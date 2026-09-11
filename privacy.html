@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인정보처리방침 | All In One Volume Master</title>
+<meta name="description" content="누리엔터테인먼트 All In One Volume Master 개인정보처리방침 / Privacy Policy">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --paper:#EEF1F4;
+    --sheet:#FFFFFF;
+    --ink:#1C2430;
+    --muted:#5B6675;
+    --rule:#D5DBE2;
+    --signal:#2A55C9;
+    --meter-lo:#3E9B67;
+    --meter-mid:#C9A227;
+    --meter-hi:#C8553D;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    font-size:16px;line-height:1.75;
+  }
+  a{color:var(--signal)}
+  a:focus-visible,button:focus-visible{outline:3px solid var(--signal);outline-offset:3px;border-radius:4px}
+
+  header{max-width:760px;margin:0 auto;padding:48px 24px 0}
+  .meter{display:flex;gap:4px;align-items:flex-end;height:36px;margin-bottom:28px}
+  .meter span{width:8px;border-radius:2px;background:var(--meter-lo);transform-origin:bottom;animation:rise .9s cubic-bezier(.2,.8,.2,1) both}
+  .meter span:nth-child(n+9){background:var(--meter-mid)}
+  .meter span:nth-child(n+12){background:var(--meter-hi)}
+  @keyframes rise{from{transform:scaleY(.05)}to{transform:scaleY(1)}}
+  @media (prefers-reduced-motion:reduce){.meter span{animation:none}}
+
+  .app{font-size:15px;color:var(--muted);margin:0 0 6px;font-weight:500}
+  h1{font-size:34px;line-height:1.25;margin:0 0 12px;font-weight:700;letter-spacing:-.01em}
+  .meta{color:var(--muted);font-size:14px;margin:0}
+
+  .lang{display:inline-flex;margin-top:24px;border:1px solid var(--rule);border-radius:999px;background:var(--sheet);padding:3px}
+  .lang button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:6px 16px;border-radius:999px;cursor:pointer}
+  .lang button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+  main{max-width:760px;margin:32px auto 0;padding:0 24px}
+  .sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:40px 44px}
+  .summary{border-left:4px solid var(--meter-lo);background:#F3F8F5;padding:16px 20px;border-radius:0 6px 6px 0;margin:0 0 32px}
+  .summary p{margin:0}
+  h2{font-size:19px;margin:36px 0 10px;line-height:1.4}
+  h2:first-of-type{margin-top:0}
+  p,li{max-width:68ch}
+  ul{padding-left:1.2em;margin:8px 0}
+  li{margin:4px 0}
+  table{width:100%;border-collapse:collapse;font-size:15px;margin:12px 0}
+  th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+  th{width:34%;color:var(--muted);font-weight:600}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:13.5px;background:var(--paper);padding:1px 5px;border-radius:4px;word-break:break-all}
+
+  footer{max-width:760px;margin:0 auto;padding:32px 24px 56px;color:var(--muted);font-size:14px}
+  footer dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}
+  footer dt{font-weight:600}
+  footer dd{margin:0}
+
+  [data-lang]{display:none}
+  body.ko [data-lang="ko"],body.en [data-lang="en"]{display:block}
+
+  @media (max-width:600px){
+    header{padding-top:32px}
+    h1{font-size:27px}
+    .sheet{padding:28px 20px;border-radius:0;border-left:0;border-right:0}
+    main{padding:0}
+    th{width:40%}
+  }
+</style>
+</head>
+<body class="ko">
+
+<header>
+  <div class="meter" aria-hidden="true">
+    <span style="height:22%;animation-delay:.00s"></span><span style="height:30%;animation-delay:.03s"></span>
+    <span style="height:38%;animation-delay:.06s"></span><span style="height:46%;animation-delay:.09s"></span>
+    <span style="height:54%;animation-delay:.12s"></span><span style="height:61%;animation-delay:.15s"></span>
+    <span style="height:68%;animation-delay:.18s"></span><span style="height:75%;animation-delay:.21s"></span>
+    <span style="height:82%;animation-delay:.24s"></span><span style="height:88%;animation-delay:.27s"></span>
+    <span style="height:93%;animation-delay:.30s"></span><span style="height:97%;animation-delay:.33s"></span>
+    <span style="height:100%;animation-delay:.36s"></span>
+  </div>
+  <p class="app">All In One Volume Master (올인원 볼륨 마스터 믹서)</p>
+  <h1 data-lang="ko">개인정보처리방침</h1>
+  <h1 data-lang="en">Privacy Policy</h1>
+  <p class="meta" data-lang="ko">시행일 2026년 9월 12일</p>
+  <p class="meta" data-lang="en">Effective September 12, 2026</p>
+  <div class="lang" role="group" aria-label="언어 선택 / Language">
+    <button type="button" id="btn-ko" aria-pressed="true" onclick="setLang('ko')">한국어</button>
+    <button type="button" id="btn-en" aria-pressed="false" onclick="setLang('en')">English</button>
+  </div>
+</header>
+
+<main>
+<!-- ===================== 한국어 ===================== -->
+<article class="sheet" data-lang="ko" lang="ko">
+  <div class="summary">
+    <p>이 앱은 회원가입이 없고, 사용자의 개인정보를 수집하거나 외부 서버로 전송하지 않습니다. 모든 설정과 기록은 사용자의 PC 안에만 저장됩니다.</p>
+  </div>
+
+  <p>누리엔터테인먼트(이하 “회사”)는 「개인정보 보호법」 등 관련 법령을 준수하며, All In One Volume Master(이하 “앱”) 이용자의 개인정보를 보호하기 위해 다음과 같이 개인정보처리방침을 정합니다.</p>
+
+  <h2>제1조 수집하는 개인정보</h2>
+  <p>앱은 이름, 이메일, 전화번호, 위치, 기기 식별자 등 이용자를 알아볼 수 있는 개인정보를 수집하지 않습니다. 앱 사용 기록을 회사로 전송하는 기능(분석, 광고, 원격 오류 보고)도 포함하지 않습니다.</p>
+  <p>다만 이용자가 고객 문의를 위해 이메일을 보내는 경우, 답변을 위해 아래 정보를 받게 됩니다.</p>
+  <table>
+    <tr><th>항목</th><td>이메일 주소, 문의 내용, 이용자가 직접 첨부한 파일(스크린샷, 로그 등)</td></tr>
+    <tr><th>목적</th><td>문의 확인 및 답변, 오류 해결</td></tr>
+    <tr><th>보유 기간</th><td>문의 처리 완료 후 1년 보관 후 파기. 단, 관련 법령에 따라 보관이 필요한 경우 해당 기간 동안 보관</td></tr>
+  </table>
+
+  <h2>제2조 PC에만 저장되는 정보</h2>
+  <p>앱이 동작하기 위해 아래 정보를 이용자의 PC에 저장합니다. 이 정보는 회사로 전송되지 않으며, 회사는 이에 접근할 수 없습니다.</p>
+  <ul>
+    <li>앱 설정(앱별 볼륨, 단축키, EQ 프리셋 등)과 동작 기록(오류 로그). 로그에는 소리를 내는 프로그램의 이름과 설치 경로가 포함될 수 있습니다.</li>
+    <li>EQ 및 마이크 효과 설정 파일: <code>C:\Program Files\EqualizerAPO\config\</code> 폴더의 앱 전용 파일, <code>C:\Users\Public\Documents\AllInOneVolumeMaster\</code> 폴더</li>
+  </ul>
+  <p>마이크 입력은 음량 표시와 효과 적용을 위해 PC 안에서 실시간으로만 처리되며, 녹음하거나 저장하거나 전송하지 않습니다.</p>
+
+  <h2>제3조 결제 정보</h2>
+  <p>앱 구매와 결제는 Microsoft Store를 통해 이루어집니다. 결제 정보는 Microsoft가 처리하며, 회사는 이용자의 카드 번호나 결제 정보를 받거나 보관하지 않습니다. 회사는 Microsoft로부터 개인을 식별할 수 없는 판매 통계만 제공받습니다. Microsoft의 개인정보 처리에 대해서는 <a href="https://privacy.microsoft.com/ko-kr/privacystatement" target="_blank" rel="noopener">Microsoft 개인정보처리방침</a>을 참고해 주세요.</p>
+
+  <h2>제4조 제3자 제공 및 처리 위탁</h2>
+  <p>회사는 이용자의 개인정보를 제3자에게 제공하지 않으며, 개인정보 처리를 외부에 위탁하지 않습니다. 법령에 따라 수사기관 등의 적법한 요청이 있는 경우는 예외로 합니다.</p>
+
+  <h2>제5조 개인정보의 파기</h2>
+  <p>보유 기간이 끝난 문의 이메일은 지체 없이 삭제합니다. PC에 저장된 정보는 이용자가 직접 삭제할 수 있으며, 방법은 아래와 같습니다.</p>
+  <ul>
+    <li>앱을 삭제하기 전에 설정 화면의 “Equalizer APO 연결 해제”를 먼저 눌러 주세요. EQ와 마이크 효과 설정이 정리됩니다.</li>
+    <li>그다음 Windows 설정 &gt; 앱에서 앱을 제거하면 앱 데이터가 함께 삭제됩니다.</li>
+  </ul>
+
+  <h2>제6조 이용자의 권리</h2>
+  <p>이용자는 회사에 보낸 문의 이메일에 대해 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다. 아래 이메일로 요청하시면 지체 없이 처리합니다.</p>
+
+  <h2>제7조 아동의 개인정보</h2>
+  <p>회사는 만 14세 미만 아동의 개인정보를 알면서 수집하지 않습니다. 만 14세 미만 아동이 문의를 보낸 사실을 알게 되면 해당 정보를 즉시 삭제합니다.</p>
+
+  <h2>제8조 개인정보 보호책임자</h2>
+  <table>
+    <tr><th>책임자</th><td>조현우 (대표)</td></tr>
+    <tr><th>이메일</th><td><a href="mailto:nurient.help@gmail.com">nurient.help@gmail.com</a></td></tr>
+  </table>
+  <p>개인정보 침해에 대한 신고나 상담은 아래 기관에도 문의할 수 있습니다.</p>
+  <ul>
+    <li>개인정보침해신고센터: 국번 없이 118 (<a href="https://privacy.kisa.or.kr" target="_blank" rel="noopener">privacy.kisa.or.kr</a>)</li>
+    <li>개인정보분쟁조정위원회: 1833-6972 (<a href="https://www.kopico.go.kr" target="_blank" rel="noopener">www.kopico.go.kr</a>)</li>
+  </ul>
+
+  <h2>제9조 방침의 변경</h2>
+  <p>이 방침이 변경되는 경우 시행 7일 전부터 이 페이지를 통해 알립니다.</p>
+</article>
+
+<!-- ===================== English ===================== -->
+<article class="sheet" data-lang="en" lang="en">
+  <div class="summary">
+    <p>This app has no accounts. It does not collect your personal information or send any data to external servers. All settings and logs stay on your PC.</p>
+  </div>
+
+  <p>Nurient Entertainment (“we”) respects your privacy. This policy explains how All In One Volume Master (“the app”) handles information.</p>
+
+  <h2>1. Information we collect</h2>
+  <p>The app does not collect personal information such as your name, email address, phone number, location, or device identifiers. It contains no analytics, advertising, or remote crash reporting.</p>
+  <p>If you email us for support, we receive the following to answer you.</p>
+  <table>
+    <tr><th>What</th><td>Your email address, your message, and any files you choose to attach (screenshots, logs)</td></tr>
+    <tr><th>Why</th><td>To answer your inquiry and fix problems</td></tr>
+    <tr><th>How long</th><td>Deleted one year after your inquiry is resolved, unless the law requires longer retention</td></tr>
+  </table>
+
+  <h2>2. Information stored only on your PC</h2>
+  <p>To work, the app stores the following on your PC. This information is never sent to us and we cannot access it.</p>
+  <ul>
+    <li>App settings (per-app volume, hotkeys, EQ presets) and error logs. Logs may include the names and install paths of programs that play audio.</li>
+    <li>EQ and microphone effect files: app-specific files in <code>C:\Program Files\EqualizerAPO\config\</code> and the folder <code>C:\Users\Public\Documents\AllInOneVolumeMaster\</code></li>
+  </ul>
+  <p>Microphone input is processed in real time on your PC only, for level display and effects. It is never recorded, saved, or transmitted.</p>
+
+  <h2>3. Payments</h2>
+  <p>Purchases are handled by the Microsoft Store. Microsoft processes your payment details; we never receive or store your card or payment information. We only receive anonymous sales statistics from Microsoft. See the <a href="https://privacy.microsoft.com/en-us/privacystatement" target="_blank" rel="noopener">Microsoft Privacy Statement</a> for how Microsoft handles your data.</p>
+
+  <h2>4. Sharing</h2>
+  <p>We do not sell, share, or outsource the processing of your personal information, except where required by law.</p>
+
+  <h2>5. Deleting your data</h2>
+  <p>We delete support emails when the retention period ends. You can remove data stored on your PC yourself:</p>
+  <ul>
+    <li>Before uninstalling, open Settings in the app and select “Disconnect Equalizer APO” to remove the app's EQ and microphone effect settings.</li>
+    <li>Then uninstall the app from Windows Settings &gt; Apps. App data is removed with it.</li>
+  </ul>
+
+  <h2>6. Your rights</h2>
+  <p>You can ask us to access, correct, or delete any support emails you have sent. Email us and we will respond promptly.</p>
+
+  <h2>7. Children</h2>
+  <p>We do not knowingly collect information from children under 14. If we learn that a child under 14 has contacted us, we will delete that information.</p>
+
+  <h2>8. Contact</h2>
+  <table>
+    <tr><th>Privacy officer</th><td>Hyunwoo Cho (Representative)</td></tr>
+    <tr><th>Email</th><td><a href="mailto:nurient.help@gmail.com">nurient.help@gmail.com</a></td></tr>
+  </table>
+
+  <h2>9. Changes</h2>
+  <p>If this policy changes, we will post the update on this page at least 7 days before it takes effect.</p>
+</article>
+</main>
+
+<footer>
+  <dl data-lang="ko">
+    <dt>상호</dt><dd>누리엔터테인먼트</dd>
+    <dt>대표자</dt><dd>조현우</dd>
+    <dt>사업자등록번호</dt><dd>563-69-00717</dd>
+    <dt>통신판매업 신고번호</dt><dd>제2026-고양일산동-1843호</dd>
+    <dt>주소</dt><dd>경기도 고양시 일산동구 고풍로 182-19</dd>
+    <dt>이메일</dt><dd><a href="mailto:nurient.help@gmail.com">nurient.help@gmail.com</a></dd>
+  </dl>
+  <dl data-lang="en">
+    <dt>Company</dt><dd>Nurient Entertainment</dd>
+    <dt>Representative</dt><dd>Hyunwoo Cho</dd>
+    <dt>Business Reg. No.</dt><dd>563-69-00717</dd>
+    <dt>Mail-order Reg. No.</dt><dd>2026-Goyangilsandong-1843</dd>
+    <dt>Address</dt><dd>182-19, Gopung-ro, Ilsandong-gu, Goyang-si, Gyeonggi-do, Republic of Korea</dd>
+    <dt>Email</dt><dd><a href="mailto:nurient.help@gmail.com">nurient.help@gmail.com</a></dd>
+  </dl>
+</footer>
+
+<script>
+  function setLang(l){
+    document.body.className = l;
+    document.documentElement.lang = l;
+    document.getElementById('btn-ko').setAttribute('aria-pressed', l==='ko');
+    document.getElementById('btn-en').setAttribute('aria-pressed', l==='en');
+    document.title = l==='ko' ? '개인정보처리방침 | All In One Volume Master' : 'Privacy Policy | All In One Volume Master';
+  }
+  var q = new URLSearchParams(location.search).get('lang');
+  if (q === 'en' || (!q && !(navigator.language||'').toLowerCase().startsWith('ko'))) setLang('en');
+</script>
+</body>
+</html>
