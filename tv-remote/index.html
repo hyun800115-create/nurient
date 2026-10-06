@@ -27,6 +27,7 @@
   --key:#232c35; --key-edge:#38444f; --accent:#ec5a49; --accent-ink:#1a0d0b; --soft:#3a2321;
   --done:#5cc48d; --done-soft:#1d3428; --shadow:rgba(0,0,0,.35); color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 .wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
@@ -109,6 +110,34 @@ ul.list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30}
 footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* developer mode */
+.devbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--ink);color:var(--bg);border-radius:12px;padding:8px 10px;margin-top:10px;font-size:13px}
+.devbar b{font-weight:700;margin-right:auto}
+.devbar button{border:1px solid color-mix(in srgb,var(--bg) 35%,transparent);background:transparent;color:var(--bg);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
+.devbar button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tag{font-family:var(--f-body);font-size:11px;border-radius:5px;padding:0 5px;border:1px solid var(--accent);color:var(--accent)}
+.note{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--soft);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.form{display:grid;gap:12px;margin-top:12px}
+.form label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.form input,.form textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.form textarea{min-height:96px;resize:vertical;font-family:var(--f-mono)}
+.form textarea.prose{font-family:var(--f-body)}
+.form input:focus,.form textarea:focus{outline:none;border-color:var(--accent)}
+.form .hint{font-size:12px;color:var(--muted)}
+.form .err{font-size:13px;color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 14px;cursor:pointer;font-size:14px}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.danger{color:var(--accent);border-color:var(--accent)}
+.btn.danger.armed{background:var(--accent);color:var(--accent-ink)}
+.pin{display:flex;gap:8px;justify-content:center;margin:18px 0 8px}
+.pin input{width:100%;max-width:220px;text-align:center;font-family:var(--f-mono);font-size:26px;letter-spacing:.4em;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.changes{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:6px}
+.changes li{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+.changes li span{min-width:0;overflow-wrap:anywhere}
+.devlink{border:0;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;padding:6px}
+.sync{font-size:12px;color:var(--muted);margin-top:6px}
+pre.export{max-height:200px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;user-select:all}
 </style>
 
 </head>
@@ -117,10 +146,17 @@ footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
   <header class="top">
     <div>
       <h1>TV 리모컨 동조코드<span class="dot" aria-hidden="true"></span></h1>
-      <p class="sub">제조사를 찾고, 코드를 하나씩 눌러 확인하세요</p>
+      <p class="sub">고객 댁 TV 제조사를 찾고, 코드를 하나씩 눌러 확인하세요</p>
     </div>
     <div class="stats" id="stats"></div>
   </header>
+  <div class="devbar" id="devbar" hidden>
+    <b>개발자 모드</b>
+    <button class="primary" id="devAdd">+ 제조사 추가</button>
+    <button id="devGuide">사용법 문구</button>
+    <button id="devChanges">변경 내역</button>
+    <button id="devLock">잠금</button>
+  </div>
 
   <div class="deck">
     <div class="search">
@@ -147,7 +183,11 @@ footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
   </section>
   <div class="listhead"><span id="listTitle">전체 제조사</span><span id="count"></span></div>
   <div id="list"></div>
-  <footer>원본: BT리모컨 TV 동조코드 (2024.04.22) · 코드가 안 맞으면 같은 목록의 다음 코드를 시도하세요</footer>
+  <footer>
+    원본: BT리모컨 TV 동조코드 (2024.04.22) · 코드가 안 맞으면 같은 목록의 다음 코드를 시도하세요
+    <div><button class="devlink" id="devOpen">개발자 모드</button></div>
+    <div class="sync" id="syncNote"></div>
+  </footer>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -160,82 +200,123 @@ footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
         <p id="shSub"></p>
       </div>
       <div class="row" style="flex-wrap:nowrap">
+        <button class="icon-btn" id="shEdit" hidden>수정</button>
         <button class="icon-btn" id="shFav" aria-label="즐겨찾기">☆</button>
         <button class="icon-btn" id="shClose" aria-label="닫기">✕</button>
       </div>
     </div>
-    <div class="how"><b>사용법</b> · 코드를 앞에서부터 차례로 리모컨에 입력해 보세요. 입력해 본 코드는 <b>한 번 탭</b>하면 ‘해봄’으로, TV가 반응하면 <b>한 번 더 탭</b>해서 ‘성공’으로 표시하세요. 표시는 이 기기에 저장됩니다.</div>
-    <div class="progress"><span id="shProg"></span><button class="chip" id="shReset">표시 초기화</button></div>
-    <div class="bar"><i id="shBar"></i></div>
-    <div class="keys" id="shKeys"></div>
-    <div class="sh-actions">
-      <button class="icon-btn" id="shCopy">코드 전체 복사</button>
-    </div>
+    <div id="shBody"></div>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 const RAW = [{"name":"삼성(SAMSUNG)","group":1,"codes":["226","163","218","215","212","206","167","191","162","181","037","183","178","185","232","225","154","092","052","035","034","231","135","157","187","341","465"]},{"name":"엘지(LG,금성,GOLDSTAR)","group":2,"codes":["227","236","206","192","186","193","175","178","185","224","201","092","183","003","002","030","164","168","032","072","031","094","096","417","470"]},{"name":"대우(DAEWOO)","group":3,"codes":["014","231","043","190","177","217","176","159","166","233","029","158","150","206","178","185","216","165","169","156","152","155","151","228","195","153","170","188","198","038","160","189","039","199","182","235","092","050","053","202","047","051","179","344","375","420","357"]},{"name":"대우루컴즈(DAEWOO LUCOMS)","group":3,"codes":["327","335","350","351","352","353","321"]},{"name":"아남(ANAM)","group":4,"codes":["204","174","234","018","019","223","193","180","171","053","220","222","161","095","221","210","211","122","158","049","054","055","069","099","302","357","374","468","355","420"]},{"name":"이레전자(ERAE)","group":4,"codes":["004","006","007","008","011","012","013"]},{"name":"디지탈 디바이스(DIGITAL DEVICE)","group":4,"codes":["301","312"]},{"name":"디지털스트림테크놀로지(DIGITAL STREAM)","group":4,"codes":["351","360"]},{"name":"삼보컴퓨터(TRIGEM COMPUTER)","group":4,"codes":["332"]},{"name":"코리아데이타시스템스(KDS)","group":4,"codes":["033","073"]},{"name":"티디에스(TDS)","group":4,"codes":["103"]},{"name":"트라이뷰(TRIVIEW)","group":4,"codes":["302"]},{"name":"프리즘 테크놀로지(PRISM TECHNOLOGY)","group":4,"codes":["303","355","072"]},{"name":"한국전자(KEC)","group":4,"codes":["053","206"]},{"name":"현대아이티(현대이미지퀘스트)","group":4,"codes":["022","017","107","108","309"]},{"name":"현우 맥 플러스(MCPLUS)","group":4,"codes":["206"]},{"name":"휴리프(HULIF)","group":4,"codes":["104"]},{"name":"쿠메스전자(QUMES)","group":4,"codes":["106"]},{"name":"다오코리아(DaoKorea)","group":4,"codes":["304"]},{"name":"모뉴엘(Moneual) - 롯데마트","group":4,"codes":["305","306","307","326"]},{"name":"드림뷰(DreamView) - 이마트","group":4,"codes":["308","332"]},{"name":"노브랜드(No Brand) - 이마트","group":4,"codes":["308","332","330","463","373","351"]},{"name":"일렉트로맨(ELECTROMAN) - 이마트","group":4,"codes":["308"]},{"name":"제이엘통상(XPEER) - 홈플러스","group":4,"codes":["321"]},{"name":"우성엔터프라이즈(WeCube) - 홈플러스","group":4,"codes":["322"]},{"name":"티바(TIVA, 스피드테크놀로지)","group":4,"codes":["324"]},{"name":"스카이미디어(Vishorn)","group":4,"codes":["325","330","336"]},{"name":"동양전자(DONGYANG)","group":4,"codes":["068"]},{"name":"비티씨정보통신(BTC)","group":4,"codes":["316"]},{"name":"씨마디지텍(CIMADIGITEC)","group":4,"codes":["318","319","072"]},{"name":"LS전자(LS ELECTRONICS)","group":4,"codes":["313"]},{"name":"모티브씨엔씨(MOTV)","group":4,"codes":["311","378","355"]},{"name":"시그마TV(SIGMACOM)","group":4,"codes":["310"]},{"name":"유니크로(UNIKRO)","group":4,"codes":["100","317"]},{"name":"보임틀(VOIMTLE)","group":4,"codes":["304"]},{"name":"보림전자(BOLIM)","group":4,"codes":["028","315","323"]},{"name":"삼인디스플레이(XSTIM)","group":4,"codes":["104","320","329"]},{"name":"유투스(케이엘전자 UTUS)","group":4,"codes":["314"]},{"name":"인디텍(VIEWPIA)","group":4,"codes":["107"]},{"name":"재원전자(JAEWON)","group":4,"codes":["333"]},{"name":"지피앤씨(GPNC)","group":4,"codes":["327","306"]},{"name":"제노스미디어(ZENOS)","group":4,"codes":["303","328"]},{"name":"제이아이케이솔루션(LEGRAND)","group":4,"codes":["342"]},{"name":"파인포스(FINEFORCE)","group":4,"codes":["306"]},{"name":"더블유시디(WCD)","group":4,"codes":["331"]},{"name":"토마토디스플레이(TOMATO DISPLAY)","group":4,"codes":["337","306","356"]},{"name":"넥스디지탈(NEX)","group":4,"codes":["338"]},{"name":"매직나라(MAGIC NARA)","group":4,"codes":["332","339"]},{"name":"유니크컴퍼니(UNIQUE COMPANY)","group":4,"codes":["340"]},{"name":"알파스캔(ALPHASCAN)","group":4,"codes":["306","203","345"]},{"name":"야마카시(YAMAKASI, 바이텍코리아)","group":4,"codes":["343","346","347","348","349"]},{"name":"자비오씨앤씨(XAVVIO)","group":4,"codes":["354"]},{"name":"티베라(TVERA)","group":4,"codes":["355"]},{"name":"스카이워스(SKYWORTH)","group":4,"codes":["353"]},{"name":"오리온정보통신(TOPSYNC) 오리온(ORION)","group":4,"codes":["351","330","357","306","111","101","072"]},{"name":"한스정보(HANSJUNGBO, HANS TOUCH)","group":4,"codes":["356"]},{"name":"샤오미(XIAOMI)","group":4,"codes":["361"]},{"name":"디스플레이파크(DISPLAY PARK)","group":4,"codes":["072"]},{"name":"스마트홈 일렉트로닉스 - 스마트라 (SMART HOME ELECTRONICS)","group":4,"codes":["362","363","072","420"]},{"name":"주연테크(JOOYON)","group":4,"codes":["302","346","373","353"]},{"name":"대유위니아(WINIADAEWOO, WINIADIMCHAE)","group":4,"codes":["338","375"]},{"name":"아낙(ANAC)","group":4,"codes":["345"]},{"name":"매직뷰(MAGICVU)","group":4,"codes":["355"]},{"name":"모넥스(MONEX)","group":4,"codes":["302"]},{"name":"엘디케이(LDK)","group":4,"codes":["321","206"]},{"name":"와사비망고(WASABIMANGO)","group":4,"codes":["072","419","420"]},{"name":"하이메이드(HIMADE)","group":4,"codes":["072","461","473","476","477","376"]},{"name":"인트로스(INTROS)","group":4,"codes":["072","355"]},{"name":"삼화디스플레이(SAMHWA)","group":4,"codes":["072"]},{"name":"JAMOS","group":4,"codes":["358"]},{"name":"CAMEL","group":4,"codes":["366"]},{"name":"아도니스(ADONIS)","group":4,"codes":["355"]},{"name":"큐닉스(QNIX)","group":4,"codes":["370","371","372"]},{"name":"와이드뷰 (WIDE VU)","group":4,"codes":["373","360"]},{"name":"벡셀 (BEXEL)","group":4,"codes":["350","462"]},{"name":"폴라로이드 (POLAROID)","group":4,"codes":["072"]},{"name":"클라인즈 (KLEINZ)","group":4,"codes":["373"]},{"name":"아인츠 (IEINZ)","group":4,"codes":["373"]},{"name":"티비스타 (TVSTAR)","group":4,"codes":["355"]},{"name":"더함 TV (THEHAM)","group":4,"codes":["072","351"]},{"name":"이엔티비 (ENTV)","group":4,"codes":["374","420"]},{"name":"MOZEE","group":4,"codes":["373"]},{"name":"시네아이(DLT) -시네EYE","group":4,"codes":["373"]},{"name":"ZEPA","group":4,"codes":["373"]},{"name":"젠티뷰(ZENTVIEW)","group":4,"codes":["356","373"]},{"name":"FIDES","group":4,"codes":["321","072"]},{"name":"프리토스 (FREETOSS)","group":4,"codes":["321","373","355"]},{"name":"CACC","group":4,"codes":["072"]},{"name":"제네시스 (GENESIS)","group":4,"codes":["321","355"]},{"name":"이노스 (INNOS)","group":4,"codes":["072","378","478","472","355"]},{"name":"한성(HANSUNG)","group":4,"codes":["378","414","420","321","472"]},{"name":"스마트뷰 (SMART VIEW)","group":4,"codes":["418","072","467"]},{"name":"이스트라(ESTRA)","group":4,"codes":["419","351"]},{"name":"COOCAA","group":4,"codes":["353"]},{"name":"티지앤컴퍼니(TG&Co.)","group":4,"codes":["332","308"]},{"name":"트루비(TRUVI)","group":4,"codes":["419","420"]},{"name":"IRIVER(드림어스)","group":4,"codes":["072","420"]},{"name":"유맥스(UMAX)","group":4,"codes":["072","420"]},{"name":"의영시스템","group":4,"codes":["357"]},{"name":"앤트웍스(ANTWORKS)","group":4,"codes":["330","357"]},{"name":"현아이디어(HYUNIDEA)","group":4,"codes":["373"]},{"name":"지스타(ZSTA)","group":4,"codes":["373"]},{"name":"타라엘씨디(TARALCD)","group":4,"codes":["302"]},{"name":"호리온(HORION)","group":4,"codes":["419","072","467"]},{"name":"NEXTBOOK","group":4,"codes":["419"]},{"name":"브라운슈거(BROWN SUGAR)","group":4,"codes":["419"]},{"name":"더하이텍(THEHITECH)","group":4,"codes":["344"]},{"name":"루브제(LUVZE)","group":4,"codes":["373"]},{"name":"브릴리언츠(BRILLIANT)","group":4,"codes":["353"]},{"name":"디포인트(DPOINT)","group":4,"codes":["072","462"]},{"name":"저스트인테크(JIT)","group":4,"codes":["373"]},{"name":"OIC코리아(OIC KOREA, PRISM KOREA)","group":4,"codes":["302"]},{"name":"델로라(DELORA)","group":4,"codes":["467"]},{"name":"브리드(VRID)","group":4,"codes":["072"]},{"name":"TNM","group":4,"codes":["420","355","360","466","378"]},{"name":"살루스(SALUS)","group":4,"codes":["462","072","357"]},{"name":"라익미(LIKEME)","group":4,"codes":["373","378","420"]},{"name":"리베로(LIBERO)","group":4,"codes":["072"]},{"name":"아티브(ARTIVE)","group":4,"codes":["466","467"]},{"name":"시티브TV(SEETIVE)","group":4,"codes":["466","467","378","476"]},{"name":"세이키(SEIKI)","group":4,"codes":["378"]},{"name":"KONKA","group":4,"codes":["072"]},{"name":"APEX","group":4,"codes":["378","462"]},{"name":"스마트에버(SMARTEVER)","group":4,"codes":["420"]},{"name":"엠제이(MJ)","group":4,"codes":["378"]},{"name":"신일전자(SHINIL)","group":4,"codes":["420"]},{"name":"중앙디스플레이(JADISPLAY)","group":4,"codes":["072"]},{"name":"해커씨앤씨(HACKER)","group":4,"codes":["072"]},{"name":"LNP","group":4,"codes":["041"]},{"name":"디지털맥스(DIGITALMAX)","group":4,"codes":["462","378"]},{"name":"PICO","group":4,"codes":["468"]},{"name":"티베스트(TVEST)","group":4,"codes":["469"]},{"name":"에이스(ACE GLOBAL)","group":4,"codes":["357"]},{"name":"와이드테크(WIDE TECH)","group":4,"codes":["360","357"]},{"name":"고랩 프리뷰(FREEVIEW)","group":4,"codes":["378"]},{"name":"썬루트(SUNROOT)","group":4,"codes":["378"]},{"name":"엠베스텍(MBESTEK)","group":4,"codes":["072","462"]},{"name":"이도디스플레이(YIDO DISPLAY)","group":4,"codes":["420"]},{"name":"아이사(DAM_TECH_TV)","group":4,"codes":["373","378"]},{"name":"지브라(ZVERA)","group":4,"codes":["373"]},{"name":"베이직스(BASICS)","group":4,"codes":["467"]},{"name":"포유디지탈(아이뮤즈) -FOR YOU DIGITAL","group":4,"codes":["338"]},{"name":"마크비전(MARK VISION)","group":4,"codes":["420"]},{"name":"리플렉스(REFLEX)","group":4,"codes":["348","420"]},{"name":"리치웰(COMODOTV -RICHWELL)","group":4,"codes":["072"]},{"name":"델리파스(DELEPHAS)","group":4,"codes":["420","355"]},{"name":"써밋티비(SUMMITV)","group":4,"codes":["373","357"]},{"name":"포스픽(POSPIC)","group":4,"codes":["420","355"]},{"name":"에스지(SG)","group":4,"codes":["373"]},{"name":"엘카이(LKAUI)","group":4,"codes":["357","360"]},{"name":"경성글로벌코리아(KSGK)","group":4,"codes":["467"]},{"name":"티브이지(TVEG)","group":4,"codes":["355","373"]},{"name":"컴스톤(COMSTONE)","group":4,"codes":["355","357","420"]},{"name":"센티오(SENTIO)","group":4,"codes":["373","420"]},{"name":"티엑스(TX)","group":4,"codes":["357"]},{"name":"포에스(FS) 디스플레이","group":4,"codes":["357"]},{"name":"롤리(LOLLY)","group":4,"codes":["462"]},{"name":"롯데하이마트 (LOTTE HIMART)","group":4,"codes":["420","357"]},{"name":"드림 TV (DREAM TV)","group":4,"codes":["357"]},{"name":"이디에스(TIVID)","group":4,"codes":["462"]},{"name":"와드뷰(WADVIEW)","group":4,"codes":["420"]},{"name":"인아큐브(INA)","group":4,"codes":["360"]},{"name":"미디어빌리지테크(SEJONG)","group":4,"codes":["471"]},{"name":"아이온코리아(BOSSWIZ)","group":4,"codes":["357","477"]},{"name":"익스프레스 럭 코리아 (EXPRESS LUCK KOREA)","group":4,"codes":["357"]},{"name":"피데스(FIDES)","group":4,"codes":["420","373"]},{"name":"다우리(DAURI)","group":4,"codes":["355"]},{"name":"큐스타(Q.STAR)","group":4,"codes":["467","360","378","353","420","474","475"]},{"name":"장은테크(JANGEUN)","group":4,"codes":["355"]},{"name":"큐벨(QBELL)","group":4,"codes":["467","355"]},{"name":"필루체(FILLUCE)","group":4,"codes":["373","072"]},{"name":"쿠잉(COOING)","group":4,"codes":["357"]},{"name":"행운(HAENGWOON)","group":4,"codes":["360"]},{"name":"파트로(PATRO)","group":4,"codes":["373"]},{"name":"케이티에이코리아(KTA KOREA)","group":4,"codes":["338"]},{"name":"유니피엠(UNIPM)","group":4,"codes":["357"]},{"name":"에스포 SMART(S4 SMART)","group":4,"codes":["472","357"]},{"name":"오토모(AUTOMO)","group":4,"codes":["357"]},{"name":"메디하임(MEDIHEIM)","group":4,"codes":["467"]},{"name":"지닷카멜레온(G.CHAMELEON)","group":4,"codes":["338"]},{"name":"COON","group":4,"codes":["351"]},{"name":"지온디스플레이(ZION DISPLAY)","group":4,"codes":["357","072"]},{"name":"큐빅스(CUBIX)","group":4,"codes":["357"]},{"name":"마루나(MARUNA)","group":4,"codes":["357"]},{"name":"아울(AWL)","group":4,"codes":["355"]},{"name":"스콘(SKON)","group":4,"codes":["357"]},{"name":"OTC","group":4,"codes":["420"]},{"name":"GMOUNT","group":4,"codes":["355"]},{"name":"BONE","group":4,"codes":["357"]},{"name":"타키온글로벌(TACHYON)","group":4,"codes":["373"]},{"name":"넥스트젠(NEXTGEN)","group":4,"codes":["477","360"]},{"name":"테레비존(TV ZONE)","group":4,"codes":["462"]},{"name":"에어리브(AIRIVE)","group":4,"codes":["355"]},{"name":"화봄(HWABOM)","group":4,"codes":["355"]},{"name":"오존컴퍼니(OZONE)","group":4,"codes":["477"]},{"name":"SONY","group":5,"codes":["048","060","059","058","057","056","207","115","194","147","070","139","045","046","080"]},{"name":"PANASONIC","group":5,"codes":["095","161","049","054","055","223","067","068","238","061","069","071","250"]},{"name":"NEC","group":5,"codes":["005","014","042","105","150","151","152","413"]},{"name":"JVC","group":5,"codes":["058","066","092","070","071","321"]},{"name":"SANYO","group":5,"codes":["020","102","151"]},{"name":"PIONEER","group":5,"codes":["002","003","027","097","367"]},{"name":"FUJITSU","group":5,"codes":["205","412"]},{"name":"SHARP","group":6,"codes":["001","062","063","064","065","092","208","206"]},{"name":"HITACHI","group":6,"codes":["377","009","023","024","025","083","097","098","150","139","206","376"]},{"name":"HP","group":6,"codes":["403"]},{"name":"TOSHIBA","group":6,"codes":["021","052","105","163","088","151","089","090","091","093"]},{"name":"MITSUBISHI","group":6,"codes":["074","075","076","105","150"]},{"name":"PHILIPS","group":7,"codes":["026","066","120","150","154","167","203","037","068","206","236","178","185","081","082","085","086","087","312"]},{"name":"하이얼(HAIER)","group":7,"codes":["033","077","078","302","333","345"]},{"name":"HISENSE","group":7,"codes":["368"]},{"name":"ZENITH","group":7,"codes":["050","084","072"]},{"name":"CANDEL","group":7,"codes":["150","081"]},{"name":"EMERSON","group":7,"codes":["359","026","038","053","092","111","135","154","206"]},{"name":"GE","group":7,"codes":["042","167","037","049","067","071"]},{"name":"GRUNDIG","group":7,"codes":["401"]},{"name":"MAGNAVOX","group":7,"codes":["001","150","154","167","037","068","206","185","081","082","085"]},{"name":"A MARK","group":7,"codes":["092","154","193","206"]},{"name":"PENNEY","group":7,"codes":["150","163","167"]},{"name":"에이텍(ATEC)","group":8,"codes":["031"]},{"name":"3S DIGITAL","group":8,"codes":["028"]},{"name":"뉴컴월드(NEWCOMMWORLD)","group":8,"codes":["219"]},{"name":"디지털 싸이노스(DIGIAL CYNOS)","group":8,"codes":["016"]},{"name":"새찬전자(SAECHAN)","group":8,"codes":["028","041","044"]},{"name":"AOC","group":8,"codes":["193","404"]},{"name":"AUDIOVOX","group":8,"codes":["038"]},{"name":"CETRONIC","group":8,"codes":["053"]},{"name":"CHANGHONG","group":8,"codes":["351"]},{"name":"CITIZEN","group":8,"codes":["050","052","092","150","163","081"]},{"name":"CLASSIC","group":8,"codes":["053"]},{"name":"CONCERTO","group":8,"codes":["150"]},{"name":"CONTEC","group":8,"codes":["053","135","157"]},{"name":"CORONADO","group":8,"codes":["092","154","206"]},{"name":"CRAIG","group":8,"codes":["053"]},{"name":"CROWN","group":8,"codes":["053","092"]},{"name":"CURTIS MATHES","group":8,"codes":["052","092","163"]},{"name":"CXC","group":8,"codes":["053"]},{"name":"DAYTRON","group":8,"codes":["092"]},{"name":"DELL","group":8,"codes":["410"]},{"name":"DYNASTY","group":8,"codes":["053"]},{"name":"덱트론(DECTRON)","group":8,"codes":["033"]},{"name":"디보스(DIBOSS)","group":8,"codes":["015","109"]},{"name":"ELECTROHOME","group":8,"codes":["038","092"]},{"name":"FUNAI","group":8,"codes":["053","359"]},{"name":"FUTURETECH","group":8,"codes":["053"]},{"name":"INFINITY","group":9,"codes":["068"]},{"name":"INKEL","group":9,"codes":["209","353","163","072","151","327","350","354","464"]},{"name":"INSIGNIA","group":9,"codes":["411"]},{"name":"JBL","group":9,"codes":["068"]},{"name":"JCPENNY","group":9,"codes":["052","092","089"]},{"name":"KENWOOD","group":9,"codes":["058","070","415"]},{"name":"KIVI","group":9,"codes":["420"]},{"name":"KLOSS","group":9,"codes":["082"]},{"name":"KMC","group":9,"codes":["092","154","206"]},{"name":"KTV","group":9,"codes":["053","092","154","250"]},{"name":"LUXMAN","group":9,"codes":["051","150"]},{"name":"LXI","group":9,"codes":["151","167","037","068","090"]},{"name":"MARANTZ","group":9,"codes":["068","108"]},{"name":"MATSUI","group":9,"codes":["068"]},{"name":"METZ","group":9,"codes":["408","462","353"]},{"name":"MGA","group":9,"codes":["150"]},{"name":"MTC","group":9,"codes":["052","150","163"]},{"name":"NAD","group":9,"codes":["090"]},{"name":"NIKEI","group":9,"codes":["053"]},{"name":"ONKING","group":9,"codes":["053"]},{"name":"ONTEC","group":9,"codes":["053"]},{"name":"ONWA","group":9,"codes":["053"]},{"name":"PHILCO","group":9,"codes":["150","154","167","037","068","206","185","081","082","085"]},{"name":"PORTLAND","group":9,"codes":["092","150","154","206"]},{"name":"PROTON","group":9,"codes":["032","092","122"]},{"name":"QUASAR","group":9,"codes":["049","067","071","250"]},{"name":"RADIO SHACK","group":9,"codes":["053","185","092"]},{"name":"RCA","group":9,"codes":["010","097","150","167","037","370"]},{"name":"RUNCO","group":9,"codes":["416"]},{"name":"REALISTIC","group":9,"codes":["053"]},{"name":"SCOTT","group":9,"codes":["053","092"]},{"name":"SEARS","group":9,"codes":["092","150","151","163","167","037","206","089","090"]},{"name":"SOUNDESIGN","group":9,"codes":["053","081"]},{"name":"SPECTRICON","group":9,"codes":["193"]},{"name":"SSS","group":9,"codes":["053"]},{"name":"SYLVANIA","group":9,"codes":["051","150","167","185","037","068","081","082","085"]},{"name":"TATUNG","group":9,"codes":["049"]},{"name":"TCL","group":9,"codes":["334","009","369","376","460","461"]},{"name":"TEAC","group":9,"codes":["407"]},{"name":"TECHNICS","group":9,"codes":["095","071"]},{"name":"TECHWOOD","group":9,"codes":["150"]},{"name":"TEKNIKA","group":9,"codes":["053","092","150","154","163","165","052","206","081"]},{"name":"THOMSON","group":9,"codes":["409"]},{"name":"TMK","group":9,"codes":["150"]},{"name":"TOTEVISION","group":9,"codes":["092"]},{"name":"UNIDEN","group":9,"codes":["406"]},{"name":"VICTOR","group":9,"codes":["066"]},{"name":"VIDTECH","group":9,"codes":["150"]},{"name":"VIEWSONIC","group":9,"codes":["405"]},{"name":"VIZIO","group":9,"codes":["364"]},{"name":"WARDS","group":9,"codes":["092","150","154","167","185","037","068","071","206","085"]},{"name":"WESTING HOUSE","group":9,"codes":["038","014","402"]},{"name":"YAMAHA","group":9,"codes":["150"]},{"name":"YUPITERUZENITH","group":9,"codes":["053"]},{"name":"ZONDA","group":9,"codes":["193"]}];
+const PASS_HASH = "a1ef3a7ea23a2e3120d1892b3f1ecf6c0b0e8456bdbc4b6b9f0b64d91558078d";
+const PASS_SALT = "nurient-tvcode:";
+const DEFAULT_GUIDE = "코드를 앞에서부터 차례로 리모컨에 입력해 보세요. 입력해 본 코드는 한 번 탭하면 ‘해봄’, TV가 반응하면 한 번 더 탭해서 ‘성공’으로 표시하세요. 표시는 이 기기에만 저장됩니다.";
 const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
-const BASE = {"ㄲ":"ㄱ","ㄸ":"ㄷ","ㅃ":"ㅂ","ㅆ":"ㅅ","ㅉ":"ㅈ"};
+const BASECHO = {"ㄲ":"ㄱ","ㄸ":"ㄷ","ㅃ":"ㅂ","ㅆ":"ㅅ","ㅉ":"ㅈ"};
 const INDEX_KO = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ".split("");
 const INDEX_EN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const POPULAR = ["삼성(SAMSUNG)","엘지(LG,금성,GOLDSTAR)","대우(DAEWOO)","샤오미(XIAOMI)","SONY","TCL","PHILIPS","PANASONIC","HISENSE","이노스 (INNOS)"];
+const POPULAR = ["b0","b1","b2","b56","b195","b281","b207","b196","b209","b89"];
 const isHangul = c => c >= "가" && c <= "힣";
 const choOf = c => isHangul(c) ? CHO[Math.floor((c.charCodeAt(0)-0xAC00)/588)] : c;
 const norm = s => s.toLowerCase().replace(/[\s()\-,.&_·]/g,"");
+const pad2 = g => String(g).padStart(2,"0");
+const collator = new Intl.Collator("ko");
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-const brands = RAW.map((b,i) => {
-  const name = b.name;
+const local = {
+  get(k, d){ try { const v = localStorage.getItem("tvcode:"+k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem("tvcode:"+k, JSON.stringify(v)); } catch(e){} }
+};
+let favs = new Set(local.get("favs", []));
+let marks = local.get("marks", {});           // {brandKey: {code: 1|2}}
+let edits = {};                                // {brandKey: {name, group, codes, note, deleted, added, updatedAt}}
+let guide = DEFAULT_GUIDE;
+let dev = false;
+try { dev = sessionStorage.getItem("tvcode:dev") === "1"; } catch(e){}
+const st = { q:"", sort: local.get("sort","name"), group:"all", fav:false, letter:null };
+
+/* ---------- storage: shared db when available, else this device ---------- */
+let db = null;
+const remote = {
+  async save(key, body){ if (db) await db.collection("edits").doc(key).set(body); else { local.set("edits", edits); } },
+  async remove(key){ if (db) await db.collection("edits").doc(key).delete(); else { local.set("edits", edits); } },
+  async saveGuide(text){ if (db) await db.doc("settings/guide").set({ text }); else local.set("guide", text); }
+};
+function setSync(t){ $("syncNote").textContent = t; }
+edits = local.get("edits", {});
+guide = local.get("guide", DEFAULT_GUIDE);
+setSync("수정 내용은 이 기기에만 저장됩니다");
+(async () => {
+  try {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  } catch(e){ db = null; }
+  if (!db) return;
+  edits = {};
+  setSync("수정 내용은 모든 사용자에게 공유됩니다");
+  db.collection("edits").onSnapshot(snap => {
+    const next = {};
+    snap.docs.forEach(d => { next[d.id] = d.data(); });
+    edits = next; rebuild(); render(); if (openKey) renderSheet();
+  }, () => setSync("공유 데이터를 불러오지 못했어요. 새로고침해 보세요"));
+  db.doc("settings/guide").onSnapshot(s => { guide = (s.exists && s.data().text) || DEFAULT_GUIDE; if (openKey && mode === "view") renderSheet(); });
+})();
+
+/* ---------- data model ---------- */
+let brands = [], byKey = {};
+function derive(key, src, origin){
+  const name = src.name;
   const m = name.match(/^([^(]+?)\s*\((.+)\)\s*(.*)$/);
   let title = name, sub = "";
   if (m && /[가-힣]/.test(m[1])) { title = (m[1] + (m[3] ? " " + m[3] : "")).trim(); sub = m[2]; }
   const first = title.trim()[0] || "#";
   let letter;
-  if (isHangul(first)) { const c = choOf(first); letter = BASE[c] || c; }
+  if (isHangul(first)) { const c = choOf(first); letter = BASECHO[c] || c; }
   else if (/[a-z]/i.test(first)) letter = first.toUpperCase();
   else letter = "#";
-  const n = norm(name);
-  const cho = [...name].map(choOf).join("").replace(/\s/g,"");
-  return { id:i, name, title, sub, group:b.group, codes:b.codes, letter, ko:isHangul(first), n, cho };
-});
-const collator = new Intl.Collator("ko");
-const totalCodes = new Set(brands.flatMap(b => b.codes)).size;
-document.getElementById("stats").innerHTML = `제조사 <b>${brands.length}</b><br>코드 <b>${totalCodes}</b>종`;
+  return { key, name, title, sub, group: +src.group || 0, codes: src.codes || [], note: src.note || "",
+    letter, ko: isHangul(first), n: norm(name), cho: [...name].map(choOf).join("").replace(/\s/g,""), order: origin.order, status: origin.status };
+}
+function rebuild(){
+  const out = [];
+  RAW.forEach((b, i) => {
+    const key = "b" + i, e = edits[key];
+    if (e && e.deleted) return;
+    out.push(derive(key, e || b, { order: i, status: e ? "edited" : "" }));
+  });
+  Object.entries(edits).filter(([k, e]) => k[0] === "n" && !e.deleted)
+    .sort((a, b) => (a[1].updatedAt || 0) - (b[1].updatedAt || 0))
+    .forEach(([k, e], j) => out.push(derive(k, e, { order: RAW.length + j, status: "added" })));
+  brands = out; byKey = Object.fromEntries(out.map(b => [b.key, b]));
+  const total = new Set(brands.flatMap(b => b.codes)).size;
+  $("stats").innerHTML = `제조사 <b>${brands.length}</b><br>코드 <b>${total}</b>종`;
+  const groups = [...new Set(brands.map(b => b.group))].sort((a,b)=>a-b);
+  const sel = $("group"), cur = sel.value || "all";
+  sel.innerHTML = `<option value="all">전체 그룹</option>` + groups.map(g => `<option value="${g}">GROUP ${pad2(g)}</option>`).join("");
+  sel.value = groups.includes(+cur) ? cur : "all";
+  if (sel.value === "all") st.group = "all";
+  $("quickRow").innerHTML = POPULAR.map(k => byKey[k]).filter(Boolean)
+    .map(b => `<button class="chip" data-open="${b.key}">${esc(b.title)}</button>`).join("");
+}
 
-const store = {
-  get(k, d){ try { const v = localStorage.getItem("tvcode:"+k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
-  set(k, v){ try { localStorage.setItem("tvcode:"+k, JSON.stringify(v)); } catch(e){} }
-};
-let favs = new Set(store.get("favs", []));
-let marks = store.get("marks", {}); // {brandName: {code: 1|2}}
-const st = { q:"", sort: store.get("sort","name"), group:"all", fav:false, letter:null };
-
-const $ = id => document.getElementById(id);
-const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-
-// group select
-const groups = [...new Set(brands.map(b => b.group))].sort((a,b)=>a-b);
-$("group").innerHTML = `<option value="all">전체 그룹</option>` + groups.map(g => `<option value="${g}">GROUP ${String(g).padStart(2,"0")}</option>`).join("");
-
-// quick picks
-$("quickRow").innerHTML = POPULAR.map(n => brands.find(b => b.name === n)).filter(Boolean)
-  .map(b => `<button class="chip" data-open="${b.id}">${esc(b.title)}</button>`).join("");
-
+/* ---------- list ---------- */
 function matches(b, q){
-  if (!q) return true;
   const nq = norm(q);
   if (!nq) return true;
   if (b.n.includes(nq)) return true;
   if (/^[ㄱ-ㅎ]+$/.test(nq) && b.cho.includes(nq)) return true;
-  if (/^\d+$/.test(nq) && b.codes.some(c => c.startsWith(nq.padStart(nq.length,"0")) || c === nq.padStart(3,"0"))) return true;
+  if (/^\d+$/.test(nq) && b.codes.some(c => c.startsWith(nq))) return true;
+  if (b.note && norm(b.note).includes(nq)) return true;
   return false;
 }
 function sorted(arr){
   const a = arr.slice();
   if (st.sort === "name") a.sort((x,y) => (x.ko===y.ko ? collator.compare(x.title, y.title) : x.ko ? -1 : 1));
-  else if (st.sort === "group") a.sort((x,y) => x.group - y.group || x.id - y.id);
+  else if (st.sort === "group") a.sort((x,y) => x.group - y.group || x.order - y.order);
   else a.sort((x,y) => y.codes.length - x.codes.length || collator.compare(x.title,y.title));
   return a;
 }
@@ -246,84 +327,211 @@ function renderIdx(base){
 }
 function codeLine(b, q){
   const dq = /^\d{1,3}$/.test(q) ? q : null;
-  return b.codes.map(c => dq && (c===dq.padStart(3,"0") || c.startsWith(dq)) ? `<mark>${c}</mark>` : c).join(" ");
+  return b.codes.map(c => dq && c.startsWith(dq) ? `<mark>${c}</mark>` : c).join(" ") || "코드 없음";
 }
 function itemHTML(b, q){
-  const tried = Object.keys(marks[b.name]||{}).length;
-  const ok = Object.values(marks[b.name]||{}).includes(2);
-  return `<li><button class="item" data-open="${b.id}">
-    <span class="nm">${favs.has(b.name)?'<span class="star">★</span> ':''}${esc(b.title)}${b.sub?`<small>${esc(b.sub)}</small>`:""}</span>
-    <span class="meta">${ok?'<span style="color:var(--done)">성공</span>':tried?`<span>${tried}/${b.codes.length}</span>`:""}<span class="gtag">G${String(b.group).padStart(2,"0")}</span><span>${b.codes.length}개</span></span>
+  const m = marks[b.key] || {};
+  const tried = Object.keys(m).length, ok = Object.values(m).includes(2);
+  const tag = dev && b.status ? `<span class="tag">${b.status === "added" ? "추가됨" : "수정됨"}</span>` : "";
+  return `<li><button class="item" data-open="${b.key}">
+    <span class="nm">${favs.has(b.key)?'<span class="star">★</span> ':''}${esc(b.title)} ${tag}${b.sub?`<small>${esc(b.sub)}</small>`:""}</span>
+    <span class="meta">${ok?'<span style="color:var(--done)">성공</span>':tried?`<span>${tried}/${b.codes.length}</span>`:""}<span class="gtag">G${pad2(b.group)}</span><span>${b.codes.length}개</span></span>
     <span class="codes">${codeLine(b,q)}</span></button></li>`;
+}
+function grouped(list, keyOf, label, q){
+  let html = "", cur, buf = [];
+  const flush = () => { if (buf.length) html += `<div class="letter">${label(cur)}</div><ul class="list">${buf.join("")}</ul>`; };
+  list.forEach(b => { const k = keyOf(b); if (k !== cur) { flush(); cur = k; buf = []; } buf.push(itemHTML(b,q)); });
+  flush();
+  return html;
 }
 function render(){
   const q = st.q.trim();
-  let base = brands.filter(b => (st.group==="all" || b.group==+st.group) && (!st.fav || favs.has(b.name)) && matches(b,q));
+  const base = brands.filter(b => (st.group==="all" || b.group==+st.group) && (!st.fav || favs.has(b.key)) && matches(b,q));
   renderIdx(base);
-  let list = st.letter ? base.filter(b => b.letter === st.letter) : base;
-  list = sorted(list);
+  const list = sorted(st.letter ? base.filter(b => b.letter === st.letter) : base);
   $("count").textContent = `${list.length}곳`;
   $("listTitle").textContent = q ? `“${q}” 검색 결과` : st.fav ? "즐겨찾기" : "전체 제조사";
   $("quick").hidden = !!(q || st.fav || st.letter || st.group!=="all");
   $("clear").hidden = !st.q;
+  $("devbar").hidden = !dev;
 
   const nq = norm(q);
   if (/^\d{3}$/.test(nq)) {
-    const users = brands.filter(b => b.codes.includes(nq));
+    const users = sorted(brands.filter(b => b.codes.includes(nq)));
     $("codehit").hidden = false;
-    $("codehit").innerHTML = `<h2>코드 <b>${nq}</b> 를 쓰는 제조사 · ${users.length}곳</h2>` + (users.length ? `<div class="row" style="gap:6px">${sorted(users).map(b=>`<button class="chip" data-open="${b.id}">${esc(b.title)}</button>`).join("")}</div>` : `<div style="color:var(--muted);font-size:13px">이 번호는 목록에 없어요.</div>`);
+    $("codehit").innerHTML = `<h2>코드 <b>${nq}</b> 를 쓰는 제조사 · ${users.length}곳</h2>` + (users.length ? `<div class="row" style="gap:6px">${users.map(b=>`<button class="chip" data-open="${b.key}">${esc(b.title)}</button>`).join("")}</div>` : `<div style="color:var(--muted);font-size:13px">이 번호는 목록에 없어요.</div>`);
   } else $("codehit").hidden = true;
 
   if (!list.length) { $("list").innerHTML = `<div class="empty">${st.fav && !favs.size ? "아직 즐겨찾기가 없어요. 제조사를 열고 ☆를 눌러 추가하세요." : "찾는 제조사가 없어요. 영문이나 초성으로도 검색해 보세요."}</div>`; return; }
-  if (st.sort === "name" && !st.letter) {
-    let html = "", cur = null, buf = [];
-    const flush = () => { if (cur!==null) html += `<div class="letter">${cur}</div><ul class="list">${buf.join("")}</ul>`; };
-    list.forEach(b => { if (b.letter !== cur) { flush(); cur = b.letter; buf = []; } buf.push(itemHTML(b,q)); });
-    flush();
-    $("list").innerHTML = html;
-  } else if (st.sort === "group") {
-    let html = "", cur = null, buf = [];
-    const flush = () => { if (cur!==null) html += `<div class="letter">GROUP ${String(cur).padStart(2,"0")}</div><ul class="list">${buf.join("")}</ul>`; };
-    list.forEach(b => { if (b.group !== cur) { flush(); cur = b.group; buf = []; } buf.push(itemHTML(b,q)); });
-    flush();
-    $("list").innerHTML = html;
-  } else {
-    $("list").innerHTML = `<ul class="list">${list.map(b => itemHTML(b,q)).join("")}</ul>`;
+  if (st.sort === "name" && !st.letter) $("list").innerHTML = grouped(list, b => b.letter, l => l, q);
+  else if (st.sort === "group") $("list").innerHTML = grouped(list, b => b.group, g => `GROUP ${pad2(g)}`, q);
+  else $("list").innerHTML = `<ul class="list">${list.map(b => itemHTML(b,q)).join("")}</ul>`;
+}
+
+/* ---------- sheet ---------- */
+let openKey = null, mode = "view", delArmed = false;
+function showSheet(){ $("scrim").hidden = false; $("sheet").hidden = false; $("sheet").scrollTop = 0; }
+function openSheet(key, m = "view"){ openKey = key; mode = m; delArmed = false; renderSheet(); showSheet(); $("shClose").focus(); }
+function openPanel(m){ openKey = "_"; mode = m; delArmed = false; renderSheet(); showSheet(); }
+function closeSheet(){ $("scrim").hidden = true; $("sheet").hidden = true; openKey = null; render(); }
+
+function renderSheet(){
+  const b = byKey[openKey];
+  $("shFav").hidden = !b || mode !== "view";
+  $("shEdit").hidden = !b || !dev || mode !== "view";
+  if (mode === "view") {
+    if (!b) { closeSheet(); return; }
+    const m = marks[b.key] || {};
+    $("shTitle").textContent = b.title;
+    $("shSub").textContent = `${b.sub ? b.sub + " · " : ""}GROUP ${pad2(b.group)} · 코드 ${b.codes.length}개`;
+    $("shFav").textContent = favs.has(b.key) ? "★" : "☆";
+    $("shFav").classList.toggle("on", favs.has(b.key));
+    const n = Object.keys(m).length, ok = Object.entries(m).find(([,v]) => v===2);
+    $("shBody").innerHTML = `
+      ${b.note ? `<div class="note">${esc(b.note)}</div>` : ""}
+      <div class="how"><b>사용법</b> · ${esc(guide)}</div>
+      <div class="progress"><span>${ok ? `성공한 코드: ${ok[0]}` : `${n} / ${b.codes.length}개 시도`}</span><button class="chip" id="shReset">표시 초기화</button></div>
+      <div class="bar"><i style="width:${ok ? 100 : b.codes.length ? n / b.codes.length * 100 : 0}%"></i></div>
+      <div class="keys">${b.codes.map((c,i) => `<button class="key ${m[c]===2?"ok":m[c]?"done":""}" data-code="${c}">${c}<small>${i+1}번째</small></button>`).join("")}</div>
+      <div class="sh-actions"><button class="icon-btn" id="shCopy">코드 전체 복사</button></div>`;
+  } else if (mode === "edit" || mode === "add") {
+    const src = b || { name:"", group:"", codes:[], note:"" };
+    $("shTitle").textContent = mode === "add" ? "제조사 추가" : "제조사 수정";
+    $("shSub").textContent = mode === "add" ? "새 제조사와 코드를 입력하세요" : b.status === "added" ? "직접 추가한 제조사" : b.status === "edited" ? "원본에서 수정된 제조사" : "원본 시트의 제조사";
+    $("shBody").innerHTML = `<form class="form" id="editForm" novalidate>
+      <label>제조사 이름<input id="fName" value="${esc(src.name)}" placeholder="예: 삼성(SAMSUNG)" required></label>
+      <span class="hint">한글명(영문명) 형식으로 쓰면 영문 검색도 됩니다.</span>
+      <label>그룹 번호<input id="fGroup" inputmode="numeric" value="${esc(src.group || "")}" placeholder="예: 4"></label>
+      <label>코드 (입력 순서대로)<textarea id="fCodes" placeholder="226 163 218">${esc((src.codes||[]).join(" "))}</textarea></label>
+      <span class="hint">띄어쓰기·쉼표·줄바꿈으로 구분하세요. 숫자는 3자리로 맞춰집니다 (72 → 072).</span>
+      <label>메모 (선택)<textarea class="prose" id="fNote" placeholder="예: 2020년 이후 모델은 420 먼저">${esc(src.note || "")}</textarea></label>
+      <div class="err" id="fErr" hidden></div>
+      <div class="btns">
+        <button class="btn primary" type="submit">저장</button>
+        <button class="btn" type="button" id="fCancel">취소</button>
+        ${b ? `<button class="btn danger" type="button" id="fDelete">삭제</button>` : ""}
+        ${b && b.status === "edited" ? `<button class="btn" type="button" id="fRevert">원본으로 되돌리기</button>` : ""}
+      </div></form>`;
+    $("fName").focus();
+  } else if (mode === "login") {
+    $("shTitle").textContent = "개발자 모드";
+    $("shSub").textContent = "비밀번호를 입력하세요";
+    $("shBody").innerHTML = `<form class="form" id="loginForm" novalidate>
+      <div class="pin"><input id="fPass" type="password" inputmode="numeric" autocomplete="off" aria-label="비밀번호" maxlength="12"></div>
+      <div class="err" id="fErr" hidden style="text-align:center"></div>
+      <div class="btns" style="justify-content:center"><button class="btn primary" type="submit">들어가기</button></div></form>`;
+    $("fPass").focus();
+  } else if (mode === "guide") {
+    $("shTitle").textContent = "사용법 문구";
+    $("shSub").textContent = "모든 제조사 화면 위에 나오는 안내 문구";
+    $("shBody").innerHTML = `<form class="form" id="guideForm" novalidate>
+      <label>안내 문구<textarea class="prose" id="fGuide" style="min-height:160px">${esc(guide)}</textarea></label>
+      <span class="hint">예: 리모컨 동조 모드로 들어가는 버튼 순서를 적어 두면 현장에서 편해요.</span>
+      <div class="btns"><button class="btn primary" type="submit">저장</button><button class="btn" type="button" id="gDefault">기본 문구로</button><button class="btn" type="button" id="fCancel">취소</button></div></form>`;
+  } else if (mode === "changes") {
+    const rows = Object.entries(edits).map(([k, e]) => {
+      const orig = k[0] === "b" ? RAW[+k.slice(1)] : null;
+      const kind = e.deleted ? "삭제" : orig ? "수정" : "추가";
+      return { k, e, kind, name: e.name || (orig && orig.name) || k };
+    }).sort((a,b) => (b.e.updatedAt||0) - (a.e.updatedAt||0));
+    $("shTitle").textContent = "변경 내역";
+    $("shSub").textContent = `원본 시트와 다른 항목 ${rows.length}개`;
+    $("shBody").innerHTML = rows.length ? `<ul class="changes">${rows.map(r => `<li><span><span class="tag">${r.kind}</span> ${esc(r.name)}</span>
+        ${r.kind === "삭제" ? `<button class="chip" data-restore="${r.k}">복구</button>` : `<button class="chip" data-open="${r.k}">보기</button>`}</li>`).join("")}</ul>
+      <p class="hint" style="font-size:12px;color:var(--muted);margin:14px 0 6px">아래 내용을 복사해 Claude에게 주면 원본 데이터에 반영할 수 있어요.</p>
+      <pre class="export" id="exportText">${esc(JSON.stringify(edits))}</pre>
+      <div class="sh-actions"><button class="icon-btn" id="copyExport">변경 내역 복사</button></div>`
+      : `<div class="empty">아직 바꾼 내용이 없어요.</div>`;
   }
 }
 
-// sheet
-let openB = null;
-function openSheet(b){
-  openB = b;
-  $("shTitle").textContent = b.title;
-  $("shSub").textContent = `${b.sub ? b.sub + " · " : ""}GROUP ${String(b.group).padStart(2,"0")} · 코드 ${b.codes.length}개`;
-  renderSheet();
-  $("scrim").hidden = false; $("sheet").hidden = false; $("sheet").scrollTop = 0;
-  $("shClose").focus();
+function parseCodes(text){
+  const parts = text.split(/[\s,，、/]+/).filter(Boolean);
+  const bad = parts.filter(p => !/^\d{1,3}$/.test(p));
+  const codes = [];
+  parts.filter(p => /^\d{1,3}$/.test(p)).forEach(p => { const c = p.padStart(3,"0"); if (!codes.includes(c)) codes.push(c); });
+  return { codes, bad };
 }
-function renderSheet(){
-  const b = openB, m = marks[b.name] || {};
-  $("shFav").textContent = favs.has(b.name) ? "★" : "☆";
-  $("shFav").classList.toggle("on", favs.has(b.name));
-  $("shKeys").innerHTML = b.codes.map((c,i) => `<button class="key ${m[c]===2?"ok":m[c]?"done":""}" data-code="${c}">${c}<small>${i+1}번째</small></button>`).join("");
-  const n = Object.keys(m).length, ok = Object.entries(m).find(([,v]) => v===2);
-  $("shProg").textContent = ok ? `성공한 코드: ${ok[0]}` : `${n} / ${b.codes.length}개 시도`;
-  $("shBar").style.width = (ok ? 100 : n / b.codes.length * 100) + "%";
+function showErr(t){ const el = $("fErr"); el.textContent = t; el.hidden = false; }
+async function persist(key, body){
+  edits[key] = body; rebuild(); render();
+  try { await remote.save(key, body); return true; }
+  catch(e){ toast(e && e.code === "permission_denied" ? "저장 권한이 없어요. 이 페이지의 소유자만 수정할 수 있어요" : "저장하지 못했어요. 잠시 후 다시 시도하세요"); return false; }
 }
-function closeSheet(){ $("scrim").hidden = true; $("sheet").hidden = true; openB = null; render(); }
-let toastT;
-function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,1600); }
 
-document.addEventListener("click", e => {
-  const o = e.target.closest("[data-open]"); if (o) { openSheet(brands[+o.dataset.open]); return; }
-  const s = e.target.closest("[data-sort]"); if (s) { st.sort = s.dataset.sort; store.set("sort", st.sort); syncSort(); render(); return; }
-  const l = e.target.closest("[data-letter]"); if (l && !l.disabled) { st.letter = l.dataset.letter || null; render(); window.scrollTo({top:0}); return; }
-  const k = e.target.closest("[data-code]"); if (k && openB) {
-    const m = marks[openB.name] = marks[openB.name] || {}; const c = k.dataset.code;
+let toastT;
+function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2000); }
+function copy(t, msg){
+  const fail = () => toast("복사가 막혀 있어요. 길게 눌러 직접 복사하세요");
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(msg), fail); else fail();
+}
+async function sha256(s){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2,"0")).join("");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const o = t.closest("[data-open]"); if (o) { openSheet(o.dataset.open); return; }
+  const r = t.closest("[data-restore]"); if (r) {
+    const k = r.dataset.restore; const prev = edits[k];
+    if (k[0] === "b" && !prev.name) { delete edits[k]; rebuild(); render(); renderSheet(); try { await remote.remove(k); } catch(err){ toast("복구하지 못했어요"); } }
+    else { await persist(k, { ...prev, deleted:false, updatedAt: Date.now() }); renderSheet(); }
+    toast("복구했어요"); return;
+  }
+  const s = t.closest("[data-sort]"); if (s) { st.sort = s.dataset.sort; local.set("sort", st.sort); syncSort(); render(); return; }
+  const l = t.closest("[data-letter]"); if (l && !l.disabled) { st.letter = l.dataset.letter || null; render(); window.scrollTo({top:0}); return; }
+  const k = t.closest("[data-code]"); if (k && openKey && mode === "view") {
+    const m = marks[openKey] = marks[openKey] || {}; const c = k.dataset.code;
     if (!m[c]) m[c] = 1; else if (m[c] === 1) { for (const x in m) if (m[x]===2) m[x]=1; m[c] = 2; } else delete m[c];
-    if (!Object.keys(m).length) delete marks[openB.name];
-    store.set("marks", marks); renderSheet(); return;
+    if (!Object.keys(m).length) delete marks[openKey];
+    local.set("marks", marks); renderSheet(); return;
+  }
+  switch (t.id) {
+    case "shReset": delete marks[openKey]; local.set("marks", marks); renderSheet(); break;
+    case "shCopy": { const b = byKey[openKey]; copy(`${b.name}: ${b.codes.join(", ")}`, "코드를 복사했어요"); break; }
+    case "copyExport": copy(JSON.stringify(edits), "변경 내역을 복사했어요"); break;
+    case "fCancel": if (byKey[openKey]) { mode = "view"; renderSheet(); } else closeSheet(); break;
+    case "gDefault": $("fGuide").value = DEFAULT_GUIDE; break;
+    case "fRevert": {
+      delete edits[openKey]; rebuild(); render(); mode = "view"; renderSheet(); toast("원본으로 되돌렸어요");
+      try { await remote.remove(openKey); } catch(err){ toast("되돌리지 못했어요"); }
+      break;
+    }
+    case "fDelete": {
+      if (!delArmed) { delArmed = true; t.classList.add("armed"); t.textContent = "한 번 더 누르면 삭제"; break; }
+      const b = byKey[openKey], key = openKey;
+      await persist(key, { name: b.name, group: b.group, codes: b.codes, note: b.note, deleted: true, updatedAt: Date.now() });
+      closeSheet(); toast(`${b.title} 삭제됨 · 변경 내역에서 복구할 수 있어요`);
+      break;
+    }
+  }
+});
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "loginForm") {
+    const ok = window.crypto && crypto.subtle && (await sha256(PASS_SALT + $("fPass").value)) === PASS_HASH;
+    if (!ok) { showErr("비밀번호가 맞지 않아요"); $("fPass").select(); return; }
+    dev = true; try { sessionStorage.setItem("tvcode:dev","1"); } catch(err){}
+    closeSheet(); toast("개발자 모드를 켰어요");
+  } else if (f.id === "editForm") {
+    const name = $("fName").value.trim().replace(/\s+/g," ");
+    const group = parseInt($("fGroup").value, 10);
+    const { codes, bad } = parseCodes($("fCodes").value);
+    if (!name) return showErr("제조사 이름을 입력하세요");
+    if (!(group > 0 && group < 100)) return showErr("그룹 번호는 1~99 사이 숫자로 입력하세요");
+    if (bad.length) return showErr(`코드는 숫자 3자리만 됩니다: ${bad.slice(0,5).join(", ")}`);
+    if (!codes.length) return showErr("코드를 하나 이상 입력하세요");
+    const key = mode === "add" ? "n" + Date.now().toString(36) : openKey;
+    const body = { name, group, codes, note: $("fNote").value.trim(), deleted:false, updatedAt: Date.now() };
+    if (await persist(key, body)) { openKey = key; mode = "view"; renderSheet(); toast("저장했어요"); }
+  } else if (f.id === "guideForm") {
+    guide = $("fGuide").value.trim() || DEFAULT_GUIDE;
+    try { await remote.saveGuide(guide); toast("사용법 문구를 저장했어요"); closeSheet(); }
+    catch(err){ toast("저장하지 못했어요. 이 페이지의 소유자만 수정할 수 있어요"); }
   }
 });
 function syncSort(){ document.querySelectorAll("[data-sort]").forEach(b => b.setAttribute("aria-pressed", b.dataset.sort===st.sort)); }
@@ -333,16 +541,15 @@ $("group").addEventListener("change", e => { st.group = e.target.value; st.lette
 $("favOnly").addEventListener("click", e => { st.fav = !st.fav; e.currentTarget.setAttribute("aria-pressed", st.fav); render(); });
 $("shClose").addEventListener("click", closeSheet);
 $("scrim").addEventListener("click", closeSheet);
-document.addEventListener("keydown", e => { if (e.key === "Escape" && openB) closeSheet(); });
-$("shFav").addEventListener("click", () => { const n=openB.name; favs.has(n)?favs.delete(n):favs.add(n); store.set("favs",[...favs]); renderSheet(); toast(favs.has(n)?"즐겨찾기에 추가했어요":"즐겨찾기에서 뺐어요"); });
-$("shReset").addEventListener("click", () => { delete marks[openB.name]; store.set("marks", marks); renderSheet(); });
-$("shCopy").addEventListener("click", () => {
-  const t = `${openB.name}: ${openB.codes.join(", ")}`;
-  const done = () => toast("코드를 복사했어요");
-  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => toast("복사가 막혀 있어요. 길게 눌러 직접 복사하세요"));
-  else toast("복사가 막혀 있어요. 길게 눌러 직접 복사하세요");
-});
-syncSort(); render();
+$("shEdit").addEventListener("click", () => { mode = "edit"; delArmed = false; renderSheet(); });
+$("shFav").addEventListener("click", () => { const k=openKey; favs.has(k)?favs.delete(k):favs.add(k); local.set("favs",[...favs]); renderSheet(); toast(favs.has(k)?"즐겨찾기에 추가했어요":"즐겨찾기에서 뺐어요"); });
+$("devOpen").addEventListener("click", () => dev ? toast("이미 개발자 모드예요") : openPanel("login"));
+$("devAdd").addEventListener("click", () => openPanel("add"));
+$("devGuide").addEventListener("click", () => openPanel("guide"));
+$("devChanges").addEventListener("click", () => openPanel("changes"));
+$("devLock").addEventListener("click", () => { dev = false; try { sessionStorage.removeItem("tvcode:dev"); } catch(e){} render(); toast("개발자 모드를 잠갔어요"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && openKey) closeSheet(); });
+syncSort(); rebuild(); render();
 </script>
 
 </body>
