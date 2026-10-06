@@ -1,0 +1,2607 @@
+[
+{
+"name": "삼성(SAMSUNG)",
+"group": 1,
+"codes": [
+"226",
+"163",
+"218",
+"215",
+"212",
+"206",
+"167",
+"191",
+"162",
+"181",
+"037",
+"183",
+"178",
+"185",
+"232",
+"225",
+"154",
+"092",
+"052",
+"035",
+"034",
+"231",
+"135",
+"157",
+"187",
+"341",
+"465"
+]
+},
+{
+"name": "엘지(LG,금성,GOLDSTAR)",
+"group": 2,
+"codes": [
+"227",
+"236",
+"206",
+"192",
+"186",
+"193",
+"175",
+"178",
+"185",
+"224",
+"201",
+"092",
+"183",
+"003",
+"002",
+"030",
+"164",
+"168",
+"032",
+"072",
+"031",
+"094",
+"096",
+"417",
+"470"
+]
+},
+{
+"name": "대우(DAEWOO)",
+"group": 3,
+"codes": [
+"014",
+"231",
+"043",
+"190",
+"177",
+"217",
+"176",
+"159",
+"166",
+"233",
+"029",
+"158",
+"150",
+"206",
+"178",
+"185",
+"216",
+"165",
+"169",
+"156",
+"152",
+"155",
+"151",
+"228",
+"195",
+"153",
+"170",
+"188",
+"198",
+"038",
+"160",
+"189",
+"039",
+"199",
+"182",
+"235",
+"092",
+"050",
+"053",
+"202",
+"047",
+"051",
+"179",
+"344",
+"375",
+"420",
+"357"
+]
+},
+{
+"name": "대우루컴즈(DAEWOO LUCOMS)",
+"group": 3,
+"codes": [
+"327",
+"335",
+"350",
+"351",
+"352",
+"353",
+"321"
+]
+},
+{
+"name": "아남(ANAM)",
+"group": 4,
+"codes": [
+"204",
+"174",
+"234",
+"018",
+"019",
+"223",
+"193",
+"180",
+"171",
+"053",
+"220",
+"222",
+"161",
+"095",
+"221",
+"210",
+"211",
+"122",
+"158",
+"049",
+"054",
+"055",
+"069",
+"099",
+"302",
+"357",
+"374",
+"468",
+"355",
+"420"
+]
+},
+{
+"name": "이레전자(ERAE)",
+"group": 4,
+"codes": [
+"004",
+"006",
+"007",
+"008",
+"011",
+"012",
+"013"
+]
+},
+{
+"name": "디지탈 디바이스(DIGITAL DEVICE)",
+"group": 4,
+"codes": [
+"301",
+"312"
+]
+},
+{
+"name": "디지털스트림테크놀로지(DIGITAL STREAM)",
+"group": 4,
+"codes": [
+"351",
+"360"
+]
+},
+{
+"name": "삼보컴퓨터(TRIGEM COMPUTER)",
+"group": 4,
+"codes": [
+"332"
+]
+},
+{
+"name": "코리아데이타시스템스(KDS)",
+"group": 4,
+"codes": [
+"033",
+"073"
+]
+},
+{
+"name": "티디에스(TDS)",
+"group": 4,
+"codes": [
+"103"
+]
+},
+{
+"name": "트라이뷰(TRIVIEW)",
+"group": 4,
+"codes": [
+"302"
+]
+},
+{
+"name": "프리즘 테크놀로지(PRISM TECHNOLOGY)",
+"group": 4,
+"codes": [
+"303",
+"355",
+"072"
+]
+},
+{
+"name": "한국전자(KEC)",
+"group": 4,
+"codes": [
+"053",
+"206"
+]
+},
+{
+"name": "현대아이티(현대이미지퀘스트)",
+"group": 4,
+"codes": [
+"022",
+"017",
+"107",
+"108",
+"309"
+]
+},
+{
+"name": "현우 맥 플러스(MCPLUS)",
+"group": 4,
+"codes": [
+"206"
+]
+},
+{
+"name": "휴리프(HULIF)",
+"group": 4,
+"codes": [
+"104"
+]
+},
+{
+"name": "쿠메스전자(QUMES)",
+"group": 4,
+"codes": [
+"106"
+]
+},
+{
+"name": "다오코리아(DaoKorea)",
+"group": 4,
+"codes": [
+"304"
+]
+},
+{
+"name": "모뉴엘(Moneual) - 롯데마트",
+"group": 4,
+"codes": [
+"305",
+"306",
+"307",
+"326"
+]
+},
+{
+"name": "드림뷰(DreamView) - 이마트",
+"group": 4,
+"codes": [
+"308",
+"332"
+]
+},
+{
+"name": "노브랜드(No Brand) - 이마트",
+"group": 4,
+"codes": [
+"308",
+"332",
+"330",
+"463",
+"373",
+"351"
+]
+},
+{
+"name": "일렉트로맨(ELECTROMAN) - 이마트",
+"group": 4,
+"codes": [
+"308"
+]
+},
+{
+"name": "제이엘통상(XPEER) - 홈플러스",
+"group": 4,
+"codes": [
+"321"
+]
+},
+{
+"name": "우성엔터프라이즈(WeCube) - 홈플러스",
+"group": 4,
+"codes": [
+"322"
+]
+},
+{
+"name": "티바(TIVA, 스피드테크놀로지)",
+"group": 4,
+"codes": [
+"324"
+]
+},
+{
+"name": "스카이미디어(Vishorn)",
+"group": 4,
+"codes": [
+"325",
+"330",
+"336"
+]
+},
+{
+"name": "동양전자(DONGYANG)",
+"group": 4,
+"codes": [
+"068"
+]
+},
+{
+"name": "비티씨정보통신(BTC)",
+"group": 4,
+"codes": [
+"316"
+]
+},
+{
+"name": "씨마디지텍(CIMADIGITEC)",
+"group": 4,
+"codes": [
+"318",
+"319",
+"072"
+]
+},
+{
+"name": "LS전자(LS ELECTRONICS)",
+"group": 4,
+"codes": [
+"313"
+]
+},
+{
+"name": "모티브씨엔씨(MOTV)",
+"group": 4,
+"codes": [
+"311",
+"378",
+"355"
+]
+},
+{
+"name": "시그마TV(SIGMACOM)",
+"group": 4,
+"codes": [
+"310"
+]
+},
+{
+"name": "유니크로(UNIKRO)",
+"group": 4,
+"codes": [
+"100",
+"317"
+]
+},
+{
+"name": "보임틀(VOIMTLE)",
+"group": 4,
+"codes": [
+"304"
+]
+},
+{
+"name": "보림전자(BOLIM)",
+"group": 4,
+"codes": [
+"028",
+"315",
+"323"
+]
+},
+{
+"name": "삼인디스플레이(XSTIM)",
+"group": 4,
+"codes": [
+"104",
+"320",
+"329"
+]
+},
+{
+"name": "유투스(케이엘전자 UTUS)",
+"group": 4,
+"codes": [
+"314"
+]
+},
+{
+"name": "인디텍(VIEWPIA)",
+"group": 4,
+"codes": [
+"107"
+]
+},
+{
+"name": "재원전자(JAEWON)",
+"group": 4,
+"codes": [
+"333"
+]
+},
+{
+"name": "지피앤씨(GPNC)",
+"group": 4,
+"codes": [
+"327",
+"306"
+]
+},
+{
+"name": "제노스미디어(ZENOS)",
+"group": 4,
+"codes": [
+"303",
+"328"
+]
+},
+{
+"name": "제이아이케이솔루션(LEGRAND)",
+"group": 4,
+"codes": [
+"342"
+]
+},
+{
+"name": "파인포스(FINEFORCE)",
+"group": 4,
+"codes": [
+"306"
+]
+},
+{
+"name": "더블유시디(WCD)",
+"group": 4,
+"codes": [
+"331"
+]
+},
+{
+"name": "토마토디스플레이(TOMATO DISPLAY)",
+"group": 4,
+"codes": [
+"337",
+"306",
+"356"
+]
+},
+{
+"name": "넥스디지탈(NEX)",
+"group": 4,
+"codes": [
+"338"
+]
+},
+{
+"name": "매직나라(MAGIC NARA)",
+"group": 4,
+"codes": [
+"332",
+"339"
+]
+},
+{
+"name": "유니크컴퍼니(UNIQUE COMPANY)",
+"group": 4,
+"codes": [
+"340"
+]
+},
+{
+"name": "알파스캔(ALPHASCAN)",
+"group": 4,
+"codes": [
+"306",
+"203",
+"345"
+]
+},
+{
+"name": "야마카시(YAMAKASI, 바이텍코리아)",
+"group": 4,
+"codes": [
+"343",
+"346",
+"347",
+"348",
+"349"
+]
+},
+{
+"name": "자비오씨앤씨(XAVVIO)",
+"group": 4,
+"codes": [
+"354"
+]
+},
+{
+"name": "티베라(TVERA)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "스카이워스(SKYWORTH)",
+"group": 4,
+"codes": [
+"353"
+]
+},
+{
+"name": "오리온정보통신(TOPSYNC) 오리온(ORION)",
+"group": 4,
+"codes": [
+"351",
+"330",
+"357",
+"306",
+"111",
+"101",
+"072"
+]
+},
+{
+"name": "한스정보(HANSJUNGBO, HANS TOUCH)",
+"group": 4,
+"codes": [
+"356"
+]
+},
+{
+"name": "샤오미(XIAOMI)",
+"group": 4,
+"codes": [
+"361"
+]
+},
+{
+"name": "디스플레이파크(DISPLAY PARK)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "스마트홈 일렉트로닉스 - 스마트라 (SMART HOME ELECTRONICS)",
+"group": 4,
+"codes": [
+"362",
+"363",
+"072",
+"420"
+]
+},
+{
+"name": "주연테크(JOOYON)",
+"group": 4,
+"codes": [
+"302",
+"346",
+"373",
+"353"
+]
+},
+{
+"name": "대유위니아(WINIADAEWOO, WINIADIMCHAE)",
+"group": 4,
+"codes": [
+"338",
+"375"
+]
+},
+{
+"name": "아낙(ANAC)",
+"group": 4,
+"codes": [
+"345"
+]
+},
+{
+"name": "매직뷰(MAGICVU)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "모넥스(MONEX)",
+"group": 4,
+"codes": [
+"302"
+]
+},
+{
+"name": "엘디케이(LDK)",
+"group": 4,
+"codes": [
+"321",
+"206"
+]
+},
+{
+"name": "와사비망고(WASABIMANGO)",
+"group": 4,
+"codes": [
+"072",
+"419",
+"420"
+]
+},
+{
+"name": "하이메이드(HIMADE)",
+"group": 4,
+"codes": [
+"072",
+"461",
+"473",
+"476",
+"477",
+"376"
+]
+},
+{
+"name": "인트로스(INTROS)",
+"group": 4,
+"codes": [
+"072",
+"355"
+]
+},
+{
+"name": "삼화디스플레이(SAMHWA)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "JAMOS",
+"group": 4,
+"codes": [
+"358"
+]
+},
+{
+"name": "CAMEL",
+"group": 4,
+"codes": [
+"366"
+]
+},
+{
+"name": "아도니스(ADONIS)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "큐닉스(QNIX)",
+"group": 4,
+"codes": [
+"370",
+"371",
+"372"
+]
+},
+{
+"name": "와이드뷰 (WIDE VU)",
+"group": 4,
+"codes": [
+"373",
+"360"
+]
+},
+{
+"name": "벡셀 (BEXEL)",
+"group": 4,
+"codes": [
+"350",
+"462"
+]
+},
+{
+"name": "폴라로이드 (POLAROID)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "클라인즈 (KLEINZ)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "아인츠 (IEINZ)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "티비스타 (TVSTAR)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "더함 TV (THEHAM)",
+"group": 4,
+"codes": [
+"072",
+"351"
+]
+},
+{
+"name": "이엔티비 (ENTV)",
+"group": 4,
+"codes": [
+"374",
+"420"
+]
+},
+{
+"name": "MOZEE",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "시네아이(DLT) -시네EYE",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "ZEPA",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "젠티뷰(ZENTVIEW)",
+"group": 4,
+"codes": [
+"356",
+"373"
+]
+},
+{
+"name": "FIDES",
+"group": 4,
+"codes": [
+"321",
+"072"
+]
+},
+{
+"name": "프리토스 (FREETOSS)",
+"group": 4,
+"codes": [
+"321",
+"373",
+"355"
+]
+},
+{
+"name": "CACC",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "제네시스 (GENESIS)",
+"group": 4,
+"codes": [
+"321",
+"355"
+]
+},
+{
+"name": "이노스 (INNOS)",
+"group": 4,
+"codes": [
+"072",
+"378",
+"478",
+"472",
+"355"
+]
+},
+{
+"name": "한성(HANSUNG)",
+"group": 4,
+"codes": [
+"378",
+"414",
+"420",
+"321",
+"472"
+]
+},
+{
+"name": "스마트뷰 (SMART VIEW)",
+"group": 4,
+"codes": [
+"418",
+"072",
+"467"
+]
+},
+{
+"name": "이스트라(ESTRA)",
+"group": 4,
+"codes": [
+"419",
+"351"
+]
+},
+{
+"name": "COOCAA",
+"group": 4,
+"codes": [
+"353"
+]
+},
+{
+"name": "티지앤컴퍼니(TG&Co.)",
+"group": 4,
+"codes": [
+"332",
+"308"
+]
+},
+{
+"name": "트루비(TRUVI)",
+"group": 4,
+"codes": [
+"419",
+"420"
+]
+},
+{
+"name": "IRIVER(드림어스)",
+"group": 4,
+"codes": [
+"072",
+"420"
+]
+},
+{
+"name": "유맥스(UMAX)",
+"group": 4,
+"codes": [
+"072",
+"420"
+]
+},
+{
+"name": "의영시스템",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "앤트웍스(ANTWORKS)",
+"group": 4,
+"codes": [
+"330",
+"357"
+]
+},
+{
+"name": "현아이디어(HYUNIDEA)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "지스타(ZSTA)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "타라엘씨디(TARALCD)",
+"group": 4,
+"codes": [
+"302"
+]
+},
+{
+"name": "호리온(HORION)",
+"group": 4,
+"codes": [
+"419",
+"072",
+"467"
+]
+},
+{
+"name": "NEXTBOOK",
+"group": 4,
+"codes": [
+"419"
+]
+},
+{
+"name": "브라운슈거(BROWN SUGAR)",
+"group": 4,
+"codes": [
+"419"
+]
+},
+{
+"name": "더하이텍(THEHITECH)",
+"group": 4,
+"codes": [
+"344"
+]
+},
+{
+"name": "루브제(LUVZE)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "브릴리언츠(BRILLIANT)",
+"group": 4,
+"codes": [
+"353"
+]
+},
+{
+"name": "디포인트(DPOINT)",
+"group": 4,
+"codes": [
+"072",
+"462"
+]
+},
+{
+"name": "저스트인테크(JIT)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "OIC코리아(OIC KOREA, PRISM KOREA)",
+"group": 4,
+"codes": [
+"302"
+]
+},
+{
+"name": "델로라(DELORA)",
+"group": 4,
+"codes": [
+"467"
+]
+},
+{
+"name": "브리드(VRID)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "TNM",
+"group": 4,
+"codes": [
+"420",
+"355",
+"360",
+"466",
+"378"
+]
+},
+{
+"name": "살루스(SALUS)",
+"group": 4,
+"codes": [
+"462",
+"072",
+"357"
+]
+},
+{
+"name": "라익미(LIKEME)",
+"group": 4,
+"codes": [
+"373",
+"378",
+"420"
+]
+},
+{
+"name": "리베로(LIBERO)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "아티브(ARTIVE)",
+"group": 4,
+"codes": [
+"466",
+"467"
+]
+},
+{
+"name": "시티브TV(SEETIVE)",
+"group": 4,
+"codes": [
+"466",
+"467",
+"378",
+"476"
+]
+},
+{
+"name": "세이키(SEIKI)",
+"group": 4,
+"codes": [
+"378"
+]
+},
+{
+"name": "KONKA",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "APEX",
+"group": 4,
+"codes": [
+"378",
+"462"
+]
+},
+{
+"name": "스마트에버(SMARTEVER)",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "엠제이(MJ)",
+"group": 4,
+"codes": [
+"378"
+]
+},
+{
+"name": "신일전자(SHINIL)",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "중앙디스플레이(JADISPLAY)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "해커씨앤씨(HACKER)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "LNP",
+"group": 4,
+"codes": [
+"041"
+]
+},
+{
+"name": "디지털맥스(DIGITALMAX)",
+"group": 4,
+"codes": [
+"462",
+"378"
+]
+},
+{
+"name": "PICO",
+"group": 4,
+"codes": [
+"468"
+]
+},
+{
+"name": "티베스트(TVEST)",
+"group": 4,
+"codes": [
+"469"
+]
+},
+{
+"name": "에이스(ACE GLOBAL)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "와이드테크(WIDE TECH)",
+"group": 4,
+"codes": [
+"360",
+"357"
+]
+},
+{
+"name": "고랩 프리뷰(FREEVIEW)",
+"group": 4,
+"codes": [
+"378"
+]
+},
+{
+"name": "썬루트(SUNROOT)",
+"group": 4,
+"codes": [
+"378"
+]
+},
+{
+"name": "엠베스텍(MBESTEK)",
+"group": 4,
+"codes": [
+"072",
+"462"
+]
+},
+{
+"name": "이도디스플레이(YIDO DISPLAY)",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "아이사(DAM_TECH_TV)",
+"group": 4,
+"codes": [
+"373",
+"378"
+]
+},
+{
+"name": "지브라(ZVERA)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "베이직스(BASICS)",
+"group": 4,
+"codes": [
+"467"
+]
+},
+{
+"name": "포유디지탈(아이뮤즈) -FOR YOU DIGITAL",
+"group": 4,
+"codes": [
+"338"
+]
+},
+{
+"name": "마크비전(MARK VISION)",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "리플렉스(REFLEX)",
+"group": 4,
+"codes": [
+"348",
+"420"
+]
+},
+{
+"name": "리치웰(COMODOTV -RICHWELL)",
+"group": 4,
+"codes": [
+"072"
+]
+},
+{
+"name": "델리파스(DELEPHAS)",
+"group": 4,
+"codes": [
+"420",
+"355"
+]
+},
+{
+"name": "써밋티비(SUMMITV)",
+"group": 4,
+"codes": [
+"373",
+"357"
+]
+},
+{
+"name": "포스픽(POSPIC)",
+"group": 4,
+"codes": [
+"420",
+"355"
+]
+},
+{
+"name": "에스지(SG)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "엘카이(LKAUI)",
+"group": 4,
+"codes": [
+"357",
+"360"
+]
+},
+{
+"name": "경성글로벌코리아(KSGK)",
+"group": 4,
+"codes": [
+"467"
+]
+},
+{
+"name": "티브이지(TVEG)",
+"group": 4,
+"codes": [
+"355",
+"373"
+]
+},
+{
+"name": "컴스톤(COMSTONE)",
+"group": 4,
+"codes": [
+"355",
+"357",
+"420"
+]
+},
+{
+"name": "센티오(SENTIO)",
+"group": 4,
+"codes": [
+"373",
+"420"
+]
+},
+{
+"name": "티엑스(TX)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "포에스(FS) 디스플레이",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "롤리(LOLLY)",
+"group": 4,
+"codes": [
+"462"
+]
+},
+{
+"name": "롯데하이마트 (LOTTE HIMART)",
+"group": 4,
+"codes": [
+"420",
+"357"
+]
+},
+{
+"name": "드림 TV (DREAM TV)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "이디에스(TIVID)",
+"group": 4,
+"codes": [
+"462"
+]
+},
+{
+"name": "와드뷰(WADVIEW)",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "인아큐브(INA)",
+"group": 4,
+"codes": [
+"360"
+]
+},
+{
+"name": "미디어빌리지테크(SEJONG)",
+"group": 4,
+"codes": [
+"471"
+]
+},
+{
+"name": "아이온코리아(BOSSWIZ)",
+"group": 4,
+"codes": [
+"357",
+"477"
+]
+},
+{
+"name": "익스프레스 럭 코리아 (EXPRESS LUCK KOREA)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "피데스(FIDES)",
+"group": 4,
+"codes": [
+"420",
+"373"
+]
+},
+{
+"name": "다우리(DAURI)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "큐스타(Q.STAR)",
+"group": 4,
+"codes": [
+"467",
+"360",
+"378",
+"353",
+"420",
+"474",
+"475"
+]
+},
+{
+"name": "장은테크(JANGEUN)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "큐벨(QBELL)",
+"group": 4,
+"codes": [
+"467",
+"355"
+]
+},
+{
+"name": "필루체(FILLUCE)",
+"group": 4,
+"codes": [
+"373",
+"072"
+]
+},
+{
+"name": "쿠잉(COOING)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "행운(HAENGWOON)",
+"group": 4,
+"codes": [
+"360"
+]
+},
+{
+"name": "파트로(PATRO)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "케이티에이코리아(KTA KOREA)",
+"group": 4,
+"codes": [
+"338"
+]
+},
+{
+"name": "유니피엠(UNIPM)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "에스포 SMART(S4 SMART)",
+"group": 4,
+"codes": [
+"472",
+"357"
+]
+},
+{
+"name": "오토모(AUTOMO)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "메디하임(MEDIHEIM)",
+"group": 4,
+"codes": [
+"467"
+]
+},
+{
+"name": "지닷카멜레온(G.CHAMELEON)",
+"group": 4,
+"codes": [
+"338"
+]
+},
+{
+"name": "COON",
+"group": 4,
+"codes": [
+"351"
+]
+},
+{
+"name": "지온디스플레이(ZION DISPLAY)",
+"group": 4,
+"codes": [
+"357",
+"072"
+]
+},
+{
+"name": "큐빅스(CUBIX)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "마루나(MARUNA)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "아울(AWL)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "스콘(SKON)",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "OTC",
+"group": 4,
+"codes": [
+"420"
+]
+},
+{
+"name": "GMOUNT",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "BONE",
+"group": 4,
+"codes": [
+"357"
+]
+},
+{
+"name": "타키온글로벌(TACHYON)",
+"group": 4,
+"codes": [
+"373"
+]
+},
+{
+"name": "넥스트젠(NEXTGEN)",
+"group": 4,
+"codes": [
+"477",
+"360"
+]
+},
+{
+"name": "테레비존(TV ZONE)",
+"group": 4,
+"codes": [
+"462"
+]
+},
+{
+"name": "에어리브(AIRIVE)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "화봄(HWABOM)",
+"group": 4,
+"codes": [
+"355"
+]
+},
+{
+"name": "오존컴퍼니(OZONE)",
+"group": 4,
+"codes": [
+"477"
+]
+},
+{
+"name": "SONY",
+"group": 5,
+"codes": [
+"048",
+"060",
+"059",
+"058",
+"057",
+"056",
+"207",
+"115",
+"194",
+"147",
+"070",
+"139",
+"045",
+"046",
+"080"
+]
+},
+{
+"name": "PANASONIC",
+"group": 5,
+"codes": [
+"095",
+"161",
+"049",
+"054",
+"055",
+"223",
+"067",
+"068",
+"238",
+"061",
+"069",
+"071",
+"250"
+]
+},
+{
+"name": "NEC",
+"group": 5,
+"codes": [
+"005",
+"014",
+"042",
+"105",
+"150",
+"151",
+"152",
+"413"
+]
+},
+{
+"name": "JVC",
+"group": 5,
+"codes": [
+"058",
+"066",
+"092",
+"070",
+"071",
+"321"
+]
+},
+{
+"name": "SANYO",
+"group": 5,
+"codes": [
+"020",
+"102",
+"151"
+]
+},
+{
+"name": "PIONEER",
+"group": 5,
+"codes": [
+"002",
+"003",
+"027",
+"097",
+"367"
+]
+},
+{
+"name": "FUJITSU",
+"group": 5,
+"codes": [
+"205",
+"412"
+]
+},
+{
+"name": "SHARP",
+"group": 6,
+"codes": [
+"001",
+"062",
+"063",
+"064",
+"065",
+"092",
+"208",
+"206"
+]
+},
+{
+"name": "HITACHI",
+"group": 6,
+"codes": [
+"377",
+"009",
+"023",
+"024",
+"025",
+"083",
+"097",
+"098",
+"150",
+"139",
+"206",
+"376"
+]
+},
+{
+"name": "HP",
+"group": 6,
+"codes": [
+"403"
+]
+},
+{
+"name": "TOSHIBA",
+"group": 6,
+"codes": [
+"021",
+"052",
+"105",
+"163",
+"088",
+"151",
+"089",
+"090",
+"091",
+"093"
+]
+},
+{
+"name": "MITSUBISHI",
+"group": 6,
+"codes": [
+"074",
+"075",
+"076",
+"105",
+"150"
+]
+},
+{
+"name": "PHILIPS",
+"group": 7,
+"codes": [
+"026",
+"066",
+"120",
+"150",
+"154",
+"167",
+"203",
+"037",
+"068",
+"206",
+"236",
+"178",
+"185",
+"081",
+"082",
+"085",
+"086",
+"087",
+"312"
+]
+},
+{
+"name": "하이얼(HAIER)",
+"group": 7,
+"codes": [
+"033",
+"077",
+"078",
+"302",
+"333",
+"345"
+]
+},
+{
+"name": "HISENSE",
+"group": 7,
+"codes": [
+"368"
+]
+},
+{
+"name": "ZENITH",
+"group": 7,
+"codes": [
+"050",
+"084",
+"072"
+]
+},
+{
+"name": "CANDEL",
+"group": 7,
+"codes": [
+"150",
+"081"
+]
+},
+{
+"name": "EMERSON",
+"group": 7,
+"codes": [
+"359",
+"026",
+"038",
+"053",
+"092",
+"111",
+"135",
+"154",
+"206"
+]
+},
+{
+"name": "GE",
+"group": 7,
+"codes": [
+"042",
+"167",
+"037",
+"049",
+"067",
+"071"
+]
+},
+{
+"name": "GRUNDIG",
+"group": 7,
+"codes": [
+"401"
+]
+},
+{
+"name": "MAGNAVOX",
+"group": 7,
+"codes": [
+"001",
+"150",
+"154",
+"167",
+"037",
+"068",
+"206",
+"185",
+"081",
+"082",
+"085"
+]
+},
+{
+"name": "A MARK",
+"group": 7,
+"codes": [
+"092",
+"154",
+"193",
+"206"
+]
+},
+{
+"name": "PENNEY",
+"group": 7,
+"codes": [
+"150",
+"163",
+"167"
+]
+},
+{
+"name": "에이텍(ATEC)",
+"group": 8,
+"codes": [
+"031"
+]
+},
+{
+"name": "3S DIGITAL",
+"group": 8,
+"codes": [
+"028"
+]
+},
+{
+"name": "뉴컴월드(NEWCOMMWORLD)",
+"group": 8,
+"codes": [
+"219"
+]
+},
+{
+"name": "디지털 싸이노스(DIGIAL CYNOS)",
+"group": 8,
+"codes": [
+"016"
+]
+},
+{
+"name": "새찬전자(SAECHAN)",
+"group": 8,
+"codes": [
+"028",
+"041",
+"044"
+]
+},
+{
+"name": "AOC",
+"group": 8,
+"codes": [
+"193",
+"404"
+]
+},
+{
+"name": "AUDIOVOX",
+"group": 8,
+"codes": [
+"038"
+]
+},
+{
+"name": "CETRONIC",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "CHANGHONG",
+"group": 8,
+"codes": [
+"351"
+]
+},
+{
+"name": "CITIZEN",
+"group": 8,
+"codes": [
+"050",
+"052",
+"092",
+"150",
+"163",
+"081"
+]
+},
+{
+"name": "CLASSIC",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "CONCERTO",
+"group": 8,
+"codes": [
+"150"
+]
+},
+{
+"name": "CONTEC",
+"group": 8,
+"codes": [
+"053",
+"135",
+"157"
+]
+},
+{
+"name": "CORONADO",
+"group": 8,
+"codes": [
+"092",
+"154",
+"206"
+]
+},
+{
+"name": "CRAIG",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "CROWN",
+"group": 8,
+"codes": [
+"053",
+"092"
+]
+},
+{
+"name": "CURTIS MATHES",
+"group": 8,
+"codes": [
+"052",
+"092",
+"163"
+]
+},
+{
+"name": "CXC",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "DAYTRON",
+"group": 8,
+"codes": [
+"092"
+]
+},
+{
+"name": "DELL",
+"group": 8,
+"codes": [
+"410"
+]
+},
+{
+"name": "DYNASTY",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "덱트론(DECTRON)",
+"group": 8,
+"codes": [
+"033"
+]
+},
+{
+"name": "디보스(DIBOSS)",
+"group": 8,
+"codes": [
+"015",
+"109"
+]
+},
+{
+"name": "ELECTROHOME",
+"group": 8,
+"codes": [
+"038",
+"092"
+]
+},
+{
+"name": "FUNAI",
+"group": 8,
+"codes": [
+"053",
+"359"
+]
+},
+{
+"name": "FUTURETECH",
+"group": 8,
+"codes": [
+"053"
+]
+},
+{
+"name": "INFINITY",
+"group": 9,
+"codes": [
+"068"
+]
+},
+{
+"name": "INKEL",
+"group": 9,
+"codes": [
+"209",
+"353",
+"163",
+"072",
+"151",
+"327",
+"350",
+"354",
+"464"
+]
+},
+{
+"name": "INSIGNIA",
+"group": 9,
+"codes": [
+"411"
+]
+},
+{
+"name": "JBL",
+"group": 9,
+"codes": [
+"068"
+]
+},
+{
+"name": "JCPENNY",
+"group": 9,
+"codes": [
+"052",
+"092",
+"089"
+]
+},
+{
+"name": "KENWOOD",
+"group": 9,
+"codes": [
+"058",
+"070",
+"415"
+]
+},
+{
+"name": "KIVI",
+"group": 9,
+"codes": [
+"420"
+]
+},
+{
+"name": "KLOSS",
+"group": 9,
+"codes": [
+"082"
+]
+},
+{
+"name": "KMC",
+"group": 9,
+"codes": [
+"092",
+"154",
+"206"
+]
+},
+{
+"name": "KTV",
+"group": 9,
+"codes": [
+"053",
+"092",
+"154",
+"250"
+]
+},
+{
+"name": "LUXMAN",
+"group": 9,
+"codes": [
+"051",
+"150"
+]
+},
+{
+"name": "LXI",
+"group": 9,
+"codes": [
+"151",
+"167",
+"037",
+"068",
+"090"
+]
+},
+{
+"name": "MARANTZ",
+"group": 9,
+"codes": [
+"068",
+"108"
+]
+},
+{
+"name": "MATSUI",
+"group": 9,
+"codes": [
+"068"
+]
+},
+{
+"name": "METZ",
+"group": 9,
+"codes": [
+"408",
+"462",
+"353"
+]
+},
+{
+"name": "MGA",
+"group": 9,
+"codes": [
+"150"
+]
+},
+{
+"name": "MTC",
+"group": 9,
+"codes": [
+"052",
+"150",
+"163"
+]
+},
+{
+"name": "NAD",
+"group": 9,
+"codes": [
+"090"
+]
+},
+{
+"name": "NIKEI",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "ONKING",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "ONTEC",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "ONWA",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "PHILCO",
+"group": 9,
+"codes": [
+"150",
+"154",
+"167",
+"037",
+"068",
+"206",
+"185",
+"081",
+"082",
+"085"
+]
+},
+{
+"name": "PORTLAND",
+"group": 9,
+"codes": [
+"092",
+"150",
+"154",
+"206"
+]
+},
+{
+"name": "PROTON",
+"group": 9,
+"codes": [
+"032",
+"092",
+"122"
+]
+},
+{
+"name": "QUASAR",
+"group": 9,
+"codes": [
+"049",
+"067",
+"071",
+"250"
+]
+},
+{
+"name": "RADIO SHACK",
+"group": 9,
+"codes": [
+"053",
+"185",
+"092"
+]
+},
+{
+"name": "RCA",
+"group": 9,
+"codes": [
+"010",
+"097",
+"150",
+"167",
+"037",
+"370"
+]
+},
+{
+"name": "RUNCO",
+"group": 9,
+"codes": [
+"416"
+]
+},
+{
+"name": "REALISTIC",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "SCOTT",
+"group": 9,
+"codes": [
+"053",
+"092"
+]
+},
+{
+"name": "SEARS",
+"group": 9,
+"codes": [
+"092",
+"150",
+"151",
+"163",
+"167",
+"037",
+"206",
+"089",
+"090"
+]
+},
+{
+"name": "SOUNDESIGN",
+"group": 9,
+"codes": [
+"053",
+"081"
+]
+},
+{
+"name": "SPECTRICON",
+"group": 9,
+"codes": [
+"193"
+]
+},
+{
+"name": "SSS",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "SYLVANIA",
+"group": 9,
+"codes": [
+"051",
+"150",
+"167",
+"185",
+"037",
+"068",
+"081",
+"082",
+"085"
+]
+},
+{
+"name": "TATUNG",
+"group": 9,
+"codes": [
+"049"
+]
+},
+{
+"name": "TCL",
+"group": 9,
+"codes": [
+"334",
+"009",
+"369",
+"376",
+"460",
+"461"
+]
+},
+{
+"name": "TEAC",
+"group": 9,
+"codes": [
+"407"
+]
+},
+{
+"name": "TECHNICS",
+"group": 9,
+"codes": [
+"095",
+"071"
+]
+},
+{
+"name": "TECHWOOD",
+"group": 9,
+"codes": [
+"150"
+]
+},
+{
+"name": "TEKNIKA",
+"group": 9,
+"codes": [
+"053",
+"092",
+"150",
+"154",
+"163",
+"165",
+"052",
+"206",
+"081"
+]
+},
+{
+"name": "THOMSON",
+"group": 9,
+"codes": [
+"409"
+]
+},
+{
+"name": "TMK",
+"group": 9,
+"codes": [
+"150"
+]
+},
+{
+"name": "TOTEVISION",
+"group": 9,
+"codes": [
+"092"
+]
+},
+{
+"name": "UNIDEN",
+"group": 9,
+"codes": [
+"406"
+]
+},
+{
+"name": "VICTOR",
+"group": 9,
+"codes": [
+"066"
+]
+},
+{
+"name": "VIDTECH",
+"group": 9,
+"codes": [
+"150"
+]
+},
+{
+"name": "VIEWSONIC",
+"group": 9,
+"codes": [
+"405"
+]
+},
+{
+"name": "VIZIO",
+"group": 9,
+"codes": [
+"364"
+]
+},
+{
+"name": "WARDS",
+"group": 9,
+"codes": [
+"092",
+"150",
+"154",
+"167",
+"185",
+"037",
+"068",
+"071",
+"206",
+"085"
+]
+},
+{
+"name": "WESTING HOUSE",
+"group": 9,
+"codes": [
+"038",
+"014",
+"402"
+]
+},
+{
+"name": "YAMAHA",
+"group": 9,
+"codes": [
+"150"
+]
+},
+{
+"name": "YUPITERUZENITH",
+"group": 9,
+"codes": [
+"053"
+]
+},
+{
+"name": "ZONDA",
+"group": 9,
+"codes": [
+"193"
+]
+}
+]
