@@ -29,7 +29,15 @@ body{margin:0;color:var(--ink);font-family:var(--f-body);font-size:15px;line-hei
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-header.top{padding-block:22px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header.top{padding-block:16px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brandrow{flex:0 0 100%;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.brandrow img{display:block;height:30px;width:auto}
+.brand-d{display:none!important}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .brand-l{display:none!important}
+  :root:not([data-theme="light"]) .brand-d{display:block!important}}
+:root[data-theme="dark"] .brand-l{display:none!important}
+:root[data-theme="dark"] .brand-d{display:block!important}
 h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,7vw,38px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
 h1 .dot{display:inline-block;width:.32em;height:.32em;border-radius:50%;background:var(--accent);margin-left:.12em;vertical-align:.5em;box-shadow:0 0 0 4px var(--soft)}
 .sub{color:var(--muted);font-size:13px;margin:6px 0 0}
