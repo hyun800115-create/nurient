@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>우리들의 안전 앨범</title>
+<link rel="stylesheet" href="fonts/jua/index.css">
+<link rel="stylesheet" href="fonts/nanum-pen-script/index.css">
+<link rel="stylesheet" href="fonts/noto-sans-kr/400.css">
+<link rel="stylesheet" href="fonts/noto-sans-kr/700.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #f6e7d8; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #play { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 0; border-radius: 999px; padding: 16px 28px;
+          background: #ea002c; color: #fff; font: 700 18px "Noto Sans KR", sans-serif; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<button id="play">▶ 안전 앨범 보기</button>
+<img id="logo" src="../src/logo.png" alt="" hidden>
+<script>
+/* Photo-album slideshow of field safety. Photos live in photos/slideNN.jpg; replace them with real photos
+   and keep the same names. Layout: ?landscape for 16:9, portrait 9:16 otherwise. */
+const SLIDES = [
+  { img: "photos/slide01.jpg", focus: [0.42, 0.55], chip: "출동 준비", title: ["출발 전 점검이", "안전의 첫걸음"], note: "타이어 · 충전량 확인 완료!" },
+  { img: "photos/slide02.jpg", focus: [0.45, 0.50], chip: "안전운전", title: ["안전벨트는", "생명벨트"], note: "제한속도 지키기" },
+  { img: "photos/slide03.jpg", focus: [0.62, 0.55], chip: "안전운전", title: ["운전 중엔", "운전만 합니다"], note: "휴대폰은 내려놓고" },
+  { img: "photos/slide04.jpg", focus: [0.62, 0.48], chip: "고객 댁 방문", title: ["고객의 집도", "내 집처럼"], note: "덧신 착용 · 꼼꼼한 개통" },
+  { img: "photos/slide05.jpg", focus: [0.55, 0.50], chip: "사다리 작업", title: ["사다리는", "2인 1조"], note: "아웃트리거 · 상단 결속 필수" },
+  { img: "photos/slide06.jpg", focus: [0.45, 0.47], chip: "전주 작업", title: ["오르기 전", "X반도 체결"], note: "안전대는 전주에 단단히" },
+  { img: "photos/slide07.jpg", focus: [0.50, 0.42], chip: "활선 주의", title: ["경보가 울리면", "즉시 멈춤"], note: "활선경보기 · 턱끈 확인" },
+  { img: "photos/slide08.jpg", focus: [0.45, 0.50], chip: "맨홀 작업", title: ["측정 먼저,", "진입은 나중에"], note: "산소 18% 이상 확인" },
+  { img: "photos/slide09.jpg", focus: [0.55, 0.50], chip: "작업 구역", title: ["펜스와 라바콘으로", "구역부터 확보"], note: "감시인 배치하기" },
+  { img: "photos/slide10.jpg", focus: [0.28, 0.50], chip: "작업 전 확인", title: ["안전장구는", "내 몸의 일부"], note: "안전모 · 장갑 · 각반 · 안전화" },
+  { img: "photos/slide11.jpg", focus: [0.50, 0.42], chip: "우리 팀", title: ["오늘도 무사히", "함께 퇴근합니다"], note: "안전 최우선, 파이팅!" },
+];
+const TITLE = 4.4, SLIDE = 4.6, END = 5.0, TOTAL = TITLE + SLIDES.length * SLIDE + END;
+const RED = "#ea002c", ORANGE = "#f47725", INK = "#2b1d14";
+const LAND = /landscape/.test(location.search + location.hash);
+const SW = LAND ? 640 : 360, SH = LAND ? 360 : 640;
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = x => 1 - Math.pow(1 - clamp(x), 3);
+const back = x => { x = clamp(x); const s = 1.4; return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+const lerp = (a, b, p) => a + (b - a) * p;
+const logo = document.getElementById("logo");
+const imgs = SLIDES.map(s => { const im = new Image(); im.src = s.img; return im; });
+const ok = im => im && im.complete && im.naturalWidth;
+function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+/* ---------- layout ---------- */
+const L = LAND
+  ? { pw: 220, ph: 275, pb: 46, pcx: 196, ptop: 12, text: { x: 452, chipY: 112, t1: 166, t2: 206, size: 30 }, logo: { x: 566, y: 26, w: 104 } }
+  : { pw: 268, ph: 335, pb: 56, pcx: 180, ptop: 66, text: { x: 180, chipY: 500, t1: 548, t2: 583, size: 27 }, logo: { x: 180, y: 32, w: 132 } };
+
+function background(c, T){
+  const g = c.createLinearGradient(0, 0, 0, SH); g.addColorStop(0, "#fff8f0"); g.addColorStop(1, "#f5e1cd");
+  c.fillStyle = g; c.fillRect(-SW, -SH, SW * 3, SH * 3);
+  for (let i = 0; i < 16; i++){
+    const r = 18 + (i * 37) % 46, x = (i * 97 + 40) % (SW + 60) - 30 + Math.sin(T * .4 + i) * 12;
+    const y = ((i * 151 + 80) % (SH + 120)) - 60 - (T * (6 + i % 5 * 3)) % (SH + 120);
+    const yy = y < -60 ? y + SH + 120 : y;
+    const col = [ "255,255,255", "244,119,37", "234,0,44", "255,210,160" ][i % 4];
+    const rg = c.createRadialGradient(x, yy, 0, x, yy, r);
+    rg.addColorStop(0, `rgba(${col},${i % 4 === 0 ? .55 : .14})`); rg.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = rg; c.beginPath(); c.arc(x, yy, r, 0, 7); c.fill();
+  }
+}
+function sparkle(c, x, y, s, a){
+  c.save(); c.globalAlpha = a; c.translate(x, y); c.fillStyle = "#fff"; c.beginPath();
+  for (let k = 0; k < 8; k++){ const r = k % 2 ? s * .28 : s; const an = k * Math.PI / 4; c.lineTo(Math.cos(an) * r, Math.sin(an) * r); }
+  c.closePath(); c.fill(); c.restore();
+}
+function logoAt(c, x, y, w, a = 1){
+  if (!ok(logo)) return;
+  const h = w * logo.naturalHeight / logo.naturalWidth;
+  c.save(); c.globalAlpha = a; c.drawImage(logo, x - w / 2, y - h / 2, w, h); c.restore();
+}
+/* A polaroid with the photo cropped 4:5 around its focus point and a slow zoom. */
+function polaroid(c, i, cx, top, rot, scale, alpha, t, noteP, pw = L.pw, ph = L.ph, pb = L.pb){
+  const s = SLIDES[i], im = imgs[i], m = Math.round(pw * .05), fw = pw + 2 * m, fh = ph + m + pb;
+  c.save(); c.globalAlpha = alpha; c.translate(cx, top + fh * scale / 2); c.rotate(rot); c.scale(scale, scale);
+  c.shadowColor = "rgba(80,40,10,.28)"; c.shadowBlur = 18; c.shadowOffsetY = 8;
+  c.fillStyle = "#fffdf9"; rr(c, -fw / 2, -fh / 2, fw, fh, 3); c.fill(); c.shadowColor = "transparent";
+  const px = -fw / 2 + m, py = -fh / 2 + m;
+  c.fillStyle = "#ddd"; c.fillRect(px, py, pw, ph);
+  if (ok(im)){
+    const z = 1 + .1 * clamp(t / SLIDE), iw = im.naturalWidth, ih = im.naturalHeight;
+    let cw = iw, ch = iw * ph / pw; if (ch > ih){ ch = ih; cw = ih * pw / ph; }
+    cw /= z; ch /= z;
+    const sx = clamp(s.focus[0] * iw - cw / 2, 0, iw - cw), sy = clamp(s.focus[1] * ih - ch / 2, 0, ih - ch);
+    c.drawImage(im, sx, sy, cw, ch, px, py, pw, ph);
+  }
+  c.strokeStyle = "rgba(0,0,0,.06)"; c.lineWidth = 1; c.strokeRect(px, py, pw, ph);
+  if (noteP > 0){
+    c.save(); c.beginPath(); c.rect(px - 4, py + ph, (pw + 8) * noteP, pb); c.clip();
+    let fs = Math.round(pb * .52); c.font = `${fs}px "Nanum Pen Script", cursive`;
+    const tw = c.measureText(s.note).width; if (tw > pw * .92){ fs = Math.floor(fs * pw * .92 / tw); c.font = `${fs}px "Nanum Pen Script", cursive`; }
+    c.fillStyle = INK; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText(s.note, 0, py + ph + pb * .52); c.restore();
+  }
+  c.save(); c.translate(0, -fh / 2 - 2); c.rotate(-.12); c.fillStyle = i % 2 ? "rgba(244,119,37,.55)" : "rgba(234,0,44,.45)";
+  c.fillRect(-34, -9, 68, 18); c.restore();
+  c.restore();
+}
+
+function slideFrame(c, T){
+  const k = Math.floor((T - TITLE) / SLIDE);
+  // the two slides around the current time are drawn so each one can leave while the next arrives
+  for (let i = Math.max(0, k - 1); i <= Math.min(SLIDES.length - 1, k + 1); i++){
+    const t0 = TITLE + i * SLIDE, t = T - t0;
+    if (t < -0.01 || t > SLIDE + 0.9) continue;
+    const enter = back(t / .75), leave = ease((t - (SLIDE - .35)) / .9);
+    const rot0 = [-0.05, 0.04, -0.035, 0.055, -0.045, 0.03][i % 6];
+    const x = L.pcx + (1 - enter) * 70 - leave * (LAND ? 150 : 110);
+    const top = L.ptop + (1 - enter) * 90 - leave * 30;
+    const rot = rot0 + (1 - enter) * 0.22 - leave * 0.18;
+    const sc = 1 - leave * 0.15, alpha = clamp(t / .25) * (1 - leave);
+    polaroid(c, i, x, top, rot, sc, alpha, t, ease((t - .7) / .9));
+    const ta = clamp((t - .3) / .4) * (1 - ease((t - (SLIDE - .4)) / .4));
+    if (ta > 0){
+      c.save(); c.globalAlpha = ta; c.textAlign = "center"; c.textBaseline = "middle";
+      const tx = L.text.x, chipLabel = `${String(i + 1).padStart(2, "0")}  ${SLIDES[i].chip}`;
+      c.font = '700 12px "Noto Sans KR", sans-serif'; const cw = c.measureText(chipLabel).width + 28;
+      c.fillStyle = i % 2 ? ORANGE : RED; rr(c, tx - cw / 2, L.text.chipY - 13, cw, 26, 13); c.fill();
+      c.fillStyle = "#fff"; c.fillText(chipLabel, tx, L.text.chipY + 1);
+      c.fillStyle = INK; c.font = `${L.text.size}px Jua, sans-serif`;
+      SLIDES[i].title.forEach((line, j) => { const p = ease((t - .45 - j * .18) / .5); c.globalAlpha = ta * p;
+        c.fillText(line, tx, (j ? L.text.t2 : L.text.t1) + (1 - p) * 12); });
+      c.restore();
+    }
+  }
+}
+function titleCard(c, T){
+  const a = 1 - ease((T - (TITLE - .5)) / .5);
+  c.save(); c.globalAlpha = a;
+  const fan = [2, 10, 4];
+  fan.forEach((i, j) => { const p = back((T - .2 - j * .15) / .8);
+    polaroid(c, i, (LAND ? 160 : 180) + (j - 1) * (LAND ? 74 : 70) * p, LAND ? 96 + (1 - p) * 120 : 360 + (1 - p) * 140, (j - 1) * .16 * p, LAND ? .52 : .46, clamp(p), 2, 1, L.pw, L.ph, L.pb); });
+  const cx = LAND ? 448 : 180;
+  logoAt(c, cx, LAND ? 92 : 132, LAND ? 220 : 240, ease(T / .6));
+  const p1 = ease((T - .5) / .6), p2 = ease((T - .9) / .6), p3 = ease((T - 1.4) / .7);
+  c.textAlign = "center"; c.textBaseline = "middle";
+  c.globalAlpha = a * p1; c.fillStyle = ORANGE; c.font = '700 13px "Noto Sans KR", sans-serif'; c.fillText("2026 홈앤서비스 서비스매니저", cx, (LAND ? 150 : 196) + (1 - p1) * 8);
+  c.globalAlpha = a * p2; c.fillStyle = INK; c.font = `${LAND ? 40 : 38}px Jua, sans-serif`; c.fillText("우리들의 안전 앨범", cx, (LAND ? 196 : 240) + (1 - p2) * 10);
+  c.globalAlpha = a * p3; c.fillStyle = RED; c.font = `${LAND ? 30 : 29}px "Nanum Pen Script", cursive`; c.fillText("오늘도 무사히, 가족 품으로", cx, (LAND ? 240 : 284) + (1 - p3) * 8);
+  for (let k = 0; k < 6; k++) sparkle(c, cx - 120 + k * 48, (LAND ? 60 : 300) + (k % 2) * 40, 6 + k % 3 * 2, (Math.sin(T * 3 + k) + 1) / 2 * a);
+  c.restore();
+}
+function endCard(c, T){
+  const t = T - (TITLE + SLIDES.length * SLIDE);
+  const fan = [0, 10, 5];
+  fan.forEach((i, j) => { const p = back((t - j * .15) / .8);
+    polaroid(c, i, (LAND ? 170 : 180) + (j - 1) * (LAND ? 80 : 74) * p, LAND ? 70 + (1 - p) * 100 : 96 + (1 - p) * 120, (j - 1) * .14 * p, LAND ? .62 : .58, clamp(p), 2, 1); });
+  const cx = LAND ? 460 : 180;
+  const p1 = ease((t - .6) / .6), p2 = ease((t - 1.1) / .6), p3 = ease((t - 1.6) / .6);
+  c.save(); c.textAlign = "center"; c.textBaseline = "middle";
+  c.globalAlpha = p1; c.fillStyle = INK; c.font = `${LAND ? 32 : 30}px Jua, sans-serif`;
+  c.fillText("안전은 가족과의", cx, (LAND ? 132 : 420) + (1 - p1) * 10); c.fillText("약속입니다", cx, (LAND ? 172 : 458) + (1 - p1) * 10);
+  c.globalAlpha = p2; c.fillStyle = RED; c.font = `${LAND ? 26 : 26}px "Nanum Pen Script", cursive`; c.fillText("홈앤서비스 서비스매니저 일동", cx, (LAND ? 214 : 502));
+  c.restore();
+  logoAt(c, cx, LAND ? 280 : 572, LAND ? 200 : 210, p3);
+  const fade = clamp((T - (TOTAL - .8)) / .8);
+  if (fade > 0){ c.fillStyle = `rgba(255,255,255,${fade})`; c.fillRect(-SW, -SH, SW * 3, SH * 3); }
+}
+
+function renderAt(cv, T){
+  const c = cv.getContext("2d"), W = cv.width, H = cv.height, sc = Math.min(W / SW, H / SH);
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H);
+  c.setTransform(sc, 0, 0, sc, (W - SW * sc) / 2, (H - SH * sc) / 2);
+  background(c, T);
+  if (T < TITLE) titleCard(c, T);
+  else if (T < TITLE + SLIDES.length * SLIDE + .9) { slideFrame(c, T); if (T < TITLE + SLIDES.length * SLIDE) logoAt(c, L.logo.x, L.logo.y, L.logo.w, .95); }
+  if (T >= TITLE + SLIDES.length * SLIDE - .2) endCard(c, T);
+  const g = c.createLinearGradient(0, 0, SW, 0); g.addColorStop(0, RED); g.addColorStop(1, ORANGE);
+  c.fillStyle = g; c.fillRect(0, SH - 4, SW * clamp(T / TOTAL), 4);
+}
+
+/* ---------- music: warm, light, about one minute ---------- */
+function buildMusic(ac, out, t0){
+  const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+  const master = ac.createGain(); master.gain.value = .62;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
+  const outG = ac.createGain(); outG.gain.value = .75; master.connect(comp); comp.connect(outG); outG.connect(out);
+  const rev = ac.createConvolver(); const n = Math.floor(ac.sampleRate * 3);
+  const ir = ac.createBuffer(2, n, ac.sampleRate); let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 * 2 - 1;
+  for (let ch = 0; ch < 2; ch++){ const d = ir.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = rnd() * Math.pow(1 - i / n, 2.6); }
+  rev.buffer = ir; const rg = ac.createGain(); rg.gain.value = .45; rev.connect(rg); rg.connect(master);
+  const noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); { const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = rnd(); }
+  const T = x => t0 + x;
+  const env = (g, t, a, peak, hold, rel) => { g.gain.setValueAtTime(0, T(t)); g.gain.linearRampToValueAtTime(peak, T(t + a)); g.gain.setValueAtTime(peak, T(t + a + hold)); g.gain.exponentialRampToValueAtTime(.0001, T(t + a + hold + rel)); };
+  function bell(t, m, vol, dec = 1.2){
+    [[1, 1], [2.76, .25], [5.4, .08]].forEach(([r, v]) => { const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = mf(m) * r; const g = ac.createGain();
+      env(g, t, .004, vol * v, .01, dec / r); o.connect(g); g.connect(master); g.connect(rev); o.start(T(t)); o.stop(T(t + dec + .1)); });
+  }
+  function keys(t, m, vol, dur){ const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = mf(m); const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1800;
+    const g = ac.createGain(); env(g, t, .01, vol, dur * .3, dur * .9); o.connect(f); f.connect(g); g.connect(master); g.connect(rev); o.start(T(t)); o.stop(T(t + dur * 1.3 + .1)); }
+  function pad(t, dur, notes, vol){ const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1100; const g = ac.createGain(); env(g, t, .8, vol, Math.max(0, dur - .8), 1.4);
+    f.connect(g); g.connect(master); g.connect(rev);
+    notes.forEach(m => [-5, 5].forEach(d => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = mf(m); o.detune.value = d; o.connect(f); o.start(T(t)); o.stop(T(t + dur + 1.6)); })); }
+  function bass(t, m, vol, dur){ const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, t, .02, vol, dur * .5, dur * .6); o.connect(g); g.connect(master); o.start(T(t)); o.stop(T(t + dur * 1.2)); }
+  function kick(t, vol){ const o = ac.createOscillator(); o.frequency.setValueAtTime(110, T(t)); o.frequency.exponentialRampToValueAtTime(45, T(t + .12)); const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + .35)); o.connect(g); g.connect(master); o.start(T(t)); o.stop(T(t + .4)); }
+  function shaker(t, vol){ const s = ac.createBufferSource(); s.buffer = noise; const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 6500; const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + .07)); s.connect(f); f.connect(g); g.connect(master); s.start(T(t)); s.stop(T(t + .1)); }
+  function clap(t, vol){ const s = ac.createBufferSource(); s.buffer = noise; const f = ac.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1500; const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + .14)); s.connect(f); f.connect(g); g.connect(master); g.connect(rev); s.start(T(t)); s.stop(T(t + .16)); }
+  const beat = 60 / 90, bar = beat * 4;
+  const prog = [["G", 43, [55, 59, 62], [67, 71, 74, 79]], ["D", 42, [54, 57, 62], [66, 69, 74, 78]], ["Em", 40, [52, 55, 59], [64, 67, 71, 76]], ["C", 36, [52, 55, 60], [64, 67, 72, 76]]];
+  const mel = [[[74, 1], [71, 1], [67, 1], [71, 1]], [[69, 2], [66, 1], [69, 1]], [[67, 1], [71, 1], [76, 2]], [[76, 1], [74, 1], [72, 1], [71, 1]]];
+  const bars = Math.floor((TOTAL - 4) / bar);
+  for (let b = 0; b < bars; b++){
+    const bt = b * bar, [, root, tri, arp] = prog[b % 4];
+    pad(bt, bar, tri, b < 2 ? .028 : .036);
+    for (let e = 0; e < 8; e++) bell(bt + e * beat / 2, arp[[0, 1, 2, 3, 2, 1, 2, 3][e]] + (b >= 14 && e % 4 === 0 ? 12 : 0), b < 2 ? .05 : .042, .9);
+    if (b >= 2){ bass(bt, root, .22, beat * 1.8); bass(bt + beat * 2, root + 7, .16, beat * 1.6); for (let e = 0; e < 8; e++) shaker(bt + e * beat / 2, e % 2 ? .05 : .03); }
+    if (b >= 6){ kick(bt, .45); kick(bt + beat * 2, .4); }
+    if (b >= 14){ clap(bt + beat, .12); clap(bt + beat * 3, .12); }
+    if (b >= 6){ let mt = bt; mel[b % 4].forEach(([m, d]) => { keys(mt, m + (b >= 14 ? 12 : 0), b >= 14 ? .06 : .07, d * beat); mt += d * beat; }); }
+  }
+  const fin = bars * bar;
+  pad(fin, 3.6, [55, 59, 62, 67], .04); bass(fin, 43, .25, 3); [79, 83, 86, 91].forEach((m, i) => bell(fin + i * .12, m, .07, 2.4));
+  master.gain.setValueAtTime(.62, T(TOTAL - 1.2)); master.gain.linearRampToValueAtTime(0, T(TOTAL));
+  return master;
+}
+
+/* ---------- player ---------- */
+const cv = document.getElementById("cv");
+function fit(){ const d = Math.min(devicePixelRatio || 1, 2); cv.width = innerWidth * d; cv.height = innerHeight * d; }
+addEventListener("resize", fit); fit();
+const fontsReady = (async () => {
+  const text = SLIDES.map(s => s.title.join("") + s.note + s.chip).join("") + "우리들의 안전 앨범오늘도 무사히, 가족 품으로2026 홈앤서비스 서비스매니저안전은 가족과의약속입니다일동0123456789 ";
+  await Promise.all(["30px Jua", '30px "Nanum Pen Script"', '700 12px "Noto Sans KR"'].map(f => document.fonts.load(f, text)));
+  await Promise.all(imgs.map(im => im.decode().catch(() => {}))); await logo.decode().catch(() => {});
+})();
+window.__show = { renderAt, buildMusic, TOTAL, ready: fontsReady };
+fontsReady.then(() => renderAt(cv, 0));
+document.getElementById("play").addEventListener("click", async () => {
+  document.getElementById("play").hidden = true;
+  const ac = new AudioContext(); const t0 = ac.currentTime + .1; buildMusic(ac, ac.destination, t0);
+  const loop = () => { const T = ac.currentTime - t0; if (T > TOTAL) return; renderAt(cv, Math.max(0, T)); requestAnimationFrame(loop); };
+  loop();
+});
+</script>
+</body>
+</html>

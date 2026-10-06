@@ -13,13 +13,14 @@ import props as P
 
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "src", "logo.png")
-args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-PREVIEW = "--preview" in args
-ANCHORS_ONLY = "--anchors" in args
-args = [a for a in args if a not in ("--preview", "--anchors")]
-OUT = args[0]
-WANT = [int(a) for a in args[1:]] or [1, 2, 3, 4, 5, 6, 7, 8]
-os.makedirs(OUT, exist_ok=True)
+OUT, PREVIEW, ANCHORS_ONLY = None, False, False
+VARIANTS = {}   # scene number -> [(name, camera loc, target, lens, fstop)] extra shots of the same set
+
+
+def configure(out, preview=False, anchors_only=False):
+    global OUT, PREVIEW, ANCHORS_ONLY
+    OUT, PREVIEW, ANCHORS_ONLY = out, preview, anchors_only
+    os.makedirs(OUT, exist_ok=True)
 
 
 def finish(n, anchors, samples=96, res=(810, 1440)):
@@ -29,7 +30,11 @@ def finish(n, anchors, samples=96, res=(810, 1440)):
         json.dump(project(anchors), f)
     if ANCHORS_ONLY:
         return
-    render(os.path.join(OUT, f"scene{n}.png"), samples=24 if PREVIEW else samples)
+    if not VARIANTS.get(f"skip{n}"):
+        render(os.path.join(OUT, f"scene{n}.png"), samples=24 if PREVIEW else samples)
+    for name, loc, target, lens, fstop in VARIANTS.get(n, []):
+        camera(loc, target, lens=lens, fstop=fstop)
+        render(os.path.join(OUT, f"{name}.png"), samples=24 if PREVIEW else samples)
 
 
 def asphalt():
@@ -293,5 +298,9 @@ def scene8():
     finish(8, dict(belt=d.anchors["chest"]), samples=96, res=(640, 640))
 
 
-for n in WANT:
-    globals()[f"scene{n}"]()
+if __name__ == "__main__":
+    args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    configure(args[0], "--preview" in args, "--anchors" in args)
+    want = [int(a) for a in args[1:] if not a.startswith("--")] or [1, 2, 3, 4, 5, 6, 7, 8]
+    for n in want:
+        globals()[f"scene{n}"]()
