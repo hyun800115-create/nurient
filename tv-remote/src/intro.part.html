@@ -1,0 +1,468 @@
+
+<!-- intro: animated safety film shown when the app opens -->
+<style>
+#intro{position:fixed;inset:0;z-index:100;background:#0f1830;color:#fff;overflow:hidden;transition:opacity .5s}
+#intro.out{opacity:0;pointer-events:none}
+#introCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#introSkip{position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top,0px));z-index:2;border:1px solid rgba(255,255,255,.5);background:rgba(15,24,48,.55);color:#fff;border-radius:999px;padding:7px 14px;font:500 13px/1 "IBM Plex Sans KR",system-ui,sans-serif;cursor:pointer}
+#introGate{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#fff;padding-inline:24px}
+#introGate img{width:min(300px,80%);height:auto}
+#introGate button{border:0;background:#ea002c;color:#fff;border-radius:999px;padding:14px 26px;font:700 16px/1 "IBM Plex Sans KR",system-ui,sans-serif;cursor:pointer;box-shadow:0 8px 24px rgba(234,0,44,.3)}
+#introGate .later{background:transparent;color:#5d6874;box-shadow:none;font-weight:500;font-size:13px;padding:6px}
+</style>
+<div id="intro" hidden>
+  <canvas id="introCanvas"></canvas>
+  <button id="introSkip">건너뛰기 ›</button>
+  <div id="introGate" hidden>
+    <img id="introLogoImg" alt="홈앤서비스 SK브로드밴드" src="__LOGO__">
+    <button id="introPlay">▶ 인트로 보기 (소리 켜짐)</button>
+    <button class="later" id="introNo">바로 시작하기</button>
+  </div>
+</div>
+<script>
+(() => {
+const TOTAL = 20;
+const CUTS = [0, 2, 5, 8, 11, 13.5, 16.5];
+const RED = "#ea002c", ORANGE = "#f47725", NAVY = "#0f1830";
+const FONT = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+const logo = document.getElementById("introLogoImg");
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = x => 1 - Math.pow(1 - clamp(x), 3);
+const lerp = (a, b, p) => a + (b - a) * p;
+
+/* ---------- drawing helpers (stage is 360 x 640) ---------- */
+function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function seg(c, x, y, a, len){ return [x + Math.sin(a)*len, y + Math.cos(a)*len]; }
+function limb(c, x, y, angs, lens, width, color){
+  const [x1,y1] = seg(c, x, y, angs[0], lens[0]);
+  const [x2,y2] = seg(c, x1, y1, angs[1], lens[1]);
+  c.strokeStyle = color; c.lineWidth = width; c.lineCap = "round"; c.lineJoin = "round";
+  c.beginPath(); c.moveTo(x,y); c.lineTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  return [x1,y1,x2,y2];
+}
+/* A field worker, front (or back) view, feet at (x,y). Angles: 0 = straight down, + = toward screen right. */
+function worker(c, x, y, s, o){
+  const g = Object.assign({helmet:true, alarm:false, harness:false, gloves:true, gaiters:false, boots:true, vest:true}, o.gear || {});
+  const t = o.t || 0;
+  c.save(); c.translate(x, y); c.scale(s, s);
+  const legL = o.legL || [0.08,0], legR = o.legR || [-0.08,0];
+  const armL = o.armL || [0.25,0.1], armR = o.armR || [-0.25,-0.1];
+  const hy = o.kneel ? -40 : -55;
+  // legs
+  const legs = [[-7, legL], [7, legR]].map(([hx, a]) => {
+    const p = limb(c, hx, hy, a, [27, 26], 10, "#26324d");
+    if (g.gaiters){
+      const ax = lerp(p[0], p[2], .3), ay = lerp(p[1], p[3], .3), bx = lerp(p[0], p[2], .9), by = lerp(p[1], p[3], .9);
+      c.strokeStyle = "#9aa3b2"; c.lineWidth = 11.5; c.beginPath(); c.moveTo(ax,ay); c.lineTo(bx,by); c.stroke();
+      c.strokeStyle = "#6b7484"; c.lineWidth = 1.4;
+      for (let k = 0; k < 3; k++){ const q = .4 + k*.2; const mx = lerp(p[0],p[2],q), my = lerp(p[1],p[3],q); c.beginPath(); c.moveTo(mx-5.5,my); c.lineTo(mx+5.5,my); c.stroke(); }
+    }
+    if (g.boots){ c.fillStyle = "#23201d"; rr(c, p[2]-7, p[3]-3, 15, 8, 3); c.fill(); c.fillStyle = "#4a4540"; c.fillRect(p[2]-7, p[3]+3, 15, 2); }
+    return p;
+  });
+  // back arm
+  const drawArm = (sx, a) => {
+    const p = limb(c, sx, hy-37, a, [22, 20], 8, "#26324d");
+    c.fillStyle = g.gloves ? "#f2c230" : "#f1c9a5"; c.beginPath(); c.arc(p[2], p[3], 4.6, 0, 7); c.fill();
+    if (g.gloves){ c.strokeStyle = "#c99a12"; c.lineWidth = 1; c.stroke(); }
+    return p;
+  };
+  // torso
+  c.fillStyle = "#26324d"; rr(c, -15, hy-41, 30, 44, 7); c.fill();
+  if (g.vest){
+    c.fillStyle = ORANGE; rr(c, -15, hy-41, 30, 40, 7); c.fill();
+    c.fillStyle = "#e8edf3"; c.fillRect(-15, hy-20, 30, 3.5); c.fillRect(-15, hy-12, 30, 3.5);
+    if (!o.back){ c.fillStyle = "#26324d"; c.beginPath(); c.moveTo(-5, hy-41); c.lineTo(0, hy-32); c.lineTo(5, hy-41); c.fill(); }
+  }
+  if (g.harness){
+    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3.6; c.lineCap = "round";
+    c.beginPath(); c.moveTo(-11, hy-40); c.lineTo(9, hy-3); c.moveTo(11, hy-40); c.lineTo(-9, hy-3); c.stroke();
+    c.beginPath(); c.moveTo(-15, hy-4); c.lineTo(15, hy-4); c.stroke();
+    c.beginPath(); c.ellipse(-7, hy+5, 6.5, 3, 0, 0, 7); c.ellipse(7, hy+5, 6.5, 3, 0, 0, 7); c.stroke();
+    c.fillStyle = "#c0c6cf"; c.beginPath(); c.arc(0, hy-21, 3.4, 0, 7); c.fill();
+  }
+  const pa = drawArm(-14, armL), pb = drawArm(14, armR);
+  // head
+  const hx = 0, hyy = hy - 53;
+  c.fillStyle = "#f1c9a5"; c.beginPath(); c.arc(hx, hyy, 11, 0, 7); c.fill();
+  if (o.back){ c.fillStyle = "#2b2622"; c.beginPath(); c.arc(hx, hyy+1, 10.5, 0, 7); c.fill(); }
+  else {
+    c.fillStyle = "#2b2622"; c.beginPath(); c.arc(hx-4, hyy+1, 1.4, 0, 7); c.arc(hx+4, hyy+1, 1.4, 0, 7); c.fill();
+    c.strokeStyle = "#a8614a"; c.lineWidth = 1.3; c.beginPath(); c.arc(hx, hyy+4, 3.4, .25, Math.PI-.25); c.stroke();
+  }
+  if (g.helmet){
+    c.fillStyle = "#f8f8f6"; c.beginPath(); c.arc(hx, hyy-2, 13.5, Math.PI, 0); c.closePath(); c.fill();
+    c.fillRect(hx-16, hyy-3, 32, 3.2);
+    c.fillStyle = RED; c.fillRect(hx-2, hyy-15.3, 4, 12.5);
+    if (!o.back){ c.strokeStyle = "#3a3a3a"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(hx-11, hyy-1); c.quadraticCurveTo(hx, hyy+15, hx+11, hyy-1); c.stroke(); }
+    if (g.alarm){
+      c.fillStyle = "#24272c"; rr(c, hx+7, hyy-14, 8, 6, 1.5); c.fill();
+      const on = Math.floor(t * 4) % 2 === 0;
+      c.fillStyle = on ? "#ff3b30" : "#5a1a16"; c.beginPath(); c.arc(hx+11, hyy-11, 1.8, 0, 7); c.fill();
+      if (on){ c.strokeStyle = "rgba(255,59,48,.65)"; c.lineWidth = 1.2; for (let k = 1; k <= 2; k++){ c.beginPath(); c.arc(hx+11, hyy-11, 3 + k*3.2, -1.1, .2); c.stroke(); } }
+    }
+  }
+  c.restore();
+  const tr = (p) => [x + p[0]*s, y + p[1]*s];
+  return { head: tr([0, hyy]), helmet: tr([0, hyy-10]), alarm: tr([11, hyy-11]), chest: tr([0, hy-21]), handL: tr([pa[2], pa[3]]), handR: tr([pb[2], pb[3]]),
+    shin: tr([lerp(legs[0][0],legs[0][2],.6), lerp(legs[0][1],legs[0][3],.6)]), foot: tr([legs[1][2], legs[1][3]]), hip: tr([0, hy-4]) };
+}
+function callout(c, t, at, px, py, lx, ly, text){
+  if (t < at) return;
+  const p = ease((t - at) / .35);
+  c.save(); c.globalAlpha = p;
+  const pulse = (t - at) % 1.2;
+  c.strokeStyle = "rgba(255,255,255,"+(1-pulse/1.2)*.9+")"; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 4 + pulse*10, 0, 7); c.stroke();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(px, py, 3.6, 0, 7); c.fill();
+  c.strokeStyle = "#fff"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(px, py); c.lineTo(lerp(px, lx, p), lerp(py, ly, p)); c.stroke();
+  c.font = "700 13px " + FONT; const w = c.measureText(text).width + 22;
+  const bx = clamp(lx > px ? lx : lx - w, 16, 344 - w), by = ly - 13;
+  c.translate(0, (1-p)*8);
+  c.fillStyle = "rgba(255,255,255,.96)"; rr(c, bx, by, w, 26, 6); c.fill();
+  c.fillStyle = ORANGE; c.fillRect(bx, by, 4, 26);
+  c.fillStyle = "#18212b"; c.textBaseline = "middle"; c.fillText(text, bx + 12, by + 13.5);
+  c.restore();
+}
+function caption(c, t, small, big){
+  const p = ease(t / .45);
+  c.save(); c.globalAlpha = p; c.translate(0, (1-p)*18);
+  const g = c.createLinearGradient(0, 520, 0, 640); g.addColorStop(0, "rgba(10,16,32,0)"); g.addColorStop(.35, "rgba(10,16,32,.82)"); g.addColorStop(1, "rgba(10,16,32,.95)");
+  c.fillStyle = g; c.fillRect(-400, 520, 1160, 420);
+  c.fillStyle = RED; c.fillRect(22, 566, 5, 46);
+  c.textBaseline = "alphabetic";
+  c.fillStyle = ORANGE; c.font = "700 13px " + FONT; c.fillText(small, 36, 582);
+  c.fillStyle = "#fff"; c.font = "800 23px " + FONT; c.fillText(big, 36, 610);
+  c.restore();
+}
+function sky(c, top, bottom){ const g = c.createLinearGradient(0, -300, 0, 640); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fillRect(-600, -300, 1560, 1240); }
+function cone(c, x, y, s){
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.fillStyle = "#2a2a2a"; c.fillRect(-14, -3, 28, 5);
+  c.fillStyle = ORANGE; c.beginPath(); c.moveTo(-10, -3); c.lineTo(-3, -36); c.lineTo(3, -36); c.lineTo(10, -3); c.fill();
+  c.fillStyle = "#f4f4f4"; c.beginPath(); c.moveTo(-7.2, -15); c.lineTo(-5.3, -24); c.lineTo(5.3, -24); c.lineTo(7.2, -15); c.fill();
+  c.restore();
+}
+
+/* ---------- scenes: draw(c, local time) ---------- */
+const scenes = [
+  // 0: opening
+  (c, t) => {
+    c.fillStyle = NAVY; c.fillRect(-600, -300, 1560, 1240);
+    for (let i = 0; i < 7; i++){
+      const sp = 140 + i*35, off = ((t*sp + i*173) % 1300) - 500;
+      c.save(); c.globalAlpha = .18 + (i%3)*.08; c.fillStyle = i%2 ? ORANGE : RED;
+      c.translate(off, 0); c.rotate(-.5); c.fillRect(-20, -200 + i*90, 260 + i*20, 6 + (i%3)*4); c.restore();
+    }
+    const p1 = ease((t - .15)/.5), p2 = ease((t - .45)/.5), p3 = ease((t - .75)/.5);
+    c.textBaseline = "alphabetic";
+    c.globalAlpha = p1; c.fillStyle = ORANGE; c.font = "700 15px " + FONT; c.fillText("홈앤서비스 서비스매니저", 34, 270 + (1-p1)*14);
+    c.globalAlpha = p2; c.fillStyle = "#fff"; c.font = "800 38px " + FONT; c.fillText("오늘도 안전하게,", 32, 322 + (1-p2)*14);
+    c.globalAlpha = p3; c.fillText("현장으로", 32, 370 + (1-p3)*14);
+    c.globalAlpha = p3; c.fillStyle = RED; c.fillRect(34, 392, 70*p3, 5); c.fillStyle = ORANGE; c.fillRect(34 + 74*p3, 392, 30*p3, 5);
+    c.globalAlpha = 1;
+  },
+  // 1: home install
+  (c, t) => {
+    c.fillStyle = "#efe9df"; c.fillRect(-600, -300, 1560, 1240);
+    c.fillStyle = "#e3dbcd"; for (let i = -10; i < 20; i++) c.fillRect(i*48, -300, 2, 800);
+    c.fillStyle = "#b98a5c"; c.fillRect(-600, 470, 1560, 500);
+    c.fillStyle = "#a77a4f"; for (let i = -10; i < 20; i++) c.fillRect(i*70, 470, 2, 500);
+    // window
+    c.fillStyle = "#bfe0f2"; rr(c, 22, 120, 92, 120, 4); c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 6; c.strokeRect(22, 120, 92, 120); c.beginPath(); c.moveTo(68,120); c.lineTo(68,240); c.stroke();
+    // cabinet + tv
+    c.fillStyle = "#6d5444"; rr(c, 140, 410, 210, 60, 5); c.fill();
+    c.fillStyle = "#1b1e24"; rr(c, 150, 230, 196, 116, 6); c.fill();
+    const on = clamp((t - 1.5) / .5);
+    if (on > 0){
+      const g = c.createLinearGradient(156, 236, 340, 340); g.addColorStop(0, "#1d3b8f"); g.addColorStop(1, "#7a1a46");
+      c.globalAlpha = on; c.fillStyle = g; c.fillRect(156, 236, 184, 104);
+      c.fillStyle = "#fff"; c.font = "800 30px " + FONT; c.fillText("B tv", 216, 296); c.fillStyle = RED; c.fillRect(216, 304, 60, 3);
+      c.globalAlpha = 1;
+    }
+    c.fillStyle = "#1b1e24"; c.fillRect(240, 346, 16, 14); c.fillRect(214, 360, 68, 5);
+    // set-top box with blinking LED
+    c.fillStyle = "#f1f1f1"; rr(c, 260, 392, 70, 18, 3); c.fill();
+    c.fillStyle = on > 0 ? "#3ccf6e" : (Math.floor(t*3)%2 ? "#f2a33a" : "#5b4520"); c.beginPath(); c.arc(318, 401, 2.3, 0, 7); c.fill();
+    // cable
+    c.strokeStyle = "#2f2f2f"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(262, 404); c.bezierCurveTo(230, 420, 190, 430, 150, 418); c.stroke();
+    const reach = Math.sin(Math.min(t, 1.5) * 4) * .12;
+    const w = worker(c, 112, 498, 1.18, { t, kneel: true, legL: [-1.1, .2], legR: [1.0, -.3], armL: [.5, .3], armR: [-2.2 + reach, -1.7], gear: { helmet: false, vest: true, gloves: true } });
+    // cap
+    c.fillStyle = RED; c.beginPath(); c.arc(w.head[0], w.head[1]-4, 13, Math.PI, 0); c.fill(); c.fillRect(w.head[0], w.head[1]-6, 18, 3.5);
+    callout(c, t, .6, 300, 402, 248, 182, "셋톱박스 연결");
+    callout(c, t, 1.9, 250, 290, 202, 130, "개통·화면 확인");
+    caption(c, t, "고객 댁 방문", "인터넷 · B tv 설치");
+  },
+  // 2: ladder work
+  (c, t) => {
+    sky(c, "#8ec5ea", "#dff1fb");
+    c.fillStyle = "#b9a58f"; c.fillRect(150, -300, 800, 820);
+    c.fillStyle = "#a8927a"; for (let r = 0; r < 40; r++) for (let k = 0; k < 12; k++) c.fillRect(150 + k*40 + (r%2)*20, -290 + r*20, 36, 2);
+    for (let k = 0; k < 25; k++) c.fillRect(150 + (k%12)*40 + Math.floor(k/12)*20, -300, 2, 820);
+    c.fillStyle = "#7d8a96"; c.fillRect(-600, 520, 1560, 420);
+    c.fillStyle = "#97a3ae"; c.fillRect(-600, 520, 1560, 6);
+    // terminal box on wall
+    c.fillStyle = "#e9ecef"; rr(c, 262, 128, 54, 40, 4); c.fill(); c.fillStyle = RED; c.fillRect(262, 128, 54, 6);
+    // ladder: base (110,520) -> top (236,150)
+    const bx = 112, by = 520, tx = 238, ty = 150, gap = 26;
+    const ang = Math.atan2(tx - bx, by - ty);
+    c.save(); c.translate(bx, by); c.rotate(ang);
+    const L = Math.hypot(tx - bx, by - ty);
+    c.fillStyle = "#c9ced4"; c.fillRect(-gap/2-4, -L, 5, L); c.fillRect(gap/2-1, -L, 5, L);
+    for (let y = 18; y < L; y += 30) c.fillRect(-gap/2, -y, gap + 1, 3.5);
+    c.restore();
+    // outriggers
+    c.fillStyle = "#e1a21a"; c.fillRect(66, 512, 96, 6); c.fillStyle = "#2b2b2b"; c.fillRect(62, 516, 12, 6); c.fillRect(154, 516, 12, 6);
+    // top tie (rope loop drawn over time)
+    const tie = clamp((t - .8) / .7);
+    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.arc(242, 162, 9, 0, Math.PI*2*tie); c.stroke();
+    if (tie > 0){ c.beginPath(); c.moveTo(250, 160); c.lineTo(lerp(250, 262, tie), 150); c.stroke(); c.fillStyle = "#888"; c.fillRect(260, 146, 6, 6); }
+    // climbing worker (back view) along ladder
+    const climb = ease(t / 2.4);
+    const fy = lerp(470, 330, climb), fx = bx + (by - fy) * Math.tan(ang);
+    const step = Math.sin(t * 7) * .25;
+    worker(c, fx, fy, 1.0, { t, back: true, legL: [.15 + step, -.1], legR: [-.15 - step, .1], armL: [2.7, 2.9 - step], armR: [-2.7, -2.9 + step], gear: { harness: true, gaiters: true } });
+    // spotter holding ladder
+    worker(c, 74, 520, 1.0, { t, armL: [.3, .2], armR: [-1.45, -1.75], gear: { harness: false, gaiters: true } });
+    callout(c, t, .3, 150, 515, 210, 470, "아웃트리거 설치");
+    callout(c, t, 1.2, 244, 162, 186, 96, "사다리 상단 결속");
+    callout(c, t, 1.9, 74, 418, 30, 372, "2인 1조 · 하부 지지");
+    caption(c, t, "사다리 작업", "고정 · 결속 · 2인 1조");
+  },
+  // 3: utility pole
+  (c, t) => {
+    sky(c, "#24345a", "#f2a25c");
+    c.fillStyle = "rgba(255,255,255,.6)"; for (let i = 0; i < 18; i++) c.fillRect((i*97)%720 - 180, (i*53)%200 - 120, 2, 2);
+    c.fillStyle = "#3a4560"; c.fillRect(-600, 540, 1560, 400);
+    c.fillStyle = "#2b3550"; for (let i = 0; i < 9; i++) rr(c, -200 + i*90, 470 - (i%3)*30, 70, 120, 4), c.fill();
+    // pole
+    c.fillStyle = "#b8bcc2"; c.beginPath(); c.moveTo(188, -300); c.lineTo(212, -300); c.lineTo(216, 560); c.lineTo(184, 560); c.fill();
+    c.fillStyle = "#8f949b"; c.fillRect(206, -300, 6, 860);
+    // crossarm + insulators + power lines
+    c.fillStyle = "#5b616b"; c.fillRect(110, 92, 180, 9);
+    c.fillStyle = "#d6dde6"; [128, 168, 232, 272].forEach(x => { rr(c, x-4, 78, 8, 14, 2); c.fill(); });
+    c.strokeStyle = "#1c2233"; c.lineWidth = 1.6;
+    [128, 168, 232, 272].forEach(x => { c.beginPath(); c.moveTo(-600, 60); c.quadraticCurveTo(x, 100, x, 78); c.quadraticCurveTo(x, 100, 960, 64); c.stroke(); });
+    // telecom cables + closure
+    c.strokeStyle = "#111"; c.lineWidth = 3; c.beginPath(); c.moveTo(-600, 228); c.quadraticCurveTo(200, 262, 960, 226); c.stroke();
+    c.lineWidth = 2; c.beginPath(); c.moveTo(-600, 244); c.quadraticCurveTo(200, 276, 960, 240); c.stroke();
+    c.fillStyle = "#2b2f36"; rr(c, 222, 238, 34, 22, 4); c.fill();
+    // step bolts
+    c.fillStyle = "#6b7078"; for (let y = 300; y < 540; y += 26) c.fillRect(y % 52 ? 212 : 176, y, 12, 3);
+    // worker on pole with lanyard around pole
+    const bob = Math.sin(t * 2) * 2;
+    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.ellipse(200, 368 + bob, 26, 7, 0, Math.PI, 0); c.stroke();
+    const w = worker(c, 160, 452 + bob, 1.05, { t, back: false, legL: [.05, 0], legR: [-.5, .4], armL: [.2, .1], armR: [-2.4, -2.2], gear: { harness: true, alarm: true, gaiters: true } });
+    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.ellipse(200, 368 + bob, 26, 7, 0, 0, Math.PI); c.stroke();
+    callout(c, t, .4, w.chest[0], w.chest[1], 70, 300, "X반도(전신 안전대) 착용");
+    callout(c, t, 1.1, 224, 368 + bob, 272, 330, "안전대 전주 체결");
+    callout(c, t, 1.8, w.alarm[0], w.alarm[1], 280, 196, "활선경보기 작동 확인");
+    caption(c, t, "전주 작업", "추락 · 감전 예방");
+  },
+  // 4: manhole
+  (c, t) => {
+    sky(c, "#9cc8e6", "#e8f3fa");
+    c.fillStyle = "#c9ccd1"; c.fillRect(-600, 330, 1560, 60);
+    c.fillStyle = "#454b55"; c.fillRect(-600, 390, 1560, 560);
+    c.fillStyle = "#f2f2f2"; for (let i = -6; i < 12; i++) c.fillRect(i*80, 600, 46, 6);
+    // buildings
+    c.fillStyle = "#b5c3d1"; rr(c, -40, 150, 120, 180, 4); c.fill(); rr(c, 260, 110, 140, 220, 4); c.fill();
+    c.fillStyle = "#dfe8f1"; for (let i = 0; i < 6; i++) for (let k = 0; k < 2; k++) c.fillRect(-25 + k*50, 170 + i*26, 30, 14), c.fillRect(275 + k*60, 130 + i*30, 40, 16);
+    // manhole + tripod
+    c.fillStyle = "#1b1d21"; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.fill();
+    c.strokeStyle = "#6d737d"; c.lineWidth = 4; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.stroke();
+    c.strokeStyle = "#e1a21a"; c.lineWidth = 4; c.beginPath(); c.moveTo(190, 380); c.lineTo(140, 492); c.moveTo(190, 380); c.lineTo(240, 492); c.moveTo(190, 380); c.lineTo(196, 500); c.stroke();
+    c.strokeStyle = "#ddd"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(190, 384); c.lineTo(190, 470); c.stroke();
+    // barrier
+    c.fillStyle = "#ffd02b"; c.fillRect(60, 430, 270, 12);
+    c.fillStyle = "#1d1d1d"; for (let x = 60; x < 330; x += 24) { c.beginPath(); c.moveTo(x, 442); c.lineTo(x+10, 430); c.lineTo(x+20, 430); c.lineTo(x+10, 442); c.fill(); }
+    c.fillStyle = "#555"; c.fillRect(64, 442, 4, 50); c.fillRect(322, 442, 4, 50);
+    cone(c, 40, 520, 1.1); cone(c, 342, 520, 1.1); cone(c, 300, 560, 1.2);
+    // worker with gas detector
+    const w = worker(c, 88, 560, 1.15, { t, armL: [.3, .2], armR: [-1.2, -2.6], gear: { gaiters: true } });
+    c.fillStyle = "#ffcf3a"; rr(c, w.handR[0]-6, w.handR[1]-16, 13, 20, 3); c.fill(); c.fillStyle = "#1f3b2a"; c.fillRect(w.handR[0]-4, w.handR[1]-13, 9, 7);
+    const read = clamp((t - .7) / .4);
+    if (read > 0){
+      c.globalAlpha = read; c.fillStyle = "rgba(15,24,48,.92)"; rr(c, 112, 268, 132, 54, 8); c.fill();
+      c.fillStyle = "#53e08a"; c.font = "700 14px " + FONT; c.fillText("O₂  20.9 %  정상", 124, 290); c.fillText("H₂S  0 ppm  정상", 124, 311);
+      c.globalAlpha = 1;
+    }
+    callout(c, t, .4, w.handR[0], w.handR[1]-8, 30, 236, "산소·유해가스 측정");
+    callout(c, t, 1.2, 300, 436, 230, 368, "안전펜스·라바콘 설치");
+    caption(c, t, "맨홀 작업", "측정 먼저, 진입은 나중에");
+  },
+  // 5: gear checklist
+  (c, t) => {
+    c.fillStyle = "#13203f"; c.fillRect(-600, -300, 1560, 1240);
+    c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = 1;
+    for (let i = -12; i < 30; i++){ c.beginPath(); c.moveTo(i*30, -300); c.lineTo(i*30, 940); c.stroke(); c.beginPath(); c.moveTo(-600, i*30); c.lineTo(960, i*30); c.stroke(); }
+    c.fillStyle = "rgba(244,119,37,.18)"; c.beginPath(); c.ellipse(98, 470, 80, 16, 0, 0, 7); c.fill();
+    const w = worker(c, 98, 470, 2.55, { t, armL: [.35, .15], armR: [-.35, -.15], gear: { harness: true, alarm: true, gaiters: true } });
+    const items = [["안전모 · 턱끈", w.helmet], ["활선경보기", w.alarm], ["X반도 (안전대)", w.chest], ["안전장갑", w.handR], ["각반", w.shin], ["안전화", w.foot]];
+    c.fillStyle = ORANGE; c.font = "700 13px " + FONT; c.fillText("작업 전 확인", 196, 96);
+    c.fillStyle = "#fff"; c.font = "800 22px " + FONT; c.fillText("안전장구 착용", 196, 124);
+    items.forEach(([label, pt], i) => {
+      const at = .3 + i * .34, p = ease((t - at) / .3), y = 160 + i * 52;
+      if (t < at) { c.globalAlpha = .35; } else c.globalAlpha = 1;
+      c.fillStyle = p > 0 ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.04)"; rr(c, 192, y, 156, 40, 8); c.fill();
+      c.strokeStyle = p > 0 ? "#53e08a" : "rgba(255,255,255,.4)"; c.lineWidth = 2; rr(c, 202, y + 11, 18, 18, 4); c.stroke();
+      if (p > 0){ c.strokeStyle = "#53e08a"; c.lineWidth = 3; c.beginPath(); c.moveTo(206, y + 20); c.lineTo(210 + 1*p, y + 25); c.lineTo(206 + 12*p, y + 14); c.stroke(); }
+      c.fillStyle = "#fff"; c.font = "700 15px " + FONT; c.fillText(label, 230, y + 26);
+      c.globalAlpha = 1;
+      if (t >= at && t < at + .9){
+        const q = (t - at) / .9; c.strokeStyle = "rgba(83,224,138," + (1 - q) + ")"; c.lineWidth = 3; c.beginPath(); c.arc(pt[0], pt[1], 8 + q * 22, 0, 7); c.stroke();
+      }
+    });
+    const done = ease((t - 2.4) / .3);
+    if (done > 0){ c.globalAlpha = done; c.fillStyle = RED; rr(c, 192, 478, 156, 34, 17); c.fill(); c.fillStyle = "#fff"; c.font = "800 14px " + FONT; c.fillText("착용 완료 · 작업 시작", 210, 500); c.globalAlpha = 1; }
+  },
+  // 6: logo
+  (c, t) => {
+    c.fillStyle = "#fff"; c.fillRect(-600, -300, 1560, 1240);
+    const sw = ease(t / .6);
+    c.save(); c.translate(180, 320); c.rotate(-.35);
+    c.fillStyle = RED; c.fillRect(-700 + sw * 300, -160, 900, 18);
+    c.fillStyle = ORANGE; c.fillRect(-200 - sw * 300 + 300, 215, 900, 12);
+    c.restore();
+    const p = ease((t - .25) / .7);
+    if (logo.complete && logo.naturalWidth){
+      const lw = 290 * lerp(1.12, 1, p), lh = lw * logo.naturalHeight / logo.naturalWidth;
+      c.globalAlpha = p; c.drawImage(logo, 180 - lw/2, 300 - lh/2, lw, lh); c.globalAlpha = 1;
+    }
+    const q = ease((t - .9) / .6);
+    c.globalAlpha = q; c.fillStyle = "#18212b"; c.font = "800 19px " + FONT; c.textAlign = "center";
+    c.fillText("안전한 작업이", 180, 384 + (1-q)*10); c.fillText("최고의 서비스입니다", 180, 412 + (1-q)*10);
+    c.fillStyle = "#8a94a0"; c.font = "500 12px " + FONT; c.fillText("B tv 리모컨 TV 동조코드", 180, 470);
+    c.textAlign = "left"; c.globalAlpha = 1;
+  }
+];
+
+function renderAt(cv, T){
+  const c = cv.getContext("2d");
+  const W = cv.width, H = cv.height, sc = Math.min(W / 360, H / 640);
+  c.setTransform(1,0,0,1,0,0); c.clearRect(0, 0, W, H);
+  let i = CUTS.length - 1; while (i > 0 && T < CUTS[i]) i--;
+  const local = T - CUTS[i], dur = (CUTS[i+1] || TOTAL) - CUTS[i];
+  const zoom = 1 + .05 * clamp(local / dur);
+  c.setTransform(sc * zoom, 0, 0, sc * zoom, W/2 - 180*sc*zoom, H/2 - 320*sc*zoom);
+  scenes[i](c, local);
+  // diagonal wipe across each cut
+  for (let k = 1; k < CUTS.length; k++){
+    const d = T - CUTS[k];
+    if (d > -.28 && d < .28){
+      const p = (d + .28) / .56;
+      c.save(); c.translate(lerp(-700, 1060, p), 320); c.rotate(.42);
+      c.fillStyle = RED; c.fillRect(-160, -900, 230, 1800); c.fillStyle = ORANGE; c.fillRect(70, -900, 120, 1800);
+      c.restore();
+    }
+  }
+  const fade = clamp((T - (TOTAL - .6)) / .6);
+  if (fade > 0){ c.setTransform(1,0,0,1,0,0); c.fillStyle = "rgba(255,255,255," + fade + ")"; c.fillRect(0, 0, W, H); }
+}
+
+/* ---------- music (Web Audio, about 20 s) ---------- */
+function buildMusic(ac, out, t0){
+  const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+  const master = ac.createGain(); master.gain.value = .68;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
+  const outG = ac.createGain(); outG.gain.value = .7; master.connect(comp); comp.connect(outG); outG.connect(out);
+  const rev = ac.createConvolver(); const irLen = Math.floor(ac.sampleRate * 2.6);
+  const ir = ac.createBuffer(2, irLen, ac.sampleRate);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 * 2 - 1;
+  for (let ch = 0; ch < 2; ch++){ const d = ir.getChannelData(ch); for (let i = 0; i < irLen; i++) d[i] = rnd() * Math.pow(1 - i / irLen, 3); }
+  rev.buffer = ir; const revGain = ac.createGain(); revGain.gain.value = .35; rev.connect(revGain); revGain.connect(master);
+  const noise = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); { const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = rnd(); }
+  const delay = ac.createDelay(1); delay.delayTime.value = .375; const fb = ac.createGain(); fb.gain.value = .32;
+  delay.connect(fb); fb.connect(delay); const dOut = ac.createGain(); dOut.gain.value = .5; delay.connect(dOut); dOut.connect(master); dOut.connect(rev);
+  const T = x => t0 + x;
+  const env = (g, t, a, peak, hold, rel) => { g.gain.setValueAtTime(0, T(t)); g.gain.linearRampToValueAtTime(peak, T(t + a)); g.gain.setValueAtTime(peak, T(t + a + hold)); g.gain.exponentialRampToValueAtTime(.0001, T(t + a + hold + rel)); };
+  function pad(t, dur, notes, vol, cutoff){
+    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = cutoff; f.Q.value = .7;
+    const g = ac.createGain(); env(g, t, .5, vol, Math.max(0, dur - .5), 1.2); f.connect(g); g.connect(master); g.connect(rev);
+    notes.forEach(m => [-6, 6].forEach(det => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = mf(m); o.detune.value = det; o.connect(f); o.start(T(t)); o.stop(T(t + dur + 1.4)); }));
+  }
+  function bass(t, m, vol){ const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = mf(m); const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 420; const g = ac.createGain(); env(g, t, .005, vol, .08, .14); o.connect(f); f.connect(g); g.connect(master); o.start(T(t)); o.stop(T(t + .3)); }
+  function kick(t, vol){ const o = ac.createOscillator(); o.frequency.setValueAtTime(150, T(t)); o.frequency.exponentialRampToValueAtTime(42, T(t + .14)); const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + .4)); o.connect(g); g.connect(master); o.start(T(t)); o.stop(T(t + .45)); }
+  function noiseHit(t, type, freq, vol, dec, toRev){ const s = ac.createBufferSource(); s.buffer = noise; const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + dec)); s.connect(f); f.connect(g); g.connect(master); if (toRev) g.connect(rev); s.start(T(t)); s.stop(T(t + dec + .05)); }
+  function pluck(t, m, vol){ const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, t, .004, vol, .02, .2); o.connect(g); g.connect(master); g.connect(delay); o.start(T(t)); o.stop(T(t + .3)); }
+  function riser(t, dur, vol){
+    const s = ac.createBufferSource(); s.buffer = noise; s.loop = true; const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 2;
+    f.frequency.setValueAtTime(300, T(t)); f.frequency.exponentialRampToValueAtTime(7000, T(t + dur));
+    const g = ac.createGain(); g.gain.setValueAtTime(.0001, T(t)); g.gain.exponentialRampToValueAtTime(vol, T(t + dur)); g.gain.linearRampToValueAtTime(0, T(t + dur + .05));
+    s.connect(f); f.connect(g); g.connect(master); g.connect(rev); s.start(T(t)); s.stop(T(t + dur + .1));
+  }
+  const chords = { Dm: [38, [50,53,57], [62,65,69,74]], Bb: [34, [46,50,53], [58,62,65,70]], F: [41, [53,57,60], [65,69,72,77]], C: [36, [48,52,55], [60,64,67,72]] };
+  const prog = ["Dm","Bb","F","C","Dm","Bb","F"];
+  pad(0, 2, chords.Dm[1], .05, 700); riser(.2, 1.8, .25);
+  prog.forEach((name, b) => {
+    const bt = 2 + b * 2, [root, tri, arp] = chords[name];
+    pad(bt, 2, tri, b < 3 ? .045 : .055, b < 3 ? 900 : 1600);
+    for (let e = 0; e < 8; e++){ const x = bt + e * .25; bass(x, root + (e % 4 === 3 ? 12 : 0), .32); }
+    for (let q = 0; q < 4; q++){
+      const x = bt + q * .5;
+      if (bt < 5 ? q % 2 === 0 : true) kick(x, .9);
+      if (bt >= 5 && q % 2 === 1) noiseHit(x, "bandpass", 1800, .35, .16, true);
+      if (bt >= 8) noiseHit(x + .25, "highpass", 7000, .12, .05, false);
+    }
+    if (bt >= 8) for (let s16 = 0; s16 < 16; s16++) pluck(bt + s16 * .125, arp[s16 % 4] + (s16 >= 8 && bt >= 12 ? 12 : 0), .05);
+  });
+  for (let i = 0; i < 24; i++){ const x = 15 + 1.5 * Math.pow(i / 24, .8); noiseHit(x, "bandpass", 2000, .08 + i * .012, .08, false); }
+  riser(14.6, 1.9, .35);
+  // impact + logo chord
+  const hit = 16.5;
+  kick(hit, 1); noiseHit(hit, "highpass", 3500, .45, 2.2, true);
+  const boom = ac.createOscillator(); boom.frequency.setValueAtTime(70, T(hit)); boom.frequency.exponentialRampToValueAtTime(38, T(hit + 2.4));
+  const bg = ac.createGain(); bg.gain.setValueAtTime(.8, T(hit)); bg.gain.exponentialRampToValueAtTime(.001, T(hit + 2.8)); boom.connect(bg); bg.connect(master); boom.start(T(hit)); boom.stop(T(hit + 3));
+  pad(hit, 2.4, [50,54,57,62,66], .06, 2600); bass(hit, 26, .4);
+  [74, 81, 86].forEach((m, i) => { const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, hit + .3 + i * .18, .005, .09, .05, 1.8); o.connect(g); g.connect(master); g.connect(rev); o.start(T(hit + .3 + i * .18)); o.stop(T(hit + 2.6 + i * .18)); });
+  master.gain.setValueAtTime(.68, T(TOTAL - .8)); master.gain.linearRampToValueAtTime(0, T(TOTAL));
+  return { stop(){ try { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(master.gain.value, ac.currentTime); master.gain.linearRampToValueAtTime(0, ac.currentTime + .3); } catch(e){} } };
+}
+
+/* ---------- player ---------- */
+const box = document.getElementById("intro"), cv = document.getElementById("introCanvas");
+let raf = 0, ac = null, music = null, startAt = 0, running = false;
+function fit(){ const dpr = Math.min(window.devicePixelRatio || 1, 2); cv.width = Math.round(cv.clientWidth * dpr); cv.height = Math.round(cv.clientHeight * dpr); }
+function finish(){
+  if (!running && box.hidden) return;
+  running = false; cancelAnimationFrame(raf);
+  if (music) music.stop();
+  if (ac) setTimeout(() => { try { ac.close(); } catch(e){} ac = null; }, 500);
+  box.classList.add("out"); setTimeout(() => { box.hidden = true; box.classList.remove("out"); }, 520);
+}
+function frame(){
+  if (!running) return;
+  const T = ac && ac.state === "running" ? ac.currentTime - startAt : (performance.now() - startAt) / 1000;
+  if (T >= TOTAL) return finish();
+  renderAt(cv, Math.max(0, T)); raf = requestAnimationFrame(frame);
+}
+function play(withSound){
+  document.getElementById("introGate").hidden = true;
+  fit(); running = true;
+  if (withSound){
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state !== "running") ac.resume();
+      startAt = ac.currentTime + .05; music = buildMusic(ac, ac.destination, startAt);
+    } catch(e){ ac = null; }
+  }
+  if (!ac || ac.state !== "running") { if (ac) { /* audio blocked: run on the clock */ } startAt = performance.now(); }
+  raf = requestAnimationFrame(frame);
+  // if the audio clock starts a moment later, switch to it without a jump
+  if (ac && ac.state !== "running") ac.onstatechange = () => { if (ac && ac.state === "running") { const T = (performance.now() - startAt) / 1000; startAt = ac.currentTime - T; } };
+}
+function open(fromUser){
+  box.hidden = false; fit(); renderAt(cv, 0);
+  if (fromUser || window.AndroidBridge) play(true);
+  else document.getElementById("introGate").hidden = false;
+}
+window.addEventListener("resize", () => { if (!box.hidden) { fit(); if (!running) renderAt(cv, 0); } });
+document.getElementById("introSkip").addEventListener("click", finish);
+document.getElementById("introNo").addEventListener("click", finish);
+document.getElementById("introPlay").addEventListener("click", () => play(true));
+window.__intro = { renderAt, buildMusic, TOTAL, open: () => open(true) };
+let seen = false; try { seen = sessionStorage.getItem("tvcode:intro") === "1"; sessionStorage.setItem("tvcode:intro", "1"); } catch(e){}
+const replay = document.getElementById("introReplay"); if (replay) replay.addEventListener("click", () => open(true));
+if (!seen && !/[?&#]nointro/.test(location.href)) open(false);
+})();
+</script>

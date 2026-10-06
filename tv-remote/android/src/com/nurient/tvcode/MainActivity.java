@@ -18,6 +18,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         s.setTextZoom(100);
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new Bridge(this), "AndroidBridge");
         web.setWebViewClient(new LinkClient(this));
         setContentView(web);

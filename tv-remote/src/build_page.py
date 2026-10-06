@@ -5,14 +5,16 @@ Writes:
   tv-remote/android/assets/index.html  page bundled into the Android app (no web fonts)
   <out>/artifact.html               page body for the claude.ai artifact (optional 1st arg)
 """
-import json, os, re, sys
+import base64, json, os, re, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(here)
 head = open(os.path.join(here, "head.part.html"), encoding="utf-8").read()
 body = open(os.path.join(here, "body.part.html"), encoding="utf-8").read()
+intro = open(os.path.join(here, "intro.part.html"), encoding="utf-8").read()
+logo = "data:image/png;base64," + base64.b64encode(open(os.path.join(here, "logo.png"), "rb").read()).decode()
 data = json.dumps(json.load(open(os.path.join(here, "brands.json"), encoding="utf-8")), ensure_ascii=False, separators=(",", ":"))
-page = (head + body).replace("__DATA__", data)
+page = (head + body + intro).replace("__DATA__", data).replace("__LOGO__", logo)
 
 def document(p):
     i = p.index('<div class="wrap">')
