@@ -12,6 +12,30 @@ root = os.path.dirname(here)
 head = open(os.path.join(here, "head.part.html"), encoding="utf-8").read()
 body = open(os.path.join(here, "body.part.html"), encoding="utf-8").read()
 intro = open(os.path.join(here, "intro.part.html"), encoding="utf-8").read()
+person = open(os.path.join(here, "person.js"), encoding="utf-8").read()
+
+
+def scene_photos():
+    """Photos dropped into src/photos/ as scene1.jpg ... scene7.jpg replace that scene's drawing."""
+    found = {}
+    folder = os.path.join(here, "photos")
+    if not os.path.isdir(folder):
+        return found
+    from io import BytesIO
+    from PIL import Image
+    for name in sorted(os.listdir(folder)):
+        m = re.fullmatch(r"scene(\d+)\.(jpe?g|png|webp)", name, re.I)
+        if not m:
+            continue
+        im = Image.open(os.path.join(folder, name)).convert("RGB")
+        im.thumbnail((720, 1280))
+        buf = BytesIO()
+        im.save(buf, "JPEG", quality=82, optimize=True)
+        found[m.group(1)] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    return found
+
+
+intro = intro.replace("/*__PERSON__*/", person).replace("__PHOTOS__", json.dumps(scene_photos()))
 logo = "data:image/png;base64," + base64.b64encode(open(os.path.join(here, "logo.png"), "rb").read()).decode()
 data = json.dumps(json.load(open(os.path.join(here, "brands.json"), encoding="utf-8")), ensure_ascii=False, separators=(",", ":"))
 page = (head + body + intro).replace("__DATA__", data).replace("__LOGO__", logo)

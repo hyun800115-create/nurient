@@ -453,6 +453,8 @@ $("devChanges").addEventListener("click", () => openPanel("changes"));
 $("devLock").addEventListener("click", () => { dev = false; try { sessionStorage.removeItem("tvcode:dev"); } catch(e){} render(); toast("개발자 모드를 잠갔어요"); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && openKey) closeSheet(); });
 window.appBack = () => {
+  const ib = document.getElementById("intro");
+  if (ib && !ib.hidden && window.__intro) { window.__intro.skip(); return true; }
   if (openKey) { if ((mode === "edit") && byKey[openKey]) { mode = "view"; renderSheet(); } else closeSheet(); return true; }
   if (st.q || st.letter || st.fav || st.group !== "all") { st.q = ""; $("q").value = ""; st.letter = null; st.fav = false; $("favOnly").setAttribute("aria-pressed", false); st.group = "all"; $("group").value = "all"; render(); return true; }
   return false;

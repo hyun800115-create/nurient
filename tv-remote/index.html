@@ -567,6 +567,8 @@ $("devChanges").addEventListener("click", () => openPanel("changes"));
 $("devLock").addEventListener("click", () => { dev = false; try { sessionStorage.removeItem("tvcode:dev"); } catch(e){} render(); toast("개발자 모드를 잠갔어요"); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && openKey) closeSheet(); });
 window.appBack = () => {
+  const ib = document.getElementById("intro");
+  if (ib && !ib.hidden && window.__intro) { window.__intro.skip(); return true; }
   if (openKey) { if ((mode === "edit") && byKey[openKey]) { mode = "view"; renderSheet(); } else closeSheet(); return true; }
   if (st.q || st.letter || st.fav || st.group !== "all") { st.q = ""; $("q").value = ""; st.letter = null; st.fav = false; $("favOnly").setAttribute("aria-pressed", false); st.group = "all"; $("group").value = "all"; render(); return true; }
   return false;
@@ -596,96 +598,273 @@ syncSort(); rebuild(); render();
 </div>
 <script>
 (() => {
-const TOTAL = 20;
-const CUTS = [0, 2, 5, 8, 11, 13.5, 16.5];
+const TOTAL = 31;
+const CUTS = [0, 2.5, 6, 9.5, 13, 16.5, 20, 23.5, 27];
 const RED = "#ea002c", ORANGE = "#f47725", NAVY = "#0f1830";
 const FONT = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
 const logo = document.getElementById("introLogoImg");
+/* Optional photos per scene (scene index -> data URI), filled in by build_page.py from src/photos/. */
+const PHOTOS = {};
+const photos = {};
+Object.keys(PHOTOS).forEach(k => { const im = new Image(); im.src = PHOTOS[k]; photos[k] = im; });
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const ease = x => 1 - Math.pow(1 - clamp(x), 3);
 const lerp = (a, b, p) => a + (b - a) * p;
-
-/* ---------- drawing helpers (stage is 360 x 640) ---------- */
 function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-function seg(c, x, y, a, len){ return [x + Math.sin(a)*len, y + Math.cos(a)*len]; }
-function limb(c, x, y, angs, lens, width, color){
-  const [x1,y1] = seg(c, x, y, angs[0], lens[0]);
-  const [x2,y2] = seg(c, x1, y1, angs[1], lens[1]);
-  c.strokeStyle = color; c.lineWidth = width; c.lineCap = "round"; c.lineJoin = "round";
-  c.beginPath(); c.moveTo(x,y); c.lineTo(x1,y1); c.lineTo(x2,y2); c.stroke();
-  return [x1,y1,x2,y2];
+
+/* Field worker figure for the intro film. Feet at (x, y), about 128 units tall at s = 1.
+   view: "front" | "back" | "side" (side faces right; flip: true faces left).
+   Angles: 0 points straight down, positive swings toward +x (forward in side view).
+   legL/armL are the screen-left limbs in front view and the far limbs in side view. */
+const PC = {
+  skin: "#f1c6a2", skinS: "#d79d7b", skinL: "#9a5a44", hair: "#2a2420", hairS: "#1a1512",
+  shirt: "#2e3c5e", shirtS: "#212b45", shirtF: "#1a2238", pants: "#2a3552", pantsS: "#1d2640", pantsF: "#161d31",
+  vest: "#f47725", vestS: "#d35d13", tape: "#eef2f6", tapeS: "#bcc5cf",
+  helm: "#fbfbf8", helmS: "#d6d6cf", cap: "#ea002c", capS: "#b5001f",
+  glove: "#f2c230", gloveS: "#cd9a13", gloveF: "#a77c0e",
+  boot: "#2b2623", bootS: "#181412", sole: "#0d0c0b", cover: "#9ccbee", coverS: "#78acd6",
+  gaiter: "#9098a5", gaiterS: "#6c7482", harness: "#ffcf3a", harnessS: "#c4930f", metal: "#c9cfd6", metalS: "#8d949d",
+  red: "#ea002c"
+};
+function pCap(c, x1, y1, r1, x2, y2, r2){
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  c.beginPath(); c.arc(x1, y1, r1, a + Math.PI / 2, a - Math.PI / 2); c.arc(x2, y2, r2, a - Math.PI / 2, a + Math.PI / 2); c.closePath();
 }
-/* A field worker, front (or back) view, feet at (x,y). Angles: 0 = straight down, + = toward screen right. */
-function worker(c, x, y, s, o){
-  const g = Object.assign({helmet:true, alarm:false, harness:false, gloves:true, gaiters:false, boots:true, vest:true}, o.gear || {});
-  const t = o.t || 0;
-  c.save(); c.translate(x, y); c.scale(s, s);
-  const legL = o.legL || [0.08,0], legR = o.legR || [-0.08,0];
-  const armL = o.armL || [0.25,0.1], armR = o.armR || [-0.25,-0.1];
-  const hy = o.kneel ? -40 : -55;
-  // legs
-  const legs = [[-7, legL], [7, legR]].map(([hx, a]) => {
-    const p = limb(c, hx, hy, a, [27, 26], 10, "#26324d");
-    if (g.gaiters){
-      const ax = lerp(p[0], p[2], .3), ay = lerp(p[1], p[3], .3), bx = lerp(p[0], p[2], .9), by = lerp(p[1], p[3], .9);
-      c.strokeStyle = "#9aa3b2"; c.lineWidth = 11.5; c.beginPath(); c.moveTo(ax,ay); c.lineTo(bx,by); c.stroke();
-      c.strokeStyle = "#6b7484"; c.lineWidth = 1.4;
-      for (let k = 0; k < 3; k++){ const q = .4 + k*.2; const mx = lerp(p[0],p[2],q), my = lerp(p[1],p[3],q); c.beginPath(); c.moveTo(mx-5.5,my); c.lineTo(mx+5.5,my); c.stroke(); }
+/* Fill a shape with a darker crescent on its lower-right (light from the upper left). */
+function pShade(c, path, base, shade, dx, dy){
+  c.save(); path(); c.fillStyle = shade; c.fill(); c.clip();
+  c.translate(-dx, -dy); path(); c.fillStyle = base; c.fill(); c.restore();
+}
+function pPt(p, a, l){ return [p[0] + Math.sin(a) * l, p[1] + Math.cos(a) * l]; }
+
+function person(c, x, y, s, o){
+  o = o || {};
+  const view = o.view || "front", side = view === "side", back = view === "back";
+  const g = Object.assign({ helmet: true, cap: false, alarm: false, harness: false, vest: true, gloves: true, gaiters: false, covers: false, badge: false }, o.gear || {});
+  const t = o.t || 0, hipY = o.hipY == null ? -55 : o.hipY, lean = o.lean || 0;
+  const sx = o.flip ? -s : s;
+  c.save(); c.translate(x, y); c.scale(sx, s);
+  c.lineCap = "round"; c.lineJoin = "round";
+  if (o.shadow !== false){ c.fillStyle = "rgba(0,0,0,.18)"; c.beginPath(); c.ellipse(side ? 2 : 0, 1.2, side ? 19 : 16, 3, 0, 0, 7); c.fill(); }
+
+  const legL = o.legL || (side ? [-0.12, 0.02] : [-0.04, 0]);
+  const legR = o.legR || (side ? [0.14, -0.04] : [0.04, 0]);
+  const footL = o.footL || 0, footR = o.footR || 0;
+  const thighR = side ? [6.9, 5.1] : [6.4, 4.8], shinR = side ? [4.9, 3.6] : [4.6, 3.4];
+
+  function boot(A, fa, far){
+    c.save(); c.translate(A[0], A[1]); c.rotate(fa);
+    const base = g.covers ? PC.cover : (far ? PC.bootS : PC.boot), shade = g.covers ? PC.coverS : PC.bootS;
+    if (side){
+      const path = () => { c.beginPath(); c.moveTo(-4.8, -3.4); c.lineTo(3, -3.4); c.quadraticCurveTo(6.4, -1.4, 9.6, 0); c.quadraticCurveTo(12, 1.2, 11.4, 3.3); c.lineTo(-4.8, 3.3); c.quadraticCurveTo(-5.8, 0, -4.8, -3.4); c.closePath(); };
+      pShade(c, path, base, shade, 0, 1.4);
+      if (!g.covers){ c.fillStyle = PC.sole; c.fillRect(-4.8, 2.5, 16.2, 1.5); }
+    } else {
+      const path = () => { c.beginPath(); c.moveTo(-4.6, -3.6); c.lineTo(4.6, -3.6); c.quadraticCurveTo(6.2, 1, 5.4, 3.4); c.lineTo(-5.4, 3.4); c.quadraticCurveTo(-6.2, 1, -4.6, -3.6); c.closePath(); };
+      pShade(c, path, base, shade, 1.6, 0.6);
+      if (!g.covers){ c.fillStyle = PC.sole; c.fillRect(-5.5, 2.7, 11, 1.4); }
     }
-    if (g.boots){ c.fillStyle = "#23201d"; rr(c, p[2]-7, p[3]-3, 15, 8, 3); c.fill(); c.fillStyle = "#4a4540"; c.fillRect(p[2]-7, p[3]+3, 15, 2); }
-    return p;
-  });
-  // back arm
-  const drawArm = (sx, a) => {
-    const p = limb(c, sx, hy-37, a, [22, 20], 8, "#26324d");
-    c.fillStyle = g.gloves ? "#f2c230" : "#f1c9a5"; c.beginPath(); c.arc(p[2], p[3], 4.6, 0, 7); c.fill();
-    if (g.gloves){ c.strokeStyle = "#c99a12"; c.lineWidth = 1; c.stroke(); }
-    return p;
-  };
-  // torso
-  c.fillStyle = "#26324d"; rr(c, -15, hy-41, 30, 44, 7); c.fill();
+    c.restore();
+  }
+  function leg(hip, a, fa, far){
+    const K = pPt(hip, a[0], 27), A = pPt(K, a[1], 25);
+    const base = far ? PC.pantsS : PC.pants, shade = far ? PC.pantsF : PC.pantsS;
+    pShade(c, () => pCap(c, hip[0], hip[1], thighR[0], K[0], K[1], thighR[1]), base, shade, 1.9, 1);
+    pShade(c, () => pCap(c, K[0], K[1], shinR[0], A[0], A[1], shinR[1]), base, shade, 1.6, .8);
+    if (g.gaiters){
+      const P = [K[0] + (A[0] - K[0]) * .38, K[1] + (A[1] - K[1]) * .38], Q = [K[0] + (A[0] - K[0]) * .97, K[1] + (A[1] - K[1]) * .97];
+      pShade(c, () => pCap(c, P[0], P[1], shinR[0] + .8, Q[0], Q[1], shinR[1] + .9), far ? PC.gaiterS : PC.gaiter, PC.gaiterS, 1.4, .6);
+      const ang = Math.atan2(A[1] - K[1], A[0] - K[0]) + Math.PI / 2;
+      c.strokeStyle = far ? "#545b67" : PC.gaiterS; c.lineWidth = 1.3;
+      [.58, .8].forEach(q => { const M = [K[0] + (A[0] - K[0]) * q, K[1] + (A[1] - K[1]) * q], r = shinR[0] + .6;
+        c.beginPath(); c.moveTo(M[0] - Math.cos(ang) * r, M[1] - Math.sin(ang) * r); c.lineTo(M[0] + Math.cos(ang) * r, M[1] + Math.sin(ang) * r); c.stroke(); });
+    }
+    boot(A, fa, far);
+    return { K, A };
+  }
+  function hand(W, a, far){
+    const base = g.gloves ? (far ? PC.gloveS : PC.glove) : (far ? PC.skinS : PC.skin);
+    const shade = g.gloves ? (far ? PC.gloveF : PC.gloveS) : PC.skinS;
+    const C = pPt(W, a, 3.6);
+    c.save(); c.translate(C[0], C[1]); c.rotate(-a);
+    pShade(c, () => { c.beginPath(); c.ellipse(0, 0, 3.2, 4.3, 0, 0, 7); }, base, shade, 1.1, .5);
+    c.fillStyle = shade; c.beginPath(); c.ellipse(-2.9, -1.2, 1.25, 2.3, .5, 0, 7); c.fill();
+    c.restore();
+  }
+  function arm(S, a, far){
+    const E = pPt(S, a[0], 21), W = pPt(E, a[1], 19);
+    const base = far ? PC.shirtS : PC.shirt, shade = far ? PC.shirtF : PC.shirtS;
+    pShade(c, () => pCap(c, S[0], S[1], 4.6, E[0], E[1], 3.9), base, shade, 1.5, .8);
+    pShade(c, () => pCap(c, E[0], E[1], 3.8, W[0], W[1], 3.1), base, shade, 1.3, .7);
+    const Cf = pPt(W, a[1], -2.2);
+    c.fillStyle = shade; pCap(c, Cf[0], Cf[1], 3.4, W[0], W[1], 3.3); c.fill();
+    hand(W, a[1], far);
+    return { E, W };
+  }
+
+  // legs (far/left first)
+  const hipL = side ? [-1, hipY] : [-6.5, hipY], hipR = side ? [1.5, hipY] : [6.5, hipY];
+  const LL = leg(hipL, legL, footL, side), LR = leg(hipR, legR, footR, false);
+
+  // upper body in a frame at the hip, rotated by lean
+  c.save(); c.translate(0, hipY); c.rotate(lean);
+  const armL = o.armL || (side ? [-0.15, 0.05] : [-0.14, -0.05]);
+  const armR = o.armR || (side ? [0.2, 0.1] : [0.14, 0.05]);
+  const shL = side ? [0.5, -35.5] : [-13.2, -35.5], shR = side ? [2.2, -35.5] : [13.2, -35.5];
+  let AL = null, AR = null;
+  if (side) AL = arm(shL, armL, true);
+
+  const torso = side
+    ? () => { c.beginPath(); c.moveTo(-4.5, -41); c.quadraticCurveTo(-9.6, -39.5, -10.6, -33); c.quadraticCurveTo(-11.6, -24, -10.2, -15); c.quadraticCurveTo(-9.2, -7, -10.6, 2); c.lineTo(9.6, 2); c.quadraticCurveTo(10.6, -6, 9.6, -12); c.quadraticCurveTo(11.6, -20, 10.6, -28); c.quadraticCurveTo(9.6, -36, 4.6, -40.6); c.quadraticCurveTo(0, -42, -4.5, -41); c.closePath(); }
+    : () => { c.beginPath(); c.moveTo(-5, -40.6); c.quadraticCurveTo(-11, -40.2, -15.4, -36.6); c.quadraticCurveTo(-17.2, -32.6, -14, -26); c.quadraticCurveTo(-11, -17, -11.6, -8); c.quadraticCurveTo(-13.2, -2, -12.6, 2.2); c.lineTo(12.6, 2.2); c.quadraticCurveTo(13.2, -2, 11.6, -8); c.quadraticCurveTo(11, -17, 14, -26); c.quadraticCurveTo(17.2, -32.6, 15.4, -36.6); c.quadraticCurveTo(11, -40.2, 5, -40.6); c.quadraticCurveTo(0, back ? -41.5 : -38.4, -5, -40.6); c.closePath(); };
+  pShade(c, torso, PC.shirt, PC.shirtS, 3.4, 0);
+  c.save(); torso(); c.clip();
+  c.fillStyle = PC.pants; c.fillRect(-20, -2.2, 40, 6);
   if (g.vest){
-    c.fillStyle = ORANGE; rr(c, -15, hy-41, 30, 40, 7); c.fill();
-    c.fillStyle = "#e8edf3"; c.fillRect(-15, hy-20, 30, 3.5); c.fillRect(-15, hy-12, 30, 3.5);
-    if (!o.back){ c.fillStyle = "#26324d"; c.beginPath(); c.moveTo(-5, hy-41); c.lineTo(0, hy-32); c.lineTo(5, hy-41); c.fill(); }
+    c.save(); c.beginPath(); c.rect(-20, -38.6, 40, 32.4); c.clip();
+    pShade(c, torso, PC.vest, PC.vestS, 3.2, 0);
+    c.fillStyle = PC.tape; c.fillRect(-20, -22.5, 40, 3.2); c.fillRect(-20, -14.5, 40, 3.2);
+    c.fillStyle = PC.tapeS; c.fillRect(side ? 4 : 8, -22.5, 14, 3.2); c.fillRect(side ? 4 : 8, -14.5, 14, 3.2);
+    if (!side && !back){ c.fillStyle = PC.shirt; c.beginPath(); c.moveTo(-5.6, -40); c.lineTo(0, -29.5); c.lineTo(5.6, -40); c.closePath(); c.fill();
+      c.strokeStyle = PC.vestS; c.lineWidth = .9; c.beginPath(); c.moveTo(0, -29.5); c.lineTo(0, -6.4); c.stroke(); }
+    if (side){ c.strokeStyle = PC.vestS; c.lineWidth = .9; c.beginPath(); c.moveTo(8.8, -33); c.lineTo(9, -6.4); c.stroke(); }
+    c.restore();
+  } else if (g.badge && !back){
+    c.fillStyle = "#f4f6f8"; c.fillRect(side ? 4.5 : -10.5, -30, 5.5, 7); c.fillStyle = PC.red; c.fillRect(side ? 4.5 : -10.5, -30, 5.5, 1.8);
   }
+  c.fillStyle = "#1b1b1b"; c.fillRect(-20, -6, 40, 3.8);
+  if (!back){ c.fillStyle = PC.metal; c.fillRect(side ? 7 : -2.2, -6.4, 4.4, 4.6); }
+  c.restore();
+
   if (g.harness){
-    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3.6; c.lineCap = "round";
-    c.beginPath(); c.moveTo(-11, hy-40); c.lineTo(9, hy-3); c.moveTo(11, hy-40); c.lineTo(-9, hy-3); c.stroke();
-    c.beginPath(); c.moveTo(-15, hy-4); c.lineTo(15, hy-4); c.stroke();
-    c.beginPath(); c.ellipse(-7, hy+5, 6.5, 3, 0, 0, 7); c.ellipse(7, hy+5, 6.5, 3, 0, 0, 7); c.stroke();
-    c.fillStyle = "#c0c6cf"; c.beginPath(); c.arc(0, hy-21, 3.4, 0, 7); c.fill();
+    const strap = (pts) => { c.strokeStyle = PC.harnessS; c.lineWidth = 3.6; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.stroke();
+      c.strokeStyle = PC.harness; c.lineWidth = 2.3; c.stroke(); };
+    if (side){
+      strap([[-1.5, -40.5], [6.5, -31], [9.4, -12]]); strap([[-3, -40.5], [-9.6, -30], [-9.8, -12]]);
+      strap([[-10.4, -8.2], [10, -8.2]]);
+      c.strokeStyle = PC.metal; c.lineWidth = 1.5; c.beginPath(); c.arc(-11.2, -30.5, 2.6, 0, 7); c.stroke();
+    } else {
+      strap([[-11.6, -37], [9.8, -7.2]]); strap([[11.6, -37], [-9.8, -7.2]]); strap([[-12.6, -8.2], [12.6, -8.2]]);
+      if (back){ c.strokeStyle = PC.metal; c.lineWidth = 1.6; c.beginPath(); c.arc(0, -24.5, 3, 0, 7); c.stroke(); }
+      else { c.fillStyle = PC.metal; c.fillRect(-2.6, -24.6, 5.2, 4.6); c.fillStyle = PC.metalS; c.fillRect(-2.6, -21.2, 5.2, 1.2); }
+    }
   }
-  const pa = drawArm(-14, armL), pb = drawArm(14, armR);
-  // head
-  const hx = 0, hyy = hy - 53;
-  c.fillStyle = "#f1c9a5"; c.beginPath(); c.arc(hx, hyy, 11, 0, 7); c.fill();
-  if (o.back){ c.fillStyle = "#2b2622"; c.beginPath(); c.arc(hx, hyy+1, 10.5, 0, 7); c.fill(); }
-  else {
-    c.fillStyle = "#2b2622"; c.beginPath(); c.arc(hx-4, hyy+1, 1.4, 0, 7); c.arc(hx+4, hyy+1, 1.4, 0, 7); c.fill();
-    c.strokeStyle = "#a8614a"; c.lineWidth = 1.3; c.beginPath(); c.arc(hx, hyy+4, 3.4, .25, Math.PI-.25); c.stroke();
+
+  // neck, collar and head
+  const N0 = side ? [1.4, -38.5] : [0, -38.5], N1 = side ? [2.6, -46.5] : [0, -46.5];
+  pShade(c, () => pCap(c, N0[0], N0[1], 3.7, N1[0], N1[1], 3.6), PC.skin, PC.skinS, 1.2, 0);
+  if (!back){
+    c.fillStyle = PC.shirt;
+    if (side){ c.beginPath(); c.moveTo(-3.8, -40.6); c.lineTo(0.5, -44.2); c.lineTo(5.4, -40.2); c.quadraticCurveTo(1, -38.8, -3.8, -40.6); c.fill(); }
+    else { c.beginPath(); c.moveTo(-5.4, -40.4); c.lineTo(-3.4, -44.3); c.lineTo(0, -39.6); c.lineTo(3.4, -44.3); c.lineTo(5.4, -40.4); c.quadraticCurveTo(0, -38, -5.4, -40.4); c.fill(); }
+  }
+  if (!side) AL = arm(shL, armL, false);
+
+  if (side){
+    const head = () => { c.beginPath(); c.moveTo(-7.6, -60); c.bezierCurveTo(-7.6, -66, -1, -67.6, 3, -66.6); c.bezierCurveTo(6.6, -65.6, 8.1, -62.6, 8.3, -59.6);
+      c.lineTo(10.4, -55.9); c.lineTo(8.5, -54.6); c.bezierCurveTo(8.9, -53, 8.7, -51.5, 8.1, -50.5); c.bezierCurveTo(7.7, -48.2, 6.1, -46.3, 3.1, -46.3);
+      c.bezierCurveTo(0, -46.5, -2, -48, -3, -50); c.bezierCurveTo(-6.6, -51, -7.9, -55, -7.6, -60); c.closePath(); };
+    pShade(c, head, PC.skin, PC.skinS, -1.4, 1.2);
+    c.fillStyle = PC.hair; c.beginPath(); c.moveTo(-7.7, -60.5); c.bezierCurveTo(-8.2, -55.5, -6.6, -52.2, -3.6, -51.4); c.lineTo(-2.6, -58.5); c.lineTo(1.6, -61.5); c.lineTo(-1, -63); c.closePath(); c.fill();
+    c.fillStyle = PC.skinS; c.beginPath(); c.ellipse(-0.6, -56.4, 1.9, 2.8, .1, 0, 7); c.fill();
+    c.strokeStyle = PC.skinL; c.lineWidth = .7; c.beginPath(); c.arc(-0.5, -56.4, 1.1, -1.2, 1.4); c.stroke();
+    c.fillStyle = PC.hair; c.beginPath(); c.ellipse(5.6, -57.9, .95, 1.3, 0, 0, 7); c.fill();
+    c.strokeStyle = PC.hair; c.lineWidth = 1.1; c.beginPath(); c.moveTo(4.1, -60.4); c.lineTo(7.3, -60.8); c.stroke();
+    c.strokeStyle = PC.skinL; c.lineWidth = .9; c.beginPath(); c.moveTo(8.2, -51.8); c.lineTo(6.3, -51.5); c.stroke();
+  } else {
+    const head = () => { c.beginPath(); c.moveTo(0, -66.6); c.bezierCurveTo(6.6, -66.6, 8.9, -61, 8.7, -57); c.bezierCurveTo(8.5, -52, 5.6, -46.8, 0, -45.9);
+      c.bezierCurveTo(-5.6, -46.8, -8.5, -52, -8.7, -57); c.bezierCurveTo(-8.9, -61, -6.6, -66.6, 0, -66.6); c.closePath(); };
+    [-1, 1].forEach(k => { c.fillStyle = PC.skinS; c.beginPath(); c.ellipse(k * 8.7, -56.4, 1.9, 2.9, 0, 0, 7); c.fill(); });
+    if (back){
+      pShade(c, head, PC.hair, PC.hairS, 1.6, 0);
+      c.fillStyle = PC.skinS; c.beginPath(); c.ellipse(0, -47.6, 5.2, 1.6, 0, 0, 7); c.fill();
+    } else {
+      pShade(c, head, PC.skin, PC.skinS, 1.8, .6);
+      c.fillStyle = PC.hair; [-1, 1].forEach(k => { c.beginPath(); c.moveTo(k * 8.6, -61.5); c.quadraticCurveTo(k * 9.2, -58, k * 8.2, -55.8); c.lineTo(k * 7.2, -60.2); c.closePath(); c.fill(); });
+      c.strokeStyle = PC.hair; c.lineWidth = 1.15;
+      c.beginPath(); c.moveTo(-5.4, -59.6); c.quadraticCurveTo(-3.6, -60.6, -1.9, -60.1); c.moveTo(1.9, -60.1); c.quadraticCurveTo(3.6, -60.6, 5.4, -59.6); c.stroke();
+      c.fillStyle = PC.hair; [-1, 1].forEach(k => { c.beginPath(); c.ellipse(k * 3.5, -57.2, 1.05, 1.35, 0, 0, 7); c.fill(); });
+      c.fillStyle = "#fff"; [-1, 1].forEach(k => { c.beginPath(); c.arc(k * 3.5 + .35, -57.7, .35, 0, 7); c.fill(); });
+      c.strokeStyle = PC.skinS; c.lineWidth = .95; c.beginPath(); c.moveTo(.3, -56.4); c.quadraticCurveTo(1.7, -53.6, .1, -52.9); c.stroke();
+      c.strokeStyle = "#9b4a3c"; c.lineWidth = 1; c.beginPath(); c.arc(0, -51.9, 2.5, .35, Math.PI - .35); c.stroke();
+      c.fillStyle = "rgba(232,120,100,.2)"; [-1, 1].forEach(k => { c.beginPath(); c.arc(k * 5.2, -53.4, 1.8, 0, 7); c.fill(); });
+    }
+  }
+
+  // headwear (or hair when bare-headed)
+  if (!g.helmet && !g.cap){
+    c.fillStyle = PC.hair;
+    if (side){ c.beginPath(); c.moveTo(-8, -58); c.bezierCurveTo(-9, -66, -3, -69.4, 2.6, -68.6); c.bezierCurveTo(7, -68, 9, -65, 8.6, -61.4); c.quadraticCurveTo(5, -63.6, 1.6, -62.4); c.lineTo(-2.6, -58.4); c.lineTo(-4.6, -54); c.closePath(); c.fill(); }
+    else { c.beginPath(); c.moveTo(-8.9, -56); c.bezierCurveTo(-9.8, -66, -5, -69.4, 0, -69.4); c.bezierCurveTo(5, -69.4, 9.8, -66, 8.9, -56); c.quadraticCurveTo(8, -61.6, 4, -62.6); c.quadraticCurveTo(0, -61, -4, -62.6); c.quadraticCurveTo(-8, -61.6, -8.9, -56); c.closePath(); c.fill(); }
   }
   if (g.helmet){
-    c.fillStyle = "#f8f8f6"; c.beginPath(); c.arc(hx, hyy-2, 13.5, Math.PI, 0); c.closePath(); c.fill();
-    c.fillRect(hx-16, hyy-3, 32, 3.2);
-    c.fillStyle = RED; c.fillRect(hx-2, hyy-15.3, 4, 12.5);
-    if (!o.back){ c.strokeStyle = "#3a3a3a"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(hx-11, hyy-1); c.quadraticCurveTo(hx, hyy+15, hx+11, hyy-1); c.stroke(); }
-    if (g.alarm){
-      c.fillStyle = "#24272c"; rr(c, hx+7, hyy-14, 8, 6, 1.5); c.fill();
-      const on = Math.floor(t * 4) % 2 === 0;
-      c.fillStyle = on ? "#ff3b30" : "#5a1a16"; c.beginPath(); c.arc(hx+11, hyy-11, 1.8, 0, 7); c.fill();
-      if (on){ c.strokeStyle = "rgba(255,59,48,.65)"; c.lineWidth = 1.2; for (let k = 1; k <= 2; k++){ c.beginPath(); c.arc(hx+11, hyy-11, 3 + k*3.2, -1.1, .2); c.stroke(); } }
+    if (side){
+      const dome = () => { c.beginPath(); c.moveTo(-10.4, -60.4); c.bezierCurveTo(-10.6, -69.4, -4, -73.6, 1.6, -73.6); c.bezierCurveTo(7.6, -73.6, 11.2, -69, 11.1, -62);
+        c.lineTo(16.8, -60.8); c.quadraticCurveTo(17.4, -59.4, 15.6, -59.2); c.lineTo(-10.9, -59.4); c.quadraticCurveTo(-11.9, -59.9, -10.4, -60.4); c.closePath(); };
+      pShade(c, dome, PC.helm, PC.helmS, -1.4, 1.6);
+      c.save(); dome(); c.clip(); c.strokeStyle = PC.red; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-10.5, -63); c.bezierCurveTo(-8, -74.5, 8, -75, 11.5, -63.5); c.stroke(); c.restore();
+      c.strokeStyle = "#3a3a3a"; c.lineWidth = .8; c.beginPath(); c.moveTo(-1.6, -59.4); c.lineTo(4.4, -46.6); c.stroke();
+      if (g.alarm) alarm(-4.6, -66.4);
+    } else {
+      const dome = () => { c.beginPath(); c.moveTo(-10.9, -60.4); c.bezierCurveTo(-10.9, -69.2, -6, -73.4, 0, -73.4); c.bezierCurveTo(6, -73.4, 10.9, -69.2, 10.9, -60.4); c.closePath(); };
+      pShade(c, dome, PC.helm, PC.helmS, 2.4, 0);
+      c.save(); dome(); c.clip(); c.fillStyle = PC.red; c.fillRect(-1.6, -74, 3.2, 14); c.restore();
+      c.fillStyle = "rgba(255,255,255,.85)"; c.beginPath(); c.ellipse(-5, -68.6, 2.2, 1.2, -.6, 0, 7); c.fill();
+      const brim = () => { c.beginPath(); c.moveTo(-13, -61); c.quadraticCurveTo(0, back ? -58.6 : -57, 13, -61); c.quadraticCurveTo(0, -59.8, -13, -61); c.closePath(); };
+      pShade(c, brim, PC.helm, PC.helmS, 0, -1);
+      if (!back){ c.strokeStyle = "#3a3a3a"; c.lineWidth = .8; c.beginPath(); c.moveTo(-8.4, -59.6); c.quadraticCurveTo(-6.4, -48.6, 0, -46.2); c.quadraticCurveTo(6.4, -48.6, 8.4, -59.6); c.stroke(); }
+      if (g.alarm) alarm(back ? -12.4 : 8.6, -68.4);
+    }
+  } else if (g.cap){
+    if (side){
+      pShade(c, () => { c.beginPath(); c.moveTo(-9.4, -60.8); c.bezierCurveTo(-9.6, -68.4, -3.6, -71.6, 1.6, -71.4); c.bezierCurveTo(6.6, -71.2, 9.8, -67.6, 9.4, -61.4); c.closePath(); }, PC.cap, PC.capS, -1.2, 1.4);
+      c.fillStyle = PC.capS; c.beginPath(); c.moveTo(5, -61.4); c.quadraticCurveTo(12.6, -62.8, 16, -60.6); c.quadraticCurveTo(12.4, -59.4, 5, -60.2); c.closePath(); c.fill();
+    } else {
+      pShade(c, () => { c.beginPath(); c.moveTo(-9.7, -60.6); c.bezierCurveTo(-9.7, -68.6, -5, -71.6, 0, -71.6); c.bezierCurveTo(5, -71.6, 9.7, -68.6, 9.7, -60.6); c.closePath(); }, PC.cap, PC.capS, 2, 0);
+      if (!back){ c.fillStyle = PC.capS; c.beginPath(); c.ellipse(0, -60.2, 10.6, 2.6, 0, 0, Math.PI); c.fill(); }
     }
   }
+
+  if (side) AR = arm(shR, armR, false); else AR = arm(shR, armR, false);
+
+  // leg loops of the harness sit on the thighs
   c.restore();
-  const tr = (p) => [x + p[0]*s, y + p[1]*s];
-  return { head: tr([0, hyy]), helmet: tr([0, hyy-10]), alarm: tr([11, hyy-11]), chest: tr([0, hy-21]), handL: tr([pa[2], pa[3]]), handR: tr([pb[2], pb[3]]),
-    shin: tr([lerp(legs[0][0],legs[0][2],.6), lerp(legs[0][1],legs[0][3],.6)]), foot: tr([legs[1][2], legs[1][3]]), hip: tr([0, hy-4]) };
+  if (g.harness){
+    [[hipL, legL, side], [hipR, legR, false]].forEach(([hp, a, far]) => {
+      const M = pPt(hp, a[0], 8), ang = a[0], r = thighR[0] - .1;
+      const px = Math.cos(ang), py = -Math.sin(ang), dx = Math.sin(ang) * 2.4, dy = Math.cos(ang) * 2.4;
+      c.strokeStyle = far ? PC.harnessS : PC.harness; c.lineWidth = 2.3;
+      c.beginPath(); c.moveTo(M[0] - px * r, M[1] - py * r); c.quadraticCurveTo(M[0] + dx, M[1] + dy, M[0] + px * r, M[1] + py * r); c.stroke();
+    });
+  }
+  c.restore();
+
+  function alarm(ax, ay){
+    c.fillStyle = "#23262b"; c.beginPath(); c.moveTo(ax - 2.4, ay - 2.4); c.lineTo(ax + 2.6, ay - 2.4); c.lineTo(ax + 2.6, ay + 2.6); c.lineTo(ax - 2.4, ay + 2.6); c.closePath(); c.fill();
+    const on = Math.floor(t * 4) % 2 === 0;
+    c.fillStyle = on ? "#ff3b30" : "#5a1a16"; c.beginPath(); c.arc(ax + .1, ay + .1, 1.3, 0, 7); c.fill();
+    if (on){ c.strokeStyle = "rgba(255,59,48,.7)"; c.lineWidth = .9; for (let k = 1; k <= 2; k++){ c.beginPath(); c.arc(ax, ay, 3.2 + k * 2.6, -2.2, -.6); c.stroke(); } }
+  }
+
+  // anchor points in stage coordinates
+  const fig = (p) => [x + p[0] * sx, y + p[1] * s];
+  const up = (p) => { const cs = Math.cos(lean), sn = Math.sin(lean); return fig([p[0] * cs - p[1] * sn, hipY + p[0] * sn + p[1] * cs]); };
+  return {
+    head: up(side ? [1.5, -57] : [0, -57]), helmet: up([0, -68]), alarm: up(side ? [-4.6, -66.4] : [8.6, -68.4]),
+    chest: up(side ? [6, -24] : [0, -22.5]), back: up([-11.2, -30.5]), waist: up([side ? 9.6 : 0, -8]),
+    shoulderTop: up(side ? [-3.5, -39.5] : [-9, -39]), hipFront: up(side ? [9.4, -4] : [8, -4]),
+    handL: up(pPt(AL.W, (o.armL || [0, 0])[1], 3.6)), handR: up(pPt(AR.W, (o.armR || [0, 0])[1], 3.6)),
+    shin: fig([(LL.K[0] + LL.A[0]) / 2, (LL.K[1] + LL.A[1]) / 2]), foot: fig(LR.A), footL: fig(LL.A), knee: fig(LR.K), hip: fig([0, hipY])
+  };
 }
-function callout(c, t, at, px, py, lx, ly, text){
-  if (t < at) return;
+
+
+/* ---------- overlays (stage is 360 x 640) ---------- */
+function callout(c, t, at, px, py, lx, ly, text, alpha = 1){
+  if (t < at || alpha <= 0) return;
   const p = ease((t - at) / .35);
-  c.save(); c.globalAlpha = p;
+  c.save(); c.globalAlpha = p * alpha;
   const pulse = (t - at) % 1.2;
   c.strokeStyle = "rgba(255,255,255,"+(1-pulse/1.2)*.9+")"; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 4 + pulse*10, 0, 7); c.stroke();
   c.fillStyle = "#fff"; c.beginPath(); c.arc(px, py, 3.6, 0, 7); c.fill();
@@ -709,6 +888,19 @@ function caption(c, t, small, big){
   c.fillStyle = "#fff"; c.font = "800 23px " + FONT; c.fillText(big, 36, 610);
   c.restore();
 }
+/* Safety points as a list, used over a photo where pointer positions are unknown. */
+function chips(c, t, labels){
+  labels.forEach((text, i) => {
+    const at = .5 + i * .65; if (t < at) return;
+    const p = ease((t - at) / .35);
+    c.save(); c.globalAlpha = p; c.translate((1 - p) * -30, 0);
+    c.font = "700 14px " + FONT; const w = c.measureText(text).width + 30, y = 90 + i * 42;
+    c.fillStyle = "rgba(255,255,255,.95)"; rr(c, 20, y, w, 32, 7); c.fill();
+    c.fillStyle = ORANGE; c.fillRect(20, y, 5, 32);
+    c.fillStyle = "#18212b"; c.textBaseline = "middle"; c.fillText(text, 36, y + 16.5);
+    c.restore();
+  });
+}
 function sky(c, top, bottom){ const g = c.createLinearGradient(0, -300, 0, 640); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fillRect(-600, -300, 1560, 1240); }
 function cone(c, x, y, s){
   c.save(); c.translate(x, y); c.scale(s, s);
@@ -718,198 +910,347 @@ function cone(c, x, y, s){
   c.restore();
 }
 
-/* ---------- scenes: draw(c, local time) ---------- */
-const scenes = [
-  // 0: opening
-  (c, t) => {
-    c.fillStyle = NAVY; c.fillRect(-600, -300, 1560, 1240);
-    for (let i = 0; i < 7; i++){
-      const sp = 140 + i*35, off = ((t*sp + i*173) % 1300) - 500;
-      c.save(); c.globalAlpha = .18 + (i%3)*.08; c.fillStyle = i%2 ? ORANGE : RED;
-      c.translate(off, 0); c.rotate(-.5); c.fillRect(-20, -200 + i*90, 260 + i*20, 6 + (i%3)*4); c.restore();
-    }
-    const p1 = ease((t - .15)/.5), p2 = ease((t - .45)/.5), p3 = ease((t - .75)/.5);
-    c.textBaseline = "alphabetic";
-    c.globalAlpha = p1; c.fillStyle = ORANGE; c.font = "700 15px " + FONT; c.fillText("홈앤서비스 서비스매니저", 34, 270 + (1-p1)*14);
-    c.globalAlpha = p2; c.fillStyle = "#fff"; c.font = "800 38px " + FONT; c.fillText("오늘도 안전하게,", 32, 322 + (1-p2)*14);
-    c.globalAlpha = p3; c.fillText("현장으로", 32, 370 + (1-p3)*14);
-    c.globalAlpha = p3; c.fillStyle = RED; c.fillRect(34, 392, 70*p3, 5); c.fillStyle = ORANGE; c.fillRect(34 + 74*p3, 392, 30*p3, 5);
-    c.globalAlpha = 1;
-  },
-  // 1: home install
-  (c, t) => {
-    c.fillStyle = "#efe9df"; c.fillRect(-600, -300, 1560, 1240);
-    c.fillStyle = "#e3dbcd"; for (let i = -10; i < 20; i++) c.fillRect(i*48, -300, 2, 800);
-    c.fillStyle = "#b98a5c"; c.fillRect(-600, 470, 1560, 500);
-    c.fillStyle = "#a77a4f"; for (let i = -10; i < 20; i++) c.fillRect(i*70, 470, 2, 500);
-    // window
-    c.fillStyle = "#bfe0f2"; rr(c, 22, 120, 92, 120, 4); c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 6; c.strokeRect(22, 120, 92, 120); c.beginPath(); c.moveTo(68,120); c.lineTo(68,240); c.stroke();
-    // cabinet + tv
-    c.fillStyle = "#6d5444"; rr(c, 140, 410, 210, 60, 5); c.fill();
-    c.fillStyle = "#1b1e24"; rr(c, 150, 230, 196, 116, 6); c.fill();
-    const on = clamp((t - 1.5) / .5);
-    if (on > 0){
-      const g = c.createLinearGradient(156, 236, 340, 340); g.addColorStop(0, "#1d3b8f"); g.addColorStop(1, "#7a1a46");
-      c.globalAlpha = on; c.fillStyle = g; c.fillRect(156, 236, 184, 104);
-      c.fillStyle = "#fff"; c.font = "800 30px " + FONT; c.fillText("B tv", 216, 296); c.fillStyle = RED; c.fillRect(216, 304, 60, 3);
-      c.globalAlpha = 1;
-    }
-    c.fillStyle = "#1b1e24"; c.fillRect(240, 346, 16, 14); c.fillRect(214, 360, 68, 5);
-    // set-top box with blinking LED
-    c.fillStyle = "#f1f1f1"; rr(c, 260, 392, 70, 18, 3); c.fill();
-    c.fillStyle = on > 0 ? "#3ccf6e" : (Math.floor(t*3)%2 ? "#f2a33a" : "#5b4520"); c.beginPath(); c.arc(318, 401, 2.3, 0, 7); c.fill();
-    // cable
-    c.strokeStyle = "#2f2f2f"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(262, 404); c.bezierCurveTo(230, 420, 190, 430, 150, 418); c.stroke();
-    const reach = Math.sin(Math.min(t, 1.5) * 4) * .12;
-    const w = worker(c, 112, 498, 1.18, { t, kneel: true, legL: [-1.1, .2], legR: [1.0, -.3], armL: [.5, .3], armR: [-2.2 + reach, -1.7], gear: { helmet: false, vest: true, gloves: true } });
-    // cap
-    c.fillStyle = RED; c.beginPath(); c.arc(w.head[0], w.head[1]-4, 13, Math.PI, 0); c.fill(); c.fillRect(w.head[0], w.head[1]-6, 18, 3.5);
-    callout(c, t, .6, 300, 402, 248, 182, "셋톱박스 연결");
-    callout(c, t, 1.9, 250, 290, 202, 130, "개통·화면 확인");
-    caption(c, t, "고객 댁 방문", "인터넷 · B tv 설치");
-  },
-  // 2: ladder work
-  (c, t) => {
-    sky(c, "#8ec5ea", "#dff1fb");
-    c.fillStyle = "#b9a58f"; c.fillRect(150, -300, 800, 820);
-    c.fillStyle = "#a8927a"; for (let r = 0; r < 40; r++) for (let k = 0; k < 12; k++) c.fillRect(150 + k*40 + (r%2)*20, -290 + r*20, 36, 2);
-    for (let k = 0; k < 25; k++) c.fillRect(150 + (k%12)*40 + Math.floor(k/12)*20, -300, 2, 820);
-    c.fillStyle = "#7d8a96"; c.fillRect(-600, 520, 1560, 420);
-    c.fillStyle = "#97a3ae"; c.fillRect(-600, 520, 1560, 6);
-    // terminal box on wall
-    c.fillStyle = "#e9ecef"; rr(c, 262, 128, 54, 40, 4); c.fill(); c.fillStyle = RED; c.fillRect(262, 128, 54, 6);
-    // ladder: base (110,520) -> top (236,150)
-    const bx = 112, by = 520, tx = 238, ty = 150, gap = 26;
-    const ang = Math.atan2(tx - bx, by - ty);
-    c.save(); c.translate(bx, by); c.rotate(ang);
-    const L = Math.hypot(tx - bx, by - ty);
-    c.fillStyle = "#c9ced4"; c.fillRect(-gap/2-4, -L, 5, L); c.fillRect(gap/2-1, -L, 5, L);
-    for (let y = 18; y < L; y += 30) c.fillRect(-gap/2, -y, gap + 1, 3.5);
+/* ---------- the company EV: a blue Kia Ray, side view facing right, ground at (x, y) ---------- */
+function car(c, x, y, s, o){
+  o = o || {};
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.fillStyle = "rgba(0,0,0,.22)"; c.beginPath(); c.ellipse(0, 1.5, 102, 6, 0, 0, 7); c.fill();
+  const body = () => { c.beginPath();
+    c.moveTo(-93, -16); c.quadraticCurveTo(-96.5, -28, -96, -44); c.lineTo(-95.5, -88); c.quadraticCurveTo(-95, -101, -82, -104);
+    c.quadraticCurveTo(-20, -106.5, 32, -104); c.quadraticCurveTo(42, -103, 47, -96); c.lineTo(66, -68); c.quadraticCurveTo(69.5, -63.5, 76, -62);
+    c.quadraticCurveTo(91, -58.5, 94.5, -50); c.quadraticCurveTo(98, -40, 96, -27); c.quadraticCurveTo(95, -18, 88, -16);
+    c.lineTo(76, -16); c.arc(55, -17, 21, 0, Math.PI, true); c.lineTo(-34, -16); c.arc(-55, -17, 21, 0, Math.PI, true); c.lineTo(-93, -16); c.closePath(); };
+  const g = c.createLinearGradient(0, -106, 0, -16); g.addColorStop(0, "#4a8ae6"); g.addColorStop(.45, "#2d68cf"); g.addColorStop(1, "#1f4c9c");
+  body(); c.fillStyle = g; c.fill();
+  c.save(); body(); c.clip();
+  c.fillStyle = "rgba(0,0,0,.14)"; c.fillRect(-100, -30, 200, 20);
+  c.fillStyle = "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(-96, -96); c.lineTo(40, -100); c.lineTo(40, -94); c.lineTo(-96, -90); c.fill();
+  c.restore();
+  // glass, pillars and the driver
+  const glass = () => { c.beginPath(); c.moveTo(-88, -94); c.quadraticCurveTo(-87, -98.6, -80, -98.6); c.lineTo(33, -98.6); c.quadraticCurveTo(38, -98, 41, -94); c.lineTo(57.5, -69.5); c.lineTo(-88, -69.5); c.closePath(); };
+  glass(); const gg = c.createLinearGradient(0, -99, 0, -69); gg.addColorStop(0, "#2a3a50"); gg.addColorStop(1, "#141c28"); c.fillStyle = gg; c.fill();
+  let driver = null;
+  if (o.driver){
+    c.save(); glass(); c.clip();
+    c.fillStyle = "#20262f"; rr(c, -12, -96, 9, 26, 3); c.fill();
+    driver = person(c, 10, -20, .72, { view: "side", t: o.t, hipY: -36, legL: [1.45, .2], legR: [1.5, .1], armR: [1.2, 1.75], armL: [1.1, 1.65], lean: -.1, shadow: false, gear: { helmet: false, cap: false, vest: false, gloves: false, badge: true } });
+    c.strokeStyle = "#9aa1ab"; c.lineWidth = 2.2; c.beginPath(); c.moveTo(driver.shoulderTop[0], driver.shoulderTop[1]); c.lineTo(driver.hipFront[0], driver.hipFront[1]); c.stroke();
     c.restore();
-    // outriggers
-    c.fillStyle = "#e1a21a"; c.fillRect(66, 512, 96, 6); c.fillStyle = "#2b2b2b"; c.fillRect(62, 516, 12, 6); c.fillRect(154, 516, 12, 6);
-    // top tie (rope loop drawn over time)
-    const tie = clamp((t - .8) / .7);
-    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.arc(242, 162, 9, 0, Math.PI*2*tie); c.stroke();
-    if (tie > 0){ c.beginPath(); c.moveTo(250, 160); c.lineTo(lerp(250, 262, tie), 150); c.stroke(); c.fillStyle = "#888"; c.fillRect(260, 146, 6, 6); }
-    // climbing worker (back view) along ladder
-    const climb = ease(t / 2.4);
-    const fy = lerp(470, 330, climb), fx = bx + (by - fy) * Math.tan(ang);
-    const step = Math.sin(t * 7) * .25;
-    worker(c, fx, fy, 1.0, { t, back: true, legL: [.15 + step, -.1], legR: [-.15 - step, .1], armL: [2.7, 2.9 - step], armR: [-2.7, -2.9 + step], gear: { harness: true, gaiters: true } });
-    // spotter holding ladder
-    worker(c, 74, 520, 1.0, { t, armL: [.3, .2], armR: [-1.45, -1.75], gear: { harness: false, gaiters: true } });
-    callout(c, t, .3, 150, 515, 210, 470, "아웃트리거 설치");
-    callout(c, t, 1.2, 244, 162, 186, 96, "사다리 상단 결속");
-    callout(c, t, 1.9, 74, 418, 30, 372, "2인 1조 · 하부 지지");
-    caption(c, t, "사다리 작업", "고정 · 결속 · 2인 1조");
-  },
-  // 3: utility pole
-  (c, t) => {
-    sky(c, "#24345a", "#f2a25c");
-    c.fillStyle = "rgba(255,255,255,.6)"; for (let i = 0; i < 18; i++) c.fillRect((i*97)%720 - 180, (i*53)%200 - 120, 2, 2);
-    c.fillStyle = "#3a4560"; c.fillRect(-600, 540, 1560, 400);
-    c.fillStyle = "#2b3550"; for (let i = 0; i < 9; i++) rr(c, -200 + i*90, 470 - (i%3)*30, 70, 120, 4), c.fill();
-    // pole
-    c.fillStyle = "#b8bcc2"; c.beginPath(); c.moveTo(188, -300); c.lineTo(212, -300); c.lineTo(216, 560); c.lineTo(184, 560); c.fill();
-    c.fillStyle = "#8f949b"; c.fillRect(206, -300, 6, 860);
-    // crossarm + insulators + power lines
-    c.fillStyle = "#5b616b"; c.fillRect(110, 92, 180, 9);
-    c.fillStyle = "#d6dde6"; [128, 168, 232, 272].forEach(x => { rr(c, x-4, 78, 8, 14, 2); c.fill(); });
-    c.strokeStyle = "#1c2233"; c.lineWidth = 1.6;
-    [128, 168, 232, 272].forEach(x => { c.beginPath(); c.moveTo(-600, 60); c.quadraticCurveTo(x, 100, x, 78); c.quadraticCurveTo(x, 100, 960, 64); c.stroke(); });
-    // telecom cables + closure
-    c.strokeStyle = "#111"; c.lineWidth = 3; c.beginPath(); c.moveTo(-600, 228); c.quadraticCurveTo(200, 262, 960, 226); c.stroke();
-    c.lineWidth = 2; c.beginPath(); c.moveTo(-600, 244); c.quadraticCurveTo(200, 276, 960, 240); c.stroke();
-    c.fillStyle = "#2b2f36"; rr(c, 222, 238, 34, 22, 4); c.fill();
-    // step bolts
-    c.fillStyle = "#6b7078"; for (let y = 300; y < 540; y += 26) c.fillRect(y % 52 ? 212 : 176, y, 12, 3);
-    // worker on pole with lanyard around pole
-    const bob = Math.sin(t * 2) * 2;
-    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.ellipse(200, 368 + bob, 26, 7, 0, Math.PI, 0); c.stroke();
-    const w = worker(c, 160, 452 + bob, 1.05, { t, back: false, legL: [.05, 0], legR: [-.5, .4], armL: [.2, .1], armR: [-2.4, -2.2], gear: { harness: true, alarm: true, gaiters: true } });
-    c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.ellipse(200, 368 + bob, 26, 7, 0, 0, Math.PI); c.stroke();
-    callout(c, t, .4, w.chest[0], w.chest[1], 70, 300, "X반도(전신 안전대) 착용");
-    callout(c, t, 1.1, 224, 368 + bob, 272, 330, "안전대 전주 체결");
-    callout(c, t, 1.8, w.alarm[0], w.alarm[1], 280, 196, "활선경보기 작동 확인");
-    caption(c, t, "전주 작업", "추락 · 감전 예방");
-  },
-  // 4: manhole
-  (c, t) => {
-    sky(c, "#9cc8e6", "#e8f3fa");
-    c.fillStyle = "#c9ccd1"; c.fillRect(-600, 330, 1560, 60);
-    c.fillStyle = "#454b55"; c.fillRect(-600, 390, 1560, 560);
-    c.fillStyle = "#f2f2f2"; for (let i = -6; i < 12; i++) c.fillRect(i*80, 600, 46, 6);
-    // buildings
-    c.fillStyle = "#b5c3d1"; rr(c, -40, 150, 120, 180, 4); c.fill(); rr(c, 260, 110, 140, 220, 4); c.fill();
-    c.fillStyle = "#dfe8f1"; for (let i = 0; i < 6; i++) for (let k = 0; k < 2; k++) c.fillRect(-25 + k*50, 170 + i*26, 30, 14), c.fillRect(275 + k*60, 130 + i*30, 40, 16);
-    // manhole + tripod
-    c.fillStyle = "#1b1d21"; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.fill();
-    c.strokeStyle = "#6d737d"; c.lineWidth = 4; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.stroke();
-    c.strokeStyle = "#e1a21a"; c.lineWidth = 4; c.beginPath(); c.moveTo(190, 380); c.lineTo(140, 492); c.moveTo(190, 380); c.lineTo(240, 492); c.moveTo(190, 380); c.lineTo(196, 500); c.stroke();
-    c.strokeStyle = "#ddd"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(190, 384); c.lineTo(190, 470); c.stroke();
-    // barrier
-    c.fillStyle = "#ffd02b"; c.fillRect(60, 430, 270, 12);
-    c.fillStyle = "#1d1d1d"; for (let x = 60; x < 330; x += 24) { c.beginPath(); c.moveTo(x, 442); c.lineTo(x+10, 430); c.lineTo(x+20, 430); c.lineTo(x+10, 442); c.fill(); }
-    c.fillStyle = "#555"; c.fillRect(64, 442, 4, 50); c.fillRect(322, 442, 4, 50);
-    cone(c, 40, 520, 1.1); cone(c, 342, 520, 1.1); cone(c, 300, 560, 1.2);
-    // worker with gas detector
-    const w = worker(c, 88, 560, 1.15, { t, armL: [.3, .2], armR: [-1.2, -2.6], gear: { gaiters: true } });
-    c.fillStyle = "#ffcf3a"; rr(c, w.handR[0]-6, w.handR[1]-16, 13, 20, 3); c.fill(); c.fillStyle = "#1f3b2a"; c.fillRect(w.handR[0]-4, w.handR[1]-13, 9, 7);
-    const read = clamp((t - .7) / .4);
-    if (read > 0){
-      c.globalAlpha = read; c.fillStyle = "rgba(15,24,48,.92)"; rr(c, 112, 268, 132, 54, 8); c.fill();
-      c.fillStyle = "#53e08a"; c.font = "700 14px " + FONT; c.fillText("O₂  20.9 %  정상", 124, 290); c.fillText("H₂S  0 ppm  정상", 124, 311);
-      c.globalAlpha = 1;
-    }
-    callout(c, t, .4, w.handR[0], w.handR[1]-8, 30, 236, "산소·유해가스 측정");
-    callout(c, t, 1.2, 300, 436, 230, 368, "안전펜스·라바콘 설치");
-    caption(c, t, "맨홀 작업", "측정 먼저, 진입은 나중에");
-  },
-  // 5: gear checklist
-  (c, t) => {
+  }
+  c.save(); glass(); c.clip();
+  c.fillStyle = "rgba(255,255,255,.13)"; c.beginPath(); c.moveTo(-60, -99); c.lineTo(-38, -99); c.lineTo(-62, -69); c.lineTo(-84, -69); c.fill();
+  c.beginPath(); c.moveTo(14, -99); c.lineTo(24, -99); c.lineTo(2, -69); c.lineTo(-8, -69); c.fill();
+  c.restore();
+  c.fillStyle = "#121820"; c.fillRect(-9, -99, 6, 30); c.fillRect(-63, -99, 5, 30);
+  c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-90, -68); c.lineTo(58, -68); c.stroke();
+  // doors, handles, mirror, lights
+  c.strokeStyle = "rgba(10,25,60,.45)"; c.lineWidth = 1.1;
+  c.beginPath(); c.moveTo(-6, -69); c.lineTo(-6, -22); c.moveTo(60, -67); c.lineTo(61, -40); c.moveTo(-62, -69); c.lineTo(-62, -39); c.moveTo(-34, -22); c.lineTo(34, -22); c.stroke();
+  c.fillStyle = "rgba(8,20,48,.5)"; rr(c, 30, -61, 10, 3, 1.5); c.fill(); rr(c, -26, -61, 10, 3, 1.5); c.fill();
+  c.fillStyle = "#1f4c9c"; c.beginPath(); c.moveTo(52, -72); c.lineTo(60, -75); c.quadraticCurveTo(64.5, -74, 62.5, -68.5); c.lineTo(54, -67.5); c.closePath(); c.fill();
+  c.fillStyle = "#f4f7fb"; c.beginPath(); c.moveTo(78, -61); c.lineTo(92, -56); c.quadraticCurveTo(95, -53, 93.5, -50.5); c.lineTo(83, -53.5); c.closePath(); c.fill();
+  c.fillStyle = "#ffe7a3"; c.beginPath(); c.arc(88, -54.5, 1.8, 0, 7); c.fill();
+  c.fillStyle = "#d3132f"; rr(c, -96.5, -86, 4, 26, 2); c.fill();
+  c.fillStyle = "#172033"; rr(c, 84, -34, 12, 9, 3); c.fill();
+  c.fillStyle = "#1a1e25"; c.fillRect(-34, -22, 68, 6);
+  // charging port on the front panel
+  c.fillStyle = "rgba(255,255,255,.55)"; rr(c, 88, -47, 6, 7, 1.5); c.fill();
+  // company decal and EV badge
+  if (o.logo && logo.complete && logo.naturalWidth){
+    c.fillStyle = "#fff"; rr(c, -57, -62, 46, 12, 2.5); c.fill();
+    c.drawImage(logo, -55, -60.2, 42, 42 * logo.naturalHeight / logo.naturalWidth);
+  }
+  c.fillStyle = "rgba(255,255,255,.9)"; c.font = "800 7px " + FONT; c.fillText("EV", 42, -27);
+  // wheels
+  const spin = o.spin || 0;
+  [-55, 55].forEach(wx => {
+    c.fillStyle = "#14171c"; c.beginPath(); c.arc(wx, -17, 17, 0, 7); c.fill();
+    c.fillStyle = "#262b33"; c.beginPath(); c.arc(wx, -17, 13.5, 0, 7); c.fill();
+    c.fillStyle = "#cfd5dc"; c.beginPath(); c.arc(wx, -17, 10.5, 0, 7); c.fill();
+    c.strokeStyle = "#8a929c"; c.lineWidth = 2.4;
+    for (let k = 0; k < 5; k++){ const a = spin + k * 1.2566; c.beginPath(); c.moveTo(wx, -17); c.lineTo(wx + Math.cos(a) * 9.5, -17 + Math.sin(a) * 9.5); c.stroke(); }
+    c.fillStyle = "#5f666f"; c.beginPath(); c.arc(wx, -17, 2.8, 0, 7); c.fill();
+  });
+  c.restore();
+  const at = (px, py) => [x + px * s, y + py * s];
+  return { rearTire: at(-66, -26), frontTire: at(55, -17), port: at(91, -43.5), roof: at(-20, -104), window: at(16, -84), driver };
+}
+
+/* A round close-up of the driver wearing a seat belt. */
+function beltInset(c, t, at, cx, cy, r, from){
+  if (t < at) return;
+  const p = ease((t - at) / .45);
+  c.save(); c.globalAlpha = p;
+  c.strokeStyle = "rgba(255,255,255,.95)"; c.lineWidth = 1.8; c.setLineDash([4, 4]);
+  c.beginPath(); c.moveTo(from[0], from[1]); c.lineTo(lerp(from[0], cx, p), lerp(from[1], cy + r * .7, p)); c.stroke(); c.setLineDash([]);
+  c.translate(cx, cy); const k = lerp(.6, 1, p); c.scale(k, k);
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, r + 4, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.arc(0, 0, r, 0, 7); c.clip();
+  const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#3c4a5e"); g.addColorStop(1, "#1b2330"); c.fillStyle = g; c.fillRect(-r, -r, 2 * r, 2 * r);
+  c.fillStyle = "rgba(170,210,245,.35)"; c.beginPath(); c.moveTo(-r, -r); c.lineTo(r, -r); c.lineTo(r, -18); c.lineTo(-r, -6); c.fill();
+  c.fillStyle = "#2a2f38"; rr(c, -48, -30, 22, 100, 9); c.fill(); rr(c, -42, -58, 15, 24, 6); c.fill();
+  const d = person(c, -8, 92, 1.45, { view: "side", t, hipY: -32, legL: [1.45, .3], legR: [1.5, .2], armR: [1.35, 1.95], armL: [1.25, 1.85], lean: -.12, shadow: false, gear: { helmet: false, cap: false, vest: false, gloves: false, badge: true } });
+  c.strokeStyle = "#5d6570"; c.lineWidth = 6; c.beginPath(); c.moveTo(d.shoulderTop[0], d.shoulderTop[1]); c.lineTo(d.hipFront[0], d.hipFront[1]); c.stroke();
+  c.strokeStyle = "#a3abb5"; c.lineWidth = 2.6; c.stroke();
+  c.fillStyle = "#c9cfd6"; rr(c, d.hipFront[0] - 6, d.hipFront[1] - 5, 10, 7, 2); c.fill();
+  c.fillStyle = "#232a35"; c.fillRect(-r, 40, 2 * r, r);
+  c.save(); c.translate(50, -6); c.rotate(-.35); c.strokeStyle = "#101318"; c.lineWidth = 6; c.beginPath(); c.ellipse(0, 0, 7, 26, 0, 0, 7); c.stroke(); c.restore();
+  c.restore();
+  c.strokeStyle = ORANGE; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, r + 2, 0, 7); c.stroke();
+  c.font = "800 13px " + FONT; const w = c.measureText("안전벨트 착용").width + 24;
+  c.fillStyle = "#fff"; rr(c, -w / 2, r + 10, w, 26, 13); c.fill();
+  c.fillStyle = RED; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("안전벨트 착용", 0, r + 23.5); c.textAlign = "left";
+  c.restore();
+}
+function noPhone(c, t, at, x, y){
+  if (t < at) return;
+  const p = ease((t - at) / .35), k = lerp(.4, 1, p);
+  c.save(); c.globalAlpha = p; c.translate(x, y); c.scale(k, k);
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, 25, 0, 7); c.fill();
+  c.fillStyle = "#23262b"; rr(c, -7, -13, 14, 26, 3); c.fill(); c.fillStyle = "#6fa8dc"; c.fillRect(-5, -10, 10, 18);
+  c.strokeStyle = RED; c.lineWidth = 4; c.beginPath(); c.arc(0, 0, 21, 0, 7); c.moveTo(-15, -15); c.lineTo(15, 15); c.stroke();
+  c.restore();
+  callout(c, t, at + .1, x, y + 26, x + 30, y + 64, "운전 중 휴대폰 사용 금지");
+}
+
+/* ---------- scenes: draw(c, local time) ---------- */
+function opening(c, t){
+  c.fillStyle = NAVY; c.fillRect(-600, -300, 1560, 1240);
+  for (let i = 0; i < 7; i++){
+    const sp = 140 + i*35, off = ((t*sp + i*173) % 1300) - 500;
+    c.save(); c.globalAlpha = .18 + (i%3)*.08; c.fillStyle = i%2 ? ORANGE : RED;
+    c.translate(off, 0); c.rotate(-.5); c.fillRect(-20, -200 + i*90, 260 + i*20, 6 + (i%3)*4); c.restore();
+  }
+  const p1 = ease((t - .2)/.5), p2 = ease((t - .5)/.5), p3 = ease((t - .8)/.5);
+  c.textBaseline = "alphabetic";
+  c.globalAlpha = p1; c.fillStyle = ORANGE; c.font = "700 15px " + FONT; c.fillText("홈앤서비스 서비스매니저", 34, 270 + (1-p1)*14);
+  c.globalAlpha = p2; c.fillStyle = "#fff"; c.font = "800 38px " + FONT; c.fillText("오늘도 안전하게,", 32, 322 + (1-p2)*14);
+  c.globalAlpha = p3; c.fillText("현장으로", 32, 370 + (1-p3)*14);
+  c.globalAlpha = p3; c.fillStyle = RED; c.fillRect(34, 392, 70*p3, 5); c.fillStyle = ORANGE; c.fillRect(34 + 74*p3, 392, 30*p3, 5);
+  c.globalAlpha = 1;
+}
+function evCheck(c, t){
+  sky(c, "#a8d2ef", "#eaf5fc");
+  c.fillStyle = "#d7dde4"; c.fillRect(-600, 170, 1560, 320);
+  c.fillStyle = "#c5ccd5"; for (let i = -10; i < 18; i++) c.fillRect(i * 64, 170, 3, 320);
+  c.fillStyle = "#b9c9d9"; for (let r = 0; r < 3; r++) for (let i = -10; i < 16; i++) c.fillRect(i * 64 + 14, 196 + r * 72, 36, 40);
+  c.fillStyle = "#eef2f6"; c.fillRect(-600, 158, 1560, 14);
+  c.fillStyle = "#6c747f"; c.fillRect(-600, 488, 1560, 460);
+  c.fillStyle = "#3fae6a"; c.fillRect(-600, 488, 1560, 8);
+  const chx = 322;
+  c.fillStyle = "#f4f6f8"; rr(c, chx - 18, 330, 40, 162, 6); c.fill();
+  c.fillStyle = "#d8dee5"; c.fillRect(chx + 12, 336, 10, 150);
+  c.fillStyle = "#3fae6a"; c.fillRect(chx - 18, 330, 40, 10);
+  c.fillStyle = "#14202c"; rr(c, chx - 12, 352, 28, 44, 3); c.fill();
+  const charge = Math.min(85, 64 + t * 12);
+  c.fillStyle = "#53e08a"; c.fillRect(chx - 8, 384, 20 * charge / 100, 6);
+  c.fillStyle = "#fff"; c.font = "700 10px " + FONT; c.textAlign = "center"; c.fillText(Math.round(charge) + "%", chx + 2, 375); c.textAlign = "left";
+  c.fillStyle = "#2b2f36"; rr(c, chx - 16, 410, 10, 16, 2); c.fill();
+  const A = car(c, 172, 522, .95, { t, logo: true });
+  c.strokeStyle = "#1e2228"; c.lineWidth = 3.2; c.beginPath(); c.moveTo(chx - 11, 424); c.bezierCurveTo(chx - 22, 520, A.port[0] + 26, 500, A.port[0], A.port[1]); c.stroke();
+  person(c, 66, 526, 1.0, { view: "side", t, hipY: -33, legL: [1.25, .2], legR: [0.15, -1.85], footR: 1.5, armR: [.62, .78], armL: [1.0, .45], gear: { helmet: false, cap: true, gloves: true, vest: true } });
+  callout(c, t, .45, A.rearTire[0], A.rearTire[1], 30, 352, "타이어 공기압 점검");
+  callout(c, t, 1.25, chx + 2, 372, 262, 292, "충전량 확인");
+  callout(c, t, 2.05, A.roof[0], A.roof[1], 126, 236, "차량 주변 확인");
+}
+function driving(c, t){
+  sky(c, "#79b7e4", "#dcefff");
+  const sc = t * 260;
+  c.fillStyle = "#a9cdb6"; c.beginPath(); c.moveTo(-600, 460);
+  for (let x = -600; x <= 960; x += 16) c.lineTo(x, 340 + Math.sin((x + sc * .12) / 62) * 18 + Math.sin((x + sc * .12) / 23) * 5);
+  c.lineTo(960, 460); c.closePath(); c.fill();
+  for (let k = 0; k < 14; k++){
+    const bx = ((k * 92 - sc * .4) % 1288 + 1288) % 1288 - 420, h = 60 + (k * 37 % 50);
+    c.fillStyle = k % 2 ? "#c7d3df" : "#b6c4d2"; c.fillRect(bx, 452 - h, 70, h);
+    c.fillStyle = "#e3eaf1"; for (let r = 0; r < Math.floor(h / 22); r++) for (let q = 0; q < 3; q++) c.fillRect(bx + 8 + q * 20, 452 - h + 8 + r * 22, 12, 10);
+  }
+  c.fillStyle = "#d3d8de"; c.fillRect(-600, 452, 1560, 24);
+  for (let k = 0; k < 10; k++){
+    const tx = ((k * 150 - sc * .9) % 1500 + 1500) % 1500 - 420;
+    c.fillStyle = "#6b4e36"; c.fillRect(tx - 3, 414, 6, 40);
+    c.fillStyle = "#3f9a5c"; c.beginPath(); c.arc(tx, 404, 20, 0, 7); c.arc(tx - 13, 414, 14, 0, 7); c.arc(tx + 13, 414, 14, 0, 7); c.fill();
+  }
+  const sgx = 440 - t * 215;
+  c.fillStyle = "#8b939d"; c.fillRect(sgx - 2.5, 370, 5, 84);
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(sgx, 352, 22, 0, 7); c.fill();
+  c.strokeStyle = RED; c.lineWidth = 5; c.beginPath(); c.arc(sgx, 352, 18.5, 0, 7); c.stroke();
+  c.fillStyle = "#111"; c.font = "800 17px " + FONT; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("50", sgx, 353); c.textAlign = "left"; c.textBaseline = "alphabetic";
+  c.fillStyle = "#454b54"; c.fillRect(-600, 476, 1560, 470);
+  c.fillStyle = "#f4f4f4"; for (let k = 0; k < 18; k++){ const lx = ((k * 90 - sc) % 1620 + 1620) % 1620 - 560; c.fillRect(lx, 624, 50, 5); }
+  const bob = Math.sin(t * 15) * .6;
+  const A = car(c, 180, 584 + bob, .92, { t, spin: t * 13, driver: true, logo: true });
+  c.strokeStyle = "rgba(255,255,255,.6)"; c.lineWidth = 2;
+  for (let k = 0; k < 4; k++){ const yy = 512 + k * 16, len = 26 + (k % 2) * 18, off = (t * 400 + k * 53) % 110; c.beginPath(); c.moveTo(84 - off, yy); c.lineTo(84 - off - len, yy); c.stroke(); }
+  beltInset(c, t, .35, 104, 200, 62, A.window);
+  callout(c, t, .9, sgx + 6, 366, sgx + 24, 412, "제한속도 50km/h 준수", clamp((sgx - 20) / 60));
+  noPhone(c, t, 1.75, 300, 318);
+}
+function install(c, t){
+  c.fillStyle = "#efe9df"; c.fillRect(-600, -300, 1560, 1240);
+  c.fillStyle = "#e3dbcd"; for (let i = -10; i < 20; i++) c.fillRect(i*48, -300, 2, 800);
+  c.fillStyle = "#b98a5c"; c.fillRect(-600, 470, 1560, 500);
+  c.fillStyle = "#a77a4f"; for (let i = -10; i < 20; i++) c.fillRect(i*70, 470, 2, 500);
+  c.fillStyle = "#bfe0f2"; rr(c, 22, 120, 92, 120, 4); c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 6; c.strokeRect(22, 120, 92, 120); c.beginPath(); c.moveTo(68,120); c.lineTo(68,240); c.stroke();
+  c.fillStyle = "#6d5444"; rr(c, 140, 410, 210, 60, 5); c.fill();
+  c.fillStyle = "#1b1e24"; rr(c, 150, 230, 196, 116, 6); c.fill();
+  const on = clamp((t - 1.7) / .5);
+  if (on > 0){
+    const g = c.createLinearGradient(156, 236, 340, 340); g.addColorStop(0, "#1d3b8f"); g.addColorStop(1, "#7a1a46");
+    c.globalAlpha = on; c.fillStyle = g; c.fillRect(156, 236, 184, 104);
+    c.fillStyle = "#fff"; c.font = "800 30px " + FONT; c.fillText("B tv", 216, 296); c.fillStyle = RED; c.fillRect(216, 304, 60, 3);
+    c.globalAlpha = 1;
+  }
+  c.fillStyle = "#1b1e24"; c.fillRect(240, 346, 16, 14); c.fillRect(214, 360, 68, 5);
+  c.fillStyle = "#f1f1f1"; rr(c, 260, 392, 70, 18, 3); c.fill();
+  c.fillStyle = on > 0 ? "#3ccf6e" : (Math.floor(t*3)%2 ? "#f2a33a" : "#5b4520"); c.beginPath(); c.arc(318, 401, 2.3, 0, 7); c.fill();
+  c.strokeStyle = "#2f2f2f"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(262, 404); c.bezierCurveTo(230, 420, 190, 430, 150, 418); c.stroke();
+  const reach = Math.sin(Math.min(t, 1.6) * 4) * .06;
+  const w = person(c, 206, 500, 1.18, { view: "side", t, hipY: -31, legL: [1.45, 0], legR: [0.15, -1.85], footR: 1.5, armR: [1.88 + reach, 2.02], armL: [.95, .5], gear: { helmet: false, cap: true, vest: false, gloves: false, covers: true, badge: true } });
+  callout(c, t, .5, w.foot[0] + 4, w.foot[1] + 6, 40, 330, "덧신 착용");
+  callout(c, t, 1.1, 300, 402, 248, 182, "셋톱박스 연결");
+  callout(c, t, 2.1, 250, 290, 202, 130, "개통·화면 확인");
+}
+function ladder(c, t){
+  sky(c, "#8ec5ea", "#dff1fb");
+  c.fillStyle = "#b9a58f"; c.fillRect(246, -300, 800, 820);
+  c.fillStyle = "#a8927a"; for (let r = 0; r < 40; r++) for (let k = 0; k < 12; k++) c.fillRect(246 + k*40 + (r%2)*20, -290 + r*20, 36, 2);
+  c.fillStyle = "#9d876f"; c.fillRect(246, -300, 6, 820);
+  c.fillStyle = "#7d8a96"; c.fillRect(-600, 520, 1560, 420);
+  c.fillStyle = "#97a3ae"; c.fillRect(-600, 520, 1560, 6);
+  c.fillStyle = "#e9ecef"; rr(c, 262, 128, 54, 40, 4); c.fill(); c.fillStyle = RED; c.fillRect(262, 128, 54, 6);
+  // ladder seen from the side: two rails and the rung ends
+  const lx = (yy) => 112 + (520 - yy) * .3405;
+  c.lineCap = "round";
+  c.strokeStyle = "#9aa1a9"; c.lineWidth = 5; c.beginPath(); c.moveTo(lx(520) + 3, 520); c.lineTo(lx(150) + 3, 150); c.stroke();
+  c.strokeStyle = "#cfd4da"; c.lineWidth = 5; c.beginPath(); c.moveTo(lx(520) - 1, 520); c.lineTo(lx(150) - 1, 150); c.stroke();
+  c.fillStyle = "#8a9199"; for (let yy = 505; yy > 160; yy -= 29){ c.beginPath(); c.ellipse(lx(yy) + 1, yy, 3.4, 2.2, -.33, 0, 7); c.fill(); }
+  // outrigger feet at the base
+  c.strokeStyle = "#e1a21a"; c.lineWidth = 5; c.beginPath(); c.moveTo(78, 532); c.lineTo(148, 508); c.stroke();
+  c.fillStyle = "#2b2b2b"; rr(c, 70, 528, 16, 7, 2); c.fill(); rr(c, 140, 504, 16, 7, 2); c.fill();
+  c.fillStyle = "#c58a10"; c.beginPath(); c.arc(lx(520) + 1, 520, 4.5, 0, 7); c.fill();
+  // tie at the top
+  const tie = clamp((t - .8) / .7);
+  c.strokeStyle = "#ffcf3a"; c.lineWidth = 3; c.beginPath(); c.arc(lx(162) + 1, 162, 8, 0, Math.PI * 2 * tie); c.stroke();
+  if (tie > 0){ c.beginPath(); c.moveTo(lx(160) + 8, 158); c.lineTo(lerp(lx(160) + 8, 254, tie), lerp(158, 146, tie)); c.stroke(); c.fillStyle = "#888"; c.fillRect(250, 142, 6, 6); }
+  // climber on the ladder, facing the wall
+  const p = ease(t / 3.2), fy = lerp(418, 318, p), ph = t * 5.5, sw = Math.sin(ph);
+  person(c, lx(fy) - 13, fy, 1.0, { view: "side", t, lean: .2, legR: [.5 + .14 * sw, -.2], legL: [.18 - .1 * sw, .02], armR: [2.62 + .1 * sw, 2.92], armL: [2.32 - .1 * sw, 2.72], gear: { harness: true, gaiters: true } });
+  const sp = person(c, 98, 520, 1.0, { view: "side", t, legR: [.2, .05], legL: [-.16, -.02], armR: [1.38, 1.6], armL: [1.26, 1.5], gear: { gaiters: true } });
+  callout(c, t, .35, 112, 520, 208, 470, "아웃트리거 설치");
+  callout(c, t, 1.25, lx(162), 162, 168, 96, "사다리 상단 결속");
+  callout(c, t, 2.0, sp.chest[0], sp.chest[1], 30, 372, "2인 1조 · 하부 지지");
+}
+function pole(c, t){
+  sky(c, "#24345a", "#f2a25c");
+  c.fillStyle = "rgba(255,255,255,.6)"; for (let i = 0; i < 18; i++) c.fillRect((i*97)%720 - 180, (i*53)%200 - 120, 2, 2);
+  c.fillStyle = "#3a4560"; c.fillRect(-600, 540, 1560, 400);
+  c.fillStyle = "#2b3550"; for (let i = 0; i < 9; i++){ rr(c, -200 + i*90, 470 - (i%3)*30, 70, 120, 4); c.fill(); }
+  // strap behind the pole
+  const bob = Math.sin(t * 2) * 1.5, wy = 430 + bob;
+  c.strokeStyle = "#c4930f"; c.lineWidth = 3; c.beginPath(); c.ellipse(196, wy - 69, 24, 5, 0, Math.PI, 0); c.stroke();
+  c.fillStyle = "#b8bcc2"; c.beginPath(); c.moveTo(188, -300); c.lineTo(212, -300); c.lineTo(216, 560); c.lineTo(184, 560); c.fill();
+  c.fillStyle = "#8f949b"; c.fillRect(206, -300, 6, 860);
+  c.fillStyle = "#5b616b"; c.fillRect(110, 92, 180, 9);
+  c.fillStyle = "#d6dde6"; [128, 168, 232, 272].forEach(x => { rr(c, x-4, 78, 8, 14, 2); c.fill(); });
+  c.strokeStyle = "#1c2233"; c.lineWidth = 1.6;
+  [128, 168, 232, 272].forEach(x => { c.beginPath(); c.moveTo(-600, 60); c.quadraticCurveTo(x, 100, x, 78); c.quadraticCurveTo(x, 100, 960, 64); c.stroke(); });
+  c.strokeStyle = "#111"; c.lineWidth = 3; c.beginPath(); c.moveTo(-600, 218); c.quadraticCurveTo(200, 250, 960, 216); c.stroke();
+  c.lineWidth = 2; c.beginPath(); c.moveTo(-600, 232); c.quadraticCurveTo(200, 262, 960, 230); c.stroke();
+  // terminal box on the pole, with drop cables up to the line
+  c.strokeStyle = "#111"; c.lineWidth = 2; c.beginPath(); c.moveTo(196, 300); c.lineTo(198, 246); c.moveTo(206, 300); c.lineTo(206, 246); c.stroke();
+  c.fillStyle = "#e9edf2"; rr(c, 184, 296, 32, 38, 4); c.fill(); c.fillStyle = "#c3cad3"; c.fillRect(206, 300, 8, 32); c.fillStyle = RED; c.fillRect(184, 296, 32, 5);
+  c.fillStyle = "#6b7078"; [[176, 404], [176, 452], [208, 428], [208, 380], [176, 356], [208, 476]].forEach(([bx, by]) => c.fillRect(bx, by, 12, 3.5));
+  const w = person(c, 166, wy, 1.05, { view: "side", t, lean: -.25, legR: [.55, -.15], legL: [.18, .02], armR: [1.55, 2.25], armL: [1.72, 2.45], gear: { harness: true, alarm: true, gaiters: true } });
+  c.strokeStyle = PC.harness; c.lineWidth = 3; c.beginPath(); c.ellipse(196, wy - 69, 24, 5, 0, 0, Math.PI); c.stroke();
+  callout(c, t, .4, w.back[0], w.back[1], 44, 268, "X반도(전신 안전대) 착용");
+  callout(c, t, 1.2, 216, wy - 66, 266, 420, "안전대 전주 체결");
+  callout(c, t, 2.0, w.alarm[0], w.alarm[1], 254, 180, "활선경보기 작동 확인");
+}
+function manhole(c, t){
+  sky(c, "#9cc8e6", "#e8f3fa");
+  c.fillStyle = "#c9ccd1"; c.fillRect(-600, 330, 1560, 60);
+  c.fillStyle = "#454b55"; c.fillRect(-600, 390, 1560, 560);
+  c.fillStyle = "#f2f2f2"; for (let i = -6; i < 12; i++) c.fillRect(i*80, 600, 46, 6);
+  c.fillStyle = "#b5c3d1"; rr(c, -40, 150, 120, 180, 4); c.fill(); rr(c, 260, 110, 140, 220, 4); c.fill();
+  c.fillStyle = "#dfe8f1"; for (let i = 0; i < 6; i++) for (let k = 0; k < 2; k++){ c.fillRect(-25 + k*50, 170 + i*26, 30, 14); c.fillRect(275 + k*60, 130 + i*30, 40, 16); }
+  c.fillStyle = "#1b1d21"; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.fill();
+  c.strokeStyle = "#6d737d"; c.lineWidth = 4; c.beginPath(); c.ellipse(190, 480, 46, 15, 0, 0, 7); c.stroke();
+  c.strokeStyle = "#e1a21a"; c.lineWidth = 4; c.beginPath(); c.moveTo(190, 380); c.lineTo(140, 492); c.moveTo(190, 380); c.lineTo(240, 492); c.moveTo(190, 380); c.lineTo(196, 500); c.stroke();
+  c.strokeStyle = "#ddd"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(190, 384); c.lineTo(190, 470); c.stroke();
+  // watchman behind the barrier
+  const wm = person(c, 296, 474, .92, { view: "side", flip: true, t, armR: [1.05, 1.35], armL: [-.1, .05], gear: { gaiters: true } });
+  c.fillStyle = "#ffd02b"; c.fillRect(60, 430, 270, 12);
+  c.fillStyle = "#1d1d1d"; for (let x = 60; x < 330; x += 24){ c.beginPath(); c.moveTo(x, 442); c.lineTo(x+10, 430); c.lineTo(x+20, 430); c.lineTo(x+10, 442); c.fill(); }
+  c.fillStyle = "#555"; c.fillRect(64, 442, 4, 50); c.fillRect(322, 442, 4, 50);
+  cone(c, 40, 520, 1.1); cone(c, 342, 520, 1.1); cone(c, 300, 560, 1.2);
+  const w = person(c, 90, 562, 1.15, { view: "front", t, armL: [-.12, -.05], armR: [-.5, -2.15], gear: { gaiters: true } });
+  c.fillStyle = "#ffcf3a"; rr(c, w.handR[0]-7, w.handR[1]-14, 14, 20, 3); c.fill(); c.fillStyle = "#1f3b2a"; c.fillRect(w.handR[0]-5, w.handR[1]-11, 10, 7);
+  const read = clamp((t - .7) / .4);
+  if (read > 0){
+    c.globalAlpha = read; c.fillStyle = "rgba(15,24,48,.92)"; rr(c, 112, 262, 136, 54, 8); c.fill();
+    c.fillStyle = "#53e08a"; c.font = "700 14px " + FONT; c.fillText("O₂  20.9 %  정상", 124, 284); c.fillText("H₂S  0 ppm  정상", 124, 305);
+    c.globalAlpha = 1;
+  }
+  callout(c, t, .4, w.handR[0], w.handR[1]-10, 30, 226, "산소·유해가스 측정");
+  callout(c, t, 1.2, 160, 436, 196, 360, "안전펜스·라바콘 설치");
+  callout(c, t, 2.0, wm.chest[0], wm.chest[1], 344, 330, "감시인 배치");
+}
+function checklist(c, t, photo){
+  if (!photo){
     c.fillStyle = "#13203f"; c.fillRect(-600, -300, 1560, 1240);
     c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = 1;
     for (let i = -12; i < 30; i++){ c.beginPath(); c.moveTo(i*30, -300); c.lineTo(i*30, 940); c.stroke(); c.beginPath(); c.moveTo(-600, i*30); c.lineTo(960, i*30); c.stroke(); }
-    c.fillStyle = "rgba(244,119,37,.18)"; c.beginPath(); c.ellipse(98, 470, 80, 16, 0, 0, 7); c.fill();
-    const w = worker(c, 98, 470, 2.55, { t, armL: [.35, .15], armR: [-.35, -.15], gear: { harness: true, alarm: true, gaiters: true } });
-    const items = [["안전모 · 턱끈", w.helmet], ["활선경보기", w.alarm], ["X반도 (안전대)", w.chest], ["안전장갑", w.handR], ["각반", w.shin], ["안전화", w.foot]];
-    c.fillStyle = ORANGE; c.font = "700 13px " + FONT; c.fillText("작업 전 확인", 196, 96);
-    c.fillStyle = "#fff"; c.font = "800 22px " + FONT; c.fillText("안전장구 착용", 196, 124);
-    items.forEach(([label, pt], i) => {
-      const at = .3 + i * .34, p = ease((t - at) / .3), y = 160 + i * 52;
-      if (t < at) { c.globalAlpha = .35; } else c.globalAlpha = 1;
-      c.fillStyle = p > 0 ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.04)"; rr(c, 192, y, 156, 40, 8); c.fill();
-      c.strokeStyle = p > 0 ? "#53e08a" : "rgba(255,255,255,.4)"; c.lineWidth = 2; rr(c, 202, y + 11, 18, 18, 4); c.stroke();
-      if (p > 0){ c.strokeStyle = "#53e08a"; c.lineWidth = 3; c.beginPath(); c.moveTo(206, y + 20); c.lineTo(210 + 1*p, y + 25); c.lineTo(206 + 12*p, y + 14); c.stroke(); }
-      c.fillStyle = "#fff"; c.font = "700 15px " + FONT; c.fillText(label, 230, y + 26);
-      c.globalAlpha = 1;
-      if (t >= at && t < at + .9){
-        const q = (t - at) / .9; c.strokeStyle = "rgba(83,224,138," + (1 - q) + ")"; c.lineWidth = 3; c.beginPath(); c.arc(pt[0], pt[1], 8 + q * 22, 0, 7); c.stroke();
-      }
-    });
-    const done = ease((t - 2.4) / .3);
-    if (done > 0){ c.globalAlpha = done; c.fillStyle = RED; rr(c, 192, 478, 156, 34, 17); c.fill(); c.fillStyle = "#fff"; c.font = "800 14px " + FONT; c.fillText("착용 완료 · 작업 시작", 210, 500); c.globalAlpha = 1; }
-  },
-  // 6: logo
-  (c, t) => {
-    c.fillStyle = "#fff"; c.fillRect(-600, -300, 1560, 1240);
-    const sw = ease(t / .6);
-    c.save(); c.translate(180, 320); c.rotate(-.35);
-    c.fillStyle = RED; c.fillRect(-700 + sw * 300, -160, 900, 18);
-    c.fillStyle = ORANGE; c.fillRect(-200 - sw * 300 + 300, 215, 900, 12);
-    c.restore();
-    const p = ease((t - .25) / .7);
-    if (logo.complete && logo.naturalWidth){
-      const lw = 290 * lerp(1.12, 1, p), lh = lw * logo.naturalHeight / logo.naturalWidth;
-      c.globalAlpha = p; c.drawImage(logo, 180 - lw/2, 300 - lh/2, lw, lh); c.globalAlpha = 1;
-    }
-    const q = ease((t - .9) / .6);
-    c.globalAlpha = q; c.fillStyle = "#18212b"; c.font = "800 19px " + FONT; c.textAlign = "center";
-    c.fillText("안전한 작업이", 180, 384 + (1-q)*10); c.fillText("최고의 서비스입니다", 180, 412 + (1-q)*10);
-    c.fillStyle = "#8a94a0"; c.font = "500 12px " + FONT; c.fillText("B tv 리모컨 TV 동조코드", 180, 470);
-    c.textAlign = "left"; c.globalAlpha = 1;
+    c.fillStyle = "rgba(244,119,37,.18)"; c.beginPath(); c.ellipse(96, 470, 80, 16, 0, 0, 7); c.fill();
+  } else { c.fillStyle = "rgba(10,16,32,.6)"; rr(c, 180, 70, 176, 470, 12); c.fill(); }
+  const w = photo ? null : person(c, 96, 470, 2.5, { view: "front", t, armL: [-.3, -.12], armR: [.3, .12], legL: [-.07, -.02], legR: [.07, .02], shadow: false, gear: { harness: true, alarm: true, gaiters: true } });
+  const items = [["안전모 · 턱끈", w && w.helmet], ["활선경보기", w && w.alarm], ["X반도 (안전대)", w && w.chest], ["안전장갑", w && w.handR], ["각반", w && w.shin], ["안전화", w && w.foot]];
+  c.fillStyle = ORANGE; c.font = "700 13px " + FONT; c.fillText("작업 전 확인", 196, 96);
+  c.fillStyle = "#fff"; c.font = "800 22px " + FONT; c.fillText("안전장구 착용", 196, 124);
+  items.forEach(([label, pt], i) => {
+    const at = .3 + i * .36, p = ease((t - at) / .3), y = 160 + i * 52;
+    c.globalAlpha = t < at ? .35 : 1;
+    c.fillStyle = p > 0 ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.04)"; rr(c, 192, y, 156, 40, 8); c.fill();
+    c.strokeStyle = p > 0 ? "#53e08a" : "rgba(255,255,255,.4)"; c.lineWidth = 2; rr(c, 202, y + 11, 18, 18, 4); c.stroke();
+    if (p > 0){ c.strokeStyle = "#53e08a"; c.lineWidth = 3; c.beginPath(); c.moveTo(206, y + 20); c.lineTo(210 + p, y + 25); c.lineTo(206 + 12*p, y + 14); c.stroke(); }
+    c.fillStyle = "#fff"; c.font = "700 15px " + FONT; c.fillText(label, 230, y + 26);
+    c.globalAlpha = 1;
+    if (pt && t >= at && t < at + .9){ const q = (t - at) / .9; c.strokeStyle = "rgba(83,224,138," + (1 - q) + ")"; c.lineWidth = 3; c.beginPath(); c.arc(pt[0], pt[1], 8 + q * 22, 0, 7); c.stroke(); }
+  });
+  const done = ease((t - 2.6) / .3);
+  if (done > 0){ c.globalAlpha = done; c.fillStyle = RED; rr(c, 192, 478, 156, 34, 17); c.fill(); c.fillStyle = "#fff"; c.font = "800 14px " + FONT; c.fillText("착용 완료 · 작업 시작", 210, 500); c.globalAlpha = 1; }
+}
+function logoCard(c, t){
+  c.fillStyle = "#fff"; c.fillRect(-600, -300, 1560, 1240);
+  const sw = ease(t / .6);
+  c.save(); c.translate(180, 320); c.rotate(-.35);
+  c.fillStyle = RED; c.fillRect(-700 + sw * 300, -160, 900, 18);
+  c.fillStyle = ORANGE; c.fillRect(-200 - sw * 300 + 300, -134, 900, 10);
+  c.restore();
+  const p = ease((t - .25) / .7);
+  if (logo.complete && logo.naturalWidth){
+    const lw = 290 * lerp(1.12, 1, p), lh = lw * logo.naturalHeight / logo.naturalWidth;
+    c.globalAlpha = p; c.drawImage(logo, 180 - lw/2, 270 - lh/2, lw, lh); c.globalAlpha = 1;
   }
+  const q = ease((t - .9) / .6);
+  c.globalAlpha = q; c.fillStyle = "#18212b"; c.font = "800 19px " + FONT; c.textAlign = "center";
+  c.fillText("안전한 작업이", 180, 354 + (1-q)*10); c.fillText("최고의 서비스입니다", 180, 382 + (1-q)*10);
+  c.fillStyle = "#8a94a0"; c.font = "500 12px " + FONT; c.fillText("B tv 리모컨 TV 동조코드", 180, 418);
+  c.textAlign = "left"; c.globalAlpha = 1;
+  const d = ease((t - .3) / 1.5), cx = lerp(-140, 180, d);
+  c.fillStyle = "#eef1f4"; c.fillRect(-600, 548, 1560, 4);
+  car(c, cx, 548, .62, { t, spin: d * 14, logo: true });
+}
+
+const scenes = [
+  { draw: opening },
+  { draw: evCheck, cap: ["출동 준비", "출발 전 차량 점검"], labels: ["타이어 공기압 점검", "충전량 확인", "차량 주변 확인"] },
+  { draw: driving, cap: ["이동 중", "안전운전 · 규정속도 준수"], labels: ["안전벨트 착용", "제한속도 준수", "운전 중 휴대폰 사용 금지"] },
+  { draw: install, cap: ["고객 댁 방문", "인터넷 · B tv 설치"], labels: ["덧신 착용", "셋톱박스 연결", "개통·화면 확인"] },
+  { draw: ladder, cap: ["사다리 작업", "고정 · 결속 · 2인 1조"], labels: ["아웃트리거 설치", "사다리 상단 결속", "2인 1조 · 하부 지지"] },
+  { draw: pole, cap: ["전주 작업", "추락 · 감전 예방"], labels: ["X반도(전신 안전대) 착용", "안전대 전주 체결", "활선경보기 작동 확인"] },
+  { draw: manhole, cap: ["맨홀 작업", "측정 먼저, 진입은 나중에"], labels: ["산소·유해가스 측정", "안전펜스·라바콘 설치", "감시인 배치"] },
+  { draw: checklist, photoDraw: (c, t) => checklist(c, t, true) },
+  { draw: logoCard }
 ];
 
 function renderAt(cv, T){
@@ -917,11 +1258,18 @@ function renderAt(cv, T){
   const W = cv.width, H = cv.height, sc = Math.min(W / 360, H / 640);
   c.setTransform(1,0,0,1,0,0); c.clearRect(0, 0, W, H);
   let i = CUTS.length - 1; while (i > 0 && T < CUTS[i]) i--;
-  const local = T - CUTS[i], dur = (CUTS[i+1] || TOTAL) - CUTS[i];
-  const zoom = 1 + .05 * clamp(local / dur);
+  const local = T - CUTS[i], dur = (CUTS[i+1] || TOTAL) - CUTS[i], scene = scenes[i];
+  const ph = photos[i], usePhoto = !!(ph && ph.complete && ph.naturalWidth);
+  if (usePhoto){
+    const z = 1 + .08 * clamp(local / dur), k = Math.max(W / ph.naturalWidth, H / ph.naturalHeight) * z;
+    c.drawImage(ph, (W - ph.naturalWidth * k) / 2, (H - ph.naturalHeight * k) / 2, ph.naturalWidth * k, ph.naturalHeight * k);
+  }
+  const zoom = usePhoto ? 1 : 1 + .05 * clamp(local / dur);
   c.setTransform(sc * zoom, 0, 0, sc * zoom, W/2 - 180*sc*zoom, H/2 - 320*sc*zoom);
-  scenes[i](c, local);
-  // diagonal wipe across each cut
+  if (!usePhoto) scene.draw(c, local);
+  else if (scene.photoDraw) scene.photoDraw(c, local);
+  else if (scene.labels) chips(c, local, scene.labels);
+  if (scene.cap) caption(c, local, scene.cap[0], scene.cap[1]);
   for (let k = 1; k < CUTS.length; k++){
     const d = T - CUTS[k];
     if (d > -.28 && d < .28){
@@ -935,7 +1283,7 @@ function renderAt(cv, T){
   if (fade > 0){ c.setTransform(1,0,0,1,0,0); c.fillStyle = "rgba(255,255,255," + fade + ")"; c.fillRect(0, 0, W, H); }
 }
 
-/* ---------- music (Web Audio, about 20 s) ---------- */
+/* ---------- music (Web Audio, about 31 s) ---------- */
 function buildMusic(ac, out, t0){
   const mf = m => 440 * Math.pow(2, (m - 69) / 12);
   const master = ac.createGain(); master.gain.value = .68;
@@ -960,36 +1308,43 @@ function buildMusic(ac, out, t0){
   function kick(t, vol){ const o = ac.createOscillator(); o.frequency.setValueAtTime(150, T(t)); o.frequency.exponentialRampToValueAtTime(42, T(t + .14)); const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + .4)); o.connect(g); g.connect(master); o.start(T(t)); o.stop(T(t + .45)); }
   function noiseHit(t, type, freq, vol, dec, toRev){ const s = ac.createBufferSource(); s.buffer = noise; const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; const g = ac.createGain(); g.gain.setValueAtTime(vol, T(t)); g.gain.exponentialRampToValueAtTime(.001, T(t + dec)); s.connect(f); f.connect(g); g.connect(master); if (toRev) g.connect(rev); s.start(T(t)); s.stop(T(t + dec + .05)); }
   function pluck(t, m, vol){ const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, t, .004, vol, .02, .2); o.connect(g); g.connect(master); g.connect(delay); o.start(T(t)); o.stop(T(t + .3)); }
+  function lead(t, m, dur, vol){
+    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400; const g = ac.createGain(); env(g, t, .03, vol, Math.max(.02, dur - .12), .2);
+    f.connect(g); g.connect(master); g.connect(delay); g.connect(rev);
+    [-8, 8].forEach(det => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = mf(m); o.detune.value = det; o.connect(f); o.start(T(t)); o.stop(T(t + dur + .3)); });
+  }
   function riser(t, dur, vol){
     const s = ac.createBufferSource(); s.buffer = noise; s.loop = true; const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 2;
     f.frequency.setValueAtTime(300, T(t)); f.frequency.exponentialRampToValueAtTime(7000, T(t + dur));
     const g = ac.createGain(); g.gain.setValueAtTime(.0001, T(t)); g.gain.exponentialRampToValueAtTime(vol, T(t + dur)); g.gain.linearRampToValueAtTime(0, T(t + dur + .05));
     s.connect(f); f.connect(g); g.connect(master); g.connect(rev); s.start(T(t)); s.stop(T(t + dur + .1));
   }
-  const chords = { Dm: [38, [50,53,57], [62,65,69,74]], Bb: [34, [46,50,53], [58,62,65,70]], F: [41, [53,57,60], [65,69,72,77]], C: [36, [48,52,55], [60,64,67,72]] };
-  const prog = ["Dm","Bb","F","C","Dm","Bb","F"];
-  pad(0, 2, chords.Dm[1], .05, 700); riser(.2, 1.8, .25);
+  const chords = { Dm: [38, [50,53,57], [62,65,69,74], [[69,2],[72,1],[74,1]]], Bb: [34, [46,50,53], [58,62,65,70], [[74,2],[72,1],[70,1]]],
+                   F: [41, [53,57,60], [65,69,72,77], [[72,3],[69,1]]], C: [36, [48,52,55], [60,64,67,72], [[67,2],[69,1],[72,1]]] };
+  const prog = ["Dm","Bb","F","C","Dm","Bb","F","C","Dm","Bb","F","C"];
+  const G0 = 2.5, HIT = 27;
+  pad(0, G0, chords.Dm[1], .05, 700); riser(.4, G0 - .4, .25);
   prog.forEach((name, b) => {
-    const bt = 2 + b * 2, [root, tri, arp] = chords[name];
-    pad(bt, 2, tri, b < 3 ? .045 : .055, b < 3 ? 900 : 1600);
-    for (let e = 0; e < 8; e++){ const x = bt + e * .25; bass(x, root + (e % 4 === 3 ? 12 : 0), .32); }
+    const bt = G0 + b * 2, [root, tri, arp, mel] = chords[name];
+    pad(bt, 2, tri, b < 2 ? .045 : .055, b < 2 ? 900 : b < 6 ? 1500 : 2000);
+    for (let e = 0; e < 8; e++) bass(bt + e * .25, root + (e % 4 === 3 ? 12 : 0), .32);
     for (let q = 0; q < 4; q++){
       const x = bt + q * .5;
-      if (bt < 5 ? q % 2 === 0 : true) kick(x, .9);
-      if (bt >= 5 && q % 2 === 1) noiseHit(x, "bandpass", 1800, .35, .16, true);
-      if (bt >= 8) noiseHit(x + .25, "highpass", 7000, .12, .05, false);
+      if (b >= 2 || q % 2 === 0) kick(x, .9);
+      if (b >= 2 && q % 2 === 1) noiseHit(x, "bandpass", 1800, .35, .16, true);
+      if (b >= 6) noiseHit(x + .25, "highpass", 7000, .12, .05, false);
+      if (b >= 10) noiseHit(x + .25, "highpass", 5000, .08, .18, false);
     }
-    if (bt >= 8) for (let s16 = 0; s16 < 16; s16++) pluck(bt + s16 * .125, arp[s16 % 4] + (s16 >= 8 && bt >= 12 ? 12 : 0), .05);
+    if (b >= 6) for (let s16 = 0; s16 < 16; s16++) pluck(bt + s16 * .125, arp[s16 % 4] + (b >= 10 && s16 >= 8 ? 12 : 0), .045);
+    if (b >= 6){ let mt = bt; mel.forEach(([m, beats]) => { lead(mt, m, beats * .5, b >= 10 ? .05 : .035); mt += beats * .5; }); }
   });
-  for (let i = 0; i < 24; i++){ const x = 15 + 1.5 * Math.pow(i / 24, .8); noiseHit(x, "bandpass", 2000, .08 + i * .012, .08, false); }
-  riser(14.6, 1.9, .35);
-  // impact + logo chord
-  const hit = 16.5;
-  kick(hit, 1); noiseHit(hit, "highpass", 3500, .45, 2.2, true);
-  const boom = ac.createOscillator(); boom.frequency.setValueAtTime(70, T(hit)); boom.frequency.exponentialRampToValueAtTime(38, T(hit + 2.4));
-  const bg = ac.createGain(); bg.gain.setValueAtTime(.8, T(hit)); bg.gain.exponentialRampToValueAtTime(.001, T(hit + 2.8)); boom.connect(bg); bg.connect(master); boom.start(T(hit)); boom.stop(T(hit + 3));
-  pad(hit, 2.4, [50,54,57,62,66], .06, 2600); bass(hit, 26, .4);
-  [74, 81, 86].forEach((m, i) => { const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, hit + .3 + i * .18, .005, .09, .05, 1.8); o.connect(g); g.connect(master); g.connect(rev); o.start(T(hit + .3 + i * .18)); o.stop(T(hit + 2.6 + i * .18)); });
+  for (let i = 0; i < 24; i++){ const x = HIT - 1.5 + 1.5 * Math.pow(i / 24, .8); noiseHit(x, "bandpass", 2000, .08 + i * .012, .08, false); }
+  riser(HIT - 1.9, 1.9, .35);
+  kick(HIT, 1); noiseHit(HIT, "highpass", 3500, .45, 2.2, true);
+  const boom = ac.createOscillator(); boom.frequency.setValueAtTime(70, T(HIT)); boom.frequency.exponentialRampToValueAtTime(38, T(HIT + 2.4));
+  const bg = ac.createGain(); bg.gain.setValueAtTime(.8, T(HIT)); bg.gain.exponentialRampToValueAtTime(.001, T(HIT + 2.8)); boom.connect(bg); bg.connect(master); boom.start(T(HIT)); boom.stop(T(HIT + 3));
+  pad(HIT, 2.6, [50,54,57,62,66], .06, 2600); bass(HIT, 26, .4);
+  [74, 81, 86].forEach((m, i) => { const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = mf(m); const g = ac.createGain(); env(g, HIT + .3 + i * .18, .005, .09, .05, 1.8); o.connect(g); g.connect(master); g.connect(rev); o.start(T(HIT + .3 + i * .18)); o.stop(T(HIT + 2.6 + i * .18)); });
   master.gain.setValueAtTime(.68, T(TOTAL - .8)); master.gain.linearRampToValueAtTime(0, T(TOTAL));
   return { stop(){ try { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(master.gain.value, ac.currentTime); master.gain.linearRampToValueAtTime(0, ac.currentTime + .3); } catch(e){} } };
 }
@@ -1035,7 +1390,7 @@ window.addEventListener("resize", () => { if (!box.hidden) { fit(); if (!running
 document.getElementById("introSkip").addEventListener("click", finish);
 document.getElementById("introNo").addEventListener("click", finish);
 document.getElementById("introPlay").addEventListener("click", () => play(true));
-window.__intro = { renderAt, buildMusic, TOTAL, open: () => open(true) };
+window.__intro = { renderAt, buildMusic, TOTAL, open: () => open(true), skip: finish };
 let seen = false; try { seen = sessionStorage.getItem("tvcode:intro") === "1"; sessionStorage.setItem("tvcode:intro", "1"); } catch(e){}
 const replay = document.getElementById("introReplay"); if (replay) replay.addEventListener("click", () => open(true));
 if (!seen && !/[?&#]nointro/.test(location.href)) open(false);
