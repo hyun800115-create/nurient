@@ -16,7 +16,8 @@ person = open(os.path.join(here, "person.js"), encoding="utf-8").read()
 
 
 def scene_photos():
-    """Photos dropped into src/photos/ as scene1.jpg ... scene7.jpg replace that scene's drawing."""
+    """Images in src/photos/ (scene1..scene7, plus scene8 = seat belt close-up) replace that scene's drawing.
+    An optional sceneN.json beside an image gives callout points as [x, y] fractions from the top-left."""
     found = {}
     folder = os.path.join(here, "photos")
     if not os.path.isdir(folder):
@@ -30,8 +31,12 @@ def scene_photos():
         im = Image.open(os.path.join(folder, name)).convert("RGB")
         im.thumbnail((720, 1280))
         buf = BytesIO()
-        im.save(buf, "JPEG", quality=82, optimize=True)
-        found[m.group(1)] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+        im.save(buf, "JPEG", quality=84, optimize=True)
+        entry = {"src": "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()}
+        spots = os.path.join(folder, f"scene{m.group(1)}.json")
+        if os.path.exists(spots):
+            entry["a"] = json.load(open(spots, encoding="utf-8"))
+        found[m.group(1)] = entry
     return found
 
 

@@ -28,8 +28,9 @@ const FONT = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Go
 const logo = document.getElementById("introLogoImg");
 /* Optional photos per scene (scene index -> data URI), filled in by build_page.py from src/photos/. */
 const PHOTOS = __PHOTOS__;
-const photos = {};
-Object.keys(PHOTOS).forEach(k => { const im = new Image(); im.src = PHOTOS[k]; photos[k] = im; });
+const photos = {}, spots = {};
+Object.keys(PHOTOS).forEach(k => { const im = new Image(); im.src = PHOTOS[k].src; photos[k] = im; spots[k] = PHOTOS[k].a || {}; });
+const ready = im => !!(im && im.complete && im.naturalWidth);
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const ease = x => 1 - Math.pow(1 - clamp(x), 3);
 const lerp = (a, b, p) => a + (b - a) * p;
@@ -154,7 +155,7 @@ function car(c, x, y, s, o){
 }
 
 /* A round close-up of the driver wearing a seat belt. */
-function beltInset(c, t, at, cx, cy, r, from){
+function beltInset(c, t, at, cx, cy, r, from, img, focus){
   if (t < at) return;
   const p = ease((t - at) / .45);
   c.save(); c.globalAlpha = p;
@@ -163,6 +164,10 @@ function beltInset(c, t, at, cx, cy, r, from){
   c.translate(cx, cy); const k = lerp(.6, 1, p); c.scale(k, k);
   c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, r + 4, 0, 7); c.fill();
   c.save(); c.beginPath(); c.arc(0, 0, r, 0, 7); c.clip();
+  if (ready(img)){
+    const k = 2.15 * r / Math.min(img.naturalWidth, img.naturalHeight), f = focus || [.5, .5];
+    c.drawImage(img, -f[0] * img.naturalWidth * k, -f[1] * img.naturalHeight * k, img.naturalWidth * k, img.naturalHeight * k);
+  } else {
   const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#3c4a5e"); g.addColorStop(1, "#1b2330"); c.fillStyle = g; c.fillRect(-r, -r, 2 * r, 2 * r);
   c.fillStyle = "rgba(170,210,245,.35)"; c.beginPath(); c.moveTo(-r, -r); c.lineTo(r, -r); c.lineTo(r, -18); c.lineTo(-r, -6); c.fill();
   c.fillStyle = "#2a2f38"; rr(c, -48, -30, 22, 100, 9); c.fill(); rr(c, -42, -58, 15, 24, 6); c.fill();
@@ -172,6 +177,7 @@ function beltInset(c, t, at, cx, cy, r, from){
   c.fillStyle = "#c9cfd6"; rr(c, d.hipFront[0] - 6, d.hipFront[1] - 5, 10, 7, 2); c.fill();
   c.fillStyle = "#232a35"; c.fillRect(-r, 40, 2 * r, r);
   c.save(); c.translate(50, -6); c.rotate(-.35); c.strokeStyle = "#101318"; c.lineWidth = 6; c.beginPath(); c.ellipse(0, 0, 7, 26, 0, 0, 7); c.stroke(); c.restore();
+  }
   c.restore();
   c.strokeStyle = ORANGE; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, r + 2, 0, 7); c.stroke();
   c.font = "800 13px " + FONT; const w = c.measureText("안전벨트 착용").width + 24;
@@ -372,7 +378,7 @@ function manhole(c, t){
   callout(c, t, 1.2, 160, 436, 196, 360, "안전펜스·라바콘 설치");
   callout(c, t, 2.0, wm.chest[0], wm.chest[1], 344, 330, "감시인 배치");
 }
-function checklist(c, t, photo){
+function checklist(c, t, photo, A){
   if (!photo){
     c.fillStyle = "#13203f"; c.fillRect(-600, -300, 1560, 1240);
     c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = 1;
@@ -380,7 +386,9 @@ function checklist(c, t, photo){
     c.fillStyle = "rgba(244,119,37,.18)"; c.beginPath(); c.ellipse(96, 470, 80, 16, 0, 0, 7); c.fill();
   } else { c.fillStyle = "rgba(10,16,32,.6)"; rr(c, 180, 70, 176, 470, 12); c.fill(); }
   const w = photo ? null : person(c, 96, 470, 2.5, { view: "front", t, armL: [-.3, -.12], armR: [.3, .12], legL: [-.07, -.02], legR: [.07, .02], shadow: false, gear: { harness: true, alarm: true, gaiters: true } });
-  const items = [["안전모 · 턱끈", w && w.helmet], ["활선경보기", w && w.alarm], ["X반도 (안전대)", w && w.chest], ["안전장갑", w && w.handR], ["각반", w && w.shin], ["안전화", w && w.foot]];
+  const at3 = k => (A ? A(k) : null);
+  const items = w ? [["안전모 · 턱끈", w.helmet], ["활선경보기", w.alarm], ["X반도 (안전대)", w.chest], ["안전장갑", w.handR], ["각반", w.shin], ["안전화", w.foot]]
+    : [["안전모 · 턱끈", at3("helmet")], ["활선경보기", at3("alarm")], ["X반도 (안전대)", at3("chest")], ["안전장갑", at3("hand")], ["각반", at3("shin")], ["안전화", at3("foot")]];
   c.fillStyle = ORANGE; c.font = "700 13px " + FONT; c.fillText("작업 전 확인", 196, 96);
   c.fillStyle = "#fff"; c.font = "800 22px " + FONT; c.fillText("안전장구 착용", 196, 124);
   items.forEach(([label, pt], i) => {
@@ -420,13 +428,29 @@ function logoCard(c, t){
 
 const scenes = [
   { draw: opening },
-  { draw: evCheck, cap: ["출동 준비", "출발 전 차량 점검"], labels: ["타이어 공기압 점검", "충전량 확인", "차량 주변 확인"] },
-  { draw: driving, cap: ["이동 중", "안전운전 · 규정속도 준수"], labels: ["안전벨트 착용", "제한속도 준수", "운전 중 휴대폰 사용 금지"] },
-  { draw: install, cap: ["고객 댁 방문", "인터넷 · B tv 설치"], labels: ["덧신 착용", "셋톱박스 연결", "개통·화면 확인"] },
-  { draw: ladder, cap: ["사다리 작업", "고정 · 결속 · 2인 1조"], labels: ["아웃트리거 설치", "사다리 상단 결속", "2인 1조 · 하부 지지"] },
-  { draw: pole, cap: ["전주 작업", "추락 · 감전 예방"], labels: ["X반도(전신 안전대) 착용", "안전대 전주 체결", "활선경보기 작동 확인"] },
-  { draw: manhole, cap: ["맨홀 작업", "측정 먼저, 진입은 나중에"], labels: ["산소·유해가스 측정", "안전펜스·라바콘 설치", "감시인 배치"] },
-  { draw: checklist, photoDraw: (c, t) => checklist(c, t, true) },
+  { draw: evCheck, cap: ["출동 준비", "출발 전 차량 점검"], labels: ["타이어 공기압 점검", "충전량 확인", "차량 주변 확인"],
+    pc: [[.45, "tire", 30, 70, "타이어 공기압 점검"], [1.25, "screen", -40, -60, "충전량 확인"], [2.05, "roof", 20, -70, "차량 주변 확인"]] },
+  { draw: driving, cap: ["이동 중", "안전운전 · 규정속도 준수"], labels: ["안전벨트 착용", "제한속도 준수", "운전 중 휴대폰 사용 금지"],
+    photoDraw: (c, t, A) => {
+      const s8 = spots[8] || {};
+      beltInset(c, t, .35, 104, 196, 62, A("window") || [150, 300], photos[8], s8.belt);
+      const s = A("sign"); if (s) callout(c, t, .9, s[0], s[1], s[0] + 20, s[1] + 62, "제한속도 50km/h 준수");
+      noPhone(c, t, 1.75, 296, 452);
+    } },
+  { draw: install, cap: ["고객 댁 방문", "인터넷 · B tv 설치"], labels: ["덧신 착용", "셋톱박스 연결", "개통·화면 확인"],
+    pc: [[.5, "covers", -20, 70, "덧신 착용"], [1.1, "stb", -10, 75, "셋톱박스 연결"], [2.1, "tv", 10, -80, "개통·화면 확인"]] },
+  { draw: ladder, cap: ["사다리 작업", "고정 · 결속 · 2인 1조"], labels: ["아웃트리거 설치", "사다리 상단 결속", "2인 1조 · 하부 지지"],
+    pc: [[.35, "outrigger", 40, -14, "아웃트리거 설치"], [1.25, "tie", -40, -40, "사다리 상단 결속"], [2.0, "spotter", -20, -70, "2인 1조 · 하부 지지"]] },
+  { draw: pole, cap: ["전주 작업", "추락 · 감전 예방"], labels: ["X반도(전신 안전대) 착용", "안전대 전주 체결", "활선경보기 작동 확인"],
+    pc: [[.4, "back", -30, 70, "X반도(전신 안전대) 착용"], [1.2, "strap", 40, 50, "안전대 전주 체결"], [2.0, "alarm", 30, -80, "활선경보기 작동 확인"]] },
+  { draw: manhole, cap: ["맨홀 작업", "측정 먼저, 진입은 나중에"], labels: ["산소·유해가스 측정", "안전펜스·라바콘 설치", "감시인 배치"],
+    pc: [[.4, "detector", -20, -80, "산소·유해가스 측정"], [1.2, "barrier", 20, 120, "안전펜스·라바콘 설치"], [2.0, "watchman", 10, -90, "감시인 배치"]],
+    extra: (c, t) => {
+      const read = clamp((t - .7) / .4);
+      if (read > 0){ c.globalAlpha = read; c.fillStyle = "rgba(15,24,48,.9)"; rr(c, 196, 70, 140, 54, 8); c.fill();
+        c.fillStyle = "#53e08a"; c.font = "700 14px " + FONT; c.fillText("O₂  20.9 %  정상", 208, 92); c.fillText("H₂S  0 ppm  정상", 208, 113); c.globalAlpha = 1; }
+    } },
+  { draw: checklist, photoDraw: (c, t, A) => checklist(c, t, true, A) },
   { draw: logoCard }
 ];
 
@@ -436,15 +460,22 @@ function renderAt(cv, T){
   c.setTransform(1,0,0,1,0,0); c.clearRect(0, 0, W, H);
   let i = CUTS.length - 1; while (i > 0 && T < CUTS[i]) i--;
   const local = T - CUTS[i], dur = (CUTS[i+1] || TOTAL) - CUTS[i], scene = scenes[i];
-  const ph = photos[i], usePhoto = !!(ph && ph.complete && ph.naturalWidth);
+  const ph = photos[i], usePhoto = ready(ph);
+  let A = null;
   if (usePhoto){
-    const z = 1 + .08 * clamp(local / dur), k = Math.max(W / ph.naturalWidth, H / ph.naturalHeight) * z;
-    c.drawImage(ph, (W - ph.naturalWidth * k) / 2, (H - ph.naturalHeight * k) / 2, ph.naturalWidth * k, ph.naturalHeight * k);
+    const z = 1 + .06 * clamp(local / dur), iw = ph.naturalWidth, ih = ph.naturalHeight, k = Math.max(W / iw, H / ih) * z;
+    const ox = (W - iw * k) / 2, oy = (H - ih * k) / 2, sx0 = W / 2 - 180 * sc, sy0 = H / 2 - 320 * sc, pts = spots[i] || {};
+    c.drawImage(ph, ox, oy, iw * k, ih * k);
+    A = key => pts[key] ? [(ox + pts[key][0] * iw * k - sx0) / sc, (oy + pts[key][1] * ih * k - sy0) / sc] : null;
   }
   const zoom = usePhoto ? 1 : 1 + .05 * clamp(local / dur);
   c.setTransform(sc * zoom, 0, 0, sc * zoom, W/2 - 180*sc*zoom, H/2 - 320*sc*zoom);
   if (!usePhoto) scene.draw(c, local);
-  else if (scene.photoDraw) scene.photoDraw(c, local);
+  else if (scene.photoDraw) scene.photoDraw(c, local, A);
+  else if (scene.pc){
+    scene.pc.forEach(([at, key, dx, dy, text]) => { const p = A(key); if (p) callout(c, local, at, p[0], p[1], p[0] + dx, p[1] + dy, text); });
+    if (scene.extra) scene.extra(c, local);
+  }
   else if (scene.labels) chips(c, local, scene.labels);
   if (scene.cap) caption(c, local, scene.cap[0], scene.cap[1]);
   for (let k = 1; k < CUTS.length; k++){

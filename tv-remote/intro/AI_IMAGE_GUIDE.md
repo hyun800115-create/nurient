@@ -13,6 +13,8 @@ PC의 로컬 AI(Stable Diffusion, ComfyUI, Fooocus, Forge, Flux 등)로 아래 �
 1. **가장 쉬운 방법:** 만든 이미지를 이 Claude 대화창에 첨부하고, 몇 번 장면인지 알려 주세요.
 2. **저장소에 직접 넣기:** `tv-remote/src/photos/` 폴더에 `scene1.jpg` ~ `scene7.jpg` 이름으로 넣고
    커밋해서 올려 주세요. 앱과 영상을 다시 만들어 드려요.
+   지금 이 폴더에는 Blender로 만든 3D 장면이 들어 있어요. 사진으로 바꿀 때는 같은 번호의
+   `sceneN.json`(안내 문구가 가리킬 위치)도 지워 주세요. 그러면 문구가 목록 형태로 나와요.
 
 ## 공통 설정
 
