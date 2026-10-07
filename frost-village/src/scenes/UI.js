@@ -74,7 +74,7 @@ export class UI extends Phaser.Scene {
 
     this.layout();
     this.scale.on('resize', this.onResize, this);
-    this.events.once('shutdown', () => this.scale.off('resize', this.onResize, this));
+    this.events.once('shutdown', () => { this.ready = false; this.panelOpen = false; this.scale.off('resize', this.onResize, this); });
 
     // ---- input (joystick anywhere that is not a button)
     this.input.on('pointerdown', (p, over) => { if (this.panelOpen || (over && over.length)) return; Input.pointerDown(p); });

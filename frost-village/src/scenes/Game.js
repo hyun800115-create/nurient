@@ -33,7 +33,7 @@ const DECOR_R = {
 
 class UIProxy {
   constructor(game) { this.game = game; }
-  get s() { const s = this.game.scene.getScene('UI'); return s && s.ready ? s : null; }
+  get s() { const s = this.game.scene.getScene('UI'); return s && s.ready && s.sys.isActive() ? s : null; }
   setCoins(v, ms) { const s = this.s; if (s) s.setCoins(v, ms); }
   coinFly(wx, wy, n) { const s = this.s; if (s) s.coinFly(wx, wy, n); }
   toast(msg) { const s = this.s; if (s) s.toast(msg); }
