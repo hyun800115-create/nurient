@@ -89,7 +89,7 @@ try {
   await shot('11_fisherman_working');
 
   // ---------------- second unlock by paying (forest), then everything
-  await page.evaluate(() => window.__FV.give(80));
+  await page.evaluate(() => { const p = window.__FV.scene.progress.pads.zone_forest; window.__FV.give(p ? p.remaining : 0); });
   await walkTo(page, await where('zone_forest'), { tol: 14 });
   await waitFor(page, () => window.__FV.state().done.includes('zone_forest'), 8000).catch(() => {});
   await sleep(1300);
@@ -102,6 +102,13 @@ try {
   await sleep(800);
   s = await st();
   step('unlockAll', Object.values(s.zones).every(Boolean) && s.workers.length >= 5, `workers=${s.workers.length}`);
+  {
+    // test setup: some finished goods on every output pad; the couriers must pick them up
+    await page.evaluate(() => { const gs = window.__FV.scene; for (const st of gs.stationList) for (let i = 0; i < 8; i++) st.outStack.push(st.output, null, gs.effects); });
+    await waitFor(page, () => window.__FV.scene.workers.filter((w) => w.role === 'porter').some((w) => w.stack.count > 0), 25000).catch(() => {});
+    const couriers = await page.evaluate(() => window.__FV.scene.workers.filter((w) => w.role === 'porter').map((w) => w.type + ':' + w.state + ':' + (w.stack.count + w.stack.incoming)));
+    step('couriers pick up finished goods', couriers.length === 5 && couriers.some((c) => /:[1-9]\d*$/.test(c)), couriers.join(' '));
+  }
 
   // chop a tree
   await page.evaluate(() => window.__FV.clearStack());

@@ -739,11 +739,11 @@ def dress_bard(rig, spec):
     ho(rig, 'beret_band', g.bm_ring(0.25, 0.022, seg=40, segr=8), beret, loc=(-0.02, 0.01, 0.205), rot=(-10, -10, 0))
     ho(rig, 'beret_nub', g.bm_ellipsoid(0.025, 0.025, 0.03, 8, 6), beret, loc=(-0.06, 0.03, 0.33))
     # feather tucked in the band, sweeping back
-    fpts = [(0.20, 0.10, 0.26), (0.29, 0.20, 0.33), (0.35, 0.33, 0.37), (0.37, 0.46, 0.38)]
-    ho(rig, 'feather', g.bm_tube_path(catmull3(fpts, 14), lambda t: 0.012 + 0.032 * math.sin(PI * t) ** 0.8,
+    fpts = [(0.20, 0.10, 0.26), (0.27, 0.17, 0.31), (0.31, 0.26, 0.33), (0.32, 0.35, 0.32)]
+    ho(rig, 'feather', g.bm_tube_path(catmull3(fpts, 14), lambda t: 0.012 + 0.030 * math.sin(PI * t) ** 0.8,
                                       segr=10, side_ref=(1, 0, 0), flat=0.30), M('feather', '#F4F7FB', rough=0.7))
     ho(rig, 'feather_tip', g.bm_ellipsoid(0.012, 0.03, 0.03, 8, 6), M('feather_tip', '#2E8A8A', rough=0.7),
-       loc=(0.37, 0.47, 0.38))
+       loc=(0.32, 0.36, 0.32))
     # short cape + belt + gold trim
     cape = M('cape', '#9E2A3A', rough=0.85)
     g.mesh_obj('cape', cb.vest_lathe([(0.275, -0.17), (0.262, -0.06), (0.242, 0.04), (0.19, 0.10), (0.13, 0.13)],

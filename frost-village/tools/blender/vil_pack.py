@@ -5,7 +5,7 @@ Run AFTER vil_render.py (plain python3 with numpy + Pillow + imagequant, no Blen
     python3 tools/blender/vil_pack.py                     # everything in the cache
     python3 tools/blender/vil_pack.py --chars npc_bard    # one key (manifest keeps the others)
     python3 tools/blender/vil_pack.py --no-previews
-    python3 tools/blender/vil_pack.py --colors 256        # palette size (default 256)
+    python3 tools/blender/vil_pack.py --colors 256        # palette size (default 192: keeps the folder < 10 MB)
 
 What it does
   1. post-process each raw 128x128 frame with the SAME soft 1px ink outline as the
@@ -129,6 +129,7 @@ def manifest_entry(key, meta, processed, has_portrait):
     if 'seatOffset' in meta:
         ent['seatOffset'] = meta['seatOffset']
         ent['seatHeightPx'] = meta['seatHeightPx']
+        ent['headTopSit'] = head_top(processed['sit_S_0'])
     return ent
 
 
@@ -187,7 +188,7 @@ def contact(key, meta, processed, path):
     quantize_save(img.convert('RGBA'), path, 256, dither=0.3)
 
 
-def gif(key, meta, processed, anim, path, z=2.0):
+def gif(key, meta, processed, anim, path, z=1.5):
     info = meta['anims'][anim]
     dirs = info['dirs'][:3]
     cw = 80
@@ -212,7 +213,7 @@ def gif(key, meta, processed, anim, path, z=2.0):
 
 def main():
     args = sys.argv[1:]
-    cache, chars, previews, colors = DEFAULT_CACHE, None, True, 256
+    cache, chars, previews, colors = DEFAULT_CACHE, None, True, 192
     i = 0
     while i < len(args):
         a = args[i]

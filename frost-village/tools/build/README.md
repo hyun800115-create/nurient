@@ -125,8 +125,19 @@ Claude에게 “`dist/artifact_inline/index.html`로 같은 아티팩트를 업�
 
 ### 아티팩트에서 알아 둘 점
 
-- 진행 상황은 보는 사람의 브라우저에만 저장됩니다. 시크릿 창이나 미리보기에서는 저장되지 않을 수 있지만 게임은 그대로 됩니다.
+- 진행 상황은 보는 사람의 브라우저에만 저장됩니다. 시크릿 창이나 미리보기에서는 저장되지 않을 수 있지만 게임은 그대로 됩니다
+  (이때는 게임 안에 “이 환경에서는 진행 상황이 저장되지 않아요”라고 한 번 알려 줍니다).
 - 주소 뒤에 `?debug=1`을 붙이는 디버그 모드는 아티팩트에서는 쓸 수 없습니다.
+- 묶음에는 게임이 실제로 읽는 그림 폴더만 들어갑니다 (`src/core/Assets.js`의 `FRAGMENTS` 목록).
+  아직 게임에 연결하지 않은 새 폴더(예: `assets/villagers/`)는 빌드할 때 “not loaded by the game yet”으로 빠집니다.
+
+### 다른 웹사이트에 iframe으로 넣을 때
+
+- `<iframe src=".../frost-village/" sandbox="allow-scripts allow-same-origin">` 처럼 **allow-same-origin**을 꼭 넣으세요.
+  `allow-scripts`만 있으면 게임 파일을 읽지 못해서 “게임을 불러오지 못했어요” 안내가 뜹니다
+  (서버가 `Access-Control-Allow-Origin: *` 헤더를 보내면 되기는 하지만, 그때도 저장은 되지 않습니다).
+- sandbox 속성이 없거나 itch.io 같은 사이트에 올릴 때는 그대로 잘 됩니다.
+- 화살표 키·스페이스바를 눌러도 바깥 페이지가 스크롤되지 않습니다.
 
 ---
 

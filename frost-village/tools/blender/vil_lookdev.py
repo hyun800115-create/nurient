@@ -32,7 +32,7 @@ INK = (43, 47, 58, 255)
 
 def main():
     args = sys.argv[1:]
-    keys = ['npc_kid_prankster', 'npc_grandpa', 'npc_fashion']
+    keys = ['npc_kid_prankster', 'npc_kid_girl', 'npc_uncle', 'npc_grandpa', 'npc_fashion']
     out = os.path.join(GAME, 'docs', 'previews', 'vil_expressions.png')
     faces = FACES
     i = 0
@@ -49,7 +49,7 @@ def main():
         else:
             i += 1
     cw, zh, gh = 120, 120, 92
-    rowh = zh + gh + gh * 2 // 2 * 2 + 8
+    rowh = zh + gh + 92 + 8
     lab = 18
     img = Image.new('RGBA', (cw * len(faces), lab + rowh * len(keys)), BG)
     d = ImageDraw.Draw(img)
@@ -71,12 +71,21 @@ def main():
                 g = ink_outline(Image.open(gp))
                 crop = g.crop((34, 14, 94, 106))              # 60x92 around the body
                 img.alpha_composite(crop, (x0 + k * 60, y0 + zh))
-                head = g.crop((44, 16, 84, 62)).resize((80, 92), Image.NEAREST)
                 if k == 0:
-                    img.alpha_composite(head, (x0 + 20, y0 + zh + gh))
+                    bb = g.getchannel('A').getbbox()
+                    cx = (bb[0] + bb[2]) // 2
+                    top = bb[1] + {'npc_fashion': 8, 'npc_uncle': 9}.get(key, 3)
+                    head = Image.new('RGBA', (40, 46), BG)
+                    head.alpha_composite(g.crop((cx - 20, top, cx + 20, top + 46)))
+                    img.alpha_composite(head.resize((80, 92), Image.NEAREST), (x0 + 20, y0 + zh + gh))
         d.line([0, y0 + rowh - 4, img.width, y0 + rowh - 4], fill=(170, 186, 210, 255))
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    img.convert('RGB').save(out, optimize=True)
+    try:
+        import imagequant
+        imagequant.quantize_pil_image(img, dithering_level=0.4, max_quality=100, min_quality=0,
+                                      max_colors=256).save(out, optimize=True)
+    except ImportError:
+        img.convert('RGB').save(out, optimize=True)
     print('wrote', out, img.size)
 
 

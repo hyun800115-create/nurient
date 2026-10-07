@@ -184,7 +184,8 @@ async function testMode(browser, mode) {
     const assets = await ev(() => {
       const g = window.__FV.game;
       const tex = ['char_player', 'props_buildings', 'ui_title_bg', 'ground_snow', 'fx_particles'].filter((k) => !g.textures.exists(k));
-      const aud = ['bgm_village', 'bgm_title', 'sfx_coin'].filter((k) => !g.cache.audio.exists(k));
+      // (village music + ambience are loaded after the title, by the Game scene)
+      const aud = ['bgm_title', 'sfx_coin'].filter((k) => !g.cache.audio.exists(k));
       return { missingTex: tex, missingAudio: aud, renderer: g.renderer.type === 2 ? 'WebGL' : 'Canvas', loadingGone: !document.getElementById('fv-loading'), errBox: (document.getElementById('fv-error') || {}).textContent || '' };
     });
     step('title screen + assets loaded', !assets.missingTex.length && !assets.missingAudio.length && assets.loadingGone && !assets.errBox,
@@ -196,6 +197,10 @@ async function testMode(browser, mode) {
     let s = await st();
     const audio = await ev(() => { const sm = window.__FV.game.sound; return { locked: sm.locked, ctx: sm.context ? sm.context.state : 'html5', music: !!(sm.sounds || []).find((x) => x.key === 'bgm_village' && x.isPlaying) }; });
     step('tap to start -> village', s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue} taps=${taps}`);
+    {
+      const ok = await waitFor(() => ['bgm_village', 'amb_wind', 'amb_sea', 'amb_fire'].every((k) => window.__FV.game.cache.audio.exists(k)), 30000).then(() => true).catch(() => false);
+      step('village music + ambience loaded after the title', ok);
+    }
     step('audio unlocked after tap', !audio.locked && (audio.ctx === 'running' || audio.ctx === 'html5'), JSON.stringify(audio));
     const warned = await ev(() => window.__FV.warnings());
     step('no placeholder art', warned.length === 0, warned.slice(0, 6).join(', '));

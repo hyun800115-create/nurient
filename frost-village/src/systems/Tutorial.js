@@ -185,9 +185,12 @@ export class Tutorial {
     if (p.room <= 0) return false;
     // coins waiting
     for (const c of this.cashes()) if (c.value >= 10 && !c.pad.contains(p.x, p.y)) { set(c.x, c.y, 40, 'obj_cash'); return true; }
-    // the station with the most finished products
+    // the station with the most finished products (stations with a courier empty themselves)
     let best = null;
-    for (const st of gs.stationList) if (st.enabled && st.outStack.count >= 3 && (!best || st.outStack.count > best.outStack.count)) best = st;
+    for (const st of gs.stationList) {
+      if (!st.enabled || st.outStack.count < 3 || gs.workers.some((w) => w.role === 'porter' && w.station === st)) continue;
+      if (!best || st.outStack.count > best.outStack.count) best = st;
+    }
     if (best && !best.outPad.contains(p.x, p.y)) { set(best.outPad.x, best.outPad.y, 80, goal ? goal.key : TAKE_KEY[best.id], goal ? goal.text : null); return true; }
     return false;
   }

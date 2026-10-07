@@ -20,7 +20,7 @@ export class Title extends Phaser.Scene {
     // the chief stands on the snow field in front of the village, the crew around him on the same ground
     const ground = H * 0.765;
     const crew = ['fisherman', 'lumberjack', 'farmer', 'miner', 'hunter'];
-    const slots = [[-262, -16, 1.26], [-150, -44, 1.16], [150, -44, 1.16], [262, -16, 1.26], [178, 80, 1.34]];
+    const slots = [[-228, -14, 1.24], [-130, -42, 1.14], [130, -42, 1.14], [228, -14, 1.24], [160, 82, 1.32]];
     const order = [0, 1, 2, 3, 4];
     for (const i of order) {
       const k = crew[i], [dx, dy, sc] = slots[i];

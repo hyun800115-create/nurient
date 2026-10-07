@@ -145,7 +145,7 @@ def write_meta(key, rig, anims, outdir):
             p = rig.j['hand_R'].matrix_world @ Vector((0.0, -0.045, -0.02))
             ip[d] = px_off(p)
         info['impactPoint'] = ip
-    if 'sit' in anims:
+    if 'sit' in anims and key not in vil_build.PET_KEYS:          # pets sit on the ground (plain anchor)
         meta['seatOffset'] = [0, 0]
         meta['seatHeightPx'] = round(va.SEAT_H * bc.VERTICAL_SCALE * bc.PPU)
     with open(os.path.join(outdir, 'meta.json'), 'w') as f:

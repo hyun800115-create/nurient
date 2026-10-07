@@ -294,6 +294,14 @@ function writePacks() {
   return packs;
 }
 
+/** asset folders the game loads: the FRAGMENTS list in src/core/Assets.js */
+function gameFragments() {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
+  const m = src.match(/export\s+const\s+FRAGMENTS\s*=\s*\[([^\]]*)\]/);
+  const list = m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
+  return list.length ? list : ['characters', 'props', 'fx', 'ui', 'ground', 'audio'];
+}
+
 // ------------------------------------------------------------------ build
 async function main() {
   const t0 = Date.now();
@@ -333,7 +341,15 @@ async function main() {
   };
   copy(path.join(ROOT, 'lib', 'phaser.min.js'));
   if (fs.existsSync(path.join(ROOT, 'lib', 'PHASER_LICENSE.md'))) copy(path.join(ROOT, 'lib', 'PHASER_LICENSE.md'));
-  for (const f of walk(path.join(ROOT, 'assets'))) copy(f);
+  // only the asset folders the game actually loads (FRAGMENTS in src/core/Assets.js): folders that are
+  // still being made (new characters, emotes, ...) stay out of the package until the game uses them
+  const frags = gameFragments();
+  for (const frag of frags) {
+    const dir = path.join(ROOT, 'assets', frag);
+    if (fs.existsSync(dir)) for (const f of walk(dir)) copy(f);
+  }
+  const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name)).map((e) => 'assets/' + e.name + '/');
+  if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
 
   // 2b) optional WebP re-encode of the copy
   if (WEBP) {
@@ -370,7 +386,7 @@ async function main() {
   // 5) checks: every manifest path exists, nothing absolute, no leftovers
   const problems = [];
   const referenced = new Set();
-  for (const frag of ['characters', 'props', 'fx', 'ui', 'ground', 'audio']) {
+  for (const frag of gameFragments()) {
     const mp = path.join(OUT, 'assets', frag, 'manifest.json');
     if (!fs.existsSync(mp)) { problems.push('missing assets/' + frag + '/manifest.json'); continue; }
     referenced.add('assets/' + frag + '/manifest.json');

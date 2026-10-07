@@ -141,7 +141,7 @@ def main():
             for d in c['dirs']:
                 if d not in cp or len(cp[d]) != 3:
                     errors.append(f'{key}: carryPoint[{d}] missing')
-        if 'sit' in c['anims'] and 'seatOffset' not in c:
+        if 'sit' in c['anims'] and c['kind'] == 'villager' and 'seatOffset' not in c:
             errors.append(f'{key}: sit without seatOffset')
         sp = man.get('sprites', {}).get(c.get('portrait'))
         if not sp or sp.get('image') not in images:
