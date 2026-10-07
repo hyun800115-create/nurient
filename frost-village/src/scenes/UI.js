@@ -9,6 +9,7 @@ import { FONT, t, setLang, getLang, fmt } from '../data/strings.js';
 import { panel } from '../core/Panel.js';
 import { View } from '../core/View.js';
 import { BALANCE } from '../data/balance.js';
+import { VERSION, BUILD_DATE } from '../data/version.js';
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -404,7 +405,9 @@ export class UI extends Phaser.Scene {
         this.onLanguage();
         this.buildPanelContent(false);
       });
-      add(this.makeButton(cx, cy + 170, 380, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 28));
+      add(this.makeButton(cx - 130, cy + 170, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
+      add(this.makeButton(cx + 130, cy + 170, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
+      add(this.add.text(cx, cy - 214, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
       add(this.makeButton(cx, cy + 262, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
@@ -413,6 +416,12 @@ export class UI extends Phaser.Scene {
     }
     const close = add(this.makeIconButton(cx + 250, cy - 290, 'ui_icon_close', 70, () => this.closeSettings()));
     void close;
+  }
+
+  /** save, then reload the page (phones can't pull-to-refresh inside the game) */
+  reloadGame() {
+    try { this.gs.save(true); } catch (e) { /* keep going */ }
+    try { window.location.reload(); } catch (e) { /* ignore */ }
   }
 
   /** after a resize / rotation: rebuild the open settings panel around the new centre */
