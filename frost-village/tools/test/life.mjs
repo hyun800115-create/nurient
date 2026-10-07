@@ -24,7 +24,9 @@ const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: vp[0], height: vp[1] } });
 const ev = (fn, a) => page.evaluate(fn, a);
-const shot = async (n) => { await render(page, 3); await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 84 }); };
+// one drawn frame first (cameras compute their view while drawing: resident LOD and the x-ray of
+// trees use it), a moment of game time, then the frames for the picture
+const shot = async (n) => { await render(page, 1); await advance(page, 0.35); await render(page, 3); await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 84 }); };
 const cam = (x, y, z = 1.25) => ev(([x, y, z]) => window.__FV.camera(x, y, z), [x, y, z]);
 const life = () => ev(() => window.__FV.life());
 const near = async (x, y) => { await ev(([x, y]) => window.__FV.teleport(x, y), [x, y]); };

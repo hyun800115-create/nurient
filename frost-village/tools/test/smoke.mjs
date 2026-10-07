@@ -187,12 +187,25 @@ try {
   {
     let caught = false;
     await page.evaluate(() => window.__FV.clearStack());
-    for (let tries = 0; tries < 6 && !caught; tries++) {
-      const a = await page.evaluate(() => window.__FV.where('animal'));
-      if (!a) { await sleep(1500); continue; }
-      await page.evaluate(([x, y]) => window.__FV.teleport(x, y), [a.x, a.y]);
-      caught = await waitFor(page, () => window.__FV.state().player.stack.includes('item_meat_raw'), 9000).then(() => true).catch(() => false);
+    // (the chief does not hunt while the smokehouse is full both ways: make room first)
+    // (and the hunter worker may have caught them all: bring them back)
+    await page.evaluate(() => { const gs = window.__FV.scene, st = gs.stations.smokehouse; st.inStack.clear(gs.effects); st.outStack.clear(gs.effects); for (const a of gs.animals) if (a.dead) a.respawn(); });
+    // chase the nearest animal with the joystick (they shy away), stop next to it so the chief swings
+    { const a = await page.evaluate(() => window.__FV.where('animal')); if (a) await page.evaluate(([x, y]) => window.__FV.teleport(x - 110, y + 40), [a.x, a.y]); }
+    for (let k = 0; k < 700 && !caught; k++) {
+      caught = await page.evaluate(() => {
+        if (window.__FV.state().player.stack.includes('item_meat_raw')) return true;
+        const a = window.__FV.where('animal'), p = window.__FV.scene.player;
+        if (!a) window.__FV.setInput(0, 0);
+        else {
+          const dx = a.x - p.x, dy = a.y - p.y, d = Math.hypot(dx, dy * 2), l = Math.hypot(dx, dy) || 1;
+          if (d < 46) window.__FV.setInput(0, 0); else window.__FV.setInput(dx / l, dy / l);
+        }
+        window.__step.run(0.1);
+        return false;
+      });
     }
+    await page.evaluate(() => window.__FV.setInput(0, 0));
     step('catching an animal gives meat', caught);
   }
   await shot('16_hunt');

@@ -265,7 +265,7 @@ export const WORLD = {
     //   acts: sit(의자에 앉기) warm(불 쬐기) chat(수다) read(게시판) play(눈싸움·술래잡기·눈사람) wander(산책) concert(공연)
     areas: {
       // stage: 음유시인이 연주하는 자리 (보면대가 없는 모닥불)
-      beach_w:   { at: [540, 615], r: 130, acts: ['sit', 'warm', 'chat'], fire: [520, 590], stage: [604, 642] },
+      beach_w:   { at: [540, 615], r: 130, acts: ['sit', 'warm', 'chat'], fire: [520, 590], stage: [432, 506] },
       notice:    { at: [520, 870], r: 120, acts: ['read', 'chat'] },
       playground:{ at: [1440, 560], r: 150, acts: ['play', 'chat', 'wander'] },
       plaza_s:   { at: [990, 1210], r: 110, acts: ['chat', 'wander'] },

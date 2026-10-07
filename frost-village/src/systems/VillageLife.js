@@ -665,7 +665,12 @@ export class VillageLife {
       if (d < bd) { bd = d; best = r; }
     }
     if (!best) return false;
-    const r = best, p = this.gs.player;
+    return this.react(best);
+  }
+
+  /** a tapped resident / pet reacts (wave + name + line; pets: happy + heart) */
+  react(r) {
+    const p = this.gs.player;
     if (r.isPet) {
       r.faceTo(p.x, p.y);
       if (!r.seat) r.act('happy', 1.6);
@@ -703,7 +708,7 @@ export class VillageLife {
     const force = this.force;     // test hook: also people who are walking / sitting / chatting / off-screen
     for (const r of this.residents) {
       if (r.isPet || (r.job && r.job.kind === 'arrive')) continue;
-      if (r.event && !(force && r.event.kind === 'chat')) continue;
+      if (r.event && !(force && r.event.kind !== 'party')) continue;
       if (!force && (r.seat || r.state === 'move')) continue;
       if (filter && !filter(r)) continue;
       out.push(r);
@@ -882,7 +887,17 @@ export class VillageLife {
         if (bard && bard.event) bard.event.drop(bard);
         return this.tryConcert();
       }
-      case 'snowman': { if (this.snowStage >= 3) this.snowKeepT = 0; this.trySnowman(); return this.events.some((e) => e instanceof SnowmanEvent); }
+      case 'snowman': {
+        // build one from scratch now (whatever was going on at the snowman site)
+        const sm = this.props.snowman;
+        if (!sm || !sm.shown) return false;
+        for (let i = this.events.length - 1; i >= 0; i--) if (this.events[i] instanceof SnowmanEvent) { this.events[i].end(); this.events.splice(i, 1); }
+        if (this.snowStage > 0) this.setSnowStage(0, true);
+        const kids = this.candidates((r) => r.role === 'kid').slice(0, 2);
+        if (!kids.length) return false;
+        this.start(new SnowmanEvent(this, kids, sm, false));
+        return { key: kids[0].key, x: Math.round(sm.x), y: Math.round(sm.y) };
+      }
       case 'cheer': this.cheer(); return true;
       case 'party': this.party(); return true;
       case 'wave': this.timers.wave = 0; for (const r of this.residents) r.waveCd = 0; return true;
@@ -900,8 +915,20 @@ export class VillageLife {
         this.goSit(who, who.job, seat);
         return who.key;
       }
-      case 'tap': { const r = this.residents.find((x) => !x.lod && !x.isPet); return !!(r && this.tap(r.x, r.y - 30)); }
-      case 'tapPet': { const r = this.residents.find((x) => !x.lod && x.isPet); return !!(r && this.tap(r.x, r.y - 15)); }
+      case 'tap': case 'tapPet': {
+        // the (pet / person) nearest the middle of the screen
+        const pet = name === 'tapPet';
+        let r = null, bd = 1e12;
+        for (const x of this.residents) {
+          if (!!x.isPet !== pet || (x.job && x.job.kind === 'arrive')) continue;
+          const d = gdist2(x.x, x.y, this.camX, this.camY) + (x.lod ? 1e9 : 0);
+          if (d < bd) { bd = d; r = x; }
+        }
+        if (!r) return false;
+        const hit = !r.lod && this.tap(r.x, r.y + r.headTop * 0.4);
+        if (!hit) this.react(r);
+        return { key: r.key, x: Math.round(r.x), y: Math.round(r.y) };
+      }
       case 'moveIn': {
         let k = Assets.charKeys('villager').find((x) => this.moved.indexOf(x) < 0 && !NOT_RESIDENT.test(x) && Assets.charReady(x) && !this.gs.keysInUse.has(x));
         if (!k) {
@@ -940,6 +967,13 @@ class LifeEvent {
   }
   drop(r) { const i = this.members.indexOf(r); if (i >= 0) this.members.splice(i, 1); if (r.event === this) r.event = null; }
   alive(r) { return r && r.alive && r.event === this; }
+  /** members still taking part (one reused array: no allocation per frame) */
+  live() {
+    const out = this._live || (this._live = []);
+    out.length = 0;
+    for (const r of this.members) if (this.alive(r)) out.push(r);
+    return out;
+  }
   end() { for (const r of this.members) { if (r.event === this) { r.event = null; if (r.alive && r.state === 'move') r.stand(); } } this.members.length = 0; }
 }
 
@@ -991,7 +1025,7 @@ class ChatEvent extends LifeEvent {
   }
   update(dt) {
     this.t += dt;
-    const m = this.members.filter((r) => this.alive(r));
+    const m = this.live();
     if (m.length < 2 || this.t > 30) return false;
     if (this.phase === 'gather') {
       if (m.every((r) => r.arrived) || this.t > 6) {
@@ -1167,7 +1201,7 @@ class TagEvent extends LifeEvent {
   }
   update(dt) {
     this.t += dt;
-    const m = this.members.filter((r) => this.alive(r));
+    const m = this.live();
     if (m.length < 2 || !this.alive(this.it) || this.t > this.len) {
       for (const r of m) { r.stand(); if (!r.isPet && Math.random() < 0.5) r.act('laugh', 1.4); }
       return false;
@@ -1299,13 +1333,17 @@ class ConcertEvent extends LifeEvent {
         if (s) { s.by = r; r.goTo(s.standX, s.standY, { tol: 8, direct: true }); const poll = () => { if (!this.alive(r)) { if (s.by === r && !r.seat) s.by = null; return; } if (!r.arrived) { this.gs.time.delayedCall(200, poll); return; } r.sitOn(s, 'sit'); }; this.gs.time.delayedCall(200, poll); continue; }
       }
       // a spot in a loose ring in front of the fire
+      // (not in front of the bard, not on another dancer's spot)
+      const taken = this.spots || (this.spots = []);
       let p = null;
-      for (let k = 0; k < 10; k++) {
+      for (let k = 0; k < 14; k++) {
         const ang = Math.PI * (0.1 + Math.random() * 0.8);
         const q = { x: a.fire.x + Math.cos(ang) * (100 + Math.random() * 70), y: a.fire.y + 30 + Math.sin(ang) * 70 };
         this.gs.collision.resolve(q, 12);
-        if (!life.crowded(q.x, q.y, r, 38) || k === 9) { p = q; break; }
+        const free = gdist(q.x, q.y, this.spot.x, this.spot.y) > 85 && !taken.some((t) => gdist(q.x, q.y, t.x, t.y) < 46) && !life.crowded(q.x, q.y, r, 38);
+        if (free || k === 13) { p = q; break; }
       }
+      taken.push(p);
       r.goTo(p.x, p.y, { tol: 10, direct: gdist(r.x, r.y, p.x, p.y) < 320 });
     }
   }
@@ -1333,7 +1371,7 @@ class SnowmanEvent extends LifeEvent {
   }
   update(dt) {
     this.t += dt;
-    const m = this.members.filter((r) => this.alive(r));
+    const m = this.live();
     if (!m.length || this.t > 60) return false;
     const life = this.life, sm = this.sm;
     if (this.phase === 'go') {

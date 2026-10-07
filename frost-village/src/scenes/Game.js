@@ -260,7 +260,9 @@ export class Game extends Phaser.Scene {
     if (opts.scale) { img.setScale(opts.scale); img.__bs = opts.scale; }
     const r = opts.r !== undefined ? opts.r : DECOR_R[key];
     let ob = null;
-    if (r) ob = this.collision.add(x, y, r * (opts.scale || 1), key);
+    // a flipped picture is mirrored inside its frame box: its foot (and so its collider) moves too
+    const fx = opts.flip ? x + (img.frame.realWidth - 2 * img.displayOriginX) * (opts.scale || 1) : x;
+    if (r) ob = this.collision.add(fx, y, r * (opts.scale || 1), key);
     img.__ob = ob;
     if (opts.zone) this.addToZone(opts.zone, img);
     this.statics.push(img);
@@ -272,7 +274,8 @@ export class Game extends Phaser.Scene {
   addOccluder(img) {
     const h = img.displayHeight * img.originY;
     const w = img.displayWidth;
-    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.4, top: h * 0.95, a: 1, big: w > 250 });
+    // x / hw: the picture's box (a quick pre-test; the alpha mask decides)
+    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w, y: img.y, hw: w * 0.5, top: h * 0.95, a: 1, big: w > 250 });
   }
 
   buildFences() {

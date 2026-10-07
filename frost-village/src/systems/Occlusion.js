@@ -51,7 +51,11 @@ export class Occlusion {
     const m = this.mask(img);
     if (!m) return true;
     const sx = img.scaleX || 1, sy = img.scaleY || 1;
-    const lx = img.displayOriginX + ((img.flipX ? -1 : 1) * (x - img.x)) / sx - m.ox;
+    // untrimmed frame coordinates; Phaser mirrors a flipped picture inside its own frame box
+    // (around the box centre, not around the origin)
+    let lx = img.displayOriginX + (x - img.x) / sx;
+    if (img.flipX) lx = img.frame.realWidth - lx;
+    lx -= m.ox;
     const ly = img.displayOriginY + (y - img.y) / sy - m.oy;
     if (lx < 0 || ly < 0 || lx >= m.cw || ly >= m.ch) return false;
     return m.data[((ly / MASK_STEP) | 0) * m.w + ((lx / MASK_STEP) | 0)] === 1;
