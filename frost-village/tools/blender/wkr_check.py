@@ -24,6 +24,7 @@ sys.path.insert(0, HERE)
 import wkr_build  # noqa: E402
 
 BUDGET = 4 * 1000 * 1000
+RAW_CACHE = '/tmp/fv_cache/workers'          # used (when present) to tell outline contact from clipping
 
 
 def main():
@@ -85,6 +86,7 @@ def main():
             errors.append(f'{key}: png {w}x{h} != json meta')
         if w > 2048 or h > 4096:
             warns.append(f'{key}: atlas {w}x{h} is large for mobile GPUs')
+        sheet_a = None
         fw, fh = c['frameSize']
         for an, info in c['anims'].items():
             if 'impactFrame' in info and not (0 <= info['impactFrame'] < info['frames']):
@@ -101,7 +103,34 @@ def main():
                         errors.append(f'{key}: {name} sourceSize != frameSize')
                     ss = fr['spriteSourceSize']
                     if ss['x'] <= 0 or ss['y'] <= 0 or ss['x'] + ss['w'] >= fw or ss['y'] + ss['h'] >= fh:
-                        warns.append(f'{key}: {name} touches the frame edge {ss}')
+                        # the trim box carries 1px padding: only warn when opaque pixels really sit
+                        # on the 128x128 frame border
+                        if sheet_a is None:
+                            sheet_a = Image.open(png).convert('RGBA').getchannel('A')
+                        f2 = fr['frame']
+                        crop = sheet_a.crop((f2['x'], f2['y'], f2['x'] + f2['w'], f2['y'] + f2['h']))
+                        edges = []
+                        if ss['y'] <= 0:
+                            edges.append(crop.crop((0, 0, f2['w'], 1)))
+                        if ss['x'] <= 0:
+                            edges.append(crop.crop((0, 0, 1, f2['h'])))
+                        if ss['y'] + ss['h'] >= fh:
+                            edges.append(crop.crop((0, f2['h'] - 1, f2['w'], f2['h'])))
+                        if ss['x'] + ss['w'] >= fw:
+                            edges.append(crop.crop((f2['w'] - 1, 0, f2['w'], f2['h'])))
+                        if any(e.getextrema()[1] > 0 for e in edges):
+                            raw = os.path.join(RAW_CACHE, key, name + '.png')
+                            if os.path.exists(raw):
+                                # the atlas frame carries the 1px ink outline: real clipping only if the
+                                # raw render itself reaches the border
+                                ra = Image.open(raw).getchannel('A')
+                                w0, h0 = ra.size
+                                border = [ra.crop((0, 0, w0, 1)), ra.crop((0, h0 - 1, w0, h0)),
+                                          ra.crop((0, 0, 1, h0)), ra.crop((w0 - 1, 0, w0, h0))]
+                                if any(b.getextrema()[1] > 0 for b in border):
+                                    warns.append(f'{key}: {name} raw render reaches the frame edge (clipped)')
+                            else:
+                                warns.append(f'{key}: {name} has opaque pixels on the frame edge {ss}')
         if 'portrait' in c:
             sp = man.get('sprites', {}).get(c['portrait'])
             if not sp or sp.get('image') not in images:

@@ -3,7 +3,7 @@ town_pack.py - turn the raw town renders (town_render.py cache) into assets/town
 <= 2048 px) + manifest.json, plus the previews docs/previews/town_*.
 
 No Blender needed: python3 with numpy + Pillow (+ `imagequant` for palette PNGs).
-    python3 tools/blender/town_pack.py [--cache DIR] [--quantize auto|on|off] [--no-previews] [--allow-partial]
+    python3 tools/blender/town_pack.py [--cache DIR] [--quantize on|auto|off] [--no-previews] [--allow-partial]
                                        [--out DIR] [--prev DIR]        (dry runs: write somewhere else)
 
 Guard + merge (modelled on bld_pack): the packer MERGES into the existing assets/town/manifest.json - unknown
@@ -19,8 +19,9 @@ Steps
      + prop_pack.border_fade); rail tiles additionally get the seamless partition-of-unity cut (town_rails doc);
      train frames get the characters' 1 px ink outline (char_pack.ink_outline); train shadow frames the shadow post
   3. atlases: town_civic, town_shops, town_homes, town_park, town_street, town_rails (split _2, _3 .. at 2048, a
-     build's frames always stay on one sheet) + one atlas per train car; palettised with libimagequant when the RGBA
-     payload would exceed 90 % of the 8 MB budget (--quantize auto)
+     build's frames always stay on one sheet) + one atlas per train car; palettised with libimagequant (256 colours,
+     dither 0.6, like the characters / buildings) by default - --quantize off keeps RGBA (~2.5x bigger), --quantize
+     auto only palettises above 90 % of the 8 MB budget
   4. assets/town/manifest.json: sprites (buildings, props, rail tiles) + characters (train cars, kind "train")
   5. previews: docs/previews/town_all.png, town_scene.png, town_anims.gif, town_train.gif
 """
@@ -369,7 +370,7 @@ def preview_all(builds, cars, frames, cframes, out):
         if c in cars:
             for d in ('SE', 'E', 'NE'):
                 ents.append(('%s move_%s' % (c, d), cframes[(c, 'move_%s_1' % d)]))
-    pp.shelf_preview(ents, out, max_w=2400, title='솔방울 마을 (neighbour town) - assets/town at 1x, PPU 64: buildings, '
+    pp.shelf_preview(ents, out, max_w=2400, title='Solbangul town (neighbour town) - assets/town at 1x, PPU 64: buildings, '
                                                   'street props, rail tiles, snow train (idle + one anim frame)')
 
 
@@ -552,7 +553,7 @@ def preview_scene(builds, cars, frames, cframes, out):
                                                  ('npc_skater', 0.6, 6.0, 'walk_NE_2', False),
                                                  ('npc_blue', -12.5, -7.6, 'walk_SE_0', False))):
         person(key, anim, x, y, flip=flip)
-    sc.finish(out, '솔방울 마을 mock block at 1x (PPU 64): assets/town buildings + rails + train, roads = '
+    sc.finish(out, 'Solbangul town mock block at 1x (PPU 64): assets/town buildings + rails + train, roads = '
                    'assets/ui2/ground_road, people = assets/villagers + villagers2 for scale')
 
 
@@ -597,41 +598,44 @@ def preview_anims_gif(builds, frames, out, bg=(236, 241, 248)):
 
 
 def preview_train_gif(builds, cars, frames, cframes, out):
-    """Train running along rail_x (heading SE) and rail_y (heading NE, then NW mirrored) on tiled track."""
+    """Two short lines meeting in an L: the train runs SE along rail_x (from the rail_x_end_n buffer) and NE along
+    rail_y (toward the rail_y_end_p buffer) - tiled track, shadows, move anim (2 anim frames per GIF frame)."""
     if 'train_engine' not in cars or 'rail_x' not in builds:
         return
-    W, H = 1100, 700
+    W, H = 1500, 720
     seq = []
-    n = 24
+    n = 20
+    step = 2 * 1.7 / 8.0                       # metres per GIF frame (2 anim frames of one 1.7 m wheel turn)
+    consist = (('train_engine', 0.0), ('train_car_a', -2.34), ('train_car_b', -4.58))
     for t in range(n):
-        sc = Scene(W, H, 120, 300, bg=(244, 247, 251))
-        for k in range(-2, 16):
-            rm = builds['rail_x']
-            sc.put(frames[rm['frames'][0]], rm['anchorPx'], k * SQ2, 0.0, ground=True)
-        if 'rail_y' in builds:
-            for k in range(-6, 10):
-                rm = builds['rail_y']
-                sc.put(frames[rm['frames'][0]], rm['anchorPx'], 9.0, k * SQ2 - 5.0, ground=True)
-        speed = 1.7 / 8.0          # metres per frame (one wheel turn per 8 frames)
-        head = 2.0 + t * speed * 2
-        for c, dx in (('train_engine', 0.0), ('train_car_a', -2.34), ('train_car_b', -4.58)):
-            if c in cars:
-                m = cars[c]
-                sc.put(cframes[(c, 'shadow_SE')], m['shadowFrames']['anchorPx'], head + dx, 0.0, ground=True, bias=1)
-                sc.put(cframes[(c, 'move_SE_%d' % ((t * 2) % 8))], m['anchorPx'], head + dx, 0.0)
-        hy = -4.0 + t * speed * 2
-        for c, dy in (('train_engine', 0.0), ('train_car_a', -2.34), ('train_car_b', -4.58)):
-            if c in cars:
-                m = cars[c]
-                sc.put(cframes[(c, 'shadow_NE')], m['shadowFrames']['anchorPx'], 9.0, hy + dy, ground=True, bias=1)
-                sc.put(cframes[(c, 'move_NE_%d' % ((t * 2) % 8))], m['anchorPx'], 9.0, hy + dy)
+        sc = Scene(W, H, 700, 330, bg=(244, 247, 251))
+        for k in range(11):
+            key = 'rail_x_end_n' if k == 0 and 'rail_x_end_n' in builds else 'rail_x'
+            rm = builds[key]
+            sc.put(frames[rm['frames'][0]], rm['anchorPx'], k * SQ2, 3.0, ground=True)
+            key = 'rail_y_end_p' if k == 0 and 'rail_y_end_p' in builds else 'rail_y'
+            rm = builds.get(key)
+            if rm:
+                sc.put(frames[rm['frames'][0]], rm['anchorPx'], -1.5, 1.5 - k * SQ2, ground=True)
+        hx = 5.0 + t * step
+        hy = -7.5 + t * step
+        for c, d in consist:
+            if c not in cars:
+                continue
+            m = cars[c]
+            fr = 'move_%s_%d'
+            sc.put(cframes[(c, 'shadow_SE')], m['shadowFrames']['anchorPx'], hx + d, 3.0, ground=True, bias=1)
+            sc.put(cframes[(c, fr % ('SE', (t * 2) % 8))], m['anchorPx'], hx + d, 3.0)
+            sc.put(cframes[(c, 'shadow_NE')], m['shadowFrames']['anchorPx'], -1.5, hy + d, ground=True, bias=1)
+            sc.put(cframes[(c, fr % ('NE', (t * 2) % 8))], m['anchorPx'], -1.5, hy + d)
         for _, im, px, py in sorted(sc.ground, key=lambda q: q[0]):
             sc.img.alpha_composite(im, (px, py))
         for _, im, px, py in sorted(sc.placed, key=lambda q: q[0]):
             sc.img.alpha_composite(im, (px, py))
         d = ImageDraw.Draw(sc.img)
-        d.text((12, 10), 'snow train on tiled rail_x (heading SE) and rail_y (heading NE), move anim at 12 fps',
-               fill=(30, 34, 44), font=pp.font(15))
+        d.text((12, 10), 'snow train on tiled rail_x (heading SE) and rail_y (heading NE) with end buffers; move anim, '
+                         'cars chained at couplerM spacing, shadowFrames under each car', fill=(30, 34, 44),
+               font=pp.font(15))
         seq.append(sc.img.convert('RGB'))
     _gif(seq, [83] * len(seq), out)
 
@@ -669,7 +673,7 @@ def main():
     cache = os.path.join(tempfile.gettempdir(), 'fv_cache', 'town')
     if '--cache' in args:
         cache = args[args.index('--cache') + 1]
-    mode = args[args.index('--quantize') + 1] if '--quantize' in args else 'auto'
+    mode = args[args.index('--quantize') + 1] if '--quantize' in args else 'on'
     if not os.path.isdir(cache):
         sys.exit('town_pack: 중단 - 렌더 캐시 폴더가 없습니다 / ABORT - render cache %s does not exist; nothing was '
                  'written. Run town_render.py first or pass --cache DIR.' % cache)

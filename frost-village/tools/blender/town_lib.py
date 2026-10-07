@@ -839,8 +839,8 @@ def street_lamp(name, loc, h=2.7, col='#2E3A4A', strength=4.0, double=False):
             sphere(name + '_knob', 0.07, (x, y, z + h + 0.02), iron, segs=12, rings=8)]
     heads = [(0.0, 1)] if not double else [(1, 1), (-1, 1)]
     for k, (sx, _) in enumerate(heads):
-        hx = x + sx * 0.38 * (1 if double else 0)
-        hy = y - sx * 0.38 * (1 if double else 0)
+        hx = x + sx * 0.4 * (1 if double else 0)
+        hy = y + sx * 0.4 * (1 if double else 0)
         if double:
             mb = L.MB()
             mb.seg(Vector((x, y, z + h - 0.1)), Vector((hx, hy, z + h - 0.05)), 0.03, iron, segs=8)
@@ -848,11 +848,15 @@ def street_lamp(name, loc, h=2.7, col='#2E3A4A', strength=4.0, double=False):
             top = z + h - 0.05
         else:
             hx, hy, top = x, y, z + h
-        lm = L.emissive(name + '_glass%d' % k, '#FFE7B0', '#FFC46A', strength)
+        lm = L.emissive(name + '_glass%d' % k, '#FFD98A', '#FFB84A', strength * 0.55)
         objs.append(cyl(name + '_cup%d' % k, 0.07, 0.08, (hx, hy, top - 0.42), mat=iron, segs=12, r_top=0.12))
-        objs.append(cyl(name + '_gl%d' % k, 0.12, 0.3, (hx, hy, top - 0.36), mat=lm, segs=16, r_top=0.15,
+        objs.append(cyl(name + '_gl%d' % k, 0.14, 0.34, (hx, hy, top - 0.4), mat=lm, segs=16, r_top=0.17,
                         bevel=0.02))
-        objs.append(cyl(name + '_hat%d' % k, 0.2, 0.12, (hx, hy, top - 0.07), mat=iron, segs=16, r_top=0.04,
+        for a in range(4):
+            aa = math.tau * a / 4 + math.pi / 4
+            objs.append(box(name + '_bar%d' % k, (0.025, 0.025, 0.34), (hx + 0.16 * math.cos(aa), hy + 0.16 * math.sin(aa),
+                                                                        top - 0.4), mat=iron, bevel=0.0))
+        objs.append(cyl(name + '_hat%d' % k, 0.24, 0.14, (hx, hy, top - 0.07), mat=iron, segs=16, r_top=0.04,
                         bevel=0.02))
         objs.append(PA.snow_cap(name + '_sn%d' % k, 0.15, (hx, hy, top + 0.03), 0.05, 3 + k))
         L.point_light(name + '_l%d' % k, (hx + 0.2, hy - 0.2, top - 0.25), 'window', 10.0, 0.08)

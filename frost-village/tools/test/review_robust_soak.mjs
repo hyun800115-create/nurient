@@ -6,7 +6,7 @@ import { newPage, bootToGame, launch, start, sleep, writeJSON, OUT } from './rev
 
 const secs = Number(process.argv[2] || 720);
 const NORENDER = process.argv.includes('--norender');   // hide cameras: many more frames per wall second (logic soak)
-const TAG = NORENDER ? 'soak_norender' : 'soak';
+const TAG = (NORENDER ? 'soak_norender' : 'soak') + (process.argv.includes('--v3') ? '_v3' : '');
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
 const { page, log } = await newPage(browser, { viewport: { width: 390, height: 844 }, dpr: 1 });
@@ -16,6 +16,14 @@ await cdp.send('HeapProfiler.enable');
 
 await bootToGame(page, srv.url + 'index.html');
 await page.evaluate(() => { window.__FV.give(200); window.__FV.unlockAll(); window.__FV.teleport(900, 1300); });
+// (v3) --v3: the whole v3 village too (three new lands, every building, both boats, the store clerk)
+if (process.argv.includes('--v3')) {
+  await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3(); });
+  await sleep(1500);
+  await page.evaluate(() => { const F = window.__FV, pr = F.scene.progress; for (const id of ['boat_rowboat', 'hire2_lumberjack', 'porter_toolsmith', 'porter_dock', 'porter_cannery', 'boat_fishing']) if (pr.pads[id]) F.completeStep(id); F.give(200); });
+  await sleep(1500);
+  await page.evaluate(() => { const F = window.__FV, pr = F.scene.progress; for (const id of ['boat_fishing', 'hire2_miner', 'hire2_fisherman', 'hire2_farmer', 'hire2_hunter']) if (pr.pads[id]) F.completeStep(id); F.teleport(900, 1300); });
+}
 if (NORENDER) await page.evaluate(() => { const g = window.__FV.game; for (const k of ['Game', 'UI']) g.scene.getScene(k).cameras.main.setVisible(false); });
 
 // ---- in-page instrumentation + bot

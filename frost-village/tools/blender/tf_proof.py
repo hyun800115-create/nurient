@@ -29,6 +29,28 @@ import tf_anim as ta                      # noqa: E402
 import tf_parts as tp                     # noqa: E402
 from townfolk_compose import Townfolk, CacheSource   # noqa: E402
 from char_pack import ink_outline         # noqa: E402
+import tf_layerfx as fx                    # noqa: E402
+import townfolk_compose as tc              # noqa: E402
+
+
+class RingSource(CacheSource):
+    """Cache frames with the per-layer ink rings that tf_pack bakes in."""
+
+    def get(self, name):
+        key = ('ring', name)
+        if key in self._cache:
+            return self._cache[key]
+        img = CacheSource.get(self, name)
+        layer, fr = name.split('/')
+        lname = layer.split('@')[0]
+        if img is not None and fx.layer_kind(lname) == 'layer':
+            if '@' in layer:
+                mask = CacheSource.get(self, 'mask@' + layer.split('@')[1] + '/' + fr)
+            else:
+                mask = CacheSource.get(self, 'head.none/' + fr)
+            img = fx.ring_layer(img, None if mask is None else mask[..., 3])
+        self._cache[key] = img
+        return img
 
 PREV = os.path.join(GAME, 'docs', 'previews')
 BG = (201, 214, 232, 255)
@@ -37,6 +59,7 @@ BG = (201, 214, 232, 255)
 def T_from_cache(cache, bases):
     """The manifest 'townfolk' block equivalent, built straight from the cache + registry."""
     import tf_presets as tbc
+    tc.SHEEN.update(tbc.SHEEN)
     T = {'tintRef': dict(tbc.TINT_REF), 'tintModel': dict(tbc.TINT_MODEL), 'z': dict(tp.Z), 'faceDirs': ta.FACE_DIRS,
          'parts': {}, 'bases': {}, 'timeline': {}}
     for pn, P in tp.PARTS.items():
@@ -89,6 +112,7 @@ def main():
     bases = sorted({c['base'] for c in combos})
     T = T_from_cache(cache, bases)
     tf = Townfolk(T, CacheSource(cache))
+    tfr = Townfolk(T, RingSource(cache))
     rows = []
     allst = {'round': [], 'exact': []}
     per_combo = []
@@ -108,7 +132,8 @@ def main():
             allst['round'].append(s_r)
             allst['exact'].append(s_e)
             cst.append(s_e)
-            rows.append((c['name'], f'{anim}_{d}_{i}', full, comp, dmap_e, s_r, s_e))
+            ringed = tfr.compose(person, anim, d, i)
+            rows.append((c['name'], f'{anim}_{d}_{i}', full, comp, dmap_e, s_r, s_e, ringed))
         if cst:
             per_combo.append((c['name'], np.mean([s['mean'] for s in cst]), np.mean([s['gt48'] for s in cst])))
     for k in ('round', 'exact'):
@@ -118,6 +143,10 @@ def main():
               f'px>48 {np.mean([s["gt48"] for s in L]):.2f}%')
     for name, m, g48 in per_combo:
         print(f'  {name:45s} mean {m:5.2f}  >48: {g48:5.2f}%')
+    # outline check: ringed composite vs ink_outline(full render)
+    ost = [stats(np.asarray(ink_outline(r[2])), np.asarray(r[7]))[0] for r in rows]
+    print(f'outlined: full+ink_outline vs ringed layers: mean {np.mean([s["mean"] for s in ost]):.2f}  '
+          f'px>48 {np.mean([s["gt48"] for s in ost]):.2f}%')
     worst = sorted(rows, key=lambda r: -r[6]['gt48'])[:8]
     print('worst frames:', [(r[0], r[1], round(r[6]['gt48'], 2)) for r in worst])
     # sheets: per combo, 4 frames: full | composite | diff (x3 zoom), plus outlined 1x comparison
@@ -130,10 +159,10 @@ def main():
     W = 3 * cw * z + 3 * cw + 30
     img = Image.new('RGBA', (W, len(pick) * (chh * z + 4) + 30), BG)
     dr = ImageDraw.Draw(img)
-    dr.text((6, 6), 'paper-doll proof: full render | composite of layers | |diff| x4   (3x)      and 1x with ink outline: full | composite',
+    dr.text((6, 6), 'paper-doll proof: full render | composite of layers | |diff| x4   (3x)      1x: full+ink_outline | composite of ringed layers',
             fill=(43, 47, 58, 255))
     y = 26
-    for name, fr, full, comp, dmap, sr, se in pick:
+    for name, fr, full, comp, dmap, sr, se, ringed in pick:
         crop = (24, 4, 104, 108)
         a = on_bg(full.crop(crop)).resize((cw * z, chh * z), Image.NEAREST)
         b = on_bg(comp.crop(crop)).resize((cw * z, chh * z), Image.NEAREST)
@@ -143,7 +172,7 @@ def main():
         img.alpha_composite(b, (cw * z, y))
         img.alpha_composite(dd, (2 * cw * z, y))
         fo = on_bg(ink_outline(full).crop(crop))
-        co = on_bg(ink_outline(comp).crop(crop))
+        co = on_bg(ringed.crop(crop))
         img.alpha_composite(fo, (3 * cw * z + 10, y))
         img.alpha_composite(co, (3 * cw * z + 10 + cw + 6, y))
         dr.text((3 * cw * z + 10, y + chh + 6), name.replace('__', '\n'), fill=(43, 47, 58, 255))

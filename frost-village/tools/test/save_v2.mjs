@@ -1,4 +1,4 @@
-// v1 -> v2 save migration test.
+// v1 -> v2 save migration test (the chain goes on to the current version: see save_v3.mjs for v2 -> v3).
 //   node tools/test/save_v2.mjs           (Node part only: migration + sanitize)
 //   node tools/test/save_v2.mjs --browser (also boots the game with an old v1 save)
 import { MIGRATE, sanitizeSave, SAVE_VERSION } from '../../src/core/Save.js';
@@ -16,10 +16,10 @@ const v1 = {
   stations: { grill: { i: 3, o: 5 } }, market: { stock: { item_fish_cooked: 4 }, cash: 12 }, trade: { stock: { item_plank: 2 }, cash: 3 },
   player: { x: 990, y: 900, stack: ['item_fish_raw', 'item_fish_raw'] },
 };
-check('SAVE_VERSION is 2', SAVE_VERSION === 2, String(SAVE_VERSION));
+check('SAVE_VERSION is 2 or later (v3: 3)', SAVE_VERSION >= 2, String(SAVE_VERSION));
 const m = MIGRATE[1](JSON.parse(JSON.stringify(v1)));
 const s = sanitizeSave(m);
-check('version bumped', m.v === 2 && s.v === 2);
+check('version bumped', m.v === 2 && s.v === SAVE_VERSION);
 check('coins kept', s.coins === 1234);
 check('couriers became porters', s.progress.done.porter_grill === true && s.progress.done.porter_bakery === true && !s.progress.done.hire2_fisherman, JSON.stringify(s.progress.done));
 check('partial courier payment kept', s.progress.paid.porter_sawmill === 300 && s.progress.paid.up_capacity === 20, JSON.stringify(s.progress.paid));
@@ -55,7 +55,7 @@ if (process.argv.includes('--browser')) {
     check('old save loads: residents moved in for every unlock', life.moved.length >= 15, life.moved.length + ' moved');
     await page.evaluate(() => window.__FV.save());
     const raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
-    check('saved again as v2 with life', raw.v === 2 && raw.life && raw.life.moved.length >= 15);
+    check('saved again as the current version with life', raw.v === SAVE_VERSION && raw.life && raw.life.moved.length >= 15);
     check('no page errors', log.errors.length === 0, log.errors.slice(0, 3).join(' | '));
   } catch (e) { check('browser part ran', false, e.message); }
   await browser.close(); await srv.close();

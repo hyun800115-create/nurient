@@ -95,7 +95,7 @@ def bogie_wheels(prefix, ys, r, crank=None, hub='#D9483B'):
     return out
 
 
-def roof_curved(name, W, Lg, z, rise=0.16, col='#8E2F27', over=0.08, seed=0):
+def roof_curved(name, W, Lg, z, rise=0.16, col='#8E2F27', over=0.08, seed=0, long_snow=False):
     """Barrel roof along local Y (coaches / cab): an arc section extruded along Y + a snow slab."""
     n = 10
     pts = []
@@ -110,6 +110,12 @@ def roof_curved(name, W, Lg, z, rise=0.16, col='#8E2F27', over=0.08, seed=0):
     o = extrude(name, outline, Lg + 2 * over, rot=(90, 0, 0), top=rm, side=rm, bevel=0.015)
     o.location = (0, (Lg + 2 * over) / 2, z)
     out = [o]
+    if long_snow:                 # one soft drift along the ridge (coach)
+        out.append(PA.snow_cap(name + '_snowL', W * 0.3, (0.04, 0.0, z + rise - 0.025), 0.07, seed,
+                               scale=(1.0, 0.8 * Lg / (W * 0.6), 1.0)))
+        out.append(PA.snow_cap(name + '_snowS', W * 0.16, (-0.18, Lg * 0.3, z + rise - 0.05), 0.05, seed + 3,
+                               scale=(1.0, 1.4, 1.0)))
+        return out
     for k, (yy, rr) in enumerate(((-Lg * 0.22, 0.2), (Lg * 0.18, 0.24))):
         out.append(PA.snow_cap(name + '_snow%d' % k, rr, (0.06 * (k * 2 - 1), yy, z + rise - 0.02), 0.07, seed + k,
                                scale=(1.0, 1.3, 1.0)))
@@ -422,7 +428,7 @@ def b_coach():
                 mb.seg(Vector((s * 0.45, e * (bl / 2 + 0.2), z0 + 0.42)), Vector((s * 0.45, e * bl / 2, z0 + 0.42)),
                        0.018, gm, segs=6)
             mb.done('rail')
-        roof_curved('roof', bw, bl + 0.36, z1, rise=0.15, col='#8E2F27', over=0.07, seed=6)
+        roof_curved('roof', bw, bl + 0.36, z1, rise=0.15, col='#8E2F27', over=0.07, seed=6, long_snow=True)
         lamp('rlamp', (0.0, -bl / 2 - 0.02, z1 + 0.06), r=0.05)
         L.point_light('coachlight', (0.0, 0.0, 1.2), 'window', 8.0, 0.3)
     for o in BA.top_level(c.objs):
@@ -610,7 +616,6 @@ def render_car(key, opts):
         head[d] = to_px(mw @ B['head_ref'])[1]
     # shadow frames (8 headings): car invisible to the camera but casting, on a shadow catcher
     sh_info = None
-    meshes = all_meshes(B['group'])
     B['pose'](B, 'move' if 'move' in spec['anims'] else first, 0, spec['anims'].get('move', spec['anims'][first])['frames'])
     if 'smoke' in B:
         B['smoke'].show(False)
@@ -632,7 +637,7 @@ def render_car(key, opts):
     sh_info = {'frameSize': [SW, SH], 'anchorPx': [sax, say], 'anchor': [round(sax / SW, 5), round(say / SH, 5)],
                'frames': {d: 'shadow_%s' % d for d in ALL8}}
     if shadow_todo:
-        for o in meshes:
+        for o in all_meshes(B['group']):          # fresh list: posing rebuilds the engine's rods
             o.visible_camera = False
         for o in bpy.context.scene.objects:
             if o.type == 'LIGHT' and o.data.type == 'POINT':

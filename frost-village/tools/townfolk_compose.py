@@ -26,7 +26,8 @@ Per frame (anim, dir, i):
   4. each layer is tinted:  rgb *= T,  T = colour / tintRef[slot] per channel, clamped to 1
      (Phaser setTint on the same sRGB values); fixed-colour subs (tint null) are not tinted.
   5. layers are drawn in ascending z (sub z may differ per dir; limbs listed in the frame's
-     timeline zfront use z 90 / 91 instead of 5 / 6), ties keep insertion order:
+     timeline zfront use z 90 / 91 instead of 5 / 6; subs with 'follow': limb (cuffs) use that
+     limb's z + 0.5), ties keep insertion order:
      limbs, body parts, head, face, brows, head parts.
 Missing frames (fully transparent, dropped by the packer) are simply skipped.
 """
@@ -64,15 +65,17 @@ def lin_to_srgb(v):
     return np.where(v <= 0.0031308, v * 12.92, 1.055 * v ** (1 / 2.4) - 0.055)
 
 
-TINT_MODEL = {'K': 0.85, 'S': [0.030, 0.033, 0.040]}
+TINT_MODEL = {'K': 1.0, 'S': [0.020, 0.022, 0.028],
+              'slotS': {'skin': [0, 0, 0], 'hands': [0, 0, 0], 'hair': [0, 0, 0], 'fur': [0, 0, 0]}}
 
 
-def tint_for(color, ref, model=None):
+def tint_for(color, ref, model=None, slot=None):
     """Phaser tint (0..1 per channel) that turns a layer rendered with albedo `ref` into `color`:
     T = clamp01( sRGB(K*lin(C) + S) / sRGB(K*lin(ref) + S) )  (K typical irradiance, S additive
     sky specular - plain C/ref ignores the specular film and makes dark colours too dark)."""
     m = model or TINT_MODEL
-    K, S = m['K'], np.asarray(m['S'], np.float32)
+    K = m['K']
+    S = np.asarray(m.get('slotS', {}).get(slot, m['S']), np.float32)
     num = lin_to_srgb(K * srgb_to_lin(hex_rgb(color)) + S)
     den = lin_to_srgb(K * srgb_to_lin(hex_rgb(ref)) + S)
     return np.clip(num / np.maximum(den, 1e-3), 0.0, 1.0)
@@ -162,28 +165,57 @@ class AtlasSource:
 
 
 class CacheSource:
-    """Raw renders straight from the tf_render cache (used to prove the layering before packing)."""
+    """Raw renders straight from the tf_render cache (used to prove the layering before packing).
+    Cache layout (tiled renders, 128x128 tiles):
+      body/<base>/<anim>_<dir>/<layer>.png   tile i = frame i, BODY_COLS (4) per row
+      head/<pose>_<dir>/<layer>.png          (head/meta.json layout 'dirs'; one 128x128 file per frame)"""
+    BODY_COLS = 4
 
     def __init__(self, cache):
         self.cache = cache
         self._cache = {}
+        self._sheets = {}
+        hm = os.path.join(cache, 'head', 'meta.json')
+        self.head_meta = json.load(open(hm)) if os.path.exists(hm) else {'frames': [], 'cols': 6}
+        self.head_index = {f: k for k, f in enumerate(self.head_meta['frames'])}
+
+    def _sheet(self, p):
+        if p not in self._sheets:
+            self._sheets[p] = (np.asarray(Image.open(p).convert('RGBA')).astype(np.float32) / 255.0
+                               if os.path.exists(p) else None)
+        return self._sheets[p]
+
+    def raw(self, name):
+        layer, fr = name.split('/')
+        if '@' in layer:
+            lname, base = layer.split('@')
+            anim_dir, i = fr.rsplit('_', 1)
+            p = os.path.join(self.cache, 'body', base, anim_dir, lname + '.png')
+            k, cols = int(i), self.BODY_COLS
+        elif self.head_meta.get('layout') == 'dirs':
+            p = os.path.join(self.cache, 'head', fr, layer + '.png')
+            sh = self._sheet(p)
+            return None if sh is None else sh.copy()
+        else:
+            p = os.path.join(self.cache, 'head', layer + '.png')
+            if fr not in self.head_index:
+                return None
+            k, cols = self.head_index[fr], self.head_meta.get('cols', 6)
+        sh = self._sheet(p)
+        if sh is None:
+            return None
+        x, y = (k % cols) * FRAME, (k // cols) * FRAME
+        return sh[y:y + FRAME, x:x + FRAME].copy()
 
     def get(self, name):
         if name in self._cache:
             return self._cache[name]
-        layer, fr = name.split('/')
-        if '@' in layer:
-            lname, base = layer.split('@')
-            p = os.path.join(self.cache, 'body', base, fr, lname + '.png')
-        else:
-            p = os.path.join(self.cache, 'head', fr, layer + '.png')
-        out = None
-        if os.path.exists(p):
-            out = np.asarray(Image.open(p).convert('RGBA')).astype(np.float32) / 255.0
-            if layer.endswith('.sheen'):
-                out = sheen_alpha(out)
-            if out[..., 3].max() <= 1.0 / 255:
-                out = None
+        out = self.raw(name)
+        layer = name.split('/')[0]
+        if out is not None and layer.endswith('.sheen'):
+            out = sheen_alpha(out)
+        if out is not None and out[..., 3].max() <= 1.0 / 255:
+            out = None
         self._cache[name] = out
         return out
 
@@ -221,7 +253,7 @@ class Townfolk:
         if col is None:
             return None
         ref = self.T['tintRef'].get(slot, self.T['tintRef']['default'])
-        return tint_for(col, ref, self.T.get('tintModel'))
+        return tint_for(col, ref, self.T.get('tintModel'), slot)
 
     def layers(self, person, anim, d, i):
         """[(z, frame name, tint or None, 'body'|'head')] in draw order for a RENDERED dir."""
@@ -230,14 +262,18 @@ class Townfolk:
         hp = tl['hp']
         out = []
         zf = set(tl.get('zfront', []))
+        limbz = {}
         for name, slot, z, zfront in LIMBS:
-            out.append((zfront if name in zf else z, f'{name}@{base}/{anim}_{d}_{i}', self.tint(person, slot), 'body'))
+            limbz[name] = zfront if name in zf else z
+            out.append((limbz[name], f'{name}@{base}/{anim}_{d}_{i}', self.tint(person, slot), 'body'))
         hat = self.wears_full_hat(person)
         heads = []
         for pn in person['parts']:
             P = self.parts[pn]
             for s, sd in P['subs'].items():
                 z = sd['z'][d] if isinstance(sd['z'], dict) else sd['z']
+                if sd.get('follow'):
+                    z = limbz[sd['follow']] + 0.5
                 if P['space'] == 'body':
                     out.append((z, f'{pn}.{s}@{base}/{anim}_{d}_{i}', self.tint(person, sd['tint']), 'body'))
                 else:
@@ -288,13 +324,10 @@ class Townfolk:
 
     # ---- people
     def random_person(self, seed=None, rng=None):
-        rng = rng or random.Random(seed)
-        gen = self.T['generator']
-        return generate(self.T, gen, rng)
+        return generate(self.T, rng or random.Random(seed))
 
-    def preset(self, name, seed=0):
-        rng = random.Random(seed)
-        return generate(self.T, self.T['presets'][name], rng, preset=name)
+    def preset(self, name, seed=0, rng=None):
+        return generate(self.T, rng or random.Random(seed), preset=name)
 
 
 def shift_float(img, dx, dy):
@@ -314,118 +347,149 @@ def shift_float(img, dx, dy):
 # --------------------------------------------------------------------------- generator
 
 def _pick(rng, opts):
-    """opts: list of names or {name: weight}."""
+    """opts: list of names or {name: weight}; returns None for an empty table."""
+    if not opts:
+        return None
     if isinstance(opts, dict):
-        names = list(opts)
-        w = [opts[n] for n in names]
-        return rng.choices(names, w)[0]
-    return rng.choice(opts)
+        names = [n for n in opts if opts[n] > 0]
+        if not names:
+            return None
+        return rng.choices(names, [opts[n] for n in names])[0]
+    return rng.choice(list(opts))
 
 
-def generate(T, gen, rng, preset=None):
-    """Build a person from a generator / preset description (see manifest 'generator', 'presets',
-    'rules').  Pure data-driven so the game can port it 1:1."""
-    rules = T['rules']
-    pal = T['palettes']
-    base = gen.get('base') if isinstance(gen.get('base'), str) else _pick(rng, gen.get('bases', rules['baseWeights']))
+def _matches(T, pn, key):
+    P = T['parts'].get(pn)
+    if P is None:
+        return False
+    if key.startswith('family:'):
+        return P['family'] == key[7:]
+    if key.startswith('tag:'):
+        return key[4:] in P.get('tags', [])
+    return pn == key
+
+
+def conflicts(T, a, b):
+    for x, y in T['generator']['exclude']:
+        if (_matches(T, a, x) and _matches(T, b, y)) or (_matches(T, a, y) and _matches(T, b, x)):
+            return True
+    return False
+
+
+def generate(T, rng, preset=None):
+    """A random person (or one of the named job presets) from the manifest 'generator' block.
+    Deterministic for a given rng state; the game ports this function 1:1."""
+    G = T['generator']
+    P = dict(G['presets'][preset]) if preset else {}
+    base = _pick(rng, P.get('bases') or G['baseWeights'])
     age = T['bases'][base]['age']
-    agerule = rules['byAge'][age]
-    person = {'base': base, 'parts': [], 'colors': {}, 'preset': preset}
-    person['face'] = _pick(rng, gen.get('faces', agerule['faces']))
-    person['nose'] = _pick(rng, gen.get('noses', agerule['noses']))
+    A = G['byAge'][age]
+    look = P.get('look') or rng.choice(['A', 'B'])
+    avail = set(T['bases'][base]['parts'])          # body parts rendered for this base
 
-    def allowed(pn):
-        P = T['parts'][pn]
-        return pn in T['parts'] and (not P.get('ages') or age in P['ages'])
+    def ok(pn):
+        part = T['parts'].get(pn)
+        if part is None:
+            return False
+        if part.get('ages') and age not in part['ages']:
+            return False
+        return part['space'] == 'head' or pn in avail
 
-    def choose(fam_key, default_opts, chance=1.0):
-        opts = gen.get(fam_key, default_opts)
-        if opts is None:
-            return None
-        if isinstance(opts, str):
-            opts = [opts]
-        if isinstance(opts, list):
-            opts = [o for o in opts if o == 'none' or allowed(o)]
+    def table(key):
+        if key in P:
+            v = P[key]
         else:
-            opts = {k: v for k, v in opts.items() if k == 'none' or allowed(k)}
-        if not opts:
+            v = A.get(key)
+        if isinstance(v, dict) and v and set(v) <= {'A', 'B'}:
+            v = v.get(look, {})
+        if v is None:
             return None
-        ch = gen.get(fam_key + 'Chance', chance)
-        if rng.random() > ch:
-            return None
-        p = _pick(rng, opts)
-        return None if p == 'none' else p
-
-    top = choose('tops', agerule['tops'])
-    bottom = choose('bottoms', agerule['bottoms'])
-    if top and T['parts'][top].get('dress'):
-        bottom = choose('bottomsUnderDress', agerule.get('bottomsUnderDress', ['bot_tights']))
-    shoes = choose('shoes', agerule['shoes'])
-    hat = choose('hats', agerule['hats'], agerule.get('hatChance', 0.5))
-    hair = choose('hair', agerule['hair'])
-    if hat and hair:
-        bad = set(T['parts'][hat].get('excludeHair', [])) | set(T['parts'][hair].get('excludeHat', []))
-        if hair in bad or hat in bad or ('tall' in T['parts'][hair].get('tags', []) and T['parts'][hat].get('cls') == 'full'
-                                         and hair not in T['parts'][hat].get('allowHair', [hair])):
-            if 'hats' not in gen:
-                hat = None
-            else:
-                hair = choose('hairUnderHat', agerule.get('hairUnderHat', agerule['hair']))
-    facial = choose('facialHair', agerule.get('facialHair', ['none']), agerule.get('facialHairChance', 0.0))
-    accs = []
-    for fam, default, ch in (('glasses', agerule.get('glasses', ['none']), agerule.get('glassesChance', 0.2)),
-                             ('neck', agerule.get('neck', ['none']), agerule.get('neckChance', 0.4)),
-                             ('bag', agerule.get('bag', ['none']), agerule.get('bagChance', 0.25)),
-                             ('headAcc', agerule.get('headAcc', ['none']), agerule.get('headAccChance', 0.15))):
-        a = choose(fam, default, ch)
-        if a:
-            accs.append(a)
-    extra = list(gen.get('extra', []))
-    chosen = [x for x in [hair, hat, facial, top, bottom, shoes] + accs + extra if x]
-    # exclusions (e.g. earmuffs + full hat, scarf + high collar)
-    final = []
-    for pn in chosen:
-        P = T['parts'][pn]
-        if any(e in final for e in P.get('exclude', [])) or any(pn in T['parts'][f].get('exclude', []) for f in final):
-            continue
-        final.append(pn)
-    person['parts'] = final
-    # colours
-    cols = person['colors']
-    gcol = gen.get('colors', {})
-
-    def col(slot, palname):
-        v = gcol.get(slot)
-        if isinstance(v, str) and v.startswith('#'):
-            return v
         if isinstance(v, str):
-            palname = v
-        elif isinstance(v, list):
-            return rng.choice(v)
-        return rng.choice(pal[palname])
-    cols['skin'] = col('skin', 'skin')
-    cols['hair'] = col('hair', agerule.get('hairPalette', 'hair'))
-    cols['top'] = col('top', 'cloth')
-    cols['top2'] = col('top2', 'accent')
-    cols['fur'] = col('fur', 'fur')
-    cols['bottom'] = col('bottom', 'pants')
-    cols['bottom2'] = col('bottom2', 'tights')
-    cols['shoes'] = col('shoes', 'shoes')
-    cols['hat'] = col('hat', 'knit')
-    cols['hat2'] = col('hat2', 'accent')
-    cols['acc'] = col('acc', 'knit')
-    cols['acc2'] = col('acc2', 'accent')
-    cols['bag'] = col('bag', 'leather')
-    cols['glasses'] = col('glasses', 'metal')
-    cols['job'] = col('job', 'cloth')
-    cols['job2'] = col('job2', 'accent')
-    sleeve = gcol.get('sleeve')
-    cols['sleeve'] = sleeve if (isinstance(sleeve, str) and sleeve.startswith('#')) else \
-        (cols.get(sleeve) if isinstance(sleeve, str) else (cols['top2'] if top and T['parts'][top].get('sleeves') == 'top2'
-                                                          else cols['top']))
-    gl = gen.get('gloveChance', agerule.get('gloveChance', 0.3))
-    cols['hands'] = gcol.get('hands') if isinstance(gcol.get('hands'), str) and gcol.get('hands', '').startswith('#') \
-        else (rng.choice(pal['gloves']) if rng.random() < gl else cols['skin'])
+            v = [v]
+        if isinstance(v, list):
+            return [x for x in v if ok(x)]
+        return {k: w for k, w in v.items() if ok(k)}
+
+    def chance(key, default=1.0):
+        return P.get(key + 'Chance', A.get(key + 'Chance', default))
+
+    def maybe(key, default=1.0, avoid=()):
+        opts = table(key)
+        if not opts or rng.random() >= chance(key, default):
+            return None
+        if avoid:
+            opts = ({k: w for k, w in opts.items() if not any(conflicts(T, k, a) for a in avoid)}
+                    if isinstance(opts, dict) else [k for k in opts if not any(conflicts(T, k, a) for a in avoid)])
+        return _pick(rng, opts)
+
+    chosen = []
+    top = maybe('tops')
+    if top:
+        chosen.append(top)
+    if top and T['parts'][top].get('dress'):
+        bottom = _pick(rng, [b for b in G['underDress'] if ok(b)])
+    else:
+        bottom = maybe('bottoms')
+    for x in (bottom, maybe('shoes')):
+        if x:
+            chosen.append(x)
+    extra = P.get('extra')
+    if isinstance(extra, dict):
+        extra = [_pick(rng, {k: w for k, w in extra.items() if ok(k)})]
+    for x in (extra or []):
+        if x and ok(x) and not any(conflicts(T, x, c) for c in chosen):
+            chosen.append(x)
+    hat = maybe('hats', 0.5, avoid=chosen)
+    hair = maybe('hair', 1.0, avoid=[hat] if hat else ())
+    if hat and hair is None:                        # no hair fits that hat: drop the hat instead
+        hat = None
+        hair = maybe('hair', 1.0)
+    for x in (hair, hat):
+        if x:
+            chosen.append(x)
+    for key, dflt in (('facialHair', 0.0), ('glasses', 0.2), ('neck', 0.3), ('bag', 0.2), ('headAcc', 0.1)):
+        x = maybe(key, dflt, avoid=chosen)
+        if x:
+            chosen.append(x)
+    person = {'base': base, 'look': look, 'preset': preset, 'parts': chosen,
+              'face': _pick(rng, table('faces') if 'faces' in P else (A['faces'].get(look) or A['faces'].get('A'))),
+              'nose': _pick(rng, P.get('noses') or A['noses'])}
+    # ---- colours
+    pal = T['palettes']
+    pcols = P.get('colors', {})
+    acols = A.get('colors', {})
+    cols = {}
+
+    def col(slot, default_pal):
+        v = pcols.get(slot, acols.get(slot))
+        if isinstance(v, list):
+            v = rng.choice(v)
+            if v == 'skin':
+                return cols.get('skin')
+            return v if v.startswith('#') else rng.choice(pal[v])
+        if isinstance(v, str):
+            return v if v.startswith('#') else rng.choice(pal[v])
+        return rng.choice(pal[default_pal])
+    slot_pal = dict(G['slotPalette'])
+    slot_pal['hair'] = A.get('hairPalette', 'hair')
+    for slot in ('skin', 'hair', 'top', 'top2', 'fur', 'bottom', 'bottom2', 'shoes', 'hat', 'hat2', 'acc', 'acc2',
+                 'bag', 'glasses'):
+        cols[slot] = col(slot, slot_pal[slot])
+    if 'skirt' in T['parts'].get(bottom or '', {}).get('tags', []) and 'bottom' not in pcols:
+        cols['bottom'] = rng.choice(pal['skirt'])
+    # a top and its accent should not be the same colour
+    if cols['top2'] == cols['top'] and 'top2' not in pcols:
+        cols['top2'] = rng.choice([c for c in pal[slot_pal['top2']] if c != cols['top']])
+    if top and T['parts'][top].get('sleeves'):
+        cols['sleeve'] = cols[T['parts'][top]['sleeves']]
+    else:
+        cols['sleeve'] = cols['top']
+    if 'hands' in pcols:
+        cols['hands'] = col('hands', 'gloves')
+    else:
+        cols['hands'] = rng.choice(pal['gloves']) if rng.random() < P.get('gloveChance', A.get('gloveChance', 0.3)) \
+            else cols['skin']
+    person['colors'] = cols
     return person
 
 

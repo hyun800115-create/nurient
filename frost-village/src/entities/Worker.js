@@ -518,8 +518,14 @@ export class WarehousePorter extends Hauler {
     this.state = 'idle';
     this.thinkT = 0.5 + index * 0.4;
     this.job = null;
-    const op = warehouse.outPad;
-    this.homePt = { x: op.x + 40 + index * 34, y: op.y + 48 };
+    // waiting spot by the warehouse door: beside the output pad, on open ground (a plot near the edge
+    // of the land or a tree must not leave the porter standing where nobody can walk)
+    const op = warehouse.outPad, k = gs.porters.filter((p) => p.wh === warehouse).length;
+    const tries = [[40 + k * 34, 48], [-40 - k * 34, 52], [k * 30, 78], [60 + k * 30, -30]];
+    let h = null;
+    for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16)) { h = q; break; } }
+    if (!h) { h = { x: op.x + 40, y: op.y + 48 }; gs.collision.resolve(h, 16); }
+    this.homePt = h;
     gs.keysInUse.add(pk.key);
   }
 

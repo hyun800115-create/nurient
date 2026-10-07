@@ -246,15 +246,15 @@ export const WORLD = {
     ['signpost', 1880, 1005, { region: 'east' }], ['lamp_post', 2010, 905, { region: 'east' }], ['lamp_post', 2230, 1060, { region: 'east' }],
     ['barrel', 2150, 690, { region: 'east' }], ['crate', 2180, 712, { region: 'east' }], ['crate', 2158, 735, { region: 'east', scale: 0.8 }],
     ['ice_chunk', 2620, 520, { region: 'east' }], ['ice_chunk', 2380, 420, { region: 'east', scale: 0.7 }], ['boat_small', 2760, 560, { region: 'east', flip: true, scale: 0.9 }],
-    ['firewood_pile', 2640, 1250, { region: 'east' }], ['tree_stump', 2700, 1360, { region: 'east' }], ['tree_stump', 2580, 1400, { region: 'east' }],
+    ['firewood_pile', 2440, 1310, { region: 'east' }], ['tree_stump', 2700, 1360, { region: 'east' }], ['tree_stump', 2580, 1400, { region: 'east' }],
     ['bush_snow', 1960, 1120, { region: 'east' }], ['snow_pile_a', 2440, 1440, { region: 'east' }], ['snow_pile_b', 2860, 880, { region: 'east' }],
-    ['campfire', 2060, 790, { region: 'east' }], ['bench', 2400, 820, { region: 'east' }], ['flag_pole', 2480, 760, { region: 'east' }],
+    ['campfire', 2060, 790, { region: 'east' }], ['bench', 2330, 960, { region: 'east' }], ['flag_pole', 2480, 760, { region: 'east' }],
     // 남쪽 들판: 밭과 쉼터
     ['hay_bale', 840, 2900, { region: 'south' }], ['hay_bale', 880, 2930, { region: 'south', scale: 0.85 }], ['hay_bale', 260, 3260, { region: 'south' }],
     ['lamp_post', 1060, 2920, { region: 'south' }], ['lamp_post', 920, 3200, { region: 'south' }], ['signpost', 1060, 3060, { region: 'south' }],
     ['barrel', 640, 2760, { region: 'south' }], ['crate', 670, 2785, { region: 'south' }], ['bush_snow', 1560, 2780, { region: 'south' }],
-    ['snow_pile_a', 420, 3290, { region: 'south' }], ['snow_pile_b', 1640, 3100, { region: 'south' }], ['campfire', 1140, 2860, { region: 'south' }],
-    ['bench', 1230, 2895, { region: 'south' }],
+    ['snow_pile_a', 420, 3290, { region: 'south' }], ['snow_pile_b', 1640, 3100, { region: 'south' }], ['campfire', 560, 2700, { region: 'south' }],
+    ['bench', 640, 2668, { region: 'south' }],
     // 동남쪽 언덕: 채석장과 언덕 마을
     ['mine_entrance', 2770, 1960, { region: 'se' }], ['crate', 2380, 1880, { region: 'se' }], ['barrel', 2410, 1905, { region: 'se' }],
     ['lamp_post', 2420, 2240, { region: 'se' }], ['lamp_post', 2260, 2700, { region: 'se' }], ['signpost', 2250, 2400, { region: 'se' }],
@@ -306,19 +306,18 @@ export const WORLD = {
   //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
   towers: {
     tower_east:  { x: 1700, y: 845, region: 'east' },
-    tower_south: { x: 1140, y: 2460, region: 'south' },
-    tower_se:    { x: 2580, y: 1360, region: 'se', in: 'east' },
+    tower_south: { x: 1450, y: 2505, region: 'south' },
+    tower_se:    { x: 2870, y: 1370, region: 'se', in: 'east' },
   },
   // 빈 건설 부지: size S(2x2m, 집) / M(3x3m, 모든 건물) / L(4x4m, 모든 건물 + 장식)
   //   region: 이 땅이 열리면 나타남, after: 이 단계를 마치면 나타남, only: 이 건물만 지을 수 있음,
   //   shore: (바닷가 부지) 해안선에서 이만큼 아래 (y 대신)
   plots: {
-    v_house1: { x: 1520, y: 2300, size: 'S', region: 'start', after: 'hire_miner' },
+    v_house1: { x: 1600, y: 2235, size: 'S', region: 'start', after: 'hire_miner' },
     v_house2: { x: 430, y: 2310, size: 'S', region: 'start', after: 'hire_miner' },
     e_dock:   { x: 2330, shore: 46, size: 'M', region: 'east', only: 'boathouse' },
     e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east' },
-    e_m2:     { x: 2640, y: 1010, size: 'M', region: 'east' },
-    e_s1:     { x: 2780, y: 1300, size: 'S', region: 'east' },
+    e_m2:     { x: 2520, y: 985, size: 'M', region: 'east' },
     s_m1:     { x: 1360, y: 2860, size: 'M', region: 'south' },
     s_m2:     { x: 1480, y: 3170, size: 'M', region: 'south' },
     s_l1:     { x: 780, y: 3220, size: 'L', region: 'south' },
@@ -326,13 +325,14 @@ export const WORLD = {
     se_m1:    { x: 2700, y: 2640, size: 'M', region: 'se' },
     se_l1:    { x: 2060, y: 2860, size: 'L', region: 'se' },
     se_s1:    { x: 2560, y: 3090, size: 'S', region: 'se' },
+    se_s3:    { x: 2560, y: 1700, size: 'S', region: 'se' },
     se_s2:    { x: 2060, y: 1820, size: 'S', region: 'se' },
   },
   // 새 땅의 자원: 벨 수 있는 소나무, 광석 바위, 밀밭 (그 땅이 열리면 나타남)
   regionTrees: [
     // 동쪽 해안 숲
-    [2760, 1040, 'tree_pine_a', 'east'], [2850, 1110, 'tree_pine_snow', 'east'], [2740, 1150, 'tree_pine_b', 'east'], [2830, 1220, 'tree_pine_a', 'east'],
-    [2900, 1330, 'tree_pine_snow', 'east'], [2950, 1180, 'tree_pine_b', 'east'], [2930, 1420, 'tree_pine_a', 'east'],
+    [2620, 1290, 'tree_pine_a', 'east'], [2720, 1240, 'tree_pine_snow', 'east'], [2690, 1360, 'tree_pine_b', 'east'], [2590, 1420, 'tree_pine_a', 'east'],
+    [2780, 1420, 'tree_pine_snow', 'east'], [2950, 1150, 'tree_pine_b', 'east'], [2930, 1010, 'tree_pine_a', 'east'],
     // 남쪽 들판의 작은 숲
     [230, 2860, 'tree_pine_snow', 'south'], [320, 2940, 'tree_pine_a', 'south'], [220, 3020, 'tree_pine_b', 'south'], [300, 3150, 'tree_pine_snow', 'south'],
     // 동남쪽 언덕 숲
@@ -391,7 +391,7 @@ export const WORLD = {
       ['lantern_string', 800, 2290, { id: 'lanterns_v', after: 'zone_hunt' }],
       // (v3) 새 땅의 쉼터 (그 땅이 열리면 나타남)
       ['log_seat', 2060, 740, { id: 'seat_east_n', after: 'r:east' }], ['log_seat_y', 1965, 765, { id: 'seat_east_w', after: 'r:east' }],
-      ['picnic_table', 1220, 2960, { id: 'picnic_s', after: 'r:south' }], ['sled', 700, 2840, { id: 'sled_s', after: 'r:south' }],
+      ['picnic_table', 470, 2760, { id: 'picnic_s', after: 'r:south' }], ['sled', 700, 2840, { id: 'sled_s', after: 'r:south' }],
       ['log_seat', 2440, 2570, { id: 'seat_se_n', after: 'r:se' }], ['log_seat_x', 2535, 2595, { id: 'seat_se_e', after: 'r:se' }],
       ['igloo', 2120, 2420, { id: 'igloo_se', after: 'r:se' }], ['snow_fort', 2620, 2860, { id: 'fort_se', after: 'r:se' }],
     ],
@@ -410,7 +410,7 @@ export const WORLD = {
       south:     { at: [990, 2470], r: 220, acts: ['chat', 'sit', 'warm', 'wander'], fire: [870, 2525], stage: [955, 2572], after: 'zone_hunt' },
       // (v3) 새 땅 (망루를 세워 열리면 주민들이 놀러 감)
       east_dock: { at: [2080, 830], r: 140, acts: ['sit', 'warm', 'chat', 'wander'], fire: [2060, 790], after: 'r:east' },
-      south_fields: { at: [1180, 2930], r: 170, acts: ['chat', 'wander', 'warm', 'play'], fire: [1140, 2860], after: 'r:south' },
+      south_fields: { at: [560, 2730], r: 140, acts: ['chat', 'wander', 'warm', 'play'], fire: [560, 2700], after: 'r:south' },
       se_hill:   { at: [2400, 2650], r: 170, acts: ['sit', 'warm', 'chat', 'play', 'wander'], fire: [2440, 2620], after: 'r:se' },
     },
     // 주민 이사 순서 (balance.js 의 population 과 함께): 단계 이름 -> 이사 오는 주민

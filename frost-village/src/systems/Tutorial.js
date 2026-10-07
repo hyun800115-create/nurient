@@ -62,7 +62,8 @@ export class Tutorial {
     // (v2) customers waiting at an empty register come before buying things (the line is stuck)
     if (!this.inTutorial && this.registerHint(set, dt, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
-      const key = this.inTutorial ? 'obj_unlock' : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter' : null;
+      const key = this.inTutorial ? 'obj_unlock' : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
+        : /^tower_/.test(pad.id) ? 'obj_tower' : pad.id === 'boat_rowboat' ? 'obj_boat' : null;
       set(pad.x, pad.y, 112, key);
       return;
     }
@@ -122,6 +123,8 @@ export class Tutorial {
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
       if (st.only ? st.only !== bkey : (bkey === 'boathouse' || (st.size === 'S' && !/^house_/.test(bkey)))) continue;
+      // (a house on a big plot only where the build menu allows it)
+      if (/^house_/.test(bkey) && st.size !== 'S') { const c = gs.buildChoices(st).find((q) => q.key === bkey); if (!c || c.locked) continue; }
       const d = gdist(p.x, p.y, st.dropX, st.dropY);
       if (d < bd) { bd = d; best = st; }
     }

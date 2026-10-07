@@ -775,7 +775,7 @@ export class Game extends Phaser.Scene {
         this.ui.banner(t('builtDone', { name: t('b_' + bkey) }), t('bsub_' + bkey));
       }
     }
-    if (site.cfg && site.cfg.size === 'L' && bkey !== 'watchtower') this.dressBigPlot(site);
+    if (site.cfg && site.cfg.size === 'L' && bkey !== 'watchtower') this.dressBigPlot(site, b);
     if (b && !this.territory.isOpen(site.region)) this.territory.add(site.region, b);
     this.time.delayedCall(instant ? 0 : 1200, () => this.progress.syncPads());
     this.updatePopulation();
@@ -783,10 +783,21 @@ export class Game extends Phaser.Scene {
   }
 
   /** an M building on a big (L) plot gets a few props around it so the ground is not empty */
-  dressBigPlot(site) {
-    const o = [['barrel', -150, 40], ['crate', 150, 34], ['lamp_post', -175, -20], ['firewood_pile', 160, -35]];
+  dressBigPlot(site, b) {
+    // around the sides, never on a pad / the unload spot / a customer's place of the building
+    const keep = [];
+    const pt = (o) => { if (o && Number.isFinite(o.x)) keep.push(o); };
+    if (b) {
+      pt(b.inPad); pt(b.outPad); pt(b.sink); pt(b.shelf); pt(b.register); pt(b.cash && b.cash.pad);
+      if (b.slotPos) for (let i = 0; i < 4; i++) pt(b.slotPos(i));
+    }
+    const o = [['lamp_post', -235, 10], ['barrel', 236, -14], ['crate', 262, 18], ['firewood_pile', -222, -62], ['barrel', -190, 96], ['crate', 205, 100]];
+    let n = 0;
     for (const [k, dx, dy] of o) {
-      const img = this.staticImage(k, site.x + dx, site.y + dy, {});
+      const x = site.x + dx, y = site.y + dy;
+      if (keep.some((q) => gdist(q.x, q.y, x, y) < 110) || n >= 4) continue;
+      n++;
+      const img = this.staticImage(k, x, y, {});
       if (!this.territory.isOpen(site.region)) this.territory.add(site.region, img);
     }
   }
@@ -893,6 +904,9 @@ export class Game extends Phaser.Scene {
       if (need && !this.progress.met(need)) reason = 'lock_' + k;
       else if (UNIQUE_BUILDINGS.indexOf(k) >= 0 && (this.isBuilt(k) || this.isBuilding(k))) reason = 'lockBuilt';
       else if (/^house_/.test(k) && this.life && !this.life.wantsHouse()) reason = 'lockNoOne';
+      // a big plot is kept for the big buildings until every one of them stands (no plot left for the
+      // store would stop the progression); after that, houses may fill the spare big plots too
+      else if (/^house_/.test(k) && site.size !== 'S' && UNIQUE_BUILDINGS.some((u) => u !== 'boathouse' && !this.isBuilt(u) && !this.isBuilding(u))) reason = 'lockBigPlot';
       out.push({ key: k, cost: c, locked: !!reason, reason });
     }
     // what can be built first

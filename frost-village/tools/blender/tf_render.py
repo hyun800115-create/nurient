@@ -78,8 +78,8 @@ def sel(spec, full):
 
 # --------------------------------------------------------------------------- scene
 
-def setup_scene(samples, anchor=ANCHOR):
-    sc = bc.setup_render(FRAME, FRAME, samples=samples, denoise=True)
+def setup_scene(samples, anchor=ANCHOR, w=FRAME, h=FRAME):
+    sc = bc.setup_render(w, h, samples=samples, denoise=True)
     sc.cycles.max_bounces = 4
     sc.cycles.diffuse_bounces = 2
     sc.cycles.glossy_bounces = 2
@@ -92,7 +92,7 @@ def setup_scene(samples, anchor=ANCHOR):
     sc.cycles.denoising_prefilter = 'NONE'
     sc.render.use_persistent_data = True
     sc.render.compositor_device = 'CPU'
-    cam = bc.setup_camera(FRAME, FRAME, anchor)
+    cam = bc.setup_camera(w, h, anchor)
     bc.setup_lighting()
     return sc, cam
 
@@ -196,6 +196,70 @@ def pose_head_only(rig, hp, d):
 def px_off(p, anchor=ANCHOR):
     px = bc.world_to_pixel(tuple(p), FRAME, FRAME, anchor)
     return [px[0] - anchor[0], px[1] - anchor[1]]
+
+
+# --------------------------------------------------------------------------- tiling
+# One render() covers many frames: the rig (with every part) is cloned and each clone stands
+# on its own 128x128 tile of a bigger orthographic frame.  World offset of tile (c, r):
+# +128 px right = 2 m along screen-right, +128 px down = 4 m toward the camera on the ground.
+# Clones are >= 2 m apart, further than any shadow reaches (sun 50 deg, ~1.3 m).
+TILE_X = Vector((1.41421356, 1.41421356, 0.0))
+TILE_Y = Vector((2.82842712, -2.82842712, 0.0))
+BODY_COLS, BODY_ROWS = 4, 2            # up to 8 frames of one (anim, dir) per render
+HEAD_COLS = 6                          # all 17 head frames in one 6x3 sheet
+
+
+def tile_offset(c, r):
+    return TILE_X * c + TILE_Y * r
+
+
+def clone_rig(rig, offset):
+    """Linked duplicate of every object of the rig hierarchy (meshes share data, same
+    collections), returned as a new Rig whose root rests at `offset`."""
+    roots = [rig.j['root']]
+    objs = []
+    stack = list(roots)
+    while stack:
+        o = stack.pop()
+        objs.append(o)
+        stack.extend(o.children)
+    mapping = {}
+    for o in objs:
+        c = o.copy()
+        mapping[o] = c
+        for col in o.users_collection:
+            col.objects.link(c)
+    for o, c in mapping.items():
+        if o.parent in mapping:
+            c.parent = mapping[o.parent]
+            c.matrix_parent_inverse = o.matrix_parent_inverse.copy()
+    new = g.Rig('human')
+    new.j = {n: mapping[e] for n, e in rig.j.items()}
+    new.rest_loc = {n: v.copy() for n, v in rig.rest_loc.items()}
+    new.side = dict(rig.side)
+    new.meta = rig.meta
+    new.rest_loc['root'] = Vector(offset)
+    new.j['root'].location = new.rest_loc['root']
+    return new
+
+
+def make_tiles(rig, n, cols, z_shift=0.0):
+    """[rig for slot 0..n-1]; slot 0 is the original rig (moved to its tile)."""
+    rigs = []
+    for k in range(n):
+        off = tile_offset(k % cols, k // cols) + Vector((0, 0, z_shift))
+        if k == 0:
+            rig.rest_loc['root'] = Vector(off)
+            rigs.append(rig)
+        else:
+            rigs.append(clone_rig(rig, off))
+    return rigs
+
+
+def split_tile(img_path, k, cols):
+    """(python3 side helper documented here): tile k is the 128x128 box at
+    ((k % cols) * 128, (k // cols) * 128) of the sheet."""
+    return ((k % cols) * FRAME, (k // cols) * FRAME)
 
 
 # --------------------------------------------------------------------------- view layers
@@ -317,6 +381,9 @@ def done_layers(outdir, names):
 
 
 def render_head(opt):
+    """One render per head frame (17), every head layer a view layer:
+    <cache>/head/<pose>_<dir>/<layer>.png.  (Head scenes hold thousands of face / hair objects, so
+    cloning them 17x for a tiled render costs more than it saves.)"""
     t0 = time.time()
     parts = sel(opt['parts'], [p.name for p in tp.head_parts()])
     face_sets = sel(opt['faces'], list(tb.FACE_SETS))
@@ -326,26 +393,27 @@ def render_head(opt):
     L = Layers(ctx)
     head_layer_specs(L, ctx, parts, face_sets)
     L.realize()
-    names = [s[0] for s in L.specs]
+    names = [s_[0] for s_ in L.specs]
     frames = ta.head_frames()
     dirs = sel(opt['dirs'], ta.LOCO_DIRS)
+    hdir = os.path.join(opt['cache'], 'head')
+    os.makedirs(hdir, exist_ok=True)
+    meta = {'anchor': list(HEAD_ANCHOR), 'layout': 'dirs', 'frames': [f'{hp}_{d}' for hp, d in frames],
+            'layers': names, 'face_frames': [list(x) for x in ta.face_frames()]}
+    with open(os.path.join(hdir, 'meta.json'), 'w') as f:
+        json.dump(meta, f, indent=1)
     frames = [(hp, d) for hp, d in frames if d in dirs]
     print(f'[head] {len(frames)} head frames x {len(names)} layers', flush=True)
     for k, (hp, d) in enumerate(frames):
-        outdir = os.path.join(opt['cache'], 'head', f'{hp}_{d}')
+        outdir = os.path.join(hdir, f'{hp}_{d}')
         want = [n for n in names if (d in ta.FACE_DIRS or not (n.startswith('face.') or n.startswith('brow.')))]
         todo = want if opt['force'] else [n for n in want if n not in done_layers(outdir, want)]
         if not todo:
             continue
         pose_head_only(rig, hp, d)
-        hw = rig.j['head'].matrix_world.translation.copy()
-        aim_camera(cam, hw, HEAD_ANCHOR)
+        aim_camera(cam, rig.j['head'].matrix_world.translation.copy(), HEAD_ANCHOR)
         L.render(outdir, set(todo))
         print(f'[head] {k + 1}/{len(frames)} {hp}_{d}: {len(todo)} layers  {time.time() - t0:.0f}s', flush=True)
-    meta = {'anchor': list(HEAD_ANCHOR), 'frames': [f'{hp}_{d}' for hp, d in ta.head_frames()],
-            'layers': names, 'face_frames': [list(x) for x in ta.face_frames()]}
-    with open(os.path.join(opt['cache'], 'head', 'meta.json'), 'w') as f:
-        json.dump(meta, f, indent=1)
     print(f'[head] done in {time.time() - t0:.0f}s', flush=True)
 
 
@@ -371,37 +439,40 @@ def body_meta(rig, base, outdir):
 
 
 def render_body(opt):
+    """Per base, one render per (anim, dir) with its frames tiled BODY_COLS x BODY_ROWS:
+    <cache>/body/<base>/<anim>_<dir>/<layer>.png, tile i = frame i."""
     t0 = time.time()
     parts = sel(opt['parts'], [p.name for p in tp.body_parts()])
+    groups = [(a, d) for a in ta.ORDER for d in ta.ANIMS[a]['dirs']
+              if (opt['anims'] == 'all' or a in opt['anims'].split(','))
+              and (opt['dirs'] == 'all' or d in opt['dirs'].split(','))]
+    if opt['frameset'] == 'proof':
+        groups = [g_ for g_ in groups if any((g_[0], g_[1]) == (pa, pd) for pa, pd, _ in PROOF_FRAMES)]
     for base in sel(opt['bases'], tb.BASE_ORDER):
-        ages = tb.BASES[base]['age']
-        bparts = [pn for pn in parts if tp.PARTS[pn].ages is None or ages in tp.PARTS[pn].ages]
+        age = tb.BASES[base]['age']
+        bparts = [pn for pn in parts if tp.PARTS[pn].ages is None or age in tp.PARTS[pn].ages]
         ctx = tb.Ctx('layer')
         rig, ch = build(ctx, base, bparts)
-        sc, cam = setup_scene(int(opt['samples']))
-        L = Layers(ctx)
-        body_layer_specs(L, ctx, bparts)
-        L.realize()
-        names = [s[0] for s in L.specs]
         bdir = os.path.join(opt['cache'], 'body', base)
         os.makedirs(bdir, exist_ok=True)
         body_meta(rig, base, bdir)
-        frames = [(a, d, i) for a, d, i in ta.all_frames()
-                  if (opt['frameset'] != 'proof' or (a, d, i) in PROOF_FRAMES)
-                  and (opt['anims'] == 'all' or a in opt['anims'].split(','))
-                  and (opt['dirs'] == 'all' or d in opt['dirs'].split(','))
-                  and (opt['frames'] == 'all' or str(i) in opt['frames'].split(','))]
-        print(f'[{base}] {len(frames)} frames x {len(names)} layers', flush=True)
-        for k, (anim, d, i) in enumerate(frames):
-            outdir = os.path.join(bdir, f'{anim}_{d}_{i}')
+        rigs = make_tiles(rig, BODY_COLS * BODY_ROWS, BODY_COLS)
+        sc, cam = setup_scene(int(opt['samples']), ANCHOR, BODY_COLS * FRAME, BODY_ROWS * FRAME)
+        L = Layers(ctx)
+        body_layer_specs(L, ctx, bparts)
+        L.realize()
+        names = [s_[0] for s_ in L.specs]
+        print(f'[{base}] {len(groups)} anim/dir groups x {len(names)} layers ({len(bparts)} parts)', flush=True)
+        for k, (anim, d) in enumerate(groups):
+            outdir = os.path.join(bdir, f'{anim}_{d}')
             todo = names if opt['force'] else [n for n in names if n not in done_layers(outdir, names)]
             if not todo:
                 continue
-            pose_body(rig, anim, d, i)
+            n = ta.ANIMS[anim]['frames']
+            for i, r_ in enumerate(rigs):
+                pose_body(r_, anim, d, min(i, n - 1))
             L.render(outdir, set(todo))
-            if k % 10 == 0:
-                print(f'[{base}] {k + 1}/{len(frames)} {anim}_{d}_{i}: {len(todo)} layers  '
-                      f'{time.time() - t0:.0f}s', flush=True)
+            print(f'[{base}] {k + 1}/{len(groups)} {anim}_{d}: {len(todo)} layers  {time.time() - t0:.0f}s', flush=True)
         print(f'[{base}] done {time.time() - t0:.0f}s', flush=True)
 
 

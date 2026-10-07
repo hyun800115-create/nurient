@@ -353,7 +353,7 @@
     const el = bot.t - tk.t0;
     if (tk.maxT && el > tk.maxT && tk.kind !== 'gather') return true;
     switch (tk.kind) {
-      case 'pay': return tk.pad.done || !tk.pad.active || (eco().coins <= 0 && tk.pad.pad.contains(p.x, p.y));
+      case 'pay': return tk.pad.done || !tk.pad.active || tk.pad.remaining <= 0 || (eco().coins <= 0 && tk.pad.pad.contains(p.x, p.y));
       case 'deposit': {
         if (!b[tk.raw]) return true;
         if (tk.st.inPad.contains(p.x, p.y) && tk.st.inStack.room <= 0) { tk.fullT = (tk.fullT || 0) + bot.dt; if (tk.fullT > 1.5) return true; }

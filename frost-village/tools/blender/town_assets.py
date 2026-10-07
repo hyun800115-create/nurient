@@ -2023,7 +2023,7 @@ def b_streetlight():
             'fxPoints.lightA / lightB.', ko='쌍가로등', en='Double street light', zone='street')
 def b_streetlight_double():
     T.street_lamp('sl', (0, 0, 0), h=2.8, double=True)
-    return {'fx': {'lightA': (0.38, -0.38, 2.5), 'lightB': (-0.38, 0.38, 2.5)}}
+    return {'fx': {'lightA': (0.4, 0.4, 2.55), 'lightB': (-0.4, -0.4, 2.55)}}
 
 
 BENCH_NOTE = ('Park bench (1.7 m) with wooden slats on cast-iron legs, long axis along world %s, facing %s. '
@@ -2086,16 +2086,17 @@ GATE_NOTE = ('Town gate of 솔방울 마을: two round stone pillars with golden
 def gate_builder():
     stone = snowy('#B9B2A6', lo=0.75, hi=0.92)
     G = 1.85
+    PH = 3.2
     for s in (-1, 1):
         x = s * G
-        cyl('pillar', 0.32, 2.6, (x, 0, 0), mat=flat('#B9B2A6', 0.8), segs=20, bevel=0.03)
-        for k in range(6):
+        cyl('pillar', 0.32, PH, (x, 0, 0), mat=flat('#B9B2A6', 0.8), segs=20, bevel=0.03)
+        for k in range(7):
             cyl('pring', 0.33, 0.04, (x, 0, 0.35 + 0.42 * k), mat=flat('#A39C90', 0.8), segs=20, bevel=0.0)
         cyl('pbase', 0.42, 0.3, (x, 0, 0), mat=stone, segs=20, bevel=0.04)
-        cyl('pcap', 0.4, 0.14, (x, 0, 2.6), mat=stone, segs=20, bevel=0.04)
+        cyl('pcap', 0.42, 0.16, (x, 0, PH), mat=stone, segs=20, bevel=0.04)
         with L.Collect() as pc:
-            T.em_pinecone(0.75)
-        L.group(BA.top_level(pc.objs), 'finial', loc=(x, 0, 3.02))
+            T.em_pinecone(1.0)
+        L.group(BA.top_level(pc.objs), 'finial', loc=(x, 0, PH + 0.48))
         for o in pc.objs:
             if o.type == 'MESH' and o.name.startswith(('cone', 'core')):
                 o.data.materials.clear()

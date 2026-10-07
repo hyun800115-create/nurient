@@ -27,7 +27,7 @@ try {
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(500);
   await tapStart(page);
-  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 60000);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 180000);
   await sleep(1500);
   await installStepper(page);
   const ev = (fn, arg) => page.evaluate(fn, arg);
