@@ -103,6 +103,9 @@ export const Save = {
     return sanitizeSave(s);
   },
   write(state) {
+    // "Start over" on the crash card: the page is reloading and the crashed game's autosave
+    // (pagehide / visibilitychange) must not put the old progress back
+    if (typeof window !== 'undefined' && window.__FV_NO_SAVE) return false;
     const ok = writeJSON(SAVE_KEY, Object.assign({ v: SAVE_VERSION, t: Date.now() }, state));
     this.lastWriteOk = ok;
     return ok;

@@ -167,6 +167,7 @@ const PAGE = `<title>서리마을 개척기</title>
       if (crash) {
         var f = document.createElement('button'); f.className = 'gray'; f.textContent = '처음부터 하기 · Start over';
         f.onclick = function () {
+          window.__FV_NO_SAVE = true;   // the crashed game must not write its state back while the page unloads
           try { var k = 'frostVillage.save.v1', v = localStorage.getItem(k); if (v) localStorage.setItem(k + '.bad', v); localStorage.removeItem(k); } catch (e) { /* */ }
           location.reload();
         };
