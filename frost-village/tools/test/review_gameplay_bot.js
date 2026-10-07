@@ -12,6 +12,9 @@
   const ST_SELL = { grill: 'market', sawmill: 'trade', bakery: 'market', smelter: 'trade', smokehouse: 'market' };
   const ST_ZONE = { grill: 'plaza', sawmill: 'forest', bakery: 'farm', smelter: 'mine', smokehouse: 'hunt' };
   const gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 2);
+  // (v3.5) division of labour: a station without an operator only works while the chief stands on its work spot
+  const needsChief = (st) => !!(st && st.op && !st.op.operator && st.op.enabled && st.enabled);
+  const PILE_ST = { item_fish_raw: 'fish', item_log: 'log', item_wheat: 'wheat', item_ore: 'ore', item_meat_raw: 'meat' };
 
   // ------------------------------------------------------------------ path finding (A*, ground space)
   const CX = 20, CY = 10;
@@ -255,11 +258,14 @@
         }
       }
     }
-    // 2. raw in bag -> deposit
+    // 2. raw in bag -> deposit (v3.5: on the work spot when nobody works the station: it feeds and cooks there)
     for (const t in b) {
       if (!RAW_ST[t]) continue;
       const st = gs.stations[RAW_ST[t]];
-      if (st.inStack.room > 0) { setTask('deposit', st.inPad, { st, raw: t, label: st.id, tol: 6 }); return; }
+      if (st.inStack.room > 0 || needsChief(st)) {
+        if (needsChief(st)) { setTask('operate', st.op, { st, raw: t, label: st.id, tol: 6, maxT: 45 }); return; }
+        setTask('deposit', st.inPad, { st, raw: t, label: st.id, tol: 6 }); return;
+      }
     }
     const hasRaw = Object.keys(b).some((t) => RAW_ST[t]);
     // 2b. a player sees the coin pile: pick it up when it pays for the next pad (or when it is big)
@@ -278,6 +284,18 @@
       const st = gs.stations[RAW_ST[t]];
       setTask('blocked', st.inPad, { st, label: 'raw ' + t + ' but ' + st.id + ' in=' + st.inStack.count + ' out=' + st.outStack.count, tol: 6, maxT: 2 });
       return;
+    }
+    // 3b. (v3.5) a station / workshop with work waiting and nobody working it: stand on its work spot
+    {
+      let best = null, bs = 0;
+      for (const st of gs.stationList.concat(gs.workshops)) {
+        if (!needsChief(st) || !st.hasWork()) continue;
+        const n = st.inStack.count;
+        if (st.isWorkshop ? false : n < Math.min(3, bot.opts.minBatch) && st.outStack.count > 0) continue;
+        const sc = (st.isWorkshop ? 30 : n) / (gd(p.x, p.y, st.op.x, st.op.y) + 300);
+        if (sc > bs) { bs = sc; best = st; }
+      }
+      if (best) { setTask('operate', best.op, { st: best, label: best.id, tol: 6, maxT: 45 }); return; }
     }
     // 4. collect from station outputs
     if (room > 0) {
@@ -309,6 +327,15 @@
         const val = window.__BAL.prices[st.output];
         opts.push({ kind, n, raw, st, score: val / (d + 600) });
       };
+      // (v3.5) a collection pile the gatherers filled (nobody carries it yet): free raw items
+      for (const id in gs.piles) {
+        const pl = gs.piles[id];
+        if (!pl.shown || !pl.enabled || pl.count < 3 || gs.rawPorters.some((r) => r.pile === pl)) continue;
+        const st = gs.stations[pl.station];
+        if (!st.enabled || (st.inStack.room < 3 && !needsChief(st)) || st.outStack.room < 2) continue;
+        const d = gd(p.x, p.y, pl.x, pl.y) + gd(pl.x, pl.y, st.inPad.x, st.inPad.y);
+        opts.push({ kind: 'pile', n: pl, raw: pl.item, st, score: (window.__BAL.prices[st.output] * Math.min(pl.count, room) * 0.6) / (d + 300) });
+      }
       add('net', 'net', 'item_fish_raw');
       if (gs.progress.isDone('zone_forest')) add('tree', gs.trees, 'item_log');
       if (gs.progress.isDone('zone_farm')) add('wheat', gs.wheat, 'item_wheat');
@@ -317,6 +344,7 @@
       opts.sort((a, c) => c.score - a.score);
       if (opts.length) {
         const o = opts[0];
+        if (o.kind === 'pile') { setTask('pile', o.n, { pile: o.n, label: 'pile ' + o.n.id, tol: 6, maxT: 12 }); return; }
         const sp = o.kind === 'net' ? { x: gs.net.gather.x, y: gs.net.gather.y } : o.kind === 'animal' ? { x: o.n.x, y: o.n.y } : o.n.standPoint(p.x, p.y, {});
         setTask('gather', sp, { node: o.n, nodeKind: o.kind, raw: o.raw, label: o.kind, tol: o.kind === 'animal' ? 40 : 5, maxT: o.kind === 'animal' ? 25 : 15 });
         return;
@@ -411,6 +439,22 @@
         if (tk.st.outStack.countOf(tk.type) === 0) { tk.emptyT = (tk.emptyT || 0) + bot.dt; return tk.emptyT > 1.5 || (b[tk.type] > 0); }
         return el > (tk.maxT || 30);
       }
+      case 'operate': {
+        // stay on the work spot until the station has used up its input (or cannot make more)
+        const st = tk.st;
+        if (!needsChief(st)) return true;
+        const raw = st.input && b[st.input] > 0;
+        if (st.op.pad.contains(p.x, p.y)) {
+          if (raw && st.inStack.room > 0) return false;
+          if (!st.hasWork()) { tk.idleT = (tk.idleT || 0) + bot.dt; return tk.idleT > 0.4; }
+          return el > (tk.maxT || 45);
+        }
+        return el > (tk.maxT || 45) || (!raw && !st.hasWork());
+      }
+      case 'pile': {
+        if (p.room <= 0 || tk.pile.count === 0) return true;
+        return el > (tk.maxT || 12) && !tk.pile.pad.contains(p.x, p.y);
+      }
       case 'blocked': return true;
       case 'idle': return el > 0.5;
       case 'arrow': return el > 0.4;
@@ -490,7 +534,7 @@
     // stuck detection
     const mv = Math.hypot(p.x - bot.lastPos.x, p.y - bot.lastPos.y);
     bot.lastPos.x = p.x; bot.lastPos.y = p.y;
-    if (!arrived && mv < 0.3) { bot.stuckT += dt; if (bot.stuckT > 3) { bot.stuckEvents++; L('STUCK at ' + Math.round(p.x) + ',' + Math.round(p.y) + ' task ' + tk.kind); bot.task = null; bot.stuckT = 0; } }
+    if (!arrived && mv < 0.3) { bot.stuckT += dt; if (bot.stuckT > 3) { bot.stuckEvents++; (bot.stuckList = bot.stuckList || []).push({ t: +bot.t.toFixed(1), x: Math.round(p.x), y: Math.round(p.y), task: tk.kind + ':' + (tk.label || ''), tx: Math.round(tk.target.x), ty: Math.round(tk.target.y) }); L('STUCK at ' + Math.round(p.x) + ',' + Math.round(p.y) + ' task ' + tk.kind); bot.task = null; bot.stuckT = 0; } }
     else bot.stuckT = 0;
     if (tk.kind === 'blocked') bot.blockedT += dt;
     if (tk.kind === 'idle') bot.idleT += dt;
@@ -509,6 +553,8 @@
       leaving: gs.market.leaving.length, agents: gs.agents.length, stall: +bot.stallT.toFixed(1),
       goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null, built: Object.keys(gs.built).length, pop: gs.life ? gs.life.people() + '/' + gs.popCap() + '+' + gs.life.waiting.length : '', hungry: +bot.hungryT.toFixed(1),
       paused: gs.scene.isPaused() ? (FV.buildMenuOpen ? 'menu' : 'yes') : undefined,
+      piles: Object.fromEntries(Object.keys(gs.piles || {}).filter((k) => gs.piles[k].shown).map((k) => [k, gs.piles[k].count])),
+      ops: gs.stationList.concat(gs.workshops).filter((x) => x.op && x.enabled).map((x) => x.id[0] + (x.op.operator ? 'O' : x.op.chief ? 'C' : '-')).join(''),
     };
   };
 })();

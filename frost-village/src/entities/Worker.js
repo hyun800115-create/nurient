@@ -1,5 +1,8 @@
 // Hired workers: go to a resource -> play the job's work anim -> carry a stack -> walk to the
-// station's input pad -> drop items one by one -> repeat. The hunter shoots arrows.
+// line's collection pile (v3.5; before: the station's input pad) -> drop items one by one -> repeat.
+// The hunter shoots arrows. The 2nd / 3rd worker of a profession has another look (workers manifest
+// professions{}: fisherman_b, fisherman_c, ...).
+// Raw porters (v3.5) carry a collection pile to its station's input along the roads.
 // Porters (v2, one per production line) pick up the station's products at its output pad and carry
 // them along the roads to the counter / trade post (stack on the back for A-frame porters).
 
@@ -12,6 +15,7 @@ import { shoreY } from '../systems/Collision.js';
 import { PRIO } from '../systems/Logistics.js';
 
 const STATION_OF = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
+const PILE_OF_WORKER = { fisherman: 'fish', lumberjack: 'log', farmer: 'wheat', miner: 'ore', hunter: 'meat' };
 
 export class Worker extends Character {
   /** where a worker waits when there is nothing to do */
@@ -20,11 +24,19 @@ export class Worker extends Character {
   }
 
   constructor(gs, type, x, y, index = 0, role = 'worker') {
-    super(gs, type, x, y, { radius: 14, capacity: BALANCE.workers.capacity, carryScale: BALANCE.player.carryScale });
+    // (v3.5) the look: base worker first, then the profession's variants (art may still be loading)
+    const want = gs.workerKey ? gs.workerKey(type, index) : type;
+    const key = want !== type && !Assets.charReady(want) ? type : want;
+    super(gs, key, x, y, { radius: 14, capacity: BALANCE.workers.capacity, carryScale: BALANCE.player.carryScale });
+    this.wantKey = key !== want ? want : null;
+    this.checkT = 1;
+    if (want !== type) gs.keysInUse.add(want);
     this.type = type;
     this.role = role;
     this.index = index;
     this.station = gs.stations[STATION_OF[type]];
+    // (v3.5) what is caught goes to the line's collection pile (the chief / a raw porter takes it on)
+    this.pile = gs.piles ? gs.piles[PILE_OF_WORKER[type]] || null : null;
     this.state = 'seek';
     this.node = null;
     this.cycles = 0;
@@ -66,6 +78,18 @@ export class Worker extends Character {
 
   get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
 
+  /** (v3.5) walk to (x, y): straight when near, along the roads when far (no getting stuck at a fence) */
+  walkTo(x, y, dt, tol) {
+    if (this._rtx !== x || this._rty !== y) {
+      this._rtx = x; this._rty = y;
+      this.route = this.route || [];
+      if (gdist(this.x, this.y, x, y) > 360) this.gs.roads.route(this.x, this.y, x, y, this.route);
+      else { this.route.length = 0; this.route.push({ x, y }); }
+      this.ri = 0;
+    }
+    return this.gs.followRoute(this, this.speed, dt, tol);
+  }
+
   /** the fisherman fishes the open sea with a rod, so the net's stock does not matter to him */
   nodeOk(n) { return this.type === 'fisherman' ? n.enabled : n.ready(); }
 
@@ -94,7 +118,8 @@ export class Worker extends Character {
     for (const n of list) {
       if (!n.ready() || (n === this.avoid && this.avoidT > 0)) continue;
       if (this.type === 'hunter' ? (n.targetedBy && n.targetedBy !== this) : (n.reservedBy && n.reservedBy !== this)) continue;
-      const d = gdist(this.x, this.y, n.x, n.y) + (this.type === 'hunter' ? 0 : gdist(n.x, n.y, this.station.inPad.x, this.station.inPad.y) * 0.35);
+      const dp = this.pile || this.station.inPad;
+      const d = gdist(this.x, this.y, n.x, n.y) + (this.type === 'hunter' ? 0 : gdist(n.x, n.y, dp.x, dp.y) * 0.35);
       if (d < bd) { bd = d; best = n; }
     }
     if (!best) return null;
@@ -106,9 +131,14 @@ export class Worker extends Character {
   update(dt) {
     const gs = this.gs;
     if (this.avoidT > 0) this.avoidT -= dt;
+    // (v3.5) the variant's art arrived after the title: swap the base look for it
+    if (this.wantKey && (this.checkT -= dt) <= 0) {
+      this.checkT = 1;
+      if (Assets.charReady(this.wantKey)) { this.reskin(this.wantKey); this.wantKey = null; }
+    }
     if (this.state === 'goto') {
       this.gotoT = (this.gotoT || 0) + dt;
-      if (this.gotoT > 7 && this.node && this.type !== 'fisherman') {
+      if (this.gotoT > (this.tripMax || 7) && this.node && this.type !== 'fisherman') {
         // could not reach it: try something else for a while
         this.avoid = this.node; this.avoidT = 15;
         this.release(); this.state = 'seek';
@@ -123,7 +153,8 @@ export class Worker extends Character {
           this.release(); this.state = 'hungry'; this.emoteT = 0; break;
         }
         this.node = this.pickNode();
-        if (this.node) { this.state = 'goto'; }
+        // (v3.5) a far node (the forest is cut bare: trees of the new land) is reached along the roads
+        if (this.node) { this.state = 'goto'; this.gotoT = 0; this.tripMax = 7 + gdist(this.x, this.y, this.stand.x, this.stand.y) / this.speed * 1.8; this._rtx = undefined; }
         else if (this.stack.count > 0) this.state = 'deliver';
         else {
           // nothing to do: wait at home
@@ -147,7 +178,7 @@ export class Worker extends Character {
           gs.moveAgent(this, n.x, n.y, this.speed, dt, 10);
           break;
         }
-        if (gs.moveAgent(this, this.stand.x, this.stand.y, this.speed, dt, 8)) {
+        if (this.walkTo(this.stand.x, this.stand.y, dt, 8)) {
           this.vx = this.vy = 0;
           this.state = 'work'; this.cycles = 0;
           if (this.type === 'fisherman') this.dir = 5;   // cast up-left into the sea (side-on reads better than from behind)
@@ -173,11 +204,14 @@ export class Worker extends Character {
         break;
       }
       case 'deliver': {
-        const pad = this.station.inPad;
+        const pad = this.pile ? this.pile.pad : this.station.inPad;
         if (this.stack.count + this.stack.incoming === 0) { this.state = 'seek'; break; }
-        if (gs.moveAgent(this, pad.x + (this.index - 0.5) * 18, pad.y + 4, this.speed, dt, 10)) {
+        // (v3.5) safety: something stands in the way for long — hand the catch over from here
+        this.deliverT = (this.deliverT || 0) + dt;
+        if (this.deliverT > 14) { this.deliverT = 0; this.vx = this.vy = 0; this.state = 'drop'; this.dropT = 0.15; this.locomotion(false); break; }
+        if (this.walkTo(pad.x + (this.index - 1) * 18, pad.y + 4 + (this.index === 2 ? 14 : 0), dt, 10)) {
           this.vx = this.vy = 0;
-          this.state = 'drop'; this.dropT = 0.15;
+          this.state = 'drop'; this.dropT = 0.15; this.deliverT = 0;
           this.locomotion(false);
         }
         break;
@@ -191,10 +225,12 @@ export class Worker extends Character {
             if (this.stack.incoming === 0) { this.state = 'seek'; this.locomotion(false); }
             break;
           }
-          if (!this.station.feedFrom(this)) {
-            // station input full: wait patiently
+          if (!(this.pile ? this.pile.feedFrom(this) : this.station.feedFrom(this))) {
+            // pile (station input) full: wait patiently
             this.dropT = 0.6;
-          }
+            this.fullT = (this.fullT || 0) + 0.6;
+            if (this.fullT > 6 && gs.life && gs.isOnScreen(this.x, this.y, 60)) { this.fullT = 0; gs.life.bubbles.emote(this, Assets.pick('emote_sweat', 'emote_dots'), 1.6); }
+          } else this.fullT = 0;
         }
         this.locomotion(false);
         break;
@@ -282,7 +318,7 @@ const PORTER_FALLBACK = ['npc_yellow', 'npc_red', 'npc_blue', 'npc_young_man', '
  * haul -> unload into a logistics sink (site, food box, workshop, shelf, warehouse), re-planning
  * when a place fills up before the stack is empty.
  */
-class Hauler extends Character {
+export class Hauler extends Character {
   constructor(gs, key, x, y, cap) {
     const def = Assets.charDef(key);
     super(gs, key, x, y, { radius: 14, capacity: cap, carryScale: BALANCE.player.carryScale, carryMode: def.carryStyle === 'back' ? 'back' : 'front' });
@@ -498,6 +534,83 @@ export class Porter extends Hauler {
     this.plan = null;
     if (sink) this.startHaul(sink);
     else this.waitT = 0;      // nowhere wants it yet: keep it and wait by the pad
+  }
+}
+
+/**
+ * (v3.5) raw porter of a production line: waits by the line's collection pile, loads what the
+ * station's input can take and carries it along the roads to the input pad (생선 짐꾼: 생선 통 -> 화덕).
+ */
+export class RawPorter extends Hauler {
+  static homeFor(gs, pile) {
+    const o = (pile.cfg && pile.cfg.porterHome) || [46, 34];
+    const p = { x: pile.x + o[0], y: pile.y + o[1] };
+    gs.collision.resolve(p, 14);
+    return [p.x, p.y];
+  }
+
+  constructor(gs, pile, station, x, y, index = 0) {
+    const pk = Porter.pickKey(gs, index + 1);
+    super(gs, pk.key, x, y, Math.max(1, Math.floor(Number(BALANCE.labour && BALANCE.labour.rawCapacity)) || 8));
+    this.wantKey = pk.later;
+    this.checkT = 1;
+    this.type = 'porter';
+    this.role = 'raw';
+    this.index = index;
+    this.pile = pile;
+    this.target = station;
+    this.station = null;       // (not a goods porter: nothing reads its station's output)
+    this.state = 'seek';
+    this.home = RawPorter.homeFor(gs, pile);
+    gs.keysInUse.add(pk.key);
+    if (pk.later) gs.keysInUse.add(pk.later);
+  }
+
+  get sink() { return this.target.inSink; }
+
+  /** only its station's input (when it is full the porter waits there with the load) */
+  planDest() { const s = this.sink, ty = this.carriedType(); return s && ty && this.gs.logistics.want(s, ty) > 0 ? s : null; }
+
+  afterUnload() { this.state = 'seek'; }
+
+  update(dt) {
+    const gs = this.gs, pile = this.pile, L = gs.logistics;
+    this.checkSkin(dt);
+    switch (this.state) {
+      case 'seek':
+      default: {
+        if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
+        if (!this.route.length || this.routeTo !== 'home') { this.go(this.home[0], this.home[1]); this.routeTo = 'home'; }
+        if (gs.followRoute(this, this.speed, dt, 10)) {
+          this.vx = this.vy = 0;
+          this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null;
+          this.faceTo(pile.x, pile.y);
+          this.locomotion(false);
+        }
+        break;
+      }
+      case 'load': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        if (!pile.enabled || !this.target.enabled) { this.locomotion(false); break; }
+        const sink = this.sink;
+        const want = sink ? Math.min(this.stack.max, L.want(sink, pile.item)) : 0;
+        const have = this.stack.count + this.stack.incoming;
+        if (want > 0 && have < want && pile.count > 0) {
+          this.waitT = 0;
+          if (this.dropT <= 0 && pile.takeTo(this, this.stack.max)) this.dropT = 0.14;
+        } else {
+          this.waitT += dt;
+          // a decent load, or the pile ran dry for a moment: carry what we have
+          if (have > 0 && this.stack.incoming === 0 && (have >= want || have >= 4 || this.waitT > 2.5)) { const n = this.planDest(); if (n) this.startHaul(n); }
+        }
+        this.locomotion(false);
+        break;
+      }
+      case 'haul': this.haul(dt); break;
+      case 'unload': this.unload(dt); break;
+    }
+    this.sync(dt);
   }
 }
 

@@ -65,35 +65,48 @@ export const BALANCE = {
     item_ingot: 10,           // 주괴 (교역소)
   },
 
-  // ── 해금 / 고용 비용 (기획서 §4) ────────────────────────────────
-  //  (시뮬레이션 기준: 처음 하는 사람 약 20~30분에 마을 완성)
+  // ── 해금 / 고용 비용 (기획서 §4, v3.5 분업: docs/기획서_v3_분업.md) ──────────────
+  //  한 생산 라인의 고용 순서: 가공 기술자 → 채집 일꾼 → 재료 짐꾼 → 상품 짐꾼 (뒤로 갈수록 조금씩 비쌈)
+  //  (생선 라인은 맨 앞에 점원). 기술자가 없으면 촌장이 가공소 작업 자리에 서 있어야 가공돼요.
   costs: {
-    hire_fisherman: 30,       // 1. 어부 고용
-    zone_forest: 100,         // 2. 벌목장 (숲 + 제재소 + 교역소)
-    hire_lumberjack: 150,     // 3. 나무꾼 고용
-    // 4. 가방 업그레이드 → 위 upgrades 의 단계별 비용
-    zone_farm: 350,           // 5. 농장 (밀밭 + 빵 오븐)
-    hire_farmer: 450,         // 6. 농부 고용
-    zone_mine: 750,           // 7. 광산 (광석 바위 + 제련소)
-    hire_miner: 850,          // 8. 광부 고용
-    zone_hunt: 1250,          // 9. 사냥터 (사슴·멧돼지 + 훈제장)
-    hire_hunter: 1500,        // 10. 사냥꾼 고용 → 마을 완성
-    // (v2) 점원: 첫 판매(교역) 뒤 바로 나타남. 점원이 계산대를 맡으면 촌장이 서 있지 않아도 돈을 받음
-    hire_clerk_market: 25,    // 판매대 점원
-    hire_clerk_trade: 60,     // 교역소 점원
-    // (v2) 짐꾼: 그 줄의 일꾼을 고용하면 나타남. 가공소 완성품을 길을 따라 판매대·교역소로 날라 줌
-    porter_grill: 150,        // 구운 생선 짐꾼
-    porter_sawmill: 300,      // 판자 짐꾼
-    porter_bakery: 500,       // 빵 짐꾼
-    porter_smelter: 800,      // 주괴 짐꾼
-    porter_smokehouse: 1000,  // 훈제 고기 짐꾼
+    // 생선 라인 (튜토리얼)
+    hire_clerk_market: 12,    // 1. 판매대 점원 (첫 판매 뒤) — 계산을 대신 해 줌
+    op_grill: 30,             // 2. 요리사 쿡 — 생선 굽기를 대신 해 줌
+    hire_fisherman: 45,       // 3. 어부 — 물고기를 잡아 그물 옆 생선 통에 쌓음
+    raw_grill: 70,            //    생선 짐꾼 — 생선 통 → 화덕
+    porter_grill: 100,        //    판매 짐꾼 — 화덕 → 판매대
+    // 나무 라인
+    zone_forest: 90,          // 4. 벌목장 (숲 + 제재소 + 교역소)
+    hire_clerk_trade: 50,     //    교역소 점원 (첫 교역 뒤)
+    op_sawmill: 110,          // 5. 제재공 산들
+    hire_lumberjack: 150,     // 6. 나무꾼
+    raw_sawmill: 170,         //    통나무 짐꾼 — 통나무 더미 → 제재소
+    porter_sawmill: 220,      //    판자 짐꾼 — 제재소 → 교역소
+    // 밀 라인 (가방 업그레이드는 나무꾼 고용 뒤 작업대에서 → 위 upgrades)
+    zone_farm: 300,           // 7. 농장 (밀밭 + 빵 오븐)
+    op_bakery: 260,           // 8. 빵집 아주머니
+    hire_farmer: 380,         // 9. 농부
+    raw_bakery: 340,          //    밀 짐꾼
+    porter_bakery: 420,       //    빵 짐꾼
+    // 광석 라인
+    zone_mine: 600,           // 10. 광산 (광석 바위 + 제련소)
+    op_smelter: 480,          // 11. 대장장이 언니
+    hire_miner: 700,          // 12. 광부
+    raw_smelter: 560,         //     광석 짐꾼
+    porter_smelter: 640,      //     주괴 짐꾼
+    // 사냥 라인
+    zone_hunt: 950,           // 13. 사냥터 (사슴·멧돼지 + 훈제장)
+    op_smokehouse: 760,       // 14. 훈제사 연기
+    hire_hunter: 1150,        // 15. 사냥꾼 → 마을 완성
+    raw_smokehouse: 820,      //     고기 짐꾼
+    porter_smokehouse: 900,   //     훈제 고기 짐꾼
   },
   payDuration: 1.6,           // 발판에 코인을 다 내는 데 걸리는 대략적인 시간(초) — 비싸도 이 시간 안에 끝남
 
   // ── 가공소 (재료 1개 → 완성품 1개) ──────────────────────────────
   //  time = 1개 가공 시간(초), inputMax = 입구에 쌓을 수 있는 최대 개수, outputMax = 출구 최대 개수
   stations: {
-    grill:      { time: 1.0, inputMax: 30, outputMax: 36 },   // 생선 그릴: 생선 → 구운 생선
+    grill:      { time: 0.8, inputMax: 30, outputMax: 36 },   // 생선 그릴(화덕): 생선 → 구운 생선
     sawmill:    { time: 1.0, inputMax: 30, outputMax: 36 },   // 제재소: 통나무 → 판자
     bakery:     { time: 1.1, inputMax: 30, outputMax: 36 },   // 빵 오븐: 밀 → 빵
     smelter:    { time: 1.2, inputMax: 30, outputMax: 36 },   // 제련소: 광석 → 주괴
@@ -222,12 +235,42 @@ export const BALANCE = {
     hire2_fisherman: 500,     // 어부 2 (낚싯대)
     hire2_hunter: 1200,       // 사냥꾼 2 (활)
   },
+  // ── (v3.5) 세 번째 일꾼 (코인 + 도구 1개) — 두 번째 일꾼과 또 다른 모습의 사람이 와요
+  hire3: {
+    hire3_fisherman: 1000,    // 어부 3 (낚싯대)
+    hire3_lumberjack: 1100,   // 나무꾼 3 (도끼)
+    hire3_farmer: 1300,       // 농부 3 (낫)
+    hire3_hunter: 1600,       // 사냥꾼 3 (활)
+  },
   // ── 새 가게·가공소 직원
   costs3: {
-    porter_toolsmith: 700,    // 도구 짐꾼 (도구를 발판·잡화점으로)
-    porter_cannery: 900,      // 통조림 짐꾼 (통조림을 잡화점으로)
-    porter_dock: 600,         // 생선 짐꾼 (배가 잡아 온 생선을 통조림 공장·그릴로)
+    op_toolsmith: 220,        // 도구 장인 (광부 영감) — 대장간에서 도구를 대신 두드림
+    op_cannery: 600,          // 통조림 기술자 통통
+    porter_toolsmith: 600,    // 도구 짐꾼 (도구를 발판·잡화점으로)
+    porter_cannery: 800,      // 통조림 짐꾼 (통조림을 잡화점으로)
+    porter_dock: 600,         // 생선 짐꾼 (배가 잡아 온 생선을 통조림 공장·화덕으로)
     hire_clerk_store: 400,    // 잡화점 점원
+  },
+  // ── (v3.5) 분업
+  labour: {
+    chiefSpeed: 1.25,         // 촌장이 직접 가공할 때 속도 배율 (1 = 기술자와 같음, 클수록 빨리 구움)
+    pileMax: 40,              // 모아두는 곳(생선 통·통나무 더미·밀 더미·광석 더미·고기 걸이)에 쌓이는 최대 개수
+    rawCapacity: 8,           // 재료 짐꾼이 한 번에 나르는 개수
+  },
+  // ── (v3.5) 강아지 콩이와 놀기 (기획서_v4 §5)
+  dog: {
+    callRange: 140,           // 콩이가 촌장 곁 이만큼(px) 안에 오면 놀기 메뉴가 떠요
+    stayTime: 12,             // 아무것도 안 하면 이만큼(초) 뒤 다시 놀러 가요
+    treatCooldown: 25,        // 간식 주기 다시 쓰기까지(초)
+    playCooldown: 4,          // 공 던지기 다시 쓰기까지(초)
+    petCooldown: 8,           // 쓰다듬기 다시 쓰기까지(초)
+    treatLove: 12,            // 간식 하나에 오르는 친밀도 (0~100)
+    playLove: 6,              // 공 놀이 한 번에 오르는 친밀도
+    petLove: 5,               // 쓰다듬기 한 번에 오르는 친밀도
+    trickAt: 50,              // 친밀도가 이만큼 넘으면 가끔 혼자 재주를 부려요
+    giftAt: 75,               // 친밀도가 이만큼 넘으면 가끔 선물(코인)을 물어 와요
+    giftEvery: 150,           // 선물을 물어 오는 간격(초, 대략)
+    giftCoins: 6,             // 선물 코인 (이 값 ±절반)
   },
   // ── 새 가공소: time = 한 번 만드는 시간(초), inputMax = 재료 종류별 최대, outputMax = 완성품 최대
   stations3: {

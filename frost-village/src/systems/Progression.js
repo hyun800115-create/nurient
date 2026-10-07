@@ -8,10 +8,17 @@ import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
 import { TOOL_OF } from '../data/items.js';
 
+/** (v3.5) the look a hire step brings: the n-th free look of the profession (workers manifest professions{}) */
+export function workerLook(gs, s) {
+  const idx = s.type === 'hire3' ? 2 : s.type === 'hire2' ? 1 : 0;
+  return gs.workerKey ? gs.workerKey(s.worker, idx, true) : s.worker;
+}
+
 /** coins a step's pad asks (v1 costs, v3 tower / hire2 / boat / porter costs) */
 export function stepCost(s) {
   if (s.type === 'tower') return (BALANCE.towers[s.id] || {}).coins;
   if (s.type === 'hire2') return BALANCE.hire2[s.id];
+  if (s.type === 'hire3') return BALANCE.hire3 && BALANCE.hire3[s.id];
   if (s.type === 'boat') return (s.level >= 2 ? BALANCE.boats.fishing : BALANCE.boats.rowboat).coins;
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
   return BALANCE.costs3 && BALANCE.costs3[s.id];
@@ -20,25 +27,41 @@ export function stepCost(s) {
 // id, type, what it needs first (after = a step id, flag = a one-time event such as the first sale).
 // side: optional purchases next to the main road (clerks, porters) — "next goal" text ignores them.
 export const STEPS = [
-  { id: 'hire_fisherman', type: 'hire', worker: 'fisherman', after: null },
-  // (v2) clerks: right after the first sale at that seller, cheap — they take payments at the register
-  { id: 'hire_clerk_market', type: 'clerk', seller: 'market', after: null, flag: 'firstSale', side: true },
-  // (v2) porters: after that line's worker — carry the station's products along the roads to the seller
-  { id: 'porter_grill', type: 'porter', station: 'grill', after: 'hire_fisherman', side: true },
+  // (v3.5 분업, docs/기획서_v3_분업.md) one production line = operator -> gatherer -> raw porter -> goods porter.
+  // operator: works the station (until then the chief stands at its work spot); raw: carries the
+  // collection pile to the station; porter: carries the products to the seller.
+  // fish line (the tutorial): clerk -> cook -> fisherman -> fish porter -> goods porter
+  { id: 'hire_clerk_market', type: 'clerk', seller: 'market', after: null, flag: 'firstSale' },
+  { id: 'op_grill', type: 'operator', station: 'grill', after: 'hire_clerk_market' },
+  { id: 'hire_fisherman', type: 'hire', worker: 'fisherman', after: 'op_grill' },
+  { id: 'raw_grill', type: 'raw', station: 'grill', after: 'hire_fisherman', side: true },
+  { id: 'porter_grill', type: 'porter', station: 'grill', after: 'raw_grill', side: true },
+  // wood line
   { id: 'zone_forest', type: 'zone', zone: 'forest', after: 'hire_fisherman' },
   { id: 'hire_clerk_trade', type: 'clerk', seller: 'trade', after: 'zone_forest', flag: 'firstTrade', side: true },
-  { id: 'hire_lumberjack', type: 'hire', worker: 'lumberjack', after: 'zone_forest' },
-  { id: 'porter_sawmill', type: 'porter', station: 'sawmill', after: 'hire_lumberjack', side: true },
+  { id: 'op_sawmill', type: 'operator', station: 'sawmill', after: 'zone_forest' },
+  { id: 'hire_lumberjack', type: 'hire', worker: 'lumberjack', after: 'op_sawmill' },
+  { id: 'raw_sawmill', type: 'raw', station: 'sawmill', after: 'hire_lumberjack', side: true },
+  { id: 'porter_sawmill', type: 'porter', station: 'sawmill', after: 'raw_sawmill', side: true },
   // (step 4 = backpack/boots upgrades at the bench, appears after hire_lumberjack)
+  // wheat line
   { id: 'zone_farm', type: 'zone', zone: 'farm', after: 'hire_lumberjack' },
-  { id: 'hire_farmer', type: 'hire', worker: 'farmer', after: 'zone_farm' },
-  { id: 'porter_bakery', type: 'porter', station: 'bakery', after: 'hire_farmer', side: true },
+  { id: 'op_bakery', type: 'operator', station: 'bakery', after: 'zone_farm' },
+  { id: 'hire_farmer', type: 'hire', worker: 'farmer', after: 'op_bakery' },
+  { id: 'raw_bakery', type: 'raw', station: 'bakery', after: 'hire_farmer', side: true },
+  { id: 'porter_bakery', type: 'porter', station: 'bakery', after: 'raw_bakery', side: true },
+  // ore line
   { id: 'zone_mine', type: 'zone', zone: 'mine', after: 'hire_farmer' },
-  { id: 'hire_miner', type: 'hire', worker: 'miner', after: 'zone_mine' },
-  { id: 'porter_smelter', type: 'porter', station: 'smelter', after: 'hire_miner', side: true },
+  { id: 'op_smelter', type: 'operator', station: 'smelter', after: 'zone_mine' },
+  { id: 'hire_miner', type: 'hire', worker: 'miner', after: 'op_smelter' },
+  { id: 'raw_smelter', type: 'raw', station: 'smelter', after: 'hire_miner', side: true },
+  { id: 'porter_smelter', type: 'porter', station: 'smelter', after: 'raw_smelter', side: true },
+  // hunting line
   { id: 'zone_hunt', type: 'zone', zone: 'hunt', after: 'hire_miner' },
-  { id: 'hire_hunter', type: 'hire', worker: 'hunter', after: 'zone_hunt' },
-  { id: 'porter_smokehouse', type: 'porter', station: 'smokehouse', after: 'hire_hunter', side: true },
+  { id: 'op_smokehouse', type: 'operator', station: 'smokehouse', after: 'zone_hunt' },
+  { id: 'hire_hunter', type: 'hire', worker: 'hunter', after: 'op_smokehouse' },
+  { id: 'raw_smokehouse', type: 'raw', station: 'smokehouse', after: 'hire_hunter', side: true },
+  { id: 'porter_smokehouse', type: 'porter', station: 'smokehouse', after: 'raw_smokehouse', side: true },
 
   // ---------------- (v3) 생산 사슬과 땅 넓히기 (기획서_v2.md v3 진행 표)
   //   after: 'b:<건물>' = that building is finished, 'r:<땅>' = that land is open, otherwise a step id
@@ -55,10 +78,17 @@ export const STEPS = [
   { id: 'hire2_fisherman', type: 'hire2', worker: 'fisherman', after: 'b:boathouse', v3: true, side: true },
   { id: 'hire2_farmer', type: 'hire2', worker: 'farmer', after: 'r:south', v3: true, side: true },
   { id: 'hire2_hunter', type: 'hire2', worker: 'hunter', after: 'b:store', v3: true, side: true },
-  // porters for the new lines, a clerk for the general store
-  { id: 'porter_toolsmith', type: 'porter', station: 'toolsmith', after: 'b:toolsmith', v3: true, side: true },
+  // (v3.5) third workers (coins + a tool): the third look of each profession
+  { id: 'hire3_fisherman', type: 'hire3', worker: 'fisherman', after: 'hire2_fisherman', also: 'b:cannery', v3: true, side: true },
+  { id: 'hire3_lumberjack', type: 'hire3', worker: 'lumberjack', after: 'hire2_lumberjack', also: 'r:south', v3: true, side: true },
+  { id: 'hire3_farmer', type: 'hire3', worker: 'farmer', after: 'hire2_farmer', also: 'b:store', v3: true, side: true },
+  { id: 'hire3_hunter', type: 'hire3', worker: 'hunter', after: 'hire2_hunter', also: 'r:se', v3: true, side: true },
+  // operators of the new workshops (until then the chief works them), porters for the new lines, a clerk for the general store
+  { id: 'op_toolsmith', type: 'operator', station: 'toolsmith', after: 'b:toolsmith', v3: true, side: true },
+  { id: 'porter_toolsmith', type: 'porter', station: 'toolsmith', after: 'op_toolsmith', v3: true, side: true },
   { id: 'porter_dock', type: 'porter', station: 'dock', after: 'boat_rowboat', v3: true, side: true },
-  { id: 'porter_cannery', type: 'porter', station: 'cannery', after: 'b:cannery', v3: true, side: true },
+  { id: 'op_cannery', type: 'operator', station: 'cannery', after: 'b:cannery', v3: true, side: true },
+  { id: 'porter_cannery', type: 'porter', station: 'cannery', after: 'op_cannery', v3: true, side: true },
   { id: 'hire_clerk_store', type: 'clerk', seller: 'store', after: 'b:store', flag: 'firstStoreSale', v3: true, side: true },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
@@ -166,19 +196,23 @@ export class Progression {
     const gs = this.gs;
     for (const s of this.visibleSteps()) {
       if (this.pads[s.id]) continue;
-      const cfg = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (gs.padSpot && gs.padSpot(s));
+      const cfg = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (WORLD.pads35 && WORLD.pads35[s.id]) || (gs.padSpot && gs.padSpot(s));
       if (!cfg) continue;
       const cost = stepCost(s);
       let icon = 'ui_icon_lock';
       let items = s.items || null;
-      if (s.type === 'hire' || s.type === 'hire2') icon = 'portrait_' + s.worker;
+      // (v3.5) the face of who comes: a portrait still loading (after the title) arrives a moment later
+      const face = (k, fb) => (Assets.has(k) || Assets.pending(k) ? k : fb);
+      if (s.type === 'hire' || s.type === 'hire2' || s.type === 'hire3') icon = face('portrait_' + workerLook(gs, s), 'portrait_' + s.worker);
+      else if (s.type === 'operator') { const w = WORLD.labour && WORLD.labour.ops[s.station]; icon = w && w.who ? face('portrait_' + w.who, 'ui_icon_worker') : 'ui_icon_worker'; }
+      else if (s.type === 'raw') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_b', 'ui_icon_backpack');
       else if (s.type === 'clerk') icon = Assets.pick('ui_icon_clerk', s.seller === 'trade' ? 'portrait_npc_clerk_b' : 'portrait_npc_clerk_a', 'ui_icon_worker');
       else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
       else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
-      if (s.type === 'hire2') items = { [TOOL_OF[s.worker]]: 1 };
+      if (s.type === 'hire2' || s.type === 'hire3') items = { [TOOL_OF[s.worker]]: 1 };
       const kind = s.type === 'zone' || s.type === 'tower' ? 'unlock' : 'hire';
-      const padTex = s.type === 'clerk' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
+      const padTex = s.type === 'clerk' || s.type === 'operator' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
         kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : 54,
@@ -186,6 +220,13 @@ export class Progression {
         onComplete: (p) => this.completeStep(s, p),
       });
       this.pads[s.id] = pad;
+      if (gs.lazyImage && Assets.pending(icon)) {
+        const size = s.type === 'zone' || s.type === 'tower' ? 40 : 54;
+        gs.lazyImage(pad.labelIcon, icon, (img) => { img.setScale(size / Math.max(img.frame.realWidth, img.frame.realHeight, 1)); pad.refresh(); });
+      }
+      // (v3.5) the pads of a line follow each other on the same spot: the chief standing there must
+      // step off first, so the coins for the next one never drain by accident
+      if (gs.player && pad.pad.contains(gs.player.x, gs.player.y)) pad.needsLeave = true;
       gs.popIn(pad);
     }
   }
@@ -201,6 +242,9 @@ export class Progression {
     if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
     else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
     else if (s.type === 'hire2') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 2' }));
+    else if (s.type === 'hire3') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 3' }));
+    else if (s.type === 'operator') gs.ui.banner(t('hired', { name: t('opName_' + s.station) }), t('opSub_' + s.station));
+    else if (s.type === 'raw') gs.ui.banner(t('hired', { name: t('raw_' + s.station) }), t('rawSub'));
     else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }));
     else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
     else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'));
@@ -221,6 +265,9 @@ export class Progression {
     if (s.type === 'zone') gs.revealZone(s.zone, instant);
     else if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, instant, x, y, s.role);
     else if (s.type === 'hire2') gs.hireWorker(s.worker, 1, instant, x, y);
+    else if (s.type === 'hire3') gs.hireWorker(s.worker, 2, instant, x, y);
+    else if (s.type === 'operator') gs.hireOperator(s.station, instant, x, y);
+    else if (s.type === 'raw') gs.hireRawPorter(s.station, instant, x, y);
     else if (s.type === 'clerk') { const sel = s.seller === 'trade' ? gs.trade : s.seller === 'store' ? gs.store : gs.market; if (sel) sel.register.hireClerk(instant, x, y); }
     else if (s.type === 'porter') gs.hirePorter(s.station, instant, x, y);
     else if (s.type === 'tower') gs.startTower(s.id, instant);

@@ -33,7 +33,7 @@ export class Workshop extends Station {
     super(gs, {
       id: kind, sprite: R.sprite, x: site.x, y: site.y, in: d.inPoint || [-158, 38], out: d.outPoint || [77, 79],
       input: kind === 'cannery' ? 'item_fish_raw' : 'item_ingot', output: kind === 'cannery' ? 'item_can' : 'item_axe',
-      sfx: R.sfx, smoke: fx.smoke || null, bal, zone: null,
+      sfx: R.sfx, smoke: fx.smoke || null, bal, zone: null, noSink: true,
     });
     this.kind = kind;
     this.recipe = R;
@@ -88,11 +88,19 @@ export class Workshop extends Station {
   }
 
   canWork() {
+    // (v3.5) somebody has to work the forge / the press (the chief on its work spot, or its operator)
+    if (!this.operated()) return false;
     if (!this.hasBatch() || this.outStack.count + this.outStack.incoming + this.recipe.outN > this.outStack.max) return false;
     // the toolsmith only forges what someone needs (a hire pad) or the shop can sell
     if (this.recipe.out === 'tool') { this.planned = this.pickTool(); return !!this.planned; }
     return true;
   }
+
+  hasWork() {
+    if (!this.hasBatch() || this.outStack.count + this.outStack.incoming + this.recipe.outN > this.outStack.max) return false;
+    return this.recipe.out === 'tool' ? !!this.pickTool() : true;
+  }
+  acceptsFromChief(p) { for (const it of p.stack.items) if (this.roomFor(it.type) > 0) return true; return false; }
 
   /** accept one ingredient from a character standing on the input pad */
   feedFrom(ch) {
@@ -161,7 +169,6 @@ export class Workshop extends Station {
     gs.time.delayedCall(260, () => {
       if (gs.isNear(this.x, this.y, 520)) gs.sfxAt(Assets.audioGroup(R.sfx) || Assets.audioDef(R.sfx) ? R.sfx : 'sfx_smelt', this.x, this.y, { volume: 0.4, throttle: 300 });
       gs.effects.pop(this.img, 0.04, 90);
-      if (this.smith) this.smith.cheer();
     });
     gs.events.emit('crafted', this.kind, outType);
   }
@@ -176,7 +183,6 @@ export class Workshop extends Station {
   setEnabled(v) {
     super.setEnabled(v);
     this.sink.enabled = v;
-    if (this.smith) { this.smith.sprite.setVisible(v); this.smith.shadow.setVisible(v); }
   }
 
   serialize() {

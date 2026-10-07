@@ -103,7 +103,7 @@ try {
   }
   const fin = await page.evaluate(() => {
     const b = window.__bot;
-    return { hungryT: +b.hungryT.toFixed(1), events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
+    return { stuckList: b.stuckList || [], hungryT: +b.hungryT.toFixed(1), events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
   });
   await shot('999_end');
   fs.writeFileSync(path.join(OUT, NAME + '.json'), JSON.stringify({ args, fin, samples, errors: log.errors }, null, 1));
@@ -117,6 +117,12 @@ try {
   console.log(`[${NAME}] BEATS longestGap=${(gap / 60).toFixed(2)}min at ${(gapAt / 60).toFixed(1)}min, v3 longestGap=${(gap3 / 60).toFixed(2)}min at ${(gap3At / 60).toFixed(1)}min, villageComplete=${(completeAt / 60).toFixed(1)}min v3Complete=${v3At >= 0 ? (v3At / 60).toFixed(1) : '-'}min (v3 took ${v3At >= 0 && completeAt >= 0 ? ((v3At - completeAt) / 60).toFixed(1) : '-'}min) hungry=${fin.hungryT}s`);
   console.log(`[${NAME}] DONE sim=${fin.simT.toFixed(0)}s completeAt=${completeAt} v3At=${v3At} stuck=${fin.stuck} accidentalPay=${fin.accidental} blocked=${fin.blockedT.toFixed(1)} idle=${fin.idleT.toFixed(1)} tasks=${JSON.stringify(Object.fromEntries(Object.entries(fin.taskTime).map(([k, v]) => [k, Math.round(v)])))} errors=${log.errors.length} wall=${((Date.now() - t0) / 1000).toFixed(0)}s`);
   for (const e of log.errors.slice(0, 5)) console.log('  ERR', e.slice(0, 300));
+  // (v3.5) the hires of every production line (operator / gatherer / raw porter / goods porter / clerk) in time order
+  const hires = fin.events.filter((e) => /^(op_|raw_|hire|porter_|zone_)/.test(e.ev));
+  console.log(`[${NAME}] HIRES ` + hires.map((e) => `${e.ev}@${(e.t / 60).toFixed(2)}`).join(' '));
+  let maxGap = 0, maxAt = '';
+  for (let i = 1; i < hires.length; i++) { const g = hires[i].t - hires[i - 1].t; if (g > maxGap) { maxGap = g; maxAt = hires[i].ev; } }
+  console.log(`[${NAME}] HIRE-GAP longest=${(maxGap / 60).toFixed(2)}min before ${maxAt}; first hire at ${hires.length ? (hires[0].t / 60).toFixed(2) : '-'}min; stuck list ${JSON.stringify(fin.stuckList)}`);
 } catch (e) {
   console.log('FATAL', e && e.stack || e);
   for (const e2 of log.errors.slice(0, 5)) console.log('  ERR', e2.slice(0, 300));

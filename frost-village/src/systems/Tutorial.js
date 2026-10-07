@@ -62,7 +62,9 @@ export class Tutorial {
     // (v2) customers waiting at an empty register come before buying things (the line is stuck)
     if (!this.inTutorial && this.registerHint(set, dt, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
-      const key = this.inTutorial ? 'obj_unlock' : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
+      const key = this.inTutorial ? (pad.id === 'op_grill' ? 'obj_operator' : pad.id === 'hire_clerk_market' ? 'obj_clerk' : 'obj_unlock')
+        : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
+        : /^op_/.test(pad.id) && prog.zonesOpen() <= 1 ? 'obj_operator' : /^raw_/.test(pad.id) && !prog.anyDone(/^raw_/) ? 'obj_raw'
         : /^tower_/.test(pad.id) ? 'obj_tower' : pad.id === 'boat_rowboat' ? 'obj_boat' : null;
       set(pad.x, pad.y, 112, key);
       return;
@@ -71,9 +73,13 @@ export class Tutorial {
     if (this.inTutorial) { this.firstLoop(set); return; }
     if (this.unloadHint(set)) return;
     if (this.registerHint(set, dt, false)) return;
+    // (v3.5) coins waiting on a cash pad that pay for the next thing come before more hand-work
+    if (this.cashHint(set)) return;
     if (this.upgradeHint(set, dt)) return;
     if (this.zoneHint(set, dt)) return;
     const idle = (gs.time.now - Input.lastActivity) / 1000 > IDLE_HINT && !gs.playerOnPad;
+    // (v3.5) a station nobody works / a full collection pile nobody carries
+    if (this.labourHint(set, idle)) return;
     // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
     if (this.v3Hint(set, dt, idle)) return;
     const nx = prog.nextPad();
@@ -84,6 +90,21 @@ export class Tutorial {
     for (const c of this.cashes()) if (c.value >= 40 && !c.pad.contains(p.x, p.y) && gdist(p.x, p.y, c.x, c.y) > 260) { set(c.x, c.y, 40, goal ? goal.key : null, goal ? goal.text : null); return; }
     // otherwise just name the next goal (no arrow)
     if (goal) { this.textKey = goal.key; this.text = goal.text; }
+  }
+
+  /** (v3.5) the coins customers left would buy the next pad (or there are a lot of them): pick them up */
+  cashHint(set) {
+    const gs = this.gs, p = gs.player, prog = gs.progress, coins = gs.economy.coins;
+    let total = 0, best = null;
+    for (const c of this.cashes()) { total += c.value; if (c.value > 0 && (!best || c.value > best.value)) best = c; }
+    if (!best || total < 25) return false;
+    let next = Infinity;
+    for (const id in prog.pads) { const pd = prog.pads[id]; if (pd.active && !pd.done && pd.remaining > 0) next = Math.min(next, pd.remaining); }
+    for (const k in prog.upPads) { const u = prog.upPads[k]; if (u.active && !u.done && !u.maxed && u.remaining > 0) next = Math.min(next, u.remaining); }
+    if (!((coins < next && coins + total >= next) || total >= 300)) return false;
+    if (best.pad.contains(p.x, p.y)) return false;
+    set(best.x, best.y, 40, 'obj_cash');
+    return true;
   }
 
   cashes() {
@@ -231,7 +252,18 @@ export class Tutorial {
       return;
     }
     if (cooked > 0) { set(m.shelf.x, m.shelf.y, 60, 'obj_sell'); return; }
-    if (raw > 0 && (p.room <= 0 || !gs.net.ready() || raw >= Math.min(4, p.capacity))) { set(grill.inPad.x, grill.inPad.y, 50, 'obj_grill'); return; }
+    // (v3.5) nobody cooks yet: the chief stands at the grill himself (the fish hop in from there)
+    const op = grill.op, cook = !op || !!op.operator;
+    if (raw > 0 && (p.room <= 0 || !gs.net.ready() || raw >= Math.min(4, p.capacity))) {
+      if (cook) set(grill.inPad.x, grill.inPad.y, 50, 'obj_grill');
+      else if (op.pad.contains(p.x, p.y)) this.textKey = 'obj_operating_grill';
+      else set(op.x, op.y, 50, 'obj_op_grill');
+      return;
+    }
+    if (!cook && grill.inStack.count > 0 && raw === 0) {
+      if (op.pad.contains(p.x, p.y)) { this.textKey = 'obj_operating_grill'; return; }
+      if (grill.outStack.count < 6 || p.room <= 0) { set(op.x, op.y, 50, 'obj_op_grill'); return; }
+    }
     if ((grill.outStack.count > 0 || grill.inStack.count > 0) && raw === 0) { set(grill.outPad.x, grill.outPad.y, 80, 'obj_take'); return; }
     set(gs.net.gather.x, gs.net.gather.y - 10, 30, 'obj_fish');
   }
@@ -274,7 +306,7 @@ export class Tutorial {
         if (s.items) return { pad: s.pad, key: 'obj_tool_give' };
         const ws = gs.workshops.find((w) => w.sink === s);
         if (ws) return { pad: ws.inPad, key: null };
-        if (s === gs.grillSink) return { pad: gs.stations.grill.inPad, key: 'obj_grill' };
+        if (s.station) return this.stationDest(s.station);
         void pad;
       }
     }
@@ -283,7 +315,42 @@ export class Tutorial {
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? { pad: gs.market.shelf, key: SELL_KEY[type] } : null;
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? { pad: gs.trade.shelf, key: SELL_KEY[type] } : null;
     const st = gs.stationByInput[type];
-    return st && st.enabled && st.inStack.room > 0 ? { pad: st.inPad, key: FEED_KEY[type] } : null;
+    return st && st.enabled && st.inStack.room > 0 ? this.stationDest(st) : null;
+  }
+
+  /** (v3.5) where to bring a station's raw items: its work spot while nobody works it, else the input pad */
+  stationDest(st) {
+    if (st.op && !st.op.operator && st.op.enabled) return { pad: st.op.pad, key: 'obj_op_' + st.id };
+    return { pad: st.inPad, key: FEED_KEY[st.input] || null };
+  }
+
+  /** (v3.5) a station with work waiting and nobody working it; a pile filling up with nobody carrying it */
+  labourHint(set, idle) {
+    const gs = this.gs, p = gs.player, prog = gs.progress;
+    let best = null, bd = Infinity;
+    for (const st of gs.stationList.concat(gs.workshops)) {
+      const op = st.op;
+      if (!st.enabled || !op || op.operator || !op.enabled || !st.hasWork()) continue;
+      if (op.pad.contains(p.x, p.y)) { this.textKey = st.id === 'grill' ? 'obj_operating_grill' : 'obj_operating'; prog.seen['op_' + st.id] = true; return true; }
+      // first time, a big input waiting, or the chief has nothing else to do
+      if (!(idle || !prog.seen['op_' + st.id] || st.inStack.count >= 8)) continue;
+      const d = gdist(p.x, p.y, op.x, op.y);
+      if (d < bd) { bd = d; best = st; }
+    }
+    if (best && (bd < 900 || idle)) { set(best.op.x, best.op.y, 50, 'obj_op_' + best.id); return true; }
+    if (p.room <= 0) return false;
+    for (const id in gs.piles) {
+      const pl = gs.piles[id];
+      if (!pl.shown || !pl.enabled || pl.count < 5) continue;
+      if (gs.rawPorters.some((r) => r.pile === pl)) continue;
+      const st = gs.stations[pl.station];
+      if (!st || !st.enabled || st.inStack.room < 3) continue;
+      if (!(idle || !prog.seen['pile_' + id])) continue;
+      if (pl.pad.contains(p.x, p.y)) { this.textKey = 'obj_pile_' + id; prog.seen['pile_' + id] = true; return true; }
+      set(pl.x, pl.y, 70, 'obj_pile_' + id);
+      return true;
+    }
+    return false;
   }
 
   /** bag full: point where the carried things can go (never at a pad that cannot take anything) */
@@ -341,7 +408,9 @@ export class Tutorial {
       const seller = z.seller === 'trade' ? gs.trade.shelf : gs.market.shelf;
       const raw = p.stack.countOf(z.raw), room = p.room;
       if (p.stack.countOf(z.product) > 0) { set(seller.x, seller.y, 60, 'obj_' + z.zone + '_4'); return true; }
-      if (raw > 0 && (room <= 0 || raw >= 3)) { set(st.inPad.x, st.inPad.y, 50, 'obj_' + z.zone + '_2'); return true; }
+      const sd = this.stationDest(st);
+      if (raw > 0 && (room <= 0 || raw >= 3)) { if (sd.pad.contains(p.x, p.y)) { this.textKey = sd.pad === st.inPad ? 'obj_' + z.zone + '_2' : 'obj_operating'; return true; } set(sd.pad.x, sd.pad.y, 50, sd.pad === st.inPad ? 'obj_' + z.zone + '_2' : sd.key); return true; }
+      if (st.inStack.count > 0 && sd.pad !== st.inPad && raw === 0 && st.outStack.count < 6) { if (sd.pad.contains(p.x, p.y)) this.textKey = 'obj_operating'; else set(sd.pad.x, sd.pad.y, 50, sd.key); return true; }
       if (room <= 0) return false;
       if ((st.outStack.count > 0 || st.inStack.count > 0) && raw === 0) { set(st.outPad.x, st.outPad.y, 80, 'obj_' + z.zone + '_3'); return true; }
       // nearest ready resource

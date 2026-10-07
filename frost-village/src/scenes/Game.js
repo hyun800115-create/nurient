@@ -34,7 +34,10 @@ import { Logistics, PRIO } from '../systems/Logistics.js';
 import { Site, buildCost } from '../entities/Site.js';
 import { Workshop, Smith } from '../entities/Workshop.js';
 import { Warehouse } from '../entities/Warehouse.js';
-import { WarehousePorter } from '../entities/Worker.js';
+import { WarehousePorter, RawPorter } from '../entities/Worker.js';
+// (v3.5) division of labour: station work spots + operators, collection piles
+import { OperatorSpot, Pile, PILE_OF_STATION } from '../systems/Labour.js';
+import { DogPlay } from '../systems/DogPlay.js';
 import { House } from '../entities/House.js';
 import { FoodBox } from '../entities/FoodBox.js';
 import { Tower } from '../entities/Tower.js';
@@ -48,6 +51,14 @@ const DECOR_R = {
   campfire: 30, bush_snow: 24, ice_chunk: 0, snow_pile_a: 0, snow_pile_b: 0, tent_a: 80, chief_lodge: 170,
   worker_hut: 98, dock_pier: 0, boat_small: 0, mine_entrance: 120, tree_stump: 18, upgrade_bench: 70,
 };
+
+/** (v3.5) clearings for the collection piles (trees and decor keep away) */
+function pileSpots() {
+  const out = [];
+  const P = (WORLD.labour && WORLD.labour.piles) || {};
+  for (const id in P) out.push([P[id].x, P[id].y, 125]);
+  return out;
+}
 
 class UIProxy {
   constructor(game) { this.game = game; }
@@ -116,6 +127,8 @@ export class Game extends Phaser.Scene {
     this.boathouse = null;
     this.store = null;
     this.built = {};              // building key -> count finished
+    this.piles = {};              // (v3.5) collection piles of the production lines
+    this.rawPorters = [];         // (v3.5) pile -> station porters
 
     this.ground = new Ground(this);
     this.territory = new Territory(this, sv.territory);
@@ -139,6 +152,7 @@ export class Game extends Phaser.Scene {
     this.buildTrees();
     this.buildResources();
     this.buildStations();
+    this.buildLabour();
     this.buildSellers();
     this.buildHuts();
     this.buildV3();
@@ -160,12 +174,14 @@ export class Game extends Phaser.Scene {
     this.progress.init();
     this.restore(sv);
     this.restoreV3Stock(sv);
+    this.restoreLabour(sv);
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
     this.padSpots = [];
     const spot = (pd, r) => { if (pd) this.padSpots.push({ x: pd.x, y: pd.y, r }); };
-    for (const st of this.stationList) { spot(st.inPad, 70); spot(st.outPad, 70); }
+    for (const st of this.stationList) { spot(st.inPad, 70); spot(st.outPad, 70); if (st.op) { spot(st.op, 64); spot(st.op.post, 40); } }
+    for (const id in this.piles) spot(this.piles[id], 80);
     spot(this.market.shelf, 70); spot(this.market.cash.pad, 70); spot(this.market.register, 64);
     spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
     spot(WORLD.net.gather ? { x: WORLD.net.x + WORLD.net.gather[0], y: WORLD.net.y + WORLD.net.gather[1] } : null, 70);
@@ -175,12 +191,14 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.pads2 || {}) spot(WORLD.pads2[id], 90);
     for (const id in WORLD.towers || {}) spot(WORLD.towers[id], 120);
     if (this.foodBox) spot(this.foodBox, 80);
-    this.events.on('built', (k, site) => { const b = site.built; if (b && b.inPad) spot(b.inPad, 70); if (b && b.outPad) spot(b.outPad, 70); });
+    this.events.on('built', (k, site) => { const b = site.built; if (b && b.inPad) spot(b.inPad, 70); if (b && b.outPad) spot(b.outPad, 70); if (b && b.op) { spot(b.op, 64); spot(b.op.post, 40); } });
     this.events.on('storeSold', () => this.progress.setFlag('firstStoreSale'));
     this.events.on('built', (k) => { if (k === 'toolsmith') this.time.delayedCall(3500, () => this.introduceFood()); });
     this.events.on('fedMiners', () => this.progress.setFlag('fedMiners'));
     // the people of the village (v2)
     this.life = new VillageLife(this, sv.life);
+    // (v3.5) Kongi the dog: whistle, treats, fetch, petting (affection is saved)
+    this.dog = new DogPlay(this, sv.dog);
     this.occlusion = new Occlusion(this);
     this.updatePopulation();
 
@@ -441,6 +459,7 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.towers || {}) { const p = WORLD.towers[id]; spots.push([p.x, p.y, 170]); spots.push([p.x, p.y + 70, 130]); spots.push([p.x, p.y + 190, 160]); }
     for (const id in WORLD.pads2 || {}) { const p = WORLD.pads2[id]; spots.push([p.x, p.y, 120]); }
     if (WORLD.foodBox) spots.push([WORLD.foodBox.x, WORLD.foodBox.y, 140]);
+    for (const q of pileSpots()) spots.push(q);
     for (const [sx, sy, r] of spots) if (gdist(x, y, sx, sy) < r) return true;
     return false;
   }
@@ -482,12 +501,23 @@ export class Game extends Phaser.Scene {
         if (r() < 0.12) continue;
         // the zone's far-left corner runs into the border pines: a chief chopping there would vanish
         if (mx + my < (cfg.cornerCut !== undefined ? cfg.cornerCut : -1e9)) continue;
+        // (v3.5) the collection pile of the wood line keeps a clearing
+        if (pileSpots().some(([ax, ay]) => gdist(p.x, p.y, ax, ay) < 80)) continue;
         const tr = new Tree(this, p.x, p.y, kinds[Math.floor(r() * kinds.length)]);
         if (cfg.scale) { tr.img.setScale(cfg.scale); tr.img.__bs = cfg.scale; tr.scale = cfg.scale; }
         this.addOccluder(tr.img);
         this.trees.push(tr);
         this.addToZone(WORLD.trees.zone, tr);
       }
+    }
+    // (v3.5) a few more pines of the forest
+    for (const [mx, my] of cfg.extra || []) {
+      const p = isoPt(tz.center[0], tz.center[1], mx, my);
+      const tr = new Tree(this, p.x, p.y, kinds[Math.floor((mx * 7 + my * 3 + 9) % 3)]);
+      if (cfg.scale) { tr.img.setScale(cfg.scale); tr.img.__bs = cfg.scale; tr.scale = cfg.scale; }
+      this.addOccluder(tr.img);
+      this.trees.push(tr);
+      this.addToZone(WORLD.trees.zone, tr);
     }
     // ore rocks
     this.rocks = [];
@@ -548,6 +578,93 @@ export class Game extends Phaser.Scene {
     }
   }
 
+  /** (v3.5) the work spot of every station and the collection pile of every production line */
+  buildLabour() {
+    const L = WORLD.labour || {};
+    for (const st of this.stationList) {
+      st.op = new OperatorSpot(this, st, (L.ops || {})[st.id]);
+      if (!this.zones[st.cfg.zone] || !this.zones[st.cfg.zone].unlocked) st.op.setEnabled(false);
+    }
+    for (const id in L.piles || {}) {
+      const cfg = L.piles[id];
+      const pile = new Pile(this, id, cfg);
+      this.piles[id] = pile;
+      if (cfg.zone && WORLD.zones[cfg.zone] && WORLD.zones[cfg.zone].unlock) this.addToZone(cfg.zone, pile);
+    }
+  }
+
+  /** (v3.5) the station / workshop with this id */
+  stationById(id) { return this.stations[id] || this.workshops.find((w) => w.kind === id) || null; }
+
+  /** (v3.5) hire the operator of station `id` (it walks from the hire pad to the work spot) */
+  hireOperator(id, instant, x, y) {
+    const st = this.stationById(id);
+    if (!st || !st.op) return null;
+    const op = st.op.hire(instant, x, y);
+    if (!instant) { this.focusCamera(st.x, st.y - 40, 1600); this.time.delayedCall(900, () => { if (this.life && op.alive) this.life.bubbles.emote(op, Assets.pick('emote_thumbs', 'emote_heart'), 1.6); }); }
+    return op;
+  }
+
+  /** (v3.5) the pile of station `id`'s line (shown once something is collected there) */
+  pileFor(id) { return this.piles[PILE_OF_STATION[id]] || null; }
+
+  /** (v3.5) hire the raw porter of station `id` (pile -> station input) */
+  hireRawPorter(id, instant, x, y) {
+    const st = this.stations[id], pile = this.pileFor(id);
+    if (!st || !pile) return null;
+    if (!pile.shown) pile.setShown(true, !instant);
+    const home = RawPorter.homeFor(this, pile);
+    const pr = new RawPorter(this, pile, st, x !== undefined && !instant ? x : home[0], y !== undefined && !instant ? y : home[1], this.rawPorters.length);
+    this.rawPorters.push(pr);
+    if (this.life) this.life.release(pr.key);
+    if (!instant) {
+      this.effects.sheet('fx_poof', pr.x, pr.y - 30, { size: 180 });
+      this.effects.burst('star', pr.x, pr.y - 40, 12);
+      pr.sprite.setScale(0.1);
+      this.tweens.add({ targets: pr.sprite, scale: 1, duration: 450, ease: 'Back.easeOut' });
+    }
+    return pr;
+  }
+
+  /** (v3.5) the look of the `index`-th worker of a profession: base, then its variants (workers manifest
+   *  professions{}); a look reserved for a station operator (the toolsmith's old miner) is skipped */
+  workerKey(type, index) {
+    const order = (Assets.professions && Assets.professions[type]) || [type];
+    const reserved = new Set(Object.values((WORLD.labour && WORLD.labour.ops) || {}).map((o) => o.who));
+    const list = order.filter((k) => k === type || (!reserved.has(k) && Assets.m.characters[k]));
+    if (!list.length) return type;
+    return list[Math.max(0, index) % list.length];
+  }
+
+  /** (v3.5) operators, work spots and collection piles; true while the chief stands on one of them */
+  updateLabour(dt) {
+    let on = false;
+    for (const s of this.stationList) if (s.op && s.op.update(dt)) on = true;
+    for (const w of this.workshops) if (w.op && w.op.update(dt)) on = true;
+    const p = this.player, ready = this.padT <= 0;
+    for (const id in this.piles) {
+      const pl = this.piles[id];
+      if (pl.update(dt)) {
+        on = true;
+        // the chief takes the catch from the pile (like an output pad)
+        if (ready) { if (pl.takeTo(p, p.capacity)) this.padT = BALANCE.player.padItemInterval; else if (pl.count > 0 && p.room <= 0) p.warnFull(); }
+      }
+    }
+    return on;
+  }
+
+  /** (v3.5) piles + what raw porters carry */
+  restoreLabour(sv) {
+    const L = sv.labour || {};
+    for (const id in this.piles) {
+      const pl = this.piles[id];
+      const n = L.piles && L.piles[id];
+      if (n) pl.restore(n);
+      // a pile is there once its line's gatherer works (or something lies on it)
+      if (!pl.shown && (n > 0 || this.workers.some((w) => w.pile === pl) || this.rawPorters.some((r) => r.pile === pl))) pl.setShown(true);
+    }
+  }
+
   buildSellers() {
     this.market = new Market(this, WORLD.market);
     this.trade = new TradePost(this, WORLD.trade);
@@ -581,16 +698,9 @@ export class Game extends Phaser.Scene {
     }
     // the miners' food box (appears with v3)
     if (WORLD.foodBox) this.foodBox = new FoodBox(this, WORLD.foodBox);
-    // boat fish can go to the grill too (logistics)
+    // boat fish can go to the grill too (logistics: v3.5 every station's input is a sink)
     const grill = this.stations.grill;
-    if (grill) {
-      this.grillSink = {
-        id: 'grill_in', isWarehouse: false, enabled: true, x: grill.inPad.x + 24, y: grill.inPad.y + 18,
-        accepts: (ty) => ty === 'item_fish_raw', room: () => Math.max(0, grill.inStack.max - grill.inStack.count - grill.inStack.incoming) - 6,
-        prio: () => PRIO.GRILL, feed: (ch) => grill.feedFrom(ch),
-      };
-      this.logistics.add(this.grillSink);
-    }
+    if (grill) this.grillSink = grill.inSink;
     this.events.on('region', () => this.refreshSites());
     this.events.on('step', () => this.time.delayedCall(800, () => this.refreshSites()));
   }
@@ -700,7 +810,7 @@ export class Game extends Phaser.Scene {
   }
 
   /** a picture whose atlas loads after the title: re-apply it when the atlas arrives */
-  lazyImage(img, key) { if (img && Assets.pending(key)) this.lazyImgs.push({ img, key }); }
+  lazyImage(img, key, after) { if (img && Assets.pending(key)) this.lazyImgs.push({ img, key, after }); }
 
   onAssetArrived(fileKey) {
     for (let i = this.lazyImgs.length - 1; i >= 0; i--) {
@@ -709,6 +819,7 @@ export class Game extends Phaser.Scene {
       if (Assets.pending(q.key)) continue;
       const anim = q.img.anims && q.img.anims.isPlaying ? q.img.anims.currentAnim && q.img.anims.currentAnim.key : null;
       if (!anim) Assets.apply(q.img, q.key);
+      if (q.after) { try { q.after(q.img); } catch (e) { /* keep going */ } }
       this.lazyImgs.splice(i, 1);
     }
     // occluder boxes of the pictures that just got their real size
@@ -733,7 +844,10 @@ export class Game extends Phaser.Scene {
       b = new Workshop(this, bkey, site);
       this.lazyImage(b.img, b.recipe.sprite);
       this.workshops.push(b);
-      if (bkey === 'toolsmith') this.hireSmith(b, instant);
+      // (v3.5) the chief works the forge / the press at its work spot until its operator is hired
+      b.op = new OperatorSpot(this, b, WORLD.labour && WORLD.labour.ops[bkey]);
+      // (a v3 save's forge / press came with its operator: the step is done before the building stands)
+      if (this.progress && this.progress.isDone('op_' + bkey)) this.time.delayedCall(instant ? 0 : 1400, () => this.hireOperator(bkey, true));
     } else if (bkey === 'warehouse') {
       b = new Warehouse(this, site);
       this.lazyImage(b.img, 'warehouse');
@@ -800,19 +914,6 @@ export class Game extends Phaser.Scene {
       const img = this.staticImage(k, x, y, {});
       if (!this.territory.isOpen(site.region)) this.territory.add(site.region, img);
     }
-  }
-
-  /** the blacksmith resident takes the job at the new forge (stands at its staff spot) */
-  hireSmith(ws, instant) {
-    const d = Assets.def('station_toolsmith');
-    const sp = (d.staffPoints && d.staffPoints[0]) || [-109, 0];
-    const key = 'npc_blacksmith';
-    if (!Assets.m.characters[key]) return;
-    const sm = new Smith(this, ws, key, ws.x + sp[0], ws.y + sp[1]);
-    ws.smith = sm;
-    this.keysInUse.add(key);
-    if (this.life) this.life.release(key);
-    if (!instant) { sm.sprite.setScale(0.1); this.tweens.add({ targets: sm.sprite, scale: 1, duration: 420, delay: 500, ease: 'Back.easeOut' }); }
   }
 
   /** the general store: a Market selling cans and tools (customers come along the roads) */
@@ -887,6 +988,12 @@ export class Game extends Phaser.Scene {
       return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
     if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
+    // (v3.5) the operator of a v3 workshop: on the porter pad's spot (the porter pad follows it)
+    if (s.type === 'operator') {
+      const src = this.sourceById(s.station);
+      if (!src || !src.outPad) return null;
+      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+    }
     return null;
   }
 
@@ -1031,6 +1138,8 @@ export class Game extends Phaser.Scene {
     const home = Worker.homeFor(this, type, index, role);
     const w = new Worker(this, type, x !== undefined ? x : home[0], y !== undefined ? y : home[1], index, role);
     this.workers.push(w);
+    // (v3.5) the line's collection pile appears with its first gatherer
+    if (w.pile && !w.pile.shown) w.pile.setShown(true, !instant);
     if (!instant) {
       this.effects.sheet('fx_poof', w.x, w.y - 30, { size: 180 });
       this.effects.burst('star', w.x, w.y - 40, 12);
@@ -1235,7 +1344,8 @@ export class Game extends Phaser.Scene {
     this.playerOnPad = this.progress.update(dt);
     this.padT -= dt;
     const onPadNow = this.handlePlayerPads(dt);
-    this.playerOnPad = this.playerOnPad || onPadNow;
+    const onLabour = this.updateLabour(dt);
+    this.playerOnPad = this.playerOnPad || onPadNow || onLabour;
 
     this.net.update(dt);
     for (const n of this.trees) n.update(dt);
@@ -1247,7 +1357,7 @@ export class Game extends Phaser.Scene {
     this.trade.update(dt);
     // (v3) construction, workshops, storage, the store, houses, towers, boats, fog
     for (const id in this.sites) this.sites[id].update(dt);
-    for (const w of this.workshops) { w.update(dt); if (w.smith) w.smith.update(dt); }
+    for (const w of this.workshops) w.update(dt);
     if (this.warehouse) this.warehouse.update(dt);
     if (this.store) this.store.update(dt);
     if (this.boathouse) this.boathouse.update(dt);
@@ -1256,7 +1366,9 @@ export class Game extends Phaser.Scene {
     this.territory.update(dt);
     for (const w of this.workers) w.update(dt);
     for (const w of this.porters) w.update(dt);
+    for (const w of this.rawPorters) w.update(dt);
     if (this.life) this.life.update(dt);
+    if (this.dog) this.dog.update(dt);
     this.v3T = (this.v3T || 0) - dt;
     if (this.v3T <= 0) {
       this.v3T = 1;
@@ -1411,7 +1523,13 @@ export class Game extends Phaser.Scene {
     }
     const bh = this.boathouse;
     if (bh && bh.enabled && bh.outPad.contains(p.x, p.y)) { on = true; if (ready) { if (bh.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval; else if (bh.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
-    this.trash.setEnabled(this.progress.isDone('hire_fisherman'));
+    // (v3.5) the discard spot also comes early if the chief's full bag has nowhere to go (grill full both ways)
+    if (!this._trashEarly && this.player.room <= 0 && this.tutorial && (this.trashCheckT = (this.trashCheckT || 0) - dt) <= 0) {
+      this.trashCheckT = 0.5;
+      const types = new Set(this.player.stack.items.map((i) => i.type));
+      if (![...types].some((ty) => this.tutorial.destination(ty))) this._trashEarly = true;
+    }
+    this.trash.setEnabled(this.progress.isDone('hire_fisherman') || !!this._trashEarly);
     if (this.trash.update(dt)) on = true;
     return on;
   }
@@ -1431,6 +1549,16 @@ export class Game extends Phaser.Scene {
   serialize() {
     const st = {};
     for (const s of this.stationList) st[s.id] = s.serialize();
+    // (v3.5) what raw porters carry goes back to the pile (or on into the input they are heading for)
+    const piles = {};
+    for (const id in this.piles) piles[id] = this.piles[id].serialize();
+    const toStation = (sid, n) => { if (st[sid]) st[sid].i = (st[sid].i || 0) + n; };
+    for (const r of this.rawPorters) {
+      const n = r.stack.count + r.stack.incoming;
+      if (!n) continue;
+      if (r.dest && r.dest.station) toStation(r.dest.station.id, n);
+      else piles[r.pile.id] = (piles[r.pile.id] || 0) + n;
+    }
     // items in mid-air are saved where they are going; food a waiting customer got but has not paid for
     // yet (the queue is not saved) goes back on the shelf, and so do goods on their way to the merchant
     const shelf = (stock, types, extra) => { const o = {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) + ((extra && extra[ty]) || 0); return o; };
@@ -1445,7 +1573,8 @@ export class Game extends Phaser.Scene {
       const d = pr.dest;
       if (d && (d.kind === 'plot' || d.kind === 'tower' || d.items)) continue;
       for (const ty of pr.stack.items.map((i) => i.type).concat(pr.stack.inTypes)) {
-        if (d && this.store && d === this.store.sink) add(storeExtra, ty);
+        if (d && d.station && this.stations[d.station.id] === d.station) toStation(d.station.id, 1);
+        else if (d && this.store && d === this.store.sink) add(storeExtra, ty);
         else if (d && this.warehouse && d === this.warehouse.sink) add(whExtra, ty);
         else if (d && d === this.foodBox) add(foodExtra, ty);
         else if (d && d.id && /_in$/.test(d.id) && d.id !== 'grill_in') { const k = d.id.replace(/_in$/, ''); (wsExtra[k] = wsExtra[k] || {})[ty] = ((wsExtra[k] || {})[ty] || 0) + 1; }
@@ -1483,6 +1612,8 @@ export class Game extends Phaser.Scene {
       trade: { stock: shelf(this.trade.stock, GOODS, tradeExtra), cash: this.trade.cash.serialize() },
       player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: pl.items.map((i) => i.type).concat(pl.inTypes) },
       life: this.life ? this.life.serialize() : undefined,
+      labour: { piles },
+      dog: this.dog ? this.dog.serialize() : undefined,
     };
   }
 
@@ -1545,6 +1676,12 @@ export class Game extends Phaser.Scene {
           boat: gs.boathouse && gs.boathouse.boat ? { level: gs.boathouse.level, state: gs.boathouse.boat.state, cargo: gs.boathouse.boat.cargo.count, x: Math.round(gs.boathouse.boat.x), y: Math.round(gs.boathouse.boat.y), catch: gs.boathouse.outStack.count } : null,
           population: gs.life ? { people: gs.life.people(), cap: gs.popCap(), waiting: gs.life.waiting.length } : null,
           goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null,
+          // (v3.5) division of labour + the dog
+          ops: Object.fromEntries(gs.stationList.concat(gs.workshops).filter((x) => x.op).map((x) => [x.id, { hired: !!x.op.operator, ready: !!(x.op.operator && x.op.operator.ready), key: x.op.operator ? x.op.operator.key : null, anim: x.op.operator ? x.op.operator.animRes : null, chief: x.op.chief, working: x.working, in: x.inStack.count, out: x.outStack.count }])),
+          piles: Object.fromEntries(Object.keys(gs.piles).map((k) => [k, { n: gs.piles[k].count, shown: gs.piles[k].shown }])),
+          rawPorters: gs.rawPorters.map((w) => ({ station: w.target.id, key: w.key, state: w.state, carry: w.stack.count, dest: w.dest ? w.dest.id : null, x: Math.round(w.x), y: Math.round(w.y) })),
+          workerKeys: gs.workers.map((w) => w.wantKey || w.key),
+          dog: gs.dog ? gs.dog.state() : null,
           v3Complete: gs.progress.v3Complete, celebrated3: gs.progress.celebrated3,
           zoom: Math.round(gs.zoomCur * 100) / 100,
           zones: Object.fromEntries(Object.keys(gs.zones).map((k) => [k, gs.zones[k].unlocked])),
@@ -1595,6 +1732,10 @@ export class Game extends Phaser.Scene {
         if (gs.store) { m.storeShelf = gs.store.shelf; m.storeCash = gs.store.cash.pad; m.storeRegister = gs.store.register; m.store = gs.store; }
         if (gs.boathouse) { m.dockOut = gs.boathouse.outPad; m.boathouse = gs.boathouse; if (gs.boathouse.boat) m.boat = gs.boathouse.boat; }
         for (const id in gs.towers) m['tower:' + id] = gs.towers[id];
+        // (v3.5) work spots, operator posts, collection piles
+        for (const x of gs.stationList.concat(gs.workshops)) if (x.op) { m['op:' + x.id] = x.op; m['post:' + x.id] = x.op.post; }
+        for (const id in gs.piles) m['pile:' + id] = gs.piles[id];
+        if (gs.dog && gs.dog.r) m.dog = gs.dog.r;
         for (const id in gs.territory.regions) { const r = gs.territory.regions[id]; const c = r.cfg.center || [(r.rect[0] + r.rect[2]) / 2, (r.rect[1] + r.rect[3]) / 2]; m['region:' + id] = { x: c[0], y: c[1] }; }
         if (name === 'tree') { const tr = gs.trees.find((n) => n.ready()); return tr && tr.standPoint(tr.x + 60, tr.y + 30); }
         if (name === 'rock') { const n = gs.rocks.find((r) => r.ready()); return n && n.standPoint(n.x + 80, n.y + 60); }
@@ -1648,6 +1789,8 @@ export class Game extends Phaser.Scene {
         gs.refreshSites();
         for (const id in P) { const st = gs.sites[id]; if (!st || st.state !== 'plot') continue; st.start(P[id], { instant: true }); st.finish(true); }
         if (gs.foodBox && !gs.foodBox.active) gs.foodBox.activate(true, 10);
+        // (v3.5) the new workshops come with their operators (like the v3 smith)
+        for (const id of ['op_toolsmith', 'op_cannery']) hooks.doneStep(id);
         pr.flags.fedMiners = true;
         pr.syncPads();
         gs.save(true);
@@ -1655,6 +1798,19 @@ export class Game extends Phaser.Scene {
       },
       /** complete a pad step now (v3 pads included: towers start their site, boats sail) */
       completeStep(id) { const s = STEPS.find((q) => q.id === id); const pad = gs.progress.pads[id]; if (!s || !pad) return false; if (pad.items) for (const k in pad.items) pad.got[k] = pad.items[k]; pad.paid = pad.cost; pad.complete(); return true; },
+      /** (v3.5) mark a step done right away (its worker / operator / porter appears at its place) */
+      doneStep(id) {
+        const pr = gs.progress, s = STEPS.find((q) => q.id === id);
+        if (!s || pr.done[id]) return false;
+        pr.done[id] = true;
+        const pad = pr.pads[id]; if (pad) { pad.destroy(); delete pr.pads[id]; }
+        pr.applyStep(s, true);
+        if (gs.life) gs.life.stepInstant(id);
+        pr.syncPads();
+        return true;
+      },
+      /** (v3.5) dog play: 'whistle' | 'treat' | 'play' | 'pet' | 'tap' (returns false when not possible now) */
+      dog(cmd) { return gs.dog ? gs.dog.command(cmd) : false; },
       save() { gs.save(true); },
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
       reset() { gs.resetProgress(); },

@@ -308,6 +308,46 @@ function gameFragments() {
   return list.filter((f) => fs.existsSync(path.join(ROOT, 'assets', f, 'manifest.json')));
 }
 
+/** (v3.5) drop the atlas / image entries (and their files) of the copied manifests that the game never loads */
+function pruneOverridden(frags, skipped) {
+  const mans = {};
+  for (const f of frags) { const mp = path.join(OUT, 'assets', f, 'manifest.json'); if (fs.existsSync(mp)) mans[f] = JSON.parse(fs.readFileSync(mp, 'utf8')); }
+  const winner = {};          // 'atlases:key' -> fragment (the last one listing it)
+  const chars = {}, sprites = {};
+  for (const f of frags) {
+    const j = mans[f]; if (!j) continue;
+    for (const kind of ['atlases', 'images']) for (const a of j[kind] || []) if (a && a.key) winner[kind + ':' + a.key] = f;
+    Object.assign(chars, j.characters || {});
+    Object.assign(sprites, j.sprites || {});
+  }
+  const used = new Set();
+  for (const k in chars) if (chars[k] && chars[k].atlas) used.add(chars[k].atlas);
+  for (const k in sprites) if (sprites[k] && sprites[k].atlas) used.add(sprites[k].atlas);
+  for (const f of frags) {
+    const j = mans[f]; if (!j) continue;
+    let changed = false;
+    for (const kind of ['atlases', 'images']) {
+      if (!Array.isArray(j[kind])) continue;
+      j[kind] = j[kind].filter((a) => {
+        const lost = winner[kind + ':' + a.key] !== f;
+        const unused = kind === 'atlases' && /^(vil_|wkr_|char_)/.test(a.key) && !used.has(a.key);
+        if (!lost && !unused) return true;
+        for (const p of [a.png, a.json]) {
+          if (!p) continue;
+          // (the same file may be listed by the winning fragment too: keep it then)
+          const keep = frags.some((g) => g !== f && mans[g] && (mans[g][kind] || []).some((b) => b.png === p || b.json === p));
+          const fp = path.join(OUT, 'assets', p);
+          if (!keep && fs.existsSync(fp)) fs.rmSync(fp);
+        }
+        skipped.push('assets/' + (a.png || a.key) + (lost ? ' (replaced by assets/' + winner[kind + ':' + a.key] + ')' : ' (no character uses it)'));
+        changed = true;
+        return false;
+      });
+    }
+    if (changed) fs.writeFileSync(path.join(OUT, 'assets', f, 'manifest.json'), JSON.stringify(j));
+  }
+}
+
 /** fragments whose pictures the game does not use yet (manifest data only): MANIFEST_ONLY_FRAGMENTS */
 function manifestOnlyFragments() {
   const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
@@ -378,6 +418,10 @@ async function main() {
     }
     for (const f of walk(dir)) copy(f);
   }
+  // (v3.5) pictures a later fragment replaced (same atlas / image key: villagers3's chef, aunt and
+  // blacksmith) or that no character uses any more (the old dog atlas, pets2 has the new one) are never
+  // loaded by the game (Assets.mergeManifests: the later fragment wins key by key): leave them out
+  pruneOverridden(frags, skipped);
   const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name)).map((e) => 'assets/' + e.name + '/');
   if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
 

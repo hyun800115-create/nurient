@@ -84,6 +84,7 @@ export const Assets = {
   fragOf: {},           // file key -> fragment it came from
   built: {},            // character key -> anims created
   layouts: {},          // manifest "layouts" (life props)
+  professions: {},      // (v3.5) profession -> character keys in hire order
 
   // ---------- loading ----------
   queueManifests(load) {
@@ -117,6 +118,8 @@ export const Assets = {
       Object.assign(m.audio, j.audio || {});
       Object.assign(m.audioGroups, j.audioGroups || {});
       if (j.layouts && typeof j.layouts === 'object') Object.assign(this.layouts, j.layouts);
+      // (v3.5) workers manifest: hire order of the looks of each profession (base first, then variants)
+      if (j.professions && typeof j.professions === 'object') for (const k in j.professions) if (Array.isArray(j.professions[k])) this.professions[k] = j.professions[k].filter((x) => typeof x === 'string');
     }
     // (v3.5) a character atlas a later fragment replaced (pets2 pet_dog -> the old vil_pet_dog) is
     // never used: do not download it

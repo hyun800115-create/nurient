@@ -15,6 +15,17 @@ export class Player extends Character {
     this.fullWarnT = 0;
     this.onImpact = () => this.impact();
     this._p = { x: 0, y: 0 };
+    this.operating = null;    // (v3.5) the OperatorSpot he stands on (set by the spot every frame)
+    this.opSpot = null;
+    this.action = null;       // (v3.5) a little scene with the dog: { anim, until, onImpact, face }
+  }
+
+  /** (v3.5) play `anim` for `dur` s facing (fx, fy) (dog play: give / throw / pet); moving cancels it */
+  doAction(anim, dur, fx, fy, onImpact) {
+    this.action = { anim, until: this.gs.time.now + dur * 1000, onImpact: onImpact || null, fx, fy };
+    this.node = null;
+    if (fx !== undefined) this.faceTo(fx, fy);
+    this.play(anim, true);
   }
 
   get capacity() { return this.gs.progress.capacity(); }
@@ -38,6 +49,8 @@ export class Player extends Character {
       this.x = p.x; this.y = p.y;
       this.stillT = 0;
       this.node = null;
+      if (this.action) { const a = this.action; this.action = null; if (a.onCancel) a.onCancel(); }
+      this.operating = null; this.opSpot = null;
       this.face(this.vx, this.vy);
       this.locomotion(true);
       // footsteps
@@ -68,10 +81,26 @@ export class Player extends Character {
           else this.node = n;
         }
       }
-      if (this.node) {
+      // (v3.5) a moment with the dog, or working a station from its work spot
+      const op = this.operating;
+      this.operating = null;
+      if (this.action && gs.time.now < this.action.until) {
+        this.node = null;
+        this.play(this.action.anim);
+      } else if (this.action) {
+        const a = this.action; this.action = null;
+        if (a.onEnd) a.onEnd();
+        this.locomotion(false);
+      } else if (op) {
+        this.node = null;
+        this.opSpot = op;
+        op.faceFor(this);
+        this.play(op.station.working ? op.chiefAnim() : (this.stack.count ? 'carry_idle' : 'idle'));
+      } else if (this.node) {
+        this.opSpot = null;
         this.faceTo(this.node.x, this.node.y);
         this.play(this.node.playerAnim);
-      } else this.locomotion(false);
+      } else { this.opSpot = null; this.locomotion(false); }
     }
     this.sync(dt);
   }
@@ -84,6 +113,9 @@ export class Player extends Character {
   }
 
   impact() {
+    // (v3.5) the dog scene's hand-over / throw frame, a station worked by hand
+    if (this.action) { if (this.action.onImpact) { const f = this.action.onImpact; this.action.onImpact = null; f(this); } return; }
+    if (this.opSpot && !this.node) { this.opSpot.chiefImpact(this); return; }
     const n = this.node;
     if (!n || this.room <= 0) return;
     const item = n.hit(this);

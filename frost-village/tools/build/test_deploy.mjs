@@ -211,7 +211,9 @@ async function testMode(browser, mode) {
     s = await st();
     step('fishing at the net', count(s, 'item_fish_raw') >= 1, `raw=${count(s, 'item_fish_raw')} anim=${s.player.anim}`);
     if (!QUICK) {
-      await walkTo(F, await where('grillIn'), { tol: 18, timeout: 15000 });
+      // (v3.5) the grill only cooks while someone works it: the chief stands on its work spot (the fish he
+      // carries go straight in) until everything is cooked
+      await walkTo(F, (await where('op:grill')) || (await where('grillIn')), { tol: 14, timeout: 15000 });
       await waitFor(() => window.__FV.state().player.stack.filter((x) => x === 'item_fish_raw').length === 0, 15000).catch(() => {});
       await waitFor(() => { const g = window.__FV.state().stations.grill; return g.in === 0 && g.out > 0; }, 30000).catch(() => {});
       await walkTo(F, await where('grillOut'), { tol: 18, timeout: 15000 });
@@ -222,6 +224,8 @@ async function testMode(browser, mode) {
       await shot('3_carry');
       await walkTo(F, await where('shelf'), { tol: 18, timeout: 15000 });
       await waitFor(() => window.__FV.state().player.stack.length === 0, 15000).catch(() => {});
+      // (v2+) no clerk yet: the chief rings the customers up at the register
+      if (await where('register')) await walkTo(F, await where('register'), { tol: 16, timeout: 15000 });
       await waitFor(() => window.__FV.state().market.cash > 0, 40000).catch(() => {});
       s = await st();
       step('customers paid', s.market.cash > 0, `cash=${s.market.cash} stock=${s.market.stock}`);

@@ -638,32 +638,41 @@ export class VillageLife {
     const gs = this.gs, p = gs.player;
     j.cd = (j.cd || 0) - dt;
     if (r.key === 'pet_dog') {
+      // (v3.5) the dog plays with the chief (whistle / bar): DogPlay moves it
+      if (this.gs.dog && this.gs.dog.busy) return;
+      // (v3.5) it no longer follows the chief: it roams — plays with the kids, naps at the dog house,
+      // warms up by a campfire, sniffs around; a happy hello when the chief stops close by
       const dp = gdist(r.x, r.y, p.x, p.y);
       const chiefMoving = p.vx * p.vx + p.vy * p.vy > 400;
-      if (dp < 300 && (chiefMoving || dp < 160)) {
-        // follow the chief, happy when he stops nearby
-        if (r.seat) r.unsit();
-        if (dp > 95 && (r.arrived || j.t > 0.6)) { j.t = 0; r.goTo(p.x - 50 + (Math.random() - 0.5) * 30, p.y + 26, { run: dp > 180, tol: 30, direct: true }); }
-        else if (dp <= 95 && !chiefMoving && r.arrived && j.cd <= 0) {
-          j.cd = 9 + Math.random() * 6;
-          r.faceTo(p.x, p.y);
-          r.act('happy', 1.6);
-          r.emote('emote_heart', 1.4);
-          this.sfx('sfx_dog_bark', r.x, r.y, 0.5);
-        }
+      if (dp < 110 && !chiefMoving && r.arrived && !r.seat && j.cd <= 0) {
+        j.cd = 14 + Math.random() * 8;
+        r.faceTo(p.x, p.y);
+        r.act('happy', 1.4);
+        r.emote('emote_heart', 1.4);
+        this.sfx('sfx_dog_bark', r.x, r.y, 0.45);
         return;
       }
-      // tag along with a kid, or rest at the dog house
-      if (r.arrived && j.t > 4) {
+      if (r.arrived && j.t > (j.wait || 4)) {
         j.t = 0;
-        const kid = this.residents.find((k) => k.role === 'kid' && !k.isPet && gdist(k.x, k.y, r.x, r.y) < 500);
-        if (kid && Math.random() < 0.6) r.goTo(kid.x + 40, kid.y + 20, { run: true, tol: 30, direct: gdist(kid.x, kid.y, r.x, r.y) < 320 });
-        else {
-          const dh = this.props.doghouse;
-          if (dh && Math.random() < 0.5) { const dp2 = dh.def.doorPoint || [0, 26]; r.goTo(dh.x + dp2[0], dh.y + dp2[1] + 6, { tol: 8 }); j.sitAfter = true; }
-          else { const a = this.pickArea(r); if (a) { const pt = this.pointIn(a); r.goTo(pt.x, pt.y, { tol: 14 }); } }
-        }
-      } else if (r.arrived && j.sitAfter) { j.sitAfter = false; r.dir = 2; r.act('sit', 4 + Math.random() * 4); }
+        j.wait = 5 + Math.random() * 8;
+        const roll = Math.random();
+        const kid = this.residents.find((k) => k.role === 'kid' && !k.isPet && !k.lod && gdist(k.x, k.y, r.x, r.y) < 600);
+        const fires = Object.values(this.areas).filter((a) => a.fire && this.areaOpen(a));
+        if (kid && roll < 0.38) { r.goTo(kid.x + 40, kid.y + 20, { run: true, tol: 30, direct: gdist(kid.x, kid.y, r.x, r.y) < 320 }); j.after = 'happy'; }
+        else if (roll < 0.62 && this.props.doghouse) { const dh = this.props.doghouse; const dp2 = dh.def.doorPoint || [0, 26]; r.goTo(dh.x + dp2[0], dh.y + dp2[1] + 6, { tol: 8 }); j.after = 'nap'; }
+        else if (roll < 0.82 && fires.length) {
+          const a = fires.sort((u, v) => gdist(u.fire.x, u.fire.y, r.x, r.y) - gdist(v.fire.x, v.fire.y, r.x, r.y))[Math.floor(Math.random() * Math.min(2, fires.length))];
+          const ang = Math.random() * Math.PI * 2;
+          const pt = { x: a.fire.x + Math.cos(ang) * 70, y: a.fire.y + 16 + Math.sin(ang) * 30 };
+          this.gs.collision.resolve(pt, 12);
+          r.goTo(pt.x, pt.y, { tol: 12 }); j.after = 'warm'; j.fire = a.fire;
+        } else { const a = this.pickArea(r); if (a) { const pt = this.pointIn(a); r.goTo(pt.x, pt.y, { tol: 14 }); } j.after = null; }
+      } else if (r.arrived && j.after) {
+        const what = j.after; j.after = null;
+        if (what === 'nap') { r.dir = 2; r.act('sit', 5 + Math.random() * 5); if (Math.random() < 0.5) r.emote('emote_zzz', 2); j.wait = 8 + Math.random() * 6; }
+        else if (what === 'warm') { if (j.fire) r.faceTo(j.fire.x, j.fire.y); r.act('sit', 4 + Math.random() * 4); j.wait = 7 + Math.random() * 5; }
+        else if (what === 'happy') { r.act('happy', 1.4); if (Math.random() < 0.5) r.emote('emote_heart', 1.2); }
+      }
       return;
     }
     if (r.key === 'pet_cat') {
@@ -731,6 +740,8 @@ export class VillageLife {
   /** a tapped resident / pet reacts (wave + name + line; pets: happy + heart) */
   react(r) {
     const p = this.gs.player;
+    // (v3.5) tapping the dog calls it / opens its play bar
+    if (r.key === 'pet_dog' && this.gs.dog) return this.gs.dog.onTap(r);
     if (r.isPet) {
       r.faceTo(p.x, p.y);
       if (!r.seat) r.act('happy', 1.6);
@@ -750,6 +761,7 @@ export class VillageLife {
     let said = 0;
     for (const r of this.residents) {
       if (r.lod || r.event) continue;
+      if (r.key === 'pet_dog' && this.gs.dog && this.gs.dog.busy) continue;
       if (r.seat) { r.emote('emote_star', 2); continue; }
       r.state = 'idle';
       r.dir = 2;
@@ -813,7 +825,7 @@ export class VillageLife {
     const group = kids.filter((k) => gdist(k.x, k.y, a.x, a.y) < (this.force ? 900 : 420)).slice(0, 4);
     if (group.length < 2) return false;
     const dog = this.byKey.pet_dog;
-    if (dog && !dog.event && gdist(dog.x, dog.y, a.x, a.y) < 500) group.push(dog);
+    if (dog && !dog.event && !(this.gs.dog && this.gs.dog.busy) && gdist(dog.x, dog.y, a.x, a.y) < 500) group.push(dog);
     const pen = this.byKey.pet_penguin;
     const area = this.nearestArea(a.x, a.y, 400) || { x: a.x, y: a.y, r: 150 };
     this.start(new TagEvent(this, group, area, pen && !pen.event && Math.random() < 0.35 && gdist(pen.x, pen.y, a.x, a.y) < 500 ? pen : null));
@@ -1479,7 +1491,7 @@ class SnowmanEvent extends LifeEvent {
 
 class PartyEvent extends LifeEvent {
   constructor(life, x, y) {
-    const all = life.residents.filter((r) => !(r.job && r.job.kind === 'arrive'));
+    const all = life.residents.filter((r) => !(r.job && r.job.kind === 'arrive') && !(r.key === 'pet_dog' && life.gs.dog && life.gs.dog.busy));
     for (const r of all) if (r.event && r.event !== null) r.event.drop(r);
     super(life, 'party', all);
     this.x = x; this.y = y;

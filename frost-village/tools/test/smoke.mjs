@@ -1,7 +1,8 @@
 // Frost Village smoke test (Playwright + Chromium, mobile viewport 390x844).
 //   node tools/test/smoke.mjs            (screenshots -> docs/previews/screens/)
-// Drives the first loop with __FV.setInput like a joystick (fish -> grill -> counter -> register ->
-// coins -> first unlock), then the v2 helpers (clerk at the register, porter for the grill), then
+// Drives the first loop with __FV.setInput like a joystick (fish -> the chief cooks at the grill's work
+// spot -> counter -> register -> coins -> the clerk, the cook, the fisherman; v3.5), the fish barrel, the
+// fish porter and the counter porter, then
 // __FV.give + unlockAll to visit every zone. Fails on any page error or console error. 404s for
 // missing optional manifest fragments are reported, not fatal.
 // v2: once the game runs, time is the fixed-step clock (fv_step.mjs): the waits below are GAME
@@ -35,6 +36,15 @@ const shot = async (n) => { if (stepping) await render(page, 2); await page.scre
 const st = () => page.evaluate(() => window.__FV.state());
 const where = (n) => page.evaluate((k) => window.__FV.where(k), n);
 const count = (s, type) => s.player.stack.filter((x) => x === type).length;
+// (v3.5) a pad that appears under the chief (the next hire of a line shares the spot) waits until he
+// steps off once, so walk off first when he is already standing there
+const walkPad = async (id, opts = { tol: 14 }) => {
+  const p = await where(id);
+  if (!p) return false;
+  const me = (await st()).player;
+  if (Math.hypot(me.x - p.x, (me.y - p.y) * 2) < 110) { await walkTo(page, { x: p.x + 70, y: p.y + 90 }, { tol: 20 }); await sleep(300); }
+  return walkTo(page, p, opts);
+};
 
 let fatal = null;
 try {
@@ -54,55 +64,104 @@ try {
   let s = await st();
   step('game started', s.coins === 0 && s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue}`);
 
-  // ---------------- first loop (repeat until we can afford the fisherman)
-  let loops = 0;
-  while ((await st()).coins < 30 && loops < 5) {
-    loops++;
+  // ---------------- first loop (v3.5: the chief cooks at the grill himself) until the first hire
+  const oneLoop = async (loops, first, register) => {
     // fish at the net
     await walkTo(page, await where('net'), { tol: 18 });
     await waitFor(page, () => { const s = window.__FV.state(); return s.player.stack.length >= Math.min(5, s.player.capacity); }, 60000).catch(() => {});
     s = await st();
-    if (loops === 1) { await shot('03_fishing'); step('fishing at the net', count(s, 'item_fish_raw') >= 3, `raw=${count(s, 'item_fish_raw')} anim=${s.player.anim}`); }
-    // drop on the grill
-    await walkTo(page, await where('grillIn'), { tol: 18 });
-    await waitFor(page, () => window.__FV.state().player.stack.filter((x) => x === 'item_fish_raw').length === 0, 10000).catch(() => {});
-    if (loops === 1) { await sleep(300); await shot('04_grill_input'); s = await st(); step('fish dropped on grill', s.stations.grill.in + s.stations.grill.out > 0, JSON.stringify(s.stations.grill)); }
-    // wait for cooking then take the products
-    await waitFor(page, () => { const g = window.__FV.state().stations.grill; return g.in === 0 && g.out > 0; }, 15000).catch(() => {});
+    if (first) { await shot('03_fishing'); step('fishing at the net', count(s, 'item_fish_raw') >= 3, `raw=${count(s, 'item_fish_raw')} anim=${s.player.anim}`); }
+    if (first) {
+      // nobody works the grill yet: fish dropped on its input stay raw
+      await walkTo(page, await where('grillIn'), { tol: 18 });
+      await waitFor(page, () => window.__FV.state().player.stack.filter((x) => x === 'item_fish_raw').length === 0, 10000).catch(() => {});
+      await walkTo(page, { x: 960, y: 760 }, { tol: 20 });
+      const g0 = (await st()).stations.grill;
+      await sleep(3000);
+      const g1 = (await st()).stations.grill;
+      await shot('04_grill_input');
+      step('(v3.5) fish on the grill stay raw while nobody works it', g0.in > 0 && g1.in === g0.in && !g1.working, `${JSON.stringify(g0)} -> ${JSON.stringify(g1)}`);
+      s = await st();
+      step('(v3.5) the tutorial points at the work spot', s.objective === 'obj_op_grill', `objective=${s.objective}`);
+    }
+    // stand at the grill (the fish in the bag hop in from there) until it is all cooked
+    await walkTo(page, await where('op:grill'), { tol: 12 });
+    await sleep(500);
+    if (first) {
+      s = await st();
+      await shot('04b_chief_cooks');
+      step('(v3.5) the chief cooks at the grill (work motion, grill on)', s.ops.grill.chief && s.ops.grill.working && s.player.anim === 'harvest' && s.objective === 'obj_operating_grill', `${JSON.stringify(s.ops.grill)} anim=${s.player.anim} obj=${s.objective}`);
+    }
+    await waitFor(page, () => { const s = window.__FV.state(); return s.stations.grill.in === 0 && !s.player.stack.includes('item_fish_raw'); }, 20000).catch(() => {});
+    await sleep(700);
     await walkTo(page, await where('grillOut'), { tol: 18 });
     await waitFor(page, () => { const s = window.__FV.state(); return s.stations.grill.out === 0 || s.player.stack.length >= s.player.capacity; }, 10000).catch(() => {});
-    if (loops === 1) { await sleep(300); await shot('05_carry_tower'); s = await st(); step('picked up grilled fish', count(s, 'item_fish_cooked') > 0, `cooked=${count(s, 'item_fish_cooked')}`); }
+    if (first) { await sleep(300); await shot('05_carry_tower'); s = await st(); step('picked up grilled fish', count(s, 'item_fish_cooked') > 0, `cooked=${count(s, 'item_fish_cooked')}`); }
     // put on the counter
     await walkTo(page, await where('shelf'), { tol: 18 });
     await waitFor(page, () => window.__FV.state().player.stack.length === 0, 10000).catch(() => {});
-    if (loops === 1) { await sleep(500); await shot('06_counter'); }
-    // (v2) the customer takes the food and waits at the register: nobody pays until the chief stands there
-    await waitFor(page, () => window.__FV.state().market.waitingPay, 30000).catch(() => {});
-    if (loops === 1) {
-      await sleep(600);
-      s = await st();
-      step('customer waits at the empty register', s.market.waitingPay && s.market.cash === 0, `waitingPay=${s.market.waitingPay} cash=${s.market.cash}`);
-      step('tutorial points at the register', s.objective === 'obj_register', `objective=${s.objective}`);
-      await shot('06b_register_wait');
-    }
-    await walkTo(page, await where('register'), { tol: 14 });
-    // customers pay while the chief stands at the register -> coins on the cash pad
-    await waitFor(page, () => { const s = window.__FV.state(); return s.market.cash > 0 && s.market.stock === 0 && !s.market.waitingPay; }, 40000).catch(() => {});
-    if (loops === 1) { await sleep(400); await shot('07_customers_pay'); s = await st(); step('customers paid at the register', s.market.cash > 0, `cash=${s.market.cash}`); }
+    if (first) { await sleep(500); await shot('06_counter'); }
+    if (register) {
+      // (v2) the customer takes the food and waits at the register: nobody pays until the chief stands there
+      await waitFor(page, () => window.__FV.state().market.waitingPay, 30000).catch(() => {});
+      if (first) {
+        await sleep(600);
+        s = await st();
+        step('customer waits at the empty register', s.market.waitingPay && s.market.cash === 0, `waitingPay=${s.market.waitingPay} cash=${s.market.cash}`);
+        step('tutorial points at the register', s.objective === 'obj_register', `objective=${s.objective}`);
+        await shot('06b_register_wait');
+      }
+      await walkTo(page, await where('register'), { tol: 14 });
+      // customers pay while the chief stands at the register -> coins on the cash pad
+      await waitFor(page, () => { const s = window.__FV.state(); return s.market.cash > 0 && s.market.stock === 0 && !s.market.waitingPay; }, 40000).catch(() => {});
+      if (first) { await sleep(400); await shot('07_customers_pay'); s = await st(); step('customers paid at the register', s.market.cash > 0, `cash=${s.market.cash}`); }
+    } else await waitFor(page, () => { const s = window.__FV.state(); return s.market.cash > 0 && s.market.stock === 0; }, 40000).catch(() => {});
     await walkTo(page, await where('cash'), { tol: 18 });
     await sleep(900);
     s = await st();
-    if (loops === 1) { await shot('08_collect_coins'); step('collected coins', s.coins > 0, `coins=${s.coins}`); }
+    if (first) { await shot('08_collect_coins'); step('collected coins', s.coins > 0, `coins=${s.coins}`); }
+  };
+  const padCost = (id) => page.evaluate((k) => { const p = window.__FV.scene.progress.pads[k]; return p ? p.remaining : 0; }, id);
+  let loops = 0;
+  while (loops < 4) {
+    const s0 = await st();
+    if (s0.pads.includes('hire_clerk_market') && s0.coins >= (await padCost('hire_clerk_market'))) break;
+    loops++; await oneLoop(loops, loops === 1, true);
   }
   s = await st();
-  step('earned 30 coins by playing', s.coins >= 30, `coins=${s.coins} after ${loops} loops`);
-  step('clerk pad appears after the first sale', s.pads.includes('hire_clerk_market') && s.flags.firstSale, `pads=${s.pads}`);
-  if (s.coins < 30) await page.evaluate((n) => window.__FV.give(n), 30 - s.coins);
+  const clerkCost = await padCost('hire_clerk_market');
+  step('the clerk pad appears after the first sale', s.pads.includes('hire_clerk_market') && s.flags.firstSale, `pads=${s.pads}`);
+  step('earned the clerk by playing (the chief cooked at the grill)', s.coins >= clerkCost && clerkCost > 0, `coins=${s.coins} cost=${clerkCost} after ${loops} loops`);
+  if (s.coins < clerkCost) await page.evaluate((n) => window.__FV.give(n), clerkCost - s.coins);
 
-  // ---------------- first unlock: hire the fisherman
-  await walkTo(page, await where('hire_fisherman'), { tol: 14 });
+  // ---------------- (v2) the clerk takes payments at the register
+  await walkPad('hire_clerk_market', { tol: 14 });
   await sleep(500);
   await shot('09_paying_unlock');
+  await waitFor(page, () => window.__FV.state().market.clerk, 10000).catch(() => {});
+  step('hired the clerk', (await st()).market.clerk);
+  // ---------------- (v3.5) the cook: earn it by playing (the clerk takes payments now)
+  await waitFor(page, () => window.__FV.state().pads.includes('op_grill'), 10000).catch(() => {});
+  let loops2 = 0;
+  while (loops2 < 4 && (await st()).coins < (await padCost('op_grill'))) { loops2++; await oneLoop(loops2, false, false); }
+  s = await st();
+  const cookCost = await padCost('op_grill');
+  step('(v3.5) earned the cook by playing', s.coins >= cookCost && cookCost > 0, `coins=${s.coins} cost=${cookCost} after ${loops2} more loops`);
+  if (s.coins < cookCost) await page.evaluate((n) => window.__FV.give(n), cookCost - s.coins);
+  await walkPad('op_grill', { tol: 14 });
+  await waitFor(page, () => window.__FV.state().ops.grill.hired, 8000).catch(() => {});
+  await walkTo(page, { x: 1000, y: 860 }, { tol: 20 });
+  await waitFor(page, () => window.__FV.state().ops.grill.ready, 20000).catch(() => {});
+  await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.stations.grill.inStack.push('item_fish_raw', null, gs.effects); });
+  await sleep(1600);
+  s = await st();
+  await shot('09b_cook_hired');
+  step('(v3.5) the cook (요리사 쿡) grills while the chief is away', s.ops.grill.ready && s.ops.grill.working && !s.ops.grill.chief && s.ops.grill.anim === 'operate', JSON.stringify(s.ops.grill));
+
+  // ---------------- the fisherman (catch -> the fish barrel)
+  await waitFor(page, () => window.__FV.state().pads.includes('hire_fisherman'), 10000).catch(() => {});
+  { const c = await padCost('hire_fisherman'); s = await st(); if (s.coins < c) await page.evaluate((n) => window.__FV.give(n), c - s.coins); }
+  await walkPad('hire_fisherman', { tol: 14 });
   await waitFor(page, () => window.__FV.state().done.includes('hire_fisherman'), 8000).catch(() => {});
   await sleep(900);
   await shot('10_fisherman_hired');
@@ -112,20 +171,30 @@ try {
   s = await st();
   step('fisherman works', s.workers[0] && ['work', 'deliver', 'drop', 'goto'].includes(s.workers[0].state), JSON.stringify(s.workers[0]));
   await shot('11_fisherman_working');
+  await waitFor(page, () => window.__FV.state().piles.fish.n > 0, 60000).catch(() => {});
+  s = await st();
+  step('(v3.5) the fisherman\'s catch goes to the fish barrel', s.piles.fish.shown && s.piles.fish.n > 0, JSON.stringify(s.piles.fish));
 
-  // ---------------- (v2) porter for the grill, clerk at the register
+  // ---------------- (v3.5) fish porter (barrel -> grill), (v2) goods porter (grill -> counter)
+  await waitFor(page, () => window.__FV.state().pads.includes('raw_grill'), 10000).catch(() => {});
+  { const c = await padCost('raw_grill'); await page.evaluate((n) => window.__FV.give(n), c); }
+  await walkPad('raw_grill', { tol: 14 });
+  await waitFor(page, () => window.__FV.state().rawPorters.length > 0, 10000).catch(() => {});
+  await walkTo(page, { x: 1100, y: 860 }, { tol: 20 });
+  await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 8; i++) gs.piles.fish.stack.push('item_fish_raw', null, gs.effects); gs.stations.grill.inStack.clear(gs.effects); });
+  await waitFor(page, () => window.__FV.state().rawPorters.some((r) => r.dest === 'grill_in' && r.carry > 0), 40000).catch(() => {});
+  s = await st();
+  step('(v3.5) the fish porter carries the barrel to the grill', s.rawPorters.some((r) => r.dest === 'grill_in' && r.carry > 0), JSON.stringify(s.rawPorters));
+  await shot('11a_fish_porter');
   await waitFor(page, () => window.__FV.state().pads.includes('porter_grill'), 10000).catch(() => {});
   await page.evaluate(() => { const p = window.__FV.scene.progress.pads.porter_grill; window.__FV.give(p ? p.remaining : 0); });
-  await walkTo(page, await where('porter_grill'), { tol: 14 });
+  await walkPad('porter_grill', { tol: 14 });
   await waitFor(page, () => window.__FV.state().done.includes('porter_grill'), 10000).catch(() => {});
   await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.stations.grill.outStack.push('item_fish_cooked', null, gs.effects); });
   await waitFor(page, () => window.__FV.state().porters.some((p) => p.state === 'haul' || p.state === 'unload'), 40000).catch(() => {});
   s = await st();
   step('porter carries grilled fish to the counter', s.porters.length === 1 && ['haul', 'unload'].includes(s.porters[0].state), JSON.stringify(s.porters));
   await shot('11b_porter');
-  await page.evaluate(() => { const p = window.__FV.scene.progress.pads.hire_clerk_market; window.__FV.give(p ? p.remaining : 0); });
-  await walkTo(page, await where('hire_clerk_market'), { tol: 14 });
-  await waitFor(page, () => window.__FV.state().market.clerk, 10000).catch(() => {});
   await walkTo(page, await where('net'), { tol: 20 });
   const cash0 = (await st()).market.cash;
   await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 8; i++) gs.market.stock.push('item_fish_cooked', null, gs.effects); });
@@ -136,7 +205,7 @@ try {
 
   // ---------------- second unlock by paying (forest), then everything
   await page.evaluate(() => { const p = window.__FV.scene.progress.pads.zone_forest; window.__FV.give(p ? p.remaining : 0); });
-  await walkTo(page, await where('zone_forest'), { tol: 14 });
+  await walkPad('zone_forest', { tol: 14 });
   await waitFor(page, () => window.__FV.state().done.includes('zone_forest'), 8000).catch(() => {});
   await sleep(1300);
   await shot('12_forest_reveal');
@@ -215,7 +284,7 @@ try {
   // upgrades
   await page.evaluate(() => window.__FV.teleport(990, 1000));
   const cap0 = (await st()).player.capacity;
-  await walkTo(page, await where('up_capacity'), { tol: 10 });
+  await walkPad('up_capacity', { tol: 10 });
   await waitFor(page, (c) => window.__FV.state().player.capacity > c, 16000, cap0).catch(() => {});
   s = await st();
   step('backpack upgrade', s.player.capacity > cap0, `${cap0} -> ${s.player.capacity}`);
@@ -241,7 +310,7 @@ try {
     await waitFor(page, () => window.__FV.state().pads.includes('tower_east'), 10000).catch(() => {});
     s = await st();
     step('(v3) first watchtower pad after the village core', s.pads.includes('tower_east') && !s.territory.east, `pads=${s.pads.filter((p) => /tower|hire2/.test(p))}`);
-    await walkTo(page, await where('tower_east'), { tol: 14 });
+    await walkPad('tower_east', { tol: 14 });
     await waitFor(page, () => window.__FV.state().done.includes('tower_east'), 10000).catch(() => {});
     await standAside();
     await pushOut('sawmill', 'item_plank', 12);
@@ -280,19 +349,22 @@ try {
 
     // ---- tool-gated hire: the 2nd lumberjack pad wants coins AND an axe from the toolsmith
     await waitFor(page, () => window.__FV.state().pads.includes('hire2_lumberjack'), 10000).catch(() => {});
-    await walkTo(page, await where('hire2_lumberjack'), { tol: 14 });
+    await walkPad('hire2_lumberjack', { tol: 14 });
     await sleep(2500);
     s = await st();
     const paidNoTool = !s.done.includes('hire2_lumberjack');
     await pushOut('sawmill', 'item_plank', 2); await pushOut('smelter', 'item_ingot', 2);
+    await waitFor(page, () => { const w = window.__FV.state().workshops.toolsmith; return w && w.in >= 2; }, 90000).catch(() => {});
+    // (v3.5) nobody works the forge yet: the chief stands at its work spot
+    await walkTo(page, await where('op:toolsmith'), { tol: 12, teleport: true });
     await waitFor(page, () => { const w = window.__FV.state().workshops.toolsmith; return w && w.outs && w.outs.item_axe > 0; }, 90000).catch(() => {});
     s = await st();
-    step('(v3) toolsmith forges the axe the pad waits for', s.workshops.toolsmith && s.workshops.toolsmith.outs.item_axe > 0, JSON.stringify(s.workshops.toolsmith));
+    step('(v3) toolsmith forges the axe the pad waits for (v3.5: the chief at the forge)', s.workshops.toolsmith && s.workshops.toolsmith.outs.item_axe > 0, JSON.stringify(s.workshops.toolsmith));
     await page.evaluate(() => window.__FV.clearStack());
     await walkTo(page, await where('toolsmithOut'), { tol: 14 });
     await waitFor(page, () => window.__FV.state().player.stack.includes('item_axe'), 8000).catch(() => {});
     await shot('19g_v3_toolsmith_axe');
-    await walkTo(page, await where('hire2_lumberjack'), { tol: 14 });
+    await walkPad('hire2_lumberjack', { tol: 14 });
     await waitFor(page, () => window.__FV.state().done.includes('hire2_lumberjack'), 10000).catch(() => {});
     s = await st();
     step('(v3) 2nd lumberjack only after the axe arrives', paidNoTool && s.done.includes('hire2_lumberjack') && s.workers.filter((w) => w.type === 'lumberjack').length === 2, `paidNoTool=${paidNoTool} lumberjacks=${s.workers.filter((w) => w.type === 'lumberjack').length}`);
@@ -321,7 +393,7 @@ try {
     await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3(); window.__FV.teleport(2200, 900); });
     await sleep(1500);
     await waitFor(page, () => window.__FV.state().pads.includes('boat_rowboat'), 10000).catch(() => {});
-    await walkTo(page, await where('boat_rowboat'), { tol: 14 });
+    await walkPad('boat_rowboat', { tol: 14 });
     await waitFor(page, () => window.__FV.state().done.includes('boat_rowboat'), 10000).catch(() => {});
     await waitFor(page, () => { const b = window.__FV.state().boat; return b && b.state === 'out'; }, 30000).catch(() => {});
     await page.evaluate(() => { const b = window.__FV.where('boat'); window.__FV.camera(b.x, b.y, 0.9); });

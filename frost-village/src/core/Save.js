@@ -33,7 +33,7 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
@@ -72,7 +72,33 @@ export const MIGRATE = {
   // v2 -> v3 (생산 사슬과 땅 넓히기): everything carries over; the new land, plots and chains start fresh
   // (residents who already moved in stay, even beyond the new house limit)
   2: (s) => Object.assign({}, s, { v: 3 }),
+  // v3 -> v3.5 (분업): stations now need an operator and gatherers drop at collection piles. Every station
+  // that ran on its own in v3 gets its operator, a hired gatherer gets the raw porter of his line, and a v3
+  // toolsmith / cannery keeps working (its operator comes with it) — nobody loses the automation they had.
+  3: (s) => {
+    const o = Object.assign({}, s, { v: 4 });
+    const pr = isObj(s.progress) ? Object.assign({}, s.progress) : {};
+    const done = Object.assign({}, isObj(pr.done) ? pr.done : {});
+    // (v3.5 분업) a v3 player keeps every machine that already ran on its own: a station whose land was
+    // open gets its operator (the grill as soon as anything was done), a hired gatherer its raw porter
+    // (in v3 the gatherer carried straight to the station; now he fills the collection pile)
+    const anyDone = Object.keys(done).some((k) => done[k] === true);
+    for (const w in LINE_STATION) {
+      const st = LINE_STATION[w], zone = STATION_ZONE[st];
+      if (zone ? done[zone] === true : anyDone) done['op_' + st] = true;
+      if (done['hire_' + w] === true) { done['op_' + st] = true; done['raw_' + st] = true; }
+    }
+    const sites = isObj(s.sites) ? s.sites : {};
+    // (a toolsmith / cannery that was built or being built in v3 worked by itself there: it keeps that)
+    for (const id in sites) { const d = sites[id]; if (isObj(d) && (d.b === 'toolsmith' || d.b === 'cannery')) done['op_' + d.b] = true; }
+    pr.done = done;
+    o.progress = pr;
+    return o;
+  },
 };
+const LINE_STATION = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
+const STATION_ZONE = { grill: null, sawmill: 'zone_forest', bakery: 'zone_farm', smelter: 'zone_mine', smokehouse: 'zone_hunt' };
+const PILE_IDS = ['fish', 'log', 'wheat', 'ore', 'meat'];
 
 /**
  * Validate a loaded save so a corrupted or hand-edited value can never brick the game:
@@ -140,6 +166,12 @@ export function sanitizeSave(raw) {
     workshops: wso,
     store: isObj(v3.store) ? { stock: counts(v3.store.stock, STORE_GOODS), cash: count(v3.store.cash, 1e9) } : undefined,
   };
+  // (v3.5) the collection piles, the dog's affection
+  const lb = isObj(raw.labour) ? raw.labour : {};
+  s.labour = { piles: {} };
+  if (isObj(lb.piles)) for (const k of PILE_IDS) if (k in lb.piles) s.labour.piles[k] = count(lb.piles[k], 200);
+  const dg = isObj(raw.dog) ? raw.dog : {};
+  s.dog = { love: Math.max(0, Math.min(100, num(dg.love, 0))), gifts: count(dg.gifts, 1e6), tricks: count(dg.tricks, 1e6) };
   return s;
 }
 

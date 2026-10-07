@@ -1,4 +1,4 @@
-// Frost Village v3 checks (생산 사슬과 땅 넓히기) — the parts the smoke test does not walk through.
+// Frost Village v3 checks (생산 사슬과 땅 넓히기; v3.5: operators/porters hired by unlockV3) — the parts the smoke test does not walk through.
 //   node tools/test/v3.mjs            (screenshots -> docs/previews/screens_v3/test_*.jpg)
 // Runs on the fixed-step clock (fv_step.mjs): every wait is GAME time.
 //   lazy buildings fragment, fog wall + walk/camera limits, porters carry on the back, clerks ring at the
@@ -172,7 +172,11 @@ try {
     await wait(() => window.__FV.state().done.includes('boat_rowboat'), 10);
     await wait(() => window.__FV.state().pads.includes('boat_fishing'), 10);
     await ev(() => { window.__FV.clearStack(); const gs = window.__FV.scene; gs.player.stack.push('item_rod', null, gs.effects); });
-    await walk(await where('boat_fishing'));
+    // (v3.5) a pad that appears under the chief waits until he steps off it once (no accidental payments)
+    const bf = await where('boat_fishing');
+    await walk({ x: bf.x - 130, y: bf.y + 40 });
+    await adv(0.3);
+    await walk(bf);
     await wait(() => window.__FV.state().done.includes('boat_fishing'), 15);
     s = await st();
     step('fishing boat bought with coins + a rod', s.done.includes('boat_fishing') && s.boat && s.boat.level === 2, JSON.stringify(s.boat));

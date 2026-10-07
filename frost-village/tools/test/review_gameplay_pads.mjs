@@ -51,7 +51,10 @@ try {
       return { id, x: Math.round(p.x), y: Math.round(p.y), triggerR: Math.round(p.pad.r), centreBlocked: gs.collision.blocked(p.x, p.y, 16), standableFrac: +(ok / tot).toFixed(2), reachedByWalking: onPad, closestApproach: Math.round(minD), overlaps: hits };
     };
     const out = [];
+    // (v3.5) the first pads wait for the first sale / trade
+    pr.flags.firstSale = true; pr.flags.firstTrade = true;
     for (const s of STEPS) {
+      if (s.v3) continue;
       pr.syncPads();
       const pad = pr.pads[s.id];
       if (!pad) { out.push({ id: s.id, missing: true }); continue; }

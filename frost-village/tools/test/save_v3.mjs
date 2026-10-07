@@ -1,4 +1,5 @@
-// v2 -> v3 save migration test (생산 사슬과 땅 넓히기).
+// v2 -> v3 save migration test (생산 사슬과 땅 넓히기). The chain goes on to the current version (v3.5: save v4,
+// see save_v35.mjs for v3 -> v3.5).
 //   node tools/test/save_v3.mjs           (Node part only: migration + sanitize)
 //   node tools/test/save_v3.mjs --browser (also boots the game with a finished v2 village, then a mid-v3 save)
 // Never wipe progress: everything a v2 player had stays; the new land, plots and chains start fresh.
@@ -27,17 +28,17 @@ const v2 = {
   life: { moved: MOVED, snowman: 2 },
 };
 
-check('SAVE_VERSION is 3', SAVE_VERSION === 3, String(SAVE_VERSION));
+check('SAVE_VERSION is 3 or later (v3.5: 4)', SAVE_VERSION >= 3, String(SAVE_VERSION));
 const m = MIGRATE[2](clone(v2));
 const s = sanitizeSave(m);
-check('v2 -> v3: version bumped', m.v === 3 && s.v === 3);
+check('v2 -> v3: version bumped', m.v === 3 && s.v === SAVE_VERSION);
 check('v2 -> v3: coins, steps, upgrades kept', s.coins === 2345 && DONE_V2.every((k) => s.progress.done[k]) && s.progress.up.capacity === 5 && s.progress.up.speed === 4 && s.progress.paid.up_capacity === 30);
 check('v2 -> v3: flags + celebration kept', s.progress.flags.firstSale && s.progress.flags.firstTrade && s.progress.celebrated);
 check('v2 -> v3: stations, shelves, carried items kept', s.stations.sawmill.o === 9 && s.market.stock.item_bread === 6 && s.trade.stock.item_plank === 2 && s.player.stack.length === 2);
 check('v2 -> v3: residents kept (nobody evicted)', s.life.moved.length === MOVED.length && s.life.snowman === 2, String(s.life.moved.length));
 check('v2 -> v3: new land closed, no sites, no v3 stock', Object.keys(s.territory).length === 0 && Object.keys(s.sites).length === 0 && !s.v3.warehouse && !s.v3.store && !s.progress.celebrated3);
 // the whole chain from v1 also lands on v3
-{ let o = { v: 1, coins: 7, progress: { done: { hire_fisherman: true, hire2_fisherman: true } } }; while (o.v !== SAVE_VERSION) o = MIGRATE[o.v](o); const z = sanitizeSave(o); check('v1 -> v2 -> v3 chain', z.v === 3 && z.progress.done.porter_grill && z.coins === 7); }
+{ let o = { v: 1, coins: 7, progress: { done: { hire_fisherman: true, hire2_fisherman: true } } }; while (o.v !== SAVE_VERSION) o = MIGRATE[o.v](o); const z = sanitizeSave(o); check('v1 -> v2 -> v3 (-> v3.5) chain', z.v === SAVE_VERSION && z.progress.done.porter_grill && z.coins === 7); }
 
 // a mid-v3 save
 const v3 = Object.assign(clone(v2), {
@@ -103,7 +104,7 @@ if (process.argv.includes('--browser')) {
     check('v2 save boots: tutorial points at the watchtower', /tower/.test(st.objective || ''), String(st.objective));
     await page.evaluate(() => window.__FV.save());
     let raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
-    check('saved again as v3', raw.v === 3 && raw.life.moved.length >= MOVED.length && raw.territory && Object.keys(raw.territory).length === 0);
+    check('saved again as the current version', raw.v === SAVE_VERSION && raw.life.moved.length >= MOVED.length && raw.territory && Object.keys(raw.territory).length === 0);
 
     // 2. a mid-v3 save comes back exactly
     await boot(v3);
@@ -118,7 +119,7 @@ if (process.argv.includes('--browser')) {
     check('v3 save: the scaffold finishes after loading', st.built.boathouse === 1 || st.sites.e_dock.state === 'done', JSON.stringify(st.sites.e_dock));
     await page.evaluate(() => window.__FV.save());
     raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
-    check('v3 round trip', raw.v === 3 && raw.territory.east === true && raw.sites.e_m1.st === 'done' && raw.v3.food.on === true, JSON.stringify(raw.sites));
+    check('v3 round trip', raw.v === SAVE_VERSION && raw.territory.east === true && raw.sites.e_m1.st === 'done' && raw.v3.food.on === true, JSON.stringify(raw.sites));
 
     // 3. a corrupted v3 save still boots
     await boot(Object.assign(clone(v3), { sites: { e_m1: { b: 'castle', st: 'done' }, e_m2: { b: 'store', st: 'scaffold', got: { item_plank: -3 } } }, territory: { east: 1, se: true }, v3: { warehouse: 'x', food: { on: true, food: { item_bread: 1e9 } } } }));

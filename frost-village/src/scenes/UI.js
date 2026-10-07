@@ -56,6 +56,12 @@ export class UI extends Phaser.Scene {
     this.zoomInBtn = this.makeZoomButton('in', () => this.gs.zoomBy(BALANCE.camera.zoomStep));
     this.zoomOutBtn = this.makeZoomButton('out', () => this.gs.zoomBy(1 / BALANCE.camera.zoomStep));
     this.mapBtn = this.makeZoomButton('map', () => this.gs.toggleOverview());
+    // ---- (v3.5) the whistle (call Kongi) + the dog's play bar (treat / fetch / pet + affection hearts)
+    this.whistleBtn = this.makeIconButton(0, 0, Assets.pick('ui_icon_whistle', 'ui_icon_worker'), 80, () => { if (this.gs.dog) this.gs.dog.command('whistle'); });
+    this.whistleBtn.icon.setScale(this.whistleBtn.icon.scaleX * 1.12);
+    this.whistleBtn.setVisible(false);
+    this.whistleBadge = this.add.text(0, 0, '', TXT(20, '#ffffff', '#d4426f', 5, '900')).setOrigin(0.5).setVisible(false);
+    this.buildDogBar();
     this.pinch = null;
     this.taps = {};
 
@@ -181,6 +187,8 @@ export class UI extends Phaser.Scene {
     this.mapBtn.setPosition(W - 56, zb);
     this.zoomOutBtn.setPosition(W - 56, zb - 84);
     this.zoomInBtn.setPosition(W - 56, zb - 160);
+    this.whistleBtn.setPosition(62, zb);
+    this.whistleBadge.setPosition(92, zb - 30);
     this.objPanel.setPosition(W / 2, top + 88);
     this.toastBox.setPosition(W / 2, H - 230 - View.safeBottom);
     this.bannerBox.setPosition(W / 2, H * 0.27);
@@ -267,6 +275,99 @@ export class UI extends Phaser.Scene {
     return c;
   }
 
+  // ---------------------------------------------------------------- (v3.5) dog bar
+  buildDogBar() {
+    const c = this.add.container(0, 0).setVisible(false).setDepth(30);
+    const bg = panel(this, 0, 0, 'ui_panel', 268, 132).setOrigin(0.5).setAlpha(0.96);
+    c.add(bg);
+    this.dogBg = bg;
+    // affection: 5 hearts (a partly filled heart is the full one cropped over the empty one)
+    this.dogHearts = [];
+    for (let i = 0; i < 5; i++) {
+      const x = -68 + i * 34;
+      const e = Assets.image(this, x, -40, Assets.pick('ui_icon_heart_empty', 'ui_icon_lock')).setOrigin(0.5);
+      e.setScale(32 / Math.max(1, e.frame.realWidth));
+      const f = Assets.image(this, x, -40, Assets.pick('ui_icon_heart_full', 'ui_icon_check')).setOrigin(0.5);
+      f.setScale(32 / Math.max(1, f.frame.realWidth));
+      c.add([e, f]);
+      this.dogHearts.push({ e, f });
+    }
+    this.dogBtns = [];
+    const defs = [['treat', 'ui_icon_treat'], ['play', 'ui_icon_play'], ['pet', 'ui_icon_pet']];
+    defs.forEach(([kind, icon], i) => {
+      const x = -84 + i * 84, y = 18;
+      const b = this.add.container(x, y);
+      const g = this.add.graphics();
+      g.fillStyle(0x1f3354, 0.22); g.fillCircle(0, 4, 34);
+      g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 34);
+      g.lineStyle(4, 0xffd27a, 1); g.strokeCircle(0, 0, 32);
+      const ic = Assets.image(this, 0, -2, Assets.pick(icon, 'ui_icon_worker')).setOrigin(0.5);
+      ic.setScale(56 / Math.max(1, ic.frame.realWidth));
+      const cdG = this.add.graphics();
+      const lab = this.add.text(0, 44, t(kind === 'treat' ? 'dogTreat' : kind === 'play' ? 'dogPlay' : 'dogPet'), TXT(17, '#2b2f3a', '#ffffff', 4, '900')).setOrigin(0.5);
+      b.add([g, ic, cdG, lab]);
+      b.setSize(76, 76);
+      b.setInteractive({ useHandCursor: true });
+      b.on('pointerdown', () => { this.tweens.add({ targets: b, scale: 0.86, duration: 70, yoyo: true }); if (this.gs.dog) this.gs.dog.command(kind); });
+      c.add(b);
+      this.dogBtns.push({ kind, b, ic, cdG, lab });
+    });
+    this.dogBar = c;
+    this.dogBarOn = false;
+  }
+
+  updateDogBar(dt) {
+    const d = this.gs.dog;
+    // the whistle shows once Kongi lives in the village
+    const has = !!(d && d.r);
+    if (this.whistleBtn.visible !== has) { this.whistleBtn.setVisible(has); this.whistleBadge.setVisible(has); }
+    if (has) {
+      const h = Math.floor(d.hearts);
+      const txt = h > 0 ? '♥' + h : '';
+      if (this.whistleBadge.text !== txt) this.whistleBadge.setText(txt);
+      // a gentle wiggle while the dog is on its way
+      const wig = d.mode === 'come' ? Math.sin(this.time.now / 70) * 0.18 : 0;
+      this.whistleBtn.icon.setRotation(wig);
+    }
+    // (not over the whole-village view: the dog is a dot there)
+    const on = !!(d && d.barVisible() && !this.gs.overview && (this.gs.zoomCur || 1) >= 0.7);
+    if (on !== this.dogBarOn) {
+      this.dogBarOn = on;
+      this.tweens.killTweensOf(this.dogBar);
+      if (on) { this.dogBar.setVisible(true).setScale(0.5).setAlpha(0); this.tweens.add({ targets: this.dogBar, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' }); }
+      else this.tweens.add({ targets: this.dogBar, scale: 0.6, alpha: 0, duration: 160, onComplete: () => { if (!this.dogBarOn) this.dogBar.setVisible(false); } });
+    }
+    if (!on) return;
+    const r = d.r;
+    const sp = this.worldToScreen(r.x, r.y + (r.headTop || -40));
+    // (above the chief's head too when he stands by the dog, with room for the hearts that rise between them)
+    const p = this.gs.player;
+    let top = sp.y - 92;
+    if (p && Math.abs(p.x - r.x) < 160 && Math.abs(p.y - r.y) < 90) { const pp = this.worldToScreen(p.x, p.y + p.headTop); top = Math.min(top, pp.y - 128); sp.x = (sp.x + pp.x) / 2; }
+    const x = Phaser.Math.Clamp(sp.x, 150, this.W - 150), y = Phaser.Math.Clamp(top, 200, this.H - 260);
+    this.dogBar.setPosition(this.dogBar.x ? this.dogBar.x + (x - this.dogBar.x) * Math.min(1, dt * 12) : x, this.dogBar.y ? this.dogBar.y + (y - this.dogBar.y) * Math.min(1, dt * 12) : y);
+    const love = d.hearts;
+    for (let i = 0; i < 5; i++) {
+      const q = this.dogHearts[i];
+      const f = Math.max(0, Math.min(1, love - i));
+      q.f.setVisible(f > 0.02);
+      if (f > 0.02 && f < 0.999) { const fw = q.f.frame.realWidth, fh = q.f.frame.realHeight; q.f.setCrop(0, fh * (1 - f), fw, fh * f); }
+      else if (q.f.isCropped) q.f.setCrop();
+    }
+    const busy = d.mode === 'scene';
+    for (const q of this.dogBtns) {
+      const cd = d.cooldown(q.kind), mx = d.cooldownMax(q.kind);
+      const ready = cd <= 0 && !busy;
+      q.b.setAlpha(ready ? 1 : 0.55);
+      q.cdG.clear();
+      if (cd > 0) {
+        q.cdG.fillStyle(0x1f3354, 0.35);
+        q.cdG.slice(0, 0, 33, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (cd / mx), false);
+        q.cdG.fillPath();
+      }
+    }
+  }
+
   // ---------------------------------------------------------------- coins
   setCoins(v, delayMs) {
     this.targetCoins = v;
@@ -275,9 +376,10 @@ export class UI extends Phaser.Scene {
   }
 
   worldToScreen(wx, wy) {
-    const cam = this.gs.cameras.main;
-    const v = cam.worldView;
-    return { x: ((wx - v.x) * cam.zoom) / View.k, y: ((wy - v.y) * cam.zoom) / View.k };
+    // (from the scroll + zoom themselves: cam.worldView is only refreshed when the frame is drawn)
+    const cam = this.gs.cameras.main, z = cam.zoom || 1;
+    const vx = cam.scrollX + cam.width * 0.5 * (1 - 1 / z), vy = cam.scrollY + cam.height * 0.5 * (1 - 1 / z);
+    return { x: ((wx - vx) * z) / View.k, y: ((wy - vy) * z) / View.k };
   }
 
   coinFly(wx, wy, n) {
@@ -625,6 +727,10 @@ export class UI extends Phaser.Scene {
     for (const id in gs.progress.pads) gs.progress.pads[id].refresh();
     for (const k in gs.progress.upPads) gs.progress.upPads[k].refresh();
     for (const id in gs.zones) { const z = gs.zones[id]; if (z.outline) z.outline.txt.setText(t(z.cfg.name)); }
+    // (v3.5) work spots, piles, the dog bar
+    for (const x of gs.stationList.concat(gs.workshops)) if (x.op) x.op.refresh();
+    for (const id in gs.piles) gs.piles[id].refresh();
+    for (const q of this.dogBtns || []) q.lab.setText(t(q.kind === 'treat' ? 'dogTreat' : q.kind === 'play' ? 'dogPlay' : 'dogPet'));
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
   }
 
@@ -667,6 +773,7 @@ export class UI extends Phaser.Scene {
         this.edge.setVisible(true).setPosition(ex - Math.cos(a) * bob, ey - Math.sin(a) * bob).setRotation(a - Math.PI / 2);
       } else this.edge.setVisible(false);
     } else this.edge.setVisible(false);
+    this.updateDogBar(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }
 }

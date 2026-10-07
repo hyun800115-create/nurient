@@ -113,6 +113,8 @@ try {
   step('campfire concert (perform + dancers)', !!ok && cst.playing && cst.members >= 3, JSON.stringify(cst));
 
   // --- elders sitting
+  // (v3.5: the baker auntie works the oven now, so the seat-sitters left may all be dancing at the concert: let it end)
+  for (let i = 0; i < 40; i++) { if (!(await ev(() => window.__FV.scene.life.events.some((e) => e.kind === 'concert')))) break; await advance(page, 1); }
   await cam(540, 600, 1.45); await near(700, 700);
   await advance(page, 2);
   ok = await ev(() => window.__FV.lifeEvent('sit'));

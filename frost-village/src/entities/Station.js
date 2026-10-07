@@ -1,11 +1,15 @@
 // Processing station: raw items on the input pad are converted one by one (timer) into
 // products that pile up as towers on the output pad. Plays its `work` loop while busy.
+// (v3.5) it only works while OPERATED: the chief stands on its work spot, or a hired operator
+// (systems/Labour.js OperatorSpot) does it for good. Its input is a logistics sink (raw porters,
+// the boat's fish porter and the warehouse bring raw items).
 
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
+import { PRIO } from '../systems/Logistics.js';
 
 export class Station {
   constructor(gs, cfg) {
@@ -33,7 +37,27 @@ export class Station {
     this.fire = null;
     if (cfg.fire) this.fire = gs.effects.loop('fx_fire', this.x + cfg.fire[0], this.y + cfg.fire[1], 46, this.y + 1);
     if (this.fire) this.fire.setVisible(false);
+    this.op = null;           // (v3.5) OperatorSpot (set by the Game)
+    // (v3.5) the input as a logistics sink: raw porters / boat fish / the warehouse bring raw items
+    if (!cfg.noSink) {
+      this.inSink = {
+        id: this.id + '_in', isWarehouse: false, enabled: true, station: this,
+        x: this.inPad.x + 24, y: this.inPad.y + 18,
+        accepts: (ty) => ty === this.input,
+        room: () => Math.max(0, this.inStack.max - this.inStack.count - this.inStack.incoming - (this.id === 'grill' ? 6 : 0)),
+        prio: () => PRIO.GRILL,
+        feed: (ch) => this.feedFrom(ch),
+      };
+      if (gs.logistics) gs.logistics.add(this.inSink);
+    }
   }
+
+  /** (v3.5) someone works the station (the chief on its work spot, or its operator) */
+  operated() { return !this.op || this.op.active; }
+  /** (v3.5) something to do (the "come and work here" cue) */
+  hasWork() { return this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max; }
+  /** (v3.5) the chief on the work spot carries something for the input */
+  acceptsFromChief(p) { return p.stack.countOf(this.input) > 0 && this.inStack.room > 0; }
 
   setEnabled(v) {
     this.enabled = v;
@@ -41,9 +65,11 @@ export class Station {
     this.inPad.setVisible(v); this.outPad.setVisible(v);
     this.obstacle.active = v;
     this.inStack.setVisible(v); this.outStack.setVisible(v);
+    if (this.inSink) this.inSink.enabled = v;
+    if (this.op) this.op.setEnabled(v);
   }
 
-  revealObjects() { return [this.img, this.inPad.img, this.outPad.img]; }
+  revealObjects() { return [this.img, this.inPad.img, this.outPad.img].concat(this.op ? this.op.revealObjects() : []); }
 
   setWorking(w) {
     if (w === this.working) return;
@@ -67,7 +93,9 @@ export class Station {
     if (can) {
       this.idleT = 0;
       this.setWorking(true);
-      this.timer += dt;
+      // (v3.5) the chief works a little faster than an operator (balance.js labour.chiefSpeed)
+      const k = this.op && this.op.chief && !this.op.operator ? Math.max(0.2, Number(BALANCE.labour && BALANCE.labour.chiefSpeed) || 1) : 1;
+      this.timer += dt * k;
       if (this.timer >= this.bal.time) { this.timer = 0; this.process(); }
     } else {
       this.idleT += dt;
@@ -90,7 +118,7 @@ export class Station {
   }
 
   /** inputs there and room for the product? */
-  canWork() { return this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max; }
+  canWork() { return this.operated() && this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max; }
 
   process() {
     const gs = this.gs;
@@ -113,7 +141,8 @@ export class Station {
           if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) Audio.play('sfx_drop', { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
         },
       });
-      if (gs.isNear(this.x, this.y, 520)) Audio.play(this.cfg.sfx, { volume: 0.45, throttle: 400 });
+      // (v3.5) an operator's own work sounds carry the station; without one the station sounds as before
+      if (gs.isNear(this.x, this.y, 520)) Audio.play(this.cfg.sfx, { volume: this.op && this.op.operator ? 0.22 : 0.45, throttle: 400 });
       gs.effects.pop(this.img, 0.06, 90);
     });
   }

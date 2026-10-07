@@ -95,7 +95,7 @@ export const WORLD = {
     // (v2) 계산대: 손님은 여기에 촌장(또는 점원)이 서 있어야 돈을 내고 떠납니다
     register: rel(market, Z('plaza', 6.0, 3.4)),   // 촌장이 서는 계산대 발판 (판매대 오른쪽 끝, 진열대 옆)
     staff: rel(market, Z('plaza', 2.1, 3.95)),     // 점원이 서는 곳 (판매대 뒤). 그림에 staffPoints 가 있으면 그것을 씀
-    clerk: ['npc_clerk_a', 'npc_aunt'],            // (v2) 점원 모습: 앞의 그림이 아직 없으면 다음 것 (그림이 오면 바뀜)
+    clerk: ['npc_clerk_a', 'villager_c'],          // (v2) 점원 모습: 앞의 그림이 아직 없으면 다음 것 (그림이 오면 바뀜)
   },
   trade: {
     sprite: 'trade_post', x: trade[0], y: trade[1], zone: 'forest',
@@ -112,13 +112,14 @@ export const WORLD = {
 
   // ── 자원 ───────────────────────────────────────────────
   net: { x: 880, y: 398, gather: [0, 86], fisherSpot: [-128, 30] },
-  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
+  // extra: (v3.5) a few more pines [mx, my] (zone metres) so three lumberjacks find work in the forest
+  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, extra: [[0.6, -3.4], [1.0, -0.6], [1.8, -2.4]], avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
   rocks: [
     [...Z('mine', -2.6, -0.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
     [...Z('mine', 0.9, -3.2), 'rock_ore'], [...Z('mine', -0.6, 0.6), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
     [...Z('mine', -1.2, -3.9), 'rock_ore'],
   ],
-  wheat: { zone: 'farm', origin: Z('farm', 1.3, -1.2), rows: 3, cols: 3, step: 1.5 },
+  wheat: { zone: 'farm', origin: Z('farm', 1.6, -1.8), rows: 3, cols: 3, step: 1.5 },   // (v3.5: a step away from the oven, where the baker works)
   hunt: { zone: 'hunt' },
 
   // ── 해금 / 고용 발판 ────────────────────────────────────
@@ -126,22 +127,42 @@ export const WORLD = {
   pads: {
     hire_fisherman:  { x: 900,  y: 700,  worker: 'fisherman',  hut: [585, 470] },
     zone_forest:     { x: 760,  y: 1130, zone: 'forest' },
-    hire_lumberjack: { ...P('forest', -0.6, 3.6), worker: 'lumberjack', hut: [300, 1010] },
+    hire_lumberjack: { x: 790, y: 1215, worker: 'lumberjack', hut: [300, 1010] },   // (v3.5: off the sawmill's input pad)
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
-    hire_farmer:     { ...P('farm', -1.0, 3.0), worker: 'farmer',     hut: [1606, 1112] },
+    hire_farmer:     { x: 1636, y: 1229, worker: 'farmer',     hut: [1606, 1112] },
     zone_mine:       { x: 760,  y: 1760, zone: 'mine' },
     hire_miner:      { ...P('mine', -0.4, 3.6), worker: 'miner',      hut: [236, 1730] },
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
-    hire_hunter:     { ...P('hunt', 1.6, 2.6), worker: 'hunter',     hut: [1616, 1790] },
+    hire_hunter:     { x: 1640, y: 1990, worker: 'hunter',     hut: [1616, 1790] },
     // (v2) 점원 고용: 첫 판매 / 첫 교역 뒤에 나타남. 점원이 있으면 촌장이 계산대에 서 있지 않아도 손님이 돈을 냄
     hire_clerk_market: { x: 1496, y: 794, clerk: 'market' },
     hire_clerk_trade:  { ...P('plaza', -2.6, -3.95), clerk: 'trade' },
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { x: 905,  y: 705,  station: 'grill' },
-    porter_sawmill:    { ...P('forest', -1.0, 3.3), station: 'sawmill' },
-    porter_bakery:     { ...P('farm', 0.6, 3.1), station: 'bakery' },
-    porter_smelter:    { ...P('mine', 0.9, 3.6), station: 'smelter' },
-    porter_smokehouse: { ...P('hunt', 2.9, 1.5), station: 'smokehouse' },
+    porter_sawmill:    { x: 790, y: 1215, station: 'sawmill' },
+    porter_bakery:     { x: 1636, y: 1229, station: 'bakery' },
+    porter_smelter:    { ...P('mine', -0.4, 3.6), station: 'smelter' },
+    porter_smokehouse: { x: 1640, y: 1990, station: 'smokehouse' },
+  },
+
+  // (v3.5) 분업: 기술자·짐꾼 고용 발판 (한 줄의 발판은 하나씩 차례로 나타나므로 같은 자리를 써요)
+  //   op_* = 가공 기술자, raw_* = 재료 짐꾼 (모아두는 곳 → 가공소). 상품 짐꾼은 위의 porter_*
+  //   hire3_* = 세 번째 일꾼 (도구 + 코인)
+  pads35: {
+    op_grill:       { x: 900,  y: 700 },
+    raw_grill:      { x: 900,  y: 700 },
+    op_sawmill:     { x: 790, y: 1215 },
+    raw_sawmill:    { x: 790, y: 1215 },
+    op_bakery:      { x: 1636, y: 1229 },
+    raw_bakery:     { x: 1636, y: 1229 },
+    op_smelter:     { ...P('mine', -0.4, 3.6) },
+    raw_smelter:    { ...P('mine', -0.4, 3.6) },
+    op_smokehouse:  { x: 1640, y: 1990 },
+    raw_smokehouse: { x: 1640, y: 1990 },
+    hire3_fisherman:  { x: 985, y: 468 },
+    hire3_lumberjack: { x: 720, y: 1415 },
+    hire3_farmer:     { x: 1585, y: 1480 },
+    hire3_hunter:     { x: 1140, y: 2195 },
   },
 
   // 고용된 일꾼의 대기 위치
@@ -235,9 +256,10 @@ export const WORLD = {
     // 마을 마당의 모닥불 (음유시인 공연 자리)
     ['campfire', 740, 1575],
     // 구역 장식 (해금 후)
-    ['firewood_pile', ...Z('forest', -3.4, 1.0), { zone: 'forest' }], ['tree_stump', ...Z('forest', 2.6, -1.2), { zone: 'forest' }],
-    ['hay_bale', ...Z('farm', 3.2, 2.6), { zone: 'farm' }], ['hay_bale', ...Z('farm', 3.0, 1.8), { zone: 'farm', scale: 0.85 }], ['barrel', ...Z('farm', -3.3, -2.1), { zone: 'farm' }],
-    ['mine_entrance', ...Z('mine', -2.6, 2.6), { zone: 'mine' }], ['crate', ...Z('mine', 2.8, 0.6), { zone: 'mine' }], ['barrel', ...Z('mine', 3.4, -0.4), { zone: 'mine' }],
+    // (v3.5: 숲의 장작 더미와 밭의 작은 짚더미는 '모아두는 곳'(labour.piles)의 소품이 되었어요)
+    ['tree_stump', ...Z('forest', 2.6, -1.2), { zone: 'forest' }],
+    ['hay_bale', ...Z('farm', 3.2, 2.6), { zone: 'farm' }], ['barrel', ...Z('farm', -3.3, -2.1), { zone: 'farm' }],
+    ['mine_entrance', ...Z('mine', -2.6, 2.6), { zone: 'mine' }],   // (v3.5: the crate and barrel went to the ore pile / out of the blacksmith's way)
     ['lamp_post', ...Z('mine', 0.4, 3.9), { zone: 'mine' }],
     ['hay_bale', ...Z('hunt', 2.6, -2.8), { zone: 'hunt' }], ['bush_snow', ...Z('hunt', 3.2, 0.4), { zone: 'hunt' }], ['bush_snow', ...Z('hunt', -2.8, -2.6), { zone: 'hunt' }],
     ['snow_pile_b', ...Z('hunt', 0.4, -3.4), { zone: 'hunt' }],
@@ -348,7 +370,7 @@ export const WORLD = {
   foodBox: { x: 690, y: 1752 },
   // (v3) 도구가 있어야 고용되는 두 번째 일꾼 발판 (x, y) — 코인 + 도구 1개
   pads2: {
-    hire2_fisherman:  { x: 1040, y: 505, worker: 'fisherman', tool: 'item_rod' },
+    hire2_fisherman:  { x: 985, y: 468, worker: 'fisherman', tool: 'item_rod' },
     hire2_lumberjack: { x: 720, y: 1415, worker: 'lumberjack', tool: 'item_axe' },
     hire2_farmer:     { x: 1585, y: 1480, worker: 'farmer', tool: 'item_sickle' },
     hire2_miner:      { x: 835, y: 1800, worker: 'miner', tool: 'item_pickaxe' },
@@ -360,6 +382,32 @@ export const WORLD = {
     route: [[90, -110], [190, -250], [230, -420]],
     fishArea: [240, -470, 150],
   },
+  // ── (v3.5) 분업: 가공소 작업 자리와 모아두는 곳 ──────────────────────
+  //  ops: 가공소마다 (가공소 중심 기준 px)
+  //    pad = 촌장이 서서 직접 가공하는 작업 자리, op = 고용한 기술자가 서는 곳, dir = 기술자가 바라보는 방향
+  //    (S 남·SE·E 동·NE·N 북·NW·W 서·SW), who = 기술자 캐릭터, chiefAnim = 촌장이 일할 때 동작
+  //    (chop 도끼질 / mine 망치질 / harvest 손놀림 / idle 가만히 바라봄), chiefDir = 촌장이 바라보는 방향 (없으면 가공소 쪽)
+  //  piles: 일꾼이 잡은 것을 모아두는 곳 (x, y = 발판), prop = 옆에 놓는 소품 (rack = 고기 걸이), propAt = 소품 위치 (발판 기준)
+  labour: {
+    ops: {
+      grill:      { pad: [-70, 35],  op: [57, -28],  dir: 'SW', who: 'npc_chef',       chiefAnim: 'harvest' },
+      sawmill:    { pad: [-72, 36],  op: [54, -27],  dir: 'SW', who: 'npc_sawyer',     chiefAnim: 'chop' },
+      bakery:     { pad: [2, 64],    op: [10, 50],   dir: 'S',  who: 'npc_aunt',       chiefAnim: 'harvest' },
+      smelter:    { pad: [-14, 66],  op: [-6, 48],   dir: 'S',  who: 'npc_blacksmith', chiefAnim: 'mine' },
+      smokehouse: { pad: [-10, 66],  op: [-22, 46],  dir: 'S',  who: 'npc_smoker',     chiefAnim: 'harvest' },
+      // (v3 건물: 부지 중심 기준) 대장간은 광부 영감이 도구를 두드려요
+      toolsmith:  { pad: [-70, 66],  op: [-109, 0],  dir: 'SE', who: 'miner_b',        chiefAnim: 'mine' },
+      cannery:    { pad: [-60, 70],  op: [-44, 20],  dir: 'NE', who: 'npc_cannery',    chiefAnim: 'harvest' },
+    },
+    piles: {
+      fish:  { x: 772, y: 532, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'barrel', propAt: [-52, -18], zone: 'plaza' },
+      log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
+      wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
+      ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [52, 6], propR: 24, zone: 'mine' },
+      meat:  { ...P('hunt', 2.6, -0.6), item: 'item_meat_raw', station: 'smokehouse', worker: 'hunter', prop: 'rack', propAt: [0, -46], zone: 'hunt' },
+    },
+  },
+
   // 두 번째 일꾼이 쉬는 곳 (첫 일꾼 자리에서 이만큼 떨어짐)
   worker2Offset: [52, 26],
 

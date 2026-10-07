@@ -26,7 +26,8 @@ function fixNum(obj, key, path, min, max, def, int) {
 const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'trade.shelfMax', 'workers.porterCapacity',
   'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life)\./.test(path);
+// (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3)\./.test(path) || /^costs\.(op|raw)_/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -50,6 +51,28 @@ export function checkBalance() {
   B.costs = B.costs || {};
   for (const k of ['hire_fisherman', 'zone_forest', 'hire_lumberjack', 'zone_farm', 'hire_farmer', 'zone_mine', 'hire_miner', 'zone_hunt', 'hire_hunter',
     'hire_clerk_market', 'hire_clerk_trade', 'porter_grill', 'porter_sawmill', 'porter_bakery', 'porter_smelter', 'porter_smokehouse']) fixNum(B.costs, k, 'costs.' + k, 1, 1e9, DEFAULT_COST, true);
+  // (v3.5 분업) operator + raw porter pads of each line; their defaults follow the line's gatherer cost
+  const LINE_WORKER = { grill: 'hire_fisherman', sawmill: 'hire_lumberjack', bakery: 'hire_farmer', smelter: 'hire_miner', smokehouse: 'hire_hunter' };
+  for (const st in LINE_WORKER) {
+    const base = B.costs[LINE_WORKER[st]];
+    fixNum(B.costs, 'op_' + st, 'costs.op_' + st, 1, 1e9, Math.max(1, Math.round(base * 0.7)), true);
+    fixNum(B.costs, 'raw_' + st, 'costs.raw_' + st, 1, 1e9, Math.max(1, Math.round(base * 1.1)), true);
+  }
+  B.hire2 = B.hire2 || {};
+  for (const w of ['lumberjack', 'miner', 'farmer', 'fisherman', 'hunter']) fixNum(B.hire2, 'hire2_' + w, 'hire2.hire2_' + w, 1, 1e9, 800, true);
+  B.hire3 = B.hire3 || {};
+  for (const w of ['fisherman', 'lumberjack', 'farmer', 'hunter']) fixNum(B.hire3, 'hire3_' + w, 'hire3.hire3_' + w, 1, 1e9, B.hire2['hire2_' + w] * 2, true);
+  B.costs3 = B.costs3 || {};
+  const C3 = { op_toolsmith: 220, op_cannery: 600, porter_toolsmith: 600, porter_cannery: 800, porter_dock: 600, hire_clerk_store: 400 };
+  for (const k in C3) fixNum(B.costs3, k, 'costs3.' + k, 1, 1e9, C3[k], true);
+  const L = B.labour = B.labour || {};
+  fixNum(L, 'chiefSpeed', 'labour.chiefSpeed', 0.1, 10, 1.25);
+  fixNum(L, 'pileMax', 'labour.pileMax', 1, 500, 40, true);
+  fixNum(L, 'rawCapacity', 'labour.rawCapacity', 1, 100, 8, true);
+  const DG = B.dog = B.dog || {};
+  const dogNums = { callRange: [30, 1000, 140], stayTime: [1, 600, 12], treatCooldown: [0, 3600, 25], playCooldown: [0, 3600, 4], petCooldown: [0, 3600, 8],
+    treatLove: [0, 100, 12], playLove: [0, 100, 6], petLove: [0, 100, 5], trickAt: [0, 100, 50], giftAt: [0, 100, 75], giftEvery: [5, 36000, 150], giftCoins: [0, 1e6, 6] };
+  for (const k in dogNums) { const [lo, hi, d] = dogNums[k]; fixNum(DG, k, 'dog.' + k, lo, hi, d); }
   // prices: whole coins >= 1
   B.prices = B.prices || {};
   for (const k of ['item_fish_cooked', 'item_bread', 'item_meat_cooked', 'item_plank', 'item_ingot']) fixNum(B.prices, k, 'prices.' + k, 1, 1e6, 1, true);

@@ -120,7 +120,7 @@ export class OperatorSpot {
     // the station waits for its worker: the label calls a little louder
     const waiting = !on && st.hasWork && st.hasWork();
     this.needT = waiting ? this.needT + dt : 0;
-    const la = on ? 0.3 : 1;
+    const la = on ? 0 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
     const k = waiting ? 1 + Math.max(0, Math.sin(gs.time.now / 160)) * 0.08 : 1;
     if (this.label.scale !== k) this.label.setScale(k);
@@ -388,6 +388,10 @@ export class Pile {
     const on = this.pad.contains(p.x, p.y);
     const la = on ? 0.3 : 0.92;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
+    // a full pile (the gatherers wait) calls a little louder
+    const full = this.stack.count >= this.stack.max - 1;
+    const k = full ? 1 + Math.max(0, Math.sin(gs.time.now / 160)) * 0.1 : 1;
+    if (this.label.scale !== k) this.label.setScale(k);
     return on;
   }
 
