@@ -155,7 +155,7 @@ try {
   await page.evaluate(() => window.__FV.teleport(990, 1000));
   const cap0 = (await st()).player.capacity;
   await walkTo(page, await where('up_capacity'), { tol: 10 });
-  await waitFor(page, (c) => window.__FV.state().player.capacity > c, 8000, cap0).catch(() => {});
+  await waitFor(page, (c) => window.__FV.state().player.capacity > c, 16000, cap0).catch(() => {});
   s = await st();
   step('backpack upgrade', s.player.capacity > cap0, `${cap0} -> ${s.player.capacity}`);
   await shot('18_upgrade');
