@@ -44,7 +44,7 @@ if (DOG) {
         window.__RV_BOT = false; F.setInput(0, 0);
         F.dog('whistle');
         for (let i = 0; i < 40 && d.mode !== 'near'; i++) await wait(500);
-        if (d.mode === 'near' && F.dog(['treat', 'play', 'pet', 'play'][k++ % 4])) { window.__RV_DOG.started++; for (let i = 0; i < 30 && d.mode === 'scene'; i++) await wait(500); }
+        if (d.mode === 'near' && F.dog(['treat', 'play', 'pet', 'play'][k++ % 4])) { window.__RV_DOG.started++; for (let i = 0; i < 100 && d.mode === 'scene'; i++) await wait(500); }   // (slow headless frames: the game clock runs slow, give it time)
         window.__RV_DOG.rounds++;
         window.__RV_BOT = true;
       }

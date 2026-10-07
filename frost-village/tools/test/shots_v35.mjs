@@ -177,7 +177,7 @@ try {
     return { n: ws.length, pts: best.map((w) => [Math.round(w.x), Math.round(w.y)]), work: best.filter((w) => w.state === 'work').length };
   }, ty);
   for (const [i, type] of ['fisherman', 'lumberjack', 'farmer', 'hunter'].entries()) {
-    if (type === 'lumberjack') { const p = await xyOf('gs.piles.log'); await ev(([x, y]) => window.__FV.teleport(x + 60, y + 120), p); }
+    if (type === 'lumberjack') { const p = await xyOf('gs.piles.log'); await ev(([x, y]) => window.__FV.teleport(x + 90, y + 150), p); }
     let g = await group(type);
     for (let t = 0; t < 140 && !(g.pts.length >= Math.min(3, g.n) && g.work >= 2); t++) { await adv(0.5); g = await group(type); }
     console.log('  variants', type, JSON.stringify(g));
@@ -189,7 +189,7 @@ try {
 
   // ================================================================ the dog: whistle, run in, treat / play / pet
   await realWaitFor(page, () => !!(window.__FV.scene.dog && window.__FV.scene.dog.r), 90000).catch(() => {});
-  await ev(() => { const d = window.__FV.scene.dog; d.love = 34; d.roam(d.r); window.__FV.teleport(1180, 1640); window.__FV.zoom(1.35); });
+  await ev(() => { const d = window.__FV.scene.dog; d.love = 34; d.roam(d.r); window.__FV.clearStack(); window.__FV.teleport(1180, 1640); window.__FV.zoom(1.35); });
   await adv(3);
   // move the dog away so it has to come running
   await ev(() => { const r = window.__FV.scene.dog.r; r.x = 820; r.y = 1500; if (r.sprite) r.sprite.setPosition(r.x, r.y); });
