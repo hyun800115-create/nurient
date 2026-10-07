@@ -3,7 +3,12 @@ life_pack.py - turn the raw village-life renders (life_render.py cache) into ONE
 atlas `life_props` + assets/life_props/manifest.json + previews.
 
 No Blender needed: python3 with numpy + Pillow (+ optional `imagequant` for palette PNGs).
-    python3 tools/blender/life_pack.py [--cache DIR] [--quantize auto|on|off] [--no-previews]
+    python3 tools/blender/life_pack.py [--cache DIR] [--quantize auto|on|off] [--no-previews] [--allow-partial]
+
+The pack REBUILDS the life_props atlas + manifest from the cache alone, and the cache lives in
+<tmp>/fv_cache/life_props (empty in a fresh container). Guard: it refuses (exit 1, nothing
+written) when a sprite key of the current manifest or of life_check.REQUIRED is missing from the
+cache, and it never writes an empty manifest. --allow-partial drops the missing keys on purpose.
 
 Steps
   1. read every <build>.json sidecar + frame PNGs from the cache (default <tmp>/fv_cache/life_props)
@@ -634,9 +639,19 @@ def main():
     quantize = 'auto'
     if '--quantize' in args:
         quantize = args[args.index('--quantize') + 1]
+    if not os.path.isdir(cache):
+        sys.exit('life_pack: 중단 - 렌더 캐시 폴더가 없습니다 / ABORT - render cache %s does not exist; '
+                 'nothing was written. Run life_render.py first or pass --cache DIR.' % cache)
     keys, builds, bench, frames = load(cache)
-    if not keys:
-        raise SystemExit('no renders in %s - run life_render.py first' % cache)
+    try:
+        from life_check import REQUIRED as required      # the list the checker enforces
+    except ImportError:
+        required = []
+    have = set(build_manifest(keys, builds, bench, None)['sprites']) if keys else set()   # no atlas without keys
+    # BEFORE deleting anything: refuse a repack that would drop sprites (fresh container = partial cache)
+    pu.guard_repack('life_pack', cache, have, os.path.join(OUT, 'manifest.json'), required,
+                    allow_partial='--allow-partial' in args,
+                    render_cmd='/tmp/bvenv/bin/python tools/blender/life_render.py -- <keys>')
     for fn in os.listdir(OUT) if os.path.isdir(OUT) else []:
         if fn.startswith(ATLAS) and fn.endswith(('.png', '.json')):
             os.remove(os.path.join(OUT, fn))

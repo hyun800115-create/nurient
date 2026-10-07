@@ -5,6 +5,8 @@ Shared image helpers (Pillow + numpy) used by every asset pipeline.
   pack_atlas(frames, ...)     trim + shelf-pack frames into one sheet, Phaser "JSON Hash" atlas
   save_atlas(...)             write sheet PNG + atlas JSON
   contact_sheet(...)          preview grid for docs/previews
+  manifest_keys(path)         sprite keys of an existing manifest.json (set(), if there is none)
+  guard_repack(...)           refuse a whole-folder repack that would drop keys missing from the cache
 
 Atlas JSON format = Phaser 3 JSON Hash (TexturePacker compatible), with trimming:
   frames[name] = {frame:{x,y,w,h}, rotated:false, trimmed:true|false,
@@ -107,6 +109,61 @@ def save_atlas(sheet, atlas, png_path, json_path, quantize=False):
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(atlas, f, separators=(',', ':'))
     return png_path
+
+
+def manifest_keys(path, section='sprites'):
+    """Keys of manifest[section] in an existing manifest.json; empty set if the file is missing."""
+    if not os.path.exists(path):
+        return set()
+    try:
+        with open(path, encoding='utf-8') as f:
+            return set(json.load(f).get(section, {}))
+    except (OSError, ValueError) as e:
+        raise SystemExit(f'cannot read {path} ({e}) - fix or delete it before packing / '
+                         f'매니페스트를 읽을 수 없습니다. 고치거나 지운 뒤 다시 실행하세요.')
+
+
+def guard_repack(tool, cache, have, manifest_path, required=(), allow_partial=False, render_cmd='render'):
+    """Safety check for packers that REBUILD a whole asset folder from the render cache
+    (prop_pack, life_pack): the cache lives in /tmp, so in a fresh container it holds only what
+    was rendered since, and a repack would silently drop every other sprite.
+
+    have      : sprite keys the cache would produce now
+    required  : keys that must survive = keys of the current manifest + the checker's REQUIRED list
+    Exits (code 1, nothing written) when the cache produced no sprites at all (never write an
+    empty manifest, even with allow_partial), or when a required key is missing and
+    allow_partial is False. Returns the list of keys that will be dropped (allow_partial)."""
+    have = set(have)
+    if not have:
+        raise SystemExit(
+            f'{tool}: 중단 - 렌더 캐시 {cache} 에 그림이 하나도 없습니다. 아무 파일도 바꾸지 않았습니다.\n'
+            f'{tool}: ABORT - no renders in the cache {cache}; nothing was written '
+            f'(an empty manifest is never written, not even with --allow-partial).\n'
+            f'  fix / 고치기: {render_cmd} first, or pass --cache <folder that holds the renders>.')
+    in_manifest = manifest_keys(manifest_path)
+    need = in_manifest | set(required)
+    missing = sorted(need - have)
+    if not missing:
+        return []
+    import textwrap
+    listing = textwrap.fill(' '.join(k + ('' if k in in_manifest else '*') for k in missing), 100,
+                            initial_indent='    ', subsequent_indent='    ')
+    if any(k not in in_manifest for k in missing):
+        listing += '\n    (* = only in the required list, not in the current manifest)'
+    if allow_partial:
+        print(f'{tool}: WARNING --allow-partial: {len(missing)} key(s) are not in the cache and will be '
+              f'DROPPED from the atlases + manifest / 캐시에 없는 {len(missing)}개는 빠집니다:\n{listing}',
+              flush=True)
+        return missing
+    raise SystemExit(
+        f'{tool}: 중단 - 지금 매니페스트(또는 필수 목록)에 있는 {len(missing)}개가 렌더 캐시 {cache} 에 없습니다.\n'
+        f'  이대로 포장하면 그 그림들이 아틀라스와 매니페스트에서 사라집니다. 아무 파일도 바꾸지 않았습니다.\n'
+        f'{tool}: ABORT - {len(missing)} key(s) in the current manifest (or the required list) are missing from '
+        f'the render cache {cache};\n  packing now would DELETE them from the atlases and the manifest. '
+        f'Nothing was written.\n{listing}\n'
+        f'  fix / 고치기: {render_cmd} for the missing keys (or all of them) first, or pass --cache <full cache>;\n'
+        f'  to drop them on purpose (e.g. a new game without these sprites), re-run with --allow-partial '
+        f'/ 일부러 빼려면 --allow-partial')
 
 
 def contact_sheet(images, cols, out_path, cell=None, bg=(150, 168, 190, 255), labels=None):

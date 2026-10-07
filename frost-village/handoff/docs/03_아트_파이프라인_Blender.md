@@ -186,9 +186,15 @@ Cycles가 한 프로세스에서 코어 4개를 다 쓰므로(`threads_mode='AUT
 ```
 Phaser가 `sourceSize`를 원점 계산에 쓰므로 잘라낸 프레임에도 `setOrigin(anchor)`가 그대로 맞습니다(크롬에서 검증됨).
 
-알려진 사소한 점: (1) 팔레트 PNG여도 `meta.format`은 `RGBA8888`로 적힘(Phaser는 무시). (2) 선반 배치에서 너비 계산이
-padding을 포함해 **최대 2052 px**가 될 수 있음 — 실제로 `vil_npc_kid_boy/kid_prankster/teen_girl`이 2052 px 폭.
-2048 제한 기기를 고려한다면 `pack_atlas`에서 `used_w = max(used_w, x - padding)`으로 고치면 됩니다(전작에서는 미수정).
+알려진 사소한 점: (1) 팔레트 PNG여도 `meta.format`은 `RGBA8888`로 적힘(Phaser는 무시).
+(2) **고침(2026-10-07)**: 예전에는 선반 배치의 너비 계산에 줄 끝 padding이 들어가서 시트가 **최대 2052 px**까지 나왔습니다
+(`vil_npc_kid_boy/kid_prankster/teen_girl`이 2052 px 폭). 이제 `pack_atlas`는 프레임 오른쪽 끝만 세고(`used_w = max(used_w, x + w)`)
+4의 배수 올림도 `max_width`를 넘지 않게 막으므로 **시트 폭 ≤ `max_width`가 보장**됩니다(트림 후 한 프레임이 `max_width`보다 넓으면 `ValueError`).
+프레임 위치는 그대로이고 시트 폭만 최대 4 px 줄어듭니다(무작위 400건 시험: 예전 최대 +4 px 초과 → 0, 프레임 사각형 400/400 동일).
+위의 세 주민 아틀라스는 `vil_pack.py --chars npc_kid_boy,npc_kid_prankster,npc_teen_girl --no-previews`로 다시 포장해 2048 px가 됐고
+(매니페스트·프레임 이름·프레임 사각형 그대로, 5,374프레임 비교), `vil_check`는 이제 2048 px를 넘는 아틀라스를 경고합니다.
+다른 아틀라스(예: `ui_icons` 984 → 980, `emotes` 492 → 488, `props_items` 584 → 580, `life_props` 1948 → 1944, 캐릭터·주민 다수)도
+**다시 생성하면 4 px 좁아질 수 있습니다** — 정상이며 게임은 매니페스트/JSON만 읽으므로 영향 없음.
 
 ---
 
@@ -380,7 +386,7 @@ python3 tools/blender/vil_lookdev.py          # [--keys a,b] [--out docs/preview
 - 매니페스트 추가 필드: `kind(villager|pet), role, name{ko,en}, traits[], headTop, shadow, portrait, seatOffset, seatHeightPx, headTopSit`,
   그리고 **애니마다 자기 `dirs`**. 최상위 `notes`.
 - `vil_check`: 20키 전부, 계약 표(TABLE — `vil_anim`과 독립적으로 다시 적은 표)대로 프레임/fps/repeat/dirs, 모든 프레임 이름, 테두리 닿음,
-  throw impactPoint, 사람 carryPoint 5방향, 앉는 캐릭터 seatOffset, 이름·역할·특성, 초상화, 용량 ≤ 10 MB.
+  throw impactPoint, 사람 carryPoint 5방향, 앉는 캐릭터 seatOffset, 이름·역할·특성, 초상화, 용량 ≤ 10 MB, 아틀라스 2048 px 초과는 경고(4096 초과는 오류).
 - 미리보기: `vil_lineup.png`, `vil_<key>.png`(시트), `vil_<key>_<anim>.gif`(SHOWCASE 목록), `vil_expressions.png`(5명 × 17표정), `vil_phaser_smoke.png`.
 - 작업 흐름 교훈(보고서): 먼저 3명으로 룩데브 → 전 애니를 낮은 품질로 훑어보며 문제(머리 뒤로 숨는 팔, 너무 얇은 목도리, 수염에 묻힌 입 등)를 고친 뒤 전체 렌더.
 
@@ -445,7 +451,7 @@ blender -b -P tools/blender/prop_render.py -- station_grill --force             
 
 ### 6.4 `prop_pack.py`
 ```bash
-python3 tools/blender/prop_pack.py                   # [--cache DIR] [--no-previews] [--quantize]
+python3 tools/blender/prop_pack.py                   # [--cache DIR] [--no-previews] [--quantize] [--allow-partial]
 ```
 1. 그림자 있는 프레임: `clean_alpha(floor=10)` → (울타리면 `tile_shadow`) → `tint_shadow`(검은 그림자를 차가운 남보라 `SHADOW_RGB=(38,46,82)`, 불투명도 0.85배) → `border_fade(width=10)`(프레임 끝에서 그림자가 칼같이 끊기지 않게).
    그림자 없는 프레임(아이템 등): `clean_alpha(floor=3)`만.
@@ -512,7 +518,7 @@ def b_<key>():
 /tmp/bvenv/bin/python tools/blender/life_render.py -- --list
 /tmp/bvenv/bin/python tools/blender/life_render.py -- --force          # 전체 약 6분 (lantern_string ~130초, kids_swing ~120초, 나머지 2–25초)
 /tmp/bvenv/bin/python tools/blender/life_render.py -- snowman kids_swing --force   # 빌드 키 / snowman_2 같은 스프라이트 키도 됨 / 접두어*
-python3 tools/blender/life_pack.py      # [--cache DIR] [--quantize auto|on|off] [--no-previews]
+python3 tools/blender/life_pack.py      # [--cache DIR] [--quantize auto|on|off] [--no-previews] [--allow-partial]
 python3 tools/blender/life_check.py
 # PC: blender -b -P tools/blender/life_render.py -- --force
 ```
@@ -531,13 +537,17 @@ python3 tools/blender/life_check.py
    - `char_pack`/`vil_pack`은 키마다 아틀라스를 따로 쓰고 기존 매니페스트 항목을 유지 → **한 명만 렌더하고 포장해도 안전**.
    - `prop_pack`은 시작할 때 `assets/props/props_*`를 **전부 지우고 캐시에 있는 것만** 다시 포장합니다. `life_pack`도 `life_props*`를 지움.
      → 소품을 하나 추가하려면 **먼저 전체 소품을 렌더해 캐시를 채운 뒤**(6–8분) 포장해야 다른 소품이 사라지지 않습니다.
-     캐시 폴더가 아예 없으면 지우기 전에 오류로 멈추지만, **폴더가 있고 비어 있으면 `prop_pack`은 막지 않고 아틀라스를 지운 뒤 빈 매니페스트를 씁니다**
-     (`life_pack`은 렌더가 없으면 `SystemExit`으로 멈춤). 실수했다면 `git checkout -- assets/props`로 되돌리세요.
+   - **안전장치(2026-10-07 추가)**: 두 스크립트는 이제 아무것도 지우기 전에 검사합니다. 지금 매니페스트의 스프라이트 키 또는 검사 스크립트의
+     필수 목록(`prop_check.REQUIRED`, `life_check.REQUIRED`) 중 **하나라도 캐시에 없으면 한국어+영어 오류(빠질 키 목록)를 내고 종료 코드 1로 멈추며
+     파일을 하나도 바꾸지 않습니다.** 캐시 폴더가 없거나 비어 있어도 같은 식으로 멈추고, **빈 매니페스트는 어떤 경우에도 쓰지 않습니다.**
+     일부러 빼려면(예: 새 게임에서 전작 소품을 버릴 때) `--allow-partial`을 붙이면 경고와 함께 캐시에 있는 것만 포장합니다.
+     (검증: 빈 캐시 / `barrel` 하나만 든 캐시 / 없는 폴더 → 전부 exit 1, `assets/props`·`assets/life_props` 12개 파일 해시 동일.
+     전체 캐시로 임시 폴더에 포장하면 매니페스트가 지금 것과 완전히 같음.) 새 게임에서 전작 키 목록을 바꿨다면 `prop_check`/`life_check`의 목록도 같이 바꾸세요.
 2. **이어서 하기**: 모든 렌더 스크립트는 PNG가 있으면 건너뜀(소품은 sidecar JSON + 모든 프레임이 있어야 "cached"). 모형·포즈를 바꿨으면 반드시 `--force`(해당 키만).
 3. **결정적**: 고정 시드·고정 샘플 수. 같은 기계에서는 같은 결과.
 4. **캐시 이름이 `fv_cache`로 하드코딩**: 새 게임에서 원본(`reference/frost-village`)과 새 게임 도구를 같은 컨테이너에서 둘 다 돌리면 같은 캐시를 씁니다.
    새 게임 쪽은 이름을 바꾸세요: `char_render.py:52`, `char_pack.py:37`, `vil_render.py:46`, `vil_pack.py:45`, `vil_lookdev.py:22` (`/tmp/fv_cache/...`),
-   `prop_render.py:40`, `prop_pack.py:594`, `life_render.py:44`, `life_pack.py:310, 631` (`tempfile.gettempdir()/fv_cache/...`). 또는 항상 `--cache`를 넘기기.
+   `prop_render.py:40`, `prop_pack.py:600`, `life_render.py:44`, `life_pack.py:315, 636` (`tempfile.gettempdir()/fv_cache/...`). 또는 항상 `--cache`를 넘기기.
 5. **하드코딩된 키 목록** (새 키를 추가할 때 같이 고칠 곳):
    - 캐릭터: `char_build.SPECS`, `HUMAN_KEYS`/`ANIMAL_KEYS`, `char_pack.ORDER`(**여기 없으면 포장 안 됨**), `char_check.EXPECTED`/`FRAMES`.
    - 주민: `vil_build.SPECS`, `KEYS`/`PET_KEYS`, 애니 집합(`RUNNERS…`), `vil_dress.DRESS`, `vil_check`의 `RUN/THROW/DANCE/SIT`(독립 표라 따로 고쳐야 함), `vil_pack.SHOWCASE`(GIF 미리보기, 선택).
@@ -752,12 +762,12 @@ python3 tools/blender/vil_check.py
 # ── 소품·건물·아이템
 /tmp/bvenv/bin/python tools/blender/prop_render.py -- --list                                          # 키 목록
 /tmp/bvenv/bin/python tools/blender/prop_render.py -- [키... | 아틀라스 | 접두어*] [--force] [--samples N] [--cache DIR]   # 전체 6–8분
-python3 tools/blender/prop_pack.py [--no-previews] [--quantize] [--cache DIR]      # 주의: 캐시에 있는 것만 남김
+python3 tools/blender/prop_pack.py [--no-previews] [--quantize] [--cache DIR] [--allow-partial]  # 캐시에 없는 키가 있으면 멈춤(8장 1)
 python3 tools/blender/prop_check.py
 # ── 생활 소품
 /tmp/bvenv/bin/python tools/blender/life_render.py -- --list
 /tmp/bvenv/bin/python tools/blender/life_render.py -- [키...] [--force] [--samples N] [--cache DIR]  # 전체 ~6분
-python3 tools/blender/life_pack.py [--quantize auto|on|off] [--no-previews] [--cache DIR]
+python3 tools/blender/life_pack.py [--quantize auto|on|off] [--no-previews] [--cache DIR] [--allow-partial]
 python3 tools/blender/life_check.py
 # ── PC (Blender 4.2+, 5.2 권장): 위 /tmp/bvenv/bin/python 을 "blender -b -P" 로 바꾸고, --cache 를 명시
 blender -b -P tools/blender/char_render.py -- --chars player --cache C:/fv_cache/characters

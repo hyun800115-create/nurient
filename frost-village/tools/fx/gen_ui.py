@@ -3,7 +3,9 @@ gen_ui.py - procedural UI art for Frost Village (CONTRACT §6).  No text is bake
 
 Re-run (from anywhere):
     python3 frost-village/tools/fx/gen_ui.py            # build everything
-    python3 frost-village/tools/fx/gen_ui.py --only ui_arrow,ui_pad_cash --preview-only
+    python3 frost-village/tools/fx/gen_ui.py --only ui_arrow,ui_pad_cash    # scratch sheet tools/fx/_cache/ui_only.png
+    python3 frost-village/tools/fx/gen_ui.py --preview-only   # everything, but previews go to tools/fx/_cache/
+                                                              # (assets/ui and docs/previews untouched)
 Outputs:
     assets/ui/ui_icons.png/.json   atlas: icons, arrow, bubble, badge, joystick, pads, rings
     assets/ui/<9-slice>.png        ui_panel, ui_button_{blue,green,gray}, ui_coin_bar,
@@ -767,7 +769,12 @@ def pads_scene(imgs):
 
 # =========================================================================== main
 def build(only=None, preview_only=False):
-    os.makedirs(OUT, exist_ok=True)
+    """only         : set of keys -> build just those and write a scratch sheet tools/fx/_cache/ui_only.png
+                   (+ ui_title_bg.png if asked); assets are never touched.
+    preview_only : build everything but write nothing under assets/ or docs/previews/: the full preview
+                   set (ui_sheet.png, ui_pads_scene.png, ui_title_bg.png) goes to tools/fx/_cache/."""
+    if not (only or preview_only):
+        os.makedirs(OUT, exist_ok=True)
     imgs = {}
     for k, fn in ATLAS_ITEMS.items():
         if only and k not in only:
@@ -807,6 +814,14 @@ def build(only=None, preview_only=False):
             print('  preview ->', os.path.join(tmp, 'ui_only.png'))
         if title is not None:
             title.save(os.path.join(tmp, 'ui_title_bg.png'))
+        return
+    if preview_only:
+        tmp = os.path.join(ROOT, 'tools', 'fx', '_cache')
+        os.makedirs(tmp, exist_ok=True)
+        preview_sheet(imgs, nine_imgs, title).convert('RGB').save(os.path.join(tmp, 'ui_sheet.png'), optimize=True)
+        pads_scene(imgs).convert('RGB').save(os.path.join(tmp, 'ui_pads_scene.png'), optimize=True)
+        title.resize((360, 640), Image.LANCZOS).save(os.path.join(tmp, 'ui_title_bg.png'), optimize=True)
+        print('  preview-only: ui_sheet.png, ui_pads_scene.png, ui_title_bg.png ->', tmp, '(assets untouched)')
         return
 
     # --- write assets
@@ -868,7 +883,8 @@ def build(only=None, preview_only=False):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--only', default='', help='comma separated keys (writes a scratch preview only)')
-    ap.add_argument('--preview-only', action='store_true')
+    ap.add_argument('--preview-only', action='store_true',
+                    help='build everything, write the preview set to tools/fx/_cache only (assets untouched)')
     a = ap.parse_args()
     only = set(k for k in a.only.split(',') if k) or None
     build(only, a.preview_only)

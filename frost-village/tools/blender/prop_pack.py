@@ -3,7 +3,13 @@ prop_pack.py - turn the raw prop renders (prop_render.py output cache) into
 trimmed Phaser atlases + assets/props/manifest.json + preview sheets.
 
 No Blender needed: any Python 3 with numpy + Pillow.
-    python3 tools/blender/prop_pack.py [--cache DIR] [--no-previews] [--quantize]
+    python3 tools/blender/prop_pack.py [--cache DIR] [--no-previews] [--quantize] [--allow-partial]
+
+The pack REBUILDS assets/props from the cache alone (stale props_* atlases are deleted). The cache
+lives in <tmp>/fv_cache/props, so in a fresh container it only holds what was rendered since.
+Guard: it refuses (exit 1, nothing written) when a sprite key of the current manifest or of
+prop_check.REQUIRED is missing from the cache, and it never writes an empty manifest.
+--allow-partial packs only what is cached and DROPS the missing keys on purpose.
 
 Steps
   1. read every <key>.json sidecar + its frame PNGs from the cache
@@ -595,7 +601,19 @@ def main():
     if '--cache' in args:
         cache = args[args.index('--cache') + 1]
     quantize = '--quantize' in args          # off by default: octree palettes band the soft shadows
+    if not os.path.isdir(cache):
+        sys.exit('prop_pack: 중단 - 렌더 캐시 폴더가 없습니다 / ABORT - render cache %s does not exist; '
+                 'nothing was written. Run prop_render.py first or pass --cache DIR.' % cache)
     keys, metas, frames = load_frames(cache)
+    sys.path.insert(0, HERE)
+    try:
+        from prop_check import REQUIRED as required      # the contract list the checker enforces
+    except ImportError:
+        required = []
+    # BEFORE deleting anything: refuse a repack that would drop sprites (fresh container = partial cache)
+    pu.guard_repack('prop_pack', cache, keys, os.path.join(OUT, 'manifest.json'), required,
+                    allow_partial='--allow-partial' in args,
+                    render_cmd='/tmp/bvenv/bin/python tools/blender/prop_render.py -- <keys>')
     os.makedirs(OUT, exist_ok=True)
     # remove stale atlases we own
     for fn in os.listdir(OUT):
@@ -620,6 +638,8 @@ def main():
             print('%-18s %4dx%-4d %3d frames %7.1f KB' % (akey, sheet.width, sheet.height, len(atlas['frames']),
                                                          sz / 1024))
     man = build_manifest(keys, metas, frame_atlas, atlas_keys, frames)
+    if not man['sprites']:                    # belt and braces: guard_repack already refused this
+        sys.exit('prop_pack: refusing to write an empty manifest / 빈 매니페스트는 쓰지 않습니다')
     with open(os.path.join(OUT, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(man, f, indent=1, ensure_ascii=False)
     print('sprites: %d   total payload %.2f MB' % (len(man['sprites']), total / 1024 / 1024))
