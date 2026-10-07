@@ -1,0 +1,520 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_ui3.py",
+ "conventions": {
+  "text": "No text is baked; the game renders all text (mission names, rewards, rank titles on the banners).",
+  "iconSize": [
+   96,
+   96
+  ],
+  "badgeSize": [
+   128,
+   128
+  ],
+  "style": "House soft-toy style of assets/ui (fxlib.toy): dark tinted outline, bevel lit from the upper-left, gloss, one navy drop shadow. Icons read at 32 px.",
+  "nineSlice": "9-slice sources are plain images (not atlas frames). contentInset = [left, top, right, bottom] px from the stretched edges where the game should lay out content.",
+  "ranks": {
+   "1": "새내기 촌장 (newcomer chief)",
+   "2": "믿음직한 촌장 (trusted chief)",
+   "3": "존경받는 촌장 (respected chief)",
+   "4": "명예로운 촌장 (honoured chief)",
+   "5": "전설의 촌장 (legendary chief)"
+  }
+ },
+ "atlases": [
+  {
+   "key": "ui3_icons",
+   "png": "ui3/ui3_icons.png",
+   "json": "ui3/ui3_icons.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "ui_mission_card",
+   "png": "ui3/ui_mission_card.png"
+  },
+  {
+   "key": "ui_mission_card_done",
+   "png": "ui3/ui_mission_card_done.png"
+  },
+  {
+   "key": "ui_mission_board",
+   "png": "ui3/ui_mission_board.png"
+  },
+  {
+   "key": "ui_progress_bg",
+   "png": "ui3/ui_progress_bg.png"
+  },
+  {
+   "key": "ui_progress_fill",
+   "png": "ui3/ui_progress_fill.png"
+  }
+ ],
+ "sprites": {
+  "ui_icon_mission": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_mission",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Mission: wooden clipboard with a checklist (mission board / list button)."
+  },
+  "ui_icon_fame": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_fame",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Fame point: gold star medal on a red neck ribbon (명성)."
+  },
+  "ui_icon_title": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_title",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Chief title: gold crown above a blank red ribbon banner (칭호)."
+  },
+  "ui_icon_delivery": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_delivery",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Delivery mission: round retro truck with crates on the bed (배달)."
+  },
+  "ui_icon_request": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_request",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Resident request: white speech bubble with a pink heart (부탁)."
+  },
+  "ui_icon_event": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_event",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Event: party popper with confetti and streamers (행사)."
+  },
+  "ui_icon_goal": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_goal",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Production goal: target with a dart in the bull's-eye (생산 목표)."
+  },
+  "ui_icon_explore": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_explore",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Exploration: brass compass, needle to the north-east (탐험)."
+  },
+  "ui_icon_calendar": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_calendar",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Daily / weekly missions: calendar page with a starred day (일일·주간)."
+  },
+  "ui_icon_day": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_day",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Daytime: glossy sun (낮)."
+  },
+  "ui_icon_night": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_night",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Night: crescent moon with stars (밤)."
+  },
+  "ui_icon_ring": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_ring",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Wedding: gold ring with a sparkling diamond (결혼)."
+  },
+  "ui_icon_baby": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_baby",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Baby: sleeping baby in a mint bonnet with a pacifier (아기 탄생)."
+  },
+  "ui_icon_flower": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_flower",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Farewell: a gentle white chrysanthemum with a lavender ribbon (배웅)."
+  },
+  "ui_icon_heart_pair": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_heart_pair",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Relationship: two overlapping hearts (관계 / 연인)."
+  },
+  "ui_icon_steer": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_steer",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Drive: retro ivory steering wheel with a red horn button (운전)."
+  },
+  "ui_icon_timer": {
+   "atlas": "ui3_icons",
+   "frame": "ui_icon_timer",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Time limit: silver stopwatch with a red countdown wedge (제한 시간)."
+  },
+  "ui_badge_rank_1": {
+   "atlas": "ui3_icons",
+   "frame": "ui_badge_rank_1",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    128,
+    128
+   ],
+   "rank": 1,
+   "notes": "Chief title badge rank 1: 새내기 촌장 (newcomer chief). Blank banner (no text baked)."
+  },
+  "ui_badge_rank_2": {
+   "atlas": "ui3_icons",
+   "frame": "ui_badge_rank_2",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    128,
+    128
+   ],
+   "rank": 2,
+   "notes": "Chief title badge rank 2: 믿음직한 촌장 (trusted chief). Blank banner (no text baked)."
+  },
+  "ui_badge_rank_3": {
+   "atlas": "ui3_icons",
+   "frame": "ui_badge_rank_3",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    128,
+    128
+   ],
+   "rank": 3,
+   "notes": "Chief title badge rank 3: 존경받는 촌장 (respected chief). Blank banner (no text baked)."
+  },
+  "ui_badge_rank_4": {
+   "atlas": "ui3_icons",
+   "frame": "ui_badge_rank_4",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    128,
+    128
+   ],
+   "rank": 4,
+   "notes": "Chief title badge rank 4: 명예로운 촌장 (honoured chief). Blank banner (no text baked)."
+  },
+  "ui_badge_rank_5": {
+   "atlas": "ui3_icons",
+   "frame": "ui_badge_rank_5",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    128,
+    128
+   ],
+   "rank": 5,
+   "notes": "Chief title badge rank 5: 전설의 촌장 (legendary chief). Blank banner (no text baked)."
+  },
+  "ui_mission_card": {
+   "image": "ui_mission_card",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    176,
+    112
+   ],
+   "minSize": [
+    84,
+    70
+   ],
+   "contentInset": [
+    16,
+    12,
+    12,
+    20
+   ],
+   "notes": "Mission row card (9-slice, warm paper, orange tab on the left, red push-pin). Use >= 120 x 80."
+  },
+  "ui_mission_card_done": {
+   "image": "ui_mission_card_done",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    176,
+    112
+   ],
+   "minSize": [
+    84,
+    70
+   ],
+   "contentInset": [
+    16,
+    12,
+    12,
+    20
+   ],
+   "notes": "Completed mission card: mint face, green tab, gold pin, check seal top-right. Same size / margins as ui_mission_card (swap in place)."
+  },
+  "ui_mission_board": {
+   "image": "ui_mission_board",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    192
+   ],
+   "minSize": [
+    84,
+    98
+   ],
+   "contentInset": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "notes": "Mission board panel (wooden frame + cork, snow on the top rail). Content area = inside the cork: inset 26 px left/right, 46 px top, 30 px bottom. Use >= 140 x 140."
+  },
+  "ui_progress_bg": {
+   "image": "ui_progress_bg",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    64,
+    30
+   ],
+   "minSize": [
+    34,
+    32
+   ],
+   "contentInset": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "notes": "Progress bar trough (dark inset pill). Height 30 (stretch width only, or keep height >= 28)."
+  },
+  "ui_progress_fill": {
+   "image": "ui_progress_fill",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    64,
+    30
+   ],
+   "minSize": [
+    34,
+    32
+   ],
+   "contentInset": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "notes": "Progress bar fill, white -> TINT it (gold #FFC83D fame, green #5CC86A done). Same frame as ui_progress_bg; set its width to 30 + (bgWidth - 30) * progress."
+  }
+ },
+ "nineSlice": {
+  "ui_mission_card": {
+   "image": "ui_mission_card",
+   "left": 46,
+   "right": 34,
+   "top": 30,
+   "bottom": 36
+  },
+  "ui_mission_card_done": {
+   "image": "ui_mission_card_done",
+   "left": 46,
+   "right": 34,
+   "top": 30,
+   "bottom": 36
+  },
+  "ui_mission_board": {
+   "image": "ui_mission_board",
+   "left": 40,
+   "right": 40,
+   "top": 52,
+   "bottom": 42
+  },
+  "ui_progress_bg": {
+   "image": "ui_progress_bg",
+   "left": 15,
+   "right": 15,
+   "top": 13,
+   "bottom": 15
+  },
+  "ui_progress_fill": {
+   "image": "ui_progress_fill",
+   "left": 15,
+   "right": 15,
+   "top": 13,
+   "bottom": 15
+  }
+ }
+}

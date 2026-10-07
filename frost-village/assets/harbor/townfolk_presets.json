@@ -1,0 +1,139 @@
+{
+ "version": 1,
+ "generator": "hand-written (docs/CONTRACT_V6.md section T); verified with tools/townfolk_compose.py by tools/blender/harbor_pack.py",
+ "target": "assets/townfolk/manifest.json -> townfolk.generator.presets",
+ "merge": "Load assets/townfolk/manifest.json, then Object.assign(man.townfolk.generator.presets, harbor.presets) (Python: T['generator']['presets'].update(...)). After that tf.preset('dock_worker', rng) etc. work with the unchanged Townfolk / TownfolkSprite code (tools/townfolk_compose.js / .py). Every part and palette named here already exists in assets/townfolk; nothing new is rendered.",
+ "presets": {
+  "dock_worker": {
+   "label": {"ko": "부두 일꾼", "en": "dock worker"},
+   "bases": {"adult_slim": 3, "adult_round": 3},
+   "tops": {"top_puffer": 2, "top_sweater": 2, "top_hoodie": 1},
+   "bottoms": {"bot_overalls": 3, "bot_pants": 1},
+   "shoes": {"shoe_rubber": 2, "shoe_boots": 2},
+   "hats": {"hat_beanie": 3, "hat_hardhat": 1},
+   "hatChance": 1.0,
+   "extra": ["det_hivis"],
+   "neck": null, "bag": null, "headAcc": null,
+   "glassesChance": 0.05,
+   "facialHairChance": 0.4,
+   "gloveChance": 0.95,
+   "colors": {
+    "top": "muted",
+    "hat": ["#D9483B", "#F28A2A", "#2E4A7A", "#3B3F52", "#F2C230"],
+    "acc": ["#F28A2A", "#C8E83A"],
+    "bottom": ["#2E4A7A", "#3D6FA8", "#4A5A6A"],
+    "shoes": ["#2E3440", "#F2C230", "#3B2A20"],
+    "hands": ["#C9A030", "#6B4A2E", "#3B3F4A"]
+   },
+   "notes": "crane signalman / stevedore: knit watch cap (or hard hat), hi-vis vest over a work top, overalls, rubber boots, work gloves. Stand at harbor_crane staffPoints / workPoints, harbor_warehouse workPoints; carries crates with carry_walk."
+  },
+  "sailor": {
+   "label": {"ko": "선원", "en": "sailor"},
+   "bases": {"adult_slim": 3, "adult_round": 2, "elder_slim": 1, "elder_round": 1},
+   "tops": {"top_sweater": 3, "top_coat": 2, "top_duffle": 2},
+   "bottoms": ["bot_pants"],
+   "shoes": {"shoe_boots": 2, "shoe_rubber": 1},
+   "hats": {"hat_beanie": 4, "hat_flatcap": 1, "hat_bucket": 1},
+   "hatChance": 0.9,
+   "neck": {"acc_scarf": 1}, "neckChance": 0.45,
+   "bag": {"acc_satchel": 1}, "bagChance": 0.15,
+   "headAcc": null,
+   "glassesChance": 0.05,
+   "facialHairChance": 0.55,
+   "gloveChance": 0.3,
+   "colors": {
+    "top": ["#22305A", "#2E4A7A", "#F4EDE0", "#3B3F52"],
+    "top2": ["#F4EDE0", "#D9483B", "#22305A"],
+    "bottom": ["#22305A", "#2E3440", "#3B3F52"],
+    "hat": ["#22305A", "#D9483B", "#F4EDE0", "#2B2F3A"],
+    "hat2": ["=hat"],
+    "acc": ["#D9483B", "#F4EDE0", "#3D7CC9"],
+    "acc2": ["#F4EDE0", "#22305A"],
+    "shoes": ["#2A2A30", "#3B2A20"],
+    "bag": ["#C8A878", "#8A5A33"]
+   },
+   "notes": "navy pea coat / cream fisherman sweater, watch cap, sometimes a red scarf and a beard. Walk off ships at ferry_terminal boardPoints, sit at sailor_lodge seatPoints."
+  },
+  "auctioneer": {
+   "label": {"ko": "경매사", "en": "fish auctioneer"},
+   "bases": {"adult_slim": 2, "adult_round": 3, "elder_slim": 1, "elder_round": 2},
+   "tops": {"top_vest": 3, "top_sweater": 1},
+   "bottoms": ["bot_pants"],
+   "shoes": ["shoe_rubber"],
+   "hats": {"hat_cap": 2, "hat_flatcap": 2},
+   "hatChance": 0.85,
+   "extra": ["det_apron"],
+   "neck": null, "bag": null, "headAcc": null,
+   "glasses": {"acc_glasses": 1, "acc_glasses_sq": 1}, "glassesChance": 0.35,
+   "facialHairChance": 0.5,
+   "gloveChance": 0.15,
+   "colors": {
+    "top": ["#2E4A7A", "#5E7A3A", "#3B3F52"],
+    "top2": ["#F4EDE0", "#DCEBF7"],
+    "acc": ["#F28A2A", "#2E8A8A", "#F2C230"],
+    "hat": ["#F4EDE0", "#2E4A7A", "#D9483B"],
+    "hat2": ["=hat"],
+    "bottom": ["#3B3F52", "#2E3440"],
+    "shoes": ["#F2C230", "#2E3440", "#F4F1EA"]
+   },
+   "notes": "quilted vest over a shirt, bright rubber apron, cap, rubber boots - stands at fish_auction staffPoints[0] (talk / wave anims while bidding; play assets/audio4 sfx_auction_bell at fxPoints.bell)."
+  },
+  "lighthouse_keeper": {
+   "label": {"ko": "등대지기", "en": "lighthouse keeper"},
+   "bases": {"elder_slim": 3, "elder_round": 3, "adult_round": 1},
+   "tops": {"top_duffle": 2, "top_sweater": 2, "top_coat": 1},
+   "bottoms": ["bot_pants"],
+   "shoes": {"shoe_boots": 2, "shoe_rubber": 1},
+   "hats": {"hat_beanie": 2, "hat_flatcap": 2, "hat_fedora": 1},
+   "hatChance": 0.8,
+   "neck": {"acc_scarf": 1}, "neckChance": 0.6,
+   "bag": null, "headAcc": null,
+   "glasses": {"acc_glasses": 1, "acc_glasses_sq": 1}, "glassesChance": 0.45,
+   "facialHairChance": 0.75,
+   "gloveChance": 0.5,
+   "colors": {
+    "top": ["#EFE6D2", "#22305A", "#7A5C40"],
+    "top2": ["#EFE6D2", "#D9483B"],
+    "bottom": ["#3B3F52", "#4A3830"],
+    "hat": ["#22305A", "#D9483B", "#3A3040"],
+    "hat2": ["#F4EDE0"],
+    "acc": ["#D9483B", "#2E4A7A"],
+    "acc2": ["#F4EDE0"],
+    "shoes": ["#3B2A20", "#2A2A30"]
+   },
+   "notes": "older keeper in a cream aran sweater or navy duffle coat, scarf, glasses and a (long) beard - lighthouse staffPoints."
+  },
+  "tourist": {
+   "label": {"ko": "관광객", "en": "tourist"},
+   "bases": {"child_slim": 2, "child_round": 1, "adult_slim": 4, "adult_round": 2, "elder_slim": 2, "elder_round": 1},
+   "tops": {"top_puffer": 3, "top_parka": 2, "top_bomber": 2, "top_hoodie": 2, "top_duffle": 1},
+   "bottoms": {"bot_pants": 3, "bot_snowpants": 2, "bot_skirt": 1},
+   "shoes": {"shoe_boots": 2, "shoe_furboots": 2, "shoe_shoes": 1},
+   "hats": {"hat_bucket": 3, "hat_cap": 3, "hat_pompom": 2, "hat_beret": 1},
+   "hatChance": 0.75,
+   "bag": {"acc_backpack": 3, "acc_satchel": 1}, "bagChance": 0.9,
+   "glasses": {"acc_glasses": 1, "acc_glasses_sq": 1}, "glassesChance": 0.35,
+   "neck": {"acc_scarf": 1}, "neckChance": 0.4,
+   "colors": {
+    "top": "cloth",
+    "hat": ["#F4EDE0", "#F2C230", "#3D7CC9", "#D9483B", "#5E9A4A"],
+    "bag": ["#F2C230", "#D9483B", "#3D7CC9", "#5E9A4A", "#F08A3A"]
+   },
+   "notes": "visitors from other regions arriving by ferry: bright winter jackets, bucket hats / caps, backpacks (children and adults) or satchels (elders), sometimes glasses. Spawn them at ferry_terminal boardPoints (reverse order) and let them queue at harbor_market / seafood_restaurant customerPoints."
+  }
+ },
+ "existingCharacters": {
+  "captain": "assets/villagers2 npc_captain (captain hat, white beard, navy pea coat) - use him as the ferry / trawler captain",
+  "fisherman": "assets/characters fisherman + assets/workers fisherman_b (old sailor) / fisherman_c - trawler crews"
+ },
+ "missingParts": [
+  {"part": "hat_sailor", "family": "hat", "why": "white dixie cap with a navy band (and a navy flat 'gob' cap) - the instantly readable sailor silhouette; today sailors fall back to a knit watch cap", "priority": "high"},
+  {"part": "top_breton", "family": "top", "why": "navy-white striped breton shirt (sailor / tourist); stripes cannot come from a tint, it needs its own layer (or a 'stripe' sub like acc_scarf)", "priority": "high"},
+  {"part": "det_lifevest", "family": "job", "why": "orange inflatable life vest over any top for ferry crew / dock workers on the piers (like det_hivis)", "priority": "medium"},
+  {"part": "hat_captain", "family": "hat", "why": "white peaked captain cap with gold badge for townsfolk captains (npc_captain exists as a full character only)", "priority": "medium"},
+  {"part": "acc_camera", "family": "neck", "why": "camera on a neck strap for tourists (contract asks for it); backpack already exists", "priority": "medium"},
+  {"part": "hat_souwester", "family": "hat", "why": "yellow sou'wester rain hat for fishermen / lighthouse keeper", "priority": "low"},
+  {"part": "held_bell / held_clipboard", "family": "hand item", "why": "auctioneer's hand bell and a dock clerk's clipboard (townfolk2 adds held_bouquet - same mechanism)", "priority": "low"},
+  {"part": "acc_seabag", "family": "bag", "why": "white duffel sea bag over the shoulder for sailors arriving / leaving", "priority": "low"}
+ ]
+}

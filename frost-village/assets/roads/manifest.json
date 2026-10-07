@@ -1,0 +1,1619 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_roads.py",
+ "conventions": {
+  "text": "Road kit (CONTRACT_V5 §N). See roadKit for the grid, widths, layer order and placement rules.",
+  "projection": "+1 m world X = screen (+45.25, +22.63) px, +1 m world Y = (+45.25, -22.63) px; one road cell = sqrt(2) m = (64, 32) px along X, (64, -32) along Y.",
+  "textures": "512x512, seamless in x and y, draw at scale 1 as patterns anchored at the grid origin G.",
+  "blend": "All decals are NORMAL-blend artwork baked into the ground (below depth-sorted sprites)."
+ },
+ "roadKit": {
+  "cellM": 1.4142135623730951,
+  "cellPx": {
+   "x": [
+    64,
+    32
+   ],
+   "y": [
+    64,
+    -32
+   ]
+  },
+  "diamondPx": [
+   128,
+   64
+  ],
+  "unitsPerCell": 128,
+  "unitsPerMetre": 90.51,
+  "gridOrigin": "one integer screen point G for the whole world; lattice (i, j) = G + i*(64,32) + j*(64,-32); cell (i, j) has its min corner at lattice (i, j). a = x + 2y, b = x - 2y (x, y from G): i = floor(a/128), j = floor(b/128).",
+  "textureOrigin": "every texture is drawn as a repeating pattern with its top-left pixel corner at G, scale 1. Inside a texture the cell lines are a = 0 (mod 128) and b = 0 (mod 128).",
+  "widthsM": {
+   "lane": 2.8284271247461903,
+   "carriageway2": 5.656854249492381,
+   "track1": 2.8284271247461903,
+   "sidewalk": 1.4142135623730951,
+   "cityStreet": 8.485281374238571
+  },
+  "widthsCells": {
+   "lane": 2,
+   "carriageway2": 4,
+   "track1": 2,
+   "sidewalk": 1,
+   "cityStreet": 6
+  },
+  "alignment": "carriageway edges and the centre line between lanes on EVEN grid lines; lane centres on odd lines (the ruts of road_dirt* follow lane centres +-0.75 m).",
+  "classes": {
+   "dirt": {
+    "era": "village (마을)",
+    "textures": {
+     "x": "road_dirt",
+     "y": "road_dirt_y",
+     "junction": "road_dirt_cross"
+    },
+    "laneCells": 2,
+    "lanes": [
+     1,
+     2
+    ],
+    "sidewalkCells": 0,
+    "curbs": false,
+    "markings": false,
+    "edges": "snow_edge_* / snow_corner_* / snow_inner_* between ROAD and NONE cells"
+   },
+   "town": {
+    "era": "town (읍)",
+    "textures": {
+     "x": "road_cobble_wide",
+     "y": "road_cobble_wide",
+     "junction": "road_cobble_wide"
+    },
+    "laneCells": 2,
+    "lanes": [
+     2
+    ],
+    "sidewalkCells": 0,
+    "curbs": false,
+    "markings": false,
+    "edges": "snow pieces between ROAD and NONE (optional sidewalks + curbs like the city)"
+   },
+   "city": {
+    "era": "city (도시)",
+    "textures": {
+     "x": "road_asphalt",
+     "y": "road_asphalt",
+     "junction": "road_asphalt",
+     "walk": "sidewalk"
+    },
+    "laneCells": 2,
+    "lanes": [
+     2
+    ],
+    "sidewalkCells": 1,
+    "curbs": true,
+    "markings": true,
+    "edges": "curbs between ROAD and WALK; snow pieces between WALK and NONE"
+   }
+  },
+  "layers": [
+   "1 ground_snow",
+   "2 textures per cell (pattern origin G; fill each texture's cells as one path)",
+   "3 snow_edge_* / snow_corner_* / snow_inner_*",
+   "4 curb_* / curb_corner_* / curb_inner_* (or intersection)",
+   "5 lane_* / crosswalk_* / stall_lines*",
+   "then depth-sorted sprites (vehicles, people, buildings)"
+  ],
+  "cellTypes": "NONE (snow) / ROAD (carriageway) / WALK (sidewalk). A WALK cell with ROAD on two orthogonal sides and on the diagonal between them (a convex sidewalk corner) is filled with the carriageway texture; its curb_corner piece paints the paving.",
+  "edgeRule": "For every cell edge between a ROAD and a WALK cell draw a curb piece, between a paved (ROAD/WALK) and a NONE cell a snow piece. X edge = segment lattice (i,j)-(i+1,j) between cells (i,j-1) and (i,j): *_x if the walk/snow cell is (i,j) (+Y), *_x_near if it is (i,j-1). Y edge = segment (i,j)-(i,j+1) between cells (i-1,j) and (i,j): *_y if the walk/snow cell is (i-1,j) (-X), *_y_near if (i,j). Anchor of an X edge piece = lattice (i,j) + (32,16); of a Y edge piece = lattice (i,j) + (32,-16). Variant = ((i*7 + j*13) % 3 + 3) % 3 -> key, key_1, key_2.",
+  "cornerRule": "At every lattice point look at the 4 cells around it; quarter q (e=+X+Y, s=+X-Y, w=-X-Y, n=-X+Y) holds cell (i + (sx-1)/2, j + (sy-1)/2). Curbs (only when all 4 cells are ROAD/WALK): exactly one WALK -> curb_corner_q of that quarter; exactly one ROAD -> curb_inner_q. Snow: exactly one NONE -> snow_corner_q; exactly one paved -> snow_inner_q. A corner piece owns the X edge leaving the point toward sx and the Y edge toward sy: skip the straight pieces there. Keep every straight run >= 2 cells (no 1-cell stubs between two corners); diagonal 2+2 cell patterns are not supported.",
+  "markingRule": "lane_x / lane_y every 2 cells on the carriageway centre line (anchor = lattice point on the centre line + (64,32) / (64,-32)); crosswalk_x on each carriageway cell of a road along X where a sidewalk line crosses it (the junction border cells), anchor = lattice (i,j) + (64,0); crosswalk_y likewise. stall_lines: anchor = stall centre = lattice of its min corner + (160,16) (2 across Y, 3 along X).",
+  "pieceFrames": "roads_decals frames are UNTRIMMED (pack trim=False) and anchored on an integer pixel (anchorPx); draw at round(anchor) - anchorPx. Straight pieces own exactly the pixels whose centre lies in their 1-cell slice, so consecutive pieces join with no overlap and no gap."
+ },
+ "atlases": [
+  {
+   "key": "roads_decals",
+   "png": "roads/roads_decals.png",
+   "json": "roads/roads_decals.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "road_dirt",
+   "png": "roads/road_dirt.png"
+  },
+  {
+   "key": "road_dirt_y",
+   "png": "roads/road_dirt_y.png"
+  },
+  {
+   "key": "road_dirt_cross",
+   "png": "roads/road_dirt_cross.png"
+  },
+  {
+   "key": "road_cobble_wide",
+   "png": "roads/road_cobble_wide.png"
+  },
+  {
+   "key": "road_asphalt",
+   "png": "roads/road_asphalt.png"
+  },
+  {
+   "key": "sidewalk",
+   "png": "roads/sidewalk.png"
+  }
+ ],
+ "sprites": {
+  "road_dirt": {
+   "image": "road_dirt",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "dirt",
+   "axis": "x",
+   "avgColour": "#CACED5",
+   "notes": "Village dirt road (packed snow + earth) with 2 wheel/runner ruts per lane running along world X. Use on ROAD cells of roads along X. Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "road_dirt_y": {
+   "image": "road_dirt_y",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "dirt",
+   "axis": "y",
+   "avgColour": "#CACED6",
+   "notes": "Same as road_dirt but the ruts run along world Y. Use on ROAD cells of roads along Y. Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "road_dirt_cross": {
+   "image": "road_dirt_cross",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "dirt",
+   "axis": "xy",
+   "avgColour": "#C9CDD3",
+   "notes": "Same base with the ruts of both directions crossing: junction / bend squares of dirt roads. Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "road_cobble_wide": {
+   "image": "road_cobble_wide",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "town",
+   "axis": "any",
+   "avgColour": "#B8BCC5",
+   "notes": "Town-era wide cobble road: quarter-cell square setts on the grid, snow in the joints. Non-directional (all ROAD cells incl. junctions). Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "road_asphalt": {
+   "image": "road_asphalt",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "city",
+   "axis": "any",
+   "avgColour": "#646B7B",
+   "notes": "City asphalt, soft blue-charcoal with a light patchy snow dusting. Non-directional. Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "sidewalk": {
+   "image": "sidewalk",
+   "anchor": [
+    0,
+    0
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "roadClass": "city",
+   "axis": "any",
+   "avgColour": "#DCD8D3",
+   "notes": "Pale paving slabs, 2x2 per cell on the grid (WALK cells). Non-directional. Pattern origin = grid origin G, scale 1; cell lines at a,b = 0 mod 128."
+  },
+  "snow_edge_x": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x",
+   "anchor": [
+    0.40441,
+    0.58333
+   ],
+   "anchorPx": [
+    55,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow (NONE cell) at +Y and paving at -Y. 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "snow_edge_x",
+    "snow_edge_x_1",
+    "snow_edge_x_2"
+   ]
+  },
+  "snow_edge_x_1": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x_1",
+   "anchor": [
+    0.40441,
+    0.58333
+   ],
+   "anchorPx": [
+    55,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow (NONE cell) at +Y and paving at -Y. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_x_2": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x_2",
+   "anchor": [
+    0.40441,
+    0.58333
+   ],
+   "anchorPx": [
+    55,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow (NONE cell) at +Y and paving at -Y. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_x_near": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x_near",
+   "anchor": [
+    0.59559,
+    0.40278
+   ],
+   "anchorPx": [
+    81,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x_near",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow at -Y and paving at +Y. 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "snow_edge_x_near",
+    "snow_edge_x_near_1",
+    "snow_edge_x_near_2"
+   ]
+  },
+  "snow_edge_x_near_1": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x_near_1",
+   "anchor": [
+    0.59559,
+    0.40278
+   ],
+   "anchorPx": [
+    81,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x_near",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow at -Y and paving at +Y. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_x_near_2": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_x_near_2",
+   "anchor": [
+    0.59559,
+    0.40278
+   ],
+   "anchorPx": [
+    81,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_x_near",
+   "layer": 3,
+   "notes": "Snow bank along an X edge with the snow at -Y and paving at +Y. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_y": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y",
+   "anchor": [
+    0.59559,
+    0.58333
+   ],
+   "anchorPx": [
+    81,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at -X and paving at +X. 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "snow_edge_y",
+    "snow_edge_y_1",
+    "snow_edge_y_2"
+   ]
+  },
+  "snow_edge_y_1": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y_1",
+   "anchor": [
+    0.59559,
+    0.58333
+   ],
+   "anchorPx": [
+    81,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at -X and paving at +X. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_y_2": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y_2",
+   "anchor": [
+    0.59559,
+    0.58333
+   ],
+   "anchorPx": [
+    81,
+    42
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at -X and paving at +X. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_y_near": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y_near",
+   "anchor": [
+    0.40441,
+    0.40278
+   ],
+   "anchorPx": [
+    55,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y_near",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at +X and paving at -X. 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "snow_edge_y_near",
+    "snow_edge_y_near_1",
+    "snow_edge_y_near_2"
+   ]
+  },
+  "snow_edge_y_near_1": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y_near_1",
+   "anchor": [
+    0.40441,
+    0.40278
+   ],
+   "anchorPx": [
+    55,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y_near",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at +X and paving at -X. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_edge_y_near_2": {
+   "atlas": "roads_decals",
+   "frame": "snow_edge_y_near_2",
+   "anchor": [
+    0.40441,
+    0.40278
+   ],
+   "anchorPx": [
+    55,
+    29
+   ],
+   "frameSize": [
+    136,
+    72
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "snow_edge_y_near",
+   "layer": 3,
+   "notes": "Snow bank along a Y edge with the snow at +X and paving at -X. 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_x": {
+   "atlas": "roads_decals",
+   "frame": "curb_x",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x",
+   "layer": 4,
+   "notes": "Curb on the +Y edge of a road along X (walk at +Y, road at -Y; screen-upper edge, face visible). 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "curb_x",
+    "curb_x_1",
+    "curb_x_2"
+   ]
+  },
+  "curb_x_1": {
+   "atlas": "roads_decals",
+   "frame": "curb_x_1",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x",
+   "layer": 4,
+   "notes": "Curb on the +Y edge of a road along X (walk at +Y, road at -Y; screen-upper edge, face visible). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_x_2": {
+   "atlas": "roads_decals",
+   "frame": "curb_x_2",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x",
+   "layer": 4,
+   "notes": "Curb on the +Y edge of a road along X (walk at +Y, road at -Y; screen-upper edge, face visible). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_x_near": {
+   "atlas": "roads_decals",
+   "frame": "curb_x_near",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x_near",
+   "layer": 4,
+   "notes": "Curb on the -Y edge of a road along X (walk at -Y, road at +Y; screen-lower edge, top only). 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "curb_x_near",
+    "curb_x_near_1",
+    "curb_x_near_2"
+   ]
+  },
+  "curb_x_near_1": {
+   "atlas": "roads_decals",
+   "frame": "curb_x_near_1",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x_near",
+   "layer": 4,
+   "notes": "Curb on the -Y edge of a road along X (walk at -Y, road at +Y; screen-lower edge, top only). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_x_near_2": {
+   "atlas": "roads_decals",
+   "frame": "curb_x_near_2",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "curb_x_near",
+   "layer": 4,
+   "notes": "Curb on the -Y edge of a road along X (walk at -Y, road at +Y; screen-lower edge, top only). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_y": {
+   "atlas": "roads_decals",
+   "frame": "curb_y",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y",
+   "layer": 4,
+   "notes": "Curb on the -X edge of a road along Y (walk at -X, road at +X; screen-upper-left edge, face visible). 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "curb_y",
+    "curb_y_1",
+    "curb_y_2"
+   ]
+  },
+  "curb_y_1": {
+   "atlas": "roads_decals",
+   "frame": "curb_y_1",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y",
+   "layer": 4,
+   "notes": "Curb on the -X edge of a road along Y (walk at -X, road at +X; screen-upper-left edge, face visible). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_y_2": {
+   "atlas": "roads_decals",
+   "frame": "curb_y_2",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y",
+   "layer": 4,
+   "notes": "Curb on the -X edge of a road along Y (walk at -X, road at +X; screen-upper-left edge, face visible). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_y_near": {
+   "atlas": "roads_decals",
+   "frame": "curb_y_near",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y_near",
+   "layer": 4,
+   "notes": "Curb on the +X edge of a road along Y (walk at +X, road at -X; screen-lower-right edge, top only). 1 cell long; anchor = midpoint of the cell edge.",
+   "variants": [
+    "curb_y_near",
+    "curb_y_near_1",
+    "curb_y_near_2"
+   ]
+  },
+  "curb_y_near_1": {
+   "atlas": "roads_decals",
+   "frame": "curb_y_near_1",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y_near",
+   "layer": 4,
+   "notes": "Curb on the +X edge of a road along Y (walk at +X, road at -X; screen-lower-right edge, top only). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "curb_y_near_2": {
+   "atlas": "roads_decals",
+   "frame": "curb_y_near_2",
+   "anchor": [
+    0.5,
+    0.54545
+   ],
+   "anchorPx": [
+    55,
+    36
+   ],
+   "frameSize": [
+    110,
+    66
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "edge",
+   "family": "curb",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "curb_y_near",
+   "layer": 4,
+   "notes": "Curb on the +X edge of a road along Y (walk at +X, road at -X; screen-lower-right edge, top only). 1 cell long; anchor = midpoint of the cell edge."
+  },
+  "snow_corner_e": {
+   "atlas": "roads_decals",
+   "frame": "snow_corner_e",
+   "anchor": [
+    0.25,
+    0.5
+   ],
+   "anchorPx": [
+    44,
+    46
+   ],
+   "frameSize": [
+    176,
+    92
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_corner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "layer": 3,
+   "notes": "Corner of a snowy block (r 0.6 m): the cell in its quarter is NONE, the other three paved. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_corner_s": {
+   "atlas": "roads_decals",
+   "frame": "snow_corner_s",
+   "anchor": [
+    0.5,
+    0.26087
+   ],
+   "anchorPx": [
+    88,
+    24
+   ],
+   "frameSize": [
+    176,
+    92
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_corner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "layer": 3,
+   "notes": "Corner of a snowy block (r 0.6 m): the cell in its quarter is NONE, the other three paved. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_corner_w": {
+   "atlas": "roads_decals",
+   "frame": "snow_corner_w",
+   "anchor": [
+    0.74432,
+    0.5
+   ],
+   "anchorPx": [
+    131,
+    46
+   ],
+   "frameSize": [
+    176,
+    92
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_corner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "layer": 3,
+   "notes": "Corner of a snowy block (r 0.6 m): the cell in its quarter is NONE, the other three paved. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_corner_n": {
+   "atlas": "roads_decals",
+   "frame": "snow_corner_n",
+   "anchor": [
+    0.5,
+    0.72826
+   ],
+   "anchorPx": [
+    88,
+    67
+   ],
+   "frameSize": [
+    176,
+    92
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_corner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "layer": 3,
+   "notes": "Corner of a snowy block (r 0.6 m): the cell in its quarter is NONE, the other three paved. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_inner_e": {
+   "atlas": "roads_decals",
+   "frame": "snow_inner_e",
+   "anchor": [
+    0.41593,
+    0.5
+   ],
+   "anchorPx": [
+    94,
+    58
+   ],
+   "frameSize": [
+    226,
+    116
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_inner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "layer": 3,
+   "notes": "Concave snow corner (outside of a bend / dead end): the cell in its quarter is paved, the other three NONE. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_inner_s": {
+   "atlas": "roads_decals",
+   "frame": "snow_inner_s",
+   "anchor": [
+    0.5,
+    0.42241
+   ],
+   "anchorPx": [
+    113,
+    49
+   ],
+   "frameSize": [
+    226,
+    116
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_inner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "layer": 3,
+   "notes": "Concave snow corner (outside of a bend / dead end): the cell in its quarter is paved, the other three NONE. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_inner_w": {
+   "atlas": "roads_decals",
+   "frame": "snow_inner_w",
+   "anchor": [
+    0.57965,
+    0.5
+   ],
+   "anchorPx": [
+    131,
+    58
+   ],
+   "frameSize": [
+    226,
+    116
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_inner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "layer": 3,
+   "notes": "Concave snow corner (outside of a bend / dead end): the cell in its quarter is paved, the other three NONE. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "snow_inner_n": {
+   "atlas": "roads_decals",
+   "frame": "snow_inner_n",
+   "anchor": [
+    0.5,
+    0.57759
+   ],
+   "anchorPx": [
+    113,
+    67
+   ],
+   "frameSize": [
+    226,
+    116
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "snow_inner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "layer": 3,
+   "notes": "Concave snow corner (outside of a bend / dead end): the cell in its quarter is paved, the other three NONE. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_corner_e": {
+   "atlas": "roads_decals",
+   "frame": "curb_corner_e",
+   "anchor": [
+    0.27222,
+    0.53
+   ],
+   "anchorPx": [
+    49,
+    53
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_corner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "layer": 4,
+   "notes": "Rounded convex sidewalk corner (r 1.0 m): the cell in its quarter is WALK, the other three ROAD. Paints its own paving; fill its cell with the carriageway texture first. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_corner_s": {
+   "atlas": "roads_decals",
+   "frame": "curb_corner_s",
+   "anchor": [
+    0.5,
+    0.33
+   ],
+   "anchorPx": [
+    90,
+    33
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_corner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "layer": 4,
+   "notes": "Rounded convex sidewalk corner (r 1.0 m): the cell in its quarter is WALK, the other three ROAD. Paints its own paving; fill its cell with the carriageway texture first. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_corner_w": {
+   "atlas": "roads_decals",
+   "frame": "curb_corner_w",
+   "anchor": [
+    0.72778,
+    0.53
+   ],
+   "anchorPx": [
+    131,
+    53
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_corner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "layer": 4,
+   "notes": "Rounded convex sidewalk corner (r 1.0 m): the cell in its quarter is WALK, the other three ROAD. Paints its own paving; fill its cell with the carriageway texture first. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_corner_n": {
+   "atlas": "roads_decals",
+   "frame": "curb_corner_n",
+   "anchor": [
+    0.5,
+    0.74
+   ],
+   "anchorPx": [
+    90,
+    74
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_corner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "layer": 4,
+   "notes": "Rounded convex sidewalk corner (r 1.0 m): the cell in its quarter is WALK, the other three ROAD. Paints its own paving; fill its cell with the carriageway texture first. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_inner_e": {
+   "atlas": "roads_decals",
+   "frame": "curb_inner_e",
+   "anchor": [
+    0.27222,
+    0.53
+   ],
+   "anchorPx": [
+    49,
+    53
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_inner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "layer": 4,
+   "notes": "Concave curb (outside of a bend): the cell in its quarter is ROAD, the other three WALK. Rounds the road corner (r 0.55 m) with paving. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_inner_s": {
+   "atlas": "roads_decals",
+   "frame": "curb_inner_s",
+   "anchor": [
+    0.5,
+    0.33
+   ],
+   "anchorPx": [
+    90,
+    33
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_inner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "layer": 4,
+   "notes": "Concave curb (outside of a bend): the cell in its quarter is ROAD, the other three WALK. Rounds the road corner (r 0.55 m) with paving. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_inner_w": {
+   "atlas": "roads_decals",
+   "frame": "curb_inner_w",
+   "anchor": [
+    0.72778,
+    0.53
+   ],
+   "anchorPx": [
+    131,
+    53
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_inner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "layer": 4,
+   "notes": "Concave curb (outside of a bend): the cell in its quarter is ROAD, the other three WALK. Rounds the road corner (r 0.55 m) with paving. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "curb_inner_n": {
+   "atlas": "roads_decals",
+   "frame": "curb_inner_n",
+   "anchor": [
+    0.5,
+    0.74
+   ],
+   "anchorPx": [
+    90,
+    74
+   ],
+   "frameSize": [
+    180,
+    100
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "corner",
+   "family": "curb_inner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "layer": 4,
+   "notes": "Concave curb (outside of a bend): the cell in its quarter is ROAD, the other three WALK. Rounds the road corner (r 0.55 m) with paving. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "lane_x": {
+   "atlas": "roads_decals",
+   "frame": "lane_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    77,
+    40
+   ],
+   "frameSize": [
+    154,
+    80
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "x",
+   "cells": 2,
+   "step": [
+    128,
+    64
+   ],
+   "layer": 5,
+   "notes": "Yellow dashed centre line on a road along X: dash 1.6 m in a 2-cell span. Anchor = centre of the span on the centre line."
+  },
+  "lane_y": {
+   "atlas": "roads_decals",
+   "frame": "lane_y",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    77,
+    40
+   ],
+   "frameSize": [
+    154,
+    80
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "y",
+   "cells": 2,
+   "step": [
+    128,
+    -64
+   ],
+   "layer": 5,
+   "notes": "Yellow dashed centre line on a road along Y."
+  },
+  "crosswalk_x": {
+   "atlas": "roads_decals",
+   "frame": "crosswalk_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    67,
+    35
+   ],
+   "frameSize": [
+    134,
+    70
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "x",
+   "cells": 1,
+   "layer": 5,
+   "notes": "Zebra module (2 stripes) for a road along X (people cross along Y): one per carriageway cell across the road. Anchor = cell centre."
+  },
+  "crosswalk_y": {
+   "atlas": "roads_decals",
+   "frame": "crosswalk_y",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    67,
+    35
+   ],
+   "frameSize": [
+    134,
+    70
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "y",
+   "cells": 1,
+   "layer": 5,
+   "notes": "Zebra module for a road along Y (people cross along X)."
+  },
+  "stall_lines": {
+   "atlas": "roads_decals",
+   "frame": "stall_lines",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    164,
+    84
+   ],
+   "frameSize": [
+    328,
+    168
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "x",
+   "cellsAcross": 2,
+   "cellsAlong": 3,
+   "layer": 5,
+   "stallPoint": [
+    0,
+    0
+   ],
+   "carHeading": "X+ / X-",
+   "notes": "One parking stall, car parked along X: 2 cells wide (Y) x 3 cells long (X), closed end at +X (flipX+flipY for the other way). Stalls side by side step (64, -32) x 2 = (128, -64). Anchor = stall centre."
+  },
+  "stall_lines_y": {
+   "atlas": "roads_decals",
+   "frame": "stall_lines_y",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    164,
+    84
+   ],
+   "frameSize": [
+    328,
+    168
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "marking",
+   "axis": "y",
+   "cellsAcross": 2,
+   "cellsAlong": 3,
+   "layer": 5,
+   "stallPoint": [
+    0,
+    0
+   ],
+   "carHeading": "Y+ / Y-",
+   "notes": "One parking stall, car parked along Y; closed end at +Y. Stalls side by side step (128, 64)."
+  },
+  "intersection": {
+   "atlas": "roads_decals",
+   "frame": "intersection",
+   "anchor": [
+    0.5,
+    0.50754
+   ],
+   "anchorPx": [
+    387,
+    202
+   ],
+   "frameSize": [
+    774,
+    398
+   ],
+   "kind": "decal",
+   "trimmed": false,
+   "piece": "composite",
+   "layer": 4,
+   "notes": "The 4 curb_corner pieces of a standard 4-way city junction (4-cell carriageways + 1-cell sidewalks) in one frame; anchor = junction centre (a lattice point). Fill the whole 6x6-cell block with asphalt first."
+  }
+ }
+}
