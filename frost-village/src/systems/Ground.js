@@ -89,7 +89,7 @@ export class Ground {
     ctx.fillStyle = vg; land(); ctx.fill();
 
     if (y0 < this.maxShore + 80) this.bakeShore(ctx, W);
-    this.bakePaths(ctx);
+    this.bakePaths(ctx, y0, h);
     this.bakeDecals(ctx, y0, h);
     ctx.restore();
   }
@@ -151,29 +151,64 @@ export class Ground {
     }
   }
 
-  bakePaths(ctx) {
-    ctx.save();
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // all paths as one shape (so junctions are not darker), stroked far off-canvas: only its blurred
-    // shadow lands on the snow. Soft feathered edges everywhere (shadowBlur works in every browser).
+  bakePaths(ctx, y0 = 0, h = this.H) {
+    const paths = WORLD.paths || [];
+    this.drawRoads(ctx, paths, 0, y0, this.W, h);
+    this.pathDecor(ctx, paths);
+  }
+
+  /**
+   * Road surface for polylines `paths` into ctx (ctx maps world coordinates; the visible area is
+   * x0, y0, w, h). With the v2 `ground_road` texture: textured road with soft edges; otherwise the
+   * soft trodden-snow style. Junctions are one shape, so they never get darker.
+   */
+  drawRoads(ctx, paths, x0, y0, w, h) {
+    if (!paths.length) return;
     const OFF = 30000;
-    const allPaths = () => {
-      ctx.beginPath();
-      for (const pts of WORLD.paths) pts.forEach((p, i) => (i ? ctx.lineTo(p[0] - OFF, p[1]) : ctx.moveTo(p[0] - OFF, p[1])));
+    const stroke = (c, ox) => {
+      c.beginPath();
+      for (const pts of paths) pts.forEach((p, i) => (i ? c.lineTo(p[0] - ox, p[1]) : c.moveTo(p[0] - ox, p[1])));
     };
-    const soft = (w, color, blur) => {
+    // stroke far off-canvas: only its blurred shadow lands (soft feathered edges in every browser)
+    const soft = (c, lw, color, blur) => {
+      c.save();
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.shadowColor = color; c.shadowBlur = blur; c.shadowOffsetX = OFF; c.shadowOffsetY = 0;
+      c.strokeStyle = '#000'; c.lineWidth = lw;
+      stroke(c, OFF); c.stroke();
+      c.restore();
+    };
+    if (Assets.has('ground_road') && typeof document !== 'undefined') {
+      // textured road: a soft mask filled with the road texture, over a soft shadowy rim
+      soft(ctx, 92, 'rgba(110,130,170,0.30)', 22);
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.ceil(w); tmp.height = Math.ceil(h);
+      const t = tmp.getContext('2d');
+      t.translate(-x0, -y0);
+      soft(t, 70, 'rgba(0,0,0,1)', 14);
+      t.setTransform(1, 0, 0, 1, 0, 0);
+      t.globalCompositeOperation = 'source-in';
+      const pat = pattern(t, 'ground_road', 0.5);
+      if (pat && pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().translate(-x0, -y0).scale(0.5));
+      t.fillStyle = pat || '#b7a99a';
+      t.fillRect(0, 0, tmp.width, tmp.height);
       ctx.save();
-      ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetX = OFF; ctx.shadowOffsetY = 0;
-      ctx.strokeStyle = '#000'; ctx.lineWidth = w;
-      allPaths(); ctx.stroke();
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(tmp, x0, y0);
       ctx.restore();
-    };
-    soft(80, 'rgba(136,160,198,0.36)', 26);   // packed, slightly blue-grey trodden snow
-    soft(34, 'rgba(150,138,130,0.26)', 14);   // a hint of earth showing through in the middle
+      return;
+    }
+    soft(ctx, 80, 'rgba(136,160,198,0.36)', 26);   // packed, slightly blue-grey trodden snow
+    soft(ctx, 34, 'rgba(150,138,130,0.26)', 14);   // a hint of earth showing through in the middle
+  }
+
+  /** snow drifts and footprints along the paths */
+  pathDecor(ctx, paths) {
+    ctx.save();
     // drift texture breaking up the edges
     const r1 = rng(11);
     if (Assets.has('decal_snow_drift_a')) {
-      for (const pts of WORLD.paths) {
+      for (const pts of paths) {
         for (let i = 0; i < pts.length - 1; i++) {
           const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
           const len = Math.hypot(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax);
@@ -189,7 +224,7 @@ export class Ground {
     const hasFoot = Assets.has('decal_footprints');
     const r2 = rng(5);
     const A = Math.atan2(22.63, 45.25);
-    for (const pts of WORLD.paths) {
+    for (const pts of paths) {
       for (let i = 0; i < pts.length - 1; i++) {
         const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
         const len = Math.hypot(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax);
@@ -219,6 +254,26 @@ export class Ground {
       if (y < y0 - 300 || y > y0 + h + 300) continue;
       drawFrame(ctx, key, x, y, sc, (rot * Math.PI) / 180, 0.95);
     }
+  }
+
+  /** roads that belong to a zone, baked into their own image above the zone floor (shown when the zone opens) */
+  roadOverlay(id, paths) {
+    if (!paths || !paths.length) return null;
+    const gs = this.gs;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const pts of paths) for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+    x0 = Math.floor(x0 - 90); y0 = Math.floor(y0 - 90); x1 = Math.ceil(x1 + 90); y1 = Math.ceil(y1 + 90);
+    const key = 'fv_roads_' + id;
+    if (gs.textures.exists(key)) gs.textures.remove(key);
+    const ct = gs.textures.createCanvas(key, x1 - x0, y1 - y0);
+    const ctx = ct.context;
+    ctx.save();
+    ctx.translate(-x0, -y0);
+    this.drawRoads(ctx, paths, x0, y0, x1 - x0, y1 - y0);
+    this.pathDecor(ctx, paths);
+    ctx.restore();
+    ct.refresh();
+    return gs.add.image(x0, y0, key).setOrigin(0, 0).setDepth(DEPTH.FLOOR + 10);
   }
 
   /** bake one zone floor (iso parallelogram) into its own image; returns the Image */

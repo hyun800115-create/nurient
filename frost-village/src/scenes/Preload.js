@@ -26,8 +26,8 @@ export class Preload extends Phaser.Scene {
     const label = this.add.text(W / 2, H * 0.62, t('loading'), { resolution: 2, fontFamily: FONT, fontSize: '22px', fontStyle: '700', color: '#5d6b80' }).setOrigin(0.5, 0);
 
     Assets.mergeManifests(this.cache.json);
-    // in-game music / ambience are loaded later by the Game scene (faster first screen)
-    Assets.queueAssets(this.load, { musicFilter: (k) => !Assets.isDeferredAudio(k) });
+    // in-game music / ambience and the villager atlases are loaded later by the Game scene (faster first screen)
+    Assets.queueAssets(this.load, { musicFilter: (k) => !Assets.isDeferredAudio(k) && !Assets.isUnusedAudio(k) });
     this.load.on('progress', (p) => { bar.width = Math.max(2, barW * p); });
     this.load.once('complete', () => {
       Assets.finalize(this.game);

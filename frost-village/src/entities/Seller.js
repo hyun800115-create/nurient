@@ -7,6 +7,7 @@ import { BALANCE } from '../data/balance.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
 import { Character } from './Character.js';
+import { Register } from './Register.js';
 import { DEPTH } from '../systems/DepthSort.js';
 
 export const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
@@ -88,7 +89,9 @@ export class CashPad {
 }
 
 // ------------------------------------------------------------------ market counter
-const CUSTOMER_KEYS = ['villager_a', 'villager_b', 'villager_c'];
+const BASE_CUSTOMERS = ['villager_a', 'villager_b', 'villager_c'];
+// villager looks that are not shoppers (job characters / too small to shop alone)
+const NOT_CUSTOMER = /^npc_(clerk|porter|toddler)/;
 
 export class Market {
   constructor(gs, cfg) {
@@ -109,7 +112,25 @@ export class Market {
     this.leaving = [];
     this.spawnT = 1.0;
     this.serveT = 0;
-    this.lastKey = null;
+    this.payT = 0;
+    this.lastKeys = [];
+    this.front = [-60, 30];    // where the counter faces (clerk idle facing)
+    // (v2) customers only pay and leave when someone stands at the register (the chief or a clerk)
+    this.register = new Register(gs, this, cfg, cfg.sprite);
+    this.waitPayT = 0;         // how long the front customer has been waiting to pay
+  }
+
+  /** the customer the cashier is serving (front of the line) */
+  payTarget() { const f = this.queue[0]; return f && f.arrived ? f : null; }
+
+  /** front customer has everything and waits at the register */
+  get waitingPay() { const f = this.queue[0]; return !!(f && f.state === 'wait' && f.arrived && f.got >= f.want.count); }
+
+  /** every look a customer can have right now (base parkas + all villagers whose art is loaded) */
+  customerKeys() {
+    const ks = BASE_CUSTOMERS.slice();
+    for (const k of Assets.charKeys('villager')) if (!NOT_CUSTOMER.test(k) && Assets.charReady(k) && !this.gs.keysInUse.has(k)) ks.push(k);
+    return ks;
   }
 
   get maxQueue() { return Math.max(1, Math.floor(BALANCE.customers.maxQueue) || 6); }
@@ -173,10 +194,15 @@ export class Market {
 
   spawnCustomer(atSlot) {
     const gs = this.gs;
-    // never the same look twice in a row
-    let key = CUSTOMER_KEYS[Math.floor(Math.random() * CUSTOMER_KEYS.length)];
-    if (key === this.lastKey) key = CUSTOMER_KEYS[(CUSTOMER_KEYS.indexOf(key) + 1 + Math.floor(Math.random() * (CUSTOMER_KEYS.length - 1))) % CUSTOMER_KEYS.length];
-    this.lastKey = key;
+    // variety: never the same look twice in a row, and not one of the last few when there is a choice
+    const all = this.customerKeys();
+    const recent = this.lastKeys;
+    let pool = all.filter((k) => recent.indexOf(k) < 0);
+    if (!pool.length) pool = all.filter((k) => k !== recent[recent.length - 1]);
+    if (!pool.length) pool = all;
+    const key = pool[Math.floor(Math.random() * pool.length)];
+    recent.push(key);
+    while (recent.length > Math.min(4, Math.max(1, all.length - 2))) recent.shift();
     let x, y, next = 1, visible = false;
     if (atSlot !== undefined) { const s = this.slotPos(atSlot); x = s.x; y = s.y; }
     else { const sp = this.spawnPoint(); x = sp.x + (Math.random() - 0.5) * 30; y = sp.y; next = sp.next; visible = sp.visible; }
@@ -191,6 +217,7 @@ export class Market {
     const gs = this.gs;
     this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
     this.cash.update(dt);
+    this.register.update(dt);
     // spawn
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
@@ -224,11 +251,23 @@ export class Market {
             front.bought.push(type);
             front.popBubble();
             if (gs.isNear(front.x, front.y, 600)) Audio.play('sfx_pickup', { volume: 0.4, rate: 1 + front.got * 0.08, throttle: 40 });
-            if (front.got >= front.want.count) this.complete(front);
           },
         });
       }
-    }
+      // everything handed over: pay at the register (only while someone is at it)
+      if (front.got >= front.want.count && front.flying.length === 0) {
+        this.waitPayT += dt;
+        if (!front.payWait) { front.payWait = true; front.updateBubble(); }
+        if (this.register.staffed) {
+          this.payT -= dt;
+          if (this.payT <= 0) {
+            this.payT = this.register.clerk ? BALANCE.register.clerkPayTime : BALANCE.register.chiefPayTime;
+            this.register.onPay(front);
+            this.complete(front);
+          }
+        } else this.payT = Math.min(this.payT, 0.25);
+      } else this.waitPayT = 0;
+    } else this.waitPayT = 0;
     for (let i = 0; i < this.queue.length; i++) this.queue[i].update(dt, i);
     for (let i = this.leaving.length - 1; i >= 0; i--) {
       const c = this.leaving[i];
@@ -318,10 +357,11 @@ export class Customer extends Character {
     if (!this.bubbleText) return;
     const left = Math.max(0, this.want.count - this.got);
     if (left > 0) { this.bubbleText.setText('x' + left); return; }
-    // order complete: a check mark instead of "x0"
+    // order complete: a coin (= "I'd like to pay") instead of "x0"; the register decides when
     this.bubbleText.setText('');
-    if (this.bubbleIcon && Assets.has('ui_icon_check')) {
-      Assets.apply(this.bubbleIcon, 'ui_icon_check');
+    const ic = Assets.pick('ui_icon_coin', 'ui_icon_check');
+    if (this.bubbleIcon && Assets.has(ic)) {
+      Assets.apply(this.bubbleIcon, ic);
       this.bubbleIcon.setOrigin(0.5, 0.5).setPosition(0, -this.bubbleBgH * 0.56);
       this.bubbleIcon.setScale(44 / Math.max(1, this.bubbleIcon.frame.realWidth));
     }
@@ -399,6 +439,8 @@ export class Customer extends Character {
       const d = DEPTH.BUBBLE + 50 - Math.max(0, slot);
       if (this.bubble.depth !== d) this.bubble.setDepth(d);
       this.bubble.setPosition(this.x, this.y + this.headTop - 6 + Math.sin(gs.time.now / 300 + this.x) * 2);
+      // waiting at the register with nobody there: the coin bubble pulses
+      if (this.payWait && slot === 0 && !this.market.register.staffed) this.bubble.setScale(this.bubbleK * (1 + Math.max(0, Math.sin(gs.time.now / 140)) * 0.12));
     }
     if (this.alive) this.sync(dt);
   }
@@ -441,6 +483,11 @@ export class TradePost {
     this.buyT = 0;
     this.happyT = 0;
     this.flying = {};      // goods on their way to the merchant (not paid yet)
+    this.front = [-60, 30];
+    // (v2) the merchant only buys while someone stands at the register (the chief or a clerk)
+    this.register = new Register(gs, this, Object.assign({ avoid: cfg.merchant }, cfg), cfg.sprite);
+    this.waitT = 0;
+    this.waitIcon = null;
   }
   setEnabled(v) {
     this.enabled = v;
@@ -448,8 +495,14 @@ export class TradePost {
     this.merchant.sprite.setVisible(v); this.merchant.shadow.setVisible(v);
     this.obstacle.active = v;
     this.stock.setVisible(v);
+    this.register.setEnabled(v);
+    if (this.waitIcon && !v) this.waitIcon.setVisible(false);
   }
-  revealObjects() { return [this.img, this.shelf.img, this.cash.pad.img, this.merchant.sprite]; }
+  revealObjects() { return [this.img, this.shelf.img, this.cash.pad.img, this.merchant.sprite].concat(this.register.revealObjects()); }
+
+  payTarget() { return this.merchant; }
+  /** goods on the shelf but nobody at the register */
+  get waitingPay() { return this.enabled && this.stock.count > 0 && !this.register.staffed; }
 
   feedFrom(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
@@ -465,12 +518,26 @@ export class TradePost {
     this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
     this.cash.update(dt);
     if (!this.enabled) return;
+    this.register.update(dt);
     const m = this.merchant;
+    const gs = this.gs;
     this.buyT -= dt;
-    if (this.buyT <= 0 && this.stock.count > 0) {
-      this.buyT = BALANCE.trade.buyInterval;
+    const staffed = this.register.staffed;
+    if (this.stock.count > 0 && !staffed) this.waitT += dt; else this.waitT = 0;
+    // waiting for a cashier: a pulsing coin over the merchant
+    const showWait = this.stock.count > 0 && !staffed;
+    if (showWait && !this.waitIcon) {
+      this.waitIcon = Assets.image(gs, m.x, m.y + m.headTop - 30, Assets.pick('ui_icon_coin', 'ui_icon_check')).setDepth(DEPTH.BUBBLE);
+      this.waitIcon.setScale(40 / Math.max(1, this.waitIcon.frame.realWidth));
+      this.waitIcon.__bs = this.waitIcon.scaleX;
+    }
+    if (this.waitIcon) {
+      this.waitIcon.setVisible(showWait);
+      if (showWait) { this.waitIcon.setScale(this.waitIcon.__bs * (1 + Math.max(0, Math.sin(gs.time.now / 140)) * 0.15)); this.waitIcon.y = m.y + m.headTop - 30 + Math.sin(gs.time.now / 300) * 3; }
+    }
+    if (this.buyT <= 0 && this.stock.count > 0 && staffed) {
+      this.buyT = this.register.clerk ? BALANCE.trade.buyInterval * BALANCE.register.clerkTradeSlow : BALANCE.trade.buyInterval;
       const it = this.stock.pop();
-      const gs = this.gs;
       this.flying[it.type] = (this.flying[it.type] || 0) + 1;
       gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: m.x, y: m.y - 40 }, {
         dur: 260, height: 50, scaleTo: 0.5,
@@ -478,9 +545,10 @@ export class TradePost {
           this.flying[it.type]--;
           gs.effects.releaseItem(s);
           this.cash.add(BALANCE.prices[it.type] || 1, m.x, m.y - 50);
+          gs.events.emit('traded', BALANCE.prices[it.type] || 1);
         },
       });
-      if (this.happyT <= 0) { m.play('happy', true); }
+      if (this.happyT <= 0) { m.play('happy', true); this.register.onPay(m); }
       this.happyT = 0.7;
     }
     if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) m.play('idle'); }

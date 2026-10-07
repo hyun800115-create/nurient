@@ -9,7 +9,8 @@ export class Pad {
     this.gs = gs; this.x = x; this.y = y; this.kind = kind;
     const w = 90.5 * sizeM;
     this.w = w;
-    this.img = Assets.image(gs, x, y, 'ui_pad_' + kind);
+    this.img = Assets.image(gs, x, y, opts.tex || ('ui_pad_' + kind));
+    if (opts.tint) this.img.setTint(opts.tint);
     this.img.setOrigin(0.5, 0.5).setDisplaySize(w, w / 2).setDepth(DEPTH.PAD);
     this.bsx = this.img.scaleX; this.bsy = this.img.scaleY;
     this.r = (w / 2) * (opts.radiusK || 0.78);

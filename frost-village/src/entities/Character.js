@@ -1,5 +1,8 @@
 // Base for every animated character: sprite + soft shadow + 8-direction anims (5 rendered,
 // 3 mirrored) + carried ItemStack + impact-frame callback.
+// v2: anims that exist only in some dirs (villager social anims: S/SE/E) turn the character to the
+// nearest dir that has them; carry style head / front / back (porters' A-frame); reskin() swaps the
+// art in place when a character's atlas arrives later.
 
 import { Assets } from '../core/Assets.js';
 import { DIR_BASE, DIR_FLIP, dirFromVec } from '../core/Iso.js';
@@ -32,6 +35,8 @@ export class Character {
     this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this._onFrame, this);
     this.stack = new ItemStack(gs, { scale: opts.carryScale || BALANCE.player.carryScale, sway: true, max: opts.capacity || 99 });
+    this.carryMode = opts.carryMode || null;   // null = balance.js default (head), 'front', 'back'
+    this.animRes = '';
     this.onImpact = null;
     this.play('idle', true);
     this.sync(0);
@@ -49,13 +54,18 @@ export class Character {
 
   /** play anim `name` in the current direction; keepFrame keeps the cycle phase on turns */
   play(name, force, keepFrame) {
+    const res = Assets.resolveAnim(this.key, name);
+    const dirs = Assets.animDirs(this.key, res);
+    if (dirs.length && dirs.indexOf(DIR_BASE[this.dir]) < 0) this.dir = nearestDir(this.dir, dirs, this.sprite.flipX);
     const base = DIR_BASE[this.dir];
-    const key = Assets.charAnim(this.key, name, base);
+    const key = dirs.length ? this.key + ':' + res + ':' + base : this.key + ':idle:S';
     this.sprite.setFlipX(DIR_FLIP[this.dir]);
     if (!force && key === this.animKey && name === this.animName) return;
     const prevName = this.animName;
     this.animName = name;
+    this.animRes = res;
     this.animKey = key;
+    if (!this.scene.anims.exists(key)) return;
     const a = this.sprite.anims;
     if (keepFrame && prevName === name && a.currentAnim) {
       const idx = a.currentFrame ? a.currentFrame.index - 1 : 0;
@@ -68,8 +78,8 @@ export class Character {
 
   _onFrame(anim, frame) {
     if (!this.onImpact) return;
-    const ad = this.def.anims[this.animName];
-    if (!ad || ad.impactFrame === undefined || anim.key.indexOf(':' + this.animName + ':') < 0) return;
+    const ad = this.def.anims[this.animRes];
+    if (!ad || ad.impactFrame === undefined || anim.key.indexOf(':' + this.animRes + ':') < 0) return;
     // placeholder art (atlas failed to load) has 2 frames: hit on the second so the game stays playable
     const hitFrame = this.def._placeholder ? 1 : ad.impactFrame;
     if (frame.index - 1 === hitFrame) this.onImpact(this);
@@ -77,7 +87,7 @@ export class Character {
 
   /** impactPoint in world coordinates for the current anim & dir */
   impactPoint() {
-    const ad = this.def.anims[this.animName];
+    const ad = this.def.anims[this.animRes];
     const base = DIR_BASE[this.dir], flip = DIR_FLIP[this.dir];
     let p = ad && ad.impactPoint && ad.impactPoint[base];
     if (!p) p = [14, -30];
@@ -86,7 +96,8 @@ export class Character {
 
   carryOffset() {
     const base = DIR_BASE[this.dir], flip = DIR_FLIP[this.dir];
-    if (BALANCE.player.carryOnHead !== false && this.def.kind !== 'animal') {
+    const mode = this.carryMode || (BALANCE.player.carryOnHead !== false ? 'head' : 'front');
+    if (mode === 'head' && this.def.kind !== 'animal' && this.def.kind !== 'pet') {
       // the tower balances on the head: the face stays visible in every direction
       const hx = HEAD_DX[base] || 0;
       return { dx: flip ? -hx : hx, dy: this.headTop + 4, behind: false };
@@ -117,7 +128,7 @@ export class Character {
       const bob = moving ? Math.abs(Math.sin(this.walkT)) * -2 : Math.sin(this.scene.time.now / 400) * 0.6;
       const o = this.carryOffset();
       let dx = o.dx, dy = o.dy, behind = o.behind;
-      if (this.isWorkAnim() && BALANCE.player.carryOnHead === false) {
+      if (this.isWorkAnim() && !this.carryMode && BALANCE.player.carryOnHead === false) {
         // hands are busy: the stack rides on the back like a backpack
         dx = -o.dx * 0.6; dy = o.dy - 6; behind = !behind;
       }
@@ -128,9 +139,34 @@ export class Character {
     }
   }
 
+  /** swap to another character's art in place (e.g. its atlas finished loading) */
+  reskin(key) {
+    if (!key || key === this.key) return;
+    this.key = key;
+    this.def = Assets.charDef(key);
+    this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);
+    const sh = this.def.shadow || [46, 18];
+    this.shadow.setDisplaySize(sh[0] * 1.15, sh[1] * 1.3);
+    if (this.def.carryStyle === 'back' && this.carryMode) this.carryMode = 'back';
+    this.animKey = '';
+    this.play(this.animName || 'idle', true);
+  }
+
   destroy() {
     this.alive = false;
     this.sprite.destroy();
     this.shadow.destroy();
   }
+}
+
+/** nearest of the 8 directions (from `d`) whose render dir is in `dirs`; ties keep the current side */
+export function nearestDir(d, dirs, flipped) {
+  for (let off = 1; off <= 4; off++) {
+    const a = (d + off) % 8, b = (d - off + 8) % 8;
+    const okA = dirs.indexOf(DIR_BASE[a]) >= 0, okB = dirs.indexOf(DIR_BASE[b]) >= 0;
+    if (okA && okB) return DIR_FLIP[a] === !!flipped ? a : b;
+    if (okA) return a;
+    if (okB) return b;
+  }
+  return d;
 }
