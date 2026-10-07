@@ -1,0 +1,316 @@
+{
+ "version": 1,
+ "generator": "tools/audio/build_audio2.py (procedural synthesis: sfx2.py, music2.py; same toolkit + loudness conventions as assets/audio)",
+ "audio": {
+  "bgm_spring": {
+   "files": [
+    "audio2/bgm_spring.ogg",
+    "audio2/bgm_spring.mp3"
+   ],
+   "volume": 0.376,
+   "loop": true,
+   "kind": "music",
+   "duration": 62.6097,
+   "loopSamples": 2761088,
+   "bpm": 92,
+   "mp3StartPad": 1105,
+   "bars": 24,
+   "tonality": "F major",
+   "notes": "v4 chapter-ending spring theme; quotes the bgm_village hook. Stereo ~62.6 s (~22 MB as decoded PCM): load only when needed."
+  },
+  "sfx_lute": {
+   "files": [
+    "audio2/sfx_lute.ogg",
+    "audio2/sfx_lute.mp3"
+   ],
+   "volume": 0.407,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 9.5985,
+   "loopSamples": 423296,
+   "bpm": 100,
+   "mp3StartPad": 1105,
+   "bars": 4,
+   "tonality": "F major",
+   "notes": "bard strum loop (mono). Play like ambience: Audio.setAmbience('sfx_lute', 0..1) by distance to the bard."
+  },
+  "sfx_hammer_1": {
+   "files": [
+    "audio2/sfx_hammer_1.ogg",
+    "audio2/sfx_hammer_1.mp3"
+   ],
+   "volume": 0.668,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.209
+  },
+  "sfx_hammer_2": {
+   "files": [
+    "audio2/sfx_hammer_2.ogg",
+    "audio2/sfx_hammer_2.mp3"
+   ],
+   "volume": 0.881,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.2181
+  },
+  "sfx_hammer_3": {
+   "files": [
+    "audio2/sfx_hammer_3.ogg",
+    "audio2/sfx_hammer_3.mp3"
+   ],
+   "volume": 0.759,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.2115
+  },
+  "sfx_build_done": {
+   "files": [
+    "audio2/sfx_build_done.ogg",
+    "audio2/sfx_build_done.mp3"
+   ],
+   "volume": 0.432,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.3699
+  },
+  "sfx_saw_short": {
+   "files": [
+    "audio2/sfx_saw_short.ogg",
+    "audio2/sfx_saw_short.mp3"
+   ],
+   "volume": 0.355,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5633
+  },
+  "sfx_boat_horn": {
+   "files": [
+    "audio2/sfx_boat_horn.ogg",
+    "audio2/sfx_boat_horn.mp3"
+   ],
+   "volume": 0.432,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.0323
+  },
+  "sfx_row": {
+   "files": [
+    "audio2/sfx_row.ogg",
+    "audio2/sfx_row.mp3"
+   ],
+   "volume": 0.335,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.993,
+   "notes": "one oar stroke (~1 s); retrigger once per row cycle"
+  },
+  "sfx_register": {
+   "files": [
+    "audio2/sfx_register.ogg",
+    "audio2/sfx_register.mp3"
+   ],
+   "volume": 0.288,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.1238
+  },
+  "sfx_tower_fire": {
+   "files": [
+    "audio2/sfx_tower_fire.ogg",
+    "audio2/sfx_tower_fire.mp3"
+   ],
+   "volume": 0.422,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.9551
+  },
+  "sfx_fog_clear": {
+   "files": [
+    "audio2/sfx_fog_clear.ogg",
+    "audio2/sfx_fog_clear.mp3"
+   ],
+   "volume": 0.363,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 3.2587
+  },
+  "sfx_chatter_1": {
+   "files": [
+    "audio2/sfx_chatter_1.ogg",
+    "audio2/sfx_chatter_1.mp3"
+   ],
+   "volume": 0.275,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5024,
+   "voice": "high"
+  },
+  "sfx_chatter_2": {
+   "files": [
+    "audio2/sfx_chatter_2.ogg",
+    "audio2/sfx_chatter_2.mp3"
+   ],
+   "volume": 0.285,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.495,
+   "voice": "high"
+  },
+  "sfx_chatter_3": {
+   "files": [
+    "audio2/sfx_chatter_3.ogg",
+    "audio2/sfx_chatter_3.mp3"
+   ],
+   "volume": 0.224,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5299,
+   "voice": "high"
+  },
+  "sfx_chatter_4": {
+   "files": [
+    "audio2/sfx_chatter_4.ogg",
+    "audio2/sfx_chatter_4.mp3"
+   ],
+   "volume": 0.324,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5651,
+   "voice": "low"
+  },
+  "sfx_chatter_5": {
+   "files": [
+    "audio2/sfx_chatter_5.ogg",
+    "audio2/sfx_chatter_5.mp3"
+   ],
+   "volume": 0.331,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5033,
+   "voice": "low"
+  },
+  "sfx_chatter_6": {
+   "files": [
+    "audio2/sfx_chatter_6.ogg",
+    "audio2/sfx_chatter_6.mp3"
+   ],
+   "volume": 0.313,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5662,
+   "voice": "low"
+  },
+  "sfx_laugh_1": {
+   "files": [
+    "audio2/sfx_laugh_1.ogg",
+    "audio2/sfx_laugh_1.mp3"
+   ],
+   "volume": 0.214,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.702,
+   "voice": "high"
+  },
+  "sfx_laugh_2": {
+   "files": [
+    "audio2/sfx_laugh_2.ogg",
+    "audio2/sfx_laugh_2.mp3"
+   ],
+   "volume": 0.295,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.7959,
+   "voice": "low"
+  },
+  "sfx_snowball_throw": {
+   "files": [
+    "audio2/sfx_snowball_throw.ogg",
+    "audio2/sfx_snowball_throw.mp3"
+   ],
+   "volume": 0.457,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.3108
+  },
+  "sfx_snowball_hit": {
+   "files": [
+    "audio2/sfx_snowball_hit.ogg",
+    "audio2/sfx_snowball_hit.mp3"
+   ],
+   "volume": 0.741,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.2938
+  },
+  "sfx_dog_bark": {
+   "files": [
+    "audio2/sfx_dog_bark.ogg",
+    "audio2/sfx_dog_bark.mp3"
+   ],
+   "volume": 0.432,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.4596
+  },
+  "sfx_cat_meow": {
+   "files": [
+    "audio2/sfx_cat_meow.ogg",
+    "audio2/sfx_cat_meow.mp3"
+   ],
+   "volume": 0.209,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.7469
+  },
+  "sfx_penguin": {
+   "files": [
+    "audio2/sfx_penguin.ogg",
+    "audio2/sfx_penguin.mp3"
+   ],
+   "volume": 0.257,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.6383
+  },
+  "sfx_cheer": {
+   "files": [
+    "audio2/sfx_cheer.ogg",
+    "audio2/sfx_cheer.mp3"
+   ],
+   "volume": 0.412,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.0105
+  }
+ },
+ "audioGroups": {
+  "sfx_hammer": [
+   "sfx_hammer_1",
+   "sfx_hammer_2",
+   "sfx_hammer_3"
+  ],
+  "sfx_chatter": [
+   "sfx_chatter_1",
+   "sfx_chatter_2",
+   "sfx_chatter_3",
+   "sfx_chatter_4",
+   "sfx_chatter_5",
+   "sfx_chatter_6"
+  ],
+  "sfx_laugh": [
+   "sfx_laugh_1",
+   "sfx_laugh_2"
+  ],
+  "sfx_chatter_hi": [
+   "sfx_chatter_1",
+   "sfx_chatter_2",
+   "sfx_chatter_3"
+  ],
+  "sfx_chatter_lo": [
+   "sfx_chatter_4",
+   "sfx_chatter_5",
+   "sfx_chatter_6"
+  ]
+ }
+}
