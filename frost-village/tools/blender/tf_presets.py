@@ -232,7 +232,8 @@ GEN = {
 
 # =========================================================================== named job presets
 # Each preset: bases + fixed / weighted part picks + colours ('#hex' fixed, [list] = pick one,
-# palette name = pick from that palette).  Anything left out falls back to GEN for that age.
+# palette name = pick from that palette, 'skin' = the person's skin, '=slot' = same colour as an
+# earlier slot in the order skin hair top top2 fur bottom bottom2 shoes hat hat2 acc acc2 bag glasses).  Anything left out falls back to GEN for that age.
 PRESETS = {
     'teacher': {'label': {'ko': '선생님', 'en': 'teacher'},
                 'bases': {'adult_slim': 3, 'adult_round': 2, 'elder_slim': 1},
@@ -290,13 +291,13 @@ PRESETS = {
                 'hats': {'hat_cap': 1, 'hat_beret': 1}, 'hatChance': 0.5, 'extra': ['det_apron'], 'neck': None,
                 'bag': None, 'headAcc': None,
                 'colors': {'top': ['#F4EDE0', '#3B3F52', '#7A5C40'], 'top2': ['#F4EDE0'],
-                           'acc': ['#2F5E48', '#6B4A2E', '#2B2F3A'], 'hat': ['#2F5E48', '#2B2F3A'],
-                           'hat2': ['#2F5E48', '#2B2F3A'], 'bottom': ['#2B2F3A', '#3B3F52']}},
+                           'hat': ['#2F5E48', '#6B4A2E', '#2B2F3A'], 'hat2': ['=hat'], 'acc': ['=hat'],
+                           'bottom': ['#2B2F3A', '#3B3F52']}},
     'station': {'label': {'ko': '역무원', 'en': 'station attendant'},
                 'bases': {'adult_slim': 3, 'adult_round': 2},
                 'tops': ['top_uniform'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': ['hat_station'],
                 'hatChance': 1.0, 'extra': ['det_station'], 'neck': None, 'bag': None, 'headAcc': None,
-                'colors': {'top': ['#2F5E48', '#22305A'], 'top2': ['#C8343A'], 'hat': ['#2F5E48', '#22305A'],
+                'colors': {'top': ['#2F5E48', '#22305A'], 'top2': ['#C8343A'], 'hat': ['=top'],
                            'bottom': ['#22305A'], 'shoes': ['#1E1E26'],
                            'hands': ['skin', 'skin', '#22242C']}},
     'factory': {'label': {'ko': '공장 노동자', 'en': 'factory worker'},

@@ -146,24 +146,28 @@ const bake = await page.evaluate(async () => {
   const cols = 16, rows = Math.ceil(frames.length / cols);
   const t0 = performance.now();
   const rt = sc.add.renderTexture(0, 0, cols * 128, rows * 128).setVisible(false);
-  const tmp = new TownfolkSprite(sc, tf, p, 0, 0);
-  for (const s of tmp.sprites) s.setVisible(false);
+  const img = sc.make.image({ key: sc.textures.getTextureKeys().find((k) => k.startsWith('tf_')), add: false });
+  let draws = 0;
+  rt.beginDraw();                                       // one batch: no flush per layer
   frames.forEach(([a, d, i], k) => {
     for (const l of tf.layers(p, a, d, i)) {
       if (!l.atlas || !sc.textures.get(l.atlas).has(l.frame)) continue;
-      const img = sc.make.image({ key: l.atlas, frame: l.frame, add: false });
+      img.setTexture(l.atlas, l.frame);
       img.setOrigin(l.head ? T.headAnchor[0] : T.anchor[0], l.head ? T.headAnchor[1] : T.anchor[1]);
-      if (l.tint != null) img.setTint(l.tint);
+      if (l.tint != null) img.setTint(l.tint); else img.clearTint();
       img.setFlipX(false).setScale(l.sx || 1, 1);
-      rt.draw(img, (k % cols) * 128 + 64 + l.dx, Math.floor(k / cols) * 128 + 104 + l.dy);
-      img.destroy();
+      rt.batchDraw(img, (k % cols) * 128 + 64 + l.dx, Math.floor(k / cols) * 128 + 104 + l.dy);
+      draws++;
     }
   });
-  rt.snapshot(() => {});
+  rt.endDraw();
+  const cpuMs = performance.now() - t0;
+  await new Promise((r) => rt.snapshotPixel(1, 1, r));   // wait for the GPU to finish
   const ms = performance.now() - t0;
-  tmp.destroy();
-  return { frames: frames.length, rtSize: [cols * 128, rows * 128], bakeMs: +ms.toFixed(0),
-    gpuMBPerPerson: +((cols * 128 * rows * 128 * 4) / 1048576).toFixed(1) };
+  img.destroy();
+  return { frames: frames.length, layerDraws: draws, rtSize: [cols * 128, rows * 128], bakeCpuMs: +cpuMs.toFixed(0),
+    bakeMs: +ms.toFixed(0), gpuMBPerPerson: +((cols * 128 * rows * 128 * 4) / 1048576).toFixed(1),
+    gpuMBFor100: +((cols * 128 * rows * 128 * 4 * 100) / 1048576).toFixed(0) };
 });
 res.push({ label: 'C bake-at-spawn (1 person, all 160 frames)', ...bake });
 const atlasMpx = await page.evaluate(() => {

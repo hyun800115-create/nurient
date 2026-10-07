@@ -227,7 +227,7 @@ def jobs_sheet(tf):
 
 def gif(tf, people, path, plan, n_frames, fps=12, scale=2):
     """plan(k) -> list of (anim, dir) for person k; frames cycle through each anim."""
-    cw, chh = 80 * scale, 104 * scale
+    cw, chh = 80 * scale, 112 * scale
     frames = []
     for t in range(n_frames):
         canvas = Image.new('RGBA', (len(people) * cw, chh), SNOW)
@@ -239,7 +239,7 @@ def gif(tf, people, path, plan, n_frames, fps=12, scale=2):
             sub = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
             shadow(sub, 64, 104, int(sw * 0.55), int(sh * 0.6))
             sub.alpha_composite(fr)
-            sub = sub.crop((24, 4, 104, 108)).resize((cw, chh), Image.NEAREST)
+            sub = sub.crop((24, 2, 104, 114)).resize((cw, chh), Image.NEAREST)
             canvas.alpha_composite(sub, (k * cw, 0))
         frames.append(canvas.convert('RGB'))
     pal = frames[0].quantize(colors=255, method=Image.Quantize.MEDIANCUT)

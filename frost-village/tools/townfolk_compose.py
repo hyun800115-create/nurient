@@ -525,8 +525,12 @@ def generate(T, rng, preset=None):
             v = rng.choice(v)
             if v == 'skin':
                 return cols.get('skin')
+            if v.startswith('='):                                   # '=top': same colour as that slot
+                return cols.get(v[1:])
             return v if v.startswith('#') else rng.choice(pal[v])
         if isinstance(v, str):
+            if v.startswith('='):
+                return cols.get(v[1:])
             return v if v.startswith('#') else rng.choice(pal[v])
         return rng.choice(pal[default_pal])
     slot_pal = dict(G['slotPalette'])

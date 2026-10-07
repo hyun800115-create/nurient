@@ -7,12 +7,16 @@
 
 import { Placeholders } from './Placeholders.js';
 
-export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'buildings', 'ui2', 'audio2'];
+export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2'];
 // pictures of these fragments are loaded after the title, in the background
 // (v3: the buildings — construction stages, new workshops, boats — come in while the village plays)
-export const LAZY_FRAGMENTS = ['villagers', 'villagers2', 'buildings'];
-// ...except these small files the village needs right away (item icons: stacks are never placeholders)
-const EAGER_KEYS = new Set(['bld_items']);
+// (v3.5: villagers3 = the station operators (chef, aunt, blacksmith re-rendered with `operate` +
+//  sawyer, smoker, canner; later fragment wins key by key, so the old chef / aunt / blacksmith atlases
+//  are never downloaded), workers = 2nd / 3rd looks of each profession, pets2 = the dog with play anims)
+export const LAZY_FRAGMENTS = ['villagers', 'villagers2', 'villagers3', 'buildings', 'workers', 'pets2'];
+// ...except these small files the village needs right away (item icons: stacks are never placeholders;
+// v3.5: the whistle / treat / ball icons of the HUD and the dog's treat + ball)
+const EAGER_KEYS = new Set(['bld_items', 'pets2_icons', 'pets2_items']);
 // v3 effect sheets that only play during construction / boat trips / tower fires: also after the title
 const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big)$/;
 // (v2 read only the staff points of the buildings fragment; v3 loads all of it)
@@ -40,6 +44,9 @@ const ANIM_FALLBACK = {
   throw: ['idle'], hit: ['surprised', 'idle'], dance: ['happy', 'idle'], sit: ['idle'], perform: ['talk', 'idle'],
   shiver: ['idle'], serve: ['talk', 'idle'], bow: ['wave', 'happy', 'idle'], salute: ['wave', 'idle'],
   fall: ['sit', 'hit', 'idle'], loaf: ['sit', 'idle'],
+  // (v3.5) station operators: a worker look (no `operate`) swings its work tool instead; dog play
+  operate: ['work', 'idle'], pet: ['idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
+  beg: ['sit', 'happy', 'idle'], run_ball: ['run', 'walk'], catch: ['happy', 'idle'], trick: ['happy', 'idle'],
 };
 
 // Defaults used when the characters manifest (or a key in it) is missing.
@@ -111,7 +118,15 @@ export const Assets = {
       Object.assign(m.audioGroups, j.audioGroups || {});
       if (j.layouts && typeof j.layouts === 'object') Object.assign(this.layouts, j.layouts);
     }
+    // (v3.5) a character atlas a later fragment replaced (pets2 pet_dog -> the old vil_pet_dog) is
+    // never used: do not download it
+    const used = new Set();
+    for (const k in this.m.characters) { const d = this.m.characters[k]; if (d && d.atlas) used.add(d.atlas); }
+    for (const k in this.m.sprites) { const d = this.m.sprites[k]; if (d && d.atlas) used.add(d.atlas); }
+    this.unusedAtlas = new Set();
+    for (const k in this.m.atlases) if (!used.has(k) && /^(vil_|wkr_|char_)/.test(k)) this.unusedAtlas.add(k);
   },
+  unusedAtlas: new Set(),
 
   /** is file `key` one of the pictures that load after the title? */
   isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key); },
@@ -216,7 +231,7 @@ export const Assets = {
   /** music not used yet (v4 spring ending): never loaded, so it costs nothing */
   isUnusedAudio(key) { return V3_ONLY.test(key); },
   /** files made for a later version (v4): not downloaded yet */
-  isUnused(key) { return V3_ONLY.test(key); },
+  isUnused(key) { return V3_ONLY.test(key) || this.unusedAtlas.has(key); },
 
   /**
    * a file failed to load. Audio: Phaser picks the first format the browser can play (ogg) and does

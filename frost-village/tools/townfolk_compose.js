@@ -218,9 +218,13 @@ export class Townfolk {
       if (Array.isArray(v)) {
         v = v[Math.floor(rng() * v.length)];
         if (v === 'skin') return cols.skin;
+        if (v.startsWith('=')) return cols[v.slice(1)];               // '=top': same colour as that slot
         return v.startsWith('#') ? v : pal[v][Math.floor(rng() * pal[v].length)];
       }
-      if (typeof v === 'string') return v.startsWith('#') ? v : pal[v][Math.floor(rng() * pal[v].length)];
+      if (typeof v === 'string') {
+        if (v.startsWith('=')) return cols[v.slice(1)];
+        return v.startsWith('#') ? v : pal[v][Math.floor(rng() * pal[v].length)];
+      }
       return pal[dpal][Math.floor(rng() * pal[dpal].length)];
     };
     const sp = Object.assign({}, G.slotPalette, { hair: A.hairPalette || 'hair' });

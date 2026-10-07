@@ -406,6 +406,11 @@ def render_head(opt):
     os.makedirs(hdir, exist_ok=True)
     meta = {'anchor': list(HEAD_ANCHOR), 'layout': 'dirs', 'frames': [f'{hp}_{d}' for hp, d in frames],
             'layers': names, 'face_frames': [list(x) for x in ta.face_frames()]}
+    mp = os.path.join(hdir, 'meta.json')
+    if os.path.exists(mp):                      # a --parts / --faces subset run keeps the other layers listed
+        with open(mp) as f:
+            old = json.load(f).get('layers', [])
+        meta['layers'] = old + [n for n in names if n not in old]
     with open(os.path.join(hdir, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)
     frames = [(hp, d) for hp, d in frames if d in dirs]
