@@ -6,7 +6,9 @@ Re-run (from anywhere; exit code 0 = all good, 1 = errors):
 Checks:
   * manifest.json of assets/fx, assets/ui, assets/ground parse and use paths relative to assets/
   * every key required by CONTRACT §5-§7 resolves (sprites -> atlas frame / image; spritesheets)
-  * atlas JSON frames lie inside their PNG; spritesheet PNG = frameWidth*frameCount x frameHeight,
+  * atlas JSON frames lie inside their PNG; spritesheet PNG = cols*frameWidth x rows*frameHeight
+    (a single-row strip, or a grid wrapped by gen_fx.grid_strip: frames left->right, top->bottom,
+    cols = min(frameCount, width // frameWidth), rows = ceil(frameCount / cols) - the order Phaser reads),
     frames are non-empty, fps / repeat / anchor / blend are sane
   * nineSlice margins fit their image
   * 512x512 ground textures are seamless (edge-wrap difference ~ interior neighbour difference)
@@ -207,10 +209,20 @@ def check_fx():
         if not (isinstance(fw, int) and isinstance(fh, int) and isinstance(n, int) and n > 0):
             err('fx: %s frame fields invalid' % k)
             continue
-        if img.size != (fw * n, fh):
-            err('fx: %s png is %s, expected %s' % (k, img.size, (fw * n, fh)))
-        if img.width > 4096:
-            warn('fx: %s strip wider than 4096 px (mobile GPU limit)' % k)
+        # single-row strip or a grid wrapped by gen_fx.grid_strip (rows <= 2048 px); Phaser reads
+        # spritesheet frames left->right, top->bottom, so both layouts load the same way
+        cols = max(1, min(n, img.width // fw))
+        rows = -(-n // cols)
+        size_ok = img.size == (cols * fw, rows * fh)
+        if not size_ok:
+            err('fx: %s png is %s, expected %s (%d x %d grid of %dx%d frames)'
+                % (k, img.size, (cols * fw, rows * fh), cols, rows, fw, fh))
+        if img.width > 4096 or img.height > 4096:
+            warn('fx: %s sheet larger than 4096 px (mobile GPU limit)' % k)
+
+        def cell(arr, i, cols=cols, fw=fw, fh=fh):
+            r, c = divmod(i, cols)
+            return arr[r * fh:(r + 1) * fh, c * fw:(c + 1) * fw]
         if not (isinstance(s.get('fps'), (int, float)) and s['fps'] > 0):
             err('fx: %s fps invalid' % k)
         if s.get('repeat') not in (-1, 0) and not isinstance(s.get('repeat'), int):
@@ -220,13 +232,15 @@ def check_fx():
         anc = s.get('anchor')
         if not (isinstance(anc, list) and len(anc) == 2 and all(0 <= v <= 1 for v in anc)):
             err('fx: %s anchor invalid %r' % (k, anc))
+        if not size_ok:
+            continue                                   # frame cells would not line up
         a = np.asarray(img.convert('RGBA'))
-        empty = [i for i in range(n) if a[:, i * fw:(i + 1) * fw, 3].max() < 8]
+        empty = [i for i in range(n) if cell(a, i)[..., 3].max() < 8]
         if empty and (s.get('repeat') == -1 or len(empty) > 1 or empty[0] != n - 1):
             err('fx: %s has empty frames %s' % (k, empty))
         if s.get('repeat') == -1 and n > 2:
             # loop closure: last->first change should be like an ordinary frame step
-            fr = [a[:, i * fw:(i + 1) * fw].astype(np.float32) for i in range(n)]
+            fr = [cell(a, i).astype(np.float32) for i in range(n)]
             steps = [np.abs(fr[i + 1] - fr[i]).mean() for i in range(n - 1)]
             wrap = np.abs(fr[0] - fr[-1]).mean()
             if wrap > 2.0 * max(np.mean(steps), 1e-3):

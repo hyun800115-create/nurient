@@ -3,11 +3,12 @@
 Run:  python3 tools/audio/check_audio.py [--no-png]        (exit code 1 if anything fails)
 Checks
   * every CONTRACT section 8 key is in assets/audio/manifest.json with files [.ogg, .mp3] that
-    exist and decode (44.1 kHz; mono sfx, stereo music/ambience), kind / loop / volume sane,
+    exist and decode (44.1 kHz; stereo music, mono ambience + sfx), kind / loop / volume sane,
     audioGroups sfx_chop / sfx_mine / sfx_harvest / sfx_step_snow complete;
   * per file: duration, sample peak (<= -1 dBFS), true peak, integrated + max momentary LUFS
     (ffmpeg ebur128), DC offset; sfx: no leading silence, clean fade-out;
-  * loops: decoded .ogg length == rendered loop length (sample exact), no click at the wrap point
+  * loops: duration inside DUR[key], decoded .ogg length == rendered loop length (sample exact),
+    .ogg end padding == 0 (Chromium plays it), manifest loopSamples, no click at the wrap point
     (high-passed energy + 2nd-difference jump at the boundary vs. the rest of the file),
     level continuity across the wrap;
   * total payload <= 8 MB.
@@ -50,6 +51,9 @@ CONTRACT = {
 CONTRACT_GROUPS = {"sfx_chop": 3, "sfx_mine": 3, "sfx_harvest": 2, "sfx_step_snow": 3}
 DUR = {"bgm_village": (60, 100), "bgm_title": (20, 30), "amb_wind": (15, 30), "amb_sea": (15, 30),
        "amb_fire": (15, 30)}
+# Channel count each kind must ship with. Ambience beds are mono on purpose (build_audio.CHANNELS:
+# the game pre-decodes loops to PCM, three stereo 24 s beds cost ~23 MB of phone memory).
+WANT_CH = {"music": 2, "ambience": 1, "sfx": 1}
 MAX_PAYLOAD = 8 * 1024 * 1024
 
 
@@ -168,7 +172,7 @@ def main(argv=None):
             a = audio.get(k)
             if a is None:
                 continue
-            want_ch = 1 if kind == "sfx" else 2
+            want_ch = WANT_CH[kind]
             decoded = {}
             for rel in a.get("files", []):
                 p = os.path.join(ASSETS, rel)
@@ -198,7 +202,7 @@ def main(argv=None):
                     fail(f"{k}: {fmt} sample peak {m['peak']:.2f} dBFS > -1")
                 if dc > 0.002:
                     fail(f"{k}: {fmt} DC offset {dc:.4f}")
-                if kind in DUR and fmt == "ogg" and not (DUR[k][0] <= dur <= DUR[k][1]):
+                if k in DUR and fmt == "ogg" and not (DUR[k][0] <= dur <= DUR[k][1]):   # DUR is keyed by sound key
                     fail(f"{k}: duration {dur:.1f}s outside {DUR[k]}")
                 if kind == "sfx" and fmt == "ogg":
                     env = np.max(np.abs(x), axis=0)
