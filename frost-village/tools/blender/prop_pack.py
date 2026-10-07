@@ -299,10 +299,10 @@ def char_frames():
 
 
 def scene_preview(metas, frames, out):
-    W, H = 1600, 1150
+    W, H = 1600, 1110
     img = Image.new('RGBA', (W, H), (244, 247, 251, 255))
     d = ImageDraw.Draw(img)
-    ox, oy = 760, 470
+    ox, oy = 760, 560
     # sea band at the top (world -X/+Y side) and shoreline foam
     sea = [iso(x, y, ox, oy) for x, y in [(-30, -8), (-30, 30), (-9.5, 30), (-9.5, -8)]]
     d.polygon(sea, fill=(47, 134, 201, 255))
@@ -354,7 +354,7 @@ def scene_preview(metas, frames, out):
     put('trade_post', 0.8, 2.0)
     put('station_sawmill', -4.0, 2.4)
     put('upgrade_bench', -1.4, 5.4)
-    put('bench', -0.6, -0.4)
+    put('bench', 2.4, -1.4)
     put('lamp_post', -5.4, -4.4)
     put('lamp_post', 2.8, -5.4)
     put('barrel', 2.8, -4.0)
@@ -400,7 +400,7 @@ def scene_preview(metas, frames, out):
     # characters for scale: real sprites from assets/characters when present, else a 1.45 m capsule
     chars = char_frames()
     shadow_layer = []
-    spots = [('player', 'idle_S_0', -1.4, -2.3)]
+    spots = [('player', 'idle_S_0', -2.4, 0.9)]
     for i, ck in enumerate(['villager_a', 'villager_b', 'villager_c', 'villager_a', 'villager_b']):
         spots.append((ck, 'idle_E_0', -0.2 - 0.9 * i, -4.3))
     for ck, fname, x, y in spots:
@@ -414,7 +414,7 @@ def scene_preview(metas, frames, out):
             placed.append((sy, ck, im, int(round(sx - ax)), int(round(sy - ay))))
     cap = None
     if 'player' not in chars:
-        cap = iso(-1.4, -2.3, ox, oy)
+        cap = iso(-2.4, 0.9, ox, oy)
     sh = Image.new('RGBA', img.size, (0, 0, 0, 0))
     sd = ImageDraw.Draw(sh)
     for sx, sy in shadow_layer:
@@ -430,8 +430,9 @@ def scene_preview(metas, frames, out):
         d.rounded_rectangle([cx - 17, cy - hpx, cx + 17, cy], radius=16, fill=(242, 240, 234, 255),
                             outline=(80, 80, 90, 255), width=2)
         d.text((cx + 22, cy - hpx), '1.45 m\n(character\nscale)', fill=(30, 30, 40), font=f)
-    d.text((16, 12), 'Frost Village props - mock layout (anchors + relative scale check, PPU 64)', fill=(20, 30, 50),
-           font=font(22))
+    d.rectangle([0, H - 40, W, H], fill=(31, 95, 168, 255))
+    d.text((16, H - 33), 'Frost Village props - mock layout at 1x (anchors + relative scale check, PPU 64; '
+           'characters from assets/characters when present)', fill=(255, 255, 255), font=font(20))
     img.convert('RGB').save(out, optimize=True)
     return out
 

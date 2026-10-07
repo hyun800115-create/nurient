@@ -819,10 +819,11 @@ def b_station_grill():
     for i in range(nbars):
         x = -gx / 2 + gx * (i + 0.5) / nbars
         L.cyl('bar', 0.02, gy, (x, 0, gz + 0.03), rot=(90, 0, 0), mat=iron, segs=8, bevel=0.0, origin='center')
-    fish_model('gfish1', cooked=True, loc=(-0.6, -0.12, gz + 0.13), rot=(0, 0, 80), scale=0.8)
-    fish_model('gfish2', cooked=True, loc=(-0.1, 0.1, gz + 0.13), rot=(0, 0, 100), scale=0.8)
-    steak_model('gsteak1', loc=(0.5, -0.18, gz + 0.05), rot=(0, 0, 20), scale=0.72)
-    steak_model('gsteak2', loc=(0.62, 0.24, gz + 0.05), rot=(0, 0, -30), scale=0.66)
+    food = [fish_model('gfish1', cooked=True, loc=(-0.6, -0.12, gz + 0.13), rot=(0, 0, 80), scale=0.8),
+            fish_model('gfish2', cooked=True, loc=(-0.1, 0.1, gz + 0.13), rot=(0, 0, 100), scale=0.8),
+            steak_model('gsteak1', loc=(0.5, -0.18, gz + 0.05), rot=(0, 0, 20), scale=0.72),
+            steak_model('gsteak2', loc=(0.62, 0.24, gz + 0.05), rot=(0, 0, -30), scale=0.66)]
+    food_z = [o.location.z for o in food]
     for i, x in enumerate((-0.78, -0.26, 0.26, 0.78)):
         box('backstone', (0.5, 0.36, 0.42 + 0.06 * (i % 2)), (x, sy / 2 + 0.02, 0.48), rot=(0, 0, rnd.uniform(-5, 5)),
             mat=snowy(['#5F6773', '#6C7380'][i % 2], lo=0.75, hi=0.9), bevel=0.08)
@@ -830,13 +831,33 @@ def b_station_grill():
     cyl('bucket', 0.2, 0.3, (sx / 2 + 0.38, 0.35, 0), mat=flat('wood_mid', 0.8), r_top=0.23, segs=18,
         cap_mat=flat('#4F86C2', 0.2))
     glow = L.point_light('pitglow', (0, 0, 0.5), 'fire', 40.0, 0.5)
+    # work-loop life: flame tongues licking up through the grate, sizzling food, light smoke
+    flames = L.Flames('gflame', [((x, y, 0.36), 0.075, h) for x, y, h in
+                                 [(-0.95, 0.18, 0.26), (-0.72, -0.3, 0.3), (-0.35, 0.22, 0.28), (0.0, -0.22, 0.32),
+                                  (0.28, 0.3, 0.27), (0.72, -0.02, 0.3), (0.98, 0.32, 0.24)]], lean=0.18)
+    smoke = L.Smoke('gsmoke', (-0.3, 0.05, gz + 0.2), n=3, rise=1.0, drift=(0.2, 0.15), r0=0.11, r1=0.3,
+                    color='#E6EAF0', alpha=0.72, seed=1, fade_in=0.18)
+    hop = [0.0, 0.035, 0.012, 0.0]
+
+    def idle():
+        L.set_emission(ember, 1.6)
+        glow.data.energy = 30
+        flames.show(False)
+        smoke.show(False)
+        for o, z in zip(food, food_z):
+            o.location.z = z
 
     def work(i):
-        s = [4.0, 7.0, 10.0, 6.5][i]
+        s = [3.0, 4.6, 6.2, 4.6][i]
         L.set_emission(ember, s)
         glow.data.energy = 40 + 12 * s
+        flames.set(i)
+        smoke.set(i)
+        for k, (o, z) in enumerate(zip(food, food_z)):
+            o.location.z = z + hop[(i + 2 * k) % 4]
 
-    return {'work': work}
+    idle()
+    return {'work': work, 'idle': idle, 'fx': {'fire': (0, 0, gz), 'smoke': (-0.3, 0.05, gz + 1.0)}}
 
 
 @asset('station_sawmill', 'station', 'props_buildings', fp=(3.0, 1.4), work=4, fps=10,
@@ -858,7 +879,7 @@ def b_station_sawmill():
     steel = flat('steel', 0.28, 0.85)
     dark = flat('iron', 0.5, 0.5)
     parts = []
-    R = 0.46
+    R = 0.52
     parts.append(cyl('disc', R, 0.035, (0, 0, 0), rot=(90, 0, 0), mat=steel, segs=48, origin='center', bevel=0.008))
     mb = L.MB()
     for k in range(24):
@@ -870,30 +891,40 @@ def b_station_sawmill():
     parts.append(mb.done('teeth', smooth=False))
     for k in range(4):
         a = math.tau * k / 4 + 0.4
-        parts.append(cyl('hole', 0.06, 0.045, (math.cos(a) * 0.25, 0, math.sin(a) * 0.25), rot=(90, 0, 0),
+        parts.append(cyl('hole', 0.065, 0.045, (math.cos(a) * R * 0.54, 0, math.sin(a) * R * 0.54), rot=(90, 0, 0),
                          mat=flat('#2A2E36', 0.6), segs=16, origin='center', bevel=0.0))
-        parts.append(box('slot', (0.03, 0.04, 0.12), (math.cos(a + 0.8) * 0.36, 0, math.sin(a + 0.8) * 0.36),
+        parts.append(box('slot', (0.03, 0.04, 0.13), (math.cos(a + 0.8) * R * 0.78, 0, math.sin(a + 0.8) * R * 0.78),
                          rot=(0, -math.degrees(a + 0.8) + 90, 0), mat=flat('#2A2E36', 0.6), bevel=0.0, origin='center'))
     parts.append(cyl('hub', 0.1, 0.08, (0, 0, 0), rot=(90, 0, 0), mat=flat('ui_gold', 0.4, 0.6), segs=20,
                      origin='center', bevel=0.015))
-    blade = L.group(parts, 'blade', loc=(0.25, 0, 0.86))
+    blade = L.group(parts, 'blade', loc=(0.25, 0, 0.9))
     # log feeding in from the left, planks out on the right
     log('log', 0.17, 1.1, (-0.68, 0.0, 0.8 + 0.17), rot=(0, 90, 0), bark=tonal('#8A5A33', 0.16, 6.0), segs=18)
     for i in range(3):
         box('plank', (0.85, 0.32, 0.07), (1.0 + rnd.uniform(-0.03, 0.03), rnd.uniform(-0.04, 0.04), 0.8 + 0.075 * i),
             rot=(0, 0, rnd.uniform(-5, 5)), mat=flat(['plank', '#E0AA6C', 'wood_light'][i], 0.75), bevel=0.02)
     dust = flat('#EBCB98', 0.95)
-    blob('dust', 0.2, (0.3, -0.5, 0.0), dust, scale=(1.3, 1.0, 0.55), seed=3, amp=0.3, subdiv=2)
+    blob('dust', 0.2, (0.12, -0.92, 0.0), dust, scale=(1.4, 1.1, 0.5), seed=3, amp=0.3, subdiv=2)
     blob('dust2', 0.14, (0.35, -0.2, 0.8), dust, scale=(1.4, 1.0, 0.3), seed=4, amp=0.3, subdiv=2)
     # little motor box with belt wheel on the back
     box('motor', (0.55, 0.45, 0.45), (0.3, 0.85, 0), mat=flat('#5C7FA8', 0.5, 0.2), bevel=0.06)
     cyl('pulley', 0.13, 0.08, (0.3, 0.6, 0.32), rot=(90, 0, 0), mat=dark, segs=18, origin='center')
     L.snow_slab('msnow', 0.45, 0.35, 0.06, (0.3, 0.85, 0.44), seed=2)
 
+    # work-loop life: blade spins (4 holes -> 90 deg symmetric, 22.5 deg/frame is seamless) and a
+    # stream of sawdust chips sprays toward the camera onto the dust heap
+    chips = L.Spray('chip', (-0.1, -0.12, 0.95), (0.15, -0.95, 0.45), flat('#E3B064', 0.9), n=10, grav=1.35,
+                    r=0.075, spread=0.14, seed=6)
+
+    def idle():
+        blade.rotation_euler.y = 0.0
+        chips.show(False)
+
     def work(i):
         blade.rotation_euler.y = math.radians(-22.5 * i)
+        chips.set(i)
 
-    return {'work': work}
+    return {'work': work, 'idle': idle, 'fx': {'blade': (0.25, 0, 0.9), 'dust': (0.12, -0.92, 0.1)}}
 
 
 def voussoir_arch(name, center, psi, w, h, depth=0.2, block=0.16, n=7, mat=None, protrude=0.0):
@@ -955,7 +986,8 @@ def b_station_bakery():
     cyl('chimney', 0.17, 1.0, tuple(back + Vector((0, 0, z0 + 0.75))), mat=L.brick(scale=3.0, row_h=0.4, snow_top=False),
         segs=16, bevel=0.02)
     cyl('chimcap', 0.22, 0.1, tuple(back + Vector((0, 0, z0 + 1.75))), mat=flat('iron', 0.5, 0.4), segs=16)
-    snow_cap('chsnow', 0.2, tuple(back + Vector((0, 0, z0 + 1.84))), 0.06, 3)
+    cyl('chimhole', 0.14, 0.012, tuple(back + Vector((0, 0, z0 + 1.85))), mat=flat('#241C18', 0.9), segs=16,
+        bevel=0.0)
     # firewood stack on the back-right corner, bread on a peel front-left
     log_pile('wood', 3, 0.11, 0.6, (0.72, 0.55, 0.5), rot=(0, 0, 0), seed=3)
     box('peel', (0.5, 0.42, 0.04), (-0.62, -0.62, 0.5), mat=flat('wood_light', 0.8), bevel=0.015, rot=(0, 0, 20))
@@ -963,13 +995,31 @@ def b_station_bakery():
     bread_model('b1', loc=(-0.65, -0.68, 0.54), rot=(0, 0, 30), scale=0.6)
     bread_model('b2', loc=(-0.55, -0.48, 0.54), rot=(0, 0, 60), scale=0.55)
     glow = L.point_light('ovenglow', tuple(Vector((0, 0, z0 + 0.4)) + fd * 1.6), 'fire', 30.0, 0.3)
+    # work-loop life: flames dancing in the oven mouth + chimney smoke; idle = banked embers
+    u = Vector((math.cos(math.radians(psi)), math.sin(math.radians(psi)), 0.0))
+    mouth_p = Vector((0, 0, z0 + 0.03)) + fd * 1.35
+    flames = L.Flames('oflame', [(tuple(mouth_p + u * o), 0.095, h, psi) for o, h in
+                                 ((-0.17, 0.28), (0.0, 0.38), (0.17, 0.3))], lean=0.08, flat_k=0.45)
+    chim_top = back + Vector((0, 0, z0 + 1.8))
+    smoke = L.Smoke('osmoke', tuple(chim_top), n=3, rise=1.1, drift=(0.25, 0.15), r0=0.12, r1=0.34, alpha=0.88,
+                    seed=2)
+
+    def idle():
+        L.set_emission(glow_m, 0.45)
+        glow.data.energy = 8
+        flames.show(False)
+        smoke.show(False)
 
     def work(i):
-        s = [3.5, 5.5, 8.0, 5.5][i]
+        s = [1.1, 1.6, 2.2, 1.6][i]
         L.set_emission(glow_m, s)
-        glow.data.energy = 20 + 8 * s
+        glow.data.energy = 14 + 10 * s
+        flames.set(i)
+        smoke.set(i)
 
-    return {'work': work}
+    idle()
+    return {'work': work, 'idle': idle,
+            'fx': {'fire': tuple(mouth_p + Vector((0, 0, 0.3))), 'smoke': tuple(chim_top + Vector((0, 0, 0.3)))}}
 
 
 @asset('station_smelter', 'station', 'props_buildings', fp=(2.4, 2.0), work=4, fps=8,
@@ -985,7 +1035,7 @@ def b_station_smelter():
     box('band', (1.12, 1.12, 0.16), (fx, fy, 1.6), mat=flat('#5E4A44', 0.7), bevel=0.04)
     cyl('stack', 0.24, 0.75, (fx, fy, 1.72), mat=flat('#5A606B', 0.5, 0.4), r_top=0.2, segs=18)
     cyl('stack_rim', 0.25, 0.08, (fx, fy, 2.45), mat=flat('iron', 0.5, 0.5), segs=18)
-    snow_cap('rimsnow', 0.24, (fx + 0.05, fy - 0.03, 2.52), 0.05, 3, scale=(1.0, 0.5, 1.0))
+    cyl('stackhole', 0.15, 0.012, (fx, fy, 2.53), mat=flat('#241C18', 0.9), segs=16, bevel=0.0)
     # snow on the band ledge
     L.snow_slab('ledge', 1.0, 1.0, 0.06, (fx, fy, 1.75), seed=5)
     glow_m = L.emissive('door', '#5A1E10', '#FF7A22', 3.0)
@@ -1019,14 +1069,32 @@ def b_station_smelter():
     g1 = L.point_light('doorglow', (fx, fy - 1.1, 0.6), 'fire', 25.0, 0.3)
     g2 = L.point_light('potglow', (cx, cy, 1.2), 'fire_hot', 20.0, 0.2)
 
+    # work-loop life: flames at the furnace door, dark smoke from the stack; idle = cooled glow
+    flames = L.Flames('sflame', [((fx + o, fy - 0.66, 0.37), 0.075, h, 0.0) for o, h in
+                                 ((-0.13, 0.24), (0.0, 0.32), (0.13, 0.26))], lean=0.06, flat_k=0.45)
+    smoke = L.Smoke('ssmoke', (fx, fy, 2.48), n=3, rise=1.1, drift=(0.25, 0.15), r0=0.13, r1=0.36,
+                    color='#A7AEB8', alpha=0.9, seed=3)
+
+    def idle():
+        L.set_emission(glow_m, 0.6)
+        L.set_emission(molten, 1.2)
+        g1.data.energy = 8
+        g2.data.energy = 8
+        flames.show(False)
+        smoke.show(False)
+
     def work(i):
-        s = [3.5, 6.0, 8.5, 6.0][i]
+        s = [2.0, 3.0, 4.2, 3.0][i]
         L.set_emission(glow_m, s)
         L.set_emission(molten, s + 1.5)
         g1.data.energy = 15 + 6 * s
         g2.data.energy = 12 + 4 * s
+        flames.set(i)
+        smoke.set(i)
 
-    return {'work': work}
+    idle()
+    return {'work': work, 'idle': idle,
+            'fx': {'fire': (fx, fy - 0.7, 0.6), 'crucible': (cx, cy, 0.95), 'smoke': (fx, fy, 2.8)}}
 
 
 def ingot_model(name='ingot', loc=(0, 0, 0), rot=(0, 0, 0), scale=1.0):
@@ -1066,17 +1134,19 @@ def b_station_smokehouse():
     roof_panel('roofF', 2.25, hy - 0.85, 1.38, hy, 2.15, 0.08, roofm, seed=1)
     roof_panel('roofB', 2.25, hy + 0.85, 1.38, hy, 2.15, 0.08, roofm, seed=2)
     box('vent', (0.35, 0.35, 0.35), (-0.4, hy, 2.0), mat=flat('#5A3322', 0.85), bevel=0.04)
-    L.snow_slab('vsnow', 0.33, 0.33, 0.06, (-0.4, hy, 2.34), seed=3)
+    box('venthole', (0.22, 0.22, 0.012), (-0.4, hy, 2.35), mat=flat('#241C18', 0.9), bevel=0.0)
     # meat rack in front
     post = flat('wood_mid', 0.8)
     for sx_ in (-1, 1):
         cyl('rpost', 0.07, 1.55, (sx_ * 0.85, -0.75, 0), mat=post, segs=12)
     log('bar', 0.06, 1.95, (0, -0.75, 1.42), rot=(0, 90, 0), bark=post, segs=12)
     string = flat('rope', 0.8)
+    hang = []
     for i, x in enumerate((-0.58, -0.2, 0.2, 0.58)):
         cooked = i % 2 == 0
-        cyl('str', 0.012, 0.3, (x, -0.75, 1.12), mat=string, segs=6, bevel=0.0)
-        meat_model('m%d' % i, cooked=True if cooked else False, loc=(x, -0.75, 1.15), rot=(0, 90, 90), scale=0.75)
+        st = cyl('str', 0.012, 0.3, (0, 0, -0.3), mat=string, segs=6, bevel=0.0)
+        mt = meat_model('m%d' % i, cooked=True if cooked else False, loc=(0, 0, -0.27), rot=(0, 90, 90), scale=0.75)
+        hang.append(L.group([st, mt], 'hang%d' % i, loc=(x, -0.75, 1.42)))
     # ember pit under the rack
     for o in round_stone_ring(0.42, 9, seed=5, size=0.12):
         o.location.y -= 0.75
@@ -1089,13 +1159,33 @@ def b_station_smokehouse():
     # firewood on the side
     log_pile('fw', 3, 0.1, 0.55, (1.25, 0.2, 0), seed=6)
     glow = L.point_light('sglow', (0, -0.95, 0.35), 'fire', 25.0, 0.3)
+    # work-loop life: meat sways on its strings, little flames in the pit, smoke from the roof vent
+    flames = L.Flames('kflame', [((-0.12, -0.8, 0.04), 0.06, 0.2), ((0.1, -0.68, 0.04), 0.065, 0.24),
+                                 ((0.02, -0.9, 0.04), 0.055, 0.17)], lean=0.15)
+    smoke = L.Smoke('ksmoke', (-0.4, hy, 2.28), n=3, rise=1.0, drift=(0.25, 0.15), r0=0.11, r1=0.32,
+                    color='#E3E7EE', alpha=0.88, seed=4)
+    swing = [0.0, 1.0, 0.0, -1.0]
+
+    def idle():
+        L.set_emission(ember, 1.0)
+        glow.data.energy = 8
+        flames.show(False)
+        smoke.show(False)
+        for h in hang:
+            h.rotation_euler = (0.0, 0.0, 0.0)
 
     def work(i):
-        s = [3.0, 5.0, 7.5, 5.0][i]
+        s = [2.6, 4.0, 5.6, 4.0][i]
         L.set_emission(ember, s)
         glow.data.energy = 15 + 6 * s
+        flames.set(i)
+        smoke.set(i)
+        for k, h in enumerate(hang):
+            a = swing[(i + k) % 4]
+            h.rotation_euler = (math.radians(4.0 * swing[(i + k + 1) % 4]), math.radians(10.0 * a), 0.0)
 
-    return {'work': work}
+    idle()
+    return {'work': work, 'idle': idle, 'fx': {'fire': (0, -0.75, 0.2), 'smoke': (-0.4, hy, 2.6)}}
 
 
 # =========================================================================== BUILDINGS
@@ -1470,7 +1560,7 @@ def b_upgrade_bench():
     sphere('gem', 0.07, (0.55, -0.1, 0.92), flat('#5CC86A', 0.2, emission='#5CC86A', emission_strength=1.0))
 
 
-@asset('fish_net', 'station', 'props_buildings', fp=(2.8, 2.8),
+@asset('fish_net', 'building', 'props_buildings', fp=(2.8, 2.8),
        notes='V-shaped fish trap net on poles. The closed corner points at the camera (screen down); the open '
              'side faces screen up (the sea). Fish shown inside. Place it on the shoreline.')
 def b_fish_net():
@@ -1715,13 +1805,12 @@ def fence_logs(axis, neighbours=True):
 
 
 FENCE_NOTE = ('1 m palisade segment of 3 vertical logs (r 0.16 m, ~0.9 m tall), anchor = segment centre on the '
-              'ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart, i.e. screen '
-              'step %s px per segment, and depth-sort by anchor y as usual. A run end looks best capped with '
-              'fence_post.')
+              'ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart along %s, '
+              'and depth-sort by anchor y as usual. A run end looks best capped with fence_post.')
 
 
 @asset('fence_log_x', 'decor', 'props_decor', fp=(1.0, 0.36),
-       notes=FENCE_NOTE % '(+45.25, +22.63) along world +X (runs screen down-right)')
+       notes=FENCE_NOTE % 'world +X (the run goes screen down-right): screen step (+45.25, +22.63) px per segment')
 def b_fence_log_x():
     # neighbours (invisible to camera) cast the shadow a continuous fence would; prop_pack.py
     # then splits the shadow between segments with a partition-of-unity weight (tileAxis).
@@ -1730,7 +1819,7 @@ def b_fence_log_x():
 
 
 @asset('fence_log_y', 'decor', 'props_decor', fp=(0.36, 1.0),
-       notes=FENCE_NOTE % '(+45.25, -22.63) along world +Y (runs screen up-right)')
+       notes=FENCE_NOTE % 'world +Y (the run goes screen up-right): screen step (+45.25, -22.63) px per segment')
 def b_fence_log_y():
     fence_logs('y')
     return {'extra': {'tileAxis': 'y'}}

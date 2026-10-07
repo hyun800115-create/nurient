@@ -17,6 +17,7 @@ Default cache: <tmp>/fv_cache/props  (on the build machine /tmp/fv_cache/props).
 Deterministic: fixed seeds, fixed sample counts.
 """
 import json
+import math
 import os
 import sys
 import tempfile
@@ -25,6 +26,9 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
+
+import bpy  # noqa: E402
+from mathutils import Matrix, Vector  # noqa: E402
 
 import bl_common as bc  # noqa: E402
 import prop_lib as L  # noqa: E402
@@ -84,6 +88,38 @@ def cached(spec, cache):
     return all(os.path.exists(os.path.join(cache, n + '.png')) for n in frame_names(spec))
 
 
+def fit_states(res, spec):
+    """Frame that fits the idle state AND every work state (moving parts, flames,
+    smoke puffs), with one shared anchor.  topPx comes from the idle state."""
+    W, H, (ax, ay), top = L.frame_fit(margin=8, shadow=spec['shadow'])
+    if not spec['work']:
+        return W, H, (ax, ay), top
+    if 'idle' not in res:
+        raise SystemExit('%s: a station with work frames must return an idle() restore' % spec['key'])
+    left, right, up, down = ax, W - ax, ay, H - ay
+    for i in range(spec['work']):
+        res['work'](i)
+        bpy.context.view_layer.update()
+        w, h, (x, y), _ = L.frame_fit(margin=8, shadow=spec['shadow'])
+        left, right, up, down = max(left, x), max(right, w - x), max(up, y), max(down, h - y)
+    res['idle']()
+    bpy.context.view_layer.update()
+    W = (left + right + 3) // 4 * 4
+    H = (up + down + 3) // 4 * 4
+    return W, H, (left, up), top
+
+
+def fx_points(res, spec, W, H, anchor):
+    """res['fx'] = {name: world point} -> px offsets [dx, dy] from the anchor."""
+    out = {}
+    R = Matrix.Rotation(math.radians(spec['yaw']), 3, 'Z')
+    for name, p in (res.get('fx') or {}).items():
+        q = R @ Vector(p)
+        x, y = bc.world_to_pixel(tuple(q), W, H, anchor)
+        out[name] = [int(round(x - anchor[0])), int(round(y - anchor[1]))]
+    return out
+
+
 def render_one(spec, cache, samples=None):
     key = spec['key']
     t0 = time.time()
@@ -102,7 +138,7 @@ def render_one(spec, cache, samples=None):
                 (h2 - an2[1]) > (H - anchor[1]):
             print('WARNING item %s exceeds item frame: need anchor %s size %sx%s' % (key, an2, w2, h2))
     else:
-        W, H, anchor, top = L.frame_fit(margin=8, shadow=spec['shadow'])
+        W, H, anchor, top = fit_states(res, spec)
     if spec['shadow'] and not res.get('custom_catcher'):
         bc.add_shadow_catcher(size=spec['catcher'])
     bc.setup_render(W, H, samples=samples or spec['samples'])
@@ -134,6 +170,9 @@ def render_one(spec, cache, samples=None):
     if item:
         meta['stackStep'] = L.stack_step(item['thickness'])
         meta['thicknessM'] = item['thickness']
+    fx = fx_points(res, spec, W, H, anchor)
+    if fx:
+        meta['fxPoints'] = fx
     for k in ('extra',):
         if k in res:
             meta.update(res[k])

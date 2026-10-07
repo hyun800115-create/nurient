@@ -82,6 +82,13 @@ def main():
         meta = data.get('meta', {}).get('size', {})
         if (meta.get('w'), meta.get('h')) != size:
             errors.append('atlas %s: meta.size %s != png %s' % (key, meta, size))
+        for fn, fr in data['frames'].items():
+            r = fr['frame']
+            if r['x'] < 0 or r['y'] < 0 or r['x'] + r['w'] > size[0] or r['y'] + r['h'] > size[1]:
+                errors.append('atlas %s: frame %s rect %s outside the %dx%d sheet' % (key, fn, r, *size))
+            ss = fr['spriteSourceSize']
+            if ss['x'] + ss['w'] > fr['sourceSize']['w'] or ss['y'] + ss['h'] > fr['sourceSize']['h']:
+                errors.append('atlas %s: frame %s spriteSourceSize outside sourceSize' % (key, fn))
         atlas_frames[key] = data['frames']
     for key in REQUIRED:
         s = sprites.get(key)

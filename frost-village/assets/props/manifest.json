@@ -37,8 +37,8 @@
    "atlas": "props_nature",
    "frame": "tree_pine_a",
    "anchor": [
-    0.31466,
-    0.68478
+    0.33203,
+    0.67
    ],
    "kind": "prop",
    "footprint": [
@@ -46,8 +46,8 @@
     29
    ],
    "frameSize": [
-    232,
-    276
+    256,
+    300
    ],
    "topPx": 180,
    "footprintM": {
@@ -59,8 +59,8 @@
    "atlas": "props_nature",
    "frame": "tree_pine_b",
    "anchor": [
-    0.25,
-    0.68373
+    0.27143,
+    0.67135
    ],
    "kind": "prop",
    "footprint": [
@@ -68,8 +68,8 @@
     27
    ],
    "frameSize": [
-    256,
-    332
+    280,
+    356
    ],
    "topPx": 219,
    "footprintM": {
@@ -81,8 +81,8 @@
    "atlas": "props_nature",
    "frame": "tree_pine_snow",
    "anchor": [
-    0.3125,
-    0.6831
+    0.32955,
+    0.66883
    ],
    "kind": "prop",
    "footprint": [
@@ -90,8 +90,8 @@
     29
    ],
    "frameSize": [
-    240,
-    284
+    264,
+    308
    ],
    "topPx": 186,
    "footprintM": {
@@ -103,8 +103,8 @@
    "atlas": "props_nature",
    "frame": "tree_stump",
    "anchor": [
-    0.43,
-    0.5375
+    0.44355,
+    0.52885
    ],
    "kind": "prop",
    "footprint": [
@@ -112,8 +112,8 @@
     26
    ],
    "frameSize": [
-    100,
-    80
+    124,
+    104
    ],
    "topPx": 35,
    "footprintM": {
@@ -125,8 +125,8 @@
    "atlas": "props_nature",
    "frame": "rock_ore",
    "anchor": [
-    0.39189,
-    0.57031
+    0.40698,
+    0.55921
    ],
    "kind": "prop",
    "footprint": [
@@ -134,8 +134,8 @@
     68
    ],
    "frameSize": [
-    148,
-    128
+    172,
+    152
    ],
    "topPx": 65,
    "footprintM": [
@@ -148,8 +148,8 @@
    "atlas": "props_nature",
    "frame": "rock_ore_b",
    "anchor": [
-    0.41129,
-    0.58065
+    0.42568,
+    0.56757
    ],
    "kind": "prop",
    "footprint": [
@@ -157,8 +157,8 @@
     72
    ],
    "frameSize": [
-    124,
-    124
+    148,
+    148
    ],
    "topPx": 64,
    "footprintM": [
@@ -171,8 +171,8 @@
    "atlas": "props_nature",
    "frame": "rock_rubble",
    "anchor": [
-    0.45,
-    0.51471
+    0.45968,
+    0.51087
    ],
    "kind": "prop",
    "footprint": [
@@ -180,8 +180,8 @@
     54
    ],
    "frameSize": [
-    100,
-    68
+    124,
+    92
    ],
    "topPx": 26,
    "footprintM": [
@@ -194,8 +194,8 @@
    "atlas": "props_nature",
    "frame": "crop_wheat_0",
    "anchor": [
-    0.46341,
-    0.50962
+    0.46809,
+    0.50781
    ],
    "kind": "prop",
    "footprint": [
@@ -203,8 +203,8 @@
     68
    ],
    "frameSize": [
-    164,
-    104
+    188,
+    128
    ],
    "topPx": 45,
    "footprintM": [
@@ -217,8 +217,8 @@
    "atlas": "props_nature",
    "frame": "crop_wheat_1",
    "anchor": [
-    0.46341,
-    0.50962
+    0.46809,
+    0.50781
    ],
    "kind": "prop",
    "footprint": [
@@ -226,8 +226,8 @@
     68
    ],
    "frameSize": [
-    164,
-    104
+    188,
+    128
    ],
    "topPx": 45,
    "footprintM": [
@@ -240,8 +240,8 @@
    "atlas": "props_nature",
    "frame": "crop_wheat_2",
    "anchor": [
-    0.46341,
-    0.58065
+    0.46809,
+    0.56757
    ],
    "kind": "prop",
    "footprint": [
@@ -249,8 +249,8 @@
     68
    ],
    "frameSize": [
-    164,
-    124
+    188,
+    148
    ],
    "topPx": 63,
    "footprintM": [
@@ -263,8 +263,8 @@
    "atlas": "props_nature",
    "frame": "crop_wheat_3",
    "anchor": [
-    0.40426,
-    0.59756
+    0.41509,
+    0.58511
    ],
    "kind": "prop",
    "footprint": [
@@ -272,8 +272,8 @@
     68
    ],
    "frameSize": [
-    188,
-    164
+    212,
+    188
    ],
    "topPx": 90,
    "footprintM": [
@@ -286,8 +286,8 @@
    "atlas": "props_nature",
    "frame": "bush_snow",
    "anchor": [
-    0.40179,
-    0.58
+    0.41912,
+    0.56452
    ],
    "kind": "decor",
    "footprint": [
@@ -295,8 +295,8 @@
     35
    ],
    "frameSize": [
-    112,
-    100
+    136,
+    124
    ],
    "topPx": 50,
    "footprintM": {
@@ -308,8 +308,8 @@
    "atlas": "props_nature",
    "frame": "snow_pile_a",
    "anchor": [
-    0.45732,
-    0.52381
+    0.46277,
+    0.51852
    ],
    "kind": "decor",
    "footprint": [
@@ -317,8 +317,8 @@
     70
    ],
    "frameSize": [
-    164,
-    84
+    188,
+    108
    ],
    "topPx": 35,
    "footprintM": [
@@ -332,7 +332,7 @@
    "frame": "snow_pile_b",
    "anchor": [
     0.5,
-    0.47059
+    0.47826
    ],
    "kind": "decor",
    "footprint": [
@@ -340,8 +340,8 @@
     50
    ],
    "frameSize": [
-    100,
-    68
+    124,
+    92
    ],
    "topPx": 24,
    "footprintM": [
@@ -354,8 +354,8 @@
    "atlas": "props_nature",
    "frame": "ice_chunk",
    "anchor": [
-    0.45536,
-    0.59375
+    0.46324,
+    0.575
    ],
    "kind": "decor",
    "footprint": [
@@ -363,8 +363,8 @@
     50
    ],
    "frameSize": [
-    112,
-    96
+    136,
+    120
    ],
    "topPx": 48,
    "footprintM": [
@@ -377,8 +377,8 @@
    "atlas": "props_buildings",
    "frame": "station_grill",
    "anchor": [
-    0.43852,
-    0.58333
+    0.44403,
+    0.57292
    ],
    "kind": "station",
    "footprint": [
@@ -398,8 +398,8 @@
     }
    },
    "frameSize": [
-    244,
-    168
+    268,
+    192
    ],
    "topPx": 89,
    "footprintM": [
@@ -412,8 +412,8 @@
    "atlas": "props_buildings",
    "frame": "station_sawmill",
    "anchor": [
-    0.41379,
-    0.57558
+    0.42188,
+    0.56633
    ],
    "kind": "station",
    "footprint": [
@@ -433,8 +433,8 @@
     }
    },
    "frameSize": [
-    232,
-    172
+    256,
+    196
    ],
    "topPx": 91,
    "footprintM": [
@@ -447,8 +447,8 @@
    "atlas": "props_buildings",
    "frame": "station_bakery",
    "anchor": [
-    0.44167,
-    0.65625
+    0.44697,
+    0.64286
    ],
    "kind": "station",
    "footprint": [
@@ -468,8 +468,8 @@
     }
    },
    "frameSize": [
-    240,
-    256
+    264,
+    280
    ],
    "topPx": 160,
    "footprintM": [
@@ -482,8 +482,8 @@
    "atlas": "props_buildings",
    "frame": "station_smelter",
    "anchor": [
-    0.4322,
-    0.71983
+    0.43846,
+    0.69922
    ],
    "kind": "station",
    "footprint": [
@@ -503,8 +503,8 @@
     }
    },
    "frameSize": [
-    236,
-    232
+    260,
+    256
    ],
    "topPx": 159,
    "footprintM": [
@@ -517,8 +517,8 @@
    "atlas": "props_buildings",
    "frame": "station_smokehouse",
    "anchor": [
-    0.32836,
-    0.65476
+    0.34247,
+    0.6413
    ],
    "kind": "station",
    "footprint": [
@@ -538,8 +538,8 @@
     }
    },
    "frameSize": [
-    268,
-    252
+    292,
+    276
    ],
    "topPx": 156,
    "footprintM": [
@@ -552,8 +552,8 @@
    "atlas": "props_buildings",
    "frame": "market_counter",
    "anchor": [
-    0.34239,
-    0.6372
+    0.35204,
+    0.62784
    ],
    "kind": "building",
    "footprint": [
@@ -561,8 +561,8 @@
     97
    ],
    "frameSize": [
-    368,
-    328
+    392,
+    352
    ],
    "topPx": 200,
    "front": "-Y",
@@ -576,8 +576,8 @@
    "atlas": "props_buildings",
    "frame": "trade_post",
    "anchor": [
-    0.33708,
-    0.63253
+    0.34737,
+    0.6236
    ],
    "kind": "building",
    "footprint": [
@@ -585,8 +585,8 @@
     106
    ],
    "frameSize": [
-    356,
-    332
+    380,
+    356
    ],
    "topPx": 202,
    "front": "-Y",
@@ -600,8 +600,8 @@
    "atlas": "props_buildings",
    "frame": "worker_hut",
    "anchor": [
-    0.38764,
-    0.6657
+    0.39474,
+    0.65489
    ],
    "kind": "building",
    "footprint": [
@@ -609,8 +609,8 @@
     118
    ],
    "frameSize": [
-    356,
-    344
+    380,
+    368
    ],
    "topPx": 221,
    "front": "-Y",
@@ -624,8 +624,8 @@
    "atlas": "props_buildings",
    "frame": "chief_lodge",
    "anchor": [
-    0.41221,
-    0.68056
+    0.41606,
+    0.67235
    ],
    "kind": "building",
    "footprint": [
@@ -633,8 +633,8 @@
     186
    ],
    "frameSize": [
-    524,
-    504
+    548,
+    528
    ],
    "topPx": 334,
    "front": "-Y",
@@ -648,8 +648,8 @@
    "atlas": "props_buildings",
    "frame": "tent_a",
    "anchor": [
-    0.44485,
-    0.61574
+    0.44932,
+    0.60417
    ],
    "kind": "building",
    "footprint": [
@@ -657,8 +657,8 @@
     97
    ],
    "frameSize": [
-    272,
-    216
+    296,
+    240
    ],
    "topPx": 124,
    "front": "-Y",
@@ -672,8 +672,8 @@
    "atlas": "props_buildings",
    "frame": "campfire",
    "anchor": [
-    0.47321,
-    0.51316
+    0.47794,
+    0.51
    ],
    "kind": "decor",
    "footprint": [
@@ -681,8 +681,8 @@
     38
    ],
    "frameSize": [
-    112,
-    76
+    136,
+    100
    ],
    "topPx": 30,
    "footprintM": {
@@ -694,8 +694,8 @@
    "atlas": "props_buildings",
    "frame": "upgrade_bench",
    "anchor": [
-    0.34167,
-    0.6875
+    0.35606,
+    0.66935
    ],
    "kind": "building",
    "footprint": [
@@ -703,8 +703,8 @@
     84
    ],
    "frameSize": [
-    240,
-    224
+    264,
+    248
    ],
    "topPx": 146,
    "front": "-Y",
@@ -718,17 +718,17 @@
    "atlas": "props_buildings",
    "frame": "fish_net",
    "anchor": [
-    0.40432,
-    0.44022
+    0.41092,
+    0.44712
    ],
-   "kind": "station",
+   "kind": "building",
    "footprint": [
     253,
     127
    ],
    "frameSize": [
-    324,
-    184
+    348,
+    208
    ],
    "topPx": 72,
    "footprintM": [
@@ -741,8 +741,8 @@
    "atlas": "props_buildings",
    "frame": "dock_pier",
    "anchor": [
-    0.44034,
-    0.63732
+    0.44415,
+    0.62662
    ],
    "kind": "building",
    "footprint": [
@@ -750,8 +750,8 @@
     145
    ],
    "frameSize": [
-    352,
-    284
+    376,
+    308
    ],
    "topPx": 173,
    "footprintM": [
@@ -764,8 +764,8 @@
    "atlas": "props_buildings",
    "frame": "mine_entrance",
    "anchor": [
-    0.46264,
-    0.66667
+    0.46505,
+    0.65333
    ],
    "kind": "building",
    "footprint": [
@@ -773,8 +773,8 @@
     83
    ],
    "frameSize": [
-    348,
-    276
+    372,
+    300
    ],
    "topPx": 175,
    "front": "S",
@@ -788,8 +788,8 @@
    "atlas": "props_buildings",
    "frame": "boat_small",
    "anchor": [
-    0.44444,
-    0.56061
+    0.45098,
+    0.55128
    ],
    "kind": "decor",
    "footprint": [
@@ -797,8 +797,8 @@
     84
    ],
    "frameSize": [
-    180,
-    132
+    204,
+    156
    ],
    "topPx": 66,
    "footprintM": [
@@ -811,8 +811,8 @@
    "atlas": "props_decor",
    "frame": "fence_log_x",
    "anchor": [
-    0.30556,
-    0.61111
+    0.34091,
+    0.59091
    ],
    "kind": "decor",
    "footprint": [
@@ -820,8 +820,8 @@
     31
    ],
    "frameSize": [
-    108,
-    108
+    132,
+    132
    ],
    "topPx": 57,
    "footprintM": [
@@ -829,14 +829,14 @@
     0.36
    ],
    "tileAxis": "x",
-   "notes": "1 m palisade segment of 3 vertical logs (r 0.16 m, ~0.9 m tall), anchor = segment centre on the ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart, i.e. screen step (+45.25, +22.63) along world +X (runs screen down-right) px per segment, and depth-sort by anchor y as usual. A run end looks best capped with fence_post."
+   "notes": "1 m palisade segment of 3 vertical logs (r 0.16 m, ~0.9 m tall), anchor = segment centre on the ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart along world +X (the run goes screen down-right): screen step (+45.25, +22.63) px per segment, and depth-sort by anchor y as usual. A run end looks best capped with fence_post."
   },
   "fence_log_y": {
    "atlas": "props_decor",
    "frame": "fence_log_y",
    "anchor": [
-    0.30556,
-    0.60714
+    0.34091,
+    0.58824
    ],
    "kind": "decor",
    "footprint": [
@@ -844,8 +844,8 @@
     31
    ],
    "frameSize": [
-    108,
-    112
+    132,
+    136
    ],
    "topPx": 60,
    "footprintM": [
@@ -853,14 +853,14 @@
     1.0
    ],
    "tileAxis": "y",
-   "notes": "1 m palisade segment of 3 vertical logs (r 0.16 m, ~0.9 m tall), anchor = segment centre on the ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart, i.e. screen step (+45.25, -22.63) along world +Y (runs screen up-right) px per segment, and depth-sort by anchor y as usual. A run end looks best capped with fence_post."
+   "notes": "1 m palisade segment of 3 vertical logs (r 0.16 m, ~0.9 m tall), anchor = segment centre on the ground. Tiles seamlessly incl. the baked shadow: place consecutive segments 1 m apart along world +Y (the run goes screen up-right): screen step (+45.25, -22.63) px per segment, and depth-sort by anchor y as usual. A run end looks best capped with fence_post."
   },
   "fence_post": {
    "atlas": "props_decor",
    "frame": "fence_post",
    "anchor": [
-    0.22917,
-    0.63793
+    0.28333,
+    0.61429
    ],
    "kind": "decor",
    "footprint": [
@@ -868,8 +868,8 @@
     14
    ],
    "frameSize": [
-    96,
-    116
+    120,
+    140
    ],
    "topPx": 66,
    "footprintM": {
@@ -881,8 +881,8 @@
    "atlas": "props_decor",
    "frame": "bench",
    "anchor": [
-    0.40385,
-    0.56034
+    0.41667,
+    0.55
    ],
    "kind": "decor",
    "footprint": [
@@ -890,8 +890,8 @@
     57
    ],
    "frameSize": [
-    156,
-    116
+    180,
+    140
    ],
    "topPx": 57,
    "footprintM": [
@@ -904,8 +904,8 @@
    "atlas": "props_decor",
    "frame": "lamp_post",
    "anchor": [
-    0.16026,
-    0.65566
+    0.20556,
+    0.63983
    ],
    "kind": "decor",
    "footprint": [
@@ -913,8 +913,8 @@
     16
    ],
    "frameSize": [
-    156,
-    212
+    180,
+    236
    ],
    "topPx": 130,
    "footprintM": {
@@ -926,8 +926,8 @@
    "atlas": "props_decor",
    "frame": "barrel",
    "anchor": [
-    0.31481,
-    0.62931
+    0.34848,
+    0.60714
    ],
    "kind": "decor",
    "footprint": [
@@ -935,8 +935,8 @@
     24
    ],
    "frameSize": [
-    108,
-    116
+    132,
+    140
    ],
    "topPx": 65,
    "footprintM": {
@@ -948,8 +948,8 @@
    "atlas": "props_decor",
    "frame": "crate",
    "anchor": [
-    0.35156,
-    0.6
+    0.375,
+    0.58333
    ],
    "kind": "decor",
    "footprint": [
@@ -957,8 +957,8 @@
     36
    ],
    "frameSize": [
-    128,
-    120
+    152,
+    144
    ],
    "topPx": 64,
    "footprintM": [
@@ -971,8 +971,8 @@
    "atlas": "props_decor",
    "frame": "firewood_pile",
    "anchor": [
-    0.38971,
-    0.6129
+    0.40625,
+    0.59459
    ],
    "kind": "decor",
    "footprint": [
@@ -980,8 +980,8 @@
     45
    ],
    "frameSize": [
-    136,
-    124
+    160,
+    148
    ],
    "topPx": 67,
    "footprintM": [
@@ -994,8 +994,8 @@
    "atlas": "props_decor",
    "frame": "signpost",
    "anchor": [
-    0.29167,
-    0.66477
+    0.32143,
+    0.645
    ],
    "kind": "decor",
    "footprint": [
@@ -1003,8 +1003,8 @@
     16
    ],
    "frameSize": [
-    144,
-    176
+    168,
+    200
    ],
    "topPx": 108,
    "footprintM": {
@@ -1016,8 +1016,8 @@
    "atlas": "props_decor",
    "frame": "flag_pole",
    "anchor": [
-    0.12143,
-    0.64894
+    0.15132,
+    0.64
    ],
    "kind": "decor",
    "footprint": [
@@ -1025,8 +1025,8 @@
     22
    ],
    "frameSize": [
-    280,
-    376
+    304,
+    400
    ],
    "topPx": 236,
    "footprintM": {
@@ -1038,8 +1038,8 @@
    "atlas": "props_decor",
    "frame": "hay_bale",
    "anchor": [
-    0.38889,
-    0.57955
+    0.40909,
+    0.5625
    ],
    "kind": "decor",
    "footprint": [
@@ -1047,8 +1047,8 @@
     36
    ],
    "frameSize": [
-    108,
-    88
+    132,
+    112
    ],
    "topPx": 43,
    "footprintM": [

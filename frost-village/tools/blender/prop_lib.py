@@ -300,6 +300,165 @@ def set_emission(m, strength):
     m.node_tree.nodes.get('Principled BSDF').inputs['Emission Strength'].default_value = strength
 
 
+# --------------------------------------------------------------------------- work-loop FX (flames, smoke)
+# Stations bake a little life into their 4-frame `work` loop: flickering flame
+# tongues and a seamless column of smoke puffs.  Both are camera-only (they cast
+# no ground shadow) and are hidden in the idle frame.
+
+def flame_mat(name, core='#FFE27A', tip='#FF7A1A', strength=1.5):
+    """Unique emissive flame material: yellow core at the bottom -> orange tip
+    (gradient on the object's Generated Z).  Kept below clipping so it stays saturated."""
+    nb = NB(name, rough=0.5)
+    tc = nb.n('ShaderNodeTexCoord')
+    sep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Generated'], sep.inputs[0])
+    fac = nb.map_range(sep.outputs['Z'], 0.2, 0.8)
+    mx = nb.n('ShaderNodeMix', data_type='RGBA', clamp_factor=True)
+    nb.link(fac, NB.sock(mx.inputs, 'Factor', 'VALUE'))
+    NB.sock(mx.inputs, 'A', 'RGBA').default_value = nb.rgb(core, raw=True)
+    NB.sock(mx.inputs, 'B', 'RGBA').default_value = nb.rgb(tip, raw=True)
+    out = NB.sock(mx.outputs, 'Result', 'RGBA')
+    nb.link(out, nb.p.inputs['Base Color'])
+    nb.link(out, nb.p.inputs['Emission Color'])
+    nb.p.inputs['Emission Strength'].default_value = strength
+    return nb.m
+
+
+_FLAME_R = [0.5, 0.9, 1.0, 0.93, 0.78, 0.58, 0.38, 0.2, 0.06]
+
+
+def flame(name, r, h, loc, mat, lean=0.25, flat_k=1.0, rot_z=0.0):
+    """Cartoon flame tongue (teardrop of revolution, tip leaning along +X), origin
+    at its base so scaling Z makes it lick upward.  flat_k < 1 flattens it along Y."""
+    M, K = 14, len(_FLAME_R)
+
+    def prof(j, k):
+        t = k / (K - 1)
+        th = math.tau * j / M
+        rr = r * _FLAME_R[k]
+        return (rr * math.cos(th) + lean * h * t * t, rr * math.sin(th) * flat_k, h * t)
+
+    ob = revolve(name, prof, M, K, mat=mat, top=(lean * h * 1.05, 0, h * 1.06), bottom=(0, 0, -0.08 * h))
+    ob.location = loc
+    ob.rotation_euler = Euler((0, 0, math.radians(rot_z)), 'XYZ')
+    ob.visible_shadow = False
+    return ob
+
+
+class Flames:
+    """A set of flame tongues that flicker over a 4-frame loop."""
+    PATTERN = [1.0, 1.32, 0.82, 1.18]
+
+    def __init__(self, name, spots, mat=None, lean=0.25, flat_k=1.0):
+        """spots: list of (loc, r, h[, rot_z])."""
+        self.mat = mat or flame_mat(name + '_mat')
+        self.obs = []
+        for i, sp in enumerate(spots):
+            loc, r, h = sp[:3]
+            rz = sp[3] if len(sp) > 3 else (i * 47.0) % 360
+            self.obs.append(flame('%s%d' % (name, i), r, h, loc, self.mat, lean=lean, flat_k=flat_k, rot_z=rz))
+        self.show(False)
+
+    def show(self, on):
+        for o in self.obs:
+            o.hide_render = not on
+            o.hide_viewport = not on
+
+    def set(self, i):
+        self.show(True)
+        for k, o in enumerate(self.obs):
+            s = self.PATTERN[(i + k) % 4]
+            w = 1.0 + (1.0 - s) * 0.35          # squash when short, stretch when tall
+            o.scale = (w, w, s)
+
+
+class Spray:
+    """Seamless 4-frame stream of small chips (sawdust, sparks).  Chip k in frame i is
+    at life t = frac(k/n + i/4) on a ballistic path from `origin` (camera-only)."""
+
+    def __init__(self, name, origin, vel, mat, n=8, grav=1.0, r=0.04, spread=0.12, seed=0):
+        rnd = rng(seed)
+        self.origin, self.grav, self.n = Vector(origin), grav, n
+        self.parts = []
+        for k in range(n):
+            v = Vector(vel) + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.5, 1))) * spread
+            o = blob('%s%d' % (name, k), r * rnd.uniform(0.75, 1.25), origin, mat, seed=seed * 20 + k, amp=0.35,
+                     subdiv=1, facet=True)
+            o.visible_shadow = False
+            self.parts.append((o, v, rnd.uniform(0, 6.28)))
+        self.show(False)
+
+    def show(self, on):
+        for o, _, _ in self.parts:
+            o.hide_render = not on
+            o.hide_viewport = not on
+
+    def set(self, i, frames=4):
+        self.show(True)
+        for k, (o, v, ph) in enumerate(self.parts):
+            t = (k / float(self.n) + i / float(frames)) % 1.0
+            o.location = self.origin + v * t + Vector((0, 0, -self.grav * t * t))
+            sc = 1.0 - 0.45 * t
+            o.scale = (sc, sc, sc)
+            o.rotation_euler = Euler((ph + t * 6.0, ph * 0.5, t * 4.0), 'XYZ')
+
+
+def smoke_mat(name, color='#EEF2F7', alpha=0.85):
+    nb = NB(name, rough=1.0)
+    nb.p.inputs['Base Color'].default_value = nb.rgb(color, raw=True)
+    nb.p.inputs['Alpha'].default_value = alpha
+    return nb.m
+
+
+def set_alpha(m, a):
+    m.node_tree.nodes.get('Principled BSDF').inputs['Alpha'].default_value = a
+
+
+class Smoke:
+    """Seamless 4-frame column of soft puffs rising from `base`.  Puff j in frame i
+    sits at life t = (j + i/4) / n, so after 4 frames every puff has taken the place
+    of the next one: grows, drifts, fades; a new puff emerges hidden inside the
+    chimney.  Puffs cast no shadow and are hidden in the idle frame."""
+
+    def __init__(self, name, base, n=3, rise=1.0, drift=(0.22, 0.12), r0=0.1, r1=0.26,
+                 color='#EEF2F7', alpha=0.88, seed=0, fade_in=0.0):
+        self.base = Vector(base)
+        self.fade_in = fade_in
+        self.n, self.rise, self.drift, self.r0, self.r1, self.alpha = n, rise, Vector((*drift, 0.0)), r0, r1, alpha
+        self.obs, self.mats = [], []
+        for j in range(n):
+            m = smoke_mat('%s_m%d' % (name, j), color, alpha)
+            o = blob('%s%d' % (name, j), 1.0, base, m, seed=seed * 10 + j, amp=0.2, freq=1.7, subdiv=2)
+            o.visible_shadow = False
+            self.obs.append(o)
+            self.mats.append(m)
+        self.show(False)
+
+    def show(self, on):
+        for o in self.obs:
+            o.hide_render = not on
+            o.hide_viewport = not on
+
+    def at(self, t):
+        e = 1.0 - (1.0 - t) ** 1.6                            # ease-out rise
+        p = self.base + Vector((0, 0, self.rise * e)) + self.drift * (t * t)
+        s = self.r0 + (self.r1 - self.r0) * math.sqrt(t)
+        a = self.alpha * (1.0 - max(0.0, (t - 0.55) / 0.45) ** 1.5)
+        if self.fade_in:
+            a *= min(1.0, t / self.fade_in)
+        return p, s, a
+
+    def set(self, i, frames=4):
+        self.show(True)
+        for j, (o, m) in enumerate(zip(self.obs, self.mats)):
+            t = (j + i / float(frames)) / self.n
+            p, s, a = self.at(t)
+            o.location = p
+            o.scale = (s, s, s * 0.85)
+            o.rotation_euler = Euler((0, 0, t * 2.0 + j), 'XYZ')
+            set_alpha(m, a)
+
+
 # --------------------------------------------------------------------------- objects
 
 def _link(ob):
@@ -606,9 +765,13 @@ def screen_xy(p):
 def frame_fit(margin=6, shadow=True, objs=None, min_size=(16, 16), max_size=(1024, 1024)):
     """Frame (w, h) and integer anchor pixel so the object (and its ground shadow)
     fit.  The anchor = world origin = footprint centre."""
+    objs = objs or scene_meshes()
+    casters = []
     pts = world_points(objs)
     if shadow:
         margin += 12            # halo for the soft contact / sky-occlusion shadow
+        # camera-only objects (flames, smoke puffs) do not cast a ground shadow
+        casters = [p for o in objs if o.visible_shadow for p in world_points([o])]
     xs, ys = [], []
     top = 0.0
     for p in pts:
@@ -616,7 +779,8 @@ def frame_fit(margin=6, shadow=True, objs=None, min_size=(16, 16), max_size=(102
         xs.append(x)
         ys.append(y)
         top = min(top, y)
-        if shadow and p.z > 0.02:
+    for p in (casters if shadow else []):
+        if p.z > 0.02:
             q = (p.x + p.z * SHADOW_K, p.y, 0.0)
             x2, y2 = screen_xy(q)
             soft = 3 + 7.0 * p.z            # penumbra grows with height

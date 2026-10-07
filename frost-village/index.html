@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#cfdcec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="서리마을 개척기 — 눈 덮인 개척지에서 자원을 모으고, 가공하고, 팔아서 마을을 키우는 캐주얼 게임">
+<title>서리마을 개척기 · Frost Village</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/characters/portrait_player.png">
+<link rel="apple-touch-icon" href="assets/characters/portrait_player_512.png">
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; overscroll-behavior: none;
+    background: #dbe6f2;
+    background: linear-gradient(180deg, #e9f0f8 0%, #cfdcec 100%);
+    touch-action: none; -webkit-touch-callout: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; touch-action: none; outline: none; }
+  #fv-loading {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    font-family: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    color: #2b2f3a; font-weight: 800; font-size: 20px; letter-spacing: 0.02em;
+    pointer-events: none; transition: opacity .35s ease;
+  }
+  #fv-loading .flake { font-size: 40px; color: #3d8be0; animation: fvspin 2.4s linear infinite; }
+  #fv-loading small { font-weight: 600; font-size: 13px; color: #5d6b80; }
+  @keyframes fvspin { to { transform: rotate(360deg); } }
+  #fv-loading.hide { opacity: 0; }
+  #fv-error {
+    display: none; position: fixed; left: 16px; right: 16px; bottom: 16px; padding: 12px 14px;
+    border-radius: 12px; background: #fff8ec; color: #2b2f3a; font: 600 14px/1.4 sans-serif;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="fv-loading"><div class="flake">❄</div><div>서리마을 개척기</div><small>Loading…</small></div>
+<div id="fv-error"></div>
+<script src="lib/phaser.min.js"></script>
+<script type="module" src="src/main.js"></script>
+<script>
+  // If ES modules are unsupported or the main module fails to load, show a friendly message.
+  window.addEventListener('error', function (e) {
+    if (window.__FV_BOOTED) return;
+    var el = document.getElementById('fv-error');
+    if (el && e && e.message) { el.style.display = 'block'; el.textContent = '게임을 불러오지 못했어요. 새로고침 해 주세요. (' + e.message + ')'; }
+  });
+</script>
+</body>
+</html>
