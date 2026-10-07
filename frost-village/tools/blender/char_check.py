@@ -22,7 +22,7 @@ ASSETS = os.path.join(GAME, 'assets')
 CHAR = os.path.join(ASSETS, 'characters')
 
 EXPECTED = {
-    'player': ['idle', 'walk', 'carry_idle', 'carry_walk', 'chop', 'mine', 'harvest'],
+    'player': ['idle', 'walk', 'carry_idle', 'carry_walk', 'chop', 'mine', 'harvest', 'pet', 'give', 'throw'],
     'fisherman': ['idle', 'walk', 'carry_idle', 'carry_walk', 'work'],
     'lumberjack': ['idle', 'walk', 'carry_idle', 'carry_walk', 'work'],
     'farmer': ['idle', 'walk', 'carry_idle', 'carry_walk', 'work'],
@@ -35,7 +35,10 @@ EXPECTED = {
     'boar': ['idle', 'walk'],
 }
 FRAMES = {'idle': 4, 'walk': 8, 'carry_idle': 4, 'carry_walk': 8, 'chop': 8, 'mine': 8, 'harvest': 6,
-          'work': 8, 'happy': 6}
+          'work': 8, 'happy': 6, 'pet': 6, 'give': 6, 'throw': 8}
+# v4 (CONTRACT_V4 I): chief dog-play anims - repeat and the impact data the game needs
+V4_PLAYER = {'pet': {'repeat': -1}, 'give': {'repeat': 0, 'impactFrame': True},
+             'throw': {'repeat': 0, 'impactFrame': True}}
 
 
 def main():
@@ -55,6 +58,25 @@ def main():
                 errors.append(f'{key}: anim {a} missing')
             elif c['anims'][a]['frames'] != FRAMES[a]:
                 errors.append(f'{key}.{a}: {c["anims"][a]["frames"]} frames, contract says {FRAMES[a]}')
+    pl = chars.get('player', {})
+    for an, req in V4_PLAYER.items():
+        info = pl.get('anims', {}).get(an)
+        if not info:
+            continue
+        if info.get('repeat') != req['repeat']:
+            errors.append(f'player.{an}: repeat {info.get("repeat")} != {req["repeat"]}')
+        if req.get('impactFrame'):
+            if 'impactFrame' not in info:
+                errors.append(f'player.{an}: impactFrame missing')
+            ip = info.get('impactPoint', {})
+            for d in pl.get('dirs', []):
+                if d not in ip:
+                    errors.append(f'player.{an}: impactPoint[{d}] missing')
+    if 'pet' in pl.get('anims', {}):
+        pp = pl.get('petPoint', {})
+        for d in pl.get('dirs', []):
+            if d not in pp or len(pp[d]) != 2:
+                errors.append(f'player: petPoint[{d}] missing')
     n_frames = 0
     for key, c in chars.items():
         a = atlases.get(c['atlas'])

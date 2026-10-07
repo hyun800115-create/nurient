@@ -10,6 +10,7 @@ import { TOOLS } from '../data/items.js';
 import { PRIO } from '../systems/Logistics.js';
 import { Station } from './Station.js';
 import { ItemStack } from './ItemStack.js';
+import { Character } from './Character.js';
 
 export const RECIPES = {
   toolsmith: {
@@ -86,7 +87,12 @@ export class Workshop extends Station {
     return true;
   }
 
-  canWork() { return this.hasBatch() && this.outStack.count + this.outStack.incoming + this.recipe.outN <= this.outStack.max; }
+  canWork() {
+    if (!this.hasBatch() || this.outStack.count + this.outStack.incoming + this.recipe.outN > this.outStack.max) return false;
+    // the toolsmith only forges what someone needs (a hire pad) or the shop can sell
+    if (this.recipe.out === 'tool') { this.planned = this.pickTool(); return !!this.planned; }
+    return true;
+  }
 
   /** accept one ingredient from a character standing on the input pad */
   feedFrom(ch) {
@@ -114,9 +120,7 @@ export class Workshop extends Station {
       for (const tl of TOOLS) { const c = store.stock.countOf(tl) + this.outStack.countWithIncoming(tl); if (c < lc) { lc = c; low = tl; } }
       if (low) return low;
     }
-    const tl = TOOLS[this.nextTool % TOOLS.length];
-    this.nextTool++;
-    return tl;
+    return null;     // nobody needs a tool and there is no shop to sell them: the forge rests
   }
 
   process() {
@@ -137,7 +141,7 @@ export class Workshop extends Station {
       if (!it) return;
       gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: mx, y: my }, { dur: 240 + i * 40, height: 50, scaleTo: 0.4, onDone: (spr) => gs.effects.releaseItem(spr) });
     });
-    const outType = R.out === 'tool' ? this.pickTool() : R.out;
+    const outType = R.out === 'tool' ? (this.planned || this.pickTool() || TOOLS[0]) : R.out;
     for (let i = 0; i < R.outN; i++) this.outStack.reserve(outType);
     const ox = this.x + (fx.output ? fx.output[0] : 0), oy = this.y + (fx.output ? fx.output[1] : -50);
     for (let i = 0; i < R.outN; i++) {
@@ -193,7 +197,6 @@ export class Workshop extends Station {
 }
 
 // ------------------------------------------------------------------ the smith (v3)
-import { Character } from './Character.js';
 
 /** the blacksmith resident working the forge: stands at the toolsmith's staff spot, cheers at every tool */
 export class Smith extends Character {

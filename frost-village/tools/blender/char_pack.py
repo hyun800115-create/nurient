@@ -138,7 +138,8 @@ def head_top(im, anchor_y=104):
 def manifest_entry(key, meta, processed, has_portrait):
     anims = {}
     for anim, info in meta['anims'].items():
-        e = {'frames': info['frames'], 'fps': info['fps'], 'repeat': -1 if anim in LOOP_ANIMS else 0}
+        e = {'frames': info['frames'], 'fps': info['fps'],
+             'repeat': info['repeat'] if 'repeat' in info else (-1 if anim in LOOP_ANIMS else 0)}
         if 'impactFrame' in info:
             e['impactFrame'] = info['impactFrame']
         if 'impactPoint' in info:
@@ -151,6 +152,8 @@ def manifest_entry(key, meta, processed, has_portrait):
     }
     if meta.get('carryPoint'):
         ent['carryPoint'] = meta['carryPoint']
+    if meta.get('petPoint'):
+        ent['petPoint'] = meta['petPoint']
     ent['shadow'] = meta.get('shadow', [46, 18])
     if has_portrait:
         ent['portrait'] = f'portrait_{key}'

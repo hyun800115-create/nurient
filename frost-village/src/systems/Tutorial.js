@@ -15,6 +15,9 @@ import { DEPTH } from './DepthSort.js';
 import { gdist } from '../core/Iso.js';
 import { t, fmt } from '../data/strings.js';
 import { FOODS, GOODS } from '../entities/Seller.js';
+import { MINER_FOOD, MATERIALS, STORE_GOODS } from '../data/items.js';
+import { buildCost } from '../entities/Site.js';
+import { BALANCE } from '../data/balance.js';
 
 const ZONE_CHAINS = [
   { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'trade', worker: 'hire_lumberjack' },
@@ -55,7 +58,7 @@ export class Tutorial {
     const set = (x, y, h, key, text) => { tg.x = x; tg.y = y; tg.h = h; this.target = tg; this.textKey = key; this.text = text || null; };
     this.target = null; this.textKey = null; this.text = null;
 
-    const pad = prog.affordablePad(eco.coins);
+    const pad = prog.affordablePad(eco.coins, p);
     // (v2) customers waiting at an empty register come before buying things (the line is stuck)
     if (!this.inTutorial && this.registerHint(set, dt, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
@@ -70,8 +73,11 @@ export class Tutorial {
     if (this.upgradeHint(set, dt)) return;
     if (this.zoneHint(set, dt)) return;
     const idle = (gs.time.now - Input.lastActivity) / 1000 > IDLE_HINT && !gs.playerOnPad;
+    // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
+    if (this.v3Hint(set, dt, idle)) return;
     const nx = prog.nextPad();
-    const goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
+    let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
+    if (prog.complete) goal = this.goalText();
     if (idle && this.nextAction(set, goal)) return;
     // gentle hint: lots of coins waiting on a cash pad
     for (const c of this.cashes()) if (c.value >= 40 && !c.pad.contains(p.x, p.y) && gdist(p.x, p.y, c.x, c.y) > 260) { set(c.x, c.y, 40, goal ? goal.key : null, goal ? goal.text : null); return; }
@@ -81,7 +87,127 @@ export class Tutorial {
 
   cashes() {
     const gs = this.gs;
-    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null].filter(Boolean);
+    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null].filter(Boolean);
+  }
+
+  // ---------------------------------------------------------------- (v3)
+  /** "next goal" text after the village is complete (the v3 main goals in order) */
+  goalText() {
+    const gs = this.gs, prog = gs.progress;
+    const g = prog.nextGoal();
+    if (!g) return null;
+    if (g.kind === 'region') {
+      const site = gs.sites[g.step];
+      if (site && site.state !== 'plot') return { key: 'obj_site_wait', text: null };
+      const pad = prog.pads[g.step];
+      const cost = pad ? pad.remaining : (BALANCE.towers[g.step] || {}).coins || 0;
+      return { key: 'obj_next_region:' + g.step + ':' + cost, text: t('obj_next_region', { name: t(g.step), cost: fmt(cost) }) };
+    }
+    if (g.kind === 'build') {
+      if (gs.isBuilding(g.id)) return { key: 'obj_site_wait', text: null };
+      const cost = buildCost(g.id).coins || 0;
+      return { key: 'obj_next_build:' + g.id, text: t('obj_next_build', { name: t('b_' + g.id), cost: fmt(cost) }) };
+    }
+    if (g.kind === 'flag') return { key: 'obj_food', text: null };
+    const pad = prog.pads[g.id];
+    const cost = pad ? pad.remaining : 0;
+    return { key: 'obj_next:' + g.id + ':' + cost, text: t('obj_next', { name: t(g.id), cost: fmt(cost) }) };
+  }
+
+  /** a free plot that can take building `bkey`, nearest to the chief */
+  plotFor(bkey) {
+    const gs = this.gs, p = gs.player;
+    let best = null, bd = Infinity;
+    for (const id in gs.sites) {
+      const st = gs.sites[id];
+      if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
+      if (st.only ? st.only !== bkey : (bkey === 'boathouse' || (st.size === 'S' && !/^house_/.test(bkey)))) continue;
+      const d = gdist(p.x, p.y, st.dropX, st.dropY);
+      if (d < bd) { bd = d; best = st; }
+    }
+    return best;
+  }
+
+  /** where the chief can pick up `type` (a station / workshop output, else nothing) */
+  sourceOf(type) {
+    const gs = this.gs;
+    let best = null, bn = 0;
+    for (const s of gs.sources()) { if (!s.enabled) continue; const n = s.outStack.countOf(type); if (n > bn) { bn = n; best = s; } }
+    return best;
+  }
+
+  v3Hint(set, dt, idle) {
+    const gs = this.gs, p = gs.player, prog = gs.progress;
+    const bag = (ty) => p.stack.countOf(ty);
+    // 1. hungry miners: food to the food box
+    const fb = gs.foodBox;
+    if (fb && fb.active && (fb.count === 0 || (!prog.flags.fedMiners && fb.count < fb.max * 0.6)) && gs.workers.some((w) => w.type === 'miner' && (w.hungry || !prog.flags.fedMiners))) {
+      if (MINER_FOOD.some((f) => bag(f) > 0)) { if (fb.pad.contains(p.x, p.y)) this.textKey = 'obj_food'; else set(fb.x, fb.y, 60, 'obj_food'); return true; }
+      const porterBrings = gs.porters.some((w) => w.station && (w.station.output === 'item_bread' || w.station.output === 'item_meat_cooked'));
+      if (!porterBrings || fb.count === 0) {
+        const src = this.sourceOf('item_bread') || this.sourceOf('item_meat_cooked');
+        if (src && p.room > 0) { if (src.outPad.contains(p.x, p.y)) this.textKey = 'obj_take_bread'; else set(src.outPad.x, src.outPad.y, 80, 'obj_take_bread'); return true; }
+      }
+      if (fb.count === 0) { this.textKey = 'obj_food'; return idle ? false : true; }
+    }
+    // 2. a construction site waiting for materials nobody is bringing
+    for (const id in gs.sites) {
+      const st = gs.sites[id];
+      if (st.state !== 'foundation' || !st.shown) continue;
+      for (const m of MATERIALS) {
+        const miss = st.missing(m);
+        if (miss <= 0) continue;
+        if (bag(m) > 0) { if (st.dropPad.contains(p.x, p.y)) this.textKey = 'obj_site_' + (m === 'item_plank' ? 'plank' : 'ingot'); else set(st.dropX, st.dropY, 60, 'obj_site_' + (m === 'item_plank' ? 'plank' : 'ingot')); return true; }
+        const carrier = gs.porters.some((w) => (w.station && w.station.output === m) || (w.wh && gs.warehouse && gs.warehouse.count(m) > 0) || (w.dest === st));
+        if (carrier) continue;
+        const src = this.sourceOf(m);
+        if (src && p.room > 0 && (idle || id.startsWith('tower_') || !prog.seen['site_' + m])) {
+          if (src.outPad.contains(p.x, p.y)) this.textKey = 'obj_site_take_' + (m === 'item_plank' ? 'plank' : 'ingot');
+          else set(src.outPad.x, src.outPad.y, 80, 'obj_site_take_' + (m === 'item_plank' ? 'plank' : 'ingot'));
+          return true;
+        }
+      }
+    }
+    // 3. a hire pad waiting for its tool
+    for (const id in prog.pads) {
+      const pd = prog.pads[id];
+      if (!pd.items || pd.done || !pd.active) continue;
+      for (const k in pd.items) {
+        if ((pd.got[k] || 0) >= pd.items[k]) continue;
+        if (bag(k) > 0) { if (pd.pad.contains(p.x, p.y)) this.textKey = 'obj_tool_give'; else set(pd.x, pd.y, 112, 'obj_tool_give', t('obj_tool_give', { name: t(k) })); return true; }
+        const porterBrings = gs.porters.some((w) => (w.station && w.station.kind === 'toolsmith') || w.dest === pd);
+        const ws = gs.workshops.find((w) => w.kind === 'toolsmith');
+        if (!porterBrings && ws && ws.outStack.countOf(k) > 0 && p.room > 0 && (idle || pd.remaining <= gs.economy.coins)) {
+          if (ws.outPad.contains(p.x, p.y)) this.textKey = 'obj_tool';
+          else set(ws.outPad.x, ws.outPad.y, 80, 'obj_tool', t('obj_tool', { name: t(k) }));
+          return true;
+        }
+      }
+    }
+    // 4. the next building: point at a free plot once it is affordable
+    const g = prog.nextGoal();
+    if (g && g.kind === 'build' && !gs.isBuilding(g.id) && !gs.isBuilt(g.id)) {
+      const cost = buildCost(g.id).coins || 0;
+      const pl = this.plotFor(g.id);
+      if (pl && gs.economy.coins >= cost) {
+        if (pl.pad && pl.pad.contains(p.x, p.y)) this.textKey = 'obj_build';
+        else set(pl.dropX, pl.dropY, 70, 'obj_build:' + g.id, t('obj_build', { name: t('b_' + g.id) }));
+        return true;
+      }
+    }
+    // 5. people wait for a home: a house on a free small plot (when affordable)
+    if (gs.life && gs.life.waiting.length && idle) {
+      const pl = this.plotFor('house_c');
+      if (pl && gs.economy.coins >= (buildCost('house_c').coins || 0) && prog.met('hire_miner')) { set(pl.dropX, pl.dropY, 70, 'obj_houses'); return true; }
+    }
+    // 6. the general store: nobody at the register
+    const sto = gs.store;
+    if (sto && sto.enabled && !sto.register.clerk && sto.waitingPay && sto.waitPayT > 2) {
+      if (sto.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait';
+      else set(sto.register.x, sto.register.y, 46, 'obj_store_register');
+      return true;
+    }
+    return false;
   }
 
   /** the very first loop: fish -> grill -> counter -> coins -> hire the fisherman */
@@ -133,6 +259,24 @@ export class Tutorial {
   /** where carried item `type` can go right now: { pad, key } or null */
   destination(type) {
     const gs = this.gs;
+    // (v3) a building site / hire pad / the food box / a workshop wanting it comes first
+    const L = gs.logistics;
+    if (L) {
+      const b = L.best(type, gs.player.x, gs.player.y, { minPrio: 50, noStore: true });
+      if (b) {
+        const s = b.sink;
+        const pad = s.dropPad || (s.pad && s.pad.contains ? s.pad : null) || (s.inPad) || { x: s.x, y: s.y, contains: (x, y) => gdist(x, y, s.x, s.y) < 60 };
+        if (s.kind === 'plot' || s.kind === 'tower') return { pad: s.dropPad, key: type === 'item_plank' ? 'obj_site_plank' : 'obj_site_ingot' };
+        if (s === gs.foodBox) return { pad: s.pad, key: 'obj_food' };
+        if (s.items) return { pad: s.pad, key: 'obj_tool_give' };
+        const ws = gs.workshops.find((w) => w.sink === s);
+        if (ws) return { pad: ws.inPad, key: null };
+        if (s === gs.grillSink) return { pad: gs.stations.grill.inPad, key: 'obj_grill' };
+        void pad;
+      }
+    }
+    if (STORE_GOODS.indexOf(type) >= 0) return gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType ? { pad: gs.store.shelf, key: null } : (gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null);
+    if (type === 'item_fish_big') return gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null;
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? { pad: gs.market.shelf, key: SELL_KEY[type] } : null;
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? { pad: gs.trade.shelf, key: SELL_KEY[type] } : null;
     const st = gs.stationByInput[type];

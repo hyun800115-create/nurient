@@ -532,15 +532,16 @@ export class TradePost {
     this.maxPerType = Math.max(1, Math.floor(BALANCE.trade.shelfMax) || 40);
     this.stock = new ItemStack(gs, { scale: 0.95, cols: [[-20, -4], [20, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: this.maxPerType * GOODS.length });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
+    // (v3) the merchant is the customer: he stands in front of the stall (the clerk works behind it)
     this.merchant = new Character(gs, 'villager_c', this.x + cfg.merchant[0], this.y + cfg.merchant[1], { dir: 1 });
-    this.merchant.faceTo(this.shelf.x, this.shelf.y);
-    this.merchant.noXray = true;   // the merchant always stands behind his cart: the cart must not fade for him
+    this.merchant.faceTo(this.x + 20, this.y - 30);
+    this.merchant.noXray = true;
     this.buyT = 0;
     this.happyT = 0;
     this.flying = {};      // goods on their way to the merchant (not paid yet)
     this.front = [-60, 30];
     // (v2) the merchant only buys while someone stands at the register (the chief or a clerk)
-    this.register = new Register(gs, this, Object.assign({ avoid: cfg.merchant }, cfg), cfg.sprite);
+    this.register = new Register(gs, this, cfg, cfg.sprite);
     this.waitT = 0;
     this.waitIcon = null;
     this.goods = GOODS;
@@ -616,7 +617,7 @@ export class TradePost {
       if (this.happyT <= 0) { m.play('happy', true); this.register.onPay(m); }
       this.happyT = 0.7;
     }
-    if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) m.play('idle'); }
+    if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) { m.faceTo(this.x + 20, this.y - 30); m.play('idle'); } }
     m.sync(dt);
   }
 }

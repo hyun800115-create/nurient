@@ -39,7 +39,7 @@ import { House } from '../entities/House.js';
 import { FoodBox } from '../entities/FoodBox.js';
 import { Tower } from '../entities/Tower.js';
 import { Boathouse } from '../entities/Boathouse.js';
-import { BUILD_UNLOCK, UNIQUE_BUILDINGS, GOALS } from '../systems/Progression.js';
+import { BUILD_UNLOCK, UNIQUE_BUILDINGS } from '../systems/Progression.js';
 import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
 
 // obstacle radius (ground space px) for static decor
@@ -101,6 +101,7 @@ export class Game extends Phaser.Scene {
     this.statics = [];
     this.keysInUse = new Set();   // character looks taken by clerks / porters (residents and customers avoid them)
     this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked), undefined, (r) => !this.territory || this.territory.isOpen(r));
+    this.roads.blocked = (x, y) => !!(this.collision && this.collision.blocked(x, y, 12));
     // (v3) who needs what (porters ask), the pictures that arrive after the title
     this.logistics = new Logistics(this);
     this.lazyImgs = [];
@@ -249,7 +250,8 @@ export class Game extends Phaser.Scene {
     this.load.on('loaderror', (f) => Assets.onLoadError(f, this.load));
     // residents who live here already come first
     const first = ((this.life && this.life.moved) || []).concat(['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
-    const n = Assets.queueLazy(this.load, first);
+    // (v3) the building / construction / boat pictures come first (small, and plots may be on screen)
+    const n = Assets.queueLazy(this.load, first, ['bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
     if (!want.length && !n) return;
     const onFile = (key) => { try { Assets.onLazyFile(key); } catch (e) { /* keep loading */ } };
@@ -434,8 +436,9 @@ export class Game extends Phaser.Scene {
     for (const d of WORLD.decor) if (/lodge|tent|pier|flag|campfire/.test(d[0])) spots.push([d[1], d[2], d[0] === 'chief_lodge' ? 230 : 120]);
     // (v3) building plots, watchtowers, pads of the new chains: room for the building and its pads
     const PR = { S: 190, M: 250, L: 310 };
-    for (const id in WORLD.plots || {}) { const p = WORLD.plots[id]; spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); }
-    for (const id in WORLD.towers || {}) { const p = WORLD.towers[id]; spots.push([p.x, p.y, 170]); spots.push([p.x, p.y + 70, 130]); }
+    // (a pine in front of a plot would hide its pad and label behind its canopy)
+    for (const id in WORLD.plots || {}) { const p = WORLD.plots[id]; spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); spots.push([p.x, p.y + 220, 200]); }
+    for (const id in WORLD.towers || {}) { const p = WORLD.towers[id]; spots.push([p.x, p.y, 170]); spots.push([p.x, p.y + 70, 130]); spots.push([p.x, p.y + 190, 160]); }
     for (const id in WORLD.pads2 || {}) { const p = WORLD.pads2[id]; spots.push([p.x, p.y, 120]); }
     if (WORLD.foodBox) spots.push([WORLD.foodBox.x, WORLD.foodBox.y, 140]);
     for (const [sx, sy, r] of spots) if (gdist(x, y, sx, sy) < r) return true;
@@ -968,6 +971,20 @@ export class Game extends Phaser.Scene {
 
   focusCamera(x, y, ms) { this.camFocus = { x, y, until: this.time.now + ms }; }
 
+  /** the part of the world the camera shows (or is about to: it follows camTarget) */
+  viewRect() {
+    const cam = this.cameras.main, ct = this.camTarget;
+    const z = Math.max(0.05, cam.zoom || 1);
+    const w = cam.width / z, h = cam.height / z;
+    const wv = cam.worldView;
+    const cx = ct ? ct.x : wv.centerX, cy = ct ? ct.y : wv.centerY;
+    const r = this._vr || (this._vr = { x: 0, y: 0, right: 0, bottom: 0 });
+    // cover both where the camera is and where it is going
+    r.x = Math.min(wv.x, cx - w / 2); r.y = Math.min(wv.y, cy - h / 2);
+    r.right = Math.max(wv.right, cx + w / 2); r.bottom = Math.max(wv.bottom, cy + h / 2);
+    return r;
+  }
+
   showBench(instant) {
     const b = this.bench;
     b.setVisible(true);
@@ -1011,7 +1028,7 @@ export class Game extends Phaser.Scene {
 
   /** (v2) a porter for station `id`'s products */
   hirePorter(id, instant, x, y) {
-    const st = this.stations[id];
+    const st = this.sourceById(id);
     if (!st) return null;
     const home = Porter.homeFor(this, st);
     const pr = new Porter(this, st, x !== undefined && !instant ? x : home[0], y !== undefined && !instant ? y : home[1], this.porters.length);
@@ -1034,6 +1051,17 @@ export class Game extends Phaser.Scene {
     while (a.ri < r.length - 1 && gdist(a.x, a.y, r[a.ri].x, r[a.ri].y) < 34) a.ri++;
     const w = r[a.ri];
     const last = a.ri >= r.length - 1;
+    // no closer to this point for a while (something stands on it, or a crowd blocks it): skip it,
+    // or call the end of the route reached, so a carrier never circles an obstacle for good
+    const dd = gdist(a.x, a.y, w.x, w.y);
+    if (a._wpX !== w.x || a._wpY !== w.y) { a._wpX = w.x; a._wpY = w.y; a._wpBest = dd; a._wpT = 0; }
+    else if (dd < a._wpBest - 6) { a._wpBest = dd; a._wpT = 0; }
+    else if ((a._wpT += dt) > 3) {
+      a._wpT = 0; a._wpBest = Infinity;
+      if (!last) { a.ri++; return false; }
+      a.vx = a.vy = 0;
+      return true;
+    }
     if (this.moveAgent(a, w.x, w.y, speed, dt, last ? tol : 28)) {
       if (last) return true;
       a.ri++;
@@ -1488,9 +1516,22 @@ export class Game extends Phaser.Scene {
           market: { stock: gs.market.stock.count, cash: gs.market.cash.value, queue: gs.market.queue.length, waitingPay: gs.market.waitingPay, staffed: gs.market.register.staffed, clerk: !!gs.market.register.clerk },
           trade: { enabled: gs.trade.enabled, stock: gs.trade.stock.count, cash: gs.trade.cash.value, staffed: gs.trade.register.staffed, clerk: !!gs.trade.register.clerk },
           workers: gs.workers.map((w) => ({ type: w.type, state: w.state, carry: w.stack.count })),
-          porters: gs.porters.map((w) => ({ station: w.station.id, key: w.key, state: w.state, carry: w.stack.count, x: Math.round(w.x), y: Math.round(w.y) })),
+          porters: gs.porters.map((w) => ({ station: w.station ? w.station.id : 'warehouse', key: w.key, state: w.state, carry: w.stack.count, type: w.carriedType ? w.carriedType() : null, dest: w.dest ? w.dest.id : null, x: Math.round(w.x), y: Math.round(w.y) })),
           flags: Object.assign({}, gs.progress.flags),
           residents: gs.life ? gs.life.residents.length : 0,
+          // (v3)
+          territory: Object.fromEntries(Object.keys(gs.territory.regions).map((k) => [k, gs.territory.regions[k].open])),
+          sites: Object.fromEntries(Object.keys(gs.sites).filter((k) => gs.sites[k].shown || gs.sites[k].state !== 'plot').map((k) => { const st = gs.sites[k]; return [k, { state: st.state, b: st.building, shown: st.shown, need: st.need, got: Object.fromEntries(MATERIALS.map((m) => [m, st.stock.countOf(m)])), t: Math.round(st.buildT * 10) / 10 }]; })),
+          built: Object.assign({}, gs.built),
+          food: gs.foodBox ? { active: gs.foodBox.active, count: gs.foodBox.count, eaten: gs.foodBox.eaten } : null,
+          hungry: gs.workers.filter((w) => w.hungry).length,
+          warehouse: gs.warehouse ? { total: gs.warehouse.total, counts: Object.assign({}, gs.warehouse.counts) } : null,
+          workshops: Object.fromEntries(gs.workshops.map((w) => [w.kind, { in: w.inStack.count, out: w.outStack.count, outs: w.serialize().outs, working: w.working }])),
+          store: gs.store ? { stock: gs.store.stock.count, cash: gs.store.cash.value, queue: gs.store.queue.length, clerk: !!gs.store.register.clerk, waitingPay: gs.store.waitingPay } : null,
+          boat: gs.boathouse && gs.boathouse.boat ? { level: gs.boathouse.level, state: gs.boathouse.boat.state, cargo: gs.boathouse.boat.cargo.count, x: Math.round(gs.boathouse.boat.x), y: Math.round(gs.boathouse.boat.y), catch: gs.boathouse.outStack.count } : null,
+          population: gs.life ? { people: gs.life.people(), cap: gs.popCap(), waiting: gs.life.waiting.length } : null,
+          goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null,
+          v3Complete: gs.progress.v3Complete, celebrated3: gs.progress.celebrated3,
           zoom: Math.round(gs.zoomCur * 100) / 100,
           zones: Object.fromEntries(Object.keys(gs.zones).map((k) => [k, gs.zones[k].unlocked])),
           objective: gs.tutorial.textKey,
@@ -1502,7 +1543,7 @@ export class Game extends Phaser.Scene {
       unlockAll() {
         const pr = gs.progress;
         for (const s of STEPS) {
-          if (pr.done[s.id]) continue;
+          if (pr.done[s.id] || s.v3) continue;     // (v3 steps: unlockV3)
           pr.done[s.id] = true;
           const pad = pr.pads[s.id];
           if (pad) { pad.destroy(); delete pr.pads[s.id]; }
@@ -1515,6 +1556,7 @@ export class Game extends Phaser.Scene {
         pr.celebrated = true;
         for (const z of ['forest', 'farm', 'mine', 'hunt']) pr.hints[z] = true;
         pr.syncPads();
+        gs.refreshSites();
         gs.save(true);
         return Object.keys(pr.done);
       },
@@ -1531,6 +1573,15 @@ export class Game extends Phaser.Scene {
         for (const id in gs.progress.pads) m[id] = gs.progress.pads[id];
         for (const k in gs.progress.upPads) m['up_' + k] = gs.progress.upPads[k];
         for (const id in gs.zones) m['zone:' + id] = { x: gs.zones[id].cfg.center[0], y: gs.zones[id].cfg.center[1] };
+        // (v3)
+        for (const id in gs.sites) { const st = gs.sites[id]; m['plot:' + id] = { x: st.dropX, y: st.dropY }; m['site:' + id] = st; }
+        for (const w of gs.workshops) { m[w.kind + 'In'] = w.inPad; m[w.kind + 'Out'] = w.outPad; m[w.kind] = w; }
+        if (gs.foodBox) m.foodBox = gs.foodBox;
+        if (gs.warehouse) { m.warehouseIn = gs.warehouse.inPad; m.warehouseOut = gs.warehouse.outPad; m.warehouse = gs.warehouse; }
+        if (gs.store) { m.storeShelf = gs.store.shelf; m.storeCash = gs.store.cash.pad; m.storeRegister = gs.store.register; m.store = gs.store; }
+        if (gs.boathouse) { m.dockOut = gs.boathouse.outPad; m.boathouse = gs.boathouse; if (gs.boathouse.boat) m.boat = gs.boathouse.boat; }
+        for (const id in gs.towers) m['tower:' + id] = gs.towers[id];
+        for (const id in gs.territory.regions) { const r = gs.territory.regions[id]; const c = r.cfg.center || [(r.rect[0] + r.rect[2]) / 2, (r.rect[1] + r.rect[3]) / 2]; m['region:' + id] = { x: c[0], y: c[1] }; }
         if (name === 'tree') { const tr = gs.trees.find((n) => n.ready()); return tr && tr.standPoint(tr.x + 60, tr.y + 30); }
         if (name === 'rock') { const n = gs.rocks.find((r) => r.ready()); return n && n.standPoint(n.x + 80, n.y + 60); }
         if (name === 'wheat') { const n = gs.wheat.find((r) => r.ready()); return n && n.standPoint(n.x - 60, n.y + 30); }
@@ -1559,6 +1610,37 @@ export class Game extends Phaser.Scene {
       /** (v2) tap at a world point (resident / pet reactions) */
       tapWorld(x, y) { const r = gs.life && gs.life.tap(x, y); return r ? r.key : null; },
       roads(ax, ay, bx, by) { return gs.roads.route(ax, ay, bx, by, []).map((p) => [Math.round(p.x), Math.round(p.y)]); },
+      // ---------------- (v3) test helpers
+      /** choose building `bkey` on plot `id` like the build menu (pays its coins); false if not allowed */
+      build(id, bkey) { const st = gs.sites[id]; return st ? gs.tryBuild(st, bkey) : false; },
+      /** the build menu's cards for plot `id` */
+      choices(id) { const st = gs.sites[id]; return st ? gs.buildChoices(st).map((c) => ({ key: c.key, locked: c.locked, reason: c.reason, coins: c.cost.coins })) : null; },
+      openMenu(id) { const st = gs.sites[id]; if (st) gs.openBuildMenu(st); return !!st; },
+      /** put every missing material on a site at once (test setup) */
+      supply(id) { const st = gs.sites[id]; if (!st || st.state !== 'foundation') return false; for (const m in st.need) while (st.stock.countWithIncoming(m) < st.need[m]) st.stock.push(m, null, gs.effects); return true; },
+      /** finish a site's building right now (no scaffold time) */
+      finishSite(id) { const st = gs.sites[id]; if (!st || st.state === 'plot' || st.state === 'done') return false; st.finish(false); return true; },
+      /** v3 shortcut for tests: open every land and put a building on chosen plots (instant) */
+      unlockV3(plan) {
+        const P = plan || { e_m1: 'toolsmith', e_dock: 'boathouse', e_m2: 'warehouse', s_m1: 'cannery', s_m2: 'store', v_house1: 'house_a', v_house2: 'house_b' };
+        hooks.unlockAll();
+        const pr = gs.progress;
+        for (const tw of ['tower_east', 'tower_south', 'tower_se']) {
+          if (!pr.done[tw]) { pr.done[tw] = true; const pad = pr.pads[tw]; if (pad) { pad.destroy(); delete pr.pads[tw]; } }
+          const st = gs.sites[tw] || gs.makeTowerSite(tw);
+          if (st.state === 'plot') st.start('watchtower', { instant: true });
+          if (st.state !== 'done') st.finish(true);
+        }
+        gs.refreshSites();
+        for (const id in P) { const st = gs.sites[id]; if (!st || st.state !== 'plot') continue; st.start(P[id], { instant: true }); st.finish(true); }
+        if (gs.foodBox && !gs.foodBox.active) gs.foodBox.activate(true, 10);
+        pr.flags.fedMiners = true;
+        pr.syncPads();
+        gs.save(true);
+        return Object.assign({}, gs.built);
+      },
+      /** complete a pad step now (v3 pads included: towers start their site, boats sail) */
+      completeStep(id) { const s = STEPS.find((q) => q.id === id); const pad = gs.progress.pads[id]; if (!s || !pad) return false; if (pad.items) for (const k in pad.items) pad.got[k] = pad.items[k]; pad.paid = pad.cost; pad.complete(); return true; },
       save() { gs.save(true); },
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
       reset() { gs.resetProgress(); },

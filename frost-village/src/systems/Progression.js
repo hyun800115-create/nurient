@@ -296,7 +296,11 @@ export class Progression {
   /** cheapest pad the player can afford now (for the tutorial arrow) */
   affordablePad(coins) {
     let best = null;
-    for (const id in this.pads) { const p = this.pads[id]; if (p.active && !p.done && p.remaining <= coins && (!best || p.remaining < best.remaining)) best = p; }
+    for (const id in this.pads) {
+      const p = this.pads[id];
+      // a pad already paid that only waits for its tool is not a place to go with coins
+      if (p.active && !p.done && p.remaining > 0 && p.remaining <= coins && (!best || p.remaining < best.remaining)) best = p;
+    }
     return best;
   }
 

@@ -1,0 +1,3000 @@
+{
+ "version": 1,
+ "notes": "Residents batch 3 = station operators (기획서_v3_분업; same format as assets/villagers2, CONTRACT_VILLAGERS A + CONTRACT_V3 D). Frames {anim}_{dir}_{i}; each anim lists its dirs (social anims S/SE/E only, mirror SW/W/NW from SE/E/NE). NEW keys: npc_sawyer, npc_smoker, npc_cannery (12 core anims + operate). OVERRIDES: npc_chef (was assets/villagers2), npc_aunt and npc_blacksmith (were assets/villagers) are COMPLETE re-renders - every anim they had, same model and poses, plus operate - under the SAME character keys AND the same atlas / portrait keys (vil_<key>, portrait_<key>). Merge this fragment AFTER villagers and villagers2 (later fragment wins, key by key): the override entries then replace the old character entries and the old atlas entries, so the older vil_npc_chef / vil_npc_aunt / vil_npc_blacksmith files are not downloaded at all. Put villagers3 in LAZY_FRAGMENTS like villagers2. operate = working a station at hip/chest height: 8 frames, 10 fps, loop, ALL 5 dirs (it is not cheated toward the camera, the operator really faces the station). operate.impactFrame = the visible beat (flip apex / rolling push / hammer hit / log into the blade / ham hooked / press down); operate.impactPoint[dir] = [dx, dy] px from the anchor of the beat (sparks, flour, sawdust, steam; negate dx for mirrored dirs); operate.beats = [{frame, kind, point{dir}}] (beats[0] = the impact, beats[1] a second sfx/particle cue); operate.station = the station sprite key; operate.workTool = what is drawn. Tools are baked into the operate frames only. Work surfaces (bakery board, can press) sit 0.50 m high about 0.35-0.55 m in front of the anchor: stand the operator at the station edge facing it (operate.workSpot gives forward/height in metres). carryStyle \"front\" + carryPoint/carryPointFrames as in batch 2. headTop for the overrides is kept from their old manifests.",
+ "atlases": [
+  {
+   "key": "vil_npc_chef",
+   "png": "villagers3/vil_npc_chef.png",
+   "json": "villagers3/vil_npc_chef.json"
+  },
+  {
+   "key": "vil_npc_aunt",
+   "png": "villagers3/vil_npc_aunt.png",
+   "json": "villagers3/vil_npc_aunt.json"
+  },
+  {
+   "key": "vil_npc_blacksmith",
+   "png": "villagers3/vil_npc_blacksmith.png",
+   "json": "villagers3/vil_npc_blacksmith.json"
+  },
+  {
+   "key": "vil_npc_sawyer",
+   "png": "villagers3/vil_npc_sawyer.png",
+   "json": "villagers3/vil_npc_sawyer.json"
+  },
+  {
+   "key": "vil_npc_smoker",
+   "png": "villagers3/vil_npc_smoker.png",
+   "json": "villagers3/vil_npc_smoker.json"
+  },
+  {
+   "key": "vil_npc_cannery",
+   "png": "villagers3/vil_npc_cannery.png",
+   "json": "villagers3/vil_npc_cannery.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "portrait_npc_chef",
+   "png": "villagers3/portrait_npc_chef.png"
+  },
+  {
+   "key": "portrait_npc_aunt",
+   "png": "villagers3/portrait_npc_aunt.png"
+  },
+  {
+   "key": "portrait_npc_blacksmith",
+   "png": "villagers3/portrait_npc_blacksmith.png"
+  },
+  {
+   "key": "portrait_npc_sawyer",
+   "png": "villagers3/portrait_npc_sawyer.png"
+  },
+  {
+   "key": "portrait_npc_smoker",
+   "png": "villagers3/portrait_npc_smoker.png"
+  },
+  {
+   "key": "portrait_npc_cannery",
+   "png": "villagers3/portrait_npc_cannery.png"
+  }
+ ],
+ "sprites": {
+  "portrait_npc_chef": {
+   "image": "portrait_npc_chef",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  },
+  "portrait_npc_aunt": {
+   "image": "portrait_npc_aunt",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  },
+  "portrait_npc_blacksmith": {
+   "image": "portrait_npc_blacksmith",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  },
+  "portrait_npc_sawyer": {
+   "image": "portrait_npc_sawyer",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  },
+  "portrait_npc_smoker": {
+   "image": "portrait_npc_smoker",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  },
+  "portrait_npc_cannery": {
+   "image": "portrait_npc_cannery",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S"
+  }
+ },
+ "characters": {
+  "npc_chef": {
+   "atlas": "vil_npc_chef",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "요리사 쿡",
+    "en": "Chef Cook"
+   },
+   "traits": [
+    "proud",
+    "foodie",
+    "dance",
+    "serves_food"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "serve": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -20
+      ],
+      "SE": [
+       15,
+       -23
+      ],
+      "E": [
+       22,
+       -30
+      ]
+     }
+    },
+    "dance": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 4,
+     "impactPoint": {
+      "S": [
+       -8,
+       -41
+      ],
+      "SE": [
+       17,
+       -43
+      ],
+      "E": [
+       32,
+       -53
+      ],
+      "NE": [
+       28,
+       -65
+      ],
+      "N": [
+       8,
+       -73
+      ]
+     },
+     "beats": [
+      {
+       "frame": 4,
+       "kind": "flip_apex",
+       "point": {
+        "S": [
+         -8,
+         -41
+        ],
+        "SE": [
+         17,
+         -43
+        ],
+        "E": [
+         32,
+         -53
+        ],
+        "NE": [
+         28,
+         -65
+        ],
+        "N": [
+         8,
+         -73
+        ]
+       }
+      },
+      {
+       "frame": 6,
+       "kind": "catch_sizzle",
+       "point": {
+        "S": [
+         -8,
+         -11
+        ],
+        "SE": [
+         18,
+         -14
+        ],
+        "E": [
+         34,
+         -24
+        ],
+        "NE": [
+         29,
+         -37
+        ],
+        "N": [
+         8,
+         -45
+        ]
+       }
+      }
+     ],
+     "station": "station_grill",
+     "workTool": "frying pan (right hand, left fist on the hip) + a roast fish that leaves the pan on frame 2, tumbles end over end (apex = impactFrame 4) and lands back on frame 6. impactPoint = fish centre at the apex; beats[1] = pan centre on the catch.",
+     "workSpot": {
+      "forwardM": 0.53,
+      "heightM": 0.6
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -32,
+     false
+    ],
+    "SE": [
+     14,
+     -35,
+     false
+    ],
+    "E": [
+     17,
+     -42,
+     false
+    ],
+    "NE": [
+     10,
+     -48,
+     true
+    ],
+    "N": [
+     -3,
+     -49,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -32
+     ],
+     [
+      1,
+      -30
+     ],
+     [
+      -1,
+      -29
+     ],
+     [
+      -2,
+      -30
+     ],
+     [
+      -3,
+      -32
+     ],
+     [
+      -1,
+      -30
+     ],
+     [
+      1,
+      -29
+     ],
+     [
+      2,
+      -30
+     ]
+    ],
+    "SE": [
+     [
+      14,
+      -35
+     ],
+     [
+      13,
+      -33
+     ],
+     [
+      12,
+      -31
+     ],
+     [
+      11,
+      -32
+     ],
+     [
+      10,
+      -33
+     ],
+     [
+      11,
+      -32
+     ],
+     [
+      13,
+      -32
+     ],
+     [
+      14,
+      -34
+     ]
+    ],
+    "E": [
+     [
+      17,
+      -42
+     ],
+     [
+      17,
+      -39
+     ],
+     [
+      17,
+      -37
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -39
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -40
+     ]
+    ],
+    "NE": [
+     [
+      10,
+      -48
+     ],
+     [
+      11,
+      -45
+     ],
+     [
+      13,
+      -43
+     ],
+     [
+      14,
+      -44
+     ],
+     [
+      14,
+      -46
+     ],
+     [
+      13,
+      -45
+     ],
+     [
+      12,
+      -44
+     ],
+     [
+      11,
+      -46
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -49
+     ],
+     [
+      -1,
+      -48
+     ],
+     [
+      1,
+      -46
+     ],
+     [
+      2,
+      -48
+     ],
+     [
+      3,
+      -49
+     ],
+     [
+      1,
+      -48
+     ],
+     [
+      -1,
+      -46
+     ],
+     [
+      -2,
+      -48
+     ]
+    ]
+   },
+   "headTop": -95,
+   "shadow": [
+    52,
+    20
+   ],
+   "portrait": "portrait_npc_chef",
+   "operates": [
+    "station_grill"
+   ],
+   "overrides": "villagers2"
+  },
+  "npc_aunt": {
+   "atlas": "vil_npc_aunt",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "빵집 아주머니",
+    "en": "Baker Auntie"
+   },
+   "traits": [
+    "kind",
+    "chatty",
+    "compliments"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "dance": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sit": {
+     "frames": 4,
+     "fps": 4,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -16
+      ],
+      "SE": [
+       19,
+       -20
+      ],
+      "E": [
+       27,
+       -29
+      ],
+      "NE": [
+       19,
+       -39
+      ],
+      "N": [
+       0,
+       -43
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "rolling_push",
+       "point": {
+        "S": [
+         0,
+         -16
+        ],
+        "SE": [
+         19,
+         -20
+        ],
+        "E": [
+         27,
+         -29
+        ],
+        "NE": [
+         19,
+         -39
+        ],
+        "N": [
+         0,
+         -43
+        ]
+       }
+      },
+      {
+       "frame": 3,
+       "kind": "pin_on_dough",
+       "point": {
+        "S": [
+         0,
+         -19
+        ],
+        "SE": [
+         18,
+         -23
+        ],
+        "E": [
+         25,
+         -32
+        ],
+        "NE": [
+         18,
+         -40
+        ],
+        "N": [
+         0,
+         -44
+        ]
+       }
+      }
+     ],
+     "station": "station_bakery",
+     "workTool": "rolling pin held by both handles, rolled forward over a dough sheet on a floured board (board top 0.50 m, its centre 0.35 m in front of the anchor = the station counter). The dough stretches on the push; impactPoint = flour-puff spot at the front edge of the dough on the full push.",
+     "workSpot": {
+      "forwardM": 0.35,
+      "heightM": 0.5
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -33,
+     false
+    ],
+    "SE": [
+     14,
+     -36,
+     false
+    ],
+    "E": [
+     17,
+     -43,
+     false
+    ],
+    "NE": [
+     10,
+     -48,
+     true
+    ],
+    "N": [
+     -3,
+     -50,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -33
+     ],
+     [
+      1,
+      -31
+     ],
+     [
+      -1,
+      -29
+     ],
+     [
+      -2,
+      -31
+     ],
+     [
+      -3,
+      -33
+     ],
+     [
+      -1,
+      -31
+     ],
+     [
+      1,
+      -29
+     ],
+     [
+      2,
+      -31
+     ]
+    ],
+    "SE": [
+     [
+      14,
+      -36
+     ],
+     [
+      13,
+      -34
+     ],
+     [
+      12,
+      -32
+     ],
+     [
+      10,
+      -33
+     ],
+     [
+      10,
+      -34
+     ],
+     [
+      11,
+      -33
+     ],
+     [
+      13,
+      -32
+     ],
+     [
+      14,
+      -34
+     ]
+    ],
+    "E": [
+     [
+      17,
+      -43
+     ],
+     [
+      17,
+      -40
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -40
+     ],
+     [
+      17,
+      -39
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -41
+     ]
+    ],
+    "NE": [
+     [
+      10,
+      -48
+     ],
+     [
+      11,
+      -46
+     ],
+     [
+      13,
+      -44
+     ],
+     [
+      14,
+      -45
+     ],
+     [
+      14,
+      -46
+     ],
+     [
+      13,
+      -45
+     ],
+     [
+      12,
+      -44
+     ],
+     [
+      10,
+      -47
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -50
+     ],
+     [
+      -1,
+      -48
+     ],
+     [
+      1,
+      -47
+     ],
+     [
+      2,
+      -48
+     ],
+     [
+      3,
+      -50
+     ],
+     [
+      1,
+      -48
+     ],
+     [
+      -1,
+      -47
+     ],
+     [
+      -2,
+      -48
+     ]
+    ]
+   },
+   "headTop": -89,
+   "shadow": [
+    48,
+    19
+   ],
+   "portrait": "portrait_npc_aunt",
+   "seatOffset": [
+    0,
+    0
+   ],
+   "seatHeightPx": 25,
+   "headTopSit": -79,
+   "operates": [
+    "station_bakery"
+   ],
+   "overrides": "villagers"
+  },
+  "npc_blacksmith": {
+   "atlas": "vil_npc_blacksmith",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "대장장이 언니",
+    "en": "Blacksmith"
+   },
+   "traits": [
+    "hearty",
+    "belly_laugh",
+    "arms_akimbo"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "dance": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -15
+      ],
+      "SE": [
+       20,
+       -19
+      ],
+      "E": [
+       28,
+       -29
+      ],
+      "NE": [
+       20,
+       -38
+      ],
+      "N": [
+       0,
+       -43
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "hammer_hit",
+       "point": {
+        "S": [
+         0,
+         -15
+        ],
+        "SE": [
+         20,
+         -19
+        ],
+        "E": [
+         28,
+         -29
+        ],
+        "NE": [
+         20,
+         -38
+        ],
+        "N": [
+         0,
+         -43
+        ]
+       }
+      },
+      {
+       "frame": 5,
+       "kind": "turn_bar",
+       "point": {
+        "S": [
+         0,
+         -13
+        ],
+        "SE": [
+         21,
+         -18
+        ],
+        "E": [
+         29,
+         -28
+        ],
+        "NE": [
+         20,
+         -38
+        ],
+        "N": [
+         0,
+         -42
+        ]
+       }
+      }
+     ],
+     "station": "station_smelter",
+     "workTool": "smithing tongs (left hand) hold an orange-hot bar; the hammer (right hand) is raised on frames 0-1 and lands on the bar on frame 3. impactPoint = bottom of the hammer face = spark spawn.",
+     "workSpot": {
+      "forwardM": 0.45,
+      "heightM": 0.5
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -32,
+     false
+    ],
+    "SE": [
+     15,
+     -36,
+     false
+    ],
+    "E": [
+     18,
+     -42,
+     false
+    ],
+    "NE": [
+     11,
+     -48,
+     true
+    ],
+    "N": [
+     -3,
+     -50,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -32
+     ],
+     [
+      1,
+      -31
+     ],
+     [
+      -1,
+      -29
+     ],
+     [
+      -2,
+      -30
+     ],
+     [
+      -3,
+      -32
+     ],
+     [
+      -1,
+      -31
+     ],
+     [
+      1,
+      -29
+     ],
+     [
+      2,
+      -30
+     ]
+    ],
+    "SE": [
+     [
+      15,
+      -36
+     ],
+     [
+      14,
+      -34
+     ],
+     [
+      12,
+      -31
+     ],
+     [
+      11,
+      -32
+     ],
+     [
+      11,
+      -34
+     ],
+     [
+      12,
+      -33
+     ],
+     [
+      13,
+      -32
+     ],
+     [
+      14,
+      -34
+     ]
+    ],
+    "E": [
+     [
+      18,
+      -42
+     ],
+     [
+      18,
+      -40
+     ],
+     [
+      18,
+      -37
+     ],
+     [
+      18,
+      -38
+     ],
+     [
+      18,
+      -40
+     ],
+     [
+      18,
+      -39
+     ],
+     [
+      18,
+      -38
+     ],
+     [
+      18,
+      -41
+     ]
+    ],
+    "NE": [
+     [
+      11,
+      -48
+     ],
+     [
+      12,
+      -46
+     ],
+     [
+      13,
+      -44
+     ],
+     [
+      14,
+      -45
+     ],
+     [
+      15,
+      -47
+     ],
+     [
+      14,
+      -45
+     ],
+     [
+      12,
+      -45
+     ],
+     [
+      11,
+      -47
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -50
+     ],
+     [
+      -1,
+      -48
+     ],
+     [
+      1,
+      -47
+     ],
+     [
+      2,
+      -48
+     ],
+     [
+      3,
+      -50
+     ],
+     [
+      1,
+      -48
+     ],
+     [
+      -1,
+      -47
+     ],
+     [
+      -2,
+      -48
+     ]
+    ]
+   },
+   "headTop": -81,
+   "shadow": [
+    50,
+    19
+   ],
+   "portrait": "portrait_npc_blacksmith",
+   "operates": [
+    "station_smelter"
+   ],
+   "overrides": "villagers"
+  },
+  "npc_sawyer": {
+   "atlas": "vil_npc_sawyer",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "제재공 산들",
+    "en": "Sandeul the Sawyer"
+   },
+   "traits": [
+    "diligent",
+    "woodworker",
+    "operator",
+    "sawmill"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -6
+      ],
+      "SE": [
+       38,
+       -14
+      ],
+      "E": [
+       54,
+       -33
+      ],
+      "NE": [
+       38,
+       -52
+      ],
+      "N": [
+       0,
+       -60
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "log_into_blade",
+       "point": {
+        "S": [
+         0,
+         -6
+        ],
+        "SE": [
+         38,
+         -14
+        ],
+        "E": [
+         54,
+         -33
+        ],
+        "NE": [
+         38,
+         -52
+        ],
+        "N": [
+         0,
+         -60
+        ]
+       }
+      },
+      {
+       "frame": 4,
+       "kind": "cut",
+       "point": {
+        "S": [
+         0,
+         -7
+        ],
+        "SE": [
+         37,
+         -15
+        ],
+        "E": [
+         53,
+         -33
+        ],
+        "NE": [
+         37,
+         -52
+        ],
+        "N": [
+         0,
+         -60
+        ]
+       }
+      }
+     ],
+     "station": "station_sawmill",
+     "workTool": "0.44 m log (axis 0.60 m high = on the saw table) pushed by both palms on its end grain; front end reaches the blade on frame 3. impactPoint = centre of the log's front end = sawdust spawn.",
+     "workSpot": {
+      "forwardM": 0.8,
+      "heightM": 0.6
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -35,
+     false
+    ],
+    "SE": [
+     15,
+     -38,
+     false
+    ],
+    "E": [
+     18,
+     -45,
+     false
+    ],
+    "NE": [
+     11,
+     -51,
+     true
+    ],
+    "N": [
+     -3,
+     -53,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -35
+     ],
+     [
+      1,
+      -33
+     ],
+     [
+      -1,
+      -31
+     ],
+     [
+      -3,
+      -33
+     ],
+     [
+      -3,
+      -35
+     ],
+     [
+      -1,
+      -33
+     ],
+     [
+      1,
+      -31
+     ],
+     [
+      3,
+      -33
+     ]
+    ],
+    "SE": [
+     [
+      15,
+      -38
+     ],
+     [
+      14,
+      -36
+     ],
+     [
+      12,
+      -34
+     ],
+     [
+      11,
+      -35
+     ],
+     [
+      11,
+      -36
+     ],
+     [
+      12,
+      -35
+     ],
+     [
+      14,
+      -34
+     ],
+     [
+      15,
+      -36
+     ]
+    ],
+    "E": [
+     [
+      18,
+      -45
+     ],
+     [
+      18,
+      -43
+     ],
+     [
+      18,
+      -40
+     ],
+     [
+      18,
+      -41
+     ],
+     [
+      18,
+      -42
+     ],
+     [
+      18,
+      -41
+     ],
+     [
+      18,
+      -41
+     ],
+     [
+      18,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      11,
+      -51
+     ],
+     [
+      12,
+      -49
+     ],
+     [
+      14,
+      -46
+     ],
+     [
+      15,
+      -48
+     ],
+     [
+      15,
+      -49
+     ],
+     [
+      14,
+      -48
+     ],
+     [
+      12,
+      -47
+     ],
+     [
+      11,
+      -49
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -53
+     ],
+     [
+      -1,
+      -51
+     ],
+     [
+      1,
+      -50
+     ],
+     [
+      3,
+      -51
+     ],
+     [
+      3,
+      -53
+     ],
+     [
+      1,
+      -51
+     ],
+     [
+      -1,
+      -50
+     ],
+     [
+      -3,
+      -51
+     ]
+    ]
+   },
+   "headTop": -82,
+   "shadow": [
+    46,
+    18
+   ],
+   "portrait": "portrait_npc_sawyer",
+   "operates": [
+    "station_sawmill"
+   ]
+  },
+  "npc_smoker": {
+   "atlas": "vil_npc_smoker",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "훈제사 연기",
+    "en": "Yeongi the Smoker"
+   },
+   "traits": [
+    "gruff",
+    "patient",
+    "operator",
+    "smokehouse"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       -16,
+       -44
+      ],
+      "SE": [
+       -1,
+       -40
+      ],
+      "E": [
+       15,
+       -43
+      ],
+      "NE": [
+       22,
+       -51
+      ],
+      "N": [
+       16,
+       -59
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "ham_hooked",
+       "point": {
+        "S": [
+         -16,
+         -44
+        ],
+        "SE": [
+         -1,
+         -40
+        ],
+        "E": [
+         15,
+         -43
+        ],
+        "NE": [
+         22,
+         -51
+        ],
+        "N": [
+         16,
+         -59
+        ]
+       }
+      },
+      {
+       "frame": 6,
+       "kind": "fan_whoosh",
+       "point": {
+        "S": [
+         6,
+         -7
+        ],
+        "SE": [
+         23,
+         -13
+        ],
+        "E": [
+         27,
+         -24
+        ],
+        "NE": [
+         15,
+         -33
+        ],
+        "N": [
+         -6,
+         -35
+        ]
+       }
+      }
+     ],
+     "station": "station_smokehouse",
+     "workTool": "ham on an S-hook in the right oven mitt is lifted onto the rack hook (frame 3, then it stays on the station rack: hidden 4-6, a new ham is picked up on 7); round paper fan in the left mitt fans the smoke down on frames 4 and 6. impactPoint = the hook; beats[1] = fan centre on the big stroke (smoke puff).",
+     "workSpot": {
+      "forwardM": 0.25,
+      "heightM": 0.85
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -33,
+     false
+    ],
+    "SE": [
+     15,
+     -36,
+     false
+    ],
+    "E": [
+     18,
+     -43,
+     false
+    ],
+    "NE": [
+     11,
+     -49,
+     true
+    ],
+    "N": [
+     -3,
+     -51,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -33
+     ],
+     [
+      1,
+      -31
+     ],
+     [
+      -1,
+      -30
+     ],
+     [
+      -3,
+      -31
+     ],
+     [
+      -3,
+      -33
+     ],
+     [
+      -1,
+      -31
+     ],
+     [
+      1,
+      -30
+     ],
+     [
+      3,
+      -31
+     ]
+    ],
+    "SE": [
+     [
+      15,
+      -36
+     ],
+     [
+      14,
+      -34
+     ],
+     [
+      12,
+      -32
+     ],
+     [
+      11,
+      -33
+     ],
+     [
+      11,
+      -34
+     ],
+     [
+      12,
+      -33
+     ],
+     [
+      13,
+      -32
+     ],
+     [
+      15,
+      -35
+     ]
+    ],
+    "E": [
+     [
+      18,
+      -43
+     ],
+     [
+      18,
+      -41
+     ],
+     [
+      18,
+      -38
+     ],
+     [
+      18,
+      -39
+     ],
+     [
+      18,
+      -40
+     ],
+     [
+      18,
+      -40
+     ],
+     [
+      18,
+      -39
+     ],
+     [
+      18,
+      -41
+     ]
+    ],
+    "NE": [
+     [
+      11,
+      -49
+     ],
+     [
+      12,
+      -47
+     ],
+     [
+      13,
+      -45
+     ],
+     [
+      15,
+      -46
+     ],
+     [
+      15,
+      -47
+     ],
+     [
+      14,
+      -46
+     ],
+     [
+      12,
+      -45
+     ],
+     [
+      11,
+      -47
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -51
+     ],
+     [
+      -1,
+      -49
+     ],
+     [
+      1,
+      -47
+     ],
+     [
+      3,
+      -49
+     ],
+     [
+      3,
+      -51
+     ],
+     [
+      1,
+      -49
+     ],
+     [
+      -1,
+      -47
+     ],
+     [
+      -3,
+      -49
+     ]
+    ]
+   },
+   "headTop": -82,
+   "shadow": [
+    56,
+    22
+   ],
+   "portrait": "portrait_npc_smoker",
+   "operates": [
+    "station_smokehouse"
+   ]
+  },
+  "npc_cannery": {
+   "atlas": "vil_npc_cannery",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "villager",
+   "role": "adult",
+   "name": {
+    "ko": "통조림 기술자 통통",
+    "en": "Tongtong the Canner"
+   },
+   "traits": [
+    "cheerful",
+    "round",
+    "operator",
+    "cannery"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "carry_walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "laugh": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "surprised": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "angry": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "sad": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "hit": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "shiver": {
+     "frames": 4,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "operate": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -17
+      ],
+      "SE": [
+       23,
+       -21
+      ],
+      "E": [
+       32,
+       -33
+      ],
+      "NE": [
+       23,
+       -44
+      ],
+      "N": [
+       0,
+       -49
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "press_down",
+       "point": {
+        "S": [
+         0,
+         -17
+        ],
+        "SE": [
+         23,
+         -21
+        ],
+        "E": [
+         32,
+         -33
+        ],
+        "NE": [
+         23,
+         -44
+        ],
+        "N": [
+         0,
+         -49
+        ]
+       }
+      },
+      {
+       "frame": 3,
+       "kind": "steam_hiss",
+       "point": {
+        "S": [
+         0,
+         -17
+        ],
+        "SE": [
+         23,
+         -21
+        ],
+        "E": [
+         32,
+         -33
+        ],
+        "NE": [
+         23,
+         -44
+        ],
+        "N": [
+         0,
+         -49
+        ]
+       }
+      }
+     ],
+     "station": "station_cannery",
+     "workTool": "bench can press (cast plate 0.50 m high, 0.50 m in front of the anchor, column + lever + ram) - both yellow-gloved hands pull the T-bar lever down, the ram seals the can on frame 3 (open can with fish 0-2, sealed lid 3-7). impactPoint = can lid.",
+     "workSpot": {
+      "forwardM": 0.5,
+      "heightM": 0.5
+     }
+    }
+   },
+   "carryStyle": "front",
+   "carryPoint": {
+    "S": [
+     3,
+     -31,
+     false
+    ],
+    "SE": [
+     14,
+     -34,
+     false
+    ],
+    "E": [
+     17,
+     -40,
+     false
+    ],
+    "NE": [
+     10,
+     -46,
+     true
+    ],
+    "N": [
+     -3,
+     -48,
+     true
+    ]
+   },
+   "carryPointFrames": {
+    "S": [
+     [
+      3,
+      -31
+     ],
+     [
+      1,
+      -29
+     ],
+     [
+      -1,
+      -28
+     ],
+     [
+      -2,
+      -29
+     ],
+     [
+      -3,
+      -31
+     ],
+     [
+      -1,
+      -29
+     ],
+     [
+      1,
+      -28
+     ],
+     [
+      2,
+      -29
+     ]
+    ],
+    "SE": [
+     [
+      14,
+      -34
+     ],
+     [
+      13,
+      -32
+     ],
+     [
+      11,
+      -30
+     ],
+     [
+      10,
+      -31
+     ],
+     [
+      10,
+      -32
+     ],
+     [
+      11,
+      -31
+     ],
+     [
+      13,
+      -30
+     ],
+     [
+      14,
+      -32
+     ]
+    ],
+    "E": [
+     [
+      17,
+      -40
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -36
+     ],
+     [
+      17,
+      -36
+     ],
+     [
+      17,
+      -38
+     ],
+     [
+      17,
+      -37
+     ],
+     [
+      17,
+      -37
+     ],
+     [
+      17,
+      -39
+     ]
+    ],
+    "NE": [
+     [
+      10,
+      -46
+     ],
+     [
+      11,
+      -44
+     ],
+     [
+      13,
+      -42
+     ],
+     [
+      14,
+      -43
+     ],
+     [
+      14,
+      -44
+     ],
+     [
+      13,
+      -43
+     ],
+     [
+      11,
+      -42
+     ],
+     [
+      10,
+      -44
+     ]
+    ],
+    "N": [
+     [
+      -3,
+      -48
+     ],
+     [
+      -1,
+      -46
+     ],
+     [
+      1,
+      -45
+     ],
+     [
+      2,
+      -46
+     ],
+     [
+      3,
+      -48
+     ],
+     [
+      1,
+      -46
+     ],
+     [
+      -1,
+      -45
+     ],
+     [
+      -2,
+      -46
+     ]
+    ]
+   },
+   "headTop": -80,
+   "shadow": [
+    54,
+    21
+   ],
+   "portrait": "portrait_npc_cannery",
+   "operates": [
+    "station_cannery"
+   ]
+  }
+ }
+}

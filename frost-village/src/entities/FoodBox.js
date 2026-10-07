@@ -6,7 +6,6 @@ import { Assets } from '../core/Assets.js';
 import { BALANCE } from '../data/balance.js';
 import { MINER_FOOD } from '../data/items.js';
 import { t } from '../data/strings.js';
-import { DEPTH } from '../systems/DepthSort.js';
 import { PRIO } from '../systems/Logistics.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
@@ -17,6 +16,7 @@ export class FoodBox {
     this.gs = gs;
     this.x = cfg.x; this.y = cfg.y;
     this.id = 'foodbox';
+    this.ux = this.x + 30; this.uy = this.y + 24;    // where porters stand to unload
     this.isWarehouse = false;
     this.enabled = false;
     this.active = false;            // appears with v3 (balance.js food)
@@ -115,5 +115,3 @@ export class FoodBox {
     this.refresh();
   }
 }
-// keep DEPTH imported for consistency with other pads
-void DEPTH;

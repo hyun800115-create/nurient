@@ -175,7 +175,7 @@ export class UI extends Phaser.Scene {
     this.coinBar.setPosition(26, top);
     this.coinIcon.setPosition(64, top);
     this.coinText.setPosition(104, top + 2);
-    this.popBox.setPosition(30, top + 64);
+    this.popBox.setPosition(28, top + 152);
     this.setBtn.setPosition(W - 62, top);
     const zb = H - 168 - View.safeBottom;
     this.mapBtn.setPosition(W - 56, zb);
@@ -393,6 +393,11 @@ export class UI extends Phaser.Scene {
     if (show && !first) { this.tweens.killTweensOf(this.popBox); this.popBox.setScale(1.15); this.tweens.add({ targets: this.popBox, scale: 1, duration: 260, ease: 'Back.easeOut' }); }
   }
 
+  // the village pauses under a menu. The SceneManager calls act at once (the ScenePlugin ones are queued to the
+  // next frame, so a menu opened and closed within one frame would leave the village paused for good)
+  pauseGame() { const m = this.game.scene; if (!m.isPaused('Game')) m.pause('Game'); }
+  resumeGame() { const m = this.game.scene; if (m.isPaused('Game')) m.resume('Game'); }
+
   // ---------------------------------------------------------------- (v3) build menu
   /** the chief stands on an empty plot: pick a building (cards: picture, name, cost, what it does) */
   openBuildMenu(site) {
@@ -401,7 +406,7 @@ export class UI extends Phaser.Scene {
     this.buildOpen = true;
     this.buildSite = site;
     Input.release();
-    if (!gs.scene.isPaused()) gs.scene.pause();
+    this.pauseGame();
     const W = this.W, H = this.H;
     const choices = gs.buildChoices(site);
     this.buildChoicesList = choices;
@@ -518,7 +523,7 @@ export class UI extends Phaser.Scene {
     this.buildOpen = false;
     const c = this.buildPanel;
     this.buildPanel = null; this.buildCards = null; this.buildBtn = null;
-    if (this.gs.scene.isPaused() && !this.panelOpen) this.gs.scene.resume();
+    if (!this.panelOpen) this.resumeGame();
     if (window.__FV) window.__FV.buildMenuOpen = false;
     if (!c) return;
     if (immediate) { c.destroy(); return; }
@@ -545,7 +550,7 @@ export class UI extends Phaser.Scene {
       bg.setScale(0.8);
       this.tweens.add({ targets: bg, scale: 1, duration: 240, ease: 'Back.easeOut' });
     }
-    if (!this.gs.scene.isPaused()) this.gs.scene.pause();
+    this.pauseGame();
   }
 
   buildPanelContent(confirm) {
@@ -609,7 +614,7 @@ export class UI extends Phaser.Scene {
     this.panelOpen = false;
     const c = this.panel;
     this.panel = null; this.panelItems = null;
-    if (!keepPaused && this.gs.scene.isPaused()) this.gs.scene.resume();
+    if (!keepPaused && !this.buildOpen) this.resumeGame();
     if (immediate) { c.destroy(); return; }
     this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
   }

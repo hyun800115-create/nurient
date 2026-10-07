@@ -5,13 +5,11 @@
 // finished building pops in. Watchtowers use the same site (their pad is paid on the spot).
 
 import { Assets } from '../core/Assets.js';
-import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { MATERIALS } from '../data/items.js';
 import { t } from '../data/strings.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { PRIO } from '../systems/Logistics.js';
-import { gdist } from '../core/Iso.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
 import { Character } from './Character.js';
@@ -51,6 +49,7 @@ export class Site {
     this.def = d;
     const dp = d.dropPoint || [2, 80];
     this.dropX = this.x + dp[0]; this.dropY = this.y + dp[1];
+    this.ux = this.dropX + 34; this.uy = this.dropY + 22;     // where porters stand to unload
     this.img = null;
     this.pad = null; this.dropPad = null; this.label = null; this.ring = null;
     this.stock = new ItemStack(gs, { scale: 0.85, cols: [[-18, -3], [18, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: 999 });
@@ -218,7 +217,6 @@ export class Site {
     }
     return false;
   }
-  get x0() { return this.dropX; }
 
   // ------------------------------------------------------------------ scaffold + builders
   beginScaffold(instant, t0) {
@@ -436,4 +434,3 @@ export class Builder extends Character {
   }
 }
 
-export { gdist };

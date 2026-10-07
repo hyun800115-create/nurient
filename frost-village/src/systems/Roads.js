@@ -154,7 +154,10 @@ export class Roads {
     // do not walk back to a node that lies just behind us / just beyond the target
     while (pts.length >= 2 && gd(ax, ay, pts[0].x, pts[0].y) < TRIM && gd(ax, ay, pts[1].x, pts[1].y) <= gd(pts[0].x, pts[0].y, pts[1].x, pts[1].y)) pts.shift();
     while (pts.length >= 2 && gd(bx, by, pts[pts.length - 1].x, pts[pts.length - 1].y) < TRIM && gd(bx, by, pts[pts.length - 2].x, pts[pts.length - 2].y) <= gd(pts[pts.length - 1].x, pts[pts.length - 1].y, pts[pts.length - 2].x, pts[pts.length - 2].y)) pts.pop();
-    for (const q of pts) out.push(q);
+    // (v3) skip road points a prop now stands on (a tent by a v2 node, a new building): walking into
+    // them would leave a porter circling the obstacle
+    const bl = this.blocked;
+    for (const q of pts) if (!bl || !bl(q.x, q.y)) out.push(q);
     out.push({ x: bx, y: by });
     return out;
   }

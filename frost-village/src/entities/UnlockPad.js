@@ -74,6 +74,7 @@ export class UnlockPad {
         this.itemIcons.push({ k, ic, tx });
       }
       // as a logistics sink: porters bring the item here
+      this.ux = x + 30; this.uy = y + 26;
       this.id = id;
       this.isWarehouse = false;
       this.enabled = true;

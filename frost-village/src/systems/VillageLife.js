@@ -22,10 +22,10 @@ const PLAIN = /^npc_(yellow|red|blue)$/;
 const NOT_RESIDENT = /^npc_(clerk|porter)_/;
 // how much each kind of resident likes each area (VillageLife picks where to go with these weights)
 const LIKES = {
-  elder: { beach_w: 4, notice: 1, plaza_s: 0.5, green_fire: 3, south: 2, doghouse: 0.5, green_e: 0.8 },
-  kid: { playground: 5, doghouse: 1.2, plaza_s: 0.8, green_e: 3, green_w: 2, notice: 0.4, south: 0.6 },
-  teen: { notice: 2, plaza_s: 1.5, playground: 1.5, green_e: 2, green_fire: 1.5, beach_w: 0.8, doghouse: 1, south: 0.8, green_w: 1 },
-  adult: { notice: 2, plaza_s: 1.6, beach_w: 1.2, doghouse: 1, green_e: 1.6, green_fire: 1.6, south: 1.2, playground: 0.6, green_w: 1 },
+  elder: { beach_w: 4, notice: 1, plaza_s: 0.5, green_fire: 3, south: 2, doghouse: 0.5, green_e: 0.8, east_dock: 2, south_fields: 0.8, se_hill: 1.2 },
+  kid: { playground: 5, doghouse: 1.2, plaza_s: 0.8, green_e: 3, green_w: 2, notice: 0.4, south: 0.6, east_dock: 0.6, south_fields: 2, se_hill: 2 },
+  teen: { notice: 2, plaza_s: 1.5, playground: 1.5, green_e: 2, green_fire: 1.5, beach_w: 0.8, doghouse: 1, south: 0.8, green_w: 1, east_dock: 1.2, south_fields: 1.5, se_hill: 1.2 },
+  adult: { notice: 2, plaza_s: 1.6, beach_w: 1.2, doghouse: 1, green_e: 1.6, green_fire: 1.6, south: 1.2, playground: 0.6, green_w: 1, east_dock: 1.4, south_fields: 1.4, se_hill: 1.2 },
 };
 const CHAT_EMOTES = {
   kid: ['emote_star', 'emote_heart', 'emote_snowball', 'emote_laugh'], prankster: ['emote_snowball', 'emote_laugh', 'emote_idea'],
@@ -75,7 +75,8 @@ export class VillageLife {
     } else for (const k of this.moved) this.queue.push({ key: k, walkIn: false, at: 0 });
     gs.events.on('step', this.onStep, this);
     gs.events.on('flag', this.onFlag, this);
-    gs.events.once('shutdown', () => { gs.events.off('step', this.onStep, this); gs.events.off('flag', this.onFlag, this); this.stopLute(); });
+    gs.events.on('region', this.onRegion, this);
+    gs.events.once('shutdown', () => { gs.events.off('step', this.onStep, this); gs.events.off('flag', this.onFlag, this); gs.events.off('region', this.onRegion, this); this.stopLute(); });
   }
 
   // ================================================================ world setup
@@ -88,7 +89,8 @@ export class VillageLife {
     }
   }
 
-  areaOpen(a) { return !a.after || this.gs.progress.isDone(a.after); }
+  // (v3) 'r:<land>' / 'b:<building>' conditions too (Progression.met)
+  areaOpen(a) { return !a.after || this.gs.progress.met(a.after); }
 
   buildProps() {
     const gs = this.gs;
@@ -113,7 +115,7 @@ export class VillageLife {
         if (tw) img.play(tw);
       }
       const rec = { id: opts.id || key + '_' + x, key, x, y, img, def, after: opts.after || null, shown: true };
-      if (rec.after && !gs.progress.isDone(rec.after)) this.setPropShown(rec, false);
+      if (rec.after && !gs.progress.met(rec.after)) this.setPropShown(rec, false);
       this.props[rec.id] = rec;
       this.propList.push(rec);
     }
@@ -270,6 +272,12 @@ export class VillageLife {
 
   onStep(id) { this.queueMoveIn(id, false); const d = this.propsAfter(id); if (d.length) this.gs.time.delayedCall(1600, () => { for (const r of d) this.setPropShown(r, true, true); }); this.buildSeatsFor(d); }
   onFlag(f) { if (f === 'firstSale') this.queueMoveIn('first_sale', false); }
+  /** (v3) new land: its props (seats, toys) appear */
+  onRegion(id, instant) {
+    const d = this.propList.filter((r) => r.after === 'r:' + id && !r.shown);
+    if (instant) for (const r of d) this.setPropShown(r, true);
+    else if (d.length) this.gs.time.delayedCall(1800, () => { for (const r of d) this.setPropShown(r, true, true); });
+  }
 
   propsAfter(id) { return this.propList.filter((r) => r.after === id && !r.shown); }
   buildSeatsFor() { /* seats exist from the start; hidden props' seats are skipped while hidden */ }

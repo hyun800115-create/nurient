@@ -5,11 +5,9 @@
 // and it brings big tuna. sfx_boat_horn when leaving and coming home.
 
 import { Assets } from '../core/Assets.js';
-import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD, shoreY } from '../data/world.js';
 import { DIR_BASE, DIR_FLIP, dirFromVec } from '../core/Iso.js';
-import { DEPTH } from '../systems/DepthSort.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
 
@@ -270,5 +268,3 @@ export class Boat {
     this.cargo.clear(this.gs.effects);
   }
 }
-// (DEPTH kept for symmetry with the other entities)
-void DEPTH; void Audio;

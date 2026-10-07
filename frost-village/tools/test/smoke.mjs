@@ -227,6 +227,129 @@ try {
   await sleep(1500);
   await shot('19_trade_post');
 
+  // ================================================================ (v3) production chains & new land
+  // Everything below runs on the real systems: pads take coins, porters carry the materials,
+  // the toolsmith forges, the miners eat, the boat rows out. Only coins (give) and the raw goods
+  // on the output pads are handed in to keep the test short.
+  const gsEval = (fn, arg) => page.evaluate(fn, arg);
+  const pushOut = (id, type, n) => gsEval(([id, type, n]) => { const gs = window.__FV.scene; const st = gs.stations[id]; for (let i = 0; i < n; i++) st.outStack.push(type, null, gs.effects); }, [id, type, n]);
+  // the chief stands aside with empty hands: whatever reaches a site was carried by porters
+  const standAside = async () => { await page.evaluate(() => { window.__FV.clearStack(); window.__FV.teleport(1000, 1160); }); await sleep(200); };
+  {
+    // ---- first watchtower: pay the pad, porters bring the planks, the tower is lit, the fog clears
+    await page.evaluate(() => window.__FV.give(3000));
+    await waitFor(page, () => window.__FV.state().pads.includes('tower_east'), 10000).catch(() => {});
+    s = await st();
+    step('(v3) first watchtower pad after the village core', s.pads.includes('tower_east') && !s.territory.east, `pads=${s.pads.filter((p) => /tower|hire2/.test(p))}`);
+    await walkTo(page, await where('tower_east'), { tol: 14 });
+    await waitFor(page, () => window.__FV.state().done.includes('tower_east'), 10000).catch(() => {});
+    await standAside();
+    await pushOut('sawmill', 'item_plank', 12);
+    await waitFor(page, () => window.__FV.state().porters.some((p) => p.dest === 'tower_east' && p.carry > 0), 60000).catch(() => {});
+    await page.evaluate(() => window.__FV.camera(1700, 900, 0.8));
+    await shot('19b_v3_porter_planks_tower');
+    s = await st();
+    const porterToTower = s.porters.some((p) => p.dest === 'tower_east' && p.carry > 0);
+    await waitFor(page, () => window.__FV.state().territory.east, 150000).catch(() => {});
+    await sleep(1500);
+    await shot('19c_v3_fog_cleared');
+    s = await st();
+    step('(v3) watchtower built from porter deliveries, fog clears', porterToTower && s.territory.east && s.sites.tower_east && s.sites.tower_east.state === 'done', `porter=${porterToTower} east=${s.territory.east} site=${JSON.stringify(s.sites.tower_east)}`);
+    await page.evaluate(() => window.__FV.camera());
+
+    // ---- plot -> build menu -> foundation; porters deliver planks + ingots; builders finish it
+    await walkTo(page, await where('plot:e_m1'), { tol: 12, teleport: true });
+    await waitFor(page, () => window.__FV.buildMenuOpen, 8000).catch(() => {});
+    await shot('19d_v3_build_menu');
+    const menu = await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); const r = { open: !!window.__FV.buildMenuOpen, cards: (ui.buildCards || []).map((c) => c.ch.key + (c.ch.locked ? '(locked)' : '')) }; ui.selectCard('toolsmith'); r.ok = !!(ui.buildBtn && ui.buildBtn.ok); if (r.ok) ui.confirmBuild(); else ui.closeBuildMenu(true); return r; });
+    step('(v3) build menu on a plot (cards, picks the toolsmith)', menu.open && menu.ok && menu.cards.includes('toolsmith'), JSON.stringify(menu));
+    await standAside();
+    await pushOut('sawmill', 'item_plank', 10); await pushOut('smelter', 'item_ingot', 6);
+    await waitFor(page, () => { const s = window.__FV.state().sites.e_m1; return s && s.state !== 'foundation'; }, 120000).catch(() => {});
+    s = await st();
+    step('(v3) foundation filled by porters (chief empty-handed)', s.sites.e_m1 && s.sites.e_m1.state !== 'foundation' && s.sites.e_m1.state !== 'plot', JSON.stringify(s.sites.e_m1));
+    await page.evaluate(() => window.__FV.camera(2040, 1150, 0.9));
+    await sleep(1500);
+    await shot('19e_v3_scaffold_builders');
+    await waitFor(page, () => window.__FV.state().built.toolsmith, 60000).catch(() => {});
+    await sleep(1200);
+    s = await st();
+    step('(v3) builders finish the toolsmith', !!s.built.toolsmith, JSON.stringify(s.built));
+    await shot('19f_v3_toolsmith_done');
+    await page.evaluate(() => window.__FV.camera());
+
+    // ---- tool-gated hire: the 2nd lumberjack pad wants coins AND an axe from the toolsmith
+    await waitFor(page, () => window.__FV.state().pads.includes('hire2_lumberjack'), 10000).catch(() => {});
+    await walkTo(page, await where('hire2_lumberjack'), { tol: 14 });
+    await sleep(2500);
+    s = await st();
+    const paidNoTool = !s.done.includes('hire2_lumberjack');
+    await pushOut('sawmill', 'item_plank', 2); await pushOut('smelter', 'item_ingot', 2);
+    await waitFor(page, () => { const w = window.__FV.state().workshops.toolsmith; return w && w.outs && w.outs.item_axe > 0; }, 90000).catch(() => {});
+    s = await st();
+    step('(v3) toolsmith forges the axe the pad waits for', s.workshops.toolsmith && s.workshops.toolsmith.outs.item_axe > 0, JSON.stringify(s.workshops.toolsmith));
+    await page.evaluate(() => window.__FV.clearStack());
+    await walkTo(page, await where('toolsmithOut'), { tol: 14 });
+    await waitFor(page, () => window.__FV.state().player.stack.includes('item_axe'), 8000).catch(() => {});
+    await shot('19g_v3_toolsmith_axe');
+    await walkTo(page, await where('hire2_lumberjack'), { tol: 14 });
+    await waitFor(page, () => window.__FV.state().done.includes('hire2_lumberjack'), 10000).catch(() => {});
+    s = await st();
+    step('(v3) 2nd lumberjack only after the axe arrives', paidNoTool && s.done.includes('hire2_lumberjack') && s.workers.filter((w) => w.type === 'lumberjack').length === 2, `paidNoTool=${paidNoTool} lumberjacks=${s.workers.filter((w) => w.type === 'lumberjack').length}`);
+
+    // ---- mine food: miners eat one bread per few ores; an empty box makes them hungry
+    await waitFor(page, () => { const f = window.__FV.state().food; return f && f.active; }, 15000).catch(() => {});
+    await page.evaluate(() => { const gs = window.__FV.scene; while (gs.foodBox.stock.count) gs.effects.releaseItem(gs.foodBox.stock.pop().spr); gs.foodBox.refresh(); for (const w of gs.workers) if (w.type === 'miner') w.oreLeft = 1; for (const k of ['bakery', 'smokehouse']) { gs.stations[k].inStack.clear(gs.effects); gs.stations[k].outStack.clear(gs.effects); } for (const p of gs.porters) p.stack.clear(gs.effects); });
+    await waitFor(page, () => window.__FV.state().hungry > 0, 60000).catch(() => {});
+    s = await st();
+    const hungry = s.hungry;
+    await page.evaluate(() => window.__FV.camera(700, 1800, 0.9));
+    await shot('19h_v3_hungry_miner');
+    await page.evaluate(() => window.__FV.camera());
+    await page.evaluate(() => window.__FV.clearStack());
+    await pushOut('bakery', 'item_bread', 6);
+    await walkTo(page, await where('bakeryOut'), { tol: 14, teleport: true });
+    await waitFor(page, () => window.__FV.state().player.stack.includes('item_bread'), 8000).catch(() => {});
+    await walkTo(page, await where('foodBox'), { tol: 14 });
+    await waitFor(page, () => window.__FV.state().hungry === 0, 30000).catch(() => {});
+    await shot('19i_v3_food_box');
+    s = await st();
+    step('(v3) mine food box: hungry miners eat the bread the chief brings', hungry > 0 && s.hungry === 0 && s.food.eaten > 0, `hungry ${hungry}->${s.hungry} food=${JSON.stringify(s.food)}`);
+
+    // ---- the rest of the buildings (instant), then a boat trip, the cannery and the store
+    await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3(); window.__FV.teleport(2200, 900); });
+    await sleep(1500);
+    await waitFor(page, () => window.__FV.state().pads.includes('boat_rowboat'), 10000).catch(() => {});
+    await walkTo(page, await where('boat_rowboat'), { tol: 14 });
+    await waitFor(page, () => window.__FV.state().done.includes('boat_rowboat'), 10000).catch(() => {});
+    await waitFor(page, () => { const b = window.__FV.state().boat; return b && b.state === 'out'; }, 30000).catch(() => {});
+    await page.evaluate(() => { const b = window.__FV.where('boat'); window.__FV.camera(b.x, b.y, 0.9); });
+    await sleep(1500);
+    await shot('19j_v3_boat_rowing');
+    await waitFor(page, () => { const b = window.__FV.state().boat; return b && b.catch > 0; }, 120000).catch(() => {});
+    s = await st();
+    step('(v3) rowboat trip: out, fish, home, catch on the dock', s.boat && s.boat.catch > 0, JSON.stringify(s.boat));
+    await page.evaluate(() => window.__FV.camera());
+    // cannery: fish x3 + ingot -> cans x3; the chief carries them to the general store; a customer pays
+    await page.evaluate(() => { window.__FV.clearStack(); const gs = window.__FV.scene; const c = gs.workshops.find((w) => w.kind === 'cannery'); for (let i = 0; i < 3; i++) c.inStack.push('item_fish_raw', null, gs.effects); c.inStack.push('item_ingot', null, gs.effects); });
+    await waitFor(page, () => { const w = window.__FV.state().workshops.cannery; return w && w.outs.item_can >= 3; }, 40000).catch(() => {});
+    s = await st();
+    step('(v3) cannery: 3 fish + 1 ingot -> 3 cans', s.workshops.cannery && s.workshops.cannery.outs.item_can >= 3, JSON.stringify(s.workshops.cannery));
+    await walkTo(page, await where('canneryOut'), { tol: 14, teleport: true });
+    await waitFor(page, () => window.__FV.state().player.stack.includes('item_can'), 8000).catch(() => {});
+    await shot('19k_v3_cannery');
+    await walkTo(page, await where('storeShelf'), { tol: 14 });
+    await waitFor(page, () => !window.__FV.state().player.stack.includes('item_can'), 10000).catch(() => {});
+    const scash0 = (await st()).store.cash;
+    await walkTo(page, await where('storeRegister'), { tol: 14 });
+    await waitFor(page, (c) => window.__FV.state().store.cash > c, 90000, scash0).catch(() => {});
+    await shot('19l_v3_store_sale');
+    s = await st();
+    step('(v3) general store sells cans at the register', s.store && s.store.cash > scash0, JSON.stringify(s.store));
+    step('(v3) every building of the plan stands', ['toolsmith', 'boathouse', 'warehouse', 'cannery', 'store', 'house_a', 'house_b'].every((k) => s.built[k]), JSON.stringify(s.built));
+    await page.evaluate(() => window.__FV.camera());
+  }
+
   // overview (the on-screen button), zoom buttons
   {
     const c0 = await page.$('canvas'); const b0 = await c0.boundingBox();
@@ -286,6 +409,7 @@ try {
   await sleep(1500);
   s = await st();
   step('save / load', s.done.length === before.done.length && Math.abs(s.coins - before.coins) < 5 && s.workers.length === before.workers.length, `done ${before.done.length}->${s.done.length} coins ${before.coins}->${s.coins}`);
+  step('(v3) save / load keeps buildings and land', JSON.stringify(s.built) === JSON.stringify(before.built) && JSON.stringify(s.territory) === JSON.stringify(before.territory), `built ${JSON.stringify(s.built)} land ${JSON.stringify(s.territory)}`);
   await shot('24_reloaded');
   // reset progress through the in-game confirm (settings -> reset -> yes)
   {

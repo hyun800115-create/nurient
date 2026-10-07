@@ -5,7 +5,6 @@
 // walk (Collision.setWalkable), the camera bounds and the whole-village (overview) frame.
 
 import { Assets } from '../core/Assets.js';
-import { Audio } from '../core/Audio.js';
 import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
@@ -149,7 +148,7 @@ export class Territory {
     const parts = [], scrollers = [], puffs = [];
     const lt = this.exposedSpans(r, 'l'), tp = this.exposedSpans(r, 't');
     // solid fog body (starts a little inside the exposed edges, where the billows take over)
-    const fx0 = lt.length ? x0 + 120 : x0, fy0 = tp.length ? y0 + 150 : y0;
+    const fx0 = lt.length ? x0 + 150 : x0, fy0 = tp.length ? y0 + 150 : y0;
     const fill = gs.add.rectangle(fx0, fy0, x1 - fx0, y1 - fy0, FILL, 1).setOrigin(0, 0).setDepth(FOG_DEPTH);
     parts.push(fill);
     const hasBank = Assets.has('fog_bank');
@@ -173,12 +172,18 @@ export class Territory {
       // billows along the edge so the wall line is never straight
       for (let x = a + 40; x < b; x += 150) puffs.push(this.puff(x + (Math.random() - 0.5) * 60, y0 + 40 + Math.random() * 30, 1.6 + Math.random() * 0.8, parts));
     }
-    // left edge facing open land (the land is west of the fog): columns of big soft billows
+    // left edge facing open land (the land is west of the fog): the fog bank turned on its side (its
+    // billows face the village and drift slowly), with a few big loose billows in front
     for (const [a, b] of lt) {
-      for (let y = a - 40; y < b + 40; y += 70) {
-        puffs.push(this.puff(x0 + 30 + Math.random() * 40, y + (Math.random() - 0.5) * 30, 2.3 + Math.random() * 0.9, parts));
-        puffs.push(this.puff(x0 + 140 + Math.random() * 40, y + 35 + (Math.random() - 0.5) * 30, 2.6 + Math.random() * 0.8, parts));
+      if (hasBank) {
+        const wall = gs.add.tileSprite(x0 + 200, a - 60, b - a + 120, 256, Assets.sprite('fog_bank').tex).setOrigin(0, 0).setAngle(90).setDepth(FOG_DEPTH + 1);
+        wall.__speed = 5; parts.push(wall); scrollers.push(wall);
+        if (Assets.has('fog_bank_mid')) {
+          const mid = gs.add.tileSprite(x0 + 120, a - 60, b - a + 120, 192, Assets.sprite('fog_bank_mid').tex).setOrigin(0, 0).setAngle(90).setDepth(FOG_DEPTH + 2).setAlpha(0.85);
+          mid.__speed = -11; parts.push(mid); scrollers.push(mid);
+        }
       }
+      for (let y = a; y < b; y += 160 + Math.random() * 120) puffs.push(this.puff(x0 + 10 + Math.random() * 50, y, 1.5 + Math.random() * 1.1, parts));
     }
     return { parts, scrollers, puffs, fill, rect: r.rect };
   }

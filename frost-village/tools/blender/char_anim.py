@@ -22,12 +22,27 @@ HUMAN_ANIMS = {
     'harvest': dict(frames=6, fps=10, impactFrame=3),
     'work': dict(frames=8, fps=14),
     'happy': dict(frames=6, fps=10),
+    # v4 dog play (chief only): pet loops, give / throw play once
+    'pet': dict(frames=6, fps=8, repeat=-1),
+    'give': dict(frames=6, fps=10, impactFrame=3, repeat=0),
+    'throw': dict(frames=8, fps=14, impactFrame=4, repeat=0),
 }
 ANIMAL_ANIMS = {
     'idle': dict(frames=4, fps=6),
     'walk': dict(frames=8, fps=12),
 }
 WORK_IMPACT = {'fisherman': 4, 'lumberjack': 5, 'farmer': 4, 'miner': 5, 'hunter': 5}
+# v4 worker variants (assets/workers, keys like 'fisherman_b') reuse their profession's
+# work anim; wkr_build registers per-variant posture tweaks (hunch, wider arms) here.
+POSE_MODS = {}
+
+
+def base_key(key):
+    """'fisherman_b' -> 'fisherman' (variants share the profession's anims)."""
+    if key in WORK_IMPACT:
+        return key
+    head = key.rsplit('_', 1)[0]
+    return head if head in WORK_IMPACT else key
 
 
 # --------------------------------------------------------------------------- helpers
@@ -237,6 +252,97 @@ def human_happy(i, n):
     return p
 
 
+# --------------------------------------------------------------------------- v4 dog play (chief)
+# Sign reminder (Rig.apply): spine/chest/head pitch > 0 leans BACK, so a forward
+# lean is negative; limb pitch > 0 swings the limb forward; knee pitch > 0 folds the
+# shin back.  IK targets are chest-local metres (x: + = character's left).
+
+LEG = 0.34
+
+
+def _crouch(t, spread=10):
+    """Squat t degrees at the hips (2t at the knees, feet stay planted)."""
+    drop = LEG * (1 - math.cos(math.radians(t)))
+    return {'hip_R': (t, spread, 0), 'hip_L': (t, spread, 0), 'knee_R': (2 * t, 0, 0), 'knee_L': (2 * t, 0, 0),
+            'root@': (0, 0, -drop)}
+
+
+def human_pet(i, n):
+    """Crouch down and stroke the dog's head/back with the right hand (loop).  The
+    left hand rests on the knee.  The stroke runs forward-back along the dog."""
+    a = TAU * i / n
+    c, s = math.cos(a), math.sin(a)
+    p = _crouch(46, spread=16)
+    p.update({'spine': (-24 + 2.0 * s, 0, -6), 'neck': (6, 0, 0), 'head': (8 - 2 * s, 0, 4 * s),
+              'ik_R': (-0.06 + 0.012 * s, -0.30 - 0.055 * c, -0.20 + 0.02 * c, -1.0, 0.3, -0.2),
+              'hand_R': (-30 + 8 * c, 0, 0),
+              'ik_L': (0.15, -0.20, -0.25, 1.0, 0.4, -0.6)})
+    p['root@'] = (0.0, 0.0, p['root@'][2] + 0.004 * s)       # root@ is world space: Z only
+    p['_show'] = {'face_happy'}
+    return p
+
+
+def human_give(i, n):
+    """Show the bone biscuit, bend down and hand it to the dog (impact frame 3 =
+    the dog takes it), then straighten up happy."""
+    keys = [
+        ({**_crouch(4), 'spine': (2, 0, 0), 'head': (-4, 0, 0),
+          'ik_R': (-0.10, -0.20, -0.04, -1, 0.4, -0.6), 'hand_R': (10, 0, 0),
+          'sh_L': (6, 10, 0), 'el_L': (14, 0, 0)}, 'face_smile', True),
+        ({**_crouch(14), 'spine': (-8, 0, -4), 'head': (0, 0, 0),
+          'ik_R': (-0.08, -0.27, -0.10, -1, 0.4, -0.6), 'hand_R': (0, 0, 0),
+          'sh_L': (8, 14, 0), 'el_L': (18, 0, 0)}, 'face_smile', True),
+        ({**_crouch(26), 'spine': (-16, 0, -6), 'head': (4, 0, 0),
+          'ik_R': (-0.05, -0.33, -0.18, -1, 0.3, -0.4), 'hand_R': (-12, 0, 0),
+          'ik_L': (0.15, -0.16, -0.22, 1, 0.4, -0.6)}, 'face_smile', True),
+        # 3 IMPACT: treat right at the dog's mouth
+        ({**_crouch(32), 'spine': (-20, 0, -6), 'head': (6, 0, 0),
+          'ik_R': (-0.04, -0.36, -0.23, -1, 0.3, -0.3), 'hand_R': (-18, 0, 0),
+          'ik_L': (0.15, -0.17, -0.25, 1, 0.4, -0.6)}, 'face_smile', True),
+        ({**_crouch(24), 'spine': (-14, 0, -4), 'head': (2, 0, 0),
+          'ik_R': (-0.05, -0.33, -0.18, -1, 0.3, -0.4), 'hand_R': (-6, 0, 10),
+          'ik_L': (0.15, -0.16, -0.22, 1, 0.4, -0.6)}, 'face_happy', False),
+        ({**_crouch(8), 'spine': (-2, 0, 0), 'head': (-4, 0, 0),
+          'sh_R': (20, 12, 0), 'el_R': (30, 0, 0), 'sh_L': (6, 10, 0), 'el_L': (14, 0, 0)}, 'face_happy', False),
+    ]
+    p, face, treat = keys[i % len(keys)]
+    p = dict(p)
+    p['_show'] = {face} | ({'treat'} if treat else set())
+    return p
+
+
+def human_throw(i, n):
+    """Overhand ball throw: ready, wind-up (ball cocked back beside the head - kept
+    outside the big head's silhouette so it reads in S view), whip forward, RELEASE on
+    the impact frame (ball leaves the hand), follow-through across the body, settle."""
+    st_back = {'hip_R': (-12, 8, 0), 'hip_L': (18, 8, 0), 'knee_R': (12, 0, 0), 'knee_L': (6, 0, 0)}
+    st_fwd = {'hip_R': (-16, 8, 0), 'hip_L': (24, 8, 0), 'knee_R': (20, 0, 0), 'knee_L': (6, 0, 0),
+              'root@': (0, 0, -0.012)}
+    P = (-1.0, 0.2, -0.4)              # elbow pole: out to the side and a bit down
+    keys = [
+        ({**_crouch(6), 'spine': (0, 0, 0), 'ik_R': (-0.12, -0.20, -0.08, *P), 'hand_R': (20, 0, 0),
+          'sh_L': (10, 12, 0), 'el_L': (20, 0, 0)}, 'face_normal', True),
+        ({**st_back, 'spine': (4, 0, -14), 'head': (-2, 0, 10), 'ik_R': (-0.35, 0.04, 0.16, -1, 0.3, -0.6),
+          'hand_R': (-30, 0, 0), 'sh_L': (56, 10, 0), 'el_L': (16, 0, 0)}, 'face_normal', True),
+        ({**st_back, 'spine': (8, 0, -22), 'head': (-4, 0, 16), 'ik_R': (-0.35, 0.12, 0.22, -1, 0.5, -0.5),
+          'hand_R': (-50, 0, 0), 'sh_L': (72, 6, 0), 'el_L': (8, 0, 0), 'root@': (0, 0, -0.004)}, 'face_smile', True),
+        ({**st_back, 'spine': (2, 0, -6), 'head': (-2, 0, 6), 'ik_R': (-0.33, -0.06, 0.27, -1, 0.3, -0.2),
+          'hand_R': (-20, 0, 0), 'sh_L': (44, 8, 0), 'el_L': (18, 0, 0)}, 'face_smile', True),
+        # 4 RELEASE (impact): arm whipped forward-up, the ball leaves the hand here
+        ({**st_fwd, 'spine': (-10, 0, 14), 'head': (-4, 0, -10), 'ik_R': (-0.26, -0.27, 0.13, -1, 0.0, -0.4),
+          'hand_R': (20, 0, 0), 'sh_L': (12, 22, 0), 'el_L': (34, 0, 0)}, 'face_smile', False),
+        ({**st_fwd, 'spine': (-16, 0, 22), 'head': (-2, 0, -14), 'ik_R': (0.02, -0.25, -0.17, -1, 0.3, -0.6),
+          'hand_R': (10, 0, 0), 'sh_L': (6, 24, 0), 'el_L': (30, 0, 0)}, 'face_happy', False),
+        ({**st_fwd, 'spine': (-7, 0, 10), 'head': (-2, 0, -6), 'sh_R': (28, 4, 0), 'el_R': (24, 0, 0),
+          'sh_L': (6, 14, 0), 'el_L': (20, 0, 0), 'root@': (0, 0, -0.006)}, 'face_happy', False),
+        ({**_crouch(2), 'spine': (1, 0, 2), 'head': (-2, 0, 0), **BASE}, 'face_happy', False),
+    ]
+    p, face, ball = keys[i % len(keys)]
+    p = dict(p)
+    p['_show'] = {face} | ({'ball'} if ball else set())
+    return p
+
+
 def _fish_keys():
     """Rod angle from straight down = sh_R pitch + el_R + spine pitch + 70 (rod tilt)."""
     L = lambda p, sp, e: {'sh_L': (p, sp, 0), 'el_L': (e, 0, 0)}
@@ -321,6 +427,7 @@ def _bow_keys():
 
 
 def work_pose(key, i, n):
+    key = base_key(key)
     if key == 'lumberjack':
         return keyed(_tool_swing_keys('axe'), i)
     if key == 'miner':
@@ -375,6 +482,12 @@ def animal_idle(i, n, key):
 
 
 def pose_for(kind, anim, i, n, key=''):
+    p = _pose_for(kind, anim, i, n, key)
+    mod = POSE_MODS.get(key)
+    return mod(anim, i, n, p) if mod else p
+
+
+def _pose_for(kind, anim, i, n, key=''):
     if kind == 'human':
         if anim == 'idle':
             return human_idle(i, n)
@@ -392,6 +505,12 @@ def pose_for(kind, anim, i, n, key=''):
             return human_harvest(i, n)
         if anim == 'happy':
             return human_happy(i, n)
+        if anim == 'pet':
+            return human_pet(i, n)
+        if anim == 'give':
+            return human_give(i, n)
+        if anim == 'throw':
+            return human_throw(i, n)
         if anim == 'work':
             return work_pose(key, i, n)
     if kind == 'animal':

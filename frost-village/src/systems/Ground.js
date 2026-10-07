@@ -9,6 +9,26 @@ import { shoreY } from './Collision.js';
 import { isoRect } from '../core/Iso.js';
 import { rng } from '../core/Placeholders.js';
 
+function pattern(ctx, key, scale = 1) {
+  const s = Assets.source(key);
+  const p = ctx.createPattern(s.img, 'repeat');
+  if (p && p.setTransform && scale !== 1 && typeof DOMMatrix !== 'undefined') p.setTransform(new DOMMatrix().scale(scale));
+  return p;
+}
+
+function drawFrame(ctx, key, x, y, scale = 1, rot = 0, alpha = 1) {
+  const s = Assets.source(key);
+  const f = s.frame;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(rot);
+  ctx.scale(scale, scale);
+  const w = f.cutWidth, h = f.cutHeight;
+  ctx.drawImage(s.img, f.cutX, f.cutY, w, h, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
 const TILE = 1024;          // (v3) the land is baked in square tiles, lazily, as the camera comes near
 const TILE_MARGIN = 420;   // px around the camera view that should already be baked
 
@@ -365,7 +385,7 @@ export class Ground {
     this.t += dt;
     // bake the land the camera is about to see (one tile per check, so a walk never hitches for long)
     this.checkT -= dt;
-    if (this.checkT <= 0) { this.checkT = 0.12; this.ensure(this.gs.cameras.main.worldView, 1); }
+    if (this.checkT <= 0) { this.checkT = 0.12; this.ensure(this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView, 1); }
     this.sea.tilePositionX = this.t * 6;
     this.sea.tilePositionY = Math.sin(this.t * 0.4) * 6;
     if (this.fish1) { this.fish1.tilePositionX = this.t * 22; this.fish1.tilePositionY = Math.sin(this.t * 0.7) * 5; }

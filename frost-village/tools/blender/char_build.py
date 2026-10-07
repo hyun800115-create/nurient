@@ -178,9 +178,9 @@ def build_human(spec):
     coat = spec['coat_mat']
     sleeve = spec.get('sleeve_mat', coat)
     fur = fur_mat(spec)
-    pants = M('pants', spec.get('pants', '#4A3830'), rough=0.85)
-    boots = M('boots', spec.get('boots', '#5A3A26'), rough=0.6)
-    mitt = M('mitten', spec.get('mitten', '#6B4A2E'), rough=0.7)
+    pants = spec.get('pants_mat') or M('pants', spec.get('pants', '#4A3830'), rough=0.85)
+    boots = spec.get('boots_mat') or M('boots', spec.get('boots', '#5A3A26'), rough=0.6)
+    mitt = spec.get('mitt_mat') or M('mitten', spec.get('mitten', '#6B4A2E'), rough=0.7)
     skin = M('skin', spec.get('skin', SKIN), rough=0.55)
 
     # ---- torso (coat / shirt) on the spine pivot
@@ -563,7 +563,50 @@ def dress_player(rig, spec):
         hair_tuft(rig, spec['hair'], az, el, size=(0.06, 0.045, 0.07), tilt=(120, 0, 0), name='backtuft')
     make_axe(rig)
     make_pickaxe(rig)
+    make_treat(rig)
+    make_ball(rig)
 
+
+# ---- v4 dog-play props (hidden unless an anim lists them in '_show'; colours match
+# the pets2 item_treat / item_ball and the ball in the dog's mouth)
+BALL_RED, BALL_WHITE = '#E8433A', '#FFF6EA'
+BISCUIT, BISCUIT_TOP, BISCUIT_DOT = '#B97638', '#DEA764', '#7A4520'
+
+
+def make_treat(rig, name='treat'):
+    """Bone biscuit held between the mitten's thumb and fingers (in front of the palm)."""
+    t = g.empty(name + '_obj', rig.j['hand_R'], (0.0, -0.062, -0.02))
+    t.rotation_quaternion = g.q_axis((0, 1, 0), 90) @ g.q_axis((1, 0, 0), -20)
+    bm_ = M('biscuit', BISCUIT, rough=0.8)
+    top = M('biscuit_top', BISCUIT_TOP, rough=0.75)
+    k = 1.3
+    objs = [g.mesh_obj(name + '_bar', g.bm_capsule(0.024 * k, 0.09 * k, r_end=0.024 * k), top, t,
+                       loc=(0, 0, 0.045 * k))]
+    for zz in (0.055 * k, -0.055 * k):
+        for xx in (-0.022 * k, 0.022 * k):
+            objs.append(g.mesh_obj(name + '_knob', g.bm_ellipsoid(0.03 * k, 0.026 * k, 0.03 * k, 14, 8), bm_, t,
+                                   loc=(xx, 0, zz)))
+    objs.append(g.mesh_obj(name + '_dot', g.bm_ellipsoid(0.010, 0.007, 0.010, 8, 6),
+                           M('biscuit_dot', BISCUIT_DOT, rough=0.9), t, loc=(0, -0.031, 0.0)))
+    fx_marker(rig, name, t, (0, 0, 0))
+    rig.toggle(name, objs)
+    return t
+
+
+def make_ball(rig, name='ball', r=0.055):
+    """Red rubber ball with a white band, held in the right mitten."""
+    t = g.empty(name + '_obj', rig.j['hand_R'], (0.0, -0.050, -0.028))
+    t.rotation_quaternion = g.q_axis((1, 0, 0), 35) @ g.q_axis((0, 1, 0), 20)
+    objs = [g.mesh_obj(name, g.bm_ellipsoid(r, r, r, 24, 14), M('ball_red', BALL_RED, rough=0.36), t),
+            g.mesh_obj(name + '_band', g.bm_ring(r * 0.985, r * 0.17, seg=32, segr=8, rz=1.0),
+                       M('ball_white', BALL_WHITE, rough=0.42), t)]
+    fx_marker(rig, name, t, (0, 0, 0))
+    rig.toggle(name, objs)
+    return t
+
+
+# ---- v1 worker looks (2026 batch 1).  No longer used by SPECS (v4 gear lives in
+# char_gear.py); kept so the old look can still be rebuilt for before/after sheets.
 
 def dress_fisherman(rig, spec):
     coat = spec['coat_mat']
@@ -747,6 +790,12 @@ def dress_hunter(rig, spec):
     make_bow(rig)
 
 
+def dress_worker(rig, spec):
+    """v4 worker outfits (CONTRACT_V4 H) - see char_gear.py."""
+    import char_gear
+    return char_gear.dress_worker(rig, spec)
+
+
 def dress_villager(rig, spec):
     style = spec['style']
     if style != 'scarf':
@@ -800,21 +849,31 @@ def dress_villager(rig, spec):
 SPECS = {
     'player': dict(coat='#F2F0EA', fur='#E6DCCB', hair='#3A2A22', pants='#4A3830',
                    boots='#5A3A26', mitten='#6B4A2E', dress=dress_player),
-    'fisherman': dict(coat='#F2C230', coat_rough=0.32, hair='#9A5A32', pants='#2E3A55',
-                      boots='#2F5D50', mitten='#E8783A', hem_fur=False, cuff_fur=False,
-                      boot_fur=False, hem_r=0.245, dress=dress_fisherman),
-    'lumberjack': dict(coat='plaid', hair='#7A4A2A', pants='#3F5675', boots='#6B4A2E',
-                       mitten='#C98F55', hem_fur=False, cuff_fur=False, boot_fur=False,
-                       hem_r=0.235, hem_z=-0.06, dress=dress_lumberjack),
-    'farmer': dict(coat='#F4F1E8', hair='#A0582E', pants='#4E8A3E', boots='#7A5235',
-                   mitten='#F6CFAE', hem_fur=False, cuff_fur=False, boot_fur=False,
-                   hem_r=0.22, hem_z=-0.05, dress=dress_farmer, blush='#F28C8C'),
-    'miner': dict(coat='#9AA2AC', hair='#3A2A22', pants='#4A3B35', boots='#3B2A20',
-                  mitten='#C98F55', hem_fur=False, cuff_fur=False, boot_fur=False,
-                  hem_r=0.225, hem_z=-0.05, dress=dress_miner),
-    'hunter': dict(coat='#4F7A3A', fur='#D9C3A0', hair='#5A3A26', pants='#5A4030', boots='#6B4A2E',
-                   mitten='#6B4A2E', hem_fur=False, cuff_fur=False, hem_r=0.235, hem_z=-0.06,
-                   dress=dress_hunter),
+    # ---- v4 workers: detailed winter work gear (char_gear.py).  *_desc = pattern materials.
+    'fisherman': dict(profession='fisherman', coat='#EDE4CF', coat_desc=('knit', '#EDE4CF', '#C9BB98'),
+                      hair='#6B4026', pants='#2F4B5C', pants_desc=('oil', '#2F4B5C'), boots='#2B2F35',
+                      mitten='#E8783A', mitt_desc=('rough', '#E8783A', 0.35), hem_fur=False, cuff_fur=False,
+                      boot_fur=False, hem_r=0.245, dress=dress_worker),
+    'lumberjack': dict(profession='lumberjack', coat='#B8302A',
+                       coat_desc=('check', '#B8302A', '#5E1A17', '#221616', 10.0), hair='#6B3E22',
+                       pants='#34507A', pants_desc=('rough', '#34507A', 0.9), boots='#7A5235', mitten='#C99A5E',
+                       mitt_desc=('rough', '#C99A5E', 0.6), hem_fur=False, cuff_fur=False, boot_fur=False,
+                       hem_r=0.235, hem_z=-0.06, dress=dress_worker),
+    'farmer': dict(profession='farmer', coat='#A9C0DA', coat_desc=('rough', '#A9C0DA', 0.85), hair='#A0582E',
+                   pants='#3F5E8C', pants_desc=('rough', '#3F5E8C', 0.88), boots='#3E6B3A', mitten='#D9C29A',
+                   mitt_desc=('rough', '#D9C29A', 0.8), hem_fur=False, cuff_fur=False, boot_fur=False,
+                   hem_r=0.22, hem_z=-0.05, dress=dress_worker, blush='#F28C8C'),
+    'miner': dict(profession='miner', coat='#8E9096', coat_desc=('stain', '#8E9096', '#4A4440', 8.0, 0.5),
+                  sleeve_desc=('stain', '#8A6E4A', '#3A3028', 6.0, 0.8), hair='#3A2A22', pants='#3E434C',
+                  pants_desc=('stain', '#3E434C', '#1E1E22', 7.0, 0.6), boots='#2E2A28', mitten='#B07A45',
+                  mitt_desc=('stain', '#B07A45', '#5A3E28', 9.0, 0.6), hem_fur=False, cuff_fur=False,
+                  boot_fur=False, hem_r=0.225, hem_z=-0.05, dress=dress_worker),
+    'hunter': dict(profession='hunter', coat='#A9784A', coat_desc=('stain', '#A9784A', '#7A5232', 5.0, 0.7),
+                   hair='#4A3020', pants='#5A4030', boots='#7A5236', mitten='#6B4A2E',
+                   mitt_desc=('rough', '#6B4A2E', 0.7), hem_fur=False, cuff_fur=False, boot_fur=False,
+                   torso_profile=[(0.272, -0.16), (0.262, -0.08), (0.236, 0.0), (0.214, 0.10), (0.208, 0.22),
+                                  (0.195, 0.31), (0.155, 0.39), (0.07, 0.45), (0.0, 0.46)],
+                   hem_r=0.272, hem_z=-0.16, fur='#D9C3A0', dress=dress_worker),
     'villager_a': dict(coat='#F2C230', fur='#F4F1EA', hair='#2A2228', pants='#2E3440', boots='#2A2A30',
                        mitten='#3B3F4A', style='a', dress=dress_villager),
     'villager_b': dict(coat='#D9483B', fur='#F4F1EA', hair='#6B4026', pants='#2E3440', boots='#7A5235',
@@ -836,15 +895,31 @@ def anims_for(key):
         return 'animal', {k: dict(v) for k, v in ca.ANIMAL_ANIMS.items()}
     H = ca.HUMAN_ANIMS
     if key == 'player':
-        names = ['idle', 'walk', 'carry_idle', 'carry_walk', 'chop', 'mine', 'harvest']
+        names = ['idle', 'walk', 'carry_idle', 'carry_walk', 'chop', 'mine', 'harvest', 'pet', 'give', 'throw']
     elif key.startswith('villager'):
         names = ['idle', 'walk', 'carry_walk', 'happy']
     else:
         names = ['idle', 'walk', 'carry_idle', 'carry_walk', 'work']
     out = {n: dict(H[n]) for n in names}
     if 'work' in out:
-        out['work']['impactFrame'] = ca.WORK_IMPACT[key]
+        out['work']['impactFrame'] = ca.WORK_IMPACT[ca.base_key(key)]
     return 'human', out
+
+
+def build_from_spec(spec, key):
+    """Body + outfit for a human spec (scene must already be reset)."""
+    spec = dict(spec)
+    if spec['coat'] == 'plaid':
+        spec['coat_mat'] = mat_plaid('plaid', '#C8402F', '#5E1A17', light='#D65A45', scale=7.0)
+    else:
+        spec['coat_mat'] = M('coat', spec['coat'], rough=spec.get('coat_rough', 0.8))
+    if spec.get('profession'):
+        import char_gear
+        spec.update(char_gear.coat_materials(spec))
+    rig = build_human(spec)
+    spec['dress'](rig, spec)
+    rig.meta['key'] = key
+    return rig
 
 
 def build(key):
@@ -854,12 +929,7 @@ def build(key):
         rig = char_animals.build(key)
         rig.meta['key'] = key
         return rig
-    spec = dict(SPECS[key])
-    if spec['coat'] == 'plaid':
-        spec['coat_mat'] = mat_plaid('plaid', '#C8402F', '#5E1A17', light='#D65A45', scale=7.0)
-    else:
-        spec['coat_mat'] = M('coat', spec['coat'], rough=spec.get('coat_rough', 0.8))
-    rig = build_human(spec)
-    spec['dress'](rig, spec)
-    rig.meta['key'] = key
-    return rig
+    if key not in SPECS:                      # v4 worker variants (assets/workers)
+        import wkr_build
+        return wkr_build.build(key)
+    return build_from_spec(SPECS[key], key)

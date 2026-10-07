@@ -1,0 +1,413 @@
+{
+ "version": 1,
+ "notes": "Dog play (CONTRACT_V4 I). characters.pet_dog OVERRIDES the villagers fragment entry (same key, same look; load this fragment after villagers). Frames {anim}_{dir}_{i}, 128x128, anchor (64,104); each anim lists its dirs (social/play anims S/SE/E, mirror SW/W). Extra points are px offsets from the anchor per render dir (negate dx for mirrored dirs): mouthPoint (ball/treat in the mouth, idle), treatPoint (biscuit in eat), bellyPoint (belly centre in roll, where the petting hand goes), anims.catch.impactPoint (ball centre at the catch frame). Items are 72x72 like every item (anchor = bottom centre). Icons are 96x96 (anchor centre).",
+ "generators": {
+  "pets2_icons": "tools/fx/gen_pets2_ui.py",
+  "pets2_pet_dog": "tools/blender/pet2_render.py + pet2_pack.py",
+  "pets2_items": "tools/blender/pet2_render.py + pet2_pack.py"
+ },
+ "atlases": [
+  {
+   "key": "pets2_pet_dog",
+   "png": "pets2/pets2_pet_dog.png",
+   "json": "pets2/pets2_pet_dog.json"
+  },
+  {
+   "key": "pets2_items",
+   "png": "pets2/pets2_items.png",
+   "json": "pets2/pets2_items.json"
+  },
+  {
+   "key": "pets2_icons",
+   "png": "pets2/pets2_icons.png",
+   "json": "pets2/pets2_icons.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "portrait_pet_dog",
+   "png": "pets2/portrait_pet_dog.png"
+  }
+ ],
+ "sprites": {
+  "ui_icon_whistle": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_whistle",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Silver pea whistle on a red lanyard with sound waves: call the dog (부르기)."
+  },
+  "ui_icon_treat": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_treat",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Bone biscuit with twinkles: give a treat (간식 주기)."
+  },
+  "ui_icon_play": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_play",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Red ball with a white band + speed streaks: play fetch (놀아주기)."
+  },
+  "ui_icon_pet": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_pet",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Happy shiba face (^^) with a patting hand + small heart: pet the dog (쓰다듬기)."
+  },
+  "ui_icon_heart_full": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_heart_full",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Glossy pink heart: one affection point (친밀도)."
+  },
+  "ui_icon_heart_empty": {
+   "atlas": "pets2_icons",
+   "frame": "ui_icon_heart_empty",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Empty sunken grey heart socket, same silhouette/position as ui_icon_heart_full (crop the full heart over it for a partial heart)."
+  },
+  "portrait_pet_dog": {
+   "image": "portrait_pet_dog",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "128x128 head-and-shoulders, facing S (same as batch 1)"
+  },
+  "item_treat": {
+   "atlas": "pets2_items",
+   "frame": "item_treat",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 19,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.15,
+   "notes": "Bone biscuit dog treat (간식): toasted brown with a lighter baked top and three docking dots; lying flat, long axis screen-right. The dog eats the same biscuit in pets2 pet_dog `eat`."
+  },
+  "item_ball": {
+   "atlas": "pets2_items",
+   "frame": "item_ball",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 28,
+   "stackStep": 13,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.24,
+   "notes": "Red rubber play ball (공) with a white band; the chief throws it and the dog brings it back in its mouth (pets2 pet_dog run_ball / catch show the same ball). stackStep is nominal (balls overlap when piled)."
+  }
+ },
+ "characters": {
+  "pet_dog": {
+   "atlas": "pets2_pet_dog",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "pet",
+   "role": "pet",
+   "name": {
+    "ko": "시바견 콩이",
+    "en": "Kongi"
+   },
+   "traits": [
+    "energetic",
+    "chases_kids",
+    "tail_wag",
+    "comes_when_called",
+    "loves_treats",
+    "fetch",
+    "belly_rubs"
+   ],
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "walk": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "run": {
+     "frames": 8,
+     "fps": 16,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "sit": {
+     "frames": 4,
+     "fps": 4,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "happy": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "eat": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "roll": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "beg": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    },
+    "run_ball": {
+     "frames": 8,
+     "fps": 16,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "catch": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "S": [
+       0,
+       -48
+      ],
+      "SE": [
+       14,
+       -51
+      ],
+      "E": [
+       20,
+       -58
+      ]
+     }
+    },
+    "trick": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ]
+    }
+   },
+   "headTop": -39,
+   "headTopBeg": -55,
+   "headTopRoll": -30,
+   "shadow": [
+    54,
+    23
+   ],
+   "mouthPoint": {
+    "S": [
+     0,
+     -10
+    ],
+    "SE": [
+     21,
+     -14
+    ],
+    "E": [
+     30,
+     -25
+    ],
+    "NE": [
+     21,
+     -36
+    ],
+    "N": [
+     0,
+     -40
+    ]
+   },
+   "treatPoint": {
+    "S": [
+     0,
+     -11
+    ],
+    "SE": [
+     18,
+     -15
+    ],
+    "E": [
+     26,
+     -24
+    ]
+   },
+   "bellyPoint": {
+    "S": [
+     3,
+     -16
+    ],
+    "SE": [
+     -3,
+     -17
+    ],
+    "E": [
+     -2,
+     -16
+    ]
+   },
+   "animNotes": {
+    "idle": "batch-1 idle (blink on frame 3)",
+    "walk": "batch-1 trot",
+    "run": "batch-1 bound (happy face)",
+    "sit": "batch-1 sit on the ground (plain anchor)",
+    "happy": "batch-1 hop + tail wag",
+    "eat": "loop: sits and crunches the bone biscuit held across its jaws (^^ eyes, crumbs). Play after the chief `give` impactFrame for ~1.5 s, then hearts.",
+    "roll": "loop: belly-up on its back, paws paddling, tongue out - the pose for petting / belly rubs. The chief crouches at bellyPoint and plays `pet`.",
+    "beg": "loop: sits up on its haunches, front paws curled at the chest - asking for a treat / waiting for the ball.",
+    "run_ball": "loop: the batch-1 run with the red ball in its mouth (fetch, coming back). Use instead of run while it carries the ball; at the chief, drop item_ball at mouthPoint.",
+    "catch": "once: crouch, leap, snaps the ball on impactFrame 3 at impactPoint (hide the flying ball then), lands holding it - continue with run_ball.",
+    "trick": "once: play-bow, hop-spin 360 deg, lands facing you with a raised paw (ta-da). Holdable last frame."
+   },
+   "overrides": "villagers/pet_dog (same look, batch-1 anims re-rendered identically + 6 play anims)",
+   "portrait": "portrait_pet_dog"
+  }
+ }
+}

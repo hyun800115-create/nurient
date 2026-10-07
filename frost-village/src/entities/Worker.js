@@ -5,7 +5,6 @@
 
 import { Character } from './Character.js';
 import { Assets } from '../core/Assets.js';
-import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
 import { DEPTH } from '../systems/DepthSort.js';
@@ -345,11 +344,15 @@ class Hauler extends Character {
     return b ? b.sink : null;
   }
 
+  /** where to stand to unload into `sink` (sinks may name a spot apart from their position) */
+  static unloadAt(sink) { return sink.ux !== undefined ? { x: sink.ux, y: sink.uy } : { x: sink.x, y: sink.y }; }
+
   startHaul(sink) {
     const ty = this.carriedType();
     this.setDest(sink, ty);
     this.state = 'haul';
-    this.go(sink.x + (this.index % 2) * 18, sink.y + 4);
+    const u = Hauler.unloadAt(sink);
+    this.go(u.x + (this.index % 2) * 18, u.y + 4);
   }
 
   haul(dt) {
@@ -359,10 +362,11 @@ class Hauler extends Character {
     if (!d || !d.enabled) { this.clearDest(); const n = this.planDest(); if (n) this.startHaul(n); else { this.vx = this.vy = 0; this.locomotion(false); } return; }
     this.tripT += dt;
     if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
-      if (this.tripT > 90) { this.x = d.x; this.y = d.y; }
+      const u = Hauler.unloadAt(d);
+      if (this.tripT > 90) { this.x = u.x; this.y = u.y; }
       this.vx = this.vy = 0;
       this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
-      this.faceTo(d.x - 20, d.y - 20);
+      this.faceTo(u.x - 20, u.y - 20);
       this.locomotion(false);
     }
   }

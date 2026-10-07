@@ -15,6 +15,7 @@ const OUT = opt('--out', '/tmp/fv_review/gameplay');
 fs.mkdirSync(OUT, { recursive: true });
 const MINUTES = Number(opt('--minutes', '40'));
 const AFTER = Number(opt('--after', '0'));            // keep playing N minutes after village complete
+const V3 = has('--v3');                                // (v3) play on until the frontier is complete (all v3 goals)
 const BAL = opt('--bal', '');
 const WORLDO = opt('--world', '');
 const SHOTS = has('--shots');
@@ -72,7 +73,7 @@ try {
   await page.addScriptTag({ path: path.join(HERE, 'review_gameplay_bot.js') });
   await page.evaluate((o) => Object.assign(window.__bot.opts, o), { policy: opt('--policy', 'smart'), upg: opt('--upg', 'greedy'), minBatch: Number(opt('--minbatch', '3')), think: Number(opt('--think', '0')), mag: Number(opt('--mag', '1')) });
 
-  let completeAt = -1, lastEvents = 0;
+  let completeAt = -1, lastEvents = 0, v3At = -1;
   const samples = [];
   const shot = async (n) => {
     if (!SHOTS) return;
@@ -85,7 +86,7 @@ try {
     const r = await page.evaluate(() => {
       window.__sim.run(10, window.__bot.tick);
       const s = window.__bot.sample();
-      return { s, events: window.__bot.events.length, done: window.__FV.state().done };
+      return { s, events: window.__bot.events.length, done: window.__FV.state().done, v3: window.__FV.scene.progress.celebrated3 };
     });
     samples.push(r.s);
     if (r.events > lastEvents) {
@@ -95,15 +96,26 @@ try {
     }
     if (sec % 60 === 50) console.log(`[${NAME}] ${r.s.t}s coins=${r.s.coins} earned=${r.s.earned} cap=${r.s.cap} task=${r.s.task} st=${JSON.stringify(r.s.st)} mk=${JSON.stringify(r.s.mk)} w=${r.s.w} obj=${r.s.obj} shelf=${JSON.stringify(r.s.shelf)} front=${JSON.stringify(r.s.front)} leaving=${r.s.leaving} stall=${r.s.stall}  (wall ${((Date.now() - t0) / 1000).toFixed(0)}s)`);
     if (completeAt < 0 && r.done.includes('hire_hunter')) completeAt = r.s.t;
-    if (completeAt >= 0 && r.s.t >= completeAt + AFTER * 60) break;
+    if (V3) {
+      if (v3At < 0 && r.v3) v3At = r.s.t;
+      if (v3At >= 0 && r.s.t >= v3At + AFTER * 60) break;
+    } else if (completeAt >= 0 && r.s.t >= completeAt + AFTER * 60) break;
   }
   const fin = await page.evaluate(() => {
     const b = window.__bot;
-    return { events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
+    return { hungryT: +b.hungryT.toFixed(1), events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
   });
   await shot('999_end');
   fs.writeFileSync(path.join(OUT, NAME + '.json'), JSON.stringify({ args, fin, samples, errors: log.errors }, null, 1));
-  console.log(`[${NAME}] DONE sim=${fin.simT.toFixed(0)}s completeAt=${completeAt} stuck=${fin.stuck} accidentalPay=${fin.accidental} blocked=${fin.blockedT.toFixed(1)} idle=${fin.idleT.toFixed(1)} tasks=${JSON.stringify(Object.fromEntries(Object.entries(fin.taskTime).map(([k, v]) => [k, Math.round(v)])))} errors=${log.errors.length} wall=${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  // (v3) beats: the longest stretch without a new event (unlock, building, land, ...)
+  const evT = fin.events.map((e) => e.t).sort((a, b) => a - b);
+  let gap = 0, gapAt = 0;
+  for (let i = 1; i < evT.length; i++) if (evT[i] - evT[i - 1] > gap) { gap = evT[i] - evT[i - 1]; gapAt = evT[i - 1]; }
+  let gap3 = 0, gap3At = 0;
+  const ev3 = evT.filter((t) => completeAt >= 0 && t >= completeAt);
+  for (let i = 1; i < ev3.length; i++) if (ev3[i] - ev3[i - 1] > gap3) { gap3 = ev3[i] - ev3[i - 1]; gap3At = ev3[i - 1]; }
+  console.log(`[${NAME}] BEATS longestGap=${(gap / 60).toFixed(2)}min at ${(gapAt / 60).toFixed(1)}min, v3 longestGap=${(gap3 / 60).toFixed(2)}min at ${(gap3At / 60).toFixed(1)}min, villageComplete=${(completeAt / 60).toFixed(1)}min v3Complete=${v3At >= 0 ? (v3At / 60).toFixed(1) : '-'}min (v3 took ${v3At >= 0 && completeAt >= 0 ? ((v3At - completeAt) / 60).toFixed(1) : '-'}min) hungry=${fin.hungryT}s`);
+  console.log(`[${NAME}] DONE sim=${fin.simT.toFixed(0)}s completeAt=${completeAt} v3At=${v3At} stuck=${fin.stuck} accidentalPay=${fin.accidental} blocked=${fin.blockedT.toFixed(1)} idle=${fin.idleT.toFixed(1)} tasks=${JSON.stringify(Object.fromEntries(Object.entries(fin.taskTime).map(([k, v]) => [k, Math.round(v)])))} errors=${log.errors.length} wall=${((Date.now() - t0) / 1000).toFixed(0)}s`);
   for (const e of log.errors.slice(0, 5)) console.log('  ERR', e.slice(0, 300));
 } catch (e) {
   console.log('FATAL', e && e.stack || e);

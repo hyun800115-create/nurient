@@ -128,12 +128,14 @@ def write_meta(key, rig, kind, anims, outdir):
         for anim, info in anims.items():
             if 'impactFrame' in info:
                 info['impactPoint'] = impact_points(rig, kind, key, anim, info)
+    if kind == 'human' and 'pet' in anims:
+        meta['petPoint'] = pet_points(rig, kind, key)
     meta['shadow'] = rig.meta.get('shadow', [46, 18])
     with open(os.path.join(outdir, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)
 
 
-IMPACT_TOOL = {'chop': 'axe', 'mine': 'pickaxe', 'harvest': None,
+IMPACT_TOOL = {'chop': 'axe', 'mine': 'pickaxe', 'harvest': None, 'give': 'treat', 'throw': 'ball',
                'lumberjack': 'axe', 'miner': 'pickaxe', 'farmer': 'sickle', 'fisherman': 'rod',
                'hunter': 'bow'}
 
@@ -142,7 +144,7 @@ def impact_points(rig, kind, key, anim, info):
     """Pixel offset from the anchor of the tool's business end at impactFrame
     (axe blade, pick tip, sickle blade, bobber splash, arrow launch, hands for
     harvest) - lets the game spawn chips/sparks/splash exactly there."""
-    tool = IMPACT_TOOL.get(anim if anim != 'work' else key)
+    tool = IMPACT_TOOL.get(anim if anim != 'work' else char_anim.base_key(key))
     pose = char_anim.pose_for(kind, anim, info['impactFrame'], info['frames'], key)
     out = {}
     for d in bc.RENDER_DIRS:
@@ -157,6 +159,29 @@ def impact_points(rig, kind, key, anim, info):
         else:
             p = (rig.world('hand_R') + rig.world('hand_L')) * 0.5
         px = bc.world_to_pixel(tuple(p), FRAME, FRAME, ANCHOR)
+        out[d] = [round(px[0] - ANCHOR[0]), round(px[1] - ANCHOR[1])]
+    return out
+
+
+PET_HEAD_TO_ANCHOR = 0.16     # pet_dog: head (under the hand) -> body centre / anchor, metres
+
+
+def pet_points(rig, kind, key):
+    """v4 dog play: pixel offset (from the chief's anchor) of the GROUND point where the
+    dog's anchor should stand while the chief pets it (pet frame 0) / takes the treat
+    (give impact) - the hand's ground projection pushed PET_HEAD_TO_ANCHOR further out
+    along the chief's facing, so the dog (facing the chief) has its head under the hand."""
+    from mathutils import Vector
+    out = {}
+    pose = char_anim.pose_for(kind, 'pet', 0, char_anim.HUMAN_ANIMS['pet']['frames'], key)
+    for d in bc.RENDER_DIRS:
+        rig.apply(pose, yaw_deg=bc.DIR_YAW[d])
+        bpy.context.view_layer.update()
+        h = rig.world('hand_R')
+        yaw = math.radians(bc.DIR_YAW[d])
+        fwd = Vector((math.sin(yaw), -math.cos(yaw), 0.0))       # local -Y rotated by the facing yaw
+        g = Vector((h.x, h.y, 0.0)) + fwd * PET_HEAD_TO_ANCHOR
+        px = bc.world_to_pixel(tuple(g), FRAME, FRAME, ANCHOR)
         out[d] = [round(px[0] - ANCHOR[0]), round(px[1] - ANCHOR[1])]
     return out
 

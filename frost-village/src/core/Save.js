@@ -1,6 +1,8 @@
 // Save / settings persistence. Every localStorage access is wrapped in try/catch
 // (private mode, sandboxed iframes and full quotas must never crash the game).
 
+import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
+
 export const SAVE_KEY = 'frostVillage.save.v1';
 export const SETTINGS_KEY = 'frostVillage.settings.v1';
 
@@ -35,7 +37,6 @@ export const SAVE_VERSION = 3;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
-import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
 // (v3) what a construction site may hold, and the land
 const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower'];
 const SITE_STATES = ['foundation', 'scaffold', 'done'];
