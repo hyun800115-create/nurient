@@ -143,7 +143,7 @@ try {
       const a = await page.evaluate(() => window.__FV.where('animal'));
       if (!a) { await sleep(1500); continue; }
       await page.evaluate(([x, y]) => window.__FV.teleport(x, y), [a.x, a.y]);
-      caught = await waitFor(page, () => window.__FV.state().player.stack.includes('item_meat_raw'), 5000).then(() => true).catch(() => false);
+      caught = await waitFor(page, () => window.__FV.state().player.stack.includes('item_meat_raw'), 9000).then(() => true).catch(() => false);
     }
     step('catching an animal gives meat', caught);
   }

@@ -45,6 +45,11 @@ export class TrashPad {
     if (!this.enabled) return false;
     const gs = this.gs, p = gs.player;
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 420 + 1.3) * 3;
+    // keep the floating label inside the screen while the pad is visible (same as the unlock pads)
+    const v = gs.cameras.main.worldView, hw = this.labelBg.width * 0.5 + 8;
+    let lx = this.x;
+    if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, this.x));
+    if (this.label.x !== lx) this.label.x = lx;
     const on = this.pad.contains(p.x, p.y);
     const la = on ? 0.35 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
