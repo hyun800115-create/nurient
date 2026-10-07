@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 /tools/**/_cache/
 .DS_Store
+dist/
