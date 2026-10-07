@@ -22,7 +22,9 @@ TOOLS = os.path.dirname(HERE)
 GAME = os.path.dirname(TOOLS)
 sys.path.insert(0, TOOLS)
 
-from townfolk_compose import Townfolk, generate      # noqa: E402
+sys.path.insert(0, HERE)
+from townfolk_compose import Townfolk, generate, iter_tf_frames      # noqa: E402
+from tf_presets import reachable_parts                              # noqa: E402
 
 ANIMS = {'idle': (4, 5), 'walk': (8, 5), 'carry_walk': (8, 5), 'talk': (8, 3), 'wave': (6, 3), 'happy': (6, 3)}
 JOBS = ['teacher', 'student', 'police', 'postal', 'doctor', 'nurse', 'hairdresser', 'barista', 'station', 'factory']
@@ -48,15 +50,20 @@ def main():
             if not os.path.exists(os.path.join(assets, at[k])):
                 err.append(f'missing {at[k]}')
         js = json.load(open(os.path.join(assets, at['json'])))
-        w, h = js['meta']['size']['w'], js['meta']['size']['h']
+        w, h = js['size']
+        if js.get('tfatlas') != 1 or js.get('frameSize') != [128, 128]:
+            err.append(f'{at["key"]}: not a tfatlas v1 128x128 json')
         if w > 2048 or h > 2048:
             err.append(f'{at["key"]} is {w}x{h} (> 2048)')
-        for n, fr in js['frames'].items():
+        from PIL import Image
+        if Image.open(os.path.join(assets, at['png'])).size != (w, h):
+            err.append(f'{at["key"]}: png size differs from json')
+        for n, (x, y, fw, fh, dx, dy) in iter_tf_frames(js):
             if n in frames:
                 err.append(f'frame {n} in two atlases')
             frames[n] = at['key']
-            if fr['sourceSize'] != {'w': 128, 'h': 128}:
-                err.append(f'{n}: sourceSize {fr["sourceSize"]}')
+            if x < 0 or y < 0 or x + fw > w or y + fh > h or dx < 0 or dy < 0 or dx + fw > 128 or dy + fh > 128:
+                err.append(f'{n}: rect out of bounds')
     # anims + timeline
     for a, (n, nd) in ANIMS.items():
         info = T['anims'].get(a)
@@ -67,7 +74,11 @@ def main():
             if len(T['timeline'][a][dd]) != n:
                 err.append(f'timeline {a} {dd}')
     # bases
+    hidden = []
     for base, B in T['bases'].items():
+        rb = B.get('render', base)
+        if rb not in T['bases'] or T['bases'][rb].get('render'):
+            err.append(f'{base}: bad render base {rb}')
         for a, (n, nd) in ANIMS.items():
             for dd in T['anims'][a]['dirs']:
                 ho = B['headOffset'].get(a, {}).get(dd)
@@ -75,9 +86,12 @@ def main():
                     err.append(f'{base}: headOffset {a} {dd}')
                 for i in range(n):
                     for limb in ('arm_R', 'arm_L', 'hand_R', 'hand_L'):
-                        nm = f'{limb}@{base}/{a}_{dd}_{i}'
+                        nm = f'{limb}@{rb}/{a}_{dd}_{i}'
                         if nm not in frames:
-                            err.append(f'missing {nm}')
+                            if limb.endswith('_L') and dd in ('SE', 'E', 'NE'):
+                                hidden.append(nm)        # far-side limb fully behind the body: empty frame
+                            else:
+                                err.append(f'missing {nm}')
         if sorted(B['carryPoint']) != sorted(T['dirs']):
             err.append(f'{base}: carryPoint dirs')
     if sorted(T['bases']) != sorted(['child_slim', 'child_round', 'adult_slim', 'adult_round', 'elder_slim',
@@ -92,17 +106,22 @@ def main():
             if slot and slot not in T['tintRef'] and 'default' not in T['tintRef']:
                 err.append(f'{pn}.{s}: tint {slot} without ref')
         if P['space'] == 'head':
-            for dd in T['dirs']:
+            # glasses / facial hair sit on the face: nothing to draw from behind (N, NE)
+            for dd in (T['faceDirs'] if P['family'] in ('glasses', 'facial_hair') else T['dirs']):
                 if not any(f'{pn}.{s}/loco_{dd}' in frames for s in P['subs']):
                     err.append(f'head part {pn}: no frame in loco_{dd}')
         else:
             for base, B in T['bases'].items():
                 if P.get('ages') and B['age'] not in P['ages']:
                     continue
+                if pn not in reachable_parts(B['age']):
+                    if pn in B['parts']:
+                        warn.append(f'{pn} packed for {base} but never generated for {B["age"]}')
+                    continue
                 if pn not in B['parts']:
                     err.append(f'{pn} not rendered for {base}')
                     continue
-                if not any(f'{pn}.{s}@{base}/walk_S_0' in frames for s in P['subs']):
+                if not any(f'{pn}.{s}@{B.get("render", base)}/walk_S_0' in frames for s in P['subs']):
                     err.append(f'{pn}@{base}: no walk_S_0 frame')
     for f_, n in NEED.items():
         if len(fam.get(f_, [])) < n:
@@ -114,6 +133,21 @@ def main():
         for dd in T['faceDirs']:
             if f'face.{fs}.neutral/loco_{dd}' not in frames:
                 err.append(f'face {fs} loco_{dd} missing')
+    # tint gamut: Phaser tints only darken, so a palette colour brighter than its slot's render
+    # ref clamps (e.g. white gloves on skin-ref hands would come out skin coloured)
+    import numpy as np
+    from townfolk_compose import srgb_to_lin, lin_to_srgb, hex_rgb
+    M = T['tintModel']
+    slight = []
+    for slot, tbl in T['tintTable'].items():
+        ref = T['tintRef'].get(slot, T['tintRef']['default'])
+        S = np.asarray(M.get('slotS', {}).get(slot, M['S']), np.float32)
+        for c in tbl:
+            r = (lin_to_srgb(srgb_to_lin(hex_rgb(c)) + S) / lin_to_srgb(srgb_to_lin(hex_rgb(ref)) + S)).max()
+            if r > 1.12:
+                err.append(f'tint {slot} {c}: {r:.2f}x brighter than ref {ref} (clamps)')
+            elif r > 1.02:
+                slight.append(f'{slot} {c}')
     # generator / presets compose
     src_frames = set(frames)
     tf = Townfolk(T, None)
@@ -147,13 +181,18 @@ def main():
     area = 0
     for at in man['atlases']:
         js = json.load(open(os.path.join(assets, at['json'])))
-        area += js['meta']['size']['w'] * js['meta']['size']['h']
+        area += js['size'][0] * js['size'][1]
     print(f'townfolk: {len(man["atlases"])} atlases, {len(frames)} frame names, {len(T["parts"])} parts '
           f'({", ".join(f"{k} {len(v)}" for k, v in sorted(fam.items()))}), {len(T["bases"])} bases, '
           f'{len(T["generator"]["presets"])} presets')
     print(f'payload {total / 1e6:.2f} MB, texture area {area / 1e6:.2f} Mpx ({area * 4 / 2 ** 20:.0f} MiB RGBA), '
           f'sprites per person avg {sum(sprite_counts) / len(sprite_counts):.1f} (max {max(sprite_counts):.0f}), '
           f'{len(sigs)}/300 distinct')
+    if hidden:
+        print(f'{len(hidden)} far-side limb frames are empty (hand/arm fully behind the body in SE/E/NE)')
+    if slight:
+        print(f'{len(slight)} palette colours are 2-12% brighter than their tint ref and clamp slightly '
+              f'(near-white / saturated yellow, orange, pink cloth)')
     for w in warn[:10]:
         print('WARN', w)
     for e in err[:60]:

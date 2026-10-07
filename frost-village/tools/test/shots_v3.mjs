@@ -57,7 +57,7 @@ try {
   await aside();
   await pushOut('sawmill', 'item_plank', 12);
   await wait(() => window.__FV.scene.porters.some((p) => p.dest && p.dest.id === 'tower_east' && p.stack.count > 0 && p.y < 1000), 80);
-  { const p = await ev(() => { const w = window.__FV.scene.porters.find((q) => q.dest && q.dest.id === 'tower_east'); return w ? { x: w.x, y: w.y } : null; }); if (p) { await cam(p.x + 60, p.y - 50, 1.1); await adv(0.3); } }
+  { const p = await ev(() => { const w = window.__FV.scene.porters.find((q) => q.dest && q.dest.id === 'tower_east'); return w ? { x: w.x, y: w.y } : null; }); if (p) { await cam(p.x + 30, p.y - 60, 1.45); await adv(0.2); } }
   await shot('02_porter_carries_planks');
   await cam(tp.x, tp.y - 120, 0.95);
   await wait(() => { const s = window.__FV.state().sites.tower_east; return s && s.state === 'scaffold'; }, 90);
@@ -65,9 +65,11 @@ try {
   await shot('03_tower_scaffold_builders');
   // 04 lit: the beacon catches fire, the fog rolls back, the camera pans to the new land
   await wait(() => window.__FV.state().built.watchtower, 60);
-  await adv(1.4);
+  await adv(1.2);
+  await cam(tp.x + 40, tp.y - 160, 0.95); await adv(0.2);
   await shot('04_tower_lit');
-  await adv(1.6);
+  await adv(1.1);
+  await cam(tp.x + 330, tp.y + 20, 0.7); await adv(0.6);
   await shot('05_fog_clearing');
   await wait(() => window.__FV.state().territory.east, 20);
   await adv(3);
@@ -107,13 +109,28 @@ try {
 
   // 13 the mine food box and a hungry miner
   await wait(() => { const f = window.__FV.state().food; return f && f.active; }, 15);
-  await ev(() => { const gs = window.__FV.scene; while (gs.foodBox.stock.count) gs.effects.releaseItem(gs.foodBox.stock.pop().spr); gs.foodBox.refresh(); for (const w of gs.workers) if (w.type === 'miner') w.oreLeft = 1; for (const k of ['bakery', 'smokehouse']) { gs.stations[k].inStack.clear(gs.effects); gs.stations[k].outStack.clear(gs.effects); } for (const p of gs.porters) if (p.station && (p.station.id === 'bakery' || p.station.id === 'smokehouse')) p.stack.clear(gs.effects); });
-  await wait(() => window.__FV.state().hungry > 0, 60);
+  // (the bread porters are kept away from the box for the picture: an empty box, a hungry miner)
+  await ev(() => { const gs = window.__FV.scene; gs.foodBox.enabled = false; while (gs.foodBox.stock.count) gs.effects.releaseItem(gs.foodBox.stock.pop().spr); gs.foodBox.refresh(); for (const w of gs.workers) if (w.type === 'miner') w.oreLeft = 1; });
+  await wait(() => window.__FV.state().hungry > 0, 90);
   const fb = await where('foodBox');
-  await walk({ x: fb.x + 120, y: fb.y + 70 });
-  await cam(fb.x + 40, fb.y - 40, 1.2); await adv(1.2);
+  await walk({ x: fb.x + 140, y: fb.y + 90 });
+  { const m = await ev(() => { const w = window.__FV.scene.workers.find((q) => q.hungry); return w ? { x: w.x, y: w.y } : null; }); const c = m ? { x: (m.x + fb.x) / 2, y: (m.y + fb.y) / 2 - 40 } : { x: fb.x, y: fb.y - 40 }; await cam(c.x, c.y, 1.25); }
+  await adv(2.5);
   await shot('13_mine_food_box_hungry');
-  await ev(() => window.__FV.camera());
+  await ev(() => { window.__FV.scene.foodBox.enabled = true; window.__FV.camera(); });
+
+  // 14 houses: past the population limit people wait; a house is built and they walk in
+  {
+    const plot = 'v_house1';
+    await ev((id) => { window.__FV.build(id, 'house_a'); window.__FV.supply(id); }, plot);
+    const h = await where('site:' + plot);
+    await wait((id) => window.__FV.state().sites[id].state === 'done', 40, plot);
+    await adv(2.0);                       // (the camera visits the new house, then the residents walk in)
+    await cam(h.x - 120, h.y + 60, 1.0);
+    await adv(2.2);
+    await shot('14_house_move_in');
+    await ev(() => window.__FV.camera());
+  }
 
   // everything else (instant), then the boat, cannery, store, warehouse, houses
   await ev(() => { window.__FV.give(30000); window.__FV.unlockV3(); });
@@ -122,13 +139,13 @@ try {
   await wait(() => window.__FV.state().done.includes('boat_rowboat'), 10);
   await wait(() => { const b = window.__FV.state().boat; return b && b.state === 'out' && b.y < 560; }, 40);
   { const b = await where('boat'); await cam(b.x - 40, b.y + 30, 1.15); await adv(0.4); }
-  await shot('14_rowboat_wake');
+  await shot('15_rowboat_wake');
   await ev(() => window.__FV.camera());
   // cannery: fish + ingots in, cans out
   await ev(() => { const gs = window.__FV.scene; const c = gs.workshops.find((w) => w.kind === 'cannery'); for (let i = 0; i < 9; i++) c.inStack.push('item_fish_raw', null, gs.effects); for (let i = 0; i < 3; i++) c.inStack.push('item_ingot', null, gs.effects); });
   await wait(() => { const w = window.__FV.state().workshops.cannery; return w && w.out >= 3 && w.working; }, 30);
   { const c = await where('cannery'); await cam(c.x + 10, c.y, 1.2); await adv(0.3); }
-  await shot('15_cannery');
+  await shot('16_cannery');
   // store: clerk, cans on the shelf, a queue
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 10; i++) gs.store.stock.push('item_can', null, gs.effects); for (const t of ['item_axe', 'item_rod']) for (let i = 0; i < 2; i++) gs.store.stock.push(t, null, gs.effects); });
   await walk(await where('storeRegister'));
@@ -139,28 +156,15 @@ try {
   await ev(() => window.__FV.teleport(2300, 1250));
   await wait(() => window.__FV.state().store.queue >= 3, 60);
   { const s = await where('storeRegister'); await cam(s.x - 60, s.y - 50, 1.15); await adv(0.5); }
-  await shot('16_store_clerk_queue');
+  await shot('17_store_clerk_queue');
   // warehouse: overflow coming in
   await ev(() => { const gs = window.__FV.scene; for (const id of ['smelter', 'sawmill']) { const S = gs.stations[id]; for (let i = 0; i < S.outStack.max; i++) S.outStack.push(S.output, null, gs.effects); } });
-  await wait(() => window.__FV.state().warehouse.total > 6, 90);
+  await wait(() => window.__FV.state().warehouse.total > 6, 150);
   { const w = await where('warehouse'); await cam(w.x - 20, w.y + 10, 1.0); await adv(0.3); }
-  await shot('17_warehouse');
-  // houses: someone waits, a house is built, they walk in
-  {
-    const plot = await ev(() => { const gs = window.__FV.scene; const p = Object.values(gs.sites).find((q) => q.kind === 'plot' && q.state === 'plot' && q.shown && q.size === 'S'); return p ? p.id : null; });
-    if (plot) {
-      // (two residents step out of the village and wait for a home, so the move-in can be filmed)
-      await ev(() => { const L = window.__FV.scene.life; for (const k of ['npc_postman', 'npc_bard']) { const r = L.byKey[k]; if (r) L.despawn(r); const i = L.moved.indexOf(k); if (i >= 0) L.moved.splice(i, 1); if (L.waiting.indexOf(k) < 0) L.waiting.push(k); } });
-      await ev((id) => { window.__FV.build(id, 'house_a'); window.__FV.supply(id); }, plot);
-      const h = await where('site:' + plot);
-      await cam(h.x - 60, h.y + 20, 1.0);
-      await wait((id) => window.__FV.state().sites[id].state === 'done', 40, plot);
-      await adv(3.2);
-      await shot('18_house_move_in');
-    }
-  }
+  await shot('18_warehouse');
   // 19 the fishing boat (big catch), 20 overview, 21 the finale
   await ev(() => { window.__FV.clearStack(); const gs = window.__FV.scene; gs.player.stack.push('item_rod', null, gs.effects); });
+  await wait(() => window.__FV.state().pads.includes('boat_fishing'), 10);
   await walk(await where('boat_fishing'));
   await wait(() => window.__FV.state().done.includes('boat_fishing'), 15);
   await wait(() => { const b = window.__FV.state().boat; return b && b.state === 'fish'; }, 60);

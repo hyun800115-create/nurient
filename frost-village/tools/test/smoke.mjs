@@ -299,7 +299,7 @@ try {
 
     // ---- mine food: miners eat one bread per few ores; an empty box makes them hungry
     await waitFor(page, () => { const f = window.__FV.state().food; return f && f.active; }, 15000).catch(() => {});
-    await page.evaluate(() => { const gs = window.__FV.scene; while (gs.foodBox.stock.count) gs.effects.releaseItem(gs.foodBox.stock.pop().spr); gs.foodBox.refresh(); for (const w of gs.workers) if (w.type === 'miner') w.oreLeft = 1; for (const k of ['bakery', 'smokehouse']) { gs.stations[k].inStack.clear(gs.effects); gs.stations[k].outStack.clear(gs.effects); } for (const p of gs.porters) p.stack.clear(gs.effects); });
+    await page.evaluate(() => { const gs = window.__FV.scene; while (gs.foodBox.stock.count) gs.effects.releaseItem(gs.foodBox.stock.pop().spr); gs.foodBox.refresh(); for (const w of gs.workers) if (w.type === 'miner') w.oreLeft = 1; for (const k of ['bakery', 'smokehouse']) { gs.stations[k].inStack.clear(gs.effects); gs.stations[k].outStack.clear(gs.effects); } for (const p of gs.porters) p.stack.clear(gs.effects); gs.foodBox.enabled = false; /* (test: the bread porters are busy elsewhere) */ });
     await waitFor(page, () => window.__FV.state().hungry > 0, 60000).catch(() => {});
     s = await st();
     const hungry = s.hungry;
@@ -312,6 +312,7 @@ try {
     await waitFor(page, () => window.__FV.state().player.stack.includes('item_bread'), 8000).catch(() => {});
     await walkTo(page, await where('foodBox'), { tol: 14 });
     await waitFor(page, () => window.__FV.state().hungry === 0, 30000).catch(() => {});
+    await page.evaluate(() => { window.__FV.scene.foodBox.enabled = true; });
     await shot('19i_v3_food_box');
     s = await st();
     step('(v3) mine food box: hungry miners eat the bread the chief brings', hungry > 0 && s.hungry === 0 && s.food.eaten > 0, `hungry ${hungry}->${s.hungry} food=${JSON.stringify(s.food)}`);
@@ -382,7 +383,7 @@ try {
   await shot('21_settings');
   const paused = await page.evaluate(() => window.__FV.game.scene.isPaused('Game'));
   step('settings panel opens (game paused)', paused);
-  await page.touchscreen.tap(b.x + (360 + 0) * sx, b.y + (b.height / sx / 2 + 170) * sx); // reset -> confirm view
+  await page.touchscreen.tap(b.x + (360 - 130) * sx, b.y + (b.height / sx / 2 + 170) * sx); // reset (left of Reload) -> confirm view
   await sleep(500);
   await shot('22_reset_confirm');
   await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 160) * sx);      // "no"
@@ -409,14 +410,14 @@ try {
   await sleep(1500);
   s = await st();
   step('save / load', s.done.length === before.done.length && Math.abs(s.coins - before.coins) < 5 && s.workers.length === before.workers.length, `done ${before.done.length}->${s.done.length} coins ${before.coins}->${s.coins}`);
-  step('(v3) save / load keeps buildings and land', JSON.stringify(s.built) === JSON.stringify(before.built) && JSON.stringify(s.territory) === JSON.stringify(before.territory), `built ${JSON.stringify(s.built)} land ${JSON.stringify(s.territory)}`);
+  { const canon = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]])); step('(v3) save / load keeps buildings and land', canon(s.built) === canon(before.built) && canon(s.territory) === canon(before.territory), `built ${canon(s.built)} vs ${canon(before.built)} land ${JSON.stringify(s.territory)}`); }
   await shot('24_reloaded');
   // reset progress through the in-game confirm (settings -> reset -> yes)
   {
     const c2 = await page.$('canvas'); const b2 = await c2.boundingBox();
     const k = b2.width / 720, Hh = b2.height / k;
     await page.touchscreen.tap(b2.x + (720 - 62) * k, b2.y + 62 * k); await sleep(600);
-    await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 170) * k); await sleep(500);
+    await page.touchscreen.tap(b2.x + (360 - 130) * k, b2.y + (Hh / 2 + 170) * k); await sleep(500);
     await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 60) * k); await sleep(2500);
     await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 15000).catch(() => {});
     s = await st();

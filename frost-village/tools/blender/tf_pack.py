@@ -81,7 +81,14 @@ def collect_head(cache, log):
     hd = os.path.join(cache, 'head')
     meta = json.load(open(os.path.join(hd, 'meta.json')))
     frames = meta['frames']
-    masks = {name: load(os.path.join(hd, name, 'head.none.png'))[..., 3] for name in frames}
+    masks = {}
+    for name in frames:
+        mp = os.path.join(hd, name, 'head.none.png')
+        if os.path.exists(mp):
+            masks[name] = load(mp)[..., 3]
+        else:
+            log.append(f'missing head frame {name}')
+    frames = [f for f in frames if f in masks]
     out = {}                                          # layer -> {frame: uint8}
     for layer in meta['layers']:
         if layer == 'head.none':
@@ -121,11 +128,12 @@ def collect_body(cache, base, log):
     meta = json.load(open(os.path.join(bd, 'meta.json')))
     tl = meta.get('tile', {'w': FRAME, 'h': FRAME, 'cols': 4, 'ox': 0, 'oy': 0})
     out = {}
+    reach = tpr.reachable_parts(tpr.BASES[base]['age'])
     for anim in ta.ORDER:
         info = ta.ANIMS[anim]
         for d in info['dirs']:
             gd = os.path.join(bd, f'{anim}_{d}')
-            if not os.path.isdir(gd):
+            if not os.path.exists(os.path.join(gd, 'mask.png')):
                 log.append(f'missing body group {base}/{anim}_{d}')
                 continue
             mask = load(os.path.join(gd, 'mask.png'))
@@ -133,6 +141,12 @@ def collect_body(cache, base, log):
                 if not f.endswith('.png') or f == 'mask.png':
                     continue
                 layer = f[:-4]
+                pn = layer.split('.')[0]
+                if layer not in LIMB_LAYERS and (pn not in tp.PARTS or (tp.PARTS[pn].ages and
+                                                                        tpr.BASES[base]['age'] not in tp.PARTS[pn].ages)):
+                    continue                     # stale render of a part this base no longer wears
+                if layer not in LIMB_LAYERS and pn not in reach:
+                    continue                     # rendered, but no generator path / preset gives it to this age
                 sh = load(os.path.join(gd, f))
                 kind = fx.layer_kind(layer)
                 fr = out.setdefault(layer, {})
@@ -156,6 +170,27 @@ def trimmed_area(img):
     if len(xs) == 0:
         return 0
     return (xs.max() - xs.min() + 3) * (ys.max() - ys.min() + 3)
+
+
+def compact_atlas(atlas, image, size):
+    """Phaser JSON-hash -> 'tfatlas' v1 (~8x smaller; townfolk_compose.js townfolkInstall() adds the
+    frames to the Phaser texture, townfolk_compose.iter_tf_frames() reads it in python):
+    frames[prefix][group] = rect (head frames '<layer>/<pose>_<dir>') or [rect | 0, ...] indexed by the
+    frame number (body frames '<layer>@<base>/<anim>_<dir>_<i>'); rect = [x, y, w, h, dx, dy]."""
+    out = {}
+    for name, fr in atlas['frames'].items():
+        assert not fr.get('rotated'), name
+        prefix, suffix = name.rsplit('/', 1)
+        r, s = fr['frame'], fr['spriteSourceSize']
+        rect = [r['x'], r['y'], r['w'], r['h'], s['x'], s['y']]
+        group, _, idx = suffix.rpartition('_')
+        if group and idx.isdigit():
+            lst = out.setdefault(prefix, {}).setdefault(group, [])
+            lst.extend([0] * (int(idx) + 1 - len(lst)))
+            lst[int(idx)] = rect
+        else:
+            out.setdefault(prefix, {})[suffix] = rect
+    return {'tfatlas': 1, 'image': image, 'size': [size[0], size[1]], 'frameSize': [FRAME, FRAME], 'frames': out}
 
 
 def build_sheets(prefix, layers, frame_name, colors, dither, report):
@@ -212,14 +247,17 @@ def build_sheets(prefix, layers, frame_name, colors, dither, report):
             atlas['frames'][n] = dict(atlas['frames'][src])
         png = os.path.join(OUT, key + '.png')
         js = os.path.join(OUT, key + '.json')
-        pack_utils.save_atlas(sheet, atlas, png, js, quantize=False)
         if imagequant is not None:
             q = imagequant.quantize_pil_image(sheet, dithering_level=dither, max_quality=100, min_quality=0,
                                               max_colors=colors)
             q.save(png, optimize=True)
+        else:
+            sheet.save(png, optimize=True)
+        with open(js, 'w', encoding='utf-8') as f:
+            json.dump(compact_atlas(atlas, key + '.png', sheet.size), f, separators=(',', ':'))
         for layer in grp:
             where[layer] = key
-        atlases.append({'key': key, 'png': f'townfolk/{key}.png', 'json': f'townfolk/{key}.json'})
+        atlases.append({'key': key, 'png': f'townfolk/{key}.png', 'json': f'townfolk/{key}.json', 'format': 'tfatlas'})
         report.append((key, sheet.size, len(frames), len(alias), os.path.getsize(png)))
         print(f'  {key}: {sheet.size[0]}x{sheet.size[1]}  {len(frames)} frames (+{len(alias)} dup)  '
               f'{os.path.getsize(png) / 1024:.0f} KB', flush=True)
@@ -263,13 +301,27 @@ def build_manifest(head_meta, body_metas, where_head, where_body, body_layers, h
     timeline = {a: {d: [tl[(a, d, i)] for i in range(ta.ANIMS[a]['frames'])] for d in ta.ANIMS[a]['dirs']}
                 for a in ta.ORDER}
     bases = {}
-    for base, m in body_metas.items():
+    for base in tpr.BASE_ORDER:
         B = tpr.BASES[base]
-        parts = sorted({l.split('.')[0] for l in body_layers[base] if l not in LIMB_LAYERS})
-        bases[base] = {'age': B['age'], 'build': B['build'], 'shadow': B['shadow'], 'carryPoint': m['carryPoint'],
-                       'headOffset': nested(m['headOffset'], None), 'parts': parts,
-                       'label': {'ko': {'child': '어린이', 'adult': '어른', 'elder': '노인'}[B['age']] + ' ' +
-                                 {'slim': '날씬', 'round': '통통'}[B['build']], 'en': base.replace('_', ' ')}}
+        src, sx = tpr.ROUND_FROM.get(base, (base, 1.0))
+        if src not in body_metas:
+            continue
+        m = body_metas[src]
+        parts = sorted({l.split('.')[0] for l in body_layers[src] if l not in LIMB_LAYERS})
+        if sx == 1.0:
+            ho = m['headOffset']
+            cp = m['carryPoint']
+        else:
+            ho = {k: [int(round(v[0] * sx)), int(round(v[1]))] for k, v in m['headOffsetF'].items()}
+            cp = {d: [int(round(v[0] * sx)), v[1], v[2]] for d, v in m['carryPoint'].items()}
+        e = {'age': B['age'], 'build': B['build'], 'shadow': B['shadow'], 'carryPoint': cp,
+             'headOffset': nested(ho, None), 'parts': parts,
+             'label': {'ko': {'child': '어린이', 'adult': '어른', 'elder': '노인'}[B['age']] + ' ' +
+                       {'slim': '날씬', 'round': '통통'}[B['build']], 'en': base.replace('_', ' ')}}
+        if src != base:
+            e['render'] = src
+            e['scaleX'] = sx
+        bases[base] = e
     frame_atlas = {}
     for layer, key in where_head.items():
         frame_atlas[layer] = key
@@ -284,6 +336,8 @@ def build_manifest(head_meta, body_metas, where_head, where_body, body_layers, h
         if slot == 'hair':
             cols |= set(tpr.PALETTES['hair_elder']) | set(tpr.PALETTES['hair_fun'])
         tint_table[slot] = {c: tc.tint_hex(c, ref, tpr.TINT_MODEL, slot) for c in sorted(cols)}
+    tint_table['hands'] = {c: tc.tint_hex(c, tpr.TINT_REF['hands'], tpr.TINT_MODEL, 'hands')
+                           for c in sorted(set(tpr.PALETTES['gloves']) | set(tpr.PALETTES['skin']))}
     T = {
         'version': 1,
         'frameSize': [FRAME, FRAME], 'anchor': [0.5, 104 / FRAME],
@@ -319,7 +373,9 @@ def build_manifest(head_meta, body_metas, where_head, where_body, body_layers, h
                   'formula), mirrored dirs flip every sprite and negate headOffset x. A frame missing from its '
                   'atlas is empty: hide that sprite.'),
     }
-    return {'version': 1, 'notes': 'Townfolk paper-doll layers (CONTRACT_V4 J); see the townfolk block.',
+    return {'version': 1, 'notes': ('Townfolk paper-doll layers (CONTRACT_V4 J); see the townfolk block. atlases[*].json '
+                                    'are tfatlas v1 (compact, NOT Phaser JSON hash): load the png with load.image and add '
+                                    'the frames with townfolkPreload / townfolkInstall from tools/townfolk_compose.js.'),
             'atlases': atlases, 'images': [], 'sprites': {}, 'townfolk': T}
 
 
@@ -349,7 +405,7 @@ def main():
     head_layers, head_meta = collect_head(cache, log)
     atlases, where_head = build_sheets('tf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report)
     body_metas, where_body, body_layer_names = {}, {}, {}
-    for base in tpr.BASE_ORDER:
+    for base in tpr.RENDER_BASES:
         if not os.path.exists(os.path.join(cache, 'body', base, 'meta.json')):
             log.append(f'no body renders for {base}')
             continue

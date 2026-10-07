@@ -95,6 +95,10 @@ def main():
             if field.endswith('Point'):
                 if not (isinstance(v, list) and len(v) == 2 and all(isinstance(q, int) for q in v)):
                     errs.append('%s.%s: not a [dx, dy] int pair: %r' % (k, field, v))
+            if field == 'fxPoints':
+                if not (isinstance(v, dict) and all(isinstance(q, list) and len(q) == 2 for q in v.values())):
+                    errs.append('%s.fxPoints: not {name: [dx, dy]}' % k)
+                continue
             if field.endswith('Points'):
                 if not (isinstance(v, list) and v and all(isinstance(p, list) and len(p) == 2 for p in v)):
                     errs.append('%s.%s: bad point list' % (k, field))

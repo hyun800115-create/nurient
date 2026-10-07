@@ -48,7 +48,7 @@ export const STEPS = [
   { id: 'tower_se', type: 'tower', region: 'se', after: 'b:store', v3: true },
   // boats at the boathouse
   { id: 'boat_rowboat', type: 'boat', level: 1, after: 'b:boathouse', v3: true },
-  { id: 'boat_fishing', type: 'boat', level: 2, after: 'b:cannery', v3: true, items: { item_rod: 1 } },
+  { id: 'boat_fishing', type: 'boat', level: 2, after: 'b:cannery', also: 'boat_rowboat', v3: true, items: { item_rod: 1 } },   // (same pad spot: after the rowboat)
   // second workers: coins + the matching tool from the toolsmith
   { id: 'hire2_lumberjack', type: 'hire2', worker: 'lumberjack', after: 'b:toolsmith', v3: true },
   { id: 'hire2_miner', type: 'hire2', worker: 'miner', after: 'hire2_lumberjack', v3: true, side: true },
@@ -141,7 +141,7 @@ export class Progression {
   zonesOpen() { let n = 0; for (const z of ZONE_IDS) if (this.done[z]) n++; return n; }
   get complete() { return this.isDone(COMPLETE_AFTER); }
 
-  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && this.met(s.after) && (!s.flag || this.flags[s.flag])); }
+  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && this.met(s.after) && (!s.flag || this.flags[s.flag]) && (!s.also || this.met(s.also))); }
 
   /** a one-time event happened (e.g. first sale): new pads may appear */
   setFlag(f) {

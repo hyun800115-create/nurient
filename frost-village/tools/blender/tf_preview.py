@@ -35,7 +35,7 @@ SUB = (90, 96, 110, 255)
 
 def font(sz=12):
     for p in ('/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-              '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'):
+              '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'):
         if os.path.exists(p):
             try:
                 return ImageFont.truetype(p, sz)
@@ -218,9 +218,9 @@ def family_sheets(tf):
 
 def jobs_sheet(tf):
     rows = []
-    for j, pd in tf.T['generator']['presets'].items():
+    for k, (j, pd) in enumerate(tf.T['generator']['presets'].items()):
         for s in range(3):
-            p = tf.preset(j, seed=11 * s + 3)
+            p = tf.preset(j, seed=101 * k + 11 * s + 3)          # different draws per job
             rows.append((f'{pd["label"]["ko"]}', f'{pd["label"]["en"]} #{s + 1}', p))
     sheet(tf, rows, os.path.join(PREV, 'townfolk_jobs.png'), 'Job presets (10 x 3 seeds)')
 

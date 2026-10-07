@@ -177,11 +177,11 @@ export class Tutorial {
       if (!pd.items || pd.done || !pd.active) continue;
       for (const k in pd.items) {
         if ((pd.got[k] || 0) >= pd.items[k]) continue;
-        if (bag(k) > 0) { if (pd.pad.contains(p.x, p.y)) this.textKey = 'obj_tool_give'; else set(pd.x, pd.y, 112, 'obj_tool_give', t('obj_tool_give', { name: t(k) })); return true; }
+        if (bag(k) > 0) { if (pd.pad.contains(p.x, p.y)) { this.textKey = 'obj_tool_give:' + k; this.text = t('obj_tool_give', { name: t(k) }); } else set(pd.x, pd.y, 112, 'obj_tool_give', t('obj_tool_give', { name: t(k) })); return true; }
         const porterBrings = gs.porters.some((w) => (w.station && w.station.kind === 'toolsmith') || w.dest === pd);
         const ws = gs.workshops.find((w) => w.kind === 'toolsmith');
         if (!porterBrings && ws && ws.outStack.countOf(k) > 0 && p.room > 0 && (idle || pd.remaining <= gs.economy.coins)) {
-          if (ws.outPad.contains(p.x, p.y)) this.textKey = 'obj_tool';
+          if (ws.outPad.contains(p.x, p.y)) { this.textKey = 'obj_tool:' + k; this.text = t('obj_tool', { name: t(k) }); }
           else set(ws.outPad.x, ws.outPad.y, 80, 'obj_tool', t('obj_tool', { name: t(k) }));
           return true;
         }
@@ -193,7 +193,7 @@ export class Tutorial {
       const cost = buildCost(g.id).coins || 0;
       const pl = this.plotFor(g.id);
       if (pl && gs.economy.coins >= cost) {
-        if (pl.pad && pl.pad.contains(p.x, p.y)) this.textKey = 'obj_build';
+        if (pl.pad && pl.pad.contains(p.x, p.y)) { this.textKey = 'obj_build:' + g.id; this.text = t('obj_build', { name: t('b_' + g.id) }); }
         else set(pl.dropX, pl.dropY, 70, 'obj_build:' + g.id, t('obj_build', { name: t('b_' + g.id) }));
         return true;
       }

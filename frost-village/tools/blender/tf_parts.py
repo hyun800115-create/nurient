@@ -422,9 +422,11 @@ def b_hair_long(rig, ctx, put):
     with put('main'):
         cb.hair_shell(rig, _hc(ctx), fringe=0.34, wave=0.05, waves=10.0, sweep=0.12, back_low=-0.80, top_puff=0.06,
                       side_low=-0.35)
-        _front_locks(rig, m, z_bot=-0.42, spread=0.27)
+        _front_locks(rig, m, z_bot=-0.36, spread=0.27)
     with put('back'):
-        _curtain(rig, m, z_bot=-0.60, keep=105)
+        # head-space layers are shared by every base: keep the curtain at shoulder-blade length so
+        # it still reads as hair (not a cape) on the short child / chibi bodies
+        _curtain(rig, m, z_bot=-0.42, keep=105)
 
 
 @part('hair_long_xl', 'hair', 'head', {'main': HAIR_MAIN, 'back': HAIR_BACK}, hatfit=True, tags=['long'],
@@ -434,9 +436,9 @@ def b_hair_long_xl(rig, ctx, put):
     with put('main'):
         cb.hair_shell(rig, _hc(ctx), fringe=0.36, wave=0.04, waves=8.0, sweep=-0.10, back_low=-0.80, top_puff=0.06,
                       side_low=-0.35)
-        _front_locks(rig, m, z_bot=-0.50, spread=0.27)
+        _front_locks(rig, m, z_bot=-0.46, spread=0.27)
     with put('back'):
-        _curtain(rig, m, z_bot=-0.80, keep=108, r_bot=0.24)
+        _curtain(rig, m, z_bot=-0.58, keep=108, r_bot=0.24)        # waist length (was -0.80: floor length)
 
 
 def _ponytail(rig, ctx, put, length):
@@ -1582,3 +1584,7 @@ def b_det_hivis(rig, ctx, put):
 # wardrobe by age (fewer layers to render for bases that would never wear them)
 for _pn in ('top_hoodie', 'top_bomber', 'bot_pleated', 'top_blazer', 'det_bow', 'acc_backpack'):
     PARTS[_pn].ages = ['child', 'adult']
+
+# job outfits that only working-age adults wear (keeps the atlases small)
+for _pn in ('top_uniform', 'top_tunic', 'det_hivis', 'det_police', 'det_station', 'det_apron_salon', 'acc_mailbag'):
+    PARTS[_pn].ages = ['adult']

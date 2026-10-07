@@ -49,6 +49,12 @@ BASES = {
                                leg=(1.10, 0.86, 0.90), hip_w=1.16)),
 }
 BASE_ORDER = ['child_slim', 'child_round', 'adult_slim', 'adult_round', 'elder_slim', 'elder_round']
+# 'round' builds are drawn from the slim renders of the same age, stretched horizontally around
+# the anchor (scaleX) - like vil_body's plump preset, which is a torso/limb scale as well.  Halves
+# the body payload / texture memory.  Head layers are never scaled (headOffset x is scaled).
+ROUND_FROM = {'child_round': ('child_slim', 1.18), 'adult_round': ('adult_slim', 1.22),
+              'elder_round': ('elder_slim', 1.18)}
+RENDER_BASES = ['child_slim', 'adult_slim', 'elder_slim']
 
 
 FACE_SETS = {
@@ -79,7 +85,7 @@ PROOF_FRAMES = [('idle', 'S', 0), ('idle', 'N', 2), ('walk', 'SE', 2), ('walk', 
 def proof_combos():
     out = []
     k = 0
-    for base in ('adult_slim', 'child_round'):
+    for base in ('adult_slim', 'child_slim'):
         for hi, hair in enumerate(('hair_short', 'hair_bob', 'hair_ponytail')):
             for ti, top in enumerate(('top_puffer', 'top_parka', 'top_sweater')):
                 cols = PROOF_COLORS[(hi + ti) % 3]
@@ -96,9 +102,11 @@ def proof_combos():
 # 머리색 8색 + 노인 회색 계열, 피부 7톤, 상의 12색 ...  (designer-editable)
 PALETTES = {
     'skin': ['#F6CFAE', '#F2C29A', '#E8B48C', '#D9A07A', '#C98E6A', '#A8714E', '#7A4E32'],
-    'hair': ['#2A2228', '#3A2A22', '#5A3A26', '#6B4026', '#8A5232', '#B5652E', '#D9A85A', '#E8C890'],
-    'hair_elder': ['#C8C6C2', '#F2F0EA', '#BDB6AA', '#9A948E', '#6A625C', '#3A2A22'],
-    'hair_fun': ['#8A2A4A', '#E8A0B4', '#5A6EC8', '#2E8A8A', '#D9A85A', '#2A2228'],
+    # hair renders with TINT_REF['hair'] (#C8C2BC): lighter colours would clamp, so the light end of
+    # each palette sits at / under the ref (white hair = the ref itself + the sheen layer)
+    'hair': ['#2A2228', '#3A2A22', '#5A3A26', '#6B4026', '#8A5232', '#B5652E', '#C89A52', '#C8B07A'],
+    'hair_elder': ['#BEBCB8', '#C8C2BC', '#BDB6AA', '#9A948E', '#6A625C', '#3A2A22'],
+    'hair_fun': ['#8A2A4A', '#C88CA0', '#5A6EB8', '#2E8A8A', '#C89A52', '#2A2228'],
     'cloth': ['#3D7CC9', '#D9483B', '#F2C230', '#5E9A4A', '#8A63C9', '#F08A3A', '#F59AB8', '#2E8A8A',
               '#7A5C40', '#F4EDE0', '#3B3F52', '#C8A878'],
     'muted': ['#7A5C40', '#5E7A3A', '#C98C8C', '#3B3F52', '#8A6A4A', '#4F6E8A', '#9A6A48', '#6A5A7A'],
@@ -113,7 +121,9 @@ PALETTES = {
     'fur': ['#F4F1EA', '#E6DCCB', '#D9C3A0', '#B8A890', '#8A6A4A'],
     'leather': ['#8A5A33', '#6B4A2E', '#3B2A20', '#C8A878', '#9A5A2E', '#3D7CC9', '#C8463D'],
     'metal': ['#2B2F3A', '#C9A045', '#8A5A33', '#C8463D', '#5A4A6A'],
-    'gloves': ['#3B3F4A', '#6B4A2E', '#C8463D', '#F4EDE0', '#3D7CC9', '#F2C230'],
+    # gloves tint the bare-hand layers (rendered with the skin ref), so every channel must stay
+    # <= TINT_REF['hands']: no white / cream / bright-blue gloves (they would clamp to skin)
+    'gloves': ['#3B3F4A', '#6B4A2E', '#C8463D', '#A88A68', '#3D6A9A', '#C9A030', '#5E7A3A'],
 }
 
 # which palette feeds which tint slot by default (the generator can override per look / preset)
@@ -154,9 +164,9 @@ GEN = {
         'hats': {'hat_pompom': 4, 'hat_beanie': 2, 'hat_earflap': 3, 'hat_ushanka': 2, 'hat_stocking': 2,
                  'hat_cap': 2, 'hat_bucket': 1, 'hat_headband': 1}, 'hatChance': 0.55,
         'tops': {'A': {'top_puffer': 3, 'top_parka': 3, 'top_dress': 2, 'top_duffle': 2, 'top_sweater': 1,
-                       'top_hoodie': 1, 'top_cardigan': 1},
+                       'top_hoodie': 1, 'top_cardigan': 1, 'top_coat': 1},
                  'B': {'top_puffer': 3, 'top_parka': 2, 'top_hoodie': 3, 'top_bomber': 2, 'top_sweater': 2,
-                       'top_duffle': 1, 'top_vest': 1}},
+                       'top_duffle': 1, 'top_vest': 1, 'top_coat': 1}},
         'bottoms': {'A': {'bot_skirt': 3, 'bot_snowpants': 2, 'bot_pants': 2, 'bot_pleated': 1, 'bot_overalls': 1},
                     'B': {'bot_pants': 3, 'bot_snowpants': 3, 'bot_overalls': 1}},
         'shoes': {'shoe_furboots': 3, 'shoe_boots': 3, 'shoe_rubber': 2, 'shoe_shoes': 1},
@@ -183,7 +193,7 @@ GEN = {
                        'top_duffle': 2, 'top_sweater': 2, 'top_hoodie': 1, 'top_vest': 1},
                  'B': {'top_coat': 2, 'top_parka': 3, 'top_puffer': 3, 'top_sweater': 2, 'top_bomber': 2,
                        'top_hoodie': 2, 'top_vest': 2, 'top_duffle': 1, 'top_cardigan': 1}},
-        'bottoms': {'A': {'bot_skirt': 3, 'bot_longskirt': 2, 'bot_pants': 3, 'bot_snowpants': 1},
+        'bottoms': {'A': {'bot_skirt': 3, 'bot_longskirt': 2, 'bot_pants': 3, 'bot_snowpants': 1, 'bot_pleated': 1},
                     'B': {'bot_pants': 5, 'bot_snowpants': 2, 'bot_overalls': 1}},
         'shoes': {'shoe_boots': 4, 'shoe_furboots': 2, 'shoe_shoes': 3, 'shoe_rubber': 1},
         'glasses': {'acc_glasses': 2, 'acc_glasses_sq': 2}, 'glassesChance': 0.25,
@@ -206,8 +216,8 @@ GEN = {
                        'top_duffle': 1, 'top_puffer': 1},
                  'B': {'top_coat': 3, 'top_vest': 3, 'top_cardigan': 2, 'top_sweater': 2, 'top_parka': 2,
                        'top_puffer': 1, 'top_duffle': 1}},
-        'bottoms': {'A': {'bot_longskirt': 4, 'bot_skirt': 1, 'bot_pants': 2},
-                    'B': {'bot_pants': 5, 'bot_overalls': 1}},
+        'bottoms': {'A': {'bot_longskirt': 4, 'bot_skirt': 1, 'bot_pants': 2, 'bot_snowpants': 1},
+                    'B': {'bot_pants': 5, 'bot_overalls': 1, 'bot_snowpants': 1}},
         'shoes': {'shoe_shoes': 3, 'shoe_boots': 3, 'shoe_furboots': 2, 'shoe_rubber': 1},
         'glasses': {'acc_glasses': 3, 'acc_glasses_sq': 1}, 'glassesChance': 0.5,
         'neck': {'acc_scarf': 3, 'acc_necklace': 1}, 'neckChance': 0.45,
@@ -245,9 +255,9 @@ PRESETS = {
                'hatChance': 1.0, 'extra': ['det_police'], 'neck': None, 'bag': None, 'glassesChance': 0.05,
                'headAcc': None, 'facialHairChance': 0.15,
                'colors': {'top': ['#2B3A5E'], 'top2': ['#1E2A44'], 'hat': ['#2B3A5E'], 'bottom': ['#2B3A5E'],
-                          'shoes': ['#1E1E26'], 'hands': ['#F4F1EA', 'skin']}},
+                          'shoes': ['#1E1E26'], 'hands': ['#22242C', 'skin']}},
     'postal': {'label': {'ko': '우체부', 'en': 'postal worker'},
-               'bases': {'adult_slim': 3, 'adult_round': 1, 'elder_slim': 1},
+               'bases': {'adult_slim': 3, 'adult_round': 1},
                'tops': ['top_uniform'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'], 'hats': ['hat_postal'],
                'hatChance': 1.0, 'bag': ['acc_mailbag'], 'bagChance': 1.0, 'neck': None, 'headAcc': None,
                'colors': {'top': ['#3D6FB8'], 'top2': ['#D23A32'], 'hat': ['#D23A32'], 'bottom': ['#2B3A5E'],
@@ -283,13 +293,14 @@ PRESETS = {
                            'acc': ['#2F5E48', '#6B4A2E', '#2B2F3A'], 'hat': ['#2F5E48', '#2B2F3A'],
                            'hat2': ['#2F5E48', '#2B2F3A'], 'bottom': ['#2B2F3A', '#3B3F52']}},
     'station': {'label': {'ko': '역무원', 'en': 'station attendant'},
-                'bases': {'adult_slim': 3, 'adult_round': 2, 'elder_slim': 1},
+                'bases': {'adult_slim': 3, 'adult_round': 2},
                 'tops': ['top_uniform'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': ['hat_station'],
                 'hatChance': 1.0, 'extra': ['det_station'], 'neck': None, 'bag': None, 'headAcc': None,
                 'colors': {'top': ['#2F5E48', '#22305A'], 'top2': ['#C8343A'], 'hat': ['#2F5E48', '#22305A'],
-                           'bottom': ['#22305A'], 'shoes': ['#1E1E26'], 'hands': ['#F4F1EA']}},
+                           'bottom': ['#22305A'], 'shoes': ['#1E1E26'],
+                           'hands': ['skin', 'skin', '#22242C']}},
     'factory': {'label': {'ko': '공장 노동자', 'en': 'factory worker'},
-                'bases': {'adult_slim': 3, 'adult_round': 3, 'elder_round': 1},
+                'bases': {'adult_slim': 3, 'adult_round': 3},
                 'tops': {'top_sweater': 2, 'top_hoodie': 1, 'top_puffer': 1}, 'bottoms': ['bot_overalls'],
                 'shoes': {'shoe_rubber': 1, 'shoe_boots': 2}, 'hats': ['hat_hardhat'], 'hatChance': 1.0,
                 'extra': ['det_hivis'], 'neck': None, 'bag': None, 'headAcc': None, 'gloveChance': 0.9,
@@ -297,3 +308,46 @@ PRESETS = {
                            'bottom': ['#3D6FA8', '#6A6A70', '#4A5A6A'], 'top': 'muted',
                            'shoes': ['#2E3440', '#3B2A20', '#F2C230']}},
 }
+
+
+def reachable_parts(age):
+    """Every part the generator / a preset can give a person of this age (static walk over GEN and
+    PRESETS).  tf_pack drops body layers of rendered parts outside this set (payload), and the
+    manifest's bases[*].parts then keeps the generator from picking them."""
+    keys = ('hair', 'hats', 'tops', 'bottoms', 'shoes', 'glasses', 'neck', 'bag', 'headAcc', 'facialHair')
+    out = set(UNDER_DRESS)
+
+    def add(v):
+        if not v:
+            return
+        if isinstance(v, str):
+            out.add(v)
+        elif isinstance(v, dict) and set(v) <= {'A', 'B'}:
+            for x in v.values():
+                add(x)
+        else:
+            out.update(v)
+    for k in keys:
+        add(GEN[age].get(k))
+    for pr in PRESETS.values():
+        if any(BASES[b]['age'] == age for b in pr['bases']):
+            for k in keys:
+                if k in pr:
+                    add(pr[k])
+            add(pr.get('extra'))
+    return out
+
+
+ROUND_CHECK_FRAMES = [('idle', 'S', 0), ('walk', 'SE', 2), ('walk', 'E', 5), ('walk', 'N', 3), ('talk', 'SE', 0),
+                      ('wave', 'S', 2)]
+
+
+def round_check_combos():
+    """Real 3D round bodies, to compare with the scaled-slim round builds the game draws."""
+    out = []
+    for base, hair, top, face in (('child_round', 'hair_twintails', 'top_puffer', 'kid'),
+                                  ('adult_round', 'hair_short', 'top_parka', 'std'),
+                                  ('elder_round', 'hair_bald', 'top_cardigan', 'elder')):
+        out.append(dict(name=f'round__{base}', base=base, face=face, nose='dot',
+                        parts=[hair, top, 'bot_pants', 'shoe_boots'], colors=PROOF_COLORS[1], frames=ROUND_CHECK_FRAMES))
+    return out

@@ -181,7 +181,7 @@ def sprite_entry(k, m, frame_atlas):
     if 'staffPoints' in s:
         s['staffDepth'] = 'front'
     for f in ('tileAxis', 'segM', 'stepPx', 'rampM', 'openEnds', 'railTopM', 'gaugeM', 'variant', 'trackAxis',
-              'trainStopsNote'):
+              'trainStopsNote', 'platformPoly', 'platformLiftPx', 'platformNote'):
         if f in m:
             s[f] = m[f]
     if m.get('notes'):
@@ -409,11 +409,21 @@ class Scene:
         d = ImageDraw.Draw(self.img)
         d.line(poly + [poly[0]], fill=(196, 205, 220, 255), width=2)
 
-    def finish(self, out, caption):
+    def finish(self, out, caption, crop=True):
         for _, im, px, py in sorted(self.ground, key=lambda t: t[0]):
             self.img.alpha_composite(im, (px, py))
         for _, im, px, py in sorted(self.placed, key=lambda t: t[0]):
             self.img.alpha_composite(im, (px, py))
+        if crop:                                     # trim the empty snow around the block
+            a = np.asarray(self.img.convert('RGB')).astype(np.int16)
+            bgc = a[0, 0]
+            ys, xs = np.nonzero(np.abs(a - bgc).max(-1) > 6)
+            if len(xs):
+                x0, y0 = max(0, xs.min() - 30), max(0, ys.min() - 50)
+                x1, y1 = min(self.W, xs.max() + 30), min(self.H, ys.max() + 70)
+                self.img = self.img.crop((x0, y0, x1, y1))
+                self.labels = [(t, sx - x0, sy - y0) for t, sx, sy in self.labels]
+                self.W, self.H = self.img.size
         d = ImageDraw.Draw(self.img)
         f = pp.font(13)
         for text, sx, sy in self.labels:
@@ -435,14 +445,18 @@ def preview_scene(builds, cars, frames, cframes, out):
                                                                                        (200, 205, 214, 255))
     # roads: main street along X (y in [-1.6, 1.6]), cross street along Y (x in [-1.6, 1.6]), lane to the station
     sc.road(tex, -17.0, 18.0, -1.6, 1.6)
-    sc.road(tex, -1.6, 1.6, -13.5, 14.0)
+    sc.road(tex, -1.6, 1.6, -18.0, 14.0)
     sc.road(tex, -17.0, -1.6, -8.4, -6.8)
 
     def B(key, x, y, label=True, frame=None):
         m = builds.get(key)
         if not m:
             return None
-        sc.put(frames[frame or m['frames'][0]], m['anchorPx'], x, y, label=key if label else None)
+        sc.put(frames[frame or m['frames'][0]], m['anchorPx'], x, y)
+        if label:                                   # label floats just above the sprite's top
+            sx, sy = sc.p(x, y)
+            top = m['topPx'][m['frames'][0]] if isinstance(m['topPx'], dict) else m['topPx']
+            sc.labels.append((key, sx, sy - top - 22))
         return m
 
     def pts(m, kind):
@@ -510,7 +524,7 @@ def preview_scene(builds, cars, frames, cframes, out):
     # --- street furniture
     for k, x, y in (('streetlight', -2.3, 2.3), ('streetlight', 2.4, -2.4), ('streetlight_double', -9.6, -1.9),
                     ('streetlight', 10.5, 2.2), ('bench_x', 0.7, -9.6), ('bench_y', -2.6, -9.5), ('sled_stop', -2.9, -2.6),
-                    ('town_gate', 0.0, 13.2)):
+                    ('town_gate', 0.0, -16.6)):
         B(k, x, y, label=k in ('sled_stop', 'town_gate', 'streetlight_double'))
     # --- station + track + train (track along X at the station's trackPoint)
     st = builds.get('train_station')
@@ -563,35 +577,50 @@ def _gif(frames_rgb, durs, out):
 
 
 def preview_anims_gif(builds, frames, out, bg=(236, 241, 248)):
-    st = [k for k in builds if 'anims' in builds[k]]
+    """Animated sprites (school bell, barber pole, fountain): the whole sprite at 0.5x + a 2x zoom on the region that
+    changes between frames."""
+    st = [k for k in sorted(builds) if 'anims' in builds[k]]
     if not st:
         return
-    gap = 10
-    scale = 0.6
-    crops = {}
+    gap = 14
+    cells = []
     for k in st:
         m = builds[k]
-        names = [m['frames'][0]] + m['anims']['work']['frames']
-        bb = None
-        for n in names:
-            b = frames[n].getbbox()
-            bb = b if bb is None else (min(bb[0], b[0]), min(bb[1], b[1]), max(bb[2], b[2]), max(bb[3], b[3]))
-        crops[k] = bb
-    sz = {k: (int((crops[k][2] - crops[k][0]) * scale), int((crops[k][3] - crops[k][1]) * scale)) for k in st}
-    Wd = sum(sz[k][0] for k in st) + gap * (len(st) + 1)
-    Hd = max(sz[k][1] for k in st) + 30
+        names = m['anims']['work']['frames']
+        arrs = [np.asarray(frames[n]).astype(np.int16) for n in names]
+        diff = np.zeros(arrs[0].shape[:2], bool)
+        for a_ in arrs[1:]:
+            diff |= np.abs(a_ - arrs[0]).max(-1) > 24
+        ys, xs = np.nonzero(diff)
+        full = frames[names[0]].getbbox()
+        if len(xs):
+            cx, cy = int(xs.mean()), int(ys.mean())
+            half = int(max(40, min(90, max(xs.max() - xs.min(), ys.max() - ys.min()) * 0.6 + 20)))
+            zoom = (cx - half, cy - half, cx + half, cy + half)
+        else:
+            zoom = full
+        fs = (int((full[2] - full[0]) * 0.5), int((full[3] - full[1]) * 0.5))
+        zs = 2 * (zoom[2] - zoom[0])
+        cells.append((k, m, full, fs, zoom, zs))
+    Wd = sum(c[3][0] + c[5] for c in cells) + gap * (2 * len(cells) + 1)
+    Hd = max(max(c[3][1], c[5]) for c in cells) + 34
 
     def compose(idx):
         im = Image.new('RGBA', (Wd, Hd), bg + (255,))
         dr = ImageDraw.Draw(im)
         x = gap
-        for k in st:
-            m = builds[k]
+        for k, m, full, fs, zoom, zs in cells:
             n = m['anims']['work']['frames'][idx % 4]
-            f = frames[n].crop(crops[k]).resize(sz[k], Image.LANCZOS)
-            im.alpha_composite(f, (x, Hd - 26 - sz[k][1]))
-            dr.text((x + 6, Hd - 22), '%s (%s)' % (k, m.get('animAlias') or 'work'), fill=(20, 24, 32), font=pp.font(13))
-            x += sz[k][0] + gap
+            f = frames[n].crop(full).resize(fs, Image.LANCZOS)
+            im.alpha_composite(f, (x, Hd - 30 - fs[1]))
+            dr.text((x + 4, Hd - 24), '%s (%s)' % (k, m.get('animAlias') or 'work'), fill=(20, 24, 32),
+                    font=pp.font(14))
+            x += fs[0] + gap
+            z = frames[n].crop(zoom).resize((zs, zs), Image.LANCZOS)
+            dr.rectangle([x - 2, Hd - 32 - zs, x + zs + 1, Hd - 29], outline=(150, 165, 185), width=2)
+            im.alpha_composite(z, (x, Hd - 30 - zs))
+            dr.text((x + 4, Hd - 24), '2x zoom', fill=(80, 90, 110), font=pp.font(12))
+            x += zs + gap
         return im.convert('RGB')
     fr = [compose(i) for _ in range(6) for i in range(4)]
     _gif(fr, [125] * len(fr), out)

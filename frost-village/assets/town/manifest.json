@@ -1,0 +1,3485 @@
+{
+ "version": 1,
+ "generator": "tools/blender/town_render.py + town_pack.py (docs/CONTRACT_V4.md section K)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (rail tiles: track centre line, tile middle; train cars: ground point under the car centre on the track centre line).",
+  "front": "-Y = the building faces screen down-left (SW); its other visible side is screen down-right (SE). yaw-45 props (fountain) face the camera (S).",
+  "footprint": "screen-px bounding size [w, h] of the ground diamond centred on the anchor; footprintM = metres; footprintPoly = the 4 ground corners in px (left, bottom, right, top) for depth / collision tests.",
+  "topPx": "visual height above the anchor in px (bubbles / progress rings).",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = the facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). All standing points are in front of the building geometry: draw characters there above the building sprite (staffDepth \"front\").",
+  "doorPoint": "where a visitor walks to before \"entering\" (fade out / hide) - in front of the door.",
+  "customerPoints": "queue spots in front of a shop (first = nearest the door).",
+  "staffPoints": "shopkeeper / official standing outside (greeting, florist at the stand, firefighter...).",
+  "inPoint": "delivery pad where porters drop goods bought from the village (cans, bread, fish, planks, ingots).",
+  "gatherPoints": "crowd spots (school line-up, town-hall meeting, fountain).",
+  "seatPoints": "anchor of a sitting character (benches, terrace chairs, fountain rim).",
+  "waitPoints/boardPoints": "station platform / sled stop: waiting spots and where passengers step on / off a car.",
+  "playPoints": "kids playing (school yard, playground).",
+  "work": "idle frame = resting state; anims.work (+ a named alias: ring / spin / water) = seamless 4-frame loop with the motion baked in; all frames share frameSize + anchor (swap frames in place, like the village stations: spr:<key>:work).",
+  "fxPoints": "px offsets for game FX: smoke (chimney tops), steam, bell, clock, siren, sign, light ...",
+  "shadows": "buildings / props / rail tiles have a baked soft cool shadow falling screen down-right; train cars have none (use their shadowFrames).",
+  "rails": "rail tiles: one tile = sqrt(2) m (one 128x64 grid cell) along world X (rail_x*, step (+64, +32) px) or Y (rail_y*, step (+64, -32) px); consecutive tiles join seamlessly incl. the shadow (partition-of-unity cut). Ground layer (kind decal). *_end_p / *_end_n: buffer stop at the +axis / -axis end; *_crossing: level crossing for a road. railTopM = rail head height (train wheels), gaugeM.",
+  "train": "characters{} entries kind \"train\": 5 rendered dirs + flipX mirrors, frame names {anim}_{dir}_{i}, idle + move. Rails run along the iso axes, so on straight track the train heads SE / NW (world +-X) or NE / SW (world +-Y); S, E, N are the in-between headings for curves / turning. Chain the cars along the track: anchor distance = couplerM.back of the car in front - couplerM.front of the car behind (metres along the heading; engine->car_a 2.34 m, car_a->car_b 2.24 m). move loop = one wheel turn (~1.7 m of track): at 12 fps move the train ~2.6 m/s (166 px/s) for no wheel slip."
+ },
+ "atlases": [
+  {
+   "key": "town_civic",
+   "png": "town/town_civic.png",
+   "json": "town/town_civic.json"
+  },
+  {
+   "key": "town_shops",
+   "png": "town/town_shops.png",
+   "json": "town/town_shops.json"
+  },
+  {
+   "key": "town_homes",
+   "png": "town/town_homes.png",
+   "json": "town/town_homes.json"
+  },
+  {
+   "key": "town_park",
+   "png": "town/town_park.png",
+   "json": "town/town_park.json"
+  },
+  {
+   "key": "town_street",
+   "png": "town/town_street.png",
+   "json": "town/town_street.json"
+  },
+  {
+   "key": "town_rails",
+   "png": "town/town_rails.png",
+   "json": "town/town_rails.json"
+  },
+  {
+   "key": "train_engine",
+   "png": "town/train_engine.png",
+   "json": "town/train_engine.json"
+  },
+  {
+   "key": "train_car_a",
+   "png": "town/train_car_a.png",
+   "json": "town/train_car_a.json"
+  },
+  {
+   "key": "train_car_b",
+   "png": "town/train_car_b.png",
+   "json": "town/train_car_b.json"
+  }
+ ],
+ "sprites": {
+  "clinic": {
+   "atlas": "town_civic",
+   "frame": "clinic",
+   "anchor": [
+    0.37205,
+    0.67969
+   ],
+   "kind": "building",
+   "frameSize": [
+    508,
+    512
+   ],
+   "footprint": [
+    308,
+    154
+   ],
+   "footprintM": [
+    3.6,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -154,
+     -5
+    ],
+    [
+     9,
+     77
+    ],
+    [
+     154,
+     5
+    ],
+    [
+     -9,
+     -77
+    ]
+   ],
+   "topPx": 327,
+   "front": "-Y",
+   "name": {
+    "ko": "병원",
+    "en": "Clinic"
+   },
+   "zone": "civic",
+   "fxPoints": {
+    "sign": [
+     11,
+     -301
+    ],
+    "siren": [
+     27,
+     28
+    ]
+   },
+   "inPoint": [
+    104,
+    50
+   ],
+   "doorPoint": [
+    -45,
+    54
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -9,
+     63
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -57,
+     67
+    ],
+    [
+     -71,
+     79
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -131,
+     16
+    ],
+    [
+     -109,
+     27
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "notes": "Clinic (3.6 x 3.2 m): clean white two-storey clinic with mint trim and a mint roof, a big red heart-with-a-plus sign on the roof and at the corner, a glass entrance under a canopy, a bench for waiting patients (seatPoints), a little ambulance sled. doorPoint, customerPoints (patients waiting), staffPoints = the nurse at the door."
+  },
+  "fire_station": {
+   "atlas": "town_civic",
+   "frame": "fire_station",
+   "anchor": [
+    0.27055,
+    0.69847
+   ],
+   "kind": "building",
+   "frameSize": [
+    584,
+    524
+   ],
+   "footprint": [
+    353,
+    176
+   ],
+   "footprintM": [
+    4.2,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -176,
+     -7
+    ],
+    [
+     14,
+     88
+    ],
+    [
+     176,
+     7
+    ],
+    [
+     -14,
+     -88
+    ]
+   ],
+   "topPx": 345,
+   "front": "-Y",
+   "name": {
+    "ko": "소방서",
+    "en": "Fire station"
+   },
+   "zone": "civic",
+   "fxPoints": {
+    "bell": [
+     118,
+     -289
+    ],
+    "siren": [
+     -52,
+     -76
+    ],
+    "garage": [
+     -72,
+     -44
+    ]
+   },
+   "doorPoint": [
+    120,
+    19
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     -45,
+     48
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "gatherPoints": [
+    [
+     -118,
+     32
+    ]
+   ],
+   "gatherDirs": [
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Fire station (4.2 x 3.6 m): red-brick two-storey station with a cream trim, a wide arched garage door standing open with the nose of a shiny red fire sled-engine (ladder on top) inside, a tall hose-drying tower with a bell and a lamp, a fire-helmet sign on the roof and at the corner, a hydrant. staffPoints = firefighter by the garage, doorPoint = side door, fxPoints.bell / siren."
+  },
+  "police_box": {
+   "atlas": "town_civic",
+   "frame": "police_box",
+   "anchor": [
+    0.4086,
+    0.63158
+   ],
+   "kind": "building",
+   "frameSize": [
+    372,
+    304
+   ],
+   "footprint": [
+    199,
+    100
+   ],
+   "footprintM": [
+    2.2,
+    2.2
+   ],
+   "footprintPoly": [
+    [
+     -100,
+     0
+    ],
+    [
+     0,
+     50
+    ],
+    [
+     100,
+     0
+    ],
+    [
+     0,
+     -50
+    ]
+   ],
+   "topPx": 171,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰 초소",
+    "en": "Police box"
+   },
+   "zone": "civic",
+   "fxPoints": {
+    "siren": [
+     9,
+     -138
+    ]
+   },
+   "doorPoint": [
+    -38,
+    35
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -61,
+     6
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "seatPoints": [
+    [
+     -95,
+     11
+    ],
+    [
+     -72,
+     23
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "notes": "Police box (2.2 x 2.2 m): small navy sentry booth with white bands, a big window, a blue-and-red light on the flat roof, a gold star badge sign, a bicycle and a little bench. staffPoints = the officer standing guard in front, doorPoint = booth door."
+  },
+  "post_office": {
+   "atlas": "town_civic",
+   "frame": "post_office",
+   "anchor": [
+    0.36585,
+    0.68504
+   ],
+   "kind": "building",
+   "frameSize": [
+    492,
+    508
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.4,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -2
+    ],
+    [
+     5,
+     75
+    ],
+    [
+     149,
+     2
+    ],
+    [
+     -5,
+     -75
+    ]
+   ],
+   "topPx": 327,
+   "front": "-Y",
+   "name": {
+    "ko": "우체국",
+    "en": "Post office"
+   },
+   "zone": "civic",
+   "fxPoints": {
+    "mail": [
+     -138,
+     -32
+    ],
+    "sign": [
+     11,
+     -301
+    ]
+   },
+   "inPoint": [
+    100,
+    48
+   ],
+   "doorPoint": [
+    -42,
+    56
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -127,
+     27
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -53,
+     69
+    ],
+    [
+     -67,
+     80
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Post office (3.4 x 3.2 m): cream two-storey building with red trim, a red roof and a red door, an envelope sign on the roof and at the corner, a big round-topped red mailbox in front (mailPoint), a parcel stack and a little red mail sled, a lit service window. doorPoint, customerPoints (queue to the counter inside), staffPoints = the postman by the mailbox, inPoint = parcel drop."
+  },
+  "school": {
+   "atlas": "town_civic",
+   "frame": "school",
+   "anchor": [
+    0.41506,
+    0.69477
+   ],
+   "kind": "building",
+   "frameSize": [
+    624,
+    688
+   ],
+   "footprint": [
+    480,
+    240
+   ],
+   "footprintM": [
+    6.4,
+    4.2
+   ],
+   "footprintPoly": [
+    [
+     -240,
+     -25
+    ],
+    [
+     50,
+     120
+    ],
+    [
+     240,
+     25
+    ],
+    [
+     -50,
+     -120
+    ]
+   ],
+   "topPx": 457,
+   "front": "-Y",
+   "name": {
+    "ko": "학교",
+    "en": "School"
+   },
+   "zone": "education",
+   "anims": {
+    "work": {
+     "frames": [
+      "school_work_0",
+      "school_work_1",
+      "school_work_2",
+      "school_work_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "ring": {
+     "frames": [
+      "school_work_0",
+      "school_work_1",
+      "school_work_2",
+      "school_work_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "bell": [
+     0,
+     -352
+    ],
+    "clock": [
+     -23,
+     -279
+    ],
+    "flag": [
+     70,
+     -56
+    ],
+    "smoke": [
+     -36,
+     -354
+    ]
+   },
+   "doorPoint": [
+    -120,
+    21
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -52,
+     12
+    ]
+   ],
+   "staffDirs": [
+    "S"
+   ],
+   "gatherPoints": [
+    [
+     -52,
+     26
+    ],
+    [
+     -27,
+     38
+    ],
+    [
+     -2,
+     51
+    ],
+    [
+     -61,
+     42
+    ],
+    [
+     -36,
+     54
+    ],
+    [
+     -11,
+     67
+    ]
+   ],
+   "gatherDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "playPoints": [
+    [
+     118,
+     43
+    ],
+    [
+     152,
+     15
+    ]
+   ],
+   "playDirs": [
+    "SE",
+    "SE"
+   ],
+   "staffDepth": "front",
+   "notes": "School (6.4 x 4.2 m incl. its yard): two-storey cream schoolhouse on a red-brick plinth with a red snowy roof, a white belfry with a golden bell and a clock on the ridge, a columned entrance porch (front = screen down-left). L-shaped sand-coloured yard in front + on the right, white picket fence with a gate (pencil + apple sign), flag pole, little football goal, snowman. idle = bell at rest; anims.work / anims.ring = the bell swinging (4-frame loop, morning / home-time bell). gatherPoints = six line-up spots for pupils in the front yard (facing the building), doorPoint = porch steps, staffPoints = the teacher in front of the line, fxPoints.bell / clock / flag."
+  },
+  "town_hall": {
+   "atlas": "town_civic",
+   "frame": "town_hall",
+   "anchor": [
+    0.35103,
+    0.69128
+   ],
+   "kind": "building",
+   "frameSize": [
+    584,
+    596
+   ],
+   "footprint": [
+    398,
+    199
+   ],
+   "footprintM": [
+    4.8,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -199,
+     -9
+    ],
+    [
+     18,
+     100
+    ],
+    [
+     199,
+     9
+    ],
+    [
+     -18,
+     -100
+    ]
+   ],
+   "topPx": 392,
+   "front": "-Y",
+   "name": {
+    "ko": "마을회관",
+    "en": "Town hall"
+   },
+   "zone": "civic",
+   "fxPoints": {
+    "clock": [
+     1,
+     -272
+    ],
+    "bell": [
+     25,
+     -335
+    ],
+    "flagL": [
+     -156,
+     -172
+    ],
+    "flagR": [
+     57,
+     -66
+    ]
+   },
+   "doorPoint": [
+    -127,
+    63
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -66,
+     11
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "gatherPoints": [
+    [
+     -170,
+     58
+    ],
+    [
+     -143,
+     71
+    ],
+    [
+     -115,
+     85
+    ],
+    [
+     -181,
+     72
+    ],
+    [
+     -154,
+     86
+    ],
+    [
+     -127,
+     100
+    ]
+   ],
+   "gatherDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Town hall (4.8 x 4.0 m): symmetric two-storey hall in warm cream stone with white columns, a pediment over the entrance, a teal roof and a central clock tower with a dome and a golden pinecone finial (the town mark), two flags, wide steps, lamp posts and flower tubs. fxPoints.clock / bell / flags; doorPoint = foot of the steps; gatherPoints = a small crowd in front (meetings, speeches); staffPoints = the mayor on the top step."
+  },
+  "train_station": {
+   "atlas": "town_civic",
+   "frame": "train_station",
+   "anchor": [
+    0.46854,
+    0.60385
+   ],
+   "kind": "building",
+   "frameSize": [
+    604,
+    520
+   ],
+   "footprint": [
+    525,
+    262
+   ],
+   "footprintM": [
+    7.2,
+    4.4
+   ],
+   "footprintPoly": [
+    [
+     -262,
+     -32
+    ],
+    [
+     63,
+     131
+    ],
+    [
+     262,
+     32
+    ],
+    [
+     -63,
+     -131
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "눈썰매 기차역",
+    "en": "Snow-train station"
+   },
+   "zone": "transport",
+   "fxPoints": {
+    "smoke": [
+     -34,
+     -293
+    ],
+    "bell": [
+     -10,
+     -74
+    ],
+    "clock": [
+     -71,
+     -135
+    ]
+   },
+   "doorPoint": [
+    -113,
+    -20
+   ],
+   "doorDir": "NE",
+   "trackPoint": [
+    -130,
+    65
+   ],
+   "staffPoints": [
+    [
+     -86,
+     12
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "seatPoints": [
+    [
+     -158,
+     -27
+    ],
+    [
+     -136,
+     -15
+    ],
+    [
+     -27,
+     39
+    ],
+    [
+     -5,
+     50
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "waitPoints": [
+    [
+     -156,
+     -30
+    ],
+    [
+     -68,
+     9
+    ],
+    [
+     -29,
+     33
+    ],
+    [
+     32,
+     59
+    ]
+   ],
+   "waitDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "boardPoints": [
+    [
+     -184,
+     -27
+    ],
+    [
+     -82,
+     23
+    ],
+    [
+     24,
+     77
+    ]
+   ],
+   "boardDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "trainStops": {
+    "engine": [
+     -24,
+     118
+    ],
+    "car_a": [
+     -130,
+     65
+    ],
+    "car_b": [
+     -232,
+     14
+    ]
+   },
+   "staffDepth": "front",
+   "trackAxis": "x",
+   "trainStopsNote": "trainStops.engine/car_a/car_b = car anchors (track centre line) when the train stands at the platform heading +X (SE); heading -X mirror around trackPoint.",
+   "notes": "Snow-train station (7.2 x 4.4 m): cosy timber station house with a red roof, a big clock on the gable, a ticket window and a bell; in front (screen down-left) a 7 m stone platform with a yellow edge line, a canopy on posts, benches, a luggage cart, a station lamp and a blank name board on two posts. The track is NOT part of this sprite: lay rail_x tiles with their anchors on trackPoint + k * (64, 32) px; the train stops with its cars on trainStops (engine heading +X / SE). boardPoints = where passengers step on / off (platform edge), waitPoints = people waiting, seatPoints = benches, doorPoint = station door, staffPoints = station master with a flag.",
+   "platformPoly": [
+    [
+     -262,
+     -49
+    ],
+    [
+     63,
+     114
+    ],
+    [
+     131,
+     80
+    ],
+    [
+     -195,
+     -83
+    ]
+   ],
+   "platformLiftPx": 18,
+   "platformNote": "platformPoly = the platform top (px from the anchor, at its height); a character walking on it is drawn platformLiftPx higher than its ground position and above this sprite (all platform points already include the lift)."
+  },
+  "bookstore": {
+   "atlas": "town_shops",
+   "frame": "bookstore",
+   "anchor": [
+    0.38386,
+    0.69048
+   ],
+   "kind": "building",
+   "frameSize": [
+    508,
+    504
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 327,
+   "front": "-Y",
+   "name": {
+    "ko": "서점",
+    "en": "Bookstore"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "smoke": [
+     -1,
+     -295
+    ],
+    "sign": [
+     11,
+     -301
+    ]
+   },
+   "inPoint": [
+    95,
+    45
+   ],
+   "doorPoint": [
+    -43,
+    53
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -2,
+     67
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -54,
+     66
+    ],
+    [
+     -69,
+     77
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -136,
+     14
+    ],
+    [
+     -113,
+     25
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "notes": "Bookstore (3 x 3 m): red-brick shop house with a slate roof and dark green wood shop front, a bay window stacked with colourful books, an open-book bracket sign + a big open-book sign on the roof, a book cart and a reading bench outside. Shop markers as the other shops."
+  },
+  "cafe": {
+   "atlas": "town_shops",
+   "frame": "cafe",
+   "anchor": [
+    0.33974,
+    0.64463
+   ],
+   "kind": "building",
+   "frameSize": [
+    468,
+    484
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 292,
+   "front": "-Y",
+   "name": {
+    "ko": "카페",
+    "en": "Cafe"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "steam": [
+     -32,
+     -280
+    ],
+    "sign": [
+     18,
+     -55
+    ]
+   },
+   "inPoint": [
+    95,
+    45
+   ],
+   "doorPoint": [
+    -44,
+    53
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -3,
+     66
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -55,
+     65
+    ],
+    [
+     -70,
+     77
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -52,
+     60
+    ],
+    [
+     -11,
+     87
+    ]
+   ],
+   "seatDirs": [
+    "NW",
+    "SE"
+   ],
+   "staffDepth": "front",
+   "notes": "Cafe (3 x 3 m): mint two-storey shop house, gable toward the street, mint + cream striped awning, big lit window with cakes and cups, a giant coffee cup on the roof (steam at fxPoints.steam) and a coffee-cup bracket sign at the front corner; terrace table with two chairs (seatPoints), chalk board, flower tub. doorPoint = in front of the door, customerPoints = queue, staffPoints = barista greeting beside the door, inPoint = delivery pad on the right side (bread / fish from the village)."
+  },
+  "carpenter_workshop": {
+   "atlas": "town_shops",
+   "frame": "carpenter_workshop",
+   "anchor": [
+    0.40336,
+    0.69658
+   ],
+   "kind": "building",
+   "frameSize": [
+    476,
+    468
+   ],
+   "footprint": [
+    290,
+    145
+   ],
+   "footprintM": [
+    3.4,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -145,
+     -5
+    ],
+    [
+     9,
+     72
+    ],
+    [
+     145,
+     5
+    ],
+    [
+     -9,
+     -72
+    ]
+   ],
+   "topPx": 305,
+   "front": "-Y",
+   "name": {
+    "ko": "목공소",
+    "en": "Carpenter workshop"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sawdust": [
+     -59,
+     11
+    ],
+    "sign": [
+     2,
+     -271
+    ]
+   },
+   "inPoint": [
+    95,
+    45
+   ],
+   "doorPoint": [
+    -79,
+    26
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -93,
+     53
+    ]
+   ],
+   "staffDirs": [
+    "NE"
+   ],
+   "customerPoints": [
+    [
+     -124,
+     26
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Carpenter workshop (3.4 x 3 m): timber workshop with a log base, plank walls and a wide open front showing a workbench with a vice and tools, a lumber rack of planks on the right side, a sawhorse with a plank and a hand saw out front, a big round saw sign on the roof and a saw bracket sign. staffPoints = the carpenter at the sawhorse (facing it), inPoint = where planks from the village sawmill are delivered, doorPoint = workshop entrance."
+  },
+  "clothing_store": {
+   "atlas": "town_shops",
+   "frame": "clothing_store",
+   "anchor": [
+    0.32906,
+    0.69048
+   ],
+   "kind": "building",
+   "frameSize": [
+    468,
+    504
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 327,
+   "front": "-Y",
+   "name": {
+    "ko": "옷가게",
+    "en": "Clothing store"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sign": [
+     11,
+     -290
+    ]
+   },
+   "inPoint": [
+    95,
+    45
+   ],
+   "doorPoint": [
+    -43,
+    53
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -2,
+     67
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -54,
+     66
+    ],
+    [
+     -69,
+     77
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Clothing store (3 x 3 m): lilac two-storey shop house with a navy roof, pink + cream awning, a big window with two mannequins in winter sweaters and scarves, a T-shirt-on-a-hanger sign at the corner and a big round T-shirt sign on the roof ridge, hat stand + flower tub by the door. Same marker set as the other shops (doorPoint, customerPoints, staffPoints, inPoint)."
+  },
+  "flower_shop": {
+   "atlas": "town_shops",
+   "frame": "flower_shop",
+   "anchor": [
+    0.35045,
+    0.69262
+   ],
+   "kind": "building",
+   "frameSize": [
+    448,
+    488
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 318,
+   "front": "-Y",
+   "name": {
+    "ko": "꽃집",
+    "en": "Flower shop"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sign": [
+     0,
+     -307
+    ]
+   },
+   "inPoint": [
+    79,
+    37
+   ],
+   "doorPoint": [
+    -53,
+    46
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -61,
+     53
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -64,
+     58
+    ],
+    [
+     -79,
+     70
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Flower shop (3 x 3 m): butter-yellow shop house with a green roof, a little glass lean-to greenhouse on the right side, tiered flower stand + buckets of tulips / daisies out front, flower boxes, a daisy bracket sign and a big 3D flower on the roof. staffPoints = florist at the flower stand."
+  },
+  "hair_salon": {
+   "atlas": "town_shops",
+   "frame": "hair_salon",
+   "anchor": [
+    0.32826,
+    0.66732
+   ],
+   "kind": "building",
+   "frameSize": [
+    460,
+    508
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 319,
+   "front": "-Y",
+   "name": {
+    "ko": "미용실",
+    "en": "Hair salon"
+   },
+   "zone": "shops",
+   "anims": {
+    "work": {
+     "frames": [
+      "hair_salon_work_0",
+      "hair_salon_work_1",
+      "hair_salon_work_2",
+      "hair_salon_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "spin": {
+     "frames": [
+      "hair_salon_work_0",
+      "hair_salon_work_1",
+      "hair_salon_work_2",
+      "hair_salon_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "pole": [
+     -42,
+     -23
+    ]
+   },
+   "inPoint": [
+    93,
+    44
+   ],
+   "doorPoint": [
+    -44,
+    52
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -4,
+     66
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -56,
+     65
+    ],
+    [
+     -70,
+     77
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Hair salon (3 x 3 m): sky-blue shop house with a white trim and a coral gable roof, a spinning red-white-blue barber pole by the door (anims.work / anims.spin: 4-frame loop), a window with a salon chair + round mirror, scissors + comb bracket sign and a big scissors sign on the roof. Shop markers as the other shops."
+  },
+  "hardware_store": {
+   "atlas": "town_shops",
+   "frame": "hardware_store",
+   "anchor": [
+    0.3555,
+    0.64679
+   ],
+   "kind": "building",
+   "frameSize": [
+    436,
+    436
+   ],
+   "footprint": [
+    281,
+    140
+   ],
+   "footprintM": [
+    3.2,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -140,
+     -2
+    ],
+    [
+     5,
+     70
+    ],
+    [
+     140,
+     2
+    ],
+    [
+     -5,
+     -70
+    ]
+   ],
+   "topPx": 262,
+   "front": "-Y",
+   "name": {
+    "ko": "철물점",
+    "en": "Hardware store"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sign": [
+     -27,
+     -224
+    ]
+   },
+   "inPoint": [
+    97,
+    46
+   ],
+   "doorPoint": [
+    -42,
+    54
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -1,
+     67
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -53,
+     66
+    ],
+    [
+     -67,
+     78
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Hardware store (3.2 x 3 m): blue-grey clapboard shop with a charcoal roof and a stepped false front, a window of tools, a hammer-and-wrench bracket sign and a big round hammer-and-wrench sign on the false front; outside: shovels + brooms in a barrel, a ladder, paint pots, a wheelbarrow with a sack. Shop markers as the other shops (inPoint = where ingots / tools from the village are delivered)."
+  },
+  "restaurant": {
+   "atlas": "town_shops",
+   "frame": "restaurant",
+   "anchor": [
+    0.35772,
+    0.68555
+   ],
+   "kind": "building",
+   "frameSize": [
+    492,
+    512
+   ],
+   "footprint": [
+    281,
+    140
+   ],
+   "footprintM": [
+    3.2,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -140,
+     -2
+    ],
+    [
+     5,
+     70
+    ],
+    [
+     140,
+     2
+    ],
+    [
+     -5,
+     -70
+    ]
+   ],
+   "topPx": 331,
+   "front": "-Y",
+   "name": {
+    "ko": "식당",
+    "en": "Restaurant"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "smoke": [
+     -6,
+     -297
+    ],
+    "sign": [
+     11,
+     -307
+    ]
+   },
+   "inPoint": [
+    100,
+    48
+   ],
+   "doorPoint": [
+    -41,
+    54
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     0,
+     68
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -52,
+     67
+    ],
+    [
+     -67,
+     79
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Restaurant (3.2 x 3 m): warm terracotta half-timbered two-storey inn with a brown roof and a brick chimney (smoke at fxPoints.smoke), two lit windows with tables and candles, a plate-fork-knife bracket sign and a big round plate sign on the roof, a menu board, lantern string over the door. Shop markers as the other shops (customerPoints = waiting line at the menu board)."
+  },
+  "supermarket": {
+   "atlas": "town_shops",
+   "frame": "supermarket",
+   "anchor": [
+    0.3874,
+    0.63034
+   ],
+   "kind": "building",
+   "frameSize": [
+    524,
+    468
+   ],
+   "footprint": [
+    353,
+    176
+   ],
+   "footprintM": [
+    4.4,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -176,
+     -11
+    ],
+    [
+     23,
+     88
+    ],
+    [
+     176,
+     11
+    ],
+    [
+     -23,
+     -88
+    ]
+   ],
+   "topPx": 275,
+   "front": "-Y",
+   "name": {
+    "ko": "슈퍼마켓",
+    "en": "Supermarket"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sign": [
+     -32,
+     -232
+    ]
+   },
+   "inPoint": [
+    129,
+    60
+   ],
+   "doorPoint": [
+    -79,
+    40
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -113,
+     48
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -91,
+     52
+    ],
+    [
+     -105,
+     64
+    ],
+    [
+     -119,
+     76
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Supermarket (4.4 x 3.4 m): wide one-storey market hall with a stepped false front, green + white striped awning over a long lit glass front (shelves of cans, bread, fish, bottles), double sliding door, a big shopping-basket sign on the parapet and a basket bracket sign, produce crates outside (apples, cabbages, fish), a stack of red baskets and a trolley. customerPoints = queue at the door; staffPoints = clerk at the produce stand; inPoint = delivery bay on the right side (cans / fish / bread from the village)."
+  },
+  "toy_shop": {
+   "atlas": "town_shops",
+   "frame": "toy_shop",
+   "anchor": [
+    0.32826,
+    0.61614
+   ],
+   "kind": "building",
+   "frameSize": [
+    460,
+    508
+   ],
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 292,
+   "front": "-Y",
+   "name": {
+    "ko": "장난감 가게",
+    "en": "Toy shop"
+   },
+   "zone": "shops",
+   "fxPoints": {
+    "sign": [
+     -25,
+     -277
+    ]
+   },
+   "inPoint": [
+    93,
+    44
+   ],
+   "doorPoint": [
+    -44,
+    52
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -4,
+     66
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -56,
+     65
+    ],
+    [
+     -70,
+     77
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "notes": "Toy shop (3 x 3 m): sunny-yellow shop house with red trim and a red-and-white striped roof, round windows, a window full of toys (rocking horse, blocks, a ball), a big 3D teddy-bear head on the roof, a teddy bracket sign with three balloons, a giant gift box by the door. Shop markers as the other shops."
+  },
+  "apartment_a": {
+   "atlas": "town_homes",
+   "frame": "apartment_a",
+   "anchor": [
+    0.29586,
+    0.65254
+   ],
+   "kind": "building",
+   "frameSize": [
+    676,
+    708
+   ],
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    4.2,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -172,
+     -9
+    ],
+    [
+     18,
+     86
+    ],
+    [
+     172,
+     9
+    ],
+    [
+     -18,
+     -86
+    ]
+   ],
+   "topPx": 442,
+   "front": "-Y",
+   "name": {
+    "ko": "아파트 A",
+    "en": "Apartment A"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     97,
+     -384
+    ],
+    "smoke2": [
+     63,
+     -406
+    ]
+   },
+   "doorPoint": [
+    -97,
+    49
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -29,
+     74
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "front",
+   "notes": "Apartment A (4.2 x 3.4 m): chunky four-storey red-brick block with cream bands, white balconies with flower pots on the front, rows of warm windows, a flat snowy roof with a water tank, chimney stacks and an antenna, entrance with a canopy, mailboxes and a bike. Home for ~8 households. doorPoint = entrance steps, fxPoints.smoke (two chimneys), staffPoints = the caretaker sweeping snow."
+  },
+  "apartment_b": {
+   "atlas": "town_homes",
+   "frame": "apartment_b",
+   "anchor": [
+    0.29934,
+    0.67226
+   ],
+   "kind": "building",
+   "frameSize": [
+    608,
+    656
+   ],
+   "footprint": [
+    335,
+    167
+   ],
+   "footprintM": [
+    4.2,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -167,
+     -11
+    ],
+    [
+     23,
+     84
+    ],
+    [
+     167,
+     11
+    ],
+    [
+     -23,
+     -84
+    ]
+   ],
+   "topPx": 420,
+   "front": "-Y",
+   "name": {
+    "ko": "아파트 B",
+    "en": "Apartment B"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     -18,
+     -420
+    ]
+   },
+   "doorPoint": [
+    -115,
+    31
+   ],
+   "doorDir": "NE",
+   "seatPoints": [
+    [
+     -59,
+     52
+    ],
+    [
+     -36,
+     63
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "notes": "Apartment B (4.2 x 3.2 m): three-storey pastel-blue house-block with white trim and balconies, a steep dark-blue gable roof with two dormers and a big round attic window, a green front door under a canopy, a bench and lamp in front. Home for ~6 households. doorPoint, fxPoints.smoke."
+  },
+  "townhouse_a": {
+   "atlas": "town_homes",
+   "frame": "townhouse_a",
+   "anchor": [
+    0.32432,
+    0.67227
+   ],
+   "kind": "building",
+   "frameSize": [
+    444,
+    476
+   ],
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 299,
+   "front": "-Y",
+   "name": {
+    "ko": "주택 A",
+    "en": "Townhouse A"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     -1,
+     -299
+    ]
+   },
+   "doorPoint": [
+    -57,
+    51
+   ],
+   "doorDir": "NE",
+   "notes": "Townhouse A (2.6 x 2.6 m): butter-yellow plaster, red roof with its gable to the street, round attic window, green door with a wreath, flower box. Home for one family; doorPoint = in front of the door, fxPoints.smoke = chimney top (game smoke)."
+  },
+  "townhouse_b": {
+   "atlas": "town_homes",
+   "frame": "townhouse_b",
+   "anchor": [
+    0.33409,
+    0.66957
+   ],
+   "kind": "building",
+   "frameSize": [
+    440,
+    460
+   ],
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 288,
+   "front": "-Y",
+   "name": {
+    "ko": "주택 B",
+    "en": "Townhouse B"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     -1,
+     -288
+    ]
+   },
+   "doorPoint": [
+    -57,
+    51
+   ],
+   "doorDir": "NE",
+   "notes": "Townhouse B (2.6 x 2.6 m): mint clapboard house with a dark-blue roof along the street, a front porch on two posts, white trim, snowman in the garden. Home for one family; doorPoint = in front of the door, fxPoints.smoke = chimney top (game smoke)."
+  },
+  "townhouse_c": {
+   "atlas": "town_homes",
+   "frame": "townhouse_c",
+   "anchor": [
+    0.34868,
+    0.67227
+   ],
+   "kind": "building",
+   "frameSize": [
+    456,
+    476
+   ],
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 299,
+   "front": "-Y",
+   "name": {
+    "ko": "주택 C",
+    "en": "Townhouse C"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     -1,
+     -299
+    ]
+   },
+   "doorPoint": [
+    -57,
+    51
+   ],
+   "doorDir": "NE",
+   "notes": "Townhouse C (2.6 x 2.6 m): coral-pink plaster with a brown gable roof to the street, a lit bay window with flowers, tall brick chimney, a little fence. Home for one family; doorPoint = in front of the door, fxPoints.smoke = chimney top (game smoke)."
+  },
+  "townhouse_d": {
+   "atlas": "town_homes",
+   "frame": "townhouse_d",
+   "anchor": [
+    0.33784,
+    0.66957
+   ],
+   "kind": "building",
+   "frameSize": [
+    444,
+    460
+   ],
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 288,
+   "front": "-Y",
+   "name": {
+    "ko": "주택 D",
+    "en": "Townhouse D"
+   },
+   "zone": "homes",
+   "fxPoints": {
+    "smoke": [
+     -1,
+     -288
+    ]
+   },
+   "doorPoint": [
+    -57,
+    51
+   ],
+   "doorDir": "NE",
+   "notes": "Townhouse D (2.6 x 2.6 m): sky-blue painted wood house with a steep red roof along the street, white shutters, a red door under a canopy, firewood stack. Home for one family; doorPoint = in front of the door, fxPoints.smoke = chimney top (game smoke)."
+  },
+  "park_fountain": {
+   "atlas": "town_park",
+   "frame": "park_fountain",
+   "anchor": [
+    0.53289,
+    0.64113
+   ],
+   "kind": "decor",
+   "frameSize": [
+    304,
+    248
+   ],
+   "footprint": [
+    192,
+    96
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -96,
+     48
+    ],
+    [
+     96,
+     48
+    ],
+    [
+     96,
+     -48
+    ],
+    [
+     -96,
+     -48
+    ]
+   ],
+   "topPx": 111,
+   "front": "S",
+   "name": {
+    "ko": "공원 분수",
+    "en": "Park fountain"
+   },
+   "zone": "park",
+   "anims": {
+    "work": {
+     "frames": [
+      "park_fountain_work_0",
+      "park_fountain_work_1",
+      "park_fountain_work_2",
+      "park_fountain_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "water": {
+     "frames": [
+      "park_fountain_work_0",
+      "park_fountain_work_1",
+      "park_fountain_work_2",
+      "park_fountain_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "splash": [
+     0,
+     -18
+    ],
+    "top": [
+     0,
+     -116
+    ]
+   },
+   "gatherPoints": [
+    [
+     85,
+     -44
+    ],
+    [
+     -87,
+     -42
+    ],
+    [
+     -85,
+     44
+    ],
+    [
+     87,
+     42
+    ]
+   ],
+   "gatherDirs": [
+    "SW",
+    "SE",
+    "NE",
+    "NW"
+   ],
+   "seatPoints": [
+    [
+     77,
+     -21
+    ],
+    [
+     2,
+     -44
+    ],
+    [
+     -75,
+     -23
+    ],
+    [
+     -77,
+     21
+    ],
+    [
+     -2,
+     44
+    ],
+    [
+     75,
+     23
+    ]
+   ],
+   "seatDirs": [
+    "NE",
+    "N",
+    "NW",
+    "SW",
+    "S",
+    "SE"
+   ],
+   "notes": "Park fountain (3 x 3 m): round stone basin with a snowy rim, a two-tier fountain with a pinecone on top; anims.work / anims.water = 4-frame water loop (jets arcing from the top, water sheets falling from the bowls, ripple rings spreading on the basin). seatPoints = people sitting on the rim, gatherPoints around it, fxPoints.splash / top."
+  },
+  "playground": {
+   "atlas": "town_park",
+   "frame": "playground",
+   "anchor": [
+    0.42254,
+    0.69481
+   ],
+   "kind": "decor",
+   "frameSize": [
+    284,
+    308
+   ],
+   "footprint": [
+    317,
+    158
+   ],
+   "footprintM": [
+    4.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -158,
+     -11
+    ],
+    [
+     23,
+     79
+    ],
+    [
+     158,
+     11
+    ],
+    [
+     -23,
+     -79
+    ]
+   ],
+   "topPx": 194,
+   "front": "-Y",
+   "name": {
+    "ko": "놀이터",
+    "en": "Playground"
+   },
+   "zone": "park",
+   "fxPoints": {
+    "slide": [
+     45,
+     -11
+    ]
+   },
+   "playPoints": [
+    [
+     -61,
+     -24
+    ],
+    [
+     48,
+     6
+    ],
+    [
+     25,
+     -10
+    ],
+    [
+     102,
+     28
+    ],
+    [
+     20,
+     55
+    ],
+    [
+     -72,
+     29
+    ]
+   ],
+   "playDirs": [
+    "NE",
+    "SE",
+    "SE",
+    "NW",
+    "NW",
+    "NE"
+   ],
+   "notes": "Playground set (4 x 3 m): a little tower with a red pointed roof, a ladder and a yellow slide, a seesaw, a spring-rider horse and a snowy sandbox. playPoints/playDirs = where kids play (slide top, slide end, seesaw seats, spring rider, sandbox)."
+  },
+  "bench_x": {
+   "atlas": "town_street",
+   "frame": "bench_x",
+   "anchor": [
+    0.3587,
+    0.6125
+   ],
+   "kind": "decor",
+   "frameSize": [
+    184,
+    160
+   ],
+   "footprint": [
+    109,
+    54
+   ],
+   "footprintM": [
+    1.8,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -54,
+     -14
+    ],
+    [
+     27,
+     27
+    ],
+    [
+     54,
+     14
+    ],
+    [
+     -27,
+     -27
+    ]
+   ],
+   "topPx": 77,
+   "front": "-Y",
+   "name": {
+    "ko": "벤치",
+    "en": "Bench"
+   },
+   "zone": "street",
+   "seatPoints": [
+    [
+     -21,
+     -8
+    ],
+    [
+     17,
+     11
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "notes": "Park bench (1.7 m) with wooden slats on cast-iron legs, long axis along world X, facing screen down-left (-Y). seatPoints/seatDirs = two sitting spots (anchor of a sitting character)."
+  },
+  "bench_y": {
+   "atlas": "town_street",
+   "frame": "bench_y",
+   "anchor": [
+    0.42857,
+    0.625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    168,
+    160
+   ],
+   "footprint": [
+    109,
+    54
+   ],
+   "footprintM": [
+    0.6,
+    1.8
+   ],
+   "footprintPoly": [
+    [
+     -54,
+     14
+    ],
+    [
+     -27,
+     27
+    ],
+    [
+     54,
+     -14
+    ],
+    [
+     27,
+     -27
+    ]
+   ],
+   "topPx": 79,
+   "front": "-Y",
+   "name": {
+    "ko": "벤치",
+    "en": "Bench"
+   },
+   "zone": "street",
+   "seatPoints": [
+    [
+     -17,
+     11
+    ],
+    [
+     21,
+     -8
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE"
+   ],
+   "notes": "Park bench (1.7 m) with wooden slats on cast-iron legs, long axis along world Y, facing screen down-right (+X). seatPoints/seatDirs = two sitting spots (anchor of a sitting character)."
+  },
+  "sled_stop": {
+   "atlas": "town_street",
+   "frame": "sled_stop",
+   "anchor": [
+    0.3125,
+    0.59783
+   ],
+   "kind": "decor",
+   "frameSize": [
+    272,
+    276
+   ],
+   "footprint": [
+    145,
+    72
+   ],
+   "footprintM": [
+    2.0,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -72,
+     -9
+    ],
+    [
+     18,
+     36
+    ],
+    [
+     72,
+     9
+    ],
+    [
+     -18,
+     -36
+    ]
+   ],
+   "topPx": 145,
+   "front": "-Y",
+   "name": {
+    "ko": "썰매 정류장",
+    "en": "Sled stop"
+   },
+   "zone": "street",
+   "fxPoints": {
+    "sign": [
+     32,
+     -100
+    ]
+   },
+   "stopPoint": [
+    -36,
+    36
+   ],
+   "stopDir": "SE",
+   "seatPoints": [
+    [
+     -8,
+     -12
+    ],
+    [
+     19,
+     2
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "waitPoints": [
+    [
+     9,
+     29
+    ],
+    [
+     -16,
+     21
+    ],
+    [
+     -41,
+     14
+    ]
+   ],
+   "waitDirs": [
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "notes": "Sled-bus stop: a round blue stop sign with a red sled on a pole, a small wooden shelter with a snowy roof and a bench, a blank timetable board. waitPoints = people waiting (queue toward the sign), seatPoints = bench, stopPoint = where the sled bus / sled taxi halts."
+  },
+  "streetlight": {
+   "atlas": "town_street",
+   "frame": "streetlight",
+   "anchor": [
+    0.17857,
+    0.66304
+   ],
+   "kind": "decor",
+   "frameSize": [
+    196,
+    276
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 162,
+   "front": "-Y",
+   "name": {
+    "ko": "가로등",
+    "en": "Street light"
+   },
+   "zone": "street",
+   "fxPoints": {
+    "light": [
+     0,
+     -141
+    ]
+   },
+   "notes": "Town street light (~2.8 m): black cast-iron post with a fluted base and a glowing lantern head, snow on the cap. fxPoints.light = lamp centre (night glow sprite)."
+  },
+  "streetlight_double": {
+   "atlas": "town_street",
+   "frame": "streetlight_double",
+   "anchor": [
+    0.26493,
+    0.6558
+   ],
+   "kind": "decor",
+   "frameSize": [
+    268,
+    276
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 161,
+   "front": "-Y",
+   "name": {
+    "ko": "쌍가로등",
+    "en": "Double street light"
+   },
+   "zone": "street",
+   "fxPoints": {
+    "lightA": [
+     36,
+     -141
+    ],
+    "lightB": [
+     -36,
+     -141
+    ]
+   },
+   "notes": "Double-headed street light (~2.8 m) for squares and the station: two lanterns on curled arms. fxPoints.lightA / lightB."
+  },
+  "town_gate": {
+   "atlas": "town_street",
+   "frame": "town_gate",
+   "anchor": [
+    0.30607,
+    0.64381
+   ],
+   "kind": "decor",
+   "frameSize": [
+    428,
+    452
+   ],
+   "footprint": [
+    253,
+    127
+   ],
+   "footprintM": [
+    4.6,
+    1.0
+   ],
+   "footprintPoly": [
+    [
+     -127,
+     -41
+    ],
+    [
+     81,
+     63
+    ],
+    [
+     127,
+     41
+    ],
+    [
+     -81,
+     -63
+    ]
+   ],
+   "topPx": 270,
+   "front": "-Y",
+   "name": {
+    "ko": "마을 입구 표지",
+    "en": "Town gate"
+   },
+   "zone": "street",
+   "fxPoints": {
+    "boardCentre": [
+     -5,
+     -146
+    ],
+    "lanternL": [
+     -101,
+     -133
+    ],
+    "lanternR": [
+     67,
+     -49
+    ]
+   },
+   "notes": "Town gate of 솔방울 마을: two round stone pillars with golden pinecone finials joined by a wooden arch beam with a big BLANK sign board (the game writes the town name), lanterns and evergreen garlands. The road (along world Y, screen up-right <-> down-left) runs between the pillars (inner gap 3.2 m); the board faces screen down-left (-Y). fxPoints.boardCentre = where to place the name text."
+  },
+  "town_gate_x": {
+   "atlas": "town_street",
+   "frame": "town_gate_x",
+   "anchor": [
+    0.34868,
+    0.64381
+   ],
+   "kind": "decor",
+   "frameSize": [
+    456,
+    452
+   ],
+   "footprint": [
+    253,
+    127
+   ],
+   "footprintM": [
+    4.6,
+    1.0
+   ],
+   "footprintPoly": [
+    [
+     -81,
+     63
+    ],
+    [
+     127,
+     -41
+    ],
+    [
+     81,
+     -63
+    ],
+    [
+     -127,
+     41
+    ]
+   ],
+   "topPx": 270,
+   "front": "+X",
+   "name": {
+    "ko": "마을 입구 표지",
+    "en": "Town gate"
+   },
+   "zone": "street",
+   "fxPoints": {
+    "boardCentre": [
+     5,
+     -146
+    ],
+    "lanternL": [
+     -67,
+     -49
+    ],
+    "lanternR": [
+     101,
+     -133
+    ]
+   },
+   "notes": "Town gate of 솔방울 마을: two round stone pillars with golden pinecone finials joined by a wooden arch beam with a big BLANK sign board (the game writes the town name), lanterns and evergreen garlands. The road (along world X, screen up-left <-> down-right) runs between the pillars (inner gap 3.2 m); the board faces screen down-right (+X). fxPoints.boardCentre = where to place the name text."
+  },
+  "rail_x": {
+   "atlas": "town_rails",
+   "frame": "rail_x",
+   "anchor": [
+    0.48113,
+    0.52419
+   ],
+   "kind": "decal",
+   "frameSize": [
+    212,
+    124
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.4142,
+    1.72
+   ],
+   "topPx": 11,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world X: straight. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, +32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_x_crossing": {
+   "atlas": "town_rails",
+   "frame": "rail_x_crossing",
+   "anchor": [
+    0.41129,
+    0.60204
+   ],
+   "kind": "decal",
+   "frameSize": [
+    248,
+    196
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.4142,
+    1.72
+   ],
+   "topPx": 64,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "crossing",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world X: level crossing (planked road between and beside the rails, red-white posts). Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, +32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_x_end_n": {
+   "atlas": "town_rails",
+   "frame": "rail_x_end_n",
+   "anchor": [
+    0.41016,
+    0.61
+   ],
+   "kind": "decal",
+   "frameSize": [
+    256,
+    200
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.4142,
+    1.72
+   ],
+   "topPx": 67,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world X: end of line, buffer stop at the -X (screen up-left) end. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, +32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_x_end_p": {
+   "atlas": "town_rails",
+   "frame": "rail_x_end_p",
+   "anchor": [
+    0.40476,
+    0.605
+   ],
+   "kind": "decal",
+   "frameSize": [
+    252,
+    200
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.4142,
+    1.72
+   ],
+   "topPx": 67,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world X: end of line, buffer stop at the +X (screen down-right) end. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, +32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_y": {
+   "atlas": "town_rails",
+   "frame": "rail_y",
+   "anchor": [
+    0.48113,
+    0.52419
+   ],
+   "kind": "decal",
+   "frameSize": [
+    212,
+    124
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.72,
+    1.4142
+   ],
+   "topPx": 11,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world Y: straight. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, -32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_y_crossing": {
+   "atlas": "town_rails",
+   "frame": "rail_y_crossing",
+   "anchor": [
+    0.41129,
+    0.60204
+   ],
+   "kind": "decal",
+   "frameSize": [
+    248,
+    196
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.72,
+    1.4142
+   ],
+   "topPx": 64,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "crossing",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world Y: level crossing (planked road between and beside the rails, red-white posts). Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, -32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_y_end_n": {
+   "atlas": "town_rails",
+   "frame": "rail_y_end_n",
+   "anchor": [
+    0.41016,
+    0.605
+   ],
+   "kind": "decal",
+   "frameSize": [
+    256,
+    200
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.72,
+    1.4142
+   ],
+   "topPx": 67,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world Y: end of line, buffer stop at the -Y (screen down-left) end. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, -32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  },
+  "rail_y_end_p": {
+   "atlas": "town_rails",
+   "frame": "rail_y_end_p",
+   "anchor": [
+    0.40476,
+    0.61
+   ],
+   "kind": "decal",
+   "frameSize": [
+    252,
+    200
+   ],
+   "footprint": [
+    142,
+    71
+   ],
+   "footprintM": [
+    1.72,
+    1.4142
+   ],
+   "topPx": 67,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "variant": "plain",
+   "notes": "Track tile (sqrt(2) m = one 128x64 grid cell) along world Y: end of line, buffer stop at the +Y (screen up-right) end. Anchor = track centre line, tile middle; place consecutive tiles exactly (+64, -32) px apart and they join seamlessly (ballast, sleepers, rails and the baked shadow continue). Draw tiles on the ground layer (kind decal, under characters / train cars)."
+  }
+ },
+ "characters": {
+  "train_engine": {
+   "atlas": "train_engine",
+   "frameSize": [
+    212,
+    224
+   ],
+   "anchor": [
+    0.43396,
+    0.76339
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "kind": "train",
+   "lengthM": 2.6,
+   "couplerM": {
+    "front": -1.38,
+    "back": 1.22
+   },
+   "headTop": -111,
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_engine",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     316,
+     264
+    ],
+    "anchor": [
+     0.41772,
+     0.60227
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "Snow train engine (~2.6 m incl. the plough): red toy steam locomotive with gold bands, a tall flared black chimney, headlamp, gold dome + bell, a yellow V snow plough pushing a little snow, big red disc wheels with crank pins + side / main rods, a navy cab with a cosy lit window and the driver in a striped cap. idle = standing (steam wisps, driver waves); move = 8-frame loop: one full wheel turn (45 deg per frame -> ~1.7 m of track per loop: at 12 fps move the engine ~2.6 m/s = ~166 px/s along the rails to match), rods, crosshead, chimney puffs drifting back. smokePoint = chimney top for extra game smoke.",
+   "smokePoint": {
+    "S": [
+     0,
+     -81
+    ],
+    "SE": [
+     33,
+     -88
+    ],
+    "E": [
+     46,
+     -104
+    ],
+    "NE": [
+     33,
+     -120
+    ],
+    "N": [
+     0,
+     -127
+    ]
+   },
+   "lampPoint": {
+    "S": [
+     0,
+     -42
+    ],
+    "SE": [
+     54,
+     -53
+    ],
+    "E": [
+     77,
+     -80
+    ],
+    "NE": [
+     54,
+     -108
+    ],
+    "N": [
+     0,
+     -119
+    ]
+   },
+   "boardPoint": {
+    "S": [
+     -64,
+     -21
+    ],
+    "SE": [
+     -75,
+     8
+    ],
+    "E": [
+     -42,
+     32
+    ],
+    "NE": [
+     16,
+     37
+    ],
+    "N": [
+     64,
+     21
+    ]
+   }
+  },
+  "train_car_a": {
+   "atlas": "train_car_a",
+   "frameSize": [
+    164,
+    152
+   ],
+   "anchor": [
+    0.5,
+    0.84211
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 2,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "kind": "train",
+   "lengthM": 2.25,
+   "couplerM": {
+    "front": -1.12,
+    "back": 1.12
+   },
+   "headTop": -89,
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_car_a",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     260,
+     236
+    ],
+    "anchor": [
+     0.36923,
+     0.60169
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "Passenger coach (~2.0 m): sky-blue lower body + cream window band with gold lines, three warm lit windows with little curtains per side, end doors with open platforms + railings, a curved red-brown roof with snow and a lamp. idle = standing, move = 8-frame wheel loop (same 45 deg/frame as the engine) with a gentle sway. boardPoint = ground spot beside the car where passengers get on / off.",
+   "lampPoint": {
+    "S": [
+     0,
+     -61
+    ],
+    "SE": [
+     36,
+     -68
+    ],
+    "E": [
+     51,
+     -86
+    ],
+    "NE": [
+     36,
+     -105
+    ],
+    "N": [
+     0,
+     -112
+    ]
+   },
+   "boardPoint": {
+    "S": [
+     -61,
+     0
+    ],
+    "SE": [
+     -43,
+     21
+    ],
+    "E": [
+     0,
+     30
+    ],
+    "NE": [
+     43,
+     21
+    ],
+    "N": [
+     61,
+     0
+    ]
+   }
+  },
+  "train_car_b": {
+   "atlas": "train_car_b",
+   "frameSize": [
+    164,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 2,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "kind": "train",
+   "lengthM": 2.25,
+   "couplerM": {
+    "front": -1.12,
+    "back": 1.12
+   },
+   "headTop": -67,
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_car_b",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     232,
+     196
+    ],
+    "anchor": [
+     0.41379,
+     0.59694
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "Goods wagon (~2.0 m): open wooden wagon (green sides, stakes, iron corners) with two crates, a sack and a barrel lashed at the back under a little snow; the front half of the deck is empty: the game draws the goods the townsfolk bought (item stacks) at cargoPoint[dir] = [dx, dy, behind] like a boat cargo. idle = standing, move = 8-frame wheel loop + gentle sway.",
+   "cargoPoint": {
+    "S": [
+     0,
+     -23,
+     false
+    ],
+    "SE": [
+     19,
+     -27,
+     false
+    ],
+    "E": [
+     27,
+     -36,
+     false
+    ],
+    "NE": [
+     19,
+     -46,
+     false
+    ],
+    "N": [
+     0,
+     -49,
+     false
+    ]
+   },
+   "boardPoint": {
+    "S": [
+     -61,
+     0
+    ],
+    "SE": [
+     -43,
+     21
+    ],
+    "E": [
+     0,
+     30
+    ],
+    "NE": [
+     43,
+     21
+    ],
+    "N": [
+     61,
+     0
+    ]
+   }
+  }
+ },
+ "trainConsist": {
+  "order": [
+   "train_engine",
+   "train_car_a",
+   "train_car_b"
+  ],
+  "spacingM": [
+   2.34,
+   2.24
+  ],
+  "notes": "engine first; each car follows the one in front at spacingM metres (anchor to anchor) along the track."
+ }
+}

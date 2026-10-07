@@ -51,6 +51,11 @@ def town(key, kind, atlas, fp=None, yaw=0.0, shadow=True, samples=40, notes='', 
     return deco
 
 
+def iso_px(x, y, z=0.0):
+    """World metres (yaw 0 builds) -> px offset from the anchor (bl_common.world_to_pixel maths)."""
+    return [int(round((x + y) * 45.2548)), int(round((x - y) * 22.6274 - z * 55.4256))]
+
+
 def ground_slab(name, x0, x1, y0, y1, col, z=0.0, t=0.035, snow_lo=0.92, bevel=0.03):
     """Thin paved / packed ground area that belongs to a building (yard, terrace, plaza)."""
     return box(name, (x1 - x0, y1 - y0, t), ((x0 + x1) / 2, (y0 + y1) / 2, z), mat=tonal(col, 0.06, 2.5, rough=0.9),
@@ -2002,7 +2007,13 @@ def b_train_station():
     return {'fx': {'smoke': smoke, 'bell': (X + 1.0, y0 - 0.22, PZ + 1.6), 'clock': (X, y0 - 0.56, H + 0.42)},
             'extra': {'trainStopsNote': 'trainStops.engine/car_a/car_b = car anchors (track centre line) when the '
                                         'train stands at the platform heading +X (SE); heading -X mirror around '
-                                        'trackPoint.'}}
+                                        'trackPoint.',
+                      'platformPoly': [iso_px(x, y, PZ) for x, y in ((PX0, PY0), (PX1, PY0), (PX1, PY1), (PX0, PY1))],
+                      'platformLiftPx': int(round(PZ * 55.4256)),
+                      'platformNote': 'platformPoly = the platform top (px from the anchor, at its height); a '
+                                      'character walking on it is drawn platformLiftPx higher than its ground '
+                                      'position and above this sprite (all platform points already include the '
+                                      'lift).'}}
 
 
 # =========================================================================== STREET PROPS

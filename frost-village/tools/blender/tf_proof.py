@@ -182,6 +182,50 @@ def main():
         y += chh * z + 4
     img.convert('RGB').save(out)
     print('->', out)
+    round_check(cache, full_cache, out.replace('.png', '_round.png'))
+
+
+def round_check(cache, full_cache, out):
+    """Real 3D round bodies vs the game's round builds (slim renders stretched by scaleX)."""
+    import tf_presets as tpr
+    combos = [c for c in tpr.round_check_combos()
+              if os.path.exists(os.path.join(full_cache, 'full', c['name']))]
+    if not combos:
+        print('round check: no full renders yet')
+        return
+    T = T_from_cache(cache, sorted(set(tpr.RENDER_BASES)))
+    for base, (src, sx) in tpr.ROUND_FROM.items():
+        B = dict(T['bases'][src])
+        B['render'] = src
+        B['scaleX'] = sx
+        hof = {a: {d: [[int(round(v[0] * sx)), int(round(v[1]))] for v in fr] for d, fr in dd.items()}
+               for a, dd in B['headOffsetF'].items()}
+        B['headOffset'] = hof
+        T['bases'][base] = B
+    tf = Townfolk(T, RingSource(cache))
+    z = 3
+    cw, chh = 80, 104
+    W = len(tpr.ROUND_CHECK_FRAMES) * 2 * cw * z + 20
+    img = Image.new('RGBA', (W, len(combos) * (chh * z + 6) + 30), BG)
+    dr = ImageDraw.Draw(img)
+    dr.text((6, 6), 'round builds: real 3D round body (left of each pair) vs slim render stretched by scaleX '
+                    '(what the game draws, right) - 3x', fill=(43, 47, 58, 255))
+    y = 26
+    stats_ = []
+    for c in combos:
+        person = {'base': c['base'], 'nose': c['nose'], 'face': c['face'], 'parts': c['parts'], 'colors': c['colors']}
+        x = 0
+        for anim, d, i in c['frames']:
+            full = ink_outline(Image.open(os.path.join(full_cache, 'full', c['name'], f'{anim}_{d}_{i}.png')).convert('RGBA'))
+            comp = tf.compose(person, anim, d, i)
+            stats_.append(stats(np.asarray(full), np.asarray(comp))[0]['mean'])
+            for im in (full, comp):
+                img.alpha_composite(on_bg(im.crop((24, 4, 104, 108))).resize((cw * z, chh * z), Image.NEAREST), (x, y))
+                x += cw * z
+            x += 4
+        y += chh * z + 6
+    img.convert('RGB').save(out)
+    print(f'round check mean |d| {np.mean(stats_):.1f}/255 ->', out)
 
 
 if __name__ == '__main__':

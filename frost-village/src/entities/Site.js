@@ -181,7 +181,7 @@ export class Site {
     this.labelKey = '';
     if (opts.got) for (const m in this.need) for (let i = 0; i < Math.min(this.need[m], opts.got[m] || 0); i++) this.stock.push(m, null, gs.effects);
     this.refreshLabel();
-    this.label.setVisible(this.shown);
+    this.label.setVisible(this.shown).setAlpha(1);     // (it was faded while the chief stood on the plot)
     this.enabled = true;
     if (gs.logistics) gs.logistics.add(this);
     if (!opts.instant) {
@@ -292,7 +292,9 @@ export class Site {
       if (this.label) { this.label.y = this.labelBaseY + Math.sin(gs.time.now / 450 + this.x * 0.01) * 4; this.refreshLabel(); }
       if (this.complete()) this.beginScaffold(false);
       const p = gs.player;
-      return !!(this.dropPad && this.shown && this.dropPad.contains(p.x, p.y));
+      const on = !!(this.dropPad && this.shown && this.dropPad.contains(p.x, p.y));
+      if (this.label) { const la = on ? 0.45 : 1; if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10)); }
+      return on;
     }
     if (this.state === 'scaffold') {
       let working = 0;

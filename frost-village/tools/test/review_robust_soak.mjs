@@ -115,7 +115,7 @@ while (Date.now() - t0 < secs * 1000) {
       shelf: { m: gs.market.stock.count, t: gs.trade.stock.count, mp: gs.market.cash.pile.count, tp: gs.trade.cash.pile.count },
       playsByKey: Object.assign({}, R.playsByKey),
       life: gs.life ? { residents: gs.life.residents.length, lod: gs.life.residents.filter((r) => r.lod).length, events: gs.life.events.map((e) => e.kind).join(','), bubbles: gs.life.bubbles.active.length, chatPool: gs.life.bubbles.chatPool.length, emotePool: gs.life.bubbles.emotePool.length, proj: gs.life.proj.length, projPool: gs.life.projPool.length } : null,
-      porters: gs.porters ? gs.porters.map((p) => p.station.id[0] + p.state[0]).join('') : '',
+      porters: gs.porters ? gs.porters.map((p) => (p.station ? p.station.id[0] : 'W') + p.state[0]).join('') : '',
     };
     R.playsByKey = {};
     return out;

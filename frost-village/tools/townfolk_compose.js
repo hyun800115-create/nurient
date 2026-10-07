@@ -1,7 +1,8 @@
 // townfolk_compose.js - JS port of tools/townfolk_compose.py (CONTRACT_V4 J), ready to copy into src/.
 // No dependencies besides the global Phaser for the optional TownfolkSprite class.
 //
-//   import { Townfolk, TownfolkSprite, mulberry32 } from './townfolk_compose.js';
+//   import { Townfolk, TownfolkSprite, mulberry32, townfolkPreload, townfolkInstall } from './townfolk_compose.js';
+//   preload(): townfolkPreload(this, manifest);  create(): townfolkInstall(this, manifest);   (tfatlas JSON, see below)
 //   const tf = new Townfolk(manifest.townfolk);          // the 'townfolk' block of assets/townfolk/manifest.json
 //   const person = tf.randomPerson(mulberry32(42));      // or tf.preset('police', mulberry32(7))
 //   const layers = tf.layers(person, 'walk', 'SW', 3);   // [{z, atlas, frame, tint, head, flip}]
@@ -9,7 +10,8 @@
 //
 // Rules (identical to the python reference):
 //  - mirrored dirs SW/W/NW use the SE/E/NE frames with flipX on EVERY layer; head offset x is negated.
-//  - body layers: frame '<layer>@<base>/<anim>_<dir>_<i>' at the character anchor (origin anchor).
+//  - body layers: frame '<layer>@<render base>/<anim>_<dir>_<i>' at the character anchor (origin anchor);
+//    'round' bases draw the slim render of their age with setScale(scaleX, 1).
 //  - head layers: frame '<layer>/<headPose>_<dir>' with origin headAnchor at anchor + headOffset.
 //  - z: sub.z (number or per-dir dict); limbs in timeline.zfront use zFront; 'follow' subs = limb z + .5.
 //  - tint: tintTable[slot][colour] (precomputed) or the tintModel formula; fixed subs are not tinted.
@@ -87,7 +89,9 @@ export class Townfolk {
     const T = this.T;
     const flip = dir in MIRROR;
     const d = MIRROR[dir] || dir;
-    const base = person.base;
+    const B = T.bases[person.base];
+    const base = B.render || person.base;
+    const sx = B.scaleX || 1;
     const tl = T.timeline[anim][d][i];
     const hp = tl.hp;
     const zf = new Set(tl.zfront || []);
@@ -96,7 +100,7 @@ export class Townfolk {
     let n = 0;
     const push = (z, layer, frame, tint, head) => {
       const atlas = T.frameAtlas[head ? layer : layer + '@' + base];
-      out.push({ z, order: n++, layer, atlas, frame, tint, head, flip });
+      out.push({ z, order: n++, layer, atlas, frame, tint, head, flip, sx: head ? 1 : sx });
     };
     for (const [name, slot] of LIMBS) {
       const L = T.limbs[name];
@@ -129,7 +133,7 @@ export class Townfolk {
     }
     for (const [z, layer, tint] of heads) push(z, layer, hf(layer), tint, true);
     out.sort((a, b) => a.z - b.z || a.order - b.order);
-    const ho = T.bases[base].headOffset[anim][d][i];
+    const ho = B.headOffset[anim][d][i];
     for (const l of out) if (l.head) { l.dx = flip ? -ho[0] : ho[0]; l.dy = ho[1]; } else { l.dx = 0; l.dy = 0; }
     return out;
   }
@@ -175,7 +179,7 @@ export class Townfolk {
       const o = {}; for (const k of Object.keys(v)) if (ok(k)) o[k] = v[k];
       return o;
     };
-    const chance = (key, dflt) => (P[key + 'Chance'] ?? A[key + 'Chance'] ?? dflt);
+    const chance = (key, dflt) => { const ck = (key === 'hats' ? 'hat' : key) + 'Chance'; return P[ck] ?? A[ck] ?? dflt; };
     const maybe = (key, dflt = 1, avoid = []) => {
       let opts = table(key);
       const empty = !opts || (Array.isArray(opts) ? !opts.length : !Object.keys(opts).length);
@@ -231,6 +235,48 @@ export class Townfolk {
   }
 }
 
+// ------------------------------------------------------------------ atlas loading ('tfatlas' JSON)
+// assets/townfolk/tf_*.json are NOT Phaser JSON-hash files (that format costs ~190 bytes per frame,
+// ~6 MB for the ~30k townfolk frames).  'tfatlas' v1:
+//   {tfatlas: 1, image, size: [w, h], frameSize: [128, 128],
+//    frames: {<prefix>: {<group>: rect | [rect | 0, ...]}}}       rect = [x, y, w, h, dx, dy]
+// frame name = `${prefix}/${group}` (single rect) or `${prefix}/${group}_${i}` (list, 0 = no frame);
+// (x, y, w, h) = trimmed box in the sheet, (dx, dy) = its offset inside the 128x128 frame.
+
+/** Calls fn(name, rect) for every frame of a tfatlas JSON. */
+export function forEachTfFrame(data, fn) {
+  for (const [prefix, groups] of Object.entries(data.frames)) {
+    for (const [g, v] of Object.entries(groups)) {
+      if (!v.some(Array.isArray)) { fn(`${prefix}/${g}`, v); continue; }   // single rect (0 = missing in lists)
+      v.forEach((r, i) => { if (r) fn(`${prefix}/${g}_${i}`, r); });
+    }
+  }
+}
+
+/** preload(): queue every townfolk sheet (image) + its tfatlas JSON.  base = URL prefix of assets/. */
+export function townfolkPreload(scene, manifest, base = 'assets/') {
+  for (const a of manifest.atlases) {
+    if (!scene.textures.exists(a.key)) scene.load.image(a.key, base + a.png);
+    scene.load.json(`${a.key}#tfatlas`, base + a.json);
+  }
+}
+
+/** create() (after the loader finished): add the frames to the loaded sheet textures.  Frames
+ *  behave exactly like JSON-hash atlas frames (trimmed, sourceSize 128x128). */
+export function townfolkInstall(scene, manifest) {
+  for (const a of manifest.atlases) {
+    const k = `${a.key}#tfatlas`, data = scene.cache.json.get(k);
+    if (!data) continue;
+    const tex = scene.textures.get(a.key), [fw, fh] = data.frameSize;
+    forEachTfFrame(data, (name, r) => {
+      if (tex.has(name)) return;
+      const f = tex.add(name, 0, r[0], r[1], r[2], r[3]);
+      f.setTrim(fw, fh, r[4], r[5], r[2], r[3]);
+    });
+    scene.cache.json.remove(k);
+  }
+}
+
 /**
  * Live layered townsperson for Phaser 3: one Sprite per layer (shared atlases, per-sprite tint),
  * re-pointed to new frames whenever the animation frame or direction changes.  Typical person =
@@ -280,7 +326,7 @@ export class TownfolkSprite {
       if (!l.atlas || !tex.get(l.atlas).has(l.frame)) continue;
       let s = this.sprites[k];
       if (!s) { s = this.scene.add.image(0, 0, l.atlas, l.frame); this.sprites.push(s); }
-      s.setTexture(l.atlas, l.frame).setVisible(true).setFlipX(l.flip);
+      s.setTexture(l.atlas, l.frame).setVisible(true).setFlipX(l.flip).setScale(l.sx, 1);
       if (l.head) s.setOrigin(this.hx, this.hy); else s.setOrigin(this.ax, this.ay);
       if (l.tint == null) s.clearTint(); else s.setTint(l.tint);
       s._dx = l.dx; s._dy = l.dy; s._z = l.z;

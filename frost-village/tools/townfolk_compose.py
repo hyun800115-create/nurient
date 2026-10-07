@@ -16,8 +16,10 @@ A person = {base, nose, face, parts: [part names], colors: {slot: '#hex'}}.
 
 Per frame (anim, dir, i):
   1. mirrored dirs (SW/W/NW) are composed as SE/E/NE and flipped at the end.
-  2. BODY layers come from frame  '<layer>@<base>/<anim>_<dir>_<i>'  placed at (0,0) of the
-     128x128 frame: limbs arm_R/arm_L/hand_R/hand_L + every sub of every body part.
+  2. BODY layers come from frame  '<layer>@<render base>/<anim>_<dir>_<i>'  placed at (0,0) of
+     the 128x128 frame: limbs arm_R/arm_L/hand_R/hand_L + every sub of every body part.  'round'
+     bases have render = the slim base of their age and scaleX (body layers stretched around the
+     anchor; head layers never - their headOffset already includes the stretch).
   3. HEAD layers come from frame  '<layer>/<hp>_<dir>'  (hp = timeline head pose) placed so the
      head-frame anchor HEAD_ANCHOR lands on body anchor + headOffset[base][anim][dir][i]:
      head.<nose> (skin), face.<set>.<expr> (no tint, S/SE/E only), brow.<set>.<shape> (hair),
@@ -81,8 +83,8 @@ def tint_for(color, ref, model=None, slot=None):
     return np.clip(num / np.maximum(den, 1e-3), 0.0, 1.0)
 
 
-def tint_hex(color, ref, model=None):
-    t = tint_for(color, ref, model)
+def tint_hex(color, ref, model=None, slot=None):
+    t = tint_for(color, ref, model, slot)
     return '#%02X%02X%02X' % tuple(int(round(float(v) * 255)) for v in t)
 
 
@@ -123,6 +125,21 @@ def paste(canvas_shape, img, dx, dy):
 
 # --------------------------------------------------------------------------- sources
 
+CHANCE_KEY = {'hats': 'hat'}          # generator table key -> its '<x>Chance' probability key
+
+
+def iter_tf_frames(js):
+    """(name, (x, y, w, h, dx, dy)) for every frame of a 'tfatlas' JSON (see tf_pack.compact_atlas)."""
+    for prefix, groups in js['frames'].items():
+        for g, v in groups.items():
+            if not any(isinstance(e, list) for e in v):          # single rect (0 = missing frame in lists)
+                yield f'{prefix}/{g}', tuple(v)
+                continue
+            for i, r in enumerate(v):
+                if r:
+                    yield f'{prefix}/{g}_{i}', tuple(r)
+
+
 class AtlasSource:
     """Frames from the packed atlases (assets/townfolk)."""
 
@@ -136,8 +153,8 @@ class AtlasSource:
         for at in self.man['atlases']:
             with open(os.path.join(assets, at['json'])) as f:
                 js = json.load(f)
-            for name, fr in js['frames'].items():
-                self.frames[name] = (at['key'], fr)
+            for name, rect in iter_tf_frames(js):
+                self.frames[name] = (at['key'], rect)
             self.sheets[at['key']] = os.path.join(assets, at['png'])
         self._img = {}
         self._cache = {}
@@ -154,12 +171,10 @@ class AtlasSource:
         if hit is None:
             self._cache[name] = None
             return None
-        key, fr = hit
+        key, (x, y, w, h, dx, dy) = hit
         sh = self._sheet(key)
-        r = fr['frame']
-        ss = fr['spriteSourceSize']
-        out = np.zeros((fr['sourceSize']['h'], fr['sourceSize']['w'], 4), np.float32)
-        out[ss['y']:ss['y'] + r['h'], ss['x']:ss['x'] + r['w']] = sh[r['y']:r['y'] + r['h'], r['x']:r['x'] + r['w']]
+        out = np.zeros((128, 128, 4), np.float32)
+        out[dy:dy + h, dx:dx + w] = sh[y:y + h, x:x + w]
         self._cache[name] = out
         return out
 
@@ -272,9 +287,13 @@ class Townfolk:
         ref = self.T['tintRef'].get(slot, self.T['tintRef']['default'])
         return tint_for(col, ref, self.T.get('tintModel'), slot)
 
+    def render_base(self, base):
+        B = self.T['bases'][base]
+        return B.get('render', base), B.get('scaleX', 1.0)
+
     def layers(self, person, anim, d, i):
         """[(z, frame name, tint or None, 'body'|'head')] in draw order for a RENDERED dir."""
-        base = person['base']
+        base, _ = self.render_base(person['base'])
         tl = self.tl(anim, d, i)
         hp = tl['hp']
         out = []
@@ -316,6 +335,7 @@ class Townfolk:
         rd = MIRROR.get(d, d)
         canvas = np.zeros((FRAME, FRAME, 4), np.float32)
         hoff = self.head_offset(person['base'], anim, rd, i)
+        _, sx = self.render_base(person['base'])
         for z, name, tint, space in self.layers(person, anim, rd, i):
             img = self.src.get(name)
             if img is None:
@@ -323,6 +343,8 @@ class Townfolk:
             if tint is not None:
                 img = img.copy()
                 img[..., :3] *= tint
+            if space == 'body' and sx != 1.0:
+                img = scale_x(img, sx)
             if space == 'head':
                 if exact_head is not None:
                     img = shift_float(img, ANCHOR[0] + exact_head[0] - HEAD_ANCHOR[0],
@@ -345,6 +367,25 @@ class Townfolk:
 
     def preset(self, name, seed=0, rng=None):
         return generate(self.T, rng or random.Random(seed), preset=name)
+
+
+def scale_x(img, s, cx=ANCHOR[0]):
+    """Stretch a frame horizontally by s around column cx (round body builds), bilinear on
+    premultiplied colour - what Phaser does for sprite.setScale(s, 1) with origin x 0.5."""
+    W = img.shape[1]
+    xs = cx + (np.arange(W, dtype=np.float32) + 0.5 - cx) / s - 0.5
+    x0 = np.floor(xs).astype(int)
+    f = (xs - x0)[None, :, None]
+    pm = img.copy()
+    pm[..., :3] *= pm[..., 3:4]
+    pad = np.zeros((img.shape[0], W + 2, 4), np.float32)
+    pad[:, 1:W + 1] = pm
+    a = pad[:, np.clip(x0 + 1, 0, W + 1)]
+    b = pad[:, np.clip(x0 + 2, 0, W + 1)]
+    out = a * (1 - f) + b * f
+    al = out[..., 3:4]
+    out[..., :3] /= np.maximum(al, 1e-6)
+    return out
 
 
 def shift_float(img, dx, dy):
@@ -428,7 +469,8 @@ def generate(T, rng, preset=None):
         return {k: w for k, w in v.items() if ok(k)}
 
     def chance(key, default=1.0):
-        return P.get(key + 'Chance', A.get(key + 'Chance', default))
+        ck = CHANCE_KEY.get(key, key) + 'Chance'                  # 'hats' -> 'hatChance'
+        return P.get(ck, A.get(ck, default))
 
     def maybe(key, default=1.0, avoid=()):
         opts = table(key)

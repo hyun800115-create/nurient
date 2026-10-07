@@ -319,7 +319,7 @@ export const WORLD = {
     e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east' },
     e_m2:     { x: 2520, y: 985, size: 'M', region: 'east' },
     s_m1:     { x: 1360, y: 2860, size: 'M', region: 'south' },
-    s_m2:     { x: 1480, y: 3170, size: 'M', region: 'south' },
+    s_m2:     { x: 1470, y: 3235, size: 'M', region: 'south' },
     s_l1:     { x: 780, y: 3220, size: 'L', region: 'south' },
     s_s1:     { x: 1160, y: 3190, size: 'S', region: 'south' },
     se_m1:    { x: 2700, y: 2640, size: 'M', region: 'se' },

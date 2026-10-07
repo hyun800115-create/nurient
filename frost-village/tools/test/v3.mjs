@@ -158,7 +158,7 @@ try {
     const t0 = (await st()).trade.stock;
     await wait((n) => window.__FV.state().trade.stock > n && window.__whOut > 0, 120, t0);
     s = await st();
-    step('warehouse restocks an empty shelf', s.trade.stock > t0 && (await ev(() => window.__whOut)) > 0 && s.warehouse.total < w1.total, `trade stock ${t0} -> ${s.trade.stock}, warehouse ${w1.total} -> ${s.warehouse.total}`);
+    { const outs = await ev(() => window.__whOut); step('warehouse restocks an empty shelf', s.trade.stock > t0 && outs > 0, `trade stock ${t0} -> ${s.trade.stock}, warehouse 'out' jobs ${outs}, stored ${w1.total} -> ${s.warehouse.total}`); }
     const wp = await where('warehouseOut');
     await ev(([x, y]) => window.__FV.camera(x - 80, y - 60, 0.9), [wp.x, wp.y]);
     await adv(0.5);

@@ -613,9 +613,7 @@ export class WarehousePorter extends Hauler {
           const ty = this.carriedType() || (out.items.length ? out.items[out.items.length - 1].type : null);
           if (this.room > 0 && ty && out.countOf(ty) > 0) gs.moveItem(out, this.stack, ty, { dur: 230, height: 55 });
           else if (this.stack.incoming === 0) {
-            // overflow goes into the warehouse, unless somewhere needs it now (a site, a workshop,
-            // the food box, a nearly empty shelf): the warehouse hands it out again when shelves run low
-            if (this.stack.count > 0) { const b = gs.logistics.best(this.carriedType(), this.x, this.y, { minPrio: PRIO.SHELF_LOW, noStore: true }); this.startHaul(b ? b.sink : W.sink); }
+            if (this.stack.count > 0) { const n = this.planDest(); this.startHaul(n || W.sink); }
             else { this.job = null; this.state = 'idle'; }
           }
         }
@@ -627,6 +625,17 @@ export class WarehousePorter extends Hauler {
       default: this.state = 'idle';
     }
     this.sync(dt);
+  }
+
+  /** overflow (an 'in' job) goes into the warehouse, unless somewhere needs most of the load now (a site,
+   *  a workshop, the food box, a nearly empty shelf); the warehouse hands it out again when shelves run low */
+  planDest(exclude) {
+    const L = this.gs.logistics, W = this.wh, ty = this.carriedType();
+    if (!this.job || this.job.kind !== 'in' || !L || !ty) return super.planDest(exclude);
+    const b = L.best(ty, this.x, this.y, { exclude, minPrio: PRIO.SHELF_LOW, noStore: true });
+    if (b && b.n >= Math.min(this.stack.count, 4)) return b.sink;
+    if (W.sink !== exclude && L.want(W.sink, ty) > 0) return W.sink;
+    return super.planDest(exclude);
   }
 
   afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.2; }

@@ -14,7 +14,8 @@ Options (after the literal --):
     --anims    all | comma list    --dirs all | S,SE,..   --frames all | 0,3
     --samples  6 (+ OIDN; 16 differs by ~3/255)   --cache /tmp/fv_cache/townfolk
     --force    re-render existing layer PNGs (default: resumable, only missing layers render)
-    --combos   proof | path to a json list (full mode)
+    --reverse  body: walk the (anim, dir) groups backwards (a 2nd process can share one base)
+    --combos   proof | round | path to a json list (full mode)
 
 How a layer is rendered: every layer is one Blender view layer of the same scene, so a
 single render() call writes all of them (compositor File Output, one PNG per layer).
@@ -63,7 +64,7 @@ def parse_args():
     i = 0
     while i < len(a):
         k = a[i].lstrip('-')
-        if k in ('force',):
+        if k in ('force', 'reverse'):
             opt[k] = True
             i += 1
         else:
@@ -452,6 +453,8 @@ def render_body(opt):
     groups = [(a, d) for a in ta.ORDER for d in ta.ANIMS[a]['dirs']
               if (opt['anims'] == 'all' or a in opt['anims'].split(','))
               and (opt['dirs'] == 'all' or d in opt['dirs'].split(','))]
+    if opt.get('reverse'):
+        groups = groups[::-1]
     if opt['frameset'] == 'proof':
         groups = [g_ for g_ in groups if any((g_[0], g_[1]) == (pa, pd) for pa, pd, _ in PROOF_FRAMES)]
     for base in sel(opt['bases'], tb.BASE_ORDER):
@@ -490,7 +493,13 @@ from tf_presets import PROOF_FRAMES, proof_combos      # noqa: E402
 
 def render_full(opt):
     t0 = time.time()
-    combos = proof_combos() if opt['combos'] == 'proof' else json.load(open(opt['combos']))
+    if opt['combos'] == 'proof':
+        combos = proof_combos()
+    elif opt['combos'] == 'round':
+        from tf_presets import round_check_combos
+        combos = round_check_combos()
+    else:
+        combos = json.load(open(opt['combos']))
     for cb_ in combos:
         outdir = os.path.join(opt['cache'], 'full', cb_['name'])
         frames = [tuple(f) for f in cb_['frames']]

@@ -17,7 +17,7 @@ const N = Number(process.argv[2] || 100);
 
 const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#eef3f9}</style>
 <script src="lib/phaser.min.js"></script></head><body><script type="module">
-import { Townfolk, TownfolkSprite, mulberry32 } from './tools/townfolk_compose.js';
+import { Townfolk, TownfolkSprite, mulberry32, townfolkPreload, townfolkInstall } from './tools/townfolk_compose.js';
 const GL = window.__GLC = { draw: 0, bind: 0 };
 for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext && WebGL2RenderingContext.prototype]) {
   if (!P) continue;
@@ -30,10 +30,13 @@ const T = man.townfolk;
 window.__TF = { T, ready: false };
 class S extends Phaser.Scene {
   preload() {
-    for (const a of man.atlases) this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
+    townfolkPreload(this, man, 'assets/');
     for (const a of vil.atlases.slice(0, 5)) this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
   }
   create() {
+    const t0 = performance.now();
+    townfolkInstall(this, man);
+    window.__TF.installMs = performance.now() - t0;
     this.tf = new Townfolk(T);
     this.npcs = [];
     this.mode = 'none';
@@ -151,6 +154,7 @@ const bake = await page.evaluate(async () => {
       const img = sc.make.image({ key: l.atlas, frame: l.frame, add: false });
       img.setOrigin(l.head ? T.headAnchor[0] : T.anchor[0], l.head ? T.headAnchor[1] : T.anchor[1]);
       if (l.tint != null) img.setTint(l.tint);
+      img.setFlipX(false).setScale(l.sx || 1, 1);
       rt.draw(img, (k % cols) * 128 + 64 + l.dx, Math.floor(k / cols) * 128 + 104 + l.dy);
       img.destroy();
     }
@@ -168,7 +172,8 @@ const atlasMpx = await page.evaluate(() => {
   }
   return +(px / 1e6).toFixed(2);
 });
-res.push({ label: 'townfolk atlases resident', mpx: atlasMpx, gpuMB: +(atlasMpx * 4).toFixed(0) });
+res.push({ label: 'townfolk atlases resident', mpx: atlasMpx, gpuMB: +(atlasMpx * 4).toFixed(0),
+  installFramesMs: +(await page.evaluate(() => window.__TF.installMs)).toFixed(0) });
 for (const r of res) console.log(JSON.stringify(r));
 if (errors.length) console.log('ERRORS', errors.slice(0, 10));
 fs.mkdirSync('/tmp/fv_review', { recursive: true });
