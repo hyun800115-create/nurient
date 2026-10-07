@@ -235,6 +235,18 @@ export class Game extends Phaser.Scene {
     (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.4, top: h * 0.95, a: 1 });
   }
 
+  /** opaque pixel of occluder `img` at world point (x, y)? (null when unknown) */
+  pixelSolid(img, x, y) {
+    try {
+      const fr = img.frame, sx = img.scaleX || 1, sy = img.scaleY || 1;
+      const lx = img.displayOriginX + ((img.flipX ? -1 : 1) * (x - img.x)) / sx;
+      const ly = img.displayOriginY + (y - img.y) / sy;
+      if (lx < 0 || ly < 0 || lx >= fr.realWidth || ly >= fr.realHeight) return false;
+      const a = this.textures.getPixelAlpha(Math.floor(lx), Math.floor(ly), img.texture.key, fr.name);
+      return a === null ? false : a > 110;
+    } catch (e) { return null; }
+  }
+
   updateOccluders(dt) {
     const p = this.player, list = this.occluders;
     if (!list) return;
@@ -242,7 +254,17 @@ export class Game extends Phaser.Scene {
     const k = Math.min(1, dt * 10);
     for (let i = 0; i < list.length; i++) {
       const o = list[i];
-      const behind = py < o.y - 6 && py > o.y - o.top && Math.abs(px - o.x) < o.hw && o.img.visible;
+      let behind = py < o.y - 6 && py > o.y - o.top && Math.abs(px - o.x) < o.hw && o.img.visible;
+      if (behind) {
+        // the box says maybe: only fade when the art really covers the chief's body or head
+        o.chkT = (o.chkT || 0) - dt;
+        if (o.chkT <= 0 || o.lastPx === undefined || Math.abs(o.lastPx - px) + Math.abs(o.lastPy - p.y) > 6) {
+          o.chkT = 0.12; o.lastPx = px; o.lastPy = p.y;
+          const a = this.pixelSolid(o.img, px, p.y - 34), b = this.pixelSolid(o.img, px, p.y - 66);
+          o.solid = a === null || b === null ? true : (a || b);
+        }
+        behind = o.solid;
+      }
       const target = behind ? 0.32 : 1;
       if (o.a === target) continue;
       o.a += (target - o.a) * k;

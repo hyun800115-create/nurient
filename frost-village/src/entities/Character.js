@@ -69,7 +69,10 @@ export class Character {
   _onFrame(anim, frame) {
     if (!this.onImpact) return;
     const ad = this.def.anims[this.animName];
-    if (ad && ad.impactFrame !== undefined && frame.index - 1 === ad.impactFrame && anim.key.indexOf(':' + this.animName + ':') > 0) this.onImpact(this);
+    if (!ad || ad.impactFrame === undefined || anim.key.indexOf(':' + this.animName + ':') < 0) return;
+    // placeholder art (atlas failed to load) has 2 frames: hit on the second so the game stays playable
+    const hitFrame = this.def._placeholder ? 1 : ad.impactFrame;
+    if (frame.index - 1 === hitFrame) this.onImpact(this);
   }
 
   /** impactPoint in world coordinates for the current anim & dir */

@@ -29,7 +29,7 @@ function updateView() {
   const cssW = Math.max(1, Math.min(iw, (ih * W) / h));          // CSS width of the fitted canvas
   const dpr = window.devicePixelRatio || 1;
   View.W = W; View.H = h;
-  View.k = Math.round(Math.max(1, Math.min(MAX_RENDER_SCALE, (cssW * dpr) / W)) * 20) / 20;
+  View.k = View.forceK || Math.round(Math.max(1, Math.min(MAX_RENDER_SCALE, (cssW * dpr) / W)) * 20) / 20;
   const perCss = W / cssW;                                        // logical px per CSS px
   View.safeTop = cssInset('--sat') * perCss;
   View.safeBottom = cssInset('--sab') * perCss;
@@ -73,6 +73,19 @@ function onResize() {
 }
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', onResize);
+
+// Weak GPU: if the village runs below ~30 fps at the sharper render scale, drop to 1x for this session
+// (checked a few times once the village is running; the first seconds are skipped: warm-up, decoding).
+let perfChecks = 0;
+const perfTimer = setInterval(() => {
+  try {
+    const loop = game.loop;
+    if (!loop || !loop.running || document.visibilityState !== 'visible' || !game.scene.isActive('Game')) return;
+    if (++perfChecks < 2) return;
+    if (View.k > 1.05 && loop.actualFps < 30) { View.forceK = 1; onResize(); clearInterval(perfTimer); }
+    if (perfChecks >= 5) clearInterval(perfTimer);
+  } catch (e) { clearInterval(perfTimer); }
+}, 3000);
 
 // 120/144 Hz screens: cap the game at ~60-72 fps (same look, half the battery / GPU work).
 // 60 and 90 Hz screens are left alone (a fixed limit would make 90 Hz judder at 45 fps).

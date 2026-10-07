@@ -9,6 +9,7 @@ export const View = {
   W: 720,          // logical width
   H: 1280,         // logical height
   k: 1,            // canvas pixels per logical pixel
+  forceK: 0,       // set to 1 when a weak GPU cannot keep up at the sharper scale
   safeTop: 0,      // notch / status-bar inset in logical px (Capacitor / standalone apps)
   safeBottom: 0,   // home-indicator inset in logical px
 
