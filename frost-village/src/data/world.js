@@ -76,6 +76,7 @@ export const WORLD = {
     // (v2) 계산대: 손님은 여기에 촌장(또는 점원)이 서 있어야 돈을 내고 떠납니다
     register: rel(market, Z('plaza', 6.0, 3.4)),   // 촌장이 서는 계산대 발판 (판매대 오른쪽 끝, 진열대 옆)
     staff: rel(market, Z('plaza', 2.1, 3.95)),     // 점원이 서는 곳 (판매대 뒤). 그림에 staffPoints 가 있으면 그것을 씀
+    clerk: ['npc_clerk_a', 'npc_aunt'],            // (v2) 점원 모습: 앞의 그림이 아직 없으면 다음 것 (그림이 오면 바뀜)
   },
   trade: {
     sprite: 'trade_post', x: trade[0], y: trade[1], zone: 'forest',
@@ -84,6 +85,7 @@ export const WORLD = {
     merchant: rel(trade, Z('plaza', -4.3, 0.5)),   // 상인 위치 (썰매 뒤)
     register: rel(trade, Z('plaza', -6.55, -1.75)),// (v2) 촌장이 서는 계산대 발판 (교역소 왼쪽 끝)
     staff: rel(trade, Z('plaza', -6.55, -1.75)),   // (v2) 점원이 서는 곳 (계산대 자리). 그림에 staffPoints 가 있으면 그것을 씀
+    clerk: ['npc_clerk_b', 'npc_merchant'],        // (v2) 점원 모습 (위와 같음)
   },
   // 버리기 발판: 위에 잠깐 서 있으면 들고 있는 물건을 모닥불에 던져 버립니다 (어부 고용 후 나타남)
   trash: { x: 560, y: 700, fire: [520, 574] },
