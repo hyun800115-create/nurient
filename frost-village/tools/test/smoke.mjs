@@ -187,6 +187,18 @@ try {
   s = await st();
   step('save / load', s.done.length === before.done.length && Math.abs(s.coins - before.coins) < 5 && s.workers.length === before.workers.length, `done ${before.done.length}->${s.done.length} coins ${before.coins}->${s.coins}`);
   await shot('24_reloaded');
+  // reset progress through the in-game confirm (settings -> reset -> yes)
+  {
+    const c2 = await page.$('canvas'); const b2 = await c2.boundingBox();
+    const k = b2.width / 720, Hh = b2.height / k;
+    await page.touchscreen.tap(b2.x + (720 - 62) * k, b2.y + 62 * k); await sleep(600);
+    await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 170) * k); await sleep(500);
+    await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 60) * k); await sleep(2500);
+    await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 15000).catch(() => {});
+    s = await st();
+    step('reset progress (in-game confirm)', s.coins === 0 && s.done.length === 0 && s.workers.length === 0, `coins=${s.coins} done=${s.done.length}`);
+    await shot('25_after_reset');
+  }
   const fps = await page.evaluate(async () => { await new Promise((r) => setTimeout(r, 1500)); return window.__FV.state().fps; });
   step('fps sample (headless software GL, informational)', true, String(fps));
 } catch (e) {
