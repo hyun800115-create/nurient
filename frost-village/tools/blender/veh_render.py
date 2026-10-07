@@ -145,6 +145,26 @@ def visible_meshes(B):
     return [o for o in veh_objects(B) if not o.hide_render and o.visible_camera]
 
 
+def bake_booleans(B):
+    """Apply every modifier stack that contains a BOOLEAN (shells with window cuts / arches) into a static mesh and
+    delete the cutters, so posing a frame never re-evaluates the (slow, exact) booleans."""
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    cutters = set()
+    for o in list(descendants(B.root)):
+        if o.type != 'MESH' or not any(m.type == 'BOOLEAN' for m in o.modifiers):
+            continue
+        for m in o.modifiers:
+            if m.type == 'BOOLEAN' and m.object is not None:
+                cutters.add(m.object)
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg), preserve_all_data_layers=False, depsgraph=dg)
+        o.modifiers.clear()
+        o.data = me
+    for c in cutters:
+        bpy.data.objects.remove(c, do_unlink=True)
+    bpy.context.view_layer.update()
+
+
 def pose(B, spec, anim, i):
     a = spec['anims'][anim]
     n = a['frames']
@@ -203,46 +223,49 @@ def render_png(path):
     os.replace(tmp, path)
 
 
-class MaskMode:
-    """Switch the scene between the colour pass and the two occlusion passes (restores everything on exit)."""
-
-    def __init__(self, B, phase):
-        self.B, self.phase = B, phase
-
-    def __enter__(self):
-        B = self.B
-        self.saved = []
-        hidden = set(B.mask_hidden)
-        panes = set(B.panes)
-        for o in veh_objects(B):
-            self.saved.append((o, o.hide_render, o.is_holdout,
-                               o.data.materials[0] if o in panes and o.data.materials else None))
-            if self.phase == 'all':
-                o.hide_render = True
-            elif o in panes:
-                o.data.materials[0] = B.pane_mask
-            elif o.get('veh_interior') or o in hidden:
-                o.hide_render = True
-            else:
-                o.is_holdout = True
-        for o in B.proxies:
-            o.hide_render = False
-        self.lights = [(o, o.hide_render) for o in bpy.context.scene.objects if o.type == 'LIGHT']
-        for o, _ in self.lights:
-            o.hide_render = True
-        return self
-
-    def __exit__(self, *a):
-        for o, hr, ho, m in self.saved:
+def render_masks(B, spec, out, mtodo):
+    """Occlusion passes.  'vis': vehicle body = holdout, interior / smoke hidden, panes clear-front / holdout-back,
+    proxies emissive; 'all': only the proxies.  Mode flags are re-applied after every pose (posing toggles face /
+    smoke visibility) and everything is restored at the end."""
+    objs = veh_objects(B)
+    panes = set(B.panes)
+    hidden = set(B.mask_hidden)
+    snap = [(o, o.hide_render, o.is_holdout) for o in objs]
+    pane_mats = [(o, o.data.materials[0]) for o in B.panes]
+    lights = [(o, o.hide_render) for o in bpy.context.scene.objects if o.type == 'LIGHT']
+    for o, _ in lights:
+        o.hide_render = True
+    for o in B.panes:
+        o.data.materials[0] = B.pane_mask
+    for o in B.proxies:
+        o.hide_render = False
+    try:
+        for phase in ('vis', 'all'):
+            for anim, d, i, name in mtodo:
+                B.root.rotation_euler.z = bc.yaw_for_dir(d)
+                pose(B, spec, anim, i)
+                for o in objs:
+                    if phase == 'all':
+                        o.hide_render = True
+                    elif o in panes:
+                        o.hide_render = False
+                    elif o.get('veh_interior') or o in hidden:
+                        o.hide_render = True
+                    else:
+                        o.is_holdout = True
+                for o in B.proxies:
+                    o.hide_render = False
+                render_png(os.path.join(out, '%s_%s.png' % ('pvis' if phase == 'vis' else 'pall', name)))
+    finally:
+        for o, hr, ho in snap:
             o.hide_render = hr
             o.is_holdout = ho
-            if m is not None:
-                o.data.materials[0] = m
-        for o in self.B.proxies:
+        for o, m in pane_mats:
+            o.data.materials[0] = m
+        for o in B.proxies:
             o.hide_render = True
-        for o, hr in self.lights:
+        for o, hr in lights:
             o.hide_render = hr
-        return False
 
 
 # --------------------------------------------------------------------------- vehicle render
@@ -278,6 +301,7 @@ def render_vehicle(key, opts):
     bc.setup_lighting()
     B = spec['fn']()
     bpy.context.view_layer.update()
+    bake_booleans(B)
     if not B.proxies:
         mtodo = []
     x0, x1, y0, y1 = measure(B, spec, DIRS)
@@ -299,15 +323,7 @@ def render_vehicle(key, opts):
         sc.cycles.samples = 8
         sc.cycles.use_denoising = False
         sc.cycles.use_adaptive_sampling = False
-        for k, (anim, d, i, name) in enumerate(mtodo):
-            B.root.rotation_euler.z = bc.yaw_for_dir(d)
-            pose(B, spec, anim, i)
-            for s in B.smokes:
-                s.show(False)
-            with MaskMode(B, 'vis'):
-                render_png(os.path.join(out, 'pvis_%s.png' % name))
-            with MaskMode(B, 'all'):
-                render_png(os.path.join(out, 'pall_%s.png' % name))
+        render_masks(B, spec, out, mtodo)
         print('[%s] masks done  %.0fs' % (key, time.time() - t0), flush=True)
     write_meta(B, spec, key, out, W, H, anchor, y0)
     print('[%s] done in %.0fs' % (key, time.time() - t0), flush=True)

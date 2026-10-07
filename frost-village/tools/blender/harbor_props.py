@@ -23,12 +23,12 @@ CONTAINER_COLS = {'red': '#D9483B', 'blue': '#3D7CC9', 'green': '#3E9A5A', 'yell
 
 
 @harbor('bollard', 'decor', 'harbor_props', fp=('r', 0.22), catcher=8.0, samples=48,
-        notes='Cast-iron mooring bollard (navy with a red band, snow cap) with a rope loop running toward the water '
-              '(-Y). Put a few along quay edges / pier sides; ropeTo = where the rope ends (a moored ship\'s bow / stern '
-              'line can continue from there).', ko='계선주', en='Bollard', zone='street')
+        notes='Cast-iron mooring bollard (navy with a red band, snow cap) with a rope loop and a little coil on the '
+              '-Y side. Put a few along quay edges / pier sides; fxPoints.ropeTo = the loop (draw a moored ship\'s '
+              'bow / stern line from there).', ko='계선주', en='Bollard', zone='street')
 def b_bollard():
     H.bollard_model('bol', (0, 0, 0), s=1.0, rope=True, seed=3)
-    return {'fx': {'ropeTo': (0.7, -0.62, -0.02)}}
+    return {'fx': {'ropeTo': (0.0, 0.0, 0.2)}}
 
 
 @harbor('harbor_lamp', 'decor', 'harbor_props', fp=('r', 0.25), catcher=10.0,

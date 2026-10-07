@@ -261,11 +261,12 @@ def breakwater_segment(k):
     u0 = k * SEG
     a, b = u0 - SEG / 2, u0 + SEG / 2
     objs = []
-    crown = snowy('#C3C8D0', lo=0.85, hi=1.0, noise_amt=0.4)
+    crown = L.stripes('#AEB5BF', '#A4ABB6', 1.0 / (SEG / 4), 'X', rough=0.9, soft=0.04)
     objs.append(box('crown%d' % k, (SEG, BW_CROWN, 0.5), (u0, 0.0, -0.5), mat=crown, bevel=0.0))
     objs.append(box('cjoint%d' % k, (0.03, BW_CROWN + 0.01, 0.01), (a, 0.0, -0.005), mat=flat('#9AA1AC', 0.9),
                     bevel=0.0))
-    objs.append(box('para%d' % k, (SEG, 0.3, 0.42), (u0, BW_CROWN / 2 + 0.1, 0.0), mat=crown, bevel=0.0))
+    objs.append(box('para%d' % k, (SEG, 0.3, 0.42), (u0, BW_CROWN / 2 + 0.1, 0.0), mat=flat('#C9CED6', 0.85),
+                    bevel=0.0))
     objs.append(L.snow_slab('parasn%d' % k, SEG, 0.26, 0.06, (u0, BW_CROWN / 2 + 0.1, 0.42), seed=4))
     objs.append(LA.snow_drift('csn%d' % k, 0.18, (u0 + 0.25, BW_CROWN / 2 - 0.2, 0.0), seed=44, scale=(1.8, 0.8, 0.3)))
     rnd = L.rng(17)
@@ -274,7 +275,8 @@ def breakwater_segment(k):
             uu = a + (j + 0.5) * SEG / 2 + rnd.uniform(-0.1, 0.1)
             vv = s * (BW_CROWN / 2 + 0.42 + rnd.uniform(-0.05, 0.08))
             rot = (rnd.uniform(0, 360), rnd.uniform(0, 360), rnd.uniform(0, 360))
-            objs.append(H.tetrapod('tp%d_%d_%d' % (k, s > 0, j), (uu, vv, H.WATER_Z + 0.22), rot=rot, s=0.95))
+            objs.append(H.tetrapod('tp%d_%d_%d' % (k, s > 0, j), (uu, vv, H.WATER_Z + 0.22), rot=rot, s=0.95,
+                                   col='#8E99A8'))
             objs.append(H.foam_ring('tpf%d_%d_%d' % (k, s > 0, j), uu, vv + s * 0.15, 0.38))
         for j in range(3):
             uu = a + (j + 0.3) * SEG / 3 + rnd.uniform(-0.05, 0.05)
@@ -286,7 +288,7 @@ def breakwater_segment(k):
 
 def breakwater_cap(u_end, sgn):
     objs = []
-    crown = snowy('#C3C8D0', lo=0.85, hi=1.0, noise_amt=0.4)
+    crown = flat('#AEB5BF', 0.9)
     objs.append(cyl('bhead', BW_CROWN / 2 + 0.2, 0.5, (u_end, 0.0, -0.5), mat=crown, segs=32, bevel=0.0))
     rnd = L.rng(23)
     for j in range(5):
@@ -294,7 +296,7 @@ def breakwater_cap(u_end, sgn):
         r = BW_CROWN / 2 + 0.55
         p = (u_end + r * math.cos(a), r * math.sin(a), H.WATER_Z + 0.2)
         objs.append(H.tetrapod('tph%d' % j, p, rot=(rnd.uniform(0, 360), rnd.uniform(0, 360), rnd.uniform(0, 360)),
-                               s=1.0))
+                               s=1.0, col='#8E99A8'))
         objs.append(H.foam_ring('tphf%d' % j, p[0] + 0.12 * math.cos(a), p[1] + 0.12 * math.sin(a), 0.4))
     # little green harbour light on the head
     cyl('blbase', 0.22, 0.12, (u_end, 0.0, 0.0), mat=flat('#C9CED6', 0.8), segs=20, bevel=0.03)
@@ -339,17 +341,17 @@ for _k, (_ax, _ends, _txt) in BW_VARIANTS.items():
 
 # =========================================================================== BUOY
 
-BUOY_NOTE = ('Navigation buoy (~1.7 m above the water, sits ON the sea plane: anchor = waterline centre, place it on '
-             'the water like a ship): red float with a white band, lattice top with a blinking lamp and a radar '
-             'reflector, a seagull riding on top. idle = still, lamp off; anims.work / anims.bob = 4-frame bobbing '
+BUOY_NOTE = ('Navigation buoy (~1.7 m above the water). Its anchor is its WATERLINE centre (like assets/ships): put '
+             'it on a sea point that is already on the water plane (e.g. 30 px below a deck-level point). Red float '
+             'with a white band, lattice top with a blinking lamp and a radar reflector, a seagull riding on top. idle = still, lamp off; anims.work / anims.bob = 4-frame bobbing '
              'loop (rises / tilts, foam ring pulses, lamp blinks on frame 1). Ground layer is NOT needed: depth-sort '
              'by anchor y like a ship.')
 
 
-@harbor('buoy', 'decor', 'harbor_water', fp=('r', 0.45), catcher=12.0, work=4, fps=4, ground='water', front=None,
+@harbor('buoy', 'decor', 'harbor_water', fp=('r', 0.45), catcher=12.0, work=4, fps=4, ground='land', front=None,
         notes=BUOY_NOTE, ko='부표', en='Buoy', zone='water', anim_name='bob', samples=48)
 def b_buoy():
-    Z = H.WATER_Z
+    Z = 0.0                     # modelled with its waterline at z 0 = the sprite anchor (like a ship)
     with L.Collect() as bc_:
         red = flat(H.HRED, 0.4)
         cyl('float', 0.36, 0.5, (0, 0, Z - 0.22), mat=red, segs=32, r_top=0.32, bevel=0.06)
@@ -374,8 +376,8 @@ def b_buoy():
         H.gull('bgull', (0.05, 0.0, Z + 1.47), rz=-120.0, s=0.9)
         PA.snow_cap('bsn', 0.16, (0.0, 0.0, Z + 0.31), 0.04, 3)
     body = L.group(BA.top_level(bc_.objs), 'buoy', loc=(0, 0, 0))
-    foam = H.foam_ring('bfoam', 0, 0, 0.38, w=0.06, alpha=0.8)
-    foam2 = H.foam_ring('bfoam2', 0, 0, 0.55, w=0.035, alpha=0.45)
+    foam = H.foam_ring('bfoam', 0, 0, 0.38, z=Z, w=0.06, alpha=0.8)
+    foam2 = H.foam_ring('bfoam2', 0, 0, 0.55, z=Z, w=0.035, alpha=0.45)
     chain = H.beam('chain', (0.3, 0.0, Z + 0.0), (0.55, 0.0, Z - 0.4), 0.03, flat('#3A3E46', 0.5))
     BOB = [(0.0, 0.0, 0.0), (0.05, 4.0, 2.0), (0.0, 0.0, 0.0), (-0.04, -4.0, -2.5)]
 

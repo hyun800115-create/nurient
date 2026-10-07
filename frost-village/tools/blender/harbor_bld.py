@@ -191,14 +191,14 @@ def b_fish_auction():
     for k in range(3):
         box('drain', (5.6, 0.05, 0.005), (0, -1.2 + 0.9 * k, 0.003), mat=flat('#7D8592', 0.5), bevel=0.0)
     post = flat(H.NAVY, 0.45, 0.3)
-    EZ, RZ = 2.35, 3.2
-    xs = (-2.7, -0.9, 0.9, 2.7)
-    for x in xs:
-        for y in (-1.45, 1.45):
-            box('post', (0.16, 0.16, EZ), (x, y, 0), mat=post, bevel=0.02)
-            box('postb', (0.26, 0.26, 0.14), (x, y, 0), mat=flat('#C9CED6', 0.8), bevel=0.02)
+    EZ, RZ = 3.0, 3.85
+    for x, y in ((-2.7, -1.45), (2.7, -1.45), (-2.7, 1.45), (-0.9, 1.45), (0.9, 1.45), (2.7, 1.45)):
+        box('post', (0.16, 0.16, EZ), (x, y, 0), mat=post, bevel=0.02)
+        box('postb', (0.26, 0.26, 0.14), (x, y, 0), mat=flat('#C9CED6', 0.8), bevel=0.02)
     for y in (-1.45, 1.45):
-        box('beam', (5.7, 0.14, 0.2), (0, y, EZ - 0.2), mat=post, bevel=0.02)
+        box('beam', (5.7, 0.16, 0.26), (0, y, EZ - 0.26), mat=post, bevel=0.02)
+    for sx in (-1, 1):
+        H.beam('kbrace', (sx * 2.7, -1.45, EZ - 0.8), (sx * 2.15, -1.45, EZ - 0.26), 0.1, post)
     roofm = L.stripes(H.HBLUE, H.HWHITE, 1.0 / 0.7, 'X', rough=0.7, soft=0.01)
     with L.Collect() as rc:
         BA.gable_roof('roof', 6.4, 2.9, EZ, RZ, 0.42, roofm, snow_frac=(0.6, 0.62), seed=101, ridge_col='#22385E')
@@ -211,14 +211,11 @@ def b_fish_auction():
         box('louv', (0.04, 0.62, 0.22), (-0.6 + 0.24 * k, 0, RZ + 0.12), mat=flat(H.NAVY, 0.6), bevel=0.0)
     LA.roof('lroofF', 1.85, -0.45, RZ + 0.38, 0.0, RZ + 0.62, 0.06, roofm, snow_frac=0.8, seed=102)
     LA.roof('lroofB', 1.85, 0.45, RZ + 0.38, 0.0, RZ + 0.62, 0.06, roofm, snow_frac=0.8, seed=103)
-    for s in (-1, 1):
-        cyl('tleg', 0.035, 0.4, (1.6 + s * 0.2, 0.2 + s * 0.2, RZ - 0.05), mat=flat('#3D424C', 0.45, 0.6), segs=8)
-    with L.Collect() as tc:
-        BA.tuna_model('rtuna', length=1.5, height=0.62, thick=0.34)
-    L.group(BA.top_level(tc.objs), 'rtunag', loc=(1.6, 0.2, RZ + 0.62), rot=(-90, 0, 45 - 8))
+    roof_sign('rsign', 1.75, 0.0, RZ - 0.02, lambda s: H.em_fish(s, 'tuna'), bg='#F4F1EA', rim=H.NAVY, r=0.62,
+              es=1.05)
     H.gull('rgull', (-1.9, 0.1, RZ + 0.08), rz=-50.0, s=1.0)
     # back wall with a blank price board + window
-    box('bwall', (5.7, 0.12, 1.5), (0, 1.62, 0.0), mat=clapboard('#E9E1D2', 5.0), bevel=0.02)
+    box('bwall', (5.7, 0.12, 2.1), (0, 1.62, 0.0), mat=clapboard('#E9E1D2', 5.0), bevel=0.02)
     box('board', (1.6, 0.06, 0.8), (-1.6, 1.53, 0.95), mat=flat('#2F3B36', 0.8), bevel=0.02)
     box('boardf', (1.7, 0.05, 0.9), (-1.6, 1.56, 0.9), mat=flat('#7A4A2A', 0.7), bevel=0.02)
     for k in range(3):
@@ -227,7 +224,7 @@ def b_fish_auction():
     T.win('bw1', (1.2, 1.56, 1.3), 'y-', w=0.6, h=0.5, shutters=None, frame=H.HWHITE, seed=104)
     # fish boxes on pallets
     pal = tonal('#C49A6A', 0.1, 4.0)
-    rows = [(-2.1, 0.55), (-0.85, 0.55), (0.4, 0.55), (1.65, 0.55), (-1.5, 1.15), (-0.2, 1.15), (1.05, 1.15)]
+    rows = [(-2.1, 0.3), (-0.85, 0.3), (0.4, 0.3), (1.65, 0.3), (-1.5, 0.95), (-0.2, 0.95), (1.05, 0.95)]
     kinds = ['tuna', 'fish', 'fish', 'tuna', 'fish', 'fish', 'fish']
     cols = ['#F4F1EA', '#3D7CC9', '#D9483B', '#F4F1EA', '#3D7CC9', '#F2B632', '#3D7CC9']
     for k, ((x, y), kd, cc) in enumerate(zip(rows, kinds, cols)):
@@ -248,9 +245,9 @@ def b_fish_auction():
     cyl('bhandle', 0.02, 0.18, (-1.95, -0.85, 1.12), mat=flat('#7A4A2A', 0.6), segs=8)
     # hanging lamps + spring scale + ice chest
     for x in (-1.8, 0.0, 1.8):
-        cyl('lcord', 0.01, 0.42, (x, -0.1, EZ - 0.4), mat=flat('#2B2F3A', 0.5), segs=5)
-        cyl('lshade', 0.26, 0.16, (x, -0.1, EZ - 0.5), mat=flat('#2E5E48', 0.5), segs=20, r_top=0.06, bevel=0.02)
-        sphere('lbulb', 0.08, (x, -0.1, EZ - 0.52), L.emissive('lb%d' % int(x * 10), '#FFE2A0', '#FFD27A', 3.0),
+        cyl('lcord', 0.01, 0.82, (x, -0.1, EZ - 0.8), mat=flat('#2B2F3A', 0.5), segs=5)
+        cyl('lshade', 0.26, 0.16, (x, -0.1, EZ - 0.9), mat=flat('#2E5E48', 0.5), segs=20, r_top=0.06, bevel=0.02)
+        sphere('lbulb', 0.08, (x, -0.1, EZ - 0.92), L.emissive('lb%d' % int(x * 10), '#FFE2A0', '#FFD27A', 3.0),
                segs=12, rings=8)
     cyl('scpost', 0.04, 1.9, (2.55, -0.9, 0), mat=post, segs=8)
     box('scarm', (0.5, 0.04, 0.04), (2.35, -0.9, 1.88), mat=post, bevel=0.0)
@@ -273,7 +270,7 @@ def b_fish_auction():
     mark('in', (2.2, -1.65, 0.0))
     mark('out', (3.45, 0.55, 0.0))
     mark('door', (0.0, -1.4, 0.0), facing=(0, 1, 0))
-    return {'fx': {'bell': (-1.95, -0.85, 1.12), 'lamp': (0.0, -0.1, EZ - 0.52)},
+    return {'fx': {'bell': (-1.95, -0.85, 1.12), 'lamp': (0.0, -0.1, EZ - 0.92)},
             'extra': {'quayEdge': [iso_px(-3.0, Y0), iso_px(3.0, Y0)], 'buyerPointsNote':
                       'customerPoints are the bidders (buyerPoints alias)'}}
 
@@ -324,25 +321,45 @@ def hull_mesh(name, Lh=4.2, Bm=1.7, Dh=1.15, frac=0.55, mat=None):
         ko='조선소', en='Shipyard', zone='port', ground={'land': [(-12.0, 12.0, -2.5, 12.0)]})
 def b_shipyard():
     Y0 = -2.5
-    SL = math.atan2(0.55, 3.2)                         # slipway slope
-    # yard ground (packed snow + timber) and the slipway
+    RY1, RY0 = 1.0, -3.3                               # slipway: top end (z 0) .. foot (under the sea)
+    GR = 0.62 / (RY1 - RY0)                            # gradient
+    SL = math.atan(GR)
+
+    def rz(y):                                          # slipway surface height at y
+        return GR * (min(y, RY1) - RY1)
+    # yard ground (paved apron) and the slipway wedge cut into it
     H.ground_tiles('yard', -3.5, 3.5, Y0, 2.5, c1='#D3D7DD', c2='#C9CED6', n=1.8)
     ramp_m = L.stripes('#B9BFC8', '#AEB5BF', 1.0 / 0.5, 'Y', rough=0.9, soft=0.03)
-    ramp = box('ramp', (2.6, 4.6, 0.12), (-0.6, -0.9, -0.12), rot=(-math.degrees(SL), 0, 0), mat=ramp_m, bevel=0.02)
-    del ramp
-    for s in (-1, 1):
-        box('rrail', (0.12, 4.6, 0.06), (-0.6 + s * 0.6, -0.9, -0.01), rot=(-math.degrees(SL), 0, 0),
-            mat=flat('#7D848F', 0.4, 0.6), bevel=0.01)
-    H.foam_line('rfoam', (-1.95, -3.15), (0.75, -3.15))
-    # hull on a cradle, following the slope (bow up-slope toward +Y)
-    hull_m = L.stripes('#C98F55', '#B97C48', 1.0 / 0.16, 'Z', rough=0.7, soft=0.05)
+    wedge = extrude('ramp', [(RY1, 0.005), (RY0, rz(RY0)), (RY0, rz(RY0) - 0.25), (RY1, -0.25)], 2.6,
+                    rot=(90, 0, 90), top=ramp_m, side=flat('#9AA1AC', 0.9), bevel=0.02)
+    wedge.location = (-1.9, 0.0, 0.0)
+    for sx in (-0.6, 0.6):
+        H.beam('rrail', (-0.6 + sx, RY1, 0.03), (-0.6 + sx, RY0, rz(RY0) + 0.03), 0.07, flat('#7D848F', 0.4, 0.6))
+    for k in range(8):
+        y = RY1 - 0.55 * k - 0.2
+        box('sleeper', (1.6, 0.12, 0.04), (-0.6, y, rz(y) + 0.005), mat=flat('#8A5A33', 0.8), bevel=0.01)
+    yw = RY1 + H.WATER_Z / GR                           # where the slipway dips under the sea
+    H.foam_line('rfoam', (-1.95, yw), (0.75, yw))
+    for s_ in (-1, 1):
+        H.foam_line('rfoam_s', (-0.6 + s_ * 1.32, yw), (-0.6 + s_ * 1.32, Y0), w=0.05)
+    # hull on a cradle following the slope (bow up-slope toward +Y, stern toward the sea)
+    nb = L.NB('hullpaint', rough=0.6)
+    tc = nb.n('ShaderNodeTexCoord')
+    sep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Object'], sep.inputs[0])
+    plank = nb.math('FRACT', nb.math('MULTIPLY', sep.outputs['Z'], 1.0 / 0.15))
+    col = nb.mix_rgb(nb.map_range(plank, 0.88, 0.95), C('#C98F55'), C('#A86B3A'))
+    col = nb.mix_rgb(nb.map_range(sep.outputs['Z'], 0.42, 0.44), C('#C0473A'), col)          # red bottom paint
+    col = nb.mix_rgb(nb.map_range(sep.outputs['Z'], 0.9, 0.92), col, C('#F4F1EA'))           # white sheer strake
+    nb.base(col)
+    hull_m = nb.m
     with L.Collect() as hc:
-        hull, secs = hull_mesh('hull', mat=hull_m)
+        hull_mesh('hull', mat=hull_m)
         rib_m = flat('#A86B3A', 0.7)
         mb = L.MB()
-        mb.seg((0, -2.15, 0.0), (0, 2.1, 0.0), 0.09, flat('#8A5A33', 0.7), segs=8)                 # keel
-        mb.seg((0, 2.1, 0.0), (0, 2.35, 1.35), 0.07, flat('#8A5A33', 0.7), segs=8)                 # stem
-        mb.seg((0, -2.15, 0.0), (0, -2.25, 1.1), 0.07, flat('#8A5A33', 0.7), segs=8)               # sternpost
+        mb.seg((0, -2.15, 0.0), (0, 2.1, 0.0), 0.09, flat('#6E4428', 0.7), segs=8)                 # keel
+        mb.seg((0, 2.1, 0.0), (0, 2.35, 1.35), 0.07, flat('#6E4428', 0.7), segs=8)                 # stem
+        mb.seg((0, -2.15, 0.0), (0, -2.25, 1.1), 0.07, flat('#6E4428', 0.7), segs=8)               # sternpost
         for k in range(7):
             y = -2.05 + 0.32 * k
             f = (y + 2.1) / 4.2
@@ -354,28 +371,27 @@ def b_shipyard():
                 pts.append(Vector((hw * math.cos(a), y, dep - dep * (math.sin(a) ** 0.8) * (1 - 0.15 * f))))
             for p, q in zip(pts, pts[1:]):
                 mb.seg(p, q, 0.04, rib_m, segs=6)
-        for s in (-1, 1):                                                                       # sheer clamps
-            mb.seg((s * 0.62, -2.1, 1.0), (s * 0.66, -0.1, 1.08), 0.035, rib_m, segs=6)
+        for s_ in (-1, 1):                                                                      # sheer clamps
+            mb.seg((s_ * 0.62, -2.1, 1.0), (s_ * 0.66, -0.1, 1.08), 0.035, rib_m, segs=6)
         mb.done('ribs')
-        box('gunwale', (0.08, 0.1, 0.1), (0, 2.3, 1.32), mat=flat(H.HRED, 0.5), bevel=0.02)
-        box('stripe', (0.02, 0.02, 0.02), (0, 0, 0), mat=flat(H.HRED, 0.5), bevel=0.0)
-    hull_g = L.group(BA.top_level(hc.objs), 'hullg', loc=(-0.6, -0.55, 0.42), rot=(-math.degrees(SL), 0, 0))
-    del hull_g
+        box('stemcap', (0.1, 0.12, 0.1), (0, 2.33, 1.32), mat=flat(H.HRED, 0.5), bevel=0.02)
+    HY = -0.55
+    L.group(BA.top_level(hc.objs), 'hullg', loc=(-0.6, HY, rz(HY) + 0.4), rot=(-math.degrees(SL), 0, 0))
     cradle = tonal('#8A5A33', 0.1, 4.0)
-    for k, y in enumerate((-2.0, -0.9, 0.2, 1.1)):
-        z = -(0.55 / 3.2) * (1.1 - y) * 0.5 if y < 1.1 else 0.0
-        box('cradle', (1.5, 0.22, 0.42 - z), (-0.6, y, z), mat=cradle, bevel=0.02)
-        for s in (-1, 1):
-            H.beam('shore', (-0.6 + s * 1.1, y, max(z, -0.4) + 0.02), (-0.6 + s * 0.62, y, 0.85), 0.07, cradle)
+    for y in (-2.25, -1.1, 0.05, 1.2):
+        zt = rz(y) + 0.4 + (y - HY) * 0.0
+        zb = rz(y)
+        box('cradle', (1.4, 0.2, zt - zb + 0.05), (-0.6, y, zb), mat=cradle, bevel=0.02)
+        for s_ in (-1, 1):
+            H.beam('shore', (-0.6 + s_ * 1.12, y, zb + 0.02), (-0.6 + s_ * 0.66, y, zt + 0.55), 0.07, cradle)
     # scaffold on the +X (visible) side
     wood = tonal('#C98F55', 0.08, 4.0)
-    for y in (-1.8, -0.4, 1.0):
-        zb = 0.0 if y > -0.2 else -0.2
-        for dx in (0.95, 1.45):
-            cyl('spole', 0.035, 1.75 - zb, (-0.6 + dx, y, zb), mat=wood, segs=8)
+    for y in (-1.9, -0.45, 1.0):
+        for dx in (1.42, 1.9):
+            cyl('spole', 0.035, 1.75, (-0.6 + dx, y, 0.0), mat=wood, segs=8)
     for z in (0.55, 1.2):
-        box('splank', (0.5, 3.0, 0.05), (-0.6 + 1.2, -0.4, z), mat=flat('#D9A066', 0.75), bevel=0.01)
-        L.snow_slab('spsn', 0.4, 0.6, 0.03, (0.6, -0.9 + z, z + 0.05), seed=int(z * 10))
+        box('splank', (0.55, 3.15, 0.05), (-0.6 + 1.66, -0.45, z), mat=flat('#D9A066', 0.75), bevel=0.01)
+        L.snow_slab('spsn', 0.45, 0.6, 0.03, (1.06, -0.9 + z, z + 0.05), seed=int(z * 10))
     for s in (-1, 1):
         H.beam('lrail', (1.55 + s * 0.15, 1.6, 0.0), (1.2 + s * 0.15, 1.2, 1.25), 0.03, flat('#8A5A33', 0.7))
     for k in range(6):
@@ -421,16 +437,16 @@ def b_shipyard():
     H.gull('ygull', (-0.6, 2.36, 1.45), rz=-80.0, s=0.9)
     # sparks (work only)
     spark_m = H.spark_mat('spark', '#FFE27A', 5.0)
-    sp1 = L.Spray('sp1', (0.25, -1.5, 0.35), (0.3, -0.6, 0.9), spark_m, n=10, grav=1.4, r=0.025, spread=0.5, seed=3)
-    sp2 = L.Spray('sp2', (0.15, 0.6, 1.25), (0.4, -0.3, 0.6), spark_m, n=8, grav=1.2, r=0.022, spread=0.45, seed=5)
+    sp1 = L.Spray('sp1', (0.3, -1.5, 0.3), (0.5, -0.7, 1.0), spark_m, n=14, grav=1.6, r=0.034, spread=0.55, seed=3)
+    sp2 = L.Spray('sp2', (0.2, 0.6, 1.2), (0.55, -0.4, 0.7), spark_m, n=12, grav=1.4, r=0.03, spread=0.5, seed=5)
     flash_m = H.spark_mat('flash', '#FFF6D0', 6.0)
-    flash = sphere('flash', 0.07, (0.22, -1.48, 0.38), flash_m, segs=10, rings=6)
+    flash = sphere('flash', 0.09, (0.27, -1.48, 0.32), flash_m, segs=10, rings=6)
     flash.visible_shadow = False
     # markers
-    for x, y in ((1.25, -1.15), (-2.05, -0.4), (0.75, 0.55)):
-        mark('work', (x, y, 0.0), facing=(-1, 0.2, 0) if x > 0 else (1, 0.1, 0))
+    for x, y, f in ((2.05, -1.25, (-1, 0.2, 0)), (-2.15, -0.25, (1, 0.1, 0)), (0.55, 1.75, (-1, -0.4, 0))):
+        mark('work', (x, y, 0.0), facing=f)
     mark('staff', (2.6, 0.05, 0.0), facing=(-1, -0.3, 0))
-    mark('in', (-2.55, 0.85, 0.0))
+    mark('in', (-2.85, -1.25, 0.0))
 
     def idle():
         sp1.show(False)
@@ -757,21 +773,24 @@ def b_harbor_warehouse():
     box('valley', (0.2, D + 0.5, 0.1), (BX, BY, WH - 0.02), mat=flat('#4A5260', 0.6), bevel=0.02)
     # open door (left bay) with a dark interior + goods, closed door (right bay)
     lx, rx = x0 + W / 4, x1 - W / 4
-    box('dark', (1.7, 0.06, 1.85), (lx, y0 + 0.03, PL), mat=flat('#2B2420', 0.95), bevel=0.0)
+    DW = 1.4
+    box('dark', (DW, 0.06, 1.75), (lx, y0 + 0.02, PL), mat=L.emissive('interior', '#2B2420', '#5A3A22', 0.35),
+        bevel=0.0)
     for s in (-1, 1):
-        box('dfr', (0.12, 0.14, 1.95), (lx + s * 0.92, y0 - 0.02, PL), mat=flat('#E3E6EB', 0.6), bevel=0.02)
-    box('dtop', (2.0, 0.14, 0.14), (lx, y0 - 0.02, PL + 1.92), mat=flat('#E3E6EB', 0.6), bevel=0.02)
-    box('drail', (4.2, 0.08, 0.08), (lx + 0.9, y0 - 0.08, PL + 2.08), mat=flat('#3A3E46', 0.5), bevel=0.01)
+        box('dfr', (0.12, 0.14, 1.85), (lx + s * (DW / 2 + 0.06), y0 - 0.02, PL), mat=flat('#E3E6EB', 0.6), bevel=0.02)
+    box('dtop', (DW + 0.3, 0.14, 0.14), (lx, y0 - 0.02, PL + 1.82), mat=flat('#E3E6EB', 0.6), bevel=0.02)
+    box('drail', (4.4, 0.08, 0.08), (lx + 1.2, y0 - 0.1, PL + 1.98), mat=flat('#3A3E46', 0.5), bevel=0.01)
     door = L.stripes('#C8473A', '#B23A30', 1.0 / 0.18, 'X', soft=0.08)
-    box('slide', (1.7, 0.08, 1.85), (lx + 1.75, y0 - 0.12, PL), mat=door, bevel=0.02)
-    box('closed', (1.7, 0.08, 1.85), (rx, y0 - 0.04, PL), mat=door, bevel=0.02)
-    for d_ in (lx + 1.75, rx):
+    box('slide', (DW, 0.08, 1.75), (lx + DW + 0.02, y0 - 0.14, PL), mat=door, bevel=0.02)
+    box('closed', (DW, 0.08, 1.75), (rx, y0 - 0.05, PL), mat=door, bevel=0.02)
+    for d_ in (lx + DW + 0.02, rx):
         for s in (-1, 1):
-            H.beam('xb', (d_ - 0.8, y0 - 0.18, PL + 0.08 if s > 0 else PL + 1.75),
-                   (d_ + 0.8, y0 - 0.18, PL + 1.75 if s > 0 else PL + 0.08), 0.07, flat('#F4F1EA', 0.6))
-    for k, (x, z, s_) in enumerate(((lx - 0.45, PL, 0.55), (lx + 0.15, PL, 0.55), (lx - 0.15, PL + 0.55, 0.5))):
-        PA.crate_model('ic%d' % k, s_, (x, y0 + 0.45, z), snow=False, seed=k + 5)
-    BA.sack('isack', (lx + 0.6, y0 + 0.3, PL), s=1.2, seed=3)
+            H.beam('xb', (d_ - DW / 2 + 0.08, y0 - 0.2, PL + 0.08 if s > 0 else PL + 1.65),
+                   (d_ + DW / 2 - 0.08, y0 - 0.2, PL + 1.65 if s > 0 else PL + 0.08), 0.07, flat('#F4F1EA', 0.6))
+    for k, (x, z, s_) in enumerate(((lx - 0.33, PL, 0.5), (lx + 0.22, PL, 0.5), (lx - 0.1, PL + 0.5, 0.45))):
+        PA.crate_model('ic%d' % k, s_, (x, y0 - 0.22, z), snow=False, seed=k + 5)
+    PA.lantern('ilamp', (lx, y0 - 0.25, PL + 1.45), 0.13, 3.0)
+    BA.sack('isack', (lx + 0.55, y0 - 0.35, 0.0), s=1.1, seed=3)
     # gable decor: hoist beam + net of sacks (left), painted anchor + round window (right)
     hz = WH + 0.55
     box('hoist', (0.14, 1.1, 0.14), (lx, y0 - 0.45, hz), mat=flat('#8A5A33', 0.7), bevel=0.02)
@@ -872,8 +891,8 @@ def b_harbor_office():
         origin='center')
     sphere('mtop', 0.06, (mx, my, cz + 3.1), flat('#F2C14E', 0.3, 0.7), segs=10, rings=6)
     d = Vector((math.cos(math.radians(45)), math.sin(math.radians(45)), 0)) * 0.62
-    H.signal_flags('sf1', (mx + d.x, my + d.y, cz + 2.55), (x1 + 0.1, y0 + 0.1, WH + 0.25), n=7, sag=0.2, size=0.16)
-    H.signal_flags('sf2', (mx - d.x, my - d.y, cz + 2.55), (x0 - 0.1, y0 - 0.1, WH + 0.1), n=6, sag=0.2, size=0.16,
+    H.signal_flags('sf1', (mx + d.x, my + d.y, cz + 2.55), (x1 + 0.1, y0 + 0.1, WH + 0.25), n=7, sag=0.2, size=0.22)
+    H.signal_flags('sf2', (mx - d.x, my - d.y, cz + 2.55), (x0 - 0.1, y0 - 0.1, WH + 0.1), n=6, sag=0.2, size=0.22,
                    cols=('#F2C14E', '#3D7CC9', '#D9483B', '#F4F1EA'))
     PA.flag('flag', (mx + 0.02, my, cz + 3.0), 0.55, 0.36, H.HBLUE, seed=5, emblem=True)
     # notice board, binoculars, life ring, bench

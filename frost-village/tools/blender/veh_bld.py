@@ -50,8 +50,22 @@ def paint(col, rough=0.4):
     return VL.paint(col, rough)
 
 
-def asphalt(c1='#5B6270', c2='#646B79'):
-    return tonal(c1, 0.05, 6.0, rough=0.92)
+def asphalt_snow(base='#5E6573', snow_amt=(0.6, 0.68), scale=0.8, name='asph'):
+    """Dark asphalt with soft scattered snow patches (~20 %) - a parking-lot ground that still reads as asphalt."""
+    key = (name, base, snow_amt, scale)
+    if key in L._CUSTOM:
+        return L._CUSTOM[key]
+    nb = L.NB(name, rough=0.9)
+    n1 = nb.noise(scale, 3.0)
+    n2 = nb.noise(scale * 4.0, 2.0)
+    mix = nb.math('ADD', nb.math('MULTIPLY', n1, 0.85), nb.math('MULTIPLY', n2, 0.15))
+    f = nb.map_range(mix, snow_amt[0], snow_amt[1])
+    tone = nb.map_range(nb.noise(5.0, 2.0), 0.3, 0.7)
+    a = nb.mix_rgb(tone, base, hexmix(base, '#7A8290', 0.35))
+    out = nb.mix_rgb(f, a, 'snow_mat')
+    nb.base(out)
+    L._CUSTOM[key] = nb.m
+    return nb.m
 
 
 def horseshoe(s=1.0, col='#F2C14E'):
@@ -101,15 +115,15 @@ BUS_STOP_NOTE = ('Retro bus stop: a glass shelter with a mint roof under snow, a
                  'bus doorPoints[1] (far side, hidden behind the bus) and get in.')
 
 
-def bus_stop_builder():
+def bus_stop_builder(yaw=0.0):
+    psi = 45.0 - yaw                      # sign boards always face the camera
     stop_shelter('#5FC09E', '#3B4150', '#BFDDEE', glass=True)
-    # stop sign: pole + round blank board (white with a mint rim) + a small bus pictogram plate under it
-    cyl('bs_pole', 0.05, 2.45, (1.35, -0.25, 0), mat=paint('#3B4150'), segs=12)
-    cyl('bs_foot', 0.14, 0.1, (1.35, -0.25, 0), mat=snowy('stone', lo=0.6, hi=0.8), segs=14, r_top=0.1)
-    disc = T.sign_disc('bs_disc', (1.35, -0.25, 2.55), r=0.36, bg='#F6F3EC', rim='#5FC09E', psi=45.0, tilt=6.0,
-                       snow=True)
-    del disc
-    box('bs_plate', (0.46, 0.05, 0.24), (1.35, -0.25, 2.0), rot=(0, 0, 45), mat=paint('#5FC09E'), bevel=0.02)
+    # stop sign: pole + round blank board (white with a mint rim) + a small mint plate under it
+    sx_, sy_ = 1.62, -0.55
+    cyl('bs_pole', 0.05, 2.25, (sx_, sy_, 0), mat=paint('#3B4150'), segs=12)
+    cyl('bs_foot', 0.14, 0.1, (sx_, sy_, 0), mat=snowy('stone', lo=0.6, hi=0.8), segs=14, r_top=0.1)
+    T.sign_disc('bs_disc', (sx_, sy_, 2.36), r=0.34, bg='#F6F3EC', rim='#5FC09E', psi=psi, tilt=6.0, snow=True)
+    box('bs_plate', (0.46, 0.05, 0.24), (sx_, sy_, 1.82), rot=(0, 0, psi), mat=paint('#5FC09E'), bevel=0.02)
     # timetable board on the back wall (blank)
     box('bs_tt', (0.5, 0.04, 0.62), (-0.55, 0.6, 0.85), mat=flat('#F4F1EA', 0.6), bevel=0.02)
     box('bs_ttf', (0.56, 0.03, 0.68), (-0.55, 0.62, 0.82), mat=paint('#3B4150'), bevel=0.02)
@@ -121,7 +135,7 @@ def bus_stop_builder():
         mark('wait', (0.95 - 0.5 * k, -0.6, 0.0), facing=(1, -0.3, 0))
     mark('stop', (0.6, -2.3, 0.0), facing=(-1, 0, 0))
     mark('board', (0.05, -0.95, 0.0), facing=(0, -1, 0))
-    return {'fx': {'board': (1.35, -0.25 - 0.06, 2.55), 'timetable': (-0.55, 0.57, 1.16)}}
+    return {'fx': {'board': (1.62 - 0.04, -0.55 - 0.04, 2.36), 'timetable': (-0.55, 0.57, 1.16)}}
 
 
 @vb('bus_stop', 'decor', 'veh_street', fp=(3.0, 1.6), catcher=14.0, notes=BUS_STOP_NOTE % ('world X', 'NW'),
@@ -134,7 +148,7 @@ def b_bus_stop():
     notes=BUS_STOP_NOTE % ('world Y, the shelter faces screen down-right', 'SW'), ko='버스 정류장', en='Bus stop',
     era=3)
 def b_bus_stop_y():
-    return bus_stop_builder()
+    return bus_stop_builder(90.0)
 
 
 SLEIGH_STOP_NOTE = ('Sleigh-bus stop (era 2): a small log shelter with a red snowy roof and a bench, a hitching rail, '
@@ -143,7 +157,7 @@ SLEIGH_STOP_NOTE = ('Sleigh-bus stop (era 2): a small log shelter with a red sno
                     'boardPoints (coach door).')
 
 
-def sleigh_stop_builder():
+def sleigh_stop_builder(yaw=0.0):
     wood = flat('#8A5A33', 0.7)
     for x in (-0.85, 0.85):
         for y in (0.1, 0.6):
@@ -160,7 +174,8 @@ def sleigh_stop_builder():
     L.log('ss_hrail', 0.05, 0.95, (-0.85, -0.75, 0.8), rot=(0, 90, 0), bark=flat('#8A5A33', 0.7),
           end=flat('#C99A5E', 0.7), segs=10)
     # sign post with a horseshoe disc + a lantern post
-    T.post_sign('ss_sign', (1.3, -0.3, 0.0), h=2.25, r=0.32, bg='#2E6B4F', rim='#F2C14E', emblem=horseshoe, es=0.9)
+    T.post_sign('ss_sign', (1.3, -0.3, 0.0), h=2.25, r=0.32, bg='#2E6B4F', rim='#F2C14E', emblem=horseshoe, es=0.9,
+                psi=45.0 - yaw)
     cyl('ss_lpost', 0.045, 1.7, (-1.35, 0.1, 0), mat=flat('#3D424C', 0.45, 0.5), segs=10)
     PA.lantern('ss_lan', (-1.35, 0.1, 1.8), 0.13, 3.0)
     PA.crate_model('ss_crate', 0.34, (1.05, 0.55, 0.0), rot=(0, 0, 12), snow=True, seed=33)
@@ -184,7 +199,7 @@ def b_sleigh_stop():
     notes=SLEIGH_STOP_NOTE % ('world Y, the shelter faces screen down-right', 'SW'), ko='썰매 정류장',
     en='Sleigh stop', era=2)
 def b_sleigh_stop_y():
-    return sleigh_stop_builder()
+    return sleigh_stop_builder(90.0)
 
 
 # =========================================================================== stable depot (era 2)
@@ -223,8 +238,8 @@ def b_stable_depot():
     # a horse looking out of the first stall
     with L.Collect() as hc:
         h = VL.build_horse('stH', coat='#C27A42', mane='#F3E6CC', muzzle='#F1DCC0', blaze=True, scale=1.0)
-    h.apply({'neck': (6, 0, 0), 'head': (8, 0, -12)}, yaw_deg=0.0)
-    h.j['root'].location = (-1.3, -D / 2 + 0.95, 0.12)
+    h.apply({'neck': (-26, 0, 0), 'head': (8, 0, -10), 'ear_R': (0, 0, -15)}, yaw_deg=0.0)
+    h.j['root'].location = (-1.3, -D / 2 + 0.75, 0.12)
     del hc
     # right side (+X): the carriage door (open, dark inside) + lamp
     box('st_cdoor_dark', (0.08, 2.3, 2.0), (W / 2 + 0.01, 0.1, 0.22), mat=flat('#2A2220', 0.9), bevel=0.02)
@@ -275,13 +290,21 @@ def b_bus_depot():
     # barrel roof along Y (gable ends face front / back)
     import town_train as TT
     with L.Collect() as rc:
-        TT.roof_curved('bd_roof', W + 0.1, D, 0.2 + H + 0.1, rise=0.9, col='#EADBB8', over=0.18, seed=50)
+        TT.roof_curved('bd_roof', W + 0.1, D, 0.2 + H + 0.1, rise=0.9, col='#4FAE8C', over=0.18, seed=50)
     L.group(BA.top_level(rc.objs), 'bd_roofg', loc=(0, 0, 0))
+    PA.snow_cap('bd_rsnow', 0.9, (0.3, 0.5, 0.2 + H + 0.99), h=0.1, seed=57, scale=(1.7, 1.5, 1.0))
+    PA.snow_cap('bd_rsnow2', 0.5, (-2.0, -1.3, 0.2 + H + 0.58), h=0.07, seed=58, scale=(1.0, 1.6, 1.0))
     box('bd_gablefill', (W - 0.1, 0.12, 0.9), (0, -D / 2 + 0.04, 0.2 + H), mat=brick, bevel=0.02, taper=(0.55, 1.0))
     # bays: arched door frames; closed = mint roller doors, open = lit interior
     doors_closed, doors_open = [], []
     for k, x in enumerate((-1.65, 1.65)):
-        T.ext_xz('bd_arch', PA.arch_pts(2.9, 2.95, 14), 0.12, flat('#EADBB8', 0.7), y=-D / 2 - 0.02).location.x = x
+        fm = flat('#EADBB8', 0.7)
+        for sx in (-1, 1):
+            box('bd_jamb', (0.22, 0.16, 1.42), (x + sx * 1.38, -D / 2 - 0.06, 0.0), mat=fm, bevel=0.03)
+        apts = [(x + 1.38 * math.cos(math.radians(a)), -D / 2 - 0.08, 1.4 + 1.38 * math.sin(math.radians(a)))
+                for a in range(0, 181, 12)]
+        import veh_lib as VL
+        VL.rail_path('bd_archr', apts, 0.11, fm, segs=10)
         with L.Collect() as cc:
             o = T.ext_xz('bd_door', PA.arch_pts(2.6, 2.7, 14), 0.08, L.stripes('#5FC09E', '#55B08F', 14.0, 'Z',
                                                                               soft=0.06), y=-D / 2 - 0.05)
@@ -289,11 +312,12 @@ def b_bus_depot():
             box('bd_win', (2.0, 0.04, 0.26), (x, -D / 2 - 0.1, 1.9), mat=T.glow_mat('bd_dw', 1.4), bevel=0.02)
         doors_closed += cc.objs
         with L.Collect() as oc:
-            o = T.ext_xz('bd_in', PA.arch_pts(2.6, 2.7, 14), 0.06, flat('#5A4A40', 0.9), y=-D / 2 + 0.2)
+            o = T.ext_xz('bd_in', PA.arch_pts(2.6, 2.7, 14), 0.04, flat('#3A302A', 0.95), y=-D / 2 - 0.01)
             o.location.x = x
-            box('bd_infl', (2.5, 0.25, 0.04), (x, -D / 2 + 0.05, 0.22), mat=flat('#8A7A6E', 0.9), bevel=0.0)
-            box('bd_inglow', (1.8, 0.04, 0.5), (x, -D / 2 + 0.15, 2.0), mat=T.glow_mat('bd_ig', 1.2), bevel=0.02)
-            PA.barrel_model('bd_brl', loc=(x + 0.9, -D / 2 + 0.05, 0.22), scale=0.4, seed=51 + k)
+            box('bd_inglow', (1.7, 0.03, 0.42), (x, -D / 2 - 0.06, 1.85), mat=T.glow_mat('bd_ig', 1.1), bevel=0.02)
+            box('bd_inlamp', (0.5, 0.03, 0.12), (x, -D / 2 - 0.07, 2.42), mat=T.glow_mat('bd_il', 2.2), bevel=0.01)
+            box('bd_infl', (2.5, 0.5, 0.03), (x, -D / 2 - 0.25, 0.0), mat=flat('#6E625A', 0.9), bevel=0.0)
+            PA.barrel_model('bd_brl', loc=(x + 0.85, -D / 2 - 0.3, 0.0), scale=0.4, seed=51 + k)
         doors_open += oc.objs
         mark('bay', (x, -D / 2 - 4.0, 0.0), facing=(0, -1, 0))
     # name board + clock + lamps
@@ -341,8 +365,10 @@ def lot_builder(rows):
     n = 4
     Wl = n * STALL_W + 0.4
     Dl = len(rows) * STALL_D + 0.4
-    box('pl_slab', (Wl, Dl, 0.03), (0, 0, 0.0), mat=snowy('#5E6573', lo=0.8, hi=0.95, noise_amt=0.5,
-                                                          noise_scale=1.4), bevel=0.02)
+    box('pl_slab', (Wl, Dl, 0.03), (0, 0, 0.0), mat=asphalt_snow(), bevel=0.02)
+    for sx in (-1, 1):            # low curbs on the two short sides
+        box('pl_curb', (0.18, Dl, 0.1), (sx * (Wl / 2 - 0.09), 0, 0.0), mat=snowy('#B9B4AA', lo=0.6, hi=0.8),
+            bevel=0.03)
     line = flat('#F4F1EA', 0.6)
     for yc, hs in rows:
         y_back = yc + hs * STALL_D / 2
@@ -405,8 +431,10 @@ def b_garage_small():
     T.gable('gs_roof', W, D, 0.12 + H, 0.12 + H + 1.0, 0.25, '#3D7CC9', '#F2E6C8', seed=70, along='y')
     T.win_row('gs_w', 'x+', 1.75, [0.6], W / 2, w=0.6, h=0.55, shutters='#3D7CC9')
     T.lamp_wall('gs_lamp', (1.35, -D / 2 - 0.02, 2.2), face='y-')
-    T.ext_xz('gs_frame', [(-1.25, 0.0), (1.25, 0.0), (1.25, 2.05), (-1.25, 2.05)], 0.1, flat('#F4F1EA', 0.7),
-             y=-D / 2 - 0.02).location.z = 0.12
+    fmm = flat('#F4F1EA', 0.7)
+    for sx in (-1, 1):                      # door frame = two jambs + a lintel (a ring, not a slab)
+        box('gs_jamb', (0.14, 0.12, 2.0), (sx * 1.22, -D / 2 - 0.05, 0.12), mat=fmm, bevel=0.02)
+    box('gs_lintel', (2.58, 0.14, 0.16), (0, -D / 2 - 0.06, 2.1), mat=fmm, bevel=0.02)
     with L.Collect() as cc:
         dm = L.stripes('#3D7CC9', '#3570B4', 6.0, 'Z', soft=0.04)
         box('gs_door', (2.3, 0.08, 1.95), (0, -D / 2 - 0.08, 0.14), mat=dm, bevel=0.03)
@@ -416,12 +444,18 @@ def b_garage_small():
         box('gs_handle', (0.3, 0.05, 0.05), (0, -D / 2 - 0.14, 0.45), mat=flat('#D9DFE6', 0.25, 0.85), bevel=0.01)
     closed_objs = cc.objs
     with L.Collect() as oc:
-        box('gs_dark', (2.3, 0.04, 1.95), (0, -D / 2 + 0.25, 0.14), mat=flat('#4A3E36', 0.9), bevel=0.0)
-        box('gs_up', (2.3, 0.5, 0.08), (0, -D / 2 + 0.2, 2.0), mat=L.stripes('#3D7CC9', '#3570B4', 6.0, 'Y',
-                                                                           soft=0.04), bevel=0.02)
-        box('gs_bench', (1.2, 0.35, 0.75), (0.4, -D / 2 + 0.55, 0.14), mat=flat('#8A5A33', 0.7), bevel=0.03)
-        box('gs_glow', (1.6, 0.04, 0.4), (0, -D / 2 + 0.3, 1.5), mat=T.glow_mat('gs_ig', 1.0), bevel=0.02)
-        PA.barrel_model('gs_brl', loc=(-0.75, -D / 2 + 0.55, 0.14), scale=0.35, seed=71)
+        # the walls are a solid box: the 'open' garage is painted on its face (dark inside, lit lamp, a bench
+        # and a barrel standing just inside the door line, the door rolled up under the lintel)
+        box('gs_dark', (2.3, 0.04, 1.9), (0, -D / 2 - 0.03, 0.14), mat=flat('#3A302A', 0.95), bevel=0.0)
+        box('gs_up', (2.36, 0.4, 0.1), (0, -D / 2 - 0.22, 1.98), mat=L.stripes('#3D7CC9', '#3570B4', 6.0, 'Y',
+                                                                             soft=0.04), bevel=0.02)
+        box('gs_glow', (1.4, 0.03, 0.12), (0, -D / 2 - 0.06, 1.8), mat=T.glow_mat('gs_ig', 2.0), bevel=0.01)
+        box('gs_wall', (2.2, 0.03, 0.9), (0, -D / 2 - 0.05, 0.75), mat=flat('#6E5A4A', 0.9), bevel=0.0)
+        box('gs_bench', (1.0, 0.3, 0.7), (0.5, -D / 2 - 0.2, 0.14), mat=flat('#8A5A33', 0.7), bevel=0.03)
+        for k in range(3):
+            box('gs_tool', (0.06, 0.03, 0.35), (-0.1 + 0.18 * k, -D / 2 - 0.08, 1.1), mat=flat('#B3BECB', 0.3, 0.7),
+                bevel=0.01)
+        PA.barrel_model('gs_brl', loc=(-0.7, -D / 2 - 0.3, 0.14), scale=0.35, seed=71)
     open_objs = oc.objs
     LA.snow_drift('gs_d', 0.25, (1.7, 2.0, 0.0), seed=72)
     PA.crate_model('gs_cr', 0.38, (1.85, -1.7, 0.0), rot=(0, 0, 8), snow=True, seed=73)
@@ -492,10 +526,10 @@ def b_fuel_depot():
     PA.barrel_model('fd_b1', loc=(-0.7, -1.6, 0.08), scale=0.5, seed=90)
     PA.barrel_model('fd_b2', loc=(-0.4, -1.75, 0.08), scale=0.45, seed=91)
     # tall sign (blank round board)
-    cyl('fd_spole', 0.06, 3.2, (2.35, -1.6, 0.08), mat=paint('#3B4150'), segs=12)
-    T.sign_disc('fd_sign', (2.35, -1.6, 3.55), r=0.45, bg='#F6F3EC', rim='#D9483B', psi=45.0, tilt=4.0)
+    cyl('fd_spole', 0.06, 3.2, (-2.4, -1.75, 0.08), mat=paint('#3B4150'), segs=12)
+    T.sign_disc('fd_sign', (-2.4, -1.75, 3.55), r=0.45, bg='#F6F3EC', rim='#D9483B', psi=45.0, tilt=4.0)
     mark('staff', (-0.3, -0.5, 0.0), facing=(1, -0.5, 0))
-    return {'fx': {'board': (2.35, -1.66, 3.55)}}
+    return {'fx': {'board': (-2.4 + 0.04, -1.75 - 0.04, 3.55)}}
 
 
 # =========================================================================== traffic light (3 states)

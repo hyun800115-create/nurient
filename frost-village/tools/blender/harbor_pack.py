@@ -309,6 +309,19 @@ def _gif(frames_rgb, durs, out):
     q[0].save(out, save_all=True, append_images=q[1:], duration=durs, loop=0, optimize=False, disposal=1)
 
 
+def kfont(size):
+    """A font with Hangul glyphs for the Korean labels (falls back to prop_pack.font)."""
+    from PIL import ImageFont
+    for p in ('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+              'C:/Windows/Fonts/malgun.ttf', '/Library/Fonts/AppleGothic.ttf'):
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size)
+            except OSError:
+                pass
+    return pp.font(size)
+
+
 def tex(rel, size=(64, 64), fill=(200, 205, 214, 255)):
     p = os.path.join(ASSETS, rel)
     return Image.open(p).convert('RGBA') if os.path.exists(p) else Image.new('RGBA', size, fill)
@@ -353,12 +366,12 @@ class Scene:
         for _, im, px, py in sorted(self.placed, key=lambda t: t[0]):
             self.img.alpha_composite(im, (px, py))
         if crop:
-            a = np.asarray(self.img.convert('RGB')).astype(np.int16)
-            bgc = np.array(bg_key if bg_key else a[0, 0])
-            ys, xs = np.nonzero(np.abs(a - bgc).max(-1) > 6)
-            if len(xs):
-                x0, y0 = max(0, xs.min() - 20), max(0, ys.min() - 30)
-                x1, y1 = min(self.W, xs.max() + 20), min(self.H, ys.max() + 50)
+            items = [(px, py, px + im.width, py + im.height) for _, im, px, py in self.placed + self.ground]
+            if items:
+                x0 = max(0, min(r[0] for r in items) - 40)
+                y0 = max(0, min(r[1] for r in items) - 40)
+                x1 = min(self.W, max(r[2] for r in items) + 40)
+                y1 = min(self.H, max(r[3] for r in items) + 70)
                 self.img = self.img.crop((x0, y0, x1, y1))
                 self.labels = [(t, sx - x0, sy - y0) for t, sx, sy in self.labels]
                 self.W, self.H = self.img.size
@@ -401,15 +414,16 @@ def preview_all(builds, frames, out):
         m = builds[k]
         im = frames[m['frames'][0]]
         if m['atlas'] == 'harbor_water' and m.get('tileAxis'):
-            bg = Image.new('RGBA', im.size, (47, 134, 201, 255))
-            bg.alpha_composite(im)
+            im = im.crop(im.getbbox())
+            bg = Image.new('RGBA', (im.width + 16, im.height + 16), (47, 134, 201, 255))
+            bg.alpha_composite(im, (8, 8))
             im = bg
         ents.append((k, im))
         if 'anims' in m:
             nfr = m['anims']['work']['frames']
             n = nfr[len(nfr) // 2 - 1] if len(nfr) > 4 else nfr[1]
             ents.append((k + ' (%s)' % (m.get('animAlias') or 'work'), frames[n]))
-    pp.shelf_preview(ents, out, max_w=2600, title='Seagull Harbour (갈매기 항구) - assets/harbor at 1x, PPU 64: landmarks, '
+    pp.shelf_preview(ents, out, max_w=2600, title='Seagull Harbour (Galmaegi port) - assets/harbor at 1x, PPU 64: landmarks, '
                                                   'buildings, water tiles (shown on sea blue), props; idle + one anim '
                                                   'frame')
 
@@ -423,20 +437,20 @@ def preview_scene(builds, frames, out):
     snow = tex('ground/ground_snow.png', fill=(244, 247, 251, 255))
     road = tex('ui2/ground_road.png', fill=(200, 205, 214, 255))
     sc.fill_poly(sea, [(-60, -40), (40, -40), (40, 60), (-60, 60)])
-    LX0, LY1 = -34.0, 22.0
+    LX0, LY1 = -34.0, 25.0
     sc.fill_poly(snow, [(LX0, 0.0), (0.0, 0.0), (0.0, LY1), (LX0, LY1)])
     sc.fill_poly(road, [(LX0, 0.0), (0.0, 0.0), (0.0, 4.8), (LX0, 4.8)])
     sc.fill_poly(road, [(-5.2, 0.0), (0.0, 0.0), (0.0, LY1), (-5.2, LY1)])
 
-    def B(key, x, y, frame=None, label=True, dy=-22):
+    def B(key, x, y, frame=None, label=True, dy=-22, z=0.0):
         m = builds.get(key)
         if not m:
             return None
-        sc.put(frames[frame or m['frames'][0]], m['anchorPx'], x, y)
-        if label:
-            top = m['topPx'][m['frames'][0]] if isinstance(m['topPx'], dict) else m['topPx']
-            sx, sy = sc.p(x, y)
-            sc.labels.append((key, sx, sy - top + dy))
+        sc.put(frames[frame or m['frames'][0]], m['anchorPx'], x, y, z=z)
+        if label:                       # name tag just in front of the footprint (its lowest ground corner)
+            sx, sy = sc.p(x, y, z)
+            fh = m.get('footprint', [0, 40])[1]
+            sc.labels.append((key, sx, sy + fh / 2 + 6))
         return m
 
     def G(key, x, y):
@@ -463,13 +477,13 @@ def preview_scene(builds, frames, out):
     for n in range(1, 5):
         G('pier_y', PXY, -SQ2 / 2 - n * SQ2)
     G('pier_end_yn', PXY, -SQ2 / 2 - 5 * SQ2)
-    PYX = 10.5
+    PYX = 12.5
     G('pier_root_xn', SQ2 / 2, PYX)
     for n in range(1, 4):
         G('pier_x', SQ2 / 2 + n * SQ2, PYX)
     G('pier_end_xp', SQ2 / 2 + 4 * SQ2, PYX)
     # breakwater off the +X arm at y = 18
-    BWY = 18.0
+    BWY = 21.0
     for n in range(0, 4):
         G('breakwater_x', SQ2 / 2 + n * SQ2, BWY)
     G('breakwater_end_xp', SQ2 / 2 + 4 * SQ2, BWY)
@@ -495,24 +509,24 @@ def preview_scene(builds, frames, out):
     # +X waterfront
     B('container_stack', -1.6, 4.7)
     B('container_stack_b', -1.55, 7.5, label=False)
-    B('container_blue', -3.2, 10.2, label=False)
-    B('bollard', -0.35, 9.4, label=False)
-    B('bollard', -0.35, 11.6, label=False)
-    B('lighthouse', -2.3, 14.4)
-    B('harbor_lamp', -0.5, 16.6, label=False)
-    B('buoy', 5.2, 4.0, frame=(builds['buoy']['anims']['work']['frames'][1] if 'buoy' in builds else None))
-    B('buoy', 2.4, -4.8, label=False)
+    B('container_red', -30.6, 9.2, label=False)
+    B('container_yellow', -29.9, 11.6, label=False)
+    B('bollard', -0.35, 11.4, label=False)
+    B('bollard', -0.35, 13.6, label=False)
+    B('lighthouse', -2.3, 17.0)
+    B('harbor_lamp', -0.5, 19.4, label=False)
+    B('buoy', 5.2, 4.0, frame=(builds['buoy']['anims']['work']['frames'][1] if 'buoy' in builds else None), z=-0.55)
+    B('buoy', 2.4, -4.8, label=False, z=-0.55)
     # second row
-    B('harbor_market', -21.6, 7.6)
-    B('seafood_restaurant', -16.4, 7.8)
-    B('customs_house', -11.4, 8.0)
-    B('harbor_warehouse', -5.9, 8.8)
-    B('sailor_lodge', -16.6, 13.0)
-    B('harbor_office', -11.9, 12.8)
-    B('net_rack', -27.5, 7.2, label=False)
-    B('anchor_decor', -8.6, 13.4, label=False)
-    B('barrel_stack', -24.6, 11.6, label=False)
-    B('container_stack', -2.2, 20.4, label=False)
+    B('harbor_market', -21.6, 9.0)
+    B('seafood_restaurant', -16.4, 9.2)
+    B('customs_house', -11.4, 9.4)
+    B('harbor_warehouse', -5.9, 10.0)
+    B('sailor_lodge', -16.6, 15.4)
+    B('harbor_office', -11.9, 15.2)
+    B('net_rack', -27.5, 8.6, label=False)
+    B('anchor_decor', -8.4, 15.0, label=False)
+    B('barrel_stack', -24.6, 14.0, label=False)
     # boats (existing assets/buildings boats) moored on the water plane
     bl = char_lib('buildings/manifest.json')
 
@@ -582,27 +596,28 @@ def preview_scene(builds, frames, out):
         at('ferry_terminal', -11.8, 2.0, 'wait', k, 'tourist', 'E', 'idle', k % 4)
     at('ferry_terminal', -11.8, 2.0, 'board', 1, 'tourist', 'SE', 'walk', 2)
     at('ferry_terminal', -11.8, 2.0, 'staff', 0, 'sailor', 'SW')
-    at('lighthouse', -2.3, 14.4, 'staff', 0, 'lighthouse_keeper', 'S', 'wave', 3)
+    at('lighthouse', -2.3, 17.0, 'staff', 0, 'lighthouse_keeper', 'S', 'wave', 3)
     for k in range(3):
-        at('harbor_market', -21.6, 7.6, 'customer', 2 * k, ['tourist', None, 'tourist'][k], 'NE')
-    at('sailor_lodge', -16.6, 13.0, 'seat', 0, 'sailor', 'S')
-    at('harbor_warehouse', -5.9, 8.8, 'work', 0, 'dock_worker', 'NE', 'carry_walk', 1)
-    at('customs_house', -11.4, 8.0, 'staff', 0, None, 'SW')
+        at('harbor_market', -21.6, 9.0, 'customer', 2 * k, ['tourist', None, 'tourist'][k], 'NE')
+    at('sailor_lodge', -16.6, 15.4, 'seat', 0, 'sailor', 'S')
+    at('harbor_warehouse', -5.9, 10.0, 'work', 0, 'dock_worker', 'NE', 'carry_walk', 1)
+    at('customs_house', -11.4, 9.4, 'staff', 0, None, 'SW')
     at('shipyard', -29.0, 2.5, 'work', 0, 'dock_worker', 'SW')
-    at('seafood_restaurant', -16.4, 7.8, 'seat', 0, 'tourist', 'SE')
-    at('seafood_restaurant', -16.4, 7.8, 'customer', 0, 'sailor', 'NE')
+    at('seafood_restaurant', -16.4, 9.2, 'seat', 0, 'tourist', 'SE')
+    at('seafood_restaurant', -16.4, 9.2, 'customer', 0, 'sailor', 'NE')
     person('sailor', PXY, -3.0, d='SW', anim='walk', i=4)
     person('tourist', -13.5, 5.6, d='SE', anim='walk', i=1)
     person(None, -9.0, 5.2, d='NE', anim='walk', i=5)
-    person('tourist', -3.0, 12.4, d='NE', anim='walk', i=2)
-    person('sailor', -1.8, 9.9, d='SE', anim='idle', i=0)
+    person('tourist', -3.4, 14.2, d='NE', anim='walk', i=2)
+    person('sailor', -1.6, 10.6, d='SE', anim='idle', i=0)
+    person('tourist', -14.0, 12.6, d='SW', anim='walk', i=6)
     sc.finish(out, 'Seagull Harbour mock block at 1x (PPU 64): assets/harbor buildings + quay / pier / breakwater tiles, '
                    'boats = assets/buildings, people = assets/townfolk with the harbour presets', bg_key=None)
 
 
 def preview_tiles(builds, frames, out):
     """Seam check: chained tiles of every kind on the sea, at 1x and a 2x zoom of the joins."""
-    sc = Scene(1800, 1100, 520, 520)
+    sc = Scene(2100, 1250, 1050, 520)
     sea = tex('ground/water_sea.png', fill=(31, 95, 168, 255))
     snow = tex('ground/ground_snow.png', fill=(244, 247, 251, 255))
     sc.fill_poly(sea, [(-30, -30), (30, -30), (30, 30), (-30, 30)])
@@ -701,7 +716,8 @@ def preview_townfolk(out):
     y = 50
     for name, cells in rows:
         lab = pres[name]['label']
-        d.text((12, y + 80), '%s\n%s' % (name, lab['ko']), fill=(20, 24, 32), font=pp.font(16))
+        d.text((12, y + 70), name, fill=(20, 24, 32), font=pp.font(16))
+        d.text((12, y + 94), lab['ko'], fill=(20, 24, 32), font=kfont(18))
         x = 200
         for c in cells:
             sheet.alpha_composite(c, (x, y))

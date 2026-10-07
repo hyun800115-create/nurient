@@ -11,8 +11,11 @@ Checks:
     ground_snow; grid alignment: sidewalk slab joints on the half-cell lines, dirt ruts on lane centre +-0.75 m
     (road_dirt along X, road_dirt_y along Y, both in road_dirt_cross)
   * pieces: frames untrimmed in the atlas, integer anchorPx == anchor * frameSize, transparent frame borders,
-    straight pieces chained 4x (variants mixed) never overlap and join without a visible seam, corner pieces meet the
-    adjacent straight pieces without overlap, markings visible on road_asphalt
+    straight pieces chained 4x (variants mixed) never overlap; corner pieces meet the adjacent straight pieces without
+    overlap; markings visible on road_asphalt
+  * exact join tests against the generator (imports gen_roads read-only): three chained 1-cell pieces == one
+    continuous 3-cell strip at the same lattice phase; every variant == its base piece next to the cut lines; every
+    corner piece == the adjacent straight piece next to their shared cut line (anti-aliasing fringe excluded)
   * payload of assets/roads <= 2.5 MB
 """
 import json
@@ -54,6 +57,110 @@ def warn(m):
 def lum(a):
     a = np.asarray(a, np.float32)
     return a[..., 0] * 0.299 + a[..., 1] * 0.587 + a[..., 2] * 0.114
+
+
+def recon(R):
+    """Render each straight family once as a continuous strip 3 cells long (monkeypatched frame / partition) and as
+    three chained 1-cell pieces at the same lattice phase; inside the middle 2 cells (which contain two cut lines)
+    the premultiplied pixels must agree."""
+    sf, sk = R.straight_frame, R.straight_keep
+    try:
+        singles = {}
+        for fam, fn in (('curb', R.curb_straight), ('snow_edge', R.snow_straight)):
+            for axis in 'xy':
+                for far in (True, False):
+                    singles[(fam, axis, far)] = fn(axis, far, 0)
+
+        def long_frame(axis, vmin, vmax, lift=0.0, pad=3):
+            h = 1.5 * R.CELL_M
+            pts = [((u, v) if axis == 'x' else (v, u)) for u in (-h, h) for v in (vmin, vmax)]
+            return R.Frame(pts, pad, lift)
+        R.straight_frame = long_frame
+        R.straight_keep = lambda fr, axis: np.ones((fr.h, fr.w), bool)
+        for (fam, axis, far), (img1, fr1) in singles.items():
+            fn = R.curb_straight if fam == 'curb' else R.snow_straight
+            imgL, frL = fn(axis, far, 0)
+            L = np.asarray(imgL).astype(np.float32)
+            chain = Image.new('RGBA', (frL.w, frL.h), (0, 0, 0, 0))
+            step = (64, 32) if axis == 'x' else (64, -32)
+            for n in (-1, 0, 1):
+                chain.alpha_composite(img1, (frL.ax + n * step[0] - fr1.ax, frL.ay + n * step[1] - fr1.ay))
+            Cn = np.asarray(chain).astype(np.float32)
+            ys, xs = np.mgrid[0:frL.h, 0:frL.w].astype(np.float32) + 0.5
+            q = (xs - frL.ax) + 2 * (ys - frL.ay) if axis == 'x' else (xs - frL.ax) - 2 * (ys - frL.ay)
+            inner = np.abs(q) < 128 - 3
+            pmL = np.dstack([L[..., :3] * L[..., 3:4] / 255, L[..., 3:4]])
+            pmC = np.dstack([Cn[..., :3] * Cn[..., 3:4] / 255, Cn[..., 3:4]])
+            d = np.abs(pmL - pmC).max(-1)[inner]
+            key = ('curb_' if fam == 'curb' else 'snow_edge_') + axis + ('' if far else '_near')
+            if d.max() > 3.0:
+                err('%s: chained pieces differ from the continuous strip (max %.1f, mean %.2f) - visible seam'
+                    % (key, d.max(), d.mean()))
+            notes.append('%-17s continuous-strip reconstruction: max diff %.2f / 255' % (key, d.max()))
+    finally:
+        R.straight_frame, R.straight_keep = sf, sk
+    # corner pieces must continue the straight pieces exactly next to the cut lines they share
+    corner_x = {('curb_corner', 1, 1): 'x_far', ('curb_corner', -1, 1): 'x_far', ('curb_corner', -1, -1): 'x_near',
+                ('curb_corner', 1, -1): 'x_near', ('curb_inner', 1, 1): 'x_near', ('curb_inner', -1, 1): 'x_near',
+                ('curb_inner', -1, -1): 'x_far', ('curb_inner', 1, -1): 'x_far'}
+    corner_y = {('curb_corner', 1, 1): 'y_near', ('curb_corner', -1, 1): 'y_far', ('curb_corner', -1, -1): 'y_far',
+                ('curb_corner', 1, -1): 'y_near', ('curb_inner', 1, 1): 'y_far', ('curb_inner', -1, 1): 'y_near',
+                ('curb_inner', -1, -1): 'y_near', ('curb_inner', 1, -1): 'y_far'}
+    R.straight_keep = lambda fr, axis: np.ones((fr.h, fr.w), bool)
+    try:
+        for fam in ('curb_corner', 'curb_inner', 'snow_corner', 'snow_inner'):
+            for qd, (sx, sy) in SIDES.items():
+                inner = fam.endswith('inner')
+                cimg, cfr = (R.curb_corner if fam.startswith('curb') else R.snow_corner)(qd, inner)
+                C = np.asarray(cimg).astype(np.float32)
+                ys, xs = np.mgrid[0:cfr.h, 0:cfr.w].astype(np.float32) + 0.5
+                pa, qb = sx * ((xs - cfr.ax) + 2 * (ys - cfr.ay)), sy * ((xs - cfr.ax) - 2 * (ys - cfr.ay))
+                cfam = 'curb_corner' if fam in ('curb_corner', 'snow_corner') else 'curb_inner'
+                worst = 0.0
+                for axis, side, band, off in (('x', corner_x[(cfam, sx, sy)], (pa > 128 - 18) & (pa < 128),
+                                               (sx * 32, sx * 16)),
+                                              ('y', corner_y[(cfam, sx, sy)], (qb > 128 - 18) & (qb < 128),
+                                               (sy * 32, -sy * 16))):
+                    far = side.endswith('far')
+                    fn = R.curb_straight if fam.startswith('curb') else R.snow_straight
+                    simg, sfr = fn(axis, far, 0)
+                    S_ = np.zeros_like(C)
+                    canvas = Image.new('RGBA', (cfr.w, cfr.h), (0, 0, 0, 0))
+                    canvas.alpha_composite(simg, (cfr.ax + off[0] - sfr.ax, cfr.ay + off[1] - sfr.ay)) \
+                        if (0 <= cfr.ax + off[0] - sfr.ax and 0 <= cfr.ay + off[1] - sfr.ay) else None
+                    if not (0 <= cfr.ax + off[0] - sfr.ax and 0 <= cfr.ay + off[1] - sfr.ay):
+                        big = Image.new('RGBA', (cfr.w + 400, cfr.h + 400), (0, 0, 0, 0))
+                        big.alpha_composite(simg, (200 + cfr.ax + off[0] - sfr.ax, 200 + cfr.ay + off[1] - sfr.ay))
+                        canvas = big.crop((200, 200, 200 + cfr.w, 200 + cfr.h))
+                    S_ = np.asarray(canvas).astype(np.float32)
+                    op = S_[..., 3] >= 250                      # erode 2 px: skip the anti-aliasing fringe, whose
+                    for _ in range(2):                            # colour legitimately depends on what lies beneath
+                        op = op & np.roll(op, 1, 0) & np.roll(op, -1, 0) & np.roll(op, 1, 1) & np.roll(op, -1, 1)
+                    sel = band & op
+                    if sel.any():
+                        worst = max(worst, float(np.abs(C[..., :3] - S_[..., :3]).max(-1)[sel].max()))
+                key = '%s_%s' % (fam, qd)
+                if worst > 6:
+                    err('%s does not continue the straight pieces at its cut lines (max diff %.1f)' % (key, worst))
+                notes.append('%-15s joins straights: max diff %.1f' % (key, worst))
+    finally:
+        R.straight_keep = sk
+    # variants must equal the base piece near the cut lines (so any mix of variants joins seamlessly)
+    for (fam, axis, far), (img0, fr0) in singles.items():
+        fn = R.curb_straight if fam == 'curb' else R.snow_straight
+        a0 = np.asarray(img0).astype(np.float32)
+        ys, xs = np.mgrid[0:fr0.h, 0:fr0.w].astype(np.float32) + 0.5
+        q = (xs - fr0.ax) + 2 * (ys - fr0.ay) if axis == 'x' else (xs - fr0.ax) - 2 * (ys - fr0.ay)
+        band = (np.abs(q) > 64 - 10) & (np.abs(q) < 64)
+        for v in (1, 2):
+            av = np.asarray(fn(axis, far, v)[0]).astype(np.float32)
+            pm0 = np.dstack([a0[..., :3] * a0[..., 3:4] / 255, a0[..., 3:4]])
+            pmv = np.dstack([av[..., :3] * av[..., 3:4] / 255, av[..., 3:4]])
+            dmax = np.abs(pm0 - pmv).max(-1)[band].max()
+            key = ('curb_' if fam == 'curb' else 'snow_edge_') + axis + ('' if far else '_near')
+            if dmax > 3.0:
+                err('%s_%d differs from %s next to its cut lines (max %.1f): variants would show a seam' % (key, v, key,
+                                                                                                          dmax))
 
 
 def main():
@@ -223,17 +330,8 @@ def main():
             clashes += canvas_put(cv, owner, n, k, 150 + n * step[0], 300 + n * step[1])
         if clashes:
             err('%s: chained pieces overlap on %d px' % (base, clashes))
-        pm = cv[..., :3] * cv[..., 3:4]
-        pm = np.dstack([pm, cv[..., 3:4] * 255])
-        dx = np.abs(pm[:, 1:] - pm[:, :-1]).sum(-1)
-        cross = (owner[:, 1:] != owner[:, :-1]) & (owner[:, 1:] >= 0) & (owner[:, :-1] >= 0)
-        inside = (owner[:, 1:] == owner[:, :-1]) & (owner[:, 1:] >= 0)
-        # compare against neighbours within the same band of rows (content is similar)
-        r = dx[cross].mean() / max(dx[inside].mean(), 1e-3) if cross.any() else 0
-        if r > 1.6:
-            err('%s: visible seam between chained pieces (ratio %.2f)' % (base, r))
-        gap_rows = 0
-        notes.append('%-17s chain: overlap 0, seam ratio %.2f' % (base, r))
+        r = 0.0
+        notes.append('%-17s chain of 4 (variants mixed): no overlap' % base)
 
     # corners vs adjacent straights: no overlap
     piece_for = {('curb_corner', 1, 1): ('curb_x', 'curb_y_near'), ('curb_corner', -1, 1): ('curb_x', 'curb_y'),
@@ -263,6 +361,13 @@ def main():
                 clashes += canvas_put(cv, owner, 10 + n, yk, x, y)
             if clashes:
                 err('%s overlaps its adjacent straight pieces on %d px' % (key, clashes))
+
+    # exact reconstruction: a continuous 2-cell strip rendered by the generator == the chain of 1-cell pieces
+    try:
+        import gen_roads as R
+        recon(R)
+    except ImportError as e:
+        warn('reconstruction test skipped (%s)' % e)
 
     # markings visible on asphalt
     if 'road_asphalt' in tex:

@@ -360,6 +360,28 @@ function pageWithFragments(page, frags) {
   return page.replace('<script src="game.js"></script>', '<script>window.__FV_FRAGMENTS = ' + JSON.stringify(frags) + ';</script>\n<script src="game.js"></script>');
 }
 
+/**
+ * (v3.5) split the supporting files into publishes of <= `size` files. The files the page boots from
+ * (game.js, lib/, every manifest.json) go in the LAST publish: a page opened between two publishes then
+ * runs the previous version with its own manifests (an update in place) instead of new manifests that
+ * point at pictures still missing, or old code with new manifests. An atlas .png and its .json (same
+ * name) always travel together, so a picture never meets the frame list of another build.
+ */
+function publishBatches(files, size) {
+  const isBoot = (p) => p === 'game.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p);
+  const boot = files.filter(isBoot);
+  const groups = new Map();
+  for (const p of files.filter((f) => !isBoot(f))) { const k = p.replace(/\.[^./]+$/, ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
+  const batches = [[]];
+  for (const g of groups.values()) {
+    if (batches[batches.length - 1].length + g.length > size) batches.push([]);
+    batches[batches.length - 1].push(...g);
+  }
+  if (batches[batches.length - 1].length + boot.length > size) batches.push([]);
+  batches[batches.length - 1].push(...boot);
+  return batches.filter((b) => b.length);
+}
+
 // ------------------------------------------------------------------ build
 async function main() {
   const t0 = Date.now();
@@ -504,8 +526,9 @@ async function main() {
     root: path.relative(path.dirname(ROOT), OUT).split(path.sep).join('/'),
     files: supporting,
     // more than one publish's worth of files: send batch 1 with the page, then the next batches to the same url
-    batches: supporting.length > LIMITS.files - 5 ? Array.from({ length: Math.ceil(supporting.length / 250) }, (_, i) => supporting.slice(i * 250, i * 250 + 250)) : undefined,
-    note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link.' : ''),
+    // (the boot files — game.js, lib/, the manifests — are in the last batch: see publishBatches)
+    batches: supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : undefined,
+    note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : ''),
   }, null, 1));
 
   const byExt = {};

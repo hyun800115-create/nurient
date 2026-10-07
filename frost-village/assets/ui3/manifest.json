@@ -376,14 +376,14 @@
     112
    ],
    "minSize": [
-    84,
-    70
+    88,
+    72
    ],
    "contentInset": [
+    34,
+    14,
     16,
-    12,
-    12,
-    20
+    22
    ],
    "notes": "Mission row card (9-slice, warm paper, orange tab on the left, red push-pin). Use >= 120 x 80."
   },
@@ -399,14 +399,14 @@
     112
    ],
    "minSize": [
-    84,
-    70
+    88,
+    72
    ],
    "contentInset": [
+    34,
+    14,
     16,
-    12,
-    12,
-    20
+    22
    ],
    "notes": "Completed mission card: mint face, green tab, gold pin, check seal top-right. Same size / margins as ui_mission_card (swap in place)."
   },
@@ -426,12 +426,12 @@
     98
    ],
    "contentInset": [
-    0,
-    0,
-    0,
-    0
+    26,
+    46,
+    26,
+    30
    ],
-   "notes": "Mission board panel (wooden frame + cork, snow on the top rail). Content area = inside the cork: inset 26 px left/right, 46 px top, 30 px bottom. Use >= 140 x 140."
+   "notes": "Mission board panel (wooden frame + cork, snow on the top rail). contentInset = the cork area. Use >= 140 x 140."
   },
   "ui_progress_bg": {
    "image": "ui_progress_bg",
@@ -484,15 +484,15 @@
   "ui_mission_card": {
    "image": "ui_mission_card",
    "left": 46,
-   "right": 34,
-   "top": 30,
+   "right": 38,
+   "top": 32,
    "bottom": 36
   },
   "ui_mission_card_done": {
    "image": "ui_mission_card_done",
    "left": 46,
-   "right": 34,
-   "top": 30,
+   "right": 38,
+   "top": 32,
    "bottom": 36
   },
   "ui_mission_board": {

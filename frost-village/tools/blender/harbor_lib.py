@@ -190,10 +190,11 @@ def bollard_model(name, loc, s=1.0, rope=False, snow=True, seed=0):
     if rope:
         objs.append(torus(name + '_loop', 0.14 * s, 0.03 * s, (x, y, z + 0.2 * s), mats=[flat(ROPE, 0.85)], M=24,
                           K=8))
-        objs.append(L.smooth_tube(name + '_line', [(x + 0.12 * s, y - 0.06 * s, z + 0.2 * s),
-                                                   (x + 0.4 * s, y - 0.3 * s, z + 0.08 * s),
-                                                   (x + 0.7 * s, y - 0.62 * s, z - 0.02)], 0.028 * s,
+        objs.append(L.smooth_tube(name + '_line', [(x + 0.1 * s, y - 0.1 * s, z + 0.2 * s),
+                                                   (x + 0.22 * s, y - 0.26 * s, z + 0.1 * s),
+                                                   (x + 0.3 * s, y - 0.34 * s, z + 0.04 * s)], 0.028 * s,
                                   flat(ROPE, 0.85)))
+        objs += rope_coil(name + '_coil', (x + 0.36 * s, y - 0.4 * s, z), r=0.13 * s, turns=2, rr=0.028 * s)
     return objs
 
 

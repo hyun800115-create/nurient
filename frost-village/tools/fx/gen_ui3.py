@@ -61,6 +61,15 @@ TINT = {'gold': '#D0701A', 'red': '#A0201A', 'blue': '#2A55B0', 'green': '#2E7A3
         'purple': '#5A30B0', 'silver': '#7F93B5', 'wood': '#7A4420', 'paper': '#B8986A', 'navy': '#1E2840'}
 
 
+def canvas(scale=1.0, S=96):
+    """S x S canvas; scale < 1 shrinks the drawing about the centre (keeps outlines + drop shadow inside the frame)."""
+    c = F.Canvas(S, S)
+    if scale != 1.0:
+        c.X = S / 2 + (c.X - S / 2) / scale
+        c.Y = S / 2 + (c.Y - S / 2) / scale
+    return c
+
+
 def shadow(c, d, opacity=0.32, dy=3.0, sigma=2.2, ow=3.0):
     c.shadow(c.cov(d - ow), dy=dy, sigma=sigma, opacity=opacity)
 
@@ -82,7 +91,7 @@ def star(c, x, y, ro, ri, n=5, rot_deg=-90, round_=1.5):
 # =========================================================================== icons (96 x 96)
 def icon_mission():
     """Mission: wooden clipboard with a silver clip and a checklist (two rows ticked, one open)."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.94)
     board = F.sd_box(c.X, c.Y, 48, 53, 30, 38, 8)
     paper = F.sd_box(c.X, c.Y, 48, 57, 23, 29, 3)
     clip = F.sd_box(c.X, c.Y, 48, 19, 15, 7, 3.5)
@@ -135,7 +144,7 @@ def icon_fame():
 
 def icon_title():
     """Title: gold crown with pearls and gems above a red ribbon banner."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.97)
     body = F.sd_polygon(c.X, c.Y, [(19, 58), (16, 26), (34, 40), (48, 20), (62, 40), (80, 26), (77, 58)]) - 2.5
     band = F.sd_box(c.X, c.Y, 48, 58, 30, 7.5, 3.5)
     balls = [(16.5, 23.5, 5.2), (48, 16.5, 5.8), (79.5, 23.5, 5.2)]
@@ -161,7 +170,7 @@ def icon_title():
 
 def icon_delivery():
     """Delivery: round toy-like retro truck (red cab, wooden cargo bed with crates) with speed lines."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.95)
     cab = F.smin(F.sd_box(c.X, c.Y, 71, 52, 15, 17, 8), F.sd_box(c.X, c.Y, 76, 62, 14, 9, 7), 3)
     bed = F.sd_box(c.X, c.Y, 37, 61, 25, 7, 2.5)
     chassis = F.sd_box(c.X, c.Y, 54, 68, 38, 4.5, 3)
@@ -171,7 +180,7 @@ def icon_delivery():
     def taper(x0, x1, y, r):
         tt = np.clip((c.X - x0) / (x1 - x0), 0, 1)
         return F.sd_segment(c.X, c.Y, x0, y, x1, y, 0) - (1.3 + (r - 1.3) * tt)
-    lines = U(taper(5, 13, 40, 2.6), taper(4, 12, 52, 2.8))
+    lines = U(taper(8, 15, 40, 2.6), taper(7, 14, 52, 2.8))
     allsh = U(cab, bed, chassis, *[F.sd_box(c.X, c.Y, x, y, w, h, 2.5) for x, y, w, h in crates],
               *[F.sd_circle(c.X, c.Y, x, y, 10.5) for x, y in wheels])
     shadow(c, U(allsh, lines))
@@ -220,7 +229,7 @@ def icon_request():
 
 def icon_event():
     """Event: party popper (striped cone) bursting confetti, curly streamers and stars."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.98)
     Xc, Yc = rot(c, 34, 62, 45)
     cone = F.sd_polygon(Xc, Yc, [(34, 98), (20, 44), (48, 44)]) - 2.0
     mouth = F.sd_ellipse(Xc, Yc, 34, 44, 15.5, 5.5)
@@ -282,7 +291,7 @@ def icon_goal():
 
 def icon_explore():
     """Explore: brass compass with a red/white needle pointing north-east."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.94)
     cx, cy = 48, 52
     case = F.sd_circle(c.X, c.Y, cx, cy, 36)
     bail = np.abs(F.sd_circle(c.X, c.Y, cx, 12, 7.5)) - 2.6
@@ -347,7 +356,7 @@ def icon_calendar():
 
 def icon_day():
     """Day: glossy round sun with rounded rays."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.95)
     cx, cy = 48, 48
     rays = None
     for k in range(10):
@@ -413,7 +422,7 @@ def icon_ring():
 
 def icon_baby():
     """Baby: chubby sleeping baby face in a mint bonnet with a frill and a pink pacifier."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.96)
     cx, cy = 48, 50
     bonnet = F.sd_circle(c.X, c.Y, cx, cy - 2, 35)
     frill = None
@@ -446,7 +455,7 @@ def icon_baby():
 def icon_flower():
     """Farewell: a gentle white chrysanthemum (국화) - three layers of narrow petals - with leaves and a lavender
     ribbon tied around the stem."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.955)
     cx, cy = 50, 33
     stem = F.sd_polyline(c.X, c.Y, [(cx, cy + 8), (48, 62), (44, 90)], 2.8)
     Xl, Yl = rot(c, 35, 60, -38)
@@ -504,7 +513,7 @@ def icon_heart_pair():
 
 def icon_steer():
     """Drive: retro ivory steering wheel with chrome spokes and a red horn button."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.98)
     cx, cy = 48, 50
     rim = np.abs(F.sd_circle(c.X, c.Y, cx, cy, 33)) - 6.0
     spokes = None
@@ -531,7 +540,7 @@ def icon_steer():
 
 def icon_timer():
     """Timer: silver stopwatch with a red countdown wedge and hand."""
-    c = F.Canvas(96, 96)
+    c = canvas(0.98)
     cx, cy = 48, 56
     case = F.sd_circle(c.X, c.Y, cx, cy, 33)
     crown = U(F.sd_box(c.X, c.Y, cx, 17, 5.5, 5, 1.5), F.sd_box(c.X, c.Y, cx, 11, 9, 3.5, 2))
@@ -624,10 +633,10 @@ def wing(c, cx, cy, side):
     """Small angel wing behind the badge: 4 rounded feathers fanning out (returns a list, back -> front)."""
     out = []
     for k in range(4):
-        x = cx + side * (16 + k * 6.5)
-        y = cy - 6 + k * 7.5
+        x = cx + side * (12 + k * 5.5)
+        y = cy - 6 + k * 7.0
         X2, Y2 = rot(c, x, y, -side * (20 + k * 14))
-        out.append(F.sd_ellipse(X2, Y2, x + side * (6 - k), y, 8 + (3 - k) * 2.6, 5.2))
+        out.append(F.sd_ellipse(X2, Y2, x + side * (4 - k), y, 7 + (3 - k) * 2.2, 4.8))
     return out[::-1]
 
 
@@ -739,7 +748,7 @@ BADGES = [('ui_badge_rank_%d' % n, (lambda n=n: badge_rank(n)),
 
 # =========================================================================== 9-slices
 CARD_W, CARD_H = 176, 112
-CARD_MARGINS = dict(left=46, right=34, top=30, bottom=36)
+CARD_MARGINS = dict(left=46, right=38, top=32, bottom=36)
 
 
 def mission_card(done=False):
@@ -789,11 +798,11 @@ def mission_card(done=False):
     part(c, head, GOLD if done else RED, ow=1.8, bevel=3.5, gloss=0.0, hi=0.6, spec=0.5)
     EA.glossy_spot(c, px_ - 2.4, py_ - 2.6, 2.4, 1.4, -35, 0.85, 0.4)
     if done:
-        sx, sy = W - 20, 17
-        seal = F.sd_circle(c.X, c.Y, sx, sy, 11.5)
-        c.shadow(c.cov(seal), dy=2, sigma=1.6, opacity=0.3)
+        sx, sy = W - 19, 15.5
+        seal = F.sd_circle(c.X, c.Y, sx, sy, 10.5)
+        c.shadow(c.cov(seal), dy=1.5, sigma=1.3, opacity=0.3)
         part(c, seal, GREEN, ow=2.0, bevel=4, gloss=0.3, hi=0.55)
-        tick = F.sd_polyline(c.X, c.Y, [(sx - 5.5, sy + 0.5), (sx - 1.5, sy + 4.5), (sx + 5.5, sy - 4)], 2.2)
+        tick = F.sd_polyline(c.X, c.Y, [(sx - 5.0, sy + 0.5), (sx - 1.4, sy + 4.1), (sx + 5.0, sy - 3.6)], 2.0)
         c.fill(tick, WHITE)
     return c.image()
 
@@ -811,10 +820,6 @@ def mission_board():
     cork = F.sd_box(c.X, c.Y, W / 2, 24 + (H - 34) / 2, W / 2 - 24, (H - 34) / 2 - 16, 6)
     c.shadow(c.cov(frame), dy=4, sigma=3.0, opacity=0.32)
     part(c, frame, WOOD_D, ow=3.0, bevel=8, gloss=0.25, tint='wood')
-    # planks: subtle grain lines on the frame
-    for k in range(4):
-        yy = 34 + k * 40
-        c.paint(c.cov(np.abs(c.Y - yy) - 0.6) * c.cov(frame + 3) * c.cov(-(cork - 3)), hexc('#7A4A28'), 0.25)
     nf = F.bevel_normals(-cork, 4, c.px)
     nf[..., 0] *= -1
     nf[..., 1] *= -1
@@ -831,7 +836,7 @@ def mission_board():
     snow = F.smin(snow, drip, 2)
     c.shadow(c.cov(snow), dy=2.0, sigma=1.6, opacity=0.25)
     part(c, snow, ('#FFFFFF', '#DCE6F2', '#7E93B5'), ow=1.8, bevel=4, gloss=0.25, tint='#7E9CCC')
-    for (x, y) in ((22, 50), (W - 22, 50), (22, H - 22), (W - 22, H - 22)):
+    for (x, y) in ((17, 45), (W - 17, 45), (17, H - 22), (W - 17, H - 22)):
         b = F.sd_circle(c.X, c.Y, x, y, 4.2)
         part(c, b, STEEL, ow=1.4, bevel=2, gloss=0.0, spec=0.4)
     return c.image()
@@ -871,14 +876,14 @@ def progress_fill():
 
 
 NINE = {
-    'ui_mission_card': (lambda: mission_card(False), CARD_MARGINS, [16, 12, 12, 20],
+    'ui_mission_card': (lambda: mission_card(False), CARD_MARGINS, [34, 14, 16, 22],
                         'Mission row card (9-slice, warm paper, orange tab on the left, red push-pin). Use >= 120 x 80.'),
-    'ui_mission_card_done': (lambda: mission_card(True), CARD_MARGINS, [16, 12, 12, 20],
+    'ui_mission_card_done': (lambda: mission_card(True), CARD_MARGINS, [34, 14, 16, 22],
                              'Completed mission card: mint face, green tab, gold pin, check seal top-right. '
                              'Same size / margins as ui_mission_card (swap in place).'),
-    'ui_mission_board': (mission_board, BOARD_MARGINS, [0, 0, 0, 0],
-                         'Mission board panel (wooden frame + cork, snow on the top rail). Content area = inside the '
-                         'cork: inset 26 px left/right, 46 px top, 30 px bottom. Use >= 140 x 140.'),
+    'ui_mission_board': (mission_board, BOARD_MARGINS, [26, 46, 26, 30],
+                         'Mission board panel (wooden frame + cork, snow on the top rail). contentInset = the cork area. '
+                         'Use >= 140 x 140.'),
     'ui_progress_bg': (progress_bg, BAR_MARGINS, [0, 0, 0, 0], 'Progress bar trough (dark inset pill). Height 30 '
                                                                '(stretch width only, or keep height >= 28).'),
     'ui_progress_fill': (progress_fill, BAR_MARGINS, [0, 0, 0, 0],

@@ -50,8 +50,12 @@ _PAINT = {}
 def paint(col, rough=0.32, coat=0.55, name=None):
     """Glossy toy-plastic paint (albedo compensated like prop_lib.flat, + a clear coat)."""
     key = (col, rough, coat)
-    if key in _PAINT and _PAINT[key].name in bpy.data.materials:
-        return _PAINT[key]
+    if key in _PAINT:
+        try:
+            if _PAINT[key].name in bpy.data.materials:      # stale after a scene reset -> ReferenceError
+                return _PAINT[key]
+        except ReferenceError:
+            pass
     c = L.adj(col)
     m = bc.mat(name or ('paint_' + c.lstrip('#') + '_%g' % rough), c, rough=rough)
     p = m.node_tree.nodes.get('Principled BSDF')

@@ -107,6 +107,15 @@ def build_gull():
         sh.parent = root
         sh.location = (s * 0.1, -0.02, 0.06)
         wings[s] = (sh, el)
+    folded = []
+    for s in (-1, 1):
+        fw = ell('gfold%d' % s, 1.0, (s * 0.115, 0.1, 0.07), grey, (0.05, 0.2, 0.075), rot=(-14, s * 10, s * -4))
+        ft = ell('gfoldt%d' % s, 1.0, (s * 0.06, 0.29, 0.085), tip, (0.035, 0.1, 0.028), rot=(2, 0, s * -14))
+        fs = ell('gfolds%d' % s, 0.02, (s * 0.074, 0.33, 0.1), flat(WHITE, 0.5), (1, 1, 0.6), segs=10, rings=6)
+        fl = ell('gfoldl%d' % s, 1.0, (s * 0.128, 0.02, 0.07), flat(WHITE, 0.55), (0.03, 0.1, 0.05), rot=(-14, 0, 0))
+        for o in (fw, ft, fs, fl):
+            o.parent = root
+            folded.append(o)
     legs = {}
     leg_m = flat(LEG, 0.45)
     for s in (-1, 1):
@@ -120,21 +129,22 @@ def build_gull():
                           top=leg_m, side=leg_m, bevel=0.004)
         foot.parent = hip
         legs[s] = hip
-    return {'group': g, 'root': root, 'neck': neck, 'jaw': jaw, 'wings': wings, 'legs': legs}
+    arts = [o for o in bpy.data.objects if o.name.startswith('gw') and o.type == 'MESH']
+    return {'group': g, 'root': root, 'neck': neck, 'jaw': jaw, 'wings': wings, 'legs': legs, 'folded': folded,
+            'arts': arts}
 
 
 def set_wing(B, up, hand, sweep=0.0, fold=0.0, fwd=0.0):
-    """up: shoulder elevation (deg, + = wing tip up); hand: extra bend of the outer wing (deg, + = up);
-    sweep: wing swept back (deg); fold 0..1 = folded against the body; fwd = wing rotated forward (braking)."""
+    """Spread wings: up = shoulder elevation (deg, + = tips up), hand = extra bend of the outer wing (+ = up),
+    sweep = swept back (deg), fwd = pitched forward (braking).  fold=1 shows the folded-wing meshes instead."""
+    folded = fold >= 0.5
+    for o in B['arts']:
+        o.hide_render = o.hide_viewport = folded
+    for o in B['folded']:
+        o.hide_render = o.hide_viewport = not folded
     for s, (sh, el) in B['wings'].items():
-        if fold > 0:
-            # folded: wing rotated back along the body, lying flat on the side
-            sh.rotation_euler = Euler((math.radians(-5 + fwd), math.radians(-s * (12 + 70 * (1 - fold))),
-                                       math.radians(s * (-(sweep + 80 * fold)))), 'XYZ')
-            el.rotation_euler = Euler((0, 0, math.radians(s * (-150 * fold))), 'XYZ')
-        else:
-            sh.rotation_euler = Euler((math.radians(fwd), math.radians(-s * up), math.radians(-s * sweep)), 'XYZ')
-            el.rotation_euler = Euler((0, math.radians(-s * hand), math.radians(-s * sweep * 0.6)), 'XYZ')
+        sh.rotation_euler = Euler((math.radians(fwd), math.radians(-s * up), math.radians(s * sweep)), 'XYZ')
+        el.rotation_euler = Euler((0, math.radians(-s * hand), math.radians(s * sweep * 0.6)), 'XYZ')
 
 
 def set_legs(B, tuck):

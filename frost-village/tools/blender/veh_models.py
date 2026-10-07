@@ -203,7 +203,7 @@ def b_retro_bus():
     B.point('doorPoints', (-1.6, (door[0] + door[1]) / 2, 0.0), many=True)
     B.point('doorPoints', (1.6, (door[0] + door[1]) / 2, 0.0), many=True)
     B.point('cargoPoint', (0.0, 1.9, 2.6))
-    B.point('boardPoint', (0.0, -2.36, 2.34))
+    B.point('routeBoardPoint', (0.0, -2.36, 2.34))
     B.driver_wheel = Vector((-0.55, -1.86, 1.6))
     return B
 
@@ -381,6 +381,7 @@ def b_horse_sleigh_bus():
             TT.roof_curved('hsb_roof', 2 * W2 + 0.04, cy1 - cy0, z0 + 1.82 - 0.03, rise=0.2, col=green, over=0.1,
                            seed=6, long_snow=False)
         L.group(VL.BA.top_level(rc.objs), 'hsb_roofg', loc=(0, (cy0 + cy1) / 2, 0))
+        VL.snow_cap('hsb_roofsnow', 1.1, 1.6, (-0.15, 1.0, z0 + 1.82 + 0.17), t=0.08, seed=12)
         rbox('hsb_trunk', (0.9, 0.7, 0.42), (0.2, 2.6, z0 + 1.98), paint('#8A5A33', 0.6), r=0.06)
         rbox('hsb_trunkb', (0.94, 0.08, 0.44), (0.2, 2.6, z0 + 1.97), paint(gold, 0.35), r=0.02)
         L.snow_slab('hsb_trunksnow', 0.7, 0.55, 0.06, (0.2, 2.6, z0 + 2.4), seed=8)
@@ -1023,7 +1024,9 @@ def b_fire_truck():
         VL.bumper('ft_bumpF', -3.18, 2.0, 0.55)
         VL.bumper('ft_bumpR', 3.12, 2.0, 0.55, mat=flat('#2B2F3A', 0.5))
         rbox('ft_cabtop', (1.2, 0.36, 0.1), (0, -2.5, 2.4), paint('#2B2F3A', 0.4), r=0.04)
-        VL.snowflake_badge('ft_door', (-W_ / 2 - 0.02, -2.4, 1.05), r=0.16, psi=-90.0, bg=gold)
+        import town_lib as TL
+        TL.emblem_at('ft_em', lambda s_: TL.em_helmet(s_, col='#F2C14E'), (-W_ / 2 - 0.03, -2.4, 1.1), psi=-90.0,
+                     scale=0.42)
         VL.snow_cap('ft_snow', 0.8, 0.6, (0.4, 2.2, 2.0), t=0.05, seed=11)
         L.point_light('ft_inlight', (0, -2.4, 2.0), 'window', 8.0, 0.3)
     collect(B, build)

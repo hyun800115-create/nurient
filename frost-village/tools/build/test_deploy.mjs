@@ -1,7 +1,7 @@
 // Frost Village — deployment tests (GitHub Pages sub-path + claude.ai Artifact host emulation).
 //
 //   node frost-village/tools/build/build_artifact.mjs        (build dist/artifact first)
-//   node frost-village/tools/build/test_deploy.mjs [mode ...] [--quick]
+//   node frost-village/tools/build/test_deploy.mjs [mode ...] [--quick] [--slow]
 //
 // Modes (default: every mode except `sandbox`):
 //   pages        serve the whole repo like GitHub Pages (https://<user>.github.io/nurient/) and open
@@ -38,6 +38,9 @@ fs.mkdirSync(SHOTS, { recursive: true });
 
 const argv = process.argv.slice(2);
 const QUICK = argv.includes('--quick');
+// --slow: every real-time wait x5 (a shared, busy machine renders the game at 1-2 fps: the normal waits time out)
+const SLOW = argv.includes('--slow') ? 5 : 1;
+const T = (ms) => ms * SLOW;
 const ALL = ['pages', 'standalone', 'sandbox', 'sandbox-cors', 'sameorigin', 'raw', 'sandbox-inline'];
 const MODES = argv.filter((a) => !a.startsWith('--'));
 const run = MODES.length ? MODES : ALL.filter((m) => m !== 'sandbox');
@@ -134,7 +137,7 @@ async function testMode(browser, mode) {
   let F = page;   // the frame the game runs in
   const getFrame = async () => {
     if (!frameSel) return page.mainFrame();
-    const h = await page.waitForSelector(frameSel, { timeout: 20000 });
+    const h = await page.waitForSelector(frameSel, { timeout: T(20000) });
     for (let i = 0; i < 100; i++) { const f = await h.contentFrame(); if (f && f.url().startsWith('http')) return f; await sleep(100); }
     throw new Error('iframe never navigated');
   };
@@ -144,7 +147,7 @@ async function testMode(browser, mode) {
   const where = (n) => ev((k) => window.__FV.where(k), n);
   const count = (s, type) => s.player.stack.filter((x) => x === type).length;
   const tapCanvas = async (fy = 0.6) => {
-    const c = await F.waitForSelector('canvas', { timeout: 20000 });
+    const c = await F.waitForSelector('canvas', { timeout: T(20000) });
     const b = await c.boundingBox();            // main-viewport coordinates, also for iframes
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * fy);
   };
@@ -152,7 +155,7 @@ async function testMode(browser, mode) {
     const t1 = Date.now();
     while (!(await ev(() => !!(window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'))).catch(() => false))) {
       if (log.pageErrors.length) throw new Error('page error before the title screen: ' + log.pageErrors[0].split(' <- ')[0]);
-      if (Date.now() - t1 > 120000) throw new Error('title screen not reached in 120 s');
+      if (Date.now() - t1 > T(120000)) throw new Error('title screen not reached in ' + T(120) + ' s');
       await sleep(250);
     }
     return Date.now() - t1;
@@ -160,7 +163,7 @@ async function testMode(browser, mode) {
   const startGame = async () => {             // tap the title (retry: a tap during the title intro can be missed)
     for (let i = 0; i < 4; i++) {
       await tapCanvas(0.6);
-      const ok = await waitFor(() => window.__FV.state && window.__FV.game.scene.isActive('UI'), 12000).then(() => true, () => false);
+      const ok = await waitFor(() => window.__FV.state && window.__FV.game.scene.isActive('UI'), T(12000)).then(() => true, () => false);
       if (ok) return i + 1;
     }
     throw new Error('tap to start did not reach the village');
@@ -168,7 +171,7 @@ async function testMode(browser, mode) {
 
   let fatal = null;
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'load', timeout: T(60000) });
     F = await getFrame();
     step('page loaded', true, F.url().replace(/^https?:\/\/[^/]+/, ''));
     const env = await ev(() => {
@@ -198,7 +201,7 @@ async function testMode(browser, mode) {
     const audio = await ev(() => { const sm = window.__FV.game.sound; return { locked: sm.locked, ctx: sm.context ? sm.context.state : 'html5', music: !!(sm.sounds || []).find((x) => x.key === 'bgm_village' && x.isPlaying) }; });
     step('tap to start -> village', s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue} taps=${taps}`);
     {
-      const ok = await waitFor(() => ['bgm_village', 'amb_wind', 'amb_sea', 'amb_fire'].every((k) => window.__FV.game.cache.audio.exists(k)), 30000).then(() => true).catch(() => false);
+      const ok = await waitFor(() => ['bgm_village', 'amb_wind', 'amb_sea', 'amb_fire'].every((k) => window.__FV.game.cache.audio.exists(k)), T(30000)).then(() => true).catch(() => false);
       step('village music + ambience loaded after the title', ok);
     }
     step('audio unlocked after tap', !audio.locked && (audio.ctx === 'running' || audio.ctx === 'html5'), JSON.stringify(audio));
@@ -206,31 +209,31 @@ async function testMode(browser, mode) {
     step('no placeholder art', warned.length === 0, warned.slice(0, 6).join(', '));
 
     // ---- first loop: net -> grill -> shelf -> customers pay -> cash
-    await walkTo(F, await where('net'), { tol: 18, timeout: 15000 });
-    await waitFor(() => { const s = window.__FV.state(); return s.player.stack.length >= Math.min(4, s.player.capacity); }, 30000).catch(() => {});
+    await walkTo(F, await where('net'), { tol: 18, timeout: T(15000) });
+    await waitFor(() => { const s = window.__FV.state(); return s.player.stack.length >= Math.min(4, s.player.capacity); }, T(30000)).catch(() => {});
     s = await st();
     step('fishing at the net', count(s, 'item_fish_raw') >= 1, `raw=${count(s, 'item_fish_raw')} anim=${s.player.anim}`);
     if (!QUICK) {
       // (v3.5) the grill only cooks while someone works it: the chief stands on its work spot (the fish he
       // carries go straight in) until everything is cooked
-      await walkTo(F, (await where('op:grill')) || (await where('grillIn')), { tol: 14, timeout: 15000 });
-      await waitFor(() => window.__FV.state().player.stack.filter((x) => x === 'item_fish_raw').length === 0, 15000).catch(() => {});
-      await waitFor(() => { const g = window.__FV.state().stations.grill; return g.in === 0 && g.out > 0; }, 30000).catch(() => {});
-      await walkTo(F, await where('grillOut'), { tol: 18, timeout: 15000 });
-      await waitFor(() => window.__FV.state().player.stack.some((x) => x === 'item_fish_cooked'), 15000).catch(() => {});
+      await walkTo(F, (await where('op:grill')) || (await where('grillIn')), { tol: 14, timeout: T(15000) });
+      await waitFor(() => window.__FV.state().player.stack.filter((x) => x === 'item_fish_raw').length === 0, T(15000)).catch(() => {});
+      await waitFor(() => { const g = window.__FV.state().stations.grill; return g.in === 0 && g.out > 0; }, T(30000)).catch(() => {});
+      await walkTo(F, await where('grillOut'), { tol: 18, timeout: T(15000) });
+      await waitFor(() => window.__FV.state().player.stack.some((x) => x === 'item_fish_cooked'), T(15000)).catch(() => {});
       await sleep(1500);
       s = await st();
       step('grilled fish picked up', count(s, 'item_fish_cooked') > 0, `cooked=${count(s, 'item_fish_cooked')}`);
       await shot('3_carry');
-      await walkTo(F, await where('shelf'), { tol: 18, timeout: 15000 });
-      await waitFor(() => window.__FV.state().player.stack.length === 0, 15000).catch(() => {});
+      await walkTo(F, await where('shelf'), { tol: 18, timeout: T(15000) });
+      await waitFor(() => window.__FV.state().player.stack.length === 0, T(15000)).catch(() => {});
       // (v2+) no clerk yet: the chief rings the customers up at the register
-      if (await where('register')) await walkTo(F, await where('register'), { tol: 16, timeout: 15000 });
-      await waitFor(() => window.__FV.state().market.cash > 0, 40000).catch(() => {});
+      if (await where('register')) await walkTo(F, await where('register'), { tol: 16, timeout: T(15000) });
+      await waitFor(() => window.__FV.state().market.cash > 0, T(40000)).catch(() => {});
       s = await st();
       step('customers paid', s.market.cash > 0, `cash=${s.market.cash} stock=${s.market.stock}`);
-      await walkTo(F, await where('cash'), { tol: 18, timeout: 15000 });
-      await waitFor(() => window.__FV.state().coins > 0, 15000).catch(() => {});
+      await walkTo(F, await where('cash'), { tol: 18, timeout: T(15000) });
+      await waitFor(() => window.__FV.state().coins > 0, T(15000)).catch(() => {});
       await sleep(1200);
       s = await st();
       step('coins collected', s.coins > 0, `coins=${s.coins}`);
@@ -240,7 +243,7 @@ async function testMode(browser, mode) {
     // ---- save + reload (persistence only expected where localStorage works)
     const before = (await st()).coins;
     await ev(() => window.__FV.save());
-    await page.reload({ waitUntil: 'load' });
+    await page.reload({ waitUntil: 'load', timeout: T(30000) });
     F = await getFrame();
     await waitTitle();
     await sleep(800);

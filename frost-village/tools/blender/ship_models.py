@@ -89,11 +89,11 @@ def b_ferry():
     cap = flat('#C98F55', 0.6)
     gang_t = H.t_at_y(0.6)
     H.bulwark('fbulw', lambda t: 0.3 + 0.62 * sm(-0.55, -0.98, t), hm, white, cap, thick=0.1,
-              gap=(gang_t - 0.05, gang_t + 0.05, -1.0))
+              gap=[(gang_t - 0.05, gang_t + 0.05, -1.0), (gang_t - 0.05, gang_t + 0.05, 1.0)])
     # portholes along the white band (both sides), skip the gangway gap on the near side
     for side in (-1.0, 1.0):
         for k, t in enumerate([-0.62 + 0.124 * j for j in range(12)]):
-            if side < 0 and abs(t - gang_t) < 0.07:
+            if abs(t - gang_t) < 0.07:
                 continue
             p, n = H.side_point(t, 1.36, side, out=0.0)
             SL.porthole('fph%d%d' % (side > 0, k), p, n, r=0.13)
@@ -104,12 +104,13 @@ def b_ferry():
     d1, d1pts = SL.cabin('fdeck1', 3.9, -4.0, 6.2, z1, h1, white, roof=flat('#D3DBE4', 0.7), rf=1.6, rb=0.35)
     zt1 = z1 + h1
     side_windows('fw1', d1pts, zt1 - 0.62, 0.6, 0.56, 0.92,
-                 skip=lambda p: p.y > 5.9 or (p.x < 0 and abs(p.y - 0.6) < 0.6))
+                 skip=lambda p: p.y > 5.9 or abs(p.y - 0.6) < 0.6)
     # gangway door on the near side (-X)
-    dn = Vector((-1, 0, 0))
-    SL.panel('fdoor_f', (-1.95, 0.6, z1 + 0.68), dn, 0.86, 1.36, 0.2, 0.035, flat(WHITE, 0.55))
-    SL.panel('fdoor', (-1.95 - 0.01, 0.6, z1 + 0.66), dn, 0.72, 1.24, 0.16, 0.05, flat('#3D7CC9', 0.5))
-    SL.porthole('fdoorw', Vector((-2.0, 0.6, z1 + 0.95)), dn, r=0.12)
+    for s_ in (-1, 1):                      # gangway doors on both sides (near = -X, far = +X)
+        dn = Vector((s_, 0, 0))
+        SL.panel('fdoor_f%d' % s_, (s_ * 1.95, 0.6, z1 + 0.68), dn, 0.86, 1.36, 0.2, 0.035, flat(WHITE, 0.55))
+        SL.panel('fdoor%d' % s_, (s_ * 1.96, 0.6, z1 + 0.66), dn, 0.72, 1.24, 0.16, 0.05, flat('#3D7CC9', 0.5))
+        SL.porthole('fdoorw%d' % s_, Vector((s_ * 2.0, 0.6, z1 + 0.95)), dn, r=0.12)
     # aft wall: double doors + life ring
     bn = Vector((0, 1, 0))
     SL.panel('fadoor', (0.0, 6.2, z1 + 0.66), bn, 0.9, 1.24, 0.16, 0.05, flat('#3D7CC9', 0.5))
@@ -151,7 +152,7 @@ def b_ferry():
         pts = []
         for t in [H.t_at_y(y) for y in [-5.6 + 0.5 * k for k in range(27)]]:
             x, y = H.xy(t, FE_F, s)
-            if s < 0 and abs(y - 0.6) < 0.55:
+            if abs(y - 0.6) < 0.55:
                 if pts:
                     SL.railing('frail%d_%d' % (s > 0, len(pts)), pts, FE_F + 0.3, h=0.5, closed=False)
                 pts = []
@@ -203,6 +204,7 @@ def b_ferry():
          'pose': layered_pose,
          'points': {'smoke': smk_base, 'stern': stern, 'bow': bow, 'gangway': Vector((gx, gy, FE_F)),
                     'gangwayDeck': Vector((gx + 0.45, gy, FE_F)),
+                    'gangwayFar': Vector((-gx, gy, FE_F)), 'gangwayFarDeck': Vector((-gx - 0.45, gy, FE_F)),
                     'horn': ftop - Vector((0, 0.7, 0.4)), 'deck': deck,
                     'perch': [mtop, Vector((jx, jy, FE_F + 1.82)), Vector((0.0, 7.75, FE_F + 1.82)),
                               Vector((-2.05, -0.5, zt1 + 0.86)), Vector((2.05, -0.5, zt1 + 0.86))],
@@ -359,13 +361,14 @@ def crew_pose_stand(rig, i=0, yaw=0.0, face='face_normal', wave=None):
 
 @ship('trawler_big', 'layered',
       dict(LAYERED_ANIMS, haul={'frames': 6, 'fps': 6, 'repeat': -1, 'layers': ['smoke', 'haul'],
-                                'dirs': ['SE', 'NE']}),
+                                'dirs': ['NE']}),
       length=TR_L, beam=TR_W, samples=24,
       notes='Deep-sea stern trawler (~14 m): blue hull with a high white bow, white wheelhouse with blue windows and a '
             'red snowy roof forward, yellow outrigger booms in a V, yellow funnel, fish boxes on deck, a green net '
             'wound on the drum and an orange A-frame over the stern ramp, a fisherman on deck. haul = the bulging net '
             'bag coming up out of the water under the A-frame (drum turning, two crew pulling, water dripping); '
-            'haul is rendered for SE and NE only (+ mirrors).')
+            'haul is rendered for NE only (stern toward the camera; NW = mirror) - turn the trawler to NE / NW '
+            'before hauling.')
 def b_trawler_big():
     import bld_assets as BA
     g = new_group()
@@ -381,12 +384,14 @@ def b_trawler_big():
         for k, t in enumerate((-0.45, -0.3)):
             p, n = H.side_point(t, 1.45, side)
             SL.porthole('tph%d%d' % (side > 0, k), p, n, r=0.12)
-    # stern ramp (dark slipway sloping into the sea)
-    ry0, ry1 = TR_L / 2 - 1.3, TR_L / 2 + 0.25
-    ln = math.hypot(ry1 - ry0, TR_F + 0.1)
-    ang = math.degrees(math.atan2(TR_F + 0.1, ry1 - ry0))
-    box('tramp', (1.5, ln, 0.08), (0, (ry0 + ry1) / 2, (TR_F - 0.1) / 2 + 0.02), rot=(-ang, 0, 0),
-        mat=L.stripes('#5A6470', '#48505B', 5.0, 'Y', soft=0.06), bevel=0.02, origin='center')
+    # stern ramp: dark ridged slipway plate on the aft deck + an orange stern roller in the bulwark gap
+    box('tramp', (1.5, 1.45, 0.05), (0, TR_L / 2 - 0.72, TR_F - 0.01), mat=L.stripes('#5A6470', '#48505B', 5.0, 'Y',
+                                                                                     soft=0.06), bevel=0.02)
+    cyl('troller', 0.13, 1.5, (0, TR_L / 2 - 0.02, TR_F + 0.05), rot=(0, 90, 0), mat=flat('#E8873A', 0.45), segs=18,
+        origin='center', bevel=0.02)
+    # deck clutter on the working deck: hatch + rope coil
+    box('thatch', (1.1, 0.8, 0.14), (0.35, 2.15, TR_F), mat=flat('#3D7CC9', 0.5), bevel=0.04)
+    SL.torus_coil('tcoil', (-1.25, 4.7, TR_F), r=0.26)
     # wheelhouse (forward)
     white = flat(WHITE, 0.55)
     w1, w1p = SL.cabin('twh1', 3.2, -3.4, -0.5, TR_F, 1.3, white, roof=flat('#D3DBE4', 0.7), rf=0.8, rb=0.25)
@@ -459,7 +464,7 @@ def b_trawler_big():
     fis = BB.crew_rig('fisherman')
     fis.j['root'].parent = g
     fis.rest_loc['root'] = Vector((-0.45, 1.75, TR_F))
-    crew_pose_stand(fis, 0, yaw=-130.0, face='face_smile')
+    crew_pose_stand(fis, 0, yaw=-100.0, face='face_smile')
     # ---- animated layers
     smk_base = ftop + Vector((0, 0.05, 0.05))
     with L.Collect() as cs:
@@ -494,8 +499,9 @@ def build_haul(dy, drum_z, block, net_m, g):
     with L.Collect() as cb:
         blob('thbag', 0.62, (0, 0, 0), net_m, scale=(1.05, 1.0, 1.15), seed=9, amp=0.16, subdiv=3)
         for k, (x, y, z, rz) in enumerate(((0.35, -0.3, 0.2, 30), (-0.3, -0.35, 0.35, 150), (0.1, -0.45, -0.1, 80),
-                                           (-0.42, -0.1, -0.2, 200), (0.45, 0.1, -0.3, 260))):
-            PA.fish_model('thf%d' % k, loc=(x, y, z), rot=(70 + 10 * k, 0, rz), scale=0.48)
+                                           (-0.42, -0.1, -0.2, 200), (0.45, 0.1, -0.3, 260), (-0.1, 0.4, 0.3, 120))):
+            v = Vector((x, y, z)).normalized() * 0.66
+            PA.fish_model('thf%d' % k, loc=tuple(v), rot=(70 + 10 * k, 0, rz), scale=0.5)
         cyl('thknot', 0.12, 0.25, (0, 0, 0.62), mat=flat(NET_ROPE, 0.8), segs=12)
     bag = L.group([o for o in cb.objs if o.parent is None], 'thbagg')
     H['bag'] = bag
@@ -558,12 +564,12 @@ def haul_pose(B, i, n):
     low = max(0.0, 1.0 - (bz + 0.35) / 0.9)                   # 1 when the bag dips
     for k, (o, m) in enumerate(H['splash']):
         a = math.tau * k / len(H['splash']) + ph * 0.3
-        r = 0.7 + 0.25 * low
-        o.location = (r * math.cos(a), by + 0.6 * r * math.sin(a), 0.03 + 0.12 * low)
-        s = 0.12 + 0.2 * low
-        o.scale = (s * 1.3, s * 1.3, s * (0.4 + 0.8 * low))
+        r = 0.62 + 0.2 * low
+        o.location = (r * math.cos(a), by + 0.6 * r * math.sin(a), 0.02 + 0.05 * low)
+        s = 0.07 + 0.11 * low
+        o.scale = (s * 1.4, s * 1.4, s * (0.35 + 0.45 * low))
         o.hide_render = o.hide_viewport = low < 0.05
-        L.set_alpha(m, 0.9)
+        L.set_alpha(m, 1.0)
     lean = 10.0 + 8.0 * math.sin(ph)
     for s, r in zip((-1, 1), H['rigs']):
         p = {'root': (0, 0, 180.0 + s * 20.0), 'spine': (-lean, 0, 0), 'chest': (-lean * 0.3, 0, 0),
@@ -670,11 +676,11 @@ def b_tugboat():
         if anim == 'idle':
             smk.set(i, 2)
             foam.show(False)
-            crew_pose_stand(cap, i, yaw=-150.0, face='face_smile', wave=i)
+            crew_pose_stand(cap, i, yaw=-95.0, face='face_smile', wave=i)
         else:
             smk.set(i, n)
             foam.set(i, n)
-            crew_pose_stand(cap, i, yaw=-20.0, face='face_smile' if i in (1, 2) else 'face_normal')
+            crew_pose_stand(cap, i, yaw=-55.0, face='face_smile' if i in (1, 2) else 'face_normal')
         bpy.context.view_layer.update()
 
     return {'group': g, 'pose': pose, 'rigs': [cap],
@@ -833,7 +839,7 @@ def b_yacht():
     t2 = BB.crew_rig('villager_a')
     t2.j['root'].parent = g
     t2.rest_loc['root'] = Vector((-0.5, 1.75, YT_F))
-    foam = SL.Foam('yfoam', H, n=7, length=0.55, spread=0.65, r0=0.12, r1=0.3, seed=8, splash=3)
+    foam = SL.Foam('yfoam', H, n=7, length=0.5, spread=0.42, r0=0.12, r1=0.24, seed=8, splash=3)
     wash = []
     for k in range(6):
         m = SL.foam_mat('ywm%d' % k)
@@ -843,22 +849,22 @@ def b_yacht():
 
     def pose(B, anim, i, n):
         mov = anim == 'move'
-        bob(B, anim, i, n, amp=(0.02, 0.025), pitch=(0.7, 1.0), roll=(1.0, 0.6), trim=2.5 if mov else 0.0)
+        bob(B, anim, i, n, amp=(0.02, 0.025), pitch=(0.7, 1.0), roll=(1.0, 0.6), trim=1.5 if mov else 0.0)
         if mov:
             foam.set(i, n)
             for k, (o, m) in enumerate(wash):
                 u = ((k + i / float(n)) / len(wash)) % 1.0
                 o.location = (0.55 * math.sin(k * 2.4), YT_L / 2 + 0.3 + 1.4 * u, 0.05)
-                s = 0.22 + 0.3 * u
+                s = (0.22 + 0.3 * u) * (1.0 - 0.7 * u ** 2)
                 o.scale = (s * 1.3, s * 1.3, s * 0.35)
                 o.hide_render = o.hide_viewport = False
-                L.set_alpha(m, 0.95 * (1 - u ** 1.5))
+                L.set_alpha(m, 1.0)
         else:
             foam.show(False)
             for o, m in wash:
                 o.hide_render = o.hide_viewport = True
-        crew_pose_stand(t1, i, yaw=-110.0, face='face_happy', wave=i % 2)
-        crew_pose_stand(t2, i + 1, yaw=-150.0, face='face_smile')
+        crew_pose_stand(t1, i, yaw=-80.0, face='face_happy', wave=i % 2)
+        crew_pose_stand(t2, i + 1, yaw=-110.0, face='face_smile')
         bpy.context.view_layer.update()
 
     return {'group': g, 'pose': pose, 'rigs': [t1, t2],

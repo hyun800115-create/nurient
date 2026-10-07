@@ -56,7 +56,7 @@ POINT_LIST = {'stall': 'stallPoints', 'bay': 'bayPoints', 'wait': 'waitPoints', 
 DIR_FIELD = {'stall': 'stallDirs', 'bay': 'bayDirs', 'wait': 'waitDirs', 'seat': 'seatDirs', 'board': 'boardDirs',
              'staff': 'staffDirs', 'stop': 'stopDir', 'door': 'doorDir'}
 VEH_POINTS = ['cargoPoint', 'doorPoints', 'exhaustPoint', 'steamPoint', 'lightPoints', 'tailPoints', 'sirenPoint',
-              'boardPoint', 'hosePoint', 'rearDoorPoint']
+              'routeBoardPoint', 'hosePoint', 'rearDoorPoint']
 SQ5 = math.sqrt(45.2548 ** 2 + 22.6274 ** 2)       # px per metre along an iso axis on screen (50.6)
 
 
@@ -112,6 +112,34 @@ def veh_images(cache, key, m):
     return base, over
 
 
+def dedupe(frames, tol_mean=0.6, tol_max=40):
+    """[(name, img)] -> (unique [(name, img)], {alias: original}).  Overlay frames of one vehicle are often the
+    same picture (only the wheels / hooves change, and they are not in front of a passenger): near-identical frames
+    are stored once and the atlas JSON gets an alias entry pointing at the same rectangle."""
+    uniq, alias, arrs = [], {}, []
+    for name, im in frames:
+        a = np.asarray(im).astype(np.int16)
+        hit = None
+        for (un, ua) in arrs:
+            if ua.shape == a.shape:
+                d = np.abs(ua - a)
+                if d.mean() <= tol_mean and d.max() <= tol_max:
+                    hit = un
+                    break
+        if hit:
+            alias[name] = hit
+        else:
+            uniq.append((name, im))
+            arrs.append((name, a))
+    return uniq, alias
+
+
+def add_aliases(atlas, alias):
+    for a, orig in alias.items():
+        if orig in atlas['frames']:
+            atlas['frames'][a] = dict(atlas['frames'][orig])
+
+
 def bld_images(cache, m):
     out = {}
     for n in m['frames']:
@@ -155,6 +183,8 @@ def veh_entry(k, m, atlas_key, over_key):
          'wheels': {'radiusM': m.get('wheelR'), 'turnsPerLoopDeg': round(360.0 / m.get('wheelSym', 3) *
                                                                         m.get('wheelTurnsPerLoop', 1), 1)},
          'notes': m.get('notes', '')}
+    if 'boardPoint' in m and 'routeBoardPoint' not in m:      # older caches named the bus route board this way
+        m['routeBoardPoint'] = m['boardPoint']
     for f in VEH_POINTS:
         if f in m:
             e[f] = m[f]
@@ -223,8 +253,7 @@ def bld_entries(k, m, frame_atlas):
             if f in sd:
                 s[f] = sd[f]
         if len(sprites) > 1:
-            s['states'] = [v['frame'] for v in sprites.values() if v['frame'] != fr or True]
-            s['states'] = list(dict.fromkeys(s['states']))
+            s['states'] = list(dict.fromkeys(v['frame'] for v in sprites.values()))
         if sd.get('anims'):
             s['anims'] = {a: dict(v) for a, v in sd['anims'].items()}
         if m.get('notes'):
@@ -335,18 +364,23 @@ def pack_all(vehicles, vimgs, builds, bimgs, mode, out_dir):
     for k in sorted(vehicles):
         base, over = vimgs[k]
         items = list(base.items())
+        ov_items, alias = dedupe(list(over.items()))
         akey = 'veh_' + k
-        sheet, atlas = pu.pack_atlas(items + list(over.items()), max_width=MAX_SHEET, trim=True, padding=2)
+        sheet, atlas = pu.pack_atlas(items + ov_items, max_width=MAX_SHEET, trim=True, padding=2)
         if sheet.height <= MAX_SHEET:
+            add_aliases(atlas, alias)
             sheets.append((akey, sheet, atlas))
             veh_atlas[k] = (akey, akey if over else None)
         else:
             sheet, atlas = pu.pack_atlas(items, max_width=MAX_SHEET, trim=True, padding=2)
             sheets.append((akey, sheet, atlas))
             if over:
-                s2, a2 = pu.pack_atlas(list(over.items()), max_width=MAX_SHEET, trim=True, padding=2)
+                s2, a2 = pu.pack_atlas(ov_items, max_width=MAX_SHEET, trim=True, padding=2)
+                add_aliases(a2, alias)
                 sheets.append((akey + '_over', s2, a2))
             veh_atlas[k] = (akey, akey + '_over' if over else None)
+        if alias:
+            print('  %s: %d overlay frames stored once (aliases)' % (k, len(alias)))
     groups = {}
     for k, m in builds.items():
         groups.setdefault(m['atlas'], []).append([(n, bimgs[n]) for n in m['frames']])

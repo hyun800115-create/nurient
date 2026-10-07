@@ -65,7 +65,7 @@ def merge_townfolk(T, T2):
     G['slotPalette'] = dict(G['slotPalette'], **G2.get('slotPalette', {}))
     G['exclude'] = list(G['exclude']) + [list(x) for x in G2.get('exclude', [])]
     G['extraSlots'] = list(G2.get('extraSlots', []))
-    for key in ('faceExprs', 'exprBrow', 'sit', 'push'):
+    for key in ('faceExprs', 'exprBrow', 'sit', 'push', 'overrides'):
         if key in T2:
             M[key] = copy.deepcopy(T2[key])
     fa_anim, fa_pose = M.setdefault('frameAtlasAnim', {}), M.setdefault('frameAtlasPose', {})
@@ -97,10 +97,11 @@ class AtlasSource2(tc.AtlasSource):
         for at in self.man2['atlases']:
             with open(os.path.join(assets, at['json'])) as f:
                 js = json.load(f)
+            ov = set(self.man2['townfolk2'].get('overrides', []))
             for name, rect in iter_tf_frames(js):
-                if name in self.frames:
+                if name in self.frames and name not in ov:
                     raise ValueError(f'frame {name} in both fragments')
-                self.frames[name] = (at['key'], rect)
+                self.frames[name] = (at['key'], rect)          # overrides: the townfolk2 copy wins
             self.sheets[at['key']] = os.path.join(assets, at['png'])
         self.T = merge_townfolk(self.man['townfolk'], self.man2['townfolk2'])
 

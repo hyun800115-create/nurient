@@ -63,6 +63,8 @@ def main():
     for a in man.get('atlases', []):
         png = os.path.join(ASSETS, a['png'])
         js = os.path.join(ASSETS, a['json'])
+        if os.path.normpath(os.path.dirname(png)) != os.path.normpath(d):     # checking a dry-run pack elsewhere
+            png, js = os.path.join(d, os.path.basename(a['png'])), os.path.join(d, os.path.basename(a['json']))
         if not (os.path.exists(png) and os.path.exists(js)):
             err('atlas %s: missing file(s)' % a['key'])
             continue

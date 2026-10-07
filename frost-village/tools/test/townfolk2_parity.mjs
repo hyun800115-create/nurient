@@ -13,8 +13,9 @@ import { mulberry32, forEachTfFrame } from '../townfolk_compose.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const casesPath = process.argv[2] || '/tmp/fv_review/townfolk2_cases.json';
-const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/townfolk/manifest.json'), 'utf8'));
-const man2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/townfolk2/manifest.json'), 'utf8'));
+const ASSETS = process.env.TF2_ASSETS || path.join(ROOT, 'assets');          // TF2_ASSETS: a staged pack
+const man = JSON.parse(fs.readFileSync(path.join(ASSETS, 'townfolk/manifest.json'), 'utf8'));
+const man2 = JSON.parse(fs.readFileSync(path.join(ASSETS, 'townfolk2/manifest.json'), 'utf8'));
 const M = mergeTownfolkManifests(man, man2);
 const tf = new Townfolk2(M.townfolk);
 const data = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
@@ -44,15 +45,18 @@ for (const c of data.cases) {
 const T = M.townfolk;
 // every frame of every atlas must resolve through the JS lookup to the atlas that holds it
 let wrong = 0, total = 0;
+const overridden = new Set(T.overrides || []);        // v4 frames replaced by townfolk2 copies
+const packedLayers = new Set();        // layers that have at least one frame somewhere
 for (const at of M.atlases) {
-  const js = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', at.json), 'utf8'));
+  const js = JSON.parse(fs.readFileSync(path.join(ASSETS, at.json), 'utf8'));
   forEachTfFrame(js, (name) => {
     total++;
     const [layer, fr] = name.split('/');
+    packedLayers.add(layer);
     let key;
     if (layer.includes('@')) { const anim = fr.split('_').slice(0, -2).join('_'); key = ((T.frameAtlasAnim || {})[anim] || {})[layer] || T.frameAtlas[layer]; }
     else { const hp = fr.split('_')[0]; key = ((T.frameAtlasPose || {})[hp] || {})[layer] || T.frameAtlas[layer]; }
-    if (key !== at.key) { wrong++; if (wrong < 5) console.log('lookup', name, key, '!=', at.key); }
+    if (key !== at.key && !(overridden.has(name) && !at.key.startsWith('tf2_'))) { wrong++; if (wrong < 5) console.log('lookup', name, key, '!=', at.key); }
   });
 }
 console.log(`atlas lookup: ${total - wrong}/${total} frames resolve to their atlas`);
@@ -66,7 +70,8 @@ for (let k = 0; k < 2000; k++) {
   people++;
   for (const [a, d, i] of [['sad', 'SW', 1], ['clap', 'E', 4], ['sit', 'S', 2], ['push', 'NW', 6], ['walk', 'SE', 3]]) {
     for (const l of tf.layers(p, a, d, i)) {
-      if (!l.atlas) { missingAtlas++; if (missingAtlas < 5) console.log('no atlas for', l.frame); }
+      const L = l.frame.split('/')[0];
+      if (!l.atlas && packedLayers.has(L)) { missingAtlas++; if (missingAtlas < 5) console.log('no atlas for', l.frame); }
     }
   }
 }

@@ -562,7 +562,7 @@ class Foam:
                  stern=False, K=22):
         self.hull, self.n, self.length, self.spread, self.r0, self.r1 = hull, n, length, spread, r0, r1
         self.z, self.K = z, K
-        self.mat = foam_mat(name + '_rib', 1.0)
+        self.mat = flat('#F4F8FC', 0.6)
         self.ribbons = []
         for side in (-1.0, 1.0):
             pts = [(0.0, 0.0, 0.0)] * K
@@ -574,9 +574,10 @@ class Foam:
         self.obs = []
         self.mats = []
         k = 0
+        lump_m = flat('#F4F8FC', 0.65)                 # opaque: no transparency noise; lumps fade by shrinking
         for side in (-1.0, 1.0):
             for j in range(n):
-                m = foam_mat('%s_m%d' % (name, k))
+                m = lump_m
                 o = blob('%s%d' % (name, k), 1.0, (0, 0, 0), m, seed=seed * 31 + k, amp=0.22, freq=1.6, subdiv=3)
                 o.visible_shadow = False
                 self.obs.append((o, side, j))
@@ -584,7 +585,7 @@ class Foam:
                 k += 1
         self.splash = []
         for j in range(splash):
-            m = foam_mat('%s_sm%d' % (name, j))
+            m = lump_m
             o = blob('%s_s%d' % (name, j), 1.0, (0, 0, 0), m, seed=seed * 17 + j, amp=0.25, freq=1.8, subdiv=3)
             o.visible_shadow = False
             self.splash.append((o, j, m))
@@ -613,27 +614,25 @@ class Foam:
                 p, nrm = self.path(u, side)
                 wob = math.sin(9.0 * u - ph + side) * (0.05 + 0.08 * u)
                 p = p + nrm * wob
-                r = self.r1 * (1.0 - u) ** 0.6 * (1.0 + 0.25 * math.sin(13.0 * u - 1.3 * ph + side)) + 0.02
-                sp.points[k].co = (p.x, p.y, (self.z + r * 0.2) / 0.6, 1.0)
+                r = self.r1 * 1.25 * (1.0 - u) ** 0.5 * (1.0 + 0.25 * math.sin(13.0 * u - 1.3 * ph + side)) + 0.02
+                sp.points[k].co = (p.x, p.y, (self.z + r * 0.15) / 0.5, 1.0)
                 sp.points[k].radius = r
-            o.scale = (1.0, 1.0, 0.6)
+            o.scale = (1.0, 1.0, 0.5)
         for (o, side, j), m in zip(self.obs, self.mats):
             u = (j + i / float(frames)) / self.n
             p, nrm = self.path(min(1.0, 0.2 + u * 0.9), side)
             p = p + nrm * (0.12 + 0.3 * u)
-            s = self.r0 * (0.35 + 0.45 * math.sin(math.pi * u))
+            s = self.r0 * (0.3 + 0.5 * math.sin(math.pi * u ** 0.8))
             o.location = (p.x, p.y, self.z + 0.02)
             o.scale = (s * 1.2, s * 1.2, s * 0.45)
             o.rotation_euler = Euler((0, 0, u * 3.0 + j), 'XYZ')
-            L.set_alpha(m, 1.0 if u < 0.7 else max(0.0, 1.0 - (u - 0.7) / 0.3))
         tip, _ = self.hull.side_point(-1.0, 0.0, 1.0)
         for (o, j, m) in self.splash:
             u = ((j + i / float(frames)) / max(1, len(self.splash)))
             up = math.sin(math.pi * u)
             o.location = (tip.x + 0.16 * math.sin(j * 2.1 + u * 3), tip.y - 0.08 - 0.12 * u, 0.08 + 0.3 * up)
-            s = self.r0 * (0.6 + 0.6 * up)
+            s = self.r0 * (0.45 + 0.6 * up)
             o.scale = (s, s, s * 0.8)
-            L.set_alpha(m, 0.95 * (0.4 + 0.6 * up))
 
 
 def smoke(name, base, big=1.0, seed=0, color='#C3C9D2', alpha=0.88, drift=(0.0, 0.6), n=3, rise=1.6):

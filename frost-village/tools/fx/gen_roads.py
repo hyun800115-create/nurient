@@ -502,6 +502,19 @@ def psin(x, seed, kmin=1, kmax=4, fall=0.6):
     return out / max(tot, 1e-6)
 
 
+_LN = {}
+
+
+def lattice_noise(mx, my, seed, scale=4.0):
+    """Unit noise periodic in BOTH world axes with a period of one cell, sampled at lattice-relative world metres:
+    identical in every piece at the same lattice phase, so it never breaks the seamless joins."""
+    key = (seed, scale)
+    if key not in _LN:
+        _LN[key] = F.fft_noise(128, 128, seed, scale=scale)
+    t = _LN[key]
+    return GG.sample(t, np.mod(mx, CELL_M) / CELL_M * 128, np.mod(my, CELL_M) / CELL_M * 128)
+
+
 def window(u, margin=0.24, soft=0.16):
     """1 in the middle of a 1-cell piece, 0 within `margin` of its cut lines (u = along offset from the centre)."""
     return np.clip((CELL_M / 2 - margin - np.abs(u)) / soft, 0, 1)
@@ -566,7 +579,7 @@ def paint_paving(c, region, seed, lat=(0.0, 0.0)):
 
 
 # --------------------------------------------------------------------------- curbs
-def render_curb(c, dfn, lat, var=None, paving=None, seed=0):
+def render_curb(c, dfn, lat, var=None, paving=None, seed=40, vseed=0):
     """Raised kerb along the boundary of the sidewalk region {dfn > 0} (dfn: world metres -> signed distance, metres).
     lat = lattice-relative world offset of the anchor (joints every half cell on the lattice).  var(mx, my) -> 0..1
     windowed variation amount (straight pieces); paving(c, d0) paints sidewalk slabs first (corner pieces)."""
@@ -580,7 +593,7 @@ def render_curb(c, dfn, lat, var=None, paving=None, seed=0):
     lx, ly = c.MX + lat[0], c.MY + lat[1]
     gx, gy = grad_world(dfn, c.MX, c.MY)
     along = np.where(np.abs(gx) > np.abs(gy), ly, lx)            # coordinate along the curb (lattice metres)
-    wg = 0.07 + 0.05 * psin(along, seed + 1) + 0.05 * vv * psin(along * 2.3, seed + 2)
+    wg = 0.07 + 0.05 * psin(along, seed + 1) + 0.05 * vv * psin(along * 2.3, vseed + 2)
     gut = d0 + np.maximum(wg, 0.03)
     gcov = c.cov(-gut * ACROSS, 0.6) * c.cov(d0 * ACROSS - 0.5)
     gh = np.clip(gut / 0.08, 0, 1) * 3.0
@@ -613,7 +626,7 @@ def render_curb(c, dfn, lat, var=None, paving=None, seed=0):
     tlit = screen_relief(c, F.blur(th, 0.5 * c.ss), 0.7)
     tl = np.clip((d1) / WT, 0, 1)
     tcol = lerp3(hexc(CURB_TOP[0]), hexc(CURB_TOP[1]), tl * 0.6)
-    gn = F.fft_noise(*c.a.shape, seed + 7, scale=1.2 * c.ss)
+    gn = lattice_noise(MX1 + lat[0], MY1 + lat[1], seed + 7, 2.0)
     tcol = lerp3(tcol, hexc('#B6BECB'), np.clip(gn - 1.3, 0, 1) * 0.4)
     tcol = lerp3(tcol, WHITE, np.clip(tlit, 0, 1) * 0.8)
     tcol = lerp3(tcol, hexc('#8C97A9'), np.clip(-tlit, 0, 1) * 0.7)
@@ -624,7 +637,7 @@ def render_curb(c, dfn, lat, var=None, paving=None, seed=0):
     tcol = lerp3(tcol, hexc('#7C8698'), np.exp(-(jt / 0.014) ** 2) * 0.75)
     # snow caps on the top (periodic + windowed variation)
     cap = 0.5 + 0.5 * psin(tal, seed + 3, 2, 5, 0.3)
-    cap = np.clip((cap - 0.62) * 3.0 + vv * (psin(tal * 1.7, seed + 4) - 0.1) * 1.6, 0, 1)
+    cap = np.clip((cap - 0.62) * 3.0 + vv * (psin(tal * 1.7, vseed + 4) - 0.1) * 1.6, 0, 1)
     cap = cap * F.smoothstep(0.02, 0.07, d1) * F.smoothstep(WT, WT - 0.06, d1)
     tcol = lerp3(tcol, hexc('#F8FAFD'), cap)
     c.paint(tcov, tcol)
@@ -653,7 +666,7 @@ def curb_straight(axis, far, variant):
         var = lambda mx, my: window(ucoord) * amp
     else:
         var = None
-    render_curb(c, dfn, lat, var, seed=40 + variant * 11)
+    render_curb(c, dfn, lat, var, seed=40, vseed=40 + variant * 11)
     return keep_mask(c.image(), straight_keep(fr, axis)), fr
 
 
@@ -704,7 +717,7 @@ def render_snow(c, dfn, lat, wob, crumb_d, seed=0, wob_fine=0.0):
     lit = screen_relief(c, F.blur(hm * ZPX, 1.4 * c.ss), 1.25)
     col = lerp3(SNOW, WHITE, np.clip(lit, 0, 1) * 0.95)
     col = lerp3(col, hexc('#BCCADD'), np.clip(-lit, 0, 1) * 0.9)
-    nz = F.fft_noise(*c.a.shape, seed + 5, scale=3 * c.ss)
+    nz = lattice_noise(c.MX + lat[0], c.MY + lat[1], 905, 5.0)
     col = lerp3(col, hexc('#E2E9F3'), np.clip(nz - 1.0, 0, 1) * 0.4)
     # cool contact shadow just on the road side of the edge
     ct = c.cov(-(d + 0.045) * ACROSS, 0.8) * (1 - present)
@@ -1105,6 +1118,31 @@ ROADKIT = {
                    'line + (64,32) / (64,-32)); crosswalk_x on each carriageway cell of a road along X where a sidewalk '
                    'line crosses it (the junction border cells), anchor = lattice (i,j) + (64,0); crosswalk_y likewise. '
                    'stall_lines: anchor = stall centre = lattice of its min corner + (160,16) (2 across Y, 3 along X).',
+    'examples': {
+        'cityStreetX': 'Street along world X, centre line on the EVEN lattice line j = J, from i = I0 to I1: ROAD cells '
+                       'j in [J-2, J+2) (road_asphalt), WALK cells j = J-3 and j = J+2 (sidewalk). Per cell column i: '
+                       'curb_x at lattice(i, J+2)+(32,16); curb_x_near at lattice(i, J-2)+(32,16); snow_edge_x at '
+                       'lattice(i, J+3)+(32,16); snow_edge_x_near at lattice(i, J-3)+(32,16); lane_x at '
+                       'lattice(i, J)+(64,32) for i = I0, I0+2, ... (stop 1 cell before a crosswalk). Widths: '
+                       '1.41 + 5.66 + 1.41 = 8.49 m.',
+        'cityStreetY': 'Street along world Y, centre line on the EVEN lattice line i = I: ROAD i in [I-2, I+2), WALK '
+                       'i = I-3 and i = I+2. Per cell row j: curb_y at lattice(I-2, j)+(32,-16); curb_y_near at '
+                       'lattice(I+2, j)+(32,-16); snow_edge_y at lattice(I-3, j)+(32,-16); snow_edge_y_near at '
+                       'lattice(I+3, j)+(32,-16); lane_y at lattice(I, j)+(64,-32) for j step 2.',
+        'cityJunction4': 'Crossing of the two streets above at (I, J): the 6x6 block i,j in [I-3, I+3) is filled with '
+                         'road_asphalt (corner squares included); curb_corner_e at lattice(I+2, J+2), _n at (I-2, J+2), '
+                         '_w at (I-2, J-2), _s at (I+2, J-2) - or the `intersection` composite at lattice(I, J); '
+                         'crosswalk_x in cells (I-3, j) and (I+2, j), crosswalk_y in cells (i, J-3) and (i, J+2) for the '
+                         '4 carriageway cells (anchor lattice(i, j)+(64, 0)); snow_corner_e/n/w/s at lattice(I+3, J+3) / '
+                         '(I-3, J+3) / (I-3, J-3) / (I+3, J-3). Straight curbs and snow edges start one cell beyond '
+                         'every corner point.',
+        'dirtRoadX': 'Village road along X, centre on the even line j = J: ROAD j in [J-2, J+2) with road_dirt '
+                     '(junction squares road_dirt_cross, roads along Y road_dirt_y); snow_edge_x at lattice(i, J+2)+'
+                     '(32,16), snow_edge_x_near at lattice(i, J-2)+(32,16); snow_corner_* / snow_inner_* at the corners. '
+                     'A 1-lane track: ROAD j in [J-1, J+1) with J odd.',
+    },
+    'laneCentres': 'Right-hand traffic: a vehicle moving +X drives on lattice line j = J-1 (centre - 1 cell = -1.41 m '
+                   'in Y), moving -X on j = J+1; moving +Y on i = I+1, moving -Y on i = I-1 (lane centres = odd lines).',
     'pieceFrames': 'roads_decals frames are UNTRIMMED (pack trim=False) and anchored on an integer pixel '
                    '(anchorPx); draw at round(anchor) - anchorPx. Straight pieces own exactly the pixels whose centre '
                    'lies in their 1-cell slice, so consecutive pieces join with no overlap and no gap.',

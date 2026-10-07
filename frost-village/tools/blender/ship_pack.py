@@ -254,7 +254,8 @@ def ship_entry(key, m, imgs):
         e['bob'] = {'px': BOB.get(key, [2, 3.5])[0], 'periodS': BOB.get(key, [2, 3.5])[1]}
         e['layerOrder'] = ['base', 'deck people / cargo', 'foam', 'anim']
     rename = {'stern': 'wakePoint', 'bow': 'bowPoint', 'smoke': 'smokePoint', 'gangway': 'gangwayPoint',
-              'gangwayDeck': 'gangwayDeckPoint', 'horn': 'hornPoint', 'deck': 'deckPoints', 'cargo': 'cargoPoints',
+              'gangwayDeck': 'gangwayDeckPoint', 'gangwayFar': 'gangwayFarPoint', 'gangwayFarDeck': 'gangwayFarDeckPoint',
+              'horn': 'hornPoint', 'deck': 'deckPoints', 'cargo': 'cargoPoints',
               'perch': 'perchPoints', 'lights': 'lightPoints', 'crane': 'hookPoint', 'net': 'netPoint',
               'crew': 'crewPoints', 'tow': 'towPoint', 'slotPoints': None, 'slotOrder': None}
     for k, v in P.items():
@@ -297,8 +298,11 @@ CONVENTIONS = {
     'deckPoints': 'ferry: spots on the open decks where a townsperson (feet) can stand fully visible (ray-tested '
                   'against the ship for this dir, far -> near order); draw passengers right after base_<dir>, '
                   'sorted by dy.',
-    'gangwayPoint': 'ferry: the gap in the bulwark on the camera side (local -X) at main-deck level where the '
-                    'gangway from the pier / ferry_terminal meets the ship; gangwayDeckPoint = first step on deck.',
+    'gangwayPoint': 'ferry: gangway openings in the bulwark at main-deck level on both sides. gangwayPoint = the '
+                    'camera-side opening (a pier / quay in FRONT of the ship), gangwayFarPoint = the far-side opening '
+                    '(quay BEHIND the ship). harbor/ferry_terminal (gangway reaching toward the camera, ship along '
+                    'world X): heading SE or NW, ferry anchor = terminal anchor + terminal.gangwayPoint - '
+                    'ferry.gangwayFarPoint[dir] (NW: mirror NE, negate dx). *DeckPoint = first step on deck.',
     'cargo': 'cargo_ship: cargoSlots.count container-stack sprites slot<k>_<dir> (pre-occluded by the ship, '
              'same frame size + anchor) - draw the loaded ones after base_<dir> in cargoSlots.order[dir] '
              '(far -> near) and hide them when unloaded. cargoPoints[dir][k] = [dx, dy, visible] = the same spots on '
@@ -396,32 +400,31 @@ def main():
         sheet, atlas = pack_frames(list(imgs[k].items()))
         sheets.append(('ship_' + k, sheet, atlas))
         print('%-18s %4dx%-4d %3d frames' % ('ship_' + k, sheet.width, sheet.height, len(atlas['frames'])), flush=True)
-    os.makedirs(OUT, exist_ok=True)
-    total = 0
-    sizes = {}
+    import io
     rgba_total = 0
     for akey, sheet, atlas in sheets:
-        pu.save_atlas(sheet, atlas, os.path.join(OUT, akey + '.png.tmp'), os.path.join(OUT, akey + '.json.tmp'))
-        rgba_total += os.path.getsize(os.path.join(OUT, akey + '.png.tmp'))
+        buf = io.BytesIO()
+        sheet.save(buf, 'PNG', optimize=True)
+        rgba_total += buf.tell()
     do_q = mode == 'on' or (mode == 'auto' and rgba_total / 1048576.0 > BUDGET_MB * 0.9)
+    os.makedirs(OUT, exist_ok=True)
     for fn in os.listdir(OUT):
         if fn.startswith('ship_') and fn.endswith(('.png', '.json')):
             os.remove(os.path.join(OUT, fn))
+    total = 0
     for akey, sheet, atlas in sheets:
         png = os.path.join(OUT, akey + '.png')
-        os.replace(os.path.join(OUT, akey + '.json.tmp'), os.path.join(OUT, akey + '.json'))
+        atlas['meta']['image'] = akey + '.png'
         if do_q:
-            os.remove(os.path.join(OUT, akey + '.png.tmp'))
-            atlas['meta']['image'] = akey + '.png'
             quantize(sheet).save(png, optimize=True)
         else:
-            os.replace(os.path.join(OUT, akey + '.png.tmp'), png)
+            sheet.save(png, optimize=True)
         with open(os.path.join(OUT, akey + '.json'), 'w', encoding='utf-8') as f:
-            atlas['meta']['image'] = akey + '.png'
             json.dump(atlas, f, separators=(',', ':'))
-        sizes[akey] = os.path.getsize(png)
-        total += sizes[akey] + os.path.getsize(os.path.join(OUT, akey + '.json'))
-        print('  %-18s %7.1f KB%s' % (akey, sizes[akey] / 1024.0, ' (256 colours)' if do_q else ''))
+        sz = os.path.getsize(png)
+        total += sz + os.path.getsize(os.path.join(OUT, akey + '.json'))
+        print('  %-18s %7.1f KB%s' % (akey, sz / 1024.0, ' (256 colours)' if do_q else ''))
+    print('  RGBA would be %.2f MB -> %s' % (rgba_total / 1048576.0, 'palettised' if do_q else 'kept RGBA'))
     man = build_manifest(ships, imgs, [s[0] for s in sheets], old)
     if dropped:
         for k in dropped:

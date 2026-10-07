@@ -3,7 +3,8 @@
 // Loads assets/townfolk + assets/townfolk2 manifests, merges them with mergeTownfolkManifests()
 // (tools/townfolk2_compose.js), installs the tfatlas frames, and stages a wedding + a farewell with
 // TownfolkSprite2: brides, grooms, clapping and seated guests, mourners (sad, face override), pushers.
-// Counts draw-list frames missing from the textures (excluding legitimately empty layers), page errors,
+// Counts core head / face / brow frames missing from the textures and atlases without a loaded texture (layers
+// that were never packed - fully hidden, e.g. a hair tie under a hat - are listed, not errors), page errors,
 // draw calls per frame; writes docs/previews/townfolk2_phaser.png and /tmp/fv_review/townfolk2_phaser.json.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,7 +26,7 @@ for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext 
 const m1 = await (await fetch('assets/townfolk/manifest.json')).json();
 const m2 = await (await fetch('assets/townfolk2/manifest.json')).json();
 const man = mergeTownfolkManifests(m1, m2);
-window.__TF = { ready: false, missing: [], checked: 0 };
+window.__TF = { ready: false, missing: [], checked: 0, emptyLayers: new Set() };
 class S extends Phaser.Scene {
   preload() { townfolkPreload(this, man, 'assets/'); }
   create() {
@@ -64,8 +65,10 @@ class S extends Phaser.Scene {
       for (const [a, info] of Object.entries(tf.T.anims)) for (const d of info.dirs) for (let i = 0; i < info.frames; i++) {
         for (const l of tf.layers(s.person, a, d, i, { face: s.face })) {
           checked++;
-          if (!l.atlas) window.__TF.missing.push('no atlas ' + l.frame);
+          const core = /^(head\.|face\.|brow\.)/.test(l.layer);
+          if (!l.atlas) { if (core) window.__TF.missing.push('no atlas ' + l.frame); else window.__TF.emptyLayers.add(l.layer); }
           else if (!tex.exists(l.atlas)) window.__TF.missing.push('no texture ' + l.atlas);
+          else if (core && !tex.get(l.atlas).has(l.frame)) window.__TF.missing.push('missing core frame ' + l.frame);
         }
       }
     }
@@ -96,7 +99,8 @@ const res = await page.evaluate(async () => {
   const n = g.loop.frame - f0;
   const sprites = sc.children.list.filter((o) => o.visible && o.type === 'Image').length;
   return { npcs: sc.npcs.length, sprites, drawPerFrame: +((C.draw - d0) / n).toFixed(1), layersChecked: window.__TF.checked,
-    missing: window.__TF.missing.length, missingSample: window.__TF.missing.slice(0, 5) };
+    missing: window.__TF.missing.length, missingSample: window.__TF.missing.slice(0, 5),
+    neverPackedLayers: [...window.__TF.emptyLayers].slice(0, 8) };
 });
 fs.mkdirSync(path.join(ROOT, 'docs', 'previews'), { recursive: true });
 await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'townfolk2_phaser.png') });

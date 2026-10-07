@@ -1,0 +1,3635 @@
+{
+ "version": 1,
+ "generator": "tools/blender/harbor_render.py + harbor_pack.py (docs/CONTRACT_V6.md section T)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre at QUAY LEVEL (z 0); tiles: the tile centre on the deck / quay edge line; buoy: its waterline centre.",
+  "levels": "z 0 = land / quay / pier deck (walkable, characters need no lift on piers). The sea surface is 0.55 m lower = waterPx 30 screen px below the deck point above it. Every berthPoint / moorPoints value is already ON THE WATER PLANE: put a ship anchor (assets/ships, waterline centre) exactly there.",
+  "front": "-Y = faces screen down-left (SW) - the harbour buildings face the sea on that side; their front footprint edge is the quay edge (quayEdge = two px points of that line). yaw-90 tiles (_y) run along world Y.",
+  "footprint": "screen-px bounding size [w, h] of the ground diamond centred on the anchor; footprintM = metres; footprintPoly = 4 ground corners in px for depth / collision tests.",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). staffDepth \"front\": draw characters there above the building sprite; \"behind\" (harbor_market): normal y-sorting (counter hides the legs).",
+  "anims": "idle frame = resting state; anims.work (+ the named alias light / lift / bob) loops with every frame sharing frameSize + anchor (swap frames in place, spr:<key>:work like the village stations). lighthouse 8f, harbor_crane 8f at 4 fps (hookPoints per frame, pickFrame / dropFrame), shipyard 4f, buoy 4f.",
+  "tiles": "pier_*, quay_*, breakwater_*: kind decal, draw on the GROUND layer (under characters / ships / buildings). One tile = sqrt(2) m along world X (step (+64, +32) px, screen down-right) or Y (step (+64, -32) px, screen up-right); consecutive tiles join seamlessly incl. the baked shadow (partition-of-unity cuts +-rampM at the open ends). pier_end_* close a pier on the sea side, pier_root_* on the land side (end line on the quay edge); quay_corner = outer corner (see its notes for the chaining offsets).",
+  "aliases": "pier_end = pier_end_yn, breakwater = breakwater_x (the contract names; same frames, aliasOf).",
+  "shadows": "baked soft cool shadows falling screen down-right: on the land (z 0) for land parts, on the sea surface for piers / gangways / slipways / tiles (so it lands where the water is drawn).",
+  "townfolk": "harbour townsfolk presets: harbor/townfolk_presets.json (merge into townfolk.generator.presets)."
+ },
+ "atlases": [
+  {
+   "key": "harbor_landmarks",
+   "png": "harbor/harbor_landmarks.png",
+   "json": "harbor/harbor_landmarks.json"
+  },
+  {
+   "key": "harbor_landmarks_2",
+   "png": "harbor/harbor_landmarks_2.png",
+   "json": "harbor/harbor_landmarks_2.json"
+  },
+  {
+   "key": "harbor_buildings",
+   "png": "harbor/harbor_buildings.png",
+   "json": "harbor/harbor_buildings.json"
+  },
+  {
+   "key": "harbor_water",
+   "png": "harbor/harbor_water.png",
+   "json": "harbor/harbor_water.json"
+  },
+  {
+   "key": "harbor_props",
+   "png": "harbor/harbor_props.png",
+   "json": "harbor/harbor_props.json"
+  }
+ ],
+ "sprites": {
+  "harbor_crane": {
+   "atlas": "harbor_landmarks",
+   "frame": "harbor_crane",
+   "anchor": [
+    0.48871,
+    0.5929
+   ],
+   "kind": "building",
+   "frameSize": [
+    620,
+    732
+   ],
+   "footprint": [
+    262,
+    131
+   ],
+   "footprintM": [
+    3.2,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -131,
+     -7
+    ],
+    [
+     14,
+     66
+    ],
+    [
+     131,
+     7
+    ],
+    [
+     -14,
+     -66
+    ]
+   ],
+   "topPx": 280,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "harbor_crane_work_0",
+      "harbor_crane_work_1",
+      "harbor_crane_work_2",
+      "harbor_crane_work_3",
+      "harbor_crane_work_4",
+      "harbor_crane_work_5",
+      "harbor_crane_work_6",
+      "harbor_crane_work_7"
+     ],
+     "fps": 4,
+     "repeat": -1,
+     "hookPoints": [
+      [
+       -186,
+       15
+      ],
+      [
+       -186,
+       -66
+      ],
+      [
+       -252,
+       -184
+      ],
+      [
+       -255,
+       -257
+      ],
+      [
+       -186,
+       -250
+      ],
+      [
+       -186,
+       -156
+      ],
+      [
+       -257,
+       -129
+      ],
+      [
+       -243,
+       7
+      ]
+     ]
+    },
+    "lift": {
+     "frames": [
+      "harbor_crane_work_0",
+      "harbor_crane_work_1",
+      "harbor_crane_work_2",
+      "harbor_crane_work_3",
+      "harbor_crane_work_4",
+      "harbor_crane_work_5",
+      "harbor_crane_work_6",
+      "harbor_crane_work_7"
+     ],
+     "fps": 4,
+     "repeat": -1,
+     "hookPoints": [
+      [
+       -186,
+       15
+      ],
+      [
+       -186,
+       -66
+      ],
+      [
+       -252,
+       -184
+      ],
+      [
+       -255,
+       -257
+      ],
+      [
+       -186,
+       -250
+      ],
+      [
+       -186,
+       -156
+      ],
+      [
+       -257,
+       -129
+      ],
+      [
+       -243,
+       7
+      ]
+     ]
+    }
+   },
+   "fxPoints": {
+    "cab": [
+     29,
+     -156
+    ],
+    "tipLamp": [
+     181,
+     -217
+    ]
+   },
+   "pickPoint": [
+    -186,
+    93
+   ],
+   "dropPoint": [
+    -186,
+    -93
+   ],
+   "hookPoint": [
+    -186,
+    -56
+   ],
+   "staffPoints": [
+    [
+     -183,
+     -44
+    ]
+   ],
+   "staffDirs": [
+    "N"
+   ],
+   "workPoints": [
+    [
+     -120,
+     -103
+    ],
+    [
+     -249,
+     -91
+    ]
+   ],
+   "workDirs": [
+    "SW",
+    "E"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "항구 크레인",
+    "en": "Harbour crane"
+   },
+   "zone": "landmark",
+   "quayEdge": [
+    [
+     -145,
+     0
+    ],
+    [
+     0,
+     72
+    ]
+   ],
+   "cargoHangPx": 62,
+   "pickFrame": 0,
+   "dropFrame": 5,
+   "jibReachM": 4.0,
+   "craneSeq": [
+    {
+     "headingDeg": -90,
+     "z": 0.3,
+     "carry": true
+    },
+    {
+     "headingDeg": -90,
+     "z": 1.75,
+     "carry": true
+    },
+    {
+     "headingDeg": -118,
+     "z": 2.9,
+     "carry": true
+    },
+    {
+     "headingDeg": -150,
+     "z": 2.9,
+     "carry": true
+    },
+    {
+     "headingDeg": 180,
+     "z": 1.7,
+     "carry": true
+    },
+    {
+     "headingDeg": 180,
+     "z": 0.02,
+     "carry": true
+    },
+    {
+     "headingDeg": -148,
+     "z": 2.3,
+     "carry": false
+    },
+    {
+     "headingDeg": -112,
+     "z": 1.3,
+     "carry": false
+    }
+   ],
+   "ground": "land+water",
+   "waterPx": 30,
+   "notes": "Harbour crane (portal 3.2 x 2.6 m on quay rails along X, jib reach 4 m, ~6.5 m tall): yellow portal with hazard-striped bogies, white machine house with a red band, glowing operator cab, counterweight, A-frame mast, lattice jib, red-white hook block. Placed with its front (-Y) at the quay edge (quayEdge, 1.6 m in front of the anchor): the jib works over the water on the -Y side. idle = jib over the water, hook up. anims.work / anims.lift = 8-frame loop at 4 fps: frame 0 hooks a crate on the ship (pickPoint, pickFrame 0), lifts, slews 90 deg to the quay side (-X), lowers and sets it down at dropPoint (dropFrame 5: the crate is released - spawn / grow a crate_stack there), then swings back empty. hookPoint = the hook tip for the idle frame, anims.work.hookPoints = per frame (attach your own cargo / FX there; cargoHangPx = hook-to-crate-bottom offset). staffPoints = signalman by the drop spot, workPoints = dock workers receiving crates."
+  },
+  "lighthouse": {
+   "atlas": "harbor_landmarks_2",
+   "frame": "lighthouse",
+   "anchor": [
+    0.34722,
+    0.68895
+   ],
+   "kind": "building",
+   "frameSize": [
+    576,
+    688
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.6,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -7
+    ],
+    [
+     14,
+     75
+    ],
+    [
+     149,
+     7
+    ],
+    [
+     -14,
+     -75
+    ]
+   ],
+   "topPx": 428,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "lighthouse_work_0",
+      "lighthouse_work_1",
+      "lighthouse_work_2",
+      "lighthouse_work_3",
+      "lighthouse_work_4",
+      "lighthouse_work_5",
+      "lighthouse_work_6",
+      "lighthouse_work_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "light": {
+     "frames": [
+      "lighthouse_work_0",
+      "lighthouse_work_1",
+      "lighthouse_work_2",
+      "lighthouse_work_3",
+      "lighthouse_work_4",
+      "lighthouse_work_5",
+      "lighthouse_work_6",
+      "lighthouse_work_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "light": [
+     0,
+     -333
+    ],
+    "smoke": [
+     98,
+     -94
+    ],
+    "door": [
+     -43,
+     -36
+    ]
+   },
+   "doorPoint": [
+    -73,
+    37
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -96,
+     20
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "등대",
+    "en": "Lighthouse"
+   },
+   "zone": "landmark",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Lighthouse (3.6 x 3.0 m, ~7 m tall): red-white striped round tower on a stone plinth among snowy rocks, navy gallery with a railing, lantern room with a Fresnel lens drum, red conical roof with a seagull weather vane, a little keeper cottage on its right side (smoke at fxPoints.smoke). idle = daytime (lamp off); anims.work / anims.light = 8-frame loop, the lit lens turns and two light beams sweep around (22.5 deg per frame, two opposite beams -> seamless). fxPoints.light = lens centre (night glow sprite), doorPoint = in front of the door, staffPoints = the keeper."
+  },
+  "customs_house": {
+   "atlas": "harbor_buildings",
+   "frame": "customs_house",
+   "anchor": [
+    0.39567,
+    0.69118
+   ],
+   "kind": "building",
+   "frameSize": [
+    508,
+    476
+   ],
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.4,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     -9
+    ],
+    [
+     18,
+     91
+    ],
+    [
+     181,
+     9
+    ],
+    [
+     -18,
+     -91
+    ]
+   ],
+   "topPx": 309,
+   "front": "-Y",
+   "fxPoints": {
+    "flag": [
+     -156,
+     -240
+    ],
+    "sign": [
+     -60,
+     -244
+    ]
+   },
+   "inPoint": [
+    7,
+    51
+   ],
+   "doorPoint": [
+    -120,
+    35
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     66,
+     74
+    ],
+    [
+     -63,
+     50
+    ]
+   ],
+   "staffDirs": [
+    "NW",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -145,
+     41
+    ],
+    [
+     -160,
+     52
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "세관",
+    "en": "Customs house"
+   },
+   "zone": "port",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Customs house (4.4 x 3.6 m): formal two-storey pale-stone building with a slate-blue roof, a columned porch and a pediment with a round balance-scales sign, a flag pole with the harbour flag, and on the right an inspection lane: red-white boom barrier, guard kiosk, a platform scale (inPoint = the inspection pad where porters set down imported goods) and a few checked crates. doorPoint = porch, customerPoints = queue at the door, staffPoints = [customs officer at the barrier, clerk at the door]."
+  },
+  "ferry_terminal": {
+   "atlas": "harbor_buildings",
+   "frame": "ferry_terminal",
+   "anchor": [
+    0.40764,
+    0.55496
+   ],
+   "kind": "building",
+   "frameSize": [
+    628,
+    564
+   ],
+   "footprint": [
+    471,
+    235
+   ],
+   "footprintM": [
+    6.4,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -235,
+     -27
+    ],
+    [
+     54,
+     118
+    ],
+    [
+     235,
+     27
+    ],
+    [
+     -54,
+     -118
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "fxPoints": {
+    "bell": [
+     72,
+     -180
+    ],
+    "clock": [
+     74,
+     -178
+    ],
+    "flag": [
+     32,
+     -33
+    ],
+    "sign": [
+     -17,
+     -249
+    ]
+   },
+   "doorPoint": [
+    -84,
+    6
+   ],
+   "doorDir": "NE",
+   "gangwayPoint": [
+    -111,
+    155
+   ],
+   "berthPoint": [
+    -116,
+    188
+   ],
+   "staffPoints": [
+    [
+     86,
+     100
+    ]
+   ],
+   "staffDirs": [
+    "NW"
+   ],
+   "customerPoints": [
+    [
+     -149,
+     -41
+    ],
+    [
+     -166,
+     -30
+    ],
+    [
+     -182,
+     -19
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "waitPoints": [
+    [
+     18,
+     70
+    ],
+    [
+     -7,
+     58
+    ],
+    [
+     -32,
+     45
+    ],
+    [
+     -57,
+     33
+    ],
+    [
+     -81,
+     20
+    ]
+   ],
+   "waitDirs": [
+    "SE",
+    "SE",
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "boardPoints": [
+    [
+     20,
+     89
+    ],
+    [
+     -34,
+     117
+    ],
+    [
+     -86,
+     143
+    ]
+   ],
+   "boardDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "seatPoints": [
+    [
+     -17,
+     20
+    ],
+    [
+     15,
+     36
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "여객선 터미널",
+    "en": "Ferry terminal"
+   },
+   "zone": "port",
+   "quayEdge": [
+    [
+     -235,
+     -27
+    ],
+    [
+     54,
+     118
+    ]
+   ],
+   "berthAxis": "x",
+   "berthSide": "-Y",
+   "ground": "land+water",
+   "waterPx": 30,
+   "notes": "Ferry terminal (6.4 x 4.0 m + a 2.6 m gangway over the water): cream waiting hall with tall arched windows, a teal barrel-vault roof with snow, a clock tower with a seagull vane, a big round ferry sign on the roof, teal-white awning over two benches, ticket window, rope-lane queue to the boarding gate and an open railed gangway on pillars reaching 2.6 m over the sea (front edge of the footprint = the quay edge, quayEdge). doorPoint = hall door, customerPoints = ticket queue, staffPoints = gate attendant, waitPoints = queue lane (first = at the gate), seatPoints = benches, boardPoints = gate -> gangway -> tip (walk them in order to board, reverse to land), gangwayPoint = gangway tip (deck level: align the ferry's own gangwayPoint here), berthPoint = the tip projected onto the sea (ferry hull side touches here, ship lies along world X = berthAxis)."
+  },
+  "fish_auction": {
+   "atlas": "harbor_buildings",
+   "frame": "fish_auction",
+   "anchor": [
+    0.3803,
+    0.56338
+   ],
+   "kind": "building",
+   "frameSize": [
+    660,
+    568
+   ],
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    6.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -23
+    ],
+    [
+     45,
+     113
+    ],
+    [
+     226,
+     23
+    ],
+    [
+     -45,
+     -113
+    ]
+   ],
+   "topPx": 299,
+   "front": "-Y",
+   "fxPoints": {
+    "bell": [
+     -127,
+     -87
+    ],
+    "lamp": [
+     -5,
+     -113
+    ]
+   },
+   "inPoint": [
+    25,
+    87
+   ],
+   "outPoint": [
+    181,
+    66
+   ],
+   "doorPoint": [
+    -63,
+    32
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -131,
+     -45
+    ],
+    [
+     -14,
+     -9
+    ],
+    [
+     84,
+     42
+    ]
+   ],
+   "staffDirs": [
+    "S",
+    "SW",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -106,
+     -1
+    ],
+    [
+     -81,
+     16
+    ],
+    [
+     -48,
+     28
+    ],
+    [
+     -25,
+     46
+    ],
+    [
+     -115,
+     19
+    ],
+    [
+     -59,
+     48
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "buyerPoints": [
+    [
+     -106,
+     -1
+    ],
+    [
+     -81,
+     16
+    ],
+    [
+     -48,
+     28
+    ],
+    [
+     -25,
+     46
+    ],
+    [
+     -115,
+     19
+    ],
+    [
+     -59,
+     48
+    ]
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "수산물 경매장",
+    "en": "Fish auction"
+   },
+   "zone": "port",
+   "quayEdge": [
+    [
+     -226,
+     -23
+    ],
+    [
+     45,
+     113
+    ]
+   ],
+   "buyerPointsNote": "customerPoints are the bidders (buyerPoints alias)",
+   "ground": "land+water",
+   "waterPx": 30,
+   "notes": "Fish auction hall (6.0 x 4.0 m, open hall on navy steel posts): blue-white striped gable roof with a louvred roof lantern and a big tuna on the ridge, wet concrete floor, rows of fish boxes on pallets (tuna, salmon, cod) in the back half, a plank back wall with a blank price board, the auctioneer's lectern with a hand bell (fxPoints.bell), hanging lamps, a spring scale. Its front edge is the quay edge (quayEdge): trawler crews drop the catch at inPoint; buyers buy from outPoint (+X side). staffPoints[0] = auctioneer (faces the buyers), staffPoints[1..2] = helpers among the boxes; customerPoints (= buyerPoints) = bidders in the front half facing the fish."
+  },
+  "harbor_market": {
+   "atlas": "harbor_buildings",
+   "frame": "harbor_market",
+   "anchor": [
+    0.38525,
+    0.6134
+   ],
+   "kind": "building",
+   "frameSize": [
+    488,
+    388
+   ],
+   "footprint": [
+    380,
+    190
+   ],
+   "footprintM": [
+    5.6,
+    2.8
+   ],
+   "footprintPoly": [
+    [
+     -190,
+     -32
+    ],
+    [
+     63,
+     95
+    ],
+    [
+     190,
+     32
+    ],
+    [
+     -63,
+     -95
+    ]
+   ],
+   "topPx": 217,
+   "front": "-Y",
+   "fxPoints": {
+    "lights": [
+     -22,
+     -97
+    ]
+   },
+   "inPoint": [
+    161,
+    60
+   ],
+   "staffPoints": [
+    [
+     -70,
+     -49
+    ],
+    [
+     14,
+     -7
+    ],
+    [
+     97,
+     35
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -136,
+     -29
+    ],
+    [
+     -113,
+     -11
+    ],
+    [
+     -52,
+     12
+    ],
+    [
+     -29,
+     31
+    ],
+    [
+     32,
+     54
+    ],
+    [
+     54,
+     72
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "behind",
+   "name": {
+    "ko": "항구 시장",
+    "en": "Harbour market"
+   },
+   "zone": "market",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Harbour market (5.6 x 2.8 m): three stalls under red / blue / yellow striped awnings - fresh fish on ice with a cute octopus and dried fish, imported goods (open spice sacks, fabric bolts, glass jars), oranges + shell souvenirs. staffPoints = one seller behind each counter (staffDepth \"behind\": normal y-sorting draws them behind the stall so the counter hides their legs; the awnings are high enough for the head to show), customerPoints = two shoppers in front of each stall (stall order left to right), inPoint = restock pad on the right."
+  },
+  "harbor_office": {
+   "atlas": "harbor_buildings",
+   "frame": "harbor_office",
+   "anchor": [
+    0.28125,
+    0.69966
+   ],
+   "kind": "building",
+   "frameSize": [
+    512,
+    596
+   ],
+   "footprint": [
+    281,
+    140
+   ],
+   "footprintM": [
+    3.2,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -140,
+     -2
+    ],
+    [
+     5,
+     70
+    ],
+    [
+     140,
+     2
+    ],
+    [
+     -5,
+     -70
+    ]
+   ],
+   "topPx": 397,
+   "front": "-Y",
+   "fxPoints": {
+    "light": [
+     16,
+     -254
+    ],
+    "flag": [
+     32,
+     -372
+    ]
+   },
+   "doorPoint": [
+    -38,
+    46
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -60,
+     29
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -57,
+     55
+    ],
+    [
+     -71,
+     67
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "항만 관리소",
+    "en": "Harbour office"
+   },
+   "zone": "port",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Harbour master's office (3.2 x 3.0 m): small white office with navy trim and a three-storey look-out tower crowned by a glazed control room, a signal mast with yardarm and signal-flag lines, a radar antenna, the harbour flag, a round anchor sign over the door, a notice board and binoculars on a stand. doorPoint, staffPoints (harbour master at the door), customerPoints (captains reporting in), fxPoints.light (control-room glow), fxPoints.flag."
+  },
+  "harbor_warehouse": {
+   "atlas": "harbor_buildings",
+   "frame": "harbor_warehouse",
+   "anchor": [
+    0.40758,
+    0.64038
+   ],
+   "kind": "building",
+   "frameSize": [
+    660,
+    520
+   ],
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 313,
+   "front": "-Y",
+   "fxPoints": {
+    "hoist": [
+     -163,
+     -89
+    ]
+   },
+   "inPoint": [
+    -176,
+    23
+   ],
+   "outPoint": [
+    138,
+    87
+   ],
+   "doorPoint": [
+    -147,
+    8
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -97,
+     31
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "workPoints": [
+    [
+     -197,
+     1
+    ],
+    [
+     2,
+     92
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "항구 창고",
+    "en": "Harbour warehouse"
+   },
+   "zone": "port",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Harbour warehouse (6.4 x 4.6 m, big): twin-gabled brick + corrugated-metal store with snowy slate-grey roofs, one huge sliding door open (crates and sacks inside), one closed, a hoist beam with a net of sacks at the left gable, a big painted anchor on the right gable, a loading apron with pallets, a hand truck and barrels. doorPoint = the open bay, inPoint = drop pad in front of the open bay, outPoint = pickup pad on the right, staffPoints = warehouse clerk, workPoints = porters."
+  },
+  "sailor_lodge": {
+   "atlas": "harbor_buildings",
+   "frame": "sailor_lodge",
+   "anchor": [
+    0.31202,
+    0.68486
+   ],
+   "kind": "building",
+   "frameSize": [
+    516,
+    568
+   ],
+   "footprint": [
+    290,
+    145
+   ],
+   "footprintM": [
+    3.4,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -145,
+     -5
+    ],
+    [
+     9,
+     72
+    ],
+    [
+     145,
+     5
+    ],
+    [
+     -9,
+     -72
+    ]
+   ],
+   "topPx": 369,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     -7,
+     -368
+    ],
+    "sign": [
+     14,
+     -57
+    ]
+   },
+   "doorPoint": [
+    -50,
+    38
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -20,
+     51
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -68,
+     48
+    ],
+    [
+     -84,
+     60
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -109,
+     -2
+    ],
+    [
+     -77,
+     14
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "선원 숙소",
+    "en": "Sailor lodge"
+   },
+   "zone": "port",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Sailor lodge (3.4 x 3.0 m): tall three-storey inn of weathered blue clapboard with white trims, a red roof with a dormer, porthole windows, a second-floor balcony with striped sailor shirts drying on a line, a ship's-wheel bracket sign, lantern, a sea chest + bench + rope coil by the door; chimney smoke at fxPoints.smoke. doorPoint, staffPoints (landlady at the door), seatPoints (bench), customerPoints (arriving sailors)."
+  },
+  "seafood_restaurant": {
+   "atlas": "harbor_buildings",
+   "frame": "seafood_restaurant",
+   "anchor": [
+    0.356,
+    0.70122
+   ],
+   "kind": "building",
+   "frameSize": [
+    500,
+    492
+   ],
+   "footprint": [
+    308,
+    154
+   ],
+   "footprintM": [
+    3.6,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -154,
+     -5
+    ],
+    [
+     9,
+     77
+    ],
+    [
+     154,
+     5
+    ],
+    [
+     -9,
+     -77
+    ]
+   ],
+   "topPx": 324,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     -14,
+     -314
+    ],
+    "sign": [
+     11,
+     -65
+    ],
+    "heater": [
+     120,
+     -63
+    ]
+   },
+   "inPoint": [
+    152,
+    -3
+   ],
+   "doorPoint": [
+    -50,
+    43
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -72,
+     26
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -62,
+     55
+    ],
+    [
+     -78,
+     66
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     7,
+     44
+    ],
+    [
+     51,
+     45
+    ],
+    [
+     79,
+     3
+    ],
+    [
+     124,
+     4
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "NE",
+    "SE",
+    "NE"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "해산물 식당",
+    "en": "Seafood restaurant"
+   },
+   "zone": "market",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Seafood restaurant (3.6 x 3.2 m): coral clapboard two-storey restaurant with a navy roof, a giant smiling crab on the roof, a glowing aquarium window with a crab and fish, a fish-shaped bracket sign, door with a striped canopy, terrace with two tables, chairs and a patio heater, menu board; grill smoke at fxPoints.smoke. doorPoint, customerPoints (queue), staffPoints (waiter), seatPoints (terrace chairs), inPoint (fresh fish delivery pad on the right)."
+  },
+  "shipyard": {
+   "atlas": "harbor_buildings",
+   "frame": "shipyard",
+   "anchor": [
+    0.4269,
+    0.52778
+   ],
+   "kind": "building",
+   "frameSize": [
+    684,
+    432
+   ],
+   "footprint": [
+    543,
+    272
+   ],
+   "footprintM": [
+    7.0,
+    5.0
+   ],
+   "footprintPoly": [
+    [
+     -272,
+     -23
+    ],
+    [
+     45,
+     136
+    ],
+    [
+     272,
+     23
+    ],
+    [
+     -45,
+     -136
+    ]
+   ],
+   "topPx": 191,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "shipyard_work_0",
+      "shipyard_work_1",
+      "shipyard_work_2",
+      "shipyard_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "smoke": [
+     197,
+     -148
+    ],
+    "sparks": [
+     -57,
+     17
+    ],
+    "forge": [
+     97,
+     -6
+    ]
+   },
+   "inPoint": [
+    -186,
+    -36
+   ],
+   "staffPoints": [
+    [
+     120,
+     58
+    ]
+   ],
+   "staffDirs": [
+    "NW"
+   ],
+   "workPoints": [
+    [
+     36,
+     75
+    ],
+    [
+     -109,
+     -43
+    ],
+    [
+     104,
+     -27
+    ]
+   ],
+   "workDirs": [
+    "NW",
+    "SE",
+    "NW"
+   ],
+   "staffDepth": "front",
+   "name": {
+    "ko": "조선소",
+    "en": "Shipyard"
+   },
+   "zone": "port",
+   "quayEdge": [
+    [
+     -272,
+     -23
+    ],
+    [
+     45,
+     136
+    ]
+   ],
+   "ground": "land+water",
+   "waterPx": 30,
+   "notes": "Shipyard (7.0 x 5.0 m): a concrete slipway running down into the sea (front = quay edge, the ramp continues 0.9 m over the water) with a half-built wooden hull on a cradle - planked bow, bare ribs at the stern - scaffolding with a ladder on its visible side, a timber sheer-leg hoist holding a plank, a red-roofed workshop with a glowing forge (smoke at fxPoints.smoke), timber stacks. idle = quiet; anims.work = 4-frame loop: welding sparks at the keel and the stern frame, rivet-forge glow, the plank swinging on the hoist, forge smoke. workPoints = shipwrights around the hull, staffPoints = foreman, inPoint = timber delivery pad."
+  },
+  "breakwater_end_xp": {
+   "atlas": "harbor_water",
+   "frame": "breakwater_end_xp",
+   "anchor": [
+    0.51404,
+    0.35377
+   ],
+   "kind": "decal",
+   "frameSize": [
+    356,
+    212
+   ],
+   "footprint": [
+    227,
+    113
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     25
+    ],
+    [
+     -49,
+     57
+    ],
+    [
+     113,
+     -25
+    ],
+    [
+     49,
+     -57
+    ]
+   ],
+   "topPx": 158,
+   "fxPoints": {
+    "light": [
+     32,
+     -59
+    ]
+   },
+   "name": {
+    "ko": "방파제",
+    "en": "Breakwater"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "crownM": 1.3,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Breakwater tile (sqrt(2) m along world X): concrete crown 1.3 m wide at quay level (walkable, z 0) with a low parapet on the +Y (screen up-right) side, cute tetrapods and snowy boulders on both slopes, foam at the waterline. Round head at +X with a little green harbour light. Tiles join seamlessly (+64, +32) px apart; ground layer."
+  },
+  "breakwater_end_yn": {
+   "atlas": "harbor_water",
+   "frame": "breakwater_end_yn",
+   "anchor": [
+    0.47159,
+    0.36058
+   ],
+   "kind": "decal",
+   "frameSize": [
+    352,
+    208
+   ],
+   "footprint": [
+    227,
+    113
+   ],
+   "footprintM": [
+    3.6,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     -25
+    ],
+    [
+     49,
+     57
+    ],
+    [
+     113,
+     25
+    ],
+    [
+     -49,
+     -57
+    ]
+   ],
+   "topPx": 158,
+   "fxPoints": {
+    "light": [
+     -32,
+     -59
+    ]
+   },
+   "name": {
+    "ko": "방파제",
+    "en": "Breakwater"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "crownM": 1.3,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Breakwater tile (sqrt(2) m along world Y): concrete crown 1.3 m wide at quay level (walkable, z 0) with a low parapet on the -X (screen up-left) side, cute tetrapods and snowy boulders on both slopes, foam at the waterline. Round head at -Y with a little green harbour light. Tiles join seamlessly (+64, -32) px apart; ground layer."
+  },
+  "breakwater_x": {
+   "atlas": "harbor_water",
+   "frame": "breakwater_x",
+   "anchor": [
+    0.58654,
+    0.41026
+   ],
+   "kind": "decal",
+   "frameSize": [
+    312,
+    156
+   ],
+   "footprint": [
+    227,
+    113
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     25
+    ],
+    [
+     -49,
+     57
+    ],
+    [
+     113,
+     -25
+    ],
+    [
+     49,
+     -57
+    ]
+   ],
+   "topPx": 158,
+   "name": {
+    "ko": "방파제",
+    "en": "Breakwater"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "crownM": 1.3,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Breakwater tile (sqrt(2) m along world X): concrete crown 1.3 m wide at quay level (walkable, z 0) with a low parapet on the +Y (screen up-right) side, cute tetrapods and snowy boulders on both slopes, foam at the waterline. Straight piece. Tiles join seamlessly (+64, +32) px apart; ground layer."
+  },
+  "breakwater_y": {
+   "atlas": "harbor_water",
+   "frame": "breakwater_y",
+   "anchor": [
+    0.40385,
+    0.4
+   ],
+   "kind": "decal",
+   "frameSize": [
+    312,
+    160
+   ],
+   "footprint": [
+    227,
+    113
+   ],
+   "footprintM": [
+    3.6,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     -25
+    ],
+    [
+     49,
+     57
+    ],
+    [
+     113,
+     25
+    ],
+    [
+     -49,
+     -57
+    ]
+   ],
+   "topPx": 158,
+   "name": {
+    "ko": "방파제",
+    "en": "Breakwater"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "crownM": 1.3,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Breakwater tile (sqrt(2) m along world Y): concrete crown 1.3 m wide at quay level (walkable, z 0) with a low parapet on the -X (screen up-left) side, cute tetrapods and snowy boulders on both slopes, foam at the waterline. Straight piece. Tiles join seamlessly (+64, -32) px apart; ground layer."
+  },
+  "buoy": {
+   "atlas": "harbor_water",
+   "frame": "buoy",
+   "anchor": [
+    0.36413,
+    0.625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    184,
+    192
+   ],
+   "footprint": [
+    58,
+    29
+   ],
+   "footprintM": {
+    "radius": 0.45
+   },
+   "topPx": 98,
+   "anims": {
+    "work": {
+     "frames": [
+      "buoy_work_0",
+      "buoy_work_1",
+      "buoy_work_2",
+      "buoy_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "bob": {
+     "frames": [
+      "buoy_work_0",
+      "buoy_work_1",
+      "buoy_work_2",
+      "buoy_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "light": [
+     0,
+     -63
+    ]
+   },
+   "name": {
+    "ko": "부표",
+    "en": "Buoy"
+   },
+   "zone": "water",
+   "onWater": true,
+   "waterline": "anchor",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Navigation buoy (~1.7 m above the water). Its anchor is its WATERLINE centre (like assets/ships): put it on a sea point that is already on the water plane (e.g. 30 px below a deck-level point). Red float with a white band, lattice top with a blinking lamp and a radar reflector, a seagull riding on top. idle = still, lamp off; anims.work / anims.bob = 4-frame bobbing loop (rises / tilts, foam ring pulses, lamp blinks on frame 1). Ground layer is NOT needed: depth-sort by anchor y like a ship."
+  },
+  "pier_end_xn": {
+   "atlas": "harbor_water",
+   "frame": "pier_end_xn",
+   "anchor": [
+    0.45902,
+    0.53049
+   ],
+   "kind": "decal",
+   "frameSize": [
+    244,
+    164
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     7
+    ],
+    [
+     -13,
+     39
+    ],
+    [
+     77,
+     -7
+    ],
+    [
+     13,
+     -39
+    ]
+   ],
+   "topPx": 66,
+   "ladderPoint": [
+    -34,
+    -17
+   ],
+   "moorPoints": [
+    [
+     -57,
+     59
+    ],
+    [
+     57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "end",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world X, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, +32) px apart. Sea end at -X (screen up-left). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_end_xp": {
+   "atlas": "harbor_water",
+   "frame": "pier_end_xp",
+   "anchor": [
+    0.48667,
+    0.35638
+   ],
+   "kind": "decal",
+   "frameSize": [
+    300,
+    188
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     7
+    ],
+    [
+     -13,
+     39
+    ],
+    [
+     77,
+     -7
+    ],
+    [
+     13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "ladderPoint": [
+    34,
+    17
+   ],
+   "moorPoints": [
+    [
+     -57,
+     59
+    ],
+    [
+     57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "end",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world X, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, +32) px apart. Sea end at +X (screen down-right): end curb, two dolphins with tyre fenders, iron ladder to the water, life ring. Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_end_yn": {
+   "atlas": "harbor_water",
+   "frame": "pier_end_yn",
+   "anchor": [
+    0.38889,
+    0.36413
+   ],
+   "kind": "decal",
+   "frameSize": [
+    288,
+    184
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "ladderPoint": [
+    -34,
+    17
+   ],
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "end",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Sea end at -Y (screen down-left; the usual end of a pier that leaves a -Y waterfront). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_end_yp": {
+   "atlas": "harbor_water",
+   "frame": "pier_end_yp",
+   "anchor": [
+    0.46479,
+    0.49432
+   ],
+   "kind": "decal",
+   "frameSize": [
+    284,
+    176
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 66,
+   "ladderPoint": [
+    34,
+    -17
+   ],
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "end",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Sea end at +Y (screen up-right). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_root_xn": {
+   "atlas": "harbor_water",
+   "frame": "pier_root_xn",
+   "anchor": [
+    0.51154,
+    0.48125
+   ],
+   "kind": "decal",
+   "frameSize": [
+    260,
+    160
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     7
+    ],
+    [
+     -13,
+     39
+    ],
+    [
+     77,
+     -7
+    ],
+    [
+     13,
+     -39
+    ]
+   ],
+   "topPx": 56,
+   "moorPoints": [
+    [
+     -57,
+     59
+    ],
+    [
+     57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "root",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world X, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, +32) px apart. Land end at -X: stone abutment on the quay edge (a pier leaving a +X waterfront). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_root_xp": {
+   "atlas": "harbor_water",
+   "frame": "pier_root_xp",
+   "anchor": [
+    0.49062,
+    0.33511
+   ],
+   "kind": "decal",
+   "frameSize": [
+    320,
+    188
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     7
+    ],
+    [
+     -13,
+     39
+    ],
+    [
+     77,
+     -7
+    ],
+    [
+     13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "moorPoints": [
+    [
+     -57,
+     59
+    ],
+    [
+     57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "root",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world X, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, +32) px apart. Land end at +X: stone abutment; put its end line (anchor + half a tile along +X) on the quay edge. Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_root_yn": {
+   "atlas": "harbor_water",
+   "frame": "pier_root_yn",
+   "anchor": [
+    0.4375,
+    0.33511
+   ],
+   "kind": "decal",
+   "frameSize": [
+    304,
+    188
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "root",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Land end at -Y. Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_root_yp": {
+   "atlas": "harbor_water",
+   "frame": "pier_root_yp",
+   "anchor": [
+    0.43403,
+    0.46951
+   ],
+   "kind": "decal",
+   "frameSize": [
+    288,
+    164
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 56,
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "root",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Land end at +Y: stone abutment on the quay edge (a pier leaving a -Y waterfront). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_x": {
+   "atlas": "harbor_water",
+   "frame": "pier_x",
+   "anchor": [
+    0.53676,
+    0.45
+   ],
+   "kind": "decal",
+   "frameSize": [
+    272,
+    140
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     7
+    ],
+    [
+     -13,
+     39
+    ],
+    [
+     77,
+     -7
+    ],
+    [
+     13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "moorPoints": [
+    [
+     -57,
+     59
+    ],
+    [
+     57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "none",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world X, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, +32) px apart. Straight piece. Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "pier_y": {
+   "atlas": "harbor_water",
+   "frame": "pier_y",
+   "anchor": [
+    0.4223,
+    0.41447
+   ],
+   "kind": "decal",
+   "frameSize": [
+    296,
+    152
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "none",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Straight piece. Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints)."
+  },
+  "quay_corner": {
+   "atlas": "harbor_water",
+   "frame": "quay_corner",
+   "anchor": [
+    0.45763,
+    0.34483
+   ],
+   "kind": "decal",
+   "frameSize": [
+    236,
+    116
+   ],
+   "footprint": [
+    109,
+    54
+   ],
+   "footprintM": [
+    1.2,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -54,
+     0
+    ],
+    [
+     0,
+     27
+    ],
+    [
+     54,
+     0
+    ],
+    [
+     0,
+     -27
+    ]
+   ],
+   "topPx": 119,
+   "name": {
+    "ko": "안벽 모서리",
+    "en": "Quay corner"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "cornerArms": {
+    "x": "neg",
+    "y": "pos"
+   },
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Outer quay corner: the land quadrant x < 0, y > 0 (screen up) meets the sea on the -Y AND +X sides; anchor = the corner point at z 0. Chain quay_x tiles toward -X with their centres at (-64, -32) px * n from this anchor (n = 1, 2 ...) and quay_y tiles toward +Y with centres at (+64, -32) px * n; the joins are seamless (cuts at half a tile on both arms). A rounded granite corner stone + a bollard-like corner post."
+  },
+  "quay_x": {
+   "atlas": "harbor_water",
+   "frame": "quay_x",
+   "anchor": [
+    0.55233,
+    0.43478
+   ],
+   "kind": "decal",
+   "frameSize": [
+    172,
+    92
+   ],
+   "footprint": [
+    87,
+    43
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    0.5
+   ],
+   "footprintPoly": [
+    [
+     -43,
+     -10
+    ],
+    [
+     21,
+     22
+    ],
+    [
+     43,
+     10
+    ],
+    [
+     -21,
+     -22
+    ]
+   ],
+   "topPx": 119,
+   "name": {
+    "ko": "안벽",
+    "en": "Quay wall"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "copingM": 0.42,
+   "faceSide": "-Y",
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Quay wall tile (sqrt(2) m along world X): granite coping (0.42 m on the land side, top = z 0) over a dressed stone wall dropping 0.55 m to the sea, dark wet band + foam line at the waterline. Sea on the -Y side (screen down-left), land on +Y. Tiles join seamlessly (+64, +32) px apart; draw on the ground layer along the land edge (the land texture stops at the anchor line, the sea texture starts there)."
+  },
+  "quay_y": {
+   "atlas": "harbor_water",
+   "frame": "quay_y",
+   "anchor": [
+    0.40104,
+    0.4
+   ],
+   "kind": "decal",
+   "frameSize": [
+    192,
+    100
+   ],
+   "footprint": [
+    87,
+    43
+   ],
+   "footprintM": [
+    0.5,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -43,
+     10
+    ],
+    [
+     -21,
+     22
+    ],
+    [
+     43,
+     -10
+    ],
+    [
+     21,
+     -22
+    ]
+   ],
+   "topPx": 119,
+   "name": {
+    "ko": "안벽",
+    "en": "Quay wall"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "copingM": 0.42,
+   "faceSide": "+X",
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Quay wall tile (sqrt(2) m along world Y): granite coping (0.42 m on the land side, top = z 0) over a dressed stone wall dropping 0.55 m to the sea, dark wet band + foam line at the waterline. Sea on the +X side (screen down-right), land on -X. Tiles join seamlessly (+64, -32) px apart; draw on the ground layer along the land edge (the land texture stops at the anchor line, the sea texture starts there)."
+  },
+  "anchor_decor": {
+   "atlas": "harbor_props",
+   "frame": "anchor_decor",
+   "anchor": [
+    0.36957,
+    0.6383
+   ],
+   "kind": "decor",
+   "frameSize": [
+    184,
+    188
+   ],
+   "footprint": [
+    118,
+    59
+   ],
+   "footprintM": [
+    1.4,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -59,
+     -2
+    ],
+    [
+     5,
+     29
+    ],
+    [
+     59,
+     2
+    ],
+    [
+     -5,
+     -29
+    ]
+   ],
+   "topPx": 100,
+   "front": "-Y",
+   "name": {
+    "ko": "닻 장식",
+    "en": "Anchor monument"
+   },
+   "zone": "street",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Monument anchor (~1.5 m): a big navy anchor standing in a snowy rock mound with a heavy chain draped around it and a little brass plaque - plaza / waterfront decoration."
+  },
+  "barrel_stack": {
+   "atlas": "harbor_props",
+   "frame": "barrel_stack",
+   "anchor": [
+    0.45745,
+    0.55233
+   ],
+   "kind": "decor",
+   "frameSize": [
+    188,
+    172
+   ],
+   "footprint": [
+    136,
+    68
+   ],
+   "footprintM": [
+    1.8,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -68,
+     -7
+    ],
+    [
+     14,
+     34
+    ],
+    [
+     68,
+     7
+    ],
+    [
+     -14,
+     -34
+    ]
+   ],
+   "topPx": 74,
+   "front": "-Y",
+   "inPoint": [
+    -43,
+    26
+   ],
+   "name": {
+    "ko": "통 더미",
+    "en": "Barrel stack"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Barrels lying in a chocked pyramid (3 + 2) with two standing barrels beside it - cargo / fish-oil barrels on the quay. inPoint = drop pad in front."
+  },
+  "bollard": {
+   "atlas": "harbor_props",
+   "frame": "bollard",
+   "anchor": [
+    0.39286,
+    0.5
+   ],
+   "kind": "decor",
+   "frameSize": [
+    84,
+    96
+   ],
+   "footprint": [
+    28,
+    14
+   ],
+   "footprintM": {
+    "radius": 0.22
+   },
+   "topPx": 27,
+   "front": "-Y",
+   "fxPoints": {
+    "ropeTo": [
+     0,
+     -11
+    ]
+   },
+   "name": {
+    "ko": "계선주",
+    "en": "Bollard"
+   },
+   "zone": "street",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Cast-iron mooring bollard (navy with a red band, snow cap) with a rope loop and a little coil on the -Y side. Put a few along quay edges / pier sides; fxPoints.ropeTo = the loop (draw a moored ship's bow / stern line from there)."
+  },
+  "container_blue": {
+   "atlas": "harbor_props",
+   "frame": "container_blue",
+   "anchor": [
+    0.39286,
+    0.57547
+   ],
+   "kind": "decor",
+   "frameSize": [
+    252,
+    212
+   ],
+   "footprint": [
+    158,
+    79
+   ],
+   "footprintM": [
+    2.4,
+    1.1
+   ],
+   "footprintPoly": [
+    [
+     -79,
+     -15
+    ],
+    [
+     29,
+     40
+    ],
+    [
+     79,
+     15
+    ],
+    [
+     -29,
+     -40
+    ]
+   ],
+   "topPx": 102,
+   "front": "-Y",
+   "name": {
+    "ko": "컨테이너",
+    "en": "Container (blue)"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Single blue toy shipping container (2.4 x 1.1 x 1.1 m, long axis along world X, doors at +X). Ground-level piece (stacking separate sprites would double the baked shadow: use the stacks)."
+  },
+  "container_green": {
+   "atlas": "harbor_props",
+   "frame": "container_green",
+   "anchor": [
+    0.39286,
+    0.57547
+   ],
+   "kind": "decor",
+   "frameSize": [
+    252,
+    212
+   ],
+   "footprint": [
+    158,
+    79
+   ],
+   "footprintM": [
+    2.4,
+    1.1
+   ],
+   "footprintPoly": [
+    [
+     -79,
+     -15
+    ],
+    [
+     29,
+     40
+    ],
+    [
+     79,
+     15
+    ],
+    [
+     -29,
+     -40
+    ]
+   ],
+   "topPx": 102,
+   "front": "-Y",
+   "name": {
+    "ko": "컨테이너",
+    "en": "Container (green)"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Single green toy shipping container (2.4 x 1.1 x 1.1 m, long axis along world X, doors at +X). Ground-level piece (stacking separate sprites would double the baked shadow: use the stacks)."
+  },
+  "container_red": {
+   "atlas": "harbor_props",
+   "frame": "container_red",
+   "anchor": [
+    0.39286,
+    0.57547
+   ],
+   "kind": "decor",
+   "frameSize": [
+    252,
+    212
+   ],
+   "footprint": [
+    158,
+    79
+   ],
+   "footprintM": [
+    2.4,
+    1.1
+   ],
+   "footprintPoly": [
+    [
+     -79,
+     -15
+    ],
+    [
+     29,
+     40
+    ],
+    [
+     79,
+     15
+    ],
+    [
+     -29,
+     -40
+    ]
+   ],
+   "topPx": 102,
+   "front": "-Y",
+   "name": {
+    "ko": "컨테이너",
+    "en": "Container (red)"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Single red toy shipping container (2.4 x 1.1 x 1.1 m, long axis along world X, doors at +X). Ground-level piece (stacking separate sprites would double the baked shadow: use the stacks)."
+  },
+  "container_stack": {
+   "atlas": "harbor_props",
+   "frame": "container_stack",
+   "anchor": [
+    0.375,
+    0.60811
+   ],
+   "kind": "decor",
+   "frameSize": [
+    336,
+    296
+   ],
+   "footprint": [
+    226,
+    113
+   ],
+   "footprintM": [
+    2.6,
+    2.4
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     -2
+    ],
+    [
+     5,
+     57
+    ],
+    [
+     113,
+     2
+    ],
+    [
+     -5,
+     -57
+    ]
+   ],
+   "topPx": 159,
+   "front": "-Y",
+   "inPoint": [
+    -70,
+    35
+   ],
+   "name": {
+    "ko": "컨테이너 더미",
+    "en": "Containers"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Stack of toy shipping containers (2.4 x 1.1 x 1.1 m each, corrugated, door ends with lock bars, snow on top): two side by side (red, blue) + a green one on top. Container yard decor; porters can use inPoint (front) as the drop pad."
+  },
+  "container_stack_b": {
+   "atlas": "harbor_props",
+   "frame": "container_stack_b",
+   "anchor": [
+    0.35714,
+    0.61076
+   ],
+   "kind": "decor",
+   "frameSize": [
+    364,
+    316
+   ],
+   "footprint": [
+    226,
+    113
+   ],
+   "footprintM": [
+    2.6,
+    2.4
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     -2
+    ],
+    [
+     5,
+     57
+    ],
+    [
+     113,
+     2
+    ],
+    [
+     -5,
+     -57
+    ]
+   ],
+   "topPx": 172,
+   "front": "-Y",
+   "inPoint": [
+    -70,
+    35
+   ],
+   "name": {
+    "ko": "컨테이너 더미 B",
+    "en": "Containers B"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Stack of toy shipping containers (2.4 x 1.1 x 1.1 m each, corrugated, door ends with lock bars, snow on top): two by two (yellow, teal, orange, blue), the top pair slightly shifted. Container yard decor; porters can use inPoint (front) as the drop pad."
+  },
+  "container_yellow": {
+   "atlas": "harbor_props",
+   "frame": "container_yellow",
+   "anchor": [
+    0.39286,
+    0.57547
+   ],
+   "kind": "decor",
+   "frameSize": [
+    252,
+    212
+   ],
+   "footprint": [
+    158,
+    79
+   ],
+   "footprintM": [
+    2.4,
+    1.1
+   ],
+   "footprintPoly": [
+    [
+     -79,
+     -15
+    ],
+    [
+     29,
+     40
+    ],
+    [
+     79,
+     15
+    ],
+    [
+     -29,
+     -40
+    ]
+   ],
+   "topPx": 102,
+   "front": "-Y",
+   "name": {
+    "ko": "컨테이너",
+    "en": "Container (yellow)"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Single yellow toy shipping container (2.4 x 1.1 x 1.1 m, long axis along world X, doors at +X). Ground-level piece (stacking separate sprites would double the baked shadow: use the stacks)."
+  },
+  "crate_stack": {
+   "atlas": "harbor_props",
+   "frame": "crate_stack",
+   "anchor": [
+    0.36574,
+    0.62273
+   ],
+   "kind": "decor",
+   "frameSize": [
+    216,
+    220
+   ],
+   "footprint": [
+    145,
+    72
+   ],
+   "footprintM": [
+    1.8,
+    1.4
+   ],
+   "footprintPoly": [
+    [
+     -72,
+     -5
+    ],
+    [
+     9,
+     36
+    ],
+    [
+     72,
+     5
+    ],
+    [
+     -9,
+     -36
+    ]
+   ],
+   "topPx": 117,
+   "front": "-Y",
+   "inPoint": [
+    -57,
+    15
+   ],
+   "name": {
+    "ko": "나무상자 더미",
+    "en": "Crate stack"
+   },
+   "zone": "yard",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Pyramid of wooden cargo crates (3 + 2 + 1) lashed with rope, a few sacks and a tarp - quay cargo pile. inPoint = drop pad in front."
+  },
+  "harbor_lamp": {
+   "atlas": "harbor_props",
+   "frame": "harbor_lamp",
+   "anchor": [
+    0.18878,
+    0.64643
+   ],
+   "kind": "decor",
+   "frameSize": [
+    196,
+    280
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 161,
+   "front": "-Y",
+   "fxPoints": {
+    "light": [
+     0,
+     -104
+    ]
+   },
+   "name": {
+    "ko": "항구 가로등",
+    "en": "Harbour lamp"
+   },
+   "zone": "street",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Harbour lamp post (~2.9 m): navy cast-iron post with a ship-lantern head (red cap, warm glass), a life ring hanging on it and a little seagull on top. fxPoints.light = lantern centre (night glow)."
+  },
+  "net_rack": {
+   "atlas": "harbor_props",
+   "frame": "net_rack",
+   "anchor": [
+    0.38462,
+    0.59914
+   ],
+   "kind": "decor",
+   "frameSize": [
+    260,
+    232
+   ],
+   "footprint": [
+    140,
+    70
+   ],
+   "footprintM": [
+    2.2,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -70,
+     -15
+    ],
+    [
+     29,
+     35
+    ],
+    [
+     70,
+     15
+    ],
+    [
+     -29,
+     -35
+    ]
+   ],
+   "topPx": 118,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -68,
+     7
+    ],
+    [
+     -27,
+     29
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NE"
+   ],
+   "name": {
+    "ko": "그물 건조대",
+    "en": "Net rack"
+   },
+   "zone": "street",
+   "ground": "land",
+   "waterPx": 30,
+   "notes": "Net drying rack (2.2 m): wooden A-frames with a pole, fishing nets draped over it with orange and white floats, a few hanging dried fish and a gull. workPoints = two spots where fishermen mend the nets."
+  },
+  "pier_end": {
+   "atlas": "harbor_water",
+   "frame": "pier_end_yn",
+   "anchor": [
+    0.38889,
+    0.36413
+   ],
+   "kind": "decal",
+   "frameSize": [
+    288,
+    184
+   ],
+   "footprint": [
+    155,
+    77
+   ],
+   "footprintM": [
+    2.0,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -7
+    ],
+    [
+     13,
+     39
+    ],
+    [
+     77,
+     7
+    ],
+    [
+     -13,
+     -39
+    ]
+   ],
+   "topPx": 141,
+   "ladderPoint": [
+    -34,
+    17
+   ],
+   "moorPoints": [
+    [
+     57,
+     59
+    ],
+    [
+     -57,
+     2
+    ]
+   ],
+   "name": {
+    "ko": "부두",
+    "en": "Pier"
+   },
+   "zone": "water",
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "pierWidthM": 2.0,
+   "capKind": "end",
+   "deckTop": 0.0,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Pier tile (sqrt(2) m along world Y, deck 2.0 m wide, deck top = quay level z 0): weathered plank deck with dark curbs, timber pilings poking up at the edges with snow caps, X bracing and foam rings where the pilings meet the sea (WATER_Z, 30 px lower). Tiles join seamlessly (+64, -32) px apart. Sea end at -Y (screen down-left; the usual end of a pier that leaves a -Y waterfront). Ground layer: characters walk on it with no lift; ships moor beside it on the water plane (moorPoints).",
+   "aliasOf": "pier_end_yn"
+  },
+  "breakwater": {
+   "atlas": "harbor_water",
+   "frame": "breakwater_x",
+   "anchor": [
+    0.58654,
+    0.41026
+   ],
+   "kind": "decal",
+   "frameSize": [
+    312,
+    156
+   ],
+   "footprint": [
+    227,
+    113
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -113,
+     25
+    ],
+    [
+     -49,
+     57
+    ],
+    [
+     113,
+     -25
+    ],
+    [
+     49,
+     -57
+    ]
+   ],
+   "topPx": 158,
+   "name": {
+    "ko": "방파제",
+    "en": "Breakwater"
+   },
+   "zone": "water",
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "tileLayer": "ground",
+   "crownM": 1.3,
+   "ground": "water",
+   "waterPx": 30,
+   "notes": "Breakwater tile (sqrt(2) m along world X): concrete crown 1.3 m wide at quay level (walkable, z 0) with a low parapet on the +Y (screen up-right) side, cute tetrapods and snowy boulders on both slopes, foam at the waterline. Straight piece. Tiles join seamlessly (+64, +32) px apart; ground layer.",
+   "aliasOf": "breakwater_x"
+  }
+ },
+ "townfolkPresets": "harbor/townfolk_presets.json",
+ "waterPx": 30
+}

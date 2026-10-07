@@ -38,7 +38,7 @@ from bld_assets import mark
 HARBOR = OrderedDict()
 
 
-def harbor(key, kind, atlas, fp=None, yaw=0.0, shadow=True, samples=40, notes='', front='-Y', catcher=24.0, work=0,
+def harbor(key, kind, atlas, fp=None, yaw=0.0, shadow=True, samples=32, notes='', front='-Y', catcher=24.0, work=0,
            fps=8, sprites=None, extra=None, ko=None, en=None, zone=None, anim_name=None, ground='land'):
     """Register a builder (bld_assets.bld spec fields + name / zone / ground metadata)."""
     def deco(fn):
@@ -103,7 +103,8 @@ LIGHT_NOTE = ('Lighthouse (3.6 x 3.0 m, ~7 m tall): red-white striped round towe
               'sprite), doorPoint = in front of the door, staffPoints = the keeper.')
 
 
-@harbor('lighthouse', 'building', 'harbor_landmarks', fp=(3.6, 3.0), catcher=34.0, work=8, fps=8, notes=LIGHT_NOTE,
+@harbor('lighthouse', 'building', 'harbor_landmarks', fp=(3.6, 3.0), catcher=34.0, work=8, fps=8, samples=28,
+        notes=LIGHT_NOTE,
         ko='등대', en='Lighthouse', zone='landmark', anim_name='light')
 def b_lighthouse():
     rnd = L.rng(5)
@@ -248,6 +249,7 @@ CRANE_NOTE = ('Harbour crane (portal 3.2 x 2.6 m on quay rails along X, jib reac
 
 
 @harbor('harbor_crane', 'building', 'harbor_landmarks', fp=(3.2, 2.6), catcher=40.0, work=8, fps=4,
+        samples=28,
         notes=CRANE_NOTE, ko='항구 크레인', en='Harbour crane', zone='landmark', anim_name='lift',
         ground={'land': [(-12.0, 12.0, -1.6, 12.0)]})
 def b_harbor_crane():
