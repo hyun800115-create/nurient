@@ -410,9 +410,11 @@ def fog_bank_front(W=512, H=128):
     s = -(gx * LXY[0] + gy * LXY[1]) * 0.6
     col = np.broadcast_to(hexc('#F2F6FB'), X.shape + (3,)).copy()
     col = F.mix(col, WHITE, np.clip(s, 0, 1))
-    col = F.mix(col, hexc('#A9BDD6'), np.clip(-s, 0, 1) * 0.9)
+    col = F.mix(col, hexc('#A0B5D0'), np.clip(-s, 0, 1) * 1.0)
+    under = np.clip(F.blur(cov, 2 * ss) - np.roll(F.blur(cov, 2 * ss), -3 * ss, axis=0), 0, 1)
+    col = F.mix(col, hexc('#B4C5DB'), np.clip(under * 2.5, 0, 1) * 0.6)
     streak = xnoise(H * ss, W * ss, 823, 3 * ss, aniso=8.0)
-    a = cov * (0.62 + 0.25 * np.clip(streak, -1, 1))
+    a = cov * (0.82 + 0.18 * np.clip(streak, -1, 1))
     # flakes (wrapped, slightly streaked by the wind) with a thin cool rim
     fl = np.zeros_like(X)
     rim = np.zeros_like(X)

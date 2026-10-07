@@ -1,7 +1,7 @@
 // Hired workers: go to a resource -> play the job's work anim -> carry a stack -> walk to the
 // station's input pad -> drop items one by one -> repeat. The hunter shoots arrows.
-// Couriers (role 'porter', hired after the village is complete) instead pick up the station's
-// products at its output pad and carry them to the counter / trade post.
+// Porters (v2, one per production line) pick up the station's products at its output pad and carry
+// them along the roads to the counter / trade post (stack on the back for A-frame porters).
 
 import { Character } from './Character.js';
 import { Assets } from '../core/Assets.js';
@@ -16,18 +16,12 @@ const FOOD_OUT = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
 
 export class Worker extends Character {
   /** where a worker waits when there is nothing to do */
-  static homeFor(gs, type, index, role) {
-    if (role === 'porter') {
-      const pad = gs.stations[STATION_OF[type]].outPad;
-      const p = { x: pad.x + 34, y: pad.y + 18 };
-      gs.collision.resolve(p, 14);
-      return [p.x, p.y];
-    }
+  static homeFor(gs, type, index) {
     return gs.workerHome(type, index);
   }
 
   constructor(gs, type, x, y, index = 0, role = 'worker') {
-    super(gs, type, x, y, { radius: 14, capacity: role === 'porter' ? BALANCE.workers.porterCapacity : BALANCE.workers.capacity, carryScale: BALANCE.player.carryScale });
+    super(gs, type, x, y, { radius: 14, capacity: BALANCE.workers.capacity, carryScale: BALANCE.player.carryScale });
     this.type = type;
     this.role = role;
     this.index = index;
@@ -40,68 +34,8 @@ export class Worker extends Character {
     this.speed = BALANCE.workers.speed * (0.95 + Math.random() * 0.1);
     this.stand = { x: 0, y: 0 };
     this.onImpact = () => this.impact();
-    this.home = Worker.homeFor(gs, type, index, role);
-    if (role === 'porter') {
-      this.onImpact = null;
-      this.seller = FOOD_OUT.indexOf(this.station.output) >= 0 ? gs.market : gs.trade;
-      this.waitT = 0;
-    }
+    this.home = Worker.homeFor(gs, type, index);
     gs.agents.push(this);
-  }
-
-  // ------------------------------------------------------------------ courier
-  updatePorter(dt) {
-    const gs = this.gs, st = this.station, out = st.outStack;
-    const shelf = this.seller.shelf;
-    switch (this.state) {
-      case 'seek':     // walk to the station's output pad
-      default: {
-        if (this.stack.count > 0 && this.room <= 0) { this.state = 'haul'; break; }
-        if (gs.moveAgent(this, this.home[0], this.home[1], this.speed, dt, 10)) {
-          this.vx = this.vy = 0;
-          this.state = 'load'; this.dropT = 0; this.waitT = 0;
-          if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
-          this.locomotion(false);
-        }
-        break;
-      }
-      case 'load': {  // take products one by one
-        this.vx = this.vy = 0;
-        this.dropT -= dt;
-        if (this.room <= 0) { this.state = 'haul'; break; }
-        if (out.count > 0) {
-          this.waitT = 0;
-          if (this.dropT <= 0 && gs.moveItem(out, this.stack, null, { dur: 230, height: 55 })) this.dropT = 0.14;
-        } else {
-          this.waitT += dt;
-          // carry what we have once the output runs dry for a moment (or right away with a decent load)
-          if (this.stack.count > 0 && (this.stack.count >= 3 || this.waitT > 2.5)) this.state = 'haul';
-        }
-        this.locomotion(false);
-        break;
-      }
-      case 'haul': {  // walk to the counter / trade post shelf
-        if (this.stack.count + this.stack.incoming === 0) { this.state = 'seek'; break; }
-        if (!this.seller.enabled && this.seller !== gs.market) { this.locomotion(false); break; }
-        if (gs.moveAgent(this, shelf.x + (this.index - 0.5) * 22 - 10, shelf.y + 10, this.speed, dt, 12)) {
-          this.vx = this.vy = 0;
-          this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
-          this.locomotion(false);
-        }
-        break;
-      }
-      case 'unload': {
-        this.vx = this.vy = 0;
-        this.dropT -= dt;
-        if (this.dropT <= 0) {
-          this.dropT = 0.14;
-          if (this.stack.count === 0) { if (this.stack.incoming === 0) this.state = 'seek'; }
-          else if (!this.seller.feedFrom(this)) this.dropT = 0.6;     // shelf full: wait for buyers
-        }
-        this.locomotion(false);
-        break;
-      }
-    }
   }
 
   get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
@@ -145,7 +79,6 @@ export class Worker extends Character {
 
   update(dt) {
     const gs = this.gs;
-    if (this.role === 'porter') { this.updatePorter(dt); this.sync(dt); return; }
     if (this.avoidT > 0) this.avoidT -= dt;
     if (this.state === 'goto') {
       this.gotoT = (this.gotoT || 0) + dt;
@@ -297,5 +230,135 @@ export class Worker extends Character {
         }
       },
     });
+  }
+}
+
+// ------------------------------------------------------------------ porter (v2)
+const PORTER_KEYS = ['npc_porter_a', 'npc_porter_b'];
+// stand-ins while the porter art is missing: ordinary villagers carrying in front
+const PORTER_FALLBACK = ['npc_yellow', 'npc_red', 'npc_blue', 'npc_young_man', 'villager_a', 'villager_b', 'villager_c'];
+
+export class Porter extends Character {
+  /** which look porter number `index` gets (and the art it waits for when that is still loading) */
+  static pickKey(gs, index) {
+    const want = PORTER_KEYS[index % PORTER_KEYS.length];
+    if (Assets.charReady(want)) return { key: want, later: null };
+    const later = Assets.charPending(want) ? want : (Assets.charPending(PORTER_KEYS[(index + 1) % 2]) ? PORTER_KEYS[(index + 1) % 2] : null);
+    const fb = PORTER_FALLBACK.find((k) => (Assets.charReady(k) || !Assets.m.characters[k]) && !gs.keysInUse.has(k) && gs.game.anims.exists(k + ':walk:S')) || 'villager_a';
+    return { key: fb, later };
+  }
+
+  static homeFor(gs, station) {
+    const pad = station.outPad;
+    const p = { x: pad.x + 30, y: pad.y + 30 };
+    gs.collision.resolve(p, 14);
+    return [p.x, p.y];
+  }
+
+  constructor(gs, station, x, y, index = 0) {
+    const pk = Porter.pickKey(gs, index);
+    const def = Assets.charDef(pk.key);
+    super(gs, pk.key, x, y, { radius: 14, capacity: BALANCE.workers.porterCapacity, carryScale: BALANCE.player.carryScale, carryMode: def.carryStyle === 'back' ? 'back' : 'front' });
+    this.wantKey = pk.later;
+    this.checkT = 1;
+    this.type = 'porter';
+    this.role = 'porter';
+    this.index = index;
+    this.station = station;
+    this.seller = FOOD_OUT.indexOf(station.output) >= 0 ? gs.market : gs.trade;
+    this.state = 'seek';
+    this.home = Porter.homeFor(gs, station);
+    this.route = [];
+    this.ri = 0;
+    this.dropT = 0;
+    this.waitT = 0;
+    this.tripT = 0;
+    this.speed = BALANCE.workers.speed * (0.95 + Math.random() * 0.1);
+    gs.keysInUse.add(pk.key);
+    gs.agents.push(this);
+  }
+
+  get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
+
+  /** walk along the roads to (x, y) */
+  go(x, y) { this.gs.roads.route(this.x, this.y, x, y, this.route); this.ri = 0; this.tripT = 0; }
+
+  shelfSpot() { const sh = this.seller.shelf; return { x: sh.x + 30 + (this.index % 2) * 20, y: sh.y + 22 }; }
+
+  update(dt) {
+    const gs = this.gs, out = this.station.outStack;
+    if (this.wantKey) {
+      this.checkT -= dt;
+      if (this.checkT <= 0) {
+        this.checkT = 1;
+        if (Assets.charReady(this.wantKey)) {
+          gs.keysInUse.delete(this.key);
+          this.reskin(this.wantKey);
+          this.carryMode = this.def.carryStyle === 'back' ? 'back' : 'front';
+          gs.keysInUse.add(this.key);
+          this.wantKey = null;
+        }
+      }
+    }
+    switch (this.state) {
+      case 'seek':
+      default: {
+        if (this.stack.count > 0 && this.room <= 0) { this.state = 'haul'; const s = this.shelfSpot(); this.go(s.x, s.y); break; }
+        if (!this.route.length || this.routeTo !== 'home') { this.go(this.home[0], this.home[1]); this.routeTo = 'home'; }
+        if (gs.followRoute(this, this.speed, dt, 10)) {
+          this.vx = this.vy = 0;
+          this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null;
+          if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
+          this.locomotion(false);
+        }
+        break;
+      }
+      case 'load': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        if (this.room <= 0) { this.startHaul(); break; }
+        if (out.count > 0) {
+          this.waitT = 0;
+          if (this.dropT <= 0 && gs.moveItem(out, this.stack, null, { dur: 230, height: 55 })) this.dropT = 0.14;
+        } else {
+          this.waitT += dt;
+          // carry what we have once the output runs dry for a moment (or right away with a decent load)
+          if (this.stack.count > 0 && this.stack.incoming === 0 && (this.stack.count >= 4 || this.waitT > 3)) this.startHaul();
+        }
+        this.locomotion(false);
+        break;
+      }
+      case 'haul': {
+        if (this.stack.count + this.stack.incoming === 0) { this.state = 'seek'; this.route.length = 0; break; }
+        if (!this.seller.enabled) { this.vx = this.vy = 0; this.locomotion(false); break; }
+        this.tripT += dt;
+        if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
+          if (this.tripT > 90) { const s = this.shelfSpot(); this.x = s.x; this.y = s.y; }
+          this.vx = this.vy = 0;
+          this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
+          this.faceTo(this.seller.shelf.x, this.seller.shelf.y);
+          this.locomotion(false);
+        }
+        break;
+      }
+      case 'unload': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        if (this.dropT <= 0) {
+          this.dropT = 0.14;
+          if (this.stack.count === 0) { if (this.stack.incoming === 0) { this.state = 'seek'; this.route.length = 0; } }
+          else if (!this.seller.feedFrom(this)) this.dropT = 0.6;     // shelf full: wait for buyers
+        }
+        this.locomotion(false);
+        break;
+      }
+    }
+    this.sync(dt);
+  }
+
+  startHaul() {
+    this.state = 'haul';
+    const s = this.shelfSpot();
+    this.go(s.x, s.y);
   }
 }

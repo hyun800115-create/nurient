@@ -70,16 +70,16 @@ def h_serve(i, n, ch):
     keys = [
         ((-0.090, -0.215, -0.170), (0.090, -0.215, -0.170), -2, 6, 'smile', True),
         ((-0.095, -0.245, -0.070), (0.095, -0.245, -0.070), -4, 2, 'talk_open', True),
-        ((-0.090, -0.300, -0.010), (0.090, -0.300, -0.010), -8, -2, 'smile', True),
-        ((-0.080, -0.360, 0.005), (0.080, -0.360, 0.005), -12, 3, 'happy', True),       # hand-over
-        ((-0.100, -0.300, -0.050), (0.100, -0.300, -0.050), -15, 13, 'happy', False),   # nod, hands free
+        ((-0.090, -0.320, 0.000), (0.090, -0.320, 0.000), -10, -2, 'smile', True),
+        ((-0.085, -0.420, 0.030), (0.085, -0.420, 0.030), -17, 3, 'happy', True),       # hand-over
+        ((-0.100, -0.320, -0.040), (0.100, -0.320, -0.040), -18, 14, 'happy', False),   # nod, hands free
         (CLASP['ik_R'][:3], CLASP['ik_L'][:3], -4, 3, 'smile', False),
     ]
     r, l, ln, lk, f, prop = keys[i % 6]
     p = {**legs_stand(3, 2), **lean(-ln), **look(lk),
          'ik_R': tuple(r) + (-0.5, 0.25, -1.0), 'ik_L': tuple(l) + (0.5, 0.25, -1.0)}
-    if i % 6 == 3:
-        p.update(body(0, -0.01, 0))
+    if i % 6 in (3, 4):
+        p.update(body(0, -0.02, 0))
     props = {ch.get('serve_prop', 'bag')} if prop else set()
     p.update(face(f, props))
     return p
@@ -151,7 +151,7 @@ def h_fall(i, n, ch):
         f = 'startle'
     elif k == 1:
         p = {**lean(-16), **look(-14), **arms(140, 40, 10), 'hip_R': (46, 8, 0), 'hip_L': (40, 8, 0),
-             'knee_R': (20, 0, 0), 'knee_L': (16, 0, 0), **body(0, 0.03, -L * 0.30)}
+             'knee_R': (30, 0, 0), 'knee_L': (24, 0, 0), **body(0, 0.035, -L * 0.62)}
         f = 'surprised'
     elif k == 2:
         p = {**lean(-8), **look(8), **arms(26, 58, 22), 'hip_R': (86, 14, 0), 'hip_L': (86, 14, 0),

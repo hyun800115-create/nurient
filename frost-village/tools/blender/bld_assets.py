@@ -376,17 +376,16 @@ def b_shop_general():
     box('cornice2', (W * 0.62 + 0.14, 0.26, 0.1), (0, Y0 + 0.02, H + 0.12 + ff_h * 0.82 - 0.02), mat=trim, bevel=0.03)
     L.snow_slab('csnow2', W * 0.6, 0.22, 0.07, (0, Y0 + 0.02, H + 0.12 + ff_h * 0.82 + 0.07), seed=4)
     box('fascia', (W + 0.2, 0.2, 0.16), (0, Y0 - 0.02, H + 0.04), mat=trim, bevel=0.03)
-    # round sign plaque on the false front: green disc + gold can & pick emblem
-    pl = cyl('plaque', 0.4, 0.06, (0, 0, 0), rot=(90, 0, 0), mat=flat('#3E8E57', 0.6), segs=40, origin='center',
-             bevel=0.02, cap_mat=flat('#4FAE65', 0.55))
-    rim = cyl('plaque_rim', 0.44, 0.04, (0, 0, 0), rot=(90, 0, 0), mat=flat('#F2C14E', 0.35, 0.6), segs=40,
-              origin='center', bevel=0.015)
-    pl.location = rim.location = (0, Y0 - 0.1, H + 0.12 + ff_h * 0.55)
-    rim.location.y += 0.02
-    ez = H + 0.12 + ff_h * 0.55
-    box('emb_ledge', (0.5, 0.2, 0.04), (-0.12, Y0 - 0.2, ez - 0.2), mat=trim, bevel=0.01)
-    can_model('emblem_can', r=0.12, h=0.2, loc=(-0.14, Y0 - 0.2, ez - 0.16), label='#F2C14E', fish=True)
-    axe_model('emblem_axe', s=0.4, loc=(0.16, Y0 - 0.16, ez + 0.02), rot=(90, -55, 0))
+    # round sign plaque on the false front: green disc with a gold rim + a 3D can & pickaxe emblem
+    ez = H + 0.12 + ff_h * 0.5
+    pl = cyl('plaque', 0.42, 0.06, (0, Y0 - 0.17, ez), rot=(90, 0, 0), mat=flat('#3E8E57', 0.6), segs=40,
+             origin='center', bevel=0.02, cap_mat=flat('#4FAE65', 0.55))
+    cyl('plaque_rim', 0.47, 0.05, (0, Y0 - 0.15, ez), rot=(90, 0, 0), mat=flat('#F2C14E', 0.35, 0.6), segs=40,
+        origin='center', bevel=0.015)
+    del pl
+    pick_model('emblem_pick', s=0.5, loc=(0.0, Y0 - 0.24, ez + 0.02), rot=(90, -48, 0))
+    box('emb_ledge', (0.42, 0.22, 0.04), (0.0, Y0 - 0.3, ez - 0.27), mat=trim, bevel=0.01)
+    can_model('emblem_can', r=0.15, h=0.26, loc=(0.0, Y0 - 0.32, ez - 0.23), label='#D9483B', fish=True)
     # roof behind the false front (gable along X, snowy)
     roofm = L.stripes('#3E7F55', '#346B47', 4.0, 'Y', rough=0.85, soft=0.04)
     rz = H + 0.12
@@ -435,12 +434,12 @@ def b_shop_general():
     sickle_model('wall_sickle', s=0.55, loc=(0.85, Y1 - 0.2, 2.15), rot=(90, 0, 0))
     # ---- counter at the front opening (overlay part): plank front + light top + cash register
     cy_ = Y0 - 0.22
-    box('counter', (1.9, 0.5, 0.92), (-0.1, cy_, 0.0), mat=L.stripes('#C98F55', '#B27843', 10.0 / 1.9, 'X', soft=0.03),
+    box('counter', (1.9, 0.5, 0.92), (0.0, cy_, 0.0), mat=L.stripes('#C98F55', '#B27843', 10.0 / 1.9, 'X', soft=0.03),
         bevel=0.03)
-    box('ctop', (2.05, 0.62, 0.08), (-0.1, cy_, 0.92), mat=tonal('#E0AE72', 0.08, 2.0), bevel=0.03)
-    box('ckick', (1.95, 0.08, 0.14), (-0.1, cy_ - 0.24, 0.0), mat=trim, bevel=0.02)
+    box('ctop', (2.05, 0.62, 0.08), (0.0, cy_, 0.92), mat=tonal('#E0AE72', 0.08, 2.0), bevel=0.03)
+    box('ckick', (1.95, 0.08, 0.14), (0.0, cy_ - 0.24, 0.0), mat=trim, bevel=0.02)
     # cash register (brass + red keys) on the right of the counter
-    rx = 0.52
+    rx = -0.62
     brass = flat('#D9A93C', 0.3, 0.75)
     box('reg_base', (0.46, 0.36, 0.14), (rx, cy_ + 0.02, 1.0), mat=brass, bevel=0.035)
     box('reg_body', (0.42, 0.26, 0.2), (rx, cy_ + 0.07, 1.12), mat=brass, bevel=0.05, taper=(0.9, 0.7))
@@ -449,10 +448,10 @@ def b_shop_general():
         for j in range(2):
             sphere('reg_key', 0.026, (rx - 0.1 + i * 0.1, cy_ - 0.09 + j * 0.06, 1.17 + j * 0.04),
                    flat(['#D9483B', '#F4F1EA', '#3D7CC9'][i], 0.4), scale=(1, 1, 0.6), segs=10, rings=6)
-    cyl('reg_crank', 0.035, 0.12, (rx + 0.25, cy_ + 0.05, 1.14), rot=(0, 90, 0), mat=brass, segs=10, origin='center')
+    cyl('reg_crank', 0.035, 0.12, (rx - 0.25, cy_ + 0.05, 1.14), rot=(0, 90, 0), mat=brass, segs=10, origin='center')
     # goods on the counter: a jar + a can pyramid
-    jar_model('cjar', r=0.08, h=0.2, loc=(-0.8, cy_ + 0.02, 1.0), fill='#E8A23C', lid='#D9483B')
-    for i, (x, z) in enumerate([(-0.45, 0), (-0.27, 0), (-0.36, 0.13)]):
+    jar_model('cjar', r=0.08, h=0.2, loc=(0.82, cy_ + 0.04, 1.0), fill='#E8A23C', lid='#D9483B')
+    for i, (x, z) in enumerate([(0.42, 0), (0.6, 0), (0.51, 0.13)]):
         can_model('ccan', r=0.08, h=0.12, loc=(x, cy_ - 0.04, 1.0 + z), label=['#D9483B', '#3D7CC9', '#F2C14E'][i],
                   fish=False)
     # ---- outdoor display on the visible right side: barrel of tools + crate of cans + snow drift
@@ -467,9 +466,10 @@ def b_shop_general():
     LA.snow_drift('d1', 0.3, (-1.45, 1.2, 0.0), seed=3)
     LA.snow_drift('d2', 0.22, (1.35, 1.3, 0.0), seed=4)
     # ---- markers
-    clerk = (-0.1, Y0 + 0.22, 0.0)
+    L.point_light('shoplamp', (0.0, Y1 - 0.8, H - 0.2), 'window', 30.0, 0.3)
+    clerk = (0.05, Y0 + 0.24, 0.0)
     mark('staff', clerk, facing=(0, -1, 0))
-    mark('customer', (-0.1, Y0 - 1.0, 0.0), facing=(0, 1, 0))
+    mark('customer', (0.05, Y0 - 1.05, 0.0), facing=(0, 1, 0))
     mark('cash', (1.1, Y0 - 1.25, 0.0))
     mark('in', (2.55, 0.35, 0.0))
     return {'overlay': {'key': 'shop_general_front', 'at': clerk},
@@ -560,12 +560,12 @@ def b_watchtower():
     n = 12
     for k in range(n):
         a = math.tau * k / n
-        p = Vector((0.18 * math.cos(a), 0.18 * math.sin(a), BZ))
-        q = Vector((0.4 * math.cos(a), 0.4 * math.sin(a), BZ + 0.42))
+        p = Vector((0.22 * math.cos(a), 0.22 * math.sin(a), BZ))
+        q = Vector((0.5 * math.cos(a), 0.5 * math.sin(a), BZ + 0.48))
         mb.seg(p, q, 0.025, iron, segs=6)
     mb.done('cage')
-    cyl('bowl', 0.2, 0.08, (0, 0, BZ - 0.02), mat=iron, segs=20, r_top=0.24)
-    for z, r in ((BZ + 0.2, 0.3), (BZ + 0.42, 0.41)):
+    cyl('bowl', 0.24, 0.09, (0, 0, BZ - 0.02), mat=iron, segs=20, r_top=0.29)
+    for z, r in ((BZ + 0.22, 0.36), (BZ + 0.48, 0.51)):
         ring = L.MB()
         pts = [Vector((r * math.cos(t), r * math.sin(t), z)) for t in [math.tau * k / 24 for k in range(25)]]
         for a_, b_ in zip(pts, pts[1:]):
@@ -574,7 +574,7 @@ def b_watchtower():
     # logs in the basket (crossed)
     for i in range(5):
         a = math.radians(i * 37 + 10)
-        log('blog', 0.06, 0.55, (0.04 * math.cos(a * 3), 0.04 * math.sin(a * 3), BZ + 0.12 + 0.05 * i),
+        log('blog', 0.07, 0.7, (0.04 * math.cos(a * 3), 0.04 * math.sin(a * 3), BZ + 0.14 + 0.06 * i),
             rot=(0, 90, math.degrees(a)), bark=tonal('#6E4428', 0.15, 6.0), segs=10)
     ember = L.emissive('tember', '#4A2A20', 'fire', 0.0)
     for i in range(14):
@@ -582,20 +582,21 @@ def b_watchtower():
         rr = rnd.uniform(0, 0.2)
         blob('coal', rnd.uniform(0.05, 0.08), (rr * math.cos(a), rr * math.sin(a), BZ + 0.1), ember, seed=60 + i,
              amp=0.3, subdiv=1, facet=True)
-    cold_snow = PA.snow_cap('coldsnow', 0.24, (0, 0, BZ + 0.36), 0.07, 5)
+    cold_snow = PA.snow_cap('coldsnow', 0.3, (0, 0, BZ + 0.44), 0.08, 5)
     # a small pennant on the back corner post
     cyl('fpole', 0.03, 1.25, (-R, R, PZ + 0.8), mat=flat('wood_dark', 0.8), segs=8)
     PA.flag('pennant', (-R + 0.02, R, PZ + 2.0), 0.55, 0.32, 'red', seed=3, emblem=True)
     # ---- work loop: beacon fire
-    flames = L.Flames('bflame', [((0.0, 0.0, BZ + 0.22), 0.2, 0.75), ((0.13, 0.1, BZ + 0.2), 0.15, 0.55),
-                                 ((-0.14, 0.06, BZ + 0.2), 0.14, 0.5), ((0.04, -0.14, BZ + 0.2), 0.15, 0.6),
-                                 ((-0.06, 0.15, BZ + 0.2), 0.13, 0.45)], lean=0.14)
-    glow = L.point_light('bglow', (0.3, -0.3, BZ + 0.5), 'fire', 0.0, 0.3)
-    glow2 = L.point_light('bglow2', (0.0, 0.0, PZ + 0.35), 'fire', 0.0, 0.4)
-    sparks = L.Spray('spark', (0.0, 0.0, BZ + 0.5), (0.1, 0.05, 1.5), L.emissive('sparkm', '#FFD45A', '#FFC24A', 3.0),
-                     n=9, grav=0.4, r=0.035, spread=0.45, seed=4)
-    smoke = L.Smoke('bsmoke', (0.05, 0.0, BZ + 1.0), n=3, rise=1.0, drift=(0.3, 0.12), r0=0.16, r1=0.38,
-                    color='#B7BDC6', alpha=0.85, seed=7, fade_in=0.2)
+    flames = L.Flames('bflame', [((0.0, 0.0, BZ + 0.3), 0.3, 1.25), ((0.2, 0.12, BZ + 0.28), 0.21, 0.9),
+                                 ((-0.2, 0.08, BZ + 0.28), 0.2, 0.85), ((0.06, -0.2, BZ + 0.28), 0.21, 0.95),
+                                 ((-0.08, 0.22, BZ + 0.28), 0.18, 0.75), ((0.22, -0.12, BZ + 0.3), 0.15, 0.6),
+                                 ((-0.22, -0.14, BZ + 0.3), 0.15, 0.65)], lean=0.12)
+    glow = L.point_light('bglow', (0.35, -0.35, BZ + 0.7), 'fire', 0.0, 0.3)
+    glow2 = L.point_light('bglow2', (0.0, 0.0, PZ + 0.4), 'fire', 0.0, 0.4)
+    sparks = L.Spray('spark', (0.0, 0.0, BZ + 0.8), (0.12, 0.05, 1.9), L.emissive('sparkm', '#FFD45A', '#FFC24A', 4.0),
+                     n=10, grav=0.5, r=0.05, spread=0.55, seed=4)
+    smoke = L.Smoke('bsmoke', (0.08, 0.0, BZ + 1.75), n=3, rise=1.1, drift=(0.32, 0.14), r0=0.18, r1=0.42,
+                    color='#AEB5C0', alpha=0.8, seed=7, fade_in=0.25)
 
     def idle():
         flames.show(False)
@@ -613,9 +614,9 @@ def b_watchtower():
         show([cold_snow], False)
         s = [1.0, 1.25, 0.85, 1.15][i]
         L.set_emission(ember, 3.0 * s)
-        glow.data.energy = 90 * s
-        glow2.data.energy = 40 * s
+        glow.data.energy = 140 * s
+        glow2.data.energy = 60 * s
 
     idle()
-    return {'idle': idle, 'work': work, 'fx': {'fire': (0.0, 0.0, BZ + 0.45), 'smoke': (0.05, 0.0, BZ + 1.6),
+    return {'idle': idle, 'work': work, 'fx': {'fire': (0.0, 0.0, BZ + 0.5), 'smoke': (0.08, 0.0, BZ + 2.1),
                                                 'platform': (0.0, 0.0, PZ)}}

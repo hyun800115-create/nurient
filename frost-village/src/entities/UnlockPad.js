@@ -31,7 +31,7 @@ export class UnlockPad {
     this.maxed = false;
     this.active = true;
     const sizeM = opts.sizeM || 1.9;
-    this.pad = new Pad(gs, x, y, this.kind === 'upgrade' ? 'upgrade' : this.kind === 'hire' ? 'hire' : 'unlock', sizeM, { radiusK: 0.8 });
+    this.pad = new Pad(gs, x, y, this.kind === 'upgrade' ? 'upgrade' : this.kind === 'hire' ? 'hire' : 'unlock', sizeM, { radiusK: 0.8, tex: opts.padTex || undefined });
 
     // cost on the floor: coin icon + number
     this.costCoin = Assets.image(gs, x - 30, y + 2, 'ui_icon_coin').setDepth(DEPTH.PAD_TEXT);

@@ -192,7 +192,7 @@ LOCK_Y, LOCK_Z = -0.2, ROW_RIM + 0.06
 
 @boat('boat_rowboat', anims={'idle': {'frames': 2, 'fps': 3, 'repeat': -1},
                              'row': {'frames': 6, 'fps': 9, 'repeat': -1}},
-      frame=(200, 168), anchor=(100, 112), samples=28,
+      frame=(232, 160), anchor=(116, 104), samples=28,
       notes='Rowboat (~2.5 m) with the fisherman rowing (facing the bow). idle = drifting with the oars resting, '
             'row = 6-frame stroke loop. Anchor = waterline centre; no baked shadow (draw fx_wake at wakePoint). '
             'cargoPoint = bottom of a fish stack in the stern box, behind=true -> draw the stack before the boat.')

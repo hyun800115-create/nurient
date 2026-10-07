@@ -4,31 +4,37 @@ import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
 import { UnlockPad } from '../entities/UnlockPad.js';
 import { Audio } from '../core/Audio.js';
+import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
 
-// id, type, what it needs first
+// id, type, what it needs first (after = a step id, flag = a one-time event such as the first sale).
+// side: optional purchases next to the main road (clerks, porters) — "next goal" text ignores them.
 export const STEPS = [
   { id: 'hire_fisherman', type: 'hire', worker: 'fisherman', after: null },
+  // (v2) clerks: right after the first sale at that seller, cheap — they take payments at the register
+  { id: 'hire_clerk_market', type: 'clerk', seller: 'market', after: null, flag: 'firstSale', side: true },
+  // (v2) porters: after that line's worker — carry the station's products along the roads to the seller
+  { id: 'porter_grill', type: 'porter', station: 'grill', after: 'hire_fisherman', side: true },
   { id: 'zone_forest', type: 'zone', zone: 'forest', after: 'hire_fisherman' },
+  { id: 'hire_clerk_trade', type: 'clerk', seller: 'trade', after: 'zone_forest', flag: 'firstTrade', side: true },
   { id: 'hire_lumberjack', type: 'hire', worker: 'lumberjack', after: 'zone_forest' },
+  { id: 'porter_sawmill', type: 'porter', station: 'sawmill', after: 'hire_lumberjack', side: true },
   // (step 4 = backpack/boots upgrades at the bench, appears after hire_lumberjack)
   { id: 'zone_farm', type: 'zone', zone: 'farm', after: 'hire_lumberjack' },
   { id: 'hire_farmer', type: 'hire', worker: 'farmer', after: 'zone_farm' },
+  { id: 'porter_bakery', type: 'porter', station: 'bakery', after: 'hire_farmer', side: true },
   { id: 'zone_mine', type: 'zone', zone: 'mine', after: 'hire_farmer' },
   { id: 'hire_miner', type: 'hire', worker: 'miner', after: 'zone_mine' },
+  { id: 'porter_smelter', type: 'porter', station: 'smelter', after: 'hire_miner', side: true },
   { id: 'zone_hunt', type: 'zone', zone: 'hunt', after: 'hire_miner' },
   { id: 'hire_hunter', type: 'hire', worker: 'hunter', after: 'zone_hunt' },
-  // after the village is complete: couriers (a second worker of each trade who carries the station's
-  // products to the counter / trade post, so the village earns on its own)
-  { id: 'hire2_fisherman', type: 'hire', worker: 'fisherman', after: 'hire_hunter', index: 1, role: 'porter' },
-  { id: 'hire2_lumberjack', type: 'hire', worker: 'lumberjack', after: 'hire_hunter', index: 1, role: 'porter' },
-  { id: 'hire2_farmer', type: 'hire', worker: 'farmer', after: 'hire_hunter', index: 1, role: 'porter' },
-  { id: 'hire2_miner', type: 'hire', worker: 'miner', after: 'hire_hunter', index: 1, role: 'porter' },
-  { id: 'hire2_hunter', type: 'hire', worker: 'hunter', after: 'hire_hunter', index: 1, role: 'porter' },
+  { id: 'porter_smokehouse', type: 'porter', station: 'smokehouse', after: 'hire_hunter', side: true },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
 const ZONE_IDS = ['zone_forest', 'zone_farm', 'zone_mine', 'zone_hunt'];
+// v1 saves: the post-completion couriers became the porters of v2 (same pads, new ids)
+export const OLD_STEP_IDS = { hire2_fisherman: 'porter_grill', hire2_lumberjack: 'porter_sawmill', hire2_farmer: 'porter_bakery', hire2_miner: 'porter_smelter', hire2_hunter: 'porter_smokehouse' };
 
 export class Progression {
   constructor(gs, saved) {
@@ -43,6 +49,7 @@ export class Progression {
       speed: lvl(up.speed, BALANCE.upgrades.speed.values.length),
     };
     this.celebrated = !!saved.celebrated;
+    this.flags = Object.assign({}, saved.flags || {});   // one-time events: firstSale, firstTrade, ...
     this.hints = Object.assign({}, saved.hints || {});   // zone -> true once its product was sold
     this.seen = Object.assign({}, saved.seen || {});     // one-time hints already shown (e.g. upgradeHint)
     this.pads = {};           // id -> UnlockPad
@@ -57,15 +64,22 @@ export class Progression {
   zonesOpen() { let n = 0; for (const z of ZONE_IDS) if (this.done[z]) n++; return n; }
   get complete() { return this.isDone(COMPLETE_AFTER); }
 
-  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && (!s.after || this.done[s.after])); }
+  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && (!s.after || this.done[s.after]) && (!s.flag || this.flags[s.flag])); }
+
+  /** a one-time event happened (e.g. first sale): new pads may appear */
+  setFlag(f) {
+    if (this.flags[f]) return;
+    this.flags[f] = true;
+    this.gs.time.delayedCall(700, () => this.syncPads());
+    this.gs.events.emit('flag', f);
+  }
 
   /** apply saved state instantly (no animations) and create the visible pads */
   init() {
     const gs = this.gs;
     for (const s of STEPS) {
       if (!this.done[s.id]) continue;
-      if (s.type === 'zone') gs.revealZone(s.zone, true);
-      if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true, undefined, undefined, s.role);
+      this.applyStep(s, true);
     }
     if (this.isDone(BENCH_AFTER)) this.openBench(true);
     this.syncPads();
@@ -78,9 +92,14 @@ export class Progression {
       const cfg = WORLD.pads[s.id];
       if (!cfg) continue;
       const cost = BALANCE.costs[s.id];
-      const icon = s.type === 'hire' ? 'portrait_' + s.worker : 'ui_icon_lock';
+      let icon = 'ui_icon_lock';
+      if (s.type === 'hire') icon = 'portrait_' + s.worker;
+      else if (s.type === 'clerk') icon = Assets.pick('ui_icon_clerk', s.seller === 'trade' ? 'portrait_npc_clerk_b' : 'portrait_npc_clerk_a', 'ui_icon_worker');
+      else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
+      const kind = s.type === 'zone' ? 'unlock' : 'hire';
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind: s.type === 'hire' ? 'hire' : 'unlock', cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'hire' ? 54 : 40,
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'zone' ? 40 : 54,
+        padTex: s.type === 'clerk' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : null,
         onComplete: (p) => this.completeStep(s, p),
       });
       this.pads[s.id] = pad;
@@ -94,13 +113,12 @@ export class Progression {
     delete this.paid[s.id];
     delete this.pads[s.id];
     pad.vanish();
-    if (s.type === 'zone') {
-      gs.revealZone(s.zone, false);
-      gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
-    } else if (s.type === 'hire') {
-      gs.hireWorker(s.worker, s.index || 0, false, pad.x, pad.y, s.role);
-      gs.ui.banner(t('hired', { name: t(s.role === 'porter' ? 'w_porter' : 'w_' + s.worker) }));
-    }
+    this.applyStep(s, false, pad.x, pad.y);
+    if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
+    else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
+    else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }));
+    else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
+    gs.events.emit('step', s.id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
     if (s.id === COMPLETE_AFTER && !this.celebrated) {
@@ -108,6 +126,15 @@ export class Progression {
       gs.time.delayedCall(1500, () => gs.celebrate());
     }
     gs.save(true);
+  }
+
+  /** make a finished step happen in the world (instant = restoring a save, no animation) */
+  applyStep(s, instant, x, y) {
+    const gs = this.gs;
+    if (s.type === 'zone') gs.revealZone(s.zone, instant);
+    else if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, instant, x, y, s.role);
+    else if (s.type === 'clerk') { const sel = s.seller === 'trade' ? gs.trade : gs.market; sel.register.hireClerk(instant, x, y); }
+    else if (s.type === 'porter') gs.hirePorter(s.station, instant, x, y);
   }
 
   openBench(instant) {
@@ -175,12 +202,19 @@ export class Progression {
   }
 
   nextPad() {
-    for (const s of STEPS) if (this.pads[s.id]) return this.pads[s.id];
+    for (const s of STEPS) if (!s.side && this.pads[s.id]) return this.pads[s.id];
     return null;
+  }
+
+  /** cheapest open side pad (clerk / porter) */
+  sidePad() {
+    let best = null;
+    for (const s of STEPS) { const p = this.pads[s.id]; if (s.side && p && p.active && !p.done && (!best || p.remaining < best.remaining)) best = p; }
+    return best;
   }
 
   serialize() {
     this.collectPaid();
-    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints, seen: this.seen };
+    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints, seen: this.seen, flags: this.flags };
   }
 }

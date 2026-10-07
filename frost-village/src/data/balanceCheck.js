@@ -19,11 +19,14 @@ function fixNum(obj, key, path, min, max, def, int) {
   if (!Number.isFinite(n)) n = def;
   if (int) n = Math.round(n);
   n = Math.max(min, Math.min(max, n));
-  if (n !== v) { if (!(v === undefined && OPTIONAL.has(path))) warn(path, v, n); obj[key] = n; }
+  if (n !== v) { if (!(v === undefined && isOptional(path))) warn(path, v, n); obj[key] = n; }
 }
 
 // settings that older balance.js files may not have yet (filled in silently)
-const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'trade.shelfMax', 'workers.porterCapacity']);
+const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'trade.shelfMax', 'workers.porterCapacity',
+  'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
+  'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life)\./.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -46,7 +49,7 @@ export function checkBalance() {
   // costs: whole coins, at least 1 (0 would make a pad that never completes)
   B.costs = B.costs || {};
   for (const k of ['hire_fisherman', 'zone_forest', 'hire_lumberjack', 'zone_farm', 'hire_farmer', 'zone_mine', 'hire_miner', 'zone_hunt', 'hire_hunter',
-    'hire2_fisherman', 'hire2_lumberjack', 'hire2_farmer', 'hire2_miner', 'hire2_hunter']) fixNum(B.costs, k, 'costs.' + k, 1, 1e9, DEFAULT_COST, true);
+    'hire_clerk_market', 'hire_clerk_trade', 'porter_grill', 'porter_sawmill', 'porter_bakery', 'porter_smelter', 'porter_smokehouse']) fixNum(B.costs, k, 'costs.' + k, 1, 1e9, DEFAULT_COST, true);
   // prices: whole coins >= 1
   B.prices = B.prices || {};
   for (const k of ['item_fish_cooked', 'item_bread', 'item_meat_cooked', 'item_plank', 'item_ingot']) fixNum(B.prices, k, 'prices.' + k, 1, 1e6, 1, true);
@@ -91,6 +94,25 @@ export function checkBalance() {
   B.camera = B.camera || {};
   fixNum(B.camera, 'zoom', 'camera.zoom', 0.5, 3, 1.2);
   fixNum(B.camera, 'lerp', 'camera.lerp', 0.01, 1, 0.12);
+  fixNum(B.camera, 'zoomMin', 'camera.zoomMin', 0.3, 1.5, 0.6);
+  fixNum(B.camera, 'zoomMax', 'camera.zoomMax', Math.max(1, B.camera.zoomMin), 4, 1.7);
+  fixNum(B.camera, 'zoomStep', 'camera.zoomStep', 1.02, 3, 1.25);
+  fixNum(B.camera, 'zoomSmooth', 'camera.zoomSmooth', 0.01, 1, 0.18);
+  B.register = B.register || {};
+  fixNum(B.register, 'chiefPayTime', 'register.chiefPayTime', 0.05, 30, 0.35);
+  fixNum(B.register, 'clerkPayTime', 'register.clerkPayTime', 0.05, 30, 0.55);
+  fixNum(B.register, 'clerkTradeSlow', 'register.clerkTradeSlow', 0.2, 20, 1.25);
+  B.population = B.population || {};
+  fixNum(B.population, 'maxActive', 'population.maxActive', 0, 60, 24, true);
+  fixNum(B.population, 'moveInDelay', 'population.moveInDelay', 0, 60, 2.5);
+  fixNum(B.population, 'moveInGap', 'population.moveInGap', 0, 60, 2);
+  const LF = B.life = B.life || {};
+  const lifeNums = { walkSpeed: [10, 600, 70], runSpeed: [10, 900, 150], stayMin: [1, 600, 14], stayMax: [1, 1200, 40], chatEvery: [0.5, 600, 5],
+    snowballEvery: [1, 3600, 16], tagEvery: [1, 3600, 45], tagLength: [2, 600, 16], concertEvery: [5, 3600, 80], concertLength: [3, 600, 24],
+    snowmanStageTime: [0.5, 600, 9], snowmanKeep: [1, 36000, 150], waveRange: [0, 1000, 170], waveCooldown: [0, 3600, 25],
+    shiverChance: [0, 1, 0.08], bubbleTime: [0.5, 30, 2.6], partyLength: [3, 600, 22] };
+  for (const k in lifeNums) { const [lo, hi, d] = lifeNums[k]; fixNum(LF, k, 'life.' + k, lo, hi, d); }
+  if (LF.stayMax < LF.stayMin) LF.stayMax = LF.stayMin;
   B.cash = B.cash || {};
   fixNum(B.cash, 'pileVisualMax', 'cash.pileVisualMax', 1, 500, 48, true);
   fixNum(B.cash, 'collectInterval', 'cash.collectInterval', 0.005, 2, 0.03);

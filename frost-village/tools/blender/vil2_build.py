@@ -70,9 +70,9 @@ SPECS = {
         face=dict(brow='#2A1E1A', brow_thick=0.0135), shadow=[46, 18]),
     'npc_porter_a': dict(
         name=('짐꾼 곰돌', 'Gomdol'), role='adult', traits=['strong', 'hardworking', 'porter', 'carries_on_back'],
-        body='big', coat='#9A6A42', sleeve='#E8DCC0', quilted=True, hair='#2A2026', pants='#3A4458',
+        body='big', coat='#9A6A42', sleeve='#E8DCC0', quilted=True, hair='#3A2A22', pants='#3A4458',
         boots='#4A3020', mitten='#C98F55', **NOFUR, hem_r=0.25, hem_z=-0.08, carry='back',
-        face=dict(brow='#2A2026', brow_thick=0.0175, nose='big', mouth_v=-0.112), shadow=[56, 22]),
+        face=dict(brow='#3A2A22', brow_thick=0.0175, nose='big', mouth_v=-0.112), shadow=[56, 22]),
     'npc_porter_b': dict(
         name=('짐꾼 다람', 'Daram'), role='teen', traits=['quick', 'cheerful', 'porter', 'carries_on_back'],
         body='teen', coat='#4E7A4A', quilted=True, hair='#A0502A', pants='#5A4636', boots='#3B2A20',

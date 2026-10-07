@@ -340,18 +340,18 @@ def make_pack_frame(rig):
 
 def make_bag(rig):
     """Kraft-paper grocery bag with a baguette and greens poking out (clerk 'serve')."""
-    e, kids = dyn_prop(rig, 'bag', hands_mid, offset=(0, -0.025, 0.045))
-    paper = M('bag_paper', '#CFA56C', rough=0.85)
-    child(kids, 'bag_body', g.bm_box(0.17, 0.10, 0.15, bevel=0.012), paper, e, loc=(0, 0, 0))
-    child(kids, 'bag_fold', g.bm_box(0.172, 0.102, 0.022, bevel=0.006), M('bag_fold', '#B88A52', rough=0.85), e,
-          loc=(0, 0, 0.068))
-    child(kids, 'bag_seal', g.bm_ellipsoid(0.026, 0.008, 0.026, 12, 6), M('bag_seal', '#E04848', rough=0.5), e,
-          loc=(0, -0.052, 0.02))
+    e, kids = dyn_prop(rig, 'bag', hands_mid, offset=(0, -0.045, 0.050))
+    paper = M('bag_paper', '#DDB57E', rough=0.85)
+    child(kids, 'bag_body', g.bm_box(0.19, 0.11, 0.17, bevel=0.014), paper, e, loc=(0, 0, 0))
+    child(kids, 'bag_fold', g.bm_box(0.192, 0.112, 0.024, bevel=0.006), M('bag_fold', '#C29358', rough=0.85), e,
+          loc=(0, 0, 0.078))
+    child(kids, 'bag_seal', g.bm_ellipsoid(0.030, 0.008, 0.030, 12, 6), M('bag_seal', '#E04848', rough=0.5), e,
+          loc=(0, -0.058, 0.025))
     child(kids, 'baguette', g.bm_capsule(0.026, 0.14, seg=12, rings=6), M('baguette', '#E3A456', rough=0.6), e,
-          loc=(-0.035, 0.01, 0.20), rot=(0, -14, 0))
+          loc=(-0.040, 0.01, 0.215), rot=(0, -14, 0))
     for k, (x, tl) in enumerate(((0.030, 10), (0.055, 28))):
         child(kids, 'greens', g.bm_ellipsoid(0.020, 0.012, 0.050, 10, 6), M('greens', '#5FB14E', rough=0.6), e,
-              loc=(x, 0.0, 0.10), rot=(0, tl, 0))
+              loc=(x, 0.0, 0.11), rot=(0, tl, 0))
     rig.toggle('bag', kids)
     rig.meta.setdefault('serve_prop', e)
 
@@ -501,12 +501,10 @@ def dress_clerk_a(rig, spec):
     hair = spec['hair']
     bob_hair(rig, hair, fringe=0.30, back_low=-0.38, side_low=-0.32, base=1.10, flare=0.08)
     scarf = M('headscarf', '#E04848', rough=0.85)
-    cb.cap_shell(rig, scarf, lambda x, y: 0.10 - 0.36 * y, base=1.155, puff=0.06, name='headscarf', soft=0.04)
-    for k, (az, el) in enumerate(((0.55, 0.62), (-0.85, 0.75), (1.9, 0.68), (-2.2, 0.55), (2.9, 0.62), (0.1, 0.95),
-                                  (-2.8, 0.85))):
-        cb.on_head('scarf_dot', g.bm_ellipsoid(0.022, 0.008, 0.022, 10, 6), M('scarf_dot', '#FFF6EC', rough=0.8),
-                   rig.j['head'], az, el, out=0.050)
-    knot_tails(rig, scarf, (0.0, 0.330, -0.070), s=1.0)
+    cb.cap_shell(rig, scarf, lambda x, y: 0.30 - 0.38 * y, base=1.150, puff=0.05, name='headscarf', soft=0.035)
+    cb.tilted_ring(rig, 'headscarf_hem', M('headscarf_hem', '#FBF6EC', rough=0.85), HEAD_R[0] * 1.075, 0.016,
+                   0.66, -0.10, sy=0.97, rz=1.0)
+    knot_tails(rig, scarf, (0.0, 0.322, -0.040), s=1.0)
     apron = mat_vstripes('apron_stripes', '#E04848', '#FBF6EC', scale=24.0)
     hz = spec.get('hem_z', -0.12)
     hr = spec.get('hem_r', 0.26)
@@ -582,14 +580,13 @@ def dress_porter_a(rig, spec):
     """짐꾼 곰돌: big & sturdy, spiky hair + white headband, quilted vest, work
     gloves, leg wraps and the A-frame carrier."""
     hair = spec['hair']
-    cb.hair_shell(rig, hair, fringe=0.40, wave=0.06, waves=12.0, sweep=0.0, back_low=-0.40, top_puff=0.10)
-    for az, el in ((-0.5, 0.95), (0.0, 1.05), (0.5, 0.95), (2.4, 0.7), (-2.4, 0.7), (PI, 0.55), (1.3, 0.8),
-                   (-1.3, 0.8)):
-        cb.hair_tuft(rig, hair, az, el, size=(0.065, 0.05, 0.10), tilt=(-35 if abs(az) < 1 else 60, 0, 0),
+    cb.hair_shell(rig, hair, fringe=0.42, wave=0.07, waves=12.0, sweep=0.0, back_low=-0.40, top_puff=0.05)
+    for az, el in ((-0.35, 1.0), (0.05, 1.08), (0.42, 0.98), (PI, 0.70), (2.5, 0.80), (-2.5, 0.80)):
+        cb.hair_tuft(rig, hair, az, el, size=(0.05, 0.04, 0.075), tilt=(-30 if abs(az) < 1 else 50, 0, 0),
                      name='spike')
     band = M('headband', '#F4F1EA', rough=0.85)
-    cb.tilted_ring(rig, 'headband', band, HEAD_R[0] * 1.10, 0.036, 0.40, 0.18, sy=0.99, rz=1.3)
-    knot_tails(rig, band, (0.0, 0.305, 0.07), s=1.1)
+    cb.tilted_ring(rig, 'headband', band, HEAD_R[0] * 1.035, 0.030, 0.42, 0.16, sy=0.97, rz=1.5)
+    knot_tails(rig, band, (0.0, 0.312, 0.035), s=1.0)
     # quilted vest pieces are the torso itself (spec quilted); undershirt sleeves come from spec
     cb.collar_fur(rig, spec, R=0.135, r=0.055, dz=0.095, bump=0.20, tufts=8,
                   mat=M('collar_k', '#E8DCC0', rough=0.95))
