@@ -64,7 +64,7 @@ done
 for d in lib src assets tools icons; do
   [ -d "$FV/$d" ] && cp -r "$FV/$d" "$REF/"
 done
-find "$REF" -type d \( -name node_modules -o -name __pycache__ -o -name _cache \) -prune -exec rm -rf {} +
+find "$REF" \( -name node_modules -o -name __pycache__ -o -name _cache \) -prune -exec rm -rf {} +
 find "$REF" -type f \( -name '*.pyc' -o -name '.DS_Store' \) -delete
 # 전작 문서 경로를 도구들이 참조할 수 있도록 계약서 사본도 둔다
 mkdir -p "$REF/docs"
