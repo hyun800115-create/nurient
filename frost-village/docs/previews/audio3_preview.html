@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frost Village Sounds 3</title>
+<style>
+:root{--bg:#F4F7FB;--card:#FFF8EC;--ink:#2B2F3A;--accent:#3D8BE0;--muted:#6b7280}
+@media (prefers-color-scheme:dark){:root{--bg:#1b2130;--card:#262e40;--ink:#eef2f8;--accent:#6aa9f0;--muted:#9aa3b2}}
+body{margin:0;padding:16px;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+h1{font-size:22px;margin:4px 0 2px} h2{font-size:17px;margin:22px 0 8px} p{color:var(--muted);margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px}
+code{overflow-wrap:anywhere}
+.card{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:8px 10px}
+.card b{display:block;font-size:14px;overflow-wrap:anywhere} .card small{color:var(--muted)}
+button{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;flex:none}
+button.on{background:#5CC86A} .bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bar button{width:auto;border-radius:10px;padding:0 14px;font-size:14px}
+</style></head><body>
+<h1>서리마을 개척기 &mdash; v5 소리 미리듣기 (탈것 · 미션 · 결혼식 · 배웅)</h1>
+<p>버튼을 누르면 게임과 같은 기본 볼륨으로 재생됩니다 (반복음은 한 번 더 누르면 정지). 맨 아래 기존 소리와 크기를 비교해 보세요.
+Each sound plays at its in-game base volume through Web Audio (loops are sample-accurate).
+Open through the game's local web server (e.g. <code>http://localhost:8000/docs/previews/audio3_preview.html</code>).</p>
+<div class="bar"><button id="bus">&#9654; 버스 도착 Bus arrives</button><button id="sleigh">&#9654; 말썰매 Horse sleigh</button>
+<button id="wedding">&#9654; 결혼식 Wedding</button><button id="night">&#9654; 밤 · 배웅 Night &amp; farewell</button>
+<button id="stop">&#9632; Stop all</button></div>
+<h2>결혼식 · 배웅 음악 Wedding & farewell music (loops)</h2><div class='grid'>
+<div class='card'><button data-key='bgm_wedding' data-vol='0.376' data-loop='1'>&#9654;</button><div><b>bgm_wedding</b><small>30.97s &middot; vol 0.376 &middot; loop</small></div></div>
+<div class='card'><button data-key='bgm_farewell' data-vol='0.355' data-loop='1'>&#9654;</button><div><b>bgm_farewell</b><small>30.98s &middot; vol 0.355 &middot; loop</small></div></div>
+</div>
+<h2>환경음 · 탈것 반복음 Ambience & vehicle loops</h2><div class='grid'>
+<div class='card'><button data-key='amb_night' data-vol='0.18' data-loop='1'>&#9654;</button><div><b>amb_night</b><small>17.01s &middot; vol 0.18 &middot; loop</small></div></div>
+<div class='card'><button data-key='amb_town' data-vol='0.216' data-loop='1'>&#9654;</button><div><b>amb_town</b><small>14.00s &middot; vol 0.216 &middot; loop</small></div></div>
+<div class='card'><button data-key='sfx_truck_engine' data-vol='0.385' data-loop='1'>&#9654;</button><div><b>sfx_truck_engine</b><small>1.60s &middot; vol 0.385 &middot; loop</small></div></div>
+<div class='card'><button data-key='sfx_sleigh_bells' data-vol='0.376' data-loop='1'>&#9654;</button><div><b>sfx_sleigh_bells</b><small>2.40s &middot; vol 0.376 &middot; loop</small></div></div>
+<div class='card'><button data-key='sfx_horse_trot' data-vol='0.422' data-loop='1'>&#9654;</button><div><b>sfx_horse_trot</b><small>2.42s &middot; vol 0.422 &middot; loop</small></div></div>
+</div>
+<h2>새 효과음 New sound effects</h2><div class='grid'>
+<div class='card'><button data-key='sfx_bus_horn' data-vol='0.376' data-loop='0'>&#9654;</button><div><b>sfx_bus_horn</b><small>1.02s &middot; vol 0.376</small></div></div>
+<div class='card'><button data-key='sfx_car_honk_1' data-vol='0.442' data-loop='0'>&#9654;</button><div><b>sfx_car_honk_1</b><small>0.48s &middot; vol 0.442</small></div></div>
+<div class='card'><button data-key='sfx_car_honk_2' data-vol='0.309' data-loop='0'>&#9654;</button><div><b>sfx_car_honk_2</b><small>0.63s &middot; vol 0.309</small></div></div>
+<div class='card'><button data-key='sfx_steam_whistle' data-vol='0.248' data-loop='0'>&#9654;</button><div><b>sfx_steam_whistle</b><small>1.70s &middot; vol 0.248</small></div></div>
+<div class='card'><button data-key='sfx_brakes' data-vol='0.295' data-loop='0'>&#9654;</button><div><b>sfx_brakes</b><small>1.16s &middot; vol 0.295</small></div></div>
+<div class='card'><button data-key='sfx_door' data-vol='0.708' data-loop='0'>&#9654;</button><div><b>sfx_door</b><small>0.39s &middot; vol 0.708</small></div></div>
+<div class='card'><button data-key='sfx_bell_hall' data-vol='0.295' data-loop='0'>&#9654;</button><div><b>sfx_bell_hall</b><small>3.88s &middot; vol 0.295</small></div></div>
+<div class='card'><button data-key='sfx_school_bell' data-vol='0.188' data-loop='0'>&#9654;</button><div><b>sfx_school_bell</b><small>2.57s &middot; vol 0.188</small></div></div>
+<div class='card'><button data-key='sfx_baby_giggle' data-vol='0.327' data-loop='0'>&#9654;</button><div><b>sfx_baby_giggle</b><small>0.86s &middot; vol 0.327</small></div></div>
+<div class='card'><button data-key='sfx_mission_done' data-vol='0.412' data-loop='0'>&#9654;</button><div><b>sfx_mission_done</b><small>1.73s &middot; vol 0.412</small></div></div>
+<div class='card'><button data-key='sfx_fame_up' data-vol='0.473' data-loop='0'>&#9654;</button><div><b>sfx_fame_up</b><small>2.39s &middot; vol 0.473</small></div></div>
+</div>
+<h2>비교용 기존 소리 Reference (assets/audio, audio2)</h2><div class='grid'>
+<div class='card'><button data-key='bgm_village' data-frag='audio' data-vol='' data-loop='1'>&#9654;</button><div><b>bgm_village</b><small>v1 village music</small></div></div>
+<div class='card'><button data-key='amb_wind' data-frag='audio' data-vol='' data-loop='1'>&#9654;</button><div><b>amb_wind</b><small>v1 wind</small></div></div>
+<div class='card'><button data-key='sfx_complete' data-frag='audio' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_complete</b><small>v1 complete</small></div></div>
+<div class='card'><button data-key='sfx_boat_horn' data-frag='audio2' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_boat_horn</b><small>v2 boat horn</small></div></div>
+<div class='card'><button data-key='sfx_cheer' data-frag='audio2' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_cheer</b><small>v2 cheer</small></div></div>
+</div>
+<script>
+const BASES={audio3:'../../assets/audio3/',audio:'../../assets/audio/',audio2:'../../assets/audio2/'};
+let ctx=null; const bufs={}; const playing={}; const mans={};
+const ogg=(()=>{try{return new Audio().canPlayType('audio/ogg; codecs="vorbis"')!==''}catch(e){return false}})();
+function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}
+async function volOf(k,frag){if(frag==='audio3')return +document.querySelector(`[data-key="${k}"]`).dataset.vol;
+ if(!mans[frag])mans[frag]=await (await fetch(BASES[frag]+'manifest.json')).json();return mans[frag].audio[k].volume}
+async function load(k,frag){const id=frag+':'+k;if(bufs[id])return bufs[id];const r=await fetch(BASES[frag]+k+(ogg?'.ogg':'.mp3'));
+ const ab=await r.arrayBuffer();bufs[id]=await new Promise((ok,no)=>ac().decodeAudioData(ab,ok,no));return bufs[id]}
+async function play(k,mult,loop,btn,frag){frag=frag||'audio3';const c=ac();const b=await load(k,frag);const v=await volOf(k,frag);
+ const s=c.createBufferSource();const g=c.createGain();s.buffer=b;s.loop=!!loop;g.gain.value=v*(mult===undefined?1:mult);
+ s.connect(g).connect(c.destination);s.start();
+ if(loop){playing[k]={s,btn,g};if(btn)btn.classList.add('on')}
+ s.onended=()=>{if(btn)btn.classList.remove('on');if(playing[k]&&playing[k].s===s)delete playing[k]};return s}
+function stop(k){const p=playing[k];if(p){try{p.s.stop()}catch(e){}if(p.btn)p.btn.classList.remove('on');delete playing[k]}}
+function stopAll(){Object.keys(playing).forEach(stop);(window._mixT||[]).forEach(clearTimeout);window._mixT=[]}
+function alertMsg(e){const p=document.createElement('p');p.textContent='Could not load audio ('+e+'). Open via http://, not file://';document.body.prepend(p)}
+document.querySelectorAll('.card button').forEach(b=>b.onclick=async()=>{const k=b.dataset.key;
+ if(playing[k]){stop(k);return} try{await play(k,1,b.dataset.loop==='1',b,b.dataset.frag||'audio3')}catch(e){alertMsg(e)}});
+document.getElementById('stop').onclick=stopAll;
+const seq=(list)=>list.forEach(([ms,k,m,fr])=>{window._mixT=window._mixT||[];window._mixT.push(setTimeout(()=>play(k,m,false,null,fr).catch(alertMsg),ms))});
+document.getElementById('bus').onclick=async()=>{stopAll();try{await play('amb_town',1,true,null);await play('sfx_truck_engine',0.6,true,null)}catch(e){alertMsg(e)}
+ seq([[600,'sfx_bus_horn',1],[2200,'sfx_brakes',1],[3300,'sfx_door',1],[4200,'sfx_car_honk_1',1],[5600,'sfx_car_honk_2',0.8],[7000,'sfx_mission_done',1],[9000,'sfx_fame_up',1]])};
+document.getElementById('sleigh').onclick=async()=>{stopAll();try{await play('sfx_horse_trot',1,true,null);await play('sfx_sleigh_bells',1,true,null)}catch(e){alertMsg(e)}
+ seq([[1500,'sfx_steam_whistle',0.9],[4000,'sfx_school_bell',0.7]])};
+document.getElementById('wedding').onclick=async()=>{stopAll();seq([[0,'sfx_bell_hall',1],[1800,'sfx_cheer',0.9,'audio2'],[9000,'sfx_baby_giggle',1]]);
+ window._mixT.push(setTimeout(()=>play('bgm_wedding',1,true,null).catch(alertMsg),2600))};
+document.getElementById('night').onclick=async()=>{stopAll();try{await play('amb_night',1,true,null);await play('bgm_farewell',1,true,null)}catch(e){alertMsg(e)}};
+</script></body></html>

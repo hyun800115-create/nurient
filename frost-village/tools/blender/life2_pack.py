@@ -73,6 +73,20 @@ def iso(x, y, z=0.0):
 
 # --------------------------------------------------------------------------- load + post
 
+def drop_faint_shadow(im, below=48):
+    """ribbon_garland: the town-hall holdout catches a faint, wide sky-occlusion veil (and a ghost of the lit
+    windows); keep only the real, close cast shadows of the swags / ribbons (dark pixels with alpha >= below)."""
+    from PIL import ImageFilter
+    a = np.asarray(im.convert('RGBA')).astype(np.float32)
+    lum = a[..., :3].mean(-1)
+    shadowish = lum < 70
+    faint = shadowish & (a[..., 3] < below)
+    deco = Image.fromarray(((~shadowish) & (a[..., 3] > 120)).astype(np.uint8) * 255, 'L')
+    near = np.asarray(deco.filter(ImageFilter.MaxFilter(25))) > 0          # within ~12 px of a decoration
+    a[..., 3] = np.where(faint | (shadowish & ~near), 0, a[..., 3])
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
 def load(cache):
     builds, strollers = {}, {}
     for fn in sorted(os.listdir(cache)):
@@ -101,7 +115,7 @@ def load(cache):
             if m['kind'] == 'item':
                 im = pu.clean_alpha(im, floor=3)
             elif m['kind'] == 'overlay':
-                im = pp.tint_shadow(pu.clean_alpha(im, floor=6))
+                im = pp.tint_shadow(pu.clean_alpha(drop_faint_shadow(im), floor=6))
             else:
                 im = pp.border_fade(pp.tint_shadow(pu.clean_alpha(im, floor=10)))
             frames[n] = im
@@ -513,7 +527,7 @@ class Scene:
     def label(self, text, sx, sy):
         self.labels.append((text, sx, sy))
 
-    def finish(self, out, caption, sub=None, crop=True):
+    def finish(self, out, caption, sub=None, crop=True, min_w=0, scale=1):
         for _, im, x, y in sorted(self.ground, key=lambda t: t[0]):
             self.img.alpha_composite(im, (x, y))
         for _, im, x, y in sorted(self.placed, key=lambda t: t[0]):
@@ -527,6 +541,17 @@ class Scene:
                 self.img = self.img.crop((x0, y0, x1, y1))
                 self.labels = [(t, sx - x0, sy - y0) for t, sx, sy in self.labels]
                 self.W, self.H = self.img.size
+        if scale != 1:
+            self.img = self.img.resize((self.W * scale, self.H * scale), Image.LANCZOS)
+            self.labels = [(t, sx * scale, sy * scale) for t, sx, sy in self.labels]
+            self.W, self.H = self.img.size
+        if self.W < min_w:
+            pad = (min_w - self.W) // 2
+            big = Image.new('RGBA', (min_w, self.H), tuple(self.img.getpixel((0, 0))))
+            big.paste(self.img, (pad, 0))
+            self.img = big
+            self.labels = [(t, sx + pad, sy) for t, sx, sy in self.labels]
+            self.W = min_w
         d = ImageDraw.Draw(self.img)
         f = pp.font(13)
         for text, sx, sy in self.labels:
@@ -586,29 +611,25 @@ def preview_all(builds, strollers, frames, sframes, out):
 
 
 def preview_wedding(builds, strollers, frames, sframes, out):
-    """The town hall (assets/town, read-only) dressed for a wedding, with townsfolk / villagers for scale."""
+    """The town hall (assets/town, read-only) dressed for a wedding, with townsfolk / villagers for scale (2x)."""
     import bld_pack as bp
     town = bp.atlas_lib('town/manifest.json')
     P = People()
     sc = Scene(2600, 1900, 1500, 760)
-    road = os.path.join(ASSETS, 'ui2', 'ground_road.png')
-    if os.path.exists(road):
-        sc.floor(Image.open(road).convert('RGBA'), -3.2, 3.0, -8.4, -2.3)
-    hall_im = None
+    plaza = os.path.join(ASSETS, 'ground', 'ground_plaza.png')
+    if os.path.exists(plaza):
+        sc.floor(Image.open(plaza).convert('RGBA'), -3.4, 3.4, -8.3, -2.3, edge=(214, 170, 150, 255))
+    hall_depth = sc.p(0.0, 0.0)[1]
     if town:
         tm = town[0]['sprites'].get('town_hall')
         if tm:
-            hall_im = town[1](tm['atlas'], tm['frame'])
             fw, fh = tm['frameSize']
-            sc.put(hall_im, (tm['anchor'][0] * fw, tm['anchor'][1] * fh), 0.0, 0.0)
-            for k, name in (('streetlight', (-3.5, -1.0)),):
-                sm = town[0]['sprites'].get(k)
-                if sm:
-                    sc.put(town[1](sm['atlas'], sm['frame']), (sm['anchor'][0] * sm['frameSize'][0],
-                                                              sm['anchor'][1] * sm['frameSize'][1]), *name)
+            sc.put(town[1](tm['atlas'], tm['frame']), (tm['anchor'][0] * fw, tm['anchor'][1] * fh), 0.0, 0.0)
+        sm = town[0]['sprites'].get('streetlight')
+        if sm:
+            sc.put(town[1](sm['atlas'], sm['frame']), (sm['anchor'][0] * sm['frameSize'][0],
+                                                      sm['anchor'][1] * sm['frameSize'][1]), -3.6, -1.2)
     lay = wedding_layout(builds)
-    seen_label = set()
-    hall_depth = sc.p(0.0, 0.0)[1]
     for it in lay['items']:
         k = it['sprite']
         m = builds.get(k)
@@ -619,20 +640,19 @@ def preview_wedding(builds, strollers, frames, sframes, out):
             sc.put(frames[k], m['anchorPx'], x, y, depth=hall_depth + 0.5)
         else:
             sc.put(frames[m['frames'][0]], m['anchorPx'], x, y, ground=(m['kind'] == 'decal'))
-        if k not in seen_label:
-            seen_label.add(k)
-            sx, sy = sc.p(x, y)
-            top = m['topPx'][m['frames'][0]] if isinstance(m['topPx'], dict) else 0
-            if k == 'ribbon_garland':
-                sc.label('ribbon_garland (on town_hall)', sx - 40, sy - 300)
-            elif k == 'wedding_carpet':
-                sc.label(k, sx - 30, sy - 8)
-            elif k == 'wedding_chairs':
-                sc.label('wedding_chairs (rows)', sx - 70, sy + 22)
-            elif k == 'flower_stand':
-                sc.label(k, sx, sy + 10)
-            else:
-                sc.label(k, sx, sy - top - 24)
+    L_ = sc.label
+    sx, sy = sc.p(0.0, 0.0)
+    L_('ribbon_garland on town_hall', sx - 120, sy - 260)
+    sx, sy = sc.p(0.0, -7.15)
+    L_('wedding_arch', sx - 118, sy - 112)
+    sx, sy = sc.p(0.0, -4.75)
+    L_('wedding_carpet', sx + 8, sy + 22)
+    sx, sy = sc.p(1.75, -4.55)
+    L_('wedding_chairs (rows)', sx + 30, sy + 26)
+    sx, sy = sc.p(3.3, -6.35)
+    L_('wedding_cake_table', sx + 10, sy + 16)
+    sx, sy = sc.p(-1.25, -7.0)
+    L_('flower_stand', sx - 40, sy + 12)
     # seated guests: the villagers that have `sit` (townsfolk get sit in assets/townfolk2)
     sitters = ['npc_grandma', 'npc_aunt', 'npc_bard', 'npc_grandpa', 'npc_herbalist', 'npc_aunt', 'npc_grandpa',
                'npc_grandma', 'npc_bard']
@@ -641,13 +661,14 @@ def preview_wedding(builds, strollers, frames, sframes, out):
     if ch:
         seats = pts_of(ch, 'seat')
         rows = [tuple(it['m']) for it in lay['items'] if it['sprite'] == 'wedding_chairs']
+        fill = {0: (0, 2), 1: (0, 1), 2: (1,), 3: (2,), 4: (), 5: (0,)}
         for r, (bx, by) in enumerate(rows):
-            for j, s in enumerate(seats):
-                if (r * 3 + j) % 3 == 1 or (r >= 4 and j != 0):
-                    continue                    # a few free seats so the chairs read
+            for j, st in enumerate(seats):
+                if j not in fill.get(r, ()):
+                    continue                    # free seats so the chairs read
                 sx0, sy0 = sc.p(bx, by)
                 im = P.char(sitters[k % len(sitters)], 'sit_SE_%d' % (k % 4), flip=True)
-                sc.person(im, sx0 + s[0], sy0 + s[1], depth=sy0 + 1 + s[1] * 0.001)
+                sc.person(im, sx0 + st[0], sy0 + st[1], depth=sy0 + 1 + st[1] * 0.001)
                 k += 1
     # couple + officiant at the arch
     am = builds.get('wedding_arch')
@@ -660,87 +681,90 @@ def preview_wedding(builds, strollers, frames, sframes, out):
                       ax + cp[0][0], ay + cp[0][1], depth=ay + 2)
             sc.person(P.townsfolk(gr, 'talk', 'W', 2) if gr else P.char('npc_young_man', 'talk_E_2', flip=True),
                       ax + cp[1][0], ay + cp[1][1], depth=ay + 2.1)
-            sc.label('couple', ax, ay + 18)
+            L_('couple (couplePoints)', ax + 6, ay + 22)
         op = pts_of(am, 'officiant')
         if op:
             sc.person(P.char('player', 'idle_S_0'), ax + op[0][0], ay + op[0][1], depth=ay + 1.5)
-    # standing guests
+            L_('chief (officiantPoint)', ax + op[0][0] + 6, ay + op[0][1] - 104)
+    # standing guests (townsfolk)
     hx, hy = sc.p(0, 0)
     for j, (pt, d) in enumerate(zip(lay['standPoints'], lay['standDirs'])):
+        if j not in (2, 3, 4):
+            continue
         rd, fl = flip_for(d)
         person = P.random(500 + j * 13)
         anim = ('wave', 'happy', 'talk')[j % 3]
         im = P.townsfolk(person, anim, d, j % 6) if person else P.char('npc_red', '%s_%s_0' % (anim, rd), flip=fl)
         sc.person(im, hx + pt[0], hy + pt[1])
-    # cake: the dog waits for a crumb
     sc.person(P.char('pet_dog', 'sit_SE_0'), *sc.p(2.75, -6.9))
-    # a parent with the baby stroller arriving
+    # a parent with the baby stroller arriving from the right
     if 'baby_stroller' in strollers:
         m = strollers['baby_stroller']
-        d = 'E'
-        px0, py0 = sc.p(-5.2, -8.2)
-        off = stroller_entry('baby_stroller', m, sframes)['pushOffset'][d]
+        d = 'SW'
+        px0, py0 = sc.p(5.4, -3.6)
+        off = stroller_entry('baby_stroller', m, sframes)['pushOffset']['SE']
+        off = [-off[0], off[1]]
         pusher = P.random(77, 'adult')
-        sc.person(P.townsfolk(pusher, 'walk', d, 3) if pusher else P.char('npc_aunt', 'walk_E_3'), px0, py0)
-        sc.put(sframes[('baby_stroller', 'move_E_3')], m['anchorPx'], sx=px0 + off[0], sy=py0 + off[1], bias=1.0)
-        sc.label('baby_stroller', px0 + off[0] + 10, py0 + off[1] + 12)
-    sc.finish(out, 'Wedding at the town hall, 1x PPU 64: assets/life2 + town_hall (assets/town) with ribbon_garland',
+        sc.person(P.townsfolk(pusher, 'walk', d, 3) if pusher else P.char('npc_aunt', 'walk_SE_3', flip=True), px0, py0)
+        fr = sframes[('baby_stroller', 'move_SE_3')].transpose(Image.FLIP_LEFT_RIGHT)
+        W_ = m['frameSize'][0]
+        sc.put(fr, (W_ - m['anchorPx'][0], m['anchorPx'][1]), sx=px0 + off[0], sy=py0 + off[1], bias=1.0)
+        L_('baby_stroller', px0 + off[0] - 10, py0 + off[1] + 14)
+    sc.finish(out, 'Wedding at the town hall at 2x (PPU 64): assets/life2 + town_hall (assets/town) dressed with '
+                   'ribbon_garland',
               sub='layout = manifest layouts.wedding_town_hall; seated guests = villagers (sit), standing = townsfolk; '
-                  'bride / groom are plain townsfolk stand-ins (outfits: assets/townfolk2)')
+                  'the bride / groom are plain townsfolk stand-ins (wedding outfits: assets/townfolk2)', scale=2)
 
 
 def preview_memorial(builds, strollers, frames, sframes, out):
     P = People()
-    sc = Scene(1700, 1100, 820, 560)
+    sc = Scene(1400, 900, 700, 470)
     gm = builds.get('memorial_garden')
     if not gm:
         return
     sc.put(frames['memorial_garden'], gm['anchorPx'], 0.0, 0.0)
     gx, gy = sc.p(0.0, 0.0)
-    gdepth = gy
-    sc.label('memorial_garden', gx - 150, gy - 230)
+    gd = gy                                   # garden depth; everything on it is drawn above (stoneDepth front)
+
+    def above(local_dy, extra=0.0):
+        return gd + 1 + local_dy * 0.001 + extra
+
     stones = pts_of(gm, 'stone')
     sm = builds.get('memorial_stone')
     wm = builds.get('flower_wreath')
     if sm:
-        for i in (0, 1, 2):
+        for i in (0, 1, 4, 5):
             s = stones[i]
-            sc.put(frames['memorial_stone'], sm['anchorPx'], sx=gx + s[0], sy=gy + s[1], depth=gdepth + 1 + s[1] * 0.001)
-        sc.label('memorial_stone x3 (stonePoints 0-2)', gx + stones[1][0] - 20, gy + stones[1][1] + 14)
-        # newest stone = 2: wreath + mourners + someone laying flowers
-        s = stones[2]
+            sc.put(frames['memorial_stone'], sm['anchorPx'], sx=gx + s[0], sy=gy + s[1], depth=above(s[1]))
+        s = stones[5]                         # the newest stone: wreath, family, someone laying flowers
         sx0, sy0 = gx + s[0], gy + s[1]
         if wm:
             w = pts_of(sm, 'wreath')[0]
-            sc.put(frames['flower_wreath'], wm['anchorPx'], sx=sx0 + w[0], sy=sy0 + w[1],
-                   depth=gdepth + 1 + (s[1] + w[1]) * 0.001)
-            sc.label('flower_wreath', sx0 + w[0], sy0 + w[1] - 92)
-        mp, md = pts_of(sm, 'mourner'), dirs_of(sm, 'mourner')
-        for j, (p, d) in enumerate(zip(mp, md)):
+            sc.put(frames['flower_wreath'], wm['anchorPx'], sx=sx0 + w[0], sy=sy0 + w[1], depth=above(s[1] + w[1]))
+        for j, (p, d) in enumerate(zip(pts_of(sm, 'mourner'), dirs_of(sm, 'mourner'))):
             rd, fl = flip_for(d)
-            key = ('npc_aunt', 'npc_uncle')[j]
-            sc.person(P.char(key, 'sad_%s_%d' % (rd, j), flip=fl), sx0 + p[0], sy0 + p[1],
-                      depth=gdepth + 1 + (s[1] + p[1]) * 0.001 + 0.0005)
-        lp = pts_of(sm, 'lay')
-        if lp:
-            sc.person(P.char('npc_kid_girl', 'idle_N_0'), sx0 + lp[0][0], sy0 + lp[0][1],
-                      depth=gdepth + 1 + (s[1] + lp[0][1]) * 0.001)
-    gp, gd = pts_of(gm, 'gather'), dirs_of(gm, 'gather')
-    for j, (p, d) in enumerate(zip(gp, gd)):
-        if j in (2, 3, 5):
-            continue
-        rd, fl = flip_for(d)
-        person = P.random(900 + j * 7)
-        im = P.townsfolk(person, 'idle', 'NE' if j % 2 else 'NW', 0) if person else P.char('npc_blue', 'idle_N_0')
-        sc.person(im, gx + p[0], gy + p[1], depth=gdepth + 1 + p[1] * 0.001)
+            sc.person(P.char(('npc_aunt', 'npc_uncle')[j], 'sad_%s_%d' % (rd, j + 1), flip=fl), sx0 + p[0], sy0 + p[1],
+                      depth=above(s[1] + p[1], 0.0005))
+        bq = builds.get('item_bouquet')
+        if bq:                                # flowers laid at the stone base (after the layPoint visit)
+            sc.put(frames['item_bouquet'], bq['anchorPx'], sx=sx0 - 4, sy=sy0 + 12, depth=above(s[1] + 12))
+        sc.label('newest memorial_stone, flower_wreath behind it, family (sad) at mournerPoints', sx0 - 30, sy0 + 34)
+    gp = pts_of(gm, 'gather')
+    for j, key in ((2, None),):
+        p = gp[j]
+        if key:
+            im = P.char(key, 'idle_NE_0', flip=True)
+        else:
+            person = P.random(900 + j * 7)
+            im = P.townsfolk(person, 'idle', 'NE', 0) if person else P.char('npc_blue', 'idle_N_0')
+        sc.person(im, gx + p[0], gy + p[1], depth=above(p[1]))
     seats = pts_of(gm, 'seat')
     if seats:
-        sc.person(P.char('npc_grandpa', 'sit_S_1'), gx + seats[0][0], gy + seats[0][1], depth=gdepth + 1)
-    # a second, empty garden spot view: stones 3-5 left free
-    sc.label('free stone spots (stonePoints 3-5)', gx + stones[4][0] + 30, gy + stones[4][1] + 40)
-    sc.finish(out, 'Memorial garden, 1x PPU 64: a gentle, warm flower farewell (assets/life2)',
-              sub='garden + 3 memorial_stones + flower_wreath; family = villagers (sad), friends = townsfolk; '
-                  'layout = manifest layouts.farewell_garden')
+        sc.person(P.char('npc_grandpa', 'sit_S_1'), gx + seats[0][0], gy + seats[0][1], depth=above(seats[0][1]))
+    sc.label('memorial_garden (stonePoints 2, 3 still free)', gx - 60, gy + 112)
+    sc.finish(out, 'Memorial garden at 2x (PPU 64): a gentle, warm flower farewell (assets/life2)',
+              sub='stones on stonePoints 0, 1, 4, 5; wreath + laid bouquet at the newest; family = villagers (sad)',
+              min_w=1100, scale=2)
 
 
 def preview_anims_gif(builds, strollers, frames, sframes, out, bg=(236, 241, 248)):

@@ -608,8 +608,8 @@ def b_memorial_garden():
     # points
     for x in (0.42 - 0.32, 0.42 + 0.32):
         seat(x, 1.18 - 0.2, z=0.49)
-    for k, (x, y) in enumerate(((-0.5, -1.18), (0.72, -1.18), (-0.42, -0.12), (0.7, -0.08), (-0.25, 0.32),
-                                (0.68, 0.36))):
+    for k, (x, y) in enumerate(((-0.3, -1.3), (0.55, -1.3), (-0.15, -0.8), (0.62, -0.78), (-0.5, -0.95),
+                                (0.15, -1.62))):
         mark('gather', (x, y, 0.0), facing=(0.0, 1.0, 0.0))
     mark('door', (0.0, -1.95, 0.0), facing=(0, 1, 0))
     for x, y in PATH:
@@ -624,7 +624,8 @@ STONE_NOTE = ('Memorial stone 추모석 (0.6 x 0.35 m, ~0.65 m tall): a small ro
               'pillow on top, flower tufts and a laid posy at the base and a warm votive light. Faces the camera. '
               'Place at memorial_garden.stonePoints (draw above the garden). mournerPoints = family at the left / '
               'right of the stone facing it (E / W - sad / talk frames exist), layPoint = where someone steps up to '
-              'lay flowers (faces N), wreathPoint = where a flower_wreath stands.')
+              'lay flowers (faces N; then drop an item_bouquet at the stone base), wreathPoint = where a flower_wreath '
+              'stands (just behind the stone, so its ring shows above it).')
 
 
 @l2('memorial_stone', 'decor', 'life2_memorial', fp=(0.6, 0.35), yaw=45.0, notes=STONE_NOTE, ko='추모석',
@@ -661,10 +662,10 @@ def b_memorial_stone():
     cyl('votive_rim', 0.036, 0.01, (0.2, -0.1, 0.08), mat=flat('#E7C66A', 0.4, 0.4), segs=14, bevel=0.003)
     L.point_light('votive_l', (0.2, -0.16, 0.17), 'window', 1.4, 0.03)
     snow_bits(((-0.35, 0.2, 0.08), (0.36, 0.22, 0.07)), seed=230)
-    mark('mourner', (-0.52, -0.05, 0.0), facing=(1, 0, 0))
-    mark('mourner', (0.52, -0.05, 0.0), facing=(-1, 0, 0))
+    mark('mourner', (-0.7, -0.25, 0.0), facing=(1, 0, 0))
+    mark('mourner', (0.7, -0.25, 0.0), facing=(-1, 0, 0))
     mark('lay', (0.0, -0.5, 0.0), facing=(0, 1, 0))
-    mark('wreath', (-0.62, 0.28, 0.0))
+    mark('wreath', (0.0, 0.55, 0.0))
     mark('plaque', (0.0, 0.09 - t, 0.08 + 0.2))
     return {'fx': {'votive': (0.2, -0.1, 0.15), 'top': (0, 0, 0.66)}}
 

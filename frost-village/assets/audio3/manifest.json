@@ -1,0 +1,269 @@
+{
+ "version": 1,
+ "generator": "tools/audio/build_audio3.py (procedural synthesis: sfx3.py, music3.py; same toolkit + loudness conventions as assets/audio and assets/audio2)",
+ "audio": {
+  "bgm_wedding": {
+   "files": [
+    "audio3/bgm_wedding.ogg",
+    "audio3/bgm_wedding.mp3"
+   ],
+   "volume": 0.376,
+   "loop": true,
+   "kind": "music",
+   "duration": 30.9667,
+   "loopSamples": 1365632,
+   "bpm": 124,
+   "mp3StartPad": 1105,
+   "bars": 16,
+   "tonality": "F major",
+   "notes": "town-hall wedding march (124 bpm, 31 s). A = bgm_village hook, B = a nod to the Bridal Chorus incipit (public domain) on bells; ~11 MB as decoded PCM: load when a wedding starts."
+  },
+  "bgm_farewell": {
+   "files": [
+    "audio3/bgm_farewell.ogg",
+    "audio3/bgm_farewell.mp3"
+   ],
+   "volume": 0.355,
+   "loop": true,
+   "kind": "music",
+   "duration": 30.9769,
+   "loopSamples": 1366080,
+   "bpm": 93,
+   "mp3StartPad": 1105,
+   "bars": 16,
+   "meter": "3/4",
+   "tonality": "F major",
+   "notes": "memorial-garden flower farewell: gentle, warm, hopeful lullaby on the village hook (93 bpm 3/4, 31 s), no drums; load on demand."
+  },
+  "amb_night": {
+   "files": [
+    "audio3/amb_night.ogg",
+    "audio3/amb_night.mp3"
+   ],
+   "volume": 0.18,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 17.0101,
+   "loopSamples": 750144,
+   "rotation": 432541,
+   "mp3StartPad": 1105,
+   "notes": "winter night bed: soft wind, distant owl + answer, faint wind chime. Crossfade with audio/amb_wind at dusk (setAmbience)."
+  },
+  "amb_town": {
+   "files": [
+    "audio3/amb_town.ogg",
+    "audio3/amb_town.mp3"
+   ],
+   "volume": 0.216,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 14.0002,
+   "loopSamples": 617408,
+   "rotation": 29158,
+   "mp3StartPad": 1105,
+   "notes": "busy town murmur (walla, passers-by, footsteps, distant traffic, shop bell). Scale with the number of townsfolk on screen."
+  },
+  "sfx_truck_engine": {
+   "files": [
+    "audio3/sfx_truck_engine.ogg",
+    "audio3/sfx_truck_engine.mp3"
+   ],
+   "volume": 0.385,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 1.5978,
+   "loopSamples": 70464,
+   "firingHz": 12.517,
+   "rotation": 29214,
+   "mp3StartPad": 1105,
+   "notes": "positional mono loop: play like ambience, Audio.setAmbience('sfx_truck_engine', 0..1) by distance to the nearest truck / bus / car (or sm.add(key,{loop:true}) per vehicle); rate 0.85 idle .. 1.0 cruise .. 1.3 fast (Phaser sound rate)"
+  },
+  "sfx_sleigh_bells": {
+   "files": [
+    "audio3/sfx_sleigh_bells.ogg",
+    "audio3/sfx_sleigh_bells.mp3"
+   ],
+   "volume": 0.376,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 2.396,
+   "loopSamples": 105664,
+   "rotation": 52357,
+   "mp3StartPad": 1105,
+   "notes": "positional mono loop: play like ambience, Audio.setAmbience('sfx_sleigh_bells', 0..1) by distance to the nearest horse sleigh bus / cargo sleigh / dog sled (or sm.add(key,{loop:true}) per vehicle); 8 jingles per loop, ~ the trot tempo of sfx_horse_trot (loop lengths 2.40 / 2.42 s after Vorbis fitting: not beat-locked)"
+  },
+  "sfx_horse_trot": {
+   "files": [
+    "audio3/sfx_horse_trot.ogg",
+    "audio3/sfx_horse_trot.mp3"
+   ],
+   "volume": 0.422,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 2.4163,
+   "loopSamples": 106560,
+   "rotation": 79399,
+   "mp3StartPad": 1105,
+   "notes": "positional mono loop: play like ambience, Audio.setAmbience('sfx_horse_trot', 0..1) by distance to the nearest horse sleigh bus (or sm.add(key,{loop:true}) per vehicle); rate ~ horse speed (0.8 .. 1.2)"
+  },
+  "sfx_bus_horn": {
+   "files": [
+    "audio3/sfx_bus_horn.ogg",
+    "audio3/sfx_bus_horn.mp3"
+   ],
+   "volume": 0.376,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.0205,
+   "cues": {
+    "toot1": 0.0,
+    "toot2": 0.21
+   }
+  },
+  "sfx_car_honk_1": {
+   "files": [
+    "audio3/sfx_car_honk_1.ogg",
+    "audio3/sfx_car_honk_1.mp3"
+   ],
+   "volume": 0.442,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.4846,
+   "cues": {
+    "pip1": 0.0,
+    "pip2": 0.15
+   }
+  },
+  "sfx_car_honk_2": {
+   "files": [
+    "audio3/sfx_car_honk_2.ogg",
+    "audio3/sfx_car_honk_2.mp3"
+   ],
+   "volume": 0.309,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.6279
+  },
+  "sfx_steam_whistle": {
+   "files": [
+    "audio3/sfx_steam_whistle.ogg",
+    "audio3/sfx_steam_whistle.mp3"
+   ],
+   "volume": 0.248,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.6984,
+   "cues": {
+    "toot1": 0.05,
+    "toot2": 0.34
+   }
+  },
+  "sfx_brakes": {
+   "files": [
+    "audio3/sfx_brakes.ogg",
+    "audio3/sfx_brakes.mp3"
+   ],
+   "volume": 0.295,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.1557,
+   "cues": {
+    "squeal": 0.12,
+    "stop": 0.47,
+    "air": 0.6
+   }
+  },
+  "sfx_door": {
+   "files": [
+    "audio3/sfx_door.ogg",
+    "audio3/sfx_door.mp3"
+   ],
+   "volume": 0.708,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.3863,
+   "cues": {
+    "click": 0.0,
+    "thunk": 0.21
+   }
+  },
+  "sfx_bell_hall": {
+   "files": [
+    "audio3/sfx_bell_hall.ogg",
+    "audio3/sfx_bell_hall.mp3"
+   ],
+   "volume": 0.295,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 3.8791,
+   "cues": {
+    "ding1": 0.0,
+    "dong1": 0.6,
+    "ding2": 1.2,
+    "dong2": 1.8
+   },
+   "notes": "town-hall tower bells (C5 / F4 strike notes); hourly chime, wedding start, festival"
+  },
+  "sfx_school_bell": {
+   "files": [
+    "audio3/sfx_school_bell.ogg",
+    "audio3/sfx_school_bell.mp3"
+   ],
+   "volume": 0.188,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.5739,
+   "notes": "brass hand bell, ~1.6 s of ringing then rings out (class start / end)"
+  },
+  "sfx_baby_giggle": {
+   "files": [
+    "audio3/sfx_baby_giggle.ogg",
+    "audio3/sfx_baby_giggle.mp3"
+   ],
+   "volume": 0.327,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.8629,
+   "voice": "baby",
+   "cues": {
+    "giggle": 0.22
+   },
+   "notes": "rattle shake + tiny giggle + coo"
+  },
+  "sfx_mission_done": {
+   "files": [
+    "audio3/sfx_mission_done.ogg",
+    "audio3/sfx_mission_done.mp3"
+   ],
+   "volume": 0.412,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.7286,
+   "cues": {
+    "stamp": 0.0,
+    "jingle": 0.13,
+    "land": 0.37
+   }
+  },
+  "sfx_fame_up": {
+   "files": [
+    "audio3/sfx_fame_up.ogg",
+    "audio3/sfx_fame_up.mp3"
+   ],
+   "volume": 0.473,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.3949,
+   "cues": {
+    "fanfare": 0.345,
+    "star": 0.725
+   }
+  }
+ },
+ "audioGroups": {
+  "sfx_car_honk": [
+   "sfx_car_honk_1",
+   "sfx_car_honk_2"
+  ]
+ }
+}

@@ -83,8 +83,13 @@ def main():
     T1, F = man1['townfolk'], man2['townfolk2']
     f1 = load_frames(assets, man1, err, 'townfolk')
     f2 = load_frames(assets, man2, err, 'townfolk2')
+    ov = set(F.get('overrides', []))
     for n in set(f1) & set(f2):
-        err.append(f'frame {n} in both fragments')
+        if n not in ov:
+            err.append(f'frame {n} in both fragments')
+    for n in ov:
+        if n not in f2:
+            err.append(f'override {n} not packed in townfolk2')
     keys1 = {a['key'] for a in man1['atlases']}
     for a in man2['atlases']:
         if a['key'] in keys1:
@@ -97,7 +102,7 @@ def main():
         print('ERROR merge:', e)
         sys.exit(1)
     frames = dict(f1)
-    frames.update(f2)
+    frames.update(f2)                     # overrides: the townfolk2 copy wins (like AtlasSource2 / the JS lookup)
     # every frame of both fragments must resolve (frameAtlas / frameAtlasAnim / frameAtlasPose) to its atlas
     nbad = 0
     for n, key in frames.items():
@@ -155,10 +160,13 @@ def main():
                     if any(f'{pn}.{s}@{base}/{a}_S_0' in frames for s in P['subs']):
                         err.append(f'{pn}@{base}: has frames in noAnims {a}')
                     continue
-                for dd in T['anims'][a]['dirs']:
-                    if not any(f'{pn}.{s}@{base}/{a}_{dd}_{i}' in frames for s in P['subs']
-                               for i in range(T['anims'][a]['frames'])):
-                        err.append(f'{pn}@{base}: no frame in {a}_{dd}')
+                have = [dd for dd in T['anims'][a]['dirs']
+                        if any(f'{pn}.{s}@{base}/{a}_{dd}_{i}' in frames for s in P['subs']
+                               for i in range(T['anims'][a]['frames']))]
+                if not have:
+                    err.append(f'{pn}@{base}: no frame at all in {a}')
+                elif len(have) < len(T['anims'][a]['dirs']):
+                    info.append(f'{pn}@{base}: {a} hidden in {sorted(set(T["anims"][a]["dirs"]) - set(have))}')
     # head layers: every v4 head layer with a soc frame also has the down frame
     soc_layers = {n.split('/')[0] for n in f1 if n.endswith('/soc_S') or n.endswith('/soc_SE') or n.endswith('/soc_E')}
     for layer in sorted(soc_layers):
@@ -284,6 +292,9 @@ def main():
           f'{len(sigs)}/400 distinct')
     if hidden:
         print(f'{len(hidden)} far-side limb frames are empty in the new anims (hidden behind the body)')
+    if info:
+        print(f'{len(info)} (part, anim) pairs fully hidden in some dirs (e.g. a necklace seen from the back): '
+              + '; '.join(info[:4]))
     for w in warn[:12]:
         print('WARN', w)
     if len(warn) > 12:

@@ -41,7 +41,10 @@ TINT_REF2 = {'gown': '#FAF8F3', 'flower': '#FAF6F2', 'flower2': '#FAF6F2', 'wrap
 tpr.TINT_REF.update({k: v for k, v in TINT_REF2.items() if k not in tpr.TINT_REF})
 TINT_MODEL_SLOTS2 = {'flower': [0, 0, 0], 'flower2': [0, 0, 0]}      # no cloth sky-sheen term on petals
 
-Z2 = {'veil_back': {'S': 2.6, 'SE': 2.6, 'E': 2.6, 'NE': 73.0, 'N': 73.0}, 'veil_top': 72.6,
+# veil_top: under the hair (69.5) while the face looks at the camera - the cap sits on the back of the head, the
+# hair in front must hide it (it only peeks out as a rim); over the hair from behind (NE / N)
+Z2 = {'veil_back': {'S': 2.6, 'SE': 2.6, 'E': 2.6, 'NE': 73.0, 'N': 73.0},
+      'veil_top': {'S': 69.5, 'SE': 69.5, 'E': 69.5, 'NE': 73.1, 'N': 73.1},
       'crown_leaves': 72.9, 'crown_flowers': 73.2, 'crown_flowers2': 73.3,
       'item': 45.0, 'item_front': 91.5, 'gown_puff': 31.5, 'gown_sash': 31.0}
 NEW_PARTS = ['wedding_dress', 'veil', 'groom_suit', 'flower_crown', 'mourning_coat', 'black_hat', 'held_bouquet']
@@ -109,6 +112,24 @@ def leaf_bm(l=0.05, w=0.022):
 def place_q(n):
     """Rotation turning local -Y toward the outward normal n (like char_build.on_head)."""
     return (-Vector(n)).to_track_quat('Y', 'Z')
+
+
+# =========================================================================== v4 part fix for the new anims
+# bot_longskirt's 'under' legs (r 0.060 / 0.050) are thinner than the mannequin core legs (0.062 / 0.052): fine
+# while standing (the bell hides them) but in `sit` the core thighs / shins poke out of the skirt front and cut
+# holes nobody fills.  townfolk2 renders bot_longskirt for its NEW anims with under-legs a bit thicker than the
+# core (the skirt then drapes over the lap); the v4 frames in assets/townfolk are untouched.
+
+def b_bot_longskirt_v5(rig, ctx, put):
+    _lazy()
+    with put('main'):
+        sm = M('lskirt', ctx.col('bottom'), 0.85)
+        g.mesh_obj('skirt', g.bm_lathe([(0.300, -0.29), (0.296, -0.26), (0.262, -0.12), (0.228, 0.0), (0.222, 0.06)],
+                                       seg=48, sy=0.86, smooth_n=12, cap_top=False, cap_bottom=False), sm, rig.j['hips'])
+        tp._legs(rig, sm, thigh=0.074, shin=0.064, name='under')
+
+
+PARTS['bot_longskirt'].fn = b_bot_longskirt_v5
 
 
 # =========================================================================== wedding dress

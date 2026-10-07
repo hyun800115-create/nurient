@@ -18,21 +18,21 @@ PALETTES2 = {
     'gown': ['#FAF8F3', '#F7EEDF', '#F7E4EA', '#E8F0F7', '#F4E8D0'],
     'flower': ['#FAF6F2', '#F59AB8', '#F7C8D8', '#F2C230', '#E8524A', '#C8A0E0', '#F2E6B8', '#9CC7E6', '#F08A3A'],
     'flower_white': ['#FAF6F2', '#F4EDE0', '#F2E6B8'],
-    'wrap': ['#F7F3EC', '#F4EDE0', '#F7E4EA', '#E8F0F7', '#C8A878', '#3B3F52'],
+    'wrap': ['#F7F3EC', '#F4EDE0', '#F7E4EA', '#DCE6EC', '#C8A878', '#3B3F52'],
     'formal': ['#2B2F3A', '#3B3F52', '#2B3A5E', '#4A4A52', '#5A4A3A', '#7A6A58'],
     'mourning': ['#2B2F3A', '#2E3440', '#3A3040', '#3B3F52', '#2A2228', '#4A4A52'],
-    'bowtie': ['#2B2F3A', '#C8343A', '#2B3A5E', '#F2B8C8', '#5E9A4A', '#F2C14E'],
-    'party': ['#F59AB8', '#F7C8D8', '#9CC7E6', '#F2C230', '#C8A0E0', '#5E9A4A', '#F08A3A', '#3D7CC9', '#D9483B'],
+    'bowtie': ['#2B2F3A', '#C8343A', '#2B3A5E', '#E8B0C0', '#5E9A4A', '#E0B24A'],
+    'party': ['#F59AB8', '#EEBCCB', '#9CC7E6', '#F2C230', '#C8A0E0', '#5E9A4A', '#F08A3A', '#3D7CC9', '#D9483B'],
 }
 SLOT_PALETTE2 = {'gown': 'gown', 'flower': 'flower', 'flower2': 'flower', 'wrap': 'wrap'}
 # extra colours for v4 tint slots (precomputed tints added to tintTable[slot])
 EXTRA_TINTS = {
     'top': PALETTES2['formal'] + PALETTES2['mourning'] + PALETTES2['party'],
-    'top2': PALETTES2['bowtie'] + ['#F7F5F0'],
+    'top2': PALETTES2['bowtie'] + ['#ECEAE4'],
     'bottom': PALETTES2['formal'] + PALETTES2['mourning'],
     'hat': ['#2B2F3A', '#2A2228', '#3A3040', '#3B3F52'],
     'hat2': ['#2B2F3A', '#3B3F52', '#4A4A52', '#2A2228'],
-    'acc2': ['#F2B8C8', '#F7C8D8', '#9CC7E6', '#F2C14E', '#C8A0E0', '#F4EDE0'],
+    'acc2': ['#E8B0C0', '#EEBCCB', '#9CC7E6', '#E0B24A', '#C8A0E0', '#E8E2D6'],
 }
 
 EXCLUDE2 = [
@@ -51,11 +51,11 @@ PRESETS2 = {
                        'hair_ponytail_long': 1, 'hair_braids': 1, 'hair_curly': 1},
               'headAcc': ['flower_crown'], 'headAccChance': 1.0, 'extra': ['veil', 'held_bouquet'],
               'gloveChance': 0.0,
-              'colors': {'gown': ['#FAF8F3', '#FAF8F3', '#F7EEDF', '#F7E4EA'], 'acc2': ['#F2B8C8', '#F7C8D8', '#9CC7E6',
-                                                                                    '#F2C14E', '#C8A0E0'],
+              'colors': {'gown': ['#FAF8F3', '#FAF8F3', '#F7EEDF', '#F7E4EA'], 'acc2': ['#E8B0C0', '#EEBCCB', '#9CC7E6',
+                                                                                    '#E0B24A', '#C8A0E0'],
                          'bottom2': ['#F4F1EA'], 'shoes': ['#E6E0D6', '#C8A878'],
                          'flower': ['#F59AB8', '#F7C8D8', '#FAF6F2', '#C8A0E0', '#F2C230'],
-                         'flower2': ['#FAF6F2', '#F7C8D8', '#F2E6B8'], 'wrap': ['#F7F3EC', '#F7E4EA', '#E8F0F7']}},
+                         'flower2': ['#FAF6F2', '#F7C8D8', '#F2E6B8'], 'wrap': ['#F7F3EC', '#F7E4EA', '#DCE6EC']}},
     'groom': {'label': {'ko': '신랑', 'en': 'groom'},
               'bases': {'adult_slim': 4, 'adult_round': 2}, 'look': 'B',
               'tops': ['groom_suit'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': None, 'neck': None,
@@ -71,14 +71,14 @@ PRESETS2 = {
                       'hats': {'hat_beret': 1, 'hat_fedora': 1}, 'hatChance': 0.15, 'neck': None, 'bag': None,
                       'headAcc': {'flower_crown': 2, 'acc_ribbon': 1, 'acc_hairclip': 1}, 'headAccChance': 0.35,
                       'gloveChance': 0.1,
-                      'colors': {'top': 'party', 'top2': ['#F4EDE0', '#F7F5F0', '#F2C14E'], 'acc2': 'party',
+                      'colors': {'top': 'party', 'top2': ['#E8E2D6', '#ECEAE4', '#E0B24A'], 'acc2': 'party',
                                  'flower': ['#F59AB8', '#F2C230', '#FAF6F2', '#C8A0E0', '#9CC7E6'],
                                  'flower2': ['#FAF6F2', '#F7C8D8']}},
     'flower_girl': {'label': {'ko': '화동', 'en': 'flower girl'},
                     'bases': {'child_slim': 3, 'child_round': 1}, 'look': 'A',
                     'tops': ['top_dress'], 'shoes': ['shoe_shoes', 'shoe_furboots'], 'hats': None, 'neck': None,
                     'bag': None, 'headAcc': ['flower_crown'], 'headAccChance': 1.0, 'extra': ['held_bouquet'],
-                    'colors': {'top': ['#F7C8D8', '#FAF8F3', '#E8F0F7', '#F59AB8'], 'top2': ['#F4EDE0'],
+                    'colors': {'top': ['#EEBCCB', '#E6E4DE', '#D8E2EA', '#F59AB8'], 'top2': ['#E8E2D6'],
                                'bottom2': ['#F4F1EA'], 'flower': ['#F59AB8', '#F2C230', '#FAF6F2'],
                                'flower2': ['#FAF6F2'], 'wrap': ['#F7F3EC', '#F7E4EA']}},
     'mourner': {'label': {'ko': '조문객', 'en': 'mourner'},
@@ -103,3 +103,33 @@ PRESETS2 = {
                                   'flower': ['#FAF6F2'], 'flower2': ['#FAF6F2', '#F2E6B8'], 'wrap': ['#F4EDE0'],
                                   'hands': ['skin', 'skin', '#3B3F4A']}},
 }
+
+
+# =========================================================================== look-dev / proof outfits
+# full Blender renders of these (tf2_render.py --mode full --combos look) are compared with the paper-doll
+# composites in docs/previews/townfolk2_proof.png (tf2_preview.py proof)
+LOOK = [
+    dict(name='bride', base='adult_slim', face='lash', nose='dot',
+         parts=['hair_bun', 'wedding_dress', 'bot_tights', 'shoe_shoes', 'veil', 'flower_crown', 'held_bouquet'],
+         colors=dict(skin='#F6CFAE', hair='#3A2A22', gown='#FAF8F3', acc2='#F2B8C8', bottom2='#F4F1EA',
+                     shoes='#E8E2D8', sleeve='#F6CFAE', hands='#F6CFAE', flower='#F59AB8', flower2='#FAF6F2',
+                     wrap='#F7F3EC', top='#FAF8F3')),
+    dict(name='groom', base='adult_slim', face='std', nose='dot',
+         parts=['hair_sidepart', 'groom_suit', 'bot_pants', 'shoe_shoes'],
+         colors=dict(skin='#E8B48C', hair='#2A2228', top='#2B2F3A', top2='#C8343A', bottom='#2B2F3A',
+                     shoes='#2A2A30', sleeve='#2B2F3A', hands='#E8B48C')),
+    dict(name='mourner', base='elder_slim', face='elder', nose='big',
+         parts=['hair_lowbun', 'mourning_coat', 'bot_longskirt', 'shoe_shoes', 'black_hat', 'held_bouquet'],
+         colors=dict(skin='#F2C29A', hair='#C8C2BC', top='#2E3440', bottom='#2B2F3A', shoes='#2A2A30',
+                     hat='#2A2228', hat2='#3B3F52', sleeve='#2E3440', hands='#F2C29A', flower='#FAF6F2',
+                     flower2='#F2E6B8', wrap='#F4EDE0')),
+    dict(name='kid', base='child_slim', face='kidlash', nose='button',
+         parts=['hair_twintails', 'top_dress', 'bot_tights', 'shoe_furboots', 'flower_crown'],
+         colors=dict(skin='#F6CFAE', hair='#8A5232', top='#F59AB8', top2='#F4EDE0', bottom2='#F4F1EA',
+                     shoes='#C8463D', fur='#F4F1EA', sleeve='#F59AB8', hands='#F6CFAE', flower='#F2C230',
+                     flower2='#FAF6F2', acc2='#F4EDE0')),
+]
+LOOK_FRAMES = [('sad', 'S', 0), ('sad', 'SE', 2), ('clap', 'S', 2), ('clap', 'E', 0), ('sit', 'S', 0),
+               ('sit', 'SE', 1), ('sit', 'E', 2), ('push', 'S', 1), ('push', 'SE', 3), ('push', 'E', 5),
+               ('push', 'N', 2), ('idle', 'S', 0), ('walk', 'SE', 2), ('happy', 'S', 2), ('wave', 'E', 1),
+               ('idle', 'N', 1)]

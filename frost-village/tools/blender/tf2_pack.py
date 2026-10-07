@@ -61,6 +61,8 @@ MERGE_RULES = [
     'tintRef, palettes: add new keys; tintModel.slotS: add new slots; tintTable[slot]: union of colours.',
     'generator.presets / slotPalette: add new keys; generator.exclude: concatenate; generator.extraSlots: '
     'colour slots the v4 generator does not fill (filled from the preset colours, see townfolk2_compose).',
+    'overrides: frame names townfolk2 REPLACES (corrected copies of v4 head frames that rendered black); they '
+    'resolve to the townfolk2 atlas through frameAtlasPose, the v4 copy is simply never used.',
     'faceExprs (new): {headPose: [expr...]} every face expression that exists for that pose - a sprite may '
     'override the timeline face with any of them (e.g. "sad" while walking to the memorial garden).',
     'Everything else (frame size, anchors, limbs, faces, noses, frameNames, layerNames) is the v4 block unchanged.',
@@ -178,7 +180,10 @@ def nested2(flat):
             for a in ta2.ORDER2}
 
 
-def build_manifest2(body_metas, where_head, where_body, body_layers, atlases):
+def build_manifest2(body_metas, where_head, where_body, body_layers, atlases, head_poses=None, head_fixes=()):
+    """head_poses: {head layer: {poses it has frames for in this fragment}}; head_fixes: [(layer, pose)] v4 head
+    frames this fragment REPLACES (corrected re-renders, listed in townfolk2.overrides)."""
+    head_poses = head_poses or {}
     tl = ta2.timeline2()
     timeline = {a: {d: [tl[(a, d, i)] for i in range(ta2.ANIMS2[a]['frames'])] for d in ta2.ANIMS2[a]['dirs']}
                 for a in ta2.ORDER2}
@@ -200,12 +205,18 @@ def build_manifest2(body_metas, where_head, where_body, body_layers, atlases):
         fa1 = json.load(f)['townfolk']['frameAtlas']
     frame_atlas, ext_anim, ext_pose = {}, {}, {}
     for layer, key in where_head.items():
-        (ext_pose if layer in fa1 else frame_atlas)[layer] = key
+        if layer not in fa1:
+            frame_atlas[layer] = key
+            continue
+        for hp in sorted(head_poses.get(layer, ())):        # v4 layer: its v5 frames, pose by pose
+            ext_pose.setdefault(hp, {})[layer] = key
     for base, w in where_body.items():
         for layer, key in w.items():
             L = f'{layer}@{base}'
             (ext_anim if L in fa1 else frame_atlas)[L] = key
-    frame_atlas_ext = [{'anims': list(ta2.ORDER2), 'map': ext_anim}, {'poses': list(ta2.HEAD_POSES2), 'map': ext_pose}]
+    frame_atlas_ext = [{'anims': list(ta2.ORDER2), 'map': ext_anim}]
+    frame_atlas_ext += [{'poses': [hp], 'map': m} for hp, m in sorted(ext_pose.items())]
+    overrides = sorted(f'{l}/{hp}_{d}' for l, hp in head_fixes for d in ta.HEAD_POSE_DIRS[hp])
     parts = {pn: part_entry2(tp.PARTS[pn]) for pn in tp2.NEW_PARTS}
     tint_ref = dict(tp2.TINT_REF2)
     tint_table = {}
@@ -214,7 +225,17 @@ def build_manifest2(body_metas, where_head, where_body, body_layers, atlases):
     for slot, pal in tpr2.SLOT_PALETTE2.items():
         ref = tint_ref.get(slot) or tpr.TINT_REF.get(slot, tpr.TINT_REF['default'])
         tint_table[slot] = {c: tc.tint_hex(c, ref, model, slot) for c in sorted(set(tpr2.PALETTES2[pal]))}
-    for slot, cols in tpr2.EXTRA_TINTS.items():           # new colours for v4 slots (formal / mourning wear)
+    extra = {k: set(v) for k, v in tpr2.EXTRA_TINTS.items()}
+    for pr in tpr2.PRESETS2.values():                      # every fixed preset colour gets a precomputed tint
+        for slot, v in pr.get('colors', {}).items():
+            if isinstance(v, list) and slot not in ('hands',):
+                extra.setdefault(slot, set()).update(c for c in v if isinstance(c, str) and c.startswith('#'))
+    for slot in list(extra):
+        if slot in tpr2.SLOT_PALETTE2:                     # new slots: palette table + preset colours, own refs
+            ref = tint_ref.get(slot)
+            tint_table.setdefault(slot, {}).update({c: tc.tint_hex(c, ref, model, slot) for c in sorted(extra[slot])})
+            del extra[slot]
+    for slot, cols in extra.items():                       # new colours for v4 slots (formal / mourning wear)
         ref = tpr.TINT_REF.get(slot, tpr.TINT_REF['default'])
         tint_table.setdefault(slot, {}).update({c: tc.tint_hex(c, ref, tpr.TINT_MODEL, slot) for c in sorted(cols)})
     seat_px = round(ta2.SEAT_H * 64 * 0.8660254, 2)
@@ -237,6 +258,7 @@ def build_manifest2(body_metas, where_head, where_body, body_layers, atlases):
                       'exclude': tpr2.EXCLUDE2, 'extraSlots': list(tpr2.EXTRA_SLOTS)},
         'frameAtlas': frame_atlas,
         'frameAtlasExt': frame_atlas_ext,
+        'overrides': overrides,
         'sit': {'anim': 'sit', 'seatHeightM': ta2.SEAT_H, 'anchor': 'seat front-centre (like villagers / life_props '
                 'seatPoints)', 'hipBackM': ta2.SEAT_BACK, 'groundOffsetPx': seat_px,
                 'notes': 'Put the sprite anchor ON the seat point (seat front-centre at seat height). The ground '
@@ -307,7 +329,9 @@ def main():
     for at in atlases:                                  # tf_pack writes 'townfolk/<key>' paths
         at['png'] = 'townfolk2/' + at['png'].split('/', 1)[1]
         at['json'] = 'townfolk2/' + at['json'].split('/', 1)[1]
-    man = build_manifest2(body_metas, where_head, where_body, body_layer_names, atlases)
+    head_poses = {l: {f.split('_', 1)[0] for f in fr} for l, fr in head_layers.items()}
+    fixes = [tuple(x) for x in head_meta.get('overrides', [])]
+    man = build_manifest2(body_metas, where_head, where_body, body_layer_names, atlases, head_poses, fixes)
     with open(os.path.join(out, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(man, f, ensure_ascii=False, separators=(',', ':'))
     total = sum(os.path.getsize(os.path.join(out, f)) for f in os.listdir(out))

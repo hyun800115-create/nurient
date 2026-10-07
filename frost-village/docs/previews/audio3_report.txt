@@ -1,0 +1,97 @@
+key                fmt  ch   dur s   peak     TP  I LUFS   Mmax    vol    eff   want       DC     kB
+bgm_wedding        ogg   2  30.967   -3.8   -3.8   -18.0  -15.7  0.376  -26.5  -26.5  0.00001  427.8
+bgm_wedding        mp3   2  30.967   -3.8   -3.6   -18.5  -16.2  0.376  -27.0  -26.5  0.00001  484.9
+                   loop: n=1365632 (render 1365632) hf_ratio=0.150 d2_ratio=0.188 level_jump=+7.1 dB wrap_jump=0.0064
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 1365632; duration 30.9667 s
+bgm_farewell       ogg   2  30.977   -2.6   -2.6   -18.0  -13.6  0.355  -27.0  -27.0  0.00000  422.1
+bgm_farewell       mp3   2  30.977   -3.2   -3.2   -18.5  -14.1  0.355  -27.5  -27.0  0.00000  484.9
+                   loop: n=1366080 (render 1366080) hf_ratio=0.339 d2_ratio=0.440 level_jump=+8.9 dB wrap_jump=0.0234
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 1366080; duration 30.9769 s
+amb_night          ogg   1  17.010   -4.8   -4.8   -20.1  -13.7  0.180  -35.0  -35.0  0.00002  147.0
+amb_night          mp3   1  17.010   -5.1   -5.0   -20.4  -14.1  0.180  -35.3  -35.0  0.00001  166.8
+                   loop: n=750144 (render 750144) hf_ratio=0.249 d2_ratio=0.505 level_jump=+0.1 dB wrap_jump=0.0049
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 750144; duration 17.0101 s
+amb_town           ogg   1  14.000   -4.5   -4.5   -20.2  -15.5  0.216  -33.5  -33.5  0.00001  112.2
+amb_town           mp3   1  14.000   -4.9   -4.9   -20.5  -15.9  0.216  -33.8  -33.5  0.00000  137.2
+                   loop: n=617408 (render 617408) hf_ratio=0.059 d2_ratio=0.162 level_jump=-3.3 dB wrap_jump=0.0012
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 617408; duration 14.0002 s
+sfx_truck_engine   ogg   1   1.598   -3.5   -3.5   -20.7  -19.7  0.385  -29.0  -29.0  0.00003   16.6
+sfx_truck_engine   mp3   1   1.598   -4.1   -4.1   -21.1  -20.1  0.385  -29.4  -29.0  0.00002   16.3
+                   loop: n=70464 (render 70464) hf_ratio=0.087 d2_ratio=0.257 level_jump=+8.4 dB wrap_jump=0.0010
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 70464; duration 1.5978 s
+sfx_sleigh_bells   ogg   1   2.396   -4.5   -4.4   -20.0  -16.8  0.376  -28.5  -28.5  0.00000   18.6
+sfx_sleigh_bells   mp3   1   2.396   -5.0   -4.9   -20.4  -17.1  0.376  -28.9  -28.5  0.00000   24.0
+                   loop: n=105664 (render 105664) hf_ratio=0.000 d2_ratio=0.000 level_jump=+50.2 dB wrap_jump=0.0000
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 105664; duration 2.396 s
+sfx_horse_trot     ogg   1   2.416   -1.5   -1.5   -20.5  -18.7  0.422  -28.0  -28.0  0.00001   25.3
+sfx_horse_trot     mp3   1   2.416   -1.9   -1.9   -21.0  -19.1  0.422  -28.5  -28.0  0.00003   24.2
+                   loop: n=106560 (render 106560) hf_ratio=0.000 d2_ratio=0.000 level_jump=+51.4 dB wrap_jump=0.0000
+                   ogg end padding 0 smp (must be 0); manifest loopSamples 106560; duration 2.4163 s
+sfx_bus_horn       ogg   1   1.021   -1.4   -1.4   -11.4  -10.0  0.376  -18.5  -18.5  0.00001   10.1
+sfx_bus_horn       mp3   1   1.021   -1.9   -1.9   -11.8  -10.5  0.376  -19.0  -18.5  0.00000   12.9
+sfx_car_honk_1     ogg   1   0.482   -1.7   -1.7   -14.2  -11.9  0.442  -19.0  -19.0  0.00001    6.8
+sfx_car_honk_1     mp3   1   0.485   -2.0   -2.0   -14.7  -12.4  0.442  -19.5  -19.0  0.00001    6.4
+sfx_car_honk_2     ogg   1   0.625   -1.4   -1.4   -11.1   -8.8  0.309  -19.0  -19.0  0.00000    7.9
+sfx_car_honk_2     mp3   1   0.628   -2.0   -2.0   -11.6   -9.3  0.309  -19.5  -19.0  0.00001    8.3
+sfx_steam_whistle  ogg   1   1.698   -1.4   -1.4    -8.0   -6.4  0.248  -18.5  -18.5  0.00000   18.4
+sfx_steam_whistle  mp3   1   1.699   -2.0   -2.0    -8.4   -6.9  0.248  -19.0  -18.5  0.00000   20.8
+sfx_brakes         ogg   1   1.156   -1.2   -0.9   -11.8   -9.9  0.295  -20.5  -20.5  0.00002   15.9
+sfx_brakes         mp3   1   1.156   -1.2   -0.7   -12.0  -10.1  0.295  -20.7  -20.5  0.00000   14.4
+sfx_door           ogg   1   0.383   -1.4   -1.3   -17.6  -17.5  0.708  -20.5  -20.5  0.00004    7.4
+sfx_door           mp3   1   0.386   -1.8   -1.8   -18.1  -18.0  0.708  -21.0  -20.5  0.00007    5.2
+sfx_bell_hall      ogg   1   3.879   -1.5   -1.5   -12.4   -7.9  0.295  -18.5  -18.5  0.00001   17.4
+sfx_bell_hall      mp3   1   3.879   -1.9   -1.9   -12.9   -8.4  0.295  -19.0  -18.5  0.00000   46.2
+sfx_school_bell    ogg   1   2.574   -1.4   -1.4    -7.2   -5.0  0.188  -19.5  -19.5  0.00001   17.9
+sfx_school_bell    mp3   1   2.574   -1.9   -1.9    -7.7   -5.5  0.188  -20.0  -19.5  0.00000   30.9
+sfx_baby_giggle    ogg   1   0.860   -1.5   -1.5   -12.9  -10.8  0.327  -20.5  -20.5  0.00000   11.7
+sfx_baby_giggle    mp3   1   0.863   -1.9   -1.8   -13.3  -11.2  0.327  -20.9  -20.5  0.00000   11.0
+sfx_mission_done   ogg   1   1.729   -1.4   -1.4   -11.9   -9.3  0.412  -17.0  -17.0  0.00003   14.6
+sfx_mission_done   mp3   1   1.729   -1.9   -1.8   -12.3   -9.7  0.412  -17.4  -17.0  0.00006   21.1
+sfx_fame_up        ogg   1   2.395   -1.6   -1.5   -12.0  -10.0  0.473  -16.5  -16.5  0.00005   25.5
+sfx_fame_up        mp3   1   2.395   -1.6   -1.7   -12.4  -10.5  0.473  -17.0  -16.5  0.00010   28.8
+total payload assets/audio3 (audio files + manifest): 2943073 bytes = 2.943 MB = 2.807 MiB (limit 3000000 bytes)
+headless Chromium 141.0.7390.37 decodeAudioData (OfflineAudioContext 44.1 kHz):
+  bgm_wedding        ogg: 1365632 frames x 2 ch (want 1365632, exact), seam d2 ratio 0.185
+  bgm_wedding        mp3: 1365632 frames x 2 ch (want 1365632, exact), seam d2 ratio 0.081
+  bgm_farewell       ogg: 1366080 frames x 2 ch (want 1366080, exact), seam d2 ratio 0.452
+  bgm_farewell       mp3: 1366080 frames x 2 ch (want 1366080, exact), seam d2 ratio 0.974
+  amb_night          ogg: 750144 frames x 1 ch (want 750144, exact), seam d2 ratio 0.507
+  amb_night          mp3: 750144 frames x 1 ch (want 750144, exact), seam d2 ratio 0.181
+  amb_town           ogg: 617408 frames x 1 ch (want 617408, exact), seam d2 ratio 0.158
+  amb_town           mp3: 617408 frames x 1 ch (want 617408, exact), seam d2 ratio 0.036
+  sfx_truck_engine   ogg: 70464 frames x 1 ch (want 70464, exact), seam d2 ratio 0.260
+  sfx_truck_engine   mp3: 70464 frames x 1 ch (want 70464, exact), seam d2 ratio 0.143
+  sfx_sleigh_bells   ogg: 105664 frames x 1 ch (want 105664, exact), seam d2 ratio 0.000
+  sfx_sleigh_bells   mp3: 105664 frames x 1 ch (want 105664, exact), seam d2 ratio 0.000
+  sfx_horse_trot     ogg: 106560 frames x 1 ch (want 106560, exact), seam d2 ratio 0.000
+  sfx_horse_trot     mp3: 106560 frames x 1 ch (want 106560, exact), seam d2 ratio 0.001
+mix: bgm_wedding plays at -26.5 LUFS effective (bgm_village target -26.5)
+mix: bgm_farewell plays at -27.0 LUFS effective (bgm_village target -26.5)
+demo: bed -25.8 LUFS | sfx layer -22.8 LUFS | mix -23.1 LUFS, peak -4.1 dBFS
+demo timeline (2 s windows, max momentary LUFS)  bed | sfx
+   0s   -24.4 |  -99.0
+   2s   -23.4 |  -19.3
+   4s   -23.1 |  -21.4
+   6s   -23.3 |  -21.4
+   8s   -23.9 |  -22.1
+  10s   -24.3 |  -17.0
+  12s   -24.3 |  -16.3
+  14s   -22.7 |  -24.4
+  16s   -21.7 |  -21.6
+  18s   -22.7 |  -28.0
+  20s   -24.0 |  -23.9
+  22s   -30.7 |  -21.5
+  24s   -23.9 |  -16.4
+  26s   -23.9 |  -22.4
+  28s   -24.7 |  -38.5
+  30s   -24.6 |  -21.3
+  32s   -24.6 |  -24.7
+  34s   -27.3 |  -99.0
+  36s   -26.5 |  -99.0
+  38s   -23.4 |  -99.0
+  40s   -24.4 |  -99.0
+  42s   -22.8 |  -99.0
+  44s   -23.1 |  -99.0
+
+
+RESULT: OK

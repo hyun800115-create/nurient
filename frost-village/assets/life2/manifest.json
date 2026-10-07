@@ -1,0 +1,1739 @@
+{
+ "version": 1,
+ "generator": "tools/blender/life2_render.py + life2_pack.py (docs/CONTRACT_V5.md section P)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (items: bottom centre of the ground contact, 72 x 72 frame at (36, 54); strollers: ground point under the pram centre, 128 x 128 at (64, 104) like the characters).",
+  "front": "-Y = faces screen down-left (SW, like the town buildings); +X = screen down-right (SE); S = faces the camera.",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = the facing of the character standing / sitting there (S, SE, E, NE, N, SW, W, NW; SW / W / NW = flipX of SE / E / NE).",
+  "seatPoints": "anchor of a SITTING character = seat-surface front centre, seatHeightM above the ground (the villager / townsfolk `sit` anchor convention, CONTRACT_VILLAGERS + assets/villagers notes). seatGroundPoints = the ground point under it (for a sit anim anchored at the floor). seatDepth \"front\": sitter depth = prop depth + 1 (+ dy * 0.001); \"between\": base sprite d, sitter d + 0.5, the `overlay` sprite d + 1.",
+  "shadows": "props have a baked soft cool shadow falling screen down-right (like assets/props / life_props / town); decals (wedding_carpet*) sit on the ground layer; strollers have none (draw the `shadow` ellipse); ribbon_garland carries only its own shadows on the town-hall facade.",
+  "overlay": "kind \"overlay\": drawn over another sprite at the same anchor (ribbon_garland on town_hall: attachTo, depth town_hall + 1; school_desk_row_front over seated kids).",
+  "layouts": "layouts{} = suggested arrangements, offsets in px from the parent sprite's anchor (and metres in the parent's world frame, m).",
+  "gentle": "Farewell props are deliberately gentle and warm (flowers, a blossom tree, a lantern, rounded pale stones with a gold heart); keep the farewell event soft too (petals, hearts, quiet music, no dark colours). The design lets players switch the farewell life event off (생애 이벤트 끄기)."
+ },
+ "atlases": [
+  {
+   "key": "life2_wedding",
+   "png": "life2/life2_wedding.png",
+   "json": "life2/life2_wedding.json"
+  },
+  {
+   "key": "life2_memorial",
+   "png": "life2/life2_memorial.png",
+   "json": "life2/life2_memorial.json"
+  },
+  {
+   "key": "life2_decor",
+   "png": "life2/life2_decor.png",
+   "json": "life2/life2_decor.json"
+  },
+  {
+   "key": "life2_items",
+   "png": "life2/life2_items.png",
+   "json": "life2/life2_items.json"
+  },
+  {
+   "key": "l2_baby_stroller",
+   "png": "life2/l2_baby_stroller.png",
+   "json": "life2/l2_baby_stroller.json"
+  },
+  {
+   "key": "l2_baby_stroller_pink",
+   "png": "life2/l2_baby_stroller_pink.png",
+   "json": "life2/l2_baby_stroller_pink.json"
+  }
+ ],
+ "sprites": {
+  "flower_stand": {
+   "atlas": "life2_wedding",
+   "frame": "flower_stand",
+   "anchor": [
+    0.30556,
+    0.625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    144,
+    160
+   ],
+   "footprint": [
+    31,
+    15
+   ],
+   "footprintM": {
+    "radius": 0.24
+   },
+   "topPx": 79,
+   "front": "S",
+   "name": {
+    "ko": "꽃 장식대",
+    "en": "Flower stand"
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -76
+    ]
+   },
+   "notes": "Flower stand (~1.4 m): white fluted pedestal with a round arrangement of pink / blush / white roses and trailing greenery, a pink bow on the column. Line the aisle with them, flank the arch and the town-hall steps. Faces the camera."
+  },
+  "ribbon_garland": {
+   "atlas": "life2_wedding",
+   "frame": "ribbon_garland",
+   "anchor": [
+    0.73106,
+    0.77574
+   ],
+   "kind": "overlay",
+   "frameSize": [
+    264,
+    272
+   ],
+   "topPx": 196,
+   "front": "-Y",
+   "name": {
+    "ko": "마을회관 리본 장식",
+    "en": "Town-hall ribbon garland"
+   },
+   "fxPoints": {
+    "doorHeart": [
+     -39,
+     -58
+    ],
+    "portico": [
+     -78,
+     -138
+    ]
+   },
+   "attachTo": "town_hall",
+   "attachOffset": [
+    0,
+    0
+   ],
+   "attachDepth": 1,
+   "notes": "Wedding dressing for the EXISTING town_hall (assets/town): flower-and-greenery swags along the portico entablature, pink bows with long tails at the column tops, pink + white ribbons spiralling down the two outer columns, pastel bunting from both flag poles to the portico corners, bows on the two street lamps and a heart wreath of roses on the door. Rendered against the real town_hall geometry (town_assets builder, unchanged) as a shadow-catching holdout, so it is occluded exactly like the building and carries its own soft shadows on the facade. Use: same world position as the town_hall sprite (attachTo / offset [0, 0]), depth = town_hall depth + 1."
+  },
+  "wedding_arch": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_arch",
+   "anchor": [
+    0.33712,
+    0.65667
+   ],
+   "kind": "decor",
+   "frameSize": [
+    264,
+    300
+   ],
+   "footprint": [
+    131,
+    66
+   ],
+   "footprintM": [
+    2.3,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -19
+    ],
+    [
+     38,
+     33
+    ],
+    [
+     66,
+     19
+    ],
+    [
+     -38,
+     -33
+    ]
+   ],
+   "topPx": 176,
+   "front": "-Y",
+   "name": {
+    "ko": "결혼식 꽃 아치",
+    "en": "Wedding arch"
+   },
+   "fxPoints": {
+    "heart": [
+     0,
+     -116
+    ],
+    "top": [
+     0,
+     -160
+    ]
+   },
+   "officiantPoint": [
+    0,
+    -30
+   ],
+   "officiantDir": "S",
+   "couplePoints": [
+    [
+     -24,
+     0
+    ],
+    [
+     24,
+     0
+    ]
+   ],
+   "coupleDirs": [
+    "E",
+    "W"
+   ],
+   "notes": "Wedding arch (2.3 x 0.6 m, ~2.6 m tall): white lattice arch on two flower planters, covered in pink / blush / white roses and greenery (heaviest at the top-left), pink + white satin ribbons hanging from the shoulders, a little gold heart hanging under the top, a touch of snow. Symmetric front / back, so guests on either side see flowers. couplePoints = bride + groom under the arch facing each other (E / W, profiles visible), officiantPoint = the chief behind them facing S (drawn behind the couple). Draw the couple / officiant above the arch sprite (depth \"front\"). Span along world X."
+  },
+  "wedding_arch_y": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_arch_y",
+   "anchor": [
+    0.31641,
+    0.63889
+   ],
+   "kind": "decor",
+   "frameSize": [
+    256,
+    288
+   ],
+   "footprint": [
+    131,
+    66
+   ],
+   "footprintM": [
+    2.3,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -38,
+     33
+    ],
+    [
+     66,
+     -19
+    ],
+    [
+     38,
+     -33
+    ],
+    [
+     -66,
+     19
+    ]
+   ],
+   "topPx": 163,
+   "front": "+X",
+   "name": {
+    "ko": "결혼식 꽃 아치(세로)",
+    "en": "Wedding arch (Y)"
+   },
+   "fxPoints": {
+    "heart": [
+     0,
+     -116
+    ],
+    "top": [
+     0,
+     -160
+    ]
+   },
+   "officiantPoint": [
+    0,
+    -30
+   ],
+   "officiantDir": "S",
+   "couplePoints": [
+    [
+     -24,
+     0
+    ],
+    [
+     24,
+     0
+    ]
+   ],
+   "coupleDirs": [
+    "E",
+    "W"
+   ],
+   "notes": "Wedding arch (2.3 x 0.6 m, ~2.6 m tall): white lattice arch on two flower planters, covered in pink / blush / white roses and greenery (heaviest at the top-left), pink + white satin ribbons hanging from the shoulders, a little gold heart hanging under the top, a touch of snow. Symmetric front / back, so guests on either side see flowers. couplePoints = bride + groom under the arch facing each other (E / W, profiles visible), officiantPoint = the chief behind them facing S (drawn behind the couple). Draw the couple / officiant above the arch sprite (depth \"front\"). Span along world Y."
+  },
+  "wedding_cake_table": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_cake_table",
+   "anchor": [
+    0.42683,
+    0.62179
+   ],
+   "kind": "decor",
+   "frameSize": [
+    164,
+    156
+   ],
+   "footprint": [
+    72,
+    36
+   ],
+   "footprintM": {
+    "radius": 0.56
+   },
+   "topPx": 77,
+   "front": "S",
+   "name": {
+    "ko": "웨딩 케이크 테이블",
+    "en": "Wedding cake table"
+   },
+   "fxPoints": {
+    "cakeTop": [
+     0,
+     -76
+    ],
+    "cake": [
+     0,
+     -55
+    ]
+   },
+   "servePoints": [
+    [
+     -18,
+     -23
+    ],
+    [
+     18,
+     -23
+    ]
+   ],
+   "serveDirs": [
+    "S",
+    "S"
+   ],
+   "notes": "Wedding cake table (r 0.55 m, ~1.45 m tall): round table in a white lace-hemmed cloth with pink ribbon swags and bows, a three-tier white cake with pink roses, pearl dots and a gold + pink heart topper, two strawberry cupcakes and a cake knife with a bow. Faces the camera. servePoints = where the couple stands behind the table to cut the cake (facing S); normal y-sorting draws them behind the table."
+  },
+  "wedding_carpet": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_carpet",
+   "anchor": [
+    0.4863,
+    0.5
+   ],
+   "kind": "decal",
+   "frameSize": [
+    292,
+    164
+   ],
+   "footprint": [
+    240,
+    120
+   ],
+   "footprintM": [
+    1.1,
+    4.2
+   ],
+   "footprintPoly": [
+    [
+     -120,
+     35
+    ],
+    [
+     -70,
+     60
+    ],
+    [
+     120,
+     -35
+    ],
+    [
+     70,
+     -60
+    ]
+   ],
+   "topPx": 61,
+   "front": "-Y",
+   "name": {
+    "ko": "결혼식 카펫",
+    "en": "Wedding carpet"
+   },
+   "aislePoints": [
+    [
+     86,
+     -43
+    ],
+    [
+     -84,
+     42
+    ]
+   ],
+   "aisleDirs": [
+    "SW",
+    "SW"
+   ],
+   "notes": "Wedding aisle carpet (1.1 x 4.2 m, ground decal): rose-red runner with cream edges and gold lines, cream fringe at both ends, scattered pink / white petals and a little snow at the edges. Draw it on the ground layer (under every character). aislePoints[0] = walk start (local +Y end = toward the town hall), aislePoints[1] = end (at the arch); the couple walks start -> end (walk SW (runs along world -Y))."
+  },
+  "wedding_carpet_x": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_carpet_x",
+   "anchor": [
+    0.49306,
+    0.50595
+   ],
+   "kind": "decal",
+   "frameSize": [
+    288,
+    168
+   ],
+   "footprint": [
+    240,
+    120
+   ],
+   "footprintM": [
+    1.1,
+    4.2
+   ],
+   "footprintPoly": [
+    [
+     70,
+     60
+    ],
+    [
+     120,
+     35
+    ],
+    [
+     -70,
+     -60
+    ],
+    [
+     -120,
+     -35
+    ]
+   ],
+   "topPx": 64,
+   "front": "+X",
+   "name": {
+    "ko": "결혼식 카펫(가로)",
+    "en": "Wedding carpet (X)"
+   },
+   "aislePoints": [
+    [
+     -86,
+     -43
+    ],
+    [
+     84,
+     42
+    ]
+   ],
+   "aisleDirs": [
+    "SE",
+    "SE"
+   ],
+   "notes": "Wedding aisle carpet (1.1 x 4.2 m, ground decal): rose-red runner with cream edges and gold lines, cream fringe at both ends, scattered pink / white petals and a little snow at the edges. Draw it on the ground layer (under every character). aislePoints[0] = walk start (local +Y end = toward the town hall), aislePoints[1] = end (at the arch); the couple walks start -> end (walk SE (runs along world +X))."
+  },
+  "wedding_chairs": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_chairs",
+   "anchor": [
+    0.375,
+    0.60976
+   ],
+   "kind": "decor",
+   "frameSize": [
+    192,
+    164
+   ],
+   "footprint": [
+    124,
+    62
+   ],
+   "footprintM": [
+    2.2,
+    0.55
+   ],
+   "footprintPoly": [
+    [
+     -62,
+     -19
+    ],
+    [
+     37,
+     31
+    ],
+    [
+     62,
+     19
+    ],
+    [
+     -37,
+     -31
+    ]
+   ],
+   "topPx": 80,
+   "front": "-Y",
+   "name": {
+    "ko": "하객 의자",
+    "en": "Wedding chairs"
+   },
+   "seatPoints": [
+    [
+     -43,
+     -38
+    ],
+    [
+     -9,
+     -21
+    ],
+    [
+     25,
+     -4
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     -43,
+     -13
+    ],
+    [
+     -9,
+     4
+    ],
+    [
+     25,
+     21
+    ]
+   ],
+   "seatDepth": "front",
+   "seatHeightM": 0.45,
+   "notes": "One row of three white wedding chairs (Chiavari style, blush cushions, a pink bow on every back, flower posies on the end chairs), 0.75 m apart (chibi heads are wide), seat 0.45 m, facing SW (world -Y). Place rows behind each other (next row 1.05 m further from the arch) on both sides of the carpet. seatPoints = seat-surface front centre (villager / townsfolk `sit` anchor, 0.45 m up), seatGroundPoints = the ground under it, seatDirs = facing (sit_SE flipX). seatDepth \"front\": draw sitters just above their row (row depth + 1, + dy * 0.001 for the order inside a row); the next row in front has a larger y and covers them."
+  },
+  "wedding_chairs_x": {
+   "atlas": "life2_wedding",
+   "frame": "wedding_chairs_x",
+   "anchor": [
+    0.46875,
+    0.60976
+   ],
+   "kind": "decor",
+   "frameSize": [
+    192,
+    164
+   ],
+   "footprint": [
+    124,
+    62
+   ],
+   "footprintM": [
+    2.2,
+    0.55
+   ],
+   "footprintPoly": [
+    [
+     -37,
+     31
+    ],
+    [
+     62,
+     -19
+    ],
+    [
+     37,
+     -31
+    ],
+    [
+     -62,
+     19
+    ]
+   ],
+   "topPx": 80,
+   "front": "+X",
+   "name": {
+    "ko": "하객 의자(가로)",
+    "en": "Wedding chairs (X)"
+   },
+   "seatPoints": [
+    [
+     -25,
+     -4
+    ],
+    [
+     9,
+     -21
+    ],
+    [
+     43,
+     -38
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "seatGroundPoints": [
+    [
+     -25,
+     21
+    ],
+    [
+     9,
+     4
+    ],
+    [
+     43,
+     -13
+    ]
+   ],
+   "seatDepth": "front",
+   "seatHeightM": 0.45,
+   "notes": "One row of three white wedding chairs (Chiavari style, blush cushions, a pink bow on every back, flower posies on the end chairs), 0.75 m apart (chibi heads are wide), seat 0.45 m, facing SE (world +X). Place rows behind each other (next row 1.05 m further from the arch) on both sides of the carpet. seatPoints = seat-surface front centre (villager / townsfolk `sit` anchor, 0.45 m up), seatGroundPoints = the ground under it, seatDirs = facing (sit_SE). seatDepth \"front\": draw sitters just above their row (row depth + 1, + dy * 0.001 for the order inside a row); the next row in front has a larger y and covers them."
+  },
+  "flower_wreath": {
+   "atlas": "life2_memorial",
+   "frame": "flower_wreath",
+   "anchor": [
+    0.34868,
+    0.63889
+   ],
+   "kind": "decor",
+   "frameSize": [
+    152,
+    144
+   ],
+   "footprint": [
+    41,
+    20
+   ],
+   "footprintM": {
+    "radius": 0.32
+   },
+   "topPx": 72,
+   "front": "S",
+   "name": {
+    "ko": "추모 화환",
+    "en": "Flower wreath"
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -61
+    ],
+    "centre": [
+     0,
+     -41
+    ]
+   },
+   "notes": "Farewell flower wreath 근조 화환 (~1.15 m): a round wreath of white chrysanthemums with pale yellow, lilac and blush flowers and soft greenery on a light wooden easel, a lavender satin bow with long tails. Gentle, bright, no text. Stands beside a memorial_stone (its wreathPoint) or at the garden entrance. Faces the camera."
+  },
+  "memorial_garden": {
+   "atlas": "life2_memorial",
+   "frame": "memorial_garden",
+   "anchor": [
+    0.49194,
+    0.68462
+   ],
+   "kind": "decor",
+   "frameSize": [
+    372,
+    260
+   ],
+   "footprint": [
+    307,
+    112
+   ],
+   "footprintM": [
+    4.8,
+    3.5
+   ],
+   "footprintPoly": [
+    [
+     -154,
+     56
+    ],
+    [
+     154,
+     56
+    ],
+    [
+     154,
+     -56
+    ],
+    [
+     -154,
+     -56
+    ]
+   ],
+   "topPx": 158,
+   "front": "S",
+   "name": {
+    "ko": "추모 정원",
+    "en": "Memorial garden"
+   },
+   "fxPoints": {
+    "lantern": [
+     114,
+     -66
+    ],
+    "tree": [
+     -101,
+     -137
+    ]
+   },
+   "doorPoint": [
+    0,
+    62
+   ],
+   "doorDir": "N",
+   "seatPoints": [
+    [
+     6,
+     -59
+    ],
+    [
+     47,
+     -59
+    ]
+   ],
+   "seatDirs": [
+    "S",
+    "S"
+   ],
+   "seatGroundPoints": [
+    [
+     6,
+     -31
+    ],
+    [
+     47,
+     -31
+    ]
+   ],
+   "stonePoints": [
+    [
+     -96,
+     -13
+    ],
+    [
+     -50,
+     -13
+    ],
+    [
+     72,
+     -13
+    ],
+    [
+     116,
+     -12
+    ],
+    [
+     -76,
+     16
+    ],
+    [
+     83,
+     16
+    ]
+   ],
+   "stoneDirs": [
+    "S",
+    "S",
+    "S",
+    "S",
+    "S",
+    "S"
+   ],
+   "gatherPoints": [
+    [
+     -19,
+     42
+    ],
+    [
+     35,
+     42
+    ],
+    [
+     -10,
+     26
+    ],
+    [
+     40,
+     25
+    ],
+    [
+     -32,
+     30
+    ],
+    [
+     10,
+     52
+    ]
+   ],
+   "gatherDirs": [
+    "N",
+    "N",
+    "N",
+    "N",
+    "N",
+    "N"
+   ],
+   "pathPoints": [
+    [
+     0,
+     52
+    ],
+    [
+     4,
+     37
+    ],
+    [
+     12,
+     23
+    ],
+    [
+     15,
+     9
+    ],
+    [
+     13,
+     -6
+    ],
+    [
+     15,
+     -19
+    ],
+    [
+     21,
+     -29
+    ]
+   ],
+   "seatDepth": "front",
+   "seatHeightM": 0.48,
+   "stoneDepth": "front",
+   "notes": "Memorial garden 추모 정원 (4.8 x 3.5 m, faces the camera): a gentle, warm little flower garden - a pale sage lawn ringed by rounded cream stones, a winding path of warm stepping stones, a blossoming plum tree, a wooden bench, a glowing stone lantern and a low snowy hedge at the back, pastel flower beds in front. Six stone spots (small pale pavers with flowers) wait for memorial_stone sprites. stonePoints = memorial_stone anchors (stoneDirs = which way the stone faces); draw stones, mourners, wreaths and walkers ABOVE the garden sprite (stoneDepth \"front\": garden depth + 1 + dy*0.001) - every tall part (tree, bench, lantern, hedge) is at the back, behind the stone spots. seatPoints = bench (sit_S), gatherPoints = mourners in front of the stones (facing N), doorPoint = the path entrance, pathPoints = the stepping-stone walk from the entrance to the bench. fxPoints.lantern = warm glow (night), tree = falling petals."
+  },
+  "memorial_stone": {
+   "atlas": "life2_memorial",
+   "frame": "memorial_stone",
+   "anchor": [
+    0.45536,
+    0.6
+   ],
+   "kind": "decor",
+   "frameSize": [
+    112,
+    100
+   ],
+   "footprint": [
+    38,
+    11
+   ],
+   "footprintM": [
+    0.6,
+    0.35
+   ],
+   "footprintPoly": [
+    [
+     -19,
+     6
+    ],
+    [
+     19,
+     6
+    ],
+    [
+     19,
+     -6
+    ],
+    [
+     -19,
+     -6
+    ]
+   ],
+   "topPx": 39,
+   "front": "S",
+   "name": {
+    "ko": "추모석",
+    "en": "Memorial stone"
+   },
+   "fxPoints": {
+    "votive": [
+     13,
+     -5
+    ],
+    "top": [
+     0,
+     -37
+    ]
+   },
+   "layPoint": [
+    0,
+    16
+   ],
+   "layDir": "N",
+   "wreathPoint": [
+    0,
+    -18
+   ],
+   "plaquePoint": [
+    0,
+    -14
+   ],
+   "mournerPoints": [
+    [
+     -45,
+     8
+    ],
+    [
+     45,
+     8
+    ]
+   ],
+   "mournerDirs": [
+    "E",
+    "W"
+   ],
+   "notes": "Memorial stone 추모석 (0.6 x 0.35 m, ~0.65 m tall): a small rounded pale stone on a low base, a soft gold heart above a blank cream plaque (plaquePoint: the game may write a tiny name), a little snow pillow on top, flower tufts and a laid posy at the base and a warm votive light. Faces the camera. Place at memorial_garden.stonePoints (draw above the garden). mournerPoints = family at the left / right of the stone facing it (E / W - sad / talk frames exist), layPoint = where someone steps up to lay flowers (faces N; then drop an item_bouquet at the stone base), wreathPoint = where a flower_wreath stands (just behind the stone, so its ring shows above it)."
+  },
+  "cradle": {
+   "atlas": "life2_decor",
+   "frame": "cradle",
+   "anchor": [
+    0.41406,
+    0.56667
+   ],
+   "kind": "decor",
+   "frameSize": [
+    128,
+    120
+   ],
+   "footprint": [
+    63,
+    32
+   ],
+   "footprintM": [
+    0.85,
+    0.55
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     -3
+    ],
+    [
+     7,
+     16
+    ],
+    [
+     32,
+     3
+    ],
+    [
+     -7,
+     -16
+    ]
+   ],
+   "topPx": 47,
+   "front": "-Y",
+   "name": {
+    "ko": "요람",
+    "en": "Cradle"
+   },
+   "anims": {
+    "rock": {
+     "frames": [
+      "cradle",
+      "cradle_rock_1",
+      "cradle",
+      "cradle_rock_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "baby": [
+     -9,
+     -39
+    ]
+   },
+   "babyPoint": [
+    -12,
+    -34
+   ],
+   "variants": [
+    "cradle",
+    "cradle_empty"
+   ],
+   "notes": "Baby cradle 요람 (decor, 0.8 x 0.5 m): honey-wood rocking cradle with a blush fabric hood with white scallops, a mint star blanket and a sleeping baby in a pink bonnet (closed happy eyes, rosy cheeks). anims.rock = gentle 4-frame rocking loop (4 fps, frame names repeat: 3 images). cradle_empty = the same cradle with the blanket folded and no baby (same frame + anchor). babyPoint = the baby's face (Zzz / heart emotes). For porches, the clinic (baby born) and homes."
+  },
+  "cradle_empty": {
+   "atlas": "life2_decor",
+   "frame": "cradle_empty",
+   "anchor": [
+    0.41406,
+    0.56667
+   ],
+   "kind": "decor",
+   "frameSize": [
+    128,
+    120
+   ],
+   "footprint": [
+    63,
+    32
+   ],
+   "footprintM": [
+    0.85,
+    0.55
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     -3
+    ],
+    [
+     7,
+     16
+    ],
+    [
+     32,
+     3
+    ],
+    [
+     -7,
+     -16
+    ]
+   ],
+   "topPx": 47,
+   "front": "-Y",
+   "name": {
+    "ko": "요람 (빈 요람)",
+    "en": "Cradle (empty)"
+   },
+   "fxPoints": {
+    "baby": [
+     -9,
+     -39
+    ]
+   },
+   "babyPoint": [
+    -12,
+    -34
+   ],
+   "variants": [
+    "cradle",
+    "cradle_empty"
+   ],
+   "notes": "Baby cradle 요람 (decor, 0.8 x 0.5 m): honey-wood rocking cradle with a blush fabric hood with white scallops, a mint star blanket and a sleeping baby in a pink bonnet (closed happy eyes, rosy cheeks). anims.rock = gentle 4-frame rocking loop (4 fps, frame names repeat: 3 images). cradle_empty = the same cradle with the blanket folded and no baby (same frame + anchor). babyPoint = the baby's face (Zzz / heart emotes). For porches, the clinic (baby born) and homes."
+  },
+  "school_desk_row": {
+   "atlas": "life2_decor",
+   "frame": "school_desk_row",
+   "anchor": [
+    0.40686,
+    0.57317
+   ],
+   "kind": "decor",
+   "frameSize": [
+    204,
+    164
+   ],
+   "footprint": [
+    145,
+    72
+   ],
+   "footprintM": [
+    2.3,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -72,
+     -16
+    ],
+    [
+     32,
+     36
+    ],
+    [
+     72,
+     16
+    ],
+    [
+     -32,
+     -36
+    ]
+   ],
+   "topPx": 74,
+   "front": "-Y",
+   "name": {
+    "ko": "교실 책상 줄",
+    "en": "School desk row"
+   },
+   "seatPoints": [
+    [
+     -29,
+     -44
+    ],
+    [
+     5,
+     -27
+    ],
+    [
+     39,
+     -10
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     -29,
+     -19
+    ],
+    [
+     5,
+     -2
+    ],
+    [
+     39,
+     14
+    ]
+   ],
+   "seatDepth": "between",
+   "seatHeightM": 0.45,
+   "overlay": "school_desk_row_front",
+   "notes": "School desk row 책상 줄 (decor, 2.3 x 0.9 m): three kid-size wooden desks on teal legs with little chairs behind them, facing SW (like the school front); a notebook + pencil, an apple + books and a pencil case on the desks. seatPoints = chair-seat front centre (0.45 m, the `sit` anchor; seatDirs SW = sit_SE flipX). Draw order: school_desk_row (depth d) -> seated kids (d + 0.5) -> school_desk_row_front overlay (d + 1, same frame + anchor: the desks only, so they hide the kids' laps)."
+  },
+  "school_desk_row_front": {
+   "atlas": "life2_decor",
+   "frame": "school_desk_row_front",
+   "anchor": [
+    0.40686,
+    0.57317
+   ],
+   "kind": "overlay",
+   "of": "school_desk_row",
+   "frameSize": [
+    204,
+    164
+   ],
+   "notes": "Occluder overlay for school_desk_row (same frame + anchor): draw it ABOVE the kids sitting at school_desk_row.seatPoints (desk row depth d, kids d + 0.5, overlay d + 1) so the desks hide their laps. Contains every surface on the -Y side of the seat line (the desks in front of the seated kids)."
+  },
+  "item_bouquet": {
+   "atlas": "life2_items",
+   "frame": "item_bouquet",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 25,
+   "name": {
+    "ko": "꽃다발",
+    "en": "Bouquet"
+   },
+   "stackStep": 9,
+   "icon": true,
+   "carryScale": 0.55,
+   "thicknessM": 0.16,
+   "notes": "Bouquet 꽃다발: pink / blush / white roses with greenery in a kraft-and-white paper cone tied with a pink satin bow, lying diagonally (flowers upper-right). Wedding mission item, gift, farewell flowers."
+  },
+  "item_cake": {
+   "atlas": "life2_items",
+   "frame": "item_cake",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 23,
+   "name": {
+    "ko": "케이크",
+    "en": "Cake"
+   },
+   "stackStep": 12,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.22,
+   "notes": "Cake 케이크: round strawberry shortcake on a pale blue plate - white cream, a pink band, cream dollops with strawberries on top. Wedding / birthday / welcome-party mission item."
+  },
+  "item_gift_box": {
+   "atlas": "life2_items",
+   "frame": "item_gift_box",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 21,
+   "name": {
+    "ko": "선물 상자",
+    "en": "Gift box"
+   },
+   "stackStep": 13,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.24,
+   "notes": "Gift box 선물 상자: sky-blue box with white polka dots, a pink ribbon cross and a big pink bow on top. Gifts between residents (relationships), welcome gifts, mission rewards."
+  },
+  "item_letter": {
+   "atlas": "life2_items",
+   "frame": "item_letter",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 25,
+   "name": {
+    "ko": "편지",
+    "en": "Letter"
+   },
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.15,
+   "notes": "Letter 편지: cream envelope with the flap closed by a red heart wax seal and a small pink heart stamp, tipped toward the viewer. Love letters, invitations (wedding), thank-you notes, delivery missions. stackStep is nominal (envelopes are thin)."
+  }
+ },
+ "characters": {
+  "baby_stroller": {
+   "atlas": "l2_baby_stroller",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "kind": "stroller",
+   "name": {
+    "ko": "유모차",
+    "en": "Baby stroller"
+   },
+   "shadow": [
+    50,
+    20
+   ],
+   "headTop": -55,
+   "lengthM": 0.9,
+   "widthM": 0.5,
+   "handlePoint": {
+    "S": [
+     0,
+     -52
+    ],
+    "SE": [
+     -24,
+     -47
+    ],
+    "E": [
+     -34,
+     -35
+    ],
+    "NE": [
+     -24,
+     -23
+    ],
+    "N": [
+     0,
+     -19
+    ]
+   },
+   "handleHeightM": 0.64,
+   "handleBackM": 0.53,
+   "babyPoint": {
+    "S": [
+     0,
+     -36
+    ],
+    "SE": [
+     3,
+     -36
+    ],
+    "E": [
+     4,
+     -38
+    ],
+    "NE": [
+     3,
+     -39
+    ],
+    "N": [
+     0,
+     -40
+    ]
+   },
+   "hoodTop": {
+    "S": [
+     0,
+     -48
+    ],
+    "SE": [
+     -5,
+     -47
+    ],
+    "E": [
+     -8,
+     -44
+    ],
+    "NE": [
+     -5,
+     -42
+    ],
+    "N": [
+     0,
+     -41
+    ]
+   },
+   "pushOffset": {
+    "S": [
+     0,
+     25
+    ],
+    "SE": [
+     35,
+     18
+    ],
+    "E": [
+     50,
+     0
+    ],
+    "NE": [
+     35,
+     -18
+    ],
+    "N": [
+     0,
+     -25
+    ]
+   },
+   "pushReachM": 0.25,
+   "depthVsPusher": {
+    "S": 1,
+    "SE": 1,
+    "E": 1,
+    "NE": -1,
+    "N": -1
+   },
+   "notes": "Baby stroller pushed by a parent (townsfolk2 `push`, 8 f, 5 dirs; same dir + flipX as the pusher; play `move` while walking, `idle` when stopped). Alignment (preferred): stroller anchor = pusher anchor + townfolk2 bases[base].pushPoint[dir] - handlePoint[dir] (mirrored dirs: negate both dx) - puts the grip bar (handleHeightM 0.64 m, handleBackM 0.53 m behind the pram centre) exactly in the hands for every age. Fallback without pushPoint: stroller anchor = pusher anchor + pushOffset[dir] (assumes the adult grip 0.25 m in front of the pusher). depthVsPusher: +1 = draw the stroller above the pusher (heading S/SE/E/SW/W), -1 = below (NE/N/NW). move loop = one wheel turn = 0.82 m: at 12 fps the pram rolls ~1.2 m/s; scale the anim speed to the pusher's walk speed (push is 8 f @ 10 fps). babyPoint = the baby's face (emote bubbles: hearts, Zzz, music)."
+  },
+  "baby_stroller_pink": {
+   "atlas": "l2_baby_stroller_pink",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "kind": "stroller",
+   "name": {
+    "ko": "유모차(분홍)",
+    "en": "Baby stroller (pink)"
+   },
+   "shadow": [
+    50,
+    20
+   ],
+   "headTop": -55,
+   "lengthM": 0.9,
+   "widthM": 0.5,
+   "handlePoint": {
+    "S": [
+     0,
+     -52
+    ],
+    "SE": [
+     -24,
+     -47
+    ],
+    "E": [
+     -34,
+     -35
+    ],
+    "NE": [
+     -24,
+     -23
+    ],
+    "N": [
+     0,
+     -19
+    ]
+   },
+   "handleHeightM": 0.64,
+   "handleBackM": 0.53,
+   "babyPoint": {
+    "S": [
+     0,
+     -36
+    ],
+    "SE": [
+     3,
+     -36
+    ],
+    "E": [
+     4,
+     -38
+    ],
+    "NE": [
+     3,
+     -39
+    ],
+    "N": [
+     0,
+     -40
+    ]
+   },
+   "hoodTop": {
+    "S": [
+     0,
+     -48
+    ],
+    "SE": [
+     -5,
+     -47
+    ],
+    "E": [
+     -8,
+     -44
+    ],
+    "NE": [
+     -5,
+     -42
+    ],
+    "N": [
+     0,
+     -41
+    ]
+   },
+   "pushOffset": {
+    "S": [
+     0,
+     25
+    ],
+    "SE": [
+     35,
+     18
+    ],
+    "E": [
+     50,
+     0
+    ],
+    "NE": [
+     35,
+     -18
+    ],
+    "N": [
+     0,
+     -25
+    ]
+   },
+   "pushReachM": 0.25,
+   "depthVsPusher": {
+    "S": 1,
+    "SE": 1,
+    "E": 1,
+    "NE": -1,
+    "N": -1
+   },
+   "notes": "Baby stroller pushed by a parent (townsfolk2 `push`, 8 f, 5 dirs; same dir + flipX as the pusher; play `move` while walking, `idle` when stopped). Alignment (preferred): stroller anchor = pusher anchor + townfolk2 bases[base].pushPoint[dir] - handlePoint[dir] (mirrored dirs: negate both dx) - puts the grip bar (handleHeightM 0.64 m, handleBackM 0.53 m behind the pram centre) exactly in the hands for every age. Fallback without pushPoint: stroller anchor = pusher anchor + pushOffset[dir] (assumes the adult grip 0.25 m in front of the pusher). depthVsPusher: +1 = draw the stroller above the pusher (heading S/SE/E/SW/W), -1 = below (NE/N/NW). move loop = one wheel turn = 0.82 m: at 12 fps the pram rolls ~1.2 m/s; scale the anim speed to the pusher's walk speed (push is 8 f @ 10 fps). babyPoint = the baby's face (emote bubbles: hearts, Zzz, music)."
+  }
+ },
+ "layouts": {
+  "wedding_town_hall": {
+   "of": "town_hall",
+   "notes": "Wedding at the town hall (마을회관 결혼식): dress the hall with ribbon_garland, lay the carpet from the steps to the arch, two blocks of three chair rows face the arch (SW), flower stands flank the arch and the steps, the cake table stands beside the right block. The bride walks out of the hall door (town_hall.doorPoint) down the carpet (aislePoints, walk SW) to wedding_arch.couplePoints[0]; the groom waits at couplePoints[1]; the chief gives the speech at officiantPoint (facing S). Seated guests use seatPoints (sit facing SW); standing guests at standPoints clap / wave. After the vows: hearts + petals FX at the arch fxPoints.heart, then the couple walks to the cake table servePoints.",
+   "items": [
+    {
+     "sprite": "ribbon_garland",
+     "px": [
+      0,
+      0
+     ],
+     "m": [
+      0.0,
+      0.0
+     ],
+     "depth": "town_hall + 1"
+    },
+    {
+     "sprite": "wedding_carpet",
+     "px": [
+      -215,
+      107
+     ],
+     "m": [
+      0.0,
+      -4.75
+     ],
+     "layer": "ground"
+    },
+    {
+     "sprite": "wedding_arch",
+     "px": [
+      -324,
+      162
+     ],
+     "m": [
+      0.0,
+      -7.15
+     ]
+    },
+    {
+     "sprite": "flower_stand",
+     "px": [
+      -373,
+      130
+     ],
+     "m": [
+      -1.25,
+      -7.0
+     ]
+    },
+    {
+     "sprite": "flower_stand",
+     "px": [
+      -260,
+      187
+     ],
+     "m": [
+      1.25,
+      -7.0
+     ]
+    },
+    {
+     "sprite": "flower_stand",
+     "px": [
+      -172,
+      48
+     ],
+     "m": [
+      -0.85,
+      -2.95
+     ]
+    },
+    {
+     "sprite": "flower_stand",
+     "px": [
+      -95,
+      86
+     ],
+     "m": [
+      0.85,
+      -2.95
+     ]
+    },
+    {
+     "sprite": "wedding_cake_table",
+     "px": [
+      -138,
+      218
+     ],
+     "m": [
+      3.3,
+      -6.35
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -333,
+      87
+     ],
+     "m": [
+      -1.75,
+      -5.6
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -174,
+      166
+     ],
+     "m": [
+      1.75,
+      -5.6
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -285,
+      63
+     ],
+     "m": [
+      -1.75,
+      -4.55
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -127,
+      143
+     ],
+     "m": [
+      1.75,
+      -4.55
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -238,
+      40
+     ],
+     "m": [
+      -1.75,
+      -3.5
+     ]
+    },
+    {
+     "sprite": "wedding_chairs",
+     "px": [
+      -79,
+      119
+     ],
+     "m": [
+      1.75,
+      -3.5
+     ]
+    }
+   ],
+   "standPoints": [
+    [
+     -453,
+     77
+    ],
+    [
+     -407,
+     45
+    ],
+    [
+     -348,
+     20
+    ],
+    [
+     -43,
+     178
+    ],
+    [
+     -77,
+     201
+    ],
+    [
+     -136,
+     262
+    ],
+    [
+     -235,
+     226
+    ]
+   ],
+   "standDirs": [
+    "SE",
+    "SE",
+    "SE",
+    "SW",
+    "SW",
+    "W",
+    "SW"
+   ]
+  },
+  "farewell_garden": {
+   "of": "memorial_garden",
+   "notes": "Gentle farewell (하늘나라 여행 배웅): put a memorial_stone at the next free memorial_garden.stonePoints[i] (stones already placed stay), stand a flower_wreath at that stone's wreathPoint, family members at its mournerPoints (sad / talk, facing the stone), friends at the garden gatherPoints (idle facing N), one by one they step to layPoint and lay an item_bouquet (or flowers) - then soft petals / hearts float up from the stone, bgm_farewell. An elder may sit on the bench (seatPoints). Order: stones 0..5 (back row left to right, then the front row).",
+   "stoneOrder": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  }
+ }
+}

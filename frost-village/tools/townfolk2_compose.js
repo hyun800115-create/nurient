@@ -49,7 +49,7 @@ export function mergeTownfolk(T, T2) {
   G.slotPalette = Object.assign({}, G.slotPalette, G2.slotPalette || {});
   G.exclude = [...G.exclude, ...(G2.exclude || [])];
   G.extraSlots = [...(G2.extraSlots || [])];
-  for (const key of ['faceExprs', 'exprBrow', 'sit', 'push']) if (key in T2) M[key] = clone(T2[key]);
+  for (const key of ['faceExprs', 'exprBrow', 'sit', 'push', 'overrides']) if (key in T2) M[key] = clone(T2[key]);
   M.frameAtlasAnim = M.frameAtlasAnim || {};
   M.frameAtlasPose = M.frameAtlasPose || {};
   for (const ext of T2.frameAtlasExt || []) {

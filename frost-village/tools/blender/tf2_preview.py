@@ -49,7 +49,7 @@ class Props:
     """Static sprites + character-style anims from other fragments (Phaser JSON-hash atlases), read-only."""
 
     def __init__(self, folders):
-        self.frames, self.sheets, self.sprites, self.chars = {}, {}, {}, {}
+        self.frames, self.sheets, self.sprites, self.chars, self.layouts = {}, {}, {}, {}, {}
         for fo in folders:
             mp = os.path.join(ASSETS, fo, 'manifest.json')
             if not os.path.exists(mp):
@@ -72,6 +72,8 @@ class Props:
                 self.sprites.setdefault(k, s)
             for k, c in m.get('characters', {}).items():
                 self.chars.setdefault(k, c)
+            for k, c in (m.get('layouts') or {}).items():
+                self.layouts.setdefault(k, c)
         self._img = {}
 
     def _sheet(self, key):
@@ -337,6 +339,187 @@ def farewell(tf, props, path, seed=77):
     crop.convert('RGB').save(path.replace('.png', '_2x.png'), optimize=True)
 
 
+# --------------------------------------------------------------------------- scenes on the life2 layouts
+
+class Stage:
+    """Depth-sorted drawing list on a big canvas; crop() trims to the content."""
+
+    def __init__(self, W=2400, H=1600, bg=SNOW):
+        self.img = Image.new('RGBA', (W, H), bg)
+        self.ground, self.items = [], []
+
+    def add(self, depth, fn):
+        self.items.append((depth, len(self.items), fn))
+
+    def draw(self):
+        for fn in self.ground:
+            fn(self.img)
+        for _, _, fn in sorted(self.items, key=lambda t: (t[0], t[1])):
+            fn(self.img)
+
+
+def pt(base, off):
+    return base[0] + off[0], base[1] + off[1]
+
+
+def wedding_life2(tf, props, path, seed=520):
+    L = props.layouts.get('wedding_town_hall')
+    if not L or not props.sprites.get('wedding_arch') or not props.sprites.get('town_hall'):
+        return False
+    rng = random.Random(seed)
+    st = Stage(2600, 1700)
+    O = (1700, 640)                                   # town hall anchor on the big canvas
+    hall_im, hall_anc, _ = props.sprite('town_hall')
+    st.add(O[1], lambda im: props.draw(im, 'town_hall', *O))
+    # plaza floor under the scene (terracotta, like the reference)
+    def floor(im):
+        d = ImageDraw.Draw(im)
+        iso_quad(d, [(-3.6, -8.6), (5.2, -8.6), (5.2, 2.6), (-3.6, 2.6)], O[0], O[1], (217, 160, 138, 255))
+        iso_quad(d, [(-3.3, -8.3), (4.9, -8.3), (4.9, 2.3), (-3.3, 2.3)], O[0], O[1], (226, 174, 152, 255))
+    st.ground.append(floor)
+    couple_done = False
+    bride, groom = tf.preset('bride', rng=rng), tf.preset('groom', rng=rng)
+    guests = ['wedding_guest', 'wedding_guest', None, 'wedding_guest', 'teacher', None, 'wedding_guest']
+    gk = 0
+    for it in L['items']:
+        key = it['sprite']
+        pos = pt(O, it['px'])
+        s = props.sprites.get(key)
+        if not s:
+            continue
+        if it.get('layer') == 'ground' or s.get('kind') == 'decal':
+            st.ground.append(lambda im, k=key, p=pos: props.draw(im, k, *p))
+        else:
+            dep = O[1] + 1 if str(it.get('depth', '')).startswith('town_hall') else pos[1]
+            st.add(dep, lambda im, k=key, p=pos: props.draw(im, k, *p))
+        for n, (sp, sd) in enumerate(zip(s.get('seatPoints', []), s.get('seatDirs', []))):
+            pr = guests[gk % len(guests)]
+            gk += 1
+            if gk % 3 == 0:
+                continue                                  # a few free seats: the chairs stay readable
+            p = tf.preset(pr, rng=rng) if pr else tf.random_person(rng=rng)
+            q = pt(pos, sp)
+            st.add(pos[1] + 1 + sp[1] * 0.001, lambda im, p=p, d=sd, q=q: person_at(im, tf, p, 'sit', d, rng.randrange(4),
+                                                                                q[0], q[1], seat_shadow=False,
+                                                                                no_shadow=True))
+        if key == 'wedding_arch' and not couple_done:
+            couple_done = True
+            cps, cds = s.get('couplePoints', []), s.get('coupleDirs', [])
+            for k, (cp, cd) in enumerate(zip(cps, cds)):
+                who = bride if k == 0 else groom
+                q = pt(pos, cp)
+                anim = 'idle' if k == 0 else 'talk'
+                st.add(pos[1] + 2 + cp[1] * 0.001, lambda im, w=who, d=cd, q=q, a=anim: person_at(im, tf, w, a, d, 1,
+                                                                                                    q[0], q[1]))
+            op = s.get('officiantPoint')
+            if op:
+                q = pt(pos, op)
+                def chief(im, q=q):
+                    fr, anc, c = props.char_frame('player', 'idle', s.get('officiantDir', 'S'), 0)
+                    if fr is not None:
+                        shadow(im, q[0], q[1], 26, 11)
+                        im.alpha_composite(fr, (int(q[0] - anc[0]), int(q[1] - anc[1])))
+                st.add(pos[1] + 1.5, chief)
+        if key == 'wedding_carpet':
+            ap = s.get('aislePoints')
+            if ap:
+                a0, a1 = pt(pos, ap[0]), pt(pos, ap[-1])
+                q = (a0[0] * 0.55 + a1[0] * 0.45, a0[1] * 0.55 + a1[1] * 0.45)
+                fg = tf.preset('flower_girl', rng=rng)
+                dd = (s.get('aisleDirs') or ['SW'])[0]
+                st.add(q[1], lambda im, q=q, d=dd: person_at(im, tf, fg, 'walk', d, 2, q[0], q[1]))
+    for n, (sp, sd) in enumerate(zip(L.get('standPoints', []), L.get('standDirs', []))):
+        p = tf.preset('wedding_guest', rng=rng) if n % 3 else tf.random_person(rng=rng)
+        q = pt(O, sp)
+        if sd not in ('S', 'SE', 'E', 'SW', 'W'):
+            sd = 'SE'
+        st.add(q[1], lambda im, p=p, d=sd, q=q, i=(n * 2) % 6: person_at(im, tf, p, 'clap', d, i, q[0], q[1]))
+    st.draw()
+    ai = next(it for it in L['items'] if it['sprite'] == 'wedding_arch')
+    ax, ay = pt(O, ai['px'])
+    # main: 2x close-up of the ceremony (arch, couple, chairs, hall steps); *_1x.png: whole scene at game scale
+    crop = st.img.crop((int(ax - 190), int(ay - 330), int(ax + 530), int(ay + 115)))
+    two = crop.resize((crop.size[0] * 2, crop.size[1] * 2), Image.NEAREST)
+    one = st.img.crop((int(ax - 200), int(O[1] - 470), int(O[0] + 330), int(ay + 150)))
+    for im_, pth, sc in ((two, path, '2x'), (one, path.replace('.png', '_1x.png'), '1x')):
+        out = Image.new('RGBA', (im_.size[0], im_.size[1] + 52), SNOW)
+        out.alpha_composite(im_, (0, 0))
+        caption(out, 'townfolk2 x life2 wedding (layouts.wedding_town_hall): bride & groom at the arch, guests sit '
+                     '(sit) and clap (clap), flower girl on the aisle',
+                f'{sc}; townsfolk by tools/townfolk2_compose.py (assets/townfolk + townfolk2); props assets/life2 + '
+                f'town; chief = assets/characters player')
+        out.convert('RGB').save(pth, optimize=True)
+    return True
+
+
+def farewell_life2(tf, props, path, seed=77):
+    """Gentle farewell on the life2 memorial garden: a new stone on the front row with a wreath, the family at
+    its mournerPoints (sad E / W), friends behind it facing the camera with white bouquets (sad S / SE / SW, heads
+    bowed), grandma on the bench (sit S + face 'sad').  Main image 2x (the garden is ~4 m wide), *_1x.png = 1x."""
+    G = props.sprites.get('memorial_garden')
+    S_ = props.sprites.get('memorial_stone')
+    if not G or not S_:
+        return False
+    rng = random.Random(seed)
+    st = Stage(1000, 800)
+    O = (500, 470)
+    st.add(O[1], lambda im: props.draw(im, 'memorial_garden', *O))
+    stones = G.get('stonePoints', [])
+    old_ = [stones[0], stones[1]] if len(stones) > 5 else []
+    new = pt(O, stones[5]) if len(stones) > 5 else pt(O, stones[0])
+    sd = 0.5 if G.get('stoneDepth') == 'front' else 0.0
+    for sp in old_:
+        q = pt(O, sp)
+        st.add(q[1] + sd, lambda im, q=q: props.draw(im, 'memorial_stone', *q))
+    st.add(new[1] + sd, lambda im, q=new: props.draw(im, 'memorial_stone', *q))
+    if props.sprites.get('flower_wreath') and S_.get('wreathPoint'):
+        wq = pt(new, S_['wreathPoint'])
+        st.add(new[1] + sd - 0.05, lambda im, q=wq: props.draw(im, 'flower_wreath', *q))     # just behind the stone
+
+    def find(preset, age):
+        for _ in range(80):
+            p = tf.preset(preset, rng=rng)
+            if tf.T['bases'][p['base']]['age'] == age:
+                return p
+        return p
+    fam = [find('mourner_family', 'adult'), find('mourner_family', 'elder')]
+    for k, (mp, md) in enumerate(zip(S_.get('mournerPoints', []), S_.get('mournerDirs', []))):
+        q = pt(new, mp)
+        st.add(q[1], lambda im, p=fam[k % 2], d=md, q=q, i=k * 2: person_at(im, tf, p, 'sad', d, i, q[0], q[1]))
+    # friends just behind the new stone, facing the camera (sad faces readable, white flowers)
+    for k, (dx, dy, dd) in enumerate(((-128, -24, 'SE'), (-100, 6, 'SE'), (-160, 4, 'S'), (-70, -40, 'SE'))):
+        q = (new[0] + dx, new[1] + dy)
+        p = find('mourner', ['adult', 'child', 'elder', 'adult'][k])
+        p['parts'] = [x for x in p['parts'] if x != 'black_hat']          # bare heads: the bowed faces stay readable
+        st.add(q[1], lambda im, p=p, q=q, d=dd, i=k: person_at(im, tf, p, 'sad', d, (i * 3) % 4, q[0], q[1]))
+    for sp, sdir in list(zip(G.get('seatPoints', []), G.get('seatDirs', [])))[:1]:
+        gm = find('mourner_family', 'elder')
+        q = pt(O, sp)
+        st.add(O[1] + 1 + sp[1] * 0.001, lambda im, q=q, d=sdir: person_at(im, tf, gm, 'sit', d, 1, q[0], q[1],
+                                                                           face='sad', no_shadow=True))
+    st.draw()
+    lay = Image.new('RGBA', st.img.size, (0, 0, 0, 0))
+    dl = ImageDraw.Draw(lay)
+    r2 = random.Random(3)
+    for _ in range(90):
+        x, y = r2.uniform(0, st.img.size[0]), r2.uniform(0, st.img.size[1])
+        sz = r2.uniform(0.8, 1.8)
+        col = (255, 255, 255, 170) if r2.random() < 0.75 else (247, 200, 216, 200)
+        dl.ellipse([x - sz, y - sz, x + sz, y + sz], fill=col)
+    st.img.alpha_composite(lay)
+    box = (int(new[0] - 250), int(new[1] - 200), int(new[0] + 150), int(new[1] + 66))
+    one = st.img.crop(box)
+    two = one.resize((one.size[0] * 2, one.size[1] * 2), Image.NEAREST)
+    for im_, pth, scale in ((two, path, '2x'), (one, path.replace('.png', '_1x.png'), '1x')):
+        out = Image.new('RGBA', (im_.size[0], im_.size[1] + 52), SNOW)
+        out.alpha_composite(im_, (0, 0))
+        caption(out, 'townfolk2 farewell: family at the stone (sad), friends with white flowers, grandma on the '
+                     'bench (sit + face sad)' if scale == '2x' else 'townfolk2 farewell (1x)',
+                f'{scale}; townsfolk by tools/townfolk2_compose.py; memorial_garden / stone / wreath from assets/life2')
+        out.convert('RGB').save(pth, optimize=True)
+    return True
+
+
 def anim_sheet(tf, path, seed=11):
     rng = random.Random(seed)
     people = []
@@ -470,16 +653,58 @@ def push_gif(tf, props, path, seed=12):
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=100, loop=0, optimize=True)
 
 
+def proof(tf, path, full_dir='/tmp/fv_cache/townfolk2/look3'):
+    """Paper-doll composite (assets) next to the full Blender render of the same outfit (tf2_render --mode full
+    --combos look --out <full_dir>): proves the layering / tints of the new parts in the new anims."""
+    import tf2_presets as LK
+    if not os.path.isdir(full_dir):
+        return False
+    rows = []
+    for c in LK.LOOK:
+        d = os.path.join(full_dir, c['name'])
+        if not os.path.isdir(d):
+            continue
+        p = {'base': c['base'], 'parts': list(c['parts']), 'face': c['face'], 'nose': c['nose'], 'colors': dict(c['colors'])}
+        rows.append((c['name'], p, d))
+    if not rows:
+        return False
+    frames = [f for f in LK.LOOK_FRAMES]
+    sc = 2
+    cw, ch = 80 * sc, 116 * sc
+    W, H = 120 + len(frames) * cw, 40 + len(rows) * (2 * ch + 10)
+    img = Image.new('RGBA', (W, H), tpv.BG)
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), 'townfolk2 proof: full Blender render (top) vs paper-doll composite from the atlases (bottom)',
+           fill=INK, font=font(16))
+    for r, (name, p, fd) in enumerate(rows):
+        y0 = 40 + r * (2 * ch + 10)
+        d.text((8, y0 + ch - 8), name, fill=INK, font=font(14))
+        for c_, (a, dd, i) in enumerate(frames):
+            fp = os.path.join(fd, f'{a}_{dd}_{i}.png')
+            x0 = 120 + c_ * cw
+            if os.path.exists(fp):
+                full = Image.open(fp).convert('RGBA')
+                img.alpha_composite(full.crop((24, 4, 104, 120)).resize((cw, ch), Image.NEAREST), (x0, y0))
+            comp = tf.compose(p, a, dd, i).crop((24, 4, 104, 120)).resize((cw, ch), Image.NEAREST)
+            img.alpha_composite(comp, (x0, y0 + ch))
+    img.convert('RGB').save(path, optimize=True)
+    return True
+
+
 def main():
-    tf = Townfolk2.from_assets()
-    props = Props(['life2', 'life_props', 'props', 'town'])
+    tf = Townfolk2.from_assets(os.environ.get('TF2_ASSETS', ASSETS))       # TF2_ASSETS: test a staged pack
+    props = Props(['life2', 'life_props', 'props', 'town', 'characters'])
     os.makedirs(PREV, exist_ok=True)
-    only = sys.argv[1:] or ['wedding', 'farewell', 'anims', 'parts', 'clap', 'push']
+    only = sys.argv[1:] or ['wedding', 'farewell', 'anims', 'parts', 'clap', 'push', 'proof']
     if 'wedding' in only:
-        wedding(tf, props, os.path.join(PREV, 'townfolk2_wedding.png'))
+        p = os.path.join(PREV, 'townfolk2_wedding.png')
+        if not wedding_life2(tf, props, p):
+            wedding(tf, props, p)
         print('wedding done', flush=True)
     if 'farewell' in only:
-        farewell(tf, props, os.path.join(PREV, 'townfolk2_farewell.png'))
+        p = os.path.join(PREV, 'townfolk2_farewell.png')
+        if not farewell_life2(tf, props, p):
+            farewell(tf, props, p)
         print('farewell done', flush=True)
     if 'anims' in only:
         anim_sheet(tf, os.path.join(PREV, 'townfolk2_anims.png'))
@@ -493,6 +718,9 @@ def main():
     if 'push' in only:
         push_gif(tf, props, os.path.join(PREV, 'townfolk2_push.gif'))
         print('push gif done', flush=True)
+    if 'proof' in only:
+        if proof(tf, os.path.join(PREV, 'townfolk2_proof.png')):
+            print('proof done', flush=True)
 
 
 if __name__ == '__main__':

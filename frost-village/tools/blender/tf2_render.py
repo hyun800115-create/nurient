@@ -20,6 +20,7 @@ Usage (build machine, bpy module; resumable - only missing layer PNGs render):
     /tmp/bvenv/bin/python tools/blender/tf2_render.py -- --mode body --pass new --bases adult_slim [--reverse]
     /tmp/bvenv/bin/python tools/blender/tf2_render.py -- --mode body --pass old --bases adult_slim
     /tmp/bvenv/bin/python tools/blender/tf2_render.py -- --mode meta --bases all       (meta2.json only)
+    /tmp/bvenv/bin/python tools/blender/tf2_render.py -- --mode headfix                 (HEAD_FIXES copies)
     /tmp/bvenv/bin/python tools/blender/tf2_render.py -- --mode full --combos look      (look-dev renders)
 Options: --anims a,b  --dirs S,SE  --samples 6  --cache DIR  --force  --reverse  --out DIR (full)
 Then: python3 tools/blender/tf2_pack.py && python3 tools/blender/tf2_check.py
@@ -164,6 +165,39 @@ def head_todo(names, hp, d):
         if hp in ta2.HEAD_POSES2 or pn in NEW_HEAD:
             out.append(n)
     return out
+
+
+# v4 head layers whose v4 render came out black (Cycles glitch in /tmp/fv_cache/townfolk; assets/townfolk is not
+# ours to touch): townfolk2 carries corrected copies for every dir of that head pose ('overrides' in the manifest)
+HEAD_FIXES = [('hat_headband.main', 'soc'), ('hat_cap.visor', 'up')]
+
+
+def render_headfix(opt):
+    t0 = time.time()
+    parts = sorted({l.split('.')[0] for l, _ in HEAD_FIXES})
+    ctx = tb.Ctx('layer')
+    rig, ch = tr.build(ctx, 'adult_slim', parts, ())
+    sc, cam = tr.setup_scene(int(opt['samples']), HEAD_ANCHOR)
+    L = tr.Layers(ctx)
+    tr.head_layer_specs(L, ctx, parts, (), with_face=False)
+    L.realize()
+    hdir = os.path.join(opt['cache'], 'head')
+    for layer, hp in HEAD_FIXES:
+        for d in ta.HEAD_POSE_DIRS[hp]:
+            outdir = os.path.join(hdir, f'{hp}_{d}')
+            want = [layer, 'head.none']
+            todo = want if opt['force'] else [n for n in want if n not in tr.done_layers(outdir, want)]
+            if not todo:
+                continue
+            pose_head_only2(rig, hp, d)
+            tr.aim_camera(cam, rig.j['head'].matrix_world.translation.copy(), HEAD_ANCHOR)
+            L.render(outdir, set(todo))
+            print(f'[headfix] {layer} {hp}_{d}  {time.time() - t0:.0f}s', flush=True)
+    mp = os.path.join(hdir, 'meta.json')
+    meta = json.load(open(mp))
+    meta['overrides'] = [[l, hp] for l, hp in HEAD_FIXES]
+    with open(mp, 'w') as f:
+        json.dump(meta, f, indent=1)
 
 
 def render_head(opt):
@@ -342,31 +376,7 @@ def render_meta(opt):
 
 # --------------------------------------------------------------------------- full (look-dev / proof)
 
-LOOK = [
-    dict(name='bride', base='adult_slim', face='lash', nose='dot',
-         parts=['hair_bun', 'wedding_dress', 'bot_tights', 'shoe_shoes', 'veil', 'flower_crown', 'held_bouquet'],
-         colors=dict(skin='#F6CFAE', hair='#3A2A22', gown='#FAF8F3', acc2='#F2B8C8', bottom2='#F4F1EA',
-                     shoes='#E8E2D8', sleeve='#F6CFAE', hands='#F6CFAE', flower='#F59AB8', flower2='#FAF6F2',
-                     wrap='#F7F3EC', top='#FAF8F3')),
-    dict(name='groom', base='adult_slim', face='std', nose='dot',
-         parts=['hair_sidepart', 'groom_suit', 'bot_pants', 'shoe_shoes'],
-         colors=dict(skin='#E8B48C', hair='#2A2228', top='#2B2F3A', top2='#C8343A', bottom='#2B2F3A',
-                     shoes='#2A2A30', sleeve='#2B2F3A', hands='#E8B48C')),
-    dict(name='mourner', base='elder_slim', face='elder', nose='big',
-         parts=['hair_lowbun', 'mourning_coat', 'bot_longskirt', 'shoe_shoes', 'black_hat', 'held_bouquet'],
-         colors=dict(skin='#F2C29A', hair='#C8C2BC', top='#2E3440', bottom='#2B2F3A', shoes='#2A2A30',
-                     hat='#2A2228', hat2='#3B3F52', sleeve='#2E3440', hands='#F2C29A', flower='#FAF6F2',
-                     flower2='#F2E6B8', wrap='#F4EDE0')),
-    dict(name='kid', base='child_slim', face='kidlash', nose='button',
-         parts=['hair_twintails', 'top_dress', 'bot_tights', 'shoe_furboots', 'flower_crown'],
-         colors=dict(skin='#F6CFAE', hair='#8A5232', top='#F59AB8', top2='#F4EDE0', bottom2='#F4F1EA',
-                     shoes='#C8463D', fur='#F4F1EA', sleeve='#F59AB8', hands='#F6CFAE', flower='#F2C230',
-                     flower2='#FAF6F2', acc2='#F4EDE0')),
-]
-LOOK_FRAMES = [('sad', 'S', 0), ('sad', 'SE', 2), ('clap', 'S', 2), ('clap', 'E', 0), ('sit', 'S', 0),
-               ('sit', 'SE', 1), ('sit', 'E', 2), ('push', 'S', 1), ('push', 'SE', 3), ('push', 'E', 5),
-               ('push', 'N', 2), ('idle', 'S', 0), ('walk', 'SE', 2), ('happy', 'S', 2), ('wave', 'E', 1),
-               ('idle', 'N', 1)]
+from tf2_presets import LOOK, LOOK_FRAMES        # noqa: E402  (look-dev / proof outfits)
 
 
 def render_full(opt):
@@ -427,7 +437,8 @@ def render_full(opt):
 def main():
     opt = parse_args()
     os.makedirs(opt['cache'], exist_ok=True)
-    {'head': render_head, 'body': render_body, 'meta': render_meta, 'full': render_full}[opt['mode']](opt)
+    {'head': render_head, 'headfix': render_headfix, 'body': render_body, 'meta': render_meta,
+     'full': render_full}[opt['mode']](opt)
 
 
 if __name__ == '__main__':
