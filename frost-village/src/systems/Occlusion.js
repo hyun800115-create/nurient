@@ -73,6 +73,7 @@ export class Occlusion {
     add(gs.player);
     for (const w of gs.workers) add(w);
     for (const w of gs.porters || []) add(w);
+    for (const w of gs.rawPorters || []) add(w);     // (v3.5) pile -> station porters
     for (const a of gs.animals || []) if (a.enabled && !a.dead) add(a);
     if (gs.market) { for (const c of gs.market.queue) add(c); for (const c of gs.market.leaving) add(c); }
     if (gs.trade && gs.trade.enabled) add(gs.trade.merchant);

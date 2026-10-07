@@ -42,7 +42,13 @@ const boot = async (clear) => {
   await adv(1);
 };
 /** fit the camera on world points [[x, y], ...] (margin px around them), at most maxZoom */
-const frame = (pts, maxZoom = 1.7, margin = 110, dy = -40) => ev(([p, mz, mg, oy]) => {
+const frame = async (pts, maxZoom = 1.7, margin = 110, dy = -40) => {
+  const z = await frameNow(pts, maxZoom, margin, dy);
+  // (draw once so the camera's view is current, then let the x-ray fade what stands in front of people)
+  await render(page, 1); await adv(0.25);
+  return z;
+};
+const frameNow = (pts, maxZoom, margin, dy) => ev(([p, mz, mg, oy]) => {
   const gs = window.__FV.scene, cam = gs.cameras.main;
   const k = cam.zoom / (gs.zoomCur || 1);
   const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]);
@@ -112,7 +118,7 @@ try {
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 8; i++) gs.stations.grill.outStack.push('item_fish_cooked', null, gs.effects); });
   await wait(() => window.__FV.scene.porters.some((p) => p.state === 'haul' && p.stack.count > 0), 40);
   // (half-way between the grill and the counter)
-  await wait(() => { const gs = window.__FV.scene, p = gs.porters.find((q) => q.state === 'haul'), m = gs.market.shelf, g = gs.stations.grill; if (!p) return false; const d = Math.hypot(p.x - m.x, p.y - m.y), all = Math.hypot(g.x - m.x, g.y - m.y); return d < all * 0.62; }, 20, undefined, 0.1);
+  await wait(() => { const gs = window.__FV.scene, p = gs.porters.find((q) => q.state === 'haul'), m = gs.market.shelf, g = gs.stations.grill; if (!p) return false; const d = Math.hypot(p.x - m.x, p.y - m.y), all = Math.hypot(g.x - m.x, g.y - m.y); return d < all * 0.85; }, 20, undefined, 0.1);
   {
     const p = await xyOf("gs.porters.find((q) => q.state === 'haul') || gs.porters[0]"), m = await xyOf('gs.market.shelf');
     await frame([p, m], 1.6, 80);
@@ -171,6 +177,7 @@ try {
     return { n: ws.length, pts: best.map((w) => [Math.round(w.x), Math.round(w.y)]), work: best.filter((w) => w.state === 'work').length };
   }, ty);
   for (const [i, type] of ['fisherman', 'lumberjack', 'farmer', 'hunter'].entries()) {
+    if (type === 'lumberjack') { const p = await xyOf('gs.piles.log'); await ev(([x, y]) => window.__FV.teleport(x + 60, y + 120), p); }
     let g = await group(type);
     for (let t = 0; t < 140 && !(g.pts.length >= Math.min(3, g.n) && g.work >= 2); t++) { await adv(0.5); g = await group(type); }
     console.log('  variants', type, JSON.stringify(g));
