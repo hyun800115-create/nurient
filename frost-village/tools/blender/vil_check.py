@@ -6,7 +6,7 @@ vil_check.py - verify assets/villagers against CONTRACT_VILLAGERS section A.
 Checks: all 20 keys present; every anim the contract table requires for that
 key exists with the right frames/fps/repeat/dirs; every frame name the manifest
 implies ({anim}_{dir}_{i} for each anim's own dirs) exists in its atlas JSON;
-sourceSize == frameSize; atlas PNG size == JSON meta; frames inside the sheet;
+sourceSize == frameSize; atlas PNG size == JSON meta (> 2048 px warns, > 4096 errors); frames inside the sheet;
 no trimmed frame touches the 128x128 edge (clipping warning); mirror targets
 rendered; throw impactFrame/impactPoint; carryPoint for all 5 dirs (humans);
 seatOffset on sitters; headTop/shadow/name/role/traits; portraits resolve;
@@ -107,6 +107,9 @@ def main():
             errors.append(f'{key}: json meta.image mismatch')
         if w > 4096 or h > 4096:
             errors.append(f'{key}: atlas {w}x{h} exceeds 4096')
+        elif w > 2048 or h > 2048:
+            warns.append(f'{key}: atlas {w}x{h} exceeds 2048 (texture limit of older mobile GPUs; '
+                         f'repack with the fixed pack_utils.pack_atlas)')
         fw, fh = c['frameSize']
         for d in c['mirror'].values():
             if d not in c['dirs']:

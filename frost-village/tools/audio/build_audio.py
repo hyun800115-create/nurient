@@ -6,8 +6,8 @@ Run from anywhere (takes ~1.5 min on 3 cores; deterministic, safe to re-run):
     python3 tools/audio/build_audio.py --skip-render      # re-encode from tools/audio/_cache/*.wav
     python3 tools/audio/build_audio.py --no-check         # skip check_audio.py at the end
 Outputs
-    assets/audio/<key>.ogg  Vorbis q4, 44.1 kHz (mono sfx, stereo music/ambience)
-    assets/audio/<key>.mp3  LAME CBR 128 kbps (music, ambience) / 96 kbps (sfx), gapless header
+    assets/audio/<key>.ogg  Vorbis q4, 44.1 kHz (stereo music, mono ambience + sfx: CHANNELS)
+    assets/audio/<key>.mp3  LAME CBR 128 kbps (music) / 80 kbps (ambience) / 96 kbps (sfx), gapless header
     assets/audio/manifest.json   CONTRACT section 2 fragment: audio{} + audioGroups{}
     docs/previews/audio_preview.html  listening page (open through the game's local web server)
 Mix: every file is mastered hot (sfx peak -1.5 dBFS, music -18 LUFS, ambience -20/-21 LUFS) and the
@@ -112,7 +112,7 @@ def _render_loop(key: str, n):
     return getattr(importlib.import_module(mod), fn)(loop_samples=n)
 
 
-def fit_loop(key: str, max_iter: int = 10):
+def fit_loop(key: str, max_iter: int = 10, search: int = 40):
     """Render a loop whose length lands exactly on a Vorbis block boundary.
 
     libvorbis pads the final block and marks the excess with an end-trim; Chromium's
@@ -122,10 +122,20 @@ def fit_loop(key: str, max_iter: int = 10):
       music    : the performance is rendered once; only the loop point moves (fold + master),
                  so the downbeat after the wrap shifts by a few ms at most;
       ambience : regenerated at the new length (everything is periodic in the loop length).
+    The trial encode uses the channel count the key ships with (CHANNELS[kind]): mono and
+    stereo Vorbis streams choose different block sequences, so a length fitted in stereo can
+    leave end padding in the mono file (128 samples in a scratch test).
+    Fallback when the boundary jumps do not converge (a regenerated bed changes its own block
+    choice with every new length): try the multiples of 64 samples (every Vorbis packet
+    boundary at 44.1 kHz is one) nearest the nominal length, closest first, up to +-search*64.
+    A render may return (channels, L) or a 1-D mono array (L,).
     Deterministic for a given libvorbis build."""
+    import numpy as np
     import synth as S
     tmp_wav, tmp_ogg = os.path.join(CACHE, f"{key}.fit.wav"), os.path.join(CACHE, f"{key}.fit.ogg")
     mod_name, fn = LOOPS[key]
+    kind = SOUNDS[key][0] if key in SOUNDS else ("music" if mod_name == "music" else "ambience")
+    ch = CHANNELS[kind]
     import importlib
     mod = importlib.import_module(mod_name)
     if mod_name == "music":
@@ -141,29 +151,61 @@ def fit_loop(key: str, max_iter: int = 10):
 
         def make(n):
             return getattr(mod, fn)(loop_samples=n)
-    n, tried = None, []
+    os.makedirs(CACHE, exist_ok=True)
+    tried = {}                                   # loop length -> end padding of its trial encode
+    best = None                                  # (padding, |L - L0|, x, meta) of the best trial so far
+
+    def trial(n):
+        nonlocal L0, best
+        x, meta = make(n)
+        x = np.asarray(x)
+        if x.ndim not in (1, 2):
+            raise ValueError(f"{key}: render returned shape {x.shape}, want (L,) or (channels, L)")
+        L = x.shape[-1]
+        L0 = L0 or L
+        S.write_wav(tmp_wav, x)
+        F.encode_ogg(tmp_wav, tmp_ogg, ch, OGG_Q)
+        tail = F.ogg_tail(tmp_ogg)
+        tried[L] = tail["discard"]
+        score = (tail["discard"], abs(L - L0))
+        if best is None or score < best[:2]:
+            best = (score[0], score[1], x, meta)
+        return x, meta, L, tail
+
+    def done(x, meta, its, method):
+        meta = dict(meta, loopSamples=x.shape[-1], fitIterations=its, fitMethod=method, nominalSamples=L0,
+                    fitChannels=ch)
+        return x, meta
+
+    n = None
     try:
-        for it in range(max_iter):
-            x, meta = make(n)
-            L = x.shape[1]
-            L0 = L0 or L
-            tried.append(L)
-            S.write_wav(tmp_wav, x)
-            F.encode_ogg(tmp_wav, tmp_ogg, 2, OGG_Q)
-            tail = F.ogg_tail(tmp_ogg)
+        for it in range(max_iter):               # 1) jump to the block boundary nearest the nominal length
+            x, meta, L, tail = trial(n)
             if tail["discard"] == 0:
-                meta.update(fitIterations=it, nominalSamples=L0)
-                return x, meta
+                return done(x, meta, it, "boundary")
             bounds = [b for b in tail["bounds"] + [L + tail["discard"]] if b > 0 and b not in tried]
             if not bounds:
                 break
             n = min(bounds, key=lambda c: abs(c - L0))
+        base = L0 - L0 % 64                      # 2) fallback: nearby multiples of 64, closest first
+        cands = sorted({base + k * 64 for k in range(-search, search + 1)} - set(tried),
+                       key=lambda c: (abs(c - L0), c))
+        print(f"  {key}: {len(tried)} boundary jumps did not converge (tried {list(tried)}); "
+              f"searching {len(cands)} multiples of 64 near {L0}", flush=True)
+        for j, c in enumerate(cands):
+            if c <= 0:
+                continue
+            x, meta, L, tail = trial(c)
+            if tail["discard"] == 0:
+                return done(x, meta, len(tried) - 1, f"grid64 #{j + 1} ({L - L0:+d})")
     finally:
         for p in (tmp_wav, tmp_ogg):
             if os.path.exists(p):
                 os.remove(p)
-    print(f"  WARNING {key}: could not land on a Vorbis block boundary (tried {tried})", flush=True)
-    meta.update(fitIterations=-1, nominalSamples=L0)
+    pad, _, x, meta = best
+    print(f"  WARNING {key}: could not land on a Vorbis block boundary; using {x.shape[-1]} "
+          f"({pad} samples of end padding) after {len(tried)} trials", flush=True)
+    x, meta = done(x, meta, -1, "failed")
     return x, meta
 
 

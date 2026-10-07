@@ -38,7 +38,11 @@ def _trim_box(img, pad=1):
 
 
 def pack_atlas(frames, max_width=2048, trim=True, padding=2):
-    """frames: list of (name, PIL.Image RGBA).  Returns (sheet, atlas_dict)."""
+    """frames: list of (name, PIL.Image RGBA).  Returns (sheet, atlas_dict).
+    The sheet is never wider than max_width: only frame right edges count toward the used
+    width (the padding after the last frame of a shelf does not), and the multiple-of-4
+    rounding is capped at max_width. A single (trimmed) frame wider than max_width raises
+    ValueError."""
     items = []
     for name, im in frames:
         im = im.convert('RGBA')
@@ -52,16 +56,18 @@ def pack_atlas(frames, max_width=2048, trim=True, padding=2):
     used_w = 0
     for i in order:
         w, h = items[i][3].size
-        if x + w > max_width:
+        if w > max_width:
+            raise ValueError(f'frame {items[i][0]!r} is {w} px wide after trim (> max_width {max_width})')
+        if x + w > max_width and x > 0:
             x = 0
             y += shelf_h + padding
             shelf_h = 0
         placements[i] = (x, y)
+        used_w = max(used_w, x + w)          # right edge of the frame, NOT including the padding after it
         x += w + padding
-        used_w = max(used_w, x)
         shelf_h = max(shelf_h, h)
     total_h = y + shelf_h
-    sheet_w = _pow2ish(used_w)
+    sheet_w = min(_pow2ish(used_w), max(max_width, used_w))   # used_w <= max_width -> sheet_w <= max_width
     sheet_h = _pow2ish(total_h)
     sheet = Image.new('RGBA', (sheet_w, sheet_h), (0, 0, 0, 0))
     atlas_frames = {}
