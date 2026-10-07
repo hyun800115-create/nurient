@@ -266,17 +266,55 @@ export class Game extends Phaser.Scene {
   loadDeferredAudio() {
     const want = Object.keys(Assets.m.audio).filter((k) => Assets.isDeferredAudio(k) && !this.cache.audio.exists(k) && !Assets.failed.has(k));
     this.load.on('loaderror', (f) => Assets.onLoadError(f, this.load));
-    // residents who live here already come first
-    const first = ((this.life && this.life.moved) || []).concat(['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
-    // (v3) the building / construction / boat pictures come first (small, and plots may be on screen)
+    // (v3.5 review) after-title pictures the village does not need yet wait (less memory early on)
+    Assets.queued.clear();
+    Assets.gate = (k) => this.lazyAllowed(k);
+    // who is already at work comes first (no stand-in looks after loading a save): hired operators, the
+    // 2nd / 3rd workers' looks, the dog — and a new game's first operator (the cook) right after
+    const pr = this.progress, ops = (WORLD.labour && WORLD.labour.ops) || {};
+    const working = [];
+    for (const st in ops) if (ops[st].who && (pr.isDone('op_' + st) || (st === 'grill' && !pr.isDone('op_grill')))) working.push(ops[st].who);
+    for (const w of this.workers) if (w.wantKey) working.push(w.wantKey);
+    working.push('pet_dog');
+    // then residents who live here already
+    const first = working.concat((this.life && this.life.moved) || [], ['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
+    // (v3) the building / construction / boat pictures come first once they are needed (plots may be on screen)
     const n = Assets.queueLazy(this.load, first, ['bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
+    this.lazyGateT = 2;
     if (!want.length && !n) return;
-    const onFile = (key) => { try { Assets.onLazyFile(key); } catch (e) { /* keep loading */ } };
-    this.load.on('filecomplete', onFile);
-    this.events.once('shutdown', () => this.load.off('filecomplete', onFile));
-    this.load.once('complete', () => { this.load.off('filecomplete', onFile); Audio.trimLoops(); Audio.applyMusic(); });
-    this.load.start();
+    this.startLazyLoad(() => { Audio.trimLoops(); Audio.applyMusic(); });
+  }
+
+  /** (v3.5 review) may after-title file `k` load now? (the 2nd / 3rd workers' looks: once the village is
+   *  complete; the v3 buildings: from the farmer on — the first house plots come with the miner) */
+  lazyAllowed(k) {
+    const pr = this.progress, f = Assets.fragOf[k];
+    if (!pr) return true;
+    if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
+    if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
+    return true;
+  }
+
+  /** start (or join) a background load of after-title files; their animations are made as each arrives */
+  startLazyLoad(onComplete) {
+    if (!this.lazyOnFile) {
+      this.lazyOnFile = (key) => { try { Assets.onLazyFile(key); } catch (e) { /* keep loading */ } };
+      this.load.on('filecomplete', this.lazyOnFile);
+      this.events.once('shutdown', () => { this.load.off('filecomplete', this.lazyOnFile); this.lazyOnFile = null; });
+    }
+    this.load.once('complete', () => { if (onComplete) onComplete(); });
+    if (!this.load.isLoading()) this.load.start();
+  }
+
+  /** (v3.5 review) a gated after-title file became needed: fetch it now */
+  checkLazyGates(dt) {
+    this.lazyGateT = (this.lazyGateT || 0) - dt;
+    if (this.lazyGateT > 0) return;
+    this.lazyGateT = 2;
+    if (!Assets.gate) return;
+    const n = Assets.queueLazy(this.load, [], ['bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    if (n) this.startLazyLoad();
   }
 
   // ------------------------------------------------------------------ building
@@ -1372,6 +1410,7 @@ export class Game extends Phaser.Scene {
     for (const w of this.rawPorters) w.update(dt);
     if (this.life) this.life.update(dt);
     if (this.dog) this.dog.update(dt);
+    this.checkLazyGates(dt);
     this.v3T = (this.v3T || 0) - dt;
     if (this.v3T <= 0) {
       this.v3T = 1;
@@ -1556,6 +1595,11 @@ export class Game extends Phaser.Scene {
     const piles = {};
     for (const id in this.piles) piles[id] = this.piles[id].serialize();
     const toStation = (sid, n) => { if (st[sid]) st[sid].i = (st[sid].i || 0) + n; };
+    // (v3.5 review) what a gatherer carries is saved on his pile (it used to be lost on a reload)
+    for (const w of this.workers) {
+      const n = w.stack.count + w.stack.incoming;
+      if (n && w.pile && w.pile.id in piles) piles[w.pile.id] += n;
+    }
     for (const r of this.rawPorters) {
       const n = r.stack.count + r.stack.incoming;
       if (!n) continue;
@@ -1589,6 +1633,17 @@ export class Game extends Phaser.Scene {
       }
     }
     for (const c of this.store ? this.store.queue : []) for (const ty of c.bought.concat(c.flying || [])) add(storeExtra, ty);
+    // (v3.5 review) raw items on their way into a station that is already full go back onto its pile
+    // (the input is restored up to its maximum: nothing may vanish on a reload)
+    for (const s of this.stationList) {
+      const d = st[s.id];
+      if (!d) continue;
+      const over = d.i - s.inStack.max;
+      if (over <= 0) continue;
+      d.i = s.inStack.max;
+      const pid = PILE_OF_STATION[s.id];
+      if (pid && this.piles[pid]) piles[pid] = (piles[pid] || 0) + over;
+    }
     const merge = (a, b) => { const o = Object.assign({}, a || {}); for (const k in b) o[k] = (o[k] || 0) + b[k]; return o; };
     const sites = {};
     for (const id in this.sites) { const d = this.sites[id].serialize(); if (d) sites[id] = d; }

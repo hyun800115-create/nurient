@@ -59,12 +59,12 @@ try {
   await walk(await where('op:grill'), 12);
   await adv(0.6);
   s = await st();
-  const chief = { anim: s.player.anim, working: s.ops.grill.working, chief: s.ops.grill.chief, obj: s.objective };
+  const chief = { anim: s.player.anim, dir: await ev(() => window.__FV.scene.player.dir), working: s.ops.grill.working, chief: s.ops.grill.chief, obj: s.objective };
   await ev(() => { const p = window.__FV.where('op:grill'); window.__FV.camera(p.x + 40, p.y - 30, 1.5); });
   await adv(0.3);
   await shot('01_chief_cooks');
   await ev(() => window.__FV.camera());
-  step('the chief on the work spot cooks (his work motion, the grill fires up)', chief.working && chief.chief && chief.anim === 'harvest' && chief.obj === 'obj_operating_grill', JSON.stringify(chief));
+  step('the chief on the work spot cooks (his work motion, side-on not his back, the grill fires up)', chief.working && chief.chief && chief.anim === 'give' && chief.dir !== 6 && chief.obj === 'obj_operating_grill', JSON.stringify(chief));
   await wait(() => window.__FV.state().ops.grill.in === 0, 20);
   await adv(0.8);
   s = await st();

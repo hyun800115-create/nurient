@@ -69,7 +69,7 @@ check('v3 -> v3.5: piles start empty, the dog starts as a stranger', Object.valu
 // hand-edited / corrupted v3.5 fields never brick the game
 {
   const bad = sanitizeSave(Object.assign(migrate(v3), { labour: { piles: { fish: 'lots', log: -4, wheat: 1e9, ore: 7.6, gold: 5 } }, dog: { love: 900, gifts: -2, tricks: 'x' } }));
-  check('corrupt v3.5: pile counts clamped, unknown piles dropped', bad.labour.piles.fish === 0 && bad.labour.piles.log === 0 && bad.labour.piles.wheat === 200 && bad.labour.piles.ore === 7 && bad.labour.piles.gold === undefined, JSON.stringify(bad.labour));
+  check('corrupt v3.5: pile counts clamped, unknown piles dropped', bad.labour.piles.fish === 0 && bad.labour.piles.log === 0 && bad.labour.piles.wheat === 500 && bad.labour.piles.ore === 7 && bad.labour.piles.gold === undefined, JSON.stringify(bad.labour));
   check('corrupt v3.5: dog affection clamped to 0..100', bad.dog.love === 100 && bad.dog.gifts === 0 && bad.dog.tricks === 0, JSON.stringify(bad.dog));
   const none = sanitizeSave(Object.assign(migrate(v3), { labour: 'x', dog: null }));
   check('corrupt v3.5: missing labour / dog fields fall back to empty', none.labour && none.dog && none.dog.love === 0, JSON.stringify({ l: none.labour, d: none.dog }));

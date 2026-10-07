@@ -323,7 +323,16 @@ def render_ship(key, opts):
         if sel_anims and kind != 'anim' and not sel_parts:
             continue
         path = os.path.join(out, name + '.png')
-        if opts['force'] or not os.path.exists(path):
+        stale = False
+        if os.path.exists(path) and not opts['force']:
+            from PIL import Image as _I            # a frame cached with another frame size is stale (model changed)
+            try:
+                stale = _I.open(path).size != (W, H)
+            except Exception:
+                stale = True
+            if stale:
+                print('[%s] %s was cached at another frame size -> re-render' % (key, name), flush=True)
+        if opts['force'] or stale or not os.path.exists(path):
             todo.append((name, kind, args, path))
     rsc = None
     if not opts['meta_only'] and todo:

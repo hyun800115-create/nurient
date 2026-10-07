@@ -71,7 +71,7 @@ class S extends Phaser.Scene {
     ship('trawler_big', 'NW', 2150, 470, 'move', 0.5);
     const heads = ['S', 'SE', 'E', 'NE', 'N', 'NW', 'W', 'SW'];
     ['tugboat', 'sailboat', 'yacht'].forEach((k, r) => heads.forEach((d, i) =>
-      ship(k, d, 120 + i * 290, 760 + r * 170, i % 2 ? 'idle' : 'move', 0.62)));
+      ship(k, d, 130 + i * 280, 780 + r * 205, i % 2 ? 'idle' : 'move', 0.55)));
     heads.forEach((d, i) => {
       const e = man.characters.seagull, [rd, flip] = resolve(e, d);
       this.add.sprite(2330, 70 + i * 140, e.atlas, 'fly_' + rd + '_0').setOrigin(e.anchor[0], e.anchor[1])

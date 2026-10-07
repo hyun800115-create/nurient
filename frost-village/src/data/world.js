@@ -113,7 +113,7 @@ export const WORLD = {
   // ── 자원 ───────────────────────────────────────────────
   net: { x: 880, y: 398, gather: [0, 86], fisherSpot: [-128, 30] },
   // extra: (v3.5) a few more pines [mx, my] (zone metres) so three lumberjacks find work in the forest
-  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, extra: [[0.6, -3.4], [1.0, -0.6], [1.8, -2.4]], avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
+  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, extra: [[0.6, -3.4], [1.0, -0.6], [1.8, -2.4]], avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [sawmill[0] - 72, sawmill[1] + 36, 120], [sawmill[0] - 120, sawmill[1] + 84, 80], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
   rocks: [
     [...Z('mine', -2.6, -0.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
     [...Z('mine', 0.9, -3.2), 'rock_ore'], [...Z('mine', -0.6, 0.6), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
@@ -387,27 +387,27 @@ export const WORLD = {
   //  ops: 가공소마다 (가공소 중심 기준 px)
   //    pad = 촌장이 서서 직접 가공하는 작업 자리, op = 고용한 기술자가 서는 곳, dir = 기술자가 바라보는 방향
   //    (S 남·SE·E 동·NE·N 북·NW·W 서·SW), who = 기술자 캐릭터, chiefAnim = 촌장이 일할 때 동작
-  //    (chop 도끼질 / mine 망치질 / harvest 손놀림 / idle 가만히 바라봄), chiefDir = 촌장이 바라보는 방향 (없으면 가공소 쪽)
+  //    (give 두 손으로 내려놓기 / chop 도끼질 / mine 망치질 / harvest 손놀림 / idle 가만히 바라봄), chiefDir = 촌장이 바라보는 방향 (없으면 가공소 쪽)
   //  piles: 일꾼이 잡은 것을 모아두는 곳 (x, y = 발판), prop = 옆에 놓는 소품 (rack = 고기 걸이), propAt = 소품 위치 (발판 기준)
   //         labelY = 이름표 높이 (발판 기준, 없으면 -92)
   labour: {
     ops: {
       //  (v3.5 리뷰: 촌장은 등을 돌리지 않고 옆모습·앞모습으로 일해요 — give = 두 손으로 내려놓기, 반복)
-      grill:      { pad: [-70, 35],  op: [57, -28],  dir: 'SW', who: 'npc_chef',       chiefAnim: 'give', chiefDir: 'E' },
-      sawmill:    { pad: [-72, 36],  op: [54, -27],  dir: 'SW', who: 'npc_sawyer',     chiefAnim: 'chop', chiefDir: 'E' },
+      grill:      { pad: [-70, 35],  op: [57, -28],  dir: 'SW', who: 'npc_chef',       chiefAnim: 'give', chiefDir: 'SE' },
+      sawmill:    { pad: [-72, 36],  op: [54, -27],  dir: 'SW', who: 'npc_sawyer',     chiefAnim: 'chop', chiefDir: 'SE' },
       bakery:     { pad: [2, 64],    op: [10, 50],   dir: 'S',  who: 'npc_aunt',       chiefAnim: 'give', chiefDir: 'SE' },
       smelter:    { pad: [-14, 66],  op: [-6, 48],   dir: 'S',  who: 'npc_blacksmith', chiefAnim: 'mine', chiefDir: 'SE' },
       smokehouse: { pad: [-10, 66],  op: [-22, 46],  dir: 'S',  who: 'npc_smoker',     chiefAnim: 'give', chiefDir: 'SE' },
       // (v3 건물: 부지 중심 기준) 대장간은 광부 영감이 모루 앞에서 도구를 두드려요
       toolsmith:  { pad: [-70, 66],  op: [-66, 8],   dir: 'E',  who: 'miner_b',        chiefAnim: 'mine', chiefDir: 'SE' },
-      cannery:    { pad: [-60, 70],  op: [-44, 20],  dir: 'NE', who: 'npc_cannery',    chiefAnim: 'give', chiefDir: 'SE' },
+      cannery:    { pad: [-60, 70],  op: [-44, 20],  dir: 'E',  who: 'npc_cannery',    chiefAnim: 'give', chiefDir: 'SE' },
     },
     piles: {
       fish:  { x: 772, y: 532, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'barrel', propAt: [-52, -18], zone: 'plaza' },
       log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
       wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
       ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [52, 6], propR: 24, zone: 'mine' },
-      meat:  { ...P('hunt', 2.6, -0.6), item: 'item_meat_raw', station: 'smokehouse', worker: 'hunter', prop: 'rack', propAt: [0, -46], labelY: -158, zone: 'hunt' },
+      meat:  { ...P('hunt', 2.6, -0.6), item: 'item_meat_raw', station: 'smokehouse', worker: 'hunter', prop: 'rack', propAt: [-84, -4], labelY: -100, zone: 'hunt' },
     },
   },
 

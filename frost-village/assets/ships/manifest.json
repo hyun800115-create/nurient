@@ -1,0 +1,1707 @@
+{
+ "version": 1,
+ "generator": "tools/blender/ship_render.py + ship_pack.py (docs/CONTRACT_V6.md section S)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = waterline centre of the hull (seagull: the feet).",
+  "dirs": "ships render S (bow toward the camera, arriving), SE (world +X, screen down-right) and NE (world +Y, screen up-right); mirror SW <- SE and NW <- NE with flipX (negate dx of every point). E / W / N are not rendered: use `nearest` (ships sail along the two iso axes like the vehicles; S is the arrival heading). The seagull has the 5 character dirs S SE E NE N + mirrors.",
+  "frames": "Phaser JSON-hash atlas per ship (ship_<key>), trimmed; frame names {anim}_{dir}_{i} like the characters. Assets.buildCharacter() turns them into <key>:<anim>:<dir> animations as for the boats.",
+  "layered": "big ships (ferry, cargo_ship, trawler_big): draw image base_<dir> (the whole ship at rest), then the deck people / cargo slot sprites, then foam_<dir>_i while moving, then the current anim (idle / move / haul) on top - all at the same position, origin = anchor, same flipX. The anim frames hold ONLY the moving parts (funnel smoke, haul gear), already occluded by the ship. Put all layers in one container and bob it: y += bob.px * sin(2 pi t / bob.periodS).",
+  "small boats": "tugboat, sailboat, yacht: complete frames (bobbing, sails and crew baked in) like boat_rowboat / boat_fishing.",
+  "points": "every *Point(s) value is a px offset [dx, dy] from the anchor per rendered dir (mirrored dirs negate dx). wakePoint = stern at the waterline (fx_wake / fx_wake_ring), bowPoint = stem at the waterline, smokePoint = funnel top (extra fx_smoke_puff if wanted), hornPoint = whistle (sfx_ship_horn_big), perchPoints = mast / funnel / crane tops where a seagull may sit (idle anim), lightPoints = lamps for night glows.",
+  "deckPoints": "ferry: spots on the open decks where a townsperson (feet) can stand fully visible (ray-tested against the ship for this dir, far -> near order); draw passengers right after base_<dir>, sorted by dy.",
+  "gangwayPoint": "ferry: gangway openings in the bulwark at main-deck level on both sides. gangwayPoint = the camera-side opening (a pier / quay in FRONT of the ship), gangwayFarPoint = the far-side opening (quay BEHIND the ship). harbor/ferry_terminal (gangway reaching toward the camera, ship along world X): heading SE or NW, ferry anchor = terminal anchor + terminal.gangwayPoint - ferry.gangwayFarPoint[dir] (NW: mirror NE, negate dx). *DeckPoint = first step on deck.",
+  "cargo": "cargo_ship: cargoSlots.count container-stack sprites slot<k>_<dir> (pre-occluded by the ship, same frame size + anchor) - draw the loaded ones after base_<dir> in cargoSlots.order[dir] (far -> near) and hide them when unloaded. cargoPoints[dir][k] = [dx, dy, visible] = the same spots on the hatch covers for the game's own item / crate stacks (visible = fraction of a 0.9 m stack the camera sees).",
+  "haul": "trawler_big: haul = the full net bag coming up over the stern (A-frame, drum turning, crew pulling, water dripping), loop; rendered only in the dirs listed in anims.haul.dirs - turn the trawler to one of them (or its mirror) before hauling. netPoint = the bag (fish splash / sfx).",
+  "seagull": "kind \"bird\": fly 6f (5 dirs), glide 2f, land 4f (once), idle 4f standing (on a post / bollard / mast top). All frames share one anchor at the feet; for a flying gull put the anchor at (ground x, ground y - altitude) and draw a small soft shadow at the ground point.",
+  "shadow": "no baked shadow, 1 px ink outline like the characters."
+ },
+ "atlases": [
+  {
+   "key": "ship_ferry",
+   "png": "ships/ship_ferry.png",
+   "json": "ships/ship_ferry.json"
+  },
+  {
+   "key": "ship_cargo_ship",
+   "png": "ships/ship_cargo_ship.png",
+   "json": "ships/ship_cargo_ship.json"
+  },
+  {
+   "key": "ship_trawler_big",
+   "png": "ships/ship_trawler_big.png",
+   "json": "ships/ship_trawler_big.json"
+  },
+  {
+   "key": "ship_tugboat",
+   "png": "ships/ship_tugboat.png",
+   "json": "ships/ship_tugboat.json"
+  },
+  {
+   "key": "ship_sailboat",
+   "png": "ships/ship_sailboat.png",
+   "json": "ships/ship_sailboat.json"
+  },
+  {
+   "key": "ship_yacht",
+   "png": "ships/ship_yacht.png",
+   "json": "ships/ship_yacht.json"
+  },
+  {
+   "key": "ship_seagull",
+   "png": "ships/ship_seagull.png",
+   "json": "ships/ship_seagull.json"
+  }
+ ],
+ "characters": {
+  "ferry": {
+   "atlas": "ship_ferry",
+   "kind": "ship",
+   "name": [
+    "여객선",
+    "passenger ferry"
+   ],
+   "frameSize": [
+    876,
+    888
+   ],
+   "anchor": [
+    0.52511,
+    0.69932
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "foam": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "with": "move"
+    }
+   },
+   "shadow": null,
+   "headTop": -466,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 16.0,
+   "beamM": 5.2,
+   "speedPx": 70,
+   "layered": true,
+   "base": "base_{dir}",
+   "bob": {
+    "px": 2,
+    "periodS": 3.6
+   },
+   "layerOrder": [
+    "base",
+    "deck people / cargo",
+    "foam",
+    "anim"
+   ],
+   "smokePoint": {
+    "S": [
+     0,
+     -399
+    ],
+    "SE": [
+     -56,
+     -387
+    ],
+    "NE": [
+     -56,
+     -331
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -258
+    ],
+    "SE": [
+     -364,
+     -182
+    ],
+    "NE": [
+     -364,
+     182
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     251
+    ],
+    "SE": [
+     355,
+     178
+    ],
+    "NE": [
+     355,
+     -178
+    ]
+   },
+   "gangwayPoint": {
+    "S": [
+     -165,
+     -113
+    ],
+    "SE": [
+     -144,
+     -50
+    ],
+    "NE": [
+     89,
+     -22
+    ]
+   },
+   "gangwayDeckPoint": {
+    "S": [
+     -136,
+     -113
+    ],
+    "SE": [
+     -123,
+     -60
+    ],
+    "NE": [
+     69,
+     -33
+    ]
+   },
+   "gangwayFarPoint": {
+    "S": [
+     165,
+     -113
+    ],
+    "SE": [
+     89,
+     -166
+    ],
+    "NE": [
+     -144,
+     -139
+    ]
+   },
+   "gangwayFarDeckPoint": {
+    "S": [
+     136,
+     -113
+    ],
+    "SE": [
+     69,
+     -156
+    ],
+    "NE": [
+     -123,
+     -129
+    ]
+   },
+   "hornPoint": {
+    "S": [
+     0,
+     -350
+    ],
+    "SE": [
+     -22,
+     -345
+    ],
+    "NE": [
+     -22,
+     -323
+    ]
+   },
+   "deckPoints": {
+    "S": [
+     [
+      -77,
+      -377
+     ],
+     [
+      77,
+      -377
+     ],
+     [
+      -77,
+      -358
+     ],
+     [
+      77,
+      -358
+     ],
+     [
+      -146,
+      -251
+     ],
+     [
+      146,
+      -251
+     ],
+     [
+      -146,
+      -78
+     ],
+     [
+      146,
+      -78
+     ],
+     [
+      -64,
+      56
+     ],
+     [
+      0,
+      56
+     ],
+     [
+      64,
+      56
+     ]
+    ],
+    "SE": [
+     [
+      -208,
+      -350
+     ],
+     [
+      -244,
+      -332
+     ],
+     [
+      -217,
+      -318
+     ],
+     [
+      -281,
+      -313
+     ],
+     [
+      -378,
+      -215
+     ],
+     [
+      -317,
+      -295
+     ],
+     [
+      -290,
+      -282
+     ],
+     [
+      -217,
+      -246
+     ],
+     [
+      258,
+      -11
+     ],
+     [
+      213,
+      12
+     ],
+     [
+      42,
+      30
+     ],
+     [
+      167,
+      35
+     ]
+    ],
+    "NE": [
+     [
+      -186,
+      -153
+     ],
+     [
+      -149,
+      -135
+     ],
+     [
+      -181,
+      -119
+     ],
+     [
+      -113,
+      -117
+     ],
+     [
+      -290,
+      -101
+     ],
+     [
+      -77,
+      -98
+     ],
+     [
+      -253,
+      -83
+     ],
+     [
+      -109,
+      -83
+     ],
+     [
+      -217,
+      -65
+     ],
+     [
+      -333,
+      49
+     ],
+     [
+      -181,
+      -46
+     ],
+     [
+      -287,
+      72
+     ],
+     [
+      -242,
+      95
+     ]
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      0,
+      -308
+     ],
+     [
+      0,
+      47
+     ],
+     [
+      0,
+      -443
+     ],
+     [
+      -131,
+      -223
+     ],
+     [
+      131,
+      -223
+     ]
+    ],
+    "SE": [
+     [
+      95,
+      -328
+     ],
+     [
+      342,
+      -24
+     ],
+     [
+      -351,
+      -370
+     ],
+     [
+      -70,
+      -181
+     ],
+     [
+      115,
+      -274
+     ]
+    ],
+    "NE": [
+     [
+      95,
+      -423
+     ],
+     [
+      342,
+      -366
+     ],
+     [
+      -351,
+      -20
+     ],
+     [
+      115,
+      -204
+     ],
+     [
+      -70,
+      -297
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "mast": [
+      0,
+      -308
+     ],
+     "bridge": [
+      0,
+      -147
+     ]
+    },
+    "SE": {
+     "mast": [
+      95,
+      -328
+     ],
+     "bridge": [
+      149,
+      -178
+     ]
+    },
+    "NE": {
+     "mast": [
+      95,
+      -423
+     ],
+     "bridge": [
+      149,
+      -327
+     ]
+    }
+   },
+   "notes": "Passenger ferry (~16 m): navy / white hull with a red boot-top and brass portholes, two white passenger decks with warm windows (bridge with blue glass up front), red funnel with a gold star, two orange lifeboats, an open sun deck with benches aft, bow capstan, stern ensign. Layered: draw base_<dir>, then passengers at deckPoints, then foam (while moving), then the idle/move smoke overlay."
+  },
+  "cargo_ship": {
+   "atlas": "ship_cargo_ship",
+   "kind": "ship",
+   "name": [
+    "화물선",
+    "cargo ship"
+   ],
+   "frameSize": [
+    1118,
+    1168
+   ],
+   "anchor": [
+    0.52236,
+    0.70291
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "foam": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "with": "move"
+    }
+   },
+   "shadow": null,
+   "headTop": -625,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 21.0,
+   "beamM": 5.6,
+   "speedPx": 55,
+   "layered": true,
+   "base": "base_{dir}",
+   "bob": {
+    "px": 2,
+    "periodS": 4.2
+   },
+   "layerOrder": [
+    "base",
+    "deck people / cargo",
+    "foam",
+    "anim"
+   ],
+   "smokePoint": {
+    "S": [
+     0,
+     -613
+    ],
+    "SE": [
+     -391,
+     -533
+    ],
+    "NE": [
+     -391,
+     -142
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -339
+    ],
+    "SE": [
+     -480,
+     -240
+    ],
+    "NE": [
+     -480,
+     240
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     330
+    ],
+    "SE": [
+     466,
+     233
+    ],
+    "NE": [
+     466,
+     -233
+    ]
+   },
+   "cargoPoints": {
+    "S": [
+     [
+      -68,
+      -186,
+      1.0
+     ],
+     [
+      68,
+      -186,
+      1.0
+     ],
+     [
+      -68,
+      -90,
+      1.0
+     ],
+     [
+      68,
+      -90,
+      0.67
+     ],
+     [
+      -68,
+      57,
+      1.0
+     ],
+     [
+      68,
+      57,
+      1.0
+     ]
+    ],
+    "SE": [
+     [
+      -38,
+      -192,
+      1.0
+     ],
+     [
+      -134,
+      -144,
+      1.0
+     ],
+     [
+      98,
+      -124,
+      1.0
+     ],
+     [
+      2,
+      -76,
+      1.0
+     ],
+     [
+      306,
+      -20,
+      1.0
+     ],
+     [
+      210,
+      28,
+      1.0
+     ]
+    ],
+    "NE": [
+     [
+      210,
+      -278,
+      0.89
+     ],
+     [
+      306,
+      -230,
+      1.0
+     ],
+     [
+      2,
+      -174,
+      1.0
+     ],
+     [
+      98,
+      -126,
+      1.0
+     ],
+     [
+      -134,
+      -106,
+      0.78
+     ],
+     [
+      -38,
+      -58,
+      1.0
+     ]
+    ]
+   },
+   "hookPoint": {
+    "S": [
+     0,
+     -39
+    ],
+    "SE": [
+     345,
+     -110
+    ],
+    "NE": [
+     345,
+     -455
+    ]
+   },
+   "hornPoint": {
+    "S": [
+     0,
+     -568
+    ],
+    "SE": [
+     -361,
+     -493
+    ],
+    "NE": [
+     -361,
+     -132
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      0,
+      -592
+     ],
+     [
+      0,
+      31
+     ],
+     [
+      0,
+      -130
+     ],
+     [
+      22,
+      -143
+     ]
+    ],
+    "SE": [
+     [
+      -294,
+      -531
+     ],
+     [
+      407,
+      -54
+     ],
+     [
+      339,
+      -200
+     ],
+     [
+      167,
+      -183
+     ]
+    ],
+    "NE": [
+     [
+      -294,
+      -236
+     ],
+     [
+      407,
+      -461
+     ],
+     [
+      339,
+      -539
+     ],
+     [
+      136,
+      -334
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "mast": [
+      0,
+      -592
+     ],
+     "foremast": [
+      0,
+      31
+     ]
+    },
+    "SE": {
+     "mast": [
+      -294,
+      -531
+     ],
+     "foremast": [
+      407,
+      -54
+     ]
+    },
+    "NE": {
+     "mast": [
+      -294,
+      -236
+     ],
+     "foremast": [
+      407,
+      -461
+     ]
+    }
+   },
+   "cargoSlots": {
+    "count": 6,
+    "frame": "slot{k}_{dir}",
+    "order": {
+     "S": [
+      4,
+      5,
+      2,
+      3,
+      0,
+      1
+     ],
+     "SE": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+     ],
+     "NE": [
+      1,
+      0,
+      3,
+      2,
+      5,
+      4
+     ]
+    },
+    "points": {
+     "S": [
+      [
+       -68,
+       57
+      ],
+      [
+       68,
+       57
+      ],
+      [
+       -68,
+       -90
+      ],
+      [
+       68,
+       -90
+      ],
+      [
+       -68,
+       -186
+      ],
+      [
+       68,
+       -186
+      ]
+     ],
+     "SE": [
+      [
+       210,
+       28
+      ],
+      [
+       306,
+       -20
+      ],
+      [
+       2,
+       -76
+      ],
+      [
+       98,
+       -124
+      ],
+      [
+       -134,
+       -144
+      ],
+      [
+       -38,
+       -192
+      ]
+     ],
+     "NE": [
+      [
+       306,
+       -230
+      ],
+      [
+       210,
+       -278
+      ],
+      [
+       98,
+       -126
+      ],
+      [
+       2,
+       -174
+      ],
+      [
+       -38,
+       -58
+      ],
+      [
+       -134,
+       -106
+      ]
+     ]
+    }
+   },
+   "notes": "Chunky freighter (~21 m): green hull with a cream sheer stripe, raised bow with a mast, three hatch covers, a yellow deck crane with a hook, cream bridge house aft with an orange funnel. The six container stacks are separate pre-occluded sprites slot<k>_<dir> (draw the loaded ones in slotOrder after the base); cargoPoints are the same spots on the hatch covers for the game's own crate / item stacks."
+  },
+  "trawler_big": {
+   "atlas": "ship_trawler_big",
+   "kind": "ship",
+   "name": [
+    "원양어선",
+    "deep-sea trawler"
+   ],
+   "frameSize": [
+    770,
+    748
+   ],
+   "anchor": [
+    0.52727,
+    0.68583
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    },
+    "foam": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "with": "move"
+    },
+    "haul": {
+     "frames": 6,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ]
+    }
+   },
+   "shadow": null,
+   "headTop": -506,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 14.0,
+   "beamM": 4.6,
+   "speedPx": 65,
+   "layered": true,
+   "base": "base_{dir}",
+   "bob": {
+    "px": 2,
+    "periodS": 3.0
+   },
+   "layerOrder": [
+    "base",
+    "deck people / cargo",
+    "foam",
+    "anim"
+   ],
+   "smokePoint": {
+    "S": [
+     0,
+     -267
+    ],
+    "SE": [
+     -48,
+     -257
+    ],
+    "NE": [
+     -48,
+     -209
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -227
+    ],
+    "SE": [
+     -321,
+     -161
+    ],
+    "NE": [
+     -321,
+     161
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     219
+    ],
+    "SE": [
+     310,
+     155
+    ],
+    "NE": [
+     310,
+     -155
+    ]
+   },
+   "netPoint": {
+    "S": [
+     0,
+     -264
+    ],
+    "SE": [
+     -326,
+     -196
+    ],
+    "NE": [
+     -326,
+     130
+    ]
+   },
+   "hornPoint": {
+    "S": [
+     0,
+     -222
+    ],
+    "SE": [
+     -28,
+     -217
+    ],
+    "NE": [
+     -28,
+     -189
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      0,
+      -276
+     ],
+     [
+      -163,
+      -348
+     ],
+     [
+      163,
+      -348
+     ],
+     [
+      -99,
+      -499
+     ],
+     [
+      99,
+      -499
+     ]
+    ],
+    "SE": [
+     [
+      86,
+      -293
+     ],
+     [
+      -91,
+      -296
+     ],
+     [
+      140,
+      -411
+     ],
+     [
+      -362,
+      -404
+     ],
+     [
+      -222,
+      -474
+     ]
+    ],
+    "NE": [
+     [
+      86,
+      -379
+     ],
+     [
+      140,
+      -321
+     ],
+     [
+      -91,
+      -436
+     ],
+     [
+      -222,
+      -112
+     ],
+     [
+      -362,
+      -182
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "mast": [
+      0,
+      -276
+     ],
+     "aframe": [
+      0,
+      -500
+     ]
+    },
+    "SE": {
+     "mast": [
+      86,
+      -293
+     ],
+     "aframe": [
+      -292,
+      -440
+     ]
+    },
+    "NE": {
+     "mast": [
+      86,
+      -379
+     ],
+     "aframe": [
+      -292,
+      -148
+     ]
+    }
+   },
+   "notes": "Deep-sea stern trawler (~14 m): blue hull with a high white bow, white wheelhouse with blue windows and a red snowy roof forward, yellow outrigger booms in a V, yellow funnel, fish boxes on deck, a green net wound on the drum and an orange A-frame over the stern ramp, a fisherman on deck. haul = the bulging net bag coming up out of the water under the A-frame (drum turning, two crew pulling, water dripping); haul is rendered for NE only (stern toward the camera; NW = mirror) - turn the trawler to NE / NW before hauling."
+  },
+  "tugboat": {
+   "atlas": "ship_tugboat",
+   "kind": "ship",
+   "name": [
+    "예인선",
+    "tugboat"
+   ],
+   "frameSize": [
+    384,
+    412
+   ],
+   "anchor": [
+    0.50781,
+    0.73058
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 7,
+     "repeat": -1
+    }
+   },
+   "shadow": null,
+   "headTop": -274,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 6.2,
+   "beamM": 3.0,
+   "speedPx": 80,
+   "smokePoint": {
+    "S": [
+     3,
+     -194
+    ],
+    "SE": [
+     -56,
+     -183
+    ],
+    "NE": [
+     -61,
+     -125
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -97
+    ],
+    "SE": [
+     -143,
+     -68
+    ],
+    "NE": [
+     -143,
+     75
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     101
+    ],
+    "SE": [
+     145,
+     71
+    ],
+    "NE": [
+     145,
+     -74
+    ]
+   },
+   "towPoint": {
+    "S": [
+     2,
+     -149
+    ],
+    "SE": [
+     -104,
+     -128
+    ],
+    "NE": [
+     -106,
+     -23
+    ]
+   },
+   "hornPoint": {
+    "S": [
+     3,
+     -165
+    ],
+    "SE": [
+     -41,
+     -157
+    ],
+    "NE": [
+     -45,
+     -114
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      -8,
+      -210
+     ],
+     [
+      3,
+      -192
+     ]
+    ],
+    "SE": [
+     [
+      5,
+      -209
+     ],
+     [
+      -55,
+      -181
+     ]
+    ],
+    "NE": [
+     [
+      17,
+      -220
+     ],
+     [
+      -59,
+      -125
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "mast": [
+      -8,
+      -210
+     ],
+     "search": [
+      32,
+      -129
+     ]
+    },
+    "SE": {
+     "mast": [
+      5,
+      -209
+     ],
+     "search": [
+      71,
+      -150
+     ]
+    },
+    "NE": {
+     "mast": [
+      17,
+      -220
+     ],
+     "search": [
+      25,
+      -198
+     ]
+    }
+   },
+   "notes": "Small fat tugboat (~6 m): red hull with a black rubber fender band, tyre fenders and a big black bow fender, white two-storey wheelhouse with blue windows and a snowy navy roof, black funnel with a red band and a white star, tow bitt + rope coil aft, the bearded captain on the aft deck (waves in idle). idle 2f / move 4f (smoke, bow foam, pitching)."
+  },
+  "sailboat": {
+   "atlas": "ship_sailboat",
+   "kind": "ship",
+   "name": [
+    "돛단배",
+    "sailboat"
+   ],
+   "frameSize": [
+    332,
+    504
+   ],
+   "anchor": [
+    0.51807,
+    0.80357
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "shadow": null,
+   "headTop": -379,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 5.6,
+   "beamM": 2.0,
+   "speedPx": 60,
+   "wakePoint": {
+    "S": [
+     0,
+     -89
+    ],
+    "SE": [
+     -131,
+     -62
+    ],
+    "NE": [
+     -131,
+     69
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     90
+    ],
+    "SE": [
+     129,
+     63
+    ],
+    "NE": [
+     129,
+     -66
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      10,
+      -339
+     ],
+     [
+      2,
+      42
+     ]
+    ],
+    "SE": [
+     [
+      28,
+      -347
+     ],
+     [
+      136,
+      13
+     ]
+    ],
+    "NE": [
+     [
+      14,
+      -368
+     ],
+     [
+      134,
+      -122
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "mast": [
+      10,
+      -336
+     ]
+    },
+    "SE": {
+     "mast": [
+      28,
+      -344
+     ]
+    },
+    "NE": {
+     "mast": [
+      14,
+      -365
+     ]
+    }
+   },
+   "notes": "Tourist sailboat (~5.6 m): white hull with a red stripe, wooden deck, small cabin, a big red-and-cream striped mainsail + a sky-blue jib, a skipper at the tiller and a waving tourist. idle = sails luffing, boom amidships; move = sails filled, heeled away from the camera, bow foam."
+  },
+  "yacht": {
+   "atlas": "ship_yacht",
+   "kind": "ship",
+   "name": [
+    "요트",
+    "yacht"
+   ],
+   "frameSize": [
+    480,
+    392
+   ],
+   "anchor": [
+    0.56667,
+    0.64031
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "move": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "shadow": null,
+   "headTop": -236,
+   "nearest": {
+    "E": "SE",
+    "W": "SW",
+    "N": "NE"
+   },
+   "lengthM": 7.2,
+   "beamM": 2.6,
+   "speedPx": 95,
+   "wakePoint": {
+    "S": [
+     0,
+     -121
+    ],
+    "SE": [
+     -177,
+     -84
+    ],
+    "NE": [
+     -176,
+     92
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     117
+    ],
+    "SE": [
+     167,
+     82
+    ],
+    "NE": [
+     167,
+     -85
+    ]
+   },
+   "perchPoints": {
+    "S": [
+     [
+      4,
+      -231
+     ],
+     [
+      41,
+      -222
+     ]
+    ],
+    "SE": [
+     [
+      -65,
+      -218
+     ],
+     [
+      -129,
+      -204
+     ]
+    ],
+    "NE": [
+     [
+      -70,
+      -151
+     ],
+     [
+      -186,
+      -46
+     ]
+    ]
+   },
+   "lightPoints": {
+    "S": {
+     "arch": [
+      32,
+      -217
+     ]
+    },
+    "SE": {
+     "arch": [
+      -45,
+      -214
+     ]
+    },
+    "NE": {
+     "arch": [
+      -90,
+      -147
+     ]
+    }
+   },
+   "notes": "Small white motor yacht (~7 m): sleek white hull with a navy pinstripe, teak decks, dark tinted windows, a flybridge under a radar arch, chrome bow rail, swim platform, two tourists on the aft deck (one waving). idle 2f bobbing, move 4f planing (bow up, big bow foam + stern wash)."
+  },
+  "seagull": {
+   "atlas": "ship_seagull",
+   "kind": "bird",
+   "name": [
+    "갈매기",
+    "seagull"
+   ],
+   "frameSize": [
+    108,
+    106
+   ],
+   "anchor": [
+    0.5,
+    0.72642
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "fly": {
+     "frames": 6,
+     "fps": 12,
+     "repeat": -1
+    },
+    "glide": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "land": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": 0
+    },
+    "idle": {
+     "frames": 4,
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "shadow": null,
+   "headTop": -66,
+   "beakPoint": {
+    "S": [
+     0,
+     -14
+    ],
+    "SE": [
+     14,
+     -16
+    ],
+    "E": [
+     19,
+     -23
+    ],
+    "NE": [
+     14,
+     -30
+    ],
+    "N": [
+     0,
+     -33
+    ]
+   },
+   "bodyPoint": {
+    "S": [
+     0,
+     -15
+    ],
+    "SE": [
+     0,
+     -15
+    ],
+    "E": [
+     0,
+     -15
+    ],
+    "NE": [
+     0,
+     -15
+    ],
+    "N": [
+     0,
+     -15
+    ]
+   },
+   "notes": "Chubby toy seagull: white body, big round head with bead eyes, yellow beak with a red spot, grey wings with black tips, orange feet. fly 6f loop / glide 2f / land 4f once / idle 4f (head turns, squawk on frame 2 - play sfx_seagull_*). Anchor = the feet for every frame."
+  }
+ },
+ "sprites": {}
+}

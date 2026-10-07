@@ -2,7 +2,7 @@
 
 import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
-import { UnlockPad } from '../entities/UnlockPad.js';
+import { UnlockPad, sanePrice } from '../entities/UnlockPad.js';
 import { Audio } from '../core/Audio.js';
 import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
@@ -199,6 +199,13 @@ export class Progression {
       const cfg = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (WORLD.pads35 && WORLD.pads35[s.id]) || (gs.padSpot && gs.padSpot(s));
       if (!cfg) continue;
       const cost = stepCost(s);
+      // (v3.5 review) a partial payment above the (new, lower) price is given back, never swallowed
+      // (v3 -> v3.5 lowered some prices; the designer may lower one in balance.js too)
+      const price = sanePrice(cost), paidBefore = this.paid[s.id] || 0;
+      if (paidBefore > price) {
+        this.paid[s.id] = price;
+        if (gs.economy) gs.economy.add(paidBefore - price);
+      }
       let icon = 'ui_icon_lock';
       let items = s.items || null;
       // (v3.5) the face of who comes: a portrait still loading (after the title) arrives a moment later
@@ -284,6 +291,8 @@ export class Progression {
       const U = BALANCE.upgrades[kind];
       const lvl = this.up[kind];
       const maxed = lvl >= U.values.length - 1;
+      // (v3.5 review) a saved partial payment above a lowered price comes back as coins
+      if (!maxed && (this.paid['up_' + kind] || 0) > sanePrice(U.costs[lvl])) { if (gs.economy) gs.economy.add(this.paid['up_' + kind] - sanePrice(U.costs[lvl])); this.paid['up_' + kind] = sanePrice(U.costs[lvl]); }
       const pad = new UnlockPad(gs, 'up_' + kind, b.x + b.pads[kind][0], b.y + b.pads[kind][1], {
         kind: 'upgrade', cost: maxed ? 1 : U.costs[lvl], paid: maxed ? 0 : (this.paid['up_' + kind] || 0), sizeM: 1.6,
         icon: kind === 'capacity' ? 'ui_icon_backpack' : 'ui_icon_speed', iconSize: 40,

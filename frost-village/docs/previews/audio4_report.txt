@@ -1,9 +1,9 @@
 key                fmt  ch   dur s   peak     TP  I LUFS   Mmax    vol    eff   want       DC     kB
-bgm_harbor         ogg   2  61.272   -3.9   -3.9   -18.0  -14.6  0.376  -26.5  -26.5  0.00001  829.8
-bgm_harbor         mp3   2  61.272   -4.2   -4.1   -18.5  -15.0  0.376  -27.0  -26.5  0.00001  958.4
-                   loop: n=2702080 (render 2702080) hf_ratio=0.073 d2_ratio=0.077 level_jump=+6.9 dB wrap_jump=0.0031
+bgm_harbor         ogg   2  61.272   -3.9   -3.9   -18.0  -15.4  0.376  -26.5  -26.5  0.00002  833.3
+bgm_harbor         mp3   2  61.272   -4.5   -4.4   -18.5  -16.0  0.376  -27.0  -26.5  0.00001  958.4
+                   loop: n=2702080 (render 2702080) hf_ratio=0.092 d2_ratio=0.262 level_jump=+3.3 dB wrap_jump=0.0107
                    ogg end padding 0 smp (must be 0); manifest loopSamples 2702080; duration 61.2717 s
-                   mp3 loop (ffmpeg, gapless tag honoured): n=2702080 hf_ratio=0.096 d2_ratio=0.241
+                   mp3 loop (ffmpeg, gapless tag honoured): n=2702080 hf_ratio=0.108 d2_ratio=0.273
 amb_harbor         ogg   1  22.005   -7.7   -7.7   -20.2  -16.6  0.216  -33.5  -33.5  0.00003  200.9
 amb_harbor         mp3   1  22.005   -8.0   -8.0   -20.4  -16.9  0.216  -33.7  -33.5  0.00001  215.6
                    loop: n=970432 (render 970432) hf_ratio=0.177 d2_ratio=0.123 level_jump=-0.0 dB wrap_jump=0.0017
@@ -28,39 +28,39 @@ sfx_auction_bell   ogg   1   2.161   -1.4   -1.4    -8.4   -5.5  0.211  -19.0  -
 sfx_auction_bell   mp3   1   2.161   -1.9   -1.8    -8.9   -6.0  0.211  -19.5  -19.0  0.00000   26.0
 sfx_rope_creak     ogg   1   1.363   -1.6   -1.6   -13.5  -10.5  0.282  -21.5  -21.5  0.00002   16.8
 sfx_rope_creak     mp3   1   1.363   -1.8   -1.8   -13.8  -10.8  0.282  -21.8  -21.5  0.00001   16.8
-total payload assets/audio4 (audio files + manifest): 2588015 bytes = 2.588 MB = 2.468 MiB (limit 3000000 bytes)
+total payload assets/audio4 (audio files + manifest): 2591638 bytes = 2.592 MB = 2.472 MiB (limit 3000000 bytes)
 headless Chromium 141.0.7390.37 decodeAudioData (OfflineAudioContext 44.1 kHz):
-  bgm_harbor         ogg: 2702080 frames x 2 ch (want 2702080, exact), seam d2 ratio 0.078
-  bgm_harbor         mp3: 2702080 frames x 2 ch (want 2702080, exact), seam d2 ratio 0.248
+  bgm_harbor         ogg: 2702080 frames x 2 ch (want 2702080, exact), seam d2 ratio 0.267
+  bgm_harbor         mp3: 2702080 frames x 2 ch (want 2702080, exact), seam d2 ratio 0.279
   amb_harbor         ogg: 970432 frames x 1 ch (want 970432, exact), seam d2 ratio 0.124
   amb_harbor         mp3: 970432 frames x 1 ch (want 970432, exact), seam d2 ratio 0.274
 mix: bgm_harbor plays at -26.5 LUFS effective (bgm_village target -26.5)
-demo: bed -26.0 LUFS | sfx layer -23.7 LUFS | mix -22.4 LUFS, peak -7.8 dBFS
+demo: bed -25.9 LUFS | sfx layer -23.7 LUFS | mix -22.3 LUFS, peak -7.8 dBFS
 demo timeline (2 s windows, max momentary LUFS)  bed | sfx
    0s   -24.5 |  -21.6
    2s   -24.7 |  -26.5
    4s   -25.2 |  -34.5
-   6s   -22.6 |  -23.1
-   8s   -22.6 |  -19.1
-  10s   -23.8 |  -18.8
-  12s   -25.4 |  -20.0
-  14s   -24.9 |  -18.3
-  16s   -25.1 |  -24.9
-  18s   -25.2 |  -23.7
-  20s   -25.0 |  -20.8
+   6s   -23.8 |  -23.1
+   8s   -24.2 |  -19.1
+  10s   -23.9 |  -18.8
+  12s   -24.8 |  -20.0
+  14s   -24.7 |  -18.3
+  16s   -24.6 |  -24.9
+  18s   -24.8 |  -23.7
+  20s   -24.9 |  -20.8
   22s   -25.1 |  -23.7
-  24s   -24.8 |  -21.7
-  26s   -24.3 |  -22.3
+  24s   -24.9 |  -21.7
+  26s   -24.4 |  -22.3
   28s   -24.7 |  -23.9
-  30s   -25.4 |  -19.0
-  32s   -24.0 |  -24.4
-  34s   -25.6 |  -20.9
-  36s   -24.4 |  -23.4
-  38s   -25.0 |  -21.4
-  40s   -24.6 |  -20.0
-  42s   -25.0 |  -19.9
-  44s   -26.0 |  -25.0
-  46s   -26.2 |  -72.3
+  30s   -25.1 |  -19.0
+  32s   -23.4 |  -24.4
+  34s   -24.5 |  -20.9
+  36s   -23.7 |  -23.4
+  38s   -24.2 |  -21.4
+  40s   -24.9 |  -20.0
+  42s   -25.4 |  -19.9
+  44s   -26.4 |  -25.0
+  46s   -26.4 |  -72.3
 
 
 RESULT: OK

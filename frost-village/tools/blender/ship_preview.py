@@ -31,6 +31,16 @@ def font(sz):
     return pp.font(sz)
 
 
+def save_png(img, out):
+    """Preview PNG palettised with libimagequant when available (previews stay ~1/3 the size)."""
+    try:
+        import imagequant
+        imagequant.quantize_pil_image(img.convert('RGBA'), dithering_level=0.8, max_quality=100, min_quality=0,
+                                      max_colors=256).save(out, optimize=True)
+    except ImportError:
+        img.convert('RGB').save(out, optimize=True)
+
+
 def tile(path, size):
     t = Image.open(path).convert('RGBA')
     im = Image.new('RGBA', size)
@@ -229,7 +239,7 @@ def preview_all(ships, imgs, out):
     dr.text((14, 9), 'Frost Village v6 - harbour ships (assets/ships): move frame + foam layer, ferry passengers at '
                      'deckPoints, cargo slots loaded; big ships at 0.62x, small boats 1x, seagull 2x',
             fill=(255, 255, 255), font=font(17))
-    canvas.convert('RGB').save(out, optimize=True)
+    save_png(canvas, out)
 
 
 def iso(C, x, y, z=0.0):
@@ -322,6 +332,27 @@ def preview_scene(ships, imgs, out):
         v = m['points'][name][rd]
         return (-v[0], v[1]) if flip else (v[0], v[1])
 
+    # ---- quay edge tiles from assets/harbor (ground layer): corner at C, quay_x toward -X, quay_y toward +Y
+    WATER = 30                                     # harbor convention: sea surface 0.55 m = 30 px below the quay
+    ground = []
+    r = sprite(har, 'quay_corner')
+    if r:
+        ground.append((r[0], r[1], C[0], C[1]))
+        for n in range(1, int(QX / 1.4142)):
+            q = sprite(har, 'quay_x')
+            ground.append((q[0], q[1], C[0] - 64 * n, C[1] - 32 * n))
+        for n in range(1, int(QY / 1.4142)):
+            q = sprite(har, 'quay_y')
+            ground.append((q[0], q[1], C[0] + 64 * n, C[1] - 32 * n))
+    for im, a, sx, sy in ground:
+        canvas.alpha_composite(im, (int(round(sx - a[0])), int(round(sy - a[1]))))
+    # harbour dressing on the quay (assets/harbor)
+    for key, x, y in (('fish_auction', -24.5, 2.0), ('harbor_market', -19.0, 9.5), ('sailor_lodge', -26.0, 17.0),
+                      ('harbor_office', -13.5, 13.5), ('harbor_warehouse', -11.0, 22.0), ('net_rack', -8.0, 4.2),
+                      ('barrel_stack', -18.0, 4.5), ('crate_stack', -9.0, 8.5), ('harbor_lamp', -7.0, 1.0),
+                      ('harbor_lamp', -1.2, 7.5), ('harbor_lamp', -20.0, 1.0)):
+        q = iso(C, x, y)
+        put_sprite(har, key, q[0], q[1])
     # ---- quay: harbor/ferry_terminal + the ferry berthed at it (SE, far-side gangway on the terminal gangway tip)
     fm = ships.get('ferry')
     T = iso(C, -13.0, 2.0)
@@ -340,6 +371,7 @@ def preview_scene(ships, imgs, out):
     cm = ships.get('cargo_ship')
     if cm:
         cx, cy = iso(C, cm['beamM'] / 2 + 0.45, 12.5)
+        cy += WATER                                    # ship anchor = waterline, 0.55 m below the quay plane
         put_ship('cargo_ship', 'NE', cx, cy, lab='cargo_ship moored (NE, 6 container slots)', anim='idle', i=0)
     hc = iso(C, -2.3, 10.5)
     put_sprite(har, 'harbor_crane', hc[0], hc[1], frame=None)
@@ -353,6 +385,12 @@ def preview_scene(ships, imgs, out):
         put_sprite(har, 'bollard', b_[0], b_[1])
         b_ = iso(C, -0.55, 3.0 + k * 3.8)
         put_sprite(har, 'bollard', b_[0], b_[1])
+    # townsfolk on the quay for scale / life
+    for j, (k, x, y, fr) in enumerate((('villager_b', -16.0, 6.5, 'idle_S_0'), ('villager_c', -15.4, 6.9, 'idle_SE_0'),
+                                       ('fisherman', -6.0, 3.0, 'idle_SE_0'), ('villager_a', -22.0, 6.0, 'idle_NE_0'),
+                                       ('player', -10.5, 4.0, 'idle_S_0'))):
+        q = iso(C, x, y)
+        put_char(chars, k, fr, q[0], q[1])
     # ---- village shore (existing art): dock_pier, boathouse, boats, the chief + villagers for scale
     put_sprite(bld, 'boathouse', 980, 1830, frame='boathouse', lab='boathouse (existing)')
     put_sprite(props, 'dock_pier', 420, 1690, lab='dock_pier (existing)')
@@ -400,7 +438,7 @@ def preview_scene(ships, imgs, out):
                           'berthed at harbor/ferry_terminal, cargo ship moored at the quay, existing dock_pier / '
                           'boathouse / boats + chief and villagers for scale (static composite, not an in-game '
                           'capture)', fill=(255, 255, 255), font=font(18))
-    canvas.convert('RGB').save(out, optimize=True)
+    save_png(canvas, out)
 
 
 def _gif(frames, durs, out):
@@ -411,13 +449,13 @@ def _gif(frames, durs, out):
 
 def preview_move_gif(ships, imgs, out):
     cells = []
-    for k, d, sc in (('ferry', 'SE', 0.5), ('cargo_ship', 'SE', 0.42), ('trawler_big', 'NE', 0.5),
-                     ('tugboat', 'SE', 0.8), ('sailboat', 'NE', 0.8), ('yacht', 'SW', 0.8)):
+    for k, d, sc in (('ferry', 'SE', 0.42), ('cargo_ship', 'SE', 0.36), ('trawler_big', 'NE', 0.42),
+                     ('tugboat', 'SE', 0.7), ('sailboat', 'NE', 0.7), ('yacht', 'SW', 0.7)):
         if k in ships:
             cells.append((k, d, sc))
     if not cells:
         return
-    n = 12
+    n = 8
     fps = 8
     stills = {}
     boxes = {}

@@ -90,7 +90,7 @@ try {
     if (first) {
       s = await st();
       await shot('04b_chief_cooks');
-      step('(v3.5) the chief cooks at the grill (work motion, grill on)', s.ops.grill.chief && s.ops.grill.working && s.player.anim === 'harvest' && s.objective === 'obj_operating_grill', `${JSON.stringify(s.ops.grill)} anim=${s.player.anim} obj=${s.objective}`);
+      step('(v3.5) the chief cooks at the grill (work motion, grill on)', s.ops.grill.chief && s.ops.grill.working && s.player.anim === 'give' && s.objective === 'obj_operating_grill', `${JSON.stringify(s.ops.grill)} anim=${s.player.anim} obj=${s.objective}`);
     }
     await waitFor(page, () => { const s = window.__FV.state(); return s.stations.grill.in === 0 && !s.player.stack.includes('item_fish_raw'); }, 20000).catch(() => {});
     await sleep(700);

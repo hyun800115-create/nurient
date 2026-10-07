@@ -230,7 +230,7 @@ def _premix_harbor(seed: int):
                 strong = st in (0, 3)
                 acc = 0.86 if strong else 0.7
                 if kind == "A1":
-                    mx.add("mel", t0, I.marimba(m, song.vel(acc), r), 0.48, -0.1)
+                    mx.add("mel", t0, I.marimba(m, song.vel(acc), r), 0.44, -0.1)
                     mx.add("mbox", t0 + 0.004, I.musicbox(m + 12, song.vel(0.5), r), 0.14, 0.3)
                 elif kind in ("A2", "A4"):
                     mx.add("acc", t0, accordion(m, song.vel(acc), dur * 0.92, r), 0.6, -0.12)

@@ -27,7 +27,8 @@ const DIR8 = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 
 /** sounds / particles of each station's work: impact = the anim's impactFrame, beat = beats[1] */
 const OP_FX = {
-  grill:      { impact: { burst: 'flame', n: 2 }, beat: { sfx: 'sfx_sizzle', vol: 0.32, burst: 'smoke', n: 1 }, emote: 'emote_fish' },
+  // (v3.5 review: no smoke puff on the cook's catch beat — it hid his face)
+  grill:      { impact: { burst: 'flame', n: 2 }, beat: { sfx: 'sfx_sizzle', vol: 0.32 }, emote: 'emote_fish' },
   sawmill:    { impact: { sfx: 'sfx_saw_short', alt: 'sfx_saw', vol: 0.3, burst: 'wood', n: 5 }, beat: { burst: 'dust', n: 2 }, emote: 'emote_dots' },
   bakery:     { impact: { burst: 'flour', n: 5 }, beat: null, cycle: { sfx: 'sfx_oven', vol: 0.3, every: 3 }, emote: 'emote_bread' },
   smelter:    { impact: { sfx: 'sfx_hammer', vol: 0.32, burst: 'spark', n: 6 }, beat: { burst: 'spark', n: 2 }, emote: 'emote_dots' },

@@ -353,7 +353,8 @@ export class UI extends Phaser.Scene {
       this.whistleBtn.icon.setRotation(wig);
       // (v3.5 review) until the whistle was used once: it pulses, and a one-time tip says what it does
       const seen = this.gs.progress && this.gs.progress.seen;
-      if (seen && !seen.whistle) {
+      // (not during the first fish loop: one thing at a time)
+      if (seen && !seen.whistle && this.gs.tutorial && !this.gs.tutorial.inTutorial) {
         this.whistleHintT = (this.whistleHintT || 0) + dt;
         const k = 1 + Math.max(0, Math.sin(this.time.now / 220)) * 0.12;
         this.whistleBtn.setScale(k);

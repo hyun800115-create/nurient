@@ -130,6 +130,8 @@ export const Assets = {
     for (const k in this.m.atlases) if (!used.has(k) && /^(vil_|wkr_|char_)/.test(k)) this.unusedAtlas.add(k);
   },
   unusedAtlas: new Set(),
+  queued: new Set(),     // (v3.5 review) after-title files already handed to the loader
+  gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
   isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key); },
@@ -147,13 +149,19 @@ export const Assets = {
   queueAssets(load, opts = {}) {
     const m = this.m;
     // opts.lazy: only the after-title pictures (not loaded yet); otherwise everything else
-    const want = (k) => !this.isUnused(k) && (opts.lazy ? this.isLazy(k) && !this.fileDone(k) && (!opts.filter || opts.filter(k)) : !this.isLazy(k));
+    // (v3.5 review) lazy pictures the village does not need yet wait for `gate` (the Game decides: the
+    // 2nd / 3rd worker looks after the village is complete, the v3 buildings shortly before the first
+    // house plots) — less memory on the phone during the first part of the game
+    const want = (k) => !this.isUnused(k) && (opts.lazy
+      ? this.isLazy(k) && !this.fileDone(k) && !this.queued.has(k) && (!this.gate || this.gate(k)) && (!opts.filter || opts.filter(k))
+      : !this.isLazy(k));
     let n = 0;
-    for (const k in m.atlases) { const a = m.atlases[k]; if (a.png && a.json && want(k)) { load.atlas(k, BASE + a.png, BASE + a.json); n++; } }
-    for (const k in m.images) { const a = m.images[k]; if (a.png && want(k)) { load.image(k, BASE + a.png); n++; } }
+    const mark = (k) => { if (opts.lazy) this.queued.add(k); n++; };
+    for (const k in m.atlases) { const a = m.atlases[k]; if (a.png && a.json && want(k)) { load.atlas(k, BASE + a.png, BASE + a.json); mark(k); } }
+    for (const k in m.images) { const a = m.images[k]; if (a.png && want(k)) { load.image(k, BASE + a.png); mark(k); } }
     for (const k in m.spritesheets) {
       const a = m.spritesheets[k];
-      if (a.png && a.frameWidth && want(k)) { load.spritesheet(k, BASE + a.png, { frameWidth: a.frameWidth, frameHeight: a.frameHeight || a.frameWidth, endFrame: a.frameCount ? a.frameCount - 1 : -1 }); n++; }
+      if (a.png && a.frameWidth && want(k)) { load.spritesheet(k, BASE + a.png, { frameWidth: a.frameWidth, frameHeight: a.frameHeight || a.frameWidth, endFrame: a.frameCount ? a.frameCount - 1 : -1 }); mark(k); }
     }
     if (opts.audio !== false && !opts.lazy) this.queueAudio(load, opts.musicFilter);
     return n;

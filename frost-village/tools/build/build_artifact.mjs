@@ -50,6 +50,7 @@ const PACK_MAX = 4 * 1024 * 1024;          // bytes of source data per packs/ass
 const LIMITS = { files: 255, maxFiles: 511, total: 64 * 1024 * 1024, perFile: 16 * 1024 * 1024 };
 // Media types the host serves (anything else is skipped with a warning).
 const WEB_TYPES = new Set(['.html', '.js', '.json', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ogg', '.mp3', '.m4a', '.wav', '.css', '.txt', '.md', '.woff2']);
+const NEVER_LOADED = /^assets\/[^/]+\/bgm_spring\./;
 const JUNK = /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini|\..*)$|\.(py|pyc|blend|blend1|psd|kra|xcf|aup3)$/i;
 
 function loadEsbuild() {
@@ -413,6 +414,8 @@ async function main() {
   const copy = (src) => {
     const r = path.relative(ROOT, src).split(path.sep).join('/');
     if (JUNK.test(r)) { skipped.push(r + ' (not a game file)'); return; }
+    // (v3.5 review) made for a later version and never requested by the game (Assets.js V3_ONLY)
+    if (NEVER_LOADED.test(r)) { skipped.push(r + ' (not loaded by the game yet)'); return; }
     if (!WEB_TYPES.has(path.extname(src).toLowerCase())) { skipped.push(r + ' (unsupported type)'); return; }
     const dst = path.join(OUT, r);
     fs.mkdirSync(path.dirname(dst), { recursive: true });
@@ -492,6 +495,7 @@ async function main() {
     for (const kind of ['atlases', 'images', 'spritesheets']) for (const a of j[kind] || []) paths.push(a.png, a.json);
     for (const k in j.audio || {}) paths.push(...(j.audio[k].files || []));
     for (const p of paths.filter(Boolean)) {
+      if (NEVER_LOADED.test('assets/' + p)) continue;     // listed, but never requested by the game
       if (/^(\/|[a-z]+:)/i.test(p)) problems.push(`absolute URL in ${frag}/manifest.json: ${p}`);
       const fp = path.join(OUT, 'assets', p);
       referenced.add('assets/' + p);
@@ -546,7 +550,7 @@ async function main() {
   if (skipped.length) console.log('  skipped: ' + skipped.join(', '));
   if (unreferenced.length) console.log('  copied but not listed in any manifest: ' + unreferenced.join(', '));
   console.log(`\n  FILES: ${sizes.length} (limit ${LIMITS.files})   TOTAL: ${mb(total)} (limit 64 MB)   largest: ${mb(sizes[0].s)} (limit 16 MB)`);
-  console.log(`  a first visit downloads about ${mb(downloaded)} (one audio format)`);
+  console.log(`  every game file once (one audio format): ${mb(downloaded)} — a first visit loads only part of it before the title; the rest arrives while playing, as the village needs it`);
   console.log(`  file list for the Artifact tool: ${path.relative(process.cwd(), LIST_OUT)}`);
   if (problems.length) {
     console.log('\n[build] PROBLEMS:\n  - ' + problems.join('\n  - '));

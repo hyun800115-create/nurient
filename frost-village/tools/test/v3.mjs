@@ -39,15 +39,20 @@ try {
   await realSleep(400);
   await tapStart(page);
   await realWaitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 180000);
-  await realWaitFor(page, () => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites'), 90000).catch(() => {});
-  const afterStart = await ev(() => window.__FV.game.textures.exists('bld_buildings'));
-  step('buildings art loads lazily after the title', !atTitle && afterStart, `title=${atTitle} game=${afterStart}`);
+  // (v3.5 review) a new village does not need the v3 buildings (nor the 2nd / 3rd workers' looks) yet:
+  // they wait until the village gets there (less memory on the phone early on)
+  await realWaitFor(page, () => window.__FV.game.textures.exists('vil_npc_chef'), 90000).catch(() => {});
+  await realSleep(1500);
+  const early = await ev(() => ({ b: window.__FV.game.textures.exists('bld_buildings'), w: window.__FV.game.textures.exists('wkr_fisherman_b') }));
   await installStepper(page);
   await adv(1);
 
   // 2. fog wall: closed land cannot be walked into and the camera does not show it
   await ev(() => { window.__FV.unlockAll(); window.__FV.give(100000); });
-  await adv(2);
+  await adv(2.5);
+  await realWaitFor(page, () => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites') && window.__FV.game.textures.exists('wkr_fisherman_b'), 90000).catch(() => {});
+  const afterStart = await ev(() => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('wkr_fisherman_b'));
+  step('buildings / worker-variant art loads lazily: not at the title, not in a new village, then when needed', !atTitle && !early.b && !early.w && afterStart, `title=${atTitle} newVillage=${JSON.stringify(early)} later=${afterStart}`);
   let s = await st();
   const fog = await ev(() => { const gs = window.__FV.scene, T = gs.territory; return { east: !!T.regions.east.fog, south: !!T.regions.south.fog, walk: gs.collision.inWalk(2300, 1000), walkStart: gs.collision.inWalk(990, 1200), cam: T.camRect }; });
   step('fog walls stand before every closed land', fog.east && fog.south && !s.territory.east && !s.territory.south, JSON.stringify(fog));

@@ -133,7 +133,9 @@ try {
   await wait(() => window.__FV.state().dog.mode !== 'scene', 8, undefined, 0.2);
   const l3 = await love();
   step('fetch: throw -> the dog runs for the ball and brings it back (ball in its mouth)', thr === 'throw' && ranOut && back === 'run_ball' && l3 > l2, `throw=${thr} ran=${ranOut} back=${back} love ${l2} -> ${l3}`);
-  await adv(1.4);
+  // (the fetch button has its cooldown: balance.js dog.playCooldown)
+  await wait(() => window.__FV.state().dog.cd.play <= 0, 14, undefined, 0.25);
+  await adv(0.4);
   await tapUI(() => { const ui = window.__FV.game.scene.getScene('UI'); const q = ui.dogBtns[1]; return { x: ui.dogBar.x + q.b.x, y: ui.dogBar.y + q.b.y }; });
   const caught = await wait(() => { const s = window.__FV.state().dog; return s.dog && s.dog.anim === 'catch'; }, 4, undefined, 0.05);
   await adv(0.12);

@@ -35,6 +35,7 @@ const TAKE_KEY = { grill: 'obj_take', sawmill: 'obj_forest_3', bakery: 'obj_farm
 const ZONE_HINT_MAX = 90;      // s a zone's guided run may stay on screen
 const UPGRADE_HINT_MAX = 25;   // s the first-upgrade hint may stay on screen
 const IDLE_HINT = 3;           // s standing still before the "what next" arrow appears
+const IDLE_LATCH = 12;         // s an idle hint stays while the chief walks to it (review fix)
 
 export class Tutorial {
   constructor(gs) {
@@ -79,7 +80,13 @@ export class Tutorial {
     if (this.cashHint(set)) return;
     if (this.upgradeHint(set, dt)) return;
     if (this.zoneHint(set, dt)) return;
-    const idle = (gs.time.now - Input.lastActivity) / 1000 > IDLE_HINT && !gs.playerOnPad;
+    // (v3.5 review) "idle": standing still a few seconds (on a pad that does nothing, or a long while on
+    // any pad). The idle hints then stay while the chief walks to them (IDLE_LATCH s): before, the arrow
+    // vanished at his first step and a player who only follows the arrow was left with nothing
+    const still = (gs.time.now - Input.lastActivity) / 1000;
+    const baseIdle = still > IDLE_HINT && (!gs.playerOnPad || still > 8 || this.onDeadPad());
+    this.idleLatch = baseIdle ? IDLE_LATCH : Math.max(0, (this.idleLatch || 0) - dt);
+    const idle = baseIdle || this.idleLatch > 0;
     // (v3.5) a station nobody works / a full collection pile nobody carries
     if (this.labourHint(set, idle)) return;
     // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
@@ -88,8 +95,11 @@ export class Tutorial {
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
     if (prog.complete) goal = this.goalText();
     if (idle && this.nextAction(set, goal)) return;
-    // gentle hint: lots of coins waiting on a cash pad
-    for (const c of this.cashes()) if (c.value >= 40 && !c.pad.contains(p.x, p.y) && gdist(p.x, p.y, c.x, c.y) > 260) { set(c.x, c.y, 40, goal ? goal.key : null, goal ? goal.text : null); return; }
+    // gentle hint: lots of coins waiting on a cash pad (once shown it leads all the way there)
+    for (const c of this.cashes()) {
+      if (c.value >= 40 && !c.pad.contains(p.x, p.y) && (gdist(p.x, p.y, c.x, c.y) > 260 || this.cashLead === c)) { this.cashLead = c; set(c.x, c.y, 40, goal ? goal.key : null, goal ? goal.text : null); return; }
+    }
+    this.cashLead = null;
     // otherwise just name the next goal (no arrow)
     if (goal) { this.textKey = goal.key; this.text = goal.text; }
   }
@@ -112,6 +122,14 @@ export class Tutorial {
     tg.x = on.x; tg.y = on.y + 78; tg.h = 34;
     this.target = tg; this.textKey = 'obj_step_off'; this.text = null;
     return true;
+  }
+
+  /** (v3.5 review) the chief stands on an unlock / hire pad that takes nothing (step off first / no coins) */
+  onDeadPad() {
+    const gs = this.gs, p = gs.player, prog = gs.progress;
+    for (const id in prog.pads) { const q = prog.pads[id]; if (q.active && !q.done && q.pad.contains(p.x, p.y)) return q.needsLeave || gs.economy.coins <= 0 || q.remaining <= 0; }
+    for (const k in prog.upPads) { const q = prog.upPads[k]; if (q.active && q.pad.contains(p.x, p.y)) return q.needsLeave || q.maxed || q.done || gs.economy.coins <= 0; }
+    return false;
   }
 
   /** (v3.5) the coins customers left would buy the next pad (or there are a lot of them): pick them up */
@@ -397,7 +415,8 @@ export class Tutorial {
       else set(d.pad.x, d.pad.y, 60, d.key);
       return true;
     }
-    if (p.room <= 0) return false;
+    // (carrying raw items: those go on first — no mixed bag of fish and grilled fish)
+    if (p.room <= 0 || p.stack.items.some((it) => gs.stationByInput[it.type])) return false;
     let best = null;
     for (const st of gs.stationList) {
       if (!st.enabled || st.outStack.count < 6 || gs.porters.some((w) => w.station === st)) continue;
