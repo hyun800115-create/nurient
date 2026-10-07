@@ -55,6 +55,24 @@ for f in 01_title.jpg 05_carry_tower.jpg 07_customers_pay.jpg 13_forest_chop.jpg
   [ -f "$FV/docs/previews/screens/$f" ] && cp "$FV/docs/previews/screens/$f" "$OUT/docs/reference/previews/screens/"
 done
 
+# 미리보기 PNG 는 용량을 줄이려고 JPEG 로 바꾼다 (Pillow 가 있을 때만; 원본 PNG 는 서리마을 저장소에 그대로 있음)
+python3 - "$OUT/docs/reference/previews" <<'PY' || true
+import sys, os
+try:
+    from PIL import Image
+except ImportError:
+    sys.exit(0)
+d = sys.argv[1]
+for f in os.listdir(d):
+    if f.lower().endswith('.png'):
+        p = os.path.join(d, f)
+        im = Image.open(p).convert('RGBA')
+        bg = Image.new('RGBA', im.size, (232, 238, 246, 255))
+        bg.alpha_composite(im)
+        bg.convert('RGB').save(p[:-4] + '.jpg', quality=86, optimize=True)
+        os.remove(p)
+PY
+
 # 3) 전작 게임 전체 (도구 + 에셋 + 코드) — 캐시·빌드 결과·node_modules 제외
 REF="$OUT/reference/frost-village"
 mkdir -p "$REF"
