@@ -4,7 +4,6 @@
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
-import { DEPTH } from '../systems/DepthSort.js';
 
 export function freeStandPoint(node, fx, fy, out) {
   const base = Math.atan2((fy - node.y) * 2, fx - node.x);
@@ -221,7 +220,8 @@ export class Net extends Node {
     if (!this.ready()) return null;
     this.stock--;
     const gs = this.gs;
-    gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 60, this.y - 20, 6);
+    gs.effects.sheet('fx_splash', this.x + (Math.random() - 0.5) * 50, this.y - 14, { size: 90 });
+    gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 60, this.y - 20, 4);
     Audio.play('sfx_splash', { volume: by === gs.player ? 0.9 : 0.5 });
     return this.item;
   }

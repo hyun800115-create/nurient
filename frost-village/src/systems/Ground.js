@@ -101,18 +101,23 @@ export class Ground {
     const g = c.getContext('2d');
     g.fillStyle = pattern(g, 'water_shallow') || 'rgba(120,200,230,1)';
     g.fillRect(0, 0, W, h);
-    // keep a band ~130 px tall above the wavy shoreline, alpha ramping toward the beach
-    g.globalCompositeOperation = 'destination-in';
+    // keep a band ~130 px tall above the wavy shoreline, alpha ramping toward the beach.
+    // (build the mask separately: destination-in clears everything outside each drawn shape)
+    const m = document.createElement('canvas');
+    m.width = W; m.height = h;
+    const mg = m.getContext('2d');
     const band = 130;
     for (let x = 0; x < W; x += 6) {
       const sy = shoreY(x + 3);
-      const gr = g.createLinearGradient(0, sy - band, 0, sy + 6);
+      const gr = mg.createLinearGradient(0, sy - band, 0, sy + 6);
       gr.addColorStop(0, 'rgba(0,0,0,0)');
       gr.addColorStop(0.55, 'rgba(0,0,0,0.35)');
       gr.addColorStop(1, 'rgba(0,0,0,0.85)');
-      g.fillStyle = gr;
-      g.fillRect(x, sy - band, 6, band + 6);
+      mg.fillStyle = gr;
+      mg.fillRect(x, sy - band, 6, band + 6);
     }
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(m, 0, 0);
     g.globalCompositeOperation = 'source-over';
     return c;
   }

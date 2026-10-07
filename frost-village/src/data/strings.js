@@ -8,6 +8,8 @@ export const STRINGS = {
     title: '서리마을 개척기',
     subtitle: 'Frost Village',
     tapToStart: '탭하여 시작',
+    clickToStart: '클릭하여 시작',
+    pcHint: 'WASD · 방향키 · 마우스 드래그로 이동',
     loading: '불러오는 중…',
     continueHint: '이어서 하기',
 
@@ -57,6 +59,7 @@ export const STRINGS = {
     obj_hunt_3: '훈제 고기를 가져가세요',
     obj_hunt_4: '훈제 고기를 판매대에 놓으세요',
     obj_upgrade: '작업대에서 가방을 업그레이드하세요',
+    obj_next: '다음 목표: {name} ({cost} 코인)',
 
     // 발판 이름
     hire_fisherman: '어부 고용',
@@ -99,6 +102,8 @@ export const STRINGS = {
     title: 'Frost Village',
     subtitle: '서리마을 개척기',
     tapToStart: 'Tap to start',
+    clickToStart: 'Click to start',
+    pcHint: 'Move with WASD · arrow keys · mouse drag',
     loading: 'Loading…',
     continueHint: 'Continue',
 
@@ -145,6 +150,7 @@ export const STRINGS = {
     obj_hunt_3: 'Pick up the smoked meat',
     obj_hunt_4: 'Put the smoked meat on the counter',
     obj_upgrade: 'Upgrade your backpack at the workbench',
+    obj_next: 'Next goal: {name} ({cost} coins)',
 
     hire_fisherman: 'Hire Fisher',
     hire_lumberjack: 'Hire Lumberjack',

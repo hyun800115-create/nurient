@@ -4,8 +4,8 @@
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { Input } from '../core/Input.js';
-import { Save, Settings } from '../core/Save.js';
-import { isoPt, isoRect, gdist, gdist2, inIsoRect, AX, AY } from '../core/Iso.js';
+import { Save } from '../core/Save.js';
+import { isoPt, isoRect, gdist, gdist2, inIsoRect } from '../core/Iso.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
 import { FONT, t } from '../data/strings.js';
@@ -38,7 +38,7 @@ class UIProxy {
   coinFly(wx, wy, n) { const s = this.s; if (s) s.coinFly(wx, wy, n); }
   toast(msg) { const s = this.s; if (s) s.toast(msg); }
   banner(msg, sub) { const s = this.s; if (s) s.banner(msg, sub); }
-  setObjective(key, tg) { const s = this.s; if (s) s.setObjective(key, tg); }
+  setObjective(key, tg, text) { const s = this.s; if (s) s.setObjective(key, tg, text); }
   celebrate() { const s = this.s; if (s) s.celebrate(); }
 }
 
@@ -174,7 +174,7 @@ export class Game extends Phaser.Scene {
     img.__ob = ob;
     if (opts.zone) this.addToZone(opts.zone, img);
     this.statics.push(img);
-    if (/^tree_pine|lodge|hut|tent|mine_entrance|market|trade_post|station_|flag_pole/.test(key)) this.addOccluder(img);
+    if (/^tree_pine|lodge|hut|tent|mine_entrance|market|trade_post|station_/.test(key)) this.addOccluder(img);
     return img;
   }
 
@@ -182,7 +182,7 @@ export class Game extends Phaser.Scene {
   addOccluder(img) {
     const h = img.displayHeight * img.originY;
     const w = img.displayWidth;
-    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.3, top: h * 0.92, a: 1 });
+    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.4, top: h * 0.95, a: 1 });
   }
 
   updateOccluders(dt) {
@@ -271,6 +271,9 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.zones) {
       const z = WORLD.zones[id];
       if (inIsoRect(x, y, z.center[0], z.center[1], z.size[0] + 1.6, z.size[1] + 1.6)) return true;
+      // the canopy (~1.5-2.5 m above the trunk on screen) must not cover the zone either
+      if (inIsoRect(x, y - 90, z.center[0], z.center[1], z.size[0] + 0.6, z.size[1] + 0.6)) return true;
+      if (inIsoRect(x, y - 170, z.center[0], z.center[1], z.size[0], z.size[1])) return true;
     }
     for (const pts of WORLD.paths) {
       for (let i = 0; i < pts.length - 1; i++) {
@@ -786,15 +789,18 @@ export class Game extends Phaser.Scene {
         if (name === 'tree') { const tr = gs.trees.find((n) => n.ready()); return tr && tr.standPoint(tr.x + 60, tr.y + 30); }
         if (name === 'rock') { const n = gs.rocks.find((r) => r.ready()); return n && n.standPoint(n.x + 80, n.y + 60); }
         if (name === 'wheat') { const n = gs.wheat.find((r) => r.ready()); return n && n.standPoint(n.x - 60, n.y + 30); }
+        if (name === 'animal') { const n = gs.animals.find((a) => a.ready() && !a.targetedBy) || gs.animals.find((a) => a.ready()); return n && { x: Math.round(n.x - 30), y: Math.round(n.y + 10) }; }
         const o = m[name];
         return o ? { x: Math.round(o.x), y: Math.round(o.y) } : null;
       },
       camera(x, y, zoom) {
         const cam = gs.cameras.main;
-        if (zoom) cam.setZoom(zoom);
-        if (x !== undefined) gs.focusCamera(x, y, 1e9); else { gs.camFocus = null; cam.setZoom(BALANCE.camera.zoom); }
+        if (zoom) { cam.setZoom(zoom); if (zoom < 0.7) cam.removeBounds(); }
+        if (x !== undefined) gs.focusCamera(x, y, 1e9);
+        else { gs.camFocus = null; cam.setZoom(BALANCE.camera.zoom); cam.setBounds(0, 0, gs.W, gs.H); }
       },
       save() { gs.save(true); },
+      clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
       reset() { gs.resetProgress(); },
       warnings() { return Array.from(Assets.warned); },
     });

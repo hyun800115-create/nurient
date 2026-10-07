@@ -51,6 +51,11 @@ export class Player extends Character {
       this.vx = this.vy = 0;
       this.sprite.anims.timeScale = 1;
       this.stillT += dt;
+      if (this.node && this.node.kind !== 'tree' && this.node.kind !== 'rock' && this.node.kind !== 'wheat' && this.node.kind !== 'net') {
+        // moving targets (animals) must stay within reach
+        const dx = this.node.x - this.x, dy = (this.node.y - this.y) * 2;
+        if (dx * dx + dy * dy > Math.pow(BALANCE.player.gatherRange * 1.5, 2)) this.node = null;
+      }
       if (this.node && (!this.node.ready() || this.room <= 0)) {
         if (this.room <= 0) this.warnFull();
         this.node = null;

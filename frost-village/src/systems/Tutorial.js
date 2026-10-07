@@ -3,8 +3,8 @@
 
 import { Assets } from '../core/Assets.js';
 import { DEPTH } from './DepthSort.js';
-import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
+import { t, fmt } from '../data/strings.js';
 
 const ZONE_CHAINS = [
   { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'trade' },
@@ -34,16 +34,19 @@ export class Tutorial {
     const gs = this.gs, p = gs.player, prog = gs.progress, eco = gs.economy;
     const tg = this._tg;
     const set = (x, y, h, key) => { tg.x = x; tg.y = y; tg.h = h; this.target = tg; this.textKey = key; };
-    this.target = null; this.textKey = null;
+    this.target = null; this.textKey = null; this.text = null;
 
     const pad = prog.affordablePad(eco.coins);
-    if (pad && !pad.pad.contains(p.x, p.y)) { set(pad.x, pad.y, 70, this.inTutorial ? 'obj_unlock' : null); return; }
+    if (pad && !pad.pad.contains(p.x, p.y)) { set(pad.x, pad.y, 112, this.inTutorial ? 'obj_unlock' : null); return; }
     if (pad) return;
     if (!this.inTutorial) {
       if (this.zoneHint(set)) return;
       // gentle hint: lots of coins waiting on a cash pad
       const cashes = [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null];
       for (const c of cashes) if (c && c.value >= 40 && !c.pad.contains(p.x, p.y) && gdist(p.x, p.y, c.x, c.y) > 260) { set(c.x, c.y, 40, null); return; }
+      // otherwise just name the next goal (no arrow)
+      const nx = prog.nextPad();
+      if (nx && !prog.complete) { this.textKey = 'obj_next:' + nx.id + ':' + nx.remaining; this.text = t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }); }
       return;
     }
     const grill = gs.stations.grill, m = gs.market;
@@ -87,9 +90,9 @@ export class Tutorial {
     this.evalT -= dt;
     if (this.evalT <= 0) { this.evalT = 0.2; this.evaluate(); }
     const tg = this.target;
-    if (!tg) { this.arrow.setVisible(false); this.gs.ui.setObjective(this.textKey, null); return; }
+    if (!tg) { this.arrow.setVisible(false); this.gs.ui.setObjective(this.textKey, null, this.text); return; }
     const bounce = Math.abs(Math.sin(this.t * 4.2)) * 16;
     this.arrow.setVisible(true).setPosition(tg.x, tg.y - tg.h - bounce);
-    this.gs.ui.setObjective(this.textKey, tg);
+    this.gs.ui.setObjective(this.textKey, tg, this.text);
   }
 }

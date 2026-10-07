@@ -219,13 +219,14 @@ export class UI extends Phaser.Scene {
     this.time.delayedCall(6500, () => e.destroy());
   }
 
-  setObjective(key, tg) {
+  setObjective(key, tg, text) {
     this.objTarget = tg;
     if (key !== this.objKey) {
       this.objKey = key;
+      this.objCustom = text || null;
       if (!key) { this.objPanel.setVisible(false); }
       else {
-        this.objText.setText(t(key));
+        this.objText.setText(text || t(key));
         this.objBg.setSize(this.objText.width + 60, 62);
         this.objPanel.setVisible(true).setScale(0.8);
         this.tweens.add({ targets: this.objPanel, scale: 1, duration: 220, ease: 'Back.easeOut' });
@@ -279,8 +280,8 @@ export class UI extends Phaser.Scene {
       add(this.makeButton(cx, cy + 262, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
-      add(this.makeButton(cx, cy + 60, 360, 84, 'blue', t('yes'), () => { this.closeSettings(true); this.gs.resetProgress(); }, 30));
-      add(this.makeButton(cx, cy + 160, 360, 84, 'gray', t('no'), () => this.buildPanelContent(false), 30));
+      add(this.makeButton(cx, cy + 60, 360, 84, 'gray', t('yes'), () => { this.closeSettings(true); this.gs.resetProgress(); }, 30));
+      add(this.makeButton(cx, cy + 160, 360, 84, 'green', t('no'), () => this.buildPanelContent(false), 30));
     }
     const close = add(this.makeIconButton(cx + 250, cy - 290, 'ui_icon_close', 70, () => this.closeSettings()));
     void close;
@@ -304,7 +305,7 @@ export class UI extends Phaser.Scene {
     for (const id in gs.progress.pads) gs.progress.pads[id].refresh();
     for (const k in gs.progress.upPads) gs.progress.upPads[k].refresh();
     for (const id in gs.zones) { const z = gs.zones[id]; if (z.outline) z.outline.txt.setText(t(z.cfg.name)); }
-    if (this.objKey) { const k = this.objKey; this.objKey = null; this.setObjective(k, this.objTarget); }
+    if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
   }
 
   // ---------------------------------------------------------------- frame

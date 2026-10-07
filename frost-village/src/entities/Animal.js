@@ -63,11 +63,17 @@ export class Animal extends Character {
     Audio.play('sfx_hit_animal', { volume: 0.8 });
     this.sprite.setTintFill(0xffffff);
     gs.time.delayedCall(80, () => this.sprite.clearTint());
-    // startled hop away
-    this.state = 'flee';
-    this.t = 0.6;
-    const dx = this.x - by.x, dy = this.y - by.y, d = Math.hypot(dx, dy) || 1;
-    this.target.x = this.x + (dx / d) * 90; this.target.y = this.y + (dy / d) * 45;
+    if (by === gs.player) {
+      // caught by the chief: stunned on the spot (stars), easy to finish
+      this.state = 'stun'; this.t = 1.4;
+      this.vx = this.vy = 0;
+    } else {
+      // hit by an arrow: startled hop away
+      this.state = 'flee';
+      this.t = 0.6;
+      const dx = this.x - by.x, dy = this.y - by.y, d = Math.hypot(dx, dy) || 1;
+      this.target.x = this.x + (dx / d) * 90; this.target.y = this.y + (dy / d) * 45;
+    }
     if (this.hp > 0) return null;
     this.die();
     this.lastYield = BALANCE.resources.animal.meat;
@@ -106,7 +112,7 @@ export class Animal extends Character {
     const gs = this.gs, A = BALANCE.resources.animal;
     const p = gs.player;
     const pd = Math.hypot(p.x - this.x, (p.y - this.y) * 2);
-    if (pd < A.fleeRange && this.state !== 'flee' && p.vx * p.vx + p.vy * p.vy > 400) {
+    if (pd < A.fleeRange && this.state !== 'flee' && this.state !== 'stun' && p.vx * p.vx + p.vy * p.vy > 400) {
       this.state = 'flee'; this.t = 0.9;
       const dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy) || 1;
       this.target.x = this.x + (dx / d) * 130; this.target.y = this.y + (dy / d) * 65;
@@ -125,6 +131,9 @@ export class Animal extends Character {
     } else if (this.state === 'flee') {
       speed = A.fleeSpeed;
       if (this.t <= 0) { this.state = 'idle'; this.t = 0.8 + Math.random(); }
+    } else if (this.state === 'stun') {
+      if (this.t <= 0) { this.state = 'idle'; this.t = 0.5; }
+      else if (Math.random() < dt * 3) gs.effects.burst('star', this.x, this.y + this.headTop, 1);
     }
     if (speed > 0) {
       const dx = this.target.x - this.x, dy = this.target.y - this.y;

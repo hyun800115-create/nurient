@@ -102,7 +102,7 @@ export class Effects {
     s.setScale(size / (def.frameWidth || 128));
     s.setBlendMode(def.blend === 'ADD' ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
     s.setPosition(x, y).setDepth(opts.depth !== undefined ? opts.depth : DEPTH.FX);
-    s.play(anim);
+    s.play({ key: anim, repeat: 0 });   // one-shot even for looping sheets (loops use loop())
     s.once('animationcomplete', () => { s.setVisible(false); this.sheetPool.push(s); });
     return s;
   }

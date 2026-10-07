@@ -19,7 +19,7 @@ const step = (name, ok, info = '') => { results.push({ name, ok, info }); consol
 const srv = await start(0, { prefix: '/game/frost-village/' });   // sub-path on purpose
 const browser = await launch();
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 } });
-const shot = async (n) => { await page.screenshot({ path: path.join(OUT, n + '.png') }); };
+const shot = async (n) => { await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 82 }); };
 const st = () => page.evaluate(() => window.__FV.state());
 const where = (n) => page.evaluate((k) => window.__FV.where(k), n);
 const count = (s, type) => s.player.stack.filter((x) => x === type).length;
@@ -104,6 +104,7 @@ try {
   step('unlockAll', Object.values(s.zones).every(Boolean) && s.workers.length >= 5, `workers=${s.workers.length}`);
 
   // chop a tree
+  await page.evaluate(() => window.__FV.clearStack());
   await waitFor(page, () => window.__FV.where('tree'), 15000).catch(() => {});
   await walkTo(page, (await where('tree')) || (await where('zone:forest')), { tol: 10, teleport: true });
   await waitFor(page, () => window.__FV.state().player.stack.includes('item_log'), 8000).catch(() => {});
@@ -114,20 +115,31 @@ try {
   await walkTo(page, await where('sawmillIn'), { tol: 16 });
   await sleep(1500);
   await walkTo(page, await where('zone:farm'), { tol: 30 });
+  await page.evaluate(() => window.__FV.clearStack());
   await waitFor(page, () => window.__FV.where('wheat'), 15000).catch(() => {});
   await walkTo(page, (await where('wheat')) || (await where('zone:farm')), { tol: 10 });
   await waitFor(page, () => window.__FV.state().player.stack.includes('item_wheat'), 8000).catch(() => {});
   s = await st();
   step('harvesting gives wheat', s.player.stack.includes('item_wheat'), `anim=${s.player.anim}`);
   await shot('14_farm');
+  await page.evaluate(() => window.__FV.clearStack());
   await waitFor(page, () => window.__FV.where('rock'), 15000).catch(() => {});
   await walkTo(page, (await where('rock')) || (await where('zone:mine')), { tol: 10 });
   await waitFor(page, () => window.__FV.state().player.stack.includes('item_ore'), 8000).catch(() => {});
   s = await st();
   step('mining gives ore', s.player.stack.includes('item_ore'), `anim=${s.player.anim}`);
   await shot('15_mine');
-  await page.evaluate(() => { const z = window.__FV.where('zone:hunt'); window.__FV.teleport(z.x - 60, z.y + 40); });
-  await sleep(4000);
+  {
+    let caught = false;
+    await page.evaluate(() => window.__FV.clearStack());
+    for (let tries = 0; tries < 6 && !caught; tries++) {
+      const a = await page.evaluate(() => window.__FV.where('animal'));
+      if (!a) { await sleep(1500); continue; }
+      await page.evaluate(([x, y]) => window.__FV.teleport(x, y), [a.x, a.y]);
+      caught = await waitFor(page, () => window.__FV.state().player.stack.includes('item_meat_raw'), 5000).then(() => true).catch(() => false);
+    }
+    step('catching an animal gives meat', caught);
+  }
   await shot('16_hunt');
   await page.evaluate(() => { window.__FV.teleport(990, 2200); });
   await sleep(1200);
@@ -148,7 +160,7 @@ try {
   await shot('19_trade_post');
 
   // overview
-  await page.evaluate(() => window.__FV.camera(900, 1310, 0.27));
+  await page.evaluate(() => window.__FV.camera(900, 1300, 0.42));
   await sleep(1200);
   await shot('20_overview');
   await page.evaluate(() => window.__FV.camera());

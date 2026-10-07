@@ -181,7 +181,7 @@ export const WORLD = {
   decals: [
     ['decal_snow_drift_a', 360, 660, 1], ['decal_snow_drift_b', 1580, 700, 1], ['decal_snow_drift_a', 760, 1580, 1.1], ['decal_snow_drift_b', 1220, 1590, 1],
     ['decal_snow_drift_a', 1580, 2420, 1], ['decal_snow_drift_b', 330, 2440, 1], ['decal_puddle_ice', 1120, 1520, 1], ['decal_puddle_ice', 640, 2250, 0.9],
-    ['decal_dirt_patch', 540, 1800, 1.1], ['decal_dirt_patch', 300, 2120, 1], ['decal_dirt_patch', 700, 1200, 0.8],
+    ['decal_dirt_patch', 540, 1800, 1.1], ['decal_dirt_patch', 300, 2120, 1],
     ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
   ],
 };

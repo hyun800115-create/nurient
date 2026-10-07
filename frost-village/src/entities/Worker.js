@@ -167,7 +167,8 @@ export class Worker extends Character {
     const gs = this.gs, n = this.node;
     const ip = this.impactPoint();
     if (this.type === 'fisherman') {
-      gs.effects.burst('splash', ip.x, ip.y, 5);
+      if (gs.isOnScreen(ip.x, ip.y, 40)) gs.effects.sheet('fx_splash', ip.x, ip.y, { size: 70 });
+      gs.effects.burst('splash', ip.x, ip.y, 3);
       if (gs.isNear(this.x, this.y, 500)) Audio.play('sfx_splash', { volume: 0.35, throttle: 200 });
     }
     if (this.type === 'hunter') { this.shoot(n, ip); return; }

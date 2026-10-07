@@ -22,7 +22,7 @@ export class Title extends Phaser.Scene {
 
     // key art (with a soft shadow on the snow; the chief hops gently)
     const artY = H * 0.5;
-    const shadow = this.add.image(W / 2 + 8, artY + 160, 'fv_shadow').setDisplaySize(230, 54).setAlpha(0.9);
+    const shadow = this.add.image(W / 2 + 6, artY + 200, 'fv_shadow').setDisplaySize(220, 50).setAlpha(0.9);
     const art = Assets.image(this, W / 2, artY, 'portrait_player_512').setOrigin(0.5, 0.5);
     art.setScale(470 / Math.max(art.frame.realWidth, 1));
     this.tweens.add({ targets: art, y: artY - 14, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -54,7 +54,11 @@ export class Title extends Phaser.Scene {
     this.tweens.add({ targets: sub, alpha: 1, duration: 600, delay: 300 });
 
     // tap to start
-    const tap = this.add.text(W / 2, H * 0.93, t('tapToStart'), {
+    const touch = !!(this.sys.game.device.input.touch);
+    if (!touch) {
+      this.add.text(W / 2, H * 0.965, t('pcHint'), { fontFamily: FONT, fontSize: '22px', fontStyle: '700', color: '#2b2f3a', stroke: '#ffffff', strokeThickness: 5, resolution: 2 }).setOrigin(0.5);
+    }
+    const tap = this.add.text(W / 2, H * 0.92, t(touch ? 'tapToStart' : 'clickToStart'), {
       fontFamily: FONT, fontSize: '40px', fontStyle: '900', color: '#ffffff', stroke: '#2b2f3a', strokeThickness: 9, resolution: 2,
     }).setOrigin(0.5);
     this.tweens.add({ targets: tap, scale: 1.08, alpha: 0.75, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
