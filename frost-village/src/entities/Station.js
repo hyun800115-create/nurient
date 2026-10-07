@@ -12,7 +12,7 @@ export class Station {
     this.gs = gs; this.cfg = cfg; this.id = cfg.id;
     this.x = cfg.x; this.y = cfg.y;
     this.input = cfg.input; this.output = cfg.output;
-    this.bal = BALANCE.stations[cfg.id];
+    this.bal = cfg.bal || BALANCE.stations[cfg.id];
     this.enabled = true;
     const r = Assets.sprite(cfg.sprite);
     this.img = gs.add.sprite(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);
@@ -63,7 +63,7 @@ export class Station {
     this.inStack.layout(this.inPad.x, this.inPad.y + 6, this.inPad.y, 0, dt);
     this.outStack.layout(this.outPad.x, this.outPad.y + 6, this.outPad.y, 0, dt);
     if (!this.enabled) return;
-    const can = this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max;
+    const can = this.canWork();
     if (can) {
       this.idleT = 0;
       this.setWorking(true);
@@ -83,10 +83,14 @@ export class Station {
           if (this.id === 'grill') { this.gs.effects.burst('smoke', this.x + (Math.random() - 0.5) * 60, this.y - 40, 1); this.gs.effects.burst('flame', this.x + (Math.random() - 0.5) * 70, this.y - 28, 2); }
           if (this.id === 'sawmill') this.gs.effects.burst('wood', this.x + 10, this.y - 50, 3);
           if (this.id === 'smelter') this.gs.effects.burst('spark', this.x + 40, this.y - 60, 2);
+          if (this.workFx) this.workFx();
         }
       }
     }
   }
+
+  /** inputs there and room for the product? */
+  canWork() { return this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max; }
 
   process() {
     const gs = this.gs;

@@ -9,9 +9,10 @@ import { ItemStack } from './ItemStack.js';
 import { Character } from './Character.js';
 import { Register } from './Register.js';
 import { DEPTH } from '../systems/DepthSort.js';
+import { FOODS, GOODS, priceOf } from '../data/items.js';
+import { PRIO } from '../systems/Logistics.js';
 
-export const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
-export const GOODS = ['item_plank', 'item_ingot'];
+export { FOODS, GOODS };
 
 // ------------------------------------------------------------------ cash pad
 export class CashPad {
@@ -97,15 +98,22 @@ export class Market {
   constructor(gs, cfg) {
     this.gs = gs; this.cfg = cfg;
     this.x = cfg.x; this.y = cfg.y;
+    this.id = cfg.id || 'market';
+    this.goods = cfg.goods || FOODS;
+    this.enabled = true;
     this.img = Assets.image(gs, this.x, this.y, cfg.sprite).setDepth(this.y);
+    if (gs.lazyImage) gs.lazyImage(this.img, cfg.sprite);
     gs.addOccluder(this.img);
     const fp = Assets.def(cfg.sprite).footprint || [195, 97];
-    this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.44, 'market');
-    this.shelf = new Pad(gs, this.x + cfg.shelf[0], this.y + cfg.shelf[1], 'input', 1.6, { icon: 'item_fish_cooked', iconSize: 40 });
-    this.maxPerType = Math.max(1, Math.floor(BALANCE.customers.shelfMax) || 40);
+    const co = cfg.collider || [0, 0, 0.44];
+    this.obstacle = gs.collision.add(this.x + co[0], this.y + co[1], fp[0] * co[2], this.id);
+    this.shelf = new Pad(gs, this.x + cfg.shelf[0], this.y + cfg.shelf[1], 'input', 1.6, { icon: this.goods[0], iconSize: 40 });
+    this.maxPerType = Math.max(1, Math.floor(cfg.shelfMax || BALANCE.customers.shelfMax) || 40);
+    const tc = {};
+    this.goods.forEach((g, i) => { tc[g] = i; });
     this.stock = new ItemStack(gs, {
-      scale: 0.95, cols: [[-28, -2], [0, 10], [28, -2]],
-      typeCols: { item_fish_cooked: 0, item_bread: 1, item_meat_cooked: 2 }, max: this.maxPerType * FOODS.length,
+      scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]],
+      typeCols: tc, max: this.maxPerType * this.goods.length,
     });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.queue = [];      // customers in line (index 0 = front)
@@ -118,7 +126,26 @@ export class Market {
     // (v2) customers only pay and leave when someone stands at the register (the chief or a clerk)
     this.register = new Register(gs, this, cfg, cfg.sprite);
     this.waitPayT = 0;         // how long the front customer has been waiting to pay
+    // (v3) porters restock the shelf through logistics
+    this.sink = {
+      id: this.id + '_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
+      accepts: (ty) => this.goods.indexOf(ty) >= 0,
+      room: (ty) => (this.enabled ? Math.max(0, this.maxPerType - this.stock.countWithIncoming(ty)) : 0),
+      prio: (ty) => (this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
+      feed: (ch) => this.feedFrom(ch),
+    };
+    if (gs.logistics) gs.logistics.add(this.sink);
   }
+
+  setEnabled(v) {
+    this.enabled = v;
+    this.sink.enabled = v;
+    this.img.setVisible(v); this.shelf.setVisible(v); this.cash.setEnabled(v); this.stock.setVisible(v);
+    this.obstacle.active = v;
+    this.register.setEnabled(v);
+    for (const c of this.queue) { c.sprite.setVisible(v); c.shadow.setVisible(v); if (c.bubble) c.bubble.setVisible(v); }
+  }
+  revealObjects() { return [this.img, this.shelf.img, this.cash.pad.img].concat(this.register.revealObjects()); }
 
   /** the customer the cashier is serving (front of the line) */
   payTarget() { const f = this.queue[0]; return f && f.arrived ? f : null; }
@@ -133,7 +160,7 @@ export class Market {
     return ks;
   }
 
-  get maxQueue() { return Math.max(1, Math.floor(BALANCE.customers.maxQueue) || 6); }
+  get maxQueue() { return Math.max(1, Math.floor(this.cfg.maxQueue || BALANCE.customers.maxQueue) || 6); }
 
   /** queue slot i: straight back from the counter, then turning (queueTurn / queueStep2) so a long line stays on the plaza */
   slotPos(i) {
@@ -144,13 +171,13 @@ export class Market {
     return { x: this.x + c.queueStart[0] + c.queueStep[0] * a + s2[0] * b, y: this.y + c.queueStart[1] + c.queueStep[1] * a + s2[1] * b };
   }
 
-  accepts(type) { return FOODS.indexOf(type) >= 0 && this.stock.countOf(type) < this.maxPerType; }
+  accepts(type) { return this.goods.indexOf(type) >= 0 && this.stock.countOf(type) < this.maxPerType; }
 
   feedFrom(ch) {
     const gs = this.gs;
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const t = ch.stack.items[i].type;
-      if (FOODS.indexOf(t) >= 0 && this.stock.countOf(t) + this.stock.incoming < this.maxPerType) {
+      if (this.goods.indexOf(t) >= 0 && this.stock.countWithIncoming(t) < this.maxPerType) {
         return gs.moveItem(ch.stack, this.stock, t, { dur: 240, height: 60, sfx: 'drop' });
       }
     }
@@ -158,6 +185,7 @@ export class Market {
   }
 
   availableFoods() {
+    if (this.cfg.available) return this.cfg.available();
     const p = this.gs.progress;
     const list = ['item_fish_cooked'];
     if (p.isDone('zone_farm')) list.push('item_bread');
@@ -167,6 +195,7 @@ export class Market {
 
   makeWant() {
     const foods = this.availableFoods();
+    if (!foods.length) foods.push(this.goods[0]);
     // newest food is a bit more likely
     let type = foods[Math.floor(Math.random() * foods.length)];
     if (foods.length > 1 && Math.random() < 0.25) type = foods[foods.length - 1];
@@ -174,13 +203,36 @@ export class Market {
     const zones = this.gs.progress.zonesOpen();
     const lo = Math.max(1, Math.floor(b.wantMin) || 1);
     const maxW = Math.max(lo, Math.min(b.wantMaxLate, b.wantMax + Math.floor(zones / 2)) || lo);
-    const count = lo + Math.floor(Math.random() * (maxW - lo + 1));
+    let count = lo + Math.floor(Math.random() * (maxW - lo + 1));
+    if (this.cfg.wantMax) count = Math.min(count, this.cfg.wantMax);
     return { type, count };
+  }
+
+  /** (v3) the path a customer walks in on: the fixed entry path, or along the roads from where they appear */
+  entryPath(from, sp) {
+    if (this.cfg.entry) return this.cfg.entry.slice(Math.max(1, from)).map((p) => ({ x: p[0] + (Math.random() - 0.5) * 40, y: p[1] + (Math.random() - 0.5) * 20 }));
+    const end = this.slotPos(Math.min(this.maxQueue - 1, this.queue.length));
+    return this.gs.roads.route(sp ? sp.x : this.x, sp ? sp.y : this.y + 300, end.x, end.y, []).slice(0, -1);
+  }
+
+  /** (v3) the way home after shopping */
+  exitPath(c) {
+    if (this.cfg.exit) { const side = (Math.random() - 0.5) * 70; return this.cfg.exit.map((p) => ({ x: p[0] + side + (Math.random() - 0.5) * 20, y: p[1] + (Math.random() - 0.5) * 16 })); }
+    const h = c.home || this.spawnPoint();
+    return this.gs.roads.route(c.x, c.y, h.x, h.y, []);
   }
 
   /** where a new customer appears: the point of the entry path nearest the plaza that is off-screen */
   spawnPoint() {
-    const pts = this.cfg.entry, gs = this.gs;
+    const gs = this.gs;
+    if (!this.cfg.entry) {
+      // (v3) a road node of the open land, off-screen, not too near and not too far
+      const ns = gs.roads.nodes.filter((n) => n.edges.some((e) => gs.roads.usable(e)));
+      const cand = ns.filter((n) => { const d = Math.hypot(n.x - this.x, (n.y - this.y) * 2); return d > 500 && d < 2200 && !gs.isOnScreen(n.x, n.y, 80); });
+      const n = cand.length ? cand[Math.floor(Math.random() * cand.length)] : (ns.length ? ns[Math.floor(Math.random() * ns.length)] : { x: this.x - 400, y: this.y + 300 });
+      return { x: n.x, y: n.y, next: 1, visible: gs.isOnScreen(n.x, n.y, 80) };
+    }
+    const pts = this.cfg.entry;
     for (let i = pts.length - 1; i > 0; i--) {
       const [bx, by] = pts[i], [ax, ay] = pts[i - 1];
       const len = Math.hypot(bx - ax, by - ay) || 1;
@@ -206,7 +258,7 @@ export class Market {
     let x, y, next = 1, visible = false;
     if (atSlot !== undefined) { const s = this.slotPos(atSlot); x = s.x; y = s.y; }
     else { const sp = this.spawnPoint(); x = sp.x + (Math.random() - 0.5) * 30; y = sp.y; next = sp.next; visible = sp.visible; }
-    const c = new Customer(gs, this, key, x, y, this.makeWant(), next);
+    const c = new Customer(gs, this, key, x, y, this.makeWant(), next, atSlot === undefined ? { x, y } : null);
     this.queue.push(c);
     if (atSlot !== undefined) { c.state = 'wait'; c.path.length = 0; c.arrived = true; c.faceTo(this.x, this.y); c.showBubble(); }
     else if (visible) c.fadeIn();
@@ -216,13 +268,14 @@ export class Market {
   update(dt) {
     const gs = this.gs;
     this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
+    if (!this.enabled) return;
     this.cash.update(dt);
     this.register.update(dt);
     // spawn
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
-      this.spawnT = Math.max(0.3, Number(BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
-      if (this.queue.length < this.maxQueue) this.spawnCustomer();
+      this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
+      if (this.queue.length < this.maxQueue && (!this.cfg.available || this.availableFoods().length)) this.spawnCustomer();
     }
     // serve the front customer
     const front = this.queue[0];
@@ -231,7 +284,7 @@ export class Market {
       // never stall the line: whenever the wanted food is out but another food is on the shelf, take that one
       // (also for a customer who already got part of the order)
       if (front.need > 0 && this.stock.countOf(front.want.type) === 0) {
-        for (const f of FOODS) if (this.stock.countOf(f) > 0) { front.setWant(f); break; }
+        for (const f of this.goods) if (this.stock.countOf(f) > 0) { front.setWant(f); break; }
       }
       this.serveT -= dt;
       if (this.serveT <= 0 && front.need > 0 && this.stock.countOf(front.want.type) > 0) {
@@ -247,7 +300,7 @@ export class Market {
             const fi = front.flying.indexOf(type);
             if (fi >= 0) front.flying.splice(fi, 1);
             front.got++;
-            front.value += BALANCE.prices[type] || 1;
+            front.value += priceOf(type);
             front.bought.push(type);
             front.popBubble();
             if (gs.isNear(front.x, front.y, 600)) Audio.play('sfx_pickup', { volume: 0.4, rate: 1 + front.got * 0.08, throttle: 40 });
@@ -282,7 +335,7 @@ export class Market {
     const i = this.queue.indexOf(c);
     if (i >= 0) this.queue.splice(i, 1);
     this.leaving.push(c);
-    const value = c.value > 0 ? c.value : (BALANCE.prices[c.want.type] || 1) * c.want.count;
+    const value = c.value > 0 ? c.value : priceOf(c.want.type) * c.want.count;
     c.hideBubble();
     c.state = 'happy';
     c.happyT = 0.9;
@@ -290,7 +343,7 @@ export class Market {
     gs.effects.burst('heart', c.x, c.y + c.headTop - 4, 3);
     Audio.play('sfx_customer_happy', { volume: 0.7 });
     gs.time.delayedCall(200, () => { this.cash.add(value, c.x, c.y - 50); if (gs.isNear(c.x, c.y, 650)) Audio.play('sfx_cash', { volume: 0.55, throttle: 250 }); });
-    gs.events.emit('sold', value);
+    gs.events.emit(this.cfg.soldEvent || 'sold', value);
   }
 
   restoreQueue(n) {
@@ -300,8 +353,9 @@ export class Market {
 
 // ------------------------------------------------------------------ customer
 export class Customer extends Character {
-  constructor(gs, market, key, x, y, want, pathFrom = 1) {
+  constructor(gs, market, key, x, y, want, pathFrom = 1, home = null) {
     super(gs, key, x, y, { radius: 13, capacity: 10 });
+    this.home = home;
     this.market = market;
     this.want = want;
     this.need = want.count;
@@ -310,7 +364,7 @@ export class Customer extends Character {
     this.bought = [];      // item types handed over (carried home)
     this.flying = [];      // item types on their way from the shelf
     this.state = 'arrive';
-    this.path = market.cfg.entry.slice(Math.max(1, pathFrom)).map((p) => ({ x: p[0] + (Math.random() - 0.5) * 40, y: p[1] + (Math.random() - 0.5) * 20 }));
+    this.path = market.entryPath(pathFrom, home);
     this.arrived = false;
     this.speed = BALANCE.customers.speed * (0.88 + Math.random() * 0.24);
     this.bubble = null;
@@ -397,7 +451,8 @@ export class Customer extends Character {
             if (this.state === 'arrive') this.state = 'wait';
             this.arrived = true;
             this.vx = this.vy = 0;
-            this.faceTo(this.market.x + 40, this.market.y - 20);
+            const fd = this.market.cfg.faceTo || [40, -20];
+            this.faceTo(this.market.x + fd[0], this.market.y + fd[1]);
             this.play('idle');
             if (!this.bubbleShown && slot <= 2) this.showBubble();
           }
@@ -413,8 +468,7 @@ export class Customer extends Character {
           // walk away carrying what we bought
           const got = this.bought.length ? this.bought : [this.want.type];
           for (let i = 0; i < Math.min(6, got.length); i++) this.stack.push(got[i], null, gs.effects);
-          const side = (Math.random() - 0.5) * 70;
-          this.path = this.market.cfg.exit.map((p) => ({ x: p[0] + side + (Math.random() - 0.5) * 20, y: p[1] + (Math.random() - 0.5) * 16 }));
+          this.path = this.market.exitPath(this);
           this.speed *= 0.95 + Math.random() * 0.2;
         }
         break;
@@ -489,9 +543,19 @@ export class TradePost {
     this.register = new Register(gs, this, Object.assign({ avoid: cfg.merchant }, cfg), cfg.sprite);
     this.waitT = 0;
     this.waitIcon = null;
+    this.goods = GOODS;
+    this.sink = {
+      id: 'trade_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
+      accepts: (ty) => GOODS.indexOf(ty) >= 0,
+      room: (ty) => (this.enabled ? Math.max(0, this.maxPerType - this.stock.countWithIncoming(ty)) : 0),
+      prio: (ty) => (this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
+      feed: (ch) => this.feedFrom(ch),
+    };
+    if (gs.logistics) gs.logistics.add(this.sink);
   }
   setEnabled(v) {
     this.enabled = v;
+    if (this.sink) this.sink.enabled = v;
     this.img.setVisible(v); this.shelf.setVisible(v); this.cash.setEnabled(v);
     this.merchant.sprite.setVisible(v); this.merchant.shadow.setVisible(v);
     this.obstacle.active = v;
@@ -508,7 +572,7 @@ export class TradePost {
   feedFrom(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const t = ch.stack.items[i].type;
-      if (GOODS.indexOf(t) >= 0 && this.stock.countOf(t) + this.stock.incoming < this.maxPerType) {
+      if (GOODS.indexOf(t) >= 0 && this.stock.countWithIncoming(t) < this.maxPerType) {
         return this.gs.moveItem(ch.stack, this.stock, t, { dur: 240, height: 60, sfx: 'drop' });
       }
     }
@@ -545,8 +609,8 @@ export class TradePost {
         onDone: (s) => {
           this.flying[it.type]--;
           gs.effects.releaseItem(s);
-          this.cash.add(BALANCE.prices[it.type] || 1, m.x, m.y - 50);
-          gs.events.emit('traded', BALANCE.prices[it.type] || 1);
+          this.cash.add(priceOf(it.type), m.x, m.y - 50);
+          gs.events.emit('traded', priceOf(it.type));
         },
       });
       if (this.happyT <= 0) { m.play('happy', true); this.register.onPay(m); }

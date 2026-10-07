@@ -187,4 +187,80 @@ export const BALANCE = {
 
   // ── 저장 ─────────────────────────────────────────────────
   autosaveEvery: 5,           // 자동 저장 간격(초)
+
+  // =====================================================================
+  //  (v3) 생산 사슬과 땅 넓히기
+  // =====================================================================
+  // ── 망루: 코인을 내면 공사가 시작되고, 자재(판자·주괴)가 모두 오면 지어져 불이 켜지며 눈안개가 걷힘
+  //    coins = 발판에서 내는 코인, item_plank / item_ingot = 공사장에 날라야 하는 자재 개수, time = 짓는 시간(초)
+  towers: {
+    tower_east:  { coins: 300,  item_plank: 10, item_ingot: 0, time: 7 },    // 1. 동쪽 해안
+    tower_south: { coins: 1100, item_plank: 16, item_ingot: 4, time: 9 },    // 2. 남쪽 들판
+    tower_se:    { coins: 2600, item_plank: 22, item_ingot: 8, time: 10 },   // 3. 동남쪽 언덕
+  },
+  // ── 건물: 빈 부지에 서서 고르면 코인을 내고, 자재가 오면 비계 → 완성
+  //    people = 집에 살 수 있는 주민 수
+  buildings: {
+    toolsmith: { coins: 400,  item_plank: 8,  item_ingot: 4, time: 9 },     // 대장간 (도구 만들기)
+    warehouse: { coins: 600,  item_plank: 14, item_ingot: 4, time: 10 },    // 창고 (넘치는 물건 보관)
+    boathouse: { coins: 700,  item_plank: 12, item_ingot: 2, time: 10 },    // 보트 창고 (배 사기)
+    cannery:   { coins: 1000, item_plank: 12, item_ingot: 6, time: 10 },    // 통조림 공장
+    store:     { coins: 1300, item_plank: 16, item_ingot: 6, time: 10 },    // 잡화점
+    house_c:   { coins: 80,   item_plank: 6,  item_ingot: 0, time: 6, people: 2 },   // 뾰족집 (2명)
+    house_a:   { coins: 160,  item_plank: 10, item_ingot: 0, time: 7, people: 3 },   // 통나무집 (3명)
+    house_b:   { coins: 320,  item_plank: 10, item_ingot: 3, time: 8, people: 4 },   // 돌집 (4명)
+  },
+  // ── 인구: 처음부터 살 수 있는 주민 수 (이보다 많으면 집을 지어야 이사 옴; 강아지·고양이·펭귄은 세지 않음)
+  population3: {
+    baseCap: 19,
+  },
+  // ── 도구가 있어야 고용되는 두 번째 일꾼 (코인 + 도구 1개를 발판에 가져와야 함)
+  hire2: {
+    hire2_lumberjack: 600,    // 나무꾼 2 (도끼)
+    hire2_miner: 900,         // 광부 2 (곡괭이)
+    hire2_farmer: 800,        // 농부 2 (낫)
+    hire2_fisherman: 500,     // 어부 2 (낚싯대)
+    hire2_hunter: 1200,       // 사냥꾼 2 (활)
+  },
+  // ── 새 가게·가공소 직원
+  costs3: {
+    porter_toolsmith: 700,    // 도구 짐꾼 (도구를 발판·잡화점으로)
+    porter_cannery: 900,      // 통조림 짐꾼 (통조림을 잡화점으로)
+    porter_dock: 600,         // 생선 짐꾼 (배가 잡아 온 생선을 통조림 공장·그릴로)
+    hire_clerk_store: 400,    // 잡화점 점원
+  },
+  // ── 새 가공소: time = 한 번 만드는 시간(초), inputMax = 재료 종류별 최대, outputMax = 완성품 최대
+  stations3: {
+    toolsmith: { time: 3.0, inputMax: 8, outputMax: 12 },   // 판자 1 + 주괴 1 → 도구 1
+    cannery:   { time: 2.6, inputMax: 18, outputMax: 30 },  // 생선 3 (참치는 1마리 = 생선 3) + 주괴 1 → 통조림 3
+  },
+  // ── 새 물건 가격 (잡화점, 1개당 코인)
+  prices3: {
+    item_can: 12,             // 통조림
+    item_axe: 40, item_pickaxe: 40, item_rod: 40, item_sickle: 40, item_bow: 40,   // 도구
+  },
+  // ── 광산 식량 상자
+  food: {
+    boxMax: 20,               // 식량 상자에 들어가는 최대 개수 (빵 + 훈제 고기)
+    orePerFood: 5,            // 광부가 광석을 이만큼 캘 때마다 식량 1개를 먹음
+    startGift: 6,             // 식량 상자가 처음 생길 때 들어 있는 빵
+  },
+  // ── 창고
+  warehouse: {
+    capacity: 300,            // 창고에 넣을 수 있는 물건 개수 (모든 종류 합)
+    porters: 2,               // 창고에 딸린 짐꾼 수
+    overflowAt: 0.6,          // 가공소 출구가 이만큼(0~1) 차면 창고 짐꾼이 창고로 옮김
+    restockBelow: 0.25,       // 판매대가 이만큼(0~1)보다 비면 창고에서 꺼내 채움
+  },
+  // ── 배: 보트 창고에서 사고, 어부가 바다에 나가 고기를 잡아 옴
+  boats: {
+    rowboat: { coins: 700, speed: 70, fishTime: 12, fish: 6, big: 0 },                       // 나룻배
+    fishing: { coins: 1800, speed: 100, fishTime: 8, fish: 4, big: 4, tool: 'item_rod' },    // 어선 (코인 + 낚싯대)
+    dockTime: 2.5,            // 부두에서 짐을 내리고 다시 나가기까지(초)
+  },
+  // ── 건설
+  build: {
+    builders: 2,              // 공사장에 오는 목수 수
+    porterCapacity: 10,       // 창고 짐꾼이 한 번에 나르는 개수
+  },
 };

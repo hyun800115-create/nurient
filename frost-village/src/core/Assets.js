@@ -9,13 +9,19 @@ import { Placeholders } from './Placeholders.js';
 
 export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'buildings', 'ui2', 'audio2'];
 // pictures of these fragments are loaded after the title, in the background
-export const LAZY_FRAGMENTS = ['villagers', 'villagers2'];
-// only the manifest data of these is used for now (v2 reads the sellers' staff points; the v3
-// buildings themselves are not shown yet, so their pictures are not downloaded)
-export const MANIFEST_ONLY_FRAGMENTS = ['buildings'];
+// (v3: the buildings — construction stages, new workshops, boats — come in while the village plays)
+export const LAZY_FRAGMENTS = ['villagers', 'villagers2', 'buildings'];
+// ...except these small files the village needs right away (item icons: stacks are never placeholders)
+const EAGER_KEYS = new Set(['bld_items']);
+// v3 effect sheets that only play during construction / boat trips / tower fires: also after the title
+const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big)$/;
+// (v2 read only the staff points of the buildings fragment; v3 loads all of it)
+export const MANIFEST_ONLY_FRAGMENTS = [];
 const BASE = 'assets/';
-// made for v3 / v4 (territory fog, construction, boats, build menu, spring music): v2 does not use them
-const V3_ONLY = /^(fog_|fx_build|fx_wake|fx_fire_big|ui_card|bgm_spring|sfx_(hammer|build_done|saw_short|boat_horn|row|tower_fire|fog_clear))/;
+// made for v4 (the spring ending): not used yet, never loaded
+const V3_ONLY = /^(bgm_spring)/;
+// v3 sounds that are only needed once the village is running (loaded after the title)
+const V3_SFX = /^sfx_(hammer|build_done|saw_short|boat_horn|row|tower_fire|fog_clear)/;
 
 /** the fragment list actually requested: the artifact build can narrow it to the folders it ships */
 export function activeFragments() {
@@ -108,7 +114,14 @@ export const Assets = {
   },
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0; },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key); },
+
+  /** a static picture whose atlas is still on its way (after the title) */
+  pending(key) {
+    const def = this.m.sprites[key];
+    const f = def && (def.atlas || def.image);
+    return !!(f && this.isLazy(f) && !this.fileDone(f));
+  },
 
   /** loaded (or failed for good)? */
   fileDone(key) { const g = this.game; return this.failed.has(key) || !!(g && g.textures.exists(key)); },
@@ -128,10 +141,10 @@ export const Assets = {
     return n;
   },
 
-  /** queue the after-title pictures; characters in `first` go to the front of the queue */
-  queueLazy(load, first = []) {
+  /** queue the after-title pictures; characters in `first` (and files in `firstKeys`) go to the front of the queue */
+  queueLazy(load, first = [], firstKeys = []) {
     let n = 0;
-    const order = [];
+    const order = firstKeys.slice();
     for (const c of first) { const d = this.m.characters[c]; if (d && d.atlas) order.push(d.atlas); }
     const firstSet = new Set(order);
     n += this.queueAssets(load, { lazy: true, filter: (k) => firstSet.has(k) });
@@ -150,7 +163,9 @@ export const Assets = {
       for (const c in this.m.characters) { const d = this.m.characters[c]; if (d && d.atlas === key && !this.built[c]) this.buildCharacter(g, c); }
     }
     for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.image === key) this.cache.delete(sk); }
+    for (const fn of this.arrivals) { try { fn(key); } catch (e) { /* keep loading */ } }
   },
+  arrivals: [],      // callbacks (file key) when an after-title file arrived (Game re-skins its pictures)
 
   /** characters whose atlas is still on its way */
   charPending(key) {
@@ -197,10 +212,10 @@ export const Assets = {
   },
 
   /** in-game music & ambience load after the title (in the Game scene) so the title appears sooner */
-  isDeferredAudio(key) { return /^(bgm_village|amb_|sfx_lute)/.test(key); },
+  isDeferredAudio(key) { return /^(bgm_village|amb_|sfx_lute)/.test(key) || V3_SFX.test(key); },
   /** music not used yet (v4 spring ending): never loaded, so it costs nothing */
   isUnusedAudio(key) { return V3_ONLY.test(key); },
-  /** pictures / sounds made for v3 (fog, construction, boats) that v2 does not show: not downloaded yet */
+  /** files made for a later version (v4): not downloaded yet */
   isUnused(key) { return V3_ONLY.test(key); },
 
   /**
@@ -359,6 +374,11 @@ export const Assets = {
     if (r) return r;
     const tex = this.game.textures;
     const def = this.m.sprites[key];
+    if (this.pending(key)) {
+      // its atlas loads after the title: an invisible stand-in until it arrives (Game re-applies it)
+      if (!tex.exists('fv_blank')) { const c = tex.createCanvas('fv_blank', 2, 2); if (c) c.refresh(); }
+      return { tex: 'fv_blank', frame: undefined, anchor: def.anchor || [0.5, 0.5], def, pending: true };
+    }
     if (def) {
       if (def.atlas && tex.exists(def.atlas) && tex.get(def.atlas).has(def.frame)) r = { tex: def.atlas, frame: def.frame, anchor: def.anchor || [0.5, 0.5], def };
       else if (def.image && tex.exists(def.image)) r = { tex: def.image, frame: undefined, anchor: def.anchor || [0.5, 0.5], def };

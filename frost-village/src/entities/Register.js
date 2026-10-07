@@ -35,11 +35,22 @@ export class Register {
     this.label = lab;
     this.labelBaseY = this.y - 46;
     this.refresh();
-    // where a clerk stands: the art's staff point (buildings manifest) or our own offset
-    const sd = Assets.def(art + '_staff');
+    // where a clerk stands: the art's staff point (buildings manifest: `<art>_staff` for the v1 stalls,
+    // the building's own staffPoints for the v3 shops) or our own offset
+    const sd0 = Assets.def(art + '_staff'), ad = Assets.def(art);
+    const sd = sd0 && Array.isArray(sd0.staffPoints) ? sd0 : ad;
     const sp = sd && Array.isArray(sd.staffPoints) && sd.staffPoints.find((q) => Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1]) && (!cfg.avoid || gdist(seller.x + q[0], seller.y + q[1], seller.x + cfg.avoid[0], seller.y + cfg.avoid[1]) > 40));
     const so = sp || cfg.staff || off;
     this.staff = { x: seller.x + so[0], y: seller.y + so[1] };
+    this.staffDir = sd && Array.isArray(sd.staffDirs) ? sd.staffDirs[0] : null;
+    // (v3) a clerk standing INSIDE a shop (staffDepth "front"): shop at depth d, clerk d + 0.5, then the
+    // shop's front overlay (its counter) at d + 1 so the counter hides the clerk's legs
+    this.frontDepth = sd && sd.staffDepth === 'front' ? seller.y + 0.5 : null;
+    this.overlay = null;
+    if (ad && ad.overlay && Assets.m.sprites[ad.overlay]) {
+      this.overlay = Assets.image(gs, seller.x, seller.y, ad.overlay).setDepth(seller.y + 1);
+      if (gs.lazyImage) gs.lazyImage(this.overlay, ad.overlay);
+    }
     this.clerkKeys = cfg.clerk || ['npc_aunt'];
     this.clerk = null;
     this.chief = false;
@@ -59,10 +70,11 @@ export class Register {
     this.enabled = v;
     const show = v && !this.clerk;
     this.pad.setVisible(show); this.label.setVisible(show);
+    if (this.overlay) this.overlay.setVisible(v);
     if (this.clerk) { this.clerk.sprite.setVisible(v); this.clerk.shadow.setVisible(v); }
   }
 
-  revealObjects() { return this.clerk ? [this.pad.img] : [this.pad.img, this.label]; }
+  revealObjects() { const o = this.clerk ? [this.pad.img] : [this.pad.img, this.label]; if (this.overlay) o.push(this.overlay); return o; }
 
   /** returns true while the chief stands on the pad */
   update(dt) {
@@ -123,6 +135,7 @@ export class Clerk extends Character {
   constructor(gs, register, key, x, y) {
     super(gs, key, x, y, { radius: 13, dir: 1 });
     this.register = register;
+    this.onImpact = () => { if (this.pendingRing) this.ring(); };
     this.state = 'go';
     this.serveT = 0;
     this.idleT = 2 + Math.random() * 4;
@@ -148,13 +161,30 @@ export class Clerk extends Character {
     else { const f = this.register.seller.front; this.faceTo(this.x + (f ? f[0] : -40), this.y + (f ? f[1] : 20)); }
   }
 
-  /** a customer paid: hand the goods over (serve anim) + register sound */
+  /** a customer paid: hand the goods over (serve anim); the register rings at the hand-over frame */
   serve(who) {
     const gs = this.gs;
     if (who) this.faceTo(who.x, who.y);
     this.play('serve', true);
     this.serveT = Math.max(0.5, Assets.animDuration(this.key, 'serve'));
+    const ad = this.def.anims[this.animRes];
+    if (this.animRes === 'serve' && ad && ad.impactFrame !== undefined) this.pendingRing = true;
+    else this.ring();
+  }
+
+  /** cha-ching (serve's impactFrame = the moment the bag is handed over) */
+  ring() {
+    const gs = this.gs;
+    this.pendingRing = false;
     gs.sfxAt(Assets.audioDef('sfx_register') ? 'sfx_register' : 'sfx_cash', this.x, this.y, { volume: 0.5, throttle: 200 });
+    if (gs.isOnScreen(this.x, this.y, 60)) { const ip = this.impactPoint(); gs.effects.burst('coin', ip.x, ip.y - 4, 2); }
+  }
+
+  /** depth: inside a shop the clerk sits between the shop and its counter overlay */
+  sync(dt) {
+    super.sync(dt);
+    const fd = this.register ? this.register.frontDepth : null;
+    if (fd !== null && fd !== undefined && this.state === 'post' && this.sprite.depth !== fd) this.sprite.setDepth(fd);
   }
 
   update(dt) {
@@ -180,7 +210,7 @@ export class Clerk extends Character {
       }
     } else {
       this.vx = this.vy = 0;
-      if (this.serveT > 0) { this.serveT -= dt; if (this.serveT <= 0) { this.faceFront(); this.play('idle'); } }
+      if (this.serveT > 0) { this.serveT -= dt; if (this.serveT <= 0) { if (this.pendingRing) this.ring(); this.faceFront(); this.play('idle'); } }
       else {
         this.idleT -= dt;
         if (this.idleT <= 0) {

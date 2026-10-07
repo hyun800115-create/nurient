@@ -12,6 +12,9 @@ const ZONES = {
   farm:   { center: [1410, 1270], size: [8, 8],     floor: 'ground_farm',  unlock: 'zone_farm',   name: 'z_farm' },
   mine:   { center: [430, 1900],  size: [9, 9],     floor: 'ground_rock',  unlock: 'zone_mine',   name: 'z_mine' },
   hunt:   { center: [1400, 1960], size: [8.5, 8.5], floor: 'ground_dirt',  unlock: 'zone_hunt',   name: 'z_hunt', floorAlpha: 0.45 },
+  // (v3) 새 땅의 밭·채석장: 그 땅(region)이 열리면 함께 보임 (잠금 발판 없음)
+  field2: { center: [560, 3060],  size: [6.6, 6.6], floor: 'ground_farm',  unlock: null, region: 'south', name: 'z_field2' },
+  quarry: { center: [2560, 2060], size: [6.6, 6.6], floor: 'ground_rock',  unlock: null, region: 'se',    name: 'z_quarry' },
 };
 
 /** zone-local metres -> screen px [x, y] */
@@ -36,12 +39,28 @@ const smokehouse = Z('hunt', -1.8, 1.6);
 
 const rel = (a, b) => [b[0] - a[0], b[1] - a[1]];
 
+// 바닷가 선 (y 값보다 위쪽이 바다). WORLD.shore 의 숫자로 계산합니다.
+//   (v3) slope: 동쪽(from 보다 오른쪽)으로 갈수록 해안선이 아래로 내려감 = 동쪽 해안 (배 창고가 있는 곳)
+export function shoreY(x) {
+  const s = WORLD.shore;
+  let y = s.base;
+  for (const [a, f, ph] of s.waves) y += a * Math.sin(x * f + ph);
+  const sl = s.slope;
+  if (sl) {
+    const d = x - sl.from;
+    if (d > 0) y += d < sl.knee ? (sl.k * d * d) / (2 * sl.knee) : sl.k * (d - sl.knee / 2);
+  }
+  return y;
+}
+
 export const WORLD = {
-  width: 1800,
-  height: 2620,
+  // (v3) 전체 지도 크기. 처음 마을은 왼쪽 위 1800 x 2620 이고, 나머지는 눈안개(망루를 세우면 열림)
+  width: 3000,
+  height: 3600,
 
   // 바닷가: y 값보다 위쪽이 바다. 물결 모양 = base + Σ amp*sin(x*freq + phase)
-  shore: { base: 372, waves: [[16, 0.0052, 0.4], [7, 0.0165, 1.7], [3, 0.041, 0.2]] },
+  //   slope: x 가 from 보다 크면 해안선이 k 비율로 내려감 (knee = 부드럽게 꺾이는 길이 px)
+  shore: { base: 372, waves: [[16, 0.0052, 0.4], [7, 0.0165, 1.7], [3, 0.041, 0.2]], slope: { from: 1880, knee: 220, k: 0.5 } },
 
   player: { x: 935, y: 520 },          // 시작 위치
   // 첫 판매(튜토리얼) 동안 카메라가 비추는 곳: 그물·그릴·판매대·손님 줄이 한 화면에 들어오도록
@@ -141,9 +160,13 @@ export const WORLD = {
       forest_link: [772, 1148], farm_link: [1196, 1158],
       cross_n: [990, 1440], forest_gate: [790, 1300], farm_gate: [1180, 1320],
       green: [990, 1700], cross_s: [990, 2040], mine_gate: [790, 1950], hunt_gate: [1170, 1980],
-      village: [990, 2240], tents_w: [620, 2380], tents_e: [1360, 2380], gate: [990, 2560], gate_out: [990, 2700],
+      village: [990, 2240], tents_w: [620, 2380], tents_e: [1360, 2380], gate: [990, 2560],
       forest_in: [690, 1290], farm_in: [1290, 1290], mine_in: [700, 1960], hunt_in: [1260, 1980],
       beach_w: [690, 610], beach_n: [1000, 500], beach_e: [1300, 572], plaza_e: [1335, 905], gap_n: [1078, 556],
+      // (v3) 새 땅의 길 (망루를 세워 그 땅이 열리면 생김)
+      east_link: [1600, 930], east_gate: [1830, 950], e_mid: [2120, 980], e_dock: [2270, 790], e_east: [2560, 1180], e_south: [2330, 1290],
+      s_gate: [990, 2760], s_cross: [990, 3020], s_w: [600, 3150], s_e: [1360, 3110], s_s: [990, 3420],
+      se_n: [2330, 1650], se_c: [2330, 2330], se_s: [2320, 3000], se_gate: [1830, 2400], se_e: [2700, 2420],
     },
     edges: [
       ['plaza_c', 'plaza_s', { draw: false }], ['plaza_c', 'plaza_sw', { draw: false }], ['plaza_c', 'plaza_se', { draw: false }],
@@ -160,10 +183,17 @@ export const WORLD = {
       ['cross_s', 'mine_gate', { via: [[880, 2000]] }], ['cross_s', 'hunt_gate', { via: [[1090, 2010]] }],
       ['cross_s', 'village'],
       ['village', 'tents_w', { via: [[800, 2330]] }], ['village', 'tents_e', { via: [[1180, 2330]] }],
-      ['village', 'gate'], ['gate', 'gate_out', { walk: false }],
+      ['village', 'gate'],
       // 구역 안 길 (구역이 열리면 나타남)
       ['forest_gate', 'forest_in', { zone: 'forest' }], ['farm_gate', 'farm_in', { zone: 'farm' }],
       ['mine_gate', 'mine_in', { zone: 'mine' }], ['hunt_gate', 'hunt_in', { zone: 'hunt' }],
+      // (v3) 새 땅의 길: region = 이 땅이 열려야 생김
+      ['plaza_e', 'east_link', { region: 'east' }], ['east_link', 'east_gate', { region: 'east' }], ['east_gate', 'e_mid', { region: 'east' }],
+      ['e_mid', 'e_dock', { region: 'east', via: [[2200, 880]] }], ['e_mid', 'e_south', { region: 'east', via: [[2230, 1150]] }], ['e_south', 'e_east', { region: 'east' }],
+      ['gate', 's_gate', { region: 'south' }], ['s_gate', 's_cross', { region: 'south' }], ['s_cross', 's_w', { region: 'south', via: [[800, 3080]] }],
+      ['s_cross', 's_e', { region: 'south', via: [[1180, 3060]] }], ['s_cross', 's_s', { region: 'south' }],
+      ['e_south', 'se_n', { region: 'se' }], ['se_n', 'se_c', { region: 'se', via: [[2360, 2000]] }], ['se_c', 'se_s', { region: 'se', via: [[2300, 2650]] }],
+      ['tents_e', 'se_gate', { region: 'se', via: [[1600, 2400]] }], ['se_gate', 'se_c', { region: 'se', via: [[2080, 2360]] }], ['se_c', 'se_e', { region: 'se' }],
     ],
   },
   paths: null,   // (자동: 위 roads 에서 그리는 길만 모아 만듦)
@@ -213,9 +243,11 @@ export const WORLD = {
     ['snow_pile_b', ...Z('hunt', 0.4, -3.4), { zone: 'hunt' }],
   ],
 
-  // 가장자리 소나무 숲 (장식, 벨 수 없음): 자동 배치 영역 [x0, y0, x1, y1, 간격]
+  // 가장자리 소나무 숲 (장식, 벨 수 없음): 자동 배치 영역 [x0, y0, x1, y1, 간격, (v3) 이 땅이 열려야 보임]
   borderTrees: [
     [0, 420, 150, 2620, 100], [1650, 420, 1800, 2620, 100], [0, 2560, 760, 2620, 115], [1180, 2560, 1800, 2620, 115],
+    [2880, 300, 3000, 1500, 100, 'east'], [2880, 1500, 3000, 3600, 100, 'se'], [1800, 3520, 3000, 3600, 115, 'se'],
+    [0, 2620, 150, 3600, 100, 'south'], [0, 3520, 1800, 3600, 115, 'south'],
   ],
   // 그 밖에 흩어진 소나무 [x, y, 종류] (구역 안이나 길 위면 자동으로 빠짐)
   extraTrees: [
@@ -224,6 +256,13 @@ export const WORLD = {
     [1660, 1640, 'tree_pine_snow'], [760, 2220, 'tree_pine_a'], [1540, 2300, 'tree_pine_snow'], [330, 2330, 'tree_pine_b'],
     [600, 2570, 'tree_pine_snow'], [1340, 2580, 'tree_pine_a'], [180, 2260, 'tree_pine_a'], [1700, 2230, 'tree_pine_b'],
     [1240, 2260, 'tree_pine_a'], [520, 2240, 'tree_pine_snow'],
+    // (v3) 새 땅의 소나무 [x, y, 종류, 땅]
+    [1960, 1380, 'tree_pine_a', 'east'], [2120, 1420, 'tree_pine_snow', 'east'], [1900, 760, 'tree_pine_b', 'east'], [2480, 860, 'tree_pine_snow', 'east'],
+    [2700, 840, 'tree_pine_a', 'east'], [2250, 1440, 'tree_pine_b', 'east'],
+    [300, 2780, 'tree_pine_snow', 'south'], [180, 3150, 'tree_pine_a', 'south'], [1650, 2760, 'tree_pine_b', 'south'], [1700, 3050, 'tree_pine_snow', 'south'],
+    [1250, 3500, 'tree_pine_a', 'south'], [480, 3450, 'tree_pine_b', 'south'], [880, 2820, 'tree_pine_a', 'south'], [1550, 3480, 'tree_pine_snow', 'south'],
+    [1980, 1700, 'tree_pine_snow', 'se'], [2700, 1700, 'tree_pine_a', 'se'], [2850, 2250, 'tree_pine_b', 'se'], [1950, 2650, 'tree_pine_a', 'se'],
+    [2600, 3400, 'tree_pine_snow', 'se'], [2000, 3400, 'tree_pine_b', 'se'], [2820, 2950, 'tree_pine_a', 'se'], [2150, 2150, 'tree_pine_snow', 'se'],
   ],
 
   // 바닥 데칼 [키, x, y, 크기배율, 회전(도)]
@@ -233,6 +272,76 @@ export const WORLD = {
     ['decal_dirt_patch', 560, 1720, 0.9], ['decal_dirt_patch', 300, 2120, 1],
     ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
   ],
+
+  // ── (v3) 땅 넓히기 ───────────────────────────────────────
+  //  rect: [왼쪽 x, 위 y, 오른쪽 x, 아래 y]. 처음엔 start 만 보이고, 나머지는 눈안개로 덮여 있음.
+  //  tower: 이 땅을 여는 망루, center: 안개가 걷힐 때 카메라가 비추는 곳
+  territory: {
+    start: { rect: [0, 0, 1800, 2620] },
+    east:  { rect: [1800, 0, 3000, 1500], tower: 'tower_east', name: 'r_east', center: [2330, 1020] },
+    south: { rect: [0, 2620, 1800, 3600], tower: 'tower_south', name: 'r_south', center: [960, 3060] },
+    se:    { rect: [1800, 1500, 3000, 3600], tower: 'tower_se', name: 'r_se', center: [2360, 2420] },
+  },
+  // 망루 공사장 (x, y = 망루 중심). 비용 발판은 공사장 앞(자재 내려놓는 곳)에 생김
+  //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
+  towers: {
+    tower_east:  { x: 1730, y: 820, region: 'east' },
+    tower_south: { x: 1140, y: 2460, region: 'south' },
+    tower_se:    { x: 2580, y: 1360, region: 'se', in: 'east' },
+  },
+  // 빈 건설 부지: size S(2x2m, 집) / M(3x3m, 모든 건물) / L(4x4m, 모든 건물 + 장식)
+  //   region: 이 땅이 열리면 나타남, after: 이 단계를 마치면 나타남, only: 이 건물만 지을 수 있음,
+  //   shore: (바닷가 부지) 해안선에서 이만큼 아래 (y 대신)
+  plots: {
+    v_house1: { x: 1520, y: 2300, size: 'S', region: 'start', after: 'hire_miner' },
+    v_house2: { x: 430, y: 2310, size: 'S', region: 'start', after: 'hire_miner' },
+    e_dock:   { x: 2330, shore: 46, size: 'M', region: 'east', only: 'boathouse' },
+    e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east' },
+    e_m2:     { x: 2640, y: 1010, size: 'M', region: 'east' },
+    e_s1:     { x: 2780, y: 1300, size: 'S', region: 'east' },
+    s_m1:     { x: 1360, y: 2880, size: 'M', region: 'south' },
+    s_m2:     { x: 1480, y: 3300, size: 'M', region: 'south' },
+    s_l1:     { x: 720, y: 3360, size: 'L', region: 'south' },
+    s_s1:     { x: 1160, y: 3320, size: 'S', region: 'south' },
+    se_m1:    { x: 2700, y: 2700, size: 'M', region: 'se' },
+    se_l1:    { x: 2040, y: 2930, size: 'L', region: 'se' },
+    se_s1:    { x: 2600, y: 3160, size: 'S', region: 'se' },
+    se_s2:    { x: 2060, y: 1820, size: 'S', region: 'se' },
+  },
+  // 새 땅의 자원: 벨 수 있는 소나무, 광석 바위, 밀밭 (그 땅이 열리면 나타남)
+  regionTrees: [
+    // 동쪽 해안 숲
+    [2760, 1040, 'tree_pine_a', 'east'], [2850, 1110, 'tree_pine_snow', 'east'], [2740, 1150, 'tree_pine_b', 'east'], [2830, 1220, 'tree_pine_a', 'east'],
+    [2900, 1330, 'tree_pine_snow', 'east'], [2950, 1180, 'tree_pine_b', 'east'], [2930, 1420, 'tree_pine_a', 'east'],
+    // 남쪽 들판의 작은 숲
+    [240, 2900, 'tree_pine_snow', 'south'], [330, 2990, 'tree_pine_a', 'south'], [230, 3060, 'tree_pine_b', 'south'], [320, 3240, 'tree_pine_snow', 'south'],
+    // 동남쪽 언덕 숲
+    [2770, 1900, 'tree_pine_a', 'se'], [2860, 1990, 'tree_pine_snow', 'se'], [2780, 2090, 'tree_pine_b', 'se'], [2880, 2140, 'tree_pine_a', 'se'],
+  ],
+  regionRocks: [
+    [...Z('quarry', -1.6, -0.6), 'rock_ore'], [...Z('quarry', 0.4, -1.8), 'rock_ore_b'], [...Z('quarry', 1.6, 0.2), 'rock_ore'],
+    [...Z('quarry', -0.6, 1.4), 'rock_ore_b'], [...Z('quarry', -1.9, -2.2), 'rock_ore'],
+  ],
+  regionWheat: { zone: 'field2', origin: Z('field2', 0, 0), rows: 3, cols: 3, step: 1.6 },
+
+  // (v3) 광산 식량 상자: 광부가 빵·훈제 고기를 먹어야 광석을 캠
+  foodBox: { ...P('mine', -1.9, 3.3) },
+  // (v3) 도구가 있어야 고용되는 두 번째 일꾼 / 새 짐꾼 / 잡화점 점원 발판 (x, y)
+  pads2: {
+    hire2_fisherman:  { x: 760, y: 560, worker: 'fisherman', tool: 'item_rod' },
+    hire2_lumberjack: { ...P('forest', 1.4, 3.6), worker: 'lumberjack', tool: 'item_axe' },
+    hire2_farmer:     { ...P('farm', -2.4, 2.8), worker: 'farmer', tool: 'item_sickle' },
+    hire2_miner:      { ...P('mine', -1.8, 2.0), worker: 'miner', tool: 'item_pickaxe' },
+    hire2_hunter:     { ...P('hunt', 0.2, 3.3), worker: 'hunter', tool: 'item_bow' },
+  },
+  // 보트 창고 기준 위치 (px): 배 사기 발판, 배가 나가는 바닷길 (정박 지점 기준), 고기 잡는 곳
+  boathouse: {
+    boatPad: [-196, 52],
+    route: [[90, -110], [190, -250], [230, -420]],
+    fishArea: [240, -470, 150],
+  },
+  // 두 번째 일꾼이 쉬는 곳 (첫 일꾼 자리에서 이만큼 떨어짐)
+  worker2Offset: [52, 26],
 
   // ── 마을 생활 (v2, docs/주민기획.md) ─────────────────────
   life: {
@@ -293,8 +402,15 @@ export const WORLD = {
   },
 };
 
-// paths to draw on the snow = road edges that are drawn, walkable or not, and belong to no zone
-WORLD.paths = WORLD.roads.edges.filter((e) => !(e[2] && (e[2].draw === false || e[2].zone))).map((e) => {
+// paths to draw on the snow = road edges that are drawn, walkable or not, and belong to no zone / new land
+WORLD.paths = WORLD.roads.edges.filter((e) => !(e[2] && (e[2].draw === false || e[2].zone || e[2].region))).map((e) => {
   const N = WORLD.roads.nodes;
   return [N[e[0]]].concat((e[2] && e[2].via) || [], [N[e[1]]]);
 });
+// (v3) every drawn road, also the ones of zones / new land (decor trees keep clear of them)
+WORLD.allPaths = WORLD.roads.edges.filter((e) => !(e[2] && e[2].draw === false)).map((e) => {
+  const N = WORLD.roads.nodes;
+  return [N[e[0]]].concat((e[2] && e[2].via) || [], [N[e[1]]]);
+});
+// (v3) plots on the shore: y follows the shoreline
+for (const id in WORLD.plots) { const pl = WORLD.plots[id]; if (pl.shore !== undefined && pl.y === undefined) pl.y = Math.round(shoreY(pl.x) + pl.shore); }

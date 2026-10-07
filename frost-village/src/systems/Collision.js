@@ -1,7 +1,7 @@
 // Static obstacle collision in "ground space" (y doubled, so 2:1 footprint ellipses become circles).
 // A uniform grid keeps queries cheap. Moving agents call resolve() after integrating velocity.
 
-import { WORLD } from '../data/world.js';
+import { shoreY as worldShoreY } from '../data/world.js';
 
 const CELL = 160;
 
@@ -12,6 +12,7 @@ export class Collision {
     this.grid = new Array(this.cols * this.rows);
     for (let i = 0; i < this.grid.length; i++) this.grid[i] = [];
     this.all = [];
+    this.walk = null;     // (v3) walkable rects [[x0, y0, x1, y1], ...] of the revealed land (null = whole map)
     this._shoreCache = new Float32Array(Math.ceil(w / 8) + 2);
     for (let i = 0; i < this._shoreCache.length; i++) this._shoreCache[i] = shoreY(i * 8);
   }
@@ -27,9 +28,28 @@ export class Collision {
     return o;
   }
 
+  /**
+   * (v3) the land that is revealed (Territory). open: the open regions' rects; inner: walkable rects
+   * (for pushing someone back out of the fog); edge: how far from the fog people stay (px)
+   */
+  setWalkable(open, inner, edge) { this.walk = open && open.length ? open : null; this.inner = inner || open || []; this.edge = edge || 46; }
+
+  inOpen(x, y) {
+    const w = this.walk;
+    for (let i = 0; i < w.length; i++) { const r = w[i]; if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) return true; }
+    return false;
+  }
+
+  /** inside the revealed land, and not right at the fog's edge? */
+  inWalk(x, y) {
+    if (!this.walk) return true;
+    const e = this.edge;
+    return this.inOpen(x, y) && this.inOpen(x - e, y) && this.inOpen(x + e, y) && this.inOpen(x, y - e) && this.inOpen(x, y + e);
+  }
+
   /** true if a circle of radius `rad` at (x, y) overlaps an active obstacle or leaves the walkable area */
   blocked(x, y, rad, ignore) {
-    if (x < 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46) return true;
+    if (x < 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46 || !this.inWalk(x, y)) return true;
     const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
     if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return true;
     const cell = this.grid[cy * this.cols + cx];
@@ -72,13 +92,20 @@ export class Collision {
     if (p.y < minY) { p.y = minY; hit = true; }
     if (p.x < 40) { p.x = 40; hit = true; } else if (p.x > this.w - 40) { p.x = this.w - 40; hit = true; }
     if (p.y > this.h - 40) { p.y = this.h - 40; hit = true; }
+    // (v3) the fog: back into the nearest piece of revealed land
+    if (this.walk && !this.inWalk(p.x, p.y)) {
+      let bx = p.x, by = p.y, bd = Infinity;
+      for (const r of this.inner) {
+        const cx = Math.max(r[0], Math.min(r[2], p.x)), cy = Math.max(r[1], Math.min(r[3], p.y));
+        const d = (cx - p.x) * (cx - p.x) + (cy - p.y) * (cy - p.y) * 4;
+        if (d < bd) { bd = d; bx = cx; by = cy; }
+      }
+      p.x = bx; p.y = Math.max(by, this.shore(bx) + 46);
+      hit = true;
+    }
     return hit;
   }
 }
 
-export function shoreY(x) {
-  const s = WORLD.shore;
-  let y = s.base;
-  for (const [a, f, ph] of s.waves) y += a * Math.sin(x * f + ph);
-  return y;
-}
+// the shoreline lives in data/world.js (v3: it bends south along the east coast)
+export const shoreY = worldShoreY;
