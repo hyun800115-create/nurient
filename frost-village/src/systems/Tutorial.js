@@ -58,6 +58,13 @@ export class Tutorial {
     const tg = this._tg;
     const set = (x, y, h, key, text) => { tg.x = x; tg.y = y; tg.h = h; this.target = tg; this.textKey = key; this.text = text || null; };
     this.target = null; this.textKey = null; this.text = null;
+    // (v3.5 review) "idle": standing still a few seconds (on a pad that does nothing, or a long while on
+    // any pad). The idle hints then stay while the chief walks to them (IDLE_LATCH s): before, the arrow
+    // vanished at his first step and a player who only follows the arrow was left with nothing
+    const still = (gs.time.now - Input.lastActivity) / 1000;
+    const baseIdle = still > IDLE_HINT && (!gs.playerOnPad || still > 8 || this.onDeadPad());
+    this.idleLatch = baseIdle ? IDLE_LATCH : Math.max(0, (this.idleLatch || 0) - dt);
+    const idle = baseIdle || this.idleLatch > 0;
 
     const pad = prog.affordablePad(eco.coins, p);
     // (v2) customers waiting at an empty register come before buying things (the line is stuck)
@@ -80,13 +87,6 @@ export class Tutorial {
     if (this.cashHint(set)) return;
     if (this.upgradeHint(set, dt)) return;
     if (this.zoneHint(set, dt)) return;
-    // (v3.5 review) "idle": standing still a few seconds (on a pad that does nothing, or a long while on
-    // any pad). The idle hints then stay while the chief walks to them (IDLE_LATCH s): before, the arrow
-    // vanished at his first step and a player who only follows the arrow was left with nothing
-    const still = (gs.time.now - Input.lastActivity) / 1000;
-    const baseIdle = still > IDLE_HINT && (!gs.playerOnPad || still > 8 || this.onDeadPad());
-    this.idleLatch = baseIdle ? IDLE_LATCH : Math.max(0, (this.idleLatch || 0) - dt);
-    const idle = baseIdle || this.idleLatch > 0;
     // (v3.5) a station nobody works / a full collection pile nobody carries
     if (this.labourHint(set, idle)) return;
     // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
@@ -117,9 +117,10 @@ export class Tutorial {
       if (!on) for (const k in prog.upPads) { const q = prog.upPads[k]; if (q.active && !q.done && !q.maxed && q.needsLeave && q.remaining > 0 && q.remaining <= gs.economy.coins && q.pad.contains(p.x, p.y)) { on = q; break; } }
     }
     if (!on) return false;
-    // the arrow bounces just beside the pad: one step there, then back on
+    // the arrow bounces just below the pad (clear of it, so it does not hide the chief standing there):
+    // one step there, then back on. (a hire pad's diamond reaches ~45 px below its centre)
     const tg = this._tg;
-    tg.x = on.x; tg.y = on.y + 78; tg.h = 34;
+    tg.x = on.x; tg.y = on.y + 118; tg.h = 34;
     this.target = tg; this.textKey = 'obj_step_off'; this.text = null;
     return true;
   }
@@ -141,7 +142,12 @@ export class Tutorial {
     let next = Infinity;
     for (const id in prog.pads) { const pd = prog.pads[id]; if (pd.active && !pd.done && pd.remaining > 0) next = Math.min(next, pd.remaining); }
     for (const k in prog.upPads) { const u = prog.upPads[k]; if (u.active && !u.done && !u.maxed && u.remaining > 0) next = Math.min(next, u.remaining); }
-    if (!((coins < next && coins + total >= next) || total >= 300)) return false;
+    // (v3.5 verify) "a lot of coins lying around" no longer pulls the chief back while he can already pay
+    // for the next building on the main path: late in v3 the cash pads refill faster than he walks to a
+    // far plot, and an arrow-only player bounced between the coins and the plot for minutes (5000+ in hand)
+    const g = prog.nextGoal();
+    const canBuild = !!(g && g.kind === 'build' && !gs.isBuilding(g.id) && !gs.isBuilt(g.id) && coins >= (buildCost(g.id).coins || 0));
+    if (!((coins < next && coins + total >= next) || (total >= 300 && !canBuild))) return false;
     if (best.pad.contains(p.x, p.y)) return false;
     set(best.x, best.y, 40, 'obj_cash');
     return true;

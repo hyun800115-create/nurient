@@ -249,6 +249,9 @@ try {
   await page.evaluate(() => window.__FV.clearStack());
   await waitFor(page, () => window.__FV.where('rock'), 15000).catch(() => {});
   await walkTo(page, (await where('rock')) || (await where('zone:mine')), { tol: 10 });
+  // (the chief does not mine while the smelter is full both ways, nor with something else in his hands
+  //  picked up on the way — e.g. ingots from the smelter's output pad: make room, empty his hands)
+  await page.evaluate(() => { const gs = window.__FV.scene, st = gs.stations.smelter; st.inStack.clear(gs.effects); st.outStack.clear(gs.effects); window.__FV.clearStack(); });
   await waitFor(page, () => window.__FV.state().player.stack.includes('item_ore'), 8000).catch(() => {});
   s = await st();
   step('mining gives ore', s.player.stack.includes('item_ore'), `anim=${s.player.anim}`);
@@ -265,6 +268,10 @@ try {
       caught = await page.evaluate(() => {
         if (window.__FV.state().player.stack.includes('item_meat_raw')) return true;
         const a = window.__FV.where('animal'), p = window.__FV.scene.player;
+        // (a straight-line chase can end at the hunting ground's fence: after ~2.5 s without moving, hop next to the animal)
+        const c = window.__chase || (window.__chase = { x: p.x, y: p.y, n: 0 });
+        if (Math.hypot(p.x - c.x, p.y - c.y) < 3) c.n++; else { c.n = 0; c.x = p.x; c.y = p.y; }
+        if (c.n > 25 && a) { window.__FV.teleport(a.x - 70, a.y + 30); c.n = 0; }
         if (!a) window.__FV.setInput(0, 0);
         else {
           const dx = a.x - p.x, dy = a.y - p.y, d = Math.hypot(dx, dy * 2), l = Math.hypot(dx, dy) || 1;

@@ -50,7 +50,10 @@ try {
   // 2. fog wall: closed land cannot be walked into and the camera does not show it
   await ev(() => { window.__FV.unlockAll(); window.__FV.give(100000); });
   await adv(2.5);
-  await realWaitFor(page, () => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites') && window.__FV.game.textures.exists('wkr_fisherman_b'), 90000).catch(() => {});
+  // (the game loop sleeps under the fixed-step clock, and Phaser's loader only starts queued files beyond
+  //  its parallel limit on a scene update: give it that nudge while waiting, without advancing game time —
+  //  on a busy machine the residents' files are still loading here and the gated ones would wait forever)
+  await realWaitFor(page, () => { const L = window.__FV.scene.load; if (L && L.isLoading()) L.update(); return window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites') && window.__FV.game.textures.exists('wkr_fisherman_b'); }, 90000).catch(() => {});
   const afterStart = await ev(() => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('wkr_fisherman_b'));
   step('buildings / worker-variant art loads lazily: not at the title, not in a new village, then when needed', !atTitle && !early.b && !early.w && afterStart, `title=${atTitle} newVillage=${JSON.stringify(early)} later=${afterStart}`);
   let s = await st();

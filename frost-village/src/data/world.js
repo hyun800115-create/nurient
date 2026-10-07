@@ -115,7 +115,8 @@ export const WORLD = {
   // extra: (v3.5) a few more pines [mx, my] (zone metres) so three lumberjacks find work in the forest
   trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, extra: [[0.6, -3.4], [1.0, -0.6], [1.8, -2.4]], avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [sawmill[0] - 72, sawmill[1] + 36, 120], [sawmill[0] - 120, sawmill[1] + 84, 80], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
   rocks: [
-    [...Z('mine', -2.6, -0.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
+    // (v3.5 리뷰: 첫 바위를 울타리 옆(-2.6, -0.4)에서 광산 안쪽으로 — 북쪽에서 오면 울타리에 막혔어요)
+    [...Z('mine', 1.0, -1.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
     [...Z('mine', 0.9, -3.2), 'rock_ore'], [...Z('mine', -0.6, 0.6), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
     [...Z('mine', -1.2, -3.9), 'rock_ore'],
   ],
@@ -406,7 +407,7 @@ export const WORLD = {
       fish:  { x: 772, y: 532, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'barrel', propAt: [-52, -18], zone: 'plaza' },
       log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
       wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
-      ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [52, 6], propR: 24, zone: 'mine' },
+      ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [46, -30], propR: 24, zone: 'mine' },   // (v3.5 리뷰: 상자를 뒤로 — 서쪽 바위로 가는 길을 막지 않게)
       meat:  { ...P('hunt', 2.6, -0.6), item: 'item_meat_raw', station: 'smokehouse', worker: 'hunter', prop: 'rack', propAt: [-84, -4], labelY: -100, zone: 'hunt' },
     },
   },

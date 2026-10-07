@@ -176,16 +176,30 @@ export function sanitizeSave(raw) {
   return s;
 }
 
+/** (v3.5 review) keep a copy of a save the game cannot use: the backup slot, or a second slot when the
+ *  backup already holds a different one (an older copy is never overwritten by a newer unreadable save) */
+function keepCopy(st, raw) {
+  if (!raw) return;
+  const b = st.getItem(BACKUP_KEY);
+  if (!b) st.setItem(BACKUP_KEY, raw);
+  else if (b !== raw) st.setItem(BACKUP_KEY + '.2', raw);
+}
+
 export const Save = {
   /** the saved game (sanitized), or null for a fresh start. Other versions are migrated or backed up first. */
   load() {
     let s = readJSON(SAVE_KEY);
-    if (!s || typeof s !== 'object') return null;
+    if (!s || typeof s !== 'object') {
+      // (v3.5 review) a save that is there but cannot be read (cut off, not JSON): keep a copy before the
+      // next autosave overwrites it
+      try { const st = getStore(); const raw = st && st.getItem(SAVE_KEY); if (raw) keepCopy(st, raw); } catch (e) { /* ignore */ }
+      return null;
+    }
     let v = typeof s.v === 'number' ? s.v : -1;
     while (v !== SAVE_VERSION && MIGRATE[v]) { try { s = MIGRATE[v](s); v = s.v; } catch (e) { break; } }
     if (v !== SAVE_VERSION) {
-      // unknown / future version: keep a copy (once) before the next autosave overwrites it
-      try { const st = getStore(); if (st && !st.getItem(BACKUP_KEY)) st.setItem(BACKUP_KEY, st.getItem(SAVE_KEY)); } catch (e) { /* ignore */ }
+      // unknown / future version: keep a copy before the next autosave overwrites it
+      try { const st = getStore(); if (st) keepCopy(st, st.getItem(SAVE_KEY)); } catch (e) { /* ignore */ }
       return null;
     }
     return sanitizeSave(s);
