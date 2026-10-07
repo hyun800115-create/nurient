@@ -8,7 +8,7 @@
 #   --zip  : 대상폴더 옆에 <대상폴더>.zip 도 만든다.
 #
 # 결과 구조 (새 저장소 루트 기준):
-#   CLAUDE.md, README.md, .gitignore
+#   CLAUDE.md, README.md, 지시서.md, 명령어모음.md, .gitignore
 #   docs/handoff/        01~07 문서 (작업방식, 도구, 파이프라인, 교훈, 새 기획)
 #   docs/reference/      전작 계약서·기획서·제작보고서·미리보기 일부
 #   reference/frost-village/   전작 게임 전체 (index.html, lib, src, assets, tools) — 실행 가능한 원본
@@ -29,6 +29,7 @@ echo "[kit] 대상: $OUT"
 # 1) 안내서
 cp "$HERE/CLAUDE.md" "$OUT/CLAUDE.md"
 cp "$HERE/README.md" "$OUT/README.md"
+for f in 지시서.md 명령어모음.md; do [ -f "$HERE/$f" ] && cp "$HERE/$f" "$OUT/$f"; done
 cat > "$OUT/.gitignore" <<'EOF'
 node_modules/
 __pycache__/
