@@ -13,7 +13,10 @@ Steps
   3. pack per atlas group (props_nature / props_buildings / props_decor /
      props_items), splitting a group into _2, _3 ... if it would exceed 2048x2048
   4. write assets/props/<atlas>.png/.json and assets/props/manifest.json
-  5. previews: docs/previews/props_all.png, props_items.png, props_scene.png
+     (items get a measured carryScale; stations pass through fxPoints + anims.work)
+  5. previews in docs/previews/: props_all.png, props_items.png, props_scene.png,
+     props_stations_work.png + .gif (work loops), props_carry.png (player carrying
+     each item at its carryScale; needs assets/characters)
 """
 import json
 import math

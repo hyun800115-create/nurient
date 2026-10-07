@@ -21,9 +21,9 @@ from itertools import product
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import fa_instruments as I  # noqa: E402
-import fa_synth as S  # noqa: E402
-from fa_synth import SR, n_of  # noqa: E402
+import instruments as I  # noqa: E402
+import synth as S  # noqa: E402
+from synth import SR, n_of  # noqa: E402
 
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_cache")
 
@@ -143,6 +143,12 @@ class Song:
 
 
 # ----------------------------------------------------------------------------- render helpers
+def circ(fn, x, pre: int):
+    """Run a causal stateful processor as if x were a loop (pre-roll with the loop's end)."""
+    pre = min(pre, x.shape[-1])
+    return fn(np.concatenate((x[..., -pre:], x), axis=-1))[..., pre:]
+
+
 class Mixer:
     def __init__(self, dur):
         self.bus = {}
@@ -164,20 +170,23 @@ def master(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, target=-18.0, 
     for name, buf in mx.bus.items():
         x = buf.get(total)
         if name == pad_bus:
-            x = S.chorus(x, rate=0.27, depth_ms=3.0, base_ms=16.0, mix=0.55, period=L)
+            x = S.chorus(x, rate=0.27, depth_ms=3.0, base_ms=16.0, mix=0.55)
         g = gains.get(name, 1.0)
+        if os.environ.get("FA_DEBUG"):
+            print(f"   bus {name:7s} lufs {S.lufs(g * x[:, :L]):6.1f}  peak {S.db(S.peak(g * x)):6.1f}")
         dry += g * x
         send += g * sends.get(name, 0.0) * x
     wet = S.reverb(send, rt60=rt60, hf_rt60=0.75, predelay=0.022, lo_cut=180, hi_cut=6000)
     mix = dry + wet
     mix = S.hp(mix, 32, order=2)
+    mix = S.shelf_lo(mix, 110, -2.5)
     mix = S.shelf_hi(mix, 7500, -3.5)
     mix = S.lp(mix, 12500)
     loop = S.fold_loop(mix, L)
-    loop = S.circular(lambda z: S.compress(z, thr_db=-24, ratio=1.7, tau=0.12), loop, n_of(4.0))
+    loop = circ(lambda z: S.compress(z, thr_db=-24, ratio=1.7, tau=0.12), loop, n_of(4.0))
     g = S.undb(target - S.lufs(loop))
     loop = loop * g
-    loop = S.limiter(loop, -1.6, window_ms=6.0, circular_=True)
+    loop = S.limiter(loop, -1.6, window_ms=6.0, circular=True)
     return loop
 
 
@@ -315,7 +324,9 @@ def render_village(seed=11):
 
     sends = {"mel": 0.22, "mbox": 0.38, "glock": 0.42, "oca": 0.32, "pluck": 0.17, "bass": 0.03, "pad": 0.38,
              "drm": 0.05, "snr": 0.16, "shk": 0.1, "sleigh": 0.22, "wb": 0.22, "cym": 0.3}
-    out = master(mx, sends, {}, L, rt60=1.9, target=-18.0, pad_bus="pad")
+    gains = {"oca": 0.55, "bass": 0.65, "drm": 0.66, "pluck": 2.0, "pad": 3.4, "snr": 1.95, "shk": 3.9,
+             "sleigh": 2.6, "glock": 1.5, "wb": 1.3}
+    out = master(mx, sends, gains, L, rt60=1.9, target=-18.0, pad_bus="pad")
     return out, {"bpm": 100, "bars": 32, "loopSamples": L}
 
 

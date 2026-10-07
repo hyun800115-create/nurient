@@ -40,7 +40,7 @@ def mix(c0, c1, t):
     c0 = np.asarray(c0, np.float32)
     c1 = np.asarray(c1, np.float32)
     t = np.asarray(t, np.float32)
-    if t.ndim >= 1 and c0.ndim == 1:
+    if t.ndim >= 1:
         t = t[..., None]
     return c0 + (c1 - c0) * t
 
