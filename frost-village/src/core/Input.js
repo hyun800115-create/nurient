@@ -1,6 +1,8 @@
 // Movement input: floating virtual joystick (touch / mouse drag anywhere) + keyboard (WASD / arrows).
 // The UI scene feeds pointer events in; the Game scene reads Input.vec each frame.
 
+import { View } from './View.js';
+
 export const JOY_RADIUS = 78;   // px (UI space) knob travel
 
 export const Input = {
@@ -15,27 +17,31 @@ export const Input = {
     const kb = scene.input.keyboard;
     if (!kb) return;
     const K = Phaser.Input.Keyboard.KeyCodes;
-    this.keys = kb.addKeys({ up: K.W, down: K.S, left: K.A, right: K.D, up2: K.UP, down2: K.DOWN, left2: K.LEFT, right2: K.RIGHT }, false, false);
+    // capture = true: arrow keys / space must not scroll the host page when the game is embedded
+    this.keys = kb.addKeys({ up: K.W, down: K.S, left: K.A, right: K.D, up2: K.UP, down2: K.DOWN, left2: K.LEFT, right2: K.RIGHT }, true, false);
+    kb.addCapture([K.SPACE]);
   },
 
   pointerDown(p) {
     if (this.joy.active || !this.enabled) return;
+    const x = View.toLogical(p.x), y = View.toLogical(p.y);
     this.joy.active = true;
     this.joy.id = p.id;
-    this.joy.bx = p.x; this.joy.by = p.y;
-    this.joy.kx = p.x; this.joy.ky = p.y;
+    this.joy.bx = x; this.joy.by = y;
+    this.joy.kx = x; this.joy.ky = y;
   },
   pointerMove(p) {
     if (!this.joy.active || p.id !== this.joy.id) return;
-    let dx = p.x - this.joy.bx, dy = p.y - this.joy.by;
+    const px = View.toLogical(p.x), py = View.toLogical(p.y);
+    let dx = px - this.joy.bx, dy = py - this.joy.by;
     const d = Math.hypot(dx, dy);
     if (d > JOY_RADIUS) {
       // floating base follows the finger when dragged far (feels better on phones)
       const over = d - JOY_RADIUS;
       this.joy.bx += (dx / d) * over; this.joy.by += (dy / d) * over;
-      dx = p.x - this.joy.bx; dy = p.y - this.joy.by;
+      dx = px - this.joy.bx; dy = py - this.joy.by;
     }
-    this.joy.kx = p.x; this.joy.ky = p.y;
+    this.joy.kx = px; this.joy.ky = py;
   },
   pointerUp(p) {
     if (!this.joy.active || (p && p.id !== this.joy.id)) return;

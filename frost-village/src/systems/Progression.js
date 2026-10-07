@@ -18,12 +18,13 @@ export const STEPS = [
   { id: 'hire_miner', type: 'hire', worker: 'miner', after: 'zone_mine' },
   { id: 'zone_hunt', type: 'zone', zone: 'hunt', after: 'hire_miner' },
   { id: 'hire_hunter', type: 'hire', worker: 'hunter', after: 'zone_hunt' },
-  // after the village is complete: second workers
-  { id: 'hire2_fisherman', type: 'hire', worker: 'fisherman', after: 'hire_hunter', index: 1 },
-  { id: 'hire2_lumberjack', type: 'hire', worker: 'lumberjack', after: 'hire_hunter', index: 1 },
-  { id: 'hire2_farmer', type: 'hire', worker: 'farmer', after: 'hire_hunter', index: 1 },
-  { id: 'hire2_miner', type: 'hire', worker: 'miner', after: 'hire_hunter', index: 1 },
-  { id: 'hire2_hunter', type: 'hire', worker: 'hunter', after: 'hire_hunter', index: 1 },
+  // after the village is complete: couriers (a second worker of each trade who carries the station's
+  // products to the counter / trade post, so the village earns on its own)
+  { id: 'hire2_fisherman', type: 'hire', worker: 'fisherman', after: 'hire_hunter', index: 1, role: 'porter' },
+  { id: 'hire2_lumberjack', type: 'hire', worker: 'lumberjack', after: 'hire_hunter', index: 1, role: 'porter' },
+  { id: 'hire2_farmer', type: 'hire', worker: 'farmer', after: 'hire_hunter', index: 1, role: 'porter' },
+  { id: 'hire2_miner', type: 'hire', worker: 'miner', after: 'hire_hunter', index: 1, role: 'porter' },
+  { id: 'hire2_hunter', type: 'hire', worker: 'hunter', after: 'hire_hunter', index: 1, role: 'porter' },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
@@ -35,17 +36,22 @@ export class Progression {
     saved = saved || {};
     this.done = Object.assign({}, saved.done || {});
     this.paid = Object.assign({}, saved.paid || {});
-    this.up = Object.assign({ capacity: 0, speed: 0 }, saved.up || {});
-    this.up.capacity = Math.min(this.up.capacity, BALANCE.upgrades.capacity.values.length - 1);
-    this.up.speed = Math.min(this.up.speed, BALANCE.upgrades.speed.values.length - 1);
+    const up = saved.up || {};
+    const lvl = (v, n) => Math.max(0, Math.min(n - 1, Math.floor(Number(v)) || 0));
+    this.up = {
+      capacity: lvl(up.capacity, BALANCE.upgrades.capacity.values.length),
+      speed: lvl(up.speed, BALANCE.upgrades.speed.values.length),
+    };
     this.celebrated = !!saved.celebrated;
     this.hints = Object.assign({}, saved.hints || {});   // zone -> true once its product was sold
+    this.seen = Object.assign({}, saved.seen || {});     // one-time hints already shown (e.g. upgradeHint)
     this.pads = {};           // id -> UnlockPad
     this.upPads = {};         // capacity / speed
     this.benchOpen = false;
   }
 
   isDone(id) { return !!this.done[id]; }
+  anyDone(re) { for (const k in this.done) if (this.done[k] && re.test(k)) return true; return false; }
   capacity() { return BALANCE.upgrades.capacity.values[this.up.capacity]; }
   speedMult() { return BALANCE.upgrades.speed.values[this.up.speed]; }
   zonesOpen() { let n = 0; for (const z of ZONE_IDS) if (this.done[z]) n++; return n; }
@@ -59,7 +65,7 @@ export class Progression {
     for (const s of STEPS) {
       if (!this.done[s.id]) continue;
       if (s.type === 'zone') gs.revealZone(s.zone, true);
-      if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true);
+      if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true, undefined, undefined, s.role);
     }
     if (this.isDone(BENCH_AFTER)) this.openBench(true);
     this.syncPads();
@@ -92,8 +98,8 @@ export class Progression {
       gs.revealZone(s.zone, false);
       gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
     } else if (s.type === 'hire') {
-      gs.hireWorker(s.worker, s.index || 0, false, pad.x, pad.y);
-      gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
+      gs.hireWorker(s.worker, s.index || 0, false, pad.x, pad.y, s.role);
+      gs.ui.banner(t('hired', { name: t(s.role === 'porter' ? 'w_porter' : 'w_' + s.worker) }));
     }
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
@@ -138,6 +144,8 @@ export class Progression {
     Audio.play('sfx_levelup');
     if (kind === 'capacity') gs.ui.banner(t('capacityUp', { n: U.values[lvl] - before }));
     else gs.ui.banner(t('speedUp'));
+    // the old price is fully spent: never save it as a partial payment for the next level
+    pad.paid = 0; pad.acc = 0;
     if (lvl >= U.values.length - 1) { pad.maxed = true; pad.done = true; pad.refresh(); }
     else gs.time.delayedCall(500, () => pad.rearm(U.costs[lvl]));
     gs.save(true);
@@ -145,8 +153,11 @@ export class Progression {
 
   /** partial payments so they survive reloads */
   collectPaid() {
-    for (const id in this.pads) { const p = this.pads[id]; if (p.paid > 0) this.paid[id] = p.paid; }
-    for (const k in this.upPads) { const p = this.upPads[k]; if (!p.maxed && p.paid > 0) this.paid['up_' + k] = p.paid; }
+    for (const id in this.pads) { const p = this.pads[id]; if (p.paid > 0) this.paid[id] = p.paid; else delete this.paid[id]; }
+    for (const k in this.upPads) {
+      const p = this.upPads[k], id = 'up_' + k;
+      if (!p.maxed && !p.done && p.paid > 0) this.paid[id] = p.paid; else delete this.paid[id];
+    }
   }
 
   update(dt) {
@@ -170,6 +181,6 @@ export class Progression {
 
   serialize() {
     this.collectPaid();
-    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints };
+    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints, seen: this.seen };
   }
 }

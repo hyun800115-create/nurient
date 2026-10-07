@@ -60,7 +60,7 @@ export class Tree extends Node {
     gs.effects.burst('wood', ip.x, ip.y);
     gs.effects.burst('snowhit', this.x, this.y - 120, 5);
     if (Math.random() < 0.6) gs.effects.burst('leaf', this.x, this.y - 90, 2);
-    Audio.play('sfx_chop', { volume: by === gs.player ? 1 : 0.55 });
+    gs.sfxAt('sfx_chop', this.x, this.y, { volume: by === gs.player ? 1 : 0.55 }, by === gs.player);
     // wobble
     gs.tweens.killTweensOf(this.img);
     this.img.setAngle(0);
@@ -114,7 +114,7 @@ export class Rock extends Node {
     const ip = by.impactPoint ? by.impactPoint() : { x: this.x, y: this.y - 30 };
     gs.effects.burst('rock', ip.x, ip.y);
     gs.effects.burst('spark', ip.x, ip.y, 4);
-    Audio.play('sfx_mine', { volume: by === gs.player ? 1 : 0.55 });
+    gs.sfxAt('sfx_mine', this.x, this.y, { volume: by === gs.player ? 1 : 0.55 }, by === gs.player);
     gs.effects.pop(this.img, 0.08, 90);
     if (this.hp <= 0) this.deplete();
     return this.item;
@@ -169,7 +169,7 @@ export class Wheat extends Node {
     const ip = by.impactPoint ? by.impactPoint() : { x: this.x, y: this.y - 20 };
     gs.effects.burst('wheat', ip.x, ip.y);
     gs.effects.burst('wheat', this.x, this.y - 30, 4);
-    Audio.play('sfx_harvest', { volume: by === gs.player ? 1 : 0.55 });
+    gs.sfxAt('sfx_harvest', this.x, this.y, { volume: by === gs.player ? 1 : 0.55 }, by === gs.player);
     gs.effects.pop(this.img, 0.1, 90);
     if (this.left <= 0) {
       gs.time.delayedCall(100, () => this.setStage(0));
@@ -222,7 +222,7 @@ export class Net extends Node {
     const gs = this.gs;
     gs.effects.sheet('fx_splash', this.x + (Math.random() - 0.5) * 50, this.y - 14, { size: 90 });
     gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 60, this.y - 20, 4);
-    Audio.play('sfx_splash', { volume: by === gs.player ? 0.9 : 0.5 });
+    gs.sfxAt('sfx_splash', this.x, this.y, { volume: by === gs.player ? 0.9 : 0.5 }, by === gs.player);
     return this.item;
   }
   /** world position of the fish leaving the net */

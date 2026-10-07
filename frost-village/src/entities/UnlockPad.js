@@ -7,6 +7,10 @@ import { BALANCE } from '../data/balance.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { Pad } from './Pad.js';
 import { t, fmt } from '../data/strings.js';
+import { panel } from '../core/Panel.js';
+
+/** a price from balance.js as a whole number >= 1 (0, negative, missing or text would make a pad that never completes) */
+export function sanePrice(v) { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 1 ? n : 1; }
 
 export class UnlockPad {
   /**
@@ -16,8 +20,9 @@ export class UnlockPad {
     this.gs = gs; this.id = id; this.x = x; this.y = y;
     this.opts = opts;
     this.kind = opts.kind || 'unlock';
-    this.cost = opts.cost;
-    this.paid = Math.min(opts.paid || 0, this.cost);
+    this.cost = sanePrice(opts.cost);
+    this.paid = Math.max(0, Math.min(Math.floor(Number(opts.paid)) || 0, this.cost));
+    this.needsLeave = false;
     this.standT = 0;
     this.acc = 0;
     this.coinT = 0;
@@ -37,12 +42,11 @@ export class UnlockPad {
 
     // floating label: icon + title on a little panel
     const lab = gs.add.container(x, y - 62).setDepth(y + 2000);
-    const nine = Assets.nine('ui_panel');
     const title = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '22px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0, 0.5);
     const icon = Assets.image(gs, 0, 0, opts.icon || 'ui_icon_lock').setOrigin(0.5, 0.5);
     const icf = icon.frame;
     icon.setScale((opts.iconSize || 46) / Math.max(icf.realWidth, icf.realHeight));
-    const bg = gs.add.nineslice(0, 0, nine.tex, nine.frame, 100, 56, nine.l, nine.r, nine.t, nine.b).setOrigin(0.5, 0.5);
+    const bg = panel(gs, 0, 0, 'ui_panel', 100, 56).setOrigin(0.5, 0.5);
     lab.add([bg, icon, title]);
     this.label = lab; this.labelBg = bg; this.labelIcon = icon; this.labelText = title;
     this.labelBaseY = y - 62;
@@ -58,7 +62,7 @@ export class UnlockPad {
   get remaining() { return Math.max(0, this.cost - this.paid); }
 
   setCost(cost, paid = 0) {
-    this.cost = cost; this.paid = paid;
+    this.cost = sanePrice(cost); this.paid = Math.max(0, Math.min(Math.floor(Number(paid)) || 0, this.cost));
     this.refresh();
   }
 
@@ -84,9 +88,10 @@ export class UnlockPad {
       this.maxBadge.setVisible(this.active);
     } else {
       this.costText.setText(fmt(this.remaining));
-      const tw = this.costText.width + 34;
-      this.costCoin.setPosition(this.x - tw / 2 + 14, this.y + 1);
-      this.costText.setPosition(this.x - tw / 2 + 32, this.y + 1);
+      // [coin] gap [digits], centred as a group (the text stroke needs a few px of air)
+      const tw = this.costText.width + 42;
+      this.costCoin.setPosition(this.x - tw / 2 + 15, this.y + 1);
+      this.costText.setPosition(this.x - tw / 2 + 38, this.y + 1);
       this.costText.setVisible(this.active); this.costCoin.setVisible(this.active);
       if (this.maxBadge) this.maxBadge.setVisible(false);
     }
@@ -105,6 +110,11 @@ export class UnlockPad {
     if (!this.active || this.done) return false;
     const gs = this.gs, p = gs.player;
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
+    // keep the floating label inside the screen while its pad is visible
+    const v = gs.cameras.main.worldView, hw = this.labelBg.width * 0.5 + 8;
+    let lx = this.x;
+    if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, this.x));
+    if (this.label.x !== lx) this.label.x = lx;
     // "ready" highlight when the player can afford it
     const afford = !this.maxed && this.remaining > 0 && gs.economy.coins >= this.remaining;
     if (afford && !this.sparkle) {
@@ -123,15 +133,20 @@ export class UnlockPad {
     if (!on || this.maxed) {
       this.standT = 0;
       this._warned = false;
+      if (!on) this.needsLeave = false;
       if (this.ring.visible) { this.ring.setVisible(false); this.ringBg.setVisible(false); }
       return on;
     }
+    // after an upgrade the player has to step off before the next level starts draining coins
+    if (this.needsLeave) return true;
     this.standT += dt;
-    if (this.standT < BALANCE.player.padDelay) return true;
-    if (!this.ring.visible && this.remaining > 0) this.drawRing();
+    if (this.standT < (Number(BALANCE.player.padDelay) || 0)) return true;
+    // already fully paid (e.g. the price was lowered in balance.js below a saved partial payment)
+    if (!(this.remaining > 0)) { this.complete(); return true; }
+    if (!this.ring.visible) this.drawRing();
     const eco = gs.economy;
-    if (this.remaining > 0 && eco.coins > 0) {
-      const rate = Math.max(12, this.cost / BALANCE.payDuration);
+    if (eco.coins > 0) {
+      const rate = Math.max(12, this.cost / Math.max(0.1, Number(BALANCE.payDuration) || 1.6));
       this.acc += rate * dt;
       let amt = Math.floor(this.acc);
       if (amt >= 1) {
@@ -211,7 +226,8 @@ export class UnlockPad {
 
   /** allow paying again (upgrades): reset completion state */
   rearm(cost) {
-    this.done = false; this.cost = cost; this.paid = 0; this.acc = 0;
+    this.done = false; this.cost = sanePrice(cost); this.paid = 0; this.acc = 0;
+    this.needsLeave = true; this.standT = 0;
     this.ring.setVisible(false); this.ringBg.setVisible(false);
     this.refresh();
   }

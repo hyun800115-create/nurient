@@ -26,14 +26,29 @@ export const Audio = {
   /** called from the title tap (a user gesture) */
   start() {
     this.started = true;
-    try { const sm = this.sm; if (sm && sm.context && sm.context.state === 'suspended') sm.context.resume(); } catch (e) { /* ignore */ }
+    this.resume();
+  },
+
+  /** resume a suspended / interrupted context (iOS after a call or app switch); call from any user tap */
+  resume() {
+    try { const c = this.sm && this.sm.context; if (c && c.state !== 'running' && c.state !== 'closed') c.resume(); } catch (e) { /* ignore */ }
+  },
+
+  /** false while WebAudio is suspended (window blurred, iOS interruption): sounds started then would pile up */
+  get live() {
+    const sm = this.sm;
+    if (!sm) return false;
+    const c = sm.context;
+    if (c && c.state !== 'running') return false;
+    return !sm.locked;
   },
 
   baseVolume(key) { const d = Assets.audioDef(key); return d && d.volume !== undefined ? d.volume : 0.7; },
 
   /** play a one-shot sfx (or a random variant of an audioGroup) */
   play(key, opts) {
-    if (!this.started || !Settings.data.sound) return;
+    if (!this.started || !Settings.data.sound || !this.live) return;
+    if (opts && opts.volume !== undefined && opts.volume <= 0.001) return;
     let k = key;
     const grp = Assets.audioGroup(key);
     if (grp && grp.length) {
@@ -112,7 +127,7 @@ export const Audio = {
       let s = this.amb[key];
       const target = on ? this.ambTarget[key] * this.baseVolume(key) : 0;
       if (!s) {
-        if (target <= 0.001 || !this.exists(key)) continue;
+        if (target <= 0.001 || !this.exists(key) || !this.live) continue;
         try { s = this.sm.add(key, { loop: true, volume: 0 }); s.play(); this.amb[key] = s; } catch (e) { continue; }
       }
       const v = s.volume + (target - s.volume) * Math.min(1, dt * 2.5);
@@ -122,10 +137,39 @@ export const Audio = {
 
   setSoundEnabled(on) {
     Settings.data.sound = !!on; Settings.save();
+    // silence the ambience loops right away (their fade only runs while the village is not paused)
+    if (!on) for (const k in this.amb) { try { this.amb[k].setVolume(0); } catch (e) { /* */ } }
   },
   setMusicEnabled(on) {
     Settings.data.music = !!on; Settings.save();
     this.applyMusic();
+  },
+
+  /**
+   * Seamless loops: decoders that ignore the mp3 gapless header (some Safari versions) return the
+   * encoder delay as silence at the start, which clicks at every loop. Cut decoded loops that are
+   * longer than the manifest duration back to exactly [mp3StartPad, + duration).
+   */
+  trimLoops() {
+    const g = this.game;
+    try {
+      const ctx = g && g.sound && g.sound.context;
+      if (!ctx || !ctx.createBuffer) return;
+      for (const key in Assets.m.audio) {
+        const a = Assets.m.audio[key];
+        if (!a || !a.loop || !a.duration || !g.cache.audio.exists(key)) continue;
+        const buf = g.cache.audio.get(key);
+        if (!buf || !buf.getChannelData || buf.__fvChecked) continue;
+        const rate = buf.sampleRate, want = Math.round(a.duration * rate);
+        if (buf.length > want + rate * 0.01) {
+          const off = Math.min(buf.length - want, Math.round(((a.mp3StartPad || 0) * rate) / 44100));
+          const out = ctx.createBuffer(buf.numberOfChannels, want, rate);
+          for (let c = 0; c < buf.numberOfChannels; c++) out.getChannelData(c).set(buf.getChannelData(c).subarray(off, off + want));
+          out.__fvChecked = true;
+          g.cache.audio.add(key, out);
+        } else buf.__fvChecked = true;
+      }
+    } catch (e) { /* keep the untrimmed buffers */ }
   },
 
   vibrate(ms) {

@@ -83,7 +83,24 @@ export const Assets = {
     }
   },
 
-  onLoadError(file) { if (file && file.key) this.failed.add(file.key); },
+  /** in-game music & ambience load after the title (in the Game scene) so the title appears sooner */
+  isDeferredAudio(key) { return /^(bgm_village|amb_)/.test(key); },
+
+  /**
+   * a file failed to load. Audio: Phaser picks the first format the browser can play (ogg) and does
+   * not try the next one, so retry once with the remaining URLs (mp3) before giving up.
+   */
+  onLoadError(file, load) {
+    if (!file || !file.key) return;
+    const a = file.type === 'audio' && this.m.audio[file.key];
+    this.retried = this.retried || new Set();
+    if (a && load && !this.retried.has(file.key)) {
+      const url = String(file.url || file.src || '');
+      const rest = (a.files || []).map((f) => BASE + f).filter((f) => url.indexOf(f) < 0 && !url.endsWith(f));
+      if (rest.length) { this.retried.add(file.key); try { load.audio(file.key, rest); return; } catch (e) { /* fall through */ } }
+    }
+    this.failed.add(file.key);
+  },
 
   /** after all files loaded: create animations */
   finalize(game) {

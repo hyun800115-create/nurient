@@ -90,7 +90,10 @@ GROUPS = {
     "sfx_harvest": ["sfx_harvest_1", "sfx_harvest_2"],
     "sfx_step_snow": ["sfx_step_snow_1", "sfx_step_snow_2", "sfx_step_snow_3"],
 }
-MP3_KBPS = {"music": 128, "ambience": 128, "sfx": 96}
+MP3_KBPS = {"music": 128, "ambience": 80, "sfx": 96}
+# Ambience beds are mono: the game decodes every loop to PCM up front, and three stereo 24 s beds
+# cost ~23 MB of phone memory for width nobody hears under the music. Music stays stereo.
+CHANNELS = {"music": 2, "ambience": 1, "sfx": 1}
 OGG_Q = 4
 PEAK_MAX = -1.0          # dBFS, decoded sample peak of every delivered file
 HEADROOM_DB = -2.0       # global trim on every volume: WebAudio sums sources and hard-clips at 0 dBFS
@@ -198,7 +201,7 @@ def _encode_one(key: str):
     src = os.path.join(CACHE, f"{key}.wav")
     if not os.path.exists(src):
         raise FileNotFoundError(f"{src} missing - run without --skip-render")
-    ch = 1 if kind == "sfx" else 2
+    ch = CHANNELS[kind]
     ogg, mp3 = os.path.join(OUT, f"{key}.ogg"), os.path.join(OUT, f"{key}.mp3")
     gain = 0.0
     for _ in range(4):                       # codecs can overshoot the source peak: trim if needed
@@ -272,7 +275,7 @@ def load_measurements(keys):
     """Measurements for keys we did not re-encode this run (reads the existing files)."""
     out = {}
     for key in keys:
-        ch = 1 if SOUNDS[key][0] == "sfx" else 2
+        ch = CHANNELS[SOUNDS[key][0]]
         ogg, mp3 = os.path.join(OUT, f"{key}.ogg"), os.path.join(OUT, f"{key}.mp3")
         src = os.path.join(CACHE, f"{key}.wav")
         out[key] = {"ogg": F.ebur128(ogg, ch), "mp3": F.ebur128(mp3, ch), "trim_db": 0.0, "channels": ch,

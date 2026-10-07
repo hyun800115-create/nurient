@@ -1,7 +1,7 @@
 // Frost Village (서리마을 개척기) — build the claude.ai Artifact package.
 //
 //   cd frost-village/tools/build && npm install          (once: installs esbuild locally)
-//   node frost-village/tools/build/build_artifact.mjs [--no-minify] [--mp3-only] [--inline]
+//   node frost-village/tools/build/build_artifact.mjs [--no-minify] [--mp3-only] [--inline] [--webp]
 //
 // Output: frost-village/dist/artifact/
 //   index.html        body-only page (the Artifact host adds <!doctype><html><head><body> itself):
@@ -23,16 +23,22 @@
 //   packs/assets_N.js classic scripts (images as data: URIs, JSON as objects, audio as base64 mp3)
 //   and inline_loader.js re-routes Phaser's loader to them: no XHR/fetch at all, so it also works
 //   with connect-src 'self'. Bigger download (+33 % base64), so use it only if the normal build fails.
+//
+// --webp (optional, needs python3 + Pillow): re-encode the big PNGs of the COPY as WebP (q90,
+//   lossless alpha) when that saves > 40 %, and rewrite the copied manifests. assets/ is untouched.
+//   About -3 MB (7.6 -> 4.7 MB of images). Works with --inline too.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');            // frost-village/
 const args = process.argv.slice(2);
 const MINIFY = !args.includes('--no-minify');
 const INLINE = args.includes('--inline');
+const WEBP = args.includes('--webp');
 const FORCE_MP3_ONLY = args.includes('--mp3-only') || INLINE;   // mp3 plays everywhere; one format is enough
 
 const OUT = path.join(ROOT, 'dist', INLINE ? 'artifact_inline' : 'artifact');
@@ -126,18 +132,69 @@ const PAGE = `<title>서리마을 개척기</title>
     border-radius: 12px; background: var(--panel); color: var(--panel-ink);
     font: 600 14px/1.45 var(--font); box-shadow: 0 4px 16px rgba(0,0,0,.35);
   }
+  #fv-error small { display: block; margin-top: 4px; font-weight: 500; font-size: 12px; color: #5d6b80; word-break: break-all; }
+  #fv-error button {
+    margin: 10px 8px 0 0; padding: 9px 14px; border: 0; border-radius: 10px; font: 800 14px var(--font);
+    color: #fff; background: #3d8be0; cursor: pointer;
+  }
+  #fv-error button.gray { background: #8e99a8; }
+  /* landscape phone: ask to rotate (the game is portrait) */
+  #fv-rotate {
+    display: none; position: fixed; inset: 0; z-index: 4; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; background: var(--night); color: var(--frost); font-weight: 800; font-size: 20px; text-align: center;
+  }
+  #fv-rotate .phone { font-size: 46px; animation: fvrot 1.8s ease-in-out infinite; }
+  #fv-rotate small { font-weight: 600; font-size: 13px; color: var(--frost-dim); }
+  @keyframes fvrot { 0%, 30% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0deg); } }
+  @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) { #fv-rotate { display: flex; } }
 </style>
 <div id="game"></div>
 <div id="fv-loading"><div class="flake">❄</div><div>서리마을 개척기</div><small>FROST VILLAGE · 불러오는 중…</small></div>
+<div id="fv-rotate"><div class="phone">📱</div><div>휴대폰을 세로로 돌려 주세요</div><small>Please rotate your phone to portrait</small></div>
 <div id="fv-error" role="alert"></div>
 <script>
-  // Show a friendly message if Phaser or the game script fails before the game has booted.
-  window.addEventListener('error', function (e) {
-    if (window.__FV_BOOTED) return;
-    var el = document.getElementById('fv-error');
-    var msg = (e && e.message) || (e && e.target && e.target.src ? 'could not load ' + e.target.src.split('/').pop() : '');
-    if (el) { el.style.display = 'block'; el.textContent = '게임을 불러오지 못했어요. 새로고침 해 주세요. (' + msg + ')'; }
-  }, true);
+  // Friendly messages: registered first and in the capture phase so a failed <script> load is seen too.
+  // After boot only errors that actually stopped the game loop are reported (with Reload / Start over).
+  (function () {
+    var box = document.getElementById('fv-error'), shown = false;
+    function show(msg, detail, crash) {
+      if (shown || !box) return;
+      shown = true;
+      box.innerHTML = '';
+      var p = document.createElement('div'); p.textContent = msg; box.appendChild(p);
+      if (detail) { var d = document.createElement('small'); d.textContent = detail; box.appendChild(d); }
+      var b = document.createElement('button'); b.textContent = '새로고침 · Reload'; b.onclick = function () { location.reload(); }; box.appendChild(b);
+      if (crash) {
+        var f = document.createElement('button'); f.className = 'gray'; f.textContent = '처음부터 하기 · Start over';
+        f.onclick = function () {
+          try { var k = 'frostVillage.save.v1', v = localStorage.getItem(k); if (v) localStorage.setItem(k + '.bad', v); localStorage.removeItem(k); } catch (e) { /* */ }
+          location.reload();
+        };
+        box.appendChild(f);
+      }
+      box.style.display = 'block';
+    }
+    window.__FV_SHOW_ERROR = show;
+    function checkAlive(detail) {
+      var g = window.__FV && window.__FV.game;
+      if (!g || !g.loop) return;
+      var f = g.loop.frame;
+      setTimeout(function () {
+        if (g.loop.frame === f && g.loop.running && document.visibilityState === 'visible') show('문제가 생겨서 게임이 멈췄어요. 새로고침 해 주세요.', detail, true);
+      }, 1500);
+    }
+    window.addEventListener('error', function (e) {
+      var el = e && e.target, isScript = el && el.tagName === 'SCRIPT';
+      if (!isScript && !(e && e.message)) return;
+      var detail = (e && e.message) || ('could not load ' + String(el && el.src).split('/').pop());
+      if (!window.__FV_BOOTED) show('게임을 불러오지 못했어요. 새로고침 해 주세요.', detail);
+      else checkAlive(detail);
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) { if (window.__FV_BOOTED) checkAlive(String(e && e.reason)); });
+    setTimeout(function () {
+      if (!window.__FV_BOOTED) show('게임을 불러오지 못했어요. 새로고침 해 주세요.', 'The game files could not be loaded (blocked or offline).');
+    }, 20000);
+  })();
 </script>
 <script src="lib/phaser.min.js"></script>
 <script src="game.js"></script>
@@ -278,6 +335,18 @@ async function main() {
   if (fs.existsSync(path.join(ROOT, 'lib', 'PHASER_LICENSE.md'))) copy(path.join(ROOT, 'lib', 'PHASER_LICENSE.md'));
   for (const f of walk(path.join(ROOT, 'assets'))) copy(f);
 
+  // 2b) optional WebP re-encode of the copy
+  if (WEBP) {
+    try {
+      const out = execFileSync(process.platform === 'win32' ? 'python' : 'python3', [path.join(HERE, 'webp_assets.py'), OUT, '90'], { encoding: 'utf8' });
+      const r = JSON.parse(out.trim().split('\n').pop());
+      if (r.error) throw new Error(r.error);
+      console.log(`[build] --webp: ${r.converted} images as WebP, ${mb(r.png_bytes)} -> ${mb(r.webp_bytes)}`);
+    } catch (e) {
+      console.log('[build] --webp skipped (needs python3 with Pillow): ' + String(e.message || e).split('\n')[0]);
+    }
+  }
+
   // 3) the page (written in step 5 for --inline, once the packs exist)
   if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), PAGE);
 
@@ -301,16 +370,7 @@ async function main() {
   // 5) checks: every manifest path exists, nothing absolute, no leftovers
   const problems = [];
   const referenced = new Set();
-  const frags = INLINE ? [] : ['characters', 'props', 'fx', 'ui', 'ground', 'audio'];
-  if (INLINE) {
-    const packs = writePacks();
-    fs.writeFileSync(path.join(OUT, 'inline_loader.js'), INLINE_LOADER);
-    const tags = packs.map((p) => `<script src="${p}"></script>`).concat('<script src="inline_loader.js"></script>', '<script src="game.js"></script>').join('\n');
-    fs.writeFileSync(path.join(OUT, 'index.html'), PAGE.replace('<script src="game.js"></script>', tags));
-    files = walk(OUT);
-    console.log(`[build] --inline: assets embedded into ${packs.length} pack scripts`);
-  }
-  for (const frag of frags) {
+  for (const frag of ['characters', 'props', 'fx', 'ui', 'ground', 'audio']) {
     const mp = path.join(OUT, 'assets', frag, 'manifest.json');
     if (!fs.existsSync(mp)) { problems.push('missing assets/' + frag + '/manifest.json'); continue; }
     referenced.add('assets/' + frag + '/manifest.json');
@@ -326,6 +386,14 @@ async function main() {
     }
   }
   const unreferenced = files.map(rel).filter((r) => r.startsWith('assets/') && !referenced.has(r));
+  if (INLINE) {   // (after the manifest checks, which need the loose files)
+    const packs = writePacks();
+    fs.writeFileSync(path.join(OUT, 'inline_loader.js'), INLINE_LOADER);
+    const tags = packs.map((p) => `<script src="${p}"></script>`).concat('<script src="inline_loader.js"></script>', '<script src="game.js"></script>').join('\n');
+    fs.writeFileSync(path.join(OUT, 'index.html'), PAGE.replace('<script src="game.js"></script>', tags));
+    files = walk(OUT);
+    console.log(`[build] --inline: assets embedded into ${packs.length} pack scripts`);
+  }
   const page = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
   if (/<!doctype|<html[\s>]|<head[\s>]|<body[\s>]/i.test(page)) problems.push('index.html contains doctype/html/head/body tags');
   if (!/^<title>[^<]+<\/title>/.test(page)) problems.push('index.html must start with <title>');
@@ -341,8 +409,8 @@ async function main() {
 
   const supporting = sizes.map((x) => x.p).filter((p) => p !== 'index.html').sort();
   fs.writeFileSync(LIST_OUT, JSON.stringify({
-    page: 'frost-village/dist/artifact/index.html',
-    root: 'frost-village/dist/artifact',
+    page: path.relative(path.dirname(ROOT), path.join(OUT, 'index.html')).split(path.sep).join('/'),
+    root: path.relative(path.dirname(ROOT), OUT).split(path.sep).join('/'),
     files: supporting,
     note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.',
   }, null, 1));

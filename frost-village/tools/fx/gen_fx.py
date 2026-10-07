@@ -880,7 +880,8 @@ def build(only=None, gifs=True):
             'particles': 'White/greyscale (tint in game) except fx_heart, fx_flame, fx_coin. Frames are untrimmed squares.',
             'blend': 'All sheets are NORMAL-blend artwork (saturated cores + warm/cool rims) so they read on white snow, '
                      'where ADD is invisible. fx_fire / fx_sparkle / fx_glow also look fine with ADD over dark ground.',
-            'sheets': 'Horizontal strips, frame i at x = i*frameWidth. Phaser anim key = sheet key.',
+            'sheets': 'Frames left->right, then wrapped into rows so no sheet is wider than 2048 px '
+                      '(GPUs with a 2048 texture limit). Phaser anim key = sheet key.',
         },
         'atlases': [{'key': 'fx_particles', 'png': 'fx/fx_particles.png', 'json': 'fx/fx_particles.json'}],
         'spritesheets': [],
@@ -892,7 +893,7 @@ def build(only=None, gifs=True):
                                   'tintable': tintable, 'frameSize': list(im.size), 'notes': note}
     for k, frames in sheets.items():
         fn, fw, fh, nfr, fps, rep, anc, note = SHEETS[k]
-        st = F.strip(frames)
+        st = grid_strip(frames, 2048)
         F.save_png(st, os.path.join(OUT, k + '.png'), quant=256, dither=0.6)
         manifest['spritesheets'].append({'key': k, 'png': 'fx/%s.png' % k, 'frameWidth': fw, 'frameHeight': fh,
                                          'frameCount': nfr, 'fps': fps, 'repeat': rep, 'anchor': anc,
@@ -904,6 +905,19 @@ def build(only=None, gifs=True):
     os.makedirs(PREV, exist_ok=True)
     preview_sheet(parts, sheets).convert('RGB').save(os.path.join(PREV, 'fx_sheet.png'), optimize=True)
     print('FX done ->', OUT)
+
+
+def grid_strip(frames, max_w=2048):
+    """frames left->right, wrapped into balanced rows so the sheet is at most max_w wide"""
+    fw, fh = frames[0].size
+    n = len(frames)
+    cols = max(1, min(n, max_w // fw))
+    rows = (n + cols - 1) // cols
+    cols = (n + rows - 1) // rows
+    out = Image.new('RGBA', (cols * fw, rows * fh), (0, 0, 0, 0))
+    for i, fr in enumerate(frames):
+        out.alpha_composite(fr, ((i % cols) * fw, (i // cols) * fh))
+    return out
 
 
 if __name__ == '__main__':

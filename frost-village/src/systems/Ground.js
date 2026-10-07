@@ -154,25 +154,35 @@ export class Ground {
   bakePaths(ctx) {
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const trace = (pts) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); };
-    // trodden snow: a soft, slightly darker bluish band with feathered edges
-    const bands = [[86, 0.06], [70, 0.07], [54, 0.08], [36, 0.08]];
-    for (const pts of WORLD.paths) for (const [w, a] of bands) { ctx.strokeStyle = 'rgba(150,172,205,' + a + ')'; ctx.lineWidth = w; trace(pts); ctx.stroke(); }
-    // a hint of earth showing through in the middle
-    const dirt = pattern(ctx, 'ground_dirt');
-    if (dirt) { ctx.globalAlpha = 0.16; ctx.strokeStyle = dirt; ctx.lineWidth = 26; for (const pts of WORLD.paths) { trace(pts); ctx.stroke(); } ctx.globalAlpha = 1; }
-    // bright snow lips along the edges
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3;
-    for (const pts of WORLD.paths) {
-      for (const off of [-40, 40]) {
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
-          const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
-          const x = pts[i][0] - (dy / l) * off, y = pts[i][1] + (dx / l) * off;
-          if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    // all paths as one shape (so junctions are not darker), stroked far off-canvas: only its blurred
+    // shadow lands on the snow. Soft feathered edges everywhere (shadowBlur works in every browser).
+    const OFF = 30000;
+    const allPaths = () => {
+      ctx.beginPath();
+      for (const pts of WORLD.paths) pts.forEach((p, i) => (i ? ctx.lineTo(p[0] - OFF, p[1]) : ctx.moveTo(p[0] - OFF, p[1])));
+    };
+    const soft = (w, color, blur) => {
+      ctx.save();
+      ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetX = OFF; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = '#000'; ctx.lineWidth = w;
+      allPaths(); ctx.stroke();
+      ctx.restore();
+    };
+    soft(80, 'rgba(136,160,198,0.36)', 26);   // packed, slightly blue-grey trodden snow
+    soft(34, 'rgba(150,138,130,0.26)', 14);   // a hint of earth showing through in the middle
+    // drift texture breaking up the edges
+    const r1 = rng(11);
+    if (Assets.has('decal_snow_drift_a')) {
+      for (const pts of WORLD.paths) {
+        for (let i = 0; i < pts.length - 1; i++) {
+          const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+          const len = Math.hypot(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax);
+          for (let d = 90; d < len - 60; d += 230 + r1() * 140) {
+            const t = d / len, side = (r1() < 0.5 ? -1 : 1) * (34 + r1() * 10);
+            const x = ax + (bx - ax) * t - Math.sin(ang) * side, y = ay + (by - ay) * t + Math.cos(ang) * side;
+            drawFrame(ctx, r1() < 0.5 ? 'decal_snow_drift_a' : 'decal_snow_drift_b', x, y, 0.42 + r1() * 0.2, 0, 0.55);
+          }
         }
-        ctx.stroke();
       }
     }
     // footprints stamped along the paths (decal runs along the A axis = 26.6 deg)

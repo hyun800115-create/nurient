@@ -91,6 +91,9 @@ node build_artifact.mjs
 
 - `src/`나 `assets/`를 고친 뒤에는 **꼭 다시 실행**하세요. 묶음은 자동으로 바뀌지 않습니다.
 - `dist/` 폴더는 언제든 지우고 다시 만들 수 있습니다.
+- **더 가볍게 (권장)**: `node build_artifact.mjs --webp`
+  큰 그림 32개를 WebP로 바꿔 첫 로딩이 약 3 MB 줄어듭니다 (12 MB → 9 MB, 눈으로는 차이 없음).
+  Python과 Pillow가 필요합니다 (`pip install pillow`). 원본 `assets/`는 바뀌지 않습니다.
 
 ### 올리기
 
@@ -109,12 +112,16 @@ Claude에게 이렇게 말하세요:
 아티팩트 환경에서 파일을 읽지 못한 경우입니다. 모든 그림과 소리를 스크립트 안에 넣은 예비 묶음을 만드세요:
 
 ```
-node build_artifact.mjs --inline
+node build_artifact.mjs --inline --webp
 ```
+(Python이 없으면 `--webp`는 빼도 됩니다.)
 
-`frost-village/dist/artifact_inline/`이 생깁니다 (파일 8개, 약 16 MB).
+`frost-village/dist/artifact_inline/`이 생깁니다 (파일 7~8개, 약 12~16 MB).
 Claude에게 “`dist/artifact_inline/index.html`로 같은 아티팩트를 업데이트해 줘
 (파일 목록: `dist/artifact_inline_files.json`)”라고 하세요.
+
+덤: 이 예비 묶음은 서버 없이도 열립니다. `dist/artifact_inline/index.html`을 더블클릭하면
+인터넷 없이 바로 플레이할 수 있어서, USB나 메일로 전달할 때 편합니다 (폴더째 전달).
 
 ### 아티팩트에서 알아 둘 점
 
@@ -132,6 +139,7 @@ node frost-village/tools/build/test_deploy.mjs               # 전체 점검 (�
 node frost-village/tools/build/test_deploy.mjs pages sameorigin --quick
 ```
 
-`test_deploy.mjs` 모드: `pages`(GitHub Pages 하위 주소), `standalone`, `raw`,
-`sandbox`(origin 없는 샌드박스 iframe + CSP, CORS 없음), `sandbox-cors`, `sameorigin`, `sandbox-inline`.
+`test_deploy.mjs` 모드: `pages`(GitHub Pages 하위 주소), `standalone`, `raw`, `sandbox-cors`,
+`sameorigin`, `sandbox-inline`. `sandbox`(origin 없는 샌드박스 iframe + CSP, CORS 없음)는 최악의 경우를
+보여 주는 모드라 일반 묶음으로는 실패하는 게 정상이고, 기본 실행에서는 빠집니다.
 스크린샷은 `frost-village/dist/deploy_test/`에 저장됩니다.

@@ -22,7 +22,9 @@ import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
 import { Market, TradePost, FOODS, GOODS } from '../entities/Seller.js';
 import { Tree, Rock, Wheat, Net } from '../entities/ResourceNode.js';
+import { TrashPad } from '../entities/TrashPad.js';
 import { rng } from '../core/Placeholders.js';
+import { View } from '../core/View.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -48,6 +50,20 @@ export class Game extends Phaser.Scene {
   init(data) { this.fresh = !!(data && data.fresh); }
 
   create() {
+    this._broken = false;
+    try {
+      this.build();
+    } catch (e) {
+      this._broken = true;
+      // a save that cannot be restored must never brick the game: keep a copy aside and start fresh
+      console.error('[FrostVillage] could not restore the saved game, starting fresh:', e);
+      if (this.fresh) throw e;
+      Save.quarantine();
+      this.time.delayedCall(0, () => this.scene.restart({ fresh: true }));
+    }
+  }
+
+  build() {
     const W = WORLD.width, H = WORLD.height;
     this.W = W; this.H = H;
     this.font = FONT;
@@ -75,7 +91,10 @@ export class Game extends Phaser.Scene {
     this.buildHuts();
 
     const ps = sv.player || {};
-    const px = ps.x !== undefined ? ps.x : WORLD.player.x, py = ps.y !== undefined ? ps.y : WORLD.player.y;
+    const okPos = Number.isFinite(ps.x) && Number.isFinite(ps.y) && ps.x >= 40 && ps.x <= W - 40 && ps.y >= 0 && ps.y <= H - 40;
+    const sp = { x: okPos ? ps.x : WORLD.player.x, y: okPos ? ps.y : WORLD.player.y };
+    if (okPos) this.collision.resolve(sp, 16);
+    const px = sp.x, py = sp.y;
     this.player = new Player(this, px, py);
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
     this.progress = new Progression(this, sv.progress);
@@ -94,12 +113,18 @@ export class Game extends Phaser.Scene {
     // camera
     const cam = this.cameras.main;
     cam.setBounds(0, 0, W, H);
-    cam.setZoom(BALANCE.camera.zoom);
+    this.zoomBase = BALANCE.camera.zoom;
+    cam.setZoom(this.zoomBase * View.k);
+    // the canvas resolution (View.k) can change on rotation / resize
+    const onResize = () => cam.setZoom(this.zoomBase * View.k);
+    this.scale.on('resize', onResize);
+    this.events.once('shutdown', () => this.scale.off('resize', onResize));
     cam.setBackgroundColor('#dbe6f2');
-    this.camTarget = { x: px, y: py - 20 };
+    const tv = this.tutorial.inTutorial && WORLD.tutorialView && gdist(px, py, WORLD.tutorialView[0], WORLD.tutorialView[1]) < 500 ? WORLD.tutorialView : null;
+    this.camTarget = tv ? { x: tv[0], y: tv[1] } : { x: px, y: py - 20 };
     this.camFocus = null;     // { x, y, until } temporary pan target
     cam.startFollow(this.camTarget, false, 1, 1);
-    cam.centerOn(px, py);
+    cam.centerOn(this.camTarget.x, this.camTarget.y);
 
     this.padT = 0;
     this.playerOnPad = false;
@@ -123,6 +148,17 @@ export class Game extends Phaser.Scene {
     Audio.setAmbience('amb_wind', 0.5);
     Audio.setAmbience('amb_sea', 0.3);
     Audio.setAmbience('amb_fire', 0);
+    this.loadDeferredAudio();
+  }
+
+  /** village music + ambience were left out of the preload (faster title); fetch them now */
+  loadDeferredAudio() {
+    const want = Object.keys(Assets.m.audio).filter((k) => Assets.isDeferredAudio(k) && !this.cache.audio.exists(k) && !Assets.failed.has(k));
+    if (!want.length) return;
+    this.load.on('loaderror', (f) => Assets.onLoadError(f, this.load));
+    Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
+    this.load.once('complete', () => { Audio.trimLoops(); Audio.applyMusic(); });
+    this.load.start();
   }
 
   // ------------------------------------------------------------------ building
@@ -156,10 +192,24 @@ export class Game extends Phaser.Scene {
         g.lineBetween(a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0, a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1);
       }
     }
-    const lock = Assets.image(this, z.center[0], z.center[1] - 10, 'ui_icon_lock').setDepth(DEPTH.PAD_TEXT);
-    const lf = lock.frame; lock.setScale(54 / Math.max(lf.realWidth, 1)).setOrigin(0.5, 0.5).setAlpha(0.9);
-    const txt = this.add.text(z.center[0], z.center[1] + 32, t(z.name), { fontFamily: FONT, fontSize: '26px', fontStyle: '900', color: '#ffffff', stroke: '#5d6b80', strokeThickness: 6, resolution: 2 }).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD_TEXT).setAlpha(0.95);
-    return { g, lock, txt };
+    // a frosted preview of what is inside (station + a few resources), so the zone is not an empty void
+    const ghosts = [];
+    const ghost = (key, x, y, sc) => {
+      if (!Assets.has(key)) return;
+      const im = Assets.image(this, x, y, key).setAlpha(0.2).setTint(0x9fb3cc).setDepth(DEPTH.OUTLINE + 1 + y * 0.01);
+      if (sc) im.setScale(sc);
+      ghosts.push(im);
+    };
+    const [zx, zy] = z.center;
+    for (const st of WORLD.stations) if (st.zone === id) ghost(st.sprite, st.x, st.y);
+    if (id === 'forest') for (const [mx, my, k] of [[-1.6, 1.0, 'tree_pine_a'], [1.4, -1.8, 'tree_pine_snow'], [-2.6, -1.6, 'tree_pine_b'], [0.2, -3.0, 'tree_pine_a']]) { const p = isoPt(zx, zy, mx, my); ghost(k, p.x, p.y, 0.85); }
+    if (id === 'farm') { const w = WORLD.wheat; for (const [i, j] of [[0, 0], [1, 1], [2, 0], [0, 2]]) { const p = isoPt(w.origin[0], w.origin[1], (i - 1) * w.step, (j - 1) * w.step); ghost('crop_wheat_3', p.x, p.y); } }
+    if (id === 'mine') for (const [x, y, k] of WORLD.rocks.slice(0, 4)) ghost(k, x, y);
+    if (id === 'hunt') for (const [mx, my, k] of [[2.6, -2.8, 'hay_bale'], [-2.8, -2.6, 'bush_snow'], [3.2, 0.4, 'bush_snow']]) { const p = isoPt(zx, zy, mx, my); ghost(k, p.x, p.y); }
+    const lock = Assets.image(this, zx, zy - 14, 'ui_icon_lock').setDepth(DEPTH.PAD_TEXT);
+    const lf = lock.frame; lock.setScale(60 / Math.max(lf.realWidth, 1)).setOrigin(0.5, 0.5).setAlpha(0.95);
+    const txt = this.add.text(zx, zy + 34, t(z.name), { fontFamily: FONT, fontSize: '34px', fontStyle: '900', color: '#ffffff', stroke: '#4a5a72', strokeThickness: 8, resolution: 2 }).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD_TEXT).setAlpha(0.97);
+    return { g, lock, txt, ghosts };
   }
 
   addToZone(zone, obj) { if (zone && this.zoneObjs[zone]) this.zoneObjs[zone].push(obj); }
@@ -193,7 +243,7 @@ export class Game extends Phaser.Scene {
     for (let i = 0; i < list.length; i++) {
       const o = list[i];
       const behind = py < o.y - 6 && py > o.y - o.top && Math.abs(px - o.x) < o.hw && o.img.visible;
-      const target = behind ? 0.45 : 1;
+      const target = behind ? 0.32 : 1;
       if (o.a === target) continue;
       o.a += (target - o.a) * k;
       if (Math.abs(o.a - target) < 0.02) o.a = target;
@@ -202,6 +252,14 @@ export class Game extends Phaser.Scene {
   }
 
   buildFences() {
+    // posts shared by two edges / zones are placed once (a doubled post doubles its baked shadow)
+    const posts = new Set();
+    const post = (x, y, zone) => {
+      const k = Math.round(x / 6) + ',' + Math.round(y / 6);
+      if (posts.has(k)) return;
+      posts.add(k);
+      this.staticImage('fence_post', x, y, { zone, r: 16 });
+    };
     for (const f of WORLD.fences) {
       const z = WORLD.zones[f.zone];
       const [cx, cy] = z.center;
@@ -227,14 +285,14 @@ export class Game extends Phaser.Scene {
           if (inGap) {
             if (lastIn) { // cap the run with a post
               const q = isoPt(cx, cy, d.sx + (d.ax === 'x' ? m - 0.5 : 0), d.sy + (d.ax === 'y' ? m - 0.5 : 0));
-              this.staticImage('fence_post', q.x, q.y, { zone: gated, r: 16 });
+              post(q.x, q.y, gated);
             }
             lastIn = false;
             continue;
           }
           if (!lastIn && i > 0) {
             const q = isoPt(cx, cy, d.sx + (d.ax === 'x' ? m - 0.5 : 0), d.sy + (d.ax === 'y' ? m - 0.5 : 0));
-            this.staticImage('fence_post', q.x, q.y, { zone: gated, r: 16 });
+            post(q.x, q.y, gated);
           }
           this.staticImage(d.ax === 'x' ? 'fence_log_x' : 'fence_log_y', p.x, p.y, { zone: gated, r: 22 });
           lastIn = true;
@@ -242,8 +300,8 @@ export class Game extends Phaser.Scene {
         // end posts
         const s = isoPt(cx, cy, d.sx, d.sy);
         const ePt = isoPt(cx, cy, d.sx + (d.ax === 'x' ? d.len : 0), d.sy + (d.ax === 'y' ? d.len : 0));
-        if (!gaps.some((g) => g[0] <= 0.6)) this.staticImage('fence_post', s.x, s.y, { zone: gated, r: 16 });
-        if (!gaps.some((g) => g[1] >= d.len - 0.6)) this.staticImage('fence_post', ePt.x, ePt.y, { zone: gated, r: 16 });
+        if (!gaps.some((g) => g[0] <= 0.6)) post(s.x, s.y, gated);
+        if (!gaps.some((g) => g[1] >= d.len - 0.6)) post(ePt.x, ePt.y, gated);
       }
     }
   }
@@ -325,6 +383,8 @@ export class Game extends Phaser.Scene {
         const p = isoPt(tz.center[0], tz.center[1], mx + (r() - 0.5) * cfg.jitter, my + (r() - 0.5) * cfg.jitter);
         if (cfg.avoid.some(([ax, ay, ar]) => gdist(p.x, p.y, ax, ay) < ar)) continue;
         if (r() < 0.12) continue;
+        // the zone's far-left corner runs into the border pines: a chief chopping there would vanish
+        if (mx + my < (cfg.cornerCut !== undefined ? cfg.cornerCut : -1e9)) continue;
         const tr = new Tree(this, p.x, p.y, kinds[Math.floor(r() * kinds.length)]);
         if (cfg.scale) { tr.img.setScale(cfg.scale); tr.img.__bs = cfg.scale; tr.scale = cfg.scale; }
         this.addOccluder(tr.img);
@@ -360,9 +420,11 @@ export class Game extends Phaser.Scene {
   buildStations() {
     this.stations = {};
     this.stationList = [];
+    this.stationByInput = {};
     for (const c of WORLD.stations) {
       const s = new Station(this, c);
       this.stations[c.id] = s;
+      this.stationByInput[c.input] = s;
       this.stationList.push(s);
       if (WORLD.zones[c.zone].unlock) this.addToZone(c.zone, s);
     }
@@ -372,6 +434,7 @@ export class Game extends Phaser.Scene {
     this.market = new Market(this, WORLD.market);
     this.trade = new TradePost(this, WORLD.trade);
     this.addToZone(WORLD.trade.zone, this.trade);
+    this.trash = new TrashPad(this, WORLD.trash);
     const b = WORLD.bench;
     this.bench = this.staticImage(b.sprite, b.x, b.y, {});
     this.bench.setVisible(false);
@@ -402,8 +465,9 @@ export class Game extends Phaser.Scene {
     this.setZoneEnabled(id, true);
     if (z.outline) {
       const o = z.outline; z.outline = null;
-      if (instant) { o.g.destroy(); o.lock.destroy(); o.txt.destroy(); }
-      else this.tweens.add({ targets: [o.g, o.lock, o.txt], alpha: 0, duration: 400, onComplete: () => { o.g.destroy(); o.lock.destroy(); o.txt.destroy(); } });
+      const all = [o.g, o.lock, o.txt].concat(o.ghosts || []);
+      if (instant) for (const x of all) x.destroy();
+      else this.tweens.add({ targets: all, alpha: 0, duration: 400, onComplete: () => { for (const x of all) x.destroy(); } });
     }
     if (instant) { z.floor.setAlpha(1); return; }
     // cinematic reveal: pan the camera, fade the floor in, pop every object in
@@ -459,9 +523,9 @@ export class Game extends Phaser.Scene {
     return [h[0] + index * 40, h[1] + index * 20];
   }
 
-  hireWorker(type, index, instant, x, y) {
-    const home = this.workerHome(type, index);
-    const w = new Worker(this, type, x !== undefined ? x : home[0], y !== undefined ? y : home[1], index);
+  hireWorker(type, index, instant, x, y, role) {
+    const home = Worker.homeFor(this, type, index, role);
+    const w = new Worker(this, type, x !== undefined ? x : home[0], y !== undefined ? y : home[1], index, role);
     this.workers.push(w);
     if (!instant) {
       this.effects.sheet('fx_poof', w.x, w.y - 30, { size: 180 });
@@ -497,6 +561,15 @@ export class Game extends Phaser.Scene {
   }
   isNear(x, y, d) { const p = this.player; return Math.abs(p.x - x) < d && Math.abs(p.y - y) < d; }
 
+  /** positional sfx: only when (x, y) is on or near the screen, softer just outside it. `force` = always (the chief's own actions) */
+  sfxAt(key, x, y, opts, force) {
+    if (!force) {
+      if (!this.isOnScreen(x, y, 220)) return;
+      if (!this.isOnScreen(x, y, 0)) opts = Object.assign({}, opts, { volume: ((opts && opts.volume) !== undefined ? opts.volume : 1) * 0.5 });
+    }
+    Audio.play(key, opts);
+  }
+
   findGatherable(x, y, range) {
     let best = null, bd = range * range;
     const check = (n) => {
@@ -523,13 +596,13 @@ export class Game extends Phaser.Scene {
     if (to.room <= 0) return false;
     const it = from.pop(types);
     if (!it) return false;
-    to.incoming++;
+    to.reserve(it.type);
     const fx = it.spr.x, fy = it.spr.y;
     const isPlayerDest = to === this.player.stack;
     this.effects.fly(it.spr, fx, fy, () => to.nextPos(it.type), {
       dur: opts.dur || 240, height: opts.height || 60, scaleTo: to.scale,
       onDone: (s) => {
-        to.incoming--;
+        to.arrive(it.type);
         to.push(it.type, s);
         if (from === this.player.stack && PRODUCT_ZONE[it.type] && (to === this.market.stock || to === this.trade.stock)) this.progress.hints[PRODUCT_ZONE[it.type]] = true;
         if (opts.sfx === 'pickup' || isPlayerDest) {
@@ -544,14 +617,14 @@ export class Game extends Phaser.Scene {
   spawnItemTo(type, x, y, ch, isPlayer, delay = 0) {
     const st = ch.stack;
     if (st.count + st.incoming >= (isPlayer ? this.player.capacity : st.max)) return false;
-    st.incoming++;
+    st.reserve(type);
     const go = () => {
       const spr = this.effects.takeItem(type);
       spr.setScale(0.45);
       this.effects.fly(spr, x, y, () => st.nextPos(type), {
         dur: 300, height: 70, scaleTo: st.scale,
         onDone: (s) => {
-          st.incoming--;
+          st.arrive(type);
           if (!ch.alive) { this.effects.releaseItem(s); return; }
           st.push(type, s);
           if (isPlayer) {
@@ -598,6 +671,12 @@ export class Game extends Phaser.Scene {
 
   // ------------------------------------------------------------------ update
   update(time, delta) {
+    if (this._broken || !this.player) return;    // create() failed and a fresh restart is queued
+    // an exception inside Phaser's loop would stop the game for good: report it once, keep running
+    try { this.tick(time, delta); } catch (e) { if (!this._tickErr) { this._tickErr = true; console.error('[FrostVillage] update error:', e); } }
+  }
+
+  tick(time, delta) {
     const dt = Math.min(0.05, delta / 1000);
     const inp = Input.update(time);
     const p = this.player;
@@ -607,7 +686,7 @@ export class Game extends Phaser.Scene {
     // player pad interactions
     this.playerOnPad = this.progress.update(dt);
     this.padT -= dt;
-    const onPadNow = this.handlePlayerPads();
+    const onPadNow = this.handlePlayerPads(dt);
     this.playerOnPad = this.playerOnPad || onPadNow;
 
     this.net.update(dt);
@@ -625,6 +704,12 @@ export class Game extends Phaser.Scene {
     // camera target
     const ct = this.camTarget;
     let fx = p.x, fy = p.y - 30;
+    if (this.tutorial.inTutorial && WORLD.tutorialView) {
+      // first loop: frame net, grill, counter and queue together; follow the chief only near the edges
+      const v = this.cameras.main.worldView, hw = v.width / 2, hh = v.height / 2;
+      fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, WORLD.tutorialView[0]));
+      fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
+    }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
@@ -654,7 +739,7 @@ export class Game extends Phaser.Scene {
     if (this.saveT >= BALANCE.autosaveEvery) { this.saveT = 0; this.save(false); }
   }
 
-  handlePlayerPads() {
+  handlePlayerPads(dt) {
     const p = this.player;
     let on = false;
     const ready = this.padT <= 0;
@@ -684,7 +769,15 @@ export class Game extends Phaser.Scene {
       if (ready && p.stack.hasAny(GOODS) && this.trade.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; this.trade.shelf.pulse(); }
     }
     if (this.market.cash.pad.contains(p.x, p.y) || (this.trade.enabled && this.trade.cash.pad.contains(p.x, p.y))) on = true;
+    this.trash.setEnabled(this.progress.isDone('hire_fisherman'));
+    if (this.trash.update(dt)) on = true;
     return on;
+  }
+
+  /** true when the station that takes `item` can neither accept more input nor make more output (gathering would only fill the bag with things nobody takes) */
+  stationBlocked(item) {
+    const st = this.stationByInput && this.stationByInput[item];
+    return !!(st && st.enabled && st.inStack.full && st.outStack.full);
   }
 
   fullToast() {
@@ -696,20 +789,26 @@ export class Game extends Phaser.Scene {
   serialize() {
     const st = {};
     for (const s of this.stationList) st[s.id] = s.serialize();
-    const shelf = (stock, types) => { const o = {}; for (const ty of types) o[ty] = stock.countOf(ty); return o; };
+    // items in mid-air are saved where they are going; food a waiting customer got but has not paid for
+    // yet (the queue is not saved) goes back on the shelf, and so do goods on their way to the merchant
+    const shelf = (stock, types, extra) => { const o = {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) + ((extra && extra[ty]) || 0); return o; };
+    const unpaid = {};
+    for (const c of this.market.queue) for (const ty of c.bought.concat(c.flying || [])) unpaid[ty] = (unpaid[ty] || 0) + 1;
+    const pl = this.player.stack;
     return {
       coins: this.economy.coins,
       progress: this.progress.serialize(),
       stations: st,
-      market: { stock: shelf(this.market.stock, FOODS), cash: this.market.cash.serialize() },
-      trade: { stock: shelf(this.trade.stock, GOODS), cash: this.trade.cash.serialize() },
-      player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: this.player.stack.items.map((i) => i.type) },
+      market: { stock: shelf(this.market.stock, FOODS, unpaid), cash: this.market.cash.serialize() },
+      trade: { stock: shelf(this.trade.stock, GOODS, this.trade.flying), cash: this.trade.cash.serialize() },
+      player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: pl.items.map((i) => i.type).concat(pl.inTypes) },
     };
   }
 
   save(force) {
-    if (this.resetting) return;
-    Save.write(this.serialize());
+    if (this.resetting || this._broken || !this.player) return;
+    const ok = Save.write(this.serialize());
+    if (!ok && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
   }
 
   restore(sv) {
@@ -765,7 +864,7 @@ export class Game extends Phaser.Scene {
           const pad = pr.pads[s.id];
           if (pad) { pad.destroy(); delete pr.pads[s.id]; }
           if (s.type === 'zone') gs.revealZone(s.zone, true);
-          if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true);
+          if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true, undefined, undefined, s.role);
         }
         pr.openBench(true);
         pr.celebrated = true;
@@ -780,7 +879,7 @@ export class Game extends Phaser.Scene {
         const S = gs.stations;
         const m = {
           net: gs.net.gather, grillIn: S.grill.inPad, grillOut: S.grill.outPad, shelf: gs.market.shelf, cash: gs.market.cash.pad,
-          tradeShelf: gs.trade.shelf, tradeCash: gs.trade.cash.pad, bench: gs.bench,
+          tradeShelf: gs.trade.shelf, tradeCash: gs.trade.cash.pad, bench: gs.bench, trash: gs.trash,
         };
         for (const s of gs.stationList) { m[s.id + 'In'] = s.inPad; m[s.id + 'Out'] = s.outPad; }
         for (const id in gs.progress.pads) m[id] = gs.progress.pads[id];
@@ -795,9 +894,9 @@ export class Game extends Phaser.Scene {
       },
       camera(x, y, zoom) {
         const cam = gs.cameras.main;
-        if (zoom) { cam.setZoom(zoom); if (zoom < 0.7) cam.removeBounds(); }
+        if (zoom) { gs.zoomBase = zoom; cam.setZoom(zoom * View.k); if (zoom < 0.7) cam.removeBounds(); }
         if (x !== undefined) gs.focusCamera(x, y, 1e9);
-        else { gs.camFocus = null; cam.setZoom(BALANCE.camera.zoom); cam.setBounds(0, 0, gs.W, gs.H); }
+        else { gs.camFocus = null; gs.zoomBase = BALANCE.camera.zoom; cam.setZoom(gs.zoomBase * View.k); cam.setBounds(0, 0, gs.W, gs.H); }
       },
       save() { gs.save(true); },
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },

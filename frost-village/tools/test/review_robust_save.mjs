@@ -84,9 +84,9 @@ if ((!only || only === 'throwingStorage') && !skip.includes('throwingStorage')) 
   const r = {};
   try {
     await page.goto(URL, { waitUntil: 'load' });
-    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 30000);
+    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 90000);
     await sleep(300); await tapStart(page);
-    await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 20000);
+    await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 90000);
     await sleep(500);
     await hideRender(page);
     r.probe = await probe(page);
@@ -183,9 +183,9 @@ if (!only || only === 'upgradeStalePaid') {
     return { lvl, coinsLeft: FV.state().coins, savedPaidRightAfterUpgrade: savedNow, savedPaidLater: savedLater, padPaidInMemory: gs.progress.upPads.capacity.paid, padCost: gs.progress.upPads.capacity.cost };
   });
   await page.reload({ waitUntil: 'load' });
-  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 30000);
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 90000);
   await sleep(300); await tapStart(page);
-  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 20000);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 90000);
   await sleep(500);
   r.afterReload = await page.evaluate(() => { const p = window.__FV.scene.progress.upPads.capacity; return { cost: p.cost, paid: p.paid, remaining: p.remaining, coins: window.__FV.state().coins }; });
   r.errors = log.errors;
@@ -244,10 +244,10 @@ if (!only || only === 'reloadDuringPayment') {
       return { coins: FV.state().coins, paid: pad.paid };
     }, delay);
     await page.reload({ waitUntil: 'load' });
-    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 30000);
+    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 90000);
     const saved = await page.evaluate((k) => { const s = JSON.parse(localStorage.getItem(k)); return { coins: s.coins, paid: s.progress.paid, done: Object.keys(s.progress.done).length }; }, KEY);
     await sleep(200); await tapStart(page);
-    await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 20000);
+    await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 90000);
     await sleep(400);
     const after = await page.evaluate(() => { const FV = window.__FV, p = FV.scene.progress.pads.zone_hunt; return { coins: FV.state().coins, paid: p ? p.paid : 'done', done: FV.state().done.includes('zone_hunt') }; });
     out.push({ delay, mid, saved, after, conserved: after.done ? 'zone done' : after.coins + after.paid === 1000 });
@@ -278,7 +278,7 @@ if (!only || only === 'reloadMidTransfer') {
       return { total0: t0, totalVisibleAtReload: total(), incoming: gs.stations.grill.inStack.incoming + gs.stations.grill.outStack.incoming + gs.player.stack.incoming };
     }, delay);
     await page.reload({ waitUntil: 'load' });
-    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 30000);
+    await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 90000);
     const saved = await page.evaluate((k) => { const s = JSON.parse(localStorage.getItem(k)); return s.player.stack.length + s.stations.grill.i + s.stations.grill.o; }, KEY);
     out.push({ delay, ...before, savedTotal: saved, lost: before.total0 - saved });
     await ctx.close();

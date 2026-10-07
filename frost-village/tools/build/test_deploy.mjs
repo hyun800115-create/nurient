@@ -3,12 +3,14 @@
 //   node frost-village/tools/build/build_artifact.mjs        (build dist/artifact first)
 //   node frost-village/tools/build/test_deploy.mjs [mode ...] [--quick]
 //
-// Modes (default: all):
+// Modes (default: every mode except `sandbox`):
 //   pages        serve the whole repo like GitHub Pages (https://<user>.github.io/nurient/) and open
 //                /nurient/frost-village/ — proves every URL is relative (no '/...' paths).
 //   standalone   dist/artifact wrapped in the host skeleton, opened directly (no frame, no CSP).
 //   sandbox      host emulation: wrapper page on origin A embeds origin B in
 //                <iframe sandbox="allow-scripts"> (opaque origin) + strict CSP; no CORS headers.
+//                WORST CASE, EXPECTED TO FAIL with the normal build (every XHR is blocked) and so
+//                not part of the default run; the --inline build is the answer (sandbox-inline).
 //   sandbox-cors same, but the file server answers with Access-Control-Allow-Origin: *.
 //   sameorigin   same frame + CSP but sandbox="allow-scripts allow-same-origin" (artifact has its
 //                own origin, so XHR/fetch to its own files is same-origin and localStorage works).
@@ -38,7 +40,7 @@ const argv = process.argv.slice(2);
 const QUICK = argv.includes('--quick');
 const ALL = ['pages', 'standalone', 'sandbox', 'sandbox-cors', 'sameorigin', 'raw', 'sandbox-inline'];
 const MODES = argv.filter((a) => !a.startsWith('--'));
-const run = MODES.length ? MODES : ALL;
+const run = MODES.length ? MODES : ALL.filter((m) => m !== 'sandbox');
 
 const CSP = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; style-src 'self' 'unsafe-inline'";
 // What the host wraps the body-only page in (charset + viewport with viewport-fit=cover + small reset).

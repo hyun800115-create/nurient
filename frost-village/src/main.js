@@ -4,6 +4,8 @@ import { Preload } from './scenes/Preload.js';
 import { Title } from './scenes/Title.js';
 import { Game } from './scenes/Game.js';
 import { UI } from './scenes/UI.js';
+import { View, MAX_RENDER_SCALE } from './core/View.js';
+import { checkBalance } from './data/balanceCheck.js';
 
 const W = 720;
 const MIN_H = 1280, MAX_H = 1600;
@@ -16,14 +18,34 @@ function logicalHeight() {
   return Math.max(MIN_H, Math.min(MAX_H, h));
 }
 
+function cssInset(name) {
+  try { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0; } catch (e) { return 0; }
+}
+
+/** logical size, render scale (device pixels per logical pixel) and safe-area insets */
+function updateView() {
+  const h = logicalHeight();
+  const iw = window.innerWidth || W, ih = window.innerHeight || h;
+  const cssW = Math.max(1, Math.min(iw, (ih * W) / h));          // CSS width of the fitted canvas
+  const dpr = window.devicePixelRatio || 1;
+  View.W = W; View.H = h;
+  View.k = Math.round(Math.max(1, Math.min(MAX_RENDER_SCALE, (cssW * dpr) / W)) * 20) / 20;
+  const perCss = W / cssW;                                        // logical px per CSS px
+  View.safeTop = cssInset('--sat') * perCss;
+  View.safeBottom = cssInset('--sab') * perCss;
+}
+
+checkBalance();
+updateView();
+
 const params = new URLSearchParams(window.location.search);
 window.__FV_DEBUG = params.get('debug') === '1';
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: W,
-  height: logicalHeight(),
+  width: Math.round(View.W * View.k),
+  height: Math.round(View.H * View.k),
   backgroundColor: '#dbe6f2',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { antialias: true, pixelArt: false, roundPixels: false, powerPreference: 'high-performance' },
@@ -42,13 +64,27 @@ let resizeTimer = 0;
 function onResize() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    const h = logicalHeight();
-    if (Math.abs(game.scale.gameSize.height - h) > 2) game.scale.setGameSize(W, h);
+    updateView();
+    const gw = Math.round(View.W * View.k), gh = Math.round(View.H * View.k);
+    const gs = game.scale.gameSize;
+    if (Math.abs(gs.width - gw) > 1 || Math.abs(gs.height - gh) > 2) game.scale.setGameSize(gw, gh);
     game.scale.refresh();
   }, 120);
 }
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', onResize);
+
+// 120/144 Hz screens: cap the game at ~60-72 fps (same look, half the battery / GPU work).
+// 60 and 90 Hz screens are left alone (a fixed limit would make 90 Hz judder at 45 fps).
+setTimeout(() => {
+  try {
+    const loop = game.loop;
+    if (!loop || !loop.running || loop.hasFpsLimit || !(loop.actualFps > 100)) return;
+    loop.sleep();
+    loop.fpsLimit = 80; loop.hasFpsLimit = true; loop._limitRate = 1000 / 80;
+    loop.wake();
+  } catch (e) { /* keep running unlimited */ }
+}, 4000);
 
 // minimal test hooks until the Game scene installs the full set
 window.__FV = window.__FV || { game };

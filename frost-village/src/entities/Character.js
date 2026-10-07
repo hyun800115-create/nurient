@@ -7,6 +7,9 @@ import { DEPTH } from '../systems/DepthSort.js';
 import { ItemStack } from './ItemStack.js';
 import { BALANCE } from '../data/balance.js';
 
+// small sideways shift of a head-carried tower per rendered direction (the head leans a little)
+const HEAD_DX = { S: 0, SE: 3, E: 5, NE: 3, N: 0 };
+
 export class Character {
   constructor(gs, key, x, y, opts = {}) {
     this.gs = gs;
@@ -80,6 +83,11 @@ export class Character {
 
   carryOffset() {
     const base = DIR_BASE[this.dir], flip = DIR_FLIP[this.dir];
+    if (BALANCE.player.carryOnHead !== false && this.def.kind !== 'animal') {
+      // the tower balances on the head: the face stays visible in every direction
+      const hx = HEAD_DX[base] || 0;
+      return { dx: flip ? -hx : hx, dy: this.headTop + 4, behind: false };
+    }
     const cp = (this.def.carryPoint && this.def.carryPoint[base]) || [0, -34, false];
     return { dx: flip ? -cp[0] : cp[0], dy: cp[1], behind: !!cp[2] };
   }
@@ -98,19 +106,22 @@ export class Character {
   sync(dt) {
     const s = this.sprite;
     s.setPosition(this.x, this.y);
-    s.setDepth(this.y);
+    if (s.depth !== this.y) s.setDepth(this.y);
     this.shadow.setPosition(this.x, this.y + 1);
     if (this.stack.count) {
       const moving = this.vx * this.vx + this.vy * this.vy > 100;
       if (moving) this.walkT += dt * 12;
       const bob = moving ? Math.abs(Math.sin(this.walkT)) * -2 : Math.sin(this.scene.time.now / 400) * 0.6;
-      let o = this.carryOffset();
+      const o = this.carryOffset();
       let dx = o.dx, dy = o.dy, behind = o.behind;
-      if (this.isWorkAnim()) {
+      if (this.isWorkAnim() && BALANCE.player.carryOnHead === false) {
         // hands are busy: the stack rides on the back like a backpack
         dx = -o.dx * 0.6; dy = o.dy - 6; behind = !behind;
       }
-      this.stack.layout(this.x + dx, this.y + dy + bob, this.y + (behind ? -0.5 : 0.5), this.vx, dt, this.walkT);
+      // glide to the new spot when turning instead of jumping
+      if (this._cdx === undefined || dt <= 0) { this._cdx = dx; this._cdy = dy; }
+      else { const k = Math.min(1, dt * 16); this._cdx += (dx - this._cdx) * k; this._cdy += (dy - this._cdy) * k; }
+      this.stack.layout(this.x + this._cdx, this.y + this._cdy + bob, this.y + (behind ? -0.5 : 0.5), this.vx, dt, this.walkT);
     }
   }
 

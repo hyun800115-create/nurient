@@ -10,19 +10,19 @@ import { FONT } from '../data/strings.js';
 const PRESETS = {
   wood:    { sprite: 'fx_chip_wood', size: 14, tint: [0xc98f55, 0xe2b57c, 0x8a5a33], speed: [90, 220], angle: [200, 340], gravityY: 600, life: [380, 650], rotate: true, qty: 7 },
   leaf:    { sprite: 'fx_leaf', size: 14, tint: [0x2e6b4f, 0x3f8a63], speed: [40, 120], angle: [200, 340], gravityY: 160, life: [600, 1000], rotate: true, qty: 4 },
-  snowhit: { sprite: 'fx_snowflake', size: 12, tint: [0xffffff], speed: [50, 160], angle: [190, 350], gravityY: 220, life: [500, 900], rotate: true, qty: 7 },
+  snowhit: { sprite: 'fx_snowflake', size: 12, tint: [0xdfe8f3, 0xc9d6e8, 0xafc3dc], speed: [50, 160], angle: [190, 350], gravityY: 220, life: [500, 900], rotate: true, qty: 7 },
   rock:    { sprite: 'fx_chip_rock', size: 13, tint: [0x8e96a3, 0x6f7784, 0xd9822b], speed: [100, 240], angle: [200, 340], gravityY: 650, life: [350, 600], rotate: true, qty: 8 },
-  spark:   { sprite: 'fx_spark', size: 16, tint: [0xffd45a, 0xff8a2a, 0xffffff], speed: [80, 220], angle: [0, 360], gravityY: 200, life: [200, 420], qty: 6, add: true },
+  spark:   { sprite: 'fx_spark', size: 16, tint: [0xffc83d, 0xff8a2a, 0xffb03a], speed: [80, 220], angle: [0, 360], gravityY: 200, life: [200, 420], qty: 6 },
   wheat:   { sprite: 'fx_wheat_bit', size: 13, tint: [0xe8c25a, 0xf2d27a, 0xc9a03a], speed: [70, 190], angle: [200, 340], gravityY: 420, life: [400, 750], rotate: true, qty: 8 },
   splash:  { sprite: 'fx_droplet', size: 12, tint: [0x9cc7e6, 0xffffff, 0x2f86c9], speed: [80, 220], angle: [215, 325], gravityY: 700, life: [350, 650], qty: 9 },
-  dust:    { sprite: 'fx_dust', size: 22, tint: [0xffffff, 0xe6eef7], speed: [8, 30], angle: [180, 360], gravityY: -10, life: [300, 520], scaleEnd: 1.6, alpha: 0.7, qty: 2, ground: true },
+  dust:    { sprite: 'fx_dust', size: 22, tint: [0xc9d6e8, 0xafc3dc], speed: [8, 30], angle: [180, 360], gravityY: -10, life: [300, 520], scaleEnd: 1.6, alpha: 0.75, qty: 2, ground: true },
   smoke:   { sprite: 'fx_smoke', size: 34, tint: [0xd9dee6, 0xbfc6d1, 0xeeeeee], speed: [10, 30], angle: [255, 285], gravityY: -45, life: [1300, 2000], scaleEnd: 2.2, alpha: 0.55, qty: 1 },
   heart:   { sprite: 'fx_heart', size: 26, tint: null, speed: [40, 90], angle: [240, 300], gravityY: -60, life: [700, 1000], qty: 3 },
   star:    { sprite: 'fx_star', size: 20, tint: [0xffc83d, 0xffffff, 0xffe08a], speed: [120, 320], angle: [0, 360], gravityY: 300, life: [450, 900], rotate: true, qty: 14, add: false },
   confetti:{ sprite: 'fx_star', size: 18, tint: [0xff6f91, 0x3d8be0, 0x5cc86a, 0xffc83d, 0xd9483b, 0xffffff], speed: [250, 620], angle: [235, 305], gravityY: 520, life: [1400, 2300], rotate: true, qty: 40 },
   coin:    { sprite: 'fx_coin', size: 18, tint: null, speed: [120, 260], angle: [220, 320], gravityY: 700, life: [400, 700], rotate: true, qty: 6 },
-  glow:    { sprite: 'fx_glow', size: 46, tint: [0xffffff], speed: [0, 10], angle: [0, 360], gravityY: 0, life: [300, 450], scaleEnd: 2.0, alpha: 0.9, qty: 1, add: true },
-  ring:    { sprite: 'fx_ring', size: 40, tint: [0xffffff], speed: [0, 0], angle: [0, 360], gravityY: 0, life: [400, 500], scaleEnd: 3.0, alpha: 0.9, qty: 1 },
+  glow:    { sprite: 'fx_glow', size: 46, tint: [0xffe08a], speed: [0, 10], angle: [0, 360], gravityY: 0, life: [300, 450], scaleEnd: 2.0, alpha: 0.8, qty: 1 },
+  ring:    { sprite: 'fx_ring', size: 40, tint: [0x8fb4e0], speed: [0, 0], angle: [0, 360], gravityY: 0, life: [400, 500], scaleEnd: 3.0, alpha: 0.9, qty: 1 },
   flame:   { sprite: 'fx_flame', size: 18, tint: null, speed: [20, 50], angle: [250, 290], gravityY: -90, life: [350, 650], scaleEnd: 0.2, alpha: 0.95, qty: 1, add: true },
   snowfall:{ sprite: 'fx_snowflake', size: 9, tint: [0xffffff], speed: [10, 40], angle: [80, 110], gravityY: 12, life: [5000, 8000], rotate: true, qty: 1, alpha: 0.85 },
 };
@@ -117,7 +117,9 @@ export class Effects {
     s.setScale(size / (def.frameWidth || 128));
     if (def.blend === 'ADD') s.setBlendMode(Phaser.BlendModes.ADD);
     s.setDepth(depth);
-    s.play({ key: anim, repeat: -1, startFrame: Math.floor(Math.random() * 4) });
+    const an = this.scene.anims.get(anim);
+    const n = an && an.frames ? an.frames.length : 1;
+    s.play({ key: anim, repeat: -1, startFrame: Math.floor(Math.random() * Math.min(4, n)) });
     return s;
   }
 

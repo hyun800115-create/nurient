@@ -60,7 +60,7 @@ export class Animal extends Character {
     this.hp--;
     gs.effects.sheet('fx_hit', this.x, this.y - 30, { size: 90 });
     gs.effects.burst('spark', this.x, this.y - 30, 4);
-    Audio.play('sfx_hit_animal', { volume: 0.8 });
+    gs.sfxAt('sfx_hit_animal', this.x, this.y, { volume: 0.8 }, by === gs.player);
     this.sprite.setTintFill(0xffffff);
     gs.time.delayedCall(80, () => this.sprite.clearTint());
     if (by === gs.player) {
@@ -86,7 +86,7 @@ export class Animal extends Character {
     this.targetedBy = null; this.reservedBy = null;
     gs.effects.sheet('fx_poof', this.x, this.y - 30, { size: 160 });
     gs.effects.burst('snowhit', this.x, this.y - 20, 10);
-    Audio.play(this.kind === 'deer' ? 'sfx_animal_deer' : 'sfx_animal_boar', { volume: 0.6 });
+    gs.sfxAt(this.kind === 'deer' ? 'sfx_animal_deer' : 'sfx_animal_boar', this.x, this.y, { volume: 0.6 });
     this.sprite.setVisible(false); this.shadow.setVisible(false);
     this.respawnT = BALANCE.resources.animal.respawn;
   }

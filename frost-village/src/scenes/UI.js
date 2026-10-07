@@ -6,6 +6,8 @@ import { Audio } from '../core/Audio.js';
 import { Input, JOY_RADIUS } from '../core/Input.js';
 import { Settings } from '../core/Save.js';
 import { FONT, t, setLang, getLang, fmt } from '../data/strings.js';
+import { panel } from '../core/Panel.js';
+import { View } from '../core/View.js';
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -17,7 +19,8 @@ export class UI extends Phaser.Scene {
   create() {
     this.ready = false;
     this.gs = this.scene.get('Game');
-    const { width: W, height: H } = this.scale.gameSize;
+    View.applyUI(this.cameras.main);
+    const W = View.W, H = View.H;
     this.W = W; this.H = H;
     this.displayCoins = this.gs.economy.coins;
     this.targetCoins = this.displayCoins;
@@ -25,8 +28,7 @@ export class UI extends Phaser.Scene {
     this.panelOpen = false;
 
     // ---- coin HUD
-    const nine = Assets.nine('ui_coin_bar');
-    this.coinBar = this.add.nineslice(0, 0, nine.tex, nine.frame, 230, 74, nine.l, nine.r, nine.t, nine.b).setOrigin(0, 0.5);
+    this.coinBar = panel(this, 0, 0, 'ui_coin_bar', 230, 74).setOrigin(0, 0.5);
     this.coinIcon = Assets.image(this, 0, 0, 'ui_icon_coin');
     this.coinIcon.setScale(64 / Math.max(this.coinIcon.frame.realWidth, 1)).setOrigin(0.5);
     this.coinIcon.__bs = this.coinIcon.scaleX;
@@ -37,8 +39,7 @@ export class UI extends Phaser.Scene {
 
     // ---- objective
     this.objPanel = this.add.container(0, 0).setVisible(false);
-    const on = Assets.nine('ui_panel');
-    this.objBg = this.add.nineslice(0, 0, on.tex, on.frame, 400, 62, on.l, on.r, on.t, on.b).setOrigin(0.5);
+    this.objBg = panel(this, 0, 0, 'ui_panel', 400, 62).setOrigin(0.5);
     this.objText = this.add.text(0, 1, '', TXT(26, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0.5);
     this.objPanel.add([this.objBg, this.objText]);
     this.objKey = null;
@@ -55,16 +56,15 @@ export class UI extends Phaser.Scene {
 
     // ---- toast / banner
     this.toastBox = this.add.container(W / 2, H - 230).setVisible(false).setDepth(50);
-    const tn = Assets.nine('ui_panel');
-    this.toastBg = this.add.nineslice(0, 0, tn.tex, tn.frame, 300, 64, tn.l, tn.r, tn.t, tn.b).setOrigin(0.5).setTint(0x2b2f3a).setAlpha(0.88);
+    this.toastBg = panel(this, 0, 0, 'ui_panel', 300, 64).setOrigin(0.5).setTint(0x2b2f3a).setAlpha(0.88);
     this.toastText = this.add.text(0, 0, '', TXT(28, '#ffffff', '#2b2f3a', 0, '800')).setOrigin(0.5);
     this.toastBox.add([this.toastBg, this.toastText]);
     this.bannerBox = this.add.container(W / 2, H * 0.27).setVisible(false).setDepth(60);
-    const bn = Assets.nine('ui_button_blue');
-    this.bannerBg = this.add.nineslice(0, 0, bn.tex, bn.frame, 460, 104, bn.l, bn.r, bn.t, bn.b).setOrigin(0.5);
+    this.bannerBg = panel(this, 0, 0, 'ui_button_blue', 460, 104).setOrigin(0.5);
     this.bannerText = this.add.text(0, -4, '', TXT(50, '#ffffff', '#1f4f8f', 10)).setOrigin(0.5);
-    this.bannerSub = this.add.text(0, 78, '', TXT(26, '#2b2f3a', '#ffffff', 8, '800')).setOrigin(0.5);
-    this.bannerBox.add([this.bannerBg, this.bannerText, this.bannerSub]);
+    this.bannerSub = this.add.text(0, 80, '', TXT(26, '#ffffff', '#1f3354', 6, '800')).setOrigin(0.5);
+    this.bannerSubBg = this.add.graphics();   // soft dark pill so the subtitle reads over a busy village
+    this.bannerBox.add([this.bannerBg, this.bannerText, this.bannerSubBg, this.bannerSub]);
 
     // coins flying to HUD
     this.flyPool = [];
@@ -77,10 +77,22 @@ export class UI extends Phaser.Scene {
     this.events.once('shutdown', () => { this.ready = false; this.panelOpen = false; this.scale.off('resize', this.onResize, this); });
 
     // ---- input (joystick anywhere that is not a button)
-    this.input.on('pointerdown', (p, over) => { if (this.panelOpen || (over && over.length)) return; Input.pointerDown(p); });
+    this.input.on('pointerdown', (p, over) => {
+      Audio.resume();    // iOS: bring sound back after a call / app switch (needs a user gesture)
+      if (this.panelOpen || (over && over.length)) return;
+      Input.pointerDown(p);
+    });
     this.input.on('pointermove', (p) => Input.pointerMove(p));
-    this.input.on('pointerup', (p) => Input.pointerUp(p));
-    this.input.on('pointerupoutside', (p) => Input.pointerUp(p));
+    // lifting the steering finger while another finger is down hands the joystick to that finger
+    const up = (p) => {
+      const mine = Input.joy.active && p.id === Input.joy.id;
+      Input.pointerUp(p);
+      if (!mine || this.panelOpen) return;
+      const other = this.input.manager.pointers.find((q) => q && q !== p && q.isDown && q.id !== p.id);
+      if (other) Input.pointerDown(other);
+    };
+    this.input.on('pointerup', up);
+    this.input.on('pointerupoutside', up);
     this.input.on('gameout', () => Input.release());
 
     this.setCoins(this.gs.economy.coins, 0);
@@ -88,20 +100,21 @@ export class UI extends Phaser.Scene {
   }
 
   onResize(gameSize) {
-    this.W = gameSize.width; this.H = gameSize.height;
-    this.cameras.main.setSize(this.W, this.H);
+    this.W = View.W; this.H = View.H;
+    this.cameras.main.setSize(gameSize.width, gameSize.height);
+    View.applyUI(this.cameras.main);
     this.layout();
   }
 
   layout() {
     const W = this.W, H = this.H;
-    const top = 62;
+    const top = 62 + View.safeTop;
     this.coinBar.setPosition(26, top);
     this.coinIcon.setPosition(64, top);
     this.coinText.setPosition(104, top + 2);
     this.setBtn.setPosition(W - 62, top);
     this.objPanel.setPosition(W / 2, top + 88);
-    this.toastBox.setPosition(W / 2, H - 230);
+    this.toastBox.setPosition(W / 2, H - 230 - View.safeBottom);
     this.bannerBox.setPosition(W / 2, H * 0.27);
     if (this.fps) this.fps.setPosition(12, H - 34);
     if (this.panel) this.layoutPanel();
@@ -126,9 +139,8 @@ export class UI extends Phaser.Scene {
 
   makeButton(x, y, w, h, style, label, onClick, size = 30) {
     const c = this.add.container(x, y);
-    const n = Assets.nine('ui_button_' + style);
-    const bg = this.add.nineslice(0, 0, n.tex, n.frame, w, h, n.l, n.r, n.t, n.b).setOrigin(0.5);
-    const tx = this.add.text(0, -3, label, TXT(size, '#ffffff', 'rgba(0,0,0,0.25)', 4, '900')).setOrigin(0.5);
+    const bg = panel(this, 0, 0, 'ui_button_' + style, w, h).setOrigin(0.5);
+    const tx = this.add.text(0, -3, label, style === 'gray' ? TXT(size, '#ffffff', '#4a5361', 6, '900') : TXT(size, '#ffffff', 'rgba(0,0,0,0.25)', 4, '900')).setOrigin(0.5);
     c.add([bg, tx]);
     c.bg = bg; c.text = tx;
     c.setSize(w, h);
@@ -147,7 +159,7 @@ export class UI extends Phaser.Scene {
   worldToScreen(wx, wy) {
     const cam = this.gs.cameras.main;
     const v = cam.worldView;
-    return { x: (wx - v.x) * cam.zoom, y: (wy - v.y) * cam.zoom };
+    return { x: ((wx - v.x) * cam.zoom) / View.k, y: ((wy - v.y) * cam.zoom) / View.k };
   }
 
   coinFly(wx, wy, n) {
@@ -198,6 +210,12 @@ export class UI extends Phaser.Scene {
     this.bannerText.setText(msg);
     this.bannerSub.setText(sub || '');
     this.bannerBg.setSize(Math.max(360, this.bannerText.width + 90), 104);
+    const g = this.bannerSubBg;
+    g.clear();
+    if (sub) {
+      const w = this.bannerSub.width + 44, h = 50;
+      g.fillStyle(0x1f3354, 0.62); g.fillRoundedRect(-w / 2, 80 - h / 2, w, h, h / 2);
+    }
     this.tweens.killTweensOf(b);
     b.setVisible(true).setAlpha(1).setScale(0.3);
     this.tweens.add({ targets: b, scale: 1, duration: 420, ease: 'Back.easeOut' });
@@ -235,7 +253,7 @@ export class UI extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- settings
-  openSettings() {
+  openSettings(instant) {
     if (this.panelOpen) return;
     this.panelOpen = true;
     Input.release();
@@ -243,19 +261,21 @@ export class UI extends Phaser.Scene {
     const c = this.add.container(0, 0).setDepth(80);
     const dim = this.add.rectangle(W / 2, H / 2, W * 2, H * 2, 0x1b2638, 0.5).setInteractive();
     dim.on('pointerdown', () => {});
-    const pn = Assets.nine('ui_panel');
-    const bg = this.add.nineslice(W / 2, H / 2, pn.tex, pn.frame, 560, 640, pn.l, pn.r, pn.t, pn.b).setOrigin(0.5);
+    const bg = panel(this, W / 2, H / 2, 'ui_panel', 560, 640).setOrigin(0.5);
     c.add([dim, bg]);
     this.panel = c; this.panelBg = bg; this.panelDim = dim;
     this.buildPanelContent(false);
-    c.setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, duration: 160 });
-    bg.setScale(0.8);
-    this.tweens.add({ targets: bg, scale: 1, duration: 240, ease: 'Back.easeOut' });
-    this.gs.scene.pause();
+    if (!instant) {
+      c.setAlpha(0);
+      this.tweens.add({ targets: c, alpha: 1, duration: 160 });
+      bg.setScale(0.8);
+      this.tweens.add({ targets: bg, scale: 1, duration: 240, ease: 'Back.easeOut' });
+    }
+    if (!this.gs.scene.isPaused()) this.gs.scene.pause();
   }
 
   buildPanelContent(confirm) {
+    this.panelConfirm = confirm;
     if (this.panelItems) for (const o of this.panelItems) o.destroy();
     this.panelItems = [];
     const W = this.W, H = this.H, cx = W / 2, cy = H / 2;
@@ -270,6 +290,12 @@ export class UI extends Phaser.Scene {
       const S = Settings.data;
       row(cy - 150, t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
       row(cy - 50, t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
+      // globe icon for the language row (drawn, there is no icon sprite for it)
+      const gl = add(this.add.graphics());
+      gl.fillStyle(0x3d8be0, 1); gl.fillCircle(cx - 200, cy + 50, 25);
+      gl.lineStyle(3, 0xffffff, 0.95); gl.strokeCircle(cx - 200, cy + 50, 25);
+      gl.strokeEllipse(cx - 200, cy + 50, 22, 50); gl.lineBetween(cx - 225, cy + 50, cx - 175, cy + 50);
+      gl.lineBetween(cx - 221, cy + 37, cx - 179, cy + 37); gl.lineBetween(cx - 221, cy + 63, cx - 179, cy + 63);
       row(cy + 50, t('language'), t('langName'), 'blue', () => {
         const l = getLang() === 'ko' ? 'en' : 'ko';
         setLang(l); Settings.data.lang = l; Settings.save();
@@ -287,14 +313,21 @@ export class UI extends Phaser.Scene {
     void close;
   }
 
-  layoutPanel() { /* panel is rebuilt on open; nothing to do */ }
+  /** after a resize / rotation: rebuild the open settings panel around the new centre */
+  layoutPanel() {
+    if (!this.panelOpen || !this.panel) return;
+    const confirm = !!this.panelConfirm;
+    this.closeSettings(true, true);
+    this.openSettings(true);
+    if (confirm) this.buildPanelContent(true);
+  }
 
-  closeSettings(immediate) {
+  closeSettings(immediate, keepPaused) {
     if (!this.panelOpen) return;
     this.panelOpen = false;
     const c = this.panel;
     this.panel = null; this.panelItems = null;
-    if (this.gs.scene.isPaused()) this.gs.scene.resume();
+    if (!keepPaused && this.gs.scene.isPaused()) this.gs.scene.resume();
     if (immediate) { c.destroy(); return; }
     this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
   }
@@ -310,6 +343,10 @@ export class UI extends Phaser.Scene {
 
   // ---------------------------------------------------------------- frame
   update(time, delta) {
+    try { this.tick(time, delta); } catch (e) { if (!this._tickErr) { this._tickErr = true; console.error('[FrostVillage] UI error:', e); } }
+  }
+
+  tick(time, delta) {
     const dt = delta / 1000;
     // coin counter
     if (this.coinDelay > 0) this.coinDelay -= dt;

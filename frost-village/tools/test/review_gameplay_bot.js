@@ -223,7 +223,9 @@
     const shelves = [];
     if (types.some((t) => FOODS.includes(t))) shelves.push(gs.market);
     if (types.some((t) => GOODS.includes(t))) shelves.push(gs.trade);
-    shelves.sort((a, c) => gd(p.x, p.y, a.shelf.x, a.shelf.y) - gd(p.x, p.y, c.shelf.x, c.shelf.y));
+    // go where most of the bag can be sold (a lone bread must not keep 25 ingots in the bag forever)
+    const b = bag(), n = (sh) => types.filter((t) => (sh === gs.market ? FOODS : GOODS).includes(t)).reduce((k, t) => k + (b[t] || 0), 0);
+    shelves.sort((a, c) => (n(c) - n(a)) || (gd(p.x, p.y, a.shelf.x, a.shelf.y) - gd(p.x, p.y, c.shelf.x, c.shelf.y)));
     const s = shelves[0];
     setTask('sell', s.shelf, { seller: s, label: s === gs.market ? 'market' : 'trade', tol: 6 });
   }

@@ -26,7 +26,7 @@ const XOFF = (m) => [Math.round(45.25 * m), Math.round(22.63 * m)];      // alon
 const YOFF = (m) => [Math.round(45.25 * m), Math.round(-22.63 * m)];     // along +Y
 
 const grill = Z('plaza', -4.5, 4.8);
-const market = Z('plaza', 3.0, 3.8);
+const market = Z('plaza', 2.0, 2.8);
 const trade = Z('plaza', -4.6, -1.0);
 const bench = Z('plaza', 3.6, -4.6);
 const sawmill = Z('forest', 1.3, 2.6);
@@ -44,6 +44,9 @@ export const WORLD = {
   shore: { base: 372, waves: [[16, 0.0052, 0.4], [7, 0.0165, 1.7], [3, 0.041, 0.2]] },
 
   player: { x: 935, y: 520 },          // 시작 위치
+  // 첫 판매(튜토리얼) 동안 카메라가 비추는 곳: 그물·그릴·판매대·손님 줄이 한 화면에 들어오도록
+  // (촌장이 화면 가장자리로 가면 카메라가 따라감)
+  tutorialView: [1095, 670],
 
   zones: ZONES,
 
@@ -60,12 +63,16 @@ export const WORLD = {
   // ── 판매처 ─────────────────────────────────────────────
   market: {
     sprite: 'market_counter', x: market[0], y: market[1],
-    shelf: rel(market, Z('plaza', 5.35, 3.8)),     // 음식 놓는 발판 (판매대 오른쪽 끝)
-    cash: rel(market, Z('plaza', 5.7, 1.3)),       // 손님 코인 쌓이는 발판
-    queueStart: rel(market, Z('plaza', 3.0, 2.25)),// 맨 앞 손님 위치 (판매대 앞)
+    shelf: rel(market, Z('plaza', 4.35, 2.8)),     // 음식 놓는 발판 (판매대 오른쪽 끝)
+    cash: rel(market, Z('plaza', 4.7, 0.3)),       // 손님 코인 쌓이는 발판
+    queueStart: rel(market, Z('plaza', 2.0, 1.25)),// 맨 앞 손님 위치 (판매대 앞)
     queueStep: YOFF(-0.9),                         // 줄 간격 (뒤로 갈수록 왼쪽 아래)
-    entry: [[990, 2660], [990, 1260], [1080, 1080]],   // 손님이 걸어오는 길 (끝나면 줄 끝으로)
-    exit: [[1080, 1080], [990, 1260], [990, 2660]],
+    queueTurn: 6,                                  // 이 수만큼 선 뒤에는 줄이 꺾여서
+    queueStep2: XOFF(0.9),                         //   이 방향(오른쪽 아래)으로 이어짐
+    // 손님이 걸어오는 길 (끝나면 줄 끝으로). 손님은 화면 밖에서 이 길 위의 가장 가까운 곳에 나타납니다.
+    // (주의: 모든 점은 걸을 수 있는 땅 안쪽이어야 합니다 — 지도 아래 끝 y 2570 보다 위)
+    entry: [[990, 2200], [990, 1260], [1080, 1080]],
+    exit: [[1080, 1080], [990, 1260], [990, 2200]],     // 다 산 손님이 돌아가는 길 (화면 밖으로 나가거나 길 끝에 닿으면 사라짐)
   },
   trade: {
     sprite: 'trade_post', x: trade[0], y: trade[1], zone: 'forest',
@@ -73,11 +80,13 @@ export const WORLD = {
     cash: rel(trade, Z('plaza', -2.1, -2.75)),     // 상인이 낸 코인
     merchant: rel(trade, Z('plaza', -4.3, 0.5)),   // 상인 위치 (썰매 뒤)
   },
+  // 버리기 발판: 위에 잠깐 서 있으면 들고 있는 물건을 모닥불에 던져 버립니다 (어부 고용 후 나타남)
+  trash: { x: 585, y: 680, fire: [520, 574] },
   bench: { sprite: 'upgrade_bench', x: bench[0], y: bench[1], pads: { capacity: rel(bench, Z('plaza', 1.55, -4.75)), speed: rel(bench, Z('plaza', 5.65, -4.45)) } },
 
   // ── 자원 ───────────────────────────────────────────────
   net: { x: 880, y: 398, gather: [0, 86], fisherSpot: [-128, 30] },
-  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
+  trees: { zone: 'forest', grid: 2.05, jitter: 0.3, margin: 0.95, scale: 0.9, cornerCut: -5.5, avoid: [[sawmill[0], sawmill[1], 170], [sawmill[0] - 104, sawmill[1] - 52, 90], [sawmill[0] + 104, sawmill[1] + 52, 90], [Z('forest', -3.2, 2.4)[0], Z('forest', -3.2, 2.4)[1], 90]] },
   rocks: [
     [...Z('mine', -2.6, -0.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
     [...Z('mine', 0.9, -3.2), 'rock_ore'], [...Z('mine', -0.6, 0.6), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
@@ -89,25 +98,25 @@ export const WORLD = {
   // ── 해금 / 고용 발판 ────────────────────────────────────
   //  worker: 고용되는 일꾼, hut: 일꾼 오두막 위치 (구역이 열릴 때 함께 나타남)
   pads: {
-    hire_fisherman:  { x: 712,  y: 548,  worker: 'fisherman',  hut: [585, 470] },
+    hire_fisherman:  { x: 900,  y: 700,  worker: 'fisherman',  hut: [585, 470] },
     zone_forest:     { x: 760,  y: 1130, zone: 'forest' },
     hire_lumberjack: { ...P('forest', -0.6, 3.6), worker: 'lumberjack', hut: [300, 1010] },
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
     hire_farmer:     { ...P('farm', -1.0, 3.0), worker: 'farmer',     hut: [1606, 1112] },
     zone_mine:       { x: 760,  y: 1760, zone: 'mine' },
-    hire_miner:      { ...P('mine', -2.4, 2.4), worker: 'miner',      hut: [236, 1730] },
+    hire_miner:      { ...P('mine', -0.4, 3.6), worker: 'miner',      hut: [236, 1730] },
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
     hire_hunter:     { ...P('hunt', 1.6, 2.6), worker: 'hunter',     hut: [1616, 1790] },
     hire2_fisherman: { x: 640,  y: 610,  worker: 'fisherman' },
     hire2_lumberjack:{ ...P('forest', -1.0, 3.3), worker: 'lumberjack' },
     hire2_farmer:    { ...P('farm', 0.6, 3.1), worker: 'farmer' },
-    hire2_miner:     { ...P('mine', -1.0, 3.2), worker: 'miner' },
+    hire2_miner:     { ...P('mine', -0.4, 3.6), worker: 'miner' },
     hire2_hunter:    { ...P('hunt', 2.9, 1.5), worker: 'hunter' },
   },
 
   // 고용된 일꾼의 대기 위치
   workerHome: {
-    fisherman: [700, 470], lumberjack: Z('forest', -2.0, 1.6), farmer: Z('farm', -0.2, 2.2), miner: Z('mine', -1.6, 1.4), hunter: Z('hunt', 0.6, 2.2),
+    fisherman: [700, 470], lumberjack: Z('forest', -2.0, 1.6), farmer: Z('farm', -0.2, 2.2), miner: Z('mine', -0.2, 2.2), hunter: Z('hunt', 0.6, 2.2),
   },
 
   // ── 길 (눈이 다져진 길) ─────────────────────────────────
@@ -147,9 +156,9 @@ export const WORLD = {
     ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', ...Z('plaza', 6.4, 5.2)], ['crate', ...Z('plaza', 6.5, 4.4), { scale: 0.85 }],
     ['signpost', 1040, 1180], ['bush_snow', ...Z('plaza', 1.0, 7.3)], ['snow_pile_b', ...Z('plaza', 7.4, 1.5)],
     // 남쪽 마을
-    ['chief_lodge', 960, 2400], ['tent_a', 660, 2380], ['tent_a', 1260, 2370, { flip: true }], ['campfire', 990, 2290],
-    ['flag_pole', 1130, 2250], ['lamp_post', 900, 2230], ['lamp_post', 1080, 2560], ['firewood_pile', 760, 2500], ['barrel', 1200, 2500],
-    ['crate', 1240, 2530], ['bench', 1090, 2300], ['hay_bale', 1340, 2470], ['snow_pile_a', 520, 2490], ['bush_snow', 1420, 2480],
+    ['chief_lodge', 960, 2400], ['tent_a', 660, 2380], ['tent_a', 1260, 2370, { flip: true }], ['campfire', 870, 2525],
+    ['flag_pole', 1345, 2285], ['lamp_post', 700, 2270], ['lamp_post', 1080, 2560], ['firewood_pile', 760, 2500], ['barrel', 1200, 2500],
+    ['crate', 1240, 2530], ['bench', 975, 2555], ['hay_bale', 1340, 2470], ['snow_pile_a', 520, 2490], ['bush_snow', 1420, 2480],
     ['snow_pile_b', 780, 2250], ['barrel', 820, 2420],
     // 길가
     ['lamp_post', 1040, 1500], ['lamp_post', 940, 1850], ['signpost', 940, 1520], ['bush_snow', 1060, 1640], ['snow_pile_b', 900, 1640],
@@ -181,7 +190,7 @@ export const WORLD = {
   decals: [
     ['decal_snow_drift_a', 360, 660, 1], ['decal_snow_drift_b', 1580, 700, 1], ['decal_snow_drift_a', 760, 1580, 1.1], ['decal_snow_drift_b', 1220, 1590, 1],
     ['decal_snow_drift_a', 1580, 2420, 1], ['decal_snow_drift_b', 330, 2440, 1], ['decal_puddle_ice', 1120, 1520, 1], ['decal_puddle_ice', 640, 2250, 0.9],
-    ['decal_dirt_patch', 540, 1800, 1.1], ['decal_dirt_patch', 300, 2120, 1],
+    ['decal_dirt_patch', 700, 1640, 1.0], ['decal_dirt_patch', 300, 2120, 1],
     ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
   ],
 };

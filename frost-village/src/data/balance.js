@@ -4,6 +4,8 @@
 //  게임의 모든 숫자가 이 파일 한 곳에 모여 있습니다.
 //  코딩을 몰라도 숫자만 바꾸고 저장 → 브라우저 새로고침 하면 바로 반영됩니다.
 //  (주의: 쉼표 , 와 괄호 { } [ ] 는 지우지 마세요!)
+//  (값을 잘못 적으면 — 0, 음수, 글자 등 — 게임이 안전한 값으로 바꿔서 실행하고,
+//   브라우저 콘솔(F12)에 "[balance.js] ..." 경고를 남깁니다. 비용·가격은 1 이상의 정수로 적어 주세요.)
 //  시간 단위는 '초', 거리 단위는 '픽셀(px)' 입니다. (1m ≈ 64px)
 // =====================================================================
 
@@ -28,21 +30,24 @@ export const BALANCE = {
     verticalFactor: 0.74,     // 위/아래로 움직일 때 속도 비율 (원근감, 1이면 좌우와 같음)
     gatherRange: 78,          // 이 거리 안에 자원이 있으면 멈춰 섰을 때 자동으로 채집
     stillDelay: 0.08,         // 멈춘 뒤 채집을 시작하기까지 걸리는 시간(초)
-    padDelay: 0.25,           // 잠금/고용 발판 위에 서서 코인이 빠져나가기 시작하기까지 시간(초)
+    padDelay: 0.5,            // 잠금/고용/업그레이드 발판 위에 서서 코인이 빠져나가기 시작하기까지 시간(초)
+                              //   (지나가다 밟았을 때 코인이 새지 않도록 0.4 ~ 0.6 추천)
+    trashDelay: 0.6,          // '버리기' 발판 위에 이만큼 서 있어야 들고 있는 물건을 버리기 시작(초)
     padItemInterval: 0.075,   // 가공소/판매대 발판에서 아이템이 하나씩 날아가는 간격(초)
     carryScale: 0.62,         // 손에 든 아이템 탑의 크기 배율
+    carryOnHead: true,        // true: 아이템 탑을 머리 위에 이고 다님 (얼굴이 가려지지 않음) / false: 가슴 앞에 듦
   },
 
   // ── 업그레이드 (작업대) ───────────────────────────────────────
   //  values = 단계별 값, costs = 다음 단계로 올리는 비용 (costs 개수 = values 개수 - 1)
   upgrades: {
     capacity: {               // 가방: 한 번에 들 수 있는 아이템 개수
-      values: [6, 9, 12, 16, 20, 25],
-      costs: [60, 150, 320, 600, 950],
+      values: [6, 10, 14, 18, 22, 26],
+      costs: [40, 90, 170, 300, 480],
     },
     speed: {                  // 신발: 이동 속도 배율
-      values: [1.0, 1.12, 1.24, 1.36, 1.5],
-      costs: [90, 220, 450, 800],
+      values: [1.0, 1.15, 1.3, 1.45, 1.6],
+      costs: [50, 120, 240, 400],
     },
   },
 
@@ -58,21 +63,21 @@ export const BALANCE = {
   // ── 해금 / 고용 비용 (기획서 §4) ────────────────────────────────
   costs: {
     hire_fisherman: 30,       // 1. 어부 고용
-    zone_forest: 80,          // 2. 벌목장 (숲 + 제재소 + 교역소)
-    hire_lumberjack: 120,     // 3. 나무꾼 고용
+    zone_forest: 100,         // 2. 벌목장 (숲 + 제재소 + 교역소)
+    hire_lumberjack: 150,     // 3. 나무꾼 고용
     // 4. 가방 업그레이드 → 위 upgrades 의 단계별 비용
-    zone_farm: 200,           // 5. 농장 (밀밭 + 빵 오븐)
-    hire_farmer: 250,         // 6. 농부 고용
-    zone_mine: 400,           // 7. 광산 (광석 바위 + 제련소)
-    hire_miner: 450,          // 8. 광부 고용
-    zone_hunt: 700,           // 9. 사냥터 (사슴·멧돼지 + 훈제장)
-    hire_hunter: 800,         // 10. 사냥꾼 고용
-    // 11. 마을 완성 후 확장: 두 번째 일꾼
-    hire2_fisherman: 900,
-    hire2_lumberjack: 1100,
-    hire2_farmer: 1300,
-    hire2_miner: 1500,
-    hire2_hunter: 1800,
+    zone_farm: 300,           // 5. 농장 (밀밭 + 빵 오븐)
+    hire_farmer: 380,         // 6. 농부 고용
+    zone_mine: 600,           // 7. 광산 (광석 바위 + 제련소)
+    hire_miner: 700,          // 8. 광부 고용
+    zone_hunt: 1000,          // 9. 사냥터 (사슴·멧돼지 + 훈제장)
+    hire_hunter: 1200,        // 10. 사냥꾼 고용
+    // 11. 마을 완성 후 확장: 배달꾼 (가공소 완성품을 판매대·교역소로 대신 날라 줌)
+    hire2_fisherman: 900,     // 구운 생선 배달꾼
+    hire2_lumberjack: 1100,   // 판자 배달꾼
+    hire2_farmer: 1300,       // 빵 배달꾼
+    hire2_miner: 1500,        // 주괴 배달꾼
+    hire2_hunter: 1800,       // 훈제 고기 배달꾼
   },
   payDuration: 1.6,           // 발판에 코인을 다 내는 데 걸리는 대략적인 시간(초) — 비싸도 이 시간 안에 끝남
 
@@ -81,9 +86,9 @@ export const BALANCE = {
   stations: {
     grill:      { time: 1.0, inputMax: 30, outputMax: 36 },   // 생선 그릴: 생선 → 구운 생선
     sawmill:    { time: 1.0, inputMax: 30, outputMax: 36 },   // 제재소: 통나무 → 판자
-    bakery:     { time: 1.3, inputMax: 30, outputMax: 36 },   // 빵 오븐: 밀 → 빵
-    smelter:    { time: 1.5, inputMax: 30, outputMax: 36 },   // 제련소: 광석 → 주괴
-    smokehouse: { time: 1.5, inputMax: 30, outputMax: 36 },   // 훈제장: 생고기 → 훈제 고기
+    bakery:     { time: 1.1, inputMax: 30, outputMax: 36 },   // 빵 오븐: 밀 → 빵
+    smelter:    { time: 1.2, inputMax: 30, outputMax: 36 },   // 제련소: 광석 → 주괴
+    smokehouse: { time: 1.2, inputMax: 30, outputMax: 36 },   // 훈제장: 생고기 → 훈제 고기
   },
 
   // ── 자원 ─────────────────────────────────────────────────
@@ -107,6 +112,7 @@ export const BALANCE = {
   workers: {
     speed: 150,               // 이동 속도
     capacity: 5,              // 한 번에 나르는 개수
+    porterCapacity: 8,        // 배달꾼이 한 번에 나르는 완성품 개수
     // 작업 동작을 몇 번 반복해야 자원 1개를 얻는지 (클수록 느림)
     cyclesPerItem: { fisherman: 2, lumberjack: 1, farmer: 1, miner: 1, hunter: 1 },
     hunterRange: 230,         // 사냥꾼이 활을 쏘는 거리
@@ -114,18 +120,20 @@ export const BALANCE = {
 
   // ── 손님 (식당 판매대) ─────────────────────────────────────────
   customers: {
-    spawnEvery: 2.6,          // 새 손님이 오는 간격(초)
-    maxQueue: 6,              // 줄 설 수 있는 최대 손님 수
+    spawnEvery: 2.0,          // 새 손님이 오는 간격(초)
+    maxQueue: 10,             // 줄 설 수 있는 최대 손님 수 (판매대로 걸어오는 손님 포함)
     wantMin: 1,               // 원하는 개수 최소
     wantMax: 3,               // 원하는 개수 최대 (처음)
     wantMaxLate: 5,           // 원하는 개수 최대 (마을이 커진 뒤)
     takeInterval: 0.2,        // 판매대에서 하나씩 가져가는 간격(초)
     speed: 120,               // 걷는 속도
+    shelfMax: 40,             // 판매대에 음식 종류별로 올려 둘 수 있는 최대 개수
   },
 
   // ── 교역소 (상인) ──────────────────────────────────────────
   trade: {
     buyInterval: 0.28,        // 상인이 물건 1개를 사 가는 간격(초)
+    shelfMax: 40,             // 교역소에 종류별로 올려 둘 수 있는 최대 개수
   },
 
   // ── 코인 ─────────────────────────────────────────────────

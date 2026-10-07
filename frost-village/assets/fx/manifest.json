@@ -4,7 +4,7 @@
  "conventions": {
   "particles": "White/greyscale (tint in game) except fx_heart, fx_flame, fx_coin. Frames are untrimmed squares.",
   "blend": "All sheets are NORMAL-blend artwork (saturated cores + warm/cool rims) so they read on white snow, where ADD is invisible. fx_fire / fx_sparkle / fx_glow also look fine with ADD over dark ground.",
-  "sheets": "Horizontal strips, frame i at x = i*frameWidth. Phaser anim key = sheet key."
+  "sheets": "Frames left->right, then wrapped into rows so no sheet is wider than 2048 px (GPUs with a 2048 texture limit). Phaser anim key = sheet key."
  },
  "atlases": [
   {

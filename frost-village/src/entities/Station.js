@@ -16,13 +16,15 @@ export class Station {
     this.enabled = true;
     const r = Assets.sprite(cfg.sprite);
     this.img = gs.add.sprite(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);
+    // tall stations (oven, smelter, smokehouse) fade when the chief walks behind them; low ones never hide him
+    if (this.img.displayHeight * this.img.originY > 190) gs.addOccluder(this.img);
     this.workAnim = Assets.spriteAnim(cfg.sprite, 'work');
     const fp = (r.def && r.def.footprint) || [190, 95];
     this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.42, 'station');
     this.inPad = new Pad(gs, this.x + cfg.in[0], this.y + cfg.in[1], 'input', 1.45, { icon: cfg.input, iconSize: 44 });
     this.outPad = new Pad(gs, this.x + cfg.out[0], this.y + cfg.out[1], 'output', 1.45, { icon: cfg.output, iconSize: 44 });
-    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-13, -4], [13, 5]], perCol: 15, max: this.bal.inputMax });
-    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], perCol: 18, max: this.bal.outputMax });
+    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-13, -4], [13, 5]], alternate: true, max: this.bal.inputMax });
+    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], alternate: true, max: this.bal.outputMax });
     this.timer = 0;
     this.working = false;
     this.idleT = 0;
@@ -95,14 +97,14 @@ export class Station {
       dur: 240, height: 50, scaleTo: 0.4,
       onDone: (spr) => gs.effects.releaseItem(spr),
     });
-    this.outStack.incoming++;
+    this.outStack.reserve(this.output);
     gs.time.delayedCall(260, () => {
       const spr = gs.effects.takeItem(this.output);
       spr.setScale(0.5);
       gs.effects.fly(spr, this.x, this.y - 50, () => this.outStack.nextPos(), {
         dur: 300, height: 60, scaleTo: 1,
         onDone: (s) => {
-          this.outStack.incoming--;
+          this.outStack.arrive(this.output);
           this.outStack.push(this.output, s);
           if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) Audio.play('sfx_drop', { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
         },
@@ -125,7 +127,7 @@ export class Station {
     return this.gs.moveItem(this.outStack, ch.stack, null, { dur: 230, height: 55, sfx: 'pickup' });
   }
 
-  serialize() { return { i: this.inStack.count, o: this.outStack.count }; }
+  serialize() { return { i: this.inStack.count + this.inStack.incoming, o: this.outStack.count + this.outStack.incoming }; }
   restore(s) {
     if (!s) return;
     const fx = this.gs.effects;

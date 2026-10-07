@@ -47,7 +47,7 @@
     "audio/amb_sea.ogg",
     "audio/amb_sea.mp3"
    ],
-   "volume": 0.216,
+   "volume": 0.188,
    "loop": true,
    "kind": "ambience",
    "duration": 24.0007,
@@ -59,7 +59,7 @@
     "audio/amb_fire.ogg",
     "audio/amb_fire.mp3"
    ],
-   "volume": 0.257,
+   "volume": 0.295,
    "loop": true,
    "kind": "ambience",
    "duration": 20.0011,

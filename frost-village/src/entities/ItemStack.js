@@ -26,11 +26,20 @@ export class ItemStack {
     this.lean = 0; this.leanV = 0;
     this.bx = 0; this.by = 0; this.depth = 0;
     this.typeCols = opts.typeCols || null; // map type -> column index (shelf with one tower per type)
+    this.alternate = !!opts.alternate;     // fill the towers side by side (twin towers) instead of one after another
     this.hopOnPush = opts.hop !== false;
     this._top = { x: 0, y: 0 };
     this.visible = true;
     this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
+    this.inTypes = [];      // their types (saved with the stack, so a reload mid-flight loses nothing)
   }
+
+  /** an item of `type` starts flying toward this stack */
+  reserve(type) { this.incoming++; this.inTypes.push(type); }
+  /** ...and has arrived (or was dropped) */
+  arrive(type) { this.incoming = Math.max(0, this.incoming - 1); const i = this.inTypes.indexOf(type); if (i >= 0) this.inTypes.splice(i, 1); }
+  /** stored + in-flight count of `type` */
+  countWithIncoming(type) { let n = this.countOf(type); for (const t of this.inTypes) if (t === type) n++; return n; }
 
   /** free slots, counting items already in flight */
   get room() { return this.max - this.items.length - this.incoming; }
@@ -81,6 +90,10 @@ export class ItemStack {
     if (this.typeCols && type) {
       col = this.typeCols[type] || 0;
       for (const it of this.items) if (this.typeCols[it.type] === col) h += stackStep(it.type) * this.scale;
+    } else if (this.alternate) {
+      const nc = this.cols.length;
+      col = n % nc;
+      for (let i = col; i < n; i += nc) h += stackStep(this.items[i].type) * this.scale;
     } else {
       col = Math.min(this.cols.length - 1, Math.floor(n / this.perCol));
       const start = col * this.perCol;
@@ -124,8 +137,22 @@ export class ItemStack {
         let hop = 0;
         if (it.hop > 0) { it.hop = Math.max(0, it.hop - dt * 5); hop = Math.sin(it.hop * Math.PI) * 9; it.spr.setScale(this.scale * (1 + it.hop * 0.25), this.scale * (1 - it.hop * 0.15)); if (it.hop === 0) it.spr.setScale(this.scale); }
         it.spr.setPosition(bx + c[0], by + c[1] - hs[col] - hop);
-        it.spr.setDepth(depth + c[1] * 0.01 + hs[col] * 0.0001 + 0.001);
+        const d = depth + c[1] * 0.01 + hs[col] * 0.0001 + 0.001;
+        if (it.spr.depth !== d) it.spr.setDepth(d);
         hs[col] += st;
+      }
+      return;
+    }
+    if (this.alternate) {
+      const nc = this.cols.length, hs = [0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < n; i++) {
+        const it = items[i], col = i % nc, c = this.cols[col];
+        let hop = 0;
+        if (it.hop > 0) { it.hop = Math.max(0, it.hop - dt * 5); hop = Math.sin(it.hop * Math.PI) * 8; it.spr.setScale(this.scale * (1 + it.hop * 0.25), this.scale * (1 - it.hop * 0.15)); if (it.hop === 0) it.spr.setScale(this.scale); }
+        it.spr.setPosition(bx + c[0], by + c[1] - hs[col] - hop);
+        const d = depth + c[1] * 0.01 + i * 0.0005 + 0.001;
+        if (it.spr.depth !== d) it.spr.setDepth(d);
+        hs[col] += stackStep(it.type) * this.scale;
       }
       return;
     }
@@ -142,7 +169,9 @@ export class ItemStack {
       let hop = 0;
       if (it.hop > 0) { it.hop = Math.max(0, it.hop - dt * 5); hop = Math.sin(it.hop * Math.PI) * 8; it.spr.setScale(this.scale * (1 + it.hop * 0.25), this.scale * (1 - it.hop * 0.15)); if (it.hop === 0) it.spr.setScale(this.scale); }
       it.spr.setPosition(bx + c[0] + lean * k + wob, by + c[1] - h - hop);
-      it.spr.setDepth(depth + c[1] * 0.01 + i * 0.0005 + 0.001);
+      // setDepth queues a full display-list sort: only when the value really changes
+      const d = depth + c[1] * 0.01 + i * 0.0005 + 0.001;
+      if (it.spr.depth !== d) it.spr.setDepth(d);
       h += st; inCol++;
     }
   }

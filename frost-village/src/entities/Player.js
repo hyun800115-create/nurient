@@ -63,8 +63,9 @@ export class Player extends Character {
       if (!this.node && this.stillT > BALANCE.player.stillDelay && !gs.playerOnPad) {
         const n = gs.findGatherable(this.x, this.y, BALANCE.player.gatherRange);
         if (n) {
-          if (this.room > 0) this.node = n;
-          else this.warnFull();
+          if (this.room <= 0) this.warnFull();
+          else if (gs.stationBlocked(n.item)) gs.fullToast();   // its station is full both ways: don't fill the bag
+          else this.node = n;
         }
       }
       if (this.node) {
