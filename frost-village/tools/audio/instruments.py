@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import numpy as np
 
-import fa_synth as S
-from fa_synth import SR, n_of
+import synth as S
+from synth import SR, n_of
 
 
 # ----------------------------------------------------------------------------- pitched
@@ -190,7 +190,8 @@ def sleigh(vel: float = 0.6, r: np.random.Generator | None = None, nbells: int =
         b = S.modal(f, n, [(1, 1, r.uniform(0.15, 0.3)), (1.47, 0.5, 0.15), (2.09, 0.22, 0.09)], r, fmax=7800)
         off = n_of(r.uniform(0, 0.028))
         y[off:] += b[:n - off] * r.uniform(0.4, 1.0)
-    y += shaker(0.5, r, 0.08)[:n] if n >= n_of(0.13) else 0
+    sh = shaker(0.5, r, 0.08)
+    y[:len(sh)] += sh[:n]
     y = S.lp(y, 7500)
     return y / max(S.peak(y), 1e-6) * vel
 

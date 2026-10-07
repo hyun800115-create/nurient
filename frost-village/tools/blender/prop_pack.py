@@ -167,7 +167,21 @@ def quantize_rgba(img, colors=256):
         return img.quantize(colors=colors, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
 
 
-def build_manifest(keys, metas, frame_atlas, atlas_keys):
+CARRY_TARGET_W = 31          # px: carried item width ~ 2/3 of a chibi head (heads are ~46 px wide)
+CARRY_RANGE = (0.55, 0.65)
+
+
+def carry_scale(img):
+    """Recommended draw scale for hand-carried stacks (characters are chibi: at 1x an
+    item is as wide as the head and a 4-stack hides the face).  Rounded to 0.05."""
+    a = np.asarray(img)[..., 3] > 40
+    cols = np.nonzero(a.any(0))[0]
+    w = (cols[-1] - cols[0] + 1) if len(cols) else 48
+    s = min(max(CARRY_TARGET_W / float(w), CARRY_RANGE[0]), CARRY_RANGE[1])
+    return round(round(s / 0.05) * 0.05, 2)
+
+
+def build_manifest(keys, metas, frame_atlas, atlas_keys, frames=None):
     sprites = {}
     for k in keys:
         m = metas[k]
@@ -183,9 +197,11 @@ def build_manifest(keys, metas, frame_atlas, atlas_keys):
         if 'stackStep' in m:
             s['stackStep'] = m['stackStep']
             s['icon'] = True
+            if frames is not None:
+                s['carryScale'] = carry_scale(frames[k])
         s['frameSize'] = m['frameSize']
         s['topPx'] = m['topPx']
-        for extra in ('front', 'footprintM', 'thicknessM', 'tileAxis'):
+        for extra in ('front', 'footprintM', 'thicknessM', 'tileAxis', 'fxPoints'):
             if extra in m:
                 s[extra] = m[extra]
         if m.get('notes'):
@@ -204,6 +220,14 @@ def build_manifest(keys, metas, frame_atlas, atlas_keys):
             'front': '-Y = faces screen down-left (SW); S = faces the camera (screen down).',
             'stackStep': 'items: px between stacked copies at scale 1 (draw copy i at y - i*stackStep).',
             'shadows': 'props/buildings have a baked soft shadow falling screen down-right; items have none.',
+            'carryScale': 'items: recommended scale for stacks carried in a character\'s hands (chibi bodies; at 1x '
+                          'an item is head-wide). Draw carried copy i at scale carryScale and y - i*stackStep*'
+                          'carryScale. Ground/pad towers and UI icons stay at scale 1 (stackStep is native).',
+            'fxPoints': 'stations: px offsets [dx, dy] from the anchor where game FX can be spawned '
+                        '(fire = flame/heat source, smoke = just above the chimney/vent top, blade, dust, crucible).',
+            'work': 'stations: the idle frame is the resting state (embers banked, no smoke); anims.work is a seamless '
+                    '4-frame loop with flames, smoke puffs and moving parts baked in. All frames share frameSize and '
+                    'anchor, so swap frames in place.',
         },
         'atlases': [{'key': a, 'png': 'props/%s.png' % a, 'json': 'props/%s.json' % a} for a in atlas_keys],
         'sprites': sprites,
@@ -325,6 +349,8 @@ def scene_preview(metas, frames, out):
         m = metas.get(key)
         if not m:
             return
+        if frame is None and 'anims' in m:          # show stations mid-work (flames / smoke)
+            frame = m['anims']['work']['frames'][1]
         im = frames[frame or key]
         ax, ay = m['anchorPx']
         sx, sy = iso(x, y, ox, oy)
@@ -437,6 +463,96 @@ def scene_preview(metas, frames, out):
     return out
 
 
+def char_carry_points(ck):
+    try:
+        man = json.load(open(os.path.join(GAME, 'assets', 'characters', 'manifest.json'), encoding='utf-8'))
+        return man['characters'][ck]['carryPoint']
+    except Exception:
+        return {'S': [0, -31, False], 'SE': [12, -34, False], 'E': [17, -40, False], 'NE': [12, -46, True],
+                'N': [0, -48, True]}
+
+
+def carry_preview(keys, metas, frames, out, n=4, ck='player'):
+    """Player carry_idle in 5 dirs holding an n-stack of each item at its carryScale
+    (+ a native-scale column for comparison)."""
+    chars = char_frames()
+    if ck not in chars:
+        return None
+    get, (cax, cay) = chars[ck]
+    cps = char_carry_points(ck)
+    items = [k for k in keys if metas[k]['kind'] == 'item']
+    dirs = ['S', 'SE', 'E', 'NE', 'N']
+    cw, ch = 110, 150
+    W, H = 150 + cw * (len(dirs) + 1), 50 + ch * len(items)
+    img = Image.new('RGBA', (W, H), (217, 160, 138, 255))
+    d = ImageDraw.Draw(img)
+    f = font(13)
+    d.text((10, 8), '%s carry_idle with a %d-stack at carryScale (last column: scale 1 for comparison)' % (ck, n),
+           fill=(20, 24, 32), font=font(16))
+    for j, dn in enumerate(dirs + ['S']):
+        d.text((150 + j * cw + 40, 30), dn if j < len(dirs) else 'S @1x', fill=(20, 24, 32), font=f)
+    for r, k in enumerate(items):
+        m = metas[k]
+        cs = carry_scale(frames[k])
+        d.text((10, 50 + r * ch + 60), '%s\ncarryScale %.2f' % (k.replace('item_', ''), cs), fill=(20, 24, 32), font=f)
+        for j, dn in enumerate(dirs + ['S']):
+            sc = cs if j < len(dirs) else 1.0
+            body = get('carry_idle_%s_0' % dn)
+            if body is None:
+                continue
+            fx, fy = 150 + j * cw + cw // 2, 50 + r * ch + 135        # feet (anchor) position
+            dx, dy, behind = cps.get(dn, [0, -34, False])
+            it = frames[k]
+            if sc != 1.0:
+                it = it.resize((max(1, round(it.width * sc)), max(1, round(it.height * sc))), Image.LANCZOS)
+            iax, iay = m['anchorPx'][0] * sc, m['anchorPx'][1] * sc
+            stack = [(it, int(round(fx + dx - iax)), int(round(fy + dy - iay - i * m['stackStep'] * sc)))
+                     for i in range(n)]
+            sh = Image.new('RGBA', img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(sh).ellipse([fx - 23, fy - 9, fx + 23, fy + 9], fill=(38, 46, 82, 70))
+            img.alpha_composite(sh)
+            layers = [(body, fx - int(cax), fy - int(cay))]
+            layers = (stack + layers) if behind else (layers + stack)
+            for im, x, y in layers:
+                img.alpha_composite(im, (x, y))
+    img.convert('RGB').save(out, optimize=True)
+    return out
+
+
+def stations_gif(keys, metas, frames, out, bg=(217, 160, 138)):
+    """Animated GIF: every station's work loop side by side (idle frame shown first, labelled)."""
+    st = [k for k in keys if 'anims' in metas[k]]
+    if not st:
+        return None
+    gap = 10
+    W = sum(metas[k]['frameSize'][0] for k in st) + gap * (len(st) + 1)
+    H = max(metas[k]['frameSize'][1] for k in st) + 40
+    fps = 8
+    out_frames = []
+
+    def compose(idx):
+        im = Image.new('RGBA', (W, H), bg + (255,))
+        d = ImageDraw.Draw(im)
+        x = gap
+        for k in st:
+            fw, fh = metas[k]['frameSize']
+            n = k if idx is None else metas[k]['anims']['work']['frames'][idx % 4]
+            im.alpha_composite(frames[n], (x, H - 30 - fh))
+            d.text((x + 10, H - 24), k.replace('station_', '') + (' (idle)' if idx is None else ''),
+                   fill=(20, 24, 32), font=font(14))
+            x += fw + gap
+        return im.convert('RGB')
+    out_frames.append(compose(None))
+    for rep in range(6):
+        for i in range(4):
+            out_frames.append(compose(i))
+    durs = [900] + [int(1000 / fps)] * (len(out_frames) - 1)
+    pal = out_frames[2].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+    q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in out_frames]
+    q[0].save(out, save_all=True, append_images=q[1:], duration=durs, loop=0, optimize=False, disposal=1)
+    return out
+
+
 def items_preview(keys, metas, frames, out):
     items = [k for k in keys if metas[k]['kind'] == 'item']
     f = font(13)
@@ -500,7 +616,7 @@ def main():
             total += sz + os.path.getsize(js)
             print('%-18s %4dx%-4d %3d frames %7.1f KB' % (akey, sheet.width, sheet.height, len(atlas['frames']),
                                                          sz / 1024))
-    man = build_manifest(keys, metas, frame_atlas, atlas_keys)
+    man = build_manifest(keys, metas, frame_atlas, atlas_keys, frames)
     with open(os.path.join(OUT, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(man, f, indent=1, ensure_ascii=False)
     print('sprites: %d   total payload %.2f MB' % (len(man['sprites']), total / 1024 / 1024))
@@ -518,6 +634,8 @@ def main():
                     work.append((n.replace('station_', ''), frames[n]))
         if work:
             shelf_preview(work, os.path.join(PREV, 'props_stations_work.png'), title='Station idle + work frames')
+            stations_gif(keys, metas, frames, os.path.join(PREV, 'props_stations_work.gif'))
+        carry_preview(keys, metas, frames, os.path.join(PREV, 'props_carry.png'))
         print('previews written to', PREV)
 
 

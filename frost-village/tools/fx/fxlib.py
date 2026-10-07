@@ -253,21 +253,41 @@ class Canvas:
         L.a = np.zeros_like(self.a)
         return L
 
+    def region(self, x0, y0, x1, y1):
+        """Sub-canvas VIEW of the output-px box (shares pixels; all ops are in-place).
+        Use it to evaluate expensive SDFs only where a shape can be."""
+        s = self.ss
+        H, W = self.a.shape
+        i0 = min(H, max(0, int(math.floor(y0 * s))))
+        i1 = min(H, max(i0, int(math.ceil(y1 * s))))
+        j0 = min(W, max(0, int(math.floor(x0 * s))))
+        j1 = min(W, max(j0, int(math.ceil(x1 * s))))
+        R = Canvas.__new__(Canvas)
+        R.w, R.h, R.ss, R.px = (j1 - j0) / s, (i1 - i0) / s, s, self.px
+        R.X = self.X[i0:i1, j0:j1]
+        R.Y = self.Y[i0:i1, j0:j1]
+        R.rgb = self.rgb[i0:i1, j0:j1]
+        R.a = self.a[i0:i1, j0:j1]
+        R.empty = R.a.size == 0
+        return R
+
     def over(self, L, opacity=1.0, mask=None):
-        """Composite layer L over self."""
+        """Composite layer L over self (in place)."""
         a = L.a * opacity
         rgb = L.rgb * opacity
         if mask is not None:
             a = a * mask
             rgb = rgb * mask[..., None]
-        self.rgb = rgb + self.rgb * (1 - a[..., None])
-        self.a = a + self.a * (1 - a)
+        self.rgb *= (1 - a[..., None])
+        self.rgb += rgb
+        self.a *= (1 - a)
+        self.a += a
 
     def under(self, L, opacity=1.0):
         a = L.a * opacity
         rgb = L.rgb * opacity
-        self.rgb = self.rgb + rgb * (1 - self.a[..., None])
-        self.a = self.a + a * (1 - self.a)
+        self.rgb += rgb * (1 - self.a[..., None])
+        self.a += a * (1 - self.a)
 
     def clip(self, mask):
         self.rgb *= mask[..., None]
@@ -292,8 +312,10 @@ class Canvas:
         if col.ndim == 1 and col.shape[0] == 4:
             k = k * col[3]
             col = col[:3]
-        self.rgb = col * k[..., None] + self.rgb * (1 - k[..., None])
-        self.a = k + self.a * (1 - k)
+        self.rgb *= (1 - k[..., None])
+        self.rgb += col * k[..., None]
+        self.a *= (1 - k)
+        self.a += k
 
     def fill(self, d, color, alpha=1.0, feather=0.0):
         self.paint(self.cov(d, feather), color, alpha)
@@ -301,7 +323,8 @@ class Canvas:
     def add(self, cov, color, alpha=1.0):
         """Additive light (keeps alpha)."""
         k = np.clip(cov * alpha, 0, 1)
-        self.rgb = np.minimum(self.rgb + np.asarray(color, np.float32) * k[..., None], self.a[..., None])
+        self.rgb += np.asarray(color, np.float32) * k[..., None]
+        np.minimum(self.rgb, self.a[..., None], out=self.rgb)
 
     def shadow(self, cov, dx=0.0, dy=3.0, sigma=3.0, color='#1B2840', opacity=0.35):
         """Paint a blurred, offset copy of `cov` (output px units)."""

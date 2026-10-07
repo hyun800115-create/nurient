@@ -7,7 +7,8 @@ Checks: every section-4 key is in `sprites`; its atlas is listed in `atlases`
 and its PNG/JSON exist; the frame (and every anims.work frame) exists in that
 atlas JSON; anchor is normalised and matches the untrimmed sourceSize; atlas
 sheets are <= 2048x2048; stations have a 4-frame work loop; items have an
-integer stackStep in 8..14; non-items have a footprint; total payload <= 5 MB.
+integer stackStep in 8..14 and a carryScale in 0.4..1.0; station work frames share
+the idle frame's untrimmed size; non-items have a footprint; total payload <= 5 MB.
 """
 import json
 import os
@@ -115,6 +116,9 @@ def main():
                 errors.append('%s: stackStep %r not an int in 8..14' % (key, st))
             if kind != 'item':
                 errors.append('%s: kind %r != item' % (key, kind))
+            cs = s.get('carryScale')
+            if not isinstance(cs, (int, float)) or not 0.4 <= cs <= 1.0:
+                errors.append('%s: carryScale %r not a number in 0.4..1.0' % (key, cs))
         else:
             fp = s.get('footprint')
             if not (isinstance(fp, list) and len(fp) == 2 and all(isinstance(v, int) and v > 0 for v in fp)):
@@ -128,6 +132,9 @@ def main():
                 for f in w['frames']:
                     if f not in tab:
                         errors.append('%s: work frame %s missing from atlas' % (key, f))
+                    elif tab[f]['sourceSize'] != fr['sourceSize']:
+                        errors.append('%s: work frame %s sourceSize %s != idle %s'
+                                      % (key, f, tab[f]['sourceSize'], fr['sourceSize']))
                 if not isinstance(w.get('fps'), (int, float)) or w.get('repeat') != -1:
                     errors.append('%s: work anim needs fps and repeat -1' % key)
             if kind != 'station':

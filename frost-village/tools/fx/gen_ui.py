@@ -353,9 +353,11 @@ def icon_speed():
     sole = F.intersect(F.sd_box(c.X, c.Y, 60, 66, 26.5, 11.5, 11), -F.sd_box(c.X, c.Y, 60, 60, 40, 10, 0) * -1)
     sole = F.intersect(F.sd_box(c.X, c.Y, 60, 64, 26.5, 13, 11.5), F.sd_box(c.X, c.Y, 60, 77, 40, 6, 0))
     cuff = F.sd_box(c.X, c.Y, 50, 22, 19, 8.5, 8)
-    lines = union(F.sd_segment(c.X, c.Y, 8, 40, 24, 40, 3.6),
-                  F.sd_segment(c.X, c.Y, 4, 54, 24, 54, 3.6),
-                  F.sd_segment(c.X, c.Y, 10, 68, 26, 68, 3.6))
+    def taper(x0, x1, y, r):
+        # tapered streak: thin at the left end, round at the right
+        tt = np.clip((c.X - x0) / (x1 - x0), 0, 1)
+        return F.sd_segment(c.X, c.Y, x0, y, x1, y, 0) - (1.5 + (r - 1.5) * tt)
+    lines = union(taper(12, 25, 38, 3.4), taper(3, 25, 53, 3.8), taper(13, 27, 68, 3.4))
     allsh = union(boot, sole, cuff)
     c.shadow(c.cov(allsh - 3), dy=3, sigma=2.2, opacity=0.32)
     toy(c, lines, '#FFFFFF', '#C8D3E3', '#34425C', ow=2.6, bevel=2.5, gloss=0, shadow=0.2, sh_dy=2)
@@ -549,34 +551,38 @@ def pad(kind):
         pad_base(c, '#1A2A48', 0.22, dashed=True)
         return c.image()
     cols = {'input': '#3D8BE0', 'output': '#4DBA62', 'cash': '#F2B53A', 'hire': '#F08A3D', 'upgrade': '#8E6BE0'}
-    fx, fy, u, v = pad_base(c, cols[kind], 0.42)
-    k = 1.0
+    pad_base(c, cols[kind], 0.42)
+    # symbols use a milder foreshortening (1.55 instead of the true 2.0) so they stay legible
+    fx, fy = c.X - PAD_W / 2, (c.Y - PAD_H / 2) * 1.55
     if kind in ('input', 'output'):
         # tray (U shape) + arrow along screen-vertical; arrow points into (input) or out of (output) the tray
-        tray = F.sd_polyline(fx, fy, [(-30, 6), (-30, 34), (30, 34), (30, 6)], 5.0)
+        tray = F.sd_polyline(fx, fy, [(-28, 8), (-28, 30), (28, 30), (28, 8)], 4.6)
         if kind == 'input':
-            shaft = F.sd_box(fx, fy, 0, -30, 6.5, 16, 2)
-            head = F.sd_polygon(fx, fy, [(-18, -16), (18, -16), (0, 16)]) - 2.5
+            shaft = F.sd_box(fx, fy, 0, -24, 6.0, 13, 2)
+            head = F.sd_polygon(fx, fy, [(-17, -12), (17, -12), (0, 14)]) - 2.5
         else:
-            shaft = F.sd_box(fx, fy, 0, -2, 6.5, 16, 2)
-            head = F.sd_polygon(fx, fy, [(-18, -16), (18, -16), (0, -48)]) - 2.5
+            shaft = F.sd_box(fx, fy, 0, 0, 6.0, 13, 2)
+            head = F.sd_polygon(fx, fy, [(-17, -12), (17, -12), (0, -36)]) - 2.5
         d = union(tray, shaft, head)
     elif kind == 'cash':
-        ring_ = np.abs(F.sd_circle(fx, fy, 0, 0, 32)) - 5.0
-        st = F.sd_star(fx, fy, 0, 1, 20, 8.5, 5, round_=2.0)
+        ring_ = np.abs(F.sd_circle(fx, fy, 0, 0, 28)) - 4.5
+        st = F.sd_star(fx, fy, 0, 1, 17, 7.5, 5, round_=2.0)
         d = union(ring_, st)
     elif kind == 'hire':
-        dome = F.intersect(F.sd_circle(fx, fy, 0, 8, 26), fy - 8)
-        brim = F.sd_box(fx, fy, 3, 12, 36, 5, 4.5)
-        ridge = F.sd_box(fx, fy, 0, -8, 4.5, 14, 2)
-        d = union(F.subtract(dome, ridge + 1.2), brim)
-        # little "+" (add a worker)
-        plus = union(F.sd_box(fx, fy, 30, -26, 3.6, 11, 1.5), F.sd_box(fx, fy, 30, -26, 11, 3.6, 1.5))
+        # worker silhouette (head + shoulders) wearing a hard hat, plus a small "+"
+        head = F.sd_circle(fx, fy, -6, 2, 12)
+        body = F.intersect(F.sd_ellipse(fx, fy, -6, 38, 24, 22), fy - 33)
+        neck_gap = F.sd_ellipse(fx, fy, -6, 16, 16, 4)
+        hat = F.intersect(F.sd_circle(fx, fy, -6, -4, 15), fy + 4)
+        brim = F.sd_box(fx, fy, -6, -4, 19, 2.6, 2.6)
+        d = union(F.subtract(union(head, body), neck_gap), hat, brim)
+        d = F.subtract(d, F.sd_box(fx, fy, -6, -1.2, 22, 1.2, 0))      # gap between hat and face
+        plus = union(F.sd_box(fx, fy, 30, -10, 3.6, 11, 1.5), F.sd_box(fx, fy, 30, -10, 11, 3.6, 1.5))
         d = union(d, plus)
     elif kind == 'upgrade':
-        shaft = F.sd_box(fx, fy, 0, 12, 9, 20, 3)
-        head = F.sd_polygon(fx, fy, [(-28, -2), (28, -2), (0, -38)]) - 3
-        bar = F.sd_box(fx, fy, 0, 40, 26, 4, 3)
+        shaft = F.sd_box(fx, fy, 0, 8, 8, 15, 3)
+        head = F.sd_polygon(fx, fy, [(-24, -4), (24, -4), (0, -32)]) - 3
+        bar = F.sd_box(fx, fy, 0, 31, 22, 3.6, 3)
         d = union(shaft, head, bar)
     pad_symbol(c, d)
     return c.image()
