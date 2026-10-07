@@ -1,0 +1,372 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_water.py (+ tools/fx/gen_water_fx.py for the fx sheets)",
+ "conventions": {
+  "gspace": "G = (screen x, 2 * screen y) world px = the iso ground plane seen from above (1 m = 64 G px). Water.js samples every texture with uv = G / tilePx (2:1 foreshortening like the ground). Image row 0 = v 0 = smallest G y.",
+  "data": "water_waves_a / water_waves_b / water_foam / water_shore_ramp are DATA textures: plain RGB, no alpha, upload with UNPACK_PREMULTIPLY_ALPHA false and UNPACK_COLORSPACE_CONVERSION NONE, REPEAT + mipmaps (all power of two). water_lut is RGBA (A = opacity), CLAMP, no mipmaps.",
+  "module": "src/systems/Water.js draws the sea with these (WebGL); Canvas fallback = ground/water_sea tileSprite.",
+  "levels": "sea surface 0.55 m below land = waterPx 30 screen px (same as assets/harbor). Water.js heightAt() returns the swell height in screen px around that plane (+ = up)."
+ },
+ "images": [
+  {
+   "key": "water_waves_a",
+   "png": "water/water_waves_a.png",
+   "frameSize": [
+    512,
+    512
+   ],
+   "tilePx": 512,
+   "channels": "R,G = ripple normal x,y in G space (0.5 + 0.5 n); B = caustics",
+   "tile": "xy",
+   "notes": "FFT (JONSWAP) ripple field, 8 m tile, peak 1.4 m; sample uv = G / 512."
+  },
+  {
+   "key": "water_waves_b",
+   "png": "water/water_waves_b.png",
+   "frameSize": [
+    256,
+    256
+   ],
+   "tilePx": 192,
+   "channels": "R,G = ripple normal x,y; B = caustics",
+   "tile": "xy",
+   "notes": "Fine ripple field, 3 m physical tile; Water.js samples it at 192 G px per tile."
+  },
+  {
+   "key": "water_foam",
+   "png": "water/water_foam.png",
+   "frameSize": [
+    256,
+    256
+   ],
+   "tilePx": 256,
+   "channels": "R = foam lace potential (threshold it), G = bubbles / slush bits, B = low-frequency variation",
+   "tile": "xy",
+   "notes": "Equalised lace: threshold t covers ~ (1 - t) of the area."
+  },
+  {
+   "key": "water_lut",
+   "png": "water/water_lut.png",
+   "frameSize": [
+    256,
+    8
+   ],
+   "rows": {
+    "winter_sea": 0,
+    "harbor": 1,
+    "tropical": 2,
+    "pool": 3
+   },
+   "channels": "RGB = water colour, A = opacity over the bed",
+   "tile": "none",
+   "notes": "u = 1 - exp(-depth_m / palette.depthScale); sample v = (row + 0.5) / 8."
+  },
+  {
+   "key": "water_shore_ramp",
+   "png": "water/water_shore_ramp.png",
+   "frameSize": [
+    256,
+    4
+   ],
+   "rows": {
+    "sand": 0,
+    "snowbank": 1,
+    "rock": 2,
+    "quay": 3
+   },
+   "channels": "RGB",
+   "tile": "none",
+   "notes": "wet/dry ramps per shore material: u 0 = dry, 0.5 = fresh wet, 1 = under water."
+  }
+ ],
+ "sprites": {
+  "water_waves_a": {
+   "frameSize": [
+    512,
+    512
+   ],
+   "tilePx": 512,
+   "channels": "R,G = ripple normal x,y in G space (0.5 + 0.5 n); B = caustics",
+   "tile": "xy",
+   "notes": "FFT (JONSWAP) ripple field, 8 m tile, peak 1.4 m; sample uv = G / 512.",
+   "image": "water_waves_a",
+   "kind": "data"
+  },
+  "water_waves_b": {
+   "frameSize": [
+    256,
+    256
+   ],
+   "tilePx": 192,
+   "channels": "R,G = ripple normal x,y; B = caustics",
+   "tile": "xy",
+   "notes": "Fine ripple field, 3 m physical tile; Water.js samples it at 192 G px per tile.",
+   "image": "water_waves_b",
+   "kind": "data"
+  },
+  "water_foam": {
+   "frameSize": [
+    256,
+    256
+   ],
+   "tilePx": 256,
+   "channels": "R = foam lace potential (threshold it), G = bubbles / slush bits, B = low-frequency variation",
+   "tile": "xy",
+   "notes": "Equalised lace: threshold t covers ~ (1 - t) of the area.",
+   "image": "water_foam",
+   "kind": "data"
+  },
+  "water_lut": {
+   "frameSize": [
+    256,
+    8
+   ],
+   "rows": {
+    "winter_sea": 0,
+    "harbor": 1,
+    "tropical": 2,
+    "pool": 3
+   },
+   "channels": "RGB = water colour, A = opacity over the bed",
+   "tile": "none",
+   "notes": "u = 1 - exp(-depth_m / palette.depthScale); sample v = (row + 0.5) / 8.",
+   "image": "water_lut",
+   "kind": "data"
+  },
+  "water_shore_ramp": {
+   "frameSize": [
+    256,
+    4
+   ],
+   "rows": {
+    "sand": 0,
+    "snowbank": 1,
+    "rock": 2,
+    "quay": 3
+   },
+   "channels": "RGB",
+   "tile": "none",
+   "notes": "wet/dry ramps per shore material: u 0 = dry, 0.5 = fresh wet, 1 = under water.",
+   "image": "water_shore_ramp",
+   "kind": "data"
+  }
+ },
+ "palettes": {
+  "winter_sea": {
+   "row": 0,
+   "depthScale": 2.2,
+   "lut": [
+    [
+     0.0,
+     "#A9DCE6",
+     0.3
+    ],
+    [
+     0.1,
+     "#78C7D8",
+     0.62
+    ],
+    [
+     0.24,
+     "#45A3C9",
+     0.86
+    ],
+    [
+     0.45,
+     "#2C7DBA",
+     0.97
+    ],
+    [
+     0.7,
+     "#2164AA",
+     1.0
+    ],
+    [
+     1.0,
+     "#1A4E92",
+     1.0
+    ]
+   ],
+   "skyHi": "#5E8FC8",
+   "skyLo": "#DCEBF6",
+   "sun": "#FFF8E8",
+   "sss": "#3FB4D2",
+   "foam": "#FFFFFF",
+   "foamShade": "#B9D7EC",
+   "bottom": "#8FA8B8",
+   "caustic": 0.55,
+   "wet": "#7C93AE",
+   "film": "#BFE6F0",
+   "slush": 1.0
+  },
+  "harbor": {
+   "row": 1,
+   "depthScale": 1.6,
+   "lut": [
+    [
+     0.0,
+     "#A8D8CF",
+     0.35
+    ],
+    [
+     0.12,
+     "#6DB9B6",
+     0.7
+    ],
+    [
+     0.28,
+     "#3B98A8",
+     0.9
+    ],
+    [
+     0.5,
+     "#2A7A9E",
+     0.98
+    ],
+    [
+     0.75,
+     "#21628F",
+     1.0
+    ],
+    [
+     1.0,
+     "#1A4C78",
+     1.0
+    ]
+   ],
+   "skyHi": "#5F8CB8",
+   "skyLo": "#D6E6EE",
+   "sun": "#FFF6E2",
+   "sss": "#46B3B0",
+   "foam": "#FFFFFF",
+   "foamShade": "#B4D3DC",
+   "bottom": "#7E8E86",
+   "caustic": 0.35,
+   "wet": "#6D7F86",
+   "film": "#BFE2E2",
+   "slush": 0.0
+  },
+  "tropical": {
+   "row": 2,
+   "depthScale": 2.8,
+   "lut": [
+    [
+     0.0,
+     "#E6F7F0",
+     0.0
+    ],
+    [
+     0.08,
+     "#B4F0E6",
+     0.22
+    ],
+    [
+     0.2,
+     "#5FDCD6",
+     0.55
+    ],
+    [
+     0.36,
+     "#26C2CC",
+     0.8
+    ],
+    [
+     0.56,
+     "#14A3BC",
+     0.94
+    ],
+    [
+     0.78,
+     "#1186A8",
+     1.0
+    ],
+    [
+     1.0,
+     "#0F6C93",
+     1.0
+    ]
+   ],
+   "skyHi": "#56A6DA",
+   "skyLo": "#E4F6FA",
+   "sun": "#FFFBEA",
+   "sss": "#4FE3D6",
+   "foam": "#FFFFFF",
+   "foamShade": "#BDE6EC",
+   "bottom": "#EBD9B4",
+   "caustic": 0.9,
+   "wet": "#BFA27A",
+   "film": "#C8F4EE",
+   "slush": 0.0
+  },
+  "pool": {
+   "row": 3,
+   "depthScale": 1.2,
+   "lut": [
+    [
+     0.0,
+     "#D8F8FF",
+     0.15
+    ],
+    [
+     0.25,
+     "#8EE3F4",
+     0.5
+    ],
+    [
+     0.55,
+     "#45C6EA",
+     0.78
+    ],
+    [
+     1.0,
+     "#1F9AD6",
+     0.92
+    ]
+   ],
+   "skyHi": "#6FB4E4",
+   "skyLo": "#F0FAFF",
+   "sun": "#FFFFFF",
+   "sss": "#6FE6F4",
+   "foam": "#FFFFFF",
+   "foamShade": "#C4E8F4",
+   "bottom": "#CDEFF7",
+   "caustic": 1.0,
+   "wet": "#9DB4C0",
+   "film": "#D8F6FF",
+   "slush": 0.0
+  }
+ },
+ "shoreRamps": [
+  "sand",
+  "snowbank",
+  "rock",
+  "quay"
+ ],
+ "textureInfo": {
+  "water_waves_a": {
+   "slopeStd": 0.2,
+   "maxSlope": 0.857,
+   "causticFocusTexels": 24.5
+  },
+  "water_waves_b": {
+   "slopeStd": 0.22,
+   "maxSlope": 0.818,
+   "causticFocusTexels": 8.9
+  },
+  "seams": {
+   "water_waves_a": [
+    1.114,
+    0.797
+   ],
+   "water_waves_b": [
+    1.094,
+    1.136
+   ],
+   "water_foam": [
+    0.972,
+    1.074
+   ]
+  }
+ },
+ "waterPx": 30
+}
