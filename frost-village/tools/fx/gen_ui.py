@@ -397,7 +397,7 @@ def icon_worker(S=96):
 
 # =========================================================================== bigger UI bits
 def arrow():
-    W, H = 120, 156
+    W, H = 132, 168
     c = F.Canvas(W, H)
     cx = W / 2
     shaft = F.sd_box(c.X, c.Y, cx, 46, 21, 40, 10)
@@ -633,10 +633,11 @@ def title_bg():
                   (0.38, hexc('#C99CC4')), (0.45, hexc('#F6B7AE')), (0.52, hexc('#FFD3AE')), (0.58, hexc('#FFE6C4'))], t)
     c.paint(np.ones_like(c.X), sky)
     del sky
-    sx, sy = 452, 655
+    sx, sy = 446, 560
     r = np.hypot((c.X - sx), (c.Y - sy) * 1.35)
     c.paint(np.clip(1 - r / 600, 0, 1) ** 2.2, hexc('#FFEBCB'), 0.85)
-    c.paint(np.clip((58 - r) / 14, 0, 1), hexc('#FFF8EA'), 1.0)
+    c.paint(np.clip((44 - r) / 3, 0, 1), hexc('#FFF8EA'), 1.0)
+    c.paint(np.clip((78 - r) / 30, 0, 1), hexc('#FFF1D6'), 0.6)
     del r
     for _ in range(80):
         x, y = rng.uniform(0, W), rng.uniform(0, 360)
@@ -682,9 +683,11 @@ def title_bg():
         left = (R.X < ppx).astype(np.float32)
         # soften the face split a little
         left = np.clip(0.5 + (ppx - R.X) * 0.8, 0, 1)
-        col = F.mix(hexc(shade_c), hexc(lit_c), left)
-        hz = np.clip((R.Y - ppy) / (base_y - ppy + 1e-3), 0, 1)
-        col = F.mix(col, hexc(haze_c), hz ** 1.2)
+        gtop = float(crest.min())
+        hz = np.clip((R.Y - gtop) / (base_y - gtop), 0, 1)
+        loc = np.clip((R.Y - ppy) / (base_y - ppy + 1e-3), 0, 1)
+        col = F.mix(hexc(shade_c), hexc(lit_c), 0.5 + (left - 0.5) * (1 - loc) ** 0.8)
+        col = F.mix(col, hexc(haze_c), hz ** 1.5)
         R.paint(cov, col)
         # jagged snow caps
         depth = R.Y - ppy
@@ -696,7 +699,7 @@ def title_bg():
         near = np.clip(1 - np.abs(R.X - sx) / 380, 0, 1)
         R.paint(np.clip(1 - inside / 3.5, 0, 1) * cov * near, hexc(rim), 0.85)
 
-    mountains([(40, 470, 0.9), (190, 430, 1.0), (330, 520, 0.95), (560, 445, 0.9), (700, 500, 1.1), (450, 560, 1.2)],
+    mountains([(40, 470, 0.9), (190, 430, 1.0), (330, 520, 0.95), (560, 445, 0.9), (700, 500, 1.1)],
               760, '#D9CBE6', '#B3A6D3', '#FFF6F4', '#DCD2EC', '#E3D7EC', cap=0.30)
     mountains([(-20, 600, 0.75), (120, 640, 0.8), (270, 585, 0.85), (420, 665, 0.8), (610, 600, 0.75), (760, 640, 0.8)],
               820, '#B9B5DE', '#9693C6', '#F7F1FA', '#C9C3E3', '#D6D2EC', cap=0.28)
@@ -736,8 +739,22 @@ def title_bg():
     forest(912, 36, 60, 100, '#6E80B2', '#56669C', '#F4F1FA', '#CFCDE8', 32, shadow_a=0.15)
     field(ridge(968, 30, 23, 0.55), '#F6F2FB', '#EAF0F9', depth=320)
 
+    # near snow: soft drifts + sparkles
+    R = c.region(0, 940, W, H)
+    g = np.clip((R.Y - 968) / 312, 0, 1)
+    R.paint(np.clip((R.Y - 950) / 30, 0, 1), F.mix(hexc('#F7F4FB'), hexc('#DDE6F4'), g), 0.55)
+    for (dx, dy, rx, ry) in [(120, 1095, 270, 36), (590, 1150, 300, 42), (330, 1248, 400, 50)]:
+        R = c.region(dx - rx - 40, dy - ry - 40, dx + rx + 40, dy + ry + 40)
+        d = F.sd_ellipse(R.X, R.Y, dx, dy, rx, ry)
+        R.paint(R.cov(d, 26) * np.clip((R.Y - dy + ry) / (2 * ry), 0, 1), hexc('#C4D2E8'), 0.5)
+        R.paint(R.cov(d + 6, 10) * np.clip(1 - (R.Y - dy + ry) / (0.8 * ry), 0, 1), WHITE, 0.6)
+    for _ in range(60):
+        x, y = rng.uniform(0, W), rng.uniform(990, H)
+        R = c.region(x - 6, y - 6, x + 6, y + 6)
+        R.fill(F.sd_star(R.X, R.Y, x, y, rng.uniform(2.5, 4.5), 0.6, 4, rot=0), WHITE, rng.uniform(0.5, 0.9), feather=0.4)
+
     # little log cabin with warm windows on the snow field
-    cab_x, cab_y = 214, 990
+    cab_x, cab_y = 336, 1000
     R = c.region(cab_x - 80, cab_y - 260, cab_x + 120, cab_y + 40)
     X, Y = R.X, R.Y
     R.fill(F.sd_ellipse(X, Y, cab_x + 6, cab_y + 20, 60, 9), hexc('#C2CDE3'), 0.6, feather=4)
@@ -762,23 +779,9 @@ def title_bg():
         sx_ = cab_x + 22 + i * 6 + 6 * math.sin(i * 1.2)
         R.fill(F.sd_circle(X, Y, sx_, sy_, 7 + i * 3.0), hexc('#F7EFF5'), 0.4 - i * 0.05, feather=5 + i * 2)
     # small pines beside the cabin
-    for (px_, pb, ph) in [(150, 1000, 70), (290, 1004, 84), (318, 1010, 56)]:
+    for (px_, pb, ph) in [(268, 1006, 74), (420, 1008, 88), (452, 1016, 58)]:
         R = c.region(px_ - 40, pb - ph - 6, px_ + 40, pb + 12)
         pine_tree(R, px_, pb, ph, ph * 0.36, 3, '#3F6E78', '#2C5262', '#FFFFFF', '#D5DEEE', shadow_a=0.2, k_round=1.2)
-
-    # near snow: soft drifts + sparkles
-    R = c.region(0, 940, W, H)
-    g = np.clip((R.Y - 968) / 312, 0, 1)
-    R.paint(np.clip((R.Y - 950) / 30, 0, 1), F.mix(hexc('#F7F4FB'), hexc('#DDE6F4'), g), 0.55)
-    for (dx, dy, rx, ry) in [(120, 1095, 270, 36), (590, 1150, 300, 42), (330, 1248, 400, 50)]:
-        R = c.region(dx - rx - 40, dy - ry - 40, dx + rx + 40, dy + ry + 40)
-        d = F.sd_ellipse(R.X, R.Y, dx, dy, rx, ry)
-        R.paint(R.cov(d, 26) * np.clip((R.Y - dy + ry) / (2 * ry), 0, 1), hexc('#C4D2E8'), 0.5)
-        R.paint(R.cov(d + 6, 10) * np.clip(1 - (R.Y - dy + ry) / (0.8 * ry), 0, 1), WHITE, 0.6)
-    for _ in range(60):
-        x, y = rng.uniform(0, W), rng.uniform(990, H)
-        R = c.region(x - 6, y - 6, x + 6, y + 6)
-        R.fill(F.sd_star(R.X, R.Y, x, y, rng.uniform(2.5, 4.5), 0.6, 4, rot=0), WHITE, rng.uniform(0.5, 0.9), feather=0.4)
 
     # framing foreground pines (palette pine, cooled by the dawn light)
     for (x, by, h) in [(-70, 1330, 430), (40, 1205, 560), (690, 1180, 500), (790, 1320, 400)]:
@@ -841,7 +844,7 @@ ATLAS_ITEMS.update({
 })
 # anchors (normalised, of the untrimmed frame)
 ANCHORS = {
-    'ui_arrow': [0.5, 0.92],        # tip of the arrow
+    'ui_arrow': [0.5, 0.893],       # tip of the arrow (y=150 of 168)
     'ui_bubble': [0.5, 0.985],      # tip of the tail
     'ui_bubble_tail': [0.5, 0.0],
 }

@@ -28,10 +28,14 @@ export class ItemStack {
     this.typeCols = opts.typeCols || null; // map type -> column index (shelf with one tower per type)
     this._top = { x: 0, y: 0 };
     this.visible = true;
+    this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
   }
 
+  /** free slots, counting items already in flight */
+  get room() { return this.max - this.items.length - this.incoming; }
+
   get count() { return this.items.length; }
-  get full() { return this.items.length >= this.max; }
+  get full() { return this.items.length + this.incoming >= this.max; }
 
   countOf(type) {
     let n = 0;

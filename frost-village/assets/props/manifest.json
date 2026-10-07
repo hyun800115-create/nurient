@@ -8,7 +8,10 @@
   "topPx": "visual height above the anchor in px (for bubbles / progress rings).",
   "front": "-Y = faces screen down-left (SW); S = faces the camera (screen down).",
   "stackStep": "items: px between stacked copies at scale 1 (draw copy i at y - i*stackStep).",
-  "shadows": "props/buildings have a baked soft shadow falling screen down-right; items have none."
+  "shadows": "props/buildings have a baked soft shadow falling screen down-right; items have none.",
+  "carryScale": "items: recommended scale for stacks carried in a character's hands (chibi bodies; at 1x an item is head-wide). Draw carried copy i at scale carryScale and y - i*stackStep*carryScale. Ground/pad towers and UI icons stay at scale 1 (stackStep is native).",
+  "fxPoints": "stations: px offsets [dx, dy] from the anchor where game FX can be spawned (fire = flame/heat source, smoke = just above the chimney/vent top, blade, dust, crucible).",
+  "work": "stations: the idle frame is the resting state (embers banked, no smoke); anims.work is a seamless 4-frame loop with flames, smoke puffs and moving parts baked in. All frames share frameSize and anchor, so swap frames in place."
  },
  "atlases": [
   {
@@ -378,7 +381,7 @@
    "frame": "station_grill",
    "anchor": [
     0.44403,
-    0.57292
+    0.62719
    ],
    "kind": "station",
    "footprint": [
@@ -399,13 +402,23 @@
    },
    "frameSize": [
     268,
-    192
+    228
    ],
    "topPx": 89,
    "footprintM": [
     2.6,
     1.6
    ],
+   "fxPoints": {
+    "fire": [
+     0,
+     -34
+    ],
+    "smoke": [
+     -11,
+     -98
+    ]
+   },
    "notes": "Fish grill: stone hearth + iron grate with fish. work = embers pulse. Long axis along world X."
   },
   "station_sawmill": {
@@ -441,6 +454,16 @@
     3.0,
     1.4
    ],
+   "fxPoints": {
+    "blade": [
+     11,
+     -44
+    ],
+    "dust": [
+     -36,
+     18
+    ]
+   },
    "notes": "Sawmill: log bench with circular blade (log feeds from the left/up-left, planks out at +X / screen down-right). work = blade spins (4-frame seamless loop)."
   },
   "station_bakery": {
@@ -448,7 +471,7 @@
    "frame": "station_bakery",
    "anchor": [
     0.44697,
-    0.64286
+    0.70977
    ],
    "kind": "station",
    "footprint": [
@@ -469,13 +492,23 @@
    },
    "frameSize": [
     264,
-    280
+    348
    ],
-   "topPx": 160,
+   "topPx": 159,
    "footprintM": [
     2.4,
     2.2
    ],
+   "fxPoints": {
+    "fire": [
+     0,
+     -3
+    ],
+    "smoke": [
+     0,
+     -167
+    ]
+   },
    "notes": "Bread oven: stone plinth + clay dome; the glowing mouth faces the camera (screen down). work = mouth glow pulses."
   },
   "station_smelter": {
@@ -483,7 +516,7 @@
    "frame": "station_smelter",
    "anchor": [
     0.43846,
-    0.69922
+    0.75305
    ],
    "kind": "station",
    "footprint": [
@@ -504,13 +537,27 @@
    },
    "frameSize": [
     260,
-    256
+    328
    ],
    "topPx": 159,
    "footprintM": [
     2.4,
     2.0
    ],
+   "fxPoints": {
+    "fire": [
+     -41,
+     -29
+    ],
+    "crucible": [
+     17,
+     -30
+    ],
+    "smoke": [
+     -9,
+     -167
+    ]
+   },
    "notes": "Smelter: brick furnace (glowing door on the -Y / down-left face) + crucible of molten metal on the +X side + ingot mould. work = furnace + crucible glow pulse."
   },
   "station_smokehouse": {
@@ -518,7 +565,7 @@
    "frame": "station_smokehouse",
    "anchor": [
     0.34247,
-    0.6413
+    0.6994
    ],
    "kind": "station",
    "footprint": [
@@ -539,13 +586,23 @@
    },
    "frameSize": [
     292,
-    276
+    336
    ],
-   "topPx": 156,
+   "topPx": 155,
    "footprintM": [
     2.4,
     2.0
    ],
+   "fxPoints": {
+    "fire": [
+     -34,
+     6
+    ],
+    "smoke": [
+     -2,
+     -161
+    ]
+   },
    "notes": "Smokehouse: plank hut with an open meat rack in front (-Y / down-left) over embers. work = embers glow pulse."
   },
   "market_counter": {
@@ -1067,6 +1124,7 @@
    "kind": "item",
    "stackStep": 11,
    "icon": true,
+   "carryScale": 0.6,
    "frameSize": [
     72,
     72
@@ -1085,6 +1143,7 @@
    "kind": "item",
    "stackStep": 9,
    "icon": true,
+   "carryScale": 0.6,
    "frameSize": [
     72,
     72
@@ -1103,6 +1162,7 @@
    "kind": "item",
    "stackStep": 13,
    "icon": true,
+   "carryScale": 0.65,
    "frameSize": [
     72,
     72
@@ -1121,6 +1181,7 @@
    "kind": "item",
    "stackStep": 8,
    "icon": true,
+   "carryScale": 0.6,
    "frameSize": [
     72,
     72
@@ -1139,6 +1200,7 @@
    "kind": "item",
    "stackStep": 11,
    "icon": true,
+   "carryScale": 0.6,
    "frameSize": [
     72,
     72
@@ -1157,6 +1219,7 @@
    "kind": "item",
    "stackStep": 13,
    "icon": true,
+   "carryScale": 0.65,
    "frameSize": [
     72,
     72
@@ -1175,6 +1238,7 @@
    "kind": "item",
    "stackStep": 12,
    "icon": true,
+   "carryScale": 0.65,
    "frameSize": [
     72,
     72
@@ -1193,6 +1257,7 @@
    "kind": "item",
    "stackStep": 9,
    "icon": true,
+   "carryScale": 0.65,
    "frameSize": [
     72,
     72
@@ -1211,6 +1276,7 @@
    "kind": "item",
    "stackStep": 11,
    "icon": true,
+   "carryScale": 0.55,
    "frameSize": [
     72,
     72
@@ -1229,6 +1295,7 @@
    "kind": "item",
    "stackStep": 11,
    "icon": true,
+   "carryScale": 0.55,
    "frameSize": [
     72,
     72
@@ -1247,6 +1314,7 @@
    "kind": "item",
    "stackStep": 8,
    "icon": true,
+   "carryScale": 0.65,
    "frameSize": [
     72,
     72

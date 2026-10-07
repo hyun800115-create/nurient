@@ -374,7 +374,8 @@ def render_title(seed=23):
             mx.add("glock", song.t(i, 0) + 0.01, I.glock(S.note(COUNTER_A3[i][0]), 0.5, r), 0.09, 0.4)
         mx.add("kick", song.t(i, 0), I.kick(0.5, r), 0.35)
     sends = {"mbox": 0.45, "oca": 0.35, "pad": 0.4, "bass": 0.05, "pluck": 0.25, "sleigh": 0.3, "glock": 0.5, "kick": 0.05}
-    out = master(mx, sends, {}, L, rt60=2.3, target=-18.0, pad_bus="pad")
+    gains = {"pad": 2.8, "pluck": 1.8, "sleigh": 2.8, "glock": 1.8, "kick": 0.75, "bass": 0.8, "oca": 0.9}
+    out = master(mx, sends, gains, L, rt60=2.3, target=-18.0, pad_bus="pad")
     return out, {"bpm": 84, "bars": 8, "loopSamples": L}
 
 

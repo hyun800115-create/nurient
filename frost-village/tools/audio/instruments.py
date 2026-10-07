@@ -237,3 +237,48 @@ def cymbal_soft(vel: float = 0.5, dur: float = 1.6, r: np.random.Generator | Non
     else:
         env = S.env_exp(n, dur / 4.0, 0.002)
     return x * env * vel / 1.5
+
+
+# ----------------------------------------------------------------------------- voice / helpers (appended)
+def formant_voice(f0, amp, formants, r: np.random.Generator, breath: float = 0.04, tilt: float = 1.0,
+                  fmax: float = 7500.0, jitter: float = 0.006) -> np.ndarray:
+    """Additive formant voice (animal calls, cute vocal chirps).
+    f0: per-sample fundamental (Hz); amp: per-sample amplitude envelope;
+    formants: list of (F_hz, bandwidth_hz, gain) where F may be a per-sample array.
+    Harmonic k gets amplitude k^-tilt * sum_j gain_j / (1 + ((k f0 - F_j) / (bw_j / 2))^2)."""
+    f0 = np.asarray(f0, dtype=float)
+    n = len(f0)
+    if jitter > 0:
+        wob = S.lp(r.standard_normal(n), 18.0, order=2)
+        wob /= max(np.std(wob), 1e-9)
+        f0 = f0 * (1 + jitter * wob)
+    p = S.phase(f0, n)
+    out = np.zeros(n)
+    kmax = int(fmax / max(f0.min(), 40.0)) + 1
+    for k in range(1, kmax + 1):
+        fk = k * f0
+        live = fk < fmax
+        if not live.any():
+            break
+        a = np.zeros(n)
+        for F, bw, g in formants:
+            F = np.broadcast_to(np.asarray(F, dtype=float), (n,))
+            a += g / (1.0 + ((fk - F) / (bw / 2.0)) ** 2)
+        a *= k ** (-tilt) * live * np.clip((fmax - fk) / (0.15 * fmax), 0, 1)
+        out += a * np.sin(S.TAU * k * p)
+    if breath > 0:
+        nz = r.standard_normal(n)
+        b = np.zeros(n)
+        for F, bw, g in formants:
+            Fm = float(np.mean(np.broadcast_to(np.asarray(F, dtype=float), (n,))))
+            b += g * S.bp(nz, Fm, max(Fm / bw, 0.5))
+        out += breath * b * np.std(out) / max(np.std(b), 1e-9) * 3.0
+    out *= np.asarray(amp, dtype=float)
+    return out / max(S.peak(out), 1e-9)
+
+
+def verb_mono(x, rt60: float = 1.0, mix: float = 0.25, tail: float = 1.0, **kw) -> np.ndarray:
+    """Dry mono + mono-summed FDN reverb, with ``tail`` seconds appended."""
+    x = np.concatenate((np.asarray(x, float), np.zeros(n_of(tail))))
+    wet = S.reverb(x, rt60=rt60, **kw).mean(axis=0)
+    return x + mix * wet
