@@ -284,9 +284,9 @@ def wedding_layout(builds):
              it('flower_stand', -1.25, -7.0), it('flower_stand', 1.25, -7.0),
              it('flower_stand', -0.85, -2.95), it('flower_stand', 0.85, -2.95),
              it('wedding_cake_table', 3.3, -6.35)]
-    for y in (-5.7, -4.85, -4.0):
-        items.append(it('wedding_chairs', -1.6, y))
-        items.append(it('wedding_chairs', 1.6, y))
+    for y in (-5.6, -4.55, -3.5):
+        items.append(it('wedding_chairs', -1.75, y))
+        items.append(it('wedding_chairs', 1.75, y))
     return {
         'of': 'town_hall',
         'notes': 'Wedding at the town hall (마을회관 결혼식): dress the hall with ribbon_garland, lay the carpet from the '
@@ -297,9 +297,9 @@ def wedding_layout(builds):
                  'guests use seatPoints (sit facing SW); standing guests at standPoints clap / wave. After the vows: '
                  'hearts + petals FX at the arch fxPoints.heart, then the couple walks to the cake table servePoints.',
         'items': items,
-        'standPoints': [iso(x, y) for x, y in ((-2.9, -6.6), (-3.1, -5.6), (-2.9, -4.5), (2.75, -4.2), (2.95, -5.1),
-                                               (4.1, -5.6), (4.3, -6.9))],
-        'standDirs': ['SE', 'SE', 'SE', 'SW', 'SW', 'SW', 'W'],
+        'standPoints': [iso(x, y) for x, y in ((-3.3, -6.7), (-3.5, -5.5), (-3.4, -4.3), (3.45, -4.4), (3.6, -5.3),
+                                               (4.3, -7.3), (2.4, -7.6))],
+        'standDirs': ['SE', 'SE', 'SE', 'SW', 'SW', 'W', 'SW'],
     }
 
 
@@ -601,7 +601,7 @@ def preview_wedding(builds, strollers, frames, sframes, out):
             hall_im = town[1](tm['atlas'], tm['frame'])
             fw, fh = tm['frameSize']
             sc.put(hall_im, (tm['anchor'][0] * fw, tm['anchor'][1] * fh), 0.0, 0.0)
-            for k, name in (('streetlight', (-3.5, -1.0)), ('bench_x', (-3.9, -3.3))):
+            for k, name in (('streetlight', (-3.5, -1.0)),):
                 sm = town[0]['sprites'].get(k)
                 if sm:
                     sc.put(town[1](sm['atlas'], sm['frame']), (sm['anchor'][0] * sm['frameSize'][0],
@@ -624,22 +624,27 @@ def preview_wedding(builds, strollers, frames, sframes, out):
             sx, sy = sc.p(x, y)
             top = m['topPx'][m['frames'][0]] if isinstance(m['topPx'], dict) else 0
             if k == 'ribbon_garland':
-                sc.label('ribbon_garland (on town_hall)', sx - 60, sy - 360)
+                sc.label('ribbon_garland (on town_hall)', sx - 40, sy - 300)
             elif k == 'wedding_carpet':
-                sc.label(k, sx - 70, sy + 30)
+                sc.label(k, sx - 30, sy - 8)
+            elif k == 'wedding_chairs':
+                sc.label('wedding_chairs (rows)', sx - 70, sy + 22)
+            elif k == 'flower_stand':
+                sc.label(k, sx, sy + 10)
             else:
-                sc.label(k, sx, sy - top - 24 if k != 'wedding_chairs' else sy + 14)
-    # seated guests (villagers that can sit + townsfolk if their sit exists later)
-    sitters = ['npc_grandma', 'npc_aunt', 'npc_grandpa', 'npc_herbalist', 'npc_bard', 'npc_aunt', 'npc_grandma',
-               'npc_herbalist', 'npc_grandpa', 'npc_bard']
+                sc.label(k, sx, sy - top - 24)
+    # seated guests: the villagers that have `sit` (townsfolk get sit in assets/townfolk2)
+    sitters = ['npc_grandma', 'npc_aunt', 'npc_bard', 'npc_grandpa', 'npc_herbalist', 'npc_aunt', 'npc_grandpa',
+               'npc_grandma', 'npc_bard']
     ch = builds.get('wedding_chairs')
     k = 0
     if ch:
         seats = pts_of(ch, 'seat')
-        for (bx, by) in [tuple(it['m']) for it in lay['items'] if it['sprite'] == 'wedding_chairs']:
+        rows = [tuple(it['m']) for it in lay['items'] if it['sprite'] == 'wedding_chairs']
+        for r, (bx, by) in enumerate(rows):
             for j, s in enumerate(seats):
-                if (k * 7 + j * 3) % 5 == 4:
-                    continue                    # leave a few seats free
+                if (r * 3 + j) % 3 == 1 or (r >= 4 and j != 0):
+                    continue                    # a few free seats so the chairs read
                 sx0, sy0 = sc.p(bx, by)
                 im = P.char(sitters[k % len(sitters)], 'sit_SE_%d' % (k % 4), flip=True)
                 sc.person(im, sx0 + s[0], sy0 + s[1], depth=sy0 + 1 + s[1] * 0.001)
@@ -655,35 +660,33 @@ def preview_wedding(builds, strollers, frames, sframes, out):
                       ax + cp[0][0], ay + cp[0][1], depth=ay + 2)
             sc.person(P.townsfolk(gr, 'talk', 'W', 2) if gr else P.char('npc_young_man', 'talk_E_2', flip=True),
                       ax + cp[1][0], ay + cp[1][1], depth=ay + 2.1)
+            sc.label('couple', ax, ay + 18)
         op = pts_of(am, 'officiant')
         if op:
             sc.person(P.char('player', 'idle_S_0'), ax + op[0][0], ay + op[0][1], depth=ay + 1.5)
-            sc.label('chief = officiant', ax + op[0][0], ay + op[0][1] - 112)
-    # cake-table helpers + standing guests
+    # standing guests
+    hx, hy = sc.p(0, 0)
     for j, (pt, d) in enumerate(zip(lay['standPoints'], lay['standDirs'])):
-        hx, hy = sc.p(0, 0)
         rd, fl = flip_for(d)
         person = P.random(500 + j * 13)
         anim = ('wave', 'happy', 'talk')[j % 3]
         im = P.townsfolk(person, anim, d, j % 6) if person else P.char('npc_red', '%s_%s_0' % (anim, rd), flip=fl)
         sc.person(im, hx + pt[0], hy + pt[1])
-    # a kid running to the cake + a dog
-    sc.person(P.char('npc_kid_girl', 'happy_SE_2', flip=True), *sc.p(2.3, -7.1))
-    sc.person(P.char('pet_dog', 'sit_SE_0', flip=False), *sc.p(2.55, -7.55))
+    # cake: the dog waits for a crumb
+    sc.person(P.char('pet_dog', 'sit_SE_0'), *sc.p(2.75, -6.9))
     # a parent with the baby stroller arriving
     if 'baby_stroller' in strollers:
         m = strollers['baby_stroller']
         d = 'E'
-        px0, py0 = sc.p(-4.6, -7.2)
+        px0, py0 = sc.p(-5.2, -8.2)
         off = stroller_entry('baby_stroller', m, sframes)['pushOffset'][d]
         pusher = P.random(77, 'adult')
         sc.person(P.townsfolk(pusher, 'walk', d, 3) if pusher else P.char('npc_aunt', 'walk_E_3'), px0, py0)
         sc.put(sframes[('baby_stroller', 'move_E_3')], m['anchorPx'], sx=px0 + off[0], sy=py0 + off[1], bias=1.0)
         sc.label('baby_stroller', px0 + off[0] + 10, py0 + off[1] + 12)
-    sc.finish(out, 'Wedding at the town hall (마을회관 결혼식), 1x PPU 64: assets/life2 props + town_hall (assets/town) '
-                   'with ribbon_garland, guests = villagers (sit) + townsfolk',
-              sub='layout = manifest layouts.wedding_town_hall; bride / groom here are plain townsfolk stand-ins '
-                  '(wedding outfits come from assets/townfolk2)')
+    sc.finish(out, 'Wedding at the town hall, 1x PPU 64: assets/life2 + town_hall (assets/town) with ribbon_garland',
+              sub='layout = manifest layouts.wedding_town_hall; seated guests = villagers (sit), standing = townsfolk; '
+                  'bride / groom are plain townsfolk stand-ins (outfits: assets/townfolk2)')
 
 
 def preview_memorial(builds, strollers, frames, sframes, out):
@@ -735,9 +738,9 @@ def preview_memorial(builds, strollers, frames, sframes, out):
         sc.person(P.char('npc_grandpa', 'sit_S_1'), gx + seats[0][0], gy + seats[0][1], depth=gdepth + 1)
     # a second, empty garden spot view: stones 3-5 left free
     sc.label('free stone spots (stonePoints 3-5)', gx + stones[4][0] + 30, gy + stones[4][1] + 40)
-    sc.finish(out, 'Memorial garden (추모 정원), 1x PPU 64: a gentle, warm flower farewell - assets/life2 garden, stones, '
-                   'wreath; family = villagers (sad), friends = townsfolk',
-              sub='layout = manifest layouts.farewell_garden; draw stones / people above the garden (stoneDepth front)')
+    sc.finish(out, 'Memorial garden, 1x PPU 64: a gentle, warm flower farewell (assets/life2)',
+              sub='garden + 3 memorial_stones + flower_wreath; family = villagers (sad), friends = townsfolk; '
+                  'layout = manifest layouts.farewell_garden')
 
 
 def preview_anims_gif(builds, strollers, frames, sframes, out, bg=(236, 241, 248)):
