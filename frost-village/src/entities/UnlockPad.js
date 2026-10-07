@@ -8,6 +8,8 @@ import { DEPTH } from '../systems/DepthSort.js';
 import { Pad } from './Pad.js';
 import { t, fmt } from '../data/strings.js';
 import { panel } from '../core/Panel.js';
+import { ItemStack } from './ItemStack.js';
+import { PRIO } from '../systems/Logistics.js';
 
 /** a price from balance.js as a whole number >= 1 (0, negative, missing or text would make a pad that never completes) */
 export function sanePrice(v) { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 1 ? n : 1; }
@@ -56,7 +58,43 @@ export class UnlockPad {
     const rf = this.ringBg.frame;
     this.ringBg.setScale(64 / Math.max(rf.realWidth, rf.realHeight));
     this.ring = gs.add.graphics().setDepth(DEPTH.LABEL + 1).setVisible(false);
+    // (v3) pads that also need an item (a tool for a second worker / the fishing boat): it has to be
+    // brought to the pad — by a porter or the chief. The label shows it: [axe] 0/1
+    this.items = opts.items || null;
+    this.got = {};
+    if (this.items) {
+      for (const k in this.items) this.got[k] = Math.max(0, Math.min(this.items[k], Math.floor(Number(opts.got && opts.got[k])) || 0));
+      this.itemStack = new ItemStack(gs, { scale: 0.75, max: 20 });
+      this.itemIcons = [];
+      for (const k in this.items) {
+        const ic = Assets.image(gs, 0, 0, k).setOrigin(0.5, 0.6);
+        ic.setScale(40 / Math.max(ic.frame.realWidth, ic.frame.realHeight, 1));
+        const tx = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '21px', fontStyle: '900', color: '#2b2f3a', resolution: 2 }).setOrigin(0, 0.5);
+        lab.add([ic, tx]);
+        this.itemIcons.push({ k, ic, tx });
+      }
+      // as a logistics sink: porters bring the item here
+      this.id = id;
+      this.isWarehouse = false;
+      this.enabled = true;
+      if (gs.logistics) gs.logistics.add(this);
+    }
     this.refresh();
+  }
+
+  // ---------------------------------------------------------------- (v3) item requirement
+  itemsMissing() { if (!this.items) return 0; let n = 0; for (const k in this.items) n += Math.max(0, this.items[k] - this.got[k] - this.itemStack.countOf(k) - this.inFlight(k)); return n; }
+  inFlight(k) { let n = 0; for (const t of this.itemStack.inTypes) if (t === k) n++; return n; }
+  itemsDone() { if (!this.items) return true; for (const k in this.items) if (this.got[k] < this.items[k]) return false; return true; }
+  accepts(type) { return !!(this.items && this.items[type] && this.active && !this.done); }
+  room(type) { return this.accepts(type) ? Math.max(0, this.items[type] - this.got[type] - this.itemStack.countWithIncoming(type)) : 0; }
+  prio() { return PRIO.SITE; }
+  feed(ch) {
+    for (let i = ch.stack.items.length - 1; i >= 0; i--) {
+      const ty = ch.stack.items[i].type;
+      if (this.room(ty) > 0) return this.gs.moveItem(ch.stack, this.itemStack, ty, { dur: 260, height: 70, sfx: 'drop' });
+    }
+    return false;
   }
 
   get remaining() { return Math.max(0, this.cost - this.paid); }
@@ -70,10 +108,13 @@ export class UnlockPad {
     const txt = this.opts.labelFn ? this.opts.labelFn() : t(this.opts.label || this.id);
     this.labelText.setText(txt);
     const iconW = this.labelIcon.displayWidth;
-    const w = Math.max(120, this.labelText.width + iconW + 34);
+    let extra = 0;
+    if (this.itemIcons) for (const q of this.itemIcons) { const have = this.got[q.k] || 0, need = this.items[q.k]; q.tx.setText(have >= need ? '✓' : have + '/' + need); q.tx.setColor(have >= need ? '#2f8f4e' : '#c0392b'); extra += 44 + q.tx.width + 8; }
+    const w = Math.max(120, this.labelText.width + iconW + 34 + extra);
     this.labelBg.setSize(w, 60);
     this.labelIcon.setPosition(-w / 2 + 14 + iconW / 2, -2);
     this.labelText.setPosition(-w / 2 + 22 + iconW, 0);
+    if (this.itemIcons) { let x = -w / 2 + 22 + iconW + this.labelText.width + 12; for (const q of this.itemIcons) { q.ic.setPosition(x + 20, 2); q.tx.setPosition(x + 42, 0); x += 44 + q.tx.width + 8; } }
     if (this.maxed) {
       this.costText.setVisible(false); this.costCoin.setVisible(false);
       if (!this.maxBadge) {
@@ -109,6 +150,21 @@ export class UnlockPad {
   update(dt) {
     if (!this.active || this.done) return false;
     const gs = this.gs, p = gs.player;
+    if (this.items) {
+      // delivered items settle into the pad (counted), then the pad may complete on its own
+      this.itemStack.layout(this.x + 46, this.y - 4, this.y + 1, 0, dt);
+      let changed = false;
+      for (const k in this.items) {
+        while (this.itemStack.countOf(k) > 0 && this.got[k] < this.items[k]) {
+          const it = this.itemStack.pop(k);
+          this.got[k]++; changed = true;
+          gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: this.x, y: this.y - 30 }, { dur: 260, height: 40, scaleTo: 0.3, onDone: (sp) => { gs.effects.releaseItem(sp); gs.effects.burst('star', this.x, this.y - 30, 6); } });
+        }
+      }
+      if (changed) { this.refresh(); Audio.play('sfx_pickup', { volume: 0.6, rate: 1.3 }); if (this.remaining <= 0 && this.itemsDone()) { this.complete(); return false; } }
+      // the chief carries the item: hand it over
+      if (this.pad.contains(p.x, p.y) && (this.handT = (this.handT || 0) - dt) <= 0) { if (this.feed(p)) { this.handT = 0.12; this.pad.pulse(); } }
+    }
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
     // keep the floating label inside the screen while its pad is visible
     const v = gs.cameras.main.worldView, hw = this.labelBg.width * 0.5 + 8;
@@ -133,6 +189,7 @@ export class UnlockPad {
     if (!on || this.maxed) {
       this.standT = 0;
       this._warned = false;
+      this._itemWarned = false;
       if (!on) this.needsLeave = false;
       if (this.ring.visible) { this.ring.setVisible(false); this.ringBg.setVisible(false); }
       return on;
@@ -142,7 +199,11 @@ export class UnlockPad {
     this.standT += dt;
     if (this.standT < (Number(BALANCE.player.padDelay) || 0)) return true;
     // already fully paid (e.g. the price was lowered in balance.js below a saved partial payment)
-    if (!(this.remaining > 0)) { this.complete(); return true; }
+    if (!(this.remaining > 0)) {
+      if (this.itemsDone()) this.complete();
+      else if (!this._itemWarned) { this._itemWarned = true; const k = Object.keys(this.items).find((q) => this.got[q] < this.items[q]); gs.ui.toast(t('needItem', { name: t(k) })); Audio.play('sfx_error', { volume: 0.4 }); }
+      return true;
+    }
     if (!this.ring.visible) this.drawRing();
     const eco = gs.economy;
     if (eco.coins > 0) {
@@ -170,7 +231,7 @@ export class UnlockPad {
           Audio.play('sfx_pad_fill', { volume: 0.5, rate: 0.85 + 0.7 * (this.paid / this.cost), throttle: 60 });
         }
       }
-      if (this.remaining <= 0) this.complete();
+      if (this.remaining <= 0 && this.itemsDone()) this.complete();
     } else if (this.remaining > 0 && eco.coins <= 0 && this.standT > BALANCE.player.padDelay + 0.05 && !this._warned) {
       this._warned = true;
       gs.ui.toast(t('notEnoughCoins'));
@@ -195,6 +256,7 @@ export class UnlockPad {
     if (this.done) return;
     const gs = this.gs;
     this.done = true;
+    if (this.items && gs.logistics) gs.logistics.remove(this);
     if (this.sparkle && this.sparkle !== 'none') this.sparkle.setVisible(false);
     this.pad.img.setScale(this.pad.bsx, this.pad.bsy);
     this.ring.setVisible(false); this.ringBg.setVisible(false);
@@ -215,6 +277,7 @@ export class UnlockPad {
   }
 
   destroy() {
+    if (this.items) { if (this.gs.logistics) this.gs.logistics.remove(this); this.itemStack.clear(this.gs.effects); }
     this.pad.img.destroy(); if (this.pad.icon) this.pad.icon.destroy();
     this.label.destroy(); this.costText.destroy(); this.costCoin.destroy();
     this.ring.destroy(); this.ringBg.destroy();

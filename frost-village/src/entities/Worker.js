@@ -12,7 +12,6 @@ import { DEPTH } from '../systems/DepthSort.js';
 import { shoreY } from '../systems/Collision.js';
 
 const STATION_OF = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
-const FOOD_OUT = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
 
 export class Worker extends Character {
   /** where a worker waits when there is nothing to do */
@@ -35,7 +34,34 @@ export class Worker extends Character {
     this.stand = { x: 0, y: 0 };
     this.onImpact = () => this.impact();
     this.home = Worker.homeFor(gs, type, index);
+    // (v3) miners eat: one bread / smoked meat from the food box every few ores
+    this.oreLeft = Math.max(1, Math.floor(BALANCE.food.orePerFood) || 5);
+    this.hungry = false;
+    this.emoteT = 0;
     gs.agents.push(this);
+  }
+
+  /** (v3) a miner who ran out of food waits by the mine until the food box has something */
+  updateHungry(dt) {
+    const gs = this.gs, box = gs.foodBox;
+    if (!box || !box.active) { this.hungry = false; this.state = 'seek'; return; }
+    const spot = { x: box.x + 70 + this.index * 40, y: box.y + 34 + this.index * 14 };
+    if (gs.moveAgent(this, spot.x, spot.y, this.speed * 0.8, dt, 12)) {
+      this.vx = this.vy = 0;
+      this.faceTo(box.x, box.y);
+      this.locomotion(false);
+    }
+    this.emoteT -= dt;
+    if (this.emoteT <= 0) {
+      this.emoteT = 3.2;
+      if (gs.life && gs.isOnScreen(this.x, this.y, 80)) gs.life.bubbles.emote(this, Assets.pick('emote_bread', 'emote_sweat'), 2);
+    }
+    if (box.count > 0 && box.eat(this)) {
+      this.hungry = false;
+      this.oreLeft = Math.max(1, Math.floor(BALANCE.food.orePerFood) || 5);
+      this.state = 'seek';
+      if (gs.life && gs.isOnScreen(this.x, this.y, 80)) gs.life.bubbles.emote(this, 'emote_heart', 1.4);
+    }
   }
 
   get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
@@ -88,9 +114,14 @@ export class Worker extends Character {
         this.release(); this.state = 'seek';
       }
     } else this.gotoT = 0;
+    if (this.state === 'hungry') { this.updateHungry(dt); this.sync(dt); return; }
     switch (this.state) {
       case 'seek': {
         if (this.room <= 0) { this.state = 'deliver'; break; }
+        if (this.hungry) {
+          if (this.stack.count > 0) { this.state = 'deliver'; break; }
+          this.release(); this.state = 'hungry'; this.emoteT = 0; break;
+        }
         this.node = this.pickNode();
         if (this.node) { this.state = 'goto'; }
         else if (this.stack.count > 0) this.state = 'deliver';
@@ -128,7 +159,7 @@ export class Worker extends Character {
       case 'work': {
         const n = this.node;
         this.vx = this.vy = 0;
-        if (!n || !this.nodeOk(n) || this.room <= 0) {
+        if (!n || !this.nodeOk(n) || this.room <= 0 || this.hungry) {
           this.release();
           this.state = this.room <= 0 ? 'deliver' : 'seek';
           this.locomotion(false);
@@ -192,8 +223,16 @@ export class Worker extends Character {
       if (this.room > 0) { gs.spawnItemTo('item_fish_raw', ip.x, ip.y, this, false); gs.sfxAt('sfx_reel', this.x, this.y, { volume: 0.3, throttle: 300 }); }
       return;
     }
+    if (this.hungry) return;
     const item = n.hit(this);
     if (item && this.room > 0) gs.spawnItemTo(item, ip.x, ip.y, this, false);
+    if (item && this.type === 'miner' && gs.foodBox && gs.foodBox.active) {
+      this.oreLeft--;
+      if (this.oreLeft <= 0) {
+        if (gs.foodBox.eat(this)) this.oreLeft = Math.max(1, Math.floor(BALANCE.food.orePerFood) || 5);
+        else { this.hungry = true; gs.events.emit('minersHungry'); }
+      }
+    }
   }
 
   shoot(animal, ip) {
@@ -233,12 +272,125 @@ export class Worker extends Character {
   }
 }
 
-// ------------------------------------------------------------------ porter (v2)
+// ------------------------------------------------------------------ porters (v2, v3)
 const PORTER_KEYS = ['npc_porter_a', 'npc_porter_b'];
 // stand-ins while the porter art is missing: ordinary villagers carrying in front
 const PORTER_FALLBACK = ['npc_yellow', 'npc_red', 'npc_blue', 'npc_young_man', 'villager_a', 'villager_b', 'villager_c'];
 
-export class Porter extends Character {
+/**
+ * Something that carries stacks between places along the roads (v3 base of both porters):
+ * haul -> unload into a logistics sink (site, food box, workshop, shelf, warehouse), re-planning
+ * when a place fills up before the stack is empty.
+ */
+class Hauler extends Character {
+  constructor(gs, key, x, y, cap) {
+    const def = Assets.charDef(key);
+    super(gs, key, x, y, { radius: 14, capacity: cap, carryScale: BALANCE.player.carryScale, carryMode: def.carryStyle === 'back' ? 'back' : 'front' });
+    this.route = [];
+    this.ri = 0;
+    this.dropT = 0;
+    this.waitT = 0;
+    this.tripT = 0;
+    this.dest = null;          // the sink the stack is going to
+    this.resv = 0;             // items reserved there
+    this.resvType = null;
+    this.speed = BALANCE.workers.speed * (0.95 + Math.random() * 0.1);
+    gs.agents.push(this);
+  }
+
+  get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
+
+  /** walk along the roads to (x, y) */
+  go(x, y) { this.gs.roads.route(this.x, this.y, x, y, this.route); this.ri = 0; this.tripT = 0; }
+
+  /** the art arrived after the title: swap the stand-in look for the real porter */
+  checkSkin(dt) {
+    if (!this.wantKey) return;
+    this.checkT = (this.checkT || 1) - dt;
+    if (this.checkT > 0) return;
+    this.checkT = 1;
+    if (Assets.charReady(this.wantKey)) {
+      const gs = this.gs;
+      if (PORTER_KEYS.indexOf(this.key) < 0) gs.keysInUse.delete(this.key);
+      this.reskin(this.wantKey);
+      this.carryMode = this.def.carryStyle === 'back' ? 'back' : 'front';
+      gs.keysInUse.add(this.key);
+      this.wantKey = null;
+    }
+  }
+
+  setDest(sink, type) {
+    const L = this.gs.logistics;
+    this.clearDest();
+    this.dest = sink;
+    this.resvType = type;
+    this.resv = this.stack.count + this.stack.incoming;
+    if (L && sink) L.reserve(sink, type, this.resv);
+  }
+
+  clearDest() {
+    const L = this.gs.logistics;
+    if (L && this.dest && this.resv > 0) L.release(this.dest, this.resvType, this.resv);
+    this.dest = null; this.resv = 0; this.resvType = null;
+  }
+
+  /** the carried type (porters carry one kind of thing per trip) */
+  carriedType() { const it = this.stack.items[this.stack.items.length - 1]; return it ? it.type : (this.stack.inTypes[0] || null); }
+
+  /** where the stack should go now (null = nowhere wants it yet) */
+  planDest(exclude) {
+    const L = this.gs.logistics, ty = this.carriedType();
+    if (!L || !ty) return null;
+    const b = L.best(ty, this.x, this.y, { exclude });
+    return b ? b.sink : null;
+  }
+
+  startHaul(sink) {
+    const ty = this.carriedType();
+    this.setDest(sink, ty);
+    this.state = 'haul';
+    this.go(sink.x + (this.index % 2) * 18, sink.y + 4);
+  }
+
+  haul(dt) {
+    const gs = this.gs;
+    if (this.stack.count + this.stack.incoming === 0) { this.clearDest(); this.state = 'seek'; this.route.length = 0; return; }
+    const d = this.dest;
+    if (!d || !d.enabled) { this.clearDest(); const n = this.planDest(); if (n) this.startHaul(n); else { this.vx = this.vy = 0; this.locomotion(false); } return; }
+    this.tripT += dt;
+    if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
+      if (this.tripT > 90) { this.x = d.x; this.y = d.y; }
+      this.vx = this.vy = 0;
+      this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
+      this.faceTo(d.x - 20, d.y - 20);
+      this.locomotion(false);
+    }
+  }
+
+  unload(dt) {
+    this.vx = this.vy = 0;
+    this.dropT -= dt;
+    if (this.dropT <= 0) {
+      this.dropT = 0.14;
+      if (this.stack.count === 0) {
+        if (this.stack.incoming === 0) { this.clearDest(); this.state = 'seek'; this.route.length = 0; this.afterUnload(); }
+      } else if (this.dest && this.dest.enabled && this.dest.feed(this)) {
+        if (this.resv > 0) { this.resv--; this.gs.logistics.release(this.dest, this.resvType, 1); }
+      } else {
+        // this place is full: somewhere else that wants it? (otherwise wait for room)
+        this.waitT += 0.6;
+        const n = this.waitT > 1.1 ? this.planDest(this.dest) : null;
+        if (n && n !== this.dest) this.startHaul(n);
+        else this.dropT = 0.6;
+      }
+    }
+    this.locomotion(false);
+  }
+
+  afterUnload() {}
+}
+
+export class Porter extends Hauler {
   /** which look porter number `index` gets (and the art it waits for when that is still loading) */
   static pickKey(gs, index) {
     const want = PORTER_KEYS[index % PORTER_KEYS.length];
@@ -250,66 +402,55 @@ export class Porter extends Character {
 
   static homeFor(gs, station) {
     const pad = station.outPad;
-    const o = station.cfg.porterHome || [30, 30];     // world.js stations[].porterHome: waiting spot next to the output pad
+    const o = (station.cfg && station.cfg.porterHome) || [30, 30];     // world.js stations[].porterHome: waiting spot next to the output pad
     const p = { x: pad.x + o[0], y: pad.y + o[1] };
     gs.collision.resolve(p, 14);
     return [p.x, p.y];
   }
 
+  /** station: anything with an outPad + outStack (v1 stations, v3 workshops, the boathouse catch pad) */
   constructor(gs, station, x, y, index = 0) {
     const pk = Porter.pickKey(gs, index);
-    const def = Assets.charDef(pk.key);
-    super(gs, pk.key, x, y, { radius: 14, capacity: BALANCE.workers.porterCapacity, carryScale: BALANCE.player.carryScale, carryMode: def.carryStyle === 'back' ? 'back' : 'front' });
+    super(gs, pk.key, x, y, BALANCE.workers.porterCapacity);
     this.wantKey = pk.later;
     this.checkT = 1;
     this.type = 'porter';
     this.role = 'porter';
     this.index = index;
     this.station = station;
-    this.seller = FOOD_OUT.indexOf(station.output) >= 0 ? gs.market : gs.trade;
     this.state = 'seek';
     this.home = Porter.homeFor(gs, station);
-    this.route = [];
-    this.ri = 0;
-    this.dropT = 0;
-    this.waitT = 0;
-    this.tripT = 0;
-    this.speed = BALANCE.workers.speed * (0.95 + Math.random() * 0.1);
+    this.plan = null;
     gs.keysInUse.add(pk.key);
     if (pk.later) gs.keysInUse.add(pk.later);
-    gs.agents.push(this);
   }
 
-  get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
-
-  /** walk along the roads to (x, y) */
-  go(x, y) { this.gs.roads.route(this.x, this.y, x, y, this.route); this.ri = 0; this.tripT = 0; }
-
-  shelfSpot() { const sh = this.seller.shelf; return { x: sh.x + 30 + (this.index % 2) * 20, y: sh.y + 22 }; }
+  /** the best (type, sink) for what lies on the output pad right now */
+  pickPlan() {
+    const L = this.gs.logistics, out = this.station.outStack;
+    if (!L) return null;
+    let best = null;
+    const seen = {};
+    for (const it of out.items) {
+      if (seen[it.type]) continue;
+      seen[it.type] = true;
+      const b = L.best(it.type, this.x, this.y);
+      if (b && (!best || b.prio > best.prio || (b.prio === best.prio && out.countOf(it.type) > out.countOf(best.type)))) best = { sink: b.sink, type: it.type, n: b.n, prio: b.prio };
+    }
+    return best;
+  }
 
   update(dt) {
     const gs = this.gs, out = this.station.outStack;
-    if (this.wantKey) {
-      this.checkT -= dt;
-      if (this.checkT <= 0) {
-        this.checkT = 1;
-        if (Assets.charReady(this.wantKey)) {
-          if (PORTER_KEYS.indexOf(this.key) < 0) gs.keysInUse.delete(this.key);
-          this.reskin(this.wantKey);
-          this.carryMode = this.def.carryStyle === 'back' ? 'back' : 'front';
-          gs.keysInUse.add(this.key);
-          this.wantKey = null;
-        }
-      }
-    }
+    this.checkSkin(dt);
     switch (this.state) {
       case 'seek':
       default: {
-        if (this.stack.count > 0 && this.room <= 0) { this.state = 'haul'; const s = this.shelfSpot(); this.go(s.x, s.y); break; }
+        if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
         if (!this.route.length || this.routeTo !== 'home') { this.go(this.home[0], this.home[1]); this.routeTo = 'home'; }
         if (gs.followRoute(this, this.speed, dt, 10)) {
           this.vx = this.vy = 0;
-          this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null;
+          this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null; this.plan = null;
           if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
           this.locomotion(false);
         }
@@ -318,49 +459,165 @@ export class Porter extends Character {
       case 'load': {
         this.vx = this.vy = 0;
         this.dropT -= dt;
-        if (this.room <= 0) { this.startHaul(); break; }
-        if (out.count > 0) {
+        if (!this.station.enabled) { this.locomotion(false); break; }
+        this.planT = (this.planT || 0) - dt;
+        if (!this.plan && this.stack.count === 0 && this.stack.incoming === 0 && this.planT <= 0) {
+          this.plan = this.pickPlan();
+          this.planT = 0.5;
+        }
+        const pl = this.plan;
+        const want = pl ? Math.min(this.stack.max, Math.max(1, pl.n)) : 0;
+        if (this.room <= 0 || (pl && this.stack.count + this.stack.incoming >= want)) { this.finishLoad(); break; }
+        if (pl && out.countOf(pl.type) > 0) {
           this.waitT = 0;
-          if (this.dropT <= 0 && gs.moveItem(out, this.stack, null, { dur: 230, height: 55 })) this.dropT = 0.14;
+          if (this.dropT <= 0 && gs.moveItem(out, this.stack, pl.type, { dur: 230, height: 55 })) this.dropT = 0.14;
         } else {
           this.waitT += dt;
+          // the planned item ran out: plan again (another product may be waiting)
+          if (pl && this.stack.count === 0 && this.stack.incoming === 0 && this.waitT > 0.5) this.plan = null;
           // carry what we have once the output runs dry for a moment (or right away with a decent load)
-          if (this.stack.count > 0 && this.stack.incoming === 0 && (this.stack.count >= 4 || this.waitT > 3)) this.startHaul();
+          if (this.stack.count > 0 && this.stack.incoming === 0 && (this.stack.count >= 4 || this.waitT > 3)) this.finishLoad();
         }
         this.locomotion(false);
         break;
       }
-      case 'haul': {
-        if (this.stack.count + this.stack.incoming === 0) { this.state = 'seek'; this.route.length = 0; break; }
-        if (this.seller.enabled === false) { this.vx = this.vy = 0; this.locomotion(false); break; }     // the market has no enabled flag (always open)
-        this.tripT += dt;
-        if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
-          if (this.tripT > 90) { const s = this.shelfSpot(); this.x = s.x; this.y = s.y; }
-          this.vx = this.vy = 0;
-          this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
-          this.faceTo(this.seller.shelf.x, this.seller.shelf.y);
-          this.locomotion(false);
-        }
-        break;
-      }
-      case 'unload': {
-        this.vx = this.vy = 0;
-        this.dropT -= dt;
-        if (this.dropT <= 0) {
-          this.dropT = 0.14;
-          if (this.stack.count === 0) { if (this.stack.incoming === 0) { this.state = 'seek'; this.route.length = 0; } }
-          else if (!this.seller.feedFrom(this)) this.dropT = 0.6;     // shelf full: wait for buyers
-        }
-        this.locomotion(false);
-        break;
-      }
+      case 'haul': this.haul(dt); break;
+      case 'unload': this.unload(dt); break;
     }
     this.sync(dt);
   }
 
-  startHaul() {
-    this.state = 'haul';
-    const s = this.shelfSpot();
-    this.go(s.x, s.y);
+  finishLoad() {
+    if (this.stack.incoming > 0) return;
+    const sink = (this.plan && this.plan.sink && this.gs.logistics.want(this.plan.sink, this.carriedType()) > 0) ? this.plan.sink : this.planDest();
+    this.plan = null;
+    if (sink) this.startHaul(sink);
+    else this.waitT = 0;      // nowhere wants it yet: keep it and wait by the pad
   }
 }
+
+/**
+ * (v3) warehouse porter: brings overflow from nearly full outputs into the warehouse and takes
+ * stored things out to whoever needs them (sites, hire pads, the food box, workshops, nearly empty shelves).
+ */
+export class WarehousePorter extends Hauler {
+  constructor(gs, warehouse, x, y, index = 0) {
+    const pk = Porter.pickKey(gs, index);
+    super(gs, pk.key, x, y, Math.max(1, Math.floor(BALANCE.build.porterCapacity) || 10));
+    this.wantKey = pk.later;
+    this.checkT = 1;
+    this.type = 'porter';
+    this.role = 'porter';
+    this.index = index;
+    this.wh = warehouse;
+    this.station = null;
+    this.state = 'idle';
+    this.thinkT = 0.5 + index * 0.4;
+    this.job = null;
+    const op = warehouse.outPad;
+    this.homePt = { x: op.x + 40 + index * 34, y: op.y + 48 };
+    gs.keysInUse.add(pk.key);
+  }
+
+  /** what to do next: a delivery out of the warehouse, or overflow into it */
+  think() {
+    const gs = this.gs, L = gs.logistics, W = this.wh;
+    if (!L || !W.enabled) return null;
+    // 1. someone needs something the warehouse has (shelves only when nearly empty)
+    const types = W.types();
+    if (types.length) {
+      const b = L.bestAny(types, W.outPad.x, W.outPad.y, { minPrio: 45, noStore: true });
+      if (b) {
+        const others = gs.porters.filter((p) => p !== this && p.job && p.job.kind === 'out' && p.job.sink === b.sink && p.job.type === b.type).length;
+        if (!others) return { kind: 'out', sink: b.sink, type: b.type, n: Math.min(this.stack.max, b.n, W.count(b.type)) };
+      }
+    }
+    // 2. an output pad filling up (no porter of its own keeping up)
+    if (W.room > 5) {
+      let best = null, bf = BALANCE.warehouse.overflowAt || 0.6;
+      for (const s of gs.sources()) {
+        if (!s.enabled || !s.outStack || s.outStack.max <= 0) continue;
+        const f = s.outStack.count / s.outStack.max;
+        if (f < bf) continue;
+        if (gs.porters.some((p) => p !== this && p.job && p.job.kind === 'in' && p.job.src === s)) continue;
+        bf = f; best = s;
+      }
+      if (best) return { kind: 'in', src: best };
+    }
+    return null;
+  }
+
+  update(dt) {
+    const gs = this.gs, W = this.wh;
+    this.checkSkin(dt);
+    switch (this.state) {
+      case 'idle': {
+        this.thinkT -= dt;
+        if (this.thinkT <= 0) {
+          this.thinkT = 0.6;
+          const j = this.think();
+          if (j) {
+            this.job = j;
+            if (j.kind === 'out') { this.state = 'toWh'; this.go(W.outPad.x + 20, W.outPad.y + 22); L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; }
+            else { this.state = 'toSrc'; this.go(j.src.outPad.x + 24, j.src.outPad.y + 20); }
+            break;
+          }
+        }
+        if (gs.moveAgent(this, this.homePt.x, this.homePt.y, this.speed * 0.6, dt, 10)) { this.vx = this.vy = 0; this.locomotion(false); }
+        break;
+      }
+      case 'toWh': {
+        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'take'; this.dropT = 0.1; this.locomotion(false); }
+        break;
+      }
+      case 'take': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        const j = this.job;
+        if (this.dropT <= 0) {
+          this.dropT = 0.14;
+          const got = this.stack.count + this.stack.incoming;
+          if (got < j.n && W.count(j.type) > 0 && this.room > 0) W.giveTo(this, j.type);
+          else if (this.stack.incoming === 0) {
+            L_release(gs, j.sink, j.type, this.jobResv); this.jobResv = 0;
+            if (this.stack.count > 0) { const ok = gs.logistics.want(j.sink, j.type) > 0 ? j.sink : this.planDest(); if (ok) this.startHaul(ok); else this.startHaul(W.sink); }
+            else { this.job = null; this.state = 'idle'; }
+          }
+        }
+        this.locomotion(false);
+        break;
+      }
+      case 'toSrc': {
+        const src = this.job.src;
+        if (!src.enabled) { this.job = null; this.state = 'idle'; break; }
+        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
+        break;
+      }
+      case 'grab': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        const out = this.job.src.outStack;
+        if (this.dropT <= 0) {
+          this.dropT = 0.14;
+          const ty = this.carriedType() || (out.items.length ? out.items[out.items.length - 1].type : null);
+          if (this.room > 0 && ty && out.countOf(ty) > 0) gs.moveItem(out, this.stack, ty, { dur: 230, height: 55 });
+          else if (this.stack.incoming === 0) {
+            if (this.stack.count > 0) { const n = this.planDest(); this.startHaul(n || W.sink); }
+            else { this.job = null; this.state = 'idle'; }
+          }
+        }
+        this.locomotion(false);
+        break;
+      }
+      case 'haul': this.haul(dt); break;
+      case 'unload': this.unload(dt); break;
+      default: this.state = 'idle';
+    }
+    this.sync(dt);
+  }
+
+  afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.2; }
+}
+
+function L_reserve(gs, sink, type, n) { if (gs.logistics) gs.logistics.reserve(sink, type, n); }
+function L_release(gs, sink, type, n) { if (gs.logistics && n > 0) gs.logistics.release(sink, type, n); }

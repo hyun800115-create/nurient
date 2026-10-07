@@ -14,9 +14,10 @@ const OFFROAD = 1.8;   // walking through the snow counts this much more than wa
 const TRIM = 170;      // a road node this close behind the walker / beyond the target is skipped
 
 export class Roads {
-  /** isOpen(zoneId) -> bool : whether edges of that zone can be used */
-  constructor(isOpen, data) {
+  /** isOpen(zoneId) -> bool : whether edges of that zone can be used; regionOpen(id): (v3) new land revealed */
+  constructor(isOpen, data, regionOpen) {
     this.isOpen = isOpen || (() => true);
+    this.regionOpen = regionOpen || (() => true);
     const R = data || WORLD.roads || { nodes: {}, edges: [] };
     this.nodes = [];
     this.byId = {};
@@ -35,7 +36,7 @@ export class Roads {
       const pts = [[a.x, a.y]].concat(via, [[b.x, b.y]]);
       let len = 0;
       for (let k = 1; k < pts.length; k++) len += gd(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1]);
-      const edge = { a: a.i, b: b.i, via, len, zone: o.zone || null, walk: o.walk !== false, draw: o.draw !== false };
+      const edge = { a: a.i, b: b.i, via, len, zone: o.zone || null, region: o.region || null, walk: o.walk !== false, draw: o.draw !== false };
       this.edges.push(edge);
       a.edges.push(edge); b.edges.push(edge);
     }
@@ -50,7 +51,7 @@ export class Roads {
   /** zones changed (unlock): forget cached paths */
   invalidate() { this.version++; this.cache.clear(); }
 
-  usable(e) { return e.walk && (!e.zone || this.isOpen(e.zone)); }
+  usable(e) { return e.walk && (!e.zone || this.isOpen(e.zone)) && (!e.region || this.regionOpen(e.region)); }
 
   /** nearest node that has a usable edge */
   nearest(x, y) { const k = this.nearestK(x, y, 1, this._k1 || (this._k1 = [])); return k.length ? k[0] : -1; }
@@ -158,11 +159,11 @@ export class Roads {
     return out;
   }
 
-  /** polylines ([[x, y], ...]) of the drawn edges of `zone` (null = always-there roads) */
-  drawn(zone) {
+  /** polylines ([[x, y], ...]) of the drawn edges of `zone` (null = always-there roads); `region`: (v3) of that new land */
+  drawn(zone, region) {
     const out = [];
     for (const e of this.edges) {
-      if (!e.draw || (e.zone || null) !== (zone || null)) continue;
+      if (!e.draw || (e.zone || null) !== (zone || null) || (e.region || null) !== (region || null)) continue;
       const a = this.nodes[e.a], b = this.nodes[e.b];
       out.push([[a.x, a.y]].concat(e.via, [[b.x, b.y]]));
     }

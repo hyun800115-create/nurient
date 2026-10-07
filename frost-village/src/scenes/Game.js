@@ -28,6 +28,19 @@ import { Tree, Rock, Wheat, Net } from '../entities/ResourceNode.js';
 import { TrashPad } from '../entities/TrashPad.js';
 import { rng } from '../core/Placeholders.js';
 import { View } from '../core/View.js';
+// (v3) territory, construction, production chains
+import { Territory } from '../systems/Territory.js';
+import { Logistics, PRIO } from '../systems/Logistics.js';
+import { Site, buildCost } from '../entities/Site.js';
+import { Workshop, Smith } from '../entities/Workshop.js';
+import { Warehouse } from '../entities/Warehouse.js';
+import { WarehousePorter } from '../entities/Worker.js';
+import { House } from '../entities/House.js';
+import { FoodBox } from '../entities/FoodBox.js';
+import { Tower } from '../entities/Tower.js';
+import { Boathouse } from '../entities/Boathouse.js';
+import { BUILD_UNLOCK, UNIQUE_BUILDINGS, GOALS } from '../systems/Progression.js';
+import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -44,7 +57,9 @@ class UIProxy {
   toast(msg) { const s = this.s; if (s) s.toast(msg); }
   banner(msg, sub) { const s = this.s; if (s) s.banner(msg, sub); }
   setObjective(key, tg, text) { const s = this.s; if (s) s.setObjective(key, tg, text); }
-  celebrate() { const s = this.s; if (s) s.celebrate(); }
+  celebrate(v3) { const s = this.s; if (s) s.celebrate(v3); }
+  openBuildMenu(site) { const s = this.s; if (s && s.openBuildMenu) s.openBuildMenu(site); }
+  setPopulation(n, cap, waiting) { const s = this.s; if (s && s.setPopulation) s.setPopulation(n, cap, waiting); }
   zoomChanged() { const s = this.s; if (s && s.zoomChanged) s.zoomChanged(); }
 }
 
@@ -85,15 +100,38 @@ export class Game extends Phaser.Scene {
     this.zoneObjs = {};
     this.statics = [];
     this.keysInUse = new Set();   // character looks taken by clerks / porters (residents and customers avoid them)
-    this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked));
+    this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked), undefined, (r) => !this.territory || this.territory.isOpen(r));
+    // (v3) who needs what (porters ask), the pictures that arrive after the title
+    this.logistics = new Logistics(this);
+    this.lazyImgs = [];
+    const onArrive = (key) => this.onAssetArrived(key);
+    Assets.arrivals.push(onArrive);
+    this.events.once('shutdown', () => { const i = Assets.arrivals.indexOf(onArrive); if (i >= 0) Assets.arrivals.splice(i, 1); });
+    this.sites = {};
+    this.workshops = [];
+    this.houses = [];
+    this.towers = {};
+    this.warehouse = null;
+    this.boathouse = null;
+    this.store = null;
+    this.built = {};              // building key -> count finished
 
     this.ground = new Ground(this);
+    this.territory = new Territory(this, sv.territory);
     this.buildZones();
     // roads inside zones: their own picture, shown when the zone opens
     for (const id in this.zones) {
       const ov = this.ground.roadOverlay(id, this.roads.drawn(id));
       this.zones[id].roads = ov;
       if (ov && !this.zones[id].unlocked) ov.setAlpha(0);
+    }
+    // (v3) roads of the new land: their own picture, shown when the fog clears
+    this.regionRoads = {};
+    for (const id in this.territory.regions) {
+      if (id === 'start') continue;
+      const ov = this.ground.roadOverlay('region_' + id, this.roads.drawn(null, id));
+      this.regionRoads[id] = ov;
+      if (ov && !this.territory.isOpen(id)) ov.setAlpha(0);
     }
     this.buildFences();
     this.buildDecor();
@@ -102,6 +140,7 @@ export class Game extends Phaser.Scene {
     this.buildStations();
     this.buildSellers();
     this.buildHuts();
+    this.buildV3();
 
     const ps = sv.player || {};
     const okPos = Number.isFinite(ps.x) && Number.isFinite(ps.y) && ps.x >= 40 && ps.x <= W - 40 && ps.y >= 0 && ps.y <= H - 40;
@@ -115,8 +154,11 @@ export class Game extends Phaser.Scene {
 
     // lock zones that are not open yet
     for (const id in this.zones) if (!this.zones[id].unlocked) this.setZoneEnabled(id, false);
+    // (v3) construction sites and buildings come back before the steps that use them (porters, boats...)
+    this.restoreV3(sv);
     this.progress.init();
     this.restore(sv);
+    this.restoreV3Stock(sv);
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
@@ -127,18 +169,29 @@ export class Game extends Phaser.Scene {
     spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
     spot(WORLD.net.gather ? { x: WORLD.net.x + WORLD.net.gather[0], y: WORLD.net.y + WORLD.net.gather[1] } : null, 70);
     for (const id in WORLD.pads) spot(WORLD.pads[id], 90);
+    // (v3) plots / their drop pads, the food box, second-worker pads, watchtower pads, the new buildings' pads
+    for (const id in this.sites) { const st = this.sites[id]; spot({ x: st.dropX, y: st.dropY }, 80); spot(st, (st.def.footprint || [272])[0] * 0.5); }
+    for (const id in WORLD.pads2 || {}) spot(WORLD.pads2[id], 90);
+    for (const id in WORLD.towers || {}) spot(WORLD.towers[id], 120);
+    if (this.foodBox) spot(this.foodBox, 80);
+    this.events.on('built', (k, site) => { const b = site.built; if (b && b.inPad) spot(b.inPad, 70); if (b && b.outPad) spot(b.outPad, 70); });
+    this.events.on('storeSold', () => this.progress.setFlag('firstStoreSale'));
+    this.events.on('built', (k) => { if (k === 'toolsmith') this.time.delayedCall(3500, () => this.introduceFood()); });
+    this.events.on('fedMiners', () => this.progress.setFlag('fedMiners'));
     // the people of the village (v2)
     this.life = new VillageLife(this, sv.life);
     this.occlusion = new Occlusion(this);
+    this.updatePopulation();
 
     // ambient snowfall around the camera
     this.snow = this.effects.emitter('snowfall');
     this.snow.setDepth(DEPTH.FX - 10);
     this.snowT = 0;
 
-    // camera
+    // camera (v3: bounded to the open land, plus a peek at the fog)
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, W, H);
+    const cb = this.territory.camRect || { x: 0, y: 0, w: W, h: H };
+    cam.setBounds(cb.x, cb.y, cb.w, cb.h);
     this.zoomBase = BALANCE.camera.zoom;
     // (v2) player zoom: pinch / wheel / +- buttons / overview (smoothly follows zoomTarget)
     const savedZoom = Settings.data.zoom;
@@ -156,6 +209,11 @@ export class Game extends Phaser.Scene {
     this.camFocus = null;     // { x, y, until } temporary pan target
     cam.startFollow(this.camTarget, false, 1, 1);
     cam.centerOn(this.camTarget.x, this.camTarget.y);
+    // (v3) bake the ground the first view needs right away (the rest is baked as the camera moves)
+    {
+      const vw = cam.width / (this.zoomCur * View.k), vh = cam.height / (this.zoomCur * View.k);
+      this.ground.ensure({ x: this.camTarget.x - vw / 2, y: this.camTarget.y - vh / 2, right: this.camTarget.x + vw / 2, bottom: this.camTarget.y + vh / 2 }, Infinity, 200);
+    }
 
     this.padT = 0;
     this.playerOnPad = false;
@@ -213,6 +271,8 @@ export class Game extends Phaser.Scene {
         floor.setAlpha(0);
         this.zones[id].outline = this.makeLockedOutline(id, z);
       }
+      // (v3) a field / quarry of the new land: appears with its land
+      if (z.region) this.territory.add(z.region, floor);
     }
   }
 
@@ -265,6 +325,7 @@ export class Game extends Phaser.Scene {
     if (r) ob = this.collision.add(fx, y, r * (opts.scale || 1), key);
     img.__ob = ob;
     if (opts.zone) this.addToZone(opts.zone, img);
+    if (opts.region && this.territory) this.territory.add(opts.region, img);
     this.statics.push(img);
     if (/^tree_pine|lodge|hut|tent|mine_entrance|market|trade_post|station_/.test(key)) this.addOccluder(img);
     return img;
@@ -339,7 +400,7 @@ export class Game extends Phaser.Scene {
       const img = this.staticImage(key, x, y, o || {});
       if (key === 'campfire') {
         const fire = this.effects.loop('fx_fire', x, y - 14, 58, y + 1);
-        if (fire) { if (o && o.zone) this.addToZone(o.zone, fire); }
+        if (fire) { if (o && o.zone) this.addToZone(o.zone, fire); if (o && o.region) this.territory.add(o.region, fire); }
         else this.fireSpots = (this.fireSpots || []).concat([{ x, y, zone: o && o.zone }]);
         this.campfires = (this.campfires || []).concat([{ x, y }]);
       }
@@ -360,7 +421,7 @@ export class Game extends Phaser.Scene {
       if (inIsoRect(x, y - 90, z.center[0], z.center[1], z.size[0] + 0.6, z.size[1] + 0.6)) return true;
       if (inIsoRect(x, y - 170, z.center[0], z.center[1], z.size[0], z.size[1])) return true;
     }
-    for (const pts of WORLD.paths) {
+    for (const pts of WORLD.allPaths || WORLD.paths) {
       for (let i = 0; i < pts.length - 1; i++) {
         const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
         const vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
@@ -371,6 +432,12 @@ export class Game extends Phaser.Scene {
     const spots = [[WORLD.net.x, WORLD.net.y, 170], [WORLD.player.x, WORLD.player.y, 120]];
     for (const id in WORLD.pads) { const p = WORLD.pads[id]; spots.push([p.x, p.y, 120]); if (p.hut) spots.push([p.hut[0], p.hut[1], 150]); }
     for (const d of WORLD.decor) if (/lodge|tent|pier|flag|campfire/.test(d[0])) spots.push([d[1], d[2], d[0] === 'chief_lodge' ? 230 : 120]);
+    // (v3) building plots, watchtowers, pads of the new chains: room for the building and its pads
+    const PR = { S: 190, M: 250, L: 310 };
+    for (const id in WORLD.plots || {}) { const p = WORLD.plots[id]; spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); }
+    for (const id in WORLD.towers || {}) { const p = WORLD.towers[id]; spots.push([p.x, p.y, 170]); spots.push([p.x, p.y + 70, 130]); }
+    for (const id in WORLD.pads2 || {}) { const p = WORLD.pads2[id]; spots.push([p.x, p.y, 120]); }
+    if (WORLD.foodBox) spots.push([WORLD.foodBox.x, WORLD.foodBox.y, 140]);
     for (const [sx, sy, r] of spots) if (gdist(x, y, sx, sy) < r) return true;
     return false;
   }
@@ -379,19 +446,19 @@ export class Game extends Phaser.Scene {
     // decorative border forest
     const r = rng(1234);
     const kinds = ['tree_pine_a', 'tree_pine_b', 'tree_pine_snow', 'tree_pine_snow'];
-    for (const [x0, y0, x1, y1, step] of WORLD.borderTrees) {
+    for (const [x0, y0, x1, y1, step, region] of WORLD.borderTrees) {
       let row = 0;
       for (let y = y0; y <= y1; y += step * 0.55, row++) {
         for (let x = x0; x <= x1; x += step) {
           const x2 = x + (r() - 0.5) * step * 0.6 + ((row % 2) * step) / 2;
           const y2 = y + (r() - 0.5) * step * 0.3;
           const k = kinds[Math.floor(r() * kinds.length)], fl = r() < 0.5, sc = 0.9 + r() * 0.25;
-          if (y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2)) continue;
-          this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc });
+          if (y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2) || x2 > this.W - 20 || y2 > this.H) continue;
+          this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc, region: region || this.territory.regionAt(x2, y2) });
         }
       }
     }
-    for (const [x, y, k] of WORLD.extraTrees) if (!this.blockedForDecor(x, y)) this.staticImage(k, x, y, { r: 24, flip: x % 2 === 0 });
+    for (const [x, y, k, region] of WORLD.extraTrees) if (!this.blockedForDecor(x, y)) this.staticImage(k, x, y, { r: 24, flip: x % 2 === 0, region: region || null });
   }
 
   buildResources() {
@@ -431,6 +498,27 @@ export class Game extends Phaser.Scene {
         const wh = new Wheat(this, p.x, p.y);
         this.wheat.push(wh);
         this.addToZone(w.zone, wh);
+      }
+    }
+    // (v3) the new land's pines, ore rocks and second wheat field (appear when the fog clears)
+    for (const [x, y, k, region] of WORLD.regionTrees || []) {
+      const tr = new Tree(this, x, y, k);
+      tr.img.setScale(0.9); tr.img.__bs = 0.9; tr.scale = 0.9;
+      this.addOccluder(tr.img);
+      this.trees.push(tr);
+      this.territory.add(region, tr);
+    }
+    for (const [x, y, k] of WORLD.regionRocks || []) { const rk = new Rock(this, x, y, k); this.rocks.push(rk); this.territory.add(this.territory.regionAt(x, y), rk); }
+    const w2 = WORLD.regionWheat;
+    if (w2) {
+      const reg = (WORLD.zones[w2.zone] && WORLD.zones[w2.zone].region) || this.territory.regionAt(w2.origin[0], w2.origin[1]);
+      for (let i = 0; i < w2.rows; i++) {
+        for (let j = 0; j < w2.cols; j++) {
+          const p = isoPt(w2.origin[0], w2.origin[1], (i - (w2.rows - 1) / 2) * w2.step, (j - (w2.cols - 1) / 2) * w2.step);
+          const wh = new Wheat(this, p.x, p.y);
+          this.wheat.push(wh);
+          this.territory.add(reg, wh);
+        }
       }
     }
     // animals
@@ -475,6 +563,361 @@ export class Game extends Phaser.Scene {
       const zone = { fisherman: null, lumberjack: 'forest', farmer: 'farm', miner: 'mine', hunter: 'hunt' }[p.worker];
       this.staticImage('worker_hut', p.hut[0], p.hut[1], { zone, scale: 0.8, r: 80 });
     }
+  }
+
+  // ------------------------------------------------------------------ v3: land, plots, chains
+  buildV3() {
+    // building plots (empty until something is chosen); watchtower sites are made when their pad is paid
+    for (const id in WORLD.plots || {}) {
+      const cfg = WORLD.plots[id];
+      const site = new Site(this, id, cfg, 'plot');
+      site.region = cfg.region || this.territory.regionAt(cfg.x, cfg.y);
+      this.sites[id] = site;
+      site.setShown(false);
+      this.lazyImage(site.img, 'site_plot_' + site.size);
+    }
+    // the miners' food box (appears with v3)
+    if (WORLD.foodBox) this.foodBox = new FoodBox(this, WORLD.foodBox);
+    // boat fish can go to the grill too (logistics)
+    const grill = this.stations.grill;
+    if (grill) {
+      this.grillSink = {
+        id: 'grill_in', isWarehouse: false, enabled: true, x: grill.inPad.x + 24, y: grill.inPad.y + 18,
+        accepts: (ty) => ty === 'item_fish_raw', room: () => Math.max(0, grill.inStack.max - grill.inStack.count - grill.inStack.incoming) - 6,
+        prio: () => PRIO.GRILL, feed: (ch) => grill.feedFrom(ch),
+      };
+      this.logistics.add(this.grillSink);
+    }
+    this.events.on('region', () => this.refreshSites());
+    this.events.on('step', () => this.time.delayedCall(800, () => this.refreshSites()));
+  }
+
+  /** plots appear when their land is open and their step is done */
+  refreshSites() {
+    for (const id in this.sites) {
+      const st = this.sites[id];
+      if (st.kind !== 'plot') continue;
+      const want = this.territory.isOpen(st.region) && this.progress.met(st.cfg.after);
+      if (want === st.shown) continue;
+      st.setShown(want);
+      if (want && st.state === 'plot' && this.isOnScreen(st.x, st.y, 200) && st.img) {
+        const o = st.img; o.setScale(0.01);
+        this.tweens.add({ targets: o, scale: 1, duration: 420, ease: 'Back.easeOut' });
+        if (st.pad) this.popIn({ pad: st.pad, label: st.label, x: st.dropX, y: st.dropY });
+      }
+    }
+  }
+
+  /** (v3) restore construction sites, buildings and their stock from the save (before the steps are applied) */
+  restoreV3(sv) {
+    const sites = sv.sites || {};
+    for (const id in sites) {
+      const d = sites[id];
+      if (!d || !d.b) continue;
+      let site = this.sites[id];
+      if (!site && WORLD.towers && WORLD.towers[id]) site = this.makeTowerSite(id);
+      if (!site) continue;
+      site.start(d.b, { instant: true, got: d.got, t: d.t });
+      if (d.st === 'done') site.finish(true);
+      else if (d.st === 'scaffold' && site.state !== 'scaffold') site.beginScaffold(true, d.t);
+    }
+    this.refreshSites();
+  }
+
+  /** (v3) what lies in the new buildings (after the steps: the boat exists by now) */
+  restoreV3Stock(sv) {
+    const v = sv.v3 || {};
+    if (v.warehouse && this.warehouse) this.warehouse.restore(v.warehouse);
+    if (this.foodBox) { if (v.food) this.foodBox.restore(v.food); if (this.isBuilt('toolsmith') && !this.foodBox.active) this.foodBox.activate(true, 0); }
+    if (v.dock && this.boathouse) this.boathouse.restore(v.dock);
+    if (v.workshops) for (const w of this.workshops) w.restore(v.workshops[w.kind]);
+    if (v.store && this.store) {
+      const fx = this.effects;
+      for (const ty in v.store.stock || {}) if (STORE_GOODS.indexOf(ty) >= 0) for (let i = 0; i < Math.min(this.store.maxPerType, v.store.stock[ty] || 0); i++) this.store.stock.push(ty, null, fx);
+      this.store.cash.restore(v.store.cash);
+    }
+  }
+
+  /** (v3) the miners' food box appears (after the forge is built): miners eat bread / smoked meat from now on */
+  introduceFood() {
+    const fb = this.foodBox;
+    if (!fb || fb.active) return;
+    fb.activate(false, Math.max(0, Math.floor(BALANCE.food.startGift) || 0));
+    this.focusCamera(fb.x, fb.y - 40, 2400);
+    this.ui.banner(t('foodIntro'), t('foodIntroSub'));
+    Audio.play('sfx_build');
+    this.save(true);
+  }
+
+  /** population: residents who live here / room in the village (balance.js population3 + houses) */
+  popCap() {
+    let n = Math.max(0, Math.floor(BALANCE.population3.baseCap) || 19);
+    for (const h of this.houses) n += h.people;
+    return n;
+  }
+
+  updatePopulation() {
+    if (!this.life) return;
+    const n = this.life.people(), cap = this.popCap(), w = this.life.waiting.length;
+    this.ui.setPopulation(n, cap, w);
+  }
+
+  /** (v3) every main goal reached: the frontier village is complete */
+  celebrate3() {
+    if (this.progress.celebrated3) return;
+    this.progress.celebrated3 = true;
+    Audio.play('sfx_complete');
+    this.ui.celebrate(true);
+    if (this.life) this.time.delayedCall(1200, () => this.life.party());
+    const p = this.player;
+    for (let i = 0; i < 12; i++) {
+      this.time.delayedCall(i * 280, () => {
+        const x = p.x + (Math.random() - 0.5) * 560, y = p.y - 160 - Math.random() * 320;
+        this.effects.burst('confetti', x, y, 22); this.effects.burst('star', x, y, 12);
+      });
+    }
+    this.effects.shake(300, 0.006);
+    this.save(true);
+  }
+
+  makeTowerSite(id) {
+    const cfg = Object.assign({ size: 'S' }, WORLD.towers[id]);
+    const site = new Site(this, id, cfg, 'tower');
+    site.region = this.territory.regionAt(cfg.x, cfg.y);
+    site.towerRegion = cfg.region;
+    this.sites[id] = site;
+    return site;
+  }
+
+  /** (v3) the watchtower pad was paid: its construction site appears (planks / ingots must come) */
+  startTower(id, instant) {
+    if (this.sites[id] && this.sites[id].state !== 'plot') return;
+    const site = this.sites[id] || this.makeTowerSite(id);
+    site.start('watchtower', { instant });
+  }
+
+  /** a picture whose atlas loads after the title: re-apply it when the atlas arrives */
+  lazyImage(img, key) { if (img && Assets.pending(key)) this.lazyImgs.push({ img, key }); }
+
+  onAssetArrived(fileKey) {
+    for (let i = this.lazyImgs.length - 1; i >= 0; i--) {
+      const q = this.lazyImgs[i];
+      if (!q.img || !q.img.active) { this.lazyImgs.splice(i, 1); continue; }
+      if (Assets.pending(q.key)) continue;
+      const anim = q.img.anims && q.img.anims.isPlaying ? q.img.anims.currentAnim && q.img.anims.currentAnim.key : null;
+      if (!anim) Assets.apply(q.img, q.key);
+      this.lazyImgs.splice(i, 1);
+    }
+    // occluder boxes of the pictures that just got their real size
+    for (const o of this.occluders || []) {
+      if (o.img && o.img.active && (o.hw < 4 || o.top < 4)) {
+        const img = o.img, h = img.displayHeight * img.originY, w = img.displayWidth;
+        o.x = img.x + (0.5 - img.originX) * w; o.hw = w * 0.5; o.top = h * 0.95; o.big = w > 250;
+      }
+    }
+    if (this.towers) for (const k in this.towers) this.towers[k].refreshFire();
+    void fileKey;
+  }
+
+  /** is a building of this kind finished? */
+  isBuilt(bkey) { return (this.built[bkey] || 0) > 0; }
+
+  /** create the working building on a finished site */
+  makeBuilding(bkey, site, instant) {
+    this.built[bkey] = (this.built[bkey] || 0) + 1;
+    let b = null;
+    if (bkey === 'toolsmith' || bkey === 'cannery') {
+      b = new Workshop(this, bkey, site);
+      this.lazyImage(b.img, b.recipe.sprite);
+      this.workshops.push(b);
+      if (bkey === 'toolsmith') this.hireSmith(b, instant);
+    } else if (bkey === 'warehouse') {
+      b = new Warehouse(this, site);
+      this.lazyImage(b.img, 'warehouse');
+      this.warehouse = b;
+      const n = Math.max(0, Math.min(6, Math.floor(BALANCE.warehouse.porters) || 2));
+      for (let i = 0; i < n; i++) {
+        const wp = new WarehousePorter(this, b, b.outPad.x + 40 + i * 30, b.outPad.y + 50, this.porters.length);
+        this.porters.push(wp);
+        b.porters.push(wp);
+        if (this.life) this.life.release(wp.key);
+        if (!instant) { wp.sprite.setScale(0.1); this.tweens.add({ targets: wp.sprite, scale: 1, duration: 450, delay: 600 + i * 200, ease: 'Back.easeOut' }); }
+      }
+    } else if (bkey === 'boathouse') {
+      b = new Boathouse(this, site);
+      this.boathouse = b;
+    } else if (bkey === 'store') {
+      b = this.makeStore(site);
+      this.store = b;
+    } else if (bkey === 'watchtower') {
+      b = new Tower(this, site, site.towerRegion);
+      this.towers[site.id] = b;
+      if (instant) { if (this.territory.isOpen(site.towerRegion)) b.light(true); else { b.light(true); this.territory.reveal(site.towerRegion, true); } }
+      else this.time.delayedCall(900, () => b.light(false));
+    } else if (/^house_/.test(bkey)) {
+      b = new House(this, bkey, site);
+      this.lazyImage(b.img, bkey);
+      this.houses.push(b);
+      if (this.life) this.life.capChanged(b, instant);
+    }
+    if (b && !instant) {
+      for (const o of b.revealObjects ? b.revealObjects() : []) {
+        if (!o || !o.setScale) continue;
+        const sx = o.scaleX, sy = o.scaleY;
+        o.setScale(0.01);
+        this.tweens.add({ targets: o, scaleX: sx, scaleY: sy, duration: 520, ease: 'Back.easeOut' });
+      }
+      if (bkey !== 'watchtower') {
+        this.focusCamera(site.x, site.y - 80, 1800);
+        this.ui.banner(t('builtDone', { name: t('b_' + bkey) }), t('bsub_' + bkey));
+      }
+    }
+    if (site.cfg && site.cfg.size === 'L' && bkey !== 'watchtower') this.dressBigPlot(site);
+    if (b && !this.territory.isOpen(site.region)) this.territory.add(site.region, b);
+    this.time.delayedCall(instant ? 0 : 1200, () => this.progress.syncPads());
+    this.updatePopulation();
+    return b;
+  }
+
+  /** an M building on a big (L) plot gets a few props around it so the ground is not empty */
+  dressBigPlot(site) {
+    const o = [['barrel', -150, 40], ['crate', 150, 34], ['lamp_post', -175, -20], ['firewood_pile', 160, -35]];
+    for (const [k, dx, dy] of o) {
+      const img = this.staticImage(k, site.x + dx, site.y + dy, {});
+      if (!this.territory.isOpen(site.region)) this.territory.add(site.region, img);
+    }
+  }
+
+  /** the blacksmith resident takes the job at the new forge (stands at its staff spot) */
+  hireSmith(ws, instant) {
+    const d = Assets.def('station_toolsmith');
+    const sp = (d.staffPoints && d.staffPoints[0]) || [-109, 0];
+    const key = 'npc_blacksmith';
+    if (!Assets.m.characters[key]) return;
+    const sm = new Smith(this, ws, key, ws.x + sp[0], ws.y + sp[1]);
+    ws.smith = sm;
+    this.keysInUse.add(key);
+    if (this.life) this.life.release(key);
+    if (!instant) { sm.sprite.setScale(0.1); this.tweens.add({ targets: sm.sprite, scale: 1, duration: 420, delay: 500, ease: 'Back.easeOut' }); }
+  }
+
+  /** the general store: a Market selling cans and tools (customers come along the roads) */
+  makeStore(site) {
+    const d = Assets.def('shop_general');
+    const ip = d.inPoint || [131, 50], cp = d.cashPoint || [-32, 66], cu = (d.customerPoints && d.customerPoints[0]) || [-70, 37];
+    const XO = (m) => [45.25 * m, 22.63 * m], YO = (m) => [45.25 * m, -22.63 * m];
+    const cfg = {
+      id: 'store', sprite: 'shop_general', x: site.x, y: site.y, goods: STORE_GOODS,
+      shelf: [ip[0] + 18, ip[1] + 30], cash: [cp[0] - 20, cp[1] + 46], queueStart: [cu[0] - 30, cu[1] + 16],
+      queueStep: YO(-0.9), queueTurn: 4, queueStep2: XO(-0.9), register: [cp[0] + 120, cp[1] + 74],
+      stockCols: [[-36, -6], [-12, 6], [12, -6], [36, 6], [-24, 18], [24, 18]],
+      clerk: ['npc_clerk_a', 'npc_clerk_b', 'npc_aunt'], collider: [22, -12, 0.3], faceTo: [30, -40],
+      maxQueue: 6, spawnEvery: 3.2, wantMax: 3, soldEvent: 'storeSold', shelfMax: 24,
+      available: () => STORE_GOODS.filter((g) => (g === 'item_can' ? this.isBuilt('cannery') : this.isBuilt('toolsmith'))),
+    };
+    const m = new Market(this, cfg);
+    m.front = [-60, 30];
+    if (this.padSpots) { this.padSpots.push({ x: m.shelf.x, y: m.shelf.y, r: 70 }, { x: m.cash.x, y: m.cash.y, r: 70 }, { x: m.register.x, y: m.register.y, r: 64 }); }
+    m.restoreQueue(1);
+    return m;
+  }
+
+  /** objects with an output pad porters can empty (v1 stations, v3 workshops, the boat's catch pad) */
+  sources() {
+    const out = this._src || (this._src = []);
+    out.length = 0;
+    for (const s of this.stationList) out.push(s);
+    for (const w of this.workshops) out.push(w);
+    if (this.boathouse) out.push(this.boathouse);
+    return out;
+  }
+
+  sourceById(id) {
+    if (this.stations[id]) return this.stations[id];
+    if (id === 'dock') return this.boathouse;
+    return this.workshops.find((w) => w.kind === id) || null;
+  }
+
+  /** tools the hire pads are still waiting for (tool -> count) */
+  toolsWanted() {
+    const o = {};
+    for (const id in this.progress.pads) {
+      const p = this.progress.pads[id];
+      if (!p.items || p.done || !p.active) continue;
+      for (const k in p.items) if (TOOLS.indexOf(k) >= 0) o[k] = (o[k] || 0) + Math.max(0, p.items[k] - (p.got[k] || 0) - p.itemStack.countWithIncoming(k));
+    }
+    return o;
+  }
+
+  /** tools of a kind already on their way to a pad (porters / the chief carrying them) */
+  toolsInTransit(tool) {
+    let n = this.player.stack.countOf(tool);
+    for (const pr of this.porters) n += pr.stack.countOf(tool);
+    return n;
+  }
+
+  /** items of `type` porters are carrying to sink `sink` (saved as delivered) */
+  carriedTo(sink, type) {
+    let n = 0;
+    for (const pr of this.porters) if (pr.dest === sink) n += pr.stack.countOf(type) + pr.stack.inTypes.filter((q) => q === type).length;
+    return n;
+  }
+
+  /** where the pad of a v3 step goes (towers: in front of the site; boat: by the boathouse; new porters / clerk: by their building) */
+  padSpot(s) {
+    if (s.type === 'tower') { const w = WORLD.towers && WORLD.towers[s.id]; if (!w || (w.in && !this.territory.isOpen(w.in))) return null; const d = Assets.def('site_plot_S').dropPoint || [2, 64]; return { x: w.x + d[0], y: w.y + d[1] }; }
+    if (s.type === 'boat') return this.boathouse ? this.boathouse.boatPad : null;
+    if (s.type === 'porter') {
+      const src = this.sourceById(s.station);
+      if (!src || !src.outPad) return null;
+      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+    }
+    if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
+    return null;
+  }
+
+  // ---------------------------------------------------------------- build menu
+  openBuildMenu(site) { if (site && site.state === 'plot' && site.shown) this.ui.openBuildMenu(site); }
+
+  /** the cards of the build menu for a plot: [{ key, cost, locked, reason, fits }] */
+  buildChoices(site) {
+    const keys = site.only ? [site.only] : (site.size === 'S' ? ['house_c', 'house_a', 'house_b'] : ['toolsmith', 'boathouse', 'warehouse', 'cannery', 'store', 'house_c', 'house_a', 'house_b'].filter((k) => k !== 'boathouse'));
+    const out = [];
+    for (const k of keys) {
+      const c = buildCost(k);
+      let reason = null;
+      const need = BUILD_UNLOCK[k];
+      if (need && !this.progress.met(need)) reason = 'lock_' + k;
+      else if (UNIQUE_BUILDINGS.indexOf(k) >= 0 && (this.isBuilt(k) || this.isBuilding(k))) reason = 'lockBuilt';
+      else if (/^house_/.test(k) && this.life && !this.life.wantsHouse()) reason = 'lockNoOne';
+      out.push({ key: k, cost: c, locked: !!reason, reason });
+    }
+    // what can be built first
+    out.sort((a, b) => (a.locked - b.locked));
+    return out;
+  }
+
+  isBuilding(bkey) { for (const id in this.sites) { const s = this.sites[id]; if (s.building === bkey && s.state !== 'done') return true; } return false; }
+
+  /** the player chose `bkey` for `site` in the build menu: pay and lay the foundation */
+  tryBuild(site, bkey) {
+    if (!site || site.state !== 'plot') return false;
+    const ch = this.buildChoices(site).find((c) => c.key === bkey);
+    if (!ch || ch.locked) return false;
+    const coins = Math.max(0, Math.floor(ch.cost.coins) || 0);
+    if (this.economy.coins < coins) { this.ui.toast(t('notEnoughCoins')); Audio.play('sfx_error', { volume: 0.5 }); return false; }
+    this.economy.spend(coins);
+    const p = this.player;
+    for (let i = 0; i < Math.min(8, Math.ceil(coins / 40)); i++) {
+      this.time.delayedCall(i * 50, () => { const spr = this.effects.takeItem('item_coin'); spr.setScale(0.7); this.effects.fly(spr, p.x, p.y - 60, { x: site.x, y: site.y }, { dur: 320, height: 60, scaleTo: 0.35, onDone: (sp) => this.effects.releaseItem(sp) }); });
+    }
+    this.effects.floatText(site.x, site.y - 80, '-' + coins, '#ffd84a', 30);
+    Audio.play('sfx_pad_fill', { volume: 0.6, rate: 1.2 });
+    site.start(bkey, {});
+    this.ui.banner(t('buildStart', { name: t('b_' + bkey) }), t('buildStartSub'));
+    this.events.emit('buildChosen', bkey, site);
+    this.save(true);
+    return true;
   }
 
   // ------------------------------------------------------------------ zones
@@ -760,9 +1203,23 @@ export class Game extends Phaser.Scene {
     for (const s of this.stationList) s.update(dt);
     this.market.update(dt);
     this.trade.update(dt);
+    // (v3) construction, workshops, storage, the store, houses, towers, boats, fog
+    for (const id in this.sites) this.sites[id].update(dt);
+    for (const w of this.workshops) { w.update(dt); if (w.smith) w.smith.update(dt); }
+    if (this.warehouse) this.warehouse.update(dt);
+    if (this.store) this.store.update(dt);
+    if (this.boathouse) this.boathouse.update(dt);
+    for (const h of this.houses) h.update(dt);
+    for (const k in this.towers) this.towers[k].update(dt);
+    this.territory.update(dt);
     for (const w of this.workers) w.update(dt);
     for (const w of this.porters) w.update(dt);
     if (this.life) this.life.update(dt);
+    this.v3T = (this.v3T || 0) - dt;
+    if (this.v3T <= 0) {
+      this.v3T = 1;
+      if (!this.progress.celebrated3 && this.progress.v3Complete) this.time.delayedCall(2500, () => this.celebrate3());
+    }
     this.tutorial.update(dt);
     if (this.occlusion) this.occlusion.update(dt);
     this.updateZoom(dt, delta);
@@ -777,7 +1234,7 @@ export class Game extends Phaser.Scene {
       fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
-    if (this.overview && !this.camFocus) { fx = this.W / 2; fy = this.H / 2 - 40; }
+    if (this.overview && !this.camFocus) { const r = this.territory.camRect; fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
     const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
 
@@ -811,13 +1268,17 @@ export class Game extends Phaser.Scene {
   fitZoom() {
     const cam = this.cameras.main;
     const vw = cam.width / View.k, vh = cam.height / View.k;
-    return Math.min(vw / this.W, vh / (this.H + 80));
+    const r = this.territory ? this.territory.camRect : { w: this.W, h: this.H };
+    return Math.min(vw / r.w, vh / (r.h + 80));
   }
+
+  /** camera bounds = the open land (+ a peek at the fog) */
+  resetBounds() { const r = this.territory.camRect; this.cameras.main.setBounds(r.x, r.y, r.w, r.h); }
 
   /** set the zoom the camera glides to (clamped); `keepOverview` keeps the whole-village view */
   setZoom(z, keepOverview) {
     const C = BALANCE.camera;
-    if (!keepOverview && this.overview) { this.overview = false; this.cameras.main.setBounds(0, 0, this.W, this.H); }
+    if (!keepOverview && this.overview) { this.overview = false; this.resetBounds(); }
     this.zoomTarget = Phaser.Math.Clamp(z, C.zoomMin, C.zoomMax);
     if (!this.overview) { Settings.data.zoom = Math.round(this.zoomTarget * 100) / 100; this._zoomSaveT = 1.2; }
     this.ui.zoomChanged();
@@ -828,7 +1289,7 @@ export class Game extends Phaser.Scene {
   /** toggle the whole-village view */
   toggleOverview() {
     const cam = this.cameras.main;
-    if (this.overview) { this.overview = false; cam.setBounds(0, 0, this.W, this.H); this.setZoom(this.prevZoom || this.zoomBase); return; }
+    if (this.overview) { this.overview = false; this.resetBounds(); this.setZoom(this.prevZoom || this.zoomBase); return; }
     this.prevZoom = this.zoomTarget;
     this.overview = true;
     // the whole village fits the screen: no bounds, so it sits in the middle
@@ -880,6 +1341,34 @@ export class Game extends Phaser.Scene {
     }
     if (this.market.cash.pad.contains(p.x, p.y) || (this.trade.enabled && this.trade.cash.pad.contains(p.x, p.y))) on = true;
     if (this.market.register.chief || (this.trade.enabled && this.trade.register.chief)) on = true;
+    // (v3) construction sites (plot pad: the build menu; drop pad: materials), workshops, storage, food, store, the catch
+    for (const id in this.sites) {
+      const st = this.sites[id];
+      if (!st.shown) continue;
+      if (st.state === 'plot' && st.pad && st.pad.contains(p.x, p.y)) on = true;
+      else if (st.state === 'foundation' && st.dropPad && st.dropPad.contains(p.x, p.y)) {
+        on = true;
+        if (ready && st.feedFromPlayer()) this.padT = BALANCE.player.padItemInterval;
+      }
+    }
+    for (const w of this.workshops) {
+      if (!w.enabled) continue;
+      if (w.inPad.contains(p.x, p.y)) { on = true; if (ready && w.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; w.inPad.pulse(); } }
+      else if (w.outPad.contains(p.x, p.y)) { on = true; if (ready) { if (w.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval; else if (w.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
+    }
+    const wh = this.warehouse;
+    if (wh && wh.enabled) {
+      if (wh.inPad.contains(p.x, p.y)) { on = true; if (ready && p.stack.count > 0 && wh.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; wh.inPad.pulse(); } }
+      else if (wh.outPad.contains(p.x, p.y)) on = true;
+    }
+    if (this.foodBox && this.foodBox.active && this.foodBox.pad.contains(p.x, p.y)) { on = true; if (ready && this.foodBox.feedFromPlayer()) this.padT = BALANCE.player.padItemInterval; }
+    const sto = this.store;
+    if (sto && sto.enabled) {
+      if (sto.shelf.contains(p.x, p.y)) { on = true; if (ready && p.stack.hasAny(STORE_GOODS) && sto.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; sto.shelf.pulse(); } }
+      if (sto.cash.pad.contains(p.x, p.y) || sto.register.chief) on = true;
+    }
+    const bh = this.boathouse;
+    if (bh && bh.enabled && bh.outPad.contains(p.x, p.y)) { on = true; if (ready) { if (bh.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval; else if (bh.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
     this.trash.setEnabled(this.progress.isDone('hire_fisherman'));
     if (this.trash.update(dt)) on = true;
     return on;
@@ -905,16 +1394,46 @@ export class Game extends Phaser.Scene {
     const shelf = (stock, types, extra) => { const o = {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) + ((extra && extra[ty]) || 0); return o; };
     const unpaid = {};
     for (const c of this.market.queue) for (const ty of c.bought.concat(c.flying || [])) unpaid[ty] = (unpaid[ty] || 0) + 1;
-    // goods a porter is carrying are saved where they are going (the shelf)
+    // goods a porter is carrying are saved where they are going (v3: the place it is heading for;
+    // sites and hire pads count them themselves)
     const tradeExtra = Object.assign({}, this.trade.flying);
+    const storeExtra = {}, whExtra = {}, foodExtra = {}, wsExtra = {}, dockExtra = {};
+    const add = (o, ty) => { o[ty] = (o[ty] || 0) + 1; };
     for (const pr of this.porters) {
+      const d = pr.dest;
+      if (d && (d.kind === 'plot' || d.kind === 'tower' || d.items)) continue;
       for (const ty of pr.stack.items.map((i) => i.type).concat(pr.stack.inTypes)) {
-        const o = FOODS.indexOf(ty) >= 0 ? unpaid : GOODS.indexOf(ty) >= 0 ? tradeExtra : null;
-        if (o) o[ty] = (o[ty] || 0) + 1;
+        if (d && this.store && d === this.store.sink) add(storeExtra, ty);
+        else if (d && this.warehouse && d === this.warehouse.sink) add(whExtra, ty);
+        else if (d && d === this.foodBox) add(foodExtra, ty);
+        else if (d && d.id && /_in$/.test(d.id) && d.id !== 'grill_in') { const k = d.id.replace(/_in$/, ''); (wsExtra[k] = wsExtra[k] || {})[ty] = ((wsExtra[k] || {})[ty] || 0) + 1; }
+        else if (FOODS.indexOf(ty) >= 0) add(unpaid, ty);
+        else if (GOODS.indexOf(ty) >= 0) add(tradeExtra, ty);
+        else if (STORE_GOODS.indexOf(ty) >= 0) add(storeExtra, ty);
+        else if (ty === 'item_fish_raw' || ty === 'item_fish_big') add(dockExtra, ty);
+        else add(whExtra, ty);
       }
     }
+    for (const c of this.store ? this.store.queue : []) for (const ty of c.bought.concat(c.flying || [])) add(storeExtra, ty);
+    const merge = (a, b) => { const o = Object.assign({}, a || {}); for (const k in b) o[k] = (o[k] || 0) + b[k]; return o; };
+    const sites = {};
+    for (const id in this.sites) { const d = this.sites[id].serialize(); if (d) sites[id] = d; }
+    const wss = {};
+    for (const w of this.workshops) { const d = w.serialize(); if (wsExtra[w.kind]) d.ins = merge(d.ins, wsExtra[w.kind]); wss[w.kind] = d; }
+    const food = this.foodBox ? this.foodBox.serialize() : null;
+    if (food) food.food = merge(food.food, foodExtra);
+    const dock = this.boathouse ? this.boathouse.serialize() : null;
+    if (dock) dock.catch = merge(dock.catch, dockExtra);
+    const v3 = {
+      warehouse: this.warehouse ? merge(this.warehouse.serialize(), whExtra) : undefined,
+      food, dock, workshops: wss,
+      store: this.store ? { stock: shelf(this.store.stock, STORE_GOODS, storeExtra), cash: this.store.cash.serialize() } : undefined,
+    };
     const pl = this.player.stack;
     return {
+      territory: this.territory.serialize(),
+      sites,
+      v3,
       coins: this.economy.coins,
       progress: this.progress.serialize(),
       stations: st,
@@ -1022,9 +1541,9 @@ export class Game extends Phaser.Scene {
       camera(x, y, zoom) {
         const cam = gs.cameras.main;
         gs.overview = false;
-        if (zoom) { gs.zoomCur = gs.zoomTarget = zoom; cam.setZoom(zoom * View.k); if (zoom < 0.7) cam.removeBounds(); }
+        if (zoom) { gs.zoomCur = gs.zoomTarget = zoom; cam.setZoom(zoom * View.k); if (zoom < 0.7) { cam.removeBounds(); gs._freeCam = true; } }
         if (x !== undefined) { gs.focusCamera(x, y, 1e9); gs.camTarget.x = x; gs.camTarget.y = y; cam.centerOn(x, y); }
-        else { gs.camFocus = null; gs.zoomCur = gs.zoomTarget = BALANCE.camera.zoom; cam.setZoom(gs.zoomCur * View.k); cam.setBounds(0, 0, gs.W, gs.H); }
+        else { gs.camFocus = null; gs._freeCam = false; gs.zoomCur = gs.zoomTarget = BALANCE.camera.zoom; cam.setZoom(gs.zoomCur * View.k); gs.resetBounds(); }
       },
       /** (v2) player zoom like the buttons: zoom(z) sets it, zoom('in'|'out'|'overview') */
       zoom(z) {

@@ -57,6 +57,8 @@ export class VillageLife {
     this.timers = { chat: 3, snowball: L.snowballEvery * 0.5, tag: L.tagEvery * 0.6, concert: L.concertEvery * 0.4, snowman: 4, wave: 0, pet: 0.5 };
     this.bannerQ = [];
     this.moved = Array.isArray(saved.moved) ? saved.moved.filter((k) => typeof k === 'string' && Assets.m.characters[k] && !NOT_RESIDENT.test(k)) : null;
+    // (v3) people who want to move in but there is no room yet (they come when a house is built)
+    this.waiting = Array.isArray(saved.waiting) ? saved.waiting.filter((k) => typeof k === 'string' && Assets.m.characters[k] && !NOT_RESIDENT.test(k) && (!this.moved || this.moved.indexOf(k) < 0)) : [];
     this.snowStage = Number.isFinite(saved.snowman) ? Math.max(0, Math.min(3, Math.floor(saved.snowman))) : 0;
     this.snowKeepT = this.snowStage === 3 ? BALANCE.life.snowmanKeep * 0.5 : 0;
     this.snowWork = 0;
@@ -204,8 +206,11 @@ export class VillageLife {
     const gs = this.gs;
     let i = 0;
     const names = [];
+    let waited = 0;
     for (const k of list) {
-      if (this.moved.indexOf(k) >= 0 || !Assets.m.characters[k] || NOT_RESIDENT.test(k)) continue;    // no art for this one (yet): skip
+      if (this.moved.indexOf(k) >= 0 || this.waiting.indexOf(k) >= 0 || !Assets.m.characters[k] || NOT_RESIDENT.test(k)) continue;    // no art for this one (yet): skip
+      // (v3) people need room in the village (pets always come along)
+      if (!this.isPetKey(k) && this.people() >= gs.popCap()) { this.waiting.push(k); waited++; continue; }
       this.moved.push(k);
       const at = instant ? 0 : this.t + BALANCE.population.moveInDelay + i * BALANCE.population.moveInGap;
       this.queue.push({ key: k, walkIn: !instant, at });
@@ -213,6 +218,48 @@ export class VillageLife {
       i++;
     }
     if (names.length) this.bannerQ.push({ at: this.t + BALANCE.population.moveInDelay, keys: names });
+    if (waited && !instant) {
+      gs.time.delayedCall(BALANCE.population.moveInDelay * 1000 + 600, () => gs.ui.toast(t('needHouses', { n: this.waiting.length })));
+      gs.events.emit('waitingHouse', this.waiting.length);
+    }
+    gs.updatePopulation && gs.updatePopulation();
+  }
+
+  isPetKey(k) { const d = Assets.m.characters[k]; return !!(d && d.kind === 'pet'); }
+  /** residents who live here (pets not counted) */
+  people() { let n = 0; for (const k of this.moved) if (!this.isPetKey(k)) n++; return n; }
+
+  /** people of every step done so far (and of the steps to come) who have no home yet */
+  futurePeople() {
+    const mi = (WORLD.life && WORLD.life.moveIns) || {};
+    let n = 0;
+    for (const id in mi) for (const k of mi[id]) if (Assets.m.characters[k] && !NOT_RESIDENT.test(k) && !this.isPetKey(k) && this.moved.indexOf(k) < 0 && this.waiting.indexOf(k) < 0) n++;
+    return n;
+  }
+
+  /** (v3) is another house useful? (someone waits now, or will come and find no room) */
+  wantsHouse() {
+    const gs = this.gs;
+    let building = 0;
+    for (const id in gs.sites) { const st = gs.sites[id]; if (st.state !== 'plot' && st.state !== 'done' && /^house_/.test(st.building)) building += Math.max(0, Math.floor(Number((BALANCE.buildings[st.building] || {}).people) || 0)); }
+    const room = gs.popCap() + building - this.people();
+    return this.waiting.length + this.futurePeople() > room;
+  }
+
+  /** (v3) a house was built: people waiting for a home move in (they walk to their new house) */
+  capChanged(house, instant) {
+    const gs = this.gs;
+    const names = [];
+    let i = 0;
+    while (this.waiting.length && this.people() < gs.popCap()) {
+      const k = this.waiting.shift();
+      this.moved.push(k);
+      this.queue.push({ key: k, walkIn: !instant, at: instant ? 0 : this.t + 1.5 + i * BALANCE.population.moveInGap, house: instant ? null : house });
+      if (!instant) names.push(k);
+      i++;
+    }
+    if (names.length) this.bannerQ.push({ at: this.t + 1.5, keys: names });
+    gs.updatePopulation && gs.updatePopulation();
   }
 
   /** step finished without fanfare (test hook unlockAll): residents + props appear right away */
@@ -243,7 +290,7 @@ export class VillageLife {
     const role = def.kind === 'pet' ? 'pet' : def.role || 'adult';
     if (q.walkIn) {
       // walk in from the village gate, appearing just off-screen on the road toward the chief
-      const p = gs.player;
+      const p = q.house ? { x: q.house.door.x, y: q.house.door.y - 60 } : gs.player;
       const gate = gs.roads.byId[(WORLD.life && WORLD.life.gate) || 'gate'] || { x: 990, y: 2560 };
       const path = gs.roads.route(gate.x, gate.y, p.x, p.y + 60, []);
       const pts = [{ x: gate.x, y: gate.y }].concat(path);
@@ -268,7 +315,11 @@ export class VillageLife {
     this.residents.push(r);
     this.byKey[q.key] = r;
     gs.agents.push(r);     // walkers keep a little distance from each other
-    if (q.walkIn) {
+    if (q.walkIn && q.house) {
+      // (v3) a new family walks to its new house, then says hello
+      r.job = { kind: 'arrive', t: 0, house: q.house };
+      r.goTo(q.house.door.x + (Math.random() - 0.5) * 30, q.house.door.y + 10, { tol: 20 });
+    } else if (q.walkIn) {
       r.job = { kind: 'arrive', t: 0 };
       const p = gs.player;
       r.goTo(p.x + (Math.random() - 0.5) * 80, p.y + 60, { tol: 30 });
@@ -441,15 +492,16 @@ export class VillageLife {
       if (j.t > 2.4) this.endJob(r);
       return;
     }
-    const near = gdist(r.x, r.y, p.x, p.y) < 150;
+    const near = !j.house && gdist(r.x, r.y, p.x, p.y) < 150;
     if (r.arrived || near || j.t > 30) {
+      if (j.house && !j.atDoor) { j.atDoor = true; this.gs.effects.burst('heart', r.x, r.y + r.headTop, 4); }
       r.state = 'idle';
       r.faceTo(p.x, p.y);
       r.act('wave', 2.2);
       r.emote(Assets.pick('emote_wave', 'emote_heart'), 1.8);
       r.say('moveIn', null, 2.4);
       j.phase = 'hello'; j.t = 0;
-    } else if (j.t > 3 && Math.floor(j.t) % 4 === 0 && r.arrived === false && j.re !== Math.floor(j.t)) {
+    } else if (!j.house && j.t > 3 && Math.floor(j.t) % 4 === 0 && r.arrived === false && j.re !== Math.floor(j.t)) {
       // the chief moves around: follow him
       j.re = Math.floor(j.t);
       if (gdist(r.route[r.route.length - 1].x, r.route[r.route.length - 1].y, p.x, p.y) > 200) r.goTo(p.x, p.y + 60, { tol: 30 });
@@ -865,7 +917,7 @@ export class VillageLife {
   stopLute() { if (this.lute) { try { this.lute.stop(); this.lute.destroy(); } catch (e) { /* */ } this.lute = null; } }
 
   // ---------------------------------------------------------------- save / hooks
-  serialize() { return { moved: this.moved.slice(), snowman: this.snowStage }; }
+  serialize() { return { moved: this.moved.slice(), snowman: this.snowStage, waiting: this.waiting.slice() }; }
 
   /** test hook: make a life event happen now near the camera; returns what happened */
   trigger(name) {

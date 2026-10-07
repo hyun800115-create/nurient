@@ -6,6 +6,16 @@ import { UnlockPad } from '../entities/UnlockPad.js';
 import { Audio } from '../core/Audio.js';
 import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
+import { TOOL_OF } from '../data/items.js';
+
+/** coins a step's pad asks (v1 costs, v3 tower / hire2 / boat / porter costs) */
+export function stepCost(s) {
+  if (s.type === 'tower') return (BALANCE.towers[s.id] || {}).coins;
+  if (s.type === 'hire2') return BALANCE.hire2[s.id];
+  if (s.type === 'boat') return (s.level >= 2 ? BALANCE.boats.fishing : BALANCE.boats.rowboat).coins;
+  if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
+  return BALANCE.costs3 && BALANCE.costs3[s.id];
+}
 
 // id, type, what it needs first (after = a step id, flag = a one-time event such as the first sale).
 // side: optional purchases next to the main road (clerks, porters) — "next goal" text ignores them.
@@ -29,9 +39,52 @@ export const STEPS = [
   { id: 'zone_hunt', type: 'zone', zone: 'hunt', after: 'hire_miner' },
   { id: 'hire_hunter', type: 'hire', worker: 'hunter', after: 'zone_hunt' },
   { id: 'porter_smokehouse', type: 'porter', station: 'smokehouse', after: 'hire_hunter', side: true },
+
+  // ---------------- (v3) 생산 사슬과 땅 넓히기 (기획서_v2.md v3 진행 표)
+  //   after: 'b:<건물>' = that building is finished, 'r:<땅>' = that land is open, otherwise a step id
+  // watchtowers: pay at the pad on the border -> a construction site; lit -> the fog clears
+  { id: 'tower_east', type: 'tower', region: 'east', after: 'hire_hunter', v3: true },
+  { id: 'tower_south', type: 'tower', region: 'south', after: 'boat_rowboat', v3: true },
+  { id: 'tower_se', type: 'tower', region: 'se', after: 'b:store', v3: true },
+  // boats at the boathouse
+  { id: 'boat_rowboat', type: 'boat', level: 1, after: 'b:boathouse', v3: true },
+  { id: 'boat_fishing', type: 'boat', level: 2, after: 'b:cannery', v3: true, items: { item_rod: 1 } },
+  // second workers: coins + the matching tool from the toolsmith
+  { id: 'hire2_lumberjack', type: 'hire2', worker: 'lumberjack', after: 'b:toolsmith', v3: true },
+  { id: 'hire2_miner', type: 'hire2', worker: 'miner', after: 'hire2_lumberjack', v3: true, side: true },
+  { id: 'hire2_fisherman', type: 'hire2', worker: 'fisherman', after: 'b:boathouse', v3: true, side: true },
+  { id: 'hire2_farmer', type: 'hire2', worker: 'farmer', after: 'r:south', v3: true, side: true },
+  { id: 'hire2_hunter', type: 'hire2', worker: 'hunter', after: 'r:se', v3: true, side: true },
+  // porters for the new lines, a clerk for the general store
+  { id: 'porter_toolsmith', type: 'porter', station: 'toolsmith', after: 'b:toolsmith', v3: true, side: true },
+  { id: 'porter_dock', type: 'porter', station: 'dock', after: 'boat_rowboat', v3: true, side: true },
+  { id: 'porter_cannery', type: 'porter', station: 'cannery', after: 'b:cannery', v3: true, side: true },
+  { id: 'hire_clerk_store', type: 'clerk', seller: 'store', after: 'b:store', flag: 'firstStoreSale', v3: true, side: true },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
+// (v3) the main goals after the village is complete, in order (tutorial "next goal" + the v3 finale)
+//   kind: region (a watchtower lit), build (a building finished), step (a pad), flag (an event)
+export const GOALS = [
+  { id: 'east', kind: 'region', step: 'tower_east' },
+  { id: 'toolsmith', kind: 'build' },
+  { id: 'fedMiners', kind: 'flag' },
+  { id: 'hire2_lumberjack', kind: 'step' },
+  { id: 'boathouse', kind: 'build' },
+  { id: 'boat_rowboat', kind: 'step' },
+  { id: 'south', kind: 'region', step: 'tower_south' },
+  { id: 'warehouse', kind: 'build' },
+  { id: 'cannery', kind: 'build' },
+  { id: 'store', kind: 'build' },
+  { id: 'se', kind: 'region', step: 'tower_se' },
+  { id: 'boat_fishing', kind: 'step' },
+];
+// (v3) which building each card of the build menu needs first (shown on the locked card)
+export const BUILD_UNLOCK = {
+  toolsmith: 'r:east', boathouse: 'b:toolsmith', warehouse: 'r:south', cannery: 'boat_rowboat', store: 'b:cannery',
+  house_a: 'hire_miner', house_b: 'b:toolsmith', house_c: 'hire_miner',
+};
+export const UNIQUE_BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store'];
 const ZONE_IDS = ['zone_forest', 'zone_farm', 'zone_mine', 'zone_hunt'];
 // v1 saves: the post-completion couriers became the porters of v2 (same pads, new ids)
 export const OLD_STEP_IDS = { hire2_fisherman: 'porter_grill', hire2_lumberjack: 'porter_sawmill', hire2_farmer: 'porter_bakery', hire2_miner: 'porter_smelter', hire2_hunter: 'porter_smokehouse' };
@@ -52,19 +105,43 @@ export class Progression {
     this.flags = Object.assign({}, saved.flags || {});   // one-time events: firstSale, firstTrade, ...
     this.hints = Object.assign({}, saved.hints || {});   // zone -> true once its product was sold
     this.seen = Object.assign({}, saved.seen || {});     // one-time hints already shown (e.g. upgradeHint)
+    this.got = {};                                        // (v3) items already delivered to pads: id -> { item: n }
+    if (saved.got && typeof saved.got === 'object') for (const k in saved.got) this.got[k] = Object.assign({}, saved.got[k]);
+    this.celebrated3 = !!saved.celebrated3;
     this.pads = {};           // id -> UnlockPad
     this.upPads = {};         // capacity / speed
     this.benchOpen = false;
   }
 
   isDone(id) { return !!this.done[id]; }
+  /** (v3) an `after` condition: step id, 'b:<building>' (finished) or 'r:<land>' (open) */
+  met(cond) {
+    if (!cond) return true;
+    if (cond.startsWith('b:')) return !!(this.gs.isBuilt && this.gs.isBuilt(cond.slice(2)));
+    if (cond.startsWith('r:')) return !!(this.gs.territory && this.gs.territory.isOpen(cond.slice(2)));
+    return !!this.done[cond];
+  }
+  /** (v3) is goal `g` reached? */
+  goalDone(g) {
+    if (g.kind === 'region') return !!(this.gs.territory && this.gs.territory.isOpen(g.id));
+    if (g.kind === 'build') return !!(this.gs.isBuilt && this.gs.isBuilt(g.id));
+    if (g.kind === 'flag') return !!this.flags[g.id];
+    return !!this.done[g.id];
+  }
+  /** (v3) the first main goal not reached yet (null before the village is complete / when all are done) */
+  nextGoal() {
+    if (!this.complete) return null;
+    for (const g of GOALS) if (!this.goalDone(g)) return g;
+    return null;
+  }
+  get v3Complete() { return this.complete && GOALS.every((g) => this.goalDone(g)); }
   anyDone(re) { for (const k in this.done) if (this.done[k] && re.test(k)) return true; return false; }
   capacity() { return BALANCE.upgrades.capacity.values[this.up.capacity]; }
   speedMult() { return BALANCE.upgrades.speed.values[this.up.speed]; }
   zonesOpen() { let n = 0; for (const z of ZONE_IDS) if (this.done[z]) n++; return n; }
   get complete() { return this.isDone(COMPLETE_AFTER); }
 
-  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && (!s.after || this.done[s.after]) && (!s.flag || this.flags[s.flag])); }
+  visibleSteps() { return STEPS.filter((s) => !this.done[s.id] && this.met(s.after) && (!s.flag || this.flags[s.flag])); }
 
   /** a one-time event happened (e.g. first sale): new pads may appear */
   setFlag(f) {
@@ -89,17 +166,23 @@ export class Progression {
     const gs = this.gs;
     for (const s of this.visibleSteps()) {
       if (this.pads[s.id]) continue;
-      const cfg = WORLD.pads[s.id];
+      const cfg = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (gs.padSpot && gs.padSpot(s));
       if (!cfg) continue;
-      const cost = BALANCE.costs[s.id];
+      const cost = stepCost(s);
       let icon = 'ui_icon_lock';
-      if (s.type === 'hire') icon = 'portrait_' + s.worker;
+      let items = s.items || null;
+      if (s.type === 'hire' || s.type === 'hire2') icon = 'portrait_' + s.worker;
       else if (s.type === 'clerk') icon = Assets.pick('ui_icon_clerk', s.seller === 'trade' ? 'portrait_npc_clerk_b' : 'portrait_npc_clerk_a', 'ui_icon_worker');
       else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
-      const kind = s.type === 'zone' ? 'unlock' : 'hire';
+      else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
+      else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
+      if (s.type === 'hire2') items = { [TOOL_OF[s.worker]]: 1 };
+      const kind = s.type === 'zone' || s.type === 'tower' ? 'unlock' : 'hire';
+      const padTex = s.type === 'clerk' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
+        : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'zone' ? 40 : 54,
-        padTex: s.type === 'clerk' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : null,
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : 54,
+        padTex, items, got: this.got[s.id],
         onComplete: (p) => this.completeStep(s, p),
       });
       this.pads[s.id] = pad;
@@ -114,10 +197,14 @@ export class Progression {
     delete this.pads[s.id];
     pad.vanish();
     this.applyStep(s, false, pad.x, pad.y);
+    delete this.got[s.id];
     if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
     else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
+    else if (s.type === 'hire2') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 2' }));
     else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }));
     else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
+    else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'));
+    else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'));
     gs.events.emit('step', s.id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
@@ -133,8 +220,11 @@ export class Progression {
     const gs = this.gs;
     if (s.type === 'zone') gs.revealZone(s.zone, instant);
     else if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, instant, x, y, s.role);
-    else if (s.type === 'clerk') { const sel = s.seller === 'trade' ? gs.trade : gs.market; sel.register.hireClerk(instant, x, y); }
+    else if (s.type === 'hire2') gs.hireWorker(s.worker, 1, instant, x, y);
+    else if (s.type === 'clerk') { const sel = s.seller === 'trade' ? gs.trade : s.seller === 'store' ? gs.store : gs.market; if (sel) sel.register.hireClerk(instant, x, y); }
     else if (s.type === 'porter') gs.hirePorter(s.station, instant, x, y);
+    else if (s.type === 'tower') gs.startTower(s.id, instant);
+    else if (s.type === 'boat') { if (gs.boathouse) gs.boathouse.setBoat(s.level, instant); }
   }
 
   openBench(instant) {
@@ -178,9 +268,18 @@ export class Progression {
     gs.save(true);
   }
 
-  /** partial payments so they survive reloads */
+  /** partial payments (and items already on pads) so they survive reloads */
   collectPaid() {
-    for (const id in this.pads) { const p = this.pads[id]; if (p.paid > 0) this.paid[id] = p.paid; else delete this.paid[id]; }
+    for (const id in this.pads) {
+      const p = this.pads[id];
+      if (p.paid > 0) this.paid[id] = p.paid; else delete this.paid[id];
+      if (p.items) {
+        const g = {};
+        // a tool flying onto the pad / carried there by a porter counts as delivered
+        for (const k in p.items) g[k] = Math.min(p.items[k], (p.got[k] || 0) + p.itemStack.countWithIncoming(k) + (this.gs.carriedTo ? this.gs.carriedTo(p, k) : 0));
+        this.got[id] = g;
+      }
+    }
     for (const k in this.upPads) {
       const p = this.upPads[k], id = 'up_' + k;
       if (!p.maxed && !p.done && p.paid > 0) this.paid[id] = p.paid; else delete this.paid[id];
@@ -215,6 +314,6 @@ export class Progression {
 
   serialize() {
     this.collectPaid();
-    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints, seen: this.seen, flags: this.flags };
+    return { done: this.done, paid: this.paid, up: this.up, celebrated: this.celebrated, hints: this.hints, seen: this.seen, flags: this.flags, got: this.got, celebrated3: this.celebrated3 };
   }
 }

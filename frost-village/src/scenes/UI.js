@@ -10,6 +10,7 @@ import { panel } from '../core/Panel.js';
 import { View } from '../core/View.js';
 import { BALANCE } from '../data/balance.js';
 import { VERSION, BUILD_DATE } from '../data/version.js';
+import { buildCost } from '../entities/Site.js';
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -35,6 +36,18 @@ export class UI extends Phaser.Scene {
     this.coinIcon.setScale(64 / Math.max(this.coinIcon.frame.realWidth, 1)).setOrigin(0.5);
     this.coinIcon.__bs = this.coinIcon.scaleX;
     this.coinText = this.add.text(0, 0, '0', TXT(40)).setOrigin(0, 0.5);
+
+    // ---- (v3) population: villagers / room (+ waiting for a house)
+    this.popBox = this.add.container(0, 0).setVisible(false);
+    this.popBg = panel(this, 0, 0, 'ui_panel', 150, 50).setOrigin(0, 0.5).setAlpha(0.92);
+    this.popIcon = Assets.image(this, 0, 0, Assets.pick('ui_icon_people', 'ui_icon_worker')).setOrigin(0.5);
+    this.popIcon.setScale(40 / Math.max(this.popIcon.frame.realWidth, 1));
+    this.popText = this.add.text(0, 0, '', TXT(24, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+    this.popWait = this.add.text(0, 0, '', TXT(22, '#ffffff', '#c45a1a', 5, '900')).setOrigin(0, 0.5);
+    this.popHouse = Assets.image(this, 0, 0, Assets.pick('ui_icon_house', 'ui_icon_lock')).setOrigin(0.5).setVisible(false);
+    this.popHouse.setScale(30 / Math.max(this.popHouse.frame.realWidth, 1));
+    this.popBox.add([this.popBg, this.popIcon, this.popText, this.popHouse, this.popWait]);
+    this.popKey = '';
 
     // ---- settings button
     this.setBtn = this.makeIconButton(0, 0, 'ui_icon_settings', 84, () => this.openSettings());
@@ -88,7 +101,7 @@ export class UI extends Phaser.Scene {
     // ---- input (joystick anywhere that is not a button; a second finger turns it into a pinch zoom)
     this.input.on('pointerdown', (p, over) => {
       Audio.resume();    // iOS: bring sound back after a call / app switch (needs a user gesture)
-      if (this.panelOpen || (over && over.length)) return;
+      if (this.panelOpen || this.buildOpen || (over && over.length)) return;
       this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
       if (other && !this.pinch) {
@@ -162,6 +175,7 @@ export class UI extends Phaser.Scene {
     this.coinBar.setPosition(26, top);
     this.coinIcon.setPosition(64, top);
     this.coinText.setPosition(104, top + 2);
+    this.popBox.setPosition(30, top + 64);
     this.setBtn.setPosition(W - 62, top);
     const zb = H - 168 - View.safeBottom;
     this.mapBtn.setPosition(W - 56, zb);
@@ -172,6 +186,7 @@ export class UI extends Phaser.Scene {
     this.bannerBox.setPosition(W / 2, H * 0.27);
     if (this.fps) this.fps.setPosition(12, H - 34);
     if (this.panel) this.layoutPanel();
+    if (this.buildOpen) this.closeBuildMenu(true);
   }
 
   // ---------------------------------------------------------------- widgets
@@ -325,8 +340,9 @@ export class UI extends Phaser.Scene {
     this.tweens.add({ targets: b, alpha: 0, y: { from: this.H * 0.27, to: this.H * 0.25 }, delay: sub ? 3200 : 1700, duration: 400, onComplete: () => { b.setVisible(false); b.y = this.H * 0.27; } });
   }
 
-  celebrate() {
-    this.banner(t('villageComplete'), t('villageCompleteSub'));
+  celebrate(v3) {
+    if (v3) this.banner(t('v3Complete'), t('v3CompleteSub'));
+    else this.banner(t('villageComplete'), t('villageCompleteSub'));
     const sf = Assets.sprite('fx_star');
     const fr = this.textures.get(sf.tex).get(sf.frame);
     const base = 22 / Math.max(8, fr.width);
@@ -355,9 +371,164 @@ export class UI extends Phaser.Scene {
     }
   }
 
+  // ---------------------------------------------------------------- (v3) population
+  setPopulation(n, cap, waiting) {
+    const key = n + '/' + cap + '/' + waiting;
+    if (key === this.popKey) return;
+    const first = !this.popKey;
+    this.popKey = key;
+    // shown once there is something to say about homes (the cap is reached or someone waits)
+    const show = this.popBox.visible || waiting > 0 || n >= cap;
+    this.popBox.setVisible(show);
+    this.popText.setText(n + '/' + cap);
+    this.popIcon.setPosition(26, 0);
+    this.popText.setPosition(52, 1);
+    let w = 52 + this.popText.width + 18;
+    if (waiting > 0) {
+      this.popHouse.setVisible(true).setPosition(w + 6, 0);
+      this.popWait.setText('+' + waiting).setVisible(true).setPosition(w + 24, 1);
+      w += 34 + this.popWait.width + 12;
+    } else { this.popHouse.setVisible(false); this.popWait.setVisible(false); }
+    this.popBg.setSize(Math.max(110, w), 50);
+    if (show && !first) { this.tweens.killTweensOf(this.popBox); this.popBox.setScale(1.15); this.tweens.add({ targets: this.popBox, scale: 1, duration: 260, ease: 'Back.easeOut' }); }
+  }
+
+  // ---------------------------------------------------------------- (v3) build menu
+  /** the chief stands on an empty plot: pick a building (cards: picture, name, cost, what it does) */
+  openBuildMenu(site) {
+    if (this.panelOpen || this.buildOpen) return;
+    const gs = this.gs;
+    this.buildOpen = true;
+    this.buildSite = site;
+    Input.release();
+    if (!gs.scene.isPaused()) gs.scene.pause();
+    const W = this.W, H = this.H;
+    const choices = gs.buildChoices(site);
+    this.buildChoicesList = choices;
+    const cols = Math.min(4, Math.max(2, choices.length));
+    const cw = cols === 4 ? 160 : 200, chh = 262, gap = 10;
+    const rows = Math.ceil(choices.length / cols);
+    const sheetW = Math.min(W - 24, cols * cw + (cols - 1) * gap + 40);
+    const sheetH = 130 + rows * chh + (rows - 1) * gap + 130;
+    const top = H - sheetH - 20 - View.safeBottom;
+    const c = this.add.container(0, 0).setDepth(85);
+    const dim = this.add.rectangle(W / 2, H / 2, W * 2, H * 2, 0x1b2638, 0.35).setInteractive();
+    dim.on('pointerdown', () => this.closeBuildMenu());
+    const bg = panel(this, W / 2, top + sheetH / 2, 'ui_panel', sheetW, sheetH).setOrigin(0.5).setInteractive();
+    c.add([dim, bg]);
+    const title = this.add.text(W / 2, top + 46, t('buildTitle'), TXT(36, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5);
+    const sub = this.add.text(W / 2, top + 88, t(site.only ? 'plotOnly_' + site.only : 'buildSize_' + site.size), TXT(22, '#6b7686', '#ffffff', 0, '800')).setOrigin(0.5);
+    c.add([title, sub]);
+    const close = this.makeIconButton(W / 2 + sheetW / 2 - 40, top + 40, 'ui_icon_close', 62, () => this.closeBuildMenu());
+    c.add(close);
+    this.buildCards = [];
+    const gx0 = W / 2 - ((cols * cw + (cols - 1) * gap) / 2) + cw / 2;
+    choices.forEach((ch, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = gx0 + col * (cw + gap), y = top + 120 + chh / 2 + row * (chh + gap);
+      const card = this.makeCard(ch, x, y, cw, chh);
+      c.add(card.c);
+      this.buildCards.push(card);
+    });
+    // confirm button
+    const btn = this.makeButton(W / 2, top + sheetH - 72, Math.min(sheetW - 60, 460), 92, 'green', '', () => this.confirmBuild(), 30);
+    c.add(btn);
+    this.buildBtn = btn;
+    this.buildPanel = c;
+    const firstOk = choices.find((q) => !q.locked);
+    this.selectCard(firstOk ? firstOk.key : null);
+    c.setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, duration: 150 });
+    bg.setScale(0.9);
+    this.tweens.add({ targets: bg, scale: 1, duration: 220, ease: 'Back.easeOut' });
+    Audio.play('sfx_click');
+    if (window.__FV) window.__FV.buildMenuOpen = true;
+  }
+
+  makeCard(ch, x, y, w, h) {
+    const c = this.add.container(x, y);
+    const bg = panel(this, 0, 0, 'ui_card', w, h).setOrigin(0.5);
+    const bgSel = panel(this, 0, 0, Assets.pick('ui_card_selected', 'ui_card'), w, h).setOrigin(0.5).setVisible(false);
+    c.add([bg, bgSel]);
+    const spr = { toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower' }[ch.key] || ch.key;
+    const th = Assets.image(this, 0, -h / 2 + 64, spr).setOrigin(0.5, 0.5);
+    const fw = Math.max(1, th.frame.realWidth), fh = Math.max(1, th.frame.realHeight);
+    th.setScale(Math.min((w - 24) / fw, 104 / fh));
+    c.add(th);
+    const name = this.add.text(0, -h / 2 + 132, t('b_' + ch.key), TXT(w < 180 ? 21 : 23, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5);
+    c.add(name);
+    // cost: coins, then materials
+    const coin = Assets.image(this, 0, 0, 'ui_icon_coin').setOrigin(0.5);
+    coin.setScale(24 / Math.max(1, coin.frame.realWidth));
+    const coinT = this.add.text(0, 0, fmt(ch.cost.coins || 0), TXT(20, ch.cost.coins > this.gs.economy.coins && !ch.locked ? '#c0392b' : '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+    const cy = -h / 2 + 164;
+    const cwid = 28 + coinT.width;
+    coin.setPosition(-cwid / 2 + 12, cy); coinT.setPosition(-cwid / 2 + 28, cy + 1);
+    c.add([coin, coinT]);
+    const mats = [['item_plank', ch.cost.item_plank], ['item_ingot', ch.cost.item_ingot]].filter((q) => q[1] > 0);
+    let mw = 0;
+    const mparts = mats.map(([k, n]) => { const ic = Assets.image(this, 0, 0, k).setOrigin(0.5, 0.6); ic.setScale(30 / Math.max(ic.frame.realWidth, ic.frame.realHeight, 1)); const tx = this.add.text(0, 0, '×' + n, TXT(19, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5); mw += 30 + tx.width + 10; return [ic, tx]; });
+    let mx = -mw / 2;
+    for (const [ic, tx] of mparts) { ic.setPosition(mx + 14, cy + 30); tx.setPosition(mx + 30, cy + 31); mx += 30 + tx.width + 10; c.add([ic, tx]); }
+    const people = Math.floor(Number(ch.cost.people) || 0);
+    const line = ch.locked ? t(ch.reason) : t('bp_' + ch.key, { n: people });
+    const desc = this.add.text(0, h / 2 - 40, line, Object.assign(TXT(15, ch.locked ? '#a5532a' : '#5d6b80', '#ffffff', 0, '800'), { align: 'center', wordWrap: { width: w - 26, useAdvancedWrap: true }, lineSpacing: 1 })).setOrigin(0.5);
+    c.add(desc);
+    if (ch.locked) {
+      for (const o of [th, name, coin, coinT]) o.setAlpha(0.45);
+      for (const [ic, tx] of mparts) { ic.setAlpha(0.45); tx.setAlpha(0.45); }
+      const lk = Assets.image(this, w / 2 - 26, -h / 2 + 26, 'ui_icon_lock').setOrigin(0.5);
+      lk.setScale(34 / Math.max(1, lk.frame.realWidth));
+      c.add(lk);
+    }
+    c.setSize(w, h);
+    c.setInteractive({ useHandCursor: !ch.locked });
+    c.on('pointerdown', () => { if (ch.locked) { this.tweens.add({ targets: c, x: c.x + 6, duration: 50, yoyo: true, repeat: 2 }); Audio.play('sfx_error', { volume: 0.4 }); return; } Audio.play('sfx_click'); this.selectCard(ch.key); });
+    return { c, bg, bgSel, ch };
+  }
+
+  selectCard(key) {
+    this.buildSel = key;
+    for (const cd of this.buildCards || []) {
+      const on = cd.ch.key === key;
+      cd.bg.setVisible(!on); cd.bgSel.setVisible(on);
+      if (on) { this.tweens.killTweensOf(cd.c); cd.c.setScale(1.06); this.tweens.add({ targets: cd.c, scale: 1, duration: 200, ease: 'Back.easeOut' }); }
+    }
+    const ch = (this.buildChoicesList || []).find((q) => q.key === key);
+    const b = this.buildBtn;
+    if (!b) return;
+    if (!ch) { b.text.setText(t('buildPick')); b.setAlpha(0.6); b.ok = false; return; }
+    const cost = buildCost(ch.key).coins || 0;
+    const ok = this.gs.economy.coins >= cost;
+    b.text.setText(ok ? t('buildBtn', { name: t('b_' + ch.key) }) + '  ' + fmt(cost) : t('buildNoCoins') + ' (' + fmt(cost) + ')');
+    b.setAlpha(ok ? 1 : 0.6);
+    b.ok = ok;
+  }
+
+  confirmBuild() {
+    const key = this.buildSel, site = this.buildSite;
+    if (!key || !site) return;
+    if (!this.buildBtn.ok) { Audio.play('sfx_error', { volume: 0.5 }); this.toast(t('notEnoughCoins')); return; }
+    this.closeBuildMenu(true);
+    this.gs.tryBuild(site, key);
+  }
+
+  closeBuildMenu(immediate) {
+    if (!this.buildOpen) return;
+    this.buildOpen = false;
+    const c = this.buildPanel;
+    this.buildPanel = null; this.buildCards = null; this.buildBtn = null;
+    if (this.gs.scene.isPaused() && !this.panelOpen) this.gs.scene.resume();
+    if (window.__FV) window.__FV.buildMenuOpen = false;
+    if (!c) return;
+    if (immediate) { c.destroy(); return; }
+    this.tweens.add({ targets: c, alpha: 0, duration: 120, onComplete: () => c.destroy() });
+  }
+
   // ---------------------------------------------------------------- settings
   openSettings(instant) {
     if (this.panelOpen) return;
+    if (this.buildOpen) this.closeBuildMenu(true);
     this.panelOpen = true;
     Input.release();
     const W = this.W, H = this.H;

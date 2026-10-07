@@ -31,13 +31,15 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
-const ITEMS = ['item_fish_raw', 'item_fish_cooked', 'item_log', 'item_plank', 'item_wheat', 'item_bread', 'item_ore', 'item_ingot', 'item_meat_raw', 'item_meat_cooked'];
-const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
-const GOODS = ['item_plank', 'item_ingot'];
+import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
+// (v3) what a construction site may hold, and the land
+const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower'];
+const SITE_STATES = ['foundation', 'scaffold', 'done'];
+const REGIONS = ['east', 'south', 'se'];
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 /** finite number (numeric strings accepted) or `d` */
@@ -66,6 +68,9 @@ export const MIGRATE = {
     o.progress = pr;
     return o;
   },
+  // v2 -> v3 (생산 사슬과 땅 넓히기): everything carries over; the new land, plots and chains start fresh
+  // (residents who already moved in stay, even beyond the new house limit)
+  2: (s) => Object.assign({}, s, { v: 3 }),
 };
 
 /**
@@ -87,7 +92,10 @@ export function sanitizeSave(raw) {
     hints: flags(pr.hints),
     seen: flags(pr.seen),
     flags: flags(pr.flags),
+    celebrated3: pr.celebrated3 === true,
+    got: {},
   };
+  if (isObj(pr.got)) for (const id in pr.got) if (/^[a-z0-9_]{1,40}$/.test(id) && isObj(pr.got[id])) s.progress.got[id] = counts(pr.got[id], TOOLS);
   s.stations = {};
   if (isObj(raw.stations)) for (const id in raw.stations) { const st = raw.stations[id]; if (isObj(st)) s.stations[id] = { i: count(st.i, 1000), o: count(st.o, 1000) }; }
   const shop = (o, types) => (isObj(o) ? { stock: counts(o.stock, types), cash: count(o.cash, 1e9) } : null);
@@ -100,13 +108,37 @@ export function sanitizeSave(raw) {
     y: Number.isFinite(y) ? y : undefined,
     stack: Array.isArray(p.stack) ? p.stack.filter((k) => typeof k === 'string' && ITEMS.indexOf(k) >= 0).slice(0, 200) : [],
   };
-  // (v2) village life: who moved in (character keys), snowman stage
+  // (v2) village life: who moved in (character keys), snowman stage; (v3) who waits for a house
   const lf = isObj(raw.life) ? raw.life : null;
   if (lf) {
-    const moved = Array.isArray(lf.moved) ? lf.moved.filter((k) => typeof k === 'string' && /^[a-z0-9_]{1,40}$/.test(k)) : null;
-    s.life = { moved: moved ? Array.from(new Set(moved)).slice(0, 80) : undefined, snowman: Math.max(0, Math.min(3, Math.floor(num(lf.snowman, 0)))) };
+    const keys = (v) => (Array.isArray(v) ? Array.from(new Set(v.filter((k) => typeof k === 'string' && /^[a-z0-9_]{1,40}$/.test(k)))).slice(0, 80) : null);
+    const moved = keys(lf.moved), waiting = keys(lf.waiting);
+    s.life = { moved: moved || undefined, snowman: Math.max(0, Math.min(3, Math.floor(num(lf.snowman, 0)))) };
     if (!s.life.moved) delete s.life.moved;
+    if (waiting) s.life.waiting = waiting;
   }
+  // (v3) the land that is open, construction sites, the new buildings' stock
+  s.territory = {};
+  if (isObj(raw.territory)) for (const r of REGIONS) if (raw.territory[r] === true) s.territory[r] = true;
+  s.sites = {};
+  if (isObj(raw.sites)) {
+    for (const id in raw.sites) {
+      const d = raw.sites[id];
+      if (!/^[a-z0-9_]{1,40}$/.test(id) || !isObj(d) || BUILDINGS.indexOf(d.b) < 0 || SITE_STATES.indexOf(d.st) < 0) continue;
+      s.sites[id] = { b: d.b, st: d.st, got: counts(d.got, MATERIALS), t: Math.max(0, Math.min(600, num(d.t, 0))) };
+    }
+  }
+  const v3 = isObj(raw.v3) ? raw.v3 : {};
+  const ws = isObj(v3.workshops) ? v3.workshops : {};
+  const wso = {};
+  for (const k of ['toolsmith', 'cannery']) if (isObj(ws[k])) wso[k] = { ins: counts(ws[k].ins, ['item_plank', 'item_ingot', 'item_fish_raw', 'item_fish_big']), outs: counts(ws[k].outs, STORE_GOODS) };
+  s.v3 = {
+    warehouse: isObj(v3.warehouse) ? counts(v3.warehouse, ITEMS) : undefined,
+    food: isObj(v3.food) ? { on: v3.food.on === true, food: counts(v3.food.food, MINER_FOOD) } : undefined,
+    dock: isObj(v3.dock) ? { level: count(v3.dock.level, 2), catch: counts(v3.dock.catch, FISH) } : undefined,
+    workshops: wso,
+    store: isObj(v3.store) ? { stock: counts(v3.store.stock, STORE_GOODS), cash: count(v3.store.cash, 1e9) } : undefined,
+  };
   return s;
 }
 
