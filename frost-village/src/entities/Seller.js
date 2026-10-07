@@ -274,7 +274,9 @@ export class Market {
     // spawn
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
-      this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
+      // (v3.5 review) once the village is complete customers come a little more often (balance.js customers.spawnEveryLate)
+      const late = !this.cfg.spawnEvery && gs.progress && gs.progress.complete && Number(BALANCE.customers.spawnEveryLate);
+      this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || late || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
       if (this.queue.length < this.maxQueue && (!this.cfg.available || this.availableFoods().length)) this.spawnCustomer();
     }
     // serve the front customer

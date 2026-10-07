@@ -69,6 +69,8 @@ export class Tutorial {
       set(pad.x, pad.y, 112, key);
       return;
     }
+    // (review fix) a pad that appeared under the chief waits until he steps off once: say so
+    if (this.stepOffHint(pad)) return;
     if (pad) return;
     if (this.inTutorial) { this.firstLoop(set); return; }
     if (this.unloadHint(set)) return;
@@ -90,6 +92,26 @@ export class Tutorial {
     for (const c of this.cashes()) if (c.value >= 40 && !c.pad.contains(p.x, p.y) && gdist(p.x, p.y, c.x, c.y) > 260) { set(c.x, c.y, 40, goal ? goal.key : null, goal ? goal.text : null); return; }
     // otherwise just name the next goal (no arrow)
     if (goal) { this.textKey = goal.key; this.text = goal.text; }
+  }
+
+  /**
+   * (review fix) the next pad of a line popped up on the spot the chief stands on: it only takes coins
+   * after he steps off once (so nothing drains by accident) — tell him instead of showing nothing
+   */
+  stepOffHint(pad) {
+    const gs = this.gs, p = gs.player, prog = gs.progress;
+    let on = null;
+    if (pad && pad.needsLeave && pad.pad.contains(p.x, p.y)) on = pad;
+    else {
+      for (const id in prog.pads) { const q = prog.pads[id]; if (q.active && !q.done && q.needsLeave && q.remaining > 0 && q.remaining <= gs.economy.coins && q.pad.contains(p.x, p.y)) { on = q; break; } }
+      if (!on) for (const k in prog.upPads) { const q = prog.upPads[k]; if (q.active && !q.done && !q.maxed && q.needsLeave && q.remaining > 0 && q.remaining <= gs.economy.coins && q.pad.contains(p.x, p.y)) { on = q; break; } }
+    }
+    if (!on) return false;
+    // the arrow bounces just beside the pad: one step there, then back on
+    const tg = this._tg;
+    tg.x = on.x; tg.y = on.y + 78; tg.h = 34;
+    this.target = tg; this.textKey = 'obj_step_off'; this.text = null;
+    return true;
   }
 
   /** (v3.5) the coins customers left would buy the next pad (or there are a lot of them): pick them up */
@@ -242,7 +264,10 @@ export class Tutorial {
     const next = prog.nextPad();
     // (v2) the customer has the food: stand at the register so they pay
     const front = m.queue[0];
-    if (!m.register.clerk && cooked === 0 && (m.waitingPay || (front && front.arrived && front.got > 0))) {
+    // (review fix) only when the front customer can actually pay now (or the shelf holds the rest of the
+    // order): a customer who got part of the order waits for more food first, never for the chief
+    const paysSoon = front && front.arrived && front.got > 0 && front.need > 0 && m.stock.count >= front.need;
+    if (!m.register.clerk && cooked === 0 && (m.waitingPay || paysSoon)) {
       if (!m.register.pad.contains(p.x, p.y)) set(m.register.x, m.register.y, 46, 'obj_register');
       else this.textKey = 'obj_register_wait';
       return;
@@ -338,19 +363,52 @@ export class Tutorial {
       if (d < bd) { bd = d; best = st; }
     }
     if (best && (bd < 900 || idle)) { set(best.op.x, best.op.y, 50, 'obj_op_' + best.id); return true; }
-    if (p.room <= 0) return false;
+    let pile = null;
     for (const id in gs.piles) {
       const pl = gs.piles[id];
       if (!pl.shown || !pl.enabled || pl.count < 5) continue;
       if (gs.rawPorters.some((r) => r.pile === pl)) continue;
       const st = gs.stations[pl.station];
       if (!st || !st.enabled || st.inStack.room < 3) continue;
+      // (review fix) the products of that station wait to be sold first: more raw items would not help
+      if (st.outStack.count >= st.outStack.max * 0.5) continue;
       if (!(idle || !prog.seen['pile_' + id])) continue;
-      if (pl.pad.contains(p.x, p.y)) { this.textKey = 'obj_pile_' + id; prog.seen['pile_' + id] = true; return true; }
-      set(pl.x, pl.y, 70, 'obj_pile_' + id);
+      pile = pl;
+      break;
+    }
+    // (review fix) finished products come before more raw items: what the chief carries goes to the
+    // seller, and a station output nobody empties (no goods porter yet) is the next stop
+    if (pile && this.productHint(set)) return true;
+    if (!pile || p.room <= 0) return false;
+    if (pile.pad.contains(p.x, p.y)) { this.textKey = 'obj_pile_' + pile.id; prog.seen['pile_' + pile.id] = true; return true; }
+    set(pile.x, pile.y, 70, 'obj_pile_' + pile.id);
+    return true;
+  }
+
+  /** (review fix) products in the bag -> their seller; else a station output piling up with no goods porter */
+  productHint(set) {
+    const gs = this.gs, p = gs.player;
+    for (let i = p.stack.items.length - 1; i >= 0; i--) {
+      const ty = p.stack.items[i].type;
+      if (FOODS.indexOf(ty) < 0 && GOODS.indexOf(ty) < 0) continue;
+      const d = this.destination(ty);
+      if (!d) continue;
+      if (d.pad.contains(p.x, p.y)) this.textKey = d.key;
+      else set(d.pad.x, d.pad.y, 60, d.key);
       return true;
     }
-    return false;
+    if (p.room <= 0) return false;
+    let best = null;
+    for (const st of gs.stationList) {
+      if (!st.enabled || st.outStack.count < 6 || gs.porters.some((w) => w.station === st)) continue;
+      // nowhere to take them (the shelf is full): not now
+      if (!this.destination(st.output)) continue;
+      if (!best || st.outStack.count > best.outStack.count) best = st;
+    }
+    if (!best) return false;
+    if (best.outPad.contains(p.x, p.y)) this.textKey = TAKE_KEY[best.id] || null;
+    else set(best.outPad.x, best.outPad.y, 80, TAKE_KEY[best.id] || null);
+    return true;
   }
 
   /** bag full: point where the carried things can go (never at a pad that cannot take anything) */
@@ -416,7 +474,17 @@ export class Tutorial {
       // nearest ready resource
       const list = z.zone === 'forest' ? gs.trees : z.zone === 'farm' ? gs.wheat : z.zone === 'mine' ? gs.rocks : gs.animals;
       let best = null, bd = 1e12;
-      for (const n of list) { if (!n.ready()) continue; const d = gdist(p.x, p.y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+      // (v3.5 review) a resource behind a fence (e.g. an ore rock seen from outside the mine) is a long walk round
+      const fence = gs.collision.fenceBetween ? (n) => gs.collision.fenceBetween(p.x, p.y, n.x, n.y) : () => false;
+      let bc = 1e12;
+      for (const n of list) {
+        if (!n.ready()) continue;
+        const d = gdist(p.x, p.y, n.x, n.y);
+        if (d >= bc) continue;
+        const c = d + (d > 120 && fence(n) ? 700 : 0);
+        if (c < bc) { bc = c; best = n; }
+      }
+      if (best) bd = gdist(p.x, p.y, best.x, best.y);
       if (best && bd > 90) { set(best.x, best.y, z.zone === 'forest' ? 200 : z.zone === 'hunt' ? 70 : 90, 'obj_' + z.zone + '_1'); return true; }
       if (best) { this.textKey = 'obj_' + z.zone + '_1'; this.target = null; return true; }
       return false;

@@ -1,0 +1,8431 @@
+{
+ "version": 1,
+ "generator": "tools/blender/veh_render.py + veh_pack.py (docs/CONTRACT_V5.md sections L + M)",
+ "conventions": {
+  "ppu": 64,
+  "vehicles": "characters{} entries with kind \"vehicle\": 2 rendered headings along the iso ground axes + flipX mirrors: SE = world +X (front + right side visible), NE = world +Y (rear + right side); SW <- SE (world -Y), NW <- NE (world -X) with setFlipX (axisDirs maps world axes to dirs). Frame names {anim}_{dir}_{i}; anchor = ground point under the vehicle centre (depth sort by it; footprintPoly [dir] = the 4 ground corners in px for better sorting / picking of long vehicles). NO baked shadow: draw a soft ellipse shadow[dir] = [w, h, angleDeg] (rotated ellipse along the heading; negate the angle for mirrored dirs) on the ground under the anchor. 1 px ink outline like the characters.",
+  "anims": "idle (engine shake / horses breathing / steam), move (wheels turn, hooves trot, steam puffs), siren (emergency vehicles standing with beacons). bobPx[i] = screen-y offset of the sprung body in frame i (0 or -1 = lifted 1 px; already baked into the frames) - add it to drawn passengers / cargo for a perfect fit (optional). wheels.turnsPerLoopDeg / radiusM -> no-slip speed = radiusM * rad(turns) * fps / frames m/s (cosmetic: any speed reads fine).",
+  "seats": "seats[dir] = px offsets of each seat surface FRONT-CENTRE = the anchor of a character in a `sit` frame (villagers / townsfolk2 convention, seat height 0.45 m); seatDirs[dir] = the facing (S/SE/E/SW/W/N/NE/NW). For facings without a sit frame (NE/NW = backs) draw the idle frame of that dir at seatsStand[dir] (the body below the window is hidden by the overlay anyway). driverSeat = index of the driver (null if the driver is baked, e.g. truck_cargo_chief). seatDrawOrder[dir] = seat indices back-to-front.",
+  "overlay": "Vehicles with seats have overlay frames (overlay.atlas, over_{anim}_{dir}_{i}: same frameSize + anchor as the colour frame, same flipX). Draw order for one vehicle: colour frame -> passengers (seatDrawOrder, at seats / seatsStand + bobPx) -> overlay frame. The overlay holds exactly the body parts that are in front of a seated passenger (doors, window frames, roof edge, dashboard sides) so heads show through the windows and legs disappear inside. Without passengers you can skip it.",
+  "points": "px offsets [dx, dy] from the anchor per rendered dir (mirror: negate dx). cargoPoint = [dx, dy, behind] bottom of a cargo / item stack (behind=false: draw the stack after the vehicle); doorPoints = ground spots beside the doors (getting in / out); lightPoints / tailPoints = head / tail lamp centres (night glow sprites); exhaustPoint / steamPoint = puff emitter; sirenPoint = beacon centre.",
+  "buildings": "sprites{} entries (prop conventions): baked soft shadow, anchor = footprint centre, front -Y = screen down-left. stallPoints/stallDirs = where a parked vehicle ANCHOR goes and its heading; bayPoints/bayDirs = depot bays; stopPoint/stopDir = where the bus / sleigh-bus anchor halts at a stop; waitPoints, seatPoints (bench, sit frames), boardPoints, staffPoints, doorPoint, pumpPoints. Multi-state buildings share frame + anchor (bus_depot / bus_depot_open, garage_small / _open, traffic_light_green / _yellow / _red): swap the frame. kind \"decal\" + layer \"ground\" (parking lots) = draw on the ground layer under everything. fxPoints.board + boardPx = blank boards for game text."
+ },
+ "atlases": [
+  {
+   "key": "veh_ambulance",
+   "png": "vehicles/veh_ambulance.png",
+   "json": "vehicles/veh_ambulance.json"
+  },
+  {
+   "key": "veh_car_a_blue",
+   "png": "vehicles/veh_car_a_blue.png",
+   "json": "vehicles/veh_car_a_blue.json"
+  },
+  {
+   "key": "veh_car_a_red",
+   "png": "vehicles/veh_car_a_red.png",
+   "json": "vehicles/veh_car_a_red.json"
+  },
+  {
+   "key": "veh_car_a_yellow",
+   "png": "vehicles/veh_car_a_yellow.png",
+   "json": "vehicles/veh_car_a_yellow.json"
+  },
+  {
+   "key": "veh_car_b_blue",
+   "png": "vehicles/veh_car_b_blue.png",
+   "json": "vehicles/veh_car_b_blue.json"
+  },
+  {
+   "key": "veh_car_b_mint",
+   "png": "vehicles/veh_car_b_mint.png",
+   "json": "vehicles/veh_car_b_mint.json"
+  },
+  {
+   "key": "veh_car_b_red",
+   "png": "vehicles/veh_car_b_red.png",
+   "json": "vehicles/veh_car_b_red.json"
+  },
+  {
+   "key": "veh_car_c_blue",
+   "png": "vehicles/veh_car_c_blue.png",
+   "json": "vehicles/veh_car_c_blue.json"
+  },
+  {
+   "key": "veh_car_c_orange",
+   "png": "vehicles/veh_car_c_orange.png",
+   "json": "vehicles/veh_car_c_orange.json"
+  },
+  {
+   "key": "veh_car_c_red",
+   "png": "vehicles/veh_car_c_red.png",
+   "json": "vehicles/veh_car_c_red.json"
+  },
+  {
+   "key": "veh_car_d_blue",
+   "png": "vehicles/veh_car_d_blue.png",
+   "json": "vehicles/veh_car_d_blue.json"
+  },
+  {
+   "key": "veh_car_d_cream",
+   "png": "vehicles/veh_car_d_cream.png",
+   "json": "vehicles/veh_car_d_cream.json"
+  },
+  {
+   "key": "veh_car_d_red",
+   "png": "vehicles/veh_car_d_red.png",
+   "json": "vehicles/veh_car_d_red.json"
+  },
+  {
+   "key": "veh_cargo_sleigh",
+   "png": "vehicles/veh_cargo_sleigh.png",
+   "json": "vehicles/veh_cargo_sleigh.json"
+  },
+  {
+   "key": "veh_dog_sled",
+   "png": "vehicles/veh_dog_sled.png",
+   "json": "vehicles/veh_dog_sled.json"
+  },
+  {
+   "key": "veh_fire_truck",
+   "png": "vehicles/veh_fire_truck.png",
+   "json": "vehicles/veh_fire_truck.json"
+  },
+  {
+   "key": "veh_horse_sleigh_bus",
+   "png": "vehicles/veh_horse_sleigh_bus.png",
+   "json": "vehicles/veh_horse_sleigh_bus.json"
+  },
+  {
+   "key": "veh_horse_sleigh_bus_over",
+   "png": "vehicles/veh_horse_sleigh_bus_over.png",
+   "json": "vehicles/veh_horse_sleigh_bus_over.json"
+  },
+  {
+   "key": "veh_police_car",
+   "png": "vehicles/veh_police_car.png",
+   "json": "vehicles/veh_police_car.json"
+  },
+  {
+   "key": "veh_retro_bus",
+   "png": "vehicles/veh_retro_bus.png",
+   "json": "vehicles/veh_retro_bus.json"
+  },
+  {
+   "key": "veh_steam_wagon",
+   "png": "vehicles/veh_steam_wagon.png",
+   "json": "vehicles/veh_steam_wagon.json"
+  },
+  {
+   "key": "veh_truck_cargo",
+   "png": "vehicles/veh_truck_cargo.png",
+   "json": "vehicles/veh_truck_cargo.json"
+  },
+  {
+   "key": "veh_truck_cargo_chief",
+   "png": "vehicles/veh_truck_cargo_chief.png",
+   "json": "vehicles/veh_truck_cargo_chief.json"
+  },
+  {
+   "key": "veh_depots",
+   "png": "vehicles/veh_depots.png",
+   "json": "vehicles/veh_depots.json"
+  },
+  {
+   "key": "veh_street",
+   "png": "vehicles/veh_street.png",
+   "json": "vehicles/veh_street.json"
+  },
+  {
+   "key": "veh_lots",
+   "png": "vehicles/veh_lots.png",
+   "json": "vehicles/veh_lots.json"
+  },
+  {
+   "key": "veh_signs",
+   "png": "vehicles/veh_signs.png",
+   "json": "vehicles/veh_signs.json"
+  }
+ ],
+ "characters": {
+  "cargo_sleigh": {
+   "atlas": "veh_cargo_sleigh",
+   "frameSize": [
+    292,
+    264
+   ],
+   "anchor": [
+    0.51712,
+    0.71591
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      -1,
+      0,
+      0,
+      -1,
+      -1
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 2,
+   "family": "cargo_sleigh",
+   "variant": null,
+   "lengthM": 4.9,
+   "widthM": 1.6,
+   "heightM": 2.2,
+   "topPx": 185,
+   "headTop": -185,
+   "shadow": {
+    "SE": [
+     243,
+     68,
+     26.57
+    ],
+    "NE": [
+     243,
+     68,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      75,
+      74
+     ],
+     [
+      147,
+      37
+     ],
+     [
+      -75,
+      -74
+     ],
+     [
+      -147,
+      -37
+     ]
+    ],
+    "NE": [
+     [
+      147,
+      -37
+     ],
+     [
+      75,
+      -74
+     ],
+     [
+      -147,
+      37
+     ],
+     [
+      -75,
+      74
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": null,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Horse cargo sleigh (~4.9 m): one chunky pony (dapple grey, blue blanket, bells) pulls a low wooden cargo sleigh with green stake sides, a driver bench at the front and a few sacks + a barrel lashed at the back; the middle of the bed is free for the game cargo stack (cargoPoint). 1 seat (driver). idle = the pony breathes / swishes, move = 8-frame trot.",
+   "cargoPoint": {
+    "SE": [
+     -54,
+     -57,
+     false
+    ],
+    "NE": [
+     -54,
+     -3,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -61,
+      21
+     ],
+     [
+      43,
+      -31
+     ]
+    ],
+    "NE": [
+     [
+      43,
+      31
+     ],
+     [
+      -61,
+      -21
+     ]
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      -40,
+      -71
+     ]
+    ],
+    "NE": [
+     [
+      24,
+      -63
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -13,
+      -46
+     ]
+    ],
+    "NE": [
+     [
+      10,
+      -44
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE"
+    ],
+    "NE": [
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -19,
+      -34
+     ]
+    ],
+    "NE": [
+     [
+      4,
+      -27
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     0
+    ],
+    "NE": [
+     0
+    ]
+   },
+   "seatNames": [
+    "cs_seat0"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_cargo_sleigh",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "dog_sled": {
+   "atlas": "veh_dog_sled",
+   "frameSize": [
+    204,
+    164
+   ],
+   "anchor": [
+    0.42647,
+    0.66463
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      -1,
+      0,
+      0,
+      -1,
+      -1
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 2,
+   "family": "dog_sled",
+   "variant": null,
+   "lengthM": 3.1,
+   "widthM": 1.1,
+   "heightM": 1.3,
+   "topPx": 105,
+   "headTop": -105,
+   "shadow": {
+    "SE": [
+     154,
+     47,
+     26.57
+    ],
+    "NE": [
+     154,
+     47,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      45,
+      48
+     ],
+     [
+      95,
+      23
+     ],
+     [
+      -45,
+      -48
+     ],
+     [
+      -95,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      95,
+      -23
+     ],
+     [
+      45,
+      -48
+     ],
+     [
+      -95,
+      23
+     ],
+     [
+      -45,
+      48
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": null,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Small dog sled (~3 m): two fluffy grey huskies (the village dog body, husky coat, blue harness) pull a little wooden basket sled with curled runners, a red blanket seat and a handle bar. 1 seat (seat 0 = the rider, sitting in the basket, holding the line). idle = dogs pant and wag, move = the dogs 8-frame run cycle (the pet_dog run), sled sways.",
+   "cargoPoint": {
+    "SE": [
+     -44,
+     -48,
+     false
+    ],
+    "NE": [
+     -55,
+     2,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -61,
+      8
+     ],
+     [
+      16,
+      -31
+     ]
+    ],
+    "NE": [
+     [
+      16,
+      31
+     ],
+     [
+      -61,
+      -8
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -19,
+      -34
+     ]
+    ],
+    "NE": [
+     [
+      -19,
+      -15
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE"
+    ],
+    "NE": [
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -24,
+      -22
+     ]
+    ],
+    "NE": [
+     [
+      -24,
+      2
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     0
+    ],
+    "NE": [
+     0
+    ]
+   },
+   "seatNames": [
+    "ds_seat0"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_dog_sled",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "horse_sleigh_bus": {
+   "atlas": "veh_horse_sleigh_bus",
+   "frameSize": [
+    432,
+    360
+   ],
+   "anchor": [
+    0.50463,
+    0.70278
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      -1,
+      0,
+      0,
+      -1,
+      -1
+     ]
+    }
+   },
+   "kind": "vehicle",
+   "era": 2,
+   "family": "horse_sleigh_bus",
+   "variant": null,
+   "lengthM": 7.9,
+   "widthM": 1.95,
+   "heightM": 2.95,
+   "topPx": 249,
+   "headTop": -249,
+   "shadow": {
+    "SE": [
+     392,
+     83,
+     26.57
+    ],
+    "NE": [
+     392,
+     83,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      135,
+      111
+     ],
+     [
+      223,
+      67
+     ],
+     [
+      -135,
+      -111
+     ],
+     [
+      -223,
+      -67
+     ]
+    ],
+    "NE": [
+     [
+      223,
+      -67
+     ],
+     [
+      135,
+      -111
+     ],
+     [
+      -223,
+      67
+     ],
+     [
+      -135,
+      111
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": null,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Horse-drawn sleigh bus (~7.5 m incl. horses): two chunky toy draft horses (chestnut with a white blaze + bay) in red collars with gold bells and red blankets pull a covered coach on brass runners: deep red lower body with gold lining, cream window band, pine-green barrel roof with snow, two glowing lanterns, luggage on the roof. 9 seats: seat 0 = the coachman on the open box (driver), 8 passengers inside (4 rows x 2). idle = horses breathe, flick an ear, swish tails; move = 8-frame trot loop (diagonal pairs, bells swing, coach glides).",
+   "cargoPoint": {
+    "SE": [
+     -54,
+     -181,
+     false
+    ],
+    "NE": [
+     -72,
+     -118,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -138,
+      -3
+     ],
+     [
+      -6,
+      -69
+     ]
+    ],
+    "NE": [
+     [
+      -6,
+      69
+     ],
+     [
+      -138,
+      3
+     ]
+    ]
+   },
+   "steamPoint": {
+    "SE": [
+     170,
+     -12
+    ],
+    "NE": [
+     170,
+     -182
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      -43,
+      -83
+     ],
+     [
+      54,
+      -131
+     ]
+    ],
+    "NE": [
+     [
+      54,
+      -88
+     ],
+     [
+      -43,
+      -137
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      11,
+      -59
+     ],
+     [
+      -37,
+      -52
+     ],
+     [
+      4,
+      -73
+     ],
+     [
+      -75,
+      -71
+     ],
+     [
+      -34,
+      -92
+     ],
+     [
+      -113,
+      -91
+     ],
+     [
+      -72,
+      -111
+     ],
+     [
+      -152,
+      -110
+     ],
+     [
+      -111,
+      -130
+     ]
+    ],
+    "NE": [
+     [
+      40,
+      -85
+     ],
+     [
+      4,
+      -36
+     ],
+     [
+      -37,
+      -56
+     ],
+     [
+      -34,
+      -17
+     ],
+     [
+      -75,
+      -37
+     ],
+     [
+      -72,
+      2
+     ],
+     [
+      -113,
+      -18
+     ],
+     [
+      -111,
+      21
+     ],
+     [
+      -152,
+      1
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      5,
+      -47
+     ],
+     [
+      -42,
+      -40
+     ],
+     [
+      -1,
+      -60
+     ],
+     [
+      -80,
+      -59
+     ],
+     [
+      -39,
+      -79
+     ],
+     [
+      -119,
+      -78
+     ],
+     [
+      -78,
+      -98
+     ],
+     [
+      -157,
+      -97
+     ],
+     [
+      -116,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      34,
+      -67
+     ],
+     [
+      -1,
+      -18
+     ],
+     [
+      -42,
+      -39
+     ],
+     [
+      -39,
+      1
+     ],
+     [
+      -80,
+      -20
+     ],
+     [
+      -78,
+      20
+     ],
+     [
+      -119,
+      0
+     ],
+     [
+      -116,
+      39
+     ],
+     [
+      -157,
+      19
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     8,
+     6,
+     7,
+     4,
+     5,
+     2,
+     3,
+     1,
+     0
+    ],
+    "NE": [
+     2,
+     0,
+     4,
+     1,
+     6,
+     3,
+     8,
+     5,
+     7
+    ]
+   },
+   "seatNames": [
+    "hsb_seat0",
+    "hsb_seat0R",
+    "hsb_seat0L",
+    "hsb_seat1R",
+    "hsb_seat1L",
+    "hsb_seat2R",
+    "hsb_seat2L",
+    "hsb_seat3R",
+    "hsb_seat3L"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_horse_sleigh_bus_over",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "steam_wagon": {
+   "atlas": "veh_steam_wagon",
+   "frameSize": [
+    292,
+    336
+   ],
+   "anchor": [
+    0.50685,
+    0.8125
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "steam": true
+    },
+    "move": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      0,
+      -1,
+      0,
+      -1,
+      0,
+      -1
+     ],
+     "wheels": true,
+     "steam": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 2,
+   "family": "steam_wagon",
+   "variant": null,
+   "lengthM": 4.5,
+   "widthM": 1.86,
+   "heightM": 3.0,
+   "topPx": 269,
+   "headTop": -269,
+   "shadow": {
+    "SE": [
+     223,
+     79,
+     26.57
+    ],
+    "NE": [
+     223,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      60,
+      72
+     ],
+     [
+      144,
+      30
+     ],
+     [
+      -60,
+      -72
+     ],
+     [
+      -144,
+      -30
+     ]
+    ],
+    "NE": [
+     [
+      144,
+      -30
+     ],
+     [
+      60,
+      -72
+     ],
+     [
+      -144,
+      30
+     ],
+     [
+      -60,
+      72
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.42,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Cute steam cargo wagon (4.4 m): forest-green toy steam lorry with a brass-banded boiler and a tall black chimney with a gold crown at the front, an open driver cab under a cream canopy, red spoked wheels (big at the back) and a wooden cargo bed with two lashed crates + a sack at the back; the front half of the bed is free for the game cargo stack (cargoPoint). 2 seats (seat 0 = driver, right). idle = gentle chimney steam, move = 8-frame loop: wheels, puffing chimney, bounce. steamPoint = chimney top for extra game puffs.",
+   "cargoPoint": {
+    "SE": [
+     -34,
+     -64,
+     false
+    ],
+    "NE": [
+     -34,
+     -30,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -36,
+      38
+     ],
+     [
+      77,
+      -18
+     ]
+    ],
+    "NE": [
+     [
+      77,
+      18
+     ],
+     [
+      -36,
+      -38
+     ]
+    ]
+   },
+   "steamPoint": {
+    "SE": [
+     76,
+     -146
+    ],
+    "NE": [
+     76,
+     -222
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      104,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      104,
+      -128
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -140,
+      -84
+     ],
+     [
+      -72,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      -72,
+      22
+     ],
+     [
+      -140,
+      -12
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      9,
+      -39
+     ],
+     [
+      47,
+      -58
+     ]
+    ],
+    "NE": [
+     [
+      47,
+      -67
+     ],
+     [
+      9,
+      -86
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      4,
+      -26
+     ],
+     [
+      42,
+      -45
+     ]
+    ],
+    "NE": [
+     [
+      42,
+      -49
+     ],
+     [
+      4,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "sw_seat0",
+    "sw_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_steam_wagon",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "ambulance": {
+   "atlas": "veh_ambulance",
+   "frameSize": [
+    316,
+    268
+   ],
+   "anchor": [
+    0.50316,
+    0.75746
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "siren": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "beacons": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "ambulance",
+   "variant": null,
+   "lengthM": 4.9,
+   "widthM": 1.96,
+   "heightM": 2.55,
+   "topPx": 199,
+   "headTop": -199,
+   "shadow": {
+    "SE": [
+     243,
+     83,
+     26.57
+    ],
+    "NE": [
+     243,
+     83,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      67,
+      78
+     ],
+     [
+      155,
+      33
+     ],
+     [
+      -67,
+      -78
+     ],
+     [
+      -155,
+      -33
+     ]
+    ],
+    "NE": [
+     [
+      155,
+      -33
+     ],
+     [
+      67,
+      -78
+     ],
+     [
+      -155,
+      33
+     ],
+     [
+      -67,
+      78
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.42,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Ambulance (4.9 m): round cream-white toy van with a red stripe, the clinic red heart-plus emblem on the side and the rear doors, a red / white light bar. idle = parked (lights off), move = beacons blinking, siren = standing, blinking. 2 seats in the cab (seat 0 = driver); rearDoorPoint = where a stretcher / patient gets in.",
+   "doorPoints": {
+    "SE": [
+     [
+      -18,
+      54
+     ],
+     [
+      109,
+      -9
+     ]
+    ],
+    "NE": [
+     [
+      109,
+      9
+     ],
+     [
+      -18,
+      -54
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -140,
+     -62
+    ],
+    "NE": [
+     -86,
+     51
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      82,
+      23
+     ],
+     [
+      137,
+      -4
+     ]
+    ],
+    "NE": [
+     [
+      137,
+      -87
+     ],
+     [
+      82,
+      -114
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -149,
+      -84
+     ],
+     [
+      -73,
+      -122
+     ]
+    ],
+    "NE": [
+     [
+      -73,
+      28
+     ],
+     [
+      -149,
+      -10
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     52,
+     -119
+    ],
+    "NE": [
+     52,
+     -171
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -140,
+     -70
+    ],
+    "NE": [
+     -140,
+     70
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      35,
+      -8
+     ],
+     [
+      73,
+      -27
+     ]
+    ],
+    "NE": [
+     [
+      73,
+      -62
+     ],
+     [
+      35,
+      -81
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      30,
+      5
+     ],
+     [
+      68,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      68,
+      -44
+     ],
+     [
+      30,
+      -63
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "am_seat0",
+    "am_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_ambulance",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_a_blue": {
+   "atlas": "veh_car_a_blue",
+   "frameSize": [
+    244,
+    208
+   ],
+   "anchor": [
+    0.5,
+    0.73558
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_a",
+   "variant": "blue",
+   "lengthM": 3.5,
+   "widthM": 1.84,
+   "heightM": 1.98,
+   "topPx": 149,
+   "headTop": -149,
+   "shadow": {
+    "SE": [
+     174,
+     78,
+     26.57
+    ],
+    "NE": [
+     174,
+     78,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      38,
+      60
+     ],
+     [
+      121,
+      19
+     ],
+     [
+      -38,
+      -60
+     ],
+     [
+      -121,
+      -19
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -19
+     ],
+     [
+      38,
+      -60
+     ],
+     [
+      -121,
+      19
+     ],
+     [
+      -38,
+      60
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.36,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round compact car (3.5 m, a chubby bubble car like a wind-up toy): frog-eye chrome headlamps, chrome smile grille, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: blue.",
+   "doorPoints": {
+    "SE": [
+     [
+      -45,
+      36
+     ],
+     [
+      72,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      72,
+      23
+     ],
+     [
+      -45,
+      -36
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -106,
+     -47
+    ],
+    "NE": [
+     -59,
+     35
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      52,
+      3
+     ],
+     [
+      103,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      103,
+      -75
+     ],
+     [
+      52,
+      -100
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -106,
+      -70
+     ],
+     [
+      -50,
+      -98
+     ]
+    ],
+    "NE": [
+     [
+      -50,
+      7
+     ],
+     [
+      -106,
+      -21
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "ca_seat0",
+    "ca_seat1",
+    "ca_seat2",
+    "ca_seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_a_blue",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_a_red": {
+   "atlas": "veh_car_a_red",
+   "frameSize": [
+    244,
+    208
+   ],
+   "anchor": [
+    0.5,
+    0.73558
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_a",
+   "variant": "red",
+   "lengthM": 3.5,
+   "widthM": 1.84,
+   "heightM": 1.98,
+   "topPx": 149,
+   "headTop": -149,
+   "shadow": {
+    "SE": [
+     174,
+     78,
+     26.57
+    ],
+    "NE": [
+     174,
+     78,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      38,
+      60
+     ],
+     [
+      121,
+      19
+     ],
+     [
+      -38,
+      -60
+     ],
+     [
+      -121,
+      -19
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -19
+     ],
+     [
+      38,
+      -60
+     ],
+     [
+      -121,
+      19
+     ],
+     [
+      -38,
+      60
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.36,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round compact car (3.5 m, a chubby bubble car like a wind-up toy): frog-eye chrome headlamps, chrome smile grille, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: red.",
+   "doorPoints": {
+    "SE": [
+     [
+      -45,
+      36
+     ],
+     [
+      72,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      72,
+      23
+     ],
+     [
+      -45,
+      -36
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -106,
+     -47
+    ],
+    "NE": [
+     -59,
+     35
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      52,
+      3
+     ],
+     [
+      103,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      103,
+      -75
+     ],
+     [
+      52,
+      -100
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -106,
+      -70
+     ],
+     [
+      -50,
+      -98
+     ]
+    ],
+    "NE": [
+     [
+      -50,
+      7
+     ],
+     [
+      -106,
+      -21
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "ca_seat0",
+    "ca_seat1",
+    "ca_seat2",
+    "ca_seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_a_red",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_a_yellow": {
+   "atlas": "veh_car_a_yellow",
+   "frameSize": [
+    244,
+    208
+   ],
+   "anchor": [
+    0.5,
+    0.73558
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_a",
+   "variant": "yellow",
+   "lengthM": 3.5,
+   "widthM": 1.84,
+   "heightM": 1.98,
+   "topPx": 149,
+   "headTop": -149,
+   "shadow": {
+    "SE": [
+     174,
+     78,
+     26.57
+    ],
+    "NE": [
+     174,
+     78,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      38,
+      60
+     ],
+     [
+      121,
+      19
+     ],
+     [
+      -38,
+      -60
+     ],
+     [
+      -121,
+      -19
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -19
+     ],
+     [
+      38,
+      -60
+     ],
+     [
+      -121,
+      19
+     ],
+     [
+      -38,
+      60
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.36,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round compact car (3.5 m, a chubby bubble car like a wind-up toy): frog-eye chrome headlamps, chrome smile grille, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: yellow.",
+   "doorPoints": {
+    "SE": [
+     [
+      -45,
+      36
+     ],
+     [
+      72,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      72,
+      23
+     ],
+     [
+      -45,
+      -36
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -106,
+     -47
+    ],
+    "NE": [
+     -59,
+     35
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      52,
+      3
+     ],
+     [
+      103,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      103,
+      -75
+     ],
+     [
+      52,
+      -100
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -106,
+      -70
+     ],
+     [
+      -50,
+      -98
+     ]
+    ],
+    "NE": [
+     [
+      -50,
+      7
+     ],
+     [
+      -106,
+      -21
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "ca_seat0",
+    "ca_seat1",
+    "ca_seat2",
+    "ca_seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_a_yellow",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_b_blue": {
+   "atlas": "veh_car_b_blue",
+   "frameSize": [
+    268,
+    204
+   ],
+   "anchor": [
+    0.5,
+    0.71569
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_b",
+   "variant": "blue",
+   "lengthM": 3.9,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 142,
+   "headTop": -142,
+   "shadow": {
+    "SE": [
+     193,
+     79,
+     26.57
+    ],
+    "NE": [
+     193,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      46,
+      65
+     ],
+     [
+      130,
+      23
+     ],
+     [
+      -46,
+      -65
+     ],
+     [
+      -130,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      130,
+      -23
+     ],
+     [
+      46,
+      -65
+     ],
+     [
+      -130,
+      23
+     ],
+     [
+      -46,
+      65
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro round sedan (3.9 m): rounded bonnet + boot, little tail fins, chrome grille and bumpers, round lamps, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: blue.",
+   "doorPoints": {
+    "SE": [
+     [
+      -42,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -42,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -119,
+     -52
+    ],
+    "NE": [
+     -69,
+     42
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      62,
+      13
+     ],
+     [
+      116,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      116,
+      -76
+     ],
+     [
+      62,
+      -104
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -118,
+      -77
+     ],
+     [
+      -60,
+      -106
+     ]
+    ],
+    "NE": [
+     [
+      -60,
+      13
+     ],
+     [
+      -118,
+      -16
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_b__seat0",
+    "car_b__seat1",
+    "car_b__seat2",
+    "car_b__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_b_blue",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_b_mint": {
+   "atlas": "veh_car_b_mint",
+   "frameSize": [
+    268,
+    204
+   ],
+   "anchor": [
+    0.5,
+    0.71569
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_b",
+   "variant": "mint",
+   "lengthM": 3.9,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 142,
+   "headTop": -142,
+   "shadow": {
+    "SE": [
+     193,
+     79,
+     26.57
+    ],
+    "NE": [
+     193,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      46,
+      65
+     ],
+     [
+      130,
+      23
+     ],
+     [
+      -46,
+      -65
+     ],
+     [
+      -130,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      130,
+      -23
+     ],
+     [
+      46,
+      -65
+     ],
+     [
+      -130,
+      23
+     ],
+     [
+      -46,
+      65
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro round sedan (3.9 m): rounded bonnet + boot, little tail fins, chrome grille and bumpers, round lamps, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: mint.",
+   "doorPoints": {
+    "SE": [
+     [
+      -42,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -42,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -119,
+     -52
+    ],
+    "NE": [
+     -69,
+     42
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      62,
+      13
+     ],
+     [
+      116,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      116,
+      -76
+     ],
+     [
+      62,
+      -104
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -118,
+      -77
+     ],
+     [
+      -60,
+      -106
+     ]
+    ],
+    "NE": [
+     [
+      -60,
+      13
+     ],
+     [
+      -118,
+      -16
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_b__seat0",
+    "car_b__seat1",
+    "car_b__seat2",
+    "car_b__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_b_mint",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_b_red": {
+   "atlas": "veh_car_b_red",
+   "frameSize": [
+    268,
+    204
+   ],
+   "anchor": [
+    0.5,
+    0.71569
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_b",
+   "variant": "red",
+   "lengthM": 3.9,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 142,
+   "headTop": -142,
+   "shadow": {
+    "SE": [
+     193,
+     79,
+     26.57
+    ],
+    "NE": [
+     193,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      46,
+      65
+     ],
+     [
+      130,
+      23
+     ],
+     [
+      -46,
+      -65
+     ],
+     [
+      -130,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      130,
+      -23
+     ],
+     [
+      46,
+      -65
+     ],
+     [
+      -130,
+      23
+     ],
+     [
+      -46,
+      65
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro round sedan (3.9 m): rounded bonnet + boot, little tail fins, chrome grille and bumpers, round lamps, cream roof with snow, whitewall hubs. 4 seats (seat 0 = driver, right front). Colour variant: red.",
+   "doorPoints": {
+    "SE": [
+     [
+      -42,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -42,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -119,
+     -52
+    ],
+    "NE": [
+     -69,
+     42
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      62,
+      13
+     ],
+     [
+      116,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      116,
+      -76
+     ],
+     [
+      62,
+      -104
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -118,
+      -77
+     ],
+     [
+      -60,
+      -106
+     ]
+    ],
+    "NE": [
+     [
+      -60,
+      13
+     ],
+     [
+      -118,
+      -16
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_b__seat0",
+    "car_b__seat1",
+    "car_b__seat2",
+    "car_b__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_b_red",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_c_blue": {
+   "atlas": "veh_car_c_blue",
+   "frameSize": [
+    276,
+    204
+   ],
+   "anchor": [
+    0.49638,
+    0.69118
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_c",
+   "variant": "blue",
+   "lengthM": 4.0,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 137,
+   "headTop": -137,
+   "shadow": {
+    "SE": [
+     198,
+     79,
+     26.57
+    ],
+    "NE": [
+     198,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      48,
+      66
+     ],
+     [
+      133,
+      24
+     ],
+     [
+      -48,
+      -66
+     ],
+     [
+      -133,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      133,
+      -24
+     ],
+     [
+      48,
+      -66
+     ],
+     [
+      -133,
+      24
+     ],
+     [
+      -48,
+      66
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round pickup (4.0 m): short two-seat cab, open wooden bed with a rolled green tarp at the cab; the bed is free for the game cargo stack (cargoPoint). 2 seats (seat 0 = driver). Colour variant: blue.",
+   "cargoPoint": {
+    "SE": [
+     -54,
+     -77,
+     false
+    ],
+    "NE": [
+     -54,
+     -23,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -44,
+      37
+     ],
+     [
+      74,
+      -22
+     ]
+    ],
+    "NE": [
+     [
+      74,
+      22
+     ],
+     [
+      -44,
+      -37
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -121,
+     -53
+    ],
+    "NE": [
+     -71,
+     43
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      64,
+      14
+     ],
+     [
+      119,
+      -13
+     ]
+    ],
+    "NE": [
+     [
+      119,
+      -78
+     ],
+     [
+      64,
+      -105
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -120,
+      -78
+     ],
+     [
+      -62,
+      -107
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      14
+     ],
+     [
+      -120,
+      -15
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -3,
+      -19
+     ],
+     [
+      33,
+      -37
+     ]
+    ],
+    "NE": [
+     [
+      33,
+      -34
+     ],
+     [
+      -3,
+      -52
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -8,
+      -6
+     ],
+     [
+      28,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      28,
+      -16
+     ],
+     [
+      -8,
+      -34
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "car_c__seat0",
+    "car_c__seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_c_blue",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_c_orange": {
+   "atlas": "veh_car_c_orange",
+   "frameSize": [
+    276,
+    204
+   ],
+   "anchor": [
+    0.49638,
+    0.69118
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_c",
+   "variant": "orange",
+   "lengthM": 4.0,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 137,
+   "headTop": -137,
+   "shadow": {
+    "SE": [
+     198,
+     79,
+     26.57
+    ],
+    "NE": [
+     198,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      48,
+      66
+     ],
+     [
+      133,
+      24
+     ],
+     [
+      -48,
+      -66
+     ],
+     [
+      -133,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      133,
+      -24
+     ],
+     [
+      48,
+      -66
+     ],
+     [
+      -133,
+      24
+     ],
+     [
+      -48,
+      66
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round pickup (4.0 m): short two-seat cab, open wooden bed with a rolled green tarp at the cab; the bed is free for the game cargo stack (cargoPoint). 2 seats (seat 0 = driver). Colour variant: orange.",
+   "cargoPoint": {
+    "SE": [
+     -54,
+     -77,
+     false
+    ],
+    "NE": [
+     -54,
+     -23,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -44,
+      37
+     ],
+     [
+      74,
+      -22
+     ]
+    ],
+    "NE": [
+     [
+      74,
+      22
+     ],
+     [
+      -44,
+      -37
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -121,
+     -53
+    ],
+    "NE": [
+     -71,
+     43
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      64,
+      14
+     ],
+     [
+      119,
+      -13
+     ]
+    ],
+    "NE": [
+     [
+      119,
+      -78
+     ],
+     [
+      64,
+      -105
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -120,
+      -78
+     ],
+     [
+      -62,
+      -107
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      14
+     ],
+     [
+      -120,
+      -15
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -3,
+      -19
+     ],
+     [
+      33,
+      -37
+     ]
+    ],
+    "NE": [
+     [
+      33,
+      -34
+     ],
+     [
+      -3,
+      -52
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -8,
+      -6
+     ],
+     [
+      28,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      28,
+      -16
+     ],
+     [
+      -8,
+      -34
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "car_c__seat0",
+    "car_c__seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_c_orange",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_c_red": {
+   "atlas": "veh_car_c_red",
+   "frameSize": [
+    276,
+    204
+   ],
+   "anchor": [
+    0.49638,
+    0.69118
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_c",
+   "variant": "red",
+   "lengthM": 4.0,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 137,
+   "headTop": -137,
+   "shadow": {
+    "SE": [
+     198,
+     79,
+     26.57
+    ],
+    "NE": [
+     198,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      48,
+      66
+     ],
+     [
+      133,
+      24
+     ],
+     [
+      -48,
+      -66
+     ],
+     [
+      -133,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      133,
+      -24
+     ],
+     [
+      48,
+      -66
+     ],
+     [
+      -133,
+      24
+     ],
+     [
+      -48,
+      66
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Round pickup (4.0 m): short two-seat cab, open wooden bed with a rolled green tarp at the cab; the bed is free for the game cargo stack (cargoPoint). 2 seats (seat 0 = driver). Colour variant: red.",
+   "cargoPoint": {
+    "SE": [
+     -54,
+     -77,
+     false
+    ],
+    "NE": [
+     -54,
+     -23,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -44,
+      37
+     ],
+     [
+      74,
+      -22
+     ]
+    ],
+    "NE": [
+     [
+      74,
+      22
+     ],
+     [
+      -44,
+      -37
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -121,
+     -53
+    ],
+    "NE": [
+     -71,
+     43
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      64,
+      14
+     ],
+     [
+      119,
+      -13
+     ]
+    ],
+    "NE": [
+     [
+      119,
+      -78
+     ],
+     [
+      64,
+      -105
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -120,
+      -78
+     ],
+     [
+      -62,
+      -107
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      14
+     ],
+     [
+      -120,
+      -15
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -3,
+      -19
+     ],
+     [
+      33,
+      -37
+     ]
+    ],
+    "NE": [
+     [
+      33,
+      -34
+     ],
+     [
+      -3,
+      -52
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -8,
+      -6
+     ],
+     [
+      28,
+      -24
+     ]
+    ],
+    "NE": [
+     [
+      28,
+      -16
+     ],
+     [
+      -8,
+      -34
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "car_c__seat0",
+    "car_c__seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_c_red",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_d_blue": {
+   "atlas": "veh_car_d_blue",
+   "frameSize": [
+    280,
+    232
+   ],
+   "anchor": [
+    0.49643,
+    0.72845
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_d",
+   "variant": "blue",
+   "lengthM": 4.1,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 165,
+   "headTop": -165,
+   "shadow": {
+    "SE": [
+     203,
+     79,
+     26.57
+    ],
+    "NE": [
+     203,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      51,
+      67
+     ],
+     [
+      135,
+      25
+     ],
+     [
+      -51,
+      -67
+     ],
+     [
+      -135,
+      -25
+     ]
+    ],
+    "NE": [
+     [
+      135,
+      -25
+     ],
+     [
+      51,
+      -67
+     ],
+     [
+      -135,
+      25
+     ],
+     [
+      -51,
+      67
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Woody wagon (4.1 m): long cabin with three side windows, wood side panels, a roof rack with two skis and snow (cargoPoint = on the rack). 4 seats (seat 0 = driver). Colour variant: blue.",
+   "cargoPoint": {
+    "SE": [
+     -23,
+     -129,
+     false
+    ],
+    "NE": [
+     -23,
+     -106,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -41,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -41,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -123,
+     -54
+    ],
+    "NE": [
+     -73,
+     44
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      67,
+      15
+     ],
+     [
+      121,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -79
+     ],
+     [
+      67,
+      -106
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -123,
+      -79
+     ],
+     [
+      -65,
+      -108
+     ]
+    ],
+    "NE": [
+     [
+      -65,
+      15
+     ],
+     [
+      -123,
+      -14
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      0,
+      -17
+     ],
+     [
+      36,
+      -35
+     ],
+     [
+      -40,
+      -37
+     ],
+     [
+      -4,
+      -55
+     ]
+    ],
+    "NE": [
+     [
+      36,
+      -35
+     ],
+     [
+      0,
+      -54
+     ],
+     [
+      -4,
+      -16
+     ],
+     [
+      -40,
+      -34
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -5,
+      -5
+     ],
+     [
+      31,
+      -23
+     ],
+     [
+      -45,
+      -25
+     ],
+     [
+      -9,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      31,
+      -18
+     ],
+     [
+      -5,
+      -36
+     ],
+     [
+      -9,
+      2
+     ],
+     [
+      -45,
+      -16
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_d__seat0",
+    "car_d__seat1",
+    "car_d__seat2",
+    "car_d__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_d_blue",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_d_cream": {
+   "atlas": "veh_car_d_cream",
+   "frameSize": [
+    280,
+    232
+   ],
+   "anchor": [
+    0.49643,
+    0.72845
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_d",
+   "variant": "cream",
+   "lengthM": 4.1,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 165,
+   "headTop": -165,
+   "shadow": {
+    "SE": [
+     203,
+     79,
+     26.57
+    ],
+    "NE": [
+     203,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      51,
+      67
+     ],
+     [
+      135,
+      25
+     ],
+     [
+      -51,
+      -67
+     ],
+     [
+      -135,
+      -25
+     ]
+    ],
+    "NE": [
+     [
+      135,
+      -25
+     ],
+     [
+      51,
+      -67
+     ],
+     [
+      -135,
+      25
+     ],
+     [
+      -51,
+      67
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Woody wagon (4.1 m): long cabin with three side windows, wood side panels, a roof rack with two skis and snow (cargoPoint = on the rack). 4 seats (seat 0 = driver). Colour variant: cream.",
+   "cargoPoint": {
+    "SE": [
+     -23,
+     -129,
+     false
+    ],
+    "NE": [
+     -23,
+     -106,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -41,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -41,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -123,
+     -54
+    ],
+    "NE": [
+     -73,
+     44
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      67,
+      15
+     ],
+     [
+      121,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -79
+     ],
+     [
+      67,
+      -106
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -123,
+      -79
+     ],
+     [
+      -65,
+      -108
+     ]
+    ],
+    "NE": [
+     [
+      -65,
+      15
+     ],
+     [
+      -123,
+      -14
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      0,
+      -17
+     ],
+     [
+      36,
+      -35
+     ],
+     [
+      -40,
+      -37
+     ],
+     [
+      -4,
+      -55
+     ]
+    ],
+    "NE": [
+     [
+      36,
+      -35
+     ],
+     [
+      0,
+      -54
+     ],
+     [
+      -4,
+      -16
+     ],
+     [
+      -40,
+      -34
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -5,
+      -5
+     ],
+     [
+      31,
+      -23
+     ],
+     [
+      -45,
+      -25
+     ],
+     [
+      -9,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      31,
+      -18
+     ],
+     [
+      -5,
+      -36
+     ],
+     [
+      -9,
+      2
+     ],
+     [
+      -45,
+      -16
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_d__seat0",
+    "car_d__seat1",
+    "car_d__seat2",
+    "car_d__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_d_cream",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "car_d_red": {
+   "atlas": "veh_car_d_red",
+   "frameSize": [
+    280,
+    232
+   ],
+   "anchor": [
+    0.49643,
+    0.72845
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "car_d",
+   "variant": "red",
+   "lengthM": 4.1,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 165,
+   "headTop": -165,
+   "shadow": {
+    "SE": [
+     203,
+     79,
+     26.57
+    ],
+    "NE": [
+     203,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      51,
+      67
+     ],
+     [
+      135,
+      25
+     ],
+     [
+      -51,
+      -67
+     ],
+     [
+      -135,
+      -25
+     ]
+    ],
+    "NE": [
+     [
+      135,
+      -25
+     ],
+     [
+      51,
+      -67
+     ],
+     [
+      -135,
+      25
+     ],
+     [
+      -51,
+      67
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Woody wagon (4.1 m): long cabin with three side windows, wood side panels, a roof rack with two skis and snow (cargoPoint = on the rack). 4 seats (seat 0 = driver). Colour variant: red.",
+   "cargoPoint": {
+    "SE": [
+     -23,
+     -129,
+     false
+    ],
+    "NE": [
+     -23,
+     -106,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -41,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -41,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -123,
+     -54
+    ],
+    "NE": [
+     -73,
+     44
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      67,
+      15
+     ],
+     [
+      121,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      121,
+      -79
+     ],
+     [
+      67,
+      -106
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -123,
+      -79
+     ],
+     [
+      -65,
+      -108
+     ]
+    ],
+    "NE": [
+     [
+      -65,
+      15
+     ],
+     [
+      -123,
+      -14
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      0,
+      -17
+     ],
+     [
+      36,
+      -35
+     ],
+     [
+      -40,
+      -37
+     ],
+     [
+      -4,
+      -55
+     ]
+    ],
+    "NE": [
+     [
+      36,
+      -35
+     ],
+     [
+      0,
+      -54
+     ],
+     [
+      -4,
+      -16
+     ],
+     [
+      -40,
+      -34
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -5,
+      -5
+     ],
+     [
+      31,
+      -23
+     ],
+     [
+      -45,
+      -25
+     ],
+     [
+      -9,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      31,
+      -18
+     ],
+     [
+      -5,
+      -36
+     ],
+     [
+      -9,
+      2
+     ],
+     [
+      -45,
+      -16
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "car_d__seat0",
+    "car_d__seat1",
+    "car_d__seat2",
+    "car_d__seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_car_d_red",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "fire_truck": {
+   "atlas": "veh_fire_truck",
+   "frameSize": [
+    392,
+    300
+   ],
+   "anchor": [
+    0.49235,
+    0.73667
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "siren": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "beacons": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "fire_truck",
+   "variant": null,
+   "lengthM": 6.3,
+   "widthM": 2.1,
+   "heightM": 2.95,
+   "topPx": 217,
+   "headTop": -217,
+   "shadow": {
+    "SE": [
+     312,
+     89,
+     26.57
+    ],
+    "NE": [
+     312,
+     89,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      95,
+      95
+     ],
+     [
+      190,
+      48
+     ],
+     [
+      -95,
+      -95
+     ],
+     [
+      -190,
+      -48
+     ]
+    ],
+    "NE": [
+     [
+      190,
+      -48
+     ],
+     [
+      95,
+      -95
+     ],
+     [
+      -190,
+      48
+     ],
+     [
+      -95,
+      95
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.48,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Fire engine (6.2 m): red cab-forward toy fire truck with a white stripe and gold trim, side lockers with chrome handles, a silver ladder on the roof, a hose reel, a gold bell on the nose and two red beacons on the cab. idle = parked (lights off), move = beacons blinking, siren = standing, blinking. 2 seats in the cab (seat 0 = driver).",
+   "doorPoints": {
+    "SE": [
+     [
+      41,
+      88
+     ],
+     [
+      176,
+      20
+     ]
+    ],
+    "NE": [
+     [
+      176,
+      -20
+     ],
+     [
+      41,
+      -88
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -179,
+     -73
+    ],
+    "NE": [
+     -106,
+     69
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      111,
+      45
+     ],
+     [
+      176,
+      12
+     ]
+    ],
+    "NE": [
+     [
+      176,
+      -99
+     ],
+     [
+      111,
+      -131
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -180,
+      -95
+     ],
+     [
+      -102,
+      -134
+     ]
+    ],
+    "NE": [
+     [
+      -102,
+      46
+     ],
+     [
+      -180,
+      7
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     113,
+     -93
+    ],
+    "NE": [
+     113,
+     -206
+    ]
+   },
+   "hosePoint": {
+    "SE": [
+     -136,
+     -75
+    ],
+    "NE": [
+     -27,
+     7
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      94,
+      19
+     ],
+     [
+      137,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      137,
+      -97
+     ],
+     [
+      94,
+      -118
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      88,
+      31
+     ],
+     [
+      132,
+      9
+     ]
+    ],
+    "NE": [
+     [
+      132,
+      -79
+     ],
+     [
+      88,
+      -101
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "ft_seat0",
+    "ft_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_fire_truck",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "police_car": {
+   "atlas": "veh_police_car",
+   "frameSize": [
+    268,
+    204
+   ],
+   "anchor": [
+    0.5,
+    0.71569
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "siren": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "beacons": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "police_car",
+   "variant": null,
+   "lengthM": 3.9,
+   "widthM": 1.86,
+   "heightM": 2.0,
+   "topPx": 142,
+   "headTop": -142,
+   "shadow": {
+    "SE": [
+     193,
+     79,
+     26.57
+    ],
+    "NE": [
+     193,
+     79,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      46,
+      65
+     ],
+     [
+      130,
+      23
+     ],
+     [
+      -46,
+      -65
+     ],
+     [
+      -130,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      130,
+      -23
+     ],
+     [
+      46,
+      -65
+     ],
+     [
+      -130,
+      23
+     ],
+     [
+      -46,
+      65
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.37,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Police car (3.9 m, the round sedan body): white with a navy skirt and roof, gold pinstripe, the police-box star badge on the door and the nose, a red / blue light bar. idle = parked (lights off), move = driving with the beacons blinking, siren = standing with the beacons blinking. 4 seats.",
+   "doorPoints": {
+    "SE": [
+     [
+      -42,
+      38
+     ],
+     [
+      76,
+      -21
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      21
+     ],
+     [
+      -42,
+      -38
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -119,
+     -52
+    ],
+    "NE": [
+     -69,
+     42
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      62,
+      13
+     ],
+     [
+      116,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      116,
+      -76
+     ],
+     [
+      62,
+      -104
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -118,
+      -77
+     ],
+     [
+      -60,
+      -106
+     ]
+    ],
+    "NE": [
+     [
+      -60,
+      13
+     ],
+     [
+      -118,
+      -16
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     -2,
+     -123
+    ],
+    "NE": [
+     -2,
+     -121
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -1,
+      -18
+     ],
+     [
+      35,
+      -36
+     ],
+     [
+      -41,
+      -38
+     ],
+     [
+      -5,
+      -56
+     ]
+    ],
+    "NE": [
+     [
+      35,
+      -35
+     ],
+     [
+      -1,
+      -53
+     ],
+     [
+      -5,
+      -15
+     ],
+     [
+      -41,
+      -33
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -6,
+      -5
+     ],
+     [
+      30,
+      -24
+     ],
+     [
+      -46,
+      -25
+     ],
+     [
+      -10,
+      -43
+     ]
+    ],
+    "NE": [
+     [
+      30,
+      -17
+     ],
+     [
+      -6,
+      -35
+     ],
+     [
+      -10,
+      3
+     ],
+     [
+      -46,
+      -15
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     3,
+     2,
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0,
+     3,
+     2
+    ]
+   },
+   "seatNames": [
+    "police_seat0",
+    "police_seat1",
+    "police_seat2",
+    "police_seat3"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_police_car",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "retro_bus": {
+   "atlas": "veh_retro_bus",
+   "frameSize": [
+    436,
+    344
+   ],
+   "anchor": [
+    0.49541,
+    0.72674
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "retro_bus",
+   "variant": null,
+   "lengthM": 7.2,
+   "widthM": 2.3,
+   "heightM": 2.95,
+   "topPx": 246,
+   "headTop": -246,
+   "shadow": {
+    "SE": [
+     357,
+     98,
+     26.57
+    ],
+    "NE": [
+     357,
+     98,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      111,
+      107
+     ],
+     [
+      215,
+      55
+     ],
+     [
+      -111,
+      -107
+     ],
+     [
+      -215,
+      -55
+     ]
+    ],
+    "NE": [
+     [
+      215,
+      -55
+     ],
+     [
+      111,
+      -107
+     ],
+     [
+      -215,
+      55
+     ],
+     [
+      -111,
+      107
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.48,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro village bonnet bus (7.0 m, toy-like): mint + cream two-tone with a red belt line, round chrome headlamps on the front fenders, a chrome grille with the Frost Village snowflake badge, white roof with snow + a roof rack with luggage, a blank route board over the windscreen (fxPoints.board), folding door on the right side behind the driver. 9 seats (seat 0 = driver, then 4 rows x 2). Empty: the game draws the driver + passengers at seats and then the over_* overlay. idle = engine shake, move = wheels + bounce.",
+   "cargoPoint": {
+    "SE": [
+     -86,
+     -187,
+     false
+    ],
+    "NE": [
+     -86,
+     -101,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -28,
+      58
+     ],
+     [
+      117,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      117,
+      14
+     ],
+     [
+      -28,
+      -58
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -196,
+     -86
+    ],
+    "NE": [
+     -132,
+     78
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      115,
+      49
+     ],
+     [
+      193,
+      10
+     ]
+    ],
+    "NE": [
+     [
+      193,
+      -105
+     ],
+     [
+      115,
+      -144
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -200,
+      -111
+     ],
+     [
+      -116,
+      -153
+     ]
+    ],
+    "NE": [
+     [
+      -116,
+      48
+     ],
+     [
+      -200,
+      5
+     ]
+    ]
+   },
+   "routeBoardPoint": {
+    "SE": [
+     107,
+     -76
+    ],
+    "NE": [
+     107,
+     -183
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      47,
+      -11
+     ],
+     [
+      -10,
+      -41
+     ],
+     [
+      37,
+      -64
+     ],
+     [
+      -51,
+      -61
+     ],
+     [
+      -4,
+      -85
+     ],
+     [
+      -91,
+      -81
+     ],
+     [
+      -44,
+      -105
+     ],
+     [
+      -132,
+      -102
+     ],
+     [
+      -85,
+      -125
+     ]
+    ],
+    "NE": [
+     [
+      96,
+      -83
+     ],
+     [
+      37,
+      -54
+     ],
+     [
+      -10,
+      -78
+     ],
+     [
+      -4,
+      -34
+     ],
+     [
+      -51,
+      -57
+     ],
+     [
+      -44,
+      -14
+     ],
+     [
+      -91,
+      -37
+     ],
+     [
+      -85,
+      7
+     ],
+     [
+      -132,
+      -17
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      41,
+      1
+     ],
+     [
+      -15,
+      -28
+     ],
+     [
+      32,
+      -52
+     ],
+     [
+      -56,
+      -49
+     ],
+     [
+      -9,
+      -72
+     ],
+     [
+      -97,
+      -69
+     ],
+     [
+      -50,
+      -93
+     ],
+     [
+      -138,
+      -89
+     ],
+     [
+      -91,
+      -113
+     ]
+    ],
+    "NE": [
+     [
+      91,
+      -65
+     ],
+     [
+      32,
+      -36
+     ],
+     [
+      -15,
+      -60
+     ],
+     [
+      -9,
+      -16
+     ],
+     [
+      -56,
+      -40
+     ],
+     [
+      -50,
+      4
+     ],
+     [
+      -97,
+      -19
+     ],
+     [
+      -91,
+      25
+     ],
+     [
+      -138,
+      1
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     8,
+     6,
+     7,
+     4,
+     5,
+     2,
+     3,
+     1,
+     0
+    ],
+    "NE": [
+     0,
+     2,
+     4,
+     1,
+     6,
+     3,
+     8,
+     5,
+     7
+    ]
+   },
+   "seatNames": [
+    "bus_seat0",
+    "bus_seat0R",
+    "bus_seat0L",
+    "bus_seat1R",
+    "bus_seat1L",
+    "bus_seat2R",
+    "bus_seat2L",
+    "bus_seat3R",
+    "bus_seat3L"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_retro_bus",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "truck_cargo": {
+   "atlas": "veh_truck_cargo",
+   "frameSize": [
+    356,
+    256
+   ],
+   "anchor": [
+    0.50281,
+    0.69141
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "truck_cargo",
+   "variant": null,
+   "lengthM": 5.5,
+   "widthM": 2.0,
+   "heightM": 2.4,
+   "topPx": 173,
+   "headTop": -173,
+   "shadow": {
+    "SE": [
+     273,
+     85,
+     26.57
+    ],
+    "NE": [
+     273,
+     85,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      79,
+      85
+     ],
+     [
+      170,
+      40
+     ],
+     [
+      -79,
+      -85
+     ],
+     [
+      -170,
+      -40
+     ]
+    ],
+    "NE": [
+     [
+      170,
+      -40
+     ],
+     [
+      79,
+      -85
+     ],
+     [
+      -170,
+      40
+     ],
+     [
+      -79,
+      85
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.45,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro delivery truck (5.4 m): sunny yellow round cab with a cream roof + snow, chrome grille and round lamps on the front fenders, the Frost Village snowflake on the door, a wooden cargo bed with green stake sides (cargoPoint = middle of the bed, where the game stacks the goods for the neighbour town). 2 seats (seat 0 = driver, right).",
+   "cargoPoint": {
+    "SE": [
+     -59,
+     -79,
+     false
+    ],
+    "NE": [
+     -59,
+     -20,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -27,
+      50
+     ],
+     [
+      100,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      100,
+      14
+     ],
+     [
+      -27,
+      -50
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -155,
+     -65
+    ],
+    "NE": [
+     -91,
+     59
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      88,
+      30
+     ],
+     [
+      155,
+      -4
+     ]
+    ],
+    "NE": [
+     [
+      155,
+      -92
+     ],
+     [
+      88,
+      -125
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -168,
+      -88
+     ],
+     [
+      -91,
+      -127
+     ]
+    ],
+    "NE": [
+     [
+      -91,
+      41
+     ],
+     [
+      -168,
+      2
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      25,
+      -20
+     ],
+     [
+      66,
+      -40
+     ]
+    ],
+    "NE": [
+     [
+      66,
+      -65
+     ],
+     [
+      25,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      19,
+      -7
+     ],
+     [
+      60,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      60,
+      -47
+     ],
+     [
+      19,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "tr_seat0",
+    "tr_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "veh_truck_cargo",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "truck_cargo_chief": {
+   "atlas": "veh_truck_cargo_chief",
+   "frameSize": [
+    356,
+    256
+   ],
+   "anchor": [
+    0.50281,
+    0.69141
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "truck_cargo",
+   "variant": "chief",
+   "lengthM": 5.5,
+   "widthM": 2.0,
+   "heightM": 2.4,
+   "topPx": 173,
+   "headTop": -173,
+   "shadow": {
+    "SE": [
+     273,
+     85,
+     26.57
+    ],
+    "NE": [
+     273,
+     85,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      79,
+      85
+     ],
+     [
+      170,
+      40
+     ],
+     [
+      -79,
+      -85
+     ],
+     [
+      -170,
+      -40
+     ]
+    ],
+    "NE": [
+     [
+      170,
+      -40
+     ],
+     [
+      79,
+      -85
+     ],
+     [
+      -170,
+      40
+     ],
+     [
+      -79,
+      85
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.45,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro delivery truck (5.4 m): sunny yellow round cab with a cream roof + snow, chrome grille and round lamps on the front fenders, the Frost Village snowflake on the door, a wooden cargo bed with green stake sides (cargoPoint = middle of the bed, where the game stacks the goods for the neighbour town). 2 seats (seat 0 = driver, right). truck_cargo with the CHIEF (assets/characters player: white fur parka, brown belt) driving: idle = he smiles and waves out of the cab, move = hands on the wheel. Seat 0 is taken (baked); seats lists the free passenger seat only.",
+   "cargoPoint": {
+    "SE": [
+     -59,
+     -79,
+     false
+    ],
+    "NE": [
+     -59,
+     -20,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -27,
+      50
+     ],
+     [
+      100,
+      -14
+     ]
+    ],
+    "NE": [
+     [
+      100,
+      14
+     ],
+     [
+      -27,
+      -50
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -155,
+     -65
+    ],
+    "NE": [
+     -91,
+     59
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      88,
+      30
+     ],
+     [
+      155,
+      -4
+     ]
+    ],
+    "NE": [
+     [
+      155,
+      -92
+     ],
+     [
+      88,
+      -125
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -168,
+      -88
+     ],
+     [
+      -91,
+      -127
+     ]
+    ],
+    "NE": [
+     [
+      -91,
+      41
+     ],
+     [
+      -168,
+      2
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      66,
+      -40
+     ]
+    ],
+    "NE": [
+     [
+      25,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE"
+    ],
+    "NE": [
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      60,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      19,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     0
+    ],
+    "NE": [
+     0
+    ]
+   },
+   "seatNames": [
+    "tr_seat1"
+   ],
+   "driverSeat": null,
+   "overlay": {
+    "atlas": "veh_truck_cargo_chief",
+    "frameName": "over_{anim}_{dir}_{i}"
+   },
+   "crew": {
+    "driver": "player",
+    "seat": "driver (right front), baked"
+   }
+  }
+ },
+ "sprites": {
+  "bus_depot": {
+   "atlas": "veh_depots",
+   "frame": "bus_depot",
+   "anchor": [
+    0.39948,
+    0.5894
+   ],
+   "kind": "building",
+   "frameSize": [
+    776,
+    604
+   ],
+   "footprint": [
+    543,
+    272
+   ],
+   "footprintM": [
+    6.8,
+    5.2
+   ],
+   "footprintPoly": [
+    [
+     -272,
+     -18
+    ],
+    [
+     36,
+     136
+    ],
+    [
+     272,
+     18
+    ],
+    [
+     -36,
+     -136
+    ]
+   ],
+   "topPx": 335,
+   "front": "-Y",
+   "name": {
+    "ko": "버스 차고지",
+    "en": "Bus depot"
+   },
+   "era": 3,
+   "fxPoints": {
+    "board": [
+     -124,
+     -149
+    ],
+    "clock": [
+     -123,
+     -185
+    ]
+   },
+   "doorPoint": [
+    -145,
+    72
+   ],
+   "doorDir": "NE",
+   "bayPoints": [
+    [
+     -373,
+     112
+    ],
+    [
+     -224,
+     187
+    ]
+   ],
+   "bayDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffPoints": [
+    [
+     -303,
+     -11
+    ]
+   ],
+   "staffDirs": [
+    "S"
+   ],
+   "state": "closed",
+   "states": [
+    "bus_depot",
+    "bus_depot_open"
+   ],
+   "notes": "Bus depot (era 3, 6.8 x 5.2 m): a brick garage with a cream barrel roof under snow, two big arched bay doors on the front (screen down-left) - frame bus_depot = doors closed (mint), bus_depot_open = doors open (lit interior) - a BLANK name board over the bays (fxPoints.board), a clock, lamps. bayPoints / bayDirs = where a bus ANCHOR stands in front of each bay (parked nose-out, heading SW; a bus drives in heading NE and the game can hide it inside while bus_depot_open shows)."
+  },
+  "bus_depot_open": {
+   "atlas": "veh_depots",
+   "frame": "bus_depot_open",
+   "anchor": [
+    0.39948,
+    0.5894
+   ],
+   "kind": "building",
+   "frameSize": [
+    776,
+    604
+   ],
+   "footprint": [
+    543,
+    272
+   ],
+   "footprintM": [
+    6.8,
+    5.2
+   ],
+   "footprintPoly": [
+    [
+     -272,
+     -18
+    ],
+    [
+     36,
+     136
+    ],
+    [
+     272,
+     18
+    ],
+    [
+     -36,
+     -136
+    ]
+   ],
+   "topPx": 335,
+   "front": "-Y",
+   "name": {
+    "ko": "버스 차고지",
+    "en": "Bus depot"
+   },
+   "era": 3,
+   "fxPoints": {
+    "board": [
+     -124,
+     -149
+    ],
+    "clock": [
+     -123,
+     -185
+    ]
+   },
+   "doorPoint": [
+    -145,
+    72
+   ],
+   "doorDir": "NE",
+   "bayPoints": [
+    [
+     -373,
+     112
+    ],
+    [
+     -224,
+     187
+    ]
+   ],
+   "bayDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffPoints": [
+    [
+     -303,
+     -11
+    ]
+   ],
+   "staffDirs": [
+    "S"
+   ],
+   "state": "open",
+   "states": [
+    "bus_depot",
+    "bus_depot_open"
+   ],
+   "notes": "Bus depot (era 3, 6.8 x 5.2 m): a brick garage with a cream barrel roof under snow, two big arched bay doors on the front (screen down-left) - frame bus_depot = doors closed (mint), bus_depot_open = doors open (lit interior) - a BLANK name board over the bays (fxPoints.board), a clock, lamps. bayPoints / bayDirs = where a bus ANCHOR stands in front of each bay (parked nose-out, heading SW; a bus drives in heading NE and the game can hide it inside while bus_depot_open shows)."
+  },
+  "fuel_depot": {
+   "atlas": "veh_depots",
+   "frame": "fuel_depot",
+   "anchor": [
+    0.44444,
+    0.62264
+   ],
+   "kind": "building",
+   "frameSize": [
+    540,
+    424
+   ],
+   "footprint": [
+    416,
+    208
+   ],
+   "footprintM": [
+    5.2,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -208,
+     -14
+    ],
+    [
+     27,
+     104
+    ],
+    [
+     208,
+     14
+    ],
+    [
+     -27,
+     -104
+    ]
+   ],
+   "topPx": 243,
+   "front": "-Y",
+   "name": {
+    "ko": "주유소",
+    "en": "Fuel depot"
+   },
+   "era": 3,
+   "fxPoints": {
+    "board": [
+     -188,
+     -210
+    ]
+   },
+   "stallPoints": [
+    [
+     -114,
+     -2
+    ],
+    [
+     -4,
+     -57
+    ]
+   ],
+   "stallDirs": [
+    "SE",
+    "SE"
+   ],
+   "staffPoints": [
+    [
+     -36,
+     5
+    ]
+   ],
+   "staffDirs": [
+    "S"
+   ],
+   "pumpPoints": [
+    [
+     2,
+     -5
+    ],
+    [
+     52,
+     -30
+    ]
+   ],
+   "notes": "Retro fuel / coal depot (5.2 x 4 m): a red-and-cream canopy on two posts over two round toy fuel pumps (red + green, glowing round heads), an attendant kiosk, a big cylindrical fuel tank on legs, a coal bin with a coal heap and barrels (winter: fuel storehouse). A BLANK round sign on a tall pole (fxPoints.board). stallPoints/stallDirs = where a car anchor stops to refuel (beside each pump, heading SE); pumpPoints = pump nozzles; staffPoints = attendant."
+  },
+  "garage_small": {
+   "atlas": "veh_depots",
+   "frame": "garage_small",
+   "anchor": [
+    0.40036,
+    0.61087
+   ],
+   "kind": "building",
+   "frameSize": [
+    552,
+    460
+   ],
+   "footprint": [
+    353,
+    176
+   ],
+   "footprintM": [
+    3.2,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -176,
+     16
+    ],
+    [
+     -32,
+     88
+    ],
+    [
+     176,
+     -16
+    ],
+    [
+     32,
+     -88
+    ]
+   ],
+   "topPx": 261,
+   "front": "-Y",
+   "name": {
+    "ko": "차고",
+    "en": "Garage"
+   },
+   "era": 3,
+   "doorPoint": [
+    -131,
+    66
+   ],
+   "doorDir": "NE",
+   "stallPoints": [
+    [
+     -235,
+     118
+    ]
+   ],
+   "stallDirs": [
+    "NE"
+   ],
+   "state": "closed",
+   "states": [
+    "garage_small",
+    "garage_small_open"
+   ],
+   "notes": "Small house garage (3.2 x 4.6 m): cream plank walls, a snowy blue gable roof, a panelled up-and-over door - frame garage_small = door closed, garage_small_open = door up, a lit workshop inside. stallPoints/stallDirs = the driveway spot in front of the door where the family car parks (nose to the door, heading NE) - place it next to a house_* at higher house levels."
+  },
+  "garage_small_open": {
+   "atlas": "veh_depots",
+   "frame": "garage_small_open",
+   "anchor": [
+    0.40036,
+    0.61087
+   ],
+   "kind": "building",
+   "frameSize": [
+    552,
+    460
+   ],
+   "footprint": [
+    353,
+    176
+   ],
+   "footprintM": [
+    3.2,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -176,
+     16
+    ],
+    [
+     -32,
+     88
+    ],
+    [
+     176,
+     -16
+    ],
+    [
+     32,
+     -88
+    ]
+   ],
+   "topPx": 261,
+   "front": "-Y",
+   "name": {
+    "ko": "차고",
+    "en": "Garage"
+   },
+   "era": 3,
+   "doorPoint": [
+    -131,
+    66
+   ],
+   "doorDir": "NE",
+   "stallPoints": [
+    [
+     -235,
+     118
+    ]
+   ],
+   "stallDirs": [
+    "NE"
+   ],
+   "state": "open",
+   "states": [
+    "garage_small",
+    "garage_small_open"
+   ],
+   "notes": "Small house garage (3.2 x 4.6 m): cream plank walls, a snowy blue gable roof, a panelled up-and-over door - frame garage_small = door closed, garage_small_open = door up, a lit workshop inside. stallPoints/stallDirs = the driveway spot in front of the door where the family car parks (nose to the door, heading NE) - place it next to a house_* at higher house levels."
+  },
+  "stable_depot": {
+   "atlas": "veh_depots",
+   "frame": "stable_depot",
+   "anchor": [
+    0.40924,
+    0.62214
+   ],
+   "kind": "building",
+   "frameSize": [
+    628,
+    524
+   ],
+   "footprint": [
+    407,
+    204
+   ],
+   "footprintM": [
+    5.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -204,
+     -11
+    ],
+    [
+     23,
+     102
+    ],
+    [
+     204,
+     11
+    ],
+    [
+     -23,
+     -102
+    ]
+   ],
+   "topPx": 305,
+   "front": "-Y",
+   "name": {
+    "ko": "마구간 차고지",
+    "en": "Stable depot"
+   },
+   "era": 2,
+   "fxPoints": {
+    "vane": [
+     27,
+     -258
+    ],
+    "lamp": [
+     192,
+     -91
+    ]
+   },
+   "doorPoint": [
+    -172,
+    27
+   ],
+   "doorDir": "NE",
+   "bayPoints": [
+    [
+     294,
+     143
+    ]
+   ],
+   "bayDirs": [
+    "SE"
+   ],
+   "staffPoints": [
+    [
+     -143,
+     44
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "notes": "Stable depot (era 2, 5 x 4 m): a red barn with white trim and a snowy gable roof with a horse weather vane, two stable half-doors on the front with a friendly horse looking out of one, a hay loft door, and a wide carriage door on the right side (+X, screen down-right) where the sleigh bus / cargo sleigh parks. bayPoints/bayDirs = vehicle anchor in front of the carriage door (parked, heading out SE); staffPoints = stable keeper; fxPoints.vane / lamp."
+  },
+  "bus_stop": {
+   "atlas": "veh_street",
+   "frame": "bus_stop",
+   "anchor": [
+    0.30263,
+    0.56563
+   ],
+   "kind": "decor",
+   "frameSize": [
+    304,
+    320
+   ],
+   "footprint": [
+    208,
+    104
+   ],
+   "footprintM": [
+    3.0,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -104,
+     -16
+    ],
+    [
+     32,
+     52
+    ],
+    [
+     104,
+     16
+    ],
+    [
+     -32,
+     -52
+    ]
+   ],
+   "topPx": 160,
+   "front": "-Y",
+   "name": {
+    "ko": "버스 정류장",
+    "en": "Bus stop"
+   },
+   "era": 3,
+   "fxPoints": {
+    "board": [
+     45,
+     -82
+    ],
+    "timetable": [
+     1,
+     -90
+    ]
+   },
+   "stopPoint": [
+    -77,
+    66
+   ],
+   "stopDir": "NW",
+   "waitPoints": [
+    [
+     16,
+     35
+    ],
+    [
+     -7,
+     24
+    ],
+    [
+     -29,
+     12
+    ]
+   ],
+   "waitDirs": [
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "seatPoints": [
+    [
+     -11,
+     -15
+    ],
+    [
+     25,
+     3
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "boardPoints": [
+    [
+     -41,
+     23
+    ]
+   ],
+   "boardDirs": [
+    "SW"
+   ],
+   "notes": "Retro bus stop: a glass shelter with a mint roof under snow, a bench, a round stop sign on a pole with a BLANK face (fxPoints.board = where the game writes the stop name / number) and a blank timetable board; a litter bin. The road runs along the shelter front (world X); the shelter stands on the FAR side of the road (screen-up), so a stopped bus never hides it. waitPoints = queue toward the sign, seatPoints = bench, stopPoint/stopDir = where the BUS ANCHOR halts (heading NW = right-hand traffic, its door side faces the shelter), boardPoints = curb spot; passengers then walk to the bus doorPoints[1] (far side, hidden behind the bus) and get in."
+  },
+  "bus_stop_y": {
+   "atlas": "veh_street",
+   "frame": "bus_stop_y",
+   "anchor": [
+    0.31842,
+    0.66118
+   ],
+   "kind": "decor",
+   "frameSize": [
+    380,
+    304
+   ],
+   "footprint": [
+    208,
+    104
+   ],
+   "footprintM": [
+    3.0,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     52
+    ],
+    [
+     104,
+     -16
+    ],
+    [
+     32,
+     -52
+    ],
+    [
+     -104,
+     16
+    ]
+   ],
+   "topPx": 180,
+   "front": "-Y",
+   "name": {
+    "ko": "버스 정류장",
+    "en": "Bus stop"
+   },
+   "era": 3,
+   "fxPoints": {
+    "board": [
+     98,
+     -153
+    ],
+    "timetable": [
+     -51,
+     -65
+    ]
+   },
+   "stopPoint": [
+    131,
+    38
+   ],
+   "stopDir": "SW",
+   "waitPoints": [
+    [
+     70,
+     -8
+    ],
+    [
+     48,
+     3
+    ],
+    [
+     25,
+     15
+    ]
+   ],
+   "waitDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -29,
+     6
+    ],
+    [
+     7,
+     -12
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE"
+   ],
+   "boardPoints": [
+    [
+     45,
+     20
+    ]
+   ],
+   "boardDirs": [
+    "SE"
+   ],
+   "notes": "Retro bus stop: a glass shelter with a mint roof under snow, a bench, a round stop sign on a pole with a BLANK face (fxPoints.board = where the game writes the stop name / number) and a blank timetable board; a litter bin. The road runs along the shelter front (world Y, the shelter faces screen down-right); the shelter stands on the FAR side of the road (screen-up), so a stopped bus never hides it. waitPoints = queue toward the sign, seatPoints = bench, stopPoint/stopDir = where the BUS ANCHOR halts (heading SW = right-hand traffic, its door side faces the shelter), boardPoints = curb spot; passengers then walk to the bus doorPoints[1] (far side, hidden behind the bus) and get in."
+  },
+  "sleigh_stop": {
+   "atlas": "veh_street",
+   "frame": "sleigh_stop",
+   "anchor": [
+    0.35366,
+    0.6039
+   ],
+   "kind": "decor",
+   "frameSize": [
+    328,
+    308
+   ],
+   "footprint": [
+    208,
+    104
+   ],
+   "footprintM": [
+    3.0,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -104,
+     -16
+    ],
+    [
+     32,
+     52
+    ],
+    [
+     104,
+     16
+    ],
+    [
+     -32,
+     -52
+    ]
+   ],
+   "topPx": 166,
+   "front": "-Y",
+   "name": {
+    "ko": "썰매 정류장",
+    "en": "Sleigh stop"
+   },
+   "era": 2,
+   "fxPoints": {
+    "lantern": [
+     -57,
+     -133
+    ],
+    "sign": [
+     45,
+     -89
+    ]
+   },
+   "stopPoint": [
+    -81,
+    59
+   ],
+   "stopDir": "NW",
+   "waitPoints": [
+    [
+     20,
+     31
+    ],
+    [
+     -2,
+     19
+    ],
+    [
+     -25,
+     8
+    ]
+   ],
+   "waitDirs": [
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "seatPoints": [
+    [
+     -11,
+     -15
+    ],
+    [
+     25,
+     3
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "boardPoints": [
+    [
+     -59,
+     20
+    ]
+   ],
+   "boardDirs": [
+    "SW"
+   ],
+   "notes": "Sleigh-bus stop (era 2): a small log shelter with a red snowy roof and a bench, a hitching rail, a lantern post and a round sign with a gold horseshoe; a blank timetable board. Road along world X. waitPoints, seatPoints, stopPoint/stopDir (where the HORSE SLEIGH BUS anchor halts, heading NW), boardPoints (coach door)."
+  },
+  "sleigh_stop_y": {
+   "atlas": "veh_street",
+   "frame": "sleigh_stop_y",
+   "anchor": [
+    0.3608,
+    0.64726
+   ],
+   "kind": "decor",
+   "frameSize": [
+    352,
+    292
+   ],
+   "footprint": [
+    208,
+    104
+   ],
+   "footprintM": [
+    3.0,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     52
+    ],
+    [
+     104,
+     -16
+    ],
+    [
+     32,
+     -52
+    ],
+    [
+     -104,
+     16
+    ]
+   ],
+   "topPx": 168,
+   "front": "-Y",
+   "name": {
+    "ko": "썰매 정류장",
+    "en": "Sleigh stop"
+   },
+   "era": 2,
+   "fxPoints": {
+    "lantern": [
+     -66,
+     -71
+    ],
+    "sign": [
+     72,
+     -147
+    ]
+   },
+   "stopPoint": [
+    118,
+    41
+   ],
+   "stopDir": "SW",
+   "waitPoints": [
+    [
+     61,
+     -10
+    ],
+    [
+     38,
+     1
+    ],
+    [
+     16,
+     12
+    ]
+   ],
+   "waitDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -29,
+     6
+    ],
+    [
+     7,
+     -12
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE"
+   ],
+   "boardPoints": [
+    [
+     41,
+     29
+    ]
+   ],
+   "boardDirs": [
+    "SE"
+   ],
+   "notes": "Sleigh-bus stop (era 2): a small log shelter with a red snowy roof and a bench, a hitching rail, a lantern post and a round sign with a gold horseshoe; a blank timetable board. Road along world Y, the shelter faces screen down-right. waitPoints, seatPoints, stopPoint/stopDir (where the HORSE SLEIGH BUS anchor halts, heading SW), boardPoints (coach door)."
+  },
+  "traffic_light": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_green",
+   "anchor": [
+    0.1886,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    228,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     -11,
+     -144
+    ]
+   },
+   "stage": 0,
+   "states": [
+    "traffic_light_green",
+    "traffic_light_yellow",
+    "traffic_light_red"
+   ],
+   "anims": {
+    "cycle": {
+     "frames": [
+      "traffic_light_green",
+      "traffic_light_green",
+      "traffic_light_green",
+      "traffic_light_yellow",
+      "traffic_light_red",
+      "traffic_light_red",
+      "traffic_light_red"
+     ],
+     "fps": 1,
+     "repeat": -1
+    }
+   },
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-left (local -Y). Frames traffic_light_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NE)."
+  },
+  "traffic_light_green": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_green",
+   "anchor": [
+    0.1886,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    228,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     -11,
+     -144
+    ]
+   },
+   "state": "green",
+   "states": [
+    "traffic_light_green",
+    "traffic_light_yellow",
+    "traffic_light_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-left (local -Y). Frames traffic_light_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NE)."
+  },
+  "traffic_light_yellow": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_yellow",
+   "anchor": [
+    0.1886,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    228,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     -11,
+     -144
+    ]
+   },
+   "state": "yellow",
+   "states": [
+    "traffic_light_green",
+    "traffic_light_yellow",
+    "traffic_light_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-left (local -Y). Frames traffic_light_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NE)."
+  },
+  "traffic_light_red": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_red",
+   "anchor": [
+    0.1886,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    228,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     -11,
+     -144
+    ]
+   },
+   "state": "red",
+   "states": [
+    "traffic_light_green",
+    "traffic_light_yellow",
+    "traffic_light_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-left (local -Y). Frames traffic_light_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NE)."
+  },
+  "traffic_light_b": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_b_green",
+   "anchor": [
+    0.14286,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    224,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     11,
+     -144
+    ]
+   },
+   "stage": 0,
+   "states": [
+    "traffic_light_b_green",
+    "traffic_light_b_yellow",
+    "traffic_light_b_red"
+   ],
+   "anims": {
+    "cycle": {
+     "frames": [
+      "traffic_light_b_green",
+      "traffic_light_b_green",
+      "traffic_light_b_green",
+      "traffic_light_b_yellow",
+      "traffic_light_b_red",
+      "traffic_light_b_red",
+      "traffic_light_b_red"
+     ],
+     "fps": 1,
+     "repeat": -1
+    }
+   },
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-right (world +X). Frames traffic_light_b_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NW)."
+  },
+  "traffic_light_b_green": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_b_green",
+   "anchor": [
+    0.14286,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    224,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     11,
+     -144
+    ]
+   },
+   "state": "green",
+   "states": [
+    "traffic_light_b_green",
+    "traffic_light_b_yellow",
+    "traffic_light_b_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-right (world +X). Frames traffic_light_b_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NW)."
+  },
+  "traffic_light_b_yellow": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_b_yellow",
+   "anchor": [
+    0.14286,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    224,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     11,
+     -144
+    ]
+   },
+   "state": "yellow",
+   "states": [
+    "traffic_light_b_green",
+    "traffic_light_b_yellow",
+    "traffic_light_b_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-right (world +X). Frames traffic_light_b_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NW)."
+  },
+  "traffic_light_b_red": {
+   "atlas": "veh_street",
+   "frame": "traffic_light_b_red",
+   "anchor": [
+    0.14286,
+    0.6625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    224,
+    320
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 191,
+   "front": "-Y",
+   "name": {
+    "ko": "신호등",
+    "en": "Traffic light"
+   },
+   "era": 3,
+   "fxPoints": {
+    "lamps": [
+     11,
+     -144
+    ]
+   },
+   "state": "red",
+   "states": [
+    "traffic_light_b_green",
+    "traffic_light_b_yellow",
+    "traffic_light_b_red"
+   ],
+   "notes": "Traffic light: a dark pole with a yellow-framed signal head (3 round lamps with visors) facing screen down-right (world +X). Frames traffic_light_b_green / _yellow / _red share frame + anchor (swap them; anims.cycle = a demo loop green-green-green-yellow-red-red-red). Place one at each corner of an intersection; the head faces the traffic that must obey it (vehicles heading NW)."
+  },
+  "parking_lot_m": {
+   "atlas": "veh_lots",
+   "frame": "parking_lot_m",
+   "anchor": [
+    0.45052,
+    0.5
+   ],
+   "kind": "decal",
+   "frameSize": [
+    1152,
+    548
+   ],
+   "footprint": [
+    996,
+    498
+   ],
+   "footprintM": [
+    11.2,
+    10.8
+   ],
+   "footprintPoly": [
+    [
+     -498,
+     -5
+    ],
+    [
+     9,
+     249
+    ],
+    [
+     498,
+     5
+    ],
+    [
+     -9,
+     -249
+    ]
+   ],
+   "topPx": 253,
+   "front": "-Y",
+   "name": {
+    "ko": "주차장 (중)",
+    "en": "Parking lot M"
+   },
+   "era": 3,
+   "stallSizeM": [
+    2.7,
+    5.2
+   ],
+   "layer": "ground",
+   "stallPoints": [
+    [
+     -294,
+     -36
+    ],
+    [
+     -172,
+     25
+    ],
+    [
+     -50,
+     86
+    ],
+    [
+     72,
+     147
+    ],
+    [
+     -72,
+     -147
+    ],
+    [
+     50,
+     -86
+    ],
+    [
+     172,
+     -25
+    ],
+    [
+     294,
+     36
+    ]
+   ],
+   "stallDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "notes": "Parking lot M (8 stalls, 11.2 x 10.8 m): a GROUND piece (draw on the ground layer under vehicles and people) - asphalt with a light snow dusting, white stall lines, concrete wheel stops, a blue P sign and plowed snow along the back edge(s). stallPoints = the ANCHOR of a parked car (stall centre), stallDirs = the parked heading (nose toward the wheel stop). Cars drive in along the open side."
+  },
+  "parking_lot_s": {
+   "atlas": "veh_lots",
+   "frame": "parking_lot_s",
+   "anchor": [
+    0.43587,
+    0.49769
+   ],
+   "kind": "decal",
+   "frameSize": [
+    920,
+    432
+   ],
+   "footprint": [
+    760,
+    380
+   ],
+   "footprintM": [
+    11.2,
+    5.6
+   ],
+   "footprintPoly": [
+    [
+     -380,
+     -63
+    ],
+    [
+     127,
+     190
+    ],
+    [
+     380,
+     63
+    ],
+    [
+     -127,
+     -190
+    ]
+   ],
+   "topPx": 194,
+   "front": "-Y",
+   "name": {
+    "ko": "주차장 (소)",
+    "en": "Parking lot S"
+   },
+   "era": 3,
+   "stallSizeM": [
+    2.7,
+    5.2
+   ],
+   "layer": "ground",
+   "stallPoints": [
+    [
+     -190,
+     -88
+    ],
+    [
+     -68,
+     -27
+    ],
+    [
+     54,
+     34
+    ],
+    [
+     176,
+     95
+    ]
+   ],
+   "stallDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "notes": "Parking lot S (4 stalls, 11.2 x 5.6 m): a GROUND piece (draw on the ground layer under vehicles and people) - asphalt with a light snow dusting, white stall lines, concrete wheel stops, a blue P sign and plowed snow along the back edge(s). stallPoints = the ANCHOR of a parked car (stall centre), stallDirs = the parked heading (nose toward the wheel stop). Cars drive in along the open side."
+  },
+  "road_sign_arrow": {
+   "atlas": "veh_signs",
+   "frame": "road_sign_arrow",
+   "anchor": [
+    0.24038,
+    0.65179
+   ],
+   "kind": "decor",
+   "frameSize": [
+    208,
+    224
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 126,
+   "front": "-Y",
+   "name": {
+    "ko": "방향 표지판",
+    "en": "Direction sign"
+   },
+   "era": 3,
+   "boardPx": [
+    66,
+    22
+   ],
+   "boardShape": "arrow",
+   "fxPoints": {
+    "board": [
+     0,
+     -110
+    ]
+   },
+   "notes": "Road sign (blank board, faces the camera): green arrow-shaped direction board (place names; pointing screen right - use the mirrored text side only by flipping the text, not the sprite). fxPoints.board = centre of the board face, boardPx = its size in px - the game draws the icon / text (speed limit, school zone, direction, town name ...)."
+  },
+  "road_sign_info": {
+   "atlas": "veh_signs",
+   "frame": "road_sign_info",
+   "anchor": [
+    0.29661,
+    0.65
+   ],
+   "kind": "decor",
+   "frameSize": [
+    236,
+    220
+   ],
+   "footprint": [
+    90,
+    13
+   ],
+   "footprintM": [
+    1.4,
+    0.4
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     6
+    ],
+    [
+     45,
+     6
+    ],
+    [
+     45,
+     -6
+    ],
+    [
+     -45,
+     -6
+    ]
+   ],
+   "topPx": 123,
+   "front": "-Y",
+   "name": {
+    "ko": "안내판",
+    "en": "Info board"
+   },
+   "era": 3,
+   "boardPx": [
+    74,
+    44
+   ],
+   "boardShape": "wide",
+   "fxPoints": {
+    "board": [
+     0,
+     -67
+    ]
+   },
+   "notes": "Road sign (blank board, faces the camera): wide cream information board on two wooden posts with a little snowy roof (town map, bus timetable, welcome). fxPoints.board = centre of the board face, boardPx = its size in px - the game draws the icon / text (speed limit, school zone, direction, town name ...)."
+  },
+  "road_sign_rect": {
+   "atlas": "veh_signs",
+   "frame": "road_sign_rect",
+   "anchor": [
+    0.21,
+    0.66393
+   ],
+   "kind": "decor",
+   "frameSize": [
+    200,
+    244
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 141,
+   "front": "-Y",
+   "name": {
+    "ko": "도로 표지판 (사각)",
+    "en": "Road sign rectangle"
+   },
+   "era": 3,
+   "boardPx": [
+    44,
+    44
+   ],
+   "boardShape": "square",
+   "fxPoints": {
+    "board": [
+     0,
+     -118
+    ]
+   },
+   "notes": "Road sign (blank board, faces the camera): blue rectangle (information: parking, bus, crossing). fxPoints.board = centre of the board face, boardPx = its size in px - the game draws the icon / text (speed limit, school zone, direction, town name ...)."
+  },
+  "road_sign_round": {
+   "atlas": "veh_signs",
+   "frame": "road_sign_round",
+   "anchor": [
+    0.22959,
+    0.66393
+   ],
+   "kind": "decor",
+   "frameSize": [
+    196,
+    244
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 142,
+   "front": "-Y",
+   "name": {
+    "ko": "도로 표지판 (원형)",
+    "en": "Road sign round"
+   },
+   "era": 3,
+   "boardPx": [
+    42,
+    44
+   ],
+   "boardShape": "round",
+   "fxPoints": {
+    "board": [
+     0,
+     -115
+    ]
+   },
+   "notes": "Road sign (blank board, faces the camera): round white board with a red rim (regulation: limits, no entry ...). fxPoints.board = centre of the board face, boardPx = its size in px - the game draws the icon / text (speed limit, school zone, direction, town name ...)."
+  },
+  "road_sign_tri": {
+   "atlas": "veh_signs",
+   "frame": "road_sign_tri",
+   "anchor": [
+    0.25,
+    0.66406
+   ],
+   "kind": "decor",
+   "frameSize": [
+    200,
+    256
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 150,
+   "front": "-Y",
+   "name": {
+    "ko": "도로 표지판 (삼각)",
+    "en": "Road sign triangle"
+   },
+   "era": 3,
+   "boardPx": [
+    46,
+    40
+   ],
+   "boardShape": "triangle",
+   "fxPoints": {
+    "board": [
+     0,
+     -115
+    ]
+   },
+   "notes": "Road sign (blank board, faces the camera): white triangle with a red rim (warning: crossing, children, slippery ...). fxPoints.board = centre of the board face, boardPx = its size in px - the game draws the icon / text (speed limit, school zone, direction, town name ...)."
+  }
+ },
+ "vehicleFamilies": {
+  "car_a": [
+   "car_a_blue",
+   "car_a_red",
+   "car_a_yellow"
+  ],
+  "car_b": [
+   "car_b_blue",
+   "car_b_mint",
+   "car_b_red"
+  ],
+  "car_c": [
+   "car_c_blue",
+   "car_c_orange",
+   "car_c_red"
+  ],
+  "car_d": [
+   "car_d_blue",
+   "car_d_cream",
+   "car_d_red"
+  ],
+  "truck_cargo": [
+   "truck_cargo_chief"
+  ]
+ },
+ "eras": {
+  "2": [
+   "cargo_sleigh",
+   "dog_sled",
+   "horse_sleigh_bus",
+   "steam_wagon",
+   "sleigh_stop",
+   "sleigh_stop_y",
+   "stable_depot"
+  ],
+  "3": [
+   "ambulance",
+   "car_a_blue",
+   "car_a_red",
+   "car_a_yellow",
+   "car_b_blue",
+   "car_b_mint",
+   "car_b_red",
+   "car_c_blue",
+   "car_c_orange",
+   "car_c_red",
+   "car_d_blue",
+   "car_d_cream",
+   "car_d_red",
+   "fire_truck",
+   "police_car",
+   "retro_bus",
+   "truck_cargo",
+   "truck_cargo_chief",
+   "bus_depot",
+   "bus_stop",
+   "bus_stop_y",
+   "fuel_depot",
+   "garage_small",
+   "parking_lot_m",
+   "parking_lot_s",
+   "road_sign_arrow",
+   "road_sign_info",
+   "road_sign_rect",
+   "road_sign_round",
+   "road_sign_tri",
+   "traffic_light",
+   "traffic_light_b"
+  ]
+ }
+}

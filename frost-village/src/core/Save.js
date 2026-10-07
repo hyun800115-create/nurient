@@ -169,9 +169,10 @@ export function sanitizeSave(raw) {
   // (v3.5) the collection piles, the dog's affection
   const lb = isObj(raw.labour) ? raw.labour : {};
   s.labour = { piles: {} };
-  if (isObj(lb.piles)) for (const k of PILE_IDS) if (k in lb.piles) s.labour.piles[k] = count(lb.piles[k], 200);
+  if (isObj(lb.piles)) for (const k of PILE_IDS) if (k in lb.piles) s.labour.piles[k] = count(lb.piles[k], 500);
   const dg = isObj(raw.dog) ? raw.dog : {};
-  s.dog = { love: Math.max(0, Math.min(100, num(dg.love, 0))), gifts: count(dg.gifts, 1e6), tricks: count(dg.tricks, 1e6) };
+  s.dog = { love: Math.max(0, Math.min(100, num(dg.love, 0))), gifts: count(dg.gifts, 1e6), tricks: count(dg.tricks, 1e6), treats: count(dg.treats, 3), cd: {} };
+  if (isObj(dg.cd)) for (const k of ['treat', 'play', 'pet']) if (k in dg.cd) s.dog.cd[k] = Math.max(0, Math.min(3600, num(dg.cd[k], 0)));
   return s;
 }
 

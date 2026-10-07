@@ -107,8 +107,11 @@ export class UI extends Phaser.Scene {
     // ---- input (joystick anywhere that is not a button; a second finger turns it into a pinch zoom)
     this.input.on('pointerdown', (p, over) => {
       Audio.resume();    // iOS: bring sound back after a call / app switch (needs a user gesture)
-      if (this.panelOpen || this.buildOpen || (over && over.length)) return;
-      this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
+      // (v3.5 review) a finger landing on the dog bar may still be the start of a drag: the joystick starts
+      // too, and the button only fires when the finger lifts without moving (dogBarRelease)
+      const onBar = over && over.length && over.every((o) => o.isDogBtn);
+      if (this.panelOpen || this.buildOpen || (over && over.length && !onBar)) return;
+      if (!onBar) this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
       if (other && !this.pinch) {
         // two fingers: zoom gesture (the joystick stops)
@@ -132,6 +135,7 @@ export class UI extends Phaser.Scene {
     });
     // lifting the steering finger while another finger is down hands the joystick to that finger
     const up = (p) => {
+      this.dogBarRelease(p);
       // a short tap without moving: villagers / pets react
       const tp = this.taps[p.id];
       delete this.taps[p.id];
@@ -277,43 +281,62 @@ export class UI extends Phaser.Scene {
 
   // ---------------------------------------------------------------- (v3.5) dog bar
   buildDogBar() {
+    // (v3.5 review) phone-sized: 88 px buttons (≈ 47 CSS px), labels inside the panel, empty hearts with contrast
     const c = this.add.container(0, 0).setVisible(false).setDepth(30);
-    const bg = panel(this, 0, 0, 'ui_panel', 268, 132).setOrigin(0.5).setAlpha(0.96);
+    const BW = 336, BH = 204;
+    const bg = panel(this, 0, 0, 'ui_panel', BW, BH).setOrigin(0.5).setAlpha(0.97);
     c.add(bg);
     this.dogBg = bg;
+    this.dogBarH = BH;
     // affection: 5 hearts (a partly filled heart is the full one cropped over the empty one)
     this.dogHearts = [];
     for (let i = 0; i < 5; i++) {
-      const x = -68 + i * 34;
-      const e = Assets.image(this, x, -40, Assets.pick('ui_icon_heart_empty', 'ui_icon_lock')).setOrigin(0.5);
-      e.setScale(32 / Math.max(1, e.frame.realWidth));
-      const f = Assets.image(this, x, -40, Assets.pick('ui_icon_heart_full', 'ui_icon_check')).setOrigin(0.5);
-      f.setScale(32 / Math.max(1, f.frame.realWidth));
+      const x = -84 + i * 42;
+      const e = Assets.image(this, x, -70, Assets.pick('ui_icon_heart_empty', 'ui_icon_lock')).setOrigin(0.5);
+      e.setScale(36 / Math.max(1, e.frame.realWidth));
+      e.setTint(0x9aa4b8);
+      const f = Assets.image(this, x, -70, Assets.pick('ui_icon_heart_full', 'ui_icon_check')).setOrigin(0.5);
+      f.setScale(36 / Math.max(1, f.frame.realWidth));
       c.add([e, f]);
       this.dogHearts.push({ e, f });
     }
     this.dogBtns = [];
     const defs = [['treat', 'ui_icon_treat'], ['play', 'ui_icon_play'], ['pet', 'ui_icon_pet']];
     defs.forEach(([kind, icon], i) => {
-      const x = -84 + i * 84, y = 18;
+      const x = -104 + i * 104, y = -4;
       const b = this.add.container(x, y);
       const g = this.add.graphics();
-      g.fillStyle(0x1f3354, 0.22); g.fillCircle(0, 4, 34);
-      g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 34);
-      g.lineStyle(4, 0xffd27a, 1); g.strokeCircle(0, 0, 32);
+      g.fillStyle(0x1f3354, 0.22); g.fillCircle(0, 5, 44);
+      g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 44);
+      g.lineStyle(5, 0xffd27a, 1); g.strokeCircle(0, 0, 41);
       const ic = Assets.image(this, 0, -2, Assets.pick(icon, 'ui_icon_worker')).setOrigin(0.5);
-      ic.setScale(56 / Math.max(1, ic.frame.realWidth));
+      ic.setScale(70 / Math.max(1, ic.frame.realWidth));
       const cdG = this.add.graphics();
-      const lab = this.add.text(0, 44, t(kind === 'treat' ? 'dogTreat' : kind === 'play' ? 'dogPlay' : 'dogPet'), TXT(17, '#2b2f3a', '#ffffff', 4, '900')).setOrigin(0.5);
+      const lab = this.add.text(0, 66, t(kind === 'treat' ? 'dogTreat' : kind === 'play' ? 'dogPlay' : 'dogPet'), TXT(25, '#2b2f3a', '#ffffff', 5, '900')).setOrigin(0.5);
       b.add([g, ic, cdG, lab]);
-      b.setSize(76, 76);
-      b.setInteractive({ useHandCursor: true });
-      b.on('pointerdown', () => { this.tweens.add({ targets: b, scale: 0.86, duration: 70, yoyo: true }); if (this.gs.dog) this.gs.dog.command(kind); });
+      // the whole column (button + its name) is the touch target
+      // (a container's hit area is measured from its top-left: size 100 x 150 -> local x -50..50, y -50..90)
+      b.setSize(100, 150);
+      b.setInteractive(new Phaser.Geom.Rectangle(0, 25, 100, 140), Phaser.Geom.Rectangle.Contains);
+      // (v3.5 review) a press only counts when the finger lifts without dragging: a drag that starts on
+      // the bar still moves the chief (UI pointer handlers below)
+      b.on('pointerdown', (ptr) => { this.barPress = { id: ptr.id, x: ptr.x, y: ptr.y, t: this.time.now, kind, b }; this.tweens.add({ targets: b, scale: 0.88, duration: 70, yoyo: true }); });
+      b.isDogBtn = true;
       c.add(b);
       this.dogBtns.push({ kind, b, ic, cdG, lab });
     });
     this.dogBar = c;
     this.dogBarOn = false;
+  }
+
+  /** (v3.5 review) the dog-bar press ends: a tap fires the button, a drag was the joystick */
+  dogBarRelease(p) {
+    const bp = this.barPress;
+    if (!bp || bp.id !== p.id) return;
+    this.barPress = null;
+    const moved = Math.hypot(p.x - bp.x, p.y - bp.y) > 22 * View.k;
+    if (moved || this.time.now - bp.t > 900 || !this.dogBarOn) return;
+    if (this.gs.dog) this.gs.dog.command(bp.kind);
   }
 
   updateDogBar(dt) {
@@ -328,6 +351,14 @@ export class UI extends Phaser.Scene {
       // a gentle wiggle while the dog is on its way
       const wig = d.mode === 'come' ? Math.sin(this.time.now / 70) * 0.18 : 0;
       this.whistleBtn.icon.setRotation(wig);
+      // (v3.5 review) until the whistle was used once: it pulses, and a one-time tip says what it does
+      const seen = this.gs.progress && this.gs.progress.seen;
+      if (seen && !seen.whistle) {
+        this.whistleHintT = (this.whistleHintT || 0) + dt;
+        const k = 1 + Math.max(0, Math.sin(this.time.now / 220)) * 0.12;
+        this.whistleBtn.setScale(k);
+        if (!this.whistleTipShown && this.whistleHintT > 4 && !this.panelOpen) { this.whistleTipShown = true; this.toast(t('dogWhistleHint'), 4000); }
+      } else if (this.whistleBtn.scale !== 1) this.whistleBtn.setScale(1);
     }
     // (not over the whole-village view: the dog is a dot there)
     const on = !!(d && d.barVisible() && !this.gs.overview && (this.gs.zoomCur || 1) >= 0.7);
@@ -340,11 +371,15 @@ export class UI extends Phaser.Scene {
     if (!on) return;
     const r = d.r;
     const sp = this.worldToScreen(r.x, r.y + (r.headTop || -40));
-    // (above the chief's head too when he stands by the dog, with room for the hearts that rise between them)
+    // (above the chief's head too when he stands by the dog, with room for the hearts that rise between them;
+    //  the gap follows the zoom so the bar does not float far away when zoomed out)
     const p = this.gs.player;
-    let top = sp.y - 92;
-    if (p && Math.abs(p.x - r.x) < 160 && Math.abs(p.y - r.y) < 90) { const pp = this.worldToScreen(p.x, p.y + p.headTop); top = Math.min(top, pp.y - 128); sp.x = (sp.x + pp.x) / 2; }
-    const x = Phaser.Math.Clamp(sp.x, 150, this.W - 150), y = Phaser.Math.Clamp(top, 200, this.H - 260);
+    const half = (this.dogBarH || 204) / 2, zk = (this.gs.cameras.main.zoom || 1) / View.k;
+    let top = sp.y - half - 10 - 8 * zk;
+    if (p && Math.abs(p.x - r.x) < 160 && Math.abs(p.y - r.y) < 90) { const pp = this.worldToScreen(p.x, p.y + p.headTop); top = Math.min(top, pp.y - half - 12 - 26 * zk); sp.x = (sp.x + pp.x) / 2; }
+    // never over the guide text / the population badge at the top, nor the buttons at the bottom
+    const minY = 62 + View.safeTop + 152 + 26 + half, maxY = this.H - 250 - View.safeBottom - half * 0.4;
+    const x = Phaser.Math.Clamp(sp.x, 180, this.W - 180), y = Phaser.Math.Clamp(top, minY, Math.max(minY, maxY));
     this.dogBar.setPosition(this.dogBar.x ? this.dogBar.x + (x - this.dogBar.x) * Math.min(1, dt * 12) : x, this.dogBar.y ? this.dogBar.y + (y - this.dogBar.y) * Math.min(1, dt * 12) : y);
     const love = d.hearts;
     for (let i = 0; i < 5; i++) {
@@ -362,7 +397,7 @@ export class UI extends Phaser.Scene {
       q.cdG.clear();
       if (cd > 0) {
         q.cdG.fillStyle(0x1f3354, 0.35);
-        q.cdG.slice(0, 0, 33, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (cd / mx), false);
+        q.cdG.slice(0, 0, 42, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (cd / mx), false);
         q.cdG.fillPath();
       }
     }
@@ -415,14 +450,14 @@ export class UI extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- messages
-  toast(msg) {
+  toast(msg, hold) {
     this.toastText.setText(msg);
     this.toastBg.setSize(Math.max(260, this.toastText.width + 70), 64);
     const b = this.toastBox;
     this.tweens.killTweensOf(b);
     b.setVisible(true).setAlpha(1).setScale(0.7);
     this.tweens.add({ targets: b, scale: 1, duration: 200, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: b, alpha: 0, delay: 1500, duration: 350, onComplete: () => b.setVisible(false) });
+    this.tweens.add({ targets: b, alpha: 0, delay: hold || 1500, duration: 350, onComplete: () => b.setVisible(false) });
   }
 
   banner(msg, sub) {

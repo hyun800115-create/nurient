@@ -140,9 +140,9 @@ def ship_bell(prime_m: float, r, t60: float = 2.4, vel: float = 1.0, dur: float 
     tierce (bright, happy), quint, nominal + slow shimmer pair, upper partials; hard clapper 'tink'."""
     f = float(S.midi_hz(prime_m))
     n = n_of(dur if dur else t60)
-    parts = [(0.5, 0.10, t60 * 0.9), (1.0, 0.28, t60 * 0.7), (1.0042, 0.1, t60 * 0.65), (1.25, 0.2, t60 * 0.45),
-             (1.5, 0.14, t60 * 0.4), (2.0, 1.0, t60 * 0.55), (2.0061, 0.32, t60 * 0.5), (2.61, 0.16, t60 * 0.22),
-             (3.0, 0.22, t60 * 0.2), (4.07, 0.1, t60 * 0.1), (5.25, 0.05, t60 * 0.06)]
+    parts = [(0.5, 0.06, t60 * 0.9), (1.0, 0.24, t60 * 0.7), (1.0042, 0.09, t60 * 0.65), (1.25, 0.18, t60 * 0.45),
+             (1.5, 0.14, t60 * 0.4), (2.0, 1.0, t60 * 0.55), (2.0061, 0.32, t60 * 0.5), (2.61, 0.22, t60 * 0.24),
+             (3.0, 0.32, t60 * 0.22), (4.07, 0.17, t60 * 0.12), (5.25, 0.08, t60 * 0.07), (6.4, 0.04, t60 * 0.04)]
     y = S.modal(f, n, parts, r, fmax=10000.0, attack=0.0006)
     k = n_of(0.012)
     y[:k] += burst(r, 0.012, 4200, 1.2, tau=0.0015)[:k] * 0.35
@@ -153,8 +153,9 @@ def handbell(m: float, r, vel: float = 1.0, t60: float = 1.1) -> np.ndarray:
     """Brass hand bell: fundamental + strong 12th (x3), shimmer pair, bright clapper click (as sfx3)."""
     f = float(S.midi_hz(m))
     n = n_of(t60)
-    modes = [(1.0, 1.0, t60), (1.0031, 0.35, t60 * 0.9), (2.0, 0.08, t60 * 0.45), (3.0, 0.45, t60 * 0.4),
-             (4.2, 0.13, t60 * 0.2), (5.4, 0.08, t60 * 0.12), (6.8, 0.04, 0.07)]
+    modes = [(1.0, 1.0, t60), (1.0031, 0.35, t60 * 0.9), (2.0, 0.08, t60 * 0.45), (2.42, 0.12, t60 * 0.25),
+             (3.0, 0.45, t60 * 0.4), (3.63, 0.08, t60 * 0.18), (4.2, 0.13, t60 * 0.2), (5.4, 0.08, t60 * 0.12),
+             (6.8, 0.04, 0.07)]
     y = S.modal(f, n, modes, r, fmax=11000.0, attack=0.0004)
     k = n_of(0.006)
     y[:k] += burst(r, 0.006, 5200, 1.0, tau=0.0008) * 0.5
@@ -177,7 +178,7 @@ def gull_note(r, f_base: float, dur: float, contour, vowel, amp_pts=None, rasp: 
     pts = amp_pts or [(0, 0), (0.012, 0.85), (0.05, 1.0), (dur * 0.55, 0.9), (dur * 0.85, 0.55), (dur, 0)]
     amp = S.env_pts(pts, n)
     y = I.formant_voice(f0, amp, [(F1, 900.0, 1.0), (F2, 1300.0, 0.55), (5200.0, 1800.0, 0.08)], r,
-                        breath=0.05, tilt=0.55, fmax=9500.0, jitter=0.012)
+                        breath=0.06, tilt=0.55, fmax=9500.0, jitter=0.02)
     if rasp > 0:                                   # rough flutter (~70-110 Hz, jittery) + formant noise
         fl = 85.0 * (1 + 0.15 * S.lp(r.standard_normal(n), 30.0, order=2) / 0.05)
         ph = S.phase(np.clip(fl, 40, 160), n)
@@ -199,11 +200,11 @@ def gull_call(r, variant: int, f_base: float | None = None, rasp: float | None =
         fb = f_base or 1180.0
         y = gull_note(r, fb, 0.56, [(0.0, 0.8), (0.1, 1.12), (0.45, 1.07), (0.8, 0.88), (1.0, 0.72)],
                       [(0.0, 2800, 4400), (0.2, 2400, 4000), (0.55, 1900, 3200), (1.0, 1300, 2400)],
-                      rasp=0.2 if rasp is None else rasp)
+                      rasp=0.28 if rasp is None else rasp)
         m.add(0.0, y, 1.0)
     elif variant == 2:                             # long call: 'kee-aaa' then 'kyow kyow kyow kyow'
         fb = f_base or 1100.0
-        rs = 0.24 if rasp is None else rasp
+        rs = 0.3 if rasp is None else rasp
         m.add(0.0, gull_note(r, fb * 1.06, 0.34, [(0.0, 0.82), (0.12, 1.12), (0.6, 1.08), (1.0, 0.9)],
                              [(0.0, 2800, 4400), (0.3, 2300, 3800), (1.0, 1900, 3200)], rasp=rs), 1.0)
         t = 0.44
@@ -228,8 +229,8 @@ def gull_call(r, variant: int, f_base: float | None = None, rasp: float | None =
     return norm(y)
 
 
-def creak(r, dur: float, rate_pts, res=((480, 3.5, 1.0), (1080, 4.5, 0.65), (2250, 5.0, 0.28)),
-          env_pts=None, jitter: float = 0.18) -> np.ndarray:
+def creak(r, dur: float, rate_pts, res=((420, 6.0, 1.0), (950, 7.0, 0.7), (1900, 8.0, 0.3)),
+          env_pts=None, jitter: float = 0.1) -> np.ndarray:
     """Stick-slip creak (rope on a wooden bollard, hull against a fender): an irregular pulse train whose
     rate follows rate_pts [(t, Hz)], each slip exciting the wood resonances ``res`` [(Hz, Q, gain)]."""
     n = n_of(dur)
@@ -240,9 +241,9 @@ def creak(r, dur: float, rate_pts, res=((480, 3.5, 1.0), (1080, 4.5, 0.65), (225
     idx = np.nonzero(np.diff(np.floor(ph)) > 0)[0] + 1
     exc = np.zeros(n)
     exc[idx] = r.uniform(0.45, 1.0, len(idx)) * np.sign(r.standard_normal(len(idx)))
-    exc = exc + 0.04 * r.standard_normal(n) * (exc != 0)
-    exc = S.lp(exc, 6000)
+    exc = S.lp(exc, 3500)
     y = sum(g * S.bp(exc, f, q) for f, q, g in res)
+    y = S.lp(y, 2800, order=2)                     # woody, not fizzy
     env = S.env_pts(env_pts or [(0, 0), (dur * 0.1, 1.0), (dur * 0.75, 0.85), (dur, 0)], n)
     return y * env
 
@@ -253,7 +254,7 @@ def lap(r, strength: float = 1.0) -> np.ndarray:
     d = 0.9
     n = n_of(d)
     sl = S.tv_filter(r.standard_normal(n), "bp", 500 + 600 * np.exp(-tax(n) / 0.12), 0.9, block=64)
-    sl = S.lp(sl, 2600) * S.env_pts([(0, 0), (0.06, 0.8), (0.14, 1.0), (0.4, 0.35), (d, 0)], n)
+    sl = S.lp(sl, 2000) * S.env_pts([(0, 0), (0.1, 0.7), (0.2, 1.0), (0.45, 0.35), (d, 0)], n)
     m = Mono(d + 0.3)
     m.add(0.0, unit(sl) * 0.12, 1.0)
     hol = S.bp(r.standard_normal(n_of(0.3)), r.uniform(190, 260), 5.0) * S.env_exp(n_of(0.3), 0.06, 0.012)
@@ -289,7 +290,7 @@ def sfx_ship_horn_big():
     k = n_of(dur + 0.3)                            # steam / air hiss: puff at the onset, faint while blowing
     air = S.bp(r.standard_normal(k), 1500, 0.7) * S.env_pts([(0, 0), (0.04, 1.0), (0.2, 0.35), (dur, 0.25),
                                                                 (dur + 0.3, 0)], k)
-    y[:k] += unit(air) * 0.025
+    y[:k] += unit(air) * 0.014
     y = delay_line(y, 0.46, 0.24, 1100)            # slap-back off the hills / warehouses
     y = delay_line(y, 0.95, 0.09, 800)
     y = I.verb_mono(y, rt60=2.6, mix=0.24, tail=1.2, predelay=0.03, size=1.0, hi_cut=3500)
@@ -348,7 +349,7 @@ def winch(r, dur: float, speed_pts, load: float = 1.0) -> np.ndarray:
     fr = np.maximum(np.interp(t, [p[0] for p in speed_pts], [p[1] for p in speed_pts]), 1.0)
     run = np.clip((fr - 1.0) / 8.0, 0, 1)
     hum = S.additive(fr * 2, n, [(h, 1.0 / (1 + ((h * 60 - 300) / 260.0) ** 2)) for h in range(1, 16)], fmax=4000)
-    whine = 0.55 * S.sine(fr * 9.0, n) + 0.3 * S.sine(fr * 13.0, n)
+    whine = 0.55 * S.sine(fr * 24.0, n) + 0.3 * S.sine(fr * 37.0, n) + 0.4 * S.sine(fr * 6.0, n)
     brush = S.bp(r.standard_normal(n), 2600, 1.0) * (0.6 + 0.4 * np.sin(TAU * S.phase(fr * 2, n)))
     rumble = S.lp(r.standard_normal(n), 220, order=2)
     y = unit(hum) * 0.5 + whine * 0.32 + unit(brush) * 0.05 + unit(rumble) * 0.18 * load
@@ -358,7 +359,7 @@ def winch(r, dur: float, speed_pts, load: float = 1.0) -> np.ndarray:
     for i in idx:
         k = min(n - i, n_of(0.004))
         tick[i:i + k] += burst(r, 0.004, 3200, 1.6, tau=0.0006)[:k]
-    y = y + tick * 0.22
+    y = y + tick * 0.1
     return y * run
 
 
@@ -369,7 +370,7 @@ def sfx_crane():
     jingle + clank, frame 5 = dropFrame at 1.25 s), the empty hook rewinds (frames 6-7)."""
     r = S.rng(9400)
     m = Mono(2.2)
-    m.add(0.0, steel_clank(r, 360, 1.0, 0.3), 0.55)                                   # latch
+    m.add(0.0, steel_clank(r, 360, 1.0, 0.3), 0.8)                                    # latch
     m.add(0.03, steel_clank(r, 520, 0.6, 0.18), 0.25)
     up = winch(r, 0.78, [(0, 0), (0.1, 26), (0.5, 30), (0.62, 26), (0.74, 4), (0.78, 0)], 1.0)
     m.add(0.05, up, 0.5)
@@ -379,8 +380,8 @@ def sfx_crane():
     m.add(0.78, winch(r, 0.3, [(0, 0), (0.06, 12), (0.24, 14), (0.3, 0)], 0.5), 0.3)  # slew motor
     dn = winch(r, 0.32, [(0, 0), (0.06, 22), (0.22, 18), (0.3, 6), (0.32, 0)], 0.6)
     m.add(0.97, dn, 0.42)                                                             # lower
-    m.add(1.25, crate_thunk(r, 1.0), 0.7)                                             # set down
-    m.add(1.262, steel_clank(r, 300, 0.8, 0.28), 0.38)
+    m.add(1.25, crate_thunk(r, 1.0), 0.9)                                             # set down
+    m.add(1.262, steel_clank(r, 300, 0.8, 0.28), 0.55)
     for k in range(5):                                                                # chain slack jingle
         m.add(1.29 + 0.032 * k + r.uniform(0, 0.012), coin_hit(r, r.uniform(1900, 2900), 0.08), 0.07 * (1 - 0.12 * k))
     rw = winch(r, 0.55, [(0, 0), (0.08, 30), (0.38, 33), (0.5, 8), (0.55, 0)], 0.35)
@@ -397,17 +398,19 @@ def sfx_rope_creak():
     (slip rate rising), a short slack 'crk-crk', and a faint low groan of the pier timbers."""
     r = S.rng(9500)
     m = Mono(1.6)
-    a = creak(r, 0.85, [(0, 22), (0.3, 48), (0.65, 72), (0.85, 60)],
+    m.add(0.0, blip(118, 72, 0.22, 0.03, 0.05, attack=0.002), 0.3)           # hull nudges the fender
+    m.add(0.0, burst(r, 0.02, 700, 0.9, tau=0.006), 0.12)
+    a = creak(r, 0.85, [(0, 32), (0.3, 66), (0.65, 118), (0.85, 92)],
               env_pts=[(0, 0), (0.12, 0.7), (0.45, 1.0), (0.75, 0.8), (0.85, 0)])
     m.add(0.0, norm(a), 0.8)
-    b = creak(r, 0.26, [(0, 55), (0.26, 30)], res=((560, 3.5, 1.0), (1250, 4.5, 0.6), (2500, 5.0, 0.25)),
+    b = creak(r, 0.26, [(0, 85), (0.26, 42)], res=((520, 6.0, 1.0), (1150, 7.0, 0.6), (2300, 8.0, 0.25)),
               env_pts=[(0, 0), (0.03, 1.0), (0.1, 0.4), (0.13, 0.9), (0.26, 0)])
     m.add(0.98, norm(b), 0.55)
     g = creak(r, 1.1, [(0, 9), (0.5, 14), (1.1, 8)], res=((140, 2.5, 1.0), (330, 3.0, 0.6)), jitter=0.3)
     m.add(0.1, norm(g), 0.16)
     k = n_of(0.9)                                   # rope fibres stretching: soft high rustle
     fib = S.bp(r.standard_normal(k), 3800, 1.2) * S.env_pts([(0, 0), (0.3, 0.6), (0.7, 1.0), (0.9, 0)], k)
-    m.add(0.0, unit(fib) * 0.02, 1.0)
+    m.add(0.0, unit(fib) * 0.01, 1.0)
     y = S.hp(m.x, 80, order=2)
     y = room(y, 0.5, 0.1, 0.15, 0.7)
     return tail_fade(y, 0.12)
@@ -454,25 +457,26 @@ def _harbor_events(seed: int, nominal: float):
     """Length-independent event layer of amb_harbor (memoised): laps, gulls, bells, tinks, creaks."""
     r = S.rng(seed + 1)
     buf = np.zeros(n_of(nominal + 5.0))
-    # water lapping on the pilings: clusters around each swell crest (~every 4.4 s), slightly irregular
-    crests = np.arange(0.6, nominal, nominal / 5.0)
-    for c in crests:
-        for j in range(int(r.integers(2, 4))):
-            place(buf, c + j * r.uniform(0.35, 0.6) + r.uniform(-0.1, 0.1), lap(r, r.uniform(0.6, 1.0)), 0.55)
+    # water lapping on the pilings: a gentle lap every ~1-2 s, stronger around each swell crest (5 per loop)
+    t = 0.15
+    while t < nominal:
+        crest = 0.5 + 0.5 * np.cos(TAU * 5 * (t - 0.6) / nominal)
+        place(buf, t, lap(r, r.uniform(0.45, 0.75) * (0.55 + 0.45 * crest)), 0.34)
+        t += r.uniform(0.75, 1.5) * (1.25 - 0.4 * crest)
     # gulls: one fairly close, the rest far over the water
     gulls = ((1.4, 2, 1.0, 0.9, 5200), (5.9, 1, 1.06, 0.35, 2600), (9.3, 3, 0.95, 0.42, 3400),
              (12.6, 1, 0.92, 0.6, 4200), (16.2, 2, 1.1, 0.3, 2400), (19.4, 3, 1.03, 0.25, 2200))
     for t0, v, pitch, g, lpf in gulls:
         y = gull_call(r, v, f_base={1: 1180.0, 2: 1100.0, 3: 1320.0}[v] * pitch)
         y = far(y, lpf, mix=0.35 if g > 0.8 else 0.65)
-        place(buf, t0, norm(y), 0.16 * g)
+        place(buf, t0, norm(y), 0.2 * g)
     # bell buoy rocking out at the harbour mouth (strike F5 / C6 - in key), and a far ship's bell pair
     for t0, pm, v in ((3.1, 65, 1.0), (4.15, 72, 0.7), (11.0, 65, 0.85), (17.6, 72, 0.8), (18.5, 65, 0.6)):
         b = far(ship_bell(pm, r, t60=3.2, vel=v), 3000, mix=0.7, rt60=2.8)
-        place(buf, t0, norm(b), 0.05 * v)
+        place(buf, t0, norm(b), 0.085 * v)
     for t0 in (14.2, 14.43):
         b = far(ship_bell(69, r, t60=2.0, vel=0.8), 2600, mix=0.75, rt60=2.6)
-        place(buf, t0, norm(b), 0.022)
+        place(buf, t0, norm(b), 0.04)
     # rigging: halyards tapping aluminium masts of the moored sailboats ('tink ... tink-tink')
     for t0 in (2.2, 2.42, 7.8, 8.05, 8.2, 13.3, 20.1, 20.3):
         tk = coin_hit(r, r.uniform(2300, 3100), 0.25) * r.uniform(0.5, 1.0)
@@ -500,8 +504,11 @@ def render_harbor_amb(seed: int = 9700, loop_samples=None, nominal: float = 22.0
     breeze = unit(circ_tv(S.noise_fft(L, r, lambda f: np.exp(-0.5 * (np.log2(f / 600.0) / 1.5) ** 2)), "bp",
                           380 + 420 * breeze_c, 0.8))
     hiss = unit(S.filt_circ(S.noise_fft(L, r), "hp", 3500, order=2))
-    bed = low * 0.05 * (0.55 + 0.45 * swell) + wash * 0.03 * (0.35 + 0.65 * swell ** 1.4) + \
-        breeze * 0.012 * (0.3 + 0.7 * breeze_c) + hiss * 0.003 * (0.4 + 0.6 * swell)
+    slosh_c = S.periodic_curve(L, r, int(nominal * 0.6), int(nominal * 1.6), slope=0.5)   # water moving round
+    slosh = unit(S.noise_fft(L, r, lambda f: np.exp(-0.5 * (np.log2(f / 520.0) / 0.9) ** 2)))  # the pilings
+    bed = low * 0.07 * (0.55 + 0.45 * swell) + wash * 0.045 * (0.35 + 0.65 * swell ** 1.4) + \
+        slosh * 0.03 * (0.15 + 0.85 * slosh_c ** 2) * (0.6 + 0.4 * swell) + \
+        breeze * 0.014 * (0.3 + 0.7 * breeze_c) + hiss * 0.003 * (0.4 + 0.6 * swell)
     ev = _memo(("harbor", seed, nominal), lambda: _harbor_events(seed, nominal))
     y = bed + fold1(ev, L)
     y = S.filt_circ(y, "hp", 35, order=2)

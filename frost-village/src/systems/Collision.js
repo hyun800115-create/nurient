@@ -62,6 +62,24 @@ export class Collision {
     return false;
   }
 
+  /** (v3.5 review) does a fence stand on the straight line between two points? (sampled; for the guide arrow) */
+  fenceBetween(ax, ay, bx, by) {
+    const L = Math.hypot(bx - ax, (by - ay) * 2), n = Math.max(1, Math.ceil(L / 20));
+    for (let k = 1; k < n; k++) {
+      const x = ax + (bx - ax) * (k / n), y = ay + (by - ay) * (k / n);
+      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+      if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) continue;
+      const cell = this.grid[cy * this.cols + cx];
+      for (let i = 0; i < cell.length; i++) {
+        const o = cell[i];
+        if (!o.active || !o.tag || o.tag.indexOf('fence') !== 0) continue;
+        const dx = x - o.x, dy = (y - o.y) * 2;
+        if (dx * dx + dy * dy < o.r * o.r) return true;
+      }
+    }
+    return false;
+  }
+
   shore(x) {
     const i = Math.max(0, Math.min(this._shoreCache.length - 2, Math.floor(x / 8)));
     const f = x / 8 - i;

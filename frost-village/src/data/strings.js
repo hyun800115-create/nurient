@@ -68,6 +68,7 @@ export const STRINGS = {
     obj_courier: '배달꾼을 고용하면 일꾼이 물건을 대신 날라요',
     obj_register: '계산대에 서서 손님에게 돈을 받으세요',
     obj_register_wait: '계산하는 중… 손님이 모두 낼 때까지 서 있어요',
+    obj_step_off: '새 발판! 한 걸음 나왔다가 다시 올라서세요',
     obj_register_trade: '교역소 계산대에 서면 상인이 물건을 사 가요',
     obj_clerk: '점원을 고용하면 계산을 대신 해 줘요',
     obj_porter: '짐꾼을 고용하면 완성품을 대신 날라 줘요',
@@ -165,8 +166,8 @@ export const STRINGS = {
     obj_store_register: '잡화점 계산대에 서서 손님에게 돈을 받으세요',
 
     // ---------------- (v3.5) 분업
-    op_grill: '요리사 고용', op_sawmill: '제재공 고용', op_bakery: '제빵사 고용', op_smelter: '제련공 고용', op_smokehouse: '훈제사 고용',
-    op_toolsmith: '도구 장인 고용', op_cannery: '통조림 기술자',
+    op_grill: '요리사 고용', op_sawmill: '제재공 고용', op_bakery: '빵집 아주머니 고용', op_smelter: '대장장이 고용', op_smokehouse: '훈제사 고용',
+    op_toolsmith: '도구 장인 고용', op_cannery: '통조림 기술자 고용',
     opName_grill: '요리사 쿡', opName_sawmill: '제재공 산들', opName_bakery: '빵집 아주머니', opName_smelter: '대장장이 언니', opName_smokehouse: '훈제사 연기',
     opName_toolsmith: '도구 장인 영감', opName_cannery: '통조림 기술자 통통',
     opSub_grill: '이제 쿡이 생선을 구워요', opSub_sawmill: '이제 산들이 톱질해요', opSub_bakery: '이제 아주머니가 빵을 구워요', opSub_smelter: '이제 언니가 주괴를 만들어요',
@@ -175,7 +176,7 @@ export const STRINGS = {
     rawSub: '모아둔 재료를 가공소로 날라요',
     opSpot_grill: '서서 굽기', opSpot_sawmill: '서서 톱질', opSpot_bakery: '서서 빵 굽기', opSpot_smelter: '서서 제련', opSpot_smokehouse: '서서 훈제',
     opSpot_toolsmith: '서서 도구 만들기', opSpot_cannery: '서서 통조림',
-    pile_fish: '생선 통', pile_log: '통나무 더미', pile_wheat: '밀 더미', pile_ore: '광석 더미', pile_meat: '고기 걸이',
+    pile_fish: '생선 통', pile_log: '통나무 더미', pile_wheat: '밀 더미', pile_ore: '광석 더미', pile_meat: '고기 걸이', pileFull: '가득!',
     hire3_fisherman: '어부 3 고용', hire3_lumberjack: '나무꾼 3 고용', hire3_farmer: '농부 3 고용', hire3_hunter: '사냥꾼 3 고용',
     obj_op_grill: '화덕 앞에 서서 생선을 구우세요', obj_op_sawmill: '제재소 앞에 서서 톱질하세요', obj_op_bakery: '오븐 앞에 서서 빵을 구우세요',
     obj_op_smelter: '제련소 앞에 서서 주괴를 만드세요', obj_op_smokehouse: '훈제장 앞에 서서 고기를 훈제하세요', obj_op_toolsmith: '대장간 앞에 서서 도구를 만드세요',
@@ -189,6 +190,7 @@ export const STRINGS = {
     dogTreat: '간식', dogPlay: '공놀이', dogPet: '쓰다듬기',
     dogComing: '콩이가 달려와요!', dogGift: '콩이가 선물을 물어 왔어요! +{n}', dogTrick: '콩이의 재주!', dogLove: '친밀도',
     dogWait: '조금 이따가 해요', dogFar: '콩이가 너무 멀리 있어요', dogFull: '콩이는 배불러요',
+    dogWhistleHint: '휘파람을 누르면 콩이가 달려와요!',
   },
 
   en: {
@@ -252,6 +254,7 @@ export const STRINGS = {
     obj_courier: 'Hire couriers to carry goods for you',
     obj_register: 'Stand at the register to take payment',
     obj_register_wait: 'Taking payment… stay until everyone has paid',
+    obj_step_off: 'New pad! Step off, then back on',
     obj_register_trade: 'Stand at the trade register so the merchant buys',
     obj_clerk: 'Hire a clerk to take payments for you',
     obj_porter: 'Hire a porter to carry the goods for you',
@@ -346,7 +349,7 @@ export const STRINGS = {
     obj_store_register: 'Stand at the store register to take payment',
 
     // ---------------- (v3.5) division of labour
-    op_grill: 'Hire a cook', op_sawmill: 'Hire a sawyer', op_bakery: 'Hire a baker', op_smelter: 'Hire a smelter', op_smokehouse: 'Hire a smoker',
+    op_grill: 'Hire a cook', op_sawmill: 'Hire a sawyer', op_bakery: 'Hire Baker Auntie', op_smelter: 'Hire a blacksmith', op_smokehouse: 'Hire a smoker',
     op_toolsmith: 'Hire a toolmaker', op_cannery: 'Hire a canner',
     opName_grill: 'Chef Cook', opName_sawmill: 'Sandeul the Sawyer', opName_bakery: 'Baker Auntie', opName_smelter: 'The Blacksmith', opName_smokehouse: 'Yeongi the Smoker',
     opName_toolsmith: 'The Old Toolmaker', opName_cannery: 'Tongtong the Canner',
@@ -356,7 +359,7 @@ export const STRINGS = {
     rawSub: 'Carries the collected goods to the station',
     opSpot_grill: 'Stand: grill', opSpot_sawmill: 'Stand: saw', opSpot_bakery: 'Stand: bake', opSpot_smelter: 'Stand: smelt', opSpot_smokehouse: 'Stand: smoke',
     opSpot_toolsmith: 'Stand: forge', opSpot_cannery: 'Stand: can',
-    pile_fish: 'Fish barrel', pile_log: 'Log pile', pile_wheat: 'Wheat pile', pile_ore: 'Ore pile', pile_meat: 'Meat rack',
+    pile_fish: 'Fish barrel', pile_log: 'Log pile', pile_wheat: 'Wheat pile', pile_ore: 'Ore pile', pile_meat: 'Meat rack', pileFull: 'full!',
     hire3_fisherman: 'Hire fisher 3', hire3_lumberjack: 'Hire lumberjack 3', hire3_farmer: 'Hire farmer 3', hire3_hunter: 'Hire hunter 3',
     obj_op_grill: 'Stand at the grill to cook the fish', obj_op_sawmill: 'Stand at the sawmill to saw', obj_op_bakery: 'Stand at the oven to bake',
     obj_op_smelter: 'Stand at the smelter to make ingots', obj_op_smokehouse: 'Stand at the smokehouse to smoke the meat', obj_op_toolsmith: 'Stand at the forge to make tools',
@@ -370,6 +373,7 @@ export const STRINGS = {
     dogTreat: 'Treat', dogPlay: 'Fetch', dogPet: 'Pet',
     dogComing: 'Kongi is coming!', dogGift: 'Kongi brought you a gift! +{n}', dogTrick: 'Kongi does a trick!', dogLove: 'Affection',
     dogWait: 'In a moment', dogFar: 'Kongi is too far away', dogFull: 'Kongi is full',
+    dogWhistleHint: 'Tap the whistle to call Kongi!',
   },
 };
 

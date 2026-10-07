@@ -1,0 +1,164 @@
+{
+ "version": 1,
+ "generator": "tools/audio/build_audio4.py (procedural synthesis: sfx4.py, music4.py; same toolkit + loudness conventions as assets/audio, audio2 and audio3)",
+ "audio": {
+  "bgm_harbor": {
+   "files": [
+    "audio4/bgm_harbor.ogg",
+    "audio4/bgm_harbor.mp3"
+   ],
+   "volume": 0.376,
+   "loop": true,
+   "kind": "music",
+   "duration": 61.2717,
+   "loopSamples": 2702080,
+   "bpm": 94.0,
+   "mp3StartPad": 1105,
+   "bars": 48,
+   "meter": "6/8",
+   "tonality": "F major",
+   "notes": "harbour-city theme: cheerful sea-shanty flavour (6/8 jig lilt, dotted quarter = 94 bpm, ~61 s), the bgm_village hook re-set as a rocking shanty line; accordion, tin whistle, marimba, stomps + claps. ~21 MB as decoded PCM: load when the player first reaches the harbour (lazy), crossfade from bgm_village with playMusic()."
+  },
+  "amb_harbor": {
+   "files": [
+    "audio4/amb_harbor.ogg",
+    "audio4/amb_harbor.mp3"
+   ],
+   "volume": 0.216,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 22.0053,
+   "loopSamples": 970432,
+   "rotation": 126884,
+   "mp3StartPad": 1105,
+   "notes": "harbour bed: water lapping on the pier pilings, gulls near and far, a bell buoy + a far ship's bell, rigging tinks, moored boats creaking. Audio.setAmbience('amb_harbor', 0..1) by distance to the quay; use instead of (or crossfade with) audio/amb_sea there."
+  },
+  "sfx_ship_horn_big": {
+   "files": [
+    "audio4/sfx_ship_horn_big.ogg",
+    "audio4/sfx_ship_horn_big.mp3"
+   ],
+   "volume": 0.351,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 3.8237,
+   "cues": {
+    "blast": 0.0,
+    "blastEnd": 2.3,
+    "echo": 0.46
+   },
+   "notes": "deep warm ferry / cargo-ship horn (F2 + C3 diaphones), one long blast + harbour echo. Ship arriving / departing; audible map-wide (volume 0.6-1.0 by distance)."
+  },
+  "sfx_ferry_bell": {
+   "files": [
+    "audio4/sfx_ferry_bell.ogg",
+    "audio4/sfx_ferry_bell.mp3"
+   ],
+   "volume": 0.38,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.3581,
+   "cues": {
+    "ding1": 0.0,
+    "ding2": 0.23,
+    "ding3": 0.95,
+    "ding4": 1.18
+   },
+   "notes": "brass ship's bell, strike A5, rung in pairs: ferry boarding / departure ('all aboard')."
+  },
+  "sfx_seagull_1": {
+   "files": [
+    "audio4/sfx_seagull_1.ogg",
+    "audio4/sfx_seagull_1.mp3"
+   ],
+   "volume": 0.193,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.85,
+   "notes": "long mew 'kyaaaow'. Group sfx_seagull: play at random (every 4-12 s near the water) with rate 0.9-1.12 and volume by distance; one-shot when a seagull sprite lands / takes off."
+  },
+  "sfx_seagull_2": {
+   "files": [
+    "audio4/sfx_seagull_2.ogg",
+    "audio4/sfx_seagull_2.mp3"
+   ],
+   "volume": 0.243,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.3579,
+   "cues": {
+    "call": 0.0,
+    "kyows": 0.44
+   },
+   "notes": "long call 'kee-aaa kyow-kyow-kyow-kyow' (group sfx_seagull)."
+  },
+  "sfx_seagull_3": {
+   "files": [
+    "audio4/sfx_seagull_3.ogg",
+    "audio4/sfx_seagull_3.mp3"
+   ],
+   "volume": 0.272,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.0215,
+   "notes": "cheeky chuckle 'kek-kek-kek-kek kew?' (group sfx_seagull)."
+  },
+  "sfx_crane": {
+   "files": [
+    "audio4/sfx_crane.ogg",
+    "audio4/sfx_crane.mp3"
+   ],
+   "volume": 0.403,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.9617,
+   "cues": {
+    "latch": 0.0,
+    "liftStart": 0.05,
+    "slew": 0.74,
+    "lower": 0.97,
+    "drop": 1.25,
+    "rewind": 1.36
+   },
+   "syncAnim": "harbor/harbor_crane anims.work (8 f @ 4 fps = 2.0 s): play once on frame 0 of every cycle; cue 'drop' = dropFrame 5 (1.25 s)",
+   "notes": "winch whirr up, slew creak, lower, crate set down (thunk + chain jingle + clank), rewind. Use volume 0.4-0.7 for a crane in the background, throttle to one per cycle per crane."
+  },
+  "sfx_auction_bell": {
+   "files": [
+    "audio4/sfx_auction_bell.ogg",
+    "audio4/sfx_auction_bell.mp3"
+   ],
+   "volume": 0.211,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 2.161,
+   "cues": {
+    "burst1": 0.0,
+    "burst2": 0.72
+   },
+   "notes": "fish-auction hand bell (F5 brass) shaken in two bursts: the auctioneer opens the bidding when a trawler's catch arrives."
+  },
+  "sfx_rope_creak": {
+   "files": [
+    "audio4/sfx_rope_creak.ogg",
+    "audio4/sfx_rope_creak.mp3"
+   ],
+   "volume": 0.282,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.3627,
+   "cues": {
+    "creak": 0.0,
+    "slack": 0.98
+   },
+   "notes": "mooring rope straining on a wooden bollard. Random every 6-15 s near moored ships (volume 0.5-1, rate 0.85-1.15)."
+  }
+ },
+ "audioGroups": {
+  "sfx_seagull": [
+   "sfx_seagull_1",
+   "sfx_seagull_2",
+   "sfx_seagull_3"
+  ]
+ }
+}

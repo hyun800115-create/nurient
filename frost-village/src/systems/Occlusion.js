@@ -95,8 +95,12 @@ export class Occlusion {
         o.want = 1;
         if (!img.visible || !img.active) continue;
         if (o.x + o.hw * 2.5 < view.x || o.x - o.hw * 2.5 > view.right || o.y < view.y - 20 || o.y - o.top > view.bottom) continue;
+        // (v3.5 review) an oven / smelter / smokehouse with its operator working in front keeps its look:
+        // only the chief walking behind it fades it (a porter passing behind would turn it into a ghost)
+        const worked = !!(o.station && o.station.op && o.station.op.operator && o.station.op.operator.ready);
         for (let k = 0; k < chars.length; k++) {
           const c = chars[k];
+          if (worked && c !== this.gs.player) continue;
           if (c.y >= o.y - 4 || c.y <= o.y - o.top) continue;
           if (Math.abs(c.x - o.x) > o.hw + 22) continue;
           // the box says maybe: fade only when the art really covers the body or the head

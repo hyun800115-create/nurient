@@ -28,6 +28,7 @@ export class ItemStack {
     this.typeCols = opts.typeCols || null; // map type -> column index (shelf with one tower per type)
     this.alternate = !!opts.alternate;     // fill the towers side by side (twin towers) instead of one after another
     this.hopOnPush = opts.hop !== false;
+    this.drawMax = opts.drawMax || 0;      // (v3.5 review) items beyond this stay on top of their tower (a big pile never becomes a skyscraper)
     this._top = { x: 0, y: 0 };
     this.visible = true;
     this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
@@ -93,7 +94,8 @@ export class ItemStack {
     } else if (this.alternate) {
       const nc = this.cols.length;
       col = n % nc;
-      for (let i = col; i < n; i += nc) h += stackStep(this.items[i].type) * this.scale;
+      const lim = this.drawMax || Infinity;
+      for (let i = col; i < n; i += nc) if (i + nc < lim) h += stackStep(this.items[i].type) * this.scale;
     } else {
       col = Math.min(this.cols.length - 1, Math.floor(n / this.perCol));
       const start = col * this.perCol;
@@ -144,7 +146,9 @@ export class ItemStack {
       return;
     }
     if (this.alternate) {
-      const nc = this.cols.length, hs = [0, 0, 0, 0, 0, 0];
+      const nc = this.cols.length, hs = this._hs || (this._hs = []);
+      for (let k = 0; k < nc; k++) hs[k] = 0;
+      const lim = this.drawMax || Infinity;
       for (let i = 0; i < n; i++) {
         const it = items[i], col = i % nc, c = this.cols[col];
         let hop = 0;
@@ -152,7 +156,7 @@ export class ItemStack {
         it.spr.setPosition(bx + c[0], by + c[1] - hs[col] - hop);
         const d = depth + c[1] * 0.01 + i * 0.0005 + 0.001;
         if (it.spr.depth !== d) it.spr.setDepth(d);
-        hs[col] += stackStep(it.type) * this.scale;
+        if (i + nc < lim) hs[col] += stackStep(it.type) * this.scale;
       }
       return;
     }

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frost Village Harbour Sounds</title>
+<style>
+:root{--bg:#F4F7FB;--card:#FFF8EC;--ink:#2B2F3A;--accent:#3D8BE0;--muted:#6b7280}
+@media (prefers-color-scheme:dark){:root{--bg:#1b2130;--card:#262e40;--ink:#eef2f8;--accent:#6aa9f0;--muted:#9aa3b2}}
+body{margin:0;padding:16px;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+h1{font-size:22px;margin:4px 0 2px} h2{font-size:17px;margin:22px 0 8px} p{color:var(--muted);margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px}
+code{overflow-wrap:anywhere}
+.card{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:8px 10px}
+.card b{display:block;font-size:14px;overflow-wrap:anywhere} .card small{color:var(--muted)}
+button{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;flex:none}
+button.on{background:#5CC86A} .bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bar button{width:auto;border-radius:10px;padding:0 14px;font-size:14px}
+</style></head><body>
+<h1>서리마을 개척기 &mdash; 갈매기 항구 소리 미리듣기 (v6 harbour city)</h1>
+<p>버튼을 누르면 게임과 같은 기본 볼륨으로 재생됩니다 (반복음은 한 번 더 누르면 정지). 맨 아래 기존 소리와 크기를 비교해 보세요.
+Each sound plays at its in-game base volume through Web Audio (loops are sample-accurate).
+Open through the game's local web server (e.g. <code>http://localhost:8000/docs/previews/audio4_preview.html</code>).</p>
+<div class="bar"><button id="ferry">&#9654; 여객선 도착 Ferry arrives</button><button id="quay">&#9654; 부두 크레인 Quay &amp; crane</button>
+<button id="auction">&#9654; 수산물 경매 Fish auction</button><button id="stop">&#9632; Stop all</button></div>
+<h2>항구 음악 Harbour music (loop)</h2><div class='grid'>
+<div class='card'><button data-key='bgm_harbor' data-vol='0.376' data-loop='1'>&#9654;</button><div><b>bgm_harbor</b><small>61.27s &middot; vol 0.376 &middot; loop</small></div></div>
+</div>
+<h2>항구 환경음 Harbour ambience (loop)</h2><div class='grid'>
+<div class='card'><button data-key='amb_harbor' data-vol='0.216' data-loop='1'>&#9654;</button><div><b>amb_harbor</b><small>22.01s &middot; vol 0.216 &middot; loop</small></div></div>
+</div>
+<h2>항구 효과음 Harbour sound effects</h2><div class='grid'>
+<div class='card'><button data-key='sfx_ship_horn_big' data-vol='0.351' data-loop='0'>&#9654;</button><div><b>sfx_ship_horn_big</b><small>3.82s &middot; vol 0.351</small></div></div>
+<div class='card'><button data-key='sfx_ferry_bell' data-vol='0.38' data-loop='0'>&#9654;</button><div><b>sfx_ferry_bell</b><small>2.36s &middot; vol 0.38</small></div></div>
+<div class='card'><button data-key='sfx_seagull_1' data-vol='0.193' data-loop='0'>&#9654;</button><div><b>sfx_seagull_1</b><small>0.85s &middot; vol 0.193</small></div></div>
+<div class='card'><button data-key='sfx_seagull_2' data-vol='0.243' data-loop='0'>&#9654;</button><div><b>sfx_seagull_2</b><small>1.36s &middot; vol 0.243</small></div></div>
+<div class='card'><button data-key='sfx_seagull_3' data-vol='0.272' data-loop='0'>&#9654;</button><div><b>sfx_seagull_3</b><small>1.02s &middot; vol 0.272</small></div></div>
+<div class='card'><button data-key='sfx_crane' data-vol='0.403' data-loop='0'>&#9654;</button><div><b>sfx_crane</b><small>1.96s &middot; vol 0.403</small></div></div>
+<div class='card'><button data-key='sfx_auction_bell' data-vol='0.211' data-loop='0'>&#9654;</button><div><b>sfx_auction_bell</b><small>2.16s &middot; vol 0.211</small></div></div>
+<div class='card'><button data-key='sfx_rope_creak' data-vol='0.282' data-loop='0'>&#9654;</button><div><b>sfx_rope_creak</b><small>1.36s &middot; vol 0.282</small></div></div>
+</div>
+<h2>비교용 기존 소리 Reference (assets/audio, audio2, audio3)</h2><div class='grid'>
+<div class='card'><button data-key='bgm_village' data-frag='audio' data-vol='' data-loop='1'>&#9654;</button><div><b>bgm_village</b><small>v1 village music</small></div></div>
+<div class='card'><button data-key='amb_sea' data-frag='audio' data-vol='' data-loop='1'>&#9654;</button><div><b>amb_sea</b><small>v1 sea</small></div></div>
+<div class='card'><button data-key='sfx_boat_horn' data-frag='audio2' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_boat_horn</b><small>v2 boat horn</small></div></div>
+<div class='card'><button data-key='sfx_bell_hall' data-frag='audio3' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_bell_hall</b><small>v5 town-hall bells</small></div></div>
+<div class='card'><button data-key='sfx_school_bell' data-frag='audio3' data-vol='' data-loop='0'>&#9654;</button><div><b>sfx_school_bell</b><small>v5 school bell</small></div></div>
+</div>
+<script>
+const BASES={audio4:'../../assets/audio4/',audio:'../../assets/audio/',audio2:'../../assets/audio2/',audio3:'../../assets/audio3/'};
+let ctx=null; const bufs={}; const playing={}; const mans={};
+const ogg=(()=>{try{return new Audio().canPlayType('audio/ogg; codecs="vorbis"')!==''}catch(e){return false}})();
+function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}
+async function volOf(k,frag){if(frag==='audio4')return +document.querySelector(`[data-key="${k}"]`).dataset.vol;
+ if(!mans[frag])mans[frag]=await (await fetch(BASES[frag]+'manifest.json')).json();return mans[frag].audio[k].volume}
+async function load(k,frag){const id=frag+':'+k;if(bufs[id])return bufs[id];const r=await fetch(BASES[frag]+k+(ogg?'.ogg':'.mp3'));
+ const ab=await r.arrayBuffer();bufs[id]=await new Promise((ok,no)=>ac().decodeAudioData(ab,ok,no));return bufs[id]}
+async function play(k,mult,loop,btn,frag,rate){frag=frag||'audio4';const c=ac();const b=await load(k,frag);const v=await volOf(k,frag);
+ const s=c.createBufferSource();const g=c.createGain();s.buffer=b;s.loop=!!loop;if(rate)s.playbackRate.value=rate;g.gain.value=v*(mult===undefined?1:mult);
+ s.connect(g).connect(c.destination);s.start();
+ if(loop){playing[k]={s,btn,g};if(btn)btn.classList.add('on')}
+ s.onended=()=>{if(btn)btn.classList.remove('on');if(playing[k]&&playing[k].s===s)delete playing[k]};return s}
+function stop(k){const p=playing[k];if(p){try{p.s.stop()}catch(e){}if(p.btn)p.btn.classList.remove('on');delete playing[k]}}
+function stopAll(){Object.keys(playing).forEach(stop);(window._mixT||[]).forEach(clearTimeout);window._mixT=[]}
+function alertMsg(e){const p=document.createElement('p');p.textContent='Could not load audio ('+e+'). Open via http://, not file://';document.body.prepend(p)}
+document.querySelectorAll('.card button').forEach(b=>b.onclick=async()=>{const k=b.dataset.key;
+ if(playing[k]){stop(k);return} try{await play(k,1,b.dataset.loop==='1',b,b.dataset.frag||'audio4')}catch(e){alertMsg(e)}});
+document.getElementById('stop').onclick=stopAll;
+const seq=(list)=>list.forEach(([ms,k,m,fr,rate])=>{window._mixT=window._mixT||[];window._mixT.push(setTimeout(()=>play(k,m,false,null,fr,rate).catch(alertMsg),ms))});
+document.getElementById('ferry').onclick=async()=>{stopAll();try{await play('amb_harbor',1,true,null);await play('bgm_harbor',0.8,true,null)}catch(e){alertMsg(e)}
+ seq([[800,'sfx_seagull_1',0.8,'audio4',1.05],[2200,'sfx_ship_horn_big',1],[6200,'sfx_rope_creak',0.9],[7400,'sfx_ferry_bell',1],[9800,'sfx_seagull_2',0.6,'audio4',0.95],[11500,'sfx_chatter_2',0.6,'audio2'],[12300,'sfx_chatter_5',0.6,'audio2'],[13600,'sfx_laugh_1',0.5,'audio2']])};
+document.getElementById('quay').onclick=async()=>{stopAll();try{await play('amb_harbor',1,true,null)}catch(e){alertMsg(e)}
+ const l=[];for(let i=0;i<6;i++)l.push([500+i*2000,'sfx_crane',0.8]);l.push([3100,'sfx_seagull_3',0.7],[7800,'sfx_rope_creak',1],[9300,'sfx_boat_horn',0.6,'audio2']);seq(l)};
+document.getElementById('auction').onclick=async()=>{stopAll();try{await play('amb_harbor',0.8,true,null)}catch(e){alertMsg(e)}
+ seq([[500,'sfx_auction_bell',1],[2900,'sfx_chatter_4',0.7,'audio2'],[3300,'sfx_chatter_1',0.7,'audio2'],[3800,'sfx_chatter_6',0.7,'audio2'],[4600,'sfx_register',0.8,'audio2'],[5500,'sfx_coins_many',0.7,'audio'],[6300,'sfx_cheer',0.6,'audio2'],[8000,'sfx_seagull_2',0.7]])};
+</script></body></html>

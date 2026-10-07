@@ -232,41 +232,64 @@ def preview_all(ships, imgs, out):
     canvas.convert('RGB').save(out, optimize=True)
 
 
+def iso(C, x, y, z=0.0):
+    """screen px of world metres (x, y, z) relative to the screen point C (PPU 64, bl_common projection)."""
+    return (C[0] + (x + y) * 45.2548, C[1] + (x - y) * 22.6274 - z * 55.4256)
+
+
 def preview_scene(ships, imgs, out):
-    """Harbour mock-up at 1x: sea with the ships, the existing pier / boathouse / boats on a snowy shore, villagers."""
-    W, H = 3400, 2000
+    """Harbour mock-up at 1x on water_sea: a snowy quay block (sea in front of both quay edges, like assets/harbor)
+    with the ferry berthed at harbor/ferry_terminal (gangwayFarPoint on the terminal gangwayPoint), the cargo ship
+    moored along the other quay edge with its crane + containers, plus a village shore with the EXISTING dock_pier,
+    boathouse and boats; villagers + the chief for scale, ships at sea, gulls flying and perched."""
+    W, H = 3800, 2150
     canvas = sea((W, H))
-    shore = os.path.join(ASSETS, 'ground', 'ground_snow.png')
-    land = tile(shore, (W, H)) if os.path.exists(shore) else Image.new('RGBA', (W, H), (244, 247, 251, 255))
+    snow_p = os.path.join(ASSETS, 'ground', 'ground_snow.png')
+    land = tile(snow_p, (W, H)) if os.path.exists(snow_p) else Image.new('RGBA', (W, H), (244, 247, 251, 255))
+    C = (2500.0, 1650.0)                          # front corner of the quay block (sea in front of both edges)
+    QX, QY = 31.0, 27.0
+    quay = [iso(C, 0, 0), iso(C, -QX, 0), iso(C, -QX, QY), iso(C, 0, QY)]
+    shore = [(0, 1560), (1230, 1860), (1230, H), (0, H)]
     mask = Image.new('L', (W, H), 0)
     md = ImageDraw.Draw(mask)
-    md.polygon([(0, 1640), (W, 1470), (W, H), (0, H)], fill=255)
+    md.polygon(quay, fill=255)
+    md.polygon(shore, fill=255)
     canvas.paste(land, (0, 0), mask)
     dr = ImageDraw.Draw(canvas)
-    dr.line([(0, 1640), (W, 1470)], fill=(236, 244, 250, 255), width=7)
+    stone = (196, 204, 214, 255)
+    dr.line([quay[1], quay[0], quay[3]], fill=stone, width=9)       # quay edge stones
+    dr.line([shore[0], shore[1]], fill=(236, 244, 250, 255), width=7)
     placed_ = []
     labels = []
     person = people_lib()
     props = atlas_reader('props/manifest.json')
     bld = atlas_reader('buildings/manifest.json')
+    har = atlas_reader('harbor/manifest.json')
+    chars = atlas_reader('characters/manifest.json')
 
     def put(im, anchor, sx, sy, depth=None, lab=None, ly=30):
         placed_.append((sy if depth is None else depth, im, int(round(sx - anchor[0])), int(round(sy - anchor[1]))))
         if lab:
             labels.append((lab, sx, sy + ly))
 
-    def put_sprite(lib, key, sx, sy, frame=None, lab=None):
+    def sprite(lib, key, frame=None):
         if not lib:
-            return
+            return None
         man, get = lib
         sp = man.get('sprites', {}).get(key)
         if not sp:
-            return
+            return None
         im = get(sp['atlas'], frame or sp['frame'])
         if im is None:
-            return
+            return None
         fw, fh = sp['frameSize']
-        put(im, (sp['anchor'][0] * fw, sp['anchor'][1] * fh), sx, sy, lab=lab)
+        return im, (sp['anchor'][0] * fw, sp['anchor'][1] * fh), sp
+
+    def put_sprite(lib, key, sx, sy, frame=None, lab=None, depth=None):
+        r = sprite(lib, key, frame)
+        if r:
+            put(r[0], r[1], sx, sy, depth=depth, lab=lab)
+        return r[2] if r else None
 
     def put_char(lib, key, frame, sx, sy, lab=None, flip=False):
         if not lib:
@@ -285,67 +308,98 @@ def preview_scene(ships, imgs, out):
             a = (fw - a[0], a[1])
         put(im, a, sx, sy, lab=lab)
 
-    def put_ship(k, d, sx, sy, lab=None, **kw):
+    def put_ship(k, d, sx, sy, lab=None, depth=None, **kw):
         if k not in ships:
             return None
         m = ships[k]
         im, a = placed(m, imgs[k], d, **kw)
-        put(im, a, sx, sy, lab=lab or '%s (%s)' % (k, d), ly=36)
+        put(im, a, sx, sy, depth=depth, lab=lab or '%s (%s)' % (k, d), ly=36)
         return m
 
-    # existing harbour pieces on the shore
-    put_sprite(bld, 'boathouse', 3150, 1560, frame='boathouse', lab='boathouse (existing)')
-    put_sprite(props, 'dock_pier', 2230, 1540, lab='dock_pier (existing)')
-    put_sprite(props, 'dock_pier', 2140, 1495)
-    put_sprite(props, 'barrel', 2480, 1600)
-    put_sprite(props, 'crate', 2530, 1625)
-    put_sprite(props, 'lamp_post', 2380, 1660)
-    put_char(bld, 'boat_fishing', 'sail_SE_1', 2860, 1290, lab='boat_fishing (existing)')
-    put_char(bld, 'boat_rowboat', 'row_SE_2', 3130, 1250, lab='boat_rowboat (existing)')
-    # ships
+    def pt(m, name, d):
+        """point of ship m for any heading (mirrors negate dx)."""
+        rd, flip = resolve(m, d)
+        v = m['points'][name][rd]
+        return (-v[0], v[1]) if flip else (v[0], v[1])
+
+    # ---- quay: harbor/ferry_terminal + the ferry berthed at it (SE, far-side gangway on the terminal gangway tip)
     fm = ships.get('ferry')
+    T = iso(C, -13.0, 2.0)
+    ts = put_sprite(har, 'ferry_terminal', T[0], T[1], lab='harbor/ferry_terminal')
     if fm:
-        put_ship('ferry', 'SW', 1700, 1360, lab='ferry (SW = SE mirrored) + passengers at deckPoints',
+        g = ts.get('gangwayPoint', [-111, 155]) if ts else [-111, 155]
+        gf = pt(fm, 'gangwayFar', 'SE')
+        fx, fy = T[0] + g[0] - gf[0], T[1] + g[1] - gf[1]
+        put_ship('ferry', 'SE', fx, fy, lab='ferry berthed: gangwayFarPoint on the terminal gangway tip',
                  anim='idle', i=0, people=passengers(fm, 'SE', person, n=9, seed=1))
-    put_ship('cargo_ship', 'SE', 760, 860, lab='cargo_ship (SE, 6 slots loaded, moving)', anim='move', i=1, foam=True)
-    put_ship('trawler_big', 'NE', 1900, 760, lab='trawler_big (NE, haul)', anim='haul', i=2)
-    put_ship('tugboat', 'NW', 2560, 1130, anim='move', i=1)
-    put_ship('sailboat', 'SE', 2560, 520, anim='move', i=2)
-    put_ship('yacht', 'NE', 2960, 860, anim='move', i=1)
-    put_ship('ferry', 'S', 3200, 420 + 620, lab='ferry (S, arriving)', anim='move', i=2, foam=True)
-    # seagulls: flying + perched on the ferry mast / trawler A-frame
+        if ts:
+            for j, (dx, dy) in enumerate(ts.get('waitPoints', [])[:4]):
+                put_char(chars, ('villager_a', 'villager_b', 'villager_c', 'villager_a')[j], 'idle_SE_0',
+                         T[0] + dx, T[1] + dy)
+    # ---- quay: cargo ship moored along the right edge (heading NE, far side to the quay) + crane, containers
+    cm = ships.get('cargo_ship')
+    if cm:
+        cx, cy = iso(C, cm['beamM'] / 2 + 0.45, 12.5)
+        put_ship('cargo_ship', 'NE', cx, cy, lab='cargo_ship moored (NE, 6 container slots)', anim='idle', i=0)
+    hc = iso(C, -2.3, 10.5)
+    put_sprite(har, 'harbor_crane', hc[0], hc[1], frame=None)
+    for j, (x, y) in enumerate(((-4.0, 15.5), (-6.8, 15.0), (-4.2, 19.5))):
+        q = iso(C, x, y)
+        put_sprite(har, 'container_stack' if j != 1 else 'container_stack_b', q[0], q[1])
+    lh = iso(C, -3.0, 24.0)
+    put_sprite(har, 'lighthouse', lh[0], lh[1])
+    for k in range(6):
+        b_ = iso(C, -1.0 - k * 4.6, 0.55)
+        put_sprite(har, 'bollard', b_[0], b_[1])
+        b_ = iso(C, -0.55, 3.0 + k * 3.8)
+        put_sprite(har, 'bollard', b_[0], b_[1])
+    # ---- village shore (existing art): dock_pier, boathouse, boats, the chief + villagers for scale
+    put_sprite(bld, 'boathouse', 980, 1830, frame='boathouse', lab='boathouse (existing)')
+    put_sprite(props, 'dock_pier', 420, 1690, lab='dock_pier (existing)')
+    put_sprite(props, 'barrel', 700, 1760)
+    put_sprite(props, 'crate', 745, 1785)
+    put_sprite(props, 'lamp_post', 600, 1830)
+    put_char(bld, 'boat_fishing', 'sail_SE_1', 300, 1420, lab='boat_fishing (existing)')
+    put_char(bld, 'boat_rowboat', 'row_SE_2', 700, 1480, lab='boat_rowboat (existing)')
+    put_char(chars, 'player', 'idle_SE_0', 520, 1960, lab='chief 1.45 m (scale)')
+    for j, k in enumerate(('villager_a', 'villager_b', 'villager_c')):
+        put_char(chars, k, 'idle_NE_0', 250 + j * 42, 1930 + j * 14)
+    put_char(chars, 'fisherman', 'idle_S_0', 820, 1990)
+    # ---- ships at sea
+    put_ship('ferry', 'S', 330, 760, lab='ferry (S, arriving)', anim='move', i=2, foam=True)
+    put_ship('trawler_big', 'NE', 1000, 560, lab='trawler_big (NE, haul)', anim='haul', i=2)
+    put_ship('sailboat', 'SE', 1520, 330, anim='move', i=2)
+    put_ship('yacht', 'NW', 820, 1130, anim='move', i=1)
+    put_ship('tugboat', 'SW', 3480, 1930, anim='move', i=1, lab='tugboat (SW)')
+    # ---- seagulls: flying + perched on the ferry mast / trawler A-frame
     gm = ships.get('seagull')
     if gm:
-        g = imgs['seagull']
-        for j, (d, a, i, sx, sy) in enumerate((('SE', 'fly', 1, 1450, 240), ('E', 'glide', 0, 1250, 160),
-                                                ('SW', 'fly', 4, 2350, 900), ('S', 'fly', 2, 300, 1300),
-                                                ('NE', 'glide', 1, 2200, 260))):
-            im, an = placed(gm, g, d, anim=a, i=i)
-            put(im, an, sx, sy, depth=5000 + j, lab='seagull %s %s' % (a, d) if j == 0 else None, ly=8)
+        gi = imgs['seagull']
+        for j, (d, a, i, sx, sy) in enumerate((('SE', 'fly', 1, 1300, 220), ('E', 'glide', 0, 640, 300),
+                                                ('SW', 'fly', 4, 1600, 1150), ('S', 'fly', 2, 3300, 380),
+                                                ('NE', 'glide', 1, 2950, 900))):
+            im, an = placed(gm, gi, d, anim=a, i=i)
+            put(im, an, sx, sy, depth=9000 + j, lab='seagull %s %s' % (a, d) if j == 0 else None, ly=8)
         if fm:
             p = fm['points']['perch']['SE'][0]
-            im, an = placed(gm, g, 'SW', anim='idle', i=1)
-            put(im, an, 1700 - p[0], 1360 + p[1], depth=5100, lab='perched (perchPoints)', ly=6)
+            im, an = placed(gm, gi, 'SW', anim='idle', i=1)
+            put(im, an, fx + p[0], fy + p[1], depth=9100, lab='gull perched (perchPoints)', ly=6)
         tm = ships.get('trawler_big')
         if tm:
             for p in tm['points']['perch']['NE'][3:5]:
-                im, an = placed(gm, g, 'SE', anim='idle', i=0)
-                put(im, an, 1900 + p[0], 760 + p[1], depth=5200)
-    # villagers on the shore for scale
-    put_char(atlas_reader('characters/manifest.json'), 'player', 'idle_SE_0', 2330, 1760, lab='chief 1.45 m (scale)')
-    for j, k in enumerate(('villager_a', 'villager_b', 'villager_c')):
-        put_char(atlas_reader('characters/manifest.json'), k, 'idle_NE_0', 1500 + j * 42, 1740 + j * 14)
-    put_char(atlas_reader('characters/manifest.json'), 'fisherman', 'idle_S_0', 2700, 1700)
+                im, an = placed(gm, gi, 'SE', anim='idle', i=0)
+                put(im, an, 1000 + p[0], 560 + p[1], depth=9200)
     for _, im, x, y in sorted(placed_, key=lambda t: t[0]):
         canvas.alpha_composite(im, (x, y))
     dr = ImageDraw.Draw(canvas)
     f = font(14)
     for t, sx, sy in labels:
         label(dr, t, sx, sy, f)
-    dr.rectangle([0, H - 42, W, H], fill=(20, 52, 98, 255))  # caption bar
-    dr.text((16, H - 34), 'Gull Harbour mock-up at 1x (PPU 64): v6 ships on the existing water_sea texture beside the '
-                          'existing dock_pier / boathouse / boats, villagers + chief for scale (static composite, not '
-                          'an in-game capture)', fill=(255, 255, 255), font=font(18))
+    dr.rectangle([0, H - 42, W, H], fill=(20, 52, 98, 255))
+    dr.text((16, H - 34), 'Gull Harbour mock-up at 1x (PPU 64): assets/ships on the existing water_sea texture - ferry '
+                          'berthed at harbor/ferry_terminal, cargo ship moored at the quay, existing dock_pier / '
+                          'boathouse / boats + chief and villagers for scale (static composite, not an in-game '
+                          'capture)', fill=(255, 255, 255), font=font(18))
     canvas.convert('RGB').save(out, optimize=True)
 
 

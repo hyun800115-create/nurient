@@ -209,7 +209,8 @@ export class Worker extends Character {
         // (v3.5) safety: something stands in the way for long — hand the catch over from here
         this.deliverT = (this.deliverT || 0) + dt;
         if (this.deliverT > 14) { this.deliverT = 0; this.vx = this.vy = 0; this.state = 'drop'; this.dropT = 0.15; this.locomotion(false); break; }
-        if (this.walkTo(pad.x + (this.index - 1) * 18, pad.y + 4 + (this.index === 2 ? 14 : 0), dt, 10)) {
+        const ds = this.dropSpot(pad);
+        if (this.walkTo(ds.x, ds.y, dt, 10)) {
           this.vx = this.vy = 0;
           this.state = 'drop'; this.dropT = 0.15; this.deliverT = 0;
           this.locomotion(false);
@@ -229,7 +230,8 @@ export class Worker extends Character {
             // pile (station input) full: wait patiently
             this.dropT = 0.6;
             this.fullT = (this.fullT || 0) + 0.6;
-            if (this.fullT > 6 && gs.life && gs.isOnScreen(this.x, this.y, 60)) { this.fullT = 0; gs.life.bubbles.emote(this, Assets.pick('emote_sweat', 'emote_dots'), 1.6); }
+            // (v3.5 review) sweat only while the chief could help (nobody carries the pile on yet)
+            if (this.fullT > 6 && gs.life && gs.isOnScreen(this.x, this.y, 60)) { this.fullT = 0; if (!this.pile || this.pile.needsHand()) gs.life.bubbles.emote(this, Assets.pick('emote_sweat', 'emote_dots'), 1.6); }
           } else this.fullT = 0;
         }
         this.locomotion(false);
@@ -237,6 +239,17 @@ export class Worker extends Character {
       }
     }
     this.sync(dt);
+  }
+
+  /** (v3.5 review) where this worker stands to unload: the 1st / 2nd / 3rd of a profession each have their own spot */
+  dropSpot(pad) {
+    if (this._dsPad === pad && this._ds) return this._ds;
+    const D = [[10, 38], [-48, 20], [-40, 58]];
+    const o = D[this.index % 3] || D[0];
+    const q = { x: pad.x + o[0], y: pad.y + o[1] };
+    if (this.gs.collision.blocked(q.x, q.y, 14)) this.gs.collision.resolve(q, 14);
+    this._dsPad = pad; this._ds = q;
+    return q;
   }
 
   impact() {

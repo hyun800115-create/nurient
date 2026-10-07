@@ -311,7 +311,8 @@ export class Pile {
     this.shown = false;
     const max = Math.max(4, Math.floor(Number(BALANCE.labour && BALANCE.labour.pileMax)) || 40);
     this.pad = new Pad(gs, this.x, this.y, 'output', 1.45, { icon: cfg.item, iconSize: 44, tint: 0xf3e2c4 });
-    this.stack = new ItemStack(gs, { scale: 0.9, cols: [[-20, -6], [0, 6], [20, -6]], alternate: true, max });
+    // (v3.5 review) a wide, low heap: 7 little towers, never drawn higher than 6 items (a full pile is not a skyscraper)
+    this.stack = new ItemStack(gs, { scale: 0.9, cols: [[-30, -10], [0, -12], [30, -10], [-16, 2], [16, 2], [-30, 12], [30, 12]], alternate: true, max, drawMax: 42 });
     // the prop that marks the place (a fish crate / log pile / hay / ore crate / a meat rack)
     this.props = [];
     const pa = cfg.propAt || [0, -40];
@@ -323,12 +324,13 @@ export class Pile {
       this.obstacle = gs.collision.add(this.x + pa[0], this.y + pa[1], cfg.propR || 22, 'pile');
     }
     // label "그물 더미"
-    const lab = gs.add.container(this.x, this.y - 92).setDepth(this.y + 1990);
+    const ly = Number(cfg.labelY) || -92;     // (v3.5 review) the meat rack's name floats above its beam
+    const lab = gs.add.container(this.x, this.y + ly).setDepth(this.y + 1990);
     this.labelText = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '18px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0.5, 0.5);
     this.labelBg = panel(gs, 0, 0, 'ui_panel', 100, 38).setOrigin(0.5, 0.5).setAlpha(0.9);
     lab.add([this.labelBg, this.labelText]);
     this.label = lab;
-    this.labelBaseY = this.y - 92;
+    this.labelBaseY = this.y + ly;
     this.refresh();
     this.setShown(false);
   }
@@ -350,7 +352,7 @@ export class Pile {
   }
 
   refresh() {
-    this.labelText.setText(t('pile_' + this.id));
+    this.labelText.setText(this.fullShown ? t('pile_' + this.id) + ' · ' + t('pileFull') : t('pile_' + this.id));
     this.labelBg.setSize(Math.max(84, this.labelText.width + 28), 38);
   }
 
@@ -388,11 +390,28 @@ export class Pile {
     const on = this.pad.contains(p.x, p.y);
     const la = on ? 0.3 : 0.92;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
-    // a full pile (the gatherers wait) calls a little louder
-    const full = this.stack.count >= this.stack.max - 1;
-    const k = full ? 1 + Math.max(0, Math.sin(gs.time.now / 160)) * 0.1 : 1;
+    // a full pile (the gatherers wait) calls a little louder — only while the chief can do something
+    // about it (no raw porter carries it yet and the station has room); the label says "가득"
+    const full = this.needsHand();
+    if (full !== this.fullShown) {
+      this.fullShown = full;
+      this.labelText.setText(full ? t('pile_' + this.id) + ' · ' + t('pileFull') : t('pile_' + this.id));
+      this.labelText.setColor(full ? '#b8322a' : '#2b2f3a');
+      this.labelBg.setSize(Math.max(84, this.labelText.width + 28), 38);
+      if (this.labelBg.setTint) { if (full) this.labelBg.setTint(0xffd6cc); else this.labelBg.clearTint(); }
+    }
+    const k = full ? 1 + Math.max(0, Math.sin(gs.time.now / 160)) * 0.12 : 1;
     if (this.label.scale !== k) this.label.setScale(k);
     return on;
+  }
+
+  /** (v3.5 review) full, nobody carries it on, and the station could take it: the chief's job */
+  needsHand() {
+    if (this.stack.count < this.stack.max - 1) return false;
+    const gs = this.gs;
+    if (gs.rawPorters && gs.rawPorters.some((r) => r.pile === this)) return false;
+    const st = gs.stations && gs.stations[this.station];
+    return !!(st && st.enabled && st.inStack.room > 0);
   }
 
   /** a gatherer drops one item (true if one moved) */

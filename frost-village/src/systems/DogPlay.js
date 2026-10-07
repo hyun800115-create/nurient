@@ -37,6 +37,10 @@ export class DogPlay {
     this.ball = null;
     this.carry = null;         // a sprite the dog holds in its mouth (ball, gift coin)
     this.treats = 0;           // treats in a row (it gets full)
+    // (v3.5 review) cooldowns and the treats-in-a-row count survive a reload (no reload to skip them)
+    const sc = saved.cd || {};
+    for (const k in this.cd) this.cd[k] = Math.max(0, Math.min(3600, num(sc[k], 0)));
+    this.treats = Math.max(0, Math.min(3, Math.floor(num(saved.treats, 0))));
   }
 
   /** the dog resident (null until it lives here and its art is ready) */
@@ -65,6 +69,7 @@ export class DogPlay {
   whistle() {
     const gs = this.gs, r = this.r, p = gs.player;
     if (!r) { gs.ui.toast(t('dogFar')); return false; }
+    if (gs.progress) gs.progress.seen.whistle = true;
     gs.sfxAt(Assets.audioDef('sfx_whoosh') ? 'sfx_whoosh' : 'sfx_click', p.x, p.y, { volume: 0.5, rate: 1.9 }, true);
     if (this.mode === 'scene') return true;
     this.take(r);
@@ -81,6 +86,7 @@ export class DogPlay {
 
   onTap(r) {
     const p = this.gs.player;
+    if (this.gs.progress) this.gs.progress.seen.whistle = true;
     if (this.mode === 'scene') return r;
     this.take(r);
     if (gdist(r.x, r.y, p.x, p.y) < num(B().callRange, 140) * 1.4) this.arrive(r);
@@ -102,16 +108,17 @@ export class DogPlay {
   }
 
   /** a spot next to the chief, on his left or right (side-on, so both are seen in profile) */
-  sideSpot(r, side) {
+  sideSpot(r, side, extra) {
     const gs = this.gs, p = gs.player;
     const pp = (Assets.charDef('player').petPoint || {}).E || [29, 4];
-    const s = side !== undefined ? side : (r.x >= p.x ? 1 : -1);
+    const s = side !== undefined && side !== null ? side : (r.x >= p.x ? 1 : -1);
+    const dx = pp[0] + (extra || 0);
     const tryS = [s, -s];
     for (const k of tryS) {
-      const q = { x: p.x + pp[0] * k, y: p.y + pp[1] };
+      const q = { x: p.x + dx * k, y: p.y + pp[1] };
       if (!gs.collision.blocked(q.x, q.y, 10)) return { x: q.x, y: q.y, side: k };
     }
-    return { x: p.x + pp[0] * s, y: p.y + pp[1], side: s };
+    return { x: p.x + dx * s, y: p.y + pp[1], side: s };
   }
 
   goNear(r, run) {
@@ -153,7 +160,8 @@ export class DogPlay {
     Audio.play('sfx_click', { volume: 0.6 });
     this.mode = 'scene';
     this.idleT = 0;
-    const sp = this.sideSpot(r);
+    // (v3.5 review) for a treat the dog sits a step further off, so the hand-over reads at phone zoom
+    const sp = this.sideSpot(r, null, kind === 'treat' ? 24 : 0);
     this.scene = { kind, phase: 'place', t: 0, spot: sp };
     p.vx = p.vy = 0;
     // the dog trots to the chief's side first
@@ -171,6 +179,7 @@ export class DogPlay {
   }
 
   addLove(n, x, y) {
+    if (this.scene) this.scene.loved = true;
     const before = Math.floor(this.hearts);
     this.love = Math.max(0, Math.min(100, this.love + n));
     const gs = this.gs;
@@ -207,6 +216,10 @@ export class DogPlay {
 
   endScene(r, happy) {
     const p = this.gs.player;
+    // (v3.5 review) a scene that stopped before the dog got anything (the chief walked off, the ball got
+    // lost) does not use up the button: its cooldown is given back
+    const sc = this.scene;
+    if (sc && !happy && !sc.loved && this.cd[sc.kind] !== undefined) this.cd[sc.kind] = Math.min(this.cd[sc.kind], 0.6);
     this.scene = null;
     if (p.action) p.action = null;
     this.dropCarry();
@@ -243,7 +256,7 @@ export class DogPlay {
       if (Math.random() < dt * 3 && gs.isOnScreen(r.x, r.y, 20)) { const tp = this.dogPoint(r, 'treatPoint', [26, -24]); gs.effects.burst('wood', tp.x, tp.y, 1); }
       if (sc.t > 1.6) {
         this.treats++;
-        this.addLove(num(B().treatLove, 12), r.x, r.y + r.headTop - 6);
+        this.addLove(num(B().treatLove, 8), r.x, r.y + r.headTop - 6);
         this.bark(r, 0.5);
         this.endScene(r, true);
       }
@@ -266,7 +279,7 @@ export class DogPlay {
     sc.heartT -= dt;
     if (sc.heartT <= 0) { sc.heartT = 0.7; if (gs.isOnScreen(r.x, r.y, 20)) { const bp = this.dogPoint(r, 'bellyPoint', [-2, -16]); gs.effects.burst('heart', bp.x, bp.y - 6, 1); } }
     if (sc.t > 2.6) {
-      this.addLove(num(B().petLove, 5), r.x, r.y + r.headTop);
+      this.addLove(num(B().petLove, 3), r.x, r.y + r.headTop);
       this.bark(r, 0.4);
       this.endScene(r, true);
     }
@@ -316,10 +329,10 @@ export class DogPlay {
       const off = cp[dirB] || [20, -58];
       const fl = land.x >= gs.player.x ? 1 : -1;
       sc.catchAt = { x: land.x + off[0] * -fl * 0.4, y: land.y + off[1] };
-      gs.effects.fly(ball, ip.x, ip.y, sc.catchAt, { dur, height: 150, scaleTo: 0.5, spin: 2, onDone: () => this.ballCaught(r, sc) });
+      this.ballTw = gs.effects.fly(ball, ip.x, ip.y, sc.catchAt, { dur, height: 150, scaleTo: 0.5, spin: 2, onDone: () => { this.ballTw = null; this.ballCaught(r, sc); } });
       gs.time.delayedCall(dur - 260, () => { if (this.scene === sc && sc.phase === 'flight') { r.vx = r.vy = 0; r.state = 'act'; r.faceTo(gs.player.x, gs.player.y); r.act('catch', 0.6); sc.jumped = true; } });
     } else {
-      gs.effects.fly(ball, ip.x, ip.y, { x: land.x, y: land.y - 6 }, { dur: 620, height: 120, scaleTo: 0.5, spin: 2, onDone: () => this.ballLanded(r, sc) });
+      this.ballTw = gs.effects.fly(ball, ip.x, ip.y, { x: land.x, y: land.y - 6 }, { dur: 620, height: 120, scaleTo: 0.5, spin: 2, onDone: () => { this.ballTw = null; this.ballLanded(r, sc); } });
       gs.time.delayedCall(260, () => { if (this.scene === sc) { r.goTo(land.x + (r.x < land.x ? -14 : 14), land.y + 4, { direct: true, run: true, tol: 10, speed: 240 }); this.bark(r, 0.4); } });
     }
   }
@@ -342,7 +355,7 @@ export class DogPlay {
     this.bark(r, 0.5);
     this.holdBall(r);
     sc.phase = 'caught'; sc.t = 0;
-    this.addLove(Math.round(num(B().playLove, 6) * 0.5), r.x, r.y + r.headTop);
+    this.addLove(Math.round(num(B().playLove, 3) * 0.5), r.x, r.y + r.headTop);
   }
 
   holdBall(r) {
@@ -392,7 +405,7 @@ export class DogPlay {
           b.setVisible(true).setPosition(mp.x, mp.y);
           gs.effects.fly(b, mp.x, mp.y, () => ({ x: p.x, y: p.y - 40 }), { dur: 360, height: 50, scaleTo: 0.3, onDone: (s) => gs.effects.releaseItem(s) });
         }
-        this.addLove(num(B().playLove, 6), r.x, r.y + r.headTop);
+        this.addLove(num(B().playLove, 3), r.x, r.y + r.headTop);
         this.bark(r, 0.45);
         this.endScene(r, true);
       }
@@ -410,6 +423,8 @@ export class DogPlay {
 
   dropCarry() {
     const gs = this.gs;
+    // (v3.5 review) a ball still in the air stops flying before its sprite goes back to the pool
+    if (this.ballTw) { this.ballTw.stop(); this.ballTw = null; }
     if (this.carry) { gs.effects.releaseItem(this.carry); this.carry = null; }
     if (this.ball) { gs.tweens.killTweensOf(this.ball); gs.effects.releaseItem(this.ball); this.ball = null; }
     if (this.gift) { this.gift.destroy(); this.gift = null; }
@@ -512,7 +527,11 @@ export class DogPlay {
     sc.tick = tick;
   }
 
-  serialize() { return { love: Math.round(this.love * 10) / 10, gifts: this.gifts, tricks: this.tricks }; }
+  serialize() {
+    const cd = {};
+    for (const k in this.cd) if (this.cd[k] > 0) cd[k] = Math.round(this.cd[k] * 10) / 10;
+    return { love: Math.round(this.love * 10) / 10, gifts: this.gifts, tricks: this.tricks, cd, treats: this.treats };
+  }
 
   state() {
     const r = this.r;

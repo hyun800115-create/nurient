@@ -323,7 +323,7 @@ export class Game extends Phaser.Scene {
     const [zx, zy] = z.center;
     for (const st of WORLD.stations) if (st.zone === id) ghost(st.sprite, st.x, st.y);
     if (id === 'forest') for (const [mx, my, k] of [[-1.6, 1.0, 'tree_pine_a'], [1.4, -1.8, 'tree_pine_snow'], [-2.6, -1.6, 'tree_pine_b'], [0.2, -3.0, 'tree_pine_a']]) { const p = isoPt(zx, zy, mx, my); ghost(k, p.x, p.y, 0.85); }
-    if (id === 'farm') { const w = WORLD.wheat; for (const [i, j] of [[0, 0], [1, 1], [2, 0], [0, 2]]) { const p = isoPt(w.origin[0], w.origin[1], (i - 1) * w.step, (j - 1) * w.step); ghost('crop_wheat_3', p.x, p.y); } }
+    if (id === 'farm') { const w = WORLD.wheat; for (const [i, j] of [[0, 0], [1, 1], [2, 0], [2, 2]]) { const p = isoPt(w.origin[0], w.origin[1], (i - 1) * w.step, (j - 1) * w.step); ghost('crop_wheat_3', p.x, p.y); } }
     if (id === 'mine') for (const [x, y, k] of WORLD.rocks.slice(0, 4)) ghost(k, x, y);
     if (id === 'hunt') for (const [mx, my, k] of [[2.6, -2.8, 'hay_bale'], [-2.8, -2.6, 'bush_snow'], [3.2, 0.4, 'bush_snow']]) { const p = isoPt(zx, zy, mx, my); ghost(k, p.x, p.y); }
     const lock = Assets.image(this, zx, zy - 14, 'ui_icon_lock').setDepth(DEPTH.PAD_TEXT);
@@ -352,11 +352,12 @@ export class Game extends Phaser.Scene {
   }
 
   /** tall things fade out when the player walks behind them */
-  addOccluder(img) {
+  addOccluder(img, station) {
     const h = img.displayHeight * img.originY;
     const w = img.displayWidth;
     // x / hw: the picture's box (a quick pre-test; the alpha mask decides)
-    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w, y: img.y, hw: w * 0.5, top: h * 0.95, a: 1, big: w > 250 });
+    // station: (v3.5 review) a station being worked stays solid for passers-by (only the chief fades it)
+    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w, y: img.y, hw: w * 0.5, top: h * 0.95, a: 1, big: w > 250, station: station || null });
   }
 
   buildFences() {
@@ -525,8 +526,10 @@ export class Game extends Phaser.Scene {
     // wheat plots
     this.wheat = [];
     const w = WORLD.wheat;
+    const skip = (i, j) => Array.isArray(w.skip) && w.skip.some((q) => Array.isArray(q) && q[0] === i && q[1] === j);
     for (let i = 0; i < w.rows; i++) {
       for (let j = 0; j < w.cols; j++) {
+        if (skip(i, j)) continue;   // (v3.5 review) the oven's work spot stays clear of wheat
         const p = isoPt(w.origin[0], w.origin[1], (i - (w.rows - 1) / 2) * w.step, (j - (w.cols - 1) / 2) * w.step);
         const wh = new Wheat(this, p.x, p.y);
         this.wheat.push(wh);

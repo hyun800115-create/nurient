@@ -185,7 +185,8 @@ export class UnlockPad {
     } else if (this.wasAfford) this.pad.img.setScale(this.pad.bsx, this.pad.bsy);
     this.wasAfford = afford;
     const on = this.pad.contains(p.x, p.y);
-    const la = on ? 0.3 : 1;
+    // (review fix) a pad waiting for the chief to step off keeps its label readable (what comes next)
+    const la = on && !(this.needsLeave && afford) ? 0.3 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
     if (!on || this.maxed) {
       this.standT = 0;

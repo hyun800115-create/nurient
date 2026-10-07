@@ -329,7 +329,7 @@ def b_cargo_ship():
     with L.Collect() as cs:
         smk = SL.smoke('csmoke', smk_base, big=1.4, seed=5, drift=(0.0, 1.0), n=4, rise=1.7)
     with L.Collect() as cf:
-        foam = SL.Foam('cfoam', H, n=8, length=0.36, spread=0.8, r0=0.22, r1=0.46, seed=4, splash=3)
+        foam = SL.Foam('cfoam', H, n=7, length=0.27, spread=0.55, r0=0.22, r1=0.44, seed=4, splash=3)
     stern = Vector((0.0, CS_L / 2 + 0.1, 0.0))
     bow = Vector((0.0, -CS_L / 2 + 0.2, 0.0))
     B = {'group': g, 'layers': {'smoke': cs.objs, 'foam': cf.objs}, 'smoke': smk, 'foam': foam,

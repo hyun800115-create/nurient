@@ -217,8 +217,8 @@ def bld_entries(k, m, frame_atlas):
              'frameSize': m['frameSize']}
         if 'footprint' in m:
             s['footprint'] = m['footprint']
-            s['footprintM'] = m['footprintM']
             fm = m['footprintM']
+            s['footprintM'] = [round(v, 3) for v in fm] if isinstance(fm, list) else fm
             if isinstance(fm, list) and len(fm) == 2:
                 a, b = fm
                 yaw = math.radians(m.get('yaw', 0.0))
@@ -272,9 +272,9 @@ CONVENTIONS = {
                 'draw a soft ellipse shadow[dir] = [w, h, angleDeg] (rotated ellipse along the heading; negate the '
                 'angle for mirrored dirs) on the ground under the anchor. 1 px ink outline like the characters.',
     'anims': 'idle (engine shake / horses breathing / steam), move (wheels turn, hooves trot, steam puffs), siren '
-             '(emergency vehicles standing with beacons). bobPx[i] = how many px the sprung body is lifted in frame i '
-             '(<= 0, already baked) - apply the same y offset to drawn passengers / cargo for a perfect fit '
-             '(optional, 1 px). wheels.turnsPerLoopDeg / radiusM -> no-slip speed = radiusM * rad(turns) * fps / '
+             '(emergency vehicles standing with beacons). bobPx[i] = screen-y offset of the sprung body in frame i '
+             '(0 or -1 = lifted 1 px; already baked into the frames) - add it to drawn passengers / cargo for a '
+             'perfect fit (optional). wheels.turnsPerLoopDeg / radiusM -> no-slip speed = radiusM * rad(turns) * fps / '
              'frames m/s (cosmetic: any speed reads fine).',
     'seats': 'seats[dir] = px offsets of each seat surface FRONT-CENTRE = the anchor of a character in a `sit` frame '
              '(villagers / townsfolk2 convention, seat height 0.45 m); seatDirs[dir] = the facing (S/SE/E/SW/W/N/NE/'
@@ -373,6 +373,8 @@ def pack_all(vehicles, vimgs, builds, bimgs, mode, out_dir):
             veh_atlas[k] = (akey, akey if over else None)
         else:
             sheet, atlas = pu.pack_atlas(items, max_width=MAX_SHEET, trim=True, padding=2)
+            if sheet.height > MAX_SHEET:             # big 8-frame era-2 loops: tighter padding first
+                sheet, atlas = pu.pack_atlas(items, max_width=MAX_SHEET, trim=True, padding=1)
             sheets.append((akey, sheet, atlas))
             if over:
                 s2, a2 = pu.pack_atlas(ov_items, max_width=MAX_SHEET, trim=True, padding=2)

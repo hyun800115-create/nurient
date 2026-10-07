@@ -283,7 +283,7 @@ def road_layer(size, polys, tex_path):
 
 def preview_scene(lib, man, people, out):
     W, H = 2600, 1500
-    ox, oy = 1150, 640
+    ox, oy = 1290, 640
     canvas = Image.new('RGBA', (W, H), SNOW)
     gm = lib.load_manifest('ground/manifest.json')
     snow = os.path.join(ASSETS, 'ground', 'ground_snow.png')
@@ -324,10 +324,11 @@ def preview_scene(lib, man, people, out):
     # bus stop on the far side of the main road; the retro bus halts at its stopPoint (heading NW)
     bx, by = -3.0, 4.3
     sx, sy, s = put_sprite('bus_stop', bx, by)
-    stx, sty = sx + s['stopPoint'][0], sy + s['stopPoint'][1]
+    # the bus is ARRIVING (5.5 m before its stopPoint, heading NW) so the shelter + queue stay visible
+    stx, sty = sx + s['stopPoint'][0] + 5.5 * 45.2548, sy + s['stopPoint'][1] + 5.5 * 22.6274
     bus = man['characters']['retro_bus']
     pas = fill_passengers(people, bus, 'NW', seed=3)
-    items.append((sty, lambda: draw_vehicle(canvas, lib, man, 'retro_bus', 'idle', 'NW', 0, stx, sty, pas)))
+    items.append((sty, lambda: draw_vehicle(canvas, lib, man, 'retro_bus', 'move', 'NW', 1, stx, sty, pas)))
     for k, (wx, wy) in enumerate(s.get('waitPoints', [])):
         img = people.townsfolk(11 + k, 'idle', 'SE') if k != 1 else people.vil('npc_kid_girl', 'idle', 'SE')
         put_person(img, sx + wx, sy + wy)
@@ -351,15 +352,15 @@ def preview_scene(lib, man, people, out):
     put_sprite('road_sign_arrow', 16.0, -3.6)
     put_sprite('road_sign_tri', 7.5, 3.5)
     # traffic (right-hand traffic: heading SE in the near lane, NW in the far lane)
-    put_vehicle('truck_cargo_chief', 'move', 'SE', 1, 2.0, -1.3)
+    put_vehicle('truck_cargo_chief', 'idle', 'SE', 1, 7.4, -1.3)
     put_vehicle('police_car', 'move', 'SE', 0, -15.0, -1.3)
     put_vehicle('horse_sleigh_bus', 'move', 'NW', 2, 20.0, 1.3)
     put_vehicle('fire_truck', 'move', 'NE', 1, 13.3, -9.0)
     put_vehicle('ambulance', 'move', 'SW', 2, 10.7, 6.5)
-    put_vehicle('car_d_red', 'move', 'NW', 3, 4.5, 1.3)
+    put_vehicle('car_d_red', 'move', 'NW', 3, -9.5, 1.3)
     # villagers for scale on the near sidewalk
     vk = ['npc_young_man', 'npc_teen_girl', 'npc_uncle']
-    for k, (x, y) in enumerate(((-1.0, -3.6), (0.0, -3.9), (-7.0, 3.6))):
+    for k, (x, y) in enumerate(((-6.6, -3.5), (-5.9, -3.9), (6.2, -3.6))):
         try:
             put_person(people.vil(vk[k], 'idle', 'S'), *iso(x, y, ox, oy))
         except Exception:

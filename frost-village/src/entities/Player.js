@@ -95,7 +95,10 @@ export class Player extends Character {
         this.node = null;
         this.opSpot = op;
         op.faceFor(this);
-        this.play(op.station.working ? op.chiefAnim() : (this.stack.count ? 'carry_idle' : 'idle'));
+        const wa = op.station.working ? op.chiefAnim() : (this.stack.count ? 'carry_idle' : 'idle');
+        this.play(wa);
+        // (v3.5 review) a one-shot motion (give) loops while he works
+        if (op.station.working && !this.sprite.anims.isPlaying) this.play(wa, true);
       } else if (this.node) {
         this.opSpot = null;
         this.faceTo(this.node.x, this.node.y);

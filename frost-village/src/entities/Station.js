@@ -21,7 +21,7 @@ export class Station {
     const r = Assets.sprite(cfg.sprite);
     this.img = gs.add.sprite(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);
     // tall stations (oven, smelter, smokehouse) fade when the chief walks behind them; low ones never hide him
-    if (this.img.displayHeight * this.img.originY > 190) gs.addOccluder(this.img);
+    if (this.img.displayHeight * this.img.originY > 190) gs.addOccluder(this.img, this);
     this.workAnim = Assets.spriteAnim(cfg.sprite, 'work');
     const fp = (r.def && r.def.footprint) || [190, 95];
     this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.42, 'station');

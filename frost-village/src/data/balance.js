@@ -98,8 +98,8 @@ export const BALANCE = {
     zone_hunt: 950,           // 13. 사냥터 (사슴·멧돼지 + 훈제장)
     op_smokehouse: 760,       // 14. 훈제사 연기
     hire_hunter: 1150,        // 15. 사냥꾼 → 마을 완성
-    raw_smokehouse: 820,      //     고기 짐꾼
-    porter_smokehouse: 900,   //     훈제 고기 짐꾼
+    raw_smokehouse: 650,      //     고기 짐꾼 (v3.5 리뷰: 820 → 650, 마을 완성 뒤 기다림 줄이기)
+    porter_smokehouse: 750,   //     훈제 고기 짐꾼 (900 → 750)
   },
   payDuration: 1.6,           // 발판에 코인을 다 내는 데 걸리는 대략적인 시간(초) — 비싸도 이 시간 안에 끝남
 
@@ -134,7 +134,7 @@ export const BALANCE = {
   workers: {
     speed: 150,               // 이동 속도
     capacity: 5,              // 한 번에 나르는 개수
-    porterCapacity: 8,        // 배달꾼이 한 번에 나르는 완성품 개수
+    porterCapacity: 14,       // 배달꾼(상품 짐꾼)이 한 번에 나르는 완성품 개수 (v3.5 리뷰: 8 → 14, 늘어난 일꾼이 만든 것도 팔리도록)
     // 작업 동작을 몇 번 반복해야 자원 1개를 얻는지 (클수록 느림)
     cyclesPerItem: { fisherman: 2, lumberjack: 1, farmer: 1, miner: 1, hunter: 1 },
     hunterRange: 230,         // 사냥꾼이 활을 쏘는 거리
@@ -143,6 +143,7 @@ export const BALANCE = {
   // ── 손님 (식당 판매대) ─────────────────────────────────────────
   customers: {
     spawnEvery: 2.0,          // 새 손님이 오는 간격(초)
+    spawnEveryLate: 1.3,      // (v3.5) 마을 완성 뒤 새 손님이 오는 간격(초) — 두 번째·세 번째 일꾼이 만든 음식도 팔려요
     maxQueue: 10,             // 줄 설 수 있는 최대 손님 수 (판매대로 걸어오는 손님 포함)
     wantMin: 1,               // 원하는 개수 최소
     wantMax: 3,               // 원하는 개수 최대 (처음)
@@ -209,7 +210,7 @@ export const BALANCE = {
   towers: {
     tower_east:  { coins: 300,  item_plank: 10, item_ingot: 0, time: 7 },    // 1. 동쪽 해안
     tower_south: { coins: 1100, item_plank: 16, item_ingot: 4, time: 9 },    // 2. 남쪽 들판
-    tower_se:    { coins: 2200, item_plank: 24, item_ingot: 10, time: 10 },  // 3. 동남쪽 언덕
+    tower_se:    { coins: 1700, item_plank: 24, item_ingot: 10, time: 10 },  // 3. 동남쪽 언덕 (v3.5 리뷰: 2200 → 1700)
   },
   // ── 건물: 빈 부지에 서서 고르면 코인을 내고, 자재가 오면 비계 → 완성
   //    people = 집에 살 수 있는 주민 수
@@ -237,10 +238,11 @@ export const BALANCE = {
   },
   // ── (v3.5) 세 번째 일꾼 (코인 + 도구 1개) — 두 번째 일꾼과 또 다른 모습의 사람이 와요
   hire3: {
-    hire3_fisherman: 1000,    // 어부 3 (낚싯대)
-    hire3_lumberjack: 1100,   // 나무꾼 3 (도끼)
-    hire3_farmer: 1300,       // 농부 3 (낫)
-    hire3_hunter: 1600,       // 사냥꾼 3 (활)
+    //    (v3.5 리뷰: 모아두는 곳이 이미 넘쳐서 세 번째 일꾼이 버는 돈이 적어요 → 값을 낮춤)
+    hire3_fisherman: 450,     // 어부 3 (낚싯대)
+    hire3_lumberjack: 500,    // 나무꾼 3 (도끼)
+    hire3_farmer: 600,        // 농부 3 (낫)
+    hire3_hunter: 700,        // 사냥꾼 3 (활)
   },
   // ── 새 가게·가공소 직원
   costs3: {
@@ -262,11 +264,12 @@ export const BALANCE = {
     callRange: 140,           // 콩이가 촌장 곁 이만큼(px) 안에 오면 놀기 메뉴가 떠요
     stayTime: 12,             // 아무것도 안 하면 이만큼(초) 뒤 다시 놀러 가요
     treatCooldown: 25,        // 간식 주기 다시 쓰기까지(초)
-    playCooldown: 4,          // 공 던지기 다시 쓰기까지(초)
-    petCooldown: 8,           // 쓰다듬기 다시 쓰기까지(초)
-    treatLove: 12,            // 간식 하나에 오르는 친밀도 (0~100)
-    playLove: 6,              // 공 놀이 한 번에 오르는 친밀도
-    petLove: 5,               // 쓰다듬기 한 번에 오르는 친밀도
+    playCooldown: 10,         // 공 던지기 다시 쓰기까지(초)
+    petCooldown: 15,          // 쓰다듬기 다시 쓰기까지(초)
+    //  (v3.5 리뷰: 하트 5개가 1분도 안 돼 다 차서 친밀도를 천천히 오르게 바꿨어요)
+    treatLove: 8,             // 간식 하나에 오르는 친밀도 (0~100)
+    playLove: 3,              // 공 놀이 한 번에 오르는 친밀도
+    petLove: 3,               // 쓰다듬기 한 번에 오르는 친밀도
     trickAt: 50,              // 친밀도가 이만큼 넘으면 가끔 혼자 재주를 부려요
     giftAt: 75,               // 친밀도가 이만큼 넘으면 가끔 선물(코인)을 물어 와요
     giftEvery: 150,           // 선물을 물어 오는 간격(초, 대략)
@@ -298,7 +301,7 @@ export const BALANCE = {
   // ── 배: 보트 창고에서 사고, 어부가 바다에 나가 고기를 잡아 옴
   boats: {
     rowboat: { coins: 700, speed: 70, fishTime: 12, fish: 6, big: 0 },                       // 나룻배
-    fishing: { coins: 1500, speed: 100, fishTime: 8, fish: 4, big: 4, tool: 'item_rod' },    // 어선 (코인 + 낚싯대)
+    fishing: { coins: 1200, speed: 100, fishTime: 8, fish: 4, big: 4, tool: 'item_rod' },    // 어선 (코인 + 낚싯대) (v3.5 리뷰: 1500 → 1200)
     dockTime: 2.5,            // 부두에서 짐을 내리고 다시 나가기까지(초)
   },
   // ── 건설

@@ -23,7 +23,7 @@ function fixNum(obj, key, path, min, max, def, int) {
 }
 
 // settings that older balance.js files may not have yet (filled in silently)
-const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'trade.shelfMax', 'workers.porterCapacity',
+const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.spawnEveryLate', 'trade.shelfMax', 'workers.porterCapacity',
   'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
@@ -61,7 +61,8 @@ export function checkBalance() {
   B.hire2 = B.hire2 || {};
   for (const w of ['lumberjack', 'miner', 'farmer', 'fisherman', 'hunter']) fixNum(B.hire2, 'hire2_' + w, 'hire2.hire2_' + w, 1, 1e9, 800, true);
   B.hire3 = B.hire3 || {};
-  for (const w of ['fisherman', 'lumberjack', 'farmer', 'hunter']) fixNum(B.hire3, 'hire3_' + w, 'hire3.hire3_' + w, 1, 1e9, B.hire2['hire2_' + w] * 2, true);
+  const H3 = { fisherman: 450, lumberjack: 500, farmer: 600, hunter: 700 };
+  for (const w in H3) fixNum(B.hire3, 'hire3_' + w, 'hire3.hire3_' + w, 1, 1e9, H3[w], true);
   B.costs3 = B.costs3 || {};
   const C3 = { op_toolsmith: 220, op_cannery: 600, porter_toolsmith: 600, porter_cannery: 800, porter_dock: 600, hire_clerk_store: 400 };
   for (const k in C3) fixNum(B.costs3, k, 'costs3.' + k, 1, 1e9, C3[k], true);
@@ -70,8 +71,8 @@ export function checkBalance() {
   fixNum(L, 'pileMax', 'labour.pileMax', 1, 500, 40, true);
   fixNum(L, 'rawCapacity', 'labour.rawCapacity', 1, 100, 8, true);
   const DG = B.dog = B.dog || {};
-  const dogNums = { callRange: [30, 1000, 140], stayTime: [1, 600, 12], treatCooldown: [0, 3600, 25], playCooldown: [0, 3600, 4], petCooldown: [0, 3600, 8],
-    treatLove: [0, 100, 12], playLove: [0, 100, 6], petLove: [0, 100, 5], trickAt: [0, 100, 50], giftAt: [0, 100, 75], giftEvery: [5, 36000, 150], giftCoins: [0, 1e6, 6] };
+  const dogNums = { callRange: [30, 1000, 140], stayTime: [1, 600, 12], treatCooldown: [0, 3600, 25], playCooldown: [0, 3600, 10], petCooldown: [0, 3600, 15],
+    treatLove: [0, 100, 8], playLove: [0, 100, 3], petLove: [0, 100, 3], trickAt: [0, 100, 50], giftAt: [0, 100, 75], giftEvery: [5, 36000, 150], giftCoins: [0, 1e6, 6] };
   for (const k in dogNums) { const [lo, hi, d] = dogNums[k]; fixNum(DG, k, 'dog.' + k, lo, hi, d); }
   // prices: whole coins >= 1
   B.prices = B.prices || {};
@@ -97,6 +98,7 @@ export function checkBalance() {
   B.customers = B.customers || {};
   const C = B.customers;
   fixNum(C, 'spawnEvery', 'customers.spawnEvery', 0.3, 600, 2.6);
+  fixNum(C, 'spawnEveryLate', 'customers.spawnEveryLate', 0.3, 600, C.spawnEvery);
   fixNum(C, 'maxQueue', 'customers.maxQueue', 1, 30, 6, true);
   fixNum(C, 'wantMin', 'customers.wantMin', 1, 50, 1, true);
   fixNum(C, 'wantMax', 'customers.wantMax', C.wantMin, 50, 3, true);
@@ -110,7 +112,7 @@ export function checkBalance() {
   B.workers = B.workers || {};
   fixNum(B.workers, 'speed', 'workers.speed', 20, 1000, 150);
   fixNum(B.workers, 'capacity', 'workers.capacity', 1, 100, 5, true);
-  fixNum(B.workers, 'porterCapacity', 'workers.porterCapacity', 1, 100, 8, true);
+  fixNum(B.workers, 'porterCapacity', 'workers.porterCapacity', 1, 100, 14, true);
   fixNum(B.workers, 'hunterRange', 'workers.hunterRange', 40, 1000, 230);
   B.workers.cyclesPerItem = B.workers.cyclesPerItem || {};
   for (const w of ['fisherman', 'lumberjack', 'farmer', 'miner', 'hunter']) fixNum(B.workers.cyclesPerItem, w, 'workers.cyclesPerItem.' + w, 1, 50, 1, true);
