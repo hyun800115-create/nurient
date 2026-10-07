@@ -25,6 +25,9 @@ const PRESETS = {
   ring:    { sprite: 'fx_ring', size: 40, tint: [0x8fb4e0], speed: [0, 0], angle: [0, 360], gravityY: 0, life: [400, 500], scaleEnd: 3.0, alpha: 0.9, qty: 1 },
   flame:   { sprite: 'fx_flame', size: 18, tint: null, speed: [20, 50], angle: [250, 290], gravityY: -90, life: [350, 650], scaleEnd: 0.2, alpha: 0.95, qty: 1, add: true },
   snowfall:{ sprite: 'fx_snowflake', size: 9, tint: [0xffffff], speed: [10, 40], angle: [80, 110], gravityY: 12, life: [5000, 8000], rotate: true, qty: 1, alpha: 0.85 },
+  // (v3.5) station operators: flour puffs at the bakery board, steam from the can press
+  flour:   { sprite: 'fx_dust', size: 18, tint: [0xffffff, 0xf6efe2, 0xeee6d6], speed: [30, 90], angle: [200, 340], gravityY: -20, life: [380, 650], scaleEnd: 1.8, alpha: 0.9, qty: 4 },
+  steam:   { sprite: 'fx_smoke', size: 26, tint: [0xffffff, 0xeef4fb], speed: [20, 50], angle: [250, 290], gravityY: -70, life: [600, 1000], scaleEnd: 1.9, alpha: 0.6, qty: 2 },
 };
 
 export class Effects {
