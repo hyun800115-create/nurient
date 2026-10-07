@@ -5,11 +5,11 @@
                "A4 C5 D5 - C5 A4 C5 -" quoted verbatim at the top of each A section, and the
                village B-section cadence "G4 - A4 C5 D5 - C5 -" quoted at the end of B.
                92 bpm, light swing 0.55, 24 bars (~62.6 s), form A1 B A2:
-                 A1 = F | Am | Bb | C | F | Dm | Gm7 C | F         flute lead with grace-note flicks,
-                      harp arpeggios, pizzicato bass, shaker, soft kick, birdsong answers
+                 A1 = F | Am | Bb | C | F | Dm | Gm7 C | F         flute lead an octave up (bright) with
+                      grace-note flicks, harp arpeggios, pizzicato bass, shaker, soft kick, birdsong answers
                  B  = Bb | C | Am | Dm | Gm7 | C | Am Dm | Gm7 C7  ocarina lead, nylon off-beat
                       comping, woodblock 'clip-clop', airy string pad, music-box sparkles
-                 A2 = F | Am | Bb | C | Dm | Bb | Gm7 C7 | F C7    flute + music-box octave, glock
+                 A2 = F | Am | Bb | C | Dm | Bb | Gm7 C7 | F C7    warm low flute + music-box octave, glock
                       counter-melody, finger-snap 2 & 4, triangle, walking bass; C7 turns back to A1.
                Brighter than the winter theme: no sleigh bells, flute / ocarina / harp / glock on top,
                birds (pitched chirps that land on F-major-pentatonic notes) in the gaps.
@@ -86,6 +86,17 @@ CH_S_A2 = [("F", "F"), ("Am", "Am"), ("Bb", "Bb"), ("C", "C"), ("Dm", "Dm"), ("B
 COUNTER_S = [("C6", "A5"), ("E6", "C6"), ("F6", "D6"), ("E6", "G6"), ("F6", "A5"), ("D6", "F6"), ("D6", "E6"),
              ("F6", "E6")]
 BIRD_NOTES = [96, 98, 101, 103, 105]                 # C7 D7 F7 G7 A7 (F-major pentatonic)
+
+
+F_MAJOR = {5, 7, 9, 10, 0, 2, 4}
+
+
+def scale_step(m: int, d: int) -> int:
+    """The next F-major scale note above (d=1) or below (d=-1) midi note m."""
+    k = m + d
+    while k % 12 not in F_MAJOR:
+        k += d
+    return k
 
 
 # ----------------------------------------------------------------------------- new voices
@@ -224,11 +235,12 @@ def _premix_spring(seed: int):
                     # grace-note flick (birdsong-like) on long notes that start on a beat
                     gr = 0.0
                     if ln >= 2 and st % 2 == 0 and r.random() < (0.55 if kind == "A1" else 0.4):
-                        gr = 2.0 if r.random() < 0.6 else -1.0
+                        gr = float(scale_step(m, 1 if r.random() < 0.6 else -1) - m)   # diatonic neighbour
                     gl = 0.055
+                    up = 12 if kind == "A1" else 0          # A1: bright 'spring is here' octave, A2: warm + music box
                     mx.add("flute", t0 - (gl if gr else 0.0),
-                           flute(m, song.vel(accent), dur * 0.97, r, vib=1.0 if ln >= 3 else 0.4, grace=gr, grace_len=gl),
-                           0.5, -0.1)
+                           flute(m + up, song.vel(accent), dur * 0.97, r, vib=1.0 if ln >= 3 else 0.4, grace=gr,
+                                 grace_len=gl), 0.42 if up else 0.5, -0.1)
                     if kind == "A2":
                         mx.add("mbox", t0 + 0.004, I.musicbox(m + 12, song.vel(0.55), r), 0.2, 0.3)
             # ------------------------------------------------ harmony
@@ -321,6 +333,9 @@ def _premix_spring(seed: int):
              "wb": 2.3, "snap": 2.2, "glock": 1.5, "tri": 1.0, "mbox": 1.1, "bird": 0.85}
     mix = premix(mx, sends, gains, L, rt60=2.0, pad_bus="pad")
     mix = S.shelf_hi(mix, 5000, 1.2)                 # a touch brighter / airier than the winter theme
+    # delay everything 12 ms: the loop point then sits just before the bar-1 downbeat instead of on the
+    # kick / harp attacks (fold_loop wraps the extra 12 ms of tail onto the start as usual)
+    mix = np.concatenate((np.zeros((2, n_of(0.012))), mix), axis=1)
     meta = {"bpm": 92, "bars": bars, "loopSamples": L, "nominalSamples": L, "target": -18.0}
     return mix, meta
 
@@ -352,6 +367,11 @@ def _premix_lute(seed: int):
     r = song.r
     L = n_of(bars * 4 * song.beat)
     mx = Mixer(L / SR + 4, loop=L / SR)
+    off = 0.015            # the loop point sits 15 ms before the downbeat: no pluck attack straddles the wrap
+
+    def T(b, beat):
+        return song.t(b, beat) + off
+
     prev = None
     for bar in range(bars):
         root, tri, _ = CHORDS[LUTE_CH[bar]]
@@ -361,24 +381,24 @@ def _premix_lute(seed: int):
         bm = bass_note(root, 41, 52)
         fifth = bm + 7 if bm + 7 <= 55 else bm - 5
         # thumb bass on 1 and 3
-        mx.add("lute", song.t(bar, 0) + song.hum(0.003), lute_note(bm, song.vel(0.8), r, song.beat * 1.7), 0.55)
-        mx.add("lute", song.t(bar, 2) + song.hum(0.003), lute_note(fifth, song.vel(0.68), r, song.beat * 1.7), 0.5)
+        mx.add("lute", T(bar, 0) + song.hum(0.003), lute_note(bm, song.vel(0.8), r, song.beat * 1.7), 0.55)
+        mx.add("lute", T(bar, 2) + song.hum(0.003), lute_note(fifth, song.vel(0.68), r, song.beat * 1.7), 0.5)
         # strums: (8th slot, down?, velocity, strings)
         for slot, down, v, strings in ((0, True, 0.62, full), (2, True, 0.42, full[1:]), (3, False, 0.34, full[1:]),
                                        (5, False, 0.36, full[1:]), (6, True, 0.46, full[1:]), (7, False, 0.32, full[2:])):
-            t0 = song.t(bar, slot / 2) + song.hum(0.004)
+            t0 = T(bar, slot / 2) + song.hum(0.004)
             seq = strings if down else strings[::-1]
             for k, mm in enumerate(seq):
                 mx.add("lute", t0 + k * (0.011 if down else 0.008) * (1 + 0.25 * r.random()),
                        lute_note(mm, song.vel(v * (1 - 0.06 * k)), r, song.beat * 0.45), 0.32)
         # the plucked tune on top
         for st, ln, m in parse_bar(LUTE_MEL[bar]):
-            t0 = song.t(bar, st / 2) + song.hum(0.004)
-            dur = song.t(bar, (st + ln) / 2) - song.t(bar, st / 2)
+            t0 = T(bar, st / 2) + song.hum(0.004)
+            dur = T(bar, (st + ln) / 2) - T(bar, st / 2)
             mx.add("lute", t0 + 0.006, lute_note(m, song.vel(0.86 if st % 2 == 0 else 0.74), r, dur * 0.95), 0.62)
         # a soft knock on the lute body on beat 4 of bars 2 and 4 (bard's flourish)
         if bar % 2 == 1:
-            mx.add("knock", song.t(bar, 3.5), I.woodblock(62, 0.4, r), 0.08)
+            mx.add("knock", T(bar, 3.5), I.woodblock(62, 0.4, r), 0.08)
     total = L + n_of(4.0)
     dry = sum(b.get(total) for b in mx.bus.values())[0]
     wet = S.reverb(dry, rt60=1.1, hf_rt60=0.5, predelay=0.012, size=0.7, lo_cut=200, hi_cut=5500).mean(axis=0)

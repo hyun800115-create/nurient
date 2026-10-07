@@ -250,7 +250,8 @@ export class Porter extends Character {
 
   static homeFor(gs, station) {
     const pad = station.outPad;
-    const p = { x: pad.x + 30, y: pad.y + 30 };
+    const o = station.cfg.porterHome || [30, 30];     // world.js stations[].porterHome: waiting spot next to the output pad
+    const p = { x: pad.x + o[0], y: pad.y + o[1] };
     gs.collision.resolve(p, 14);
     return [p.x, p.y];
   }
@@ -275,6 +276,7 @@ export class Porter extends Character {
     this.tripT = 0;
     this.speed = BALANCE.workers.speed * (0.95 + Math.random() * 0.1);
     gs.keysInUse.add(pk.key);
+    if (pk.later) gs.keysInUse.add(pk.later);
     gs.agents.push(this);
   }
 
@@ -292,7 +294,7 @@ export class Porter extends Character {
       if (this.checkT <= 0) {
         this.checkT = 1;
         if (Assets.charReady(this.wantKey)) {
-          gs.keysInUse.delete(this.key);
+          if (PORTER_KEYS.indexOf(this.key) < 0) gs.keysInUse.delete(this.key);
           this.reskin(this.wantKey);
           this.carryMode = this.def.carryStyle === 'back' ? 'back' : 'front';
           gs.keysInUse.add(this.key);

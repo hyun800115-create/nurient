@@ -149,6 +149,13 @@
       const tg = gs.tutorial.target;
       if (tg) { setTask('arrow', { x: tg.x, y: tg.y }, { label: gs.tutorial.textKey || '(no text)', tol: 8, maxT: 3 }); return; }
     }
+    // 0. (v2) customers / the merchant wait at an empty register: stand there until they have paid
+    {
+      const m = gs.market, tr = gs.trade;
+      const sellFood = Object.keys(b).some((t) => FOODS.includes(t) && canSell(t));
+      if (m.waitingPay && !m.register.clerk && !sellFood) { setTask('register', m.register, { seller: m, label: 'market', tol: 5 }); return; }
+      if (tr.enabled && tr.stock.count > 0 && !tr.register.clerk && !Object.keys(b).some((t) => GOODS.includes(t))) { setTask('register', tr.register, { seller: tr, label: 'trade', tol: 5 }); return; }
+    }
     // 1. pay
     const want = desiredPad();
     if (want && want.remaining <= coins && want.remaining > 0) { setTask('pay', { x: want.x, y: want.y }, { pad: want, label: want.id, tol: 6 }); return; }
@@ -160,7 +167,12 @@
     }
     const hasRaw = Object.keys(b).some((t) => RAW_ST[t]);
     // 2b. a player sees the coin pile: pick it up when it pays for the next pad (or when it is big)
-    { const ct0 = cashTotal(); if (ct0 > 0 && ((want && coins < want.remaining && coins + ct0 >= want.remaining) || ct0 >= 300)) return cashTask(); }
+    {
+      const ct0 = cashTotal();
+      // (v2) like a person: a coin pile you walk past, or one that has grown big, gets picked up
+      const nearPile = [gs.market.cash].concat(gs.trade.enabled ? [gs.trade.cash] : []).some((c) => c.value > 0 && gd(p.x, p.y, c.x, c.y) < 260);
+      if (ct0 > 0 && ((want && coins < want.remaining && coins + ct0 >= want.remaining) || ct0 >= (bot.opts.pileMax || 80) || nearPile)) return cashTask();
+    }
     // 3. bag full -> sell
     const sellables = Object.keys(b).filter((t) => (FOODS.includes(t) || GOODS.includes(t)) && canSell(t));
     if (room <= 0 && sellables.length) { return sellTask(sellables); }
@@ -267,6 +279,17 @@
         return false;
       }
       case 'cash': return tk.cash.value <= 0;
+      case 'register': {
+        if (tk.seller === gs.market) {
+          // stay while customers still have food coming / are paying
+          const f = gs.market.queue[0];
+          const busy = gs.market.waitingPay || (f && f.need > 0 && FOODS.some((x) => gs.market.stock.countOf(x) > 0));
+          if (!busy) { tk.idleT = (tk.idleT || 0) + bot.dt; return tk.idleT > 0.5; }
+          tk.idleT = 0;
+          return el > 40;
+        }
+        return gs.trade.stock.count === 0 || el > 40;
+      }
       case 'gather': {
         if (p.room <= 0) return true;
         if (el > tk.maxT) { L('gather timeout ' + tk.nodeKind); return true; }

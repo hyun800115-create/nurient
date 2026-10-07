@@ -1,0 +1,589 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_ui2.py (ui2_art.py, ui2_ground.py, ui2_fx.py)",
+ "conventions": {
+  "text": "No text is baked; the game renders all text.",
+  "iconSize": [
+   96,
+   96
+  ],
+  "pads": "ui_pad_* are 192x96 iso (2:1) diamonds like assets/ui pads: tip-to-tip ~170 px, anchor = centre, footprint [170, 85]. White engraved symbol, colour-coded fill.",
+  "iso": "World axes run at +-26.565 deg on screen (A = down-right (2,1), B = up-right (2,-1)); 1 m along an axis = 50.6 px, 1 m across = 40.5 px perpendicular.",
+  "blend": "All FX sheets are NORMAL-blend artwork (ADD vanishes on snow).",
+  "sheets": "Frames left->right, wrapped into rows so no sheet is wider than 2048 px. Phaser anim key = sheet key.",
+  "fogLayers": "Back->front: fog_bank (wall, opaque top, scroll ~6 px/s), fog_bank_mid (draw ~56 px lower, ~13 px/s), fog_bank_front (draw ~216 px lower than the wall top, ~30 px/s). All tile in x (TileSprite.tilePositionX). Fill everything beyond the wall with fog_bank.fillColor. When a watchtower clears an area: tween the layers' alpha to 0 (~0.8 s) and burst 10-20 fog_puff particles outward."
+ },
+ "atlases": [
+  {
+   "key": "ui2_icons",
+   "png": "ui2/ui2_icons.png",
+   "json": "ui2/ui2_icons.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "ui_card",
+   "png": "ui2/ui_card.png"
+  },
+  {
+   "key": "ui_card_selected",
+   "png": "ui2/ui_card_selected.png"
+  },
+  {
+   "key": "ground_road",
+   "png": "ui2/ground_road.png"
+  },
+  {
+   "key": "road_edge",
+   "png": "ui2/road_edge.png"
+  },
+  {
+   "key": "fog_bank",
+   "png": "ui2/fog_bank.png"
+  },
+  {
+   "key": "fog_bank_mid",
+   "png": "ui2/fog_bank_mid.png"
+  },
+  {
+   "key": "fog_bank_front",
+   "png": "ui2/fog_bank_front.png"
+  },
+  {
+   "key": "fog_puff",
+   "png": "ui2/fog_puff.png"
+  }
+ ],
+ "spritesheets": [
+  {
+   "key": "fx_build_dust",
+   "png": "ui2/fx_build_dust.png",
+   "frameWidth": 160,
+   "frameHeight": 128,
+   "frameCount": 12,
+   "fps": 24,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.72
+   ],
+   "blend": "NORMAL",
+   "notes": "Construction hammer puff: pow star + warm dust balls rolling out on the ground + wood chips. Anchor = ground point. Play on every hammer hit (~0.5 s)."
+  },
+  {
+   "key": "fx_build_done",
+   "png": "ui2/fx_build_done.png",
+   "frameWidth": 192,
+   "frameHeight": 192,
+   "frameCount": 18,
+   "fps": 20,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.76
+   ],
+   "blend": "NORMAL",
+   "notes": "Building complete: flash, golden iso ground ring, light fan, fountain of stars + confetti. Anchor = footprint centre; scale x1.3-1.6 for 3x3 m buildings."
+  },
+  {
+   "key": "fx_wake",
+   "png": "ui2/fx_wake.png",
+   "frameWidth": 256,
+   "frameHeight": 128,
+   "frameCount": 12,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake loop on dark sea: 3 foam rings spreading from the hull + waterline collar + bubbles. Anchor = hull centre at the waterline; draw UNDER the boat. Clear centre ~92x40 px. Scale x0.7 for the rowboat, x1.2 for the fishing boat."
+  },
+  {
+   "key": "fx_wake_ring",
+   "png": "ui2/fx_wake_ring.png",
+   "frameWidth": 192,
+   "frameHeight": 96,
+   "frameCount": 14,
+   "fps": 16,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra: one expanding foam ring. Spawn at the stern of a MOVING boat every ~0.25 s (world space, under the boat) - the rings form a V-shaped wake trail by themselves."
+  },
+  {
+   "key": "fx_fire_big",
+   "png": "ui2/fx_fire_big.png",
+   "frameWidth": 128,
+   "frameHeight": 192,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.9
+   ],
+   "blend": "NORMAL",
+   "notes": "Watchtower fire basket loop (tall flames + embers; add fx_smoke_puff above for smoke). Anchor = base of the flames (basket rim, buildings fxPoints.fire)."
+  }
+ ],
+ "sprites": {
+  "ui_icon_zoom_in": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_zoom_in",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Magnifier with a green plus (zoom in)."
+  },
+  "ui_icon_zoom_out": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_zoom_out",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Magnifier with a red minus (zoom out)."
+  },
+  "ui_icon_map": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_map",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Folded parchment map with a red pin (overview / \"show all\")."
+  },
+  "ui_icon_hammer": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_hammer",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Claw hammer (build menu / construction)."
+  },
+  "ui_icon_house": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_house",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Snowy log cabin (houses / housing capacity)."
+  },
+  "ui_icon_people": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_people",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Three villager heads in yellow/red/blue parka hoods (population)."
+  },
+  "ui_icon_clerk": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_clerk",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Shop clerk bust: red-white headscarf + striped apron."
+  },
+  "ui_icon_porter": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_porter",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Porter (orange beanie, green scarf) with a crate stack on a back frame."
+  },
+  "ui_icon_tools": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_tools",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Crossed axe + pickaxe (tools from the toolsmith)."
+  },
+  "ui_icon_food": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_food",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Bread loaf + smoked drumstick (miners' food / food supply)."
+  },
+  "ui_icon_happy": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_happy",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Smiling face (happiness)."
+  },
+  "ui_icon_lock_open": {
+   "atlas": "ui2_icons",
+   "frame": "ui_icon_lock_open",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Open gold padlock + twinkle (unlocked); pairs with ui/ui_icon_lock."
+  },
+  "ui_pad_clerk": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_clerk",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#E2659A",
+   "notes": "Iso 2:1 floor pad (192x96), pink, cash register + \"+\": hire a clerk for this counter. Diamond tip-to-tip ~170 px."
+  },
+  "ui_pad_porter": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_porter",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#8FB23A",
+   "notes": "Iso 2:1 floor pad (192x96), lime green, porter carrying crates on a back frame + \"+\": hire a porter for this line. Diamond tip-to-tip ~170 px."
+  },
+  "ui_pad_build": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_build",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#E0534A",
+   "notes": "Iso 2:1 floor pad (192x96), coral red, hammer + \"+\": empty building site, opens the build menu. Diamond tip-to-tip ~170 px."
+  },
+  "ui_pad_tower": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_tower",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#B05CC8",
+   "notes": "Iso 2:1 floor pad (192x96), violet, watchtower with a beacon fire: build the watchtower (expands the territory). Diamond tip-to-tip ~170 px."
+  },
+  "ui_pad_boat": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_boat",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#4A58C0",
+   "notes": "Iso 2:1 floor pad (192x96), deep-sea indigo, sailing boat: buy / upgrade a boat at the pier. Diamond tip-to-tip ~170 px."
+  },
+  "ui_pad_register": {
+   "atlas": "ui2_icons",
+   "frame": "ui_pad_register",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    192,
+    96
+   ],
+   "footprint": [
+    170,
+    85
+   ],
+   "colour": "#22AE98",
+   "notes": "Iso 2:1 floor pad (192x96), teal, two footprints + coin: the spot where the chief / clerk stands to take payment. Diamond tip-to-tip ~170 px."
+  },
+  "ui_card": {
+   "image": "ui_card",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    112,
+    128
+   ],
+   "minSize": [
+    64,
+    70
+   ],
+   "contentInset": [
+    16,
+    14,
+    16,
+    22
+   ],
+   "notes": "Build-menu card (9-slice). Recommended 120-220 px wide, 120-260 px tall; content inset [l, t, r, b] keeps text off the rim and the bottom lip."
+  },
+  "ui_card_selected": {
+   "image": "ui_card_selected",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    112,
+    128
+   ],
+   "minSize": [
+    64,
+    70
+   ],
+   "contentInset": [
+    16,
+    14,
+    16,
+    22
+   ],
+   "notes": "Selected build-menu card: gold rim + glow + twinkle, same size/margins as ui_card. Recommended 120-220 px wide, 120-260 px tall; content inset [l, t, r, b] keeps text off the rim and the bottom lip."
+  },
+  "ground_road": {
+   "image": "ground_road",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "avgColour": "#C4CBD7",
+   "notes": "Packed-snow cobble road, seamless 512 (cobbles are iso-foreshortened). Fill road cells with it at scale 1 (TileSprite / pattern), then lay road_edge along the borders."
+  },
+  "road_edge": {
+   "image": "road_edge",
+   "kind": "decal",
+   "tile": "x",
+   "frameSize": [
+    512,
+    64
+   ],
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "edgeLine": 32,
+   "roadSide": "top",
+   "notes": "Seamless in x (512x64). Centre line (y=32) on the road boundary, top half over the road, bottom half fades into the snow. Along a world axis rotate by +-26.57 deg (flipY for the opposite side); shading is mild so flips/rotations look right."
+  },
+  "fog_bank": {
+   "image": "fog_bank",
+   "kind": "fog",
+   "tile": "x",
+   "frameSize": [
+    512,
+    256
+   ],
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "opaqueRows": 194,
+   "bodyBottom": 209,
+   "fillColor": "#E6EEF6",
+   "parallax": {
+    "order": 0,
+    "yOffset": 0,
+    "speed": 6
+   },
+   "notes": "Drifting snow-fog WALL (back layer, also fine alone): top 194 rows fully opaque #E6EEF6 (continue with a rect of fillColor beyond), soft cloud banks, puffy lip ending near y=209, faint cool ground shadow below. Anchor = top centre; place the wall so its lip sits just outside the territory border."
+  },
+  "fog_bank_mid": {
+   "image": "fog_bank_mid",
+   "kind": "fog",
+   "tile": "x",
+   "frameSize": [
+    512,
+    192
+   ],
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "opaqueRows": 0,
+   "bodyBottom": 151,
+   "parallax": {
+    "order": 1,
+    "yOffset": 56,
+    "speed": 13
+   },
+   "notes": "Mid fog band (transparent top) hanging in front of the wall lip; draw over fog_bank 56 px lower, scroll ~2x faster."
+  },
+  "fog_bank_front": {
+   "image": "fog_bank_front",
+   "kind": "fog",
+   "tile": "x",
+   "frameSize": [
+    512,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "opaqueRows": 0,
+   "bodyBottom": 81,
+   "parallax": {
+    "order": 2,
+    "yOffset": 216,
+    "speed": 30
+   },
+   "notes": "Front layer: drifting blowing-snow wisps + flakes over the border; draw last (~216 px below the wall top), scroll fastest. Optional."
+  },
+  "fog_puff": {
+   "image": "fog_puff",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "tintable": false,
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "Soft fog billow particle (light blue-white baked, feathered rim). Fog clearing: emit 10-20, scale 0.6->1.6, drift outward/up, alpha 1->0 over ~1 s."
+  }
+ },
+ "nineSlice": {
+  "ui_card": {
+   "image": "ui_card",
+   "left": 30,
+   "right": 30,
+   "top": 30,
+   "bottom": 36
+  },
+  "ui_card_selected": {
+   "image": "ui_card_selected",
+   "left": 30,
+   "right": 30,
+   "top": 30,
+   "bottom": 36
+  }
+ }
+}

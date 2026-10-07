@@ -45,7 +45,6 @@ from mathutils import Vector     # noqa: E402
 import bl_common as bc           # noqa: E402
 import vil_render as vr          # noqa: E402   (setup_scene, px_off, ui_camera; nothing runs on import)
 import vil2_build as vb2         # noqa: E402
-import vil2_anim as va2          # noqa: E402
 import vil_anim as va            # noqa: E402
 
 FRAME = vr.FRAME

@@ -46,6 +46,7 @@ REL = "audio2"                                                    # manifest pat
 
 # ----------------------------------------------------------------------------- the sound list
 # key: (kind, loop, target loudness at game call volume 1 (before HEADROOM_DB), extra manifest fields)
+#   extra "cues" = seconds from the start of the file to a sync point (e.g. sync fx_build_done to "fanfare").
 #   music / ambience: integrated LUFS ; sfx: max momentary LUFS (400 ms) - same as build_audio.SOUNDS.
 #   v1 references: bgm_village -24.5, amb_* -31..-32.5, sfx_chop -16, sfx_customer_happy -17,
 #   sfx_animal_* -18, sfx_build -16, sfx_unlock -15, sfx_complete -14, sfx_pad_fill -20.
@@ -53,19 +54,21 @@ SOUNDS = {
     "bgm_spring":         ("music", True, -24.5, {"bars": 24, "tonality": "F major",
                                                  "notes": "v4 chapter-ending spring theme; quotes the bgm_village hook. "
                                                           "Stereo ~62.6 s (~22 MB as decoded PCM): load only when needed."}),
-    "sfx_lute":           ("ambience", True, -26.0, {"bars": 4, "tonality": "F major",
+    "sfx_lute":           ("ambience", True, -25.0, {"bars": 4, "tonality": "F major",
                                                     "notes": "bard strum loop (mono). Play like ambience: "
                                                              "Audio.setAmbience('sfx_lute', 0..1) by distance to the bard."}),
     "sfx_hammer_1":       ("sfx", False, -17.5, {}),
     "sfx_hammer_2":       ("sfx", False, -17.5, {}),
     "sfx_hammer_3":       ("sfx", False, -17.5, {}),
-    "sfx_build_done":     ("sfx", False, -15.0, {}),
+    "sfx_build_done":     ("sfx", False, -15.0, {"cues": {"thunk": 0.26, "fanfare": 0.58}}),
     "sfx_saw_short":      ("sfx", False, -18.5, {}),
-    "sfx_boat_horn":      ("sfx", False, -16.5, {}),
-    "sfx_row":            ("sfx", False, -20.0, {"notes": "one oar stroke (~1 s); retrigger once per row cycle"}),
-    "sfx_register":       ("sfx", False, -17.0, {}),
-    "sfx_tower_fire":     ("sfx", False, -16.0, {}),
-    "sfx_fog_clear":      ("sfx", False, -15.0, {}),
+    "sfx_boat_horn":      ("sfx", False, -16.5, {"cues": {"toot1": 0.0, "toot2": 0.34}}),
+    "sfx_row":            ("sfx", False, -20.0, {"cues": {"catch": 0.1},
+                                                "notes": "one oar stroke (~1 s); retrigger once per row cycle"}),
+    "sfx_register":       ("sfx", False, -17.0, {"cues": {"bell": 0.29}}),
+    "sfx_tower_fire":     ("sfx", False, -16.0, {"cues": {"ignite": 0.07},
+                                                "notes": "one-shot ignition; for the burning loop reuse audio/amb_fire"}),
+    "sfx_fog_clear":      ("sfx", False, -15.0, {"cues": {"whooshPeak": 0.9, "reveal": 0.95}}),
     "sfx_chatter_1":      ("sfx", False, -19.0, {"voice": "high"}),
     "sfx_chatter_2":      ("sfx", False, -19.0, {"voice": "high"}),
     "sfx_chatter_3":      ("sfx", False, -19.0, {"voice": "high"}),
@@ -74,7 +77,7 @@ SOUNDS = {
     "sfx_chatter_6":      ("sfx", False, -19.0, {"voice": "low"}),
     "sfx_laugh_1":        ("sfx", False, -18.5, {"voice": "high"}),
     "sfx_laugh_2":        ("sfx", False, -18.5, {"voice": "low"}),
-    "sfx_snowball_throw": ("sfx", False, -19.5, {}),
+    "sfx_snowball_throw": ("sfx", False, -19.5, {"cues": {"swish": 0.12}}),
     "sfx_snowball_hit":   ("sfx", False, -17.5, {}),
     "sfx_dog_bark":       ("sfx", False, -18.0, {}),
     "sfx_cat_meow":       ("sfx", False, -18.5, {}),
@@ -90,8 +93,8 @@ GROUPS = {
     "sfx_chatter_lo": ["sfx_chatter_4", "sfx_chatter_5", "sfx_chatter_6"],
 }
 LOOPS = {"bgm_spring": ("music2", "render_spring"), "sfx_lute": ("music2", "render_lute")}
-# Payload budget for assets/audio2 is 3 MB (CONTRACT_V3 task): music MP3 at 112 kbps instead of 128.
-MP3_KBPS = dict(BA.MP3_KBPS, music=112)
+# Same codec settings as assets/audio (build_audio.MP3_KBPS / CHANNELS / OGG_Q): payload ~2.5 MB of the 3 MB budget.
+MP3_KBPS = dict(BA.MP3_KBPS)
 
 
 def bind():

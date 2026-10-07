@@ -65,14 +65,14 @@ SPECS = {
         face=dict(brow='#4A2E22', lashes=True, blush='#F49090'), shadow=[46, 18]),
     'npc_clerk_b': dict(
         name=('점원 민호', 'Minho'), role='adult', traits=['tidy', 'polite', 'shopkeeper', 'register'],
-        body='tall', coat='#FBF8F0', sleeve='#FBF8F0', hair='#2A1E1A', pants='#4A3830', boots='#3B2A20',
+        body='tall', coat='#FBF8F0', sleeve='#FBF8F0', hair='#4A3428', pants='#4A3830', boots='#3B2A20',
         bare_hands=True, **NOFUR, hem_r=0.24, hem_z=-0.07, idle_style='back', serve_prop='bag',
-        face=dict(brow='#2A1E1A', brow_thick=0.0135), shadow=[46, 18]),
+        face=dict(brow='#3A2A22', brow_thick=0.0135), shadow=[46, 18]),
     'npc_porter_a': dict(
         name=('짐꾼 곰돌', 'Gomdol'), role='adult', traits=['strong', 'hardworking', 'porter', 'carries_on_back'],
-        body='big', coat='#9A6A42', sleeve='#E8DCC0', quilted=True, hair='#3A2A22', pants='#3A4458',
+        body='big', coat='#9A6A42', sleeve='#E8DCC0', quilted=True, hair='#5A3A26', pants='#3A4458',
         boots='#4A3020', mitten='#C98F55', **NOFUR, hem_r=0.25, hem_z=-0.08, carry='back',
-        face=dict(brow='#3A2A22', brow_thick=0.0175, nose='big', mouth_v=-0.112), shadow=[56, 22]),
+        face=dict(brow='#4A2E1E', brow_thick=0.0175, nose='big', mouth_v=-0.112), shadow=[56, 22]),
     'npc_porter_b': dict(
         name=('짐꾼 다람', 'Daram'), role='teen', traits=['quick', 'cheerful', 'porter', 'carries_on_back'],
         body='teen', coat='#4E7A4A', quilted=True, hair='#A0502A', pants='#5A4636', boots='#3B2A20',
@@ -143,7 +143,7 @@ def make_spec(key):
     coat = s['coat']
     if coat == 'splatter':
         s['coat_mat'] = vd2.mat_splatter('smock_splatter', '#F2EAD8', ['#E04848', '#F2C230', '#3D7CC9', '#5FB14E',
-                                                                         '#E07AB0'], scale=9.0, size=0.22)
+                                                                         '#E07AB0'], scale=7.0, size=0.27)
     else:
         s['coat_mat'] = cb.M('coat', coat, rough=s.get('coat_rough', 0.8))
     if s.get('sleeve'):

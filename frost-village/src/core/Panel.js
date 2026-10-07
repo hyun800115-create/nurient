@@ -12,6 +12,7 @@ const FLAT = {
   ui_button_gray: { fill: 0x8e99a8, line: 0x6a7584 },
   ui_coin_bar: { fill: 0x26364f, line: 0x16213a, alpha: 0.85 },
   ui_bubble_body: { fill: 0xffffff, line: 0xd7e3f2 },
+  ui_chat_bubble: { fill: 0xffffff, line: 0xd7e3f2 },
 };
 
 class FlatPanel extends Phaser.GameObjects.Graphics {

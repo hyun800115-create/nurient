@@ -31,7 +31,7 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
@@ -50,8 +50,22 @@ const flags = (v) => { const o = {}; if (isObj(v)) for (const k in v) if (v[k] =
 const counts = (v, keys) => { const o = {}; if (isObj(v)) for (const k of keys || Object.keys(v)) if (k in v) o[k] = count(v[k], 1e7); return o; };
 
 // Migrations from older save versions: MIGRATE[v] turns a version-v save into version v+1.
-const MIGRATE = {
-  // 0: (s) => ({ ...s, v: 1 }),
+// (never wipe a player's progress: every old field is carried over)
+const OLD_STEP_IDS = { hire2_fisherman: 'porter_grill', hire2_lumberjack: 'porter_sawmill', hire2_farmer: 'porter_bakery', hire2_miner: 'porter_smelter', hire2_hunter: 'porter_smokehouse' };
+export const MIGRATE = {
+  // v1 -> v2 (살아 있는 마을): post-completion couriers became porters (same pads, new ids); the first
+  // sale / trade already happened for anyone who unlocked something; residents are derived on load.
+  1: (s) => {
+    const o = Object.assign({}, s, { v: 2 });
+    const pr = isObj(s.progress) ? Object.assign({}, s.progress) : {};
+    const ren = (obj) => { const r = {}; if (isObj(obj)) for (const k in obj) r[OLD_STEP_IDS[k] || k] = obj[k]; return r; };
+    pr.done = ren(pr.done);
+    pr.paid = ren(pr.paid);
+    const anyDone = Object.keys(pr.done).some((k) => pr.done[k] === true);
+    pr.flags = Object.assign({}, isObj(pr.flags) ? pr.flags : {}, anyDone ? { firstSale: true } : {}, pr.done.zone_forest === true ? { firstTrade: true } : {});
+    o.progress = pr;
+    return o;
+  },
 };
 
 /**
@@ -72,6 +86,7 @@ export function sanitizeSave(raw) {
     celebrated: pr.celebrated === true,
     hints: flags(pr.hints),
     seen: flags(pr.seen),
+    flags: flags(pr.flags),
   };
   s.stations = {};
   if (isObj(raw.stations)) for (const id in raw.stations) { const st = raw.stations[id]; if (isObj(st)) s.stations[id] = { i: count(st.i, 1000), o: count(st.o, 1000) }; }
@@ -85,6 +100,13 @@ export function sanitizeSave(raw) {
     y: Number.isFinite(y) ? y : undefined,
     stack: Array.isArray(p.stack) ? p.stack.filter((k) => typeof k === 'string' && ITEMS.indexOf(k) >= 0).slice(0, 200) : [],
   };
+  // (v2) village life: who moved in (character keys), snowman stage
+  const lf = isObj(raw.life) ? raw.life : null;
+  if (lf) {
+    const moved = Array.isArray(lf.moved) ? lf.moved.filter((k) => typeof k === 'string' && /^[a-z0-9_]{1,40}$/.test(k)) : null;
+    s.life = { moved: moved ? Array.from(new Set(moved)).slice(0, 80) : undefined, snowman: Math.max(0, Math.min(3, Math.floor(num(lf.snowman, 0)))) };
+    if (!s.life.moved) delete s.life.moved;
+  }
   return s;
 }
 
@@ -119,13 +141,15 @@ export const Save = {
 };
 
 export const Settings = {
-  data: { sound: true, music: true, lang: null },
+  data: { sound: true, music: true, lang: null, zoom: null },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
       this.data.sound = s.sound !== false;
       this.data.music = s.music !== false;
       this.data.lang = s.lang === 'ko' || s.lang === 'en' ? s.lang : null;
+      const z = typeof s.zoom === 'number' ? s.zoom : NaN;
+      this.data.zoom = Number.isFinite(z) && z > 0.2 && z < 5 ? z : null;
     }
     return this.data;
   },

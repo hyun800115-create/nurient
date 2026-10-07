@@ -28,8 +28,9 @@ from mathutils import Vector, Matrix, Euler
 
 import bl_common as bc
 import prop_lib as L
-from prop_lib import C, flat, box, cyl, sphere, blob, extrude
+from prop_lib import C, flat, box, cyl, sphere, blob, extrude, tonal
 import prop_assets as PA
+import life_assets as LA
 import char_build as CB
 import char_geo as G
 
@@ -355,9 +356,9 @@ def to_px(p, W, H, anchor):
 
 
 def cam_depth(p):
-    """Distance along the view direction (bigger = farther from the camera)."""
-    v = Vector((-0.612, 0.612, -0.5)).normalized()
-    return Vector(p).dot(v)
+    """Horizontal distance away from the camera (bigger = farther), height ignored: decides whether a stack standing
+    on the deck at p is behind the crew / cabin (cargoPoint 'behind')."""
+    return (-p[0] + p[1]) * math.sqrt(0.5)
 
 
 def render_boat(key, opts):
@@ -413,7 +414,7 @@ def render_boat(key, opts):
         mw = B['group'].matrix_world
         c = mw @ B['cargo']
         crew = mw @ B['crew_ref']
-        behind = cam_depth(c) > cam_depth(crew) + 0.05
+        behind = cam_depth(c) > cam_depth(crew) + 0.1
         cp[d] = to_px(c, W, H, anchor) + [bool(behind)]
         wp[d] = to_px(mw @ B['stern'], W, H, anchor)
         bp[d] = to_px(mw @ B['bow'], W, H, anchor)
@@ -426,3 +427,224 @@ def render_boat(key, opts):
     with open(os.path.join(out, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)
     print('[%s] done in %.0fs (complete=%s)' % (key, time.time() - t0, complete), flush=True)
+
+
+# =========================================================================== fishing boat
+
+FB_L, FB_BEAM, FB_RIM, FB_DEPTH = 4.4, 1.72, 0.66, 0.9
+DECK_Z = 0.42
+CAB_Y0, CAB_Y1, CAB_W, CAB_H = 0.1, 1.05, 1.1, 1.05
+
+
+@boat('boat_fishing', anims={'idle': {'frames': 2, 'fps': 3, 'repeat': -1},
+                             'sail': {'frames': 4, 'fps': 6, 'repeat': -1}},
+      frame=(336, 304), anchor=(168, 236), samples=28,
+      notes='Fishing boat (~4.4 m): white / blue / red hull, small wheelhouse with a red snowy roof and a smoking '
+            'stove pipe, mast with a village pennant, net boom swung out to starboard with a net of fish. Crew of 2: '
+            'the captain at the aft wheel (navy coat, white cap, white beard) and the fisherman (yellow raincoat) on '
+            'the foredeck. idle = moored (gentle bob, no smoke); sail = 4-frame loop (pitching, smoke, net swing, '
+            'fisherman hauling the net rope, captain steering). Anchor = waterline centre; cargoPoint = fish hold '
+            'hatch on the foredeck.')
+def b_boat_fishing():
+    grp = bpy.data.objects.new('boat', None)
+    bpy.context.scene.collection.objects.link(grp)
+    parts = []
+    hm = hull_mat('fishhull', [(-1.0, '#C23E33'), (0.1, '#F4F1EA'), (0.38, '#3D7CC9'), (0.5, '#F4F1EA')])
+    h, rim = hull('fhull', FB_L, FB_BEAM, FB_RIM, FB_DEPTH, hm, bow_k=0.78, stern_k=0.22, sheer=0.22, M=48, K=12)
+    parts.append(h)
+    parts.append(rim_tube('frail', rim, 0.05, flat('#3D7CC9', 0.5)))
+    # deck
+    pts = []
+    for k in range(31):
+        y = -FB_L / 2 + 0.25 + (FB_L - 0.42) * k / 30
+        pts.append((half_width_at(rim, y) * 0.93, y))
+    poly = pts + [(-x, y) for x, y in pts[::-1]]
+    dk = extrude('deck', poly, 0.04, top=L.stripes('#C99A62', '#B5864F', 9.0, 'X', soft=0.04),
+                 side=flat('#A87442', 0.8), bevel=0.0)
+    dk.location = (0, 0, DECK_Z)
+    parts.append(dk)
+    # wheelhouse (white planks, blue windows, red snowy roof) amidships-aft
+    wall = L.stripes('#F4F1EA', '#E4DED0', 5.0, 'Z', rough=0.7, soft=0.05)
+    cz = DECK_Z + 0.04
+    cyc = (CAB_Y0 + CAB_Y1) / 2
+    parts.append(box('cabin', (CAB_W, CAB_Y1 - CAB_Y0, CAB_H), (0, cyc, cz), mat=wall, bevel=0.04))
+    glass = flat('#9CC7E6', 0.15, 0.2)
+    trimm = flat('#3D7CC9', 0.5)
+    parts.append(box('fwin', (CAB_W * 0.7, 0.06, 0.34), (0, CAB_Y0 - 0.01, cz + CAB_H - 0.5), mat=glass, bevel=0.02))
+    parts.append(box('fwinfr', (CAB_W * 0.76, 0.05, 0.42), (0, CAB_Y0 + 0.01, cz + CAB_H - 0.54), mat=trimm, bevel=0.02))
+    for s in (-1, 1):
+        parts.append(box('swin', (0.06, 0.32, 0.3), (s * CAB_W / 2, cyc - 0.12, cz + CAB_H - 0.48), mat=glass,
+                         bevel=0.02))
+        parts.append(box('swinfr', (0.05, 0.38, 0.36), (s * (CAB_W / 2 - 0.02), cyc - 0.12, cz + CAB_H - 0.51),
+                         mat=trimm, bevel=0.02))
+    with L.Collect() as rc:
+        LA.roof('croofA', CAB_W + 0.3, CAB_Y0 - 0.22, cz + CAB_H + 0.05, cyc, cz + CAB_H + 0.25, 0.07,
+                L.stripes('#C23E33', '#A93630', 5.0, 'Y', rough=0.7, soft=0.04), snow_frac=0.7, seed=3)
+        LA.roof('croofB', CAB_W + 0.3, CAB_Y1 + 0.22, cz + CAB_H + 0.05, cyc, cz + CAB_H + 0.25, 0.07,
+                L.stripes('#C23E33', '#A93630', 5.0, 'Y', rough=0.7, soft=0.04), snow_frac=0.7, seed=4)
+    parts += rc.objs
+    # stove pipe on the roof
+    pipe_top = Vector((0.32, CAB_Y1 - 0.25, cz + CAB_H + 0.75))
+    parts.append(cyl('pipe', 0.06, 0.6, (0.32, CAB_Y1 - 0.25, cz + CAB_H + 0.12), mat=flat('#3D424C', 0.5, 0.5),
+                     segs=12))
+    parts.append(cyl('pipecap', 0.1, 0.07, tuple(pipe_top - Vector((0, 0, 0.04))), mat=flat('#3D424C', 0.5, 0.5),
+                     segs=12, r_top=0.05))
+    # life ring on the cabin side + buoys over the rail
+    ring = L.MB()
+    for k in range(16):
+        a0, a1 = math.tau * k / 16, math.tau * (k + 1) / 16
+        p = Vector((0, 0.17 * math.cos(a0), 0.17 * math.sin(a0)))
+        q = Vector((0, 0.17 * math.cos(a1), 0.17 * math.sin(a1)))
+        ring.seg(p, q, 0.05, flat('#D9483B' if (k // 2) % 2 == 0 else '#F4F1EA', 0.5), segs=10)
+    parts.append(ring.done('lifering', loc=(CAB_W / 2 + 0.05, cyc + 0.25, cz + 0.45)))
+    for s, y in ((1, -0.7), (-1, -0.3), (1, 1.5)):
+        hw = half_width_at(rim, y)
+        parts.append(sphere('buoy', 0.1, (s * (hw + 0.07), y, FB_RIM - 0.1), flat('#F08A3A', 0.45), scale=(0.8, 1, 1.2),
+                            segs=14, rings=8))
+    # aft wheel (on the back wall of the cabin)
+    wheel_parts = [cyl('wrim', 0.22, 0.035, (0, 0, 0), rot=(90, 0, 0), mat=flat('#8A5A33', 0.6), segs=24,
+                       origin='center')]
+    for k in range(6):
+        a = k * 60
+        wheel_parts.append(box('wspoke', (0.04, 0.03, 0.56), (0, 0, 0), rot=(0, a, 0), mat=flat('#C98F55', 0.6),
+                               bevel=0.008, origin='center'))
+    wheel_parts.append(cyl('whub', 0.05, 0.07, (0, 0, 0), rot=(90, 0, 0), mat=flat('#F2C14E', 0.3, 0.6), segs=12,
+                           origin='center'))
+    wheel = L.group(wheel_parts, 'wheel', loc=(0.0, CAB_Y1 + 0.1, cz + 0.85))
+    wheel.parent = grp
+    parts.append(box('wpost', (0.08, 0.1, 0.25), (0.0, CAB_Y1 + 0.04, cz + 0.72), mat=flat('#8A5A33', 0.6), bevel=0.01))
+    # mast in front of the cabin + pennant + net boom to starboard (+X)
+    mx, my = 0.0, CAB_Y0 - 0.22
+    mast_top = 3.15
+    parts.append(cyl('mast', 0.06, mast_top - cz, (mx, my, cz), mat=tonal('#C98F55', 0.08, 3.0), segs=12,
+                     r_top=0.045))
+    parts.append(cyl('masttop', 0.07, 0.06, (mx, my, mast_top), mat=flat('#F2C14E', 0.3, 0.6), segs=12))
+    pen = PA.flag('pennant', (mx + 0.03, my, mast_top - 0.04), 0.55, 0.3, 'red', seed=2, emblem=True)
+    parts.append(pen)
+    bz0 = cz + 0.85
+    boom_tip = Vector((FB_BEAM / 2 + 1.25, my - 0.35, 2.15))
+    mb = L.MB()
+    mb.seg(Vector((mx, my, bz0)), boom_tip, 0.05, tonal('#B5763F', 0.08, 3.0), segs=10, r2=0.04)
+    mb.seg(Vector((mx, my, mast_top - 0.3)), boom_tip, 0.012, flat('#D9C39A', 0.8), segs=5)
+    parts.append(mb.done('boom'))
+    parts.append(PA.snow_cap('boomsnow', 0.08, (mx, my, mast_top + 0.06), 0.04, 3))
+    import bld_assets as BA
+    net_m = BA.net_mat()
+    with L.Collect() as nc:
+        blob('netbag', 0.3, (0, 0, -0.32), net_m, scale=(1.0, 0.9, 1.15), seed=6, amp=0.15, subdiv=3)
+        PA.fish_model('nf1', loc=(0.16, -0.18, -0.36), rot=(70, 0, 20), scale=0.45)
+        PA.fish_model('nf2', loc=(-0.12, -0.18, -0.25), rot=(100, 10, 160), scale=0.42)
+        PA.fish_model('nf3', loc=(0.02, -0.2, -0.5), rot=(80, 0, 90), scale=0.4)
+    netg = L.group([o for o in nc.objs if o.parent is None], 'netg', loc=tuple(boom_tip - Vector((0, 0, 0.55))))
+    netg.parent = grp
+    netrope = cyl('netrope', 0.014, 0.55, tuple(boom_tip - Vector((0, 0, 0.55))), mat=flat('#D9C39A', 0.8), segs=6)
+    parts.append(netrope)
+    # haul rope from the boom tip down to the fisherman's hands is drawn per frame (tube)
+    # fish hold hatch on the foredeck (cargo) + a crate
+    hy = -1.0
+    parts.append(box('hatch', (0.7, 0.55, 0.12), (0.0, hy, DECK_Z + 0.04), mat=flat('#8A5A33', 0.8), bevel=0.02))
+    parts.append(box('hatchin', (0.56, 0.42, 0.02), (0.0, hy, DECK_Z + 0.16), mat=flat('#2A1E18', 0.9), bevel=0.0))
+    parts.append(PA.fish_model('hfish', loc=(0.05, hy, DECK_Z + 0.2), rot=(0, 0, 60), scale=0.45))
+    parts.append(PA.crate_model('fcrate', 0.38, (-0.48, -0.45, DECK_Z + 0.04), snow=True, seed=5))
+    with L.Collect() as lc:
+        PA.lantern('blan', (-0.42, CAB_Y0 - 0.1, cz + CAB_H - 0.35), 0.11, 3.0, light=False)
+    parts += lc.objs
+    # bow + stern details
+    parts.append(cyl('bowpost', 0.05, 0.3, (0, -FB_L / 2 + 0.2, FB_RIM + 0.1), mat=flat('#3D7CC9', 0.5), segs=10))
+    for o in list(parts):
+        if o is None:
+            continue
+        if o.parent is None:
+            o.parent = grp
+    # crew
+    cap = crew_rig('fisherman', spec_over={'coat': '#2B3A5C', 'coat_rough': 0.7, 'pants': '#2E3440',
+                                           'boots': '#2A2A30', 'mitten': '#F4F1EA'}, dress=dress_captain)
+    cap.j['root'].parent = grp
+    cap.rest_loc['root'] = Vector((0.0, CAB_Y1 + 0.52, DECK_Z + 0.04))
+    fis = crew_rig('fisherman')
+    fis.j['root'].parent = grp
+    fis.rest_loc['root'] = Vector((0.42, -0.62, DECK_Z + 0.04))
+    smoke = L.Smoke('fbsmoke', tuple(pipe_top), n=3, rise=0.9, drift=(0.0, 0.35), r0=0.09, r1=0.26, color='#C3C9D2',
+                    alpha=0.85, seed=11)
+    for o in smoke.obs:
+        o.parent = grp
+    haul = []
+    return {'group': grp, 'rigs': [cap, fis], 'cargo': Vector((0.0, hy, DECK_Z + 0.18)),
+            'crew_ref': Vector((0.0, 0.3, 1.2)), 'stern': Vector((0, FB_L / 2, 0.0)), 'bow': Vector((0, -FB_L / 2, 0.0)),
+            'pose': pose_fishing, 'wheel': wheel, 'net': netg, 'smoke': smoke, 'pennant': pen, 'haul': haul,
+            'boom_tip': boom_tip, 'netrope': netrope}
+
+
+def pose_fishing(B, anim, i, n):
+    import char_anim as CA
+    grp = B['group']
+    cap, fis = B['rigs']
+    if anim == 'idle':
+        grp.location.z = 0.015 * (1 if i else -1)
+        grp.rotation_euler.x = math.radians(0.6 * (1 if i else -1))
+        grp.rotation_euler.y = math.radians(0.8 * (-1 if i else 1))
+        B['smoke'].show(False)
+        swing = 2.0 * (1 if i else -1)
+        steer = 0.0
+        haul_t = None
+    else:
+        t = i / float(n)
+        grp.location.z = 0.025 * math.sin(math.tau * t)
+        grp.rotation_euler.x = math.radians(1.6 * math.cos(math.tau * t))
+        grp.rotation_euler.y = math.radians(1.0 * math.sin(math.tau * t))
+        B['smoke'].set(i)
+        swing = 7.0 * math.sin(math.tau * t)
+        steer = 25.0 * math.sin(math.tau * t)
+        haul_t = t
+    B['net'].rotation_euler = Euler((math.radians(swing * 0.5), math.radians(swing), 0), 'XYZ')
+    B['pennant'].rotation_euler.z = math.radians(-10 + (4 * math.sin(math.tau * i / max(1, n))))
+    B['wheel'].rotation_euler.y = math.radians(steer)
+    # captain: standing idle pose facing the bow, hands on the wheel (IK)
+    cp = CA.pose_for('human', 'idle', i % 4, 4, 'fisherman')
+    cp['_show'] = {'face_normal'} if (anim == 'idle' or i != 2) else {'face_smile'}
+    cap.apply(cp, yaw_deg=0.0)
+    bpy.context.view_layer.update()
+    inv = cap.j['chest'].matrix_world.inverted()
+    w = B['wheel']
+    for side, a in (('R', 150.0 + steer), ('L', 30.0 + steer)):
+        p = w.matrix_world @ Vector((0.21 * math.cos(math.radians(a)), 0.0, 0.21 * math.sin(math.radians(a))))
+        cap.solve_arm(side, tuple(inv @ p), (0.8 * (-1 if side == 'R' else 1), 0.3, -0.7))
+    # fisherman on the foredeck: idle = looking out with a little wave; sail = hauling the net rope
+    if haul_t is None:
+        fp = CA.pose_for('human', 'idle', i % 4, 4, 'fisherman')
+        fp['root'] = (0, 0, -40)
+        fp['_show'] = {'face_smile'}
+        fis.apply(fp, yaw_deg=0.0)
+        bpy.context.view_layer.update()
+        inv = fis.j['chest'].matrix_world.inverted()
+        wave = Vector((0.18, -0.05, 0.42 + 0.04 * i))
+        fis.solve_arm('L', tuple(wave), (1.0, 0.0, -0.4))
+        hands = None
+    else:
+        lean = 8.0 + 6.0 * math.sin(math.tau * haul_t)
+        fp = {'root': (0, 0, -55), 'spine': (lean, 0, 0), 'head': (-lean * 0.6 - 6, 0, 8),
+              'hip_R': (-8, 4, 0), 'hip_L': (14, 4, 0), 'knee_R': (6, 0, 0), 'knee_L': (16, 0, 0),
+              '_show': {'face_happy'} if i in (1, 2) else {'face_normal'}}
+        fis.apply(fp, yaw_deg=0.0)
+        bpy.context.view_layer.update()
+        inv = fis.j['chest'].matrix_world.inverted()
+        tip = grp.matrix_world @ B['boom_tip']
+        chest = fis.j['chest'].matrix_world.translation
+        d = (tip - chest).normalized()
+        k = 0.06 * math.sin(math.tau * haul_t)
+        hi = chest + d * (0.3 + k) + Vector((0, 0, 0.05))
+        lo = chest + d * (0.18 - k) + Vector((0, 0, -0.02))
+        fis.solve_arm('R', tuple(inv @ hi), (-0.8, 0.3, -0.7))
+        fis.solve_arm('L', tuple(inv @ lo), (0.8, 0.3, -0.7))
+        hands = (hi, lo)
+    bpy.context.view_layer.update()
+    for r_ in B['haul']:
+        bpy.data.objects.remove(r_, do_unlink=True)
+    B['haul'].clear()
+    if hands:
+        tip = grp.matrix_world @ B['boom_tip']
+        hand = fis.world('hand_R')
+        hand2 = fis.world('hand_L')
+        B['haul'].append(L.tube('haul', [tuple(tip), tuple(hand), tuple(hand2 + (hand2 - hand) * 1.5)], 0.012,
+                                flat('#D9C39A', 0.8)))
+    bpy.context.view_layer.update()

@@ -1,0 +1,1452 @@
+{
+ "version": 1,
+ "generator": "tools/blender/bld_render.py + bld_pack.py (docs/CONTRACT_V3.md section E)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (items: bottom centre; boats: waterline centre of the hull).",
+  "front": "-Y = the building faces screen down-left (SW); its other visible side is screen down-right (SE).",
+  "footprint": "screen-px bounding size [w, h] of the ground diamond, centred on the anchor; footprintM = metres.",
+  "topPx": "visual height above the anchor in px (bubbles / progress rings).",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled sprite). *Dirs = facing of the character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX).",
+  "inPoint/outPoint": "centres of the input / output floor pads (ui_pad_input / ui_pad_output, 170x85) - all placed in FRONT of the building (larger y than the building edge) so a character standing on a pad sorts above the building.",
+  "staffPoints": "where a clerk / worker stands. staffDepth \"front\": the spot is in front of the building geometry -> draw the character above the building sprite (depth d + 0.5); if the sprite has `overlay`, draw that overlay sprite above the character (d + 1). \"behind\" (existing sellers): normal anchor-y sorting already draws the clerk behind the counter sprite.",
+  "customerPoints": "shop_general: where the first customer stands (queue continues toward screen down-left).",
+  "cashPoint": "shop_general: coin pad (ui_pad_cash).",
+  "dockPoint": "boathouse: water spot beside the pier end where a boat anchor is placed; dockDir = boat facing.",
+  "workPoints": "construction sites: builder spots (hammering, facing workDirs), outside the footprint; draw them above the site sprite.",
+  "dropPoint": "construction sites: where delivered materials are stacked (item towers).",
+  "stages": "site_plot_X -> site_foundation_X -> site_scaffold_X share frameSize + anchor (X = S 2x2, M 3x3, L 4x4 m); the finished building (anchor = footprint centre too) simply replaces the site sprite.",
+  "work": "idle frame = resting state; anims.work = seamless 4-frame loop with the motion baked in (all frames share frameSize + anchor; swap frames in place). The game builds spr:<key>:work like the props stations.",
+  "fxPoints": "px offsets for game FX: smoke (chimney top), fire, steam, sparks, hoist, crane, register ...",
+  "shadows": "buildings / sites have a baked soft cool shadow falling screen down-right; items and boats none.",
+  "stackStep": "items: px between stacked copies at scale 1; carryScale = scale for hand-carried stacks (same rules as assets/props items).",
+  "boats": "characters{} entries with kind \"boat\": 5 rendered dirs + flipX mirrors, frame names {anim}_{dir}_{i}; crew baked in, 1 px ink outline like the characters, NO shadow (draw fx_wake at wakePoint[dir], mirrored dirs negate dx). cargoPoint[dir] = [dx, dy, behind] = bottom of a carried fish stack (behind = draw the stack before the boat sprite).",
+  "staff overrides": "market_counter_staff / trade_post_staff are not images: {of, staffPoints, staffDirs, staffDepth} for the EXISTING props sellers, measured from prop_assets geometry."
+ },
+ "atlases": [
+  {
+   "key": "bld_buildings",
+   "png": "buildings/bld_buildings.png",
+   "json": "buildings/bld_buildings.json"
+  },
+  {
+   "key": "bld_buildings_2",
+   "png": "buildings/bld_buildings_2.png",
+   "json": "buildings/bld_buildings_2.json"
+  },
+  {
+   "key": "bld_sites",
+   "png": "buildings/bld_sites.png",
+   "json": "buildings/bld_sites.json"
+  },
+  {
+   "key": "bld_items",
+   "png": "buildings/bld_items.png",
+   "json": "buildings/bld_items.json"
+  },
+  {
+   "key": "boat_rowboat",
+   "png": "buildings/boat_rowboat.png",
+   "json": "buildings/boat_rowboat.json"
+  },
+  {
+   "key": "boat_fishing",
+   "png": "buildings/boat_fishing.png",
+   "json": "buildings/boat_fishing.json"
+  }
+ ],
+ "sprites": {
+  "warehouse": {
+   "atlas": "bld_buildings",
+   "frame": "warehouse",
+   "anchor": [
+    0.41667,
+    0.62136
+   ],
+   "kind": "building",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    456,
+    412
+   ],
+   "topPx": 235,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "warehouse_work_0",
+      "warehouse_work_1",
+      "warehouse_work_2",
+      "warehouse_work_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "hoist": [
+     -97,
+     -103
+    ],
+    "door": [
+     -71,
+     -14
+    ]
+   },
+   "inPoint": [
+    -158,
+    38
+   ],
+   "outPoint": [
+    77,
+    79
+   ],
+   "doorPoint": [
+    -92,
+    46
+   ],
+   "staffPoints": [
+    [
+     -9,
+     78
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "front",
+   "notes": "Warehouse (3x3 m): big log barn with a gambrel roof; its gable end faces screen down-left (world -Y) with wide red X-braced barn doors standing open (crates / sacks / barrels inside and outside) and a loft hoist above the doors. anims.work = the hoist lifts a sack bundle (pulley turning, rope shortening) while the doors sway. staffPoints[0] = keeper beside the doors (in front of the barn: draw above it). inPoint = drop-off pad (front-left), outPoint = pick-up pad (right side)."
+  },
+  "station_cannery": {
+   "atlas": "bld_buildings",
+   "frame": "station_cannery",
+   "anchor": [
+    0.33259,
+    0.70833
+   ],
+   "kind": "station",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    448,
+    432
+   ],
+   "topPx": 244,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "station_cannery_work_0",
+      "station_cannery_work_1",
+      "station_cannery_work_2",
+      "station_cannery_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "press": [
+     -30,
+     -34
+    ],
+    "steam": [
+     -12,
+     -139
+    ],
+    "smoke": [
+     86,
+     -230
+    ],
+    "input": [
+     -101,
+     -57
+    ],
+    "output": [
+     37,
+     23
+    ]
+   },
+   "inPoint": [
+    -158,
+    38
+   ],
+   "outPoint": [
+    77,
+    79
+   ],
+   "notes": "Cannery (3x3 m): brick + half-timber workshop with a slate roof, a giant tin can on the ridge, a brick chimney. In front (screen down-left) a conveyor runs along world +X: fish crate at the left (input) end, a can-sealing press in the middle, sealed cans stacked at the right (output) end. anims.work = cans travel along the belt (seamless), the press stamps, lamp blinks, steam + chimney smoke. inPoint = fish/ingot pad (front-left), outPoint = cans pad (right). fxPoints: press, steam, smoke, input, output."
+  },
+  "shop_general": {
+   "atlas": "bld_buildings",
+   "frame": "shop_general",
+   "anchor": [
+    0.33333,
+    0.64151
+   ],
+   "kind": "building",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    420,
+    424
+   ],
+   "topPx": 251,
+   "front": "-Y",
+   "fxPoints": {
+    "register": [
+     -57,
+     -63
+    ],
+    "coins": [
+     -32,
+     60
+    ]
+   },
+   "inPoint": [
+    131,
+    50
+   ],
+   "cashPoint": [
+    -32,
+    66
+   ],
+   "staffPoints": [
+    [
+     -9,
+     7
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -70,
+     37
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "staffDepth": "front",
+   "overlay": "shop_general_front",
+   "notes": "General store (3x3 m): cream plank shop with a false front, green-white awning, open counter with a brass cash register, shelves of cans / jars / tools inside. Front faces screen down-left (world -Y). staffPoints[0] = the clerk spot BEHIND the counter (facing SW = SE flipped): draw the shop (depth d), then the clerk (d + 0.5), then the overlay sprite shop_general_front (d + 1, same anchor) so the counter hides the clerk's legs. customerPoint = where the first customer stands in front of the counter (queue toward screen down-left); cashPoint = coin pad; inPoint = restock pad (porters)."
+  },
+  "shop_general_front": {
+   "atlas": "bld_buildings",
+   "frame": "shop_general_front",
+   "anchor": [
+    0.33333,
+    0.64151
+   ],
+   "kind": "overlay",
+   "of": "shop_general",
+   "frameSize": [
+    420,
+    424
+   ],
+   "notes": "Occluder overlay for shop_general (same frame + anchor): draw it ABOVE the clerk standing at shop_general.staffPoints[0] (building depth d, clerk d + 0.5, overlay d + 1) so the counter hides the clerk's legs. Contains every surface on the camera side of the vertical plane through the staff spot (the counter + what stands in front of the clerk)."
+  },
+  "station_toolsmith": {
+   "atlas": "bld_buildings",
+   "frame": "station_toolsmith",
+   "anchor": [
+    0.35309,
+    0.73305
+   ],
+   "kind": "station",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    388,
+    472
+   ],
+   "topPx": 266,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "station_toolsmith_work_0",
+      "station_toolsmith_work_1",
+      "station_toolsmith_work_2",
+      "station_toolsmith_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "fire": [
+     3,
+     -84
+    ],
+    "sparks": [
+     -26,
+     -36
+    ],
+    "smoke": [
+     8,
+     -269
+    ],
+    "steam": [
+     -73,
+     -42
+    ]
+   },
+   "inPoint": [
+    -158,
+    38
+   ],
+   "outPoint": [
+    77,
+    79
+   ],
+   "staffPoints": [
+    [
+     -109,
+     0
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "staffDepth": "front",
+   "notes": "Toolsmith / forge (3x3 m): open timber smithy with a stone forge + brick hood and chimney, leather bellows, a cam-driven trip hammer over the anvil, a quench trough and a tool rack with axes, picks and sickles. anims.work = hammer rises and strikes (spark burst on the strike frame), bellows pump, coals pulse, chimney smoke, steam from the trough. staffPoints[0] = the smith at the forge front (draw above the building). inPoint = ingot+plank pad (front-left), outPoint = tools pad (right)."
+  },
+  "house_a": {
+   "atlas": "bld_buildings_2",
+   "frame": "house_a",
+   "anchor": [
+    0.38855,
+    0.66369
+   ],
+   "kind": "building",
+   "footprint": [
+    199,
+    100
+   ],
+   "footprintM": [
+    2.2,
+    2.2
+   ],
+   "frameSize": [
+    332,
+    336
+   ],
+   "topPx": 203,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     -6,
+     -201
+    ],
+    "chimney": [
+     -6,
+     -193
+    ]
+   },
+   "doorPoint": [
+    -63,
+    32
+   ],
+   "notes": "Cosy log cabin (2.2 x 2.2 m) with a red snowy roof, stone chimney, a wreath on the door (front = screen down-left, world -Y), blue-shuttered window on the right side, firewood pile and lantern. Chimney smoke is drawn by the game at fxPoints.smoke; doorPoint = in front of the door."
+  },
+  "house_b": {
+   "atlas": "bld_buildings_2",
+   "frame": "house_b",
+   "anchor": [
+    0.34158,
+    0.61765
+   ],
+   "kind": "building",
+   "footprint": [
+    226,
+    113
+   ],
+   "footprintM": [
+    2.5,
+    2.5
+   ],
+   "frameSize": [
+    404,
+    340
+   ],
+   "topPx": 189,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     72,
+     -177
+    ],
+    "chimney": [
+     72,
+     -163
+    ]
+   },
+   "doorPoint": [
+    -57,
+    46
+   ],
+   "notes": "Stone cottage (2.5 x 2.5 m): rounded grey stone walls, blue slate roof with snow, arched wooden door with a stone arch, round porthole window + berry window box on the front, tall stone chimney on the right gable (smoke at fxPoints.smoke). Front = screen down-left (world -Y)."
+  },
+  "house_c": {
+   "atlas": "bld_buildings_2",
+   "frame": "house_c",
+   "anchor": [
+    0.35174,
+    0.67188
+   ],
+   "kind": "building",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "frameSize": [
+    344,
+    384
+   ],
+   "topPx": 237,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     -3,
+     -240
+    ],
+    "chimney": [
+     -3,
+     -229
+    ]
+   },
+   "doorPoint": [
+    -74,
+    26
+   ],
+   "notes": "Tall half-timbered cottage (2 x 2 m): cream plaster + dark beams, steep green roof with its gable toward the viewer (front = screen down-left, world -Y), round attic window, door canopy, brick chimney (smoke at fxPoints.smoke), potted pine and lantern."
+  },
+  "watchtower": {
+   "atlas": "bld_buildings_2",
+   "frame": "watchtower",
+   "anchor": [
+    0.26456,
+    0.71062
+   ],
+   "kind": "building",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "frameSize": [
+    412,
+    584
+   ],
+   "topPx": 342,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "watchtower_work_0",
+      "watchtower_work_1",
+      "watchtower_work_2",
+      "watchtower_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "fire": [
+     0,
+     -248
+    ],
+    "smoke": [
+     4,
+     -335
+    ],
+    "platform": [
+     0,
+     -186
+    ]
+   },
+   "notes": "Watchtower (2x2 m footprint, ~5 m): four log legs with cross braces, a ladder on the front (-Y, screen down-left), a railed platform at 3.4 m and an iron fire basket on top. Idle = cold logs in the basket; anims.work = the beacon fire burning (4-frame loop, flames + glow + embers + smoke). fxPoints.fire = basket top (for fx_fire_big), fxPoints.smoke = above the flames."
+  },
+  "boathouse": {
+   "atlas": "bld_buildings_2",
+   "frame": "boathouse",
+   "anchor": [
+    0.34459,
+    0.72396
+   ],
+   "kind": "building",
+   "footprint": [
+    226,
+    113
+   ],
+   "footprintM": [
+    3.0,
+    2.0
+   ],
+   "frameSize": [
+    444,
+    384
+   ],
+   "topPx": 203,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "boathouse_work_0",
+      "boathouse_work_1",
+      "boathouse_work_2",
+      "boathouse_work_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "crane": [
+     167,
+     -62
+    ],
+    "smoke": [
+     -24,
+     -212
+    ]
+   },
+   "outPoint": [
+    -63,
+    59
+   ],
+   "dockPoint": [
+    149,
+    23
+   ],
+   "dockDir": "NE",
+   "doorPoint": [
+    -92,
+    18
+   ],
+   "notes": "Boathouse (3 x 2 m): blue plank boat shed with a red roof, its open gable doorway toward the viewer (screen down-left) shows a rowboat on a cradle; crossed oars + fish sign above the door, life ring on the side. A small pier runs along the right side toward world +Y (screen up-right = the sea) and sticks out ~1 m past the footprint; a jib crane at its end. anims.work = the crane winch turns and lifts a net of fish, stove-pipe smoke. dockPoint/dockDir = where a boat (anchor) moors beside the pier end; outPoint = catch pad on land (front right)."
+  },
+  "site_plot_S": {
+   "atlas": "bld_sites",
+   "frame": "site_plot_S",
+   "anchor": [
+    0.375,
+    0.60135
+   ],
+   "kind": "site",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "frameSize": [
+    336,
+    296
+   ],
+   "topPx": 80,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    64
+   ],
+   "workPoints": [
+    [
+     -81,
+     27
+    ],
+    [
+     79,
+     29
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 0,
+   "stages": [
+    "site_plot_S",
+    "site_foundation_S",
+    "site_scaffold_S"
+   ],
+   "size": "S",
+   "notes": "Construction site S (2 x 2 m footprint): site_plot_S = staked-out plot (stakes, rope, flags, packed snow), site_foundation_S = stone foundation + a few planks, site_scaffold_S = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 2x2 (houses, watchtower) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_foundation_S": {
+   "atlas": "bld_sites",
+   "frame": "site_foundation_S",
+   "anchor": [
+    0.375,
+    0.60135
+   ],
+   "kind": "site",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "frameSize": [
+    336,
+    296
+   ],
+   "topPx": 56,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    64
+   ],
+   "workPoints": [
+    [
+     -81,
+     27
+    ],
+    [
+     79,
+     29
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 1,
+   "stages": [
+    "site_plot_S",
+    "site_foundation_S",
+    "site_scaffold_S"
+   ],
+   "size": "S",
+   "notes": "Construction site S (2 x 2 m footprint): site_plot_S = staked-out plot (stakes, rope, flags, packed snow), site_foundation_S = stone foundation + a few planks, site_scaffold_S = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 2x2 (houses, watchtower) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_scaffold_S": {
+   "atlas": "bld_sites",
+   "frame": "site_scaffold_S",
+   "anchor": [
+    0.375,
+    0.60135
+   ],
+   "kind": "site",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "frameSize": [
+    336,
+    296
+   ],
+   "topPx": 157,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    64
+   ],
+   "workPoints": [
+    [
+     -81,
+     27
+    ],
+    [
+     79,
+     29
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 2,
+   "stages": [
+    "site_plot_S",
+    "site_foundation_S",
+    "site_scaffold_S"
+   ],
+   "size": "S",
+   "notes": "Construction site S (2 x 2 m footprint): site_plot_S = staked-out plot (stakes, rope, flags, packed snow), site_foundation_S = stone foundation + a few planks, site_scaffold_S = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 2x2 (houses, watchtower) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_plot_M": {
+   "atlas": "bld_sites",
+   "frame": "site_plot_M",
+   "anchor": [
+    0.39953,
+    0.58235
+   ],
+   "kind": "site",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    428,
+    340
+   ],
+   "topPx": 102,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    87
+   ],
+   "workPoints": [
+    [
+     -111,
+     35
+    ],
+    [
+     107,
+     37
+    ],
+    [
+     -66,
+     60
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 0,
+   "stages": [
+    "site_plot_M",
+    "site_foundation_M",
+    "site_scaffold_M"
+   ],
+   "size": "M",
+   "notes": "Construction site M (3 x 3 m footprint): site_plot_M = staked-out plot (stakes, rope, flags, packed snow), site_foundation_M = stone foundation + a few planks, site_scaffold_M = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 3x3 (warehouse, cannery, shop, toolsmith, boathouse) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_foundation_M": {
+   "atlas": "bld_sites",
+   "frame": "site_foundation_M",
+   "anchor": [
+    0.39953,
+    0.58235
+   ],
+   "kind": "site",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    428,
+    340
+   ],
+   "topPx": 79,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    87
+   ],
+   "workPoints": [
+    [
+     -111,
+     35
+    ],
+    [
+     107,
+     37
+    ],
+    [
+     -66,
+     60
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 1,
+   "stages": [
+    "site_plot_M",
+    "site_foundation_M",
+    "site_scaffold_M"
+   ],
+   "size": "M",
+   "notes": "Construction site M (3 x 3 m footprint): site_plot_M = staked-out plot (stakes, rope, flags, packed snow), site_foundation_M = stone foundation + a few planks, site_scaffold_M = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 3x3 (warehouse, cannery, shop, toolsmith, boathouse) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_scaffold_M": {
+   "atlas": "bld_sites",
+   "frame": "site_scaffold_M",
+   "anchor": [
+    0.39953,
+    0.58235
+   ],
+   "kind": "site",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "frameSize": [
+    428,
+    340
+   ],
+   "topPx": 178,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    87
+   ],
+   "workPoints": [
+    [
+     -111,
+     35
+    ],
+    [
+     107,
+     37
+    ],
+    [
+     -66,
+     60
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 2,
+   "stages": [
+    "site_plot_M",
+    "site_foundation_M",
+    "site_scaffold_M"
+   ],
+   "size": "M",
+   "notes": "Construction site M (3 x 3 m footprint): site_plot_M = staked-out plot (stakes, rope, flags, packed snow), site_foundation_M = stone foundation + a few planks, site_scaffold_M = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 3x3 (warehouse, cannery, shop, toolsmith, boathouse) building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_plot_L": {
+   "atlas": "bld_sites",
+   "frame": "site_plot_L",
+   "anchor": [
+    0.4186,
+    0.58586
+   ],
+   "kind": "site",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "frameSize": [
+    516,
+    396
+   ],
+   "topPx": 125,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    110
+   ],
+   "workPoints": [
+    [
+     -140,
+     43
+    ],
+    [
+     135,
+     46
+    ],
+    [
+     -79,
+     76
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 0,
+   "stages": [
+    "site_plot_L",
+    "site_foundation_L",
+    "site_scaffold_L"
+   ],
+   "size": "L",
+   "notes": "Construction site L (4 x 4 m footprint): site_plot_L = staked-out plot (stakes, rope, flags, packed snow), site_foundation_L = stone foundation + a few planks, site_scaffold_L = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 4x4 building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_foundation_L": {
+   "atlas": "bld_sites",
+   "frame": "site_foundation_L",
+   "anchor": [
+    0.4186,
+    0.58586
+   ],
+   "kind": "site",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "frameSize": [
+    516,
+    396
+   ],
+   "topPx": 105,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    110
+   ],
+   "workPoints": [
+    [
+     -140,
+     43
+    ],
+    [
+     135,
+     46
+    ],
+    [
+     -79,
+     76
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 1,
+   "stages": [
+    "site_plot_L",
+    "site_foundation_L",
+    "site_scaffold_L"
+   ],
+   "size": "L",
+   "notes": "Construction site L (4 x 4 m footprint): site_plot_L = staked-out plot (stakes, rope, flags, packed snow), site_foundation_L = stone foundation + a few planks, site_scaffold_L = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 4x4 building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "site_scaffold_L": {
+   "atlas": "bld_sites",
+   "frame": "site_scaffold_L",
+   "anchor": [
+    0.4186,
+    0.58586
+   ],
+   "kind": "site",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "frameSize": [
+    516,
+    396
+   ],
+   "topPx": 211,
+   "front": "-Y",
+   "dropPoint": [
+    2,
+    110
+   ],
+   "workPoints": [
+    [
+     -140,
+     43
+    ],
+    [
+     135,
+     46
+    ],
+    [
+     -79,
+     76
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "stage": 2,
+   "stages": [
+    "site_plot_L",
+    "site_foundation_L",
+    "site_scaffold_L"
+   ],
+   "size": "L",
+   "notes": "Construction site L (4 x 4 m footprint): site_plot_L = staked-out plot (stakes, rope, flags, packed snow), site_foundation_L = stone foundation + a few planks, site_scaffold_L = half-built timber frame inside scaffolding with a ladder and plank piles. All three share frameSize + anchor (= footprint centre), and so does any finished 4x4 building: swap the sprite in place. workPoints/workDirs = where builders stand and hammer (outside the footprint, facing the site; draw them above the sprite); dropPoint = where delivered materials are stacked."
+  },
+  "item_can": {
+   "atlas": "bld_items",
+   "frame": "item_can",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 22,
+   "stackStep": 14,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.26,
+   "notes": "Tin can of fish (통조림): red label, cream bands, orange fish decal toward the viewer, ring-pull lid."
+  },
+  "item_fish_big": {
+   "atlas": "bld_items",
+   "frame": "item_fish_big",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 18,
+   "stackStep": 14,
+   "icon": true,
+   "carryScale": 0.55,
+   "thicknessM": 0.25,
+   "notes": "Big tuna (참치) caught by boat: navy back, silver belly, yellow finlets, lying on its side."
+  },
+  "item_axe": {
+   "atlas": "bld_items",
+   "frame": "item_axe",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 32,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.15,
+   "notes": "Axe (tool item): chunky wooden handle + big steel head; head raised toward the back so it reads as an icon."
+  },
+  "item_pickaxe": {
+   "atlas": "bld_items",
+   "frame": "item_pickaxe",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 33,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.15,
+   "notes": "Pickaxe (tool item): wooden handle + curved double iron pick head."
+  },
+  "item_rod": {
+   "atlas": "bld_items",
+   "frame": "item_rod",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 42,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.55,
+   "thicknessM": 0.15,
+   "notes": "Fishing rod (tool item): cork grip, big red reel, short chunky rod with a red-white bobber."
+  },
+  "item_sickle": {
+   "atlas": "bld_items",
+   "frame": "item_sickle",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 30,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.55,
+   "thicknessM": 0.15,
+   "notes": "Sickle (tool item): short handle + shiny crescent blade."
+  },
+  "item_bow": {
+   "atlas": "bld_items",
+   "frame": "item_bow",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 27,
+   "stackStep": 8,
+   "icon": true,
+   "carryScale": 0.55,
+   "thicknessM": 0.15,
+   "notes": "Hunting bow (tool item): curved wooden stave with a leather grip, string and one red-fletched arrow."
+  },
+  "item_toolbox": {
+   "atlas": "bld_items",
+   "frame": "item_toolbox",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 32,
+   "stackStep": 14,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.25,
+   "notes": "Toolbox (generic tool crate): red metal box with a steel carry handle, latches and a hammer + saw handle poking out."
+  },
+  "market_counter_staff": {
+   "of": "market_counter",
+   "kind": "staff",
+   "staffPoints": [
+    [
+     70,
+     -8
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "behind",
+   "notes": "Clerk spot behind the existing market_counter (seller side = world +Y, screen up-right), measured from prop_assets geometry (sprite not re-rendered). The clerk faces SW (customers); normal anchor-y sorting draws the clerk BEHIND the counter sprite, so the counter hides the legs. headVisible = fraction of the head visible over the counter."
+  },
+  "trade_post_staff": {
+   "of": "trade_post",
+   "kind": "staff",
+   "staffPoints": [
+    [
+     61,
+     -21
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "behind",
+   "notes": "Clerk spot behind the existing trade_post (seller side = world +Y, screen up-right), measured from prop_assets geometry (sprite not re-rendered). The clerk faces SW (customers); normal anchor-y sorting draws the clerk BEHIND the counter sprite, so the counter hides the legs. headVisible = fraction of the head visible over the counter."
+  }
+ },
+ "characters": {
+  "boat_rowboat": {
+   "atlas": "boat_rowboat",
+   "frameSize": [
+    232,
+    160
+   ],
+   "anchor": [
+    0.5,
+    0.65
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "row": {
+     "frames": 6,
+     "fps": 9,
+     "repeat": -1
+    }
+   },
+   "kind": "boat",
+   "cargoPoint": {
+    "S": [
+     -1,
+     -49,
+     true
+    ],
+    "SE": [
+     -38,
+     -41,
+     true
+    ],
+    "E": [
+     -52,
+     -22,
+     false
+    ],
+    "NE": [
+     -37,
+     -4,
+     false
+    ],
+    "N": [
+     1,
+     4,
+     false
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -39
+    ],
+    "SE": [
+     -57,
+     -28
+    ],
+    "E": [
+     -80,
+     1
+    ],
+    "NE": [
+     -57,
+     29
+    ],
+    "N": [
+     0,
+     41
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     41
+    ],
+    "SE": [
+     57,
+     29
+    ],
+    "E": [
+     80,
+     1
+    ],
+    "NE": [
+     57,
+     -28
+    ],
+    "N": [
+     0,
+     -39
+    ]
+   },
+   "headTop": -92,
+   "lengthM": 2.5,
+   "crew": [
+    "fisherman"
+   ],
+   "shadow": null,
+   "notes": "Rowboat (~2.5 m) with the fisherman rowing (facing the bow). idle = drifting with the oars resting, row = 6-frame stroke loop. Anchor = waterline centre; no baked shadow (draw fx_wake at wakePoint). cargoPoint = bottom of a fish stack in the stern box, behind=true -> draw the stack before the boat."
+  },
+  "boat_fishing": {
+   "atlas": "boat_fishing",
+   "frameSize": [
+    336,
+    304
+   ],
+   "anchor": [
+    0.5,
+    0.77632
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 3,
+     "repeat": -1
+    },
+    "sail": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "kind": "boat",
+   "cargoPoint": {
+    "S": [
+     1,
+     -1,
+     false
+    ],
+    "SE": [
+     45,
+     -11,
+     false
+    ],
+    "E": [
+     64,
+     -33,
+     false
+    ],
+    "NE": [
+     45,
+     -56,
+     true
+    ],
+    "N": [
+     -1,
+     -65,
+     true
+    ]
+   },
+   "wakePoint": {
+    "S": [
+     0,
+     -68
+    ],
+    "SE": [
+     -100,
+     -48
+    ],
+    "E": [
+     -141,
+     2
+    ],
+    "NE": [
+     -100,
+     52
+    ],
+    "N": [
+     0,
+     73
+    ]
+   },
+   "bowPoint": {
+    "S": [
+     0,
+     70
+    ],
+    "SE": [
+     100,
+     49
+    ],
+    "E": [
+     141,
+     0
+    ],
+    "NE": [
+     100,
+     -50
+    ],
+    "N": [
+     0,
+     -71
+    ]
+   },
+   "headTop": -193,
+   "lengthM": 4.4,
+   "crew": [
+    "captain",
+    "fisherman"
+   ],
+   "shadow": null,
+   "notes": "Fishing boat (~4.4 m): white / blue / red hull, small wheelhouse with a red snowy roof and a smoking stove pipe, mast with a village pennant, net boom swung out to starboard with a net of fish. Crew of 2: the captain at the aft wheel (navy coat, white cap, white beard) and the fisherman (yellow raincoat) on the foredeck. idle = moored (gentle bob, no smoke); sail = 4-frame loop (pitching, smoke, net swing, fisherman hauling the net rope, captain steering). Anchor = waterline centre; cargoPoint = fish hold hatch on the foredeck."
+  }
+ }
+}

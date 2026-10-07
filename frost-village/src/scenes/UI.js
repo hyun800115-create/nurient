@@ -8,6 +8,7 @@ import { Settings } from '../core/Save.js';
 import { FONT, t, setLang, getLang, fmt } from '../data/strings.js';
 import { panel } from '../core/Panel.js';
 import { View } from '../core/View.js';
+import { BALANCE } from '../data/balance.js';
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -36,6 +37,13 @@ export class UI extends Phaser.Scene {
 
     // ---- settings button
     this.setBtn = this.makeIconButton(0, 0, 'ui_icon_settings', 84, () => this.openSettings());
+
+    // ---- (v2) zoom buttons: + / - / whole village
+    this.zoomInBtn = this.makeZoomButton('in', () => this.gs.zoomBy(BALANCE.camera.zoomStep));
+    this.zoomOutBtn = this.makeZoomButton('out', () => this.gs.zoomBy(1 / BALANCE.camera.zoomStep));
+    this.mapBtn = this.makeZoomButton('map', () => this.gs.toggleOverview());
+    this.pinch = null;
+    this.taps = {};
 
     // ---- objective
     this.objPanel = this.add.container(0, 0).setVisible(false);
@@ -76,15 +84,51 @@ export class UI extends Phaser.Scene {
     this.scale.on('resize', this.onResize, this);
     this.events.once('shutdown', () => { this.ready = false; this.panelOpen = false; this.scale.off('resize', this.onResize, this); });
 
-    // ---- input (joystick anywhere that is not a button)
+    // ---- input (joystick anywhere that is not a button; a second finger turns it into a pinch zoom)
     this.input.on('pointerdown', (p, over) => {
       Audio.resume();    // iOS: bring sound back after a call / app switch (needs a user gesture)
       if (this.panelOpen || (over && over.length)) return;
+      this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
+      const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
+      if (other && !this.pinch) {
+        // two fingers: zoom gesture (the joystick stops)
+        Input.release();
+        const d = Math.hypot(p.x - other.x, p.y - other.y);
+        this.pinch = { a: other.id, b: p.id, d0: Math.max(20, d), z0: this.gs.overview ? this.gs.fitZoom() : this.gs.zoomTarget };
+        delete this.taps[p.id]; delete this.taps[other.id];
+        return;
+      }
+      if (this.pinch) return;
       Input.pointerDown(p);
     });
-    this.input.on('pointermove', (p) => Input.pointerMove(p));
+    this.input.on('pointermove', (p) => {
+      if (this.pinch) {
+        const ps = this.input.manager.pointers;
+        const a = ps.find((q) => q && q.id === this.pinch.a), b = ps.find((q) => q && q.id === this.pinch.b);
+        if (a && b && a.isDown && b.isDown) this.gs.setZoom(this.pinch.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / this.pinch.d0));
+        return;
+      }
+      Input.pointerMove(p);
+    });
     // lifting the steering finger while another finger is down hands the joystick to that finger
     const up = (p) => {
+      // a short tap without moving: villagers / pets react
+      const tp = this.taps[p.id];
+      delete this.taps[p.id];
+      if (tp && !this.pinch && !this.panelOpen && this.time.now - tp.t < 300 && Math.hypot(p.x - tp.x, p.y - tp.y) < 16 * View.k && this.gs.life) {
+        const wp = this.gs.cameras.main.getWorldPoint(p.x, p.y);
+        this.gs.life.tap(wp.x, wp.y);
+      }
+      if (this.pinch) {
+        if (p.id === this.pinch.a || p.id === this.pinch.b) {
+          // the other finger stays down: it does not become a joystick until it is lifted too
+          const still = this.input.manager.pointers.some((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
+          if (!still) this.pinch = null; else this.pinch.ending = true;
+        }
+        if (this.pinch && this.pinch.ending && !this.input.manager.pointers.some((q) => q && q.isDown && q.id !== 0)) this.pinch = null;
+        Input.release();
+        return;
+      }
       const mine = Input.joy.active && p.id === Input.joy.id;
       Input.pointerUp(p);
       if (!mine || this.panelOpen) return;
@@ -93,7 +137,12 @@ export class UI extends Phaser.Scene {
     };
     this.input.on('pointerup', up);
     this.input.on('pointerupoutside', up);
-    this.input.on('gameout', () => Input.release());
+    this.input.on('gameout', () => { Input.release(); this.pinch = null; });
+    // mouse wheel zoom (PC)
+    this.input.on('wheel', (p, over, dx, dy) => {
+      if (this.panelOpen || !dy) return;
+      this.gs.zoomBy(dy > 0 ? 1 / 1.12 : 1.12);
+    });
 
     this.setCoins(this.gs.economy.coins, 0);
     this.ready = true;
@@ -113,6 +162,10 @@ export class UI extends Phaser.Scene {
     this.coinIcon.setPosition(64, top);
     this.coinText.setPosition(104, top + 2);
     this.setBtn.setPosition(W - 62, top);
+    const zb = H - 168 - View.safeBottom;
+    this.mapBtn.setPosition(W - 56, zb);
+    this.zoomOutBtn.setPosition(W - 56, zb - 84);
+    this.zoomInBtn.setPosition(W - 56, zb - 160);
     this.objPanel.setPosition(W / 2, top + 88);
     this.toastBox.setPosition(W / 2, H - 230 - View.safeBottom);
     this.bannerBox.setPosition(W / 2, H * 0.27);
@@ -135,6 +188,55 @@ export class UI extends Phaser.Scene {
     c.setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => { this.tweens.add({ targets: c, scale: 0.88, duration: 70, yoyo: true }); Audio.play('sfx_click'); onClick(); });
     return c;
+  }
+
+  /** round zoom button: the UI-2 icon when there is one, otherwise a drawn + / - / map symbol */
+  makeZoomButton(kind, onClick) {
+    const key = { in: 'ui_icon_zoom_in', out: 'ui_icon_zoom_out', map: 'ui_icon_map' }[kind];
+    const size = 70;
+    if (Assets.has(key)) {
+      const b = this.makeIconButton(0, 0, key, size, onClick);
+      b.kind = kind;
+      return b;
+    }
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    g.fillStyle(0x1f3354, 0.25); g.fillCircle(0, 5, size / 2);
+    g.fillStyle(0xffffff, 0.95); g.fillCircle(0, 0, size / 2);
+    g.lineStyle(4, 0xd7e3f2, 1); g.strokeCircle(0, 0, size / 2 - 2);
+    const ic = this.add.graphics();
+    ic.lineStyle(7, 0x2a64a8, 1);
+    if (kind === 'in') { ic.lineBetween(-13, 0, 13, 0); ic.lineBetween(0, -13, 0, 13); }
+    else if (kind === 'out') ic.lineBetween(-13, 0, 13, 0);
+    else {
+      // folded map
+      ic.lineStyle(3.5, 0x2a64a8, 1);
+      ic.fillStyle(0xdcecff, 1);
+      ic.beginPath(); ic.moveTo(-17, -11); ic.lineTo(-6, -15); ic.lineTo(6, -11); ic.lineTo(17, -15); ic.lineTo(17, 11); ic.lineTo(6, 15); ic.lineTo(-6, 11); ic.lineTo(-17, 15); ic.closePath(); ic.fillPath(); ic.strokePath();
+      ic.lineBetween(-6, -15, -6, 11); ic.lineBetween(6, -11, 6, 15);
+      ic.fillStyle(0xd9483b, 1); ic.fillCircle(11, -3, 4);
+    }
+    c.add([g, ic]);
+    c.icon = ic;
+    c.kind = kind;
+    c.setSize(size, size);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => { this.tweens.add({ targets: c, scale: 0.88, duration: 70, yoyo: true }); Audio.play('sfx_click'); onClick(); });
+    return c;
+  }
+
+  /** the village zoom changed: show the overview button as pressed while the whole village is shown */
+  zoomChanged() {
+    if (!this.mapBtn) return;
+    const on = !!this.gs.overview;
+    this.mapBtn.setAlpha(on ? 1 : 0.92);
+    if (this.mapBtn.list && this.mapBtn.list[0] && this.mapBtn.list[0].clear && !this.mapBtn.__real) {
+      const g = this.mapBtn.list[0], size = 70;
+      g.clear();
+      g.fillStyle(0x1f3354, 0.25); g.fillCircle(0, 5, size / 2);
+      g.fillStyle(on ? 0xffe9a8 : 0xffffff, 0.95); g.fillCircle(0, 0, size / 2);
+      g.lineStyle(4, on ? 0xffc83d : 0xd7e3f2, 1); g.strokeCircle(0, 0, size / 2 - 2);
+    }
   }
 
   makeButton(x, y, w, h, style, label, onClick, size = 30) {

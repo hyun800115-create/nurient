@@ -181,7 +181,7 @@ def road_edge(W=512, H=64):
         r = rng.uniform(0.7, 2.2)
         dd = np.hypot(wrap_dx(X, bx, W), (Y - by) * 1.6) - r
         crumbs = np.maximum(crumbs, np.clip(0.5 - dd * 1.5, 0, 1) * rng.uniform(0.6, 1.0))
-    ccol = F.mix(hexc('#F7FAFD'), hexc('#C9D6E8'), np.clip((Y - (lip_y[None, :] - 20)) / 30, 0, 1) * 0.0)
+    ccol = hexc('#F7FAFD')                                      # crumb colour
     col = col * (1 - crumbs[..., None] * (1 - a[..., None])) + ccol * (crumbs * (1 - a))[..., None]
     a = np.maximum(a, crumbs)
     # gentle texture in the snow
@@ -202,103 +202,6 @@ def _grid(W, H, ss):
     ys = (np.arange(H * ss, dtype=np.float32) + 0.5) / ss
     X, Y = np.meshgrid(xs, ys)
     return xs, X, Y
-
-
-def _billow_row(X, Y, W, rng, y, n, rmin, rmax, jit=0.25, ysq=1.12):
-    """Wrapped billow circles along a row -> list of (bx, by, r) and their smooth-union SDF."""
-    d = None
-    blobs = []
-    off = rng.uniform(0, W / n)
-    for i in range(n):
-        bx = (off + i * W / n + rng.uniform(-jit, jit) * W / n) % W
-        r = rng.uniform(rmin, rmax)
-        by = y + rng.uniform(-0.18, 0.18) * r
-        blobs.append((bx, by, r))
-        e = np.hypot(wrap_dx(X, bx, W), (Y - by) * ysq) - r
-        d = e if d is None else _smin(d, e, r * 0.3)
-    return d, blobs
-
-
-def billow_layer(W, H, ss, seed, lip, n, rmin, rmax, cols, inner_rows=3, top_fade=None, core_alpha=1.0,
-                 fill=FOG_FILL, ground_shadow=0.22, wobble=2.0, feather=2.2):
-    """One fog layer, seamless in x.  The lower edge is a row of soft billows (circle centres ~ `lip`);
-    everything above it is solid fog (no holes).  Inner billow rows only shape the shading, so the wall
-    looks puffy and volumetric.  Colours: cols = (light, mid, shade), lit by the shared upper-left sun.
-    top_fade (px) makes the top transparent (for a band that hangs in front of the wall); otherwise
-    the top blends into the flat `fill` colour (continue the hidden area with a solid rect of it).
-    Returns premultiplied rgb (H*ss, W*ss, 3) and alpha."""
-    rng = np.random.default_rng(seed)
-    xs, X, Y = _grid(W, H, ss)
-    d, blobs = _billow_row(X, Y, W, rng, lip, n, rmin, rmax)
-    d = _smin(d, Y - (lip - rmax * 0.25), rmax * 0.35)                 # solid above the billow centres
-    nz = xnoise(H * ss, W * ss, seed + 1, 6 * ss)
-    d = d + nz * wobble
-    cov = np.clip(0.5 - d / feather, 0, 1)
-    cov = blur_wrapx(cov, 0.8 * ss)
-    # height field: lip billows + inner rows (shading only)
-    hgt = blur_wrapx(cov, 7 * ss) * 12.0
-    for j in range(1, inner_rows + 1):
-        dj, _ = _billow_row(X, Y, W, rng, lip - j * rmax * 0.95, max(3, n - j), rmin * (1 + 0.15 * j),
-                            rmax * (1 + 0.15 * j))
-        cj = np.clip(0.5 - dj / 3.0, 0, 1)
-        hgt += blur_wrapx(cj, (5 + 2 * j) * ss) * (10.0 - 1.8 * j)
-    hgt += xnoise(H * ss, W * ss, seed + 3, 14 * ss, aniso=3.0) * 1.2
-    gy = np.gradient(hgt, 1.0 / ss, axis=0)
-    gx = (np.roll(hgt, -1, 1) - np.roll(hgt, 1, 1)) * 0.5 * ss
-    s = -(gx * LXY[0] + gy * LXY[1]) * 0.45
-    light, mid, shade = (hexc(c) for c in cols)
-    col = np.broadcast_to(mid, X.shape + (3,)).copy()
-    col = F.mix(col, light, np.clip(s, 0, 1) * 0.9)
-    col = F.mix(col, shade, np.clip(-s, 0, 1) * 0.9)
-    # cool underside of the lip billows (separates the fog from white snow)
-    under = np.clip((Y - lip) / (rmax * 0.9), 0, 1) * cov
-    col = F.mix(col, shade, under * 0.55)
-    # drifting streaks inside the wall
-    wisp = xnoise(H * ss, W * ss, seed + 2, 8 * ss, aniso=6.0)
-    col = F.mix(col, light, np.clip(wisp - 0.5, 0, 1) * 0.3)
-    a = cov * core_alpha
-    if top_fade:
-        a = a * F.smoothstep(0.0, top_fade, Y)
-    else:
-        topt = 1 - F.smoothstep(0.0, lip - rmax * 2.2, Y)
-        col = F.mix(col, hexc(fill), topt)
-        a = np.maximum(a, topt)
-    pm = col * a[..., None]
-    # soft cool shadow on the ground right below the lip (helps the wall sit on the snow)
-    if ground_shadow:
-        dist = np.clip(d, 0, None)
-        gs = np.exp(-(dist / 9.0) ** 2) * (d > 0) * ground_shadow * (Y > lip - rmax)
-        gs = blur_wrapx(gs, 2.0 * ss)
-        pm = pm + hexc('#8EA3C2') * (gs * (1 - a))[..., None]
-        a = a + gs * (1 - a)
-    a = a * np.clip((H - 1 - Y) / 4.0, 0, 1)
-    pm = pm * np.clip((H - 1 - Y) / 4.0, 0, 1)[..., None]
-    return pm, a
-
-
-def fog_ball(c, x, y, r, W, top='#FFFFFF', bot='#E2EAF4', lo='#8FA6C6', rim='#A9BCD8', haze=0.0,
-             haze_col=FOG_FILL, a=1.0, feather=0.9):
-    """Sphere-lit cotton ball (like gen_fx.ball, softer edge), drawn wrapped in x on a W-wide canvas.
-    haze blends the ball toward the fog fill colour (aerial perspective for the rows further back)."""
-    for ox in (-W, 0, W):
-        xx = x + ox
-        if xx + r + 4 < 0 or xx - r - 4 > W:
-            continue
-        R = c.region(xx - r - 4, y - r - 4, xx + r + 4, y + r + 4)
-        if R.empty:
-            continue
-        d = F.sd_circle(R.X, R.Y, xx, y, r)
-        rim_c = F.mix(hexc(rim), hexc(haze_col), haze)
-        R.fill(d - max(0.8, r * 0.05), rim_c, a, feather=feather)
-        nx = (R.X - xx) / r
-        ny = (R.Y - y) / r
-        nz = np.sqrt(np.clip(1 - nx * nx - ny * ny, 0.0, 1.0))
-        n = np.dstack([nx, ny, nz]).astype(np.float32)
-        n /= np.maximum(np.linalg.norm(n, axis=2, keepdims=True), 1e-6)
-        t = np.clip((R.Y - (y - r)) / (2 * r), 0, 1)
-        col = F.shade(F.mix(hexc(top), hexc(bot), t), F.lambert(n), 0.5, 0.6, hexc(lo))
-        col = F.mix(col, hexc(haze_col), haze)
-        R.paint(R.cov(d, feather), col, a)
 
 
 def cloud_row(c, W, rng, y, n, rmin, rmax, haze=0.0, a=1.0, top='#FFFFFF', bot='#DCE6F1', lo='#8FA6C6',
@@ -415,18 +318,16 @@ def fog_bank_front(W=512, H=128):
     col = F.mix(col, hexc('#B4C5DB'), np.clip(under * 2.5, 0, 1) * 0.6)
     streak = xnoise(H * ss, W * ss, 823, 3 * ss, aniso=8.0)
     a = cov * (0.82 + 0.18 * np.clip(streak, -1, 1))
-    # flakes (wrapped, slightly streaked by the wind) with a thin cool rim
+    # flakes (wrapped, slightly streaked by the wind) with a soft cool shadow below-right (reads on snow)
     fl = np.zeros_like(X)
-    rim = np.zeros_like(X)
     for i in range(46):
         bx, by = rng.uniform(0, W), rng.uniform(H * 0.12, H * 0.88)
         r = rng.uniform(1.0, 2.3)
         dd = np.hypot(wrap_dx(X, bx, W) / 1.8, Y - by) - r * 0.7
         fl = np.maximum(fl, np.clip(0.5 - dd * 1.3, 0, 1))
-        rim = np.maximum(rim, np.clip(0.5 - (dd - 0.8) * 1.3, 0, 1))
-    pm = col * a[..., None]
-    rr = np.clip(rim - fl, 0, 1) * 0.6 * (1 - a)
-    pm = pm + hexc('#8EA3C2') * rr[..., None]
+    shd = blur_wrapx(np.roll(F.shift(fl, 0, 2 * ss), 1 * ss, axis=1), 0.9 * ss)
+    rr = np.clip(shd - fl, 0, 1) * 0.45 * (1 - a)
+    pm = col * a[..., None] + hexc('#7F96B8') * rr[..., None]
     a = a + rr
     pm = pm * (1 - fl[..., None]) + WHITE * fl[..., None]
     a = a * (1 - fl) + fl

@@ -82,11 +82,11 @@ export const BALANCE = {
     hire_clerk_market: 25,    // 판매대 점원
     hire_clerk_trade: 60,     // 교역소 점원
     // (v2) 짐꾼: 그 줄의 일꾼을 고용하면 나타남. 가공소 완성품을 길을 따라 판매대·교역소로 날라 줌
-    porter_grill: 120,        // 구운 생선 짐꾼
-    porter_sawmill: 250,      // 판자 짐꾼
-    porter_bakery: 450,       // 빵 짐꾼
-    porter_smelter: 700,      // 주괴 짐꾼
-    porter_smokehouse: 900,   // 훈제 고기 짐꾼
+    porter_grill: 150,        // 구운 생선 짐꾼
+    porter_sawmill: 300,      // 판자 짐꾼
+    porter_bakery: 500,       // 빵 짐꾼
+    porter_smelter: 800,      // 주괴 짐꾼
+    porter_smokehouse: 1000,  // 훈제 고기 짐꾼
   },
   payDuration: 1.6,           // 발판에 코인을 다 내는 데 걸리는 대략적인 시간(초) — 비싸도 이 시간 안에 끝남
 

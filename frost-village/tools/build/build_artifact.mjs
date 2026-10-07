@@ -45,7 +45,9 @@ const OUT = path.join(ROOT, 'dist', INLINE ? 'artifact_inline' : 'artifact');
 const LIST_OUT = path.join(ROOT, 'dist', INLINE ? 'artifact_inline_files.json' : 'artifact_files.json');
 const PACK_MAX = 4 * 1024 * 1024;          // bytes of source data per packs/assets_N.js
 
-const LIMITS = { files: 255, total: 64 * 1024 * 1024, perFile: 16 * 1024 * 1024 };
+// one Artifact publish: <= 255 files / 64 MB; one version may hold up to 511 files / 256 MB when it is
+// sent in several publishes to the same url (artifact_files.json lists the batches)
+const LIMITS = { files: 255, maxFiles: 511, total: 64 * 1024 * 1024, perFile: 16 * 1024 * 1024 };
 // Media types the host serves (anything else is skipped with a warning).
 const WEB_TYPES = new Set(['.html', '.js', '.json', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ogg', '.mp3', '.m4a', '.wav', '.css', '.txt', '.md', '.woff2']);
 const JUNK = /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini|\..*)$|\.(py|pyc|blend|blend1|psd|kra|xcf|aup3)$/i;
@@ -295,12 +297,27 @@ function writePacks() {
   return packs;
 }
 
-/** asset folders the game loads: the FRAGMENTS list in src/core/Assets.js */
+/** asset folders the game loads: the FRAGMENTS list in src/core/Assets.js (only the ones that exist) */
 function gameFragments() {
   const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
   const m = src.match(/export\s+const\s+FRAGMENTS\s*=\s*\[([^\]]*)\]/);
-  const list = m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
-  return list.length ? list : ['characters', 'props', 'fx', 'ui', 'ground', 'audio'];
+  let list = m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
+  if (!list.length) list = ['characters', 'props', 'fx', 'ui', 'ground', 'audio'];
+  // a fragment still being made (no manifest yet) is left out of the package AND of the page's
+  // fragment list (window.__FV_FRAGMENTS), so the published game never asks for a missing file
+  return list.filter((f) => fs.existsSync(path.join(ROOT, 'assets', f, 'manifest.json')));
+}
+
+/** fragments whose pictures the game does not use yet (manifest data only): MANIFEST_ONLY_FRAGMENTS */
+function manifestOnlyFragments() {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
+  const m = src.match(/export\s+const\s+MANIFEST_ONLY_FRAGMENTS\s*=\s*\[([^\]]*)\]/);
+  return m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
+}
+
+/** the page with the shipped fragment list set before the game starts */
+function pageWithFragments(page, frags) {
+  return page.replace('<script src="game.js"></script>', '<script>window.__FV_FRAGMENTS = ' + JSON.stringify(frags) + ';</script>\n<script src="game.js"></script>');
 }
 
 // ------------------------------------------------------------------ build
@@ -345,9 +362,21 @@ async function main() {
   // only the asset folders the game actually loads (FRAGMENTS in src/core/Assets.js): folders that are
   // still being made (new characters, emotes, ...) stay out of the package until the game uses them
   const frags = gameFragments();
+  const manifestOnly = manifestOnlyFragments();
   for (const frag of frags) {
     const dir = path.join(ROOT, 'assets', frag);
-    if (fs.existsSync(dir)) for (const f of walk(dir)) copy(f);
+    if (!fs.existsSync(dir)) continue;
+    if (manifestOnly.includes(frag)) {
+      // manifest data only: copy the manifest without its picture lists
+      const j = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+      delete j.atlases; delete j.images; delete j.spritesheets; delete j.audio; delete j.audioGroups; delete j.characters;
+      fs.mkdirSync(path.join(OUT, 'assets', frag), { recursive: true });
+      fs.writeFileSync(path.join(OUT, 'assets', frag, 'manifest.json'), JSON.stringify(j));
+      copied.push(path.join(OUT, 'assets', frag, 'manifest.json'));
+      skipped.push('assets/' + frag + '/ pictures (not used by the game yet)');
+      continue;
+    }
+    for (const f of walk(dir)) copy(f);
   }
   const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name)).map((e) => 'assets/' + e.name + '/');
   if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
@@ -365,24 +394,25 @@ async function main() {
   }
 
   // 3) the page (written in step 5 for --inline, once the packs exist)
-  if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), PAGE);
+  if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE, frags));
 
   // 4) file-count limit: drop .ogg and point the audio manifest at .mp3 only
   let files = walk(OUT);
   let mp3Only = FORCE_MP3_ONLY;
   if (files.length > LIMITS.files) { mp3Only = true; console.log(`[build] ${files.length} files > ${LIMITS.files}: dropping .ogg copies`); }
-  if (mp3Only) {
-    const manPath = path.join(OUT, 'assets', 'audio', 'manifest.json');
+  if (mp3Only) for (const frag of frags) {
+    const manPath = path.join(OUT, 'assets', frag, 'manifest.json');
+    if (!fs.existsSync(manPath)) continue;
     const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
+    if (!man.audio) continue;
     for (const k in man.audio || {}) {
       const a = man.audio[k];
       const mp3 = (a.files || []).filter((f) => /\.mp3$/i.test(f));
       if (mp3.length) a.files = mp3;
     }
     fs.writeFileSync(manPath, JSON.stringify(man, null, 1));
-    for (const f of files) if (/\.ogg$/i.test(f)) fs.rmSync(f);
-    files = walk(OUT);
   }
+  if (mp3Only) { for (const f of files) if (/\.ogg$/i.test(f)) fs.rmSync(f); files = walk(OUT); }
 
   // 5) checks: every manifest path exists, nothing absolute, no leftovers
   const problems = [];
@@ -407,7 +437,7 @@ async function main() {
     const packs = writePacks();
     fs.writeFileSync(path.join(OUT, 'inline_loader.js'), INLINE_LOADER);
     const tags = packs.map((p) => `<script src="${p}"></script>`).concat('<script src="inline_loader.js"></script>', '<script src="game.js"></script>').join('\n');
-    fs.writeFileSync(path.join(OUT, 'index.html'), PAGE.replace('<script src="game.js"></script>', tags));
+    fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE, frags).replace('<script src="game.js"></script>', tags));
     files = walk(OUT);
     console.log(`[build] --inline: assets embedded into ${packs.length} pack scripts`);
   }
@@ -421,7 +451,7 @@ async function main() {
   const sizes = files.map((f) => ({ p: rel(f), s: fs.statSync(f).size })).sort((a, b) => b.s - a.s);
   const total = sizes.reduce((n, x) => n + x.s, 0);
   for (const x of sizes) if (x.s > LIMITS.perFile) problems.push(`${x.p} is ${mb(x.s)} (> 16 MB per file)`);
-  if (sizes.length > LIMITS.files) problems.push(`${sizes.length} files (> ${LIMITS.files})`);
+  if (sizes.length > LIMITS.maxFiles) problems.push(`${sizes.length} files (> ${LIMITS.maxFiles})`);
   if (total > LIMITS.total) problems.push(`total ${mb(total)} (> 64 MB)`);
 
   const supporting = sizes.map((x) => x.p).filter((p) => p !== 'index.html').sort();
@@ -429,7 +459,9 @@ async function main() {
     page: path.relative(path.dirname(ROOT), path.join(OUT, 'index.html')).split(path.sep).join('/'),
     root: path.relative(path.dirname(ROOT), OUT).split(path.sep).join('/'),
     files: supporting,
-    note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.',
+    // more than one publish's worth of files: send batch 1 with the page, then the next batches to the same url
+    batches: supporting.length > LIMITS.files - 5 ? Array.from({ length: Math.ceil(supporting.length / 250) }, (_, i) => supporting.slice(i * 250, i * 250 + 250)) : undefined,
+    note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link.' : ''),
   }, null, 1));
 
   const byExt = {};

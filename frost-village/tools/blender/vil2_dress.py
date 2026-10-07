@@ -298,28 +298,29 @@ def make_pack_frame(rig):
     pad = M('pf_pad', '#3A3540', rough=0.85)
     wood = M('pf_shelf', '#C98F55', rough=0.65)
     metal = M('pf_metal', '#B9C2CE', rough=0.35, metal=0.6)
+    zb, zt = 0.05, 1.00                                   # frame bottom (= shelf) / top of the rails
     for s in (-1, 1):
-        rail = [(s * 0.160, 0.262, -0.10), (s * 0.165, 0.290, 0.40), (s * 0.160, 0.330, 0.90)]
+        rail = [(s * 0.160, 0.262, zb), (s * 0.165, 0.290, 0.52), (s * 0.160, 0.330, zt)]
         g.mesh_obj('pf_rail', g.bm_tube_path(vd.catmull3(rail, 12), 0.022, segr=10), red, sp)
-        # shelf arms going backward
-        g.mesh_obj('pf_arm', g.bm_tube_path([(s * 0.160, 0.262, -0.10), (s * 0.160, 0.52, -0.085)], 0.018,
+        # shelf arms going backward + diagonal struts
+        g.mesh_obj('pf_arm', g.bm_tube_path([(s * 0.160, 0.262, zb), (s * 0.160, 0.52, zb + 0.015)], 0.018,
                                             segr=8), metal, sp)
-        g.mesh_obj('pf_strut', g.bm_tube_path([(s * 0.160, 0.282, 0.16), (s * 0.160, 0.50, -0.075)], 0.012,
+        g.mesh_obj('pf_strut', g.bm_tube_path([(s * 0.160, 0.282, zb + 0.26), (s * 0.160, 0.50, zb + 0.025)], 0.012,
                                               segr=8), metal, sp)
-    arch = [(-0.160, 0.330, 0.90)] + [(-0.160 * math.cos(a), 0.330 + 0.01 * math.sin(a), 0.90 + 0.13 * math.sin(a))
-                                     for a in [PI * k / 10 for k in range(1, 10)]] + [(0.160, 0.330, 0.90)]
+    arch = [(-0.160, 0.330, zt)] + [(-0.160 * math.cos(a), 0.330 + 0.01 * math.sin(a), zt + 0.12 * math.sin(a))
+                                    for a in [PI * k / 10 for k in range(1, 10)]] + [(0.160, 0.330, zt)]
     g.mesh_obj('pf_arch', g.bm_tube_path(arch, 0.022, segr=10), red, sp)
-    for z in (0.06, 0.62, 0.86):
-        y = 0.262 + (0.330 - 0.262) * (z + 0.10) / 1.0
+    for z in (zb + 0.03, 0.66, 0.92):
+        y = 0.262 + (0.330 - 0.262) * (z - zb) / (zt - zb)
         g.mesh_obj('pf_rung', g.bm_tube_path([(-0.16, y, z), (0.16, y, z)], 0.016, segr=8), red, sp)
-    panel = g.bm_box(0.30, 0.03, 0.46, bevel=0.03, segs=3)
-    g.mesh_obj('pf_panel', panel, canvas, sp, loc=(0, 0.262, 0.34), rot=(-4, 0, 0))
-    for z in (0.20, 0.36, 0.50):
+    panel = g.bm_box(0.30, 0.03, 0.50, bevel=0.03, segs=3)
+    g.mesh_obj('pf_panel', panel, canvas, sp, loc=(0, 0.272, 0.40), rot=(-4, 0, 0))
+    for z in (0.24, 0.40, 0.56):
         g.mesh_obj('pf_strap_h', g.bm_box(0.31, 0.012, 0.022, bevel=0.005), M('pf_web', '#E8C25A', rough=0.7),
-                   sp, loc=(0, 0.282 + 0.01 * z, z), rot=(-4, 0, 0))
+                   sp, loc=(0, 0.290 + 0.01 * z, z), rot=(-4, 0, 0))
     shelf = g.bm_box(0.36, 0.27, 0.026, bevel=0.008)
-    g.mesh_obj('pf_shelf', shelf, wood, sp, loc=(0, 0.395, -0.090))
-    g.mesh_obj('pf_lip', g.bm_box(0.36, 0.018, 0.045, bevel=0.006), wood, sp, loc=(0, 0.520, -0.070))
+    g.mesh_obj('pf_shelf', shelf, wood, sp, loc=(0, 0.395, zb + 0.008))
+    g.mesh_obj('pf_lip', g.bm_box(0.36, 0.018, 0.045, bevel=0.006), wood, sp, loc=(0, 0.520, zb + 0.028))
     # small tin cup hanging on the left rail (charm)
     g.mesh_obj('pf_cup', g.bm_lathe([(0.0, 0.0), (0.034, 0.0), (0.040, 0.06), (0.042, 0.065)], seg=16,
                                      cap_top=False), metal, sp, loc=(0.20, 0.33, 0.44), rot=(0, 0, 0))
@@ -333,22 +334,22 @@ def make_pack_frame(rig):
                    pad, sp)
     g.mesh_obj('pf_belt', g.bm_ring(0.240, 0.026, seg=56, segr=10, sy=0.86, rz=1.2), pad, sp, loc=(0, 0, 0.0))
     g.mesh_obj('pf_buckle', g.bm_box(0.06, 0.02, 0.05, bevel=0.008), metal, sp, loc=(0, -0.226, 0.0))
-    marker(rig, 'carry_marker', sp, (0.0, 0.392, -0.072))
+    marker(rig, 'carry_marker', sp, (0.0, 0.392, 0.068))
 
 
 # --------------------------------------------------------------------------- hand props
 
 def make_bag(rig):
     """Kraft-paper grocery bag with a baguette and greens poking out (clerk 'serve')."""
-    e, kids = dyn_prop(rig, 'bag', hands_mid, offset=(0, -0.045, 0.050))
+    e, kids = dyn_prop(rig, 'bag', hands_mid, offset=(0, -0.040, 0.040))
     paper = M('bag_paper', '#DDB57E', rough=0.85)
     child(kids, 'bag_body', g.bm_box(0.19, 0.11, 0.17, bevel=0.014), paper, e, loc=(0, 0, 0))
     child(kids, 'bag_fold', g.bm_box(0.192, 0.112, 0.024, bevel=0.006), M('bag_fold', '#C29358', rough=0.85), e,
           loc=(0, 0, 0.078))
     child(kids, 'bag_seal', g.bm_ellipsoid(0.030, 0.008, 0.030, 12, 6), M('bag_seal', '#E04848', rough=0.5), e,
           loc=(0, -0.058, 0.025))
-    child(kids, 'baguette', g.bm_capsule(0.026, 0.14, seg=12, rings=6), M('baguette', '#E3A456', rough=0.6), e,
-          loc=(-0.040, 0.01, 0.215), rot=(0, -14, 0))
+    child(kids, 'baguette', g.bm_capsule(0.026, 0.10, seg=12, rings=6), M('baguette', '#E3A456', rough=0.6), e,
+          loc=(-0.045, 0.01, 0.165), rot=(0, -14, 0))
     for k, (x, tl) in enumerate(((0.030, 10), (0.055, 28))):
         child(kids, 'greens', g.bm_ellipsoid(0.020, 0.012, 0.050, 10, 6), M('greens', '#5FB14E', rough=0.6), e,
               loc=(x, 0.0, 0.11), rot=(0, tl, 0))
@@ -379,33 +380,33 @@ def make_dish(rig):
 
 def make_palette(rig):
     """Wooden kidney palette with paint dabs (left hand) + a brush (right hand)."""
-    e, kids = dyn_prop(rig, 'palette', lambda r: r.world('hand_L'), offset=(0.03, -0.035, 0.035),
-                       rot=(-58, 0, 18))
+    e, kids = dyn_prop(rig, 'palette', lambda r: r.world('hand_L'), offset=(0.05, -0.06, 0.05),
+                       rot=(-62, 0, 24))
     wood = M('palette_wood', '#D9A867', rough=0.55)
     outline = []
     for k in range(32):
         t = TAU * k / 32
         rr = 1.0 - 0.28 * math.exp(-((t - PI) % TAU - PI) ** 2 / 0.12)        # bite at angle pi
-        outline.append((0.115 * rr * math.cos(t), 0.085 * rr * math.sin(t)))
-    slab = g.bm_slab([(y, x) for x, y in outline], 0.012, bevel=0.004)
+        outline.append((0.150 * rr * math.cos(t), 0.110 * rr * math.sin(t)))
+    slab = g.bm_slab([(y, x) for x, y in outline], 0.016, bevel=0.005)
     g.bm_transform(slab, Matrix.Rotation(PI / 2, 4, 'Y'))                       # outline into XY, thin along Z
     child(kids, 'palette', slab, wood, e)
-    for k, (col, u, v) in enumerate((('#E04848', 0.045, 0.040), ('#F2C230', 0.075, -0.005), ('#3D7CC9', 0.040,
-                                                                                          -0.045),
-                                     ('#5FB14E', -0.010, 0.055), ('#F4F1EA', -0.005, -0.055))):
-        child(kids, 'paint', g.bm_ellipsoid(0.024, 0.022, 0.012, 12, 6), M('paint_' + col, col, rough=0.25), e,
-              loc=(u, v, 0.010))
-    child(kids, 'palette_hole', g.bm_ellipsoid(0.016, 0.016, 0.009, 10, 6), M('palette_hole', '#6E4428', rough=0.6),
-          e, loc=(-0.07, 0.0, 0.006))
+    for k, (col, u, v) in enumerate((('#E04848', 0.060, 0.050), ('#F2C230', 0.098, -0.006), ('#3D7CC9', 0.055,
+                                                                                          -0.058),
+                                     ('#5FB14E', -0.012, 0.070), ('#F4F1EA', -0.008, -0.070))):
+        child(kids, 'paint', g.bm_ellipsoid(0.032, 0.029, 0.015, 12, 6), M('paint_' + col, col, rough=0.25), e,
+              loc=(u, v, 0.012))
+    child(kids, 'palette_hole', g.bm_ellipsoid(0.020, 0.020, 0.011, 10, 6), M('palette_hole', '#6E4428', rough=0.6),
+          e, loc=(-0.090, 0.0, 0.007))
     rig.toggle('palette', kids)
 
     b, bk = dyn_prop(rig, 'brush', lambda r: r.world('hand_R'), offset=(0.0, -0.02, 0.02), rot=(-30, -25, 0))
-    child(bk, 'brush_handle', g.bm_lathe([(0.0, -0.06), (0.010, -0.055), (0.008, 0.10), (0.0, 0.105)], seg=10,
+    child(bk, 'brush_handle', g.bm_lathe([(0.0, -0.06), (0.015, -0.055), (0.012, 0.12), (0.0, 0.125)], seg=10,
                                          smooth_n=0), M('brush_handle', '#C8463D', rough=0.4), b)
-    child(bk, 'brush_ferrule', g.bm_cyl(0.011, 0.011, 0.03, seg=10), M('brush_ferrule', '#B9C2CE', rough=0.3,
-                                                                         metal=0.7), b, loc=(0, 0, 0.10))
-    child(bk, 'brush_tip', g.bm_lathe([(0.011, 0.0), (0.012, 0.02), (0.0, 0.05)], seg=10),
-          M('brush_tip', '#3D7CC9', rough=0.5), b, loc=(0, 0, 0.13))
+    child(bk, 'brush_ferrule', g.bm_cyl(0.016, 0.016, 0.035, seg=10), M('brush_ferrule', '#B9C2CE', rough=0.3,
+                                                                          metal=0.7), b, loc=(0, 0, 0.12))
+    child(bk, 'brush_tip', g.bm_lathe([(0.016, 0.0), (0.018, 0.025), (0.0, 0.065)], seg=10),
+          M('brush_tip', '#3D7CC9', rough=0.5), b, loc=(0, 0, 0.155))
     rig.toggle('brush', bk)
 
 
@@ -414,30 +415,30 @@ def _spear_parts(parent, length=1.64):
     shaft = M('spear_shaft', '#8A5A33', rough=0.55)
     steel = M('spear_steel', '#D7DFE8', rough=0.25, metal=0.7)
     red = M('spear_tassel', '#D23A32', rough=0.9)
-    objs = [g.mesh_obj('spear_shaft', g.bm_cyl(0.017, 0.015, length - 0.20, seg=10), shaft, parent),
-            g.mesh_obj('spear_butt', g.bm_lathe([(0.0, -0.02), (0.020, -0.012), (0.020, 0.05), (0.0, 0.06)], seg=10),
+    objs = [g.mesh_obj('spear_shaft', g.bm_cyl(0.025, 0.022, length - 0.24, seg=12), shaft, parent),
+            g.mesh_obj('spear_butt', g.bm_lathe([(0.0, -0.02), (0.028, -0.012), (0.028, 0.06), (0.0, 0.07)], seg=12),
                        steel, parent)]
     # leaf-shaped blade
     blade = []
     for k in range(13):
         t = k / 12
-        w = 0.040 * math.sin(PI * min(1.0, t * 1.25)) ** 0.8 * (1 - t) ** 0.25
+        w = 0.060 * math.sin(PI * min(1.0, t * 1.25)) ** 0.8 * (1 - t) ** 0.25
         blade.append((w, t))
-    prof = [(w, length - 0.21 + 0.21 * t) for w, t in blade]
-    prof[0] = (0.016, prof[0][1])
+    prof = [(w, length - 0.25 + 0.25 * t) for w, t in blade]
+    prof[0] = (0.024, prof[0][1])
     prof[-1] = (0.0, prof[-1][1])
-    objs.append(g.mesh_obj('spear_blade', g.bm_lathe(prof, seg=4, sx=1.0, sy=0.30), steel, parent))
-    objs.append(g.mesh_obj('spear_collar', g.bm_cyl(0.021, 0.021, 0.035, seg=10), M('spear_brass', '#D9A520',
+    objs.append(g.mesh_obj('spear_blade', g.bm_lathe(prof, seg=4, sx=1.0, sy=0.38), steel, parent))
+    objs.append(g.mesh_obj('spear_collar', g.bm_cyl(0.030, 0.030, 0.040, seg=12), M('spear_brass', '#D9A520',
                                                                                      rough=0.35, metal=0.6),
-                           parent, loc=(0, 0, length - 0.235)))
-    tas = g.bm_lathe([(0.0, -0.09), (0.030, -0.075), (0.040, -0.03), (0.024, 0.0), (0.0, 0.004)], seg=14,
+                           parent, loc=(0, 0, length - 0.275)))
+    tas = g.bm_lathe([(0.0, -0.11), (0.040, -0.09), (0.052, -0.04), (0.030, 0.0), (0.0, 0.004)], seg=14,
                      smooth_n=10)
-    vd.fuzz(tas, 0.004, 60.0)
-    objs.append(g.mesh_obj('spear_tassel', tas, red, parent, loc=(0, 0, length - 0.24)))
+    vd.fuzz(tas, 0.005, 60.0)
+    objs.append(g.mesh_obj('spear_tassel', tas, red, parent, loc=(0, 0, length - 0.28)))
     return objs
 
 
-def make_spear(rig, length=1.64):
+def make_spear(rig, length=1.62):
     """Upright spear through the LEFT fist (dynamic) + a copy slung on the back."""
     e = g.empty('spear_dyn')
     objs = _spear_parts(e, length)
@@ -539,12 +540,13 @@ def dress_clerk_a(rig, spec):
 def dress_clerk_b(rig, spec):
     """점원 민호: side-parted hair, white shirt, green vest, red bow tie, oversleeves."""
     hair = spec['hair']
-    cb.hair_shell(rig, hair, fringe=0.38, wave=0.03, waves=6.0, sweep=0.32, back_low=-0.42, top_puff=0.09,
+    cb.hair_shell(rig, hair, fringe=0.36, wave=0.03, waves=6.0, sweep=0.34, back_low=-0.42, top_puff=0.07,
                   base=1.09)
-    ho(rig, 'part', g.bm_tube_path([cb.head_point(0.42, el, out=0.022)[0] for el in (0.45, 0.75, 1.05)], 0.007,
+    ho(rig, 'part', g.bm_tube_path([cb.head_point(0.40, el, out=0.024)[0] for el in (0.42, 0.70, 0.98, 1.2)], 0.008,
                                    segr=6), M('part', '#2A1E1A', rough=0.5))
-    cb.hair_tuft(rig, hair, -0.30, 0.55, size=(0.08, 0.05, 0.10), tilt=(-70, 0, 0), name='swoop')
-    cb.hair_tuft(rig, hair, -0.05, 0.62, size=(0.07, 0.05, 0.09), tilt=(-72, 0, 0), name='swoop')
+    # side-swept fringe falling toward the character's right
+    for az, el, sz in ((0.22, 0.52, 1.0), (-0.08, 0.50, 1.05), (-0.36, 0.44, 0.95), (-0.60, 0.36, 0.8)):
+        cb.hair_tuft(rig, hair, az, el, size=(0.075 * sz, 0.045, 0.12 * sz), tilt=(-82, -38, 0), name='swoop')
     vest = M('vest', '#3F7A4A', rough=0.8)
     g.mesh_obj('vest', cb.vest_lathe([(0.250, -0.095), (0.246, 0.0), (0.232, 0.12), (0.222, 0.24), (0.205, 0.31),
                                       (0.165, 0.38)], gap_deg=20, seg=44, sy=0.88), vest, rig.j['spine'])
@@ -580,13 +582,16 @@ def dress_porter_a(rig, spec):
     """짐꾼 곰돌: big & sturdy, spiky hair + white headband, quilted vest, work
     gloves, leg wraps and the A-frame carrier."""
     hair = spec['hair']
-    cb.hair_shell(rig, hair, fringe=0.42, wave=0.07, waves=12.0, sweep=0.0, back_low=-0.40, top_puff=0.05)
-    for az, el in ((-0.35, 1.0), (0.05, 1.08), (0.42, 0.98), (PI, 0.70), (2.5, 0.80), (-2.5, 0.80)):
-        cb.hair_tuft(rig, hair, az, el, size=(0.05, 0.04, 0.075), tilt=(-30 if abs(az) < 1 else 50, 0, 0),
+    cb.hair_shell(rig, hair, fringe=0.30, wave=0.10, waves=13.0, sweep=0.0, back_low=-0.40, top_puff=0.04)
+    for az, el in ((-0.45, 0.90), (-0.12, 0.98), (0.20, 0.98), (0.50, 0.90), (PI, 0.75), (2.5, 0.85), (-2.5, 0.85),
+                   (1.6, 1.0), (-1.6, 1.0)):
+        cb.hair_tuft(rig, hair, az, el, size=(0.055, 0.045, 0.085), tilt=(-25 if abs(az) < 1 else 40, 0, 0),
                      name='spike')
+    for az in (-0.30, 0.0, 0.30):
+        cb.hair_tuft(rig, hair, az, 0.30, size=(0.05, 0.035, 0.07), tilt=(-85, 0, 0), name='bang')
     band = M('headband', '#F4F1EA', rough=0.85)
-    cb.tilted_ring(rig, 'headband', band, HEAD_R[0] * 1.035, 0.030, 0.42, 0.16, sy=0.97, rz=1.5)
-    knot_tails(rig, band, (0.0, 0.312, 0.035), s=1.0)
+    cb.tilted_ring(rig, 'headband', band, HEAD_R[0] * 1.015, 0.028, 0.56, 0.30, sy=0.97, rz=1.6)
+    knot_tails(rig, band, (0.0, 0.300, 0.115), s=1.0)
     # quilted vest pieces are the torso itself (spec quilted); undershirt sleeves come from spec
     cb.collar_fur(rig, spec, R=0.135, r=0.055, dz=0.095, bump=0.20, tufts=8,
                   mat=M('collar_k', '#E8DCC0', rough=0.95))
@@ -838,19 +843,19 @@ def dress_guard(rig, spec):
     leather pauldrons, emblem, spear upright in the left fist."""
     hair = spec['hair']
     cb.hair_shell(rig, hair, fringe=0.22, wave=0.05, waves=10.0, sweep=0.0, back_low=-0.45)
-    steel = M('helmet', '#AEB9C6', rough=0.30, metal=0.65)
-    cb.cap_shell(rig, steel, lambda x, y: 0.30 - 0.10 * y, base=1.16, puff=0.20, name='helmet', soft=0.02)
+    steel = M('helmet', '#97A3B2', rough=0.38, metal=0.55)
+    cb.cap_shell(rig, steel, lambda x, y: 0.34 - 0.12 * y, base=1.125, puff=0.07, name='helmet', soft=0.02)
     fur = M('helmet_fur', '#8A6A4A', rough=0.97)
-    cb.tilted_ring(rig, 'helmet_fur', fur, HEAD_R[0] * 1.12, 0.062, 0.38, 0.12, sy=1.0, tufts=12, bump=0.40,
-                   seed=6.0)
-    ho(rig, 'helmet_ridge', g.bm_tube_path([cb.head_point(0, el, out=0.075)[0] for el in (0.55, 0.85, 1.20, 1.55,
-                                                                                          1.85, 2.15)],
-                                           0.018, segr=8), M('helmet_d', '#8A96A6', rough=0.3, metal=0.65))
-    ho(rig, 'helmet_knob', g.bm_ellipsoid(0.035, 0.035, 0.035, 12, 8), M('brass', '#E8B33A', rough=0.3, metal=0.7),
-       loc=(0, 0.0, 0.405))
-    plume = g.bm_lathe([(0.0, 0.0), (0.045, 0.03), (0.055, 0.09), (0.030, 0.15), (0.0, 0.17)], seg=14, smooth_n=10)
+    cb.tilted_ring(rig, 'helmet_fur', fur, HEAD_R[0] * 1.045, 0.046, 0.40, 0.14, sy=0.98, tufts=12, bump=0.40,
+                   seed=6.0, rz=1.2)
+    ho(rig, 'helmet_ridge', g.bm_tube_path([cb.head_point(0, el, out=0.050)[0] for el in (0.62, 0.95, 1.25, 1.57,
+                                                                                          1.90, 2.25)],
+                                           0.016, segr=8), M('helmet_d', '#7E8A9A', rough=0.35, metal=0.55))
+    ho(rig, 'helmet_knob', g.bm_ellipsoid(0.032, 0.032, 0.030, 12, 8), M('brass', '#E8B33A', rough=0.3, metal=0.7),
+       loc=(0, 0.0, 0.335))
+    plume = g.bm_lathe([(0.0, 0.0), (0.040, 0.03), (0.050, 0.08), (0.028, 0.13), (0.0, 0.15)], seg=14, smooth_n=10)
     vd.fuzz(plume, 0.007, 50.0)
-    ho(rig, 'plume', plume, M('plume', '#D23A32', rough=0.9), loc=(0, 0.03, 0.42), rot=(-25, 0, 0))
+    ho(rig, 'plume', plume, M('plume', '#D23A32', rough=0.9), loc=(0, 0.03, 0.345), rot=(-25, 0, 0))
     # gambeson is the quilted torso; leather pauldrons + belt + emblem
     leather = M('pauldron', '#8A5A33', rough=0.55)
     for n, s in (('R', -1), ('L', 1)):

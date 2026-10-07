@@ -111,6 +111,8 @@ export class Register {
     }
     this.clerk = c;
     gs.keysInUse.add(key);
+    if (c.wantKey) gs.keysInUse.add(c.wantKey);     // reserved: the resident with that look stays away
+    if (gs.life) { gs.life.release(key); if (c.wantKey) gs.life.release(c.wantKey); }
     this.pad.setVisible(false); this.label.setVisible(false);
     return c;
   }
@@ -162,7 +164,7 @@ export class Clerk extends Character {
       this.checkT -= dt;
       if (this.checkT <= 0) {
         this.checkT = 1;
-        if (Assets.charReady(this.wantKey)) { gs.keysInUse.delete(this.key); this.reskin(this.wantKey); gs.keysInUse.add(this.wantKey); this.wantKey = null; }
+        if (Assets.charReady(this.wantKey)) { gs.keysInUse.delete(this.key); this.reskin(this.wantKey); gs.keysInUse.add(this.wantKey); this.wantKey = null; this.faceFront(); }
       }
     }
     if (this.state === 'go') {

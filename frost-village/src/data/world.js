@@ -53,7 +53,7 @@ export const WORLD = {
   // ── 가공소 ─────────────────────────────────────────────
   // in / out: 입구·출구 발판 위치 (가공소 기준 상대 px)
   stations: [
-    { id: 'grill',      sprite: 'station_grill',      x: grill[0], y: grill[1], in: XOFF(-2.15), out: XOFF(2.15), input: 'item_fish_raw', output: 'item_fish_cooked', zone: 'plaza', sfx: 'sfx_sizzle', fire: [0, -30] },
+    { id: 'grill',      sprite: 'station_grill',      x: grill[0], y: grill[1], in: XOFF(-2.15), out: XOFF(2.15), input: 'item_fish_raw', output: 'item_fish_cooked', zone: 'plaza', sfx: 'sfx_sizzle', fire: [0, -30], porterHome: [-52, 44] },
     { id: 'sawmill',    sprite: 'station_sawmill',    x: sawmill[0], y: sawmill[1], in: XOFF(-2.3), out: XOFF(2.3), input: 'item_log', output: 'item_plank', zone: 'forest', sfx: 'sfx_saw' },
     { id: 'bakery',     sprite: 'station_bakery',     x: bakery[0], y: bakery[1], in: [118, 28], out: [-118, 30], input: 'item_wheat', output: 'item_bread', zone: 'farm', sfx: 'sfx_oven', smoke: [40, -150] },
     { id: 'smelter',    sprite: 'station_smelter',    x: smelter[0], y: smelter[1], in: [-122, 4], out: [112, 52], input: 'item_ore', output: 'item_ingot', zone: 'mine', sfx: 'sfx_smelt', smoke: [-14, -150] },
@@ -74,7 +74,7 @@ export const WORLD = {
     entry: [[990, 2200], [990, 1260], [1080, 1080]],
     exit: [[1080, 1080], [990, 1260], [990, 2200]],     // 다 산 손님이 돌아가는 길 (화면 밖으로 나가거나 길 끝에 닿으면 사라짐)
     // (v2) 계산대: 손님은 여기에 촌장(또는 점원)이 서 있어야 돈을 내고 떠납니다
-    register: rel(market, Z('plaza', 0.0, 3.05)),  // 촌장이 서는 계산대 발판 (판매대 왼쪽 끝)
+    register: rel(market, Z('plaza', 6.0, 3.4)),   // 촌장이 서는 계산대 발판 (판매대 오른쪽 끝, 진열대 옆)
     staff: rel(market, Z('plaza', 2.1, 3.95)),     // 점원이 서는 곳 (판매대 뒤). 그림에 staffPoints 가 있으면 그것을 씀
   },
   trade: {
@@ -83,7 +83,7 @@ export const WORLD = {
     cash: rel(trade, Z('plaza', -2.1, -2.75)),     // 상인이 낸 코인
     merchant: rel(trade, Z('plaza', -4.3, 0.5)),   // 상인 위치 (썰매 뒤)
     register: rel(trade, Z('plaza', -6.55, -1.75)),// (v2) 촌장이 서는 계산대 발판 (교역소 왼쪽 끝)
-    staff: rel(trade, Z('plaza', -5.6, -0.15)),    // (v2) 점원이 서는 곳. 그림에 staffPoints 가 있으면 그것을 씀
+    staff: rel(trade, Z('plaza', -6.55, -1.75)),   // (v2) 점원이 서는 곳 (계산대 자리). 그림에 staffPoints 가 있으면 그것을 씀
   },
   // 버리기 발판: 위에 잠깐 서 있으면 들고 있는 물건을 모닥불에 던져 버립니다 (어부 고용 후 나타남)
   trash: { x: 560, y: 700, fire: [520, 574] },
@@ -113,10 +113,10 @@ export const WORLD = {
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
     hire_hunter:     { ...P('hunt', 1.6, 2.6), worker: 'hunter',     hut: [1616, 1790] },
     // (v2) 점원 고용: 첫 판매 / 첫 교역 뒤에 나타남. 점원이 있으면 촌장이 계산대에 서 있지 않아도 손님이 돈을 냄
-    hire_clerk_market: { ...P('plaza', 5.3, 3.6), clerk: 'market' },
+    hire_clerk_market: { x: 1496, y: 794, clerk: 'market' },
     hire_clerk_trade:  { ...P('plaza', -2.6, -3.95), clerk: 'trade' },
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
-    porter_grill:      { x: 640,  y: 610,  station: 'grill' },
+    porter_grill:      { x: 905,  y: 705,  station: 'grill' },
     porter_sawmill:    { ...P('forest', -1.0, 3.3), station: 'sawmill' },
     porter_bakery:     { ...P('farm', 0.6, 3.1), station: 'bakery' },
     porter_smelter:    { ...P('mine', 0.9, 3.6), station: 'smelter' },
@@ -141,12 +141,15 @@ export const WORLD = {
       green: [990, 1700], cross_s: [990, 2040], mine_gate: [790, 1950], hunt_gate: [1170, 1980],
       village: [990, 2240], tents_w: [620, 2380], tents_e: [1360, 2380], gate: [990, 2560], gate_out: [990, 2700],
       forest_in: [690, 1290], farm_in: [1290, 1290], mine_in: [700, 1960], hunt_in: [1260, 1980],
-      beach_w: [690, 610], beach_n: [1000, 500], beach_e: [1300, 600],
+      beach_w: [690, 610], beach_n: [1000, 500], beach_e: [1300, 572], plaza_e: [1335, 905], gap_n: [1078, 556],
     },
     edges: [
       ['plaza_c', 'plaza_s', { draw: false }], ['plaza_c', 'plaza_sw', { draw: false }], ['plaza_c', 'plaza_se', { draw: false }],
       ['plaza_c', 'plaza_w', { draw: false }], ['plaza_w', 'plaza_sw', { draw: false }],
-      ['beach_w', 'beach_n', { draw: false }], ['beach_n', 'beach_e', { draw: false }], ['beach_w', 'plaza_w', { draw: false }], ['beach_w', 'plaza_c', { draw: false }],
+      ['plaza_c', 'plaza_e', { draw: false }], ['plaza_e', 'plaza_se', { draw: false }],
+      ['beach_w', 'beach_n', { draw: false }], ['beach_n', 'beach_e', { draw: false }],
+      // 광장 위쪽 울타리 틈 (그릴 옆): 광장 <-> 바닷가 오른쪽 놀이터
+      ['plaza_c', 'gap_n', { draw: false }], ['gap_n', 'beach_n', { draw: false }], ['gap_n', 'beach_e', { draw: false }], ['beach_w', 'plaza_w', { draw: false }], ['beach_w', 'plaza_c', { draw: false }],
       ['plaza_s', 'cross_n', { via: [[990, 1150]] }],
       ['plaza_sw', 'forest_link'], ['forest_link', 'forest_gate', { via: [[786, 1230]] }],
       ['plaza_se', 'farm_link'], ['farm_link', 'farm_gate', { via: [[1186, 1240]] }],
@@ -186,7 +189,7 @@ export const WORLD = {
     ['snow_pile_b', 1720, 600], ['campfire', 520, 590], ['firewood_pile', 430, 650], ['barrel', 640, 520],
     // 광장
     ['lamp_post', ...Z('plaza', -6.6, -6.6)], ['lamp_post', ...Z('plaza', 6.6, -6.6)], ['lamp_post', ...Z('plaza', -0.5, 6.7)],
-    ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', ...Z('plaza', 6.4, 5.2)], ['crate', ...Z('plaza', 6.5, 4.4), { scale: 0.85 }],
+    ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1590, 812], ['crate', 1565, 838, { scale: 0.85 }],
     ['signpost', 1068, 1214], ['bush_snow', ...Z('plaza', 1.0, 7.3)], ['snow_pile_b', ...Z('plaza', 7.4, 1.5)],
     // 남쪽 마을
     ['chief_lodge', 960, 2400], ['tent_a', 660, 2380], ['tent_a', 1260, 2370, { flip: true }], ['campfire', 870, 2525],
@@ -225,7 +228,7 @@ export const WORLD = {
   decals: [
     ['decal_snow_drift_a', 360, 660, 1], ['decal_snow_drift_b', 1580, 700, 1], ['decal_snow_drift_a', 760, 1580, 1.1], ['decal_snow_drift_b', 1220, 1590, 1],
     ['decal_snow_drift_a', 1580, 2420, 1], ['decal_snow_drift_b', 330, 2440, 1], ['decal_puddle_ice', 1120, 1520, 1], ['decal_puddle_ice', 640, 2250, 0.9],
-    ['decal_dirt_patch', 700, 1640, 1.0], ['decal_dirt_patch', 300, 2120, 1],
+    ['decal_dirt_patch', 560, 1720, 0.9], ['decal_dirt_patch', 300, 2120, 1],
     ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
   ],
 
@@ -253,21 +256,22 @@ export const WORLD = {
       ['kids_swing', 1440, 1610, { id: 'swing', after: 'hire_farmer' }],
       ['ice_rink', 1215, 1700, { id: 'rink', after: 'zone_mine' }],
       ['igloo', 330, 1565, { id: 'igloo', after: 'hire_miner' }],
-      ['clothesline', 1150, 2470, { id: 'clothes', after: 'zone_hunt' }],
+      ['clothesline', 470, 2440, { id: 'clothes', after: 'zone_hunt' }],
       ['lantern_string', 800, 2290, { id: 'lanterns_v', after: 'zone_hunt' }],
     ],
     // 주민이 머무는 곳: 중심 [x, y], 반지름 r(px), 하는 일 acts, after = 이 단계를 마쳐야 사람들이 감
     //   acts: sit(의자에 앉기) warm(불 쬐기) chat(수다) read(게시판) play(눈싸움·술래잡기·눈사람) wander(산책) concert(공연)
     areas: {
-      beach_w:   { at: [540, 615], r: 130, acts: ['sit', 'warm', 'chat'], fire: [520, 590] },
-      notice:    { at: [478, 860], r: 90, acts: ['read', 'chat'] },
+      // stage: 음유시인이 연주하는 자리 (보면대가 없는 모닥불)
+      beach_w:   { at: [540, 615], r: 130, acts: ['sit', 'warm', 'chat'], fire: [520, 590], stage: [604, 642] },
+      notice:    { at: [520, 870], r: 120, acts: ['read', 'chat'] },
       playground:{ at: [1440, 560], r: 150, acts: ['play', 'chat', 'wander'] },
       plaza_s:   { at: [990, 1210], r: 110, acts: ['chat', 'wander'] },
       doghouse:  { at: [1430, 1030], r: 90, acts: ['chat', 'wander'] },
       green_fire:{ at: [740, 1610], r: 150, acts: ['sit', 'warm', 'chat', 'concert'], fire: [740, 1575], after: 'zone_forest' },
       green_e:   { at: [1280, 1600], r: 170, acts: ['chat', 'play', 'wander', 'sit'], after: 'zone_farm' },
       green_w:   { at: [380, 1610], r: 140, acts: ['chat', 'wander', 'play'], after: 'hire_miner' },
-      south:     { at: [990, 2470], r: 220, acts: ['chat', 'sit', 'warm', 'wander'], fire: [870, 2525], after: 'zone_hunt' },
+      south:     { at: [990, 2470], r: 220, acts: ['chat', 'sit', 'warm', 'wander'], fire: [870, 2525], stage: [955, 2572], after: 'zone_hunt' },
     },
     // 주민 이사 순서 (balance.js 의 population 과 함께): 단계 이름 -> 이사 오는 주민
     //   목록에 있는 주민의 그림이 아직 없으면 (예: 2차 주민) 건너뛰고 다음 사람이 옴

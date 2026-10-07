@@ -56,13 +56,17 @@ export class Tutorial {
     this.target = null; this.textKey = null; this.text = null;
 
     const pad = prog.affordablePad(eco.coins);
+    // (v2) customers waiting at an empty register come before buying things (the line is stuck)
+    if (!this.inTutorial && this.registerHint(set, dt, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
-      set(pad.x, pad.y, 112, this.inTutorial ? 'obj_unlock' : (/^hire2_/.test(pad.id) && !prog.anyDone(/^hire2_/) ? 'obj_courier' : null));
+      const key = this.inTutorial ? 'obj_unlock' : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter' : null;
+      set(pad.x, pad.y, 112, key);
       return;
     }
     if (pad) return;
     if (this.inTutorial) { this.firstLoop(set); return; }
     if (this.unloadHint(set)) return;
+    if (this.registerHint(set, dt, false)) return;
     if (this.upgradeHint(set, dt)) return;
     if (this.zoneHint(set, dt)) return;
     const idle = (gs.time.now - Input.lastActivity) / 1000 > IDLE_HINT && !gs.playerOnPad;
@@ -86,6 +90,13 @@ export class Tutorial {
     const grill = gs.stations.grill, m = gs.market;
     const raw = p.stack.countOf('item_fish_raw'), cooked = p.stack.countOf('item_fish_cooked');
     const next = prog.nextPad();
+    // (v2) the customer has the food: stand at the register so they pay
+    const front = m.queue[0];
+    if (!m.register.clerk && cooked === 0 && (m.waitingPay || (front && front.arrived && front.got > 0))) {
+      if (!m.register.pad.contains(p.x, p.y)) set(m.register.x, m.register.y, 46, 'obj_register');
+      else this.textKey = 'obj_register_wait';
+      return;
+    }
     if (m.cash.value > 0 && cooked === 0 && (eco.coins + m.cash.value >= (next ? next.remaining : 0) || (raw === 0 && grill.outStack.count === 0))) {
       if (!m.cash.pad.contains(p.x, p.y)) set(m.cash.x, m.cash.y, 40, 'obj_cash');
       return;
@@ -94,6 +105,29 @@ export class Tutorial {
     if (raw > 0 && (p.room <= 0 || !gs.net.ready() || raw >= Math.min(4, p.capacity))) { set(grill.inPad.x, grill.inPad.y, 50, 'obj_grill'); return; }
     if ((grill.outStack.count > 0 || grill.inStack.count > 0) && raw === 0) { set(grill.outPad.x, grill.outPad.y, 80, 'obj_take'); return; }
     set(gs.net.gather.x, gs.net.gather.y - 10, 30, 'obj_fish');
+  }
+
+  /**
+   * (v2) customers / the merchant waiting at a register nobody stands at. urgent: only when the line
+   * has been stuck for a while (then it beats buying pads); otherwise after unloading.
+   */
+  registerHint(set, dt, urgent) {
+    const gs = this.gs, p = gs.player, m = gs.market, tr = gs.trade;
+    const mWait = m.waitingPay && !m.register.clerk ? m.waitPayT : 0;
+    const tWait = tr.enabled && tr.waitingPay && !tr.register.clerk ? tr.waitT : 0;
+    const need = urgent ? 9 : 1.2;
+    let reg = null, key = null;
+    if (mWait > need && (!tWait || mWait >= tWait)) { reg = m.register; key = 'obj_register'; }
+    else if (tWait > need + 1) { reg = tr.register; key = 'obj_register_trade'; }
+    if (!reg) return false;
+    if (reg.pad.contains(p.x, p.y)) { this.textKey = 'obj_register_wait'; return true; }
+    // a gentle toast the first times the line gets stuck far away
+    if (urgent && gdist(p.x, p.y, reg.x, reg.y) > 420 && gs.time.now - (this.waitToastT || -1e9) > 45000) {
+      this.waitToastT = gs.time.now;
+      gs.ui.toast(t(reg === m.register ? 'customersWaiting' : 'merchantWaiting'));
+    }
+    set(reg.x, reg.y, 46, key);
+    return true;
   }
 
   /** where carried item `type` can go right now: { pad, key } or null */
@@ -185,10 +219,10 @@ export class Tutorial {
     if (p.room <= 0) return false;
     // coins waiting
     for (const c of this.cashes()) if (c.value >= 10 && !c.pad.contains(p.x, p.y)) { set(c.x, c.y, 40, 'obj_cash'); return true; }
-    // the station with the most finished products (stations with a courier empty themselves)
+    // the station with the most finished products (stations with a porter empty themselves)
     let best = null;
     for (const st of gs.stationList) {
-      if (!st.enabled || st.outStack.count < 3 || gs.workers.some((w) => w.role === 'porter' && w.station === st)) continue;
+      if (!st.enabled || st.outStack.count < 3 || gs.porters.some((w) => w.station === st)) continue;
       if (!best || st.outStack.count > best.outStack.count) best = st;
     }
     if (best && !best.outPad.contains(p.x, p.y)) { set(best.outPad.x, best.outPad.y, 80, goal ? goal.key : TAKE_KEY[best.id], goal ? goal.text : null); return true; }

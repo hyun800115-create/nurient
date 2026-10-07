@@ -1,13 +1,17 @@
 // Frost Village smoke test (Playwright + Chromium, mobile viewport 390x844).
 //   node tools/test/smoke.mjs            (screenshots -> docs/previews/screens/)
-// Drives the first loop with __FV.setInput like a joystick (fish -> grill -> counter -> coins ->
-// first unlock), then __FV.give + unlockAll to visit every zone. Fails on any page error or
-// console error. 404s for missing optional manifest fragments are reported, not fatal.
+// Drives the first loop with __FV.setInput like a joystick (fish -> grill -> counter -> register ->
+// coins -> first unlock), then the v2 helpers (clerk at the register, porter for the grill), then
+// __FV.give + unlockAll to visit every zone. Fails on any page error or console error. 404s for
+// missing optional manifest fragments are reported, not fatal.
+// v2: once the game runs, time is the fixed-step clock (fv_step.mjs): the waits below are GAME
+// seconds, so the test gives the same result however slow headless rendering / the machine is.
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
-import { launch, openPage, tapStart, sleep, waitFor, walkTo } from './pw.mjs';
+import { launch, openPage, tapStart, sleep as realSleep, waitFor as realWaitFor } from './pw.mjs';
+import { installStepper, advance, render, walkStep, waitStep } from './fv_step.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'docs', 'previews', 'screens');
@@ -19,7 +23,15 @@ const step = (name, ok, info = '') => { results.push({ name, ok, info }); consol
 const srv = await start(0, { prefix: '/game/frost-village/' });   // sub-path on purpose
 const browser = await launch();
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 } });
-const shot = async (n) => { await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 82 }); };
+// game-time versions of sleep / waitFor / walkTo once the stepper is installed (real time before)
+let stepping = false;
+// (one drawn frame at the end: Phaser sorts input hits by the cameras' render lists, so new UI
+//  must have been drawn once before a tap can land on it)
+const sleep = async (ms) => { if (!stepping) return realSleep(ms); await advance(page, ms / 1000); await render(page, 1); await realSleep(30); };
+const waitFor = (pg, fn, ms, arg) => (stepping ? waitStep(pg, fn, ms, arg) : realWaitFor(pg, fn, ms, arg));
+const walkTo = (pg, target, opts) => walkStep(pg, target, opts);
+const startStepping = async () => { await installStepper(page); stepping = true; };
+const shot = async (n) => { if (stepping) await render(page, 2); await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 82 }); };
 const st = () => page.evaluate(() => window.__FV.state());
 const where = (n) => page.evaluate((k) => window.__FV.where(k), n);
 const count = (s, type) => s.player.stack.filter((x) => x === type).length;
@@ -28,14 +40,16 @@ let fatal = null;
 try {
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) { /* */ } });
   await page.reload({ waitUntil: 'load' });
-  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 40000);
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(900);
   await shot('01_title');
   step('title screen', true);
 
   await tapStart(page);
-  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 20000);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 60000);
   await sleep(1200);
+  const fps = await page.evaluate(async () => { await new Promise((r) => setTimeout(r, 1500)); return window.__FV.state().fps; });
+  await startStepping();
   await shot('02_start');
   let s = await st();
   step('game started', s.coins === 0 && s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue}`);
@@ -46,7 +60,7 @@ try {
     loops++;
     // fish at the net
     await walkTo(page, await where('net'), { tol: 18 });
-    await waitFor(page, () => { const s = window.__FV.state(); return s.player.stack.length >= Math.min(5, s.player.capacity); }, 20000).catch(() => {});
+    await waitFor(page, () => { const s = window.__FV.state(); return s.player.stack.length >= Math.min(5, s.player.capacity); }, 60000).catch(() => {});
     s = await st();
     if (loops === 1) { await shot('03_fishing'); step('fishing at the net', count(s, 'item_fish_raw') >= 3, `raw=${count(s, 'item_fish_raw')} anim=${s.player.anim}`); }
     // drop on the grill
@@ -62,9 +76,19 @@ try {
     await walkTo(page, await where('shelf'), { tol: 18 });
     await waitFor(page, () => window.__FV.state().player.stack.length === 0, 10000).catch(() => {});
     if (loops === 1) { await sleep(500); await shot('06_counter'); }
-    // customers buy -> coins on the cash pad
-    await waitFor(page, () => { const s = window.__FV.state(); return s.market.cash > 0 && s.market.stock === 0; }, 20000).catch(() => {});
-    if (loops === 1) { await sleep(400); await shot('07_customers_pay'); s = await st(); step('customers paid', s.market.cash > 0, `cash=${s.market.cash}`); }
+    // (v2) the customer takes the food and waits at the register: nobody pays until the chief stands there
+    await waitFor(page, () => window.__FV.state().market.waitingPay, 30000).catch(() => {});
+    if (loops === 1) {
+      await sleep(600);
+      s = await st();
+      step('customer waits at the empty register', s.market.waitingPay && s.market.cash === 0, `waitingPay=${s.market.waitingPay} cash=${s.market.cash}`);
+      step('tutorial points at the register', s.objective === 'obj_register', `objective=${s.objective}`);
+      await shot('06b_register_wait');
+    }
+    await walkTo(page, await where('register'), { tol: 14 });
+    // customers pay while the chief stands at the register -> coins on the cash pad
+    await waitFor(page, () => { const s = window.__FV.state(); return s.market.cash > 0 && s.market.stock === 0 && !s.market.waitingPay; }, 40000).catch(() => {});
+    if (loops === 1) { await sleep(400); await shot('07_customers_pay'); s = await st(); step('customers paid at the register', s.market.cash > 0, `cash=${s.market.cash}`); }
     await walkTo(page, await where('cash'), { tol: 18 });
     await sleep(900);
     s = await st();
@@ -72,6 +96,7 @@ try {
   }
   s = await st();
   step('earned 30 coins by playing', s.coins >= 30, `coins=${s.coins} after ${loops} loops`);
+  step('clerk pad appears after the first sale', s.pads.includes('hire_clerk_market') && s.flags.firstSale, `pads=${s.pads}`);
   if (s.coins < 30) await page.evaluate((n) => window.__FV.give(n), 30 - s.coins);
 
   // ---------------- first unlock: hire the fisherman
@@ -88,6 +113,27 @@ try {
   step('fisherman works', s.workers[0] && ['work', 'deliver', 'drop', 'goto'].includes(s.workers[0].state), JSON.stringify(s.workers[0]));
   await shot('11_fisherman_working');
 
+  // ---------------- (v2) porter for the grill, clerk at the register
+  await waitFor(page, () => window.__FV.state().pads.includes('porter_grill'), 10000).catch(() => {});
+  await page.evaluate(() => { const p = window.__FV.scene.progress.pads.porter_grill; window.__FV.give(p ? p.remaining : 0); });
+  await walkTo(page, await where('porter_grill'), { tol: 14 });
+  await waitFor(page, () => window.__FV.state().done.includes('porter_grill'), 10000).catch(() => {});
+  await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.stations.grill.outStack.push('item_fish_cooked', null, gs.effects); });
+  await waitFor(page, () => window.__FV.state().porters.some((p) => p.state === 'haul' || p.state === 'unload'), 40000).catch(() => {});
+  s = await st();
+  step('porter carries grilled fish to the counter', s.porters.length === 1 && ['haul', 'unload'].includes(s.porters[0].state), JSON.stringify(s.porters));
+  await shot('11b_porter');
+  await page.evaluate(() => { const p = window.__FV.scene.progress.pads.hire_clerk_market; window.__FV.give(p ? p.remaining : 0); });
+  await walkTo(page, await where('hire_clerk_market'), { tol: 14 });
+  await waitFor(page, () => window.__FV.state().market.clerk, 10000).catch(() => {});
+  await walkTo(page, await where('net'), { tol: 20 });
+  const cash0 = (await st()).market.cash;
+  await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 8; i++) gs.market.stock.push('item_fish_cooked', null, gs.effects); });
+  await waitFor(page, (c) => window.__FV.state().market.cash > c, 40000, cash0).catch(() => {});
+  s = await st();
+  step('clerk takes payments (chief away)', s.market.clerk && s.market.cash > cash0, `clerk=${s.market.clerk} cash ${cash0} -> ${s.market.cash}`);
+  await shot('11c_clerk');
+
   // ---------------- second unlock by paying (forest), then everything
   await page.evaluate(() => { const p = window.__FV.scene.progress.pads.zone_forest; window.__FV.give(p ? p.remaining : 0); });
   await walkTo(page, await where('zone_forest'), { tol: 14 });
@@ -103,11 +149,13 @@ try {
   s = await st();
   step('unlockAll', Object.values(s.zones).every(Boolean) && s.workers.length >= 5, `workers=${s.workers.length}`);
   {
-    // test setup: some finished goods on every output pad; the couriers must pick them up
+    // test setup: some finished goods on every output pad; the porters must pick them up
     await page.evaluate(() => { const gs = window.__FV.scene; for (const st of gs.stationList) for (let i = 0; i < 8; i++) st.outStack.push(st.output, null, gs.effects); });
-    await waitFor(page, () => window.__FV.scene.workers.filter((w) => w.role === 'porter').some((w) => w.stack.count > 0), 25000).catch(() => {});
-    const couriers = await page.evaluate(() => window.__FV.scene.workers.filter((w) => w.role === 'porter').map((w) => w.type + ':' + w.state + ':' + (w.stack.count + w.stack.incoming)));
-    step('couriers pick up finished goods', couriers.length === 5 && couriers.some((c) => /:[1-9]\d*$/.test(c)), couriers.join(' '));
+    await waitFor(page, () => window.__FV.scene.porters.filter((w) => w.station.id !== 'grill').some((w) => w.stack.count > 0), 40000).catch(() => {});
+    const porters = await page.evaluate(() => window.__FV.scene.porters.map((w) => w.station.id + ':' + w.state + ':' + (w.stack.count + w.stack.incoming)));
+    step('porters pick up finished goods (all 5 lines)', porters.length === 5 && porters.some((c) => !/^grill/.test(c) && /:[1-9]\d*$/.test(c)), porters.join(' '));
+    const s2 = await st();
+    step('both registers have clerks, residents moved in', s2.market.clerk && s2.trade.clerk && s2.residents >= 10, `residents=${s2.residents}`);
   }
 
   // chop a tree
@@ -166,11 +214,29 @@ try {
   await sleep(1500);
   await shot('19_trade_post');
 
-  // overview
-  await page.evaluate(() => window.__FV.camera(900, 1300, 0.42));
-  await sleep(1200);
-  await shot('20_overview');
-  await page.evaluate(() => window.__FV.camera());
+  // overview (the on-screen button), zoom buttons
+  {
+    const c0 = await page.$('canvas'); const b0 = await c0.boundingBox();
+    const k0 = b0.width / 720, H0 = b0.height / k0;
+    const z0 = await page.evaluate(() => window.__FV.zoom().target);
+    await page.touchscreen.tap(b0.x + (720 - 56) * k0, b0.y + (H0 - 168 - 160) * k0);      // +
+    await sleep(500);
+    const z1 = await page.evaluate(() => window.__FV.zoom().target);
+    step('zoom + button', z1 > z0, `${z0} -> ${z1}`);
+    await page.touchscreen.tap(b0.x + (720 - 56) * k0, b0.y + (H0 - 168 - 84) * k0);       // -
+    await page.touchscreen.tap(b0.x + (720 - 56) * k0, b0.y + (H0 - 168 - 84) * k0);
+    await sleep(500);
+    const z2 = await page.evaluate(() => window.__FV.zoom().target);
+    step('zoom - button', z2 < z1, `${z1} -> ${z2}`);
+    await page.touchscreen.tap(b0.x + (720 - 56) * k0, b0.y + (H0 - 168) * k0);            // overview
+    await sleep(2500);
+    const zo = await page.evaluate(() => window.__FV.zoom());
+    step('overview button shows the whole village', zo.overview && zo.target < 0.6, JSON.stringify(zo));
+    await shot('20_overview');
+    await page.touchscreen.tap(b0.x + (720 - 56) * k0, b0.y + (H0 - 168) * k0);            // back
+    await sleep(1500);
+    step('overview toggles back', !(await page.evaluate(() => window.__FV.zoom().overview)));
+  }
 
   // settings panel (tap the gear)
   const c = await page.$('canvas'); const b = await c.boundingBox();
@@ -197,11 +263,13 @@ try {
   // save + reload
   await page.evaluate(() => window.__FV.save());
   const before = await st();
+  stepping = false;
   await page.reload({ waitUntil: 'load' });
-  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 40000);
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(500);
   await tapStart(page);
-  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 20000);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 60000);
+  await startStepping();
   await sleep(1500);
   s = await st();
   step('save / load', s.done.length === before.done.length && Math.abs(s.coins - before.coins) < 5 && s.workers.length === before.workers.length, `done ${before.done.length}->${s.done.length} coins ${before.coins}->${s.coins}`);
@@ -215,11 +283,10 @@ try {
     await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 60) * k); await sleep(2500);
     await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 15000).catch(() => {});
     s = await st();
-    step('reset progress (in-game confirm)', s.coins === 0 && s.done.length === 0 && s.workers.length === 0, `coins=${s.coins} done=${s.done.length}`);
+    step('reset progress (in-game confirm)', s.coins === 0 && s.done.length === 0 && s.workers.length === 0 && s.porters.length === 0, `coins=${s.coins} done=${s.done.length}`);
     await shot('25_after_reset');
   }
-  const fps = await page.evaluate(async () => { await new Promise((r) => setTimeout(r, 1500)); return window.__FV.state().fps; });
-  step('fps sample (headless software GL, informational)', true, String(fps));
+  step('fps sample at the start (headless software GL, real time, informational)', true, String(fps));
 } catch (e) {
   fatal = e;
   console.log('FATAL', e && e.stack || e);

@@ -28,10 +28,10 @@ union = F.union
 # ============================================================================ iso floor pads (192 x 96)
 PAD_COLOURS = {   # existing: input #3D8BE0, output #4DBA62, cash #F2B53A, hire #F08A3D, upgrade #8E6BE0
     'clerk': '#E2659A',      # pink   - hire a clerk (cash register + "+")
-    'porter': '#B07A48',     # wood   - hire a porter (crate on an A-frame back carrier + "+")
+    'porter': '#8FB23A',     # lime   - hire a porter (porter with crates on a back frame + "+")
     'build': '#E0534A',      # coral  - build here (hammer + "+")
-    'tower': '#4B5FC4',      # indigo - raise a watchtower (night watch beacon)
-    'boat': '#1FA6D3',       # sea cyan - buy / upgrade a boat
+    'tower': '#B05CC8',      # violet - raise a watchtower (beacon at dusk)
+    'boat': '#4A58C0',       # deep-sea indigo - buy / upgrade a boat
     'register': '#22AE98',   # teal   - stand here to take payment (two footprints + coin)
 }
 
@@ -60,17 +60,26 @@ def _hammer_frame(X, Y, cx, cy, deg):
     return F.rot(X, Y, cx, cy, math.radians(deg))
 
 
+def _horn(X, Y, cx, cy, r, a0, a1, t0, t1, steps=10):
+    """Tapered curved horn (polygon around an arc of radius r from angle a0 to a1, half-thickness t0 -> t1)."""
+    outer, inner = [], []
+    for j in range(steps + 1):
+        u = j / steps
+        a = a0 + (a1 - a0) * u
+        t = t0 + (t1 - t0) * u
+        outer.append((cx + (r + t) * math.cos(a), cy + (r + t) * math.sin(a)))
+        inner.append((cx + (r - t) * math.cos(a), cy + (r - t) * math.sin(a)))
+    return F.sd_polygon(X, Y, outer + inner[::-1])
+
+
 def _hammer_sd(X, Y, cx, cy, k=1.0, parts=False):
     """Claw hammer in its own upright frame centred at (cx, cy): handle down, head across the top.
-    Square striking face on the left, tapered split claw on the right."""
+    Square striking face on the left, a tapered claw curving down on the right."""
     handle = F.sd_box(X, Y, cx, cy + 12 * k, 4.6 * k, 22 * k, 2.2 * k)
-    head = F.sd_box(X, Y, cx - 2 * k, cy - 14 * k, 13 * k, 8 * k, 2.5 * k)
-    face_ = F.sd_box(X, Y, cx - 16 * k, cy - 14 * k, 4.5 * k, 10 * k, 2.2 * k)
-    claw = F.sd_polygon(X, Y, [(cx + 9 * k, cy - 22 * k), (cx + 25 * k, cy - 18 * k), (cx + 27 * k, cy - 11 * k),
-                               (cx + 9 * k, cy - 6 * k)]) - 1.0 * k
-    claw = F.subtract(claw, F.sd_polygon(X, Y, [(cx + 14 * k, cy - 14 * k), (cx + 30 * k, cy - 15.5 * k),
-                                                 (cx + 30 * k, cy - 12.5 * k)]) - 0.6 * k)   # the V split
-    hd = union(head, face_, claw)
+    head = F.sd_box(X, Y, cx - 2 * k, cy - 14 * k, 12 * k, 7.5 * k, 2.5 * k)
+    face_ = F.sd_box(X, Y, cx - 15 * k, cy - 14 * k, 4.5 * k, 10 * k, 2.2 * k)
+    claw = _horn(X, Y, cx + 8 * k, cy - 1 * k, 13 * k, math.radians(-95), math.radians(-12), 6.5 * k, 1.6 * k) - 0.8 * k
+    hd = F.smin(union(head, face_), claw, 1.5 * k)
     if parts:
         return handle, hd
     return union(handle, hd)
@@ -81,21 +90,21 @@ def pad_symbol_sd(kind, fx, fy):
     if kind == 'clerk':
         return union(_sym_register_machine(fx, fy, -7, 2), _plus(fx, fy, 33, -21))
     if kind == 'porter':
-        # porter walking left with a crate stack on an A-frame back carrier (side view)
-        head = F.sd_circle(fx, fy, -17, -19, 8.5)
-        body = F.sd_segment(fx, fy, -15, -6, -12, 11, 8.0)
-        legs = union(F.sd_segment(fx, fy, -13, 15, -22, 31, 3.4), F.sd_segment(fx, fy, -9, 15, -2, 31, 3.4))
-        arm = F.sd_segment(fx, fy, -16, -3, -25, 8, 3.0)
-        rail = F.sd_segment(fx, fy, -2, 26, 1, -32, 2.6)
-        crate1 = F.sd_box(fx, fy, 9, 7, 11, 12, 2.2)
-        crate2 = F.sd_box(fx, fy, 8, -16, 9, 9.5, 2.2)
+        # porter walking left with a crate stack on a back frame (side view)
+        head = F.sd_circle(fx, fy, -18, -21, 9.0)
+        body = F.sd_segment(fx, fy, -15, -5, -12, 10, 8.2)
+        legs = union(F.sd_segment(fx, fy, -13, 14, -23, 31, 3.5), F.sd_segment(fx, fy, -9, 14, -1, 31, 3.5))
+        arm = F.sd_segment(fx, fy, -17, -1, -26, 9, 3.0)
+        rail = F.sd_segment(fx, fy, -1, 26, 1, -32, 2.6)
+        crate1 = F.sd_box(fx, fy, 10, 7, 11, 12, 2.2)
+        crate2 = F.sd_box(fx, fy, 9, -16, 9, 9.5, 2.2)
         crates = union(crate1, crate2)
-        crates = F.subtract(crates, np.abs(F.sd_box(fx, fy, 9, 7, 6.5, 7.5, 1.2)) - 0.75)
-        crates = F.subtract(crates, F.sd_box(fx, fy, 8, -5.5, 14, 1.3, 0))
-        person = union(head, body, legs, arm)
+        crates = F.subtract(crates, np.abs(F.sd_box(fx, fy, 10, 7, 6.5, 7.5, 1.2)) - 0.75)
+        crates = F.subtract(crates, F.sd_box(fx, fy, 9, -5.5, 14, 1.3, 0))
+        person = union(F.subtract(head, F.sd_circle(fx, fy, -15, -9, 6.0)), body, legs, arm)   # neck gap
         person = F.subtract(person, union(crates, rail) - 2.2)              # gap so the load reads separately
         d = union(person, F.subtract(rail, crates - 1.6), crates)
-        return union(d, _plus(fx, fy, 33, -17, 10.5, 3.6))
+        return union(d, _plus(fx, fy, 34, -17, 10.5, 3.6))
     if kind == 'build':
         X, Y = _hammer_frame(fx, fy, -7, 4, -40)
         return union(_hammer_sd(X, Y, -7, 4, 1.0), _plus(fx, fy, 31, -21, 12.5, 4.0))
@@ -241,7 +250,7 @@ def icon_map():
 def icon_hammer():
     """Chunky claw hammer, wooden handle, steel head (tilted)."""
     c = F.Canvas(96, 96)
-    cx, cy, k = 52, 52, 1.3
+    cx, cy, k = 50, 48, 1.4
     X, Y = _hammer_frame(c.X, c.Y, cx, cy, -40)
     handle, d_head = _hammer_sd(X, Y, cx, cy, k, parts=True)
     grip = F.sd_box(X, Y, cx, cy + 25 * k, 5.4 * k, 9 * k, 2.6 * k)
@@ -485,12 +494,10 @@ def icon_lock_open():
     shackle = F.sd_arc(c.X, c.Y, cx + ox, 40 + lift, 17, math.pi, 2 * math.pi, 5.5)
     legs = union(F.sd_box(c.X, c.Y, cx + ox - 17, 46 + lift, 5.5, 8, 0),
                  F.sd_box(c.X, c.Y, cx + ox + 17, 46 + lift + 2, 5.5, 6, 0))
-    leg_in = F.sd_box(c.X, c.Y, cx - 17 + ox + 17 + 0, 50, 5.5, 4, 0)
     sh = union(shackle, legs)
     body = F.sd_box(c.X, c.Y, cx, 63, 29, 22, 9)
     c.shadow(c.cov(np.minimum(sh, body) - 3), dy=3, sigma=2.2, opacity=0.32)
     toy(c, sh, '#F4F7FB', '#8E96A3', '#3E4756', ow=3, bevel=4.5, gloss=0.3, shadow=0, spec=0.35)
-    del leg_in
     toy(c, body, '#FFE07A', '#E39A22', '#7A4A0E', ow=3, bevel=7, gloss=0.35, shadow=0, hi=0.55)
     kh = union(F.sd_circle(c.X, c.Y, cx, 59, 5.6),
                F.sd_polygon(c.X, c.Y, [(cx - 3.2, 60), (cx + 3.2, 60), (cx + 4.5, 74), (cx - 4.5, 74)]) - 0.8)

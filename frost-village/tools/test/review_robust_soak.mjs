@@ -106,6 +106,8 @@ while (Date.now() - t0 < secs * 1000) {
       leavingPos: gs.market.leaving.map((c) => [Math.round(c.x), Math.round(c.y), c.state, c.path.length]),
       shelf: { m: gs.market.stock.count, t: gs.trade.stock.count, mp: gs.market.cash.pile.count, tp: gs.trade.cash.pile.count },
       playsByKey: Object.assign({}, R.playsByKey),
+      life: gs.life ? { residents: gs.life.residents.length, lod: gs.life.residents.filter((r) => r.lod).length, events: gs.life.events.map((e) => e.kind).join(','), bubbles: gs.life.bubbles.active.length, chatPool: gs.life.bubbles.chatPool.length, emotePool: gs.life.bubbles.emotePool.length, proj: gs.life.proj.length, projPool: gs.life.projPool.length } : null,
+      porters: gs.porters ? gs.porters.map((p) => p.station.id[0] + p.state[0]).join('') : '',
     };
     R.playsByKey = {};
     return out;
@@ -126,7 +128,7 @@ while (Date.now() - t0 < secs * 1000) {
     ...Object.fromEntries(Object.entries(inPage).filter(([k]) => !['upd', 'ren', 'gsUpd', 'frames', 'gameTime'].includes(k))),
   };
   samples.push(s);
-  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
+  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, life: s.life, porters: s.porters, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
   writeJSON(TAG + '_samples.json', { samples, errors: log.errors, warnings: log.warnings });
 }
 await page.evaluate(() => { window.__RV_BOT = false; });

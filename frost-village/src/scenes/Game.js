@@ -4,7 +4,7 @@
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { Input } from '../core/Input.js';
-import { Save } from '../core/Save.js';
+import { Save, Settings } from '../core/Save.js';
 import { isoPt, isoRect, gdist, gdist2, inIsoRect } from '../core/Iso.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
@@ -17,7 +17,10 @@ import { Economy } from '../systems/Economy.js';
 import { Progression, STEPS } from '../systems/Progression.js';
 import { Tutorial, PRODUCT_ZONE } from '../systems/Tutorial.js';
 import { Player } from '../entities/Player.js';
-import { Worker } from '../entities/Worker.js';
+import { Worker, Porter } from '../entities/Worker.js';
+import { Roads } from '../systems/Roads.js';
+import { VillageLife } from '../systems/VillageLife.js';
+import { Occlusion } from '../systems/Occlusion.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
 import { Market, TradePost, FOODS, GOODS } from '../entities/Seller.js';
@@ -42,6 +45,7 @@ class UIProxy {
   banner(msg, sub) { const s = this.s; if (s) s.banner(msg, sub); }
   setObjective(key, tg, text) { const s = this.s; if (s) s.setObjective(key, tg, text); }
   celebrate() { const s = this.s; if (s) s.celebrate(); }
+  zoomChanged() { const s = this.s; if (s && s.zoomChanged) s.zoomChanged(); }
 }
 
 export class Game extends Phaser.Scene {
@@ -76,12 +80,21 @@ export class Game extends Phaser.Scene {
     this.depthSort = new DepthSort();
     this.agents = [];          // moving characters (workers, customers) for separation
     this.workers = [];
+    this.porters = [];
     this.zones = {};
     this.zoneObjs = {};
     this.statics = [];
+    this.keysInUse = new Set();   // character looks taken by clerks / porters (residents and customers avoid them)
+    this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked));
 
     this.ground = new Ground(this);
     this.buildZones();
+    // roads inside zones: their own picture, shown when the zone opens
+    for (const id in this.zones) {
+      const ov = this.ground.roadOverlay(id, this.roads.drawn(id));
+      this.zones[id].roads = ov;
+      if (ov && !this.zones[id].unlocked) ov.setAlpha(0);
+    }
     this.buildFences();
     this.buildDecor();
     this.buildTrees();
@@ -104,6 +117,19 @@ export class Game extends Phaser.Scene {
     for (const id in this.zones) if (!this.zones[id].unlocked) this.setZoneEnabled(id, false);
     this.progress.init();
     this.restore(sv);
+    this.events.on('sold', () => this.progress.setFlag('firstSale'));
+    this.events.on('traded', () => this.progress.setFlag('firstTrade'));
+    // spots residents never stand on (pads)
+    this.padSpots = [];
+    const spot = (pd, r) => { if (pd) this.padSpots.push({ x: pd.x, y: pd.y, r }); };
+    for (const st of this.stationList) { spot(st.inPad, 70); spot(st.outPad, 70); }
+    spot(this.market.shelf, 70); spot(this.market.cash.pad, 70); spot(this.market.register, 64);
+    spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
+    spot(WORLD.net.gather ? { x: WORLD.net.x + WORLD.net.gather[0], y: WORLD.net.y + WORLD.net.gather[1] } : null, 70);
+    for (const id in WORLD.pads) spot(WORLD.pads[id], 90);
+    // the people of the village (v2)
+    this.life = new VillageLife(this, sv.life);
+    this.occlusion = new Occlusion(this);
 
     // ambient snowfall around the camera
     this.snow = this.effects.emitter('snowfall');
@@ -114,9 +140,14 @@ export class Game extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, W, H);
     this.zoomBase = BALANCE.camera.zoom;
-    cam.setZoom(this.zoomBase * View.k);
+    // (v2) player zoom: pinch / wheel / +- buttons / overview (smoothly follows zoomTarget)
+    const savedZoom = Settings.data.zoom;
+    this.zoomTarget = Number.isFinite(savedZoom) ? Phaser.Math.Clamp(savedZoom, BALANCE.camera.zoomMin, BALANCE.camera.zoomMax) : this.zoomBase;
+    this.zoomCur = this.zoomTarget;
+    this.overview = false;
+    cam.setZoom(this.zoomCur * View.k);
     // the canvas resolution (View.k) can change on rotation / resize
-    const onResize = () => cam.setZoom(this.zoomBase * View.k);
+    const onResize = () => cam.setZoom(this.zoomCur * View.k);
     this.scale.on('resize', onResize);
     this.events.once('shutdown', () => this.scale.off('resize', onResize));
     cam.setBackgroundColor('#dbe6f2');
@@ -151,13 +182,22 @@ export class Game extends Phaser.Scene {
     this.loadDeferredAudio();
   }
 
-  /** village music + ambience were left out of the preload (faster title); fetch them now */
+  /**
+   * Left out of the preload (faster title), fetched now in the background: village music + ambience
+   * and the villager / building atlases (residents appear as their art arrives).
+   */
   loadDeferredAudio() {
     const want = Object.keys(Assets.m.audio).filter((k) => Assets.isDeferredAudio(k) && !this.cache.audio.exists(k) && !Assets.failed.has(k));
-    if (!want.length) return;
     this.load.on('loaderror', (f) => Assets.onLoadError(f, this.load));
-    Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
-    this.load.once('complete', () => { Audio.trimLoops(); Audio.applyMusic(); });
+    // residents who live here already come first
+    const first = ((this.life && this.life.moved) || []).concat(['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
+    const n = Assets.queueLazy(this.load, first);
+    if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
+    if (!want.length && !n) return;
+    const onFile = (key) => { try { Assets.onLazyFile(key); } catch (e) { /* keep loading */ } };
+    this.load.on('filecomplete', onFile);
+    this.events.once('shutdown', () => this.load.off('filecomplete', onFile));
+    this.load.once('complete', () => { this.load.off('filecomplete', onFile); Audio.trimLoops(); Audio.applyMusic(); });
     this.load.start();
   }
 
@@ -232,45 +272,7 @@ export class Game extends Phaser.Scene {
   addOccluder(img) {
     const h = img.displayHeight * img.originY;
     const w = img.displayWidth;
-    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.4, top: h * 0.95, a: 1 });
-  }
-
-  /** opaque pixel of occluder `img` at world point (x, y)? (null when unknown) */
-  pixelSolid(img, x, y) {
-    try {
-      const fr = img.frame, sx = img.scaleX || 1, sy = img.scaleY || 1;
-      const lx = img.displayOriginX + ((img.flipX ? -1 : 1) * (x - img.x)) / sx;
-      const ly = img.displayOriginY + (y - img.y) / sy;
-      if (lx < 0 || ly < 0 || lx >= fr.realWidth || ly >= fr.realHeight) return false;
-      const a = this.textures.getPixelAlpha(Math.floor(lx), Math.floor(ly), img.texture.key, fr.name);
-      return a === null ? false : a > 110;
-    } catch (e) { return null; }
-  }
-
-  updateOccluders(dt) {
-    const p = this.player, list = this.occluders;
-    if (!list) return;
-    const px = p.x, py = p.y - 30;
-    const k = Math.min(1, dt * 10);
-    for (let i = 0; i < list.length; i++) {
-      const o = list[i];
-      let behind = py < o.y - 6 && py > o.y - o.top && Math.abs(px - o.x) < o.hw && o.img.visible;
-      if (behind) {
-        // the box says maybe: only fade when the art really covers the chief's body or head
-        o.chkT = (o.chkT || 0) - dt;
-        if (o.chkT <= 0 || o.lastPx === undefined || Math.abs(o.lastPx - px) + Math.abs(o.lastPy - p.y) > 6) {
-          o.chkT = 0.12; o.lastPx = px; o.lastPy = p.y;
-          const a = this.pixelSolid(o.img, px, p.y - 34), b = this.pixelSolid(o.img, px, p.y - 66);
-          o.solid = a === null || b === null ? true : (a || b);
-        }
-        behind = o.solid;
-      }
-      const target = behind ? 0.32 : 1;
-      if (o.a === target) continue;
-      o.a += (target - o.a) * k;
-      if (Math.abs(o.a - target) < 0.02) o.a = target;
-      o.img.setAlpha(o.a);
-    }
+    (this.occluders || (this.occluders = [])).push({ img, x: img.x + (0.5 - img.originX) * w * 0.4, y: img.y, hw: w * 0.4, top: h * 0.95, a: 1, big: w > 250 });
   }
 
   buildFences() {
@@ -485,6 +487,9 @@ export class Game extends Phaser.Scene {
     if (!z || z.unlocked) return;
     z.unlocked = true;
     this.setZoneEnabled(id, true);
+    if (this.roads) this.roads.invalidate();
+    if (z.roads) { if (instant) z.roads.setAlpha(1); else this.tweens.add({ targets: z.roads, alpha: 1, duration: 900, delay: 500 }); }
+    if (!instant && this.life) this.time.delayedCall(900, () => this.life.cheer());
     if (z.outline) {
       const o = z.outline; z.outline = null;
       const all = [o.g, o.lock, o.txt].concat(o.ghosts || []);
@@ -558,8 +563,41 @@ export class Game extends Phaser.Scene {
     return w;
   }
 
+  /** (v2) a porter for station `id`'s products */
+  hirePorter(id, instant, x, y) {
+    const st = this.stations[id];
+    if (!st) return null;
+    const home = Porter.homeFor(this, st);
+    const pr = new Porter(this, st, x !== undefined && !instant ? x : home[0], y !== undefined && !instant ? y : home[1], this.porters.length);
+    this.porters.push(pr);
+    if (this.life) this.life.release(pr.key);
+    if (!instant) {
+      this.effects.sheet('fx_poof', pr.x, pr.y - 30, { size: 180 });
+      this.effects.burst('star', pr.x, pr.y - 40, 12);
+      pr.sprite.setScale(0.1);
+      this.tweens.add({ targets: pr.sprite, scale: 1, duration: 450, ease: 'Back.easeOut' });
+    }
+    return pr;
+  }
+
+  /** follow agent `a`'s waypoint list `a.route` (from roads.route); true on arrival at the last point */
+  followRoute(a, speed, dt, tol = 10) {
+    const r = a.route;
+    if (!r || !r.length) return true;
+    a.ri = a.ri || 0;
+    while (a.ri < r.length - 1 && gdist(a.x, a.y, r[a.ri].x, r[a.ri].y) < 34) a.ri++;
+    const w = r[a.ri];
+    const last = a.ri >= r.length - 1;
+    if (this.moveAgent(a, w.x, w.y, speed, dt, last ? tol : 28)) {
+      if (last) return true;
+      a.ri++;
+    }
+    return false;
+  }
+
   celebrate() {
     Audio.play('sfx_complete');
+    if (this.life) this.time.delayedCall(1200, () => this.life.party());
     this.ui.celebrate();
     const p = this.player;
     this.effects.sheet('fx_unlock', p.x, p.y - 20, { size: 320 });
@@ -720,8 +758,11 @@ export class Game extends Phaser.Scene {
     this.market.update(dt);
     this.trade.update(dt);
     for (const w of this.workers) w.update(dt);
+    for (const w of this.porters) w.update(dt);
+    if (this.life) this.life.update(dt);
     this.tutorial.update(dt);
-    this.updateOccluders(dt);
+    if (this.occlusion) this.occlusion.update(dt);
+    this.updateZoom(dt, delta);
 
     // camera target
     const ct = this.camTarget;
@@ -733,6 +774,7 @@ export class Game extends Phaser.Scene {
       fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
+    if (this.overview && !this.camFocus) { fx = this.W / 2; fy = this.H / 2 - 40; }
     const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
 
@@ -759,6 +801,49 @@ export class Game extends Phaser.Scene {
 
     this.saveT += dt;
     if (this.saveT >= BALANCE.autosaveEvery) { this.saveT = 0; this.save(false); }
+  }
+
+  // ------------------------------------------------------------------ zoom (v2)
+  /** zoom that shows the whole village */
+  fitZoom() {
+    const cam = this.cameras.main;
+    const vw = cam.width / View.k, vh = cam.height / View.k;
+    return Math.min(vw / this.W, vh / (this.H + 80));
+  }
+
+  /** set the zoom the camera glides to (clamped); `keepOverview` keeps the whole-village view */
+  setZoom(z, keepOverview) {
+    const C = BALANCE.camera;
+    if (!keepOverview && this.overview) { this.overview = false; this.cameras.main.setBounds(0, 0, this.W, this.H); }
+    this.zoomTarget = Phaser.Math.Clamp(z, C.zoomMin, C.zoomMax);
+    if (!this.overview) { Settings.data.zoom = Math.round(this.zoomTarget * 100) / 100; this._zoomSaveT = 1.2; }
+    this.ui.zoomChanged();
+  }
+
+  zoomBy(f) { this.setZoom((this.overview ? this.prevZoom || this.zoomBase : this.zoomTarget) * f); }
+
+  /** toggle the whole-village view */
+  toggleOverview() {
+    const cam = this.cameras.main;
+    if (this.overview) { this.overview = false; cam.setBounds(0, 0, this.W, this.H); this.setZoom(this.prevZoom || this.zoomBase); return; }
+    this.prevZoom = this.zoomTarget;
+    this.overview = true;
+    // the whole village fits the screen: no bounds, so it sits in the middle
+    cam.removeBounds();
+    this.zoomTarget = this.fitZoom();
+    this.ui.zoomChanged();
+  }
+
+  updateZoom(dt, delta) {
+    const cam = this.cameras.main;
+    if (this.overview) this.zoomTarget = this.fitZoom();
+    if (Math.abs(this.zoomCur - this.zoomTarget) > 0.0005) {
+      const k = 1 - Math.pow(1 - BALANCE.camera.zoomSmooth, delta / 16.67);
+      this.zoomCur += (this.zoomTarget - this.zoomCur) * k;
+      if (Math.abs(this.zoomCur - this.zoomTarget) < 0.001) this.zoomCur = this.zoomTarget;
+      cam.setZoom(this.zoomCur * View.k);
+    }
+    if (this._zoomSaveT > 0) { this._zoomSaveT -= dt; if (this._zoomSaveT <= 0) Settings.save(); }
   }
 
   handlePlayerPads(dt) {
@@ -791,6 +876,7 @@ export class Game extends Phaser.Scene {
       if (ready && p.stack.hasAny(GOODS) && this.trade.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; this.trade.shelf.pulse(); }
     }
     if (this.market.cash.pad.contains(p.x, p.y) || (this.trade.enabled && this.trade.cash.pad.contains(p.x, p.y))) on = true;
+    if (this.market.register.chief || (this.trade.enabled && this.trade.register.chief)) on = true;
     this.trash.setEnabled(this.progress.isDone('hire_fisherman'));
     if (this.trash.update(dt)) on = true;
     return on;
@@ -816,14 +902,23 @@ export class Game extends Phaser.Scene {
     const shelf = (stock, types, extra) => { const o = {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) + ((extra && extra[ty]) || 0); return o; };
     const unpaid = {};
     for (const c of this.market.queue) for (const ty of c.bought.concat(c.flying || [])) unpaid[ty] = (unpaid[ty] || 0) + 1;
+    // goods a porter is carrying are saved where they are going (the shelf)
+    const tradeExtra = Object.assign({}, this.trade.flying);
+    for (const pr of this.porters) {
+      for (const ty of pr.stack.items.map((i) => i.type).concat(pr.stack.inTypes)) {
+        const o = FOODS.indexOf(ty) >= 0 ? unpaid : GOODS.indexOf(ty) >= 0 ? tradeExtra : null;
+        if (o) o[ty] = (o[ty] || 0) + 1;
+      }
+    }
     const pl = this.player.stack;
     return {
       coins: this.economy.coins,
       progress: this.progress.serialize(),
       stations: st,
       market: { stock: shelf(this.market.stock, FOODS, unpaid), cash: this.market.cash.serialize() },
-      trade: { stock: shelf(this.trade.stock, GOODS, this.trade.flying), cash: this.trade.cash.serialize() },
+      trade: { stock: shelf(this.trade.stock, GOODS, tradeExtra), cash: this.trade.cash.serialize() },
       player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: pl.items.map((i) => i.type).concat(pl.inTypes) },
+      life: this.life ? this.life.serialize() : undefined,
     };
   }
 
@@ -868,9 +963,13 @@ export class Game extends Phaser.Scene {
           done: Object.keys(gs.progress.done).filter((k) => gs.progress.done[k]),
           upgrades: Object.assign({}, gs.progress.up),
           stations: Object.fromEntries(gs.stationList.map((s) => [s.id, { enabled: s.enabled, in: s.inStack.count, out: s.outStack.count, working: s.working }])),
-          market: { stock: gs.market.stock.count, cash: gs.market.cash.value, queue: gs.market.queue.length },
-          trade: { enabled: gs.trade.enabled, stock: gs.trade.stock.count, cash: gs.trade.cash.value },
+          market: { stock: gs.market.stock.count, cash: gs.market.cash.value, queue: gs.market.queue.length, waitingPay: gs.market.waitingPay, staffed: gs.market.register.staffed, clerk: !!gs.market.register.clerk },
+          trade: { enabled: gs.trade.enabled, stock: gs.trade.stock.count, cash: gs.trade.cash.value, staffed: gs.trade.register.staffed, clerk: !!gs.trade.register.clerk },
           workers: gs.workers.map((w) => ({ type: w.type, state: w.state, carry: w.stack.count })),
+          porters: gs.porters.map((w) => ({ station: w.station.id, key: w.key, state: w.state, carry: w.stack.count, x: Math.round(w.x), y: Math.round(w.y) })),
+          flags: Object.assign({}, gs.progress.flags),
+          residents: gs.life ? gs.life.residents.length : 0,
+          zoom: Math.round(gs.zoomCur * 100) / 100,
           zones: Object.fromEntries(Object.keys(gs.zones).map((k) => [k, gs.zones[k].unlocked])),
           objective: gs.tutorial.textKey,
           pads: Object.keys(gs.progress.pads),
@@ -885,9 +984,11 @@ export class Game extends Phaser.Scene {
           pr.done[s.id] = true;
           const pad = pr.pads[s.id];
           if (pad) { pad.destroy(); delete pr.pads[s.id]; }
-          if (s.type === 'zone') gs.revealZone(s.zone, true);
-          if (s.type === 'hire') gs.hireWorker(s.worker, s.index || 0, true, undefined, undefined, s.role);
+          pr.applyStep(s, true);
+          if (gs.life) gs.life.stepInstant(s.id);
         }
+        if (gs.life && !pr.flags.firstSale) gs.life.stepInstant('first_sale');
+        pr.flags.firstSale = true; pr.flags.firstTrade = true;
         pr.openBench(true);
         pr.celebrated = true;
         for (const z of ['forest', 'farm', 'mine', 'hunt']) pr.hints[z] = true;
@@ -902,6 +1003,7 @@ export class Game extends Phaser.Scene {
         const m = {
           net: gs.net.gather, grillIn: S.grill.inPad, grillOut: S.grill.outPad, shelf: gs.market.shelf, cash: gs.market.cash.pad,
           tradeShelf: gs.trade.shelf, tradeCash: gs.trade.cash.pad, bench: gs.bench, trash: gs.trash,
+          register: gs.market.register, tradeRegister: gs.trade.register,
         };
         for (const s of gs.stationList) { m[s.id + 'In'] = s.inPad; m[s.id + 'Out'] = s.outPad; }
         for (const id in gs.progress.pads) m[id] = gs.progress.pads[id];
@@ -916,10 +1018,25 @@ export class Game extends Phaser.Scene {
       },
       camera(x, y, zoom) {
         const cam = gs.cameras.main;
-        if (zoom) { gs.zoomBase = zoom; cam.setZoom(zoom * View.k); if (zoom < 0.7) cam.removeBounds(); }
-        if (x !== undefined) gs.focusCamera(x, y, 1e9);
-        else { gs.camFocus = null; gs.zoomBase = BALANCE.camera.zoom; cam.setZoom(gs.zoomBase * View.k); cam.setBounds(0, 0, gs.W, gs.H); }
+        gs.overview = false;
+        if (zoom) { gs.zoomCur = gs.zoomTarget = zoom; cam.setZoom(zoom * View.k); if (zoom < 0.7) cam.removeBounds(); }
+        if (x !== undefined) { gs.focusCamera(x, y, 1e9); gs.camTarget.x = x; gs.camTarget.y = y; cam.centerOn(x, y); }
+        else { gs.camFocus = null; gs.zoomCur = gs.zoomTarget = BALANCE.camera.zoom; cam.setZoom(gs.zoomCur * View.k); cam.setBounds(0, 0, gs.W, gs.H); }
       },
+      /** (v2) player zoom like the buttons: zoom(z) sets it, zoom('in'|'out'|'overview') */
+      zoom(z) {
+        if (z === 'in') gs.zoomBy(BALANCE.camera.zoomStep);
+        else if (z === 'out') gs.zoomBy(1 / BALANCE.camera.zoomStep);
+        else if (z === 'overview') gs.toggleOverview();
+        else if (Number.isFinite(z)) gs.setZoom(z);
+        return { target: gs.zoomTarget, cur: gs.zoomCur, overview: gs.overview };
+      },
+      /** (v2) make a village-life event happen now (chat, snowball, tag, concert, snowman, cheer, party, wave, shiver, sit, tap, tapPet, moveIn) */
+      lifeEvent(name) { return gs.life ? gs.life.trigger(name) : false; },
+      life() { return gs.life ? gs.life.state() : null; },
+      /** (v2) tap at a world point (resident / pet reactions) */
+      tapWorld(x, y) { const r = gs.life && gs.life.tap(x, y); return r ? r.key : null; },
+      roads(ax, ay, bx, by) { return gs.roads.route(ax, ay, bx, by, []).map((p) => [Math.round(p.x), Math.round(p.y)]); },
       save() { gs.save(true); },
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
       reset() { gs.resetProgress(); },

@@ -10,8 +10,8 @@
    "volume": 0.376,
    "loop": true,
    "kind": "music",
-   "duration": 62.6097,
-   "loopSamples": 2761088,
+   "duration": 62.617,
+   "loopSamples": 2761408,
    "bpm": 92,
    "mp3StartPad": 1105,
    "bars": 24,
@@ -23,11 +23,11 @@
     "audio2/sfx_lute.ogg",
     "audio2/sfx_lute.mp3"
    ],
-   "volume": 0.407,
+   "volume": 0.452,
    "loop": true,
    "kind": "ambience",
-   "duration": 9.5985,
-   "loopSamples": 423296,
+   "duration": 9.6,
+   "loopSamples": 423360,
    "bpm": 100,
    "mp3StartPad": 1105,
    "bars": 4,
@@ -72,7 +72,11 @@
    "volume": 0.432,
    "loop": false,
    "kind": "sfx",
-   "duration": 2.3699
+   "duration": 2.3699,
+   "cues": {
+    "thunk": 0.26,
+    "fanfare": 0.58
+   }
   },
   "sfx_saw_short": {
    "files": [
@@ -92,7 +96,11 @@
    "volume": 0.432,
    "loop": false,
    "kind": "sfx",
-   "duration": 2.0323
+   "duration": 2.0323,
+   "cues": {
+    "toot1": 0.0,
+    "toot2": 0.34
+   }
   },
   "sfx_row": {
    "files": [
@@ -103,6 +111,9 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.993,
+   "cues": {
+    "catch": 0.1
+   },
    "notes": "one oar stroke (~1 s); retrigger once per row cycle"
   },
   "sfx_register": {
@@ -110,10 +121,13 @@
     "audio2/sfx_register.ogg",
     "audio2/sfx_register.mp3"
    ],
-   "volume": 0.288,
+   "volume": 0.327,
    "loop": false,
    "kind": "sfx",
-   "duration": 1.1238
+   "duration": 1.1024,
+   "cues": {
+    "bell": 0.29
+   }
   },
   "sfx_tower_fire": {
    "files": [
@@ -123,7 +137,11 @@
    "volume": 0.422,
    "loop": false,
    "kind": "sfx",
-   "duration": 1.9551
+   "duration": 1.9551,
+   "cues": {
+    "ignite": 0.07
+   },
+   "notes": "one-shot ignition; for the burning loop reuse audio/amb_fire"
   },
   "sfx_fog_clear": {
    "files": [
@@ -133,7 +151,11 @@
    "volume": 0.363,
    "loop": false,
    "kind": "sfx",
-   "duration": 3.2587
+   "duration": 3.2587,
+   "cues": {
+    "whooshPeak": 0.9,
+    "reveal": 0.95
+   }
   },
   "sfx_chatter_1": {
    "files": [
@@ -231,7 +253,10 @@
    "volume": 0.457,
    "loop": false,
    "kind": "sfx",
-   "duration": 0.3108
+   "duration": 0.3108,
+   "cues": {
+    "swish": 0.12
+   }
   },
   "sfx_snowball_hit": {
    "files": [
@@ -258,10 +283,10 @@
     "audio2/sfx_cat_meow.ogg",
     "audio2/sfx_cat_meow.mp3"
    ],
-   "volume": 0.209,
+   "volume": 0.207,
    "loop": false,
    "kind": "sfx",
-   "duration": 0.7469
+   "duration": 0.7301
   },
   "sfx_penguin": {
    "files": [

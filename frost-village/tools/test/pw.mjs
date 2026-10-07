@@ -45,7 +45,7 @@ export async function openPage(browser, url, opts = {}) {
     } else if (m.type() === 'warning') log.warnings.push(tx);
   });
   page.on('response', (r) => { if (r.status() === 404) log.missing404.push('404 ' + r.url()); });
-  await page.goto(url, { waitUntil: 'load' });
+  await page.goto(url, { waitUntil: 'load', timeout: opts.timeout || 120000 });
   return { page, ctx, log };
 }
 
@@ -56,11 +56,15 @@ export async function waitFor(page, fn, timeout = 20000, arg) {
   return page.waitForFunction(fn, arg, { timeout, polling: 100 });
 }
 
-/** tap the canvas centre (title screen) */
+/** tap the canvas centre (title screen); taps again while the title is still there (slow machines) */
 export async function tapStart(page) {
   const c = await page.$('canvas');
   const b = await c.boundingBox();
-  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+  for (let i = 0; i < 6; i++) {
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+    const ok = await page.waitForFunction(() => { const g = window.__FV && window.__FV.game; return g && !g.scene.isActive('Title'); }, null, { timeout: 3000, polling: 100 }).then(() => true).catch(() => false);
+    if (ok) return;
+  }
 }
 
 /**

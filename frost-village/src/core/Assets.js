@@ -9,8 +9,13 @@ import { Placeholders } from './Placeholders.js';
 
 export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'buildings', 'ui2', 'audio2'];
 // pictures of these fragments are loaded after the title, in the background
-export const LAZY_FRAGMENTS = ['villagers', 'villagers2', 'buildings'];
+export const LAZY_FRAGMENTS = ['villagers', 'villagers2'];
+// only the manifest data of these is used for now (v2 reads the sellers' staff points; the v3
+// buildings themselves are not shown yet, so their pictures are not downloaded)
+export const MANIFEST_ONLY_FRAGMENTS = ['buildings'];
 const BASE = 'assets/';
+// made for v3 / v4 (territory fog, construction, boats, build menu, spring music): v2 does not use them
+const V3_ONLY = /^(fog_|fx_build|fx_wake|fx_fire_big|ui_card|bgm_spring|sfx_(hammer|build_done|saw_short|boat_horn|row|tower_fire|fog_clear))/;
 
 /** the fragment list actually requested: the artifact build can narrow it to the folders it ships */
 export function activeFragments() {
@@ -79,9 +84,19 @@ export const Assets = {
       if (!j || typeof j !== 'object') continue;
       const m = this.m;
       const tag = (a) => { this.fragOf[a.key] = f; };
-      for (const a of j.atlases || []) if (a && a.key) { m.atlases[a.key] = a; tag(a); }
-      for (const a of j.images || []) if (a && a.key) { m.images[a.key] = a; tag(a); }
-      for (const a of j.spritesheets || []) if (a && a.key) { m.spritesheets[a.key] = a; tag(a); }
+      const files = MANIFEST_ONLY_FRAGMENTS.indexOf(f) < 0;
+      if (files) {
+        for (const a of j.atlases || []) if (a && a.key) { m.atlases[a.key] = a; tag(a); }
+        for (const a of j.images || []) if (a && a.key) { m.images[a.key] = a; tag(a); }
+        for (const a of j.spritesheets || []) if (a && a.key) { m.spritesheets[a.key] = a; tag(a); }
+      }
+      if (!files) {
+        // manifest-only fragment (v3 buildings): only the data records v2 uses (clerk staff points);
+        // its pictures / characters (boats...) are not loaded yet, so they must not shadow anything
+        const sp = j.sprites && typeof j.sprites === 'object' ? j.sprites : {};
+        for (const k in sp) if (/_staff$/.test(k) && sp[k] && typeof sp[k] === 'object') m.sprites[k] = sp[k];
+        continue;
+      }
       const ch = j.characters && typeof j.characters === 'object' ? j.characters : {};
       for (const k in ch) if (ch[k] && typeof ch[k] === 'object') { m.characters[k] = ch[k]; this.fragOf['char:' + k] = f; }
       Object.assign(m.sprites, j.sprites || {});
@@ -101,7 +116,7 @@ export const Assets = {
   queueAssets(load, opts = {}) {
     const m = this.m;
     // opts.lazy: only the after-title pictures (not loaded yet); otherwise everything else
-    const want = (k) => (opts.lazy ? this.isLazy(k) && !this.fileDone(k) && (!opts.filter || opts.filter(k)) : !this.isLazy(k));
+    const want = (k) => !this.isUnused(k) && (opts.lazy ? this.isLazy(k) && !this.fileDone(k) && (!opts.filter || opts.filter(k)) : !this.isLazy(k));
     let n = 0;
     for (const k in m.atlases) { const a = m.atlases[k]; if (a.png && a.json && want(k)) { load.atlas(k, BASE + a.png, BASE + a.json); n++; } }
     for (const k in m.images) { const a = m.images[k]; if (a.png && want(k)) { load.image(k, BASE + a.png); n++; } }
@@ -175,15 +190,18 @@ export const Assets = {
     for (const k in m.audio) {
       const a = m.audio[k];
       if (filter && !filter(k, a)) continue;
+      if (this.isUnused(k)) continue;
       const files = (a.files || []).map((f) => BASE + f);
       if (files.length) load.audio(k, files);
     }
   },
 
   /** in-game music & ambience load after the title (in the Game scene) so the title appears sooner */
-  isDeferredAudio(key) { return /^(bgm_village|amb_)/.test(key); },
+  isDeferredAudio(key) { return /^(bgm_village|amb_|sfx_lute)/.test(key); },
   /** music not used yet (v4 spring ending): never loaded, so it costs nothing */
-  isUnusedAudio(key) { return /^bgm_spring/.test(key); },
+  isUnusedAudio(key) { return V3_ONLY.test(key); },
+  /** pictures / sounds made for v3 (fog, construction, boats) that v2 does not show: not downloaded yet */
+  isUnused(key) { return V3_ONLY.test(key); },
 
   /**
    * a file failed to load. Audio: Phaser picks the first format the browser can play (ogg) and does

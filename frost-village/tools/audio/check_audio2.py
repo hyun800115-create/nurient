@@ -230,11 +230,11 @@ def demo_mix(man2, path_mp3):
         y = np.tile(x, (1, int(np.ceil(n / x.shape[1])) + 1))[:, :n]
         bed[:] += src(key)[0]["volume"] * y * S.env_pts(env_pts, n)
 
-    loop("bgm_village", [(0, 0), (1.0, 1), (27.5, 1), (30.0, 0), (DUR_S, 0)])
+    loop("bgm_village", [(0, 0), (1.0, 1), (27.5, 1), (30.5, 0), (DUR_S, 0)])
     loop("amb_wind", [(0, 0), (1.0, 0.6), (27, 0.6), (31, 0.15), (DUR_S, 0.15)])
     loop("amb_sea", [(0, 0), (20.5, 0), (23, 0.7), (26.5, 0.7), (28.5, 0), (DUR_S, 0)])
     loop("sfx_lute", [(0, 0), (9.5, 0), (12.5, 0.85), (16.5, 0.85), (19.5, 0), (DUR_S, 0)])   # walking past the bard
-    loop("bgm_spring", [(0, 0), (29.0, 0), (31.0, 1), (43.0, 1), (DUR_S, 0)])
+    loop("bgm_spring", [(0, 0), (28.5, 0), (30.5, 1), (43.0, 1), (DUR_S, 0)])
     bed[:, -S.n_of(0.05):] *= np.linspace(1, 0, S.n_of(0.05))
     # --- villagers chatting near the plaza
     for t, k, p in ((0.6, "sfx_chatter_1", -0.3), (1.35, "sfx_chatter_4", 0.3), (2.15, "sfx_chatter_2", -0.3),
@@ -416,7 +416,7 @@ def main(argv=None):
                     fail(f"{k}: ogg has {tail['discard']} samples of end padding -> gap at every loop in Chrome")
                 if a.get("loopSamples") != x.shape[1]:
                     fail(f"{k}: manifest loopSamples {a.get('loopSamples')} != decoded {x.shape[1]}")
-                if abs(a.get("duration", 0) * 44100 - x.shape[1]) > 2:
+                if abs(a.get("duration", 0) * 44100 - x.shape[1]) > 0.00005 * 44100 + 0.5:     # manifest rounds to 0.1 ms
                     fail(f"{k}: manifest duration {a.get('duration')} != {x.shape[1] / 44100:.4f}")
                 if lm["hf_ratio"] > 1.0 or lm["d2_ratio"] > 1.0:
                     fail(f"{k}: possible click at loop point (hf {lm['hf_ratio']:.2f}, d2 {lm['d2_ratio']:.2f})")

@@ -35,7 +35,7 @@ import numpy as np  # noqa: E402
 
 import instruments as I  # noqa: E402
 import synth as S  # noqa: E402
-from sfx import Mono, blip, bubble, burst, chime, coin_hit, nsweep, puff, room, smooth_noise, sparkles, tax  # noqa: E402
+from sfx import Mono, blip, bubble, burst, coin_hit, nsweep, puff, room, smooth_noise, sparkles, tax  # noqa: E402
 from synth import SR, TAU, n_of  # noqa: E402
 
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_cache", "audio2")
@@ -311,7 +311,7 @@ def sfx_register():
     tb = 0.29                                                       # the bell
     bell = S.modal(1396.9, n_of(1.0), [(1, 1, 0.9), (2.0, 0.28, 0.5), (2.76, 0.35, 0.3), (5.4, 0.12, 0.12),
                                        (1.004, 0.4, 0.85)], r, fmax=12000, attack=0.0004)
-    m.add(tb, bell, 0.42)
+    m.add(tb, bell, 0.3)
     m.add(tb, burst(r, 0.004, 6500, 1.0, tau=0.0006), 0.25)
     m.add(tb + 0.03, nsweep(r, 0.17, 500, 1500, 1.1, [(0, 0), (0.03, 1), (0.13, 0.6), (0.17, 0)]), 0.12)  # drawer
     m.add(tb + 0.2, blip(170, 95, 0.1, 0.02, 0.03), 0.4)            # drawer stop clunk
@@ -529,8 +529,9 @@ def sfx_cat_meow():
     amp = S.env_pts([(0, 0), (0.03, 0.35), (0.07, 0.45), (0.13, 1.0), (0.38, 0.85), (0.52, 0.45), (dur, 0)], n)
     F1 = S.env_pts([(0, 320), (0.07, 360), (0.16, 1050), (0.34, 980), (0.5, 620), (dur, 520)], n)
     F2 = S.env_pts([(0, 1900), (0.07, 2100), (0.16, 1750), (0.34, 1600), (0.5, 1050), (dur, 950)], n)
-    y = I.formant_voice(f0, amp, [(F1, 150, 1.0), (F2, 220, 0.7), (3300, 380, 0.25)], r, breath=0.06, tilt=0.75,
-                        jitter=0.006, fmax=9000.0)
+    y = I.formant_voice(f0, amp, [(F1, 150 + 250, 1.0), (F2, 220 + 250, 0.7), (3300, 380 + 250, 0.25)], r,
+                        breath=0.06, tilt=0.75, jitter=0.006, fmax=9000.0)
+    y = _level(y, amp)                       # F1 sweeping across the sparse harmonics would spike the level
     return room(S.hp(y, 280), 0.45, 0.08, 0.15, 0.5)
 
 

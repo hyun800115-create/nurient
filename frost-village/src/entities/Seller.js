@@ -480,6 +480,7 @@ export class TradePost {
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.merchant = new Character(gs, 'villager_c', this.x + cfg.merchant[0], this.y + cfg.merchant[1], { dir: 1 });
     this.merchant.faceTo(this.shelf.x, this.shelf.y);
+    this.merchant.noXray = true;   // the merchant always stands behind his cart: the cart must not fade for him
     this.buyT = 0;
     this.happyT = 0;
     this.flying = {};      // goods on their way to the merchant (not paid yet)

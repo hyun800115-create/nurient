@@ -10,12 +10,12 @@ vanishes on the near-white snow (handoff doc 04 §2.5).
                                                wood chips flying; anchor = ground point [0.5, 0.72]
   fx_build_done   192x192 x 18, 20 fps, once   completion: flash, golden iso ground ring, light fan,
                                                fountain of stars + confetti + twinkles; anchor = building
-                                               footprint centre [0.5, 0.78]
+                                               footprint centre [0.5, 0.76]
   fx_wake         256x128 x 12, 12 fps, loop   foam ripple rings around a hull (iso 2:1), for dark sea;
                                                anchor = hull centre on the waterline [0.5, 0.5]
   fx_wake_ring    192x96  x 14, 16 fps, once   (extra) ONE expanding foam ring: spawn behind a moving
                                                boat every ~0.25 s and the rings form a V wake by themselves
-  fx_fire_big     128x192 x 12, 14 fps, loop   watchtower fire basket: tall flames, embers, smoke wisps;
+  fx_fire_big     128x192 x 12, 14 fps, loop   watchtower fire basket: tall flame bundle + embers;
                                                anchor = base of the flames (basket rim) [0.5, 0.9]
 One-shots: t = (i + 0.7) / (n - 1 + 0.7) so frame 0 already shows the effect.  Loops: every motion is
 periodic in 2*pi*i/n (seamless).  Deterministic (fixed seeds).
@@ -69,7 +69,7 @@ def sh_build_dust(i, n, W=160, H=128):
         y = cy + (rng.uniform(-6, 6) * p) - (8 + rng.uniform(4, 22)) * p - 6 * F.ease_in(t, 1.5)
         r = rng.uniform(9, 15) * F.ease_out(min(1, t * 3.2), 2) * (1 - F.ease_in(t, 1.7)) * (0.8 + 0.4 * p)
         balls.append((y, x, r))
-    rc = 17 * F.ease_out(min(1.0, t * 5), 2) * (1 - F.ease_in(min(1.0, t * 1.7), 1.4))
+    rc = 18 * F.ease_out(min(1.0, t * 5), 2) * (1 - F.ease_in(min(1.0, t * 2.6), 1.2))
     balls.append((cy - 8 - 12 * t, cx, rc))
     for (y, x, r) in sorted(balls):
         GF.ball(c, x, y, r, top='#FFF8EC', bot='#E9DCC4', lo='#A68A6A', rim='#B59A80')
@@ -78,8 +78,8 @@ def sh_build_dust(i, n, W=160, H=128):
     if tp < 1:
         sc = F.ease_out(min(1, tp * 3), 2) * (1 - F.ease_in(tp, 2.0))
         if sc > 0.05:
-            R = c.region(cx - 30, cy - 52, cx + 30, cy - 4)
-            d = F.sd_star(R.X, R.Y, cx, cy - 28, 21 * sc, 9 * sc, 6, rot=-math.pi / 2 + 0.3 * tp, round_=1.2 * sc)
+            R = c.region(cx - 34, cy - 58, cx + 34, cy + 2)
+            d = F.sd_star(R.X, R.Y, cx, cy - 28, 25 * sc, 11 * sc, 6, rot=-math.pi / 2 + 0.3 * tp, round_=1.4 * sc)
             R.fill(d - 2.2, hexc('#C8501A'))
             r_ = np.hypot(R.X - cx, R.Y - cy + 28) / max(1, 20 * sc)
             R.paint(R.cov(d), F.ramp([(0, hexc('#FFFFFF')), (0.5, hexc('#FFF2B0')), (1, hexc('#FFC23A'))], r_))
@@ -87,7 +87,9 @@ def sh_build_dust(i, n, W=160, H=128):
     for k in range(7):
         a = -math.pi / 2 + (k - 3) * 0.42 + rng.uniform(-0.1, 0.1)
         v = rng.uniform(80, 120)
-        tt = t * 0.75
+        tt = max(0.0, t - 0.1) * 0.8
+        if tt <= 0:
+            continue
         x = cx + math.cos(a) * v * tt
         y = cy - 22 + math.sin(a) * v * tt + 0.5 * 330 * tt * tt
         s = rng.uniform(3.2, 4.6) * (1 - F.ease_in(F.clamp01((t - 0.6) / 0.4), 1.5))
@@ -135,7 +137,7 @@ def sh_build_done(i, n, S=192):
     rays, a fountain of chunky stars + confetti with gravity, twinkles lingering at the end."""
     t = (i + 0.7) / (n - 1 + 0.7)
     c = F.Canvas(S, S)
-    cx, gy = S / 2, S * 0.78
+    cx, gy = S / 2, S * 0.76
     # light fan behind everything (soft golden rays fanning upward)
     ra = F.bump(t, -0.05, 0.7)
     if ra > 0.01:
@@ -146,10 +148,10 @@ def sh_build_done(i, n, S=192):
         for k in range(7):
             a0 = -math.pi / 2 + (k - 3) * 0.36 + 0.05 * math.sin(t * 6 + k)
             da = np.abs(np.angle(np.exp(1j * (ang - a0))))
-            ln = (110 + 30 * (k % 2)) * F.ease_out(min(1.0, t * 3), 2)
+            ln = (96 + 26 * (k % 2)) * F.ease_out(min(1.0, t * 3), 2)
             w = 0.075 + 0.03 * (k % 2)
             m = np.clip(1 - da / w, 0, 1) ** 1.2 * np.clip(1 - r / max(ln, 1), 0, 1) * np.clip(r / 10, 0, 1)
-            Rr.paint(m, F.mix(hexc('#FFF6C8'), hexc('#FFC83D'), np.clip(r / 120, 0, 1)), 0.85)
+            Rr.paint(m, F.mix(hexc('#FFE27A'), hexc('#FFB52E'), np.clip(r / 110, 0, 1)), 0.9)
         c.over(L, ra * 0.75)
     # flash
     if t < 0.3:
@@ -158,22 +160,23 @@ def sh_build_done(i, n, S=192):
     # golden ground ring (iso ellipse) + glow
     tb = F.clamp01(t / 0.6)
     if tb < 1:
-        rx = 22 + 66 * F.ease_out(tb, 2.4)
+        rx = 20 + 52 * F.ease_out(tb, 2.4)
         GF.gold_ellipse_ring(c, cx, gy, rx, rx * 0.5, 3.4 * (1 - tb) + 0.9, (1 - tb) ** 0.7, glow=True)
     rg = np.hypot(c.X - cx, (c.Y - gy) * 2.0)
     c.paint(np.exp(-(rg / 48) ** 2), hexc('#FFD45A'), 0.45 * F.bump(t, -0.1, 0.8))
     # fountain: stars + confetti (back-to-front by depth sign)
     rng = np.random.default_rng(41)
     parts = []
-    for k in range(22):
-        a = -math.pi / 2 + rng.uniform(-0.95, 0.95)
-        v = rng.uniform(150, 235)
-        t0 = rng.uniform(0.0, 0.18)
-        tt = max(0.0, (t - t0)) * 0.95
-        g = 380.0
-        x = cx + math.cos(a) * v * tt * 0.75
-        y = gy - 22 + math.sin(a) * v * tt + 0.5 * g * tt * tt
-        life = F.clamp01((t - t0) / 0.9)
+    for k in range(24):
+        a = -math.pi / 2 + (k / 23.0 - 0.5) * 2.5 + rng.uniform(-0.12, 0.12)   # burst fan, mostly upward
+        v = rng.uniform(150, 360)
+        t0 = rng.uniform(0.0, 0.12)
+        tt = max(0.0, (t - t0))
+        kd = rng.uniform(2.2, 5.0)
+        p = (1 - math.exp(-kd * tt)) / 3.2                                   # air drag: fast burst, then drift
+        x = cx + math.cos(a) * v * p * 0.82
+        y = gy - 26 + math.sin(a) * v * p * 0.9 + rng.uniform(60, 140) * tt * tt                     # gentle fall afterwards
+        life = F.clamp01((t - t0) / 0.92)
         kind = 'star' if k % 3 != 1 else 'conf'
         parts.append((rng.uniform(0, 1), kind, k, x, y, life, tt))
     for depth, kind, k, x, y, life, tt in sorted(parts):
@@ -182,7 +185,7 @@ def sh_build_done(i, n, S=192):
         fade = 1 - F.ease_in(F.clamp01((life - 0.7) / 0.3), 1.5)
         if kind == 'star':
             s = (7.5 + (k % 4) * 1.6) * min(1.0, life * 8) * (0.4 + 0.6 * fade)
-            GF.star5(c, x, y, s, tt * 7 + k, *STAR_COLS[k % 3], a=fade)
+            GF.star5(c, x, y, s, tt * 7 + k, *STAR_COLS[(k // 3 + k) % 3], a=fade)
         else:
             confetti(c, x, y, 5.2, tt * 9 + k, tt * 16 + k * 1.3, CONFETTI[k % len(CONFETTI)], a=fade)
     # twinkles that linger around the building
@@ -200,6 +203,7 @@ def foam_ring(c, cx, cy, rx, ry, th, a, phase=0.0, broken=0.5, seed=0):
     broken up by a periodic angular pattern so it looks like foam rather than a hard line."""
     if a <= 0.01 or rx < 2:
         return
+    th = th * 1.0
     R = c.region(cx - rx - th - 4, cy - ry - th - 4, cx + rx + th + 4, cy + ry + th + 4)
     if R.empty:
         return
@@ -209,8 +213,9 @@ def foam_ring(c, cx, cy, rx, ry, th, a, phase=0.0, broken=0.5, seed=0):
     pat = np.zeros_like(ang)
     for k, fr in enumerate((3, 5, 8, 13)):
         pat += np.sin(ang * fr + phase * (1 + k * 0.3) + rng.uniform(0, 6.3)) / (1 + k * 0.6)
-    pat = pat / 2.2
-    wid = th * np.clip(0.55 + 0.45 * pat + (1 - broken) * 0.5, 0.0, 1.2)
+    pat = pat / 1.6
+    # broken = fraction of the ring that is gaps (0 = solid line, 0.5 = half foam / half gaps)
+    wid = th * np.clip((pat - (broken * 1.4 - 0.7)) * 1.6, 0.0, 1.15)
     ring = np.abs(e) - wid
     R.fill(ring - 1.1, hexc('#174A86'), 0.45 * a)
     under = np.abs(e - th * 0.6) - wid * 0.8
@@ -247,14 +252,16 @@ def sh_wake(i, n, W=256, H=128):
     hx, hy = 46, 20                                       # hull footprint (half axes) - kept clear
     for k in range(3):
         u = (u0 + k / 3.0) % 1.0
-        rx = hx + 4 + (W / 2 - 10 - hx) * F.ease_out(u, 1.6)
+        rx = hx + 2 + (W / 2 - 6 - hx) * F.ease_out(u, 1.4)
         ry = rx * 0.48
-        a = math.sin(math.pi * min(1.0, u * 1.6)) ** 0.7 * (1 - u) ** 1.1
-        th = 3.6 * (1 - u) + 1.0
-        foam_ring(c, cx, cy + 2, rx, ry, th, a, phase=2 * math.pi * u + k, seed=60 + k)
-    # waterline collar (lacy, slowly shifting pattern -> periodic over the loop)
-    foam_ring(c, cx, cy + 2, hx + 2, hy + 1, 3.2, 0.95, phase=2 * math.pi * u0, broken=0.2, seed=70)
-    bubbles(c, cx, cy + 2, hx + 8, hy + 5, 16, u0, 71)
+        a = math.sin(math.pi * min(1.0, u * 2.5)) ** 0.5 * (1 - u) ** 0.8
+        th = 4.2 * (1 - u) ** 0.8 + 1.2
+        foam_ring(c, cx, cy + 2, rx, ry, 1.0, a * 0.45, phase=0.0, broken=0.0, seed=90 + k)      # thin ripple line
+        foam_ring(c, cx, cy + 2, rx, ry, th, a, phase=2 * math.pi * u + k * 2.1, broken=0.25 + 0.3 * u, seed=60 + k)
+    # waterline collar: lacy broken foam hugging the hull (pattern drifts once per loop -> seamless)
+    foam_ring(c, cx, cy + 2, hx + 1, hy + 1, 3.0, 0.95, phase=2 * math.pi * u0, broken=0.45, seed=70)
+    foam_ring(c, cx, cy + 2, hx + 6, hy + 4, 2.2, 0.7, phase=-2 * math.pi * u0 + 1.0, broken=0.6, seed=72)
+    bubbles(c, cx, cy + 2, hx + 9, hy + 5, 24, u0, 71)
     return c.image()
 
 
@@ -265,38 +272,25 @@ def sh_wake_ring(i, n, W=192, H=96):
     cx, cy = W / 2, H / 2
     rx = 10 + (W / 2 - 12) * F.ease_out(t, 1.8)
     a = min(1.0, t * 6) * (1 - F.ease_in(t, 1.4))
-    foam_ring(c, cx, cy, rx, rx * 0.48, 3.4 * (1 - t) + 0.9, a, phase=t * 3, seed=80)
+    foam_ring(c, cx, cy, rx, rx * 0.48, 1.0, a * 0.5, phase=0.0, broken=0.0, seed=82)
+    foam_ring(c, cx, cy, rx, rx * 0.48, 3.8 * (1 - t) + 1.0, a, phase=t * 3, broken=0.2 + 0.35 * t, seed=80)
     bubbles(c, cx, cy, rx * 0.8, rx * 0.38, 8, t * 0.5, 81, a=a * 0.9)
     return c.image()
 
 
 # =========================================================================== fx_fire_big
 def sh_fire_big(i, n, W=128, H=192):
-    """Watchtower fire basket loop: a tall bundle of toy flame tongues (gen_fx.flame_layers), warm halo,
-    embers spiralling up and soft grey smoke wisps leaving the tip.  All motion periodic over n frames."""
+    """Watchtower fire basket loop: a tall teardrop bundle of toy flame tongues (gen_fx.flame_layers), warm
+    halo and embers spiralling up (smoke = the existing fx_smoke_puff).  All motion periodic over n frames."""
     ph = 2 * math.pi * i / n
     c = F.Canvas(W, H)
     cx, by = W / 2, H * 0.9
-    # smoke wisps (behind the flames), rising and fading, periodic
-    for k in range(3):
-        u = (i / n + k / 3.0) % 1.0
-        y = by - 108 - 62 * u
-        x = cx + 6 + 10 * u + 4 * math.sin(2 * math.pi * u + k)
-        r = 7 + 11 * u
-        a = math.sin(math.pi * u) ** 1.2 * 0.75
-        R = c.region(x - r * 2, y - r * 2, x + r * 2, y + r * 2)
-        if R.empty or a < 0.02:
-            continue
-        blobs = [(x, y, r * 0.8), (x - r * 0.55, y + r * 0.25, r * 0.55), (x + r * 0.55, y + r * 0.2, r * 0.58)]
-        d = GF.puff_sdf(R, blobs, r * 0.18)
-        Lr = R
-        GF.cloud(Lr, d, '#F4F6FA', '#C9D0DC', '#6E7888', alpha=a, bevel=r * 0.5, rim='#8C96A8', rim_a=0.6)
     # warm halo
-    r = np.hypot(c.X - cx, (c.Y - by + 48) * 0.75)
-    c.paint(np.exp(-(r / 52) ** 2), hexc('#FFB04A'), 0.30 + 0.05 * math.sin(ph * 2))
+    r = np.hypot((c.X - cx) * 1.15, (c.Y - by + 52) * 0.7)
+    c.paint(np.exp(-(r / 46) ** 2), hexc('#FFB04A'), 0.30 + 0.05 * math.sin(ph * 2))
     tongues = [  # dx, height, width, phase, speed(int)
-        (-22, 70, 16, 0.0, 1), (22, 66, 15, 2.1, 1), (0, 112, 25, 1.0, 1), (-10, 86, 17, 3.9, 2), (11, 80, 16, 5.0, 2),
-        (-30, 44, 11, 4.4, 1), (30, 40, 10, 0.7, 2)]
+        (-15, 74, 15, 0.0, 1), (15, 70, 14, 2.1, 1), (0, 124, 23, 1.0, 1), (-7, 96, 16, 3.9, 2), (8, 90, 15, 5.0, 2),
+        (-24, 46, 10, 4.4, 1), (24, 42, 10, 0.7, 2)]
     for j, (dx, h, w, p0, m) in enumerate(sorted(tongues, key=lambda q: -q[1])):
         hh = h * (1 + 0.12 * math.sin(ph * m + p0) + 0.06 * math.sin(ph * 2 * m + p0 * 2))
         sway = 0.5 * math.sin(ph * m + p0 + 0.8)
@@ -304,8 +298,8 @@ def sh_fire_big(i, n, W=128, H=192):
     # embers spiralling up
     for k in range(8):
         u = (i / n + k / 8.0) % 1.0
-        x = cx + (k - 3.5) * 6 + 9 * math.sin(2 * math.pi * u + k * 1.7)
-        y = by - 50 - 120 * u
+        x = cx + (k - 3.5) * 4 + 10 * math.sin(2 * math.pi * u + k * 1.7) * (0.4 + u)
+        y = by - 60 - 105 * u
         a = math.sin(math.pi * u) * 0.95
         R = c.region(x - 7, y - 7, x + 7, y + 7)
         if R.empty:
@@ -321,7 +315,7 @@ SHEETS = {
     'fx_build_dust': (sh_build_dust, 160, 128, 12, 24, 0, [0.5, 0.72],
                       'Construction hammer puff: pow star + warm dust balls rolling out on the ground + wood chips. '
                       'Anchor = ground point. Play on every hammer hit (~0.5 s).'),
-    'fx_build_done': (sh_build_done, 192, 192, 18, 20, 0, [0.5, 0.78],
+    'fx_build_done': (sh_build_done, 192, 192, 18, 20, 0, [0.5, 0.76],
                       'Building complete: flash, golden iso ground ring, light fan, fountain of stars + confetti. '
                       'Anchor = footprint centre; scale x1.3-1.6 for 3x3 m buildings.'),
     'fx_wake': (sh_wake, 256, 128, 12, 12, -1, [0.5, 0.5],
@@ -332,6 +326,6 @@ SHEETS = {
                      'Extra: one expanding foam ring. Spawn at the stern of a MOVING boat every ~0.25 s (world '
                      'space, under the boat) - the rings form a V-shaped wake trail by themselves.'),
     'fx_fire_big': (sh_fire_big, 128, 192, 12, 14, -1, [0.5, 0.9],
-                    'Watchtower fire basket loop (tall flames, embers, smoke wisps). Anchor = base of the flames '
+                    'Watchtower fire basket loop (tall flames + embers; add fx_smoke_puff above for smoke). Anchor = base of the flames '
                     '(basket rim, buildings fxPoints.fire).'),
 }
