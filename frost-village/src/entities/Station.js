@@ -58,8 +58,8 @@ export class Station {
   }
 
   update(dt) {
-    this.inStack.layout(this.inPad.x, this.inPad.y + 6, this.inPad.y);
-    this.outStack.layout(this.outPad.x, this.outPad.y + 6, this.outPad.y);
+    this.inStack.layout(this.inPad.x, this.inPad.y + 6, this.inPad.y, 0, dt);
+    this.outStack.layout(this.outPad.x, this.outPad.y + 6, this.outPad.y, 0, dt);
     if (!this.enabled) return;
     const can = this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max;
     if (can) {
@@ -77,7 +77,7 @@ export class Station {
         this.fxT = 0.5 + Math.random() * 0.4;
         if (this.gs.isOnScreen(this.x, this.y, 150)) {
           const sm = this.cfg.smoke;
-          if (sm) this.gs.effects.burst('smoke', this.x + sm[0], this.y + sm[1], 1);
+          if (sm) this.gs.effects.sheet('fx_smoke_puff', this.x + sm[0], this.y + sm[1], { size: 120, depth: this.y + 2 });
           if (this.id === 'grill') { this.gs.effects.burst('smoke', this.x + (Math.random() - 0.5) * 60, this.y - 40, 1); this.gs.effects.burst('flame', this.x + (Math.random() - 0.5) * 70, this.y - 28, 2); }
           if (this.id === 'sawmill') this.gs.effects.burst('wood', this.x + 10, this.y - 50, 3);
           if (this.id === 'smelter') this.gs.effects.burst('spark', this.x + 40, this.y - 60, 2);

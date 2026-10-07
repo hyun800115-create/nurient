@@ -27,6 +27,21 @@ export class Collision {
     return o;
   }
 
+  /** true if a circle of radius `rad` at (x, y) overlaps an active obstacle or leaves the walkable area */
+  blocked(x, y, rad, ignore) {
+    if (x < 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46) return true;
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return true;
+    const cell = this.grid[cy * this.cols + cx];
+    for (let i = 0; i < cell.length; i++) {
+      const o = cell[i];
+      if (!o.active || o === ignore) continue;
+      const dx = x - o.x, dy = (y - o.y) * 2, R = o.r + rad;
+      if (dx * dx + dy * dy < R * R) return true;
+    }
+    return false;
+  }
+
   shore(x) {
     const i = Math.max(0, Math.min(this._shoreCache.length - 2, Math.floor(x / 8)));
     const f = x / 8 - i;

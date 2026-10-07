@@ -26,6 +26,7 @@ export class ItemStack {
     this.lean = 0; this.leanV = 0;
     this.bx = 0; this.by = 0; this.depth = 0;
     this.typeCols = opts.typeCols || null; // map type -> column index (shelf with one tower per type)
+    this.hopOnPush = opts.hop !== false;
     this._top = { x: 0, y: 0 };
     this.visible = true;
     this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
@@ -52,7 +53,7 @@ export class ItemStack {
   push(type, spr, fx) {
     if (!spr) spr = fx.takeItem(type);
     spr.setScale(this.scale).setVisible(this.visible).setAngle(0);
-    this.items.push({ type, spr, hop: 0 });
+    this.items.push({ type, spr, hop: this.hopOnPush ? 1 : 0 });
     return spr;
   }
 
@@ -120,7 +121,9 @@ export class ItemStack {
         const col = this.typeCols[it.type] || 0;
         const c = this.cols[col] || this.cols[0];
         const st = stackStep(it.type) * this.scale;
-        it.spr.setPosition(bx + c[0], by + c[1] - hs[col]);
+        let hop = 0;
+        if (it.hop > 0) { it.hop = Math.max(0, it.hop - dt * 5); hop = Math.sin(it.hop * Math.PI) * 9; it.spr.setScale(this.scale * (1 + it.hop * 0.25), this.scale * (1 - it.hop * 0.15)); if (it.hop === 0) it.spr.setScale(this.scale); }
+        it.spr.setPosition(bx + c[0], by + c[1] - hs[col] - hop);
         it.spr.setDepth(depth + c[1] * 0.01 + hs[col] * 0.0001 + 0.001);
         hs[col] += st;
       }
@@ -136,7 +139,9 @@ export class ItemStack {
       const st = stackStep(it.type) * this.scale;
       const k = this.sway ? (inCol / 10) * (inCol / 10) : 0;
       const wob = this.sway && inCol > 0 ? Math.sin(bob * 2 + inCol * 0.5) * 0.6 * inCol / 10 : 0;
-      it.spr.setPosition(bx + c[0] + lean * k + wob, by + c[1] - h);
+      let hop = 0;
+      if (it.hop > 0) { it.hop = Math.max(0, it.hop - dt * 5); hop = Math.sin(it.hop * Math.PI) * 8; it.spr.setScale(this.scale * (1 + it.hop * 0.25), this.scale * (1 - it.hop * 0.15)); if (it.hop === 0) it.spr.setScale(this.scale); }
+      it.spr.setPosition(bx + c[0] + lean * k + wob, by + c[1] - h - hop);
       it.spr.setDepth(depth + c[1] * 0.01 + i * 0.0005 + 0.001);
       h += st; inCol++;
     }

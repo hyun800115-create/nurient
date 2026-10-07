@@ -26,7 +26,7 @@ const config = {
   height: logicalHeight(),
   backgroundColor: '#dbe6f2',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  render: { antialias: true, pixelArt: false, roundPixels: false, powerPreference: 'high-performance', maxLights: 0 },
+  render: { antialias: true, pixelArt: false, roundPixels: false, powerPreference: 'high-performance' },
   input: { activePointers: 3, keyboard: true, windowEvents: true },
   audio: { disableWebAudio: false },
   fps: { target: 60, smoothStep: true },

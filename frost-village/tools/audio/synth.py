@@ -604,7 +604,8 @@ def _block_powers(x, dual_mono=True, block=0.4, hop=0.1):
 
 
 def lufs(x, dual_mono: bool = True) -> float:
-    """Integrated loudness (gated). Mono is measured as dual-mono (same as ffmpeg ebur128 on mono)."""
+    """Integrated loudness (gated). Mono is measured as dual-mono (= ffmpeg ebur128 dualmono=true),
+    i.e. as heard when a mono file plays on both speakers."""
     pw = _block_powers(x, dual_mono)
     L = -0.691 + 10 * np.log10(np.maximum(pw, 1e-15))
     keep = L > -70

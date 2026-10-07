@@ -59,7 +59,7 @@ export const Audio = {
 
   playMusic(key) {
     if (this.musicKey === key && this.music) { this.applyMusic(); return; }
-    this.stopMusic();
+    this.stopMusic(900);
     this.musicKey = key;
     this.applyMusic();
   },
@@ -81,9 +81,17 @@ export const Audio = {
     } catch (e) { /* ignore */ }
   },
 
-  stopMusic() {
-    if (this.music) { try { this.music.stop(); this.music.destroy(); } catch (e) { /* */ } }
+  stopMusic(fadeMs = 0) {
+    const m = this.music;
     this.music = null; this.musicKey = null;
+    if (!m) return;
+    if (fadeMs > 0) {
+      try {
+        const scene = this.game.scene.getScenes(true)[0];
+        if (scene && scene.tweens) { scene.tweens.add({ targets: m, volume: 0, duration: fadeMs, onComplete: () => { try { m.stop(); m.destroy(); } catch (e) { /* */ } } }); return; }
+      } catch (e) { /* fall through */ }
+    }
+    try { m.stop(); m.destroy(); } catch (e) { /* */ }
   },
 
   fade(snd, to, ms) {

@@ -186,11 +186,11 @@ export const Placeholders = {
           ctx.strokeStyle = 'rgba(70,45,25,0.35)'; ctx.lineWidth = 6;
           for (let i = -S; i < S * 2; i += 24) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + S, S / 2); ctx.stroke(); }
         }
-        const n = key.startsWith('water') ? 140 : 380;
+        const n = key.startsWith('water') ? 140 : 150;
         for (let i = 0; i < n; i++) {
           const x = r() * S, y = r() * S, s = 1 + r() * (key.startsWith('water') ? 10 : 4);
           const light = r() < 0.5;
-          ctx.fillStyle = key.startsWith('water') ? (light ? 'rgba(255,255,255,0.06)' : 'rgba(10,40,90,0.08)') : (light ? 'rgba(255,255,255,0.22)' : 'rgba(60,70,100,0.07)');
+          ctx.fillStyle = key.startsWith('water') ? (light ? 'rgba(255,255,255,0.06)' : 'rgba(10,40,90,0.08)') : (light ? 'rgba(255,255,255,0.12)' : 'rgba(60,70,100,0.035)');
           ctx.beginPath(); ctx.ellipse(x, y, s * 2, s, 0, 0, Math.PI * 2); ctx.fill();
           // wrap
           for (const [ox, oy] of [[S, 0], [-S, 0], [0, S], [0, -S]]) { ctx.beginPath(); ctx.ellipse(x + ox, y + oy, s * 2, s, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -313,7 +313,6 @@ export const Placeholders = {
       }); break;
       case 'ui_badge_max': this.canvas(textures, tk, 96, 44, (ctx) => {
         ctx.fillStyle = '#d9483b'; rr(ctx, 2, 2, 92, 40, 20); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; rr(ctx, 3.5, 3.5, 89, 37, 18); ctx.stroke();
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MAX', 48, 23);
       }); break;
       case 'ui_ring_bg': icon(96, (ctx) => { ctx.fillStyle = 'rgba(43,47,58,0.45)'; ctx.beginPath(); ctx.arc(48, 48, 44, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(48, 48, 36, 0, Math.PI * 2); ctx.stroke(); }); break;
       case 'ui_ring_fill': icon(96, (ctx) => { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(48, 48, 36, 0, Math.PI * 2); ctx.stroke(); }); break;

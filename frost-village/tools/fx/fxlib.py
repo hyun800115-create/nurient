@@ -154,12 +154,53 @@ def sd_arc(X, Y, cx, cy, r, a0, a1, t):
     return np.where(on, d_ring, np.minimum(e0, e1)).astype(np.float32)
 
 
+def sd_heart_iq(X, Y, cx, cy, s):
+    """Exact heart SDF (Inigo Quilez), bottom tip at (cx, cy + s*0.62), width ~1.25*s*2, y down."""
+    px = np.abs(X - cx) / (s * 1.6)
+    py = (cy + s * 0.62 - Y) / (s * 1.6)          # 0 at the tip, up = positive
+    d1 = np.sqrt((px - 0.25) ** 2 + (py - 0.75) ** 2) - math.sqrt(2.0) / 4.0
+    m = np.maximum(px + py, 0.0) * 0.5
+    d2 = np.sqrt(np.minimum(px ** 2 + (py - 1.0) ** 2, (px - m) ** 2 + (py - m) ** 2)) * np.sign(px - py)
+    return (np.where(py + px > 1.0, d1, d2) * s * 1.6).astype(np.float32)
+
+
 def sd_heart(X, Y, cx, cy, s):
     """Chubby heart of overall width ~2.1*s centred near (cx,cy)."""
     lx = sd_circle(X, Y, cx - 0.5 * s, cy - 0.28 * s, 0.56 * s)
     rx = sd_circle(X, Y, cx + 0.5 * s, cy - 0.28 * s, 0.56 * s)
     tri = sd_polygon(X, Y, [(cx - 1.03 * s, cy - 0.12 * s), (cx + 1.03 * s, cy - 0.12 * s), (cx, cy + 0.98 * s)])
     return smin(np.minimum(lx, rx), tri - 0.06 * s, 0.22 * s)
+
+
+def sd_teardrop(X, Y, cx, cy, r, h, tip=0.0):
+    """Teardrop: circle (cx,cy,r) with a pointed tip h px ABOVE the centre (h > r).
+    tip = rounding radius of the point."""
+    h = max(h, r * 1.05)
+    beta = math.acos(min(0.999, r / h))
+    tx, ty = cx, cy - h
+    pr = (cx + r * math.sin(beta), cy - r * math.cos(beta))
+    pl = (cx - r * math.sin(beta), cy - r * math.cos(beta))
+    tri = sd_polygon(X, Y, [(tx, ty + tip * 1.5), pr, (cx, cy), pl])
+    return np.minimum(sd_circle(X, Y, cx, cy, r), tri) - tip * 0.25
+
+
+def sd_implicit(f, px):
+    """Approximate signed distance from an implicit function f (negative inside):
+    f / |grad f|, gradient taken on the supersampled grid (px = output px per sample)."""
+    gy, gx = np.gradient(f.astype(np.float32), px)
+    g = np.sqrt(gx * gx + gy * gy)
+    return (f / np.maximum(g, 1e-4)).astype(np.float32)
+
+
+def sd_glint(X, Y, cx, cy, rx, ry, px, rot_=0.0, pinch=0.5):
+    """Concave 4-point 'twinkle' star (astroid-like), arms rx (horizontal) / ry (vertical).
+    pinch < 1 makes the sides concave (0.5 = classic sparkle)."""
+    if rot_:
+        X, Y = rot(X, Y, cx, cy, rot_)
+    ax = np.abs(X - cx) / max(rx, 1e-3)
+    ay = np.abs(Y - cy) / max(ry, 1e-3)
+    f = ax ** pinch + ay ** pinch - 1.0
+    return sd_implicit(f * min(rx, ry), px)
 
 
 def union(*ds):
@@ -364,6 +405,28 @@ class Canvas:
         return Image.fromarray(arr, 'RGBA')
 
 
+# --------------------------------------------------------------------------- easing
+def ease_out(t, p=3.0):
+    t = min(max(t, 0.0), 1.0)
+    return 1 - (1 - t) ** p
+
+
+def ease_in(t, p=2.0):
+    t = min(max(t, 0.0), 1.0)
+    return t ** p
+
+
+def bump(t, a, b):
+    """0 outside [a,b], smooth hump peaking in the middle."""
+    if t <= a or t >= b:
+        return 0.0
+    return math.sin(math.pi * (t - a) / (b - a))
+
+
+def clamp01(t):
+    return min(max(t, 0.0), 1.0)
+
+
 # --------------------------------------------------------------------------- shading
 def bevel_normals(d, width, px, profile='round'):
     """Height field from an SDF (pillow-like rounded rim of `width` px) -> unit normals (H,W,3)."""
@@ -375,6 +438,17 @@ def bevel_normals(d, width, px, profile='round'):
     else:  # linear chamfer
         h = t * width
     gy, gx = np.gradient(h.astype(np.float32), px)
+    n = np.dstack([-gx, -gy, np.ones_like(gx)])
+    n /= np.linalg.norm(n, axis=2, keepdims=True)
+    return n
+
+
+def pillow_normals(cov, sigma, ss, depth=1.0):
+    """Inflated 'pillow' normals from a coverage mask: height = blurred coverage.
+    No medial-axis ridges (unlike bevel_normals), good for clouds, hearts, blobs.
+    sigma in output px; depth ~ slope near the rim (1 = 45 degrees)."""
+    h = blur(np.clip(cov, 0, 1), sigma * ss) * depth * sigma
+    gy, gx = np.gradient(h.astype(np.float32), 1.0 / ss)
     n = np.dstack([-gx, -gy, np.ones_like(gx)])
     n /= np.linalg.norm(n, axis=2, keepdims=True)
     return n
@@ -406,6 +480,41 @@ def specular(n, power=40.0, light=LIGHT):
     h = light + np.array([0, 0, 1.0], np.float32)
     h = h / np.linalg.norm(h)
     return np.clip(n @ h, 0, 1) ** power
+
+
+def toy(c, d, top, bot, outline=None, ow=3.0, bevel=7.0, gloss=0.35, shadow=0.3,
+        sh_dy=3.0, sh_sigma=2.2, hi=0.5, lo=0.45, spec=0.0, yr=None, tint_lo=None, gloss_h=0.45,
+        alpha=1.0, sh_color='#1B2840', pillow=None):
+    """Paint one 'soft toy' part on canvas c: drop shadow, outline, vertical gradient fill
+    lit by a rounded bevel (shared sun), glossy highlight on the upper part."""
+    as_c = lambda v: hexc(v) if isinstance(v, str) else np.asarray(v, np.float32)
+    if shadow:
+        dd = d - (ow if outline is not None else 0)
+        c.shadow(c.cov(dd), dy=sh_dy, sigma=sh_sigma, opacity=shadow * alpha, color=sh_color)
+    if outline is not None:
+        c.fill(d - ow, as_c(outline), alpha)
+    if yr is None:
+        ys = c.Y[d < 0]
+        yr = (float(ys.min()), float(ys.max())) if ys.size else (0, 1)
+    t = np.clip((c.Y - yr[0]) / max(yr[1] - yr[0], 1e-3), 0, 1)
+    base = mix(as_c(top), as_c(bot), t)
+    if pillow:
+        n = pillow_normals(c.cov(d), pillow, c.ss)
+    else:
+        n = bevel_normals(d, bevel, c.px)
+    s = lambert(n)
+    col = shade(base, s, hi, lo, None if tint_lo is None else as_c(tint_lo))
+    if spec:
+        col = np.clip(col + spec * specular(n, 30)[..., None], 0, 1)
+    c.paint(c.cov(d), col, alpha)
+    if gloss:
+        g = c.cov(d + bevel * 0.5, feather=1.0) * np.clip(1 - (c.Y - yr[0]) / ((yr[1] - yr[0]) * gloss_h), 0, 1) ** 1.6
+        c.paint(g, np.ones(3, np.float32), gloss * alpha)
+    return yr
+
+
+def stroke(c, d, width, color, alpha=1.0, feather=0.0):
+    c.fill(np.abs(d) - width / 2, hexc(color) if isinstance(color, str) else color, alpha, feather)
 
 
 # --------------------------------------------------------------------------- noise (periodic)
@@ -513,6 +622,44 @@ def save_png(img, path, quant=None, dither=1.0):
         q.save(path, optimize=True)
     else:
         img.save(path, optimize=True)
+    return path
+
+
+def strip(frames):
+    """Horizontal sprite strip from equally sized RGBA frames."""
+    w, h = frames[0].size
+    out = Image.new('RGBA', (w * len(frames), h), (0, 0, 0, 0))
+    for i, f in enumerate(frames):
+        out.paste(f, (i * w, 0))
+    return out
+
+
+def save_gif(frames, path, fps, panels=('#F4F7FB', '#D9A08A', '#1F5FA8'), hold=0, scale=1, anchor=None):
+    """Preview GIF: every frame composited over side-by-side background panels.
+    hold = extra blank frames appended (so one-shot effects read as separate bursts).
+    anchor = (ax, ay) normalised -> draws a small cross where the sprite origin is."""
+    import os
+    from PIL import ImageDraw
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    w, h = frames[0].size
+    w2, h2 = w * scale, h * scale
+    seq = list(frames) + [Image.new('RGBA', (w, h), (0, 0, 0, 0))] * hold
+    out = []
+    for f in seq:
+        if scale != 1:
+            f = f.resize((w2, h2), Image.LANCZOS)
+        im = Image.new('RGBA', (w2 * len(panels), h2), (0, 0, 0, 255))
+        for k, col in enumerate(panels):
+            im.paste(Image.new('RGBA', (w2, h2), col), (k * w2, 0))
+            im.alpha_composite(f, (k * w2, 0))
+            if anchor is not None:
+                ax, ay = anchor[0] * w2 + k * w2, anchor[1] * h2
+                d = ImageDraw.Draw(im)
+                d.line([(ax - 4, ay), (ax + 4, ay)], fill=(255, 0, 90, 160))
+                d.line([(ax, ay - 4), (ax, ay + 4)], fill=(255, 0, 90, 160))
+        out.append(im.convert('RGB').quantize(255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
+    out[0].save(path, save_all=True, append_images=out[1:], duration=int(round(1000 / fps)), loop=0,
+                optimize=False, disposal=1)
     return path
 
 

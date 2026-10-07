@@ -18,11 +18,13 @@ export class CashPad {
     this.gs = gs; this.x = x; this.y = y;
     this.pad = new Pad(gs, x, y, 'cash', 1.5);
     this.value = 0;
-    this.pile = new ItemStack(gs, { scale: 0.9, cols: [[-24, -2], [0, -12], [24, -2], [-12, 8], [12, 8], [0, 18]], perCol: 8, max: BALANCE.cash.pileVisualMax });
+    this.pile = new ItemStack(gs, { scale: 0.85, cols: [[0, -16], [-22, -5], [22, -5], [0, 6], [-44, 6], [44, 6], [-22, 17], [22, 17], [0, 28]], perCol: 5, max: BALANCE.cash.pileVisualMax });
     this.collectT = 0;
     this.enabled = true;
+    this.spin = gs.effects.loop('fx_coin_spin', x, y - 70, 46, DEPTH.LABEL - 5);
+    if (this.spin) this.spin.setVisible(false);
   }
-  setEnabled(v) { this.enabled = v; this.pad.setVisible(v); this.pile.setVisible(v); }
+  setEnabled(v) { this.enabled = v; this.pad.setVisible(v); this.pile.setVisible(v); if (this.spin && !v) this.spin.setVisible(false); }
 
   /** add `amount` coins, flying `n` coin sprites from (fx, fy) */
   add(amount, fx, fy) {
@@ -47,8 +49,13 @@ export class CashPad {
   }
 
   update(dt) {
-    this.pile.layout(this.x, this.y + 4, this.y);
+    this.pile.layout(this.x, this.y + 4, this.y, 0, dt);
     if (!this.enabled) return;
+    if (this.spin) {
+      const show = this.value > 0;
+      if (this.spin.visible !== show) this.spin.setVisible(show);
+      if (show) this.spin.y = this.y - 74 - this.pile.count * 0.8 + Math.sin(this.gs.time.now / 300) * 5;
+    }
     const p = this.gs.player;
     if ((this.value > 0 || this.pile.count > 0) && this.pad.contains(p.x, p.y)) {
       if (this.value > 0) {
@@ -154,7 +161,7 @@ export class Market {
 
   update(dt) {
     const gs = this.gs;
-    this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y);
+    this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
     this.cash.update(dt);
     // spawn
     this.spawnT -= dt;
@@ -166,6 +173,10 @@ export class Market {
     const front = this.queue[0];
     if (front && front.state === 'wait' && front.arrived) {
       if (!front.bubbleShown) front.showBubble();
+      // don't stall the line: if nothing of the wanted food is on the shelf yet, take another food that is
+      if (front.got === 0 && front.need === front.want.count && this.stock.countOf(front.want.type) === 0) {
+        for (const f of FOODS) if (this.stock.countOf(f) > 0) { front.setWant(f); break; }
+      }
       this.serveT -= dt;
       if (this.serveT <= 0 && front.need > 0 && this.stock.countOf(front.want.type) > 0) {
         this.serveT = BALANCE.customers.takeInterval;
@@ -205,7 +216,7 @@ export class Market {
     c.play('happy', true);
     gs.effects.burst('heart', c.x, c.y + c.headTop - 4, 3);
     Audio.play('sfx_customer_happy', { volume: 0.7 });
-    gs.time.delayedCall(200, () => this.cash.add(value, c.x, c.y - 50));
+    gs.time.delayedCall(200, () => { this.cash.add(value, c.x, c.y - 50); if (gs.isNear(c.x, c.y, 650)) Audio.play('sfx_cash', { volume: 0.55, throttle: 250 }); });
     gs.events.emit('sold', value);
   }
 
@@ -248,13 +259,18 @@ export class Customer extends Character {
     const tx = gs.add.text(22, -bg.displayHeight * 0.58, '', { fontFamily: gs.font, fontSize: '26px', fontStyle: '900', color: '#2b2f3a', resolution: 2 }).setOrigin(0.5, 0.5);
     c.add([bg, ic, tx]);
     c.setScale(0.85);
-    this.bubble = c; this.bubbleText = tx;
+    this.bubble = c; this.bubbleText = tx; this.bubbleIcon = ic; c.__bs = 0.85;
     this.bubbleShown = true;
     this.updateBubble();
     c.setScale(0.2);
     gs.tweens.add({ targets: c, scale: 0.85, duration: 260, ease: 'Back.easeOut' });
   }
   updateBubble() { if (this.bubbleText) this.bubbleText.setText('x' + Math.max(0, this.want.count - this.got)); }
+  setWant(type) {
+    this.want.type = type;
+    if (this.bubbleIcon) { const sc = this.bubbleIcon.scaleX; Assets.apply(this.bubbleIcon, type); this.bubbleIcon.setOrigin(0.5, 0.6).setScale(sc); }
+    if (this.bubble) this.gs.effects.pop(this.bubble, 0.15, 90);
+  }
   popBubble() {
     this.updateBubble();
     if (!this.bubble) return;
@@ -362,7 +378,7 @@ export class TradePost {
   }
 
   update(dt) {
-    this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y);
+    this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
     this.cash.update(dt);
     if (!this.enabled) return;
     const m = this.merchant;

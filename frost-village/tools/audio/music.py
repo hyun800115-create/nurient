@@ -1,16 +1,22 @@
-"""Frost Village - background music by procedural synthesis.
+"""Frost Village - background music by procedural synthesis (library + script).
 
   bgm_village : cosy winter-village loop, F major, 100 bpm, light swing, 32 bars (76.8 s)
-                form A1 A2 B A3 (8 bars each), F major pentatonic hook.
-  bgm_title   : warm music-box version of the hook, 84 bpm, 8 bars (22.9 s)
+                form A1 A2 B A3 (8 bars each), F-major-pentatonic hook "A C D - C A C -".
+                A = F | Dm | Bb | C | F | Dm | Bb C | F      (I vi IV V)
+                B = Bb | C | Am | Dm | Bb | C | Gm7 | C7     (IV V iii vi ... ii V7)
+                marimba lead (A), ocarina lead (B), music-box / glockenspiel doubles,
+                nylon-pluck off-beat "chk-a" comping, pizzicato bass, warm saw pad,
+                soft kick on 1 & 3, brushed snare, shaker, sleigh bells.
+  bgm_title   : warm music-box version of the hook with harp arpeggios, 84 bpm, 8 bars (22.9 s)
 
 Both are rendered with a tail and the tail is folded back onto the loop start
-(fold_loop), so reverb and ringing notes cross the loop point seamlessly.
+(fold_loop), so reverb and ringing notes cross the loop point seamlessly; the bus
+compressor and the limiter run circularly (they see the loop as a loop).
 
-Run:   python3 tools/audio/fa_music.py [village] [title]
-       -> writes tools/audio/_cache/bgm_<name>.wav (float, stereo, normalised to -18 LUFS)
-Normally called through fa_build.py.  Deterministic (fixed seeds).
-Requires numpy + scipy.
+Run:   python3 tools/audio/music.py [village] [title]
+       -> writes tools/audio/_cache/bgm_<name>.wav (32-bit float, stereo, -18 LUFS)
+Normally called through build_audio.py.  Deterministic (fixed seeds).  Needs numpy + scipy.
+Set FV_AUDIO_DEBUG=1 to print per-bus loudness.
 """
 from __future__ import annotations
 
@@ -21,6 +27,9 @@ from itertools import product
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import deps  # noqa: E402
+
+deps.ensure()
 import instruments as I  # noqa: E402
 import synth as S  # noqa: E402
 from synth import SR, n_of  # noqa: E402
@@ -150,9 +159,13 @@ def circ(fn, x, pre: int):
 
 
 class Mixer:
-    def __init__(self, dur):
+    """Named stereo buses. Events humanised to before t=0 are moved to the end of the loop
+    (t + loop) so fold_loop carries them across the loop point instead of cropping their attack."""
+
+    def __init__(self, dur, loop=None):
         self.bus = {}
         self.dur = dur
+        self.loop = loop
 
     def b(self, name):
         if name not in self.bus:
@@ -160,10 +173,13 @@ class Mixer:
         return self.bus[name]
 
     def add(self, name, t, sig, gain=1.0, p=0.0):
+        if t < 0 and self.loop:
+            t += self.loop
         self.b(name).add(t, sig, gain, p)
 
 
-def master(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, target=-18.0, pad_bus=None, extra_tail=6.0):
+def premix(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, pad_bus=None, extra_tail=6.0):
+    """Sum the buses (+ chorus on the pad, shared FDN reverb, master EQ) -> (2, L + tail), not yet looped."""
     total = L + n_of(extra_tail)
     dry = np.zeros((2, total))
     send = np.zeros((2, total))
@@ -172,7 +188,7 @@ def master(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, target=-18.0, 
         if name == pad_bus:
             x = S.chorus(x, rate=0.27, depth_ms=3.0, base_ms=16.0, mix=0.55)
         g = gains.get(name, 1.0)
-        if os.environ.get("FA_DEBUG"):
+        if os.environ.get("FV_AUDIO_DEBUG"):
             print(f"   bus {name:7s} lufs {S.lufs(g * x[:, :L]):6.1f}  peak {S.db(S.peak(g * x)):6.1f}")
         dry += g * x
         send += g * sends.get(name, 0.0) * x
@@ -180,8 +196,16 @@ def master(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, target=-18.0, 
     mix = dry + wet
     mix = S.hp(mix, 32, order=2)
     mix = S.shelf_lo(mix, 110, -2.5)
-    mix = S.shelf_hi(mix, 7500, -3.5)
-    mix = S.lp(mix, 12500)
+    mix = S.shelf_hi(mix, 8000, -1.0)     # keep a little winter sparkle (bells, shaker)
+    mix = S.lp(mix, 15000)
+    return mix
+
+
+def finish(mix, L: int, target=-18.0):
+    """Fold the tail onto the start at loop length L, circular bus compression, loudness, limiter.
+    L may differ from the nominal bar length by a few hundred samples: build_audio.py picks the
+    nearest Vorbis block boundary so browsers that ignore the Ogg end-trim still loop seamlessly
+    (the downbeat after the loop point then lands <= ~12 ms early/late - inaudible)."""
     loop = S.fold_loop(mix, L)
     loop = circ(lambda z: S.compress(z, thr_db=-24, ratio=1.7, tau=0.12), loop, n_of(4.0))
     g = S.undb(target - S.lufs(loop))
@@ -191,12 +215,14 @@ def master(mx: Mixer, sends: dict, gains: dict, L: int, rt60=1.9, target=-18.0, 
 
 
 # ----------------------------------------------------------------------------- bgm_village
-def render_village(seed=11):
+def render_village(seed=11, loop_samples=None, premix_only=False):
+    """-> (stereo loop, meta). loop_samples: fold at this length instead of the nominal 32 bars.
+    premix_only: return the un-looped mix (for build_audio.fit_loop, which then calls finish())."""
+    bars = 32
     song = Song(100, swing=0.58, seed=seed)
     r = song.r
-    bars = 32
     L = n_of(bars * 4 * song.beat)
-    mx = Mixer(bars * 4 * song.beat + 8)
+    mx = Mixer(L / SR + 8, loop=L / SR)
 
     # --- section plan
     sections = []  # (bar0, kind, melody bars, chord bars)
@@ -326,17 +352,22 @@ def render_village(seed=11):
              "drm": 0.05, "snr": 0.16, "shk": 0.1, "sleigh": 0.22, "wb": 0.22, "cym": 0.3}
     gains = {"oca": 0.55, "bass": 0.65, "drm": 0.66, "pluck": 2.0, "pad": 3.4, "snr": 1.95, "shk": 3.9,
              "sleigh": 2.6, "glock": 1.5, "wb": 1.3}
-    out = master(mx, sends, gains, L, rt60=1.9, target=-18.0, pad_bus="pad")
-    return out, {"bpm": 100, "bars": 32, "loopSamples": L}
+    mix = premix(mx, sends, gains, L, rt60=1.9, pad_bus="pad")
+    meta = {"bpm": 100, "bars": bars, "loopSamples": L, "nominalSamples": L, "target": -18.0}
+    if premix_only:
+        return mix, meta
+    meta["loopSamples"] = int(loop_samples or L)
+    return finish(mix, meta["loopSamples"], -18.0), meta
 
 
 # ----------------------------------------------------------------------------- bgm_title
-def render_title(seed=23):
+def render_title(seed=23, loop_samples=None, premix_only=False):
+    """Same interface as render_village."""
+    bars = 8
     song = Song(84, swing=0.53, seed=seed)
     r = song.r
-    bars = 8
     L = n_of(bars * 4 * song.beat)
-    mx = Mixer(bars * 4 * song.beat + 8)
+    mx = Mixer(L / SR + 8, loop=L / SR)
     mel = MEL_A[:7] + [MEL_A_TURN]
     chs = CH_A[:7] + [CH_A_TURN]
     prev_tri, prev_pad = None, None
@@ -375,8 +406,12 @@ def render_title(seed=23):
         mx.add("kick", song.t(i, 0), I.kick(0.5, r), 0.35)
     sends = {"mbox": 0.45, "oca": 0.35, "pad": 0.4, "bass": 0.05, "pluck": 0.25, "sleigh": 0.3, "glock": 0.5, "kick": 0.05}
     gains = {"pad": 2.8, "pluck": 1.8, "sleigh": 2.8, "glock": 1.8, "kick": 0.75, "bass": 0.8, "oca": 0.9}
-    out = master(mx, sends, gains, L, rt60=2.3, target=-18.0, pad_bus="pad")
-    return out, {"bpm": 84, "bars": 8, "loopSamples": L}
+    mix = premix(mx, sends, gains, L, rt60=2.3, pad_bus="pad")
+    meta = {"bpm": 84, "bars": bars, "loopSamples": L, "nominalSamples": L, "target": -18.0}
+    if premix_only:
+        return mix, meta
+    meta["loopSamples"] = int(loop_samples or L)
+    return finish(mix, meta["loopSamples"], -18.0), meta
 
 
 def main(names):

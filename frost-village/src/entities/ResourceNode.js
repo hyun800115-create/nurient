@@ -6,6 +6,20 @@ import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { DEPTH } from '../systems/DepthSort.js';
 
+export function freeStandPoint(node, fx, fy, out) {
+  const base = Math.atan2((fy - node.y) * 2, fx - node.x);
+  const col = node.gs.collision;
+  out = out || {};
+  const r = node.standDist;
+  for (let k = 0; k < 12; k++) {
+    const a = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 6);
+    const x = node.x + Math.cos(a) * r, y = node.y + (Math.sin(a) * r) / 2;
+    if (!col.blocked(x, y, 15, node.obstacle)) { out.x = x; out.y = y; return out; }
+  }
+  out.x = node.x + Math.cos(base) * r; out.y = node.y + (Math.sin(base) * r) / 2;
+  return out;
+}
+
 class Node {
   constructor(gs, kind, x, y) {
     this.gs = gs; this.kind = kind; this.x = x; this.y = y;
@@ -14,17 +28,16 @@ class Node {
     this.standDist = 46;
   }
   ready() { return false; }
-  /** where a gatherer coming from (fx, fy) should stand */
+  /** where a gatherer coming from (fx, fy) should stand (a free spot around the node, nearest the gatherer first) */
   standPoint(fx, fy, out) {
-    let dx = fx - this.x, dy = (fy - this.y) * 2;
-    const d = Math.hypot(dx, dy) || 1;
-    dx /= d; dy /= d;
-    out = out || {};
-    out.x = this.x + dx * this.standDist;
-    out.y = this.y + (dy * this.standDist) / 2;
-    return out;
+    return freeStandPoint(this, fx, fy, out);
   }
-  setEnabled(v) { this.enabled = v; }
+  setEnabled(v) {
+    this.enabled = v;
+    if (this.img) this.img.setVisible(v);
+    if (this.obstacle) this.obstacle.active = v;
+  }
+  revealObjects() { return [this.img]; }
 }
 
 // ------------------------------------------------------------------ tree
@@ -60,7 +73,7 @@ export class Tree extends Node {
     const gs = this.gs;
     gs.time.delayedCall(120, () => {
       Assets.apply(this.img, 'tree_stump');
-      this.img.setAngle(0).setScale(1);
+      this.img.setAngle(0).setScale(this.scale || 1);
       gs.effects.sheet('fx_poof', this.x, this.y - 30, { size: 150 });
       gs.effects.burst('snowhit', this.x, this.y - 40, 10);
     });
@@ -73,8 +86,9 @@ export class Tree extends Node {
     if (this.timer <= 0) {
       this.hp = this.hpMax;
       Assets.apply(this.img, this.treeKey);
-      this.img.setScale(0.2, 0.1);
-      this.gs.tweens.add({ targets: this.img, scaleX: 1, scaleY: 1, duration: 650, ease: 'Back.easeOut' });
+      const sc = this.scale || 1;
+      this.img.setScale(0.2 * sc, 0.1 * sc);
+      this.gs.tweens.add({ targets: this.img, scaleX: sc, scaleY: sc, duration: 650, ease: 'Back.easeOut' });
       this.gs.effects.burst('snowhit', this.x, this.y - 20, 6);
     }
   }

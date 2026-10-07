@@ -40,6 +40,23 @@ export const STRINGS = {
     obj_cash: '손님이 낸 코인을 주우세요',
     obj_unlock: '코인을 들고 발판 위에 서 보세요',
     obj_wait: '손님이 오고 있어요…',
+    obj_forest_1: '나무 앞에 서서 통나무를 모으세요',
+    obj_forest_2: '통나무를 제재소에 넣으세요',
+    obj_forest_3: '판자를 가져가세요',
+    obj_forest_4: '판자를 교역소에 파세요',
+    obj_farm_1: '다 익은 밀 앞에 서서 밀을 거두세요',
+    obj_farm_2: '밀을 빵 오븐에 넣으세요',
+    obj_farm_3: '빵을 가져가세요',
+    obj_farm_4: '빵을 판매대에 놓으세요',
+    obj_mine_1: '바위 앞에 서서 광석을 캐세요',
+    obj_mine_2: '광석을 제련소에 넣으세요',
+    obj_mine_3: '주괴를 가져가세요',
+    obj_mine_4: '주괴를 교역소에 파세요',
+    obj_hunt_1: '사슴이나 멧돼지 곁에 서서 잡으세요',
+    obj_hunt_2: '생고기를 훈제장에 넣으세요',
+    obj_hunt_3: '훈제 고기를 가져가세요',
+    obj_hunt_4: '훈제 고기를 판매대에 놓으세요',
+    obj_upgrade: '작업대에서 가방을 업그레이드하세요',
 
     // 발판 이름
     hire_fisherman: '어부 고용',
@@ -62,6 +79,7 @@ export const STRINGS = {
     level: 'Lv.{n}',
 
     // 구역 / 시설 이름
+    w_fisherman: '어부', w_lumberjack: '나무꾼', w_farmer: '농부', w_miner: '광부', w_hunter: '사냥꾼',
     z_plaza: '광장',
     z_forest: '소나무 숲',
     z_farm: '밀밭',
@@ -110,6 +128,23 @@ export const STRINGS = {
     obj_cash: 'Collect the coins',
     obj_unlock: 'Stand on the pad with your coins',
     obj_wait: 'Customers are coming…',
+    obj_forest_1: 'Stand by a tree to chop logs',
+    obj_forest_2: 'Put the logs into the sawmill',
+    obj_forest_3: 'Pick up the planks',
+    obj_forest_4: 'Sell the planks at the trade post',
+    obj_farm_1: 'Stand by ripe wheat to harvest it',
+    obj_farm_2: 'Put the wheat into the oven',
+    obj_farm_3: 'Pick up the bread',
+    obj_farm_4: 'Put the bread on the counter',
+    obj_mine_1: 'Stand by a rock to mine ore',
+    obj_mine_2: 'Put the ore into the smelter',
+    obj_mine_3: 'Pick up the ingots',
+    obj_mine_4: 'Sell the ingots at the trade post',
+    obj_hunt_1: 'Stand next to a deer or boar to catch it',
+    obj_hunt_2: 'Put the meat into the smokehouse',
+    obj_hunt_3: 'Pick up the smoked meat',
+    obj_hunt_4: 'Put the smoked meat on the counter',
+    obj_upgrade: 'Upgrade your backpack at the workbench',
 
     hire_fisherman: 'Hire Fisher',
     hire_lumberjack: 'Hire Lumberjack',
@@ -130,6 +165,7 @@ export const STRINGS = {
     max: 'MAX',
     level: 'Lv.{n}',
 
+    w_fisherman: 'Fisher', w_lumberjack: 'Lumberjack', w_farmer: 'Farmer', w_miner: 'Miner', w_hunter: 'Hunter',
     z_plaza: 'Plaza',
     z_forest: 'Pine Forest',
     z_farm: 'Wheat Farm',
@@ -168,3 +204,6 @@ export function t(key, params) {
 }
 
 export const FONT = "Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif";
+
+/** 12345 -> "12,345" */
+export function fmt(n) { return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
