@@ -61,12 +61,10 @@ export class OperatorSpot {
     const c = this.cfg;
     const pd = c.pad || [-70, 40];
     this.x = station.x + pd[0]; this.y = station.y + pd[1];
-    const tex = Assets.pick('ui_pad_clerk', 'ui_pad_input');
-    this.pad = new Pad(gs, this.x, this.y, 'input', 1.3, {
-      tex, tint: tex === 'ui_pad_clerk' ? 0xffe2a8 : 0xffd27a,
-      icon: Assets.pick('ui_icon_hammer', 'ui_icon_worker'), iconSize: 40,
-    });
-    if (this.pad.icon) this.pad.icon.setAlpha(0.85);
+    // (v3.5 review) the "stand here" pad (two footprints, like the register spot) — not the red hammer
+    // pad of a build plot; the station's product shows what working here makes
+    const tex = Assets.pick('ui_pad_register', 'ui_pad_input');
+    this.pad = new Pad(gs, this.x, this.y, 'input', 1.3, { tex, tint: tex === 'ui_pad_register' ? 0xfff2c0 : 0xffd27a });
     // small floating label "서서 굽기"
     const lab = gs.add.container(this.x, this.y - 48).setDepth(this.y + 1990);
     this.labelText = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '19px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0.5, 0.5);

@@ -230,19 +230,19 @@ def _premix_harbor(seed: int):
                 strong = st in (0, 3)
                 acc = 0.86 if strong else 0.7
                 if kind == "A1":
-                    mx.add("mel", t0, I.marimba(m, song.vel(acc), r), 0.62, -0.1)
+                    mx.add("mel", t0, I.marimba(m, song.vel(acc), r), 0.48, -0.1)
                     mx.add("mbox", t0 + 0.004, I.musicbox(m + 12, song.vel(0.5), r), 0.14, 0.3)
                 elif kind in ("A2", "A4"):
-                    mx.add("acc", t0, accordion(m, song.vel(acc), dur * 0.92, r), 0.5, -0.12)
+                    mx.add("acc", t0, accordion(m, song.vel(acc), dur * 0.92, r), 0.6, -0.12)
                     mx.add("mel", t0 + 0.003, I.marimba(m, song.vel(acc * 0.8), r), 0.22, 0.2)
                     if kind == "A4" and i >= 4:
                         mx.add("mbox", t0 + 0.006, I.musicbox(m + 12, song.vel(0.55), r), 0.16, 0.3)
                 elif kind == "A3":
-                    mx.add("acc", t0, accordion(m, song.vel(acc), dur * 0.92, r), 0.46, -0.15)
+                    mx.add("acc", t0, accordion(m, song.vel(acc), dur * 0.92, r), 0.6, -0.15)
                     g = scale_step(m + 12, 1) - (m + 12) if (strong and ln >= 2) else 0.0
                     gl = 0.045 if g else 0.0
                     mx.add("whis", t0 - gl, flute(m + 12, song.vel(0.7), dur * 0.9, r, vib=0.6 if ln >= 3 else 0.2,
-                                                  grace=g, grace_len=0.045), 0.24, 0.15)
+                                                  grace=g, grace_len=0.045), 0.3, 0.15)
                 elif kind == "B":
                     g = scale_step(m, 1) - m if (strong and ln >= 2) else 0.0
                     gl = 0.045 if g else 0.0
@@ -251,7 +251,7 @@ def _premix_harbor(seed: int):
                     if ln >= 3:
                         mx.add("mel", t0, I.marimba(m - 12, song.vel(0.4), r), 0.16, -0.25)
                 else:                                   # C: music box lead, glock + marimba echo
-                    mx.add("mbox", t0, I.musicbox(m, song.vel(0.75 if strong else 0.6), r), 0.4, -0.1)
+                    mx.add("mbox", t0, I.musicbox(m, song.vel(0.75 if strong else 0.6), r), 0.34, -0.1)
                     mx.add("glock", t0 + 0.005, I.glock(m + 12, song.vel(0.4), r), 0.07, 0.35)
             # ------------------------------------------------ harmony
             for half in (0, 1):
@@ -374,7 +374,7 @@ def _premix_harbor(seed: int):
     sends = {"mel": 0.22, "mbox": 0.38, "acc": 0.16, "accb": 0.04, "whis": 0.3, "glock": 0.42, "pluck": 0.17,
              "bass": 0.03, "pad": 0.4, "stomp": 0.06, "bod": 0.08, "clap": 0.2, "shk": 0.1, "sleigh": 0.22,
              "wb": 0.22, "cym": 0.3, "tri": 0.35, "bell": 0.45}
-    gains = {"mel": 1.15, "mbox": 1.0, "acc": 1.0, "accb": 1.0, "whis": 0.5, "glock": 1.4, "pluck": 2.6, "bass": 0.55,
+    gains = {"mel": 1.15, "mbox": 1.0, "acc": 1.0, "accb": 1.0, "whis": 0.5, "glock": 1.4, "pluck": 2.6, "bass": 0.48,
              "pad": 3.0, "stomp": 0.95, "bod": 1.3, "clap": 2.2, "shk": 5.0, "sleigh": 2.4, "wb": 1.3, "cym": 1.0,
              "tri": 1.0, "bell": 1.0}
     mix = premix(mx, sends, gains, L, rt60=1.7, pad_bus="pad")
