@@ -332,7 +332,7 @@ export class Porter extends Character {
       }
       case 'haul': {
         if (this.stack.count + this.stack.incoming === 0) { this.state = 'seek'; this.route.length = 0; break; }
-        if (!this.seller.enabled) { this.vx = this.vy = 0; this.locomotion(false); break; }
+        if (this.seller.enabled === false) { this.vx = this.vy = 0; this.locomotion(false); break; }     // the market has no enabled flag (always open)
         this.tripT += dt;
         if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
           if (this.tripT > 90) { const s = this.shelfSpot(); this.x = s.x; this.y = s.y; }
