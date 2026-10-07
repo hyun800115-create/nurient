@@ -9,6 +9,7 @@ import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { shoreY } from '../systems/Collision.js';
+import { PRIO } from '../systems/Logistics.js';
 
 const STATION_OF = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
 
@@ -612,7 +613,9 @@ export class WarehousePorter extends Hauler {
           const ty = this.carriedType() || (out.items.length ? out.items[out.items.length - 1].type : null);
           if (this.room > 0 && ty && out.countOf(ty) > 0) gs.moveItem(out, this.stack, ty, { dur: 230, height: 55 });
           else if (this.stack.incoming === 0) {
-            if (this.stack.count > 0) { const n = this.planDest(); this.startHaul(n || W.sink); }
+            // overflow goes into the warehouse, unless somewhere needs it now (a site, a workshop,
+            // the food box, a nearly empty shelf): the warehouse hands it out again when shelves run low
+            if (this.stack.count > 0) { const b = gs.logistics.best(this.carriedType(), this.x, this.y, { minPrio: PRIO.SHELF_LOW, noStore: true }); this.startHaul(b ? b.sink : W.sink); }
             else { this.job = null; this.state = 'idle'; }
           }
         }

@@ -108,9 +108,18 @@ def collect_head(cache, log):
     return out, meta
 
 
+def body_tile(sh, i, tl):
+    """128x128 frame i from a tiled group sheet (tile box w x h at offset ox, oy in the frame)."""
+    x, y = (i % tl['cols']) * tl['w'], (i // tl['cols']) * tl['h']
+    out = np.zeros((FRAME, FRAME, 4), np.float32)
+    out[tl['oy']:tl['oy'] + tl['h'], tl['ox']:tl['ox'] + tl['w']] = sh[y:y + tl['h'], x:x + tl['w']]
+    return out
+
+
 def collect_body(cache, base, log):
     bd = os.path.join(cache, 'body', base)
     meta = json.load(open(os.path.join(bd, 'meta.json')))
+    tl = meta.get('tile', {'w': FRAME, 'h': FRAME, 'cols': 4, 'ox': 0, 'oy': 0})
     out = {}
     for anim in ta.ORDER:
         info = ta.ANIMS[anim]
@@ -128,10 +137,10 @@ def collect_body(cache, base, log):
                 kind = fx.layer_kind(layer)
                 fr = out.setdefault(layer, {})
                 for i in range(info['frames']):
-                    img = tile(sh, i, 4)
+                    img = body_tile(sh, i, tl)
                     if img[..., 3].max() <= 2 / 255:
                         continue
-                    res = process(img, kind, tile(mask, i, 4)[..., 3])
+                    res = process(img, kind, body_tile(mask, i, tl)[..., 3])
                     if res[..., 3].max() <= 2 / 255:
                         continue
                     fr[f'{anim}_{d}_{i}'] = to_u8(res)

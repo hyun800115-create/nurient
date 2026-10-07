@@ -2,12 +2,10 @@
 tf_proof.py - prove the paper-doll approach: composite the layer renders and compare them
 with full renders of the same combination (CONTRACT_V4 J, step 1).
 
-    /tmp/bvenv/bin/python tools/blender/tf_render.py -- --mode head --faces std,kid \
-        --parts hair_short,hair_bob,hair_ponytail --cache /tmp/fv_cache/townfolk_proof
-    /tmp/bvenv/bin/python tools/blender/tf_render.py -- --mode body --bases adult_slim,child_round \
-        --frameset proof --cache /tmp/fv_cache/townfolk_proof
+    (layer renders: the normal tf_render head / body runs into /tmp/fv_cache/townfolk)
     /tmp/bvenv/bin/python tools/blender/tf_render.py -- --mode full --combos proof --cache /tmp/fv_cache/townfolk_proof
-    python3 tools/blender/tf_proof.py [--cache DIR] [--out docs/previews/townfolk_proof.png]
+    python3 tools/blender/tf_proof.py [--cache /tmp/fv_cache/townfolk] [--full /tmp/fv_cache/townfolk_proof]
+                                      [--out docs/previews/townfolk_proof.png]
 
 Plain python3 (numpy + Pillow).  Prints per-frame diff stats and writes side-by-side sheets
 (full render | composite | diff x4) at 1x and 3x.
@@ -101,10 +99,13 @@ def on_bg(im, bg=BG):
 
 def main():
     args = sys.argv[1:]
-    cache = '/tmp/fv_cache/townfolk_proof'
+    cache = '/tmp/fv_cache/townfolk'
+    full_cache = '/tmp/fv_cache/townfolk_proof'
     out = os.path.join(PREV, 'townfolk_proof.png')
     if '--cache' in args:
         cache = args[args.index('--cache') + 1]
+    if '--full' in args:
+        full_cache = args[args.index('--full') + 1]
     if '--out' in args:
         out = args[args.index('--out') + 1]
     from tf_presets import proof_combos
@@ -120,7 +121,7 @@ def main():
         person = {'base': c['base'], 'nose': c['nose'], 'face': c['face'], 'parts': c['parts'], 'colors': c['colors']}
         cst = []
         for anim, d, i in c['frames']:
-            p = os.path.join(cache, 'full', c['name'], f'{anim}_{d}_{i}.png')
+            p = os.path.join(full_cache, 'full', c['name'], f'{anim}_{d}_{i}.png')
             if not os.path.exists(p):
                 continue
             full = Image.open(p).convert('RGBA')

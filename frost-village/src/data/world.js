@@ -221,7 +221,7 @@ export const WORLD = {
     ['snow_pile_b', 1720, 600], ['campfire', 520, 590], ['firewood_pile', 430, 650], ['barrel', 640, 520],
     // 광장
     ['lamp_post', ...Z('plaza', -6.6, -6.6)], ['lamp_post', ...Z('plaza', 6.6, -6.6)], ['lamp_post', ...Z('plaza', -0.5, 6.7)],
-    ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1590, 812], ['crate', 1565, 838, { scale: 0.85 }],
+    ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1545, 800], ['crate', 1522, 826, { scale: 0.85 }],
     ['signpost', 1068, 1214], ['bush_snow', ...Z('plaza', 1.0, 7.3)], ['snow_pile_b', ...Z('plaza', 7.4, 1.5)],
     // 남쪽 마을
     ['chief_lodge', 960, 2400], ['tent_a', 660, 2380], ['tent_a', 1260, 2370, { flip: true }], ['campfire', 870, 2525],
@@ -305,7 +305,7 @@ export const WORLD = {
   // 망루 공사장 (x, y = 망루 중심). 비용 발판은 공사장 앞(자재 내려놓는 곳)에 생김
   //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
   towers: {
-    tower_east:  { x: 1700, y: 845, region: 'east' },
+    tower_east:  { x: 1660, y: 845, region: 'east' },
     tower_south: { x: 1450, y: 2505, region: 'south' },
     tower_se:    { x: 2870, y: 1370, region: 'se', in: 'east' },
   },

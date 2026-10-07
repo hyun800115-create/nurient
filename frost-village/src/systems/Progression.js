@@ -54,7 +54,7 @@ export const STEPS = [
   { id: 'hire2_miner', type: 'hire2', worker: 'miner', after: 'hire2_lumberjack', v3: true, side: true },
   { id: 'hire2_fisherman', type: 'hire2', worker: 'fisherman', after: 'b:boathouse', v3: true, side: true },
   { id: 'hire2_farmer', type: 'hire2', worker: 'farmer', after: 'r:south', v3: true, side: true },
-  { id: 'hire2_hunter', type: 'hire2', worker: 'hunter', after: 'r:se', v3: true, side: true },
+  { id: 'hire2_hunter', type: 'hire2', worker: 'hunter', after: 'b:store', v3: true, side: true },
   // porters for the new lines, a clerk for the general store
   { id: 'porter_toolsmith', type: 'porter', station: 'toolsmith', after: 'b:toolsmith', v3: true, side: true },
   { id: 'porter_dock', type: 'porter', station: 'dock', after: 'boat_rowboat', v3: true, side: true },

@@ -377,10 +377,10 @@
       }
       case 'cash': return tk.cash.value <= 0;
       case 'register': {
-        if (tk.seller === gs.market) {
-          // stay while customers still have food coming / are paying
-          const f = gs.market.queue[0];
-          const busy = gs.market.waitingPay || (f && f.need > 0 && FOODS.some((x) => gs.market.stock.countOf(x) > 0));
+        if (tk.seller === gs.market || (gs.store && tk.seller === gs.store)) {
+          // stay while customers still have food (cans, tools) coming / are paying
+          const S = tk.seller, f = S.queue[0], goods = S === gs.market ? FOODS : STORE;
+          const busy = S.waitingPay || (f && f.need > 0 && goods.some((x) => S.stock.countOf(x) > 0));
           if (!busy) { tk.idleT = (tk.idleT || 0) + bot.dt; return tk.idleT > 0.5; }
           tk.idleT = 0;
           return el > 40;

@@ -65,11 +65,11 @@ FACE_SETS = {
 
 PROOF_COLORS = [
     dict(skin='#F6CFAE', hair='#3A2A22', top='#3D7CC9', top2='#F2C14E', fur='#F4F1EA', bottom='#3B3F52',
-         shoes='#6B4A2E', sleeve='#3D7CC9', hands='#F6CFAE'),
+         shoes='#6B4A2E', sleeve='#3D7CC9', hands='#F6CFAE', acc2='#F08A8A'),
     dict(skin='#E0A982', hair='#8A5232', top='#D9483B', top2='#F4EDE0', fur='#E6DCCB', bottom='#4A3830',
-         shoes='#3B2A20', sleeve='#D9483B', hands='#3B3F4A'),
+         shoes='#3B2A20', sleeve='#D9483B', hands='#3B3F4A', acc2='#3D7CC9'),
     dict(skin='#F2C29A', hair='#D9A85A', top='#5E9A4A', top2='#F4EDE0', fur='#F4F1EA', bottom='#2E3440',
-         shoes='#8A5A33', sleeve='#5E9A4A', hands='#F2C29A'),
+         shoes='#8A5A33', sleeve='#5E9A4A', hands='#F2C29A', acc2='#F2C14E'),
 ]
 PROOF_FRAMES = [('idle', 'S', 0), ('idle', 'N', 2), ('walk', 'SE', 2), ('walk', 'E', 5), ('walk', 'NE', 1),
                 ('carry_walk', 'S', 3), ('carry_walk', 'E', 0), ('talk', 'E', 0), ('wave', 'S', 2),
@@ -128,7 +128,6 @@ EXCLUDE = [
     ['family:headacc', 'family:hat'],          # earmuffs / bows / clips are for bare heads
     ['tag:tall', 'hat_beret'], ['tag:tall', 'hat_headband'], ['tag:tall', 'hat_nurse'],
     ['tag:big', 'hat_beret'], ['tag:big', 'hat_headband'], ['tag:big', 'hat_nurse'],
-    ['tag:dress', 'family:bottom'],            # dresses get tights from 'underDress' instead
     ['bot_overalls', 'tag:dress'], ['bot_overalls', 'top_labcoat'], ['bot_overalls', 'top_uniform'],
     ['bot_overalls', 'top_coat'], ['bot_overalls', 'top_duffle'],
     ['acc_scarf', 'det_stethoscope'], ['acc_scarf', 'det_tie'], ['acc_scarf', 'det_bow'],

@@ -196,7 +196,7 @@ export const BALANCE = {
   towers: {
     tower_east:  { coins: 300,  item_plank: 10, item_ingot: 0, time: 7 },    // 1. 동쪽 해안
     tower_south: { coins: 1100, item_plank: 16, item_ingot: 4, time: 9 },    // 2. 남쪽 들판
-    tower_se:    { coins: 2600, item_plank: 22, item_ingot: 8, time: 10 },   // 3. 동남쪽 언덕
+    tower_se:    { coins: 2200, item_plank: 24, item_ingot: 10, time: 10 },  // 3. 동남쪽 언덕
   },
   // ── 건물: 빈 부지에 서서 고르면 코인을 내고, 자재가 오면 비계 → 완성
   //    people = 집에 살 수 있는 주민 수
@@ -255,7 +255,7 @@ export const BALANCE = {
   // ── 배: 보트 창고에서 사고, 어부가 바다에 나가 고기를 잡아 옴
   boats: {
     rowboat: { coins: 700, speed: 70, fishTime: 12, fish: 6, big: 0 },                       // 나룻배
-    fishing: { coins: 1800, speed: 100, fishTime: 8, fish: 4, big: 4, tool: 'item_rod' },    // 어선 (코인 + 낚싯대)
+    fishing: { coins: 1500, speed: 100, fishTime: 8, fish: 4, big: 4, tool: 'item_rod' },    // 어선 (코인 + 낚싯대)
     dockTime: 2.5,            // 부두에서 짐을 내리고 다시 나가기까지(초)
   },
   // ── 건설

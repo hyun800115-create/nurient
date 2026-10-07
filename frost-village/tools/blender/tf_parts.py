@@ -213,7 +213,7 @@ def _torso(prof, mat, rig, sy=0.84, n=26):
     return g.mesh_obj('torso', g.bm_lathe(prof, seg=44, sy=sy, smooth_n=n, cap_top=False), mat, rig.j['spine'])
 
 
-@part('top_puffer', 'top', 'body', {'main': sub('top', Z['top']), 'zip': sub(None, Z['top_detail'])},
+@part('top_puffer', 'top', 'body', {'main': sub('top', Z['top'])},
       tags=['casual', 'warm'], label={'ko': '패딩', 'en': 'puffer'})
 def b_top_puffer(rig, ctx, put):
     coat = M('puffer', ctx.col('top'), 0.75)
@@ -224,8 +224,7 @@ def b_top_puffer(rig, ctx, put):
                    loc=(0, 0.01, 0.10))
         g.mesh_obj('hood', g.bm_ellipsoid(0.17, 0.10, 0.12, 24, 12), coat, rig.j['chest'], loc=(0, 0.19, 0.06),
                    rot=(-25, 0, 0))
-    with put('zip'):
-        zm = M('zip', '#C9CED6', 0.35, metal=0.5)
+        zm = M('zip', ctx.col('top', 0.62), 0.5)
         g.mesh_obj('zip', g.bm_box(0.014, 0.012, 0.36, bevel=0.004), zm, rig.j['spine'], loc=(0, -0.205, 0.12))
         g.mesh_obj('zip_pull', g.bm_box(0.022, 0.012, 0.036, bevel=0.005), zm, rig.j['spine'], loc=(0, -0.212, 0.29))
 
@@ -952,7 +951,7 @@ def _btn(rig, mat, zs, r=0.212, xs=(0.0,), size=0.018, out=0.0):
                        loc=(x, p[1], p[2]))
 
 
-@part('top_coat', 'top', 'body', {'main': TOP, 'buttons': TOPFIX}, tags=['smart', 'warm'],
+@part('top_coat', 'top', 'body', {'main': TOP}, tags=['smart', 'warm'],
       label={'ko': '롱코트', 'en': 'long coat'})
 def b_top_coat(rig, ctx, put):
     m = M('coat', ctx.col('top'), 0.8)
@@ -966,8 +965,7 @@ def b_top_coat(rig, ctx, put):
                        M('lapel', ctx.col('top', 0.82), 0.8), rig.j['spine'])
             g.mesh_obj('pocket', g.bm_box(0.08, 0.012, 0.014, bevel=0.004), M('lapel', ctx.col('top', 0.82), 0.8),
                        rig.j['spine'], loc=(s * 0.13, -0.200, -0.04), rot=(0, 0, s * 10))
-    with put('buttons'):
-        bm = M('btn_dark', '#3A2A22', 0.4)
+        bm = M('btn_dark', ctx.col('top', 0.45), 0.4)
         for s in (-1, 1):
             for z in (-0.06, 0.04, 0.14):
                 g.mesh_obj('button', g.bm_ellipsoid(0.019, 0.011, 0.019, 10, 6), bm, rig.j['spine'],
@@ -999,7 +997,7 @@ def b_top_hoodie(rig, ctx, put):
                        loc=(s * 0.05, -0.205, 0.235))
 
 
-@part('top_cardigan', 'top', 'body', {'shirt': TOP2, 'main': sub('top', Z['top'] + 0.5), 'buttons': TOPFIX},
+@part('top_cardigan', 'top', 'body', {'shirt': TOP2, 'main': sub('top', Z['top'] + 0.5)},
       tags=['smart', 'knit'], label={'ko': '가디건', 'en': 'cardigan'})
 def b_top_cardigan(rig, ctx, put):
     with put('shirt'):
@@ -1015,14 +1013,13 @@ def b_top_cardigan(rig, ctx, put):
         g.mesh_obj('hem', g.bm_ring(0.258, 0.020, seg=56, segr=8, sy=0.88, rz=1.4, u0=PI * 0.6, u1=PI * 2.4,
                                     closed=False), M('cardigan_rib', ctx.col('top', 0.88), 0.95), rig.j['spine'],
                    loc=(0, 0, -0.09), rot=(0, 0, 0))
-    with put('buttons'):
-        bm_ = M('btn_card', '#E8DCC0', 0.4)
+        bm_ = M('btn_card', ctx.col('top', 0.55), 0.4)
         for z in (-0.04, 0.05, 0.14, 0.23):
             g.mesh_obj('button', g.bm_ellipsoid(0.016, 0.010, 0.016, 10, 6), bm_, rig.j['spine'],
                        loc=(0.062, -0.215 + 0.012 * (z < 0.1), z))
 
 
-@part('top_bomber', 'top', 'body', {'main': TOP, 'rib': TOP2, 'zip': TOPFIX}, tags=['casual'],
+@part('top_bomber', 'top', 'body', {'main': TOP, 'rib': TOP2}, tags=['casual'],
       label={'ko': '항공 점퍼', 'en': 'bomber jacket'})
 def b_top_bomber(rig, ctx, put):
     m = M('bomber', ctx.col('top'), 0.6)
@@ -1039,12 +1036,12 @@ def b_top_bomber(rig, ctx, put):
                    loc=(0, 0, -0.06))
         g.mesh_obj('collar_rib', g.bm_ring(0.13, 0.032, seg=48, segr=8, sy=0.92, rz=1.4), rib, rig.j['chest'],
                    loc=(0, 0.01, 0.085))
-    with put('zip'):
-        zm = M('zip', '#C9CED6', 0.35, metal=0.6)
+    with put('main'):
+        zm = M('zip_b', ctx.col('top', 0.6), 0.4)
         g.mesh_obj('zip', g.bm_box(0.012, 0.012, 0.30, bevel=0.004), zm, rig.j['spine'], loc=(0.0, -0.200, 0.12))
 
 
-@part('top_dress', 'top', 'body', {'main': TOP, 'collar': TOP2, 'buttons': TOPFIX}, tags=['dress'],
+@part('top_dress', 'top', 'body', {'main': TOP, 'collar': TOP2}, tags=['dress'],
       label={'ko': '원피스 코트', 'en': 'coat dress'})
 def b_top_dress(rig, ctx, put):
     m = M('dress', ctx.col('top'), 0.85)
@@ -1056,8 +1053,7 @@ def b_top_dress(rig, ctx, put):
         for s in (-1, 1):
             g.mesh_obj('collar', g.bm_ellipsoid(0.070, 0.028, 0.040, 14, 8), cm, rig.j['chest'],
                        loc=(s * 0.058, -0.112, 0.085), rot=(30, s * 18, s * 20))
-    with put('buttons'):
-        bm_ = M('btn_dress', '#F4EDE0', 0.4)
+        bm_ = M('btn_dress', ctx.col('top2'), 0.4)
         for z in (0.0, 0.17, 0.26):
             g.mesh_obj('button', g.bm_ellipsoid(0.018, 0.010, 0.018, 10, 6), bm_, rig.j['spine'],
                        loc=cb.front_point(z, 0.215 if z < 0.15 else 0.207))
@@ -1135,7 +1131,7 @@ def b_top_uniform(rig, ctx, put):
                            loc=(s * 0.060, -0.198 + 0.006 * (z > 0.15), z))
 
 
-@part('top_labcoat', 'top', 'body', {'under': TOP2, 'main': sub('top', Z['top'] + 0.5), 'pen': TOPFIX}, tags=['job'],
+@part('top_labcoat', 'top', 'body', {'under': TOP2, 'main': sub('top', Z['top'] + 0.5)}, tags=['job'],
       ages=['adult', 'elder'], label={'ko': '의사 가운', 'en': 'lab coat'})
 def b_top_labcoat(rig, ctx, put):
     with put('under'):
@@ -1153,11 +1149,8 @@ def b_top_labcoat(rig, ctx, put):
                                                 keep_deg=9, sy=0.88, center_deg=s * 31), coat, rig.j['spine'])
             g.mesh_obj('coat_pocket', g.bm_box(0.08, 0.014, 0.075, bevel=0.008), M('coat_pocket', ctx.col('top', 0.93), 0.7),
                        rig.j['spine'], loc=(s * 0.165, -0.195, -0.08), rot=(0, 0, s * 26))
-    with put('pen'):
-        g.mesh_obj('pen', g.bm_cyl(0.009, 0.009, 0.065, seg=8), M('pen', '#3D7CC9', 0.3), rig.j['spine'],
+        g.mesh_obj('pen', g.bm_cyl(0.009, 0.009, 0.065, seg=8), M('pen', ctx.col('top', 0.45), 0.3), rig.j['spine'],
                    loc=(-0.135, -0.18, 0.20))
-        g.mesh_obj('pen2', g.bm_cyl(0.009, 0.009, 0.06, seg=8), M('pen2', '#E04848', 0.3), rig.j['spine'],
-                   loc=(-0.115, -0.183, 0.20))
 
 
 @part('top_blazer', 'top', 'body', {'main': TOP, 'shirt': sub(None, Z['top'] - 0.5), 'crest': TOPFIX}, tags=['job'],
@@ -1274,8 +1267,7 @@ def b_bot_pleated(rig, ctx, put):
         g.mesh_obj('pleats', bm, M('pleat', ctx.col('bottom'), 0.85), rig.j['hips'])
 
 
-@part('bot_overalls', 'bottom', 'body', {'main': BOT, 'bib': sub('bottom', Z['bib']),
-                                         'buckles': sub(None, Z['bib'] + 0.2)}, tags=['work'],
+@part('bot_overalls', 'bottom', 'body', {'main': BOT, 'bib': sub('bottom', Z['bib'])}, tags=['work'],
       label={'ko': '멜빵바지', 'en': 'overalls'})
 def b_bot_overalls(rig, ctx, put):
     om = M('overalls', ctx.col('bottom'), 0.85)
@@ -1291,8 +1283,7 @@ def b_bot_overalls(rig, ctx, put):
             g.mesh_obj('strap', g.bm_tube_path([(s * 0.075, -0.170, 0.26), (s * 0.090, -0.12, 0.40),
                                                 (s * 0.09, 0.02, 0.44), (s * 0.08, 0.17, 0.32), (s * 0.075, 0.19, 0.10)],
                                                0.014, segr=6, side_ref=(1, 0, 0), flat=2.2), om, rig.j['spine'])
-    with put('buckles'):
-        gold = M('buckle', '#C9A045', 0.35, metal=0.6)
+        gold = M('buckle', ctx.col('bottom', 1.35), 0.35, metal=0.4)
         for s in (-1, 1):
             g.mesh_obj('btn', g.bm_ellipsoid(0.018, 0.010, 0.018, 10, 6), gold, rig.j['spine'],
                        loc=(s * 0.075, -0.188, 0.262))

@@ -12,7 +12,7 @@ Options (after the literal --):
     --bases    all | comma list (tf_body.BASE_ORDER)           (body / full)
     --parts    all | comma list of part names (others are left out of the scene)
     --anims    all | comma list    --dirs all | S,SE,..   --frames all | 0,3
-    --samples  16                  --cache /tmp/fv_cache/townfolk
+    --samples  6 (+ OIDN; 16 differs by ~3/255)   --cache /tmp/fv_cache/townfolk
     --force    re-render existing layer PNGs (default: resumable, only missing layers render)
     --combos   proof | path to a json list (full mode)
 
@@ -58,7 +58,7 @@ LIMB_LAYERS = {'arm_R': 'M_arm_R', 'arm_L': 'M_arm_L', 'hand_R': 'M_hand_R', 'ha
 def parse_args():
     a = bc.script_args()
     opt = {'mode': 'head', 'bases': 'all', 'parts': 'all', 'anims': 'all', 'dirs': 'all', 'frames': 'all',
-           'samples': '16', 'cache': DEFAULT_CACHE, 'force': False, 'combos': 'proof', 'faces': 'all',
+           'samples': '6', 'cache': DEFAULT_CACHE, 'force': False, 'combos': 'proof', 'faces': 'all',
            'frameset': 'all'}
     i = 0
     while i < len(a):
@@ -206,11 +206,16 @@ def px_off(p, anchor=ANCHOR):
 TILE_X = Vector((1.41421356, 1.41421356, 0.0))
 TILE_Y = Vector((2.82842712, -2.82842712, 0.0))
 BODY_COLS, BODY_ROWS = 4, 2            # up to 8 frames of one (anim, dir) per render
+# body tiles keep only the useful 96x112 part of the 128x128 frame (x 16..112, y 0..112):
+# 35% fewer pixels for the denoiser / compositor.  Tile (c, r) = frame box offset (TILE_OX, 0).
+BODY_TW, BODY_TH, TILE_OX = 96, 112, 16
+BODY_TX = TILE_X * (BODY_TW / 128.0)
+BODY_TY = TILE_Y * (BODY_TH / 128.0)
 HEAD_COLS = 6                          # all 17 head frames in one 6x3 sheet
 
 
-def tile_offset(c, r):
-    return TILE_X * c + TILE_Y * r
+def tile_offset(c, r, tx=TILE_X, ty=TILE_Y):
+    return tx * c + ty * r
 
 
 def clone_rig(rig, offset):
@@ -243,11 +248,11 @@ def clone_rig(rig, offset):
     return new
 
 
-def make_tiles(rig, n, cols, z_shift=0.0):
+def make_tiles(rig, n, cols, z_shift=0.0, tx=TILE_X, ty=TILE_Y):
     """[rig for slot 0..n-1]; slot 0 is the original rig (moved to its tile)."""
     rigs = []
     for k in range(n):
-        off = tile_offset(k % cols, k // cols) + Vector((0, 0, z_shift))
+        off = tile_offset(k % cols, k // cols, tx, ty) + Vector((0, 0, z_shift))
         if k == 0:
             rig.rest_loc['root'] = Vector(off)
             rigs.append(rig)
@@ -434,6 +439,7 @@ def body_meta(rig, base, outdir):
         o = px_off(mid)
         cp[d] = [int(round(o[0])), int(round(o[1])), d in ('NE', 'N')]
     meta['carryPoint'] = cp
+    meta['tile'] = {'w': BODY_TW, 'h': BODY_TH, 'cols': BODY_COLS, 'ox': TILE_OX, 'oy': 0}
     with open(os.path.join(outdir, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)
 
@@ -456,8 +462,9 @@ def render_body(opt):
         bdir = os.path.join(opt['cache'], 'body', base)
         os.makedirs(bdir, exist_ok=True)
         body_meta(rig, base, bdir)
-        rigs = make_tiles(rig, BODY_COLS * BODY_ROWS, BODY_COLS)
-        sc, cam = setup_scene(int(opt['samples']), ANCHOR, BODY_COLS * FRAME, BODY_ROWS * FRAME)
+        rigs = make_tiles(rig, BODY_COLS * BODY_ROWS, BODY_COLS, tx=BODY_TX, ty=BODY_TY)
+        sc, cam = setup_scene(int(opt['samples']), (ANCHOR[0] - TILE_OX, ANCHOR[1]), BODY_COLS * BODY_TW,
+                              BODY_ROWS * BODY_TH)
         L = Layers(ctx)
         body_layer_specs(L, ctx, bparts)
         L.realize()

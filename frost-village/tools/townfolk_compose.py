@@ -167,7 +167,8 @@ class AtlasSource:
 class CacheSource:
     """Raw renders straight from the tf_render cache (used to prove the layering before packing).
     Cache layout (tiled renders, 128x128 tiles):
-      body/<base>/<anim>_<dir>/<layer>.png   tile i = frame i, BODY_COLS (4) per row
+      body/<base>/<anim>_<dir>/<layer>.png   tile i = frame i (body/<base>/meta.json 'tile': w, h, cols and
+                                             the tile's offset ox, oy inside the 128x128 frame)
       head/<pose>_<dir>/<layer>.png          (head/meta.json layout 'dirs'; one 128x128 file per frame)"""
     BODY_COLS = 4
 
@@ -178,6 +179,14 @@ class CacheSource:
         hm = os.path.join(cache, 'head', 'meta.json')
         self.head_meta = json.load(open(hm)) if os.path.exists(hm) else {'frames': [], 'cols': 6}
         self.head_index = {f: k for k, f in enumerate(self.head_meta['frames'])}
+
+    def _tile(self, base):
+        key = ('tile', base)
+        if key not in self._sheets:
+            mp = os.path.join(self.cache, 'body', base, 'meta.json')
+            m = json.load(open(mp)) if os.path.exists(mp) else {}
+            self._sheets[key] = m.get('tile', {'w': FRAME, 'h': FRAME, 'cols': self.BODY_COLS, 'ox': 0, 'oy': 0})
+        return self._sheets[key]
 
     def _sheet(self, p):
         if p not in self._sheets:
@@ -191,7 +200,15 @@ class CacheSource:
             lname, base = layer.split('@')
             anim_dir, i = fr.rsplit('_', 1)
             p = os.path.join(self.cache, 'body', base, anim_dir, lname + '.png')
-            k, cols = int(i), self.BODY_COLS
+            tl = self._tile(base)
+            sh = self._sheet(p)
+            if sh is None:
+                return None
+            k = int(i)
+            x, y = (k % tl['cols']) * tl['w'], (k // tl['cols']) * tl['h']
+            out = np.zeros((FRAME, FRAME, 4), np.float32)
+            out[tl['oy']:tl['oy'] + tl['h'], tl['ox']:tl['ox'] + tl['w']] = sh[y:y + tl['h'], x:x + tl['w']]
+            return out
         elif self.head_meta.get('layout') == 'dirs':
             p = os.path.join(self.cache, 'head', fr, layer + '.png')
             sh = self._sheet(p)
@@ -429,7 +446,7 @@ def generate(T, rng, preset=None):
     if top and T['parts'][top].get('dress'):
         bottom = _pick(rng, [b for b in G['underDress'] if ok(b)])
     else:
-        bottom = maybe('bottoms')
+        bottom = maybe('bottoms', 1.0, avoid=chosen)
     for x in (bottom, maybe('shoes')):
         if x:
             chosen.append(x)

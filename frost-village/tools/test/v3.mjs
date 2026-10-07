@@ -52,7 +52,7 @@ try {
   const fog = await ev(() => { const gs = window.__FV.scene, T = gs.territory; return { east: !!T.regions.east.fog, south: !!T.regions.south.fog, walk: gs.collision.inWalk(2300, 1000), walkStart: gs.collision.inWalk(990, 1200), cam: T.camRect }; });
   step('fog walls stand before every closed land', fog.east && fog.south && !s.territory.east && !s.territory.south, JSON.stringify(fog));
   step('closed land is not walkable', !fog.walk && fog.walkStart);
-  step('camera bounds stop at the fog (with a peek)', fog.cam && fog.cam[2] - fog.cam[0] < 2300, JSON.stringify(fog.cam));
+  step('camera bounds stop at the fog (with a peek)', fog.cam && fog.cam.w < 2300 && fog.cam.h < 3100, JSON.stringify(fog.cam));
   await ev(() => window.__FV.camera(1650, 900, 0.7));
   await adv(1);
   await shot('01_fog_wall');
@@ -119,7 +119,7 @@ try {
   await ev(() => window.__FV.unlockV3());
   await adv(3);
   s = await st();
-  step('unlockV3: three lands open, all buildings stand', s.territory.east && s.territory.south && s.territory.se && ['toolsmith', 'boathouse', 'warehouse', 'cannery', 'store', 'house_a', 'house_b'].every((k) => s.built[k]), JSON.stringify(s.built));
+  step('unlockV3: three lands open, all buildings stand', s.territory.east && s.territory.south && s.territory.se && ['toolsmith', 'boathouse', 'warehouse', 'cannery', 'store'].every((k) => s.built[k]) && (s.built.house_a || 0) + (s.built.house_b || 0) + (s.built.house_c || 0) >= 2, JSON.stringify(s.built));
   {
     await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.store.stock.push('item_can', null, gs.effects); });
     await wait(() => (window.__FV.scene.progress.flags.firstStoreSale || window.__FV.state().store.waitingPay), 60);
@@ -142,16 +142,23 @@ try {
 
   // 7. warehouse: overflow from a full output pad goes in, an empty shelf is restocked from it
   {
-    await ev(() => { const gs = window.__FV.scene; const S = gs.stations.smelter; for (let i = 0; i < S.outStack.max; i++) S.outStack.push('item_ingot', null, gs.effects); });
+    // (everything else that takes ingots is full, so the overflow has nowhere to go but the warehouse)
+    await ev(() => {
+      const gs = window.__FV.scene; const S = gs.stations.smelter;
+      for (let i = 0; i < S.outStack.max; i++) S.outStack.push('item_ingot', null, gs.effects);
+      for (const w of gs.workshops) while (w.roomFor('item_ingot') > 0) w.inStack.push('item_ingot', null, gs.effects);
+      while (gs.trade.stock.countOf('item_ingot') < gs.trade.maxPerType) gs.trade.stock.push('item_ingot', null, gs.effects);
+    });
     const w0 = (await st()).warehouse.total;
-    await wait((n) => window.__FV.state().warehouse.total > n, 90, w0);
+    await wait((n) => window.__FV.state().warehouse.total > n, 150, w0);
     const w1 = (await st()).warehouse;
     step('warehouse takes overflow from a full output pad', w1.total > w0, `${w0} -> ${JSON.stringify(w1)}`);
-    await ev(() => { const gs = window.__FV.scene; gs.trade.stock.clear(gs.effects); });
+    // the smelter's own pad is emptied so only the warehouse can bring ingots back to the empty shelf
+    await ev(() => { const gs = window.__FV.scene; gs.trade.stock.clear(gs.effects); gs.stations.smelter.outStack.clear(gs.effects); gs.stations.smelter.inStack.clear(gs.effects); window.__whOut = 0; for (const p of gs.warehouse.porters) { const o = p.think.bind(p); p.think = () => { const j = o(); if (j && j.kind === 'out') window.__whOut++; return j; }; } });
     const t0 = (await st()).trade.stock;
-    await wait((n) => window.__FV.state().trade.stock > n, 90, t0);
+    await wait((n) => window.__FV.state().trade.stock > n && window.__whOut > 0, 120, t0);
     s = await st();
-    step('warehouse restocks an empty shelf', s.trade.stock > t0, `trade stock ${t0} -> ${s.trade.stock}`);
+    step('warehouse restocks an empty shelf', s.trade.stock > t0 && (await ev(() => window.__whOut)) > 0 && s.warehouse.total < w1.total, `trade stock ${t0} -> ${s.trade.stock}, warehouse ${w1.total} -> ${s.warehouse.total}`);
     const wp = await where('warehouseOut');
     await ev(([x, y]) => window.__FV.camera(x - 80, y - 60, 0.9), [wp.x, wp.y]);
     await adv(0.5);
