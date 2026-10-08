@@ -6,7 +6,7 @@
 // recently used templates; per pair: recently said lines).
 
 import { Grammar, tidy, slotBit, ALWAYS_SLOTS } from '../lang/grammar.js';
-import { COND } from '../lang/conds.js';
+import { COND, TAG } from '../lang/conds.js';
 import { josa, particle, casualName, counted, commas, romanize, hasBatchim } from '../lang/josa.js';
 import { Rng, mix32, hashStr } from './rng.js';
 import { getRel, ST_ACQ, ST_FRIEND, ST_BEST, ST_SWEET, ST_ENGAGED, ST_SPOUSE, RF_FAMILY, RF_RIVAL, RF_SIBLING, RF_COWORK, RF_NEIGHBOR, RF_CLASS } from './relations.js';
@@ -20,6 +20,10 @@ import KO from '../lang/ko/index.js';
 import EN from '../lang/en/index.js';
 
 export const CHIEF = -2;
+
+const TAG_Q = 1 << TAG.q;
+// a beat whose rule is one of these answers the line before it (no extra answer is needed)
+const REPLY_RE = /(\.re$|\.re\.|^react\.|^ans\.|^answer\.|^thanks\.|^agree|^disagree|^invite\.(yes|no)|^flirt\.(re|oblivious)|^confess\.(yes|no)|^propose\.yes|^sorry\.re|^argue\.back|^joke\.(laugh|groan)|^qa)/;
 
 const C = COND;
 const S = (ch) => slotBit(ch);
@@ -52,11 +56,13 @@ export class Dialogue {
     this.grammars = Object.create(null);
     this.trng = new Rng(1);
     this.ctx = {
-      f0: 0, f1: 0, f2: 0, f3: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
+      f0: 0, f1: 0, f2: 0, f3: 0, f4: 0, p0: 0, p1: 0, t0: 0, t1: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
       get: (s) => this.slot(s),
     };
+    this.prev0 = 0; this.prev1 = 0;      // tags of the line said just before (replies answer what was said)
     this.cur = { b: null, sp: null, ls: null, rel: null, lang: 'ko', f: null, cache: Object.create(null), ext: null };
     this.fallback = new Map();
+    this.mask = [0, 0, 0, 0, 0];
     this.stats = { lines: 0, rerolls: 0, misses: 0, missRules: Object.create(null) };
   }
 
@@ -72,16 +78,35 @@ export class Dialogue {
     const e = this.e;
     this.trng.setState([mix32(e.cfg.seedNum, talk.id), mix32(talk.id, 0x51ed), mix32(talk.a + 7, talk.id), mix32(talk.b + 13, 0x9e37)]);
     const lines = [];
-    for (const b of talk.beats) {
-      const sp = e.people[b.w];
-      const ls = b.to === CHIEF ? null : b.to >= 0 ? e.people[b.to] : null;
-      const text = this.line(b, sp, ls, lang, talk);
-      const len = text.length;
-      const dur = lang === 'en' ? Math.min(4.4, Math.max(2, 1.2 + len * 0.035)) : Math.min(4.4, Math.max(2, 1.3 + len * 0.075));
-      lines.push({ who: b.w, to: b.to, text, emote: b.em, anim: b.an, dur: Math.round(dur * 10) / 10, rule: b.r, topic: b.topic });
+    const beats = talk.beats;
+    this.prev0 = 0; this.prev1 = 0;
+    for (let i = 0; i < beats.length; i++) {
+      const b = beats[i];
+      this.pushLine(lines, b, lang, talk);
+      // a question that the next beat does not answer (the asked person does not speak next, or the
+      // talk moves on): the asked person answers it in a short line first
+      if ((this.prev0 & TAG_Q) && b.to >= 0 && !talk.shout && e.people[b.to]) {
+        const nb = beats[i + 1];
+        if (!(nb && nb.w === b.to && REPLY_RE.test(nb.r))) this.pushLine(lines, this.answerBeat(b), lang, talk);
+      }
     }
     talk.lines = lines;
     return lines;
+  }
+
+  pushLine(lines, b, lang, talk) {
+    const e = this.e;
+    const sp = e.people[b.w];
+    const ls = b.to === CHIEF ? null : b.to >= 0 ? e.people[b.to] : null;
+    const text = this.line(b, sp, ls, lang, talk);
+    const len = text.length;
+    const dur = lang === 'en' ? Math.min(4.4, Math.max(2, 1.2 + len * 0.035)) : Math.min(4.4, Math.max(2, 1.3 + len * 0.075));
+    lines.push({ who: b.w, to: b.to, text, emote: b.em, anim: b.an, dur: Math.round(dur * 10) / 10, rule: b.r, topic: b.topic });
+  }
+
+  /** the short answer to a question that was left hanging */
+  answerBeat(q) {
+    return { w: q.to, to: q.w, r: 'qa', f: q.f, x: q.x, d: q.d, alt: q.alt, src: q.src, from: q.from, o: q.o, p: q.p, i: q.i, h: q.h, n: q.n, s: q.s, fl: q.fl, em: null, an: 'talk', topic: q.topic };
   }
 
   resolveRule(g, name) {
@@ -107,6 +132,7 @@ export class Dialogue {
     const rel = ls ? getRel(e, sp.id, ls.id) : null;
     this.setup(b, sp, ls, rel, lang, talk);
     const ctx = this.ctx;
+    ctx.p0 = this.prev0; ctx.p1 = this.prev1;
     let text = '', tries = 0;
     for (; tries < 4; tries++) {
       text = tidy(g.expand(rule, ctx), lang);
@@ -123,6 +149,7 @@ export class Dialogue {
       if (fb && fb !== rule) text = tidy(g.expand(fb, ctx), lang);
       if (!text) { this.miss(b.r); text = lang === 'en' ? '…' : '…'; }
     }
+    this.prev0 = ctx.t0; this.prev1 = ctx.t1;
     return text;
   }
 
@@ -133,7 +160,7 @@ export class Dialogue {
     const e = this.e, ctx = this.ctx, cur = this.cur;
     cur.b = b; cur.sp = sp; cur.ls = ls; cur.rel = rel; cur.lang = lang; cur.f = b.f; cur.talk = talk;
     for (const k in cur.cache) delete cur.cache[k];
-    const m = [0, 0, 0, 0];
+    const m = this.mask; m[0] = m[1] = m[2] = m[3] = m[4] = 0;
     const set = (i) => { m[i >> 5] |= 1 << (i & 31); };
     const gs = groupOf(e, sp);
     set([C.toddler, C.kid, C.teen, C.adult, C.elder][gs]);
@@ -141,8 +168,9 @@ export class Dialogue {
     const lv = ls ? this.levelFor(sp, ls, rel) : b.to === CHIEF ? 2 : 0;
     ctx.level = lv;
     set([C.ban, C.yo, C.hon][lv]);
-    if (b.to === CHIEF) set(C.l_chief);
+    if (b.to === CHIEF) { set(C.l_chief); set(C.chief_talk); }
     else if (ls) {
+      if (ls.tr[0] < 30) set(C.l_shy);
       const gl = groupOf(e, ls);
       set(gl <= G_KID ? C.l_kid : gl === G_TEEN ? C.l_teen : gl === G_ADULT ? C.l_adult : C.l_elder);
       set(ls.male ? C.l_male : C.l_female);
@@ -154,7 +182,7 @@ export class Dialogue {
       if (ls.kids.length) set(C.lkid);
       if (ls.job === sp.job && ls.job !== 'none' && ls.job !== 'retired') set(C.samejob);
     }
-    if (!rel || rel.n === 0) set(C.stranger);
+    if (!rel || rel.n === 0) { set(C.stranger); if (ls) set(C.first_talk); }
     else {
       const st = rel.stage;
       if (st <= ST_ACQ) set(C.acq);
@@ -234,7 +262,14 @@ export class Dialogue {
       if (this.count(b) > 1) set(C.plural);
       if (f.v > 0) set(C.pos); else if (f.v < 0) set(C.neg);
       if (f.k === 'snowman' && f.n >= 2) set(C.big);
-      if (f.a >= 0 && !anon && e.people[f.a]) { slots |= S('X'); if (groupOf(e, e.people[f.a]) === G_ELDER) set(C.x_elder); }
+      if (f.a >= 0 && !anon && e.people[f.a]) {
+        slots |= S('X');
+        const xa = e.people[f.a], gx = groupOf(e, xa);
+        set(gx === G_ELDER ? C.x_elder : gx === G_ADULT ? C.x_adult : C.x_kid);
+        if (f.b >= 0 && e.people[f.b] && gx <= G_TEEN && groupOf(e, e.people[f.b]) <= G_TEEN) set(C.x_plural_kids);
+        if (/^(police|detective)$/.test(xa.job)) set(C.x_police);
+        if (xa.flags & F_NEWCOMER) set(C.x_newcomer);
+      }
       if (f.b >= 0 && e.people[f.b]) slots |= S('Y');
       if (f.c >= 0 && e.people[f.c]) slots |= S('C');
       if (f.p >= 0 && !(b.d === D_PLACE && b.alt < 0)) slots |= S('P') | S('B');
@@ -260,7 +295,7 @@ export class Dialogue {
     if (b.r.startsWith('answer.when') || b.r.startsWith('ans.when')) slots |= S('D');
     if (b.r.startsWith('answer.since')) slots |= S('D');
     if (b.r.startsWith('small.prices') || b.r.startsWith('ans.price')) slots |= S('M');
-    ctx.f0 = m[0]; ctx.f1 = m[1]; ctx.f2 = m[2]; ctx.f3 = m[3];
+    ctx.f0 = m[0]; ctx.f1 = m[1]; ctx.f2 = m[2]; ctx.f3 = m[3]; ctx.f4 = m[4];
     ctx.slots = slots;
     ctx.recent = sp.recent; ctx.rpos = sp.rpos;
   }
@@ -342,7 +377,8 @@ export class Dialogue {
         if (J && J.kid && h < 5) return { text: J.kid + (t.male ? ' 아저씨' : ' 아줌마'), title: true };
         return { text: t.given + (t.male ? ' 삼촌' : ' 이모'), title: true };
       }
-      if (gs === G_ELDER) return { text: casualName(t.given), casual: true };
+      // elders call the young adults they know well by name (and speak 반말); others '씨' with 해요체
+      if (gs === G_ELDER) return close ? { text: casualName(t.given), casual: true } : { text: t.given + ' 씨', title: true };
       if (close || (rel && rel.stage === ST_SWEET)) {
         if (at - as >= 4) return { text: t.given + ' ' + (sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니')), title: true };
         return { text: casualName(t.given), casual: true };
@@ -588,6 +624,7 @@ export class Dialogue {
     this.setup(b, sp, null, null, lang, null);
     ctx.level = 3;
     ctx.recent = null;
+    ctx.p0 = 0; ctx.p1 = 0;
     const text = tidy(g.expand(r, ctx), lang);
     if (!text) this.miss(rule);
     return text;

@@ -11,6 +11,8 @@ Groups (custom property 'lgx' on every object):
   floor     floor slab inside + markings + dock levellers
   apron     outside ground pieces (dock apron, entrance landing, receiving pad)  -> part of the _floor layer
   interior  racks, conveyor body, packing table, office, counter, decor (static)
+  rackf     the rack FRONT parts (front uprights, front beams, beam tags) = part of _interior, repeated in the
+            _interior_racks overlay so the game's stock stacks sit INSIDE the racks
   front_f   the 'front furniture' subset of interior (counter, conveyor, packing table): staff stand BEHIND it,
             so it is repeated in the _interior_front overlay (= _interior pixels x this mask)
   belt      conveyor belt + riding boxes (8-frame loop patch, never in _interior)
@@ -374,13 +376,15 @@ def rack_unit(name, length, depth, levels, top, cat, header=True, slots_per_leve
     deck = tonal(X.DECK_WOOD, 0.08, 6.0, rough=0.75)
     objs = []
     mb = L2.MB()
+    mbf = L2.MB()                       # FRONT uprights: own object -> group 'rackf' (drawn above the stock)
     hl = length / 2
     for x in (-hl + 0.04, hl - 0.04):
         for y in (0.04, depth - 0.04):
-            mb.cube((0.08, 0.08, top), up, loc=(x, y, top / 2))
-            mb.cube((0.16, 0.14, 0.02), up, loc=(x, y, 0.01))
+            m_ = mbf if y < depth / 2 else mb
+            m_.cube((0.08, 0.08, top), up, loc=(x, y, top / 2))
+            m_.cube((0.16, 0.14, 0.02), up, loc=(x, y, 0.01))
             for k in range(int(top / 0.12)):
-                mb.cube((0.025, 0.084, 0.04), flat('#2E5A93', 0.5), loc=(x, y, 0.1 + k * 0.12))
+                m_.cube((0.025, 0.084, 0.04), flat('#2E5A93', 0.5), loc=(x, y, 0.1 + k * 0.12))
         # end-frame bracing (zig-zag)
         n = 4
         for k in range(n):
@@ -390,12 +394,13 @@ def rack_unit(name, length, depth, levels, top, cat, header=True, slots_per_leve
             mb.seg(p, q, 0.018, up, segs=6)
         mb.cube((0.05, depth, 0.04), up, loc=(x, depth / 2, top - 0.05))
     objs.append(mb.done(name + '_up', smooth=False))
+    objs.append(mbf.done(name + '_rf_up', smooth=False))
     cm = flat(CAT_COL[cat], 0.5)
     slots = []
     for li, z in enumerate(levels):
         for y in (0.0, depth):
-            objs.append(box(name + '_beam', (length - 0.12, 0.07, 0.11), (0, y + (0.035 if y == 0 else -0.035),
-                                                                           z - 0.11), mat=beam, bevel=0.012))
+            objs.append(box(name + ('_rf_beam' if y == 0 else '_beam'), (length - 0.12, 0.07, 0.11),
+                            (0, y + (0.035 if y == 0 else -0.035), z - 0.11), mat=beam, bevel=0.012))
         objs.append(box(name + '_deck', (length - 0.14, depth - 0.06, 0.035), (0, depth / 2, z - 0.035), mat=deck,
                         bevel=0.006))
         for k in range(1, 5):
@@ -404,8 +409,8 @@ def rack_unit(name, length, depth, levels, top, cat, header=True, slots_per_leve
         # category tags on the front beam (small coloured labels)
         for j in range(slots_per_level):
             xs = -hl + length * (j + 0.5) / slots_per_level
-            objs.append(box(name + '_tag', (0.22, 0.012, 0.07), (xs, -0.005, z - 0.095), mat=cm, bevel=0.004))
-            objs.append(box(name + '_tagw', (0.12, 0.014, 0.03), (xs - 0.02, -0.007, z - 0.075),
+            objs.append(box(name + '_rf_tag', (0.22, 0.012, 0.07), (xs, -0.005, z - 0.095), mat=cm, bevel=0.004))
+            objs.append(box(name + '_rf_tagw', (0.12, 0.014, 0.03), (xs - 0.02, -0.007, z - 0.075),
                             mat=flat('#FBF6EA', 0.6), bevel=0.0))
             slots.append({'level': li, 'slot': j, 'local': (xs, depth / 2, z), 'width': length / slots_per_level})
     if header:
@@ -798,7 +803,7 @@ def interior_decor():
         ht.cone(0.09, 0.09, 0.06, flat(X.RUBBER, 0.6), loc=(x, 0.08, 0.09), rot=(0, 90, 0), segs=14)
     objs.append(ht.done('handtruck', loc=(-0.65, -3.5, 0), rot=(0, 0, 12)))
     for k, (x, y) in enumerate(((CORR_X + 0.7, -0.2), (3.95, 2.95), (-0.8, 2.95))):
-        if k == 2:
+        if k != 0:                      # k 1 stood inside the appliances rack (stock slot), k 2 in the lane
             continue
         objs.append(cyl('cone%d' % k, 0.13, 0.42, (x, y, 0.03), mat=X.hazard('#F08A2D', '#F4F1EA', 6.0, 0.0,
                                                                               ('X', 'Z')),
@@ -1168,6 +1173,11 @@ def build():
         interior_decor()
         office_back()
         office_lamp_base()
+    # rack FRONT parts (front uprights, front beams, beam tags): group 'rackf' = drawn above the stock, below the
+    # pickers / forklift (lgx_pack derives _interior_racks = _interior x the rmask pass)
+    for o in bpy.context.scene.objects:
+        if o.get('lgx') == 'interior' and '_rf_' in o.name:
+            o['lgx'] = 'rackf'
     with Group('front_f'):
         conveyor_static()
         packing_table()

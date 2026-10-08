@@ -33,6 +33,8 @@ const HANDLED = new Set(['version', 'fragment', 'extends', 'requires', 'anims', 
 
 /** Merge one fragment block F (townfolk2 format: townfolk2 / beachfolk / cityfolk) into the merged block M (in place). */
 export function mergeTownfolkFragment(M, F, name = F.fragment || 'fragment') {
+  M.animFragment = M.animFragment || {};
+  for (const a of Object.keys(F.anims || {})) M.animFragment[a] = name;
   for (const k of ['anims', 'timeline', 'headPoses', 'parts', 'z', 'tintRef', 'palettes', 'frameAtlas']) {
     for (const [key, v] of Object.entries(F[k] || {})) {
       if (M[k] && key in M[k]) throw new Error(`${name} redefines ${k}.${key}`);
@@ -62,6 +64,15 @@ export function mergeTownfolkFragment(M, F, name = F.fragment || 'fragment') {
   G.slotPalette = Object.assign({}, G.slotPalette, G2.slotPalette || {});
   G.exclude = [...G.exclude, ...clone(G2.exclude || [])];
   G.extraSlots = [...new Set([...(G.extraSlots || []), ...(G2.extraSlots || [])])];
+  for (const [key, v] of Object.entries(G2)) {         // other generator keys (beachfolk: beachSlots, animParts, ...)
+    if (['presets', 'slotPalette', 'exclude', 'extraSlots'].includes(key)) continue;
+    if (Array.isArray(G[key]) && Array.isArray(v)) {
+      const cur = [...G[key]], seen = new Set(cur.map((x) => JSON.stringify(x)));
+      for (const x of clone(v)) if (!seen.has(JSON.stringify(x))) cur.push(x);
+      G[key] = cur;
+    } else if (isObj(G[key]) && isObj(v)) G[key] = Object.assign({}, G[key], clone(v));
+    else G[key] = clone(v);
+  }
   M.faceExprs = M.faceExprs || {};
   for (const [hp, lst] of Object.entries(F.faceExprs || {})) {
     const cur = M.faceExprs[hp] || (M.faceExprs[hp] = []);
@@ -95,7 +106,8 @@ export function mergeTownfolkFragments(man, ...frags) {
   const atlases = [...man.atlases];
   for (const fm of frags) {
     if (!fm) continue;
-    const key = Object.keys(fm).find((k) => isObj(fm[k]) && fm[k].extends === 'townfolk');
+    const ext = (k) => (isObj(fm[k]) ? fm[k].extends : null);         // beachfolk: extends ['townfolk', 'townfolk2']
+    const key = Object.keys(fm).find((k) => ext(k) === 'townfolk' || (Array.isArray(ext(k)) && ext(k).includes('townfolk')));
     if (!key) throw new Error('not a townfolk fragment manifest');
     for (const r of fm[key].requires || []) if (!M.fragments.includes(r)) throw new Error(`${key} needs ${r} merged first`);
     mergeTownfolkFragment(M, fm[key], key);
@@ -117,6 +129,7 @@ export class Cityfolk extends Townfolk2 {
     const sx = B.scaleX || 1;
     const tl = T.timeline[anim][d][i];
     const hp = tl.hp;
+    const hd = tl.hd || d;                               // beachfolk: head frame dir when it differs from the anim dir
     let expr = tl.face, brow = tl.brow;
     if (opts.face && ((T.faceExprs || {})[hp] || []).includes(opts.face)) { expr = opts.face; brow = T.exprBrow[opts.face] || 'neutral'; }
     const zf = new Set(tl.zfront || []);
@@ -136,29 +149,31 @@ export class Cityfolk extends Townfolk2 {
     }
     const hat = this.wearsFullHat(person);
     const heads = [];
-    const parts = [...person.parts];
+    const parts = this.animParts(person, anim);
     if (!opts.noItems) for (const it of (T.animItems || {})[anim] || []) if (!parts.includes(it)) parts.push(it);
     for (const pn of parts) {
       const P = T.parts[pn];
       if (P.noAnims && P.noAnims.includes(anim)) continue;
       if (P.onlyAnims && !P.onlyAnims.includes(anim)) continue;
+      if (P.anims && !P.anims.includes(anim)) continue;   // beachfolk parts: frames only in their anims
       for (const [s, sd] of Object.entries(P.subs)) {
         let z = typeof sd.z === 'object' ? sd.z[d] : sd.z;
-        if (sd.follow) z = limbZ[sd.follow] + 0.5;
+        if (sd.follow) z = limbZ[sd.follow] + (sd.followDz ?? 0.5);
         if (sd.zfrontFollow && zf.has(sd.zfrontFollow)) z = T.limbs[sd.zfrontFollow].zFront + 0.5;
         if (P.space === 'body') {
           push(z, `${pn}.${s}`, `${pn}.${s}@${base}/${anim}_${d}_${i}`, this.tint(person, sd.tint), false);
         } else {
+          const zh = typeof sd.z === 'object' ? sd.z[hd] : sd.z;
           const suf = hat && P.hatfit ? '~hat' : '';
-          heads.push([z, `${pn}.${s}${suf}`, this.tint(person, sd.tint)]);
-          if (sd.sheen) heads.push([z + 0.5, `${pn}.${s}${suf}.sheen`, null]);
+          heads.push([zh, `${pn}.${s}${suf}`, this.tint(person, sd.tint)]);
+          if (sd.sheen) heads.push([zh + 0.5, `${pn}.${s}${suf}.sheen`, null]);
         }
       }
     }
     const Z = T.z;
-    const hf = (layer) => `${layer}/${hp}_${d}`;
+    const hf = (layer) => `${layer}/${hp}_${hd}`;
     push(Z.head, `head.${person.nose || 'dot'}`, hf(`head.${person.nose || 'dot'}`), this.tint(person, 'skin'), true);
-    if (T.faceDirs.includes(d)) {
+    if (((T.faceDirsByPose || {})[hp] || T.faceDirs).includes(hd)) {
       const fs = person.face || 'std';
       push(Z.face, `face.${fs}.${expr}`, hf(`face.${fs}.${expr}`), null, true);
       push(Z.brow, `brow.${fs}.${brow}`, hf(`brow.${fs}.${brow}`), this.tint(person, 'hair'), true);
@@ -170,17 +185,29 @@ export class Cityfolk extends Townfolk2 {
     return out;
   }
 
-  /** true when every worn body part has frames in `anim` (cityfolk coverage, see header) */
+  /** the person's parts + the props a (beachfolk) anim always shows (generator.animParts) */
+  animParts(person, anim) {
+    const parts = [...person.parts];
+    for (const pn of (this.T.generator.animParts || {})[anim] || []) if (!parts.includes(pn) && this.T.parts[pn]) parts.push(pn);
+    return parts;
+  }
+
+  /** true when every worn body part has frames in `anim`: cityfolk anims / cityfolk parts -> bases[b].cfCover[anim];
+   *  parts with `anims` (beachfolk) -> that list; other v4 / v5 parts -> only the anims of townfolk / townfolk2 */
   canPlay(person, anim) {
     const T = this.T;
     if (!T.anims[anim]) return false;
     const cover = (T.bases[person.base].cfCover || {})[anim];
     const cf = new Set(T.cfParts || []);
     const isCf = (T.cityfolkAnims || []).includes(anim);
-    for (const pn of person.parts) {
+    const fr = (T.animFragment || {})[anim] || 'townfolk';
+    const old = fr === 'townfolk' || fr === 'townfolk2';
+    for (const pn of this.animParts(person, anim)) {
       const P = T.parts[pn];
-      if (!P || P.space !== 'body' || isItem(P)) continue;
-      if (isCf || cf.has(pn)) { if (!cover || !cover.includes(pn)) return false; }
+      if (!P || P.space !== 'body' || isItem(P) || !P.subs || !Object.keys(P.subs).length) continue;
+      if (P.anims) { if (!P.anims.includes(anim)) return false; }
+      else if (isCf || cf.has(pn)) { if (!cover || !cover.includes(pn)) return false; }
+      else if (!old) return false;
     }
     return true;
   }

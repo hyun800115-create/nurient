@@ -8,7 +8,7 @@
 // residents fleeing, police running after a fleeing burglar, an arrest, movers with boxes, sweepers, reporters,
 // a scuffle, bank staff, everybody else idling / walking.  Audits every frame of every anim each staged person
 // can play (core head / face / brow frames must exist, every layer must resolve to a loaded texture), counts draw
-// calls and texture units, page errors; writes docs/previews/cityfolk_phaser.png + /tmp/fv_review/cityfolk_phaser.json.
+// calls and texture units, page errors; writes docs/previews/cityfolk_phaser.png + /tmp/fv_cache/cityfolk/review/cityfolk_phaser.json.
 // Parity mode: recomputes every Python draw list dumped by cf_check.py --dump (person, anim -> pickAnim, dir,
 // frame, face, noItems) with Cityfolk.layers / pickAnim / canPlay / points and compares them.
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ async function parity(casesPath) {
   const man = rd('townfolk');
   const M = mergeTownfolkFragments(man, ...FRAGS.map(rd));
   // generic merge == townfolk2's own merge for v4 + v5
-  const a = mergeTownfolkFragments(man, rd('townfolk2')).townfolk; delete a.fragments;
+  const a = mergeTownfolkFragments(man, rd('townfolk2')).townfolk; delete a.fragments; delete a.animFragment;
   const b = mergeTownfolkManifests(man, rd('townfolk2')).townfolk;
   const sortKeys = (o) => (Array.isArray(o) ? o.map(sortKeys) : (o && typeof o === 'object' ? Object.fromEntries(Object.keys(o).sort().map((k) => [k, sortKeys(o[k])])) : o));
   const same = JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b));
@@ -176,13 +176,13 @@ async function phaser() {
   await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'cityfolk_phaser.png') });
   console.log(JSON.stringify(res));
   if (errors.length) console.log('ERRORS', errors.slice(0, 10));
-  fs.mkdirSync('/tmp/fv_review', { recursive: true });
-  fs.writeFileSync('/tmp/fv_review/cityfolk_phaser.json', JSON.stringify({ res, errors }, null, 1));
+  fs.mkdirSync('/tmp/fv_cache/cityfolk/review', { recursive: true });
+  fs.writeFileSync('/tmp/fv_cache/cityfolk/review/cityfolk_phaser.json', JSON.stringify({ res, errors }, null, 1));
   await browser.close();
   await srv.close();
   process.exit(errors.length || res.missing ? 1 : 0);
 }
 
 const i = process.argv.indexOf('--parity');
-if (i >= 0) await parity(process.argv[i + 1] || '/tmp/fv_review/cityfolk_cases.json');
+if (i >= 0) await parity(process.argv[i + 1] || '/tmp/fv_cache/cityfolk/review/cityfolk_cases.json');
 else await phaser();

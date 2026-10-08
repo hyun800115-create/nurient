@@ -31,7 +31,7 @@ VEHICLES = ['forklift', 'forklift_loaded', 'delivery_van_red', 'delivery_van_blu
             'moving_truck', 'pallet_jack']
 CENTER = 'logistics_center'
 REQUIRED_ALL = [CENTER] + ITEMS + PRODUCERS + VEHICLES
-LAYERS = ['back', 'floor', 'interior', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']
+LAYERS = ['back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']
 PATCHES = {'conveyor': 8, 'dock1': 6, 'dock2': 6, 'lamp': 4}
 CATEGORIES = ['materials', 'food', 'goods', 'furniture', 'tools', 'appliances']
 VEH_ANIMS = {'forklift': {'idle': 2, 'move': 4, 'lift': 6}, 'forklift_loaded': {'idle': 2, 'move': 4, 'lift': 6},
@@ -131,6 +131,8 @@ def main():
             if cat not in cats:
                 err('no rack slots for category %s' % cat)
         for s in c.get('rackSlots', []):
+            if s.get('band') not in ('stock', 'front'):
+                err('rack slot %s L%d S%d: band %s' % (s['rack'], s['level'], s['slot'], s.get('band')))
             if s.get('maxStackPx', 0) < 30:
                 err('rack slot %s L%d S%d: maxStackPx %s < 30' % (s['rack'], s['level'], s['slot'],
                                                                    s.get('maxStackPx')))
@@ -142,6 +144,8 @@ def main():
             if b not in ('mid', 'front', 'any', 'outside'):
                 err('bad band %s' % b)
         for e in c.get('forkliftPath', []):
+            if e['legBand'] not in ('mid', 'front', 'outside', 'mixed'):
+                err('forklift leg at %s: bad legBand %s' % (e['point'], e['legBand']))
             if e['legBand'] == 'mixed':
                 warns.append('forklift leg at %s has a mixed band (switch band at the next node)' % e['point'])
         val = man.get('logistics', {}).get('validation', {})

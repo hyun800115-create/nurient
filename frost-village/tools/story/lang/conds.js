@@ -27,9 +27,24 @@ export const CONDS = [
   // where the conversation happens, and a few things about the listener
   'athome', 'atwork', 'atschool', 'atshop', 'outdoors', 'l_owner', 'l_police', 'l_fire', 'l_kidof', 'l_worried',
   'lkid', 'samejob', 'neighbor', 'cowork', 'classmate', 'grand', 'sibling', 'twice', 'many', 'big', 'self2', 'x_elder',
+  // who the story is about (X = the main person of the fact), more listener facts
+  'x_kid', 'x_adult', 'x_plural_kids', 'l_shy', 'l_elder_rel', 'first_talk', 'chief_talk', 'x_police', 'x_newcomer',
 ];
 
-if (CONDS.length > 128) throw new Error('story: too many condition flags (' + CONDS.length + ' > 128)');
+if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');
+
+// Conversation tags: an alternative can mark what it said ('=meal' — it asked whether you have eaten) and
+// the next line can require ('^meal') or forbid ('!^meal') it, so replies answer what was actually said.
+// '@paper' / '!@paper' test the tags already set earlier in the same line (no double "in the paper").
+export const TAGS = [
+  'q', 'meal', 'how', 'where', 'busy', 'doing', 'sleepq', 'praise', 'play', 'go', 'snowman', 'snowfight', 'sled',
+  'cold', 'snowy', 'sunny', 'windy', 'foggy', 'mild', 'miss', 'tired', 'hungry', 'happy', 'sad', 'hw', 'work',
+  'paper', 'newsq', 'visited', 'plansq', 'taste', 'why', 'age', 'live', 'likeq', 'joke', 'thanks', 'sorry',
+  'bung', 'cocoa', 'taller', 'sick', 'price', 'save', 'news', 'icicle', 'stars', 'dog', 'train', 'shopq',
+];
+if (TAGS.length > 64) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 64)');
+export const TAG = Object.create(null);
+TAGS.forEach((n, i) => { TAG[n] = i; });
 
 export const COND = Object.create(null);
 CONDS.forEach((n, i) => { COND[n] = i; });

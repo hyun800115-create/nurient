@@ -12,8 +12,11 @@
 // An alternative may start with '?cond cond !cond *3?' — required / forbidden condition flags
 // (lang/conds.js) and an optional weight. Alternatives that need a slot the context does not have are
 // never chosen (computed transitively through rule references).
+// Conversation tags in the same header: '=tag' marks what this alternative says (a question about
+// meals, a compliment …), '^tag' / '!^tag' require / forbid that the previous line carried the tag (so a
+// reply answers what was really said), '@tag' / '!@tag' test tags set earlier in the same line.
 
-import { COND } from './conds.js';
+import { COND, TAG } from './conds.js';
 import { particle, finalKind } from './josa.js';
 
 const T_TEXT = 0, T_RULE = 1, T_SLOT = 2, T_JOSA = 3, T_LEVEL = 4, T_CHOICE = 5;
@@ -47,6 +50,14 @@ export class Grammar {
     }
     // resolve rule references and the slots each alternative needs (fixpoint through references)
     for (const name of names) for (const a of this.rules[name].alts) this.resolve(a.parts, name);
+    // top-level references of each alternative (an alternative whose referenced rule has nothing to say
+    // in the current context is skipped) and rules that can always say something
+    for (const name of names) for (const a of this.rules[name].alts) {
+      a.refs = [];
+      for (const p of a.parts) if (p.t === T_RULE && a.refs.indexOf(p.r) < 0) a.refs.push(p.r);
+      a.free = !a.refs.length && !(a.m0 | a.m1 | a.m2 | a.m3 | a.m4 | a.pm0 | a.pm1 | a.cm0 | a.cm1 | a.n0 | a.n1 | a.n2 | a.n3 | a.n4 | a.pn0 | a.pn1 | a.cn0 | a.cn1 | a.directNeed);
+    }
+    for (const name of names) { const R = this.rules[name]; R.always = R.alts.some((a) => a.free); }
     for (let pass = 0; pass < 6; pass++) {
       let changed = false;
       for (const name of names) {
@@ -66,7 +77,9 @@ export class Grammar {
   }
 
   compileAlt(src, ruleName) {
-    let w = 1, m = [0, 0, 0, 0], n = [0, 0, 0, 0];
+    let w = 1;
+    const m = [0, 0, 0, 0, 0], n = [0, 0, 0, 0, 0];
+    const ts = [0, 0], pm = [0, 0], pn = [0, 0], cm = [0, 0], cn = [0, 0];
     let s = src;
     if (typeof s !== 'string') throw new Error(`grammar ${this.lang}: ${ruleName}: alternative is not a string`);
     if (s.charAt(0) === '?') {
@@ -76,7 +89,16 @@ export class Grammar {
         if (!tok) continue;
         if (tok.charAt(0) === '*') { w = +tok.slice(1) || 1; continue; }
         const neg = tok.charAt(0) === '!';
-        const nm = neg ? tok.slice(1) : tok;
+        let nm = neg ? tok.slice(1) : tok;
+        const c0 = nm.charAt(0);
+        if (c0 === '=' || c0 === '^' || c0 === '@') {
+          nm = nm.slice(1);
+          const t = TAG[nm];
+          if (t === undefined) throw new Error(`grammar ${this.lang}: ${ruleName}: unknown tag "${nm}" in "${src}"`);
+          const arr = c0 === '=' ? ts : c0 === '^' ? (neg ? pn : pm) : (neg ? cn : cm);
+          arr[t >> 5] |= 1 << (t & 31);
+          continue;
+        }
         const i = COND[nm];
         if (i === undefined) throw new Error(`grammar ${this.lang}: ${ruleName}: unknown condition "${nm}" in "${src}"`);
         (neg ? n : m)[i >> 5] |= 1 << (i & 31);
@@ -88,7 +110,9 @@ export class Grammar {
     if (wm) { w = +wm[1]; s = s.slice(wm[0].length); }
     const ctx = { need: 0 };
     const [parts] = parse(s, 0, '', ctx, this.lang, ruleName);
-    const alt = { parts, m0: m[0], m1: m[1], m2: m[2], m3: m[3], n0: n[0], n1: n[1], n2: n[2], n3: n[3], w, gid: this.altCount++, directNeed: ctx.need, need: ctx.need, rule: ruleName, src };
+    const alt = { parts, m0: m[0], m1: m[1], m2: m[2], m3: m[3], m4: m[4], n0: n[0], n1: n[1], n2: n[2], n3: n[3], n4: n[4],
+      ts0: ts[0], ts1: ts[1], pm0: pm[0], pm1: pm[1], pn0: pn[0], pn1: pn[1], cm0: cm[0], cm1: cm[1], cn0: cn[0], cn1: cn[1],
+      w, gid: this.altCount++, directNeed: ctx.need, need: ctx.need, rule: ruleName, src };
     this.allAlts.push(alt);
     return alt;
   }
@@ -114,13 +138,15 @@ export class Grammar {
 
   /**
    * expand rule `name` for context `ctx` and return the text ('' if nothing fits)
-   * ctx: { f0, f1, f2, f3 (condition masks), slots (bitmask of present slots), level (0..3),
-   *        rng (has next()), get(slot) -> string, recent (Int32Array ring) / rpos, track (bool) }
+   * ctx: { f0 … f4 (condition masks), p0, p1 (tags of the previous line), t0, t1 (tags set so far in
+   *        this line, updated), slots (bitmask of present slots), level (0..3), rng (has next()),
+   *        get(slot) -> string, recent (Int32Array ring) / rpos, track (bool) }
    */
   expand(name, ctx) {
     const r = this.rules[name];
     if (!r) return '';
     const out = { s: '' };
+    ctx.t0 = 0; ctx.t1 = 0;
     this.expandRule(r, ctx, out, 0);
     return out.s;
   }
@@ -136,18 +162,29 @@ export class Grammar {
   choose(r, ctx) {
     const alts = r.alts, n = alts.length;
     if (!n) return null;
-    const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, have = ctx.slots;
+    const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
+    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0;
     const rec = ctx.recent, useRecent = rec && n >= 3;
     let sum = 0, sumAll = 0;
     const W = scratchW;
     for (let i = 0; i < n; i++) {
       const a = alts[i];
-      if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 ||
-          (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3)) { W[i] = -1; continue; }
+      if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
+          (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
+          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pn0 & p0) || (a.pn1 & p1) ||
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cn0 & t0) || (a.cn1 & t1)) { W[i] = -1; continue; }
       let w = a.w;
       sumAll += w;
       if (useRecent && recentHas(rec, a.gid)) { W[i] = -w; continue; }   // remembered: only as a last resort
       W[i] = w; sum += w;
+    }
+    // drop alternatives that reference a rule with nothing to say here
+    for (let i = 0; i < n; i++) {
+      const a = alts[i];
+      if (W[i] === -1 || !a.refs.length) continue;
+      let ok = true;
+      for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, 0)) { ok = false; break; }
+      if (!ok) { if (W[i] > 0) sum -= W[i]; else sumAll += W[i]; sumAll -= a.w; W[i] = -1; }
     }
     let pick = -1;
     if (sum > 0) {
@@ -161,9 +198,30 @@ export class Grammar {
     }
     if (pick < 0) return null;
     const a = alts[pick];
+    ctx.t0 = t0 | a.ts0; ctx.t1 = t1 | a.ts1;
     if (useRecent) { rec[ctx.rpos.v] = a.gid + 1; ctx.rpos.v = (ctx.rpos.v + 1) % rec.length; }
     if (ctx.track) this.used[a.gid] = 1;
     return a;
+  }
+
+  /** true when rule r has at least one alternative that fits ctx (looking a few references deep) */
+  canExpand(r, ctx, depth) {
+    if (r.always) return true;
+    if (depth > 3) return true;
+    const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
+    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0;
+    const alts = r.alts;
+    for (let i = 0; i < alts.length; i++) {
+      const a = alts[i];
+      if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
+          (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
+          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pn0 & p0) || (a.pn1 & p1) ||
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cn0 & t0) || (a.cn1 & t1)) continue;
+      let ok = true;
+      for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, depth + 1)) { ok = false; break; }
+      if (ok) return true;
+    }
+    return false;
   }
 
   emit(parts, ctx, out, depth) {

@@ -387,6 +387,11 @@ def veh_entry(k, m, atlas_key):
     for f in ('cargoGround', 'tipPoint', 'dumpPoint', 'digPoint', 'framePoints'):
         if f in m:
             e[f] = m[f]
+    fp = m.get('framePoints', {})
+    if 'bucketPoints' in fp:            # contract name (CONTRACT_V8 AB): bucketPoint[anim][dir][frame] = px offset
+        e['bucketPoint'] = fp['bucketPoints']
+    if 'bedPoints' in fp:
+        e['bedPoint'] = fp['bedPoints']
     if 'crew' in m:
         e['crew'] = m['crew']
     return e

@@ -11,10 +11,11 @@ win) and REFUSES (exit 1, nothing written) when a key of the current manifest or
 complete render in the cache.  --allow-partial packs what is cached.  An empty manifest is never written.
 
 The logistics centre
-  * layers (same frameSize + anchor): back, floor, interior, interior_front (= interior x the front-furniture mask),
-    stub, shell_cut, shell, props; patches: conveyor (8), dock door 1 / 2 (6 each), office lamp (4).
+  * layers (same frameSize + anchor): back, floor, interior, interior_racks (= interior x the rack-front mask: front
+    uprights + beams drawn over the stock), interior_front (= interior x the front-furniture mask), stub, shell_cut,
+    shell, props; patches: conveyor (8), dock door 1 / 2 (6 each), office lamp (4).
   * palette groups: every layer that is drawn exactly on top of another one shares its sheet (and palette):
-    lgx_center_a = shell + dock door patches, lgx_center_b = interior + interior_front + conveyor + lamp,
+    lgx_center_a = shell + dock door patches, lgx_center_b = interior + interior_racks + interior_front + conveyor + lamp,
     lgx_center_c = back + floor + stub + shell_cut + props.
   * depth bands are VALIDATED here against the interior's 16-bit view-depth pass: every standing point, every
     forklift path sample and every rack slot is tested against the rendered interior pixels (what is in front of it,
@@ -46,14 +47,17 @@ MAX_SHEET = 2048
 BUDGET_MB = 7.0
 KX, KY, KZ = 45.2548, 22.6274, 55.4256
 CENTER = 'logistics_center'
-LAYERS = ['back', 'floor', 'interior', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']
+LAYERS = ['back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']
+DERIVED = {'interior_front': 'fmask', 'interior_racks': 'rmask'}     # = _interior x mask pass
 LAYER_SRC = {'shell_cut': 'cut'}
 SHEET_OF = {'shell': 'lgx_center_a', 'interior': 'lgx_center_b', 'interior_front': 'lgx_center_b',
+            'interior_racks': 'lgx_center_b',
             'back': 'lgx_center_c', 'floor': 'lgx_center_c', 'stub': 'lgx_center_c', 'shell_cut': 'lgx_center_c',
             'props': 'lgx_center_c'}
 PATCHES = {'conveyor': ('belt', 8, 'lgx_center_b', 8, -1), 'dock1': ('door1', 6, 'lgx_center_a', 8, 0),
            'dock2': ('door2', 6, 'lgx_center_a', 8, 0), 'lamp': ('lamp', 4, 'lgx_center_b', 4, -1)}
-DEPTH = {'back': -0.40, 'floor': -0.35, 'interior': -0.30, 'lamp': -0.29, 'stock': -0.25, 'mid': -0.20,
+DEPTH = {'back': -0.40, 'floor': -0.35, 'interior': -0.30, 'lamp': -0.29, 'stock': -0.25, 'interior_racks': -0.22,
+         'mid': -0.20,
          'interior_front': -0.10, 'conveyor': -0.09, 'front': -0.05, 'stub': -0.02, 'shell_cut': -0.015,
          'shell': 0.0, 'dock1': 0.001, 'dock2': 0.001, 'props': 0.01}
 VEH_ORDER = ['forklift', 'forklift_loaded', 'pallet_jack', 'delivery_van_red', 'delivery_van_blue',
@@ -77,7 +81,7 @@ def load_center(cache):
     if not os.path.exists(mp):
         return None
     meta = json.load(open(mp))
-    need = ['back', 'floor', 'interior', 'fmask', 'stub', 'cut', 'shell', 'props', 'depth_interior']
+    need = ['back', 'floor', 'interior', 'fmask', 'rmask', 'stub', 'cut', 'shell', 'props', 'depth_interior']
     for k, (pre, n, _, _, _) in PATCHES.items():
         need += ['%s_%d' % (pre, f) for f in range(n)]
     miss = [n for n in need if not os.path.exists(os.path.join(d, n + '.png'))]
@@ -112,7 +116,7 @@ def center_images(meta):
         return Image.open(os.path.join(d, n + '.png')).convert('RGBA')
     imgs = {}
     for name in LAYERS:
-        if name == 'interior_front':
+        if name in DERIVED:
             continue
         im = ld(LAYER_SRC.get(name, name))
         if name == 'shell':
@@ -121,12 +125,13 @@ def center_images(meta):
             im = pu.clean_alpha(im, floor=3)
         imgs[name] = im
     a = np.asarray(imgs['interior']).astype(np.float32)
-    m = np.asarray(ld('fmask')).astype(np.float32)[..., 3] / 255.0
-    m[m < 0.06] = 0.0
-    f = a.copy()
-    f[..., 3] *= m
-    f[f[..., 3] < 2] = 0
-    imgs['interior_front'] = Image.fromarray(np.clip(f + 0.5, 0, 255).astype(np.uint8), 'RGBA')
+    for name, mask in DERIVED.items():
+        m = np.asarray(ld(mask)).astype(np.float32)[..., 3] / 255.0
+        m[m < 0.06] = 0.0
+        f = a.copy()
+        f[..., 3] *= m
+        f[f[..., 3] < 2] = 0
+        imgs[name] = Image.fromarray(np.clip(f + 0.5, 0, 255).astype(np.uint8), 'RGBA')
     patches = {}
     for k, (pre, n, _, _, _) in PATCHES.items():
         patches[k] = [pu.clean_alpha(ld('%s_%d' % (pre, i)), floor=3) for i in range(n)]
@@ -161,6 +166,7 @@ class Depth:
         self.depth = dm['min'] + raw / mx * (dm['max'] - dm['min'])
         self.cover = np.asarray(imgs['interior'])[..., 3] > 140
         self.front = np.asarray(imgs['interior_front'])[..., 3] > 140
+        self.rack = np.asarray(imgs['interior_racks'])[..., 3] > 60      # rack fronts: drawn ABOVE the stock
         self.ok = self.valid & self.cover
         self.b = np.array(meta['camBack'])
         self.ax, self.ay = meta['anchorPx']
@@ -217,7 +223,7 @@ class Depth:
             h = k / KZ
             ad = self.dworld((p[0], p[1], p[2] + h)) - item_r
             x0, x1 = max(0, int(sx - half_w)), min(self.W, int(sx + half_w + 1))
-            ok = self.ok[row, x0:x1]
+            ok = self.ok[row, x0:x1] & ~self.rack[row, x0:x1]
             if (ok & (self.depth[row, x0:x1] < ad - 0.03)).sum() > 2:
                 free = k
                 break
@@ -271,8 +277,11 @@ def validate(meta, dep):
         out['forklift'].append(reqs)
     for s in P['rackSlots']:
         free, bf = dep.stack(s['world'])
-        out['slots'].append((free, bf))
-        if bf > 25:
+        # rack slots: band 'stock' (above _interior, below _interior_racks); floor bays stand in the open in front
+        # of the conveyor / packing table -> band 'front' (y-sorted with the front actors)
+        band = 'front' if s['rack'] == 'floor_bays' else 'stock'
+        out['slots'].append((free, bf, band))
+        if bf > 25 and band == 'stock':
             out['issues'].append('slot %s L%d S%d: front furniture behind the stack (%d px)' % (s['rack'], s['level'],
                                                                                                s['slot'], bf))
         if free < 30:
@@ -283,12 +292,14 @@ def validate(meta, dep):
 # =================================================================================================== manifest entries
 
 def pick_band(reqs):
-    bands = set(b for b, _ in reqs if b not in ('any',))
+    """-> (band of the leg inside the building, crosses the outer wall?)"""
+    out = any(b == 'outside' for b, _ in reqs)
+    bands = set(b for b, _ in reqs if b not in ('any', 'outside'))
     if not bands:
-        return 'mid'
+        return ('outside' if out and all(b == 'outside' for b, _ in reqs) else 'front'), out
     if len(bands) == 1:
-        return bands.pop()
-    return 'mixed'
+        return bands.pop(), out
+    return 'mixed', out
 
 
 def center_entries(meta, frame_atlas, val):
@@ -329,13 +340,16 @@ def center_entries(meta, frame_atlas, val):
     order = sorted(range(len(P['rackSlots'])), key=lambda i: (px(P['rackSlots'][i]['world'])[1], i))
     rank = {i: r for r, i in enumerate(order)}
     for i, s in enumerate(P['rackSlots']):
-        free, bf = val['slots'][i]
+        free, bf, band = val['slots'][i]
         slots.append({'rack': s['rack'], 'category': s['category'], 'level': s['level'], 'slot': s['slot'],
                       'point': px(s['world']), 'maxStackPx': int(free), 'widthM': s['widthM'],
-                      'face': s['face'], 'drawOrder': rank[i]})
+                      'face': s['face'], 'band': band, 'drawOrder': rank[i]})
     fpath = []
     for i, node in enumerate(P['forkliftPath']):
-        e = {'point': px(node['at']), 'dir': node['dir'], 'legBand': pick_band(val['forklift'][i])}
+        lb, cross = pick_band(val['forklift'][i])
+        e = {'point': px(node['at']), 'dir': node['dir'], 'legBand': lb}
+        if cross:
+            e['legCrossesWall'] = True
         if node.get('action'):
             e['action'] = node['action']
         if node.get('note'):
@@ -355,9 +369,9 @@ def center_entries(meta, frame_atlas, val):
         'footprintM': [D['W'], D['D']], 'footprint': [int(round((D['W'] + D['D']) * KX)),
                                                       int(round((D['W'] + D['D']) * KY))],
         'footprintPoly': meta['footprintPoly'], 'revealPoly': rp,
-        'layers': lay, 'layerOrder': ['back', 'floor', 'interior', 'lamp', '<stock>', '<actors mid>',
-                                      'interior_front', 'conveyor', '<actors front>', 'stub', 'shell_cut', 'shell',
-                                      'dock1', 'dock2', 'props'],
+        'layers': lay, 'layerOrder': ['back', 'floor', 'interior', 'lamp', '<stock>', 'interior_racks',
+                                      '<actors mid>', 'interior_front', 'conveyor', '<actors front + floor stock>',
+                                      'stub', 'shell_cut', 'shell', 'dock1', 'dock2', 'props'],
         'patches': patch_keys,
         'reveal': {'states': {'closed': {'shell': 1.0, 'shell_cut': 0.0},
                               'half': {'shell': 0.45, 'shell_cut': 0.0},
@@ -466,9 +480,13 @@ CONVENTIONS = {
                 'between _interior (+ stock) and _interior_front (they stand BEHIND the counter / conveyor / packing '
                 'table, which hide their legs), "front" = above _interior_front. Sort actors inside a band by their '
                 'own y. Bands are validated against the rendered depth (staffBands / customerBands / '
-                'forkliftPath[].legBand). Stock: draw the item sprites of a rack slot at slot.point (bottom of the '
-                'stack), stacked by stackStep (optionally scaled, e.g. 0.8), never higher than maxStackPx, in '
-                'drawOrder, between _interior and the mid band. _stub (front walls at 0.45 m) and _props (apron '
+                'forkliftPath[].legBand; legCrossesWall = the leg leaves / enters through a dock door: outside the '
+                'wall use the outside rule). Stock: draw the item sprites of a rack slot at slot.point (bottom of '
+                'the stack), stacked by stackStep (optionally scaled, e.g. 0.8), never higher than maxStackPx, in '
+                'drawOrder. slot.band "stock" = between _interior and _interior_racks (the rack front uprights and '
+                'beams are drawn OVER the goods, so they sit inside the racks; empty slot = bare shelf); slot.band '
+                '"front" (the materials floor bays) = y-sorted with the front actors. _stub (front walls at 0.45 m) '
+                'and _props (apron '
                 'props) are always drawn; _shell (+ dock door patches) fades for the reveal; _shell_cut is the '
                 'optional walls-at-1.6 m state.'),
     'outsideActors': ('Characters / vehicles outside the building: normal y-sort, but the building is big - an '

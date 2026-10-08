@@ -11,18 +11,21 @@
  },
  "hoseAim": {
   "segment": "fx_hose_stream",
-  "segmentLengthPx": 64,
+  "segmentLengthPx": 32,
   "segmentThicknessPx": 10,
-  "stepPx": 40,
+  "stepPx": 32,
+  "ropeTexture": "fx_hose_rope",
+  "ropeLengthPx": 256,
   "tip": "fx_hose_tip",
   "impact": [
    "fx_water_mist",
    "fx_steam_puff"
   ],
   "arc": "N = nozzle (cityfolk spray_hose nozzlePoint, or the fire truck hosePoint), T = target (fire anchor + [0, -0.3 * heightPx] or a window). Curve P(s) = N + (T - N) * s + [0, -h * 4 * s * (1 - s)] for s in 0..1 with arc height h = clamp(0.3 * |T - N|, 20, 120) px (the jet arcs up, then falls onto the target).",
-  "chain": "Walk the curve by arc length in steps of L = stepPx: at each step place a sprite of fx_hose_stream with origin (0, 0.5) at the step start, rotation = angle of the curve tangent there, scaleX = 1.15 * L / 64 (slight overlap hides the joints), scaleY = 1.0 -> 0.7 along the arc (the jet thins). Depth: above the firefighter, below the building fire. Put fx_hose_tip at the end point with the last rotation and fx_water_mist at T. Re-aim every frame by recomputing the points (cheap: ~8 sprites).",
-  "rope": "WebGL alternative: this.add.rope(0, 0, \"fx_hose_stream\", 0, points) with points sampled along P(s) every ~16 px; advance its frame with the sheet anim (one draw call, perfectly smooth bends).",
-  "demo": "tools/test/fx_city_phaser.mjs aims streams this way; gen_fx_city_scene.hose_arc() is the Python version used by docs/previews/fxcity_scene.png and fxcity_hose_arc.gif."
+  "chain": "Split the curve into n = ceil(length / stepPx) equal arc-length steps L (<= 32 px): at each step place a sprite of fx_hose_stream with origin (0, 0.5) at the step start, rotation = angle of the curve tangent there, scaleX = (L + 1) / 32 (the texture is seamless, +1 px hides hairline gaps at the bends), scaleY = 1.0 -> 0.7 along the arc (the jet thins). All segments play the same anim in sync. Depth: above the firefighter, below the building fire. Put fx_hose_tip at the end point with the last rotation and fx_water_mist at T. Re-aim every frame by recomputing the points (cheap: ~8 sprites).",
+  "rope": "RECOMMENDED on WebGL: rope = this.add.rope(N.x, N.y, \"fx_hose_rope\", 0, points) with points = P(s) - N sampled every ~12 px (s = 0..1) and rope.setFrame((frame + 1) % 8) at 30 fps (or follow the fx_hose_rope anim); setPoints() again when re-aiming. One draw call, perfectly smooth bends; the 256 px texture is mapped once over the arc, so 200-450 px jets keep about the bead size. Thin it toward the end with rope.setColors / a slightly smaller scaleY, add fx_hose_tip + fx_water_mist at T.",
+  "chainNote": "The segment chain works on every renderer (Canvas too) but shows faint joints at tight bends; prefer the rope on WebGL.",
+  "demo": "tools/test/fx_city_phaser.mjs aims chained streams and ropes; gen_fx_city_scene.hose_rope() / hose_arc() are the Python versions of the rope / chain used by docs/previews/fxcity_scene.png and fxcity_hose_arc.gif."
  },
  "fireMount": {
   "pick": "Pick the fire sheet from the building footprint width fw = sprites[k].footprint[0]: fw <= 280 -> fx_fire_bld_s, fw <= 380 -> fx_fire_bld_m, else fx_fire_bld_l.",
@@ -186,17 +189,32 @@
   {
    "key": "fx_hose_stream",
    "png": "fx_city/fx_hose_stream.png",
-   "frameWidth": 64,
+   "frameWidth": 32,
    "frameHeight": 24,
    "frameCount": 8,
-   "fps": 20,
+   "fps": 30,
    "repeat": -1,
    "anchor": [
     0.0,
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Fire-hose water jet SEGMENT, seamless in x, flowing toward +x by 8 px per frame. Chain copies along an arc from the nozzle to the target (see manifest.hoseAim) or map it onto a Phaser Rope. All segments play the same anim in sync."
+   "notes": "Fire-hose water jet SEGMENT (one 32 px bead period), seamless in x, flowing toward +x by 4 px per frame. Chain copies along an arc from the nozzle to the target (see manifest.hoseAim) or map it onto a Phaser Rope. All segments play the same anim in sync."
+  },
+  {
+   "key": "fx_hose_rope",
+   "png": "fx_city/fx_hose_rope.png",
+   "frameWidth": 256,
+   "frameHeight": 24,
+   "frameCount": 8,
+   "fps": 30,
+   "repeat": -1,
+   "anchor": [
+    0.0,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra: the same flowing jet, 8 bead periods long, as the texture of a Phaser Rope laid along the aimed arc (recommended on WebGL: smooth bends, one draw call; see manifest.hoseAim.rope)."
   },
   {
    "key": "fx_hose_tip",
@@ -204,7 +222,7 @@
    "frameWidth": 96,
    "frameHeight": 64,
    "frameCount": 8,
-   "fps": 20,
+   "fps": 30,
    "repeat": -1,
    "anchor": [
     0.0,

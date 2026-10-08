@@ -213,10 +213,12 @@ def main():
             o = json.load(open(p, encoding='utf-8'))
         except Exception:
             continue
-        for k in set(o.get('sprites', {})) & set(sp):
+        osp = o.get('sprites', {}) if isinstance(o, dict) else {}
+        for k in set(osp if isinstance(osp, dict) else []) & set(sp):
             errs.append('sprite key %s collides with assets/%s' % (k, d))
-        for a in o.get('atlases', []):
-            if a.get('key') in mine_atl:
+        oat = o.get('atlases', []) if isinstance(o, dict) else []
+        for a in (oat if isinstance(oat, list) else []):
+            if isinstance(a, dict) and a.get('key') in mine_atl:
                 errs.append('atlas key %s collides with assets/%s' % (a['key'], d))
     mb = payload / 1048576.0
     if mb > BUDGET_MB:

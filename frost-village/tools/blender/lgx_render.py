@@ -3,7 +3,7 @@ lgx_render.py - render the v8 logistics set (docs/CONTRACT_V8.md section AA) int
 builds assets/logistics/ (atlases + manifest.json) and the docs/previews/lgx_* previews.
 
   * logistics_center (lgx_center.build): ONE scene, many passes that share the frame + anchor (camera never moves):
-        back, floor, interior, fmask (front-furniture mask), stub, cut, shell, props   (full-frame layers)
+        back, floor, interior, fmask (front-furniture mask), rmask (rack-front mask), stub, cut, shell, props
         door1_<f>, door2_<f> (f 0..5), belt_<f> (f 0..7), lamp_<f> (f 0..3)              (border-rendered patches)
         depth_interior (16-bit view-depth of the interior, used by lgx_pack to validate the depth bands)
     Per pass every group is VISIBLE, GHOST (invisible to the camera, still casts shadows / bounces light),
@@ -53,15 +53,16 @@ bc.setup_render = _setup_render_fixed          # run-time wrapper only (bl_commo
 MARGIN = 10
 DMIN, DMAX = 40.0, 80.0                         # view-depth range encoded in the 16-bit depth pass
 
-ALL = ['back', 'floor', 'apron', 'interior', 'front_f', 'lamp', 'belt', 'stub', 'cut', 'shell', 'door1', 'door2',
-       'props']
-# pass -> (visible, ghost, holdout, ghost-without-shadow); everything else hidden
+ALL = ['back', 'floor', 'apron', 'interior', 'rackf', 'front_f', 'lamp', 'belt', 'stub', 'cut', 'shell', 'door1',
+       'door2', 'props']
+# pass -> (visible, ghost, holdout, ghost-without-shadow); everything else hidden.  'rackf' (rack front parts) is a
+# sub-group of the interior: wherever 'interior' is listed, 'rackf' is too.
 PASSES = {
-    'back': (['back'], ['floor', 'apron', 'interior', 'front_f', 'stub', 'props'], [], []),
-    'floor': (['floor', 'apron'], ['interior', 'front_f', 'stub', 'props', 'lamp'], [], ['back']),
-    'interior': (['interior', 'front_f', 'lamp'], ['floor', 'apron', 'stub', 'props'], [], ['back']),
-    'stub': (['stub'], ['interior', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
-    'cut': (['cut'], ['interior', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
+    'back': (['back'], ['floor', 'apron', 'interior', 'rackf', 'front_f', 'stub', 'props'], [], []),
+    'floor': (['floor', 'apron'], ['interior', 'rackf', 'front_f', 'stub', 'props', 'lamp'], [], ['back']),
+    'interior': (['interior', 'rackf', 'front_f', 'lamp'], ['floor', 'apron', 'stub', 'props'], [], ['back']),
+    'stub': (['stub'], ['interior', 'rackf', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
+    'cut': (['cut'], ['interior', 'rackf', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
     'shell': (['shell', 'back', 'door1', 'door2'], [], [], []),
     'props': (['props'], ['shell', 'back', 'door1', 'door2', 'floor', 'apron'], [], []),
 }
@@ -295,15 +296,22 @@ def render_center(opts):
     mw = mask_white()
 
     def setup_fmask():
-        apply_pass(['front_f'], [], ['interior', 'lamp'], [])
+        apply_pass(['front_f'], [], ['interior', 'rackf', 'lamp'], [])
         override_material(mw)
     go('fmask', setup_fmask, spp=16, denoise=False)
+    override_material(None)
+
+    # rack-front mask: front uprights / beams / tags white, the rest of the interior as holdout
+    def setup_rmask():
+        apply_pass(['rackf'], [], ['interior', 'front_f', 'lamp'], [])
+        override_material(mw)
+    go('rmask', setup_rmask, spp=16, denoise=False)
     override_material(None)
     # interior depth (validation of the depth bands in lgx_pack)
     dm = depth_material()
 
     def setup_depth():
-        apply_pass(['interior', 'front_f', 'lamp'], [], [], [])
+        apply_pass(['interior', 'rackf', 'front_f', 'lamp'], [], [], [])
         override_material(dm)
     go('depth_interior', setup_depth, spp=1, denoise=False, raw=True, depth16=True)
     override_material(None)
@@ -315,7 +323,8 @@ def render_center(opts):
     for f in range(LC.BELT_FRAMES):
         def setup_belt(f=f):
             ctl['belt'](f)
-            apply_pass(['belt'], ['floor', 'apron', 'stub', 'props'], ['interior', 'front_f', 'lamp'], ['back'])
+            apply_pass(['belt'], ['floor', 'apron', 'stub', 'props'], ['interior', 'rackf', 'front_f', 'lamp'],
+                       ['back'])
         go('belt_%d' % f, setup_belt, border=bb)
     ctl['belt'](0)
     del belt_objs
@@ -328,7 +337,7 @@ def render_center(opts):
         for f in range(6):
             def setup_door(k=k, f=f, me=me, other=other):
                 ctl['door'](k, f)
-                apply_pass([me, 'interior', 'front_f', 'floor', 'back', 'lamp'], [other],
+                apply_pass([me, 'interior', 'rackf', 'front_f', 'floor', 'back', 'lamp'], [other],
                            ['shell', 'props', 'apron'], [])
             go('%s_%d' % (me, f), setup_door, border=db)
         ctl['door'](k, 0)
@@ -343,7 +352,7 @@ def render_center(opts):
     for f in range(4):
         def setup_lamp(f=f):
             ctl['lamp'](f)
-            apply_pass(['lamp'], ['floor', 'apron', 'stub', 'props'], ['interior', 'front_f'], ['back'],
+            apply_pass(['lamp'], ['floor', 'apron', 'stub', 'props'], ['interior', 'rackf', 'front_f'], ['back'],
                        extra_vis=is_lamp)
         go('lamp_%d' % f, setup_lamp, border=lb)
     ctl['lamp'](0)

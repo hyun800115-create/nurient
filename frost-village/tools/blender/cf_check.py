@@ -140,6 +140,7 @@ def main():
         A = cc.merge_fragments(man1['townfolk'], [('townfolk2', t2)])
         B = tc2.merge_townfolk(man1['townfolk'], t2)
         A.pop('fragments', None)
+        A.pop('animFragment', None)
         if json.dumps(A, sort_keys=True) != json.dumps(B, sort_keys=True):
             diff = [k for k in set(A) | set(B) if json.dumps(A.get(k), sort_keys=True) != json.dumps(B.get(k), sort_keys=True)]
             err.append(f'generic merge differs from townfolk2_compose.merge_townfolk in {diff}')

@@ -667,7 +667,7 @@ def make_all(out_dir=None, prev_dir=None):
     os.makedirs(prev, exist_ok=True)
     P = Frag(os.path.abspath(out_dir) if out_dir else 'civic')
     if not P.ok:
-        print('civ_preview: no manifest at %s' % rel)
+        print('civ_preview: no manifest at %s' % (out_dir or 'assets/civic'))
         return
     Pe = People()
     preview_all(P, os.path.join(prev, 'civ_all.png'))

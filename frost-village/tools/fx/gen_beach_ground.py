@@ -479,14 +479,14 @@ def decal_sand_ripples():
     ss = 4
     c = F.Canvas(W, H, ss=ss)
     x, y = world(c.X, c.Y, ax, ay)
-    rip = np.sin(math.tau * (y + 0.05 * np.sin(x * 4.0)) / 0.16)
+    rip = np.sin(math.tau * (y + 0.05 * np.sin(x * 4.0)) / 0.2)
     rip = np.sign(rip) * np.abs(rip) ** 0.6
     mask = np.clip(1.0 - np.hypot(x / 1.3, y / 0.8), 0, 1) ** 0.7
-    hgt = rip * mask * 1.2
-    lit = shade_height(hgt, ss, 0.7)
+    hgt = rip * mask * 1.6
+    lit = shade_height(hgt, ss, 0.9)
     col = np.broadcast_to(hexc(SAND), x.shape + (3,)).copy()
-    col = GG.lerp3(col, hexc('#CDB48A'), np.clip(-lit, 0, 1) * 0.9)
-    col = GG.lerp3(col, hexc(SAND_HI), np.clip(lit, 0, 1) * 0.9)
+    col = GG.lerp3(col, hexc('#C2A574'), np.clip(-lit, 0, 1))
+    col = GG.lerp3(col, hexc(SAND_HI), np.clip(lit, 0, 1))
     a = np.clip(mask * 1.4, 0, 1) ** 0.8 * (0.25 + 0.75 * np.clip(np.abs(lit) * 2.5, 0, 1))
     c.rgb[...] = col * a[..., None]
     c.a[...] = a
@@ -732,12 +732,13 @@ def preview(texs, kit, decals, out):
     sx, sy, sh = 10, 0, 0
     pos = []
     for k, im in shelf:
-        if sx + im.width + 10 > W:
+        slot = max(im.width, int(f.getlength(k)) + 4)      # the label must not run into the next decal's label
+        if sx + slot + 10 > W:
             sx = 10
             sy += sh + 30
             sh = 0
-        pos.append((k, im, sx, sy))
-        sx += im.width + 24
+        pos.append((k, im, sx + (slot - im.width) // 2, sy))
+        sx += slot + 24
         sh = max(sh, im.height)
     shelf_h = sy + sh + 40
     H = 40 + 512 + 40 + comp.height + 40 + shelf_h
@@ -764,7 +765,7 @@ def preview(texs, kit, decals, out):
     sheet.alpha_composite(sand, (0, y1))
     for k, im, px, py in pos:
         sheet.alpha_composite(im, (px, y1 + py + 6))
-        d.text((px, y1 + py + 8 + im.height), k, fill=(40, 34, 28), font=f)
+        d.text((px + im.width // 2, y1 + py + 8 + im.height), k, fill=(40, 34, 28), font=f, anchor='ma')
     sheet.convert('RGB').save(out, optimize=True)
 
 

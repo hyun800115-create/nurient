@@ -43,6 +43,9 @@ FRAGMENT_ORDER = ['townfolk2', 'beachfolk', 'cityfolk']        # folders under a
 def merge_fragment(M, F, name=None):
     """Merge fragment block F into the merged block M (in place, F untouched) - same rules as the JS port."""
     name = name or F.get('fragment', 'fragment')
+    af = M.setdefault('animFragment', {})
+    for a in F.get('anims', {}):
+        af[a] = name
     for k in ('anims', 'timeline', 'headPoses', 'parts', 'z', 'tintRef', 'palettes', 'frameAtlas'):
         for key, v in F.get(k, {}).items():
             if key in M.get(k, {}):
@@ -75,6 +78,15 @@ def merge_fragment(M, F, name=None):
     G['exclude'] = list(G['exclude']) + [list(x) for x in G2.get('exclude', [])]
     xs = list(G.get('extraSlots', []))
     G['extraSlots'] = xs + [s for s in G2.get('extraSlots', []) if s not in xs]
+    for key, v in G2.items():                   # other generator keys (beachfolk: beachSlots, animParts, ...)
+        if key in ('presets', 'slotPalette', 'exclude', 'extraSlots'):
+            continue
+        if isinstance(G.get(key), list) and isinstance(v, list):
+            G[key] = list(G[key]) + [x for x in copy.deepcopy(v) if x not in G[key]]
+        elif isinstance(G.get(key), dict) and isinstance(v, dict):
+            G[key] = dict(G[key], **copy.deepcopy(v))
+        else:
+            G[key] = copy.deepcopy(v)
     fe = M.setdefault('faceExprs', {})
     for hp, lst in F.get('faceExprs', {}).items():
         cur = fe.setdefault(hp, [])
@@ -105,7 +117,8 @@ def merge_fragment(M, F, name=None):
 
 def fragment_block(man):
     for k, v in man.items():
-        if isinstance(v, dict) and v.get('extends') == 'townfolk':
+        ext = v.get('extends') if isinstance(v, dict) else None
+        if ext == 'townfolk' or (isinstance(ext, list) and 'townfolk' in ext):     # beachfolk: ['townfolk', ...]
             return k, v
     raise ValueError('not a townfolk fragment manifest')
 
@@ -170,6 +183,7 @@ class Cityfolk(tc2.Townfolk2):
         base, _ = self.render_base(person['base'])
         tl = self.tl(anim, d, i)
         hp = tl['hp']
+        hd = tl.get('hd', d)                    # beachfolk: head frame dir when it differs from the anim dir
         expr, brow = tl['face'], tl['brow']
         if face and face in self.T.get('faceExprs', {}).get(hp, []):
             expr, brow = face, self.T['exprBrow'].get(face, 'neutral')
@@ -181,7 +195,7 @@ class Cityfolk(tc2.Townfolk2):
             out.append((limbz[name], f'{name}@{base}/{anim}_{d}_{i}', self.tint(person, slot), 'body'))
         hat = self.wears_full_hat(person)
         heads = []
-        parts = list(person['parts'])
+        parts = self.anim_parts(person, anim)
         if not no_items:
             parts += [it for it in self.T.get('animItems', {}).get(anim, []) if it not in parts]
         for pn in parts:
@@ -190,25 +204,28 @@ class Cityfolk(tc2.Townfolk2):
                 continue
             if P.get('onlyAnims') and anim not in P['onlyAnims']:
                 continue
+            if 'anims' in P and anim not in P['anims']:          # beachfolk parts: frames only in their anims
+                continue
             for s, sd in P['subs'].items():
                 z = sd['z'][d] if isinstance(sd['z'], dict) else sd['z']
                 if sd.get('follow'):
-                    z = limbz[sd['follow']] + 0.5
+                    z = limbz[sd['follow']] + sd.get('followDz', 0.5)
                 if sd.get('zfrontFollow') and sd['zfrontFollow'] in zf:
                     z = self.T['limbs'][sd['zfrontFollow']]['zFront'] + 0.5
                 if P['space'] == 'body':
                     out.append((z, f'{pn}.{s}@{base}/{anim}_{d}_{i}', self.tint(person, sd['tint']), 'body'))
                 else:
+                    zh = sd['z'][hd] if isinstance(sd['z'], dict) else sd['z']
                     suffix = '~hat' if (hat and P.get('hatfit')) else ''
-                    heads.append((z, f'{pn}.{s}{suffix}/{hp}_{d}', self.tint(person, sd['tint']), 'head'))
+                    heads.append((zh, f'{pn}.{s}{suffix}/{hp}_{hd}', self.tint(person, sd['tint']), 'head'))
                     if sd.get('sheen'):
-                        heads.append((z + 0.5, f'{pn}.{s}{suffix}.sheen/{hp}_{d}', None, 'head'))
+                        heads.append((zh + 0.5, f'{pn}.{s}{suffix}.sheen/{hp}_{hd}', None, 'head'))
         Zh = self.T['z']
-        out.append((Zh['head'], f'head.{person.get("nose", "dot")}/{hp}_{d}', self.tint(person, 'skin'), 'head'))
-        if d in self.T['faceDirs']:
+        out.append((Zh['head'], f'head.{person.get("nose", "dot")}/{hp}_{hd}', self.tint(person, 'skin'), 'head'))
+        if hd in self.T.get('faceDirsByPose', {}).get(hp, self.T['faceDirs']):
             fs = person.get('face', 'std')
-            out.append((Zh['face'], f'face.{fs}.{expr}/{hp}_{d}', None, 'head'))
-            out.append((Zh['brow'], f'brow.{fs}.{brow}/{hp}_{d}', self.tint(person, 'hair'), 'head'))
+            out.append((Zh['face'], f'face.{fs}.{expr}/{hp}_{hd}', None, 'head'))
+            out.append((Zh['brow'], f'brow.{fs}.{brow}/{hp}_{hd}', self.tint(person, 'hair'), 'head'))
         out += heads
         order = {id(x): k for k, x in enumerate(out)}
         out.sort(key=lambda x: (x[0], order[id(x)]))
@@ -241,20 +258,36 @@ class Cityfolk(tc2.Townfolk2):
         return out
 
     # ---- coverage / fallback
+    def anim_parts(self, person, anim):
+        """The person's parts + the props a (beachfolk) anim always shows (generator.animParts)."""
+        parts = list(person['parts'])
+        for pn in self.T['generator'].get('animParts', {}).get(anim, []):
+            if pn not in parts and pn in self.parts:
+                parts.append(pn)
+        return parts
+
     def can_play(self, person, anim):
+        """Every worn body part has frames in `anim`: cityfolk anims / cityfolk parts -> bases[b].cfCover[anim];
+        parts with 'anims' (beachfolk) -> that list; other v4 / v5 parts -> only anims of townfolk / townfolk2."""
         T = self.T
         if anim not in T['anims']:
             return False
         cover = T['bases'][person['base']].get('cfCover', {}).get(anim)
         cf = set(T.get('cfParts', []))
         is_cf = anim in T.get('cityfolkAnims', [])
-        for pn in person['parts']:
+        old = T.get('animFragment', {}).get(anim, 'townfolk') in ('townfolk', 'townfolk2')
+        for pn in self.anim_parts(person, anim):
             P = T['parts'].get(pn)
-            if P is None or P['space'] != 'body' or is_item(P):
+            if P is None or P['space'] != 'body' or is_item(P) or not P.get('subs'):
                 continue
-            if is_cf or pn in cf:
+            if 'anims' in P:
+                if anim not in P['anims']:
+                    return False
+            elif is_cf or pn in cf:
                 if not cover or pn not in cover:
                     return False
+            elif not old:
+                return False
         return True
 
     def pick_anim(self, person, anim):

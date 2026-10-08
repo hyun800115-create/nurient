@@ -307,6 +307,144 @@ def b_excavator():
     load = []
 
     def load_fn():
+        blob('ld', 0.2, (0, -0.2, -0.12), CL.charcoal(5.0, seed=3), scale=(1.1, 0.8, 0.55), seed=31, amp=0.3,
+             subdiv=2)
+        CL.charred_beam('ldbeam', (-0.18, -0.05, -0.05), (0.15, -0.38, 0.02), r=0.045, seed=33, snow=False)
+        CL.bricks('ldbricks', (0.08, -0.22, -0.08), 0.12, 3, seed=34, col='#B4593F')
+    load = collect_to(bk, load_fn)
+    drop = []
+
+    def drop_fn():
+        for k, (dy, dz, r) in enumerate(((-0.3, -0.45, 0.09), (-0.45, -0.7, 0.07), (-0.2, -0.85, 0.06),
+                                         (-0.5, -0.38, 0.05))):
+            blob('dr', r, (0.05 * (k - 1.5), dy, dz), CL.charcoal(5.0, seed=40 + k) if k % 2 == 0 else
+                 flat('#9A948F', 0.85), seed=40 + k, amp=0.3, subdiv=2)
+        CL.bricks('drbricks', (0.0, -0.4, -0.6), 0.1, 2, seed=44, col='#B4593F')
+    drop = collect_to(bk, drop_fn)
+    # operator
+    rig = operator_rig(sw, (-0.29, -0.4, 0.74))
+    B.rigs.append(rig)
+    stick_c = Vector((-0.29, -0.66, 0.92))
+
+    def show(objs, on):
+        for o in BA.descendants(objs):
+            o.hide_render = not on
+
+    def hook(anim, i, n):
+        p = EXC_DIG[i] if anim == 'dig' else EXC_REST
+        sw.rotation_euler = Euler((0, 0, math.radians(p['sw'])), 'XYZ')
+        bm.rotation_euler = Euler((math.radians(p['boom']), 0, 0), 'XYZ')
+        st.rotation_euler = Euler((math.radians(p['stick']), 0, 0), 'XYZ')
+        bk.rotation_euler = Euler((math.radians(p['bucket']), 0, 0), 'XYZ')
+        show(load, anim == 'dig' and i in (3, 4))
+        show(drop, anim == 'dig' and i == 5)
+        place_cleats(i / float(n) if anim == 'move' else 0.0)
+        bpy.context.view_layer.update()
+        VL.pose_driver(rig, sw.matrix_world @ stick_c, anim, i, n, wave=(anim == 'idle' and i == 1),
+                       face='face_happy' if anim == 'dig' and i in (2, 5) else 'face_smile')
+    B.hooks.append(hook)
+    B.extra_points = {'bucketPoints': tip}
+    B.crew_note = {'driver': 'operator (yellow hard hat, hi-vis vest)', 'seat': 'cab, baked'}
+    B.driver_seat = None
+    B.point('exhaustPoint', (0.5, 1.0, 1.85))
+    B.point('lightPoints', (-0.24, -0.95, 2.5), many=True)
+    B.point('sirenPoint', (-0.05, -0.15, 2.7))
+    return B
+
+
+# =========================================================================== DUMP TRUCK
+
+DUMP_NOTE = ('Toy dump truck (5.2 m): chunky orange cab-over cab with big round lamps and a friendly operator in a '
+             'yellow hard hat, dark chassis, six fat wheels, a sunny-yellow ribbed tipping bed with a hinged '
+             'tailgate. idle / move = empty; idle_loaded / move_loaded = the bed heaped with charred beams, bricks and '
+             'ash (after the excavator dumped into it, cargoPoint = bed centre); tip = 6 frames, play once: the bed '
+             'rises, the tailgate swings, the load slides out behind the truck (tipFrame 2-3: dust FX at tipPoint) '
+             'and the empty bed settles back down (ends = idle).')
+
+DUMP_ANIMS = OrderedDict([
+    ('idle', dict(frames=2, fps=4, repeat=-1, bob=[0, 1], spin=False, blink=False, smoke=False)),
+    ('move', dict(frames=4, fps=10, repeat=-1, bob=[0, 1, 1, 0], spin=True, blink=False, smoke=False)),
+    ('idle_loaded', dict(frames=2, fps=4, repeat=-1, bob=[0, 1], spin=False, blink=False, smoke=False)),
+    ('move_loaded', dict(frames=4, fps=10, repeat=-1, bob=[0, 1, 1, 0], spin=True, blink=False, smoke=False)),
+    ('tip', dict(frames=6, fps=6, repeat=0, bob=[0, 0, 1, 1, 0, 0], spin=False, blink=False, smoke=True,
+                 tipFrame=2)),
+])
+DUMP_TIP = [0.0, 22.0, 46.0, 56.0, 30.0, 0.0]          # bed angle per tip frame (deg, front up)
+
+
+@veh('dump_truck', DUMP_ANIMS, notes=DUMP_NOTE, samples=24)
+def b_dump_truck():
+    B = VL.VB('dump_truck')
+    B.length, B.width, B.height = 5.2, 2.1, 2.6
+    org = paint(ORANGE)
+    yel = paint(YEL)
+    wr = 0.5
+    axles = (-1.5, 0.95, 1.85)
+
+    def build():
+        rbox('frame', (1.2, 4.6, 0.26), (0, 0.15, 0.5), flat(DARK, 0.5), r=0.06)
+        # cab-over cab
+        VL.shell('cab', (2.0, 1.45, 1.55), (0, -1.55, 0.9), org, r=0.32, wall=0.06, inner=flat('#E9DCC2', 0.8),
+                 frame_mat=paint('#F4F1EA', 0.4),
+                 cuts=[(-0.82, 0.82, -2.45, -2.1, 1.55, 2.25, 0.1),          # windscreen
+                       (-1.2, -0.85, -2.05, -1.05, 1.55, 2.2, 0.1),          # right window
+                       (0.85, 1.2, -2.05, -1.05, 1.55, 2.2, 0.1)])           # left window
+        rbox('cablow', (2.0, 1.45, 0.62), (0, -1.55, 0.62), org, r=0.22)
+        rbox('grille', (1.0, 0.1, 0.42), (0, -2.3, 0.85), chrome(), r=0.08)
+        for k in range(4):
+            rbox('slot', (0.8, 0.04, 0.04), (0, -2.36, 0.92 + 0.08 * k), flat(DARK, 0.6), r=0.015)
+        for sx in (-1, 1):
+            VL.headlamp('head', (sx * 0.75, -2.28, 1.0), r=0.16, facing=-1)
+            VL.mirror_arm('mir', (sx * 1.02, -2.0, 1.75), out=sx)
+            rbox('fender', (0.5, 1.15, 0.12), (sx * 0.85, axles[0], 1.02), org, r=0.05)
+        VL.bumper('bumpF', -2.42, 2.0, 0.62, mat=flat(DARK, 0.5), t=0.18, h=0.2)
+        VL.snowflake_badge('door', (-1.02, -1.4, 1.35), r=0.17, psi=-90.0, bg='#EE7F33', fg='#F4F1EA')
+        VL.snow_cap('cabsnow', 1.4, 1.0, (0.05, -1.55, 2.44), t=0.07, seed=7)
+        cyl('exh', 0.06, 1.1, (0.75, -0.72, 1.0), mat=chrome(), segs=12, bevel=0.01)
+        cyl('exhcap', 0.075, 0.06, (0.75, -0.72, 2.1), mat=flat(DARK, 0.5), segs=12, bevel=0.01)
+        rbox('step', (0.25, 0.4, 0.06), (-1.05, -1.5, 0.42), flat(DARK, 0.5), r=0.02)
+        for y in axles:
+            VL.wheel_well('well', y, wr, 0.55, 0.92)
+        for y in axles[1:]:
+            for sx in (-1, 1):
+                rbox('rfender', (0.46, 0.7, 0.1), (sx * 0.86, y, 1.05), flat(DARK, 0.5), r=0.04)
+        rbox('hingeb', (1.4, 0.2, 0.2), (0, 2.05, 0.75), flat(DARK, 0.5), r=0.05)
+    collect(B, build)
+    # panes
+    B.end_window('pW', -2.27, -0.8, 0.8, 1.57, 2.23, end=-1)
+    B.side_window('pR', -0.97, -2.0, -1.1, 1.57, 2.18, side=-1)
+    for y in axles:
+        for sx in (-1, 1):
+            B.add_wheel((sx * 0.85, y, wr), wr, w=0.34, hub=YEL, holes=3, name='wh')
+    # tipping bed (hinge at the rear)
+    hz, hy = 1.05, 2.12
+    bed = G.empty('bed', B.body, (0, hy, hz))
+    bed.rotation_mode = 'XYZ'
+
+    def bed_fn():
+        y0, y1 = -0.75 - hy, 2.25 - hy
+        rbox('bfloor', (2.04, y1 - y0, 0.14), (0, (y0 + y1) / 2, 0.05), yel, r=0.04)
+        ribs = L.stripes(YEL, '#E0AE1E', 6.0, 'Y', rough=0.4, soft=0.08)
+        for sx in (-1, 1):
+            rbox('bside', (0.1, y1 - y0, 0.78), (sx * 0.97, (y0 + y1) / 2, 0.15), ribs, r=0.04)
+            for k in range(4):
+                rbox('brib', (0.06, 0.08, 0.7), (sx * 1.03, y0 + 0.4 + k * 0.72, 0.18), yel, r=0.02)
+        rbox('bfront', (2.04, 0.12, 1.0), (0, y0 + 0.06, 0.15), yel, r=0.05)
+        rbox('blip', (2.04, 0.5, 0.08), (0, y0 - 0.15, 1.1), yel, r=0.03)
+        rbox('bstripe', (2.06, 0.13, 0.12), (0, y0 + 0.06, 0.88), L.stripes(YEL, DARK, 7.0, 'X', soft=0.02), r=0.02)
+        VL.snow_cap('bsnow', 0.6, 0.3, (0.5, y0 - 0.15, 1.18), t=0.04, seed=8)
+    collect_to(bed, bed_fn)
+    tg = G.empty('tailgate', bed, (0, 2.25 - hy, 0.95))
+    tg.rotation_mode = 'XYZ'
+
+    def tg_fn():
+        rbox('tgate', (2.0, 0.1, 0.8), (0, 0.0, -0.8), yel, r=0.04)
+        for sx in (-1, 1):
+            VL.taillamp('tail', (sx * 0.8, 0.07, -0.55), r=0.07, facing=1)
+    collect_to(tg, tg_fn)
+    load_static, load_fall = [], []
+
+    def load_fn():
         yc = 0.95 - hy + 0.35
         blob('heap', 0.8, (0, yc, 0.15), CL.charcoal(4.0, seed=91), scale=(1.12, 1.35, 0.3), seed=92,
              amp=0.25, subdiv=3, flat_bottom=0.3)

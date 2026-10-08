@@ -10,9 +10,9 @@ dust cloud of bonks and boings, nobody gets hurt.
                 one late 'plink')
   rebuild       sfx_excavator (toy diesel + hydraulic whine, loop), sfx_demolish_crunch (bucket bite: clank, wood
                 splinters, brick rubble pour, dust), amb_construction (distant hammering, saw, drill, clanks, reverse
-                beeps, a worker's call, loop)
-  bank          amb_bank (marble-hall murmur, footsteps on tile, note-counting machine, number-ticket 'ding-dong',
-                loop), sfx_coin_count (coins stacked, rising, 'ching'), sfx_stamp (rubber stamp 'THUNK' on a ledger),
+                beeps, gravel, loop - no voices)
+  bank          amb_bank (marble-hall murmur, soft footsteps on tile, a faint note counter, paper, loop - texture
+                only), sfx_ticket_chime (extra: the queue display's 'ding-dong' C6 A5), sfx_coin_count (coins stacked, rising, 'ching'), sfx_stamp (rubber stamp 'THUNK' on a ledger),
                 sfx_vault_door (wheel spin, three bolts, heavy swing, treasure 'ting')
   logistics     amb_warehouse (conveyor hum + roller rattle + boxes bumping + far reverse beeps + big hall, loop),
                 sfx_forklift_beep (three friendly reverse beeps, C6), sfx_moving_truck (engine stops, air brake,
@@ -391,7 +391,7 @@ def _hose_events(seed: int, nominal: float):
         if t >= nominal:
             break
         d = r.uniform(0.004, 0.012)
-        ev.append((t / nominal, burst(r, d, r.uniform(900, 5200), 1.3, tau=d / 4), r.uniform(0.15, 1.0) ** 2))
+        ev.append((t / nominal, burst(r, d, r.uniform(700, 3800), 1.3, tau=d / 4), r.uniform(0.15, 1.0) ** 2))
     t = 0.0
     while True:                                          # bigger splats / gloops
         t += r.exponential(1 / 9.0)
@@ -400,6 +400,9 @@ def _hose_events(seed: int, nominal: float):
         ev.append((t / nominal, bubble(r, r.uniform(350, 900), r.uniform(0.03, 0.06), 0.9), 0.5))
         ev.append((t / nominal, S.lp(burst(r, 0.04, 700, 0.8, tau=0.01), 2000), 0.6))
     return ev
+
+
+HOSE_MIX = {"jet": 0.126, "wash": 0.17, "splat": 0.3}
 
 
 def render_hose_spray(seed: int = 10500, loop_samples=None, nominal: float = 2.4):
@@ -414,12 +417,14 @@ def render_hose_spray(seed: int = 10500, loop_samples=None, nominal: float = 2.4
     jet = unit(circ_tv(jet, "bp", 1900 + 1400 * sway, 0.5))
     wash = unit(S.noise_fft(L, r, lambda f: np.exp(-0.5 * (np.log2(f / 700.0) / 1.0) ** 2)))
     rum = unit(S.noise_fft(L, r, lambda f: 1.0 / (1 + (f / 120.0) ** 2) / np.sqrt(np.maximum(f, 30))))
-    bed = jet * 0.2 * (0.85 + 0.15 * flut) + wash * 0.12 * (0.6 + 0.4 * flut) + rum * 0.05
+    # polish (critic: 53 % of the energy in 2-5 kHz): jet -4 dB, water hitting the wall (wash, splats, gloops) +3 dB
+    bed = jet * HOSE_MIX["jet"] * (0.85 + 0.15 * flut) + wash * HOSE_MIX["wash"] * (0.6 + 0.4 * flut) + rum * 0.05
     ev = _memo(("hose", seed, nominal), lambda: _hose_events(seed, nominal))
     buf = np.zeros(L + n_of(0.3))
     for u, sig, g in ev:
         place(buf, u * L, sig, g, L)
-    y = bed + 0.22 * fold1(buf, L)
+    y = bed + HOSE_MIX["splat"] * fold1(buf, L)
+    y = S.filt_circ(y, "peak", 1000, 0.8, 2.0)
     y = S.filt_circ(y, "hp", 60, order=2)
     y = S.filt_circ(y, "lp", 6000)
     return finish_loop(y, {"loopSamples": L})
@@ -463,13 +468,19 @@ def sfx_collapse_soft():
     m.add(0.0, norm(c), 0.28)
     m.add(0.42, _pop(r, 2), 0.9)
     m.add(0.42, wood_knock(r, 520, 0.5, 0.06), 0.25)
+    # polish (phones): a dry 1-2 kHz woody 'krak' on the crack
+    m.add(0.42, S.bp(r.standard_normal(n_of(0.06)), 1500, 1.1) * S.env_exp(n_of(0.06), 0.008, 0.0004), 0.35)
+    m.add(0.425, wood_knock(r, 1180, 0.7, 0.05), 0.22)
     for t0, note, v in ((0.6, "C4", 1.0), (0.84, "A3", 0.92), (1.06, "F3", 0.95)):
         f = float(S.midi_hz(S.note(note)))
-        m.add(t0, wood_knock(r, f, v, 0.22), 0.55)
-        m.add(t0 + 0.075, wood_knock(r, f * 1.01, v * 0.4, 0.12), 0.4)
-        m.add(t0, puff(r, 0.18, 1200, [(0, 0), (0.005, 1), (0.18, 0)]), 0.12)
-    m.add(1.22, blip(95, 40, 0.5, 0.05, 0.12, attack=0.004), 0.7)
-    m.add(1.22, puff(r, 0.9, 420, [(0, 0), (0.02, 1.0), (0.3, 0.5), (0.9, 0)]), 0.5)
+        m.add(t0, wood_knock(r, f, v, 0.22), 0.42)
+        m.add(t0, wood_knock(r, 2 * f, v, 0.12), 0.3)                    # octave 'tok': the arpeggio reads on phones
+        m.add(t0 + 0.075, wood_knock(r, f * 1.01, v * 0.4, 0.12), 0.3)
+        m.add(t0 + 0.075, wood_knock(r, 2.02 * f, v * 0.4, 0.07), 0.14)
+        m.add(t0, puff(r, 0.18, 1200, [(0, 0), (0.005, 1), (0.18, 0)]), 0.16)
+    m.add(1.22, blip(95, 40, 0.5, 0.05, 0.12, attack=0.004), 0.55)
+    m.add(1.22, puff(r, 0.9, 420, [(0, 0), (0.02, 1.0), (0.3, 0.5), (0.9, 0)]), 0.4)
+    m.add(1.22, cardboard(r, 1.0, 0.6), 0.35)                            # hollow mid 'flumph' body (~350-900 Hz)
     t = 1.25
     while t < 1.95:                                      # rubble pour
         g = np.exp(-(t - 1.25) / 0.3)
@@ -483,6 +494,11 @@ def sfx_collapse_soft():
 
 
 # ============================================================================ demolition / construction
+# polish (critic: 95.8 % below 300 Hz, phone loss -17.6 dB): hydraulic whine 0.07 -> EXC_MIX + its 2nd harmonic,
+# 1.1-2.3 kHz track-link rattle on the firing grid, sub shelved -3 dB, low-pass 4 kHz.
+EXC_MIX = {"whine": 0.2, "links": 0.09}
+
+
 def render_excavator(seed: int = 10800, loop_samples=None, nominal: float = 2.0):
     """Toy excavator at work (mono loop): a chunky diesel 'chug' (4-stroke firing ~9.5 Hz, deep pipe tone,
     harmonic hum locked to it), the hydraulic pump whine rising and falling as the arm moves (one cycle per
@@ -508,17 +524,25 @@ def render_excavator(seed: int = 10800, loop_samples=None, nominal: float = 2.0)
     hum = S.additive(ff, L, [(h, 1.0 / (1 + ((h * ff - 160) / 120) ** 2)) for h in range(1, 30)], fmax=4000)
     arm = 0.5 - 0.5 * np.cos(TAU * t / dur)
     whine_f = loop_freq(560.0 * (1 + 0.22 * arm), L)
-    whine = S.sine(whine_f, L) + 0.35 * S.sine(loop_freq(whine_f * 2.01, L), L)
-    y = unit(y) + 0.3 * unit(hum) + 0.07 * whine * (0.3 + 0.7 * arm)
+    whine = S.sine(whine_f, L) + 0.5 * S.sine(loop_freq(whine_f * 2.0, L), L)
+    y = unit(y) + 0.3 * unit(hum) + EXC_MIX["whine"] * whine * (0.3 + 0.7 * arm)
     rat = S.noise_fft(L, r, lambda f: np.exp(-0.5 * (np.log2(f / 1300.0) / 0.8) ** 2))
     y = y + 0.06 * unit(rat) * (0.5 + 0.5 * np.cos(TAU * ff * (t - ph / ff)) ** 2)
+    links = np.zeros(L + n_of(0.1))                                         # polish: track links 'tikka-tikka'
+    for i in range(2 * k):                                                  # two per firing -> whole cycles per loop
+        place(links, (i * 0.5 + ph + 0.27) * P + r.normal(0, 0.0012) * SR,
+              S.hp(steel_clank(r, r.uniform(1150, 2300), 0.5, 0.035), 700, order=2),
+              r.uniform(0.5, 1.0) * (0.7 + 0.3 * arm[int(i * P / 2) % L]), L)
+    y = y + EXC_MIX["links"] * unit(fold1(links, L))
     cl = np.zeros(L + n_of(0.5))
     for u in (0.27, 0.77):
         place(cl, u * L, steel_clank(r, 280, 0.6, 0.2), 0.25, L)
     y = y + fold1(cl, L)
     y = S.filt_circ(y, "hp", 45, order=2)
+    y = S.filt_circ(y, "lshelf", 120, 0.7, -3.0)                           # polish: less sub (lost on phones)
     y = S.filt_circ(y, "peak", 380, 0.9, 3.0)
-    y = S.filt_circ(y, "lp", 5000)
+    y = S.filt_circ(y, "peak", 1100, 0.9, 2.5)
+    y = S.filt_circ(y, "lp", 4000)                                          # toy: nothing sharp
     return finish_loop(y, {"loopSamples": L, "firings": k, "firingHz": round(ff, 3)})
 
 
@@ -576,11 +600,8 @@ def _construction_events(seed: int, nominal: float):
         place(buf, t0 * k9 * SR, far(steel_clank(r, f, 1.0, 0.35), 4500, 0.5, 1.5), 0.12)
     for i in range(3):                                                                        # far reverse beeps
         place(buf, (2.9 * k9 + i * 0.5) * SR, far(beep(84, 0.22, 1.0), 3000, 0.7, 1.6), 0.05)
-    for t0, kid in ((6.0, False), (9.0, True)):                                               # worker calls
-        sy = [("h", "o", 0.1, 1.0, 0.05, 0.9), ("", "i", 0.16, 1.12, -0.1, 1.0)] if not kid else \
-             [("y", "o", 0.12, 1.0, 0.1, 1.0), ("", "i", 0.1, 1.1, 0.0, 0.8), ("", "a", 0.2, 1.2, -0.12, 1.0)]
-        v = utter(r, sy, 175 if not kid else 230, fs=1.0 if not kid else 1.06, tilt=1.0, breath=0.04, fmax=6500.0)
-        place(buf, t0 * k9 * SR, far(norm(S.hp(v, 120)), 3000, 0.55, 1.4), 0.06)
+    # polish: no worker calls in the bed (an identifiable voice repeated every 8 s); the game adds audio2
+    # sfx_chatter_lo / sfx_hammer at random 6-20 s intervals instead.
     for t0 in (1.0, 5.9):                                                                      # gravel shovelled
         g = np.zeros(n_of(0.5))
         tt = 0.0
@@ -593,8 +614,8 @@ def _construction_events(seed: int, nominal: float):
 
 def render_construction(seed: int = 11000, loop_samples=None, nominal: float = 8.0):
     """Building site across the street (mono loop): hammering in three bursts, a hand saw, a cordless drill,
-    steel clanks, a far dump truck's reverse beeps, a worker calling out, gravel being shovelled, over a low
-    distant engine rumble and a light breeze."""
+    steel clanks, a far dump truck's reverse beeps, gravel being shovelled, over a low distant engine rumble and a
+    light breeze. No voices (the game adds chatter at random times)."""
     r = S.rng(seed)
     L = int(loop_samples or n_of(nominal))
     rum = unit(S.noise_fft(L, r, lambda f: 1.0 / (1 + (f / 150.0) ** 2) / np.maximum(f, 30) ** 0.5))
@@ -636,31 +657,24 @@ def _bank_events(seed: int, nominal: float):
     r = S.rng(seed + 1)
     k9 = nominal / 9.0                                  # times below were laid out for 9 s
     buf = np.zeros(n_of(nominal + 4.0))
-    for t0, cnt, step, g in ((0.5, 7, 0.52, 1.0), (5.2, 6, 0.48, 0.8)):              # people crossing the hall
+    for t0, cnt, step, g in ((0.5, 7, 0.52, 0.7), (5.2, 6, 0.48, 0.55)):             # people crossing the hall
         for i in range(cnt):
             env = np.sin(np.pi * (i + 0.5) / cnt) ** 1.2
-            place(buf, (t0 * k9 + i * step + r.normal(0, 0.01)) * SR, heel_step(r, r.uniform(0.7, 1.0)), 0.05 * g * env)
-    place(buf, 1.6 * k9 * SR, counting_machine(r, 0.85), 0.05)                              # note counter
-    place(buf, 6.9 * k9 * SR, counting_machine(r, 0.55), 0.04)
-    for k, nm in enumerate(("C6", "A5")):                                              # number ticket 'ding-dong'
-        place(buf, (3.6 * k9 + 0.32 * k) * SR, I.glock(S.note(nm), 0.7, r), 0.05)
-    st = sfx_stamp()                                                                   # a teller stamps
-    place(buf, 4.7 * k9 * SR, S.lp(st, 3500), 0.06)
-    place(buf, 8.2 * k9 * SR, S.lp(st, 3000), 0.045)
+            place(buf, (t0 * k9 + i * step + r.normal(0, 0.01)) * SR, S.lp(heel_step(r, r.uniform(0.7, 1.0)), 4000),
+                  0.05 * g * env)
+    place(buf, 1.6 * k9 * SR, S.lp(counting_machine(r, 0.7), 2500), 0.03)              # a faint note counter
     for t0 in (2.5, 7.6):                                                              # paper shuffle
-        place(buf, t0 * k9 * SR, paper_grains(r, 0.4, 90, env=[(0, 0.2), (0.1, 1), (0.4, 0)]), 0.03)
-    c = V1.sfx_coin()
-    place(buf, 5.9 * k9 * SR, norm(c), 0.025)
-    for t0, kid in ((0.9, False), (2.9, False), (4.2, True), (6.3, False), (8.0, False)):   # quiet voices
-        y = _babble(r, kid)
-        place(buf, t0 * k9 * SR, norm(S.lp(y, 2800)), 0.04)
+        place(buf, t0 * k9 * SR, paper_grains(r, 0.4, 90, env=[(0, 0.2), (0.1, 1), (0.4, 0)]), 0.025)
+    # polish: no ticket chime / stamps / coin / voices in the bed (they repeated every 8 s while the queue did
+    # something else); the game plays sfx_ticket_chime, sfx_stamp, sfx_coin_count, audio2 sfx_chatter_lo on events.
+    _ = V1
     return buf
 
 
 def render_bank(seed: int = 11100, loop_samples=None, nominal: float = 8.0):
-    """Inside the bank (mono loop): a hushed murmur in a marble hall, footsteps on polished stone, the
-    note-counting machine 'brrrrt', the number-ticket chime 'ding-dong' (C6 A5), a teller's stamp, paper
-    shuffling, a coin, all in a warm hall reverb; faint air-conditioning hum underneath."""
+    """Inside the bank (mono loop): a hushed murmur in a marble hall, soft footsteps on polished stone, a faint
+    note-counting machine, paper shuffling, all in a warm hall reverb; faint air-conditioning hum underneath.
+    Texture only: the number-ticket chime, stamps, coins and voices are game-triggered one-shots."""
     r = S.rng(seed)
     L = int(loop_samples or n_of(nominal))
     walla = np.zeros(L)
@@ -672,7 +686,7 @@ def render_bank(seed: int = 11100, loop_samples=None, nominal: float = 8.0):
     walla = S.filt_circ(walla, "lp", 2600)
     hvac = unit(S.noise_fft(L, r, lambda f: np.exp(-0.5 * (np.log2(f / 250.0) / 1.2) ** 2)))
     ev = _memo(("bank", seed, nominal), lambda: _bank_events(seed, nominal))
-    y = unit(walla) * 0.011 + hvac * 0.008 + 1.6 * fold1(ev, L)
+    y = unit(walla) * 0.016 + hvac * 0.009 + 1.6 * fold1(ev, L)
     y = circ_verb(y, rt60=1.6, mix=0.35, hf_rt60=0.7, predelay=0.025, size=1.0, hi_cut=5000)
     y = S.filt_circ(y, "hp", 60, order=2)
     return finish_loop(y, {"loopSamples": L})
@@ -702,9 +716,10 @@ def sfx_stamp():
     papery slap, rubber squash - and a pen hopping on the desk. cues: thunk 0."""
     r = S.rng(11300)
     m = Mono(0.7)
-    m.add(0.0, blip(240, 95, 0.2, 0.015, 0.035, attack=0.0008), 0.45)
-    m.add(0.0, wood_knock(r, 310, 1.0, 0.09), 0.7)
-    m.add(0.0, S.bp(r.standard_normal(n_of(0.05)), 1900, 0.9) * S.env_exp(n_of(0.05), 0.006, 0.0004), 0.5)
+    m.add(0.0, blip(240, 95, 0.2, 0.015, 0.035, attack=0.0008), 0.28)       # polish: desk thump -4 dB
+    m.add(0.0, wood_knock(r, 720, 1.0, 0.08), 0.62)                          # polish: knock 310 -> 720 Hz (phones)
+    m.add(0.0, wood_knock(r, 310, 0.7, 0.07), 0.2)
+    m.add(0.0, S.bp(r.standard_normal(n_of(0.08)), 1900, 0.9) * S.env_exp(n_of(0.08), 0.011, 0.0004), 0.5)
     m.add(0.0, burst(r, 0.01, 3600, 1.2, tau=0.0015), 0.15)
     m.add(0.004, S.lp(r.standard_normal(n_of(0.06)), 1200) * S.env_exp(n_of(0.06), 0.012, 0.001), 0.3)
     m.add(0.11, wood_knock(r, 1400, 0.5, 0.03), 0.2)
@@ -713,36 +728,67 @@ def sfx_stamp():
     return tail_fade(y, 0.08)
 
 
+VAULT_FPS = 8.0          # civ_assets.py: CL.overlay('vault', ..., 8, fps=8, repeat=0) -> frame k at k / 8 s
+
+
 def sfx_vault_door():
-    """The round vault door opens: the spoked wheel spins (ratchet ticks speeding up, hub whirr), three bolts
-    retract 'clunk-clunk-CLUNK', the heavy door swings with a low hinge groan and a whoosh of air, settles with
-    a deep 'dunn', and a little treasure sparkle 'ting'. cues: spin 0, bolts 0.78 / 0.94 / 1.1, swing 1.25,
-    open 2.15, sparkle 2.2."""
+    """The round vault door opens, timed to anims.vault (8 frames at 8 fps: 0 closed, 1-2 the wheel spins, 3-7 the
+    door swings 20 -> 102 deg): the spoked wheel spins (ratchet ticks speeding up, hub whirr), three bolts retract
+    'ka-chunk-CLUNK' as frame 3 starts the swing, the heavy door swings with a low hinge groan and a whoosh of
+    air, lands with a deep 'dunn' on the last frame, and a little treasure sparkle 'ting'. Every bolt has a
+    1.2-2.5 kHz steel 'clack' and the 'dunn' a 1 kHz knock, so it reads on phone speakers.
+    cues: spin 0, bolt1 0.25, bolt2 0.31, bolt3 0.375 (frame 3), swing 0.4, open 0.875 (frame 7), sparkle 0.94."""
     r = S.rng(11400)
-    m = Mono(3.2)
-    d = 0.72
+    fr = 1.0 / VAULT_FPS
+    m = Mono(2.4)
+    d = 0.24
     n = n_of(d)
     t = tax(n)
-    rate = 5 + 15 * (t / d) ** 1.3
+    rate = 18 + 30 * (t / d) ** 1.2
     ph = np.cumsum(rate) / SR
     for i in np.nonzero(np.diff(np.floor(ph)) > 0)[0] + 1:
-        m.add(i / SR, steel_clank(r, r.uniform(1500, 1900), 0.4, 0.05), 0.14)
-    whirr = S.bp(r.standard_normal(n), 320, 1.5) * S.env_pts([(0, 0), (0.1, 0.6), (d - 0.05, 1.0), (d, 0)], n)
+        m.add(i / SR, steel_clank(r, r.uniform(1500, 1900), 0.4, 0.04), 0.16)
+    whirr = S.bp(r.standard_normal(n), 320, 1.5) * S.env_pts([(0, 0), (0.05, 0.6), (d - 0.03, 1.0), (d, 0)], n)
     m.add(0.0, unit(whirr) * 0.03, 1.0)
-    for k, t0 in enumerate((0.78, 0.94, 1.1)):
-        m.add(t0, steel_clank(r, 160 + 15 * k, 1.0, 0.3), 0.32 + 0.08 * k)
-        m.add(t0, blip(120, 55, 0.2, 0.02, 0.05), 0.4 + 0.1 * k)
-    g = creak(r, 0.85, [(0, 10), (0.4, 18), (0.85, 12)], res=((150, 3.0, 1.0), (360, 4.0, 0.6), (780, 5.0, 0.25)),
-              env_pts=[(0, 0), (0.15, 0.8), (0.6, 1.0), (0.85, 0)], jitter=0.2)
-    m.add(1.25, norm(g), 0.2)
-    m.add(1.25, puff(r, 0.95, 300, [(0, 0), (0.5, 1.0), (0.95, 0)]), 0.35)
-    m.add(2.15, blip(90, 45, 0.6, 0.05, 0.15, attack=0.003), 0.5)
-    m.add(2.15, S.modal(110, n_of(1.0), [(1, 1, 0.8), (2.71, 0.4, 0.4), (4.3, 0.15, 0.2)], r, attack=0.002), 0.12)
-    m.add(2.2, I.glock(96, 0.6, r), 0.1)
-    m.add(2.28, I.glock(101, 0.5, r), 0.07)
+    m.add(0.0, steel_clank(r, 1250, 0.6, 0.06), 0.12)                        # hand grabs the wheel
+    for k, t0 in enumerate((2 * fr, 2 * fr + 0.06, 3 * fr)):
+        m.add(t0, steel_clank(r, 160 + 15 * k, 1.0, 0.25), 0.18 + 0.04 * k)
+        m.add(t0, blip(120, 55, 0.18, 0.02, 0.05), 0.18 + 0.04 * k)
+        m.add(t0, S.hp(steel_clank(r, 1300 + 350 * k, 0.9, 0.08), 600, order=2), 0.3 + 0.05 * k)   # bright 'clack'
+        m.add(t0 + 0.004, wood_knock(r, 640 + 70 * k, 0.9, 0.06), 0.22)
+    sw = 7 * fr - 3.2 * fr                                                  # the swing: frame 3 .. frame 7
+    g = creak(r, sw, [(0, 10), (sw * 0.45, 18), (sw, 12)], res=((150, 3.0, 1.0), (360, 4.0, 0.6), (780, 5.0, 0.35)),
+              env_pts=[(0, 0), (sw * 0.15, 0.8), (sw * 0.6, 1.0), (sw, 0)], jitter=0.2)
+    m.add(3.2 * fr, norm(g), 0.2)
+    m.add(3.2 * fr, puff(r, sw, 420, [(0, 0), (sw * 0.55, 1.0), (sw, 0)]), 0.3)
+    m.add(7 * fr, blip(90, 45, 0.5, 0.04, 0.13, attack=0.003), 0.3)
+    m.add(7 * fr, S.modal(110, n_of(0.9), [(1, 1, 0.7), (2.71, 0.4, 0.35), (4.3, 0.15, 0.2)], r, attack=0.002), 0.08)
+    m.add(7 * fr, wood_knock(r, 1000, 1.0, 0.08), 0.32)                    # 1 kHz knock in the 'dunn'
+    m.add(7 * fr, S.hp(steel_clank(r, 760, 0.8, 0.18), 500, order=2), 0.16)
+    m.add(7 * fr + 0.065, I.glock(96, 0.6, r), 0.1)
+    m.add(7 * fr + 0.145, I.glock(101, 0.5, r), 0.07)
     y = S.lp(m.x, 8000)
     y = room(y, 0.9, 0.14, 0.35, 0.9)
-    return tail_fade(y[:n_of(2.75)], 0.4)
+    return tail_fade(y[:n_of(1.9)], 0.4)
+
+
+def sfx_ticket_chime():
+    """Bank queue: the number display calls the next customer - a soft electronic 'ding-dong' (C6 -> A5, a
+    vibraphone-like bell with a slow motor tremolo, F major), a faint display click. cues: ding 0, dong 0.34."""
+    r = S.rng(12600)
+    m = Mono(1.7)
+    m.add(0.0, burst(r, 0.006, 2400, 1.0, tau=0.0012), 0.04)
+    for t0, nm, v in ((0.0, "C6", 1.0), (0.34, "A5", 0.92)):
+        f = float(S.midi_hz(S.note(nm)))
+        n = n_of(1.25)
+        b = S.modal(f, n, [(1, 1, 1.1), (1.0025, 0.35, 1.0), (2.0, 0.22, 0.45), (3.0, 0.07, 0.25), (4.0, 0.03, 0.15)],
+                    r, fmax=9000.0, attack=0.0025)
+        trem = 1.0 - 0.18 * (0.5 - 0.5 * np.cos(TAU * 5.2 * tax(n)))
+        m.add(t0, b * trem * v, 0.42)
+        m.add(t0, I.glock(S.note(nm), 0.4, r), 0.05 * v)
+    y = S.lp(m.x, 7000)
+    y = room(y, 0.6, 0.1, 0.22, 0.7)
+    return tail_fade(y, 0.3)
 
 
 # ============================================================================ logistics
@@ -772,15 +818,14 @@ def _warehouse_events(seed: int, nominal: float):
         for k in range(5):
             place(cl, (k * 0.06 + r.uniform(0, 0.02)) * SR, steel_clank(r, r.uniform(500, 900), 0.6, 0.1), 0.5)
         ev.append((t0 / nominal, far(cl, 4000, 0.6, 2.0), 0.05))
-    v = _babble(r, False)
-    ev.append((4.9 / nominal, far(norm(v), 2600, 0.7, 2.0), 0.04))
+    # polish: the far voice is gone (it repeated every 8 s); the game adds audio2 sfx_chatter_lo near workers.
     return ev
 
 
 def render_warehouse(seed: int = 11500, loop_samples=None, nominal: float = 8.0):
     """Inside the logistics centre (mono loop): the conveyor's electric motor hum (G2 + harmonics) and the
     rollers' steady rattle, boxes bumping over the roller joints, a forklift reversing at the far end
-    ('beep ... beep'), its motor passing, a tape gun, a pallet jack, a voice - in a big echoing hall."""
+    ('beep ... beep'), its motor passing, a tape gun, a pallet jack - in a big echoing hall (no voices)."""
     r = S.rng(seed)
     L = int(loop_samples or n_of(nominal))
     t = np.arange(L) / SR
@@ -1080,10 +1125,11 @@ SFX6 = {
     "sfx_box_drop": sfx_box_drop,
     "sfx_box_drop_2": lambda: sfx_box_drop_v(2), "sfx_box_drop_3": lambda: sfx_box_drop_v(3),
     "sfx_newspaper": sfx_newspaper,
+    "sfx_ticket_chime": sfx_ticket_chime,
 }
 # per-key mastering like sfx.FINISH: punch = dB of fast (3 ms look-ahead) limiting before normalisation
 FINISH6 = {
-    "sfx_fire_flare": dict(punch=2, fout=0.06), "sfx_steam_hiss": dict(punch=1, fout=0.05),
+    "sfx_fire_flare": dict(punch=2, fout=0.06), "sfx_steam_hiss": dict(punch=1, fout=0.05, peak_db=-2.6),
     "sfx_collapse_soft": dict(punch=3, fout=0.06), "sfx_demolish_crunch": dict(punch=3, fout=0.06),
     "sfx_coin_count": dict(punch=2, fout=0.05), "sfx_stamp": dict(punch=5, fout=0.03),
     "sfx_vault_door": dict(punch=3, fout=0.08), "sfx_forklift_beep": dict(punch=1, fout=0.03),
@@ -1092,6 +1138,7 @@ FINISH6 = {
     "sfx_fire_alarm_bell": dict(punch=2, fout=0.08), "sfx_moving_truck": dict(punch=3, fout=0.05),
     "sfx_box_drop": dict(punch=5, fout=0.03),
     "sfx_box_drop_2": dict(punch=5, fout=0.03), "sfx_box_drop_3": dict(punch=7, fout=0.03), "sfx_newspaper": dict(punch=2, fout=0.03),
+    "sfx_ticket_chime": dict(punch=1, fout=0.08),
 }
 # loop renders (key -> function name in this module); build_audio.fit_loop calls them with loop_samples=n
 LOOP_FUNCS = {"sfx_siren_fire": "render_siren_fire", "sfx_siren_police": "render_siren_police",
@@ -1107,13 +1154,14 @@ def render_with_lead(key: str):
     y = np.asarray(SFX6[key](), dtype=float)
     opts = dict(FINISH6.get(key, {}))
     punch = opts.pop("punch", 0)
+    peak_db = opts.pop("peak_db", -1.5)
     if punch:
         y = S.hp(y, 30, order=2)
         y = S.limiter(y / max(S.peak(y), 1e-12), -float(punch), window_ms=3.0)
     a = np.abs(S.hp(y, opts.get("lowcut", 30.0), order=2))        # = finish_sfx's trim_silence decision
     idx = np.nonzero(a > S.undb(opts.get("thr_db", -56.0)) * max(a.max(), 1e-12))[0]
     lead = max(0, int(idx[0]) - n_of(0.001)) / SR if len(idx) else 0.0
-    return S.finish_sfx(y, peak_db=-1.5, **opts), lead
+    return S.finish_sfx(y, peak_db=peak_db, **opts), lead
 
 
 def render(key: str) -> np.ndarray:

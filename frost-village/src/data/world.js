@@ -55,7 +55,8 @@ export function shoreY(x) {
 
 export const WORLD = {
   // (v3) 전체 지도 크기. 처음 마을은 왼쪽 위 1800 x 2620 이고, 나머지는 눈안개(망루를 세우면 열림)
-  width: 3000,
+  // (v4) 동쪽으로 넓어짐: 3000 → 6144 (서리역 앞 3000~4150, 솔방울 마을 4150~6144)
+  width: 6144,
   height: 3450,
 
   // 바닷가: y 값보다 위쪽이 바다. 물결 모양 = base + Σ amp*sin(x*freq + phase)
@@ -190,6 +191,8 @@ export const WORLD = {
       east_link: [1600, 930], east_gate: [1830, 950], e_mid: [2120, 980], e_dock: [2270, 790], e_east: [2560, 1180], e_south: [2330, 1290],
       s_gate: [990, 2760], s_cross: [990, 2980], s_w: [600, 3090], s_e: [1360, 3050], s_s: [990, 3290],
       se_n: [2330, 1650], se_c: [2330, 2330], se_s: [2320, 2960], se_gate: [1830, 2400], se_e: [2700, 2420],
+      // ---- (v4-A) 역 가는 길 (동쪽 해안 → 서리역 광장). 그 너머 길은 WORLD.v4.walk 에서 자동으로 만들어져요
+      v_link_w: [2640, 1139], v_link_e: [3184, 1411],
     },
     edges: [
       ['plaza_c', 'plaza_s', { draw: false }], ['plaza_c', 'plaza_sw', { draw: false }], ['plaza_c', 'plaza_se', { draw: false }],
@@ -217,6 +220,8 @@ export const WORLD = {
       ['s_cross', 's_e', { region: 'south', via: [[1180, 3010]] }], ['s_cross', 's_s', { region: 'south' }],
       ['e_south', 'se_n', { region: 'se' }], ['se_n', 'se_c', { region: 'se', via: [[2360, 2000]] }], ['se_c', 'se_s', { region: 'se', via: [[2300, 2650]] }],
       ['tents_e', 'se_gate', { region: 'se', via: [[1600, 2400]] }], ['se_gate', 'se_c', { region: 'se', via: [[2080, 2360]] }], ['se_c', 'se_e', { region: 'se' }],
+      // ---- (v4-A) 역 가는 길
+      ['e_east', 'v_link_w', { region: 'rail' }], ['v_link_w', 'v_link_e', { region: 'rail' }],
     ],
   },
   paths: null,   // (자동: 위 roads 에서 그리는 길만 모아 만듦)
@@ -290,8 +295,11 @@ export const WORLD = {
   // 가장자리 소나무 숲 (장식, 벨 수 없음): 자동 배치 영역 [x0, y0, x1, y1, 간격, (v3) 이 땅이 열려야 보임]
   borderTrees: [
     [0, 420, 150, 2620, 100], [1650, 420, 1800, 2620, 100], [0, 2560, 760, 2620, 115], [1180, 2560, 1800, 2620, 115],
-    [2880, 300, 3000, 1500, 100, 'east'], [2880, 1500, 3000, 3450, 100, 'se'], [1800, 3380, 3000, 3450, 115, 'se'],
+    // (v4) 7번째 값 = 이 땅이 열리면 사라지는 나무 (동쪽 끝 숲은 서리역 앞 땅이 열리면 비켜 줌)
+    [2880, 300, 3000, 1500, 100, 'east', 'rail'], [2880, 1500, 3000, 3450, 100, 'se', 'rail'], [1800, 3380, 3000, 3450, 115, 'se'],
     [0, 2620, 150, 3450, 100, 'south'], [0, 3380, 1800, 3450, 115, 'south'],
+    // ---- (v4-A) 서리역 앞·솔방울 마을의 가장자리 숲
+    [3000, 3380, 4150, 3450, 115, 'rail'], [4150, 3380, 6144, 3450, 115, 'town'], [6024, 300, 6144, 3450, 100, 'town'],
   ],
   // 그 밖에 흩어진 소나무 [x, y, 종류] (구역 안이나 길 위면 자동으로 빠짐)
   extraTrees: [
@@ -325,6 +333,10 @@ export const WORLD = {
     east:  { rect: [1800, 0, 3000, 1500], tower: 'tower_east', name: 'r_east', center: [2330, 1020] },
     south: { rect: [0, 2620, 1800, 3450], tower: 'tower_south', name: 'r_south', center: [960, 3000] },
     se:    { rect: [1800, 1500, 3000, 3450], tower: 'tower_se', name: 'r_se', center: [2360, 2380] },
+    // ---- (v4-A) 서리역 앞: 동쪽 망루에 불이 켜질 때 east 와 함께 열려요 (openWith)
+    rail:  { rect: [3000, 0, 4150, 3450], name: 'r_rail', center: [3420, 1560], openWith: 'east' },
+    // ---- (v4-A) 솔방울 마을: 촌장님 초대(첫 가게 개업 뒤)로 열려요 (openFlag)
+    town:  { rect: [4150, 0, 6144, 3450], name: 'r_town', center: [4900, 2450], openFlag: 'townInvite' },
   },
   // 망루 공사장 (x, y = 망루 중심). 비용 발판은 공사장 앞(자재 내려놓는 곳)에 생김
   //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
@@ -351,11 +363,13 @@ export const WORLD = {
     se_s1:    { x: 2560, y: 3090, size: 'S', region: 'se' },
     se_s3:    { x: 2560, y: 1700, size: 'S', region: 'se' },
     se_s2:    { x: 2060, y: 1820, size: 'S', region: 'se' },
+    // ---- (v4-A) 눈에 덮인 옛 기차역 (XL 부지, 서리역만 고칠 수 있음). drop = 자재 내려놓는 발판 (승격식 발판 자리)
+    r_station: { x: 3410, y: 1330, size: 'XL', region: 'rail', only: 'station', drop: [3200, 1441] },
   },
   // 새 땅의 자원: 벨 수 있는 소나무, 광석 바위, 밀밭 (그 땅이 열리면 나타남)
   regionTrees: [
-    // 동쪽 해안 숲
-    [2620, 1290, 'tree_pine_a', 'east'], [2720, 1240, 'tree_pine_snow', 'east'], [2690, 1360, 'tree_pine_b', 'east'], [2590, 1420, 'tree_pine_a', 'east'],
+    // 동쪽 해안 숲 ((v4) [2720, 1240] 소나무는 '역 가는 길' 바로 옆이라 뺐어요)
+    [2620, 1290, 'tree_pine_a', 'east'], [2690, 1360, 'tree_pine_b', 'east'], [2590, 1420, 'tree_pine_a', 'east'],
     [2780, 1420, 'tree_pine_snow', 'east'], [2950, 1150, 'tree_pine_b', 'east'], [2930, 1010, 'tree_pine_a', 'east'],
     // 남쪽 들판의 작은 숲
     [230, 2860, 'tree_pine_snow', 'south'], [320, 2940, 'tree_pine_a', 'south'], [220, 3020, 'tree_pine_b', 'south'], [300, 3150, 'tree_pine_snow', 'south'],

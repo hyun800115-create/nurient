@@ -643,8 +643,8 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     # ---------- people: the chief, villagers, townsfolk / beachfolk
     ch = chs.get('characters/manifest.json', 'player', 'idle', 'S', 0)
     if ch:
-        sc.put(ch[0], ch[1], -0.7, 5.6, bias=0.5)
-        labels.append(('chief 1.45 m', -0.7, 5.6, False))
+        sc.put(ch[0], ch[1], 3.0, 1.9, bias=0.5)          # in front of the lifeguard tower, by the shells
+        labels.append(('chief 1.45 m', 3.0, 1.9, False))
     for key, x, y, d in (('villager_a', -5.6, 6.4, 'SE'), ('villager_b', 10.4, 6.6, 'SW'),
                          ('villager_c', -11.6, 6.0, 'E')):
         r = chs.get('characters/manifest.json', key, 'idle', d, 1)
