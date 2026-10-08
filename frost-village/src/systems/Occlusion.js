@@ -78,6 +78,8 @@ export class Occlusion {
     if (gs.market) { for (const c of gs.market.queue) add(c); for (const c of gs.market.leaving) add(c); }
     if (gs.trade && gs.trade.enabled) add(gs.trade.merchant);
     if (gs.life) for (const r of gs.life.residents) if (!r.lod) add(r);
+    // ---- (v4-A) train visitors, townsfolk, the train's cars
+    if (gs.v4) gs.v4.occlusionSubjects(add);
     return out;
   }
 

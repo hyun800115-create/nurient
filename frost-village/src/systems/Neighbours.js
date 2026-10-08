@@ -564,6 +564,11 @@ export class Neighbours {
     for (const v of this.visitors) add(v);
     for (const a of this.actors) add(a);
     if (this.town) for (const b of this.town.bodies) if (b.c) add(b);
+    if (this.train) {
+      const subs = this._carSubs || (this._carSubs = []);
+      let k = 0;
+      this.train.forEachVisible((spr, c) => { const o = subs[k] || (subs[k] = { alive: true, noXray: false }); o.sprite = spr; o.x = spr.x; o.y = spr.y; o.headTop = (c.def && c.def.headTop) || -90; k++; add(o); });
+    }
   }
 
   serialize() {
