@@ -23,7 +23,8 @@ Usage (build machine, bpy module; resumable - only missing layer PNGs render):
     /tmp/bvenv/bin/python tools/blender/bf_render.py -- --mode head [--frames new|old|all] [--reverse]
     /tmp/bvenv/bin/python tools/blender/bf_render.py -- --mode body --bases adult_slim [--set new|old|all] [--reverse]
     /tmp/bvenv/bin/python tools/blender/bf_render.py -- --mode meta --bases all
-Options: --anims a,b  --dirs S,SE  --samples 6  --cache DIR  --force  --parts a,b
+Options: --anims a,b  --dirs S,SE  --samples 6  --cache DIR  --force  --parts a,b  --chunk 24 (head: view layers
+per linked scene copy, see ChunkLayers)
 Then: python3 tools/blender/bf_pack.py && python3 tools/blender/bf_check.py
 """
 import json
@@ -69,7 +70,7 @@ def parse_args():
     a = bc.script_args()
     opt = {'mode': 'full', 'bases': 'all', 'set': 'all', 'anims': 'all', 'dirs': 'all', 'samples': '6',
            'cache': DEFAULT_CACHE, 'force': False, 'reverse': False, 'combos': 'look', 'out': None,
-           'parts': 'all', 'frames': 'all', 'look': 'all'}
+           'parts': 'all', 'frames': 'all', 'look': 'all', 'chunk': '24'}
     i = 0
     while i < len(a):
         k = a[i].lstrip('-')
@@ -642,7 +643,7 @@ def render_head(opt):
     wat = water_block(ctx)
     sc, cam = tr.setup_scene(int(opt['samples']), HEAD_ANCHOR)
     sc.cycles.transparent_max_bounces = 32
-    L = tr.Layers(ctx)
+    L = ChunkLayers(ctx, int(opt['chunk']))
     tr.head_layer_specs(L, ctx, parts, face_sets)
     head_cols = [c for c in ctx.cols if c.startswith('P.') or c == 'M_head_none']
     add_water_to_specs(L, head_cols)

@@ -1,6 +1,7 @@
 // Incidents — all cute, all non-violent, all with a happy ending:
 //   theft   a hungry or mischievous resident pinches a bun -> "도둑이야!" -> police dispatched -> comic
-//           chase -> arrest (hands behind the back) -> police station -> apology + paying back -> release;
+//           chase -> arrest (walks along holding the officer's hand) -> police station (cocoa) -> apology +
+//           paying back -> release;
 //           or the thief gets away -> wanted poster (3 slots) -> a witness tips the police / the thief
 //           turns themselves in -> arrest -> apology -> release
 //   queue   someone cuts in line -> argument -> apology (or a scuffle)
@@ -15,7 +16,7 @@
 
 import { G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, S_IDLE, S_EVENT, F_WANTED, F_JAILED, F_HOMELESS, F_OWNER, groupOf } from './people.js';
 import { SRC_SEEN, SRC_DID, D_ANON, findMem, remember } from './memory.js';
-import { getRel, ensureRel, RF_RIVAL } from './relations.js';
+import { getRel, ensureRel, clampRel, RF_RIVAL } from './relations.js';
 import { ITEMS } from '../data/items.js';
 import { FIRE_CAUSES } from '../data/facts.js';
 import { B_OK, B_BURNING, B_RUIN, B_DEMOLISH, B_BUILD, B_DAMAGED } from './world.js';
@@ -230,7 +231,7 @@ export class Incidents {
           const paid = e.econ.pay(thief, cost);
           vic.wallet += paid;
           const rel = ensureRel(e, thief, vic);
-          rel.aff += 60;
+          rel.aff += 60; clampRel(rel);
         }
         for (const id of I.officers) e.learn(e.people[id], f, SRC_SEEN);
         thief.tr[2] = Math.max(0, thief.tr[2] - 12);   // learnt a lesson
@@ -393,7 +394,7 @@ export class Incidents {
         return;
       }
       e.social.say(a, 'shout.queue_sorry', { to: b.id, em: 'emote_sweat', an: 'sad' });
-      rel.aff += 30;
+      rel.aff += 30; clampRel(rel);
       const f = e.fact('apology', { a: a.id, b: b.id, p: I.place, ref: I.fact.id });
       e.witness(f, e.world.places[I.place], a.id, b.id);
       I.outcome = 'apology';
@@ -520,7 +521,7 @@ export class Incidents {
       e.social.say(a, 'shout.handshake', { to: b.id, em: 'emote_sweat' });
       const f = e.fact('apology', { a: a.id, b: b.id, p: I.place, ref: I.fact.id });
       e.witness(f, e.world.places[I.place], a.id, b.id);
-      rel.aff += 140;
+      rel.aff += 140; clampRel(rel);
       if (rng.chance(0.4)) { rel.aff = Math.max(rel.aff, 40); rel.flags &= ~RF_RIVAL; const g = e.fact('reconcile', { a: a.id, b: b.id, p: I.place }); e.learn(a, g, SRC_DID); e.learn(b, g, SRC_DID); }
       this.release(a); this.release(b);
       for (const id of I.officers) this.release(e.people[id]);

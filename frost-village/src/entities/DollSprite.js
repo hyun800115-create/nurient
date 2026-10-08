@@ -276,10 +276,11 @@ export class DollPool {
   /** re-tier: the nearest dolls in (or near) the view get rigs, up to the caps */
   assign() {
     const gs = this.gs, P = (BALANCE.v4 && BALANCE.v4.perf) || {};
-    const cam = gs.cameras.main, v = cam.worldView;
+    // (the view the camera shows or is going to: also right after a jump, before the next render)
+    const v = gs.viewRect ? gs.viewRect() : gs.cameras.main.worldView;
     const zoom = gs.zoomCur || 1;
     const margin = P.margin !== undefined ? P.margin : 120;
-    const cx = v.centerX, cy = v.centerY;
+    const cx = (v.x + v.right) / 2, cy = (v.y + v.bottom) / 2;
     const maxFull = zoom < 0.7 ? 0 : (this.low ? (P.maxRigsLow || 16) : (P.maxRigs || 32));
     const maxLite = (P.maxLite !== undefined ? P.maxLite : 40) + (zoom < 0.7 ? (P.maxRigs || 32) : 0);
     const dots = zoom < 0.4;

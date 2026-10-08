@@ -524,10 +524,10 @@ export class TownSim {
   /** who is near the view gets a body (nearest first, up to the caps) */
   retier() {
     const gs = this.gs, P = this.B.perf;
-    const v = gs.cameras.main.worldView;
+    const v = gs.viewRect ? gs.viewRect() : gs.cameras.main.worldView;
     const m = P.margin || 120, near = P.near || 600;
     const cap = (P.maxRigs || 32) + (P.maxLite || 40);
-    const cx = v.centerX, cy = v.centerY;
+    const cx = (v.x + v.right) / 2, cy = (v.y + v.bottom) / 2;
     const want = this._want || (this._want = []);
     want.length = 0;
     let walking = 0, inside = 0, out = 0, away = 0;

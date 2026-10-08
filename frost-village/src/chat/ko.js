@@ -159,7 +159,7 @@ export function render(tpl, slots, level, out) {
 
 /** collapse doubled spaces and spaces before punctuation */
 export function tidy(s) {
-  return s.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?~…])/g, '$1').replace(/^\s+|\s+$/g, '');
+  return s.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?~])/g, '$1').replace(/([^.!?~…\s])\s+…/g, '$1…').replace(/^\s+|\s+$/g, '');
 }
 
 // ---------------------------------------------------------------- text checks

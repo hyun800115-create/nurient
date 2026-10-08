@@ -22,7 +22,7 @@ export class TownBuilding {
     if (gs.lazyImage) gs.lazyImage(this.img, this.key, () => { this.def = Assets.def(this.key); this.points(); this.startLoop(); });
     this.obstacles = [];
     this.addCollision(opts.collision);
-    if (opts.occluder !== false && this.def.kind !== 'decal') gs.addOccluder(this.img);
+    if (opts.occluder !== false && this.def.kind !== 'decal') { gs.addOccluder(this.img); gs.occluders[gs.occluders.length - 1].mainOnly = true; }
     this.points();
     this.startLoop();
     if (cfg.board) this.makeBoard(t(cfg.board));

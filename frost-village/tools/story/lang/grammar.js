@@ -177,9 +177,10 @@ export class Grammar {
           (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pm3 & p3) !== a.pm3 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) || (a.pn3 & p3) ||
           (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3)) { W[i] = NO; continue; }
       if (noQ && (a.ts0 & 1)) { W[i] = NO; continue; }          // this line must not ask a question
-      let w = a.w;
+      // recently used by this speaker: still possible, but much less likely (a fitting answer said
+      // twice beats an unfitting generic one)
+      const w = useRecent && recentHas(rec, a.gid) ? a.w * 0.06 : a.w;
       sumAll += w;
-      if (useRecent && recentHas(rec, a.gid)) { W[i] = -w; continue; }   // remembered: only as a last resort
       W[i] = w; sum += w;
     }
     // drop alternatives that reference a rule with nothing to say here
@@ -188,7 +189,7 @@ export class Grammar {
       if (W[i] === NO || !a.refs.length) continue;
       let ok = true;
       for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, 0)) { ok = false; break; }
-      if (!ok) { if (W[i] > 0) sum -= W[i]; sumAll -= a.w; W[i] = NO; }
+      if (!ok) { sum -= W[i]; sumAll -= W[i]; W[i] = NO; }
     }
     let pick = -1;
     if (sum > 0) {
@@ -337,7 +338,10 @@ function parse(s, i, stop, ctx, lang, ruleName) {
 /** final tidy-up of a generated line */
 export function tidy(s, lang) {
   s = s.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?~…])/g, '$1').replace(/^[\s,]+/, '').trim();
-  if (lang === 'en' && s) s = s.charAt(0).toUpperCase() + s.slice(1);
+  if (lang === 'en' && s) {
+    s = s.charAt(0).toUpperCase() + s.slice(1);
+    s = s.replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());   // a new sentence starts with a capital
+  }
   return s;
 }
 

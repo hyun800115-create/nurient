@@ -396,7 +396,7 @@ export class Game extends Phaser.Scene {
     if (r) ob = this.collision.add(fx, y, r * (opts.scale || 1), key);
     img.__ob = ob;
     if (opts.zone) this.addToZone(opts.zone, img);
-    if (opts.region && this.territory) this.territory.add(opts.region, img);
+    if (opts.region && this.territory) this.territory.add(opts.region, img, opts.until);
     this.statics.push(img);
     if (/^tree_pine|lodge|hut|tent|mine_entrance|market|trade_post|station_/.test(key)) this.addOccluder(img);
     return img;
@@ -520,7 +520,7 @@ export class Game extends Phaser.Scene {
     // decorative border forest
     const r = rng(1234);
     const kinds = ['tree_pine_a', 'tree_pine_b', 'tree_pine_snow', 'tree_pine_snow'];
-    for (const [x0, y0, x1, y1, step, region] of WORLD.borderTrees) {
+    for (const [x0, y0, x1, y1, step, region, until] of WORLD.borderTrees) {
       let row = 0;
       for (let y = y0; y <= y1; y += step * 0.55, row++) {
         for (let x = x0; x <= x1; x += step) {
@@ -528,7 +528,7 @@ export class Game extends Phaser.Scene {
           const y2 = y + (r() - 0.5) * step * 0.3;
           const k = kinds[Math.floor(r() * kinds.length)], fl = r() < 0.5, sc = 0.9 + r() * 0.25;
           if (y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2) || x2 > this.W - 20 || y2 > this.H) continue;
-          this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc, region: region || this.territory.regionAt(x2, y2) });
+          this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc, region: region || this.territory.regionAt(x2, y2), until });   // (v4-A) until: gone when that land opens
         }
       }
     }

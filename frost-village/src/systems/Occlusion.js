@@ -103,6 +103,8 @@ export class Occlusion {
         for (let k = 0; k < chars.length; k++) {
           const c = chars[k];
           if (worked && c !== this.gs.player) continue;
+          // (v4-A) the town's buildings fade for the chief, the train and train visitors (not for every townsperson)
+          if (o.mainOnly && c !== this.gs.player && !c.xrayMain) continue;
           if (c.y >= o.y - 4 || c.y <= o.y - o.top) continue;
           if (Math.abs(c.x - o.x) > o.hw + 22) continue;
           // the box says maybe: fade only when the art really covers the body or the head

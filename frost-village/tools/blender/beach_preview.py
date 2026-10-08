@@ -623,17 +623,22 @@ def preview_scene(builds, frames, chars, cframes, man, out):
         r = Chars().get('ships/manifest.json', 'yacht', 'move', 'SE', 1)
         if r:
             im, an = r
-            sx, sy = sc.p(7.5, -11.8)
+            YX = 11.0                                   # the towing yacht, ~2.5 m of rope ahead of the banana's nose
+            sx, sy = sc.p(YX, -11.8)
             sc.put_px(im, an, sx, sy + WATER_PX, sy + WATER_PX)
-            m = chars.get('banana_boat_crew')
-            if m:
-                tp = m['towPoint']['SE']
+            mc = man.get('characters', {}).get('banana_boat_crew') or {}
+            try:
+                yw = json.load(open(os.path.join(ASSETS, 'ships', 'manifest.json'), encoding='utf-8'))[
+                    'characters']['yacht']['wakePoint']['SE']
+            except Exception:       # noqa: BLE001
+                yw = [-177, -84]
+            if mc.get('towPoint'):
+                tp = mc['towPoint']['SE']
                 bx, by = sc.p(1.0, -11.8)
                 by += WATER_PX
-                tx, ty = sc.p(7.5 - 3.3, -11.8)
                 line = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-                ImageDraw.Draw(line).line([(bx + tp[0], by + tp[1]), (tx, ty + WATER_PX - 8)], fill=(250, 248, 240,
-                                                                                                     230), width=2)
+                ImageDraw.Draw(line).line([(bx + tp[0], by + tp[1]), (sx + yw[0], sy + WATER_PX + yw[1])],
+                                          fill=(250, 248, 240, 230), width=2)
                 sc.ground.append((9e9, line, 0, 0))
     for (x, y, d, i) in ((-2.8, 0.9, 'E', 2), (8.2, 1.2, 'SE', 0), (-10.0, 1.6, 'S', 3), (12.0, 3.2, 'NE', 1)):
         r = char_img('crab', 'walk', d, i)

@@ -95,6 +95,8 @@ export function slotify(text, personas, chiefName = '촌장님') {
       for (const [form, key] of targets) {
         if (!s.startsWith(form, i)) continue;
         let j = i + form.length;
+        const hon = s.slice(j).match(/^\s?(씨|님|언니|오빠|형|누나)(?![가-힣]{2})/);
+        if (hon && key !== 'chief') j += hon[0].length;
         let part = '';
         for (const p of PARTICLES) if (s.startsWith(p, j)) { part = p; break; }
         const after = s[j + part.length];
@@ -165,7 +167,11 @@ export function sanitizeResult(raw, { personas, self, chiefName = '촌장님', r
   }
   for (const g of asList(r.gossip, 3)) {
     const t = capLine(cleanSpoken(g), 70);
-    if (t && isSpeech(t, { max: 70, min: 6 }) && /(대|래|대요|래요|다더라|더라)[.!~…]*$/.test(t)) out.gossip.push(slotify(t, personas || {}, chiefName));
+    if (t && isSpeech(t, { max: 70, min: 6 }) && /(대|래|대요|래요|다더라|더라)[.!~…]*$/.test(t)) {
+      // the attribution is added by whoever repeats it, so drop a leading "X가 그러는데"
+      const g2 = slotify(t, personas || {}, chiefName).replace(/^\{@[a-z_]+(:[^}]*)?\}\s*(그러는데|그러던데|말하길|말하는데|한테 들었는데)[,\s]*/, '');
+      if (g2.length >= 6) out.gossip.push(g2);
+    }
     else dropped.push('gossip');
   }
   for (const l of asList(r.lines, 2)) {

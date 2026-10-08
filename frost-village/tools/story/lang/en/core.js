@@ -14,7 +14,7 @@ export default {
   ],
   src: [
     '*10 ', '?told? *2 I heard from {Z} that ', '?told? {Z} says ', '?told? {Z} told me ',
-    '?news =paper? *2 The paper says ', '?news =paper? It’s in the paper: ', '?seen? *2 I saw it myself — ', '?seen? With my own eyes: ',
+    '?news =paper? *2 the paper says ', '?news =paper? it’s in the paper: ', '?seen? *2 I saw it myself — ', '?seen? with my own eyes: ',
   ],
   wow: ['*3 [Really?|Really?|Is that so?]', '[Whoa!|Oh my!|Goodness!]', '[No way!|No way!|Good heavens!]', '?elder? *2 Oh dear!', '?kid? *2 Woooow!', '?teen? For real?!', '?grumpy? Tsk tsk!', '?shy? Oh…'],
   laugh: ['*2 Hahaha!', 'Pfft, haha!', '?kid? *2 Hehehe!', '?elder? Ho ho ho!', '?teen? LOL', '?female? Hehe!', 'Oh, my tummy!'],
@@ -23,7 +23,7 @@ export default {
   // ---------------------------------------------------------------- greetings
   greet: ['*5 #greet.core#', '*3 #greet.core# #greet.add#', '?!rival? *2 #greet.core# #greet.ask#'],
   'greet.core': [
-    '*3 [Hey, {V}!|Hello, {V}!|Good day, {V}!]', '[Hi, {V}!|Hello there, {V}!|Hello, {V}!]', '[Oh, {V}!|Oh, {V}!|Ah, {V}!]', '?!rival? [{V}! Fancy seeing you here!|{V}, fancy meeting you here!|What a pleasant surprise, {V}.]',
+    '*3 [Hey, {V}!|Hello, {V}!|Good day, {V}!]', '[Hi, {V}!|Hello there, {V}!|Hello, {V}!]', '[Oh, {V}!|Oh, {V}!|Ah, {V}!]', '?!rival !athome? [{V}! Fancy seeing you here!|{V}, fancy meeting you here!|What a pleasant surprise, {V}.]',
     '?morning? *2 [Morning, {V}!|Good morning, {V}!|Good morning, {V}.]', '?morning =q =sleepq? *2 [{V}, sleep well?|Did you sleep well, {V}?|Did you rest well, {V}?]', '?morning? [You’re up early, {V}!|You’re up early, {V}!|Up bright and early, {V}!]',
     '?noon =q =meal? *2 [{V}, had lunch yet?|Have you had lunch, {V}?|Have you had your lunch, {V}?]', '?evening =q =meal? *2 [{V}, had dinner?|Have you eaten, {V}?|Have you had supper, {V}?]',
     '?evening =q =day? [{V}, how was your day?|How was your day, {V}?|How was your day, {V}?]', '?night =q =late? [{V}, still up?|Still awake, {V}?|Still awake at this hour, {V}?]',
@@ -83,7 +83,7 @@ export default {
     '?^sleepq? *4 [Like a log!|Yes, very well!|Very well, thank you.]', '?^sleepq? *3 [Barely got out from under the covers!|It was too cold to get up!|It was hard to leave my warm bed.]', '?^sleepq tired? *4 [Not really… tossed and turned.|Not really, I tossed and turned.|Not very well.]',
     '?^late? *4 [Going to bed soon.|Just about to sleep.|About to retire.]', '?^late? *2 [Couldn’t sleep, so I came out.|Couldn’t sleep, so I went for a walk.|I couldn’t sleep.]',
     '?^cold? *4 [I’m fine, three layers!|I’m fine, I’m wearing three layers!|I’m dressed warmly, thank you.]', '?^cold? *3 [Freezing!|I’m freezing!|Quite cold.]', '?^cold kid? *3 [Not at all! I’ve been running around!|Not at all! I’m warm from running!|Not cold!]',
-    '?^newq? *6 [Yep, just moved in!|Yes, I just moved in!|Yes, I moved in recently.]', '?^newq newcomer? *8 [Yes! Nice to meet you!|Yes! Nice to meet you!|Yes, a pleasure to meet you.]', '?^newq !newcomer? *8 [I’ve lived here ages — we just never said hi!|I’ve lived here for ages — we just never met!|I have lived here a long time, but we never met.]',
+    '?^newq newcomer? *6 [Yep, just moved in!|Yes, I just moved in!|Yes, I moved in recently.]', '?^newq newcomer? *8 [Yes! Nice to meet you!|Yes! Nice to meet you!|Yes, a pleasure to meet you.]', '?^newq !newcomer? *3 [I’ve lived here ages — we just never said hi!|I’ve lived here for ages — we just never met!|I have lived here a long time, but we never met.]', '?^newq !newcomer? *3 [I’ve seen you around, though!|I’ve seen you around, though!|I believe I have seen you about.]', '?^newq !newcomer? *2 [We must’ve passed each other a hundred times!|We must have passed each other a hundred times!|We must have passed many times.]', '?^newq !newcomer? *2 [Nice to finally say hi!|Nice to finally meet you!|A pleasure to meet you at last.]', '?^newq !newcomer? [I live just down the road from {P}!|I live just down the road!|I live nearby.]',
     '?^hw? *4 [Not yet… later!|Not yet… later!|Not yet.]', '?^hw? *3 [Yep! All done!|Yes! All done!|Yes, all done!]', '?^hw? [There was homework?!|There was homework?!|Homework?!]',
     '?^shopq? *3 [Just looking!|Just browsing!|Just browsing.]', '?^shopq? *3 [Stuff for dinner!|Something for dinner!|Groceries for supper.]', '?^shopq? [Fish buns! Hehe.|Fish buns!|A little snack.]',
     '?^praise? *4 [Yep! Got it yesterday. Like it?|Yes! I got it yesterday. Do you like it?|Yes, it is new.]',
@@ -154,12 +154,12 @@ export default {
     '?rival? *4 […Hmph.|…Yes.|…Yes.]', '?shy? [B-bye…|B-bye…|Goodbye…]',
   ],
   'bye.home': [
-    '?family? *3 [I’m going to my room!|I’ll be in my room!|I’ll be in my room.]', '?family? *2 [See you at dinner!|See you at dinner!|See you at supper.]', '?family kid? *3 [Going to do my homework!|I’ll go do my homework!|Homework time!]', '?family elder? *2 [I think I’ll lie down.|I think I’ll lie down.|I shall lie down a while.]',
-    '?family night? *5 [Night!|Good night!|Good night.]', '?family morning? *3 [I’m off!|I’m off now!|I’m heading out.]', '?!family? *3 [Thanks for coming over!|Thanks for coming over!|Thank you for visiting.]', '?!family? [Come again!|Come again!|Do come again.]',
+    '?housemate? *3 [I’m going to my room!|I’ll be in my room!|I’ll be in my room.]', '?housemate? *2 [See you at dinner!|See you at dinner!|See you at supper.]', '?housemate kid? *3 [Going to do my homework!|I’ll go do my homework!|Homework time!]', '?housemate elder? *2 [I think I’ll lie down.|I think I’ll lie down.|I shall lie down a while.]',
+    '?housemate night? *5 [Night!|Good night!|Good night.]', '?housemate morning? *3 [I’m off!|I’m off now!|I’m heading out.]', '?!housemate? *3 [Thanks for coming over!|Thanks for coming over!|Thank you for visiting.]', '?!housemate? [Come again!|Come again!|Do come again.]',
   ],
   'bye.home.re': [
-    '?family? *3 [Okay, later!|Okay, see you later!|See you later.]', '?family night? *5 [Night!|Good night!|Good night.]', '?family morning? *3 [Have a good day!|Have a good day!|Have a good day.]', '?family? [Okay!|Okay!|All right.]',
-    '?!family? *3 [I’ll come again!|I’ll come again!|I shall come again.]', '?!family? [Thanks for having me!|Thanks for having me!|Thank you for having me.]',
+    '?housemate? *3 [Okay, later!|Okay, see you later!|See you later.]', '?housemate night? *5 [Night!|Good night!|Good night.]', '?housemate morning? *3 [Have a good day!|Have a good day!|Have a good day.]', '?housemate? [Okay!|Okay!|All right.]',
+    '?!housemate? *3 [I’ll come again!|I’ll come again!|I shall come again.]', '?!housemate? [Thanks for having me!|Thanks for having me!|Thank you for having me.]',
   ],
 
   // ---------------------------------------------------------------- first meetings
@@ -192,7 +192,7 @@ export default {
     '?=q =likeq? *2 [Do you like {H}? I love {H}!|Do you like {H}? I love it!|Are you fond of {H}? I am.]', '[Anyone here like {H}?|Does anyone here like {H}?|Is anyone here fond of {H}?]', '?kid =q =likeq? [Do you like {H}? I love it!|Do you like {H}?|Do you like {H}?]',
   ],
   'intro.samelike.re': [
-    '*2 [Oh! I love {H} too!|Oh! I love {H} too!|Why, I love {H} too!]', '[Another {H} fan, yay!|Another {H} fan!|How nice to meet a fellow fan of {H}!]', '[Let’s {A} together sometime!|We should {A} together sometime!|We must {A} together sometime.]', '?kid? [Really? Me too! Let’s be friends!|Really? Me too!|Really? Me too!]',
+    '*2 [Oh! I love {H} too!|Oh! I love {H} too!|Why, I love {H} too!]', '[Another fan of {H}, yay!|Another fan of {H}!|How nice to meet a fellow admirer of {H}!]', '[Let’s {A} together sometime!|We should {A} together sometime!|We must {A} together sometime.]', '?kid? [Really? Me too! Let’s be friends!|Really? Me too!|Really? Me too!]',
   ],
   'intro.end': ['*4 #intro.end.core#', '*3 [Nice meeting you, {V}!|Nice to meet you, {V}!|A pleasure, {V}.]', '[Good to meet you, {V}!|Lovely meeting you, {V}!|Delighted, {V}.]'],
   'intro.end.core': [

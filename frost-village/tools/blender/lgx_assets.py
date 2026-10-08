@@ -482,8 +482,8 @@ def b_appliance_factory():
     sphere('plamp', 0.06, (px_ + 0.32, py_ - 0.05, pz + 1.28), lamp_m, segs=14, rings=8)
     cyl('plampb', 0.05, 0.05, (px_ + 0.32, py_ - 0.05, pz + 1.2), mat=flat(X.INK, 0.5), segs=12)
     glow = L.point_light('pglow', (px_ + 0.4, py_ - 0.4, pz + 1.3), '#FF5A3A', 0.0, 0.1)
-    sparks = L.Spray('spark', (px_ + 0.12, py_ - 0.1, pz + 0.08), (0.25, -0.6, 0.55),
-                     L.emissive('sparkm', '#FFD45A', '#FFB347', 4.0), n=10, grav=1.6, r=0.022, spread=0.35, seed=9)
+    sparks = L.Spray('spark', (px_ + 0.12, py_ - 0.1, pz + 0.08), (0.3, -0.75, 0.7),
+                     L.emissive('sparkm', '#FFD45A', '#FFB347', 5.0), n=16, grav=1.8, r=0.038, spread=0.45, seed=9)
     # input crate of ingots (left) + output pallet of appliances (right)
     with L.Collect() as ci:
         X.crate_open('incr', 0.6, 0.5, 0.3)

@@ -255,11 +255,17 @@ async function ingame() {
       fit();
       step(4, 0);
       fit();
-      step(4, 0);
-      return { frameMs: +ms.toFixed(1) };
+      // grab the frame from the drawing buffer right after it is drawn (the game runs without
+      // preserveDrawingBuffer, so a page screenshot could catch a cleared buffer on a busy machine)
+      return new Promise((resolve) => {
+        game.renderer.snapshot((img) => resolve({ frameMs: +ms.toFixed(1), png: img && img.src }));
+        step(4, 0);
+      });
     }, cam);
     const shotFile = path.join(TMP, `ingame_${r.name}.png`);
-    await page.screenshot({ path: shotFile });
+    if (res.png && res.png.startsWith('data:image/png;base64,')) fs.writeFileSync(shotFile, Buffer.from(res.png.slice(22), 'base64'));
+    else await page.screenshot({ path: shotFile });
+    delete res.png;
     out.runs.push(Object.assign({ name: r.name, shot: shotFile, errors }, info, res));
     await ctx.close();
   }

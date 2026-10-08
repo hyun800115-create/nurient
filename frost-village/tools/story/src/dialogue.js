@@ -53,7 +53,7 @@ const CHIEF_DEEDS = {
 // '너' (you) + particle as a pronoun (not 너무, 너머 …) and '네가' / '니가'
 const YOU_RE = /(^|[^가-힣])(?:너(는|도|랑|한테|를|만|의|야|네|밖에|가|)|[네니]가())(?![가-힣])/g;
 const YOU_P = { 는: '은', 를: '을', 랑: '이랑', 야: '이야', 가: '이' };
-function replaceYou(text, w) {
+export function replaceYou(text, w) {
   return text.replace(YOU_RE, (m0, pre, p1, p2) => {
     const p = p1 !== undefined ? p1 : '가';
     const form = YOU_P[p];
@@ -217,6 +217,7 @@ export class Dialogue {
     if (b.to === CHIEF) { set(C.l_chief); set(C.chief_talk); }
     else if (ls) {
       if (ls.tr[0] < 30) set(C.l_shy);
+      if (ls.hh === sp.hh && sp.hh >= 0) set(C.housemate);
       const gl = groupOf(e, ls);
       set(gl <= G_KID ? C.l_kid : gl === G_TEEN ? C.l_teen : gl === G_ADULT ? C.l_adult : C.l_elder);
       set(ls.male ? C.l_male : C.l_female);
@@ -239,7 +240,7 @@ export class Dialogue {
       if (st >= ST_FRIEND || (rel.flags & RF_FAMILY)) set(C.close);
     }
     if (rel) {
-      if (rel.flags & RF_FAMILY) set(C.family);
+      if ((rel.flags & RF_FAMILY) || rel.stage === ST_SPOUSE) set(C.family);
       if (rel.flags & RF_RIVAL) set(C.rival);
       if (rel.crushOf(sp.id)) set(C.crush);
       if (rel.isParentOf(sp.id)) set(C.parent);

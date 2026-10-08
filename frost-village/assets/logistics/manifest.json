@@ -40,6 +40,21 @@
    "key": "lgx_forklift_loaded",
    "png": "logistics/lgx_forklift_loaded.png",
    "json": "logistics/lgx_forklift_loaded.json"
+  },
+  {
+   "key": "lgx_pallet_jack",
+   "png": "logistics/lgx_pallet_jack.png",
+   "json": "logistics/lgx_pallet_jack.json"
+  },
+  {
+   "key": "lgx_delivery_van_red",
+   "png": "logistics/lgx_delivery_van_red.png",
+   "json": "logistics/lgx_delivery_van_red.json"
+  },
+  {
+   "key": "lgx_moving_truck",
+   "png": "logistics/lgx_moving_truck.png",
+   "json": "logistics/lgx_moving_truck.json"
   }
  ],
  "sprites": {
@@ -698,8 +713,8 @@
     "SE"
    ],
    "dockNames": [
-    "van bay (front)",
-    "truck bay (back)"
+    "front bay",
+    "back bay"
    ],
    "dockVehiclePoints": {
     "truck_cargo": [
@@ -1525,7 +1540,7 @@
       -62,
       105
      ],
-     "maxStackPx": 94,
+     "maxStackPx": 58,
      "widthM": 1.35,
      "depthM": 0.8,
      "spanPx": [
@@ -1549,7 +1564,7 @@
       3,
       137
      ],
-     "maxStackPx": 94,
+     "maxStackPx": 58,
      "widthM": 1.35,
      "depthM": 0.8,
      "spanPx": [
@@ -1573,7 +1588,7 @@
       -8,
       77
      ],
-     "maxStackPx": 94,
+     "maxStackPx": 58,
      "widthM": 1.35,
      "depthM": 0.8,
      "spanPx": [
@@ -1597,7 +1612,7 @@
       58,
       110
      ],
-     "maxStackPx": 94,
+     "maxStackPx": 58,
      "widthM": 1.35,
      "depthM": 0.8,
      "spanPx": [
@@ -2400,6 +2415,128 @@
      "repeat": -1
     }
    }
+  },
+  "appliance_factory": {
+   "atlas": "lgx_producers",
+   "frame": "appliance_factory",
+   "anchor": [
+    0.33967,
+    0.74792
+   ],
+   "frameSize": [
+    368,
+    480
+   ],
+   "kind": "station",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "front": "-Y",
+   "notes": "Appliance factory (가전 공장, 3 x 3 m): little brick factory with a saw-tooth roof of glowing skylights, a tall striped chimney, a mint roll-up door and a TV emblem on the front. In front (screen down-left) a stamping press on a steel table: a crate of ingots at its back (input side), finished appliances (a fridge, a radio, a washer) on a pallet at the right (output). anims.work = the press ram stamps, sparks burst, a warning lamp blinks, chimney smoke. workSpot = the operator at the press (in front of it, facing W), inPoint = ingots pad (front-left), outPoint = appliance pad (right).",
+   "name": {
+    "ko": "가전 공장",
+    "en": "Appliance factory"
+   },
+   "chain": {
+    "in": "item_ingot",
+    "out": [
+     "item_fridge",
+     "item_stove_iron",
+     "item_washer",
+     "item_radio",
+     "item_tv_retro"
+    ]
+   },
+   "topPx": 275,
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "fxPoints": {
+    "press": [
+     -38,
+     -21
+    ],
+    "sparks": [
+     -38,
+     -17
+    ],
+    "smoke": [
+     7,
+     -280
+    ],
+    "input": [
+     -79,
+     -39
+    ],
+    "output": [
+     14,
+     -9
+    ],
+    "emblem": [
+     9,
+     -74
+    ]
+   },
+   "inPoint": [
+    -158,
+    38
+   ],
+   "outPoint": [
+    77,
+    79
+   ],
+   "staffPoints": [
+    [
+     -6,
+     36
+    ]
+   ],
+   "staffDirs": [
+    "NW"
+   ],
+   "staffDepth": "front",
+   "workSpot": {
+    "forwardM": 0.5,
+    "heightM": 0.62,
+    "dir": "NW",
+    "note": "stand at the press table end facing W (= E mirrored); draw the operator above the station sprite",
+    "point": [
+     -6,
+     36
+    ]
+   },
+   "anims": {
+    "work": {
+     "frames": [
+      "appliance_factory_work_0",
+      "appliance_factory_work_1",
+      "appliance_factory_work_2",
+      "appliance_factory_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   }
   }
  },
  "characters": {
@@ -2697,9 +2834,752 @@
      -36
     ]
    }
+  },
+  "pallet_jack": {
+   "atlas": "lgx_pallet_jack",
+   "frameSize": [
+    112,
+    108
+   ],
+   "anchor": [
+    0.45536,
+    0.73148
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 1,
+     "repeat": -1,
+     "bobPx": [
+      0
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "pallet_jack",
+   "variant": null,
+   "lengthM": 1.75,
+   "widthM": 0.6,
+   "heightM": 0.95,
+   "topPx": 75,
+   "headTop": -75,
+   "shadow": {
+    "SE": [
+     87,
+     26,
+     26.57
+    ],
+    "NE": [
+     87,
+     26,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      26,
+      27
+     ],
+     [
+      53,
+      13
+     ],
+     [
+      -26,
+      -27
+     ],
+     [
+      -53,
+      -13
+     ]
+    ],
+    "NE": [
+     [
+      53,
+      -13
+     ],
+     [
+      26,
+      -27
+     ],
+     [
+      -53,
+      13
+     ],
+     [
+      -26,
+      27
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.09,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Hand pallet jack (1.75 m): red pump body with a chrome ram, two long forks with little tip rollers, small black steering wheels, a tilted tiller with a black loop grip. The worker walks BEHIND the handle and pushes it forks-first: front = forks. handlePoint[dir] = the grip (px from the anchor); align a townfolk2 `push` pose with jack anchor = pusher anchor + pushPoint[dir] - handlePoint[dir] (or use pushOffset[dir] = where the pusher anchor goes for an adult). cargoPoint = middle of the forks (draw a pallet_* item there).",
+   "cargoPoint": {
+    "SE": [
+     16,
+     3,
+     false
+    ],
+    "NE": [
+     16,
+     -14,
+     false
+    ]
+   },
+   "seats": {
+    "SE": [],
+    "NE": []
+   },
+   "driverSeat": null,
+   "handlePoint": {
+    "SE": [
+     -40,
+     -61
+    ],
+    "NE": [
+     -40,
+     -21
+    ]
+   },
+   "pushOffset": {
+    "SE": [
+     -59,
+     -29
+    ],
+    "NE": [
+     -59,
+     29
+    ]
+   }
+  },
+  "delivery_van_red": {
+   "atlas": "lgx_delivery_van_red",
+   "frameSize": [
+    284,
+    252
+   ],
+   "anchor": [
+    0.50352,
+    0.75
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "delivery_van",
+   "variant": "red",
+   "lengthM": 4.4,
+   "widthM": 1.9,
+   "heightM": 2.36,
+   "topPx": 185,
+   "headTop": -185,
+   "shadow": {
+    "SE": [
+     218,
+     81,
+     26.57
+    ],
+    "NE": [
+     218,
+     81,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      57,
+      71
+     ],
+     [
+      143,
+      28
+     ],
+     [
+      -57,
+      -71
+     ],
+     [
+      -143,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      143,
+      -28
+     ],
+     [
+      57,
+      -71
+     ],
+     [
+      -143,
+      28
+     ],
+     [
+      -57,
+      71
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.38,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro delivery van (4.4 m): round bread-van body in red with a cream roof + snow, a short rounded nose with frog-eye chrome lamps and a smile grille, the logistics parcel-with-wings emblem on the side, two rear doors with little round windows. 2 seats (seat 0 = driver, right front). rearDoorPoint = where a worker stands to load / unload at the back; cargoPoint = the rear cargo floor.",
+   "cargoPoint": {
+    "SE": [
+     -68,
+     -61,
+     false
+    ],
+    "NE": [
+     -68,
+     7,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -7,
+      58
+     ],
+     [
+      115,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      115,
+      3
+     ],
+     [
+      -7,
+      -58
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -129,
+     -57
+    ],
+    "NE": [
+     -79,
+     47
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      72,
+      14
+     ],
+     [
+      124,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      -83
+     ],
+     [
+      72,
+      -110
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -136,
+      -81
+     ],
+     [
+      -62,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      18
+     ],
+     [
+      -136,
+      -19
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -124,
+     -62
+    ],
+    "NE": [
+     -124,
+     62
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      38,
+      -10
+     ],
+     [
+      76,
+      -29
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      -66
+     ],
+     [
+      38,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      32,
+      3
+     ],
+     [
+      70,
+      -16
+     ]
+    ],
+    "NE": [
+     [
+      70,
+      -49
+     ],
+     [
+      32,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "dv_seat0",
+    "dv_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_delivery_van_red",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "moving_truck": {
+   "atlas": "lgx_moving_truck",
+   "frameSize": [
+    436,
+    380
+   ],
+   "anchor": [
+    0.54587,
+    0.69211
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    },
+    "unload": {
+     "frames": 6,
+     "fps": 6,
+     "repeat": 0,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "moving_truck",
+   "variant": null,
+   "lengthM": 6.5,
+   "widthM": 2.1,
+   "heightM": 3.05,
+   "topPx": 259,
+   "headTop": -259,
+   "shadow": {
+    "SE": [
+     322,
+     89,
+     26.57
+    ],
+    "NE": [
+     322,
+     89,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      100,
+      97
+     ],
+     [
+      195,
+      50
+     ],
+     [
+      -100,
+      -97
+     ],
+     [
+      -195,
+      -50
+     ]
+    ],
+    "NE": [
+     [
+      195,
+      -50
+     ],
+     [
+      100,
+      -97
+     ],
+     [
+      -195,
+      50
+     ],
+     [
+      -100,
+      97
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.44,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Moving truck (6.5 m, 이삿짐 트럭): rounded mint cab with a cream roof + snow, chrome grille and frog-eye lamps, a tall cream box body with a teal band and a little house-with-a-heart emblem on the side, moving boxes, a lamp and a sofa inside. 2 seats (seat 0 = driver). unload = 6 frames: the rear roll door rolls up (0-3), the loading ramp slides out (3-4) and tilts down to the snow (5); play backward to pack up. rampPoint = ground end of the ramp in frame 5 (movers walk from there up into the box); cargoPoint = the box floor at the rear.",
+   "cargoPoint": {
+    "SE": [
+     -118,
+     -115,
+     false
+    ],
+    "NE": [
+     -118,
+     3,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -7,
+      62
+     ],
+     [
+      124,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      3
+     ],
+     [
+      -7,
+      -62
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -163,
+     -66
+    ],
+    "NE": [
+     -95,
+     63
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      104,
+      39
+     ],
+     [
+      175,
+      3
+     ]
+    ],
+    "NE": [
+     [
+      175,
+      -101
+     ],
+     [
+      104,
+      -136
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -186,
+      -97
+     ],
+     [
+      -105,
+      -138
+     ]
+    ],
+    "NE": [
+     [
+      -105,
+      49
+     ],
+     [
+      -186,
+      8
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -167,
+     -84
+    ],
+    "NE": [
+     -167,
+     84
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      43,
+      -10
+     ],
+     [
+      86,
+      -31
+     ]
+    ],
+    "NE": [
+     [
+      86,
+      -74
+     ],
+     [
+      43,
+      -96
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      37,
+      3
+     ],
+     [
+      81,
+      -19
+     ]
+    ],
+    "NE": [
+     [
+      81,
+      -56
+     ],
+     [
+      37,
+      -78
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "mt_seat0",
+    "mt_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_moving_truck",
+    "frameName": "over_{anim}_{dir}_{i}"
+   },
+   "rampPoint": {
+    "SE": [
+     -202,
+     -101
+    ],
+    "NE": [
+     -202,
+     101
+    ]
+   }
   }
  },
  "vehicleFamilies": {
+  "delivery_van": [
+   "delivery_van_red"
+  ],
   "forklift": [
    "forklift_loaded"
   ]

@@ -138,6 +138,9 @@ export class Bank {
     if (e.bus.has('bank')) e.bus.emit('bank', { op: 'paid_off', who: r.id, loan: L.id, purpose: L.purpose });
   }
 
+  /** a resident leaves town (moves away, gentle farewell): the town's mutual-aid fund settles their loans */
+  settleLeaving(r) { for (const L of this.loans) if (L.who === r.id && !L.done) this.forgive(L, r, 'left'); }
+
   forgive(L, r, why) {
     L.done = 1; L.bal = 0;
     this.stats.forgiven++;

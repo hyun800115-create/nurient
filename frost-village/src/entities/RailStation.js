@@ -81,10 +81,10 @@ export class RailStation {
   }
 
   makeSign() {
-    const gs = this.gs;
-    const c = this.clock;
-    this.sign = gs.add.text(c.x + 10, c.y + 44, t(this.cfg.name || 'stn_ours'), { fontFamily: FONT, fontSize: '20px', fontStyle: '900', color: '#fff6dc', stroke: '#5a3a26', strokeThickness: 6, resolution: 2 }).setOrigin(0.5, 0.5).setDepth(this.y + 1);
+    this.sign = stationSign(this.gs, this.x, this.y, t(this.cfg.name || 'stn_ours'));
     this.sign.setAlpha(this.open ? 1 : 0.35);
+    // the platform lamp lights up at night
+    this.lamp = { x: this.x + 74, y: this.y - 46 };
   }
 
   /** repaired: the tint clears, the drifts pop, one strike of the bell, the sign lights */
@@ -118,6 +118,13 @@ export class RailStation {
     for (const o of this.obstacles) o.active = v && this.open;
   }
   revealObjects() { return [this.img, this.sign].concat(this.drifts); }
+}
+
+/** the station's name on the white board at the platform's west end */
+export function stationSign(gs, x, y, text) {
+  const tx = gs.add.text(x - 214, y - 141, text, { fontFamily: FONT, fontSize: '17px', fontStyle: '900', color: '#3a4a66', resolution: 2 }).setOrigin(0.5, 0.5).setDepth(y + 1);
+  tx.setScale(Math.min(1, 54 / Math.max(1, tx.width)));
+  return tx;
 }
 
 export { DEPTH };

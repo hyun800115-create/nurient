@@ -1,6 +1,8 @@
 // Compact save: every piece of state is an integer or a string, written as varints (zig-zag for
-// signed) with a string table, then base64. Round-trips exactly, so a loaded town continues
-// identically (same seed state, same orders of lists and maps).
+// signed) with a string table, then base64. Round-trips exactly, so a loaded town continues to live
+// identically (same seed state, same orders of lists and maps). Only the speakers' short-term phrasing
+// memory (which template / line they used last) is not stored, so lines after a load may be worded a
+// little differently — the story itself (who meets whom, what they say about what) is the same.
 
 import { Resident, Household } from './people.js';
 import { Fact, Mem } from './memory.js';
@@ -113,7 +115,7 @@ export function serialize(e) {
     w.u(r.qs.length);
     for (const q of r.qs) { w.s(q.k); w.u(q.f ? q.f.id : 0); w.i(q.o); w.i(q.t); w.u(q.n); }
     w.u(r.adj.length); for (const rel of r.adj) w.u(relIdx.get(rel));
-    w.ints(r.recent); w.u(r.rpos.v);
+    // (r.recent / rel.ring — the speakers' short-term phrasing memory — are not saved: text only)
     w.u(r.log.length);
     for (const L of r.log) { w.i(L[0]); w.s(L[1]); w.i(L[2]); w.i(L[3]); if (typeof L[4] === 'string') { w.u(1); w.s(L[4]); } else { w.u(0); w.i(L[4]); } w.u(L[5]); w.i(L[6]); }
     w.s(r.dream); w.i(r.crushOn); w.u(r.agenda.length); for (const a of r.agenda) w.ints(a);
@@ -145,8 +147,8 @@ export function serialize(e) {
   }
   // newspapers, quotes
   w.u(e.news.papers.length);
-  for (const p of e.news.papers) w.s(JSON.stringify({ day: p.day, head: p.head ? p.head.id : 0, items: p.items.map((f) => f.id), weather: p.weather, prices: p.prices, rate: p.rate, wanted: p.wanted.map((f) => f.id), reporter: p.reporter, quote: p.quote, no: p.no }));
-  w.s(JSON.stringify(e.quotes));
+  for (const p of e.news.papers) w.s(JSON.stringify({ day: p.day, head: p.head ? p.head.id : 0, items: p.items.map((f) => f.id), weather: p.weather, prices: p.prices, rate: p.rate, wanted: p.wanted.map((f) => f.id), reporter: p.reporter, quote: null, no: p.no }));
+  w.s('[]');   // overheard quotes are text (wording), not story state: not saved
   // statistics
   w.s(JSON.stringify({ social: e.social.stats, incidents: In.stats, life: e.life.stats, bank: B.stats, econ: e.econ.stats, jobs: e.jobs.stats, news: e.news.stats }));
   // assemble: magic, version, string table, body
@@ -241,7 +243,6 @@ export function deserialize(e, str) {
     const nq = r.u();
     for (let k = 0; k < nq; k++) { const kk = r.s(), fid = r.u(), o = r.i(), t = r.i(), n = r.u(); p.qs.push({ k: kk, f: fid ? e.facts.get(fid) || null : null, o, t, n }); }
     const na = r.u(); for (let k = 0; k < na; k++) p.adj.push(rels[r.u()]);
-    p.recent.set(r.ints()); p.rpos.v = r.u();
     const nl = r.u();
     for (let k = 0; k < nl; k++) { const L = [r.i(), r.s(), r.i(), r.i(), 0, 0, 0]; L[4] = r.u() === 1 ? r.s() : r.i(); L[5] = r.u(); L[6] = r.i(); p.log.push(L); }
     p.dream = r.s(); p.crushOn = r.i(); const ng = r.u(); for (let k = 0; k < ng; k++) p.agenda.push(r.ints());

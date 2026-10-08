@@ -863,7 +863,7 @@ export class Social {
       const o = e.people[p.here[rng.int(p.here.length)]];
       if (o && o !== r && o.alive) {
         const rel = getRel(e, r.id, o.id);
-        if (rel && rel.stage >= ST_FRIEND && rng.chance(0.5)) { const pet = ITEMS.filter((x) => x.petty); const it = pet[rng.int(pet.length)]; f = e.fact('gift', { a: r.id, b: o.id, p: p.idx, i: it.idx }); rel.aff += 40; }
+        if (rel && rel.stage >= ST_FRIEND && rng.chance(0.5)) { const pet = ITEMS.filter((x) => x.petty); const it = pet[rng.int(pet.length)]; f = e.fact('gift', { a: r.id, b: o.id, p: p.idx, i: it.idx }); rel.aff += 40; clampRel(rel); }
         else if (rng.chance(0.5)) f = e.fact('help', { a: r.id, b: o.id, p: p.idx, i: rng.int(5) });
         else { const it = ITEMS.filter((x) => x.petty && x.cat === 'goods'); f = e.fact('lost_found', { a: o.id, b: r.id, p: p.idx, i: it[rng.int(it.length)].idx }); }
       }
@@ -878,6 +878,7 @@ export class Social {
     const f = e.fact('prank', { a: r.id, b: o.id, p: p.idx, n: rng.int(5) });
     const rel = ensureRel(e, r, o);
     rel.aff += o.tr[9] > 50 ? 10 : -60;
+    clampRel(rel);
     return f;
   }
 

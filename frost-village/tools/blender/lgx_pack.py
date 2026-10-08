@@ -397,7 +397,7 @@ def center_entries(meta, frame_atlas, val):
                             '(optionally through shell_cut = walls at 1.6 m, roof off). Everything inside is drawn '
                             'whether or not the shell is visible (the shell simply covers it); skip the inside '
                             'layers while the shell is at alpha 1 and both dock doors are closed to save fill-rate.'},
-        'dockPoints': docks, 'dockDirs': ['SE', 'SE'], 'dockNames': ['van bay (front)', 'truck bay (back)'],
+        'dockPoints': docks, 'dockDirs': ['SE', 'SE'], 'dockNames': ['front bay', 'back bay'],
         'dockVehiclePoints': dock_veh,
         'forkliftPath': fpath,
         'rackSlots': slots,

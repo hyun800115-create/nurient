@@ -99,7 +99,9 @@ class Lib:
             man, get = self.man, self.get
         else:
             man, get = self._vehx
-            v = man['characters'][key]
+            v = man['characters'].get(key)
+            if v is None:
+                return None, None
         dd = {'SW': 'SE', 'NW': 'NE'}.get(d, d)
         fr = '%s_%s_%d' % (anim, dd, i)
         if over:
@@ -347,7 +349,8 @@ def ground(canvas, ox, oy, roads=True):
         p = os.path.join(ASSETS, rel)
         return Image.open(p).convert('RGBA') if os.path.exists(p) else Image.new('RGBA', (64, 64), fill)
     snow = tex('ground/ground_snow.png', (244, 247, 251, 255))
-    road = tex('ui2/ground_road.png', (200, 205, 214, 255))
+    road = tex('roads/road_asphalt.png', (120, 126, 138, 255))
+    walk = tex('roads/sidewalk.png', (200, 205, 214, 255))
     W, H = canvas.size
     tiled = Image.new('RGBA', (W, H))
     for ty in range(0, H, snow.height):
@@ -360,17 +363,18 @@ def ground(canvas, ox, oy, roads=True):
     def P(x, y):
         return ox + (x + y) * KX, oy + (x - y) * KY
 
-    def poly(pts):
+    def poly(pts, tx_img):
         m = Image.new('L', (W, H), 0)
         ImageDraw.Draw(m).polygon([P(*p) for p in pts], fill=255)
+        m = m.filter(ImageFilter.GaussianBlur(0.7))
         t = Image.new('RGBA', (W, H))
-        for ty in range(0, H, road.height):
-            for tx in range(0, W, road.width):
-                t.paste(road, (tx, ty))
+        for ty in range(0, H, tx_img.height):
+            for tx in range(0, W, tx_img.width):
+                t.paste(tx_img, (tx, ty))
         canvas.paste(t, (0, 0), m)
-    poly([(7.1, -9.0), (13.5, -9.0), (13.5, 4.2), (7.1, 4.2)])
-    poly([(-12.0, -9.0), (13.5, -9.0), (13.5, -6.2), (-12.0, -6.2)])
-    poly([(-2.4, -6.2), (-0.8, -6.2), (-0.8, -5.0), (-2.4, -5.0)])
+    poly([(6.3, -9.0), (14.5, -9.0), (14.5, 4.6), (6.3, 4.6)], walk)        # dock yard (light pavers)
+    poly([(-12.0, -9.6), (14.5, -9.6), (14.5, -6.6), (-12.0, -6.6)], road)  # street along the front
+    poly([(-2.6, -6.6), (-0.6, -6.6), (-0.6, -4.5), (-2.6, -4.5)], walk)    # path to the entrance
 
 
 # =================================================================================================== previews
@@ -443,9 +447,9 @@ def compose_scene(lib, rich=True, shell=0.0, cut=0.0, t=0, size=(2200, 1400), or
     # vehicles at the docks (outside)
     if with_vehicles:
         dv = C['dockVehiclePoints']
-        for op in vehicle_ops(lib, 'truck_cargo', 'idle', 'SE', 0, dv['truck_cargo'][1], ox, oy, driver='postal', seed=3):
+        for op in vehicle_ops(lib, 'truck_cargo', 'idle', 'SE', 0, dv['truck_cargo'][0], ox, oy, driver='postal', seed=3):
             act['outside'].append(op)
-        for op in vehicle_ops(lib, 'delivery_van_red', 'idle', 'SE', 0, dv['delivery_van'][0], ox, oy,
+        for op in vehicle_ops(lib, 'delivery_van_red', 'idle', 'SE', 0, dv['delivery_van'][1], ox, oy,
                               driver='station', seed=5):
             act['outside'].append(op)
     cen.draw(canvas, ox, oy, shell=shell, cut=cut, belt=t % 8, doors=doors, lamp=t % 4, actors=act)
@@ -491,14 +495,14 @@ def preview_scene(lib, out):
         seen.add(r)
         L_(roles[r], pt, 8)
     L_('shop owners queue', C['customerPoints'][2], 8)
-    L_('truck at dock 2', C['dockVehiclePoints']['truck_cargo'][1], 40)
-    L_('van at dock 1', C['dockVehiclePoints']['delivery_van'][0], 40)
-    L_('forklift on its path', C['forkliftPath'][1]['point'], -150)
+    L_('truck at dock 1', C['dockVehiclePoints']['truck_cargo'][0], 40)
+    L_('van at dock 2', C['dockVehiclePoints']['delivery_van'][1], 40)
+    p0, p1 = C['forkliftPath'][0]['point'], C['forkliftPath'][1]['point']
+    L_('forklift on its path', (p0[0] + (p1[0] - p0[0]) * 0.35, p0[1] + (p1[1] - p0[1]) * 0.35), 14)
     label(cv, labs)
-    cv = cv.crop((140, 150, 2140, 1330))
-    caption(cv, 'Logistics centre at 1x (PPU 64), revealed: stocked racks (assets/logistics items at 0.8x on rackSlots), '
-                'staff at staffPoints (townsfolk + villagers2 clerk), forklift on forkliftPath, truck_cargo + '
-                'delivery_van at dockVehiclePoints, shop owners at customerPoints').save(out, optimize=True)
+    cv = cv.crop((330, 250, 1880, 1130))
+    caption(cv, 'logistics_center at 1x, revealed: stock on rackSlots, staff (townsfolk + villagers2 clerk), forklift '
+                'on forkliftPath, truck + van at the docks, shop owners at customerPoints').save(out, optimize=True)
 
 
 def preview_cutaway(lib, out):
@@ -584,8 +588,8 @@ def preview_docks(lib, out):
     crop_anim(lib, out, box, fn, len(seq), 1, 110)
 
 
-def vehicle_frame(lib, key, anim, d, i, size=(420, 360), driver=None):
-    cv = Image.new('RGBA', size, BG + (255,))
+def vehicle_frame(lib, key, anim, d, i, size=(420, 360), driver=None, bg=BG + (255,)):
+    cv = Image.new('RGBA', size, bg)
     for im, x, y, _ in sorted(vehicle_ops(lib, key, anim, d, i, (0, 0), size[0] // 2, int(size[1] * 0.68),
                                           driver=driver, seed=11), key=lambda t: t[3]):
         cv.alpha_composite(im, (x, y))
@@ -661,12 +665,14 @@ def preview_all(lib, out):
         im, _ = lib.item(key)
         ents.append((key, im.resize((144, 144), Image.LANCZOS)))
     for key in lib.V:
+        clear = (0, 0, 0, 0)
         for d, an, i in (('SE', 'idle', 0), ('NE', 'idle', 0)):
-            ents.append(('%s %s' % (key, d), vehicle_frame(lib, key, an, d, i, size=(460, 380))))
+            ents.append(('%s %s' % (key, d), vehicle_frame(lib, key, an, d, i, size=(460, 380), bg=clear)))
         if key.startswith('forklift'):
-            ents.append((key + ' lift 5', vehicle_frame(lib, key, 'lift', 'SE', 5, size=(460, 380))))
+            ents.append((key + ' lift 5', vehicle_frame(lib, key, 'lift', 'SE', 5, size=(460, 380), bg=clear)))
         if key == 'moving_truck':
-            ents.append(('moving_truck unload 5', vehicle_frame(lib, key, 'unload', 'NE', 5, size=(560, 420))))
+            ents.append(('moving_truck unload 5', vehicle_frame(lib, key, 'unload', 'NE', 5, size=(560, 420),
+                                                                bg=clear)))
     pp.shelf_preview(ents, out, max_w=2600, title='assets/logistics at 1x (PPU 64; layer thumbnails at 0.5x, items '
                                                   'at 2x): logistics centre, producers, items, vehicles')
 

@@ -28,7 +28,7 @@ export const CONDS = [
   'athome', 'atwork', 'atschool', 'atshop', 'outdoors', 'l_owner', 'l_police', 'l_fire', 'l_kidof', 'l_worried',
   'lkid', 'samejob', 'neighbor', 'cowork', 'classmate', 'grand', 'sibling', 'twice', 'many', 'big', 'self2', 'x_elder',
   // who the story is about (X = the main person of the fact), more listener facts
-  'x_kid', 'x_adult', 'x_plural_kids', 'l_shy', 'l_elder_rel', 'first_talk', 'chief_talk', 'x_police', 'x_newcomer',
+  'x_kid', 'x_adult', 'x_plural_kids', 'l_shy', 'l_elder_rel', 'first_talk', 'chief_talk', 'x_police', 'x_newcomer', 'housemate',
 ];
 
 if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');

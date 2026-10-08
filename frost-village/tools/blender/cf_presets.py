@@ -114,7 +114,7 @@ PRESETS3 = {
     'banker': {'label': {'ko': '은행장', 'en': 'banker'},
                'bases': {'adult_slim': 2, 'adult_round': 3, 'elder_slim': 1, 'elder_round': 2},
                'tops': ['top_suit_3pc'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': {'hat_fedora': 1},
-               'hatChance': 0.2, 'extra': ['det_tie'], 'neck': None, 'bag': None, 'headAcc': None,
+               'hatChance': 0.2, 'neck': None, 'bag': None, 'headAcc': None,
                'glasses': {'acc_glasses': 1, 'acc_glasses_sq': 2}, 'glassesChance': 0.5, 'facialHairChance': 0.45,
                'colors': {'top': 'suit', 'top2': ['#C8343A', '#2B3A5E', '#F2C14E', '#5E9A4A'], 'bottom': ['=top'],
                           'shoes': ['#2A2A30', '#3B2A20'], 'hat': ['#2B2F3A', '#3B3F52'], 'hat2': ['#2B2F3A'],
@@ -122,7 +122,7 @@ PRESETS3 = {
     'bank_teller': {'label': {'ko': '은행 창구 직원', 'en': 'bank teller'},
                     'bases': {'adult_slim': 4, 'adult_round': 2},
                     'tops': ['top_teller_vest'], 'bottoms': {'bot_pants': 3, 'bot_skirt': 1}, 'shoes': ['shoe_shoes'],
-                    'hats': ['acc_visor'], 'hatChance': 0.55, 'extra': {'det_bow': 1, 'det_tie': 1}, 'neck': None,
+                    'hats': ['acc_visor'], 'hatChance': 0.55, 'neck': None,
                     'bag': None, 'headAcc': None, 'glassesChance': 0.3, 'facialHairChance': 0.1,
                     'colors': {'top': 'teller_vest', 'top2': 'shirt_pale', 'bottom': ['#3B3F52', '#2B2F3A', '#4A3830'],
                                'shoes': ['#2A2A30', '#3B2A20'], 'hands': ['skin']}},
@@ -144,9 +144,9 @@ PRESETS3 = {
                                    'shoes': ['#3B2A20', '#2E3440'], 'hands': 'workglove'}},
     'delivery_driver': {'label': {'ko': '택배 기사', 'en': 'delivery driver'},
                         'bases': {'adult_slim': 4, 'adult_round': 2},
-                        'tops': ['top_delivery_polo'], 'bottoms': ['bot_pants'], 'shoes': {'shoe_shoes': 1, 'shoe_boots': 2},
-                        'hats': ['hat_delivery_cap'], 'hatChance': 0.9, 'neck': None, 'bag': {'acc_satchel': 1},
-                        'bagChance': 0.3, 'headAcc': None, 'gloveChance': 0.3,
+                        'tops': ['top_delivery_polo'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'],
+                        'hats': ['hat_delivery_cap'], 'hatChance': 0.9, 'neck': None, 'bag': None,
+                        'headAcc': None, 'gloveChance': 0.3,
                         'colors': {'top': ['#7A4A2A', '#D9483B', '#2E6E8A'], 'top2': ['#F2C14E', '#F4F1EA', '#E8DCC0'],
                                    'hat': ['=top'], 'hat2': ['=top2'], 'bottom': ['#3B3F52', '#4A3830', '#2B2F3A'],
                                    'shoes': ['#3B2A20', '#2A2A30'], 'bag': ['#8A5A33', '#3B2A20']}},
@@ -228,23 +228,26 @@ CF_CIVIC = FIRE + POLICE + BURGLAR + BANK + PRESS + ['top_work_jacket', 'top_del
                                                      'acc_back_brace']
 
 # per new anim: v4 wardrobe tier per age ('all' | 'core' | 'mini' | 'none') + extra parts (any age they exist for)
-MOVERS = ['top_work_jacket', 'acc_gloves', 'top_delivery_polo', 'bot_mover_overalls', 'acc_back_brace', 'top_sweater']
+MOVERS = ['top_work_jacket', 'acc_gloves', 'top_delivery_polo', 'bot_mover_overalls', 'acc_back_brace', 'top_sweater',
+          'top_hivis_jacket', 'acc_toolbelt', 'det_hivis', 'bot_overalls']          # + forklift / site crews
 SITE = ['top_hivis_jacket', 'top_work_jacket', 'acc_toolbelt', 'acc_gloves', 'det_hivis', 'bot_overalls']
 CAST3 = {
     # run is the everyday hurry / play / rush-to-see anim -> the core wardrobe; flee (arms-up panic) keeps the mini
     # wardrobe and everybody else falls back flee -> run with the 'panic' face (still reads as fleeing)
-    'run':           ({'child': 'core', 'adult': 'core', 'elder': 'core'}, FIRE + POLICE + BURGLAR),
+    'run':           ({'child': 'core', 'adult': 'core', 'elder': 'core'},
+                      FIRE + POLICE + BURGLAR + ['top_trench', 'acc_camera', 'top_delivery_polo']),
     'flee':          ({'child': 'mini', 'adult': 'mini', 'elder': 'mini'}, BURGLAR),
     'arrested_walk': ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'carry_box':     ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, MOVERS),
     'argue':         ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),
     'fight':         ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'point':         ({'child': 'core', 'adult': 'core', 'elder': 'core'},
-                      FIRE + POLICE + ['top_trench', 'acc_camera', 'top_hivis_jacket', 'acc_toolbelt']),
+                      FIRE + POLICE + ['top_trench', 'acc_camera', 'top_hivis_jacket', 'acc_toolbelt', 'acc_gloves',
+                                       'top_work_jacket', 'det_hivis']),
     'think':         ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       ['top_trench', 'top_suit_3pc', 'det_tie', 'top_police_v2', 'det_police', 'acc_camera']),
     'shocked':       ({'child': 'core', 'adult': 'core', 'elder': 'core'},
-                      BURGLAR + ['top_suit_3pc', 'det_tie', 'top_teller_vest', 'det_bow', 'acc_camera']),
+                      BURGLAR + ['top_suit_3pc', 'top_teller_vest', 'acc_camera', 'top_trench']),
     'phone':         ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       ['top_trench', 'top_suit_3pc', 'det_tie', 'top_teller_vest', 'det_bow', 'top_police_v2',
                        'det_police', 'acc_camera', 'top_delivery_polo']),

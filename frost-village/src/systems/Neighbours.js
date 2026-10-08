@@ -19,7 +19,7 @@ import { TownSim, F } from './TownSim.js';
 import { DayClock } from './DayClock.js';
 import { V4Paint, PAINT_FILES } from './V4Paint.js';
 import { Train } from '../entities/Train.js';
-import { RailStation } from '../entities/RailStation.js';
+import { RailStation, stationSign } from '../entities/RailStation.js';
 import { TownBuilding } from '../entities/TownBuilding.js';
 import { Visitor } from '../entities/Visitor.js';
 import { Character } from '../entities/Character.js';
@@ -160,7 +160,7 @@ export class Neighbours {
     gs.territory.add('rail', this.ours);
     // the town (hidden in its fog until the invitation)
     for (const b of V.town.buildings) {
-      if (b.role === 'station') { const tb = new TownBuilding(gs, b, { collision: false }); this.townStation = tb; this.addStationShape(tb); this.buildings.push(tb); gs.territory.add(b.region || 'town', tb); continue; }
+      if (b.role === 'station') { const tb = new TownBuilding(gs, b, { collision: false }); this.townStation = tb; this.addStationShape(tb); tb.boardText = stationSign(gs, tb.x, tb.y, t('stn_town')); this.buildings.push(tb); gs.territory.add(b.region || 'town', tb); continue; }
       const tb = new TownBuilding(gs, b);
       this.buildings.push(tb);
       gs.territory.add(b.region || 'town', tb);
@@ -182,7 +182,7 @@ export class Neighbours {
       const d = Assets.def(b.key), fp = d.fxPoints || {};
       for (const k of ['light', 'lightA', 'lightB']) if (fp[k]) this.clock.addLight(b.x + fp[k][0], b.y + fp[k][1], 1, Math.abs(b.x - 4912));
     }
-    for (const st of [this.ours, this.townStation]) if (st) { const c = st.clock || (st.fx && st.fx.clock); if (c) this.clock.addLight(c.x, c.y, 0.7, Math.abs(c.x - 4912)); }
+    for (const st of [this.ours, this.townStation]) if (st) { const c = st.clock || (st.fx && st.fx.clock); if (c) this.clock.addLight(c.x, c.y, 0.7, Math.abs(c.x - 4912)); this.clock.addLight(st.x + 74, st.y - 46, 1, Math.abs(st.x - 4912)); }
     for (const img of gs.lamps || []) this.clock.addLight(img.x, img.y - 92, 0.9, 9000 + img.x);
     for (const c of gs.campfires || []) this.clock.addLight(c.x, c.y - 20, 1.3, 9500 + c.x);
     // the train (runs once the station is repaired)
@@ -561,13 +561,13 @@ export class Neighbours {
   // ---------------------------------------------------------------- occlusion / save / hooks
   /** characters that can hide behind the town's buildings (Occlusion.collect) */
   occlusionSubjects(add) {
-    for (const v of this.visitors) add(v);
-    for (const a of this.actors) add(a);
+    for (const v of this.visitors) { v.xrayMain = true; add(v); }
+    for (const a of this.actors) { a.xrayMain = true; add(a); }
     if (this.town) for (const b of this.town.bodies) if (b.c) add(b);
     if (this.train) {
       const subs = this._carSubs || (this._carSubs = []);
       let k = 0;
-      this.train.forEachVisible((spr, c) => { const o = subs[k] || (subs[k] = { alive: true, noXray: false }); o.sprite = spr; o.x = spr.x; o.y = spr.y; o.headTop = (c.def && c.def.headTop) || -90; k++; add(o); });
+      this.train.forEachVisible((spr, c) => { const o = subs[k] || (subs[k] = { alive: true, noXray: false, xrayMain: true }); o.sprite = spr; o.x = spr.x; o.y = spr.y; o.headTop = (c.def && c.def.headTop) || -90; k++; add(o); });
     }
   }
 

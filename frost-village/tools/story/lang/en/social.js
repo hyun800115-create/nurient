@@ -51,7 +51,7 @@ export default {
   // ---------------------------------------------------------------- invitations
   invite: ['*3 [Wanna {A} tomorrow?|Want to {A} tomorrow?|Would you like to {A} tomorrow?]', '[Meet me at {P} tomorrow afternoon?|Shall we meet at {P} tomorrow afternoon?|Shall we meet at {P} tomorrow?]', '?kid? [Let’s play at {P} tomorrow!|Let’s play at {P} tomorrow!|Let’s play tomorrow!]', '[You like {H}, right? Let’s {A} tomorrow!|You like {H}, right? Let’s {A} tomorrow!|You enjoy {H}; shall we {A} tomorrow?]'],
   'invite.yes': ['*3 [Sure! See you tomorrow!|Sure! See you tomorrow!|Splendid. Until tomorrow.]', '[Perfect! I love {H} too!|Perfect! I love {H} too!|Lovely. I enjoy {H} too.]', '[I’ll be there! Promise!|I’ll be there, I promise!|I shall be there.]'],
-  'invite.no': ['*3 [Ah, I’m busy tomorrow… next time for sure!|I’m busy tomorrow… next time, for sure!|I am engaged tomorrow. Next time.]', '[Sorry, I’m not very good at {H}…|Sorry, I’m not good at {H}…|I am clumsy at {H}.]'],
+  'invite.no': ['*3 [Ah, I’m busy tomorrow… next time for sure!|I’m busy tomorrow… next time, for sure!|I am engaged tomorrow. Next time.]', '[Sorry, {H} isn’t really my thing…|Sorry, {H} isn’t really my thing…|I am afraid {H} is not for me.]'],
 
   // ---------------------------------------------------------------- jokes (gentle puns)
   joke: [

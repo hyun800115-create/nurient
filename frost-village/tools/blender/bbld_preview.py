@@ -9,8 +9,11 @@ bbld_preview.py - previews for assets/beach_bld (called by bbld_pack.py, or on i
     docs/previews/bbld_pool.gif     hotel pool with the baked fallback water loop
     docs/previews/bbld_hotel_daynight.gif   resort hotel fading day -> night -> day
 Standalone:  python3 tools/blender/bbld_preview.py [--cache DIR]   (re-reads the render cache like bbld_pack)
-The ground (promenade paving, boardwalk, sand, wet sand, foam, sea) is drawn procedurally here, per pixel, from the
-inverse iso projection - it is only a stand-in for the real beach / water fragments.
+The ground (promenade paving, boardwalk, sand, wet sand, foam, sea) is drawn here, per pixel, from the inverse iso
+projection - a stand-in for the real ground: the sand uses assets/beach ground_sand(_wet) and the sea is a static
+look-alike of src/systems/Water.js built from assets/water (tropical palette LUT, ripple normals, caustics, foam lace)
+when those fragments exist, else a procedural fallback.  Beach props (parasols, loungers, palms, towels, dune grass,
+sandcastle) come from assets/beach when present.
 """
 import json
 import math
@@ -555,8 +558,8 @@ def preview_scene(builds, frames, derived, out_day, out_night):
     gr = ground(sc.W, sc.H, sc.ox, sc.oy, 0.0)
     box = sc.content_box()
     img = caption(sc.render(gr, night=False).crop(box),
-                  'Sunny Beach (햇살 해변) beachfront at 1x (PPU 64): assets/beach_bld on a stand-in promenade / boardwalk '
-                  '/ sand / sea; people = existing assets/townfolk (+ townfolk2 sit) at the sprite points')
+                  'Sunny Beach (햇살 해변) beachfront at 1x (PPU 64): assets/beach_bld on a stand-in promenade / boardwalk; '
+                  'sand + props = assets/beach, sea = static assets/water look; people = assets/townfolk (+ townfolk2 sit)')
     img.convert('RGB').save(out_day, optimize=True)
     sc2 = build_scene(builds, frames, derived, night=True)
     img2 = caption(sc2.render(gr, night=True, labels=False).crop(box),

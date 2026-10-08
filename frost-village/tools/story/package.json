@@ -5,6 +5,6 @@
   "description": "Story-network engine for Frost Village (pure ES modules, no Phaser, no DOM). See docs/build_reports/story.md.",
   "scripts": {
     "sim": "node sim.mjs --days 30 --residents 250 --seed 7",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.mjs"
   }
 }

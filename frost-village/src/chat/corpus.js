@@ -229,6 +229,7 @@ export class VillageCorpus {
         if (x.src !== 'a') o.src = x.src;
         if (x.u) o.u = x.u;
         if (x.r) o.r = x.r;
+        if (x.ex) o.ex = 1;
         if (x.sb) o.sb = x.sb.map(ix);
         if (x.kn) o.kn = x.kn.map(([k, h, f, d, e]) => [ix(k), h, ix(f), d, e]);
         return o;
@@ -244,6 +245,7 @@ export class VillageCorpus {
       if (!r || typeof r.t !== 'string' || (r.k !== 'g' && r.k !== 'l')) continue;
       const x = { i: r.i | 0, k: r.k, t: r.t, o: key(r.o), tp: Array.isArray(r.tp) ? r.tp.slice(0, 3) : [], md: r.md || '', d: r.d | 0, src: r.src || 'a', u: r.u | 0 };
       if (r.r) x.r = r.r | 0;
+      if (r.ex) x.ex = 1;
       if (Array.isArray(r.sb)) x.sb = r.sb.map(key).filter(Boolean);
       if (r.k === 'g') x.kn = Array.isArray(r.kn) ? r.kn.map(([k, h, f, d, e]) => [key(k), h | 0, key(f), d | 0, e | 0]).filter((k) => k[0]) : [];
       c.e.push(x);

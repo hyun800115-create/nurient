@@ -1148,9 +1148,9 @@ def interaction_points():
     P['forkliftPath'] = F
     P['docks'] = [
         dict(bay=1, door=wpt(X0, (DOCK1[0] + DOCK1[1]) / 2), widthM=round(DOCK1[1] - DOCK1[0], 2), dir='SE',
-             suits='delivery_van', note='van bay (front)'),
+             suits='any (delivery_van, truck_cargo, moving_truck)', note='front bay (screen lower)'),
         dict(bay=2, door=wpt(X0, (DOCK2[0] + DOCK2[1]) / 2), widthM=round(DOCK2[1] - DOCK2[0], 2), dir='SE',
-             suits='truck_cargo / moving_truck', note='truck bay (back)'),
+             suits='any (delivery_van, truck_cargo, moving_truck)', note='back bay (screen upper)'),
     ]
 
 

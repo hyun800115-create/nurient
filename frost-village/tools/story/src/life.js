@@ -304,6 +304,7 @@ export class Life {
   /** a resident leaves the story (moved away or farewell): no orphans left behind */
   remove(r, flag) {
     const e = this.e;
+    e.bank.settleLeaving(r);
     e.world.leave(r);
     removeFromHousehold(e, r);
     removeAllRels(e, r);

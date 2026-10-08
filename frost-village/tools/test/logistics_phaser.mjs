@@ -107,7 +107,7 @@ class S extends Phaser.Scene {
   }
 }
 window.__L.game = new Phaser.Game({ type: Phaser.WEBGL, width: 1400, height: 900, backgroundColor: '#eef3f9',
-  render: { antialias: true }, scene: S, banner: false });
+  render: { antialias: true }, fps: { target: 20, forceSetTimeOut: true }, scene: S, banner: false });
 </script></body></html>`;
 
 const srv = await start(0, { prefix: '/fv/' });
@@ -127,14 +127,14 @@ const prev = path.join(ROOT, 'docs', 'previews');
 fs.mkdirSync(prev, { recursive: true });
 const closedPng = path.join(prev, 'lgx_phaser_closed.png');
 const openPng = path.join(prev, 'lgx_phaser_open.png');
-await page.screenshot({ path: closedPng });
+await page.screenshot({ path: closedPng, timeout: 240000 });
 // tap inside the reveal polygon (its centroid)
 const target = await page.evaluate(() => { const [ox, oy] = window.__L.center; const p = window.__L.poly;
   const cx = p.reduce((s, q) => s + q[0], 0) / p.length, cy = p.reduce((s, q) => s + q[1], 0) / p.length; return [ox + cx, oy + cy]; });
 await page.mouse.click(target[0], target[1]);
 await sleep(900);
 const afterTap = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
-await page.screenshot({ path: openPng });
+await page.screenshot({ path: openPng, timeout: 240000 });
 await page.mouse.click(target[0], target[1]);
 await sleep(900);
 const afterTap2 = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
