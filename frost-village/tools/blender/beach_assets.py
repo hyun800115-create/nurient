@@ -35,16 +35,19 @@ BEACH = OrderedDict()
 
 
 def beach(key, kind, atlas, fp=None, yaw=0.0, shadow=True, samples=40, notes='', front='-Y', catcher=14.0, work=0,
-          fps=8, sprites=None, extra=None, ko=None, en=None, zone=None, anim_name=None, ground='sand'):
+          fps=8, sprites=None, extra=None, ko=None, en=None, zone=None, anim_name=None, ground='sand', item=None):
     def deco(fn):
         ex = dict(extra or {})
         if ko or en:
             ex['name'] = {'ko': ko or key, 'en': en or key}
         if zone:
             ex['zone'] = zone
-        BEACH[key] = dict(key=key, fn=fn, kind=kind, atlas=atlas, fp=fp, yaw=yaw, shadow=shadow, samples=samples,
-                          notes=notes, front=front, catcher=catcher, work=work, fps=fps, item=None, sprites=sprites,
-                          extra=ex, anim_name=anim_name, ground=ground)
+        if ground == 'water':
+            ex.setdefault('waterPlane', True)
+            ex.setdefault('waterline', 'anchor')
+        BEACH[key] = dict(key=key, fn=fn, kind=kind, atlas=atlas, fp=fp, yaw=yaw, shadow=shadow and not item,
+                          samples=samples, notes=notes, front=front, catcher=catcher, work=work, fps=fps, item=item,
+                          sprites=sprites, extra=ex, anim_name=anim_name, ground=ground)
         return fn
     return deco
 
@@ -458,11 +461,15 @@ BUILD_NOTE = ('Sandcastle being built: 4 stages sharing one frame + anchor (swap
 def b_sandcastle_build():
     m = B.sand(B.SAND_DAMP)
     with L.Collect() as s0:
-        B.sand_mound('pile', 0.36, 0.16, (0.0, 0.05, 0), seed=5, col=B.SAND_DAMP)
-        B.sand_mound('pile2', 0.2, 0.09, (0.3, -0.05, 0), seed=6, col=B.SAND_DAMP)
-        sphere('hole', 0.16, (-0.32, -0.12, 0.0), flat('#B89A6A', 0.95), scale=(1.2, 0.8, 0.12), segs=16, rings=8)
+        B.sand_mound('pile', 0.34, 0.2, (0.0, 0.08, 0), seed=5, col=B.SAND_DAMP)
+        B.sand_mound('pile2', 0.2, 0.11, (0.28, -0.08, 0), seed=6, col=B.SAND_DAMP)
+        B.sand_mound('pile3', 0.14, 0.07, (-0.12, -0.26, 0), seed=7, col=B.SAND_DAMP)
+        sphere('hole', 0.17, (-0.36, -0.06, 0.0), flat('#A88A5C', 0.95), scale=(1.15, 0.85, 0.1), segs=16, rings=8)
+        B.torus('holerim', 0.18, 0.035, (-0.36, -0.06, 0.0), mats=[B.sand(B.SAND_DAMP)], M=24, K=8,
+                scale=(1.15, 0.85, 0.8))
+        B.spade('spst', (0.05, 0.12, 0.3), col='#3D86D6', rot=(-70, 0, 30))
     with L.Collect() as tools0:
-        bucket_spade_pair(0.42, -0.3, rz=30, tip=True)
+        B.bucket('bk0', (0.45, -0.28, 0.08), r=0.1, h=0.15, col=B.RED, rot=(0, 75, 30), sand_in=False)
     with L.Collect() as s1:
         B.sand_mound('base', 0.55, 0.09, (0, 0, 0), seed=3, col=B.SAND_DAMP, scale=(1, 0.85, 1))
         B.tower_bucket('keep', (0, 0.05, 0.04), r=0.17, h=0.3, mat=m, seed=2, crenel=False)
@@ -502,3 +509,8 @@ def b_sandcastle_build():
     keys = [n for n, _ in frames]
     sprites = {n: {'frame': n, 'stage': k, 'stages': keys} for k, n in enumerate(keys)}
     return {'frames': frames, 'sprites': sprites}
+
+
+# the rest of the set (registration order = manifest order inside each atlas)
+import beach_props  # noqa: E402,F401
+import beach_water  # noqa: E402,F401

@@ -275,6 +275,42 @@ def water_poly(rect, zw, yaw):
     return [[int(round(x)), int(round(y))] for x, y in poly], [[int(round(x)), int(round(y))] for x, y in wl]
 
 
+def rebuild(spec, W, H_, anchor, samples):
+    """Fresh scene of the build's idle state (same camera / catcher) for the next destructive pass."""
+    bc.reset_scene()
+    L._CUSTOM.clear()
+    BA.MARKERS.clear()
+    B.reset()
+    B.YAW = spec['yaw']
+    bc.setup_lighting()
+    with B.warm():
+        res = spec['fn']() or {}
+    B.sweep_snow()
+    if res.get('water'):
+        for o in res['water']['objs']:
+            o.hide_render = True
+            o.hide_viewport = True
+    BR.parent_to_root(spec['yaw'])
+    fr = BR.frames_for(spec, res)
+    if fr[0][1]:
+        fr[0][1]()
+    if spec['shadow']:
+        add_catcher(spec['catcher'], _holes(spec, res))
+    bc.setup_render(W, H_, samples=samples or spec['samples'])
+    bc.setup_camera(W, H_, anchor)
+    bpy.context.view_layer.update()
+    return res
+
+
+def _holes(spec, res):
+    R = Matrix.Rotation(math.radians(spec['yaw']), 3, 'Z')
+    hw = []
+    for (x0, x1, y0, y1) in res.get('holes') or ():
+        c = [R @ Vector(p) for p in ((x0, y0, 0), (x1, y1, 0))]
+        hw.append((min(c[0].x, c[1].x), max(c[0].x, c[1].x), min(c[0].y, c[1].y), max(c[0].y, c[1].y)))
+    return hw
+
+
 # --------------------------------------------------------------------------- render one build
 
 def render_bbld(spec, cache, samples=None, only=None):
@@ -302,13 +338,7 @@ def render_bbld(spec, cache, samples=None, only=None):
     frames = BR.frames_for(spec, res)
     W, H_, anchor, tops = BR.fit_frames(frames, spec['shadow'])
     if spec['shadow']:
-        holes = res.get('holes') or ()
-        R = Matrix.Rotation(math.radians(spec['yaw']), 3, 'Z')
-        hw = []
-        for (x0, x1, y0, y1) in holes:
-            c = [R @ Vector(p) for p in ((x0, y0, 0), (x1, y1, 0))]
-            hw.append((min(c[0].x, c[1].x), max(c[0].x, c[1].x), min(c[0].y, c[1].y), max(c[0].y, c[1].y)))
-        add_catcher(spec['catcher'], hw)
+        add_catcher(spec['catcher'], _holes(spec, res))
     sc = bc.setup_render(W, H_, samples=samples or spec['samples'])
     bc.setup_camera(W, H_, anchor)
     fpts, fdirs = {}, {}
@@ -361,35 +391,38 @@ def render_bbld(spec, cache, samples=None, only=None):
             o.hide_render = True
         meta['water'] = {'frames': names, 'fps': water.get('fps', 6), 'poly': vis, 'rectWater': wl,
                          'z': water['z'], 'rectM': list(water['rect'])}
-    # ---- overlay mask (front-tagged occluders), then glow pass (both destroy materials -> last)
+    # ---- destructive passes (they replace materials): tag mask, plane mask, glow - each on a freshly built scene
+    passes = []
     if B.FRONT and res.get('overlay', True):
-        mask = '%s_front_mask' % key
-        render_front_mask(os.path.join(cache, mask + '.png'))
-        meta['overlay'] = {'key': '%s_front' % key, 'mask': mask, 'of': frames[0][0]}
-    glow = '%s_glow' % key
-    # the mask pass replaced materials -> rebuild the scene for the glow pass if a mask was rendered
-    if meta.get('overlay'):
-        bc.reset_scene()
-        L._CUSTOM.clear()
-        BA.MARKERS.clear()
-        B.reset()
-        B.YAW = spec['yaw']
-        bc.setup_lighting()
-        with B.warm():
-            res2 = spec['fn']() or {}
-        B.sweep_snow()
-        if res2.get('water'):
-            for o in res2['water']['objs']:
-                o.hide_render = True
-        BR.parent_to_root(spec['yaw'])
-        fr2 = BR.frames_for(spec, res2)
-        if fr2[0][1]:
-            fr2[0][1]()
-        bc.setup_render(W, H_, samples=samples or spec['samples'])
-        bc.setup_camera(W, H_, anchor)
-        bpy.context.view_layer.update()
-    if res.get('glow', True) and render_glow(os.path.join(cache, glow + '.png')):
-        meta['glow'] = glow
+        passes.append('tags')
+    if res.get('overlay_plane'):
+        passes.append('plane')
+    if res.get('glow', True):
+        passes.append('glow')
+    first = True
+    masks = []
+    for ps in passes:
+        if not first:
+            rebuild(spec, W, H_, anchor, samples)
+        first = False
+        if ps == 'tags':
+            n = '%s_front_mask' % key
+            if only in (None, 'frames', 'masks'):
+                render_front_mask(os.path.join(cache, n + '.png'))
+            masks.append({'mask': n, 'kind': 'tags'})
+        elif ps == 'plane':
+            st = [em for kind, em, _ in BA.MARKERS if kind == 'staff']
+            c = st[0].matrix_world.translation.copy()
+            n = '%s_front_mask2' % key
+            if only in (None, 'frames', 'masks'):
+                BR.render_overlay_mask(c, os.path.join(cache, n + '.png'))
+            masks.append({'mask': n, 'kind': 'plane', 'staff': 0})
+        else:
+            glow = '%s_glow' % key
+            if render_glow(os.path.join(cache, glow + '.png')):
+                meta['glow'] = glow
+    if masks:
+        meta['overlay'] = {'key': '%s_front' % key, 'masks': masks, 'of': frames[0][0]}
     with open(os.path.join(cache, key + '.json'), 'w') as f:
         json.dump(meta, f, indent=1)
     print('[%s] %dx%d anchor %s  %d frame(s)%s%s%s  %.1fs' % (key, W, H_, anchor, len(frames),
@@ -410,7 +443,7 @@ def cached(key, cache):
         return False
     names = list(meta.get('frames', []))
     if meta.get('overlay'):
-        names.append(meta['overlay']['mask'])
+        names += [m['mask'] for m in meta['overlay']['masks']]
     if meta.get('glow'):
         names.append(meta['glow'])
     if meta.get('water'):

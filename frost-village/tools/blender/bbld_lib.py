@@ -74,7 +74,7 @@ RED = '#E04B3F'
 GOLD = '#F2C14E'
 INK = '#2B2F3A'
 GLASS = '#A9D8EA'
-WARM_LIGHT = '#FFCF7A'
+WARM_LIGHT = '#FFBE62'
 SNOW_MAT_PREFIX = 'm_' + L.C('snow_mat').lstrip('#')
 
 
@@ -484,21 +484,24 @@ def gwin(name, loc, face='y-', w=0.5, h=0.62, frame=WHITE, shutters=None, curtai
     if arch:
         objs.append(T.ext_xz(name + '_fr', PA.arch_pts(w + 0.14, h + 0.08, 12), depth, fm, y=0.0))
         objs[-1].location.z = -0.04
-        objs.append(T.ext_xz(name + '_g', PA.arch_pts(w, h, 12), depth, gm, y=0.02))
+        objs.append(T.ext_xz(name + '_g', PA.arch_pts(w, h, 12), depth, gm, y=-0.02))
+        front_y = -depth - 0.02
     else:
         objs.append(box(name + '_fr', (w + 0.14, depth, h + 0.14), (0, -0.01, -0.07), mat=fm, bevel=0.025))
         objs.append(box(name + '_g', (w, depth, h), (0, -0.035, 0.0), mat=gm, bevel=0.008))
+        front_y = -depth - 0.002
     if mull:
-        objs.append(box(name + '_m1', (0.04, depth + 0.012, h), (0, -0.045, 0.0), mat=fm, bevel=0.0))
-        if not arch:
-            objs.append(box(name + '_m2', (w, depth + 0.012, 0.04), (0, -0.045, h * 0.62), mat=fm, bevel=0.0))
+        objs.append(box(name + '_m1', (0.04, 0.02, h * (0.98 if not arch else 0.9)), (0, front_y - 0.005, 0.0), mat=fm,
+                        bevel=0.0))
+        objs.append(box(name + '_m2', (w, 0.02, 0.04), (0, front_y - 0.005, h * (0.62 if not arch else 0.5)), mat=fm,
+                        bevel=0.0))
     if curtain:
         cm = flat(curtain, 0.85)
         for s in (-1, 1):
-            objs.append(box(name + '_cu', (w * 0.24, 0.012, h * (0.86 if not arch else 0.7)),
-                            (s * (w / 2 - w * 0.12), -depth - 0.002, h * 0.06), mat=cm, bevel=0.004))
+            objs.append(box(name + '_cu', (w * 0.24, 0.012, h * (0.86 if not arch else 0.62)),
+                            (s * (w / 2 - w * 0.12), front_y - 0.012, h * 0.06), mat=cm, bevel=0.004))
     # glass sheen
-    objs.append(box(name + '_sh', (0.035, 0.008, h * 0.6), (-w * 0.26, -depth - 0.004, h * 0.2), rot=(0, -28, 0),
+    objs.append(box(name + '_sh', (0.035, 0.008, h * 0.6), (-w * 0.26, front_y - 0.006, h * 0.2), rot=(0, -28, 0),
                     mat=flat('#F2FBFF', 0.1), bevel=0.0))
     if sill:
         objs.append(box(name + '_sill', (w + 0.24, 0.16, 0.05), (0, -0.07, -0.12), mat=flat(sill, 0.7), bevel=0.015))
@@ -809,7 +812,7 @@ def em_shellfish_grill(s=1.0):
     objs.append(sphere('clamtop', 0.19 * s, (0, -0.02 * s, 0.13 * s), flat('#E3C9A1', 0.5), scale=(1.2, 0.45, 0.5),
                        rot=(-12, 0, 0), segs=22, rings=12))
     objs.append(PA.fish_model('gfish', length=0.36 * s, height=0.15 * s, thick=0.07 * s,
-                              loc=(0.05 * s, -0.12 * s, 0.32 * s), rot=(-90, 0, 0)))
+                              loc=(0.05 * s, -0.12 * s, 0.32 * s), rot=(90, 0, 0)))
     return objs
 
 
@@ -885,12 +888,19 @@ def awning_at(name, face, loc, W, depth, z_back, z_front, c1, c2=WHITE, n=8, sca
     return T.face_group(c.objs, face, loc, name + '_g')
 
 
-def sign_board(name, center, w=1.6, h=0.5, bg='#FFF8EC', frame=TURQ, psi_=None, t=0.08, posts=None, lit=False,
+def sign_board(name, center, w=1.6, h=0.5, bg='#FFF8EC', frame=TURQ, psi_=None, t=0.08, posts=None, lit=True,
                bulbs=0):
-    """Blank rectangular sign board (game writes the name at its centre) facing psi; optional marquee bulbs."""
+    """Blank rectangular sign board (game writes the name at its centre) facing psi; optional marquee bulbs.  lit:
+    the board face glows softly at night (an illuminated sign the name is written on)."""
     fm = flat(frame, 0.5)
+    bm = flat(bg, 0.6)
+    if lit:
+        bm = L.NB(name + '_bdm', rough=0.6).m
+        p = bm.node_tree.nodes.get('Principled BSDF')
+        p.inputs['Base Color'].default_value = (*bc.srgb_to_linear(L.adj(bg)), 1.0)
+        night(bm, '#FFE9B8', 1.1)
     objs = [box(name + '_fr', (w + 0.12, t, h + 0.12), (0, 0.01, -(h + 0.12) / 2), mat=fm, bevel=0.03),
-            box(name + '_bd', (w, t, h), (0, -0.02, -h / 2), mat=flat(bg, 0.6), bevel=0.02)]
+            box(name + '_bd', (w, t, h), (0, -0.02, -h / 2), mat=bm, bevel=0.02)]
     if bulbs:
         bm_ = neon_mat(name + '_bulb', '#FFF1C8', 0.9, 4.0)
         nb = bulbs
@@ -906,7 +916,7 @@ def sign_board(name, center, w=1.6, h=0.5, bg='#FFF8EC', frame=TURQ, psi_=None, 
                 p = (w / 2 - (d - w - h), -h / 2 - 0.03)
             else:
                 p = (-w / 2 - 0.03, -h / 2 + (d - 2 * w - h))
-            objs.append(sphere(name + '_b', 0.035, (p[0], -0.06, p[1] - h / 2), bm_, segs=8, rings=6))
+            objs.append(sphere(name + '_b', 0.035, (p[0], -0.06, p[1]), bm_, segs=8, rings=6))
     g = L.group(objs, name, loc=center, rot=(0, 0, psi() if psi_ is None else psi_))
     return g
 
@@ -968,3 +978,157 @@ def flag_pole(name, loc, h=3.2, col=TURQ, w=0.6, fh=0.4, seed=0):
             sphere(name + '_top', 0.055, (x, y, z + h + 0.03), flat(GOLD, 0.3, 0.8), segs=10, rings=6),
             PA.flag(name + '_flag', (x + 0.03, y, z + h - 0.06), w, fh, col, seed=seed, emblem=True)]
     return objs
+
+
+# =========================================================================== roofs
+
+def tile_roof_mat(col=TERRA, rows=0.17):
+    """Terracotta tile courses: horizontal bands (object Z) + a faint vertical joint pattern."""
+    return L.stripes(col, hexmix(col, '#000000', 0.16), 1.0 / rows, 'Z', rough=0.7, soft=0.12)
+
+
+def hip_roof(name, x0, x1, y0, y1, z, rise, over=0.3, col=TERRA, fascia=STUCCO_W, t=0.09, ridge_col=None):
+    """Hip roof over the rectangle x0..x1, y0..y1 (eaves at z, overhang `over`), 45-degree hips in plan, ridge along
+    the longer axis.  Returns (objs, roof_z(x, y) function for placing things on the slopes)."""
+    ex0, ex1, ey0, ey1 = x0 - over, x1 + over, y0 - over, y1 + over
+    Wd, Dd = ex1 - ex0, ey1 - ey0
+    cx, cy = (ex0 + ex1) / 2, (ey0 + ey1) / 2
+    bm = bmesh.new()
+    if Wd >= Dd:
+        d = Dd / 2
+        r0, r1 = (ex0 + d, cy, z + rise), (ex1 - d, cy, z + rise)
+    else:
+        d = Wd / 2
+        r0, r1 = (cx, ey0 + d, z + rise), (cx, ey1 - d, z + rise)
+    c00, c10, c11, c01 = (ex0, ey0, z), (ex1, ey0, z), (ex1, ey1, z), (ex0, ey1, z)
+    V = {k: bm.verts.new(v) for k, v in (('c00', c00), ('c10', c10), ('c11', c11), ('c01', c01), ('r0', r0),
+                                          ('r1', r1))}
+    if Wd >= Dd:
+        faces = [('c00', 'c10', 'r1', 'r0'), ('c10', 'c11', 'r1'), ('c11', 'c01', 'r0', 'r1'), ('c01', 'c00', 'r0')]
+    else:
+        faces = [('c00', 'c10', 'r0'), ('c10', 'c11', 'r1', 'r0'), ('c11', 'c01', 'r1'), ('c01', 'c00', 'r0', 'r1')]
+    for f in faces:
+        bm.faces.new([V[k] for k in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=-t)
+    m = tile_roof_mat(col)
+    objs = [L.finish(name, bm, [m], smooth=False)]
+    rc = ridge_col or hexmix(col, '#000000', 0.25)
+    rm = flat(rc, 0.6)
+    mb = L.MB()
+    mb.seg(r0, r1, 0.07, rm, segs=10)
+    for c, r in ((c00, r0), (c01, r0), (c10, r1), (c11, r1)):
+        mb.seg(c, r, 0.055, rm, segs=8)
+    mb.sphere(0.09, rm, loc=r0, segs=10, rings=6)
+    mb.sphere(0.09, rm, loc=r1, segs=10, rings=6)
+    objs.append(mb.done(name + '_ridge'))
+    fm = flat(fascia, 0.6)
+    objs.append(box(name + '_fa', (Wd, 0.06, 0.12), (cx, ey0 + 0.03, z - 0.12), mat=fm, bevel=0.02))
+    objs.append(box(name + '_fb', (Wd, 0.06, 0.12), (cx, ey1 - 0.03, z - 0.12), mat=fm, bevel=0.02))
+    objs.append(box(name + '_fl', (0.06, Dd, 0.12), (ex0 + 0.03, cy, z - 0.12), mat=fm, bevel=0.02))
+    objs.append(box(name + '_fr', (0.06, Dd, 0.12), (ex1 - 0.03, cy, z - 0.12), mat=fm, bevel=0.02))
+
+    def roof_z(x, y):
+        """Height of the roof surface above (x, y) (inside the eave rectangle)."""
+        dist = min(x - ex0, ex1 - x, y - ey0, ey1 - y)
+        return z + rise * min(1.0, max(0.0, dist / d))
+    return objs, roof_z
+
+
+def dormer(name, x, y_front, z0, w=0.8, h=0.75, depth=1.0, wall=STUCCO_W, roof=TERRA, curtain=LEMON, face='y-'):
+    """Little roof dormer (front face at y_front, bottom at z0) with a gable cap and a glass window."""
+    objs = [box(name + '_b', (w, depth, h), (x, y_front + depth / 2, z0), mat=stucco(wall), bevel=0.03)]
+    with L.Collect() as c:
+        T.gable(name + '_r', w, depth + 0.2, z0 + h, z0 + h + w * 0.45, 0.1, roof, stucco(wall), x=x,
+                y=y_front + depth / 2 - 0.1, along='y', snow_frac=(0, 0))
+    objs += c.objs
+    objs.append(gwin(name + '_w', (x, y_front, z0 + 0.15), 'y-', w=w * 0.52, h=h * 0.6, arch=True, curtain=curtain,
+                     sill=None))
+    return objs
+
+
+def roof_deck(name, W, D, z, x=0.0, y=0.0, wall=STUCCO_W, cap=TURQ, parapet=0.26, floor='#E9DFCC', t=0.14):
+    """Flat roof with a light tiled deck (not the town's grey slab), a parapet and coloured caps."""
+    objs = [box(name, (W, D, t), (x, y, z), mat=tile_mat(floor, hexmix(floor, '#000000', 0.06), 2.5,
+                                                         hexmix(floor, '#000000', 0.15)), bevel=0.02)]
+    pm = flat(wall, 0.75)
+    cm = flat(cap, 0.5)
+    pt = 0.14
+    for sx, sy, cx, cy in ((W + 0.1, pt, 0, -D / 2), (W + 0.1, pt, 0, D / 2), (pt, D, -W / 2, 0), (pt, D, W / 2, 0)):
+        objs.append(box(name + '_p', (sx, sy, parapet), (x + cx, y + cy, z), mat=pm, bevel=0.03))
+        objs.append(box(name + '_c', (sx + 0.05, sy + 0.06, 0.06), (x + cx, y + cy, z + parapet), mat=cm, bevel=0.02))
+    return objs
+
+
+def shell(name, BX, BY, W, D, PL, H, wall, plinth='#D8CBB6', trim=None, trim_t=0.13):
+    """Plinth + wall block + corner trims; returns (x0, x1, y0, y1)."""
+    T.plinth(name + '_pl', W, D, h=PL, col=plinth, x=BX, y=BY)
+    box(name, (W, D, H - PL), (BX, BY, PL), mat=wall if not isinstance(wall, str) else stucco(wall), bevel=0.04)
+    if trim:
+        T.corner_trims(name + '_ct', W, D, PL, H - PL, trim, t=trim_t, x=BX, y=BY)
+    return BX - W / 2, BX + W / 2, BY - D / 2, BY + D / 2
+
+
+def bulb_ring(name, pts, mats, r=0.04, closed=False):
+    """Marquee bulbs along a polyline (list of 3D points), materials cycling through `mats` (phase groups)."""
+    objs = []
+    n = len(pts)
+    for k, p in enumerate(pts):
+        objs.append(sphere('%s%d' % (name, k), r, p, mats[k % len(mats)], segs=8, rings=6))
+    return objs
+
+
+def phase_mats(name, cols, n=4, day=0.9, strength=4.5):
+    """n groups of neon materials (for chasing / twinkling bulbs): returns list of lists [[m per colour]]."""
+    out = []
+    for g in range(n):
+        out.append([neon_mat('%s_%d_%d' % (name, g, c), col, day, strength) for c, col in enumerate(cols)])
+    return out
+
+
+def set_phase(groups, i, hi=2.6, lo=0.35):
+    """Frame i of a chase: group i % n bright, the next one medium, the rest dim (day emission)."""
+    n = len(groups)
+    for g, ms in enumerate(groups):
+        d = (g - i) % n
+        s = hi if d == 0 else (hi * 0.45 if d == 1 else lo)
+        for m in ms:
+            L.set_emission(m, s)
+
+
+def tank_glass(name, col='#7FD3F0', alpha=0.38, glow=0.35, night_col='#5BC8F0'):
+    """See-through glowing aquarium / live-tank glass (alpha blended, so what is inside shows)."""
+    nb = L.NB(name, rough=0.08)
+    rgb = nb.rgb(col, raw=True)
+    nb.p.inputs['Base Color'].default_value = rgb
+    nb.p.inputs['Emission Color'].default_value = rgb
+    nb.p.inputs['Emission Strength'].default_value = glow
+    nb.p.inputs['Alpha'].default_value = alpha
+    night(nb.m, night_col, 1.6)
+    return nb.m
+
+
+def thatch_mat(col=THATCH):
+    """Straw thatch: course bands + streaky noise along the slope."""
+    key = ('thatch', col)
+    if key in L._CUSTOM:
+        return L._CUSTOM[key]
+    nb = L.NB('thatch', rough=0.95)
+    tc = nb.n('ShaderNodeTexCoord')
+    sep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Object'], sep.inputs[0])
+    band = nb.math('FRACT', nb.math('MULTIPLY', sep.outputs['Z'], 1.0 / 0.16))
+    band = nb.map_range(band, 0.55, 0.95)
+    wv = nb.n('ShaderNodeTexWave', wave_type='BANDS', bands_direction='Z')
+    wv.inputs['Scale'].default_value = 3.0
+    wv.inputs['Distortion'].default_value = 6.0
+    wv.inputs['Detail'].default_value = 3.0
+    mp = nb.n('ShaderNodeMapping')
+    mp.inputs['Scale'].default_value = (8.0, 8.0, 0.6)
+    nb.link(tc.outputs['Object'], mp.inputs['Vector'])
+    nb.link(mp.outputs['Vector'], wv.inputs['Vector'])
+    streak = nb.map_range(wv.outputs['Fac'], 0.3, 0.8)
+    c1 = nb.mix_rgb(streak, hexmix(col, '#000000', 0.12), hexmix(col, '#FFFFFF', 0.12))
+    nb.base(nb.mix_rgb(band, c1, hexmix(col, '#000000', 0.25)))
+    L._CUSTOM[key] = nb.m
+    return nb.m

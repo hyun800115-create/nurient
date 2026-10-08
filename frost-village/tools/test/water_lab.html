@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Water Lab</title>
+<!--
+  Living-water lab (CONTRACT_V7 section V). Open through the static server:
+    node tools/test/serve.mjs 8080   ->   http://127.0.0.1:8080/tools/test/water_lab.html?scene=beach
+  Query: scene=village|harbor|beach  mode=new|old  quality=high|low  w=390 h=844 (canvas CSS px)  dpr=1
+         zoom=1.0 (game zoom; the canvas shows 720 / zoom world px across, like the game)  renderer=canvas
+         t=<seconds> (start time)  play=1 (run the clock in real time; otherwise only window.__W.frame(t) draws)
+  Hooks (used by tools/test/water_lab.mjs): window.__W = { ready, frame(t), info(), setQuality(q), perf(n) }
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: #1d2433; }
+  #game { width: 100vw; height: 100vh; }
+  canvas { display: block; }
+</style>
+<script src="../../lib/phaser.min.js"></script>
+</head>
+<body>
+<div id="game"></div>
+<script type="module" src="./water_lab/lab.js"></script>
+</body>
+</html>

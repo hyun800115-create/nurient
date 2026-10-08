@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+"""
+gen_water_fx.py - water effect spritesheets for the living-water module (CONTRACT_V7 section V).
+
+Writes the sheets into assets/water/, adds them to assets/water/manifest.json (spritesheets[]; the
+textures written by gen_water.py stay as they are) and renders docs/previews/water_fx_sheet.png +
+water_fx_*.gif. Deterministic. Usable with or without the shader (src/systems/Water.js).
+
+    python3 tools/fx/gen_water_fx.py            # all sheets + previews
+    python3 tools/fx/gen_water_fx.py --only fx_wave_crash --no-gif
+
+Conventions = assets/fx (handoff doc 04 2.3.2): NORMAL blend toy-water art (white -> ice body, bevel
+light from the upper left, thin sea-blue rim so it reads on white snow, sand and deep sea), frames
+left -> right wrapped into rows <= 2048 px, one-shots start visibly at frame 0, loops are periodic.
+Water rings / foam lie on the iso water plane (2:1). Foam lace = the same water_foam texture the shader
+uses, so sprite foam and shader foam look alike.
+
+  fx_wave_crash      192x192 x 10, 20 fps, once  spray burst of a wave hitting rock / a breakwater;
+                                                 anchor = impact point at the waterline [0.5, 0.80]
+  fx_splash_small     96x96  x 10, 24 fps, once  small splash (fish jump, pebble, swimmer kick) [0.5, 0.72]
+  fx_splash_big      192x192 x 14, 24 fps, once  big splash (dive, cannonball, crate overboard) [0.5, 0.80]
+  fx_swim_ripple     128x64  x 12, 12 fps, loop  rings + lacy collar around a swimmer; anchor = waterline
+                                                 centre [0.5, 0.5]; draw UNDER the swimmer
+  fx_wake_v2         256x176 x  8, 12 fps, loop  boat wake V (bow arms + stern trail) for heading SE;
+  fx_wake_v2_s/_e/_ne/_n                         other rendered headings (mirror for SW / W / NW with flipX);
+                                                 anchor = hull centre at the waterline [0.5, 0.5], under the boat;
+                                                 drawn for a ~2.2 m hull: scale 1.15 rowboat, 2.0 fishing boat
+  fx_sparkle_water   128x64  x 12, 12 fps, loop  sun glints twinkling on water (scatter a few; low quality /
+                                                 canvas fallback, or extra sparkle on calm water)
+  fx_shore_wave_x    384x256 x 16,  6 fps, loop  rolling breaking-wave crest strip for SAND beaches, coast along
+                                                 world X with the sea on the far (+Y, screen up-right) side;
+  fx_shore_wave_y                                coast along world Y with the sea on the far (-X, up-left) side
+                                                 (= flipX of _x). Chain every (+256, +128) px (_x) or (+256, -128)
+                                                 px (_y) = 4 tiles; anchor = mean waterline at the segment centre.
+"""
+import argparse
+import json
+import math
+import os
+import sys
+
+import numpy as np
+from PIL import Image, ImageDraw
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, HERE)
+import fxlib as F  # noqa: E402
+from fxlib import hexc  # noqa: E402
+import gen_fx as GF  # noqa: E402  (water_part, glint, grid_strip - read only)
+import ui2_fx as U2  # noqa: E402  (foam_ring, bubbles - read only)
+import gen_water as GW  # noqa: E402  (foam texture - the same lace the shader uses)
+
+OUT = os.path.join(ROOT, 'assets', 'water')
+PREV = os.path.join(ROOT, 'docs', 'previews')
+WHITE = hexc('#FFFFFF')
+RIM = hexc('#174A86')
+SEA = hexc('#2F86C9')
+PPM = 64.0           # G px per metre
+LACE = None
+
+
+def lace_tex():
+    global LACE
+    if LACE is None:
+        LACE = GW.foam_texture(256)
+    return LACE
+
+
+def sample(tex, gx, gy, ch=0):
+    """periodic bilinear sample of a (256, 256, C) texture at G px coordinates"""
+    n = tex.shape[0]
+    x = np.mod(gx, n)
+    y = np.mod(gy, n)
+    x0 = np.floor(x).astype(np.int64)
+    y0 = np.floor(y).astype(np.int64)
+    tx, ty = x - x0, y - y0
+    x1, y1 = (x0 + 1) % n, (y0 + 1) % n
+    t = tex[..., ch]
+    return ((t[y0, x0] * (1 - tx) + t[y0, x1] * tx) * (1 - ty) + (t[y1, x0] * (1 - tx) + t[y1, x1] * tx) * ty)
+
+
+def foam(c, pot, lace, a=1.0, aa=0.07, shade_lo='#BCDDF3', rim=True):
+    """threshold the lace by a foam potential (0..1) and paint toy foam: white core, icy edges, a thin
+    dark-blue under-rim one px lower so it reads on white snow and sand too"""
+    cov = np.clip((lace - (1 - pot) + aa) / (2 * aa), 0, 1)
+    cov = cov * cov * (3 - 2 * cov)
+    if rim:
+        sh = np.roll(cov, int(round(1.4 * c.ss)), axis=0)
+        c.paint(np.clip(sh - cov, 0, 1), RIM, 0.32 * a)
+    core = np.clip((lace - (1 - pot)) / 0.28, 0, 1)
+    col = F.mix(hexc(shade_lo), WHITE, core ** 0.7)
+    c.paint(cov, col, a)
+    return cov
+
+
+# =========================================================================== splashes
+def splash(c, cx, wy, t, S, n_spk=8, col_h=48, spike_len=(18, 28), drops=12, rings=3, seed=4, mist=0.0):
+    """water splash at (cx, wy) scaled by S (1 = the 128 px fx_splash): rings on the iso water plane, foam
+    disc, crown of tapered spikes, a central column with a blob and droplets flung on arcs"""
+    for k, t0 in enumerate((-0.08, 0.2, 0.42)[:rings]):
+        tt = F.clamp01((t - t0) / 0.62)
+        if 0 < tt < 1:
+            rx = (9 + 48 * F.ease_out(tt, 2)) * S
+            U2.foam_ring(c, cx, wy, rx, rx * 0.46, (3.0 * (1 - tt) + 0.8) * S, 0.95 * (1 - tt) ** 1.2,
+                         phase=tt * 4 + k, broken=0.15 + 0.4 * tt, seed=30 + k + seed)
+    fa = 1 - F.ease_in(t, 1.5)
+    R = c.region(cx - 30 * S, wy - 14 * S, cx + 30 * S, wy + 14 * S)
+    if not R.empty:
+        e = F.sd_ellipse(R.X, R.Y, cx, wy, (11 + 12 * t) * S, (4.5 + 5 * t) * S)
+        lc = sample(lace_tex(), (R.X - cx) * 3.1 / S + seed * 37, (R.Y - wy) * 6.2 / S + seed * 11)
+        foam(R, np.clip(0.95 - np.maximum(e, 0) / (6 * S), 0, 1) * fa, lc, a=0.95)
+    hgt = F.bump(t, -0.08, 0.62)
+    rng = np.random.default_rng(seed)
+    spikes = []
+    for k in range(n_spk):
+        phi = 2 * math.pi * k / n_spk + 0.35
+        p = F.ease_out(t, 2)
+        bx = cx + math.cos(phi) * (7 + 10 * p) * S
+        by = wy + math.sin(phi) * (3 + 4 * p) * S
+        L = rng.uniform(*spike_len) * hgt * S
+        dx, dy = math.cos(phi) * 1.05, -1.0
+        nrm = math.hypot(dx, dy)
+        tx, ty = bx + dx / nrm * L, by + dy / nrm * L * (0.9 + 0.2 * abs(math.cos(phi)))
+        spikes.append((math.sin(phi), bx, by, tx, ty, L))
+
+    def spike(sp):
+        _, bx, by, tx, ty, L = sp
+        R = c.region(min(bx, tx) - 8 * S, ty - 8 * S, max(bx, tx) + 8 * S, by + 6 * S)
+        if R.empty or L < 2:
+            return
+        tt = np.clip(np.hypot(R.X - bx, R.Y - by) / max(L, 1), 0, 1)
+        d = F.sd_segment(R.X, R.Y, bx, by, tx, ty, 0) - (2.9 - 2.0 * tt) * S
+        d = np.minimum(d, F.sd_circle(R.X, R.Y, tx, ty, 1.9 * S))
+        d = np.maximum(d, R.Y - wy - 4 * S)
+        GF.water_part(R, d, ty, L)
+    for sp in sorted(spikes):
+        if sp[0] < 0:
+            spike(sp)
+    H = col_h * F.bump(t, -0.05, 0.8) ** 0.8 * S
+    if H > 2:
+        R = c.region(cx - 14 * S, wy - H - 10 * S, cx + 14 * S, wy + 6 * S)
+        tt = np.clip((wy - R.Y) / H, 0, 1)
+        d = np.abs(R.X - cx) - (5.0 - 2.6 * tt) * S
+        d = np.maximum(d, R.Y - wy)
+        d = np.maximum(d, (wy - H) - R.Y)
+        d = F.smin(d, F.sd_circle(R.X, R.Y, cx, wy - H, 4.2 * S), 2.0 * S)
+        GF.water_part(R, d, wy - H, H)
+    for sp in sorted(spikes):
+        if sp[0] >= 0:
+            spike(sp)
+    if mist > 0:
+        ma = mist * F.bump(t, 0.05, 1.0)
+        r = np.hypot((c.X - cx) / (26 * S), (c.Y - (wy - H * 0.7 - 6 * S)) / (22 * S))
+        c.paint(np.exp(-r ** 2), hexc('#EAF5FD'), 0.45 * ma)
+    for k in range(drops):
+        phi = 2 * math.pi * k / drops + rng.uniform(-0.2, 0.2)
+        vx = math.cos(phi) * rng.uniform(45, 85) * S
+        vy = -rng.uniform(70, 120) * S
+        tt = t * 0.75
+        x = cx + vx * tt * 0.5
+        y = wy - 8 * S + vy * tt * 0.6 + 140 * S * tt * tt
+        if y > wy + 2 * S:
+            continue
+        rr = rng.uniform(1.6, 3.0) * S * (1 - 0.4 * t)
+        R = c.region(x - rr * 3, y - rr * 3, x + rr * 3, y + rr * 3)
+        if R.empty or rr < 0.5:
+            continue
+        sp_ = math.hypot(vx * 0.5, vy * 0.6 + 280 * S * tt) + 1e-6
+        ux, uy = (vx * 0.5) / sp_, (vy * 0.6 + 280 * S * tt) / sp_
+        d = F.sd_segment(R.X, R.Y, x - ux * rr * 1.6, y - uy * rr * 1.6, x, y, 0) - rr * 0.7
+        d = np.minimum(d, F.sd_circle(R.X, R.Y, x, y, rr))
+        GF.water_part(R, d, y - rr, 2 * rr, a=1 - F.ease_in(t, 3))
+
+
+def sh_splash_small(i, n, S=96):
+    t = (i + 0.7) / (n - 1 + 0.7)
+    c = F.Canvas(S, S)
+    splash(c, S / 2, S * 0.72, t, 0.68, n_spk=6, col_h=30, spike_len=(14, 22), drops=8, rings=2, seed=7)
+    return c.image()
+
+
+def sh_splash_big(i, n, S=192):
+    t = (i + 0.7) / (n - 1 + 0.7)
+    c = F.Canvas(S, S, ss=3)
+    splash(c, S / 2, S * 0.80, t, 1.45, n_spk=10, col_h=72, spike_len=(22, 36), drops=18, rings=3, seed=9, mist=0.9)
+    return c.image()
+
+
+# =========================================================================== wave crash
+def sh_wave_crash(i, n, S=192):
+    """A swell crest slamming into rock / a breakwater: a cotton-soft spray plume bursts up and fans out,
+    its edges tearing into lace and droplets, then it collapses into mist while a foam mound boils at the
+    foot. Anchor = impact point at the waterline."""
+    t = (i + 0.7) / (n - 1 + 0.7)
+    c = F.Canvas(S, S, ss=3)
+    cx, wy = S / 2, S * 0.80
+    rng = np.random.default_rng(21)
+    lc = lace_tex()
+    rise = F.ease_out(F.clamp01(t / 0.42), 2.2)
+    fall = F.clamp01((t - 0.42) / 0.58)
+    # mist halo behind the plume
+    ma = F.bump(t, 0.05, 1.08)
+    my = wy - 46 - 40 * t
+    r = np.hypot((c.X - cx) / (46 + 30 * t), (c.Y - my) / (40 + 22 * t))
+    c.paint(np.exp(-r ** 2 * 1.3), hexc('#EAF5FD'), 0.55 * ma)
+    # boiling foam mound on the water (iso)
+    fa = 1 - F.ease_in(t, 1.6)
+    R = c.region(cx - 84, wy - 32, cx + 84, wy + 36)
+    rx = 36 + 44 * F.ease_out(t, 2)
+    e = F.sd_ellipse(R.X, R.Y, cx, wy + 4, rx, rx * 0.42)
+    lace = sample(lc, (R.X - cx) * 1.5 + 17, (R.Y - wy) * 3.0 + 41 - t * 30)
+    foam(R, np.clip(1.0 - np.maximum(e + 6, 0) / 24, 0, 1) * (0.6 + 0.4 * fa) * (1.0 - 0.55 * t), lace, a=0.97)
+    # the plume: a cauliflower burst = smooth union of blobs thrown out in a fan (fixed seed -> the same
+    # blobs every frame; they rise with the burst, then drift out, sink and shrink)
+    H = 120 * rise * (1 - 0.3 * fall)
+    brng = np.random.default_rng(33)
+    d = None
+    for k in range(16):
+        th = brng.uniform(-1.05, 1.05) + 0.12           # fan angle from vertical (leans a little landward)
+        q = brng.uniform(0.18, 1.0) ** 0.8
+        env = math.cos(th * 0.9) ** 0.7
+        dist = H * q * env
+        bx = cx + math.sin(th) * dist * 0.85 + math.sin(th) * fall * 26 * q
+        by = wy - 8 - math.cos(th) * dist + fall * 30 * q * q
+        rr = (10 + 16 * (1 - q) + brng.uniform(-2, 4)) * (0.7 + 0.3 * rise) * (1 - 0.5 * fall * q)
+        if rr < 1:
+            continue
+        dc = F.sd_circle(c.X, c.Y, bx, by, rr)
+        d = dc if d is None else F.smin(d, dc, 10.0)
+    # jets of spray shooting out of the top of the burst
+    jh = F.bump(t, 0.02, 0.75)
+    jr = np.random.default_rng(44)
+    for k in range(7):
+        th = (k - 3) * 0.24 + jr.uniform(-0.1, 0.1) + 0.08
+        L = jr.uniform(34, 58) * jh
+        bx = cx + math.sin(th) * H * 0.42
+        by = wy - 8 - math.cos(th) * H * 0.48
+        tx, ty = bx + math.sin(th) * L, by - math.cos(th) * L
+        if L < 3:
+            continue
+        R = c.region(min(bx, tx) - 8, ty - 8, max(bx, tx) + 8, by + 8)
+        if R.empty:
+            continue
+        tt = np.clip(np.hypot(R.X - bx, R.Y - by) / max(L, 1), 0, 1)
+        dj = F.sd_segment(R.X, R.Y, bx, by, tx, ty, 0) - (3.6 - 2.6 * tt)
+        dj = np.minimum(dj, F.sd_circle(R.X, R.Y, tx, ty, 2.2))
+        GF.water_part(R, dj, ty, L, a=1 - F.ease_in(fall, 1.5))
+    if d is not None and H > 4:
+        # torn, lacy edges that open up into holes as the plume collapses
+        tear = sample(lc, c.X * 1.9 + 7, c.Y * 1.9 + 101 + t * 40)
+        d = d + (0.55 - tear) * (8 + 26 * fall) + fall * 10
+        d = np.maximum(d, c.Y - (wy + 2))
+        al = 1 - F.ease_in(fall, 1.6)
+        c.fill(d - 1.3, SEA, 0.35 * al)
+        GF.cloud(c, d, '#FFFFFF', '#CFE6F6', '#6FA6D6', alpha=al, bevel=11.0)
+    # droplets flung from the top, raining back down
+    for k in range(24):
+        vx = rng.uniform(-80, 80)
+        vy = -rng.uniform(80, 170)
+        t0 = rng.uniform(0.12, 0.38)
+        tt = max(0.0, t - t0) * 0.95
+        if tt <= 0:
+            continue
+        x = cx + rng.uniform(-44, 44) + vx * tt
+        y = wy - 20 - H * rng.uniform(0.45, 0.95) + vy * tt + 300 * tt * tt
+        if y > wy + 6:
+            continue
+        rr = rng.uniform(1.8, 3.8) * (1 - 0.35 * t)
+        R = c.region(x - rr * 3, y - rr * 3, x + rr * 3, y + rr * 3)
+        if R.empty:
+            continue
+        GF.water_part(R, F.sd_circle(R.X, R.Y, x, y, rr), y - rr, 2 * rr, a=1 - F.ease_in(t, 2.5))
+    return c.image()
+
+
+# =========================================================================== swim ripple
+def sh_swim_ripple(i, n, W=128, H=64):
+    u0 = i / n
+    c = F.Canvas(W, H)
+    cx, cy = W / 2, H / 2
+    for k in range(2):
+        u = (u0 + k / 2.0) % 1.0
+        rx = 20 + 40 * F.ease_out(u, 1.3)
+        a = math.sin(math.pi * min(1.0, u * 2.2)) ** 0.5 * (1 - u) ** 0.9
+        U2.foam_ring(c, cx, cy, rx, rx * 0.46, 1.0, a * 0.55, phase=0.0, broken=0.0, seed=5 + k)
+        U2.foam_ring(c, cx, cy, rx, rx * 0.46, 2.6 * (1 - u) + 0.8, a * 0.95, phase=2 * math.pi * u + k, broken=0.3 + 0.3 * u,
+                     seed=9 + k)
+    U2.foam_ring(c, cx, cy, 17, 8, 2.6, 0.95, phase=2 * math.pi * u0, broken=0.4, seed=12)
+    U2.bubbles(c, cx, cy, 21, 10, 10, u0, 13)
+    return c.image()
+
+
+# =========================================================================== wake V
+WAKE_DIRS = {  # rendered heading -> unit vector in G space (screen x, 2 * screen y)
+    'S': (0.0, 1.0), 'SE': (math.sqrt(0.5), math.sqrt(0.5)), 'E': (1.0, 0.0),
+    'NE': (math.sqrt(0.5), -math.sqrt(0.5)), 'N': (0.0, -1.0),
+}
+
+
+def wake(i, n, hd, W=256, H=176):
+    """Boat wake V for heading hd (G unit vector): two streaky foam arms opening at ~19.5 deg behind the bow,
+    churned pale-turquoise water along them, a stern trail and transverse ripples between; the foam
+    streaks scroll backwards one texture period per loop (seamless)."""
+    u0 = i / n
+    c = F.Canvas(W, H, ss=3)
+    cx, cy = W / 2, H / 2
+    gx = c.X - cx
+    gy = 2 * (c.Y - cy)
+    hx, hy = hd
+    a_ = gx * hx + gy * hy                 # along the heading (+ = ahead)
+    b_ = -gx * hy + gy * hx                # across (+ = starboard)
+    Lh, Bh = 70.0, 24.0                    # half length / half beam of a ~2.2 m hull (G px)
+    lc = lace_tex()
+    back = -(a_ - Lh * 0.8)                # distance behind the bow (G px)
+    fade = np.clip(1 - back / 290.0, 0, 1) ** 1.4 * np.clip(back / 14.0, 0, 1)
+    scroll = 256.0 * u0                    # one lace period per loop
+    pot = np.zeros_like(gx)
+    body = np.zeros_like(gx)
+    k = math.tan(math.radians(19.5))
+    for side in (-1, 1):
+        off = side * b_ - (Bh * 0.75 + k * back)
+        w = 5.5 + 0.05 * back
+        arm = np.exp(-(off / w) ** 2) * fade
+        streak = sample(lc, off * 2.2 + 50 * side, (back + scroll) * 0.5 + 30)
+        pot = np.maximum(pot, arm * (0.62 + 0.25 * streak))
+        body = np.maximum(body, np.exp(-(off / (w * 2.4)) ** 2) * fade)
+        pot = np.maximum(pot, np.exp(-((off - 13 - 0.05 * back) / 2.4) ** 2) * fade * 0.32)
+    # stern trail
+    behind = -(a_ + Lh * 0.85)
+    tw_ = Bh * 0.8 + behind * 0.07
+    trail = np.exp(-(b_ / tw_) ** 2) * np.clip(behind / 10, 0, 1) * np.clip(1 - behind / 230, 0, 1)
+    tstreak = sample(lc, b_ * 1.6 + 90, (behind + scroll) * 0.45 + 70)
+    pot = np.maximum(pot, trail * (0.5 + 0.3 * tstreak))
+    body = np.maximum(body, trail)
+    # transverse ripples between the arms
+    tw = 0.5 + 0.5 * np.cos((back + (b_ ** 2) * 0.004) * (2 * math.pi / 34.0) - 4 * math.pi * u0)
+    inside = np.clip(1 - np.abs(b_) / (Bh + 0.36 * back + 1), 0, 1) * fade
+    pot = np.maximum(pot, tw ** 6 * inside * 0.32)
+    # thin collar at the hull waterline (the boat covers the inside)
+    hull = np.hypot(a_ / Lh, b_ / Bh)
+    pot = np.maximum(pot, np.exp(-((hull - 1.04) / 0.08) ** 2) * 0.62)
+    keep = hull >= 0.95
+    lace = sample(lc, b_ * 0.9 + 31, a_ * 0.6 + scroll * 0.6)
+    c.paint(np.clip(body, 0, 1) * keep, hexc('#9FDCEA'), 0.30)
+    foam(c, np.clip(pot, 0, 1) * keep, 0.5 * lace + 0.5 * sample(lc, gx * 1.3 + 3, gy * 1.3 + scroll * 0.9), a=0.94, aa=0.09)
+    return c.image()
+
+
+def make_wake(hd_key):
+    hd = WAKE_DIRS[hd_key]
+    return lambda i, n: wake(i, n, hd)
+
+
+# =========================================================================== sparkles
+def sh_sparkle_water(i, n, W=128, H=64):
+    c = F.Canvas(W, H)
+    rng = np.random.default_rng(17)
+    for k in range(9):
+        x, y = rng.uniform(14, W - 14), rng.uniform(10, H - 10)
+        ph = rng.uniform(0, 1)
+        a = max(0.0, math.sin(2 * math.pi * (i / n + ph))) ** 3
+        s = rng.uniform(5, 11)
+        GF.glint(c, x, y, s * (0.6 + 0.4 * a), core='#FFFFFF', glow='#BFE9FF', a=a, glow_a=0.5, thin=0.45,
+                 rot_=rng.uniform(-0.2, 0.2))
+    for k in range(14):
+        x, y = rng.uniform(4, W - 4), rng.uniform(4, H - 4)
+        ph = rng.uniform(0, 1)
+        a = max(0.0, math.sin(2 * math.pi * (2 * i / n + ph))) ** 4
+        R = c.region(x - 3, y - 3, x + 3, y + 3)
+        if not R.empty:
+            R.fill(F.sd_circle(R.X, R.Y, x, y, 1.1), WHITE, a)
+    return c.image()
+
+
+# =========================================================================== shore wave strip
+SEG_PX = (256.0, 128.0)        # one segment along world X = 4 tiles = 5.66 m = (256, 128) screen px
+
+
+def shore_wave(i, n, mirror=False, W=384, H=256):
+    """A breaking crest rolling up a sand beach: the glassy turquoise face with a bright lip moving in,
+    collapsing into a foam bore that runs up the beach (thin water sheet) and slides back leaving lace and a
+    damp band. Seamless along the coast (periodic over one segment, partition-of-unity ends)."""
+    p = i / n
+    c = F.Canvas(W, H, ss=3)
+    cx, cy = W / 2, H * 0.55
+    X = (W - c.X) if mirror else c.X
+    gx = X - cx
+    gy = 2 * (c.Y - cy)
+    # coast along world X: along-shore unit (1, 1)/sqrt2 in G, sea side (+Y) = (1, -1)/sqrt2
+    s2 = math.sqrt(0.5)
+    u = (gx + gy) * s2 / PPM                 # metres along the coast
+    v = (gx - gy) * s2 / PPM                 # metres toward the sea
+    L = 4 * math.sqrt(2)
+    # partition of unity across the segment ends (ramp 0.35 m)
+    ramp = 0.35
+    w_end = np.clip((L / 2 + ramp - np.abs(u)) / (2 * ramp), 0, 1)
+    w_end = w_end * w_end * (3 - 2 * w_end)
+    ua = 2 * math.pi * u / L
+    wob = 0.16 * np.sin(ua * 2 + 1.3) + 0.08 * np.sin(ua * 3 + 0.4)
+    lc = lace_tex()
+    lace = sample(lc, u * PPM * (512.0 / (L * PPM)) * 0.5 + 40, v * PPM * 1.1 + 13)
+    # crest position over the cycle: approach (0 .. 0.42), break at 0.42, run-up to 0.68, backwash to 1
+    if p < 0.42:
+        q = p / 0.42
+        vc = 2.4 - 2.2 * F.ease_in(q, 1.4)
+        face = 1.0
+    else:
+        vc = 0.2
+        face = 0.0
+    vc = vc + wob
+    alpha_all = w_end
+    # damp sand band (left by the previous wave, fading), on the land side
+    run = 0.0
+    if p >= 0.42:
+        q = (p - 0.42) / 0.58
+        run = 1.25 * math.sin(math.pi * min(1.0, q / 0.45) * 0.5) if q < 0.45 else 1.25 * (1 - F.ease_in((q - 0.45) / 0.55, 1.3))
+    edge = -run + wob * 0.6                  # swash edge (metres, negative = up the beach)
+    damp = np.clip((v + 1.45 + wob * 0.5) / 0.25, 0, 1) * np.clip((0.15 - v) / 0.4, 0, 1)
+    c.paint(damp * alpha_all, hexc('#A8865C'), 0.20)
+    # water sheet (swash) between the waterline and the edge
+    sheet = np.clip((v - edge) / 0.12, 0, 1) * np.clip((0.35 - v) / 0.25, 0, 1)
+    c.paint(sheet * alpha_all, hexc('#C8F4EE'), 0.42)
+    # the glassy wave face (turquoise band shoreward of the crest) while the wave approaches
+    if face > 0:
+        dv = v - vc
+        fb = np.exp(-((dv + 0.28) / 0.22) ** 2) * (dv < 0.05)
+        c.paint(fb * alpha_all, hexc('#4FD8D2'), 0.55)
+        c.paint(np.exp(-((dv + 0.06) / 0.07) ** 2) * alpha_all, hexc('#E9FFFC'), 0.7)
+        pot = np.exp(-((dv - 0.05) / 0.16) ** 2) * (0.55 + 0.45 * F.ease_in(min(1.0, p / 0.42), 2))
+        pot += np.exp(-np.clip(dv - 0.1, 0, None) / 0.35) * (dv > 0.05) * 0.45 * min(1.0, p / 0.3)
+    else:
+        q = (p - 0.42) / 0.58
+        # the bore: foam band at the swash edge, lace spread over the sheet, remnants offshore fading
+        pot = np.exp(-((v - edge) / (0.14 + 0.1 * q)) ** 2) * (1.0 - 0.55 * q)
+        pot = np.maximum(pot, sheet * (0.55 - 0.45 * q))
+        pot = np.maximum(pot, np.exp(-np.clip(v - 0.15, 0, None) / 0.5) * (v > 0.15) * (0.7 - 0.65 * q))
+    foam(c, np.clip(pot, 0, 1) * alpha_all, lace, a=0.97, aa=0.08)
+    return c.image()
+
+
+def make_shore(mirror):
+    return lambda i, n: shore_wave(i, n, mirror)
+
+
+# key: (fn(i, n), frameW, frameH, frames, fps, repeat, anchor, notes)
+SHEETS = {
+    'fx_wave_crash': (sh_wave_crash, 192, 192, 10, 20, 0, [0.5, 0.80],
+                      'Spray burst of a swell crest hitting rock / a breakwater (foam mound, spray fan, mist, droplets). '
+                      'Anchor = impact point at the waterline. Water.js plays it at crest times on rock / breakwater '
+                      'shores (onCrash); scale 0.75-1.1.'),
+    'fx_splash_small': (sh_splash_small, 96, 96, 10, 24, 0, [0.5, 0.72],
+                        'Small splash (fish jump, pebble, swimmer kick). Anchor = water surface point.'),
+    'fx_splash_big': (sh_splash_big, 192, 192, 14, 24, 0, [0.5, 0.80],
+                      'Big splash (dive, cannonball, crate overboard): column, crown, droplets, mist, 3 rings. '
+                      'Anchor = water surface point.'),
+    'fx_swim_ripple': (sh_swim_ripple, 128, 64, 12, 12, -1, [0.5, 0.5],
+                       'Rings + lacy collar around a swimmer (loop). Anchor = waterline centre; draw UNDER the swimmer '
+                       '(depth = swimmer depth - 1). Clear centre ~32 x 14 px.'),
+    'fx_wake_v2': (make_wake('SE'), 256, 176, 8, 12, -1, [0.5, 0.5],
+                   'Boat wake V for heading SE (bow arms at 19.5 deg + churned stern trail + transverse ripples), loop. '
+                   'Anchor = hull centre at the waterline, draw under the boat. Hull ~2.2 m: scale 1.15 rowboat, 2.0 '
+                   'fishing boat. Mirror (flipX) for SW.'),
+    'fx_wake_v2_s': (make_wake('S'), 256, 176, 8, 12, -1, [0.5, 0.5], 'Boat wake V, heading S (toward the camera).'),
+    'fx_wake_v2_e': (make_wake('E'), 256, 176, 8, 12, -1, [0.5, 0.5], 'Boat wake V, heading E (flipX for W).'),
+    'fx_wake_v2_ne': (make_wake('NE'), 256, 176, 8, 12, -1, [0.5, 0.5], 'Boat wake V, heading NE (flipX for NW).'),
+    'fx_wake_v2_n': (make_wake('N'), 256, 176, 8, 12, -1, [0.5, 0.5], 'Boat wake V, heading N (away from the camera).'),
+    'fx_sparkle_water': (sh_sparkle_water, 128, 64, 12, 12, -1, [0.5, 0.5],
+                         'Sun glints twinkling on water (loop). Scatter a few over calm water (low quality / canvas).'),
+    'fx_shore_wave_x': (make_shore(False), 384, 256, 16, 6, -1, [0.5, 0.55],
+                        'Rolling breaking-wave strip for sand beaches, coast along world X, sea on the far (+Y, screen '
+                        'up-right) side. Chain one sprite every (+256, +128) px along the waterline; anchor = mean '
+                        'waterline at the segment centre. Seamless along the coast; 2.7 s cycle like the shader swash.'),
+    'fx_shore_wave_y': (make_shore(True), 384, 256, 16, 6, -1, [0.5, 0.55],
+                        'Same for a coast along world Y with the sea on the far (-X, screen up-left) side (= flipX of '
+                        '_x). Chain every (+256, -128) px.'),
+}
+
+
+# =========================================================================== build / previews
+def merge_manifest(entries):
+    path = os.path.join(OUT, 'manifest.json')
+    man = {}
+    if os.path.exists(path):
+        with open(path) as f:
+            man = json.load(f)
+    keys = {e['key'] for e in entries}
+    man['spritesheets'] = [s for s in man.get('spritesheets', []) if s['key'] not in keys] + entries
+    conv = man.get('conventions', {})
+    conv['fx'] = ('fx_* sheets: NORMAL-blend toy water art (white -> ice, thin sea-blue rim), frames left->right '
+                  'wrapped into rows <= 2048 px, Phaser anim key = sheet key; one-shots visible from frame 0, loops '
+                  'periodic. Generator: tools/fx/gen_water_fx.py')
+    man['conventions'] = conv
+    with open(path, 'w') as f:
+        json.dump(man, f, indent=1)
+
+
+def on_bg(img, col):
+    bg = Image.new('RGBA', img.size, col)
+    bg.alpha_composite(img)
+    return bg
+
+
+def preview(frames_by_key):
+    bgs = [('#F4F7FB', 'snow'), ('#E9D5AE', 'sand'), ('#2C7DBA', 'sea'), ('#1A4E92', 'deep')]
+    pad = 8
+    rows = []
+    for k, frames in frames_by_key.items():
+        fw, fh = frames[0].size
+        sc = 1.0 if fh <= 192 else 0.75
+        picks = frames if len(frames) <= 8 else [frames[int(j * len(frames) / 8)] for j in range(8)]
+        row_h = int(fh * sc) * 2 + pad
+        rows.append((k, picks, sc, row_h))
+    W = 8 * (int(384 * 0.75) + pad) + 160
+    H = sum(r[3] + 24 for r in rows) + 20
+    im = Image.new('RGB', (W, H), (34, 40, 52))
+    dr = ImageDraw.Draw(im)
+    y = 10
+    for k, picks, sc, row_h in rows:
+        dr.text((10, y), k, fill=(235, 240, 248))
+        y += 16
+        x = 10
+        for j, fr in enumerate(picks):
+            f2 = fr.resize((int(fr.width * sc), int(fr.height * sc)), Image.LANCZOS) if sc != 1 else fr
+            for b, (col, _) in enumerate(bgs[:2] if j % 2 == 0 else bgs[2:]):
+                im.paste(on_bg(f2, col).convert('RGB'), (x, y + b * (f2.height + 2)))
+            x += f2.width + pad
+        y += row_h + 8
+    os.makedirs(PREV, exist_ok=True)
+    im.crop((0, 0, W, y)).save(os.path.join(PREV, 'water_fx_sheet.png'), optimize=True)
+
+
+def build(only=None, gifs=True):
+    os.makedirs(OUT, exist_ok=True)
+    entries, frames_by_key = [], {}
+    for k, (fn, fw, fh, n, fps, rep, anc, note) in SHEETS.items():
+        if only and k not in only:
+            continue
+        frames = [fn(i, n) for i in range(n)]
+        for fr in frames:
+            assert fr.size == (fw, fh), (k, fr.size)
+        frames_by_key[k] = frames
+        sheet = GF.grid_strip(frames, 2048)
+        F.save_png(sheet, os.path.join(OUT, k + '.png'), quant=256, dither=0.6)
+        entries.append({'key': k, 'png': 'water/' + k + '.png', 'frameWidth': fw, 'frameHeight': fh, 'frameCount': n,
+                        'fps': fps, 'repeat': rep, 'anchor': anc, 'blend': 'NORMAL', 'notes': note})
+        if gifs and k in ('fx_wave_crash', 'fx_splash_big', 'fx_wake_v2', 'fx_shore_wave_x', 'fx_swim_ripple'):
+            F.save_gif(frames, os.path.join(PREV, 'water_' + k + '.gif'), fps, panels=('#F4F7FB', '#E9D5AE', '#2C7DBA'),
+                       hold=0 if rep == -1 else 6, anchor=anc)
+        print(k, 'ok', flush=True)
+    if not only:
+        merge_manifest(entries)
+        preview(frames_by_key)
+    else:
+        merge_manifest(entries)
+    return entries
+
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--only', default='')
+    ap.add_argument('--no-gif', action='store_true')
+    a = ap.parse_args()
+    only = set(k for k in a.only.split(',') if k) or None
+    build(only, gifs=not a.no_gif)

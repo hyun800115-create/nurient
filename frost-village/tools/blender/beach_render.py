@@ -125,7 +125,19 @@ def render_beach(spec, cache, samples=None):
     BR.parent_to_root(spec['yaw'])
     frames = frames_for(spec, res)
     tile = res.get('tile')
-    if tile:
+    item = spec.get('item')
+    if item:
+        if frames[0][1]:
+            frames[0][1]()
+        bpy.context.view_layer.update()
+        W, H_ = BA.ITEM_FRAME
+        anchor = BA.ITEM_ANCHOR
+        w2, h2, an2, top = L.frame_fit(margin=0, shadow=False)
+        tops = {n: int(round(top)) for n, _ in frames}
+        if an2[0] > anchor[0] or an2[1] > anchor[1] or (w2 - an2[0]) > (W - anchor[0]) or \
+                (h2 - an2[1]) > (H_ - anchor[1]):
+            print('WARNING item %s exceeds the item frame: needs anchor %s size %sx%s' % (key, an2, w2, h2))
+    elif tile:
         if frames[0][1]:
             frames[0][1]()
         bpy.context.view_layer.update()
@@ -169,6 +181,10 @@ def render_beach(spec, cache, samples=None):
         meta['anims'] = {'work': {'frames': [n for n, _ in frames[1:]], 'fps': spec['fps'], 'repeat': -1}}
         if spec.get('anim_name'):
             meta['animAlias'] = spec['anim_name']
+    if item:
+        meta['stackStep'] = L.stack_step(item['thickness'])
+        meta['thicknessM'] = item['thickness']
+        meta['icon'] = True
     if spec['fp'] is not None:
         meta['footprint'] = L.footprint_px(spec['fp'], spec['yaw'])
         meta['footprintM'] = list(spec['fp']) if spec['fp'][0] != 'r' else {'radius': spec['fp'][1]}

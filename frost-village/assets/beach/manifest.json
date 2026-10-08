@@ -1,0 +1,1177 @@
+{
+ "version": 1,
+ "sprites": {
+  "ground_sand": {
+   "image": "ground_sand",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "generator": "gen_beach_ground",
+   "notes": "Dry white sand (seamless 512, pattern anchored at the grid origin G, scale 1): soft undulation, wind ripples along world X that come and go, fine grains and shell crumbs."
+  },
+  "ground_sand_wet": {
+   "image": "ground_sand_wet",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "tile",
+   "tile": "xy",
+   "frameSize": [
+    512,
+    512
+   ],
+   "generator": "gen_beach_ground",
+   "notes": "Wet sand left by the swash (seamless 512): darker, smooth and glossy with sky-sheen streaks, faint backwash lace lines along world X, bubble holes. The Water module draws its own animated wet band; use this for static wet areas."
+  },
+  "ground_sand_snow_edge_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x",
+   "variants": [
+    "ground_sand_snow_edge_x",
+    "ground_sand_snow_edge_x_1",
+    "ground_sand_snow_edge_x_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the SNOW cell at +Y (screen up-right), sand at -Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_x_1": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x_1",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x",
+   "variants": [
+    "ground_sand_snow_edge_x",
+    "ground_sand_snow_edge_x_1",
+    "ground_sand_snow_edge_x_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the SNOW cell at +Y (screen up-right), sand at -Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_x_2": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x_2",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "far",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x",
+   "variants": [
+    "ground_sand_snow_edge_x",
+    "ground_sand_snow_edge_x_1",
+    "ground_sand_snow_edge_x_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the SNOW cell at +Y (screen up-right), sand at -Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_x_near": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x_near",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x_near",
+   "variants": [
+    "ground_sand_snow_edge_x_near",
+    "ground_sand_snow_edge_x_near_1",
+    "ground_sand_snow_edge_x_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the snow cell at -Y (screen down-left), sand at +Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_x_near_1": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x_near_1",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x_near",
+   "variants": [
+    "ground_sand_snow_edge_x_near",
+    "ground_sand_snow_edge_x_near_1",
+    "ground_sand_snow_edge_x_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the snow cell at -Y (screen down-left), sand at +Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_x_near_2": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_x_near_2",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "x",
+   "side": "near",
+   "step": [
+    64,
+    32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_x_near",
+   "variants": [
+    "ground_sand_snow_edge_x_near",
+    "ground_sand_snow_edge_x_near_1",
+    "ground_sand_snow_edge_x_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: X edge with the snow cell at -Y (screen down-left), sand at +Y. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y",
+   "variants": [
+    "ground_sand_snow_edge_y",
+    "ground_sand_snow_edge_y_1",
+    "ground_sand_snow_edge_y_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at -X (screen up-left), sand at +X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y_1": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y_1",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y",
+   "variants": [
+    "ground_sand_snow_edge_y",
+    "ground_sand_snow_edge_y_1",
+    "ground_sand_snow_edge_y_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at -X (screen up-left), sand at +X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y_2": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y_2",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "far",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y",
+   "variants": [
+    "ground_sand_snow_edge_y",
+    "ground_sand_snow_edge_y_1",
+    "ground_sand_snow_edge_y_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at -X (screen up-left), sand at +X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y_near": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y_near",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y_near",
+   "variants": [
+    "ground_sand_snow_edge_y_near",
+    "ground_sand_snow_edge_y_near_1",
+    "ground_sand_snow_edge_y_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at +X (screen down-right), sand at -X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y_near_1": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y_near_1",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y_near",
+   "variants": [
+    "ground_sand_snow_edge_y_near",
+    "ground_sand_snow_edge_y_near_1",
+    "ground_sand_snow_edge_y_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at +X (screen down-right), sand at -X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_edge_y_near_2": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_edge_y_near_2",
+   "anchor": [
+    0.5,
+    0.52113
+   ],
+   "anchorPx": [
+    64,
+    37
+   ],
+   "frameSize": [
+    128,
+    71
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "edge",
+   "family": "sand_snow",
+   "axis": "y",
+   "side": "near",
+   "step": [
+    64,
+    -32
+   ],
+   "cells": 1,
+   "variantOf": "ground_sand_snow_edge_y_near",
+   "variants": [
+    "ground_sand_snow_edge_y_near",
+    "ground_sand_snow_edge_y_near_1",
+    "ground_sand_snow_edge_y_near_2"
+   ],
+   "notes": "Sand <-> snow transition, 1 cell long: Y edge with the snow cell at +X (screen down-right), sand at -X. Anchor = midpoint of the cell edge; snow lip with a damp melt band on the sand, sand dust blowing onto the snow."
+  },
+  "ground_sand_snow_corner_n": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_corner_n",
+   "anchor": [
+    0.5,
+    0.68627
+   ],
+   "anchorPx": [
+    96,
+    70
+   ],
+   "frameSize": [
+    192,
+    102
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_corner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "notes": "Rounded corner of a SNOW cell sticking into the sand: the cell in quarter n is snow, the other three sand. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_inner_n": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_inner_n",
+   "anchor": [
+    0.5,
+    0.68627
+   ],
+   "anchorPx": [
+    96,
+    70
+   ],
+   "frameSize": [
+    192,
+    102
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_inner",
+   "quarter": [
+    -1,
+    1
+   ],
+   "quarterDir": "n",
+   "notes": "Concave corner (sand bay): the cell in quarter n is SAND, the other three snow. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_corner_e": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_corner_e",
+   "anchor": [
+    0.31414,
+    0.51456
+   ],
+   "anchorPx": [
+    60,
+    53
+   ],
+   "frameSize": [
+    191,
+    103
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_corner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "notes": "Rounded corner of a SNOW cell sticking into the sand: the cell in quarter e is snow, the other three sand. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_inner_e": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_inner_e",
+   "anchor": [
+    0.31414,
+    0.51456
+   ],
+   "anchorPx": [
+    60,
+    53
+   ],
+   "frameSize": [
+    191,
+    103
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_inner",
+   "quarter": [
+    1,
+    1
+   ],
+   "quarterDir": "e",
+   "notes": "Concave corner (sand bay): the cell in quarter e is SAND, the other three snow. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_corner_s": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_corner_s",
+   "anchor": [
+    0.5,
+    0.34314
+   ],
+   "anchorPx": [
+    96,
+    35
+   ],
+   "frameSize": [
+    192,
+    102
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_corner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "notes": "Rounded corner of a SNOW cell sticking into the sand: the cell in quarter s is snow, the other three sand. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_inner_s": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_inner_s",
+   "anchor": [
+    0.5,
+    0.34314
+   ],
+   "anchorPx": [
+    96,
+    35
+   ],
+   "frameSize": [
+    192,
+    102
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_inner",
+   "quarter": [
+    1,
+    -1
+   ],
+   "quarterDir": "s",
+   "notes": "Concave corner (sand bay): the cell in quarter s is SAND, the other three snow. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_corner_w": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_corner_w",
+   "anchor": [
+    0.68586,
+    0.51456
+   ],
+   "anchorPx": [
+    131,
+    53
+   ],
+   "frameSize": [
+    191,
+    103
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_corner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "notes": "Rounded corner of a SNOW cell sticking into the sand: the cell in quarter w is snow, the other three sand. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "ground_sand_snow_inner_w": {
+   "atlas": "beach_ground_decals",
+   "frame": "ground_sand_snow_inner_w",
+   "anchor": [
+    0.68586,
+    0.51456
+   ],
+   "anchorPx": [
+    131,
+    53
+   ],
+   "frameSize": [
+    191,
+    103
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "piece": "corner",
+   "family": "sand_snow_inner",
+   "quarter": [
+    -1,
+    -1
+   ],
+   "quarterDir": "w",
+   "notes": "Concave corner (sand bay): the cell in quarter w is SAND, the other three snow. Anchor = the lattice point; owns the first cell of both edges leaving it toward its quarter."
+  },
+  "decal_footprints_sand": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_footprints_sand",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    93,
+    48
+   ],
+   "frameSize": [
+    186,
+    96
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "notes": "Bare footprints walking along world X (screen down-right), 6 prints over 2.8 m; flipX for the other direction, use rotation-free (iso)."
+  },
+  "decal_shells": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_shells",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    110,
+    55
+   ],
+   "frameSize": [
+    220,
+    110
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "notes": "Scattered shells, pebbles and a little starfish on the sand (~2.5 x 1.2 m patch)."
+  },
+  "decal_seaweed": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_seaweed",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    100,
+    51
+   ],
+   "frameSize": [
+    200,
+    102
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "notes": "Wrack line along world X: washed-up seaweed strands, shells, dried foam crumbs on a damp streak (put it along the high-water line)."
+  },
+  "decal_sand_ripples": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_sand_ripples",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    111,
+    57
+   ],
+   "frameSize": [
+    222,
+    114
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "notes": "Patch of pronounced wind ripples (crests along world X) fading out at the edges; scatter a few for variety."
+  },
+  "decal_towel_red": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_red",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     -5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NE"
+   ],
+   "lyingAxis": "y",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (red) lying flat, long side along world Y (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_red_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_red_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     -25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NW"
+   ],
+   "lyingAxis": "x",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (red) lying flat, long side along world X (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_blue": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_blue",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     -5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NE"
+   ],
+   "lyingAxis": "y",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (blue) lying flat, long side along world Y (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_blue_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_blue_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     -25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NW"
+   ],
+   "lyingAxis": "x",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (blue) lying flat, long side along world X (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_yellow": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_yellow",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     -5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NE"
+   ],
+   "lyingAxis": "y",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (yellow) lying flat, long side along world Y (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_yellow_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_yellow_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     -25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NW"
+   ],
+   "lyingAxis": "x",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (yellow) lying flat, long side along world X (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_green": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_green",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     -5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NE"
+   ],
+   "lyingAxis": "y",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (green) lying flat, long side along world Y (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_towel_green_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_towel_green_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    68,
+    35
+   ],
+   "frameSize": [
+    136,
+    70
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "lyingPoints": [
+    [
+     5,
+     2
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     -25,
+     -12
+    ]
+   ],
+   "lyingDirs": [
+    "NW"
+   ],
+   "lyingAxis": "x",
+   "lyingHeightM": 0.0,
+   "notes": "Beach towel (green) lying flat, long side along world X (0.8 x 1.6 m): ground decal. lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, lyingDirs = screen direction from hips to head."
+  },
+  "decal_volleyball_court": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_volleyball_court",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    265,
+    134
+   ],
+   "frameSize": [
+    530,
+    268
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "courtM": [
+    3.6,
+    7.0
+   ],
+   "cornerPoints": [
+    [
+     -240,
+     38
+    ],
+    [
+     -77,
+     120
+    ],
+    [
+     240,
+     -38
+    ],
+    [
+     77,
+     -120
+    ]
+   ],
+   "netAxis": "x",
+   "notes": "Beach volleyball court lines (blue rope with red corner pegs), 3.6 x 7.0 m, long axis along world Y. Put volleyball_net at the anchor (the court centre)."
+  },
+  "decal_volleyball_court_x": {
+   "atlas": "beach_ground_decals",
+   "frame": "decal_volleyball_court_x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "anchorPx": [
+    265,
+    134
+   ],
+   "frameSize": [
+    530,
+    268
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "generator": "gen_beach_ground",
+   "courtM": [
+    7.0,
+    3.6
+   ],
+   "cornerPoints": [
+    [
+     -240,
+     -38
+    ],
+    [
+     77,
+     120
+    ],
+    [
+     240,
+     38
+    ],
+    [
+     -77,
+     -120
+    ]
+   ],
+   "netAxis": "y",
+   "notes": "Beach volleyball court lines (blue rope with red corner pegs), 7.0 x 3.6 m, long axis along world X. Put volleyball_net_y at the anchor (the court centre)."
+  }
+ },
+ "images": [
+  {
+   "key": "ground_sand",
+   "png": "beach/ground_sand.png"
+  },
+  {
+   "key": "ground_sand_wet",
+   "png": "beach/ground_sand_wet.png"
+  }
+ ],
+ "atlases": [
+  {
+   "key": "beach_ground_decals",
+   "png": "beach/beach_ground_decals.png",
+   "json": "beach/beach_ground_decals.json"
+  }
+ ],
+ "conventions": {
+  "ground": "gen_beach_ground: ground_sand / ground_sand_wet = 512 seamless textures (draw as patterns anchored at the grid origin G, scale 1; the cell grid of assets/roads: one cell = sqrt(2) m = (64, 32) px along X, (64, -32) along Y). ground_sand_snow_* = the sand<->snow transition kit (placement rules in sandKit). decal_* = flat ground decals (draw on the ground layer below every depth-sorted sprite)."
+ },
+ "sandKit": {
+  "cellM": 1.4142135623730951,
+  "cellPx": {
+   "x": [
+    64,
+    32
+   ],
+   "y": [
+    64,
+    -32
+   ]
+  },
+  "layers": [
+   "1 ground_snow everywhere",
+   "2 ground_sand (or ground_sand_wet) on SAND cells",
+   "3 ground_sand_snow_edge_* / _corner_* / _inner_*",
+   "4 decal_* (towels, shells, court ...)",
+   "then depth-sorted sprites"
+  ],
+  "edgeRule": "X edge = segment lattice (i,j)-(i+1,j) between cells (i,j-1) and (i,j): ground_sand_snow_edge_x if the SNOW cell is (i,j) (+Y), ground_sand_snow_edge_x_near if it is (i,j-1); anchor = lattice (i,j) + (32,16). Y edge = segment (i,j)-(i,j+1) between cells (i-1,j) and (i,j): ground_sand_snow_edge_y if the snow cell is (i-1,j) (-X), _y_near if it is (i,j); anchor = lattice (i,j) + (32,-16). Variant = (i*7 + j*13) mod 3 -> suffix \"\", \"_1\", \"_2\".",
+  "cornerRule": "At every lattice point look at its 4 cells (quarters n = (-X,+Y), e = (+X,+Y), s = (+X,-Y), w = (-X,-Y)): exactly one SNOW -> ground_sand_snow_corner_<that quarter>; exactly three SNOW -> ground_sand_snow_inner_<the sand quarter>. Anchor = the lattice point. A corner piece owns the first cell of both edges leaving the point toward its quarter: skip the edge pieces there. Diagonal checkerboards (two snow cells on a diagonal) are not supported.",
+  "reference": "tools/fx/gen_beach_ground.py kit_compose_preview() implements these rules."
+ },
+ "generator": "tools/blender/beach_render.py + beach_pack.py; tools/fx/gen_beach_ground.py"
+}

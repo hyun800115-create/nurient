@@ -5,7 +5,8 @@
   "gspace": "G = (screen x, 2 * screen y) world px = the iso ground plane seen from above (1 m = 64 G px). Water.js samples every texture with uv = G / tilePx (2:1 foreshortening like the ground). Image row 0 = v 0 = smallest G y.",
   "data": "water_waves_a / water_waves_b / water_foam / water_shore_ramp are DATA textures: plain RGB, no alpha, upload with UNPACK_PREMULTIPLY_ALPHA false and UNPACK_COLORSPACE_CONVERSION NONE, REPEAT + mipmaps (all power of two). water_lut is RGBA (A = opacity), CLAMP, no mipmaps.",
   "module": "src/systems/Water.js draws the sea with these (WebGL); Canvas fallback = ground/water_sea tileSprite.",
-  "levels": "sea surface 0.55 m below land = waterPx 30 screen px (same as assets/harbor). Water.js heightAt() returns the swell height in screen px around that plane (+ = up)."
+  "levels": "sea surface 0.55 m below land = waterPx 30 screen px (same as assets/harbor). Water.js heightAt() returns the swell height in screen px around that plane (+ = up).",
+  "fx": "fx_* sheets: NORMAL-blend toy water art (white -> ice, thin sea-blue rim), frames left->right wrapped into rows <= 2048 px, Phaser anim key = sheet key; one-shots visible from frame 0, loops periodic. Generator: tools/fx/gen_water_fx.py"
  },
  "images": [
   {
@@ -178,17 +179,17 @@
     ],
     [
      0.7,
-     "#2164AA",
+     "#2468B0",
      1.0
     ],
     [
      1.0,
-     "#1A4E92",
+     "#1C559C",
      1.0
     ]
    ],
-   "skyHi": "#5E8FC8",
-   "skyLo": "#DCEBF6",
+   "skyHi": "#4A86C8",
+   "skyLo": "#A9CDEC",
    "sun": "#FFF8E8",
    "sss": "#3FB4D2",
    "foam": "#FFFFFF",
@@ -234,8 +235,8 @@
      1.0
     ]
    ],
-   "skyHi": "#5F8CB8",
-   "skyLo": "#D6E6EE",
+   "skyHi": "#557FAA",
+   "skyLo": "#B4D0DD",
    "sun": "#FFF6E2",
    "sss": "#46B3B0",
    "foam": "#FFFFFF",
@@ -286,8 +287,8 @@
      1.0
     ]
    ],
-   "skyHi": "#56A6DA",
-   "skyLo": "#E4F6FA",
+   "skyHi": "#4A9AD4",
+   "skyLo": "#C4EAF4",
    "sun": "#FFFBEA",
    "sss": "#4FE3D6",
    "foam": "#FFFFFF",
@@ -323,8 +324,8 @@
      0.92
     ]
    ],
-   "skyHi": "#6FB4E4",
-   "skyLo": "#F0FAFF",
+   "skyHi": "#62AADF",
+   "skyLo": "#D8F2FB",
    "sun": "#FFFFFF",
    "sss": "#6FE6F4",
    "foam": "#FFFFFF",
@@ -368,5 +369,187 @@
    ]
   }
  },
- "waterPx": 30
+ "waterPx": 30,
+ "spritesheets": [
+  {
+   "key": "fx_wave_crash",
+   "png": "water/fx_wave_crash.png",
+   "frameWidth": 192,
+   "frameHeight": 192,
+   "frameCount": 10,
+   "fps": 20,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.8
+   ],
+   "blend": "NORMAL",
+   "notes": "Spray burst of a swell crest hitting rock / a breakwater (foam mound, spray fan, mist, droplets). Anchor = impact point at the waterline. Water.js plays it at crest times on rock / breakwater shores (onCrash); scale 0.75-1.1."
+  },
+  {
+   "key": "fx_splash_small",
+   "png": "water/fx_splash_small.png",
+   "frameWidth": 96,
+   "frameHeight": 96,
+   "frameCount": 10,
+   "fps": 24,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.72
+   ],
+   "blend": "NORMAL",
+   "notes": "Small splash (fish jump, pebble, swimmer kick). Anchor = water surface point."
+  },
+  {
+   "key": "fx_splash_big",
+   "png": "water/fx_splash_big.png",
+   "frameWidth": 192,
+   "frameHeight": 192,
+   "frameCount": 14,
+   "fps": 24,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.8
+   ],
+   "blend": "NORMAL",
+   "notes": "Big splash (dive, cannonball, crate overboard): column, crown, droplets, mist, 3 rings. Anchor = water surface point."
+  },
+  {
+   "key": "fx_wake_v2",
+   "png": "water/fx_wake_v2.png",
+   "frameWidth": 256,
+   "frameHeight": 176,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake V for heading SE (bow arms at 19.5 deg + churned stern trail + transverse ripples), loop. Anchor = hull centre at the waterline, draw under the boat. Hull ~2.2 m: scale 1.15 rowboat, 2.0 fishing boat. Mirror (flipX) for SW."
+  },
+  {
+   "key": "fx_wake_v2_s",
+   "png": "water/fx_wake_v2_s.png",
+   "frameWidth": 256,
+   "frameHeight": 176,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake V, heading S (toward the camera)."
+  },
+  {
+   "key": "fx_wake_v2_e",
+   "png": "water/fx_wake_v2_e.png",
+   "frameWidth": 256,
+   "frameHeight": 176,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake V, heading E (flipX for W)."
+  },
+  {
+   "key": "fx_wake_v2_ne",
+   "png": "water/fx_wake_v2_ne.png",
+   "frameWidth": 256,
+   "frameHeight": 176,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake V, heading NE (flipX for NW)."
+  },
+  {
+   "key": "fx_wake_v2_n",
+   "png": "water/fx_wake_v2_n.png",
+   "frameWidth": 256,
+   "frameHeight": 176,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Boat wake V, heading N (away from the camera)."
+  },
+  {
+   "key": "fx_shore_wave_x",
+   "png": "water/fx_shore_wave_x.png",
+   "frameWidth": 384,
+   "frameHeight": 256,
+   "frameCount": 16,
+   "fps": 6,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.55
+   ],
+   "blend": "NORMAL",
+   "notes": "Rolling breaking-wave strip for sand beaches, coast along world X, sea on the far (+Y, screen up-right) side. Chain one sprite every (+256, +128) px along the waterline; anchor = mean waterline at the segment centre. Seamless along the coast; 2.7 s cycle like the shader swash."
+  },
+  {
+   "key": "fx_shore_wave_y",
+   "png": "water/fx_shore_wave_y.png",
+   "frameWidth": 384,
+   "frameHeight": 256,
+   "frameCount": 16,
+   "fps": 6,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.55
+   ],
+   "blend": "NORMAL",
+   "notes": "Same for a coast along world Y with the sea on the far (-X, screen up-left) side (= flipX of _x). Chain every (+256, -128) px."
+  },
+  {
+   "key": "fx_swim_ripple",
+   "png": "water/fx_swim_ripple.png",
+   "frameWidth": 128,
+   "frameHeight": 64,
+   "frameCount": 12,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Rings + lacy collar around a swimmer (loop). Anchor = waterline centre; draw UNDER the swimmer (depth = swimmer depth - 1). Clear centre ~32 x 14 px."
+  },
+  {
+   "key": "fx_sparkle_water",
+   "png": "water/fx_sparkle_water.png",
+   "frameWidth": 128,
+   "frameHeight": 64,
+   "frameCount": 12,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Sun glints twinkling on water (loop). Scatter a few over calm water (low quality / canvas)."
+  }
+ ]
 }

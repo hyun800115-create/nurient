@@ -1,0 +1,1046 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_fx_city.py (+ gen_fx_city_fx.py, gen_ui4.py)",
+ "conventions": {
+  "contract": "CONTRACT_V8 §AC. Paths relative to frost-village/assets/. Fragment name: fx_city (add it to FRAGMENTS in src/core/Assets.js).",
+  "blend": "Every sheet is NORMAL-blend artwork (saturated cores + darker warm / cool rims) so it reads on white snow, where ADD vanishes (handoff doc 04 §2.5). Fire / glows also look fine with ADD at night or over dark ground.",
+  "sheets": "Frames left->right, wrapped into balanced rows so no sheet is wider than 2048 px (Phaser reads the grid row-major). Phaser anim key = sheet key (Assets.sheetAnims). Loops are seamless (every motion periodic over the frame count); one-shots show the effect from frame 0 and fade out on the last frames.",
+  "tone": "Cute and family-friendly: comic dust-cloud scuffles (stars, no injuries), nobody is ever hurt in a fire, demolition is soft dust and planks.",
+  "icons": "ui4_icons: 96x96 soft-toy icons (house style of assets/ui, ui2, ui3), anchor [0.5, 0.5], trimmed atlas with sourceSize kept; they read at 32 px on cream and dark. No text baked anywhere.",
+  "panels": "Panels are plain images (not atlas frames) so Phaser NineSlice can use them; margins in nineSlice, layout boxes in sprites[key] (contentInset = [left, top, right, bottom] px from the stretched edges; *Box = [x, y, w, h] in source px)."
+ },
+ "hoseAim": {
+  "segment": "fx_hose_stream",
+  "segmentLengthPx": 64,
+  "segmentThicknessPx": 10,
+  "stepPx": 40,
+  "tip": "fx_hose_tip",
+  "impact": [
+   "fx_water_mist",
+   "fx_steam_puff"
+  ],
+  "arc": "N = nozzle (cityfolk spray_hose nozzlePoint, or the fire truck hosePoint), T = target (fire anchor + [0, -0.3 * heightPx] or a window). Curve P(s) = N + (T - N) * s + [0, -h * 4 * s * (1 - s)] for s in 0..1 with arc height h = clamp(0.3 * |T - N|, 20, 120) px (the jet arcs up, then falls onto the target).",
+  "chain": "Walk the curve by arc length in steps of L = stepPx: at each step place a sprite of fx_hose_stream with origin (0, 0.5) at the step start, rotation = angle of the curve tangent there, scaleX = 1.15 * L / 64 (slight overlap hides the joints), scaleY = 1.0 -> 0.7 along the arc (the jet thins). Depth: above the firefighter, below the building fire. Put fx_hose_tip at the end point with the last rotation and fx_water_mist at T. Re-aim every frame by recomputing the points (cheap: ~8 sprites).",
+  "rope": "WebGL alternative: this.add.rope(0, 0, \"fx_hose_stream\", 0, points) with points sampled along P(s) every ~16 px; advance its frame with the sheet anim (one draw call, perfectly smooth bends).",
+  "demo": "tools/test/fx_city_phaser.mjs aims streams this way; gen_fx_city_scene.hose_arc() is the Python version used by docs/previews/fxcity_scene.png and fxcity_hose_arc.gif."
+ },
+ "fireMount": {
+  "pick": "Pick the fire sheet from the building footprint width fw = sprites[k].footprint[0]: fw <= 280 -> fx_fire_bld_s, fw <= 380 -> fx_fire_bld_m, else fx_fire_bld_l.",
+  "place": "Fire anchor = building anchor + [0, -0.55 * topPx] (base of the flames at about eave height so the crown engulfs the roof); scale = clamp(0.85 * fw / baseWidthPx, 0.7, 1.3); depth = building depth + 1.",
+  "grow": "Start: one fx_fire_window (alpha tween in) + fx_smoke_column at scale 0.5. Full fire: fx_fire_bld_* + 1-2 fx_fire_window + fx_smoke_column (scale 1) + fx_embers. Dying: lower the fire alpha / scale to 0.6, spawn fx_steam_puff more often, tint the smoke lighter (0xdfe4ec) -> swap the building for the civic ruin_* sprite and keep a small smoke column (scale 0.45) + fx_embers (alpha 0.5) for a while.",
+  "alarm": "fx_alarm_flash on the fire_alarm_post (or above the building, anchor + [0, -topPx - 30]) until the fire truck arrives; fx_siren_glow_red at the truck sirenPoint."
+ },
+ "fightGuide": {
+  "play": "Scuffle: walk the two residents together, hide both, play fx_fight_cloud at their midpoint (ground) for 2-4 s, then fx_poof (assets/fx) and show them again apart, dizzy / sulking (emotes). A police officer arrives (police car with fx_siren_glow_red + fx_siren_glow_blue). Nobody gets hurt.",
+  "curious": "Story network: fx_question_mark over a resident asking about something new, fx_lightbulb_idea when they learn it / get an idea, fx_memory_sparkle while recalling a memory or hearing a rumour."
+ },
+ "atlases": [
+  {
+   "key": "ui4_icons",
+   "png": "fx_city/ui4_icons.png",
+   "json": "fx_city/ui4_icons.json"
+  }
+ ],
+ "images": [
+  {
+   "key": "ui_wanted_poster",
+   "png": "fx_city/ui_wanted_poster.png"
+  },
+  {
+   "key": "ui_newspaper",
+   "png": "fx_city/ui_newspaper.png"
+  },
+  {
+   "key": "ui_newspaper_masthead",
+   "png": "fx_city/ui_newspaper_masthead.png"
+  },
+  {
+   "key": "ui_newspaper_column",
+   "png": "fx_city/ui_newspaper_column.png"
+  },
+  {
+   "key": "ui_newspaper_photo",
+   "png": "fx_city/ui_newspaper_photo.png"
+  },
+  {
+   "key": "ui_newspaper_divider",
+   "png": "fx_city/ui_newspaper_divider.png"
+  },
+  {
+   "key": "ui_passbook",
+   "png": "fx_city/ui_passbook.png"
+  },
+  {
+   "key": "ui_passbook_row",
+   "png": "fx_city/ui_passbook_row.png"
+  },
+  {
+   "key": "ui_story_card",
+   "png": "fx_city/ui_story_card.png"
+  },
+  {
+   "key": "ui_story_card_news",
+   "png": "fx_city/ui_story_card_news.png"
+  }
+ ],
+ "spritesheets": [
+  {
+   "key": "fx_fire_bld_s",
+   "png": "fx_city/fx_fire_bld_s.png",
+   "frameWidth": 208,
+   "frameHeight": 224,
+   "frameCount": 16,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
+   "baseWidthPx": 140,
+   "heightPx": 150,
+   "plot": "S (townhouses, small shops: footprint <= 280 px)"
+  },
+  {
+   "key": "fx_fire_bld_m",
+   "png": "fx_city/fx_fire_bld_m.png",
+   "frameWidth": 280,
+   "frameHeight": 288,
+   "frameCount": 16,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
+   "baseWidthPx": 192,
+   "heightPx": 200,
+   "plot": "M (shops, civic: footprint <= 380 px)"
+  },
+  {
+   "key": "fx_fire_bld_l",
+   "png": "fx_city/fx_fire_bld_l.png",
+   "frameWidth": 352,
+   "frameHeight": 352,
+   "frameCount": 16,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
+   "baseWidthPx": 248,
+   "heightPx": 255,
+   "plot": "L (apartments, big halls, warehouses)"
+  },
+  {
+   "key": "fx_fire_window",
+   "png": "fx_city/fx_fire_window.png",
+   "frameWidth": 96,
+   "frameHeight": 144,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.74
+   ],
+   "blend": "NORMAL",
+   "notes": "Flames licking out of a window and up the wall, with a flickering glow of the burning room. Anchor = window centre (the bottom of the flames melts into the window). flipX freely."
+  },
+  {
+   "key": "fx_smoke_column",
+   "png": "fx_city/fx_smoke_column.png",
+   "frameWidth": 224,
+   "frameHeight": 400,
+   "frameCount": 16,
+   "fps": 10,
+   "repeat": -1,
+   "anchor": [
+    0.32,
+    0.95
+   ],
+   "blend": "NORMAL",
+   "notes": "Tall smoke plume loop: sooty billows from a glowing source (underside lit orange by the fire) swell, drift right with the wind and turn light grey as they rise. Anchor = base of the column: put it on top of the fire (fire anchor + [8, -0.55 * heightPx]). flipX for wind from the other side; scale 0.5 for a starting fire or a smouldering ruin."
+  },
+  {
+   "key": "fx_embers",
+   "png": "fx_city/fx_embers.png",
+   "frameWidth": 128,
+   "frameHeight": 224,
+   "frameCount": 16,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.96
+   ],
+   "blend": "NORMAL",
+   "notes": "Sparks / embers with short trails spiralling up. Anchor = bottom centre (on the fire). Use over big fires and smouldering ruins."
+  },
+  {
+   "key": "fx_hose_stream",
+   "png": "fx_city/fx_hose_stream.png",
+   "frameWidth": 64,
+   "frameHeight": 24,
+   "frameCount": 8,
+   "fps": 20,
+   "repeat": -1,
+   "anchor": [
+    0.0,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Fire-hose water jet SEGMENT, seamless in x, flowing toward +x by 8 px per frame. Chain copies along an arc from the nozzle to the target (see manifest.hoseAim) or map it onto a Phaser Rope. All segments play the same anim in sync."
+  },
+  {
+   "key": "fx_hose_tip",
+   "png": "fx_city/fx_hose_tip.png",
+   "frameWidth": 96,
+   "frameHeight": 64,
+   "frameCount": 8,
+   "fps": 20,
+   "repeat": -1,
+   "anchor": [
+    0.0,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra: end of the jet breaking up into a fan of droplets. Attach its anchor (left middle) to the end of the last hose segment with the same rotation."
+  },
+  {
+   "key": "fx_water_mist",
+   "png": "fx_city/fx_water_mist.png",
+   "frameWidth": 160,
+   "frameHeight": 112,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.6
+   ],
+   "blend": "NORMAL",
+   "notes": "Where the hose hits: translucent pale-blue spray cloud, splash flicks, falling droplets, glints. Anchor = impact point. Pair with fx_steam_puff while the fire is still burning."
+  },
+  {
+   "key": "fx_steam_puff",
+   "png": "fx_city/fx_steam_puff.png",
+   "frameWidth": 128,
+   "frameHeight": 192,
+   "frameCount": 14,
+   "fps": 16,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.9
+   ],
+   "blend": "NORMAL",
+   "notes": "One-shot white steam billow (water meets fire): spawn every ~0.3-0.5 s near the impact point (more often as the fire dies). Anchor = source."
+  },
+  {
+   "key": "fx_fight_cloud",
+   "png": "fx_city/fx_fight_cloud.png",
+   "frameWidth": 192,
+   "frameHeight": 176,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Cartoon scuffle loop: tumbling dust ball with fists and boots popping out, dizzy stars, pow bursts, speed swooshes and kicked-up dust. Hide the two residents while it plays (see manifest.fightGuide). Anchor = ground under the middle."
+  },
+  {
+   "key": "fx_alarm_flash",
+   "png": "fx_city/fx_alarm_flash.png",
+   "frameWidth": 128,
+   "frameHeight": 128,
+   "frameCount": 8,
+   "fps": 10,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Alarm loop: red lamp with \"!\" pulsing, red warning burst flashing, ringing arcs, ripple ring. Anchor = centre. Use on fire_alarm_post, above a building in trouble, police calls."
+  },
+  {
+   "key": "fx_siren_glow_red",
+   "png": "fx_city/fx_siren_glow_red.png",
+   "frameWidth": 128,
+   "frameHeight": 64,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Rotating beacon (red): light fan sweeping on the ground plane, lamp flares when it faces the camera. Anchor = beacon (vehicles sirenPoint). Fire truck: red only; police car: red + blue (blue is half a turn later - start both on the same frame).",
+   "pair": "fx_siren_glow_blue"
+  },
+  {
+   "key": "fx_siren_glow_blue",
+   "png": "fx_city/fx_siren_glow_blue.png",
+   "frameWidth": 128,
+   "frameHeight": 64,
+   "frameCount": 8,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Rotating beacon (blue), half a turn after fx_siren_glow_red. Anchor = beacon.",
+   "pair": "fx_siren_glow_red"
+  },
+  {
+   "key": "fx_demolish_dust",
+   "png": "fx_city/fx_demolish_dust.png",
+   "frameWidth": 256,
+   "frameHeight": 192,
+   "frameCount": 16,
+   "fps": 20,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.78
+   ],
+   "blend": "NORMAL",
+   "notes": "One-shot demolition / collapse: dust ring rolls out on the ground, a cloud billows up, planks, bricks and soot bits fly. Anchor = building footprint centre; scale x1.2-1.6 for big plots; x0.6 for each excavator bucket hit."
+  },
+  {
+   "key": "fx_question_mark",
+   "png": "fx_city/fx_question_mark.png",
+   "frameWidth": 80,
+   "frameHeight": 112,
+   "frameCount": 12,
+   "fps": 10,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.95
+   ],
+   "blend": "NORMAL",
+   "notes": "Curious resident loop: glossy blue \"?\" bobbing, little \"?\"s popping off. Anchor = head top (character anchor + [0, -78]). Tween its scale in / out."
+  },
+  {
+   "key": "fx_lightbulb_idea",
+   "png": "fx_city/fx_lightbulb_idea.png",
+   "frameWidth": 96,
+   "frameHeight": 128,
+   "frameCount": 14,
+   "fps": 16,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.95
+   ],
+   "blend": "NORMAL",
+   "notes": "One-shot \"aha!\": bulb pops up, flickers, lights with rays + sparkles, stays lit (hold the last frame ~0.8 s, then fade). Anchor = head top."
+  },
+  {
+   "key": "fx_memory_sparkle",
+   "png": "fx_city/fx_memory_sparkle.png",
+   "frameWidth": 112,
+   "frameHeight": 112,
+   "frameCount": 16,
+   "fps": 12,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.9
+   ],
+   "blend": "NORMAL",
+   "notes": "Dreamy loop while a resident remembers: pastel twinkles and a ribbon spiral up in a soft lilac glow. Anchor = head top."
+  }
+ ],
+ "sprites": {
+  "ui_icon_piggy": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_piggy",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Bank savings: pink piggy bank with a coin dropping in (저축)."
+  },
+  "ui_icon_loan": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_loan",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Loan: burlap money sack with a coin emblem and a blue arrow curving in (대출)."
+  },
+  "ui_icon_interest": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_interest",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Interest: coin stack with a sprouting seedling and a green up-arrow (이자)."
+  },
+  "ui_icon_passbook": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_passbook",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Passbook: navy bank book with a gold coin emblem and a red bookmark (통장)."
+  },
+  "ui_icon_insurance": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_insurance",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Fire insurance: blue shield guarding a little house, green check (보험)."
+  },
+  "ui_icon_story": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_story",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Stories: open storybook with a pink heart rising out (이야기)."
+  },
+  "ui_icon_rumor": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_rumor",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Rumour: a friendly ear listening to purple whisper waves (소문)."
+  },
+  "ui_icon_question": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_question",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Question: speech bubble with a glossy blue \"?\" (질문)."
+  },
+  "ui_icon_friend_new": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_friend_new",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "New friend: two villager heads under a pink heart, green \"+\" (새 친구)."
+  },
+  "ui_icon_memory": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_memory",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Memory: tilted instant photo of the snowy village with a heart sticker (기억)."
+  },
+  "ui_icon_move_in": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_move_in",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Moving in: house + green arrow in at the door + moving box (이사 옴)."
+  },
+  "ui_icon_move_out": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_move_out",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Moving out: house + orange arrow leaving + moving box (이사 감)."
+  },
+  "ui_icon_newspaper": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_newspaper",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Town paper \"솔방울 신문\": folded paper with a pinecone emblem (신문)."
+  },
+  "ui_icon_badge": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_badge",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Police: gold shield badge, blue enamel, white star (경찰)."
+  },
+  "ui_icon_wanted": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_wanted",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Wanted: pinned poster with a red band, sepia portrait and reward coin (현상수배)."
+  },
+  "ui_icon_cuffs_cute": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_cuffs_cute",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Arrest: cute toy handcuffs with a pink heart charm (체포)."
+  },
+  "ui_icon_thief": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_thief",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Petty thief: round face, domino mask, striped beanie, cheeky grin (좀도둑)."
+  },
+  "ui_icon_fire_alert": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_fire_alert",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Fire alert: red warning triangle with a toy flame (화재 경보)."
+  },
+  "ui_icon_firetruck": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_firetruck",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Fire engine: chubby red truck with ladder and beacon (소방차)."
+  },
+  "ui_icon_hydrant": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_hydrant",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Fire hydrant: red hydrant with gold outlets and a snow cap (소화전)."
+  },
+  "ui_icon_box": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_box",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Parcel: kraft cardboard box with tape (택배 상자)."
+  },
+  "ui_icon_forklift": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_forklift",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Forklift: yellow forklift lifting a pallet with a box (지게차)."
+  },
+  "ui_icon_settle": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_settle",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Settlement: receipt with a red check seal + wooden stamp (정산)."
+  },
+  "ui_icon_stock": {
+   "atlas": "ui4_icons",
+   "frame": "ui_icon_stock",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Stock: wooden rack with crates, sack, cans and logs (재고)."
+  },
+  "ui_stamp_bank": {
+   "atlas": "ui4_icons",
+   "frame": "ui_stamp_bank",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "Extra: red round bank seal imprint, ink only - stamp it on passbook rows / receipts."
+  },
+  "ui_wanted_poster": {
+   "image": "ui_wanted_poster",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    224,
+    296
+   ],
+   "notes": "현상수배 poster (fixed 224x296 image, NOT 9-slice): ribbon title band (titleBox), wooden portrait frame (portraitWindow 128x128 - draw the resident portrait there), name plate (nameBox), reward line (rewardIcon coin + rewardBox).  Also usable small (x0.3) on the civic wanted_board posterPoints.",
+   "titleBox": [
+    40,
+    22,
+    144,
+    36
+   ],
+   "portraitWindow": [
+    48,
+    78,
+    128,
+    128
+   ],
+   "nameBox": [
+    40,
+    224,
+    144,
+    26
+   ],
+   "rewardIcon": [
+    52,
+    262,
+    24,
+    24
+   ],
+   "rewardBox": [
+    82,
+    256,
+    104,
+    26
+   ]
+  },
+  "ui_newspaper": {
+   "image": "ui_newspaper",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    160,
+    160
+   ],
+   "notes": "솔방울 신문 page (9-slice newsprint): stretch to the panel size, then lay out ui_newspaper_masthead at the top and ui_newspaper_column / _photo / _divider pieces inside contentInset.",
+   "contentInset": [
+    24,
+    24,
+    24,
+    28
+   ],
+   "minSize": [
+    64,
+    64
+   ]
+  },
+  "ui_newspaper_masthead": {
+   "image": "ui_newspaper_masthead",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    320,
+    96
+   ],
+   "notes": "Masthead strip (9-slice, stretch horizontally only, keep 96 px tall): pinecone medallions left / right, rules top and bottom.  Draw the paper title \"솔방울 신문\" centred in titleBox (relative to the stretched strip: x from 96 to width-96).",
+   "titleBox": [
+    96,
+    14,
+    128,
+    52
+   ],
+   "minSize": [
+    200,
+    96
+   ]
+  },
+  "ui_newspaper_column": {
+   "image": "ui_newspaper_column",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    112,
+    128
+   ],
+   "notes": "Article box (9-slice): headline in the grey bar (headlineBox: x, y, width relative to the right edge, h), body text in contentInset.",
+   "contentInset": [
+    12,
+    42,
+    12,
+    10
+   ],
+   "headlineBox": [
+    10,
+    9,
+    -10,
+    22
+   ],
+   "minSize": [
+    40,
+    60
+   ]
+  },
+  "ui_newspaper_photo": {
+   "image": "ui_newspaper_photo",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    96,
+    80
+   ],
+   "notes": "Photo slot (9-slice): draw a snapshot / portrait clipped to the inner rect (contentInset).",
+   "contentInset": [
+    10,
+    10,
+    10,
+    10
+   ],
+   "minSize": [
+    32,
+    32
+   ]
+  },
+  "ui_newspaper_divider": {
+   "image": "ui_newspaper_divider",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    128,
+    16
+   ],
+   "notes": "Section rule (9-slice, stretch horizontally only, 16 px tall).",
+   "minSize": [
+    52,
+    16
+   ]
+  },
+  "ui_passbook": {
+   "image": "ui_passbook",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    200,
+    200
+   ],
+   "notes": "통장 panel (9-slice): navy cover, cream page; bank / owner title in titleBox (above the thin rule), column titles just above the double rule at headerY, rows below - stack ui_passbook_row (32 px each) inside contentInset; stamp deposits with ui_stamp_bank (x0.3).",
+   "contentInset": [
+    42,
+    74,
+    22,
+    26
+   ],
+   "headerY": 66,
+   "titleBox": [
+    44,
+    12,
+    120,
+    22
+   ],
+   "minSize": [
+    90,
+    110
+   ]
+  },
+  "ui_passbook_row": {
+   "image": "ui_passbook_row",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    128,
+    32
+   ],
+   "notes": "One passbook line (9-slice, stretch horizontally, 32 px tall).",
+   "rowHeight": 32,
+   "minSize": [
+    24,
+    32
+   ]
+  },
+  "ui_story_card": {
+   "image": "ui_story_card",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    176,
+    124
+   ],
+   "notes": "Rumour / story card (9-slice): lilac band on top, speech tail bottom-left (in the margin).  Put ui_icon_rumor / ui_icon_story at iconPoint (x0.4) and the text in contentInset.",
+   "contentInset": [
+    18,
+    34,
+    16,
+    28
+   ],
+   "iconPoint": [
+    24,
+    20
+   ],
+   "minSize": [
+    80,
+    80
+   ]
+  },
+  "ui_story_card_news": {
+   "image": "ui_story_card_news",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    176,
+    124
+   ],
+   "notes": "Extra: news variant (sky-blue band, blue push-pin, curled corner).  Same size / margins as ui_story_card.",
+   "contentInset": [
+    18,
+    34,
+    16,
+    28
+   ],
+   "iconPoint": [
+    24,
+    20
+   ],
+   "minSize": [
+    80,
+    80
+   ]
+  }
+ },
+ "nineSlice": {
+  "ui_newspaper": {
+   "image": "ui_newspaper",
+   "left": 26,
+   "right": 26,
+   "top": 26,
+   "bottom": 30
+  },
+  "ui_newspaper_masthead": {
+   "image": "ui_newspaper_masthead",
+   "left": 96,
+   "right": 96,
+   "top": 18,
+   "bottom": 28
+  },
+  "ui_newspaper_column": {
+   "image": "ui_newspaper_column",
+   "left": 16,
+   "right": 16,
+   "top": 40,
+   "bottom": 16
+  },
+  "ui_newspaper_photo": {
+   "image": "ui_newspaper_photo",
+   "left": 14,
+   "right": 14,
+   "top": 14,
+   "bottom": 14
+  },
+  "ui_newspaper_divider": {
+   "image": "ui_newspaper_divider",
+   "left": 24,
+   "right": 24,
+   "top": 6,
+   "bottom": 6
+  },
+  "ui_passbook": {
+   "image": "ui_passbook",
+   "left": 48,
+   "right": 32,
+   "top": 74,
+   "bottom": 30
+  },
+  "ui_passbook_row": {
+   "image": "ui_passbook_row",
+   "left": 10,
+   "right": 10,
+   "top": 4,
+   "bottom": 6
+  },
+  "ui_story_card": {
+   "image": "ui_story_card",
+   "left": 40,
+   "right": 26,
+   "top": 36,
+   "bottom": 36
+  },
+  "ui_story_card_news": {
+   "image": "ui_story_card_news",
+   "left": 40,
+   "right": 26,
+   "top": 36,
+   "bottom": 36
+  }
+ }
+}

@@ -101,14 +101,14 @@ def _set(m, **kw):
     return m
 
 
-def canvas(col, rough=0.86, var=0.06, scale=14.0):
+def canvas(col, rough=0.86, var=0.035, scale=30.0):
     """Woven beach canvas: soft tonal variation + a faint sheen (reads as fabric, not plastic)."""
     key = ('bcanvas', C(col), rough, var, scale)
     if key in L._CUSTOM:
         return L._CUSTOM[key]
     m = tonal(col, var, scale, rough=rough, name='canvas_' + C(col).lstrip('#'))
     m = m.copy()
-    _set(m, sheen=0.35, sheen_tint=0.5)
+    _set(m, sheen=0.3, sheen_tint='#FFFFFF')
     L._CUSTOM[key] = m
     return m
 
@@ -333,7 +333,8 @@ def board_xz(name, w, h, t, loc, mat, side=None, r=0.04, rz=0.0, tilt=0.0, bevel
 
 def sand_mound(name, r, h, loc=(0, 0, 0), seed=0, col=SAND, scale=(1, 1, 1)):
     """Low soft heap of dry sand (around a pole foot / a dug hole)."""
-    o = blob(name, r, (loc[0], loc[1], loc[2] - r * 0.62), sand(col, var=0.07), scale=(scale[0], scale[1], h / r),
+    kz = 1.6 * h / r
+    o = blob(name, r, (loc[0], loc[1], loc[2] - 0.6 * h), sand(col, var=0.07), scale=(scale[0], scale[1], kz),
              seed=seed, amp=0.14, freq=1.4, subdiv=3)
     return o
 
@@ -463,73 +464,44 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
         # rib underneath: from the runner on the pole to the rim
         mb.seg(Vector((0, 0, apex - 0.62)), line[-1] + Vector((0, 0, -0.03)), 0.008, metal('#C9CED6'), segs=5)
     objs.append(mb.done(name + '_ribs'))
-    # valance flaps: pivot empties at each panel's rim mid-point, flap hangs down (local -Z), X along the tangent
+    # valance: one continuous skirt hanging from the canopy rim (so no gap at the sagging rim), scalloped bottom
+    # edge per panel (panel colour), a cream hem piping band and a sawtooth tassel fringe - all in one mesh so the
+    # flutter can push it outward with a travelling wave.
+    dep = 0.13
+    sk_v, sk_f, sk_m, sk_info = [], [], [], []
+    hem_i = ncol
+    fr_i = ncol + 1
+    rows = [0.0, 0.5, 0.86, 1.0]             # fraction of the panel depth (top = rim)
+    for j in range(M + 1):
+        jj = j % M
+        rim = Vector(prof(jj, K - 1))
+        a = math.tau * j / M
+        out = Vector((math.cos(a), math.sin(a), 0.0))
+        u = (j % M_PER) / float(M_PER)
+        if j == M:
+            u = 1.0
+        d = dep * (0.62 + 0.38 * math.sin(math.pi * u))
+        for f in rows:
+            q = rim + out * (0.02 + 0.06 * f) + Vector((0, 0, -d * f))
+            sk_v.append(q)
+            sk_info.append((a, f * d / dep))
+        # fringe tooth tip below the hem (every other column)
+        q = rim + out * 0.085 + Vector((0, 0, -d - (0.05 if j % 2 == 0 else 0.012)))
+        sk_v.append(q)
+        sk_info.append((a, (d + 0.05) / dep))
+    R_ = len(rows) + 1
+    for j in range(M):
+        pan = (j // M_PER) % ncol
+        for r in range(R_ - 1):
+            i0 = j * R_ + r
+            sk_f.append((i0, i0 + R_, i0 + R_ + 1, i0 + 1))
+            sk_m.append(pan if r < len(rows) - 2 else (hem_i if r == len(rows) - 2 else fr_i))
+    sk_mats = mats + [flat(CREAM, 0.75), flat(CREAM, 0.8)]
+    skirt = mesh_from(name + '_skirt', sk_v, sk_f, sk_mats, sk_m)
+    solidify(skirt, 0.01, 0.0)
+    objs.append(skirt)
+    sk_d = Deform(skirt)
     flaps = []
-    for p in range(panels):
-        a0 = math.tau * p / panels
-        a1 = math.tau * (p + 1) / panels
-        am = (a0 + a1) / 2
-        q0 = Vector(prof(p * M_PER, K - 1))
-        q1 = Vector(prof(((p + 1) * M_PER) % M, K - 1))
-        mid = Vector(prof(p * M_PER + M_PER // 2, K - 1))
-        piv = bpy.data.objects.new('%s_flap%d' % (name, p), None)
-        link(piv)
-        piv.location = mid
-        tang = (q1 - q0)
-        tang.z = 0
-        ang = math.atan2(tang.y, tang.x)
-        piv.rotation_euler = Euler((0, 0, ang), 'XYZ')
-        # flap outline in the pivot frame: X along the tangent, the flap leans 8 deg outward (+ -Y local = outward?)
-        w = (q1 - q0).length
-        dep = 0.12
-        nsc = 1
-        pts3 = []
-        n = 14
-        for k in range(n + 1):
-            x = -w / 2 + w * k / n
-            # rim follows the canopy sag (the corners are higher at the ribs)
-            pts3.append((x, 0.0, 0.0))
-        bot = []
-        for k in range(n, -1, -1):
-            x = -w / 2 + w * k / n
-            u = (k / n) * nsc
-            sc = math.sin(math.pi * (u % 1.0))
-            bot.append((x, 0.0, -dep * (0.55 + 0.45 * sc)))
-        outline = pts3 + bot
-        # thin double-sided flap: triangulated strip
-        vv, ff = [], []
-        top_row = [Vector(p_) for p_ in pts3]
-        bot_row = [Vector(p_) for p_ in reversed(bot)]
-        for k in range(n + 1):
-            vv.append(top_row[k])
-            vv.append(bot_row[k])
-        for k in range(n):
-            ff.append((2 * k, 2 * k + 2, 2 * k + 3, 2 * k + 1))
-        # the flap hangs on the OUTSIDE of the rim: outward = local -Y (pivot X = tangent, ccw -> outward = -Y)
-        fl = mesh_from('%s_flapm%d' % (name, p), vv, ff, [mats[p % ncol]])
-        solidify(fl, 0.01, 0.0)
-        fl.parent = piv
-        fl.location = (0, -0.008, 0.005)
-        fl.rotation_euler = Euler((math.radians(-10), 0, 0), 'XYZ')
-        objs.append(fl)
-        # piping along the hem + tassel fringe
-        mbf = L2.MB()
-        hm = flat(CREAM, 0.75)
-        prev = None
-        for k in range(n + 1):
-            q = bot_row[k]
-            if prev is not None:
-                mbf.seg(prev, q, 0.007, hm, segs=5)
-            prev = q
-        if fringe:
-            for k in range(1, n, 2):
-                q = bot_row[k]
-                mbf.seg(q, q + Vector((0, 0.0, -0.045)), 0.0055, hm, segs=4, r2=0.0035)
-                mbf.sphere(0.009, hm, loc=tuple(q + Vector((0, 0, -0.048))), segs=6, rings=4)
-        fr = mbf.done('%s_fringe%d' % (name, p))
-        fr.parent = fl
-        flaps.append((piv, p, am))
-        objs.append(piv)
     # pole: lower wood, chrome joint, upper white; finial; runner
     lo, hi = pole_cols
     objs.append(cyl(name + '_pole_lo', 0.03, 1.3, (0, 0, -0.05), mat=painted(hi), segs=14, bevel=0.008))
@@ -543,31 +515,32 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
     can_d = Deform(can)
 
     def set_wind(i, n=4):
-        """Flutter frame i of n (wind from screen upper-left = world -X, -Y): flaps lift and ripple, the canopy
-        panels breathe."""
+        """Flutter frame i of n (breeze from the screen upper-left = world -X): the valance billows outward with a
+        wave travelling round the rim (strongest on the downwind side), the canopy panels breathe."""
         if i is None:
             can_d.reset()
-            for piv, p, am in flaps:
-                piv.rotation_euler.x = 0.0
+            sk_d.reset()
             return
         ph = math.tau * i / n
-        for piv, p, am in flaps:
-            down = 0.5 + 0.5 * math.cos(am - math.radians(-30))      # downwind side (+X, +Y-ish) lifts more
-            ang = (10 + 26 * down) * (0.55 + 0.45 * math.sin(ph + p * 1.3))
-            piv.rotation_euler.x = math.radians(-ang)
+
+        def fs(c, k):
+            a, f = sk_info[k]
+            down = 0.55 + 0.45 * math.cos(a - math.radians(-20))
+            lift = (0.35 + 0.65 * (0.5 + 0.5 * math.sin(ph - a * 2.0))) * down
+            out = Vector((math.cos(a), math.sin(a), 0.0))
+            return c + out * (0.1 * f * lift) + Vector((0, 0, 0.07 * f * f * lift))
+        sk_d.apply(fs)
 
         def f(c, k):
             if c.z < apex - 0.02 and c.length > 0.15:
                 a = math.atan2(c.y, c.x)
                 rho = math.hypot(c.x, c.y)
                 t = rho / R
-                w = 0.022 * t * math.sin(ph + a * 2.0 + t * 2.0)
+                w = 0.036 * t * t * math.sin(ph - a * 2.0 + 0.6)
                 return Vector((c.x, c.y, c.z + w))
             return c
         can_d.apply(f)
 
-    if tilt:
-        pass
     return {'objs': objs, 'canopy': can_d, 'flaps': flaps, 'set_wind': set_wind,
             'apex': Vector((0, 0, apex)), 'rim_z': z_rim, 'R': R}
 
