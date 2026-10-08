@@ -739,6 +739,29 @@ def sh_fight_cloud(i, n, W=192, H=176):
     lo_t = _yramp([(cy - 50, '#C9B08A'), (cy + 40, '#A88C66')])
     rim = _yramp([(cy - 50, '#9E8868'), (cy + 40, '#7E6A4E')])
     billow(c, lobes, col, _yalpha([(0, 1), (H, 1)]), lo_t, rim, rim_a=1.0, hi=0.5, lo=0.55)
+    # cartoon eyes peeking out of the dust (the two scufflers take turns: cross brows, darting pupils, a blink)
+    for w0, dx, dy, look in ((0.04, -13, -8, 1.0), (0.54, 13, 0, -1.0)):
+        u = (i / n - w0) % 1.0
+        if u > 0.62:
+            continue
+        s = min(1.0, math.sin(math.pi * u / 0.62) * 1.8)
+        blink = 0.25 if 0.28 < u < 0.34 else 1.0
+        ex, ey = cx + dx + 2 * math.sin(ph * 3), cy + dy - 2 * bounce
+        R = c.region(ex - 16, ey - 16, ex + 16, ey + 12)
+        if R.empty:
+            continue
+        for side in (-1, 1):
+            x = ex + side * 5.6
+            d = F.sd_ellipse(R.X, R.Y, x, ey, 4.0 * s, 5.2 * s * blink)
+            R.fill(d - 1.1, hexc('#5A3A24'), 1.0)
+            R.fill(d, WHITE, 1.0)
+            if blink > 0.5:
+                px = x + look * 1.3 + 0.6 * math.sin(ph * 4)
+                R.fill(F.sd_circle(R.X, R.Y, px, ey + 1.0, 2.2 * s), hexc('#2A1A10'), 1.0)
+                R.fill(F.sd_circle(R.X, R.Y, px - 0.7, ey + 0.1, 0.7 * s), WHITE, 1.0)
+            # cross brow: outer end high, inner end low (comic grumpy, not scary)
+            R.fill(F.sd_segment(R.X, R.Y, x + side * 4.2, ey - 7.8 * s, x - side * 2.6, ey - 5.4 * s, 1.2 * s),
+                   hexc('#5A3A24'), 1.0)
     # speed swooshes (white arcs with a soft grey edge) circling the ball
     for k in range(2):
         a0 = ph + k * math.pi

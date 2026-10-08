@@ -65,6 +65,7 @@ STAFF_ROLES = {
 STAFF_BEHIND = {'resort_hotel': [2], 'beach_cafe': [0], 'icecream_shop': [0], 'beach_bar': [0], 'seafood_bbq': [0],
                 'tourist_info': [0], 'lifeguard_station': [0]}
 CLIP = (60, 128, 18)        # plane-overlay clip around a staff point: +-x, up, down (px)
+WATER_SEE = 0.72            # hotel_pool_water body opacity (the rest shows the pool floor of the base frame)
 
 
 # --------------------------------------------------------------------------- post
@@ -178,7 +179,12 @@ def load(cache):
             pm = poly_mask(W, H, [(ax + x, ay + y) for x, y in m['water']['poly']])
             for i, n in enumerate(m['water']['frames']):
                 a = np.asarray(Image.open(os.path.join(cache, n + '.png')).convert('RGBA')).astype(np.float32)
-                a[..., 3] = a[..., 3] * pm
+                # clear water: the turquoise body lets WATER_SEE of the base frame's pool floor (sun mosaic, tiles)
+                # through, the bright ripple glints stay opaque
+                lum = a[..., :3].mean(-1)
+                med = float(np.median(lum[pm > 0.5])) if (pm > 0.5).any() else 128.0
+                hi = np.clip((lum - med - 12.0) / 50.0, 0.0, 1.0)
+                a[..., 3] = a[..., 3] * pm * (WATER_SEE + (1.0 - WATER_SEE) * hi)
                 frames[n] = pu.clean_alpha(Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGBA'), floor=3)
             derived[k + '_water'] = ('water', k)
     return builds, frames, derived

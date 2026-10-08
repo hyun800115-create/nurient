@@ -289,6 +289,9 @@ def mix_layers(layers: dict, levels: dict) -> np.ndarray:
 # though they arrive on the swell's beat.
 SEA_WAVES = 7
 SEA_PHASE = 4.4
+# both beds roll off above ~15 kHz (24 dB / oct, -6 dB at BED_LP): air absorption over the water, the same band the
+# .mp3 fallback keeps, inaudible on phone speakers - and Vorbis then spends ~20 kB less on hiss nobody hears.
+BED_LP = 15000.0
 SEA_NEAR = [(0, +0.12, 0.66, 2.4, 0.35, 0.45, 1.0, 1.05), (1, -0.15, 0.56, 2.2, 0.18, 0.35, 0.95, 0.95),
             (2, +0.05, 0.84, 2.7, 0.6, 0.6, 1.05, 1.1), (3, -0.08, 1.06, 3.0, 0.8, 0.85, 1.1, 1.15),
             (4, +0.17, 1.14, 3.2, 0.88, 0.9, 1.1, 1.2), (5, -0.04, 0.9, 2.8, 0.55, 0.7, 1.0, 1.1),
@@ -379,6 +382,7 @@ def render_sea_waves(seed: int = 10100, loop_samples=None, nominal: float = SEA_
     y = bed + fold1(ev, L)
     y = S.filt_circ(y, "hp", 36, order=2)
     y = S.filt_circ(y, "lshelf", 110, gain_db=-3.0)            # keep the weight, spend the level on the surf
+    y = S.filt_circ(y, "lp", BED_LP, order=2)                  # air absorption over the water (see BED_LP)
     y, shift = rotate_quiet(master_mono(y, -20.0))
     return y, {"loopSamples": L, "rotation": shift, **swell_meta(timing, SEA_PHASE, SEA_WAVES, L, shift)}
 
@@ -440,13 +444,11 @@ def _beach_events(seed: int, nominal: float):
         w = surf_wave(r, size, A, plunge=0.1, swash=1.0, retreat=0.9, foam=0.8, warm=0.6)
         place_wrap(lay["mid"], tb - A, distance(w, 0.5, lp_min=1200.0, verb=0.6, rt60=2.0), 1.0, nominal)
     # children far down the beach: many short overlapping phrases at low, uneven levels (a texture, no single
-    # voice stands out) + two laughs buried in it
+    # voice stands out; the recognisable laughs / squeals / calls are the sfx_beach_kids one-shots)
     t = 0.3
     while t < nominal:
         place_wrap(lay["kids"], t, kid_voice(r, "babble"), r.uniform(0.3, 0.75), nominal)
         t += r.uniform(0.7, 1.9)
-    for t0 in (5.1, 15.6):
-        place(lay["kids"], t0, kid_voice(r, "laugh"), 0.3)
     kids = S.lp(lay["kids"], 2700, order=2)                 # distant: highs absorbed, outdoor smear
     lay["kids"] = I.verb_mono(kids, rt60=1.5, mix=0.6, tail=0.0, predelay=0.04, size=1.0, hi_cut=3800)[:nb]
     for t0 in (9.3, 19.9):                                 # far splashes of kids jumping in
@@ -485,6 +487,7 @@ def render_beach_amb(seed: int = 10200, loop_samples=None, nominal: float = BEAC
     ev, timing = _memo(("beach", seed, nominal), lambda: _beach_events(seed, nominal))
     y = bed + fold1(ev, L)
     y = S.filt_circ(y, "hp", 40, order=2)
+    y = S.filt_circ(y, "lp", BED_LP, order=2)
     y, shift = rotate_quiet(master_mono(y, -20.0))
     return y, {"loopSamples": L, "rotation": shift, **swell_meta(timing, BEACH_PHASE, BEACH_WAVES, L, shift)}
 
@@ -866,8 +869,8 @@ SFX5 = {
 # per-key mastering like sfx.FINISH: punch = dB of fast (3 ms look-ahead) limiting before normalisation
 FINISH5 = {
     "sfx_wave_crash_1": dict(punch=3, fout=0.1), "sfx_wave_crash_2": dict(punch=3, fout=0.1),
-    "sfx_wave_crash_3": dict(punch=3, fout=0.1), "sfx_wave_wash": dict(punch=1, fout=0.15),
-    "sfx_wave_wash_2": dict(punch=1, fout=0.15), "sfx_wave_wash_3": dict(punch=1, fout=0.15),
+    "sfx_wave_crash_3": dict(punch=3, fout=0.1), "sfx_wave_wash": dict(punch=1, fout=0.15, lp=BED_LP),
+    "sfx_wave_wash_2": dict(punch=1, fout=0.15, lp=BED_LP), "sfx_wave_wash_3": dict(punch=1, fout=0.15, lp=BED_LP),
     "sfx_splash_1": dict(punch=3, fout=0.04), "sfx_splash_1b": dict(punch=3, fout=0.04),
     "sfx_splash_1c": dict(punch=3, fout=0.04), "sfx_splash_2": dict(punch=3, fout=0.05),
     "sfx_splash_3": dict(punch=3, fout=0.06), "sfx_pool_splash": dict(punch=3, fout=0.06),
@@ -881,16 +884,43 @@ FINISH5 = {
 LOOP_FUNCS = {"amb_sea_waves": "render_sea_waves", "amb_beach": "render_beach_amb"}
 
 
+ONESHOT_LP = 16000.0  # one-shots roll off above 16 kHz (24 dB / oct): inaudible on phones, fewer Vorbis bytes
+TAIL_DB = -40.0       # one-shots end where their 20 ms level falls this far under the loudest 20 ms ...
+TAIL_FADE = 0.06      # ... with this much cos^2 fade-out after that point
+
+
+def trim_tail(y, db: float = TAIL_DB, fade: float = TAIL_FADE) -> np.ndarray:
+    """End a one-shot where its ring-out has fallen `db` under its loudest 20 ms window, then fade out over `fade` s.
+    In the game every one-shot sits on an ambience bed (-33.5 LUFS); a tail 40 dB under the sound's peak is masked
+    there, so the bytes go to the sounds instead (payload cap). Nothing before that point is touched (cues keep)."""
+    y = np.asarray(y, dtype=float)
+    w = n_of(0.02)
+    nw = len(y) // w
+    if nw < 4:
+        return y
+    e = 10 * np.log10((y[:nw * w].reshape(nw, w) ** 2).mean(axis=1) + 1e-20)
+    above = np.nonzero(e > e.max() + db)[0]
+    end = min(len(y), (int(above[-1]) + 1) * w + n_of(fade))
+    if end >= len(y) - n_of(0.005):
+        return y
+    out = y[:end].copy()
+    k = n_of(fade)
+    out[-k:] *= np.cos(np.linspace(0, np.pi / 2, k)) ** 2
+    return out
+
+
 def render(key: str) -> np.ndarray:
     """Same mastering chain as sfx.render .. sfx4.render: optional punch limiter -> synth.finish_sfx
-    (high-pass, trim, fades, peak -1.5 dBFS)."""
+    (high-pass, trim, fades, peak -1.5 dBFS) -> trim_tail (ring-out under -40 dB re the loudest 20 ms). A gentle
+    roll-off above ONESHOT_LP (washes: BED_LP, like the beach bed they belong to) goes first."""
     y = np.asarray(SFX5[key](), dtype=float)
     opts = dict(FINISH5.get(key, {}))
     punch = opts.pop("punch", 0)
+    y = S.lp(y, opts.pop("lp", ONESHOT_LP), order=2)
     if punch:
         y = S.hp(y, 30, order=2)
         y = S.limiter(y / max(S.peak(y), 1e-12), -float(punch), window_ms=3.0)
-    return S.finish_sfx(y, peak_db=-1.5, **opts)
+    return trim_tail(S.finish_sfx(y, peak_db=-1.5, **opts))
 
 
 def main(keys):

@@ -236,7 +236,9 @@ def main():
                     err.append(f'{n}: anim item outside its anims')
                     break
     # head parts + faces
-    hp_frames = [f'{hp}_{d}' for hp, info_ in T['headPoses'].items() for d in info_['dirs']]
+    # (head poses of townfolk + townfolk2 only: later fragments' poses - beachfolk swim / lie - are theirs to fill)
+    own_poses = set(man1['townfolk']['headPoses']) | set((dict(blocks).get('townfolk2') or {}).get('headPoses', {}))
+    hp_frames = [f'{hp}_{d}' for hp, info_ in T['headPoses'].items() if hp in own_poses for d in info_['dirs']]
     for pn in NEW_PARTS:
         P = T['parts'].get(pn)
         if P is None:

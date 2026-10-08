@@ -185,8 +185,8 @@ def bonk(r, f: float = 420.0, vel: float = 1.0) -> np.ndarray:
 def pow_puff(r, vel: float = 1.0) -> np.ndarray:
     """Muffled cartoon 'pow' inside a dust cloud: soft low thump + a puff of dust."""
     n = n_of(0.3)
-    y = blip(150, 58, 0.3, 0.025, 0.07, attack=0.0015) * 0.9
-    y = y + S.lp(r.standard_normal(n), 900, order=2) * S.env_pts([(0, 0), (0.004, 1), (0.05, 0.4), (0.3, 0)], n) * 0.6
+    y = blip(150, 58, 0.3, 0.025, 0.07, attack=0.0015) * 0.6
+    y = y + S.bp(r.standard_normal(n), 700, 0.8) * S.env_pts([(0, 0), (0.004, 1), (0.05, 0.4), (0.3, 0)], n) * 0.7
     y = y + S.bp(r.standard_normal(n), 1600, 0.9) * S.env_exp(n, 0.012, 0.0006) * 0.25
     return y * vel
 
@@ -496,7 +496,7 @@ def sfx_collapse_soft():
 # ============================================================================ demolition / construction
 # polish (critic: 95.8 % below 300 Hz, phone loss -17.6 dB): hydraulic whine 0.07 -> EXC_MIX + its 2nd harmonic,
 # 1.1-2.3 kHz track-link rattle on the firing grid, sub shelved -3 dB, low-pass 4 kHz.
-EXC_MIX = {"whine": 0.2, "links": 0.09}
+EXC_MIX = {"whine": 0.36, "links": 0.18, "chug": 0.9}
 
 
 def render_excavator(seed: int = 10800, loop_samples=None, nominal: float = 2.0):
@@ -517,11 +517,11 @@ def render_excavator(seed: int = 10800, loop_samples=None, nominal: float = 2.0)
         pop = S.lp(r.standard_normal(n), 420, order=2) * S.env_exp(n, 0.009, 0.001)
         f1 = 68.0 * (1 + 0.015 * r.standard_normal())
         tone = S.modal(f1, n, [(1, 1, 0.07), (2.05, 0.5, 0.04), (3.1, 0.22, 0.02)], r, attack=0.0015)
-        chug = S.bp(r.standard_normal(n), 300, 1.4) * S.env_exp(n, 0.014, 0.001)
-        place(buf, (i + ph) * P + r.normal(0, 0.0008) * SR, pop * 0.9 + tone * 1.2 + chug * 0.6, g, L)
+        chug = S.bp(r.standard_normal(n), 420, 1.2) * S.env_exp(n, 0.014, 0.001)          # polish: 300 -> 420 Hz
+        place(buf, (i + ph) * P + r.normal(0, 0.0008) * SR, pop * 0.9 + tone * 1.2 + chug * EXC_MIX["chug"], g, L)
     y = fold1(buf, L)
     t = np.arange(L) / SR
-    hum = S.additive(ff, L, [(h, 1.0 / (1 + ((h * ff - 160) / 120) ** 2)) for h in range(1, 30)], fmax=4000)
+    hum = S.additive(ff, L, [(h, 1.0 / (1 + ((h * ff - 230) / 150) ** 2)) for h in range(1, 40)], fmax=4000)
     arm = 0.5 - 0.5 * np.cos(TAU * t / dur)
     whine_f = loop_freq(560.0 * (1 + 0.22 * arm), L)
     whine = S.sine(whine_f, L) + 0.5 * S.sine(loop_freq(whine_f * 2.0, L), L)
@@ -539,7 +539,7 @@ def render_excavator(seed: int = 10800, loop_samples=None, nominal: float = 2.0)
         place(cl, u * L, steel_clank(r, 280, 0.6, 0.2), 0.25, L)
     y = y + fold1(cl, L)
     y = S.filt_circ(y, "hp", 45, order=2)
-    y = S.filt_circ(y, "lshelf", 120, 0.7, -3.0)                           # polish: less sub (lost on phones)
+    y = S.filt_circ(y, "lshelf", 130, 0.7, -5.0)                           # polish: less sub (lost on phones)
     y = S.filt_circ(y, "peak", 380, 0.9, 3.0)
     y = S.filt_circ(y, "peak", 1100, 0.9, 2.5)
     y = S.filt_circ(y, "lp", 4000)                                          # toy: nothing sharp
@@ -717,7 +717,7 @@ def sfx_stamp():
     r = S.rng(11300)
     m = Mono(0.7)
     m.add(0.0, blip(240, 95, 0.2, 0.015, 0.035, attack=0.0008), 0.28)       # polish: desk thump -4 dB
-    m.add(0.0, wood_knock(r, 720, 1.0, 0.08), 0.62)                          # polish: knock 310 -> 720 Hz (phones)
+    m.add(0.0, wood_knock(r, 720, 1.0, 0.08), 0.75)                          # polish: knock 310 -> 720 Hz (phones)
     m.add(0.0, wood_knock(r, 310, 0.7, 0.07), 0.2)
     m.add(0.0, S.bp(r.standard_normal(n_of(0.08)), 1900, 0.9) * S.env_exp(n_of(0.08), 0.011, 0.0004), 0.5)
     m.add(0.0, burst(r, 0.01, 3600, 1.2, tau=0.0015), 0.15)
@@ -1022,7 +1022,7 @@ def render_comic_fight(seed: int = 12200, loop_samples=None, nominal: float = 2.
     buf = np.zeros(L + n_of(0.8))
     for u, sig, g in ev:
         place(buf, u * L, sig, g, L)
-    y = dust * 0.05 * (0.4 + 0.6 * flut) + low * 0.05 + unit(fold1(feet, L)) * 0.03 + fold1(buf, L)
+    y = dust * 0.05 * (0.4 + 0.6 * flut) + low * 0.03 + unit(fold1(feet, L)) * 0.03 + fold1(buf, L)
     y = S.filt_circ(y, "hp", 50, order=2)
     y = S.filt_circ(y, "lp", 8000)
     y = circ_verb(y, rt60=0.4, mix=0.1, hf_rt60=0.2, predelay=0.008, size=0.5)

@@ -157,6 +157,26 @@ def _mask_band(img):
     return im
 
 
+def wanted_mock(poster, e, seed=12, name='빵 도둑 "살금이"', reward='포상금 500', mask=True):
+    """ui_wanted_poster composed the way the game does it: resident portrait in portraitWindow + title / name /
+    reward text in their boxes (the asset itself carries no text)."""
+    pos = poster.copy()
+    pd = ImageDraw.Draw(pos)
+    port = _portrait(seed=seed)
+    if mask:
+        port = _mask_band(port)
+    px, py_, pw, ph = e['portraitWindow']
+    pos.alpha_composite(port.resize((pw, ph), Image.LANCZOS) if port.size != (pw, ph) else port, (px, py_))
+    tx, ty, tw, th = e['titleBox']
+    text(pd, (tx + tw / 2, ty + th / 2), '현상수배', 24, fill=(255, 255, 255), bold=True, anchor='mm', stroke=2,
+         stroke_fill=(110, 20, 16))
+    nx, ny, nw, nh = e['nameBox']
+    text(pd, (nx + nw / 2, ny + nh / 2), name, 15, fill=(70, 50, 30), bold=True, anchor='mm')
+    rx, ry, rw, rh = e['rewardBox']
+    text(pd, (rx + 6, ry + rh / 2 - 2), reward, 16, fill=(110, 70, 20), bold=True, anchor='lm')
+    return pos
+
+
 def ui_preview(icons, panels, W=1600):
     import gen_ui4 as UI
     margins = {k: m for k, _f, m, _e, _n in UI.PANELS}
@@ -226,19 +246,7 @@ def ui_preview(icons, panels, W=1600):
     y += 26
     yb = y
     # wanted poster x1 with portrait + text
-    pos = panels['ui_wanted_poster'].copy()
-    e = extras['ui_wanted_poster']
-    pd = ImageDraw.Draw(pos)
-    port = _mask_band(_portrait(seed=12))
-    px, py_, pw, ph = e['portraitWindow']
-    pos.alpha_composite(port, (px, py_))
-    tx, ty, tw, th = e['titleBox']
-    text(pd, (tx + tw / 2, ty + th / 2), '현상수배', 24, fill=(255, 255, 255), bold=True, anchor='mm', stroke=2,
-         stroke_fill=(110, 20, 16))
-    nx, ny, nw, nh = e['nameBox']
-    text(pd, (nx + nw / 2, ny + nh / 2), '빵 도둑 "살금이"', 15, fill=(70, 50, 30), bold=True, anchor='mm')
-    rx, ry, rw, rh = e['rewardBox']
-    text(pd, (rx + 6, ry + rh / 2 - 2), '포상금 500', 16, fill=(110, 70, 20), bold=True, anchor='lm')
+    pos = wanted_mock(panels['ui_wanted_poster'], extras['ui_wanted_poster'])
     im.alpha_composite(pos, (14, y))
     small = pos.resize((pos.width * 32 // 100, pos.height * 32 // 100), Image.LANCZOS)
     im.alpha_composite(small, (20, y + pos.height + 10))

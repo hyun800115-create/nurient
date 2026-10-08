@@ -1,17 +1,20 @@
 """Frost Village - v8 'living city' music by procedural synthesis (library + script).
 
   bgm_city  : busy, upbeat town theme for the living city. F major, 126 bpm, light shuffle, 32 bars (61.0 s), form
-              A1 A2 B A3 like bgm_village and in its melodic family:
-                A = F | Dm | Bb | C | F | Dm | Bb C | F      the bgm_village hook "A4 C5 D5 - C5 A4 C5 -" verbatim in
-                    bar 1 and 5, the village bar 2/3/6/7 shapes made busier (pickups, syncopations, a reach to A5),
-                    and a perky 'ta - da-da!' F-major arpeggio answer.
-                B = Bb | C | Am | Dm | Bb | C | Gm7 | C7    the bgm_village B melody note for note (on flute), with a
-                    muted-trumpet call-back of the hook in the gaps and a little 'beep-beep' car-horn toot (F4 + A4).
-              Arrangement: A1 marimba lead over bouncing pizzicato bass, off-beat electric-piano 'chk' chords,
-              kick / brushed snare / clap / shaker groove; A2 the muted trumpet takes the tune, glockenspiel
-              counter-melody, brass 'pap-pa!' stabs, a bicycle-bell fill; B flute + plucked arpeggios + walking
-              bass + woodblock; A3 tutti (trumpet + marimba, glock, a nod of sleigh bells - it is still a snowy
-              town), tom fill turnaround F | C7 back into the hook.
+              A1 A2 B A3 like bgm_village and in its melodic family (same key, same hook, same palette), but its own
+              tune and harmony:
+                A = F | Dm7 | Gm7 | C7 | F | D7 | Gm7 C7 | F   the bgm_village hook "A4 C5 D5 - C5 A4 C5 -" verbatim
+                    in bars 1 and 5; new bars in between: off-beat entries answered by 16th-note 'traffic' pickups
+                    from the other lead instrument, a D7 'city' secondary dominant, running eighths, a 'ta-da-da!'
+                    answer.
+                B = Gm7 | C7 | Fmaj7 | Dm7 | Bb | C | Am7 D7 | Gm7 C7   a new lyrical flute tune; the village B melody
+                    appears only as a 2-bar muted-trumpet quote over Bb | C (bars 5-6); a marimba hook fragment in
+                    the bar-4 gap, a little 'beep-beep' car-horn toot (E4 + G4) before the return.
+              Arrangement: A1 marimba lead over bouncing pizzicato bass (trumpet answers), off-beat electric-piano
+              'chk' chords, kick / brushed snare / clap / shaker groove; A2 the muted trumpet takes the tune (marimba
+              answers), a new glockenspiel counter-line, brass 'pap-pa!' stabs, a bicycle-bell fill; B flute +
+              plucked arpeggios + walking bass + woodblock; A3 tutti (trumpet + marimba, glock, a nod of sleigh
+              bells - it is still a snowy town), tom fill turnaround F | C7 back into the hook.
   bgm_chase : comic chase (cops after a bread thief, everybody smiling). F major / D minor, 168 bpm, 16 bars (22.9 s):
                 A = F | F | C7 | F | F | Bb | C7 | F A7     xylophone gallop built on the village hook (A C D C A C D F)
                 B = Dm | Gm | C7 | F | Dm | Gm | A7 | Bb C7 4 bars of tiptoe pizzicato (sneaking), then the race
@@ -42,7 +45,7 @@ import deps  # noqa: E402
 deps.ensure()
 import instruments as I  # noqa: E402
 import synth as S  # noqa: E402
-from music import CHORDS, COUNTER_A3, MEL_B, Mixer, Song, bass_note, finish, parse_bar, premix, voice  # noqa: E402
+from music import CHORDS, MEL_B, Mixer, Song, bass_note, finish, parse_bar, premix, voice  # noqa: E402
 from music2 import flute, triangle  # noqa: E402
 from sfx import chime, coin_hit  # noqa: E402
 from sfx3 import horn_tone  # noqa: E402
@@ -54,6 +57,8 @@ CH6 = dict(CHORDS)
 CH6.update({
     "Gm": (7, [7, 10, 2], [7, 10, 2, 5]),
     "A7": (9, [9, 1, 4, 7], [9, 1, 4, 7]),
+    "D7": (2, [2, 6, 9, 0], [2, 6, 9, 0]),          # secondary dominant (V of Gm7): the 'city' colour
+    "Fmaj7": (5, [5, 9, 0, 4], [5, 9, 0, 4]),
 })
 
 
@@ -183,20 +188,44 @@ def _delay(mix, sec=0.012):
 
 
 # ----------------------------------------------------------------------------- bgm_city score
+# polish (critic: 82 % of the eighth-note slots, 15 of 32 bars, both progressions and the counter-line were
+# bgm_village's): the family markers stay - F major, the hook "A4 C5 D5 - C5 A4 C5 -" verbatim in bars 1 and 5,
+# marimba / muted-trumpet palette - but every other bar, both progressions, the B section and the counter-line are
+# new. A is busier and more 'city': off-beat entries answered by 16th-note 'traffic' pickups from a second
+# instrument, a D7 secondary dominant; B is a new lyrical flute tune on its own progression; the village B melody
+# survives only as a 2-bar muted-trumpet quote (B bars 5-6, over the same Bb | C it had in the village).
 CITY_A = [
     "A4 C5 D5 -  C5 A4 C5 -",     # F      the village hook, verbatim
-    "D5 -  F5 D5 C5 -  A4 C5",    # Dm     village bar 2 + a pickup
-    "D5 C5 D5 F5 -  D5 C5 A4",    # Bb     village bar 3 with a syncopated F5
-    "G4 -  A4 C5 -  .  G4 A4",    # C      the question, busier
-    "A4 C5 D5 -  C5 A4 C5 F5",    # F      hook again, leaps up
-    "D5 -  F5 G5 A5 -  G5 F5",    # Dm     reaches higher than the village (A5)
-    "D5 C5 A4 C5 D5 C5 A4 G4",    # Bb | C village bar 7 verbatim
-    "F4 -  -  A4 C5 -  F5 .",     # F      'ta - da-da!' answer
+    ".  F5 .  E5 F5 A5 -  .",     # Dm7    off-beat entry (answered by a 16th 'ba-da' pickup on beat 1)
+    "G5 -  F5 D5 .  Bb4 D5 F5",   # Gm7    syncopated climb back up
+    "E5 -  D5 C5 Bb4 .  .  .",    # C7     the question ... brass 'pap-pa!' in the gap
+    "A4 C5 D5 -  C5 A4 C5 -",     # F      the hook again
+    ".  F#5 .  A5 C6 -  A5 .",    # D7     the city twist (secondary dominant), off-beat again
+    "Bb5 A5 G5 D5 E5 G5 Bb5 G5",  # Gm7|C7 running eighths
+    "A5 -  F5 .  C5 .  F5 .",     # F      'ta - da - da!' answer
 ]
-CITY_TURN = "F4 -  -  -  .  .  F4 G4"          # loop end: pickup back into the hook (= village MEL_A_TURN)
-CITY_CH_A = [("F", "F"), ("Dm", "Dm"), ("Bb", "Bb"), ("C", "C"), ("F", "F"), ("Dm", "Dm"), ("Bb", "C"), ("F", "F")]
-CITY_CH_B = [("Bb", "Bb"), ("C", "C"), ("Am", "Am"), ("Dm", "Dm"), ("Bb", "Bb"), ("C", "C"), ("Gm7", "Gm7"), ("C7", "C7")]
-CITY_SECTIONS = [(0, "A1", CITY_A, CITY_CH_A), (8, "A2", CITY_A, CITY_CH_A), (16, "B", MEL_B, CITY_CH_B),
+CITY_TURN = "F5 .  C5 A4 G4 .  F4 G4"          # loop end: pickup F4 G4 back into the hook
+CITY_CH_A = [("F", "F"), ("Dm", "Dm"), ("Gm7", "Gm7"), ("C7", "C7"), ("F", "F"), ("D7", "D7"), ("Gm7", "C7"), ("F", "F")]
+CITY_B = [
+    "D5 -  -  F5 G5 -  F5 D5",    # Gm7    new lyrical flute tune
+    "E5 -  -  -  C5 .  .  .",     # C7
+    "A5 -  G5 A5 C6 -  A5 -",     # Fmaj7
+    "F5 -  -  -  .  .  .  .",     # Dm7    (marimba hook fragment in the gap)
+    MEL_B[0],                     # Bb     the village B, bars 1-2 only: a muted-trumpet quote
+    MEL_B[1],                     # C
+    "C5 -  E5 G5 F#5 -  A5 -",    # Am7|D7
+    "Bb5 -  A5 G5 E5 -  .  .",    # Gm7|C7 -> back to the hook
+]
+CITY_CH_B = [("Gm7", "Gm7"), ("C7", "C7"), ("Fmaj7", "Fmaj7"), ("Dm", "Dm"), ("Bb", "Bb"), ("C", "C"), ("Am", "D7"),
+             ("Gm7", "C7")]
+CITY_B_QUOTE = (4, 5)                          # B bars played by the muted trumpet (the village quote)
+# 16th-note 'traffic' answers in A (bar index -> [(beat, note)]), played by the instrument NOT carrying the tune
+CITY_RESP = {1: [(0.0, "D5"), (0.25, "E5")], 3: [(3.0, "G4"), (3.25, "Bb4"), (3.5, "C5"), (3.75, "E5")],
+             5: [(0.0, "D5"), (0.25, "E5")]}
+# new glockenspiel counter-line for A2 / A3 (one chord tone per half bar)
+COUNTER_CITY = [("C6", "A5"), ("F6", "D6"), ("D6", "G6"), ("E6", "Bb5"), ("A5", "C6"), ("F#6", "C6"), ("Bb5", "Bb5"),
+                ("A5", "F5")]
+CITY_SECTIONS = [(0, "A1", CITY_A, CITY_CH_A), (8, "A2", CITY_A, CITY_CH_A), (16, "B", CITY_B, CITY_CH_B),
                  (24, "A3", CITY_A[:7] + [CITY_TURN], CITY_CH_A[:7] + [("F", "C7")])]
 
 
@@ -228,10 +257,20 @@ def _premix_city(seed: int):
                     mx.add("mel", t0 + 0.003, I.marimba(m, song.vel(acc * 0.9), r), 0.3, 0.15)
                     if ln >= 3:
                         mx.add("flu", t0, flute(m + 12, song.vel(0.6), dur * 0.9, r, vib=0.6), 0.12, 0.3)
-                else:                                      # B: the village B melody on flute
+                elif i in CITY_B_QUOTE:                    # B 5-6: the village B quoted by the muted trumpet
+                    mx.add("tpt", t0, trumpet(m, song.vel(acc * 0.92), dur * 0.85), 0.44, 0.2)
+                else:                                      # B: the new flute tune
                     mx.add("flu", t0, flute(m, song.vel(0.82), dur * 0.95, r, vib=1.0 if ln >= 3 else 0.4), 0.42, -0.05)
                     if ln >= 4:
                         mx.add("mel", t0, I.marimba(m - 12, song.vel(0.4), r), 0.16, -0.25)
+            if kind != "B" and i in CITY_RESP and (i != 3 or kind == "A1"):   # 16th 'traffic' answers (bar 4:
+                # only in A1 - A2 / A3 have the brass 'pap-pa!' there)
+                for bt, nm in CITY_RESP[i]:
+                    tt = song.t(bar, bt) + song.hum(0.002)
+                    if kind == "A1":
+                        mx.add("tpt", tt, trumpet(S.note(nm), song.vel(0.6), song.beat * 0.22), 0.3, 0.3)
+                    else:
+                        mx.add("mel", tt, I.marimba(S.note(nm), song.vel(0.7), r), 0.34, 0.3)
             # ------------------------------------------------ harmony
             for half in (0, 1):
                 ch = chs[i][half]
@@ -246,7 +285,7 @@ def _premix_city(seed: int):
                 fifth = bm + 7 if bm + 7 <= 50 else bm - 5
                 if kind == "B":                            # walking bass in quarters
                     nxt_root = CH6[chs[(i + 1) % 8][0]][0] if half == 1 else CH6[chs[i][1]][0]
-                    walk = [bm, bm + (4 if ch in ("Bb", "C", "C7", "F") else 3), fifth,
+                    walk = [bm, bm + (tri[1] - tri[0]) % 12, fifth,
                             bass_note(nxt_root) + (1 if (bass_note(nxt_root) - bm) % 12 > 6 else -1)]
                     for k in range(2):
                         nb = walk[k + 2 * half]
@@ -283,7 +322,7 @@ def _premix_city(seed: int):
             # ------------------------------------------------ colour lines
             if kind in ("A2", "A3"):
                 for half in (0, 1):
-                    nm = COUNTER_A3[i][half]
+                    nm = COUNTER_CITY[i][half]
                     if kind == "A3" and last:
                         nm = ("C6", "E6")[half]
                     mx.add("glock", song.t(bar, half * 2) + 0.006, I.glock(S.note(nm), song.vel(0.55), r),
@@ -293,12 +332,12 @@ def _premix_city(seed: int):
                 sv = voice(CH6[ch][1][:3], None, 62, 76)
                 mx.add("stab", song.t(bar, 2.5), brass_stab(sv, 0.7, 0.1), 0.28, 0.1)
                 mx.add("stab", song.t(bar, 3.0), brass_stab(sv, 0.85, 0.16), 0.32, 0.1)
-            if kind == "B" and i == 3:                     # trumpet call-back of the hook in the gap
+            if kind == "B" and i == 3:                     # marimba hook fragment in the gap (A4 C5 D5 over Dm7)
                 for k, nm in enumerate(("A4", "C5", "D5")):
-                    mx.add("tpt", song.t(bar, 2.0 + k * 0.5), trumpet(S.note(nm), 0.7, song.beat * 0.4), 0.36, 0.25)
-            if kind == "B" and i == 7:                     # 'beep-beep' car horn (F4 + A4) on the last beat
+                    mx.add("mel", song.t(bar, 2.0 + k * 0.5), I.marimba(S.note(nm), song.vel(0.75), r), 0.36, 0.25)
+            if kind == "B" and i == 7:                     # 'beep-beep' car horn (E4 + G4, inside C7) on the last beat
                 for t0 in (song.t(bar, 3.0), song.t(bar, 3.5)):
-                    mx.add("fx", t0, car_toot(65, 0.13, r) + car_toot(69, 0.13, r), 0.1, 0.35)
+                    mx.add("fx", t0, car_toot(64, 0.13, r) + car_toot(67, 0.13, r), 0.1, 0.35)
             if kind == "B" and i % 2 == 1:                 # music-box sparkle
                 root, tri, _ = CH6[chs[i][1]]
                 v = voice(tri[:3], None, 79, 92)

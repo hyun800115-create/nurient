@@ -168,15 +168,19 @@ class Centre:
             out.append((s, key, im, n, step, sc))
         return out
 
-    def stock_ops(self, ox, oy):
+    def stock_ops(self, ox, oy, band='stock'):
+        """Draw ops of the stock stacks in one band ('stock' = inside the racks, 'front' = floor bays); each op
+        (img, x, y, sort_y) - sort_y = the slot's ground y on the canvas (front band is y-sorted with actors)."""
         ops = []
         for s, key, im, n, step, sc in self.stock:
+            if s.get('band', 'stock') != band:
+                continue
             ims = im.resize((int(im.width * sc), int(im.height * sc)), Image.LANCZOS)
             ax, ay = 36 * sc, 54 * sc
             for k in range(n):
                 x = ox + s['point'][0] - ax
                 y = oy + s['point'][1] - ay - k * step
-                ops.append((ims, int(round(x)), int(round(y))))
+                ops.append((ims, int(round(x)), int(round(y)), oy + s['point'][1] + k * 0.001))
         return ops
 
     def draw(self, canvas, ox, oy, shell=1.0, cut=0.0, belt=0, doors=(0, 0), lamp=0, actors=None, stock=True):
@@ -195,13 +199,15 @@ class Centre:
             put(L.layer('interior'))
             put(L.patch('lamp', lamp))
             if stock:
-                for im, x, y in self.stock_ops(ox, oy):
+                for im, x, y, _ in self.stock_ops(ox, oy, 'stock'):
                     canvas.alpha_composite(im, (x, y))
+            put(L.layer('interior_racks'))
             for im, x, y, _ in sorted(actors.get('mid', []), key=lambda t: t[3]):
                 canvas.alpha_composite(im, (x, y))
             put(L.layer('interior_front'))
             put(L.patch('conveyor', belt))
-            for im, x, y, _ in sorted(actors.get('front', []), key=lambda t: t[3]):
+            front = list(actors.get('front', [])) + (self.stock_ops(ox, oy, 'front') if stock else [])
+            for im, x, y, _ in sorted(front, key=lambda t: t[3]):
                 canvas.alpha_composite(im, (x, y))
             put(L.layer('stub'))
         else:
@@ -573,7 +579,7 @@ def preview_all(lib, out):
     op = Image.new('RGBA', (lib.W, lib.H), (0, 0, 0, 0))
     Centre(lib).draw(op, lib.A[0], lib.A[1], shell=0.0, stock=False)
     ents.append(('logistics_center (open, empty racks)', op))
-    for name in ('back', 'floor', 'interior', 'interior_front', 'stub', 'shell_cut', 'props'):
+    for name in ('back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub', 'shell_cut', 'props'):
         ents.append(('_' + name, lib.layer(name).resize((lib.W // 2, lib.H // 2), Image.LANCZOS)))
     for key in ('furniture_workshop', 'appliance_factory'):
         s = lib.S[key]

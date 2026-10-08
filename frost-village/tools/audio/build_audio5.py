@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -53,125 +54,96 @@ REL = "audio5"                                                    # manifest pat
 #   References: bgm_village / bgm_harbor -24.5, amb_sea / amb_harbor / amb_town -31.5, sfx_splash -17,
 #   sfx_step_snow -17.5, sfx_school_bell -17.5, sfx_boat_horn / sfx_ferry_bell -16.5, sfx_chatter -19,
 #   sfx_rope_creak -19.5.
-_SWELL_NOTE = ("Swell sync (src/systems/Water.js, SWELL.shore.period 6.0 s): the loop holds swellWaves shore-swell "
-               "periods of swellPeriod s; cues.waterline = loop times the near waves' white water reaches the "
-               "waterline (= the shader's shore cycle 0, when the crest line meets the shore), cues.breaks = their "
-               "crash ~0.5-0.8 s earlier, cues.upmost = where the backwash starts. To start the bed in step with the "
-               "crests on screen: cyc = fract((w * t + water._nu(gx, gy) - PI / 2) / (2 * PI)) at the shore point "
-               "nearest the camera (w = 2 PI / 6.0, t = the Water time, g = its G coords) and "
-               "seek = (swellPhase + cyc * swellPeriod + k * swellPeriod) mod duration (k = any integer, random = "
-               "another wave of the set); play the loop from that seek (Phaser sound.play({ seek })) and re-seek "
-               "whenever the bed (re)starts. The loop is swellWaves * 6.0 s to a few ms, so it stays in step.")
-_CRASH_NOTE = ("wave hitting rocks / the breakwater / quay ('철썩!'): a ~0.2 s surge runs in, the slap is at "
-               "cues.impact. Group sfx_wave_crash. Trigger it from the Water.js crash events (they fire when a big "
-               "shore-swell crest, av >= 0.78, reaches a rock / breakwater point, about every 6 s there, and Water "
-               "starts water/fx_wave_crash there - frame 0 is the impact): Water.crashEvents(t0, t1, fn) is a pure "
-               "function of time, so call it looking AHEAD by cues.impact - water.crashEvents(tPrev + 0.2, t + 0.2, "
-               "(x, y, strength) => ...) - and start the sound then; its slap lands on the spray's frame 0. "
-               "Volume = clamp(0.25 + 0.55 * strength, 0.3, 1) x distance falloff (strength 0.4-1.4), rate "
-               "0.94-1.06 (keep near 1, the impact moves with the rate); skip points off camera; at most 2 crash "
-               "sounds in any 0.5 s (keep the nearest).")
-_WASH_NOTE = ("one wash running up a sand beach and draining back with a fizzing hiss (group sfx_wave_wash: 1 medium, "
-              "2 small quick lap, 3 bigger with a long backwash). Play it on the shore-swell crests at the sand "
-              "near the camera, every crest (6 s): the Water.js shore cycle cyc = fract((w * t + water._nu(gx, gy) "
-              "- PI / 2) / (2 * PI)) wraps to 0 when a crest reaches the waterline - start the sound cues.waterline "
-              "s BEFORE that (look ahead) so its white water arrives with the crest line; the swash on screen runs "
-              "up for 1.8 s, the sound turns back at cues.upmost. Volume 0.3-0.8 x water._av(gx, gy, t) (the "
-              "wave's size on screen), rate 0.95-1.05. amb_beach only carries a low surf bed on the same grid, so "
-              "these washes ARE the near surf.")
-_SPLASH_NOTE = ("hand splash (group sfx_splash_beach = sfx_splash_1, 1b, 1c - interchangeable): beachfolk "
-                "splash_play impact frame, kids in the shallows. Do NOT name a group 'sfx_splash' - that is the v1 "
-                "fish-splash key.")
-_DRY_NOTE = ("footstep on dry sand (group sfx_sand_step = 1, 2, 3). Play like sfx_step_snow on the walk-cycle "
-             "contact frames while the player / a walker is on dry beach sand (call volume ~0.32 like the snow "
-             "steps, rate 0.9-1.1). Each is over within ~120 ms, so running steps (0.225 s apart) never overlap.")
-_WET_NOTE = ("footstep on damp, firm sand at the waterline (group sfx_sand_step_wet = 4, 5, 'thup'): use it instead "
-             "of sfx_sand_step in the wet band (Water.js shoreDistance between about -RUNUP and 0 on sand), same "
-             "call volume ~0.32.")
-_KIDS_NOTE = ("children playing a little way off (group sfx_beach_kids: 1 giggle 'hi-hi-hi', 2 squeal 'ee-YAA!', "
-              "3 call 'o-maa~!', 4 'wheee~'). Play near beachfolk families / kids at random every 6-15 s (one at a "
-              "time), volume 0.4-0.9 by distance, rate 0.95-1.08; 4 also suits the water slide / banana boat. "
-              "These are the recognisable calls - amb_beach only has a far babble.")
+_SWELL_NOTE = ("SWELL SYNC (src/systems/Water.js, shore swell period 6.0 s): the loop is swellWaves periods of "
+               "swellPeriod s, one near wave per crest. cues.waterline = loop times its white water reaches the "
+               "waterline (shader shore cycle 0), cues.breaks = the break just before, cues.upmost = backwash start. "
+               "To start in step with the crests on screen: cyc = fract((water.shore.w * water.t + water._nu(gx, gy) "
+               "- PI/2) / (2 PI)) at the sand / shore point nearest the camera; seek = (swellPhase + (cyc + k) * "
+               "swellPeriod) mod duration (any integer k); play with { seek } and re-seek whenever the bed restarts.")
+_CRASH_NOTE = ("Wave on rocks / breakwater / quay ('철썩!'), group sfx_wave_crash; a ~0.2 s surge runs in, the slap is at "
+               "cues.impact. Drive it from Water.js crash events (big crests, av >= 0.78, at rock / breakwater points, "
+               "about every 6 s; Water starts water/fx_wave_crash there and its frame 0 is the impact). crashEvents is "
+               "a pure function of time, so look ahead by cues.impact: water.crashEvents(tPrev + 0.2, t + 0.2, "
+               "(x, y, strength) => play) - the slap then lands on frame 0. Volume clamp(0.25 + 0.55 * strength, 0.3, "
+               "1) x distance (strength 0.4-1.4), rate 0.94-1.06; skip off-camera points; at most 2 in any 0.5 s.")
+_WASH_NOTE = ("Swash up the sand and back with a fizzing hiss, group sfx_wave_wash (1 medium, 2 small quick lap, 3 big "
+              "with a long backwash). Play one on every shore-swell crest at the sand near the camera: the shore cycle "
+              "cyc (see amb_sea_waves) wraps to 0 when a crest reaches the waterline - start the sound "
+              "cues.waterline s before that. Volume 0.3-0.8 x water._av(gx, gy, t), rate 0.95-1.05. amb_beach only "
+              "has a low surf bed on the same grid, so these washes ARE the near surf.")
+_DRY_NOTE = ("Footstep on dry sand, group sfx_sand_step (1-3): like sfx_step_snow on the walk-cycle contact frames on "
+             "beach sand (call volume ~0.32, rate 0.9-1.1); each is over within ~120 ms (running steps 0.225 s apart).")
+_WET_NOTE = ("Footstep on damp firm sand, group sfx_sand_step_wet (4-5, 'thup'): instead of sfx_sand_step in the wet "
+             "band at the waterline (Water.js shore distance about -RUNUP..0 on sand), call volume ~0.32.")
+_KIDS_NOTE = ("Children playing nearby, group sfx_beach_kids (1 giggle, 2 squeal, 3 'o-maa~!', 4 'wheee~'): near "
+              "beachfolk families / kids, one at a time at random every 6-15 s, volume 0.4-0.9 by distance, rate "
+              "0.95-1.08 (4 also suits the banana boat). amb_beach only has a far babble.")
 SOUNDS = {
     "bgm_beach":          ("music", True, -24.5, {"bars": 24, "meter": "4/4", "tonality": "F major",
-                                                 "notes": "Sunny Beach theme: island / calypso lilt (120 bpm, swung 8ths), "
-                                                          "steel pan plays the bgm_village hook, ukulele strum, calypso "
-                                                          "bass, congas + claves; B = the village B melody on ocarina. "
-                                                          "Crossfade in with Audio.playMusic('bgm_beach'). Loading: "
-                                                          "~18 MB as decoded PCM (48 s stereo float32 at 48 kHz), so "
-                                                          "keep it OUT of the Preload queue and load it lazily, "
-                                                          "together with amb_beach, when the player first nears the "
-                                                          "beach (e.g. a lazy rule /^(bgm_beach|amb_beach)$/ queued "
-                                                          "like the lazy fragments)."}),
-    "amb_sea_waves":      ("ambience", True, -31.5, {"notes": "REAL rolling sea for the village coast, replacing audio/amb_sea: "
-                                                              "Audio.setAmbience('amb_sea_waves', 0.15 + sea * 0.6) exactly "
-                                                              "where Game.js drives amb_sea today, amb_sea to 0, and then mark "
-                                                              "amb_sea unused (Assets.isUnused) so its 4.6 MB decode is not "
-                                                              "loaded. One near breaker per shore-swell crest (sizes rise and "
-                                                              "fall in a set; plunging / spilling, run-up, hiss / fizz / "
-                                                              "shingle backwash), irregular waves further along the coast, far "
-                                                              "surf, sea rumble, ice floes knocking. Loads deferred with the "
-                                                              "other amb_ loops (Game scene). Also usable at the harbour's open "
-                                                              "coast under amb_harbor. " + _SWELL_NOTE}),
-    "amb_beach":          ("ambience", True, -31.5, {"notes": "Sunny Beach bed: a LOW spilling surf on sand on the same 6 s "
-                                                              "swell grid (seek it like amb_sea_waves), a far babble of "
-                                                              "children, far gulls and splashes, warm breeze, faint holiday "
-                                                              "crowd. Audio.setAmbience('amb_beach', 0..1) by distance to the "
-                                                              "sand, crossfaded against amb_sea_waves / amb_harbor; put the "
-                                                              "life on top as one-shots (sfx_wave_wash on the crests near the "
-                                                              "camera, sfx_beach_kids near families, audio4 sfx_seagull now "
-                                                              "and then). Loading: lazy with bgm_beach (see there) - keep it "
-                                                              "out of the generic ^amb_ deferred rule, e.g. "
-                                                              "/^(bgm_village|amb_(?!beach)|sfx_lute)/. " + _SWELL_NOTE}),
+                                                 "notes": "Sunny Beach theme (120 bpm calypso lilt): steel pan plays the "
+                                                          "bgm_village hook and its B melody, ukulele, calypso bass, "
+                                                          "congas, claves. Audio.playMusic('bgm_beach') at the beach. "
+                                                          "~18 MB decoded: keep it out of Preload and load it lazily "
+                                                          "with amb_beach when the player first nears the beach (e.g. "
+                                                          "a lazy rule /^(bgm_beach|amb_beach)$/)."}),
+    "amb_sea_waves":      ("ambience", True, -31.5, {"notes": "Real rolling sea for the village coast, replacing "
+                                                              "audio/amb_sea: Audio.setAmbience('amb_sea_waves', 0.15 + "
+                                                              "sea * 0.6) where Game.js drives amb_sea now, amb_sea to 0 "
+                                                              "and then marked unused (saves its 4.6 MB decode). Cold "
+                                                              "coast: near breakers on the swell, waves along the coast, "
+                                                              "far surf, rumble, ice floes knocking - keep it on the "
+                                                              "snowy side of the beach transition. Deferred with the "
+                                                              "other amb_ loops. " + _SWELL_NOTE}),
+    "amb_beach":          ("ambience", True, -31.5, {"notes": "Sunny Beach bed: low spilling surf on the same 6 s grid "
+                                                              "(seek it like amb_sea_waves), far children's babble, two "
+                                                              "far gulls, warm breeze, faint crowd. setAmbience('amb_beach',"
+                                                              " 0..1) by distance to the sand, crossfaded against "
+                                                              "amb_harbor (amb_sea_waves has ice knocks: fade it out "
+                                                              "before the sand). Add the life as one-shots: "
+                                                              "sfx_wave_wash on crests, sfx_beach_kids, audio4 "
+                                                              "sfx_seagull now and then. Lazy with bgm_beach; keep it "
+                                                              "out of the generic ^amb_ rule, e.g. "
+                                                              "/^(bgm_village|amb_(?!beach)|sfx_lute)/."}),
     "sfx_wave_crash_1":   ("sfx", False, -16.5, {"cues": {"impact": 0.2}, "notes": "medium slap + white spray. " + _CRASH_NOTE}),
-    "sfx_wave_crash_2":   ("sfx", False, -16.5, {"cues": {"impact": 0.2}, "notes": "big boom, long spray and pour-off "
-                                                                            "(see sfx_wave_crash_1)."}),
+    "sfx_wave_crash_2":   ("sfx", False, -16.5, {"cues": {"impact": 0.2}, "notes": "big boom, long spray (see _1)."}),
     "sfx_wave_crash_3":   ("sfx", False, -16.5, {"cues": {"impact": 0.2, "impact2": 0.54},
-                                                "notes": "double slap, a second surge 0.34 s later (see sfx_wave_crash_1)."}),
-    "sfx_wave_wash":      ("sfx", False, -19.0, {"cues": sfx5.wash_cues(1), "notes": "medium wash. " + _WASH_NOTE}),
+                                                "notes": "double slap (see _1)."}),
+    "sfx_wave_wash":      ("sfx", False, -19.0, {"cues": sfx5.wash_cues(1), "notes": _WASH_NOTE}),
     "sfx_wave_wash_2":    ("sfx", False, -19.0, {"cues": sfx5.wash_cues(2), "notes": "small quick lap (see sfx_wave_wash)."}),
-    "sfx_wave_wash_3":    ("sfx", False, -19.0, {"cues": sfx5.wash_cues(3), "notes": "bigger wash, long fizzing backwash "
-                                                                                    "(see sfx_wave_wash)."}),
-    "sfx_splash_1":       ("sfx", False, -17.5, {"cues": {"slap": 0.0, "slap2": 0.13}, "notes": "'splish-splish', both "
-                                                "hands. " + _SPLASH_NOTE}),
-    "sfx_splash_1b":      ("sfx", False, -17.5, {"cues": {"slap": 0.0}, "notes": "one flat slap + a flick of spray "
-                                                "(see sfx_splash_1)."}),
-    "sfx_splash_1c":      ("sfx", False, -17.5, {"cues": {"slap": 0.0}, "notes": "three quick little paddles "
-                                                "(see sfx_splash_1)."}),
-    "sfx_splash_2":       ("sfx", False, -17.0, {"cues": {"slap": 0.0}, "notes": "jumping in feet-first 'sploosh': a "
-                                                "swimmer entering the water, a kid jumping off the raft. Play by KEY - "
-                                                "not in the hand-splash group."}),
-    "sfx_splash_3":       ("sfx", False, -16.5, {"cues": {"slap": 0.0}, "notes": "cannonball 'KA-BLOOMP' / big jump; also a "
-                                                "banana boat tipping its riders off. Play by KEY - not in the "
-                                                "hand-splash group."}),
+    "sfx_wave_wash_3":    ("sfx", False, -19.0, {"cues": sfx5.wash_cues(3), "notes": "big wash (see sfx_wave_wash)."}),
+    "sfx_splash_1":       ("sfx", False, -17.5, {"cues": {"slap": 0.0, "slap2": 0.13},
+                                                "notes": "Hand splash, group sfx_splash_beach (1, 1b, 1c): beachfolk "
+                                                         "splash_play impact frame, kids in the shallows. (Never name a "
+                                                         "group 'sfx_splash': that is the v1 fish-splash key.)"}),
+    "sfx_splash_1b":      ("sfx", False, -17.5, {"cues": {"slap": 0.0}, "notes": "flat slap (see sfx_splash_1)."}),
+    "sfx_splash_1c":      ("sfx", False, -17.5, {"cues": {"slap": 0.0}, "notes": "three paddles (see sfx_splash_1)."}),
+    "sfx_splash_2":       ("sfx", False, -17.0, {"cues": {"slap": 0.0}, "notes": "jumping in feet-first: a swimmer "
+                                                "entering the water. Play by key (not in the hand-splash group)."}),
+    "sfx_splash_3":       ("sfx", False, -16.5, {"cues": {"slap": 0.0}, "notes": "cannonball / big jump, banana boat "
+                                                "tipping over. Play by key."}),
     "sfx_pool_splash":    ("sfx", False, -17.0, {"cues": {"slap": 0.0, "laps": 0.62},
-                                                "notes": "hotel pool dive (crisp slap, plunge, wall + deck reflections, "
-                                                         "gutter laps). Guest diving into beach_bld/hotel_pool."}),
+                                                "notes": "Guest diving into the hotel pool (tiled walls, gutter laps)."}),
     "sfx_lifeguard_whistle": ("sfx", False, -18.0, {"cues": {"tweet": 0.0, "tweeet": 0.27},
-                                                   "notes": "pea whistle 'tweet - tweeeet' (F7, deep pea trill): lifeguard "
-                                                            "on the tower calls a swimmer back from the buoy line / start "
-                                                            "of a rescue. Throttle to once per 8 s."}),
+                                                   "notes": "Pea whistle 'tweet - tweeeet' (F7): lifeguard calls a "
+                                                            "swimmer back from the buoy line. At most once per 8 s."}),
     "sfx_icecream_bell":  ("sfx", False, -17.5, {"cues": {"chime": 0.0, "last": 0.62, "jingle": 0.95},
-                                                "notes": "ice-cream cart chime (bright bells play the bgm_village hook "
-                                                         "A C D -> F, then a jingle). icecream_cart vendor rings it when "
-                                                         "customers arrive / every 20-40 s while open; volume by distance."}),
+                                                "notes": "Ice-cream cart chime (the village hook, landing on F): when "
+                                                         "customers arrive / every 20-40 s while open."}),
     "sfx_beachball_bounce": ("sfx", False, -17.5, {"cues": {"bounce1": 0.0, "bounce2": 0.3, "bounce3": 0.48},
-                                                  "notes": "vinyl beach ball 'boing' (F5 + a vinyl 'pock', voiced to carry "
-                                                           "on phone speakers) on the sand + two little re-bounces. Ball "
-                                                           "landing after ball_throw; for ball_catch play it at volume "
+                                                  "notes": "Beach ball 'boing' (F5 + vinyl 'pock', carries on phones) "
+                                                           "and two re-bounces: ball landing; ball_catch at volume "
                                                            "0.6, rate 1.15."}),
     "sfx_hotel_bell":     ("sfx", False, -17.5, {"cues": {"ding": 0.004},
-                                                "notes": "reception desk service bell 'ding' (C7). Guest checks in at "
-                                                         "resort_hotel / pension; receptionist answers."}),
+                                                "notes": "Reception bell 'ding' (C7): check-in at resort_hotel / pension."}),
     "sfx_sand_step_1":    ("sfx", False, -17.5, {"notes": _DRY_NOTE}),
-    "sfx_sand_step_2":    ("sfx", False, -17.5, {"notes": "dry sand (see sfx_sand_step_1)."}),
-    "sfx_sand_step_3":    ("sfx", False, -17.5, {"notes": "dry sand with a quick toe scuff (see sfx_sand_step_1)."}),
+    "sfx_sand_step_2":    ("sfx", False, -17.5, {"notes": "dry sand (see _1)."}),
+    "sfx_sand_step_3":    ("sfx", False, -17.5, {"notes": "dry sand, quick toe scuff (see _1)."}),
     "sfx_sand_step_4":    ("sfx", False, -17.5, {"notes": _WET_NOTE}),
-    "sfx_sand_step_5":    ("sfx", False, -17.5, {"notes": "damp sand, heel-ball 'thup-p' (see sfx_sand_step_4)."}),
-    "sfx_beach_kids_1":   ("sfx", False, -19.0, {"notes": "giggle. " + _KIDS_NOTE}),
-    "sfx_beach_kids_2":   ("sfx", False, -19.0, {"notes": "squeal (see sfx_beach_kids_1)."}),
-    "sfx_beach_kids_3":   ("sfx", False, -19.0, {"notes": "'o-maa~!' call (see sfx_beach_kids_1)."}),
-    "sfx_beach_kids_4":   ("sfx", False, -19.0, {"notes": "'wheee~' (see sfx_beach_kids_1)."}),
+    "sfx_sand_step_5":    ("sfx", False, -17.5, {"notes": "damp sand 'thup-p' (see _4)."}),
+    "sfx_beach_kids_1":   ("sfx", False, -19.0, {"notes": _KIDS_NOTE}),
+    "sfx_beach_kids_2":   ("sfx", False, -19.0, {"notes": "squeal (see _1)."}),
+    "sfx_beach_kids_3":   ("sfx", False, -19.0, {"notes": "'o-maa~!' (see _1)."}),
+    "sfx_beach_kids_4":   ("sfx", False, -19.0, {"notes": "'wheee~' (see _1)."}),
 }
 GROUPS = {
     "sfx_wave_crash": ["sfx_wave_crash_1", "sfx_wave_crash_2", "sfx_wave_crash_3"],
@@ -287,9 +259,18 @@ def write_manifest(meas):
                         "same toolkit + loudness conventions as assets/audio .. audio4)",
            "audio": audio, "audioGroups": GROUPS}
     with open(os.path.join(OUT, "manifest.json"), "w") as f:
-        json.dump(man, f, indent=1, ensure_ascii=False)
-        f.write("\n")
+        f.write(manifest_text(man) + "\n")
     return man
+
+
+def manifest_text(man) -> str:
+    """json.dumps(indent=1) with every list of plain numbers / strings on one line (files, cues, groups): the
+    same JSON, ~1.5 kB smaller and easier to read."""
+    txt = json.dumps(man, indent=1, ensure_ascii=False)
+    scalar = r'(?:-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?|"(?:[^"\\\n]|\\.)*")'
+    pat = re.compile(r"\[\n((?:[ ]*" + scalar + r",?\n)+)[ ]*\]")
+    return pat.sub(lambda m: "[" + ", ".join(ln.strip().rstrip(",") for ln in m.group(1).strip().split("\n")) + "]",
+                   txt)
 
 
 # ----------------------------------------------------------------------------- listening page

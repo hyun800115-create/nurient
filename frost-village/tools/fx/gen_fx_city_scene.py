@@ -408,12 +408,12 @@ def main(out=None, W=2240, H=1240, frame=5):
     alarm, ala, _ = sheet_frames('fx_alarm_flash')
     add(ap[1], lambda: put(canvas, aimg, ap, aanc))
     add(ap[1] + 1, lambda: put(canvas, alarm[frame % 8], ap + np.array(atop) + [0, -26], ala, scale=0.75))
-    labels.append((ap + np.array(atop) + [-86, -26], 'fx_alarm_flash'))
+    labels.append((ap + np.array(atop) + [0, -84], 'fx_alarm_flash'))
     # --- crowd on the far sidewalk, watching and clapping, with story FX over a few heads
     crowd = [((7.2, -6.6), 'clap', 'SE', 1, None), ((8.4, -6.9), 'clap', 'S', 4, None),
-             ((9.6, -6.7), 'idle', 'E', 9, 'fx_question_mark'), ((6.0, -7.0), 'happy', 'SE', 15, 'fx_lightbulb_idea'),
+             ((9.6, -6.7), 'idle', 'E', 9, 'fx_question_mark'), ((6.0, -7.0), 'clap', 'SE', 15, None),
              ((10.8, -6.9), 'talk', 'S', 22, None), ((12.0, -6.6), 'idle', 'E', 31, 'fx_memory_sparkle'),
-             ((13.2, -6.8), 'clap', 'SE', 40, None)]
+             ((13.2, -6.8), 'happy', 'SE', 40, 'fx_lightbulb_idea')]
     for (x, y), an, dr, seed, fx in crowd:
         pp = S(x, y)
         per = person(None, seed)
@@ -426,7 +426,8 @@ def main(out=None, W=2240, H=1240, frame=5):
             fr, fan, fsp = sheet_frames(fx)
             fi = (frame if fsp['repeat'] == -1 else len(fr) - 2) % len(fr)
             add(pp[1] + 400, (lambda fr=fr, fan=fan, pp=pp, fi=fi: put(canvas, fr[fi], pp + [0, -80], fan, scale=0.9)))
-            labels.append((pp + [0, -168], fx))
+            labels.append((pp + {'fx_memory_sparkle': [-40, -176], 'fx_lightbulb_idea': [70, -150]}.get(fx, [0, -168]),
+                           fx))
     labels.append((S(9.6, -7.9) + [0, 46], 'crowd (assets/townfolk) watching - nobody is hurt'))
     # --- fight cloud + police (up the street)
     fcp = S(-7.4, -3.0)
@@ -454,14 +455,23 @@ def main(out=None, W=2240, H=1240, frame=5):
     # --- wanted board (civic wanted_board when available, else a simple wooden board) with posters
     wb = S(-4.6, -0.5)
     poster = Image.open(os.path.join(ASSETS, 'fx_city', 'ui_wanted_poster.png')).convert('RGBA')
+    try:                                                # composed like the game: portrait + text in the boxes
+        import gen_fx_city_preview as PV
+        pe = _man('fx_city')['sprites']['ui_wanted_poster']
+        posters = [PV.wanted_mock(poster, pe, seed=12),
+                   PV.wanted_mock(poster, pe, seed=27, name='눈덩이 장난꾼 "통통이"', reward='포상금 300',
+                                  mask=False)]
+    except Exception as e:                              # pragma: no cover
+        print('  (poster mock skipped: %s)' % e)
+        posters = [poster, poster]
     try:
         bimg, banc, bdef = sprite('civic', 'wanted_board')
         pts = [np.array(p_) for p_ in bdef.get('posterPoints', [])[:3]]
 
         def board():
             put(canvas, bimg, wb, banc)
-            for p_ in pts:
-                put(canvas, poster, wb + p_, (0.5, 0.5), scale=0.22)
+            for k_, p_ in enumerate(pts):
+                put(canvas, posters[k_ % 2], wb + p_, (0.5, 0.5), scale=0.22)
     except Exception:
         def board():
             dd = ImageDraw.Draw(canvas)
@@ -470,9 +480,24 @@ def main(out=None, W=2240, H=1240, frame=5):
                 dd.rounded_rectangle([px_ - 5, y - 120, px_ + 5, y], 3, fill=(110, 70, 40, 255), outline=(60, 36, 20, 255))
             dd.rounded_rectangle([x - 70, y - 150, x + 70, y - 52], 8, fill=(201, 143, 85, 255), outline=(78, 46, 22, 255),
                                  width=3)
-            dd.rounded_rectangle([x - 74, y - 158, x + 74, y - 146], 6, fill=(244, 247, 251, 255), outline=(126, 147, 181, 255))
-            for dx in (-36, 36):
-                put(canvas, poster, (x + dx, y - 101), (0.5, 0.5), scale=0.29)
+            # wooden top plank with a lumpy snow cap (4x supersampled so the edges stay soft)
+            q = 4
+            cap = Image.new('RGBA', (176 * q, 40 * q), (0, 0, 0, 0))
+            cd = ImageDraw.Draw(cap)
+            cd.rounded_rectangle([4 * q, 22 * q, 172 * q, 34 * q], 5 * q, fill=(132, 82, 44, 255),
+                                 outline=(70, 40, 20, 255), width=2 * q)
+            bumps = ((26, 8), (56, 11), (92, 10), (126, 12), (154, 8))
+            for grow, colr in ((1.6, (150, 168, 198, 255)), (0.0, (252, 253, 255, 255))):
+                g = grow * q
+                cd.rounded_rectangle([2 * q - g, 11 * q - g, 174 * q + g, 25 * q + g], 7 * q, fill=colr)
+                for bx_, r_ in bumps:
+                    cd.ellipse([(bx_ - r_) * q - g, (17 - r_) * q - g, (bx_ + r_) * q + g, (17 + r_ * 0.6) * q + g],
+                               fill=colr)
+            cd.rounded_rectangle([10 * q, 21 * q, 166 * q, 24 * q], 2 * q, fill=(214, 226, 242, 255))
+            cap = cap.resize((176, 40), Image.LANCZOS)
+            canvas.alpha_composite(cap, (int(x - 88), int(y - 182)))
+            for k_, dx in enumerate((-36, 36)):
+                put(canvas, posters[k_], (x + dx, y - 101), (0.5, 0.5), scale=0.29)
     add(wb[1], board)
     labels.append((wb + [0, 24], 'wanted board + ui_wanted_poster'))
     # --- paint back to front, then labels

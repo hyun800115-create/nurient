@@ -64,6 +64,8 @@ export const SHORE_TYPES = {
   none: { runup: 0.0, edge: 0, wave: false },
 };
 
+const TYPE_NAMES = Object.keys(SHORE_TYPES);
+
 /**
  * Swell constants shared by the shader (uniforms) and heightAt() / slopeAt().
  * waves: directional, `rot` degrees from the region's swell direction, `len` wavelength in G px,
@@ -583,12 +585,23 @@ function imageTexture(renderer, scene, key, repeat) {
 
 // ------------------------------------------------------------------------------------------------ masks
 function inPoly(p, x, y) {
+  const bb = p.__bb || polyBox(p);
+  if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) return false;        // (same answer, much cheaper)
   let inside = false;
   for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
     const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
     if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
+}
+
+/** cached bounding box of a flat polygon [x0, y0, x1, y1, ...] */
+function polyBox(p) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]); }
+  const bb = [x0, y0, x1, y1];
+  try { Object.defineProperty(p, '__bb', { value: bb, enumerable: false }); } catch (e) { /* frozen array: recompute */ }
+  return bb;
 }
 
 /**
@@ -599,7 +612,12 @@ function inPoly(p, x, y) {
  */
 function maskFn(mask, wp) {
   if (typeof mask === 'function') return (x, y) => mask(x, y - wp);
-  if (mask && typeof mask.shoreY === 'function') { const f = mask.shoreY; return (x, y) => y - wp < f(x); }
+  if (mask && typeof mask.shoreY === 'function') {
+    const f = mask.shoreY;
+    const fn = (x, y) => y - wp < f(x);
+    fn.curve = f; fn.wp = wp;                    // _buildField evaluates the curve once per sample column
+    return fn;
+  }
   if (mask && (mask.water || mask.land)) {
     const norm = (p) => (Array.isArray(p) ? { poly: p, waterPx: wp } : { poly: p.poly, waterPx: p.waterPx !== undefined ? p.waterPx : wp });
     const water = mask.water ? mask.water.map(norm) : null, land = (mask.land || []).map(norm);
@@ -629,44 +647,90 @@ function typeFn(st, def) {
   return () => def;
 }
 
-// 8SSEDT: nearest seed offset for every cell (seed cells: flag 1). Returns squared distances (cells^2).
+// 8SSEDT: nearest seed offset (ox, oy in cells) for every cell (seed cells: flag 1). Two raster passes;
+// the neighbour test is written out inline (no closures: ~5x faster in JS than the textbook version).
+const EDT_INF = 30000;
 function edt(nx, ny, seed, ox, oy) {
-  const INF = 30000;
+  const INF = EDT_INF;
   for (let i = 0; i < nx * ny; i++) { if (seed[i]) { ox[i] = 0; oy[i] = 0; } else { ox[i] = INF; oy[i] = INF; } }
-  const d2 = (i) => ox[i] * ox[i] + oy[i] * oy[i];
-  const cmp = (i, x, y, dx, dy) => {
-    const xx = x + dx, yy = y + dy;
-    if (xx < 0 || yy < 0 || xx >= nx || yy >= ny) return;
-    const j = yy * nx + xx;
-    if (ox[j] >= INF) return;
-    const cx = ox[j] + dx, cy = oy[j] + dy;
-    if (cx * cx + cy * cy < d2(i)) { ox[i] = cx; oy[i] = cy; }
-  };
+  // cand(i, j, dx, dy): take cell j's seed (offset + (dx, dy)) for cell i when it is nearer
+  let j, cx, cy, ci;
   for (let y = 0; y < ny; y++) {
-    for (let x = 0; x < nx; x++) { const i = y * nx + x; cmp(i, x, y, -1, 0); cmp(i, x, y, 0, -1); cmp(i, x, y, -1, -1); cmp(i, x, y, 1, -1); }
-    for (let x = nx - 1; x >= 0; x--) cmp(y * nx + x, x, y, 1, 0);
+    const row = y * nx, up = y > 0;
+    for (let x = 0; x < nx; x++) {
+      const i = row + x;
+      ci = ox[i] * ox[i] + oy[i] * oy[i];
+      if (x > 0) { j = i - 1; if (ox[j] < INF) { cx = ox[j] - 1; cy = oy[j]; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } } }
+      if (up) {
+        j = i - nx; if (ox[j] < INF) { cx = ox[j]; cy = oy[j] - 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } }
+        if (x > 0) { j = i - nx - 1; if (ox[j] < INF) { cx = ox[j] - 1; cy = oy[j] - 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } } }
+        if (x < nx - 1) { j = i - nx + 1; if (ox[j] < INF) { cx = ox[j] + 1; cy = oy[j] - 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; } } }
+      }
+    }
+    for (let x = nx - 2; x >= 0; x--) {
+      const i = row + x;
+      j = i + 1;
+      if (ox[j] < INF) { cx = ox[j] + 1; cy = oy[j]; if (cx * cx + cy * cy < ox[i] * ox[i] + oy[i] * oy[i]) { ox[i] = cx; oy[i] = cy; } }
+    }
   }
   for (let y = ny - 1; y >= 0; y--) {
-    for (let x = nx - 1; x >= 0; x--) { const i = y * nx + x; cmp(i, x, y, 1, 0); cmp(i, x, y, 0, 1); cmp(i, x, y, -1, 1); cmp(i, x, y, 1, 1); }
-    for (let x = 0; x < nx; x++) cmp(y * nx + x, x, y, -1, 0);
+    const row = y * nx, dn = y < ny - 1;
+    for (let x = nx - 1; x >= 0; x--) {
+      const i = row + x;
+      ci = ox[i] * ox[i] + oy[i] * oy[i];
+      if (x < nx - 1) { j = i + 1; if (ox[j] < INF) { cx = ox[j] + 1; cy = oy[j]; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } } }
+      if (dn) {
+        j = i + nx; if (ox[j] < INF) { cx = ox[j]; cy = oy[j] + 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } }
+        if (x > 0) { j = i + nx - 1; if (ox[j] < INF) { cx = ox[j] - 1; cy = oy[j] + 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; ci = cx * cx + cy * cy; } } }
+        if (x < nx - 1) { j = i + nx + 1; if (ox[j] < INF) { cx = ox[j] + 1; cy = oy[j] + 1; if (cx * cx + cy * cy < ci) { ox[i] = cx; oy[i] = cy; } } }
+      }
+    }
+    for (let x = 1; x < nx; x++) {
+      const i = row + x;
+      j = i - 1;
+      if (ox[j] < INF) { cx = ox[j] - 1; cy = oy[j]; if (cx * cx + cy * cy < ox[i] * ox[i] + oy[i] * oy[i]) { ox[i] = cx; oy[i] = cy; } }
+    }
   }
 }
 
+/** separable Gaussian (clamped edges), in place; tmp = scratch of the same size */
 function blur(src, nx, ny, sigma, tmp) {
   const r = Math.max(1, Math.ceil(sigma * 2.5));
   const k = new Float32Array(2 * r + 1);
   let s = 0;
   for (let i = -r; i <= r; i++) { k[i + r] = Math.exp(-(i * i) / (2 * sigma * sigma)); s += k[i + r]; }
   for (let i = 0; i < k.length; i++) k[i] /= s;
-  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    let a = 0;
-    for (let i = -r; i <= r; i++) a += src[y * nx + Math.min(nx - 1, Math.max(0, x + i))] * k[i + r];
-    tmp[y * nx + x] = a;
+  // horizontal: clamped taps only near the two ends of a row
+  const xa = Math.min(r, nx), xb = Math.max(xa, nx - r);
+  for (let y = 0; y < ny; y++) {
+    const row = y * nx;
+    for (let x = 0; x < xa; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) a += src[row + Math.min(nx - 1, Math.max(0, x + i))] * k[i + r];
+      tmp[row + x] = a;
+    }
+    for (let x = xa; x < xb; x++) {
+      let a = 0;
+      const o = row + x - r;
+      for (let i = 0; i <= 2 * r; i++) a += src[o + i] * k[i];
+      tmp[row + x] = a;
+    }
+    for (let x = xb; x < nx; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) a += src[row + Math.min(nx - 1, Math.max(0, x + i))] * k[i + r];
+      tmp[row + x] = a;
+    }
   }
-  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    let a = 0;
-    for (let i = -r; i <= r; i++) a += tmp[Math.min(ny - 1, Math.max(0, y + i)) * nx + x] * k[i + r];
-    src[y * nx + x] = a;
+  // vertical: whole rows at a time (cache friendly), same summation order per cell
+  const acc = blur.acc && blur.acc.length >= nx ? blur.acc : (blur.acc = new Float64Array(nx));
+  for (let y = 0; y < ny; y++) {
+    acc.fill(0, 0, nx);
+    for (let i = -r; i <= r; i++) {
+      const o = Math.min(ny - 1, Math.max(0, y + i)) * nx, kk = k[i + r];
+      for (let x = 0; x < nx; x++) acc[x] += tmp[o + x] * kk;
+    }
+    const row = y * nx;
+    for (let x = 0; x < nx; x++) src[row + x] = acc[x];
   }
 }
 
@@ -751,32 +815,44 @@ export class Water {
     this.stats.fieldCells = N;
     // coverage (2 x 2 samples per cell) at the water level (land at z 0 seen waterPx lower)
     const cov = new Float32Array(N);
-    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-      let c = 0;
-      for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
-        const wx = R.x + (x + 0.25 + sx * 0.5) * CELL_X, wy = R.y + (y + 0.25 + sy * 0.5) * CELL_Y;
-        if (isWater(wx, wy)) c++;
+    if (isWater.curve) {
+      // shoreline curve mask: the curve once per sample column (same samples, same answers)
+      const f = isWater.curve, wp = isWater.wp, fc = new Float64Array(nx * 2);
+      for (let x = 0; x < nx; x++) for (let sx = 0; sx < 2; sx++) fc[x * 2 + sx] = f(R.x + (x + 0.25 + sx * 0.5) * CELL_X);
+      for (let y = 0; y < ny; y++) {
+        const wy0 = R.y + (y + 0.25) * CELL_Y - wp, wy1 = R.y + (y + 0.75) * CELL_Y - wp;
+        for (let x = 0; x < nx; x++) {
+          const f0 = fc[x * 2], f1 = fc[x * 2 + 1];
+          cov[y * nx + x] = ((wy0 < f0) + (wy0 < f1) + (wy1 < f0) + (wy1 < f1)) / 4;
+        }
       }
-      cov[y * nx + x] = c / 4;
+    } else {
+      for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+        let c = 0;
+        for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+          const wx = R.x + (x + 0.25 + sx * 0.5) * CELL_X, wy = R.y + (y + 0.25 + sy * 0.5) * CELL_Y;
+          if (isWater(wx, wy)) c++;
+        }
+        cov[y * nx + x] = c / 4;
+      }
     }
     const water = new Uint8Array(N);
     for (let i = 0; i < N; i++) water[i] = cov[i] >= 0.5 ? 1 : 0;
     // shore cells: land cells next to water; their type decides the look of that stretch of coast
     const seedL = new Uint8Array(N), seedW = new Uint8Array(N), seedV = new Uint8Array(N);
-    const tp = new Array(N);
+    const tp = new Uint8Array(N);                 // shore cells: 1 + index in TYPE_NAMES
     const defT = SHORE_TYPES[this.opts.defaultShore] ? this.opts.defaultShore : 'snowbank';
     let anyWave = false;
     for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = y * nx + x;
       if (water[i]) { seedW[i] = 1; continue; }
-      const nb = (xx, yy) => (xx < 0 || yy < 0 || xx >= nx || yy >= ny) ? 0 : water[yy * nx + xx];
-      if (!(nb(x - 1, y) || nb(x + 1, y) || nb(x, y - 1) || nb(x, y + 1))) continue;
+      if (!((x > 0 && water[i - 1]) || (x < nx - 1 && water[i + 1]) || (y > 0 && water[i - nx]) || (y < ny - 1 && water[i + nx]))) continue;
       seedL[i] = 1;
       const wx = R.x + (x + 0.5) * CELL_X, wy = R.y + (y + 0.5) * CELL_Y;
       let ty = typeAt(wx, wy);
       if ((!ty || ty === defT) && this.waterPx) ty = typeAt(wx, wy - this.waterPx);
       ty = SHORE_TYPES[ty] ? ty : defT;
-      tp[i] = ty;
+      tp[i] = 1 + TYPE_NAMES.indexOf(ty);
       if (SHORE_TYPES[ty].wave) { seedV[i] = 1; anyWave = true; }
     }
     const ox = new Int16Array(N), oy = new Int16Array(N);
@@ -788,10 +864,10 @@ export class Water {
     const d = new Float32Array(N);
     for (let i = 0; i < N; i++) {
       if (water[i]) {
-        const dd = anyLand && ox[i] < 30000 ? Math.hypot(ox[i], oy[i]) * CELL_G - CELL_G * 0.5 : DM;
+        const dd = anyLand && ox[i] < 30000 ? Math.sqrt(ox[i] * ox[i] + oy[i] * oy[i]) * CELL_G - CELL_G * 0.5 : DM;
         d[i] = Math.min(DM, Math.max(0.5, dd));
       } else {
-        const dd = ox2[i] < 30000 ? Math.hypot(ox2[i], oy2[i]) * CELL_G - CELL_G * 0.5 : DM;
+        const dd = ox2[i] < 30000 ? Math.sqrt(ox2[i] * ox2[i] + oy2[i] * oy2[i]) * CELL_G - CELL_G * 0.5 : DM;
         d[i] = -Math.min(DM, Math.max(0.5, dd));
       }
       // sub-cell shoreline from the coverage of boundary cells
@@ -807,7 +883,7 @@ export class Water {
       edt(nx, ny, seedV, ox3, oy3);
       for (let i = 0; i < N; i++) {
         if (!water[i]) { w[i] = d[i]; continue; }
-        w[i] = ox3[i] < 30000 ? Math.min(DM, Math.hypot(ox3[i], oy3[i]) * CELL_G - CELL_G * 0.5) : DM;
+        w[i] = ox3[i] < 30000 ? Math.min(DM, Math.sqrt(ox3[i] * ox3[i] + oy3[i] * oy3[i]) * CELL_G - CELL_G * 0.5) : DM;
       }
       blur(w, nx, ny, 3.0, tmp);
     } else w.fill(DM);
@@ -819,7 +895,7 @@ export class Water {
       if (ox[i] < 30000) {
         const x = (i % nx) + ox[i], y = ((i / nx) | 0) + oy[i];
         const j = y * nx + x;
-        if (j >= 0 && j < N && tp[j]) st = SHORE_TYPES[tp[j]];
+        if (j >= 0 && j < N && tp[j]) st = SHORE_TYPES[TYPE_NAMES[tp[j] - 1]];
       }
       pR[i] = st.runup; pE[i] = st.edge;
     }

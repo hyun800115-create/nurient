@@ -6,7 +6,7 @@
 // way (layers at one anchor, depth = base + depthOffset, stock on rackSlots, a forklift driving forkliftPath, the
 // conveyor / dock doors / office lamp playing) and tests the REVEAL TOGGLE: a pointer tap inside revealPoly fades the
 // shell (+ dock door patches) out, a second tap brings it back; hover (pointermove) also reveals on desktop.
-// Writes docs/previews/lgx_phaser_closed.png, lgx_phaser_open.png and /tmp/fv_review/logistics_phaser.json.
+// Writes docs/previews/lgx_phaser_closed.png, lgx_phaser_open.png and /tmp/fv_cache/logistics/logistics_phaser.json.
 // Exit 1 on missing frames, page errors, 404s or a reveal that does not change the picture.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,11 +50,9 @@ class S extends Phaser.Scene {
     // ---- the centre, composed by the manifest rules
     this.add.rectangle(700, 450, 1400, 900, 0xeef3f9).setDepth(-1e6);
     const C = sp.logistics_center, ox = 560, oy = 470, base = 0;
-    const off = (name) => ({ back: -0.40, floor: -0.35, interior: -0.30, lamp: -0.29, interior_front: -0.10, conveyor: -0.09,
-      stub: -0.02, shell_cut: -0.015, shell: 0, dock1: 0.001, dock2: 0.001, props: 0.01 })[name];
     const put = (key, d) => { const s = sp[key]; return this.add.sprite(ox, oy, s.atlas, s.frame).setOrigin(s.anchor[0], s.anchor[1]).setDepth(base + d); };
     const layers = {};
-    for (const n of ['back', 'floor', 'interior', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']) layers[n] = put(C.layers[n], sp[C.layers[n]].depthOffset);
+    for (const n of Object.keys(C.layers)) layers[n] = put(C.layers[n], sp[C.layers[n]].depthOffset);
     layers.shell_cut.setAlpha(0);
     const patches = {};
     for (const [n, key] of Object.entries(C.patches)) {
@@ -68,7 +66,9 @@ class S extends Phaser.Scene {
       const cat = C.rackCategories[s.category]; const key = cat[(s.slot + s.level) % cat.length]; const it = sp[key];
       const sc = 0.8, top = (it.topPx || 40) * sc, step = it.stackStep * sc;
       const n = Math.max(1, Math.min(3, Math.floor((s.maxStackPx - top) / step) + 1));
-      for (let k = 0; k < n; k++) this.add.image(ox + s.point[0], oy + s.point[1] - k * step, it.atlas, it.frame).setOrigin(0.5, 0.75).setScale(sc).setDepth(base - 0.25 + (order++) * 1e-5);
+      // band 'stock' = inside the racks (under _interior_racks), 'front' = floor bays, y-sorted with the front actors
+      const d0 = s.band === 'front' ? -0.05 + (s.point[1] + 400) * 1e-6 : -0.25 + (order++) * 1e-5;
+      for (let k = 0; k < n; k++) this.add.image(ox + s.point[0], oy + s.point[1] - k * step, it.atlas, it.frame).setOrigin(0.5, 0.75).setScale(sc).setDepth(base + d0 + k * 1e-7);
     }
     // forklift (loaded) driving the path: SE/NE rendered, SW/NW = flipX; band from the path legs
     const fk = ch.forklift_loaded;
@@ -81,8 +81,8 @@ class S extends Phaser.Scene {
       const rd = dir === 'SW' ? 'SE' : dir === 'NW' ? 'NE' : dir;
       fl.setFlipX(dir === 'SW' || dir === 'NW');
       fl.play('veh:forklift_loaded:move:' + rd, true);
-      const band = a.legBand === 'front' ? -0.05 : -0.2;
-      fl.setDepth(base + band + 1e-4);
+      const band = a.legBand === 'mid' ? -0.2 : -0.05;
+      fl.setDepth(base + band + (a.point[1] + 400) * 1e-6 + 1e-7);
       this.tweens.add({ targets: fl, x: ox + b.point[0], y: oy + b.point[1], duration: 120 + Math.hypot(dx, dy) * 9,
         onComplete: () => { leg = (leg + 1) % P.length; drive(); } });
     };
@@ -161,8 +161,9 @@ Object.assign(res, { afterTap, afterTap2, afterHover, afterLeave, screenshotsDif
 console.log(JSON.stringify(res));
 if (errors.length) console.log('ERRORS', errors.slice(0, 10));
 if (notFound.length) console.log('404', notFound.slice(0, 10));
-fs.mkdirSync('/tmp/fv_review', { recursive: true });
-fs.writeFileSync('/tmp/fv_review/logistics_phaser.json', JSON.stringify({ res, errors, notFound }, null, 1));
+const outDir = process.env.LGX_OUT || '/tmp/fv_cache/logistics';
+fs.mkdirSync(outDir, { recursive: true });
+fs.writeFileSync(path.join(outDir, 'logistics_phaser.json'), JSON.stringify({ res, errors, notFound }, null, 1));
 await browser.close();
 await srv.close();
 process.exit(errors.length || notFound.length || res.missing.length || !revealOk ? 1 : 0);

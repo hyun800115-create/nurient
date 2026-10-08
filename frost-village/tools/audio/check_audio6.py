@@ -17,9 +17,15 @@ Checks
     compared with the existing audio3 sfx_bus_horn (report only);
   * loops: decoded .ogg length == rendered loop length, .ogg end padding == 0, manifest loopSamples / duration,
     click detector at the wrap (check_audio.loop_metrics: hf_ratio / d2_ratio < 1) for .ogg and .mp3;
-  * headless Chromium (Playwright, check_audio2.chromium_decode): decodeAudioData of every loop must return
-    exactly loopSamples frames for the .ogg (Chromium ignores the Vorbis end-trim) and the wrap must not jump;
-    .mp3 lengths reported;
+  * headless Chromium (Playwright): decodeAudioData of every loop into a 44.1 kHz context must return exactly
+    loopSamples frames for the .ogg and the .mp3 (Chromium ignores the Vorbis end-trim) and the wrap must not jump;
+    a second pass decodes into a 48 kHz context (what phones, iOS especially, run at - the decoder resamples and
+    the loop length becomes fractional) and the wrap must not jump there either (ogg and mp3);
+  * phone speakers: every key is also measured through a crude phone-speaker model (4th-order high-pass 500 Hz +
+    2nd-order low-pass 9 kHz, the critic's model): phone loss = phone-weighted level - full-range level (integrated
+    for loops, max momentary for one-shots) must be <= 6 dB, and amb_fire_big must not be quieter on a phone than
+    the v1 camp fire (assets/audio amb_fire);
+  * loop manifest duration: round(duration * 44100) == loopSamples (Audio.trimLoops cuts to round(duration * rate));
   * payload of assets/audio6 (files + manifest) <= 4,000,000 bytes; both music loops play at the same effective
     loudness as bgm_village.
 Writes docs/previews/audio6_report.txt, audio6_waveforms.png (waveform of every key, spectrograms of the loops
@@ -40,7 +46,6 @@ import deps  # noqa: E402
 deps.ensure()
 import numpy as np  # noqa: E402
 
-import check_audio2 as C2  # noqa: E402
 import ffmpeg_tools as F  # noqa: E402
 import synth as S  # noqa: E402
 from check_audio import loop_metrics  # noqa: E402
@@ -61,8 +66,8 @@ CONTRACT = {
             "sfx_stamp", "sfx_vault_door", "sfx_forklift_beep", "sfx_police_whistle", "sfx_crowd_gasp",
             "sfx_crowd_cheer_small", "sfx_cuffs_click", "sfx_fire_alarm_bell", "sfx_moving_truck", "sfx_box_drop",
             "sfx_newspaper",
-            # extra variants (group sfx_box) - not in the contract
-            "sfx_box_drop_2", "sfx_box_drop_3"],
+            # extras - not in the contract: variants (group sfx_box), the bank queue chime (was baked into amb_bank)
+            "sfx_box_drop_2", "sfx_box_drop_3", "sfx_ticket_chime"],
 }
 CONTRACT_GROUPS = {"sfx_box": 3}
 DUR = {"bgm_city": (60, 90), "bgm_chase": (20, 40),
@@ -71,7 +76,7 @@ DUR = {"bgm_city": (60, 90), "bgm_chase": (20, 40),
        "sfx_excavator": (1.5, 4.0), "sfx_comic_fight": (1.5, 4.0),
        "sfx_fire_flare": (0.6, 2.5), "sfx_steam_hiss": (1.0, 3.0), "sfx_collapse_soft": (1.0, 3.0),
        "sfx_demolish_crunch": (0.6, 2.5), "sfx_coin_count": (0.6, 2.0), "sfx_stamp": (0.1, 0.8),
-       "sfx_vault_door": (1.5, 3.5), "sfx_forklift_beep": (0.8, 2.0), "sfx_police_whistle": (0.6, 2.0),
+       "sfx_vault_door": (1.0, 3.5), "sfx_ticket_chime": (0.6, 2.0), "sfx_forklift_beep": (0.8, 2.0), "sfx_police_whistle": (0.6, 2.0),
        "sfx_crowd_gasp": (0.6, 2.0), "sfx_crowd_cheer_small": (1.0, 3.0), "sfx_cuffs_click": (0.15, 0.8),
        "sfx_fire_alarm_bell": (1.0, 3.5), "sfx_moving_truck": (1.5, 3.5), "sfx_box_drop": (0.1, 0.8),
        "sfx_box_drop_2": (0.1, 0.8), "sfx_box_drop_3": (0.1, 0.8),
@@ -81,7 +86,8 @@ TUNING = {"sfx_siren_fire": (400.0, 480.0, 440.0, "A4 (low tone)", None),
           "sfx_forklift_beep": (980.0, 1120.0, 1046.50, "C6", None),
           "sfx_fire_alarm_bell": (830.0, 930.0, 880.0, "A5", None),
           "sfx_police_whistle": (1950.0, 2250.0, 2093.00, "C7 (centre of the pea trill)", None),
-          "sfx_coin_count": (1330.0, 1460.0, 1396.91, "F6 'ching'", (0.72, 1.3))}
+          "sfx_coin_count": (1330.0, 1460.0, 1396.91, "F6 'ching'", (0.72, 1.3)),
+          "sfx_ticket_chime": (980.0, 1120.0, 1046.50, "C6 'ding'", (0.0, 0.3))}
 # sounds whose pitch is a trill / FM cluster: measure the power-weighted centre of the band, not the strongest line
 # (the pea's ~26 Hz flutter puts more energy in the sidebands than in the carrier)
 TUNE_CENTROID = {"sfx_police_whistle"}
@@ -91,13 +97,101 @@ ONSET_CUES = {"sfx_forklift_beep": ("beep1", "beep2", "beep3"), "sfx_vault_door"
               "sfx_cuffs_click": ("ratchet", "latch"), "sfx_police_whistle": ("blast1", "blast2"),
               "sfx_fire_alarm_bell": ("ring1",), "sfx_coin_count": ("first", "ching"), "sfx_stamp": ("thunk",),
               "sfx_moving_truck": ("brake", "door", "doorTop", "ramp", "rampDown"), "sfx_steam_hiss": ("hiss",),
-              "sfx_demolish_crunch": ("bite",), "sfx_fire_flare": ("flare",)}
+              "sfx_demolish_crunch": ("bite",), "sfx_fire_flare": ("flare",), "sfx_ticket_chime": ("ding", "dong")}
 HARSH_KEYS = ("sfx_siren_fire", "sfx_siren_police", "sfx_fire_alarm_bell", "sfx_police_whistle", "sfx_forklift_beep",
               "amb_fire_big", "sfx_hose_spray")
 WANT_CH = {"music": 2, "ambience": 1, "sfx": 1}
 MAX_PAYLOAD = 4_000_000                      # '4 MB' read strictly (decimal)
 HEADROOM_DB = -2.0
 TARGET_V1 = {"music": -24.5 + HEADROOM_DB}               # bgm_village effective level (target + headroom)
+PHONE_MAX_LOSS = 6.0                         # dB lost through the phone-speaker model (critic's fail line)
+
+
+def phone_weight(x):
+    """Crude phone speaker (the critic's model): 4th-order high-pass at 500 Hz + 2nd-order low-pass at 9 kHz."""
+    from scipy import signal
+    sos = np.vstack([signal.butter(4, 500, "hp", fs=44100, output="sos"),
+                     signal.butter(2, 9000, "lp", fs=44100, output="sos")])
+    return signal.sosfilt(sos, np.atleast_2d(x), axis=-1)
+
+
+def levels(x):
+    """(integrated LUFS, max momentary LUFS) of (ch, n) with 0.5 s of silence appended (ebur128 practice)."""
+    x = np.atleast_2d(x)
+    pad = np.concatenate([x, np.zeros((x.shape[0], S.n_of(0.5)))], axis=1)
+    return S.lufs(pad), S.momentary_max(pad)
+
+
+_JS48 = r"""
+import { createRequire } from 'node:module';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import fs from 'node:fs';
+const require = createRequire(import.meta.url);
+function loadPW() {
+  try { return require('playwright'); } catch (e) { /* next */ }
+  const roots = [];
+  try { roots.push(execSync('npm root -g', { encoding: 'utf8' }).trim()); } catch (e) { /* */ }
+  roots.push('/opt/node22/lib/node_modules', '/usr/local/lib/node_modules', '/usr/lib/node_modules');
+  for (const r of roots) { try { return require(path.join(r, 'playwright')); } catch (e) { /* next */ } }
+  throw new Error('playwright package not found');
+}
+const files = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const { chromium } = loadPW();
+const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+const page = await browser.newPage();
+await page.setContent('<html><body>decode test</body></html>');
+const out = { version: browser.version(), files: [] };
+for (const f of files) {
+  const b64 = fs.readFileSync(f.path).toString('base64');
+  const r = await page.evaluate(async ({ b64 }) => {
+    const bin = atob(b64); const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    const res = {};
+    for (const sr of [44100, 48000]) {
+      const ctx = new OfflineAudioContext(1, 1, sr);
+      let buf;
+      try { buf = await ctx.decodeAudioData(u.buffer.slice(0)); } catch (e) { return { error: String(e) }; }
+      let seam = 0, ref = 0;
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        const x = buf.getChannelData(c), n = x.length;
+        const at = (i) => x[((i % n) + n) % n];
+        const d2 = (i) => Math.abs(at(i) - 2 * at(i - 1) + at(i - 2));
+        for (const i of [0, 1, 2]) seam = Math.max(seam, d2(i));        // differences straddling the wrap
+        const s = []; for (let i = 2; i < n; i += 3) s.push(d2(i));
+        s.sort((a, b) => a - b); ref = Math.max(ref, s[Math.floor(s.length * 0.999)]);
+      }
+      res[sr] = { length: buf.length, channels: buf.numberOfChannels, seamRatio: seam / Math.max(ref, 1e-9) };
+    }
+    return res;
+  }, { b64 });
+  out.files.push(Object.assign({ key: f.key, fmt: f.fmt }, r));
+}
+await browser.close();
+console.log(JSON.stringify(out));
+"""
+
+
+def chromium_decode2(items):
+    """items: [{key, path, fmt}] -> {version, files: [{key, fmt, 44100: {length, channels, seamRatio}, 48000: ...}]}
+    (decodeAudioData into 44.1 kHz and 48 kHz OfflineAudioContexts) or {'error': ...}."""
+    import subprocess
+    os.makedirs(CACHE, exist_ok=True)
+    js, lst = os.path.join(CACHE, "chromium_decode48.mjs"), os.path.join(CACHE, "chromium_decode48.json")
+    with open(js, "w") as f:
+        f.write(_JS48)
+    with open(lst, "w") as f:
+        json.dump(items, f)
+    try:
+        p = subprocess.run(["node", js, lst], capture_output=True, text=True, timeout=480)
+    except Exception as e:  # noqa: BLE001
+        return {"error": f"could not run node: {e}"}
+    if p.returncode != 0:
+        return {"error": (p.stderr or p.stdout).strip().splitlines()[-1:] or ["node failed"]}
+    try:
+        return json.loads(p.stdout.strip().splitlines()[-1])
+    except Exception as e:  # noqa: BLE001
+        return {"error": f"bad output: {e}: {p.stdout[-300:]}"}
 
 
 def targets():
@@ -216,8 +310,8 @@ def previews_png(rows, path):
 
 def demo_mix(man6, path_mp3):
     """~76 s 'a day in the living city' at manifest volumes x call-site volume (like the game):
-    morning city (bgm_city, amb_town, bus, chatter, newspaper boy) -> the bank (amb_bank, door, coins counted,
-    stamp, vault) -> the logistics centre (amb_warehouse, forklift beeps, boxes, a moving truck, settlement stamp)
+    morning city (bgm_city, amb_town, bus, chatter, newspaper boy) -> the bank (amb_bank, door, the queue chime,
+    coins counted, stamp, vault) -> the logistics centre (amb_warehouse, forklift beeps, boxes, a moving truck, settlement stamp)
     -> fire! (alarm bell, gasps, flare, the big fire, the fire engine's siren approaching, brakes, hose, steam,
     cheer) -> a bread thief (whistle, bgm_chase, police siren, dust-cloud scuffle, whistle, cuffs, cheer) ->
     next morning the paper (bgm_city, newspaper, laugh)."""
@@ -311,14 +405,17 @@ def demo_mix(man6, path_mp3):
     sfx(9.6, "sfx_laugh", 0.5, -0.2)
     # the bank
     sfx(12.2, "sfx_door", 0.8, 0.0)
-    sfx(14.2, "sfx_chatter", 0.5, 0.2)
+    sfx(13.4, "sfx_ticket_chime", 1.0, -0.15)
+    sfx(14.2, "sfx_chatter_lo", 0.5, 0.2)
     sfx(15.2, "sfx_coin_count", 1.0, 0.1)
     sfx(17.0, "sfx_stamp", 1.0, 0.1)
     sfx(18.4, "sfx_vault_door", 0.9, -0.25)
+    sfx(20.3, "sfx_ticket_chime", 0.85, -0.15)
     sfx(21.0, "sfx_cash", 0.6, 0.1)
     # the logistics centre
     sfx(23.6, "sfx_forklift_beep", 0.8, -0.35)
-    sfx(24.9, "sfx_forklift_beep", 0.8, -0.35)
+    sfx(24.86, "sfx_forklift_beep", 0.8, -0.35)
+    sfx(28.4, "sfx_chatter_lo", 0.4, 0.3)
     sfx(25.3, "sfx_box", 1.0, 0.2)
     sfx(25.8, "sfx_box", 0.8, 0.25, 1.08)
     sfx(26.3, "sfx_box", 0.9, 0.15, 0.94)
@@ -425,7 +522,7 @@ def main(argv=None):
     total = 0
     lines.append(f"{'key':22s} {'fmt':4s} {'ch':>2s} {'dur s':>7s} {'peak':>6s} {'TP':>6s} {'I LUFS':>7s} "
                  f"{'Mmax':>6s} {'vol':>6s} {'eff':>6s} {'want':>6s} {'DC':>8s} {'kB':>6s}")
-    loop_items, onset_lines, harsh_lines = [], [], []
+    loop_items, onset_lines, harsh_lines, phone_rows = [], [], [], []
     for kind, keys in CONTRACT.items():
         for k in keys:
             a = audio.get(k)
@@ -462,6 +559,8 @@ def main(argv=None):
                              f"{size / 1024:6.1f}")
                 if m["peak"] > -1.0:
                     fail(f"{k}: {fmt} sample peak {m['peak']:.2f} dBFS > -1")
+                if m["tpk"] > -1.0:
+                    warns.append(f"{k}: {fmt} true peak {m['tpk']:.2f} dBTP > -1")
                 if dc > 0.002:
                     fail(f"{k}: {fmt} DC offset {dc:.4f}")
                 if np.isfinite(want) and abs(eff - want) > 1.0:
@@ -511,6 +610,16 @@ def main(argv=None):
                 if fmt == "ogg" and k in HARSH_KEYS:
                     hs, cen = harshness(x)
                     harsh_lines.append(f"  {k:22s} energy > 4 kHz {hs:5.1f} %   centroid {cen:6.0f} Hz")
+                if fmt == "ogg":
+                    fI, fM = levels(x)
+                    pI, pM = levels(phone_weight(x))
+                    full, ph = (fM, pM) if kind == "sfx" else (fI, pI)
+                    loss = full - ph
+                    g = 20 * np.log10(max(a.get("volume", 1.0), 1e-6))
+                    phone_rows.append((k, kind, loss, ph + g, "Mmax" if kind == "sfx" else "I"))
+                    if loss > PHONE_MAX_LOSS:
+                        fail(f"{k}: loses {loss:.1f} dB on a phone speaker (> {PHONE_MAX_LOSS:.0f} dB): too much of it "
+                             f"is below 500 Hz")
             if "ogg" not in decoded:
                 continue
             x, m = decoded["ogg"]
@@ -530,8 +639,9 @@ def main(argv=None):
                     fail(f"{k}: ogg has {tail['discard']} samples of end padding -> gap at every loop in Chrome")
                 if a.get("loopSamples") != x.shape[1]:
                     fail(f"{k}: manifest loopSamples {a.get('loopSamples')} != decoded {x.shape[1]}")
-                if abs(a.get("duration", 0) * 44100 - x.shape[1]) > 0.00005 * 44100 + 0.5:     # manifest rounds to 0.1 ms
-                    fail(f"{k}: manifest duration {a.get('duration')} != {x.shape[1] / 44100:.4f}")
+                if round(a.get("duration", 0) * 44100) != x.shape[1]:          # Audio.trimLoops: round(duration*rate)
+                    fail(f"{k}: manifest duration {a.get('duration')} * 44100 rounds to "
+                         f"{round(a.get('duration', 0) * 44100)}, not loopSamples {x.shape[1]}")
                 if lm["hf_ratio"] > 1.0 or lm["d2_ratio"] > 1.0:
                     fail(f"{k}: possible click at loop point (hf {lm['hf_ratio']:.2f}, d2 {lm['d2_ratio']:.2f})")
                 if "mp3" in decoded:
@@ -563,6 +673,25 @@ def main(argv=None):
     if harsh_lines:
         lines.append("friendliness (less energy up top = rounder, less shrill):")
         lines.extend(harsh_lines)
+    if phone_rows:
+        ref_fire = None
+        try:
+            with open(os.path.join(ASSETS, "audio", "manifest.json")) as f:
+                af = json.load(f)["audio"]["amb_fire"]
+            xf = F.decode(os.path.join(ASSETS, af["files"][0]), 1)
+            ref_fire = levels(phone_weight(xf))[0] + 20 * np.log10(af["volume"])
+        except Exception as e:  # noqa: BLE001
+            warns.append(f"could not measure assets/audio amb_fire for the phone comparison: {e}")
+        lines.append(f"phone speaker model (HP 500 Hz 4th order + LP 9 kHz): loss must be <= {PHONE_MAX_LOSS:.0f} dB; "
+                     "phone-effective = phone-weighted level + 20 log10(volume)")
+        for k, kind, loss, peff, what in sorted(phone_rows, key=lambda t: -t[2]):
+            lines.append(f"  {k:22s} {kind:8s} loss {loss:5.1f} dB   phone-effective {what} {peff:6.1f}")
+        if ref_fire is not None:
+            big = [t for t in phone_rows if t[0] == "amb_fire_big"]
+            lines.append(f"  {'(audio amb_fire, v1)':22s} {'ambience':8s} {'':14s}   phone-effective I {ref_fire:6.1f}")
+            if big and big[0][3] < ref_fire - 0.05:
+                fail(f"amb_fire_big is quieter on a phone ({big[0][3]:.1f}) than the v1 camp fire amb_fire "
+                     f"({ref_fire:.1f})")
     man_size = os.path.getsize(man_p)
     total += man_size
     lines.append(f"total payload assets/audio6 (audio files + manifest): {total} bytes = {total / 1e6:.3f} MB = "
@@ -575,32 +704,34 @@ def main(argv=None):
     if stray:
         warns.append(f"files in assets/audio6 not referenced by the manifest: {stray}")
 
-    # ---- headless Chromium decode of the loops (check_audio2's Playwright runner, our cache folder)
+    # ---- headless Chromium decode of the loops at 44.1 kHz and 48 kHz (phones)
     if "--no-browser" not in argv and loop_items:
-        C2.CACHE = CACHE
-        res = C2.chromium_decode([{k: v for k, v in it.items() if k != "want"} for it in loop_items])
+        res = chromium_decode2([{k: v for k, v in it.items() if k != "want"} for it in loop_items])
         if "error" in res:
             warns.append(f"Chromium decode test not run: {res['error']}")
         else:
-            lines.append(f"headless Chromium {res.get('version')} decodeAudioData (OfflineAudioContext 44.1 kHz):")
+            lines.append(f"headless Chromium {res.get('version')} decodeAudioData (OfflineAudioContext 44.1 kHz | 48 kHz):")
             for it, rr in zip(loop_items, res["files"]):
                 if "error" in rr:
                     fail(f"{it['key']}: Chromium cannot decode {it['fmt']}: {rr['error']}")
                     continue
-                ok = rr["length"] == it["want"]
-                diff = "exact" if ok else "%+d" % (rr["length"] - it["want"])
-                lines.append(f"  {it['key']:22s} {it['fmt']}: {rr['length']} frames x {rr['channels']} ch "
-                             f"(want {it['want']}, {diff}), seam d2 ratio {rr['seamRatio']:.3f}")
-                if it["fmt"] == "ogg":
-                    if not ok:
-                        fail(f"{it['key']}: Chromium decodes the ogg loop to {rr['length']} frames, want {it['want']}")
-                    if rr["seamRatio"] > 1.0:
-                        fail(f"{it['key']}: Chromium-decoded loop jumps at the seam (ratio {rr['seamRatio']:.2f})")
-                elif not ok:
-                    warns.append(f"{it['key']}: Chromium mp3 decode {rr['length']} vs {it['want']} frames "
-                                 f"(only used where ogg is unsupported; Audio.trimLoops handles longer buffers)")
-                elif rr["seamRatio"] > 1.0:
-                    warns.append(f"{it['key']}: Chromium-decoded mp3 seam ratio {rr['seamRatio']:.2f}")
+                a44, a48 = rr["44100"], rr["48000"]
+                ok = a44["length"] == it["want"]
+                diff = "exact" if ok else "%+d" % (a44["length"] - it["want"])
+                ideal48 = it["want"] * 48000 / 44100
+                lines.append(f"  {it['key']:22s} {it['fmt']}: {a44['length']} frames x {a44['channels']} ch "
+                             f"(want {it['want']}, {diff}), seam {a44['seamRatio']:.3f} | 48k: {a48['length']} frames "
+                             f"(ideal {ideal48:.2f}), seam {a48['seamRatio']:.3f}")
+                if not ok:
+                    if it["fmt"] == "ogg":
+                        fail(f"{it['key']}: Chromium decodes the ogg loop to {a44['length']} frames, want {it['want']}")
+                    else:
+                        warns.append(f"{it['key']}: Chromium mp3 decode {a44['length']} vs {it['want']} frames "
+                                     f"(Audio.trimLoops handles longer buffers)")
+                for sr, aa in (("44.1", a44), ("48", a48)):
+                    if aa["seamRatio"] > 1.0:
+                        fail(f"{it['key']}: Chromium-decoded {it['fmt']} jumps at the seam at {sr} kHz "
+                             f"(ratio {aa['seamRatio']:.2f})")
 
     # ---- mix sanity vs assets/audio
     for r_ in rows:

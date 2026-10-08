@@ -509,3 +509,106 @@ WORLD.allPaths = WORLD.roads.edges.filter((e) => !(e[2] && e[2].draw === false))
 });
 // (v3) plots on the shore: y follows the shoreline
 for (const id in WORLD.plots) { const pl = WORLD.plots[id]; if (pl.shore !== undefined && pl.y === undefined) pl.y = Math.round(shoreY(pl.x) + pl.shore); }
+
+// =====================================================================
+// ---- (v4-A) 이웃 마을 솔방울 마을 · 눈썰매 기차 · 서리역 앞 (docs/v4_plan.md §3)
+//  v4 의 모든 것은 '도로 격자' 위에 있어요: 한 칸 = √2 m = 화면 128 x 64 마름모.
+//    L(i, j) = (3120 + 64·(i + j),  1315 + 32·(i − j))
+//    i = 화면 오른쪽 아래로 (기찻길 방향),  j = 화면 오른쪽 위로 (바다 쪽이 +)
+//  기찻길은 j = 0 줄이에요. 건물은 모두 j 가 작은 쪽(화면 왼쪽 아래)을 바라봐요.
+//  자리를 옮길 때는 i, j 만 고치면 x, y 는 자동으로 계산돼요.
+//  (고친 뒤: node tools/test/v4_layout.mjs 로 겹치는 곳이 없는지 확인하세요)
+// =====================================================================
+const G4 = [3120, 1315];
+/** 격자 (i, j) → 화면 px [x, y] */
+export function L4(i, j) { return [Math.round(G4[0] + 64 * (i + j)), Math.round(G4[1] + 32 * (i - j))]; }
+/** 화면 px → 격자 { i, j } */
+export function px2L4(x, y) { const a = (x - G4[0]) / 64, b = (y - G4[1]) / 32; return { i: (a + b) / 2, j: (a - b) / 2 }; }
+const at4 = (o) => { const [x, y] = L4(o.i, o.j); return Object.assign(o, { x, y }); };
+
+WORLD.v4 = {
+  G: G4,
+  // ── 기찻길 (j = 0 줄). 타일 k 는 칸 [k, k+1) 을 덮음. from/to = 첫·마지막 타일 (끝에는 차막이)
+  //    crossings = 건널목 타일 (사람은 여기서만 기찻길을 건너요). sign = 동쪽 끝 표지판 (v6 갈매기 항구)
+  rail: { j: 0, from: -1, to: 46, crossings: [8, 33], sign: { i: 46.6, j: -1.2 } },
+  // ── 역 (기차가 서는 곳). carA = 손님 칸(앞 객차)이 서는 i. 기관차는 늘 서쪽(마을 쪽) 끝에 있어요
+  stations: {
+    ours: at4({ key: 'train_station', i: 2.5, j: 2.03, carA: 2.5, plot: 'r_station', name: 'stn_ours' }),   // 서리역
+    town: at4({ key: 'train_station', i: 28.0, j: 2.03, carA: 28.0, name: 'stn_town' }),                    // 솔방울역
+  },
+  // ── 역 광장의 발판들 (B 가 씀): 짐 싣는 곳, 주문판, 역 금고, 역 짐꾼 고용, 승격식
+  square: {
+    cargo: at4({ i: 4.1, j: -1.8 }), board: at4({ i: 2.6, j: -2.4 }), cash: at4({ i: 6.3, j: -1.6 }),
+    porter: at4({ i: 7.6, j: -2.4 }), rank: at4({ i: 2.6, j: -1.35 }),
+  },
+  // ── 가게·집 부지 (B 가 씀). size: M 가게, L 큰 가게, S 집. m = [X m, Y m]
+  lots: {
+    lotA1: at4({ i: 9.65, j: -1.9, size: 'M', m: [3.4, 3.0] }), lotA2: at4({ i: 12.3, j: -1.9, size: 'M', m: [3.4, 3.0] }), lotA3: at4({ i: 14.95, j: -1.9, size: 'M', m: [3.4, 3.0] }),
+    lotB1: at4({ i: 12.8, j: -10.25, size: 'M', m: [3.4, 3.0] }), lotB2: at4({ i: 15.45, j: -10.25, size: 'M', m: [3.4, 3.0] }), lotB3: at4({ i: 18.1, j: -10.25, size: 'M', m: [3.4, 3.0] }),
+    lotB5: at4({ i: 21.2, j: -10.25, size: 'L', m: [4.4, 3.4] }),
+    lotH1: at4({ i: 16.0, j: -15.2, size: 'S', m: [2.6, 2.6] }), lotH2: at4({ i: 18.4, j: -15.2, size: 'S', m: [2.6, 2.6] }), lotH3: at4({ i: 20.8, j: -15.2, size: 'S', m: [2.6, 2.6] }),
+    lotH4: at4({ i: 25.5, j: -15.2, size: 'S', m: [2.6, 2.6] }), lotH5: at4({ i: 27.9, j: -15.2, size: 'S', m: [2.6, 2.6] }),
+  },
+  // ── 길 (B 의 RoadNet 이 칠하고, 사람·탈것이 다녀요).
+  //    corridor = 영원히 비워 두는 칸 (i: [시작, 끝], j: [시작, 끝]), paint = v4 에 칠하는 칸 (j 또는 i 범위), cls = 길 종류
+  //    walk = 사람이 걷는 선 (X 길: j 값, Y 길: i 값)
+  streets: [
+    { id: 'link',      axis: 'x', i: [-6.5, 2.0],  j: [-1.5, -0.5],  cls: 'path',   name: 'st_link' },                             // 역 가는 길 (v2 길로 그려요)
+    { id: 'square',    axis: 'x', i: [2.0, 8.3],   j: [-3.0, -0.75], cls: 'square', walk: -1.6, walkSpan: [2.0, 8.5], name: 'st_square' },  // 역 광장
+    { id: 'main',      axis: 'x', i: [8.0, 49.5],  j: [-9.0, -3.0],  cls: 'dirt',   paint: [-6.0, -4.0], walk: -4.5, walkSpan: [8.2, 49.5], name: 'st_main' },   // 역앞 거리 → 솔방울 큰길
+    { id: 'back',      axis: 'x', i: [13.0, 50.0], j: [-14.0, -12.0], cls: 'dirt',  paint: [-14.0, -12.0], walk: -13.0, name: 'st_back' },   // 뒷길 / 학교길
+    { id: 'ave',       axis: 'y', i: [30.0, 34.0], j: [-18.0, -9.0], cls: 'dirt',   paint: [30.0, 34.0], walk: 30.4, walkSpan: [-17.5, -4.5], name: 'st_ave' },  // 솔방울 중앙로
+    { id: 'shopalley', axis: 'y', i: [23.3, 24.3], j: [-18.0, -9.0], cls: 'path',   walk: 23.8, walkSpan: [-17.5, -4.5], name: 'st_shopalley' },          // 가게 골목
+    { id: 'homes',     axis: 'x', i: [17.0, 30.0], j: [-18.0, -17.0], cls: 'path',  walk: -17.5, walkSpan: [17.0, 30.4], name: 'st_homes' },   // 집 앞길
+    { id: 'apts',      axis: 'x', i: [34.0, 47.0], j: [-18.0, -17.0], cls: 'path',  walk: -17.5, walkSpan: [30.4, 47.0], name: 'st_apts' },   // 아파트 앞길
+    { id: 'alley_t',   axis: 'y', i: [33.0, 34.0], j: [-3.0, -0.75], cls: 'path',   walk: 33.5, walkSpan: [-4.5, -0.75], name: 'st_alley' },   // 역 골목
+    { id: 'platform_e', axis: 'x', i: [30.5, 34.0], j: [0.75, 1.75], cls: 'path',   walk: 1.25, walkSpan: [25.6, 33.5], name: 'st_platform' }, // 솔방울역 승강장 → 승강장 끝길
+    { id: 'xing_ours', axis: 'y', i: [8.0, 9.0],   j: [-0.75, 1.0],  cls: 'xing',   walk: 8.5, walkSpan: [-1.6, 1.0], xing: 8, name: 'st_xing' },     // 건널목 (서리역)
+    { id: 'xing_town', axis: 'y', i: [33.0, 34.0], j: [-0.75, 1.0],  cls: 'xing',   walk: 33.5, walkSpan: [-0.75, 1.25], xing: 33, name: 'st_xing' }, // 건널목 (솔방울역)
+  ],
+  // ── 사람이 걷는 선 (위 길 말고 더 필요한 연결). [축, 고정값, 시작, 끝]
+  //    x 축: j 고정, i 시작~끝 / y 축: i 고정, j 시작~끝
+  walkExtra: [
+    ['y', 2.0, -1.6, -1.0],    // 역 가는 길 끝(v_link_e) → 역 광장
+    ['x', 1.0, 0.8, 8.5],      // 서리역 승강장 → 동쪽 끝 → 건널목
+    ['y', 8.2, -4.5, -1.6],    // 역 광장 → 역앞 거리
+  ],
+  // ── 솔방울 마을 건물 21채 (+ 마을 입구). role: 하는 일 (주민 일정이 씀), home: 사는 사람 수
+  town: {
+    buildings: [
+      at4({ id: 't_station', key: 'train_station', i: 28.0, j: 2.03, role: 'station', home: 1 }),
+      at4({ id: 't_police',  key: 'police_box', i: 31.6, j: 2.6, role: 'police', label: 'tb_police' }),
+      at4({ id: 't_cafe',    key: 'cafe', i: 21.0, j: -1.9, role: 'shop', home: 2 }),
+      at4({ id: 't_book',    key: 'bookstore', i: 23.5, j: -1.9, role: 'shop', home: 1 }),
+      at4({ id: 't_play',    key: 'playground', i: 26.4, j: -1.9, role: 'play' }),
+      at4({ id: 't_fountain', key: 'park_fountain', i: 29.5, j: -1.9, role: 'park' }),
+      at4({ id: 't_sled',    key: 'sled_stop', i: 31.7, j: -1.9, role: 'stop' }),
+      at4({ id: 't_toy',     key: 'toy_shop', i: 35.3, j: -1.9, role: 'shop', home: 1 }),
+      at4({ id: 't_cloth',   key: 'clothing_store', i: 37.9, j: -1.9, role: 'shop', home: 2 }),
+      at4({ id: 't_flower',  key: 'flower_shop', i: 40.5, j: -1.9, role: 'shop', home: 1 }),
+      at4({ id: 't_hair',    key: 'hair_salon', i: 43.1, j: -1.9, role: 'shop', home: 1 }),
+      at4({ id: 't_rest',    key: 'restaurant', i: 45.8, j: -1.9, role: 'shop', home: 2 }),
+      at4({ id: 't_post',    key: 'post_office', i: 35.5, j: -10.5, role: 'post' }),
+      at4({ id: 't_school',  key: 'school', i: 39.3, j: -10.5, role: 'school' }),
+      at4({ id: 't_hall',    key: 'town_hall', i: 43.5, j: -10.5, role: 'hall', home: 3 }),
+      at4({ id: 't_clinic',  key: 'clinic', i: 46.8, j: -10.5, role: 'clinic' }),
+      at4({ id: 't_fire',    key: 'fire_station', i: 49.9, j: -10.5, role: 'fire', home: 2 }),
+      at4({ id: 't_apt1',    key: 'apartment_a', i: 35.7, j: -15.3, role: 'home', home: 24 }),
+      at4({ id: 't_apt2',    key: 'apartment_b', i: 38.95, j: -15.3, role: 'home', home: 18 }),
+      at4({ id: 't_apt3',    key: 'apartment_a', i: 42.2, j: -15.3, role: 'home', home: 24 }),
+      at4({ id: 't_apt4',    key: 'apartment_b', i: 45.45, j: -15.3, role: 'home', home: 18 }),
+      // 마을 입구 (서리역 앞 땅에 서 있어서 기찻길을 찾았을 때부터 보여요). board = 간판 글자
+      at4({ id: 't_gate', key: 'town_gate', i: 18.05, j: -2.2, role: 'gate', region: 'rail', board: 'townName' }),
+    ],
+    // 거리 소품 [키, i, j]: 가로등은 솔방울 큰길 보도(j −3.5)에 (가게 문·골목을 피해서), 건널목엔 쌍가로등,
+    //   분수·놀이터 앞 의자 (사람이 걷는 선 j −4.5 와 겹치지 않게)
+    props: [
+      ['streetlight', 19.8, -3.5], ['streetlight', 25.0, -3.5], ['streetlight', 31.4, -3.5],
+      ['streetlight', 36.9, -3.5], ['streetlight', 41.9, -3.5], ['streetlight', 47.6, -3.5],
+      ['streetlight_double', 7.55, -0.85], ['streetlight_double', 32.75, -1.0],
+      ['bench_x', 28.9, -3.35], ['bench_x', 30.1, -3.35], ['bench_x', 26.6, -3.35],
+    ],
+  },
+  // ── 집 창문 불빛 (밤): [건물 id, dx, dy] (나중에 채움)
+  windowGlows: [],
+};

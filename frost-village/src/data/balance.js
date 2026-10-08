@@ -309,4 +309,48 @@ export const BALANCE = {
     builders: 2,              // 공사장에 오는 목수 수
     porterCapacity: 10,       // 창고 짐꾼이 한 번에 나르는 개수
   },
+
+  // =====================================================================
+  //  (v4) 이웃 마을 솔방울 마을과 눈썰매 기차 (docs/v4_plan.md)
+  // =====================================================================
+  v4: {
+    // ---- (v4-A) 세상·기차·주민·밤낮
+    // ── 서리역 고치기 (눈에 덮인 옛 역): 코인 + 자재, time = 고치는 시간(초)
+    station: { coins: 500, item_plank: 14, item_ingot: 4, time: 12 },
+    // ── 눈썰매 기차: speed = 최고 속도(m/초), accel / brake = 출발·멈출 때 빨라지고 느려지는 정도(m/초²)
+    //    dwellOurs / dwellTown = 서리역 / 솔방울역에 서 있는 시간(초), seats = 손님 자리, coachSeats = 객차를 하나 더 달면 늘어나는 자리
+    //    firstRide = 첫 기차 손님 수, firstDelay = 역을 고친 뒤 첫 기차가 오기까지(초)
+    //    whistleBefore = 도착 몇 초 전에 기적을 울릴지, blockAhead = 앞에 누가 있으면 이만큼(m) 앞에서 멈춤
+    train: { speed: 2.6, accel: 0.6, brake: 0.8, dwellOurs: 14, dwellTown: 10, seats: 12, coachSeats: 8,
+             firstRide: 6, firstDelay: 3, whistleBefore: 2.5, blockAhead: 1.5 },
+    // ── 기차로 오는 손님: 기차 한 대 손님 = base + 가게 수 × perShop + (등급-1) × perRank (자리 수까지)
+    //    dawn / day / dusk / night = 새벽·낮·저녁·밤 배율, wantMin~wantMax = 사고 싶은 개수
+    //    patience = 줄이 꽉 차 있으면 이만큼(초) 기다리다 그냥 감, regularAt = 이만큼 오면 단골(★)
+    //    storeChance = 잡화점에 들를 확률, shopChance = 새로 연 가게에 들를 확률, speed = 걷는 속도(px/초)
+    visitors: { base: 4, perShop: 1, perRank: 3, dawn: 0.5, day: 1.0, dusk: 1.3, night: 0.3,
+                wantMin: 2, wantMax: 4, patience: 60, shopChance: 0.45, storeChance: 0.25, regularAt: 3, speed: 105 },
+    // ── 솔방울 마을: people = 주민 수, peopleRank2 = 읍이 되면, seed = 주민을 만드는 씨앗(바꾸면 다른 사람들)
+    //    walk = 걷는 속도(px/초), tripChance = 하루에 우리 마을로 나들이 갈 확률,
+    //    inviteAfter = 첫 가게가 안 열려도 첫 기차 뒤 이만큼(초) 지나면 촌장님이 초대하러 와요
+    town: { people: 100, peopleRank2: 120, seed: 2611, walk: 70, tripChance: 0.35, inviteAfter: 480 },
+    // ── 낮과 밤: length = 하루 길이(초, 600 = 10분 = 한 시간 25초), startHour = 첫 기차가 오는 시각
+    //    darkness = 밤 어둡기(0~1), fade = 바뀌는 데 걸리는 시간(초)
+    //    dawn / dayStart / dusk / night = 새벽·낮·저녁·밤이 시작하는 시각, lightsOn / lightsOff = 가로등 켜고 끄는 시각
+    day: { on: true, length: 600, startHour: 8, darkness: 0.35, fade: 8,
+           dawn: 6, dayStart: 8, dusk: 17, night: 20, lightsOn: 19, lightsOff: 6.5 },
+    // ── 성능: maxRigs = 자세히 그리는 주민 수 (가벼운 폰은 maxRigsLow), maxLite = 간단히 그리는 주민 수
+    //    margin / near = 화면 밖 이만큼(px)까지 그리기 / 걷게 하기, maxGlows = 한 화면의 불빛 수
+    perf: { maxRigs: 32, maxRigsLow: 16, maxLite: 40, margin: 120, near: 600, maxGlows: 40 },
+    // ── 주민의 하루 (시각, 각자 ±0.4시간씩 달라요)
+    townLife: {
+      jitter: 0.4,
+      school: { leave: 7.5, bell: 8, recess: 10.5, recessEnd: 10.83, lunch: 12, lunchEnd: 12.67, out: 15, home: 17.5 },
+      teen: { cafe: 15.5, home: 17.5 },
+      shop: { open: 7.67, lunch: 12, lunchEnd: 12.67, close: 18.5 },
+      civic: { start: 7.75, teacherEnd: 16, end: 18 },
+      adult: { out: 8, home: 19, walkChance: 0.3, walkEnd: 20, errandMin: 6, errandMax: 15, tripFrom: 13, tripTo: 18 },
+      elder: { out: 9, cafe: 11, clinicChance: 0.2, home: 18, tripMorning: [9, 12], tripAfternoon: [14, 17] },
+      night: { dozers: 3, patrol: 1 },
+    },
+  },
 };

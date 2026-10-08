@@ -27,7 +27,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3)\./.test(path) || /^costs\.(op|raw)_/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4)\./.test(path) || /^costs\.(op|raw)_/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -153,4 +153,93 @@ export function checkBalance() {
   fixNum(A, 'deer', 'resources.animal.deer', 0, 20, 3, true); fixNum(A, 'boar', 'resources.animal.boar', 0, 20, 2, true);
   fixNum(A, 'hp', 'resources.animal.hp', 1, 100, 2, true); fixNum(A, 'meat', 'resources.animal.meat', 1, 50, 2, true);
   fixNum(A, 'respawn', 'resources.animal.respawn', 0.1, 600, 6);
+  // ---- (v4-A) 이웃 마을·기차·주민·밤낮 (docs/v4_plan.md §13)
+  checkV4A(B);
+}
+
+function checkV4A(B) {
+  const V = B.v4 = (B.v4 && typeof B.v4 === 'object') ? B.v4 : {};
+  const sub = (k) => (V[k] = (V[k] && typeof V[k] === 'object' && !Array.isArray(V[k])) ? V[k] : {});
+  const S = sub('station');
+  fixNum(S, 'coins', 'v4.station.coins', 1, 1e9, 500, true);
+  fixNum(S, 'item_plank', 'v4.station.item_plank', 0, 999, 14, true);
+  fixNum(S, 'item_ingot', 'v4.station.item_ingot', 0, 999, 4, true);
+  fixNum(S, 'time', 'v4.station.time', 1, 600, 12);
+  const T = sub('train');
+  fixNum(T, 'speed', 'v4.train.speed', 0.5, 6, 2.6);
+  fixNum(T, 'accel', 'v4.train.accel', 0.05, 10, 0.6);
+  fixNum(T, 'brake', 'v4.train.brake', 0.05, 10, 0.8);
+  fixNum(T, 'dwellOurs', 'v4.train.dwellOurs', 2, 120, 14);
+  fixNum(T, 'dwellTown', 'v4.train.dwellTown', 2, 120, 10);
+  fixNum(T, 'seats', 'v4.train.seats', 1, 60, 12, true);
+  fixNum(T, 'coachSeats', 'v4.train.coachSeats', 0, 60, 8, true);
+  fixNum(T, 'firstRide', 'v4.train.firstRide', 1, 60, 6, true);
+  fixNum(T, 'firstDelay', 'v4.train.firstDelay', 0, 60, 3);
+  fixNum(T, 'whistleBefore', 'v4.train.whistleBefore', 0, 20, 2.5);
+  fixNum(T, 'blockAhead', 'v4.train.blockAhead', 0.3, 10, 1.5);
+  const VI = sub('visitors');
+  fixNum(VI, 'base', 'v4.visitors.base', 0, 60, 4);
+  fixNum(VI, 'perShop', 'v4.visitors.perShop', 0, 20, 1);
+  fixNum(VI, 'perRank', 'v4.visitors.perRank', 0, 20, 3);
+  for (const k of ['dawn', 'day', 'dusk', 'night']) fixNum(VI, k, 'v4.visitors.' + k, 0, 5, { dawn: 0.5, day: 1, dusk: 1.3, night: 0.3 }[k]);
+  fixNum(VI, 'wantMin', 'v4.visitors.wantMin', 1, 20, 2, true);
+  fixNum(VI, 'wantMax', 'v4.visitors.wantMax', VI.wantMin, 20, 4, true);
+  fixNum(VI, 'patience', 'v4.visitors.patience', 5, 600, 60);
+  fixNum(VI, 'shopChance', 'v4.visitors.shopChance', 0, 1, 0.45);
+  fixNum(VI, 'storeChance', 'v4.visitors.storeChance', 0, 1, 0.25);
+  fixNum(VI, 'regularAt', 'v4.visitors.regularAt', 1, 100, 3, true);
+  fixNum(VI, 'speed', 'v4.visitors.speed', 20, 600, 105);
+  const TW = sub('town');
+  fixNum(TW, 'people', 'v4.town.people', 20, 192, 100, true);
+  fixNum(TW, 'peopleRank2', 'v4.town.peopleRank2', TW.people, 192, 120, true);
+  fixNum(TW, 'seed', 'v4.town.seed', 0, 4294967295, 2611, true);
+  fixNum(TW, 'walk', 'v4.town.walk', 20, 300, 70);
+  fixNum(TW, 'tripChance', 'v4.town.tripChance', 0, 1, 0.35);
+  fixNum(TW, 'inviteAfter', 'v4.town.inviteAfter', 10, 3600, 480);
+  const D = sub('day');
+  if (typeof D.on !== 'boolean') { if (D.on !== undefined) warn('v4.day.on', D.on, true); D.on = true; }
+  fixNum(D, 'length', 'v4.day.length', 60, 3600, 600);
+  fixNum(D, 'startHour', 'v4.day.startHour', 0, 23.99, 8);
+  fixNum(D, 'darkness', 'v4.day.darkness', 0, 0.6, 0.35);
+  fixNum(D, 'fade', 'v4.day.fade', 0, 60, 8);
+  // hours must be in order: dawn < dayStart < dusk < night, lights on after dusk starts
+  fixNum(D, 'dawn', 'v4.day.dawn', 0, 23, 6);
+  fixNum(D, 'dayStart', 'v4.day.dayStart', D.dawn, 23, 8);
+  fixNum(D, 'dusk', 'v4.day.dusk', D.dayStart, 23.5, 17);
+  fixNum(D, 'night', 'v4.day.night', D.dusk, 23.9, 20);
+  fixNum(D, 'lightsOn', 'v4.day.lightsOn', D.dusk, D.night, 19);
+  fixNum(D, 'lightsOff', 'v4.day.lightsOff', 0, D.dayStart, 6.5);
+  const P = sub('perf');
+  fixNum(P, 'maxRigs', 'v4.perf.maxRigs', 4, 48, 32, true);
+  fixNum(P, 'maxRigsLow', 'v4.perf.maxRigsLow', 4, P.maxRigs, 16, true);
+  fixNum(P, 'maxLite', 'v4.perf.maxLite', 0, 96, 40, true);
+  fixNum(P, 'margin', 'v4.perf.margin', 0, 600, 120);
+  fixNum(P, 'near', 'v4.perf.near', P.margin, 2000, 600);
+  fixNum(P, 'maxGlows', 'v4.perf.maxGlows', 0, 96, 40, true);
+  const TL = sub('townLife');
+  fixNum(TL, 'jitter', 'v4.townLife.jitter', 0, 2, 0.4);
+  const hours = (o, path, keys, dflt) => {
+    const X = TL[o] = (TL[o] && typeof TL[o] === 'object') ? TL[o] : {};
+    let lo = 0;
+    keys.forEach((k, n) => { fixNum(X, k, 'v4.townLife.' + o + '.' + k, lo, 23.99, dflt[n]); lo = X[k]; });
+    void path;
+  };
+  hours('school', 'school', ['leave', 'bell', 'recess', 'recessEnd', 'lunch', 'lunchEnd', 'out', 'home'], [7.5, 8, 10.5, 10.83, 12, 12.67, 15, 17.5]);
+  hours('teen', 'teen', ['cafe', 'home'], [15.5, 17.5]);
+  hours('shop', 'shop', ['open', 'lunch', 'lunchEnd', 'close'], [7.67, 12, 12.67, 18.5]);
+  hours('civic', 'civic', ['start', 'teacherEnd', 'end'], [7.75, 16, 18]);
+  const AD = TL.adult = (TL.adult && typeof TL.adult === 'object') ? TL.adult : {};
+  fixNum(AD, 'out', 'v4.townLife.adult.out', 0, 23, 8); fixNum(AD, 'home', 'v4.townLife.adult.home', AD.out, 23.5, 19);
+  fixNum(AD, 'walkChance', 'v4.townLife.adult.walkChance', 0, 1, 0.3); fixNum(AD, 'walkEnd', 'v4.townLife.adult.walkEnd', AD.home, 23.9, 20);
+  fixNum(AD, 'errandMin', 'v4.townLife.adult.errandMin', 1, 120, 6); fixNum(AD, 'errandMax', 'v4.townLife.adult.errandMax', AD.errandMin, 240, 15);
+  fixNum(AD, 'tripFrom', 'v4.townLife.adult.tripFrom', AD.out, AD.home, 13); fixNum(AD, 'tripTo', 'v4.townLife.adult.tripTo', AD.tripFrom, AD.home, 18);
+  const EL = TL.elder = (TL.elder && typeof TL.elder === 'object') ? TL.elder : {};
+  fixNum(EL, 'out', 'v4.townLife.elder.out', 0, 23, 9); fixNum(EL, 'cafe', 'v4.townLife.elder.cafe', EL.out, 23, 11);
+  fixNum(EL, 'clinicChance', 'v4.townLife.elder.clinicChance', 0, 1, 0.2); fixNum(EL, 'home', 'v4.townLife.elder.home', EL.cafe, 23.5, 18);
+  for (const [k, d] of [['tripMorning', [9, 12]], ['tripAfternoon', [14, 17]]]) {
+    if (!Array.isArray(EL[k]) || EL[k].length !== 2) { if (EL[k] !== undefined) warn('v4.townLife.elder.' + k, EL[k], d); EL[k] = d.slice(); }
+    fixNum(EL[k], 0, 'v4.townLife.elder.' + k + '[0]', 0, 23, d[0]); fixNum(EL[k], 1, 'v4.townLife.elder.' + k + '[1]', EL[k][0], 23.9, d[1]);
+  }
+  const NI = TL.night = (TL.night && typeof TL.night === 'object') ? TL.night : {};
+  fixNum(NI, 'dozers', 'v4.townLife.night.dozers', 0, 10, 3, true); fixNum(NI, 'patrol', 'v4.townLife.night.patrol', 0, 2, 1, true);
 }

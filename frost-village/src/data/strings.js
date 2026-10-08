@@ -191,6 +191,30 @@ export const STRINGS = {
     dogComing: '콩이가 달려와요!', dogGift: '콩이가 선물을 물어 왔어요! +{n}', dogTrick: '콩이의 재주!', dogLove: '친밀도',
     dogWait: '조금 이따가 해요', dogFar: '콩이가 너무 멀리 있어요', dogFull: '콩이는 배불러요',
     dogWhistleHint: '휘파람을 누르면 콩이가 달려와요!',
+
+    // ---------------- (v4-A) 이웃 마을 솔방울 마을 · 눈썰매 기차 · 낮과 밤
+    villageCompleteRumor: '동쪽 안개 너머에서 기적 소리가…',
+    railFound: '오래된 기찻길을 찾았어요!', railFoundSub: '기차역을 고치면 이웃 마을과 이어져요',
+    r_rail: '서리역 앞', r_town: '솔방울 마을',
+    plotOnly_station: '서리역 고치기', b_station: '서리역', bsub_station: '곧 이웃 마을 기차가 와요!', lock_station: '기찻길을 찾으면',
+    buildSize_XL: '아주 큰 부지',
+    stationRepaired: '서리역이 다시 문을 열었어요!', stationRepairedSub: '솔방울 마을 기차가 곧 도착해요',
+    firstTrain: '솔방울 마을 사람들이 장 보러 왔어요!', firstTrainSub: '판매대에 물건을 채워 두세요',
+    trainArrive: '솔방울 기차 도착 · 손님 {n}명',
+    inviteTitle: '솔방울 마을 촌장님의 초대!', inviteSub: '기찻길을 따라 동쪽으로 가 보세요',
+    townWelcome: '솔방울 마을에 오신 걸 환영해요', townWelcomeSub: '주민 {n}명이 사는 이웃 마을이에요',
+    townName: '솔방울 마을', stn_ours: '서리역', stn_town: '솔방울역', signHarbor: '갈매기 항구 방면 (공사 중)',
+    obj_station: '서리역을 고쳐 이웃 마을과 이어 보세요', obj_visit_town: '기찻길을 따라 솔방울 마을에 가 보세요',
+    obj_off_track: '기찻길에서 비켜 주세요!',
+    day: '낮', dawn: '새벽', dusk: '저녁', night: '밤', clockFmt: '{d}일째 {h}:{m}',
+    set_daynight: '낮과 밤',
+    tb_police: '역전 파출소',
+    // 주민 이름표 (주민을 누르면): 이름 · 나이 · 하는 일 · 좋아하는 것
+    tfCard: '{name} · {age}살 · {act}', tfLikes: '좋아하는 것: {fav}', tfRegular: '단골 ★',
+    act_home: '집에서 쉬는 중', act_school: '학교 가는 중', act_class: '수업 중', act_recess: '쉬는 시간', act_lunch: '점심 시간',
+    act_play: '노는 중', act_work: '일하는 중', act_errand: '장 보는 중', act_cafe: '카페에서 쉬는 중', act_walk: '산책 중',
+    act_trip: '서리마을 나들이 가는 중', act_shop: '서리마을에서 장 보는 중', act_train: '기차 타는 중', act_patrol: '순찰 중',
+    act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중',
   },
 
   en: {
@@ -374,6 +398,29 @@ export const STRINGS = {
     dogComing: 'Kongi is coming!', dogGift: 'Kongi brought you a gift! +{n}', dogTrick: 'Kongi does a trick!', dogLove: 'Affection',
     dogWait: 'In a moment', dogFar: 'Kongi is too far away', dogFull: 'Kongi is full',
     dogWhistleHint: 'Tap the whistle to call Kongi!',
+
+    // ---------------- (v4-A) the neighbour town Pinecone Village · the snow train · day and night
+    villageCompleteRumor: 'A train whistle beyond the eastern fog…',
+    railFound: 'You found an old railway!', railFoundSub: 'Repair the station to link up with the neighbour town',
+    r_rail: 'Frost Station', r_town: 'Pinecone Village',
+    plotOnly_station: 'Repair Frost Station', b_station: 'Frost Station', bsub_station: 'The neighbours\' train is coming soon!', lock_station: 'Find the railway first',
+    buildSize_XL: 'Very large plot',
+    stationRepaired: 'Frost Station is open again!', stationRepairedSub: 'The Pinecone train arrives soon',
+    firstTrain: 'Pinecone villagers came to shop!', firstTrainSub: 'Keep the counters stocked',
+    trainArrive: 'Pinecone train arrived · {n} shoppers',
+    inviteTitle: 'An invitation from the Pinecone mayor!', inviteSub: 'Follow the railway east',
+    townWelcome: 'Welcome to Pinecone Village', townWelcomeSub: 'A neighbour town of {n} people',
+    townName: 'Pinecone Village', stn_ours: 'Frost Station', stn_town: 'Pinecone Station', signHarbor: 'To Seagull Harbour (closed)',
+    obj_station: 'Repair Frost Station to link up with the neighbours', obj_visit_town: 'Follow the railway to Pinecone Village',
+    obj_off_track: 'Please step off the track!',
+    day: 'Day', dawn: 'Dawn', dusk: 'Dusk', night: 'Night', clockFmt: 'Day {d} {h}:{m}',
+    set_daynight: 'Day & night',
+    tb_police: 'Station police box',
+    tfCard: '{name} · {age} · {act}', tfLikes: 'Likes: {fav}', tfRegular: 'Regular ★',
+    act_home: 'resting at home', act_school: 'off to school', act_class: 'in class', act_recess: 'at recess', act_lunch: 'lunch break',
+    act_play: 'playing', act_work: 'at work', act_errand: 'running errands', act_cafe: 'at the café', act_walk: 'taking a walk',
+    act_trip: 'off to Frost Village', act_shop: 'shopping in Frost Village', act_train: 'on the train', act_patrol: 'on patrol',
+    act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting',
   },
 };
 
@@ -443,6 +490,19 @@ export const LINES = {
     tap: ['부르셨어요?', '앗, 촌장님!', '네~?', '무슨 일이에요?'],
     warm: ['아~ 따뜻해', '불 앞이 최고야', '손 녹이자~'],
     read: ['마을 소식이 붙었네', '다음 장날은 언제지?', '새 주민이 온대!'],
+    // ---- (v4-A) 이웃 마을
+    rumor: ['동쪽 안개 너머에 기찻길이 있대!', '밤에 동쪽에서 기적 소리를 들었어', '안개 너머에 마을이 또 있대요', '옛날엔 여기까지 기차가 왔었지…'],
+    town_kid: ['학교 끝나면 분수대 가자!', '오늘 급식 맛있었어!', '썰매 정류장까지 달리기!', '종 울렸다! 쉬는 시간이다!', '우리 마을 최고!', '눈싸움할 사람~?'],
+    town_adult: ['오늘 장 볼 게 많네', '서리마을 생선구이가 그렇게 맛있대요', '기차 시간 늦겠다!', '오늘 날씨 좋네요', '꽃집에 새 꽃 들어왔대요', '퇴근하고 뭐 먹지?'],
+    town_elder: ['허허, 분수대 소리 좋다', '서리마을 빵이 제일이야', '젊었을 땐 기차 타고 멀리 갔었지', '조금 쉬었다 가자', '손주 줄 선물 사야지'],
+    shopper_happy: ['다 샀다! 고마워요~', '역시 서리마을이야!', '또 올게요!', '우리 마을에 자랑해야지'],
+    shopper_sad: ['아쉽다, 다 팔렸네…', '다음엔 꼭 사 가야지', '빈손으로 가네…'],
+    regular: ['또 왔어요, 촌장님!', '단골 왔어요~!', '오늘도 잘 부탁해요!', '이 집 아니면 안 돼요'],
+    mayor_invite: ['우리 마을에도 놀러 오세요!', '솔방울 마을이 촌장님을 기다려요!', '기찻길만 따라오시면 돼요!'],
+    founder_ask: ['여기에 가게를 열어도 될까요?', '서리마을 물건으로 장사해 볼게요!'],
+    builder: ['뚝딱뚝딱!', '금방 지어 드릴게요!', '튼튼하게 짓자!'],
+    newcomer: ['오늘부터 이웃이에요!', '이사 왔어요, 잘 부탁해요!'],
+    station: ['기차가 들어옵니다~!', '안전선 밖으로 물러나 주세요!', '솔방울행 기차 출발합니다!'],
   },
   en: {
     kid: ['Let\'s build a snowman!', 'Kongi is so cute!', 'Snow days are the best!', 'I\'m the fastest!', 'My hands are frozen!', 'Today\'s fish is the best!', 'I want to go sledding~', 'The chief is cool~'],
@@ -482,8 +542,47 @@ export const LINES = {
     tap: ['You called?', 'Oh, chief!', 'Yes~?', 'What\'s up?'],
     warm: ['Ahh, so warm', 'Nothing beats the fire', 'Let\'s warm our hands~'],
     read: ['There\'s village news', 'When is the next market day?', 'A new neighbour is coming!'],
+    // ---- (v4-A) the neighbour town
+    rumor: ['They say there\'s a railway beyond the eastern fog!', 'I heard a train whistle from the east last night', 'Another village lies beyond the fog', 'Trains used to come all the way here…'],
+    town_kid: ['Fountain after school!', 'Lunch was yummy today!', 'Race you to the sled stop!', 'The bell! Recess!', 'Our town is the best!', 'Snowball fight, anyone?'],
+    town_adult: ['So much shopping today', 'They say Frost Village grilled fish is amazing', 'I\'ll miss my train!', 'Lovely weather today', 'The florist got new flowers', 'What\'s for dinner after work?'],
+    town_elder: ['Ah, the fountain sounds lovely', 'Frost Village bread is the best', 'I rode trains far away when I was young', 'Let\'s rest a little', 'I must buy a gift for my grandchild'],
+    shopper_happy: ['Got everything! Thank you~', 'Frost Village never fails!', 'I\'ll be back!', 'I\'ll tell everyone at home'],
+    shopper_sad: ['Oh no, sold out…', 'Next time for sure', 'Going home empty-handed…'],
+    regular: ['I\'m back, chief!', 'Your regular is here~!', 'Hello again!', 'Nowhere else for me'],
+    mayor_invite: ['Come visit our village too!', 'Pinecone Village is waiting for you, chief!', 'Just follow the railway!'],
+    founder_ask: ['May I open a shop here?', 'I\'ll sell Frost Village goods!'],
+    builder: ['Bang bang!', 'Done in no time!', 'Let\'s build it sturdy!'],
+    newcomer: ['We\'re neighbours now!', 'Just moved in, nice to meet you!'],
+    station: ['Train arriving~!', 'Please stand behind the line!', 'The Pinecone train is leaving!'],
   },
 };
+
+// =====================================================================
+//  (v4-A) 솔방울 마을 주민 이름 (주민 번호 순서). ko / en 은 같은 순서로 짝을 맞춤 (120명)
+// =====================================================================
+export const TOWN_NAMES = {
+  ko: ['민지', '서준', '하은', '도윤', '지우', '예준', '수아', '시우', '서연', '주원', '하린', '지호', '지아', '준우', '채원', '도현', '윤서', '건우', '다은', '우진',
+    '은서', '선우', '소율', '현우', '예린', '유준', '지유', '정우', '수빈', '승우', '가은', '지훈', '서윤', '민준', '하윤', '태윤', '나은', '은우', '유나', '시윤',
+    '채은', '이준', '아린', '민재', '서아', '준서', '연우', '지환', '예은', '승민', '다인', '하준', '소윤', '준혁', '지민', '태민', '수연', '재윤', '혜원', '동하',
+    '미숙', '영호', '순자', '정수', '옥순', '광수', '말순', '덕배', '영자', '춘식', '복순', '만석', '금순', '봉구', '정희', '용수', '명자', '철수', '영희', '길동',
+    '보람', '한결', '초롱', '가람', '나래', '다솜', '새봄', '온유', '바다', '하늘', '누리', '단비', '여름', '가을', '겨울', '이슬', '별이', '솔이', '봄이', '산들',
+    '은비', '태호', '경민', '수진', '상우', '혜진', '동건', '미영', '재석', '은희', '성민', '지혜', '현수', '보영', '창민', '유진', '기태', '선희', '동욱', '미란'],
+  en: ['Minji', 'Seojun', 'Haeun', 'Doyun', 'Jiwoo', 'Yejun', 'Sua', 'Siwoo', 'Seoyeon', 'Juwon', 'Harin', 'Jiho', 'Jia', 'Junwoo', 'Chaewon', 'Dohyun', 'Yunseo', 'Gunwoo', 'Daeun', 'Woojin',
+    'Eunseo', 'Sunwoo', 'Soyul', 'Hyunwoo', 'Yerin', 'Yujun', 'Jiyu', 'Jungwoo', 'Subin', 'Seungwoo', 'Gaeun', 'Jihoon', 'Seoyun', 'Minjun', 'Hayun', 'Taeyun', 'Naeun', 'Eunwoo', 'Yuna', 'Siyun',
+    'Chaeeun', 'Ijun', 'Arin', 'Minjae', 'Seoa', 'Junseo', 'Yeonwoo', 'Jihwan', 'Yeeun', 'Seungmin', 'Dain', 'Hajun', 'Soyun', 'Junhyuk', 'Jimin', 'Taemin', 'Suyeon', 'Jaeyun', 'Hyewon', 'Dongha',
+    'Misook', 'Youngho', 'Soonja', 'Jungsoo', 'Oksoon', 'Kwangsoo', 'Malsoon', 'Deokbae', 'Youngja', 'Chunsik', 'Boksoon', 'Manseok', 'Geumsoon', 'Bonggu', 'Junghee', 'Yongsoo', 'Myungja', 'Cheolsoo', 'Younghee', 'Gildong',
+    'Boram', 'Hangyeol', 'Chorong', 'Garam', 'Narae', 'Dasom', 'Saebom', 'Onyu', 'Bada', 'Haneul', 'Nuri', 'Danbi', 'Yeoreum', 'Gaeul', 'Gyeoul', 'Iseul', 'Byeoli', 'Soli', 'Bomi', 'Sandeul',
+    'Eunbi', 'Taeho', 'Kyungmin', 'Sujin', 'Sangwoo', 'Hyejin', 'Donggun', 'Miyoung', 'Jaeseok', 'Eunhee', 'Sungmin', 'Jihye', 'Hyunsoo', 'Boyoung', 'Changmin', 'Yujin', 'Kitae', 'Sunhee', 'Donguk', 'Miran'],
+};
+
+/** (v4-A) the name of town citizen `id` in the current language */
+export function townName(id) {
+  const tb = TOWN_NAMES[current] || TOWN_NAMES.ko;
+  const n = tb.length;
+  const base = tb[((id % n) + n) % n];
+  return id >= n ? base + ' ' + (Math.floor(id / n) + 1) : base;
+}
 
 /** a random line of category `cat` in the current language (null when there is none) */
 export function line(cat, rnd) {

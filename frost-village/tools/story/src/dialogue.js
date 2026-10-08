@@ -56,10 +56,10 @@ export class Dialogue {
     this.grammars = Object.create(null);
     this.trng = new Rng(1);
     this.ctx = {
-      f0: 0, f1: 0, f2: 0, f3: 0, f4: 0, p0: 0, p1: 0, t0: 0, t1: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
+      f0: 0, f1: 0, f2: 0, f3: 0, f4: 0, p0: 0, p1: 0, p2: 0, t0: 0, t1: 0, t2: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
       get: (s) => this.slot(s),
     };
-    this.prev0 = 0; this.prev1 = 0;      // tags of the line said just before (replies answer what was said)
+    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0;      // tags of the line said just before (replies answer what was said)
     this.cur = { b: null, sp: null, ls: null, rel: null, lang: 'ko', f: null, cache: Object.create(null), ext: null };
     this.fallback = new Map();
     this.mask = [0, 0, 0, 0, 0];
@@ -79,15 +79,20 @@ export class Dialogue {
     this.trng.setState([mix32(e.cfg.seedNum, talk.id), mix32(talk.id, 0x51ed), mix32(talk.a + 7, talk.id), mix32(talk.b + 13, 0x9e37)]);
     const lines = [];
     const beats = talk.beats;
-    this.prev0 = 0; this.prev1 = 0;
+    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0;
+    let added = 0;
     for (let i = 0; i < beats.length; i++) {
       const b = beats[i];
       this.pushLine(lines, b, lang, talk);
       // a question that the next beat does not answer (the asked person does not speak next, or the
-      // talk moves on): the asked person answers it in a short line first
-      if ((this.prev0 & TAG_Q) && b.to >= 0 && !talk.shout && e.people[b.to]) {
+      // talk moves on): the asked person answers it in a short line first (at most two such lines)
+      let last = b;
+      while ((this.prev0 & TAG_Q) && last.to >= 0 && !talk.shout && e.people[last.to] && added < 2) {
         const nb = beats[i + 1];
-        if (!(nb && nb.w === b.to && REPLY_RE.test(nb.r))) this.pushLine(lines, this.answerBeat(b), lang, talk);
+        if (nb && nb.w === last.to && REPLY_RE.test(nb.r)) break;
+        last = this.answerBeat(last);
+        this.pushLine(lines, last, lang, talk);
+        added++;
       }
     }
     talk.lines = lines;
@@ -132,7 +137,8 @@ export class Dialogue {
     const rel = ls ? getRel(e, sp.id, ls.id) : null;
     this.setup(b, sp, ls, rel, lang, talk);
     const ctx = this.ctx;
-    ctx.p0 = this.prev0; ctx.p1 = this.prev1;
+    ctx.p0 = this.prev0; ctx.p1 = this.prev1; ctx.p2 = this.prev2;
+    ctx.noQ = !!b.nq;
     let text = '', tries = 0;
     for (; tries < 4; tries++) {
       text = tidy(g.expand(rule, ctx), lang);
@@ -149,7 +155,7 @@ export class Dialogue {
       if (fb && fb !== rule) text = tidy(g.expand(fb, ctx), lang);
       if (!text) { this.miss(b.r); text = lang === 'en' ? '…' : '…'; }
     }
-    this.prev0 = ctx.t0; this.prev1 = ctx.t1;
+    this.prev0 = ctx.t0; this.prev1 = ctx.t1; this.prev2 = ctx.t2;
     return text;
   }
 
@@ -240,7 +246,7 @@ export class Dialogue {
       if (place.cat === 'outdoor') set(C.outdoors);
     }
     // the fact / memory version
-    let slots = ALWAYS_SLOTS;
+    let slots = ALWAYS_SLOTS | S('U');
     const f = b.f;
     if (f) {
       if (b.x >= 1) set(C.ex1);
@@ -605,7 +611,8 @@ export class Dialogue {
       case 'G': { const i = f && f.k === 'pet' ? f.n : b.n; const p = PETS[(i >= 0 ? i : 0) % PETS.length]; return en ? p[1] : p[0]; }
       case 'H': { const l = LIKES[b.h]; return l ? (en ? l.en : l.ko) : ''; }
       case 'A': { const l = LIKES[b.h]; return l ? (en ? l.enAct : l.koAct) : ''; }
-      case 'Q': case 'U': case 'F': return '';
+      case 'U': { const a = ageOf(e, sp); return en ? String(a) : counted(a, '살').replace(' ', ' '); }
+      case 'Q': case 'F': return '';
     }
     return '';
   }
@@ -624,7 +631,7 @@ export class Dialogue {
     this.setup(b, sp, null, null, lang, null);
     ctx.level = 3;
     ctx.recent = null;
-    ctx.p0 = 0; ctx.p1 = 0;
+    ctx.p0 = 0; ctx.p1 = 0; ctx.p2 = 0; ctx.noQ = true;
     const text = tidy(g.expand(r, ctx), lang);
     if (!text) this.miss(rule);
     return text;

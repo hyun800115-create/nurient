@@ -61,10 +61,14 @@ POS = ("positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audi
 SOUNDS = {
     "bgm_city":              ("music", True, -24.5, {"bars": 32, "tonality": "F major", "meter": "4/4",
                                                     "notes": "busy upbeat living-city theme (126 bpm shuffle, 61 s), A A B A "
-                                                             "like bgm_village: the village hook verbatim, made busier; B = the "
-                                                             "village B melody on flute. Daytime in the city districts "
+                                                             "like bgm_village and in its family (the village hook verbatim in "
+                                                             "bars 1 and 5 of A, same palette) but its own tune and chords: A "
+                                                             "F Dm7 Gm7 C7 F D7 Gm7-C7 F with 16th 'traffic' answers, B a new "
+                                                             "flute tune on Gm7 C7 Fmaj7 Dm7 Bb C Am7-D7 Gm7-C7 (the village B "
+                                                             "only as a 2-bar trumpet quote). Daytime in the city districts "
                                                              "(logistics, bank, police). ~21 MB as decoded PCM: load lazily, "
-                                                             "Audio.playMusic('bgm_city') crossfades."}),
+                                                             "Audio.playMusic('bgm_city') crossfades; after bgm_chase resume it "
+                                                             "from its saved position, not bar 1."}),
     "bgm_chase":             ("music", True, -24.5, {"bars": 16, "tonality": "F major / D minor", "meter": "4/4",
                                                     "notes": "comic chase gallop (168 bpm, 23 s): play while police chase a thief "
                                                              "(or a fire engine races), then playMusic back to the previous "
@@ -73,14 +77,19 @@ SOUNDS = {
                                                                 "(cosy cartoon, no scary highs). setAmbience('amb_fire_big', 0..1) "
                                                                 "by distance x fire size; fade out with the steam hiss."}),
     "amb_construction":      ("ambience", True, -31.5, {"notes": "building site across the street (hammering, saw, drill, clanks, "
-                                                                "far reverse beeps, a worker's call). setAmbience by distance to "
-                                                                "any construction / rebuild site."}),
-    "amb_bank":              ("ambience", True, -32.5, {"notes": "inside the bank: hushed marble-hall murmur, footsteps, note "
-                                                                "counter, number-ticket 'ding-dong', stamp. setAmbience 0..1 "
-                                                                "while the bank's inside is revealed / the camera is near it."}),
+                                                                "far reverse beeps, gravel; no voices). setAmbience by distance "
+                                                                "to any construction / rebuild site; for life add audio2 "
+                                                                "sfx_chatter_lo / sfx_hammer at random 6-20 s intervals."}),
+    "amb_bank":              ("ambience", True, -32.5, {"notes": "inside the bank, texture only: hushed marble-hall murmur, soft "
+                                                                "footsteps, a faint note counter, paper, HVAC. setAmbience 0..1 "
+                                                                "while the bank's inside is revealed / the camera is near it. The "
+                                                                "events are one-shots the game fires: sfx_ticket_chime when a "
+                                                                "teller calls the next customer, sfx_stamp / sfx_coin_count on "
+                                                                "loans and deposits, audio2 sfx_chatter_lo for talk."}),
     "amb_warehouse":         ("ambience", True, -32.0, {"notes": "inside the logistics centre: conveyor hum + roller rattle, boxes "
-                                                                "bumping, far forklift reverse beeps, tape gun, big hall. "
-                                                                "setAmbience 0..1 while revealed / near."}),
+                                                                "bumping, far forklift reverse beeps, tape gun, pallet jack, big "
+                                                                "hall (no voices). setAmbience 0..1 while revealed / near; add "
+                                                                "audio2 sfx_chatter_lo near workers."}),
     "sfx_siren_fire":        ("ambience", True, -23.0, {"notes": POS.format(k="sfx_siren_fire", what="fire engine")
                                                        + "retro two-tone 'nee-naw' (D5 / A4, 0.5 s each, round, not "
                                                          "piercing). Start on dispatch, fade out ~1 s after arrival. "
@@ -90,14 +99,19 @@ SOUNDS = {
                                                          "arrest."}),
     "sfx_hose_spray":        ("ambience", True, -26.0, {"notes": POS.format(k="sfx_hose_spray", what="spraying firefighter")
                                                        + "loop while anim spray_hose plays (fx_hose_stream). One instance is "
-                                                         "enough for several hoses (raise its volume a little)."}),
+                                                         "enough for several hoses (raise its volume a little). Optional: "
+                                                         "duck it to 0.75 while amb_fire_big is above 0.5."}),
     "sfx_excavator":         ("ambience", True, -27.0, {"notes": POS.format(k="sfx_excavator", what="excavator")
-                                                       + "rate 0.85 idle / moving, 1.0 working, 1.12 while anims.dig plays; "
-                                                         "add sfx_demolish_crunch on each dig frame."}),
+                                                       + "rate 0.85 idle / moving, 1.0 working, 1.12 while anims.dig plays "
+                                                         "(needs Audio.setAmbienceRate(key, r) -> this.amb[key].setRate(r); "
+                                                         "without it play at rate 1); add sfx_demolish_crunch on each dig "
+                                                         "frame."}),
     "sfx_comic_fight":       ("ambience", True, -23.0, {"notes": POS.format(k="sfx_comic_fight", what="fx_fight_cloud")
                                                        + "cartoon scuffle (bonk, pow, biff, swish, boing, tiny 'hai!'). "
                                                          "Loop while the dust cloud is up (2-4 s), stop with a "
-                                                         "sfx_police_whistle or a laugh."}),
+                                                         "sfx_police_whistle or a laugh. Start each fight at a random "
+                                                         "position (seek) and rate 0.95-1.05 so the 2.4 s cycle never lines "
+                                                         "up twice."}),
     "sfx_fire_flare":        ("sfx", False, -16.5, {"cues": {"flare": 0.0},
                                                    "notes": "flames burst from a window (fx_fire_window / fire start / "
                                                             "flare-up when the hose stops)."}),
@@ -116,15 +130,22 @@ SOUNDS = {
     "sfx_stamp":             ("sfx", False, -17.5, {"cues": {"thunk": 0.0},
                                                    "notes": "rubber stamp on a ledger: settlement at the logistics counter, "
                                                             "loan approved, passbook entry (ui_icon_settle)."}),
-    "sfx_vault_door":        ("sfx", False, -17.0, {"cues": {"spin": 0.0, "bolt1": 0.78, "bolt2": 0.94, "bolt3": 1.1,
-                                                            "swing": 1.25, "open": 2.15, "sparkle": 2.2},
-                                                   "notes": "the bank vault opens (anims.vault, 8 f): play on frame 0; the door "
-                                                            "swings 1.25 -> 2.15 s (frames 4-7 at ~4 fps)."}),
+    "sfx_vault_door":        ("sfx", False, -17.0, {"cues": {"spin": 0.0, "bolt1": 0.25, "bolt2": 0.31, "bolt3": 0.375,
+                                                            "swing": 0.4, "open": 0.875, "sparkle": 0.94},
+                                                   "notes": "the bank vault opens: play on frame 0 of anims.vault (8 f at 8 fps "
+                                                            "as civ_assets.py renders it): the wheel spins on frames 1-2, the "
+                                                            "bolts clunk as frame 3 starts the swing, the door lands with a "
+                                                            "'dunn' on frame 7 (0.875 s), a sparkle follows. If the anim is "
+                                                            "played at another fps, scale the playback rate by fps / 8 "
+                                                            "(0.75-1.25 sounds fine)."}),
     "sfx_forklift_beep":     ("sfx", False, -20.0, {"cues": {"beep1": 0.0, "beep2": 0.42, "beep3": 0.84},
-                                                   "notes": "forklift reversing (three C6 beeps). Repeat every ~1.3 s while a "
+                                                   "notes": "forklift reversing (three C6 beeps 0.42 s apart). Retrigger every "
+                                                            "1.26 s (3 x 0.42, so the beeps stay evenly spaced) while a "
                                                             "forklift drives backwards; volume by distance."}),
-    "sfx_police_whistle":    ("sfx", False, -17.0, {"cues": {"blast1": 0.0, "blast2": 0.3},
-                                                   "notes": "officer spots a thief / stops a scuffle ('pweet! pweeeeet!')."}),
+    "sfx_police_whistle":    ("sfx", False, -19.0, {"cues": {"blast1": 0.0, "blast2": 0.3},
+                                                   "notes": "officer spots a thief / stops a scuffle ('pweet! pweeeeet!'). For "
+                                                            "repeat incidents nearby play only the first blast (stop at the "
+                                                            "'blast2' cue)."}),
     "sfx_crowd_gasp":        ("sfx", False, -18.0, {"notes": "onlookers 'h-oooh!' (fire breaks out, thief runs, roof "
                                                             "collapses). Surprised, not scared."}),
     "sfx_crowd_cheer_small": ("sfx", False, -17.0, {"notes": "fire out / thief caught / new building opens: 'hoo-ray!', "
@@ -139,8 +160,9 @@ SOUNDS = {
                                                    "notes": "moving truck arrives and opens (anims.unload: ramp + door); "
                                                             "drive in with audio3 sfx_truck_engine."}),
     "sfx_box_drop":          ("sfx", False, -18.5, {"notes": "cardboard box / crate set down (movers, warehouse pickers, "
-                                                            "deliveries). For variety play the group sfx_box (3 boxes) with "
-                                                            "rate 0.92-1.1; throttle ~120 ms."}),
+                                                            "deliveries). Call Audio.play('sfx_box', {rate: 0.92-1.1}) - the "
+                                                            "group picks one of the 3 boxes; 'sfx_box_drop' alone is always "
+                                                            "box 1. Throttle ~120 ms."}),
     "sfx_box_drop_2":        ("sfx", False, -18.5, {"notes": "variant: small box with tins / toys clinking inside (group "
                                                             "sfx_box)."}),
     "sfx_box_drop_3":        ("sfx", False, -18.5, {"notes": "variant: big heavy box, deeper thump + short scrape (group "
@@ -148,6 +170,11 @@ SOUNDS = {
     "sfx_newspaper":         ("sfx", False, -18.5, {"cues": {"fwap": 0.16},
                                                    "notes": "the morning paper '솔방울 신문' opens (ui_newspaper) / a "
                                                             "resident reads the paper."}),
+    "sfx_ticket_chime":      ("sfx", False, -19.0, {"cues": {"ding": 0.0, "dong": 0.34},
+                                                   "notes": "extra (not in the contract): the bank's number display calls the "
+                                                            "next customer, 'ding-dong' C6 A5. Play when a teller frees up / "
+                                                            "the queue advances (it used to be baked into amb_bank and "
+                                                            "repeated every 8 s)."}),
 }
 GROUPS = {
     # Audio.play('sfx_box') picks one of the three (never the same twice in a row); 'sfx_box_drop' stays the
@@ -285,6 +312,9 @@ def write_manifest(meas):
             with open(mp) as f:
                 meta = json.load(f)
             entry["loopSamples"] = meta.get("loopSamples")
+            # 7 decimals: round(duration * 44100) == loopSamples, so Audio.trimLoops (Safari path, want =
+            # round(duration * rate)) cuts the loop to the exact sample count
+            entry["duration"] = round(meta["loopSamples"] / 44100.0, 7)
             if "bpm" in meta:
                 entry["bpm"] = round(meta["bpm"], 3)
             for mk in META_KEYS:
@@ -393,9 +423,10 @@ document.getElementById('city').onclick=()=>{stopAll();loopAt(0,'bgm_city',1);lo
  seq([[900,'sfx_bus_horn',0.6,'audio3'],[2500,'sfx_chatter',0.6,'audio2'],[3300,'sfx_car_honk',0.5,'audio3'],[4800,'sfx_newspaper',0.9],
  [6200,'sfx_box',0.8],[6600,'sfx_box',0.6,'audio6',1.08],[8200,'sfx_laugh',0.5,'audio2']])};
 document.getElementById('bank').onclick=()=>{stopAll();loopAt(0,'amb_bank',1);loopAt(0,'bgm_city',0.35);
- seq([[600,'sfx_door',0.8,'audio3'],[1800,'sfx_coin_count',1],[3600,'sfx_stamp',1],[5000,'sfx_vault_door',1],[8200,'sfx_cash',0.7,'audio'],[9200,'sfx_chatter',0.5,'audio2']])};
+ seq([[600,'sfx_door',0.8,'audio3'],[1400,'sfx_ticket_chime',1],[2300,'sfx_chatter_lo',0.5,'audio2'],[3000,'sfx_coin_count',1],[4600,'sfx_stamp',1],
+ [5800,'sfx_vault_door',1],[7600,'sfx_ticket_chime',0.9],[8400,'sfx_cash',0.7,'audio'],[9200,'sfx_chatter_lo',0.5,'audio2']])};
 document.getElementById('ware').onclick=()=>{stopAll();loopAt(0,'amb_warehouse',1);loopAt(0,'bgm_city',0.35);
- seq([[500,'sfx_forklift_beep',0.8],[1900,'sfx_forklift_beep',0.8],[2600,'sfx_box',1],[3100,'sfx_box',0.8,'audio6',0.92],[3500,'sfx_box',0.9],
+ seq([[500,'sfx_forklift_beep',0.8],[1760,'sfx_forklift_beep',0.8],[5200,'sfx_chatter_lo',0.4,'audio2'],[2600,'sfx_box',1],[3100,'sfx_box',0.8,'audio6',0.92],[3500,'sfx_box',0.9],
  [4300,'sfx_moving_truck',1],[7600,'sfx_stamp',1],[8300,'sfx_coins_many',0.6,'audio']])};
 document.getElementById('fire').onclick=()=>{stopAll();loopAt(0,'bgm_city',0.5);
  seq([[300,'sfx_fire_alarm_bell',1],[1200,'sfx_crowd_gasp',1],[1800,'sfx_fire_flare',1]]);loopAt(1700,'amb_fire_big',0.9);
@@ -408,7 +439,7 @@ document.getElementById('chase').onclick=()=>{stopAll();loopAt(0,'bgm_chase',1);
  at(9000,()=>stop('sfx_siren_police'));loopAt(9200,'sfx_comic_fight',1);at(11800,()=>stop('sfx_comic_fight'));
  seq([[11900,'sfx_police_whistle',0.9],[12700,'sfx_cuffs_click',1],[13500,'sfx_crowd_cheer_small',0.9]])};
 document.getElementById('build').onclick=()=>{stopAll();loopAt(0,'amb_construction',1);loopAt(0,'sfx_excavator',0.8);
- seq([[1500,'sfx_demolish_crunch',1],[4000,'sfx_demolish_crunch',0.9],[6200,'sfx_collapse_soft',1],[9000,'sfx_hammer',0.6,'audio2'],[10500,'sfx_build_done',0.8,'audio2']]);
+ seq([[1500,'sfx_demolish_crunch',1],[3000,'sfx_chatter_lo',0.4,'audio2'],[4000,'sfx_demolish_crunch',0.9],[6200,'sfx_collapse_soft',1],[9000,'sfx_hammer',0.6,'audio2'],[10500,'sfx_build_done',0.8,'audio2']]);
  at(8500,()=>stop('sfx_excavator'))};
 </script></body></html>
 """

@@ -7,7 +7,8 @@
                      the 'and' of 2 and tied over beat 3, every phrase anticipates the next bar on the 'and' of 4.
                      Bars 4 and 6-7 answer like the village tune (the G-A-G question, the reach up to A5).
                 B  = Bb | C | Am | Dm | Bb | C | Gm7 | C7     the bgm_village B section: the village's own B melody
-                     on its own voice (ocarina) over island comping, a marimba ghost on long notes, steel-pan chord
+                     on the steel pan (rolled long notes), the village ocarina doubling it softly an octave below,
+                     over island comping, a marimba ghost on long notes, steel-pan chord
                      'chinks' on the off-beats, glock sparkles, three cartoon water 'bloops', a slide whistle up into
                      the last A.
                 A2 = tutti: steel pan + marimba an octave below (the village voice), glock counter-melody (the
@@ -65,7 +66,7 @@ A_MEL = [
 ]
 A_END_OPEN = "-  -  -  .  .  .  F4 G4"     # F | C7   pickup back into the hook (the village turnaround)
 A_END_CLOSED = "-  -  -  -  .  .  .  ."   # F
-B_MEL = [                          # the bgm_village B melody (ocarina), nearly note for note
+B_MEL = [                          # the bgm_village B melody (its ocarina line), nearly note for note
     "D5 -  F5 -  D5 C5 D5 -",      # Bb
     "C5 -  -  A4 C5 D5 C5 -",      # C
     "A4 -  C5 A4 G4 A4 C5 -",      # Am
@@ -267,8 +268,13 @@ def _premix_beach(seed: int):
                     mx.add("mel", t0 + 0.004, I.marimba(m, song.vel(acc * 0.85), r), 0.3, 0.22)
                 elif s in (0, 4) and ln >= 2:
                     mx.add("mbox", t0 + 0.005, I.musicbox(m + 24, song.vel(0.45), r), 0.08, 0.35)
-            else:                                           # B: the village ocarina
-                mx.add("oca", t0, I.ocarina(m, song.vel(0.8), dur * 0.96, r, vib=1.0 if ln >= 3 else 0.5), 0.42,
+            else:                                           # B: the village B melody on the steel pan (a softer,
+                #                                             rolled touch), the village ocarina doubling it quietly
+                if ln >= 4:                                 # an octave below
+                    mx.add("pan", t0, pan_roll(m + 12, song.vel(acc * 0.85), dur * 0.95, r), 0.44, -0.12)
+                else:
+                    mx.add("pan", t0, steelpan(m + 12, song.vel(acc * 0.92), r), 0.44, -0.12)
+                mx.add("oca", t0, I.ocarina(m, song.vel(0.7), dur * 0.96, r, vib=1.0 if ln >= 3 else 0.5), 0.15,
                        -0.08)
                 if ln >= 4:
                     mx.add("mel", t0, I.marimba(m - 12, song.vel(0.38), r), 0.2, -0.25)
@@ -341,7 +347,7 @@ def _premix_beach(seed: int):
             sw = I.cymbal_soft(0.35, 1.2, r, swell=True)
             mx.add("cym", st(last + 1, 0) - len(sw) / SR, sw, 0.12, 0.0)
         if kind == "B":
-            for k, mm in enumerate((77, 81, 84)):           # water 'bloops' answering the ocarina (bar 4)
+            for k, mm in enumerate((77, 81, 84)):           # water 'bloops' answering the melody (bar 4)
                 f = float(S.midi_hz(mm))
                 mx.add("bloop", st(bar0 + 3, 5) + k * beat * 0.5, bubble(r, f * 0.8, 0.13, 0.25, tau=0.05), 0.1,
                        0.3 - 0.3 * k)
@@ -359,6 +365,9 @@ def _premix_beach(seed: int):
              "pad": 2.6, "kick": 0.7, "clap": 1.9, "rim": 2.6, "shk": 4.5, "conga": 1.0, "clv": 2.6, "tri": 1.0,
              "cym": 1.0, "bloop": 1.0, "slide": 1.0}
     mix = premix(mx, sends, gains, L, rt60=1.5, pad_bus="pad")
+    # gentle roll-off above 16 kHz (24 dB / oct): only shaker / cymbal air ~60 dB down lives there; the .mp3 fallback
+    # (iOS) has nothing above ~16 kHz either, so both formats now sound alike, and the .ogg is a few kB lighter.
+    mix = S.lp(mix, 16000.0, order=2)
     mix = _delay(mix)
     meta = {"bpm": BPM, "bars": BARS, "loopSamples": L, "nominalSamples": L, "target": -18.0}
     return mix, meta

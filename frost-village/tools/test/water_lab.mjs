@@ -7,6 +7,9 @@
 //   node tools/test/water_lab.mjs beforeafter -> docs/previews/water_before_after.png
 //   node tools/test/water_lab.mjs perf        -> relative frame cost old tileSprite / low / high (SwiftShader)
 //   node tools/test/water_lab.mjs check       -> loads every scene x mode x quality, fails on console errors
+//   node tools/test/water_lab.mjs ingame [--cam x,y] [--only old,new_high,...]
+//                                             -> the REAL game with the Ground.js integration patches of
+//                                                water_lab/integrate.mjs served in memory -> docs/previews/water_ingame.png
 //   node tools/test/water_lab.mjs all         -> everything above (resumable: frames are cached in the scratch dir)
 //
 // Frames go to $WATER_LAB_TMP (default: /tmp/water_lab); GIFs are made with ffmpeg (palettegen, 2 passes).
@@ -41,7 +44,7 @@ async function open(q) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + (e && e.stack || e)));
-  page.on('console', (m) => { if (/Failed to load resource/.test(m.text())) return; if (m.type() === 'error' || (m.type() === 'warning' && /Water|WebGL|shader/i.test(m.text()))) errors.push(m.type() + ': ' + m.text()); });
+  page.on('console', (m) => { if (/Failed to load resource|GPU stall due to ReadPixels/.test(m.text())) return; if (m.type() === 'error' || (m.type() === 'warning' && /Water|WebGL|shader/i.test(m.text()))) errors.push(m.type() + ': ' + m.text()); });
   page.on('response', (r) => { if (r.status() >= 400 && !/assets\/(beach|beachfolk)\//.test(r.url())) errors.push('HTTP ' + r.status() + ' ' + r.url()); });
   const qs = new URLSearchParams(Object.assign({ w, h, dpr }, q)).toString();
   await page.goto(srv.url + 'tools/test/water_lab.html?' + qs, { waitUntil: 'load', timeout: 180000 });
@@ -177,6 +180,101 @@ async function check() {
   return out;
 }
 
+// ------------------------------------------------------------------------------------------- in-game proof
+/**
+ * Boot the REAL game (index.html, fresh save) and look at the village coast, once as it is today and once
+ * with the Ground.js integration of docs/build_reports/water.md applied. The patched files are served
+ * through Playwright route interception (tools/test/water_lab/integrate.mjs) — nothing in src/ is written.
+ * Deterministic frame: the game loop is put to sleep and the water clock set to t before the final step.
+ */
+async function ingame() {
+  const { PATCHES, apply, FILES } = await import('./water_lab/integrate.mjs');
+  void PATCHES;
+  await boot();
+  const cam = (opt('cam') || '1440,300').split(',').map(Number);
+  const runs = [
+    { name: 'old', patch: false, zoom: 1.0 },
+    { name: 'new_high', patch: true, zoom: 1.0 },
+    { name: 'new_high_z06', patch: true, zoom: 0.6 },
+    { name: 'new_high_z12', patch: true, zoom: 1.2 },
+    { name: 'new_low', patch: true, zoom: 1.0, quality: 'low' },
+  ];
+  const only = opt('only');
+  const out = { missing: {}, runs: [] };
+  for (const r of runs) {
+    if (only && only.split(',').indexOf(r.name) < 0) continue;
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'ko-KR' });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push('pageerror: ' + (e && e.stack || e)));
+    page.on('console', (m) => { const tx = m.text(); if (/Failed to load resource|AudioContext|GPU stall/i.test(tx)) return; if (m.type() === 'error' || (m.type() === 'warning' && /Water|WebGL|shader|placeholder|missing/i.test(tx))) errors.push(m.type() + ': ' + tx); });
+    if (r.patch) {
+      for (const f of FILES) {
+        await page.route('**/' + f, async (route) => {
+          const res = apply(f, fs.readFileSync(path.join(ROOT, f), 'utf8'));
+          if (res.missing.length) out.missing[f] = res.missing;
+          await route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: res.code });
+        });
+      }
+    }
+    await page.goto(srv.url + 'index.html', { waitUntil: 'load', timeout: 180000 });
+    await page.waitForFunction(() => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), null, { timeout: 240000, polling: 200 });
+    await page.waitForTimeout(800);
+    const c = await page.$('canvas');
+    const b = await c.boundingBox();
+    for (let i = 0; i < 10; i++) {
+      await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+      const ok = await page.waitForFunction(() => { const g = window.__FV && window.__FV.game; return g && !g.scene.isActive('Title') && window.__FV.state && g.scene.isActive('UI'); }, null, { timeout: 6000, polling: 200 }).then(() => true).catch(() => false);
+      if (ok) break;
+    }
+    await page.waitForTimeout(1500);
+    const info = await page.evaluate(([x, y, z, q]) => {
+      const F = window.__FV, gs = F.scene, g = gs.ground;
+      if (q && g.setWaterQuality) g.setWaterQuality(q);
+      F.camera(x, y, z);
+      gs.cameras.main.removeBounds();            // (test framing: the coast in the middle of the phone)
+      gs.cameras.main.centerOn(x, y);
+      g.ensure(gs.cameras.main.worldView, Infinity, 300);
+      return { water: g.water ? g.water.info() : null, fish: !!g.fish1, floaters: (gs.floaters || []).length, viewK: gs.cameras.main.zoom };
+    }, [cam[0], cam[1], r.zoom, r.quality || null]);
+    await page.waitForTimeout(1200);
+    // deterministic final frame + whole-game frame cost (game.step + readPixels, 24 frames)
+    const res = await page.evaluate(([x, y]) => {
+      const F = window.__FV, game = F.game, gs = F.scene, g = gs.ground;
+      game.loop.sleep();
+      const gl = game.renderer.gl, px = new Uint8Array(4);
+      const step = (t, d) => { if (g.water) g.water.setTime(t); g.t = t; game.step(100000 + t * 1000, d); if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); };
+      const fit = () => { gs.cameras.main.removeBounds(); gs.cameras.main.centerOn(x, y); g.ensure(gs.cameras.main.worldView, Infinity, 300); };
+      fit();
+      for (let i = 0; i < 3; i++) step(3.9 + i * 0.03, 0);
+      const a = performance.now();
+      for (let i = 0; i < 24; i++) step(5 + i / 30, 0);
+      const ms = (performance.now() - a) / 24;
+      fit();
+      step(4, 0);
+      fit();
+      step(4, 0);
+      return { frameMs: +ms.toFixed(1) };
+    }, cam);
+    const shotFile = path.join(TMP, `ingame_${r.name}.png`);
+    await page.screenshot({ path: shotFile });
+    out.runs.push(Object.assign({ name: r.name, shot: shotFile, errors }, info, res));
+    await ctx.close();
+  }
+  // composite (only when all five ran)
+  const f = (n) => path.join(TMP, `ingame_${n}.png`);
+  if (!only) {
+    const crop = (src, dst) => execFileSync('python3', ['-c', `from PIL import Image; Image.open('${src}').convert('RGB').crop((0, 260, 780, 1460)).save('${dst}')`]);
+    for (const n of ['old', 'new_high', 'new_high_z06', 'new_high_z12', 'new_low']) crop(f(n), f(n + '_c'));
+    execFileSync('python3', [path.join(ROOT, 'tools', 'test', 'water_lab', 'compose.py'), 'strip', path.join(PREV, 'water_ingame.png'), '5',
+      f('old_c'), f('new_high_c'), f('new_low_c'), f('new_high_z06_c'), f('new_high_z12_c'),
+      'GAME TODAY (tileSprite sea), zoom 1.0', 'GAME + Ground.js patch, Water high, zoom 1.0', '... Water low (물결 품질: 간단)', '... Water high, zoom 0.6', '... Water high, zoom 1.2']);
+    out.preview = path.join(PREV, 'water_ingame.png');
+  }
+  fs.writeFileSync(path.join(TMP, 'ingame.json'), JSON.stringify(out, null, 1));
+  return out;
+}
+
 // ------------------------------------------------------------------------------------------- frame strips
 /** contact sheet of n frames dt apart (crop in canvas px) -> one PNG (python compose.py strip) */
 async function seq(scene, o = {}) {
@@ -211,6 +309,7 @@ const main = async () => {
   } else if (cmd === 'beforeafter') result = await beforeAfter();
   else if (cmd === 'perf') result = await perf();
   else if (cmd === 'check') result = await check();
+  else if (cmd === 'ingame') result = await ingame();
   else if (cmd === 'all') {
     result = { check: await check(), gifs: [], beforeAfter: await beforeAfter(), perf: await perf() };
     for (const s of ['village', 'harbor', 'beach']) result.gifs.push(await gif(s));

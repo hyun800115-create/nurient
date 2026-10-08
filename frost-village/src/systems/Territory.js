@@ -26,6 +26,8 @@ export class Territory {
       if (!r || !Array.isArray(r.rect)) continue;
       this.regions[id] = { id, cfg: r, rect: r.rect, open: id === 'start' || !!(saved && saved[id]), objs: [], fog: null };
     }
+    // (v4-A) a region that opens together with another one (rail with east): a save with that one open has it open too
+    for (const id in this.regions) { const r = this.regions[id]; if (!r.open && r.cfg.openWith && this.regions[r.cfg.openWith] && this.regions[r.cfg.openWith].open) r.open = true; }
     this.t = 0;
     this.puffs = null;
     this.apply();
@@ -39,8 +41,14 @@ export class Territory {
     return 'start';
   }
 
-  /** an object that belongs to a region: hidden until the region opens */
-  add(region, obj) {
+  /** an object that belongs to a region: hidden until the region opens.
+   *  (v4-A) `until`: and hidden again for good once that other region opens (border pines that make room) */
+  add(region, obj, until) {
+    if (until && this.regions[until]) {
+      obj.__until = until;
+      (this.untilObjs || (this.untilObjs = [])).push(obj);
+      if (this.regions[until].open) this.setObjEnabled(obj, false);
+    }
     const r = this.regions[region];
     if (!r || region === 'start') return obj;
     r.objs.push(obj);
@@ -48,7 +56,23 @@ export class Territory {
     return obj;
   }
 
+  /** (v4-A) the big area a point lies in: 'village' (start, east, south, se) or 'neighbours' (rail, town) */
+  areaOf(x) { return x >= ((WORLD.territory.rail && WORLD.territory.rail.rect[0]) || 1e9) ? 'neighbours' : 'village'; }
+
+  /** (v4-A) bounding box of the open land of an area (the overview frames the area the chief is in) */
+  areaRect(area) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const id in this.regions) {
+      const r = this.regions[id];
+      if (!r.open || this.areaOf((r.rect[0] + r.rect[2]) / 2) !== area) continue;
+      x0 = Math.min(x0, r.rect[0]); y0 = Math.min(y0, r.rect[1]); x1 = Math.max(x1, r.rect[2]); y1 = Math.max(y1, r.rect[3]);
+    }
+    if (!Number.isFinite(x0)) return this.camRect;
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+
   setObjEnabled(o, v) {
+    if (v && o.__until && this.isOpen(o.__until)) v = false;
     if (o.setEnabled) o.setEnabled(v);
     else { if (o.setVisible) o.setVisible(v); if (o.__ob) o.__ob.active = v; }
   }
@@ -147,9 +171,12 @@ export class Territory {
     const [x0, y0, x1, y1] = r.rect;
     const parts = [], scrollers = [], puffs = [];
     const lt = this.exposedSpans(r, 'l'), tp = this.exposedSpans(r, 't');
+    // (v4-A) fog on all four sides: the right / bottom edge can face open land too (se beside the rail strip)
+    const rt = this.exposedSpans(r, 'r'), bt = this.exposedSpans(r, 'b');
     // solid fog body (starts a little inside the exposed edges, where the billows take over)
     const fx0 = lt.length ? x0 + 150 : x0, fy0 = tp.length ? y0 + 150 : y0;
-    const fill = gs.add.rectangle(fx0, fy0, x1 - fx0, y1 - fy0, FILL, 1).setOrigin(0, 0).setDepth(FOG_DEPTH);
+    const fx1 = rt.length ? x1 - 150 : x1, fy1 = bt.length ? y1 - 150 : y1;
+    const fill = gs.add.rectangle(fx0, fy0, fx1 - fx0, fy1 - fy0, FILL, 1).setOrigin(0, 0).setDepth(FOG_DEPTH);
     parts.push(fill);
     const hasBank = Assets.has('fog_bank');
     // top edge facing open land (the land is north of the fog): the fog bank wall, flipped so its billows face the village
@@ -185,6 +212,26 @@ export class Territory {
       }
       for (let y = a; y < b; y += 160 + Math.random() * 120) puffs.push(this.puff(x0 + 10 + Math.random() * 50, y, 1.5 + Math.random() * 1.1, parts));
     }
+    // (v4-A) right edge facing open land (the land is east of the fog): the left wall, mirrored
+    for (const [a, b] of rt) {
+      if (hasBank) {
+        const wall = gs.add.tileSprite(x1 - 200, b + 60, b - a + 120, 256, Assets.sprite('fog_bank').tex).setOrigin(0, 0).setAngle(-90).setDepth(FOG_DEPTH + 1);
+        wall.__speed = 5; parts.push(wall); scrollers.push(wall);
+        if (Assets.has('fog_bank_mid')) {
+          const mid = gs.add.tileSprite(x1 - 120, b + 60, b - a + 120, 192, Assets.sprite('fog_bank_mid').tex).setOrigin(0, 0).setAngle(-90).setDepth(FOG_DEPTH + 2).setAlpha(0.85);
+          mid.__speed = -11; parts.push(mid); scrollers.push(mid);
+        }
+      } else parts.push(gs.add.rectangle(x1 - 170, a, 190, b - a, FILL, 0.92).setOrigin(0, 0).setDepth(FOG_DEPTH + 1));
+      for (let y = a; y < b; y += 160 + Math.random() * 120) puffs.push(this.puff(x1 - 10 - Math.random() * 50, y, 1.5 + Math.random() * 1.1, parts));
+    }
+    // (v4-A) bottom edge facing open land (the land is south of the fog): the bank with its billows facing down
+    for (const [a, b] of bt) {
+      if (hasBank) {
+        const bank = gs.add.tileSprite(a, y1 + 70 - 256, b - a, 256, Assets.sprite('fog_bank').tex).setOrigin(0, 0).setDepth(FOG_DEPTH + 1);
+        bank.__speed = 6; parts.push(bank); scrollers.push(bank);
+      } else parts.push(gs.add.rectangle(a, y1 - 170, b - a, 190, FILL, 0.92).setOrigin(0, 0).setDepth(FOG_DEPTH + 1));
+      for (let x = a + 40; x < b; x += 150) puffs.push(this.puff(x + (Math.random() - 0.5) * 60, y1 - 40 - Math.random() * 30, 1.6 + Math.random() * 0.8, parts));
+    }
     return { parts, scrollers, puffs, fill, rect: r.rect };
   }
 
@@ -219,8 +266,9 @@ export class Territory {
   }
 
   // ------------------------------------------------------------------ reveal
-  /** region `id` opens (instant = restoring a save) */
-  reveal(id, instant) {
+  /** region `id` opens (instant = restoring a save). (v4-A) quiet: no camera pan / banner of its own
+   *  (a region opening together with another one); regions with `openWith: id` open in the same frame */
+  reveal(id, instant, quiet) {
     const gs = this.gs;
     const r = this.regions[id];
     if (!r || r.open) return false;
@@ -228,6 +276,20 @@ export class Territory {
     const oldFog = r.fog;
     r.fog = null;
     for (const o of r.objs) this.setObjEnabled(o, true);
+    // (v4-A) border pines that make room for this land
+    for (const o of this.untilObjs || []) if (o.__until === id) this.setObjEnabled(o, false);
+    // (v4-A) land that opens together with this one (the rail strip with the east coast)
+    for (const k in this.regions) {
+      const q = this.regions[k];
+      if (!q.open && q.cfg.openWith === id) {
+        q.open = true;
+        if (q.fog) { const f = q.fog; q.fog = null; if (instant) this.destroyFog(f); else { f.fading = true; for (const p of f.parts) gs.tweens.add({ targets: p, alpha: 0, duration: 1600, delay: 300 }); gs.time.delayedCall(2100, () => this.destroyFog(f)); } }
+        for (const o of q.objs) this.setObjEnabled(o, true);
+        for (const o of this.untilObjs || []) if (o.__until === k) this.setObjEnabled(o, false);
+        if (gs.regionRoads && gs.regionRoads[k]) { const ov = gs.regionRoads[k]; if (instant) ov.setAlpha(1); else gs.tweens.add({ targets: ov, alpha: 1, duration: 900, delay: 700 }); }
+        if (instant) gs.events.emit('region', k, true); else gs.time.delayedCall(950, () => gs.events.emit('region', k, false));
+      }
+    }
     if (gs.roads) gs.roads.invalidate();
     if (gs.regionRoads && gs.regionRoads[id]) {
       const ov = gs.regionRoads[id];
@@ -253,7 +315,7 @@ export class Territory {
     // the clearing: whoosh, billows rolling away, the land and its things popping in
     const [cx, cy] = r.cfg.center || [(r.rect[0] + r.rect[2]) / 2, (r.rect[1] + r.rect[3]) / 2];
     if (!gs.overview && !gs._freeCam) gs.cameras.main.setBounds(b.x, b.y, b.w, b.h);
-    gs.focusCamera(cx, cy, BALANCE.camera.revealPanMs + 2600);
+    if (!quiet) gs.focusCamera(cx, cy, BALANCE.camera.revealPanMs + 2600);
     gs.sfxAt('sfx_fog_clear', cx, cy, { volume: 0.9 }, true);
     if (oldFog) {
       oldFog.fading = true;
@@ -278,7 +340,7 @@ export class Territory {
       o.setScale(0.01);
       gs.tweens.add({ targets: o, scaleX: sx, scaleY: sy, duration: 420, delay: 900 + i * 18, ease: 'Back.easeOut' });
     });
-    gs.time.delayedCall(1000, () => { gs.ui.banner(t('newLand'), t(r.cfg.name || 'r_east')); if (gs.life) gs.life.cheer(); });
+    if (!quiet) gs.time.delayedCall(1000, () => { gs.ui.banner(t('newLand'), t(r.cfg.name || 'r_east')); if (gs.life) gs.life.cheer(); });
     gs.time.delayedCall(900, () => gs.events.emit('region', id, false));
     return true;
   }
@@ -299,6 +361,7 @@ export class Territory {
     const pts = [];
     for (const [a, b] of this.exposedSpans(r, 't')) for (let x = a; x < b; x += 90) pts.push([x, y0 + 40]);
     for (const [a, b] of this.exposedSpans(r, 'l')) for (let y = a; y < b; y += 90) pts.push([x0 + 60, y]);
+    for (const [a, b] of this.exposedSpans(r, 'r')) for (let y = a; y < b; y += 90) pts.push([x1 - 60, y]);
     for (let i = 0; i < 26; i++) pts.push([Math.max(x0, v.x) + Math.random() * (Math.min(x1, v.right) - Math.max(x0, v.x)), Math.max(y0, v.y) + Math.random() * (Math.min(y1, v.bottom) - Math.max(y0, v.y))]);
     let n = 0;
     for (const [x, y] of pts) {

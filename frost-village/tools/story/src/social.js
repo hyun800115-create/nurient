@@ -42,6 +42,7 @@ export class Beat {
     this.o = -1; this.p = -1; this.i = -1; this.h = -1; this.n = 0; this.s = '';
     this.fl = [];
     this.em = null; this.an = 'talk'; this.topic = '';
+    this.nq = false;      // the line must not ask a question (a follow-up question comes next)
   }
 }
 
@@ -364,9 +365,11 @@ export class Social {
       // follow-up question and answer
       const fq = FOLLOW[f.k];
       if (fq && rng.chance(0.55)) {
+        bt.nq = true;
         bt = this.beat(beats, l, s, 'follow.' + fq + '.' + f.k, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
         this.answerFollow(s, l, m, fq, beats);
       } else if (m.src === SRC_TOLD && m.from >= 0 && rng.chance(0.3)) {
+        bt.nq = true;
         bt = this.beat(beats, l, s, 'follow.source', 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
         bt = this.beat(beats, s, l, 'answer.source', 'rumor:' + f.k); this.setVersion(bt, m);
       }

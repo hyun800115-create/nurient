@@ -358,11 +358,18 @@ def plank_stack(name, sx, sy, layers, loc=(0, 0, 0), col='#D39A5E', strap=True):
     rnd = L.rng(len(name))
     cols = [tonal(hexmix(col, '#FFFFFF', rnd.uniform(-0.05, 0.1)), 0.1, 5.0, rough=0.8) for _ in range(3)]
     n = max(2, int(sx / 0.17))
+    endm = flat('#EBCB92', 0.85)                 # pale sawn end grain -> reads as lumber, not as boxes
+    ringm = flat('#C08A4E', 0.85)
     for j in range(layers):
         for k in range(n):
             x = -sx / 2 + sx * (k + 0.5) / n
-            mb.cube((sx / n - 0.012, sy + rnd.uniform(-0.03, 0.03), 0.065), cols[(j + k) % 3],
-                    loc=(x, rnd.uniform(-0.015, 0.015), 0.035 + j * 0.072))
+            ln = sy + rnd.uniform(-0.03, 0.03)
+            yo = rnd.uniform(-0.035, 0.035)
+            z = 0.035 + j * 0.072
+            mb.cube((sx / n - 0.014, ln, 0.065), cols[(j + k) % 3], loc=(x, yo, z))
+            ye = yo - ln / 2 - 0.004
+            mb.cube((sx / n - 0.03, 0.008, 0.05), endm, loc=(x, ye, z + 0.0075))
+            mb.cube((0.012, 0.009, 0.03), ringm, loc=(x + rnd.uniform(-0.03, 0.03), ye - 0.001, z + 0.017))
     objs = [mb.done(name + '_pl', smooth=False)]
     if strap:
         sm = flat('#3D7CC9', 0.5)
