@@ -522,11 +522,16 @@ def b_top_suit_3pc(rig, ctx, put):
                        loc=(s * 0.150, -0.206, -0.035), rot=(0, 0, s * 28))
         g.mesh_obj('breast_pocket', g.bm_box(0.060, 0.012, 0.012, bevel=0.003), md, rig.j['spine'],
                    loc=(0.118, -0.192, 0.235), rot=(0, 0, -22))
-    with put('square'):
+    with put('square'):                     # pocket square + matching necktie (one tint: top2)
         sq = M('pocket_sq', ctx.col('top2'), 0.6)
         for k, dx in enumerate((-0.016, 0.0, 0.016)):
             g.mesh_obj('square', g.bm_ellipsoid(0.014, 0.008, 0.020, 8, 6), sq, rig.j['spine'],
                        loc=(0.118 + dx, -0.196, 0.250 + 0.006 * (k == 1)), rot=(0, 0, -22))
+        # same tie as the v4 det_tie (that part is only packed for children), slightly slimmer
+        g.mesh_obj('tie_knot', g.bm_ellipsoid(0.020, 0.013, 0.019, 10, 6), sq, rig.j['spine'], loc=(0, -0.166, 0.376))
+        g.mesh_obj('tie', g.bm_slab([(-0.0, 0.0), (0.026, -0.02), (0.031, -0.19), (0.0, -0.222), (-0.031, -0.19),
+                                     (-0.026, -0.02)], 0.011, bevel=0.004), sq, rig.j['spine'], loc=(0, -0.203, 0.37),
+                   rot=(-8, 0, 90))
     with put('trim'):
         gold = M('chain', BRASS, 0.3, metal=0.75)
         btn = M('vbtn', '#3A3236', 0.4)
@@ -578,6 +583,11 @@ def b_top_teller_vest(rig, ctx, put):
                    rig.j['spine'], loc=(-0.112, -0.200, 0.200), rot=(-6, 0, 16))
         g.mesh_obj('pen', g.bm_cyl(0.008, 0.008, 0.06, seg=8), M('pen_b', '#2B3A5E', 0.3), rig.j['spine'],
                    loc=(0.11, -0.196, 0.19))
+        bt = M('teller_bowtie', '#7A2E3A', 0.45)        # wine bow tie at the collar
+        for s_ in (-1, 1):
+            g.mesh_obj('bowtie_w', g.bm_ellipsoid(0.030, 0.012, 0.019, 12, 8), bt, rig.j['chest'],
+                       loc=(s_ * 0.027, -0.142, 0.072), rot=(0, s_ * -12, 0))
+        g.mesh_obj('bowtie_k', g.bm_ellipsoid(0.012, 0.011, 0.013, 10, 6), bt, rig.j['chest'], loc=(0, -0.150, 0.072))
 
 
 @part('acc_visor', 'hat', 'head', {'main': sub(None, Z['hat'])}, cls='top', tags=['bank', 'job'],
