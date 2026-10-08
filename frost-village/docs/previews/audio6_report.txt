@@ -1,82 +1,82 @@
 collision check against: audio, audio2, audio3, audio4, audio5
 key                    fmt  ch   dur s   peak     TP  I LUFS   Mmax    vol    eff   want       DC     kB
-bgm_city               ogg   2  60.954   -3.8   -3.8   -18.0  -15.6  0.376  -26.5  -26.5  0.00001  807.0
-bgm_city               mp3   2  60.954   -4.3   -4.2   -18.4  -16.1  0.376  -26.9  -26.5  0.00001  953.5
-                       loop: n=2688064 (render 2688064) hf_ratio=0.017 d2_ratio=0.064 level_jump=+6.0 dB wrap_jump=0.0078
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 2688064; duration 60.9538 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=2688064 hf_ratio=0.152 d2_ratio=0.551
+bgm_city               ogg   2  60.951   -3.6   -3.6   -18.0  -15.6  0.376  -26.5  -26.5  0.00001  807.6
+bgm_city               mp3   2  60.951   -4.1   -4.1   -18.5  -16.1  0.376  -27.0  -26.5  0.00001  953.5
+                       loop: n=2687936 (render 2687936) hf_ratio=0.014 d2_ratio=0.065 level_jump=+7.4 dB wrap_jump=0.0029
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 2687936; duration 60.9509297 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=2687936 hf_ratio=0.022 d2_ratio=0.070
 bgm_chase              ogg   2  22.857   -1.9   -1.9   -18.0  -15.4  0.376  -26.5  -26.5  0.00002  311.9
 bgm_chase              mp3   2  22.857   -2.3   -2.3   -18.5  -15.9  0.376  -27.0  -26.5  0.00001  358.0
                        loop: n=1008000 (render 1008000) hf_ratio=0.252 d2_ratio=0.238 level_jump=+18.5 dB wrap_jump=0.0108
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 1008000; duration 22.8571 s
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 1008000; duration 22.8571429 s
                        mp3 loop (ffmpeg, gapless tag honoured): n=1008000 hf_ratio=0.252 d2_ratio=0.233
-amb_fire_big           ogg   1   7.999   -7.0   -6.6   -20.1  -17.4  0.254  -32.0  -32.0  0.00007   81.5
-amb_fire_big           mp3   1   7.999   -7.6   -7.1   -20.5  -17.8  0.254  -32.4  -32.0  0.00000   78.8
-                       loop: n=352768 (render 352768) hf_ratio=0.132 d2_ratio=0.055 level_jump=-2.4 dB wrap_jump=0.0003
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 352768; duration 7.9993 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=352768 hf_ratio=0.122 d2_ratio=0.059
-amb_construction       ogg   1   7.999   -1.6   -1.6   -20.2  -17.0  0.216  -33.5  -33.5  0.00004   70.9
-amb_construction       mp3   1   7.999   -1.9   -1.9   -20.6  -17.4  0.216  -33.9  -33.5  0.00003   78.8
-                       loop: n=352768 (render 352768) hf_ratio=0.213 d2_ratio=0.167 level_jump=-1.9 dB wrap_jump=0.0029
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 352768; duration 7.9993 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=352768 hf_ratio=0.214 d2_ratio=0.044
-amb_bank               ogg   1   7.998   -7.8   -7.8   -20.2  -15.8  0.193  -34.5  -34.5  0.00000   67.2
-amb_bank               mp3   1   7.998   -8.3   -8.3   -20.6  -16.3  0.193  -34.9  -34.5  0.00000   78.8
-                       loop: n=352704 (render 352704) hf_ratio=0.016 d2_ratio=0.006 level_jump=+0.8 dB wrap_jump=0.0025
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 352704; duration 7.9978 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=352704 hf_ratio=0.016 d2_ratio=0.032
-amb_warehouse          ogg   1   7.999   -1.9   -1.9   -20.3  -18.0  0.207  -34.0  -34.0  0.00000   86.3
-amb_warehouse          mp3   1   7.999   -1.9   -2.0   -20.6  -18.4  0.207  -34.3  -34.0  0.00000   78.8
-                       loop: n=352768 (render 352768) hf_ratio=0.085 d2_ratio=0.072 level_jump=+0.2 dB wrap_jump=0.0014
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 352768; duration 7.9993 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=352768 hf_ratio=0.080 d2_ratio=0.069
+amb_fire_big           ogg   1   7.996   -2.3   -2.2   -20.2  -16.3  0.257  -32.0  -32.0  0.00008   80.6
+amb_fire_big           mp3   1   7.996   -2.3   -2.1   -20.5  -16.6  0.257  -32.3  -32.0  0.00000   78.8
+                       loop: n=352640 (render 352640) hf_ratio=0.056 d2_ratio=0.042 level_jump=-0.4 dB wrap_jump=0.0020
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 352640; duration 7.9963719 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=352640 hf_ratio=0.057 d2_ratio=0.018
+amb_construction       ogg   1   8.002   -2.6   -2.6   -20.1  -16.9  0.214  -33.5  -33.5  0.00004   71.0
+amb_construction       mp3   1   8.002   -2.3   -2.3   -20.4  -17.3  0.214  -33.8  -33.5  0.00004   78.8
+                       loop: n=352896 (render 352896) hf_ratio=0.205 d2_ratio=0.168 level_jump=+0.3 dB wrap_jump=0.0031
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 352896; duration 8.0021769 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=352896 hf_ratio=0.206 d2_ratio=0.150
+amb_bank               ogg   1   7.989   -9.4   -9.4   -20.2  -19.2  0.193  -34.5  -34.5  0.00001   56.9
+amb_bank               mp3   1   7.989   -9.4   -9.4   -20.5  -19.5  0.193  -34.8  -34.5  0.00000   78.6
+                       loop: n=352320 (render 352320) hf_ratio=0.137 d2_ratio=0.269 level_jump=-0.6 dB wrap_jump=0.0048
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 352320; duration 7.9891156 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=352320 hf_ratio=0.077 d2_ratio=0.093
+amb_warehouse          ogg   1   7.999   -1.9   -1.9   -20.3  -17.9  0.207  -34.0  -34.0  0.00000   86.3
+amb_warehouse          mp3   1   7.999   -2.0   -2.0   -20.6  -18.3  0.207  -34.3  -34.0  0.00002   78.8
+                       loop: n=352768 (render 352768) hf_ratio=0.084 d2_ratio=0.071 level_jump=+0.2 dB wrap_jump=0.0018
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 352768; duration 7.9992744 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=352768 hf_ratio=0.087 d2_ratio=0.090
 sfx_siren_fire         ogg   1   1.990  -12.2  -12.2   -20.2  -19.0  0.575  -25.0  -25.0  0.00000   16.6
                        tuning: strongest partial 440.3 Hz = A4 (low tone) +1.1 cents
 sfx_siren_fire         mp3   1   1.990  -12.7  -12.7   -20.7  -19.5  0.575  -25.5  -25.0  0.00000   20.2
                        loop: n=87744 (render 87744) hf_ratio=0.648 d2_ratio=0.426 level_jump=+0.3 dB wrap_jump=0.0014
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 87744; duration 1.9897 s
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 87744; duration 1.9896599 s
                        mp3 loop (ffmpeg, gapless tag honoured): n=87744 hf_ratio=0.626 d2_ratio=0.183
 sfx_siren_police       ogg   1   2.408  -15.2  -15.2   -20.0  -19.0  0.531  -25.5  -25.5  0.00000   16.5
 sfx_siren_police       mp3   1   2.408  -15.6  -15.6   -20.5  -19.5  0.531  -26.0  -25.5  0.00000   24.2
                        loop: n=106176 (render 106176) hf_ratio=0.518 d2_ratio=0.555 level_jump=-3.9 dB wrap_jump=0.0007
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 106176; duration 2.4076 s
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 106176; duration 2.407619 s
                        mp3 loop (ffmpeg, gapless tag honoured): n=106176 hf_ratio=0.546 d2_ratio=0.044
-sfx_hose_spray         ogg   1   2.400  -11.6  -11.5   -20.5  -20.0  0.422  -28.0  -28.0  0.00000   23.8
-sfx_hose_spray         mp3   1   2.400  -12.7  -12.7   -20.7  -20.2  0.422  -28.2  -28.0  0.00000   24.0
-                       loop: n=105856 (render 105856) hf_ratio=0.487 d2_ratio=0.416 level_jump=-0.8 dB wrap_jump=0.0064
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 105856; duration 2.4004 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=105856 hf_ratio=0.474 d2_ratio=0.327
-sfx_excavator          ogg   1   1.995   -4.4   -4.4   -20.4  -19.0  0.372  -29.0  -29.0  0.00013   18.4
-sfx_excavator          mp3   1   1.995   -4.8   -4.8   -20.8  -19.5  0.372  -29.4  -29.0  0.00000   20.2
-                       loop: n=88000 (render 88000) hf_ratio=0.107 d2_ratio=0.118 level_jump=+9.3 dB wrap_jump=0.0001
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 88000; duration 1.9955 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=88000 hf_ratio=0.101 d2_ratio=0.098
-sfx_comic_fight        ogg   1   2.400   -6.0   -6.0   -20.4  -18.4  0.589  -25.0  -25.0  0.00002   22.5
-sfx_comic_fight        mp3   1   2.400   -6.7   -6.7   -20.8  -18.8  0.589  -25.4  -25.0  0.00002   24.0
-                       loop: n=105856 (render 105856) hf_ratio=0.280 d2_ratio=0.267 level_jump=+4.2 dB wrap_jump=0.0026
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 105856; duration 2.4004 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=105856 hf_ratio=0.282 d2_ratio=0.103
+sfx_hose_spray         ogg   1   2.400  -11.0  -11.0   -20.5  -20.1  0.422  -28.0  -28.0  0.00001   23.1
+sfx_hose_spray         mp3   1   2.400  -10.8  -10.8   -20.7  -20.2  0.422  -28.2  -28.0  0.00000   24.0
+                       loop: n=105856 (render 105856) hf_ratio=0.360 d2_ratio=0.252 level_jump=-0.2 dB wrap_jump=0.0081
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 105856; duration 2.4003628 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=105856 hf_ratio=0.356 d2_ratio=0.246
+sfx_excavator          ogg   1   2.004   -4.1   -4.1   -20.4  -19.3  0.372  -29.0  -29.0  0.00005   24.6
+sfx_excavator          mp3   1   2.004   -4.5   -4.5   -20.8  -19.7  0.372  -29.4  -29.0  0.00003   20.2
+                       loop: n=88384 (render 88384) hf_ratio=0.026 d2_ratio=0.076 level_jump=+1.8 dB wrap_jump=0.0019
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 88384; duration 2.0041723 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=88384 hf_ratio=0.021 d2_ratio=0.041
+sfx_comic_fight        ogg   1   2.400   -5.5   -5.5   -20.1  -18.4  0.569  -25.0  -25.0  0.00005   23.0
+sfx_comic_fight        mp3   1   2.400   -5.8   -5.8   -20.4  -18.8  0.569  -25.3  -25.0  0.00001   24.0
+                       loop: n=105856 (render 105856) hf_ratio=0.240 d2_ratio=0.107 level_jump=+1.7 dB wrap_jump=0.0007
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 105856; duration 2.4003628 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=105856 hf_ratio=0.244 d2_ratio=0.042
 sfx_fire_flare         ogg   1   1.498   -1.3   -1.3   -14.0   -9.9  0.372  -18.5  -18.5  0.00016   18.7
 sfx_fire_flare         mp3   1   1.498   -1.9   -1.9   -14.2  -10.3  0.372  -18.9  -18.5  0.00013   18.4
-sfx_steam_hiss         ogg   1   2.188   -1.0   -0.5   -10.9   -6.9  0.221  -20.0  -20.0  0.00002   22.8
-sfx_steam_hiss         mp3   1   2.188   -1.2   -1.2   -11.0   -7.0  0.221  -20.1  -20.0  0.00001   26.3
-sfx_collapse_soft      ogg   1   2.370   -1.4   -1.4   -15.5  -11.9  0.442  -19.0  -19.0  0.00005   21.4
-sfx_collapse_soft      mp3   1   2.370   -1.9   -1.9   -16.2  -12.4  0.442  -19.5  -19.0  0.00001   28.5
+sfx_steam_hiss         ogg   1   2.188   -2.3   -1.8   -12.0   -8.0  0.251  -20.0  -20.0  0.00002   22.8
+sfx_steam_hiss         mp3   1   2.188   -2.6   -1.9   -12.1   -8.2  0.251  -20.2  -20.0  0.00000   26.3
+sfx_collapse_soft      ogg   1   2.364   -1.6   -1.6   -19.8  -15.9  0.700  -19.0  -19.0  0.00003   20.6
+sfx_collapse_soft      mp3   1   2.364   -2.0   -2.0   -20.2  -16.3  0.700  -19.4  -19.0  0.00001   28.5
 sfx_demolish_crunch    ogg   1   1.464   -1.5   -1.5   -21.8  -14.8  0.617  -19.0  -19.0  0.00012   14.9
 sfx_demolish_crunch    mp3   1   1.464   -1.9   -1.9   -22.2  -15.1  0.617  -19.3  -19.0  0.00003   18.1
 sfx_coin_count         ogg   1   1.354   -1.3   -1.2   -12.8  -10.7  0.343  -20.0  -20.0  0.00000   13.1
                        tuning: strongest partial 1397.0 Hz = F6 'ching' +0.1 cents
 sfx_coin_count         mp3   1   1.354   -1.8   -1.7   -13.2  -11.1  0.343  -20.4  -20.0  0.00000   16.5
-sfx_stamp              ogg   1   0.312   -1.5   -1.4   -16.5  -16.5  0.708  -19.5  -19.5  0.00018    6.1
-sfx_stamp              mp3   1   0.291   -1.9   -1.9   -17.0  -17.0  0.708  -20.0  -19.5  0.00010    4.3
-sfx_vault_door         ogg   1   2.689   -1.4   -1.4   -18.7  -14.0  0.562  -19.0  -19.0  0.00011   21.0
-sfx_vault_door         mp3   1   2.689   -2.0   -1.9   -19.2  -14.5  0.562  -19.5  -19.0  0.00000   32.1
+sfx_stamp              ogg   1   0.312   -1.5   -1.4   -18.3  -18.3  0.871  -19.5  -19.5  0.00010    6.1
+sfx_stamp              mp3   1   0.291   -2.0   -1.9   -18.8  -18.8  0.871  -20.0  -19.5  0.00004    4.3
+sfx_vault_door         ogg   1   1.691   -1.5   -1.4   -19.3  -16.1  0.716  -19.0  -19.0  0.00008   14.9
+sfx_vault_door         mp3   1   1.691   -1.9   -1.9   -19.7  -16.5  0.716  -19.4  -19.0  0.00001   20.5
 sfx_forklift_beep      ogg   1   1.277   -1.1   -1.1    -4.2   -3.5  0.119  -22.0  -22.0  0.00001    9.0
                        tuning: strongest partial 1047.6 Hz = C6 +1.8 cents
 sfx_forklift_beep      mp3   1   1.277   -1.9   -1.9    -4.7   -4.0  0.119  -22.5  -22.0  0.00000   15.6
-sfx_police_whistle     ogg   1   1.254   -1.1   -1.1    -2.2   -1.1  0.127  -19.0  -19.0  0.00000   13.6
+sfx_police_whistle     ogg   1   1.254   -1.1   -1.1    -2.2   -1.1  0.101  -21.0  -21.0  0.00000   13.6
                        tuning: band centre 2091.0 Hz = C7 (centre of the pea trill) -1.7 cents
-sfx_police_whistle     mp3   1   1.254   -1.8   -1.7    -2.7   -1.5  0.127  -19.4  -19.0  0.00000   15.3
+sfx_police_whistle     mp3   1   1.254   -1.8   -1.7    -2.7   -1.5  0.101  -21.4  -21.0  0.00000   15.3
 sfx_crowd_gasp         ogg   1   1.404   -1.6   -1.5   -13.6  -11.7  0.385  -20.0  -20.0  0.00000   14.8
 sfx_crowd_gasp         mp3   1   1.404   -2.0   -2.0   -14.0  -12.1  0.385  -20.4  -20.0  0.00000   17.1
 sfx_crowd_cheer_small  ogg   1   2.286   -1.4   -1.4   -12.6   -8.2  0.288  -19.0  -19.0  0.00000   24.1
@@ -96,75 +96,111 @@ sfx_box_drop_2         ogg   1   0.238   -1.6   -1.6   -19.1  -19.1  0.851  -20.
 sfx_box_drop_2         mp3   1   0.241   -2.0   -2.0   -19.2  -19.2  0.851  -20.6  -20.5  0.00010    3.7
 sfx_box_drop_3         ogg   1   0.299   -1.3   -1.3   -19.7  -19.7  0.912  -20.5  -20.5  0.00002    6.0
 sfx_box_drop_3         mp3   1   0.302   -1.4   -1.4   -19.9  -19.9  0.912  -20.7  -20.5  0.00021    4.3
+sfx_ticket_chime       ogg   1   1.238   -1.4   -1.4   -12.0   -9.4  0.263  -21.0  -21.0  0.00001    7.2
+                       tuning: strongest partial 1046.6 Hz = C6 'ding' +0.1 cents
+sfx_ticket_chime       mp3   1   1.238   -1.9   -1.9   -12.4   -9.8  0.263  -21.4  -21.0  0.00000   15.3
 cue timing (manifest cue -> nearest detected onset, s):
   sfx_fire_flare         flare 0.00->0.000
   sfx_steam_hiss         hiss 0.00->0.000
-  sfx_collapse_soft      crack 0.36->0.336, donk1 0.54->0.536, donk2 0.78->0.780, donk3 1.00->1.000, flumph 1.16->1.164, plink 1.99->1.992
+  sfx_collapse_soft      crack 0.36->0.336, donk1 0.54->0.540, donk2 0.78->0.780, donk3 1.00->1.000, flumph 1.16->1.160, plink 1.99->1.992
   sfx_demolish_crunch    bite 0.00->0.000
   sfx_coin_count         first 0.00->0.000, ching 0.72->0.720
   sfx_stamp              thunk 0.00->0.000
-  sfx_vault_door         bolt1 0.78->0.776, bolt2 0.94->0.936, bolt3 1.10->1.096, open 2.15->2.152
+  sfx_vault_door         bolt1 0.25->0.248, bolt2 0.31->0.308, bolt3 0.38->0.376, open 0.88->0.876
   sfx_forklift_beep      beep1 0.00->0.000, beep2 0.42->0.420, beep3 0.84->0.840
   sfx_police_whistle     blast1 0.00->0.000, blast2 0.30->0.300
   sfx_cuffs_click        ratchet 0.00->0.000, latch 0.19->0.188
   sfx_fire_alarm_bell    ring1 0.00->0.000
   sfx_moving_truck       brake 0.50->0.500, door 0.90->0.900, doorTop 1.60->1.600, ramp 1.80->1.808, rampDown 2.20->2.204
+  sfx_ticket_chime       ding 0.00->0.000, dong 0.34->0.340
 friendliness (less energy up top = rounder, less shrill):
-  amb_fire_big           energy > 4 kHz   0.3 %   centroid    206 Hz
+  amb_fire_big           energy > 4 kHz   1.1 %   centroid    515 Hz
   sfx_siren_fire         energy > 4 kHz   0.0 %   centroid    719 Hz
   sfx_siren_police       energy > 4 kHz   0.0 %   centroid    643 Hz
-  sfx_hose_spray         energy > 4 kHz  16.4 %   centroid   2543 Hz
+  sfx_hose_spray         energy > 4 kHz   7.0 %   centroid   1653 Hz
   sfx_forklift_beep      energy > 4 kHz   0.0 %   centroid   1070 Hz
   sfx_police_whistle     energy > 4 kHz   0.6 %   centroid   2100 Hz
   sfx_fire_alarm_bell    energy > 4 kHz   0.0 %   centroid    911 Hz
   (audio3 sfx_bus_horn)  energy > 4 kHz   0.0 %   centroid    667 Hz
-total payload assets/audio6 (audio files + manifest): 3929456 bytes = 3.929 MB = 3.747 MiB (limit 4000000 bytes)
-headless Chromium 141.0.7390.37 decodeAudioData (OfflineAudioContext 44.1 kHz):
-  bgm_city               ogg: 2688064 frames x 2 ch (want 2688064, exact), seam d2 ratio 0.064
-  bgm_city               mp3: 2688064 frames x 2 ch (want 2688064, exact), seam d2 ratio 0.554
-  bgm_chase              ogg: 1008000 frames x 2 ch (want 1008000, exact), seam d2 ratio 0.253
-  bgm_chase              mp3: 1008000 frames x 2 ch (want 1008000, exact), seam d2 ratio 0.242
-  amb_fire_big           ogg: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.053
-  amb_fire_big           mp3: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.057
-  amb_construction       ogg: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.166
-  amb_construction       mp3: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.045
-  amb_bank               ogg: 352704 frames x 1 ch (want 352704, exact), seam d2 ratio 0.006
-  amb_bank               mp3: 352704 frames x 1 ch (want 352704, exact), seam d2 ratio 0.030
-  amb_warehouse          ogg: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.074
-  amb_warehouse          mp3: 352768 frames x 1 ch (want 352768, exact), seam d2 ratio 0.069
-  sfx_siren_fire         ogg: 87744 frames x 1 ch (want 87744, exact), seam d2 ratio 0.436
-  sfx_siren_fire         mp3: 87744 frames x 1 ch (want 87744, exact), seam d2 ratio 0.185
-  sfx_siren_police       ogg: 106176 frames x 1 ch (want 106176, exact), seam d2 ratio 0.555
-  sfx_siren_police       mp3: 106176 frames x 1 ch (want 106176, exact), seam d2 ratio 0.051
-  sfx_hose_spray         ogg: 105856 frames x 1 ch (want 105856, exact), seam d2 ratio 0.419
-  sfx_hose_spray         mp3: 105856 frames x 1 ch (want 105856, exact), seam d2 ratio 0.325
-  sfx_excavator          ogg: 88000 frames x 1 ch (want 88000, exact), seam d2 ratio 0.120
-  sfx_excavator          mp3: 88000 frames x 1 ch (want 88000, exact), seam d2 ratio 0.100
-  sfx_comic_fight        ogg: 105856 frames x 1 ch (want 105856, exact), seam d2 ratio 0.273
-  sfx_comic_fight        mp3: 105856 frames x 1 ch (want 105856, exact), seam d2 ratio 0.099
+phone speaker model (HP 500 Hz 4th order + LP 9 kHz): loss must be <= 6 dB; phone-effective = phone-weighted level + 20 log10(volume)
+  sfx_collapse_soft      sfx      loss   4.9 dB   phone-effective Mmax  -24.0
+  sfx_excavator          ambience loss   4.8 dB   phone-effective I  -33.8
+  sfx_moving_truck       sfx      loss   4.4 dB   phone-effective Mmax  -24.4
+  sfx_stamp              sfx      loss   4.2 dB   phone-effective Mmax  -23.7
+  sfx_vault_door         sfx      loss   4.1 dB   phone-effective Mmax  -23.1
+  sfx_demolish_crunch    sfx      loss   3.9 dB   phone-effective Mmax  -22.9
+  sfx_comic_fight        ambience loss   3.6 dB   phone-effective I  -28.6
+  amb_fire_big           ambience loss   3.5 dB   phone-effective I  -35.5
+  sfx_fire_flare         sfx      loss   3.3 dB   phone-effective Mmax  -21.9
+  amb_construction       ambience loss   3.0 dB   phone-effective I  -36.5
+  amb_warehouse          ambience loss   2.7 dB   phone-effective I  -36.6
+  amb_bank               ambience loss   2.6 dB   phone-effective I  -37.1
+  bgm_city               music    loss   2.5 dB   phone-effective I  -29.0
+  sfx_newspaper          sfx      loss   2.2 dB   phone-effective Mmax  -22.7
+  sfx_crowd_cheer_small  sfx      loss   2.1 dB   phone-effective Mmax  -21.0
+  sfx_crowd_gasp         sfx      loss   1.8 dB   phone-effective Mmax  -21.8
+  bgm_chase              music    loss   1.7 dB   phone-effective I  -28.3
+  sfx_siren_fire         ambience loss   1.4 dB   phone-effective I  -26.4
+  sfx_box_drop_3         sfx      loss   1.2 dB   phone-effective Mmax  -21.7
+  sfx_box_drop_2         sfx      loss   1.2 dB   phone-effective Mmax  -21.6
+  sfx_siren_police       ambience loss   0.8 dB   phone-effective I  -26.3
+  sfx_box_drop           sfx      loss   0.8 dB   phone-effective Mmax  -21.3
+  sfx_steam_hiss         sfx      loss   0.7 dB   phone-effective Mmax  -20.6
+  sfx_hose_spray         ambience loss   0.3 dB   phone-effective I  -28.3
+  sfx_coin_count         sfx      loss   0.2 dB   phone-effective Mmax  -20.2
+  sfx_cuffs_click        sfx      loss   0.1 dB   phone-effective Mmax  -20.6
+  sfx_fire_alarm_bell    sfx      loss   0.0 dB   phone-effective Mmax  -20.0
+  sfx_ticket_chime       sfx      loss   0.0 dB   phone-effective Mmax  -21.0
+  sfx_forklift_beep      sfx      loss   0.0 dB   phone-effective Mmax  -22.0
+  sfx_police_whistle     sfx      loss   0.0 dB   phone-effective Mmax  -20.9
+  (audio amb_fire, v1)   ambience                  phone-effective I  -37.6
+total payload assets/audio6 (audio files + manifest): 3930304 bytes = 3.930 MB = 3.748 MiB (limit 4000000 bytes)
+headless Chromium 141.0.7390.37 decodeAudioData (OfflineAudioContext 44.1 kHz | 48 kHz):
+  bgm_city               ogg: 2687936 frames x 2 ch (want 2687936, exact), seam 0.066 | 48k: 2925644 frames (ideal 2925644.63), seam 0.064
+  bgm_city               mp3: 2687936 frames x 2 ch (want 2687936, exact), seam 0.070 | 48k: 2925644 frames (ideal 2925644.63), seam 0.148
+  bgm_chase              ogg: 1008000 frames x 2 ch (want 1008000, exact), seam 0.253 | 48k: 1097142 frames (ideal 1097142.86), seam 0.337
+  bgm_chase              mp3: 1008000 frames x 2 ch (want 1008000, exact), seam 0.247 | 48k: 1097142 frames (ideal 1097142.86), seam 0.366
+  amb_fire_big           ogg: 352640 frames x 1 ch (want 352640, exact), seam 0.041 | 48k: 383825 frames (ideal 383825.85), seam 0.086
+  amb_fire_big           mp3: 352640 frames x 1 ch (want 352640, exact), seam 0.018 | 48k: 383825 frames (ideal 383825.85), seam 0.033
+  amb_construction       ogg: 352896 frames x 1 ch (want 352896, exact), seam 0.168 | 48k: 384104 frames (ideal 384104.49), seam 0.219
+  amb_construction       mp3: 352896 frames x 1 ch (want 352896, exact), seam 0.146 | 48k: 384104 frames (ideal 384104.49), seam 0.164
+  amb_bank               ogg: 352320 frames x 1 ch (want 352320, exact), seam 0.262 | 48k: 383477 frames (ideal 383477.55), seam 0.366
+  amb_bank               mp3: 352320 frames x 1 ch (want 352320, exact), seam 0.093 | 48k: 383477 frames (ideal 383477.55), seam 0.119
+  amb_warehouse          ogg: 352768 frames x 1 ch (want 352768, exact), seam 0.070 | 48k: 383965 frames (ideal 383965.17), seam 0.072
+  amb_warehouse          mp3: 352768 frames x 1 ch (want 352768, exact), seam 0.088 | 48k: 383965 frames (ideal 383965.17), seam 0.090
+  sfx_siren_fire         ogg: 87744 frames x 1 ch (want 87744, exact), seam 0.429 | 48k: 95503 frames (ideal 95503.67), seam 0.538
+  sfx_siren_fire         mp3: 87744 frames x 1 ch (want 87744, exact), seam 0.177 | 48k: 95503 frames (ideal 95503.67), seam 0.232
+  sfx_siren_police       ogg: 106176 frames x 1 ch (want 106176, exact), seam 0.553 | 48k: 115565 frames (ideal 115565.71), seam 0.510
+  sfx_siren_police       mp3: 106176 frames x 1 ch (want 106176, exact), seam 0.052 | 48k: 115565 frames (ideal 115565.71), seam 0.128
+  sfx_hose_spray         ogg: 105856 frames x 1 ch (want 105856, exact), seam 0.249 | 48k: 115217 frames (ideal 115217.41), seam 0.302
+  sfx_hose_spray         mp3: 105856 frames x 1 ch (want 105856, exact), seam 0.249 | 48k: 115217 frames (ideal 115217.41), seam 0.232
+  sfx_excavator          ogg: 88384 frames x 1 ch (want 88384, exact), seam 0.075 | 48k: 96200 frames (ideal 96200.27), seam 0.100
+  sfx_excavator          mp3: 88384 frames x 1 ch (want 88384, exact), seam 0.040 | 48k: 96200 frames (ideal 96200.27), seam 0.048
+  sfx_comic_fight        ogg: 105856 frames x 1 ch (want 105856, exact), seam 0.101 | 48k: 115217 frames (ideal 115217.41), seam 0.087
+  sfx_comic_fight        mp3: 105856 frames x 1 ch (want 105856, exact), seam 0.040 | 48k: 115217 frames (ideal 115217.41), seam 0.055
 mix: bgm_city plays at -26.5 LUFS effective (bgm_village target -26.5)
 mix: bgm_chase plays at -26.5 LUFS effective (bgm_village target -26.5)
-demo: bed -27.2 LUFS | sfx layer -23.6 LUFS | mix -24.0 LUFS, peak -2.1 dBFS
+demo: bed -27.3 LUFS | sfx layer -23.7 LUFS | mix -24.0 LUFS, peak -1.3 dBFS
 demo timeline (4 s windows, max momentary LUFS)  bed | sfx
-   0s   -23.7 |  -25.4
+   0s   -24.1 |  -25.4
    4s   -24.1 |  -22.5
-   8s   -24.0 |  -26.0
-  12s   -28.6 |  -20.0
-  16s   -27.8 |  -19.3
-  20s   -30.7 |  -22.4
-  24s   -29.7 |  -18.8
+   8s   -24.3 |  -26.0
+  12s   -29.0 |  -20.0
+  16s   -29.9 |  -19.5
+  20s   -30.4 |  -22.4
+  24s   -29.5 |  -18.8
   28s   -30.2 |  -19.5
-  32s   -30.4 |  -15.9
-  36s   -25.1 |  -23.0
-  40s   -23.6 |  -22.0
-  44s   -24.8 |  -19.9
-  48s   -24.9 |  -18.2
-  52s   -24.1 |  -23.7
-  56s   -22.0 |  -78.0
-  60s   -20.9 |  -18.8
-  64s   -25.9 |  -20.8
-  68s   -24.6 |  -20.5
-  72s   -25.4 |  -26.4
+  32s   -29.5 |  -15.9
+  36s   -25.9 |  -23.0
+  40s   -22.7 |  -22.0
+  44s   -24.5 |  -19.9
+  48s   -24.9 |  -18.9
+  52s   -24.1 |  -23.8
+  56s   -22.0 |  -79.2
+  60s   -21.3 |  -19.4
+  64s   -26.1 |  -20.8
+  68s   -24.8 |  -20.5
+  72s   -25.1 |  -26.4
 
 
 RESULT: OK

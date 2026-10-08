@@ -157,7 +157,7 @@ def main():
                 len(sp['bank_vault']['anims']['vault']['frames']) != 8:
             errs.append('bank_vault: anims.vault must have 8 frames')
     if 'police_station' in sp:
-        for f in ('cellPoints', 'carBayPoint', 'carBayDir', 'staffPoints', 'cellDoorPoint'):
+        for f in ('cellPoints', 'cellPoint', 'carBayPoint', 'carBayDir', 'staffPoints', 'cellDoorPoint'):
             if f not in sp['police_station']:
                 errs.append('police_station: %s missing' % f)
         if 'open' not in sp.get('police_station_cell', {}).get('anims', {}):
@@ -228,6 +228,8 @@ def main():
         for d in ('SE', 'NE'):
             if len(bp.get(d, [])) != 8:
                 errs.append('excavator: bucketPoints.dig.%s must have 8 points' % d)
+        if 'bucketPoint' not in exc:
+            errs.append('excavator: bucketPoint (contract name) missing')
         if 'dumpPoint' not in exc or 'digFrame' not in exc['anims'].get('dig', {}):
             errs.append('excavator: dumpPoint / digFrame missing')
     dt = ch.get('dump_truck')

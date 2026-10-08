@@ -1,0 +1,2824 @@
+{
+ "version": 1,
+ "generator": "tools/blender/lgx_render.py + lgx_pack.py (docs/CONTRACT_V8.md section AA)",
+ "conventions": {
+  "ppu": 64,
+  "cutaway": "logistics_center_* layers share frameSize + anchor with logistics_center (place them all at the building anchor). Depth of a layer = building depth + its depthOffset (layerOrder). Inside actors (staff, customers inside, forklift / pallet jack inside) are drawn in one of two bands: \"mid\" = between _interior (+ stock) and _interior_front (they stand BEHIND the counter / conveyor / packing table, which hide their legs), \"front\" = above _interior_front. Sort actors inside a band by their own y. Bands are validated against the rendered depth (staffBands / customerBands / forkliftPath[].legBand; legCrossesWall = the leg leaves / enters through a dock door: outside the wall use the outside rule). Stock: draw the item sprites of a rack slot at slot.point (bottom of the stack), stacked by stackStep (scaled with the item, e.g. 0.85), never higher than maxStackPx, in drawOrder. A slot holds lanes x rows of stacks: lane offsets = point + spanPx * t (t in -0.5..0.5, across the slot width), row offsets = point + depthPx * u (u -0.5 = back row, +0.5 = front row; draw back rows first, lanes by screen y). Stock level -> number of stacks + stack heights (empty slot = bare shelf, full = every lane x row stacked to maxStackPx). slot.band \"stock\" = between _interior and _interior_racks (the rack front uprights and beams are drawn OVER the goods, so they sit inside the racks; empty slot = bare shelf); slot.band \"front\" (the materials floor bays) = y-sorted with the front actors. _stub (front walls at 0.45 m) and _props (apron props) are always drawn; _shell (+ dock door patches) fades for the reveal; _shell_cut is the optional walls-at-1.6 m state.",
+  "outsideActors": "Characters / vehicles outside the building: normal y-sort, but the building is big - an actor is in front of it when its anchor is below the two front edges of footprintPoly (left->bottom, bottom->right).",
+  "items": "72 x 72 frames, anchor (36, 54) = bottom centre; stackStep px between stacked copies; carryScale for hand-carried stacks; also usable as UI icons.",
+  "producers": "prop / station conventions (baked shadow, anchor = footprint centre, front -Y). anims.work loops 4 frames. workSpot.point/dir = where the operator stands (in front of the machine, draw him above the station sprite); inPoint / outPoint = input / output pads.",
+  "vehicles": "characters{} entries with kind \"vehicle\" in the assets/vehicles conventions: dirs SE (world +X) and NE (world +Y), SW <- SE and NW <- NE with flipX, frame names {anim}_{dir}_{i}, no baked shadow (draw shadow[dir]), seats + overlay frames for drivers, px points per dir (negate dx when mirrored).",
+  "docks": "dockPoints = the ground point in the middle of each dock door; dockVehiclePoints[family][bay] = where the vehicle ANCHOR goes when it is backed up to that bay (facing SE = away from the door)."
+ },
+ "atlases": [
+  {
+   "key": "lgx_center_a",
+   "png": "logistics/lgx_center_a.png",
+   "json": "logistics/lgx_center_a.json"
+  },
+  {
+   "key": "lgx_center_b",
+   "png": "logistics/lgx_center_b.png",
+   "json": "logistics/lgx_center_b.json"
+  },
+  {
+   "key": "lgx_center_c",
+   "png": "logistics/lgx_center_c.png",
+   "json": "logistics/lgx_center_c.json"
+  },
+  {
+   "key": "lgx_items",
+   "png": "logistics/lgx_items.png",
+   "json": "logistics/lgx_items.json"
+  },
+  {
+   "key": "lgx_producers",
+   "png": "logistics/lgx_producers.png",
+   "json": "logistics/lgx_producers.json"
+  },
+  {
+   "key": "lgx_forklift_loaded",
+   "png": "logistics/lgx_forklift_loaded.png",
+   "json": "logistics/lgx_forklift_loaded.json"
+  }
+ ],
+ "sprites": {
+  "logistics_center_back": {
+   "atlas": "lgx_center_c",
+   "frame": "logistics_center_back",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "back",
+   "depthOffset": -0.4
+  },
+  "logistics_center_floor": {
+   "atlas": "lgx_center_c",
+   "frame": "logistics_center_floor",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "floor",
+   "depthOffset": -0.35
+  },
+  "logistics_center_interior": {
+   "atlas": "lgx_center_b",
+   "frame": "logistics_center_interior",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "interior",
+   "depthOffset": -0.3
+  },
+  "logistics_center_interior_racks": {
+   "atlas": "lgx_center_b",
+   "frame": "logistics_center_interior_racks",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "interior_racks",
+   "depthOffset": -0.22
+  },
+  "logistics_center_interior_front": {
+   "atlas": "lgx_center_b",
+   "frame": "logistics_center_interior_front",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "interior_front",
+   "depthOffset": -0.1
+  },
+  "logistics_center_stub": {
+   "atlas": "lgx_center_c",
+   "frame": "logistics_center_stub",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "stub",
+   "depthOffset": -0.02
+  },
+  "logistics_center_shell_cut": {
+   "atlas": "lgx_center_c",
+   "frame": "logistics_center_shell_cut",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "shell_cut",
+   "depthOffset": -0.015
+  },
+  "logistics_center_shell": {
+   "atlas": "lgx_center_a",
+   "frame": "logistics_center_shell",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "shell",
+   "depthOffset": 0.0
+  },
+  "logistics_center_props": {
+   "atlas": "lgx_center_c",
+   "frame": "logistics_center_props",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "props",
+   "depthOffset": 0.01
+  },
+  "logistics_center_conveyor": {
+   "atlas": "lgx_center_b",
+   "frame": "logistics_center_conveyor_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "conveyor",
+   "depthOffset": -0.09,
+   "anims": {
+    "conveyor": {
+     "frames": [
+      "logistics_center_conveyor_0",
+      "logistics_center_conveyor_1",
+      "logistics_center_conveyor_2",
+      "logistics_center_conveyor_3",
+      "logistics_center_conveyor_4",
+      "logistics_center_conveyor_5",
+      "logistics_center_conveyor_6",
+      "logistics_center_conveyor_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "notes": "Conveyor belt + riding parcels, 8-frame seamless loop (one parcel spacing per loop). ALWAYS draw it (frame 0 when paused): the belt is not in _interior. Depth: right above _interior_front."
+  },
+  "logistics_center_dock1": {
+   "atlas": "lgx_center_a",
+   "frame": "logistics_center_dock1_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "dock1",
+   "depthOffset": 0.001,
+   "anims": {
+    "dock_door": {
+     "frames": [
+      "logistics_center_dock1_0",
+      "logistics_center_dock1_1",
+      "logistics_center_dock1_2",
+      "logistics_center_dock1_3",
+      "logistics_center_dock1_4",
+      "logistics_center_dock1_5"
+     ],
+     "fps": 8,
+     "repeat": 0
+    }
+   },
+   "notes": "Roll-up dock door 1: frame 0 = closed (identical to the shell), 5 = open (the inside seen through the opening, lit under the roof). Play forward to open, backward to close; same alpha as _shell (it belongs to the shell)."
+  },
+  "logistics_center_dock2": {
+   "atlas": "lgx_center_a",
+   "frame": "logistics_center_dock2_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "dock2",
+   "depthOffset": 0.001,
+   "anims": {
+    "dock_door": {
+     "frames": [
+      "logistics_center_dock2_0",
+      "logistics_center_dock2_1",
+      "logistics_center_dock2_2",
+      "logistics_center_dock2_3",
+      "logistics_center_dock2_4",
+      "logistics_center_dock2_5"
+     ],
+     "fps": 8,
+     "repeat": 0
+    }
+   },
+   "notes": "Roll-up dock door 2: frame 0 = closed (identical to the shell), 5 = open (the inside seen through the opening, lit under the roof). Play forward to open, backward to close; same alpha as _shell (it belongs to the shell)."
+  },
+  "logistics_center_lamp": {
+   "atlas": "lgx_center_b",
+   "frame": "logistics_center_lamp_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "lamp",
+   "depthOffset": -0.29,
+   "anims": {
+    "office_lamp": {
+     "frames": [
+      "logistics_center_lamp_0",
+      "logistics_center_lamp_1",
+      "logistics_center_lamp_2",
+      "logistics_center_lamp_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "notes": "Office desk lamp + desk top: 4-frame warm glow loop. Frame 0 equals _interior; draw right above _interior (below the clerk)."
+  },
+  "logistics_center": {
+   "atlas": "lgx_center_a",
+   "frame": "logistics_center_shell",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "building",
+   "name": {
+    "ko": "솔방울 물류센터",
+    "en": "Pinecone Logistics Centre"
+   },
+   "zone": "logistics",
+   "front": "-Y",
+   "topPx": 487,
+   "footprintM": [
+    11.0,
+    8.0
+   ],
+   "footprint": [
+    860,
+    430
+   ],
+   "footprintPoly": [
+    [
+     48,
+     475
+    ],
+    [
+     546,
+     724
+    ],
+    [
+     908,
+     543
+    ],
+    [
+     410,
+     294
+    ]
+   ],
+   "revealPoly": [
+    [
+     -455,
+     -256
+    ],
+    [
+     -455,
+     -257
+    ],
+    [
+     -452,
+     -270
+    ],
+    [
+     -449,
+     -279
+    ],
+    [
+     -445,
+     -288
+    ],
+    [
+     -440,
+     -298
+    ],
+    [
+     -433,
+     -308
+    ],
+    [
+     -426,
+     -318
+    ],
+    [
+     -417,
+     -328
+    ],
+    [
+     -408,
+     -338
+    ],
+    [
+     -398,
+     -349
+    ],
+    [
+     -397,
+     -349
+    ],
+    [
+     -386,
+     -360
+    ],
+    [
+     -374,
+     -370
+    ],
+    [
+     -362,
+     -381
+    ],
+    [
+     -348,
+     -391
+    ],
+    [
+     -334,
+     -401
+    ],
+    [
+     -320,
+     -411
+    ],
+    [
+     -320,
+     -411
+    ],
+    [
+     -305,
+     -420
+    ],
+    [
+     -290,
+     -429
+    ],
+    [
+     -275,
+     -438
+    ],
+    [
+     -260,
+     -446
+    ],
+    [
+     -244,
+     -453
+    ],
+    [
+     -229,
+     -460
+    ],
+    [
+     -214,
+     -466
+    ],
+    [
+     -200,
+     -471
+    ],
+    [
+     -185,
+     -476
+    ],
+    [
+     -176,
+     -478
+    ],
+    [
+     -169,
+     -480
+    ],
+    [
+     -165,
+     -481
+    ],
+    [
+     -158,
+     -483
+    ],
+    [
+     -145,
+     -485
+    ],
+    [
+     -133,
+     -486
+    ],
+    [
+     -122,
+     -487
+    ],
+    [
+     -122,
+     -487
+    ],
+    [
+     -112,
+     -487
+    ],
+    [
+     -102,
+     -486
+    ],
+    [
+     -93,
+     -484
+    ],
+    [
+     -86,
+     -481
+    ],
+    [
+     433,
+     -222
+    ],
+    [
+     439,
+     -218
+    ],
+    [
+     444,
+     -214
+    ],
+    [
+     449,
+     -208
+    ],
+    [
+     452,
+     -202
+    ],
+    [
+     455,
+     -192
+    ],
+    [
+     455,
+     -192
+    ],
+    [
+     455,
+     -186
+    ],
+    [
+     432,
+     33
+    ],
+    [
+     432,
+     34
+    ],
+    [
+     432,
+     34
+    ],
+    [
+     431,
+     34
+    ],
+    [
+     384,
+     60
+    ],
+    [
+     98,
+     203
+    ],
+    [
+     69,
+     216
+    ],
+    [
+     68,
+     216
+    ],
+    [
+     67,
+     216
+    ],
+    [
+     44,
+     211
+    ],
+    [
+     44,
+     211
+    ],
+    [
+     38,
+     208
+    ],
+    [
+     -279,
+     46
+    ],
+    [
+     -431,
+     -34
+    ],
+    [
+     -431,
+     -34
+    ],
+    [
+     -432,
+     -34
+    ],
+    [
+     -432,
+     -34
+    ],
+    [
+     -432,
+     -35
+    ],
+    [
+     -455,
+     -251
+    ]
+   ],
+   "layers": {
+    "back": "logistics_center_back",
+    "floor": "logistics_center_floor",
+    "interior": "logistics_center_interior",
+    "interior_racks": "logistics_center_interior_racks",
+    "interior_front": "logistics_center_interior_front",
+    "stub": "logistics_center_stub",
+    "shell_cut": "logistics_center_shell_cut",
+    "shell": "logistics_center_shell",
+    "props": "logistics_center_props"
+   },
+   "layerOrder": [
+    "back",
+    "floor",
+    "interior",
+    "lamp",
+    "<stock>",
+    "interior_racks",
+    "<actors mid>",
+    "interior_front",
+    "conveyor",
+    "<actors front + floor stock>",
+    "stub",
+    "shell_cut",
+    "shell",
+    "dock1",
+    "dock2",
+    "props"
+   ],
+   "patches": {
+    "conveyor": "logistics_center_conveyor",
+    "dock1": "logistics_center_dock1",
+    "dock2": "logistics_center_dock2",
+    "lamp": "logistics_center_lamp"
+   },
+   "reveal": {
+    "states": {
+     "closed": {
+      "shell": 1.0,
+      "shell_cut": 0.0
+     },
+     "half": {
+      "shell": 0.45,
+      "shell_cut": 0.0
+     },
+     "cut": {
+      "shell": 0.0,
+      "shell_cut": 1.0
+     },
+     "open": {
+      "shell": 0.0,
+      "shell_cut": 0.0
+     }
+    },
+    "fadeMs": 350,
+    "notes": "Tap / hover inside revealPoly -> tween shell (and the dock door patches) to alpha 0 (optionally through shell_cut = walls at 1.6 m, roof off). Everything inside is drawn whether or not the shell is visible (the shell simply covers it); skip the inside layers while the shell is at alpha 1 and both dock doors are closed to save fill-rate."
+   },
+   "dockPoints": [
+    [
+     154,
+     172
+    ],
+    [
+     324,
+     87
+    ]
+   ],
+   "dockDirs": [
+    "SE",
+    "SE"
+   ],
+   "dockNames": [
+    "van bay (front)",
+    "truck bay (back)"
+   ],
+   "dockVehiclePoints": {
+    "truck_cargo": [
+     [
+      294,
+      242
+     ],
+     [
+      464,
+      157
+     ]
+    ],
+    "delivery_van": [
+     [
+      269,
+      230
+     ],
+     [
+      439,
+      145
+     ]
+    ],
+    "moving_truck": [
+     [
+      364,
+      277
+     ],
+     [
+      534,
+      192
+     ]
+    ],
+    "forklift": [
+     [
+      219,
+      205
+     ],
+     [
+      389,
+      120
+     ]
+    ]
+   },
+   "forkliftPath": [
+    {
+     "point": [
+      -57,
+      -103
+     ],
+     "dir": "NE",
+     "legBand": "mid",
+     "action": "pick",
+     "note": "turn to the food rack, forks in, lift (anim lift), back out"
+    },
+    {
+     "point": [
+      276,
+      63
+     ],
+     "dir": "SE",
+     "legBand": "front",
+     "legCrossesWall": true,
+     "note": "drive +X along the lane"
+    },
+    {
+     "point": [
+      330,
+      91
+     ],
+     "dir": "SE",
+     "legBand": "front",
+     "legCrossesWall": true,
+     "action": "drop",
+     "note": "through dock 2 to the truck: lift, set the pallet down"
+    },
+    {
+     "point": [
+      276,
+      63
+     ],
+     "dir": "SE",
+     "legBand": "front",
+     "note": "reverse back inside (still facing SE)"
+    },
+    {
+     "point": [
+      106,
+      148
+     ],
+     "dir": "SW",
+     "legBand": "front",
+     "legCrossesWall": true,
+     "note": "drive -Y down the dock corridor"
+    },
+    {
+     "point": [
+      161,
+      175
+     ],
+     "dir": "SE",
+     "legBand": "front",
+     "legCrossesWall": true,
+     "action": "pick",
+     "note": "through dock 1: pick a pallet from the van"
+    },
+    {
+     "point": [
+      106,
+      148
+     ],
+     "dir": "SE",
+     "legBand": "front",
+     "note": "reverse back inside"
+    },
+    {
+     "point": [
+      276,
+      63
+     ],
+     "dir": "NE",
+     "legBand": "mid",
+     "note": "drive +Y up the corridor"
+    },
+    {
+     "point": [
+      152,
+      1
+     ],
+     "dir": "NW",
+     "legBand": "mid",
+     "action": "drop",
+     "note": "back along the lane to the tools rack: put away (lift)"
+    },
+    {
+     "point": [
+      -57,
+      -103
+     ],
+     "dir": "NW",
+     "legBand": "mid",
+     "note": "continue to the food rack -> loop"
+    }
+   ],
+   "rackSlots": [
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      -11,
+      -158
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 11
+    },
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      38,
+      -134
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 15
+    },
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 1,
+     "slot": 0,
+     "point": [
+      -11,
+      -225
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 4
+    },
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 1,
+     "slot": 1,
+     "point": [
+      38,
+      -200
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 6
+    },
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 2,
+     "slot": 0,
+     "point": [
+      -11,
+      -291
+     ],
+     "maxStackPx": 24,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 0
+    },
+    {
+     "rack": "rack_food",
+     "category": "food",
+     "level": 2,
+     "slot": 1,
+     "point": [
+      38,
+      -267
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 1
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      94,
+      -106
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 19
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      142,
+      -82
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 21
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 1,
+     "slot": 0,
+     "point": [
+      94,
+      -173
+     ],
+     "maxStackPx": 26,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 9
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 1,
+     "slot": 1,
+     "point": [
+      142,
+      -148
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 13
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 2,
+     "slot": 0,
+     "point": [
+      94,
+      -239
+     ],
+     "maxStackPx": 24,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 2
+    },
+    {
+     "rack": "rack_goods",
+     "category": "goods",
+     "level": 2,
+     "slot": 1,
+     "point": [
+      142,
+      -215
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 5
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      198,
+      -54
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 23
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      246,
+      -30
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 25
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 1,
+     "slot": 0,
+     "point": [
+      198,
+      -121
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 17
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 1,
+     "slot": 1,
+     "point": [
+      246,
+      -96
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 20
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 2,
+     "slot": 0,
+     "point": [
+      198,
+      -187
+     ],
+     "maxStackPx": 24,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 8
+    },
+    {
+     "rack": "rack_tools",
+     "category": "tools",
+     "level": 2,
+     "slot": 1,
+     "point": [
+      246,
+      -163
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 10
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      302,
+      -2
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 26
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      350,
+      22
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 27
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 1,
+     "slot": 0,
+     "point": [
+      302,
+      -68
+     ],
+     "maxStackPx": 27,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 22
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 1,
+     "slot": 1,
+     "point": [
+      350,
+      -44
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 24
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 2,
+     "slot": 0,
+     "point": [
+      302,
+      -135
+     ],
+     "maxStackPx": 24,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 14
+    },
+    {
+     "rack": "rack_appliances",
+     "category": "appliances",
+     "level": 2,
+     "slot": 1,
+     "point": [
+      350,
+      -111
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.075,
+     "depthM": 0.6,
+     "spanPx": [
+      43,
+      22
+     ],
+     "depthPx": [
+      -27,
+      14
+     ],
+     "face": "SW",
+     "band": "stock",
+     "drawOrder": 18
+    },
+    {
+     "rack": "rack_furniture",
+     "category": "furniture",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      -186,
+      -126
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.175,
+     "depthM": 0.7,
+     "spanPx": [
+      48,
+      -24
+     ],
+     "depthPx": [
+      32,
+      16
+     ],
+     "face": "SE",
+     "band": "stock",
+     "drawOrder": 16
+    },
+    {
+     "rack": "rack_furniture",
+     "category": "furniture",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      -133,
+      -153
+     ],
+     "maxStackPx": 32,
+     "widthM": 1.175,
+     "depthM": 0.7,
+     "spanPx": [
+      48,
+      -24
+     ],
+     "depthPx": [
+      32,
+      16
+     ],
+     "face": "SE",
+     "band": "stock",
+     "drawOrder": 12
+    },
+    {
+     "rack": "rack_furniture",
+     "category": "furniture",
+     "level": 1,
+     "slot": 0,
+     "point": [
+      -186,
+      -200
+     ],
+     "maxStackPx": 0,
+     "widthM": 1.175,
+     "depthM": 0.7,
+     "spanPx": [
+      48,
+      -24
+     ],
+     "depthPx": [
+      32,
+      16
+     ],
+     "face": "SE",
+     "band": "stock",
+     "drawOrder": 7
+    },
+    {
+     "rack": "rack_furniture",
+     "category": "furniture",
+     "level": 1,
+     "slot": 1,
+     "point": [
+      -133,
+      -227
+     ],
+     "maxStackPx": 45,
+     "widthM": 1.175,
+     "depthM": 0.7,
+     "spanPx": [
+      48,
+      -24
+     ],
+     "depthPx": [
+      32,
+      16
+     ],
+     "face": "SE",
+     "band": "stock",
+     "drawOrder": 3
+    },
+    {
+     "rack": "floor_bays",
+     "category": "materials",
+     "level": 0,
+     "slot": 0,
+     "point": [
+      -62,
+      105
+     ],
+     "maxStackPx": 94,
+     "widthM": 1.35,
+     "depthM": 0.8,
+     "spanPx": [
+      56,
+      28
+     ],
+     "depthPx": [
+      -36,
+      18
+     ],
+     "face": "S",
+     "band": "front",
+     "drawOrder": 29
+    },
+    {
+     "rack": "floor_bays",
+     "category": "materials",
+     "level": 0,
+     "slot": 1,
+     "point": [
+      3,
+      137
+     ],
+     "maxStackPx": 94,
+     "widthM": 1.35,
+     "depthM": 0.8,
+     "spanPx": [
+      56,
+      28
+     ],
+     "depthPx": [
+      -36,
+      18
+     ],
+     "face": "S",
+     "band": "front",
+     "drawOrder": 31
+    },
+    {
+     "rack": "floor_bays",
+     "category": "materials",
+     "level": 0,
+     "slot": 2,
+     "point": [
+      -8,
+      77
+     ],
+     "maxStackPx": 94,
+     "widthM": 1.35,
+     "depthM": 0.8,
+     "spanPx": [
+      56,
+      28
+     ],
+     "depthPx": [
+      -36,
+      18
+     ],
+     "face": "S",
+     "band": "front",
+     "drawOrder": 28
+    },
+    {
+     "rack": "floor_bays",
+     "category": "materials",
+     "level": 0,
+     "slot": 3,
+     "point": [
+      58,
+      110
+     ],
+     "maxStackPx": 94,
+     "widthM": 1.35,
+     "depthM": 0.8,
+     "spanPx": [
+      56,
+      28
+     ],
+     "depthPx": [
+      -36,
+      18
+     ],
+     "face": "S",
+     "band": "front",
+     "drawOrder": 30
+    }
+   ],
+   "rackCategories": {
+    "materials": [
+     "pallet_planks",
+     "pallet_logs",
+     "pallet_ingots",
+     "pallet_boxes"
+    ],
+    "food": [
+     "item_crate_food",
+     "item_crate_bread",
+     "item_crate_produce",
+     "item_crate_cans"
+    ],
+    "goods": [
+     "cardboard_box_s",
+     "cardboard_box_m",
+     "cardboard_box_l",
+     "item_crate_cans"
+    ],
+    "furniture": [
+     "item_chair",
+     "item_table",
+     "item_sofa",
+     "item_bed",
+     "item_wardrobe"
+    ],
+    "tools": [
+     "item_toolbox",
+     "cardboard_box_s"
+    ],
+    "appliances": [
+     "item_fridge",
+     "item_stove_iron",
+     "item_washer",
+     "item_radio",
+     "item_tv_retro"
+    ]
+   },
+   "staffPoints": [
+    [
+     -260,
+     -60
+    ],
+    [
+     7,
+     -21
+    ],
+    [
+     171,
+     55
+    ],
+    [
+     -22,
+     -120
+    ],
+    [
+     186,
+     -16
+    ],
+    [
+     -116,
+     -110
+    ],
+    [
+     272,
+     147
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "NE",
+    "NE",
+    "NW",
+    "SE"
+   ],
+   "staffRoles": [
+    "clerk",
+    "packer",
+    "packer",
+    "picker",
+    "picker",
+    "picker",
+    "dockhand"
+   ],
+   "staffBands": [
+    "mid",
+    "mid",
+    "mid",
+    "any",
+    "any",
+    "mid",
+    "outside"
+   ],
+   "customerPoints": [
+    [
+     -324,
+     -28
+    ],
+    [
+     -290,
+     -7
+    ],
+    [
+     -256,
+     15
+    ],
+    [
+     -222,
+     38
+    ],
+    [
+     -287,
+     71
+    ],
+    [
+     -324,
+     89
+    ],
+    [
+     -360,
+     107
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NW",
+    "NW",
+    "NW",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "customerBands": [
+    "front",
+    "front",
+    "front",
+    "front",
+    "outside",
+    "outside",
+    "outside"
+   ],
+   "doorPoint": [
+    -278,
+    67
+   ],
+   "doorDir": "NE",
+   "insidePoint": [
+    -222,
+    39
+   ],
+   "inPoint": [
+    -110,
+    161
+   ],
+   "conveyor": {
+    "start": [
+     -97,
+     -87
+    ],
+    "end": [
+     81,
+     2
+    ],
+    "axis": "x"
+   },
+   "fxPoints": {
+    "board": [
+     -254,
+     -115
+    ],
+    "emblem": [
+     -109,
+     -432
+    ],
+    "lamp": [
+     -277,
+     -143
+    ],
+    "vents": [
+     [
+      -122,
+      -443
+     ],
+     [
+      -14,
+      -388
+     ],
+     [
+      204,
+      -280
+     ]
+    ],
+    "dockLights": [
+     [
+      252,
+      4
+     ],
+     [
+      277,
+      -9
+     ]
+    ]
+   },
+   "boardSizePx": [
+    137,
+    43
+   ],
+   "nameBoard": {
+    "point": [
+     -254,
+     -115
+    ],
+    "widthPx": 137,
+    "heightPx": 43,
+    "shearY": 0.5,
+    "text": {
+     "ko": "솔방울 물류센터",
+     "en": "Pinecone Logistics"
+    },
+    "color": "#2B4F7E",
+    "note": "blank cream name board on the -Y facade (part of _shell): the game writes the name here, centred on point, fitted into widthPx x heightPx and sheared y += 0.5 * x (the facade runs along screen (2, 1)); fade it with the shell."
+   },
+   "notes": "Logistics centre (11 x 8 m) rendered as aligned cutaway layers that share this frame + anchor: draw the layers in layerOrder at depth = building depth + depthOffset. Closed look = _shell (this entry's own frame). Inside: blue + orange pallet racks with category signs (food fish, goods can, tools hammer, appliances fridge on the back wall; furniture chair on the left wall), a green belt conveyor with a feeder hood and a labeller arch, a packing table, the office corner (desk, abacus, cabinet, safe, heater with a sleeping cat) behind a green settlement counter (ledger, stamp, bell, coins), materials floor bays, two dock levellers."
+  },
+  "item_chair": {
+   "atlas": "lgx_items",
+   "frame": "item_chair",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 20,
+   "thicknessM": 0.36,
+   "carryScale": 0.65,
+   "category": "furniture",
+   "notes": "Wooden chair with a red cushion (toy scale), seen three-quarter.",
+   "topPx": 54
+  },
+  "item_table": {
+   "atlas": "lgx_items",
+   "frame": "item_table",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 24,
+   "thicknessM": 0.44,
+   "carryScale": 0.55,
+   "category": "furniture",
+   "notes": "Small wooden dining table with a checked runner and a tiny flower vase.",
+   "topPx": 36
+  },
+  "item_sofa": {
+   "atlas": "lgx_items",
+   "frame": "item_sofa",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 22,
+   "thicknessM": 0.4,
+   "carryScale": 0.55,
+   "category": "furniture",
+   "notes": "Chubby mint two-seat sofa with rolled arms, two cushions and a yellow throw pillow.",
+   "topPx": 38
+  },
+  "item_bed": {
+   "atlas": "lgx_items",
+   "frame": "item_bed",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 17,
+   "thicknessM": 0.3,
+   "carryScale": 0.55,
+   "category": "furniture",
+   "notes": "Cosy wooden bed (side view: headboard with a little heart at the left, blue patchwork quilt, white pillow).",
+   "topPx": 40
+  },
+  "item_wardrobe": {
+   "atlas": "lgx_items",
+   "frame": "item_wardrobe",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 44,
+   "thicknessM": 0.8,
+   "carryScale": 0.65,
+   "category": "furniture",
+   "notes": "Stubby wooden wardrobe with two panel doors and gold knobs.",
+   "topPx": 54
+  },
+  "item_fridge": {
+   "atlas": "lgx_items",
+   "frame": "item_fridge",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 43,
+   "thicknessM": 0.78,
+   "carryScale": 0.65,
+   "category": "appliances",
+   "notes": "Retro rounded mint fridge with chrome lever handles and a little red badge.",
+   "topPx": 50
+  },
+  "item_stove_iron": {
+   "atlas": "lgx_items",
+   "frame": "item_stove_iron",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 33,
+   "thicknessM": 0.6,
+   "carryScale": 0.65,
+   "category": "appliances",
+   "notes": "Cast-iron pot-belly stove (난로) with a glowing window and a red kettle on top.",
+   "topPx": 47
+  },
+  "item_washer": {
+   "atlas": "lgx_items",
+   "frame": "item_washer",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 31,
+   "thicknessM": 0.56,
+   "carryScale": 0.65,
+   "category": "appliances",
+   "notes": "Front-loading washing machine: blue water swirling behind a round porthole, dial and detergent drawer.",
+   "topPx": 38
+  },
+  "item_radio": {
+   "atlas": "lgx_items",
+   "frame": "item_radio",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 18,
+   "thicknessM": 0.32,
+   "carryScale": 0.65,
+   "category": "appliances",
+   "notes": "Retro wooden table radio: arched top, cream speaker grille, glowing gold dial, two knobs.",
+   "topPx": 22
+  },
+  "item_tv_retro": {
+   "atlas": "lgx_items",
+   "frame": "item_tv_retro",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 29,
+   "thicknessM": 0.52,
+   "carryScale": 0.65,
+   "category": "appliances",
+   "notes": "Retro CRT television in a wooden cabinet on splayed legs, rabbit-ear antenna, softly glowing screen.",
+   "topPx": 46
+  },
+  "item_toolbox": {
+   "atlas": "lgx_items",
+   "frame": "item_toolbox",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 14,
+   "thicknessM": 0.25,
+   "carryScale": 0.65,
+   "category": "tools",
+   "notes": "Toolbox (tools): red metal box with a steel carry handle, latches and a hammer + saw handle poking out. Same builder as assets/buildings item_toolbox (identical look), re-rendered here so the logistics fragment is self-contained.",
+   "topPx": 32
+  },
+  "item_crate_food": {
+   "atlas": "lgx_items",
+   "frame": "item_crate_food",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "food",
+   "notes": "Open wooden crate of mixed food: a fish, a loaf, apples.",
+   "topPx": 30
+  },
+  "item_crate_cans": {
+   "atlas": "lgx_items",
+   "frame": "item_crate_cans",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "food",
+   "notes": "Open wooden crate packed with red and blue tin cans (lids up).",
+   "topPx": 26
+  },
+  "item_crate_bread": {
+   "atlas": "lgx_items",
+   "frame": "item_crate_bread",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "food",
+   "notes": "Crate of fresh bread: two long loaves and round buns.",
+   "topPx": 31
+  },
+  "item_crate_produce": {
+   "atlas": "lgx_items",
+   "frame": "item_crate_produce",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "food",
+   "notes": "Crate of vegetables: green cabbages, carrots and red apples.",
+   "topPx": 29
+  },
+  "pallet_planks": {
+   "atlas": "lgx_items",
+   "frame": "pallet_planks",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 23,
+   "thicknessM": 0.42,
+   "carryScale": 0.65,
+   "category": "materials",
+   "notes": "Pallet of sawn planks strapped with blue bands (materials).",
+   "topPx": 35
+  },
+  "pallet_ingots": {
+   "atlas": "lgx_items",
+   "frame": "pallet_ingots",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 23,
+   "thicknessM": 0.42,
+   "carryScale": 0.65,
+   "category": "materials",
+   "notes": "Pallet of shiny metal ingots stacked crosswise (materials).",
+   "topPx": 28
+  },
+  "pallet_logs": {
+   "atlas": "lgx_items",
+   "frame": "pallet_logs",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 25,
+   "thicknessM": 0.46,
+   "carryScale": 0.65,
+   "category": "materials",
+   "notes": "Pallet of round logs (end grain toward the viewer) held by a red strap (materials).",
+   "topPx": 50
+  },
+  "pallet_boxes": {
+   "atlas": "lgx_items",
+   "frame": "pallet_boxes",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 23,
+   "thicknessM": 0.42,
+   "carryScale": 0.6,
+   "category": "goods",
+   "notes": "Pallet of brown parcels stacked two high with a blue strap (goods).",
+   "topPx": 34
+  },
+  "cardboard_box_s": {
+   "atlas": "lgx_items",
+   "frame": "cardboard_box_s",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 14,
+   "thicknessM": 0.26,
+   "carryScale": 0.65,
+   "category": "goods",
+   "notes": "Small kraft parcel with tape and a this-way-up label.",
+   "topPx": 20
+  },
+  "cardboard_box_m": {
+   "atlas": "lgx_items",
+   "frame": "cardboard_box_m",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "goods",
+   "notes": "Medium kraft parcel with tape and a this-way-up label.",
+   "topPx": 26
+  },
+  "cardboard_box_l": {
+   "atlas": "lgx_items",
+   "frame": "cardboard_box_l",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "icon": true,
+   "stackStep": 24,
+   "thicknessM": 0.44,
+   "carryScale": 0.65,
+   "category": "goods",
+   "notes": "Large kraft box with tape and a this-way-up label.",
+   "topPx": 34
+  },
+  "furniture_workshop": {
+   "atlas": "lgx_producers",
+   "frame": "furniture_workshop",
+   "anchor": [
+    0.32282,
+    0.70388
+   ],
+   "frameSize": [
+    412,
+    412
+   ],
+   "kind": "station",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "front": "-Y",
+   "notes": "Furniture workshop (가구 공방, 3 x 3 m): warm plank workshop with a red snowy gable roof, a stove-pipe chimney, an open barn door with tools on the back wall and a giant 3D chair on the ridge. In front (screen down-left) a table saw on a work bench running along Y: a pallet of planks at its back end (input side), a freshly made chair and a mint sofa at the right (output). anims.work = the saw blade spins (3 red marks, seamless), sawdust spray, lamp glow, chimney smoke. workSpot = the operator at the bench (in front of it, facing W), inPoint = planks pad (front-left), outPoint = furniture pad (right).",
+   "name": {
+    "ko": "가구 공방",
+    "en": "Furniture workshop"
+   },
+   "chain": {
+    "in": "item_plank",
+    "out": [
+     "item_chair",
+     "item_table",
+     "item_sofa",
+     "item_bed",
+     "item_wardrobe"
+    ]
+   },
+   "topPx": 241,
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "fxPoints": {
+    "saw": [
+     -38,
+     -32
+    ],
+    "dust": [
+     -45,
+     -31
+    ],
+    "smoke": [
+     86,
+     -212
+    ],
+    "input": [
+     -79,
+     -44
+    ],
+    "output": [
+     16,
+     4
+    ],
+    "emblem": [
+     29,
+     -214
+    ]
+   },
+   "inPoint": [
+    -158,
+    38
+   ],
+   "outPoint": [
+    77,
+    79
+   ],
+   "staffPoints": [
+    [
+     -14,
+     32
+    ]
+   ],
+   "staffDirs": [
+    "NW"
+   ],
+   "staffDepth": "front",
+   "workSpot": {
+    "forwardM": 0.55,
+    "heightM": 0.72,
+    "dir": "NW",
+    "note": "stand at the bench end facing W (= E mirrored); the bench is behind the operator in depth, so draw him above the station sprite",
+    "point": [
+     -14,
+     32
+    ]
+   },
+   "anims": {
+    "work": {
+     "frames": [
+      "furniture_workshop_work_0",
+      "furniture_workshop_work_1",
+      "furniture_workshop_work_2",
+      "furniture_workshop_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   }
+  }
+ },
+ "characters": {
+  "forklift_loaded": {
+   "atlas": "lgx_forklift_loaded",
+   "frameSize": [
+    168,
+    196
+   ],
+   "anchor": [
+    0.5119,
+    0.80102
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "lift": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": 0,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "liftPx": [
+      0,
+      -14,
+      -28,
+      -42,
+      -55,
+      -69
+     ]
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "forklift",
+   "variant": "loaded",
+   "lengthM": 2.5,
+   "widthM": 1.16,
+   "heightM": 2.25,
+   "topPx": 153,
+   "headTop": -153,
+   "shadow": {
+    "SE": [
+     124,
+     49,
+     26.57
+    ],
+    "NE": [
+     124,
+     49,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      30,
+      41
+     ],
+     [
+      83,
+      15
+     ],
+     [
+      -30,
+      -41
+     ],
+     [
+      -83,
+      -15
+     ]
+    ],
+    "NE": [
+     [
+      83,
+      -15
+     ],
+     [
+      30,
+      -41
+     ],
+     [
+      -83,
+      15
+     ],
+     [
+      -30,
+      41
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.3,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Toy forklift (2.5 m incl. forks): sunny yellow body, dark counterweight with hazard stripes and the Frost Village snowflake, black overhead guard with a snowy roof and an orange beacon, steel mast with a hydraulic ram, two forks. Seat 0 = the driver (empty: the game draws a townsfolk in `sit` at seats + the over_* overlay). idle = engine shake, move = wheels + beacon blink, lift = 6 frames, carriage + forks rise from the ground to 1.25 m (play forward to lift, backward to lower). cargoPoint = middle of the forks at frame 0; liftPx[i] = extra screen-y of the forks in lift frame i. Variant _loaded: a pallet of parcels on the forks (rises with the forks; cargoPoint = top of the load). cargoPoint behind=true for NE (the forks point away from the camera: draw the load before the forklift).",
+   "cargoPoint": {
+    "SE": [
+     42,
+     -20,
+     false
+    ],
+    "NE": [
+     42,
+     -61,
+     true
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -57,
+      15
+     ],
+     [
+      29,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      29,
+      28
+     ],
+     [
+      -57,
+      -15
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -32,
+     -112
+    ],
+    "NE": [
+     -70,
+     -62
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      -17,
+      -94
+     ],
+     [
+      28,
+      -117
+     ]
+    ],
+    "NE": [
+     [
+      28,
+      -99
+     ],
+     [
+      -17,
+      -122
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -78,
+      -67
+     ],
+     [
+      -40,
+      -86
+     ]
+    ],
+    "NE": [
+     [
+      -40,
+      -8
+     ],
+     [
+      -78,
+      -27
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     -20,
+     -147
+    ],
+    "NE": [
+     -48,
+     -113
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -16,
+      -58
+     ]
+    ],
+    "NE": [
+     [
+      -16,
+      -42
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE"
+    ],
+    "NE": [
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -22,
+      -46
+     ]
+    ],
+    "NE": [
+     [
+      -22,
+      -24
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     0
+    ],
+    "NE": [
+     0
+    ]
+   },
+   "seatNames": [
+    "fk_seat0"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_forklift_loaded",
+    "frameName": "over_{anim}_{dir}_{i}"
+   },
+   "forkTipPoint": {
+    "SE": [
+     62,
+     25
+    ],
+    "NE": [
+     62,
+     -36
+    ]
+   }
+  }
+ },
+ "vehicleFamilies": {
+  "forklift": [
+   "forklift_loaded"
+  ]
+ },
+ "logistics": {
+  "validation": {
+   "issues": [
+    "staff packer at [3.1, 0.68, 0.0]: hidden by non-front interior (20 px)",
+    "forklift leg 0 at (0.39, 1.65, 0.0): hidden by non-front interior (29 px)",
+    "forklift leg 0 at (0.65, 1.65, 0.0): hidden by non-front interior (40 px)",
+    "forklift leg 0 at (0.9, 1.65, 0.0): hidden by non-front interior (48 px)",
+    "forklift leg 0 at (1.16, 1.65, 0.0): hidden by non-front interior (183 px)",
+    "forklift leg 0 at (1.41, 1.65, 0.0): hidden by non-front interior (378 px)",
+    "forklift leg 0 at (1.66, 1.65, 0.0): hidden by non-front interior (545 px)",
+    "forklift leg 0 at (1.92, 1.65, 0.0): hidden by non-front interior (767 px)",
+    "forklift leg 0 at (2.17, 1.65, 0.0): hidden by non-front interior (716 px)",
+    "forklift leg 0 at (2.42, 1.65, 0.0): hidden by non-front interior (482 px)",
+    "forklift leg 0 at (2.68, 1.65, 0.0): hidden by non-front interior (118 px)",
+    "forklift leg 3 at (4.45, 0.15, 0.0): hidden by non-front interior (28 px)",
+    "forklift leg 3 at (4.45, -0.1, 0.0): hidden by non-front interior (46 px)",
+    "forklift leg 6 at (4.45, -0.1, 0.0): hidden by non-front interior (46 px)",
+    "forklift leg 6 at (4.45, 0.15, 0.0): hidden by non-front interior (28 px)",
+    "forklift leg 7 at (2.7, 1.65, 0.0): hidden by non-front interior (91 px)",
+    "forklift leg 7 at (2.45, 1.65, 0.0): hidden by non-front interior (427 px)",
+    "forklift leg 7 at (2.2, 1.65, 0.0): hidden by non-front interior (687 px)",
+    "forklift leg 7 at (1.95, 1.65, 0.0): hidden by non-front interior (778 px)",
+    "forklift leg 7 at (1.7, 1.65, 0.0): hidden by non-front interior (585 px)",
+    "forklift leg 8 at (1.7, 1.65, 0.0): hidden by non-front interior (585 px)",
+    "forklift leg 8 at (1.44, 1.65, 0.0): hidden by non-front interior (367 px)",
+    "forklift leg 8 at (1.19, 1.65, 0.0): hidden by non-front interior (210 px)",
+    "forklift leg 8 at (0.93, 1.65, 0.0): hidden by non-front interior (71 px)",
+    "forklift leg 8 at (0.68, 1.65, 0.0): hidden by non-front interior (41 px)",
+    "forklift leg 8 at (0.42, 1.65, 0.0): hidden by non-front interior (29 px)",
+    "slot rack_food L0 S0: only 27 px free above",
+    "slot rack_food L0 S1: only 0 px free above",
+    "slot rack_food L1 S0: only 27 px free above",
+    "slot rack_food L1 S1: only 0 px free above",
+    "slot rack_food L2 S0: only 24 px free above",
+    "slot rack_food L2 S1: only 0 px free above",
+    "slot rack_goods L0 S0: only 27 px free above",
+    "slot rack_goods L0 S1: only 0 px free above",
+    "slot rack_goods L1 S0: only 26 px free above",
+    "slot rack_goods L1 S1: only 0 px free above",
+    "slot rack_goods L2 S0: only 24 px free above",
+    "slot rack_goods L2 S1: only 0 px free above",
+    "slot rack_tools L0 S0: only 27 px free above",
+    "slot rack_tools L0 S1: only 0 px free above",
+    "slot rack_tools L1 S0: only 27 px free above",
+    "slot rack_tools L1 S1: only 0 px free above",
+    "slot rack_tools L2 S0: only 24 px free above",
+    "slot rack_tools L2 S1: only 0 px free above",
+    "slot rack_appliances L0 S0: only 0 px free above",
+    "slot rack_appliances L0 S1: only 0 px free above",
+    "slot rack_appliances L1 S0: only 27 px free above",
+    "slot rack_appliances L1 S1: only 0 px free above",
+    "slot rack_appliances L2 S0: only 24 px free above",
+    "slot rack_appliances L2 S1: only 0 px free above",
+    "slot rack_furniture L0 S0: only 0 px free above",
+    "slot rack_furniture L1 S0: only 0 px free above"
+   ],
+   "staff": [
+    [
+     1573,
+     2,
+     1
+    ],
+    [
+     1089,
+     3,
+     0
+    ],
+    [
+     661,
+     20,
+     0
+    ],
+    [
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0
+    ],
+    [
+     813,
+     1,
+     0
+    ],
+    null
+   ],
+   "customers": [
+    [
+     0,
+     0,
+     2076
+    ],
+    [
+     0,
+     0,
+     1967
+    ],
+    [
+     0,
+     0,
+     1691
+    ],
+    [
+     0,
+     0,
+     131
+    ],
+    null,
+    null,
+    null
+   ],
+   "note": "counts = (front-furniture px in front, other interior px in front, front-furniture px behind) of a standing chibi"
+  }
+ }
+}

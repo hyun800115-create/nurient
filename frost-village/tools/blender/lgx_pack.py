@@ -276,7 +276,8 @@ def validate(meta, dep):
                 out['issues'].append('forklift leg %d at %s: %s' % (i, tuple(round(v, 2) for v in p), iss))
         out['forklift'].append(reqs)
     for s in P['rackSlots']:
-        free, bf = dep.stack(s['world'])
+        # floor bays: pallets stand in the open - cap the stack at ~2 pallets so the forklift / staff stay visible
+        free, bf = dep.stack(s['world'], cap=60 if s['rack'] == 'floor_bays' else 96)
         # rack slots: band 'stock' (above _interior, below _interior_racks); floor bays stand in the open in front
         # of the conveyor / packing table -> band 'front' (y-sorted with the front actors)
         band = 'front' if s['rack'] == 'floor_bays' else 'stock'
@@ -341,8 +342,22 @@ def center_entries(meta, frame_atlas, val):
     rank = {i: r for r, i in enumerate(order)}
     for i, s in enumerate(P['rackSlots']):
         free, bf, band = val['slots'][i]
+        w = s['widthM']
+        if s['rack'] == 'rack_furniture':            # shelf runs along +Y, front faces +X
+            span, dep = (0.0, 1.0), (1.0, 0.0)
+            depth = D['frackD']
+        elif s['rack'] == 'floor_bays':              # bay along X, front faces -Y
+            span, dep = (1.0, 0.0), (0.0, -1.0)
+            depth = 1.1
+        else:                                        # back racks: shelf along +X, front faces -Y
+            span, dep = (1.0, 0.0), (0.0, -1.0)
+            depth = D['rackD']
+        use = max(0.2, depth - 0.3)                  # usable depth (rows) inside the uprights / bay lines
+        sp_ = px((span[0] * (w - 0.12), span[1] * (w - 0.12), 0.0))
+        dp_ = px((dep[0] * use, dep[1] * use, 0.0))
         slots.append({'rack': s['rack'], 'category': s['category'], 'level': s['level'], 'slot': s['slot'],
-                      'point': px(s['world']), 'maxStackPx': int(free), 'widthM': s['widthM'],
+                      'point': px(s['world']), 'maxStackPx': int(free), 'widthM': w, 'depthM': round(use, 2),
+                      'spanPx': sp_, 'depthPx': dp_,
                       'face': s['face'], 'band': band, 'drawOrder': rank[i]})
     fpath = []
     for i, node in enumerate(P['forkliftPath']):
@@ -401,7 +416,13 @@ def center_entries(meta, frame_atlas, val):
         'conveyor': {'start': px(P['conveyor']['start']), 'end': px(P['conveyor']['end']), 'axis': 'x'},
         'fxPoints': {'board': px(P['fx_board']), 'emblem': px(P['fx_emblem']), 'lamp': px(P['lampPoint']),
                      'vents': [px(v) for v in P['fx_vents']], 'dockLights': [px(v) for v in P['fx_dockLights']]},
-        'boardSizePx': [int(round(P['boardSizeM'][0] * 64)), int(round(P['boardSizeM'][1] * KZ))],
+        'boardSizePx': [int(round(P['boardSizeM'][0] * KX)), int(round(P['boardSizeM'][1] * KZ))],
+        'nameBoard': {'point': px(P['fx_board']), 'widthPx': int(round(P['boardSizeM'][0] * KX)),
+                      'heightPx': int(round(P['boardSizeM'][1] * KZ)), 'shearY': 0.5,
+                      'text': {'ko': '솔방울 물류센터', 'en': 'Pinecone Logistics'}, 'color': '#2B4F7E',
+                      'note': 'blank cream name board on the -Y facade (part of _shell): the game writes the name '
+                              'here, centred on point, fitted into widthPx x heightPx and sheared y += 0.5 * x '
+                              '(the facade runs along screen (2, 1)); fade it with the shell.'},
         'notes': ('Logistics centre (11 x 8 m) rendered as aligned cutaway layers that share this frame + anchor: '
                   'draw the layers in layerOrder at depth = building depth + depthOffset. Closed look = _shell '
                   '(this entry\'s own frame). Inside: blue + orange pallet racks with category signs (food fish, '
@@ -482,8 +503,11 @@ CONVENTIONS = {
                 'own y. Bands are validated against the rendered depth (staffBands / customerBands / '
                 'forkliftPath[].legBand; legCrossesWall = the leg leaves / enters through a dock door: outside the '
                 'wall use the outside rule). Stock: draw the item sprites of a rack slot at slot.point (bottom of '
-                'the stack), stacked by stackStep (optionally scaled, e.g. 0.8), never higher than maxStackPx, in '
-                'drawOrder. slot.band "stock" = between _interior and _interior_racks (the rack front uprights and '
+                'the stack), stacked by stackStep (scaled with the item, e.g. 0.85), never higher than maxStackPx, '
+                'in drawOrder. A slot holds lanes x rows of stacks: lane offsets = point + spanPx * t (t in '
+                '-0.5..0.5, across the slot width), row offsets = point + depthPx * u (u -0.5 = back row, +0.5 = '
+                'front row; draw back rows first, lanes by screen y). Stock level -> number of stacks + stack '
+                'heights (empty slot = bare shelf, full = every lane x row stacked to maxStackPx). slot.band "stock" = between _interior and _interior_racks (the rack front uprights and '
                 'beams are drawn OVER the goods, so they sit inside the racks; empty slot = bare shelf); slot.band '
                 '"front" (the materials floor bays) = y-sorted with the front actors. _stub (front walls at 0.45 m) '
                 'and _props (apron '

@@ -2,7 +2,7 @@
 gen_fx_city_scene.py - docs/previews/fxcity_scene.png: a 1x (PPU 64) mock town street that puts the fx_city
 assets in context the way the game will: a townhouse on fire (fx_fire_bld_s + fx_fire_window + fx_smoke_column +
 fx_embers), the fire truck from assets/vehicles with fx_siren_glow_red, firefighters aiming the hose
-(fx_hose_stream segments chained along an arc + fx_hose_tip + fx_water_mist + fx_steam_puff), a clapping crowd
+(fx_hose_rope laid along the aimed arc of manifest.hoseAim + fx_hose_tip + fx_water_mist + fx_steam_puff), a crowd
 with fx_question_mark / fx_lightbulb_idea / fx_memory_sparkle, a fight cloud with a police car (red + blue glows),
 an alarm post, a wanted board with ui_wanted_poster and the 솔방울 신문 newspaper panel as a UI overlay.
 
@@ -10,7 +10,8 @@ Reads assets/fx_city (run gen_fx_city.py first), assets/town, assets/vehicles, a
 assets/townfolk(+2) and - when they exist - assets/cityfolk (firefighter / police presets) and assets/civic
 (wanted_board, fire_alarm_post, fire_hydrant).  Everything read-only; the townfolk compositor is imported.
     python3 tools/fx/gen_fx_city_scene.py            # -> docs/previews/fxcity_scene.png
-Also exports hose_arc() (the hose aiming algorithm of manifest.hoseAim) and snapshot() (newspaper photo).
+Also exports hose_rope() / hose_arc() (Python versions of the manifest.hoseAim Rope and segment chain) and
+snapshot() (newspaper photo).
 """
 import json
 import math

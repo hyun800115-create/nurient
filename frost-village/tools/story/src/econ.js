@@ -154,6 +154,11 @@ export class Economy {
     if (g >= G_ADULT && !r.bigBuy && r.wallet + r.savings > 450 && rng.chance(0.03 + r.tr[10] / 2000)) {
       r.bigBuy = rng.chance(0.5) ? 'furniture_store' : 'appliance_store';
     }
+    // a small furniture loan for someone who wants a new sofa but cannot quite afford it (paid off in ~2 weeks)
+    if (g >= G_ADULT && !r.bigBuy && !r.loanWant && !e.bank.hasLoan(r) && r.wallet + r.savings > 120 && r.wallet + r.savings <= 450 && rng.chance(0.004 + r.tr[10] / 6000)) {
+      r.loanWant = { purpose: 'furniture', amount: 120 + rng.int(160) };
+      r.bigBuy = 'furniture_store';
+    }
     // dreams of a shop: start saving, then ask the bank
     if (g === G_ADULT && !r.dream && !(r.flags & F_OWNER) && rng.chance(0.004 + (r.job === 'none' ? 0.01 : 0))) {
       const kinds = Object.keys(SHOP_COST);

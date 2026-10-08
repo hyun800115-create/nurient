@@ -18,10 +18,15 @@ import { panel } from '../core/Panel.js';
 const DIR_IDX = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 const SIZE_FALLBACK = { S: { dropPoint: [2, 64], workPoints: [[-81, 27], [79, 29]], workDirs: ['NE', 'NW'], footprint: [181, 91] },
   M: { dropPoint: [2, 87], workPoints: [[-111, 35], [107, 37], [-66, 60]], workDirs: ['NE', 'NW', 'NE'], footprint: [272, 136] },
-  L: { dropPoint: [2, 110], workPoints: [[-140, 43], [135, 46], [-79, 76]], workDirs: ['NE', 'NW', 'NE'], footprint: [362, 181] } };
+  L: { dropPoint: [2, 110], workPoints: [[-140, 43], [135, 46], [-79, 76]], workDirs: ['NE', 'NW', 'NE'], footprint: [362, 181] },
+  // (v4-A) XL: the old station on the rail strip (two L stage pictures ±1.8 m along X; drop pad from world.js)
+  XL: { dropPoint: [-210, 111], workPoints: [[-181, -25], [49, 91], [-80, 40]], workDirs: ['NE', 'NE', 'NE'], footprint: [525, 262] } };
+const XL_PART = [[-81, -41], [81, 41]];      // ±1.8 m along world X
 
 /** the cost table entry of a building key (balance.js buildings / towers) */
 export function buildCost(bkey, siteId) {
+  // (v4-A) repairing the old station (balance.js v4.station)
+  if (bkey === 'station') return (BALANCE.v4 && BALANCE.v4.station) || { coins: 500, item_plank: 14, item_ingot: 4, time: 12 };
   if (bkey === 'watchtower') return (BALANCE.towers && BALANCE.towers[siteId]) || { coins: 300, item_plank: 10, item_ingot: 0, time: 8 };
   return (BALANCE.buildings && BALANCE.buildings[bkey]) || { coins: 100, item_plank: 6, item_ingot: 0, time: 8 };
 }
@@ -45,7 +50,9 @@ export class Site {
     this.isWarehouse = false;
     this.builders = [];
     this.built = null;            // the finished building object
-    const d = Object.assign({}, SIZE_FALLBACK[this.size], Assets.def('site_plot_' + this.size));
+    this.xl = this.size === 'XL';
+    const d = Object.assign({}, SIZE_FALLBACK[this.size] || SIZE_FALLBACK.M, this.xl ? {} : Assets.def('site_plot_' + this.size));
+    if (this.xl && Array.isArray(cfg.drop)) d.dropPoint = [cfg.drop[0] - cfg.x, cfg.drop[1] - cfg.y];
     this.def = d;
     const dp = d.dropPoint || [2, 80];
     this.dropX = this.x + dp[0]; this.dropY = this.y + dp[1];
@@ -60,10 +67,21 @@ export class Site {
   }
 
   // ------------------------------------------------------------------ visuals
-  sprite(stage) { return 'site_' + stage + '_' + this.size; }
+  sprite(stage) { return 'site_' + stage + '_' + (this.xl ? 'L' : this.size); }
 
   makeImg(stage) {
     const gs = this.gs;
+    if (this.xl) {
+      // (v4-A) XL: a container of two L stage pictures; on the plot stage nothing (the ruin is the plot)
+      if (!this.img) {
+        this.img = gs.add.container(this.x, this.y).setDepth(this.y);
+        this.xlParts = XL_PART.map(([dx, dy]) => { const r = Assets.sprite(this.sprite('foundation')); return gs.add.image(dx, dy, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]); });
+        this.img.add(this.xlParts);
+      }
+      for (const p of this.xlParts) { if (stage === 'plot') p.setVisible(false); else { Assets.apply(p, this.sprite(stage)); p.setVisible(true); } }
+      this.img.setVisible(this.shown);
+      return;
+    }
     if (!this.img) {
       const r = Assets.sprite(this.sprite(stage));
       this.img = gs.add.image(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);

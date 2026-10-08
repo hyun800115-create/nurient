@@ -34,6 +34,15 @@ KX, KY, KZ = 45.2548, 22.6274, 55.4256
 BG = (236, 241, 248)
 CENTER = 'logistics_center'
 ITEM_SCALE = 0.8
+STOCK_SCALE = 0.85
+_SC = {}
+
+
+def _scaled(key, im, sc):
+    if (key, sc) not in _SC:
+        _SC[(key, sc)] = im.resize((max(1, int(round(im.width * sc))), max(1, int(round(im.height * sc)))),
+                                   Image.LANCZOS)
+    return _SC[(key, sc)]
 
 
 def kfont(size):
@@ -146,41 +155,69 @@ def shadow_ellipse(w, h, ang=0.0, alpha=70):
 class Centre:
     """Draws the logistics centre with its layers + stock + actors in the documented order (reference)."""
 
-    def __init__(self, lib, rng_seed=3):
+    def __init__(self, lib, rng_seed=3, fill=0.85):
         self.L = lib
         self.C = lib.C
         self.rnd = random.Random(rng_seed)
-        self.stock = self.make_stock()
+        self.stock = self.make_stock(fill, rng_seed)
 
-    def make_stock(self, fill=0.8):
+    def make_stock(self, fill=0.85, seed=3):
+        """Reference stock layout: every slot holds lanes x rows of item stacks (spanPx / depthPx), filled to
+        `fill` (0 = empty shelves, 1 = every stack at maxStackPx).  Small items (content <= 44 px wide at 1x) get
+        2 lanes x 2 rows, big ones (sofa, bed, fridge ...) 1 x 1.  -> list of (slot, key, img, scale, pos list)."""
+        rnd = random.Random(seed)
         out = []
         cats = self.C['rackCategories']
         for s in sorted(self.C['rackSlots'], key=lambda s: s['drawOrder']):
-            if self.rnd.random() > fill + 0.1:
-                continue
-            key = self.rnd.choice(cats[s['category']])
+            key = cats[s['category']][(s['level'] * 2 + s['slot'] + seed) % len(cats[s['category']])]
             im, sd = self.L.item(key)
-            sc = ITEM_SCALE
-            top = sd.get('topPx', 40) * sc
-            step = sd['stackStep'] * sc
-            nmax = max(1, int((s['maxStackPx'] - top) // step) + 1) if s['maxStackPx'] > top else 1
-            n = self.rnd.randint(1, nmax) if s['category'] != 'materials' else min(nmax, 1)
-            out.append((s, key, im, n, step, sc))
+            bb = im.getbbox() or (0, 0, 72, 72)
+            small = (bb[2] - bb[0]) <= 44
+            sc = STOCK_SCALE
+            lanes, rows = (2, 2) if small else (1, 1)
+            if s['rack'] == 'floor_bays':
+                lanes, rows = (1, 1) if not small else (2, 1)
+            h1 = (sd.get('topPx') or 40) * sc         # topPx = height of one item above its anchor (px)
+            step = max(4.0, (sd.get('stackStep') or 12) * sc)
+            if h1 > s['maxStackPx'] + 6:
+                continue                               # (never happens with the shipped items)
+            nmax = 1 + max(0, int((s['maxStackPx'] - h1) // step))
+            stacks = []
+            for r in range(rows):
+                u = (r + 0.5) / rows - 0.5 if rows > 1 else 0.0
+                for ln in range(lanes):
+                    t = (ln + 0.5) / lanes - 0.5 if lanes > 1 else 0.0
+                    x = s['point'][0] + s['spanPx'][0] * t + s['depthPx'][0] * u
+                    y = s['point'][1] + s['spanPx'][1] * t + s['depthPx'][1] * u
+                    stacks.append((r, y, x))
+            stacks.sort(key=lambda q: (q[0], q[1]))
+            total = len(stacks) * nmax
+            want = int(round(total * fill * rnd.uniform(0.85, 1.15))) if fill < 1 else total
+            want = max(0, min(total, want))
+            if want == 0:
+                continue
+            per = [0] * len(stacks)
+            for k in range(want):                      # fill front rows first, evenly
+                idx = sorted(range(len(stacks)), key=lambda q: (per[q], -stacks[q][0], rnd.random()))[0]
+                per[idx] += 1
+            pos = []
+            for (r, y, x), n in zip(stacks, per):
+                for k in range(n):
+                    pos.append((x, y, k * step))
+            out.append((s, key, im, sc, pos))
         return out
 
     def stock_ops(self, ox, oy, band='stock'):
         """Draw ops of the stock stacks in one band ('stock' = inside the racks, 'front' = floor bays); each op
-        (img, x, y, sort_y) - sort_y = the slot's ground y on the canvas (front band is y-sorted with actors)."""
+        (img, x, y, sort_y) - sort_y = the stack's ground y on the canvas (front band is y-sorted with actors)."""
         ops = []
-        for s, key, im, n, step, sc in self.stock:
+        for s, key, im, sc, pos in self.stock:
             if s.get('band', 'stock') != band:
                 continue
-            ims = im.resize((int(im.width * sc), int(im.height * sc)), Image.LANCZOS)
+            ims = _scaled(key, im, sc)
             ax, ay = 36 * sc, 54 * sc
-            for k in range(n):
-                x = ox + s['point'][0] - ax
-                y = oy + s['point'][1] - ay - k * step
-                ops.append((ims, int(round(x)), int(round(y)), oy + s['point'][1] + k * 0.001))
+            for x, y, lift in pos:
+                ops.append((ims, int(round(ox + x - ax)), int(round(oy + y - ay - lift)), oy + y + lift * 0.0001))
         return ops
 
     def draw(self, canvas, ox, oy, shell=1.0, cut=0.0, belt=0, doors=(0, 0), lamp=0, actors=None, stock=True):
@@ -216,11 +253,46 @@ class Centre:
             put(L.layer('shell_cut'), cut)
         if shell > 0.001:
             put(L.layer('shell'), shell)
+            nb = name_board(L)
+            if nb:
+                canvas.alpha_composite(with_alpha(nb[0], shell), (ox + nb[1], oy + nb[2]))
             put(L.patch('dock1', doors[0]), shell)
             put(L.patch('dock2', doors[1]), shell)
         put(L.layer('props'))
         for im, x, y, _ in sorted(actors.get('outside', []), key=lambda t: t[3]):
             canvas.alpha_composite(im, (x, y))
+
+
+_BOARD = {}
+
+
+def name_board(lib, lang='ko'):
+    """The game-side name label on the blank board (manifest nameBoard): text fitted into the board, sheared onto
+    the -Y facade.  Returns (img, dx, dy) with dx, dy = top-left relative to the building anchor."""
+    nb = lib.C.get('nameBoard')
+    if not nb:
+        return None
+    if lang in _BOARD:
+        return _BOARD[lang]
+    w, h = nb['widthPx'], nb['heightPx']
+    txt = nb['text'][lang]
+    big = Image.new('RGBA', (w * 4, h * 4), (0, 0, 0, 0))
+    d = ImageDraw.Draw(big)
+    size = h * 4
+    f = kfont(size)
+    while size > 8 and (f.getlength(txt) > w * 4 * 0.9 or size > h * 4 * 0.62):
+        size -= 2
+        f = kfont(size)
+    tw = f.getlength(txt)
+    col = tuple(int(nb['color'][i:i + 2], 16) for i in (1, 3, 5))
+    d.text(((w * 4 - tw) / 2, (h * 4 - size) / 2 - size * 0.12), txt, fill=col + (255,), font=f)
+    flat_ = big.resize((w, h), Image.LANCZOS)
+    k = nb['shearY']
+    H2 = int(h + w * k + 2)
+    sheared = flat_.transform((w, H2), Image.AFFINE, (1, 0, 0, -k, 1, 0), resample=Image.BICUBIC)
+    cx, cy = nb['point']
+    _BOARD[lang] = (sheared, int(round(cx - w / 2)), int(round(cy - h / 2 - w * k / 2)))
+    return _BOARD[lang]
 
 
 def person_op(lib, preset, pt, d, ox, oy, anim='idle', i=0, seed=0, vil=None):
@@ -599,10 +671,29 @@ def preview_all(lib, out):
                                                   'at 2x): logistics centre, producers, items, vehicles')
 
 
+def preview_stock(lib, out):
+    """Stock levels: the open centre (no actors) with the racks going empty -> full -> empty."""
+    ox, oy = 640, 560
+    levels = [0.0, 0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0, 1.0, 1.0, 0.75, 0.5, 0.25, 0.0]
+    frames = []
+    base = Image.new('RGBA', (1500, 1000), BG + (255,))
+    ground(base, ox, oy, roads=False)
+    for k, f in enumerate(levels):
+        cv = base.copy()
+        Centre(lib, rng_seed=5, fill=f).draw(cv, ox, oy, shell=0.0, belt=k % 8, lamp=k % 4)
+        c = cv.crop((140, 60, 1260, 860))
+        d = ImageDraw.Draw(c)
+        txt = 'stock %d%%' % int(round(f * 100))
+        d.rounded_rectangle([14, 12, 30 + pp.font(24).getlength(txt), 50], radius=9, fill=(255, 255, 255, 235))
+        d.text((22, 16), txt, fill=(25, 30, 40), font=pp.font(24))
+        frames.append(c.resize((c.width * 3 // 4, c.height * 3 // 4), Image.LANCZOS))
+    gif(frames, out, 260)
+
+
 ALL = {'all': preview_all, 'cutaway': preview_cutaway, 'reveal': preview_reveal, 'scene': preview_scene,
        'conveyor': preview_conveyor, 'docks': preview_docks, 'forklift': preview_forklift, 'trucks': preview_trucks,
-       'producers': preview_producers}
-EXT = {'reveal': 'gif', 'conveyor': 'gif', 'docks': 'gif', 'forklift': 'gif', 'trucks': 'gif', 'producers': 'gif'}
+       'producers': preview_producers, 'stock': preview_stock}
+EXT = {'stock': 'gif', 'reveal': 'gif', 'conveyor': 'gif', 'docks': 'gif', 'forklift': 'gif', 'trucks': 'gif', 'producers': 'gif'}
 
 
 def main():

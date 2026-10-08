@@ -56,7 +56,7 @@ POINT_SINGLE = {'door': 'doorPoint', 'entry': 'entryPoint', 'atm': 'atmPoint', '
 POINT_LIST = {'staff': 'staffPoints', 'customer': 'customerPoints', 'counter': 'counterPoints', 'seat': 'seatPoints',
               'cell': 'cellPoints', 'work': 'workPoints', 'gather': 'gatherPoints', 'poster': 'posterPoints'}
 NO_DIR = {'poster', 'drop'}
-SLOT = {'staffPoints': 'behind', 'cellPoints': 'behind', 'cellSeatPoint': 'behind', 'vaultPoint': 'behind',
+SLOT = {'staffPoints': 'behind', 'cellPoints': 'behind', 'cellPoint': 'behind', 'cellSeatPoint': 'behind', 'vaultPoint': 'behind',
         'customerPoints': 'front', 'counterPoints': 'front', 'seatPoints': 'front', 'atmPoint': 'front',
         'entryPoint': 'front', 'deskPoint': 'front', 'cellDoorPoint': 'front', 'doorPoint': 'outside',
         'carBayPoint': 'outside', 'sideDoorPoint': 'outside'}
@@ -289,6 +289,10 @@ def entries_for(k, m, fa):
         pts = m['framePoints'][k]
         dirs = m['frameDirs'][k]
         put_points(s, pts, dirs)
+        if s.get('cellPoints') and 'cellPoint' not in s:      # contract name (CONTRACT_V8 AB): the jail cell spot
+            s['cellPoint'] = s['cellPoints'][0]
+            if s.get('cellDirs'):
+                s['cellDir'] = s['cellDirs'][0]
         s['pointSlots'] = {f: SLOT[f] for f in SLOT if f in s}
         if m.get('fxPoints'):
             s['fxPoints'] = m['fxPoints']

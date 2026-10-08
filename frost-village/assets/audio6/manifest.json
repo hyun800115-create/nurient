@@ -10,14 +10,14 @@
    "volume": 0.376,
    "loop": true,
    "kind": "music",
-   "duration": 60.9538,
-   "loopSamples": 2688064,
+   "duration": 60.9509297,
+   "loopSamples": 2687936,
    "bpm": 126,
    "mp3StartPad": 1105,
    "bars": 32,
    "tonality": "F major",
    "meter": "4/4",
-   "notes": "busy upbeat living-city theme (126 bpm shuffle, 61 s), A A B A like bgm_village: the village hook verbatim, made busier; B = the village B melody on flute. Daytime in the city districts (logistics, bank, police). ~21 MB as decoded PCM: load lazily, Audio.playMusic('bgm_city') crossfades."
+   "notes": "busy upbeat living-city theme (126 bpm shuffle, 61 s), A A B A like bgm_village and in its family (the village hook verbatim in bars 1 and 5 of A, same palette) but its own tune and chords: A F Dm7 Gm7 C7 F D7 Gm7-C7 F with 16th 'traffic' answers, B a new flute tune on Gm7 C7 Fmaj7 Dm7 Bb C Am7-D7 Gm7-C7 (the village B only as a 2-bar trumpet quote). Daytime in the city districts (logistics, bank, police). ~21 MB as decoded PCM: load lazily, Audio.playMusic('bgm_city') crossfades; after bgm_chase resume it from its saved position, not bar 1."
   },
   "bgm_chase": {
    "files": [
@@ -27,7 +27,7 @@
    "volume": 0.376,
    "loop": true,
    "kind": "music",
-   "duration": 22.8571,
+   "duration": 22.8571429,
    "loopSamples": 1008000,
    "bpm": 168,
    "mp3StartPad": 1105,
@@ -41,12 +41,12 @@
     "audio6/amb_fire_big.ogg",
     "audio6/amb_fire_big.mp3"
    ],
-   "volume": 0.254,
+   "volume": 0.257,
    "loop": true,
    "kind": "ambience",
-   "duration": 7.9993,
-   "loopSamples": 352768,
-   "rotation": 43625,
+   "duration": 7.9963719,
+   "loopSamples": 352640,
+   "rotation": 78372,
    "mp3StartPad": 1105,
    "notes": "building fire: warm roar + crackle + snaps + 'fwoosh' licks (cosy cartoon, no scary highs). setAmbience('amb_fire_big', 0..1) by distance x fire size; fade out with the steam hiss."
   },
@@ -55,14 +55,14 @@
     "audio6/amb_construction.ogg",
     "audio6/amb_construction.mp3"
    ],
-   "volume": 0.216,
+   "volume": 0.214,
    "loop": true,
    "kind": "ambience",
-   "duration": 7.9993,
-   "loopSamples": 352768,
-   "rotation": 296259,
+   "duration": 8.0021769,
+   "loopSamples": 352896,
+   "rotation": 268717,
    "mp3StartPad": 1105,
-   "notes": "building site across the street (hammering, saw, drill, clanks, far reverse beeps, a worker's call). setAmbience by distance to any construction / rebuild site."
+   "notes": "building site across the street (hammering, saw, drill, clanks, far reverse beeps, gravel; no voices). setAmbience by distance to any construction / rebuild site; for life add audio2 sfx_chatter_lo / sfx_hammer at random 6-20 s intervals."
   },
   "amb_bank": {
    "files": [
@@ -72,11 +72,11 @@
    "volume": 0.193,
    "loop": true,
    "kind": "ambience",
-   "duration": 7.9978,
-   "loopSamples": 352704,
-   "rotation": 15493,
+   "duration": 7.9891156,
+   "loopSamples": 352320,
+   "rotation": 161961,
    "mp3StartPad": 1105,
-   "notes": "inside the bank: hushed marble-hall murmur, footsteps, note counter, number-ticket 'ding-dong', stamp. setAmbience 0..1 while the bank's inside is revealed / the camera is near it."
+   "notes": "inside the bank, texture only: hushed marble-hall murmur, soft footsteps, a faint note counter, paper, HVAC. setAmbience 0..1 while the bank's inside is revealed / the camera is near it. The events are one-shots the game fires: sfx_ticket_chime when a teller calls the next customer, sfx_stamp / sfx_coin_count on loans and deposits, audio2 sfx_chatter_lo for talk."
   },
   "amb_warehouse": {
    "files": [
@@ -86,11 +86,11 @@
    "volume": 0.207,
    "loop": true,
    "kind": "ambience",
-   "duration": 7.9993,
+   "duration": 7.9992744,
    "loopSamples": 352768,
    "rotation": 5775,
    "mp3StartPad": 1105,
-   "notes": "inside the logistics centre: conveyor hum + roller rattle, boxes bumping, far forklift reverse beeps, tape gun, big hall. setAmbience 0..1 while revealed / near."
+   "notes": "inside the logistics centre: conveyor hum + roller rattle, boxes bumping, far forklift reverse beeps, tape gun, pallet jack, big hall (no voices). setAmbience 0..1 while revealed / near; add audio2 sfx_chatter_lo near workers."
   },
   "sfx_siren_fire": {
    "files": [
@@ -100,7 +100,7 @@
    "volume": 0.575,
    "loop": true,
    "kind": "ambience",
-   "duration": 1.9897,
+   "duration": 1.9896599,
    "loopSamples": 87744,
    "rotation": 68084,
    "cycles": 2,
@@ -115,7 +115,7 @@
    "volume": 0.531,
    "loop": true,
    "kind": "ambience",
-   "duration": 2.4076,
+   "duration": 2.407619,
    "loopSamples": 106176,
    "rotation": 50282,
    "cycles": 4,
@@ -130,11 +130,11 @@
    "volume": 0.422,
    "loop": true,
    "kind": "ambience",
-   "duration": 2.4004,
+   "duration": 2.4003628,
    "loopSamples": 105856,
-   "rotation": 102275,
+   "rotation": 103967,
    "mp3StartPad": 1105,
-   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_hose_spray', 0..1) by distance to the nearest spraying firefighter, or sm.add('sfx_hose_spray', {loop: true}) per spraying firefighter; loop while anim spray_hose plays (fx_hose_stream). One instance is enough for several hoses (raise its volume a little)."
+   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_hose_spray', 0..1) by distance to the nearest spraying firefighter, or sm.add('sfx_hose_spray', {loop: true}) per spraying firefighter; loop while anim spray_hose plays (fx_hose_stream). One instance is enough for several hoses (raise its volume a little). Optional: duck it to 0.75 while amb_fire_big is above 0.5."
   },
   "sfx_excavator": {
    "files": [
@@ -144,26 +144,26 @@
    "volume": 0.372,
    "loop": true,
    "kind": "ambience",
-   "duration": 1.9955,
-   "loopSamples": 88000,
-   "rotation": 85166,
-   "firingHz": 9.522,
+   "duration": 2.0041723,
+   "loopSamples": 88384,
+   "rotation": 580,
+   "firingHz": 9.48,
    "mp3StartPad": 1105,
-   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_excavator', 0..1) by distance to the nearest excavator, or sm.add('sfx_excavator', {loop: true}) per excavator; rate 0.85 idle / moving, 1.0 working, 1.12 while anims.dig plays; add sfx_demolish_crunch on each dig frame."
+   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_excavator', 0..1) by distance to the nearest excavator, or sm.add('sfx_excavator', {loop: true}) per excavator; rate 0.85 idle / moving, 1.0 working, 1.12 while anims.dig plays (needs Audio.setAmbienceRate(key, r) -> this.amb[key].setRate(r); without it play at rate 1); add sfx_demolish_crunch on each dig frame."
   },
   "sfx_comic_fight": {
    "files": [
     "audio6/sfx_comic_fight.ogg",
     "audio6/sfx_comic_fight.mp3"
    ],
-   "volume": 0.589,
+   "volume": 0.569,
    "loop": true,
    "kind": "ambience",
-   "duration": 2.4004,
+   "duration": 2.4003628,
    "loopSamples": 105856,
-   "rotation": 103825,
+   "rotation": 67461,
    "mp3StartPad": 1105,
-   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_comic_fight', 0..1) by distance to the nearest fx_fight_cloud, or sm.add('sfx_comic_fight', {loop: true}) per fx_fight_cloud; cartoon scuffle (bonk, pow, biff, swish, boing, tiny 'hai!'). Loop while the dust cloud is up (2-4 s), stop with a sfx_police_whistle or a laugh."
+   "notes": "positional mono loop (kind ambience, like audio3 sfx_truck_engine): Audio.setAmbience('sfx_comic_fight', 0..1) by distance to the nearest fx_fight_cloud, or sm.add('sfx_comic_fight', {loop: true}) per fx_fight_cloud; cartoon scuffle (bonk, pow, biff, swish, boing, tiny 'hai!'). Loop while the dust cloud is up (2-4 s), stop with a sfx_police_whistle or a laugh. Start each fight at a random position (seek) and rate 0.95-1.05 so the 2.4 s cycle never lines up twice."
   },
   "sfx_fire_flare": {
    "files": [
@@ -184,7 +184,7 @@
     "audio6/sfx_steam_hiss.ogg",
     "audio6/sfx_steam_hiss.mp3"
    ],
-   "volume": 0.221,
+   "volume": 0.251,
    "loop": false,
    "kind": "sfx",
    "duration": 2.188,
@@ -199,10 +199,10 @@
     "audio6/sfx_collapse_soft.ogg",
     "audio6/sfx_collapse_soft.mp3"
    ],
-   "volume": 0.442,
+   "volume": 0.7,
    "loop": false,
    "kind": "sfx",
-   "duration": 2.3704,
+   "duration": 2.3644,
    "cues": {
     "crack": 0.359,
     "donk1": 0.539,
@@ -248,10 +248,10 @@
     "audio6/sfx_stamp.ogg",
     "audio6/sfx_stamp.mp3"
    ],
-   "volume": 0.708,
+   "volume": 0.871,
    "loop": false,
    "kind": "sfx",
-   "duration": 0.2907,
+   "duration": 0.2906,
    "cues": {
     "thunk": 0.0
    },
@@ -262,20 +262,20 @@
     "audio6/sfx_vault_door.ogg",
     "audio6/sfx_vault_door.mp3"
    ],
-   "volume": 0.562,
+   "volume": 0.716,
    "loop": false,
    "kind": "sfx",
-   "duration": 2.6885,
+   "duration": 1.6909,
    "cues": {
     "spin": 0.0,
-    "bolt1": 0.777,
-    "bolt2": 0.937,
-    "bolt3": 1.097,
-    "swing": 1.247,
-    "open": 2.147,
-    "sparkle": 2.197
+    "bolt1": 0.25,
+    "bolt2": 0.31,
+    "bolt3": 0.375,
+    "swing": 0.4,
+    "open": 0.875,
+    "sparkle": 0.94
    },
-   "notes": "the bank vault opens (anims.vault, 8 f): play on frame 0; the door swings 1.25 -> 2.15 s (frames 4-7 at ~4 fps)."
+   "notes": "the bank vault opens: play on frame 0 of anims.vault (8 f at 8 fps as civ_assets.py renders it): the wheel spins on frames 1-2, the bolts clunk as frame 3 starts the swing, the door lands with a 'dunn' on frame 7 (0.875 s), a sparkle follows. If the anim is played at another fps, scale the playback rate by fps / 8 (0.75-1.25 sounds fine)."
   },
   "sfx_forklift_beep": {
    "files": [
@@ -291,14 +291,14 @@
     "beep2": 0.42,
     "beep3": 0.84
    },
-   "notes": "forklift reversing (three C6 beeps). Repeat every ~1.3 s while a forklift drives backwards; volume by distance."
+   "notes": "forklift reversing (three C6 beeps 0.42 s apart). Retrigger every 1.26 s (3 x 0.42, so the beeps stay evenly spaced) while a forklift drives backwards; volume by distance."
   },
   "sfx_police_whistle": {
    "files": [
     "audio6/sfx_police_whistle.ogg",
     "audio6/sfx_police_whistle.mp3"
    ],
-   "volume": 0.127,
+   "volume": 0.101,
    "loop": false,
    "kind": "sfx",
    "duration": 1.2535,
@@ -306,7 +306,7 @@
     "blast1": 0.0,
     "blast2": 0.3
    },
-   "notes": "officer spots a thief / stops a scuffle ('pweet! pweeeeet!')."
+   "notes": "officer spots a thief / stops a scuffle ('pweet! pweeeeet!'). For repeat incidents nearby play only the first blast (stop at the 'blast2' cue)."
   },
   "sfx_crowd_gasp": {
    "files": [
@@ -387,7 +387,7 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.2445,
-   "notes": "cardboard box / crate set down (movers, warehouse pickers, deliveries). For variety play the group sfx_box (3 boxes) with rate 0.92-1.1; throttle ~120 ms."
+   "notes": "cardboard box / crate set down (movers, warehouse pickers, deliveries). Call Audio.play('sfx_box', {rate: 0.92-1.1}) - the group picks one of the 3 boxes; 'sfx_box_drop' alone is always box 1. Throttle ~120 ms."
   },
   "sfx_box_drop_2": {
    "files": [
@@ -424,6 +424,21 @@
     "fwap": 0.157
    },
    "notes": "the morning paper '솔방울 신문' opens (ui_newspaper) / a resident reads the paper."
+  },
+  "sfx_ticket_chime": {
+   "files": [
+    "audio6/sfx_ticket_chime.ogg",
+    "audio6/sfx_ticket_chime.mp3"
+   ],
+   "volume": 0.263,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.238,
+   "cues": {
+    "ding": 0.0,
+    "dong": 0.34
+   },
+   "notes": "extra (not in the contract): the bank's number display calls the next customer, 'ding-dong' C6 A5. Play when a teller frees up / the queue advances (it used to be baked into amb_bank and repeated every 8 s)."
   }
  },
  "audioGroups": {

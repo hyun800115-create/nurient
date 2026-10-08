@@ -6,6 +6,7 @@
 // atlases load after the title (Game scene) so the first screen does not get heavier.
 
 import { Placeholders } from './Placeholders.js';
+import { TF } from './Townfolk.js';
 
 export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2'];
 // pictures of these fragments are loaded after the title, in the background
@@ -134,7 +135,111 @@ export const Assets = {
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key); },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || this.lateFrag.has(this.fragOf[key]); },
+
+  // ---------------------------------------------------------------- (v4-A) late fragments
+  // v4 art (town, townfolk, roads, audio3...) is never requested at boot: its manifest and the files a
+  // system asks for are fetched while the village plays (docs/v4_plan.md §11.6). Their pictures behave like
+  // the other after-title pictures (stand-ins, then Assets.arrivals); townfolk sheets use the compact
+  // 'tfatlas' JSON (frames installed when both the image and its JSON are there).
+  lateFrag: new Set(),     // fragments merged late
+  lateWant: new Set(),     // late files a system asked for (the Game's lazy gate lets only these through)
+  lateAudio: new Set(),    // late sounds asked for
+  lateWaiting: {},         // fragment -> [{ only, audio }] asked before its manifest arrived
+  tfJson: {},              // tfatlas key -> parsed JSON (until installed)
+  tfReady: new Set(),      // tfatlas sheets with their frames installed
+  /**
+   * fetch fragment `name` late (its manifest first, once) and then the files in opts.only (file keys) and
+   * the sounds in opts.audio (keys). Never at boot. onReady(): called when the manifest is merged.
+   */
+  loadFragment(scene, name, opts = {}, onReady) {
+    if (!scene || !scene.load) return false;
+    const want = () => {
+      for (const k of opts.only || []) this.lateWant.add(k);
+      for (const k of opts.audio || []) this.lateAudio.add(k);
+      if (onReady) { try { onReady(); } catch (e) { console.error(e); } }
+      if (scene.queueLate) scene.queueLate();
+    };
+    if (this.fragments[name]) { want(); return true; }
+    (this.lateWaiting[name] = this.lateWaiting[name] || []).push(want);
+    if (this.lateWaiting[name].length > 1) return true;     // manifest already on its way
+    const key = 'manifest_' + name;
+    const done = () => {
+      const j = scene.cache.json.exists(key) ? scene.cache.json.get(key) : null;
+      this.mergeLate(name, j);
+      const q = this.lateWaiting[name] || [];
+      delete this.lateWaiting[name];
+      for (const fn of q) fn();
+    };
+    if (scene.cache.json.exists(key)) { done(); return true; }
+    scene.load.json(key, BASE + name + '/manifest.json');
+    const onFile = (k) => { if (k === key) { scene.load.off('filecomplete', onFile); scene.load.off('loaderror', onErr); done(); } };
+    const onErr = (f) => { if (f && f.key === key) { scene.load.off('filecomplete', onFile); scene.load.off('loaderror', onErr); this.fragments[name] = false; done(); } };
+    scene.load.on('filecomplete', onFile);
+    scene.load.on('loaderror', onErr);
+    if (!scene.load.isLoading()) scene.load.start();
+    return true;
+  },
+
+  /** merge a late fragment's manifest (same rules as mergeManifests; its files are lazy) */
+  mergeLate(f, j) {
+    this.fragments[f] = !!j && typeof j === 'object';
+    if (!this.fragments[f]) return;
+    this.lateFrag.add(f);
+    const m = this.m;
+    const tag = (a) => { this.fragOf[a.key] = f; };
+    for (const a of j.atlases || []) if (a && a.key) { m.atlases[a.key] = a; tag(a); }
+    for (const a of j.images || []) if (a && a.key) { m.images[a.key] = a; tag(a); }
+    for (const a of j.spritesheets || []) if (a && a.key) { m.spritesheets[a.key] = a; tag(a); }
+    const ch = j.characters && typeof j.characters === 'object' ? j.characters : {};
+    for (const k in ch) if (ch[k] && typeof ch[k] === 'object' && !m.characters[k]) { m.characters[k] = ch[k]; this.fragOf['char:' + k] = f; delete this.charCache[k]; }
+    const sp = j.sprites && typeof j.sprites === 'object' ? j.sprites : {};
+    for (const k in sp) if (!m.sprites[k]) { m.sprites[k] = sp[k]; this.cache.delete(k); }
+    for (const k in j.nineSlice || {}) if (!m.nineSlice[k]) m.nineSlice[k] = j.nineSlice[k];
+    for (const k in j.audio || {}) if (!m.audio[k]) m.audio[k] = j.audio[k];
+    for (const k in j.audioGroups || {}) if (!m.audioGroups[k]) m.audioGroups[k] = j.audioGroups[k];
+    this.lateManifest = this.lateManifest || {};
+    this.lateManifest[f] = j;
+  },
+
+  /** the Game's lazy gate for late files: only what a system asked for */
+  lateAllowed(key) { return this.lateWant.has(key); },
+
+  /** queue late sounds that were asked for (and are not loaded yet) */
+  queueLateAudio(load) {
+    let n = 0;
+    for (const k of this.lateAudio) {
+      if (this.queued.has('audio:' + k) || this.failed.has(k) || !this.m.audio[k]) continue;
+      if (this.game && this.game.cache.audio.exists(k)) continue;
+      this.queued.add('audio:' + k);
+      const files = (this.m.audio[k].files || []).map((f) => BASE + f);
+      if (files.length) { load.audio(k, files); n++; }
+    }
+    return n;
+  },
+
+  /** (tfatlas) install the frames of a townfolk sheet once its image and JSON are both loaded */
+  tfInstall(key) {
+    const g = this.game;
+    if (!g || this.tfReady.has(key) || !g.textures.exists(key)) return false;
+    const data = this.tfJson[key] || (g.cache.json.exists(key + '#tfatlas') ? g.cache.json.get(key + '#tfatlas') : null);
+    if (!data || !data.frames) return false;
+    const tex = g.textures.get(key);
+    const [fw, fh] = data.frameSize || [128, 128];
+    for (const prefix in data.frames) {
+      const groups = data.frames[prefix];
+      for (const grp in groups) {
+        const v = groups[grp];
+        const add = (name, r) => { if (!r || tex.has(name)) return; const fr = tex.add(name, 0, r[0], r[1], r[2], r[3]); if (fr) fr.setTrim(fw, fh, r[4], r[5], r[2], r[3]); };
+        if (!v.some(Array.isArray)) add(prefix + '/' + grp, v);
+        else for (let i = 0; i < v.length; i++) if (v[i]) add(prefix + '/' + grp + '_' + i, v[i]);
+      }
+    }
+    delete this.tfJson[key];
+    if (g.cache.json.exists(key + '#tfatlas')) g.cache.json.remove(key + '#tfatlas');
+    this.tfReady.add(key);
+    return true;
+  },
 
   /** a static picture whose atlas is still on its way (after the title) */
   pending(key) {
@@ -157,7 +262,14 @@ export const Assets = {
       : !this.isLazy(k));
     let n = 0;
     const mark = (k) => { if (opts.lazy) this.queued.add(k); n++; };
-    for (const k in m.atlases) { const a = m.atlases[k]; if (a.png && a.json && want(k)) { load.atlas(k, BASE + a.png, BASE + a.json); mark(k); } }
+    for (const k in m.atlases) {
+      const a = m.atlases[k];
+      if (!a.png || !a.json || !want(k)) continue;
+      // (v4-A) townfolk sheets: plain image + compact frame list (installed by tfInstall)
+      if (a.format === 'tfatlas') { load.image(k, BASE + a.png); load.json(k + '#tfatlas', BASE + a.json); mark(k); continue; }
+      load.atlas(k, BASE + a.png, BASE + a.json);
+      mark(k);
+    }
     for (const k in m.images) { const a = m.images[k]; if (a.png && want(k)) { load.image(k, BASE + a.png); mark(k); } }
     for (const k in m.spritesheets) {
       const a = m.spritesheets[k];
@@ -181,6 +293,17 @@ export const Assets = {
   /** a lazily loaded file arrived: create its animations */
   onLazyFile(key) {
     const g = this.game;
+    // (v4-A) a tfatlas JSON / image: install when both are there, then tell the arrivals
+    if (typeof key === 'string' && key.endsWith('#tfatlas')) {
+      const k = key.slice(0, -8);
+      if (g && g.cache.json.exists(key)) this.tfJson[k] = g.cache.json.get(key);
+      if (this.tfInstall(k)) for (const fn of this.arrivals) { try { fn(k); } catch (e) { /* keep loading */ } }
+      return;
+    }
+    if (g && this.m.atlases[key] && this.m.atlases[key].format === 'tfatlas') {
+      if (this.tfInstall(key)) for (const fn of this.arrivals) { try { fn(key); } catch (e) { /* keep loading */ } }
+      return;
+    }
     if (!g || !g.textures.exists(key)) return;
     this.cache.delete(key);
     if (this.m.spritesheets[key]) this.sheetAnims(g, key);
@@ -299,6 +422,8 @@ export const Assets = {
 
   charDef(key) {
     if (this.charCache[key]) return this.charCache[key];
+    // (v4-A) a townsperson paper doll: synthetic def from the townfolk manifest
+    if (key.charCodeAt(0) === 116 && key.startsWith('tf:')) { const d = TF.charDef(key); if (d) { this.charCache[key] = d; this.built[key] = true; return d; } }
     const d = Object.assign({}, COMMON_CHAR, CHAR_DEFAULTS[key] || {}, this.m.characters[key] || {});
     d.anims = Object.assign({}, (CHAR_DEFAULTS[key] || {}).anims || {}, (this.m.characters[key] || {}).anims || {});
     this.charCache[key] = d;

@@ -50,6 +50,7 @@ export class Social {
   constructor(e) {
     this.e = e;
     this.tmp = []; this.tmpW = [];
+    this.toldNow = [];        // stories (root fact ids) told in the current conversation
     this.stats = { talks: 0, beats: 0, intros: 0, gossip: 0, gossipNew: 0, distortions: 0, exaggerations: 0, questions: 0, answered: 0, dunno: 0,
       confessions: 0, confessYes: 0, proposals: 0, quarrels: 0, reconciles: 0, invites: 0, outings: 0, happenings: 0, topics: Object.create(null) };
     this.affAcc = 0;
@@ -115,6 +116,7 @@ export class Social {
     const rel = ensureRel(e, a, b);
     const beats = [];
     this.affAcc = 0;
+    this.toldNow.length = 0;
     const family = (rel.flags & RF_FAMILY) !== 0 || rel.stage === ST_SPOUSE;
     const first = rel.n === 0 && !family;
     if (first) this.intro(a, b, rel, beats);
@@ -262,6 +264,7 @@ export class Social {
     let best = null, bs = 0.12;
     for (let i = 0; i < s.mem.length; i++) {
       const m = s.mem[i], f = m.f;
+      if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;     // that story was just told in this talk
       const ng = NO_GOSSIP[f.k];
       if (ng === 1) continue;
       if (ng === 2 && !(s.tr[7] < 35)) continue;
@@ -347,6 +350,7 @@ export class Social {
 
   tRumor(s, l, m, beats) {
     const e = this.e, rng = e.rng, f = m.f;
+    this.toldNow.push(f.ref || f.id);
     const known = findMem(l, f);
     let bt = this.beat(beats, s, l, 'rumor.' + f.k, 'rumor:' + f.k);
     this.setVersion(bt, m);
@@ -363,7 +367,8 @@ export class Social {
       bt.em = rule === 'react.bad' ? 'emote_exclaim' : rule === 'react.funny' ? 'emote_laugh' : rule === 'react.good' ? 'emote_heart' : 'emote_question';
       bt.an = rule === 'react.bad' ? 'shocked' : rule === 'react.funny' ? 'laugh' : rule === 'react.doubt' ? 'think' : 'talk';
       // follow-up question and answer
-      const fq = FOLLOW[f.k];
+      let fq = FOLLOW[f.k];
+      if (fq === 'who' && m.d !== D_ANON && f.a >= 0 && (f.k !== 'wanted' || e.dialogue.knowsCulprit(s, f))) fq = null;   // already said who
       if (fq && rng.chance(0.55)) {
         bt.nq = true;
         bt = this.beat(beats, l, s, 'follow.' + fq + '.' + f.k, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
@@ -535,6 +540,8 @@ export class Social {
       Object.assign(bt, ans.bt);
       bt.em = 'emote_idea'; bt.an = 'point';
       if (ans.m) { this.tell(l, s, ans.m); this.setVersion(bt, ans.m); }
+      // 'did you hear more about it?' is answered by telling the story itself (the version l remembers)
+      if (q.k === 'more' && ans.m) { bt.r = 'rumor.' + q.f.k; this.toldNow.push(q.f.ref || q.f.id); }
       if (ans.lead) this.jobLead(s, ans.lead);
       bt = this.beat(beats, s, l, 'ask.thanks', 'ask:' + q.k); bt.f = q.f; bt.em = 'emote_heart';
       const i = s.qs.indexOf(q);
@@ -542,8 +549,8 @@ export class Social {
       this.stats.answered++;
       this.affAcc += 12;
     } else {
-      bt = this.beat(beats, l, s, 'ans.dunno.' + q.k, 'ask:' + q.k); bt.f = q.f; bt.o = q.o; if (q.k === 'price' || q.k === 'buy') bt.i = q.o; bt.em = 'emote_sweat'; bt.an = 'think';
-      const tip = this.suggestWho(l, q);
+      bt = this.beat(beats, l, s, 'ans.dunno.' + q.k + (q.f ? '.' + q.f.k : ''), 'ask:' + q.k); bt.f = q.f; bt.o = q.o; if (q.k === 'price' || q.k === 'buy') bt.i = q.o; bt.em = 'emote_sweat'; bt.an = 'think';
+      const tip = this.suggestWho(l, q, s.id);
       if (tip >= 0) { bt = this.beat(beats, l, s, 'ans.suggest', 'ask:' + q.k); bt.o = tip; bt.f = q.f; }
       else if (rng.chance(0.4)) { bt = this.beat(beats, s, l, 'ask.shrug', 'ask:' + q.k); bt.f = q.f; }
       // the listener now wonders too
@@ -604,14 +611,14 @@ export class Social {
   }
 
   /** someone l thinks might know (police for thefts, firefighters for fires, a chatty friend …) */
-  suggestWho(l, q) {
+  suggestWho(l, q, asker = -1) {
     const e = this.e;
     const want = q.k === 'caught' || (q.f && (q.f.k === 'theft' || q.f.k === 'wanted')) ? 'j_police' : q.f && (q.f.k === 'fire' || q.f.k === 'ruin') ? 'j_fire' : q.k === 'rate' ? 'j_bank' : q.k === 'price' || q.k === 'buy' ? 'j_shop' : null;
     let best = -1, bs = 0;
     for (const rel of l.adj) {
       if (rel.n === 0) continue;
       const o = e.people[rel.other(l.id)];
-      if (!o.alive) continue;
+      if (!o.alive || o.id === asker || (q.f && (q.f.a === o.id && q.k === 'who'))) continue;
       let sc = o.tr[0] / 100 + rel.fam / 1000;
       if (want && e.jobTag(o) === want) sc += 2;
       if (sc > bs) { bs = sc; best = o.id; }
@@ -796,8 +803,7 @@ export class Social {
     this.fillSmall(bt, k, s, l, place);
     bt.em = SMALL_EMOTE[k] || null;
     const first = bt;
-    const re = rng.chance(0.8);
-    bt = this.beat(beats, l, s, re ? 'small.' + k + '.re' : 'agree', 'small:' + k);
+    bt = this.beat(beats, l, s, 'small.' + k + '.re', 'small:' + k);
     // the reply talks about the same thing (except things that are the listener's own: hobbies, work, family)
     if (k === 'hobby' || k === 'music' || k === 'work' || k === 'family') this.fillSmall(bt, k, l, s, place);
     else { bt.o = first.o; bt.p = first.p; bt.i = first.i; bt.h = first.h; bt.n = first.n; bt.s = first.s; bt.f = first.f; bt.fl = first.fl.slice(); }

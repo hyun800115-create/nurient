@@ -177,6 +177,40 @@ class Beachfolk(tc2.Townfolk2):
         out.sort(key=lambda x: (x[0], order[id(x)]))
         return out
 
+    def compose(self, person, anim, d, i, exact_head=None, face=None, margin=0):
+        """Like Townfolk2.compose; margin > 0 returns a (128 + 2 margin)^2 canvas with the anchor at
+        (64 + margin, 104 + margin), so heads / hat brims reaching outside the 128 frame (sunbathe: the head lies
+        beside the hips; in the game every layer is its own sprite and is never clipped) stay whole."""
+        if not margin:
+            return super().compose(person, anim, d, i, exact_head=exact_head, face=face)
+        import numpy as np
+        from PIL import Image
+        flip = d in MIRROR
+        rd = MIRROR.get(d, d)
+        S = tc.FRAME + 2 * margin
+        canvas = np.zeros((S, S, 4), np.float32)
+        hoff = self.head_offset(person['base'], anim, rd, i)
+        _, sx = self.render_base(person['base'])
+        for z, name, tint, space in self.layers(person, anim, rd, i, face=face):
+            img = self.src.get(name)
+            if img is None:
+                continue
+            if tint is not None:
+                img = img.copy()
+                img[..., :3] *= tint
+            if space == 'body':
+                if sx != 1.0:
+                    img = tc.scale_x(img, sx)
+                img = tc.paste((S, S), img, margin, margin)
+            else:
+                img = tc.paste((S, S), img, margin + tc.ANCHOR[0] + hoff[0] - tc.HEAD_ANCHOR[0],
+                               margin + tc.ANCHOR[1] + hoff[1] - tc.HEAD_ANCHOR[1])
+            canvas = tc.over(canvas, img)
+        out = Image.fromarray((np.clip(canvas, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGBA')
+        if flip:
+            out = out.transpose(Image.FLIP_LEFT_RIGHT)
+        return out
+
     # ---- points
     def _pt(self, v, d):
         if v is None:

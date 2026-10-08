@@ -7,6 +7,7 @@
 //                    이랑/랑, 이야/야, 이에요/예요, 이었/였 …; always write the after-consonant form)
 //   {:을}            particle for whatever text comes right before (e.g. '#food#{:을} 샀어')
 //   {X^}             slot with the first letter capitalised (English)
+//   {X:a}            English: slot with its article ('a baker', 'an ice rink')
 //   [반말|해요|존댓]  pick by speech level (two options: the second is used for 존댓 too)
 //   <a|b|c>          pick one at random
 // An alternative may start with '?cond cond !cond *3?' — required / forbidden condition flags
@@ -17,7 +18,7 @@
 // reply answers what was really said), '@tag' / '!@tag' test tags set earlier in the same line.
 
 import { COND, TAG } from './conds.js';
-import { particle, finalKind } from './josa.js';
+import { particle, finalKind, article } from './josa.js';
 
 const T_TEXT = 0, T_RULE = 1, T_SLOT = 2, T_JOSA = 3, T_LEVEL = 4, T_CHOICE = 5;
 
@@ -29,6 +30,7 @@ export const ALWAYS_SLOTS = SLOT_BIT.S | SLOT_BIT.L | SLOT_BIT.V | SLOT_BIT.W | 
 export function slotBit(s) { return SLOT_BIT[s] || 0; }
 
 let scratchW = new Float64Array(256);
+const NO = -Infinity;      // weight mark: alternative not eligible (recently used ones are stored negative)
 // 나/저/너 + 이/가 -> 내가/제가/네가
 const PRON = { 나: '내가', 저: '제가', 너: '네가' };
 
@@ -55,7 +57,7 @@ export class Grammar {
     for (const name of names) for (const a of this.rules[name].alts) {
       a.refs = [];
       for (const p of a.parts) if (p.t === T_RULE && a.refs.indexOf(p.r) < 0) a.refs.push(p.r);
-      a.free = !a.refs.length && !(a.m0 | a.m1 | a.m2 | a.m3 | a.m4 | a.pm0 | a.pm1 | a.pm2 | a.cm0 | a.cm1 | a.cm2 | a.n0 | a.n1 | a.n2 | a.n3 | a.n4 | a.pn0 | a.pn1 | a.pn2 | a.cn0 | a.cn1 | a.cn2 | a.directNeed);
+      a.free = !a.refs.length && !(a.m0 | a.m1 | a.m2 | a.m3 | a.m4 | a.pm0 | a.pm1 | a.pm2 | a.pm3 | a.cm0 | a.cm1 | a.cm2 | a.cm3 | a.n0 | a.n1 | a.n2 | a.n3 | a.n4 | a.pn0 | a.pn1 | a.pn2 | a.pn3 | a.cn0 | a.cn1 | a.cn2 | a.cn3 | a.directNeed);
     }
     for (const name of names) { const R = this.rules[name]; R.always = R.alts.some((a) => a.free); }
     for (let pass = 0; pass < 6; pass++) {
@@ -79,7 +81,7 @@ export class Grammar {
   compileAlt(src, ruleName) {
     let w = 1;
     const m = [0, 0, 0, 0, 0], n = [0, 0, 0, 0, 0];
-    const ts = [0, 0, 0], pm = [0, 0, 0], pn = [0, 0, 0], cm = [0, 0, 0], cn = [0, 0, 0];
+    const ts = [0, 0, 0, 0], pm = [0, 0, 0, 0], pn = [0, 0, 0, 0], cm = [0, 0, 0, 0], cn = [0, 0, 0, 0];
     let s = src;
     if (typeof s !== 'string') throw new Error(`grammar ${this.lang}: ${ruleName}: alternative is not a string`);
     if (s.charAt(0) === '?') {
@@ -111,7 +113,8 @@ export class Grammar {
     const ctx = { need: 0 };
     const [parts] = parse(s, 0, '', ctx, this.lang, ruleName);
     const alt = { parts, m0: m[0], m1: m[1], m2: m[2], m3: m[3], m4: m[4], n0: n[0], n1: n[1], n2: n[2], n3: n[3], n4: n[4],
-      ts0: ts[0], ts1: ts[1], ts2: ts[2], pm0: pm[0], pm1: pm[1], pm2: pm[2], pn0: pn[0], pn1: pn[1], pn2: pn[2], cm0: cm[0], cm1: cm[1], cm2: cm[2], cn0: cn[0], cn1: cn[1], cn2: cn[2],
+      ts0: ts[0], ts1: ts[1], ts2: ts[2], ts3: ts[3], pm0: pm[0], pm1: pm[1], pm2: pm[2], pm3: pm[3], pn0: pn[0], pn1: pn[1], pn2: pn[2], pn3: pn[3],
+      cm0: cm[0], cm1: cm[1], cm2: cm[2], cm3: cm[3], cn0: cn[0], cn1: cn[1], cn2: cn[2], cn3: cn[3],
       w, gid: this.altCount++, directNeed: ctx.need, need: ctx.need, rule: ruleName, src };
     this.allAlts.push(alt);
     return alt;
@@ -146,7 +149,7 @@ export class Grammar {
     const r = this.rules[name];
     if (!r) return '';
     const out = { s: '' };
-    ctx.t0 = 0; ctx.t1 = 0; ctx.t2 = 0;
+    ctx.t0 = 0; ctx.t1 = 0; ctx.t2 = 0; ctx.t3 = 0;
     this.expandRule(r, ctx, out, 0);
     return out.s;
   }
@@ -163,7 +166,7 @@ export class Grammar {
     const alts = r.alts, n = alts.length;
     if (!n) return null;
     const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
-    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0;
+    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, p3 = ctx.p3 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0, t3 = ctx.t3 | 0;
     const rec = ctx.recent, useRecent = rec && n >= 3, noQ = ctx.noQ;
     let sum = 0, sumAll = 0;
     const W = scratchW;
@@ -171,9 +174,9 @@ export class Grammar {
       const a = alts[i];
       if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
           (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
-          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) ||
-          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2)) { W[i] = -1; continue; }
-      if (noQ && (a.ts0 & 1)) { W[i] = -1; continue; }          // this line must not ask a question
+          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pm3 & p3) !== a.pm3 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) || (a.pn3 & p3) ||
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3)) { W[i] = NO; continue; }
+      if (noQ && (a.ts0 & 1)) { W[i] = NO; continue; }          // this line must not ask a question
       let w = a.w;
       sumAll += w;
       if (useRecent && recentHas(rec, a.gid)) { W[i] = -w; continue; }   // remembered: only as a last resort
@@ -182,10 +185,10 @@ export class Grammar {
     // drop alternatives that reference a rule with nothing to say here
     for (let i = 0; i < n; i++) {
       const a = alts[i];
-      if (W[i] === -1 || !a.refs.length) continue;
+      if (W[i] === NO || !a.refs.length) continue;
       let ok = true;
       for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, 0)) { ok = false; break; }
-      if (!ok) { if (W[i] > 0) sum -= W[i]; sumAll -= a.w; W[i] = -1; }
+      if (!ok) { if (W[i] > 0) sum -= W[i]; sumAll -= a.w; W[i] = NO; }
     }
     let pick = -1;
     if (sum > 0) {
@@ -194,12 +197,12 @@ export class Grammar {
       if (pick < 0) for (let i = n - 1; i >= 0; i--) if (W[i] > 0) { pick = i; break; }
     } else if (sumAll > 0) {
       let x = ctx.rng.next() * sumAll;
-      for (let i = 0; i < n; i++) { const w = W[i] === -1 ? 0 : -W[i]; if (w <= 0) continue; if (x < w) { pick = i; break; } x -= w; }
-      if (pick < 0) for (let i = n - 1; i >= 0; i--) if (W[i] !== -1) { pick = i; break; }
+      for (let i = 0; i < n; i++) { const w = W[i] === NO ? 0 : -W[i]; if (w <= 0) continue; if (x < w) { pick = i; break; } x -= w; }
+      if (pick < 0) for (let i = n - 1; i >= 0; i--) if (W[i] !== NO) { pick = i; break; }
     }
     if (pick < 0) return null;
     const a = alts[pick];
-    ctx.t0 = t0 | a.ts0; ctx.t1 = t1 | a.ts1; ctx.t2 = t2 | a.ts2;
+    ctx.t0 = t0 | a.ts0; ctx.t1 = t1 | a.ts1; ctx.t2 = t2 | a.ts2; ctx.t3 = t3 | a.ts3;
     if (useRecent) { rec[ctx.rpos.v] = a.gid + 1; ctx.rpos.v = (ctx.rpos.v + 1) % rec.length; }
     if (ctx.track) this.used[a.gid] = 1;
     return a;
@@ -210,14 +213,14 @@ export class Grammar {
     if (r.always) return true;
     if (depth > 3) return true;
     const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
-    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0;
+    const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, p3 = ctx.p3 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0, t3 = ctx.t3 | 0;
     const alts = r.alts;
     for (let i = 0; i < alts.length; i++) {
       const a = alts[i];
       if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
           (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
-          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) ||
-          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2)) continue;
+          (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pm3 & p3) !== a.pm3 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) || (a.pn3 & p3) ||
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3)) continue;
       let ok = true;
       for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, depth + 1)) { ok = false; break; }
       if (ok) return true;
@@ -236,6 +239,7 @@ export class Grammar {
           if (v == null) v = '';
           if (p.cap && v) v = v.charAt(0).toUpperCase() + v.slice(1);
           if (p.form === '이' && PRON[v]) { out.s += PRON[v]; break; }
+          if (p.form === 'a' && this.lang === 'en') { if (v) out.s += article(v) + ' ' + v; break; }   // English article: {J:a} -> 'a baker' / 'an owner'
           out.s += v;
           if (p.form) out.s += particle(v, p.form);
           break;

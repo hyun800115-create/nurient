@@ -100,8 +100,8 @@ def hose_arc_gif(sheets, path):
     import gen_fx_city_scene as SC
     seg, tip, rope = sheets['fx_hose_stream'], sheets['fx_hose_tip'], sheets.get('fx_hose_rope')
     mist, steam = sheets.get('fx_water_mist'), sheets.get('fx_steam_puff')
-    W, H = 520, 260
-    aims = [((70, 220), (330, 90)), ((70, 220), (440, 170)), ((70, 220), (230, 60))]
+    W, H = 520, 284
+    aims = [((70, 244), (330, 114)), ((70, 244), (440, 194)), ((70, 244), (230, 84))]
     frames = []
     n = 24
     for i in range(n):
@@ -120,8 +120,8 @@ def hose_arc_gif(sheets, path):
             if steam is not None and k == 0:
                 SC.put(im, steam[(i * 14 // n) % len(steam)], (T[0] + 16, T[1] - 4), (0.5, 0.9), 0.8)
         d.ellipse([N[0] - 6, N[1] - 6, N[0] + 6, N[1] + 6], fill=(60, 70, 90, 255))
-        text(d, (8, 6), 'aimed jets (manifest.hoseAim): fx_hose_rope on a Rope (2 arcs) and the fx_hose_stream '
-                        'segment chain (steep arc, Canvas fallback) + fx_hose_tip + fx_water_mist + fx_steam_puff', 12)
+        text(d, (8, 5), 'aimed jets (manifest.hoseAim): fx_hose_rope on a Rope (2 lower arcs, recommended)', 12)
+        text(d, (8, 21), 'fx_hose_stream chain (steep arc, Canvas fallback); + hose_tip, water_mist, steam_puff', 12)
         text(d, (N[0] - 30, N[1] + 10), 'nozzle', 12)
         frames.append(im)
     F.save_gif(frames, path, 24, panels=('#F4F7FB',))

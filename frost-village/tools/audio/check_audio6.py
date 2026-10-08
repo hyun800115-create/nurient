@@ -22,8 +22,8 @@ Checks
     a second pass decodes into a 48 kHz context (what phones, iOS especially, run at - the decoder resamples and
     the loop length becomes fractional) and the wrap must not jump there either (ogg and mp3);
   * phone speakers: every key is also measured through a crude phone-speaker model (4th-order high-pass 500 Hz +
-    2nd-order low-pass 9 kHz, the critic's model): phone loss = phone-weighted level - full-range level (integrated
-    for loops, max momentary for one-shots) must be <= 6 dB, and amb_fire_big must not be quieter on a phone than
+    2nd-order low-pass 9 kHz, the critic's model): phone loss = full-range level - phone-weighted level (integrated
+    for loops; for one-shots the worse of integrated and max momentary) must be <= 6 dB, and amb_fire_big must not be quieter on a phone than
     the v1 camp fire (assets/audio amb_fire);
   * loop manifest duration: round(duration * 44100) == loopSamples (Audio.trimLoops cuts to round(duration * rate));
   * payload of assets/audio6 (files + manifest) <= 4,000,000 bytes; both music loops play at the same effective
@@ -614,7 +614,8 @@ def main(argv=None):
                     fI, fM = levels(x)
                     pI, pM = levels(phone_weight(x))
                     full, ph = (fM, pM) if kind == "sfx" else (fI, pI)
-                    loss = full - ph
+                    # loops: integrated loss; one-shots: the worse of the integrated and the max-momentary loss
+                    loss = max(fI - pI, fM - pM) if kind == "sfx" else fI - pI
                     g = 20 * np.log10(max(a.get("volume", 1.0), 1e-6))
                     phone_rows.append((k, kind, loss, ph + g, "Mmax" if kind == "sfx" else "I"))
                     if loss > PHONE_MAX_LOSS:

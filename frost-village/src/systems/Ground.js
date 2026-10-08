@@ -56,6 +56,10 @@ export class Ground {
     this.tiles = new Array(this.cols * this.rows).fill(null);
     this.baked = 0;
     this.checkT = 0;
+    // (v4-A, plan §10.2) extra layers baked into the tiles (rails, v4 streets: fn(ctx, x0, y0, w, h)) and
+    // tiles to re-bake in place (one per check) when such a layer changes
+    this.hooks = [];
+    this.dirty = new Set();
     gs.events.once('shutdown', () => this.destroyTiles());
   }
 
@@ -78,6 +82,58 @@ export class Ground {
       }
     }
     return n;
+  }
+
+  /** (v4-A) a layer baked into the ground tiles after the paths: fn(ctx, x0, y0, w, h) for tiles meeting rect {x, y, w, h} */
+  addBakeHook(fn, rect) {
+    const h = { fn, rect: rect || null };
+    this.hooks.push(h);
+    this.invalidate(rect);
+    return h;
+  }
+
+  removeBakeHook(h) { const i = this.hooks.indexOf(h); if (i >= 0) { this.hooks.splice(i, 1); this.invalidate(h.rect); } }
+
+  /** (v4-A) baked tiles meeting rect (all when null) are re-baked in place, one per check, nearest the view first */
+  invalidate(rect) {
+    for (let ty = 0; ty < this.rows; ty++) {
+      for (let tx = 0; tx < this.cols; tx++) {
+        const i = ty * this.cols + tx;
+        if (!this.tiles[i]) continue;
+        if (rect && (tx * TILE > rect.x + rect.w || (tx + 1) * TILE < rect.x || ty * TILE > rect.y + rect.h || (ty + 1) * TILE < rect.y)) continue;
+        this.dirty.add(i);
+      }
+    }
+  }
+
+  /** (v4-A) re-bake one dirty tile into its own canvas (no hole while it is redrawn) */
+  rebakeOne(view) {
+    if (!this.dirty.size) return false;
+    let best = -1, bd = Infinity;
+    const cx = view ? (view.x + view.right) / 2 : 0, cy = view ? (view.y + view.bottom) / 2 : 0;
+    for (const i of this.dirty) {
+      const tx = i % this.cols, ty = Math.floor(i / this.cols);
+      const d = Math.abs((tx + 0.5) * TILE - cx) + Math.abs((ty + 0.5) * TILE - cy);
+      if (d < bd) { bd = d; best = i; }
+    }
+    this.dirty.delete(best);
+    const img = this.tiles[best];
+    if (!img || !img.texture || !img.texture.context) return false;
+    const tx = best % this.cols, ty = Math.floor(best / this.cols);
+    const ct = img.texture, ctx = ct.context;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ct.width, ct.height);
+    this.bakeChunk(ctx, tx * TILE, ty * TILE, ct.width, ct.height);
+    ct.refresh();
+    return true;
+  }
+
+  runHooks(ctx, x0, y0, w, h) {
+    for (const hk of this.hooks) {
+      const r = hk.rect;
+      if (r && (x0 > r.x + r.w || x0 + w < r.x || y0 > r.y + r.h || y0 + h < r.y)) continue;
+      try { ctx.save(); hk.fn(ctx, x0, y0, w, h); } catch (e) { if (!this._hookErr) { this._hookErr = true; console.error('[FrostVillage] ground hook:', e); } } finally { ctx.restore(); }
+    }
   }
 
   bakeTile(tx, ty) {
@@ -125,14 +181,17 @@ export class Ground {
     // snow
     ctx.fillStyle = pattern(ctx, 'ground_snow') || '#eef3f9';
     land(); ctx.fill();
-    // soft blue shading toward the map edges (gives depth)
+    // soft blue shading toward the map edges (gives depth). (v4-A) a 240 px band on each side whatever the
+    // map width (the v3 map was 3000 px wide: 8 % of it), so the first village looks exactly as before
     const vg = ctx.createLinearGradient(0, 0, W, 0);
-    vg.addColorStop(0, 'rgba(120,150,200,0.10)'); vg.addColorStop(0.08, 'rgba(120,150,200,0)');
-    vg.addColorStop(0.92, 'rgba(120,150,200,0)'); vg.addColorStop(1, 'rgba(120,150,200,0.10)');
+    const band = Math.min(0.5, 240 / W);
+    vg.addColorStop(0, 'rgba(120,150,200,0.10)'); vg.addColorStop(band, 'rgba(120,150,200,0)');
+    vg.addColorStop(1 - band, 'rgba(120,150,200,0)'); vg.addColorStop(1, 'rgba(120,150,200,0.10)');
     ctx.fillStyle = vg; land(); ctx.fill();
 
     if (y0 < tileShoreMax + 80 && y0 + h > tileShore - 120) this.bakeShore(ctx, xa, xb);
     this.bakePaths(ctx, x0, y0, w, h);
+    if (this.hooks.length) this.runHooks(ctx, x0, y0, w, h);
     this.bakeDecals(ctx, x0, y0, w, h);
     ctx.restore();
     void H;
@@ -385,7 +444,11 @@ export class Ground {
     this.t += dt;
     // bake the land the camera is about to see (one tile per check, so a walk never hitches for long)
     this.checkT -= dt;
-    if (this.checkT <= 0) { this.checkT = 0.12; this.ensure(this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView, 1); }
+    if (this.checkT <= 0) {
+      this.checkT = 0.12;
+      const view = this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView;
+      if (!this.ensure(view, 1) && this.dirty.size) this.rebakeOne(view);
+    }
     this.sea.tilePositionX = this.t * 6;
     this.sea.tilePositionY = Math.sin(this.t * 0.4) * 6;
     if (this.fish1) { this.fish1.tilePositionX = this.t * 22; this.fish1.tilePositionY = Math.sin(this.t * 0.7) * 5; }

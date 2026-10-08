@@ -175,3 +175,91 @@ export function hangulRatio(s) {
 
 /** strip particles from the end of a word (for matching names inside player text) */
 export function stem(word) { return String(word).replace(/(이랑|랑|한테|에게|께서|이가|이는|이를|이도|이야|은|는|이|가|을|를|도|야|아|와|과|의|로|으로)$/, ''); }
+
+
+// ---------------------------------------------------------------- plain-form sentence converters
+// Memories and facts are stored in the plain written form ('~했다', '~한다', '~이다'). These turn them
+// into spoken forms without another AI call:
+//   toHearsay('촌장님이 생선을 잡았다')      -> '촌장님이 생선을 잡았대'      (rumours: "they say …")
+//   toHearsay('촌장님은 고양이를 좋아한다')  -> '촌장님은 고양이를 좋아한대'
+//   toReminder('촌장님이 생선을 잡았다')     -> '촌장님이 생선을 잡았잖아'    ("you did …, remember?")
+//   toReminder('촌장님은 고양이를 좋아한다') -> '촌장님은 고양이를 좋아하잖아'
+// Both return '' when the sentence is not in the plain form (the caller then skips it).
+
+function splitTail(s) {
+  s = String(s || '').trim();
+  const m = s.match(/[\s.!?~…]*$/);
+  return [s.slice(0, s.length - (m ? m[0].length : 0)), m ? m[0] : ''];
+}
+
+/** true when a sentence ends in the plain written form (다) */
+export function isPlainForm(s) { const [b] = splitTail(s); return /[가-힣]다$/.test(b) && b.length >= 3; }
+
+export function toHearsay(s) {
+  const [b] = splitTail(s);
+  if (/[가-힣](대|래)$/.test(b)) return b;                // already hearsay
+  if (!/[가-힣]다$/.test(b) || b.length < 3) return '';
+  if (/[가-힣]이다$/.test(b) && !/(있|없|같|많|좋|싫)이다$/.test(b)) return b.slice(0, -2) + '이래';
+  return b.slice(0, -1) + '대';
+}
+
+function dropFinal(ch) {
+  const c = ch.charCodeAt(0);
+  if (c < H0 || c > H1) return ch;
+  return String.fromCharCode(c - ((c - H0) % 28));
+}
+function finalOf(ch) { const c = ch.charCodeAt(0); return c >= H0 && c <= H1 ? (c - H0) % 28 : -1; }
+
+export function toReminder(s) {
+  const [b] = splitTail(s);
+  if (/[가-힣]잖아$/.test(b)) return b;
+  if (!/[가-힣]다$/.test(b) || b.length < 3) return '';
+  const body = b.slice(0, -1);                            // without 다
+  const last = body[body.length - 1];
+  if (/는$/.test(body) && body.length >= 2 && finalOf(body[body.length - 2]) > 0) return body.slice(0, -1) + '잖아'; // 먹는다 -> 먹잖아
+  if (/는$/.test(body) && body.length >= 2) return body.slice(0, -1) + '잖아';                                    // 가는다 (rare)
+  if (finalOf(last) === 4 /* ㄴ */) return body.slice(0, -1) + dropFinal(last) + '잖아';                             // 한다 -> 하잖아
+  return body + '잖아';                                                                                                // 했다/착하다/이다/있다
+}
+
+// first-person words follow the speech level (내가 / 제가 …)
+const I_CASUAL = { '제가': '내가', '저는': '나는', '저도': '나도', '저한테': '나한테', '저를': '나를', '저랑': '나랑', '제': '내', '저': '나' };
+const I_POLITE = { '내가': '제가', '나는': '저는', '나도': '저도', '나한테': '저한테', '나를': '저를', '나랑': '저랑', '내': '제', '나': '저' };
+/** swap first-person pronouns (whole words only) to fit the speech level */
+export function levelPronouns(text, level) {
+  const map = level === POLITE ? I_POLITE : I_CASUAL;
+  return String(text).replace(/(^|[\s"'“‘(])([가-힣]{1,3})(?=$|[\s,.!?~…"'”’)])/g, (all, pre, w) => (map[w] ? pre + map[w] : all));
+}
+
+/** the way a speaker says "I/me" + particle (form in after-consonant spelling) */
+export function pronoun(form, level) {
+  const pol = level === POLITE;
+  switch (form || '') {
+    case '이': return pol ? '제가' : '내가';
+    case '은': return pol ? '저는' : '나는';
+    case '을': return pol ? '저를' : '나를';
+    case '과': case '이랑': return pol ? '저랑' : '나랑';
+    case '의': return pol ? '제' : '내';
+    case '도': return pol ? '저도' : '나도';
+    case '한테': case '에게': return pol ? '저한테' : '나한테';
+    default: return (pol ? '저' : '나') + (form || '');
+  }
+}
+
+/** a short normalised key for duplicate checks (no spaces, punctuation or final endings) */
+export function normKey(s) {
+  return String(s || '').replace(/\{[^}]*\}/g, '@').replace(/[^가-힣a-zA-Z0-9@]/g, '').replace(/(이래|래|대|요|다|어|야)$/, '').toLowerCase();
+}
+
+/** character-bigram similarity 0..1 (near-duplicate check) */
+export function similarity(a, b) {
+  a = normKey(a); b = normKey(b);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const grams = (s) => { const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const g = s.substr(i, 2); m.set(g, (m.get(g) || 0) + 1); } return m; };
+  const A = grams(a), B = grams(b);
+  let inter = 0, total = 0;
+  for (const [g, n] of A) { inter += Math.min(n, B.get(g) || 0); total += n; }
+  for (const [, n] of B) total += n;
+  return total ? (2 * inter) / total : 0;
+}

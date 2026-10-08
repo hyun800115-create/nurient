@@ -1,116 +1,115 @@
 collision check against: assets/audio, assets/audio2, assets/audio3, assets/audio4, assets/audio6
 key                    fmt  ch   dur s   peak     TP  I LUFS   Mmax    vol    eff   want       DC     kB  phone
-bgm_beach              ogg   2  47.994   -1.5   -1.5   -18.0  -14.8  0.376  -26.5  -26.5  0.00000  630.7 
-bgm_beach              mp3   2  47.994   -2.2   -2.2   -18.5  -15.3  0.376  -27.0  -26.5  0.00000  751.0 
-                       loop: n=2116544 (render 2116544) hf_ratio=0.021 d2_ratio=0.066 level_jump=+6.9 dB wrap_jump=0.0051
-                       ogg end padding 0 smp (must be 0); manifest loopSamples 2116544; duration 47.9942 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=2116544 hf_ratio=0.043 d2_ratio=0.168
-amb_sea_waves          ogg   1  41.999   -2.8   -2.8   -20.3  -13.1  0.219  -33.5  -33.5  0.00001  365.6 
-amb_sea_waves          mp3   1  41.999   -2.7   -2.7   -20.5  -13.3  0.219  -33.7  -33.5  0.00001  410.7 
-                       loop: n=1852160 (render 1852160) hf_ratio=0.080 d2_ratio=0.053 level_jump=+1.1 dB wrap_jump=0.0032
+bgm_beach              ogg   2  47.991   -1.8   -1.7   -18.0  -14.9  0.376  -26.5  -26.5  0.00001  631.9 
+bgm_beach              mp3   2  47.991   -1.9   -1.8   -18.5  -15.4  0.376  -27.0  -26.5  0.00001  751.0 
+                       loop: n=2116416 (render 2116416) hf_ratio=0.019 d2_ratio=0.041 level_jump=+6.1 dB wrap_jump=0.0029
+                       ogg end padding 0 smp (must be 0); manifest loopSamples 2116416; duration 47.9913 s
+                       mp3 loop (ffmpeg, gapless tag honoured): n=2116416 hf_ratio=0.151 d2_ratio=0.437
+amb_sea_waves          ogg   1  41.999   -3.0   -3.0   -20.3  -12.9  0.219  -33.5  -33.5  0.00001  352.8 
+amb_sea_waves          mp3   1  41.999   -3.7   -3.6   -20.5  -13.2  0.219  -33.7  -33.5  0.00002  410.7 
+                       loop: n=1852160 (render 1852160) hf_ratio=0.090 d2_ratio=0.088 level_jump=-0.6 dB wrap_jump=0.0003
                        ogg end padding 0 smp (must be 0); manifest loopSamples 1852160; duration 41.9991 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=1852160 hf_ratio=0.081 d2_ratio=0.048
-                       swell: 7 x 5.99987 s (Water.js 6.0), phase 2.177 s; waterline cues 2.30, 8.03, 14.23, 20.10, 26.35, 32.14, 38.27; grid offsets +0.12, -0.15, +0.05, -0.08, +0.17, -0.04, +0.09 s; measured surge - waterline -0.20, +0.27, +0.37, -0.30, +0.15, -0.14, -0.27 s (mean |err| 0.24)
-amb_beach              ogg   1  24.001   -6.6   -6.6   -20.2  -16.2  0.216  -33.5  -33.5  0.00001  210.8 
-amb_beach              mp3   1  24.001   -6.2   -6.2   -20.4  -16.4  0.216  -33.7  -33.5  0.00000  234.9 
-                       loop: n=1058432 (render 1058432) hf_ratio=0.172 d2_ratio=0.109 level_jump=+1.4 dB wrap_jump=0.0013
+                       mp3 loop (ffmpeg, gapless tag honoured): n=1852160 hf_ratio=0.091 d2_ratio=0.081
+                       swell: 7 x 5.99987 s (Water.js 6.0), phase 1.653 s; waterline cues 1.77, 7.50, 13.70, 19.57, 25.82, 31.61, 37.74; grid offsets +0.12, -0.15, +0.05, -0.08, +0.17, -0.04, +0.09 s; measured surge - waterline -0.27, +0.20, +0.50, -0.27, +0.18, -0.11, -0.34 s (mean |err| 0.27)
+amb_beach              ogg   1  24.001   -6.0   -6.0   -20.2  -16.2  0.216  -33.5  -33.5  0.00001  203.5 
+amb_beach              mp3   1  24.001   -6.4   -6.4   -20.4  -16.5  0.216  -33.7  -33.5  0.00000  234.9 
+                       loop: n=1058432 (render 1058432) hf_ratio=0.185 d2_ratio=0.059 level_jump=+1.0 dB wrap_jump=0.0012
                        ogg end padding 0 smp (must be 0); manifest loopSamples 1058432; duration 24.0007 s
-                       mp3 loop (ffmpeg, gapless tag honoured): n=1058432 hf_ratio=0.162 d2_ratio=0.032
-                       swell: 4 x 6.00018 s (Water.js 6.0), phase 2.02 s; waterline cues 2.12, 7.90, 14.08, 19.97; grid offsets +0.10, -0.12, +0.06, -0.05 s; measured surge - waterline -0.22, -0.10, -0.18, +0.33 s (mean |err| 0.21) in 2500-8000 Hz
-sfx_wave_crash_1       ogg   1   2.961   -2.2   -1.9   -15.4  -11.1  0.427  -18.5  -18.5  0.00001   28.5    0.5
+                       mp3 loop (ffmpeg, gapless tag honoured): n=1058432 hf_ratio=0.181 d2_ratio=0.110
+                       swell: 4 x 6.00018 s (Water.js 6.0), phase 2.022 s; waterline cues 2.12, 7.90, 14.08, 19.97; grid offsets +0.10, -0.12, +0.06, -0.05 s; measured surge - waterline -0.22, -0.10, -0.18, +0.33 s (mean |err| 0.21) in 2500-8000 Hz
+sfx_wave_crash_1       ogg   1   2.940   -1.8   -1.8   -14.7  -10.3  0.389  -18.5  -18.5  0.00003   27.7    0.5
                        cue onsets (manifest -> detected): impact 0.200->0.200
-sfx_wave_crash_1       mp3   1   2.961   -2.3   -1.2   -15.5  -11.2  0.427  -18.6  -18.5  0.00001   35.5    0.4
-sfx_wave_crash_2       ogg   1   3.681   -1.7   -1.1   -15.6  -10.2  0.385  -18.5  -18.5  0.00001   34.5    0.8
+sfx_wave_crash_1       mp3   1   2.940   -1.8   -1.8   -14.9  -10.5  0.389  -18.7  -18.5  0.00004   35.2    0.5
+sfx_wave_crash_2       ogg   1   3.380   -1.7   -1.2   -15.0   -9.8  0.367  -18.5  -18.5  0.00004   31.5    0.9
                        cue onsets (manifest -> detected): impact 0.200->0.200
-sfx_wave_crash_2       mp3   1   3.681   -2.1   -1.7   -15.8  -10.4  0.385  -18.7  -18.5  0.00005   43.8    0.8
-sfx_wave_crash_3       ogg   1   3.141   -1.4   -1.1   -13.5   -9.6  0.359  -18.5  -18.5  0.00001   30.3    0.3
+sfx_wave_crash_2       mp3   1   3.380   -2.4   -2.2   -15.2   -9.9  0.367  -18.6  -18.5  0.00008   40.4    0.9
+sfx_wave_crash_3       ogg   1   3.040   -1.6   -1.5   -13.9   -9.7  0.363  -18.5  -18.5  0.00005   28.9    0.3
                        cue onsets (manifest -> detected): impact 0.200->0.200, impact2 0.540->0.540
-sfx_wave_crash_3       mp3   1   3.141   -1.8   -1.7   -13.7   -9.8  0.359  -18.7  -18.5  0.00005   37.7    0.3
-sfx_wave_wash          ogg   1   2.978   -1.8   -1.7   -14.0  -10.2  0.288  -21.0  -21.0  0.00003   29.6    0.4
-sfx_wave_wash          mp3   1   2.978   -2.0   -2.0   -14.2  -10.4  0.288  -21.2  -21.0  0.00002   35.5    0.3
-sfx_splash_1           ogg   1   0.878   -1.4   -1.4   -16.6  -12.5  0.447  -19.5  -19.5  0.00001   11.5    0.1
-sfx_splash_1           mp3   1   0.881   -1.8   -1.7   -16.8  -12.7  0.447  -19.7  -19.5  0.00001   11.0    0.1
-sfx_splash_2           ogg   1   1.294   -1.4   -1.4   -14.7   -9.8  0.347  -19.0  -19.0  0.00001   15.3    0.5
-sfx_splash_2           mp3   1   1.294   -2.0   -2.0   -14.9  -10.0  0.347  -19.2  -19.0  0.00001   15.9    0.4
-sfx_splash_3           ogg   1   1.851   -1.3   -1.2   -14.4   -9.4  0.351  -18.5  -18.5  0.00000   20.2    1.4
-sfx_splash_3           mp3   1   1.851   -2.2   -1.9   -14.7   -9.7  0.351  -18.8  -18.5  0.00004   22.3    1.3
-sfx_lifeguard_whistle  ogg   1   1.326   -1.1   -1.1    -4.8   -3.4  0.148  -20.0  -20.0  0.00000   14.8   -0.0
+sfx_wave_crash_3       mp3   1   3.040   -1.9   -1.9   -13.8   -9.9  0.363  -18.7  -18.5  0.00002   36.4    0.3
+sfx_wave_wash          ogg   1   2.978   -2.0   -1.9   -14.0  -10.2  0.288  -21.0  -21.0  0.00002   28.6    0.3
+sfx_wave_wash          mp3   1   2.978   -2.3   -1.9   -14.3  -10.4  0.288  -21.2  -21.0  0.00000   35.5    0.3
+sfx_splash_1           ogg   1   0.817   -1.5   -1.3   -16.7  -12.6  0.452  -19.5  -19.5  0.00001   10.9    0.1
+sfx_splash_1           mp3   1   0.820   -1.8   -1.4   -16.9  -12.8  0.452  -19.7  -19.5  0.00000   10.4    0.1
+sfx_splash_2           ogg   1   1.280   -1.1   -1.1   -14.9   -9.9  0.351  -19.0  -19.0  0.00001   14.9    0.5
+sfx_splash_2           mp3   1   1.280   -1.8   -1.5   -15.0  -10.1  0.351  -19.2  -19.0  0.00001   15.6    0.4
+sfx_splash_3           ogg   1   1.760   -1.9   -1.7   -14.0   -9.0  0.335  -18.5  -18.5  0.00001   19.1    1.4
+sfx_splash_3           mp3   1   1.760   -1.9   -1.8   -14.2   -9.2  0.335  -18.7  -18.5  0.00002   21.4    1.3
+sfx_lifeguard_whistle  ogg   1   1.160   -1.2   -1.1    -4.8   -3.4  0.148  -20.0  -20.0  0.00000   13.5   -0.0
                        pea trill 40 Hz, AM index 0.36 (v7.0: 0.15)
-                       tuning: strongest partial 2783.9 Hz = F7 (centroid of the trilled tone) -6.1 cents
-sfx_lifeguard_whistle  mp3   1   1.326   -1.5   -1.3    -5.2   -3.7  0.148  -20.3  -20.0  0.00000   16.2   -0.0
-sfx_icecream_bell      ogg   1   2.183   -1.4   -1.3    -9.3   -7.3  0.245  -19.5  -19.5  0.00001   15.3    0.0
-                       tuning: strongest partial 1396.9 Hz = F6 last chime +0.1 cents
-sfx_icecream_bell      mp3   1   2.183   -1.9   -1.8    -9.7   -7.7  0.245  -19.9  -19.5  0.00000   26.3    0.0
-sfx_beachball_bounce   ogg   1   0.838   -1.6   -1.6   -17.4  -12.7  0.457  -19.5  -19.5  0.00001   10.4    0.6
-                       tuning: strongest partial 701.7 Hz = F5 'boing' +7.8 cents
+                       tuning: strongest partial 2782.8 Hz = F7 (centroid of the trilled tone) -6.9 cents
+sfx_lifeguard_whistle  mp3   1   1.160   -1.5   -1.5    -5.1   -3.7  0.148  -20.3  -20.0  0.00000   14.4   -0.0
+sfx_icecream_bell      ogg   1   1.820   -1.4   -1.4    -8.9   -7.3  0.245  -19.5  -19.5  0.00001   14.2    0.0
+                       tuning: strongest partial 1397.0 Hz = F6 last chime +0.1 cents
+sfx_icecream_bell      mp3   1   1.820   -2.0   -2.0    -9.3   -7.7  0.245  -19.9  -19.5  0.00001   22.0    0.0
+sfx_beachball_bounce   ogg   1   0.777   -1.3   -1.3   -17.4  -12.7  0.457  -19.5  -19.5  0.00001   10.2    0.6
+                       tuning: strongest partial 697.9 Hz = F5 'boing' -1.6 cents
                        cue onsets (manifest -> detected): bounce1 0.000->0.000, bounce2 0.300->0.300, bounce3 0.480->0.480
-sfx_beachball_bounce   mp3   1   0.841   -2.0   -2.0   -17.8  -13.1  0.457  -19.9  -19.5  0.00001   10.7    0.6
-sfx_hotel_bell         ogg   1   1.970   -1.2   -1.0   -11.0   -6.0  0.211  -19.5  -19.5  0.00000    8.8    0.0
+sfx_beachball_bounce   mp3   1   0.780   -2.0   -2.0   -17.9  -13.2  0.457  -20.0  -19.5  0.00000    9.8    0.6
+sfx_hotel_bell         ogg   1   1.680   -1.5   -1.4   -10.8   -5.8  0.207  -19.5  -19.5  0.00000    8.4    0.0
                        tuning: strongest partial 2093.0 Hz = C7 -0.0 cents
-sfx_hotel_bell         mp3   1   1.970   -1.8   -1.8   -11.5   -6.5  0.211  -20.0  -19.5  0.00000   23.9    0.0
-sfx_sand_step_1        ogg   1   0.316   -1.1   -1.1   -18.9  -16.1  0.676  -19.5  -19.5  0.00003    6.5    0.3
+sfx_hotel_bell         mp3   1   1.680   -2.1   -1.6   -11.2   -6.2  0.207  -19.9  -19.5  0.00000   20.5    0.0
+sfx_sand_step_1        ogg   1   0.317   -2.0   -2.0   -19.1  -16.2  0.684  -19.5  -19.5  0.00005    6.5    0.3
                        energy after 120 ms 0.9 % (running steps are 0.225 s apart)
-sfx_sand_step_1        mp3   1   0.319   -2.4   -2.3   -19.2  -16.3  0.676  -19.7  -19.5  0.00007    4.6    0.3
-sfx_sand_step_2        ogg   1   0.308   -1.9   -1.9   -16.9  -16.9  0.741  -19.5  -19.5  0.00006    6.6    0.1
+sfx_sand_step_1        mp3   1   0.319   -1.5   -1.4   -19.3  -16.4  0.684  -19.7  -19.5  0.00003    4.6    0.3
+sfx_sand_step_2        ogg   1   0.308   -1.5   -1.5   -17.1  -17.1  0.759  -19.5  -19.5  0.00004    6.6    0.1
                        energy after 120 ms 1.2 % (running steps are 0.225 s apart)
-sfx_sand_step_2        mp3   1   0.310   -1.4   -1.4   -17.0  -17.0  0.741  -19.6  -19.5  0.00002    4.3    0.1
-sfx_sand_step_3        ogg   1   0.317   -1.4   -1.4   -18.0  -15.2  0.610  -19.5  -19.5  0.00003    6.6    0.2
-                       energy after 120 ms 1.7 % (running steps are 0.225 s apart)
-sfx_sand_step_3        mp3   1   0.320   -1.8   -1.7   -18.4  -15.6  0.610  -19.9  -19.5  0.00007    4.6    0.2
-sfx_sand_step_4        ogg   1   0.244   -2.4   -2.4   -18.0  -18.0  0.841  -19.5  -19.5  0.00005    5.9    1.4
-sfx_sand_step_4        mp3   1   0.247   -2.4   -2.3   -18.3  -18.3  0.841  -19.8  -19.5  0.00006    3.7    1.4
-sfx_pool_splash        ogg   1   1.929   -1.0   -1.0   -17.1   -9.8  0.347  -19.0  -19.0  0.00003   20.7    0.6
+sfx_sand_step_2        mp3   1   0.310   -1.9   -1.9   -17.2  -17.2  0.759  -19.6  -19.5  0.00010    4.3    0.1
+sfx_sand_step_3        ogg   1   0.317   -1.8   -1.7   -18.3  -15.5  0.631  -19.5  -19.5  0.00001    6.5    0.2
+                       energy after 120 ms 1.8 % (running steps are 0.225 s apart)
+sfx_sand_step_3        mp3   1   0.320   -1.9   -1.9   -18.6  -15.7  0.631  -19.7  -19.5  0.00001    4.6    0.1
+sfx_sand_step_4        ogg   1   0.237   -1.6   -1.6   -17.9  -17.9  0.832  -19.5  -19.5  0.00002    5.7    1.4
+sfx_sand_step_4        mp3   1   0.240   -2.2   -2.1   -18.2  -18.2  0.832  -19.8  -19.5  0.00023    3.7    1.3
+sfx_pool_splash        ogg   1   1.900   -2.4   -2.1   -17.9  -10.7  0.385  -19.0  -19.0  0.00002   20.0    0.6
                        cue onsets (manifest -> detected): slap 0.000->0.000
-sfx_pool_splash        mp3   1   1.929   -1.9   -1.7   -17.3  -10.0  0.347  -19.2  -19.0  0.00001   23.3    0.6
-sfx_beach_kids_1       ogg   1   0.617   -1.1   -1.1   -10.0   -8.1  0.226  -21.0  -21.0  0.00000    8.1    2.6
-sfx_beach_kids_1       mp3   1   0.620   -1.9   -1.9   -10.3   -8.4  0.226  -21.3  -21.0  0.00000    8.0    2.5
-sfx_beach_kids_2       ogg   1   0.638   -1.3   -1.3    -8.5   -6.4  0.186  -21.0  -21.0  0.00000    8.3    0.4
-sfx_beach_kids_2       mp3   1   0.641   -2.0   -2.0    -8.9   -6.8  0.186  -21.4  -21.0  0.00000    8.3    0.4
-sfx_beach_kids_3       ogg   1   0.741   -1.3   -1.3    -9.4   -7.7  0.216  -21.0  -21.0  0.00001    9.1    0.3
-sfx_beach_kids_3       mp3   1   0.744   -1.9   -1.9    -9.9   -8.1  0.216  -21.4  -21.0  0.00000    9.5    0.3
-sfx_beach_kids_4       ogg   1   0.738   -1.3   -1.2    -7.3   -5.2  0.162  -21.0  -21.0  0.00001    9.2    1.8
-sfx_beach_kids_4       mp3   1   0.741   -1.9   -1.9    -7.7   -5.6  0.162  -21.4  -21.0  0.00001    9.5    1.8
-sfx_sand_step_5        ogg   1   0.243   -1.8   -1.7   -16.5  -16.5  0.708  -19.5  -19.5  0.00007    5.7    2.7
-sfx_sand_step_5        mp3   1   0.246   -2.3   -2.2   -17.0  -17.0  0.708  -20.0  -19.5  0.00018    3.7    2.6
-sfx_splash_1b          ogg   1   0.922   -1.6   -1.4   -15.1  -11.0  0.376  -19.5  -19.5  0.00001   11.6    0.1
-sfx_splash_1b          mp3   1   0.901   -2.3   -2.1   -15.3  -11.2  0.376  -19.7  -19.5  0.00002   11.3    0.1
-sfx_splash_1c          ogg   1   0.933   -1.3   -1.2   -13.2   -9.8  0.327  -19.5  -19.5  0.00000   12.0    0.1
-sfx_splash_1c          mp3   1   0.935   -1.5   -1.3   -13.3   -9.9  0.327  -19.6  -19.5  0.00001   11.6    0.1
-sfx_wave_wash_2        ogg   1   2.590   -1.9   -1.9   -16.8  -13.7  0.432  -21.0  -21.0  0.00000   26.0    0.2
-sfx_wave_wash_2        mp3   1   2.590   -2.3   -2.3   -17.0  -14.0  0.432  -21.3  -21.0  0.00000   31.2    0.2
-sfx_wave_wash_3        ogg   1   3.323   -1.6   -1.5   -13.8  -10.4  0.295  -21.0  -21.0  0.00003   32.7    0.4
-sfx_wave_wash_3        mp3   1   3.323   -1.0   -1.0   -14.0  -10.6  0.295  -21.2  -21.0  0.00000   39.8    0.3
-total payload assets/audio5 (audio files + manifest): 3543099 bytes = 3.543 MB = 3.379 MiB (limit 3500000 bytes)
+sfx_pool_splash        mp3   1   1.900   -3.0   -2.7   -18.2  -11.0  0.385  -19.3  -19.0  0.00000   23.0    0.6
+sfx_beach_kids_1       ogg   1   0.597   -1.1   -1.0   -10.1   -8.1  0.226  -21.0  -21.0  0.00000    8.1    2.6
+sfx_beach_kids_1       mp3   1   0.600   -1.9   -1.9   -10.4   -8.5  0.226  -21.4  -21.0  0.00000    7.7    2.5
+sfx_beach_kids_2       ogg   1   0.638   -1.3   -1.3    -8.4   -6.4  0.186  -21.0  -21.0  0.00000    8.3    0.4
+sfx_beach_kids_2       mp3   1   0.641   -1.9   -1.8    -8.9   -6.8  0.186  -21.4  -21.0  0.00000    8.3    0.4
+sfx_beach_kids_3       ogg   1   0.765   -1.3   -1.3    -9.5   -7.7  0.216  -21.0  -21.0  0.00000    9.1    0.3
+sfx_beach_kids_3       mp3   1   0.744   -1.9   -1.9    -9.9   -8.2  0.216  -21.5  -21.0  0.00000    9.5    0.3
+sfx_beach_kids_4       ogg   1   0.738   -1.4   -1.3    -7.3   -5.2  0.162  -21.0  -21.0  0.00001    9.2    1.8
+sfx_beach_kids_4       mp3   1   0.741   -2.0   -1.9    -7.8   -5.7  0.162  -21.5  -21.0  0.00001    9.5    1.8
+sfx_sand_step_5        ogg   1   0.263   -1.4   -1.1   -16.5  -16.5  0.708  -19.5  -19.5  0.00010    5.5    2.8
+sfx_sand_step_5        mp3   1   0.240   -2.1   -2.0   -16.8  -16.8  0.708  -19.8  -19.5  0.00003    3.7    2.7
+sfx_splash_1b          ogg   1   0.922   -2.0   -1.8   -14.6  -10.5  0.355  -19.5  -19.5  0.00001   11.5    0.1
+sfx_splash_1b          mp3   1   0.901   -1.2   -1.1   -14.7  -10.6  0.355  -19.6  -19.5  0.00001   11.3    0.1
+sfx_splash_1c          ogg   1   0.917   -1.7   -1.7   -13.9  -10.5  0.355  -19.5  -19.5  0.00000   11.7    0.1
+sfx_splash_1c          mp3   1   0.920   -2.7   -2.6   -14.0  -10.6  0.355  -19.6  -19.5  0.00001   11.6    0.1
+sfx_wave_wash_2        ogg   1   2.590   -1.9   -1.9   -16.8  -13.7  0.432  -21.0  -21.0  0.00000   25.0    0.2
+sfx_wave_wash_2        mp3   1   2.590   -2.0   -1.9   -17.0  -14.0  0.432  -21.3  -21.0  0.00000   31.2    0.2
+sfx_wave_wash_3        ogg   1   3.323   -1.2   -1.2   -13.8  -10.5  0.299  -21.0  -21.0  0.00004   31.4    0.4
+sfx_wave_wash_3        mp3   1   3.323   -2.0   -2.0   -14.1  -10.7  0.299  -21.2  -21.0  0.00000   39.8    0.3
+total payload assets/audio5 (audio files + manifest): 3486245 bytes = 3.486 MB = 3.325 MiB (limit 3500000 bytes)
 sea realism (momentary loudness 400 ms / 100 ms hop):
-  amb_sea_waves (new)     42.0s  range p95-p10 12.3 dB, 7 breakers, intervals 5.0-6.7 s (mean 5.9), breaker level spread 5.8 dB, spectral-envelope self-similarity 0.38 at lag 6.0 s (loudness curve 0.67 at 5.9 s)
+  amb_sea_waves (new)     42.0s  range p95-p10 12.4 dB, 7 breakers, intervals 4.9-6.7 s (mean 5.9), breaker level spread 5.7 dB, spectral-envelope self-similarity 0.37 at lag 5.9 s (loudness curve 0.67 at 5.9 s)
   audio/amb_sea (old)     24.0s  range p95-p10 13.6 dB, 4 breakers, intervals 5.6-6.2 s (mean 5.9), breaker level spread 1.9 dB, spectral-envelope self-similarity 0.63 at lag 12.0 s (loudness curve 0.93 at 11.8 s)
 headless Chromium 141.0.7390.37 decodeAudioData (OfflineAudioContext 44.1 kHz):
-  bgm_beach              ogg: 2116544 frames x 2 ch (want 2116544, exact), seam d2 ratio 0.067
-  bgm_beach              mp3: 2116544 frames x 2 ch (want 2116544, exact), seam d2 ratio 0.170
-  amb_sea_waves          ogg: 1852160 frames x 1 ch (want 1852160, exact), seam d2 ratio 0.053
-  amb_sea_waves          mp3: 1852160 frames x 1 ch (want 1852160, exact), seam d2 ratio 0.048
-  amb_beach              ogg: 1058432 frames x 1 ch (want 1058432, exact), seam d2 ratio 0.109
-  amb_beach              mp3: 1058432 frames x 1 ch (want 1058432, exact), seam d2 ratio 0.031
+  bgm_beach              ogg: 2116416 frames x 2 ch (want 2116416, exact), seam d2 ratio 0.040
+  bgm_beach              mp3: 2116416 frames x 2 ch (want 2116416, exact), seam d2 ratio 0.431
+  amb_sea_waves          ogg: 1852160 frames x 1 ch (want 1852160, exact), seam d2 ratio 0.087
+  amb_sea_waves          mp3: 1852160 frames x 1 ch (want 1852160, exact), seam d2 ratio 0.081
+  amb_beach              ogg: 1058432 frames x 1 ch (want 1058432, exact), seam d2 ratio 0.060
+  amb_beach              mp3: 1058432 frames x 1 ch (want 1058432, exact), seam d2 ratio 0.110
 mix: bgm_beach plays at -26.5 LUFS effective (bgm_village target -26.5)
-demo: bed -28.1 LUFS | sfx layer -25.6 LUFS | mix -25.4 LUFS, peak -8.0 dBFS
+demo: bed -28.1 LUFS | sfx layer -25.7 LUFS | mix -25.4 LUFS, peak -8.0 dBFS
 demo timeline (4 s windows, max momentary LUFS)  bed | sfx
-   0s   -25.9 |  -99.0
-   4s   -25.9 |  -20.5
+   0s   -25.2 |  -31.1
+   4s   -25.5 |  -21.0
    8s   -26.1 |  -99.0
-  12s   -27.2 |  -23.1
-  16s   -26.4 |  -23.7
-  20s   -26.5 |  -20.9
-  24s   -25.7 |  -21.8
-  28s   -26.7 |  -20.4
-  32s   -24.3 |  -22.7
-  36s   -24.9 |  -19.5
-  40s   -24.9 |  -19.0
-  44s   -24.6 |  -21.6
-  48s   -25.5 |  -33.6
-  52s   -27.5 |  -30.0
+  12s   -27.1 |  -23.1
+  16s   -25.3 |  -24.7
+  20s   -25.8 |  -20.9
+  24s   -25.4 |  -21.8
+  28s   -25.2 |  -20.4
+  32s   -24.8 |  -22.7
+  36s   -24.3 |  -19.4
+  40s   -25.2 |  -19.0
+  44s   -25.1 |  -21.6
+  48s   -25.6 |  -33.6
+  52s   -27.7 |  -29.9
   56s   -30.1 |  -26.8
-  60s   -29.5 |  -99.0
+  60s   -29.8 |  -99.0
 
-FAIL: payload 3543099 bytes > 3500000
 
-RESULT: FAIL
+RESULT: OK

@@ -197,7 +197,11 @@ SEAM_FIT = {
     "sfx_hose_spray": [{"seed": s} for s in range(10500, 10516)],
     "sfx_excavator": [{"seed": s} for s in range(10800, 10832)],
     "sfx_comic_fight": [{"seed": s} for s in range(12200, 12216)],
+    # music: move the loop point a few ms around the downbeat (the pre-mix is memoised, so variants are cheap);
+    # scored also after the 48 kHz resampling phones do (bgm_city's mp3 wrap jumped at 48 kHz with lead 12 ms)
+    "bgm_city": [{"lead": v} for v in (0.012, 0.008, 0.016, 0.006, 0.020, 0.010, 0.014, 0.004, 0.024, 0.018)],
 }
+SEAM48 = {"bgm_city"}            # keys whose seam score includes the emulated 48 kHz decode (seam48 below)
 # Same codec settings as assets/audio .. audio4 (build_audio.MP3_KBPS / CHANNELS / OGG_Q).
 MP3_KBPS = dict(BA.MP3_KBPS)
 
@@ -216,6 +220,22 @@ bind()
 
 
 # ----------------------------------------------------------------------------- render
+def seam48(x) -> float:
+    """Wrap smoothness after a 44.1 -> 48 kHz decode the way browsers do it on phones (the decoded loop gets a
+    fractional length and is truncated; the resampler sees silence beyond both ends): resample 160/147, truncate
+    to floor(n * 48000 / 44100), max |2nd difference| straddling the wrap / 99.9th percentile of all of them -
+    the same statistic check_audio6 reads from headless Chromium (this emulation tracks it within ~0.1)."""
+    import numpy as np
+    from scipy import signal
+    x = np.atleast_2d(x)
+    y = signal.resample_poly(x, 160, 147, axis=1)[:, :int(x.shape[1] * 48000 // 44100)]
+    seam = ref = 0.0
+    for z in y:
+        d2 = np.abs(z - 2 * np.roll(z, 1) + np.roll(z, 2))
+        seam, ref = max(seam, float(d2[:3].max())), max(ref, float(np.percentile(d2[2::3], 99.9)))
+    return seam / max(ref, 1e-12)
+
+
 def fit_loop_seam(key: str, variants, good: float = 0.5):
     """build_audio.fit_loop for each render variant (e.g. seeds) of a loop; every fitted loop is encoded exactly
     like the delivery (Vorbis q4 and LAME, CHANNELS[kind]) and decoded, and the variant whose decoded wrap is
@@ -250,6 +270,8 @@ def fit_loop_seam(key: str, variants, good: float = 0.5):
                     break
                 lm = loop_metrics(d)
                 score = max(score, lm["d2_ratio"], lm["hf_ratio"])
+                if key in SEAM48:
+                    score = max(score, seam48(d))
             meta = dict(meta, seamVariant=kw, seamRatio=round(score, 3))
             if best is None or score < best[0]:
                 best = (score, x, meta)

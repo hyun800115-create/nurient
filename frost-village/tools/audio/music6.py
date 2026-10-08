@@ -393,14 +393,17 @@ def _premix_city(seed: int):
              "pad": 3.0, "kick": 0.66, "snr": 1.9, "clap": 2.0, "shk": 4.2, "sleigh": 2.4, "wb": 1.3, "cym": 1.0,
              "stab": 0.8, "fx": 1.0}
     mix = premix(mx, sends, gains, L, rt60=1.6, pad_bus="pad")
-    mix = _delay(mix)
     meta = {"bpm": 126, "bars": bars, "loopSamples": L, "nominalSamples": L, "target": -18.0}
-    return mix, meta
+    return mix, meta                                  # the lead-in delay is applied in render_city
 
 
-def render_city(seed: int = 81, loop_samples=None, premix_only: bool = False):
-    """-> (stereo loop (2, L), meta). Pre-mix memoised (same interface as music4.render_harbor)."""
+def render_city(seed: int = 81, loop_samples=None, premix_only: bool = False, lead: float = 0.012):
+    """-> (stereo loop (2, L), meta). Pre-mix memoised (same interface as music4.render_harbor).
+    lead = how far before the downbeat the loop point sits (s); build_audio6 tries a few values and keeps the one
+    whose decoded wrap is smoothest in both codecs, also after the 48 kHz resampling phones do."""
     mix, meta = _memo(("city", seed), lambda: _premix_city(seed))
+    mix = _delay(mix, lead)
+    meta["lead"] = lead
     if premix_only:
         return mix, meta
     L = int(loop_samples or meta["nominalSamples"])

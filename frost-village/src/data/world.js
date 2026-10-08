@@ -551,13 +551,14 @@ WORLD.v4 = {
   },
   // ── 길 (B 의 RoadNet 이 칠하고, 사람·탈것이 다녀요).
   //    corridor = 영원히 비워 두는 칸 (i: [시작, 끝], j: [시작, 끝]), paint = v4 에 칠하는 칸 (j 또는 i 범위), cls = 길 종류
+  //    paintSpan = (Y 길) 칠하는 j 범위 (큰길까지 이어지게), walkSpan = 걷는 선의 범위
   //    walk = 사람이 걷는 선 (X 길: j 값, Y 길: i 값)
   streets: [
     { id: 'link',      axis: 'x', i: [-6.5, 2.0],  j: [-1.5, -0.5],  cls: 'path',   name: 'st_link' },                             // 역 가는 길 (v2 길로 그려요)
     { id: 'square',    axis: 'x', i: [2.0, 8.3],   j: [-3.0, -0.75], cls: 'square', walk: -1.6, walkSpan: [2.0, 8.5], name: 'st_square' },  // 역 광장
     { id: 'main',      axis: 'x', i: [8.0, 49.5],  j: [-9.0, -3.0],  cls: 'dirt',   paint: [-6.0, -4.0], walk: -4.5, walkSpan: [8.2, 49.5], name: 'st_main' },   // 역앞 거리 → 솔방울 큰길
     { id: 'back',      axis: 'x', i: [13.0, 50.0], j: [-14.0, -12.0], cls: 'dirt',  paint: [-14.0, -12.0], walk: -13.0, name: 'st_back' },   // 뒷길 / 학교길
-    { id: 'ave',       axis: 'y', i: [30.0, 34.0], j: [-18.0, -9.0], cls: 'dirt',   paint: [30.0, 34.0], walk: 30.4, walkSpan: [-17.5, -4.5], name: 'st_ave' },  // 솔방울 중앙로
+    { id: 'ave',       axis: 'y', i: [30.0, 34.0], j: [-18.0, -9.0], cls: 'dirt',   paint: [30.0, 34.0], paintSpan: [-18.0, -4.0], walk: 30.4, walkSpan: [-17.5, -4.5], name: 'st_ave' },  // 솔방울 중앙로
     { id: 'shopalley', axis: 'y', i: [23.3, 24.3], j: [-18.0, -9.0], cls: 'path',   walk: 23.8, walkSpan: [-17.5, -4.5], name: 'st_shopalley' },          // 가게 골목
     { id: 'homes',     axis: 'x', i: [17.0, 30.0], j: [-18.0, -17.0], cls: 'path',  walk: -17.5, walkSpan: [17.0, 30.4], name: 'st_homes' },   // 집 앞길
     { id: 'apts',      axis: 'x', i: [34.0, 47.0], j: [-18.0, -17.0], cls: 'path',  walk: -17.5, walkSpan: [30.4, 47.0], name: 'st_apts' },   // 아파트 앞길

@@ -231,8 +231,10 @@ CF_CIVIC = FIRE + POLICE + BURGLAR + BANK + PRESS + ['top_work_jacket', 'top_del
 MOVERS = ['top_work_jacket', 'acc_gloves', 'top_delivery_polo', 'bot_mover_overalls', 'acc_back_brace', 'top_sweater']
 SITE = ['top_hivis_jacket', 'top_work_jacket', 'acc_toolbelt', 'acc_gloves', 'det_hivis', 'bot_overalls']
 CAST3 = {
-    'run':           ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, FIRE + POLICE + BURGLAR),
-    'flee':          ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),
+    # run is the everyday hurry / play / rush-to-see anim -> the core wardrobe; flee (arms-up panic) keeps the mini
+    # wardrobe and everybody else falls back flee -> run with the 'panic' face (still reads as fleeing)
+    'run':           ({'child': 'core', 'adult': 'core', 'elder': 'core'}, FIRE + POLICE + BURGLAR),
+    'flee':          ({'child': 'mini', 'adult': 'mini', 'elder': 'mini'}, BURGLAR),
     'arrested_walk': ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'carry_box':     ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, MOVERS),
     'argue':         ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),

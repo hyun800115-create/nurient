@@ -473,13 +473,13 @@ def sfx_collapse_soft():
     m.add(0.425, wood_knock(r, 1180, 0.7, 0.05), 0.22)
     for t0, note, v in ((0.6, "C4", 1.0), (0.84, "A3", 0.92), (1.06, "F3", 0.95)):
         f = float(S.midi_hz(S.note(note)))
-        m.add(t0, wood_knock(r, f, v, 0.22), 0.42)
-        m.add(t0, wood_knock(r, 2 * f, v, 0.12), 0.3)                    # octave 'tok': the arpeggio reads on phones
+        m.add(t0, wood_knock(r, f, v, 0.18), 0.36)
+        m.add(t0, wood_knock(r, 2 * f, v, 0.12), 0.38)                   # octave 'tok': the arpeggio reads on phones
         m.add(t0 + 0.075, wood_knock(r, f * 1.01, v * 0.4, 0.12), 0.3)
         m.add(t0 + 0.075, wood_knock(r, 2.02 * f, v * 0.4, 0.07), 0.14)
         m.add(t0, puff(r, 0.18, 1200, [(0, 0), (0.005, 1), (0.18, 0)]), 0.16)
-    m.add(1.22, blip(95, 40, 0.5, 0.05, 0.12, attack=0.004), 0.55)
-    m.add(1.22, puff(r, 0.9, 420, [(0, 0), (0.02, 1.0), (0.3, 0.5), (0.9, 0)]), 0.4)
+    m.add(1.22, blip(95, 40, 0.5, 0.05, 0.08, attack=0.004), 0.45)
+    m.add(1.22, puff(r, 0.9, 420, [(0, 0), (0.02, 1.0), (0.3, 0.5), (0.9, 0)]), 0.3)
     m.add(1.22, cardboard(r, 1.0, 0.6), 0.35)                            # hollow mid 'flumph' body (~350-900 Hz)
     t = 1.25
     while t < 1.95:                                      # rubble pour
@@ -716,12 +716,12 @@ def sfx_stamp():
     papery slap, rubber squash - and a pen hopping on the desk. cues: thunk 0."""
     r = S.rng(11300)
     m = Mono(0.7)
-    m.add(0.0, blip(240, 95, 0.2, 0.015, 0.035, attack=0.0008), 0.28)       # polish: desk thump -4 dB
-    m.add(0.0, wood_knock(r, 720, 1.0, 0.08), 0.75)                          # polish: knock 310 -> 720 Hz (phones)
-    m.add(0.0, wood_knock(r, 310, 0.7, 0.07), 0.2)
-    m.add(0.0, S.bp(r.standard_normal(n_of(0.08)), 1900, 0.9) * S.env_exp(n_of(0.08), 0.011, 0.0004), 0.5)
+    m.add(0.0, blip(240, 95, 0.2, 0.015, 0.022, attack=0.0008), 0.28)       # polish: desk thump -4 dB, shorter
+    m.add(0.0, S.hp(wood_knock(r, 720, 1.0, 0.08), 420, order=2), 0.8)     # polish: knock 310 -> 720 Hz (phones)
+    m.add(0.0, wood_knock(r, 310, 0.7, 0.05), 0.12)
+    m.add(0.0, S.bp(r.standard_normal(n_of(0.08)), 1900, 0.9) * S.env_exp(n_of(0.08), 0.011, 0.0004), 0.6)
     m.add(0.0, burst(r, 0.01, 3600, 1.2, tau=0.0015), 0.15)
-    m.add(0.004, S.lp(r.standard_normal(n_of(0.06)), 1200) * S.env_exp(n_of(0.06), 0.012, 0.001), 0.3)
+    m.add(0.004, S.bp(r.standard_normal(n_of(0.06)), 850, 0.9) * S.env_exp(n_of(0.06), 0.012, 0.001), 0.3)
     m.add(0.11, wood_knock(r, 1400, 0.5, 0.03), 0.2)
     m.add(0.18, wood_knock(r, 1500, 0.35, 0.03), 0.13)
     y = room(m.x, 0.4, 0.08, 0.15, 0.5)

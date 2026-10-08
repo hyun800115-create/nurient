@@ -446,17 +446,19 @@ def b_dump_truck():
 
     def load_fn():
         yc = 0.95 - hy + 0.35
-        blob('heap', 0.8, (0, yc, 0.15), CL.charcoal(4.0, seed=91), scale=(1.12, 1.35, 0.3), seed=92,
-             amp=0.25, subdiv=3, flat_bottom=0.3)
-        blob('ash', 0.45, (0.35, yc + 0.5, 0.22), flat(CL.ASH, 0.9), scale=(1.2, 1.0, 0.4), seed=93, amp=0.25,
+        blob('heap', 0.8, (0, yc, 0.15), CL.charcoal(4.0, snow=0.35, seed=91, base=CL.ASH_DARK), scale=(1.12, 1.35, 0.3),
+             seed=92, amp=0.25, subdiv=3, flat_bottom=0.3)
+        blob('ash', 0.5, (0.3, yc + 0.45, 0.24), snowy_ash(), scale=(1.2, 1.0, 0.42), seed=93, amp=0.25,
+             subdiv=2)
+        blob('ash2', 0.42, (-0.35, yc - 0.55, 0.22), snowy_ash(), scale=(1.1, 1.0, 0.4), seed=95, amp=0.25,
              subdiv=2)
         for k, (p, q) in enumerate((((-0.6, -0.4, 0.32), (0.5, -1.6, 0.5)), ((0.6, -0.3, 0.3), (-0.2, -1.2, 0.55)),
                                     ((-0.3, -1.9, 0.3), (0.7, -2.3, 0.45)), ((-0.7, -1.0, 0.3), (0.1, -0.2, 0.5)))):
             CL.charred_beam('lb', (p[0], p[1] + 0.95 - hy + 1.2, p[2]), (q[0], q[1] + 0.95 - hy + 1.2, q[2]),
                             r=0.06, seed=94 + k, snow=False)
-        CL.bricks('lbricks', (0.1, yc), 0.6, 10, seed=97, col='#B4593F', z=0.3)
+        CL.bricks('lbricks', (0.1, yc), 0.7, 14, seed=97, col='#B4593F', z=0.4)
         for k in range(4):
-            box('ltile', (0.26, 0.18, 0.03), (-0.5 + 0.33 * k, yc - 0.3 + 0.25 * (k % 2), 0.42),
+            box('ltile', (0.26, 0.18, 0.03), (-0.5 + 0.33 * k, yc - 0.3 + 0.25 * (k % 2), 0.5),
                 rot=(15 * (k % 2), -12, 30 * k), mat=flat(['#C8473A', '#3D6FA8'][k % 2], 0.7), bevel=0.01)
     load_static = collect_to(bed, load_fn)
 

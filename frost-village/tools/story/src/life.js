@@ -132,6 +132,13 @@ export class Life {
 
   // ---------------------------------------------------------------- daily
   daily() {
+    this.aging();
+    if (this.e.cfg.lifeEvents) this.babies();
+    this.moves();
+  }
+
+  /** birthdays into the next age group, newcomers settling in, gentle farewells, old agendas */
+  aging() {
     const e = this.e, rng = e.rng, day = e.clock.day;
     const list = e.alive.slice();
     for (const r of list) {
@@ -147,8 +154,28 @@ export class Life {
       // agenda clean-up
       if (r.agenda.length) r.agenda = r.agenda.filter((a) => a[0] >= day);
     }
-    if (e.cfg.lifeEvents) this.babies();
-    this.moves();
+    this.dates();
+  }
+
+  /** sweethearts and the engaged plan a date for tomorrow evening (a café, the park, the ice rink …) */
+  dates() {
+    const e = this.e, rng = e.rng, day = e.clock.day + 1;
+    if (!e.cfg.lifeEvents) return;
+    for (const r of e.alive) {
+      const o = this.partnerOf(r);
+      if (o < r.id) continue;                 // each pair once (and skips -1)
+      const p = e.people[o];
+      if (!p || !p.alive || r.spouse === o) continue;
+      if (!rng.chance(0.55)) continue;
+      if (r.agenda.some((a) => a[0] === day) || p.agenda.some((a) => a[0] === day)) continue;
+      const kinds = ['cafe', 'park', 'ice_rink', 'restaurant', 'plaza', 'beach_fire', 'bakery'];
+      let place = null;
+      for (let k = 0; k < 4 && !place; k++) { const list = e.world.all(kinds[rng.int(kinds.length)]).filter((q) => q.state === B_OK); if (list.length) place = list[rng.int(list.length)]; }
+      if (!place) continue;
+      const min = 1020 + rng.int(7) * 15;
+      r.agenda.push([day, min, place.idx, p.id]);
+      p.agenda.push([day, min, place.idx, r.id]);
+    }
   }
 
   grow(r, from, to) {

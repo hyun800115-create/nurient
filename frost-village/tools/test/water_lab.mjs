@@ -191,13 +191,15 @@ async function ingame() {
   const { PATCHES, apply, FILES } = await import('./water_lab/integrate.mjs');
   void PATCHES;
   await boot();
-  const cam = (opt('cam') || '1440,300').split(',').map(Number);
+  // camera centres: the dock of the village coast with the top of the view at the top of the sea region
+  // (world y -200, like the old tileSprite); zoom 1.0 / 1.2 keep the game's own camera bounds
+  const camOpt = opt('cam') ? opt('cam').split(',').map(Number) : null;
   const runs = [
-    { name: 'old', patch: false, zoom: 1.0 },
-    { name: 'new_high', patch: true, zoom: 1.0 },
-    { name: 'new_high_z06', patch: true, zoom: 0.6 },
-    { name: 'new_high_z12', patch: true, zoom: 1.2 },
-    { name: 'new_low', patch: true, zoom: 1.0, quality: 'low' },
+    { name: 'old', patch: false, zoom: 1.0, cam: [1440, 580] },
+    { name: 'new_high', patch: true, zoom: 1.0, cam: [1440, 580] },
+    { name: 'new_high_z06', patch: true, zoom: 0.6, cam: [1440, 1100] },
+    { name: 'new_high_z12', patch: true, zoom: 1.2, cam: [1440, 470] },
+    { name: 'new_low', patch: true, zoom: 1.0, quality: 'low', cam: [1440, 580] },
   ];
   const only = opt('only');
   const out = { missing: {}, runs: [] };
@@ -228,11 +230,11 @@ async function ingame() {
       if (ok) break;
     }
     await page.waitForTimeout(1500);
+    const cam = camOpt || r.cam;
     const info = await page.evaluate(([x, y, z, q]) => {
       const F = window.__FV, gs = F.scene, g = gs.ground;
       if (q && g.setWaterQuality) g.setWaterQuality(q);
       F.camera(x, y, z);
-      gs.cameras.main.removeBounds();            // (test framing: the coast in the middle of the phone)
       gs.cameras.main.centerOn(x, y);
       g.ensure(gs.cameras.main.worldView, Infinity, 300);
       return { water: g.water ? g.water.info() : null, fish: !!g.fish1, floaters: (gs.floaters || []).length, viewK: gs.cameras.main.zoom };
@@ -244,7 +246,7 @@ async function ingame() {
       game.loop.sleep();
       const gl = game.renderer.gl, px = new Uint8Array(4);
       const step = (t, d) => { if (g.water) g.water.setTime(t); g.t = t; game.step(100000 + t * 1000, d); if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); };
-      const fit = () => { gs.cameras.main.removeBounds(); gs.cameras.main.centerOn(x, y); g.ensure(gs.cameras.main.worldView, Infinity, 300); };
+      const fit = () => { gs.cameras.main.centerOn(x, y); g.ensure(gs.cameras.main.worldView, Infinity, 300); };
       fit();
       for (let i = 0; i < 3; i++) step(3.9 + i * 0.03, 0);
       const a = performance.now();
@@ -264,7 +266,7 @@ async function ingame() {
   // composite (only when all five ran)
   const f = (n) => path.join(TMP, `ingame_${n}.png`);
   if (!only) {
-    const crop = (src, dst) => execFileSync('python3', ['-c', `from PIL import Image; Image.open('${src}').convert('RGB').crop((0, 260, 780, 1460)).save('${dst}')`]);
+    const crop = (src, dst) => execFileSync('python3', ['-c', `from PIL import Image; Image.open('${src}').convert('RGB').crop((0, 0, 780, 1240)).save('${dst}')`]);
     for (const n of ['old', 'new_high', 'new_high_z06', 'new_high_z12', 'new_low']) crop(f(n), f(n + '_c'));
     execFileSync('python3', [path.join(ROOT, 'tools', 'test', 'water_lab', 'compose.py'), 'strip', path.join(PREV, 'water_ingame.png'), '5',
       f('old_c'), f('new_high_c'), f('new_low_c'), f('new_high_z06_c'), f('new_high_z12_c'),

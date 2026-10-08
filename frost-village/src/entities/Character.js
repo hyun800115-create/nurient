@@ -9,6 +9,7 @@ import { DIR_BASE, DIR_FLIP, dirFromVec } from '../core/Iso.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { ItemStack } from './ItemStack.js';
 import { BALANCE } from '../data/balance.js';
+import { DollSprite } from './DollSprite.js';
 
 // small sideways shift of a head-carried tower per rendered direction (the head leans a little)
 const HEAD_DX = { S: 0, SE: 3, E: 5, NE: 3, N: 0 };
@@ -31,7 +32,9 @@ export class Character {
     const sh = this.def.shadow || [46, 18];
     this.shadow = gs.add.image(x, y, 'fv_shadow').setDepth(DEPTH.SHADOW);
     this.shadow.setDisplaySize(sh[0] * 1.15, sh[1] * 1.3);
-    this.sprite = gs.add.sprite(x, y, '__WHITE');
+    // (v4-A) opts.person: a townsperson paper doll ('tf:<base>') instead of a single-atlas sprite
+    this.sprite = opts.person ? new DollSprite(gs, key, opts.person, x, y) : gs.add.sprite(x, y, '__WHITE');
+    if (opts.person) this.sprite.shadow = this.shadow;
     this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this._onFrame, this);
     this.stack = new ItemStack(gs, { scale: opts.carryScale || BALANCE.player.carryScale, sway: true, max: opts.capacity || 99 });
@@ -65,11 +68,12 @@ export class Character {
     this.animName = name;
     this.animRes = res;
     this.animKey = key;
-    if (!this.scene.anims.exists(key)) return;
+    const doll = this.sprite.isDoll;
+    if (!doll && !this.scene.anims.exists(key)) return;
     const a = this.sprite.anims;
     if (keepFrame && prevName === name && a.currentAnim) {
       const idx = a.currentFrame ? a.currentFrame.index - 1 : 0;
-      const n = this.scene.anims.get(key).frames.length;
+      const n = doll ? this.sprite.frameCount(key) : this.scene.anims.get(key).frames.length;
       a.play({ key, startFrame: Math.min(idx, n - 1) });
     } else {
       a.play(key);
@@ -141,7 +145,7 @@ export class Character {
 
   /** swap to another character's art in place (e.g. its atlas finished loading) */
   reskin(key) {
-    if (!key || key === this.key) return;
+    if (!key || key === this.key || this.sprite.isDoll) return;
     this.key = key;
     this.def = Assets.charDef(key);
     this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);

@@ -81,7 +81,7 @@ def beach_bg(W, H, shore, t=0.0, seed=3):
 def shadow(img, x, y, w, h, a=64):
     sh = Image.new('RGBA', (int(w * 2 + 4), int(h * 2 + 4)), (0, 0, 0, 0))
     ImageDraw.Draw(sh).ellipse([2, 2, w * 2 + 1, h * 2 + 1], fill=(110, 86, 50, a))
-    img.alpha_composite(sh, (int(x - w - 2), int(y - h - 2)))
+    paste(img, sh, int(x - w - 2), int(y - h - 2))
 
 
 def ripple(img, x, y, k=1.0, t=0.0):
@@ -161,6 +161,19 @@ def splash_fx(img, x, y, t):
 WATER = ('swim', 'float', 'splash_play', 'surf')
 
 
+MARGIN = 40          # compose margin: sunbathing heads / hat brims reach outside the 128 frame (never clipped in-game)
+
+
+def paste(dst, src, x, y):
+    """alpha_composite src onto dst with its top-left at (x, y); parts outside dst are cropped."""
+    W, H = dst.size
+    w, h = src.size
+    x0, y0, x1, y1 = max(0, x), max(0, y), min(W, x + w), min(H, y + h)
+    if x1 <= x0 or y1 <= y0:
+        return
+    dst.alpha_composite(src.crop((x0 - x, y0 - y, x1 - x, y1 - y)), (x0, y0))
+
+
 def draw_person(canvas, bf, p, anim, d, i, x, y, t=0.0, extras=True):
     """Ground fx + person; returns nothing.  (x, y) = anchor."""
     B = bf.T['bases'][p['base']]
@@ -175,8 +188,8 @@ def draw_person(canvas, bf, p, anim, d, i, x, y, t=0.0, extras=True):
     b = bf.ball_point(p, anim, d, i) if extras and anim in ('ball_throw', 'ball_catch') else None
     if b and not b[2]:
         ball(canvas, x + b[0], y + b[1], b[3])
-    fr = bf.compose(p, anim, d, i)
-    canvas.alpha_composite(fr, (int(round(x - 64)), int(round(y - 104))))
+    fr = bf.compose(p, anim, d, i, margin=MARGIN)
+    paste(canvas, fr, int(round(x - 64 - MARGIN)), int(round(y - 104 - MARGIN)))
     if b and b[2]:
         ball(canvas, x + b[0], y + b[1], b[3])
 
@@ -299,6 +312,9 @@ SIGNATURE = {'swimmer': ('swim', 'S', 2), 'sunbather': ('sunbathe', 'SE', 0), 'f
              'beach_bar_staff': ('talk', 'SE', 0), 'surfer': ('surf', 'SE', 1), 'beach_tourist': ('clap', 'S', 2)}
 
 
+CELL_AY = 100        # anchor y inside a 112 x 120 preview cell
+
+
 def cell_bg(anim, w, h):
     if anim in WATER:
         return beach_bg(w, h, lambda x: -999, 0.0, 9)
@@ -308,7 +324,7 @@ def cell_bg(anim, w, h):
 def jobs_sheet(bf, path, seeds=(1, 2, 3)):
     G = bf.T['generator']['presets']
     names = list(SIGNATURE)
-    cw, ch = 96, 112
+    cw, ch = 112, 120
     lw = 132
     frames = [('idle', 'S', 0), ('walk', 'SE', 2), ('idle', 'N', 1), None]
     W = lw + len(seeds) * (len(frames) * cw + 12)
@@ -327,11 +343,9 @@ def jobs_sheet(bf, path, seeds=(1, 2, 3)):
                 anim, dd, i = f or SIGNATURE[pr]
                 x0 = lw + s_i * (len(frames) * cw + 12) + j * cw
                 cell = cell_bg(anim, cw, ch)
-                sub = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
-                if anim == 'sunbathe':
-                    ground_for(sub, bf, p, anim, dd, 64, 104)
-                draw_person(sub, bf, p, anim, dd, i, 64, 104)
-                cell.alpha_composite(sub.crop((16, 8, 112, 120)))
+                if anim in ('sunbathe', 'dig'):
+                    ground_for(cell, bf, p, anim, dd, cw // 2, CELL_AY)
+                draw_person(cell, bf, p, anim, dd, i, cw // 2, CELL_AY)
                 img.alpha_composite(cell, (x0, y0))
     img.convert('RGB').save(path, optimize=True)
     print('->', path)
@@ -375,7 +389,7 @@ def parts_sheet(bf, path):
          dict(top='#2E8A8A', top2='#F7F5F0', bottom='#C8A878', acc='#2B2F3A', shoes='#F2C230', skin='#C98E6A')),
     ]
     frames = [('idle', 'S', 0), ('walk', 'SE', 2), ('idle', 'N', 1), ('wave', 'S', 2)]
-    cw, ch = 96, 112
+    cw, ch = 112, 120
     cols_per_row = 2
     rows = (len(looks) + 1) // 2
     W = cols_per_row * (len(frames) * cw + 280)
@@ -404,9 +418,7 @@ def parts_sheet(bf, path):
             if not bf.can_play(p, anim):
                 continue
             cell = cell_bg(anim, cw, ch)
-            sub = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
-            draw_person(sub, bf, p, anim, dd, i, 64, 104)
-            cell.alpha_composite(sub.crop((16, 8, 112, 120)))
+            draw_person(cell, bf, p, anim, dd, i, cw // 2, CELL_AY)
             img.alpha_composite(cell, (x0 + 160 + j * cw, y0))
     img.convert('RGB').save(path, optimize=True)
     print('->', path)

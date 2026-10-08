@@ -84,7 +84,8 @@ for (const [key, i, j] of V4.town.props) {
   const A = rect(p);
   for (const s of streets) {
     if (!s.paint) continue;
-    const pr = s.axis === 'x' ? [s.i[0], s.i[1], s.paint[0], s.paint[1]] : [s.paint[0], s.paint[1], s.j[0], s.j[1]];
+    const sj = s.paintSpan || s.j;
+    const pr = s.axis === 'x' ? [s.i[0], s.i[1], s.paint[0], s.paint[1]] : [s.paint[0], s.paint[1], sj[0], sj[1]];
     if (A[0] < pr[1] && pr[0] < A[1] && A[2] < pr[3] && pr[2] < A[3]) bad(p.name, 'on painted street', s.id);
   }
   for (const w of walkLines) {

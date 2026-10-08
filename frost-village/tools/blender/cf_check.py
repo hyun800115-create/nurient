@@ -39,6 +39,9 @@ NEW_PARTS = ['hat_fire_helmet', 'top_fire_coat', 'bot_fire_pants', 'acc_air_tank
              'top_work_jacket', 'acc_gloves', 'hat_delivery_cap', 'top_delivery_polo', 'bot_mover_overalls',
              'acc_back_brace', 'top_hivis_jacket', 'acc_toolbelt', 'acc_camera', 'held_notepad', 'top_trench',
              'hat_deerstalker']
+# limbs fully hidden by the body in a whole anim/dir (checked by eye on the renders): mittens behind the back seen
+# from the front, mittens hugging the box seen from behind
+HIDDEN_LIMBS = {('arrested_walk', 'S'): ('hand_R', 'hand_L'), ('carry_box', 'N'): ('hand_R', 'hand_L')}
 PRESETS = ['firefighter', 'police_officer', 'detective', 'burglar', 'banker', 'bank_teller', 'warehouse_worker',
            'forklift_driver', 'delivery_driver', 'mover', 'construction_worker', 'demolition_worker', 'reporter']
 # what each preset must wear, and the anims it must be able to play (its job in the living city)
@@ -187,7 +190,8 @@ def main():
                     for limb in ('arm_R', 'arm_L', 'hand_R', 'hand_L'):
                         nm = f'{limb}@{rb}/{a}_{d}_{i}'
                         if nm not in frames:
-                            (hidden if limb.endswith('_L') and d in ('SE', 'E', 'NE') else err).append(f'missing {nm}')
+                            exp = (limb.endswith('_L') and d in ('SE', 'E', 'NE')) or limb in HIDDEN_LIMBS.get((a, d), ())
+                            (hidden if exp else err).append(f'missing {nm}')
             if a not in B.get('cfCover', {}):
                 err.append(f'{base}: no cfCover for {a}')
         for key, anim in (('nozzlePoint', 'spray_hose'), ('boxPoint', 'carry_box'), ('sweepPoint', 'sweep')):
@@ -196,7 +200,7 @@ def main():
                 if len(tab.get(d, [])) != T['anims'][anim]['frames'] or any(v is None for v in tab.get(d, [])):
                     err.append(f'{base}: {key} {anim} {d}')
     if hidden:
-        info.append(f'{len(hidden)} far-side limb frames hidden by the body (expected)')
+        info.append(f'{len(hidden)} limb frames hidden by the body (far-side limbs, HIDDEN_LIMBS; expected)')
     # coverage: every cast part has frames in every frame (some sub)
     holes = {}
     for base in ('child_slim', 'adult_slim', 'elder_slim'):

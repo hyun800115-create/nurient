@@ -217,6 +217,7 @@ export class Market {
 
   /** (v3) the way home after shopping */
   exitPath(c) {
+    if (c && c.exitPathOverride) return c.exitPathOverride();     // (v4-A) a train visitor walks back to the station
     if (this.cfg.exit) { const side = (Math.random() - 0.5) * 70; return this.cfg.exit.map((p) => ({ x: p[0] + side + (Math.random() - 0.5) * 20, y: p[1] + (Math.random() - 0.5) * 16 })); }
     const h = c.home || this.spawnPoint();
     return this.gs.roads.route(c.x, c.y, h.x, h.y, []);
@@ -252,13 +253,17 @@ export class Market {
     let pool = all.filter((k) => recent.indexOf(k) < 0);
     if (!pool.length) pool = all.filter((k) => k !== recent[recent.length - 1]);
     if (!pool.length) pool = all;
-    const key = pool[Math.floor(Math.random() * pool.length)];
+    let key = pool[Math.floor(Math.random() * pool.length)];
     recent.push(key);
     while (recent.length > Math.min(4, Math.max(1, all.length - 2))) recent.shift();
+    // (v4-A) once the neighbours come by train, the customers look like the townsfolk they are
+    const look = gs.v4 && gs.v4.pickLook ? gs.v4.pickLook(this) : null;
+    if (look) key = look.key;
     let x, y, next = 1, visible = false;
     if (atSlot !== undefined) { const s = this.slotPos(atSlot); x = s.x; y = s.y; }
     else { const sp = this.spawnPoint(); x = sp.x + (Math.random() - 0.5) * 30; y = sp.y; next = sp.next; visible = sp.visible; }
-    const c = new Customer(gs, this, key, x, y, this.makeWant(), next, atSlot === undefined ? { x, y } : null);
+    const c = new Customer(gs, this, key, x, y, this.makeWant(), next, atSlot === undefined ? { x, y } : null, look ? { person: look.person } : null);
+    if (look) { c.citizen = look.citizen || null; if (gs.v4.noteVisit) gs.v4.noteVisit(look.citizen); }
     this.queue.push(c);
     if (atSlot !== undefined) { c.state = 'wait'; c.path.length = 0; c.arrived = true; c.faceTo(this.x, this.y); c.showBubble(); }
     else if (visible) c.fadeIn();
@@ -277,7 +282,9 @@ export class Market {
       // (v3.5 review) once the village is complete customers come a little more often (balance.js customers.spawnEveryLate)
       const late = !this.cfg.spawnEvery && gs.progress && gs.progress.complete && Number(BALANCE.customers.spawnEveryLate);
       this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || late || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
-      if (this.queue.length < this.maxQueue && (!this.cfg.available || this.availableFoods().length)) this.spawnCustomer();
+      // (v4-A) while train visitors wait to join the line, the anonymous customers let them in first
+      const vw = gs.v4 && gs.v4.visitorsWaiting ? gs.v4.visitorsWaiting(this) : 0;
+      if (this.queue.length < this.maxQueue && vw < 2 && (!this.cfg.available || this.availableFoods().length)) this.spawnCustomer();
     }
     // serve the front customer
     const front = this.queue[0];
@@ -355,8 +362,9 @@ export class Market {
 
 // ------------------------------------------------------------------ customer
 export class Customer extends Character {
-  constructor(gs, market, key, x, y, want, pathFrom = 1, home = null) {
-    super(gs, key, x, y, { radius: 13, capacity: 10 });
+  constructor(gs, market, key, x, y, want, pathFrom = 1, home = null, opts = null) {
+    // (v4-A) opts.person: the customer is a townsperson paper doll
+    super(gs, key, x, y, Object.assign({ radius: 13, capacity: 10 }, opts || {}));
     this.home = home;
     this.market = market;
     this.want = want;

@@ -50,16 +50,27 @@ const CHIEF_DEEDS = {
   fame: ['{t} 칭호를 받으셨', 'earned the title {t}'], drive: ['트럭을 몰고 {t}까지 다녀오셨', 'drove the truck to {t}'], other: ['{t}', '{t}'],
 };
 
+// '너' (you) + particle as a pronoun (not 너무, 너머 …) and '네가' / '니가'
+const YOU_RE = /(^|[^가-힣])(?:너(는|도|랑|한테|를|만|의|야|네|밖에|가|)|[네니]가())(?![가-힣])/g;
+const YOU_P = { 는: '은', 를: '을', 랑: '이랑', 야: '이야', 가: '이' };
+function replaceYou(text, w) {
+  return text.replace(YOU_RE, (m0, pre, p1, p2) => {
+    const p = p1 !== undefined ? p1 : '가';
+    const form = YOU_P[p];
+    return pre + w + (form ? particle(w, form) : p);
+  });
+}
+
 export class Dialogue {
   constructor(e) {
     this.e = e;
     this.grammars = Object.create(null);
     this.trng = new Rng(1);
     this.ctx = {
-      f0: 0, f1: 0, f2: 0, f3: 0, f4: 0, p0: 0, p1: 0, p2: 0, t0: 0, t1: 0, t2: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
+      f0: 0, f1: 0, f2: 0, f3: 0, f4: 0, p0: 0, p1: 0, p2: 0, p3: 0, t0: 0, t1: 0, t2: 0, t3: 0, slots: 0, level: 0, rng: this.trng, recent: null, rpos: null, track: true,
       get: (s) => this.slot(s),
     };
-    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0;      // tags of the line said just before (replies answer what was said)
+    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0; this.prev3 = 0;      // tags of the line said just before (replies answer what was said)
     this.cur = { b: null, sp: null, ls: null, rel: null, lang: 'ko', f: null, cache: Object.create(null), ext: null };
     this.fallback = new Map();
     this.mask = [0, 0, 0, 0, 0];
@@ -79,7 +90,7 @@ export class Dialogue {
     this.trng.setState([mix32(e.cfg.seedNum, talk.id), mix32(talk.id, 0x51ed), mix32(talk.a + 7, talk.id), mix32(talk.b + 13, 0x9e37)]);
     const lines = [];
     const beats = talk.beats;
-    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0;
+    this.prev0 = 0; this.prev1 = 0; this.prev2 = 0; this.prev3 = 0; this.prevText = '';
     let added = 0;
     for (let i = 0; i < beats.length; i++) {
       const b = beats[i];
@@ -137,7 +148,7 @@ export class Dialogue {
     const rel = ls ? getRel(e, sp.id, ls.id) : null;
     this.setup(b, sp, ls, rel, lang, talk);
     const ctx = this.ctx;
-    ctx.p0 = this.prev0; ctx.p1 = this.prev1; ctx.p2 = this.prev2;
+    ctx.p0 = this.prev0; ctx.p1 = this.prev1; ctx.p2 = this.prev2; ctx.p3 = this.prev3;
     ctx.noQ = !!b.nq;
     let text = '', tries = 0;
     for (; tries < 4; tries++) {
@@ -145,8 +156,8 @@ export class Dialogue {
       if (!text) break;
       if (!rel) break;
       const h = hashStr(text);
-      let dup = false;
-      for (let i = 0; i < rel.ring.length; i++) if (rel.ring[i] === h) { dup = true; break; }
+      let dup = this.echoes(text);
+      for (let i = 0; !dup && i < rel.ring.length; i++) if (rel.ring[i] === h) { dup = true; break; }
       if (!dup) { rel.ring[rel.rp] = h; rel.rp = (rel.rp + 1) % rel.ring.length; break; }
       this.stats.rerolls++;
     }
@@ -155,8 +166,37 @@ export class Dialogue {
       if (fb && fb !== rule) text = tidy(g.expand(fb, ctx), lang);
       if (!text) { this.miss(b.r); text = lang === 'en' ? '…' : '…'; }
     }
-    this.prev0 = ctx.t0; this.prev1 = ctx.t1; this.prev2 = ctx.t2;
+    this.prev0 = ctx.t0; this.prev1 = ctx.t1; this.prev2 = ctx.t2; this.prev3 = ctx.t3;
+    this.prevText = text;
+    if (lang === 'ko') {
+      const you = ls ? this.youWord(sp, ls, rel) : null;
+      if (you) text = replaceYou(text, you);
+      if (/[가-힣]$/.test(text)) text += '.';
+    }
     return text;
+  }
+
+  /** true when a sentence of `text` repeats a sentence of the line just said (no parroting) */
+  echoes(text) {
+    const p = this.prevText;
+    if (!p) return false;
+    const parts = text.split(/(?<=[.!?…~])\s+/);
+    for (const s of parts) if (s.length >= 5 && p.indexOf(s) >= 0) return true;
+    return false;
+  }
+
+  /** in 반말 one does not call a parent, grandparent, older sibling / friend or a spouse '너':
+   *  the word to use instead (엄마, 할머니, 지훈 형, 자기, 당신 …), or null when '너' is fine */
+  youWord(sp, ls, rel) {
+    if (this.ctx.level !== 0) return null;
+    const e = this.e;
+    const gs = groupOf(e, sp);
+    if (rel && rel.stage === ST_SPOUSE) return gs === G_ELDER ? '임자' : ageOf(e, sp) < 36 ? '자기' : '당신';
+    if (gs === G_ELDER) return null;
+    if (rel && (rel.isParentOf(ls.id) || rel.isGrandOf(ls.id))) return this.referKo(sp, ls).text;
+    const d = ageOf(e, ls) - ageOf(e, sp);
+    if (d >= (gs <= G_TEEN ? 2 : 4) && groupOf(e, ls) !== G_TODDLER) return this.referKo(sp, ls).text;
+    return null;
   }
 
   miss(r) { this.stats.misses++; this.stats.missRules[r] = (this.stats.missRules[r] || 0) + 1; }
@@ -602,6 +642,7 @@ export class Dialogue {
       case 'R': return (e.bank.depositBp / 100).toFixed(2) + '%';
       case 'J': {
         const who = b.o >= 0 ? P(b.o) : f ? P(f.a) : sp;
+        if (who && (who.flags & F_OWNER) && who.work >= 0 && e.world.places[who.work].cat === 'shop') { const K = e.world.places[who.work].K; return en ? K.en.replace(/^the /, '') + ' owner' : K.ko + ' 사장'; }
         const J = who ? JOBS[who.job] : null;
         return J ? (en ? J.en : J.ko) : '';
       }
@@ -631,7 +672,7 @@ export class Dialogue {
     this.setup(b, sp, null, null, lang, null);
     ctx.level = 3;
     ctx.recent = null;
-    ctx.p0 = 0; ctx.p1 = 0; ctx.p2 = 0; ctx.noQ = true;
+    ctx.p0 = 0; ctx.p1 = 0; ctx.p2 = 0; ctx.p3 = 0; ctx.noQ = true;
     const text = tidy(g.expand(r, ctx), lang);
     if (!text) this.miss(rule);
     return text;

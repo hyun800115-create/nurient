@@ -45,8 +45,10 @@ export const TAGS = [
   'often', 'tongue', 'angel', 'igloo', 'scarf', 'cheap', 'pricey', 'chiefq', 'chiefdo', 'petsaw', 'petplay', 'trainq',
   'traveldream', 'driver', 'shopnew', 'shopnice', 'tired_work', 'police_kid', 'firecheck', 'bankkid', 'loanbusy',
   'logibusy', 'customers', 'newmenu', 'teacher', 'doctor', 'harvest', 'build', 'reporter', 'retired', 'jobless',
+  'whyfight', 'differ', 'doubt', 'dinner', 'day',
+  'how2', 'meal2', 'plans2', 'age2', 'hurtq', 'firetruck', 'ring',
 ]; 
-if (TAGS.length > 96) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 96)');
+if (TAGS.length > 128) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 128)');
 export const TAG = Object.create(null);
 TAGS.forEach((n, i) => { TAG[n] = i; });
 

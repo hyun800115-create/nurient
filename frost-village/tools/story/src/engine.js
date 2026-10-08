@@ -83,6 +83,8 @@ export class StoryEngine {
     this.quotes = [];
     this.initialPop = 0;
     this.upkeepI = -1;
+    this.dayQ = [];             // pieces of the day change, run one per step (no frame spikes)
+    this.nightIds = null; this.nightI = -1;   // residents whose nightly money / mood is still to do
     this.likes = LIKES;
     this.visible = null;
     this.metrics = opts.metrics || null;
@@ -99,6 +101,8 @@ export class StoryEngine {
     this.perf = { steps: 0, ms: 0, maxMs: 0 };
     if (opts.save) this.deserialize(opts.save);
     else this.setup(opts);
+    // compile the dialogue grammar now (≈50 ms once) rather than in the middle of the first conversation
+    if (cfg.textMode !== 'none' && opts.warm !== false) this.dialogue.grammar(cfg.lang);
   }
 
   // ================================================================ setup
@@ -280,12 +284,15 @@ export class StoryEngine {
     }
     const singles = list.filter((r) => this.life.canRomanceSolo(r));
     rng.shuffle(singles);
+    const taken = new Set();
     for (let k = 0; k + 1 < singles.length && k < 28; k += 2) {
       const a = singles[k];
-      const b = singles.slice(k + 1).find((x) => x.male !== a.male && Math.abs(ageOf(this, x) - ageOf(this, a)) <= 8 && this.life.partnerOf(x) < 0);
+      if (taken.has(a.id)) continue;
+      const b = singles.slice(k + 1).find((x) => !taken.has(x.id) && x.male !== a.male && Math.abs(ageOf(this, x) - ageOf(this, a)) <= 8 && this.life.partnerOf(x) < 0);
       if (!b) continue;
       const rel = link(a, b, 400 + rng.int(300), 380 + rng.int(300));
       if (!rel || (rel.flags & RF_FAMILY)) continue;
+      taken.add(a.id); taken.add(b.id);
       if (k < 8) { rel.stage = ST_SWEET; rel.rom = 560 + rng.int(240); rel.sweetDay = -rng.int(10); }
       else { rel.rom = 300 + rng.int(200); rel.aff = Math.max(rel.aff, 380); rel.flags |= a.id === rel.a ? RF_CRUSH_A : RF_CRUSH_B; a.crushOn = b.id; }
     }
@@ -325,6 +332,7 @@ export class StoryEngine {
     if (prevMin < 300 && min >= 300) this.news.compile();
     if (prevMin < 60 && min >= 60) this.upkeepI = 0;
     if (this.upkeepI >= 0) this.upkeepSlice();
+    this.runDayQueue();
     this.runScheduled();
     this.plans.update();
     this.social.update();
@@ -333,24 +341,50 @@ export class StoryEngine {
   }
 
   newDay() {
+    this.flushQueues();
     this.weather.roll();
     if (!this.cfg.gamePrices) this.world.driftPrices(this.rng);
-    this.incidents.planDay();
-    this.incidents.dailyWanted();
-    this.life.daily();
-    this.jobs.fillOpenings(true);
-    this.curiosity();
-    this.gcFacts();
-    if (this.bus.has('day')) this.bus.emit('day', { day: this.clock.day, weather: this.weather.today });
+    // the rest of the day change runs one piece per step (people are asleep at midnight)
+    this.dayQ.push('incidents', 'aging', 'babies', 'moves', 'jobs', 'curiosity', 'gc', 'day');
+  }
+
+  /** one piece of the day change / a slice of the nightly bookkeeping per step */
+  runDayQueue() {
+    if (this.nightI >= 0) {
+      const ids = this.nightIds, end = Math.min(ids.length, this.nightI + 40);
+      for (let i = this.nightI; i < end; i++) {
+        const r = this.people[ids[i]];
+        if (!r || !r.alive) continue;
+        this.econ.nightly(r);
+        this.moodNightly(r);
+      }
+      this.nightI = end;
+      if (end >= ids.length) { this.nightI = -1; this.nightIds = null; this.bank.daily(); }
+      return;
+    }
+    if (!this.dayQ.length) return;
+    switch (this.dayQ.shift()) {
+      case 'incidents': this.incidents.planDay(); this.incidents.dailyWanted(); break;
+      case 'aging': this.life.aging(); break;
+      case 'babies': if (this.cfg.lifeEvents) this.life.babies(); break;
+      case 'moves': this.life.moves(); break;
+      case 'jobs': this.jobs.fillOpenings(true); break;
+      case 'curiosity': this.curiosity(); break;
+      case 'gc': this.gcFacts(); break;
+      case 'day': if (this.bus.has('day')) this.bus.emit('day', { day: this.clock.day, weather: this.weather.today }); break;
+    }
+  }
+
+  /** finish any pending daily work right away (before saving, and before the next day starts) */
+  flushQueues() {
+    let guard = 0;
+    while ((this.nightI >= 0 || this.dayQ.length) && guard++ < 1000) this.runDayQueue();
   }
 
   endOfDay() {
-    for (let i = 0; i < this.alive.length; i++) {
-      const r = this.alive[i];
-      this.econ.nightly(r);
-      this.moodNightly(r);
-    }
-    this.bank.daily();
+    this.flushQueues();
+    this.nightIds = this.alive.map((r) => r.id);
+    this.nightI = 0;
   }
 
   /** memories fade / consolidate at night, a slice of residents per step (no frame spikes) */
@@ -396,7 +430,12 @@ export class StoryEngine {
       const k = opts[rng.int(opts.length)];
       let o = -1;
       if (k === 'price' || k === 'buy') o = this.likesItem(r);
-      if (k === 'how') { const fr = friendsOf(this, r); if (!fr.length) continue; o = fr[rng.int(fr.length)]; }
+      if (k === 'how') {
+        // a friend outside the family and household
+        const fr = friendsOf(this, r).filter((id) => { const rel = getRel(this, r.id, id); return rel && !(rel.flags & RF_FAMILY) && rel.stage !== ST_SPOUSE && this.people[id].hh !== r.hh; });
+        if (!fr.length) continue;
+        o = fr[rng.int(fr.length)];
+      }
       if (k === 'chief' && !this.chiefFacts) continue;
       this.social.addQ(r, k, null, o);
     }
@@ -634,7 +673,8 @@ export class StoryEngine {
   }
 
   // ---------------------------------------------------------------- save
-  serialize() { return doSerialize(this); }
+  /** compact save string (pending daily work is finished first, so a save never splits a day change) */
+  serialize() { this.flushQueues(); return doSerialize(this); }
   deserialize(s) { doDeserialize(this, s); }
 }
 

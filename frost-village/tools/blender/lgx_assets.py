@@ -349,16 +349,13 @@ def b_furniture_workshop():
             box('bleg', (0.07, 0.07, bz - 0.08), (x, y, 0), mat=flat('#8A5A33', 0.7), bevel=0.01)
     box('bshelf', (0.5, by1 - by0 - 0.1, 0.04), (bx, (by0 + by1) / 2, 0.25), mat=wm, bevel=0.01)
     box('sawbox', (0.36, 0.42, 0.06), (bx, -0.85, bz), mat=flat('#3E7F55', 0.4), bevel=0.02)
-    blade = saw_blade('blade', 0.2)
+    blade = saw_blade('blade', 0.25)
     blade.location = (bx, -0.85, bz + 0.07)
     blade.rotation_euler = (0, 0, math.radians(90))
-    box('guard', (0.06, 0.3, 0.08), (bx, -0.85, bz + 0.33), mat=flat('#F2C230', 0.4), bevel=0.02)
+    box('guard', (0.06, 0.3, 0.08), (bx, -0.85, bz + 0.38), mat=flat('#F2C230', 0.4), bevel=0.02)
     box('plank_in', (0.14, 0.62, 0.04), (bx - 0.05, -1.0, bz + 0.06), rot=(0, 0, 0), mat=tonal('#E3B47A', 0.08, 5.0),
         bevel=0.008)
-    # a chair being finished at the bench's front end
-    with L.Collect() as cc2:
-        X.chair_model('wipchair', 0.55, '#E3B47A', '#E3B47A')
-    L.group(BA.top_level(cc2.objs), 'wip_g', loc=(bx + 0.05, -1.15, bz), rot=(0, 0, 30))
+    # (no work-in-progress chair on the bench any more: it hid the saw - the saw + sawdust read better alone)
     # input: pallet of planks behind the bench (left) - output: chair + sofa at the right
     with L.Collect() as ci:
         X.pallet('inpal', 0.74, 0.74, 0.12)
@@ -375,14 +372,17 @@ def b_furniture_workshop():
     sphere('wlamp', 0.08, (-0.55, Y0 - 0.25, 1.62), lamp_m, segs=14, rings=8)
     box('wlamp_arm', (0.04, 0.25, 0.04), (-0.55, Y0 - 0.12, 1.68), mat=flat(X.INK, 0.5), bevel=0.0)
     glow = L.point_light('wglow', (-0.4, -0.6, 1.4), 'window', 6.0, 0.2)
-    dust = L.Spray('dust', (bx + 0.0, -0.98, bz + 0.12), (0.05, -0.55, 0.65), flat('#F3D9A8', 0.8), n=10, grav=1.3,
-                   r=0.028, spread=0.25, seed=7)
+    dust = L.Spray('dust', (bx + 0.0, -0.98, bz + 0.14), (0.1, -0.75, 0.8), flat('#F7E3B5', 0.8), n=16, grav=1.6,
+                   r=0.04, spread=0.3, seed=7)
+    dcloud = L.Smoke('dcloud', (bx + 0.02, -1.05, bz + 0.1), n=3, rise=0.35, drift=(0.05, -0.35), r0=0.07, r1=0.2,
+                     color='#F3E2C0', alpha=0.8, seed=9)
     smoke = L.Smoke('wsmoke', (chx, chy, 3.6), n=3, rise=0.95, drift=(0.25, 0.1), r0=0.1, r1=0.3, color='#A7AEB8',
                     alpha=0.85, seed=8)
 
     def idle():
         blade.rotation_euler = (0, math.radians(10), math.radians(90))
         dust.show(False)
+        dcloud.show(False)
         smoke.show(False)
         L.set_emission(lamp_m, 1.0)
         glow.data.energy = 3.0
@@ -390,6 +390,7 @@ def b_furniture_workshop():
     def work(i):
         blade.rotation_euler = (0, math.radians(10 + 30 * i), math.radians(90))
         dust.set(i)
+        dcloud.set(i)
         smoke.set(i)
         L.set_emission(lamp_m, [2.0, 2.6, 2.2, 2.8][i])
         glow.data.energy = [6.0, 8.0, 7.0, 9.0][i]
