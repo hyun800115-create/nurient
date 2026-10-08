@@ -102,6 +102,71 @@ def tiled(rel, W, H):
     return np.tile(t, (ry, rx, 1))[:H, :W]
 
 
+def _hex(c):
+    c = c.lstrip('#')
+    return np.array([int(c[i:i + 2], 16) for i in (0, 2, 4)], np.float32)
+
+
+def water_sea(W, H, ox, oy, d, wx, t=0.0):
+    """Static look-alike of src/systems/Water.js (palette "tropical") from the assets/water fragment: depth LUT colour
+    over the sand bed, ripple normals (water_waves_a) shading + sky reflection + sun glints, caustics in the shallows,
+    rolling swell crests parallel to the shore and lacy foam (water_foam) at the swash line.  d = metres out to sea.
+    Returns (rgb, foam) or None when the fragment is not there (then ground() uses its procedural sea)."""
+    try:
+        man = json.load(open(os.path.join(ASSETS, 'water', 'manifest.json'), encoding='utf-8'))
+        pal = man['palettes']['tropical']
+        wv = np.asarray(Image.open(os.path.join(ASSETS, 'water', 'water_waves_a.png')).convert('RGB')).astype(
+            np.float32) / 255.0
+        fo = np.asarray(Image.open(os.path.join(ASSETS, 'water', 'water_foam.png')).convert('RGB')).astype(
+            np.float32) / 255.0
+    except Exception:                          # noqa: BLE001
+        return None
+    X, Y = np.meshgrid(np.arange(W) + ox * 0, np.arange(H))
+    gx, gy = X.astype(np.int64), (2 * Y).astype(np.int64)            # G space: (screen x, 2 * screen y)
+    sh = int(t * 512 * 0.25)
+    n = wv[(gy + sh) % wv.shape[0], (gx + sh // 2) % wv.shape[1]]
+    n2 = wv[(gy // 2 + 97 - sh) % wv.shape[0], (gx // 2 + 211) % wv.shape[1]]
+    nx = (n[..., 0] * 2 - 1) * 0.65 + (n2[..., 0] * 2 - 1) * 0.35
+    ny = (n[..., 1] * 2 - 1) * 0.65 + (n2[..., 1] * 2 - 1) * 0.35
+    caus = n[..., 2]
+    depth = np.clip(d, 0, None) * 0.42
+    u = 1.0 - np.exp(-depth / pal['depthScale'])
+    stops = pal['lut']
+    us = np.array([s[0] for s in stops], np.float32)
+    cols = np.stack([_hex(s[1]) for s in stops])
+    ops = np.array([s[2] for s in stops], np.float32)
+    col = np.stack([np.interp(u, us, cols[:, c]) for c in range(3)], -1)
+    op = np.interp(u, us, ops)[..., None]
+    bed = _hex(pal['bottom']) * (0.92 + 0.08 * caus[..., None])
+    sea = bed * (1 - op) + col * op
+    # rolling swell: soft crests parallel to the shore moving in with t (brighter faces, darker troughs)
+    ph = d * 1.25 + t * math.tau + 0.6 * np.sin(wx * 0.21)
+    sw = np.sin(ph)
+    sea = sea * (1.0 + 0.10 * sw[..., None] * np.clip(u * 3, 0, 1)[..., None])
+    # broken white caps only on the first two crests in front of the beach (fade out to sea), lace-textured
+    win = np.clip((d - 1.0) / 1.0, 0, 1) * np.clip((8.5 - d) / 3.0, 0, 1)
+    var = fo[(gy // 4 + 31) % 256, (gx // 4 + 77) % 256, 2]
+    crest = np.clip((sw - 0.9) / 0.1, 0, 1) * win * (fo[(gy // 2) % 256, gx % 256, 0] > 0.5) * np.clip(
+        (var - 0.35) / 0.2, 0, 1)
+    # ripple shading + sky reflection (Fresnel-ish on slope) + sun glints
+    lit = nx * -0.55 + ny * -0.8
+    sea = sea * (1.0 + 0.22 * lit[..., None])
+    sky = _hex(pal['skyLo']) * 0.6 + _hex(pal['skyHi']) * 0.4
+    refl = np.clip(0.08 + 0.5 * np.abs(ny), 0, 0.4)[..., None] * np.clip(u * 2.5, 0, 1)[..., None]
+    sea = sea * (1 - refl) + sky * refl
+    glint = np.clip((lit - 0.62) / 0.2, 0, 1) * np.clip(u * 3, 0, 1)
+    sea = sea * (1 - glint[..., None] * 0.7) + _hex(pal['sun']) * glint[..., None] * 0.7
+    # caustics in the shallows
+    sea = sea + (caus[..., None] ** 2) * pal['caustic'] * 60.0 * np.clip(1 - u * 2.2, 0, 1)[..., None]
+    # foam: swash lace at the waterline + the swell crests
+    lace = fo[(gy + sh) % 256, (gx - sh) % 256, 0]
+    swash = 0.25 + 0.2 * math.sin(t * math.tau)
+    band = np.exp(-((d + swash * 0.3 - 0.15) / 0.32) ** 2)
+    foam = np.clip((lace - (1.0 - band * 0.9)) / 0.12, 0, 1) * band + np.exp(-((d + swash * 0.3) / 0.09) ** 2) * 0.8
+    foam = np.clip(foam + crest * 0.75, 0, 1)
+    return np.clip(sea, 0, 255), foam
+
+
 def ground(W, H, ox, oy, t=0.0):
     """RGB float image of the beach ground: promenade paving (y > -1.9), boardwalk (-3.3 .. -1.9), sand, wet sand,
     swash foam, sea (shallow turquoise -> deep) with wave bands and glints.  t = wave phase (0..1) for GIFs."""
@@ -135,13 +200,22 @@ def ground(W, H, ox, oy, t=0.0):
     wet = tw if tw is not None else np.array([214, 190, 140], np.float32) * (0.96 + 0.05 * n1[..., None])
     wet_w = np.clip(1.0 - (wy - sy) / 1.1, 0, 1)[..., None]
     sand = sand * (1 - wet_w) + wet * wet_w
-    img = np.where((d > 0)[..., None], sea, sand)
-    # swash foam: a lacy band at the waterline + a second line offshore (moves with t)
-    swash = 0.25 + 0.2 * math.sin(t * math.tau)
-    f1 = np.exp(-((d + swash * 0.3) / 0.16) ** 2) * (0.6 + 0.4 * n2)
-    f2 = np.exp(-((d - 1.4 - 0.4 * math.sin(t * math.tau + 1.0)) / 0.12) ** 2) * (n1 > 0.45) * 0.55
-    foam = np.clip(f1 + f2, 0, 1)[..., None]
-    img = img * (1 - foam) + 252 * foam
+    ws = water_sea(W, H, ox, oy, d, wx, t)
+    if ws is not None:
+        # assets/water look (tropical palette); wet-sand edge blends softly into the shallow water
+        sea, foam = ws
+        edge = np.clip(d / 0.25, 0, 1)[..., None]
+        img = sand * (1 - edge) + sea * edge
+        img = np.where((d > -0.02)[..., None], img, sand)
+        img = img * (1 - foam[..., None]) + 252 * foam[..., None]
+    else:
+        img = np.where((d > 0)[..., None], sea, sand)
+        # swash foam: a lacy band at the waterline + a second line offshore (moves with t)
+        swash = 0.25 + 0.2 * math.sin(t * math.tau)
+        f1 = np.exp(-((d + swash * 0.3) / 0.16) ** 2) * (0.6 + 0.4 * n2)
+        f2 = np.exp(-((d - 1.4 - 0.4 * math.sin(t * math.tau + 1.0)) / 0.12) ** 2) * (n1 > 0.45) * 0.55
+        foam = np.clip(f1 + f2, 0, 1)[..., None]
+        img = img * (1 - foam) + 252 * foam
     # boardwalk planks along X
     bw = (wy > -3.3) & (wy <= -1.9)
     pk = np.floor(wy / 0.24).astype(int)
@@ -313,6 +387,13 @@ def beach_props(sc, night):
         B('sun_lounger', x + 0.9, y - 0.4)
     for x, y in ((-6.0, 6.5), (20.5, 9.0), (34.0, 7.0), (40.5, 4.5)):
         B('palm_tree_a', x, y)
+    for x, y in ((-5.2, -4.6), (43.8, -4.4)):
+        B('palm_tree_b', x, y)
+    for k, (x, y) in enumerate(((2.2, -3.95), (11.4, -3.95), (29.6, -3.95), (41.6, -3.95), (-2.0, -4.2))):
+        B(('dune_grass_a', 'dune_grass_b', 'dune_grass_c')[k % 3], x, y)
+    B('sandcastle_m', 9.6, -9.0)
+    B('bucket_spade', 10.4, -9.3)
+    B('beach_ball', 14.2, -8.7)
 
 
 def build_scene(builds, frames, derived, night=False, seed=7):

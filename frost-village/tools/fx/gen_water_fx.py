@@ -470,7 +470,8 @@ SHEETS = {
     'fx_shore_wave_x': (make_shore(False), 384, 256, 16, 6, -1, [0.5, 0.55],
                         'Rolling breaking-wave strip for sand beaches, coast along world X, sea on the far (+Y, screen '
                         'up-right) side. Chain one sprite every (+256, +128) px along the waterline; anchor = mean '
-                        'waterline at the segment centre. Seamless along the coast; 2.7 s cycle like the shader swash.'),
+                        'waterline at the segment centre. Seamless along the coast; 2.7 s loop, for beaches drawn WITHOUT the '
+                        'shader (canvas / fallback) - the shader draws its own swash on the 6 s shore swell.'),
     'fx_shore_wave_y': (make_shore(True), 384, 256, 16, 6, -1, [0.5, 0.55],
                         'Same for a coast along world Y with the sea on the far (-X, screen up-left) side (= flipX of '
                         '_x). Chain every (+256, -128) px.'),

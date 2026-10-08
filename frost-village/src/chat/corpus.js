@@ -34,6 +34,8 @@ export function exaggerate(text, x) {
   return s;
 }
 
+function sameSlots(a, b) { const A = slotKeys(a).sort().join(','), B = slotKeys(b).sort().join(','); return A === B; }
+
 export class VillageCorpus {
   constructor() {
     this.e = [];          // entries, oldest first
@@ -54,7 +56,7 @@ export class VillageCorpus {
     const recent = this.e.slice(-120);
     for (const x of recent) {
       if (x.k !== kind) continue;
-      if (normKey(x.t) === key || (similarity(x.t, t) >= 0.86 && (x.o === meta.o || kind === 'g'))) {
+      if (normKey(x.t) === key || (similarity(x.t, t) >= 0.86 && x.o === meta.o && sameSlots(x.t, t))) {
         x.d = Math.max(x.d, meta.d | 0);         // heard again: fresh again
         x.r = (x.r || 0) + 1;
         if (meta.tp) for (const tp of meta.tp) if (!x.tp.includes(tp) && x.tp.length < 3) x.tp.push(tp);

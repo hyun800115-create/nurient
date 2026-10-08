@@ -248,10 +248,10 @@
     "audio6/sfx_stamp.ogg",
     "audio6/sfx_stamp.mp3"
    ],
-   "volume": 1.0,
+   "volume": 0.966,
    "loop": false,
    "kind": "sfx",
-   "duration": 0.2907,
+   "duration": 0.2908,
    "cues": {
     "thunk": 0.0
    },

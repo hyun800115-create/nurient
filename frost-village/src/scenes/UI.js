@@ -593,7 +593,7 @@ export class UI extends Phaser.Scene {
     const bg = panel(this, 0, 0, 'ui_card', w, h).setOrigin(0.5);
     const bgSel = panel(this, 0, 0, Assets.pick('ui_card_selected', 'ui_card'), w, h).setOrigin(0.5).setVisible(false);
     c.add([bg, bgSel]);
-    const spr = { toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower' }[ch.key] || ch.key;
+    const spr = { toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower', station: 'train_station' }[ch.key] || ch.key;   // (v4-A) station
     const th = Assets.image(this, 0, -h / 2 + 64, spr).setOrigin(0.5, 0.5);
     const fw = Math.max(1, th.frame.realWidth), fh = Math.max(1, th.frame.realHeight);
     th.setScale(Math.min((w - 24) / fw, 104 / fh));

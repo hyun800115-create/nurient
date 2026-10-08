@@ -514,6 +514,85 @@ def render_meta(opt):
 
 # --------------------------------------------------------------------------- head
 
+class ChunkLayers(tr.Layers):
+    """tf_render.Layers spread over several linked copies of the scene (`chunk` view layers each).
+
+    Why: setting LayerCollection.exclude runs BKE_view_layer_find_from_collection(), which walks every view layer
+    of the scene - realizing N view layers x C collections in ONE scene costs ~N^2 C^2 (the ~350-layer beach head
+    scene needed hours just to set up).  Linked scene copies share every object / collection / material, the
+    camera and all render settings (Scene.copy() made before any view layer is added), so the layers come out
+    exactly as tf_render.Layers would render them; render() runs one render per scene that has wanted layers."""
+
+    def __init__(self, ctx, chunk=24):
+        super().__init__(ctx)
+        self.chunk = max(1, int(chunk))
+        self.scenes = []          # [(scene, [layer names], file output node)]
+
+    def realize(self):
+        main = self.sc
+        allc = set(self.ctx.cols)
+        groups = [self.specs[k:k + self.chunk] for k in range(0, len(self.specs), self.chunk)]
+        scenes = [main] + [main.copy() for _ in groups[1:]]           # copies first: 1 view layer each
+        for k, (sc, specs) in enumerate(zip(scenes, groups)):
+            if sc is not main:
+                sc.name = f'bf_chunk_{k:02d}'
+            first = True
+            for name, vis, hold, ind in specs:
+                if first:
+                    vl = sc.view_layers[0]
+                    vl.name = name
+                    first = False
+                else:
+                    vl = sc.view_layers.new(name)
+                if name in self.overrides:
+                    vl.material_override = self.overrides[name]
+                for cname in allc:
+                    lc = vl.layer_collection.children.get(cname)
+                    if lc is None:
+                        continue
+                    if cname in vis:
+                        lc.exclude = False
+                    elif cname in hold:
+                        lc.exclude = False
+                        lc.holdout = True
+                    elif cname in ind:
+                        lc.exclude = False
+                        lc.indirect_only = True
+                    else:
+                        lc.exclude = True
+            tree = bpy.data.node_groups.new(f'bf_comp_{k:02d}', 'CompositorNodeTree')
+            sc.compositing_node_group = tree
+            fo = tree.nodes.new('CompositorNodeOutputFile')
+            fo.format.media_type = 'IMAGE'
+            fo.format.file_format = 'PNG'
+            fo.format.color_mode = 'RGBA'
+            fo.format.color_depth = '8'
+            fo.file_name = ''
+            for name, *_ in specs:
+                rl = tree.nodes.new('CompositorNodeRLayers')
+                rl.scene = sc
+                rl.layer = name
+                fo.file_output_items.new('RGBA', name)
+                tree.links.new(rl.outputs['Image'], fo.inputs[name])
+            self.scenes.append((sc, [s_[0] for s_ in specs], fo))
+            print(f'[chunk] scene {k + 1}/{len(groups)}: {len(specs)} view layers', flush=True)
+        self.tree, self.fo = self.scenes[0][2].id_data, self.scenes[0][2]
+
+    def render(self, outdir, only=None):
+        os.makedirs(outdir, exist_ok=True)
+        for sc, names, fo in self.scenes:
+            want = [n for n in names if only is None or n in only]
+            if not want:
+                continue
+            for vl in sc.view_layers:
+                vl.use = vl.name in want
+            fo.directory = outdir + os.sep
+            bpy.ops.render.render(write_still=False, scene=sc.name)
+        missing = [n for n in (only or [s[0] for s in self.specs]) if not os.path.exists(os.path.join(outdir, n + '.png'))]
+        if missing:
+            raise RuntimeError(f'missing outputs in {outdir}: {missing[:5]}')
+
+
 def pose_head_only3(rig, hp, d):
     rig.apply({}, yaw_deg=0.0)
     stabilize_head3(rig, hp, d)

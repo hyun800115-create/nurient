@@ -100,15 +100,15 @@ export class TownBuilding {
   makeBoard(text) {
     const gs = this.gs;
     const bc = (this.def.fxPoints && this.def.fxPoints.boardCentre) || [0, -146];
-    this.board = gs.add.text(this.x + bc[0], this.y + bc[1], text, { fontFamily: FONT, fontSize: '22px', fontStyle: '900', color: '#5a3a26', resolution: 2 }).setOrigin(0.5, 0.5).setDepth(this.y + 0.5);
-    this.board.setScale(Math.min(1, 150 / Math.max(1, this.board.width)));
+    this.boardText = gs.add.text(this.x + bc[0], this.y + bc[1], text, { fontFamily: FONT, fontSize: '22px', fontStyle: '900', color: '#5a3a26', resolution: 2 }).setOrigin(0.5, 0.5).setDepth(this.y + 0.5);
+    this.boardText.setScale(Math.min(1, 150 / Math.max(1, this.boardText.width)));
   }
 
   setEnabled(v) {
     this.enabled = v;
     this.img.setVisible(v);
-    if (this.board) this.board.setVisible(v);
+    if (this.boardText) this.boardText.setVisible(v);
     for (const o of this.obstacles) o.active = v;
   }
-  revealObjects() { return this.board ? [this.img, this.board] : [this.img]; }
+  revealObjects() { return this.boardText ? [this.img, this.boardText] : [this.img]; }
 }

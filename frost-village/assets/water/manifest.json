@@ -492,36 +492,6 @@
    "notes": "Boat wake V, heading N (away from the camera)."
   },
   {
-   "key": "fx_shore_wave_x",
-   "png": "water/fx_shore_wave_x.png",
-   "frameWidth": 384,
-   "frameHeight": 256,
-   "frameCount": 16,
-   "fps": 6,
-   "repeat": -1,
-   "anchor": [
-    0.5,
-    0.55
-   ],
-   "blend": "NORMAL",
-   "notes": "Rolling breaking-wave strip for sand beaches, coast along world X, sea on the far (+Y, screen up-right) side. Chain one sprite every (+256, +128) px along the waterline; anchor = mean waterline at the segment centre. Seamless along the coast; 2.7 s cycle like the shader swash."
-  },
-  {
-   "key": "fx_shore_wave_y",
-   "png": "water/fx_shore_wave_y.png",
-   "frameWidth": 384,
-   "frameHeight": 256,
-   "frameCount": 16,
-   "fps": 6,
-   "repeat": -1,
-   "anchor": [
-    0.5,
-    0.55
-   ],
-   "blend": "NORMAL",
-   "notes": "Same for a coast along world Y with the sea on the far (-X, screen up-left) side (= flipX of _x). Chain every (+256, -128) px."
-  },
-  {
    "key": "fx_swim_ripple",
    "png": "water/fx_swim_ripple.png",
    "frameWidth": 128,
@@ -550,6 +520,36 @@
    ],
    "blend": "NORMAL",
    "notes": "Sun glints twinkling on water (loop). Scatter a few over calm water (low quality / canvas)."
+  },
+  {
+   "key": "fx_shore_wave_x",
+   "png": "water/fx_shore_wave_x.png",
+   "frameWidth": 384,
+   "frameHeight": 256,
+   "frameCount": 16,
+   "fps": 6,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.55
+   ],
+   "blend": "NORMAL",
+   "notes": "Rolling breaking-wave strip for sand beaches, coast along world X, sea on the far (+Y, screen up-right) side. Chain one sprite every (+256, +128) px along the waterline; anchor = mean waterline at the segment centre. Seamless along the coast; 2.7 s loop, for beaches drawn WITHOUT the shader (canvas / fallback) - the shader draws its own swash on the 6 s shore swell."
+  },
+  {
+   "key": "fx_shore_wave_y",
+   "png": "water/fx_shore_wave_y.png",
+   "frameWidth": 384,
+   "frameHeight": 256,
+   "frameCount": 16,
+   "fps": 6,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.55
+   ],
+   "blend": "NORMAL",
+   "notes": "Same for a coast along world Y with the sea on the far (-X, screen up-left) side (= flipX of _x). Chain every (+256, -128) px."
   }
  ]
 }

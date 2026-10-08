@@ -40,6 +40,7 @@ const SLOPE_K = PPU / HEIGHT_PX_PER_M;       // height px per G px -> dimensionl
 const DM = 768;                              // distance range stored in the field (G px)
 const CELL_X = 8, CELL_Y = 4;                // field cell in world px (= 8 x 8 G px)
 const CELL_G = 8;
+const FIELD_FINE_MAX = 300000;               // more fine cells than this: the field is built 2x coarser (opts.fieldScale)
 const RUNUP_MAX = 150;                       // swash run-up (G px) for runup 1 (sand)
 const SWASH_UP = 0.3;                        // part of a wave cycle the uprush takes
 const DRY_T = 2.6;                           // seconds for fresh wet sand to fade
@@ -807,6 +808,80 @@ export class Water {
   }
 
   // ------------------------------------------------------------------ field
+  /**
+   * the field on a grid of nx x ny cells of s x s fine cells (s 1 = the 8 x 4 px cells): signed shore distance,
+   * wave distance and shore parameters from the cell coverage `cov` (0 land .. 1 water)
+   */
+  _fieldCore(cov, nx, ny, s, typeAt) {
+    const R = this.region, N = nx * ny;
+    const cX = CELL_X * s, cY = CELL_Y * s, cG = CELL_G * s;
+    const water = new Uint8Array(N);
+    for (let i = 0; i < N; i++) water[i] = cov[i] >= 0.5 ? 1 : 0;
+    // shore cells: land cells next to water; their type decides the look of that stretch of coast
+    const seedL = new Uint8Array(N), seedW = new Uint8Array(N), seedV = new Uint8Array(N);
+    const tp = new Uint8Array(N);                 // shore cells: 1 + index in TYPE_NAMES
+    const defT = SHORE_TYPES[this.opts.defaultShore] ? this.opts.defaultShore : 'snowbank';
+    let anyWave = false;
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const i = y * nx + x;
+      if (water[i]) { seedW[i] = 1; continue; }
+      if (!((x > 0 && water[i - 1]) || (x < nx - 1 && water[i + 1]) || (y > 0 && water[i - nx]) || (y < ny - 1 && water[i + nx]))) continue;
+      seedL[i] = 1;
+      const wx = R.x + (x + 0.5) * cX, wy = R.y + (y + 0.5) * cY;
+      let ty = typeAt(wx, wy);
+      if ((!ty || ty === defT) && this.waterPx) ty = typeAt(wx, wy - this.waterPx);
+      ty = SHORE_TYPES[ty] ? ty : defT;
+      tp[i] = 1 + TYPE_NAMES.indexOf(ty);
+      if (SHORE_TYPES[ty].wave) { seedV[i] = 1; anyWave = true; }
+    }
+    const ox = new Int16Array(N), oy = new Int16Array(N);
+    const ox2 = new Int16Array(N), oy2 = new Int16Array(N);
+    edt(nx, ny, seedL, ox, oy);                 // every cell -> nearest shore (land) cell
+    edt(nx, ny, seedW, ox2, oy2);               // land cells -> nearest water cell
+    let anyLand = false;
+    for (let i = 0; i < N; i++) if (!water[i]) { anyLand = true; break; }
+    const d = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      if (water[i]) {
+        const dd = anyLand && ox[i] < 30000 ? Math.sqrt(ox[i] * ox[i] + oy[i] * oy[i]) * cG - cG * 0.5 : DM;
+        d[i] = Math.min(DM, Math.max(0.5, dd));
+      } else {
+        const dd = ox2[i] < 30000 ? Math.sqrt(ox2[i] * ox2[i] + oy2[i] * oy2[i]) * cG - cG * 0.5 : DM;
+        d[i] = -Math.min(DM, Math.max(0.5, dd));
+      }
+      // sub-cell shoreline from the coverage of boundary cells
+      if (cov[i] > 0 && cov[i] < 1 && Math.abs(d[i]) < cG) d[i] = (cov[i] - 0.5) * cG;
+    }
+    const tmp = new Float32Array(N);
+    blur(d, nx, ny, 1.25 / s, tmp);
+    // wave distance: to the coasts that make the shore swell only (crests pass around breakwaters / quays),
+    // smoothed harder so the crest lines stay round (no medial-axis kinks)
+    const w = new Float32Array(N);
+    if (anyWave) {
+      const ox3 = new Int16Array(N), oy3 = new Int16Array(N);
+      edt(nx, ny, seedV, ox3, oy3);
+      for (let i = 0; i < N; i++) {
+        if (!water[i]) { w[i] = d[i]; continue; }
+        w[i] = ox3[i] < 30000 ? Math.min(DM, Math.sqrt(ox3[i] * ox3[i] + oy3[i] * oy3[i]) * cG - cG * 0.5) : DM;
+      }
+      blur(w, nx, ny, 3.0 / s, tmp);
+    } else w.fill(DM);
+    // shore parameters from the nearest shore cell's type
+    const pR = new Float32Array(N), pE = new Float32Array(N);
+    const def = SHORE_TYPES[defT];
+    for (let i = 0; i < N; i++) {
+      let st = def;
+      if (ox[i] < 30000) {
+        const x = (i % nx) + ox[i], y = ((i / nx) | 0) + oy[i];
+        const j = y * nx + x;
+        if (j >= 0 && j < N && tp[j]) st = SHORE_TYPES[TYPE_NAMES[tp[j] - 1]];
+      }
+      pR[i] = st.runup; pE[i] = st.edge;
+    }
+    blur(pR, nx, ny, 2.0 / s, tmp); blur(pE, nx, ny, 2.0 / s, tmp);
+    return { d, w, pR, pE, anyWave };
+  }
+
   _buildField(isWater, typeAt) {
     const R = this.region;
     const nx = Math.max(2, Math.ceil(R.w / CELL_X)), ny = Math.max(2, Math.ceil(R.h / CELL_Y));
@@ -836,70 +911,39 @@ export class Water {
         cov[y * nx + x] = c / 4;
       }
     }
+    // big regions (the whole village sea is ~0.5 M fine cells): the field is computed on 2 x 2 coarser cells
+    // and upsampled (bilinear) — all its channels are smooth (blurred) fields, ~4x cheaper to build
+    const s = this.opts.fieldScale || (N > FIELD_FINE_MAX ? 2 : 1);
+    this.fieldScale = s;
+    let F;
+    if (s === 1) F = this._fieldCore(cov, nx, ny, 1, typeAt);
+    else {
+      const nxc = Math.ceil(nx / s), nyc = Math.ceil(ny / s), covC = new Float32Array(nxc * nyc);
+      for (let Y = 0; Y < nyc; Y++) for (let X = 0; X < nxc; X++) {
+        let a = 0, n = 0;
+        for (let yy = Y * s; yy < Math.min(ny, Y * s + s); yy++) for (let xx = X * s; xx < Math.min(nx, X * s + s); xx++) { a += cov[yy * nx + xx]; n++; }
+        covC[Y * nxc + X] = a / n;
+      }
+      const C = this._fieldCore(covC, nxc, nyc, s, typeAt);
+      const up = (src) => {
+        const out = new Float32Array(N);
+        for (let y = 0; y < ny; y++) {
+          const fy = Math.min(nyc - 1, Math.max(0, (y + 0.5) / s - 0.5));
+          const y0 = Math.floor(fy), y1 = Math.min(nyc - 1, y0 + 1), ty = fy - y0;
+          for (let x = 0; x < nx; x++) {
+            const fx = Math.min(nxc - 1, Math.max(0, (x + 0.5) / s - 0.5));
+            const x0 = Math.floor(fx), x1 = Math.min(nxc - 1, x0 + 1), tx = fx - x0;
+            const a = src[y0 * nxc + x0], b = src[y0 * nxc + x1], c = src[y1 * nxc + x0], e = src[y1 * nxc + x1];
+            out[y * nx + x] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + e * tx) * ty;
+          }
+        }
+        return out;
+      };
+      F = { d: up(C.d), w: up(C.w), pR: up(C.pR), pE: up(C.pE), anyWave: C.anyWave };
+    }
+    const { d, w, pR, pE, anyWave } = F;
     const water = new Uint8Array(N);
     for (let i = 0; i < N; i++) water[i] = cov[i] >= 0.5 ? 1 : 0;
-    // shore cells: land cells next to water; their type decides the look of that stretch of coast
-    const seedL = new Uint8Array(N), seedW = new Uint8Array(N), seedV = new Uint8Array(N);
-    const tp = new Uint8Array(N);                 // shore cells: 1 + index in TYPE_NAMES
-    const defT = SHORE_TYPES[this.opts.defaultShore] ? this.opts.defaultShore : 'snowbank';
-    let anyWave = false;
-    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-      const i = y * nx + x;
-      if (water[i]) { seedW[i] = 1; continue; }
-      if (!((x > 0 && water[i - 1]) || (x < nx - 1 && water[i + 1]) || (y > 0 && water[i - nx]) || (y < ny - 1 && water[i + nx]))) continue;
-      seedL[i] = 1;
-      const wx = R.x + (x + 0.5) * CELL_X, wy = R.y + (y + 0.5) * CELL_Y;
-      let ty = typeAt(wx, wy);
-      if ((!ty || ty === defT) && this.waterPx) ty = typeAt(wx, wy - this.waterPx);
-      ty = SHORE_TYPES[ty] ? ty : defT;
-      tp[i] = 1 + TYPE_NAMES.indexOf(ty);
-      if (SHORE_TYPES[ty].wave) { seedV[i] = 1; anyWave = true; }
-    }
-    const ox = new Int16Array(N), oy = new Int16Array(N);
-    const ox2 = new Int16Array(N), oy2 = new Int16Array(N);
-    edt(nx, ny, seedL, ox, oy);                 // every cell -> nearest shore (land) cell
-    edt(nx, ny, seedW, ox2, oy2);               // land cells -> nearest water cell
-    let anyLand = false;
-    for (let i = 0; i < N; i++) if (!water[i]) { anyLand = true; break; }
-    const d = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      if (water[i]) {
-        const dd = anyLand && ox[i] < 30000 ? Math.sqrt(ox[i] * ox[i] + oy[i] * oy[i]) * CELL_G - CELL_G * 0.5 : DM;
-        d[i] = Math.min(DM, Math.max(0.5, dd));
-      } else {
-        const dd = ox2[i] < 30000 ? Math.sqrt(ox2[i] * ox2[i] + oy2[i] * oy2[i]) * CELL_G - CELL_G * 0.5 : DM;
-        d[i] = -Math.min(DM, Math.max(0.5, dd));
-      }
-      // sub-cell shoreline from the coverage of boundary cells
-      if (cov[i] > 0 && cov[i] < 1 && Math.abs(d[i]) < CELL_G) d[i] = (cov[i] - 0.5) * CELL_G;
-    }
-    const tmp = new Float32Array(N);
-    blur(d, nx, ny, 1.25, tmp);
-    // wave distance: to the coasts that make the shore swell only (crests pass around breakwaters / quays),
-    // smoothed harder so the crest lines stay round (no medial-axis kinks)
-    const w = new Float32Array(N);
-    if (anyWave) {
-      const ox3 = new Int16Array(N), oy3 = new Int16Array(N);
-      edt(nx, ny, seedV, ox3, oy3);
-      for (let i = 0; i < N; i++) {
-        if (!water[i]) { w[i] = d[i]; continue; }
-        w[i] = ox3[i] < 30000 ? Math.min(DM, Math.sqrt(ox3[i] * ox3[i] + oy3[i] * oy3[i]) * CELL_G - CELL_G * 0.5) : DM;
-      }
-      blur(w, nx, ny, 3.0, tmp);
-    } else w.fill(DM);
-    // shore parameters from the nearest shore cell's type
-    const pR = new Float32Array(N), pE = new Float32Array(N);
-    const def = SHORE_TYPES[defT];
-    for (let i = 0; i < N; i++) {
-      let st = def;
-      if (ox[i] < 30000) {
-        const x = (i % nx) + ox[i], y = ((i / nx) | 0) + oy[i];
-        const j = y * nx + x;
-        if (j >= 0 && j < N && tp[j]) st = SHORE_TYPES[TYPE_NAMES[tp[j] - 1]];
-      }
-      pR[i] = st.runup; pE[i] = st.edge;
-    }
-    blur(pR, nx, ny, 2.0, tmp); blur(pE, nx, ny, 2.0, tmp);
     this.fieldD = d; this.fieldW = w; this.fieldR = pR; this.fieldE = pE;
     // RGBA8 texture: R = d, G = wave distance (sqrt-encoded, +-DM), B = runup, A = edge kind
     const px = new Uint8Array(N * 4);
@@ -1016,6 +1060,16 @@ export class Water {
     }
     this._h = h;
     if (out) { out.x = sx; out.y = 2 * sy; }       // G y = 2 screen y
+  }
+
+  /**
+   * swash / shore-swell cycle (0..1) at world (x, y): 0 = a crest reaches the waterline here (foam starts up
+   * the beach — the moment for sfx_wave_wash), 0.3 = top of the uprush, then the backwash. Same phase as the
+   * shader's surf and swash; one cycle = SWELL.shore.period (6 s).
+   */
+  swashPhase(x, y, t) {
+    const gx = x - this.region.x, gy = 2 * (y - this.region.y);
+    return fract((wrap(this.shore.w * (t === undefined ? this.t : t)) + this._nu(gx, gy) - Math.PI / 2) / TAU);
   }
 
   /** the water surface point (screen px) under world (x, y) at the land level: y + waterPx - height */

@@ -174,7 +174,8 @@ def b_van(key, col):
     cream = '#F7EDD6'
 
     def build():
-        bm = VL.band_paint(key + '_paint', [(-9, col), (1.5, cream)])
+        # body colour, a cream belt pinstripe just under the windows, cream roof
+        bm = VL.band_paint(key + '_paint', [(-9, col), (0.64, cream), (0.73, col), (1.5, cream)])
         cuts = [(-W_ / 2 - 0.2, -W_ / 2 + 0.2, -1.6, -0.9, 1.15, 1.72, 0.08),
                 (W_ / 2 - 0.2, W_ / 2 + 0.2, -1.6, -0.9, 1.15, 1.72, 0.08),
                 (-W_ / 2 + 0.15, W_ / 2 - 0.15, -1.95, -1.55, 1.12, 1.78, 0.1)]
@@ -196,7 +197,7 @@ def b_van(key, col):
         VL.bumper('dv_bumpF', -2.14, 1.7, 0.46, t=0.12, h=0.13)
         VL.bumper('dv_bumpR', 2.16, 1.7, 0.46, t=0.12, h=0.13)
         # side emblem (right side) + door seam + handle
-        T.emblem_at('dv_em', lambda s=1.0: _parcel_emblem(s), (-W_ / 2 - 0.02, 0.55, 1.05), psi=-90.0, scale=0.8)
+        T.emblem_at('dv_em', lambda s=1.0: _parcel_emblem(s), (-W_ / 2 - 0.02, 0.6, 1.1), psi=-90.0, scale=1.1)
         rbox('dv_handle', (0.04, 0.16, 0.05), (-W_ / 2 - 0.02, -0.98, 1.0), chrome(), r=0.02, origin='center')
         rbox('dv_seam', (0.02, 0.02, 1.0), (-W_ / 2 - 0.005, -0.88, 0.55), flat('#2B2F3A', 0.6), r=0.005)
         # rear doors with round windows + handles

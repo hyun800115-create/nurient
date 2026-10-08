@@ -11,7 +11,7 @@
 //
 // Template language (lines.js):
 //   {x}        value of slot x               {x:을}   value + particle      {x:이다}  copula: 이야/야 · 이에요/예요
-//   ~          '요' when polite, '' when casual (구웠어~ -> 구웠어 / 구웠어요)
+//   {요}       '요' when polite, '' when casual (구웠어{요}~ -> 구웠어~ / 구웠어요~); a plain ~ stays a tilde
 //   [a|b]      a when casual (반말), b when polite (존댓말)
 //   {chief}    the way this resident calls the chief (촌장님)
 
@@ -134,7 +134,7 @@ function levelOne(s, level) {
 }
 
 // ---------------------------------------------------------------- templates
-const TOKEN = /\{([a-zA-Z_][\w]*)(?::([^}]+))?\}|\[([^\]|]*)\|([^\]]*)\]|~/g;
+const TOKEN = /\{([a-zA-Z_][\w]*)(?::([^}]+))?\}|\{요\}|\[([^\]|]*)\|([^\]]*)\]/g;
 
 /**
  * Render a template with slots at a speech level. Missing slots render as '' and are reported in
@@ -144,7 +144,7 @@ export function render(tpl, slots, level, out) {
   const polite = level === POLITE;
   let missing = 0;
   const txt = tpl.replace(TOKEN, (all, key, form, cas, pol) => {
-    if (all === '~') return polite ? '요' : '';
+    if (all === '{요}') return polite ? '요' : '';
     if (cas !== undefined) return polite ? pol : cas;
     let v = slots ? slots[key] : undefined;
     if (v === undefined || v === null || v === '') { missing++; return ''; }
@@ -248,7 +248,7 @@ export function pronoun(form, level) {
 
 /** a short normalised key for duplicate checks (no spaces, punctuation or final endings) */
 export function normKey(s) {
-  return String(s || '').replace(/\{[^}]*\}/g, '@').replace(/[^가-힣a-zA-Z0-9@]/g, '').replace(/(이래|래|대|요|다|어|야)$/, '').toLowerCase();
+  return String(s || '').replace(/\{@([a-z_]+)(?::[^}]*)?\}/g, '@$1').replace(/\{[^}]*\}/g, '@').replace(/[^가-힣a-zA-Z0-9@]/g, '').replace(/(이래|래|대|요|다|어|야)$/, '').toLowerCase();
 }
 
 /** character-bigram similarity 0..1 (near-duplicate check) */

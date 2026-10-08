@@ -302,7 +302,7 @@ export class Neighbours {
     }
     if (ev === 'arrive') {
       const p = stop === 'ours' ? this.ours : this.townStation;
-      if (p && gs.isOnScreen(p.x, p.y, 400)) { Audio.play('sfx_brakes', { volume: 0.7 }); this.train.puffs(3); }
+      if (p && gs.isOnScreen(p.x, p.y, 400)) { Audio.play('sfx_brakes', { volume: 0.7 }); if (this.train) this.train.puffs(3); }
       if (stop === 'ours') this.arriveOurs(); else this.arriveTown();
       for (const fn of this.waitNext[stop].splice(0)) { try { fn(); } catch (e) { console.error(e); } }
       return;
