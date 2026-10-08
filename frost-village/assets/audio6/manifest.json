@@ -199,10 +199,10 @@
     "audio6/sfx_collapse_soft.ogg",
     "audio6/sfx_collapse_soft.mp3"
    ],
-   "volume": 0.7,
+   "volume": 0.724,
    "loop": false,
    "kind": "sfx",
-   "duration": 2.3644,
+   "duration": 2.3702,
    "cues": {
     "crack": 0.359,
     "donk1": 0.539,
@@ -248,10 +248,10 @@
     "audio6/sfx_stamp.ogg",
     "audio6/sfx_stamp.mp3"
    ],
-   "volume": 0.871,
+   "volume": 1.0,
    "loop": false,
    "kind": "sfx",
-   "duration": 0.2906,
+   "duration": 0.2907,
    "cues": {
     "thunk": 0.0
    },

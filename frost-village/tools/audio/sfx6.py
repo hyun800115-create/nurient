@@ -1131,7 +1131,7 @@ SFX6 = {
 FINISH6 = {
     "sfx_fire_flare": dict(punch=2, fout=0.06), "sfx_steam_hiss": dict(punch=1, fout=0.05, peak_db=-2.6),
     "sfx_collapse_soft": dict(punch=3, fout=0.06), "sfx_demolish_crunch": dict(punch=3, fout=0.06),
-    "sfx_coin_count": dict(punch=2, fout=0.05), "sfx_stamp": dict(punch=5, fout=0.03),
+    "sfx_coin_count": dict(punch=2, fout=0.05), "sfx_stamp": dict(punch=8, fout=0.03),
     "sfx_vault_door": dict(punch=3, fout=0.08), "sfx_forklift_beep": dict(punch=1, fout=0.03),
     "sfx_police_whistle": dict(punch=1, fout=0.03), "sfx_crowd_gasp": dict(punch=1, fout=0.05),
     "sfx_crowd_cheer_small": dict(punch=2, fout=0.08), "sfx_cuffs_click": dict(punch=6, fout=0.02),

@@ -127,7 +127,7 @@ SOUNDS = {
                                                             "frame of anims.dig (fx_demolish_dust)."}),
     "sfx_coin_count":        ("sfx", False, -18.0, {"cues": {"first": 0.0, "ching": 0.72},
                                                    "notes": "teller counts coins: deposits / withdrawals / interest paid."}),
-    "sfx_stamp":             ("sfx", False, -17.5, {"cues": {"thunk": 0.0},
+    "sfx_stamp":             ("sfx", False, -18.5, {"cues": {"thunk": 0.0},
                                                    "notes": "rubber stamp on a ledger: settlement at the logistics counter, "
                                                             "loan approved, passbook entry (ui_icon_settle)."}),
     "sfx_vault_door":        ("sfx", False, -17.0, {"cues": {"spin": 0.0, "bolt1": 0.25, "bolt2": 0.31, "bolt3": 0.375,

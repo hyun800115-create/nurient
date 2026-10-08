@@ -51,6 +51,34 @@ export class Roads {
   /** zones changed (unlock): forget cached paths */
   invalidate() { this.version++; this.cache.clear(); }
 
+  /** (v4-A) merge another walk graph ({ nodes: { id: [x, y] }, edges: [[a, b, opts]] }; a node id that exists
+   *  already is the same node — that is how the v4 street grid joins the v2 roads) */
+  addGraph(R) {
+    if (!R || !R.nodes) return 0;
+    let n = 0;
+    for (const id in R.nodes) {
+      if (this.byId[id]) continue;
+      const p = R.nodes[id];
+      if (!Array.isArray(p) || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue;
+      const node = { i: this.nodes.length, id, x: p[0], y: p[1], edges: [] };
+      this.byId[id] = node;
+      this.nodes.push(node);
+      n++;
+    }
+    for (const e of R.edges || []) {
+      const a = this.byId[e[0]], b = this.byId[e[1]], o = e[2] || {};
+      if (!a || !b || a === b) continue;
+      const edge = { a: a.i, b: b.i, via: [], len: gd(a.x, a.y, b.x, b.y), zone: o.zone || null, region: o.region || null, walk: o.walk !== false, draw: o.draw !== false, xing: o.xing !== undefined ? o.xing : -1 };
+      this.edges.push(edge);
+      a.edges.push(edge); b.edges.push(edge);
+    }
+    const N = this.nodes.length;
+    this.g = new Float64Array(N); this.f = new Float64Array(N); this.from = new Int32Array(N); this.fromEdge = new Array(N);
+    this.closed = new Uint8Array(N);
+    this.invalidate();
+    return n;
+  }
+
   usable(e) { return e.walk && (!e.zone || this.isOpen(e.zone)) && (!e.region || this.regionOpen(e.region)); }
 
   /** nearest node that has a usable edge */

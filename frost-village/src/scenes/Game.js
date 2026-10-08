@@ -44,6 +44,8 @@ import { Tower } from '../entities/Tower.js';
 import { Boathouse } from '../entities/Boathouse.js';
 import { BUILD_UNLOCK, UNIQUE_BUILDINGS } from '../systems/Progression.js';
 import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
+// ---- (v4-A) the neighbour town, the snow train, day and night
+import { Neighbours } from '../systems/Neighbours.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -169,6 +171,8 @@ export class Game extends Phaser.Scene {
 
     // lock zones that are not open yet
     for (const id in this.zones) if (!this.zones[id].unlocked) this.setZoneEnabled(id, false);
+    // ---- (v4-A) the neighbours: made now when the rail strip is open, else when the tower_east site starts
+    Neighbours.attach(this, sv.v4);
     // (v3) construction sites and buildings come back before the steps that use them (porters, boats...)
     this.restoreV3(sv);
     this.progress.init();
@@ -293,7 +297,16 @@ export class Game extends Phaser.Scene {
     if (!pr) return true;
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
     if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
+    // ---- (v4-A) late v4 files: only the ones a v4 system asked for
+    if (Assets.lateFrag.has(f)) return Assets.lateAllowed(k);
     return true;
+  }
+
+  /** (v4-A) fetch the late files a v4 system just asked for (pictures and sounds) */
+  queueLateFiles() {
+    if (!this.load) return;
+    const n = Assets.queueLazy(this.load, [], []) + Assets.queueLateAudio(this.load);
+    if (n) this.startLazyLoad(() => { Audio.trimLoops(); });
   }
 
   /** start (or join) a background load of after-title files; their animations are made as each arrives */
@@ -912,6 +925,9 @@ export class Game extends Phaser.Scene {
       this.towers[site.id] = b;
       if (instant) { if (this.territory.isOpen(site.towerRegion)) b.light(true); else { b.light(true); this.territory.reveal(site.towerRegion, true); } }
       else this.time.delayedCall(900, () => b.light(false));
+    } else if (bkey === 'station') {
+      // ---- (v4-A) the old station is repaired: the trains run
+      b = this.v4 ? this.v4.stationBuilt(site, instant) : null;
     } else if (/^house_/.test(bkey)) {
       b = new House(this, bkey, site);
       this.lazyImage(b.img, bkey);
@@ -1250,6 +1266,8 @@ export class Game extends Phaser.Scene {
     }
     this.effects.shake(300, 0.006);
     this.effects.vibrate(80);
+    // ---- (v4-A) a faint train whistle from beyond the eastern fog
+    if (this.territory && !this.territory.isOpen('rail')) this.time.delayedCall(2600, () => { this.ui.toast(t('villageCompleteRumor')); Audio.play(Audio.exists('sfx_steam_whistle') ? 'sfx_steam_whistle' : 'sfx_boat_horn', { volume: 0.25 }); });
   }
 
   // ------------------------------------------------------------------ helpers
@@ -1410,6 +1428,8 @@ export class Game extends Phaser.Scene {
     for (const w of this.rawPorters) w.update(dt);
     if (this.life) this.life.update(dt);
     if (this.dog) this.dog.update(dt);
+    // ---- (v4-A) the rail strip, the train, the town, day and night
+    if (this.v4) this.v4.update(dt);
     this.checkLazyGates(dt);
     this.v3T = (this.v3T || 0) - dt;
     if (this.v3T <= 0) {
@@ -1430,7 +1450,7 @@ export class Game extends Phaser.Scene {
       fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
-    if (this.overview && !this.camFocus) { const r = this.territory.camRect; fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
+    if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
     const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
 
@@ -1464,8 +1484,16 @@ export class Game extends Phaser.Scene {
   fitZoom() {
     const cam = this.cameras.main;
     const vw = cam.width / View.k, vh = cam.height / View.k;
-    const r = this.territory ? this.territory.camRect : { w: this.W, h: this.H };
+    const r = this.overviewRect();
     return Math.min(vw / r.w, vh / (r.h + 80));
+  }
+
+  /** (v4-A) the land the overview frames: the area the chief is in (the village, or the rail strip + town) */
+  overviewRect() {
+    const T = this.territory;
+    if (!T) return { x: 0, y: 0, w: this.W, h: this.H };
+    if (!T.isOpen('rail')) return T.camRect;
+    return T.areaRect(T.areaOf(this.player ? this.player.x : 0));
   }
 
   /** camera bounds = the open land (+ a peek at the fog) */
@@ -1672,6 +1700,8 @@ export class Game extends Phaser.Scene {
       life: this.life ? this.life.serialize() : undefined,
       labour: { piles },
       dog: this.dog ? this.dog.serialize() : undefined,
+      // ---- (v4-A) the v4 block (kept as it was when v4 is not running yet)
+      v4: this.v4 ? this.v4.serialize() : (this.saved && this.saved.v4) || undefined,
     };
   }
 
@@ -1746,6 +1776,8 @@ export class Game extends Phaser.Scene {
           objective: gs.tutorial.textKey,
           pads: Object.keys(gs.progress.pads),
           fps: Math.round(gs.game.loop.actualFps),
+          // ---- (v4-A)
+          v4: gs.v4 ? gs.v4.state() : null,
         };
       },
       give(c) { gs.economy.add(Math.floor(c || 0)); return gs.economy.coins; },

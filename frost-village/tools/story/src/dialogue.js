@@ -536,11 +536,11 @@ export class Dialogue {
     const L = lang === 'en' ? 1 : 0;
     if (PLACE_KINDS[b.s]) return L ? PLACE_KINDS[b.s].en : PLACE_KINDS[b.s].ko;
     if (MOVE_WHY[b.s]) return MOVE_WHY[b.s][L];
-    if (b.s === 'apology') return L ? 'apologised' : '사과했';
+    if (b.s === 'apology') return L ? 'they apologised and made it right' : '사과했';
     if (b.s === 'out') return L ? 'it was put out quickly' : '금방 꺼졌';
-    if (b.s === 'demolish') return L ? 'they demolished it' : '철거했';
-    if (b.s === 'rebuilt') return L ? 'it was rebuilt' : '새로 지었';
-    if (b.s === 'memorial') return L ? 'there was a memorial' : '추모식을 했';
+    if (b.s === 'demolish') return L ? 'the ruins have been cleared away' : '철거했';
+    if (b.s === 'rebuilt') return L ? 'it has been rebuilt, nicer than before' : '새로 지었';
+    if (b.s === 'memorial') return L ? 'there was a lovely memorial in the garden' : '추모식을 했';
     return '';
   }
 
