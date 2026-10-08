@@ -365,7 +365,12 @@ export class VillageLife {
 
   // ================================================================ lines & sounds
   line(r, cat) {
-    if (cat === 'persona') cat = r.persona;
+    if (cat === 'persona') {
+      // ---- (v4-A) after the mine opens, a rumour now and then: a railway beyond the eastern fog
+      const gs = this.gs;
+      if (gs.progress && gs.progress.isDone('zone_mine') && gs.territory && !gs.territory.isOpen('rail') && Math.random() < 0.12) return line('rumor') || line(r.persona) || line('plain');
+      cat = r.persona;
+    }
     return line(cat) || line('plain');
   }
 

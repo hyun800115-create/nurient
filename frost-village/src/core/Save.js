@@ -38,9 +38,10 @@ export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
 // (v3) what a construction site may hold, and the land
-const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower'];
+// (v4-A) + the repaired station (plot r_station) and the rail strip / neighbour town
+const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station'];
 const SITE_STATES = ['foundation', 'scaffold', 'done'];
-const REGIONS = ['east', 'south', 'se'];
+const REGIONS = ['east', 'south', 'se', 'rail', 'town'];
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 /** finite number (numeric strings accepted) or `d` */
@@ -147,6 +148,8 @@ export function sanitizeSave(raw) {
   // (v3) the land that is open, construction sites, the new buildings' stock
   s.territory = {};
   if (isObj(raw.territory)) for (const r of REGIONS) if (raw.territory[r] === true) s.territory[r] = true;
+  // (v4-A) the rail strip opens together with the east coast
+  if (s.territory.east) s.territory.rail = true;
   s.sites = {};
   if (isObj(raw.sites)) {
     for (const id in raw.sites) {
@@ -173,7 +176,38 @@ export function sanitizeSave(raw) {
   const dg = isObj(raw.dog) ? raw.dog : {};
   s.dog = { love: Math.max(0, Math.min(100, num(dg.love, 0))), gifts: count(dg.gifts, 1e6), tricks: count(dg.tricks, 1e6), treats: count(dg.treats, 3), cd: {} };
   if (isObj(dg.cd)) for (const k of ['treat', 'play', 'pet']) if (k in dg.cd) s.dog.cd[k] = Math.max(0, Math.min(3600, num(dg.cd[k], 0)));
+  // ---- (v4-A) the v4 block: always kept (also while v4 is not running); BUILD-B's sanitizeV4 takes over its own keys
+  const v4 = sanitizeV4(raw.v4);
+  if (v4) s.v4 = v4;
   return s;
+}
+
+/** (v4-A) a plain JSON value with bounded size (numbers finite, strings short, at most 64 items / keys a level) */
+function plainJSON(v, depth) {
+  if (v === null || typeof v === 'boolean') return v;
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.max(-1e12, Math.min(1e12, v)) : undefined;
+  if (typeof v === 'string') return v.length <= 64 ? v : v.slice(0, 64);
+  if (depth <= 0) return undefined;
+  if (Array.isArray(v)) { const o = []; for (const x of v.slice(0, 64)) { const y = plainJSON(x, depth - 1); if (y !== undefined) o.push(y); } return o; }
+  if (isObj(v)) { const o = {}; let n = 0; for (const k in v) { if (++n > 64 || !/^[A-Za-z0-9_]{1,40}$/.test(k)) continue; const y = plainJSON(v[k], depth - 1); if (y !== undefined) o[k] = y; } return o; }
+  return undefined;
+}
+
+/** (v4-A) the v4 save block (docs/v4_plan.md §12): clock and town checked here, the rest passed through bounded */
+export function sanitizeV4(raw) {
+  if (!isObj(raw)) return null;
+  const o = plainJSON(raw, 5) || {};
+  o.v = 1;
+  const ck = isObj(raw.clock) ? raw.clock : {};
+  o.clock = { t: Math.max(0, Math.min(3600, num(ck.t, 200))), day: count(ck.day, 1e6), on: ck.on === true };
+  const tw = isObj(raw.town) ? raw.town : {};
+  o.town = {
+    seed: Math.max(0, Math.min(4294967295, Math.floor(num(tw.seed, 2611)))),
+    open: tw.open === true,
+    extra: Array.isArray(tw.extra) ? tw.extra.filter((e) => Array.isArray(e) && e.length >= 2 && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(0, 64).map((e) => [count(e[0], 999), String(e[1]).slice(0, 20), typeof e[2] === 'string' ? e[2].slice(0, 40) : null]) : [],
+    regulars: Array.isArray(tw.regulars) ? tw.regulars.filter((e) => Array.isArray(e) && Number.isFinite(e[0]) && Number.isFinite(e[1])).slice(0, 40).map((e) => [count(e[0], 999), count(e[1], 999)]) : [],
+  };
+  return o;
 }
 
 /** (v3.5 review) keep a copy of a save the game cannot use: the backup slot, or a second slot when the
@@ -221,7 +255,7 @@ export const Save = {
 };
 
 export const Settings = {
-  data: { sound: true, music: true, lang: null, zoom: null },
+  data: { sound: true, music: true, lang: null, zoom: null, daynight: true },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -230,6 +264,7 @@ export const Settings = {
       this.data.lang = s.lang === 'ko' || s.lang === 'en' ? s.lang : null;
       const z = typeof s.zoom === 'number' ? s.zoom : NaN;
       this.data.zoom = Number.isFinite(z) && z > 0.2 && z < 5 ? z : null;
+      this.data.daynight = s.daynight !== false;     // (v4-A) 낮과 밤
     }
     return this.data;
   },
