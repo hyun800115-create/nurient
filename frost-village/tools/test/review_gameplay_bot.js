@@ -18,7 +18,9 @@
 
   // ------------------------------------------------------------------ path finding (A*, ground space)
   const CX = 20, CY = 10;
-  const COLS = Math.ceil(gs.W / CX), ROWS = Math.ceil(gs.H / CY);
+  // ((v4-C) the grid starts at the west strip's edge: WORLD.left, the collision grid's origin)
+  const X0 = Math.min(0, (gs.collision && gs.collision.ox) || 0);
+  const COLS = Math.ceil((gs.W - X0) / CX), ROWS = Math.ceil(gs.H / CY);
   let grid = new Uint8Array(COLS * ROWS), gridKey = '';
   function gridKeyNow() {
     // (v3) foundations, finished buildings and newly cleared land change what is walkable too
@@ -27,6 +29,9 @@
     if (gs.territory) for (const id in gs.territory.regions) k += gs.territory.regions[id].open ? 'o' : 'c';
     // (v4) the neighbours' shops, houses, station and props add obstacles too
     k += ':' + gs.collision.all.length;
+    // ((v4-C) a mined-out rock shrinks its obstacle and grows it back when it respawns: a stale grid walked the bot
+    // into a respawned rock beside the ore pile — a person just steps around it)
+    if (gs.rocks) { k += ':'; for (const r of gs.rocks) k += r.hp > 0 ? 'R' : 'r'; }
     return k;
   }
   function cellBlocked(c, r) {
@@ -34,7 +39,7 @@
     const k = gridKeyNow();
     if (k !== gridKey) { grid.fill(0); gridKey = k; }
     const i = r * COLS + c;
-    if (!grid[i]) grid[i] = gs.collision.blocked(c * CX + CX / 2, r * CY + CY / 2, 15) ? 2 : 1;
+    if (!grid[i]) grid[i] = gs.collision.blocked(X0 + c * CX + CX / 2, r * CY + CY / 2, 15) ? 2 : 1;
     return grid[i] === 2;
   }
   function los(ax, ay, bx, by) {
@@ -46,8 +51,8 @@
     return true;
   }
   function astar(sx, sy, tx, ty) {
-    const sc = Math.floor(sx / CX), sr = Math.floor(sy / CY);
-    let tc = Math.floor(tx / CX), tr = Math.floor(ty / CY);
+    const sc = Math.floor((sx - X0) / CX), sr = Math.floor(sy / CY);
+    let tc = Math.floor((tx - X0) / CX), tr = Math.floor(ty / CY);
     if (cellBlocked(tc, tr)) { // nearest free cell to the target
       let best = null, bd = 1e9;
       for (let dr = -8; dr <= 8; dr++) for (let dc = -8; dc <= 8; dc++) {
@@ -83,7 +88,7 @@
     }
     if (from[t] < 0 && t !== s) return null;
     const pts = [];
-    for (let i = t; i !== s && i >= 0; i = from[i]) pts.push({ x: (i % COLS) * CX + CX / 2, y: ((i / COLS) | 0) * CY + CY / 2 });
+    for (let i = t; i !== s && i >= 0; i = from[i]) pts.push({ x: X0 + (i % COLS) * CX + CX / 2, y: ((i / COLS) | 0) * CY + CY / 2 });
     pts.reverse();
     pts.push({ x: tx, y: ty });
     // string pulling
@@ -136,7 +141,9 @@
     if (aff.length) return aff[0];
     return main || cands.sort((a, b) => a.remaining - b.remaining)[0] || null;
   }
-  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; return v; }
+  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; for (const c of civicCash()) v += c.value; return v; }
+  // (v4-C) the big restaurant's cash pad and the town hall's tax box: a person picks them up like any till
+  function civicCash() { const C = gs.civic, o = []; if (!C) return o; if (C.restaurant && C.restaurant.enabled && C.restaurant.cash && C.restaurant.cash.value >= 40) o.push(C.restaurant.cash); if (C.hall && C.hall.enabled && C.hall.tax && C.hall.tax.value >= 40) o.push(C.hall.tax); return o; }
   const STORE = ['item_can', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
   function shelfFor(type) { return FOODS.includes(type) ? gs.market : GOODS.includes(type) && gs.trade.enabled ? gs.trade : STORE.includes(type) && gs.store && gs.store.enabled ? gs.store : null; }
   function canSell(type) { const s = shelfFor(type); return s && s.stock.countOf(type) + 0 < s.maxPerType; }
@@ -234,9 +241,11 @@
     const p = P(), coins = eco().coins, b = bag();
     const room = p.room;
     // policy 'arrow': follow the tutorial arrow if there is one
-    if (bot.opts.policy === 'arrow') {
+    if (bot.opts.policy === 'arrow' || bot.opts.policy === 'arrowonly') {
       const tg = gs.tutorial.target;
       if (tg) { setTask('arrow', { x: tg.x, y: tg.y }, { label: gs.tutorial.textKey || '(no text)', tol: 8, maxT: 3 }); return; }
+      // (review) a player who only follows the arrow: no arrow -> stand still (the idle hints come after a few s)
+      if (bot.opts.policy === 'arrowonly') { setTask('wait', { x: P().x, y: P().y }, { label: gs.tutorial.textKey || '(none)', tol: 1000, maxT: 1 }); return; }
     }
     // 0. (v2) customers / the merchant wait at an empty register: stand there until they have paid
     {
@@ -418,6 +427,8 @@
     // (v4) 역 금고: the wholesale and the rent pile up there
     const G = gs.v4 && gs.v4.growth;
     if (G && G.till && G.till.value >= 40) cs.push(G.till);
+    if (gs.store && gs.store.cash) cs.push(gs.store.cash);
+    cs.push(...civicCash());
     const c = cs.filter((c) => c.value > 0).sort((a, b) => gd(p.x, p.y, a.x, a.y) - gd(p.x, p.y, b.x, b.y))[0];
     if (!c) return;
     setTask('cash', c, { cash: c, label: c === gs.market.cash ? 'market' : 'trade', tol: 6 });
@@ -511,6 +522,7 @@
       case 'house': return !b.item_plank || tk.site.st !== 'site' || tk.site.room('item_plank') <= 0 || el > (tk.maxT || 40);
       case 'fetch4': return p.room <= 0 || tk.st.outStack.countOf(tk.type) === 0 || (b[tk.type] || 0) >= Math.max(1, gs.v4.growth.needOf(tk.type)) || el > (tk.maxT || 30);
       case 'idle': return el > 0.5;
+      case 'wait': return el > 1 || !!gs.tutorial.target;
       case 'arrow': return el > 0.4;
     }
     return true;
@@ -561,7 +573,8 @@
     if (window.__FV.buildMenuOpen) {
       const ui = FV.game.scene.getScene('UI');
       const tk0 = bot.task;
-      if (tk0 && tk0.kind === 'build' && ui.buildSite === tk0.site) { ui.selectCard(tk0.bkey); if (ui.buildBtn && ui.buildBtn.ok) { ui.confirmBuild(); bot.events.push({ t: bot.t, ev: 'build:' + tk0.bkey, coins: eco().coins }); L('BUILD ' + tk0.bkey + ' on ' + tk0.site.id); } else ui.closeBuildMenu(true); }
+      if (bot.opts.policy === 'arrowonly') { if (ui.buildBtn && ui.buildBtn.ok) { ui.confirmBuild(); bot.events.push({ t: bot.t, ev: 'build:menu', coins: eco().coins }); } else ui.closeBuildMenu(true); }
+      else if (tk0 && tk0.kind === 'build' && ui.buildSite === tk0.site) { ui.selectCard(tk0.bkey); if (ui.buildBtn && ui.buildBtn.ok) { ui.confirmBuild(); bot.events.push({ t: bot.t, ev: 'build:' + tk0.bkey, coins: eco().coins }); L('BUILD ' + tk0.bkey + ' on ' + tk0.site.id); } else ui.closeBuildMenu(true); }
       else ui.closeBuildMenu(true);
     }
     for (const k in gs.built) if (!bot.seenBuilt[k] || bot.seenBuilt[k] < gs.built[k]) { bot.seenBuilt[k] = gs.built[k]; bot.events.push({ t: bot.t, ev: 'built:' + k, coins: eco().coins }); }
@@ -608,6 +621,8 @@
     else bot.stuckT = 0;
     if (tk.kind === 'blocked') bot.blockedT += dt;
     if (tk.kind === 'idle') bot.idleT += dt;
+    if (tk.kind === 'wait') { bot.waitT2 = (bot.waitT2 || 0) + dt; bot.curWaitRun = (bot.curWaitRun || 0) + dt; if (bot.curWaitRun > (bot.maxWaitRun || 0)) { bot.maxWaitRun = bot.curWaitRun; bot.maxWaitAt = bot.t; bot.maxWaitText = gs.tutorial.textKey; } if (bot.curWaitRun > 60 && !bot._lw) { bot._lw = 1; (bot.longWaits = bot.longWaits || []).push({ t: +bot.t.toFixed(0), text: gs.tutorial.textKey, coins: eco().coins }); } } else { if (bot.curWaitRun > 60) (bot.longWaits = bot.longWaits || []).push({ end: +bot.t.toFixed(0), len: +bot.curWaitRun.toFixed(0), text: bot.lastWaitText }); bot.curWaitRun = 0; bot._lw = 0; }
+    if (tk.kind === 'wait') bot.lastWaitText = gs.tutorial.textKey;
   };
 
   bot.sample = function () {

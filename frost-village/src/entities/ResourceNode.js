@@ -4,6 +4,7 @@
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
+import { shoreY } from '../data/world.js';
 
 export function freeStandPoint(node, fx, fy, out) {
   const base = Math.atan2((fy - node.y) * 2, fx - node.x);
@@ -221,6 +222,9 @@ export class Net extends Node {
     this.stock--;
     const gs = this.gs;
     gs.effects.sheet('fx_splash', this.x + (Math.random() - 0.5) * 50, this.y - 14, { size: 90 });
+    // (v4-C2) a ring in the living water where the fish was pulled out
+    const wv = gs.ground && gs.ground.water;
+    if (wv) wv.ripple(this.x + (Math.random() - 0.5) * 40, Math.min(this.y - 20, shoreY(this.x) - 14), by === gs.player ? 1.3 : 0.9);
     gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 60, this.y - 20, 4);
     gs.sfxAt('sfx_splash', this.x, this.y, { volume: by === gs.player ? 0.9 : 0.5 }, by === gs.player);
     return this.item;

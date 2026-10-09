@@ -5,8 +5,8 @@
 
 export const STRINGS = {
   ko: {
-    title: '서리마을 개척기',
-    subtitle: 'Frost Village',
+    title: '행복한 눈꽃마을 이야기',
+    subtitle: 'Snowbloom Village',
     tapToStart: '탭하여 시작',
     clickToStart: '클릭하여 시작',
     pcHint: 'WASD · 방향키 · 마우스 드래그로 이동',
@@ -242,6 +242,10 @@ export const STRINGS = {
     orders_title: '솔방울 주문판', order_to: '→ {shop}', order_swap: '다른 주문', order_reward: '보상 {n}', order_standing: '정기 납품',
     order_empty: '지금은 주문이 없어요', order_hint: '주문을 다 채우면 그 가게가 역 앞에 문을 열어요\n짐 싣는 곳에 놓은 물건은 값의 70%가 역 금고에 쌓여요',
     set_gfx: '그래픽', gfx_auto: '자동', gfx_high: '선명하게', gfx_low: '가볍게',
+    // (v4-C2) 물결 품질 (살아 있는 바다), 주민 목소리 (눈꽃말), 주민과 수다
+    waterQuality: '물결 품질', qualityHigh: '높음', qualityLow: '간단',
+    voiceVol: '주민 목소리', voice_0: '끔', voice_1: '작게', voice_2: '보통', voice_3: '크게',
+    chatBtn: '수다 떨기', chatSaved: '수다를 기억했어요', chatOff: '지금은 수다를 열 수 없어요. 잠시 뒤에 다시 해 봐요',
     // 가게 이름
     shop_cafe: '역앞 카페', shop_restaurant: '생선구이 식당', shop_carpenter_workshop: '목공소', shop_hardware_store: '철물점', shop_supermarket: '슈퍼마켓',
 
@@ -282,8 +286,8 @@ export const STRINGS = {
   },
 
   en: {
-    title: 'Frost Village',
-    subtitle: '서리마을 개척기',
+    title: 'Snowbloom Village',
+    subtitle: '행복한 눈꽃마을 이야기',
     tapToStart: 'Tap to start',
     clickToStart: 'Click to start',
     pcHint: 'Move with WASD · arrow keys · mouse drag',
@@ -508,6 +512,9 @@ export const STRINGS = {
     orders_title: 'Pinecone order board', order_to: '→ {shop}', order_swap: 'Other order', order_reward: 'Reward {n}', order_standing: 'Regular delivery',
     order_empty: 'No orders right now', order_hint: 'Fill an order and its shop opens by the station\nGoods on the loading dock pay 70% of their price into the station till',
     set_gfx: 'Graphics', gfx_auto: 'Auto', gfx_high: 'Sharp', gfx_low: 'Light',
+    waterQuality: 'Water', qualityHigh: 'High', qualityLow: 'Simple',
+    voiceVol: 'Voices', voice_0: 'Off', voice_1: 'Low', voice_2: 'Mid', voice_3: 'High',
+    chatBtn: 'Chat', chatSaved: 'Chat remembered', chatOff: 'Chat is not available right now. Try again soon',
     shop_cafe: 'Station Café', shop_restaurant: 'Grill House', shop_carpenter_workshop: 'Carpenter', shop_hardware_store: 'Hardware', shop_supermarket: 'Supermarket',
 
     // ---------------- (v4-C) the west strip · the plot menu · town hall · big restaurant · decor
@@ -614,6 +621,7 @@ export const LINES = {
     town_elder: ['허허, 분수대 소리 좋다', '서리마을 빵이 제일이야', '젊었을 땐 기차 타고 멀리 갔었지', '조금 쉬었다 가자', '손주 줄 선물 사야지'],
     shopper_happy: ['다 샀다! 고마워요~', '역시 서리마을이야!', '또 올게요!', '우리 마을에 자랑해야지'],
     shopper_sad: ['아쉽다, 다 팔렸네…', '다음엔 꼭 사 가야지', '빈손으로 가네…'],
+    shopper_nofav: ['좋아하는 게 다 팔렸네…', '오늘은 이걸로 할게요', '다음엔 있겠죠?'],
     regular: ['또 왔어요, 촌장님!', '단골 왔어요~!', '오늘도 잘 부탁해요!', '이 집 아니면 안 돼요'],
     mayor_invite: ['우리 마을에도 놀러 오세요!', '솔방울 마을이 촌장님을 기다려요!', '기찻길만 따라오시면 돼요!'],
     founder_ask: ['여기에 가게를 열어도 될까요?', '서리마을 물건으로 장사해 볼게요!'],
@@ -666,6 +674,7 @@ export const LINES = {
     town_elder: ['Ah, the fountain sounds lovely', 'Frost Village bread is the best', 'I rode trains far away when I was young', 'Let\'s rest a little', 'I must buy a gift for my grandchild'],
     shopper_happy: ['Got everything! Thank you~', 'Frost Village never fails!', 'I\'ll be back!', 'I\'ll tell everyone at home'],
     shopper_sad: ['Oh no, sold out…', 'Next time for sure', 'Going home empty-handed…'],
+    shopper_nofav: ['My favourite is sold out…', 'I\'ll take this instead', 'Maybe next time?'],
     regular: ['I\'m back, chief!', 'Your regular is here~!', 'Hello again!', 'Nowhere else for me'],
     mayor_invite: ['Come visit our village too!', 'Pinecone Village is waiting for you, chief!', 'Just follow the railway!'],
     founder_ask: ['May I open a shop here?', 'I\'ll sell Frost Village goods!'],

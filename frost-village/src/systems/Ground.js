@@ -9,6 +9,11 @@ import { DEPTH } from './DepthSort.js';
 import { shoreY } from './Collision.js';
 import { isoRect } from '../core/Iso.js';
 import { rng } from '../core/Placeholders.js';
+// ---- (v4-C2) the living water of v7 (docs/build_reports/water.md §6.2)
+import { Water, bakedField, suggestWaterQuality } from './Water.js';
+import { villageSeaPreset, FISH_BANDS } from './VillageSea.js';
+import { Settings } from '../core/Save.js';
+const WATER_TEX = ['water_waves_a', 'water_waves_b', 'water_foam', 'water_lut', 'water_field_village'];
 
 function pattern(ctx, key, scale = 1) {
   const s = Assets.source(key);
@@ -89,11 +94,12 @@ export class Ground {
     for (let x = this.X0; x <= W; x += 8) maxShore = Math.max(maxShore, shoreY(x));
     this.maxShore = maxShore;
 
-    // --- sea (live, scrolling): Ground.makeSea() — the one place the sea is made (the living water of v7
-    // replaces this method only)
+    // --- sea: Ground.makeSea() — the one place the sea is made. (v4-C2) the living water of v7 (Water.js): swells,
+    // ripples, glints, depth colour, the fish under the surface and the live shore foam; Canvas renderer / no water
+    // textures / a shader that does not compile: the old scrolling sea that follows the camera
     this.seaH = Math.ceil(maxShore + 40);
-    this.makeSea();
     this.t = 0;
+    this.makeSea();
 
     // --- baked land: a pool of 512² slots, tiles made when the camera comes near and re-used far away
     this.slots = [];
@@ -126,25 +132,108 @@ export class Ground {
   }
 
   /**
-   * (v4-B, docs/v4_plan.md §10.2 / §11.3c) the sea and the two fish schools. A Phaser TileSprite owns a canvas as
-   * big as itself: one as wide as the 6144 px world cost 63 MiB (+ 9 for the fish). These follow the camera
-   * instead and are only as big as the view (below zoom 0.5 they are drawn at half resolution and scaled 2x —
-   * the sea is soft anyway). The pattern stays fixed in the world: tilePosition = the sprite's world position
-   * (+ the drift), so moving the sprite never moves the waves.
+   * (v4-C2) the sea: Water.js (WebGL) over the whole village coast, west strip included (VillageSea.js). Its
+   * shoreline field is baked (assets/water/field_village.png, tools/fx/gen_water_field.mjs). When the shader is not
+   * there (Canvas renderer, the water fragment missing, a GPU that cannot compile it) the old sea below is used.
    */
   makeSea() {
     const gs = this.gs;
-    this.sea = gs.add.tileSprite(0, -200, 64, 64, Assets.sprite('water_sea').tex).setOrigin(0, 0).setDepth(DEPTH.WATER);
-    const fs = Assets.sprite('fish_school');
-    this.fish1 = gs.add.tileSprite(0, 40, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.55);
-    this.fish2 = gs.add.tileSprite(0, 150, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.35);
+    this.water = null;
+    this.liveShore = false;
+    try {
+      const wm = gs.cache.json.exists('manifest_water') ? gs.cache.json.get('manifest_water') : null;
+      const gl = gs.sys.renderer && gs.sys.renderer.gl;
+      this.waitWater = !!(wm && gl);       // the water's textures come after the title: tryUpgradeSea() when they are here
+      if (wm && gl && this.waterTexReady()) {
+        this.waitWater = false;
+        const q = Settings.data.water || suggestWaterQuality(gl);      // '물결 품질' (null = automatic)
+        const fs = Assets.sprite('fish_school');
+        const w = new Water(gs, Object.assign(villageSeaPreset(), {
+          quality: q, fish: FISH_BANDS, fishKey: fs.tex, manifest: wm, baked: bakedField(gs, wm, 'village'),
+        }));
+        if (w.isShader) this.water = w;
+        else { if (w.fallback) { w.fallback.destroy(); w.fallback = null; } w.destroy(); }
+      }
+    } catch (e) {
+      console.warn('[FrostVillage] living water unavailable, using the old sea:', e && e.message);
+      if (this.water) { try { this.water.destroy(); } catch (e2) { /* */ } }
+      this.water = null;
+    }
+    this.liveShore = !!this.water;        // the shallows + shore foam are drawn live, not baked
+    this.sea = null; this.fish1 = null; this.fish2 = null;
+    if (!this.water) this.makeOldSea();
+    this.syncFish();
+  }
+
+  /**
+   * (v4-B, docs/v4_plan.md §10.2 / §11.3c) the old sea: a scrolling tileSprite. A Phaser TileSprite owns a canvas as
+   * big as itself: one as wide as the 6144 px world cost 63 MiB (+ 9 for the fish). It follows the camera instead and
+   * is only as big as the view (below zoom 0.5 it is drawn at half resolution and scaled 2x — the sea is soft anyway).
+   * The pattern stays fixed in the world: tilePosition = the sprite's world position (+ the drift).
+   */
+  makeOldSea() {
+    this.sea = this.gs.add.tileSprite(0, -200, 64, 64, Assets.sprite('water_sea').tex).setOrigin(0, 0).setDepth(DEPTH.WATER);
+  }
+
+  /** fish schools: under the water surface (Water, high quality) or the old tileSprites over it */
+  syncFish() {
+    const want = !(this.water && this.water.drawsFish);
+    if (want && !this.fish1) {
+      const fs = Assets.sprite('fish_school'), gs = this.gs;
+      this.fish1 = gs.add.tileSprite(0, 40, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.55);
+      this.fish2 = gs.add.tileSprite(0, 150, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.35);
+    } else if (!want && this.fish1) {
+      this.fish1.destroy(); this.fish2.destroy();
+      this.fish1 = null; this.fish2 = null;
+    }
+    this._fitW = -1;
     this.seaFit(true);
   }
 
-  /** fit the sea / fish sprites to the camera view (called every frame, cheap; resizes only on a new size class) */
+  /** (v4-C2) the textures Water needs (data textures + the baked field) are loaded */
+  waterTexReady() {
+    const tx = this.gs.textures;
+    for (const k of WATER_TEX) if (!tx.exists(k)) return false;
+    return true;
+  }
+
+  /**
+   * (v4-C2) the water's textures arrived after the village opened (a quick tap through the title on a slow
+   * network): the living sea replaces the old one, and the shore tiles are baked again without the drawn shallows
+   */
+  tryUpgradeSea() {
+    if (this.water || !this.waitWater || !this.waterTexReady()) return false;
+    const oldSea = this.sea, f1 = this.fish1, f2 = this.fish2;
+    this.sea = null; this.fish1 = null; this.fish2 = null;
+    this.makeSea();
+    if (!this.water) {
+      // the shader did not come up: keep what was there
+      if (this.sea) this.sea.destroy();
+      if (this.fish1) { this.fish1.destroy(); this.fish2.destroy(); }
+      this.sea = oldSea; this.fish1 = f1; this.fish2 = f2;
+      this.waitWater = false;
+      return false;
+    }
+    if (oldSea) oldSea.destroy();
+    if (f1) { f1.destroy(); f2.destroy(); }
+    this.invalidate({ x: this.X0, y: -200, w: this.W - this.X0, h: this.seaH + 260 });
+    return true;
+  }
+
+  /** settings '물결 품질': 'high' | 'low' (the fish swim under the surface only at high) */
+  setWaterQuality(q) {
+    if (!this.water) return;
+    this.water.setQuality(q === 'low' ? 'low' : 'high');
+    this.syncFish();
+  }
+
+  /** the water quality in use ('high' | 'low'), or null for the old sea */
+  get waterQuality() { return this.water ? this.water.quality : null; }
+
+  /** fit the old sea / fish sprites to the camera view (called every frame, cheap; resizes only on a new size class) */
   seaFit(force) {
     const gs = this.gs, cam = gs.cameras && gs.cameras.main;
-    if (!cam || !this.sea) return;
+    if (!cam || (!this.sea && !this.fish1)) return;
     const z = Math.max(0.05, cam.zoom || 1);
     const wv = cam.worldView;
     // the view (the world view is refreshed only when a frame is drawn: use the camera's own numbers)
@@ -162,20 +251,20 @@ export class Ground {
     const top = -200, bottom = this.seaH;
     const vis = cy - vh / 2 - 320 < bottom;
     const sh = Math.ceil((bottom - top) / k / 64) * 64;
-    if (force || this.sea.__k !== k || this.sea.__w !== sw) {
-      this.sea.setSize(sw, sh);
-      this.sea.setScale(k); this.sea.setTileScale(1 / k, 1 / k);
-      this.sea.__k = k; this.sea.__w = sw;
-      for (const f of [this.fish1, this.fish2]) { f.setSize(sw, Math.ceil(200 / k)); f.setScale(k); }
-      this.fish1.setTileScale(1 / k, 1 / k);
-      this.fish2.setTileScale(0.8 / k, 0.8 / k);
+    if (force || this._fitK !== k || this._fitW !== sw) {
+      if (this.sea) { this.sea.setSize(sw, sh); this.sea.setScale(k); this.sea.setTileScale(1 / k, 1 / k); }
+      this._fitK = k; this._fitW = sw;
+      if (this.fish1) {
+        for (const f of [this.fish1, this.fish2]) { f.setSize(sw, Math.ceil(200 / k)); f.setScale(k); }
+        this.fish1.setTileScale(1 / k, 1 / k);
+        this.fish2.setTileScale(0.8 / k, 0.8 / k);
+      }
     }
-    this.sea.setPosition(x0, top);
-    this.fish1.setPosition(x0, 40);
-    this.fish2.setPosition(x0, 150);
-    this.sea.setVisible(vis);
-    this.fish1.setVisible(vis);
-    this.fish2.setVisible(vis);
+    if (this.sea) { this.sea.setPosition(x0, top); this.sea.setVisible(vis); }
+    if (this.fish1) {
+      this.fish1.setPosition(x0, 40); this.fish2.setPosition(x0, 150);
+      this.fish1.setVisible(vis); this.fish2.setVisible(vis);
+    }
   }
 
   /** the camera zoom the tiles are made for */
@@ -440,7 +529,7 @@ export class Ground {
     for (let x = xa; x <= xb; x += 16) tileShore = Math.min(tileShore, shoreY(x));
     let tileShoreMax = 0;
     for (let x = xa; x <= xb; x += 16) tileShoreMax = Math.max(tileShoreMax, shoreY(x));
-    if (y0 < tileShoreMax + 20) this.drawShallow(ctx, x0, y0, w, h);
+    if (y0 < tileShoreMax + 20 && !this.liveShore) this.drawShallow(ctx, x0, y0, w, h);
     // snow
     ctx.fillStyle = pattern(ctx, 'ground_snow') || '#eef3f9';
     land(); ctx.fill();
@@ -503,8 +592,9 @@ export class Ground {
     const line = (off) => { ctx.beginPath(); for (let x = xa - 8; x <= xb + 8; x += 8) { const y = shoreY(x) + off; if (x <= xa - 8) ctx.moveTo(x, y); else ctx.lineTo(x, y); } };
     ctx.strokeStyle = 'rgba(201,214,232,0.9)'; ctx.lineWidth = 12; line(6); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 7; line(1); ctx.stroke();
-    ctx.strokeStyle = 'rgba(156,199,230,0.55)'; ctx.lineWidth = 5; line(-6); ctx.stroke();
+    if (!this.liveShore) { ctx.strokeStyle = 'rgba(156,199,230,0.55)'; ctx.lineWidth = 5; line(-6); ctx.stroke(); }
     ctx.restore();
+    if (this.liveShore) return;                 // (v4-C2) Water draws the foam lace, slush and wet edge live
     // foam strip segments along the curve (texture: water above, land below; lip at anchor y)
     const foam = Assets.source('shore_foam');
     const f = foam.frame;
@@ -724,11 +814,15 @@ export class Ground {
       this.trimT -= 0.12;
       if (this.trimT <= 0) { this.trimT = 2; this.trim(view); }
     }
-    // (the sprites follow the view; the pattern stays put in the world: offset by the sprite's own position)
+    // (v4-C2) the living water's clock
+    if (this.water) this.water.update(dt);
+    // (the old sea / fish sprites follow the view; the pattern stays put in the world: offset by the sprite's own position)
     this.seaFit(false);
     const sea = this.sea;
-    sea.tilePositionX = sea.x + this.t * 6;
-    sea.tilePositionY = sea.y + 200 + Math.sin(this.t * 0.4) * 6;
+    if (sea) {
+      sea.tilePositionX = sea.x + this.t * 6;
+      sea.tilePositionY = sea.y + 200 + Math.sin(this.t * 0.4) * 6;
+    }
     if (this.fish1) { this.fish1.tilePositionX = this.fish1.x + this.t * 22; this.fish1.tilePositionY = Math.sin(this.t * 0.7) * 5; }
     if (this.fish2) { this.fish2.tilePositionX = (this.fish2.x / 0.8) + 130 + this.t * 14; this.fish2.tilePositionY = 40; }
   }

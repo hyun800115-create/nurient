@@ -170,7 +170,8 @@ export class UnlockPad {
       if (this.pad.contains(p.x, p.y) && (this.handT = (this.handT || 0) - dt) <= 0) { if (this.feed(p)) { this.handT = 0.12; this.pad.pulse(); } }
     }
     // (v4-B, v3.5 known issue) the chief standing on the pad: the label lifts over his head (glides)
-    const onPad = this.pad.contains(p.x, p.y) && !this.labelDx;
+    // (v4 fix) a label set below its pad (labelAt dy > 0, the station porter) stays put: lifting it would cover the price
+    const onPad = this.pad.contains(p.x, p.y) && !this.labelDx && this.labelBaseY < this.y;
     this.lift = (this.lift || 0) + ((onPad ? 1 : 0) - (this.lift || 0)) * Math.min(1, dt * 8);
     this.label.y = this.labelBaseY - this.lift * 74 + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
     // keep the floating label inside the screen while its pad is visible

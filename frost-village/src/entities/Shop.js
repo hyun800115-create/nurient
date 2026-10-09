@@ -281,14 +281,27 @@ export class Shop {
   // ------------------------------------------------------------------ logistics sink (restocking)
   shelfMax() { return Math.max(1, Math.floor(BALANCE.v4.founding.shopShelf) || 20); }
   accepts(type) { return this.st === 'open' && this.sells.indexOf(type) >= 0; }
-  room(type) { return this.accepts(type) ? Math.max(0, this.shelfMax() - (this.stock[type] || 0)) : 0; }
+  /** room on the shelf for `type` (the chief's delivery pad and a porter unloading here) */
+  fullRoom(type) { return this.accepts(type) ? Math.max(0, this.shelfMax() - (this.stock[type] || 0)) : 0; }
+  /**
+   * (v4 review) what the station porters are asked to bring: nothing while the shelf is above `restockBelow` of
+   * full, then a whole batch (the shelf filled up). Before, a café selling one bread every 40 s kept a porter
+   * walking back and forth with 1–2 breads while the next shop's order waited for its last items
+   */
+  room(type) {
+    const n = this.fullRoom(type);
+    if (n <= 0) return 0;
+    const low = Math.max(1, Math.floor(this.shelfMax() * (Number(BALANCE.v4.founding.restockBelow) || 0.4)));
+    const L = this.gs.logistics;
+    return (this.stock[type] || 0) < low || (L && L.reserved(this, type) > 0) ? n : 0;
+  }
   prio() { return PRIO.SHOP; }
   get ux() { return this.inPt ? this.inPt.x + 40 : this.x; }
   get uy() { return this.inPt ? this.inPt.y + 30 : this.y; }
   feed(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const ty = ch.stack.items[i].type;
-      if (this.room(ty) <= 0) continue;
+      if (this.fullRoom(ty) <= 0) continue;
       return this.take(ch, ty);
     }
     return false;
@@ -408,7 +421,7 @@ export class Shop {
       if (this.inPad && this.inPad.contains(p.x, p.y)) {
         on = true;
         if (gs.padT <= 0 && p.stack.hasAny(this.sells)) {
-          for (let i = p.stack.items.length - 1; i >= 0; i--) { const ty = p.stack.items[i].type; if (this.room(ty) > 0) { this.take(p, ty); gs.padT = BALANCE.player.padItemInterval; this.inPad.pulse(); break; } }
+          for (let i = p.stack.items.length - 1; i >= 0; i--) { const ty = p.stack.items[i].type; if (this.fullRoom(ty) > 0) { this.take(p, ty); gs.padT = BALANCE.player.padItemInterval; this.inPad.pulse(); break; } }
         }
       }
       // a thumbs-up from the keeper when the chief passes by
@@ -539,7 +552,7 @@ export class HouseLot {
     if (this.house) return;
     if (this.img) { this.img.destroy(); this.img = null; }
     if (this.obstacle) { this.obstacle.active = false; this.obstacle = null; }
-    this.house = new TownBuilding(gs, { id: this.id, key: this.houseKey, x: this.x, y: this.y, role: 'home' });
+    this.house = new TownBuilding(gs, { id: this.id, key: this.houseKey, x: this.x, y: this.y, role: 'home', fadeZone: WORLD.v4.houseFade || null });
     gs.territory.add('rail', this.house.img);
     if (!instant) {
       const o = this.house.img, sx = o.scaleX, sy = o.scaleY;

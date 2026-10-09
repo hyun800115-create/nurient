@@ -7,9 +7,11 @@
 import { Assets } from '../core/Assets.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD, shoreY } from '../data/world.js';
-import { DIR_BASE, DIR_FLIP, dirFromVec } from '../core/Iso.js';
+import { DIR_BASE, DIR_FLIP, DIRS8, dirFromVec } from '../core/Iso.js';
 import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
+// ---- (v4-C2) the boats ride the living water's swell, touch it and leave rings + a V wake (water.md §6.4)
+import { WaterSheets } from '../systems/Water.js';
 
 const DIR_IDX = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 
@@ -216,7 +218,14 @@ export class Boat {
       }
     }
     this.play(moving ? this.moveAnim : 'idle');
-    this.sprite.setPosition(this.x, this.y);
+    // (v4-C2) on the living water the hull rides the swell and has a foam collar + a shadow on the water
+    const wv = gs.ground && gs.ground.water, live = !!(wv && wv.isShader);
+    const bob = live ? wv.heightAt(this.x, this.y) : 0;
+    this.sprite.setPosition(this.x, this.y - bob);
+    if (live) {
+      if (!this.hull || this.hullOf !== wv) { this.hull = wv.addHull(this.x, this.y, this.def, this.dir, { foam: 0.8, shadow: 0.24 }); this.hullOf = wv; }
+      if (this.visible) wv.moveHull(this.hull, this.x, this.y, this.def, this.dir);
+    }
     const d = this.y;
     if (this.sprite.depth !== d) this.sprite.setDepth(d);
     // wake under the hull while moving + rings at the stern
@@ -225,10 +234,25 @@ export class Boat {
     const wx = this.x + (flip ? -wp[0] : wp[0]), wy = this.y + wp[1];
     const onScreen = this.visible && gs.isOnScreen(this.x, this.y, 200);
     if (moving && onScreen) {
-      if (!this.wake) this.wake = gs.effects.loop('fx_wake', this.x, this.y, this.level >= 2 ? 300 : 190, d - 2);
-      if (this.wake) { this.wake.setVisible(true).setPosition((this.x + wx) / 2, (this.y + wy) / 2).setDepth(d - 2); this.wake.setFlipX(flip); }
+      // (v4-C2) the V sheet of the heading, asked for on first use (the old fx_wake until it is there)
+      const wv2 = live ? WaterSheets.wake(DIRS8[this.dir]) : null;
+      const wk = wv2 && gs.textures.exists(wv2.key) && Assets.sheet(wv2.key) ? wv2.key : 'fx_wake';
+      if (this.wake && this.wakeKey !== wk) { this.wake.destroy(); this.wake = null; }
+      if (!this.wake) {
+        this.wake = gs.effects.loop(wk, this.x, this.y, wk === 'fx_wake' ? (this.level >= 2 ? 300 : 190) : (this.level >= 2 ? 512 : 294), d - 2);
+        this.wakeKey = wk;
+      }
+      if (this.wake) {
+        if (wk === 'fx_wake') this.wake.setPosition((this.x + wx) / 2, (this.y + wy) / 2).setFlipX(flip);
+        else this.wake.setPosition(this.x, this.y - bob).setFlipX(wv2.flip);      // the v2 anchor = hull centre at the waterline
+        this.wake.setVisible(true).setDepth(d - 2);
+      }
       this.ringT -= dt;
-      if (this.ringT <= 0) { this.ringT = 0.28; gs.effects.sheet('fx_wake_ring', wx, wy, { size: this.level >= 2 ? 170 : 120, depth: d - 3 }); }
+      if (this.ringT <= 0) {
+        this.ringT = 0.28;
+        if (live) wv.ripple(wx, wy, this.level >= 2 ? 1.0 : 0.7);          // rings in the water itself
+        else gs.effects.sheet('fx_wake_ring', wx, wy, { size: this.level >= 2 ? 170 : 120, depth: d - 3 });
+      }
       if (this.moveAnim === 'row') {
         this.rowT -= dt;
         if (this.rowT <= 0) { this.rowT = Assets.animDuration(this.key, 'row') || 0.67; gs.sfxAt('sfx_row', this.x, this.y, { volume: 0.5, throttle: 300 }); }
@@ -254,8 +278,11 @@ export class Boat {
     else if (raw < (c.fish || 0)) type = 'item_fish_raw';
     if (!type) { if (Math.random() < 0.3) this.pickSpot(); return; }
     const sx = this.x + (Math.random() - 0.5) * 80, sy = this.y - 6 + Math.random() * 20;
+    // (v4-C2) rings where the fish comes out, and the water's small splash sheet (asked for on first use)
+    const wv = gs.ground && gs.ground.water;
+    if (wv && wv.isShader) { wv.ripple(sx, sy, 1.2); WaterSheets.want('fx_splash_small'); }
     if (gs.isOnScreen(this.x, this.y, 150)) {
-      gs.effects.sheet('fx_splash', sx, sy, { size: 70 });
+      gs.effects.sheet(wv && wv.isShader && Assets.sheet('fx_splash_small') ? 'fx_splash_small' : 'fx_splash', sx, sy, { size: 70 });
       gs.effects.burst('splash', sx, sy, 4);
       gs.sfxAt('sfx_splash', this.x, this.y, { volume: 0.3, throttle: 300 });
     }
@@ -265,6 +292,8 @@ export class Boat {
   destroy() {
     this.sprite.destroy();
     if (this.wake) this.wake.destroy();
+    if (this.hull && this.hullOf && this.hullOf.alive) for (const id of this.hull) this.hullOf.removeContact(id);
+    this.hull = null;
     this.cargo.clear(this.gs.effects);
   }
 }

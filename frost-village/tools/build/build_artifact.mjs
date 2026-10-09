@@ -1,4 +1,8 @@
-// Frost Village (서리마을 개척기) — build the claude.ai Artifact package.
+// 행복한 눈꽃마을 이야기 · Snowbloom Village (Frost Village) — build the claude.ai Artifact package.
+//
+// (v4-C2) PUBLISH WITH capabilities: { sample: {} } — the resident chat (주민과 수다 떨기) asks the viewer's Claude for
+// replies through the `sample` capability when the page declares it (it falls back to the offline village voice
+// when it is not declared or the viewer says no). artifact_files.json carries the same `capabilities` field.
 //
 //   cd frost-village/tools/build && npm install          (once: installs esbuild locally)
 //   node frost-village/tools/build/build_artifact.mjs [--no-minify] [--mp3-only] [--inline] [--webp]
@@ -47,7 +51,8 @@ const PACK_MAX = 4 * 1024 * 1024;          // bytes of source data per packs/ass
 
 // one Artifact publish: <= 255 files / 64 MB; one version may hold up to 511 files / 256 MB when it is
 // sent in several publishes to the same url (artifact_files.json lists the batches)
-const LIMITS = { files: 255, maxFiles: 511, total: 64 * 1024 * 1024, perFile: 16 * 1024 * 1024 };
+// (v4 review M6) 64 MB is the limit of ONE publish (each batch below), 256 MB of the whole version
+const LIMITS = { files: 255, maxFiles: 511, total: 64 * 1024 * 1024, version: 256 * 1024 * 1024, perFile: 16 * 1024 * 1024 };
 // Media types the host serves (anything else is skipped with a warning).
 const WEB_TYPES = new Set(['.html', '.js', '.json', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ogg', '.mp3', '.m4a', '.wav', '.css', '.txt', '.md', '.woff2']);
 const NEVER_LOADED = /^assets\/[^/]+\/bgm_spring\./;
@@ -75,7 +80,7 @@ function walk(dir) {
 }
 
 // ------------------------------------------------------------------ page (body content only)
-const PAGE = `<title>서리마을 개척기</title>
+const PAGE = `<title>행복한 눈꽃마을 이야기</title>
 <style>
   /* One-screen game: a portrait canvas centred on a deep, snowy night sky.
      Single dark look on purpose (no light theme), so every colour is set here explicitly. */
@@ -152,7 +157,7 @@ const PAGE = `<title>서리마을 개척기</title>
   @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) { #fv-rotate { display: flex; } }
 </style>
 <div id="game"></div>
-<div id="fv-loading"><div class="flake">❄</div><div>서리마을 개척기</div><small>FROST VILLAGE · 불러오는 중…</small></div>
+<div id="fv-loading"><div class="flake">❄</div><div>행복한 눈꽃마을 이야기</div><small>SNOWBLOOM VILLAGE · 불러오는 중…</small></div>
 <div id="fv-rotate"><div class="phone">📱</div><div>휴대폰을 세로로 돌려 주세요</div><small>Please rotate your phone to portrait</small></div>
 <div id="fv-error" role="alert"></div>
 <script>
@@ -171,7 +176,7 @@ const PAGE = `<title>서리마을 개척기</title>
         var f = document.createElement('button'); f.className = 'gray'; f.textContent = '처음부터 하기 · Start over';
         f.onclick = function () {
           window.__FV_NO_SAVE = true;   // the crashed game must not write its state back while the page unloads
-          try { var k = 'frostVillage.save.v1', v = localStorage.getItem(k); if (v) localStorage.setItem(k + '.bad', v); localStorage.removeItem(k); } catch (e) { /* */ }
+          try { var k = 'frostVillage.save.v1', v = localStorage.getItem(k); if (v) localStorage.setItem(k + '.bad', v); localStorage.removeItem(k); localStorage.removeItem(k + '.chat'); } catch (e) { /* */ }
           location.reload();
         };
         box.appendChild(f);
@@ -318,6 +323,112 @@ function lateFragments() {
   return list.filter((f) => fs.existsSync(path.join(ROOT, 'assets', f, 'manifest.json')));
 }
 
+/**
+ * (v4-C2) leave out what the game never loads (src/core/Assets.js):
+ *  - USED_ONLY {fragment: [keys]}: fragments of which only some keys are used yet (audio5 = amb_sea_waves, audio4 =
+ *    the title's ferry horn + gull, water = its data textures + the sheets the village plays);
+ *  - OLD_TITLE: the old title screen's pictures;
+ *  - title: entries the title never loads (loadAtTitle: false) and the app icons (not used by the page).
+ * The copied manifests are rewritten and the files of the dropped entries removed.
+ */
+function assetsConst(name) {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
+  if (name === 'USED_ONLY') {
+    const m = src.match(/export\s+const\s+USED_ONLY\s*=\s*(\{[^\n]*\});/);
+    try { return m ? JSON.parse(m[1]) : {}; } catch (e) { console.log('[build] USED_ONLY could not be read: ' + e.message); return {}; }
+  }
+  const m = src.match(new RegExp('const\\s+' + name + '\\s*=\\s*/(.+)/;'));
+  return m ? new RegExp(m[1]) : null;
+}
+function pruneUnusedKeys(frags, skipped) {
+  const USED = assetsConst('USED_ONLY'), OLD = assetsConst('OLD_TITLE');
+  for (const f of frags) {
+    const mp = path.join(OUT, 'assets', f, 'manifest.json');
+    if (!fs.existsSync(mp)) continue;
+    const j = JSON.parse(fs.readFileSync(mp, 'utf8'));
+    const only = USED[f] ? new Set(USED[f]) : null;
+    const drop = (key, entry) => (only && !only.has(key)) || (OLD && OLD.test(key)) || (f === 'title' && entry && entry.loadAtTitle === false);
+    const gone = [];
+    let changed = false;
+    for (const kind of ['atlases', 'images', 'spritesheets']) {
+      if (!Array.isArray(j[kind])) continue;
+      j[kind] = j[kind].filter((a) => { if (!a || !drop(a.key, a)) return true; gone.push(a.png, a.json); changed = true; return false; });
+    }
+    if (j.audio) for (const k of Object.keys(j.audio)) if (drop(k, j.audio[k])) { gone.push(...(j.audio[k].files || [])); delete j.audio[k]; changed = true; }
+    if (j.audioGroups) for (const g of Object.keys(j.audioGroups)) {
+      const keep = (j.audioGroups[g] || []).filter((k) => j.audio && j.audio[k]);
+      if (keep.length) j.audioGroups[g] = keep; else delete j.audioGroups[g];
+    }
+    if (j.sprites && only) for (const k of Object.keys(j.sprites)) if (!only.has(k) && !(j.images || []).some((a) => a.key === k)) delete j.sprites[k];
+    for (const p of gone.filter(Boolean)) { const fp = path.join(OUT, 'assets', p); if (fs.existsSync(fp)) { fs.rmSync(fp); skipped.push('assets/' + p + ' (not used by the game yet)'); } }
+    if (f === 'title') { const ic = path.join(OUT, 'assets', 'title', 'icon'); if (fs.existsSync(ic)) { fs.rmSync(ic, { recursive: true }); skipped.push('assets/title/icon/ (app icons: not used by the page)'); } }
+    if (changed) fs.writeFileSync(mp, JSON.stringify(j));
+  }
+}
+
+/**
+ * (v4-C2) the 511-file limit of one artifact version: a frame list (atlas .json up to EMBED_FRAME_JSON bytes) whose
+ * picture loads at boot (or whose fragment is a late one, fetched with its manifest) goes into its manifest as `data`
+ * (Assets.queueAssets passes it to Phaser instead of a URL), so it costs no extra download. Lazy fragments' lists stay
+ * separate files (they would make the boot manifest heavier). The title bake's stage frame lists go into
+ * title_bake.json (src/title/TitleAssets.js reads `data` the same way).
+ */
+const EMBED_FRAME_JSON = 64000;
+// (v4 review M6) small frame lists of the after-title fragments ride inside their manifests too, up to this many bytes
+// in all (each costs a file of the 511 a version may hold; their manifests load at boot, so the total stays small)
+const EMBED_LAZY_TOTAL = 160000;
+function embedFrameLists(frags, late, skipped) {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
+  const lm = src.match(/export\s+const\s+LAZY_FRAGMENTS\s*=\s*\[([^\]]*)\]/);
+  const lazy = lm ? (lm[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((x) => x.slice(1, -1)) : [];
+  const em = src.match(/const\s+EAGER_KEYS\s*=\s*new Set\(\[([^\]]*)\]\)/);
+  const eager = new Set(em ? (em[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((x) => x.slice(1, -1)) : []);
+  const out = { n: 0, bytes: 0 };
+  let lazyBytes = 0;
+  for (const f of frags.concat(late)) {
+    const mp = path.join(OUT, 'assets', f, 'manifest.json');
+    if (!fs.existsSync(mp)) continue;
+    const j = JSON.parse(fs.readFileSync(mp, 'utf8'));
+    let changed = false;
+    for (const a of j.atlases || []) {
+      if (!a || !a.json || a.data || a.format === 'tfatlas') continue;
+      const jp = path.join(OUT, 'assets', a.json);
+      if (!fs.existsSync(jp) || fs.statSync(jp).size > EMBED_FRAME_JSON) continue;
+      if (lazy.includes(f) && !eager.has(a.key)) { if (lazyBytes + fs.statSync(jp).size > EMBED_LAZY_TOTAL) continue; lazyBytes += fs.statSync(jp).size; }
+      // (another manifest pointing at the same file keeps it)
+      if (frags.concat(late).some((g) => g !== f && fs.existsSync(path.join(OUT, 'assets', g, 'manifest.json')) && fs.readFileSync(path.join(OUT, 'assets', g, 'manifest.json'), 'utf8').includes('"' + a.json + '"'))) continue;
+      a.data = JSON.parse(fs.readFileSync(jp, 'utf8'));
+      out.bytes += fs.statSync(jp).size;
+      fs.rmSync(jp);
+      skipped.push('assets/' + a.json + ' (embedded in ' + f + '/manifest.json)');
+      delete a.json;
+      changed = true;
+      out.n++;
+    }
+    if (changed) fs.writeFileSync(mp, JSON.stringify(j));
+  }
+  // the title diorama's stage atlases
+  const tb = path.join(OUT, 'assets', 'title_bake', 'title_bake.json');
+  if (fs.existsSync(tb)) {
+    const j = JSON.parse(fs.readFileSync(tb, 'utf8'));
+    let changed = false;
+    for (const k in j.files || {}) {
+      const fe = j.files[k];
+      if (!fe || !fe.json) continue;
+      const jp = path.join(OUT, 'assets', 'title_bake', fe.json);
+      if (!fs.existsSync(jp) || fs.statSync(jp).size > EMBED_FRAME_JSON) continue;
+      fe.data = JSON.parse(fs.readFileSync(jp, 'utf8'));
+      out.bytes += fs.statSync(jp).size;
+      fs.rmSync(jp);
+      skipped.push('assets/title_bake/' + fe.json + ' (embedded in title_bake.json)');
+      delete fe.json;
+      changed = true; out.n++;
+    }
+    if (changed) fs.writeFileSync(tb, JSON.stringify(j));
+  }
+  return out;
+}
+
 /** (v3.5) drop the atlas / image entries (and their files) of the copied manifests that the game never loads */
 function pruneOverridden(frags, skipped) {
   const mans = {};
@@ -365,9 +476,13 @@ function manifestOnlyFragments() {
   return m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
 }
 
-/** the page with the shipped fragment list set before the game starts */
-function pageWithFragments(page, frags) {
-  return page.replace('<script src="game.js"></script>', '<script>window.__FV_FRAGMENTS = ' + JSON.stringify(frags) + ';</script>\n<script src="game.js"></script>');
+/** the shipped fragment list, set before the game starts.
+ *  ((v4 review L4) it rides at the top of game.js, not in the page: the page goes out with the FIRST publish of a
+ *  multi-publish update, game.js with the LAST, so a page opened in between keeps the old code with its own old list) */
+function pageWithFragments(page) { return page; }
+function stampFragments(frags) {
+  const f = path.join(OUT, 'game.js');
+  fs.writeFileSync(f, 'window.__FV_FRAGMENTS = ' + JSON.stringify(frags) + ';\n' + fs.readFileSync(f, 'utf8'));
 }
 
 /**
@@ -378,7 +493,8 @@ function pageWithFragments(page, frags) {
  * name) always travel together, so a picture never meets the frame list of another build.
  */
 function publishBatches(files, size) {
-  const isBoot = (p) => p === 'game.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p) || p === 'assets/_packed/index.json';
+  // ((v4 review L4) chat.js and the title's bake list load at boot too: they travel with game.js)
+  const isBoot = (p) => p === 'game.js' || p === 'chat.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p) || p === 'assets/_packed/index.json' || p === 'assets/title_bake/title_bake.json';
   const boot = files.filter(isBoot);
   const groups = new Map();
   for (const p of files.filter((f) => !isBoot(f))) { const k = p.replace(/\.[^./]+$/, ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
@@ -462,11 +578,27 @@ async function main() {
     legalComments: 'none',
     charset: 'ascii',            // Korean text as \\u escapes: safe whatever charset the host serves .js with
     logLevel: 'warning',
-    banner: { js: '/* Frost Village - generated from src/ by tools/build/build_artifact.mjs. Do not edit this file: change src/ and rebuild. Phaser is loaded separately (lib/phaser.min.js, MIT licence). */' },
+    banner: { js: '/* Snowbloom Village (Frost Village) - generated from src/ by tools/build/build_artifact.mjs. Do not edit this file: change src/ and rebuild. Phaser is loaded separately (lib/phaser.min.js, MIT licence). */' },
+    // (v4-C2) the bundle loads the resident-chat code as its own script (chat.js) the first time a chat opens
+    define: { __FV_BUNDLED__: 'true' },
     metafile: true,
   });
   if (res.errors.length) throw new Error('esbuild failed');
   const bundled = Object.keys(res.metafile.inputs).length;
+  // (v4-C2) chat.js: src/chat (~200 KB) is not needed at first paint; src/systems/ResidentChat.js adds this script on
+  // the first 수다 떨기 (it sets window.__FV_CHAT_MOD)
+  const resChat = await esbuild.build({
+    entryPoints: [path.join(ROOT, 'src', 'chat', 'index.js')],
+    outfile: path.join(OUT, 'chat.js'),
+    bundle: true, format: 'iife', globalName: '__FV_CHAT_MOD', target: 'es2019', platform: 'browser',
+    minify: MINIFY, legalComments: 'none', charset: 'ascii', logLevel: 'warning',
+    banner: { js: '/* Snowbloom Village resident chat (src/chat) - generated by tools/build/build_artifact.mjs. */' },
+    metafile: true,
+  });
+  if (resChat.errors.length) throw new Error('esbuild (chat.js) failed');
+  // the game bundle must not contain the chat modules (they would be shipped twice)
+  const inGame = Object.keys(res.metafile.inputs).filter((f) => /src\/chat\//.test(f));
+  if (inGame.length) throw new Error('game.js bundles src/chat (' + inGame.join(', ') + '): import it only through ResidentChat.loadChatModule');
 
   // 2) copy lib/ and assets/
   const copied = [];
@@ -507,8 +639,12 @@ async function main() {
   // (v3.5) pictures a later fragment replaced (same atlas / image key: villagers3's chef, aunt and
   // blacksmith) or that no character uses any more (the old dog atlas, pets2 has the new one) are never
   // loaded by the game (Assets.mergeManifests: the later fragment wins key by key): leave them out
+  pruneUnusedKeys(frags.concat(late), skipped);
   pruneOverridden(frags, skipped);
   const packedN = shipPacked(frags.concat(late), skipped, copied);
+  // (v4-C2, the 511-file limit) small frame lists that load with their manifest anyway ride inside it
+  const emb = embedFrameLists(frags, late, skipped);
+  if (emb.n) console.log(`[build] ${emb.n} small frame lists embedded in their manifests (${(emb.bytes / 1024).toFixed(0)} KB, no extra download: they load with the manifest anyway)`);
   if (packedN) console.log(`[build] packed pages: ${packedN} atlases shipped as pages (assets/_packed)`);
   const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name) && !late.includes(e.name)).map((e) => 'assets/' + e.name + '/');
   if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
@@ -526,7 +662,8 @@ async function main() {
   }
 
   // 3) the page (written in step 5 for --inline, once the packs exist)
-  if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE, frags));
+  stampFragments(frags);
+  if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE));
 
   // 4) file-count limit: drop .ogg and point the audio manifest at .mp3 only
   let files = walk(OUT);
@@ -579,8 +716,8 @@ async function main() {
   if (INLINE) {   // (after the manifest checks, which need the loose files)
     const packs = writePacks();
     fs.writeFileSync(path.join(OUT, 'inline_loader.js'), INLINE_LOADER);
-    const tags = packs.map((p) => `<script src="${p}"></script>`).concat('<script src="inline_loader.js"></script>', '<script src="game.js"></script>').join('\n');
-    fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE, frags).replace('<script src="game.js"></script>', tags));
+    const tags = packs.map((p) => `<script src="${p}"></script>`).concat('<script src="inline_loader.js"></script>', '<script src="chat.js"></script>', '<script src="game.js"></script>').join('\n');
+    fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE).replace('<script src="game.js"></script>', tags));
     files = walk(OUT);
     console.log(`[build] --inline: assets embedded into ${packs.length} pack scripts`);
   }
@@ -589,15 +726,25 @@ async function main() {
   if (!/^<title>[^<]+<\/title>/.test(page)) problems.push('index.html must start with <title>');
   const gameJs = fs.readFileSync(path.join(OUT, 'game.js'), 'utf8');
   if (/\bimport\s*\(|\bimport\.meta\b|^\s*(import|export)\s/m.test(gameJs)) problems.push('game.js still contains import/export syntax');
+  const chatJs = fs.existsSync(path.join(OUT, 'chat.js')) ? fs.readFileSync(path.join(OUT, 'chat.js'), 'utf8') : '';
+  if (!chatJs) problems.push('chat.js is missing');
+  else if (/\bimport\s*\(|\bimport\.meta\b|^\s*(import|export)\s/m.test(chatJs) || !/__FV_CHAT_MOD/.test(chatJs)) problems.push('chat.js is not a classic script that sets __FV_CHAT_MOD');
 
   // 6) report
   const sizes = files.map((f) => ({ p: rel(f), s: fs.statSync(f).size })).sort((a, b) => b.s - a.s);
   const total = sizes.reduce((n, x) => n + x.s, 0);
   for (const x of sizes) if (x.s > LIMITS.perFile) problems.push(`${x.p} is ${mb(x.s)} (> 16 MB per file)`);
   if (sizes.length > LIMITS.maxFiles) problems.push(`${sizes.length} files (> ${LIMITS.maxFiles})`);
-  if (total > LIMITS.total) problems.push(`total ${mb(total)} (> 64 MB)`);
+  if (total > LIMITS.version) problems.push(`total ${mb(total)} (> 256 MB a version)`);
 
   const supporting = sizes.map((x) => x.p).filter((p) => p !== 'index.html').sort();
+  // each publish (the page + one batch) within 64 MB
+  {
+    const sz = new Map(sizes.map((x) => [x.p, x.s]));
+    const pageB = sz.get('index.html') || 0;
+    const bs = supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : [supporting];
+    bs.forEach((b, i) => { const n = b.reduce((a, p) => a + (sz.get(p) || 0), pageB); if (n > LIMITS.total) problems.push(`publish ${i + 1}: ${mb(n)} (> 64 MB one publish)`); });
+  }
   fs.writeFileSync(LIST_OUT, JSON.stringify({
     page: path.relative(path.dirname(ROOT), path.join(OUT, 'index.html')).split(path.sep).join('/'),
     root: path.relative(path.dirname(ROOT), OUT).split(path.sep).join('/'),
@@ -605,7 +752,9 @@ async function main() {
     // more than one publish's worth of files: send batch 1 with the page, then the next batches to the same url
     // (the boot files — game.js, lib/, the manifests — are in the last batch: see publishBatches)
     batches: supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : undefined,
-    note: 'Publish: Artifact({ file_path: page, root, files }). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : ''),
+    // (v4-C2) the resident chat asks the viewer's Claude through the `sample` capability: publish with this declaration
+    capabilities: { sample: {} },
+    note: 'Publish: Artifact({ file_path: page, root, files, capabilities: { sample: {} } }) - the capabilities declaration lets residents chat with AI (offline village voice without it). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : ''),
   }, null, 1));
 
   const byExt = {};
@@ -622,7 +771,7 @@ async function main() {
   for (const x of sizes.slice(0, 10)) console.log(`    ${mb(x.s).padStart(9)}  ${x.p}`);
   if (skipped.length) console.log('  skipped: ' + skipped.join(', '));
   if (unreferenced.length) console.log('  copied but not listed in any manifest: ' + unreferenced.join(', '));
-  console.log(`\n  FILES: ${sizes.length} (limit ${LIMITS.files})   TOTAL: ${mb(total)} (limit 64 MB)   largest: ${mb(sizes[0].s)} (limit 16 MB)`);
+  console.log(`\n  FILES: ${sizes.length} (limit ${LIMITS.files} a publish, ${LIMITS.maxFiles} a version)   TOTAL: ${mb(total)} (limit 64 MB a publish, 256 MB a version)   largest: ${mb(sizes[0].s)} (limit 16 MB)`);
   console.log(`  every game file once (one audio format): ${mb(downloaded)} — a first visit loads only part of it before the title; the rest arrives while playing, as the village needs it`);
   console.log(`  file list for the Artifact tool: ${path.relative(process.cwd(), LIST_OUT)}`);
   if (problems.length) {

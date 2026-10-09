@@ -8,7 +8,10 @@
 import { Placeholders } from './Placeholders.js';
 import { TF } from './Townfolk.js';
 
-export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2'];
+export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5'];
+// (v4-C2) water = the living sea of v7 (Water.js): its data textures come after the title (WATER_DATA, prefetched
+// while the title shows), its effect sheets only when a system asks (WaterSheets). audio5 = the sea / beach sounds:
+// only amb_sea_waves is used yet (it replaces amb_sea); the beach keys wait for the beach (USED_ONLY)
 // pictures of these fragments are loaded after the title, in the background
 // (v3: the buildings — construction stages, new workshops, boats — come in while the village plays)
 // (v3.5: villagers3 = the station operators (chef, aunt, blacksmith re-rendered with `operate` +
@@ -19,15 +22,26 @@ export const LAZY_FRAGMENTS = ['villagers', 'villagers2', 'villagers3', 'buildin
 // v3.5: the whistle / treat / ball icons of the HUD and the dog's treat + ball)
 const EAGER_KEYS = new Set(['bld_items', 'pets2_icons', 'pets2_items']);
 // v3 effect sheets that only play during construction / boat trips / tower fires: also after the title
-const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big)$/;
+// (v4-C2) + the water effect sheets (loaded only when a system asked for them: Game.lazyAllowed -> WaterSheets)
+const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big|wave_crash|splash_small|splash_big|swim_ripple|wake_v2(_[a-z]+)?|sparkle_water|shore_wave_[xy])$/;
+// (v4-C2) the water's data textures + baked shoreline field: not needed for the title's first paint (prefetched
+// while the title shows, else the Game fetches them first and the old sea shows until they are there)
+export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_village)$/;
+// (v4-C2) fragments of which the game uses only some keys yet; the rest is never loaded and the artifact build
+// leaves those files out (tools/build/build_artifact.mjs reads this line: keep it one JSON-like object)
+export const USED_ONLY = { "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
 // (v2 read only the staff points of the buildings fragment; v3 loads all of it)
 export const MANIFEST_ONLY_FRAGMENTS = [];
 // (v4-A) fragments that are never loaded at boot: Assets.loadFragment() fetches them while the village
 // plays (docs/v4_plan.md §11.6). The artifact build packages them too (tools/build/build_artifact.mjs).
-export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
+// (v4-C2) + voice (눈꽃말: each voice type's sprite when its first resident speaks), audio4 (the title's ferry horn and
+// gull), title + title_bake (the living title: src/title/TitleAssets.js reads them itself; Assets.js never loads them)
+export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2', 'voice', 'audio4', 'title', 'title_bake'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
 const BASE = 'assets/';
 // made for v4 (the spring ending): not used yet, never loaded
 const V3_ONLY = /^(bgm_spring)/;
+// (v4-C2) pictures only the old title screen used (docs/build_reports/title_code.md §2): 478 KB less at boot
+const OLD_TITLE = /^(ui_title_bg|portrait_player_512)$/;
 // v3 sounds that are only needed once the village is running (loaded after the title)
 const V3_SFX = /^sfx_(hammer|build_done|saw_short|boat_horn|row|tower_fire|fog_clear)/;
 
@@ -122,6 +136,7 @@ export const Assets = {
       Object.assign(m.sprites, j.sprites || {});
       Object.assign(m.nineSlice, j.nineSlice || {});
       Object.assign(m.audio, j.audio || {});
+      for (const k in j.audio || {}) this.audioFrag[k] = f;
       Object.assign(m.audioGroups, j.audioGroups || {});
       if (j.layouts && typeof j.layouts === 'object') Object.assign(this.layouts, j.layouts);
       // (v3.5) workers manifest: hire order of the looks of each profession (base first, then variants)
@@ -208,7 +223,33 @@ export const Assets = {
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || this.lateFrag.has(this.fragOf[key]); },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || this.lateFrag.has(this.fragOf[key]); },
+
+  /**
+   * (v4-C2) fetch after-title pictures now, outside any scene's loader (plain Image elements added to the
+   * texture manager): the water's data textures while the title shows, so the village opens with the living sea.
+   * The Game's lazy loader skips what is here or on its way; a failed file goes back to it.
+   */
+  prefetch(game, test) {
+    if (!game || !game.textures || typeof Image === 'undefined') return 0;
+    let n = 0;
+    for (const k in this.m.images) {
+      const a = this.m.images[k];
+      if (!a || !a.png || !test(k) || this.isUnused(k) || game.textures.exists(k) || this.queued.has(k)) continue;
+      this.queued.add(k);
+      n++;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          if (!game.textures.exists(k)) game.textures.addImage(k, img);
+          this.onLazyFile(k);
+        } catch (e) { this.queued.delete(k); }
+      };
+      img.onerror = () => { this.queued.delete(k); };
+      img.src = BASE + a.png;
+    }
+    return n;
+  },
 
   // ---------------------------------------------------------------- (v4-A) late fragments
   // v4 art (town, townfolk, roads, audio3...) is never requested at boot: its manifest and the files a
@@ -250,12 +291,24 @@ export const Assets = {
       for (const fn of q) fn();
     };
     if (scene.cache.json.exists(key)) { done(); return true; }
-    scene.load.json(key, BASE + name + '/manifest.json');
+    // (v4 review M2) a manifest that failed to arrive is asked for again (a few times, with a growing pause) before
+    // the systems waiting for it go on without it: one dropped request must not leave the town as placeholders
+    let tries = 0;
+    const ask = () => {
+      if (!scene.sys || !scene.load) return;
+      scene.load.json(key, BASE + name + '/manifest.json');
+      scene.load.on('filecomplete', onFile);
+      scene.load.on('loaderror', onErr);
+      if (!scene.load.isLoading()) scene.load.start();
+    };
     const onFile = (k) => { if (k === key) { scene.load.off('filecomplete', onFile); scene.load.off('loaderror', onErr); done(); } };
-    const onErr = (f) => { if (f && f.key === key) { scene.load.off('filecomplete', onFile); scene.load.off('loaderror', onErr); this.fragments[name] = false; done(); } };
-    scene.load.on('filecomplete', onFile);
-    scene.load.on('loaderror', onErr);
-    if (!scene.load.isLoading()) scene.load.start();
+    const onErr = (f) => {
+      if (!f || f.key !== key) return;
+      scene.load.off('filecomplete', onFile); scene.load.off('loaderror', onErr);
+      if (++tries <= 4 && scene.time) { scene.time.delayedCall([2000, 6000, 15000, 30000][tries - 1], ask); return; }
+      this.fragments[name] = false; done();
+    };
+    ask();
     return true;
   },
 
@@ -274,7 +327,7 @@ export const Assets = {
     const sp = j.sprites && typeof j.sprites === 'object' ? j.sprites : {};
     for (const k in sp) if (!m.sprites[k]) { m.sprites[k] = sp[k]; this.cache.delete(k); }
     for (const k in j.nineSlice || {}) if (!m.nineSlice[k]) m.nineSlice[k] = j.nineSlice[k];
-    for (const k in j.audio || {}) if (!m.audio[k]) m.audio[k] = j.audio[k];
+    for (const k in j.audio || {}) if (!m.audio[k]) { m.audio[k] = j.audio[k]; this.audioFrag[k] = f; }
     for (const k in j.audioGroups || {}) if (!m.audioGroups[k]) m.audioGroups[k] = j.audioGroups[k];
     this.lateManifest = this.lateManifest || {};
     this.lateManifest[f] = j;
@@ -452,7 +505,16 @@ export const Assets = {
   /** music not used yet (v4 spring ending): never loaded, so it costs nothing */
   isUnusedAudio(key) { return V3_ONLY.test(key); },
   /** files made for a later version (v4): not downloaded yet */
-  isUnused(key) { return V3_ONLY.test(key) || this.unusedAtlas.has(key); },
+  isUnused(key) {
+    if (V3_ONLY.test(key) || this.unusedAtlas.has(key)) return true;
+    // (v4-C2) a fragment the game uses only part of (USED_ONLY); amb_sea is replaced by amb_sea_waves (audio5)
+    const f = this.fragOf[key] || (this.m.audio[key] && this.audioFrag[key]);
+    if (f && USED_ONLY[f] && USED_ONLY[f].indexOf(key) < 0) return true;
+    if (key === 'amb_sea' && this.m.audio.amb_sea_waves) return true;
+    // (v4-C2) the old title's pictures: the new title (src/title) does not use them
+    return OLD_TITLE.test(key);
+  },
+  audioFrag: {},        // (v4-C2) audio key -> fragment
 
   /**
    * a file failed to load. Audio: Phaser picks the first format the browser can play (ogg) and does
@@ -466,6 +528,20 @@ export const Assets = {
       const url = String(file.url || file.src || '');
       const rest = (a.files || []).map((f) => BASE + f).filter((f) => url.indexOf(f) < 0 && !url.endsWith(f));
       if (rest.length) { this.retried.add(file.key); try { load.audio(file.key, rest); return; } catch (e) { /* fall through */ } }
+    }
+    // (v4 review M2) an after-title picture (a lazy / late file, or an area page that was evicted and comes back) is
+    // tried again a few times with a growing pause before it counts as failed: one network hiccup on a phone must
+    // not leave a placeholder box for the whole session. Until then it stays "pending" (pictures keep their
+    // invisible stand-in and are re-skinned when it arrives); the next lazy pass queues it again.
+    let key = file.key;
+    if (typeof key === 'string' && key.endsWith('#tfatlas')) key = key.slice(0, -8);
+    const lazy = file.type !== 'audio' && (this.isLazy(key) || this.held.has(key) || this.demanded.has(key));
+    this.fileTries = this.fileTries || {};
+    const n = (this.fileTries[key] || 0) + 1;
+    if (lazy && n <= 5 && typeof setTimeout === 'function') {
+      this.fileTries[key] = n;
+      setTimeout(() => { this.queued.delete(key); }, [3000, 8000, 20000, 45000, 90000][n - 1]);
+      return;
     }
     this.failed.add(file.key);
   },

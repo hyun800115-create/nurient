@@ -145,9 +145,11 @@ export class Tutorial {
   /** (v3.5) the coins customers left would buy the next pad (or there are a lot of them): pick them up */
   cashHint(set) {
     const gs = this.gs, p = gs.player, prog = gs.progress, coins = gs.economy.coins;
-    let total = 0, best = null;
+    // ((v4-C) the town hall's tax box and the restaurant's cash count only when they make the next purchase possible)
+    let total = 0, best = null, totalAll = 0, bestAll = null;
     for (const c of this.cashes()) { total += c.value; if (c.value > 0 && (!best || c.value > best.value)) best = c; }
-    if (!best || total < 25) return false;
+    for (const c of this.cashes(true)) { totalAll += c.value; if (c.value > 0 && (!bestAll || c.value > bestAll.value)) bestAll = c; }
+    if (!bestAll || totalAll < 25) return false;
     let next = Infinity;
     for (const id in prog.pads) { const pd = prog.pads[id]; if (pd.active && !pd.done && pd.remaining > 0) next = Math.min(next, pd.remaining); }
     for (const k in prog.upPads) { const u = prog.upPads[k]; if (u.active && !u.done && !u.maxed && u.remaining > 0) next = Math.min(next, u.remaining); }
@@ -156,20 +158,24 @@ export class Tutorial {
     // far plot, and an arrow-only player bounced between the coins and the plot for minutes (5000+ in hand)
     const g = prog.nextGoal();
     const canBuild = !!(g && g.kind === 'build' && !gs.isBuilding(g.id) && !gs.isBuilt(g.id) && coins >= (buildCost(g.id).coins || 0));
-    if (!((coins < next && coins + total >= next) || (total >= 300 && !canBuild))) return false;
-    if (best.pad.contains(p.x, p.y)) return false;
-    set(best.x, best.y, 40, 'obj_cash');
+    const buys = coins < next && coins + totalAll >= next, lots = !!best && total >= 300 && !canBuild;
+    if (!buys && !lots) return false;
+    const c = buys && !(best && coins + total >= next) ? bestAll : best;
+    if (c.pad.contains(p.x, p.y)) return false;
+    set(c.x, c.y, 40, 'obj_cash');
     return true;
   }
 
-  cashes() {
+  cashes(withCivic) {
     const gs = this.gs;
     // ((v4-B) + the station till: wholesale, card bonuses and rent)
     const g = gs.v4 && gs.v4.growth;
-    // ((v4-C) + the town hall's tax box and the big restaurant's cash pad)
-    const cv = gs.civic;
-    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null,
-      cv && cv.hall && cv.hall.enabled ? cv.hall.tax : null, cv && cv.restaurant && cv.restaurant.enabled ? cv.restaurant.cash : null].filter(Boolean);
+    const out = [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null];
+    // ((v4-C) the town hall's tax box and the big restaurant's cash pad count toward the next purchase (cashHint) only:
+    // they fill all the time, and a "coins are waiting" arrow to them would never leave the chief alone — the bots
+    // following the arrow collected tax for half an hour instead of filling the neighbours' orders)
+    if (withCivic) { const cv = gs.civic; if (cv && cv.hall && cv.hall.enabled) out.push(cv.hall.tax); if (cv && cv.restaurant && cv.restaurant.enabled) out.push(cv.restaurant.cash); }
+    return out.filter(Boolean);
   }
 
   // ---------------------------------------------------------------- (v4-B, docs/v4_plan.md §15.3)
@@ -189,6 +195,12 @@ export class Tutorial {
     return false;
   }
 
+  /** (v4 review) an open founding card needs `ty` and the station porters brought nothing for it for `stuckAfter` s */
+  cardStuck(g, ty) {
+    const after = 45;
+    return g.cards.some((c) => c.shop && c.need[ty] && c.got[ty] < c.need[ty] && (g.porters.length === 0 || (c.porterIdle || 0) >= after));
+  }
+
   /** the loading dock as a target (the chief carries `ty`, an open card needs it) */
   dockFor(ty) { const g = this.growth(); return g && g.needOf(ty) > 0 ? g.dockPad : null; }
 
@@ -204,7 +216,9 @@ export class Tutorial {
         if (g.needOf(ty) <= 0) continue;
         const shelf = FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
         const full = !shelf || !shelf.enabled || shelf.stock.countOf(ty) >= shelf.maxPerType * 0.5;
-        if (!full) continue;
+        // ((v4 review) a founding card the station porters do not fill (nothing from them for a while): its goods go
+        //  to the dock even while their shelf is low — else an arrow-only player sold the cans the 슈퍼마켓 waited for)
+        if (!full && !this.cardStuck(g, ty)) continue;
         const key = 'obj_cargo:' + ty, text = t('obj_cargo', { item: t(ty) });
         if (g.dockPad.contains(p.x, p.y)) { this.textKey = key; this.text = text; }
         else set(g.dockPad.x, g.dockPad.y, 60, key, text);
@@ -228,7 +242,7 @@ export class Tutorial {
       }
     }
     // 7. happiness below the bar and a shelf item is gone: that shelf (idle only)
-    if (g && idle && nb.rank && nb.rank.level < 2 && g.happiness() < ((BALANCE.v4.rank && BALANCE.v4.rank[2] && BALANCE.v4.rank[2].happy) || 70)) {
+    if (g && idle && nb.rank && nb.rank.level < 2 && g.happiness() < ((BALANCE.v4.rank && BALANCE.v4.rank[2] && BALANCE.v4.rank[2].happy) || 80)) {
       const m = gs.market;
       const ty = m.availableFoods ? FOODS.find((f) => m.stock.countOf(f) === 0 && gs.stationList.some((st) => st.output === f && st.enabled)) : null;
       if (ty) { set(m.shelf.x, m.shelf.y, 60, 'obj_happy_low:' + ty, t('obj_happy_low', { item: t(ty) })); return true; }
@@ -240,7 +254,9 @@ export class Tutorial {
         const ty = Object.keys(c.need).find((k) => c.got[k] < c.need[k]);
         const src = ty && this.sourceOf(ty);
         const text = c.shop ? t('obj_order_focus', { item: t(ty), got: c.got[ty], need: c.need[ty], shop: t('shop_' + c.shop) }) : t('obj_order_standing', { item: t(ty), got: c.got[ty], need: c.need[ty] });
-        if (src && p.room > 0 && g.porters.length === 0) { if (src.outPad.contains(p.x, p.y)) { this.textKey = 'obj_order:' + c.id; this.text = text; } else set(src.outPad.x, src.outPad.y, 80, 'obj_order:' + c.id + ':' + c.got[ty], text); return true; }
+        // ((v4 review) with station porters the chief is sent too once they have brought nothing for this card for a
+        //  while: a trickle the shelves' porters always take first, or tools below the porters' batch size)
+        if (src && p.room > 0 && (g.porters.length === 0 || this.cardStuck(g, ty))) { if (src.outPad.contains(p.x, p.y)) { this.textKey = 'obj_order:' + c.id; this.text = text; } else set(src.outPad.x, src.outPad.y, 80, 'obj_order:' + c.id + ':' + c.got[ty], text); return true; }
       }
     }
     return false;
@@ -493,7 +509,8 @@ export class Tutorial {
     }
     // ---- (v4-B) a full shelf: an open order card takes it at the loading dock
     const dock = this.dockFor(type);
-    if (dock && !this.shelfRoom(type)) return { pad: dock, key: 'obj_cargo:' + type, text: t('obj_cargo', { item: t(type) }) };
+    const gw = this.growth();
+    if (dock && (!this.shelfRoom(type) || (gw && this.cardStuck(gw, type)))) return { pad: dock, key: 'obj_cargo:' + type, text: t('obj_cargo', { item: t(type) }) };
     if (STORE_GOODS.indexOf(type) >= 0) return gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType ? { pad: gs.store.shelf, key: null } : (gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null);
     if (type === 'item_fish_big') return gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null;
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? { pad: gs.market.shelf, key: SELL_KEY[type] } : null;
@@ -670,8 +687,19 @@ export class Tutorial {
       if (d && !d.pad.contains(p.x, p.y)) { set(d.pad.x, d.pad.y, 60, d.key, d.text); return true; }
     }
     if (p.room <= 0) return false;
-    // coins waiting
-    for (const c of this.cashes()) if (c.value >= 10 && !c.pad.contains(p.x, p.y)) { set(c.x, c.y, 40, 'obj_cash'); return true; }
+    // coins waiting: the biggest pile worth the walk ((v4-C) a tax box half full / a restaurant cash pad with a good
+    // pile count too — (v4 review) before, the market's few coins always came first and an arrow-only player left
+    // 12000 coins on the restaurant's pad for an hour)
+    let cb = null;
+    const cand = (c, min, key) => { if (c && c.value >= min && !c.pad.contains(p.x, p.y) && (!cb || c.value > cb.c.value)) cb = { c, key }; };
+    for (const c of this.cashes()) cand(c, 10, 'obj_cash');
+    const cv = gs.civic;
+    if (cv && cv.hall && cv.hall.enabled) {
+      const cap = Math.max(1, Math.floor(Number(((BALANCE.civic || {}).hall || {}).taxCap) || 1500));
+      cand(cv.hall.tax, Math.min(300, cap * 0.5), 'obj_hall_tax');
+    }
+    if (cv && cv.restaurant && cv.restaurant.enabled) cand(cv.restaurant.cash, 150, 'obj_cash');
+    if (cb) { set(cb.c.x, cb.c.y, 40, cb.key); return true; }
     // the station with the most finished products (stations with a porter empty themselves)
     let best = null;
     for (const st of gs.stationList) {

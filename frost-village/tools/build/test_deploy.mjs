@@ -33,7 +33,8 @@ const FV = path.resolve(HERE, '..', '..');              // frost-village/
 const REPO = path.resolve(FV, '..');                     // repo root (GitHub Pages site root)
 const DIST = path.join(FV, 'dist', 'artifact');
 const DIST_INLINE = path.join(FV, 'dist', 'artifact_inline');
-const SHOTS = path.join(FV, 'dist', 'deploy_test');
+// (review) FV_DEPLOY_SHOTS: write the screenshots elsewhere (a reviewer's scratch folder)
+const SHOTS = process.env.FV_DEPLOY_SHOTS || path.join(FV, 'dist', 'deploy_test');
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const argv = process.argv.slice(2);
@@ -161,10 +162,15 @@ async function testMode(browser, mode) {
     return Date.now() - t1;
   };
   const startGame = async () => {             // tap the title (retry: a tap during the title intro can be missed)
-    for (let i = 0; i < 4; i++) {
+    // (v4-C2) the living title's first visit: tap 1 turns the sound on (the opening goes on), tap 2 skips it, then
+    // a tap starts the village; once the title has handed over, the village may take a while to build (SwiftShader)
+    for (let i = 0; i < 8; i++) {
       await tapCanvas(0.6);
-      const ok = await waitFor(() => window.__FV.state && window.__FV.game.scene.isActive('UI'), T(12000)).then(() => true, () => false);
-      if (ok) return i + 1;
+      const ok = await waitFor(() => (window.__FV.state && window.__FV.game.scene.isActive('UI')) || !window.__FV.game.scene.isActive('Title'), T(6000)).then(() => true, () => false);
+      if (ok) {
+        await waitFor(() => window.__FV.state && window.__FV.game.scene.isActive('UI'), T(90000));
+        return i + 1;
+      }
     }
     throw new Error('tap to start did not reach the village');
   };
@@ -186,7 +192,9 @@ async function testMode(browser, mode) {
     await shot('1_title');
     const assets = await ev(() => {
       const g = window.__FV.game;
-      const tex = ['char_player', 'props_buildings', 'ui_title_bg', 'ground_snow', 'fx_particles'].filter((k) => !g.textures.exists(k));
+      // (v4-C2) the living title: its first paint (the stage-1 diorama bake, the island ground, a logo) instead of ui_title_bg
+      const tex = ['char_player', 'props_buildings', 'ground_snow', 'fx_particles', 'ttl_1_0', 'ttl_ground_base'].filter((k) => !g.textures.exists(k));
+      if (!['ttl_logo_main', 'ttl_logo_main_1x', 'ttl_logo_en', 'ttl_logo_en_1x'].some((k) => g.textures.exists(k))) tex.push('ttl_logo_*');
       // (village music + ambience are loaded after the title, by the Game scene)
       const aud = ['bgm_title', 'sfx_coin'].filter((k) => !g.cache.audio.exists(k));
       return { missingTex: tex, missingAudio: aud, renderer: g.renderer.type === 2 ? 'WebGL' : 'Canvas', loadingGone: !document.getElementById('fv-loading'), errBox: (document.getElementById('fv-error') || {}).textContent || '' };
@@ -201,8 +209,19 @@ async function testMode(browser, mode) {
     const audio = await ev(() => { const sm = window.__FV.game.sound; return { locked: sm.locked, ctx: sm.context ? sm.context.state : 'html5', music: !!(sm.sounds || []).find((x) => x.key === 'bgm_village' && x.isPlaying) }; });
     step('tap to start -> village', s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue} taps=${taps}`);
     {
-      const ok = await waitFor(() => ['bgm_village', 'amb_wind', 'amb_sea', 'amb_fire'].every((k) => window.__FV.game.cache.audio.exists(k)), T(30000)).then(() => true).catch(() => false);
+      // (v4-C2) audio5's rolling sea (amb_sea_waves) replaces amb_sea
+      const ok = await waitFor(() => ['bgm_village', 'amb_wind', 'amb_sea_waves', 'amb_fire'].every((k) => window.__FV.game.cache.audio.exists(k)), T(30000)).then(() => true).catch(() => false);
       step('village music + ambience loaded after the title', ok);
+    }
+    {
+      // (v4-C2) the living water (data textures prefetched while the title showed), the village voices' manifest
+      // (late fragment) and the resident chat's own script (chat.js, loaded on demand)
+      const w = await waitFor(() => { const x = window.__FV.water && window.__FV.water(); return x && (x.shader || x.sea); }, T(30000)).then(() => ev(() => window.__FV.water())).catch(() => null);
+      step('(v4-C2) living water: shader sea with the baked shoreline field (or the old sea without WebGL)', !!w && (w.shader ? w.fieldFrom === 'baked' : w.sea), w ? JSON.stringify({ shader: w.shader, quality: w.quality, field: w.fieldFrom, sea: w.sea }) : 'no water');
+      const vm = await waitFor(() => window.__FV.game.cache.json.exists('manifest_voice'), T(30000)).then(() => true).catch(() => false);
+      step('(v4-C2) village voices: the voice manifest arrived (late fragment)', vm);
+      const chat = await ev(() => window.__FV.scene.residentChat.ensure().then(() => ({ ok: !!window.__FV_CHAT_MOD, mode: window.__FV.chat().mode })).catch((e) => ({ ok: false, err: String(e && e.message) })));
+      step('(v4-C2) resident chat: chat.js loads on demand, offline village voice', chat.ok && chat.mode === 'offline', JSON.stringify(chat));
     }
     step('audio unlocked after tap', !audio.locked && (audio.ctx === 'running' || audio.ctx === 'html5'), JSON.stringify(audio));
     const warned = await ev(() => window.__FV.warnings());

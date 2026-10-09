@@ -63,11 +63,11 @@ export class Territory {
   areaOf(x) { return x >= ((WORLD.territory.rail && WORLD.territory.rail.rect[0]) || 1e9) ? 'neighbours' : 'village'; }
 
   /** (v4-A) bounding box of the open land of an area (the overview frames the area the chief is in) */
-  areaRect(area) {
+  areaRect(area, filter) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const id in this.regions) {
       const r = this.regions[id];
-      if (!r.open || this.areaOf((r.rect[0] + r.rect[2]) / 2) !== area) continue;
+      if (!r.open || this.areaOf((r.rect[0] + r.rect[2]) / 2) !== area || (filter && !filter(r))) continue;
       x0 = Math.min(x0, r.rect[0]); y0 = Math.min(y0, r.rect[1]); x1 = Math.max(x1, r.rect[2]); y1 = Math.max(y1, r.rect[3]);
     }
     if (!Number.isFinite(x0)) return this.camRect;

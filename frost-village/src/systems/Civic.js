@@ -43,8 +43,9 @@ export const CATALOG = {
   house_c: { cat: 'home', sizes: 'SML', thumb: 'house_c' },
   house_a: { cat: 'home', sizes: 'SML', thumb: 'house_a' },
   house_b: { cat: 'home', sizes: 'SML', thumb: 'house_b' },
-  town_hall: { cat: 'civic', sizes: 'X', unique: true, thumb: 'town_hall', art: ['town_hall', 'notice_board'] },
-  big_restaurant: { cat: 'civic', sizes: 'X', unique: true, thumb: 'restaurant', art: ['restaurant'] },
+  town_hall: { cat: 'civic', sizes: 'X', unique: true, thumb: 'town_hall', art: ['town_hall', 'notice_board'], waitIcon: 'notice_board' },
+  // ((v4 review) waitIcon: the card's picture while the town art is on its way — a dish, not the hammer)
+  big_restaurant: { cat: 'civic', sizes: 'X', unique: true, thumb: 'restaurant', art: ['restaurant'], waitIcon: 'item_fish_cooked' },
   deco_snowman: { cat: 'decor', sizes: 'S', thumb: 'snowman_3' },
   deco_bench: { cat: 'decor', sizes: 'S', thumb: 'bench' },
   deco_lamp: { cat: 'decor', sizes: 'S', thumb: 'lamp_post' },

@@ -30,7 +30,7 @@ export class HudV4 {
     // ---- rank chip
     const rc = this.rankChip = ui.add.container(0, 0).setVisible(false).setDepth(20);
     this.rankBg = panel(ui, 0, 0, 'ui_panel', 156, 54).setOrigin(0, 0.5).setAlpha(0.95);
-    this.rankBadge = icon(ui, 26, 0, ['ui_badge_rank_1', 'ui_icon_fame', 'ui_icon_star', 'ui_icon_lock'], 42);
+    this.rankBadge = icon(ui, 26, 0, ['ui_badge_rank_1', 'ui_icon_fame', 'ui_icon_lock'], 42);
     this.rankText = ui.add.text(52, -12, '', TXT(19, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5);
     this.rankBars = ui.add.graphics();
     rc.add([this.rankBg, this.rankBadge, this.rankText, this.rankBars]);
@@ -51,11 +51,22 @@ export class HudV4 {
     // ---- clock
     const ck = this.clock = ui.add.container(0, 0).setVisible(false).setDepth(20);
     this.clockG = ui.add.graphics();
-    this.clockIcon = icon(ui, 0, 0, ['ui_icon_day', 'ui_icon_star', 'ui_icon_lock'], 38);
+    this.clockIcon = icon(ui, 0, 0, ['ui_icon_day', 'ui_icon_lock'], 38);
     ck.add([this.clockG, this.clockIcon]);
-    // ---- train edge icon
-    this.trainEdge = icon(ui, 0, 0, ['ui_icon_delivery', 'ui_icon_porter', 'ui_icon_backpack'], 44).setVisible(false).setDepth(19);
-    this.trainEdge.setTint(0xffe2a8);
+    // ---- train edge icon ((v4 review) a round badge with the snow train's engine in it and a pointer toward the
+    //      train: the bare delivery icon read like a stray truck)
+    const te = this.trainEdge = ui.add.container(0, 0).setVisible(false).setDepth(19);
+    this.trainEdgeG = ui.add.graphics();
+    this.trainEdgePtr = ui.add.graphics();
+    this.trainEdgeIcon = icon(ui, 0, 0, ['ui_icon_delivery', 'ui_icon_porter', 'ui_icon_backpack'], 40);
+    this.trainEdgeEngine = null;
+    const g = this.trainEdgeG;
+    g.fillStyle(0x1f3354, 0.25); g.fillCircle(0, 4, 31);
+    g.fillStyle(0xfff8ec, 0.97); g.fillCircle(0, 0, 31);
+    g.lineStyle(5, 0xe8a33d, 1); g.strokeCircle(0, 0, 29);
+    const pg = this.trainEdgePtr;
+    pg.fillStyle(0xe8a33d, 1); pg.fillTriangle(38, 0, 26, -10, 26, 10);
+    te.add([pg, g, this.trainEdgeIcon]);
     this.layout();
   }
 
@@ -87,7 +98,7 @@ export class HudV4 {
     this.refreshT = (this.refreshT || 0) - dt;
     if (this.refreshT <= 0) {
       this.refreshT = 0.25;
-      reicon(this.rankBadge); reicon(this.orderIcon); reicon(this.clockIcon); reicon(this.trainEdge);
+      reicon(this.rankBadge); reicon(this.orderIcon); reicon(this.clockIcon); reicon(this.trainEdgeIcon);
       if (showRank) this.drawRank();
       if (showOrder) this.drawOrder();
       if (this.panel && this.panel.refresh) this.panel.refresh();
@@ -107,7 +118,7 @@ export class HudV4 {
     const rk = this.nb.rank;
     const lv = rk.level;
     const badge = 'ui_badge_rank_' + Math.min(5, lv);
-    if (this.rankBadge.__keys[0] !== badge) { this.rankBadge.__keys = [badge, 'ui_icon_fame', 'ui_icon_star', 'ui_icon_lock']; this.rankBadge.__k = null; reicon(this.rankBadge); }
+    if (this.rankBadge.__keys[0] !== badge) { this.rankBadge.__keys = [badge, 'ui_icon_fame', 'ui_icon_lock']; this.rankBadge.__k = null; reicon(this.rankBadge); }
     const txt = t('rank_' + lv);
     if (this.rankText.text !== txt) this.rankText.setText(txt);
     const bars = rk.bars();
@@ -151,7 +162,7 @@ export class HudV4 {
   drawClock() {
     const nb = this.nb, h = nb.clock.hour(), night = h >= 19 || h < 6;
     const want = night ? 'ui_icon_night' : 'ui_icon_day';
-    if (this.clockIcon.__keys[0] !== want) { this.clockIcon.__keys = [want, 'ui_icon_star', 'ui_icon_lock']; this.clockIcon.__k = null; reicon(this.clockIcon); }
+    if (this.clockIcon.__keys[0] !== want) { this.clockIcon.__keys = [want, 'ui_icon_lock']; this.clockIcon.__k = null; reicon(this.clockIcon); }
     const k = Math.floor(h * 4);
     if (k === this._ck) return;
     this._ck = k;
@@ -176,10 +187,26 @@ export class HudV4 {
         const a = Math.atan2(p.y - cy, p.x - cx);
         const bob = Math.sin(this.t * 5) * 4;
         this.trainEdge.setPosition(ex - Math.cos(a) * bob, ey - Math.sin(a) * bob);
+        this.trainEdgePtr.setRotation(Math.atan2(p.y - ey, p.x - ex));
+        this.trainEngineIcon();
         show = true;
       }
     }
     if (this.trainEdge.visible !== show) this.trainEdge.setVisible(show);
+  }
+
+  /** the engine's first idle frame in the badge (once the train's art is here), else the delivery icon */
+  trainEngineIcon() {
+    if (this.trainEdgeEngine) return;
+    // (the train is rendered NE and drawn mirrored as NW: Train.js HEAD)
+    const ui = this.ui, an = ui.anims.get('train_engine:idle:NE') || ui.anims.get('train_engine:move:NE');
+    const f = an && an.frames && an.frames[0] ? an.frames[0].frame : null;
+    if (!f || !f.texture || !ui.textures.exists(f.texture.key)) return;
+    const im = ui.add.image(0, 4, f.texture.key, f.name).setOrigin(0.5, 0.62).setFlipX(true);
+    im.setScale(50 / Math.max(1, f.realWidth, f.realHeight));
+    this.trainEdgeEngine = im;
+    this.trainEdge.add(im);
+    this.trainEdgeIcon.setVisible(false);
   }
 
   // ------------------------------------------------------------------ panels (non-pausing; a tap outside closes)
@@ -291,7 +318,7 @@ export class HudV4 {
       p.c.add(bg);
       p.c.add(ui.makeIconButton(W / 2 + pw / 2 - 40, top + 40, 'ui_icon_close', 62, () => this.closePanel()));
       const lv = rk.level;
-      const badge = icon(ui, W / 2, top + 100, ['ui_badge_rank_' + Math.min(5, lv), 'ui_icon_fame', 'ui_icon_star'], 128);
+      const badge = icon(ui, W / 2, top + 100, ['ui_badge_rank_' + Math.min(5, lv), 'ui_icon_fame', 'ui_icon_lock'], 128);
       p.c.add(badge);
       p.c.add(ui.add.text(W / 2, top + 186, t('rank_panel') + ' · ' + t('rank_' + lv), TXT(30, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
       const content = ui.add.container(0, 0);
@@ -384,7 +411,7 @@ export class HudV4 {
   badgeFly(wx, wy) {
     const ui = this.ui;
     const s = ui.worldToScreen(wx, wy);
-    const b = icon(ui, s.x, s.y, ['ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_star'], 128).setDepth(65);
+    const b = icon(ui, s.x, s.y, ['ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_lock'], 128).setDepth(65);
     b.setScale(b.scaleX * 0.3);
     const to = { x: this.rankChip.x + 26, y: this.rankChip.y };
     const sc = b.scaleX;

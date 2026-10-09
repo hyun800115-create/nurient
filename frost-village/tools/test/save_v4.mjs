@@ -164,6 +164,11 @@ if (args.includes('--browser')) {
     const back = await ev(() => { const s = Object.values(window.__FV.v4.growth().shops)[0]; return { shop: s && s.shop, st: s && s.st, t: s && s.t, coins: window.__FV.state().coins, till: window.__FV.v4.growth().till }; });
     check('reload mid-founding: the build goes on where it was', back.shop === mid.shop && back.st === 'build' && back.t >= mid.t - 0.5 && back.t <= mid.t + 4, { mid, back });
     check('reload mid-founding: coins and 역 금고 kept', Math.abs(back.coins - mid.coins) < 30 && Math.abs(back.till - mid.till) < 30, { mid, back });
+    // (v4 review C1) a reload with the repaired station: real pictures for the station, the town and the shops (no
+    // placeholder cached before the late town manifest arrived)
+    await advance(page, 3);
+    const art = await ev(() => { const nb = window.__FV.scene.v4, ph = (o) => !!(o && o.texture && /^ph__/.test(o.texture.key)); return { warnings: window.__FV.warnings(), ours: nb.ours && nb.ours.img ? nb.ours.img.texture.key : null, phBld: (nb.buildings || []).filter((b) => ph(b.img)).length, phShops: Object.values(nb.growth.shops).filter((s) => ph(s.bld && s.bld.img) || ph(s.siteImg)).length }; });
+    check('reload with the station repaired: no placeholder art (station / town / shops), no missing-asset warnings', art.warnings.length === 0 && art.ours && !/^ph__/.test(art.ours) && art.phBld === 0 && art.phShops === 0, art);
     // mid-train: the train between stations
     await ev(() => window.__FV.v4.train('toOurs', 6));
     await advance(page, 0.5);
@@ -182,6 +187,8 @@ if (args.includes('--browser')) {
     await advance(page, 3);
     const cer = await ev(() => { const nb = window.__FV.scene.v4; const rn = window.__FV.scene.roadNet || nb.roadNet; return { level: nb.rank.level, ceremony: nb.rank.ceremonyOn, cobble: rn ? rn.cellList(1).filter((c) => c.cls === 1).length : 0, coaches: nb.rail.consist().length }; });
     check('reload mid-ceremony: 읍 with its rewards, no half ceremony', cer.level === 2 && !cer.ceremony && cer.cobble > 0 && cer.coaches >= 3, cer);
+    const w2 = await ev(() => window.__FV.warnings());
+    check('reload in 읍: no missing-asset warnings', w2.length === 0, w2.slice(0, 5));
     // idle income over 120 s (v4 build) vs the v3.5 build, same save (needs --v35 <dir of the v3.5 build>)
     const V35 = opt('--v35', '');
     const last = FX[fixtures[fixtures.length - 1]];

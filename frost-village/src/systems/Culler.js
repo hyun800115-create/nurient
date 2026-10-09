@@ -10,8 +10,19 @@
 //   - the view is the union of where the camera is, where it is going (camTarget / centerOn) and the zoom it
 //     glides to, plus a margin
 
+import { Assets } from '../core/Assets.js';
+
 const MARGIN = 300;          // px of world around the view that still draws
 const BOUNDS_EVERY = 400;    // ms a container's measured bounds are reused (labels rarely change shape)
+// ((v4 review M5) pictures of the props atlas — border pines, fences, rocks, and the item pictures of every pile,
+//  shelf and cash stack: about 1600 of the 2500 display objects of a full village — are taken OFF the display list
+//  while they are far outside that rect, and put back (same pass, right before the draw) as soon as they — or the
+//  camera, a jump, the overview zoom — bring them near again. A pooled item picture that is reused somewhere near
+//  comes back the same frame. Only plain Images of the boot `props` atlas (never evicted by Residency, which walks
+//  the display list) are parked.)
+const PARK_OUT = 450;        // px beyond the drawn rect (itself the view + 300): parked
+const PARK_IN = 250;         // px beyond the drawn rect: back on the list (hysteresis)
+const PARK_TALL = 400;       // extra px below the rect (pictures stand on their foot and reach up)
 
 export class Culler {
   constructor(gs) {
@@ -22,9 +33,55 @@ export class Culler {
     this.enabled = true;
     this.R = { x: 0, y: 0, right: 0, bottom: 0 };
     this.tmp = null;
+    this.parked = [];
+    this.parkOn = true;
+    this.okKey = new Map();
     this.onPre = () => { try { this.pass(); } catch (e) { this.fail(); } };
     gs.events.on('prerender', this.onPre);
-    gs.events.once('shutdown', () => gs.events.off('prerender', this.onPre));
+    gs.events.once('shutdown', () => {
+      gs.events.off('prerender', this.onPre);
+      // parked pictures are not on the display list, so the scene would not destroy them
+      for (const img of this.parked) { try { if (img.scene) img.destroy(); } catch (e) { /* */ } }
+      this.parked.length = 0;
+    });
+  }
+
+  /** a picture that may leave the display list while far away (texture checked every time: pools retexture) */
+  parkable(o) {
+    if (o.type !== 'Image' || o.noCull || o.scrollFactorX !== 1 || o.scrollFactorY !== 1 || o.parentContainer || !o.texture) return false;
+    const k = o.texture.key;
+    let v = this.okKey.get(k);
+    if (v === undefined) {
+      const A = Assets.m && Assets.m.atlases, a = A ? A[k] : null;
+      v = /^props/.test(k) && !(a && a.onDemand);
+      this.okKey.set(k, v);
+    }
+    return v;
+  }
+
+  /** parked pictures that came near again (or every one, when culling is off) go back on the list */
+  unpark(R, all) {
+    const P = this.parked, gs = this.gs, DL = gs.sys && gs.sys.displayList;
+    if (!P.length || !DL) return;
+    const x0 = R.x - PARK_IN, x1 = R.right + PARK_IN, y0 = R.y - PARK_IN, y1 = R.bottom + PARK_IN + PARK_TALL;
+    let w = 0, back = 0;
+    for (let i = 0; i < P.length; i++) {
+      const o = P[i];
+      if (!o.scene || o.parentContainer) { o.__park = 0; continue; }   // destroyed / put in a container while parked
+      if (all || (o.x > x0 && o.x < x1 && o.y > y0 && o.y < y1) || o.displayList) {
+        o.__park = 0;
+        if (!o.displayList) {
+          // (a picture whose page went while it was off the list shows nothing rather than a dead texture)
+          if (!o.texture || !gs.textures.exists(o.texture.key)) { o.setTexture('__WHITE'); o.setVisible(false); }
+          o.displayList = DL; DL.list.push(o); back++;
+        }
+        continue;
+      }
+      P[w++] = o;
+    }
+    P.length = w;
+    // (Phaser sorts the list BEFORE the prerender event: sort now, so a picture that came back is in its place)
+    if (back) { DL.queueDepthSort(); DL.depthSort(); }
   }
 
   /** the world rect that has to draw */
@@ -52,7 +109,11 @@ export class Culler {
     const t0 = performance.now();
     const cam = gs.cameras.main, id = cam.id;
     const R = this.rect();
+    const park = this.enabled && this.parkOn;
+    this.unpark(R, !park);
     const list = gs.children.list;
+    const px0 = R.x - PARK_OUT, px1 = R.right + PARK_OUT, py0 = R.y - PARK_OUT, py1 = R.bottom + PARK_OUT + PARK_TALL;
+    let parkN = 0;
     const on = this.enabled;
     const now = gs.time ? gs.time.now : t0;
     let n = 0;
@@ -80,6 +141,13 @@ export class Culler {
       }
       if (out) { if (!(o.cameraFilter & id)) o.cameraFilter |= id; n++; }
       else if (o.cameraFilter & id) o.cameraFilter &= ~id;
+      if (park && ty === 'Image' && (o.x < px0 || o.x > px1 || o.y < py0 || o.y > py1) && this.parkable(o)) { o.__park = 2; parkN++; }
+    }
+    if (parkN) {
+      // one compaction of the list (not a splice per picture)
+      let w = 0;
+      for (let i = 0; i < list.length; i++) { const o = list[i]; if (o.__park === 2) { o.__park = 1; o.displayList = null; this.parked.push(o); } else list[w++] = o; }
+      list.length = w;
     }
     this.culled = n;
     this.passes++;
@@ -93,6 +161,6 @@ export class Culler {
     this.gs.events.off('prerender', this.onPre);
   }
 
-  /** draw everything again / cull again (tests, a full-world capture) */
+  /** draw everything again / cull again (tests, a full-world capture): also puts every parked picture back */
   setEnabled(v) { this.enabled = !!v; this.pass(); }
 }

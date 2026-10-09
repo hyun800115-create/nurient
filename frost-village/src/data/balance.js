@@ -338,8 +338,9 @@ export const BALANCE = {
     //    dawn / day / dusk / night = 새벽·낮·저녁·밤 배율, wantMin~wantMax = 사고 싶은 개수
     //    patience = 줄이 꽉 차 있으면 이만큼(초) 기다리다 그냥 감, regularAt = 이만큼 오면 단골(★)
     //    storeChance = 잡화점에 들를 확률, shopChance = 새로 연 가게에 들를 확률, speed = 걷는 속도(px/초)
-    visitors: { base: 4, perShop: 1, perRank: 3, dawn: 0.5, day: 1.0, dusk: 1.3, night: 0.3,
-                wantMin: 2, wantMax: 4, patience: 60, shopChance: 0.45, storeChance: 0.25, regularAt: 3, speed: 105 },
+    //    maxInVillage = 우리 마을에 한꺼번에 와 있는 이웃 최대 수 (이보다 많으면 다음 기차는 덜 태워 와요; 폰이 버벅이지 않게)
+    visitors: { base: 4, perShop: 1, perRank: 3, dawn: 0.5, day: 1.0, dusk: 1.3, night: 0.1,
+                wantMin: 2, wantMax: 4, patience: 60, shopChance: 0.45, storeChance: 0.25, regularAt: 3, speed: 105, maxInVillage: 24 },
     // ── 솔방울 마을: people = 주민 수, peopleRank2 = 읍이 되면, seed = 주민을 만드는 씨앗(바꾸면 다른 사람들)
     //    walk = 걷는 속도(px/초), tripChance = 하루에 우리 마을로 나들이 갈 확률,
     //    inviteAfter = 첫 가게가 안 열려도 첫 기차 뒤 이만큼(초) 지나면 촌장님이 초대하러 와요
@@ -381,6 +382,7 @@ export const BALANCE = {
     //    shops.<가게>: need = 주문 (물건: 개수), rent = 월세(코인/분), sells = 파는 물건 (= 채워 주는 물건),
     //                  after = 이게 있어야 주문이 나와요 (zone_xxx = 땅, b:건물 = 지은 건물)
     //    shopShelf = 새 가게 선반 한 칸(물건 하나)에 들어가는 개수, inlandEvery = 솔방울 마을 손님이 이만큼(초)마다 하나씩 사 감
+    //    restockBelow = 선반이 이만큼(0.4 = 40%) 아래로 줄면 역 짐꾼이 한꺼번에 채워 줘요 (촌장은 언제든 채울 수 있어요)
     founding: { buildTime: 25, ribbonAuto: 90, household: 2,
                 order: ['cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'],
                 lots: { cafe: 'lotA1', restaurant: 'lotA2', carpenter_workshop: 'lotA3', hardware_store: 'lotB1', supermarket: 'lotB5' },
@@ -389,24 +391,27 @@ export const BALANCE = {
                   restaurant:         { need: { item_fish_cooked: 40, item_meat_cooked: 15 },   rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'],         after: 'zone_hunt' },
                   carpenter_workshop: { need: { item_plank: 50 },                               rent: 25, sells: [],                                               after: 'zone_forest' },
                   hardware_store:     { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
-                  supermarket:        { need: { item_can: 20, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
+                  supermarket:        { need: { item_can: 10, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
                 },
-                shopShelf: 20, inlandEvery: 40 },
+                shopShelf: 20, inlandEvery: 40, restockBelow: 0.4 },
     // ── 역 짐꾼 (역 광장에서 고용): 첫째 / 둘째 값 (둘째는 가게가 3곳 열린 뒤), 한 번에 나르는 개수
     stationPorter: [600, 1100], stationPorterCapacity: 12,
     // 역 짐꾼은 남는 물건만 나르지만, 새 가게 주문(창업 주문)에 필요한 물건은 공장 앞에 이만큼만 쌓여도 가져가요
-    stationPorterFoundingMin: 4,
+    // (v4 리뷰: 4 였을 때 화살표만 따라가는 봇은 가게 5곳을 끝내 못 열었어요 → 1)
+    stationPorterFoundingMin: 1,
     // ── 목수의 집 (목공소가 열리면): item_plank = 집 하나에 드는 판자, time = 짓는 시간(초), people = 이사 오는 사람 수
     //    lots = 집터 (lotsRank2 = 읍이 된 뒤 더 생기는 집터)
     houses: { item_plank: 20, time: 30, people: 4, lots: ['lotH1', 'lotH2', 'lotH3'], lotsRank2: ['lotH4', 'lotH5', 'lotB2', 'lotB3'] },
     // ── 월세: cap = 역 금고에 쌓이는 월세의 최대, autoFromRank = 이 등급부터 역 금고가 저절로 비워짐, autoEvery = 몇 초마다
     rent: { cap: 2000, autoFromRank: 2, autoEvery: 15 },
     // ── 행복: window = 최근 손님 몇 명으로 계산할지, base = 가장 낮은 행복 (손님이 다 아쉬워해도)
-    happiness: { window: 40, base: 50 },
+    //    (기차 손님은 좋아하는 음식이 진열대에 없으면 다른 걸 사 가며 반쯤만 기뻐해요: 진열대를 채워 두면 행복이 올라요)
+    //    (v4 리뷰: base 50 + 꾸미기 24 면 손님이 다 아쉬워해도 74 라 행복 막대가 아무 뜻이 없었어요 → 30)
+    happiness: { window: 40, base: 30 },
     // ── 등급: 2 = 읍 (people = 사람 수, shops = 연 가게 수, happy = 행복, coins = 승격식 비용)
-    //    (v4 봇 측정: 3000 이면 조건이 다 찬 뒤 1~2분 만에 읍이 돼서(잘하는 봇 39분) 14000 으로 올림 —
-    //     잘하는 봇 약 48분, 화살표만 따라가는 봇 약 49분, 천천히 하는 봇 약 55분에 읍이 돼요)
-    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 14000 } },
+    //    (v4 봇 측정: 3000 이면 조건이 다 찬 뒤 1~2분 만에 읍이 돼서(잘하는 봇 39분) 14000 으로 올렸다가,
+    //     v4 리뷰에서 조건이 다 찬 뒤 코인만 모으며 5분 넘게 기다려서 11000 으로 내림)
+    rank: { 2: { people: 45, shops: 5, happy: 80, coins: 11000 } },
     // ── 승격식: length = 길이(초), skipAfter = 이만큼(초) 지나면 조이스틱으로 건너뛰기
     ceremony: { length: 12, skipAfter: 3 },
     // ── 텍스처 메모리 (MiB): mustMiB = 넘으면 안 되는 한도, targetMiB = 목표, lowMiB = 가벼운 그래픽 목표,
@@ -445,8 +450,8 @@ export const BALANCE = {
       // 직원 고용비 (처음엔 촌장이 직접: 계산대에 서고, 주방 발판에 서서 요리·서빙)
       staff: { cashier: 450, cook: 700, server: 900 },   // 계산 점원 / 요리사 / 서빙 직원
     },
-    // ── 꾸미기·마을회관이 올려 주는 행복도의 합이 이보다 커지지 않아요
-    happyCap: 24,
+    // ── 꾸미기·마을회관이 올려 주는 행복도의 합이 이보다 커지지 않아요 (v4 리뷰: 24 → 12, 손님이 기뻐야 읍이 돼요)
+    happyCap: 12,
     // ── 이주민: 주민이 다 들어가고도 빈 방이 남으면 이웃 마을·바깥 길에서 새 이웃이 이사 와요 (광부를 고용한 뒤부터)
     settlers: {
       every: 45,              // 이만큼(초)마다 한 가족 (행복도가 높을수록 조금 더 자주)

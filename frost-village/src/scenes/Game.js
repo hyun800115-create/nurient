@@ -53,6 +53,15 @@ import { Civic, isDecor } from '../systems/Civic.js';
 import { TownHall } from '../entities/TownHall.js';
 import { BigRestaurant } from '../entities/BigRestaurant.js';
 import { Amenity } from '../entities/Amenity.js';
+// ---- (v4-C2) the living water (docs/build_reports/water.md §6)
+import { WaterSheets, WaterBudget } from '../systems/Water.js';
+import { WATER_DATA } from '../core/Assets.js';
+// ---- (v4-C2) 눈꽃말, the village voices (docs/build_reports/voice.md §7)
+import { attachVillageVoice } from '../voice/phaser.js';
+import { voiceFor } from '../voice/cast.js';
+// ---- (v4-C2) 주민과 수다 떨기 (docs/build_reports/chat.md)
+import { ResidentChat } from '../systems/ResidentChat.js';
+import { newChatId } from '../core/Save.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -89,6 +98,7 @@ class UIProxy {
   openOrders() { const s = this.s; if (s && s.openOrders) s.openOrders(); }
   openRank() { const s = this.s; if (s && s.openRank) s.openRank(); }
   rankBadgeFly(wx, wy) { const s = this.s; if (s && s.rankBadgeFly) s.rankBadgeFly(wx, wy); }
+  hudBottomFrac() { const s = this.s; return s && s.hudBottomFrac ? s.hudBottomFrac() : 0.24; }
 }
 
 export class Game extends Phaser.Scene {
@@ -148,6 +158,8 @@ export class Game extends Phaser.Scene {
     this.rawPorters = [];         // (v3.5) pile -> station porters
 
     this.ground = new Ground(this);
+    // (v4-C2) the chat record's id (a new game gets a new one: an old chat village is never read into it)
+    this.cid = sv.cid || newChatId();
     // ---- (v4-C) the civic buildings + settlers (before the plots and the village life: people() counts settlers)
     this.civic = new Civic(this, sv.c1);
     this.queueLate = this.queueLate || (() => this.queueLateFiles());
@@ -224,6 +236,16 @@ export class Game extends Phaser.Scene {
     this.life = new VillageLife(this, sv.life);
     // (v3.5) Kongi the dog: whistle, treats, fetch, petting (affection is saved)
     this.dog = new DogPlay(this, sv.dog);
+    // (v4-C2) the residents' voices: lazy per voice type (each type's sprite when its first resident speaks; the
+    // residents already living here are fetched after the title files). null without Web Audio: the old chatter stays
+    try {
+      const types = [...new Set(((this.life && this.life.residents) || []).map(voiceFor).filter((tp) => tp && tp !== 'chief'))];
+      this.voice = attachVillageVoice(this, { volume: typeof Settings.data.voice === 'number' ? Settings.data.voice : 1, types });
+    } catch (e) { console.warn('[FrostVillage] village voices unavailable:', e && e.message); this.voice = null; }
+    Audio.onImportant = () => { if (this.voice) this.voice.duck(0.35, 0.7); };
+    // (v4-C2) tap a resident -> 수다 떨기 (the chat code loads the first time a chat opens)
+    this.residentChat = new ResidentChat(this);
+    this.events.once('shutdown', () => { Audio.onImportant = null; this.voice = null; });
     this.occlusion = new Occlusion(this);
     this.culler = new Culler(this);       // (v4-B) pictures far outside the camera are not drawn (draw calls; runs before each drawn frame)
     this.updatePopulation();
@@ -280,7 +302,16 @@ export class Game extends Phaser.Scene {
     this.scene.launch('UI');
     Audio.playMusic('bgm_village');
     Audio.setAmbience('amb_wind', 0.5);
-    Audio.setAmbience('amb_sea', 0.3);
+    this.seaAmbience(0.3);
+    // (v4-C2) the sea bed starts where its breakers land with the water's crests near the camera (water.md §6.9)
+    Audio.ambSeek.amb_sea_waves = () => {
+      const wv = this.ground && this.ground.water, d = Assets.audioDef('amb_sea_waves');
+      if (!wv || !d || !d.swellPeriod) return 0;
+      const cx = this.cameras.main.worldView.centerX;
+      return wv.bedSeek(cx, shoreY(cx), d.swellPhase || 0, d.swellPeriod, d.duration || 42);
+    };
+    this.events.once('shutdown', () => { delete Audio.ambSeek.amb_sea_waves; });
+    this.wireWaterDecor();
     Audio.setAmbience('amb_fire', 0);
     this.loadDeferredAudio();
   }
@@ -316,6 +347,7 @@ export class Game extends Phaser.Scene {
    *  complete; the v3 buildings: from the farmer on — the first house plots come with the miner) */
   lazyAllowed(k) {
     const pr = this.progress, f = Assets.fragOf[k];
+    if (f === 'water' && !WATER_DATA.test(k)) return WaterSheets.allowed(k);     // (v4-C2) only the water sheets a system asked for
     if (!pr) return true;
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
     if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
@@ -499,9 +531,86 @@ export class Game extends Phaser.Scene {
         this.campfires = (this.campfires || []).concat([{ x, y }]);
       }
       if (key === 'lamp_post') this.lamps = (this.lamps || []).concat([img]);
-      // things floating in the sea bob gently
-      if ((key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10) {
-        this.tweens.add({ targets: img, y: y + 4, angle: { from: -1.5, to: 1.5 }, duration: 1600 + (x % 7) * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: (x % 5) * 200 });
+      // things floating in the sea bob gently (v4-C2: on the living water's swell once it is there: wireWaterDecor)
+      const inSea = (key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10;
+      if (inSea || key === 'dock_pier') (this.seaDecor = this.seaDecor || []).push({ key, img, x, y, o, rot: img.rotation || 0, floats: inSea });
+      if (inSea) {
+        const tw = this.tweens.add({ targets: img, y: y + 4, angle: { from: -1.5, to: 1.5 }, duration: 1600 + (x % 7) * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: (x % 5) * 200 });
+        this.seaDecor[this.seaDecor.length - 1].tween = tw;
+      }
+    }
+  }
+
+  /**
+   * (v4-C2, water.md §6.3) things in the sea touch the living water: the pier's posts get foam collars and the deck a
+   * shadow on the water; boats and ice ride the swell (heightAt / slopeAt, every frame while on screen) instead of
+   * the old sine tween. Called once the Water exists (at creation, or when its textures arrived later).
+   */
+  wireWaterDecor() {
+    const wv = this.ground && this.ground.water;
+    if (!wv || !wv.isShader || this._waterDecor === wv) return;
+    this._waterDecor = wv;
+    this.floaters = [];
+    for (const d of this.seaDecor || []) {
+      const { key, img, x, y, o } = d;
+      if (key === 'dock_pier') {
+        // the pier's posts stand in the water: foam collars + the deck's shadow on the water
+        for (const [mx, my] of [[-0.92, 0.7], [0.92, 0.7], [-0.92, 2.2], [0.92, 2.2]]) {
+          const px = x + 45.25 * (mx + my), py = y + 22.63 * (mx - my);
+          if (wv.shoreDistance(px, py) > 4) wv.addContact(px, py, 7, { foam: 0.85, shadow: 0.1 });
+        }
+        wv.addContact(x, y, 30, { foam: 0, shadow: 0.2 });
+        continue;
+      }
+      if (!d.floats || !img.active) continue;
+      if (d.tween) { d.tween.stop(); d.tween = null; }
+      img.setPosition(x, y).setAngle(0).setRotation(d.rot);
+      this.floaters.push({ img, x, y, tilt: key === 'boat_small' ? 0.3 : 0.15, rot: d.rot });
+      const s = (o && o.scale) || 1;
+      if (key === 'boat_small') { wv.addContact(x - 34 * s, y - 17 * s, 32 * s, { foam: 0.75, shadow: 0.22 }); wv.addContact(x + 34 * s, y + 17 * s, 32 * s, { foam: 0.75, shadow: 0.22 }); }
+      else wv.addContact(x, y + 2, 26 * s, { foam: 0.6, shadow: 0.12 });
+    }
+    // the frame-time watchdog of the automatic '물결 품질' (only while the setting is automatic and the water is high)
+    this.waterBudget = !Settings.data.water && wv.quality === 'high' ? new WaterBudget() : null;
+    this.waterBudgetWait = 5;          // s: not during the first seconds (decoding, after-title files)
+  }
+
+  /** (v4-C2) per frame: floaters on the swell, night light on the water, the automatic water quality, the sea bed sound */
+  updateWater(dt, delta) {
+    const wv = this.ground.water;
+    if (!wv) return;
+    if (this.floaters && this.floaters.length) {
+      const sl = this._floatSlope || (this._floatSlope = { x: 0, y: 0 });
+      for (const f of this.floaters) {
+        if (!f.img.active || !this.isOnScreen(f.x, f.y, 120)) continue;
+        wv.slopeAt(f.x, f.y, undefined, sl);
+        f.img.setPosition(f.x, f.y - wv.heightAt(f.x, f.y)).setRotation(f.rot + Math.max(-0.12, Math.min(0.12, -sl.x * f.tilt)));
+      }
+    }
+    // night: the water's own light (glints, sky reflection, crest glow) dims under the DayClock overlay
+    const ck = this.v4 && this.v4.clock;
+    const dark = ck && ck.on && ck.cur && Settings.data.daynight !== false ? ck.cur.a : 0;
+    if (Math.abs(dark - (this._waterDark || 0)) > 0.004) { this._waterDark = dark; wv.setLighting({ dark }); }
+    if (this.waterBudget) {
+      if (this.waterBudgetWait > 0) this.waterBudgetWait -= dt;
+      else {
+        const v = this.cameras.main.worldView;
+        const r = this.waterBudget.sample(delta, v.y < shoreY(v.centerX) - 40);
+        if (r) {
+          this.waterBudget = null;
+          if (r === 'low' && wv.quality !== 'low') { this.ground.setWaterQuality('low'); Settings.data.water = 'low'; Settings.save(); }
+        }
+      }
+    }
+    // the sea bed (audio5 amb_sea_waves) keeps the shore-swell crests in step with its breakers
+    this.bedT = (this.bedT || 0) - dt;
+    if (this.bedT <= 0) {
+      this.bedT = 1;
+      const snd = Audio.amb && Audio.amb.amb_sea_waves, d = Assets.audioDef('amb_sea_waves');
+      if (snd && snd.isPlaying && d && d.swellPeriod) {
+        const cx = this.cameras.main.worldView.centerX;
+        const c = (snd.seek - (d.swellPhase || 0)) / d.swellPeriod;
+        wv.syncPhase(c - Math.floor(c), cx, shoreY(cx));
       }
     }
   }
@@ -529,7 +638,12 @@ export class Game extends Phaser.Scene {
     // (v3) building plots, watchtowers, pads of the new chains: room for the building and its pads
     const PR = { S: 190, M: 250, L: 310 };
     // (a pine in front of a plot would hide its pad and label behind its canopy)
-    for (const id in WORLD.plots || {}) { const p = WORLD.plots[id]; spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); spots.push([p.x, p.y + 220, 200]); }
+    for (const id in WORLD.plots || {}) {
+      const p = WORLD.plots[id];
+      spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); spots.push([p.x, p.y + 220, 200]);
+      // ((v4 review) world.js plots.<id>.clear: more room in front of a plot — the town hall's little square)
+      for (const c of Array.isArray(p.clear) ? p.clear : []) if (Array.isArray(c) && c.length >= 3) spots.push([p.x + c[0], p.y + c[1], c[2]]);
+    }
     for (const id in WORLD.towers || {}) { const p = WORLD.towers[id]; spots.push([p.x, p.y, 170]); spots.push([p.x, p.y + 70, 130]); spots.push([p.x, p.y + 190, 160]); }
     for (const id in WORLD.pads2 || {}) { const p = WORLD.pads2[id]; spots.push([p.x, p.y, 120]); }
     if (WORLD.foodBox) spots.push([WORLD.foodBox.x, WORLD.foodBox.y, 140]);
@@ -898,7 +1012,15 @@ export class Game extends Phaser.Scene {
   /** a picture whose atlas loads after the title: re-apply it when the atlas arrives */
   lazyImage(img, key, after) { if (img && Assets.pending(key)) this.lazyImgs.push({ img, key, after }); }
 
+  /** (v4-C2) the sea ambience: audio5's rolling sea (amb_sea_waves) once it is there, else the old amb_sea */
+  seaAmbience(vol) {
+    if (Assets.audioDef('amb_sea_waves') && !Assets.failed.has('amb_sea_waves')) { Audio.setAmbience('amb_sea_waves', vol); Audio.setAmbience('amb_sea', Audio.exists('amb_sea_waves') ? 0 : vol); }
+    else Audio.setAmbience('amb_sea', vol);
+  }
+
   onAssetArrived(fileKey) {
+    // (v4-C2) the water's textures arrived after the village opened: the living sea replaces the old one
+    if (WATER_DATA.test(fileKey) && this.ground && !this.ground.water && this.ground.tryUpgradeSea()) this.wireWaterDecor();
     for (let i = this.lazyImgs.length - 1; i >= 0; i--) {
       const q = this.lazyImgs[i];
       if (!q.img || !q.img.active) { this.lazyImgs.splice(i, 1); continue; }
@@ -1063,6 +1185,10 @@ export class Game extends Phaser.Scene {
       if (!p.items || p.done || !p.active) continue;
       for (const k in p.items) if (TOOLS.indexOf(k) >= 0) o[k] = (o[k] || 0) + Math.max(0, p.items[k] - (p.got[k] || 0) - p.itemStack.countWithIncoming(k));
     }
+    // ((v4-C) a neighbours' order card that asks for a tool (the 철물점 wants an axe and a pickaxe): the forge makes it
+    // too — before, once every hire pad had its tool, a card waiting for a pickaxe could only be swapped away)
+    const G = this.v4 && this.v4.growth;
+    if (G && G.active && G.needOf) for (const tl of TOOLS) { const n = G.needOf(tl); if (n > 0) o[tl] = (o[tl] || 0) + n; }
     return o;
   }
 
@@ -1454,6 +1580,13 @@ export class Game extends Phaser.Scene {
     const inp = Input.update(time);
     const p = this.player;
     this.ground.update(dt);
+    this.updateWater(dt, delta);
+    // (v4-C2) the village voices follow the sound toggle (and the context: a suspended one would pile clips up)
+    if (this.voice) {
+      const on = Audio.started && Settings.data.sound && Audio.live;
+      if (on !== this.voice.enabled) this.voice.setEnabled(on);
+      this.voice.update(dt);
+    }
     Residency.tick(dt);
     p.update(dt, inp);
 
@@ -1485,6 +1618,7 @@ export class Game extends Phaser.Scene {
     for (const w of this.porters) w.update(dt);
     for (const w of this.rawPorters) w.update(dt);
     if (this.life) this.life.update(dt);
+    if (this.residentChat) this.residentChat.update(dt);
     if (this.dog) this.dog.update(dt);
     // ---- (v4-C) the town hall, the big restaurant, decor, settlers
     if (this.civic) this.civic.update(dt);
@@ -1527,7 +1661,7 @@ export class Game extends Phaser.Scene {
     if (this.ambT <= 0) {
       this.ambT = 0.25;
       const sea = Math.max(0, Math.min(1, 1 - (p.y - 400) / 900));
-      Audio.setAmbience('amb_sea', 0.15 + sea * 0.6);
+      this.seaAmbience(0.15 + sea * 0.6);
       let fire = 0;
       for (const s of this.stationList) if (s.working && s.enabled) { const d = Math.hypot(s.x - p.x, s.y - p.y); fire = Math.max(fire, 1 - d / 420); }
       for (const c of this.campfires || []) { const d = Math.hypot(c.x - p.x, c.y - p.y); fire = Math.max(fire, (1 - d / 350) * 0.7); }
@@ -1552,8 +1686,12 @@ export class Game extends Phaser.Scene {
   overviewRect() {
     const T = this.territory;
     if (!T) return { x: 0, y: 0, w: this.W, h: this.H };
+    // ((v4 review) the west strip (x < 0) has its own overview: with it the whole village came out at zoom 0.16,
+    //  its labels specks; the chief's side of the old map edge is framed, like the v3.5 overview)
+    const px = this.player ? this.player.x : 0, area = T.areaOf(px);
+    if (area === 'village') { const west = px < 0; const r = T.areaRect(area, (q) => ((q.rect[0] + q.rect[2]) / 2 < 0) === west); if (r && r !== T.camRect) return r; }
     if (!T.isOpen('rail')) return T.camRect;
-    return T.areaRect(T.areaOf(this.player ? this.player.x : 0));
+    return T.areaRect(area);
   }
 
   /** camera bounds = the open land (+ a peek at the fog) */
@@ -1768,12 +1906,14 @@ export class Game extends Phaser.Scene {
       v4: this.v4 ? this.v4.serialize() : (this.saved && this.saved.v4) || undefined,
       // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry and cash
       c1: this.civic ? this.civic.serialize() : undefined,
+      cid: this.cid,
     };
   }
 
   save(force) {
     if (this.resetting || this._broken || !this.player) return;
     const ok = Save.write(this.serialize());
+    if (this.residentChat) this.residentChat.save();        // (v4-C2) only when a chat changed it
     if (!ok && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
   }
 
@@ -1804,6 +1944,19 @@ export class Game extends Phaser.Scene {
     Object.assign(hooks, {
       game: this.game,
       scene: gs,
+      // ---- (v4-C2) the living water, the village voices, resident chat
+      water() { const w = gs.ground && gs.ground.water; return w ? Object.assign(w.info(), { floaters: (gs.floaters || []).length, budget: !!gs.waterBudget, dark: gs._waterDark || 0, sea: !!gs.ground.sea }) : { shader: false, sea: !!(gs.ground && gs.ground.sea), wait: !!(gs.ground && gs.ground.waitWater) }; },
+      voice() {
+        const v = gs.voice;
+        if (!v) return null;
+        const sp = (v.active || []).filter((u) => u).map((u) => u.voice);
+        return { enabled: v.enabled, volume: v.volume, backend: !!v.backend, types: Object.keys(v.voices || {}), requested: Object.keys(v.requested || {}), stats: Object.assign({}, v.stats || {}), speaking: sp, maxVoices: v.maxVoices, pending: (v.pending || []).length };
+      },
+      chat() { return gs.residentChat ? gs.residentChat.state() : null; },
+      chatOpen(key) {
+        const r = gs.life && gs.life.residents.find((x) => (!key || x.key === key) && gs.residentChat.canChat(x));
+        return r ? (gs.residentChat.open(r) ? r.key : null) : null;
+      },
       state() {
         const p = gs.player;
         return {

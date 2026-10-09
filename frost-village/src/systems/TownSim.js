@@ -193,9 +193,13 @@ export class TownSim {
     this.base = this.citizens.length;
     // people who came later (saved as [id, kind, home]): newcomers of the town (읍), founders' households and
     // house residents in the station district (a founder who was a townsperson keeps his id: converted)
+    // ((v4 review L3) a saved home that is not a town building or a district lot (an edited / old save) is dropped:
+    //  a district person without one is skipped, a townsperson gets an ordinary home)
+    const V4 = WORLD.v4 || {}, known = (h) => !!h && !!((V4.lots && V4.lots[h]) || (V4.town && V4.town.buildings.some((b) => b.id === h)));
     for (const e of extra) {
       if (!Array.isArray(e)) continue;
-      const kind = String(e[1] || 'adult'), home = e[2] || null;
+      const kind = String(e[1] || 'adult'), home = known(e[2]) ? e[2] : null;
+      if (DISTRICT_KINDS.has(kind) && !home) continue;
       if (DISTRICT_KINDS.has(kind) && Number.isFinite(e[0]) && e[0] < this.base && this.citizens[e[0]]) { this.toDistrict(this.citizens[e[0]], kind, home); continue; }
       this.addCitizen(kind, home);
     }
@@ -828,13 +832,17 @@ export class TownSim {
     for (const c of waiting) { if (out.length >= n) break; out.push(c); }
     if (out.length < n) {
       // top up with people who are free right now and not in sight (moved abstractly)
-      const free = this.citizens.filter((c) => !(c.flags & (F.ON_TRAIN | F.IN_VILLAGE | F.WAITING | F.DISTRICT)) && (c.kind === 'adult' || c.kind === 'elder' || c.kind === 'teen') && (opts.any || c.lod >= 1) && c.act !== 'work' && c.act !== 'class');
+      // ((v4 review) not someone asleep or at home for the night: night trains stay nearly empty)
+      const free = this.citizens.filter((c) => !(c.flags & (F.ON_TRAIN | F.IN_VILLAGE | F.WAITING | F.DISTRICT)) && (c.kind === 'adult' || c.kind === 'elder' || c.kind === 'teen') && (opts.any || c.lod >= 1) && c.act !== 'work' && c.act !== 'class' && c.act !== 'sleep' && !(c.act === 'home' && this.nightNow()));
       free.sort((a, b) => ((a.id * 7 + this.dayOf(this.T)) % 13) - ((b.id * 7 + this.dayOf(this.T)) % 13));
       for (const c of free) { if (out.length >= n) break; out.push(c); }
     }
     for (const c of out) this.leave(c);
     return out;
   }
+
+  /** (v4 review) is it night on the town's clock (lights on .. dawn)? */
+  nightNow() { const D = BALANCE.v4.day || {}, h = this.hourOf(this.T); return h >= (D.night || 20) || h < (D.dawn || 6); }
 
   /** a citizen gets on the train (town side) */
   leave(c) {

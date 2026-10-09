@@ -1,7 +1,8 @@
-// Frost Village (서리마을 개척기) — entry point.
+// 행복한 눈꽃마을 이야기 · Snowbloom Village (the village itself is 서리마을) — entry point.
 import { Boot } from './scenes/Boot.js';
 import { Preload } from './scenes/Preload.js';
-import { Title } from './scenes/Title.js';
+// (v4-C2) the living title screen of "행복한 눈꽃마을 이야기" (src/title; the old scenes/Title.js is kept as a fallback)
+import { TitleScene as Title } from './title/TitleScene.js';
 import { Game } from './scenes/Game.js';
 import { UI } from './scenes/UI.js';
 import { View, MAX_RENDER_SCALE } from './core/View.js';
@@ -80,10 +81,23 @@ window.addEventListener('orientationchange', onResize);
 // Weak GPU: if the village runs below ~30 fps at the sharper render scale, drop to 1x for this session
 // (checked a few times once the village is running; the first seconds are skipped: warm-up, decoding).
 let perfChecks = 0;
+let titleSlow = false, titleChecks = 0;
 const perfTimer = setInterval(() => {
   try {
     const loop = game.loop;
-    if (!loop || !loop.running || document.visibilityState !== 'visible' || !game.scene.isActive('Game')) return;
+    // (v4-C2) the living title fills more pixels than the old one: it is watched too (title_code.md §2)
+    if (!loop || !loop.running || document.visibilityState !== 'visible' || !(game.scene.isActive('Game') || game.scene.isActive('Title'))) return;
+    // (v4-C2) while the living water's own watchdog is still deciding (water.md §6.5: the water drops to 물결 '간단'
+    // first, the resolution only after that), this check waits
+    const gsc = game.scene.isActive('Game') ? game.scene.getScene('Game') : null;
+    if (gsc && gsc.waterBudget && gsc.waterBudget.t > 0) return;
+    // (v4 review L1) a slow title is remembered, and the drop applied once the village runs: a resolution change
+    // restarts the title (its textures fetched again, the first-visit intro cut short on exactly the weak phones)
+    if (game.scene.isActive('Title')) {
+      if (++titleChecks >= 2 && View.k > 1.05 && loop.actualFps < 30) titleSlow = true;
+      return;
+    }
+    if (titleSlow) { View.forceK = 1; onResize(); clearInterval(perfTimer); return; }
     if (++perfChecks < 2) return;
     if (View.k > 1.05 && loop.actualFps < 30) { View.forceK = 1; onResize(); clearInterval(perfTimer); }
     if (perfChecks >= 5) clearInterval(perfTimer);

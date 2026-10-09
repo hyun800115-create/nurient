@@ -260,7 +260,9 @@ export const Residency = {
     const w = cam.width / z, h = cam.height / z;
     const view = ct ? { x: ct.x - w / 2, right: ct.x + w / 2, y: ct.y - h / 2, bottom: ct.y + h / 2 } : cam.worldView;
     const T = this.cfg();
-    const ttl = (T.townTtl || 10);
+    // ((v4 review M1) under the soft budget a far area's pictures stay a while longer (6x): a short trip away and back
+    //  no longer fetches and uploads the whole area again; over it they go after `townTtl` as before)
+    const ttl = (T.townTtl || 10) * (this.total < this.budget().soft ? 6 : 1);
     this.areas = this.areas || {};
     // (v4-C) a page may belong to more than one area (the village's town hall and park props are town art too):
     // it goes only once every area that lists it has been far for `ttl` s, and comes back when any is near
@@ -269,7 +271,7 @@ export const Residency = {
       const st = this.areas[R.id] || (this.areas[R.id] = { farT: 0, out: false });
       const gap = st.gap = this.areaGap(view, R.rect);
       if (gap > RELEASE) st.farT += 0.5; else st.farT = 0;
-      for (const k of R.extra ? R.pages.concat(R.extra(gs)) : R.pages) {
+      for (const k of this.expand(R.extra ? R.pages.concat(R.extra(gs)) : R.pages)) {
         if (!(Assets.m.atlases[k] || Assets.m.images[k])) continue;
         far.set(k, (far.has(k) ? far.get(k) : true) && st.farT >= ttl);
         near.set(k, (near.get(k) || false) || gap < ACQUIRE);
@@ -288,7 +290,19 @@ export const Residency = {
       if (gs.queueLateFiles) gs.queueLateFiles();
       if (gs.checkLazyGates) { gs.lazyGateT = 0; }
     }
-    for (const R of REGIONS) { const st = this.areas[R.id]; st.out = R.pages.every((k) => !tex.exists(k)); }
+    for (const R of REGIONS) { const st = this.areas[R.id]; st.out = this.expand(R.pages).every((k) => !tex.exists(k)); }
+  },
+
+  /** (v4 review M3) a page key of an area also stands for the pages it was split into to stay under 8 MiB
+   *  (town_civic@rest -> town_civic@rest, town_civic@rest2, ...) */
+  expand(keys) {
+    const out = [];
+    for (const k of keys) {
+      out.push(k);
+      if (k.indexOf('@') < 0) continue;
+      for (let n = 2; n < 9 && Assets.m.atlases[k + n]; n++) out.push(k + n);
+    }
+    return out;
   },
 
   /** take an area's building pictures out of memory: what shows them gets a stand-in and is re-skinned on arrival */

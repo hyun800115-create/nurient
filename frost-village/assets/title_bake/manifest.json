@@ -1,0 +1,7 @@
+{
+ "version": 1,
+ "note": "title diorama bake (tools/title/bake_title.mjs). Loaded by src/title/TitleAssets.js from title_bake.json, not by Assets.js.",
+ "atlases": [],
+ "images": [],
+ "sprites": {}
+}

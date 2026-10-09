@@ -208,7 +208,9 @@ export class Neighbours {
     for (const c of gs.campfires || []) this.clock.addLight(c.x, c.y - 20, 1.3, 9500 + c.x);
     // the train (runs once the station is repaired)
     this.train = new Train(gs, this.rail);
-    if (open) this.stationOpen(true);
+    // (a repair that finished while the manifest was still on its way plays its first train now)
+    if (open) this.stationOpen(!this._stationLive);
+    this._stationLive = false;
     // the people of the town (when their manifest is here)
     if (open || this._preStation) this.prefetchStation();
     if (gs.territory.isOpen('town')) this.onTownOpen(true);
@@ -253,10 +255,13 @@ export class Neighbours {
 
   /** Game.makeBuilding('station'): the repair is done */
   stationBuilt(site, instant) {
-    if (!this.ours) this.onTownManifest();
-    this.stationOpen(instant);
-    const st = this.ours;
-    return { revealObjects: () => [], setEnabled: (v) => st && st.setEnabled(v), station: st };
+    // (v4 review C1) a reload restores the finished station during Game.create, before the late town manifest is
+    // here: building the town now would cache placeholder pictures for every town key for the whole session.
+    // Wait for the manifest instead; onTownManifest() opens the station (the site is 'done' by then).
+    if (!this.ready) { if (!instant) this._stationLive = true; }
+    else this.stationOpen(instant);
+    const nb = this;
+    return { revealObjects: () => [], setEnabled: (v) => nb.ours && nb.ours.setEnabled(v), get station() { return nb.ours; } };
   }
 
   stationOpen(instant) {
@@ -315,6 +320,36 @@ export class Neighbours {
   trainRuns() { return this.rail.running; }
   bubbles() { return this.gs.life ? this.gs.life.bubbles : null; }
   sellers() { const gs = this.gs; return [gs.market, gs.store].filter(Boolean); }
+  /**
+   * (v4 review) the 승격식: up to `n` townsfolk visiting our village come and cheer in a ring around (x, y) for
+   * `secs` s, then go on with their visit. The far ones step in from just off screen (a road node 550–900 px away)
+   */
+  gatherVisitors(x, y, secs, n) {
+    const gs = this.gs, R = gs.roads;
+    const far = R ? R.nodes.filter((q) => { const d = Math.hypot(q.x - x, (q.y - y) * 2); return d > 550 && d < 900; }) : [];
+    let k = 0;
+    for (const v of this.visitors) {
+      if (k >= n) break;
+      const a = (k / Math.max(1, n)) * Math.PI * 2 + 0.6, rr = 190 + (k % 3) * 42;
+      const p = { x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr * 0.5 };
+      if (gs.collision) gs.collision.resolve(p, 12);
+      if (!v.cheer || !v.cheer(p, secs, x, y)) continue;
+      if (Math.hypot(v.x - x, (v.y - y) * 2) > 1100 && far.length) {
+        const q = far[(v.citizen.id + k) % far.length];
+        v.x = q.x + (Math.random() - 0.5) * 30; v.y = q.y + (Math.random() - 0.5) * 16;
+        v.goTo(p);
+      }
+      k++;
+    }
+    return k;
+  }
+
+  /** (v4 review) does our village make `type` now (a working station / workshop puts it out)? */
+  producing(type) {
+    const gs = this.gs;
+    for (const s of gs.sources ? gs.sources() : []) if (s.enabled && (s.output === type || (s.recipe && (s.recipe.output === type || (s.recipe.outputs && s.recipe.outputs.indexOf(type) >= 0))))) return true;
+    return false;
+  }
   charDef(key) { return Assets.charDef(key); }
 
   // ---------------------------------------------------------------- the train
@@ -346,7 +381,11 @@ export class Neighbours {
     const rank = this.rank && this.rank.level ? this.rank.level : 1;
     const seats = (T.seats || 12) + (this.rail.coaches > 1 ? (T.coachSeats || 8) : 0);
     const mult = V[this.clock.phase()] !== undefined ? V[this.clock.phase()] : 1;
-    return Math.max(1, Math.round(Math.min(V.base + shops * V.perShop + (rank - 1) * V.perRank, seats) * (this.clock.on ? mult : 1)));
+    const n = Math.max(1, Math.round(Math.min(V.base + shops * V.perShop + (rank - 1) * V.perRank, seats) * (this.clock.on ? mult : 1)));
+    // ((v4 review M5) at most `maxInVillage` neighbours in our village at once: 30–50 visitors made the plaza heavy
+    //  (display objects, logic time) without being more fun to watch)
+    const room = Math.max(0, Math.floor(Number(V.maxInVillage) || 24) - this.visitors.length);
+    return Math.min(n, room);
   }
 
   arriveTown() {
@@ -364,7 +403,7 @@ export class Neighbours {
     // and the next riders get on (the waiting ones from the platform first)
     if (this.town) {
       const n = this.firstPending ? (BALANCE.v4.train.firstRide || 6) : this.ridersWanted();
-      this.onBoard = this.town.pickRiders(n, { any: !this.townVisible() });
+      this.onBoard = n > 0 ? this.town.pickRiders(n, { any: !this.townVisible() }) : [];
     }
     void gs;
   }
@@ -570,7 +609,8 @@ export class Neighbours {
       const f = this.buildings.find((b) => b.id === 't_fountain');
       if (f && gdist(gs.player.x, gs.player.y, f.x, f.y) < 400) {
         gs.progress.setFlag('townVisit');
-        gs.ui.banner(t('townWelcome'), t('townWelcomeSub', { n: this.town ? this.town.population() : 100 }));
+        // ((v4 review) the town's own people: not the founders' households / house residents by our station)
+        gs.ui.banner(t('townWelcome'), t('townWelcomeSub', { n: this.town ? Math.max(0, this.town.population() - this.districtPeople()) : 100 }));
         if (gs.life) gs.life.cheer();
       }
     }
@@ -609,7 +649,10 @@ export class Neighbours {
     this.onNextArrival('ours', () => {
       const i = this.sendQ.indexOf(handle);
       if (i >= 0) this.sendQ.splice(i, 1);
-      const c = opts.citizen || (this.town && this.town.citizens.find((q) => (kind === 'builder' ? q.kind === 'builder' : q.kind === 'adult') && !(q.flags & (F.ON_TRAIN | F.IN_VILLAGE)) && !q.sent));
+      const avail = (q) => !(q.flags & (F.ON_TRAIN | F.IN_VILLAGE | F.DISTRICT)) && !q.sent;
+      // ((v4 review) the town has 3 builders: when 3 shops are founded at once, a handy adult helps on the third)
+      const c = opts.citizen || (this.town && (this.town.citizens.find((q) => (kind === 'builder' ? q.kind === 'builder' : q.kind === 'adult') && avail(q))
+        || (kind === 'builder' ? this.town.citizens.find((q) => q.kind === 'adult' && TF.age(q.person.base) === 'adult' && avail(q)) : null)));
       if (!c || !TF.ok) return;
       c.sent = true;
       if (this.town) this.town.leave(c);
@@ -660,7 +703,7 @@ export class Neighbours {
     let s = t('tfCard', { name: c.name, age: c.age, act: t('act_' + (act === 'class' ? 'class' : act === 'sleep' ? 'home' : act === 'school' ? 'school' : act)) });
     s += '\n' + t('tfLikes', { fav: t(c.fav) });
     if (c.regular) s += ' · ' + t('tfRegular');
-    B.chat(w, s, c.regular ? 'emote_heart' : null, 2.6);
+    B.chat(w, s, c.regular ? 'emote_heart' : null, 2.6, { silent: true, card: true });     // (v4-C2) a name card, not speech
     if (w.faceTo) w.faceTo(gs.player.x, gs.player.y);
     Audio.play('sfx_click', { volume: 0.4 });
     return w;
@@ -675,7 +718,7 @@ export class Neighbours {
     if (this.train) {
       const subs = this._carSubs || (this._carSubs = []);
       let k = 0;
-      this.train.forEachVisible((spr, c) => { const o = subs[k] || (subs[k] = { alive: true, noXray: false, xrayMain: true }); o.sprite = spr; o.x = spr.x; o.y = spr.y; o.headTop = (c.def && c.def.headTop) || -90; k++; add(o); });
+      this.train.forEachVisible((spr, c) => { const o = subs[k] || (subs[k] = { alive: true, noXray: false, xrayMain: true, isCar: true }); o.sprite = spr; o.x = spr.x; o.y = spr.y; o.headTop = (c.def && c.def.headTop) || -90; k++; add(o); });
     }
   }
 

@@ -4,8 +4,11 @@
 // tested 10x a second, and "is this pixel solid" reads a small alpha mask made once per frame
 // picture (no per-test canvas reads).
 
+import { px2L4 } from '../data/world.js';
+
 const MASK_STEP = 4;          // mask resolution (px of the picture per mask cell)
 const FADED = 0.32;           // alpha of a see-through occluder
+const ZONE_FADE = 0.42;       // (v4 review) a tall row in front of the row the chief is looking at
 
 export class Occlusion {
   constructor(gs) {
@@ -91,12 +94,17 @@ export class Occlusion {
     if (this.t <= 0) {
       this.t = 0.1;
       const chars = this.collect(view);
+      const pl = this.gs.player, pq = pl ? px2L4(pl.x, pl.y) : null;
       for (let i = 0; i < list.length; i++) {
         const o = list[i];
         const img = o.img;
         o.want = 1;
         if (!img.visible || !img.active) continue;
         if (o.x + o.hw * 2.5 < view.x || o.x - o.hw * 2.5 > view.right || o.y < view.y - 20 || o.y - o.top > view.bottom) continue;
+        // (v4 review) the town's apartments / the carpenter's houses stand in front of the school row / the B shops:
+        // while the chief is in the block behind them (the street and yards they would hide) they stay see-through
+        const z = o.zone;
+        if (z && pq && pq.i >= z[0] && pq.i <= z[1] && pq.j >= z[2] && pq.j <= z[3]) { o.want = ZONE_FADE; continue; }
         // (v3.5 review) an oven / smelter / smokehouse with its operator working in front keeps its look:
         // only the chief walking behind it fades it (a porter passing behind would turn it into a ghost)
         const worked = !!(o.station && o.station.op && o.station.op.operator && o.station.op.operator.ready);
@@ -105,6 +113,8 @@ export class Occlusion {
           if (worked && c !== this.gs.player) continue;
           // (v4-A) the town's buildings fade for the chief, the train and train visitors (not for every townsperson)
           if (o.mainOnly && c !== this.gs.player && !c.xrayMain) continue;
+          // (v4 review) a founded shop / a station: only the chief and the train's cars
+          if (o.chiefOnly && c !== this.gs.player && !c.isCar) continue;
           if (c.y >= o.y - 4 || c.y <= o.y - o.top) continue;
           if (Math.abs(c.x - o.x) > o.hw + 22) continue;
           // the box says maybe: fade only when the art really covers the body or the head

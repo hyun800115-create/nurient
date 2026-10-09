@@ -1,6 +1,6 @@
 // Rank (v4-B, docs/v4_plan.md §9): 마을 -> 읍. Three bars — people (village residents + station-district
 // citizens), founded shops open, happiness — and, when all three are full, the 승격식 pad (a Progression step,
-// balance.js v4.rank.2.coins, 14000) on the station square. Paying it starts a 12 s ceremony (bells, confetti, the badge flying to the
+// balance.js v4.rank.2.coins, 11000) on the station square. Paying it starts a 12 s ceremony (bells, confetti, the badge flying to the
 // HUD, the main street repaved to cobble tile by tile, new streetlights) and the rewards (§9.4): auto rent, a
 // second coach, the town grows to 120, new house lots, a bigger delivery bonus, the title 읍장.
 
@@ -26,7 +26,7 @@ export class Rank {
     this.applied = false;
   }
 
-  need() { return (BALANCE.v4.rank && BALANCE.v4.rank[2]) || { people: 45, shops: 5, happy: 70, coins: 14000 }; }
+  need() { return (BALANCE.v4.rank && BALANCE.v4.rank[2]) || { people: 45, shops: 5, happy: 80, coins: 11000 }; }
   /** village residents + the station district's citizens */
   people() { const gs = this.gs; return (gs.life ? gs.life.people() : 0) + (this.nb.districtPeople ? this.nb.districtPeople() : 0); }
   shops() { return this.nb.growth ? this.nb.growth.openShopCount() : 0; }
@@ -77,10 +77,29 @@ export class Rank {
     this.atHall = !!venue;
     this.steps = [];
     this.inputAtStart = !!(Input.joy && Input.joy.active);
-    gs.focusCamera(this.cx + 120, this.cy + 80, this.cLen * 1000);
-    // everyone comes: the village (the party ring around the chief) and the townsfolk nearby
-    if (gs.life) gs.life.party();
+    // ((v4 review) at the hall: the hall and its little square fill the screen (not the pines in front of it))
+    if (this.atHall) gs.focusCamera(this.cx + 60, this.cy - 160, this.cLen * 1000);
+    else gs.focusCamera(this.cx + 120, this.cy + 80, this.cLen * 1000);
+    // everyone comes: the village (the party ring around the chief; the far ones come in from just off screen), the
+    // townsfolk visiting our village and the townsfolk near the square
+    if (gs.life) gs.life.party({ pull: 700 });
+    if (this.nb.gatherVisitors) this.nb.gatherVisitors(this.cx, this.cy + 40, this.cLen + 1, 18);
     if (this.nb.town && this.nb.town.gather) this.nb.town.gather(this.cx, this.cy + 60, 900, 24, this.cLen + 2);
+    // ((v4 review) at the hall the square's change (the cobble wipe, the new lamps) happens at the station: the
+    //  camera goes there for the second half, with the district's people gathered round)
+    if (this.atHall) {
+      this.at(5.0, () => {
+        const cam = gs.cameras.main;
+        const go = () => {
+          const fx = Q.rank.x + 120, fy = Q.rank.y + 40;
+          gs.focusCamera(fx, fy, (this.cLen - 5) * 1000 + 400); cam.centerOn(fx, fy);
+          if (gs.camTarget) { gs.camTarget.x = fx; gs.camTarget.y = fy; }
+          Rank.bakeView(gs, fx, fy);
+        };
+        if (cam.fadeOut) { cam.fadeOut(260, 255, 255, 255); gs.time.delayedCall(280, () => { go(); cam.fadeIn(320, 255, 255, 255); }); } else go();
+        if (this.nb.town && this.nb.town.gather) this.nb.town.gather(Q.rank.x, Q.rank.y + 20, 1400, 18, this.cLen - 4);
+      });
+    }
     // bells, music ducks
     const bell = Audio.exists('sfx_bell_hall') ? 'sfx_bell_hall' : 'sfx_unlock';
     this.duck(true);
@@ -92,8 +111,9 @@ export class Rank {
     for (let i = 0; i < 10; i++) this.at(1 + i * 0.32, () => { const x = this.cx + (Math.random() - 0.5) * 560, y = this.cy - 160 - Math.random() * 300; gs.effects.burst('confetti', x, y, 22); gs.effects.burst('star', x, y, 12); });
     this.at(1.2, () => gs.effects.shake(260, 0.005));
     // the repave wipe outward from the square (+ fx_poof at the front), then the streetlights pop up
-    this.at(3.0, () => this.repave(false), true);
-    this.at(6.4, () => this.addLights(false), true);
+    // ((v4 review) at the hall: once the camera is at the station square)
+    this.at(this.atHall ? 5.8 : 3.0, () => this.repave(false), true);
+    this.at(this.atHall ? 8.6 : 6.4, () => this.addLights(false), true);
     // the rewards, one toast after another
     const toasts = ['rewardCobble', 'rewardRent', 'rewardCoach', 'rewardTown', 'rewardLots', 'rewardOrders', 'rewardTitle'];
     toasts.forEach((k, i) => this.at(4 + i * 1.1, () => gs.ui.toast(t(k), 1000)));
@@ -123,9 +143,24 @@ export class Rank {
     void skipped;
     this.steps = [];
     gs.camFocus = null;
+    // (at the hall: a white cut back to the chief, not a pan through the whole village; a skip during the first
+    //  white fade must not leave the screen white)
+    const cam = gs.cameras.main;
+    if (cam && this.atHall && gs.player && gs.camTarget) {
+      if (cam.resetFX) cam.resetFX();
+      const back = () => { gs.camTarget.x = gs.player.x; gs.camTarget.y = gs.player.y - 30; cam.centerOn(gs.camTarget.x, gs.camTarget.y); Rank.bakeView(gs, gs.camTarget.x, gs.camTarget.y); };
+      if (!skipped && cam.fadeOut) { cam.fadeOut(220, 255, 255, 255); gs.time.delayedCall(240, () => { back(); cam.fadeIn(300, 255, 255, 255); }); } else back();
+    }
     this.duck(false);
     this.applyRewards(false);
     gs.save(true);
+  }
+
+  /** the ground tiles of a view the camera cuts to, baked at once (under the white fade: no unbaked squares) */
+  static bakeView(gs, x, y) {
+    const cam = gs.cameras.main, z = Math.max(0.05, cam.zoom || 1);
+    const w = cam.width / z, h = cam.height / z;
+    try { if (gs.ground && gs.ground.ensure) gs.ground.ensure({ x: x - w / 2, y: y - h / 2, right: x + w / 2, bottom: y + h / 2 }, Infinity, 120); } catch (e) { /* baked as the camera moves */ }
   }
 
   duck(on) {

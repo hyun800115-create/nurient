@@ -110,7 +110,7 @@ try {
 if (who !== 'intro') await page.waitForTimeout(4000);
 const T = await page.evaluate(() => window.__T);
 let boot = 0, title = 0;
-const titleRe = /src\/title\/bake|assets\/title\//;
+const titleRe = /src\/title\/bake|assets\/title_bake\/|assets\/title\//;
 for (const r of resp) { if (titleRe.test(r.url)) title += r.bytes; else boot += r.bytes; }
 const m = T.marks;
 // the intro's director at 60 fps: stage n starts at stageStart[n-1] s after the title's first frame (+ the waits

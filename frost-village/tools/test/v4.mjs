@@ -203,13 +203,43 @@ try {
     // happiness floor
     for (let k = 0; k < 60; k++) g.addSatisfaction(0);
     out.happyFloor = g.happiness();
+    // ((v4 review M8) the bar matters: half the visitors going home empty-handed keeps the village under the 읍 bar,
+    //  even with the town hall and every decoration (civic.happyCap)
+    for (let k = 0; k < 60; k++) g.addSatisfaction(k % 2 ? 1 : 0);
+    const gs = window.__FV.scene, bonusNow = gs.civic ? gs.civic.happyBonus() : 0;
+    out.happyHalf = g.happiness() - bonusNow;
     for (let k = 0; k < 60; k++) g.addSatisfaction(1);
+    out.happyFull = g.happiness();
     return out;
   });
   step('8 cards only for producers that exist (eligible checked)', rules.eligible);
   step('8 a stuck card can be swapped after 180 s', rules.canSwap === true || rules.canSwap === undefined, rules.canSwap);
   step('8 founding lots reserved, houses never on them', rules.lots && rules.houses, rules);
-  step('8 happiness never under its floor (50)', rules.happyFloor >= 50, rules.happyFloor);
+  const hBase = await ev(async () => (await import(new URL('src/data/balance.js', location.href).href)).BALANCE.v4.happiness.base);
+  step('8 happiness never under its floor (balance v4.happiness.base ' + hBase + ')', rules.happyFloor >= hBase, rules.happyFloor);
+  const hB = await ev(async () => { const B = (await import(new URL('src/data/balance.js', location.href).href)).BALANCE; return { cap: (B.civic && B.civic.happyCap) || 0, bar: B.v4.rank[2].happy }; });
+  step('8 happiness matters: half the visitors served -> under the 읍 bar even with full decor (' + hB.cap + '); all served -> over it', rules.happyHalf + hB.cap < hB.bar && rules.happyFull >= hB.bar, { half: rules.happyHalf, cap: hB.cap, bar: hB.bar, full: rules.happyFull });
+  // (v4 review M4) a card that is full but was never completed (saved in the 350 ms before its completion, then
+  // reloaded) completes by itself
+  const full = await ev(() => { const g = window.__FV.scene.v4.growth, c = g.cards[0]; if (!c) return null; for (const k in c.need) c.got[k] = c.need[k]; return { id: c.id, n: g.cards.length, standing: g.standing, done: g.done.length }; });
+  if (full) {
+    await adv(2.5);
+    const af = await ev((id) => { const g = window.__FV.scene.v4.growth; return { gone: !g.cards.some((c) => c.id === id), standing: g.standing, done: g.done.length }; }, full.id);
+    step('8 a full card left on the board completes by itself (no 30/30 for ever)', af.gone, { full, af });
+  }
+  // (v4 review M5) 다른 주문 keeps what was delivered for a founding card
+  const sw = await ev(() => {
+    const g = window.__FV.scene.v4.growth;
+    const c = { id: 9999, shop: 'cafe', need: { item_bread: 30 }, got: { item_bread: 12 }, idle: 999, standing: false };
+    g.cards.unshift(c);
+    const ok = g.swap(9999);
+    const back = g.cards.find((q) => q.shop === 'cafe');
+    const kept = g.kept.cafe ? g.kept.cafe.item_bread : null;
+    // (clean up: this test card is not part of the game)
+    g.cards = g.cards.filter((q) => q.shop !== 'cafe'); delete g.kept.cafe; const i = g.skipped.indexOf('cafe'); if (i >= 0) g.skipped.splice(i, 1);
+    return { ok, kept, back: back ? back.got.item_bread : null };
+  });
+  step('8 다른 주문 keeps the delivered goods of a founding card', sw.ok && (sw.kept === 12 || sw.back === 12), sw);
   // invitation fallback: a fresh first-train flag with no shop: the mayor comes after inviteAfter s
   const fb = await ev(() => { const nb = window.__FV.scene.v4; return { after: nb.gs ? true : true, has: typeof nb.invite === 'function' }; });
   step('8 invitation fallback exists (480 s after the first train)', fb.has);

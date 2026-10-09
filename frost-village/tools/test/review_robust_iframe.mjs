@@ -47,9 +47,12 @@ for (const c of cases) {
     if (booted) {
       const el = await page.$('#g');
       const b = await el.boundingBox();
-      await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
       let inGame = false;
-      for (let i = 0; i < 80 && !inGame; i++) { inGame = await frame.evaluate(() => !!(window.__FV.state && window.__FV.game.scene.isActive('UI'))).catch(() => false); if (!inGame) await sleep(250); }
+      // (v4-C2) the first-run title intro: tap = sound on, tap = skip, tap = start
+      for (let i = 0; i < 80 && !inGame; i++) {
+        if (i % 8 === 0 && i < 64) await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+        inGame = await frame.evaluate(() => !!(window.__FV.state && window.__FV.game.scene.isActive('UI'))).catch(() => false); if (!inGame) await sleep(250);
+      }
       r.gameStarted = inGame;
       if (inGame) {
         await sleep(1500);

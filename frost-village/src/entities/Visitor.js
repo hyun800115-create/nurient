@@ -99,6 +99,16 @@ export class Visitor extends Customer {
         if (!(this.target && this.target.drivesGuests)) this.vx = this.vy = 0;
         if ((this.shopBT += dt) > (BALANCE.v4.visitors.patience || 60) * 1.5) this.finishTarget(0.3);
         break;
+      case 'cheer': {
+        // (v4 review) the 승격식: to a spot in the ring, cheer, then back to the visit
+        if (this.follow(dt)) {
+          this.vx = this.vy = 0;
+          if (!this.cheered) { this.cheered = true; this.faceTo(this.cheerX, this.cheerY); this.play(Math.random() < 0.5 ? 'wave' : 'happy', true); }
+        }
+        this.cheerT -= dt;
+        if (this.cheerT <= 0) this.endCheer();
+        break;
+      }
       case 'platform':
         this.vx = this.vy = 0;
         if (this.stack.count && this.animName !== 'carry_idle') this.locomotion(false);
@@ -165,11 +175,36 @@ export class Visitor extends Customer {
     if (p) this.goTo(p);
   }
 
+  /** (v4 review) join the 승격식 ring at p for `secs` s (not while in a line, boarding or gone) */
+  cheer(p, secs, cx, cy) {
+    if (!this.alive || ['shop', 'shopB', 'board', 'gone', 'cheer'].indexOf(this.stage) >= 0) return false;
+    this.cheerPrev = this.stage === 'browse' ? 'walk' : this.stage;
+    this.stage = 'cheer';
+    this.cheerT = secs; this.cheerX = cx; this.cheerY = cy; this.cheered = false;
+    this.goTo(p);
+    return true;
+  }
+  endCheer() {
+    const prev = this.cheerPrev || 'home';
+    this.cheerPrev = null; this.cheered = false;
+    this.play('idle');
+    if (prev === 'walk' && this.target) { this.stage = 'walk'; this.goTo(this.joinPoint()); return; }
+    this.stage = 'home';
+    this.goTo(this.nb.platformSpot(this));
+  }
+
   /** what this visitor wants from seller m (their favourite when it sells it) */
   pickType(m) {
     const av = m.availableFoods ? m.availableFoods() : m.goods;
     const fav = this.citizen.fav;
     if (fav && av.indexOf(fav) >= 0 && Math.random() < 0.7) return fav;
+    // ((v4 review M8) their favourite is something this shop sells and our village makes, but the shelf is empty:
+    //  they take something else and go home only half happy — the happiness bar shows when shelves run dry)
+    if (fav && av.indexOf(fav) < 0 && m.goods.indexOf(fav) >= 0 && this.nb.producing && this.nb.producing(fav) && Math.random() < 0.7) {
+      this.missedFav = true;
+      const B = this.nb.bubbles();
+      if (B && Math.random() < 0.5) this.gs.time.delayedCall(1200, () => { if (this.alive) B.chat(this, line('shopper_nofav'), 'emote_dots', 2); });
+    }
     return av.length ? av[Math.floor(Math.random() * av.length)] : m.goods[0];
   }
 
@@ -195,7 +230,8 @@ export class Visitor extends Customer {
     const m = this.market;
     const i = m.leaving.indexOf(this);
     if (i >= 0) m.leaving.splice(i, 1);
-    const frac = this.want.count > 0 ? (this.got >= this.wantPlan.count ? 1 : this.got > 0 ? 0.6 : 0) : 0;
+    let frac = this.want.count > 0 ? (this.got >= this.wantPlan.count ? 1 : this.got > 0 ? 0.6 : 0) : 0;
+    if (this.missedFav) { frac = Math.min(frac, 0.6); this.missedFav = false; }
     this.finishTarget(frac);
   }
 

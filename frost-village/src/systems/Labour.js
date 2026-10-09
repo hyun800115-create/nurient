@@ -431,7 +431,8 @@ export class Pile {
     const fx = this.gs.effects;
     // (v4-B, v3.5 known issue) a full pile was saved with the items still flying onto it: keep those too (the
     // pile is over its max until it is carried off; it never draws higher than drawMax)
-    for (let k = 0; k < Math.min(Math.max(0, Math.floor(n) || 0), this.stack.max + 8); k++) this.stack.push(this.item, null, fx);
+    // ((v4 review L2) up to twice its max: a busy pile was saved over max + 8 and lost the rest on every reload)
+    for (let k = 0; k < Math.min(Math.max(0, Math.floor(n) || 0), Math.max(this.stack.max + 8, this.stack.max * 2)); k++) this.stack.push(this.item, null, fx);
   }
 }
 

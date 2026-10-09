@@ -263,6 +263,7 @@ export class Worker extends Character {
       // the line lands in the water, never on the snow in front of him
       ip = { x: ip.x - 10, y: Math.min(ip.y, shoreY(ip.x - 10) - 16) };
       if (gs.isOnScreen(ip.x, ip.y, 40)) gs.effects.sheet('fx_splash', ip.x, ip.y, { size: 70 });
+      if (gs.ground && gs.ground.water) gs.ground.water.ripple(ip.x, ip.y, 0.8);     // (v4-C2) the line's plop rings out
       gs.effects.burst('splash', ip.x, ip.y, 3);
       gs.sfxAt('sfx_splash', this.x, this.y, { volume: 0.35, throttle: 200 });
     }
@@ -840,7 +841,9 @@ export class StationPorter extends Hauler {
       for (const it of s.outStack.items) {
         if (seen[it.type]) continue; seen[it.type] = true;
         const have = s.outStack.countOf(it.type);
-        if (surplus || (G && G.foundingNeedOf && G.foundingNeedOf(it.type) > 0 && have >= early)) consider(s, it.type, have, s.outPad.x, s.outPad.y);
+        // ((v4 review) a card that needs fewer than `early` (the 철물점's one axe / one pickaxe) is taken at once)
+        const fn = G && G.foundingNeedOf ? G.foundingNeedOf(it.type) : 0;
+        if (surplus || (fn > 0 && have >= Math.min(early, fn))) consider(s, it.type, have, s.outPad.x, s.outPad.y);
       }
     }
     return best;
@@ -854,14 +857,46 @@ export class StationPorter extends Hauler {
     return b ? b.sink : null;
   }
 
-  afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.3; }
+  afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.3; this.strandT = 0; }
+
+  /**
+   * (v4 review M6) goods nobody at the station wants any more (the chief finished the card himself): after a few
+   * seconds they go wherever the village takes them (the warehouse, a shelf, a workshop); with no place at all
+   * they ride the next train at the wholesale price — the porter never stands frozen with a full load
+   */
+  stranded(dt) {
+    this.strandT = (this.strandT || 0) + dt;
+    if (this.strandT < 4 || this.stack.count <= 0 || this.stack.incoming > 0) return false;
+    const L = this.gs.logistics, ty = this.carriedType();
+    const b = L && ty ? L.best(ty, this.x, this.y, { remote: true, exclude: this.state === 'unload' ? this.dest : null }) : null;
+    if (b && b.sink !== this.dest) { this.strandT = 0; this.startHaul(b.sink); return true; }
+    if (this.strandT < 20) return false;
+    const G = this.growth, gs = this.gs;
+    while (this.stack.count > 0) {
+      const it = this.stack.pop();
+      if (!it) break;
+      if (G && G.payWholesale) G.payWholesale(it.type, 1, this.x, this.y - 60);
+      gs.effects.releaseItem(it.spr);
+    }
+    this.clearDest();
+    this.afterUnload();
+    return true;
+  }
+
+  unload(dt) {
+    super.unload(dt);
+    if (this.state !== 'unload') { this.strandT = 0; return; }
+    const ty = this.carriedType(), d = this.dest;
+    if (d && d.enabled && this.stack.count > 0 && d.accepts(ty) && (d.fullRoom ? d.fullRoom(ty) : d.room(ty)) > 0) { this.strandT = 0; return; }
+    this.stranded(dt);
+  }
 
   update(dt) {
     const gs = this.gs;
     this.checkSkin(dt);
     switch (this.state) {
       case 'idle': {
-        if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
+        if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } if (this.stranded(dt)) break; } else this.strandT = 0;
         this.thinkT -= dt;
         if (this.thinkT <= 0) {
           this.thinkT = 0.8;
@@ -894,10 +929,15 @@ export class StationPorter extends Hauler {
           const have = this.stack.count + this.stack.incoming;
           const W = gs.warehouse;
           let took = false;
-          if (have < j.n && this.room > 0) {
+          // ((v4 review) what came out since the job was planned is taken too, up to what the sink still wants)
+          const lim = Math.min(this.stack.max, j.n + Math.max(0, gs.logistics.want(j.sink, j.type)));
+          if (have < lim && this.room > 0) {
             if (W && j.src === W) took = W.count(j.type) > 0 && W.giveTo(this, j.type);
             else if (j.src.outStack && j.src.outStack.countOf(j.type) > 0) took = gs.moveItem(j.src.outStack, this.stack, j.type, { dur: 230, height: 55 });
           }
+          // ((v4 review) a founding card's goods trickle out of a workshop the shelves' porters also empty: wait a
+          //  few seconds at the door for the next one instead of walking back with nothing)
+          if (!took && this.stack.incoming === 0 && have < lim && this.waitT < 8 && j.src !== W && this.growth && this.growth.foundingNeedOf(j.type) > 0 && j.src.enabled) { this.waitT += 0.14; this.locomotion(false); break; }
           if (!took && this.stack.incoming === 0) {
             gs.logistics.release(j.sink, j.type, this.jobResv || 0); this.jobResv = 0;
             if (this.stack.count > 0) { const ok = gs.logistics.want(j.sink, j.type) > 0 ? j.sink : this.planDest(); if (ok) this.startHaul(ok); else { this.state = 'idle'; } }

@@ -31,8 +31,12 @@ export class Bubbles {
     return { kind: 'chat', c, body, tail, icon, text };
   }
 
-  /** speech bubble over character `who` with `text` (and an emote icon) for `dur` seconds */
-  chat(who, text, emote, dur = 2.6) {
+  /**
+   * speech bubble over character `who` with `text` (and an emote icon) for `dur` seconds.
+   * (v4-C2) every bubble is spoken in 눈꽃말 by the speaker's own voice (VillageVoice, docs/build_reports/voice.md §7);
+   * opts.silent: a card that is not speech (the townsperson info card)
+   */
+  chat(who, text, emote, dur = 2.6, opts) {
     if (!who || !who.alive) return null;
     // one bubble per character: replace its current one
     this.clear(who, 'chat');
@@ -58,8 +62,13 @@ export class Bubbles {
     else b.text.setPosition(0, cy);
     b.tail.setPosition(0, -20);
     b.who = who; b.t = 0; b.dur = dur; b.k = 0;
+    // ((v4 review) a name card stays on screen, clear of the HUD chips: b.cw / b.ch its size)
+    b.card = !!(opts && opts.card); b.cw = w; b.ch = h;
+    b.tail.setVisible(true);
     b.c.setVisible(true).setAlpha(1).setScale(0.2);
     this.active.push(b);
+    const vv = this.gs.voice;
+    if (vv && !(opts && opts.silent)) { try { vv.speakBubble(text, who, emote); } catch (e) { /* the bubble stays */ } }
     return b;
   }
 
@@ -115,6 +124,20 @@ export class Bubbles {
 
   hasChat(who) { for (const b of this.active) if (b.kind === 'chat' && b.who === who) return true; return false; }
 
+  /** (v4 review) a name card inside the view: clear of the left / right edges, and below the HUD chips at the top
+   *  (when there is no room above the head it hangs below the feet, without its tail) */
+  keepOnScreen(b, w) {
+    const gs = this.gs, v = gs.cameras.main.worldView;
+    const hud = v.height * (gs.ui && gs.ui.hudBottomFrac ? gs.ui.hudBottomFrac() : 0.24);
+    const half = b.cw / 2 + 10;
+    const x = Math.max(v.x + half, Math.min(v.right - half, b.c.x));
+    let y = b.c.y;
+    const flip = y - b.ch - 24 < v.y + hud;
+    if (flip) y = Math.min(v.bottom - 20, w.y + b.ch + 34);
+    if (b.tail.visible === flip) b.tail.setVisible(!flip);
+    b.c.setPosition(x, y);
+  }
+
   update(dt) {
     const gs = this.gs;
     for (let i = this.active.length - 1; i >= 0; i--) {
@@ -132,6 +155,7 @@ export class Bubbles {
       const head = w.y + w.headTop * (w.sprite.scaleY || 1) + (w.sitDy || 0);
       if (b.kind === 'chat') b.c.setPosition(w.x, head - 10 + Math.sin(gs.time.now / 320 + w.x) * 1.5);
       else b.c.setPosition(w.x + (b.dx || 0), head - 6 + Math.sin(gs.time.now / 280 + w.y) * 2);
+      if (b.card) this.keepOnScreen(b, w);
       b.c.setScale(sc);
       // nearer the camera = drawn on top
       const d = (b.kind === 'chat' ? DEPTH.BUBBLE + 20 : DEPTH.BUBBLE + 10) + w.y * 0.001;

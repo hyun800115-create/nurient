@@ -38,6 +38,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ASSETS = os.path.join(ROOT, 'assets')
 OUT = os.path.join(ASSETS, '_packed')
 PAD = 2
+# (v4 review M3) no page uploads more than 8 MiB at once (docs/v4_plan.md §16.4): a page over it is packed again on
+# finer widths, and a town page that is still too big is split by building into <suffix>, <suffix>2, ...
+PAGE_CAP = 8 * 1048576
+FINE_WIDTHS = tuple(range(512, 2049, 32))
 
 # ---------------------------------------------------------------- rules
 # villagers: anims the systems play (jobs, stations, porters, seats) stay resident; the rest is social
@@ -117,6 +121,10 @@ def build_page(src_img, rects):
     """rects: list of unique source rects (x, y, w, h). Returns (sheet, {rect: (nx, ny)})."""
     sizes = [(r[2], r[3]) for r in rects]
     W, H, pos = pack(sizes)
+    if ((W + 3) // 4 * 4) * max(4, H) * 4 > PAGE_CAP:
+        W2, H2, pos2 = pack(sizes, FINE_WIDTHS)
+        if W2 * H2 < W * H:
+            W, H, pos = W2, H2, pos2
     W = (W + 3) // 4 * 4
     if W > 4096 or H > 4096:
         raise ValueError('page too large %dx%d' % (W, H))
@@ -135,8 +143,34 @@ def save_png(sheet, path):
 
 
 # ---------------------------------------------------------------- Phaser JSON hash atlases
-def split_hash(atlas_key, src_png, src_json, classify, pages_order):
-    """classify(frame_name) -> page suffix or None (drop). Returns {suffix: (sheet, atlas_json, frames)}."""
+def frame_group(name):
+    """the building / sprite a frame belongs to (its loop frames stay on one page with it)"""
+    return re.sub(r'_work(_\d+)?$', '', re.sub(r'_\d+$', '', name))
+
+
+def cap_groups(g):
+    """(v4 review M3) split the frames {name: f} of one page into page-sized parts by building (biggest first,
+    first fit on an area estimate); a single building is never split"""
+    groups = {}
+    for name, f in g.items():
+        groups.setdefault(frame_group(name), {})[name] = f
+    area = lambda gg: sum((f['frame']['w'] + PAD) * (f['frame']['h'] + PAD) for f in {(ff['frame']['x'], ff['frame']['y']): ff for ff in gg.values()}.values())
+    parts = []
+    for gk in sorted(groups, key=lambda k: -area(groups[k])):
+        a = area(groups[gk])
+        for pt in parts:
+            if pt[0] + a <= PAGE_CAP / 4 * 0.78:
+                pt[0] += a
+                pt[1].update(groups[gk])
+                break
+        else:
+            parts.append([a, dict(groups[gk])])
+    return [pt[1] for pt in parts]
+
+
+def split_hash(atlas_key, src_png, src_json, classify, pages_order, cap_split=False):
+    """classify(frame_name) -> page suffix or None (drop). Returns {suffix: (sheet, atlas_json, frames)}.
+    cap_split: a page over PAGE_CAP is split by building into suffix, suffix2, ..."""
     j = json.load(open(src_json))
     fr = j['frames']
     if isinstance(fr, list):
@@ -151,10 +185,8 @@ def split_hash(atlas_key, src_png, src_json, classify, pages_order):
             continue
         groups.setdefault(suf, {})[name] = f
     out = {}
-    for suf in pages_order:
-        g = groups.get(suf)
-        if not g:
-            continue
+
+    def make(suf, g):
         rects = sorted({(f['frame']['x'], f['frame']['y'], f['frame']['w'], f['frame']['h']) for f in g.values()})
         sheet, where = build_page(img, rects)
         frames = {}
@@ -169,6 +201,16 @@ def split_hash(atlas_key, src_png, src_json, classify, pages_order):
                                             'image': file_of(key) + '.png', 'format': 'RGBA8888',
                                             'size': {'w': sheet.width, 'h': sheet.height}, 'scale': '1'}}
         out[suf] = (sheet, atlas, sorted(g.keys()))
+        return sheet
+    for suf in pages_order:
+        g = groups.get(suf)
+        if not g:
+            continue
+        sheet = make(suf, g)
+        if cap_split and sheet.width * sheet.height * 4 > PAGE_CAP:
+            del out[suf]
+            for n, part in enumerate(cap_groups(g)):
+                make(suf if n == 0 else suf + str(n + 1), part)
     return out, dropped, list(fr.keys())
 
 
@@ -384,7 +426,7 @@ def main():
                 continue
 
             def build(key=key, png=png, js=js, frag=frag, classify=classify, order=order):
-                pages, dropped, allf = split_hash(key, png, js, classify, order)
+                pages, dropped, allf = split_hash(key, png, js, classify, order, cap_split=key in TOWN_SPLIT)
                 e = {'frag': frag, 'kind': 'town', 'pages': [], 'dropped': len(dropped)}
                 for suf, (sheet, atlas, names) in pages.items():
                     pk = key + '@' + suf
@@ -429,6 +471,10 @@ def main():
     for key, core, tot, built in report:
         print('%-26s core/loco %6.2f MiB  all pages %6.2f MiB %s' % (key, core / MiB, tot / MiB, '(built)' if built else ''))
     print('pages: %d atlases -> %d pages' % (len(index['atlases']), sum(len(e['pages']) for e in index['atlases'].values())))
+    for e in index['atlases'].values():
+        for pg in e['pages']:
+            if pg.get('bytes', 0) > PAGE_CAP:
+                problems.append('%s: %.2f MiB, over the %d MiB page cap' % (pg['key'], pg['bytes'] / MiB, PAGE_CAP // 1048576))
     if problems:
         print('PROBLEMS:')
         for p in problems:

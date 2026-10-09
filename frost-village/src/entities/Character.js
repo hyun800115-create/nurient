@@ -63,7 +63,9 @@ export class Character {
   /** play anim `name` in the current direction; keepFrame keeps the cycle phase on turns */
   play(name, force, keepFrame) {
     // (v4-B) a social anim lives on an on-demand page: ask for it (Residency; the fallback plays meanwhile)
-    if (!LOCO.has(name) && Assets.packed && !this.sprite.isDoll && this.def && this.def.atlas) {
+    // ((v4 review M1) only for someone on or near the screen: residents chatting out of sight made a social page load
+    //  and go again about 40 times a minute; one that comes into view plays its anim again and asks then)
+    if (!LOCO.has(name) && Assets.packed && !this.sprite.isDoll && this.def && this.def.atlas && this.sprite.visible && (!this.gs.isOnScreen || this.gs.isOnScreen(this.x, this.y, 220))) {
       const sp = Assets.socialPage(this.def.atlas, name);
       if (sp) Residency.want(sp);
     }

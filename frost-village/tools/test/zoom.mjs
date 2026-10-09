@@ -67,7 +67,11 @@ try {
   const d = await openPage(browser, srv.url + 'index.html', { viewport: { width: 1000, height: 800 }, isMobile: false, hasTouch: false, dpr: 1 });
   await waitFor(d.page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 90000);
   await sleep(800);
-  await d.page.mouse.click(500, 480);
+  // (v4-C2) the first-run title intro: click = sound on, click = skip, click = start
+  for (let i = 0; i < 10; i++) {
+    await d.page.mouse.click(500, 480);
+    if (await waitFor(d.page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 4000).then(() => true).catch(() => false)) break;
+  }
   await waitFor(d.page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 60000).catch(() => {});
   await sleep(1500);
   const w0 = (await d.page.evaluate(() => window.__FV.zoom())).target;

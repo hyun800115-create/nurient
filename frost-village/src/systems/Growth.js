@@ -51,11 +51,15 @@ export class Growth {
     this.done = Array.isArray(o.done) ? o.done.filter((k, i, a) => FND().shops[k] && a.indexOf(k) === i) : [];
     this.standing = Math.max(0, Math.floor(Number(o.standing) || 0));
     this.skipped = [];
+    // ((v4 review M5) what was delivered for a founding card that was swapped away: it comes back with the card)
+    this.kept = {};
+    if (o.kept && typeof o.kept === 'object') for (const k in o.kept) if (FND().shops[k] && o.kept[k] && typeof o.kept[k] === 'object') this.kept[k] = o.kept[k];
     this.cargo = 0;                   // crates waiting on the dock (already counted on their cards)
     this.savedCargo = s.cargo && typeof s.cargo === 'object' ? s.cargo : {};
     this.savedCash = Math.max(0, Math.floor(Number(s.cash) || 0));
-    this.rentFrac = 0;
     this.rentAcc = Math.max(0, Math.floor(Number(s.rentAcc) || 0));
+    // ((v4 review L2) the rent counted but not yet paid into the till comes back after a reload)
+    this.rentFrac = Math.min(this.rentAcc, Number(BALANCE.v4.rent.cap) || 2000);
     this.payFrac = 0;
     // happiness: the last `window` satisfactions (saved as a count and their sum)
     this.happyList = [];
@@ -93,7 +97,7 @@ export class Growth {
       }
     }
     // a founding card that was done before the save without its lot (old / edited save): its lot appears
-    for (const k of this.done) if (!Object.values(this.shops).some((sh) => sh.shop === k)) { const lot = FND().lots[k]; if (lots[lot] && !this.shops[lot]) this.shops[lot] = new Shop(this, lot, k, { st: 'open' }); }
+    for (const k of this.done) if (!Object.values(this.shops).some((sh) => sh.shop === k)) { const lot = this.lotFor(k); if (lot) this.shops[lot] = new Shop(this, lot, k, { st: 'open' }); }
     if (s.houses && typeof s.houses === 'object') for (const id in s.houses) if (lots[id] && !this.houses[id] && !this.shops[id]) this.houses[id] = new HouseLot(this, id, s.houses[id]);
     if (gs.progress.flags.firstTrain) this.activate(true);
     // shops that needed their founder: they ride the next train (a reload lost them in transit)
@@ -122,7 +126,7 @@ export class Growth {
     this.boardLabel = floatLabel(gs, Q.board.x + LB.board[0], Q.board.y + LB.board[1], Assets.pick('ui_icon_mission', 'ui_icon_request', 'ui_icon_lock'));
     // the loading dock
     this.dock = { id: 'cargo', x: Q.cargo.x, y: Q.cargo.y, ux: Q.cargo.x + 34, uy: Q.cargo.y + 22, enabled: true, remote: true, isWarehouse: false, kind: 'cargo',
-      accepts: (ty) => this.needOf(ty) > 0, room: (ty) => this.needOf(ty), prio: () => PRIO.WHOLESALE, feed: (ch) => this.feedDock(ch) };
+      accepts: (ty) => this.needOf(ty) > 0, room: (ty) => this.needOf(ty), prio: (ty) => (this.foundingNeedOf(ty) > 0 ? PRIO.FOUNDING : PRIO.WHOLESALE), feed: (ch) => this.feedDock(ch) };
     this.dockPad = new Pad(gs, Q.cargo.x, Q.cargo.y, 'input', 1.6, { tex: Assets.pick('ui_pad_porter', 'ui_pad_input'), icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack'), iconSize: 40 });
     this.dockLabel = floatLabel(gs, Q.cargo.x + LB.cargo[0], Q.cargo.y + LB.cargo[1], Assets.pick('ui_icon_delivery', 'ui_icon_backpack'));
     this.dockLabel.set(t('cargo_pad'));
@@ -174,7 +178,7 @@ export class Growth {
       const taken = (k) => onBoard.has(k) || this.done.indexOf(k) >= 0 || Object.values(this.shops).some((s) => s.shop === k);
       let k = order.find((x) => !taken(x) && this.skipped.indexOf(x) < 0 && this.eligible(x));
       if (!k && this.skipped.length) k = order.find((x) => !taken(x) && this.eligible(x) && this.cards.length + 1 < max);
-      if (k) { const i = this.skipped.indexOf(k); if (i >= 0) this.skipped.splice(i, 1); this.cards.push(this.cardFrom({ shop: k })); added++; continue; }
+      if (k) { const i = this.skipped.indexOf(k); if (i >= 0) this.skipped.splice(i, 1); this.cards.push(this.cardFrom({ shop: k, got: this.kept[k] })); delete this.kept[k]; added++; continue; }
       // every founding card is out (or none is possible yet while some remain): regular deliveries come only
       // once all the founding shops are open
       const allFounded = order.every((x) => this.done.indexOf(x) >= 0);
@@ -227,11 +231,11 @@ export class Growth {
     const c = this.cards[i];
     // what was already delivered for it is not lost: it stays paid (wholesale), the card goes to the back
     this.cards.splice(i, 1);
-    if (c.shop) this.skipped.push(c.shop);
+    if (c.shop) { this.skipped.push(c.shop); this.kept[c.shop] = Object.assign({}, c.got); }
     this.refill();
     // nothing else could take its place: it comes back (fresh idle timer)
     if (this.cards.length < 1 || (c.shop && !this.cards.some((q) => q.shop === c.shop) && this.cards.length < 3 && !this.refill())) {
-      if (!this.cards.some((q) => q.shop === c.shop && q.shop)) { c.idle = 0; this.cards.push(c); }
+      if (!this.cards.some((q) => q.shop === c.shop && q.shop)) { c.idle = 0; this.cards.push(c); if (c.shop) delete this.kept[c.shop]; }
     }
     Audio.play('sfx_click', { volume: 0.5 });
     this.refreshLabels(true);
@@ -249,9 +253,10 @@ export class Growth {
       if (!c) continue;
       c.got[ty]++;
       c.idle = 0;
+      if (ch && ch.role === 'stationPorter') c.porterIdle = 0;
       this.payWholesale(ty, 1, this.dock.x, this.dock.y - 30);
       this.addCrate(ty, ch);
-      if (this.cardDone(c)) this.gs.time.delayedCall(350, () => this.completeCard(c));
+      if (this.cardDone(c)) { c.doneT = 0; this.gs.time.delayedCall(350, () => this.completeCard(c)); }
       this.refreshLabels();
       this.gs.events.emit('v4:cards');
       return true;
@@ -315,9 +320,20 @@ export class Growth {
   }
 
   // ================================================================== founding (§8.3)
+  /** the lot a new shop stands on: its own (balance founding.lots), or — when an old / edited save put another shop
+   *  there — a free shop lot no other unfounded shop is waiting for (v4 review L3: the founding never got stuck) */
+  lotFor(shop) {
+    const L = WORLD.v4.lots, own = FND().lots[shop];
+    const free = (id) => L[id] && !this.shops[id] && !this.houses[id];
+    if (free(own)) return own;
+    const reserved = new Set(FND().order.filter((k) => k !== shop && !Object.values(this.shops).some((s) => s.shop === k)).map((k) => FND().lots[k]));
+    return Object.keys(L).find((id) => /^lot[AB]/.test(id) && free(id) && !reserved.has(id)) || null;
+  }
+
   found(shop) {
-    const lot = FND().lots[shop];
-    if (!WORLD.v4.lots[lot] || this.shops[lot]) return null;
+    if (Object.values(this.shops).some((s) => s.shop === shop)) return null;
+    const lot = this.lotFor(shop);
+    if (!lot) return null;
     // the art of the founded shops and the ribbon's flower stands
     this.wantArt();
     const sh = new Shop(this, lot, shop, null);
@@ -526,7 +542,10 @@ export class Growth {
       }
     }
     // the board: idle timers (no progress), refill when a producer appeared (a building / zone)
-    for (const c of this.cards) if (!this.cardDone(c)) c.idle = Math.min(3600, c.idle + dt);
+    for (const c of this.cards) if (!this.cardDone(c)) { c.idle = Math.min(3600, c.idle + dt); c.porterIdle = Math.min(3600, (c.porterIdle || 0) + dt); }
+    // ((v4 review M4) a card that is full but was never completed — saved in the 350 ms before its completion,
+    //  then reloaded — completes now instead of staying at 30/30 for ever)
+    for (const c of this.cards.slice()) if (this.cardDone(c)) { c.doneT = (c.doneT || 0) + dt; if (c.doneT > 1) this.completeCard(c); }
     this.refillT = (this.refillT || 0) - dt;
     if (this.refillT <= 0) { this.refillT = 2; if (this.refill()) this.refreshLabels(true); this.houseCheck(false); }
     // rent of the open shops into the till (capped while nobody collects)
@@ -591,7 +610,7 @@ export class Growth {
     for (const id in this.houses) houses[id] = this.houses[id].serialize();
     const n = this.happyList.length;
     return {
-      orders: { cards, done: this.done.slice(0, 5), standing: this.standing },
+      orders: { cards, done: this.done.slice(0, 5), standing: this.standing, kept: Object.keys(this.kept).length ? JSON.parse(JSON.stringify(this.kept)) : undefined },
       cargo,
       shops, houses,
       cash: this.till ? this.till.value : this.savedCash,

@@ -462,12 +462,12 @@ try {
   await shot('21_settings');
   const paused = await page.evaluate(() => window.__FV.game.scene.isPaused('Game'));
   step('settings panel opens (game paused)', paused);
-  await page.touchscreen.tap(b.x + (360 - 130) * sx, b.y + (b.height / sx / 2 + 245) * sx); // reset (left of Reload) -> confirm view ((v4) two more rows above: +245)
+  await page.touchscreen.tap(b.x + (360 - 130) * sx, b.y + (b.height / sx / 2 + 330) * sx); // reset (left of Reload) -> confirm view ((v4-C2) seven rows above: +330)
   await sleep(500);
   await shot('22_reset_confirm');
   await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 160) * sx);      // "no"
   await sleep(400);
-  await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 345) * sx);      // close ((v4) +345)
+  await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 428) * sx);      // close ((v4-C2) +428)
   await sleep(500);
   step('settings closed', !(await page.evaluate(() => window.__FV.game.scene.isPaused('Game'))));
 
@@ -496,7 +496,7 @@ try {
     const c2 = await page.$('canvas'); const b2 = await c2.boundingBox();
     const k = b2.width / 720, Hh = b2.height / k;
     await page.touchscreen.tap(b2.x + (720 - 62) * k, b2.y + 62 * k); await sleep(600);
-    await page.touchscreen.tap(b2.x + (360 - 130) * k, b2.y + (Hh / 2 + 245) * k); await sleep(500);
+    await page.touchscreen.tap(b2.x + (360 - 130) * k, b2.y + (Hh / 2 + 330) * k); await sleep(500);
     await page.touchscreen.tap(b2.x + 360 * k, b2.y + (Hh / 2 + 60) * k); await sleep(2500);
     await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 15000).catch(() => {});
     s = await st();

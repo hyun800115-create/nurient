@@ -22,7 +22,7 @@ export function stepCost(s) {
   if (s.type === 'boat') return (s.level >= 2 ? BALANCE.boats.fishing : BALANCE.boats.rowboat).coins;
   // ---- (v4-B) the station porters, the 승격식 (rank ceremony)
   if (s.type === 'stationPorter') { const a = (BALANCE.v4 && BALANCE.v4.stationPorter) || [600, 1100]; return a[s.id === 'stn_porter2' ? 1 : 0]; }
-  if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 14000 }).coins;
+  if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 11000 }).coins;
   // ---- (v4-C) the big restaurant's staff
   if (s.type === 'restStaff') { const S = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.staff) || {}; return S[s.role] || 500; }
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
@@ -146,13 +146,14 @@ export const GOALS = [
   { id: 'shops:3', kind: 'shops', n: 3, passive: true, v4: true },
   { id: 'south', kind: 'region', step: 'tower_south' },
   { id: 'warehouse', kind: 'build' },
-  // ---- (v4-C) the town hall (tax box, notice board, the ceremony's venue)
-  { id: 'town_hall', kind: 'build', c1: true },
   { id: 'cannery', kind: 'build' },
   { id: 'store', kind: 'build' },
   { id: 'se', kind: 'region', step: 'tower_se' },
   { id: 'boat_fishing', kind: 'step' },
   { id: 'shops:5', kind: 'shops', n: 5, rankKey: 'shops', passive: true, v4: true },
+  // ---- (v4-C) the town hall (tax box, notice board, +rooms toward the 45 people, the ceremony's venue): after the
+  //   fifth shop so its 2400 coins / planks / ingots do not hold up the cannery and the shops' orders (bot runs)
+  { id: 'town_hall', kind: 'build', c1: true },
   { id: 'people:45', kind: 'people', n: 45, rankKey: 'people', passive: true, v4: true },
   { id: 'rank:2', kind: 'rank', n: 2, v4: true },
 ];
@@ -295,14 +296,14 @@ export class Progression {
       else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
       else if (s.type === 'stationPorter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');     // (v4-B)
-      else if (s.type === 'rank') icon = Assets.pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_star', 'ui_icon_lock_open', 'ui_icon_lock');
+      else if (s.type === 'rank') icon = Assets.pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'restStaff') icon = s.role === 'cashier' ? Assets.pick('ui_icon_clerk', 'portrait_npc_clerk_b', 'ui_icon_worker') : s.role === 'cook' ? Assets.pick('ui_icon_food', 'portrait_npc_chef', 'ui_icon_worker') : Assets.pick('ui_icon_porter', 'ui_icon_worker');     // (v4-C)
       if (s.type === 'hire2' || s.type === 'hire3') items = { [TOOL_OF[s.worker]]: 1 };
       const kind = s.type === 'zone' || s.type === 'tower' || s.type === 'rank' ? 'unlock' : 'hire';
       const padTex = s.type === 'clerk' || s.type === 'operator' || s.type === 'restStaff' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' || s.type === 'restStaff' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' ? ((WORLD.v4 && WORLD.v4.square && WORLD.v4.square.labels && WORLD.v4.square.labels.porter) || [0, 64]) : s.type === 'restStaff' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
         padTex, items, got: this.got[s.id],
         onComplete: (p) => this.completeStep(s, p),
       });

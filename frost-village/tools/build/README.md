@@ -1,4 +1,7 @@
-# 서리마을 개척기 — 배포 안내
+# 행복한 눈꽃마을 이야기 (Snowbloom Village) — 배포 안내
+
+> 게임 이름이 **「행복한 눈꽃마을 이야기」 / Snowbloom Village** 로 바뀌었어요 (게임 속 마을 이름은 그대로 서리마을).
+> 폴더 이름(`frost-village`)과 저장 데이터는 그대로라서, 예전에 하던 게임도 이어서 할 수 있어요.
 
 게임을 다른 사람에게 보여 주는 방법은 두 가지입니다.
 
@@ -98,7 +101,18 @@ node build_artifact.mjs
 ### 올리기
 
 Claude에게 이렇게 말하세요:
-“`frost-village/dist/artifact/index.html`을 아티팩트로 올려 줘. 같이 올릴 파일 목록은 `frost-village/dist/artifact_files.json`에 있어.”
+“`frost-village/dist/artifact/index.html`을 아티팩트로 올려 줘. 같이 올릴 파일 목록은 `frost-village/dist/artifact_files.json`에 있어.
+**`capabilities: { sample: {} }`도 같이 선언해 줘.**”
+
+- **`sample` 선언이 꼭 필요해요 (v4-C2 주민과 수다 떨기).** 이 선언이 있으면 주민과 수다를 떨 때 보는 사람의 Claude가
+  주민의 대답을 만들어 줘요 (처음 한 번 "이 페이지가 Claude를 써도 될까요?" 확인 창이 떠요). 선언이 없거나 보는 사람이
+  허락하지 않으면 주민은 **마을 말투**(오프라인)로 대답해요 — 게임은 그대로 돼요.
+  `artifact_files.json`에도 `"capabilities": { "sample": {} }`가 적혀 있어요.
+- 파일이 500개쯤이라 **두 번에 나눠** 올려요 (`artifact_files.json`의 `batches`: 첫 묶음은 페이지와 함께, 둘째 묶음은 같은 링크로).
+  게임 코드와 목록 파일(`game.js`, `chat.js`, `lib/`, `manifest.json`, 타이틀 목록)은 마지막 묶음에 있어서, 중간에 열어도 섞여서 깨지지 않아요.
+  (그림 조각 목록 `__FV_FRAGMENTS` 도 페이지가 아니라 `game.js` 맨 위에 들어 있어요: 첫 묶음과 함께 바뀌는 페이지가 예전 코드에 새 목록을 주지 않게.)
+  한 번에 올리는 크기는 64 MB, 한 버전 전체는 256 MB · 파일 511개까지예요 (빌드가 묶음마다 확인해요).
+- 주민 수다 코드는 `chat.js`라는 따로 된 파일이에요. 처음 "수다 떨기"를 누를 때만 내려받아요 (첫 화면이 가벼워요).
 
 이미 올린 아티팩트를 고칠 때는 “같은 아티팩트 링크로 업데이트해 줘”라고 하면 주소가 그대로 유지됩니다.
 
@@ -109,19 +123,14 @@ Claude에게 이렇게 말하세요:
 
 ### 그림이 회색 상자로 나오거나 “불러오는 중”에서 멈추면
 
-아티팩트 환경에서 파일을 읽지 못한 경우입니다. 모든 그림과 소리를 스크립트 안에 넣은 예비 묶음을 만드세요:
+아티팩트 환경에서 파일을 읽지 못한 경우입니다. v4부터는 **예비 묶음(`--inline`)을 쓰지 않아요**:
+그림·소리가 너무 많아져서(약 80 MB) 한 번에 올릴 수 있는 크기(64 MB)를 넘고, 열 때 전부 내려받아야 해서 아주 느려요.
+(`dist/artifact_inline/`은 v3 이전에 만든 옛 묶음이라 쓰지 마세요.)
 
-```
-node build_artifact.mjs --inline --webp
-```
-(Python이 없으면 `--webp`는 빼도 됩니다.)
-
-`frost-village/dist/artifact_inline/`이 생깁니다 (파일 7~8개, 약 12~16 MB).
-Claude에게 “`dist/artifact_inline/index.html`로 같은 아티팩트를 업데이트해 줘
-(파일 목록: `dist/artifact_inline_files.json`)”라고 하세요.
-
-덤: 이 예비 묶음은 서버 없이도 열립니다. `dist/artifact_inline/index.html`을 더블클릭하면
-인터넷 없이 바로 플레이할 수 있어서, USB나 메일로 전달할 때 편합니다 (폴더째 전달).
+대신 이렇게 해 보세요:
+1. 링크를 새로 고침 → 게임이 잠시 뒤 받지 못한 그림을 다시 받아요 (몇 번까지 저절로 다시 시도해요).
+2. 그래도 그대로면 Claude에게 “`dist/artifact_files.json`으로 같은 아티팩트를 다시 올려 줘”라고 하세요
+   (`batches`가 있으면 묶음 순서대로).
 
 ### 아티팩트에서 알아 둘 점
 
@@ -145,7 +154,7 @@ Claude에게 “`dist/artifact_inline/index.html`로 같은 아티팩트를 업�
 
 ```
 node frost-village/tools/build/build_artifact.mjs            # 아티팩트 묶음
-node frost-village/tools/build/build_artifact.mjs --inline   # 예비 묶음
+node frost-village/tools/build/build_artifact.mjs --inline   # (v3 까지의 예비 묶음: v4 는 64 MB 를 넘어서 빌드가 멈춰요)
 node frost-village/tools/build/test_deploy.mjs               # 전체 점검 (약 15~25분)
 node frost-village/tools/build/test_deploy.mjs pages sameorigin --quick
 ```

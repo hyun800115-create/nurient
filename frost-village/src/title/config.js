@@ -42,7 +42,7 @@ export const TITLE_TEXT = {
 export const TITLE_CFG = {
   // where the baked diorama lives (tools/title/bake_title.mjs writes it). Move the folder and change
   // this one path if the build should ship it under assets/ (see docs/build_reports/title_code.md).
-  bakeBase: 'src/title/bake/',
+  bakeBase: 'assets/title_bake/',          // (v4-C2) shipped with the game (assets/title_bake, a late fragment: packaged, never loaded by Assets.js)
   bakeManifest: 'title_bake.json',
   // optional art from the title_art agent (logo, backdrop, fx). Missing files = built-in fallbacks.
   artBase: 'assets/title/',

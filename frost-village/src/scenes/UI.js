@@ -67,6 +67,7 @@ export class UI extends Phaser.Scene {
     this.whistleBtn.setVisible(false);
     this.whistleBadge = this.add.text(0, 0, '', TXT(20, '#ffffff', '#d4426f', 5, '900')).setOrigin(0.5).setVisible(false);
     this.buildDogBar();
+    this.buildChatButton();          // (v4-C2) 수다 떨기
     this.pinch = null;
     this.taps = {};
 
@@ -295,6 +296,67 @@ export class UI extends Phaser.Scene {
     return c;
   }
 
+  // ---------------------------------------------------------------- (v4-C2) 수다 떨기
+  /** the "수다 떨기" pill that appears under a tapped resident (with a persona card) for a few seconds */
+  buildChatButton() {
+    const c = this.add.container(0, 0).setDepth(31).setVisible(false);
+    const b = this.makeButton(0, 0, 236, 76, 'green', '', () => this.chatPressed(), 28);
+    const ic = Assets.image(this, -84, -2, Assets.pick('emote_dots', 'emote_heart')).setOrigin(0.5);
+    ic.setScale(44 / Math.max(1, ic.frame.realWidth));
+    b.text.setText(t('chatBtn')).setX(18);
+    b.add(ic);
+    c.add(b);
+    this.chatBtn = c; this.chatBtnB = b;
+    this.chatFor = null; this.chatT = 0;
+  }
+
+  showChatButton(r) {
+    if (!this.chatBtn || this.panelOpen || this.buildOpen || this.v4PanelOpen) return;
+    this.chatFor = r; this.chatT = 6;
+    this.chatBtnB.text.setText(t('chatBtn'));
+    this.tweens.killTweensOf(this.chatBtn);
+    this.chatBtn.setVisible(true).setScale(0.5).setAlpha(0);
+    this.tweens.add({ targets: this.chatBtn, scale: 1, alpha: 1, duration: 200, ease: 'Back.easeOut' });
+    this.placeChatButton(true);
+    if (window.__FV) window.__FV.chatButton = true;
+  }
+
+  hideChatButton() {
+    if (!this.chatBtn || !this.chatFor) return;
+    this.chatFor = null;
+    this.tweens.killTweensOf(this.chatBtn);
+    this.tweens.add({ targets: this.chatBtn, scale: 0.6, alpha: 0, duration: 140, onComplete: () => { if (!this.chatFor) this.chatBtn.setVisible(false); } });
+    if (window.__FV) window.__FV.chatButton = false;
+  }
+
+  chatPressed() {
+    const r = this.chatFor, rc = this.gs.residentChat;
+    this.hideChatButton();
+    if (r && rc) rc.open(r);
+  }
+
+  /** under the resident's feet (their bubble is over the head), on screen, above the bottom buttons */
+  placeChatButton(snap) {
+    const r = this.chatFor;
+    if (!r) return;
+    const sp = this.worldToScreen(r.x, r.y);
+    const x = Phaser.Math.Clamp(sp.x, 140, this.W - 140);
+    const y = Phaser.Math.Clamp(sp.y + 62, 200 + View.safeTop, this.H - 250 - View.safeBottom);
+    if (snap) this.chatBtn.setPosition(x, y);
+    else this.chatBtn.setPosition(this.chatBtn.x + (x - this.chatBtn.x) * 0.3, this.chatBtn.y + (y - this.chatBtn.y) * 0.3);
+  }
+
+  updateChatButton(dt) {
+    const r = this.chatFor;
+    if (!r) return;
+    this.chatT -= dt;
+    const p = this.gs.player;
+    const gone = !r.alive || r.lod || !r.sprite || !r.sprite.visible || this.chatT <= 0 || this.panelOpen || this.buildOpen || this.v4PanelOpen
+      || (p && Math.hypot(p.x - r.x, (p.y - r.y) * 2) > 700) || !this.gs.isOnScreen(r.x, r.y, 20);
+    if (gone) { this.hideChatButton(); return; }
+    this.placeChatButton(false);
+  }
+
   // ---------------------------------------------------------------- (v3.5) dog bar
   buildDogBar() {
     // (v3.5 review) phone-sized: 88 px buttons (≈ 47 CSS px), labels inside the panel, empty hearts with contrast
@@ -454,6 +516,12 @@ export class UI extends Phaser.Scene {
     const minTop = (this.hud4 ? Math.max(this.hud4.bottom(), 62 + View.safeTop + 180) : 62 + View.safeTop + 180) + 8;
     for (const lift of [0, 110, 220]) if (this.whistleBaseY - lift - R >= minTop && !hit(this.whistleBaseY - lift)) return lift;
     return 0;
+  }
+
+  /** (v4 review) the HUD's bottom edge (coins, population badge, the v4 chips) as a fraction of the screen height */
+  hudBottomFrac() {
+    const b = (this.hud4 ? Math.max(this.hud4.bottom(), 62 + View.safeTop + 180) : 62 + View.safeTop + 180) + 10;
+    return this.H > 0 ? Math.min(0.6, b / this.H) : 0.24;
   }
 
   worldToScreen(wx, wy) {
@@ -719,7 +787,8 @@ export class UI extends Phaser.Scene {
     const civ = this.gs.civic;
     let spr = civ ? civ.thumb(ch.key) : null;
     const waiting = !spr && !!(civ && CATALOG[ch.key]);
-    if (!spr) spr = waiting ? 'ui_icon_hammer' : ({ toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower', station: 'train_station' }[ch.key] || ch.key);   // (v4-A) station
+    const wi = waiting && CATALOG[ch.key] && CATALOG[ch.key].waitIcon;
+    if (!spr) spr = waiting ? (wi && Assets.has(wi) ? wi : 'ui_icon_hammer') : ({ toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower', station: 'train_station' }[ch.key] || ch.key);   // (v4-A) station
     const th = Assets.image(this, 0, -h / 2 + 64, spr).setOrigin(0.5, 0.5);
     const fw = Math.max(1, th.frame.realWidth), fh = Math.max(1, th.frame.realHeight);
     th.setScale(Math.min((w - 24) / fw, (waiting ? 64 : 104) / fh));
@@ -831,7 +900,7 @@ export class UI extends Phaser.Scene {
     const c = this.add.container(0, 0).setDepth(80);
     const dim = this.add.rectangle(W / 2, H / 2, W * 2, H * 2, 0x1b2638, 0.5).setInteractive();
     dim.on('pointerdown', () => {});
-    const bg = panel(this, W / 2, H / 2, 'ui_panel', 560, 840).setOrigin(0.5);
+    const bg = panel(this, W / 2, H / 2, 'ui_panel', 560, 1020).setOrigin(0.5);
     c.add([dim, bg]);
     this.panel = c; this.panelBg = bg; this.panelDim = dim;
     this.buildPanelContent(false);
@@ -851,18 +920,20 @@ export class UI extends Phaser.Scene {
     const W = this.W, H = this.H, cx = W / 2, cy = H / 2;
     const add = (o) => { this.panel.add(o); this.panelItems.push(o); return o; };
     if (!confirm) {
-      add(this.add.text(cx, cy - 362, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
+      // (v4-C2) seven rows on a 90 px pitch (76 px buttons never overlap): + 물결 품질, 주민 목소리
+      add(this.add.text(cx, cy - 452, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
       const row = (y, label, value, style, cb, icon) => {
         if (icon) { const ic = add(Assets.image(this, cx - 200, y, icon).setOrigin(0.5)); ic.setScale(54 / Math.max(ic.frame.realWidth, 1)); }
         add(this.add.text(cx - 160, y, label, TXT(32, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
         add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
       };
       const S = Settings.data;
-      row(cy - 250, t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
-      row(cy - 155, t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
+      const Y = (i) => cy - 330 + i * 90;
+      row(Y(0), t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
+      row(Y(1), t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
       // globe icon for the language row (drawn, there is no icon sprite for it)
       const gl = add(this.add.graphics());
-      const ly = cy - 60;
+      const ly = Y(2);
       gl.fillStyle(0x3d8be0, 1); gl.fillCircle(cx - 200, ly, 25);
       gl.lineStyle(3, 0xffffff, 0.95); gl.strokeCircle(cx - 200, ly, 25);
       gl.strokeEllipse(cx - 200, ly, 22, 50); gl.lineBetween(cx - 225, ly, cx - 175, ly);
@@ -874,19 +945,43 @@ export class UI extends Phaser.Scene {
         this.buildPanelContent(false);
       });
       // ---- (v4-B) 낮과 밤 (day & night tint on / off) and 그래픽 (auto / sharp / light)
-      row(cy + 35, t('set_daynight'), S.daynight !== false ? t('on') : t('off'), S.daynight !== false ? 'green' : 'gray', () => { S.daynight = S.daynight === false; Settings.save(); this.buildPanelContent(false); }, Assets.pick('ui_icon_night', 'ui_icon_day', 'ui_icon_star'));
+      row(Y(3), t('set_daynight'), S.daynight !== false ? t('on') : t('off'), S.daynight !== false ? 'green' : 'gray', () => { S.daynight = S.daynight === false; Settings.save(); this.buildPanelContent(false); }, Assets.pick('ui_icon_night', 'ui_icon_day', 'ui_icon_settings'));
       const gfx = S.gfx === 'high' || S.gfx === 'low' ? S.gfx : 'auto';
-      row(cy + 130, t('set_gfx'), t('gfx_' + gfx), 'blue', () => { S.gfx = gfx === 'auto' ? 'high' : gfx === 'high' ? 'low' : 'auto'; Settings.save(); if (this.gs.applyGfx) this.gs.applyGfx(); this.buildPanelContent(false); }, Assets.pick('ui_icon_speed', 'ui_icon_settings'));
-      add(this.makeButton(cx - 130, cy + 245, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
-      add(this.makeButton(cx + 130, cy + 245, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
-      add(this.add.text(cx, cy - 314, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
-      add(this.makeButton(cx, cy + 345, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+      row(Y(4), t('set_gfx'), t('gfx_' + gfx), 'blue', () => { S.gfx = gfx === 'auto' ? 'high' : gfx === 'high' ? 'low' : 'auto'; Settings.save(); if (this.gs.applyGfx) this.gs.applyGfx(); this.buildPanelContent(false); }, Assets.pick('ui_icon_speed', 'ui_icon_settings'));
+      // ---- (v4-C2) 물결 품질: 높음 / 간단 (the living water; Canvas / old sea: shown, has no effect)
+      const gd = this.gs.ground;
+      const wq = (S.water || (gd && gd.waterQuality) || 'high') === 'low' ? 'low' : 'high';
+      const wy = Y(5);
+      const wi = add(this.add.graphics());
+      wi.fillStyle(0x2f86c9, 1); wi.fillCircle(cx - 200, wy, 25);
+      wi.lineStyle(4, 0xffffff, 0.95);
+      for (const dy of [-7, 5]) { wi.beginPath(); for (let i = 0; i <= 16; i++) { const x = cx - 216 + i * 2, y = wy + dy + Math.sin(i * 0.8) * 3.5; if (i) wi.lineTo(x, y); else wi.moveTo(x, y); } wi.strokePath(); }
+      row(wy, t('waterQuality'), wq === 'high' ? t('qualityHigh') : t('qualityLow'), wq === 'high' ? 'green' : 'gray', () => {
+        S.water = wq === 'high' ? 'low' : 'high'; Settings.save();
+        if (gd && gd.setWaterQuality) gd.setWaterQuality(S.water);
+        this.gs.waterBudget = null;          // the player chose: no automatic switch any more
+        this.buildPanelContent(false);
+      });
+      // ---- (v4-C2) 주민 목소리 (눈꽃말 voices): 끔 / 작게 / 보통 / 크게
+      const VOL = [0, 0.35, 0.7, 1];
+      const vv = typeof S.voice === 'number' ? S.voice : 1;
+      let vi = 0;
+      for (let i = 0; i < VOL.length; i++) if (Math.abs(VOL[i] - vv) < Math.abs(VOL[vi] - vv)) vi = i;
+      row(Y(6), t('voiceVol'), t('voice_' + vi), vi === 0 ? 'gray' : 'green', () => {
+        S.voice = VOL[(vi + 1) % VOL.length]; Settings.save();
+        if (this.gs.voice) this.gs.voice.setVolume(S.voice);
+        this.buildPanelContent(false);
+      }, Assets.pick('emote_music', 'ui_icon_people'));
+      add(this.makeButton(cx - 130, cy + 330, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
+      add(this.makeButton(cx + 130, cy + 330, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
+      add(this.add.text(cx, cy - 404, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
+      add(this.makeButton(cx, cy + 428, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
       add(this.makeButton(cx, cy + 60, 360, 84, 'gray', t('yes'), () => { this.closeSettings(true); this.gs.resetProgress(); }, 30));
       add(this.makeButton(cx, cy + 160, 360, 84, 'green', t('no'), () => this.buildPanelContent(false), 30));
     }
-    const close = add(this.makeIconButton(cx + 250, cy - 390, 'ui_icon_close', 70, () => this.closeSettings()));
+    const close = add(this.makeIconButton(cx + 250, cy - 478, 'ui_icon_close', 70, () => this.closeSettings()));
     void close;
   }
 
@@ -968,6 +1063,7 @@ export class UI extends Phaser.Scene {
       } else this.edge.setVisible(false);
     } else this.edge.setVisible(false);
     this.updateDogBar(dt);
+    this.updateChatButton(dt);
     if (this.hud4) this.hud4.update(dt);
     this.updateBuildThumbs(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);

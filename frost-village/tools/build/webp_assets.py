@@ -27,7 +27,11 @@ def main():
         sys.exit(1)
     assets = os.path.join(dist, 'assets')
     mapping, before, after = {}, 0, 0
+    # (v4-C2) data textures must stay exact: the living water's normal / foam / LUT textures and its baked shoreline field
+    skip_dirs = {os.path.join(assets, 'water')}
     for root, _dirs, files in os.walk(assets):
+        if any(root == d or root.startswith(d + os.sep) for d in skip_dirs):
+            continue
         for name in sorted(files):
             if not name.lower().endswith('.png'):
                 continue

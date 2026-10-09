@@ -98,7 +98,11 @@ for (const [name, raw] of Object.entries(variants)) {
       await page.waitForFunction(() => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), null, { timeout: 90000 });
       await sleep(300);
       const c = await page.$('canvas'); const b = await c.boundingBox();
-      await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+      // (v4-C2) the new title may want more than one tap (sound on / skip / start)
+      for (let i = 0; i < 8; i++) {
+        await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
+        if (await page.waitForFunction(() => window.__FV.game.scene.isActive('UI'), null, { timeout: 2500 }).then(() => true).catch(() => false)) break;
+      }
       await sleep(8000);
       r.afterReload = await page.evaluate(() => ({ uiActive: window.__FV.game.scene.isActive('UI'), gameStatus: window.__FV.game.scene.getScene('Game').sys.settings.status, saveStillThere: !!localStorage.getItem('frostVillage.save.v1') }));
       await page.screenshot({ path: `${OUT}/savefast_${name}_after_reload.jpg`, type: 'jpeg', quality: 60 });

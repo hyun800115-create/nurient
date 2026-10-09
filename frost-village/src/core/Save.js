@@ -123,6 +123,8 @@ export function sanitizeSave(raw) {
   const s = {};
   s.v = SAVE_VERSION;
   s.coins = count(raw.coins, 1e12);
+  // (v4-C2) the chat record's id (ChatSave)
+  if (typeof raw.cid === 'string' && /^[a-z0-9]{4,16}$/.test(raw.cid)) s.cid = raw.cid;
   const pr = isObj(raw.progress) ? raw.progress : {};
   const up = isObj(pr.up) ? pr.up : {};
   s.progress = {
@@ -165,9 +167,17 @@ export function sanitizeSave(raw) {
   if (s.territory.east) s.territory.rail = true;
   s.sites = {};
   if (isObj(raw.sites)) {
-    for (const id in raw.sites) {
+    // ((v4 review L3) a building on a plot that cannot take it (a town hall on a small plot, a station on the hall's
+    //  plot) or a second one of a unique building (two town halls) is dropped; finished ones are kept first)
+    const XL_ONLY = ['town_hall', 'big_restaurant'], UNIQ = ['town_hall', 'big_restaurant', 'station', 'toolsmith', 'warehouse', 'boathouse', 'cannery', 'store'];
+    const seenU = new Set(), plots = WORLD.plots || {};
+    const ids = Object.keys(raw.sites).sort((a, b) => (isObj(raw.sites[b]) && raw.sites[b].st === 'done' ? 1 : 0) - (isObj(raw.sites[a]) && raw.sites[a].st === 'done' ? 1 : 0));
+    for (const id of ids) {
       const d = raw.sites[id];
       if (!/^[a-z0-9_]{1,40}$/.test(id) || !isObj(d) || BUILDINGS.indexOf(d.b) < 0 || SITE_STATES.indexOf(d.st) < 0) continue;
+      const p = plots[id];
+      if (p && ((p.only && d.b !== p.only) || (!p.only && d.b === 'station') || (XL_ONLY.indexOf(d.b) >= 0 && p.size !== 'XL'))) continue;
+      if (UNIQ.indexOf(d.b) >= 0) { if (seenU.has(d.b)) continue; seenU.add(d.b); }
       s.sites[id] = { b: d.b, st: d.st, got: counts(d.got, MATERIALS), t: Math.max(0, Math.min(600, num(d.t, 0))) };
     }
   }
@@ -253,6 +263,12 @@ export function sanitizeV4(raw) {
     done: Array.isArray(od.done) ? od.done.filter((k, i, a) => typeof k === 'string' && SHOPS[k] && a.indexOf(k) === i).slice(0, 5) : [],
     standing: count(od.standing, 1e6),
   };
+  // ((v4 review) a swapped founding card's delivered goods, waiting for the card to come back)
+  if (isObj(od.kept)) {
+    const kept = {};
+    for (const k in od.kept) if (SHOPS[k] && isObj(od.kept[k])) { const g = counts(od.kept[k], Object.keys(SHOPS[k].need || {})); if (Object.keys(g).length) kept[k] = g; }
+    if (Object.keys(kept).length) o.orders.kept = kept;
+  }
   o.cargo = counts(raw.cargo, ITEMS);
   for (const k in o.cargo) o.cargo[k] = Math.min(999, o.cargo[k]);
   // founded shops (lot ids validated against WORLD.v4.lots, one shop of a kind)
@@ -326,15 +342,51 @@ export const Save = {
     return ok;
   },
   lastWriteOk: true,
-  clear() { removeKey(SAVE_KEY); },
+  clear() { removeKey(SAVE_KEY); ChatSave.clear(); },
   /** move a save that crashed the game aside (kept for debugging) */
   quarantine() {
     try { const st = getStore(); if (!st) return; const raw = st.getItem(SAVE_KEY); if (raw) st.setItem(BAD_KEY, raw); st.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+    // (the chat record is tied to the save by its id: the fresh game gets a new id and never reads it)
   },
 };
 
+/**
+ * (v4-C2) the resident chat's village (src/chat ChatVillage: memories of the chief, rumours, relations) — part of the
+ * game save, kept as its own versioned record next to it so the game's autosave (6 KB, every few seconds) stays
+ * small: it is written only when a chat changed it. `cid` ties it to one game save: a new game, a reset or "start
+ * over" leaves the old one unread. The chat code validates / migrates the inner record (ChatVillage.deserialize).
+ */
+export const CHAT_KEY = SAVE_KEY + '.chat';
+export const CHAT_RECORD_VERSION = 1;
+const CHAT_MAX_CHARS = 600000;       // a damaged / foreign record bigger than this is not read
+export const ChatSave = {
+  blocked: false,           // a record from a newer game version is there: never overwritten
+  load(cid) {
+    let raw = null;
+    try { const st = getStore(); raw = st && st.getItem(CHAT_KEY); } catch (e) { raw = null; }
+    if (!raw || raw.length > CHAT_MAX_CHARS) return null;
+    let o = null;
+    try { o = JSON.parse(raw); } catch (e) { return null; }
+    if (!isObj(o)) return null;
+    if (num(o.v, 0) > CHAT_RECORD_VERSION) { this.blocked = true; return null; }
+    if (o.v !== CHAT_RECORD_VERSION || typeof o.cid !== 'string' || o.cid !== cid || !isObj(o.chat)) return null;
+    return o.chat;
+  },
+  write(cid, chat) {
+    if (this.blocked || (typeof window !== 'undefined' && window.__FV_NO_SAVE)) return false;
+    if (typeof cid !== 'string' || !isObj(chat)) return false;
+    return writeJSON(CHAT_KEY, { v: CHAT_RECORD_VERSION, cid, t: Date.now(), chat });
+  },
+  clear() { removeKey(CHAT_KEY); this.blocked = false; },
+  bytes() { try { const st = getStore(); const r = st && st.getItem(CHAT_KEY); return r ? r.length : 0; } catch (e) { return 0; } },
+};
+
+/** (v4-C2) a new game's chat id (ties the chat record to this save) */
+export function newChatId() { return (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).slice(-12); }
+
 export const Settings = {
-  data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto' },
+  // (v4-C2) water: '물결 품질' 'high' | 'low' | null (automatic); voice: '주민 목소리' volume 0..1 (0 = off)
+  data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1 },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -345,6 +397,8 @@ export const Settings = {
       this.data.zoom = Number.isFinite(z) && z > 0.2 && z < 5 ? z : null;
       this.data.daynight = s.daynight !== false;     // (v4-A) 낮과 밤
       this.data.gfx = s.gfx === 'high' || s.gfx === 'low' ? s.gfx : 'auto';     // (v4-B) 그래픽: 자동 / 선명하게 / 가볍게
+      this.data.water = s.water === 'low' || s.water === 'high' ? s.water : null;  // (v4-C2) 물결 품질
+      this.data.voice = typeof s.voice === 'number' && s.voice >= 0 && s.voice <= 1 ? s.voice : 1;   // (v4-C2) 주민 목소리
     }
     return this.data;
   },

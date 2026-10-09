@@ -145,7 +145,8 @@ export const TitleAssets = {
         for (const k of grp.atlases) {
           const f = this.man.files[k];
           this.keys.add(k); pk.keys.push(k); this.tomb.delete(k);
-          if (!tex.exists(k)) load.atlas(k, this.base + f.png, this.base + f.json);
+          // (v4-C2) the artifact build embeds a stage's small frame list in title_bake.json (`data`: one file less)
+          if (!tex.exists(k)) load.atlas(k, this.base + f.png, f.data || (this.base + f.json));
         }
         for (const k of grp.images) {
           const f = this.man.files[k];
@@ -174,7 +175,7 @@ export const TitleAssets = {
       this.artKeys.add(key); pk.keys.push(key); this.tomb.delete(key);
       return !tex.exists(key);
     };
-    for (const at of a.atlases || []) if (at && at.loadAtTitle !== false && take(at.key)) load.atlas(at.key, base + at.png, base + at.json);
+    for (const at of a.atlases || []) if (at && at.loadAtTitle !== false && take(at.key)) load.atlas(at.key, base + at.png, at.data || (base + at.json));   // (the artifact build may embed the frame list)
     for (const im of a.images || []) if (im && im.loadAtTitle !== false && take(im.key)) load.image(im.key, base + im.png);
     for (const sh of a.spritesheets || []) {
       if (!sh || !sh.frameWidth || !take(sh.key)) continue;

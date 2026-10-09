@@ -22,7 +22,16 @@ export class TownBuilding {
     if (gs.lazyImage) gs.lazyImage(this.img, this.key, () => { this.def = Assets.def(this.key); this.points(); this.startLoop(); });
     this.obstacles = [];
     this.addCollision(opts.collision);
-    if (opts.occluder !== false && this.def.kind !== 'decal') { gs.addOccluder(this.img); gs.occluders[gs.occluders.length - 1].mainOnly = true; }
+    if (opts.occluder !== false && this.def.kind !== 'decal') {
+      gs.addOccluder(this.img);
+      const oc = gs.occluders[gs.occluders.length - 1];
+      oc.mainOnly = true;
+      // ((v4 review) the founded shops and the stations stand beside the crossing and the platform path: every
+      //  passing visitor, founder or builder turned them into ghosts. They fade only for the chief and the train)
+      if (this.role === 'shop' || this.role === 'station') oc.chiefOnly = true;
+      // ((v4 review) a tall building in front of a row the chief looks at: see-through while he is in that block)
+      if (Array.isArray(cfg.fadeZone) && cfg.fadeZone.length === 4) oc.zone = cfg.fadeZone;
+    }
     this.points();
     this.startLoop();
     if (cfg.board) this.makeBoard(t(cfg.board));

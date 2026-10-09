@@ -62,7 +62,8 @@ export async function waitFor(page, fn, timeout = 20000, arg) {
 export async function tapStart(page) {
   const c = await page.$('canvas');
   const b = await c.boundingBox();
-  for (let i = 0; i < 6; i++) {
+  // (v4-C2) the living title's first visit: tap 1 = sound on (the opening goes on), tap 2 = skip, then start
+  for (let i = 0; i < 10; i++) {
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height * 0.6);
     const ok = await page.waitForFunction(() => { const g = window.__FV && window.__FV.game; return g && !g.scene.isActive('Title'); }, null, { timeout: 3000, polling: 100 }).then(() => true).catch(() => false);
     if (ok) return;

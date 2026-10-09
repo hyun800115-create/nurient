@@ -23,6 +23,7 @@ export class RailStation {
     this.img = Assets.image(gs, this.x, this.y, this.key).setDepth(this.y);
     gs.lazyImage(this.img, this.key, () => { this.def = Assets.def(this.key); this.points(); this.applyLook(); });
     gs.addOccluder(this.img);
+    gs.occluders[gs.occluders.length - 1].chiefOnly = true;     // (v4 review) not for everyone waiting on the platform
     this.obstacles = [];
     this.drifts = [];
     this.points();

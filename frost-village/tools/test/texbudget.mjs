@@ -112,7 +112,10 @@ try {
     return s[s.length - 1];
   };
   const m = await ev(() => { const k = window.__FV.scene.market; return { x: k.x + 120, y: k.y + 180 }; });
+  // the textures (MiB) on the GPU now: what a failed 'return to the start' kept is printed
+  const texList = () => ev(() => { const g = window.__FV.game, o = {}; for (const k in g.textures.list) { if (k[0] === '_') continue; let b = 0; for (const s of g.textures.list[k].source) b += (s.width || 0) * (s.height || 0) * 4; if (b > 262144) o[k] = +(b / 1048576).toFixed(2); } return o; });
   const plaza0 = await at('full v4 plaza', m.x, m.y, 1.2, 30);
+  const tex0 = await texList();
   await at('east dock', 2700, 700, 1.2);
   await at('our station', 3420, 1640, 1.2);
   await at('along the track', 3900, 1900, 1.2);
@@ -125,7 +128,9 @@ try {
   check('full v4, any view <= 455 MiB (must)', overFor(tour, 455) <= 2, peak);
   check('full v4, plaza <= 300 MiB (target)', plaza0.MiB <= 300, plaza0.MiB);
   check('full v4 tour peak <= 300 MiB (target)', peak <= 300, peak);
-  check('return to the start of the tour <= start + 5 MiB', plaza1.MiB <= plaza0.MiB + 5, { start: plaza0.MiB, end: plaza1.MiB });
+  const tex1 = await texList();
+  const kept = Object.keys(tex1).filter((k) => !(k in tex0)).map((k) => k + ' ' + tex1[k]), gone = Object.keys(tex0).filter((k) => !(k in tex1)).map((k) => k + ' ' + tex0[k]);
+  check('return to the start of the tour <= start + 5 MiB', plaza1.MiB <= plaza0.MiB + 5, { start: plaza0.MiB, end: plaza1.MiB, extra: kept.slice(0, 12), gone: gone.slice(0, 12) });
   const agree = tour.filter((r) => r.glTex).map((r) => Math.abs(r.glTex - r.MiB) / Math.max(1, r.MiB));
   check('GL texture bytes agree with the source-sum within 10 % (median)', agree.length && agree.sort((a, b) => a - b)[Math.floor(agree.length / 2)] <= 0.10, agree.length ? +agree[Math.floor(agree.length / 2)].toFixed(3) : 'no GL probe');
   // the renderer's own render targets (screen-sized) come on top; without Phaser's FX pipeline (disablePreFX) ~17 MiB

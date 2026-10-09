@@ -40,7 +40,7 @@
      ]
     }
    ],
-   "src": "a5f348a49e4919da"
+   "src": "226e53d46cbb82c4"
   },
   "vil_npc_kid_girl": {
    "frag": "villagers",
@@ -80,7 +80,7 @@
      ]
     }
    ],
-   "src": "32f15d241646aa49"
+   "src": "296180ca6b17ac21"
   },
   "vil_npc_kid_prankster": {
    "frag": "villagers",
@@ -120,7 +120,7 @@
      ]
     }
    ],
-   "src": "1aac7c69ab9a3a18"
+   "src": "0e2fdc404b0664f4"
   },
   "vil_npc_teen_girl": {
    "frag": "villagers",
@@ -160,7 +160,7 @@
      ]
     }
    ],
-   "src": "4fe759598558311f"
+   "src": "73ddbb15b037343e"
   },
   "vil_npc_young_man": {
    "frag": "villagers",
@@ -200,7 +200,7 @@
      ]
     }
    ],
-   "src": "57931d226117e6c2"
+   "src": "bed3ca958a833214"
   },
   "vil_npc_aunt": {
    "frag": "villagers3",
@@ -240,7 +240,7 @@
      ]
     }
    ],
-   "src": "6379f2d856d0c3f5"
+   "src": "4f3f9e9e9489952c"
   },
   "vil_npc_uncle": {
    "frag": "villagers",
@@ -278,7 +278,7 @@
      ]
     }
    ],
-   "src": "9552e95f79ab4427"
+   "src": "2f01f2b67151a8c9"
   },
   "vil_npc_grandma": {
    "frag": "villagers",
@@ -316,7 +316,7 @@
      ]
     }
    ],
-   "src": "01d04236bb4d4021"
+   "src": "fb01f575d362acec"
   },
   "vil_npc_grandpa": {
    "frag": "villagers",
@@ -354,7 +354,7 @@
      ]
     }
    ],
-   "src": "238884fdc96eea37"
+   "src": "9d0d48c91839fd8b"
   },
   "vil_npc_merchant": {
    "frag": "villagers",
@@ -391,7 +391,7 @@
      ]
     }
    ],
-   "src": "4ee039e134567257"
+   "src": "92d80385609ad4d0"
   },
   "vil_npc_herbalist": {
    "frag": "villagers",
@@ -429,7 +429,7 @@
      ]
     }
    ],
-   "src": "457a0b51027a117c"
+   "src": "e49dc92fed62e243"
   },
   "vil_npc_bard": {
    "frag": "villagers",
@@ -468,7 +468,7 @@
      ]
     }
    ],
-   "src": "7bd991d8ac007de6"
+   "src": "2aca371252fae65c"
   },
   "vil_npc_blacksmith": {
    "frag": "villagers3",
@@ -507,7 +507,7 @@
      ]
     }
    ],
-   "src": "882e29f376188d0b"
+   "src": "d0a9d5ecf78cffe5"
   },
   "vil_npc_fashion": {
    "frag": "villagers",
@@ -545,7 +545,7 @@
      ]
     }
    ],
-   "src": "08bb952d257a1eeb"
+   "src": "ec4e29cdb5f96c90"
   },
   "vil_npc_yellow": {
    "frag": "villagers",
@@ -582,7 +582,7 @@
      ]
     }
    ],
-   "src": "f25366ecb1e9d470"
+   "src": "87c70c6b28ed9483"
   },
   "vil_npc_red": {
    "frag": "villagers",
@@ -619,7 +619,7 @@
      ]
     }
    ],
-   "src": "132d79f999b4d283"
+   "src": "8cf24d2c3b7c645f"
   },
   "vil_npc_blue": {
    "frag": "villagers",
@@ -656,7 +656,7 @@
      ]
     }
    ],
-   "src": "39514b92fca59b5a"
+   "src": "e1ac965b3e5f5c4b"
   },
   "vil_npc_clerk_a": {
    "frag": "villagers2",
@@ -695,7 +695,7 @@
      ]
     }
    ],
-   "src": "9b2c57912d92320c"
+   "src": "7f9f35f6b4611c17"
   },
   "vil_npc_clerk_b": {
    "frag": "villagers2",
@@ -734,7 +734,7 @@
      ]
     }
    ],
-   "src": "2454dd401568545a"
+   "src": "68affa2e3edecb64"
   },
   "vil_npc_porter_a": {
    "frag": "villagers2",
@@ -772,7 +772,7 @@
      ]
     }
    ],
-   "src": "9a94390e052f59ba"
+   "src": "598119e8e72b655d"
   },
   "vil_npc_porter_b": {
    "frag": "villagers2",
@@ -810,7 +810,7 @@
      ]
     }
    ],
-   "src": "e13c3a049557bb06"
+   "src": "c1a5806694d675f4"
   },
   "vil_npc_captain": {
    "frag": "villagers2",
@@ -848,7 +848,7 @@
      ]
     }
    ],
-   "src": "7539e9e2795c53b5"
+   "src": "69e1c0fd05188e59"
   },
   "vil_npc_chef": {
    "frag": "villagers3",
@@ -888,7 +888,7 @@
      ]
     }
    ],
-   "src": "f4c1edb0352cb6d2"
+   "src": "2bd62725ebcc24e2"
   },
   "vil_npc_postman": {
    "frag": "villagers2",
@@ -926,7 +926,7 @@
      ]
     }
    ],
-   "src": "b7e5a26a1e4ee8e9"
+   "src": "6d3a13e4ad52865f"
   },
   "vil_npc_doctor": {
    "frag": "villagers2",
@@ -964,7 +964,7 @@
      ]
     }
    ],
-   "src": "2b605bf310c86d36"
+   "src": "952079cc20fb048f"
   },
   "vil_npc_painter": {
    "frag": "villagers2",
@@ -1002,7 +1002,7 @@
      ]
     }
    ],
-   "src": "cecbb1193d01e619"
+   "src": "05b8ccbffddd8104"
   },
   "vil_npc_guard": {
    "frag": "villagers2",
@@ -1040,7 +1040,7 @@
      ]
     }
    ],
-   "src": "50d9881a1eec430a"
+   "src": "b8fe871c7e8e5229"
   },
   "vil_npc_skater": {
    "frag": "villagers2",
@@ -1080,7 +1080,7 @@
      ]
     }
    ],
-   "src": "c6e2fd0296807b1f"
+   "src": "e963f6c9b163a9ba"
   },
   "vil_npc_toddler": {
    "frag": "villagers2",
@@ -1119,7 +1119,7 @@
      ]
     }
    ],
-   "src": "0648985133a993fd"
+   "src": "adfbd97fba2c0374"
   },
   "vil_npc_sawyer": {
    "frag": "villagers3",
@@ -1157,7 +1157,7 @@
      ]
     }
    ],
-   "src": "934259c6ef424ed4"
+   "src": "e368c984ab614021"
   },
   "vil_npc_smoker": {
    "frag": "villagers3",
@@ -1195,7 +1195,7 @@
      ]
     }
    ],
-   "src": "bf7a8f9988ce0630"
+   "src": "088ff592a032ad1e"
   },
   "vil_npc_cannery": {
    "frag": "villagers3",
@@ -1233,7 +1233,7 @@
      ]
     }
    ],
-   "src": "35574f9aa1beb4e7"
+   "src": "1667953726626835"
   },
   "tf_head_0": {
    "frag": "townfolk",
@@ -1253,10 +1253,10 @@
      "cls": "soc",
      "png": "_packed/tf_head_0.soc.png",
      "json": "_packed/tf_head_0.soc.json",
-     "bytes": 8400896
+     "bytes": 8367616
     }
    ],
-   "src": "b58e38972346b4c3"
+   "src": "fb9e11b04b169dea"
   },
   "tf_head_1": {
    "frag": "townfolk",
@@ -1279,7 +1279,7 @@
      "bytes": 4374528
     }
    ],
-   "src": "862313f83c2321b9"
+   "src": "eeaee31fff26bc73"
   },
   "tf_child_slim_0": {
    "frag": "townfolk",
@@ -1302,7 +1302,7 @@
      "bytes": 4620288
     }
    ],
-   "src": "d5d5a69a300d2a2b"
+   "src": "b3a2b6058456ae3f"
   },
   "tf_child_slim_1": {
    "frag": "townfolk",
@@ -1325,7 +1325,7 @@
      "bytes": 3768320
     }
    ],
-   "src": "b43bdaeb2601cafc"
+   "src": "2be0bfd87245a3c1"
   },
   "tf_adult_slim_0": {
    "frag": "townfolk",
@@ -1348,7 +1348,7 @@
      "bytes": 4530176
     }
    ],
-   "src": "2d72b9e5ed3eae6f"
+   "src": "98815e77a00f5314"
   },
   "tf_adult_slim_1": {
    "frag": "townfolk",
@@ -1371,7 +1371,7 @@
      "bytes": 4587520
     }
    ],
-   "src": "c5ac1f2ce065e322"
+   "src": "5f5fc049da4d7412"
   },
   "tf_adult_slim_2": {
    "frag": "townfolk",
@@ -1394,7 +1394,7 @@
      "bytes": 4415488
     }
    ],
-   "src": "8452ae83417823ea"
+   "src": "8bd0032fe3be13a6"
   },
   "tf_adult_slim_3": {
    "frag": "townfolk",
@@ -1417,7 +1417,7 @@
      "bytes": 3047424
     }
    ],
-   "src": "9f56bc10ed0458e9"
+   "src": "d481563570e29645"
   },
   "tf_elder_slim_0": {
    "frag": "townfolk",
@@ -1440,7 +1440,7 @@
      "bytes": 4620288
     }
    ],
-   "src": "a603de807bc3f37a"
+   "src": "94fa36362089961f"
   },
   "tf_elder_slim_1": {
    "frag": "townfolk",
@@ -1463,7 +1463,7 @@
      "bytes": 4448256
     }
    ],
-   "src": "75a42e4379fd21d9"
+   "src": "f4f32312c5f6e9ee"
   },
   "tf_elder_slim_2": {
    "frag": "townfolk",
@@ -1486,7 +1486,7 @@
      "bytes": 1081344
     }
    ],
-   "src": "ac37e9d7f46fc6bb"
+   "src": "b8c96052752cae6c"
   },
   "town_civic": {
    "frag": "town",
@@ -1517,22 +1517,31 @@
      "cls": "rest",
      "png": "_packed/town_civic.rest.png",
      "json": "_packed/town_civic.rest.json",
-     "bytes": 12386304,
+     "bytes": 7289856,
      "frames": [
-      "clinic",
-      "fire_station",
-      "police_box",
-      "post_office",
       "school",
       "school_work_0",
       "school_work_1",
       "school_work_2",
       "school_work_3"
      ]
+    },
+    {
+     "key": "town_civic@rest2",
+     "cls": "rest2",
+     "png": "_packed/town_civic.rest2.png",
+     "json": "_packed/town_civic.rest2.json",
+     "bytes": 3411968,
+     "frames": [
+      "clinic",
+      "fire_station",
+      "police_box",
+      "post_office"
+     ]
     }
    ],
    "dropped": 0,
-   "src": "15feb826db81cf21"
+   "src": "7f7c4c153e4db998"
   },
   "town_shops": {
    "frag": "town",
@@ -1557,7 +1566,7 @@
      "cls": "a",
      "png": "_packed/town_shops.a.png",
      "json": "_packed/town_shops.a.json",
-     "bytes": 8429568,
+     "bytes": 7200256,
      "frames": [
       "bookstore",
       "clothing_store",
@@ -1572,7 +1581,7 @@
     }
    ],
    "dropped": 0,
-   "src": "6ccbe9d7a9609dc8"
+   "src": "3ff7c870efacdee8"
   },
   "train_engine": {
    "frag": "town",
@@ -1587,7 +1596,7 @@
     }
    ],
    "dropped": 55,
-   "src": "a5068fb4c0c13f23"
+   "src": "d26a76bd8cfcae00"
   },
   "train_car_a": {
    "frag": "town",
@@ -1602,7 +1611,7 @@
     }
    ],
    "dropped": 43,
-   "src": "7027964b419576df"
+   "src": "9b223d1bac75a079"
   },
   "train_car_b": {
    "frag": "town",
@@ -1617,7 +1626,7 @@
     }
    ],
    "dropped": 43,
-   "src": "afc8817062780c6e"
+   "src": "04304ca09fd1bf3f"
   }
  }
 }

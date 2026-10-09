@@ -1,6 +1,8 @@
 // Gameplay-review simulation: a bot plays from a fresh save using only __FV.setInput (joystick),
 // at a fixed 60 fps simulated clock (headlessStep + fake Date.now), much faster than real time.
 //   node tools/test/review_gameplay_sim.mjs --name smart --policy smart --upg greedy --minutes 40 [--bal '{"prices":{"item_fish_cooked":5}}'] [--shots]
+//   (v4 review) --policy arrowonly (only goes where the arrow points, stands still otherwise), --load <save.json>,
+//   --saveAt 20,30 (save snapshots), --v4 (play on until 읍)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +22,7 @@ const V4 = has('--v4');                                // (v4) play on until the
 const BAL = opt('--bal', '');
 const WORLDO = opt('--world', '');
 const SHOTS = has('--shots');
+const SAVEAT = opt('--saveAt', '').split(',').filter(Boolean).map(Number).sort((a, b) => a - b);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const srv = await start(0, { prefix: '/fv/' });
@@ -27,7 +30,9 @@ const browser = await launch();
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 360, height: 720 }, dpr: 1 });
 const t0 = Date.now();
 try {
-  await page.evaluate(() => { try { localStorage.clear(); } catch (e) { /* */ } });
+  const LOAD = opt('--load', '');
+  const saveTxt = LOAD ? fs.readFileSync(LOAD, 'utf8') : null;
+  await page.evaluate((sv) => { try { localStorage.clear(); if (sv) localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, saveTxt);
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await page.evaluate(async (bal) => {
@@ -43,6 +48,13 @@ try {
   await tapStart(page);
   await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player, 120000);
   await sleep(500);
+  if (saveTxt) {
+    const sv = JSON.parse(saveTxt);
+    await page.waitForFunction(() => window.__FV.scene && window.__FV.scene.v4 !== undefined, null, { timeout: 5000 }).catch(() => {});
+    const st = await page.evaluate(() => { const gs = window.__FV.scene; return { v: window.__FV.state().v, coins: gs.economy.coins, done: Object.keys(gs.progress.done).length, built: Object.assign({}, gs.built), regions: Object.keys(gs.territory.regions).filter((r) => gs.territory.regions[r].open), v4: !!gs.v4, sites: Object.fromEntries(Object.entries(gs.sites).map(([k, q]) => [k, q.state + (q.building ? ':' + q.building : '')])), pop: gs.life ? gs.life.people() : null, workers: gs.workers.length, porters: gs.porters.length }; });
+    console.log('LOADED', JSON.stringify({ saveV: sv.v, saveCoins: sv.coins, saveDone: Object.keys((sv.progress || {}).done || {}).length, saveRegions: Object.keys(sv.territory || {}).filter((k) => sv.territory[k] === true || (sv.territory[k] && sv.territory[k].open)), saveSites: sv.sites ? Object.keys(sv.sites).length : null, savePop: sv.life && sv.life.moved ? sv.life.moved.length : null }));
+    console.log('STATE', JSON.stringify(st));
+  }
   // fixed-step driver
   await page.evaluate(() => {
     const game = window.__FV.game;
@@ -71,11 +83,12 @@ try {
     const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
     m.update = (dt) => { const f = m.queue[0]; if (f && f.state === 'wait' && f.arrived && f.need > 0 && m.stock.countOf(f.want.type) === 0) { for (const x of FOODS) if (m.stock.countOf(x) > 0) { f.setWant(x); break; } } return orig(dt); };
   });
-  await page.addScriptTag({ path: path.join(HERE, 'review_gameplay_bot.js') });
-  await page.evaluate((o) => Object.assign(window.__bot.opts, o), { policy: opt('--policy', 'smart'), upg: opt('--upg', 'greedy'), minBatch: Number(opt('--minbatch', '3')), think: Number(opt('--think', '0')), mag: Number(opt('--mag', '1')) });
+  await page.addScriptTag({ path: opt('--botjs', path.join(HERE, 'review_gameplay_bot.js')) });
+  await page.evaluate((o) => Object.assign(window.__bot.opts, o), Object.assign({ policy: opt('--policy', 'smart'), upg: opt('--upg', 'greedy'), minBatch: Number(opt('--minbatch', '3')), think: Number(opt('--think', '0')), mag: Number(opt('--mag', '1')) }, JSON.parse(opt('--botopts', '{}'))));
 
   let completeAt = -1, lastEvents = 0, v3At = -1, eupAt = -1;
   const samples = [];
+  const v4samples = [];
   const shot = async (n) => {
     if (!SHOTS) return;
     await page.evaluate(() => { for (let i = 0; i < 3; i++) window.__sim.render(); });
@@ -90,6 +103,8 @@ try {
       return { s, events: window.__bot.events.length, done: window.__FV.state().done, v3: window.__FV.scene.progress.celebrated3, eup: !!window.__FV.scene.progress.flags.rankEup };
     });
     samples.push(r.s);
+    if (SAVEAT.length && SAVEAT[0] * 60 <= r.s.t) { const m = SAVEAT.shift(); const sv = await page.evaluate(() => { window.__FV.save(); return localStorage.getItem('frostVillage.save.v1'); }); fs.writeFileSync(path.join(OUT, `${NAME}_save_${m}min.json`), sv || ''); console.log(`[${NAME}] saved snapshot ${m}min (${(sv || '').length} B)`); }
+    if (sec % 30 === 20) { const v = await page.evaluate(() => { try { const S = window.__FV.v4 ? window.__FV.v4.state() : null; if (!S) return null; const g = S.growth || {}; return { t: window.__bot.t, coins: window.__FV.scene.economy.coins, earned: window.__FV.scene.economy.earned, clock: S.clock, train: { phase: S.train.phase, riders: S.train.riders, cars: S.train.cars }, arrivals: S.arrivals, vis: S.visitors.length, visSt: S.visitors.reduce((o, v) => { o[v.stage] = (o[v.stage] || 0) + 1; return o; }, {}), cards: (g.cards || []).map((c) => [c.shop || 'std', JSON.stringify(c.got), JSON.stringify(c.need), c.idle]), till: g.till, shops: g.shops, houses: g.houses, happy: g.happy, happyN: g.happyN, rent: g.rent, porters: g.porters, gearned: g.earned, rank: S.rank, district: S.district, people: S.town && S.town.people, census: S.town && S.town.census, mk: window.__FV.state().market, pop: window.__FV.scene.life ? window.__FV.scene.life.people() : null, civic: window.__FV.civic ? window.__FV.civic() : null, cap: window.__FV.scene.popCap ? window.__FV.scene.popCap() : null, waiting: window.__FV.scene.life ? window.__FV.scene.life.waiting.length : null, built: Object.assign({}, window.__FV.scene.built), goal: window.__FV.scene.progress.nextGoal() ? window.__FV.scene.progress.nextGoal().id : null, obj: window.__FV.scene.tutorial.textKey, arrow: !!window.__FV.scene.tutorial.target, task: window.__bot.task ? window.__bot.task.kind + ':' + (window.__bot.task.label || '') : null }; } catch (e) { return { err: String(e) }; } }); if (v) { v4samples.push(v); } }
     if (r.events > lastEvents) {
       const evs = await page.evaluate((k) => window.__bot.events.slice(k), lastEvents);
       for (const e of evs) { console.log(`[${NAME}] t=${e.t.toFixed(1)}s (${(e.t / 60).toFixed(2)} min) ${e.ev} coins=${e.coins ?? ''}`); await shot(String(Math.round(e.t)).padStart(4, '0') + '_' + e.ev); }
@@ -109,10 +124,10 @@ try {
   }
   const fin = await page.evaluate(() => {
     const b = window.__bot;
-    return { stuckList: b.stuckList || [], hungryT: +b.hungryT.toFixed(1), events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
+    return { longWaits: b.longWaits || [], maxWaitRun: b.maxWaitRun || 0, maxWaitAt: b.maxWaitAt || 0, maxWaitText: b.maxWaitText || null, waitT: b.waitT2 || 0, stuckList: b.stuckList || [], hungryT: +b.hungryT.toFixed(1), events: b.events, taskTime: b.taskTime, noGuideRuns: b.noGuideRuns, stuck: b.stuckEvents, blockedT: b.blockedT, idleT: b.idleT, huntCatches: b.huntCatches, accidental: b.accidental || 0, accList: (b.accList || []).slice(0, 60), huntChaseTime: b.huntChaseTime, log: b.log.slice(-400), state: window.__FV.state(), simT: window.__sim.simT };
   });
   await shot('999_end');
-  fs.writeFileSync(path.join(OUT, NAME + '.json'), JSON.stringify({ args, fin, samples, errors: log.errors }, null, 1));
+  fs.writeFileSync(path.join(OUT, NAME + '.json'), JSON.stringify({ args, fin, samples, v4samples, errors: log.errors, warnings: log.warnings.slice(0, 200) }, null, 1));
   // (v3) beats: the longest stretch without a new event (unlock, building, land, ...)
   const evT = fin.events.map((e) => e.t).sort((a, b) => a - b);
   let gap = 0, gapAt = 0;

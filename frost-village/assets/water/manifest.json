@@ -83,7 +83,7 @@
    "key": "water_field_village",
    "png": "water/field_village.png",
    "frameSize": [
-    384,
+    472,
     1017
    ],
    "kind": "data",
@@ -570,22 +570,22 @@
    "key": "water_field_village",
    "png": "water/field_village.png",
    "version": 3,
-   "sig": "7608bf9f",
-   "fnx": 384,
+   "sig": "f9f76ece",
+   "fnx": 472,
    "fny": 339,
    "s": 2,
    "autoDir": [
-    -0.546756258380095,
-    0.8372918212440623
+    -0.4738596686435441,
+    0.8806003715835182
    ],
    "region": {
-    "x": 0,
+    "x": -1400,
     "y": -200,
-    "w": 6144,
+    "w": 7544,
     "h": 2708
    },
    "waterPx": 0,
-   "dataHash": "8113bf72"
+   "dataHash": "a0e4dbca"
   }
  }
 }

@@ -20,6 +20,8 @@ export const PRIO = {
                     //   a porter whose food could go to either fills the pantry first, then the shelves again)
   SHELF_LOW: 45,    // a shop shelf is nearly empty
   SHELF: 40,        // a shop shelf
+  FOUNDING: 38,     // (v4 review) the loading dock for what a founding card (a new shop) still needs: before the
+                    //   founded shops' restocking, so an open café never keeps the next shop's order waiting
   SHOP: 35,         // (v4) a founded shop's shelf at the station district (remote)
   WHOLESALE: 30,    // (v4) the loading dock at the station square (remote)
   STORE: 10,        // the warehouse

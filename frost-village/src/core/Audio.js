@@ -13,6 +13,8 @@ export const Audio = {
   ambTarget: {},          // key -> target volume (0..1)
   lastPlay: new Map(),    // key -> time (throttle)
   lastVariant: {},
+  ambSeek: {},            // (v4-C2) key -> fn() seconds: where a loop starts (amb_sea_waves: in step with the water's crests)
+  onImportant: null,      // (v4-C2) fn(): a milestone sound plays (the village voices duck under it)
 
   init(game) { this.game = game; },
 
@@ -69,6 +71,8 @@ export const Audio = {
       if (opts && opts.rate) cfg.rate = opts.rate;
       if (opts && opts.detune) cfg.detune = opts.detune;
       this.sm.play(k, cfg);
+      // (v4-C2, voice.md §7.6) the village voices duck under milestone sounds only (not under every sale)
+      if (this.onImportant && /^sfx_(levelup|complete|unlock|build_done|hire|mission_done|fame_up)$/.test(k)) this.onImportant();
     } catch (e) { /* ignore */ }
   },
 
@@ -128,7 +132,13 @@ export const Audio = {
       const target = on ? this.ambTarget[key] * this.baseVolume(key) : 0;
       if (!s) {
         if (target <= 0.001 || !this.exists(key) || !this.live) continue;
-        try { s = this.sm.add(key, { loop: true, volume: 0 }); s.play(); this.amb[key] = s; } catch (e) { continue; }
+        try {
+          s = this.sm.add(key, { loop: true, volume: 0 });
+          let seek = 0;
+          try { seek = this.ambSeek[key] ? Math.max(0, Number(this.ambSeek[key]()) || 0) : 0; } catch (e) { seek = 0; }
+          if (seek > 0) s.play({ seek }); else s.play();
+          this.amb[key] = s;
+        } catch (e) { continue; }
       }
       const v = s.volume + (target - s.volume) * Math.min(1, dt * 2.5);
       try { s.setVolume(v); } catch (e) { /* */ }

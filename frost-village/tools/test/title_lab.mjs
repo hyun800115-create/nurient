@@ -143,7 +143,7 @@ if (want('intro')) {
   const { ctx, page, errs, reqs } = await open(vp, { query: '?intro=0' });
   const s0 = await state(page);
   check('fresh player: idle title shows stage 1', s0.stage === 1 && s0.saveStage === 1 && s0.mode === 'idle', s0);
-  const fetched = bakeReq(reqs, /title\/bake\/ttl_(\d|ground)|assets\/title\/ttl_/);
+  const fetched = bakeReq(reqs, /title(\/|_)bake\/ttl_(\d|ground)|assets\/title\/ttl_/);
   check('idle camp fetches only what it shows (no stage 2-4 bake, no logo parts, no far city)',
     !fetched.some((u) => /ttl_[234]_0|ttl_ground_s[234]|ttl_logo_parts|ttl_city_|ttl_fx_pop/.test(u)), fetched);
   report.memory.idleCamp = await ttlTex(page);
@@ -261,7 +261,7 @@ if (want('returning')) {
   const { ctx, page, errs, reqs } = await open(vp, { init, initArg: SAVE_STR });
   const s0 = await state(page);
   check('returning player: no intro, save stage 2 read from the save', s0.mode === 'idle' && s0.saveStage === 2, s0);
-  check('returning village player: no stage 3-4 bake fetched', !bakeReq(reqs, /ttl_[34]_0|ttl_ground_s[34]/).length, bakeReq(reqs, /title\/bake/));
+  check('returning village player: no stage 3-4 bake fetched', !bakeReq(reqs, /ttl_[34]_0|ttl_ground_s[34]/).length, bakeReq(reqs, /title(\/|_)bake/));
   await step(page, 2.2);
   await shot(page, path.join(PREV, 'title_grow.png'));
   await step(page, 3.0);
@@ -333,7 +333,7 @@ if (want('leak')) {
   // first visit on a slow network: the stage 3-4 bake, the logo parts, the night sky and the far city are
   // still downloading (held here) when the player skips and starts. (a) downloads in flight are aborted;
   // (b) files that finish anyway (already downloaded, being decoded) are removed the moment they land.
-  const hold = /\/fv\/(src\/title\/bake\/ttl_(3|4)_0|src\/title\/bake\/ttl_ground_s[34]|assets\/title\/ttl_(logo_parts|city_|stars|aurora|moon|logo_main_shine|shine_band|fx_pop))/;
+  const hold = /\/fv\/((src\/title\/bake|assets\/title_bake)\/ttl_(3|4)_0|(src\/title\/bake|assets\/title_bake)\/ttl_ground_s[34]|assets\/title\/ttl_(logo_parts|city_|stars|aurora|moon|logo_main_shine|shine_band|fx_pop))/;
   for (const mode of ['abort', 'land']) {
     const { ctx, page, errs, held } = await open(vp, { query: '?intro=1', hold, wait: 'title' });
     await page.evaluate((all) => { window.__LAB.TitleAssets.request(window.__FV.scene.load, all); }, ALL_PACKS);
@@ -389,7 +389,7 @@ if (want('lowmem')) {
 // ------------------------------------------------------------------ 8) a late stage (slow network): the script waits, life does not, the town never shrinks
 if (want('late')) {
   const vp = { w: 390, h: 844, dpr: 2 };
-  const hold = /\/fv\/src\/title\/bake\/(ttl_4_0|ttl_ground_s4)/;
+  const hold = /\/fv\/(src\/title\/bake|assets\/title_bake)\/(ttl_4_0|ttl_ground_s4)/   // ((v4-C2) the game serves the bake from assets/title_bake);
   const { ctx, page, errs, held } = await open(vp, { query: '?intro=1', hold, wait: 'title' });
   // everything but the city's bake comes in (the clock stands still meanwhile); then the intro starts over
   await page.evaluate((all) => { window.__LAB.TitleAssets.request(window.__FV.scene.load, all); }, ALL_PACKS);

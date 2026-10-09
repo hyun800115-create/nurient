@@ -196,7 +196,7 @@ function checkC1(B) {
   const S = R.staff = (R.staff && typeof R.staff === 'object') ? R.staff : {};
   const SD = { cashier: 450, cook: 700, server: 900 };
   for (const k in SD) fixNum(S, k, 'civic.restaurant.staff.' + k, 1, 1e9, SD[k], true);
-  fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 24, true);
+  fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 12, true);
   const ST = C.settlers = (C.settlers && typeof C.settlers === 'object') ? C.settlers : {};
   fixNum(ST, 'every', 'civic.settlers.every', 5, 3600, 45);
   fixNum(ST, 'householdMin', 'civic.settlers.householdMin', 1, 10, 1, true);
@@ -212,7 +212,7 @@ const V4B_SHOPS = {
   restaurant: { need: { item_fish_cooked: 40, item_meat_cooked: 15 }, rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'], after: 'zone_hunt' },
   carpenter_workshop: { need: { item_plank: 50 }, rent: 25, sells: [], after: 'zone_forest' },
   hardware_store: { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
-  supermarket: { need: { item_can: 20, item_bread: 20 }, rent: 40, sells: ['item_can', 'item_bread'], after: 'b:cannery' },
+  supermarket: { need: { item_can: 10, item_bread: 20 }, rent: 40, sells: ['item_can', 'item_bread'], after: 'b:cannery' },
 };
 const V4B_LOTS = ['lotA1', 'lotA2', 'lotA3', 'lotB1', 'lotB2', 'lotB3', 'lotB5', 'lotH1', 'lotH2', 'lotH3', 'lotH4', 'lotH5'];
 
@@ -252,6 +252,7 @@ function checkV4B(B) {
   fixNum(F, 'household', 'v4.founding.household', 1, 6, 2, true);
   fixNum(F, 'shopShelf', 'v4.founding.shopShelf', 1, 200, 20, true);
   fixNum(F, 'inlandEvery', 'v4.founding.inlandEvery', 1, 3600, 40);
+  fixNum(F, 'restockBelow', 'v4.founding.restockBelow', 0.05, 1, 0.4);
   const S = F.shops = (F.shops && typeof F.shops === 'object' && !Array.isArray(F.shops)) ? F.shops : {};
   for (const k in V4B_SHOPS) {
     const d = V4B_SHOPS[k];
@@ -278,7 +279,7 @@ function checkV4B(B) {
   while (SP.length < 2) SP.push(SP.length ? SP[SP.length - 1] : 600);
   fixList(SP, 'v4.stationPorter', 1, 1e9, true);
   fixNum(V, 'stationPorterCapacity', 'v4.stationPorterCapacity', 1, 60, 12, true);
-  fixNum(V, 'stationPorterFoundingMin', 'v4.stationPorterFoundingMin', 1, 60, 4, true);
+  fixNum(V, 'stationPorterFoundingMin', 'v4.stationPorterFoundingMin', 1, 60, 1, true);
   const H = sub('houses');
   fixNum(H, 'item_plank', 'v4.houses.item_plank', 1, 999, 20, true);
   fixNum(H, 'time', 'v4.houses.time', 1, 600, 30);
@@ -293,13 +294,13 @@ function checkV4B(B) {
   fixNum(R, 'autoEvery', 'v4.rent.autoEvery', 1, 600, 15);
   const HP = sub('happiness');
   fixNum(HP, 'window', 'v4.happiness.window', 1, 200, 40, true);
-  fixNum(HP, 'base', 'v4.happiness.base', 0, 99, 50);
+  fixNum(HP, 'base', 'v4.happiness.base', 0, 99, 30);
   const RK = sub('rank');
   const R2 = RK[2] = (RK[2] && typeof RK[2] === 'object') ? RK[2] : {};
   fixNum(R2, 'people', 'v4.rank.2.people', 1, 999, 45, true);
   fixNum(R2, 'shops', 'v4.rank.2.shops', 0, F.order.length, Math.min(5, F.order.length), true);
-  fixNum(R2, 'happy', 'v4.rank.2.happy', 0, 100, 70);
-  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 14000, true);
+  fixNum(R2, 'happy', 'v4.rank.2.happy', 0, 100, 80);
+  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 11000, true);
   const C = sub('ceremony');
   fixNum(C, 'length', 'v4.ceremony.length', 3, 60, 12);
   fixNum(C, 'skipAfter', 'v4.ceremony.skipAfter', 0, C.length, 3);
@@ -338,12 +339,13 @@ function checkV4A(B) {
   fixNum(VI, 'base', 'v4.visitors.base', 0, 60, 4);
   fixNum(VI, 'perShop', 'v4.visitors.perShop', 0, 20, 1);
   fixNum(VI, 'perRank', 'v4.visitors.perRank', 0, 20, 3);
-  for (const k of ['dawn', 'day', 'dusk', 'night']) fixNum(VI, k, 'v4.visitors.' + k, 0, 5, { dawn: 0.5, day: 1, dusk: 1.3, night: 0.3 }[k]);
+  for (const k of ['dawn', 'day', 'dusk', 'night']) fixNum(VI, k, 'v4.visitors.' + k, 0, 5, { dawn: 0.5, day: 1, dusk: 1.3, night: 0.1 }[k]);
   fixNum(VI, 'wantMin', 'v4.visitors.wantMin', 1, 20, 2, true);
   fixNum(VI, 'wantMax', 'v4.visitors.wantMax', VI.wantMin, 20, 4, true);
   fixNum(VI, 'patience', 'v4.visitors.patience', 5, 600, 60);
   fixNum(VI, 'shopChance', 'v4.visitors.shopChance', 0, 1, 0.45);
   fixNum(VI, 'storeChance', 'v4.visitors.storeChance', 0, 1, 0.25);
+  fixNum(VI, 'maxInVillage', 'v4.visitors.maxInVillage', 1, 120, 24, true);
   fixNum(VI, 'regularAt', 'v4.visitors.regularAt', 1, 100, 3, true);
   fixNum(VI, 'speed', 'v4.visitors.speed', 20, 600, 105);
   const TW = sub('town');

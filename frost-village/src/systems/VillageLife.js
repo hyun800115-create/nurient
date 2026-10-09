@@ -397,11 +397,22 @@ export class VillageLife {
   }
 
   chatter(r) {
+    // (v4-C2) 눈꽃말: the resident's own voice spoke the bubble (Bubbles.chat); the old babble only while that voice is
+    // not loaded yet (its first line), without Web Audio, or when the voice fragment is missing. 주민 목소리 '끔': quiet.
+    if (Settings.data.voice === 0) return;
+    if (this.gs.voice && this.gs.voice.ready(r)) return;
     const high = r.role === 'kid' || r.role === 'teen';
     const k = Assets.audioGroup(high ? 'sfx_chatter_hi' : 'sfx_chatter_lo') ? (high ? 'sfx_chatter_hi' : 'sfx_chatter_lo') : Assets.audioGroup('sfx_chatter') ? 'sfx_chatter' : null;
     if (!k) return;
     const rate = r.role === 'kid' ? 1.12 : r.role === 'elder' ? 0.88 : 1;
     this.gs.sfxAt(k, r.x, r.y, { volume: 0.4, rate: rate * (0.95 + Math.random() * 0.1), throttle: 250 });
+  }
+
+  /** (v4-C2) a resident laughs: in their own 눈꽃말 voice when it is loaded, else the old laugh */
+  laugh(r, vol = 0.45) {
+    const v = this.gs.voice;
+    if (Settings.data.voice !== 0 && v && v.ready(r)) v.emote(r, 'laugh');
+    else this.sfx('sfx_laugh', r.x, r.y, vol);
   }
 
   sfx(key, x, y, vol = 0.5, fb) {
@@ -780,6 +791,8 @@ export class VillageLife {
     }
     if (!r.event && !r.seat) { r.faceTo(p.x, p.y); r.act(Math.random() < 0.5 && r.can('surprised') ? 'surprised' : 'wave', 1.3); if (r.job && r.job.kind === 'stay') r.job.next = 1.6; }
     r.say(r.name + '\n' + (Math.random() < 0.5 ? line('tap') : this.line(r, 'persona')), Math.random() < 0.5 ? 'emote_exclaim' : 'emote_heart', 2.8, true);
+    // (v4-C2) a resident with a persona card: the "수다 떨기" button under their feet
+    if (this.gs.residentChat) this.gs.residentChat.offer(r);
     return r;
   }
 
@@ -909,10 +922,12 @@ export class VillageLife {
   }
 
   // ---------------------------------------------------------------- village complete party
-  party() {
+  /** everyone gathers round the chief. opts.pull: residents farther than ~2x this step in from `pull` px away
+   *  (just off screen) instead of walking across the whole map (v4 review: the 승격식 at the far town hall) */
+  party(opts) {
     if (this.events.some((e) => e instanceof PartyEvent)) return;
     const p = this.gs.player;
-    this.start(new PartyEvent(this, p.x, p.y));
+    this.start(new PartyEvent(this, p.x, p.y, opts));
   }
 
   // ---------------------------------------------------------------- snowball projectiles
@@ -1288,7 +1303,7 @@ class SnowballEvent extends LifeEvent {
     if (this.phase === 'done') { this.doneT -= dt; return this.doneT > 0; }
     return false;
   }
-  sfxLaugh(r) { this.life.sfx('sfx_laugh', r.x, r.y, 0.45); }
+  sfxLaugh(r) { this.life.laugh(r, 0.45); }
   end() { if (this.th) this.th.onImpact = null; if (this.tg) this.tg.onImpact = null; super.end(); }
 }
 
@@ -1348,7 +1363,7 @@ class TagEvent extends LifeEvent {
           this.it = o;
           o.act('surprised', 0.5);
           if (Math.random() < 0.6) o.say('tag', 'emote_exclaim', 1.4);
-          this.life.sfx('sfx_laugh', o.x, o.y, 0.4);
+          this.life.laugh(o, 0.4);
           break;
         }
       }
@@ -1493,7 +1508,7 @@ class SnowmanEvent extends LifeEvent {
           life.gs.effects.burst('snowhit', sm.x, sm.y - 50, 14);
           life.setSnowStage(0, true);
           k.act('laugh', 1.6);
-          life.sfx('sfx_laugh', k.x, k.y, 0.45);
+          life.laugh(k, 0.45);
         });
       }
       return this.t < 3;
@@ -1523,11 +1538,12 @@ class SnowmanEvent extends LifeEvent {
 }
 
 class PartyEvent extends LifeEvent {
-  constructor(life, x, y) {
+  constructor(life, x, y, opts) {
     const all = life.residents.filter((r) => !(r.job && r.job.kind === 'arrive') && !(r.key === 'pet_dog' && life.gs.dog && life.gs.dog.busy));
     for (const r of all) if (r.event && r.event !== null) r.event.drop(r);
     super(life, 'party', all);
     this.x = x; this.y = y;
+    const pull = opts && opts.pull ? opts.pull : 0;
     // everyone gathers in a ring around the chief
     const n = all.length;
     all.forEach((r, i) => {
@@ -1535,6 +1551,13 @@ class PartyEvent extends LifeEvent {
       const rad = 120 + (i % 3) * 45;
       const p = { x: x + Math.cos(ang) * rad, y: y + Math.sin(ang) * rad * 0.5 };
       life.gs.collision.resolve(p, 12);
+      if (pull && gdist(r.x, r.y, p.x, p.y) > pull * 2) {
+        // (from just off screen, on the side they come from)
+        const d = gdist(r.x, r.y, x, y) || 1, q = { x: x + ((r.x - x) / d) * pull, y: y + ((r.y - y) / d) * pull };
+        life.gs.collision.resolve(q, 12);
+        r.x = q.x; r.y = q.y;
+        if (r.sync) r.sync(0);
+      }
       r.goTo(p.x, p.y, { tol: 14, run: gdist(r.x, r.y, p.x, p.y) > 500 });
     });
     this.len = BALANCE.life.partyLength;

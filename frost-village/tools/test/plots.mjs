@@ -71,6 +71,9 @@ try {
   });
   step('1 the west strip is open from the start (no fog), its south end waits for the south fields', w1.open && !w1.fog && !w1.south && w1.rect[0] <= -1300, w1);
   step('1 the camera may go west, the start still frames the plaza (the chief in view, the view not pulled west)', w1.camLeft <= -1300 && w1.view > -200, w1);
+  // (the start's camera fade-in: on a busy machine the first shot could catch it still black)
+  await until(() => { const c = window.__FV.scene.cameras.main, f = c.fadeEffect; return !(f && f.isRunning) && !(f && f.alpha > 0.05 && !f.isComplete); }, 6);
+  await adv(1);
   await shot('00_start');
   // walk west from the old map edge: no wall at x = 0, the shore holds
   await ev(() => window.__FV.teleport(120, 1250));

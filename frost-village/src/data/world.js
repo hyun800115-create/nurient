@@ -402,7 +402,8 @@ export const WORLD = {
     // ---- (v4-C) 서쪽 숲마을의 부지. XL = 마을회관·큰 식당 자리 (동쪽 망루 공사가 시작되면 나타나요)
     //   drop = 자재 내려놓는 발판 위치 (XL 부지만)
     w_rest:  { x: -600, y: 880,  size: 'XL', region: 'west', after: 'tower_east', drop: [-390, 1000] },
-    w_hall:  { x: -780, y: 1880, size: 'XL', region: 'west', after: 'tower_east', drop: [-570, 2000] },
+    w_hall:  { x: -780, y: 1880, size: 'XL', region: 'west', after: 'tower_east', drop: [-570, 2000],
+               clear: [[-150, 300, 260], [60, 300, 240]] },   // (v4 리뷰) 마을회관 앞 작은 광장: 승격식 때 사람들이 모이는 곳 (소나무를 비워 둠) [x, y, 반지름]
     w_m1:    { x: -250, y: 1360, size: 'M', region: 'west', after: 'zone_hunt' },
     w_m2:    { x: -1100, y: 1130, size: 'M', region: 'west', after: 'hire_hunter' },
     w_s1:    { x: -170, y: 1080, size: 'S', region: 'west', after: 'hire_miner' },
@@ -579,6 +580,8 @@ export function L4(i, j) { return [Math.round(G4[0] + 64 * (i + j)), Math.round(
 /** 화면 px → 격자 { i, j } */
 export function px2L4(x, y) { const a = (x - G4[0]) / 64, b = (y - G4[1]) / 32; return { i: (a + b) / 2, j: (a - b) / 2 }; }
 const at4 = (o) => { const [x, y] = L4(o.i, o.j); return Object.assign(o, { x, y }); };
+// (v4 리뷰) 아파트 줄 앞(학교·우체국·마을회관 줄과 큰길)에 촌장이 있으면 아파트가 반투명해져요 [i 시작, i 끝, j 시작, j 끝]
+const APT_FADE = [33.5, 51.5, -14.6, -3.0];
 
 WORLD.v4 = {
   G: G4,
@@ -593,10 +596,13 @@ WORLD.v4 = {
   // ── 역 광장의 발판들 (B 가 씀): 짐 싣는 곳, 주문판, 역 금고, 역 짐꾼 고용, 승격식
   square: {
     cargo: at4({ i: 4.1, j: -1.8 }), board: at4({ i: 2.6, j: -2.4 }), cash: at4({ i: 6.3, j: -1.6 }),
-    porter: at4({ i: 7.6, j: -2.4 }), rank: at4({ i: 2.6, j: -1.35 }),
+    // (v4 리뷰) 역 짐꾼·승격식 발판은 광장 앞쪽(바다 반대편) 빈 눈밭으로 옮겼어요: 예전 자리에선 짐 싣는 곳 이름표가 승격식 값을,
+    //   역 짐꾼 이름표가 카페 벽과 제 값을 가렸어요
+    porter: at4({ i: 6.0, j: -3.4 }), rank: at4({ i: 4.0, j: -3.9 }),
     // 떠 있는 이름표 위치 (발판에서 [오른쪽 px, 아래쪽 px]). 짐 싣는 곳과 역 금고 이름표가 겹치지 않게 벌려 둠
     //   (역 금고 이름표는 동전 더미 위에서 도는 동전보다 위에: 동전이 가득 쌓여도 글자를 가리지 않게)
-    labels: { board: [0, -150], cargo: [-34, -70], cash: [36, -172] },
+    //   porter = 역 짐꾼 고용 발판의 이름표 (발판 아래쪽: 위에는 짐 싣는 곳과 역 금고가 있어요)
+    labels: { board: [0, -150], cargo: [-34, -70], cash: [36, -172], porter: [0, 64] },
   },
   // ── 가게·집 부지 (B 가 씀). size: M 가게, L 큰 가게, S 집. m = [X m, Y m]
   lots: {
@@ -631,7 +637,11 @@ WORLD.v4 = {
     ['x', 1.0, 0.8, 8.5],      // 서리역 승강장 → 동쪽 끝 → 건널목
     ['y', 8.2, -4.5, -1.6],    // 역 광장 → 역앞 거리
   ],
+  // ── (v4 리뷰) 키 큰 집이 뒷줄 건물을 가릴 때: 촌장이 이 칸 [i 시작, i 끝, j 시작, j 끝] 안에 있으면 앞 건물이 반투명해져요
+  //    houseFade = 목수의 집(H 부지)이 철물점 줄(B 부지)을 가리지 않게
+  houseFade: [10.5, 29.5, -12.8, -3.0],
   // ── 솔방울 마을 건물 21채 (+ 마을 입구). role: 하는 일 (주민 일정이 씀), home: 사는 사람 수
+  //    fadeZone = 아파트가 학교·마을회관 줄을 가리지 않게 (위 houseFade 와 같은 방식)
   town: {
     buildings: [
       at4({ id: 't_station', key: 'train_station', i: 28.0, j: 2.03, role: 'station', home: 1 }),
@@ -651,10 +661,10 @@ WORLD.v4 = {
       at4({ id: 't_hall',    key: 'town_hall', i: 43.5, j: -10.5, role: 'hall', home: 3 }),
       at4({ id: 't_clinic',  key: 'clinic', i: 46.8, j: -10.5, role: 'clinic' }),
       at4({ id: 't_fire',    key: 'fire_station', i: 49.9, j: -10.5, role: 'fire', home: 2 }),
-      at4({ id: 't_apt1',    key: 'apartment_a', i: 35.7, j: -15.3, role: 'home', home: 24 }),
-      at4({ id: 't_apt2',    key: 'apartment_b', i: 38.95, j: -15.3, role: 'home', home: 18 }),
-      at4({ id: 't_apt3',    key: 'apartment_a', i: 42.2, j: -15.3, role: 'home', home: 24 }),
-      at4({ id: 't_apt4',    key: 'apartment_b', i: 45.45, j: -15.3, role: 'home', home: 18 }),
+      at4({ id: 't_apt1',    key: 'apartment_a', i: 35.7, j: -15.3, role: 'home', home: 24, fadeZone: APT_FADE }),
+      at4({ id: 't_apt2',    key: 'apartment_b', i: 38.95, j: -15.3, role: 'home', home: 18, fadeZone: APT_FADE }),
+      at4({ id: 't_apt3',    key: 'apartment_a', i: 42.2, j: -15.3, role: 'home', home: 24, fadeZone: APT_FADE }),
+      at4({ id: 't_apt4',    key: 'apartment_b', i: 45.45, j: -15.3, role: 'home', home: 18, fadeZone: APT_FADE }),
       // 마을 입구 (서리역 앞 땅에 서 있어서 기찻길을 찾았을 때부터 보여요). board = 간판 글자
       at4({ id: 't_gate', key: 'town_gate', i: 18.05, j: -2.2, role: 'gate', region: 'rail', board: 'townName' }),
     ],

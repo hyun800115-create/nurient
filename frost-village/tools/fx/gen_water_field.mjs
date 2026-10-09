@@ -15,6 +15,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Water, WaterPresets } from '../../src/systems/Water.js';
 import { shoreY, WORLD } from '../../src/data/world.js';
+// (v4-C2) the game's village sea = WaterPresets.village widened to the west strip (WORLD.left < 0)
+import { villageSeaPreset } from '../../src/systems/VillageSea.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'assets', 'water');
@@ -22,7 +24,7 @@ const MAN = path.join(OUT, 'manifest.json');
 const CHECK = process.argv.includes('--check');
 
 const FIELDS = {
-  village: () => WaterPresets.village(WORLD.width, shoreY),
+  village: () => villageSeaPreset(),
 };
 
 const man = JSON.parse(fs.readFileSync(MAN, 'utf8'));
