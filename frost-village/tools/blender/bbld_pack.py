@@ -148,6 +148,53 @@ def poly_mask(W, H, pts, ss=4):
     return np.asarray(m.resize((W, H), Image.LANCZOS)).astype(np.float32) / 255.0
 
 
+def _caustics():
+    """assets/water water_waves_b caustics channel (B), or a procedural stand-in when the fragment is missing."""
+    p = os.path.join(ASSETS, 'water', 'water_waves_b.png')
+    if os.path.exists(p):
+        return np.asarray(Image.open(p).convert('RGB')).astype(np.float32)[..., 2] / 255.0
+    rnd = np.random.RandomState(5)
+    g = Image.fromarray((rnd.rand(32, 32) * 255).astype(np.uint8)).resize((256, 256), Image.BICUBIC)
+    v = np.asarray(g).astype(np.float32) / 255.0
+    return np.clip(1.0 - np.abs(v - 0.5) * 9.0, 0, 1)
+
+
+def pool_water(a, pm, i, n):
+    """One frame of the baked fallback pool water (hotel_pool_water), seamless over n frames.
+    Body = the Blender water render blurred (no blotchy glints) with its deepest shadows lifted, WATER_SEE opaque so the
+    pool floor of the base frame (tiles, sun mosaic) shows through; on top a moving caustic network (two layers of
+    assets/water water_waves_b caustics drifting on small circles in opposite directions = a perfect loop) and a few
+    sun glints where both layers peak.  Cut to the waterPoly mask pm."""
+    H, W = pm.shape
+    body = np.asarray(Image.fromarray(a[..., :3].clip(0, 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(7))).astype(np.float32)
+    lum = body.mean(-1)
+    med = float(np.median(lum[pm > 0.5])) if (pm > 0.5).any() else 128.0
+    k = np.clip((0.82 * med - lum) / (0.82 * med), 0, 1)[..., None]
+    body = body + (body * (med * 0.82 / np.maximum(lum, 1.0))[..., None] - body) * k
+    cau = _caustics()
+    Y, X = np.mgrid[0:H, 0:W].astype(np.float32)
+    th = math.tau * i / n
+    R = 6.0
+
+    def samp(gx, gy):
+        x0, y0 = np.floor(gx).astype(int), np.floor(gy).astype(int)
+        fx, fy = gx - x0, gy - y0
+        s_ = lambda yy, xx: cau[yy % cau.shape[0], xx % cau.shape[1]]   # noqa: E731
+        return ((s_(y0, x0) * (1 - fx) + s_(y0, x0 + 1) * fx) * (1 - fy) +
+                (s_(y0 + 1, x0) * (1 - fx) + s_(y0 + 1, x0 + 1) * fx) * fy)
+    # G space (screen x, 2 * screen y) = the ground plane, like src/systems/Water.js samples its textures
+    c1 = samp(X + R * math.cos(th), 2 * Y + R * math.sin(th))
+    c2 = samp(X * 0.83 + 97 + R * math.cos(1.7 - th), 2 * Y * 0.83 + 41 + R * math.sin(1.7 - th))
+    c = np.clip(np.sqrt(c1 * c2) * 1.6, 0, 1) ** 1.3
+    col = body + c[..., None] * np.array([58, 66, 58], np.float32)
+    gl = np.clip((np.minimum(c1, c2) - 0.74) / 0.2, 0, 1)
+    col = col * (1 - gl[..., None] * 0.5) + 255.0 * gl[..., None] * 0.5
+    alpha = pm * np.clip(WATER_SEE + (1 - WATER_SEE) * (0.45 * c + gl), 0, 1) * (a[..., 3] / 255.0)
+    out = np.dstack([col.clip(0, 255), alpha * 255.0])
+    return pu.clean_alpha(Image.fromarray(out.astype(np.uint8), 'RGBA'), floor=3)
+
+
 def load(cache):
     builds = {}
     for fn in sorted(os.listdir(cache)):
@@ -187,15 +234,10 @@ def load(cache):
             W, H = m['frameSize']
             ax, ay = m['anchorPx']
             pm = poly_mask(W, H, [(ax + x, ay + y) for x, y in m['water']['poly']])
+            nfr = len(m['water']['frames'])
             for i, n in enumerate(m['water']['frames']):
                 a = np.asarray(Image.open(os.path.join(cache, n + '.png')).convert('RGBA')).astype(np.float32)
-                # clear water: the turquoise body lets WATER_SEE of the base frame's pool floor (sun mosaic, tiles)
-                # through, the bright ripple glints stay opaque
-                lum = a[..., :3].mean(-1)
-                med = float(np.median(lum[pm > 0.5])) if (pm > 0.5).any() else 128.0
-                hi = np.clip((lum - med - 12.0) / 50.0, 0.0, 1.0)
-                a[..., 3] = a[..., 3] * pm * (WATER_SEE + (1.0 - WATER_SEE) * hi)
-                frames[n] = pu.clean_alpha(Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGBA'), floor=3)
+                frames[n] = pool_water(a, pm, i, nfr)
             derived[k + '_water'] = ('water', k)
     return builds, frames, derived
 
@@ -204,6 +246,8 @@ def load(cache):
 
 def footprint_poly(m):
     fm = m.get('footprintM')
+    if isinstance(fm, dict) and 'radius' in fm:          # round things (lamp post): the square around the circle
+        fm = [2.0 * fm['radius'], 2.0 * fm['radius']]
     if not isinstance(fm, list) or len(fm) != 2:
         return None
     a, b = fm
@@ -283,8 +327,8 @@ CONVENTIONS = {
               'a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, '
               'seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting '
               '(their dy > 0) or just above the building.',
-    'staff': 'staffPoints + staffRoles (role names; top-level staffPresets maps each role to an existing townsfolk preset) + staffDepth "front": draw staff at building depth '
-             'd + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: '
+    'staff': 'staffPoints + staffRoles (role names; the top-level staffPresets maps every role to an existing '
+             'townsfolk preset "<fragment>:<preset>") + staffDepth "front": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: '
              'draw the sprite\'s `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their '
              'legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already '
              'does this for sprites with `overlay`).',
@@ -300,7 +344,7 @@ CONVENTIONS = {
     'pool': 'hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water '
             'surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js '
             '(palette "pool", shore "quay") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + '
-            'anchor, anims.work / ripple 6 f) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes '
+            'anchor, anims.work / ripple 6 f: clear turquoise water over the pool floor with a drifting caustic net) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes '
             'there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).',
     'atlases': 'bbld_hotel (hotel, pool, night frames, water loop), bbld_shops, bbld_civic, bbld_street, bbld_glow '
                '(all night glow overlays - load it lazily, only needed at night).',

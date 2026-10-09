@@ -59,8 +59,9 @@ function flake(ctx, x, y, r, fill, stroke, lw) {
 
 /** the built-in logo as a canvas texture (2x resolution); returns its key */
 export function makeTextLogo(scene, lang) {
-  const key = 'ttl_logo_fb';
-  if (scene.textures.exists(key)) scene.textures.remove(key);
+  // (drawn once per language and reused: a logo on screen keeps its texture while another one is made)
+  const key = 'ttl_logo_fb_' + (lang === 'en' ? 'en' : 'ko');
+  if (scene.textures.exists(key)) return key;
   const parts = TITLE_NAME.logo[lang] || TITLE_NAME.logo.ko;
   const W = 1320, H = 700;
   const ct = scene.textures.createCanvas(key, W, H);

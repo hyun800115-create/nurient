@@ -1,0 +1,4934 @@
+{
+ "version": 1,
+ "generator": "tools/blender/civ_render.py + civ_pack.py (docs/CONTRACT_V8.md section AB)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (vehicles: ground centre). Ruins / rubble / scorch decals share the anchor of the S / M / L plot (site_*) they sit on.",
+  "points": "every *Point(s) value is a px offset [dx, dy] from the anchor (unscaled); *Dir(s) = facing of a character standing there (SW / W / NW = flipped SE / E / NE frames). Points inside a cutaway building include the raised floor (floorLiftPx).",
+  "cutaway": "bank + police_station: see sprites[key].cutaway - aligned layers (_floor, _back, _interior, _front, _shell_cut, _shell) + animated overlay layers, all with the building's frame + anchor (trimmed in the atlas). drawOrder lists layers and the two character slots @behind (staff behind counters, the prisoner in the cell) and @front (customers, visitors). Fade _shell to reveal the inside, show _shell_cut (dollhouse wall stubs) while revealed. revealPoly = px polygon (anchor-relative) of the building silhouette for tap / hover tests.",
+  "shadows": "buildings / props have a baked soft cool shadow falling screen down-right (the cutaway ground shadow lives in _floor); vehicles none (use characters[key].shadow ellipse).",
+  "overlays": "<ruin>_smoke: draw on top of the ruin at the same position, play its smoke anim (4 f loop).",
+  "tiles": "demolition_fence_x / _y: one tile = sqrt(2) m, step (64, 32) / (64, -32) px; the tile owns the post at its -axis end; shadows join seamlessly; close chains with demolition_fence_post. fenceRings = rings around S / M / L plots.",
+  "decals": "scorch_decal_* and welcome_mat are ground-layer decals (draw under everything standing on them).",
+  "vehicles": "characters{} kind \"vehicle\" (assets/vehicles conventions): rendered dirs SE (world +X) and NE (world +Y), mirror SW <- SE, NW <- NE, frame names {anim}_{dir}_{i}; an operator is baked into each cab. framePoints[field][anim][dir][i] = per-frame px points (excavator bucketPoints, dump_truck bedPoints / tipPoints). excavator dig: digFrame / dumpFrame (+ digPoint / dumpPoint = ground point under the bucket); dump_truck tip: tipFrame + tipPoint."
+ },
+ "atlases": [
+  {
+   "key": "civ_bank",
+   "png": "civic/civ_bank.png",
+   "json": "civic/civ_bank.json"
+  },
+  {
+   "key": "civ_police",
+   "png": "civic/civ_police.png",
+   "json": "civic/civ_police.json"
+  },
+  {
+   "key": "civ_ruins",
+   "png": "civic/civ_ruins.png",
+   "json": "civic/civ_ruins.json"
+  },
+  {
+   "key": "civ_props",
+   "png": "civic/civ_props.png",
+   "json": "civic/civ_props.json"
+  },
+  {
+   "key": "civ_moving",
+   "png": "civic/civ_moving.png",
+   "json": "civic/civ_moving.json"
+  },
+  {
+   "key": "civ_demo",
+   "png": "civic/civ_demo.png",
+   "json": "civic/civ_demo.json"
+  },
+  {
+   "key": "civ_decals",
+   "png": "civic/civ_decals.png",
+   "json": "civic/civ_decals.json"
+  },
+  {
+   "key": "civ_excavator",
+   "png": "civic/civ_excavator.png",
+   "json": "civic/civ_excavator.json"
+  },
+  {
+   "key": "civ_dump_truck",
+   "png": "civic/civ_dump_truck.png",
+   "json": "civic/civ_dump_truck.json"
+  }
+ ],
+ "sprites": {
+  "bank": {
+   "atlas": "civ_bank",
+   "frame": "bank",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "building",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "doorPoint": [
+    -118,
+    59
+   ],
+   "doorDir": "NE",
+   "entryPoint": [
+    -43,
+    4
+   ],
+   "entryDir": "NE",
+   "atmPoint": [
+    -106,
+    -26
+   ],
+   "atmDir": "NW",
+   "vaultPoint": [
+    -43,
+    -52
+   ],
+   "vaultDir": "NE",
+   "deskPoint": [
+    -48,
+    -31
+   ],
+   "deskDir": "NW",
+   "staffPoints": [
+    [
+     50,
+     -37
+    ],
+    [
+     86,
+     -19
+    ],
+    [
+     122,
+     -1
+    ],
+    [
+     -96,
+     -54
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     -12,
+     -14
+    ],
+    [
+     -35,
+     -9
+    ],
+    [
+     -59,
+     -4
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "counterPoints": [
+    [
+     7,
+     -16
+    ],
+    [
+     43,
+     2
+    ],
+    [
+     80,
+     20
+    ]
+   ],
+   "counterDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     14,
+     -7
+    ],
+    [
+     35,
+     3
+    ],
+    [
+     55,
+     13
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "pointSlots": {
+    "staffPoints": "behind",
+    "vaultPoint": "behind",
+    "customerPoints": "front",
+    "counterPoints": "front",
+    "seatPoints": "front",
+    "atmPoint": "front",
+    "entryPoint": "front",
+    "deskPoint": "front",
+    "doorPoint": "outside"
+   },
+   "fxPoints": {
+    "sign": [
+     63,
+     -221
+    ],
+    "display": [
+     116,
+     -159
+    ],
+    "vault": [
+     -16,
+     -129
+    ],
+    "lamp": [
+     23,
+     -25
+    ]
+   },
+   "cutaway": {
+    "layers": {
+     "floor": "bank_floor",
+     "back": "bank_back",
+     "interior": "bank_interior",
+     "front": "bank_front",
+     "shell_cut": "bank_shell_cut",
+     "shell": "bank_shell"
+    },
+    "drawOrder": [
+     "bank_floor",
+     "bank_back",
+     "bank_interior",
+     "bank_vault",
+     "@behind",
+     "bank_front",
+     "@front",
+     "bank_shell_cut",
+     "bank_shell"
+    ],
+    "overlays": {
+     "bank_vault": {
+      "anims": [
+       "vault",
+       "vault_close"
+      ],
+      "drawAfter": "interior",
+      "frames": 8
+     }
+    },
+    "fade": {
+     "layer": "bank_shell",
+     "closedAlpha": 1.0,
+     "openAlpha": 0.12,
+     "ms": 260
+    },
+    "cut": {
+     "layer": "bank_shell_cut",
+     "visible": "only while revealed (fade in with the shell fade out)"
+    },
+    "revealPoly": [
+     [
+      -181,
+      -211
+     ],
+     [
+      -17,
+      -293
+     ],
+     [
+      78,
+      -251
+     ],
+     [
+      199,
+      -185
+     ],
+     [
+      203,
+      -181
+     ],
+     [
+      196,
+      -9
+     ],
+     [
+      44,
+      67
+     ],
+     [
+      -37,
+      51
+     ],
+     [
+      -141,
+      -1
+     ],
+     [
+      -176,
+      -41
+     ]
+    ],
+    "floorLiftPx": 18,
+    "notes": "Draw every layer at the SAME position + origin (anchor) as the building. Depth: base = anchor y; layers / slots in drawOrder get base + 0.01 * index (characters inside: base + slot offset + their own y * 1e-4 for sorting among themselves). Closed: draw the plain <key> frame (or all layers - identical). Reveal (tap / hover inside revealPoly, or the chief walks in): fade the shell to openAlpha and show shell_cut; residents inside are only drawn while revealed (or always - the closed shell covers them). Characters at pointSlots \"behind\" go to @behind, \"front\" to @front; outside points use normal y-sorting."
+   },
+   "revealPoly": [
+    [
+     -181,
+     -211
+    ],
+    [
+     -17,
+     -293
+    ],
+    [
+     78,
+     -251
+    ],
+    [
+     199,
+     -185
+    ],
+    [
+     203,
+     -181
+    ],
+    [
+     196,
+     -9
+    ],
+    [
+     44,
+     67
+    ],
+    [
+     -37,
+     51
+    ],
+    [
+     -141,
+     -1
+    ],
+    [
+     -176,
+     -41
+    ]
+   ],
+   "notes": "Bank \"솔방울 은행\" (5.4 x 4.6 m footprint): cream sandstone hall on a stone plinth with a white columned portico, teal pediment with a gold pinecone coin, a big gold coin standing on the roof and a piggy-bank bracket sign. CUTAWAY: bank_floor (checker marble floor, red runner, steps, planters, ground shadow), bank_back (the two far walls from inside: wallpaper, wainscot, windows, clock, number display), bank_interior (vault room, teller stools, money cart, ATM, waiting chairs, piggy statue, manager corner), bank_front (teller counter with glass partitions + manager desk = what stands in front of staff), bank_vault (round vault door overlay: anims.vault 8 f opens, vault_close reverses), bank_shell_cut (dollhouse wall stubs), bank_shell (closed hall). bank = the closed building in one frame. staffPoints = 3 tellers + manager (behind slot), counterPoints = where customers are served, customerPoints = the queue (first = next in line), seatPoints = waiting chairs, atmPoint, vaultPoint, entryPoint (just inside), doorPoint (outside, foot of the steps)."
+  },
+  "bank_floor": {
+   "atlas": "civ_bank",
+   "frame": "bank_floor",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "floor"
+  },
+  "bank_back": {
+   "atlas": "civ_bank",
+   "frame": "bank_back",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "back"
+  },
+  "bank_interior": {
+   "atlas": "civ_bank",
+   "frame": "bank_interior",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "interior"
+  },
+  "bank_front": {
+   "atlas": "civ_bank",
+   "frame": "bank_front",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "front"
+  },
+  "bank_shell_cut": {
+   "atlas": "civ_bank",
+   "frame": "bank_shell_cut",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "shell_cut"
+  },
+  "bank_shell": {
+   "atlas": "civ_bank",
+   "frame": "bank_shell",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "shell"
+  },
+  "bank_vault": {
+   "atlas": "civ_bank",
+   "frame": "bank_vault_0",
+   "anchor": [
+    0.36755,
+    0.61614
+   ],
+   "frameSize": [
+    604,
+    508
+   ],
+   "kind": "layer",
+   "footprint": [
+    453,
+    226
+   ],
+   "footprintM": [
+    5.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -226,
+     -9
+    ],
+    [
+     18,
+     113
+    ],
+    [
+     226,
+     9
+    ],
+    [
+     -18,
+     -113
+    ]
+   ],
+   "topPx": 293,
+   "front": "-Y",
+   "name": {
+    "ko": "은행",
+    "en": "Bank"
+   },
+   "zone": "civic",
+   "layerOf": "bank",
+   "layer": "vault",
+   "anims": {
+    "vault": {
+     "frames": [
+      "bank_vault_0",
+      "bank_vault_1",
+      "bank_vault_2",
+      "bank_vault_3",
+      "bank_vault_4",
+      "bank_vault_5",
+      "bank_vault_6",
+      "bank_vault_7"
+     ],
+     "fps": 8,
+     "repeat": 0
+    },
+    "vault_close": {
+     "frames": [
+      "bank_vault_7",
+      "bank_vault_6",
+      "bank_vault_5",
+      "bank_vault_4",
+      "bank_vault_3",
+      "bank_vault_2",
+      "bank_vault_1",
+      "bank_vault_0"
+     ],
+     "fps": 8,
+     "repeat": 0
+    }
+   },
+   "drawAfter": "interior",
+   "notes": "Animated overlay of bank (same frame + anchor as the building, trimmed in the atlas). Frame 0 = closed. Play vault to open, vault_close to close; it stays on the last frame."
+  },
+  "police_station": {
+   "atlas": "civ_police",
+   "frame": "police_station",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "building",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "doorPoint": [
+    -127,
+    38
+   ],
+   "doorDir": "NE",
+   "entryPoint": [
+    -67,
+    -3
+   ],
+   "entryDir": "NE",
+   "cellDoorPoint": [
+    -93,
+    -52
+   ],
+   "cellDoorDir": "NE",
+   "cellSeatPoint": [
+    -58,
+    -109
+   ],
+   "cellSeatDir": "SE",
+   "carBayPoint": [
+    95,
+    48
+   ],
+   "carBayDir": "SW",
+   "sideDoorPoint": [
+    109,
+    11
+   ],
+   "sideDoorDir": "NW",
+   "staffPoints": [
+    [
+     -3,
+     -35
+    ],
+    [
+     54,
+     -22
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -44,
+     -15
+    ],
+    [
+     -43,
+     5
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -155,
+     -72
+    ],
+    [
+     -128,
+     -85
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE"
+   ],
+   "cellPoints": [
+    [
+     -43,
+     -79
+    ],
+    [
+     -66,
+     -70
+    ]
+   ],
+   "cellDirs": [
+    "SE",
+    "SE"
+   ],
+   "cellPoint": [
+    -43,
+    -79
+   ],
+   "cellDir": "SE",
+   "pointSlots": {
+    "staffPoints": "behind",
+    "cellPoints": "behind",
+    "cellPoint": "behind",
+    "cellSeatPoint": "behind",
+    "customerPoints": "front",
+    "seatPoints": "front",
+    "entryPoint": "front",
+    "cellDoorPoint": "front",
+    "doorPoint": "outside",
+    "carBayPoint": "outside",
+    "sideDoorPoint": "outside"
+   },
+   "fxPoints": {
+    "siren": [
+     -18,
+     -253
+    ],
+    "smoke": [
+     -70,
+     -326
+    ],
+    "sign": [
+     -114,
+     -232
+    ],
+    "lamp": [
+     -103,
+     -102
+    ],
+    "stove": [
+     13,
+     -105
+    ]
+   },
+   "cutaway": {
+    "layers": {
+     "floor": "police_station_floor",
+     "back": "police_station_back",
+     "interior": "police_station_interior",
+     "front": "police_station_front",
+     "shell_cut": "police_station_shell_cut",
+     "shell": "police_station_shell"
+    },
+    "drawOrder": [
+     "police_station_floor",
+     "police_station_back",
+     "police_station_interior",
+     "@behind",
+     "police_station_front",
+     "police_station_cell",
+     "@front",
+     "police_station_shell_cut",
+     "police_station_shell"
+    ],
+    "overlays": {
+     "police_station_cell": {
+      "anims": [
+       "open",
+       "close"
+      ],
+      "drawAfter": "behind",
+      "frames": 6
+     }
+    },
+    "fade": {
+     "layer": "police_station_shell",
+     "closedAlpha": 1.0,
+     "openAlpha": 0.12,
+     "ms": 260
+    },
+    "cut": {
+     "layer": "police_station_shell_cut",
+     "visible": "only while revealed (fade in with the shell fade out)"
+    },
+    "revealPoly": [
+     [
+      -232,
+      -188
+     ],
+     [
+      -149,
+      -314
+     ],
+     [
+      -71,
+      -326
+     ],
+     [
+      -54,
+      -318
+     ],
+     [
+      149,
+      -172
+     ],
+     [
+      128,
+      -34
+     ],
+     [
+      -19,
+      40
+     ],
+     [
+      -27,
+      40
+     ],
+     [
+      -110,
+      0
+     ],
+     [
+      -210,
+      -52
+     ]
+    ],
+    "floorLiftPx": 12,
+    "notes": "Draw every layer at the SAME position + origin (anchor) as the building. Depth: base = anchor y; layers / slots in drawOrder get base + 0.01 * index (characters inside: base + slot offset + their own y * 1e-4 for sorting among themselves). Closed: draw the plain <key> frame (or all layers - identical). Reveal (tap / hover inside revealPoly, or the chief walks in): fade the shell to openAlpha and show shell_cut; residents inside are only drawn while revealed (or always - the closed shell covers them). Characters at pointSlots \"behind\" go to @behind, \"front\" to @front; outside points use normal y-sorting."
+   },
+   "revealPoly": [
+    [
+     -232,
+     -188
+    ],
+    [
+     -149,
+     -314
+    ],
+    [
+     -71,
+     -326
+    ],
+    [
+     -54,
+     -318
+    ],
+    [
+     149,
+     -172
+    ],
+    [
+     128,
+     -34
+    ],
+    [
+     -19,
+     40
+    ],
+    [
+     -27,
+     40
+    ],
+    [
+     -110,
+     0
+    ],
+    [
+     -210,
+     -52
+    ]
+   ],
+   "notes": "Police station \"솔방울 경찰서\" (6.4 x 4.6 m footprint incl. the car bay): white-and-navy clapboard station with a slate-blue gable roof, a red/blue light bar on the ridge, a gold star badge sign, a blue police lamp over the double door and a painted car bay on its right side for the police_car. CUTAWAY like the bank: police_station_floor (wood floor, rugs, car bay, ground shadow), _back (far walls from inside: notice board, town map, clock, windows, the cell's barred window), _interior (the cosy cell: cot with a patchwork quilt, teddy, cocoa, flower; stove with kettle, filing cabinet, coat hooks, visitor bench, plants), _front (reception desk + the cell bars = what stands in front of 'behind' characters), police_station_cell (barred cell door overlay: anims.open 6 f, close reverses; draw it AFTER the behind slot because the prisoner is inside), _shell_cut, _shell. staffPoints = desk officer + filing officer (behind slot), customerPoints = visitor at the desk (+ one waiting), cellPoints = prisoner spots inside the cell (behind slot), cellSeatPoint = sitting on the cot, cellDoorPoint = just outside the cell door, carBayPoint + carBayDir = where the police_car parks (nose out, SW), sideDoorPoint = staff door to the car bay, doorPoint / entryPoint."
+  },
+  "police_station_floor": {
+   "atlas": "civ_police",
+   "frame": "police_station_floor",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "floor"
+  },
+  "police_station_back": {
+   "atlas": "civ_police",
+   "frame": "police_station_back",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "back"
+  },
+  "police_station_interior": {
+   "atlas": "civ_police",
+   "frame": "police_station_interior",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "interior"
+  },
+  "police_station_front": {
+   "atlas": "civ_police",
+   "frame": "police_station_front",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "front"
+  },
+  "police_station_shell_cut": {
+   "atlas": "civ_police",
+   "frame": "police_station_shell_cut",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "shell_cut"
+  },
+  "police_station_shell": {
+   "atlas": "civ_police",
+   "frame": "police_station_shell",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "shell"
+  },
+  "police_station_cell": {
+   "atlas": "civ_police",
+   "frame": "police_station_cell_0",
+   "anchor": [
+    0.4237,
+    0.692
+   ],
+   "frameSize": [
+    616,
+    500
+   ],
+   "kind": "layer",
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 326,
+   "front": "-Y",
+   "name": {
+    "ko": "경찰서",
+    "en": "Police station"
+   },
+   "zone": "police",
+   "layerOf": "police_station",
+   "layer": "cell",
+   "anims": {
+    "open": {
+     "frames": [
+      "police_station_cell_0",
+      "police_station_cell_1",
+      "police_station_cell_2",
+      "police_station_cell_3",
+      "police_station_cell_4",
+      "police_station_cell_5"
+     ],
+     "fps": 10,
+     "repeat": 0
+    },
+    "close": {
+     "frames": [
+      "police_station_cell_5",
+      "police_station_cell_4",
+      "police_station_cell_3",
+      "police_station_cell_2",
+      "police_station_cell_1",
+      "police_station_cell_0"
+     ],
+     "fps": 10,
+     "repeat": 0
+    }
+   },
+   "drawAfter": "behind",
+   "notes": "Animated overlay of police_station (same frame + anchor as the building, trimmed in the atlas). Frame 0 = closed. Play open to open, close to close; it stays on the last frame."
+  },
+  "rubble_pile_l": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_l",
+   "anchor": [
+    0.47403,
+    0.48611
+   ],
+   "frameSize": [
+    308,
+    216
+   ],
+   "kind": "rubble",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     0
+    ],
+    [
+     0,
+     91
+    ],
+    [
+     181,
+     0
+    ],
+    [
+     0,
+     -91
+    ]
+   ],
+   "topPx": 80,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (L)",
+    "en": "Rubble pile L"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -143,
+     44
+    ],
+    [
+     134,
+     49
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 0,
+   "stages": [
+    "rubble_pile_l",
+    "rubble_pile_l_half"
+   ],
+   "notes": "Rubble pile for a L plot (4 x 4 m, same anchor / footprint as ruin_l and site_*_L): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_l_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "rubble_pile_l_half": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_l_half",
+   "anchor": [
+    0.47403,
+    0.48611
+   ],
+   "frameSize": [
+    308,
+    216
+   ],
+   "kind": "rubble",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     0
+    ],
+    [
+     0,
+     91
+    ],
+    [
+     181,
+     0
+    ],
+    [
+     0,
+     -91
+    ]
+   ],
+   "topPx": 85,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (L)",
+    "en": "Rubble pile L"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -143,
+     44
+    ],
+    [
+     134,
+     49
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 1,
+   "stages": [
+    "rubble_pile_l",
+    "rubble_pile_l_half"
+   ],
+   "notes": "Rubble pile for a L plot (4 x 4 m, same anchor / footprint as ruin_l and site_*_L): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_l_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "rubble_pile_m": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_m",
+   "anchor": [
+    0.41786,
+    0.4881
+   ],
+   "frameSize": [
+    280,
+    168
+   ],
+   "kind": "rubble",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 61,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (M)",
+    "en": "Rubble pile M"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -113,
+     36
+    ],
+    [
+     106,
+     40
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 0,
+   "stages": [
+    "rubble_pile_m",
+    "rubble_pile_m_half"
+   ],
+   "notes": "Rubble pile for a M plot (3 x 3 m, same anchor / footprint as ruin_m and site_*_M): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_m_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "rubble_pile_m_half": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_m_half",
+   "anchor": [
+    0.41786,
+    0.4881
+   ],
+   "frameSize": [
+    280,
+    168
+   ],
+   "kind": "rubble",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 58,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (M)",
+    "en": "Rubble pile M"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -113,
+     36
+    ],
+    [
+     106,
+     40
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 1,
+   "stages": [
+    "rubble_pile_m",
+    "rubble_pile_m_half"
+   ],
+   "notes": "Rubble pile for a M plot (3 x 3 m, same anchor / footprint as ruin_m and site_*_M): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_m_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "rubble_pile_s": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_s",
+   "anchor": [
+    0.465,
+    0.42949
+   ],
+   "frameSize": [
+    200,
+    156
+   ],
+   "kind": "rubble",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 47,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (S)",
+    "en": "Rubble pile S"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -84,
+     28
+    ],
+    [
+     79,
+     31
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 0,
+   "stages": [
+    "rubble_pile_s",
+    "rubble_pile_s_half"
+   ],
+   "notes": "Rubble pile for a S plot (2 x 2 m, same anchor / footprint as ruin_s and site_*_S): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_s_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "rubble_pile_s_half": {
+   "atlas": "civ_ruins",
+   "frame": "rubble_pile_s_half",
+   "anchor": [
+    0.465,
+    0.42949
+   ],
+   "frameSize": [
+    200,
+    156
+   ],
+   "kind": "rubble",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 47,
+   "front": "-Y",
+   "name": {
+    "ko": "잔해 더미 (S)",
+    "en": "Rubble pile S"
+   },
+   "zone": "demolition",
+   "workPoints": [
+    [
+     -84,
+     28
+    ],
+    [
+     79,
+     31
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "stage": 1,
+   "stages": [
+    "rubble_pile_s",
+    "rubble_pile_s_half"
+   ],
+   "notes": "Rubble pile for a S plot (2 x 2 m, same anchor / footprint as ruin_s and site_*_S): what is left after the excavator knocked the ruin down - a heap of charred beams and planks, bricks, ash and cinders with a few bright bits (red shingles, a blue shutter) and fresh snow on top. rubble_pile_s_half = the same heap half carted away (same frame + anchor: swap in place while the dump truck works). workPoints = where workers shovel / the bucket bites."
+  },
+  "ruin_house_town": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_house_town",
+   "anchor": [
+    0.38158,
+    0.77564
+   ],
+   "frameSize": [
+    380,
+    468
+   ],
+   "kind": "ruin",
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 342,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 주택",
+    "en": "Burnt townhouse"
+   },
+   "zone": "ruins",
+   "doorPoint": [
+    -57,
+    51
+   ],
+   "doorDir": "NE",
+   "workPoints": [
+    [
+     -97,
+     33
+    ],
+    [
+     86,
+     36
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "fxPoints": {
+    "smoke": [
+     0,
+     -17
+    ],
+    "chimney": [
+     -1,
+     -253
+    ],
+    "ember": [
+     0,
+     -17
+    ]
+   },
+   "notes": "Burnt townhouse (2.6 x 2.6 m, same anchor / footprint as townhouse_a..d in assets/town, so it replaces one in place): butter-yellow plaster walls blackened toward their jagged tops, the front door frame and window holes with soot plumes, half of the gable standing, a collapsed red roof leaning in, the brick chimney still up, and the flower box under the window - flowers and all - survived. ruin_house_town_smoke = smoke overlay (anims.smoke). Draw scorch_decal_m under it."
+  },
+  "ruin_house_town_smoke": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_house_town_smoke_0",
+   "anchor": [
+    0.38158,
+    0.77564
+   ],
+   "frameSize": [
+    380,
+    468
+   ],
+   "kind": "overlay",
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -118,
+     0
+    ],
+    [
+     0,
+     59
+    ],
+    [
+     118,
+     0
+    ],
+    [
+     0,
+     -59
+    ]
+   ],
+   "topPx": 342,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 주택",
+    "en": "Burnt townhouse"
+   },
+   "zone": "ruins",
+   "of": "ruin_house_town",
+   "anims": {
+    "smoke": {
+     "frames": [
+      "ruin_house_town_smoke_0",
+      "ruin_house_town_smoke_1",
+      "ruin_house_town_smoke_2",
+      "ruin_house_town_smoke_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "notes": "Smoke wisps of ruin_house_town: draw this sprite on top of ruin_house_town at the same position (same frame size + anchor) and play spr:ruin_house_town_smoke:smoke while the ruin smoulders."
+  },
+  "ruin_l": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_l",
+   "anchor": [
+    0.41406,
+    0.73058
+   ],
+   "frameSize": [
+    512,
+    412
+   ],
+   "kind": "ruin",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     0
+    ],
+    [
+     0,
+     91
+    ],
+    [
+     181,
+     0
+    ],
+    [
+     0,
+     -91
+    ]
+   ],
+   "topPx": 280,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 건물 (대)",
+    "en": "Burnt ruin L"
+   },
+   "zone": "ruins",
+   "workPoints": [
+    [
+     -127,
+     45
+    ],
+    [
+     122,
+     48
+    ],
+    [
+     -66,
+     74
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "fxPoints": {
+    "smoke": [
+     -18,
+     -22
+    ],
+    "smoke2": [
+     38,
+     -30
+    ],
+    "chimney": [
+     100,
+     -188
+    ],
+    "ember": [
+     -18,
+     -22
+    ]
+   },
+   "notes": "Burnt ruin for a L plot (4 x 4 m footprint, same anchor / footprint as site_*_L and the big shops / hall buildings it replaces): a burnt brick building - the back and left brick walls stand with empty window holes and jagged sooty tops, a tall chimney, collapsed charred roof trusses, a big ash heap, the iron safe and a white clawfoot bathtub (with a rubber duck!) survived. Charred but toy-like - fresh snow on the black beams, soot-stained snow on the ground, a few warm embers. ruin_l_smoke = smoke-wisp overlay (same frame + anchor, anims.smoke 4 f loop, draw on top of the ruin while it smoulders). fxPoints.smoke = wisp bases (extra game FX), workPoints = where the demolition crew / excavator bucket works."
+  },
+  "ruin_l_smoke": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_l_smoke_0",
+   "anchor": [
+    0.41406,
+    0.73058
+   ],
+   "frameSize": [
+    512,
+    412
+   ],
+   "kind": "overlay",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.0,
+    4.0
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     0
+    ],
+    [
+     0,
+     91
+    ],
+    [
+     181,
+     0
+    ],
+    [
+     0,
+     -91
+    ]
+   ],
+   "topPx": 280,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 건물 (대)",
+    "en": "Burnt ruin L"
+   },
+   "zone": "ruins",
+   "of": "ruin_l",
+   "anims": {
+    "smoke": {
+     "frames": [
+      "ruin_l_smoke_0",
+      "ruin_l_smoke_1",
+      "ruin_l_smoke_2",
+      "ruin_l_smoke_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "notes": "Smoke wisps of ruin_l: draw this sprite on top of ruin_l at the same position (same frame size + anchor) and play spr:ruin_l_smoke:smoke while the ruin smoulders."
+  },
+  "ruin_m": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_m",
+   "anchor": [
+    0.44149,
+    0.76263
+   ],
+   "frameSize": [
+    376,
+    396
+   ],
+   "kind": "ruin",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 282,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 건물 (중)",
+    "en": "Burnt ruin M"
+   },
+   "zone": "ruins",
+   "workPoints": [
+    [
+     -97,
+     35
+    ],
+    [
+     93,
+     37
+    ],
+    [
+     -50,
+     57
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW",
+    "NE"
+   ],
+   "fxPoints": {
+    "smoke": [
+     7,
+     0
+    ],
+    "smoke2": [
+     45,
+     -2
+    ],
+    "chimney": [
+     33,
+     -202
+    ],
+    "ember": [
+     20,
+     7
+    ]
+   },
+   "notes": "Burnt ruin for a M plot (3 x 3 m footprint, same anchor / footprint as site_*_M and the warehouse / cannery / shop / toolsmith / boathouse buildings it replaces): a burnt log cottage - the back and left log walls stand half high with jagged charred ends, two tall corner posts, a fallen roof panel with a few red shingles left, the stone chimney and the iron stove (with its red kettle!) survived, ash heaps and cinders. Charred but toy-like - fresh snow on the black beams, soot-stained snow on the ground, a few warm embers. ruin_m_smoke = smoke-wisp overlay (same frame + anchor, anims.smoke 4 f loop, draw on top of the ruin while it smoulders). fxPoints.smoke = wisp bases (extra game FX), workPoints = where the demolition crew / excavator bucket works."
+  },
+  "ruin_m_smoke": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_m_smoke_0",
+   "anchor": [
+    0.44149,
+    0.76263
+   ],
+   "frameSize": [
+    376,
+    396
+   ],
+   "kind": "overlay",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    3.0,
+    3.0
+   ],
+   "footprintPoly": [
+    [
+     -136,
+     0
+    ],
+    [
+     0,
+     68
+    ],
+    [
+     136,
+     0
+    ],
+    [
+     0,
+     -68
+    ]
+   ],
+   "topPx": 282,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 건물 (중)",
+    "en": "Burnt ruin M"
+   },
+   "zone": "ruins",
+   "of": "ruin_m",
+   "anims": {
+    "smoke": {
+     "frames": [
+      "ruin_m_smoke_0",
+      "ruin_m_smoke_1",
+      "ruin_m_smoke_2",
+      "ruin_m_smoke_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "notes": "Smoke wisps of ruin_m: draw this sprite on top of ruin_m at the same position (same frame size + anchor) and play spr:ruin_m_smoke:smoke while the ruin smoulders."
+  },
+  "ruin_s": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_s",
+   "anchor": [
+    0.43939,
+    0.64286
+   ],
+   "frameSize": [
+    264,
+    252
+   ],
+   "kind": "ruin",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 141,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 집 (소)",
+    "en": "Burnt ruin S"
+   },
+   "zone": "ruins",
+   "workPoints": [
+    [
+     -72,
+     27
+    ],
+    [
+     68,
+     27
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NW"
+   ],
+   "fxPoints": {
+    "smoke": [
+     7,
+     -5
+    ],
+    "smoke2": [
+     -2,
+     -56
+    ],
+    "ember": [
+     7,
+     -6
+    ]
+   },
+   "notes": "Burnt ruin for a S plot (2 x 2 m footprint, same anchor / footprint as site_*_S and the house_a / b / c (2-2.5 m homes) buildings it replaces): a burnt little log cottage - one charred corner post, a low back log wall, the front door frame still standing with its blue door hanging askew, the little iron stove and a blue mailbox survived, ash heap + embers. Charred but toy-like - fresh snow on the black beams, soot-stained snow on the ground, a few warm embers. ruin_s_smoke = smoke-wisp overlay (same frame + anchor, anims.smoke 4 f loop, draw on top of the ruin while it smoulders). fxPoints.smoke = wisp bases (extra game FX), workPoints = where the demolition crew / excavator bucket works."
+  },
+  "ruin_s_smoke": {
+   "atlas": "civ_ruins",
+   "frame": "ruin_s_smoke_0",
+   "anchor": [
+    0.43939,
+    0.64286
+   ],
+   "frameSize": [
+    264,
+    252
+   ],
+   "kind": "overlay",
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 141,
+   "front": "-Y",
+   "name": {
+    "ko": "불탄 집 (소)",
+    "en": "Burnt ruin S"
+   },
+   "zone": "ruins",
+   "of": "ruin_s",
+   "anims": {
+    "smoke": {
+     "frames": [
+      "ruin_s_smoke_0",
+      "ruin_s_smoke_1",
+      "ruin_s_smoke_2",
+      "ruin_s_smoke_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "notes": "Smoke wisps of ruin_s: draw this sprite on top of ruin_s at the same position (same frame size + anchor) and play spr:ruin_s_smoke:smoke while the ruin smoulders."
+  },
+  "fire_alarm_post": {
+   "atlas": "civ_props",
+   "frame": "fire_alarm_post",
+   "anchor": [
+    0.27143,
+    0.63068
+   ],
+   "frameSize": [
+    140,
+    176
+   ],
+   "kind": "decor",
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 90,
+   "front": "-Y",
+   "name": {
+    "ko": "화재 경보기",
+    "en": "Fire alarm post"
+   },
+   "zone": "fire",
+   "fxPoints": {
+    "bell": [
+     -2,
+     -88
+    ],
+    "lamp": [
+     3,
+     -74
+    ]
+   },
+   "anims": {
+    "work": {
+     "frames": [
+      "fire_alarm_post_work_0",
+      "fire_alarm_post_work_1",
+      "fire_alarm_post_work_2",
+      "fire_alarm_post_work_3"
+     ],
+     "fps": 10,
+     "repeat": -1
+    },
+    "ring": {
+     "frames": [
+      "fire_alarm_post_work_0",
+      "fire_alarm_post_work_1",
+      "fire_alarm_post_work_2",
+      "fire_alarm_post_work_3"
+     ],
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "notes": "Fire alarm post (1.7 m): red post with a glass-fronted alarm box (white push button), a little hammer on a chain, a gold bell on top and a red lamp. idle = quiet; anims.work / anims.ring = 4-frame alarm loop (lamp flashes, bell hammer shakes) - play it when a resident reports a fire (sfx_fire_alarm_bell)."
+  },
+  "fire_hydrant": {
+   "atlas": "civ_props",
+   "frame": "fire_hydrant",
+   "anchor": [
+    0.34375,
+    0.59615
+   ],
+   "frameSize": [
+    96,
+    104
+   ],
+   "kind": "decor",
+   "footprint": [
+    28,
+    14
+   ],
+   "footprintM": {
+    "radius": 0.22
+   },
+   "topPx": 41,
+   "front": "-Y",
+   "name": {
+    "ko": "소화전",
+    "en": "Fire hydrant"
+   },
+   "zone": "fire",
+   "hosePoint": [
+    10,
+    -13
+   ],
+   "hoseDir": "SE",
+   "notes": "Fire hydrant (0.75 m): chunky red toy hydrant with gold caps on little chains, a gold top nut and a snow cap. hosePoint = the side outlet facing screen down-right where the firefighters connect the hose (fx_hose_stream starts at the nozzle, not here)."
+  },
+  "for_sale_sign": {
+   "atlas": "civ_props",
+   "frame": "for_sale_sign",
+   "anchor": [
+    0.32558,
+    0.63043
+   ],
+   "frameSize": [
+    172,
+    184
+   ],
+   "kind": "decor",
+   "footprint": [
+    64,
+    10
+   ],
+   "footprintM": [
+    1.0,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     5
+    ],
+    [
+     32,
+     5
+    ],
+    [
+     32,
+     -5
+    ],
+    [
+     -32,
+     -5
+    ]
+   ],
+   "topPx": 95,
+   "front": "S",
+   "name": {
+    "ko": "매물 표지판",
+    "en": "For sale sign"
+   },
+   "zone": "moving",
+   "fxPoints": {
+    "board": [
+     4,
+     -53
+    ]
+   },
+   "boardPx": [
+    37,
+    21
+   ],
+   "notes": "For-sale yard sign (faces the camera): white post + arm, a blank green-bordered board hanging on two chains, a little house with a heart on top. fxPoints.board / boardPx = where the game writes the text."
+  },
+  "insurance_sign": {
+   "atlas": "civ_props",
+   "frame": "insurance_sign",
+   "anchor": [
+    0.29891,
+    0.62766
+   ],
+   "frameSize": [
+    184,
+    188
+   ],
+   "kind": "decor",
+   "footprint": [
+    77,
+    10
+   ],
+   "footprintM": [
+    1.2,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -38,
+     5
+    ],
+    [
+     38,
+     5
+    ],
+    [
+     38,
+     -5
+    ],
+    [
+     -38,
+     -5
+    ]
+   ],
+   "topPx": 97,
+   "front": "S",
+   "name": {
+    "ko": "보험 표지판",
+    "en": "Insurance sign"
+   },
+   "zone": "fire",
+   "fxPoints": {
+    "board": [
+     0,
+     -50
+    ]
+   },
+   "boardPx": [
+    58,
+    27
+   ],
+   "notes": "Insurance sign (blank board on two posts, faces the camera) with a red umbrella sheltering a little house on top - put it on a burnt plot while insurance + the rebuild loan are arranged. fxPoints.board = board centre, boardPx = writable board size (the game renders the text)."
+  },
+  "sold_sign": {
+   "atlas": "civ_props",
+   "frame": "sold_sign",
+   "anchor": [
+    0.32558,
+    0.63043
+   ],
+   "frameSize": [
+    172,
+    184
+   ],
+   "kind": "decor",
+   "footprint": [
+    64,
+    10
+   ],
+   "footprintM": [
+    1.0,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -32,
+     5
+    ],
+    [
+     32,
+     5
+    ],
+    [
+     32,
+     -5
+    ],
+    [
+     -32,
+     -5
+    ]
+   ],
+   "topPx": 95,
+   "front": "S",
+   "name": {
+    "ko": "판매 완료 표지판",
+    "en": "Sold sign"
+   },
+   "zone": "moving",
+   "fxPoints": {
+    "board": [
+     4,
+     -53
+    ]
+   },
+   "boardPx": [
+    37,
+    21
+   ],
+   "notes": "Sold yard sign: the for-sale sign with a red diagonal ribbon across the board and a pink heart sticker (no baked text). Swap for_sale_sign -> sold_sign when somebody buys the house."
+  },
+  "wanted_board": {
+   "atlas": "civ_props",
+   "frame": "wanted_board",
+   "anchor": [
+    0.33333,
+    0.65079
+   ],
+   "frameSize": [
+    312,
+    252
+   ],
+   "kind": "decor",
+   "footprint": [
+    147,
+    16
+   ],
+   "footprintM": [
+    2.3,
+    0.5
+   ],
+   "footprintPoly": [
+    [
+     -74,
+     8
+    ],
+    [
+     74,
+     8
+    ],
+    [
+     74,
+     -8
+    ],
+    [
+     -74,
+     -8
+    ]
+   ],
+   "topPx": 143,
+   "front": "S",
+   "name": {
+    "ko": "현상수배 게시판",
+    "en": "Wanted board"
+   },
+   "zone": "police",
+   "gatherPoints": [
+    [
+     -45,
+     32
+    ],
+    [
+     0,
+     32
+    ],
+    [
+     45,
+     32
+    ]
+   ],
+   "gatherDirs": [
+    "N",
+    "N",
+    "N"
+   ],
+   "posterPoints": [
+    [
+     -44,
+     -67
+    ],
+    [
+     0,
+     -67
+    ],
+    [
+     44,
+     -67
+    ]
+   ],
+   "posterSizePx": [
+    24,
+    19
+   ],
+   "posterNote": "portrait window 0.38 x 0.34 m facing the camera (no skew); draw the portrait centred on posterPoints[i], scaled to posterSizePx",
+   "notes": "Wanted board (2.3 m wide, faces the camera): a little roofed wooden notice board with a gold police star on top and three blank cream WANTED posters (red header band, empty portrait window, gold reward strip, red pins). posterPoints = centre of each portrait window, posterSizePx = its size at 1x - the game draws a resident portrait (and name / reward text) there; gatherPoints = where villagers stand to read it (facing the board)."
+  },
+  "welcome_mat": {
+   "atlas": "civ_props",
+   "frame": "welcome_mat",
+   "anchor": [
+    0.48864,
+    0.48214
+   ],
+   "frameSize": [
+    88,
+    56
+   ],
+   "kind": "decal",
+   "footprint": [
+    68,
+    34
+   ],
+   "footprintM": [
+    0.9,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -34,
+     -3
+    ],
+    [
+     7,
+     17
+    ],
+    [
+     34,
+     3
+    ],
+    [
+     -7,
+     -17
+    ]
+   ],
+   "topPx": 18,
+   "front": "-Y",
+   "name": {
+    "ko": "환영 매트",
+    "en": "Welcome mat"
+   },
+   "zone": "moving",
+   "notes": "Welcome mat (ground decal, 0.9 x 0.6 m, long side along world X = screen down-right): coir mat with a red border and a pink heart; put it at a doorPoint when a new family moves in. Ground layer."
+  },
+  "furniture_pile_l": {
+   "atlas": "civ_moving",
+   "frame": "furniture_pile_l",
+   "anchor": [
+    0.42982,
+    0.62946
+   ],
+   "frameSize": [
+    228,
+    224
+   ],
+   "kind": "decor",
+   "footprint": [
+    195,
+    97
+   ],
+   "footprintM": [
+    2.6,
+    1.7
+   ],
+   "footprintPoly": [
+    [
+     -97,
+     -10
+    ],
+    [
+     20,
+     49
+    ],
+    [
+     97,
+     10
+    ],
+    [
+     -20,
+     -49
+    ]
+   ],
+   "topPx": 121,
+   "front": "-Y",
+   "name": {
+    "ko": "가구 더미 (대)",
+    "en": "Furniture pile L"
+   },
+   "zone": "moving",
+   "notes": "Big furniture pile on the snow: a teal sofa with a yellow pillow, an armchair, a fringed floor lamp, a stack of boxes, a potted plant, a framed painting leaning on the sofa and a rolled-up rug. furniture_pile = alias of this."
+  },
+  "furniture_pile_s": {
+   "atlas": "civ_moving",
+   "frame": "furniture_pile_s",
+   "anchor": [
+    0.39732,
+    0.60366
+   ],
+   "frameSize": [
+    224,
+    164
+   ],
+   "kind": "decor",
+   "footprint": [
+    127,
+    63
+   ],
+   "footprintM": [
+    1.6,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -63,
+     -5
+    ],
+    [
+     9,
+     32
+    ],
+    [
+     63,
+     5
+    ],
+    [
+     -9,
+     -32
+    ]
+   ],
+   "topPx": 79,
+   "front": "-Y",
+   "name": {
+    "ko": "가구 더미 (소)",
+    "en": "Furniture pile S"
+   },
+   "zone": "moving",
+   "notes": "Small furniture pile on the snow (move-in / move-out): a mustard armchair, a pink fringed floor lamp, two boxes and a rolled-up rug."
+  },
+  "moving_boxes_stack": {
+   "atlas": "civ_moving",
+   "frame": "moving_boxes_stack",
+   "anchor": [
+    0.43452,
+    0.57639
+   ],
+   "frameSize": [
+    168,
+    144
+   ],
+   "kind": "decor",
+   "footprint": [
+    95,
+    48
+   ],
+   "footprintM": [
+    1.2,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -48,
+     -3
+    ],
+    [
+     7,
+     24
+    ],
+    [
+     48,
+     3
+    ],
+    [
+     -7,
+     -24
+    ]
+   ],
+   "topPx": 63,
+   "front": "-Y",
+   "name": {
+    "ko": "이삿짐 상자 더미",
+    "en": "Moving boxes stack"
+   },
+   "zone": "moving",
+   "dropPoint": [
+    9,
+    29
+   ],
+   "notes": "Moving boxes: a wobbly stack of taped kraft boxes with \"this side up\" arrows, one open with a lamp and a teddy peeking out, a little snow on top. Drop it by a door during a move-in / move-out (movers carry_box between the truck and here). dropPoint = where the next carried box lands."
+  },
+  "demolition_fence_post": {
+   "atlas": "civ_demo",
+   "frame": "demolition_fence_post",
+   "anchor": [
+    0.27679,
+    0.62143
+   ],
+   "frameSize": [
+    112,
+    140
+   ],
+   "kind": "decor",
+   "footprint": [
+    19,
+    10
+   ],
+   "footprintM": {
+    "radius": 0.15
+   },
+   "topPx": 67,
+   "front": "-Y",
+   "name": {
+    "ko": "철거 가림막 기둥",
+    "en": "Demolition fence post"
+   },
+   "zone": "demolition",
+   "notes": "Single demolition fence post (closes a chain of fence tiles / the last corner of a ring)."
+  },
+  "demolition_fence_x": {
+   "atlas": "civ_demo",
+   "frame": "demolition_fence_x",
+   "anchor": [
+    0.38415,
+    0.62195
+   ],
+   "frameSize": [
+    164,
+    164
+   ],
+   "kind": "decor",
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    0.3
+   ],
+   "topPx": 82,
+   "front": "-Y",
+   "name": {
+    "ko": "철거 가림막 (x)",
+    "en": "Demolition fence x"
+   },
+   "zone": "demolition",
+   "tileAxis": "x",
+   "segM": 1.4142,
+   "stepPx": [
+    64,
+    32
+   ],
+   "postEnd": "-x",
+   "tileLayer": "objects",
+   "notes": "Demolition fence tile along world X (one grid cell = sqrt(2) m, step (64, 32) px): white posts on little concrete feet with orange caps, an orange-and-white striped board on top and a yellow-and-black hazard board below, a bit of snow. The tile owns the post at its -X end; chain tiles at stepPx and close a chain with demolition_fence_post. Shadows join seamlessly (partition-of-unity cut like the rails). _lamp variant = same tile with an amber warning lamp clamped on the board (anims.blink 2 f). fenceRings (manifest top level) lists ready-made rings around S / M / L plots."
+  },
+  "demolition_fence_x_lamp": {
+   "atlas": "civ_demo",
+   "frame": "demolition_fence_x_lamp",
+   "anchor": [
+    0.38415,
+    0.62195
+   ],
+   "frameSize": [
+    164,
+    164
+   ],
+   "kind": "decor",
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    0.3
+   ],
+   "topPx": 82,
+   "front": "-Y",
+   "name": {
+    "ko": "철거 가림막 경고등 (x)",
+    "en": "Demolition fence x with lamp"
+   },
+   "zone": "demolition",
+   "fxPoints": {
+    "lamp": [
+     -2,
+     -57
+    ]
+   },
+   "anims": {
+    "work": {
+     "frames": [
+      "demolition_fence_x_lamp_work_0",
+      "demolition_fence_x_lamp_work_1"
+     ],
+     "fps": 3,
+     "repeat": -1
+    },
+    "blink": {
+     "frames": [
+      "demolition_fence_x_lamp_work_0",
+      "demolition_fence_x_lamp_work_1"
+     ],
+     "fps": 3,
+     "repeat": -1
+    }
+   },
+   "tileAxis": "x",
+   "segM": 1.4142,
+   "stepPx": [
+    64,
+    32
+   ],
+   "postEnd": "-x",
+   "tileLayer": "objects",
+   "notes": "Demolition fence tile along world X (one grid cell = sqrt(2) m, step (64, 32) px): white posts on little concrete feet with orange caps, an orange-and-white striped board on top and a yellow-and-black hazard board below, a bit of snow. The tile owns the post at its -X end; chain tiles at stepPx and close a chain with demolition_fence_post. Shadows join seamlessly (partition-of-unity cut like the rails). _lamp variant = same tile with an amber warning lamp clamped on the board (anims.blink 2 f). fenceRings (manifest top level) lists ready-made rings around S / M / L plots."
+  },
+  "demolition_fence_y": {
+   "atlas": "civ_demo",
+   "frame": "demolition_fence_y",
+   "anchor": [
+    0.375,
+    0.5625
+   ],
+   "frameSize": [
+    168,
+    160
+   ],
+   "kind": "decor",
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    0.3,
+    1.4142135623730951
+   ],
+   "topPx": 69,
+   "front": "-Y",
+   "name": {
+    "ko": "철거 가림막 (y)",
+    "en": "Demolition fence y"
+   },
+   "zone": "demolition",
+   "tileAxis": "y",
+   "segM": 1.4142,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "postEnd": "-y",
+   "tileLayer": "objects",
+   "notes": "Demolition fence tile along world Y (one grid cell = sqrt(2) m, step (64, -32) px): white posts on little concrete feet with orange caps, an orange-and-white striped board on top and a yellow-and-black hazard board below, a bit of snow. The tile owns the post at its -Y end; chain tiles at stepPx and close a chain with demolition_fence_post. Shadows join seamlessly (partition-of-unity cut like the rails). _lamp variant = same tile with an amber warning lamp clamped on the board (anims.blink 2 f). fenceRings (manifest top level) lists ready-made rings around S / M / L plots."
+  },
+  "demolition_fence_y_lamp": {
+   "atlas": "civ_demo",
+   "frame": "demolition_fence_y_lamp",
+   "anchor": [
+    0.375,
+    0.5625
+   ],
+   "frameSize": [
+    168,
+    160
+   ],
+   "kind": "decor",
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    0.3,
+    1.4142135623730951
+   ],
+   "topPx": 69,
+   "front": "-Y",
+   "name": {
+    "ko": "철거 가림막 경고등 (y)",
+    "en": "Demolition fence y with lamp"
+   },
+   "zone": "demolition",
+   "fxPoints": {
+    "lamp": [
+     2,
+     -57
+    ]
+   },
+   "anims": {
+    "work": {
+     "frames": [
+      "demolition_fence_y_lamp_work_0",
+      "demolition_fence_y_lamp_work_1"
+     ],
+     "fps": 3,
+     "repeat": -1
+    },
+    "blink": {
+     "frames": [
+      "demolition_fence_y_lamp_work_0",
+      "demolition_fence_y_lamp_work_1"
+     ],
+     "fps": 3,
+     "repeat": -1
+    }
+   },
+   "tileAxis": "y",
+   "segM": 1.4142,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "postEnd": "-y",
+   "tileLayer": "objects",
+   "notes": "Demolition fence tile along world Y (one grid cell = sqrt(2) m, step (64, -32) px): white posts on little concrete feet with orange caps, an orange-and-white striped board on top and a yellow-and-black hazard board below, a bit of snow. The tile owns the post at its -Y end; chain tiles at stepPx and close a chain with demolition_fence_post. Shadows join seamlessly (partition-of-unity cut like the rails). _lamp variant = same tile with an amber warning lamp clamped on the board (anims.blink 2 f). fenceRings (manifest top level) lists ready-made rings around S / M / L plots."
+  },
+  "furniture_pile": {
+   "atlas": "civ_moving",
+   "frame": "furniture_pile_l",
+   "anchor": [
+    0.42982,
+    0.62946
+   ],
+   "frameSize": [
+    228,
+    224
+   ],
+   "kind": "decor",
+   "footprint": [
+    195,
+    97
+   ],
+   "footprintM": [
+    2.6,
+    1.7
+   ],
+   "footprintPoly": [
+    [
+     -97,
+     -10
+    ],
+    [
+     20,
+     49
+    ],
+    [
+     97,
+     10
+    ],
+    [
+     -20,
+     -49
+    ]
+   ],
+   "topPx": 121,
+   "front": "-Y",
+   "name": {
+    "ko": "가구 더미 (대)",
+    "en": "Furniture pile L"
+   },
+   "zone": "moving",
+   "notes": "Big furniture pile on the snow: a teal sofa with a yellow pillow, an armchair, a fringed floor lamp, a stack of boxes, a potted plant, a framed painting leaning on the sofa and a rolled-up rug. furniture_pile = alias of this.",
+   "aliasOf": "furniture_pile_l"
+  },
+  "scorch_decal_s": {
+   "atlas": "civ_decals",
+   "frame": "scorch_decal_s",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "frameSize": [
+    260,
+    130
+   ],
+   "kind": "decal",
+   "footprint": [
+    218,
+    109
+   ],
+   "radiusM": 1.7,
+   "plotM": [
+    2.0,
+    2.0
+   ],
+   "layer": "ground",
+   "zone": "ruins",
+   "name": {
+    "ko": "그을음 자국 (S)",
+    "en": "Scorch decal S"
+   },
+   "notes": "Soot-stained snow of a burnt S plot (procedural): soft charcoal smudge, wet melted ring, ash flecks. Ground layer under ruin_s / rubble / the site; fade it out slowly after the rebuild."
+  },
+  "scorch_decal_m": {
+   "atlas": "civ_decals",
+   "frame": "scorch_decal_m",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "frameSize": [
+    364,
+    182
+   ],
+   "kind": "decal",
+   "footprint": [
+    307,
+    154
+   ],
+   "radiusM": 2.4,
+   "plotM": [
+    3.0,
+    3.0
+   ],
+   "layer": "ground",
+   "zone": "ruins",
+   "name": {
+    "ko": "그을음 자국 (M)",
+    "en": "Scorch decal M"
+   },
+   "notes": "Soot-stained snow of a burnt M plot (procedural): soft charcoal smudge, wet melted ring, ash flecks. Ground layer under ruin_m / rubble / the site; fade it out slowly after the rebuild."
+  },
+  "scorch_decal_l": {
+   "atlas": "civ_decals",
+   "frame": "scorch_decal_l",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "frameSize": [
+    472,
+    236
+   ],
+   "kind": "decal",
+   "footprint": [
+    397,
+    198
+   ],
+   "radiusM": 3.1,
+   "plotM": [
+    4.0,
+    4.0
+   ],
+   "layer": "ground",
+   "zone": "ruins",
+   "name": {
+    "ko": "그을음 자국 (L)",
+    "en": "Scorch decal L"
+   },
+   "notes": "Soot-stained snow of a burnt L plot (procedural): soft charcoal smudge, wet melted ring, ash flecks. Ground layer under ruin_l / rubble / the site; fade it out slowly after the rebuild."
+  }
+ },
+ "characters": {
+  "excavator": {
+   "atlas": "civ_excavator",
+   "frameSize": [
+    332,
+    288
+   ],
+   "anchor": [
+    0.43675,
+    0.74306
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 4,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "dig": {
+     "frames": 8,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      -1,
+      0
+     ],
+     "beacons": true,
+     "steam": true,
+     "digFrame": 2,
+     "dumpFrame": 5
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "excavator",
+   "variant": null,
+   "lengthM": 2.9,
+   "widthM": 1.75,
+   "heightM": 2.3,
+   "topPx": 210,
+   "headTop": -210,
+   "shadow": {
+    "SE": [
+     144,
+     74,
+     26.57
+    ],
+    "NE": [
+     144,
+     74,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      26,
+      53
+     ],
+     [
+      105,
+      13
+     ],
+     [
+      -26,
+      -53
+     ],
+     [
+      -105,
+      -13
+     ]
+    ],
+    "NE": [
+     [
+      105,
+      -13
+     ],
+     [
+      26,
+      -53
+     ],
+     [
+      -105,
+      13
+     ],
+     [
+      -26,
+      53
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.221,
+    "turnsPerLoopDeg": 60.0
+   },
+   "notes": "Toy excavator (tracked, 2.9 m long + arm): sunny yellow house with black-and-yellow hazard stripes on the counterweight, a round-cornered cab with big windows and a friendly operator in a yellow hard hat, an amber beacon, a jointed boom + stick + steel bucket with teeth. idle = engine shake; move = tracks run (sprockets + cleats) and the beacon blinks; dig = 8-frame loop: reach out (1), bucket bites the ground (2 = digFrame: dust FX at bucketPoints), curls up a load of rubble (3), swings 90 deg to its right side (4-5) and dumps it (5 = dumpFrame: drop FX at bucketPoints / dumpPoint), swings back (6-7). Park a dump_truck so that its cargoPoint is under dumpPoint (the truck stands beside the excavator, same heading, on the excavator's right = the camera side).",
+   "exhaustPoint": {
+    "SE": [
+     -23,
+     -136
+    ],
+    "NE": [
+     -68,
+     -91
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      32,
+      -112
+     ]
+    ],
+    "NE": [
+     [
+      54,
+      -155
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     5,
+     -145
+    ],
+    "NE": [
+     9,
+     -152
+    ]
+   },
+   "seats": {
+    "SE": [],
+    "NE": []
+   },
+   "driverSeat": null,
+   "crew": {
+    "driver": "operator (yellow hard hat, hi-vis vest)",
+    "seat": "cab, baked"
+   },
+   "dumpPoint": {
+    "SE": [
+     -119,
+     75
+    ],
+    "NE": [
+     151,
+     59
+    ]
+   },
+   "digPoint": {
+    "SE": [
+     145,
+     55
+    ],
+    "NE": [
+     109,
+     -73
+    ]
+   },
+   "framePoints": {
+    "bucketPoints": {
+     "idle": {
+      "SE": [
+       [
+        104,
+        -1
+       ],
+       [
+        104,
+        -2
+       ]
+      ],
+      "NE": [
+       [
+        68,
+        -87
+       ],
+       [
+        68,
+        -88
+       ]
+      ]
+     },
+     "move": {
+      "SE": [
+       [
+        104,
+        -1
+       ],
+       [
+        104,
+        -1
+       ],
+       [
+        104,
+        -2
+       ],
+       [
+        104,
+        -1
+       ]
+      ],
+      "NE": [
+       [
+        68,
+        -87
+       ],
+       [
+        68,
+        -87
+       ],
+       [
+        68,
+        -88
+       ],
+       [
+        68,
+        -87
+       ]
+      ]
+     },
+     "dig": {
+      "SE": [
+       [
+        104,
+        -1
+       ],
+       [
+        169,
+        26
+       ],
+       [
+        145,
+        55
+       ],
+       [
+        114,
+        18
+       ],
+       [
+        23,
+        24
+       ],
+       [
+        -119,
+        -33
+       ],
+       [
+        23,
+        33
+       ],
+       [
+        94,
+        13
+       ]
+      ],
+      "NE": [
+       [
+        68,
+        -87
+       ],
+       [
+        133,
+        -126
+       ],
+       [
+        109,
+        -72
+       ],
+       [
+        78,
+        -78
+       ],
+       [
+        134,
+        -55
+       ],
+       [
+        151,
+        -49
+       ],
+       [
+        168,
+        -63
+       ],
+       [
+        99,
+        -84
+       ]
+      ]
+     }
+    }
+   },
+   "bucketPoint": {
+    "idle": {
+     "SE": [
+      [
+       104,
+       -1
+      ],
+      [
+       104,
+       -2
+      ]
+     ],
+     "NE": [
+      [
+       68,
+       -87
+      ],
+      [
+       68,
+       -88
+      ]
+     ]
+    },
+    "move": {
+     "SE": [
+      [
+       104,
+       -1
+      ],
+      [
+       104,
+       -1
+      ],
+      [
+       104,
+       -2
+      ],
+      [
+       104,
+       -1
+      ]
+     ],
+     "NE": [
+      [
+       68,
+       -87
+      ],
+      [
+       68,
+       -87
+      ],
+      [
+       68,
+       -88
+      ],
+      [
+       68,
+       -87
+      ]
+     ]
+    },
+    "dig": {
+     "SE": [
+      [
+       104,
+       -1
+      ],
+      [
+       169,
+       26
+      ],
+      [
+       145,
+       55
+      ],
+      [
+       114,
+       18
+      ],
+      [
+       23,
+       24
+      ],
+      [
+       -119,
+       -33
+      ],
+      [
+       23,
+       33
+      ],
+      [
+       94,
+       13
+      ]
+     ],
+     "NE": [
+      [
+       68,
+       -87
+      ],
+      [
+       133,
+       -126
+      ],
+      [
+       109,
+       -72
+      ],
+      [
+       78,
+       -78
+      ],
+      [
+       134,
+       -55
+      ],
+      [
+       151,
+       -49
+      ],
+      [
+       168,
+       -63
+      ],
+      [
+       99,
+       -84
+      ]
+     ]
+    }
+   },
+   "name": {
+    "ko": "굴착기",
+    "en": "Excavator"
+   },
+   "zone": "demolition"
+  },
+  "dump_truck": {
+   "atlas": "civ_dump_truck",
+   "frameSize": [
+    348,
+    376
+   ],
+   "anchor": [
+    0.53448,
+    0.80053
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 4,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    },
+    "idle_loaded": {
+     "frames": 2,
+     "fps": 4,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move_loaded": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    },
+    "tip": {
+     "frames": 6,
+     "fps": 6,
+     "repeat": 0,
+     "bobPx": [
+      0,
+      0,
+      -1,
+      -1,
+      0,
+      0
+     ],
+     "steam": true,
+     "tipFrame": 2
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "dump_truck",
+   "variant": null,
+   "lengthM": 5.2,
+   "widthM": 2.1,
+   "heightM": 2.6,
+   "topPx": 297,
+   "headTop": -297,
+   "shadow": {
+    "SE": [
+     258,
+     89,
+     26.57
+    ],
+    "NE": [
+     258,
+     89,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      70,
+      83
+     ],
+     [
+      165,
+      35
+     ],
+     [
+      -70,
+      -83
+     ],
+     [
+      -165,
+      -35
+     ]
+    ],
+    "NE": [
+     [
+      165,
+      -35
+     ],
+     [
+      70,
+      -83
+     ],
+     [
+      -165,
+      35
+     ],
+     [
+      -70,
+      83
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.5,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Toy dump truck (5.2 m): chunky orange cab-over cab with big round lamps and a friendly operator in a yellow hard hat, dark chassis, six fat wheels, a sunny-yellow ribbed tipping bed with a hinged tailgate. idle / move = empty; idle_loaded / move_loaded = the bed heaped with charred beams, bricks and ash (after the excavator dumped into it, cargoPoint = bed centre); tip = 6 frames, play once: the bed rises, the tailgate swings, the load slides out behind the truck (tipFrame 2-3: dust FX at tipPoint) and the empty bed settles back down (ends = idle).",
+   "cargoPoint": {
+    "SE": [
+     -34,
+     -86,
+     false
+    ],
+    "NE": [
+     -34,
+     -52,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      2,
+      62
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      -1
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     67,
+     -123
+    ],
+    "NE": [
+     -1,
+     -155
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      73,
+      15
+     ],
+     [
+      141,
+      -19
+     ]
+    ],
+    "NE": [
+     [
+      141,
+      -92
+     ],
+     [
+      73,
+      -126
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -141,
+      -62
+     ],
+     [
+      -69,
+      -98
+     ]
+    ],
+    "NE": [
+     [
+      -69,
+      43
+     ],
+     [
+      -141,
+      7
+     ]
+    ]
+   },
+   "seats": {
+    "SE": [],
+    "NE": []
+   },
+   "driverSeat": null,
+   "crew": {
+    "driver": "operator (yellow hard hat, hi-vis vest)",
+    "seat": "cab, baked"
+   },
+   "cargoGround": {
+    "SE": [
+     -34,
+     -17
+    ],
+    "NE": [
+     -34,
+     17
+    ]
+   },
+   "tipPoint": {
+    "SE": [
+     -136,
+     -68
+    ],
+    "NE": [
+     -136,
+     68
+    ]
+   },
+   "framePoints": {
+    "bedPoints": {
+     "idle": {
+      "SE": [
+       [
+        -34,
+        -125
+       ],
+       [
+        -34,
+        -126
+       ]
+      ],
+      "NE": [
+       [
+        -34,
+        -91
+       ],
+       [
+        -34,
+        -92
+       ]
+      ]
+     },
+     "move": {
+      "SE": [
+       [
+        -34,
+        -125
+       ],
+       [
+        -34,
+        -126
+       ],
+       [
+        -34,
+        -126
+       ],
+       [
+        -34,
+        -125
+       ]
+      ],
+      "NE": [
+       [
+        -34,
+        -91
+       ],
+       [
+        -34,
+        -92
+       ],
+       [
+        -34,
+        -92
+       ],
+       [
+        -34,
+        -91
+       ]
+      ]
+     },
+     "idle_loaded": {
+      "SE": [
+       [
+        -34,
+        -125
+       ],
+       [
+        -34,
+        -126
+       ]
+      ],
+      "NE": [
+       [
+        -34,
+        -91
+       ],
+       [
+        -34,
+        -92
+       ]
+      ]
+     },
+     "move_loaded": {
+      "SE": [
+       [
+        -34,
+        -125
+       ],
+       [
+        -34,
+        -126
+       ],
+       [
+        -34,
+        -126
+       ],
+       [
+        -34,
+        -125
+       ]
+      ],
+      "NE": [
+       [
+        -34,
+        -91
+       ],
+       [
+        -34,
+        -92
+       ],
+       [
+        -34,
+        -92
+       ],
+       [
+        -34,
+        -91
+       ]
+      ]
+     },
+     "tip": {
+      "SE": [
+       [
+        -34,
+        -125
+       ],
+       [
+        -54,
+        -160
+       ],
+       [
+        -82,
+        -190
+       ],
+       [
+        -95,
+        -198
+       ],
+       [
+        -63,
+        -171
+       ],
+       [
+        -34,
+        -125
+       ]
+      ],
+      "NE": [
+       [
+        -34,
+        -91
+       ],
+       [
+        -54,
+        -106
+       ],
+       [
+        -82,
+        -107
+       ],
+       [
+        -95,
+        -103
+       ],
+       [
+        -63,
+        -108
+       ],
+       [
+        -34,
+        -91
+       ]
+      ]
+     }
+    },
+    "tipPoints": {
+     "idle": {
+      "SE": [
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -67
+       ]
+      ],
+      "NE": [
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        65
+       ]
+      ]
+     },
+     "move": {
+      "SE": [
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -66
+       ]
+      ],
+      "NE": [
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        66
+       ]
+      ]
+     },
+     "idle_loaded": {
+      "SE": [
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -67
+       ]
+      ],
+      "NE": [
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        65
+       ]
+      ]
+     },
+     "move_loaded": {
+      "SE": [
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -66
+       ]
+      ],
+      "NE": [
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        66
+       ]
+      ]
+     },
+     "tip": {
+      "SE": [
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -67
+       ],
+       [
+        -131,
+        -66
+       ],
+       [
+        -131,
+        -66
+       ]
+      ],
+      "NE": [
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        65
+       ],
+       [
+        -131,
+        66
+       ],
+       [
+        -131,
+        66
+       ]
+      ]
+     }
+    }
+   },
+   "bedPoint": {
+    "idle": {
+     "SE": [
+      [
+       -34,
+       -125
+      ],
+      [
+       -34,
+       -126
+      ]
+     ],
+     "NE": [
+      [
+       -34,
+       -91
+      ],
+      [
+       -34,
+       -92
+      ]
+     ]
+    },
+    "move": {
+     "SE": [
+      [
+       -34,
+       -125
+      ],
+      [
+       -34,
+       -126
+      ],
+      [
+       -34,
+       -126
+      ],
+      [
+       -34,
+       -125
+      ]
+     ],
+     "NE": [
+      [
+       -34,
+       -91
+      ],
+      [
+       -34,
+       -92
+      ],
+      [
+       -34,
+       -92
+      ],
+      [
+       -34,
+       -91
+      ]
+     ]
+    },
+    "idle_loaded": {
+     "SE": [
+      [
+       -34,
+       -125
+      ],
+      [
+       -34,
+       -126
+      ]
+     ],
+     "NE": [
+      [
+       -34,
+       -91
+      ],
+      [
+       -34,
+       -92
+      ]
+     ]
+    },
+    "move_loaded": {
+     "SE": [
+      [
+       -34,
+       -125
+      ],
+      [
+       -34,
+       -126
+      ],
+      [
+       -34,
+       -126
+      ],
+      [
+       -34,
+       -125
+      ]
+     ],
+     "NE": [
+      [
+       -34,
+       -91
+      ],
+      [
+       -34,
+       -92
+      ],
+      [
+       -34,
+       -92
+      ],
+      [
+       -34,
+       -91
+      ]
+     ]
+    },
+    "tip": {
+     "SE": [
+      [
+       -34,
+       -125
+      ],
+      [
+       -54,
+       -160
+      ],
+      [
+       -82,
+       -190
+      ],
+      [
+       -95,
+       -198
+      ],
+      [
+       -63,
+       -171
+      ],
+      [
+       -34,
+       -125
+      ]
+     ],
+     "NE": [
+      [
+       -34,
+       -91
+      ],
+      [
+       -54,
+       -106
+      ],
+      [
+       -82,
+       -107
+      ],
+      [
+       -95,
+       -103
+      ],
+      [
+       -63,
+       -108
+      ],
+      [
+       -34,
+       -91
+      ]
+     ]
+    }
+   },
+   "name": {
+    "ko": "덤프트럭",
+    "en": "Dump truck"
+   },
+   "zone": "demolition"
+  }
+ },
+ "fenceRings": {
+  "S": {
+   "sideM": 2.828,
+   "tilesPerSide": 2,
+   "pieces": [
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      32,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -96,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      32,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -96,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x_lamp",
+     "at": [
+      96,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -32,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y_lamp",
+     "at": [
+      96,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -32,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_post",
+     "at": [
+      128,
+      0
+     ]
+    }
+   ],
+   "gate": "leave out one front demolition_fence_x piece for a walk-in gap"
+  },
+  "M": {
+   "sideM": 4.243,
+   "tilesPerSide": 3,
+   "pieces": [
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      32,
+      -80
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -160,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      32,
+      80
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -160,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x_lamp",
+     "at": [
+      96,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -96,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y_lamp",
+     "at": [
+      96,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -96,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      160,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -32,
+      -80
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      160,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -32,
+      80
+     ]
+    },
+    {
+     "key": "demolition_fence_post",
+     "at": [
+      192,
+      0
+     ]
+    }
+   ],
+   "gate": "leave out one front demolition_fence_x piece for a walk-in gap"
+  },
+  "L": {
+   "sideM": 5.657,
+   "tilesPerSide": 4,
+   "pieces": [
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      32,
+      -112
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -224,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      32,
+      112
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -224,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      96,
+      -80
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -160,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      96,
+      80
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -160,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_x_lamp",
+     "at": [
+      160,
+      -48
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -96,
+      -80
+     ]
+    },
+    {
+     "key": "demolition_fence_y_lamp",
+     "at": [
+      160,
+      48
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -96,
+      80
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      224,
+      -16
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      -32,
+      -112
+     ]
+    },
+    {
+     "key": "demolition_fence_y",
+     "at": [
+      224,
+      16
+     ]
+    },
+    {
+     "key": "demolition_fence_x",
+     "at": [
+      -32,
+      112
+     ]
+    },
+    {
+     "key": "demolition_fence_post",
+     "at": [
+      256,
+      0
+     ]
+    }
+   ],
+   "gate": "leave out one front demolition_fence_x piece for a walk-in gap"
+  }
+ },
+ "demolitionLayout": {
+  "S": {
+   "excavator": {
+    "at": [
+     -139,
+     -78
+    ],
+    "dir": "SE",
+    "anim": "dig",
+    "worldM": [
+     -3.26,
+     0.2
+    ],
+    "notes": "outside the fence on the plot's -X side (screen up-left), arm over the fence"
+   },
+   "dump_truck": {
+    "at": [
+     -224,
+     14
+    ],
+    "dir": "SE",
+    "worldM": [
+     -2.17,
+     -2.78
+    ],
+    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
+    "notes": "beside the excavator (its right side), bed under the bucket at dumpFrame"
+   }
+  },
+  "M": {
+   "excavator": {
+    "at": [
+     -198,
+     -81
+    ],
+    "dir": "SE",
+    "anim": "dig",
+    "worldM": [
+     -3.97,
+     -0.4
+    ],
+    "notes": "outside the fence on the plot's -X side (screen up-left), arm over the fence"
+   },
+   "dump_truck": {
+    "at": [
+     -283,
+     11
+    ],
+    "dir": "SE",
+    "worldM": [
+     -2.88,
+     -3.37
+    ],
+    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
+    "notes": "beside the excavator (its right side), bed under the bucket at dumpFrame"
+   }
+  },
+  "L": {
+   "excavator": {
+    "at": [
+     -262,
+     -81
+    ],
+    "dir": "SE",
+    "anim": "dig",
+    "worldM": [
+     -4.68,
+     -1.1
+    ],
+    "notes": "outside the fence on the plot's -X side (screen up-left), arm over the fence"
+   },
+   "dump_truck": {
+    "at": [
+     -347,
+     11
+    ],
+    "dir": "SE",
+    "worldM": [
+     -3.59,
+     -4.08
+    ],
+    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
+    "notes": "beside the excavator (its right side), bed under the bucket at dumpFrame"
+   }
+  }
+ },
+ "fireSequence": [
+  {
+   "step": "burning",
+   "draw": "the building + fx_city fx_fire_bld_<s|m|l> / fx_smoke_column (fx_city fragment)"
+  },
+  {
+   "step": "ruin",
+   "draw": "scorch_decal_<size> (ground) + ruin_<size> (or ruin_house_town for town houses) + ruin_<size>_smoke overlay while it smoulders; insurance_sign nearby"
+  },
+  {
+   "step": "demolition",
+   "draw": "fenceRings[size] + excavator (dig) + dump_truck at demolitionLayout[size]; ruin -> rubble_pile_<size> when the excavator has knocked it down"
+  },
+  {
+   "step": "clearing",
+   "draw": "rubble_pile_<size> -> rubble_pile_<size>_half -> nothing (dump truck leaves move_loaded); scorch decal stays"
+  },
+  {
+   "step": "rebuild",
+   "draw": "assets/buildings site_plot_<S|M|L> -> site_foundation -> site_scaffold (same anchor); remove the fence; fade the scorch decal"
+  },
+  {
+   "step": "done",
+   "draw": "the new building (same anchor)"
+  }
+ ]
+}

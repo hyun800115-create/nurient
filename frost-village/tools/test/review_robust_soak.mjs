@@ -9,7 +9,7 @@ import { newPage, bootToGame, launch, start, sleep, writeJSON, OUT } from './rev
 const secs = Number(process.argv[2] || 720);
 const NORENDER = process.argv.includes('--norender');   // hide cameras: many more frames per wall second (logic soak)
 const DOG = process.argv.includes('--dog');
-const TAG = (NORENDER ? 'soak_norender' : 'soak') + (process.argv.includes('--v3') ? '_v3' : '') + (DOG ? '_dog' : '');
+const TAG = (NORENDER ? 'soak_norender' : 'soak') + (process.argv.includes('--v4') ? '_v4' : process.argv.includes('--v3') ? '_v3' : '') + (DOG ? '_dog' : '');
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
 const { page, log } = await newPage(browser, { viewport: { width: 390, height: 844 }, dpr: 1 });
@@ -20,7 +20,7 @@ await cdp.send('HeapProfiler.enable');
 await bootToGame(page, srv.url + 'index.html');
 await page.evaluate(() => { window.__FV.give(200); window.__FV.unlockAll(); window.__FV.teleport(900, 1300); });
 // (v3) --v3: the whole v3 village too (three new lands, every building, both boats, the store clerk)
-if (process.argv.includes('--v3')) {
+if (process.argv.includes('--v3') || process.argv.includes('--v4')) {
   await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3(); });
   await sleep(1500);
   await page.evaluate(() => { const F = window.__FV, pr = F.scene.progress; for (const id of ['boat_rowboat', 'hire2_lumberjack', 'porter_toolsmith', 'porter_dock', 'porter_cannery', 'boat_fishing']) if (pr.pads[id]) F.completeStep(id); F.give(200); });
@@ -29,6 +29,24 @@ if (process.argv.includes('--v3')) {
   await sleep(1500);
   // (v3.5) third workers + any operator / porter step still open
   await page.evaluate(() => { const F = window.__FV; for (const id of ['hire3_fisherman', 'hire3_lumberjack', 'hire3_farmer', 'hire3_hunter', 'op_toolsmith', 'op_cannery', 'porter_toolsmith', 'porter_cannery', 'porter_dock', 'hire_clerk_store']) F.doneStep(id); F.teleport(900, 1300); });
+}
+// (v4) --v4 (implies --v3): the station repaired, the first train, the town open, all five shops, three
+// carpenter houses and the rank 읍 ceremony; then the soak runs with trains, visitors, town dolls and rent
+const V4 = process.argv.includes('--v4');
+if (V4) {
+  const W = (fn, ms) => page.waitForFunction(fn, null, { timeout: ms, polling: 500 }).catch(() => null);
+  await W(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready, 120000);
+  await page.evaluate(() => { window.__FV.give(50000); window.__FV.v4.repair(); });
+  await W(() => window.__FV.state().v4.arrivals > 0, 240000);
+  await page.evaluate(() => window.__FV.v4.openTown());
+  await W(() => window.__FV.hasTex('town_homes'), 120000);
+  await page.evaluate(() => window.__FV.v4.foundAll());
+  for (let k = 0; k < 3; k++) { await page.evaluate(() => window.__FV.v4.house()); await sleep(1000); }
+  await W(() => Object.values(window.__FV.v4.growth().houses).every((h) => h.st === 'done'), 240000);
+  await page.evaluate(() => { window.__FV.v4.happy(Array(40).fill(1)); window.__FV.scene.v4.rank.ceremony(false); });
+  await sleep(4000);
+  await page.evaluate(() => window.__FV.teleport(900, 1300));
+  console.log('v4 setup', JSON.stringify(await page.evaluate(() => ({ rank: window.__FV.v4.rank().level, shops: Object.keys(window.__FV.v4.growth().shops).length, arrivals: window.__FV.state().v4.arrivals }))));
 }
 if (DOG) {
   // every ~25 s the chief stops (bot paused), whistles for the dog and plays one round (treat / ball / pet)
@@ -147,6 +165,7 @@ while (Date.now() - t0 < secs * 1000) {
       ops: Object.entries(st.ops || {}).map(([k, v]) => k[0] + k[1] + (v.working ? '+' : '-')).join(' '),
       piles: Object.entries(st.piles || {}).map(([k, v]) => k + v.n).join(' '),
       raw: (st.rawPorters || []).map((r) => r.station[0] + r.state[0] + r.carry).join(' '),
+      v4: gs.v4 && gs.v4.ready ? (() => { const v = window.__FV.v4.state(), tx = window.__FV.texStats ? window.__FV.texStats() : null; return { rank: window.__FV.v4.rank().level, train: v.train && v.train.phase, visitors: v.visitors.length, arrivals: st.v4 && st.v4.arrivals, dolls: gs.v4.town && gs.v4.town.stats ? gs.v4.town.stats.live : -1, citizens: gs.v4.town ? gs.v4.town.citizens.length : 0, till: window.__FV.v4.growth().till, texMiB: tx && tx.totalMiB }; })() : null,
       dog: st.dog ? { mode: st.dog.mode, love: st.dog.love, gifts: st.dog.gifts, tricks: st.dog.tricks, rounds: window.__RV_DOG ? window.__RV_DOG.rounds : 0, started: window.__RV_DOG ? window.__RV_DOG.started : 0 } : null,
     };
     R.playsByKey = {};
@@ -168,7 +187,7 @@ while (Date.now() - t0 < secs * 1000) {
     ...Object.fromEntries(Object.entries(inPage).filter(([k]) => !['upd', 'ren', 'gsUpd', 'frames', 'gameTime'].includes(k))),
   };
   samples.push(s);
-  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, life: s.life, porters: s.porters, ops: s.ops, piles: s.piles, raw: s.raw, dog: s.dog, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
+  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, life: s.life, porters: s.porters, ops: s.ops, piles: s.piles, raw: s.raw, dog: s.dog, v4: s.v4, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
   writeJSON(TAG + '_samples.json', { samples, errors: log.errors, warnings: log.warnings });
 }
 await page.evaluate(() => { window.__RV_BOT = false; });

@@ -11,7 +11,7 @@ Groups (custom property 'lgx' on every object):
   floor     floor slab inside + markings + dock levellers
   apron     outside ground pieces (dock apron, entrance landing, receiving pad)  -> part of the _floor layer
   interior  racks, conveyor body, packing table, office, counter, decor (static)
-  rackf     the rack FRONT parts (front uprights, front beams, beam tags) = part of _interior, repeated in the
+  rackf     the rack FRONT parts (front uprights, front beams, beam tags, top signs) = part of _interior, repeated in the
             _interior_racks overlay so the game's stock stacks sit INSIDE the racks
   front_f   the 'front furniture' subset of interior (counter, conveyor, packing table): staff stand BEHIND it,
             so it is repeated in the _interior_front overlay (= _interior pixels x this mask)
@@ -802,9 +802,9 @@ def interior_decor():
     for x in (-0.04, 0.4):
         ht.cone(0.09, 0.09, 0.06, flat(X.RUBBER, 0.6), loc=(x, 0.08, 0.09), rot=(0, 90, 0), segs=14)
     objs.append(ht.done('handtruck', loc=(-0.65, -3.5, 0), rot=(0, 0, 12)))
-    for k, (x, y) in enumerate(((CORR_X + 0.7, -0.2), (3.95, 2.95), (-0.8, 2.95))):
-        if k != 0:                      # k 1 stood inside the appliances rack (stock slot), k 2 in the lane
-            continue
+    # (earlier spots: beside the dock corridor = in front of the forklift lane, inside the appliances rack (a stock
+    # slot), in the rack lane) -> one cone next to the empty-pallet stack by the front wall, clear of every path
+    for k, (x, y) in enumerate(((0.8, -3.2),)):
         objs.append(cyl('cone%d' % k, 0.13, 0.42, (x, y, 0.03), mat=X.hazard('#F08A2D', '#F4F1EA', 6.0, 0.0,
                                                                               ('X', 'Z')),
                         r_top=0.025, segs=16, bevel=0.01))
@@ -1178,6 +1178,14 @@ def build():
     for o in bpy.context.scene.objects:
         if o.get('lgx') == 'interior' and '_rf_' in o.name:
             o['lgx'] = 'rackf'
+    # the round category signs (+ their posts) on top of the racks stand IN FRONT of the top-level stock: they are
+    # rack-front parts too (drawn over the goods piled on the top shelf)
+    for o in list(bpy.context.scene.objects):
+        base = o.name.split('.')[0]
+        if o.get('lgx') == 'interior' and base.startswith('rack_') and (base.endswith('_sign') or base.endswith('_sp')):
+            o['lgx'] = 'rackf'
+            for ch in o.children_recursive:
+                ch['lgx'] = 'rackf'
     with Group('front_f'):
         conveyor_static()
         packing_table()

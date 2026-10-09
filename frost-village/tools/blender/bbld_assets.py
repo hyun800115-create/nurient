@@ -608,7 +608,9 @@ def cafe_builder():
     B.planter_palm('cpalm', ((x1 if sgn > 0 else x0) + 0.3 * sgn, y1 + 0.1, 0.0), h=1.55, s=0.66, seed=12)
     B.pot_plant('cpot', (dxp - 0.5 * sgn, y0 - 0.3, 0.0), r=0.16, kind='flowers', seed=3)
     # markers
-    mark('staff', (wx + 0.05, y0 + 0.42, 0.0), facing=(0.1, -1, 0))
+    # the barista stands on the camera's line of sight through the window centre (camera looks along (-1, +1) in
+    # world space: for the base model that is -X, for the yaw-90 _x model +X), so the face shows in the opening
+    mark('staff', (wx - 0.37 * sgn, y0 + 0.42, 0.0), facing=(0.1, -1, 0))
     for k in range(3):
         mark('customer', (wx - 0.05 * k, y0 - 0.62 - 0.46 * k, 0.0), facing=(0, 1, 0))
     mark('door', (dxp, y0 - 0.55, 0.0), facing=(0, 1, 0))
@@ -648,7 +650,9 @@ def icecream_builder():
     wm = L.stripes('#F9C7D6', '#FFFFFF', 1.0 / 0.32, 'X', rough=0.7, soft=0.03)
     wm_y = L.stripes('#F9C7D6', '#FFFFFF', 1.0 / 0.32, 'Y', rough=0.7, soft=0.03)
     T.plinth('plinth', W, D, h=PL, col='#E3D3C2', x=BX, y=BY)
-    HX0, HX1, HZ0, HZ1 = BX - 0.85, BX + 0.55, PL + 0.82, PL + 1.72
+    # a low freezer (0.84 m) and a short, high awning: the vendor's face (~0.95 m on the chibi townsfolk) shows in
+    # the opening between them
+    HX0, HX1, HZ0, HZ1 = BX - 0.85, BX + 0.55, PL + 0.70, PL + 1.72
     wall_open('fwall', x0, x1, y0, PL, PL + WH, (HX0, HX1, HZ0, HZ1), wm)
     box('bwall', (W, 0.12, WH), (BX, y1 - 0.06, PL), mat=wm, bevel=0.02)
     for s in (-1, 1):
@@ -672,15 +676,13 @@ def icecream_builder():
             bevel=0.02)
         sphere('tubh', 0.07, (fc - 0.55 + 0.22 * k, y0 + 0.08, HZ0 + 0.0), flat(tubs[k], 0.7), scale=(1, 1, 0.55),
                segs=12, rings=6)
-    box('fglass', (HX1 - HX0, 0.3, 0.02), (fc, y0 - 0.02, HZ0 + 0.14), rot=(-20, 0, 0),
-        mat=B.glass_mat('fzg', '#E6F7FB', '#BFE6F0', strength=1.6), bevel=0.0)
     box('fcount', (HX1 - HX0 + 0.2, 0.25, 0.06), (fc, y0 - 0.12, HZ0 - 0.06), mat=flat(B.MINT, 0.5), bevel=0.02)
     for k in range(4):
         with L.Collect() as cc:
             B.em_icecream(0.22, scoops=(tubs[k], tubs[(k + 2) % 6]), cherry=False)
         L.group(BA.top_level(cc.objs), 'ccone%d' % k, loc=(fc + 0.35 + 0.0 * k, y0 - 0.15 + 0.05 * k, HZ0 + 0.06),
                 rot=(0, 0, 0)).scale = (0.5, 0.5, 0.5)
-    B.awning_at('awn', 'y-', (fc, y0, HZ1 + 0.3), HX1 - HX0 + 0.5, 0.6, 0.0, -0.3, B.MINT, B.WHITE, n=9)
+    B.awning_at('awn', 'y-', (fc, y0, HZ1 + 0.36), HX1 - HX0 + 0.5, 0.42, 0.0, -0.16, B.MINT, B.WHITE, n=9)
     # side door (visible side) + window
     sw, sc, sl = wface(side, x0, x1, y0, y1)
     T.door('door', on_face(side, sw, sc + along_sign(side) * 0.25, PL), side, w=0.62, h=1.35, col=B.MINT,
@@ -717,7 +719,9 @@ def icecream_builder():
     cyl('sspost', 0.03, 0.4, (BX + 0.95, y0 - 0.85, 0.0), mat=flat('#E9E4DA', 0.4), segs=8)
     cyl('ssfoot', 0.15, 0.05, (BX + 0.95, y0 - 0.85, 0.0), mat=flat('#E9E4DA', 0.4), segs=14)
     # markers
-    mark('staff', (fc - 0.1, y0 + 0.62, 0.0), facing=(0.1, -1, 0))
+    # the vendor stands on the camera's line of sight through the window centre (see cafe_builder)
+    sgn = 1.0 if side == 'x+' else -1.0
+    mark('staff', (fc - 0.1 - 0.55 * sgn, y0 + 0.62, 0.0), facing=(0.1, -1, 0))
     for k in range(4):
         mark('customer', (fc + 0.05 - 0.06 * k, y0 - 0.65 - 0.42 * k, 0.0), facing=(0, 1, 0))
     dp = on_face(side, sw, sc + along_sign(side) * 0.25, 0.0)

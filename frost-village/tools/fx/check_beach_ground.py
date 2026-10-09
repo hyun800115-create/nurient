@@ -4,9 +4,10 @@ check_beach_ground.py - checks the ground part of assets/beach (written by tools
 
   * ground_sand / ground_sand_wet: 512x512, listed in images[] + sprites (kind tile), seamless (wrap-around seam vs.
     interior gradient ratio <= 1.5, the test of tools/fx/check_assets.py)
-  * every kit piece / decal: frame exists in beach_ground_decals, sourceSize == frameSize, integer anchorPx inside the
-    frame, decal borders transparent (alpha <= 24; kit pieces: <= 24 on the band edges), towels have lyingPoints /
-    lyingDirs, courts have cornerPoints
+  * every kit piece (sand<->snow and dry<->wet) / decal: frame exists in beach_ground_decals, sourceSize == frameSize,
+    integer anchorPx inside the frame, decal borders transparent (alpha <= 24; kit pieces: <= 24 on the band edges),
+    towels have lyingPoints / lyingDirs / lyingFeetPoints / lyingFeetDirs (feet dir = the screen direction hips -> feet
+    and one beachfolk `sunbathe` has frames for), courts have cornerPoints, the manifest has wetKit rules
   * the transition kit composes seamlessly: two chained edge pieces of every variant pair reproduce the continuous
     transition along their shared cut (max alpha step <= 40 / 255 across the cut line)
 """
@@ -24,12 +25,20 @@ GEN = 'gen_beach_ground'
 TEXTURES = ['ground_sand', 'ground_sand_wet']
 EDGES = ['ground_sand_snow_edge_x', 'ground_sand_snow_edge_x_near', 'ground_sand_snow_edge_y',
          'ground_sand_snow_edge_y_near']
-KIT = [e + s for e in EDGES for s in ('', '_1', '_2')] + \
-    ['ground_sand_snow_%s_%s' % (k, q) for k in ('corner', 'inner') for q in 'nesw']
+WET_EDGES = [e.replace('_snow_', '_wet_') for e in EDGES]
+KIT = [e + s for e in EDGES + WET_EDGES for s in ('', '_1', '_2')] + \
+    ['ground_sand_%s_%s_%s' % (f, k, q) for f in ('snow', 'wet') for k in ('corner', 'inner') for q in 'nesw']
 DECALS = ['decal_footprints_sand', 'decal_shells', 'decal_seaweed', 'decal_sand_ripples', 'decal_volleyball_court',
           'decal_volleyball_court_x'] + ['decal_towel_%s%s' % (c, x) for c in ('red', 'blue', 'yellow', 'green')
                                          for x in ('', '_x')]
 REQUIRED = TEXTURES + KIT + DECALS
+
+
+def screen_dir(dx, dy):
+    """8-way screen direction name of a px vector (y down)."""
+    import math
+    a = math.degrees(math.atan2(-dy, dx)) % 360
+    return ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'][int(((a + 22.5) % 360) // 45)]
 
 
 def seam_ratio(img):
@@ -117,14 +126,23 @@ def check(man=None, verbose=True):
             warns.append('%s: kit piece touches its frame edge (alpha %d)' % (k, border))
     for k in DECALS:
         if k.startswith('decal_towel') and k in sp:
-            for f in ('lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingAxis'):
+            for f in ('lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingFeetPoints', 'lyingFeetDirs', 'lyingAxis'):
                 if f not in sp[k]:
                     errors.append('%s: missing %s' % (k, f))
+            e = sp[k]
+            for lp, fp, fd in zip(e.get('lyingPoints', []), e.get('lyingFeetPoints', []), e.get('lyingFeetDirs', [])):
+                if screen_dir(fp[0] - lp[0], fp[1] - lp[1]) != fd:
+                    errors.append('%s: lyingFeetDirs %s does not match hips -> feet %s' % (k, fd, [fp[0] - lp[0],
+                                                                                                fp[1] - lp[1]]))
+                if fd not in ('SE', 'NE', 'SW', 'NW'):
+                    errors.append('%s: lyingFeetDirs %s has no beachfolk sunbathe frames (SE / NE + mirrors)' % (k, fd))
+    if 'wetKit' not in man:
+        errors.append('manifest: wetKit placement rules missing')
         if k.startswith('decal_volleyball_court') and k in sp and len(sp[k].get('cornerPoints', [])) != 4:
             errors.append('%s: cornerPoints must list 4 corners' % k)
     # seamless chaining of edge pieces: compose A (anchor 0) + B (anchor + step) for every variant pair and compare
     # the composite across the shared cut with the alpha of a single piece just inside its own cut
-    for e in EDGES:
+    for e in EDGES + WET_EDGES:
         if not all(v in imgs for v in (e, e + '_1', e + '_2')):
             continue
         step = (64, 32) if '_x' in e else (64, -32)

@@ -196,8 +196,9 @@ export class UI extends Phaser.Scene {
     this.mapBtn.setPosition(W - 56, zb);
     this.zoomOutBtn.setPosition(W - 56, zb - 84);
     this.zoomInBtn.setPosition(W - 56, zb - 160);
-    this.whistleBtn.setPosition(62, zb);
-    this.whistleBadge.setPosition(92, zb - 30);
+    this.whistleBaseY = zb;
+    this.whistleBtn.setPosition(62, zb - (this.whistleLift || 0));
+    this.whistleBadge.setPosition(92, zb - (this.whistleLift || 0) - 30);
     this.objPanel.setPosition(W / 2, top + 88);
     this.toastBox.setPosition(W / 2, H - 230 - View.safeBottom);
     this.bannerBox.setPosition(W / 2, H * 0.27);
@@ -372,6 +373,13 @@ export class UI extends Phaser.Scene {
         if (!this.whistleTipShown && this.whistleHintT > 4 && !this.panelOpen) { this.whistleTipShown = true; this.toast(t('dogWhistleHint'), 4000); }
       } else if (this.whistleBtn.scale !== 1) this.whistleBtn.setScale(1);
     }
+    // (v4-B, v3.5 known issue) the whistle steps up when a pad / plot label would sit under it (glides)
+    if (has) {
+      this.whistleChk = (this.whistleChk || 0) - dt;
+      if (this.whistleChk <= 0) { this.whistleChk = 0.25; this.whistleLift = this.whistleLiftFor(); }
+      const want = this.whistleBaseY - (this.whistleLift || 0), y0 = this.whistleBtn.y;
+      if (Math.abs(y0 - want) > 0.5) { const y = y0 + (want - y0) * Math.min(1, dt * 10); this.whistleBtn.y = y; this.whistleBadge.y = y - 30; }
+    }
     // (not over the whole-village view: the dog is a dot there)
     const on = !!(d && d.barVisible() && !this.gs.overview && (this.gs.zoomCur || 1) >= 0.7);
     if (on !== this.dogBarOn) {
@@ -421,6 +429,27 @@ export class UI extends Phaser.Scene {
     this.targetCoins = v;
     if (delayMs) this.coinDelay = Math.max(this.coinDelay, delayMs / 1000);
     if (v < this.displayCoins) this.displayCoins = v;
+  }
+
+  /** how far the whistle button steps up so no world label (pad / plot sign) sits under it: 0, 110 or 220 px */
+  whistleLiftFor() {
+    const gs = this.gs, cam = gs.cameras.main, k = (cam.zoom || 1) / View.k;
+    const boxes = [];
+    const add = (o) => {
+      if (!o || !o.label || !o.labelBg || !o.label.visible || !o.label.active) return;
+      const c = this.worldToScreen(o.label.x, o.label.y), hw = o.labelBg.width * 0.5 * k, hh = o.labelBg.height * 0.5 * k;
+      if (c.x - hw < 140 && c.y + hh > this.whistleBaseY - 300) boxes.push([c.x - hw, c.y - hh, c.x + hw, c.y + hh]);
+    };
+    const pads = gs.progress && gs.progress.pads;
+    for (const id in pads || {}) add(pads[id]);
+    for (const id in gs.sites || {}) add(gs.sites[id]);
+    if (!boxes.length) return 0;
+    const bx = 62, R = 48;
+    const hit = (y) => boxes.some((b) => bx + R > b[0] && bx - R < b[2] && y + R > b[1] && y - R < b[3]);
+    // (never up into the population badge / the v4 chips)
+    const minTop = (this.hud4 ? Math.max(this.hud4.bottom(), 62 + View.safeTop + 180) : 62 + View.safeTop + 180) + 8;
+    for (const lift of [0, 110, 220]) if (this.whistleBaseY - lift - R >= minTop && !hit(this.whistleBaseY - lift)) return lift;
+    return 0;
   }
 
   worldToScreen(wx, wy) {

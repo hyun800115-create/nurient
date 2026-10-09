@@ -118,19 +118,20 @@ export class Growth {
     gs.lazyImage(this.board, 'notice_board');
     gs.territory.add('rail', this.board);
     this.boardObs = gs.collision.add(Q.board.x, Q.board.y, 30, 'board');
-    this.boardLabel = floatLabel(gs, Q.board.x, Q.board.y - 150, Assets.pick('ui_icon_mission', 'ui_icon_request', 'ui_icon_lock'));
+    const LB = Object.assign({ board: [0, -150], cargo: [-34, -70], cash: [36, -128] }, Q.labels || {});
+    this.boardLabel = floatLabel(gs, Q.board.x + LB.board[0], Q.board.y + LB.board[1], Assets.pick('ui_icon_mission', 'ui_icon_request', 'ui_icon_lock'));
     // the loading dock
     this.dock = { id: 'cargo', x: Q.cargo.x, y: Q.cargo.y, ux: Q.cargo.x + 34, uy: Q.cargo.y + 22, enabled: true, remote: true, isWarehouse: false, kind: 'cargo',
       accepts: (ty) => this.needOf(ty) > 0, room: (ty) => this.needOf(ty), prio: () => PRIO.WHOLESALE, feed: (ch) => this.feedDock(ch) };
     this.dockPad = new Pad(gs, Q.cargo.x, Q.cargo.y, 'input', 1.6, { tex: Assets.pick('ui_pad_porter', 'ui_pad_input'), icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack'), iconSize: 40 });
-    this.dockLabel = floatLabel(gs, Q.cargo.x, Q.cargo.y - 70, Assets.pick('ui_icon_delivery', 'ui_icon_backpack'));
+    this.dockLabel = floatLabel(gs, Q.cargo.x + LB.cargo[0], Q.cargo.y + LB.cargo[1], Assets.pick('ui_icon_delivery', 'ui_icon_backpack'));
     this.dockLabel.set(t('cargo_pad'));
     this.crates = new ItemStack(gs, { scale: 0.7, cols: [[-24, -6], [0, 6], [24, -6], [-12, 18], [12, 18]], perCol: 3, max: 999 });
     if (gs.logistics) gs.logistics.add(this.dock);
     // the station till (역 금고): wholesale, card bonuses and rent
     this.till = new CashPad(gs, Q.cash.x, Q.cash.y);
     this.till.restore(this.savedCash);
-    this.tillLabel = floatLabel(gs, Q.cash.x, Q.cash.y - 128, 'ui_icon_coin');
+    this.tillLabel = floatLabel(gs, Q.cash.x + LB.cash[0], Q.cash.y + LB.cash[1], 'ui_icon_coin');
     for (const ty in this.savedCargo) { const n = Math.max(0, Math.min(999, Math.floor(Number(this.savedCargo[ty]) || 0))); if (ITEMS.indexOf(ty) >= 0) for (let i = 0; i < n; i++) this.addCrate(ty, null); }
     // the station porters hired before a reload come back (Progression applies the steps; this catches a
     // save whose steps were kept while the porter count was not)

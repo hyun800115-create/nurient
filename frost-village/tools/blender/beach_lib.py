@@ -12,8 +12,9 @@ Beach conventions (on top of the village / town / harbour ones)
   * 1 unit = 1 m, world origin = footprint centre = sprite anchor, local front = -Y (screen down-left) - the sea side
     of the beach is -Y, like the harbour waterfront.
   * z = 0 is the SAND surface.  Water-plane props (swim_buoy_line, float_raft, boats) are modelled with their
-    WATERLINE at z = 0 (= their sprite anchor, like assets/ships and harbor/buoy); in the game the sea surface is
-    0.55 m below the land (harbour `waterPx` 30), so put them on a sea point that is already on the water plane.
+    WATERLINE at z = 0 (= their sprite anchor, like assets/ships and harbor/buoy).  On a sand beach the sea surface is
+    level with the sand (waterPx 0 - one rule with assets/water and assets/beachfolk), so the anchor goes on the sea
+    point itself; only beside quays / piers / breakwaters is the sea 0.55 m (waterPx 30) lower.
   * No snow on the beach props (warm-current coast); the cool sky ambient + warm key sun of bl_common are kept so the
     beach sits in the same light as the village, harbour and town.
   * Materials: woven canvas (`canvas`) with darker seam piping and cream fringe, painted wood with a faint grain
@@ -33,11 +34,12 @@ import life2_lib as L2
 
 # =========================================================================== palette (inside the world palette family)
 SAND = '#F1E2C2'           # dry white sand (ground texture matches: tools/fx/gen_beach_ground.py)
-SAND_DAMP = '#E2C895'      # packed / damp sand (sandcastles)
+SAND_DAMP = '#D9B57C'      # packed / damp sand (sandcastles): one step darker + warmer than the dry ground sand so
+                           # moulded castles read against it (polish: they blended into the sand)
 SAND_WET = '#C9AE80'
 SAND_SHADE = '#CDB083'
 WHITE = '#F7F3EA'
-CREAM = '#F3E6C8'
+CREAM = '#EBD9B2'           # fringe / hems (polish: one step darker so white canvas keeps an edge)
 RED = '#E8524A'
 CORAL = '#F27B5B'
 ORANGE = '#F49A3A'
@@ -61,8 +63,8 @@ TRUNK = '#A07850'
 TRUNK_DARK = '#7D5A3A'
 TEAK = '#B97B4A'
 TEAK_DARK = '#94603A'
-DRIFT = '#C9BBA6'
-WOOD_WHITE = '#F2EEE6'
+DRIFT = '#B9A991'
+WOOD_WHITE = '#E9E2D4'      # warm off-white paint (polish: pure white frames had no tonal range)
 WOOD_BLUE = '#5FA8D8'
 ROPE = '#D9C39A'
 STEEL = '#B3BECB'
@@ -184,7 +186,7 @@ def teak(col=TEAK, rough=0.62, along='X'):
     return nb.m
 
 
-def sand(col=SAND_DAMP, rough=0.95, var=0.1, scale=38.0):
+def sand(col=SAND_DAMP, rough=0.95, var=0.17, scale=38.0):
     """Packed sand: fine grain speckle + a soft large-scale damp variation."""
     key = ('bsand', C(col), rough, var, scale)
     if key in L._CUSTOM:
@@ -444,8 +446,8 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
     can = mesh_from(name + '_canopy', verts, faces, mats, fm)
     solidify(can, 0.014, 1.0)
     objs = [can]
-    seam = flat(hexmix(cols[0], '#3A2A2A', 0.25) if ncol <= 2 else '#F3E6C8', 0.7)
-    tipm = flat(WHITE, 0.4)
+    seam = flat(hexmix(cols[0], '#2A1E22', 0.4) if ncol <= 2 else '#B89A6A', 0.7)   # polish: deeper piping
+    tipm = flat(hexmix(cols[0], '#2A1E22', 0.3), 0.4)
     mb = L2.MB()
     rib_pts = []
     for p in range(panels):
@@ -462,7 +464,7 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
         mb.sphere(0.024, tipm, loc=tuple(tip), segs=8, rings=5)
         rib_pts.append(line[-1])
         # rib underneath: from the runner on the pole to the rim
-        mb.seg(Vector((0, 0, apex - 0.62)), line[-1] + Vector((0, 0, -0.03)), 0.008, metal('#C9CED6'), segs=5)
+        mb.seg(Vector((0, 0, apex - 0.62)), line[-1] + Vector((0, 0, -0.03)), 0.008, metal('#7E8794'), segs=5)
     objs.append(mb.done(name + '_ribs'))
     # valance: one continuous skirt hanging from the canopy rim (so no gap at the sagging rim), scalloped bottom
     # edge per panel (panel colour), a cream hem piping band and a sawtooth tassel fringe - all in one mesh so the
@@ -496,21 +498,21 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
             i0 = j * R_ + r
             sk_f.append((i0, i0 + R_, i0 + R_ + 1, i0 + 1))
             sk_m.append(pan if r < len(rows) - 2 else (hem_i if r == len(rows) - 2 else fr_i))
-    sk_mats = mats + [flat(CREAM, 0.75), flat(CREAM, 0.8)]
+    sk_mats = mats + [flat(hexmix(cols[0], '#2A1E22', 0.35) if ncol <= 2 else CREAM, 0.75), flat(CREAM, 0.8)]
     skirt = mesh_from(name + '_skirt', sk_v, sk_f, sk_mats, sk_m)
     solidify(skirt, 0.01, 0.0)
     objs.append(skirt)
     sk_d = Deform(skirt)
     flaps = []
     # pole: lower wood, chrome joint, upper white; finial; runner
-    lo, hi = pole_cols
-    objs.append(cyl(name + '_pole_lo', 0.03, 1.3, (0, 0, -0.05), mat=painted(hi), segs=14, bevel=0.008))
-    objs.append(cyl(name + '_joint', 0.042, 0.1, (0, 0, 1.23), mat=metal(CHROME, 0.22, 0.85), segs=16, bevel=0.01))
+    lo, _hi = pole_cols
+    objs.append(cyl(name + '_pole_lo', 0.03, 1.3, (0, 0, -0.05), mat=teak(TEAK_DARK, along='Z'), segs=14, bevel=0.008))
+    objs.append(cyl(name + '_joint', 0.042, 0.1, (0, 0, 1.23), mat=metal('#9AA3AF', 0.22, 0.85), segs=16, bevel=0.01))
     objs.append(cyl(name + '_pole_hi', 0.026, apex - 1.3, (0, 0, 1.3), mat=painted(lo), segs=14, bevel=0.008))
     objs.append(cyl(name + '_runner', 0.045, 0.08, (0, 0, apex - 0.66), mat=painted(WOOD_WHITE), segs=14,
                     bevel=0.012))
-    objs.append(sphere(name + '_finial', 0.05, (0, 0, apex + 0.05), painted(lo), segs=16, rings=10))
-    objs.append(cyl(name + '_cap', 0.06, 0.03, (0, 0, apex), mat=painted(lo), segs=16, bevel=0.01))
+    objs.append(sphere(name + '_finial', 0.05, (0, 0, apex + 0.05), teak(TEAK_DARK, along='Z'), segs=16, rings=10))
+    objs.append(cyl(name + '_cap', 0.06, 0.03, (0, 0, apex), mat=teak(TEAK_DARK, along='Z'), segs=16, bevel=0.01))
     objs.append(sand_mound(name + '_mound', 0.2, 0.07, (0, 0, 0), seed=seed + 3, col=SAND))
     can_d = Deform(can)
 
@@ -547,13 +549,14 @@ def parasol(name, cols, R=1.05, apex=2.3, drop=0.42, panels=8, tilt=0.0, pole_co
 
 # =========================================================================== lounger
 
-def lounger(name, cushion=('#2FB9C4', WHITE), frame=WOOD_WHITE, slat=TEAK, towel=PINK, length=1.95, width=0.66,
+def lounger(name, cushion=('#2FB9C4', WHITE), frame=TEAK_DARK, slat='#C2895A', towel=PINK, length=1.95, width=0.66,
             back_deg=38.0):
-    """Wooden sun lounger along local Y, head at +Y: white painted frame + leg pairs, teak slats, small wheels at
-    the head, raised backrest, a striped cushion with piping seams + tufting buttons, a rolled towel at the head.
+    """Wooden sun lounger along local Y, head at +Y: oiled dark-teak frame + leg pairs (polish: was white paint, no
+    tonal range on the pale sand), lighter teak slats, small rubber wheels at the head, raised backrest, a striped
+    cushion with piping seams + tufting buttons, a rolled towel at the head.
     Returns dict(lie (hip point), head (head point), objs)."""
     objs = []
-    fm = painted(frame)
+    fm = teak(frame, along='Y')
     sm = teak(slat, along='X')
     hl = length / 2
     z_rail = 0.3

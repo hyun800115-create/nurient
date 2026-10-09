@@ -77,10 +77,10 @@ export const Residency = {
     return this.total;
   },
 
-  /** loaded on-demand character pages */
-  residentSocial() {
+  /** on-demand character pages resident or on their way (`loadedOnly`: resident only) */
+  residentSocial(loadedOnly) {
     const tex = this.gs.game.textures, out = [];
-    for (const k of Assets.demanded) { const a = Assets.m.atlases[k]; if (a && a.onDemand && a.format !== 'tfatlas' && tex.exists(k)) out.push(k); }
+    for (const k of Assets.demanded) { const a = Assets.m.atlases[k]; if (a && a.onDemand && a.format !== 'tfatlas' && (!loadedOnly || tex.exists(k))) out.push(k); }
     return out;
   },
 
@@ -98,9 +98,10 @@ export const Residency = {
     // (the soft / hard budgets make unused pages go sooner; a new one is refused only near the must)
     const a = Assets.m.atlases[page];
     if (this.total + (a && a.bytes ? a.bytes / 1048576 : 4) > B.must - 30) { this.refused++; return false; }
+    // at most `socialPages` resident or loading (the least recently used one makes room)
     const res = this.residentSocial();
     const cap = this.low() ? Math.min(2, T.socialPages) : T.socialPages;
-    if (res.length >= cap && !this.evictLRU(res, 0)) { this.refused++; return false; }
+    if (res.length >= cap && !this.evictLRU(res.filter((k) => this.gs.game.textures.exists(k)), 2000)) { this.refused++; return false; }
     return this.demand([page]);
   },
 
@@ -235,13 +236,16 @@ export const Residency = {
 
   regionTick() {
     const gs = this.gs, tex = gs.game.textures;
-    const view = gs.viewRect ? gs.viewRect() : gs.cameras.main.worldView;
+    // where the camera is going (its follow target): the world view is only refreshed when a frame is drawn
+    const cam = gs.cameras.main, z = Math.max(0.05, cam.zoom || 1), ct = gs.camTarget;
+    const w = cam.width / z, h = cam.height / z;
+    const view = ct ? { x: ct.x - w / 2, right: ct.x + w / 2, y: ct.y - h / 2, bottom: ct.y + h / 2 } : cam.worldView;
     const T = this.cfg();
     const ttl = (T.townTtl || 10);
     this.areas = this.areas || {};
     for (const R of REGIONS) {
       const st = this.areas[R.id] || (this.areas[R.id] = { farT: 0, out: false });
-      const gap = this.areaGap(view, R.rect);
+      const gap = st.gap = this.areaGap(view, R.rect);
       const pages = R.pages.filter((k) => Assets.m.atlases[k] || Assets.m.images[k]);
       if (gap > RELEASE) st.farT += 0.5; else st.farT = 0;
       if (!st.out && st.farT >= ttl && pages.some((k) => tex.exists(k)) && !(gs.camFocus)) {
@@ -298,12 +302,12 @@ export const Residency = {
     for (const k of pages) {
       if (now - (this.use[k] || 0) > ttl) this.evict(k);
     }
-    if (this.total > B.soft) {
+    // near the must: whatever is not on screen and unused for a second goes, oldest first (the cap and the TTL
+    // keep the on-demand pages small otherwise: evicting them sooner only makes them load again)
+    if (this.total > B.must - 30) {
       const left = pages.filter((k) => tex.exists(k));
-      // over the soft budget: whatever is not on screen and unused for 3 s (1 s over the hard one) goes, oldest first
-      const age = this.total > B.hard ? 1000 : 3000;
       let guard = left.length;
-      while (this.total > B.soft && guard-- > 0 && this.evictLRU(left.filter((k) => tex.exists(k)), age)) this.measure();
+      while (this.total > B.must - 30 && guard-- > 0 && this.evictLRU(left.filter((k) => tex.exists(k)), 1000)) this.measure();
     }
     if (this.total > B.hard) {
       this.overHardT += 0.5;
@@ -319,7 +323,8 @@ export const Residency = {
     return {
       totalMiB: +this.total.toFixed(1), peakMiB: +this.peak.toFixed(1), byCls, soft: B.soft, hard: B.hard,
       overSoft: this.total > B.soft, overHard: this.total > B.hard,
-      social: this.residentSocial().length, demanded: Assets.demanded.size,
+      social: this.residentSocial().length, demanded: Assets.demanded.size, held: Assets.held.size,
+      areas: this.areas ? Object.fromEntries(Object.entries(this.areas).map(([k, v]) => [k, (v.out ? 'out' : 'in') + ' gap ' + Math.round(v.gap || 0) + ' far ' + (v.farT || 0)])) : null,
       loads: this.loads, evictions: this.evictions, refused: this.refused, budgetEvents: this.budgetEvents,
       ground: this.gs && this.gs.ground ? { slots: this.gs.ground.slots.length, level: this.gs.ground.level, baked: this.gs.ground.baked, evictions: this.gs.ground.evictions } : null,
     };

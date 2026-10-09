@@ -1,6 +1,7 @@
 // Frost Village v3.5 screenshots for the designer (분업 + 강아지 놀기) -> docs/previews/screens_v35/NN_*.jpg
 //   node tools/test/shots_v35.mjs [--only 05]      (phone viewport 390x844, fixed-step clock: GAME time)
 // Each shot is framed on the people it is about (the camera fits their bounding box).
+// (v4-B) 21–23 (a pad under the chief, a full pile, the meat rack) used to come from a scratch script: now here.
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -101,8 +102,36 @@ try {
     await adv(0.2);
     await shot('02_cook_flipping_fish');
   }
+  // 22: (moved here from a scratch script, §18 #7) the fish barrel full, nobody carries it on: the label says so
+  await ev(() => window.__FV.doneStep('hire_fisherman'));
+  await adv(0.5);
+  await ev(() => { const gs = window.__FV.scene, p = gs.piles.fish; gs.stations.grill.inStack.clear(gs.effects); for (let i = p.stack.count; i < p.stack.max; i++) p.stack.push(p.item, null, gs.effects); window.__FV.teleport(p.x + 160, p.y + 170); });
+  await wait(() => window.__FV.scene.piles.fish.fullShown, 6, undefined, 0.25);
+  await adv(0.4);
+  {
+    const b = await xyOf('gs.piles.fish'), q = await xyOf("gs.progress.pads['raw_grill']") || b;
+    await frame([b, q, [b[0], b[1] - 120]], 1.8, 80);
+    await adv(0.2);
+    await shot('22_pile_full_label');
+  }
+  // 21: a new pad popped up under the chief: it waits until he steps off once (the hint says so, the
+  // label lifts over his head)
+  await ev(() => {
+    const gs = window.__FV.scene, pad = gs.progress.pads['raw_grill'];
+    if (!pad) return;
+    window.__FV.give(Math.max(0, pad.remaining - gs.economy.coins + 50));
+    pad.needsLeave = true;
+    window.__FV.teleport(pad.x, pad.y);
+  });
+  await adv(1.2);
+  {
+    const q = await xyOf("gs.progress.pads['raw_grill']") || await xyOf('gs.player');
+    await frame([q, [q[0], q[1] - 160], [q[0], q[1] + 140]], 1.8, 90, 0);
+    await adv(0.3);
+    await shot('21_step_off_new_pad');
+  }
   // 03: the fisherman fills the barrel, the fish porter carries it to the grill
-  await ev(() => { window.__FV.doneStep('hire_fisherman'); window.__FV.doneStep('raw_grill'); });
+  await ev(() => { const gs = window.__FV.scene; gs.piles.fish.stack.clear(gs.effects); window.__FV.doneStep('raw_grill'); });
   await free();
   await ev(() => { const gs = window.__FV.scene; gs.stations.grill.inStack.clear(gs.effects); for (let i = 0; i < 16; i++) gs.piles.fish.stack.push('item_fish_raw', null, gs.effects); window.__FV.teleport(1040, 900); });
   await wait(() => window.__FV.scene.rawPorters.some((r) => r.state === 'haul' && r.stack.count > 0), 40);
@@ -184,6 +213,18 @@ try {
     await frame(g.pts, 1.8, 90);
     await adv(0.3);
     await shot(`07_variants_${i + 1}_${type}`);
+  }
+  await free();
+  // 23: (§18 #3) the three hunters each drop at their own spot by the meat rack (no bunching)
+  {
+    const m = await xyOf('gs.piles.meat');
+    await ev(([x, y]) => window.__FV.teleport(x + 150, y + 200), m);
+    const near = () => ev(([x, y]) => window.__FV.scene.workers.filter((w) => w.type === 'hunter' && Math.hypot(w.x - x, (w.y - y) * 1.6) < 200).map((w) => [Math.round(w.x), Math.round(w.y)]), m);
+    let pts = await near();
+    for (let t = 0; t < 120 && pts.length < 2; t++) { await adv(0.5); pts = await near(); }
+    await frame([m, [m[0] - 120, m[1] - 60], [m[0] + 120, m[1] + 60], ...pts], 1.7, 80);
+    await adv(0.2);
+    await shot('23_meat_rack');
   }
   await free();
 

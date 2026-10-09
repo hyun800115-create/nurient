@@ -235,6 +235,32 @@ def main():
     dt = ch.get('dump_truck')
     if dt and ('cargoPoint' not in dt or 'tipFrame' not in dt['anims'].get('tip', {})):
         errs.append('dump_truck: cargoPoint / tipFrame missing')
+    # ---- demolitionLayout: vehicles stand clear of the fence ring, the bucket digs inside the plot
+    def wpt(p):
+        return (p[0] / 45.2548 + p[1] / 22.6274) / 2.0, (p[0] / 45.2548 - p[1] / 22.6274) / 2.0
+    lay = man.get('demolitionLayout', {})
+    for sz, n in (('S', 2), ('M', 3), ('L', 4)):
+        L_ = lay.get(sz, {})
+        h = n * 2 ** 0.5 / 2
+        if exc and 'excavator' in L_:
+            ex, ey = wpt(L_['excavator']['at'])
+            xs = [ex + wpt(p)[0] for p in exc['footprintPoly']['SE']]
+            ys = [ey + wpt(p)[1] for p in exc['footprintPoly']['SE']]
+            if max(xs) > -h and min(xs) < h and max(ys) > -h and min(ys) < h:
+                errs.append('demolitionLayout.%s: the excavator stands inside the fence ring' % sz)
+            gx, gy = wpt(exc['digPoint']['SE'])
+            if not (abs(ex + gx) < h and abs(ey + gy) < h):
+                errs.append('demolitionLayout.%s: the bucket does not reach into the plot' % sz)
+        else:
+            errs.append('demolitionLayout.%s: excavator missing' % sz)
+        if dt and 'dump_truck' in L_:
+            tx, ty = wpt(L_['dump_truck']['at'])
+            xs = [tx + wpt(p)[0] for p in dt['footprintPoly']['SE']]
+            ys = [ty + wpt(p)[1] for p in dt['footprintPoly']['SE']]
+            if max(xs) > -h and min(xs) < h and max(ys) > -h and min(ys) < h:
+                errs.append('demolitionLayout.%s: the dump truck stands inside the fence ring' % sz)
+        else:
+            errs.append('demolitionLayout.%s: dump_truck missing' % sz)
     # ---- collisions with other fragments
     for frag in sorted(os.listdir(ASSETS)):
         p = os.path.join(ASSETS, frag, 'manifest.json')

@@ -227,18 +227,21 @@ def bank_people(Pe, s):
     if len(s.get('staffPoints', [])) > 3:
         im, an = Pe.person('teacher', seed=3, d='SE')
         ppl.append(('behind', s['staffPoints'][3], im, an))
-    for k, pt in enumerate(s.get('customerPoints', [])[1:3]):
-        im, an = Pe.person(None, seed=40 + k, d='NE', i=k % 4)
-        ppl.append(('front', pt, im, an))
-    for k, pt in enumerate(s.get('counterPoints', [])[:2]):
+    # a calm opening hour: one customer at the first and the last window, one waiting in the queue, someone at
+    # the ATM and grandma resting on the far chair (the game decides how busy it gets)
+    cps = s.get('counterPoints', [])
+    for k, pt in enumerate([cps[0], cps[-1]] if len(cps) > 1 else cps):
         im, an = Pe.person(None, seed=60 + k, d='NE')
+        ppl.append(('front', pt, im, an))
+    for k, pt in enumerate(s.get('customerPoints', [])[2:3]):
+        im, an = Pe.person(None, seed=41 + k, d='NE', i=1)
         ppl.append(('front', pt, im, an))
     if s.get('atmPoint'):
         im, an = Pe.person(None, seed=77, d='NW')
         ppl.append(('front', s['atmPoint'], im, an))
     if s.get('seatPoints'):
         im, an = Pe.villager('npc_grandma', 'idle', 'SW', 0)
-        pt = s['seatPoints'][1]
+        pt = s['seatPoints'][-1]
         ppl.append(('front', [pt[0], pt[1] + 25], im, an))
     return ppl
 
@@ -314,7 +317,7 @@ def preview_cutaway(P, Pe, key, out, people_fn, title):
         e = P.man['sprites'][lk]
         if lk in cut['overlays']:
             an = cut['overlays'][lk]['anims'][0]
-            im = P.frame(e['atlas'], e['anims'][an]['frames'][-1])
+            im = P.frame(e['atlas'], e['anims'][an]['frames'][0])
         else:
             im = P.frame(e['atlas'], e['frame'])
         cell = Image.new('RGBA', (W, H), (236, 241, 247, 255))
@@ -385,10 +388,11 @@ def preview_all(P, out):
                                                   'props, fence tiles, moving props, demolition vehicles')
 
 
-def plot_panel(P, B, V, FX, step, title, size='S', W=560, H=420, t=0):
-    """One step of the fire sequence on an S plot (anchor at the panel centre)."""
+def plot_panel(P, B, V, FX, step, title, size='S', W=640, H=500, t=0):
+    """One step of the fire sequence on an S plot (anchor near the panel centre; shifted right while the demolition
+    vehicles stand on the plot's left)."""
     cv = Image.new('RGBA', (W, H), SNOW)
-    cx, cy = W * 0.56, H * 0.62
+    cx, cy = W * (0.68 if step in ('demolish', 'rubble') else 0.52), H * 0.68
     items = []                     # (depth, img, anchor, x, y)
     ring = P.man.get('fenceRings', {}).get(size)
     lay = P.man.get('demolitionLayout', {}).get(size, {})
@@ -475,86 +479,95 @@ def preview_fire_sequence(P, out):
 
 
 def preview_scene(P, Pe, out):
-    """A town corner at 1x."""
+    """A town corner at 1x: the civic row (bank open, wanted board, police station with its car) faces the main
+    street from behind (+Y side, fronts facing -Y like every village building), moving day at a townhouse further
+    along, and a burnt plot being cleared on the near side of the street."""
     import town_pack as tp       # read-only reuse: Scene (iso placement, road fill, labels, caption)
     T_ = Frag('town')
     V = Frag('vehicles')
     LG = Frag('logistics') if os.path.exists(os.path.join(ASSETS, 'logistics', 'manifest.json')) else None
-    sc = tp.Scene(3000, 2000, 1400, 1100)
+    sc = tp.Scene(3200, 2200, 1500, 1150)
     road_p = os.path.join(ASSETS, 'ui2', 'ground_road.png')
     tex = Image.open(road_p).convert('RGBA') if os.path.exists(road_p) else Image.new('RGBA', (64, 64),
                                                                                        (200, 205, 214, 255))
-    sc.road(tex, -16.0, 16.0, -1.6, 1.6)          # main street along X
-    sc.road(tex, -1.6, 1.6, -14.0, 13.0)          # cross street along Y
+    sc.road(tex, -15.0, 23.0, -1.6, 1.6)          # main street along X
+    sc.road(tex, -1.6, 1.6, -11.0, 9.0)           # cross street along Y
 
-    def put(F, key, x, y, lab=True, frame=None, ground=False, img=None, an=None):
+    def top_of(img, an):
+        bb = img.getbbox()
+        return (an[1] - bb[1]) if bb else 60
+
+    def put(F, key, x, y, lab=True, frame=None, ground=False, img=None, an=None, text=None, dy=0):
         if img is None:
             img, an = F.sprite(key, frame)
         if img is None:
-            return
+            return None
         sc.put(img, an, x, y, ground=ground)
         if lab:
             sx, sy = sc.p(x, y)
-            s = F.man['sprites'].get(key, {}) if F else {}
-            top = s.get('topPx', 60) if isinstance(s.get('topPx', 60), (int, float)) else 60
-            sc.labels.append((key, sx, sy - top - 20))
+            sc.labels.append((text or key, sx, sy - top_of(img, an) - 22 + dy))
+        return img
 
     def person(img, an, x, y):
-        if img is None:
-            return
-        sx, sy = sc.p(x, y)
-        sc.put(img, an, x, y)
+        if img is not None:
+            sc.put(img, an, x, y)
 
-    # bank (open, with people) on the -X / -Y block corner
+    def off(pt):                    # px offset -> world metres
+        return (pt[0] / PX_X + pt[1] / PX_Y) / 2, (pt[0] / PX_X - pt[1] / PX_Y) / 2
+
+    # ---- civic row behind the main street (fronts face the street)
     bk = P.man['sprites']['bank']
     bimg, ban = cutaway(P, 'bank', 1.0, bank_people(Pe, bk), overlay_i={'bank_vault': 7})
-    put(P, 'bank', -4.6, -4.3, img=bimg, an=ban)
-    # police station (closed) with a police car in its bay
+    put(P, 'bank', -4.6, 4.6, img=bimg, an=ban, text='bank (revealed, vault open)')
     ps = P.man['sprites']['police_station']
+    PX, PY = 5.7, 4.6
     pimg, pan = cutaway(P, 'police_station', 0.0)
-    put(P, 'police_station', 5.2, -4.3, img=pimg, an=pan)
+    put(P, 'police_station', PX, PY, img=pimg, an=pan)
     cb = ps.get('carBayPoint')
     if cb and V.ok:
         im, an = V.char('police_car', 'idle', 'SW', 0)
         if im is not None:
-            gx = (cb[0] / PX_X + cb[1] / PX_Y) / 2
-            gy = (cb[0] / PX_X - cb[1] / PX_Y) / 2
-            sc.put(im, an, 5.2 + gx, -4.3 + gy)
-    put(P, 'wanted_board', 2.6, -2.6)
+            gx, gy = off(cb)
+            sc.put(im, an, PX + gx, PY + gy)
+    wx, wy = 3.0, 2.35
+    put(P, 'wanted_board', wx, wy)
     wb = P.man['sprites'].get('wanted_board', {})
-    if wb.get('posterPoints'):
-        sx, sy = sc.p(2.6, -2.6)
+    if wb.get('posterPoints'):          # the game draws resident portraits into the poster slots
+        sx, sy = sc.p(wx, wy)
         for k, pt in enumerate(wb['posterPoints']):
             im, an = Pe.person(None, seed=300 + k, d='S')
             if im is None:
                 continue
             head = im.crop((40, 18, 88, 66)).resize(tuple(wb['posterSizePx']), Image.LANCZOS)
             sc.placed.append((sy + 0.5, head, int(sx + pt[0] - head.width / 2), int(sy + pt[1] - head.height / 2)))
-    for k, (x, y, d_) in enumerate(((2.3, -1.9, 'NE'), (3.1, -2.0, 'N'))):
+    for k, (x, y, d_) in enumerate(((2.1, 1.5, 'NE'), (5.0, 1.95, 'NW'))):
         im, an = Pe.person(None, seed=500 + k, d=d_)
         person(im, an, x, y)
-    put(P, 'fire_hydrant', 1.9, -6.0)
-    put(P, 'fire_alarm_post', 1.9, 2.0, frame='fire_alarm_post_work_0')
-    # moving day by a townhouse (+X / +Y block)
-    put(T_, 'townhouse_b', 5.0, 4.6)
-    put(P, 'sold_sign', 3.3, 2.7)
-    put(P, 'furniture_pile_l', 7.2, 2.6)
-    put(P, 'moving_boxes_stack', 4.4, 2.5)
-    put(P, 'welcome_mat', 5.0 - 0.9, 4.6 - 1.0, lab=False, ground=True)
-    mt = None
+    put(P, 'fire_hydrant', 2.0, -2.0)
+    put(P, 'fire_alarm_post', -2.0, -1.95, frame='fire_alarm_post_work_0', dy=-4)
+    # ---- moving day at a townhouse further along the street
+    HX, HY = 14.0, 4.4
+    put(T_, 'townhouse_b', HX, HY)
+    put(P, 'welcome_mat', HX - 0.55, HY - 2.05, lab=False, ground=True)
+    put(P, 'sold_sign', HX - 2.6, 2.3)
+    put(P, 'furniture_pile_l', HX - 0.9, 2.75, dy=-6)
+    put(P, 'moving_boxes_stack', HX + 0.95, 2.35, dy=14)
     if LG and LG.ok and 'moving_truck' in LG.man.get('characters', {}):
-        mt, man_ = LG.char('moving_truck', 'idle', 'NW', 0)
+        # backed up to the kerb (heading SW, rear doors toward the house), ramp down
+        c = LG.man['characters']['moving_truck']
+        an_ = 'unload' if 'unload' in c.get('anims', {}) else 'idle'
+        mt, man_ = LG.char('moving_truck', an_, 'SW', c['anims'][an_]['frames'] - 1)
         if mt is not None:
-            sc.put(mt, man_, 9.5, 0.6)
-            sx, sy = sc.p(9.5, 0.6)
-            sc.labels.append(('moving_truck (logistics)', sx, sy - 120))
-    for k, (x, y, d_) in enumerate(((6.3, 2.0, 'E'), (8.1, 1.8, 'SW'))):
+            sc.put(mt, man_, HX + 6.3, 0.1)
+            sx, sy = sc.p(HX + 6.3, 0.1)
+            sc.labels.append(('moving_truck (assets/logistics, unload)', sx, sy - top_of(mt, man_) - 22))
+    for k, (x, y, d_) in enumerate(((HX + 3.4, 1.5, 'W'), (HX + 1.6, 1.3, 'E'))):
         im, an = Pe.person('factory', seed=600 + k, anim='carry_walk', d=d_)
         person(im, an, x, y)
-    # demolition of a burnt plot (-X / +Y block): scorch + ruin_m + fence ring + excavator + dump truck
-    plot = (-6.0, 5.6)
+    # ---- a burnt plot being cleared on the near side: scorch + ruin_m + fence ring M + excavator + dump truck
+    plot = (-5.6, -5.4)
     put(P, 'scorch_decal_m', plot[0], plot[1], lab=False, ground=True)
-    put(P, 'ruin_m', plot[0], plot[1])
+    put(P, 'ruin_m', plot[0], plot[1], text='ruin_m + fence ring M (demolition)')
     ov = P.man['sprites'].get('ruin_m_smoke')
     if ov:
         rim, ran = P.sprite('ruin_m')
@@ -565,29 +578,24 @@ def preview_scene(P, Pe, out):
     if ring:
         for pc in ring['pieces']:
             im, an = P.sprite(pc['key'])
-            gx = (pc['at'][0] / PX_X + pc['at'][1] / PX_Y) / 2
-            gy = (pc['at'][0] / PX_X - pc['at'][1] / PX_Y) / 2
+            gx, gy = off(pc['at'])
             sc.put(im, an, plot[0] + gx, plot[1] + gy)
     lay = P.man.get('demolitionLayout', {}).get('M', {})
     for vk, anim, i in (('excavator', 'dig', 2), ('dump_truck', 'idle_loaded', 0)):
         if vk in lay:
             im, an = P.char(vk, anim, lay[vk]['dir'], i)
-            at = lay[vk]['at']
-            gx = (at[0] / PX_X + at[1] / PX_Y) / 2
-            gy = (at[0] / PX_X - at[1] / PX_Y) / 2
+            gx, gy = off(lay[vk]['at'])
             sc.put(im, an, plot[0] + gx, plot[1] + gy)
             sx, sy = sc.p(plot[0] + gx, plot[1] + gy)
-            sc.labels.append((vk, sx, sy - 150))
-    put(P, 'insurance_sign', -3.6, 2.4)
-    sx, sy = sc.p(*plot)
-    sc.labels.append(('ruin_m + fence ring M', sx, sy - 210))
-    for k, (x, y, d_) in enumerate(((-2.5, 3.0, 'NW'), (-2.9, 2.6, 'W'), (-2.2, -0.5, 'S'), (0.5, 4.5, 'SE'),
-                                    (-0.6, -9.0, 'NE'), (0.7, -6.8, 'S'))):
+            sc.labels.append((vk, sx, sy - top_of(im, an) - 22))
+    put(P, 'insurance_sign', -2.9, -4.4)
+    # ---- passers-by
+    for k, (x, y, d_) in enumerate(((-2.6, -2.4, 'NW'), (-0.6, -4.5, 'NE'), (0.7, 5.6, 'SW'), (8.9, -0.6, 'W'),
+                                    (-9.0, 0.4, 'SE'), (0.4, -8.6, 'N'))):
         im, an = Pe.person(None, seed=700 + k, d=d_, i=k % 4)
         person(im, an, x, y)
-    sc.finish(out, 'Civic corner at 1x (PPU 64): the bank revealed with tellers + customers, police station with the '
-                   'police_car in its bay, wanted board (portraits drawn by the game), moving day, a burnt plot being '
-                   'demolished; people = assets/townfolk + villagers')
+    sc.finish(out, 'Civic corner at 1x (PPU 64): bank revealed, wanted board + police station with its car, '
+                   'moving day, a burnt plot being cleared')
 
 
 def gifs(P, Pe, prev):

@@ -86,15 +86,17 @@ class S extends Phaser.Scene {
     bank.objs.bank_vault.play('spr:bank_vault:vault');
     police.objs.police_station_cell.play('spr:police_station_cell:open');
     // ---- ruins smouldering on their scorch decals
-    let rx = 120;
+    let rx = 70;
     for (const [k, d] of [['ruin_s', 'scorch_decal_s'], ['ruin_m', 'scorch_decal_m'], ['ruin_l', 'scorch_decal_l'], ['ruin_house_town', 'scorch_decal_m']]) {
+      const fw = sp[k].frameSize[0], ax = sp[k].anchor[0];
+      rx += fw * ax * 0.8;
       img(d, rx, 820, -1000);
       img(k, rx, 820);
       img(k + '_smoke', rx, 820, 821).play('spr:' + k + '_smoke:smoke');
-      rx += 250;
+      rx += fw * (1 - ax) * 0.75;
     }
     // ---- demolition on an M plot: fence ring + excavator + dump truck
-    const px = 1460, py = 760;
+    const px = 1700, py = 770;
     img('rubble_pile_m', px, py);
     for (const pc of man.fenceRings.M.pieces) {
       const o = img(pc.key, px + pc.at[0], py + pc.at[1]);
@@ -139,8 +141,13 @@ await page.mouse.move(5, 5);
 await sleep(500);
 await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'civ_phaser_closed.png') });
 // reveal test: hover the bank (inside revealPoly) -> its shell must fade, the police station stays closed
-await page.mouse.move(360, 330);
-await sleep(900);
+// headless WebGL on a busy shared CPU can run the game loop slowly: move in steps, then wait for the tween
+for (let k = 1; k <= 5; k++) { await page.mouse.move(5 + (355 * k) / 5, 5 + (325 * k) / 5); await sleep(120); }
+await page.waitForFunction(() => {
+  const o = window.__C.scene.children.list.find((c) => c.frame && c.frame.name === 'bank_shell');
+  return o && o.alpha < 0.3;
+}, null, { timeout: 20000, polling: 200 }).catch(() => {});
+await sleep(300);
 const reveal = await page.evaluate(() => {
   const sc = window.__C.scene;
   const shells = sc.children.list.filter((o) => o.frame && /_shell$/.test(o.frame.name));

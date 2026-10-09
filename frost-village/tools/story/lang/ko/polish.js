@@ -138,4 +138,9 @@ export default {
   'about.outing': ['{X:과} {Y:이} {P}에 놀러 갔다는'],
   'about.friend': ['{X:과} {Y:이} 친해졌다는'],
   'about.bestfriend': ['{X:과} {Y:이} 단짝이 됐다는'],
+  // someone's own news that they are moving away: not 'that must have been upsetting' but 'I'll miss you'
+  'react.sorry.move_plan': ['*2 [어? 정말? 너무 섭섭하다…|어머, 정말요? 너무 섭섭해요…|아이고, 섭섭해서 어쩌나요.]', '[떠나기 전에 꼭 밥 한번 먹자!|떠나기 전에 꼭 밥 한번 먹어요!|떠나시기 전에 꼭 식사 한번 해요.]', '[가서도 꼭 연락해!|가서도 꼭 연락해요!|가셔서도 꼭 연락 주세요.]'],
+  // a grown-up's diary about a child who has become a friend
+  'diary.friend.kid': ['{O:이} 요즘 나를 잘 따른다. 귀여운 녀석!', '{O:이} 오늘 먼저 반갑게 인사해 주었다. 기특하다.', '{O:이랑} 이야기하면 나까지 즐거워진다.'],
+  'diary.bestfriend.kid': ['{O:이} 나를 제일 좋아한대. 헤헤, 기분 좋다.', '{O:이랑} 이제 아주 친해졌다. 귀여운 녀석!'],
 };

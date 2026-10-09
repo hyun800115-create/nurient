@@ -33,6 +33,8 @@ export async function openPage(browser, url, opts = {}) {
     hasTouch: opts.hasTouch !== false,
     locale: opts.locale || 'ko-KR',
   });
+  // (v4-B) a script that runs before the page's own (texbudget.mjs: the GL texture probe)
+  if (opts.init) await ctx.addInitScript(opts.init);
   const page = await ctx.newPage();
   const log = { errors: [], warnings: [], missing404: [], all: [] };
   page.on('pageerror', (e) => log.errors.push('pageerror: ' + (e && e.stack ? e.stack : e)));

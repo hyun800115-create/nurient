@@ -540,6 +540,8 @@ WORLD.v4 = {
   square: {
     cargo: at4({ i: 4.1, j: -1.8 }), board: at4({ i: 2.6, j: -2.4 }), cash: at4({ i: 6.3, j: -1.6 }),
     porter: at4({ i: 7.6, j: -2.4 }), rank: at4({ i: 2.6, j: -1.35 }),
+    // 떠 있는 이름표 위치 (발판에서 [오른쪽 px, 아래쪽 px]). 짐 싣는 곳과 역 금고 이름표가 겹치지 않게 벌려 둠
+    labels: { board: [0, -150], cargo: [-34, -70], cash: [36, -128] },
   },
   // ── 가게·집 부지 (B 가 씀). size: M 가게, L 큰 가게, S 집. m = [X m, Y m]
   lots: {

@@ -7,11 +7,11 @@
   "front": "-Y = faces screen down-left (SW) = the SEA side (like the harbour waterfront). `<key>_x` variants are the same model rotated yaw 90: front = +X (screen down-right) for a coastline along the other iso axis; all their points / polys are already rotated. Baked shadows cannot be flipped, so never mirror a sprite.",
   "footprint": "footprint = screen-px bounding size [w, h] of the ground diamond; footprintM = metres; footprintPoly = 4 ground corners in px (depth sorting / collision).",
   "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting (their dy > 0) or just above the building.",
-  "staff": "staffPoints + staffRoles (beachfolk preset names) + staffDepth \"front\": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: draw the sprite's `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already does this for sprites with `overlay`).",
+  "staff": "staffPoints + staffRoles (role names; the top-level staffPresets maps every role to an existing townsfolk preset \"<fragment>:<preset>\") + staffDepth \"front\": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: draw the sprite's `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already does this for sprites with `overlay`).",
   "balconyPoints": "resort_hotel / pension: guests standing on balconies (elevated - dy already includes the floor height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1.",
   "night": "night: {glow, blend: ADD, tint}. At night tint every sprite with `tint` (multiply) and add the `<key>_glow` sprite (same frame + anchor, blendMode ADD, untinted) at the same position: lit windows, lamps, neon, bulbs, tiki torches, live tanks with a soft bloom. resort_hotel(_x) also has `night.frame` = <key>_night, the finished night picture (draw it UNTINTED instead of tint + glow). lightPoints (+ lightKinds, lightRadiusPx) = where to put extra fx_glow sprites or light the ground.",
   "anims": "idle frame = rest; anims.work (+ alias grill / fish / lights / twinkle / ripple) loop with every frame sharing frameSize + anchor: spr:<key>:work like the village stations.",
-  "pool": "hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js (palette \"pool\", shore \"quay\") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + anchor, anims.work / ripple 6 f) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).",
+  "pool": "hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js (palette \"pool\", shore \"quay\") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + anchor, anims.work / ripple 6 f: clear turquoise water over the pool floor with a drifting caustic net) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).",
   "atlases": "bbld_hotel (hotel, pool, night frames, water loop), bbld_shops, bbld_civic, bbld_street, bbld_glow (all night glow overlays - load it lazily, only needed at night)."
  },
  "atlases": [
@@ -815,13 +815,13 @@
    "atlas": "bbld_shops",
    "frame": "beach_bar",
    "anchor": [
-    0.38034,
-    0.6422
+    0.36777,
+    0.65708
    ],
    "kind": "building",
    "frameSize": [
-    468,
-    436
+    484,
+    452
    ],
    "footprint": [
     326,
@@ -849,12 +849,12 @@
      -81
     ]
    ],
-   "topPx": 260,
+   "topPx": 276,
    "front": "-Y",
    "fxPoints": {
     "sign": [
      2,
-     -227
+     -243
     ],
     "torchL": [
      -152,
@@ -871,8 +871,8 @@
    ],
    "staffPoints": [
     [
-     18,
-     -5
+     5,
+     2
     ]
    ],
    "staffDirs": [
@@ -927,7 +927,7 @@
     ],
     [
      -71,
-     -78
+     -95
     ],
     [
      34,
@@ -970,13 +970,13 @@
    "atlas": "bbld_shops",
    "frame": "beach_bar_x",
    "anchor": [
-    0.36842,
-    0.6422
+    0.37723,
+    0.65708
    ],
    "kind": "building",
    "frameSize": [
-    456,
-    436
+    448,
+    452
    ],
    "footprint": [
     326,
@@ -1004,12 +1004,12 @@
      5
     ]
    ],
-   "topPx": 260,
+   "topPx": 276,
    "front": "+X",
    "fxPoints": {
     "sign": [
      -2,
-     -227
+     -243
     ],
     "torchL": [
      -16,
@@ -1026,8 +1026,8 @@
    ],
    "staffPoints": [
     [
-     -5,
-     -12
+     9,
+     -5
     ]
    ],
    "staffDirs": [
@@ -1082,7 +1082,7 @@
     ],
     [
      71,
-     -78
+     -95
     ],
     [
      -34,
@@ -1183,8 +1183,8 @@
    "doorDir": "NE",
    "staffPoints": [
     [
-     -53,
-     -21
+     -72,
+     -30
     ]
    ],
    "staffDirs": [
@@ -1338,8 +1338,8 @@
    "doorDir": "NW",
    "staffPoints": [
     [
-     58,
-     -23
+     72,
+     -30
     ]
    ],
    "staffDirs": [
@@ -1787,8 +1787,8 @@
    "doorDir": "NW",
    "staffPoints": [
     [
-     -10,
-     -15
+     -35,
+     -28
     ]
    ],
    "staffDirs": [
@@ -1925,8 +1925,8 @@
    "doorDir": "NE",
    "staffPoints": [
     [
-     -30,
-     5
+     -5,
+     -7
     ]
    ],
    "staffDirs": [
@@ -3152,8 +3152,8 @@
    ],
    "staffPoints": [
     [
-     18,
-     -18
+     -29,
+     -8
     ]
    ],
    "staffDirs": [
@@ -3422,7 +3422,25 @@
     "glow": "beach_lamp_glow",
     "blend": "ADD",
     "tint": "#6B7AB8"
-   }
+   },
+   "footprintPoly": [
+    [
+     -23,
+     0
+    ],
+    [
+     0,
+     11
+    ],
+    [
+     23,
+     0
+    ],
+    [
+     0,
+     -11
+    ]
+   ]
   },
   "string_lights_x": {
    "atlas": "bbld_street",
@@ -3662,12 +3680,12 @@
   },
   "beach_bar_front": {
    "anchor": [
-    0.38034,
-    0.6422
+    0.36777,
+    0.65708
    ],
    "frameSize": [
-    468,
-    436
+    484,
+    452
    ],
    "of": "beach_bar",
    "atlas": "bbld_shops",
@@ -3677,12 +3695,12 @@
   },
   "beach_bar_glow": {
    "anchor": [
-    0.38034,
-    0.6422
+    0.36777,
+    0.65708
    ],
    "frameSize": [
-    468,
-    436
+    484,
+    452
    ],
    "of": "beach_bar",
    "atlas": "bbld_glow",
@@ -3693,12 +3711,12 @@
   },
   "beach_bar_x_front": {
    "anchor": [
-    0.36842,
-    0.6422
+    0.37723,
+    0.65708
    ],
    "frameSize": [
-    456,
-    436
+    448,
+    452
    ],
    "of": "beach_bar_x",
    "atlas": "bbld_shops",
@@ -3708,12 +3726,12 @@
   },
   "beach_bar_x_glow": {
    "anchor": [
-    0.36842,
-    0.6422
+    0.37723,
+    0.65708
    ],
    "frameSize": [
-    456,
-    436
+    448,
+    452
    ],
    "of": "beach_bar_x",
    "atlas": "bbld_glow",
@@ -4303,5 +4321,22 @@
  },
  "lazyAtlases": [
   "bbld_glow"
- ]
+ ],
+ "staffPresets": {
+  "doorman": "beachfolk:doorman",
+  "bellhop": "beachfolk:bellhop",
+  "receptionist": "beachfolk:receptionist",
+  "housekeeper": "beachfolk:housekeeper",
+  "lifeguard": "beachfolk:lifeguard",
+  "icecream_vendor": "beachfolk:icecream_vendor",
+  "beach_bar_staff": "beachfolk:beach_bar_staff",
+  "surfer": "beachfolk:surfer",
+  "barista": "townfolk:barista",
+  "chef": "townfolk:barista",
+  "clerk": "beachfolk:beach_bar_staff",
+  "attendant": "beachfolk:beach_bar_staff",
+  "guide": "beachfolk:receptionist",
+  "ticket_seller": "beachfolk:receptionist",
+  "owner": "beachfolk:beach_tourist"
+ }
 }

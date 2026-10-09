@@ -173,28 +173,32 @@ def bar_builder():
     B.plank_floor('deck', X0, X1, Y0, Y1, z=0.05, t=0.08, along='x', seed=2)
     B.deck_skirt('skirt', X0, X1, Y0, Y1, h=0.08)
     trunk = L.stripes('#A8794E', '#8C6240', 8.0, 'Z', rough=0.85, soft=0.15)
+    # the thatch stops just in front of the counter (stools sit in the open) and sits high enough that the
+    # camera ray from the bartender's head (1.75 m) passes under the front fringe: he stays visible
+    RY0 = -0.77
+    RZ = 2.75
     for px_ in (X0 + 0.15, X1 - 0.15):
-        for py_ in (Y0 + 0.15, Y1 - 0.15):
-            cyl('post', 0.09, 2.5, (px_, py_, 0.0), mat=trunk, segs=12, r_top=0.08)
-    RZ = 2.45
-    roof, roof_z = B.hip_roof('thatch', X0 + 0.1, X1 - 0.1, Y0 + 0.1, Y1 - 0.1, RZ, 0.9, over=0.22, col=B.THATCH,
+        for py_ in (RY0 + 0.15, Y1 - 0.15):
+            cyl('post', 0.09, RZ + 0.05, (px_, py_, 0.0), mat=trunk, segs=12, r_top=0.08)
+    roof, roof_z = B.hip_roof('thatch', X0 + 0.1, X1 - 0.1, RY0 + 0.1, Y1 - 0.1, RZ, 0.9, over=0.22, col=B.THATCH,
                               fascia=B.THATCH, t=0.18, ridge_col='#B98C48')
     roof[0].data.materials[0] = B.thatch_mat()
-    thatch_fringe('fringe', X0 - 0.12, X1 + 0.12, Y0 - 0.12, Y1 + 0.12, RZ - 0.02, h=0.18, seed=4)
+    thatch_fringe('fringe', X0 - 0.12, X1 + 0.12, RY0 - 0.12, Y1 + 0.12, RZ - 0.02, h=0.18, seed=4)
     # sign: coconut cocktail on top of the roof
     emblem_disc('rsign', (0.0, 0.05, RZ + 1.62), lambda s: B.em_cocktail(s), r=0.5, bg=B.LEMON, rim=B.CORAL, es=0.95,
                 legs=0.4)
     # bar counter (front) - bamboo front, dark top
     cy = -0.42
     bam = L.stripes('#D9B870', '#B8944E', 1.0 / 0.08, 'X', rough=0.75, soft=0.2)
-    box('counter', (2.4, 0.42, 1.0), (0.0, cy, 0.05), mat=bam, bevel=0.03)
-    box('ctop', (2.55, 0.55, 0.07), (0.0, cy - 0.02, 1.05), mat=tonal('#7A4A2A', 0.06, 4.0), bevel=0.02)
+    # chibi scale: the townsfolk are ~1.45 m tall with their eyes at ~0.95 m, so the bar top sits at 0.87 m
+    box('counter', (2.4, 0.42, 0.75), (0.0, cy, 0.05), mat=bam, bevel=0.03)
+    box('ctop', (2.55, 0.55, 0.07), (0.0, cy - 0.02, 0.8), mat=tonal('#7A4A2A', 0.06, 4.0), bevel=0.02)
     for k in range(3):
-        box('cband', (2.42, 0.44, 0.04), (0.0, cy, 0.25 + 0.3 * k), mat=flat('#9C7048', 0.7), bevel=0.01)
+        box('cband', (2.42, 0.44, 0.04), (0.0, cy, 0.2 + 0.22 * k), mat=flat('#9C7048', 0.7), bevel=0.01)
     for k, (cx_, c) in enumerate(((-0.75, B.CORAL), (-0.1, B.LEMON), (0.6, B.MINT))):
         with L.Collect() as dc:
             B.em_cocktail(0.2, drink=c)
-        L.group(BA.top_level(dc.objs), 'cdrink%d' % k, loc=(cx_, cy - 0.12, 1.16))
+        L.group(BA.top_level(dc.objs), 'cdrink%d' % k, loc=(cx_, cy - 0.12, 0.91))
     # stools in front
     seats = []
     for k in range(4):
@@ -229,7 +233,7 @@ def bar_builder():
         f.visible_shadow = False
         B.light_pt((tx, Y0 - 0.25, 1.85), 'torch', 0.9)
     # bulbs along the front eave
-    B.bulb_string('bulbs', (X0 - 0.3, Y0 - 0.32, RZ - 0.2), (X1 + 0.3, Y0 - 0.32, RZ - 0.2), n=10, sag=0.15)
+    B.bulb_string('bulbs', (X0 - 0.3, RY0 - 0.32, RZ - 0.2), (X1 + 0.3, RY0 - 0.32, RZ - 0.2), n=10, sag=0.15)
     # surfboard + menu board on the visible side
     sxp = X1 + 0.35 if sgn > 0 else X0 - 0.35
     with L.Collect() as sb:
@@ -241,7 +245,7 @@ def bar_builder():
     box('menuf', (0.18, 0.48, 0.05), (sxp, -0.35, 0.66), mat=tonal(B.WOOD, 0.06, 4.0), bevel=0.015)
     B.planter_palm('bpalm', (-sxp, 1.45, 0.0), h=1.6, s=0.66, seed=9)
     # markers
-    mark('staff', (0.15, 0.25, 0.05), facing=(0, -1, 0))
+    mark('staff', (0.15, -0.05, 0.05), facing=(0, -1, 0))
     for (sx, sy) in seats:
         mark('seat', (sx, sy, 0.0), facing=(0, 1, 0))
     for k in range(2):
@@ -912,7 +916,8 @@ def b_tourist_info():
         for k in range(2):
             box('bro', (0.18, 0.04, 0.24), (rx_ - 0.11 + 0.22 * k, ry_ - 0.13, 0.2 + 0.3 * j), rot=(-12, 0, 0),
                 mat=flat((B.SKY, B.CORAL, B.LEMON, B.MINT, B.PINK, B.TURQ)[j * 2 + k], 0.6), bevel=0.01)
-    mark('staff', (cx, cy + 0.25, 0.0), facing=(0, -1, 0))
+    # the guide stands just behind the window, on the camera's line of sight through it (camera looks along (-1, +1))
+    mark('staff', (cx - 0.3, cy - 0.5, 0.0), facing=(0, -1, 0))
     for k in range(2):
         mark('customer', (cx - 0.05 * k, cy - 1.15 - 0.45 * k, 0.0), facing=(0, 1, 0))
     mark('customer', (mx, my - 0.6, 0.0), facing=(0, 1, 0))

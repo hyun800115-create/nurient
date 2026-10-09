@@ -19,7 +19,7 @@ from bld_assets import mark
 import veh_lib as VL
 import town_lib as T
 import beach_lib as B
-from beach_assets import beach, loop_frames, anim_entry, _empty, castle_s, bucket_spade_pair
+from beach_assets import beach, loop_frames, anim_entry, _empty, castle_s, bucket_spade_pair, seat
 
 
 def collect_group(fn, name, loc=(0, 0, 0), rot=(0, 0, 0)):
@@ -71,8 +71,8 @@ def deck_chair(cols=(B.BLUE, B.WHITE), pillow=B.LEMON):
     B.solidify(sl, 0.012, 0.0)
     sphere('pillow', 0.12, (0, -0.07, 0.86), B.canvas(pillow), scale=(1.7, 0.6, 0.85), rot=(-20, 0, 0), segs=16,
            rings=10)
-    mark('seat', (0, -0.33, 0.3), facing=(0, -1, 0))
-    return {}
+    seat((0, -0.34, 0.33), facing=(0, -1, 0))
+    return {'extra': {'seatHeightM': 0.33, 'seatDepth': 'front'}}
 
 
 beach('beach_chair_folding', 'decor', 'beach_shade', fp=(0.7, 0.8), samples=40,
@@ -252,15 +252,19 @@ def b_bucket_spade():
     o2 = extrude('sstar', pts, 0.045, top=B.sand(B.SAND_DAMP), side=B.sand(B.SAND_DAMP), bevel=0.014)
     o2.location = (-0.12, -0.25, 0.0)
     o2.rotation_euler = Euler((0, 0, math.radians(-8)), 'XYZ')
-    mark('play', (0.0, -0.5, 0.0), facing=(0, 1, 0))
-    return {}
+    # the kid kneels on the far side facing SE (beachfolk `dig` frames), the toys stay in front of them
+    mark('play', (-0.5, 0.02, 0.0), facing=(1, 0, 0))
+    return {'extra': {'playDepth': 'behind', 'playAnim': 'dig'}}
 
 
 # =========================================================================== VOLLEYBALL NET
 
 NET_NOTE = ('Beach volleyball net (net along world %s, posts 4.2 m apart, top band 1.9 m high): padded white posts '
             'with blue covers, black mesh with a white top band, red-white antennas, guy ropes to sand pegs. Put it on '
-            'the middle line of decal_volleyball_court (%s). playPoints = 2 players a side (facing the net).')
+            'the middle line of decal_volleyball_court (%s). playPoints / playDirs = 2 players a side (true facing: '
+            'toward the net). ballDirs = the dir to play beachfolk ball_throw / ball_catch with at each point (those '
+            'anims have S / SE / E + mirrors only): the far side uses its true facing, the near side (backs to the '
+            'camera) turns side-on (E / W) to the nearest dir that has frames.')
 
 
 def volley_net():
@@ -304,10 +308,10 @@ def volley_net():
 
 beach('volleyball_net', 'decor', 'beach_play', fp=(4.4, 0.3), samples=40, catcher=16.0,
       notes=NET_NOTE % ('X', 'court long axis along world Y'), ko='비치발리볼 네트', en='Beach volleyball net',
-      zone='play', extra={'netAxis': 'x'})(volley_net)
+      zone='play', extra={'netAxis': 'x', 'ballDirs': ['E', 'E', 'SW', 'SW']})(volley_net)
 beach('volleyball_net_y', 'decor', 'beach_play', fp=(4.4, 0.3), yaw=90.0, samples=40, catcher=16.0,
       notes=NET_NOTE % ('Y', 'court long axis along world X'), ko='비치발리볼 네트 (Y)',
-      en='Beach volleyball net (Y)', zone='play', extra={'netAxis': 'y'})(volley_net)
+      en='Beach volleyball net (Y)', zone='play', extra={'netAxis': 'y', 'ballDirs': ['W', 'W', 'SE', 'SE']})(volley_net)
 
 
 # =========================================================================== SURFBOARDS
@@ -582,14 +586,16 @@ def b_swing():
                 col=['#F7C6CF', '#FFFFFF', '#F9D9A8'][k % 3], rz=90, kind='scallop')
     mbs.done('garland')
     for sx in (-1, 1):
-        mark('seat', (sx * 0.28, -0.25, z + 0.06), facing=(0, -1, 0))
-    return {}
+        seat((sx * 0.28, -0.25, z + 0.06), facing=(0, -1, 0))
+    return {'extra': {'seatHeightM': round(z + 0.06, 3), 'seatDepth': 'front'}}
 
 
 @beach('picnic_table_beach', 'decor', 'beach_shade', fp=(1.8, 1.6), samples=40, catcher=16.0,
        notes='Beach picnic table: weathered teak table with attached benches, a blue-and-white parasol through the '
-             'middle, a pitcher of lemonade and two cups. seatPoints: 2 on the +Y bench (face SW, sit frames) and 2 '
-             'on the -Y bench (face NE = backs: draw an idle NE frame at seatsStand or skip); seatDirs per seat.',
+             'middle, a pitcher of lemonade and two cups. seatPoints (all `sit` SW): seats 0 / 2 on the far (+Y) bench '
+             'facing the table (seatDepths "behind": normal y-sort, the table top hides their laps), seats 1 / 3 on '
+             'the near (-Y) bench sitting with their backs to the table, looking out to sea (seatDepths "front": '
+             'draw them just above the table).',
        ko='해변 피크닉 테이블', en='Beach picnic table', zone='shade')
 def b_picnic():
     tk = B.teak('#B98458', along='X')
@@ -614,10 +620,14 @@ def b_picnic():
         bevel=0.01)
     for k, (x, y) in enumerate(((-0.3, -0.1), (-0.1, 0.14))):
         cyl('cup%d' % k, 0.04, 0.09, (x, y, 0.77), mat=B.vinyl([B.PINK, B.MINT][k], 0.3), segs=14, bevel=0.008)
+    # far bench: facing the table (SW), the table top hides their laps (normal y-sort, seatDepths "behind");
+    # near bench: sitting with their backs to the table looking out to sea (SW, drawn in front, "front").
+    # Polish: the near seats faced NE before - no character set has sit-NE frames.
     for x in (-0.4, 0.4):
-        mark('seat', (x, 0.5, 0.45), facing=(0, -1, 0))
-        mark('seat', (x, -0.5, 0.45), facing=(0, 1, 0))
-    return {}
+        seat((x, 0.48, 0.46), facing=(0, -1, 0))
+        seat((x, -0.76, 0.46), facing=(0, -1, 0))
+    return {'extra': {'seatHeightM': 0.46, 'seatDepths': ['behind', 'front', 'behind', 'front'],
+                      'seatDepth': 'per seat: seatDepths'}}
 
 
 # =========================================================================== FOOD CARTS / STANDS
@@ -626,88 +636,161 @@ CART_N = 4
 
 
 @beach('icecream_cart', 'station', 'beach_service', fp=(1.6, 0.9), samples=48, catcher=16.0,
-       notes='Ice-cream cart: pastel mint cart on two spoked wheels with a push handle, two round freezer lids, a cone '
-             'rack, a giant strawberry cone on the roof, a pink-and-white umbrella and a brass bell. idle = still; '
-             'anims.bell (= work) = 4-frame bell ring (swinging + a little glint) when calling customers '
-             '(sfx_icecream_bell). staffPoints[0] = the vendor behind the cart (+Y, faces SW), customerPoints = '
-             'queue in front (-Y side, first at the counter, facing NE), fxPoints.bell.', ko='아이스크림 수레',
+       notes='Ice-cream cart: minty cart on two spoked wheels with rubber tyres and a push handle, two round freezer '
+             'lids, a cone rack, a giant three-scoop cone (strawberry, mint, vanilla + a cherry) standing on the roof '
+             'at the left end, a pink-and-white umbrella set back over the vendor, and a brass hand bell hung from a '
+             'curled bracket on the front of the handle. idle = still; anims.bell (= work) = 4-frame ring at 8 fps: '
+             'the bell swings +-25 deg with a glint and little "ding" marks (sfx_icecream_bell on frames 1 and 3). '
+             'staffPoints[0] = the vendor behind the cart (+Y, faces SW; staffDepth "behind" = normal y-sort, the cart '
+             'body hides his legs), customerPoints = queue in front (-Y side, first at the counter, facing NE), '
+             'fxPoints.bell (the bell), fxPoints.sign (top of the giant cone).', ko='아이스크림 수레',
        en='Ice-cream cart', zone='service', anim_name='bell')
 def b_icecream_cart():
-    mint = VL.paint('#9FE3C8', 0.35, 0.45)
-    cream = VL.paint('#FFF4DC', 0.4, 0.3)
-    pink = VL.paint('#F58FB4', 0.35, 0.4)
+    mint = VL.paint('#74D3AE', 0.35, 0.45)
+    mint_dk = VL.paint('#4FB08C', 0.4, 0.4)
+    cream = VL.paint('#FFF1D6', 0.4, 0.3)
+    pink = VL.paint('#EE7FA6', 0.35, 0.4)
     VL.rbox('body', (1.3, 0.7, 0.62), (0, 0, 0.3), mint, r=0.1)
     VL.rbox('band', (1.32, 0.72, 0.1), (0, 0, 0.62), pink, r=0.05)
     VL.rbox('top', (1.34, 0.74, 0.06), (0, 0, 0.92), cream, r=0.03)
+    VL.rbox('base', (1.26, 0.66, 0.06), (0, 0, 0.27), mint_dk, r=0.03)
     # scalloped skirt trim (front)
     mb = L2.MB()
     for k in range(9):
         x = -0.6 + k * 0.15
-        mb.sphere(0.06, VL.paint('#FFF4DC', 0.4, 0.2), loc=(x, -0.36, 0.33), scale=(1, 0.3, 0.8), segs=10, rings=6)
+        mb.sphere(0.06, VL.paint('#FFF1D6', 0.4, 0.2), loc=(x, -0.36, 0.33), scale=(1, 0.3, 0.8), segs=10, rings=6)
     mb.done('scal')
     # front decal: a big painted cone emblem
     cone_pts = [(-0.11, 0.08), (0.11, 0.08), (0.0, -0.18)]
-    o = extrude('emc', cone_pts, 0.01, top=flat('#E8B464', 0.6), side=flat('#E8B464', 0.6), bevel=0.0)
+    o = extrude('emc', cone_pts, 0.01, top=flat('#D99A4A', 0.6), side=flat('#D99A4A', 0.6), bevel=0.0)
     o.rotation_euler = Euler((math.radians(90), 0, 0), 'XYZ')
     o.location = (0, -0.355, 0.62)
-    sphere('ems', 0.1, (0, -0.36, 0.73), flat('#F58FB4', 0.6), scale=(1, 0.12, 0.85), segs=16, rings=8)
+    sphere('ems', 0.1, (0, -0.36, 0.73), flat('#EE7FA6', 0.6), scale=(1, 0.12, 0.85), segs=16, rings=8)
+    sphere('emc2', 0.025, (0.02, -0.37, 0.83), flat('#D9483B', 0.4), scale=(1, 0.4, 1), segs=10, rings=6)
     # freezer lids
-    for x in (-0.3, 0.12):
-        cyl('lid', 0.17, 0.05, (x, 0.05, 0.98), mat=B.metal(B.CHROME, 0.2, 0.85), segs=24, bevel=0.015)
-        sphere('lidk', 0.03, (x, 0.05, 1.04), B.metal(B.CHROME, 0.2, 0.85), segs=10, rings=6)
+    for x in (-0.12, 0.3):
+        cyl('lid', 0.17, 0.05, (x, 0.05, 0.98), mat=B.metal('#BFC7D2', 0.22, 0.85), segs=24, bevel=0.015)
+        sphere('lidk', 0.03, (x, 0.05, 1.04), B.metal('#8E96A3', 0.25, 0.85), segs=10, rings=6)
     # cone rack with cones
-    box('rack', (0.24, 0.12, 0.12), (0.47, -0.2, 0.98), mat=cream, bevel=0.02)
+    box('rack', (0.24, 0.12, 0.12), (0.47, -0.22, 0.98), mat=cream, bevel=0.02)
     for k in range(3):
-        cyl('cn%d' % k, 0.025, 0.12, (0.4 + k * 0.07, -0.2, 1.06), mat=flat('#E2AC5C', 0.7), segs=10, r_top=0.035,
+        cyl('cn%d' % k, 0.025, 0.12, (0.4 + k * 0.07, -0.22, 1.06), mat=flat('#D99A4A', 0.7), segs=10, r_top=0.035,
             bevel=0.004, rot=(180, 0, 0))
-    # wheels + handle
+    # wheels (pink spokes, cream hub, dark rubber tyre) + handle
+    tyre = flat('#3A3F4A', 0.6)
     for sy in (-1, 1):
-        o = cyl('wh%d' % sy, 0.24, 0.07, (-0.35, sy * 0.4, 0.24), rot=(90, 0, 0), mat=B.painted('#F58FB4'), segs=28,
-                origin='center', bevel=0.02, cap_mat=VL.paint('#FFF4DC', 0.4, 0.2))
-        del o
+        cyl('wh%d' % sy, 0.22, 0.06, (-0.35, sy * 0.4, 0.24), rot=(90, 0, 0), mat=B.painted('#EE7FA6'), segs=28,
+            origin='center', bevel=0.02, cap_mat=VL.paint('#FFF1D6', 0.4, 0.2))
+        B.torus('ty%d' % sy, 0.225, 0.035, (-0.35, sy * 0.4, 0.24), rot=(90, 0, 0), mats=[tyre], M=32, K=10)
         mbw = L2.MB()
         for k in range(8):
             a = math.tau * k / 8
-            mbw.seg((-0.35, sy * 0.44, 0.24), (-0.35 + 0.18 * math.cos(a), sy * 0.44, 0.24 + 0.18 * math.sin(a)), 0.012,
+            mbw.seg((-0.35, sy * 0.44, 0.24), (-0.35 + 0.17 * math.cos(a), sy * 0.44, 0.24 + 0.17 * math.sin(a)), 0.012,
                     flat(B.WHITE, 0.5), segs=5)
         mbw.done('spokes%d' % sy)
-    box('leg', (0.06, 0.4, 0.3), (0.5, 0, 0.0), mat=B.painted('#F58FB4'), bevel=0.02)
-    B.rod('hd1', (0.62, -0.28, 0.6), (0.92, -0.28, 0.82), 0.022, B.metal(B.CHROME, 0.2, 0.85), segs=8)
-    B.rod('hd2', (0.62, 0.28, 0.6), (0.92, 0.28, 0.82), 0.022, B.metal(B.CHROME, 0.2, 0.85), segs=8)
+    box('leg', (0.06, 0.4, 0.3), (0.5, 0, 0.0), mat=mint_dk, bevel=0.02)
+    steel = B.metal('#8E96A3', 0.25, 0.85)
+    B.rod('hd1', (0.62, -0.28, 0.6), (0.92, -0.28, 0.82), 0.022, steel, segs=8)
+    B.rod('hd2', (0.62, 0.28, 0.6), (0.92, 0.28, 0.82), 0.022, steel, segs=8)
     B.rod('hd3', (0.92, -0.3, 0.82), (0.92, 0.3, 0.82), 0.03, VL.paint('#2E6FB8', 0.4, 0.3), segs=10)
-    # umbrella (pink / white) on a pole
-    P = B.parasol('um', ['#F58FB4', B.WHITE], R=0.75, apex=2.35, drop=0.28, seed=7)
+    # umbrella (pink / white), set back over the vendor so the giant cone and the bell stay in the open
+    ux, uy = 0.28, 0.2
+    P = B.parasol('um', ['#EE7FA6', B.WHITE], R=0.62, apex=2.72, drop=0.24, seed=7)
     for o in P['objs']:
         if o.name.startswith('um_mound'):
             o.hide_render = True
-        elif o.name.startswith('um_pole'):
-            pass
-    # giant cone on the roof (strawberry scoop + cherry)
-    cyl('gc', 0.08, 0.32, (-0.48, 0.12, 0.95 + 0.34), rot=(180, 0, 0), mat=flat('#E2AC5C', 0.7), segs=16,
-        r_top=0.015, bevel=0.01)
-    sphere('gs', 0.12, (-0.48, 0.12, 1.38), VL.paint('#F58FB4', 0.45, 0.3), segs=18, rings=12)
-    sphere('gc2', 0.035, (-0.48, 0.12, 1.51), VL.paint(B.RED, 0.25, 0.6), segs=10, rings=6)
-    # bell (hangs from the umbrella pole)
-    bell_g = L.group([], 'bellg', loc=(0.06, -0.08, 1.75))
+        elif o.parent is None:
+            o.location = (o.location[0] + ux, o.location[1] + uy, o.location[2])
+        if o.name.startswith('um_pole_lo'):           # only the part above the cart top (no stick under the cart)
+            o.location = (o.location[0], o.location[1], 0.95)
+            o.scale = (1, 1, 0.3 / 1.3)
+    box('ubase', (0.14, 0.14, 0.06), (ux, uy, 0.95), mat=steel, bevel=0.015)
+    # giant three-scoop cone on the roof (left end): waffle cone, strawberry / mint / vanilla scoops, cherry
+    cx, cy = -0.44, -0.04
+    cyl('gcb', 0.1, 0.05, (cx, cy, 0.95), mat=cream, segs=18, bevel=0.012)
+    gc = cyl('gc', 0.035, 0.4, (cx, cy, 1.0), mat=B.teak('#D99A4A', along='Z', rough=0.7), segs=18, r_top=0.14,
+             bevel=0.01)
+    del gc
+    mbx = L2.MB()
+    for k in range(4):                                  # waffle ridges
+        z = 1.08 + k * 0.08
+        rr = 0.035 + (0.14 - 0.035) * (z - 1.0) / 0.4
+        mbx.seg((cx - rr * 0.72, cy - rr * 0.72, z), (cx + rr * 0.72, cy - rr * 0.72, z + 0.05), 0.008,
+                flat('#B87A36', 0.7), segs=5)
+    mbx.done('waffle')
+    for (dz, r_, col, sq) in ((1.45, 0.155, '#F58FB4', 0.8), (1.61, 0.13, '#8FDCB8', 0.85), (1.74, 0.105, '#FFF3DA', 0.9)):
+        blob('sc%d' % int(dz * 100), r_, (cx, cy, dz), VL.paint(col, 0.45, 0.25), scale=(1, 1, sq), seed=int(dz * 10),
+             amp=0.1, freq=2.5, subdiv=3)
+    sphere('cher', 0.045, (cx + 0.01, cy - 0.01, 1.86), VL.paint('#D62F3A', 0.2, 0.7), segs=14, rings=8)
+    B.rod('cherst', (cx + 0.01, cy - 0.01, 1.89), (cx + 0.05, cy + 0.02, 1.97), 0.005, flat('#5E8A3A', 0.7), segs=5)
+    mbs = L2.MB()
+    rnd = L.rng(12)
+    for k in range(16):                                 # sprinkles on the strawberry scoop
+        a = rnd.uniform(0, math.tau)
+        zz = rnd.uniform(1.43, 1.53)
+        rr = 0.15 * math.sqrt(max(0.05, 1 - ((zz - 1.45) / 0.13) ** 2))
+        mbs.cone(0.008, 0.008, 0.035, flat(['#FFFFFF', '#5BC0EB', '#F7DC6F', '#9BE564'][k % 4], 0.35),
+                 loc=(cx + rr * math.cos(a), cy + rr * math.sin(a), zz), rot=(90, 0, rnd.uniform(0, 180)), segs=6)
+    mbs.done('sprinkles')
+    # brass hand bell on a curled bracket at the front end of the handle (camera side, outside the umbrella)
+    bx, by = 0.92, -0.3
+    hx, hy = bx + 0.12, by - 0.06                      # the bell hangs out past the handle end, clear of the cart
+    B.rod('bpost', (bx, by, 0.82), (bx, by, 1.42), 0.013, steel, segs=8)
+    B.rod('barm', (bx, by, 1.42), (hx, hy, 1.47), 0.012, steel, segs=8)
+    sphere('bcurl', 0.022, (hx, hy, 1.47), steel, segs=10, rings=6)
+    bell_g = L.group([], 'bellg', loc=(hx, hy, 1.45))
     with L.Collect() as bc_:
-        T.bell_model('bell', s=0.35, col='#E2B33C')
+        T.bell_model('bell', s=0.72, col='#E2B33C')
+        cyl('bhandle', 0.018, 0.07, (0, 0, 0.0), mat=B.teak(B.TEAK_DARK, along='Z'), segs=10, bevel=0.006)
     for o in BA.top_level(bc_.objs):
         o.parent = bell_g
-    B.rod('bstr', (0.06, -0.02, 1.95), (0.06, -0.08, 1.78), 0.006, B.rope_mat(), segs=5)
-    SW = [0.0, 22.0, 0.0, -22.0]
+    glint_m = flat('#FFFFFF', 0.2, emission='#FFF6D8', emission_strength=4.0)
+    ding_m = flat('#F07A36', 0.5)                       # warm "ding" strokes (white would vanish on the sand)
+    with L.Collect() as gl:
+        for a in (0, 90):
+            o = box('gl%d' % a, (0.075, 0.004, 0.012), (0, 0, 0), mat=glint_m, bevel=0.0)
+            o.rotation_euler = Euler((0, math.radians(a + 45), 0), 'XYZ')
+    glint = L.group(BA.top_level(gl.objs), 'glint', loc=(hx - 0.08, hy - 0.12, 1.3))
+    for o in BA.descendants([glint]):
+        o.visible_shadow = False
+    dings = []
+    for side in (-1, 1):
+        with L.Collect() as dc:
+            mbd = L2.MB()
+            hdir = Vector((0.7071, 0.7071, 0.0))              # screen-horizontal (world X+Y)
+            for k, ang in enumerate((-35, 0, 35)):            # three short radiating sound strokes
+                t = math.radians(ang)
+                p0 = hdir * (side * 0.2 * math.cos(t)) + Vector((0, 0, -0.14 + 0.2 * math.sin(t)))
+                p1 = hdir * (side * 0.3 * math.cos(t)) + Vector((0, 0, -0.14 + 0.3 * math.sin(t)))
+                mbd.seg(p0, p1, 0.016, ding_m, segs=6)
+            mbd.done('ding%d' % side)
+        g = L.group(BA.top_level(dc.objs), 'dings%d' % side, loc=(hx, hy - 0.04, 1.45))
+        for o in BA.descendants([g]):
+            o.visible_shadow = False
+        dings.append(g)
+    SW = [0.0, 25.0, 0.0, -25.0]
+    fx_all = BA.descendants([glint] + dings)
 
     def idle():
         bell_g.rotation_euler = (0, 0, 0)
+        BA.show(fx_all, False)
 
     def work(i):
-        bell_g.rotation_euler = (math.radians(SW[i]), math.radians(SW[i] * 0.4), 0)
-    mark('staff', (0.0, 0.62, 0.0), facing=(0, -1, 0))
+        # swing in the screen plane (about world X+Y = the axis facing the camera) so the motion reads
+        a = math.radians(SW[i])
+        bell_g.rotation_euler = Euler((a * 0.7, -a * 0.7, 0), 'XYZ')
+        BA.show(fx_all, False)
+        if i in (1, 3):
+            BA.show(BA.descendants([glint]), True)
+            BA.show(BA.descendants([dings[0 if i == 3 else 1]]), True)
+    mark('staff', (0.1, 0.62, 0.0), facing=(0, -1, 0))
     for k in range(3):
         mark('customer', (-0.1 + k * 0.05, -0.75 - k * 0.7, 0.0), facing=(0, 1, 0))
     frames = loop_frames('icecream_cart', 'bell', CART_N, work, idle)
     idle()
     return {'frames': frames, 'anims': anim_entry('icecream_cart', 'bell', CART_N, 8),
-            'fx': {'bell': (0.06, -0.08, 1.7), 'sign': (-0.48, 0.12, 1.45)}, 'extra': {'staffDepth': 'front'}}
+            'fx': {'bell': (hx, hy, 1.3), 'sign': (cx, cy, 1.9)},
+            'extra': {'staffDepth': 'behind', 'bellFrames': [1, 3]}}
 
 
 @beach('corn_stand', 'station', 'beach_service', fp=(1.8, 1.0), samples=48, catcher=16.0,
@@ -831,60 +914,157 @@ def b_rental_stand():
 
 # =========================================================================== SIGNS (blank boards)
 
-SIGN_NOTE = 'Blank beach sign (%s). The game writes the text at fxPoints.board (centre of the board face).'
+SIGN_NOTE = ('Beach sign (%s). The text area stays blank (the game writes the text at fxPoints.board = centre of '
+             'the blank area); the frame around it is decorated (polish: plain blank boards looked cheap).')
+
+
+def _face_disc(name, loc_local, r, col, board_rot, board_loc, depth=0.012, kind=None):
+    """A little painted icon disc on a board face (board_rot / board_loc = the board's transform; loc_local in the
+    board's XY plane, + toward the camera)."""
+    with L.Collect() as c:
+        cyl(name, r, depth, (loc_local[0], loc_local[1], 0.0), mat=B.painted(col), segs=20, bevel=0.004)
+        if kind == 'sun':
+            sphere(name + '_c', r * 0.55, (loc_local[0], loc_local[1], depth), flat('#F7C948', 0.5),
+                   scale=(1, 1, 0.35), segs=14, rings=8)
+            mb = L2.MB()
+            for k in range(8):
+                a = math.tau * k / 8
+                mb.seg((loc_local[0] + r * 0.62 * math.cos(a), loc_local[1] + r * 0.62 * math.sin(a), depth),
+                       (loc_local[0] + r * 0.88 * math.cos(a), loc_local[1] + r * 0.88 * math.sin(a), depth), 0.006,
+                       flat('#F49A3A', 0.5), segs=5)
+            mb.done(name + '_rays')
+        elif kind == 'wave':
+            mb = L2.MB()
+            for j in range(2):
+                yy = loc_local[1] - r * 0.25 + j * r * 0.4
+                pts = [(loc_local[0] - r * 0.7 + r * 1.4 * t / 8, yy + r * 0.12 * math.sin(t * 1.6), depth)
+                       for t in range(9)]
+                for q0, q1 in zip(pts, pts[1:]):
+                    mb.seg(q0, q1, 0.008, flat(B.WHITE, 0.5), segs=5)
+            mb.done(name + '_w')
+        elif kind == 'cone':
+            cyl(name + '_cn', 0.004, r * 0.9, (loc_local[0], loc_local[1] - r * 0.6, depth), rot=(-90, 0, 0),
+                mat=flat('#D99A4A', 0.6), segs=10, r_top=r * 0.32, bevel=0.0)
+            sphere(name + '_sc', r * 0.38, (loc_local[0], loc_local[1] + r * 0.32, depth), flat('#F28DB2', 0.5),
+                   scale=(1, 1, 0.5), segs=12, rings=8)
+    return L.group(BA.top_level(c.objs), name + '_g', loc=board_loc, rot=board_rot)
 
 
 @beach('beach_sign_arrow', 'decor', 'beach_service', fp=('r', 0.3), samples=40,
-       notes=SIGN_NOTE % 'driftwood post with three pastel arrow boards pointing different ways, a starfish on top',
+       notes=SIGN_NOTE % 'driftwood post with three pastel arrow boards pointing different ways, each with a white '
+                         'painted rim and a little icon at its tail (sun, wave, ice cream), rope lashings, a starfish '
+                         'on top; fxPoints.board = the top arrow',
        ko='해변 화살표 표지판', en='Beach arrow sign', zone='service')
 def b_sign_arrow():
     dw = B.teak(B.DRIFT, along='Z')
     cyl('post', 0.06, 1.9, (0, 0, 0), mat=dw, segs=12, bevel=0.015)
-    boards = []
-    for k, (z, col, rz, flip) in enumerate(((1.55, B.TURQ, 10, 1), (1.25, B.CORAL, -35, -1), (0.95, B.YELLOW, 60, 1))):
-        pts = [(-0.05, -0.09), (0.42, -0.09), (0.52, 0.0), (0.42, 0.09), (-0.05, 0.09)]
+    rope = B.rope_mat('#C9A86A')
+    for k, (z, col, rz, flip, icon) in enumerate(((1.55, B.TURQ, 10, 1, 'sun'), (1.25, B.CORAL, -35, -1, 'wave'),
+                                                  (0.95, B.YELLOW, 60, 1, 'cone'))):
+        pts = [(-0.05, -0.1), (0.42, -0.1), (0.53, 0.0), (0.42, 0.1), (-0.05, 0.1)]
+        inner = [(-0.03, -0.075), (0.41, -0.075), (0.495, 0.0), (0.41, 0.075), (-0.03, 0.075)]
         if flip < 0:
             pts = [(-x, y) for x, y in reversed(pts)]
-        o = extrude('arrow%d' % k, pts, 0.035, top=B.painted(col), side=B.painted(hexmix(col, '#3A2A22', 0.2)),
-                    bevel=0.01)
-        o.rotation_euler = Euler((math.radians(90), 0, math.radians(rz)), 'XYZ')
-        o.location = (0, 0.02, z)
-        boards.append(o)
+            inner = [(-x, y) for x, y in reversed(inner)]
+        rot = (90, 0, rz)
+        loc = (0, 0.02, z)
+        o = extrude('arrow%d' % k, pts, 0.03, top=B.painted('#F4EEE2'), side=B.painted(hexmix(col, '#3A2A22', 0.3)),
+                    bevel=0.008)
+        o.rotation_euler = Euler([math.radians(a) for a in rot], 'XYZ')
+        o.location = loc
+        o2 = extrude('arrowi%d' % k, inner, 0.038, top=B.painted(col), side=B.painted(col), bevel=0.004)
+        o2.rotation_euler = Euler([math.radians(a) for a in rot], 'XYZ')
+        o2.location = loc
+        bg = {'sun': '#3D86D6', 'wave': '#2E86C9', 'cone': '#F7F3EA'}[icon]
+        _face_disc('ic%d' % k, (0.045 * flip, 0.0), 0.062, bg, rot, loc, depth=0.044, kind=icon)
+        # rope lashing where the board meets the post + two nail heads
+        B.torus('lash%d' % k, 0.068, 0.012, (0, 0, z - 0.06), mats=[rope], M=20, K=6)
+        B.torus('lash%db' % k, 0.068, 0.012, (0, 0, z + 0.06), mats=[rope], M=20, K=6)
     B.starfish('star', (0, 0, 1.9), r=0.09, col='#F49A5A', rz=20, t=0.035, tilt=(0, 0))
     B.sand_mound('m', 0.2, 0.05, (0, 0, 0), seed=2)
     return {'fx': {'board': (0.2, -0.03, 1.55)}}
 
 
 @beach('beach_sign_board', 'decor', 'beach_service', fp=('r', 0.3), samples=40,
-       notes=SIGN_NOTE % 'a turquoise surfboard stuck nose-up in the sand as a sign board, with a hibiscus flower',
+       notes=SIGN_NOTE % 'a turquoise surfboard stuck nose-up in the sand as a sign board: a cream text panel with a '
+                         'blue wave band under it, a flower lei draped over the nose, a hibiscus and two shells',
        ko='서핑보드 표지판', en='Surfboard sign', zone='service')
 def b_sign_board():
     surfboard('sb', (0, 0.0, 0.92), (88, 0, 0), B.TURQ, stripe=B.WHITE, L_=1.8, W=0.6, fin=False)
+    B.board_xz('panelr', 0.46, 0.59, 0.01, (0, -0.055, 0.58), flat('#2E86C9', 0.55), r=0.05)
     B.board_xz('panel', 0.42, 0.55, 0.012, (0, -0.06, 0.6), flat('#FFF8EC', 0.6), r=0.04)
+    # painted wave band under the panel
+    mb = L2.MB()
+    for j, (zz, col) in enumerate(((0.47, '#2E86C9'), (0.42, '#7FD3E0'))):
+        pts = [(-0.24 + 0.48 * t / 10, -0.07 - 0.002 * j, zz + 0.025 * math.sin(t * 1.25)) for t in range(11)]
+        for q0, q1 in zip(pts, pts[1:]):
+            mb.seg(q0, q1, 0.02, flat(col, 0.5), segs=6)
+    mb.done('waveband')
+    # flower lei draped across the board near the nose
+    mbl = L2.MB()
+    cols = ['#F2577A', '#F7C948', '#FFFFFF', '#F49A3A', '#B98AE0']
+    for k in range(15):
+        t = k / 14.0
+        x = -0.3 + 0.6 * t
+        z = 1.55 - 0.16 * math.sin(math.pi * t) - 0.02 * math.cos(t * 9)
+        mbl.sphere(0.034, flat(cols[k % len(cols)], 0.55), loc=(x, -0.085 + 0.03 * abs(x), z), segs=10, rings=6)
+    mbl.done('lei')
     for k in range(5):
         a = math.tau * k / 5
-        sphere('pet%d' % k, 0.05, (0.2 + 0.05 * math.cos(a), -0.07, 1.42 + 0.05 * math.sin(a)), flat('#F2577A', 0.5),
+        sphere('pet%d' % k, 0.05, (0.2 + 0.05 * math.cos(a), -0.07, 1.3 + 0.05 * math.sin(a)), flat('#F2577A', 0.5),
                scale=(1, 0.4, 1), segs=10, rings=6)
-    sphere('pc', 0.025, (0.2, -0.09, 1.42), flat(B.YELLOW, 0.5), segs=8, rings=5)
+    sphere('pc', 0.025, (0.2, -0.09, 1.3), flat(B.YELLOW, 0.5), segs=8, rings=5)
+    mbs = L2.MB()
+    B.shell(mbs, (-0.17, -0.07, 1.16), s=0.04, col='#F7C6CF', rz=90)
+    B.shell(mbs, (0.17, -0.07, 0.36), s=0.04, col='#FFFFFF', rz=90)
+    mbs.done('shells')
     B.sand_mound('m', 0.3, 0.08, (0, 0, 0), seed=3)
     return {'fx': {'board': (0, -0.07, 0.87)}}
 
 
 @beach('beach_sign_notice', 'decor', 'beach_service', fp=(1.2, 0.3), samples=40,
-       notes=SIGN_NOTE % 'framed notice board on two white posts under a little coral roof (rules / opening hours)',
+       notes=SIGN_NOTE % 'framed notice board on two white posts under a little coral roof: a turquoise header '
+                         'strip with sun / wave icons, two pinned paper notes in the lower corners, a life ring on the '
+                         'post and shells along the roof (rules / opening hours go in the blank middle)',
        ko='해변 안내판', en='Beach notice board', zone='service')
 def b_sign_notice():
     pm = B.painted(B.WOOD_WHITE)
     for sx in (-1, 1):
         box('p%d' % sx, (0.08, 0.08, 1.85), (sx * 0.55, 0, 0), mat=pm, bevel=0.015)
     B.board_xz('frame', 1.12, 0.78, 0.05, (0, 0.03, 0.82), B.teak(B.TEAK, along='X'), r=0.03)
-    B.board_xz('face', 1.0, 0.66, 0.012, (0, -0.0, 0.88), flat('#FFF8EC', 0.6), r=0.02)
+    F0 = -0.034                                     # front of the cream face, proud of the teak frame (polish: the face
+    #                                                 used to sit inside the frame, so the board showed plain brown)
+    B.board_xz('face', 1.0, 0.66, 0.014, (0, F0 + 0.014, 0.88), flat('#FFF8EC', 0.6), r=0.02)
+    # header strip with two icons
+    B.board_xz('head', 1.0, 0.12, 0.008, (0, F0, 1.42), flat('#2FB9C4', 0.55), r=0.015)
+    rot = (90, 0, 0)
+    _face_disc('hs', (-0.4, 0.0), 0.045, '#2FB9C4', rot, (0, F0 - 0.008, 1.48), depth=0.006, kind='sun')
+    _face_disc('hw', (0.4, 0.0), 0.045, '#2E86C9', rot, (0, F0 - 0.008, 1.48), depth=0.006, kind='wave')
+    # two pinned paper notes (lower corners, slightly tilted) with coloured push pins + scribble lines
+    for k, (x, z, rz, pin) in enumerate(((-0.36, 1.0, 6, '#E8524A'), (0.37, 1.02, -5, '#3D86D6'))):
+        o = B.board_xz('note%d' % k, 0.2, 0.2, 0.004, (x, F0, z), flat('#FFFDF5' if k else '#FFF2B8', 0.7),
+                       r=0.005)
+        o.rotation_euler = Euler((math.radians(90), math.radians(rz), 0), 'XYZ')
+        sphere('pin%d' % k, 0.018, (x, F0 - 0.012, z + 0.17), flat(pin, 0.3), segs=10, rings=6)
+        mb = L2.MB()
+        for j in range(3):
+            zz = z + 0.12 - j * 0.045
+            mb.seg((x - 0.07, F0 - 0.006, zz), (x + 0.05 - 0.03 * (j == 2), F0 - 0.006, zz), 0.004, flat('#9AA3AE', 0.6),
+                   segs=4)
+        mb.done('scrib%d' % k)
     box('roof', (1.32, 0.34, 0.06), (0, 0.0, 1.82), rot=(0, 0, 0), mat=B.painted(B.CORAL), bevel=0.02,
         taper=(0.9, 0.5))
     box('roof2', (1.32, 0.34, 0.08), (0, 0.0, 1.78), mat=B.painted(B.CORAL), bevel=0.02)
+    mbs = L2.MB()
+    for k in range(5):
+        B.shell(mbs, (-0.4 + k * 0.2, -0.0, 1.89), s=0.04, col=['#F7C6CF', '#FFFFFF', '#F9D9A8'][k % 3], rz=90)
+    mbs.done('rshells')
+    # life ring hanging on the right post
+    B.torus('ring', 0.13, 0.035, (0.55, -0.07, 1.3), rot=(90, 0, 0),
+            mats=[B.vinyl(B.RESCUE_RED, 0.4, 0.3), B.vinyl(B.WHITE, 0.4, 0.3)], seg_fn=lambda j, k: (j // 4) % 2)
     for sx in (-1, 1):
         B.sand_mound('m%d' % sx, 0.14, 0.04, (sx * 0.55, 0, 0), seed=4 + sx)
-    return {'fx': {'board': (0, -0.02, 1.21)}}
+    return {'fx': {'board': (0, F0, 1.16)}}
 
 
 # =========================================================================== KITE (flying)
@@ -960,116 +1140,159 @@ def b_kite():
 
 # =========================================================================== NATURE: PALMS, PINE, GRASS, DRIFT
 
-def frond(mb, base, direction, length=1.6, width=0.34, droop=0.9, lift=0.35, mats=None, n=16, seed=0, fold=0.35):
-    """Palm frond into a life2_lib.MB-like vertex list: a V-folded leaf strip along a drooping arc with a serrated
-    (leaflet) edge.  Returns (verts, faces, fmat) chunk appended to mb lists."""
-    d = Vector((direction[0], direction[1], 0)).normalized()
-    side = Vector((-d.y, d.x, 0))
-    verts, faces, fm = mb
+def pinnate_frond(name, length=1.8, lift=0.55, droop=1.05, n=28, seed=0, mats=None, spread=1.0, dead=False):
+    """Coconut-palm frond along local +X from the crown (origin): a curved yellow-green midrib (rachis) arching up
+    then drooping, with n pairs of narrow leaflets hanging down from it in a V (longest mid-frond, short at the base
+    and tip), each leaflet a 3-segment strip that curves down under its own weight.  Rigid: the sway turns the whole
+    frond, so frames never re-shape it (polish: the old serrated paper-cutout fronds popped between frames)."""
     rnd = L.rng(seed)
-    pts = []
-    for k in range(n + 1):
-        t = k / n
-        p = Vector(base) + d * (length * t) + Vector((0, 0, lift * t - droop * t * t))
-        pts.append(p)
-    base_i = len(verts)
-    for k, p in enumerate(pts):
-        t = k / n
-        w = width * math.sin(math.pi * min(1.0, 0.1 + t)) ** 0.8 * (0.25 if k == n else 1.0)
-        serr = 1.0 if k % 2 == 0 else 0.55
-        tan = (pts[min(n, k + 1)] - pts[max(0, k - 1)]).normalized()
-        up = side.cross(tan).normalized()
-        if up.z < 0:
-            up = -up
-        for s in (-1, 1):
-            q = p + side * (s * w * serr) + up * (fold * w * 0.6)
-            verts.append(tuple(q))
-        verts.append(tuple(p - up * 0.01))
+    mats = mats or [flat(B.PALM_LEAF, 0.55), flat('#6FB257', 0.55), flat(B.PALM_DARK, 0.6), flat('#B9C46A', 0.6)]
+    if dead:
+        mats = [flat('#A8834E', 0.8), flat('#BD9A5E', 0.8), flat('#8A6A3E', 0.8), flat('#9C7A48', 0.8)]
+
+    def rach(t):
+        return Vector((length * t, 0.0, lift * t - droop * t * t))
+    verts, faces, fm = [], [], []
     for k in range(n):
-        a = base_i + k * 3
-        b = a + 3
-        faces.append((a, b, b + 2, a + 2))
-        faces.append((a + 2, b + 2, b + 1, a + 1))
-        fm.append(0)
-        fm.append(1)
-    return pts
+        t = 0.07 + 0.9 * (k + 0.5) / n
+        p = rach(t)
+        tan = (rach(min(1.0, t + 0.01)) - rach(max(0.0, t - 0.01))).normalized()
+        side0 = Vector((0, 1, 0))
+        ll = (0.46 * math.sin(math.pi * (0.12 + 0.86 * t)) ** 0.75 + 0.05) * spread * rnd.uniform(0.88, 1.08)
+        w = 0.05 * (0.6 + 0.4 * math.sin(math.pi * t)) * rnd.uniform(0.85, 1.1)
+        hang = math.radians(28 + 34 * t + rnd.uniform(-6, 6))        # leaflets hang lower toward the tip
+        fwd = math.radians(38 + rnd.uniform(-6, 6))                   # and sweep forward along the rachis
+        for sd in (-1, 1):
+            d = (side0 * sd * math.cos(fwd) + tan * math.sin(fwd))
+            d = (d * math.cos(hang) + Vector((0, 0, -1)) * math.sin(hang)).normalized()
+            wdir = tan - d * tan.dot(d)                  # leaflet width lies along the rachis (flat blade)
+            wdir = wdir.normalized() if wdir.length > 1e-6 else Vector((1, 0, 0))
+            base_i = len(verts)
+            segs = 3
+            for j in range(segs + 1):
+                u = j / segs
+                c = p + d * (ll * u) + Vector((0, 0, -0.24 * ll * u * u))      # bows down under its weight
+                hw = w * (1.0 - 0.8 * u) * (0.5 if j == 0 else 1.0)
+                verts.append(tuple(c + wdir * hw))
+                verts.append(tuple(c - wdir * hw))
+            for j in range(segs):
+                a = base_i + 2 * j
+                faces.append((a, a + 1, a + 3, a + 2))
+                fm.append((k + (sd > 0)) % 3 if not dead else (k % 2))
+    # the rachis itself (tapering rod)
+    mb = L2.MB()
+    pts = [rach(0.02 + 0.98 * j / 10) for j in range(11)]
+    for j, (a, b_) in enumerate(zip(pts, pts[1:])):
+        r0 = 0.026 * (1 - 0.8 * j / 10)
+        mb.seg(a, b_, r0, mats[3], segs=6, r2=r0 * 0.85)
+    rod = mb.done(name + '_rachis')
+    leaf = B.mesh_from(name, verts, faces, mats[:3], fm, smooth=True)
+    rod.parent = leaf
+    return leaf
 
 
-def palm(name, h=4.4, lean=(0.5, -0.15), n_fr=9, seed=0, coconuts=True, sway=None, x0=(0, 0)):
-    """Coconut palm: ringed curved trunk + a crown of drooping serrated fronds + coconuts.  sway(i) re-poses."""
+def palm(name, h=4.4, lean=(0.5, -0.15), n_fr=10, seed=0, coconuts=True, x0=(0, 0), dead=1):
+    """Coconut palm: ringed curved trunk (alternating bark bands + ring ridges), a fibrous crown boss, n_fr pinnate
+    fronds (rigid groups that the sway turns about their base), a cluster of glossy coconuts under the crown and a
+    dried brown frond hanging down.  Returns {'pose': fn(i, n), 'top': crown point}."""
     tm = [B.teak(B.TRUNK, along='Z'), B.teak(B.TRUNK_DARK, along='Z')]
-    n = 15
-    segs = []
+    ring = flat('#6E4E33', 0.85)
+    n = 16
     pts = []
     for k in range(n + 1):
         t = k / n
-        x = x0[0] + lean[0] * t * t
-        y = x0[1] + lean[1] * t * t
-        pts.append(Vector((x, y, h * t)))
-    trunk_g = L.group([], name + '_trunk')
+        pts.append(Vector((x0[0] + lean[0] * t * t, x0[1] + lean[1] * t * t, h * t)))
+    mbr = L2.MB()
     for k in range(n):
         p, q = pts[k], pts[k + 1]
-        r0 = 0.17 - 0.06 * k / n
-        o = B.rod('%s_tr%d' % (name, k), p, q + (q - p) * 0.05, r0, tm[k % 2], segs=14, r2=r0 * 0.86)
-        o.parent = trunk_g
-        segs.append(o)
+        r0 = 0.18 - 0.07 * k / n
+        B.rod('%s_tr%d' % (name, k), p, q + (q - p) * 0.05, r0, tm[k % 2], segs=14, r2=r0 * 0.88)
+        d = (q - p).normalized()
+        mbr.seg(p + d * 0.005, p + d * 0.03, r0 * 1.04, ring, segs=14, r2=r0 * 1.0)
+    mbr.done(name + '_rings')
     top = pts[-1]
     crown = L.group([], name + '_crown', loc=tuple(top))
-    crown.parent = None
-    sphere(name + '_cb', 0.2, (0, 0, 0.0), flat('#8A6A44', 0.9), scale=(1, 1, 0.8), segs=14, rings=8).parent = crown
-    lm = [flat(B.PALM_LEAF, 0.6), flat(B.PALM_DARK, 0.65)]
-    fronds = []
+    boss = blob(name + '_boss', 0.21, (0, 0, -0.04), B.teak('#8A6A44', along='Z'), scale=(1, 1, 0.85), seed=seed,
+                amp=0.18, freq=3.0, subdiv=3)
+    boss.parent = crown
     rnd = L.rng(seed)
+    fronds = []
     for k in range(n_fr):
-        a = math.tau * k / n_fr + rnd.uniform(-0.2, 0.2)
-        ln = rnd.uniform(1.5, 1.9)
-        dr = rnd.uniform(0.8, 1.15)
+        a = math.tau * k / n_fr + rnd.uniform(-0.18, 0.18)
+        up = k % 2 == 0
         fg = L.group([], '%s_fg%d' % (name, k))
         fg.parent = crown
-        chunk = ([], [], [])
-        frond(chunk, (0, 0, 0.05), (math.cos(a), math.sin(a)), length=ln, width=0.3, droop=dr, lift=0.5,
-              seed=seed + k)
-        o = B.mesh_from('%s_fr%d' % (name, k), chunk[0], chunk[1], lm, chunk[2])
+        fg.rotation_euler = Euler((0, 0, a), 'XYZ')
+        o = pinnate_frond('%s_fr%d' % (name, k), length=rnd.uniform(1.65, 2.0) * (0.92 if up else 1.0),
+                          lift=rnd.uniform(0.55, 0.75) if up else rnd.uniform(0.3, 0.45),
+                          droop=rnd.uniform(0.95, 1.2) if up else rnd.uniform(1.05, 1.35), seed=seed * 31 + k)
         o.parent = fg
+        o.location = (0.06, 0, 0.02 if up else -0.04)
+        fronds.append((fg, a))
+    for k in range(dead):
+        a = math.tau * (k + 0.35) / max(1, dead) + 2.2
+        fg = L.group([], '%s_dg%d' % (name, k))
+        fg.parent = crown
+        fg.rotation_euler = Euler((0, 0, a), 'XYZ')
+        o = pinnate_frond('%s_dead%d' % (name, k), length=1.2, lift=-0.2, droop=1.6, n=18, seed=seed + 90 + k,
+                          spread=0.7, dead=True)
+        o.parent = fg
+        o.location = (0.08, 0, -0.1)
+        fronds.append((fg, a))
+    # three young spear fronds standing up in the middle (fills the crown top)
+    for k in range(3):
+        a = math.tau * k / 3 + 0.9
+        fg = L.group([], '%s_sg%d' % (name, k))
+        fg.parent = crown
+        fg.rotation_euler = Euler((0, 0, a), 'XYZ')
+        o = pinnate_frond('%s_spear%d' % (name, k), length=1.05, lift=1.05, droop=0.75, n=18, seed=seed * 7 + 50 + k,
+                          spread=0.75)
+        o.parent = fg
+        o.location = (0.03, 0, 0.06)
         fronds.append((fg, a))
     if coconuts:
-        for k in range(4):
-            a = math.tau * k / 4 + 0.3
-            sphere('%s_co%d' % (name, k), 0.1, (0.13 * math.cos(a), 0.13 * math.sin(a), -0.12),
-                   flat(['#7A5A34', '#8FA04A'][k % 2], 0.6), segs=12, rings=8).parent = crown
+        # a cluster of glossy coconuts hanging under the crown on the CAMERA side (+X -Y) so it shows between fronds
+        cm = [VL.paint('#6E4C2C', 0.4, 0.5), VL.paint('#8C9A3C', 0.36, 0.55), VL.paint('#7A5A30', 0.4, 0.5)]
+        for k, (dx, dy, dz) in enumerate(((0.16, -0.1, -0.2), (0.06, -0.18, -0.23), (0.2, 0.02, -0.27),
+                                          (0.1, -0.06, -0.34), (-0.02, -0.12, -0.31))):
+            sphere('%s_co%d' % (name, k), 0.12 - 0.008 * (k % 2), (dx, dy, dz), cm[k % 3], scale=(1, 1, 1.12),
+                   segs=16, rings=10).parent = crown
 
     def pose(i, n_):
-        ph = 0.0 if i is None else math.tau * i / n_
-        amp = 0.0 if i is None else 1.0
-        bend = 0.06 * amp * math.sin(ph)
-        crown.location = tuple(top + Vector((bend, -bend * 0.4, 0)))
-        crown.rotation_euler = Euler((math.radians(2 * amp * math.sin(ph)), math.radians(3 * amp * math.sin(ph)), 0),
-                                     'XYZ')
+        if i is None:
+            crown.rotation_euler = Euler((0, 0, 0), 'XYZ')
+            for fg, a in fronds:
+                fg.rotation_euler = Euler((0, 0, a), 'XYZ')
+            return
+        ph = math.tau * i / n_
+        # the whole crown nods ~1 deg in the breeze (rotation about its base: stays on the trunk) ...
+        crown.rotation_euler = Euler((math.radians(0.9 * math.sin(ph)), math.radians(1.1 * math.sin(ph)), 0), 'XYZ')
+        # ... and every frond lifts / dips 2.5 deg about its base with a phase travelling round the crown
         for k, (fg, a) in enumerate(fronds):
-            w = amp * math.sin(ph + k * 0.8)
-            fg.rotation_euler = Euler((math.radians(-6 * w * math.sin(a)), math.radians(6 * w * math.cos(a)),
-                                       math.radians(3 * w)), 'XYZ')
-    pose(None, 4)
+            w = math.sin(ph - k * 0.7)
+            r = Euler((0, math.radians(-2.5 * w), a + math.radians(1.2 * math.cos(ph - k * 0.7))), 'XYZ')
+            fg.rotation_euler = r
+    pose(None, SWAY_N)
     return {'pose': pose, 'top': top}
 
 
-SWAY_N = 4
+SWAY_N = 8
 
 
 def _palm_builder(key, variant):
     def b():
         if variant == 'a':
-            P = palm('pa', h=4.4, lean=(0.6, -0.2), n_fr=9, seed=3)
+            P = palm('pa', h=4.4, lean=(0.6, -0.2), n_fr=10, seed=3)
             poses = [P['pose']]
             B.sand_mound('m', 0.35, 0.08, (0, 0, 0), seed=3)
-            mbs = L2.MB()
+            cm = VL.paint('#6E4C2C', 0.42, 0.45)
             for k in range(2):
-                mbs.sphere(0.1, flat('#7A5A34', 0.6), loc=(0.35 + 0.2 * k, -0.2 - 0.1 * k, 0.08), segs=12, rings=8)
-            mbs.done('fallen')
+                sphere('fallen%d' % k, 0.1, (0.35 + 0.2 * k, -0.2 - 0.1 * k, 0.085), cm, scale=(1, 1, 1.1), segs=16,
+                       rings=10)
             top = P['top']
         else:
-            P1 = palm('pb1', h=3.7, lean=(0.85, 0.35), n_fr=8, seed=7, x0=(0.05, 0.1))
-            P2 = palm('pb2', h=2.8, lean=(-0.2, -0.95), n_fr=7, seed=9, coconuts=False, x0=(-0.05, -0.1))
+            P1 = palm('pb1', h=3.7, lean=(0.85, 0.35), n_fr=9, seed=7, x0=(0.05, 0.1))
+            P2 = palm('pb2', h=2.8, lean=(-0.2, -0.95), n_fr=8, seed=9, coconuts=False, x0=(-0.05, -0.1), dead=0)
             poses = [P1['pose'], P2['pose']]
             B.sand_mound('m', 0.4, 0.08, (0, 0, 0), seed=5)
             top = P1['top']
@@ -1083,18 +1306,20 @@ def _palm_builder(key, variant):
                 p(None, SWAY_N)
         frames = loop_frames(key, 'sway', SWAY_N, setter, idle)
         idle()
-        return {'frames': frames, 'anims': anim_entry(key, 'sway', SWAY_N, 4), 'fx': {'crown': tuple(top)}}
+        return {'frames': frames, 'anims': anim_entry(key, 'sway', SWAY_N, 8), 'fx': {'crown': tuple(top)}}
     return b
 
 
 beach('palm_tree_a', 'decor', 'beach_nature', fp=('r', 0.3), samples=40, catcher=18.0,
-      notes='Coconut palm (~4.6 m): ringed, gently curved trunk, a crown of nine drooping serrated fronds and green / '
-            'brown coconuts, two fallen coconuts at the foot. idle = still; anims.sway (= work) = 4-frame breeze loop '
-            '(crown bends, fronds flutter). Footprint = the trunk only.', ko='야자수 A', en='Palm tree A',
+      notes='Coconut palm (~4.6 m): ringed, gently curved trunk, a fibrous crown with ten drooping pinnate fronds '
+            '(yellow-green midrib, two rows of hanging leaflets), a dried brown frond, a cluster of glossy coconuts '
+            'and two fallen coconuts at the foot. idle = still; anims.sway (= work) = 8-frame breeze loop at 8 fps: '
+            'the crown nods ~1 deg and every frond lifts / dips 2.5 deg about its base (rigid, <= 3 px per step). '
+            'Footprint = the trunk only.', ko='야자수 A', en='Palm tree A',
       zone='nature', anim_name='sway')(_palm_builder('palm_tree_a', 'a'))
 beach('palm_tree_b', 'decor', 'beach_nature', fp=('r', 0.35), samples=40, catcher=18.0,
-      notes='Twin palm (3.7 m + 2.8 m trunks leaning apart from one sandy foot). idle = still; anims.sway (= work) = '
-            '4-frame breeze loop.', ko='야자수 B', en='Palm tree B', zone='nature',
+      notes='Twin palm (3.7 m + 2.8 m trunks leaning apart from one sandy foot), pinnate fronds, coconuts on the tall '
+            'one. idle = still; anims.sway (= work) = 8-frame breeze loop at 8 fps.', ko='야자수 B', en='Palm tree B', zone='nature',
       anim_name='sway')(_palm_builder('palm_tree_b', 'b'))
 
 
@@ -1197,7 +1422,7 @@ def b_starfish():
 def b_driftwood():
     dw = B.teak(B.DRIFT, along='X', rough=0.8)
     end = L.end_grain(light='#E3D9C6', ring='#BFB3A0')
-    o = cyl('log', 0.15, 1.6, (0, 0, 0.13), rot=(0, 90, 8), mat=dw, segs=16, origin='center', bevel=0.05,
+    o = cyl('log', 0.19, 1.6, (0, 0, 0.17), rot=(0, 90, 8), mat=dw, segs=18, origin='center', bevel=0.06,
             cap_mat=end)
     o.scale = (1.0, 1.0, 1.0)
     B.rod('br', (0.35, 0.05, 0.22), (0.62, -0.25, 0.55), 0.06, dw, segs=10, r2=0.03)
@@ -1210,5 +1435,5 @@ def b_driftwood():
     B.shell(mb, (0.5, -0.3, 0.0), s=0.05, col='#FFFFFF', rz=20)
     mb.done('weed')
     B.sand_mound('m', 0.5, 0.05, (0, 0, 0), seed=8, scale=(1.6, 0.6, 1))
-    mark('seat', (-0.2, -0.12, 0.28), facing=(0, -1, 0))
-    return {}
+    seat((-0.2, -0.17, 0.36), facing=(0, -1, 0))
+    return {'extra': {'seatHeightM': 0.36, 'seatDepth': 'front'}}

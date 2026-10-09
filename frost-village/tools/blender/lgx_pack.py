@@ -45,6 +45,7 @@ ASSETS = os.path.join(GAME, 'assets')
 OUT = os.path.join(ASSETS, 'logistics')
 MAX_SHEET = 2048
 BUDGET_MB = 7.0
+TOP_STACK_PX = 46                 # max pile height on a top shelf (no shelf above it)
 KX, KY, KZ = 45.2548, 22.6274, 55.4256
 CENTER = 'logistics_center'
 LAYERS = ['back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub', 'shell_cut', 'shell', 'props']
@@ -164,8 +165,12 @@ class Depth:
         self.valid = raw > 0
         dm = meta['depth']
         self.depth = dm['min'] + raw / mx * (dm['max'] - dm['min'])
-        self.cover = np.asarray(imgs['interior'])[..., 3] > 140
-        self.front = np.asarray(imgs['interior_front'])[..., 3] > 140
+        ia = np.asarray(imgs['interior'])[..., 3].astype(np.float32)
+        fa = np.asarray(imgs['interior_front'])[..., 3].astype(np.float32)
+        self.cover = ia > 140
+        # front furniture: _interior_front = _interior x fmask, so judge the mask ratio (anti-aliased rims of the
+        # counter / conveyor / table keep only part of the interior alpha and must still count as front)
+        self.front = (fa > 140) | ((fa > 60) & (fa >= 0.5 * ia))
         self.rack = np.asarray(imgs['interior_racks'])[..., 3] > 60      # rack fronts: drawn ABOVE the stock
         self.ok = self.valid & self.cover
         self.b = np.array(meta['camBack'])
@@ -209,13 +214,24 @@ class Depth:
         band = 'mid' if nf > tol else ('front' if bf > tol else 'any')
         return band, issue, (nf, nn, bf)
 
-    def stack(self, p, half_w=26, item_r=0.22, cap=96):
+    @staticmethod
+    def _run(m):
+        best = cur = 0
+        for v in m:
+            cur = cur + 1 if v else 0
+            best = max(best, cur)
+        return best
+
+    def stack(self, p, half_w=26, item_r=0.22, cap=96, rod=10):
         """Free screen height (px) above a stock slot before something of the interior is in front of the stack,
-        + F pixels behind the stack (would be drawn over it)."""
+        + F pixels behind the stack (would be drawn over it).
+        Thin rods (the zig-zag bracing of the rack end frames: < `rod` px per row) do not stop a stack - the goods
+        simply cover them; a solid occluder (the shelf above, a sign) stops it where its contiguous run begins."""
         sx, sy = px(p)
         sx += self.ax
         sy += self.ay
         free = cap
+        runs = []
         for k in range(0, cap):
             row = int(sy - k)
             if row < 0:
@@ -224,8 +240,12 @@ class Depth:
             ad = self.dworld((p[0], p[1], p[2] + h)) - item_r
             x0, x1 = max(0, int(sx - half_w)), min(self.W, int(sx + half_w + 1))
             ok = self.ok[row, x0:x1] & ~self.rack[row, x0:x1]
-            if (ok & (self.depth[row, x0:x1] < ad - 0.03)).sum() > 2:
-                free = k
+            runs.append(self._run(ok & (self.depth[row, x0:x1] < ad - 0.03)))
+            if runs[-1] >= rod:
+                k0 = k
+                while k0 > 0 and runs[k0 - 1] > 0:      # back to where this occluder starts
+                    k0 -= 1
+                free = k0
                 break
         bf = 0
         for row in range(int(sy - free), int(sy + 10)):
@@ -275,9 +295,21 @@ def validate(meta, dep):
             if iss:
                 out['issues'].append('forklift leg %d at %s: %s' % (i, tuple(round(v, 2) for v in p), iss))
         out['forklift'].append(reqs)
-    for s in P['rackSlots']:
+    meas = [dep.stack(s['world'], cap=60 if s['rack'] == 'floor_bays' else 96) for s in P['rackSlots']]
+    # every slot of one rack level has the same shelf above it: use the level's smallest free height for all of
+    # its slots (the slot next to an end frame sees the bracing rods first); top shelves (nothing above) are capped
+    # at TOP_STACK_PX so the piles stay tidy under the category sign
+    lvl = {}
+    for s, (free, _) in zip(P['rackSlots'], meas):
+        if s['rack'] != 'floor_bays':
+            k = (s['rack'], s['level'])
+            lvl[k] = min(lvl.get(k, 999), free)
+    for s, (free, bf) in zip(P['rackSlots'], meas):
+        if s['rack'] != 'floor_bays':
+            free = lvl[(s['rack'], s['level'])]
+            if s.get('upper') is None:
+                free = min(free, TOP_STACK_PX)
         # floor bays: pallets stand in the open - cap the stack at ~2 pallets so the forklift / staff stay visible
-        free, bf = dep.stack(s['world'], cap=60 if s['rack'] == 'floor_bays' else 96)
         # rack slots: band 'stock' (above _interior, below _interior_racks); floor bays stand in the open in front
         # of the conveyor / packing table -> band 'front' (y-sorted with the front actors)
         band = 'front' if s['rack'] == 'floor_bays' else 'stock'
@@ -418,6 +450,10 @@ def center_entries(meta, frame_atlas, val):
         'layers': lay, 'layerOrder': ['back', 'floor', 'interior', 'lamp', '<stock>', 'interior_racks',
                                       '<actors mid>', 'interior_front', 'conveyor', '<actors front + floor stock>',
                                       'stub', 'shell_cut', 'shell', 'dock1', 'dock2', 'props'],
+        # depth offsets of the three placeholder bands (the layers + patches carry their own depthOffset): stock
+        # stacks, 'mid' actors (behind the counter / conveyor / packing table), 'front' actors + floor-bay pallets;
+        # inside one band sort by screen y (y * 1e-6 added to the band offset keeps them inside the band)
+        'bandDepth': {'stock': DEPTH['stock'], 'mid': DEPTH['mid'], 'front': DEPTH['front']},
         'patches': patch_keys,
         'reveal': {'states': {'closed': {'shell': 1.0, 'shell_cut': 0.0},
                               'half': {'shell': 0.45, 'shell_cut': 0.0},

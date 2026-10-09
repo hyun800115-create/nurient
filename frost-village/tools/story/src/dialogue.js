@@ -33,12 +33,12 @@ const WEATHER_KO = { clear: '맑은 하늘', sunny: '햇살', cloudy: '구름', 
 const WEATHER_EN = { clear: 'clear skies', sunny: 'sunshine', cloudy: 'clouds', light: 'flurries', snow: 'snow', heavy: 'heavy snow', blizzard: 'the blizzard', fog: 'fog', mild: 'mild weather' };
 // what each of the town's pets gets up to (PETS: 0 콩이 the dog, 1 나비 the cat, 2 뽀삐 the penguin); fact pet: n = pet, i = antic
 const PET_ANTICS = [
-  [['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['눈밭에서 데굴데굴 뒹굴었', 'rolled around in the snow'],
+  [['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['눈 위를 데굴데굴 뒹굴었', 'rolled around in the snow'],
     ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 신나게 달렸', 'pulled a sled at full speed'],
     ['꼬리를 흔들며 손님들을 맞이했', 'greeted everyone, wagging its tail'], ['우체부 가방을 졸졸 따라다녔', 'followed the postman’s bag all morning']],
-  [['하루 종일 따끈한 데서 낮잠을 잤', 'napped somewhere warm all day'], ['할아버지 모자 위에서 낮잠을 잤', 'napped on Grandpa’s hat'],
+  [['하루 종일 쿨쿨 낮잠만 잤', 'napped all day long'], ['할아버지 모자를 이불 삼아 낮잠을 잤', 'napped curled up in Grandpa’s hat'],
     ['눈송이를 잡으려고 폴짝폴짝 뛰었', 'leapt about trying to catch snowflakes'], ['털실 뭉치를 데굴데굴 굴리고 다녔', 'rolled a ball of yarn all over the place'],
-    ['생선 냄새를 따라 졸졸 따라다녔', 'followed the smell of fish everywhere'], ['꾸벅꾸벅 졸다가 벤치에서 미끄러졌', 'dozed off and slid off a bench']],
+    ['생선 냄새를 따라 졸졸 따라다녔', 'followed the smell of fish everywhere'], ['꾸벅꾸벅 졸다가 벤치 아래로 미끄러졌', 'dozed off and slid off a bench']],
   [['배를 깔고 쭉 미끄럼을 탔', 'slid along on its belly'], ['뒤뚱뒤뚱 한 바퀴 산책을 했', 'went for a waddling stroll'],
     ['눈사람 옆에 서서 꼼짝 않고 있었', 'stood stock-still next to a snowman'], ['멸치 간식을 얻어먹었', 'got an anchovy treat'],
     ['아이들이랑 줄을 서서 썰매를 탔', 'queued up with the children for the sled'], ['날개를 파닥파닥하며 인사했', 'flapped its flippers to say hello']],
@@ -201,6 +201,14 @@ export class Dialogue {
     for (; tries < 4; tries++) {
       text = tidy(g.expand(rule, ctx), lang);
       if (!text) break;
+      // '수진이도 안녕!' only answers a hello
+      if (tries < 3 && /^(네, )?[가-힣 ]{1,12}도 안녕/.test(text) && this.prevText && !/안녕/.test(this.prevText)) { this.stats.rerolls++; continue; }
+      // nobody asks for a baby's name that was just said
+      if (tries < 3 && b.f && b.f.k === 'baby' && this.prevText && /이름은 뭐|name\?/i.test(text)) {
+        const c = b.f.c >= 0 ? this.e.people[b.f.c] : null;
+        const nm = c ? (lang === 'en' ? this.nameEn(c) : c.given) : '';
+        if (nm && this.prevText.includes(nm)) { this.stats.rerolls++; continue; }
+      }
       if (!rel) break;
       const h = hashStr(text);
       let dup = this.echoes(text);
@@ -445,7 +453,7 @@ export class Dialogue {
     if (gl === G_ELDER && gs !== G_ELDER) return 2;
     if (gs === G_ELDER) return gl === G_ELDER ? (close ? 0 : 1) : gl === G_ADULT && !close ? 1 : 0;
     if (gs <= G_TEEN) {
-      if (gl <= G_TEEN) return al - as >= 3 && !close ? 1 : 0;
+      if (gl <= G_TEEN) return gs === G_KID && gl === G_KID ? 0 : al - as >= 3 && !close ? 1 : 0;   // children talk 반말 among themselves
       return 1;       // kids and teens to adults: polite (해요체)
     }
     // adults
@@ -464,9 +472,17 @@ export class Dialogue {
     if (t === CHIEF) return lang === 'en' ? 'the chief' : '촌장님';
     if (this.press) return this.pressName(t, lang);
     if (lang === 'en') return this.referEn(sp, t);
-    const r = this.referKo(sp, t, this.cur && t === this.cur.ls);
+    const ls = this.cur ? this.cur.ls : null;
+    const r = this.referKo(sp, t, t === ls);
+    let text = r.text;
+    if (t !== ls && t !== sp && !r.kin) {
+      // two people with the same given name in one talk: the one talked about gets the full name ('이명수가 소식통이야')
+      if (t.sur && ((ls && ls.given === t.given) || (sp && sp.given === t.given)) && text.startsWith(t.given)) text = r.casual ? t.sur + t.given : t.sur + text;
+      // speaking politely about a grown-up: '서희 씨' ('재훈 씨와 서희 결혼식' mixes two ways of naming)
+      else if (r.casual && this.ctx.level >= 1 && groupOf(this.e, t) >= G_ADULT) text = t.given + ' 씨';
+    }
     // speaking politely, a title takes 님: '박 순경님이 잡았대요' ('박 순경이 잡았대' among friends)
-    return r.addNim && this.ctx.level >= 1 ? r.text + '님' : r.text;
+    return r.addNim && this.ctx.level >= 1 ? text + '님' : text;
   }
 
   /** 1 if sp knows the thief of theft fact `tid` was caught, 2 if sp knows they got away (a wanted poster), else 0 */
@@ -530,6 +546,7 @@ export class Dialogue {
       if (gs === G_ELDER) {
         // grandparents call each other by name: an old friend ('순자야'), an older friend ('덕수 형님', '말순 언니'), or '○○ 씨'
         if (close && at - as >= 5 && sp.male === t.male) return { text: t.given + (t.male ? ' 형님' : ' 언니'), title: true };
+        if (close && at - as >= 5) return { text: t.given + ' 씨', title: true };
         if (close) return { text: casualName(t.given), casual: true };
         return { text: t.given + ' 씨', title: true };
       }
@@ -915,6 +932,8 @@ export class Dialogue {
       const b = neutralB(f);
       if (other >= 0) b.o = other;
       let rule = 'diary.' + kind;
+      // a grown-up who has become friends with a child writes about it as a grown-up would
+      if ((kind === 'friend' || kind === 'bestfriend') && other >= 0 && groupOf(e, r) >= G_ADULT && e.people[other] && groupOf(e, e.people[other]) <= G_TEEN && ageOf(e, r) - ageOf(e, e.people[other]) >= 15) rule += '.kid';
       if (kind === 'talk' && f && typeof extra === 'string') {
         // say what the news was: '민지 씨한테서 광장에 좀도둑이 들었다는 이야기를 들었다.'
         const tp = extra.replace(/[<>]$/, ''), out = extra.charAt(extra.length - 1) === '>';

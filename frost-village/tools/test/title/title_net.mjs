@@ -5,7 +5,7 @@
 //
 // Marks (ms since navigation): preloadCreate (the game's loading bar), titleCreate (the title's first frame),
 // g2..g4 / night / city / parts (streamed packs ready), and for the intro how long its director waited in
-// all (holdSec) - people keep moving meanwhile. Prints one JSON line.
+// all (holdModel, modelled at 60 fps from the marks) - people keep moving meanwhile. Prints one JSON line.
 import fs from 'node:fs';
 import { start } from '../serve.mjs';
 import { loadPlaywright } from '../pw.mjs';
@@ -41,7 +41,8 @@ class PreloadWired extends Preload {
   create() {
     armAudioUnlock();
     const ld = this.load, orig = ld.start.bind(ld);
-    ld.start = () => { TitleAssets.queueFirstPaint(ld); ld.start = orig; return orig(); };
+    // (= the doc's line right after Assets.queueAssets, before Preload's own load.start())
+    ld.start = () => { ld.start = orig; TitleAssets.queueFirstPaint(ld); return orig(); };
     super.create();
   }
 }
@@ -50,10 +51,13 @@ const P = __MODE__ === 'wired' ? PreloadWired : Preload;
 class P2 extends P { create() { mark('preloadCreate'); super.create(); } }
 Object.defineProperty(P2, 'name', { value: 'Preload' });
 const game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: Math.round(View.W * View.k), height: Math.round(View.H * View.k),
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, banner: false, scene: [Boot, P2, TitleScene, GameStub] });
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, banner: false, scene: [Boot, P2, TitleScene, GameStub],
+  fps: { target: 60, limit: 8 } });      // (drawing at 8 fps keeps SwiftShader off the CPU: the marks are network-bound)
 window.__FV = { game };
 let lastHold = 0;
 const poll = () => {
+  const ts = game.scene.getScene('Title');
+  if (ts && ts.sys.settings.status >= 2) mark('titleStart');       // the title scene began (its preload waits for the first paint)
   const S = window.__TITLE;
   if (S) {
     mark('titleCreate');
@@ -77,7 +81,8 @@ const SAVES = {
 const { chromium } = loadPlaywright();
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const srv = await start(0, { prefix: '/fv/' });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+// (dpr 1: the same files as @2x - the bake does not depend on k and the logo is @2x either way - at a quarter of the pixels)
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, locale: 'ko-KR' });
 if (SAVES[who]) await ctx.addInitScript((sv) => { localStorage.setItem('frostVillage.save.v1', JSON.stringify(sv.save)); localStorage.setItem('frostVillage.title.v1', JSON.stringify({ introSeen: true, shown: sv.shown })); }, SAVES[who]);
 const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
@@ -92,14 +97,37 @@ cdp.on('Network.loadingFinished', (e) => { const r = reqStart[e.requestId]; if (
 await page.route('**/fv/__n.html*', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML }));
 await page.goto(srv.url + '__n.html', { waitUntil: 'commit' });
 // the intro: until the idle title; a returning player: until everything it streams is in
-await page.waitForFunction((w) => { const T = window.__T; return !!T && 'titleCreate' in T.marks && (w !== 'intro' || 'idle' in T.marks); }, who, { timeout: 600000, polling: 250 });
+// (network-bound marks only: SwiftShader on a shared box may draw at ~1 fps, so the intro's own clock is not
+// waited for; its waits at stage starts are modelled from the marks below, as on a phone at 60 fps)
+try {
+  await page.waitForFunction((w) => { const T = window.__T; if (!T || !('titleCreate' in T.marks)) return false;
+    const need = w === 'intro' ? ['g2', 'g3', 'g4', 'art:night', 'art:city', 'art:parts'] : w === 'camp' ? ['art:night'] : [];
+    return need.every((k) => k in T.marks); }, who, { timeout: 600000, polling: 250 });
+} catch (e) {
+  console.log('TIMEOUT', JSON.stringify(await page.evaluate(() => ({ T: window.__T, st: window.__TITLE && window.__TITLE.state(), scenes: window.__FV.game.scene.getScenes(true).map((s) => s.sys.settings.key), fps: window.__FV.game.loop.actualFps }))));
+  throw e;
+}
 if (who !== 'intro') await page.waitForTimeout(4000);
 const T = await page.evaluate(() => window.__T);
 let boot = 0, title = 0;
 const titleRe = /src\/title\/bake|assets\/title\//;
 for (const r of resp) { if (titleRe.test(r.url)) title += r.bytes; else boot += r.bytes; }
 const m = T.marks;
-const out = { mode, net, who, marks: m, firstPaintAfterBarMs: m.titleCreate - m.preloadCreate, holdSec: +T.hold.toFixed(2), titleMode: T.mode, logoArt: T.logoArt,
+// the intro's director at 60 fps: stage n starts at stageStart[n-1] s after the title's first frame (+ the waits
+// so far) and waits at most 2.5 s for its pack
+let holdModel = null;
+if (who === 'intro') {
+  const starts = [0.35, 2.6, 5.0, 7.5];
+  let shift = 0; holdModel = {};
+  for (let g = 2; g <= 4; g++) {
+    const due = m.titleCreate + (starts[g - 1] + shift) * 1000;
+    const w = Math.min(2.5, Math.max(0, ((m['g' + g] || Infinity) - due) / 1000));
+    holdModel['g' + g] = +w.toFixed(2); shift += w;
+  }
+  holdModel.total = +shift.toFixed(2);
+}
+const out = { mode, net, who, marks: m, titlePreloadMs: m.titleCreate - (m.titleStart || m.titleCreate), firstPaintAfterBarMs: m.titleCreate - m.preloadCreate, holdModel,
+  titleMode: T.mode, logoArt: T.logoArt,
   bootKB: Math.round(boot / 1024), titleKB: Math.round(title / 1024), titleFiles: resp.filter((r) => titleRe.test(r.url)).map((r) => r.url) };
 console.log(JSON.stringify(out));
 if (OUT) fs.writeFileSync(OUT, JSON.stringify(Object.assign(out, { resp }), null, 1));

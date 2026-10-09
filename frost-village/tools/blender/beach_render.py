@@ -49,6 +49,19 @@ import harbor_render as HR  # noqa: E402 (read-only reuse: frame_fit_h / fit_fra
 import beach_assets as BAS  # noqa: E402
 
 PLANES = [0.0]
+# Exposure (EV) per build (polish): the beach set is pastel / white-heavy and read washed-out next to the harbour,
+# town and village props (tonal spread 0.29 vs ~0.53, darkest 5 % at 0.60 vs ~0.40).  Darker secondary materials
+# (beach_lib palette) + one exposure step down bring it into the same tonal range; the shadow catcher alpha (the baked
+# shadow strength) does not depend on the exposure, and occluder masks are rendered at 0 EV.
+EXPOSURE_DEFAULT = -0.2
+EXPOSURE = {'beach_pine': -0.05, 'corn_stand': -0.1, 'rental_stand': -0.1, 'palm_tree_a': -0.12, 'palm_tree_b': -0.12,
+            'kite': -0.1}
+for _k in ('parasol_red', 'parasol_blue', 'parasol_yellow', 'parasol_green', 'parasol_pink', 'parasol_rainbow',
+           'icecream_cart', 'sandcastle_s', 'sandcastle_m', 'sandcastle_l', 'sandcastle_build', 'beach_sign_arrow',
+           'beach_sign_board', 'beach_sign_notice', 'surfboard_rack', 'rescue_board', 'rescue_buoy_stand',
+           'swim_ring_red', 'swim_ring_duck', 'swim_ring_donut', 'changing_booth', 'beach_shower', 'driftwood',
+           'beach_swing', 'volleyball_net', 'volleyball_net_y', 'bucket_spade', 'starfish'):
+    EXPOSURE[_k] = -0.3              # the pastel / white-heavy props: one more step
 
 
 def parse(argv):
@@ -148,6 +161,7 @@ def render_beach(spec, cache, samples=None):
     if spec['shadow']:
         bc.add_shadow_catcher(size=spec['catcher'])
     sc = bc.setup_render(W, H_, samples=samples or spec['samples'])
+    sc.view_settings.exposure = EXPOSURE.get(key, EXPOSURE_DEFAULT)
     if res.get('bounces'):
         sc.cycles.max_bounces = res['bounces']
     bc.setup_camera(W, H_, anchor)
@@ -171,7 +185,7 @@ def render_beach(spec, cache, samples=None):
         'frames': [n for n, _ in frames], 'shadow': spec['shadow'], 'notes': spec['notes'], 'yaw': spec['yaw'],
         'topPx': tops, 'framePoints': fpts, 'frameDirs': fdirs,
         'sprites': res.get('sprites') or {key: {'frame': frames[0][0]}},
-        'ground': spec['ground'],
+        'ground': spec['ground'], 'exposure': EXPOSURE.get(key, EXPOSURE_DEFAULT),
     }
     if wpts:
         meta['frameWorldPoints'] = wpts
@@ -211,6 +225,7 @@ def render_beach(spec, cache, samples=None):
     if ov:
         mask = '%s_mask' % ov['key']
         c_world = R @ Vector(ov['at'])
+        sc.view_settings.exposure = 0.0                 # the mask is pure emission white / black
         BR.render_overlay_mask(c_world, os.path.join(cache, mask + '.png'))
         meta['overlay'] = {'key': ov['key'], 'mask': mask, 'of': frames[0][0],
                            'notes': ov.get('notes', 'every surface on the camera side of the vertical plane through '

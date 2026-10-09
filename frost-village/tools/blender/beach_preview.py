@@ -30,13 +30,8 @@ import harbor_pack as hp  # noqa: E402
 
 KX, KY, KZ = 45.2548, 22.6274, 55.4256
 SQ2 = math.sqrt(2.0)
-WATER_PX = 30
-SLOPE_TOP = 2.4          # the beach slopes from the dry sand (y = SLOPE_TOP, z 0) down to the waterline (y 0, z -0.55)
-
-
-def slope_dz(y):
-    """Screen-y offset (px, + = down) of the slope surface at world y (0 .. SLOPE_TOP)."""
-    return WATER_PX * max(0.0, min(1.0, 1.0 - y / SLOPE_TOP))
+WATER_PX = 0             # polish: on the sand beach the sea surface is level with the sand (manifest waterPx 0, one rule
+#                          with assets/water + beachfolk); the old preview faked a 0.55 m slope the game does not have
 SAND_BG = (241, 227, 196)
 
 
@@ -334,8 +329,6 @@ class Scene:
         sx, sy = self.p(x, y)
         if water:
             sy += WATER_PX
-        elif y < SLOPE_TOP:
-            sy += slope_dz(y)
         sy += dz
         d = (sy + bias) if depth is None else depth
         item = (d, im, int(round(sx - anchor_px[0])), int(round(sy - anchor_px[1])))
@@ -403,58 +396,61 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             if is_sand(i, j):
                 dr.polygon([L(i, j), L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)], fill=255)
     img.paste(tile_tex(sand_tex, W, H), (0, 0), mask)
-    # transition kit along every sand / snow cell edge (rules of sandKit)
-    owned = set()
-    pieces = []
-    for j in range(J0, J1 + 1):
-        for i in range(I0, I1 + 1):
-            q = {(-1, 1): is_sand(i - 1, j), (1, 1): is_sand(i, j), (1, -1): is_sand(i, j - 1),
-                 (-1, -1): is_sand(i - 1, j - 1)}
-            snow_q = [k for k, v in q.items() if not v]
-            name = None
-            if len(snow_q) == 1:
-                qx, qy = snow_q[0]
-                name = 'ground_sand_snow_corner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[(qx, qy)]
-            elif len(snow_q) == 3:
-                qx, qy = [k for k, v in q.items() if v][0]
-                name = 'ground_sand_snow_inner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[(qx, qy)]
-            if name:
-                pieces.append((name, L(i, j)))
-                owned.add(('x', i if qx > 0 else i - 1, j))
-                owned.add(('y', i, j if qy > 0 else j - 1))
-    for j in range(J0, J1 + 1):
-        for i in range(I0, I1 + 1):
-            a_, b_ = is_sand(i, j - 1), is_sand(i, j)
-            v = (i * 7 + j * 13) % 3
-            if a_ != b_ and ('x', i, j) not in owned:
-                nm = 'ground_sand_snow_edge_x' if not b_ else 'ground_sand_snow_edge_x_near'
-                p = L(i, j)
-                pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] + 16)))
-            a_, b_ = is_sand(i - 1, j), is_sand(i, j)
-            if a_ != b_ and ('y', i, j) not in owned:
-                nm = 'ground_sand_snow_edge_y' if not a_ else 'ground_sand_snow_edge_y_near'
-                p = L(i, j)
-                pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] - 16)))
+    # wet sand: the cell row along the sea (j = 0) plus a few tongues (j = 1), drawn with ground_sand_wet and the
+    # dry <-> wet kit by the wetKit rules (= sandKit rules with WET for SNOW)
+    WET1 = (-17, -16, -9, -8, -7, -1, 0, 5, 6, 10, 11, 12, 16)
+
+    def is_wet(i, j):
+        return j <= 0 or (j == 1 and i in WET1)
+    wmask = Image.new('L', (W, H), 0)
+    dw = ImageDraw.Draw(wmask)
+    for j in range(J0, 3):
+        for i in range(I0, I1):
+            if is_wet(i, j):
+                dw.polygon([L(i, j), L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)], fill=255)
+    img.paste(tile_tex(wet_tex, W, H), (0, 0), wmask)
+
+    def kit_pieces(prefix, other, jr, ir):
+        owned = set()
+        pieces = []
+        for j in jr:
+            for i in ir:
+                q = {(-1, 1): other(i - 1, j), (1, 1): other(i, j), (1, -1): other(i, j - 1),
+                     (-1, -1): other(i - 1, j - 1)}
+                oq = [k for k, v in q.items() if v]
+                name = None
+                if len(oq) == 1:
+                    qx, qy = oq[0]
+                    name = prefix + '_corner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[(qx, qy)]
+                elif len(oq) == 3:
+                    qx, qy = [k for k, v in q.items() if not v][0]
+                    name = prefix + '_inner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[(qx, qy)]
+                if name:
+                    pieces.append((name, L(i, j)))
+                    owned.add(('x', i if qx > 0 else i - 1, j))
+                    owned.add(('y', i, j if qy > 0 else j - 1))
+        for j in jr:
+            for i in ir:
+                a_, b_ = other(i, j - 1), other(i, j)
+                v = (i * 7 + j * 13) % 3
+                if a_ != b_ and ('x', i, j) not in owned:
+                    nm = prefix + '_edge_x' if b_ else prefix + '_edge_x_near'
+                    p = L(i, j)
+                    pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] + 16)))
+                a_, b_ = other(i - 1, j), other(i, j)
+                if a_ != b_ and ('y', i, j) not in owned:
+                    nm = prefix + '_edge_y' if a_ else prefix + '_edge_y_near'
+                    p = L(i, j)
+                    pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] - 16)))
+        return pieces
+    # dry <-> wet first (only between land cells: j >= 0), then sand <-> snow (rules of sandKit)
+    pieces = kit_pieces('ground_sand_wet', lambda i, j: is_wet(i, j) or j < 0, range(0, 4), range(I0, I1 + 1))
+    pieces += kit_pieces('ground_sand_snow', lambda i, j: not is_sand(i, j), range(J0, J1 + 1), range(I0, I1 + 1))
     for name, (px, py) in pieces:
         if name in sp:
             im, an = spr(name)
             img.alpha_composite(im, (int(round(px - an[0])), int(round(py - an[1]))))
-    # the beach slope: dry sand at y = SLOPE_TOP (z 0) down to the waterline (y 0, z -0.55): per pixel find the slope
-    # parameter t, blend dry -> damp -> wet sand (the Water module draws its own animated wet band in the game)
-    Yp, Xp = np.mgrid[0:H, 0:W].astype(np.float32)
-    A = (Xp - ox) / KX
-    t = (Yp - oy - KY * (A - 2 * SLOPE_TOP)) / (2 * SLOPE_TOP * KY + WATER_PX)
-    band = (t >= 0) & (t <= 1.0)
-    sand_a = np.asarray(img.convert('RGB'), np.float32) / 255.0
-    sand_l = np.asarray(tile_tex(sand_tex, W, H).convert('RGB'), np.float32) / 255.0
     wet_a = np.asarray(tile_tex(wet_tex, W, H).convert('RGB'), np.float32) / 255.0
-    tt = np.clip(t, 0, 1)
-    k = np.clip((tt - 0.1) / 0.55, 0, 1)
-    k = k * k * (3 - 2 * k)
-    slope = sand_l * (1 - k[..., None]) + wet_a * k[..., None]
-    slope *= (1.0 - 0.1 * tt ** 2)[..., None]
-    out_a = np.where(band[..., None], slope, sand_a)
-    img = Image.fromarray((np.clip(out_a, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGB').convert('RGBA')
     X0, X1 = I0 * SQ2 - 2, I1 * SQ2 + 2
     wt = WaterTex()
     sand_rgb = wet_a
@@ -695,8 +691,8 @@ def preview_scene(builds, frames, chars, cframes, man, out):
         if not e:
             continue
         pe = people.person('sunbather', int(x * 10))
-        d = e['lyingDirs'][0]
-        fr = people.frame(pe, 'sunbathe', d, 0) or people.frame(pe, 'sunbathe', 'SE', 0)
+        d = (e.get('lyingFeetDirs') or ['SE'])[0]            # beachfolk sunbathe dir = where the FEET point
+        fr = people.frame(pe, 'sunbathe', d, 0)
         bx, by = sc.p(x, y)
         if fr:
             lp = e['lyingPoints'][0]
@@ -707,11 +703,20 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             if fr:
                 lp = e['seatPoints'][0]
                 sc.put_px(fr[0], fr[1], bx + lp[0], by + lp[1], by + 0.5)
+    # someone sitting sideways on the second lounger's cushion edge (seatPoints, `sit` facing seatDirs)
+    e = sp.get('sun_lounger')
+    if e and e.get('seatPoints'):
+        pe = people.person('beach_tourist', 27)
+        fr = people.frame(pe, 'sit', e['seatDirs'][0], 2)
+        if fr:
+            bx, by = sc.p(-8.5 + k, 3.9)
+            lp = e['seatPoints'][0]
+            sc.put_px(fr[0], fr[1], bx + lp[0], by + lp[1], by + 1)
     # a sunbather on the towel of the far-left family spot (towel lyingPoints)
     e = sp.get('decal_towel_green')
     if e and e.get('lyingPoints'):
         pe = people.person('sunbather', 33)
-        fr = people.frame(pe, 'sunbathe', e['lyingDirs'][0], 0)
+        fr = people.frame(pe, 'sunbathe', (e.get('lyingFeetDirs') or ['SW'])[0], 0)
         if fr:
             bx, by = sc.p(-18.0, 4.0)
             lp = e['lyingPoints'][0]
@@ -725,17 +730,30 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             bx, by = sc.p(2.6 + k, 5.4)
             lp = e['seatPoints'][0]
             sc.put_px(fr[0], fr[1], bx + lp[0], by + lp[1], by + 0.5)
-    # kids digging at the sandcastles
-    for key, x, y in (('sandcastle_l', -1.5, 2.3), ('sandcastle_build_2', 6.3, 2.4)):
+    # kids digging at the sandcastles: workPoints are on the far side, so normal y-sorting (workDepth "behind") puts
+    # the castle in front of them
+    for key, x, y in (('sandcastle_l', -1.5, 2.3), ('sandcastle_build_2', 6.3, 2.4), ('bucket_spade', 7.5, 3.0)):
         e = sp.get(key)
         if not e:
             continue
         bx, by = sc.p(x, y)
-        for n, (wp, wd) in enumerate(zip(e.get('workPoints', [])[:2], e.get('workDirs', [])[:2])):
-            pe = people.person('family_beach', 40 + n + int(x)) or people.person(None, 40 + n)
-            fr = people.frame(pe, 'dig', wd, n) or people.frame(pe, 'idle', wd, n)
+        pts = list(zip(e.get('workPoints', [])[:3], e.get('workDirs', [])[:3])) or \
+            list(zip(e.get('playPoints', []), e.get('playDirs', [])))
+        for n, (wp, wd) in enumerate(pts):
+            pe = people.person('family_beach', 40 + n + int(x * 3)) or people.person(None, 40 + n)
+            fr = people.frame(pe, 'dig', wd, n * 2) or people.frame(pe, 'idle', wd, n)
             if fr:
-                sc.put_px(fr[0], fr[1], bx + wp[0], by + wp[1], by + wp[1] + 0.5)
+                sc.put_px(fr[0], fr[1], bx + wp[0], by + wp[1], by + wp[1])
+    # the picnic table: two eating at the far bench (behind the table top), two on the near bench looking out to sea
+    e = sp.get('picnic_table_beach')
+    if e and e.get('seatPoints'):
+        bx, by = sc.p(-9.6, 10.6)
+        for n, (pt, d, dep) in enumerate(zip(e['seatPoints'], e['seatDirs'],
+                                             e.get('seatDepths') or ['front'] * len(e['seatPoints']))):
+            pe = people.person(['beach_tourist', 'family_beach', 'sunbather', 'beach_tourist'][n % 4], 70 + n)
+            fr = people.frame(pe, 'sit', d, n)
+            if fr:
+                sc.put_px(fr[0], fr[1], bx + pt[0], by + pt[1], (by - 1) if dep == 'behind' else by + 1 + pt[1] * 0.001)
     # ice-cream vendor + queue
     e = sp.get('icecream_cart')
     if e:

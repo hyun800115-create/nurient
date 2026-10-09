@@ -16,6 +16,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const MINUTES = Number(opt('--minutes', '40'));
 const AFTER = Number(opt('--after', '0'));            // keep playing N minutes after village complete
 const V3 = has('--v3');                                // (v3) play on until the frontier is complete (all v3 goals)
+const V4 = has('--v4');                                // (v4) play on until the village is a 읍 (rank 2)
 const BAL = opt('--bal', '');
 const WORLDO = opt('--world', '');
 const SHOTS = has('--shots');
@@ -73,7 +74,7 @@ try {
   await page.addScriptTag({ path: path.join(HERE, 'review_gameplay_bot.js') });
   await page.evaluate((o) => Object.assign(window.__bot.opts, o), { policy: opt('--policy', 'smart'), upg: opt('--upg', 'greedy'), minBatch: Number(opt('--minbatch', '3')), think: Number(opt('--think', '0')), mag: Number(opt('--mag', '1')) });
 
-  let completeAt = -1, lastEvents = 0, v3At = -1;
+  let completeAt = -1, lastEvents = 0, v3At = -1, eupAt = -1;
   const samples = [];
   const shot = async (n) => {
     if (!SHOTS) return;
@@ -86,7 +87,7 @@ try {
     const r = await page.evaluate(() => {
       window.__sim.run(10, window.__bot.tick);
       const s = window.__bot.sample();
-      return { s, events: window.__bot.events.length, done: window.__FV.state().done, v3: window.__FV.scene.progress.celebrated3 };
+      return { s, events: window.__bot.events.length, done: window.__FV.state().done, v3: window.__FV.scene.progress.celebrated3, eup: !!window.__FV.scene.progress.flags.rankEup };
     });
     samples.push(r.s);
     if (r.events > lastEvents) {
@@ -96,7 +97,12 @@ try {
     }
     if (sec % 60 === 50) console.log(`[${NAME}] ${r.s.t}s coins=${r.s.coins} earned=${r.s.earned} cap=${r.s.cap} task=${r.s.task} st=${JSON.stringify(r.s.st)} mk=${JSON.stringify(r.s.mk)} w=${r.s.w} obj=${r.s.obj} shelf=${JSON.stringify(r.s.shelf)} front=${JSON.stringify(r.s.front)} leaving=${r.s.leaving} stall=${r.s.stall}  (wall ${((Date.now() - t0) / 1000).toFixed(0)}s)`);
     if (completeAt < 0 && r.done.includes('hire_hunter')) completeAt = r.s.t;
-    if (V3) {
+    if (V4) {
+      if (v3At < 0 && r.v3) v3At = r.s.t;
+      // (stop AFTER min once the village is a 읍 and v3 is complete too)
+      if (r.eup && eupAt < 0) eupAt = r.s.t;
+      if (eupAt >= 0 && v3At >= 0 && r.s.t >= Math.max(eupAt, v3At) + AFTER * 60) break;
+    } else if (V3) {
       if (v3At < 0 && r.v3) v3At = r.s.t;
       if (v3At >= 0 && r.s.t >= v3At + AFTER * 60) break;
     } else if (completeAt >= 0 && r.s.t >= completeAt + AFTER * 60) break;
@@ -117,6 +123,15 @@ try {
   console.log(`[${NAME}] BEATS longestGap=${(gap / 60).toFixed(2)}min at ${(gapAt / 60).toFixed(1)}min, v3 longestGap=${(gap3 / 60).toFixed(2)}min at ${(gap3At / 60).toFixed(1)}min, villageComplete=${(completeAt / 60).toFixed(1)}min v3Complete=${v3At >= 0 ? (v3At / 60).toFixed(1) : '-'}min (v3 took ${v3At >= 0 && completeAt >= 0 ? ((v3At - completeAt) / 60).toFixed(1) : '-'}min) hungry=${fin.hungryT}s`);
   console.log(`[${NAME}] DONE sim=${fin.simT.toFixed(0)}s completeAt=${completeAt} v3At=${v3At} stuck=${fin.stuck} accidentalPay=${fin.accidental} blocked=${fin.blockedT.toFixed(1)} idle=${fin.idleT.toFixed(1)} tasks=${JSON.stringify(Object.fromEntries(Object.entries(fin.taskTime).map(([k, v]) => [k, Math.round(v)])))} errors=${log.errors.length} wall=${((Date.now() - t0) / 1000).toFixed(0)}s`);
   for (const e of log.errors.slice(0, 5)) console.log('  ERR', e.slice(0, 300));
+  // (v4) the neighbours' milestones
+  if (V4) {
+    const at = (ev) => { const e = fin.events.find((q) => q.ev === ev || q.ev.startsWith(ev)); return e ? +(e.t / 60).toFixed(2) : null; };
+    const shops = fin.events.filter((e) => e.ev.startsWith('shop_open:'));
+    const ev4 = evT.filter((t) => t >= (fin.events.find((e) => e.ev === 'tower_east') || { t: 0 }).t);
+    let gap4 = 0, gap4At = 0;
+    for (let i = 1; i < ev4.length; i++) if (ev4[i] - ev4[i - 1] > gap4) { gap4 = ev4[i] - ev4[i - 1]; gap4At = ev4[i - 1]; }
+    console.log(`[${NAME}] V4 towerEast=${at('tower_east')} stationBuilt=${at('built:station')} firstTrain=${at('flag:firstTrain')} firstShop=${shops.length ? (shops[0].t / 60).toFixed(2) : '-'} townVisit=${at('flag:townVisit')} v3Complete=${v3At >= 0 ? (v3At / 60).toFixed(1) : '-'} shops5=${shops.length >= 5 ? (shops[4].t / 60).toFixed(2) : '-'} rankReady=${at('flag:rankReady')} rank=${eupAt >= 0 ? (eupAt / 60).toFixed(2) : '-'} longestGapAfterTowerEast=${(gap4 / 60).toFixed(2)}min at ${(gap4At / 60).toFixed(1)}min stuck=${fin.stuck} shops=${shops.map((e) => e.ev.slice(10) + '@' + (e.t / 60).toFixed(1)).join(',')}`);
+  }
   // (v3.5) the hires of every production line (operator / gatherer / raw porter / goods porter / clerk) in time order
   const hires = fin.events.filter((e) => /^(op_|raw_|hire|porter_|zone_)/.test(e.ev));
   console.log(`[${NAME}] HIRES ` + hires.map((e) => `${e.ev}@${(e.t / 60).toFixed(2)}`).join(' '));

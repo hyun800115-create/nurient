@@ -2,8 +2,8 @@
 //   node tools/test/beach_bld_phaser.mjs [--out DIR]
 // Loads assets/beach_bld/manifest.json, loads every atlas (Phaser JSON hash), registers the sprite anims exactly like
 // src/core/Assets.js spriteAnims() (spr:<key>:<anim>), checks that every sprite frame and anim frame exists, plays all
-// anims, then lays out (left) a 0.5x shelf of every building playing its anim and (right) a 1x mini beachfront at DAY
-// and at NIGHT the way the game should draw it:
+// anims, then lays out (top) a 0.33x shelf of every building playing its anim and (below, one band each) a 1x mini
+// beachfront at DAY and at NIGHT the way the game should draw it:
 //   building at depth d, its staff / balcony guests at d + 0.5, its `overlay` (<key>_front) at d + 1,
 //   hotel_pool_water (spr:hotel_pool_water:ripple) at d + 0.25 inside waterPoly (drawn as a debug outline),
 //   night: setTint(night.tint) on every sprite + <key>_glow with blendMode ADD (resort_hotel: resort_hotel_night).
@@ -22,12 +22,13 @@ const OUTDIR = argOut > 0 ? process.argv[argOut + 1] : path.join(os.tmpdir(), 'f
 const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#efe3c6}</style>
 <script src="lib/phaser.min.js"></script></head><body><script type="module">
 const man = await (await fetch('assets/beach_bld/manifest.json')).json();
+const CW = 1400, CH = 3000, BAND_H = 1180;
 window.__B = { ready: false, missing: [], anims: [], frames: 0, placed: 0 };
 class S extends Phaser.Scene {
   preload() { for (const a of man.atlases) this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json); }
   create() {
     const B = window.__B, tex = this.textures, sp = man.sprites;
-    this.add.rectangle(560, 620, 1120, 1240, 0xf3e8cf).setDepth(-1e6);
+    this.add.rectangle(CW / 2, CH / 2, CW, CH, 0xf3e8cf).setDepth(-1e6);
     for (const [k, s] of Object.entries(sp)) {
       B.frames++;
       if (!tex.exists(s.atlas) || !tex.get(s.atlas).has(s.frame)) B.missing.push(k + ':' + s.frame);
@@ -41,24 +42,29 @@ class S extends Phaser.Scene {
         B.anims.push(key);
       }
     }
-    // 0.5x shelf of every building / street piece (not the derived overlays)
+    // 0.33x shelf of every building / street piece (not the derived overlays), above the two street bands
     const order = Object.keys(sp).filter((k) => !['overlay', 'glow', 'night'].includes(sp[k].kind));
     let x = 12, y = 8, rowH = 0;
     for (const k of order) {
-      const s = sp[k], sc = 0.5;
+      const s = sp[k], sc = 0.33;
       const w = s.frameSize[0] * sc, h = s.frameSize[1] * sc;
-      if (x + w > 1110) { x = 12; y += rowH + 4; rowH = 0; }
+      if (x + w > CW - 10) { x = 12; y += rowH + 4; rowH = 0; }
       const img = this.add.sprite(x + s.anchor[0] * w, y + s.anchor[1] * h, s.atlas, s.frame).setScale(sc).setOrigin(s.anchor[0], s.anchor[1]);
-      img.setDepth(y + s.anchor[1] * h);
+      img.setDepth(-1e5 + y + s.anchor[1] * h);
       if (s.anims && s.anims.work) img.play('spr:' + k + ':work');
       B.placed++;
       x += w + 4; rowH = Math.max(rowH, h);
     }
     // 1x mini beachfront: day (top) and night (bottom)
     const KX = 45.2548, KY = 22.6274;
-    const street = (ox, oy, night) => {
+    const street = (ox, oy, night, top) => {
       const W = (wx, wy) => [ox + (wx + wy) * KX, oy + (wx - wy) * KY];
       const g = this.add.graphics().setDepth(oy - 2000);
+      const band = this.make.graphics({ x: 0, y: 0, add: false });
+      band.fillStyle(0xffffff, 1).fillRect(0, top, CW, BAND_H);
+      g.setMask(band.createGeometryMask());                // keep this street's ground inside its own band
+      this.add.text(12, top + 6, night ? 'NIGHT: tint + <key>_glow (ADD), resort_hotel_night' : 'DAY: building d, staff d+0.5, overlay d+1, pool water d+0.25',
+        { fontFamily: 'sans-serif', fontSize: '16px', color: '#20242c' }).setDepth(1e6);
       const poly = (pts, col) => { g.fillStyle(col, 1); g.beginPath(); g.moveTo(...W(...pts[0])); for (const p of pts.slice(1)) g.lineTo(...W(...p)); g.closePath(); g.fillPath(); };
       const nt = night ? 0.62 : 1;
       const c = (r, gg, b) => Phaser.Display.Color.GetColor(r * nt * 0.82, gg * nt * 0.86, b * nt);
@@ -103,18 +109,19 @@ class S extends Phaser.Scene {
       put('resort_hotel', 0.0, 2.9); put('hotel_pool', 7.4, 2.3); put('beach_cafe', 13.0, 1.8); put('icecream_shop', 17.1, 1.6);
       put('beach_bar', 9.0, -5.4); put('beach_gate', 3.2, -3.85);
     };
-    street(330, 180 + 470, false);
-    street(330, 180 + 470 + 560, true);
+    const shelfBottom = y + rowH + 12;
+    street(230, shelfBottom + 660, false, shelfBottom);
+    street(230, shelfBottom + BAND_H + 660, true, shelfBottom + BAND_H);
     B.scene = this; B.ready = true;
   }
 }
-window.__B.game = new Phaser.Game({ type: Phaser.WEBGL, width: 1120, height: 1240, backgroundColor: '#efe3c6',
+window.__B.game = new Phaser.Game({ type: Phaser.WEBGL, width: CW, height: CH, backgroundColor: '#efe3c6',
   render: { antialias: true }, scene: S, banner: false });
 </script></body></html>`;
 
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
-const ctx = await browser.newContext({ viewport: { width: 1120, height: 1240 }, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: 1400, height: 3000 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 const errors = [];
 const notFound = [];
@@ -132,7 +139,12 @@ const res = await page.evaluate(() => {
     anims: B.anims.length, animKeys: B.anims, framesChecked: B.frames, missing: B.missing, playing, placed: B.placed };
 });
 fs.mkdirSync(path.join(ROOT, 'docs', 'previews'), { recursive: true });
-await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'bbld_phaser.png') });
+// the CPU is shared with Blender renders: let the anims run a moment, then pause the game loop so the screenshot of the
+// (software-rendered) WebGL canvas does not compete with Phaser redrawing 60 times a second
+await sleep(1500);
+await page.evaluate(() => window.__B.game.loop.sleep());
+await sleep(300);
+await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'bbld_phaser.png'), timeout: 180000 });
 console.log(JSON.stringify(res));
 if (errors.length) console.log('ERRORS', errors.slice(0, 10));
 if (notFound.length) console.log('404', notFound.slice(0, 10));

@@ -7,7 +7,8 @@
 // checks that every sprite frame, anim frame, character frame and overlay frame exists in its texture, then lays the
 // set out the way the game should draw it: sand + wet sand textures, a shelf of every prop at 0.5x playing its work
 // anim (occluder overlays above their building), chained boardwalk + buoy-line tiles at their stepPx, water-plane
-// props and boats sunk by waterPx on a sea band, boats / crab in all 8 headings (mirrors with flipX, nearest map).
+// props and boats on a sea band (waterPx 0 on the sand beach), an iso wet-sand band dressed with the dry <-> wet kit,
+// boats / crab in all 8 headings (mirrors with flipX, nearest map).
 // Writes docs/previews/beach_phaser.png + /tmp/fv_review/beach_phaser.json.  Exit 1 on missing frames / errors / 404s.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,7 +33,7 @@ class S extends Phaser.Scene {
   create() {
     const B = window.__B, tex = this.textures, sp = man.sprites, ch = man.characters || {};
     const has = (a, f) => tex.exists(a) && tex.get(a).has(f);
-    const WP = man.waterPx || 30;
+    const WP = man.waterPx ?? 30;       // 0 on the sand beach (waterPxByShore), 30 beside quays
     // ---- sprites: frames + spr:<key>:<anim> (Assets.spriteAnims) ----
     for (const [k, s] of Object.entries(sp)) {
       B.sprites++; B.frames++;
@@ -71,7 +72,23 @@ class S extends Phaser.Scene {
     // ---- backdrop: sand, wet sand band, sea ----
     const SEA = 1010;
     if (tex.exists('ground_sand')) this.add.tileSprite(0, 0, ${W}, SEA, 'ground_sand').setOrigin(0, 0).setDepth(-1e7);
-    if (tex.exists('ground_sand_wet')) this.add.tileSprite(0, SEA - 70, ${W}, 70, 'ground_sand_wet').setOrigin(0, 0).setDepth(-1e7 + 1);
+    // wet sand: an iso band of wet cells along world X (masked tileSprite), its dry edge dressed with the dry <-> wet
+    // kit by the wetKit rules (ground_sand_wet_edge_x_near: the wet cell is on the -Y / sea side)
+    if (tex.exists('ground_sand_wet')) {
+      const wet = this.add.tileSprite(0, 0, ${W}, ${H}, 'ground_sand_wet').setOrigin(0, 0).setDepth(-1e7 + 1);
+      const g = this.make.graphics({}, false);
+      const L0 = [-400, SEA - 330];                    // lattice point (0, 0) of the band's dry edge
+      const pts = [[L0[0], L0[1]], [L0[0] + 64 * 40, L0[1] + 32 * 40], [L0[0] + 64 * 40, L0[1] + 32 * 40 + 400],
+                   [L0[0], L0[1] + 400]];
+      g.fillStyle(0xffffff).fillPoints(pts.map(([x, y]) => new Phaser.Geom.Point(x, y)), true);
+      wet.setMask(g.createGeometryMask());
+      for (let i = 0; i < 40; i++) {
+        const v = ((i * 7) % 3 + 3) % 3, k = 'ground_sand_wet_edge_x_near' + (v ? '_' + v : ''), s = sp[k];
+        if (!s) { B.missing.push(k); continue; }
+        this.add.image(L0[0] + 64 * i + 32, L0[1] + 32 * i + 16, s.atlas, s.frame).setOrigin(s.anchor[0], s.anchor[1])
+          .setDepth(-1e7 + 1.5);
+      }
+    }
     this.add.rectangle(0, SEA, ${W}, ${H} - SEA, 0x35b5c4).setOrigin(0, 0).setDepth(-1e7 + 2);
     this.add.rectangle(0, SEA, ${W}, 10, 0xf4fbfb, 0.85).setOrigin(0, 0).setDepth(-1e7 + 3);
     this.add.rectangle(0, SEA + 120, ${W}, ${H} - SEA - 120, 0x1f8fb3).setOrigin(0, 0).setDepth(-1e7 + 2);

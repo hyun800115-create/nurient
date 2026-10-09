@@ -163,9 +163,9 @@ def _buoy_builder(axis):
 
 
 BUOY_NOTE = ('Swim-area buoy line tile (sqrt(2) m along world %s): white rope with four orange / white sausage floats '
-             'and foam rings, ON THE WATER: anchor = waterline (sea surface 0.55 m = waterPx 30 below the land). Chain '
-             'tiles %s px apart; play every tile\'s anims.bob (= work) IN SYNC (same frame index): the wave travels '
-             'one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end.')
+             'and foam rings, ON THE WATER: anchor = waterline (on the sand beach the sea surface is level with the '
+             'sand: waterPx 0; 30 beside quays). Chain tiles %s px apart; play every tile\'s anims.bob (= work) IN '
+             'SYNC (same frame index): the wave travels one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end.')
 for _ax in ('x', 'y'):
     beach('swim_buoy_line_' + _ax, 'decor', 'beach_water', fp=(SEG, 0.3) if _ax == 'x' else (0.3, SEG),
           yaw=0.0 if _ax == 'x' else 90.0, catcher=20.0, samples=40, front=None, ground='water',

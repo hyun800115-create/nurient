@@ -48,7 +48,7 @@ export const CONDS = [
   // 14:00-17:00 ('학교 끝났어?' after school, not at nine in the morning)
   'afternoon',
   // which pet the story is about (the dog is the default): the cat does not pull sleds, the penguin has no tail to wag
-  'pet_cat', 'pet_peng',
+  'pet_cat', 'pet_peng', 'nameq',
 ];
 
 if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');

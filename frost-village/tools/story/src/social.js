@@ -122,13 +122,14 @@ export class Social {
       ws.push(w);
     }
     // nobody one knows here: once the town has settled in, people mostly keep to themselves (a newcomer still gets a hello)
-    if (known === 0 && !early && rng.chance(0.72)) {
+    // (at the weekend the plaza is full of faces one has seen around: still mostly a nod, not a new friend)
+    if (known === 0 && !early && rng.chance(e.clock.dow >= 5 ? 0.84 : 0.72)) {
       let nc = false;
       for (const q of free) if (q !== a && (q.flags & F_NEWCOMER)) { nc = true; break; }
       if (!nc) return null;
     }
     // a crowd of strangers (a busy plaza at the weekend) does not drown out the people one knows
-    const cap = known > 0 ? known * (early ? 0.5 : 0.14) : strange;
+    const cap = known > 0 ? known * (early ? 0.5 : e.clock.dow >= 5 ? 0.09 : 0.14) : strange;
     const k = strange > cap && strange > 0 ? cap / strange : 1;
     for (let i = 0; i < ws.length; i++) if (ws[i] < 0) ws[i] = -ws[i] * k;
     const i = rng.weighted(ws, free.length);
@@ -332,7 +333,7 @@ export class Social {
       if (ng === 1) continue;
       if (ng === 2 && !(s.tr[7] < 35)) continue;
       if (m.tt.indexOf(l.id) >= 0) continue;
-      if (f.a === l.id || f.b === l.id) continue;
+      if (f.a === l.id || f.b === l.id || f.c === l.id) continue;     // nobody is told their own story
       if (f.a === s.id && m.src === SRC_DID) continue;
       if (FAMILY_NEWS[f.k] && (f.a === s.id || f.b === s.id || (f.a >= 0 && e.people[f.a] && e.people[f.a].hh === s.hh))) continue;
       const nov = novelty(e, f);
@@ -367,7 +368,7 @@ export class Social {
       if (f.a !== s.id && f.b !== s.id && !famHH) continue;
       // family news is not news to the family
       if (FAMILY_NEWS[f.k] && (f.a === l.id || f.b === l.id || f.c === l.id || (f.a >= 0 && e.people[f.a] && e.people[f.a].hh === l.hh))) continue;
-      if (f.a === l.id || f.b === l.id) continue;   // no 'I went to the beach with my husband!' to the husband (that is a shared memory: recall)
+      if (f.a === l.id || f.b === l.id || f.c === l.id) continue;     // nobody is told their own story   // no 'I went to the beach with my husband!' to the husband (that is a shared memory: recall)
       if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;
       if (this.stale(f)) continue;
       if ((f.k === 'crush' || f.k === 'confess_no') && rel.stage < ST_BEST) continue;
@@ -460,6 +461,7 @@ export class Social {
       if (fq === 'what' && f.k === 'shop_open' && !(m.d === D_PLACE && m.alt < 0)) fq = null;   // the shop's name already says what it sells
       if (fq && rng.chance(0.55)) {
         bt.nq = true;
+        if (fq === 'name') rb.fl.push(COND.nameq);    // the story itself does not say the name the listener is about to ask
         bt = this.beat(beats, l, s, 'follow.' + fq + '.' + f.k, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
         this.answerFollow(s, l, m, fq, beats);
       } else if (m.src === SRC_TOLD && m.from >= 0 && rng.chance(0.3)) {
@@ -643,7 +645,8 @@ export class Social {
     if ((q.k === 'price' || q.k === 'buy') && gl < G_TEEN) return false;
     if ((q.k === 'rate' || q.k === 'job') && gl < G_ADULT) return false;
     if (q.k === 'how' && q.o === l.id) return false;
-    if (q.f && (q.f.a === l.id || q.f.b === l.id) && (q.k === 'who' || q.k === 'caught')) return false;
+    // the questions are about other people ('소영 씨가 왜 이사 가요?'): not asked of the people in the story
+    if (q.f && (q.f.a === l.id || q.f.b === l.id || q.f.c === l.id)) return false;
     return true;
   }
 

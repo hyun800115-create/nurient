@@ -32,7 +32,7 @@ import { View } from '../core/View.js';
 import { Territory } from '../systems/Territory.js';
 import { Logistics, PRIO } from '../systems/Logistics.js';
 import { Site, buildCost } from '../entities/Site.js';
-import { Workshop, Smith } from '../entities/Workshop.js';
+import { Workshop } from '../entities/Workshop.js';
 import { Warehouse } from '../entities/Warehouse.js';
 import { WarehousePorter, RawPorter } from '../entities/Worker.js';
 // (v3.5) division of labour: station work spots + operators, collection piles
@@ -1838,6 +1838,8 @@ export class Game extends Phaser.Scene {
       texStats() { return Residency.stats(); },
       /** (v4-B) is atlas / image `k` loaded (any of its packed pages)? */
       hasTex(k) { return !!Assets.texOf(k); },
+      /** (v4-B) the asset registry (tests: failed / queued / pages) */
+      assets() { return Assets; },
       teleport(x, y) { gs.player.x = x; gs.player.y = y; gs.camTarget.x = x; gs.camTarget.y = y - 30; gs.player.sync(0); },
       setInput(vx, vy) { Input.override = (vx || vy) ? { x: vx, y: vy } : null; },
       where(name) {

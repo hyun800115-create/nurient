@@ -101,22 +101,34 @@ for _way, _ko in (('red', '빨강'), ('blue', '파랑'), ('yellow', '노랑'), (
 
 # =========================================================================== SUN LOUNGER
 
-LOUNGER_NOTE = ('Wooden sun lounger (%s): white-painted frame with leg pairs and two little wheels at the head, oiled '
-                'teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white piping '
-                'and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion '
-                '(anchor of a `sunbathe` character lying on its back), lyingHeadPoints / lyingFeetPoints = where the '
-                'head / feet rest, lyingDirs = screen direction from hips to head (%s); seatPoints = sitting on the '
-                'side rail (facing %s).')
+LOUNGER_NOTE = ('Wooden sun lounger (%s): oiled dark-teak frame with leg pairs and two rubber wheels at the head, '
+                'lighter teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white '
+                'piping and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion '
+                '(anchor of a beachfolk `sunbathe` frame), lyingHeadPoints / lyingFeetPoints = where the head / feet '
+                'rest. lyingFeetDirs = screen direction hips -> FEET (%s) = the `dir` to play beachfolk `sunbathe` with '
+                '(its dir is where the feet point); lyingDirs = hips -> head (%s), kept for reference. seatPoints = '
+                'sitting sideways on the %s cushion edge (townsfolk2 `sit` anchor = seat front-centre at 0.45 m, faces '
+                '%s); seatGroundPoints = the sand under it.')
 
 
-def _lounger_builder(yaw_note):
+def seat(loc, facing, ground=True):
+    """`sit` anchor (seat front-centre, townsfolk2 / villagers convention) + the ground point under it."""
+    mark('seat', loc, facing=facing)
+    if ground:
+        BA.MARKERS.append(('seatground', _empty((loc[0], loc[1], 0.0)), None))
+
+
+def _lounger_builder(axis):
     def b():
         R = B.lounger('lg')
         mark('lie', tuple(R['lie']), facing=(0, 1, 0))
         BA.MARKERS.append(('liehead', _empty(R['head']), None))
         BA.MARKERS.append(('liefeet', _empty(R['feet']), None))
-        mark('seat', (0.36, -0.35, 0.37), facing=(1, 0, 0))
-        return {'extra': {'lyingHeightM': round(R['lie'].z, 3), 'backrestDeg': 38}}
+        # sit sideways on the cushion edge on the CAMERA side, facing out: +X (SE) for the Y lounger, local -X ->
+        # world -Y (SW) for the X lounger (yaw 90).  Polish: was on the far rail facing NE (no sit-NE frames).
+        sx = 1 if axis == 'y' else -1
+        seat((sx * 0.31, -0.3, 0.45), facing=(sx, 0, 0))
+        return {'extra': {'lyingHeightM': round(R['lie'].z, 3), 'backrestDeg': 38, 'seatHeightM': 0.45}}
     return b
 
 
@@ -128,11 +140,12 @@ def _empty(p):
 
 
 beach('sun_lounger', 'decor', 'beach_shade', fp=(0.7, 1.95), yaw=0.0, samples=40,
-      notes=LOUNGER_NOTE % ('along world Y, head at +Y = screen up-right', 'NE', 'SE'), ko='선베드', en='Sun lounger',
-      zone='shade', extra={'lyingAxis': 'y'})(_lounger_builder('y'))
+      notes=LOUNGER_NOTE % ('along world Y, head at +Y = screen up-right', 'SW', 'NE', '+X (screen down-right)', 'SE'),
+      ko='선베드', en='Sun lounger', zone='shade', extra={'lyingAxis': 'y', 'seatDepth': 'front'})(_lounger_builder('y'))
 beach('sun_lounger_x', 'decor', 'beach_shade', fp=(0.7, 1.95), yaw=90.0, samples=40,
-      notes=LOUNGER_NOTE % ('along world X, head at -X = screen up-left', 'NW', 'NE'), ko='선베드 (X축)',
-      en='Sun lounger (X axis)', zone='shade', extra={'lyingAxis': 'x'})(_lounger_builder('x'))
+      notes=LOUNGER_NOTE % ('along world X, head at -X = screen up-left', 'SE', 'NW', '-Y (screen down-left)', 'SW'),
+      ko='선베드 (X축)', en='Sun lounger (X axis)', zone='shade',
+      extra={'lyingAxis': 'x', 'seatDepth': 'front'})(_lounger_builder('x'))
 
 
 # =========================================================================== LIFEGUARD TOWER
@@ -245,6 +258,7 @@ def b_lifeguard_tower():
     # markers
     mark('staff', (0.0, -0.36, PLAT_Z), facing=(0, -1, 0))
     mark('seat', (0.0, 0.1, seat_z), facing=(0, -1, 0))
+    BA.MARKERS.append(('seatground', _empty((0.0, 0.1, PLAT_Z)), None))      # the platform under the high chair
     mark('look', (0.0, -3.0, 0.0), facing=(0, -1, 0))
     BA.MARKERS.append(('ladder', _empty((lx0 + 0.25, 0.36, 0.0)), None))
     return {'overlay': {'key': 'lifeguard_tower_front', 'at': (0.0, -0.36, 0.0)},
@@ -305,9 +319,11 @@ def binoculars(name, loc, rz=0.0):
 
 # =========================================================================== SANDCASTLES
 
-SC_NOTE = ('Sandcastle %s: damp packed sand (fine grain), bucket-moulded towers with ridges and crenellations, drip '
-           'spires, scallop / cone shells, a little starfish and a paper pennant flag. Decor on the sand (no '
-           'collision needed for S).')
+SC_NOTE = ('Sandcastle %s: damp packed sand (fine grain, one step darker than the dry sand), bucket-moulded towers '
+           'with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant '
+           'flag. workPoints / workDirs = kneeling diggers (beachfolk `dig`: SE / SW / S) on the FAR side so the '
+           'castle stays in front of them (workDepth "behind" = normal y-sort). Decor on the sand (no collision needed '
+           'for S).')
 
 
 def castle_s(seed=0, x=0.0, y=0.0, flag_col=B.RED):
@@ -416,17 +432,19 @@ def castle_l(seed=0):
 def b_sandcastle_s():
     castle_s(seed=1)
     bucket_spade_pair(0.32, 0.12, rz=20)
-    mark('work', (-0.05, -0.45, 0.0), facing=(0, 1, 0))
-    return {}
+    # diggers kneel on the FAR side (screen up) so the castle is drawn in front of them, facing it with a direction
+    # beachfolk `dig` has frames for (S / SE / E, SW / W mirrored).  Polish: were in front, facing NE (no frames).
+    mark('work', (-0.55, 0.05, 0.0), facing=(1, 0, 0))
+    return {'extra': {'workDepth': 'behind'}}
 
 
 @beach('sandcastle_m', 'decor', 'beach_play', fp=(1.1, 0.9), samples=40, notes=SC_NOTE % 'M (keep + 2 towers)',
        ko='모래성 (중)', en='Sandcastle M', zone='play')
 def b_sandcastle_m():
     castle_m(seed=2)
-    mark('work', (-0.35, -0.6, 0.0), facing=(0.3, 1, 0))
-    mark('work', (0.55, -0.45, 0.0), facing=(-0.5, 1, 0))
-    return {}
+    mark('work', (-0.85, 0.05, 0.0), facing=(1, 0, 0))
+    mark('work', (0.05, 0.78, 0.0), facing=(0, -1, 0))
+    return {'extra': {'workDepth': 'behind'}}
 
 
 @beach('sandcastle_l', 'decor', 'beach_play', fp=(2.0, 2.0), samples=40,
@@ -434,10 +452,10 @@ def b_sandcastle_m():
        en='Sandcastle L', zone='play')
 def b_sandcastle_l():
     castle_l(seed=3)
-    mark('work', (-0.5, -1.15, 0.0), facing=(0.3, 1, 0))
-    mark('work', (0.6, -1.1, 0.0), facing=(-0.3, 1, 0))
-    mark('work', (1.25, 0.0, 0.0), facing=(-1, 0, 0))
-    return {}
+    mark('work', (-1.28, 0.0, 0.0), facing=(1, 0, 0))
+    mark('work', (0.0, 1.28, 0.0), facing=(0, -1, 0))
+    mark('work', (-0.95, 0.95, 0.0), facing=(1, -1, 0))
+    return {'extra': {'workDepth': 'behind'}}
 
 
 def bucket_spade_pair(x, y, rz=0.0, col=B.RED, spade_col='#3D86D6', tip=False):
@@ -451,8 +469,9 @@ def bucket_spade_pair(x, y, rz=0.0, col=B.RED, spade_col='#3D86D6', tip=False):
 BUILD_NOTE = ('Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): '
               'sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + '
               'the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and '
-              'shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; '
-              'stages lists every stage key in order.')
+              'shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE '
+              '/ SW) on the far side of the castle (workDepth "behind": normal y-sort draws the castle in front of '
+              'them); stages lists every stage key in order.')
 
 
 @beach('sandcastle_build', 'decor', 'beach_play', fp=(1.1, 0.9), samples=40, notes=BUILD_NOTE,
@@ -494,8 +513,8 @@ def b_sandcastle_build():
                                                      (0.14, -0.2, 0.1, '#F9D9A8', 'scallop'))):
             B.shell(mb2, (dx, dy, z), s=0.045, col=col, rz=k * 40, kind=kind)
         mb2.done('shells')
-    mark('work', (-0.35, -0.62, 0.0), facing=(0.3, 1, 0))
-    mark('work', (0.62, -0.5, 0.0), facing=(-0.6, 1, 0))
+    mark('work', (-0.85, 0.05, 0.0), facing=(1, 0, 0))
+    mark('work', (0.05, 0.78, 0.0), facing=(0, -1, 0))
     groups = [s0.objs + tools0.objs, s1.objs + tools1.objs, s1.objs + s2.objs + tools1.objs,
               s1.objs + s2.objs + s3.objs + tools1.objs]
     every = BA.descendants(s0.objs + tools0.objs + s1.objs + tools1.objs + s2.objs + s3.objs)
@@ -508,7 +527,7 @@ def b_sandcastle_build():
     frames = [('sandcastle_build_%d' % k, setter(g)) for k, g in enumerate(groups)]
     keys = [n for n, _ in frames]
     sprites = {n: {'frame': n, 'stage': k, 'stages': keys} for k, n in enumerate(keys)}
-    return {'frames': frames, 'sprites': sprites}
+    return {'frames': frames, 'sprites': sprites, 'extra': {'workDepth': 'behind'}}
 
 
 # the rest of the set (registration order = manifest order inside each atlas)

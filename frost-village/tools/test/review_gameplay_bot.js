@@ -25,6 +25,8 @@
     let k = Object.keys(gs.progress.done).length + ':' + gs.progress.benchOpen;
     if (gs.sites) for (const id in gs.sites) k += gs.sites[id].state ? gs.sites[id].state[0] : '-';
     if (gs.territory) for (const id in gs.territory.regions) k += gs.territory.regions[id].open ? 'o' : 'c';
+    // (v4) the neighbours' shops, houses, station and props add obstacles too
+    k += ':' + gs.collision.all.length;
     return k;
   }
   function cellBlocked(c, r) {
@@ -131,20 +133,24 @@
     if (aff.length) return aff[0];
     return main || cands.sort((a, b) => a.remaining - b.remaining)[0] || null;
   }
-  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; return v; }
+  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; return v; }
   const STORE = ['item_can', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
   function shelfFor(type) { return FOODS.includes(type) ? gs.market : GOODS.includes(type) && gs.trade.enabled ? gs.trade : STORE.includes(type) && gs.store && gs.store.enabled ? gs.store : null; }
   function canSell(type) { const s = shelfFor(type); return s && s.stock.countOf(type) + 0 < s.maxPerType; }
 
   // ------------------------------------------------------------------ (v3) helpers
   const B3 = () => window.__BAL.buildings;
-  const costOf = (k) => (B3()[k] || {}).coins || 0;
+  // ((v4) the station's repair is priced in BALANCE.v4.station)
+  const costOf = (k) => (k === 'station' && window.__BAL.v4 && window.__BAL.v4.station ? window.__BAL.v4.station.coins : (B3()[k] || {}).coins) || 0;
   function plotFor(bkey) {
     const p = P();
     let best = null, bd = 1e12;
+    // a building with its own reserved site (v4 station: r_station) only goes there
+    const own = Object.values(gs.sites).some((q) => q.kind === 'plot' && q.only === bkey);
     for (const id in gs.sites) {
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
+      if (own && st.only !== bkey) continue;
       if (st.only ? st.only !== bkey : (bkey === 'boathouse' || (st.size === 'S' && !/^house_/.test(bkey)))) continue;
       if (/^house_/.test(bkey) && st.size !== 'S' && Object.values(gs.sites).some((q) => q.kind === 'plot' && q.state === 'plot' && q.shown && q.size === 'S')) continue;
       const d = gd(p.x, p.y, st.dropX, st.dropY);
@@ -258,6 +264,32 @@
         }
       }
     }
+    // 1d. (v4) the neighbours: cut a ribbon, visit the town when invited, carry for the order cards, feed the
+    //     carpenter's house sites (bot.opts.v4 === false turns it off)
+    if (bot.opts.v4 !== false && gs.v4 && gs.v4.growth && gs.v4.growth.active) {
+      const G = gs.v4.growth, fl = gs.progress.flags;
+      for (const id in G.shops) { const sh = G.shops[id]; if (sh.st === 'ribbon' && sh.ribbonPad) { setTask('ribbon', { x: sh.ribbonPad.x, y: sh.ribbonPad.y }, { shop: sh, label: 'ribbon ' + sh.shop, tol: 5, maxT: 25 }); return; } }
+      if (fl.townInvite && !fl.townVisit && gs.territory.isOpen('town')) {
+        const f = gs.v4.buildings && gs.v4.buildings.find((q) => q.id === 't_fountain');
+        if (f) { setTask('visit', { x: f.x - 120, y: f.y + 200 }, { label: 'town', tol: 40, maxT: 90 }); return; }
+      }
+      // items the cards need -> the cargo pad
+      for (const t in b) if (G.needOf(t) > 0) { setTask('dock', { x: G.dock.x, y: G.dock.y }, { type: t, label: 'dock ' + t, tol: 6, maxT: 40 }); return; }
+      // planks -> a house site
+      const hs = Object.values(G.houses).find((h) => h.st === 'site' && h.pad && h.room('item_plank') > 0);
+      if (hs && b.item_plank) { setTask('house', { x: hs.pad.x, y: hs.pad.y }, { site: hs, label: 'house', tol: 6, maxT: 40 }); return; }
+      // fetch for the focus card / the house site from a station or workshop output (when worth the walk)
+      if (room > 0) {
+        const want = [];
+        const fc = G.focusCard();
+        if (fc) for (const k in fc.need) if (fc.got[k] < fc.need[k]) want.push(k);
+        if (hs) want.push('item_plank');
+        for (const ty of want) {
+          const src = srcOf(ty);
+          if (src && src.outStack.countOf(ty) >= Math.min(4, G.needOf(ty) || 4)) { setTask('fetch4', src.outPad, { st: src, type: ty, label: 'fetch4 ' + ty, tol: 6, maxT: 30 }); return; }
+        }
+      }
+    }
     // 2. raw in bag -> deposit (v3.5: on the work spot when nobody works the station: it feeds and cooks there)
     for (const t in b) {
       if (!RAW_ST[t]) continue;
@@ -312,9 +344,10 @@
     }
     // 5. sell what we carry
     if (sellables.length) return sellTask(sellables);
-    // 6. cash needed for the next pad
+    // 6. cash needed for the next pad (or (v4) the next building, e.g. the station's repair)
     const ct = cashTotal();
     if (want && coins + ct >= want.remaining && ct > 0) return cashTask();
+    { const g = gs.progress.nextGoal(); if (g && g.kind === 'build' && ct > 0 && coins < costOf(g.id) && coins + ct >= costOf(g.id)) return cashTask(); }
     // 7. gather by hand
     if (room > 0) {
       const opts = [];
@@ -370,6 +403,9 @@
     const p = P();
     const cs = [gs.market.cash];
     if (gs.trade.enabled) cs.push(gs.trade.cash);
+    // (v4) 역 금고: the wholesale and the rent pile up there
+    const G = gs.v4 && gs.v4.growth;
+    if (G && G.till && G.till.value >= 40) cs.push(G.till);
     const c = cs.filter((c) => c.value > 0).sort((a, b) => gd(p.x, p.y, a.x, a.y) - gd(p.x, p.y, b.x, b.y))[0];
     if (!c) return;
     setTask('cash', c, { cash: c, label: c === gs.market.cash ? 'market' : 'trade', tol: 6 });
@@ -456,6 +492,12 @@
         return el > (tk.maxT || 12) && !tk.pile.pad.contains(p.x, p.y);
       }
       case 'blocked': return true;
+      // (v4)
+      case 'ribbon': return tk.shop.st !== 'ribbon' || el > (tk.maxT || 25);
+      case 'visit': return !!gs.progress.flags.townVisit || el > (tk.maxT || 90);
+      case 'dock': return !b[tk.type] || gs.v4.growth.needOf(tk.type) <= 0 || el > (tk.maxT || 40);
+      case 'house': return !b.item_plank || tk.site.st !== 'site' || tk.site.room('item_plank') <= 0 || el > (tk.maxT || 40);
+      case 'fetch4': return p.room <= 0 || tk.st.outStack.countOf(tk.type) === 0 || (b[tk.type] || 0) >= Math.max(1, gs.v4.growth.needOf(tk.type)) || el > (tk.maxT || 30);
       case 'idle': return el > 0.5;
       case 'arrow': return el > 0.4;
     }
@@ -513,6 +555,10 @@
     for (const k in gs.built) if (!bot.seenBuilt[k] || bot.seenBuilt[k] < gs.built[k]) { bot.seenBuilt[k] = gs.built[k]; bot.events.push({ t: bot.t, ev: 'built:' + k, coins: eco().coins }); }
     for (const r in gs.territory.regions) if (gs.territory.regions[r].open && !bot.seenRegion[r]) { bot.seenRegion[r] = true; if (r !== 'start') bot.events.push({ t: bot.t, ev: 'region:' + r, coins: eco().coins }); }
     if (gs.progress.celebrated3 && !bot.seen3) { bot.seen3 = true; bot.events.push({ t: bot.t, ev: 'v3_complete', coins: eco().coins }); }
+    // (v4) flags (firstTrain, townInvite, townVisit, shops3, rankReady, rankEup) and the shops as they open
+    bot.seenFlag = bot.seenFlag || {};
+    for (const f of ['firstTrain', 'townInvite', 'townVisit', 'shops3', 'rankReady', 'rankEup']) if (gs.progress.flags[f] && !bot.seenFlag[f]) { bot.seenFlag[f] = true; bot.events.push({ t: bot.t, ev: 'flag:' + f, coins: eco().coins }); }
+    if (gs.v4 && gs.v4.growth) { const G = gs.v4.growth; bot.seenShop = bot.seenShop || {}; for (const id in G.shops) { const sh = G.shops[id]; if (sh.st === 'open' && !bot.seenShop[sh.shop]) { bot.seenShop[sh.shop] = true; bot.events.push({ t: bot.t, ev: 'shop_open:' + sh.shop, coins: eco().coins }); } } }
     if (gs.life && gs.life.waiting.length !== bot.lastWait) { bot.lastWait = gs.life.waiting.length; }
     if (gs.workers.some((w) => w.hungry)) bot.hungryT += dt;
     // decide

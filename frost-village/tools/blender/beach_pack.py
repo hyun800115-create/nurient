@@ -61,10 +61,10 @@ CHAR_NAMES = {'swan_pedal_boat': ['오리배 (백조 페달보트)', 'Swan pedal
 POINT_SINGLE = {'door': 'doorPoint', 'ladder': 'ladderPoint', 'look': 'lookPoint'}
 POINT_LIST = {'staff': 'staffPoints', 'customer': 'customerPoints', 'seat': 'seatPoints', 'lie': 'lyingPoints',
               'work': 'workPoints', 'play': 'playPoints', 'stand': 'standPoints', 'liehead': 'lyingHeadPoints',
-              'liefeet': 'lyingFeetPoints'}
+              'liefeet': 'lyingFeetPoints', 'seatground': 'seatGroundPoints'}
 DIR_LIST = {'staff': 'staffDirs', 'customer': 'customerDirs', 'seat': 'seatDirs', 'lie': 'lyingDirs',
             'work': 'workDirs', 'play': 'playDirs', 'stand': 'standDirs', 'door': 'doorDir'}
-INTERNAL = {'build', 'kind', 'atlas', 'frameSize', 'anchorPx', 'anchor', 'frames', 'shadow', 'notes', 'yaw', 'topPx',
+INTERNAL = {'build', 'kind', 'atlas', 'exposure', 'frameSize', 'anchorPx', 'anchor', 'frames', 'shadow', 'notes', 'yaw', 'topPx',
             'framePoints', 'frameDirs', 'sprites', 'ground', 'frameWorldPoints', 'anims', 'animAlias', 'footprint',
             'footprintM', 'front', 'fxPoints', 'points', 'overlay', 'thicknessM'}
 
@@ -172,6 +172,12 @@ def footprint_poly(m):
     return pts
 
 
+def screen_dir(dx, dy):
+    """8-way screen direction of a px vector (y down): E, NE, N, NW, W, SW, S, SE."""
+    a = math.degrees(math.atan2(-dy, dx)) % 360
+    return ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'][int(((a + 22.5) % 360) // 45)]
+
+
 def sprite_entry(k, m, fr, frame_atlas):
     s = {'atlas': frame_atlas[fr], 'frame': fr, 'anchor': m['anchor'], 'kind': m['kind'], 'frameSize': m['frameSize']}
     if 'footprint' in m:
@@ -203,6 +209,10 @@ def sprite_entry(k, m, fr, frame_atlas):
                 s[DIR_LIST[kind]] = dirs[kind]
     if 'lookPoint' in s and 'lookDir' not in m and dirs.get('look'):
         s['lookDir'] = dirs['look'][0]
+    if s.get('lyingPoints') and s.get('lyingFeetPoints'):
+        # beachfolk `sunbathe` is played with dir = where the FEET point (polish: lyingDirs is hips -> head)
+        s['lyingFeetDirs'] = [screen_dir(f[0] - p[0], f[1] - p[1]) for p, f in zip(s['lyingPoints'],
+                                                                                   s['lyingFeetPoints'])]
     if 'staffPoints' in s:
         s.setdefault('staffDepth', m.get('staffDepth', 'front'))
         # the contract names a single vendor / guard spot (`staffPoint`): the first of the list
@@ -289,21 +299,28 @@ CONVENTIONS = {
     'ppu': 64,
     'anchor': 'normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre ON THE SAND (z 0); '
               'water-plane props (swim_buoy_line_*, float_raft, boats) = their WATERLINE (sea surface), like '
-              'assets/ships and harbor/buoy: put them on a sea point that is already on the water plane (the sea is '
-              '0.55 m = waterPx 30 screen px below the land).',
+              'assets/ships and harbor/buoy: put the anchor on the sea point. Sea level (polish, one rule with '
+              'assets/water and assets/beachfolk): on a sand beach the sea surface is LEVEL with the sand (waterPx 0, '
+              'the Water.js sand polygon ends at the waterline), so a water-plane anchor = the world point itself; only '
+              'beside walls that show (quay, pier, breakwater) is the sea waterPx 30 (0.55 m) lower - see '
+              'waterPxByShore.',
     'front': '-Y = faces screen down-left (SW) = the sea side of the beach (like the harbour waterfront). _x variants '
              'are the same prop turned 90 deg (front +X = screen down-right).',
     'shadows': 'baked soft cool shadows falling screen down-right (lighter on the water for water-plane props). Do '
                'not flipX baked-shadow sprites. Characters-style atlases (boats, crab) have NO baked shadow and a 1 px '
                'ink outline like the characters.',
     'points': 'every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled, height '
-              'included). *Dirs = facing of a character there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). '
-              'staffDepth "front": draw the character above the sprite; "behind": normal anchor-y sorting (the counter '
-              'hides the legs). lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), '
-              'lyingHeadPoints / lyingFeetPoints = head / feet ends, lyingDirs = screen direction hips -> head, '
-              'lyingAxis = the world axis of the body. seatPoints = seat-surface front-centre (`sit` anchor, '
-              'villagers / townsfolk2 convention). workPoints = kneeling diggers (beachfolk `dig`). playPoints = '
-              'players. standPoints = people under the beach shower.',
+              'included). *Dirs = facing of a character there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX); every '
+              '*Dirs value has frames in the anim that is played there (beach_check verifies it). '
+              'staffDepth / seatDepth / workDepth / playDepth "front": draw the character just above the sprite; '
+              '"behind": normal anchor-y sorting (the counter / table / sandcastle hides the legs); seatDepths = per '
+              'seat. lyingPoints = hip point of a sunbather on their back, lyingHeadPoints / lyingFeetPoints = head / '
+              'feet ends; play beachfolk `sunbathe` with dir = lyingFeetDirs[i] (the FEET direction - its dir '
+              'convention); lyingDirs = hips -> head (reference only). seatPoints = seat front-centre at the seat '
+              'height (townsfolk2 / villagers `sit` anchor, 0.45 m seat), seatGroundPoints = the floor under it '
+              '(shadow: draw it there), seatHeightM. workPoints = kneeling diggers (beachfolk `dig`, S / SE / E + '
+              'mirrors). playPoints = players (playAnim when given; volleyball: ballDirs = the dir for ball_throw / '
+              'ball_catch). standPoints = people under the beach shower.',
     'anims': 'idle frame = resting state; named loops (flutter, sway, water, bob, bounce, bell, grill, fly) are also '
              'listed as anims.work; every frame shares frameSize + anchor (swap frames in place; Assets.js registers '
              'spr:<key>:<anim>). Water-plane bob loops of the swim-buoy line tiles must play IN SYNC (same frame index '
@@ -348,7 +365,12 @@ def build_manifest(builds, frame_atlas, prop_atlases, chars, cimgs, char_atlas, 
     man['characters'] = {k: dict({f: x for f, x in oldch.get(k, {}).items()}, **char_entry(k, chars[k], cimgs[k],
                                                                                           char_atlas[k]))
                          for k in chars}
-    man['waterPx'] = 30
+    man['waterPx'] = 0
+    man['waterPxByShore'] = {'sand': 0, 'quay': 30, 'pier': 30, 'breakwater': 30,
+                             'notes': 'polish: one rule with assets/water (water.md 6.6) and assets/beachfolk: on a SAND '
+                                      'beach the sea surface is level with the sand (waterPx 0), so water-plane anchors '
+                                      'go on the sea point itself; only next to walls that show (quay, pier, '
+                                      'breakwater) is the surface 30 px (0.55 m) lower, like the harbour.'}
     return man
 
 

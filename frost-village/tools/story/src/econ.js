@@ -39,7 +39,12 @@ export class Economy {
       case A_BIGBUY: this.bigBuy(r, p); break;
       case A_HOME: if (e.clock.minute < 600 && r.readDay !== e.clock.day) e.news.read(r); r.energy = Math.min(100, r.energy + 5); break;
       case A_OUTING: this.outing(r, p); r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
-      case A_SOCIAL: case A_PLAY: case A_VISIT: r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
+      case A_SOCIAL: case A_PLAY: case A_VISIT:
+        // a shop that sells a service (the hair salon) is paid by its visitors
+        if (act === A_SOCIAL && p.cat === 'shop' && !p.sellIdx.length && p.owner >= 0 && p.owner !== r.id && r.wallet >= 20 && groupOf(e, r) >= G_TEEN && (r.id + e.clock.day) % 4 === 0) {
+          r.wallet -= 10; p.till += 10; this.stats.sales++; this.stats.salesCoins += 10;    // a haircut now and then
+        }
+        r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
       case A_CLINIC: r.mood = Math.min(100, r.mood + 6); break;
     }
   }
@@ -114,8 +119,11 @@ export class Economy {
     // the centre lets a shop take a little more on account (paid back at the next pick-up), so a shop
     // with an empty till is never stuck with empty shelves
     let settledNow = 0;
+    // a shop that is stuck (empty shelves and the account at its limit) gets half its bill written off:
+    // a cozy town does not let a shop close over a few crates of fish
+    if (shop.stock <= 4 && (shop.owed || 0) >= 600 - avg * 5) { const cut = Math.floor(shop.owed / 2); shop.owed -= cut; this.stats.writtenOff = (this.stats.writtenOff || 0) + cut; }
     if (shop.owed > 0) { const pd = this.pay(r, shop.owed); shop.owed -= pd; settledNow += pd; }
-    const budget = r.wallet + r.savings;
+    const budget = Math.max(0, r.wallet + r.savings - 30);     // keep a little for food
     let qty = Math.min(want, Math.floor(budget / avg));
     const cost = qty * avg;
     if (cost > 0) { this.pay(r, cost); settledNow += cost; }

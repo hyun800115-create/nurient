@@ -269,17 +269,17 @@
    "ios": "icon_1024.png (opaque, no rounded corners - iOS masks it)."
   },
   "payload": {
-   "titleLoadPngBytes": 1284309,
-   "titleLoadAfterWebpBuildBytes": 864287,
+   "titleLoadPngBytes": 1279532,
+   "titleLoadAfterWebpBuildBytes": 858548,
    "worstLanguage": "ko",
    "byGroup": {
     "logo": {
-     "png": 399933,
-     "webpBuild": 399933
+     "png": 395274,
+     "webpBuild": 395274
     },
     "backdrop": {
-     "png": 882443,
-     "webpBuild": 498714
+     "png": 882325,
+     "webpBuild": 497634
     },
     "fx": {
      "png": 84763,

@@ -252,11 +252,17 @@ export class TitleDiorama {
   setStageInstant(s) {
     this.stage = s;
     this.pendingOuts = null;
+    // (a stage whose pictures are not in yet keeps what it would replace until they land, as grow() does)
+    let rs = 0;
+    while (rs < s && TitleAssets.ready(rs + 1)) rs++;
+    const keep = [];
     for (const r of this.recs) {
       r.want = this.wanted(r.o, s);
+      if (!r.want && rs < s && this.wanted(r.o, rs)) { r.want = true; keep.push(r); }
       r.popT = -1; r.popMode = 0;
       if (r.img) this.showRec(r, r.want);
     }
+    if (keep.length) { this.pendingOuts = keep; this.pendingTo = s; }
     for (const r of this.groundRecs) {
       r.want = r.stage <= s;
       r.fade = -1;

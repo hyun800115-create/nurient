@@ -37,6 +37,11 @@
    "json": "logistics/lgx_producers.json"
   },
   {
+   "key": "lgx_forklift",
+   "png": "logistics/lgx_forklift.png",
+   "json": "logistics/lgx_forklift.json"
+  },
+  {
    "key": "lgx_forklift_loaded",
    "png": "logistics/lgx_forklift_loaded.png",
    "json": "logistics/lgx_forklift_loaded.json"
@@ -50,6 +55,16 @@
    "key": "lgx_delivery_van_red",
    "png": "logistics/lgx_delivery_van_red.png",
    "json": "logistics/lgx_delivery_van_red.json"
+  },
+  {
+   "key": "lgx_delivery_van_blue",
+   "png": "logistics/lgx_delivery_van_blue.png",
+   "json": "logistics/lgx_delivery_van_blue.json"
+  },
+  {
+   "key": "lgx_delivery_van_mint",
+   "png": "logistics/lgx_delivery_van_mint.png",
+   "json": "logistics/lgx_delivery_van_mint.json"
   },
   {
    "key": "lgx_moving_truck",
@@ -374,159 +389,39 @@
    "revealPoly": [
     [
      -455,
-     -256
-    ],
-    [
-     -455,
      -257
-    ],
-    [
-     -452,
-     -270
-    ],
-    [
-     -449,
-     -279
     ],
     [
      -445,
      -288
     ],
     [
-     -440,
-     -298
-    ],
-    [
-     -433,
-     -308
-    ],
-    [
      -426,
      -318
-    ],
-    [
-     -417,
-     -328
-    ],
-    [
-     -408,
-     -338
-    ],
-    [
-     -398,
-     -349
-    ],
-    [
-     -397,
-     -349
     ],
     [
      -386,
      -360
     ],
     [
-     -374,
-     -370
-    ],
-    [
-     -362,
-     -381
-    ],
-    [
-     -348,
-     -391
-    ],
-    [
-     -334,
-     -401
-    ],
-    [
      -320,
      -411
-    ],
-    [
-     -320,
-     -411
-    ],
-    [
-     -305,
-     -420
-    ],
-    [
-     -290,
-     -429
-    ],
-    [
-     -275,
-     -438
     ],
     [
      -260,
      -446
     ],
     [
-     -244,
-     -453
-    ],
-    [
-     -229,
-     -460
-    ],
-    [
      -214,
      -466
-    ],
-    [
-     -200,
-     -471
-    ],
-    [
-     -185,
-     -476
-    ],
-    [
-     -176,
-     -478
-    ],
-    [
-     -169,
-     -480
-    ],
-    [
-     -165,
-     -481
     ],
     [
      -158,
      -483
     ],
     [
-     -145,
-     -485
-    ],
-    [
-     -133,
-     -486
-    ],
-    [
-     -122,
-     -487
-    ],
-    [
-     -122,
-     -487
-    ],
-    [
      -112,
      -487
-    ],
-    [
-     -102,
-     -486
-    ],
-    [
-     -93,
-     -484
     ],
     [
      -86,
@@ -537,28 +432,8 @@
      -222
     ],
     [
-     439,
-     -218
-    ],
-    [
-     444,
-     -214
-    ],
-    [
      449,
      -208
-    ],
-    [
-     452,
-     -202
-    ],
-    [
-     455,
-     -192
-    ],
-    [
-     455,
-     -192
     ],
     [
      455,
@@ -566,79 +441,19 @@
     ],
     [
      432,
-     33
-    ],
-    [
-     432,
      34
-    ],
-    [
-     432,
-     34
-    ],
-    [
-     431,
-     34
-    ],
-    [
-     384,
-     60
-    ],
-    [
-     98,
-     203
-    ],
-    [
-     69,
-     216
-    ],
-    [
-     68,
-     216
     ],
     [
      67,
      216
     ],
     [
-     44,
-     211
-    ],
-    [
-     44,
-     211
-    ],
-    [
      38,
      208
     ],
     [
-     -279,
-     46
-    ],
-    [
-     -431,
-     -34
-    ],
-    [
-     -431,
-     -34
-    ],
-    [
      -432,
      -34
-    ],
-    [
-     -432,
-     -34
-    ],
-    [
-     -432,
-     -35
-    ],
-    [
-     -455,
-     -251
     ]
    ],
    "layers": {
@@ -868,7 +683,7 @@
       -11,
       -158
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 35,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -892,7 +707,7 @@
       38,
       -134
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 35,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -916,7 +731,7 @@
       -11,
       -225
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -940,7 +755,7 @@
       38,
       -200
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -964,7 +779,7 @@
       -11,
       -291
      ],
-     "maxStackPx": 24,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -988,7 +803,7 @@
       38,
       -267
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1012,7 +827,7 @@
       94,
       -106
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 35,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1036,7 +851,7 @@
       142,
       -82
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 35,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1060,7 +875,7 @@
       94,
       -173
      ],
-     "maxStackPx": 26,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1084,7 +899,7 @@
       142,
       -148
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1108,7 +923,7 @@
       94,
       -239
      ],
-     "maxStackPx": 24,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1132,7 +947,7 @@
       142,
       -215
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1156,7 +971,7 @@
       198,
       -54
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1180,7 +995,7 @@
       246,
       -30
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1204,7 +1019,7 @@
       198,
       -121
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1228,7 +1043,7 @@
       246,
       -96
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1252,7 +1067,7 @@
       198,
       -187
      ],
-     "maxStackPx": 24,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1276,7 +1091,7 @@
       246,
       -163
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1300,7 +1115,7 @@
       302,
       -2
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1324,7 +1139,7 @@
       350,
       22
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1348,7 +1163,7 @@
       302,
       -68
      ],
-     "maxStackPx": 27,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1372,7 +1187,7 @@
       350,
       -44
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 34,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1396,7 +1211,7 @@
       302,
       -135
      ],
-     "maxStackPx": 24,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1420,7 +1235,7 @@
       350,
       -111
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 46,
      "widthM": 1.075,
      "depthM": 0.6,
      "spanPx": [
@@ -1444,7 +1259,7 @@
       -186,
       -126
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 40,
      "widthM": 1.175,
      "depthM": 0.7,
      "spanPx": [
@@ -1468,7 +1283,7 @@
       -133,
       -153
      ],
-     "maxStackPx": 32,
+     "maxStackPx": 40,
      "widthM": 1.175,
      "depthM": 0.7,
      "spanPx": [
@@ -1492,7 +1307,7 @@
       -186,
       -200
      ],
-     "maxStackPx": 0,
+     "maxStackPx": 46,
      "widthM": 1.175,
      "depthM": 0.7,
      "spanPx": [
@@ -1516,7 +1331,7 @@
       -133,
       -227
      ],
-     "maxStackPx": 45,
+     "maxStackPx": 46,
      "widthM": 1.175,
      "depthM": 0.7,
      "spanPx": [
@@ -1852,7 +1667,12 @@
     "color": "#2B4F7E",
     "note": "blank cream name board on the -Y facade (part of _shell): the game writes the name here, centred on point, fitted into widthPx x heightPx and sheared y += 0.5 * x (the facade runs along screen (2, 1)); fade it with the shell."
    },
-   "notes": "Logistics centre (11 x 8 m) rendered as aligned cutaway layers that share this frame + anchor: draw the layers in layerOrder at depth = building depth + depthOffset. Closed look = _shell (this entry's own frame). Inside: blue + orange pallet racks with category signs (food fish, goods can, tools hammer, appliances fridge on the back wall; furniture chair on the left wall), a green belt conveyor with a feeder hood and a labeller arch, a packing table, the office corner (desk, abacus, cabinet, safe, heater with a sleeping cat) behind a green settlement counter (ledger, stamp, bell, coins), materials floor bays, two dock levellers."
+   "notes": "Logistics centre (11 x 8 m) rendered as aligned cutaway layers that share this frame + anchor: draw the layers in layerOrder at depth = building depth + depthOffset. Closed look = _shell (this entry's own frame). Inside: blue + orange pallet racks with category signs (food fish, goods can, tools hammer, appliances fridge on the back wall; furniture chair on the left wall), a green belt conveyor with a feeder hood and a labeller arch, a packing table, the office corner (desk, abacus, cabinet, safe, heater with a sleeping cat) behind a green settlement counter (ledger, stamp, bell, coins), materials floor bays, two dock levellers.",
+   "bandDepth": {
+    "stock": -0.25,
+    "mid": -0.2,
+    "front": -0.05
+   }
   },
   "item_chair": {
    "atlas": "lgx_items",
@@ -2540,6 +2360,301 @@
   }
  },
  "characters": {
+  "forklift": {
+   "atlas": "lgx_forklift",
+   "frameSize": [
+    164,
+    196
+   ],
+   "anchor": [
+    0.52439,
+    0.80102
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true,
+     "beacons": true
+    },
+    "lift": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": 0,
+     "bobPx": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "liftPx": [
+      0,
+      -14,
+      -28,
+      -42,
+      -55,
+      -69
+     ]
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "forklift",
+   "variant": null,
+   "lengthM": 2.5,
+   "widthM": 1.16,
+   "heightM": 2.25,
+   "topPx": 153,
+   "headTop": -153,
+   "shadow": {
+    "SE": [
+     124,
+     49,
+     26.57
+    ],
+    "NE": [
+     124,
+     49,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      30,
+      41
+     ],
+     [
+      83,
+      15
+     ],
+     [
+      -30,
+      -41
+     ],
+     [
+      -83,
+      -15
+     ]
+    ],
+    "NE": [
+     [
+      83,
+      -15
+     ],
+     [
+      30,
+      -41
+     ],
+     [
+      -83,
+      15
+     ],
+     [
+      -30,
+      41
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.3,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Toy forklift (2.5 m incl. forks): sunny yellow body, dark counterweight with hazard stripes and the Frost Village snowflake, black overhead guard with a snowy roof and an orange beacon, steel mast with a hydraulic ram, two forks. Seat 0 = the driver (empty: the game draws a townsfolk in `sit` at seats + the over_* overlay). idle = engine shake, move = wheels + beacon blink, lift = 6 frames, carriage + forks rise from the ground to 1.25 m (play forward to lift, backward to lower). cargoPoint = middle of the forks at frame 0; liftPx[i] = extra screen-y of the forks in lift frame i. cargoPoint behind=true for NE (the forks point away from the camera: draw the load before the forklift).",
+   "cargoPoint": {
+    "SE": [
+     42,
+     14,
+     false
+    ],
+    "NE": [
+     42,
+     -28,
+     true
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -57,
+      15
+     ],
+     [
+      29,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      29,
+      28
+     ],
+     [
+      -57,
+      -15
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -32,
+     -112
+    ],
+    "NE": [
+     -70,
+     -62
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      -17,
+      -94
+     ],
+     [
+      28,
+      -117
+     ]
+    ],
+    "NE": [
+     [
+      28,
+      -99
+     ],
+     [
+      -17,
+      -122
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -78,
+      -67
+     ],
+     [
+      -40,
+      -86
+     ]
+    ],
+    "NE": [
+     [
+      -40,
+      -8
+     ],
+     [
+      -78,
+      -27
+     ]
+    ]
+   },
+   "sirenPoint": {
+    "SE": [
+     -20,
+     -147
+    ],
+    "NE": [
+     -48,
+     -113
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      -16,
+      -58
+     ]
+    ],
+    "NE": [
+     [
+      -16,
+      -42
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE"
+    ],
+    "NE": [
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      -22,
+      -46
+     ]
+    ],
+    "NE": [
+     [
+      -22,
+      -24
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     0
+    ],
+    "NE": [
+     0
+    ]
+   },
+   "seatNames": [
+    "fk_seat0"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_forklift",
+    "frameName": "over_{anim}_{dir}_{i}"
+   },
+   "forkTipPoint": {
+    "SE": [
+     62,
+     25
+    ],
+    "NE": [
+     62,
+     -36
+    ]
+   }
+  },
   "forklift_loaded": {
    "atlas": "lgx_forklift_loaded",
    "frameSize": [
@@ -3268,6 +3383,574 @@
     "frameName": "over_{anim}_{dir}_{i}"
    }
   },
+  "delivery_van_blue": {
+   "atlas": "lgx_delivery_van_blue",
+   "frameSize": [
+    284,
+    252
+   ],
+   "anchor": [
+    0.50352,
+    0.75
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "delivery_van",
+   "variant": "blue",
+   "lengthM": 4.4,
+   "widthM": 1.9,
+   "heightM": 2.36,
+   "topPx": 185,
+   "headTop": -185,
+   "shadow": {
+    "SE": [
+     218,
+     81,
+     26.57
+    ],
+    "NE": [
+     218,
+     81,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      57,
+      71
+     ],
+     [
+      143,
+      28
+     ],
+     [
+      -57,
+      -71
+     ],
+     [
+      -143,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      143,
+      -28
+     ],
+     [
+      57,
+      -71
+     ],
+     [
+      -143,
+      28
+     ],
+     [
+      -57,
+      71
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.38,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro delivery van (4.4 m): round bread-van body in blue with a cream roof + snow, a short rounded nose with frog-eye chrome lamps and a smile grille, the logistics parcel-with-wings emblem on the side, two rear doors with little round windows. 2 seats (seat 0 = driver, right front). rearDoorPoint = where a worker stands to load / unload at the back; cargoPoint = the rear cargo floor.",
+   "cargoPoint": {
+    "SE": [
+     -68,
+     -61,
+     false
+    ],
+    "NE": [
+     -68,
+     7,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -7,
+      58
+     ],
+     [
+      115,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      115,
+      3
+     ],
+     [
+      -7,
+      -58
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -129,
+     -57
+    ],
+    "NE": [
+     -79,
+     47
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      72,
+      14
+     ],
+     [
+      124,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      -83
+     ],
+     [
+      72,
+      -110
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -136,
+      -81
+     ],
+     [
+      -62,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      18
+     ],
+     [
+      -136,
+      -19
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -124,
+     -62
+    ],
+    "NE": [
+     -124,
+     62
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      38,
+      -10
+     ],
+     [
+      76,
+      -29
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      -66
+     ],
+     [
+      38,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      32,
+      3
+     ],
+     [
+      70,
+      -16
+     ]
+    ],
+    "NE": [
+     [
+      70,
+      -49
+     ],
+     [
+      32,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "dv_seat0",
+    "dv_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_delivery_van_blue",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
+  "delivery_van_mint": {
+   "atlas": "lgx_delivery_van_mint",
+   "frameSize": [
+    284,
+    252
+   ],
+   "anchor": [
+    0.50352,
+    0.75
+   ],
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "delivery_van",
+   "variant": "mint",
+   "lengthM": 4.4,
+   "widthM": 1.9,
+   "heightM": 2.36,
+   "topPx": 185,
+   "headTop": -185,
+   "shadow": {
+    "SE": [
+     218,
+     81,
+     26.57
+    ],
+    "NE": [
+     218,
+     81,
+     -26.57
+    ]
+   },
+   "footprintPoly": {
+    "SE": [
+     [
+      57,
+      71
+     ],
+     [
+      143,
+      28
+     ],
+     [
+      -57,
+      -71
+     ],
+     [
+      -143,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      143,
+      -28
+     ],
+     [
+      57,
+      -71
+     ],
+     [
+      -143,
+      28
+     ],
+     [
+      -57,
+      71
+     ]
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.38,
+    "turnsPerLoopDeg": 120.0
+   },
+   "notes": "Retro delivery van (4.4 m): round bread-van body in mint with a cream roof + snow, a short rounded nose with frog-eye chrome lamps and a smile grille, the logistics parcel-with-wings emblem on the side, two rear doors with little round windows. 2 seats (seat 0 = driver, right front). rearDoorPoint = where a worker stands to load / unload at the back; cargoPoint = the rear cargo floor.",
+   "cargoPoint": {
+    "SE": [
+     -68,
+     -61,
+     false
+    ],
+    "NE": [
+     -68,
+     7,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -7,
+      58
+     ],
+     [
+      115,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      115,
+      3
+     ],
+     [
+      -7,
+      -58
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -129,
+     -57
+    ],
+    "NE": [
+     -79,
+     47
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      72,
+      14
+     ],
+     [
+      124,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      -83
+     ],
+     [
+      72,
+      -110
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -136,
+      -81
+     ],
+     [
+      -62,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      18
+     ],
+     [
+      -136,
+      -19
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -124,
+     -62
+    ],
+    "NE": [
+     -124,
+     62
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      38,
+      -10
+     ],
+     [
+      76,
+      -29
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      -66
+     ],
+     [
+      38,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      32,
+      3
+     ],
+     [
+      70,
+      -16
+     ]
+    ],
+    "NE": [
+     [
+      70,
+      -49
+     ],
+     [
+      32,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "dv_seat0",
+    "dv_seat1"
+   ],
+   "driverSeat": 0,
+   "overlay": {
+    "atlas": "lgx_delivery_van_mint",
+    "frameName": "over_{anim}_{dir}_{i}"
+   }
+  },
   "moving_truck": {
    "atlas": "lgx_moving_truck",
    "frameSize": [
@@ -3578,6 +4261,8 @@
  },
  "vehicleFamilies": {
   "delivery_van": [
+   "delivery_van_blue",
+   "delivery_van_mint",
    "delivery_van_red"
   ],
   "forklift": [
@@ -3586,78 +4271,20 @@
  },
  "logistics": {
   "validation": {
-   "issues": [
-    "staff packer at [3.1, 0.68, 0.0]: hidden by non-front interior (20 px)",
-    "forklift leg 0 at (0.39, 1.65, 0.0): hidden by non-front interior (29 px)",
-    "forklift leg 0 at (0.65, 1.65, 0.0): hidden by non-front interior (40 px)",
-    "forklift leg 0 at (0.9, 1.65, 0.0): hidden by non-front interior (48 px)",
-    "forklift leg 0 at (1.16, 1.65, 0.0): hidden by non-front interior (183 px)",
-    "forklift leg 0 at (1.41, 1.65, 0.0): hidden by non-front interior (378 px)",
-    "forklift leg 0 at (1.66, 1.65, 0.0): hidden by non-front interior (545 px)",
-    "forklift leg 0 at (1.92, 1.65, 0.0): hidden by non-front interior (767 px)",
-    "forklift leg 0 at (2.17, 1.65, 0.0): hidden by non-front interior (716 px)",
-    "forklift leg 0 at (2.42, 1.65, 0.0): hidden by non-front interior (482 px)",
-    "forklift leg 0 at (2.68, 1.65, 0.0): hidden by non-front interior (118 px)",
-    "forklift leg 3 at (4.45, 0.15, 0.0): hidden by non-front interior (28 px)",
-    "forklift leg 3 at (4.45, -0.1, 0.0): hidden by non-front interior (46 px)",
-    "forklift leg 6 at (4.45, -0.1, 0.0): hidden by non-front interior (46 px)",
-    "forklift leg 6 at (4.45, 0.15, 0.0): hidden by non-front interior (28 px)",
-    "forklift leg 7 at (2.7, 1.65, 0.0): hidden by non-front interior (91 px)",
-    "forklift leg 7 at (2.45, 1.65, 0.0): hidden by non-front interior (427 px)",
-    "forklift leg 7 at (2.2, 1.65, 0.0): hidden by non-front interior (687 px)",
-    "forklift leg 7 at (1.95, 1.65, 0.0): hidden by non-front interior (778 px)",
-    "forklift leg 7 at (1.7, 1.65, 0.0): hidden by non-front interior (585 px)",
-    "forklift leg 8 at (1.7, 1.65, 0.0): hidden by non-front interior (585 px)",
-    "forklift leg 8 at (1.44, 1.65, 0.0): hidden by non-front interior (367 px)",
-    "forklift leg 8 at (1.19, 1.65, 0.0): hidden by non-front interior (210 px)",
-    "forklift leg 8 at (0.93, 1.65, 0.0): hidden by non-front interior (71 px)",
-    "forklift leg 8 at (0.68, 1.65, 0.0): hidden by non-front interior (41 px)",
-    "forklift leg 8 at (0.42, 1.65, 0.0): hidden by non-front interior (29 px)",
-    "slot rack_food L0 S0: only 27 px free above",
-    "slot rack_food L0 S1: only 0 px free above",
-    "slot rack_food L1 S0: only 27 px free above",
-    "slot rack_food L1 S1: only 0 px free above",
-    "slot rack_food L2 S0: only 24 px free above",
-    "slot rack_food L2 S1: only 0 px free above",
-    "slot rack_goods L0 S0: only 27 px free above",
-    "slot rack_goods L0 S1: only 0 px free above",
-    "slot rack_goods L1 S0: only 26 px free above",
-    "slot rack_goods L1 S1: only 0 px free above",
-    "slot rack_goods L2 S0: only 24 px free above",
-    "slot rack_goods L2 S1: only 0 px free above",
-    "slot rack_tools L0 S0: only 27 px free above",
-    "slot rack_tools L0 S1: only 0 px free above",
-    "slot rack_tools L1 S0: only 27 px free above",
-    "slot rack_tools L1 S1: only 0 px free above",
-    "slot rack_tools L2 S0: only 24 px free above",
-    "slot rack_tools L2 S1: only 0 px free above",
-    "slot rack_appliances L0 S0: only 0 px free above",
-    "slot rack_appliances L0 S1: only 0 px free above",
-    "slot rack_appliances L1 S0: only 27 px free above",
-    "slot rack_appliances L1 S1: only 0 px free above",
-    "slot rack_appliances L2 S0: only 24 px free above",
-    "slot rack_appliances L2 S1: only 0 px free above",
-    "slot rack_furniture L0 S0: only 0 px free above",
-    "slot rack_furniture L1 S0: only 0 px free above"
-   ],
+   "issues": [],
    "staff": [
     [
-     1573,
-     2,
+     1574,
+     1,
      1
     ],
     [
-     1089,
-     3,
-     0
-    ],
-    [
-     661,
-     20,
-     0
-    ],
-    [
+     1092,
      0,
+     0
+    ],
+    [
+     678,
      0,
      0
     ],
@@ -3667,9 +4294,14 @@
      0
     ],
     [
-     813,
-     1,
+     0,
+     0,
      0
+    ],
+    [
+     814,
+     0,
+     1
     ],
     null
    ],
@@ -3677,17 +4309,17 @@
     [
      0,
      0,
-     2076
+     2092
     ],
     [
      0,
      0,
-     1967
+     1968
     ],
     [
      0,
      0,
-     1691
+     1693
     ],
     [
      0,

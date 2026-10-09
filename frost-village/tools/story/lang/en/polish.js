@@ -120,4 +120,9 @@ export default {
   'about.outing': ['{X} and {Y} went to {P} together'],
   'about.friend': ['{X} and {Y} have become friends'],
   'about.bestfriend': ['{X} and {Y} are now best friends'],
+  // someone's own news that they are moving away
+  'react.sorry.move_plan': ['*2 [What? Really? I’ll miss you…|Oh, really? I’ll miss you…|Oh dear, we will miss you.]', '[Let’s have dinner before you go!|Let’s have dinner before you go!|Do let us have dinner before you leave.]', '[Keep in touch, okay?|Please keep in touch!|Please do keep in touch.]'],
+  // a grown-up's diary about a child who has become a friend
+  'diary.friend.kid': ['{O} follows me around these days. Sweet kid!', '{O} said hello to me first today. How lovely.', 'Talking with {O} cheers me up.'],
+  'diary.bestfriend.kid': ['{O} says I am their favourite. That made my day.', '{O} and I have become great friends. Sweet kid!'],
 };

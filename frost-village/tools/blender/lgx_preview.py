@@ -426,7 +426,7 @@ def compose_scene(lib, rich=True, shell=0.0, cut=0.0, t=0, size=(2200, 1400), or
         act['mid' if band in ('mid', 'any', 'mixed') else band].append(op)
     if rich:
         q0, q1 = fp[3]['point'], fp[4]['point']
-        pt2 = (q0[0] + (q1[0] - q0[0]) * 0.55, q0[1] + (q1[1] - q0[1]) * 0.55)
+        pt2 = (q0[0] + (q1[0] - q0[0]) * 0.2, q0[1] + (q1[1] - q0[1]) * 0.2)     # beside (not over) the packer
         for op in vehicle_ops(lib, 'forklift', 'idle', 'SW', t % 2, pt2, ox, oy, driver='dock_worker', seed=9):
             act['front'].append(op)
         # pallet jack pushed by a worker toward the materials bays
@@ -501,8 +501,8 @@ def preview_scene(lib, out):
     L_('forklift on its path', (p0[0] + (p1[0] - p0[0]) * 0.35, p0[1] + (p1[1] - p0[1]) * 0.35), 14)
     label(cv, labs)
     cv = cv.crop((330, 250, 1880, 1130))
-    caption(cv, 'logistics_center at 1x, revealed: stock on rackSlots, staff (townsfolk + villagers2 clerk), forklift '
-                'on forkliftPath, truck + van at the docks, shop owners at customerPoints').save(out, optimize=True)
+    caption(cv, 'logistics_center at 1x, open: stocked rackSlots, staff (townsfolk), forklifts on forkliftPath, '
+                'truck + van at the docks, shop owners queuing').save(out, optimize=True)
 
 
 def preview_cutaway(lib, out):

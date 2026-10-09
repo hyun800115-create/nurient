@@ -137,7 +137,7 @@ export default {
   'diary.loan': ['?self *2? I borrowed money from the bank. I’ll pay it back diligently.'],
   'diary.loan_paid': ['?self *2? I finally paid off my loan! I could fly.'],
   'diary.bank_help': ['?self? The bank said they’d wait on my loan. How kind.'],
-  'diary.pickup': ['*2 Picked up stock at the logistics centre this morning and settled up.'],
+  'diary.pickup': ['*2 Picked up stock for the shop at the logistics centre and settled up.'],
   'diary.theft': ['?self? *3 I was so hungry that I took the {I}… my heart is pounding.', '?self2? *3 A thief came to our shop! They took the {I}.', '?seen? *2 I saw a thief at {P}! What a shock.', '?anon? I saw someone take the {I} at {P}.'],
   'diary.arrest': ['?self? *3 I got caught by the police. I won’t do it again.', '?seen !self? *2 I saw the police catch the thief. So fast.', '?!self !self2? {C} caught the thief.', '?self2? *2 The thief was caught! What a relief.'],
   'diary.apology': ['?self? *3 I apologised to {Y} from my heart. I feel a little lighter.', '?self ref_window *3? I went to {Y} and said sorry for the window. Next time I’ll throw snowballs somewhere wide open.', '?self ref_scuffle *2? {Y} and I made up. We forgot the quarrel and laughed together.', '?self2 ref_queue *2? {X} said sorry for jumping the queue. I said it was fine.', '?self2 ref_window *2? {X} came to say sorry for the window. So brave — I gave them a sweet.', '?self2? *3 {X} came to apologise. I forgave them.', '?!self !self2? I saw {X} apologise.'],

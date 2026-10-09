@@ -26,7 +26,7 @@ import { disarmAudioUnlock } from './audioUnlock.js';
 import { TitleFx } from './TitleFx.js';
 import { TitleSky } from './TitleSky.js';
 import { TitleDiorama } from './TitleDiorama.js';
-import { TitleLogo } from './TitleLogo.js';
+import { TitleLogo, LOGO_KEYS } from './TitleLogo.js';
 import { TitleUI } from './TitleUI.js';
 import { TitleSettings } from './TitleSettings.js';
 
@@ -164,15 +164,14 @@ export class TitleScreen {
     if (n === 'art:sky' || n === 'art:night' || n === 'art:city') this.sky.lateArt();
     else if (n === 'art:fx') this.upgradeSnow();
     else if (n === 'art:logo') this.upgradeLogo();
-    else if (n === 'art:pop') this.dio.popPool = undefined;      // made on the next big pop
+    else if (n === 'art:pop' && this.dio.popPool === null) this.dio.popPool = undefined;      // made on the next big pop
   }
 
   /** the 3D logo landed while the text logo is up: cross-fade to it */
   upgradeLogo() {
     const old = this.logo;
-    if (!old || old.fromArt || old.state === 'hidden') return;
+    if (!old || old.fromArt || old.state === 'hidden' || !TitleAssets.artPick(this.scene, LOGO_KEYS[this.lang === 'en' ? 'en' : 'ko'])) return;
     const nu = this.makeLogo(false);
-    if (!nu.fromArt) { nu.destroy(); return; }
     if (this.oldLogo) this.oldLogo.destroy();
     this.oldLogo = old;
     this.logo = nu;
@@ -291,7 +290,7 @@ export class TitleScreen {
       if (s === 3 && this.dio.trainArrive(true)) this.later(0.9, () => this.cue('train', 0.7));
       if (s === 4) {
         this.cityAt = this.t;
-        this.later(1.1, () => this.cue('bus', 0.5));
+        if (this.dio.stageReady(4)) this.later(1.1, () => this.cue('bus', 0.5));
         if (this.dio.ferryArrive()) this.later(1.9, () => this.cue('ship', 0.55));
       }
     }

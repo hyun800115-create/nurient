@@ -332,9 +332,10 @@ def crowd(bf, path, n=60, seed=2027):
         p1 = bf.preset('family_beach', rng=rng)
         p2 = bf.preset(rng.choice(['swimmer', 'beach_tourist']), rng=rng)
         if bf.can_play(p1, 'ball_throw') and bf.can_play(p2, 'ball_catch'):
-            plan.append((y, x, p1, 'ball_throw', 'SE', 2))
-            plan.append((y + 30, x + 60, p2, 'ball_catch', 'NW', 0))
-            used.append((x + 60, y + 30))
+            # ball anims have S / SE / E (+ mirrored SW / W): the pair stands side by side facing E <-> W
+            plan.append((y, x, p1, 'ball_throw', 'E', 2))
+            plan.append((y + 2, x + 84, p2, 'ball_catch', 'W', 0))
+            used.append((x + 84, y + 2))
             count += 2
     plan.sort(key=lambda e: e[0])
     for y, x, p, anim, d, i in plan:
@@ -542,13 +543,13 @@ def gifs(bf, seed=9):
 
 
 def ball_gif(bf, path, rng):
-    """Thrower (SE) and catcher (NW) toss a beach ball back and forth: release on ball_throw impactFrame,
+    """Thrower (E) and catcher (W) toss a beach ball back and forth: release on ball_throw impactFrame,
     arrival on ball_catch impactFrame; the roles swap every throw."""
     a = pick(bf, rng, 'family_beach', 'ball_throw', 'child')
     b = pick(bf, rng, 'beach_tourist', 'ball_catch', 'adult')
     W, H = 420, 210
-    pos = {0: (120, 110), 1: (300, 170)}
-    dirs = {0: 'SE', 1: 'NW'}
+    pos = {0: (110, 140), 1: (310, 146)}
+    dirs = {0: 'E', 1: 'W'}                 # ball anims: S / SE / E (+ SW / W mirrored)
     people = [a, b]
     timp = bf.T['anims']['ball_throw']['impactFrame']
     cimp = bf.T['anims']['ball_catch']['impactFrame']
@@ -594,9 +595,8 @@ def proof(bf, path, full_dir=os.path.join(SCRATCH, 'proof')):
         if not os.path.isdir(os.path.join(full_dir, c['name'])):
             continue
         cols = dict(c['colors'])
-        for slot in ('ring', 'ring2', 'float', 'board', 'board2', 'toy', 'swim', 'swim2'):
-            cols.setdefault(slot, {'ring': '#E8524A', 'ring2': '#F7F5F0', 'board': '#F2C230', 'board2': '#3D7CC9'}.get(
-                slot, '#3D7CC9'))
+        for slot, pal in bpr.SLOT_PALETTE3.items():          # same defaults as bf_render --mode full
+            cols.setdefault(slot, bpr.PALETTES3[pal][0])
         person = {'base': c['base'], 'face': c['face'], 'nose': c['nose'], 'parts': c['parts'], 'colors': cols}
         rows.append((c['name'], person))
     sc = 2

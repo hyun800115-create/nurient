@@ -39,6 +39,12 @@ export class TitleSky {
   /** a procedural stand-in (made on first use) */
   fb(key) { return TitleFx.ensure(this.scene, key); }
 
+  /** a stand-in nothing draws any more (its art landed): give its texture memory back now */
+  dropFb(...keys) {
+    const tm = this.scene.textures;
+    for (const k of keys) if (tm.exists(k)) { tm.remove(k); TitleAssets.keys.delete(k); }
+  }
+
   get tints() { const meta = TitleAssets.art && TitleAssets.art.meta; return (meta && meta.tints) || {}; }
 
   /** a horizontal strip (tile x) with its bottom at y; null when the art is missing */
@@ -92,7 +98,7 @@ export class TitleSky {
       const im = add(a ? s.add.image(W / 2, 0, a.tex, a.frame) : s.add.image(W / 2, 0, this.fb(fb)), d).setOrigin(0.5, 0);
       im.setDisplaySize(W + 4, hz + 60);
       im.fromArt = !!a;
-      im.artKey = key;
+      im.artKey = key; im.fbKey = fb;
       return im;
     };
     this.skyDay = sky('ttl_sky_day', 'ttl_fx_sky_day', 0);
@@ -131,12 +137,13 @@ export class TitleSky {
     const sig = (st ? 1 : 0) + (mo ? 2 : 0) + (au ? 4 : 0);
     if (this.nightArt === sig) return;
     this.nightArt = sig;
-    if (st) { this.stars.setTexture(st.tex, st.frame); this.stars.setScale(W / this.stars.frame.realWidth); }
+    if (st) { this.stars.setTexture(st.tex, st.frame); this.stars.setScale(W / this.stars.frame.realWidth); this.dropFb('ttl_fx_stars'); }
     else { this.stars.setTexture(this.fb('ttl_fx_stars')); this.stars.setDisplaySize(W * 1.1, hz * 0.95); }
-    if (mo) this.moon.setTexture(mo.tex, mo.frame).setScale(0.62); else this.moon.setTexture(this.fb('ttl_fx_moon')).setScale(1.2);
+    if (mo) { this.moon.setTexture(mo.tex, mo.frame).setScale(0.62); this.dropFb('ttl_fx_moon'); } else this.moon.setTexture(this.fb('ttl_fx_moon')).setScale(1.2);
     const auTex = au ? au.tex : this.fb('ttl_fx_aurora'), auFr = au ? au.frame : undefined;
     this.aurora1.setTexture(auTex, auFr); this.aurora1.setDisplaySize(W * 1.45, hz * 0.85);
     this.aurora2.setTexture(auTex, auFr); this.aurora2.setDisplaySize(W * 1.2, hz * 0.6);
+    if (au) this.dropFb('ttl_fx_aurora');
     this.auroraSX = [this.aurora1.scaleX, this.aurora2.scaleX];
     void H;
   }
@@ -148,6 +155,7 @@ export class TitleSky {
       const a = this.art(im.artKey);
       if (!a) continue;
       im.setTexture(a.tex, a.frame); im.setDisplaySize(this.W + 4, this.horizon + 60); im.fromArt = true;
+      this.dropFb(im.fbKey);
     }
     this.setNightPictures();
     if (this.makeStrips(true)) {
@@ -215,7 +223,7 @@ export class TitleSky {
       if (this.fbFar && (this.mtnFar || this.mtnMid)) {
         this.fbK = Math.max(0, this.fbK - dt / FADE_IN);
         this.fbFar.setAlpha(this.fbK); this.fbNear.setAlpha(this.fbK);
-        if (this.fbK <= 0) { this.fbFar.destroy(); this.fbNear.destroy(); this.fbFar = this.fbNear = null; } else any = true;
+        if (this.fbK <= 0) { this.fbFar.destroy(); this.fbNear.destroy(); this.fbFar = this.fbNear = null; this.dropFb('ttl_fx_mtn_far', 'ttl_fx_mtn_near'); } else any = true;
       }
       this.fading = any;
     }

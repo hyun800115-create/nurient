@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const ROOT0 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
@@ -16,6 +16,7 @@ const TYPES = {
 
 export function start(port = 0, opts = {}) {
   const prefix = opts.prefix || '/';   // serve under a sub-path to prove relative URLs work
+  const ROOT = opts.root ? path.resolve(opts.root) : ROOT0;   // (v4-B) another build (save_v4.mjs --v35)
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       let u = decodeURIComponent((req.url || '/').split('?')[0]);

@@ -17,6 +17,7 @@
 //     still running are aborted, and anything that lands later anyway is removed the moment it lands.
 import { Assets } from '../core/Assets.js';
 import { View } from '../core/View.js';
+import { getLang } from '../data/strings.js';
 import { TITLE_CFG } from './config.js';
 import { titlePlan, firstPaintPacks } from './plan.js';
 
@@ -117,10 +118,15 @@ export const TitleAssets = {
     if (added) this.kick(load);
   },
 
-  /** start the loader, or (already running) hand it the new files now instead of on its next scene update */
+  /**
+   * a loader that finished: start it again; a running one: hand it the new files now instead of on its next
+   * scene update. An idle one (a scene's preload, or Preload.create before its own start) is left to its owner.
+   */
   kick(load) {
     try {
       if (!load.list.size) return;
+      const IDLE = Phaser.Loader && Phaser.Loader.LOADER_IDLE !== undefined ? Phaser.Loader.LOADER_IDLE : 0;
+      if (load.state === IDLE) return;
       if (!load.isLoading()) load.start();
       else if (load.inflight.size < load.maxParallelDownloads) load.checkLoadQueue();
     } catch (e) { /* a loader of a scene that is going away */ }
@@ -179,7 +185,7 @@ export const TitleAssets = {
   /** the art filter of this phone: its language's logo, and the @2x logo unless the _1x one is sharp enough */
   artWant() {
     const o = this.artOpts || {};
-    const lang = o.lang || 'ko';
+    const lang = o.lang || getLang() || 'ko';           // (Boot already set the player's language)
     const en = lang === 'en';
     const k = o.k || View.k || 1;
     const meta = this.art && this.art.meta;

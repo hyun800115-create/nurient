@@ -473,8 +473,8 @@ LAYOUT = [
     ('lifeguard_station', 32.6, -6.3), ('restroom_shower', 38.4, -5.0),
 ]
 FACE_FALLBACK = {'NE': 'E', 'N': 'SE', 'NW': 'W'}
-LABEL_TOP = {'pension', 'convenience_store'}     # back row: label above the roof (the front row hides their feet)
-LABEL_MID = {'hotel_pool'}
+LABEL_TOP = {'pension', 'convenience_store', 'restroom_shower'}   # label above the roof (else hidden / ambiguous)
+LABEL_MID = {'hotel_pool', 'beach_gate'}
 ROAD = (10.0, 14.0)                              # the back street behind the shops (world y), see ground()
 
 
@@ -628,7 +628,9 @@ def build_scene(builds, frames, derived, night=False, seed=7):
         except Exception as e:                 # noqa: BLE001
             print('note: person %s %s %s: %s' % (preset, anim, d, e))
             return
-        sc.items.append(((sy if depth is None else depth) + 0.5, im, int(round(sx - 64)), int(round(sy - 104)), 'n'))
+        # depth: y-sorted (+0.5) unless given; a given depth is used as is (staff / balcony guests at d + 0.5 stay
+        # UNDER their building's overlay at d + 1)
+        sc.items.append(((sy + 0.5) if depth is None else depth, im, int(round(sx - 64)), int(round(sy - 104)), 'n'))
 
     placed = {}
     for key, x, y in LAYOUT:
@@ -750,7 +752,7 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             for rank, j in enumerate(order):               # person() adds 0.5 to the depth
                 dx, dy = seats[j]
                 person('beachkid' if j else 'beachgoer', bx + dx, by + dy, d=sw['d'], anim='sit', i=0,
-                       depth=by + 0.1 + 0.01 * rank, lib=tf2)
+                       depth=by + 0.6 + 0.01 * rank, lib=tf2)
             if sw['over'] is not None:
                 sc.put(sw['over'], sw['anc'], sw['x'], sw['y'], depth=by + 1.0)
         # strollers on the back-street sidewalks
@@ -784,8 +786,9 @@ def preview_scene(builds, frames, derived, out_day, out_night):
                    'warm pools under the lamps / string lights (lightPoints)')
     img2.convert('RGB').save(out_night, optimize=True)
     # phone check: what a 390 x 844 portrait screen shows at zoom 0.6 / 0.9 / 1.2 (centred on the hotel + pool)
-    cx, cy = sc.p(10.0, -0.5)
-    phone_preview(img.convert('RGB'), (cx - box[0], cy - box[1]),
+    cx, cy = sc.p(8.5, 0.6)
+    plain = sc.render(gr, night=False, labels=False).crop(box)
+    phone_preview(plain.convert('RGB'), (cx - box[0], cy - box[1]),
                   os.path.join(os.path.dirname(out_day), 'bbld_phone.png'))
     return img, img2
 

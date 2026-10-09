@@ -92,7 +92,12 @@ _M = {}
 
 
 def _cached(key, fn):
-    if key not in _M or _M[key].name not in bpy.data.materials:
+    m = _M.get(key)
+    try:
+        ok = m is not None and m.name in bpy.data.materials and bpy.data.materials[m.name] == m
+    except ReferenceError:          # the scene was reset between renders (veh_render) -> material freed
+        ok = False
+    if not ok:
         _M[key] = fn()
     return _M[key]
 

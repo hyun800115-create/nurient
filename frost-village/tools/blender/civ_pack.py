@@ -434,20 +434,25 @@ def demolition_layout(vehicles):
     """Where the excavator and the dump truck stand while clearing an S / M / L plot (px from the plot centre):
     the excavator outside the fence ring on the plot's -X side (screen up-left) heading SE, so its bucket bites
     inside the plot at digFrame; the dump truck beside it (the excavator's right = world -Y) with its bed under the
-    bucket at dumpFrame.  The pair is slid along +Y until neither footprint touches the fence ring."""
+    bucket at dumpFrame.  The pair is slid along Y (nearest to y = 0.2 first, both ways) until neither footprint
+    touches the fence ring and the bucket's dig point still lands inside the plot."""
     out = {}
     exc, dump = vehicles.get('excavator'), vehicles.get('dump_truck')
+    cands = sorted((round(0.2 + 0.1 * k, 2) for k in range(-50, 31)), key=lambda v: (abs(v - 0.2), v))
     for sz, n in (('S', 2), ('M', 3), ('L', 4)):
         h = n * SQ2 / 2
         e = {}
         ex_x = -h - 1.85
-        for k in range(30):
-            ex_y = 0.2 + 0.1 * k
+        for ex_y in cands:
             ex = iso(ex_x, ex_y)
             ok = True
             if exc:
                 xs = [to_world(*p)[0] + ex_x for p in exc['footprintPoly']['SE']]
                 ok = max(xs) < -h - 0.15
+                dg = exc.get('digPoint', {}).get('SE')
+                if dg:
+                    gx, gy = to_world(*dg)
+                    ok = ok and abs(ex_x + gx) < h - 0.2 and abs(ex_y + gy) < h - 0.2
             tr = None
             if exc and dump and exc.get('dumpPoint') and dump.get('cargoGround'):
                 dp = exc['dumpPoint']['SE']
@@ -462,6 +467,8 @@ def demolition_layout(vehicles):
                 ok = ok and not (inside_x and inside_y)
             if ok:
                 break
+        else:
+            print('WARNING: demolitionLayout %s: no clear spot for the excavator + dump truck' % sz)
         e['excavator'] = {'at': ex, 'dir': 'SE', 'anim': 'dig', 'worldM': [round(ex_x, 2), round(ex_y, 2)],
                           'notes': 'outside the fence on the plot\'s -X side (screen up-left), arm over the fence'}
         if tr:

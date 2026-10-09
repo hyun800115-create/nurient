@@ -244,7 +244,10 @@ export class Worker extends Character {
   /** (v3.5 review) where this worker stands to unload: the 1st / 2nd / 3rd of a profession each have their own spot */
   dropSpot(pad) {
     if (this._dsPad === pad && this._ds) return this._ds;
-    const D = [[10, 38], [-48, 20], [-40, 58]];
+    // (v4-B, v3.5 known issue) the meat rack stands left of its pad: the hunters unload on the open right side,
+    // each at his own spot (the rack's collision used to push the 2nd / 3rd onto the 1st one's spot)
+    const rack = this.pile && this.pile.cfg && this.pile.cfg.prop === 'rack';
+    const D = rack ? [[18, 40], [62, 18], [58, 64]] : [[10, 38], [-48, 20], [-40, 58]];
     const o = D[this.index % 3] || D[0];
     const q = { x: pad.x + o[0], y: pad.y + o[1] };
     if (this.gs.collision.blocked(q.x, q.y, 14)) this.gs.collision.resolve(q, 14);

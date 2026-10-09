@@ -10,7 +10,7 @@ It has five parts:
 
 The title code (`src/title/TitleAssets.js`, `TitleSky.js`, `TitleLogo.js`) already reads this fragment: `meta.logo.main.parts`, `meta.layout`, `meta.tints` and `meta.backdrop`. All keys and file names are the same as before the polish pass, so the title code needs no change.
 
-The title loads **1.22 MB** (1,284,309 bytes of PNG) in the worst case: @2x pictures, Korean logo and parts, every backdrop layer and the FX. After the deploy build's WebP pass that is about **0.82 MB** (864,287 bytes). The limit is 1.5 MB.
+The title loads **1.22 MB** (1,279,532 bytes of PNG) in the worst case: @2x pictures, Korean logo and parts, every backdrop layer and the FX. After the deploy build's WebP pass that is about **0.82 MB** (858,548 bytes). The limit is 1.5 MB.
 
 `tools/blender/ttl_build.sh` was run **end to end** in one go on a fresh cache after the polish pass, and its own acceptance checks (`ttl_check.py`) pass. See "Checks" below.
 
@@ -25,7 +25,7 @@ Previews:
 ## What changed in the polish pass
 - **Logo letters keep every jamo apart.** The letters are no longer grown outward (the bevel now rounds the edge *inside* the font's outline), the camera looks down less, and the letters are a little thinner in depth. Snow sits only on *exposed* tops: an edge with another stroke of the same letter less than 0.12 em above it gets no snow, a snow lump that would reach into the gap between two strokes is shrunk or dropped, and a drip must hang on its own stroke. The light inner rim now runs only round the outer silhouette, so the gaps between strokes and the counters (o, ㅇ) are solid navy. At 215 px wide, 꽃 shows two ㄱ, 을 shows ㅇ, ㅡ and the three bars of ㄹ, and 눈 shows ㄴ ㅜ ㄴ. `ttl_check.py` measures this.
 - **The 눈꽃 emblem no longer covers a stroke.** It blooms on the snow just above 꽃's top-right corner, between 꽃 and 마; 행복한 moved up to make room. It overlaps 꽃 by 2.7 % and 마 by 0.5 % (limit 3 %). The short logo uses the same rule.
-- **English logo:** the big word is now Fredoka 600 (its o, b and e counters are 42 % of the letter instead of 31 % in 700); after the 3D render and the ink they measure 32–35 %. A letter whose inward bevel throws a spike out of a sharp notch (Fredoka's n and m) is rebuilt automatically with a gentler bevel.
+- **English logo:** the big word is now Fredoka 600 (its o, b and e counters are 42 % of the letter instead of 31 % in 700); after the 3D render and the ink they measure 35–38 %. A letter whose inward bevel throws a spike out of a sharp notch (Fredoka's n and m) is rebuilt automatically with a gentler bevel.
 - **App icon recomposed:** a close, bold portrait. The chief's face fills about half the width, with a wide open smile (the game's small "o" mouth is swapped for a D-shaped smile with a tongue). A tall tower of raw salmon steaks leans up to the top-right corner, each steak tipped so its orange-and-white cut face shows, with the red 눈꽃 pennant on top. 콩이 (^^ eyes, tongue out) sits bottom-left, fully inside the iOS squircle. Behind them: a saturated ice-blue sky, only the red roof corner and log ends of the cabin, two snowy pines, a few big soft flakes. A thin navy rim like the logo's outlines the chief, the stack and the dog. The adaptive foreground is framed closer and has no grey shadow blob.
 - **Backdrop:**
   - The forest and the mid hills tile without a seam (every tree is chosen once and copied one period left and right).
@@ -167,12 +167,12 @@ Only rendered PNGs ship; no font file goes into the game. A credit line is a nic
 ## Payload (what the title loads)
 | group | what the title loads (worst case: k = 2, Korean) | PNG | after the WebP deploy pass |
 |---|---|---|---|
-| logo | `ttl_logo_main` 118 KB, `ttl_logo_main_shine` 55 KB, `ttl_logo_parts` 127 KB (+ json), `ttl_shine_band` 15 KB | 0.31 MB | same (already palette PNGs) |
-| backdrop | 3 skies 4 KB, `ttl_stars` 60 KB, `ttl_aurora` 97 KB, `ttl_moon` 6 KB, `ttl_clouds` 47 KB, `ttl_mtn_far` 134 KB, `ttl_mtn_mid` 99 KB, `ttl_forest` 293 KB, `ttl_city_far` 93 KB, `ttl_city_lights` 50 KB | 0.84 MB | 0.48 MB |
-| fx | `ttl_fx` 21 KB (+ json), `ttl_fx_pop` 62 KB | 0.08 MB | 0.05 MB |
-| **total** | | **1.22 MB** (1,284,309 bytes; limit 1.5 MB) | **0.82 MB** (864,287 bytes) |
+| logo | `ttl_logo_main` 116 KB, `ttl_logo_main_shine` 55 KB, `ttl_logo_parts` 124 KB (+ json), `ttl_shine_band` 15 KB | 310 KB | same (already palette PNGs) |
+| backdrop | 3 skies 4 KB, `ttl_stars` 60 KB, `ttl_aurora` 97 KB, `ttl_moon` 6 KB, `ttl_clouds` 47 KB, `ttl_mtn_far` 134 KB, `ttl_mtn_mid` 100 KB, `ttl_forest` 293 KB, `ttl_city_far` 92 KB, `ttl_city_lights` 49 KB | 882 KB | 498 KB |
+| fx | `ttl_fx` 21 KB (+ json), `ttl_fx_pop` 62 KB | 85 KB | 48 KB |
+| **total** | | **1.22 MB** (1,279,532 bytes; limit 1.5 MB) | **0.82 MB** (858,548 bytes) |
 
-The English set (`ttl_logo_en` + `_shine`, 83 KB) replaces the Korean logo, main shine and parts (300 KB). `meta.payload` and `meta.load` in the manifest hold the same numbers and each key's load flag: `true` for always, `"ko"` / `"en"` for one language only, `"k1"` for a `_1x` twin, `false` for not loaded at title time.
+The English set (`ttl_logo_en` + `_shine`, 83 KB) replaces the Korean logo, main shine and parts (295 KB). `meta.payload` and `meta.load` in the manifest hold the same numbers and each key's load flag: `true` for always, `"ko"` / `"en"` for one language only, `"k1"` for a `_1x` twin, `false` for not loaded at title time.
 
 The icons and the short logo are not loaded at title time. The English logo replaces the Korean one, so only the larger of the two is counted. The `_1x` twins replace the @2x pictures on k = 1 phones. Big RGBA pictures are palette-quantized with imagequant (dithered), so the PNGs are already small. `tools/build/webp_assets.py` shrinks the backdrop further at deploy time.
 
@@ -180,11 +180,11 @@ The icons and the short logo are not loaded at title time. The English logo repl
 | check | what it measures | result |
 |---|---|---|
 | name | the logo rows parse; every character has a glyph | OK, no fallback characters |
-| jamo | the main logo shrunk to 215 px wide; for each big letter, the most body runs along vertical / horizontal scan lines must be at least the plain Jua glyph's | OK: 눈 4 / 4 (font 3 / 2), 꽃 7 / 5 (font 4 / 3), 마 3 / 5 (font 2 / 3), 을 6 / 3 (font 6 / 2) |
+| jamo | the main logo shrunk to 215 px wide; for each big letter, the most body runs along vertical / horizontal scan lines must be at least the plain Jua glyph's | OK: 눈 4 / 4 (font 3 / 2), 꽃 7 / 5 (font 4 / 3), 마 4 / 5 (font 2 / 3), 을 6 / 3 (font 6 / 2) |
 | emblem | the emblem's render alpha over each letter piece | OK: 꽃 2.66 %, 마 0.47 %, 눈 0 %, 을 0 % (limit 3 %) |
-| counters | each enclosed counter of the big English word vs its letter's width, on `ttl_logo_en_1x` | OK: 0.35, 0.32, 0.34 (limit 0.30) |
-| seams | for every tiled strip, the wrap column's step vs the steps inside the picture | OK: forest 4.4 (was 22.8), mtn_mid 1.4 (was 14.4), mtn_far 1.9, city 4.4, city lights 0.7, clouds 0.4, aurora 1.2 |
-| payload | `meta.payload.titleLoadPngBytes` ≤ 1.5 MB | OK: 1,284,309 bytes |
+| counters | each enclosed counter of the big English word vs its letter's width, on `ttl_logo_en_1x` | OK: o 0.38, b 0.35, o 0.38 (limit 0.30) |
+| seams | for every tiled strip, the wrap column's step vs the steps inside the picture | OK: forest 4.4 (was 22.8), mtn_mid 1.4 (was 14.4), mtn_far 1.9, city 4.5, city lights 0.7, clouds 0.4, aurora 1.5 |
+| payload | `meta.payload.titleLoadPngBytes` ≤ 1.5 MB | OK: 1,279,532 bytes |
 
 The full report of a run is written to `<cache>/ttl_check.json`.
 
@@ -211,7 +211,7 @@ Set `PY3` to a python with scipy and imagequant (recommended: exact round outlin
 - **`ttl_preview.py`**: the six preview images.
 - **`ttl_check.py`**: the acceptance checks above.
 
-Render time on the shared 4-core box, 2 threads: logo pieces about 5 min, short and English logos about 3 min, five strips about 5 min, icon about 6 min. Packing, previews and checks take about 1 min.
+The end-to-end run (`sh tools/blender/ttl_build.sh <fresh cache>`) took 64 minutes on the shared 4-core box at a load average of 25–30 (other agents rendering): logo pieces 10 min, short and English logos 10 min, five strips 20 min, icon 23 min, packing + previews + checks 1 min. On a quiet box it is about 25 minutes.
 
 ## Known issues / notes
 - The mock's diorama is a **placeholder** (real game sprites on a white island ellipse). The real growing diorama is the title_code agent's work. The backdrop in the mock and in `title_art_band.png` follows `TitleSky.js` exactly.
@@ -221,3 +221,18 @@ Render time on the shared 4-core box, 2 threads: logo pieces about 5 min, short 
 - In the adaptive icon, a round launcher mask may crop the top of the salmon tower and the pennant; the face and 콩이 stay inside.
 - A longer name makes the logo letters smaller, because the logo width is fixed; the name check warns from 7 letters up. Check `title_art_logo_phone.png` after a rename.
 - Jua has no full Hangul set. Rare syllables fall back to Pretendard ExtraBold, which is heavier and less round than Jua; the name check lists them.
+
+## Critic review: what happened to each issue
+| # | issue (severity) | outcome | how / why |
+|---|---|---|---|
+| 1 | Letter strokes fuse; counters close; 꽃 / 을 read as striped blobs at 360 px (high) | **fixed** | Reproduced (the critic's crops, and the font vs piece comparison). Now: the bevel stays inside the font outline (`offset = -bevel`), camera tilt 8° → 5°, letters thinner in depth, snow only on exposed tops (`GlyphMask`: no snow under another stroke within 0.12 em, blobs shrunk or dropped near a gap, drips must hang on their own stroke), and the white rim is kept out of gaps and counters so they stay solid navy. `ttl_check.py` jamo check passes at 215 px; see `title_art_logo_phone.png`. English: Fredoka 600 for the big word, counters 35–38 % of the letter. |
+| 2 | Emblem covers the right ㄱ of ㄲ, in the main and the short logo (high) | **fixed** | Reproduced. The emblem now blooms on the snow just above 꽃's top-right corner (centre 0.6 R over the glyph top, 0.1 R in from its right edge), and 행복한 moves up to make room. The same rule applies in the short logo. It covers 꽃 by 2.66 % and 마 by 0.47 %; `ttl_check.py` fails above 3 %. |
+| 3 | App icon is a busy postcard: white chief on white snow, a hamburger stack, an "o" mouth, unreadable at 48 px (high) | **fixed** | Reproduced. Recomposed: close portrait, face about half the width against a saturated blue sky, a wide D-shaped smile, a tall leaning tower of raw salmon steaks with their orange cut faces tipped to the viewer and the 눈꽃 pennant on top, 콩이 bottom-left fully inside the squircle, only the cabin's roof corner, a few big soft flakes, a navy rim round the subjects. The adaptive foreground is framed closer and has no catcher shadow. At 48 px the face, the orange tower and 콩이 read on light and dark home screens. |
+| 4 | Forest strip doesn't tile (cut pine at the wrap); `mtn_mid` seam too (medium) | **fixed** | Reproduced (wrap step 22.8 vs 2.5–3.5 inside; `mtn_mid` 14.4). Cause: each of a tree's three copies drew its own random height. Every tree is now chosen once. Now forest 4.4 and `mtn_mid` 1.4 against a limit of about 2× the median step. `ttl_check.py` checks every tiled strip. |
+| 5 | Mountains look like sugar piles (medium) | **fixed** | Reproduced. New far range: asymmetric peaks, double summits, spurs radiating from the summits, a low warm key light from the upper left with blue shadow flanks, a blue-grey rock band under a ragged snowline with snow down the gullies, more haze than the near layer. The near layer is now low, round snowy hills dotted with pines. Remaining softness is listed under known issues. |
+| 6 | Far city is a flat vector skyline; only two dark boxes show at the city stage (medium) | **fixed** | Reproduced. Rendered in Blender from the game's own buildings (town hall clock tower, brick apartments, resort hotel, school, fire station, townhouses, harbour crane, lighthouse) in two rows, with snowy roofs and haze. The lights are the render's emission pass plus glow and aviation lights. A 120-px transparent foot lifts the skyline so about half of it clears the hills where `TitleSky.js` already draws the strip (`title_art_band.png`); `meta.backdrop.cityFootPx` documents it. |
+| 7 | Aurora's lower edge is a double line like a glowing tube; night clouds are dark slate; 96 empty rows (medium) | **fixed** | Reproduced. Three side-by-side curtains, each with one soft hem (a smooth rise over about 20 px, no second line), rays reaching the hem, cyan to violet tops, and a brightness dip at the wrap so an untiled image never shows a cut. Cropped to 1024 × 416. Night cloud tint #45527F → #7F8FC2. |
+| 8 | Rename isn't really one config: `logo.ko/en` ignored, 2- and 4-word names break, no glyph check (medium) | **fixed** | Reproduced. The rows now come from `TITLE_NAME.logo.ko/.en`, then `koLines/enLines`, then a space split (last word = sign, previous = big word, rest = top). Tested with 1, 2, 3 and 4 words and an English top row. `ttl_check_name.py` (build step 0) stops on an empty or spaced big word or an undrawable character, and warns when `logo.ko` doesn't spell the name. Layouts handle missing rows. **Full 11,172-syllable Jua: not possible**, because no such font exists (checked: Google Fonts Jua has 2,367; the 2014 BM JUA TTF maps 11,172 but 8,805 glyphs are empty). Instead, any syllable Jua lacks falls back per character to Pretendard ExtraBold (OFL, 11,172), and the check names it. |
+| 9 | Dusk tints turn snow mauve and pines muddy purple (low) | **fixed** | Reproduced. Warmer, lighter tints: `mtn_far` #FFD9C8, `mtn_mid` #F6C9C2, forest #DDB7AE, city #E8B8B4. The optional rim-light strip was not added: the new mountains already carry their own warm lit side. |
+| 10 | Bokeh flake is a near-white disc, a "dirty second moon" at night (low) | **fixed** | Reproduced. Now a faint cool disc (#DDEBFF): fill alpha 58 of 255, a brighter soft rim up to 90; the manifest says ADD at alpha 0.3–0.5. |
+| — | Rest of the critic's list (the text I received was cut off after issue 10) | not seen | Nothing after the bokeh item reached this agent. |

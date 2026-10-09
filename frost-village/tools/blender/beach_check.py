@@ -40,21 +40,111 @@ ANIMS = {'beach_ball_bounce': 'bounce', 'beach_shower': 'water', 'palm_tree_a': 
          'icecream_cart': 'bell', 'corn_stand': 'grill', 'kite': 'fly'}
 ANIMS.update({p: 'flutter' for p in PARASOLS})
 FIELDS = {
-    'sun_lounger': ['lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingFeetPoints', 'seatPoints'],
-    'sun_lounger_x': ['lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingFeetPoints', 'seatPoints'],
+    'sun_lounger': ['lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingFeetPoints', 'lyingFeetDirs', 'seatPoints',
+                    'seatGroundPoints'],
+    'sun_lounger_x': ['lyingPoints', 'lyingDirs', 'lyingHeadPoints', 'lyingFeetPoints', 'lyingFeetDirs', 'seatPoints',
+                      'seatGroundPoints'],
     'beach_chair_folding': ['seatPoints', 'seatDirs'], 'beach_chair_folding_x': ['seatPoints', 'seatDirs'],
     'lifeguard_tower': ['staffPoints', 'staffDirs', 'staffPoint', 'lookDir', 'lookPoint', 'seatPoints', 'overlay',
                         'ladderPoint'],
     'icecream_cart': ['staffPoints', 'staffPoint', 'customerPoints', 'fxPoints'], 'corn_stand': ['staffPoints', 'customerPoints'],
     'rental_stand': ['staffPoints', 'customerPoints'], 'beach_swing': ['seatPoints'], 'driftwood': ['seatPoints'],
-    'picnic_table_beach': ['seatPoints', 'seatDirs'], 'changing_booth': ['doorPoint'],
+    'picnic_table_beach': ['seatPoints', 'seatDirs', 'seatDepths', 'seatGroundPoints'], 'changing_booth': ['doorPoint'],
     'beach_shower': ['standPoints'], 'sandcastle_m': ['workPoints'], 'sandcastle_l': ['workPoints'],
     'sandcastle_build_0': ['workPoints', 'stage', 'stages'], 'sandcastle_build_3': ['stage', 'stages'],
-    'volleyball_net': ['playPoints'], 'volleyball_net_y': ['playPoints'], 'float_raft': ['playPoints', 'waterPlane'],
+    'volleyball_net': ['playPoints', 'ballDirs'], 'volleyball_net_y': ['playPoints', 'ballDirs'],
+    'float_raft': ['playPoints', 'waterPlane'],
     'swim_buoy_line_x': ['waterPlane', 'tileAxis', 'stepPx'], 'swim_buoy_line_y': ['waterPlane', 'tileAxis', 'stepPx'],
     'swim_buoy_line_end': ['waterPlane'], 'boardwalk_x': ['tileAxis', 'stepPx', 'cuts'],
     'boardwalk_y': ['tileAxis', 'stepPx', 'cuts'], 'kite': ['stringPoint'], 'beach_sign_arrow': ['fxPoints'],
     'parasol_red': ['shadePoint'], 'beach_ball': ['stackStep']}
+
+
+# directions that have frames (rendered dirs + their flipX mirrors) in the people anims the beach points are played with
+# (townsfolk2 / villagers `sit`, beachfolk `sunbathe` / `dig` / `ball_throw` / `ball_catch`)
+MIRROR = {'SE': 'SW', 'E': 'W', 'NE': 'NW'}
+
+
+def with_mirrors(dirs):
+    return set(dirs) | {MIRROR[d] for d in dirs if d in MIRROR}
+
+
+ANIM_DIRS = {'sit': with_mirrors(['S', 'SE', 'E']), 'sunbathe': with_mirrors(['SE', 'NE']),
+             'dig': with_mirrors(['S', 'SE', 'E']), 'ball': with_mirrors(['S', 'SE', 'E'])}
+KZ = 55.4256
+
+
+def screen_dir(dx, dy):
+    import math
+    a = math.degrees(math.atan2(-dy, dx)) % 360
+    return ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'][int(((a + 22.5) % 360) // 45)]
+
+
+def people_rules(sp, errors, warns):
+    """Every point direction must be playable: *Dirs values have frames in the anim used there (or its mirrors); the
+    sunbather feet dir matches the geometry; seats sit at a plausible height over their ground point."""
+    for k, e in sp.items():
+        if e.get('generator') == 'gen_beach_ground':
+            continue
+        for d in e.get('seatDirs') or []:
+            if d not in ANIM_DIRS['sit']:
+                errors.append('%s: seatDirs %s has no `sit` frames (S/SE/E + mirrors)' % (k, d))
+        for d in e.get('workDirs') or []:
+            if d not in ANIM_DIRS['dig']:
+                errors.append('%s: workDirs %s has no beachfolk `dig` frames (S/SE/E + mirrors)' % (k, d))
+        if e.get('playAnim') == 'dig':
+            for d in e.get('playDirs') or []:
+                if d not in ANIM_DIRS['dig']:
+                    errors.append('%s: playDirs %s has no `dig` frames' % (k, d))
+        for d in e.get('ballDirs') or []:
+            if d not in ANIM_DIRS['ball']:
+                errors.append('%s: ballDirs %s has no ball_throw / ball_catch frames' % (k, d))
+        if e.get('lyingPoints'):
+            fds = e.get('lyingFeetDirs') or []
+            if len(fds) != len(e['lyingPoints']):
+                errors.append('%s: lyingFeetDirs missing / wrong length' % k)
+            for lp, fp, fd in zip(e['lyingPoints'], e.get('lyingFeetPoints') or [], fds):
+                if fd not in ANIM_DIRS['sunbathe']:
+                    errors.append('%s: lyingFeetDirs %s has no `sunbathe` frames' % (k, fd))
+                if screen_dir(fp[0] - lp[0], fp[1] - lp[1]) != fd:
+                    errors.append('%s: lyingFeetDirs %s != hips -> feet direction' % (k, fd))
+        if e.get('seatPoints') and e.get('seatGroundPoints'):
+            for sp_, gp in zip(e['seatPoints'], e['seatGroundPoints']):
+                h = (gp[1] - sp_[1]) / KZ
+                if abs(gp[0] - sp_[0]) > 1 or not (0.25 <= h <= 0.65):
+                    errors.append('%s: seat %s sits %.2f m over its ground point %s (want 0.25 .. 0.65 m)' %
+                                  (k, sp_, h, gp))
+                elif e.get('seatHeightM') is not None and abs(h - e['seatHeightM']) > 0.05:
+                    warns.append('%s: seat height %.2f m != seatHeightM %s' % (k, h, e['seatHeightM']))
+        if e.get('seatDepths') and len(e['seatDepths']) != len(e.get('seatPoints') or []):
+            errors.append('%s: seatDepths length != seatPoints' % k)
+
+
+def anim_motion(sp, atl_imgs, errors):
+    """No dead anims: every named loop must visibly change (polish: the ice-cream bell frames were identical)."""
+    import numpy as np
+    for k, e in sp.items():
+        if e.get('aliasOf') or not e.get('anims') or e.get('atlas') not in atl_imgs:
+            continue
+        sheet, frames = atl_imgs[e['atlas']]
+        for an, ad in e['anims'].items():
+            if an == 'work':
+                continue
+            arr = []
+            for n in ad['frames']:
+                f = frames.get(n)
+                if f is None:
+                    break
+                r, so = f['frame'], f['spriteSourceSize']
+                im = np.zeros((f['sourceSize']['h'], f['sourceSize']['w'], 4), np.float32)
+                crop = np.asarray(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), np.float32)
+                im[so['y']:so['y'] + r['h'], so['x']:so['x'] + r['w']] = crop
+                arr.append(im)
+            if len(arr) < 2:
+                continue
+            mx = max(float(np.abs(a - arr[0]).mean()) for a in arr[1:])
+            if mx < 0.25:
+                errors.append('%s.anims.%s: frames barely change (max mean diff %.2f) - a dead anim' % (k, an, mx))
 
 
 def main():
@@ -169,6 +259,15 @@ def main():
             errors.append('character %s: missing shadow' % k)
     if 'banana_boat' in ch and 'towPoint' not in ch['banana_boat']:
         errors.append('banana_boat: missing towPoint')
+    people_rules(sp, errors, warns)
+    if man.get('waterPx') != 0 or (man.get('waterPxByShore') or {}).get('sand') != 0:
+        errors.append('sea level: waterPx must be 0 on the sand beach with waterPxByShore (one rule with assets/water)')
+    atl_imgs = {}
+    used = {e.get('atlas') for e in sp.values() if e.get('anims')}
+    for a in man.get('atlases', []):
+        if a['key'] in atl and a['key'] in used:
+            atl_imgs[a['key']] = (Image.open(os.path.join(ASSETS, a['png'])).convert('RGBA'), atl[a['key']])
+    anim_motion(sp, atl_imgs, errors)
     # collisions with other fragments
     mine = set(sp) | set(ch)
     for frag in sorted(os.listdir(ASSETS)):

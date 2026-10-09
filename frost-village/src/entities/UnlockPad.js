@@ -169,7 +169,10 @@ export class UnlockPad {
       // the chief carries the item: hand it over
       if (this.pad.contains(p.x, p.y) && (this.handT = (this.handT || 0) - dt) <= 0) { if (this.feed(p)) { this.handT = 0.12; this.pad.pulse(); } }
     }
-    this.label.y = this.labelBaseY + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
+    // (v4-B, v3.5 known issue) the chief standing on the pad: the label lifts over his head (glides)
+    const onPad = this.pad.contains(p.x, p.y) && !this.labelDx;
+    this.lift = (this.lift || 0) + ((onPad ? 1 : 0) - (this.lift || 0)) * Math.min(1, dt * 8);
+    this.label.y = this.labelBaseY - this.lift * 74 + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
     // keep the floating label inside the screen while its pad is visible
     const v = gs.cameras.main.worldView, hw = this.labelBg.width * 0.5 + 8;
     const bx = this.x + (this.labelDx || 0);

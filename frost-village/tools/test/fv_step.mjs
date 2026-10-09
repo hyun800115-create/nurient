@@ -57,7 +57,17 @@ export async function until(page, fn, maxSec = 30, arg) {
 
 /** draw a couple of frames so a screenshot shows the current state */
 export async function render(page, n = 3) {
-  await page.evaluate((k) => { for (let i = 0; i < k; i++) window.__step.frame(); }, n);
+  await page.evaluate((k) => {
+    for (let i = 0; i < k; i++) window.__step.frame();
+    // (v4-B) the camera's follow / pan only moves when a frame is drawn: bake the ground tiles for where it
+    // really is now (in play this happens over the next frames), then draw once more
+    const gs = window.__FV.scene, g = gs && gs.ground;
+    if (g && typeof g.ensure === 'function' && gs.cameras && gs.cameras.main) {
+      const n0 = g.baked || 0;
+      try { g.ensure(gs.cameras.main.worldView, Infinity); } catch (e) { /* */ }
+      if ((g.baked || 0) !== n0) window.__step.frame();
+    }
+  }, n);
 }
 
 /** joystick walk in game time (like pw.mjs walkTo, but stepping the fixed clock) */

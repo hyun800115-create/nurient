@@ -2,7 +2,7 @@
 bf_pack.py - beachfolk layers -> assets/beachfolk atlases + manifest fragment (CONTRACT_V7 Y).
 
 Run AFTER bf_render.py (plain python3 + numpy + Pillow + imagequant, no Blender):
-    python3 tools/blender/bf_pack.py [--colors 56] [--cache <scratch>/v7_beachfolk/cache] [--out assets/beachfolk]
+    python3 tools/blender/bf_pack.py [--colors 80] [--dither 0.35] [--cache <scratch>/v7_beachfolk/cache] [--out assets/beachfolk]
 
 Same layer processing, frame naming and compact 'tfatlas' JSON as tools/blender/tf_pack.py (imported, not edited).
 Atlas keys are bf_head_<k> and bf_<base>_<k> (never clash with tf_* / tf2_*).  Water anims: the ink ring is also
@@ -418,7 +418,8 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, he
         'notes': ('Partial townfolk block (CONTRACT_V7 Y).  Merge after townfolk2 (rules in "merge"), then compose '
                   'exactly like tools/beachfolk_compose.py: the v4 + v5 rules plus (1) head frames use timeline hd '
                   '(default dir) and faceDirsByPose; (2) animParts are drawn in their anim even if not worn; '
-                  '(3) parts with "anims" draw only in those anims (canPlay checks a whole person); (4) followDz; '
+                  '(3) parts with "anims" draw only in those anims (canPlay checks a whole person, except '
+                  '"drop" accessories, which are simply put down there); (4) followDz; '
                   '(5) water anims are anchored on the water surface (see water).'),
     }
     return {'version': 1, 'notes': ('Beachfolk fragment (CONTRACT_V7 Y): swim / float / sunbathe / dig / beach ball / '
@@ -430,7 +431,10 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, he
 
 def main():
     args = sys.argv[1:]
-    cache, colors, dither = DEFAULT_CACHE, 56, 0.5
+    # Beach people show a lot of bare skin (large soft gradients): 56 colours + dither 0.5 (townfolk) speckles it
+    # once tinted, so bodies use 80 colours / dither 0.35 and the head sheet (faces) 96 / 0.3 (+0.5 MB payload).
+    cache, colors, dither = DEFAULT_CACHE, 80, 0.35
+    head_colors, head_dither = 96, 0.3
     out = OUT
     i = 0
     while i < len(args):
@@ -453,7 +457,8 @@ def main():
     log, report = [], []
     print('[head3] collecting', flush=True)
     head_layers, head_meta = collect_head3(cache, log)
-    atlases, where_head = build_sheets3('bf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report)
+    atlases, where_head = build_sheets3('bf_head', head_layers, lambda l, f: f'{l}/{f}', max(colors, head_colors),
+                                        min(dither, head_dither), report)
     body_metas, where_body, body_layer_names = {}, {}, {}
     for base in tpr.RENDER_BASES:
         if not os.path.exists(os.path.join(cache, 'body', base, 'meta3.json')):

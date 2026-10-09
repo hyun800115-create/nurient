@@ -70,7 +70,7 @@ WHITE = hexc('#FFFFFF')
 SAND = '#F1E3C4'
 SAND_HI = '#FBF3E0'
 SAND_LO = '#D9C39C'
-SAND_WET = '#CDB389'
+SAND_WET = '#D2B994'      # = water_shore_ramp sand row at u ~0.5 (fresh wet), polish (was #CDB389)
 SNOW = '#F4F7FB'
 SNOW_LO = '#C9D6E8'
 
@@ -100,30 +100,33 @@ def sm(e0, e1, x):
 # =========================================================================== seamless textures
 
 def tex_sand(ss=2):
-    """Dry white sand: soft undulation, wind ripples running along world X that come and go, fine light / dark grains,
-    a few shell crumbs.  Relief lit by the shared sun (upper-left)."""
+    """Dry white sand: a very soft undulation, wind ripples running along world X that come and go, a fine mottle,
+    light and warm grains, a few shell crumbs.  Relief lit by the shared sun (upper-left).
+    Polish: the old large blotch layer (90 px noise, strong colour swing) read as a repeating camouflage pattern when
+    tiled at phone zoom, and its dark pepper grains looked like dirt - the low-frequency swing is now ~1/3 and the
+    grains are warm and soft."""
     n = N * ss
     rng = np.random.default_rng(701)
-    low = F.fft_noise(n, n, 11, scale=90 * ss)
-    mid = F.fft_noise(n, n, 12, scale=22 * ss)
-    # ripples: crests along world X = screen direction (2,1); band-pass noise stretched along that direction
+    low = F.fft_noise(n, n, 11, scale=150 * ss)
+    mid = F.fft_noise(n, n, 12, scale=7 * ss)
     rip = F.fft_noise(n, n, 13, band=(1 / (15.0 * ss), 1 / (8.5 * ss)), aniso=5.0, angle=math.atan2(1, 2))
     rip = np.sign(rip) * np.abs(rip) ** 0.75
-    rip *= np.clip(0.3 + 0.7 * F.fft_noise(n, n, 14, scale=60 * ss), 0, 1)
-    h = low * 2.6 + mid * 0.8 + rip * 1.5
-    lit = shade_height(h, 1, 1.0) * ss
+    rip *= np.clip(0.3 + 0.7 * F.fft_noise(n, n, 14, scale=40 * ss), 0, 1)
+    h = low * 0.9 + mid * 0.3 + rip * 1.35
+    lit = GG.relief(h, ss, 1.0)
     base = np.broadcast_to(hexc(SAND), (n, n, 3)).copy()
-    rgb = GG.lerp3(base, hexc(SAND_LO), np.clip(-lit * 0.7 - low * 0.05, 0, 1) * 0.7)
-    rgb = GG.lerp3(rgb, hexc(SAND_HI), np.clip(lit * 0.7 + low * 0.05, 0, 1) * 0.9)
-    rgb = GG.lerp3(rgb, hexc('#E6D1A6'), np.clip(-mid * 0.4, 0, 1) * 0.6)
+    rgb = GG.lerp3(base, hexc(SAND_LO), np.clip(-lit * 0.7, 0, 1) * 0.6)
+    rgb = GG.lerp3(rgb, hexc(SAND_HI), np.clip(lit * 0.7, 0, 1) * 0.8)
+    rgb = GG.lerp3(rgb, hexc('#EAD8B2'), np.clip(-low * 0.25, 0, 1) * 0.35)
+    rgb = GG.lerp3(rgb, hexc('#EBDAB6'), np.clip(-mid * 0.45, 0, 1) * 0.3)
     rgb = F.downsample_wrap(rgb, ss)
-    # grains at output resolution
+    # grains at output resolution: bright quartz, warm amber, a few grey specks (no dark pepper)
     g = rng.random((N, N)).astype(np.float32)
-    rgb = GG.lerp3(rgb, hexc('#B89B70'), (g > 0.965).astype(np.float32) * 0.5)
-    rgb = GG.lerp3(rgb, hexc('#FFFDF6'), (g < 0.045).astype(np.float32) * 0.65)
+    rgb = GG.lerp3(rgb, hexc('#D9C49C'), (g > 0.972).astype(np.float32) * 0.45)
+    rgb = GG.lerp3(rgb, hexc('#FFFDF6'), (g < 0.035).astype(np.float32) * 0.5)
     g2 = rng.random((N, N)).astype(np.float32)
-    rgb = GG.lerp3(rgb, hexc('#A8865A'), (g2 > 0.994).astype(np.float32) * 0.6)
-    rgb = GG.lerp3(rgb, hexc('#9AA3AE'), (g2 < 0.0015).astype(np.float32) * 0.7)
+    rgb = GG.lerp3(rgb, hexc('#C6AD84'), (g2 > 0.9975).astype(np.float32) * 0.45)
+    rgb = GG.lerp3(rgb, hexc('#AEB6C0'), (g2 < 0.0012).astype(np.float32) * 0.5)
     # shell crumbs: tiny pink / white flecks with a soft halo
     imp = np.zeros((N, N), np.float32)
     pts = rng.integers(0, N, (90, 2))
@@ -135,35 +138,40 @@ def tex_sand(ss=2):
 
 
 def tex_sand_wet(ss=2):
-    """Wet sand left by the swash: darker, smooth and glossy (sky sheen streaks), backwash lace lines along world X,
-    tiny bubble holes."""
+    """Wet sand left by the swash: darker and smooth with a soft sky sheen, a few faint backwash lace threads along
+    world X and tiny bubble holes.  Base colour = assets/water water_shore_ramp sand row at ~u 0.5 ("fresh wet"), so
+    the baked band and the Water.js swash band meet without a step.
+    Polish: the old lace lines were evenly spaced (period 512/7 px) and bright, so tiling showed a diagonal grid of
+    white dashes; the base was a flat orange-brown."""
     n = N * ss
     rng = np.random.default_rng(702)
-    low = F.fft_noise(n, n, 21, scale=80 * ss)
-    mid = F.fft_noise(n, n, 22, scale=16 * ss)
+    low = F.fft_noise(n, n, 21, scale=110 * ss)
+    mid = F.fft_noise(n, n, 22, scale=14 * ss)
     rip = F.fft_noise(n, n, 23, band=(1 / (40.0 * ss), 1 / (22.0 * ss)), aniso=3.0, angle=math.atan2(1, 2))
-    h = low * 1.4 + mid * 0.25 + rip * 0.35
-    lit = shade_height(h, 1, 1.0) * ss
+    h = low * 0.9 + mid * 0.25 + rip * 0.3
+    lit = GG.relief(h, ss, 1.0)
     base = np.broadcast_to(hexc(SAND_WET), (n, n, 3)).copy()
-    rgb = GG.lerp3(base, hexc('#B79B71'), np.clip(-lit * 0.6, 0, 1) * 0.6)
-    rgb = GG.lerp3(rgb, hexc('#DCC6A0'), np.clip(lit * 0.6, 0, 1) * 0.6)
-    # glossy sky sheen: soft streaks stretched along world X, bluish-white
+    rgb = GG.lerp3(base, hexc('#BFA27C'), np.clip(-lit * 0.6, 0, 1) * 0.5)
+    rgb = GG.lerp3(rgb, hexc('#DEC8A3'), np.clip(lit * 0.6, 0, 1) * 0.5)
+    rgb = GG.lerp3(rgb, hexc('#C9AE88'), np.clip(-low * 0.3, 0, 1) * 0.35)
+    # glossy sky sheen: very soft streaks stretched along world X, bluish-white
     sheen = F.fft_noise(n, n, 24, scale=10 * ss, aniso=4.0, angle=math.atan2(1, 2))
-    sheen = np.clip(sheen * 0.5 + low * 0.35 - 0.75, 0, 1)
-    rgb = GG.lerp3(rgb, hexc('#D9E1DF'), sheen * 0.4)
-    # backwash lace: thin bright lines along world X with warp
+    sheen = np.clip(0.5 + 0.35 * sheen, 0, 1) ** 3
+    rgb = GG.lerp3(rgb, hexc('#DCE3E2'), sheen * 0.22)
+    # backwash lace: a few faint, broken, wandering threads (no regular spacing)
     Xs, Ys = GG.coords(N, ss)
     a, b = GG.ab(Xs, Ys)
-    warp = F.fft_noise(n, n, 25, scale=30 * ss) * 9.0
-    P = 512.0 / 7.0
+    warp = F.fft_noise(n, n, 25, scale=45 * ss) * 26.0 + F.fft_noise(n, n, 27, scale=12 * ss) * 4.0
+    P = 512.0 / 3.0
     phase = np.mod(b + warp, P) / P
-    lace = np.exp(-((phase - 0.5) / 0.018) ** 2) * np.clip(0.5 + 0.5 * F.fft_noise(n, n, 26, scale=20 * ss), 0, 1)
-    rgb = GG.lerp3(rgb, hexc('#EFE6D2'), lace * 0.45)
-    rgb = GG.lerp3(rgb, hexc('#A88B62'), np.roll(lace, 2 * ss, 0) * 0.25)
+    gate = np.clip(F.fft_noise(n, n, 26, scale=24 * ss) * 1.4 - 0.5, 0, 1)
+    lace = np.exp(-((phase - 0.5) / 0.012) ** 2) * gate
+    rgb = GG.lerp3(rgb, hexc('#E8DCC4'), lace * 0.35)
+    rgb = GG.lerp3(rgb, hexc('#B39770'), np.roll(lace, 2 * ss, 0) * 0.18)
     rgb = F.downsample_wrap(rgb, ss)
     g = rng.random((N, N)).astype(np.float32)
-    rgb = GG.lerp3(rgb, hexc('#8E7350'), (g > 0.992).astype(np.float32) * 0.5)
-    rgb = GG.lerp3(rgb, hexc('#F4EEE0'), (g < 0.004).astype(np.float32) * 0.7)
+    rgb = GG.lerp3(rgb, hexc('#A78B64'), (g > 0.994).astype(np.float32) * 0.45)
+    rgb = GG.lerp3(rgb, hexc('#EFE8DA'), (g < 0.003).astype(np.float32) * 0.6)
     return np.clip(rgb, 0, 1)
 
 
@@ -345,6 +353,205 @@ def build_kit():
     return out
 
 
+# =========================================================================== dry <-> wet sand kit (polish)
+# ground_sand_wet used to be a whole-cell fill only: along the shore it ended in a ruler-straight hard edge that read
+# like a cardboard strip.  This kit follows EXACTLY the sandKit placement rules with "SNOW" read as "WET" (wet cells
+# = ground_sand_wet): every piece paints the wet sand texture over the straight cell line (opaque there), pushes the
+# boundary 0.04 - 0.3 m into the dry cell with the periodic boundary noise of the snow kit, and then lets a damp ramp
+# fade out irregularly over ~0.8 m (40 - 60 screen px) with a broken line of dried foam / salt at the tide mark.
+
+W_WET = 1.3            # half width of a wet-kit piece's owned box across the boundary (m)
+W_IN = 0.34            # how far a piece reaches into the wet cell (it fades into the identical wet texture there)
+W_RAMP = 0.78          # damp ramp length on the dry side (m)
+R_WET = 0.12           # corner rounding of the wet boundary (m)
+
+
+def lace_noise(s, seed, var=None):
+    """Higher-frequency periodic (per cell) noise in [-1, 1] for the ragged damp edge / tide line."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros_like(s)
+    tot = 0.0
+    for k in (2, 3, 5, 7, 9):
+        a = 1.0 / math.sqrt(k)
+        out += a * np.sin(math.tau * k * s / SEG + rng.uniform(0, math.tau))
+        tot += a
+    out /= tot * 0.6
+    if var:
+        r2 = np.random.default_rng(seed * 17 + var)
+        w = np.sin(math.pi * np.mod(s, SEG) / SEG) ** 2
+        v = np.zeros_like(s)
+        for k in (5, 11, 19):
+            v += np.sin(math.tau * k * s / SEG + r2.uniform(0, math.tau)) / 3
+        out = out * (1 - 0.6 * w) + v * 0.9 * w
+    return np.clip(out, -1, 1)
+
+
+def sharp_quad(x, y, qx, qy):
+    """Signed distance (m, + inside) to the SHARP quadrant {qx*x > 0, qy*y > 0} (the cell corner itself)."""
+    ax, ay = qx * x, qy * y
+    inside = (ax > 0) & (ay > 0)
+    return np.where(inside, np.minimum(ax, ay), -np.hypot(np.minimum(ax, 0), np.minimum(ay, 0)))
+
+
+def smooth_quad(x, y, qx, qy, r, k=0.2):
+    """quad_sdf with a SMOOTH interior (soft-min of the two arm distances): its inner level sets round off instead of
+    making sharp L corners (the tide line inside a dry bay)."""
+    ax, ay = qx * x, qy * y
+    d_out = quad_sdf(x, y, qx, qy, r)
+    m = np.minimum(ax, ay)
+    d_in = m - k * np.log1p(np.exp(-np.abs(ax - ay) / k))
+    return np.where((ax > 0) & (ay > 0), np.minimum(d_in, d_out), d_out)
+
+
+def wet_fields(kind, x, y, var):
+    """(d_true, b, lace): d_true = signed distance to the straight cell boundary / sharp cell corner (+ = WET side),
+    b = signed distance to the noisy wet boundary (pushed into the dry cell), lace = ragged-edge noise in [-1, 1]."""
+    if kind[0] == 'edge':
+        _, axis, sgn = kind
+        s = (x if axis == 'x' else y) + SEG / 2
+        d = sgn * (y if axis == 'x' else x)
+        seed = 3 if axis == 'x' else 5
+        off = np.clip(0.16 + 0.8 * edge_noise(s, seed + 20, var), 0.09, 0.4)
+        return d, d + off, lace_noise(s, seed + 40, var)
+    _, qx, qy = kind
+    nx = np.clip(0.16 + 0.8 * edge_noise(np.mod(x, SEG), 23), 0.09, 0.4)
+    ny = np.clip(0.16 + 0.8 * edge_noise(np.mod(y, SEG), 25), 0.09, 0.4)
+    lx = lace_noise(np.mod(x, SEG), 43)
+    ly = lace_noise(np.mod(y, SEG), 45)
+    wx = 1 - sm(-0.15, 0.15, np.abs(qy * y) - np.abs(qx * x))
+    off = nx * wx + ny * (1 - wx)
+    lace = lx * wx + ly * (1 - wx)
+    if kind[0] == 'corner':                      # the quarter's cell is WET (convex wet corner)
+        d = sharp_quad(x, y, qx, qy)
+        b = quad_sdf(x, y, qx, qy, R_WET) + off
+    else:                                        # 'inner': the quarter's cell is DRY (concave wet corner)
+        d = -sharp_quad(x, y, qx, qy)
+        b = -smooth_quad(x, y, qx, qy, R_WET) + off
+    return d, b, lace
+
+
+def owned_box_w(kind, w):
+    if kind[0] == 'edge':
+        if kind[1] == 'x':
+            return (-SEG / 2, SEG / 2, -w, w)
+        return (-w, w, -SEG / 2, SEG / 2)
+    _, qx, qy = kind
+    xs = sorted([0.0, qx * SEG])
+    ys = sorted([0.0, qy * SEG])
+    x0, x1 = (xs[0], xs[1] + w) if qx < 0 else (xs[0] - w, xs[1])
+    y0, y1 = (ys[0], ys[1] + w) if qy < 0 else (ys[0] - w, ys[1])
+    return (x0, x1, y0, y1)
+
+
+def render_wet_piece(kind, wet_tex, var=0, ss=4, seed=0):
+    """RGBA image + integer anchor of one dry <-> wet piece.  wet_tex = the ground_sand_wet texture (H x W x 3, 0..1),
+    sampled under the piece so the piece IS wet sand where it is opaque."""
+    x0, x1, y0, y1 = owned_box_w(kind, W_WET)
+    corners = [screen(x, y) for x in (x0, x1) for y in (y0, y1)]
+    sx0 = math.floor(min(c[0] for c in corners)) - 3
+    sx1 = math.ceil(max(c[0] for c in corners)) + 3
+    sy0 = math.floor(min(c[1] for c in corners)) - 3
+    sy1 = math.ceil(max(c[1] for c in corners)) + 3
+    W, H = sx1 - sx0, sy1 - sy0
+    ax, ay = -sx0, -sy0
+    c = F.Canvas(W, H, ss=ss)
+    x, y = world(c.X, c.Y, ax, ay)
+    rmp = 0.035
+    inside = np.ones_like(x)
+    for dist in (x - x0, x1 - x, y - y0, y1 - y):
+        inside = inside * np.clip(0.5 + dist / (2 * rmp), 0, 1)
+    d, b, lace = wet_fields(kind, x, y, var)
+    # opacity: 1 over the straight cell line and on the wet ground pushed into the dry cell; fades out quickly inside
+    # the wet cell (the same texture is underneath) and irregularly along the damp ramp on the dry side
+    a_wet = 1.0 - sm(W_IN * 0.35, W_IN, d)
+    # dry side: a defined, wavy wet edge (1 -> 0.55 over ~13 cm), then a damp zone fading out over W_RAMP with a slow,
+    # ragged far edge (lace = slow periodic noise; no hairy high-frequency streaks)
+    t = np.clip(-b, 0, None) / W_RAMP + 0.12 * lace
+    edge = 1.0 - 0.45 * sm(0.0, 0.13, -b)
+    a_dry = edge * (1.0 - sm(0.05, 1.0, t)) ** 1.1
+    alpha = np.where(b >= 0, np.where(d > 0, a_wet, 1.0), a_dry)
+    # colour: the wet texture's mean tone + fine grain (a smooth, freshly wet band; it must be identical in two
+    # overlapping neighbours, so no texture lookup), lightening toward a damp tone along the ramp
+    rng = np.random.default_rng(3000 + seed * 7 + var * 13)
+    mean = wet_tex.reshape(-1, 3).mean(0)
+    col = np.broadcast_to(mean.astype(np.float32), x.shape + (3,)).copy()
+    gr0 = rng.random(x.shape).astype(np.float32)
+    col = GG.lerp3(col, hexc('#B79C76'), (gr0 > 0.985).astype(np.float32) * 0.35)
+    col = GG.lerp3(col, hexc('#E9DDC6'), (gr0 < 0.012).astype(np.float32) * 0.45)
+    damp = np.clip(t, 0, 1) * (b < 0)
+    col = GG.lerp3(col, hexc('#E4D0AC'), damp * 0.55)
+    # a thin darker "just wet" seam right at the noisy boundary (water sitting in the sand), very faint
+    col = GG.lerp3(col, hexc('#BFA27C'), np.exp(-(b / 0.05) ** 2) * 0.22)
+    # broken tide line of dried foam / salt at the end of the ramp + a few bubble pits on the wet ground
+    if kind[0] == 'edge':
+        sa = (x if kind[1] == 'x' else y) + SEG / 2
+        gate = lace_noise(sa, 61 if kind[1] == 'x' else 63, var)
+    else:
+        _, qx, qy = kind
+        wx = 1 - sm(-0.15, 0.15, np.abs(qy * y) - np.abs(qx * x))
+        gate = lace_noise(np.mod(x, SEG), 61) * wx + lace_noise(np.mod(y, SEG), 63) * (1 - wx)
+    gate = np.clip(0.35 + 1.2 * gate, 0, 1)
+    tw = 0.06 * (0.7 + 0.6 * gate)
+    tide = np.exp(-((-b - (0.5 + 0.06 * lace) * W_RAMP) / tw) ** 2) * gate * (b < 0)
+    gr = rng.random(x.shape).astype(np.float32)
+    dots = F.blur((gr > 0.94).astype(np.float32), 0.5 * ss)
+    dots = np.clip(dots / (dots.max() + 1e-6) * 2.2, 0, 1)
+    froth = np.clip(tide * 0.32 + tide * dots * 0.75, 0, 1)        # a soft pale band of dried foam bubbles
+    col = GG.lerp3(col, hexc('#FAF5EA'), np.clip(froth * 1.4, 0, 1))
+    alpha = np.maximum(alpha, froth * 0.85)
+    # a few specks of shell grit / seaweed along the tide line
+    specks = (gr > 0.9955) & (np.abs(-b - 0.5 * W_RAMP) < 0.08) & (b < 0)
+    col = GG.lerp3(col, hexc('#8A9A5A'), specks.astype(np.float32) * 0.8)
+    alpha = np.maximum(alpha, specks.astype(np.float32) * 0.9)
+    pits = (gr > 0.9965) & (b > 0.05)
+    col = GG.lerp3(col, hexc('#9C8260'), pits.astype(np.float32) * 0.6)
+    alpha = 1.0 - np.power(np.clip(1.0 - alpha, 1e-6, 1.0), inside)
+    alpha = np.where(inside <= 0, 0.0, alpha)
+    c.rgb[...] = col * alpha[..., None]
+    c.a[...] = alpha
+    return c.image(), (ax, ay)
+
+
+WET_EDGE_KINDS = {
+    'ground_sand_wet_edge_x': (('edge', 'x', 1), 'X edge with the WET cell at +Y (screen up-right), dry sand at -Y.'),
+    'ground_sand_wet_edge_x_near': (('edge', 'x', -1), 'X edge with the WET cell at -Y (screen down-left = the sea '
+                                                      'side of this beach), dry sand at +Y.'),
+    'ground_sand_wet_edge_y': (('edge', 'y', -1), 'Y edge with the WET cell at -X (screen up-left), dry sand at +X.'),
+    'ground_sand_wet_edge_y_near': (('edge', 'y', 1), 'Y edge with the WET cell at +X (screen down-right), dry sand '
+                                                      'at -X.'),
+}
+
+
+def build_wet_kit(wet_img):
+    wet_tex = np.asarray(wet_img.convert('RGB'), np.float32) / 255.0
+    out = {}
+    for key, (kind, note) in WET_EDGE_KINDS.items():
+        for v in range(3):
+            k = key if v == 0 else '%s_%d' % (key, v)
+            im, an = render_wet_piece(kind, wet_tex, v, seed=len(key))
+            out[k] = (im, an, {'piece': 'edge', 'family': 'sand_wet', 'axis': kind[1],
+                               'side': 'far' if (kind[1] == 'x') == (kind[2] > 0) else 'near',
+                               'step': [64, 32] if kind[1] == 'x' else [64, -32], 'cells': 1, 'variantOf': key,
+                               'variants': [key, key + '_1', key + '_2'],
+                               'notes': 'Dry <-> wet sand transition, 1 cell long: ' + note + ' Anchor = midpoint of '
+                                        'the cell edge. Paints the wet sand over the cell line, pushes the wet edge '
+                                        '0.1 - 0.3 m into the dry cell, then a ragged damp ramp (~0.8 m) with a broken '
+                                        'tide line of dried foam. Rules = sandKit with SNOW read as WET (wetKit).'})
+    for q, (qx, qy) in QUARTERS.items():
+        im, an = render_wet_piece(('corner', qx, qy), wet_tex, 0, seed=31 + qx + 3 * qy)
+        out['ground_sand_wet_corner_' + q] = (im, an, {
+            'piece': 'corner', 'family': 'sand_wet_corner', 'quarter': [qx, qy], 'quarterDir': q,
+            'notes': 'Rounded corner of a WET cell sticking into dry sand: the cell in quarter %s is wet, the other '
+                     'three dry. Anchor = the lattice point; owns the first cell of both edges leaving it toward its '
+                     'quarter.' % q})
+        im, an = render_wet_piece(('inner', qx, qy), wet_tex, 0, seed=41 + qx + 3 * qy)
+        out['ground_sand_wet_inner_' + q] = (im, an, {
+            'piece': 'corner', 'family': 'sand_wet_inner', 'quarter': [qx, qy], 'quarterDir': q,
+            'notes': 'Concave corner (dry bay in wet sand): the cell in quarter %s is DRY, the other three wet. Anchor = '
+                     'the lattice point; owns the first cell of both edges leaving it toward its quarter.' % q})
+    return out
+
+
 # =========================================================================== decals
 
 def canvas_for(wm, hm, pad=0.15):
@@ -367,22 +574,23 @@ def decal_footprints():
         vc = 0.09 if k % 2 == 0 else -0.09
         side = 1 if k % 2 == 0 else -1
         u, v = x - uc, y - vc
-        sole = np.hypot(u / 0.09, v / 0.045) - 1.0
-        heel = np.hypot((u + 0.1) / 0.045, v / 0.04) - 1.0
-        f = np.minimum(sole * 0.045, heel * 0.04)
-        for t, (tu, tv, tr) in enumerate(((0.12, -0.03, 0.022), (0.125, -0.005, 0.017), (0.122, 0.015, 0.015),
-                                         (0.115, 0.032, 0.013), (0.105, 0.046, 0.011))):
+        sole = np.hypot(u / 0.105, v / 0.052) - 1.0
+        heel = np.hypot((u + 0.115) / 0.052, v / 0.046) - 1.0
+        f = np.minimum(sole * 0.052, heel * 0.046)
+        for t, (tu, tv, tr) in enumerate(((0.14, -0.035, 0.025), (0.146, -0.006, 0.02), (0.142, 0.017, 0.017),
+                                         (0.134, 0.037, 0.015), (0.122, 0.053, 0.013))):
             toe = np.hypot(u - tu, v - side * tv) / tr - 1.0
             f = np.minimum(f, toe * tr)
         d = np.minimum(d, f)
     pr = np.clip(-d / 0.02, 0, 1)
-    hgt = -F.blur(pr, 1.0 * ss) * 3.0 + F.blur(np.clip(1 - np.abs(d) / 0.03, 0, 1), 1.2 * ss) * 0.8
-    lit = shade_height(hgt, ss, 0.9)
+    hgt = -F.blur(pr, 1.0 * ss) * 4.0 + F.blur(np.clip(1 - np.abs(d) / 0.035, 0, 1), 1.2 * ss) * 1.3
+    lit = shade_height(hgt, ss, 1.1)
     col = np.broadcast_to(hexc(SAND), x.shape + (3,)).copy()
-    col = GG.lerp3(col, hexc('#C4A97C'), pr * 0.9)
-    col = GG.lerp3(col, hexc('#B79D72'), np.clip(-lit, 0, 1) * 0.8)
-    col = GG.lerp3(col, hexc(SAND_HI), np.clip(lit, 0, 1) * 0.8)
-    a = np.clip(F.blur(np.clip(1 - d / 0.035, 0, 1), 1.0 * ss) * 1.2, 0, 1)
+    col = GG.lerp3(col, hexc('#C9AC7C'), pr * 0.95)
+    col = GG.lerp3(col, hexc('#A88A5E'), np.clip(-lit, 0, 1) * 0.9)
+    col = GG.lerp3(col, hexc(SAND_HI), np.clip(lit, 0, 1) * 0.85)
+    # polish: the prints were barely visible - deeper floor, darker shaded rim, a raised rim of pushed sand
+    a = np.clip(F.blur(np.clip(1 - d / 0.045, 0, 1), 1.0 * ss) * 1.3, 0, 1)
     c.rgb[...] = col * a[..., None]
     c.a[...] = a
     return c.image(), (ax, ay), {'notes': 'Bare footprints walking along world X (screen down-right), 6 prints over '
@@ -482,12 +690,13 @@ def decal_sand_ripples():
     rip = np.sin(math.tau * (y + 0.05 * np.sin(x * 4.0)) / 0.2)
     rip = np.sign(rip) * np.abs(rip) ** 0.6
     mask = np.clip(1.0 - np.hypot(x / 1.3, y / 0.8), 0, 1) ** 0.7
-    hgt = rip * mask * 1.6
-    lit = shade_height(hgt, ss, 0.9)
+    hgt = rip * mask * 2.2
+    lit = shade_height(hgt, ss, 1.1)
     col = np.broadcast_to(hexc(SAND), x.shape + (3,)).copy()
-    col = GG.lerp3(col, hexc('#C2A574'), np.clip(-lit, 0, 1))
-    col = GG.lerp3(col, hexc(SAND_HI), np.clip(lit, 0, 1))
-    a = np.clip(mask * 1.4, 0, 1) ** 0.8 * (0.25 + 0.75 * np.clip(np.abs(lit) * 2.5, 0, 1))
+    col = GG.lerp3(col, hexc('#B89A68'), np.clip(-lit * 1.3, 0, 1))
+    col = GG.lerp3(col, hexc('#FFF8EA'), np.clip(lit * 1.3, 0, 1))
+    # polish: the patch was nearly invisible - stronger crest light / trough shade, more opaque body
+    a = np.clip(mask * 1.5, 0, 1) ** 0.8 * (0.5 + 0.5 * np.clip(np.abs(lit) * 3.0, 0, 1))
     c.rgb[...] = col * a[..., None]
     c.a[...] = a
     return c.image(), (ax, ay), {'notes': 'Patch of pronounced wind ripples (crests along world X) fading out at '
@@ -557,12 +766,16 @@ def decal_towel(name, cols, axis='y'):
             c.fill(F.sd_segment(c.X, c.Y, a0[0] + ax, a0[1] + ay, a1[0] + ax, a1[1] + ay, 0.55), hexc('#F3E6C8'))
     lie = screen(*((0.0, -0.1) if axis == 'y' else (0.1, 0.0)))
     head = screen(*((0.0, 0.55) if axis == 'y' else (-0.55, 0.0)))
+    feet = screen(*((0.0, -0.68) if axis == 'y' else (0.68, 0.0)))
     extra = {'lyingPoints': [[int(round(lie[0])), int(round(lie[1]))]], 'lyingHeadPoints': [[int(round(head[0])),
                                                                                               int(round(head[1]))]],
-             'lyingDirs': ['NE' if axis == 'y' else 'NW'], 'lyingAxis': axis, 'lyingHeightM': 0.0,
+             'lyingFeetPoints': [[int(round(feet[0])), int(round(feet[1]))]],
+             'lyingDirs': ['NE' if axis == 'y' else 'NW'], 'lyingFeetDirs': ['SW' if axis == 'y' else 'SE'],
+             'lyingAxis': axis, 'lyingHeightM': 0.0,
              'notes': 'Beach towel (%s) lying flat, long side along world %s (0.8 x 1.6 m): ground decal. lyingPoints '
-                      '= hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints = the head end, '
-                      'lyingDirs = screen direction from hips to head.' % (name, axis.upper())}
+                      '= hip point of a sunbather on their back, lyingHeadPoints / lyingFeetPoints = head / feet ends. '
+                      'Play beachfolk `sunbathe` with dir = lyingFeetDirs[i] (its dir is where the FEET point); '
+                      'lyingDirs = hips -> head, kept for reference.' % (name, axis.upper())}
     return c.image(), (ax, ay), extra
 
 
@@ -630,21 +843,36 @@ TEXTURES = {
 }
 
 
-def kit_compose_preview(kit, sand, snow):
-    """A small cell map composed with the kit (exactly the placement rules) for the preview sheet."""
-    grid = ["SSSSSSSS",
-            "SSAAAASS",
-            "SAAAAAAS",
-            "SAAAAAAS",
-            "SSAAASSS",
-            "SSSAASSS",
+WET_GRID = ["AAAAAAAA",
+            "AAAAAAAA",
+            "AAASSAAA",
+            "AASSSSAS",
+            "SSSSSSSS",
             "SSSSSSSS"]
+
+
+def kit_compose_preview(kit, sand, snow, prefix='ground_sand_snow', grid=None):
+    """A small cell map composed with the kit (exactly the placement rules) for the preview sheet.  The 'S' cells get
+    `snow` (for prefix ground_sand_wet: the WET sand texture), the 'A' cells `sand`; pieces = <prefix>_edge_* ..."""
+    grid = grid or ["SSSSSSSS",
+                    "SSAAAASS",
+                    "SAAAAAAS",
+                    "SAAAAAAS",
+                    "SSAAASSS",
+                    "SSSAASSS",
+                    "SSSSSSSS"]
     nj, ni = len(grid), len(grid[0])
 
     def cell(i, j):
         if 0 <= j < nj and 0 <= i < ni:
             return grid[nj - 1 - j][i]
-        return 'S'
+        if prefix == 'ground_sand_snow':
+            return 'S'
+        if j < 0:
+            return 'S'                     # the wet band continues toward the sea ...
+        if j >= nj:
+            return 'A'
+        return grid[nj - 1 - j][min(ni - 1, max(0, i))]     # ... and sideways
     G = (40, 40 + nj * 32)
     Wd, Hd = 80 + 64 * (ni + nj), 80 + 32 * (ni + nj)
 
@@ -658,43 +886,53 @@ def kit_compose_preview(kit, sand, snow):
             for tx in range(0, Wd, tex.width):
                 t.paste(tex, (tx, ty))
         return t
-    img.alpha_composite(tile(snow))
     mask = Image.new('L', (Wd, Hd), 0)
     dr = ImageDraw.Draw(mask)
-    for j in range(nj):
-        for i in range(ni):
-            if cell(i, j) == 'A':
-                dr.polygon([L(i, j), L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)], fill=255)
-    img.paste(tile(sand), (0, 0), mask)
+    if prefix == 'ground_sand_snow':
+        img.alpha_composite(tile(snow))
+        for j in range(nj):
+            for i in range(ni):
+                if cell(i, j) == 'A':
+                    dr.polygon([L(i, j), L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)], fill=255)
+        img.paste(tile(sand), (0, 0), mask)
+    else:                                   # dry sand everywhere, the wet texture on the 'S' (wet) cells
+        img.alpha_composite(tile(sand))
+        for j in range(-nj, 2 * nj):
+            for i in range(-ni, 2 * ni):
+                if cell(i, j) == 'S':
+                    dr.polygon([L(i, j), L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)], fill=255)
+        img.paste(tile(snow), (0, 0), mask)
     owned = set()
     pieces = []
-    for j in range(-1, nj + 1):
-        for i in range(-1, ni + 1):
+    JR = range(-1, nj + 1) if prefix == 'ground_sand_snow' else range(-nj, 2 * nj)
+    IR = range(-1, ni + 1) if prefix == 'ground_sand_snow' else range(-ni, 2 * ni)
+    for j in JR:
+        for i in IR:
             q = {(-1, 1): cell(i - 1, j), (1, 1): cell(i, j), (1, -1): cell(i, j - 1), (-1, -1): cell(i - 1, j - 1)}
             snow_q = [k for k, v in q.items() if v == 'S']
             if len(snow_q) == 1:
                 qx, qy = snow_q[0]
-                name = 'ground_sand_snow_corner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[snow_q[0]]
+                name = prefix + '_corner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[snow_q[0]]
             elif len(snow_q) == 3:
                 sand_q = [k for k, v in q.items() if v != 'S'][0]
                 qx, qy = sand_q
-                name = 'ground_sand_snow_inner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[sand_q]
+                name = prefix + '_inner_' + {(-1, 1): 'n', (1, 1): 'e', (1, -1): 's', (-1, -1): 'w'}[sand_q]
             else:
                 continue
             pieces.append((name, L(i, j)))
             owned.add(('x', i if qx > 0 else i - 1, j))
             owned.add(('y', i, j if qy > 0 else j - 1))
-    for j in range(-1, nj + 1):
-        for i in range(-1, ni + 1):
+    for j in JR:
+        for i in IR:
             a, b = cell(i, j - 1), cell(i, j)
             if a != b and ('x', i, j) not in owned:
-                nm = 'ground_sand_snow_edge_x' if b == 'S' else 'ground_sand_snow_edge_x_near'
+                nm = prefix + '_edge_x' if b == 'S' else prefix + '_edge_x_near'
                 v = (i * 7 + j * 13) % 3
                 p = L(i, j)
                 pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] + 16)))
             a, b = cell(i - 1, j), cell(i, j)
             if a != b and ('y', i, j) not in owned:
-                nm = 'ground_sand_snow_edge_y' if a == 'S' else 'ground_sand_snow_edge_y_near'
+                nm = prefix + '_edge_y' if a == 'S' else prefix + '_edge_y_near'
                 v = (i * 7 + j * 13) % 3
                 p = L(i, j)
                 pieces.append((nm if v == 0 else '%s_%d' % (nm, v), (p[0] + 32, p[1] - 16)))
@@ -716,6 +954,10 @@ def preview(texs, kit, decals, out):
         if os.path.exists(os.path.join(ROOT, 'assets', 'ground', 'ground_snow.png')) else \
         Image.new('RGBA', (64, 64), hexc_rgba(SNOW))
     comp = kit_compose_preview(kit, texs['ground_sand'].convert('RGBA'), snow)
+    comp_wet = None
+    if 'ground_sand_wet_edge_x' in kit and 'ground_sand_wet' in texs:
+        comp_wet = kit_compose_preview(kit, texs['ground_sand'].convert('RGBA'), texs['ground_sand_wet'].convert('RGBA'),
+                                       prefix='ground_sand_wet', grid=WET_GRID)
     W = 1700
     # layout: textures row, kit composite, decals shelf on sand
     from PIL import ImageFont
@@ -741,7 +983,7 @@ def preview(texs, kit, decals, out):
         sx += slot + 24
         sh = max(sh, im.height)
     shelf_h = sy + sh + 40
-    H = 40 + 512 + 40 + comp.height + 40 + shelf_h
+    H = 40 + 512 + 40 + comp.height + 40 + shelf_h + ((comp_wet.height + 30) if comp_wet else 0)
     sheet = Image.new('RGBA', (W, H), (226, 232, 240, 255))
     d = ImageDraw.Draw(sheet)
     d.text((10, 10), 'assets/beach ground (gen_beach_ground.py): seamless textures tiled 2x2 at 0.5x, the sand<->snow '
@@ -757,6 +999,12 @@ def preview(texs, kit, decals, out):
                                              '/ y_near,\n3 variants each, corner_* and inner_*)', fill=(30, 34, 44),
            font=f)
     y1 = y0 + comp.height + 30
+    if comp_wet:
+        sheet.alpha_composite(comp_wet, (10, y1))
+        d.text((10 + comp_wet.width + 10, y1 + 20), 'dry <-> wet kit (polish): wet cells along the sea\n(ground_sand_wet_'
+                                                    'edge_* / corner_* / inner_*,\nsame placement rules: wetKit)',
+               fill=(30, 34, 44), font=f)
+        y1 += comp_wet.height + 30
     sand = Image.new('RGBA', (W, shelf_h), (241, 227, 196, 255))
     tex = texs['ground_sand'].convert('RGBA')
     for ty in range(0, shelf_h, 512):
@@ -812,6 +1060,26 @@ def merge_manifest(entries, images, atlas_json_key):
                       'first cell of both edges leaving the point toward its quarter: skip the edge pieces there. '
                       'Diagonal checkerboards (two snow cells on a diagonal) are not supported.',
         'reference': 'tools/fx/gen_beach_ground.py kit_compose_preview() implements these rules.'}
+    man['wetKit'] = {
+        'cellM': SEG, 'cellPx': {'x': [64, 32], 'y': [64, -32]},
+        'what': 'dry <-> wet sand transition (polish): ground_sand_wet_edge_x / _x_near / _y / _y_near (3 variants each), '
+                'ground_sand_wet_corner_n/e/s/w, ground_sand_wet_inner_n/e/s/w.',
+        'layers': ['1 ground_snow everywhere', '2 ground_sand on DRY sand cells, ground_sand_wet on WET cells (the band '
+                   'of cells along the sea)', '3 ground_sand_wet_* on the dry/wet cell borders (then ground_sand_snow_* '
+                   'on sand/snow borders)', '4 decal_*', 'then depth-sorted sprites'],
+        'rules': 'Exactly the sandKit edgeRule + cornerRule with SNOW read as WET and SAND read as DRY: X edge between '
+                 'cells (i,j-1) and (i,j): ground_sand_wet_edge_x if the WET cell is (i,j) (+Y), _x_near if it is '
+                 '(i,j-1) (-Y) - on this beach (sea at -Y) the shore band uses _x_near; anchor = lattice (i,j) + '
+                 '(32,16). Y edge between (i-1,j) and (i,j): _y if the wet cell is (i-1,j), _y_near if it is (i,j); '
+                 'anchor = lattice (i,j) + (32,-16). Variant = (i*7 + j*13) mod 3. Corners: one WET quarter -> '
+                 'ground_sand_wet_corner_<q>, three WET quarters -> ground_sand_wet_inner_<dry q>; a corner owns the '
+                 'first cell of both edges toward its quarter. No piece is needed where wet sand meets the water.',
+        'look': 'each piece paints the wet sand tone over the cell line, pushes the wet edge 0.1 - 0.3 m into the dry '
+                'cell along a wavy line, then a ragged damp ramp ~0.8 m (40 - 60 px) with a soft band of dried foam at '
+                'the tide mark. Colour = water_shore_ramp sand row at u ~0.5, like ground_sand_wet and the Water.js '
+                'swash band (palette tropical, wet #BFA27A at 0.45), so the baked and the animated wet sand meet '
+                'without a step.',
+        'reference': 'tools/fx/gen_beach_ground.py kit_compose_preview(prefix="ground_sand_wet") implements these rules.'}
     man['generator'] = man.get('generator') or 'tools/blender/beach_render.py + beach_pack.py; tools/fx/gen_beach_ground.py'
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as fh:
@@ -827,6 +1095,9 @@ def build(only=None):
             continue
         texs[k] = F.to_rgb_image(fn())
     kit = build_kit() if not only or any(k.startswith('ground_sand_snow') for k in only) else {}
+    if (not only or any(k.startswith('ground_sand_wet_') for k in only)):
+        wet_img = texs.get('ground_sand_wet') or F.to_rgb_image(tex_sand_wet())
+        kit.update(build_wet_kit(wet_img))
     decals = build_decals() if not only or any(k.startswith('decal_') for k in only) else {}
     if only:
         ents = [(k, im) for k, im in texs.items()] + [(k, v[0]) for k, v in list(kit.items()) + list(decals.items())

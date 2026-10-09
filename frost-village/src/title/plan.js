@@ -49,8 +49,9 @@ export function firstPaintPacks(plan) {
 /** what streams in while the title plays, in the order it is needed */
 export function streamPacks(plan, intro) {
   if (intro) {
-    // (2 packs download at once: stage 2 first, then the town with the night sky, the city, the logo parts)
-    const p = ['art:pop', 'g2', 'g3', 'art:night', 'cues', 'g4', 'art:city', 'art:parts', 'art:shine'];
+    // (2 packs download at once, the island first: on a slow phone network the next stage matters more than
+    // the painted stars or the pop sparkle, which have stand-ins / the game's own puff until they land)
+    const p = ['g2', 'g3', 'art:pop', 'g4', 'art:night', 'cues', 'art:city', 'art:parts', 'art:shine'];
     return p.filter((n) => (n[0] === 'g' ? +n.slice(1) <= plan.cap : n !== 'art:city' || plan.cap >= 4));
   }
   const p = [];

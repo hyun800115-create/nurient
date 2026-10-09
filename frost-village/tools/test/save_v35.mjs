@@ -37,10 +37,10 @@ const v3 = {
   v3: { workshops: { toolsmith: { ins: { item_plank: 2, item_ingot: 1 }, outs: { item_axe: 1 } } } },
 };
 
-check('SAVE_VERSION is 4 (v3.5)', SAVE_VERSION === 4, String(SAVE_VERSION));
+check('SAVE_VERSION is 4 or later (v3.5: 4, v4: 5)', SAVE_VERSION >= 4, String(SAVE_VERSION));
 const m = MIGRATE[3](clone(v3));
 const s = sanitizeSave(m);
-check('v3 -> v3.5: version bumped', m.v === 4 && s.v === 4);
+check('v3 -> v3.5: version bumped', m.v === 4 && s.v >= 4);
 check('v3 -> v3.5: coins, steps, upgrades, pad payments kept', s.coins === 4321 && DONE_V2.every((k) => s.progress.done[k]) && s.progress.done.tower_east && s.progress.up.capacity === 4 && s.progress.paid.hire2_lumberjack === 250 && s.progress.got.hire2_lumberjack.item_axe === 1);
 check('v3 -> v3.5: every line keeps its automation (operator + raw porter)', STATIONS.every((st) => s.progress.done['op_' + st] && s.progress.done['raw_' + st]), Object.keys(s.progress.done).filter((k) => /^(op|raw)_/.test(k)).join(','));
 check('v3 -> v3.5: the toolsmith and the cannery being built keep working by themselves', s.progress.done.op_toolsmith && s.progress.done.op_cannery);
@@ -64,7 +64,7 @@ check('v3 -> v3.5: piles start empty, the dog starts as a stranger', Object.valu
 // the whole chain v1 -> v4
 {
   const z = migrate({ v: 1, coins: 7, progress: { done: { hire_fisherman: true, hire2_fisherman: true } } });   // (v1's hire2_fisherman = the grill porter)
-  check('v1 -> v2 -> v3 -> v3.5 chain', z.v === 4 && z.progress.done.porter_grill && z.progress.done.op_grill && z.progress.done.raw_grill && z.coins === 7, JSON.stringify(z.progress.done));
+  check('v1 -> v2 -> v3 -> v3.5 chain', z.v === SAVE_VERSION && z.progress.done.porter_grill && z.progress.done.op_grill && z.progress.done.raw_grill && z.coins === 7, JSON.stringify(z.progress.done));
 }
 // hand-edited / corrupted v3.5 fields never brick the game
 {
@@ -116,7 +116,7 @@ if (process.argv.includes('--browser')) {
     check('v3 save: the cannery finishes and has its operator', st.built.cannery === 1 && st.ops.cannery && st.ops.cannery.hired, JSON.stringify({ built: st.built.cannery, op: st.ops.cannery, site: st.sites.e_m2 }));
     await page.evaluate(() => window.__FV.save());
     const raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
-    check('saved again as v4 with piles + dog', raw.v === 4 && raw.labour && raw.labour.piles && raw.dog && typeof raw.dog.love === 'number', JSON.stringify({ v: raw.v, l: raw.labour, d: raw.dog }));
+    check('saved again as the current version with piles + dog', raw.v === SAVE_VERSION && raw.labour && raw.labour.piles && raw.dog && typeof raw.dog.love === 'number', JSON.stringify({ v: raw.v, l: raw.labour, d: raw.dog }));
 
     // 2. the v4 round trip keeps piles and affection
     // (no meat porter in this save, so nobody empties the meat rack while the game boots)

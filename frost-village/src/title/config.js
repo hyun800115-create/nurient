@@ -61,8 +61,9 @@ export const TITLE_CFG = {
   introMode: 'first',
   // growth shown on the idle title when the save reached a stage the title has not shown yet
   growSec: 2.4,
-  // idle title time of day: 'night' | 'dusk' | 'day' | 'auto' (dusk for the camp / village, night later)
-  idleTime: 'night',
+  // idle title time of day: 'auto' (a warm dusk with the first lights for the camp and the village, the
+  // starry night for the town and the city) | 'night' | 'dusk' | 'day'
+  idleTime: 'auto',
   // localStorage key of the title's own little memory (intro seen, last stage shown). Never the save.
   prefsKey: 'frostVillage.title.v1',
   // phones that report little memory (navigator.deviceMemory <= 2) never load stages above this

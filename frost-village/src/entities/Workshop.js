@@ -10,7 +10,6 @@ import { TOOLS } from '../data/items.js';
 import { PRIO } from '../systems/Logistics.js';
 import { Station } from './Station.js';
 import { ItemStack } from './ItemStack.js';
-import { Character } from './Character.js';
 
 export const RECIPES = {
   toolsmith: {
@@ -199,32 +198,5 @@ export class Workshop extends Station {
     const fx = this.gs.effects;
     if (s.ins) for (const ty in s.ins) if (this.inputTypes.indexOf(ty) >= 0) for (let k = 0; k < Math.min(s.ins[ty], this.bal.inputMax); k++) this.inStack.push(ty, null, fx);
     if (s.outs) for (const ty in s.outs) for (let k = 0; k < s.outs[ty] && this.outStack.count < this.outStack.max; k++) this.outStack.push(ty, null, fx);
-  }
-}
-
-// ------------------------------------------------------------------ the smith (v3)
-
-/** the blacksmith resident working the forge: stands at the toolsmith's staff spot, cheers at every tool */
-export class Smith extends Character {
-  constructor(gs, ws, key, x, y) {
-    super(gs, key, x, y, { radius: 12, dir: 1 });
-    this.ws = ws;
-    this.noXray = true;
-    this.happyT = 0;
-    this.lookT = 3;
-    this.sync(0);
-  }
-  cheer() {
-    if (!this.gs.isOnScreen(this.x, this.y, 80)) return;
-    this.play(Math.random() < 0.5 ? 'happy' : 'talk', true);
-    this.happyT = 0.9;
-  }
-  update(dt) {
-    if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) { this.dir = 1; this.play('idle', true); } }
-    this.sync(dt);
-  }
-  sync(dt) {
-    super.sync(dt);
-    if (this.ws) { const d = this.ws.y + 1; if (this.sprite.depth !== d) this.sprite.setDepth(d); }
   }
 }

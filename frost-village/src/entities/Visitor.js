@@ -18,7 +18,8 @@ export class Visitor extends Customer {
   /** plan: { targets: [market...], want: { type, count } } */
   constructor(gs, nb, citizen, x, y, plan) {
     // (the Customer base wants a seller with a line; a founded shop target is handled by this class)
-    const first = plan.targets.find((q) => q && q.queue) || gs.market;
+    // ((v4-B) a founded Shop has a queue too, but no entry path: the base class gets a real seller)
+    const first = plan.targets.find((q) => q && q.queue && typeof q.entryPath === 'function') || gs.market;
     super(gs, first, 'tf:' + citizen.person.base, x, y, plan.want, 1, null, { person: citizen.person });
     this.nb = nb;
     this.citizen = citizen;

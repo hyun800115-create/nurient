@@ -1066,8 +1066,9 @@ def b_police_station():
     mark('customer', (door_x + 0.45, -0.85, PL), facing=(-0.3, 1, 0))
     for y in (-0.95, -0.35):
         mark('seat', (bench_x + 0.2, y, PL + 0.45), facing=(1, 0, 0))
-    mark('cell', (-2.1, 0.8, PL), facing=(0.4, -1, 0))
-    mark('cell', (-2.45, 0.6, PL), facing=(0.4, -1, 0))
+    # inmates stand on the cell rug facing the camera so the face reads between the bars (not behind the corner post)
+    mark('cell', (-1.94, 1.0, PL), facing=(1, 0, 0))
+    mark('cell', (-2.0, 0.55, PL), facing=(1, 0, 0))
     mark('cellseat', (bx_ + 0.33, by_ - 0.1, PL + 0.45), facing=(1, 0, 0))
     mark('celldoor', ((cdx0 + cdx1) / 2, cy0 - 0.45, PL), facing=(0, 1, 0))
     mark('carbay', (2.11, 0.0, 0.0), facing=(0, -1, 0))

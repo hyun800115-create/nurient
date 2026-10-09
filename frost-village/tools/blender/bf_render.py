@@ -163,6 +163,51 @@ def add_water_to_specs(L, uw_visible):
 
 # --------------------------------------------------------------------------- posing
 
+# Sunbathing ('lie' head pose): the wide-brim sun hats are laid over the face (napping in the sun) instead of
+# standing on edge behind the lying head like a big disc.  hat -> its own tilt (bf_parts), cancelled on the face.
+LIE_FACE_HATS = {'straw_hat': bp.STRAW_TILT, 'sun_hat_wide': bp.SUNHAT_TILT}
+LIE_HAT_OFFSET = (0.0, -0.035, 0.0)        # head-centre space: hat opening just in front of the face
+
+
+def hat_pivots(rig, ctx):
+    """An empty at the head centre per LIE_FACE_HATS part; the part's head-parented objects are re-parented to it
+    (world transforms kept), so set_lie_hats() can swing the whole hat as one piece."""
+    head = rig.j['head']
+    bpy.context.view_layer.update()
+    piv = {}
+    for pn in LIE_FACE_HATS:
+        objs = [o for cname, c in ctx.cols.items() if cname.startswith(f'P.{pn}.') for o in c.objects
+                if o.parent == head]
+        if not objs:
+            continue
+        e = bpy.data.objects.new(f'lie_pivot_{pn}', None)
+        for c in head.users_collection:
+            c.objects.link(e)
+        e.parent = head
+        e.location = (0.0, 0.0, tb.HEAD_C)
+        bpy.context.view_layer.update()
+        for o in objs:
+            mw = o.matrix_world.copy()
+            o.parent = e
+            o.matrix_parent_inverse.identity()
+            o.matrix_world = mw
+        piv[pn] = e
+    bpy.context.view_layer.update()
+    return piv
+
+
+def set_lie_hats(piv, on):
+    for pn, e in piv.items():
+        if on:
+            e.rotation_euler = (math.radians(90.0 - LIE_FACE_HATS[pn]), 0.0, 0.0)
+            e.location = (LIE_HAT_OFFSET[0], LIE_HAT_OFFSET[1], tb.HEAD_C + LIE_HAT_OFFSET[2])
+        else:
+            e.rotation_euler = (0.0, 0.0, 0.0)
+            e.location = (0.0, 0.0, tb.HEAD_C)
+    if piv:
+        bpy.context.view_layer.update()
+
+
 def stabilize_head3(rig, hp, hd):
     down, tilt, turn = ba.head_rot3(hp, hd)
     target = tr.q_axis((0, 0, 1), bc.DIR_YAW[hd] + turn) @ tr.q_axis((1, 0, 0), down) @ tr.q_axis((0, 1, 0), tilt)
@@ -640,6 +685,7 @@ def render_head(opt):
     face_sets = list(tb.FACE_SETS)
     ctx = tb.Ctx('layer')
     rig, ch = tr.build(ctx, 'adult_slim', parts, face_sets)
+    piv = hat_pivots(rig, ctx)
     wat = water_block(ctx)
     sc, cam = tr.setup_scene(int(opt['samples']), HEAD_ANCHOR)
     sc.cycles.transparent_max_bounces = 32
@@ -673,6 +719,7 @@ def render_head(opt):
         if not todo:
             continue
         pose_head_only3(rig, hp, d)
+        set_lie_hats(piv, hp == 'lie')
         hc = rig.world('head', (0, 0, tb.HEAD_C))
         zw = hc.z - ba.SWIM_HEAD_CUT
         set_water(wat, hp == 'swim', zw)
@@ -716,6 +763,7 @@ def render_full(opt):
             ctx.colors.setdefault(slot, bpr.PALETTES3[pal][0])
         hat = any(tp.PARTS[p].family == 'hat' and tp.PARTS[p].cls == 'full' for p in parts)
         rig, ch = tr.build(ctx, cb_['base'], parts, (cb_['face'],), hat_variants=hat)
+        piv = hat_pivots(rig, ctx)
         wat = water_block(ctx)
         root0 = rig.rest_loc['root'].copy()
         sc, cam = tr.setup_scene(int(opt['samples']), ANCHOR, FRAME, FRAME)
@@ -753,6 +801,7 @@ def render_full(opt):
             rig.rest_loc['root'] = root0
             set_water(wat, anim in ba.WATER_ANIMS, 0.0)
             pose_body3(rig, anim, d, i)
+            set_lie_hats(piv, tl['_hp'] == 'lie')
             bc.render_to(os.path.join(outdir, f'{anim}_{d}_{i}.png'))
         print(f'[full3] {cb_["name"]} {len(todo)} frames  {time.time() - t0:.0f}s', flush=True)
 
