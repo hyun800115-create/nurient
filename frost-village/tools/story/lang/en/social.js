@@ -33,7 +33,7 @@ export default {
   'sweet.married': [
     '?=q =dinner? *3 [{V}, what should we have for dinner?|{V}, what shall we have for dinner?|{V}, what would you like for supper?]', '?=invite? [{V}, let’s go shopping together.|{V}, let’s go shopping together.|{V}, shall we shop together?]', '?=praise? [{V}, you look extra handsome today.|{V}, you look lovely today.|You look very fine today.]',
     '?haskids =hw? [I should check the kids’ homework.|I’d better check the kids’ homework.|I shall check the children’s homework.]', '?elder =q =oldq? [{V}, remember when we were young?|{V}, do you remember our younger days?|Do you remember our youth?]',
-    '?=q =save? [{V}, how much did we save this month?|{V}, how much did we save this month?|How much have we saved this month?]', '?=tired? [{V}, you look tired today.|{V}, you look tired today.|You look tired today.]', '?=happy? [I’m so glad I married you, {V}.|I’m so happy with you, {V}.|I am so glad we are together.]',
+    '?=q =save? [{V}, how much did we save this month?|{V}, how much did we save this month?|How much have we saved this month?]', '?=tired? [{V}, you look tired today.|{V}, you look tired today.|You look tired today.]', '?=happy? [I’m so glad I married you.|I’m so happy with you.|I am so glad we are together.]',
   ],
   'sweet.married.re': [
     '?^dinner? *8 [How about your favourite, grilled fish?|How about your favourite grilled fish?|Grilled fish, perhaps?]', '?^dinner? *5 [I’ll make fishcake soup tonight!|I’ll make fishcake soup!|I shall make fishcake soup.]',

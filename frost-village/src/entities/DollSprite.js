@@ -226,7 +226,8 @@ export class DollPool {
     this.stats = { dolls: 0, full: 0, lite: 0, dot: 0, images: 0 };
     this.low = false;        // low graphics tier (BUILD-B sets it)
     this._list = [];
-    gs.events.once('shutdown', () => { this.dolls.length = 0; });
+    // (a restarted scene is the same object: the next game makes a new pool)
+    gs.events.once('shutdown', () => { this.dolls.length = 0; this.free.length = 0; this.freeDots.length = 0; if (gs.dollPool === this) gs.dollPool = null; });
   }
 
   add(d) { this.dolls.push(d); this.t = 0; }

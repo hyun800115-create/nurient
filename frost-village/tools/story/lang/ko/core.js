@@ -25,7 +25,7 @@ export default {
   // optional little openers before a statement
   lead: [
     '*14 ', '*2 [있잖아, |있잖아요, |저기요, ]', '[근데 |그런데 |그런데 ]', '[아 참, |아 참, |아 참, ]', '[야, |저기, |저, ]',
-    '?chatty? *2 [대박 소식! |대박 소식이에요! |재미있는 소식이 있어요. ]', '?gossip? *2 [이거 비밀인데, |이거 비밀인데요, |이거 비밀인데요, ]',
+    '?chatty? *2 [대박 소식! |대박 소식이에요! |재미있는 소식이 있어요. ]', '?gossip !news? *2 [이거 비밀인데, |이거 비밀인데요, |이거 비밀인데요, ]',
     '?elder ban? [이보게, |이보게, |이보게, ]', '?kid ban? [있잖아 있잖아, |있잖아요, |있잖아요, ]', '?teen ban? [헐, 대박. |헐, 대박. |저기요, ]',
     '?shy? [저… |저… |저… ]', '?fresh? [방금 들은 건데, |방금 들은 건데요, |방금 들은 건데요, ]',
   ],
@@ -51,7 +51,9 @@ export default {
 
   // ---------------------------------------------------------------- greetings
   // =tag marks what a line says (lang/conds.js TAGS) so the reply answers it: ^tag in the reply rules.
-  greet: ['*5 #greet.core#', '*3 #greet.core# #greet.add#', '?!rival? *2 #greet.core# #greet.ask#'],
+  greet: ['?!rival? *5 #greet.core#', '?!rival? *3 #greet.core# #greet.add#', '?!rival? *2 #greet.core# #greet.ask#', '?rival? #greet.rival#'],
+  // rivals greet each other coldly (comic, never mean)
+  'greet.rival': ['*5 […어, 너구나.|…아, 네.|…아, 안녕하세요.]', '*3 [흥, 또 너야?|흥, 또 그쪽이에요?|…예, 안녕하세요.]', '[…안녕.|…안녕하세요.|…안녕하십니까.]', '[하필 여기서 만나네.|하필 여기서 만나네요.|하필 여기서 뵙네요.]', '?kid? [흥! 메롱!|흥!|흥!]'],
   'greet.core': [
     '*3 [안녕, {V}!|{V}, 안녕하세요!|{V}, 안녕하세요!]',
     '[{V}, 안녕!|안녕하세요, {V}!|안녕하세요, {V}!]',
@@ -105,7 +107,7 @@ export default {
     '?!@q =q =how? [요즘 어떻게 지내?|요즘 어떻게 지내요?|요즘 어떻게 지내세요?]', '?!@q =q =how? [별일 없지?|별일 없죠?|별일 없으시죠?]', '?!@q =q =how? [잘 지냈어?|잘 지냈어요?|잘 지내셨어요?]', '?!@q =q =doing? [오늘 뭐 했어?|오늘 뭐 했어요?|오늘 뭐 하셨어요?]',
   ],
   // the reply to a greeting: answer the question, react to what was said, or just greet back
-  'greet.re': ['?^q? #qa#', '?!^q? *60 #resp#', '?!^q? *5 #greet.re.core#', '?!^q? *2 #greet.re.core# #greet.add#', '?!rival !^q? [{V}, 안녕!|{V}, 안녕하세요!|{V}, 안녕하세요!]', '?!rival !^q? [{V}, 반가워!|{V}, 반가워요!|{V}, 반갑습니다!]'],
+  'greet.re': ['?rival? *200 […흥.|…네.|…네.]', '?rival? *100 […뭐.|…뭐요.|…예.]', '?^q? #qa#', '?!^q? *60 #resp#', '?!^q? *5 #greet.re.core#', '?!^q? *2 #greet.re.core# #greet.add#', '?!rival !^q? [{V}, 안녕!|{V}, 안녕하세요!|{V}, 안녕하세요!]', '?!rival !^q? [{V}, 반가워!|{V}, 반가워요!|{V}, 반갑습니다!]'],
   'greet.re.core': [
     '*4 [어, 안녕!|네, 안녕하세요!|네, 안녕하세요!]', '*2 [응, 안녕!|네, 반가워요!|네, 반갑습니다!]', '[{L}도 안녕!|{V}도 안녕하세요!|네, {V}도 안녕하세요!]', '[오, {V}!|아, {V}!|아이고, {V}!]',
     '?morning? *2 [응, 좋은 아침!|네, 좋은 아침이에요!|네, 좋은 아침입니다!]', '?morning? [아침부터 반갑다!|아침부터 반갑네요!|아침부터 반갑습니다!]',
@@ -179,7 +181,8 @@ export default {
     '?^hungry !hungry? [난 아까 먹었어!|저는 아까 먹었어요!|저는 아까 먹었어요.]',
   ],
   'thanks.praise': ['[헤헤, 고마워!|헤헤, 고마워요!|아이고, 고맙습니다.]'],
-  bye: ['?!athome? *5 #bye.core#', '?!athome? *2 #bye.core# #bye.add#', '?athome? #bye.home#'],
+  bye: ['?!athome !rival? *5 #bye.core#', '?!athome !rival? *2 #bye.core# #bye.add#', '?athome !rival? #bye.home#', '?rival? #bye.rival#'],
+  'bye.rival': ['*4 […그럼.|…그럼 이만.|…그럼 이만.]', '[흥, 간다!|흥, 갈게요!|가 보겠습니다.]', '[다음엔 비켜 줘.|다음엔 좀 비켜 줘요.|다음엔 좀 비켜 주시지요.]', '?kid? [메롱! 간다!|메롱!|메롱!]'],
   // at home with the family nobody says goodbye like leaving
   'bye.home': [
     '?housemate? *3 [나 방에 들어갈게!|저 방에 들어갈게요!|방에 들어가 보겠습니다.]', '?housemate? *2 [이따 저녁 때 봐!|이따 저녁 때 봐요!|이따 저녁 때 뵐게요.]', '?housemate kid? *3 [나 숙제하러 갈게!|저 숙제하러 갈게요!|숙제하러 갈게요.]', '?housemate elder? *2 [나는 좀 누워야겠다.|저는 좀 누워야겠어요.|좀 누워 있겠습니다.]',
@@ -205,7 +208,7 @@ export default {
     '?snow !@snowy? [눈길 미끄러워!|눈길 미끄러워요!|눈길 미끄러우니 조심하세요.]', '?cold !@cold? [손 꽁꽁 얼지 않게!|손 꽁꽁 얼지 않게요!|손 시리지 않게 조심하세요.]', '?evening? [푹 쉬어!|푹 쉬어요!|푹 쉬세요.]',
     '?kid? [나 이제 집에 가야 돼!|저 이제 집에 가야 돼요!|저 이제 가 봐야 돼요!]', '?close? [연락할게!|연락할게요!|연락드릴게요.]',
   ],
-  'bye.re': ['?athome? *40 #bye.home.re#', '?!athome? *5 #bye.re.core#', '?!athome? *2 #bye.re.core# #bye.add#', '?!rival !athome? *2 [{L}도 잘 가!|{V}도 들어가세요!|{V}도 살펴 가세요!]', '?!rival !athome? [잘 가, {V}!|조심히 가요, {V}!|살펴 가세요, {V}!]'],
+  'bye.re': ['?rival? *80 [흥.|…예.|…예.]', '?rival? *40 […그래.|…네.|…네.]', '?athome !rival? *40 #bye.home.re#', '?!athome? *5 #bye.re.core#', '?!athome? *2 #bye.re.core# #bye.add#', '?!rival !athome? *2 [{L}도 잘 가!|{V}도 들어가세요!|{V}도 살펴 가세요!]', '?!rival !athome? [잘 가, {V}!|조심히 가요, {V}!|살펴 가세요, {V}!]'],
   'bye.re.core': [
     '*3 [응, 잘 가!|네, 들어가세요!|네, 살펴 가세요!]', '[그래, 또 보자!|네, 또 봬요!|네, 또 뵙겠습니다!]', '[응, 너도!|네, 그쪽도요!|네, 들어가세요!]',
     '?night? *2 [응, 잘 자!|네, 안녕히 주무세요!|네, 안녕히 주무세요!]', '?cold? [너도 감기 조심!|감기 조심하세요!|감기 조심하세요!]',

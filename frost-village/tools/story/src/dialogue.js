@@ -74,6 +74,7 @@ export class Dialogue {
     this.cur = { b: null, sp: null, ls: null, rel: null, lang: 'ko', f: null, cache: Object.create(null), ext: null };
     this.fallback = new Map();
     this.mask = [0, 0, 0, 0, 0];
+    this.press = false;     // writing the paper: people are named in press style
     this.stats = { lines: 0, rerolls: 0, misses: 0, missRules: Object.create(null) };
   }
 
@@ -309,6 +310,10 @@ export class Dialogue {
       if (this.count(b) > 1) set(C.plural);
       if (f.v > 0) set(C.pos); else if (f.v < 0) set(C.neg);
       if (f.k === 'snowman' && f.n >= 2) set(C.big);
+      if (f.k === 'apology' && f.ref > 0) {
+        const rf = e.facts.get(f.ref), rk = rf ? rf.k : '';
+        if (rk === 'theft') set(C.ref_theft); else if (rk === 'queue_jump') set(C.ref_queue); else if (rk === 'window') set(C.ref_window); else if (rk === 'scuffle') set(C.ref_scuffle);
+      }
       if (f.a >= 0 && !anon && e.people[f.a]) {
         slots |= S('X');
         const xa = e.people[f.a], gx = groupOf(e, xa);
@@ -388,8 +393,28 @@ export class Dialogue {
   refer(sp, t, lang) {
     if (!t) return lang === 'en' ? 'someone' : '누군가';
     if (t === CHIEF) return lang === 'en' ? 'the chief' : '촌장님';
+    if (this.press) return this.pressName(t, lang);
     if (lang === 'en') return this.referEn(sp, t);
     return this.referKo(sp, t).text;
+  }
+
+  /** how the paper names people: full name with a neutral title (박민수 씨, 김도윤 어린이, 최순자 어르신 …) */
+  pressName(t, lang) {
+    const e = this.e, g = groupOf(e, t);
+    if (lang === 'en') {
+      const full = (t.sur ? this.surEn(t) + ' ' : '') + this.nameEn(t);
+      if (t.titleEn && !t.given) return t.titleEn;
+      if (/^(police|detective)$/.test(t.job)) return 'Officer ' + full;
+      if (t.job === 'firefighter') return 'Firefighter ' + full;
+      if (g === G_TODDLER) return 'baby ' + this.nameEn(t);
+      return g <= G_KID ? 'little ' + full : full;
+    }
+    if (t.title && !t.given) return t.title;
+    const full = (t.sur || '') + t.given;
+    if (/^(police|detective)$/.test(t.job)) return full + ' ' + JOBS[t.job].title;
+    if (t.job === 'firefighter') return full + ' 소방관';
+    if (g === G_TODDLER) return '아기 ' + t.given;
+    return full + (g <= G_KID ? ' 어린이' : g === G_TEEN ? ' 학생' : g === G_ELDER ? ' 어르신' : ' 씨');
   }
 
   referKo(sp, t) {
@@ -687,9 +712,12 @@ export class Dialogue {
     const mk = (f) => { const b = { w: -1, to: -1, r: '', f, x: 0, d: 0, alt: -1, src: SRC_NEWS, from: -1, o: -1, p: -1, i: -1, h: -1, n: 0, s: '', fl: [] }; return b; };
     const out = { masthead: lang === 'en' ? 'The Pinecone Times' : '솔방울 신문', no: paper.no, day: paper.day, date: lang === 'en' ? 'Day ' + (paper.day + 1) : (paper.day + 1) + '일째 아침', headline: '', lead: '', articles: [], sidebar: [], byline: '' };
     const sp = reporter || e.alive[0];
+    this.press = true;
     if (paper.head) {
       out.headline = this.written('news.head.' + paper.head.k, lang, { b: mk(paper.head), sp });
       out.lead = this.written('news.body.' + paper.head.k, lang, { b: mk(paper.head), sp });
+      const g = this.grammar(lang);
+      if (g.has('news.more.' + paper.head.k)) out.lead += ' ' + this.written('news.more.' + paper.head.k, lang, { b: mk(paper.head), sp });
     } else {
       out.headline = this.written('news.quiet', lang, { b: mk(null), sp });
     }
@@ -703,6 +731,7 @@ export class Dialogue {
     for (const f of paper.wanted) out.sidebar.push(this.written('news.wanted', lang, { b: mk(f), sp }));
     { const b = mk(null); b.n = paper.rate; out.sidebar.push(this.written('news.rate', lang, { b, sp })); }
     if (paper.quote) out.sidebar.push((lang === 'en' ? 'Overheard: “' : '오늘의 한마디: “') + paper.quote.text + '” — ' + this.refer(null, e.people[paper.quote.who], lang));
+    this.press = false;
     if (reporter) out.byline = lang === 'en' ? 'Reporter ' + this.nameEn(reporter) : (reporter.sur || '') + reporter.given + ' 기자';
     return out;
   }

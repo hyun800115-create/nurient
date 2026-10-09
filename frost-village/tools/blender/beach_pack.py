@@ -4,6 +4,7 @@ beach_pack.py - turn the raw Sunny Beach renders (beach_render.py cache) into as
 
 No Blender needed: python3 with numpy + Pillow (+ `imagequant` for palette PNGs).
     python3 tools/blender/beach_pack.py [--cache DIR] [--quantize on|auto|off] [--no-previews] [--allow-partial]
+    python3 tools/blender/beach_pack.py --previews-only        (refresh docs/previews/beach_* only; assets untouched)
                                         [--out DIR] [--prev DIR]          (dry runs: write somewhere else)
 
 Guard + merge (as harbor_pack / ship_pack): the packer MERGES into the existing assets/beach/manifest.json.
@@ -458,6 +459,14 @@ def main():
                  'written. Run beach_render.py first or pass --cache DIR.' % cache)
     builds, frames = load_props(cache)
     chars, cframes = load_chars(cache)
+    if '--previews-only' in args:
+        # refresh docs/previews only (e.g. after assets/beachfolk or assets/water changed): assets/beach untouched
+        man_path = os.path.join(OUT, 'manifest.json')
+        if not os.path.exists(man_path):
+            sys.exit('beach_pack: --previews-only needs a packed %s' % man_path)
+        import beach_preview as bp
+        bp.previews(builds, frames, chars, cframes, json.load(open(man_path, encoding='utf-8')), PREV, out_dir=OUT)
+        return
     have = set(chars)
     for k, m in builds.items():
         have |= set((m.get('sprites') or {k: 1}).keys())

@@ -93,10 +93,10 @@ class S extends Phaser.Scene {
     this.add.sprite(ox + dv.delivery_van[0][0], oy + dv.delivery_van[0][1], van.atlas, 'idle_SE_0').setOrigin(van.anchor[0], van.anchor[1]).setDepth(base + 1).play('veh:delivery_van_red:idle:SE');
     this.add.sprite(ox + dv.moving_truck[1][0], oy + dv.moving_truck[1][1], mt.atlas, 'idle_SE_0').setOrigin(mt.anchor[0], mt.anchor[1]).setDepth(base + 1.1).play('veh:moving_truck:idle:SE');
     // producers, items shelf (right side)
-    let x = 1000, y = 120;
-    for (const k of ['furniture_workshop', 'appliance_factory']) { const s = sp[k]; this.add.sprite(x + 110, y + 140, s.atlas, s.frame).setOrigin(s.anchor[0], s.anchor[1]).setScale(0.6).play('spr:' + k + ':work'); x += 200; }
-    x = 990; y = 330;
-    for (const [k, s] of Object.entries(sp)) { if (s.kind !== 'item') continue; this.add.image(x, y, s.atlas, s.frame).setOrigin(0.5, 0.75); x += 70; if (x > 1370) { x = 990; y += 70; } }
+    let x = 1010, y = 30;
+    for (const k of ['furniture_workshop', 'appliance_factory']) { const s = sp[k]; this.add.sprite(x + 90, y + 150, s.atlas, s.frame).setOrigin(s.anchor[0], s.anchor[1]).setScale(0.5).play('spr:' + k + ':work'); x += 190; }
+    x = 1010; y = 240;
+    for (const [k, s] of Object.entries(sp)) { if (s.kind !== 'item') continue; this.add.image(x, y, s.atlas, s.frame).setOrigin(0.5, 0.75).setScale(0.6); x += 48; if (x > 1370) { x = 1010; y += 46; } }
     // ---- reveal toggle: tap inside revealPoly (or hover on desktop)
     const poly = new Phaser.Geom.Polygon(C.revealPoly.map(([px, py]) => new Phaser.Geom.Point(ox + px, oy + py)));
     const fadeTargets = [layers.shell, patches.dock1, patches.dock2];
@@ -125,27 +125,36 @@ await page.waitForFunction(() => window.__L && window.__L.ready, null, { timeout
 await sleep(1500);
 const prev = path.join(ROOT, 'docs', 'previews');
 fs.mkdirSync(prev, { recursive: true });
+// the shared build machine runs SwiftShader under heavy load: pause the game loop while the page is captured, and wait
+// for the reveal tween by state (not by wall-clock sleeps)
+const shot = async (p) => {
+  await page.evaluate(() => window.__L.game.loop.sleep());
+  await page.screenshot({ path: p, timeout: 240000 });
+  await page.evaluate(() => window.__L.game.loop.wake());
+};
+const settle = (open) => page.waitForFunction((o) => { const a = window.__L.shellAlpha(); return o ? a < 0.05 : a > 0.95; },
+  open, { timeout: 120000, polling: 200 }).catch(() => null);
 const closedPng = path.join(prev, 'lgx_phaser_closed.png');
 const openPng = path.join(prev, 'lgx_phaser_open.png');
-await page.screenshot({ path: closedPng, timeout: 240000 });
+await shot(closedPng);
 // tap inside the reveal polygon (its centroid)
 const target = await page.evaluate(() => { const [ox, oy] = window.__L.center; const p = window.__L.poly;
   const cx = p.reduce((s, q) => s + q[0], 0) / p.length, cy = p.reduce((s, q) => s + q[1], 0) / p.length; return [ox + cx, oy + cy]; });
 await page.mouse.click(target[0], target[1]);
-await sleep(900);
+await settle(true);
 const afterTap = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
-await page.screenshot({ path: openPng, timeout: 240000 });
+await shot(openPng);
 await page.mouse.click(target[0], target[1]);
-await sleep(900);
+await settle(false);
 const afterTap2 = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
 // hover mode: moving into the polygon reveals, moving out closes
 await page.evaluate(() => { window.__L.hoverMode = true; });
 await page.mouse.move(5, 5);
 await page.mouse.move(target[0], target[1], { steps: 4 });
-await sleep(800);
+await settle(true);
 const afterHover = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
 await page.mouse.move(5, 5, { steps: 4 });
-await sleep(800);
+await settle(false);
 const afterLeave = await page.evaluate(() => ({ revealed: window.__L.revealed, alpha: window.__L.shellAlpha() }));
 const res = await page.evaluate(() => {
   const L = window.__L, sc = L.scene;

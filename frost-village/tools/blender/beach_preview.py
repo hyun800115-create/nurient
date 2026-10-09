@@ -476,12 +476,12 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     # boardwalk along Y from the snow edge down to the beach (x = -0.7 m): end at the sea side
     if 'boardwalk_y' in sp:
         xb = -0.7
-        for k in range(6):
+        for k in range(4):                    # from the sand bay in the snow down to the open sand (no props on it)
             yb = 11.5 - k * SQ2
             im, an = spr('boardwalk_y')
             sc.put(im, an, xb, yb, ground=True, depth=-1000 + k)
         im, an = spr('boardwalk_end_yn')
-        sc.put(im, an, xb, 11.5 - 6 * SQ2, ground=True, depth=-990)
+        sc.put(im, an, xb, 11.5 - 4 * SQ2, ground=True, depth=-990)
     # ---------- props
     labels = []
 
@@ -502,11 +502,11 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     # shade row: parasols with loungers in their shade, chairs, towels
     k = 1.72
     for key, x, y in (('parasol_red', -8.5, 5.0), ('parasol_blue', -3.0, 4.6), ('parasol_rainbow', 2.6, 5.8),
-                      ('parasol_yellow', 8.0, 8.0), ('parasol_green', -11.0, 8.4), ('parasol_pink', 5.6, 9.2)):
+                      ('parasol_yellow', 8.0, 8.0), ('parasol_green', -13.5, 6.0), ('parasol_pink', 4.6, 7.6)):
         prop(key, x, y, key)
     prop('sun_lounger', -8.5 + k, 5.0, 'sun_lounger')
     prop('sun_lounger', -8.5 + k, 3.9)
-    prop('sun_lounger_x', -3.0 + k, 4.5, 'sun_lounger_x')
+    prop('sun_lounger_x', -3.0 - k, 4.5, 'sun_lounger_x')      # sunning beside the blue parasol (clear of the tower)
     prop('beach_chair_folding', 2.6 + k, 5.4, 'beach_chair_folding')
     prop('beach_chair_folding_x', 2.6 + k - 0.1, 6.6)
     prop('swim_ring_duck', 4.6, 4.4, 'swim_ring_duck')
@@ -530,7 +530,7 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     prop('rental_stand', -2.6, 9.6, 'rental_stand')
     prop('beach_shower', -13.6, 8.8, 'beach_shower', frame='beach_shower_water_1')
     prop('changing_booth', -14.0, 11.2, 'changing_booth')
-    prop('beach_sign_board', -1.9, 4.2)
+    prop('beach_sign_board', -11.2, 4.6)
     prop('beach_sign_arrow', 1.4, 11.6, 'beach_sign_arrow')
     prop('beach_sign_notice', -4.4, 11.6)
     prop('beach_swing', 15.2, 9.8, 'beach_swing')
@@ -648,8 +648,8 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     # ---------- people: the chief, villagers, townsfolk / beachfolk
     ch = chs.get('characters/manifest.json', 'player', 'idle', 'S', 0)
     if ch:
-        sc.put(ch[0], ch[1], 3.0, 1.9, bias=0.5)          # in front of the lifeguard tower, by the shells
-        labels.append(('chief 1.45 m', 3.0, 1.9, False))
+        sc.put(ch[0], ch[1], -0.7, 10.2, bias=0.5)        # walking down the boardwalk
+        labels.append(('chief 1.45 m', -0.7, 10.2, False))
     for key, x, y, d in (('villager_a', -5.6, 6.4, 'SE'), ('villager_b', 10.4, 6.6, 'SW'),
                          ('villager_c', -11.6, 6.0, 'E')):
         r = chs.get('characters/manifest.json', key, 'idle', d, 1)
@@ -666,7 +666,7 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             ov, oan = spr('lifeguard_tower_front')
             sc.put_px(ov, oan, tx, ty, ty + 1.0)
     # sunbathers on loungers / towels (beachfolk sunbathe if present, else a sitter on the side rail)
-    for key, x, y in (('sun_lounger', -8.5 + k, 5.0), ('sun_lounger_x', -3.0 + k, 4.5)):
+    for key, x, y in (('sun_lounger', -8.5 + k, 5.0), ('sun_lounger_x', -3.0 - k, 4.5)):
         e = sp.get(key)
         if not e:
             continue

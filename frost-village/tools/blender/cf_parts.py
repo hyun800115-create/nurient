@@ -585,9 +585,9 @@ def b_top_teller_vest(rig, ctx, put):
                    loc=(0.11, -0.196, 0.19))
         bt = M('teller_bowtie', '#7A2E3A', 0.45)        # wine bow tie at the collar
         for s_ in (-1, 1):
-            g.mesh_obj('bowtie_w', g.bm_ellipsoid(0.030, 0.012, 0.019, 12, 8), bt, rig.j['chest'],
-                       loc=(s_ * 0.027, -0.142, 0.072), rot=(0, s_ * -12, 0))
-        g.mesh_obj('bowtie_k', g.bm_ellipsoid(0.012, 0.011, 0.013, 10, 6), bt, rig.j['chest'], loc=(0, -0.150, 0.072))
+            g.mesh_obj('bowtie_w', g.bm_ellipsoid(0.036, 0.014, 0.024, 12, 8), bt, rig.j['chest'],
+                       loc=(s_ * 0.032, -0.160, 0.058), rot=(0, s_ * -14, 0))
+        g.mesh_obj('bowtie_k', g.bm_ellipsoid(0.014, 0.013, 0.015, 10, 6), bt, rig.j['chest'], loc=(0, -0.170, 0.058))
 
 
 @part('acc_visor', 'hat', 'head', {'main': sub(None, Z['hat'])}, cls='top', tags=['bank', 'job'],

@@ -470,32 +470,34 @@ def snow_cap(samples, depth, name, parent=None, r=0.06, seed=1, drips=0.18, up=0
                 el2.radius = rr * 0.75
                 el2.stiffness = 1.6
             # drips hanging over the front face where the edge is close to flat
-            if rnd.random() < drips * w and nrm.y > 0.75:
-                L = r * (0.9 + 1.8 * rnd.random())
-                el3 = mb.elements.new(type='ELLIPSOID')
-                el3.co = (c.x + dx, c.y + dy - L * 0.55, zf + r * 0.10)
-                el3.radius = r * 0.62
-                el3.size_x = 0.55
-                el3.size_y = 0.55 + L / r * 0.55
-                el3.size_z = 0.45
-                el3.stiffness = 2.0
+            if rnd.random() < drips * w and nrm.y > 0.80:
+                _drip(mb, c.x + dx, c.y + dy, zf, r, rnd)
         # drips at the ends of a run (edge turning down the side)
         if side_drip:
             for i in range(n):
-                if flags[i] and not flags[(i + 1) % n] or (flags[i] and not flags[i - 1]):
-                    if rnd.random() < 0.5:
+                if (flags[i] and not flags[(i + 1) % n]) or (flags[i] and not flags[i - 1]):
+                    if rnd.random() < 0.22:
                         p, nrm = loop[i]
-                        L = r * (1.0 + 1.2 * rnd.random())
-                        el4 = mb.elements.new(type='ELLIPSOID')
-                        el4.co = (p.x + dx, p.y + dy - L * 0.5, zf + r * 0.1)
-                        el4.radius = r * 0.6
-                        el4.size_x = 0.55
-                        el4.size_y = 0.5 + L / r * 0.5
-                        el4.size_z = 0.45
-                        el4.stiffness = 2.0
+                        _drip(mb, p.x + dx, p.y + dy, zf, r * 0.85, rnd)
     if mat is not None:
         mb.materials.append(mat)
     return ob, count
+
+
+def _drip(mb, x, y, zf, r, rnd):
+    """A cartoon drip on the front face: a soft neck + a round drop at its end."""
+    L = r * (0.7 + 1.1 * rnd.random())
+    el = mb.elements.new(type='ELLIPSOID')
+    el.co = (x, y - L * 0.45, zf + r * 0.05)
+    el.radius = r * 0.62
+    el.size_x = 0.55
+    el.size_y = 0.45 + L / r * 0.45
+    el.size_z = 0.42
+    el.stiffness = 2.0
+    b = mb.elements.new(type='BALL')
+    b.co = (x, y - L * 0.95, zf + r * 0.08)
+    b.radius = r * 0.62
+    b.stiffness = 1.7
 
 
 def snow_to_mesh(ob):
@@ -514,3 +516,193 @@ def snow_to_mesh(ob):
         me.materials.append(m)
     bpy.data.objects.remove(ob)
     return mo
+
+
+# ------------------------------------------------------------------ 2D shapes -> beveled solids
+def poly_solid(name, pts, depth, bevel, mat, parent=None, loc=(0, 0, 0), rot=(0, 0, 0), bevel_res=4,
+               offset=0.0):
+    """Closed 2D polygon (XY) extruded to +-depth with a round bevel (like the letters)."""
+    cu = bpy.data.curves.new(name, 'CURVE')
+    cu.dimensions = '2D'
+    cu.fill_mode = 'BOTH'
+    cu.extrude = depth
+    cu.bevel_depth = bevel
+    cu.bevel_resolution = bevel_res
+    cu.offset = offset
+    sp = cu.splines.new('POLY')
+    sp.points.add(len(pts) - 1)
+    for i, (x, y) in enumerate(pts):
+        sp.points[i].co = (x, y, 0, 1)
+    sp.use_cyclic_u = True
+    ob = bpy.data.objects.new(name, cu)
+    link(ob)
+    cu.materials.append(mat)
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    bpy.data.objects.remove(ob)
+    bpy.data.curves.remove(cu)
+    for p in me.polygons:
+        p.use_smooth = True
+    mo = bpy.data.objects.new(name, me)
+    mo.location = loc
+    mo.rotation_euler = rot
+    link(mo, parent)
+    try:
+        mo.data.set_sharp_from_angle(angle=math.radians(50))
+    except Exception:
+        pass
+    return mo
+
+
+def rounded_rect(w, h, r, seg=8):
+    pts = []
+    cs = [(w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180),
+          (w / 2 - r, -h / 2 + r, 270)]
+    for cx, cy, a0 in cs:
+        for k in range(seg + 1):
+            a = math.radians(a0 + 90.0 * k / seg)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
+
+
+def star_pts(R, r, n=4, rot=0.0, seg=6, pinch=0.55):
+    """A soft n-point sparkle: concave sides (quadratic curves through the inner radius)."""
+    pts = []
+    for i in range(n):
+        a0 = rot + 2 * math.pi * i / n
+        a1 = rot + 2 * math.pi * (i + 1) / n
+        p0 = Vector((math.cos(a0) * R, math.sin(a0) * R))
+        p2 = Vector((math.cos(a1) * R, math.sin(a1) * R))
+        am = (a0 + a1) / 2
+        p1 = Vector((math.cos(am) * r * pinch, math.sin(am) * r * pinch))
+        for k in range(seg):
+            t = k / seg
+            q = (1 - t) ** 2 * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+            pts.append((q.x, q.y))
+    return pts
+
+
+def ellipsoid(name, rx, ry, rz, mat, parent=None, loc=(0, 0, 0), rot=(0, 0, 0), seg=32, rings=16):
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=rings, radius=1.0)
+    bmesh.ops.scale(bm, vec=(rx, ry, rz), verts=bm.verts)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    ob = bpy.data.objects.new(name, me)
+    ob.location = loc
+    ob.rotation_euler = rot
+    me.materials.append(mat)
+    return link(ob, parent)
+
+
+def capsule2d(name, a, b, rad, depth, mat, parent=None, z=0.0, seg=8):
+    """A rounded stroke from a to b (2D) with half-thickness `rad`, extruded thin."""
+    a = Vector(a)
+    b = Vector(b)
+    d = (b - a)
+    L = d.length
+    ang = math.atan2(d.y, d.x)
+    pts = []
+    for k in range(seg + 1):
+        t = math.pi / 2 + math.pi * k / seg
+        pts.append((rad * math.cos(t), rad * math.sin(t)))
+    for k in range(seg + 1):
+        t = -math.pi / 2 + math.pi * k / seg
+        pts.append((L + rad * math.cos(t), rad * math.sin(t)))
+    return poly_solid(name, pts, depth, min(depth, rad) * 0.9, mat, parent=parent, loc=(a.x, a.y, z),
+                      rot=(0, 0, ang), bevel_res=3)
+
+
+def emblem(name, R, parent=None, loc=(0, 0, 0), rot_deg=0.0, depth=0.05):
+    """The 눈꽃 (snow-flower) emblem: six round petals that are also the arms of a snowflake,
+    ice-blue snowflake strokes on the petals, a golden centre.  Front = +Z."""
+    root = empty(name, loc=loc, rot=(0, 0, math.radians(rot_deg)), parent=parent)
+    pet = mat_gradient(name + '_petal', '#FFFFFF', '#BFE2FF', -R * 0.05, R * 0.95, rough=0.35, coat=0.5,
+                       sss=0.15)
+    line = mat_flat(name + '_line', C.PAL['emblem_line'], rough=0.3, coat=0.4)
+    core = mat_gradient(name + '_core', '#FFE48A', '#F2A21C', -R * 0.22, R * 0.22, rough=0.25, coat=0.7)
+    tip = mat_flat(name + '_tip', '#8FD0FF', rough=0.3, coat=0.4)
+    for k in range(6):
+        a = math.radians(90 + 60 * k)
+        pr = empty(name + '_p%d' % k, rot=(0, 0, a - math.pi / 2), parent=root)
+        ellipsoid(name + '_petal%d' % k, R * 0.27, R * 0.40, depth * 1.6, pet, parent=pr, loc=(0, R * 0.52, 0))
+        # snowflake arm on the petal: a stroke + a V branch
+        capsule2d(name + '_arm%d' % k, (0, R * 0.30), (0, R * 0.80), R * 0.045, depth * 0.35, line, parent=pr,
+                  z=depth * 1.45)
+        for sgn in (-1, 1):
+            capsule2d(name + '_br%d%d' % (k, sgn), (0, R * 0.60), (sgn * R * 0.13, R * 0.76), R * 0.036,
+                      depth * 0.3, line, parent=pr, z=depth * 1.40)
+        # small ice spike between petals (keeps the snowflake reading at small sizes)
+        sp = empty(name + '_s%d' % k, rot=(0, 0, a + math.radians(30) - math.pi / 2), parent=root)
+        ellipsoid(name + '_spike%d' % k, R * 0.07, R * 0.16, depth * 0.8, tip, parent=sp, loc=(0, R * 0.80, 0))
+    ellipsoid(name + '_core', R * 0.25, R * 0.25, depth * 2.0, core, parent=root, loc=(0, 0, depth * 0.6))
+    # tiny highlight dots on the core
+    return root
+
+
+def wood_mat(name, top, bottom, h):
+    if name in _MATS:
+        return _MATS[name]
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    p = _principled(m)
+    tc = nt.nodes.new('ShaderNodeTexCoord')
+    mp = nt.nodes.new('ShaderNodeMapping')
+    mp.inputs['Scale'].default_value = (1.0, 14.0, 1.0)
+    nt.links.new(tc.outputs['Object'], mp.inputs['Vector'])
+    nz = nt.nodes.new('ShaderNodeTexNoise')
+    nz.inputs['Scale'].default_value = 2.2
+    nz.inputs['Detail'].default_value = 3.0
+    nz.inputs['Distortion'].default_value = 0.8
+    nt.links.new(mp.outputs['Vector'], nz.inputs['Vector'])
+    sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+    nt.links.new(tc.outputs['Object'], sep.inputs[0])
+    mr = nt.nodes.new('ShaderNodeMapRange')
+    mr.inputs['From Min'].default_value = -h / 2
+    mr.inputs['From Max'].default_value = h / 2
+    nt.links.new(sep.outputs['Y'], mr.inputs['Value'])
+    grad = nt.nodes.new('ShaderNodeValToRGB')
+    grad.color_ramp.elements[0].color = (*lin(bottom), 1)
+    grad.color_ramp.elements[1].color = (*lin(top), 1)
+    nt.links.new(mr.outputs['Result'], grad.inputs['Fac'])
+    mix = nt.nodes.new('ShaderNodeMix')
+    mix.data_type = 'RGBA'
+    mix.blend_type = 'MULTIPLY'
+    nt.links.new(grad.outputs['Color'], mix.inputs[6])
+    gr2 = nt.nodes.new('ShaderNodeValToRGB')
+    gr2.color_ramp.elements[0].position = 0.35
+    gr2.color_ramp.elements[0].color = (0.70, 0.62, 0.55, 1)
+    gr2.color_ramp.elements[1].position = 0.65
+    gr2.color_ramp.elements[1].color = (1, 1, 1, 1)
+    nt.links.new(nz.outputs['Fac'], gr2.inputs['Fac'])
+    nt.links.new(gr2.outputs['Color'], mix.inputs[7])
+    mix.inputs['Factor'].default_value = 1.0
+    nt.links.new(mix.outputs[2], p.inputs['Base Color'])
+    p.inputs['Roughness'].default_value = 0.55
+    p.inputs['Coat Weight'].default_value = 0.25
+    _MATS[name] = m
+    return m
+
+
+def label_pass(pieces):
+    """Swap every material for a flat emission colour per piece (an ID image for splitting the logo).
+    `pieces` = {piece_index: [objects]}; colours encode the index in the red channel (index * 16)."""
+    for idx, obs in pieces.items():
+        v = (idx * 16 + 8) / 255.0
+        m = bpy.data.materials.new('label%d' % idx)
+        m.use_nodes = True
+        nt = m.node_tree
+        for n in list(nt.nodes):
+            nt.nodes.remove(n)
+        out = nt.nodes.new('ShaderNodeOutputMaterial')
+        em = nt.nodes.new('ShaderNodeEmission')
+        em.inputs['Color'].default_value = (*lin((v, 0.0, 0.0)), 1)
+        nt.links.new(em.outputs[0], out.inputs['Surface'])
+        for ob in obs:
+            if ob.type in ('MESH', 'META') and ob.data is not None:
+                ob.data.materials.clear()
+                ob.data.materials.append(m)

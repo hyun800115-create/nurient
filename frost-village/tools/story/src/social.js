@@ -258,6 +258,21 @@ export class Social {
     }
   }
 
+  /** news that is out of date: a proposal after the wedding, dating after the engagement, a crush on
+   *  someone one now dates, a planned move of someone who has already left */
+  stale(f) {
+    const e = this.e;
+    if (f.a < 0 || f.b < 0) return f.k === 'move_plan' && f.a >= 0 && !(e.people[f.a] && e.people[f.a].alive);
+    const rel = getRel(e, f.a, f.b);
+    const st = rel ? rel.stage : -1;
+    switch (f.k) {
+      case 'crush': case 'confess_no': return st >= ST_SWEET;
+      case 'sweetheart': return st >= ST_ENGAGED;
+      case 'engaged': return st >= ST_SPOUSE;
+    }
+    return false;
+  }
+
   /** the juiciest memory s could tell l about */
   pickTellable(s, l) {
     const e = this.e;
@@ -265,6 +280,7 @@ export class Social {
     for (let i = 0; i < s.mem.length; i++) {
       const m = s.mem[i], f = m.f;
       if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;     // that story was just told in this talk
+      if (this.stale(f)) continue;
       const ng = NO_GOSSIP[f.k];
       if (ng === 1) continue;
       if (ng === 2 && !(s.tr[7] < 35)) continue;
@@ -300,6 +316,7 @@ export class Social {
       const f = m.f;
       if (!PERSONAL[f.k] || m.tt.indexOf(l.id) >= 0) continue;
       if (f.a !== s.id && f.b !== s.id) continue;
+      if (this.stale(f)) continue;
       if ((f.k === 'crush' || f.k === 'confess_no') && rel.stage < ST_BEST) continue;
       if (f.k === 'crush' && f.b === l.id) continue;
       if (f.k === 'deposit' && rel.stage < ST_FRIEND) continue;
@@ -318,7 +335,7 @@ export class Social {
       const f = m.f;
       const tbl = good ? CONGRATS : COMFORT;
       if (!tbl[f.k] || m.tt.indexOf(l.id) >= 0) continue;
-      if (novelty(e, f) < 0.3) continue;
+      if (novelty(e, f) < 0.3 || this.stale(f)) continue;
       let about = f.a === l.id || f.b === l.id;
       if (f.k === 'theft' || f.k === 'window') about = f.b === l.id;
       if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0) about = e.world.places[f.p].residents.indexOf(l.id) >= 0 || e.world.places[f.p].owner === l.id;

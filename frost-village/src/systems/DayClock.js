@@ -23,7 +23,7 @@ export class DayClock {
     const s = saved || {};
     this.on = s.on === true;
     this.T = Number.isFinite(s.T) ? s.T : (Number.isFinite(s.t) && Number.isFinite(s.day) ? s.day * this.dayLen() + s.t : this.D.startHour * HOUR);
-    this.cur = { color: 0xffffff, a: 0 };
+    this.cur = { r: 255, g: 255, b: 255, a: 0 };     // smoothed tint (float channels: no rounding stalls)
     this.overlay = null;
     this.glows = [];
     this.lights = [];         // { x, y, k, on, onAt } lamps the night lights up
@@ -78,8 +78,9 @@ export class DayClock {
     // the tint follows the hour, smoothed over `fade` seconds
     const tg = this.target(h);
     const k = Math.min(1, dt / Math.max(0.2, this.D.fade || 8) * 3);
-    this.cur.a += (tg.a - this.cur.a) * k;
-    this.cur.color = lerpColor(this.cur.color, tg.color, k);
+    const C = this.cur;
+    C.a += (tg.a - C.a) * k;
+    C.r += (((tg.color >> 16) & 255) - C.r) * k; C.g += (((tg.color >> 8) & 255) - C.g) * k; C.b += ((tg.color & 255) - C.b) * k;
     this.drawOverlay();
     // lights on at 19:00 one by one (from the station outward), off at 06:30
     const D = this.D;
@@ -106,9 +107,9 @@ export class DayClock {
     o.setPosition(v.x - m, v.y - m);
     o.setSize(v.width + m * 2, v.height + m * 2);
     // multiply by (1 - a) + a * colour: never darker than the readability floor
-    const c = this.cur.color;
+    const C = this.cur;
     const mix = (ch) => Math.round(255 * (1 - a) + ch * a);
-    o.fillColor = (mix((c >> 16) & 255) << 16) | (mix((c >> 8) & 255) << 8) | mix(c & 255);
+    o.fillColor = (mix(C.r) << 16) | (mix(C.g) << 8) | mix(C.b);
     o.fillAlpha = 1;
   }
 

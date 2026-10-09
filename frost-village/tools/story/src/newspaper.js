@@ -30,11 +30,12 @@ export class Newspaper {
     // upcoming weddings
     for (const f of e.facts.values()) if (f.k === 'engaged' && f.n >= day && f.n <= day + 2 && cands.every((c) => c[1] !== f)) cands.push([70, f]);
     cands.sort((a, b) => b[0] - a[0] || a[1].id - b[1].id);
-    // one story per kind per paper at most twice
+    // one story per kind per paper (two for the big ones: fires, thefts, weddings, babies, newcomers)
     const per = Object.create(null), items = [];
+    const TWICE = { fire: 1, theft: 1, wedding: 1, baby: 1, move_in: 1, shop_open: 1 };
     for (const [, f] of cands) {
       per[f.k] = (per[f.k] || 0) + 1;
-      if (per[f.k] > 2) continue;
+      if (per[f.k] > (TWICE[f.k] ? 2 : 1)) continue;
       items.push(f);
       if (items.length >= 7) break;
     }

@@ -3,7 +3,7 @@
 //
 //   detectIntent('안녕! 요즘 어때?', ctx) -> { intent: 'how', greet: true, topics: [], names: [], … }
 //
-// Intents: greeting · how · weather · work · gossip · person · compliment · thanks · gift · joke ·
+// Intents: greeting · invite (같이 ~하자) · how · weather · work · gossip · person · compliment · thanks · gift · joke ·
 // memory · favor · farewell · about · rude · distress · answer (to the resident's last question) · unknown
 
 import { topicsOf, itemsOf, ANIMALS, COLORS, FOODS, ITEMS } from './topics.js';
@@ -25,12 +25,13 @@ const R = {
   joke: /농담|웃긴|웃겨|웃기|재밌는 ?(얘기|거|이야기)|개그|수수께끼|퀴즈|ㅋㅋ|ㅎㅎ|하하|웃어/,
   memory: /기억|나 ?(알아|누군지)|우리 ?(처음|저번)|저번에|지난번|아까 ?(내가|뭐)|내가 ?(뭐|무슨) ?(라고|말|얘기)|뭐라고 ?했/,
   favor: /도와 ?(줄|드릴|줘)|도울 ?(일|거|게)|도움|부탁|필요한 ?(거|것|게)|할 ?일 ?(있|없)|심부름|뭐 ?필요|해 ?줄 ?(거|일)|맡겨/,
+  invite: /(같이|함께) ?[가-힣]*(하자|놀자|가자|할래|갈래|먹자)|[가-힣]+(하자|놀자|가자|먹자)[!~.]*$|[가-힣]+ ?할래[?？]/,
   about: /좋아하는 ?(거|것|게)|취미|이름이 ?뭐|누구(야|세요|니)|몇 ?살|어디 ?살|뭘 ?좋아|뭐 ?좋아해|싫어하는 ?(거|것)|너는 ?(뭐|어떤)|넌 ?(뭐|어떤)/,
   yes: /^(응|어|네|넹|넵|예|그래|그럼|당연|맞아|좋아|ㅇㅇ|웅|물론|오케이|ok|okay)/i,
   no: /^(아니|아뇨|노|ㄴㄴ|싫어|별로|글쎄|안 ?해|못 ?해|몰라)/i,
 };
 
-export const INTENTS = ['greeting', 'how', 'weather', 'work', 'gossip', 'person', 'compliment', 'thanks', 'gift', 'joke', 'memory', 'favor', 'farewell', 'about', 'rude', 'distress', 'answer', 'unknown'];
+export const INTENTS = ['greeting', 'invite', 'how', 'weather', 'work', 'gossip', 'person', 'compliment', 'thanks', 'gift', 'joke', 'memory', 'favor', 'farewell', 'about', 'rude', 'distress', 'answer', 'unknown'];
 
 /** names of residents mentioned in the text: [{ key, form }] */
 export function namesIn(text, personas, exclude) {
@@ -100,6 +101,7 @@ export function detectIntent(raw, ctx = {}) {
   if (R.gossip.test(t)) return pick('gossip');
   if (res.names.length && (res.question || /어때|알아|뭐 ?해|좋아|어떤 ?사람|친해/.test(t))) return pick('person');
   if (R.farewell.test(t) && !R.how.test(t)) return pick('farewell');
+  if (R.invite.test(t) && !R.how.test(t)) return pick('invite');
   if (R.how.test(t)) return pick('how');
   if (R.about.test(t)) return pick('about');
   if (R.thanks.test(t)) return pick('thanks');

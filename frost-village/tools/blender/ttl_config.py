@@ -38,12 +38,12 @@ PAL = {
     'snow': '#FFFFFF',
     'snow_shade': '#D6E6F7',
     # main-word letters: (top colour, bottom colour) - one per syllable, cycled
-    'main': [('#9BDCFF', '#3D8BE0'),     # ice blue
-             ('#FFB2C6', '#E8506F'),     # berry pink (the flower)
-             ('#FFE27A', '#F2A21C'),     # coin gold
-             ('#93EBD9', '#24A893')],    # mint
-    'top': ('#FFE68A', '#F5A623'),       # 행복한: coin gold
-    'en': [('#9BDCFF', '#3D8BE0')],
+    'main': [('#74C9FF', '#2C74D8'),     # ice blue
+             ('#FF97B4', '#DE3A66'),     # berry pink (the flower)
+             ('#FFD447', '#EE930F'),     # coin gold
+             ('#6FE0C6', '#169C86')],    # mint
+    'top': ('#FF8E7E', '#D2303A'),       # 행복한: ribbon red
+    'en': [('#74C9FF', '#2C74D8')],
     'sign_wood': ('#D8A066', '#9C6232'),
     'sign_text': '#FFF6E6',
     'emblem_petal': ('#FFFFFF', '#CFE7FF'),

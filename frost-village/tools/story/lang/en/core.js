@@ -21,7 +21,8 @@ export default {
   tail: ['*12 ', '?kid? hehe', '?teen? lol', '?funny? heh'],
 
   // ---------------------------------------------------------------- greetings
-  greet: ['*5 #greet.core#', '*3 #greet.core# #greet.add#', '?!rival? *2 #greet.core# #greet.ask#'],
+  greet: ['?!rival? *5 #greet.core#', '?!rival? *3 #greet.core# #greet.add#', '?!rival? *2 #greet.core# #greet.ask#', '?rival? #greet.rival#'],
+  'greet.rival': ['*5 […Oh. It’s you.|…Oh. Hello.|…Good day.]', '*3 [Hmph. You again?|Oh. You again.|…Hello.]', '[…Hi.|…Hello.|…Good day.]', '[Of all the places to meet.|Of all places to run into you.|Of all places.]', '?kid? [Hmph! Nyah!|Hmph!|Hmph!]'],
   'greet.core': [
     '*3 [Hey, {V}!|Hello, {V}!|Good day, {V}!]', '[Hi, {V}!|Hello there, {V}!|Hello, {V}!]', '[Oh, {V}!|Oh, {V}!|Ah, {V}!]', '?!rival !athome? [{V}! Fancy seeing you here!|{V}, fancy meeting you here!|What a pleasant surprise, {V}.]',
     '?morning? *2 [Morning, {V}!|Good morning, {V}!|Good morning, {V}.]', '?morning =q =sleepq? *2 [{V}, sleep well?|Did you sleep well, {V}?|Did you rest well, {V}?]', '?morning? [You’re up early, {V}!|You’re up early, {V}!|Up bright and early, {V}!]',
@@ -60,7 +61,7 @@ export default {
     '?weekend =happy !@happy? [Love the weekend!|Weekends are the best!|How nice to have the weekend.]', '?close =miss !@miss? [I was just hoping to see you!|I was hoping I’d see you!|I was just thinking of you.]',
   ],
   'greet.ask': ['?!@q =q =how? [How’s it going?|How are you doing?|How are you keeping?]', '?!@q =q =how? [All good?|Is everything well?|I trust all is well?]', '?!@q =q =how? [How have you been?|How have you been?|How have you been?]', '?!@q =q =doing? [What did you do today?|What did you do today?|What did you do today?]'],
-  'greet.re': ['?^q? #qa#', '?!^q? *60 #resp#', '?!^q? *5 #greet.re.core#', '?!^q? *2 #greet.re.core# #greet.add#', '?!rival !^q? [Hey, {V}!|Hello, {V}!|Good day, {V}.]', '?!rival !^q? [Good to see you, {V}!|Nice to see you, {V}!|A pleasure, {V}.]'],
+  'greet.re': ['?rival? *200 […Hmph.|…Yes.|…Yes.]', '?rival? *100 […Whatever.|…Hm.|…Indeed.]', '?^q? #qa#', '?!^q? *60 #resp#', '?!^q? *5 #greet.re.core#', '?!^q? *2 #greet.re.core# #greet.add#', '?!rival !^q? [Hey, {V}!|Hello, {V}!|Good day, {V}.]', '?!rival !^q? [Good to see you, {V}!|Nice to see you, {V}!|A pleasure, {V}.]'],
   'greet.re.core': [
     '*4 [Oh, hi!|Oh, hello!|Hello!]', '*2 [Hey!|Hi there!|Good day!]', '[Hi to you too!|Hello to you too!|And hello to you.]', '[Oh, {V}!|Ah, {V}!|Ah, {V}.]',
     '?morning? *2 [Morning!|Good morning!|Good morning.]', '?evening? [Evening!|Good evening!|Good evening.]', '?night? [What are you doing up so late?|Out so late?|Out at this hour?]',
@@ -129,7 +130,8 @@ export default {
   'thanks.praise': ['[Hehe, thanks!|Hehe, thank you!|Oh, thank you.]'],
 
   // ---------------------------------------------------------------- goodbyes
-  bye: ['?!athome? *5 #bye.core#', '?!athome? *2 #bye.core# #bye.add#', '?athome? #bye.home#'],
+  bye: ['?!athome !rival? *5 #bye.core#', '?!athome !rival? *2 #bye.core# #bye.add#', '?athome !rival? #bye.home#', '?rival? #bye.rival#'],
+  'bye.rival': ['*4 […Well then.|…Well then.|…Good day.]', '[Hmph, I’m off!|Hmph, I’m going.|I shall be going.]', '[Stay out of my way next time.|Please move aside next time.|Kindly make way next time.]', '?kid? [Nyah! Bye!|Nyah!|Nyah!]'],
   'bye.core': [
     '*3 [See ya!|See you!|Take care!]', '[I’d better go!|I’d better be going!|I must be going.]', '[Let’s chat again!|Let’s talk again soon!|Let’s talk again soon.]', '[Bye!|Goodbye!|Goodbye.]', '[Catch you later!|See you later!|See you later.]',
     '?night? *3 [Night night!|Good night!|Good night.]', '?cold =cold? *2 [Don’t catch a cold!|Don’t catch a cold!|Mind you don’t catch cold.]', '?snow =snowy? *2 [Careful on the ice!|Careful on the ice!|Mind the icy roads.]',
@@ -145,7 +147,7 @@ export default {
     '?snow !@snowy? [It’s slippery out!|It’s slippery!|Mind the ice.]', '?cold !@cold? [Keep your hands warm!|Keep your hands warm!|Keep your hands warm.]', '?evening? [Rest well!|Rest well!|Rest well.]',
     '?kid? [I have to go home now!|I have to go home now!|I have to go now!]', '?close? [I’ll call you!|I’ll call you!|I shall be in touch.]',
   ],
-  'bye.re': ['?athome? *40 #bye.home.re#', '?!athome? *5 #bye.re.core#', '?!athome? *2 #bye.re.core# #bye.add#', '?!rival !athome? *2 [You too, {V}!|You too, {V}!|Take care, {V}.]', '?!rival !athome? [Bye, {V}!|Take care, {V}!|Goodbye, {V}.]'],
+  'bye.re': ['?rival? *80 [Hmph.|…Yes.|…Indeed.]', '?athome !rival? *40 #bye.home.re#', '?!athome? *5 #bye.re.core#', '?!athome? *2 #bye.re.core# #bye.add#', '?!rival !athome? *2 [You too, {V}!|You too, {V}!|Take care, {V}.]', '?!rival !athome? [Bye, {V}!|Take care, {V}!|Goodbye, {V}.]'],
   'bye.re.core': [
     '*3 [Bye!|Bye-bye!|Take care.]', '[See ya!|See you!|See you soon.]', '[You too!|You too!|And you.]',
     '?night? *2 [Night!|Good night!|Good night.]', '?cold? [Don’t catch a cold either!|Stay warm too!|Do keep warm.]', '?kid ban? *2 [See you tomorrow!|See you tomorrow!|See you tomorrow!]',

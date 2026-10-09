@@ -167,7 +167,7 @@ export default {
   'small.fashion.re': ['*3 [It totally suits you!|It really suits you!|It suits you very well.]', '[Where’d you get it? I want one!|Where did you get it? I want one!|Where did you buy it?]', '[The colour’s so pretty!|Such a pretty colour!|A lovely colour.]'],
   'small.music': ['?=hobby? *2 [I’m so into {H} lately. La la la~|I’m into {H} lately. La la la~|I enjoy {H} lately.]', '?=q =news? [Did you hear the musician at the plaza?|Did you hear the plaza concert?|Did you hear the concert?]', '?=hobby? [♪ The town that sparkles like snowflakes~|♪ The town that sparkles like snowflakes~|♪ The town that sparkles like snowflakes~]'],
   'small.music.re': ['?^hobby? *2 [I’ll sing along! ♪|I’ll sing along! ♪|I shall sing along.]', '?^hobby? [Great voice!|What a voice!|A lovely voice.]', '?^news ^q? *8 [Yep! So fun!|Yes! It was so fun!|Yes, delightful.]', '?^news ^q? *4 [No, I missed it! Aww.|No, I missed it!|I missed it.]', '[Let’s go to the next concert together!|Let’s go to the next concert!|We must attend the next concert.]'],
-  'small.more': ['*2 [Right?|Right?|Wouldn’t you say?]', '#laugh#', '[We really get each other!|We really get along!|We think alike.]', '[Talking with you is fun!|It’s fun talking with you!|What a pleasant chat.]'],
+  'small.more': ['*2 [Right?|Right?|Wouldn’t you say?]', '[We really get each other!|We really get along!|We think alike.]', '[Talking with you is fun!|It’s fun talking with you!|What a pleasant chat.]'],
   'small.re': ['#agree#'],
   'small.generic': ['[Nice weather.|Nice weather.|Fine weather.]'],
 };

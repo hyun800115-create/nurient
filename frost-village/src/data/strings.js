@@ -214,7 +214,7 @@ export const STRINGS = {
     act_home: '집에서 쉬는 중', act_school: '학교 가는 중', act_class: '수업 중', act_recess: '쉬는 시간', act_lunch: '점심 시간',
     act_play: '노는 중', act_work: '일하는 중', act_errand: '장 보는 중', act_cafe: '카페에서 쉬는 중', act_walk: '산책 중',
     act_trip: '서리마을 나들이 가는 중', act_shop: '서리마을에서 장 보는 중', act_train: '기차 타는 중', act_patrol: '순찰 중',
-    act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중',
+    act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중', act_doze: '꾸벅꾸벅 조는 중',
   },
 
   en: {
@@ -420,7 +420,7 @@ export const STRINGS = {
     act_home: 'resting at home', act_school: 'off to school', act_class: 'in class', act_recess: 'at recess', act_lunch: 'lunch break',
     act_play: 'playing', act_work: 'at work', act_errand: 'running errands', act_cafe: 'at the café', act_walk: 'taking a walk',
     act_trip: 'off to Frost Village', act_shop: 'shopping in Frost Village', act_train: 'on the train', act_patrol: 'on patrol',
-    act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting',
+    act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting', act_doze: 'dozing off',
   },
 };
 

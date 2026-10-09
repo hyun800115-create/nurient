@@ -738,7 +738,8 @@ export class VillageLife {
       const d = Math.abs(wx - r.x) + Math.abs(wy - (r.y + r.headTop / 2));
       if (d < bd) { bd = d; best = r; }
     }
-    if (!best) return false;
+    // ---- (v4-A) a townsperson (in the town, a train visitor, a customer from the town): name card
+    if (!best) return this.gs.v4 && this.gs.v4.tap ? this.gs.v4.tap(wx, wy) : false;
     return this.react(best);
   }
 

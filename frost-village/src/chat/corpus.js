@@ -56,7 +56,8 @@ export class VillageCorpus {
     const recent = this.e.slice(-120);
     for (const x of recent) {
       if (x.k !== kind) continue;
-      if (normKey(x.t) === key || (similarity(x.t, t) >= 0.86 && x.o === meta.o && sameSlots(x.t, t))) {
+      if (x._n === undefined) Object.defineProperty(x, '_n', { value: normKey(x.t), writable: true, enumerable: false });
+      if (x._n === key || (x.o === meta.o && Math.abs(x._n.length - key.length) <= key.length * 0.3 && similarity(x.t, t) >= 0.86 && sameSlots(x.t, t))) {
         x.d = Math.max(x.d, meta.d | 0);         // heard again: fresh again
         x.r = (x.r || 0) + 1;
         if (meta.tp) for (const tp of meta.tp) if (!x.tp.includes(tp) && x.tp.length < 3) x.tp.push(tp);
@@ -136,8 +137,8 @@ export class VillageCorpus {
    * kn = the speaker's knower record. Returns the text.
    */
   sayGossip(x, kn, speaker, personas, level, chiefName = '촌장님', rng = Math.random) {
-    const body = renderSlots(exaggerate(x.t, kn ? kn[4] : 0), speaker, personas, level, chiefName);
     const from = kn && kn[2];
+    const body = renderSlots(exaggerate(x.t, kn ? kn[4] : 0), speaker, personas, level, chiefName, from && personas[from] ? from : null);
     let pre = '';
     if (from && personas[from]) {
       const nm = refName(personas, speaker, from, chiefName);
@@ -192,10 +193,12 @@ export class VillageCorpus {
 
   // ---------------------------------------------------------------- bounds
   prune(day) {
-    const over = (kind, cap) => this.e.filter((x) => x.k === kind).length > cap;
+    const count = (kind) => { let n = 0; for (const x of this.e) if (x.k === kind) n++; return n; };
     const score = (x) => this.fresh(x, day) * 4 + (x.kn ? x.kn.length * 0.25 : 0) + (x.src === 'a' ? 1 : 0) + (x.r || 0) * 0.3 - x.u * 0.15;
     for (const [kind, cap] of [['g', G_CAP], ['l', L_CAP]]) {
-      while (over(kind, cap)) {
+      let n = count(kind);
+      while (n > cap) {
+        n--;
         let wi = -1, ws = 1e9;
         for (let i = 0; i < this.e.length; i++) { const x = this.e[i]; if (x.k !== kind || x.d >= day) continue; const s = score(x); if (s < ws) { ws = s; wi = i; } }
         if (wi < 0) wi = this.e.findIndex((x) => x.k === kind);

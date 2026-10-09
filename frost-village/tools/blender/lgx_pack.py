@@ -292,6 +292,37 @@ def validate(meta, dep):
 
 # =================================================================================================== manifest entries
 
+def simplify_poly(poly, eps=2.5):
+    """Ramer-Douglas-Peucker on a closed polygon (drops duplicate / collinear hull points)."""
+    pts = []
+    for q in poly:
+        if not pts or (abs(q[0] - pts[-1][0]) + abs(q[1] - pts[-1][1])) > 0:
+            pts.append(list(q))
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts.pop()
+
+    def rdp(seg):
+        if len(seg) < 3:
+            return seg
+        (ax, ay), (bx, by) = seg[0], seg[-1]
+        L = math.hypot(bx - ax, by - ay) or 1e-9
+        dmax, idx = 0.0, 0
+        for i in range(1, len(seg) - 1):
+            d = abs((bx - ax) * (ay - seg[i][1]) - (ax - seg[i][0]) * (by - ay)) / L
+            if d > dmax:
+                dmax, idx = d, i
+        if dmax <= eps:
+            return [seg[0], seg[-1]]
+        return rdp(seg[:idx + 1])[:-1] + rdp(seg[idx:])
+    # split the ring at its two farthest-apart points so both halves are open polylines
+    i0 = min(range(len(pts)), key=lambda i: (pts[i][0], pts[i][1]))
+    i1 = max(range(len(pts)), key=lambda i: (pts[i][0], pts[i][1]))
+    a, b = sorted((i0, i1))
+    h1 = rdp(pts[a:b + 1])
+    h2 = rdp(pts[b:] + pts[:a + 1])
+    return h1[:-1] + h2[:-1]
+
+
 def pick_band(reqs):
     """-> (band of the leg inside the building, crosses the outer wall?)"""
     out = any(b == 'outside' for b, _ in reqs)
@@ -376,7 +407,7 @@ def center_entries(meta, frame_atlas, val):
         docks.append(px(d['door']))
     for vk, ln in VEH_LENGTH.items():
         dock_veh[vk] = [px((d['door'][0] + DOCK_GAP[vk] + ln / 2.0, d['door'][1], 0.0)) for d in P['docks']]
-    rp = meta['shellHull']
+    rp = simplify_poly(meta['shellHull'])
     main = {
         'atlas': frame_atlas['%s_shell' % CENTER], 'frame': '%s_shell' % CENTER, 'anchor': anchor,
         'frameSize': [W, H], 'kind': 'building', 'name': {'ko': '솔방울 물류센터', 'en': 'Pinecone Logistics Centre'},

@@ -563,7 +563,7 @@ export class StoryEngine {
     }
     if (talk.lines) {
       // quote of the day candidates: jokes and funny reactions said in town
-      for (const l of talk.lines) if (/^(joke|react\.funny|small\.weather|sweet|flirt\.re)/.test(l.rule) && l.text.length <= 40) { this.quotes.push({ who: l.who, text: l.text, day: this.clock.day }); if (this.quotes.length > 12) this.quotes.shift(); }
+      for (const l of talk.lines) if (/^(joke|react\.funny|small\.weather|small\.snow|flirt\.oblivious)/.test(l.rule) && l.text.length <= 40) { this.quotes.push({ who: l.who, text: l.text, day: this.clock.day }); if (this.quotes.length > 12) this.quotes.shift(); }
     }
     if (this.metrics) this.metrics.onTalk(talk, this);
     if (this.bus.has('talk')) this.bus.emit('talk', talk);

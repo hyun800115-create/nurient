@@ -233,7 +233,18 @@ export class OfflineBrain {
         const again = mem.last === day && (session.count || 0) > 0;
         parts.push(say(again ? V(GENERIC.again) : L.hi && L.hi.length ? L.hi : V(GENERIC.greeting)));
         res.emote = 'wave'; res.affinity = 1; res.memory = again ? '' : SUMMARY.greeting;
-        this.maybeExtra(village, key, c, res, parts, session, intent, 0.6);
+        if (intent.topics.length) { const tp = intent.topics[0]; parts.push(say(this.likes(p, tp) ? GENERIC.topicLike : GENERIC.topicGeneric, { topic: tp })); res.memory = render(SUMMARY.topic, { topic: tp }, CASUAL); }
+        else this.maybeExtra(village, key, c, res, parts, session, intent, 0.6);
+        break;
+      }
+      case 'invite': {
+        const tp = intent.topics[0] || (intent.text.match(/([가-힣]{1,5})(?:하자|놀자|가자|먹자|할래)/) || [])[1] || '';
+        const yes = !tp || this.likes(p, tp) || p.group === 'kid' || rng() < 0.5;
+        parts.push(say(yes ? V(GENERIC.inviteYes) : GENERIC.inviteMaybe, { topic: tp || '그거' }));
+        res.emote = yes ? (p.group === 'kid' ? 'sparkle' : 'thumbs') : 'sweat'; res.mood = yes ? (p.group === 'kid' ? 'excited' : 'happy') : null;
+        res.affinity = yes ? 2 : 1; res.importance = 2;
+        res.memory = tp ? '촌장님이 같이 ' + tp + ' 하자고 했다' : '촌장님이 같이 놀자고 했다';
+        res.topics = res.topics.length ? res.topics : tp ? [tp] : ['놀이'];
         break;
       }
       default: {
@@ -242,7 +253,7 @@ export class OfflineBrain {
         const line = village.corpus.pickLine(key, { day, topics: intent.topics, said: mem.said, rng, needTopic: true });
         if (line) { parts.push(village.corpus.sayLine(line, key, village.personas, level, village.chiefName)); res.used.push(line.i); }
         else if (tp) {
-          const liked = (p.likes || []).some((l) => l.includes(tp)) || (p.lines.work || []).some((l) => l.includes(tp));
+          const liked = this.likes(p, tp);
           parts.push(say(liked ? GENERIC.topicLike : GENERIC.topicGeneric, { topic: tp }));
           const g = village.corpus.pickGossip(key, { day, topics: [tp], said: mem.said, rng });
           if (g && g.entry.tp.includes(tp)) { parts.push(village.corpus.sayGossip(g.entry, g.kn, key, village.personas, level, village.chiefName, rng)); res.used.push(g.entry.i); }
@@ -263,6 +274,13 @@ export class OfflineBrain {
     if (!res.emote) res.emote = MOOD_EMOTE[mem.mood] || 'heart';
     if (res.memory && !isPlainForm(res.memory)) res.memory = '';
     return res;
+  }
+
+  /** does this resident like the topic? (likes, traits, own work lines) */
+  likes(p, tp) {
+    if (!tp) return false;
+    const hay = [...(p.likes || []), ...(p.traits || []), ...((p.lines && p.lines.work) || []), p.job || ''];
+    return hay.some((l) => l.includes(tp) || (tp.length >= 2 && tp.includes(l.split(' ').pop())));
   }
 
   /** after small talk: maybe a learned line, a rumour, a memory, or a question back */

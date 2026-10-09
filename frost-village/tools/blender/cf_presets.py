@@ -145,7 +145,7 @@ PRESETS3 = {
     'delivery_driver': {'label': {'ko': '택배 기사', 'en': 'delivery driver'},
                         'bases': {'adult_slim': 4, 'adult_round': 2},
                         'tops': ['top_delivery_polo'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'],
-                        'hats': ['hat_delivery_cap'], 'hatChance': 0.9, 'neck': None, 'bag': None,
+                        'hats': ['hat_delivery_cap'], 'hatChance': 1.0, 'neck': None, 'bag': None,
                         'headAcc': None, 'gloveChance': 0.3,
                         'colors': {'top': ['#7A4A2A', '#D9483B', '#2E6E8A'], 'top2': ['#F2C14E', '#F4F1EA', '#E8DCC0'],
                                    'hat': ['=top'], 'hat2': ['=top2'], 'bottom': ['#3B3F52', '#4A3830', '#2B2F3A'],

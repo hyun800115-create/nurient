@@ -117,9 +117,11 @@ export function slotify(text, personas, chiefName = '촌장님') {
  * render slots for `speaker` at `level`: names follow how the speaker calls each person (미소 언니 /
  * 미소 씨), particles are re-applied, the speaker's own name becomes 나/저, and the line is re-levelled.
  */
-export function renderSlots(tpl, speaker, personas, level, chiefName = '촌장님') {
+export function renderSlots(tpl, speaker, personas, level, chiefName = '촌장님', self3 = null) {
   const txt = String(tpl || '').replace(/\{@([a-z_]+)(?::([^}]+))?\}/g, (all, key, form) => {
     if (key === speaker) return pronoun(form || '', level);
+    if (key === self3) return form ? josa('자기', form) : '자기';      // "미소가 그러던데, 촌장님이 자기한테 …"
+
     const name = key === 'chief' ? chiefName : refName(personas, speaker, key, chiefName) || '누군가';
     return form ? josa(name, form) : name;
   });

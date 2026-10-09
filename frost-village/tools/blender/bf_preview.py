@@ -52,7 +52,12 @@ def beach_bg(W, H, shore, t=0.0, seed=3):
     dist = (ys - s)                                     # > 0 = sea side (below the line)
     noise = rng.normal(0, 1, (H, W)).astype(np.float32)
     img = np.zeros((H, W, 3), np.float32)
-    sand = SAND[None, None] + noise[..., None] * 4.0
+    tex = sand_tex()
+    if tex is not None:
+        th, tw = tex.shape[:2]
+        sand = tex[np.arange(H)[:, None] % th, np.arange(W)[None, :] % tw]
+    else:
+        sand = SAND[None, None] + noise[..., None] * 4.0
     wet = np.clip(1 - (-dist) / 14.0, 0, 1)[..., None] * (dist <= 0)[..., None]
     sand = sand * (1 - wet) + WET * wet
     depth = np.clip(dist / 260.0, 0, 1)[..., None]
@@ -84,7 +89,42 @@ def shadow(img, x, y, w, h, a=64):
     paste(img, sh, int(x - w - 2), int(y - h - 2))
 
 
+_FX = {}
+
+
+def fx_frames(key, fw, fh, n):
+    """Frames of an assets/water fx sheet (read only; None when the water fragment is not there)."""
+    if key not in _FX:
+        path = os.path.join(GAME, 'assets', 'water', key + '.png')
+        if not os.path.exists(path):
+            _FX[key] = None
+        else:
+            sh = Image.open(path).convert('RGBA')
+            cols = sh.width // fw
+            _FX[key] = [sh.crop(((k % cols) * fw, (k // cols) * fh, (k % cols + 1) * fw, (k // cols + 1) * fh))
+                        for k in range(n)]
+    return _FX[key]
+
+
+_SAND = {}
+
+
+def sand_tex():
+    if 'img' not in _SAND:
+        path = os.path.join(GAME, 'assets', 'beach', 'ground_sand.png')
+        _SAND['img'] = np.asarray(Image.open(path).convert('RGB')).astype(np.float32) if os.path.exists(path) else None
+    return _SAND['img']
+
+
 def ripple(img, x, y, k=1.0, t=0.0):
+    """fx_swim_ripple (assets/water, anchor 0.5 / 0.5 on the waterline) under a swimmer; ring fallback."""
+    fr = fx_frames('fx_swim_ripple', 128, 64, 12)
+    if fr:
+        im = fr[int(t * 12) % 12]
+        if abs(k - 1.0) > 0.02:
+            im = im.resize((max(1, int(128 * k)), max(1, int(64 * k))), Image.BILINEAR)
+        paste(img, im, int(round(x - im.width / 2)), int(round(y - im.height / 2)))
+        return
     d = ImageDraw.Draw(img, 'RGBA')
     rx, ry = 26 * k, 10.5 * k
     d.ellipse([x - rx, y - ry, x + rx, y + ry], outline=(255, 255, 255, 170), width=2)
@@ -145,6 +185,12 @@ def castle(img, x, y, size=1.0):
 
 
 def splash_fx(img, x, y, t):
+    """fx_splash_small (assets/water, anchor 0.5 / 0.72 = water surface) at phase t 0..1; droplet fallback."""
+    fr = fx_frames('fx_splash_small', 96, 96, 10)
+    if fr:
+        im = fr[min(9, int(t * 10))]
+        paste(img, im, int(round(x - 48)), int(round(y - 96 * 0.72)))
+        return
     d = ImageDraw.Draw(img, 'RGBA')
     rng = random.Random(int(x * 7 + y))
     for k in range(14):

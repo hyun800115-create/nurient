@@ -17,12 +17,13 @@ const RETRY = 5;            // s between tries when the line is full
 export class Visitor extends Customer {
   /** plan: { targets: [market...], want: { type, count } } */
   constructor(gs, nb, citizen, x, y, plan) {
-    const first = plan.targets[0];
+    // (the Customer base wants a seller with a line; a founded shop target is handled by this class)
+    const first = plan.targets.find((q) => q && q.queue) || gs.market;
     super(gs, first, 'tf:' + citizen.person.base, x, y, plan.want, 1, null, { person: citizen.person });
     this.nb = nb;
     this.citizen = citizen;
     this.targets = plan.targets.slice();
-    this.target = first;
+    this.target = this.targets[0] || first;
     this.wantPlan = plan.want;
     this.stage = 'walk';
     this.path = [];
@@ -42,6 +43,8 @@ export class Visitor extends Customer {
   // ---------------------------------------------------------------- where to go
   joinPoint() {
     const m = this.target;
+    // (B) a founded shop: its customer points
+    if (m.serve) { const cp = (m.customerPoints && m.customerPoints[0]) || m; return { x: cp.x, y: cp.y }; }
     const s = m.slotPos(Math.min(m.maxQueue - 1, m.queue.length + 1));
     return { x: s.x, y: s.y };
   }
@@ -89,6 +92,11 @@ export class Visitor extends Customer {
         if (this.follow(dt)) { this.stage = 'platform'; this.vx = this.vy = 0; this.play('idle'); this.faceTo(this.x + 40, this.y - 20); this.nb.visitorAtPlatform(this); }
         break;
       }
+      case 'shopB':
+        // (B) waiting at a founded shop; never longer than its patience
+        this.vx = this.vy = 0;
+        if ((this.shopBT += dt) > (BALANCE.v4.visitors.patience || 60) * 1.5) this.finishTarget(0.3);
+        break;
       case 'platform':
         this.vx = this.vy = 0;
         if (this.stack.count && this.animName !== 'carry_idle') this.locomotion(false);
@@ -126,6 +134,14 @@ export class Visitor extends Customer {
 
   tryJoin() {
     const m = this.target;
+    // (B) a founded shop serves its own line: wait there until it calls back with how it went
+    if (m && m.serve) {
+      if (this.stage === 'shopB') return;
+      this.stage = 'shopB'; this.vx = this.vy = 0; this.locomotion(false);
+      try { m.serve(this, (frac) => { if (this.alive && this.stage === 'shopB') this.finishTarget(Number.isFinite(frac) ? frac : 0); }); } catch (e) { this.finishTarget(0); }
+      this.shopBT = 0;
+      return;
+    }
     if (!m || !m.enabled) { this.finishTarget(0); return; }
     if (m.queue.length < m.maxQueue) {
       m.queue.push(this);
@@ -186,7 +202,7 @@ export class Visitor extends Customer {
     this.results.push(frac);
     this.targets.shift();
     this.target = this.targets[0] || null;
-    if (this.target && this.target.enabled) { this.stage = 'walk'; this.state = 'visit'; this.goTo(this.joinPoint()); return; }
+    if (this.target && (this.target.enabled || this.target.serve)) { this.stage = 'walk'; this.state = 'visit'; this.goTo(this.joinPoint()); return; }
     // done: how was it?
     const f = this.results.length ? this.results.reduce((a, b) => a + b, 0) / this.results.length : 0;
     this.frac = f;

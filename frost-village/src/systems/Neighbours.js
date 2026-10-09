@@ -64,6 +64,8 @@ export class Neighbours {
   /** wire v4 into the Game (called once in Game.build): made now when the rail strip is open, else later */
   static attach(gs, saved) {
     gs.v4 = null;
+    gs._v4pre = false;
+    gs.roadNet = null;
     gs.v4Saved = saved || null;
     if (gs.territory.isOpen('rail')) { gs.v4 = new Neighbours(gs, saved, true); return gs.v4; }
     const onSite = (site) => { if (site && site.id === 'tower_east') Neighbours.prefetch(gs); };
@@ -394,6 +396,9 @@ export class Neighbours {
     const storeOk = !!(sto && sto.enabled && (sto.availableFoods ? sto.availableFoods().length : true));
     if (storeOk && r() < V.storeChance) { targets.push(sto); if (r() < 0.5) targets.push(mk); }
     else { targets.push(mk); if (storeOk && r() < V.storeChance) targets.push(sto); }
+    // (B) a founded shop with something on its shelves
+    const shops = this.growth && this.growth.shopTargets ? this.growth.shopTargets() : [];
+    if (shops.length && r() < V.shopChance) { const sh = shops[Math.floor(r() * shops.length)]; if (sh) targets.splice(r() < 0.5 ? 0 : targets.length, 0, sh); }
     const n = V.wantMin + Math.floor(r() * (V.wantMax - V.wantMin + 1));
     return { targets, want: { type: (mk.availableFoods()[0]) || 'item_fish_cooked', count: n } };
   }
@@ -557,6 +562,34 @@ export class Neighbours {
   onNextArrival(stop, fn) { this.waitNext[stop === 'town' ? 'town' : 'ours'].push(fn); }
   addCoach() { if (this.rail.coaches > 1) return; this.rail.coaches = 2; if (this.train) this.train.build(); }
   get people() { return this.town ? this.town.population() : 0; }
+
+  /** tap on a townsperson: a name card (이름 · 나이 · 하는 일, 좋아하는 것, 단골 ★) */
+  tap(wx, wy) {
+    const gs = this.gs;
+    let best = null, bd = 1e12;
+    const test = (w, c) => {
+      if (!w || !w.alive || !c || !w.sprite.visible) return;
+      const top = w.y + w.headTop - 14, bot = w.y + 10;
+      if (wy < top || wy > bot || Math.abs(wx - w.x) > 34) return;
+      const d = Math.abs(wx - w.x) + Math.abs(wy - (w.y + w.headTop / 2));
+      if (d < bd) { bd = d; best = { w, c }; }
+    };
+    if (this.town) for (const b of this.town.bodies) if (b.c) test(b, b.c);
+    for (const v of this.visitors) test(v, v.citizen);
+    for (const m of this.sellers()) for (const c of m.queue.concat(m.leaving)) if (c.citizen) test(c, c.citizen);
+    if (!best) return false;
+    const { w, c } = best;
+    const B = this.bubbles();
+    if (!B) return false;
+    const act = c.flags & F.IN_VILLAGE || w.market ? 'shop' : c.act;
+    let s = t('tfCard', { name: c.name, age: c.age, act: t('act_' + (act === 'class' ? 'class' : act === 'sleep' ? 'home' : act === 'school' ? 'school' : act)) });
+    s += '\n' + t('tfLikes', { fav: t(c.fav) });
+    if (c.regular) s += ' · ' + t('tfRegular');
+    B.chat(w, s, c.regular ? 'emote_heart' : null, 2.6);
+    if (w.faceTo) w.faceTo(gs.player.x, gs.player.y);
+    Audio.play('sfx_click', { volume: 0.4 });
+    return w;
+  }
 
   // ---------------------------------------------------------------- occlusion / save / hooks
   /** characters that can hide behind the town's buildings (Occlusion.collect) */
