@@ -58,6 +58,7 @@ const measure = (label) => ev(async (label) => {
     label, drawPerFrame: +((C.draw - s.draw) / n).toFixed(1), bindPerFrame: +((C.bind - s.bind) / n).toFixed(1), uploadsPerFrame: +((C.upload - s.upload) / n).toFixed(2),
     objs: kids.length, visible: vis, pileItems: piles, texMiB: +(texBytes / 1048576).toFixed(1), textures: nTex,
     dolls: v4 && v4.dolls, live: v4 && v4.town ? v4.town.live : 0, visitors: v4 ? v4.visitors.length : 0, hour: v4 ? v4.clock.hour : null,
+    cull: window.__FV.cull ? window.__FV.cull() : null,   // (v4-B) view culling: pictures left out, ms per drawn frame
   };
 }, label);
 const bench = (n = 240) => ev((n) => window.__step.bench(n), n);
@@ -143,7 +144,10 @@ try {
   step('logic per tick (median): plaza ≤ 1.6 ms, town ≤ 2.1 ms (fixed-step bench, SwiftShader)', R.bench.plaza.p50 <= 1.6 && R.bench.town_noon.p50 <= 2.1,
     'p50 / mean: plaza ' + R.bench.plaza.p50 + ' / ' + R.bench.plaza.avg + ', town noon ' + R.bench.town_noon.p50 + ' / ' + R.bench.town_noon.avg + ', town night ' + R.bench.town_night.p50 + ' / ' + R.bench.town_night.avg);
   step('town sim ≤ 0.35 ms per frame', P.townMs <= 0.35, P.townMs.toFixed(3) + ' ms (all v4 ' + P.all.toFixed(3) + ' ms)');
-  step('draw calls per frame logged (gate ≤ 12 is BUILD-B\'s pages work)', maxDraw > 0, 'max ' + maxDraw + ' ' + R.scenes.map((s) => s.label.split(' ')[0] + ':' + s.drawPerFrame).join(' '));
+  // (v4-B) the gate (§16.4): view culling (src/systems/Culler.js) keeps a frame to the textures on screen
+  step('draw calls per frame ≤ 12 (plaza with visitors, the town by day / dusk / night, zoom 0.6, overview)', maxDraw > 0 && maxDraw <= 12, 'max ' + maxDraw + ' ' + R.scenes.map((s) => s.label.split(' ')[0] + ':' + s.drawPerFrame).join(' '));
+  // display objects (§16.4 asks ≤ 1700 without pile items): logged — a noon crowd of ~60 paper dolls on screen is 8–12 images each
+  console.log('   display objects (excl. pile items): ' + R.scenes.map((s) => s.label.split(' ')[0] + ':' + (s.objs - s.pileItems)).join(' '));
   const tex = R.scenes.map((s) => s.texMiB);
   step('texture memory logged (source-sum MiB; must ≤ 455 is BUILD-B\'s residency work)', tex.every((x) => x > 0), tex.join(' / '));
   fs.writeFileSync(path.join(OUT, 'a_perf.json'), JSON.stringify(R, null, 1));

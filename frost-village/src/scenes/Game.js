@@ -21,6 +21,7 @@ import { Worker, Porter } from '../entities/Worker.js';
 import { Roads } from '../systems/Roads.js';
 import { VillageLife } from '../systems/VillageLife.js';
 import { Occlusion } from '../systems/Occlusion.js';
+import { Culler } from '../systems/Culler.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
 import { Market, TradePost, FOODS, GOODS } from '../entities/Seller.js';
@@ -215,6 +216,7 @@ export class Game extends Phaser.Scene {
     // (v3.5) Kongi the dog: whistle, treats, fetch, petting (affection is saved)
     this.dog = new DogPlay(this, sv.dog);
     this.occlusion = new Occlusion(this);
+    this.culler = new Culler(this);       // (v4-B) pictures far outside the camera are not drawn (draw calls; runs before each drawn frame)
     this.updatePopulation();
 
     // ambient snowfall around the camera
@@ -1841,6 +1843,8 @@ export class Game extends Phaser.Scene {
       },
       /** (v4-B) texture residency: MiB by class, budget, loads / evictions (docs/v4_plan.md §11.5) */
       texStats() { return Residency.stats(); },
+      /** (v4-B) view culling: { culled, passes, enabled }; cull(false) draws everything */
+      cull(v) { const c = gs.culler; if (!c) return null; if (v !== undefined) c.setEnabled(v); return { culled: c.culled, passes: c.passes, enabled: c.enabled, ms: +c.ms.toFixed(3) }; },
       /** (v4-B) is atlas / image `k` loaded (any of its packed pages)? */
       hasTex(k) { return !!Assets.texOf(k); },
       /** (v4-B) the asset registry (tests: failed / queued / pages) */

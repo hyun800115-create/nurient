@@ -10,6 +10,14 @@ import { TF } from './Townfolk.js';
 import { BALANCE } from '../data/balance.js';
 
 const TF_SOC_ANIMS = new Set(['talk', 'wave', 'happy']);
+
+/** take an animation out for good: Phaser's anims.remove() only unlists it — the Animation keeps its
+ *  'pauseall' / 'resumeall' listeners on the manager and its frames (a leak on every evict / reload) */
+function dropAnim(g, key) {
+  const a = g.anims.get(key);
+  if (!a) return;
+  if (typeof a.destroy === 'function') a.destroy(); else g.anims.remove(key);
+}
 // (v4-B) building pictures that belong to one area: out of memory while the camera is far from it (§11.3b
 // `regionBld`), back when it comes near. Rects in world px [x0, y0, x1, y1].
 // (the district by our station uses the street props and the townhouses too: those belong to rail strip + town)
@@ -191,7 +199,7 @@ export const Residency = {
         if (!d || d.atlas !== own) continue;
         const def = Assets.charDef(c);
         for (const an of anims) {
-          for (const dir of ['S', 'SE', 'E', 'NE', 'N']) { const ak = c + ':' + an + ':' + dir; if (g.anims.exists(ak)) g.anims.remove(ak); }
+          for (const dir of ['S', 'SE', 'E', 'NE', 'N']) dropAnim(g, c + ':' + an + ':' + dir);
           if (def._dirs) def._dirs[an] = [];
         }
       }
@@ -277,7 +285,7 @@ export const Residency = {
       o.setTexture('fv_blank');
       if (sk && gs.lazyImgs) gs.lazyImgs.push({ img: o, key: sk, after: loop ? (img) => { if (img.anims && g.anims.exists(loop)) img.anims.play(loop); } : null });
     }
-    for (const k of drop) g.anims.remove(k);
+    for (const k of drop) dropAnim(g, k);
     for (const k of set) { tex.remove(k); Assets.held.add(k); Assets.queued.delete(k); }
     Assets.cache.clear();
     this.evictions += set.size;

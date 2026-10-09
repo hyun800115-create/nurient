@@ -118,7 +118,8 @@ try {
   await ev(() => { window.__FV.v4.invite(); window.__FV.v4.openTown(); });
   await nudge(() => window.__FV.hasTex('town_homes') && window.__FV.state().v4.tf.child, 150000);
   console.log('  townVisit before the walk:', await ev(() => !!window.__FV.state().flags.townVisit));
-  await ev(() => { window.__FV.camera(); window.__FV.teleport(4700, 2520); });
+  // (the welcome comes when the chief reaches the square: near the fountain)
+  await ev(() => { const f = window.__FV.scene.v4.buildings.find((b) => b.id === 't_fountain') || { x: 4886, y: 2320 }; window.__FV.camera(); window.__FV.teleport(f.x - 60, f.y + 120); });
   await until(() => !!window.__FV.state().flags.townVisit, 15, 0.25);
   await adv(0.6);
   console.log('  welcome banner shown:', await ev(() => { const b = window.__FV.game.scene.getScene('UI').bannerBox; return b.visible + ' ' + b.alpha; }));
