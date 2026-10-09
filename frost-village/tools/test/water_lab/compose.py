@@ -3,16 +3,33 @@
   compose.py pair  <left.png> <right.png> <out.png> <left label> <right label>
   compose.py strip <out.png> <cols> <f1.png> ... <fn.png> <label1> ... <labeln>
 """
+import os
 import sys
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+
+# a font with Hangul (labels such as '물결 품질'); PIL's bitmap default has none
+FONTS = ['/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+         '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
 
 
-def label(im, text, xy):
+def font(size):
+    for f in FONTS:
+        if os.path.exists(f):
+            try:
+                return ImageFont.truetype(f, size)
+            except OSError:
+                pass
+    return ImageFont.load_default()
+
+
+def label(im, text, xy, size=None):
     d = ImageDraw.Draw(im)
     x, y = xy
-    w = int(d.textlength(text)) + 12
-    d.rectangle([x, y, x + w, y + 18], fill=(20, 28, 44))
-    d.text((x + 6, y + 3), text, fill=(240, 244, 250))
+    size = size or max(13, min(24, im.width // 160))
+    f = font(size)
+    w = int(d.textlength(text, font=f)) + 14
+    d.rectangle([x, y, x + w, y + size + 10], fill=(20, 28, 44))
+    d.text((x + 7, y + 4), text, font=f, fill=(240, 244, 250))
 
 
 def pair(a, b, out, la, lb, crop=None):
@@ -21,11 +38,11 @@ def pair(a, b, out, la, lb, crop=None):
         box = tuple(int(v) for v in crop.split(','))
         A, B = A.crop(box), B.crop(box)
     gap = 12
-    im = Image.new('RGB', (A.width + B.width + gap, max(A.height, B.height) + 28), (20, 28, 44))
-    im.paste(A, (0, 28))
-    im.paste(B, (A.width + gap, 28))
-    label(im, la, (4, 4))
-    label(im, lb, (A.width + gap + 4, 4))
+    im = Image.new('RGB', (A.width + B.width + gap, max(A.height, B.height) + 32), (20, 28, 44))
+    im.paste(A, (0, 32))
+    im.paste(B, (A.width + gap, 32))
+    label(im, la, (4, 4), 18)
+    label(im, lb, (A.width + gap + 4, 4), 18)
     im.save(out, optimize=True)
 
 
@@ -41,7 +58,7 @@ def strip(out, cols, rest):
     for i, (f, lab) in enumerate(zip(ims, labels)):
         x, y = (i % cols) * (w + g), (i // cols) * (h + g)
         im.paste(f, (x, y))
-        label(im, lab, (x + 4, y + 4))
+        label(im, lab, (x + 6, y + 6), max(13, min(24, w // 34)))
     im.save(out, optimize=True)
 
 

@@ -9,9 +9,16 @@
 //   bridge.lineFor(speakerKey, listenerKey)             // what the story dialogue generator can ask for
 //
 // Story engine calls used (all optional): story.newspaper(), story.diary(id, day), story.clock.day,
-// story.weather.kind, story.relationship(a, b), story.on('talk', fn).
+// story.weather.today.kind, story.relationship(a, b), story.on('talk', fn).
 
 import { levelize, CASUAL, POLITE, isPlainForm } from './ko.js';
+import { capLine } from './sanitize.js';
+
+// story weather kinds (tools/story/src/weather.js) -> chat weather id (lines.js) + Korean name
+export const STORY_WEATHER = {
+  clear: ['clear', '맑은 하늘'], sunny: ['clear', '화창한 햇살'], mild: ['clear', '포근한 날씨'], cloudy: ['snow', '흐린 하늘'],
+  light: ['snow', '가랑눈'], snow: ['snow', '눈'], heavy: ['heavy', '함박눈'], blizzard: ['blizzard', '눈보라'], fog: ['fog', '안개'],
+};
 
 export class StoryBridge {
   constructor(story, village, { idOf = null, keyOf = null } = {}) {
@@ -30,13 +37,13 @@ export class StoryBridge {
     const paper = this.call(() => s.newspaper());
     const w = {};
     if (paper && typeof paper === 'object') {
-      const news = [paper.headline, paper.lead].filter((x) => typeof x === 'string' && x).map((x) => x.slice(0, 80));
+      const news = [paper.headline, paper.lead].filter((x) => typeof x === 'string' && x).map((x) => capLine(x, 80));
       if (news.length) w.news = news.slice(0, 2);
     }
     const day = this.call(() => s.clock.day);
     if (Number.isFinite(day)) w.day = day;
-    const wk = this.call(() => s.weather.kind);
-    if (typeof wk === 'string') w.weather = wk;
+    const wk = this.call(() => (s.weather.today ? s.weather.today.kind : s.weather.kind));
+    if (typeof wk === 'string' && STORY_WEATHER[wk]) { w.weather = STORY_WEATHER[wk][0]; w.weatherKo = STORY_WEATHER[wk][1]; }
     this.village.setWorld(w);
     return w;
   }
@@ -74,8 +81,10 @@ export class StoryBridge {
     const v = this.village;
     const a = this.keyOf(talk.a), b = this.keyOf(talk.b);
     if (!a || !b || !v.personas[a] || !v.personas[b]) return false;
-    const g = v.corpus.pickGossip(a, { day: v.day, said: v.mem(a).said, rng, minFresh: 0.15 });
-    if (!g || v.corpus.knower(g.entry, b)) return false;
+    // what the chief told `a` (or `a` heard) and `b` has not heard yet
+    let g = v.corpus.pickGossip(a, { day: v.day, said: v.mem(a).said, rng, minFresh: 0.15, own: true });
+    if (g && (v.corpus.knower(g.entry, b) || (g.entry.sb && g.entry.sb.includes(b)))) g = null;
+    if (!g) return false;
     const line = this.lineFor(a, b, g);
     if (!line) return false;
     const idx = talk.lines.findIndex((l) => l.who === talk.a && /^(rumor|small|chat|greet)/.test(String(l.rule || l.topic || '')));
@@ -91,7 +100,7 @@ export class StoryBridge {
   /** a learned rumour `speaker` could tell `listener` (resident to resident), or '' */
   lineFor(speaker, listener, picked) {
     const v = this.village;
-    const g = picked || v.corpus.pickGossip(speaker, { day: v.day, said: v.mem(speaker).said });
+    const g = picked || v.corpus.pickGossip(speaker, { day: v.day, said: v.mem(speaker).said, own: true });
     if (!g) return '';
     const rel = this.call(() => this.story.relationship(this.idOf(speaker), this.idOf(listener)));
     const sp = v.personas[speaker], ls = v.personas[listener];

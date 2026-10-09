@@ -33,19 +33,20 @@ export function randomReply(rng, key) {
 }
 
 /**
- * run `total` conversations (open, `perConv` AI messages, close); a new game day every `perDay`.
+ * run `total` conversations (open, `perConv` AI messages, close) with residents from `roster`; a new
+ * game day every `perDay`.
  * returns { village, engine, curve: [{ convs, bytes, gossip, lines, episodes }], calls }
  */
-export async function simulate({ total = 1000, perConv = 3, perDay = 8, seed = 5, marks = [10, 50, 100, 250, 500, 750, 1000] } = {}) {
+export async function simulate({ total = 1000, perConv = 3, perDay = 8, seed = 5, marks = [10, 50, 100, 250, 500, 750, 1000], roster = LAB_RESIDENTS } = {}) {
   const rng = makeRng(seed);
-  const village = new ChatVillage({ roster: LAB_RESIDENTS, seed });
+  const village = new ChatVillage({ roster, seed });
   const sample = makeFakeSample({ script: (input) => ({ reply: randomReply(rng, currentKey), chunks: 1 }) });
   const engine = new ChatEngine({ village, sample, opts: { cooldownMs: 0, sessionBudget: 1e9, streakBudget: 1e9 } });
   let currentKey = LAB_RESIDENTS[0];
   const lines = ['요즘 어때?', '무슨 소문 있어?', '나 오늘 생선 잡았어!', '선물 줄게', '고양이 좋아해?', '도와줄 일 있어?', '눈사람 만들자', '잘 지내!'];
   const curve = [];
   for (let c = 1; c <= total; c++) {
-    currentKey = LAB_RESIDENTS[Math.floor(rng() * LAB_RESIDENTS.length)];
+    currentKey = roster[Math.floor(rng() * roster.length)];
     engine.open(currentKey);
     for (let m = 0; m < perConv; m++) await engine.send(currentKey, lines[Math.floor(rng() * lines.length)]);
     engine.close(currentKey);

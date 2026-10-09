@@ -57,8 +57,9 @@ export class DayClock {
     if (!(Settings.data.daynight !== false && D.on)) return { color: 0xffffff, a: 0 };
     if (h >= D.dayStart && h < D.dusk) return { color: 0xffffff, a: 0 };
     if (h >= D.dusk && h < D.night) {
+      // a warm orange glow first, then lilac, then the night blue
       const f = (h - D.dusk) / Math.max(0.01, D.night - D.dusk);
-      return { color: lerpColor(DUSK0, DUSK1, f), a: 0.12 + (dk * 0.72 - 0.12) * f };
+      return { color: lerpColor(DUSK0, DUSK1, f), a: 0.16 + (dk - 0.16) * f };
     }
     if (h >= D.dawn && h < D.dayStart) {
       const f = (h - D.dawn) / Math.max(0.01, D.dayStart - D.dawn);
@@ -98,19 +99,19 @@ export class DayClock {
     const gs = this.gs, a = this.cur.a;
     if (a < 0.004) { if (this.overlay) this.overlay.setVisible(false); return; }
     if (!this.overlay) {
-      this.overlay = gs.add.rectangle(0, 0, 10, 10, 0xffffff, 1).setOrigin(0, 0).setDepth(DEPTH.FX - 30);
+      // a tinted white image (a Shape ignores the MULTIPLY blend in WebGL; an Image does not)
+      this.overlay = gs.add.image(0, 0, '__WHITE').setOrigin(0, 0).setDepth(DEPTH.FX - 30);
       this.overlay.setBlendMode(Phaser.BlendModes.MULTIPLY);
     }
     const v = gs.cameras.main.worldView, m = 80;
     const o = this.overlay;
     o.setVisible(true);
     o.setPosition(v.x - m, v.y - m);
-    o.setSize(v.width + m * 2, v.height + m * 2);
+    o.setDisplaySize(v.width + m * 2, v.height + m * 2);
     // multiply by (1 - a) + a * colour: never darker than the readability floor
     const C = this.cur;
     const mix = (ch) => Math.round(255 * (1 - a) + ch * a);
-    o.fillColor = (mix(C.r) << 16) | (mix(C.g) << 8) | mix(C.b);
-    o.fillAlpha = 1;
+    o.setTint((mix(C.r) << 16) | (mix(C.g) << 8) | mix(C.b));
   }
 
   drawGlows() {

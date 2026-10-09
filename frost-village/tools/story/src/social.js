@@ -24,13 +24,15 @@ const DISTORT = {
 // facts that are not gossiped about (private or too small)
 const NO_GOSSIP = { deposit: 1, meet: 1, crush: 2, confess_no: 2, bank_help: 2, outing: 1, shop_plan: 0, move_plan: 0 };
 // own facts worth telling a friend about (personal news)
-const PERSONAL = { big_buy: 1, loan: 1, loan_paid: 1, deposit: 1, outing: 1, slip: 1, bigcatch: 1, gift: 1, lost_found: 1, new_job: 1, first_job: 1,
+const PERSONAL = { baby: 1, big_buy: 1, loan: 1, loan_paid: 1, deposit: 1, outing: 1, slip: 1, bigcatch: 1, gift: 1, lost_found: 1, new_job: 1, first_job: 1,
   shop_plan: 1, move_plan: 1, crush: 1, confess_no: 1, sweetheart: 1, engaged: 1, burnt_food: 1, prank: 1, snowman: 1, concert: 1, bank_help: 1, help: 1, retire: 1, housewarming: 1 };
+// news about one's own family is told as one's own news ('our baby!'), never as gossip about a relative
+const FAMILY_NEWS = { baby: 1, wedding: 1, engaged: 1, sweetheart: 1, move_in: 1, move_out: 1, move_plan: 1 };
 const CONGRATS = { wedding: 1, engaged: 1, baby: 1, shop_open: 1, new_job: 1, first_job: 1, loan_paid: 1, rebuilt: 1, move_in: 1, bigcatch: 1, sweetheart: 1, retire: 1 };
 const COMFORT = { theft: 1, ruin: 1, fire: 1, move_plan: 1, farewell: 1, window: 1, confess_no: 1 };
 const RECALL = { outing: 1, snowman: 1, concert: 1, fire: 1, wedding: 1, slip: 1, prank: 1, meet: 1, gift: 1, help: 1, scuffle: 1, cat_rescue: 1, pet: 1, bigcatch: 1, housewarming: 1, reconcile: 1, arrest: 1 };
 // follow-up questions after a rumour
-const FOLLOW = { theft: 'caught', fire: 'hurt', ruin: 'after', wedding: 'when', engaged: 'when', baby: 'name', move_in: 'who', move_out: 'why', move_plan: 'why',
+const FOLLOW = { theft: 'caught', fire: 'hurt', ruin: 'after', engaged: 'when', baby: 'name', move_in: 'who', move_out: 'why', move_plan: 'why',
   shop_open: 'what', scuffle: 'why', wanted: 'who', window: 'who', arrest: 'after', loan: 'why', sweetheart: 'since', farewell: 'after' };
 
 const SMALL = ['weather', 'prices', 'chief', 'pet', 'train', 'shop', 'work', 'hobby', 'family', 'bank', 'logistics', 'food', 'plans', 'news', 'town', 'health', 'school', 'play', 'oldtimes', 'dream', 'newcomer', 'season', 'sleep', 'money', 'fashion', 'music', 'snow'];
@@ -51,6 +53,7 @@ export class Social {
     this.e = e;
     this.tmp = []; this.tmpW = [];
     this.toldNow = [];        // stories (root fact ids) told in the current conversation
+    this.askedNow = [];       // questions already asked in the current conversation
     this.stats = { talks: 0, beats: 0, intros: 0, gossip: 0, gossipNew: 0, distortions: 0, exaggerations: 0, questions: 0, answered: 0, dunno: 0,
       confessions: 0, confessYes: 0, proposals: 0, quarrels: 0, reconciles: 0, invites: 0, outings: 0, happenings: 0, topics: Object.create(null) };
     this.affAcc = 0;
@@ -117,6 +120,7 @@ export class Social {
     const beats = [];
     this.affAcc = 0;
     this.toldNow.length = 0;
+    this.askedNow.length = 0;
     const family = (rel.flags & RF_FAMILY) !== 0 || rel.stage === ST_SPOUSE;
     const first = rel.n === 0 && !family;
     if (first) this.intro(a, b, rel, beats);
@@ -228,11 +232,11 @@ export class Social {
     if (cg) add('congrats', 3);
     const cf = this.pickAbout(s, l, false);
     if (cf) add('comfort', 3);
-    if (s.qs.length) add('ask', 1.3 + s.tr[3] / 60);
+    if (this.nextQ(s)) add('ask', 1.3 + s.tr[3] / 60);
     const rc = rel.n > 1 ? this.pickRecall(s, l) : null;
     if (rc) add('recall', 1.0);
     if (rel.crushOf(s.id) || rel.stage >= ST_SWEET && rel.stage <= ST_SPOUSE) add('romance', rel.stage >= ST_SWEET ? 1.4 : 1.8);
-    if (rel.flags & RF_RIVAL) add(rel.aff > -150 && s.tr[1] > 50 ? 'reconcile' : 'quarrel', 2.2);
+    if (rel.flags & RF_RIVAL) add((rel.aff > -220 || rel.fights >= 3) && s.tr[1] > 40 ? 'reconcile' : 'quarrel', 2.2);   // after a few rows, the kinder one says sorry
     if (rel.stage >= ST_FRIEND && gs >= G_KID && s.agenda.length < 2) {
       let shared = -1;
       for (const li of s.likes) if (l.likes.indexOf(li) >= 0) { shared = li; break; }
@@ -287,6 +291,7 @@ export class Social {
       if (m.tt.indexOf(l.id) >= 0) continue;
       if (f.a === l.id || f.b === l.id) continue;
       if (f.a === s.id && m.src === SRC_DID) continue;
+      if (FAMILY_NEWS[f.k] && (f.a === s.id || f.b === s.id || (f.a >= 0 && e.people[f.a] && e.people[f.a].hh === s.hh))) continue;
       const nov = novelty(e, f);
       if (nov <= 0) continue;
       const sc = (f.imp / 100) * (m.s / 1000) * nov * (1 + 0.3 * m.x) * (m.told > 5 ? 0.25 : 1) * (FACT_KINDS[f.k].news ? 1 : 0.8);
@@ -315,7 +320,11 @@ export class Social {
     for (const m of s.mem) {
       const f = m.f;
       if (!PERSONAL[f.k] || m.tt.indexOf(l.id) >= 0) continue;
-      if (f.a !== s.id && f.b !== s.id) continue;
+      const famHH = f.k === 'baby' && f.a >= 0 && e.people[f.a] && e.people[f.a].hh === s.hh;     // a new baby brother or sister
+      if (f.a !== s.id && f.b !== s.id && !famHH) continue;
+      // family news is not news to the family
+      if (FAMILY_NEWS[f.k] && (f.a === l.id || f.b === l.id || f.c === l.id || (f.a >= 0 && e.people[f.a] && e.people[f.a].hh === l.hh))) continue;
+      if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;
       if (this.stale(f)) continue;
       if ((f.k === 'crush' || f.k === 'confess_no') && rel.stage < ST_BEST) continue;
       if (f.k === 'crush' && f.b === l.id) continue;
@@ -336,6 +345,7 @@ export class Social {
       const tbl = good ? CONGRATS : COMFORT;
       if (!tbl[f.k] || m.tt.indexOf(l.id) >= 0) continue;
       if (novelty(e, f) < 0.3 || this.stale(f)) continue;
+      if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;
       let about = f.a === l.id || f.b === l.id;
       if (f.k === 'theft' || f.k === 'window') about = f.b === l.id;
       if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0) about = e.world.places[f.p].residents.indexOf(l.id) >= 0 || e.world.places[f.p].owner === l.id;
@@ -386,6 +396,7 @@ export class Social {
       // follow-up question and answer
       let fq = FOLLOW[f.k];
       if (fq === 'who' && m.d !== D_ANON && f.a >= 0 && (f.k !== 'wanted' || e.dialogue.knowsCulprit(s, f))) fq = null;   // already said who
+      if (fq === 'what' && f.k === 'shop_open' && !(m.d === D_PLACE && m.alt < 0)) fq = null;   // the shop's name already says what it sells
       if (fq && rng.chance(0.55)) {
         bt.nq = true;
         bt = this.beat(beats, l, s, 'follow.' + fq + '.' + f.k, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
@@ -473,7 +484,7 @@ export class Social {
       if (f.k === 'move_in') this.addQ(l, 'who', f);
       if (f.k === 'engaged') this.addQ(l, 'when', f);
       if (f.k === 'move_plan') this.addQ(l, 'why', f);
-      if (f.k === 'shop_open' || f.k === 'shop_plan') this.addQ(l, 'what', f);
+      if (f.k === 'shop_plan' || (f.k === 'shop_open' && d === D_PLACE && alt < 0)) this.addQ(l, 'what', f);
     }
     if (e.bus.has('gossip')) e.bus.emit('gossip', { fact: f.id, kind: f.k, from: s.id, to: l.id, x: lm ? lm.x : x, d: lm ? lm.d : d, hop: lm ? lm.h : m.h + 1 });
     return lm;
@@ -513,6 +524,7 @@ export class Social {
     bt.em = rule === 'react.funny' ? 'emote_laugh' : rule === 'react.crush' ? 'emote_love' : rule === 'react.sorry' ? 'emote_sweat' : 'emote_thumbs';
     bt.an = rule === 'react.funny' ? 'laugh' : 'happy';
     this.tell(s, l, m);
+    this.toldNow.push(f.ref || f.id);
     this.affAcc += 18;
   }
 
@@ -524,6 +536,7 @@ export class Social {
     bt.em = good ? 'emote_love' : 'emote_tear';
     m.tt.push(l.id);
     if (m.tt.length > 4) m.tt.shift();
+    this.toldNow.push(f.ref || f.id);
     this.affAcc += good ? 35 : 45;
     if (!good) l.mood = Math.min(100, l.mood + 8);
   }
@@ -541,9 +554,16 @@ export class Social {
     }
   }
 
+  /** the first open question of s not yet asked in this conversation */
+  nextQ(s) {
+    for (let i = 0; i < s.qs.length; i++) if (this.askedNow.indexOf(s.qs[i]) < 0) return s.qs[i];
+    return null;
+  }
+
   tAsk(s, l, beats) {
     const e = this.e, rng = e.rng;
-    const q = s.qs[0];
+    const q = this.nextQ(s);
+    this.askedNow.push(q);
     q.n++;
     this.stats.questions++;
     let bt = this.beat(beats, s, l, 'ask.' + q.k + (q.f ? '.' + q.f.k : ''), 'ask:' + q.k);
@@ -567,6 +587,7 @@ export class Social {
       this.affAcc += 12;
     } else {
       bt = this.beat(beats, l, s, 'ans.dunno.' + q.k + (q.f ? '.' + q.f.k : ''), 'ask:' + q.k); bt.f = q.f; bt.o = q.o; if (q.k === 'price' || q.k === 'buy') bt.i = q.o; bt.em = 'emote_sweat'; bt.an = 'think';
+      if (q.f) { const lm = findMem(l, q.f); bt.src = lm ? lm.src : SRC_ASKED; }   // 'I only saw the smoke' only from someone who saw it
       const tip = this.suggestWho(l, q, s.id);
       if (tip >= 0) { bt = this.beat(beats, l, s, 'ans.suggest', 'ask:' + q.k); bt.o = tip; bt.f = q.f; }
       else if (rng.chance(0.4)) { bt = this.beat(beats, s, l, 'ask.shrug', 'ask:' + q.k); bt.f = q.f; }
@@ -687,7 +708,7 @@ export class Social {
     if (rel.rom >= 240) {
       const who = a.tr[5] >= b.tr[5] ? a : b;
       const flag = who.id === rel.a ? RF_CRUSH_A : RF_CRUSH_B;
-      if (!(rel.flags & flag)) {
+      if (!(rel.flags & flag) && rel.stage < ST_SWEET) {     // (sweethearts and spouses are past the secret-crush stage)
         rel.flags |= flag;
         who.crushOn = (who === a ? b : a).id;
         const f = e.fact('crush', { a: who.id, b: (who === a ? b : a).id });
@@ -847,7 +868,7 @@ export class Social {
       case 'work': bt.p = s.work; bt.o = s.id; break;
       case 'hobby': bt.h = s.likes[rng.int(s.likes.length)]; break;
       case 'family': bt.o = s.spouse >= 0 && rng.chance(0.5) ? s.spouse : s.kids.length ? s.kids[rng.int(s.kids.length)] : s.spouse; break;
-      case 'food': bt.i = s.lastBuy >= 0 ? s.lastBuy : ITEMS[rng.int(17)].idx; break;
+      case 'food': bt.i = s.lastBuy >= 0 && ITEMS[s.lastBuy].cat === 'food' ? s.lastBuy : ITEMS[rng.int(17)].idx; break;
       case 'plans': { const n = s.plan; let p = -1; for (let j = s.planI; j < s.planN; j += 3) if (n[j + 2] !== 0 && n[j + 2] !== 9 && n[j + 1] !== place.idx) { p = n[j + 1]; break; } bt.p = p; break; }
       case 'news': { const pap = e.news.latest(); if (pap && pap.head) { bt.f = pap.head; } break; }
       case 'newcomer': bt.o = l.id; bt.p = l.home; break;

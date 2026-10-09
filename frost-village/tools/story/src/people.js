@@ -145,7 +145,7 @@ export function makeResident(e, spec = {}) {
   rollTraits(rng, r.tr, r.persona, group);
   if (spec.traits) for (const k in spec.traits) { const i = AXES.indexOf(k); if (i >= 0) r.tr[i] = spec.traits[k]; }
   rollLikes(rng, r, group);
-  r.job = spec.job || (group === G_ELDER ? 'retired' : group <= G_TEEN ? (age >= 7 ? 'student' : 'none') : 'none');
+  r.job = spec.job || (group === G_ELDER ? 'retired' : group <= G_TEEN ? (group >= G_KID ? 'student' : 'none') : 'none');
   r.wallet = spec.wallet !== undefined ? spec.wallet : group <= G_TEEN ? rng.range(2, 15) : rng.range(30, 140);
   r.savings = spec.savings !== undefined ? spec.savings : group <= G_TEEN ? rng.range(0, 30) : group === G_ELDER ? rng.range(200, 1500) : rng.range(50, 900);
   r.mood = rng.range(0, 50);
@@ -160,7 +160,7 @@ export function jobDef(r) { return JOBS[r.job] || JOBS.none; }
 
 // ---------------------------------------------------------------- households
 export class Household {
-  constructor(id) { this.id = id; this.members = []; this.home = -1; this.since = 0; this.unhappy = 0; this.planOut = -1; }
+  constructor(id) { this.id = id; this.members = []; this.home = -1; this.since = 0; this.unhappy = 0; this.planOut = -1; this.why = undefined; }
 }
 
 export function addToHousehold(e, hh, r) {

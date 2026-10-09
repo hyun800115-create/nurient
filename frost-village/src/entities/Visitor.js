@@ -51,7 +51,7 @@ export class Visitor extends Customer {
 
   goTo(p) {
     const gs = this.gs;
-    this.route = gs.roads.route(this.x, this.y, p.x, p.y, []);
+    this.route = this.nb.route ? this.nb.route(this.x, this.y, p.x, p.y) : gs.roads.route(this.x, this.y, p.x, p.y, []);
     this.ri = 0;
     this.dest = p;
   }
@@ -223,7 +223,8 @@ export class Visitor extends Customer {
     if (this.stage !== 'platform' && this.stage !== 'home') return false;
     this.stage = 'board';
     this.boardT = 0;
-    this.route = [{ x: p.x, y: p.y }]; this.ri = 0;
+    // (over the level crossing if still on the other side of the rails)
+    this.route = this.nb.route ? this.nb.route(this.x, this.y, p.x, p.y) : [{ x: p.x, y: p.y }]; this.ri = 0;
     return true;
   }
 

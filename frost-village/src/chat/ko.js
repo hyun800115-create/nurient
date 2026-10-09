@@ -143,7 +143,9 @@ const TOKEN = /\{([a-zA-Z_][\w]*)(?::([^}]+))?\}|\{요\}|\[([^\]|]*)\|([^\]]*)\]
 export function render(tpl, slots, level, out) {
   const polite = level === POLITE;
   let missing = 0;
-  const txt = tpl.replace(TOKEN, (all, key, form, cas, pol) => {
+  // [casual|polite] first, so a slot inside a choice is filled too
+  const chosen = String(tpl).replace(/\[([^\]|]*)\|([^\]]*)\]/g, (all, cas, pol) => (polite ? pol : cas));
+  const txt = chosen.replace(TOKEN, (all, key, form, cas, pol) => {
     if (all === '{요}') return polite ? '요' : '';
     if (cas !== undefined) return polite ? pol : cas;
     let v = slots ? slots[key] : undefined;

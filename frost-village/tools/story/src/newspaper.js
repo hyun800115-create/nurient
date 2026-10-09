@@ -20,15 +20,18 @@ export class Newspaper {
   compile() {
     const e = this.e, day = e.clock.day;
     const cands = [];
+    // stories already printed (the small hours of a day belong to two papers' windows)
+    const printed = new Set();
+    for (const p of this.papers) { if (p.head) printed.add(p.head.id); for (const f of p.items) printed.add(f.id); }
     for (const f of e.facts.values()) {
       const K = FACT_KINDS[f.k];
-      if (!K.news) continue;
+      if (!K.news || printed.has(f.id)) continue;
       if (f.day !== day - 1 && !(f.day === day && e.clock.minute < 360)) continue;
       const sc = K.news * 40 + f.imp + Math.min(40, f.reach * 2) + (f.k === 'chief' ? 20 : 0);
       cands.push([sc, f]);
     }
     // upcoming weddings
-    for (const f of e.facts.values()) if (f.k === 'engaged' && f.n >= day && f.n <= day + 2 && cands.every((c) => c[1] !== f)) cands.push([70, f]);
+    for (const f of e.facts.values()) if (f.k === 'engaged' && f.n >= day && f.n <= day + 2 && (!printed.has(f.id) || f.n === day) && cands.every((c) => c[1] !== f)) cands.push([70, f]);
     cands.sort((a, b) => b[0] - a[0] || a[1].id - b[1].id);
     // one story per kind per paper (two for the big ones: fires, thefts, weddings, babies, newcomers)
     const per = Object.create(null), items = [];

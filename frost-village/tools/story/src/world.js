@@ -68,12 +68,27 @@ export class World {
     return hour >= o[0] && hour < o[1];
   }
 
+  /** the eldest grown-up living in a home (-1 when empty): who owns it, whose name it carries */
+  headOf(p) {
+    const e = this.e;
+    let best = -1, ba = -1;
+    for (const id of p.residents) {
+      const r = e.people[id];
+      if (!r || !r.alive) continue;
+      const a = e.clock.day - r.birth;
+      const grown = a >= 19 * e.cfg.yearDays;
+      const sc = (grown ? 1e6 : 0) + a;
+      if (sc > ba) { ba = sc; best = id; }
+    }
+    return best;
+  }
+
   /** display name of a place in a language */
   nameOf(p, lang) {
     if (!p) return lang === 'en' ? 'somewhere' : '어딘가';
     if (p.name) return p.name[lang] || p.name.ko;
     if (p.kind === 'home') {
-      const e = this.e, o = p.residents.length ? e.people[p.residents[0]] : null;
+      const e = this.e, h = this.headOf(p), o = h >= 0 ? e.people[h] : null;
       if (o) return lang === 'en' ? e.dialogue.nameEn(o) + '’s house' : o.given + '네 집';
       return lang === 'en' ? 'an empty house' : '빈집';
     }

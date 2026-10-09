@@ -38,8 +38,27 @@ export class Economy {
       case A_PICKUP: this.pickup(r, p); break;
       case A_BIGBUY: this.bigBuy(r, p); break;
       case A_HOME: if (e.clock.minute < 600 && r.readDay !== e.clock.day) e.news.read(r); r.energy = Math.min(100, r.energy + 5); break;
-      case A_SOCIAL: case A_PLAY: case A_OUTING: case A_VISIT: r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
+      case A_OUTING: this.outing(r, p); r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
+      case A_SOCIAL: case A_PLAY: case A_VISIT: r.fun = Math.min(100, r.fun + 12); e.social.happen(r, p); break;
       case A_CLINIC: r.mood = Math.min(100, r.mood + 6); break;
+    }
+  }
+
+  /** a promised outing: when the friend is already there, it becomes a shared memory (and a story) */
+  outing(r, p) {
+    const e = this.e, day = e.clock.day;
+    for (let i = 0; i < r.agenda.length; i++) {
+      const a = r.agenda[i];
+      if (a[0] !== day || a[2] !== p.idx) continue;
+      const o = e.people[a[3]];
+      if (!o || !o.alive || o.loc !== p.idx) return;
+      const f = e.fact('outing', { a: o.id, b: r.id, p: p.idx });
+      e.witness(f, p, o.id, r.id);
+      e.social.stats.outings++; e.life.stats.outings++;
+      // done: the promise is kept for both
+      r.agenda.splice(i, 1);
+      for (let k = 0; k < o.agenda.length; k++) if (o.agenda[k][0] === day && o.agenda[k][2] === p.idx && o.agenda[k][3] === r.id) { o.agenda.splice(k, 1); break; }
+      return;
     }
   }
 

@@ -4,7 +4,8 @@ rebuild whole TTF files from the npm @fontsource packages (github raw downloads 
 the npm registry works).  Only rendered images ship in the game - these fonts are build tools.
 
     python3 -m venv v && v/bin/pip install fonttools brotli
-    v/bin/python tools/fonts/make_fonts.py            # writes tools/fonts/*.ttf + OFL texts
+    v/bin/python tools/fonts/make_fonts.py [cache_dir]   # writes tools/fonts/*.ttf + OFL texts
+                                                          # (downloads cached in $TMP/fv_fonts_cache)
 
 Fonts
   Jua-Regular.ttf      BM JUA (Woowa Brothers), rounded chunky Hangul + Latin.   @fontsource/jua 5.3.0
@@ -49,7 +50,8 @@ def to_ttf(buf, out):
 
 
 def main():
-    cache = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '_cache')
+    import tempfile
+    cache = sys.argv[1] if len(sys.argv) > 1 else os.path.join(tempfile.gettempdir(), 'fv_fonts_cache')
     tmp = os.path.join(cache, 'tmp')
     os.makedirs(tmp, exist_ok=True)
     # Jua: korean + latin subsets -> one TTF

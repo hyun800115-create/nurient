@@ -146,8 +146,8 @@ Cost and size:
 
 - Lab regions: about 60–150 k cells in 0.15–0.4 s of CPU.
 - **The whole village sea (6144 × 2708 px ≈ 520 k cells)** is built on 2 × 2 coarser cells and upsampled.
-  This happens automatically above 300 k cells, and `opts.fieldScale` overrides it. It costs **0.18 s of CPU
-  cold (0.09 s warm) instead of 0.49 s**.
+  This happens automatically above 300 k cells, and `opts.fieldScale` overrides it. It costs **0.09–0.18 s of
+  CPU instead of 0.18–0.49 s** for the fine field (0.39 s for the very first build in a fresh process, JIT cold).
 - Against the fine field: mean error 1.9 G px within 48 G px of the shore, maximum 8 G px; heightAt differs by
   at most 0.34 px.
 - The field code is optimised: inline 8SSEDT, blur without clamping in the interior, one evaluation of the
@@ -216,7 +216,8 @@ water.swashPhase(x, y, t?)        // 0..1 shore-swell cycle: 0 = a crest reaches
 water.setPalette(name | object); water.setQuality('high' | 'low'); water.setFish(layers, key)
 water.drawsFish                   // true when the shader draws the fish (keep the tileSprites otherwise)
 water.isShader, water.fallback    // WebGL path? / the fallback tileSprite
-water.setVisible(v); water.info(); water.destroy()   // also destroyed on scene shutdown
+water.setVisible(v); water.destroy()  // also destroyed on scene shutdown
+water.info()                      // { shader, quality, palette, field, fieldScale, drawsFish, fetchesBody, fetchesShore, textureBytes, buildMs, … }
 ```
 
 `heightAt` and `slopeAt` sum exactly what the shader sums: the 4 swells with the same coast weighting, the
@@ -478,9 +479,27 @@ The same run is repeated without patches as a baseline, and the composite goes t
 - WebGL path active; `drawsFish` true at high (the fish tileSprites are destroyed), false at low (the
   tileSprites come back).
 - 8 decor floaters (boats and ice chunks) ride the swell.
-- No errors. One unrelated warning from work in progress elsewhere: missing `site_plot_XL`.
+- No errors. The first run logged one unrelated warning from work in progress elsewhere (missing
+  `site_plot_XL`); the second run logged nothing.
 
-INGAME_TABLE
+Results (`ingame.json`, two full runs; the second run is the one in `water_ingame.png`):
+
+| run | sea | fish | floaters on the swell | fetches / px (body, shore) | GPU texture memory | field build in the page | whole game frame, run 1 / run 2 |
+|---|---|---|---|---|---|---|---|
+| today, zoom 1.0 | tileSprite | tileSprites | 0 (sine tweens) | 1 / – | – | – | 927 / 1522 ms |
+| Water high, zoom 1.0 | shader | under the surface | 8 | 6, 3 | 4.36 MB | 2.8 s | 1651 / 1318 ms |
+| Water high, zoom 0.6 | shader | under the surface | 8 | 6, 3 | 4.36 MB | 2.4 s | 1041 / 1504 ms |
+| Water high, zoom 1.2 | shader | under the surface | 8 | 6, 3 | 4.36 MB | 3.0 s | 1693 / 1604 ms |
+| Water low, zoom 1.0 | shader | tileSprites again | 8 | 2, 2 | 4.36 MB | 1.6 s | 1461 / 975 ms |
+
+- The whole-frame times swing by ±50 % between the two runs and between neighbouring rows. That is the shared
+  machine (SwiftShader on 4 cores at load average 30–37 with Blender renders), not the water. They only show
+  that the game still runs with the water in it. The sea's own cost is measured cleanly, interleaved, in
+  section 7.
+- The field for the whole village sea (768 × 677 cells, 519,936 > 300,000) is built 2 × coarser
+  automatically: `info().fieldScale` is 2. In node on the same machine, the first build in a fresh process
+  (JIT still cold) takes 0.36 s wall and 0.39 s CPU.
+  The 1.6–3.0 s in the page is the same work on a CPU that 30+ other threads were competing for.
 
 ## 7. Performance
 
@@ -516,8 +535,8 @@ Other costs:
   the 3 tileSprites.
 - **CPU per frame:** about 40 uniform uploads, no allocations; `heightAt` + `slopeAt` cost about 2 µs per
   floater (node, 8 live rings).
-- **Load:** the field for the whole village sea costs 0.18 s of CPU (cold, 2.1 GHz Xeon, node). Lab-size
-  regions cost 0.1–0.4 s.
+- **Load:** the field for the whole village sea costs 0.09–0.18 s of CPU once the JIT is warm, and 0.39 s
+  for the very first build in a fresh process (2.1 GHz Xeon, node). Lab-size regions cost 0.1–0.4 s.
 - **Memory:** see 4.6.
 
 ## 8. How to run

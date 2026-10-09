@@ -59,11 +59,11 @@ PPM = 64.0   # G px per metre
 PALETTES = {
     'winter_sea': {
         'row': 0, 'depthScale': 2.2,
-        'lut': [[0.00, '#A9DCE6', 0.30], [0.10, '#78C7D8', 0.62], [0.24, '#45A3C9', 0.86],
-                [0.45, '#2C7DBA', 0.97], [0.70, '#2468B0', 1.0], [1.00, '#1C559C', 1.0]],
-        'skyHi': '#4A86C8', 'skyLo': '#A9CDEC', 'sun': '#FFF8E8', 'sss': '#3FB4D2',
-        'foam': '#FFFFFF', 'foamShade': '#B9D7EC', 'bottom': '#8FA8B8', 'caustic': 0.55,
-        'wet': '#7C93AE', 'film': '#BFE6F0', 'slush': 1.0,
+        'lut': [[0.00, '#A2C2CE', 0.30], [0.10, '#7FAFC0', 0.60], [0.24, '#4D8DB0', 0.86],
+                [0.45, '#2D6CA6', 0.97], [0.70, '#21589A', 1.0], [1.00, '#1A4884', 1.0]],
+        'skyHi': '#3F6E9E', 'skyLo': '#9DB6CC', 'sun': '#FFF6E6', 'sss': '#3E97B4',
+        'foam': '#FFFFFF', 'foamShade': '#B3C7D6', 'bottom': '#8A9DAA', 'caustic': 0.35,
+        'wet': '#7A8DA4', 'film': '#C4D6DF', 'slush': 1.0,
     },
     'harbor': {
         'row': 1, 'depthScale': 1.6,

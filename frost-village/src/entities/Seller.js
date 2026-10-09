@@ -590,11 +590,41 @@ export class TradePost {
     return false;
   }
 
+  /** (v4-A) once the neighbours come by train, the buyer here is one of them too (a builder of 솔방울 마을
+   *  buying planks and ingots); after a dozen purchases, with nothing left on the shelf, another one comes */
+  townLook(dt) {
+    this.lookT = (this.lookT || 0) - dt;
+    if (this.lookT > 0) return;
+    this.lookT = 3;
+    const nb = this.gs.v4, m = this.merchant;
+    if (!nb || !nb.merchantLook) return;
+    const busy = this.stock.count > 0 || this.happyT > 0 || Object.keys(this.flying).some((k) => this.flying[k] > 0);
+    if (m.citizen && (this.bought < 12 || busy)) return;
+    if (!m.citizen && busy && this.bought > 0) return;
+    const look = nb.merchantLook(m.citizen || null);
+    if (look) this.swapMerchant(look);
+  }
+
+  swapMerchant(look) {
+    const gs = this.gs, old = this.merchant;
+    const m = new Character(gs, look.key, old.x, old.y, { dir: 1, person: look.person });
+    m.citizen = look.citizen || null;
+    m.noXray = true;
+    m.faceTo(this.x + 20, this.y - 30);
+    this.merchant = m;
+    this.bought = 0;
+    if (!this.enabled) { m.sprite.setVisible(false); m.shadow.setVisible(false); old.destroy(); return; }
+    m.sprite.setAlpha(0); m.shadow.setAlpha(0);
+    gs.tweens.add({ targets: [m.sprite, m.shadow], alpha: 1, duration: 450 });
+    gs.tweens.add({ targets: [old.sprite, old.shadow], alpha: 0, duration: 300, onComplete: () => old.destroy() });
+  }
+
   update(dt) {
     this.stock.layout(this.shelf.x, this.shelf.y + 6, this.shelf.y, 0, dt);
     this.cash.update(dt);
     if (!this.enabled) return;
     this.register.update(dt);
+    this.townLook(dt);
     const m = this.merchant;
     const gs = this.gs;
     this.buyT -= dt;
@@ -626,6 +656,7 @@ export class TradePost {
       });
       if (this.happyT <= 0) { m.play('happy', true); this.register.onPay(m); }
       this.happyT = 0.7;
+      this.bought = (this.bought || 0) + 1;
     }
     if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) { m.faceTo(this.x + 20, this.y - 30); m.play('idle'); } }
     m.sync(dt);

@@ -12,7 +12,7 @@ import sys
 
 import bpy
 import bmesh
-from mathutils import Vector, Matrix, Euler, Quaternion
+from mathutils import Vector, Matrix, Quaternion
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -383,10 +383,23 @@ def resample(loop, step):
     return out
 
 
-def edge_samples(loops, step=0.02):
-    """Outline samples with the OUTWARD normal: [(p, n), ...] per loop."""
+def is_hole(loops, k):
+    """True when loop k lies inside another loop (the counter of o, ㅇ, b ...)."""
+    x, y = loops[k][0]
+    depth = 0
+    for j, l in enumerate(loops):
+        if j != k and point_inside([l], x, y):
+            depth += 1
+    return depth % 2 == 1
+
+
+def edge_samples(loops, step=0.02, skip_holes=False):
+    """Outline samples with the OUTWARD normal: [(p, n), ...] per loop.  skip_holes: leave out the
+    inner outlines of counters (no snow lumps sitting inside an o / ㅇ)."""
     res = []
-    for l in loops:
+    for k, l in enumerate(loops):
+        if skip_holes and is_hole(loops, k):
+            continue
         pts = resample(l, step)
         n = len(pts)
         if n < 4:

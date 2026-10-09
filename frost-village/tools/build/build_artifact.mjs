@@ -309,6 +309,15 @@ function gameFragments() {
   return list.filter((f) => fs.existsSync(path.join(ROOT, 'assets', f, 'manifest.json')));
 }
 
+/** (v4) fragments the game fetches late, while the village plays (LATE_FRAGMENTS in src/core/Assets.js):
+ *  packaged like the others, but never in the boot list (window.__FV_FRAGMENTS) */
+function lateFragments() {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'core', 'Assets.js'), 'utf8');
+  const m = src.match(/export\s+const\s+LATE_FRAGMENTS\s*=\s*\[([^\]]*)\]/);
+  const list = m ? (m[1].match(/['"]([a-z0-9_-]+)['"]/gi) || []).map((s) => s.slice(1, -1)) : [];
+  return list.filter((f) => fs.existsSync(path.join(ROOT, 'assets', f, 'manifest.json')));
+}
+
 /** (v3.5) drop the atlas / image entries (and their files) of the copied manifests that the game never loads */
 function pruneOverridden(frags, skipped) {
   const mans = {};
@@ -427,8 +436,9 @@ async function main() {
   // only the asset folders the game actually loads (FRAGMENTS in src/core/Assets.js): folders that are
   // still being made (new characters, emotes, ...) stay out of the package until the game uses them
   const frags = gameFragments();
+  const late = lateFragments();
   const manifestOnly = manifestOnlyFragments();
-  for (const frag of frags) {
+  for (const frag of frags.concat(late)) {
     const dir = path.join(ROOT, 'assets', frag);
     if (!fs.existsSync(dir)) continue;
     if (manifestOnly.includes(frag)) {
@@ -447,7 +457,7 @@ async function main() {
   // blacksmith) or that no character uses any more (the old dog atlas, pets2 has the new one) are never
   // loaded by the game (Assets.mergeManifests: the later fragment wins key by key): leave them out
   pruneOverridden(frags, skipped);
-  const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name)).map((e) => 'assets/' + e.name + '/');
+  const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name) && !late.includes(e.name)).map((e) => 'assets/' + e.name + '/');
   if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
 
   // 2b) optional WebP re-encode of the copy
@@ -469,7 +479,7 @@ async function main() {
   let files = walk(OUT);
   let mp3Only = FORCE_MP3_ONLY;
   if (files.length > LIMITS.files) { mp3Only = true; console.log(`[build] ${files.length} files > ${LIMITS.files}: dropping .ogg copies`); }
-  if (mp3Only) for (const frag of frags) {
+  if (mp3Only) for (const frag of frags.concat(late)) {
     const manPath = path.join(OUT, 'assets', frag, 'manifest.json');
     if (!fs.existsSync(manPath)) continue;
     const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
@@ -486,7 +496,7 @@ async function main() {
   // 5) checks: every manifest path exists, nothing absolute, no leftovers
   const problems = [];
   const referenced = new Set();
-  for (const frag of gameFragments()) {
+  for (const frag of gameFragments().concat(lateFragments())) {
     const mp = path.join(OUT, 'assets', frag, 'manifest.json');
     if (!fs.existsSync(mp)) { problems.push('missing assets/' + frag + '/manifest.json'); continue; }
     referenced.add('assets/' + frag + '/manifest.json');

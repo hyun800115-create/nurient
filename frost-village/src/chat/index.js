@@ -18,7 +18,7 @@ export { buildPrompt, RULES, FORMAT, BUDGET, PROMPT_VERSION } from './prompt.js'
 export { VillageCorpus, exaggerate } from './corpus.js';
 export { ResidentMemory } from './memory.js';
 export { PERSONAS, RELATIONS, LAB_RESIDENTS, STAGES, stageOf, levelToChief, refName } from './personas.js';
-export { detectIntent, INTENTS } from './intent.js';
+export { detectIntent, INTENTS, chiefDeed } from './intent.js';
 export { sanitizeResult, slotify, renderSlots, extractPartialReply, cleanPlayerText, MOOD_KO } from './sanitize.js';
-export { StoryBridge } from './storyBridge.js';
+export { StoryBridge, STORY_WEATHER } from './storyBridge.js';
 export * as ko from './ko.js';

@@ -9,9 +9,10 @@
 import { render, levelize, levelPronouns, toHearsay, toReminder, similarity, CASUAL, isPlainForm, hangulRatio } from './ko.js';
 import { GENERIC, SUMMARY, OFFLINE_GOSSIP } from './lines.js';
 import { refName } from './personas.js';
-import { slotify, isClean, MOOD_EMOTE } from './sanitize.js';
+import { slotify, renderSlots, isClean, MOOD_EMOTE } from './sanitize.js';
 
 const pickFrom = (list, rng) => list[Math.floor(rng() * list.length) % list.length];
+const shuffle = (list, rng) => { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 export class OfflineBrain {
   constructor() { this.id = 'offline'; }
@@ -24,18 +25,24 @@ export class OfflineBrain {
     const level = village.level(key);
     const likes = p.likes || [];
     const slots = {
-      chief: village.chiefName, like: likes[0] || '눈', like2: likes[1] || likes[0] || '빵', dislike: (p.dislikes || [])[0] || '추위',
+      chief: village.chiefName, like: likes[0] || '눈', like2: likes[1] || '', dislike: (p.dislikes || [])[0] || '추위',
       job: p.job, weather: village.world.weatherKo || '눈',
     };
     const recent = (session && session.recentTpl) || [];
     const say = (list, extra) => {
       if (!list || !list.length) return '';
+      const all = Object.assign({}, slots, extra || {});
+      // fresh templates first (in random order), and never one with an empty slot when another fits
       const fresh = list.filter((t) => !recent.includes(t));
-      const tpl = pickFrom(fresh.length ? fresh : list, rng);
+      const order = shuffle(fresh, rng).concat(shuffle(list.filter((t) => recent.includes(t)), rng));
+      let tpl = order[0], txt = '';
+      for (const t of order) {
+        const out = {};
+        const r = render(t, all, level, out);
+        if (!out.missing) { tpl = t; txt = r; break; }
+      }
+      if (!txt) txt = render(tpl, all, level);
       recent.push(tpl); if (recent.length > 12) recent.shift();
-      const out = {};
-      let txt = render(tpl, Object.assign({}, slots, extra || {}), level, out);
-      if (out.missing) txt = render(pickFrom(list, rng), Object.assign({}, slots, extra || {}), level);
       if (p.level !== level) txt = levelize(txt, level);          // a polite resident who became a close friend
       return levelPronouns(txt, level);
     };
@@ -46,7 +53,7 @@ export class OfflineBrain {
     if (!obj) return null;
     if (Array.isArray(obj)) return obj;
     if ((p.group === 'kid' || p.group === 'toddler') && obj.kid) return obj.kid;
-    if (level === CASUAL && p.group !== 'kid' && p.group !== 'teen' && obj.old) return obj.old;
+    if (level === CASUAL && (p.group === 'elder' || p.old) && obj.old) return obj.old;   // 허허 / 에잉 grown-ups
     return obj.def;
   }
 
@@ -237,10 +244,25 @@ export class OfflineBrain {
         else this.maybeExtra(village, key, c, res, parts, session, intent, 0.6);
         break;
       }
+      case 'news': {
+        const d = intent.deed;
+        // the listener may be in the news ("내가 하린이랑 …" told to 하린): they say 나랑 / 저랑
+        const mine = (t, lv) => renderSlots(slotify(t, village.personas, village.chiefName), key, village.personas, lv, village.chiefName);
+        if (intent.greet && !(mem.last === day && (session.count || 0) > 0)) parts.push(say(L.hi && L.hi.length ? L.hi : V(GENERIC.greeting)));
+        parts.push(say(V(GENERIC.news), { deed: mine(d.echo, level) }));
+        res.emote = p.group === 'kid' ? 'sparkle' : 'exclaim'; res.mood = p.group === 'kid' ? 'excited' : null;
+        res.affinity = 1; res.importance = 3; res.memory = mine(d.plain, CASUAL);
+        if (isClean(d.plain)) { const h = toHearsay(d.plain); if (h) res.gossip.push(slotify(h, village.personas, village.chiefName)); }
+        break;
+      }
       case 'invite': {
         const tp = intent.topics[0] || (intent.text.match(/([가-힣]{1,5})(?:하자|놀자|가자|먹자|할래)/) || [])[1] || '';
         const yes = !tp || this.likes(p, tp) || p.group === 'kid' || rng() < 0.5;
-        parts.push(say(yes ? V(GENERIC.inviteYes) : GENERIC.inviteMaybe, { topic: tp || '그거' }));
+        // the chief's own proposal, echoed back ("같이 썰매 타자!" -> "썰매 타자")
+        let act = intent.text.replace(/[!~.?？…ㅋㅎ\s]+$/, '').replace(/^(우리|나랑|저랑|같이|함께|\s)+/, '').replace(/(하|가|타|보|놀|먹)(?:ㄹ래|할래|갈래|탈래|볼래|놀래|먹을래)$/, '');
+        act = act.replace(/([가-힣])을래$/, '$1자').replace(/할래$/, '하자').replace(/갈래$/, '가자').replace(/탈래$/, '타자').replace(/볼래$/, '보자').replace(/놀래$/, '놀자').replace(/먹을래$/, '먹자').replace(/할까$/, '하자').replace(/갈까$/, '가자');
+        if (!/자$/.test(act) || act.length > 12 || /[^가-힣 ]/.test(act)) act = '';
+        parts.push(say(yes ? V(GENERIC.inviteYes) : GENERIC.inviteMaybe, { topic: tp, act }));
         res.emote = yes ? (p.group === 'kid' ? 'sparkle' : 'thumbs') : 'sweat'; res.mood = yes ? (p.group === 'kid' ? 'excited' : 'happy') : null;
         res.affinity = yes ? 2 : 1; res.importance = 2;
         res.memory = tp ? '촌장님이 같이 ' + tp + ' 하자고 했다' : '촌장님이 같이 놀자고 했다';
@@ -250,7 +272,7 @@ export class OfflineBrain {
       default: {
         // unknown: talk about the topic if there is one, else keep the chat going
         const tp = intent.topics[0];
-        const line = village.corpus.pickLine(key, { day, topics: intent.topics, said: mem.said, rng, needTopic: true });
+        const line = village.corpus.pickLine(key, { day, topics: intent.topics, said: mem.said, mood: mem.mood, rng, needTopic: true });
         if (line) { parts.push(village.corpus.sayLine(line, key, village.personas, level, village.chiefName)); res.used.push(line.i); }
         else if (tp) {
           const liked = this.likes(p, tp);
@@ -266,9 +288,9 @@ export class OfflineBrain {
       }
     }
     // a little personality: an interjection now and then
-    if (p.interj && p.interj.length && parts.length && rng() < 0.22 && !p.interj.some((i) => parts[0].startsWith(i.replace(/~$/, '')))) {
+    if (p.interj && p.interj.length && parts.length && rng() < 0.22 && !p.interj.some((i) => parts[0].startsWith(i.replace(/~$/, ''))) && !/^(오|어|음|우와|와아?|헐|어머나?|아이고|헤헤|히히|흥|허허|껄껄|에잉|흠흠|어험|정말|진짜|야호|좋아|대박)[,~!…?\s]/.test(parts[0])) {
       const ij = pickFrom(p.interj, rng);
-      if (!/[~…]$/.test(ij)) parts[0] = ij + ', ' + parts[0]; else parts[0] = ij + ' ' + parts[0];
+      if (!/[~…!?.♪]$/.test(ij)) parts[0] = ij + ', ' + parts[0]; else parts[0] = ij + ' ' + parts[0];
     }
     res.reply = parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
     if (!res.emote) res.emote = MOOD_EMOTE[mem.mood] || 'heart';
@@ -290,7 +312,7 @@ export class OfflineBrain {
     if (rng() > chance) return;
     const roll = rng();
     if (roll < 0.3) {
-      const line = village.corpus.pickLine(key, { day, topics: intent.topics, said: mem.said, rng });
+      const line = village.corpus.pickLine(key, { day, topics: intent.topics, said: mem.said, mood: mem.mood, rng });
       if (line) { parts.push(village.corpus.sayLine(line, key, village.personas, level, village.chiefName)); res.used.push(line.i); return; }
     }
     if (roll < 0.55) {
@@ -332,7 +354,7 @@ export class OfflineBrain {
     out.push({ text: say(again ? this.variant(GENERIC.again, p, level) : L.hi && L.hi.length ? L.hi : this.variant(GENERIC.greeting, p, level)), emote: 'wave', used: [] });
     const open = mem.openFavors();
     const g = village.corpus.pickGossip(key, { day, said: mem.said, rng, minFresh: 0.1 });
-    const line = village.corpus.pickLine(key, { day, said: mem.said, rng });
+    const line = village.corpus.pickLine(key, { day, said: mem.said, mood: mem.mood, rng });
     const r = mem.ep.length ? mem.reminder({ day }) : null;
     const opts = [];
     if (g) opts.push(['g', 3 + village.corpus.fresh(g.entry, day) * 3]);

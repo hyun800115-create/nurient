@@ -20,6 +20,16 @@ test('round trip is lossless and the restored town continues identically', () =>
   assert.equal(b.serialize(), a.serialize());
 });
 
+test('three weeks of life (forgetting, questions, moves) round-trip exactly', () => {
+  const a = createStory({ seed: 21, population: 200, textMode: 'none' });
+  a.runDays(21.3);
+  const s1 = a.serialize();
+  const b = createStory({ save: s1, textMode: 'none' });
+  assert.equal(b.serialize(), s1);
+  a.runDays(1); b.runDays(1);
+  assert.equal(b.serialize(), a.serialize());
+});
+
 test('a save is compact', () => {
   const a = createStory({ seed: 3, population: 250, textMode: 'none' });
   a.runDays(5);

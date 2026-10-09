@@ -31,6 +31,12 @@ export const CONDS = [
   'x_kid', 'x_adult', 'x_plural_kids', 'l_shy', 'l_elder_rel', 'first_talk', 'chief_talk', 'x_police', 'x_newcomer', 'housemate',
   // what an apology was for (the fact it refers to)
   'ref_theft', 'ref_queue', 'ref_window', 'ref_scuffle',
+  // the fact happened at the speaker's own home
+  'myhome',
+  // the fact is a sad one (a gentle farewell): no 'big news!' openers
+  'grave',
+  // talking in a café, restaurant or food stall (no 'did you come grocery shopping?')
+  'atcafe',
 ];
 
 if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');
@@ -49,6 +55,12 @@ export const TAGS = [
   'logibusy', 'customers', 'newmenu', 'teacher', 'doctor', 'harvest', 'build', 'reporter', 'retired', 'jobless',
   'whyfight', 'differ', 'doubt', 'dinner', 'day',
   'how2', 'meal2', 'plans2', 'age2', 'hurtq', 'firetruck', 'ring',
+  'newsq2',  // 'not yet — what did the paper say?'
+  'visit',   // 'can I come and see the baby?'
+  'yes',     // 'sure, let's go!' (an invitation accepted)
+  'hair',    // 'did you get a haircut?'
+  'newfam',  // 'what are the new neighbours like?'
+  'leave',   // a goodbye that already says 'I have to go' (no second 'I have to go' in the same line)
 ]; 
 if (TAGS.length > 128) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 128)');
 export const TAG = Object.create(null);

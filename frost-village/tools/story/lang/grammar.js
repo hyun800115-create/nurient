@@ -57,7 +57,7 @@ export class Grammar {
     for (const name of names) for (const a of this.rules[name].alts) {
       a.refs = [];
       for (const p of a.parts) if (p.t === T_RULE && a.refs.indexOf(p.r) < 0) a.refs.push(p.r);
-      a.free = !a.refs.length && !(a.m0 | a.m1 | a.m2 | a.m3 | a.m4 | a.pm0 | a.pm1 | a.pm2 | a.pm3 | a.cm0 | a.cm1 | a.cm2 | a.cm3 | a.n0 | a.n1 | a.n2 | a.n3 | a.n4 | a.pn0 | a.pn1 | a.pn2 | a.pn3 | a.cn0 | a.cn1 | a.cn2 | a.cn3 | a.directNeed);
+      a.free = !a.refs.length && !(a.m0 | a.m1 | a.m2 | a.m3 | a.m4 | a.pm0 | a.pm1 | a.pm2 | a.pm3 | a.cm0 | a.cm1 | a.cm2 | a.cm3 | a.n0 | a.n1 | a.n2 | a.n3 | a.n4 | a.pn0 | a.pn1 | a.pn2 | a.pn3 | a.cn0 | a.cn1 | a.cn2 | a.cn3 | a.directNeed) && !a.lv;
     }
     for (const name of names) { const R = this.rules[name]; R.always = R.alts.some((a) => a.free); }
     for (let pass = 0; pass < 6; pass++) {
@@ -110,12 +110,14 @@ export class Grammar {
     // a bare '*3 ' weight prefix
     const wm = /^\*(\d+(?:\.\d+)?) /.exec(s);
     if (wm) { w = +wm[1]; s = s.slice(wm[0].length); }
-    const ctx = { need: 0 };
+    const ctx = { need: 0, lv: null };
     const [parts] = parse(s, 0, '', ctx, this.lang, ruleName);
+    // slots only one speech level's wording needs ('[… {P} 쪽에 있어.|… {P} 쪽에 있어요.|반갑습니다.]')
+    const lv = ctx.lv && (ctx.lv[0] | ctx.lv[1] | ctx.lv[2] | ctx.lv[3]) ? ctx.lv : null;
     const alt = { parts, m0: m[0], m1: m[1], m2: m[2], m3: m[3], m4: m[4], n0: n[0], n1: n[1], n2: n[2], n3: n[3], n4: n[4],
       ts0: ts[0], ts1: ts[1], ts2: ts[2], ts3: ts[3], pm0: pm[0], pm1: pm[1], pm2: pm[2], pm3: pm[3], pn0: pn[0], pn1: pn[1], pn2: pn[2], pn3: pn[3],
       cm0: cm[0], cm1: cm[1], cm2: cm[2], cm3: cm[3], cn0: cn[0], cn1: cn[1], cn2: cn[2], cn3: cn[3],
-      w, gid: this.altCount++, directNeed: ctx.need, need: ctx.need, rule: ruleName, src };
+      w, gid: this.altCount++, directNeed: ctx.need, need: ctx.need, lv, rule: ruleName, src };
     this.allAlts.push(alt);
     return alt;
   }
@@ -167,7 +169,7 @@ export class Grammar {
     if (!n) return null;
     const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
     const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, p3 = ctx.p3 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0, t3 = ctx.t3 | 0;
-    const rec = ctx.recent, useRecent = rec && n >= 3, noQ = ctx.noQ;
+    const rec = ctx.recent, useRecent = rec && n >= 3, noQ = ctx.noQ, lvl = ctx.level > 3 ? 3 : ctx.level | 0;
     let sum = 0, sumAll = 0;
     const W = scratchW;
     for (let i = 0; i < n; i++) {
@@ -175,7 +177,8 @@ export class Grammar {
       if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
           (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
           (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pm3 & p3) !== a.pm3 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) || (a.pn3 & p3) ||
-          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3)) { W[i] = NO; continue; }
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3) ||
+          (a.lv !== null && (a.lv[lvl] & have) !== a.lv[lvl])) { W[i] = NO; continue; }
       if (noQ && (a.ts0 & 1)) { W[i] = NO; continue; }          // this line must not ask a question
       // recently used by this speaker: still possible, but much less likely (a fitting answer said
       // twice beats an unfitting generic one)
@@ -215,13 +218,15 @@ export class Grammar {
     if (depth > 3) return true;
     const f0 = ctx.f0, f1 = ctx.f1, f2 = ctx.f2, f3 = ctx.f3, f4 = ctx.f4 | 0, have = ctx.slots;
     const p0 = ctx.p0 | 0, p1 = ctx.p1 | 0, p2 = ctx.p2 | 0, p3 = ctx.p3 | 0, t0 = ctx.t0 | 0, t1 = ctx.t1 | 0, t2 = ctx.t2 | 0, t3 = ctx.t3 | 0;
+    const lvl = ctx.level > 3 ? 3 : ctx.level | 0;
     const alts = r.alts;
     for (let i = 0; i < alts.length; i++) {
       const a = alts[i];
       if ((a.need & have) !== a.need || (a.m0 & f0) !== a.m0 || (a.m1 & f1) !== a.m1 || (a.m2 & f2) !== a.m2 || (a.m3 & f3) !== a.m3 || (a.m4 & f4) !== a.m4 ||
           (a.n0 & f0) || (a.n1 & f1) || (a.n2 & f2) || (a.n3 & f3) || (a.n4 & f4) ||
           (a.pm0 & p0) !== a.pm0 || (a.pm1 & p1) !== a.pm1 || (a.pm2 & p2) !== a.pm2 || (a.pm3 & p3) !== a.pm3 || (a.pn0 & p0) || (a.pn1 & p1) || (a.pn2 & p2) || (a.pn3 & p3) ||
-          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3)) continue;
+          (a.cm0 & t0) !== a.cm0 || (a.cm1 & t1) !== a.cm1 || (a.cm2 & t2) !== a.cm2 || (a.cm3 & t3) !== a.cm3 || (a.cn0 & t0) || (a.cn1 & t1) || (a.cn2 & t2) || (a.cn3 & t3) ||
+          (a.lv !== null && (a.lv[lvl] & have) !== a.lv[lvl])) continue;
       let ok = true;
       for (let k = 0; k < a.refs.length; k++) if (!this.canExpand(a.refs[k], ctx, depth + 1)) { ok = false; break; }
       if (ok) return true;
@@ -312,20 +317,32 @@ function parse(s, i, stop, ctx, lang, ruleName) {
       const close = c === '[' ? ']' : '>';
       const opts = [];
       i++;
-      const inner = { need: 0 };
-      let needAll = ~0;
+      const inner = { need: 0, lv: null };
+      let needAll = ~0, needAny = 0;
+      const optNeed = [];
       for (;;) {
-        inner.need = 0;
+        inner.need = 0; inner.lv = null;
         const [p, ni] = parse(s, i, '|' + close, inner, lang, ruleName);
         opts.push(p);
-        needAll &= inner.need;
+        let on = inner.need;
+        if (inner.lv) on |= inner.lv[0] | inner.lv[1] | inner.lv[2] | inner.lv[3];   // nested levels: be safe
+        optNeed.push(on);
+        needAll &= on; needAny |= on;
         i = ni;
         if (s.charAt(i) === '|') { i++; continue; }
         if (s.charAt(i) === close) { i++; break; }
         throw new Error(`grammar ${lang}: ${ruleName}: unterminated ${c}…${close} in "${s}"`);
       }
-      // a level choice needs the slots of the option actually used; to stay safe require what all need
-      ctx.need |= needAll === ~0 ? 0 : needAll;
+      if (c === '<') ctx.need |= needAny;          // a random pick may land on any option
+      else {
+        // a level choice needs what every option needs, plus what the option of the speaker's level needs
+        const common = needAll === ~0 ? 0 : needAll;
+        ctx.need |= common;
+        if (needAny & ~common) {
+          if (!ctx.lv) ctx.lv = [0, 0, 0, 0];
+          for (let L = 0; L < 4; L++) ctx.lv[L] |= optNeed[L < optNeed.length ? L : optNeed.length - 1] & ~common;
+        }
+      }
       parts.push({ t: c === '[' ? T_LEVEL : T_CHOICE, opts });
       continue;
     }

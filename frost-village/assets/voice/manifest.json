@@ -1,0 +1,3271 @@
+{
+ "version": 1,
+ "generator": "tools/voice/build_voice.py (눈꽃말: eSpeak NG articulation -> WORLD vocoder voices; loudness matched to assets/audio2 chatter)",
+ "language": "눈꽃말",
+ "notes": "Audio sprites: play a marker with source.start(when, start, dur). Not loaded at boot: Assets.loadFragment(scene, 'voice', {audio: [keys...]}). Runtime: src/voice/VillageVoice.js. `onset` = time of the first sound: if a decoded file has it later (an mp3 decoder that ignores the LAME gapless tag adds ~mp3StartPad samples), shift every marker by the difference.",
+ "audio": {
+  "voice_kid_boy": {
+   "files": [
+    "voice/voice_kid_boy.ogg",
+    "voice/voice_kid_boy.mp3"
+   ],
+   "volume": 0.401,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 16.52549,
+   "samples": 728774,
+   "mp3StartPad": 1105,
+   "onset": 0.04145,
+   "voiceType": "kid_boy",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.28388,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.35887,
+     "dur": 0.59846,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.00231,
+     "dur": 0.37982,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.42712,
+     "dur": 0.29229,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 1.7644,
+     "dur": 0.33925,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.14864,
+     "dur": 0.27043,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.46406,
+     "dur": 0.43032,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 2.93937,
+     "dur": 0.59556,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 3.57991,
+     "dur": 0.388,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.0129,
+     "dur": 0.37029,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.42819,
+     "dur": 0.4515,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 4.92467,
+     "dur": 0.31406,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.28372,
+     "dur": 0.28798,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 5.61669,
+     "dur": 0.44796,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 6.10964,
+     "dur": 0.37898,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 6.53361,
+     "dur": 0.31367,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 6.89227,
+     "dur": 0.37265,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 7.30991,
+     "dur": 0.35177,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 7.70667,
+     "dur": 0.31791,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 8.06957,
+     "dur": 0.27497,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 8.38952,
+     "dur": 0.28324,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "play": {
+     "start": 8.71776,
+     "dur": 0.27404,
+     "kind": "word",
+     "syl": 1,
+     "say": "플링"
+    },
+    "dog": {
+     "start": 9.03678,
+     "dur": 0.38639,
+     "kind": "word",
+     "syl": 2,
+     "say": "왈뽕"
+    },
+    "go": {
+     "start": 9.46816,
+     "dur": 0.34707,
+     "kind": "word",
+     "syl": 1,
+     "say": "프룽"
+    },
+    "big": {
+     "start": 9.86023,
+     "dur": 0.3846,
+     "kind": "word",
+     "syl": 2,
+     "say": "봄봄"
+    },
+    "and": {
+     "start": 10.28982,
+     "dur": 0.21456,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 10.54937,
+     "dur": 0.29426,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 10.88862,
+     "dur": 0.2734,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 11.20701,
+     "dur": 0.25093,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 11.50293,
+     "dur": 0.26574,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 11.81365,
+     "dur": 0.3237,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 12.18234,
+     "dur": 0.32515,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 12.55247,
+     "dur": 0.50583,
+     "kind": "emote",
+     "syl": 5,
+     "emote": "laugh",
+     "say": "키히히히히"
+    },
+    "emo_surprise": {
+     "start": 13.10329,
+     "dur": 0.34342,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 13.4917,
+     "dur": 0.40068,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 13.93737,
+     "dur": 0.46653,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 14.44889,
+     "dur": 0.37592,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 14.8698,
+     "dur": 0.35451,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 15.2693,
+     "dur": 0.43578,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 15.75007,
+     "dur": 0.4837,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 16.27875,
+     "dur": 0.20175,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_kid_girl": {
+   "files": [
+    "voice/voice_kid_girl.ogg",
+    "voice/voice_kid_girl.mp3"
+   ],
+   "volume": 0.401,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 17.07937,
+   "samples": 753200,
+   "mp3StartPad": 1105,
+   "onset": 0.04592,
+   "voiceType": "kid_girl",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.30914,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.38413,
+     "dur": 0.63027,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.05939,
+     "dur": 0.37975,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.48413,
+     "dur": 0.28093,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 1.81005,
+     "dur": 0.35206,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.2071,
+     "dur": 0.281,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.53308,
+     "dur": 0.43395,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.01202,
+     "dur": 0.60787,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 3.66488,
+     "dur": 0.38739,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.09726,
+     "dur": 0.39642,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.53866,
+     "dur": 0.48469,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.06834,
+     "dur": 0.35261,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.46594,
+     "dur": 0.30519,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 5.81612,
+     "dur": 0.46351,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 6.32463,
+     "dur": 0.39249,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 6.76211,
+     "dur": 0.34261,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 7.14971,
+     "dur": 0.40905,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 7.60374,
+     "dur": 0.36492,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 8.01365,
+     "dur": 0.30295,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 8.36159,
+     "dur": 0.28621,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 8.69279,
+     "dur": 0.2949,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "play": {
+     "start": 9.03268,
+     "dur": 0.32794,
+     "kind": "word",
+     "syl": 1,
+     "say": "플링"
+    },
+    "cute": {
+     "start": 9.4056,
+     "dur": 0.37848,
+     "kind": "word",
+     "syl": 2,
+     "say": "뾰롱"
+    },
+    "star": {
+     "start": 9.82907,
+     "dur": 0.35698,
+     "kind": "word",
+     "syl": 1,
+     "say": "쁘릴"
+    },
+    "cat": {
+     "start": 10.23104,
+     "dur": 0.34998,
+     "kind": "word",
+     "syl": 2,
+     "say": "미울"
+    },
+    "and": {
+     "start": 10.62601,
+     "dur": 0.23141,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 10.9024,
+     "dur": 0.29735,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 11.24474,
+     "dur": 0.3037,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 11.59342,
+     "dur": 0.27002,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 11.90844,
+     "dur": 0.27243,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 12.22585,
+     "dur": 0.34896,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 12.6198,
+     "dur": 0.33787,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 13.00265,
+     "dur": 0.51388,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "히히히힛"
+    },
+    "emo_surprise": {
+     "start": 13.56152,
+     "dur": 0.37111,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 13.97762,
+     "dur": 0.40358,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 14.42619,
+     "dur": 0.47249,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 14.94367,
+     "dur": 0.36061,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 15.34927,
+     "dur": 0.34433,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 15.73859,
+     "dur": 0.47429,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 16.25787,
+     "dur": 0.50846,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 16.81132,
+     "dur": 0.22306,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_adult_m": {
+   "files": [
+    "voice/voice_adult_m.ogg",
+    "voice/voice_adult_m.mp3"
+   ],
+   "volume": 0.406,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 18.12327,
+   "samples": 799236,
+   "mp3StartPad": 1105,
+   "onset": 0.04766,
+   "voiceType": "adult_m",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.32921,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.4042,
+     "dur": 0.69531,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.14449,
+     "dur": 0.45601,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.64549,
+     "dur": 0.30989,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 2.00036,
+     "dur": 0.36982,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.41517,
+     "dur": 0.29556,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.75571,
+     "dur": 0.48211,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.28281,
+     "dur": 0.67451,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 4.00231,
+     "dur": 0.41701,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.46431,
+     "dur": 0.42583,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.93512,
+     "dur": 0.52907,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.50918,
+     "dur": 0.37109,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.92526,
+     "dur": 0.32068,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 6.29093,
+     "dur": 0.51066,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 6.84658,
+     "dur": 0.3961,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 7.28766,
+     "dur": 0.3529,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 7.68556,
+     "dur": 0.41063,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 8.14118,
+     "dur": 0.38807,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 8.57424,
+     "dur": 0.36739,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 8.98662,
+     "dur": 0.30537,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 9.33698,
+     "dur": 0.31685,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "boat": {
+     "start": 9.69882,
+     "dur": 0.25,
+     "kind": "word",
+     "syl": 1,
+     "say": "블롭"
+    },
+    "train": {
+     "start": 9.99381,
+     "dur": 0.41068,
+     "kind": "word",
+     "syl": 2,
+     "say": "칙폭"
+    },
+    "eat": {
+     "start": 10.44948,
+     "dur": 0.30195,
+     "kind": "word",
+     "syl": 1,
+     "say": "뭄"
+    },
+    "wood": {
+     "start": 10.79642,
+     "dur": 0.41252,
+     "kind": "word",
+     "syl": 2,
+     "say": "똘롬"
+    },
+    "and": {
+     "start": 11.25392,
+     "dur": 0.23415,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 11.53306,
+     "dur": 0.33567,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 11.91372,
+     "dur": 0.3239,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 12.28261,
+     "dur": 0.28011,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 12.60771,
+     "dur": 0.28372,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 12.93642,
+     "dur": 0.3742,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 13.3556,
+     "dur": 0.34063,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 13.74122,
+     "dur": 0.65565,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "하하하하"
+    },
+    "emo_surprise": {
+     "start": 14.44186,
+     "dur": 0.37048,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 14.85732,
+     "dur": 0.42497,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 15.32728,
+     "dur": 0.50746,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 15.87973,
+     "dur": 0.38921,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 16.31392,
+     "dur": 0.37689,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 16.7358,
+     "dur": 0.50134,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 17.28213,
+     "dur": 0.53916,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 17.86628,
+     "dur": 0.212,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_adult_f": {
+   "files": [
+    "voice/voice_adult_f.ogg",
+    "voice/voice_adult_f.mp3"
+   ],
+   "volume": 0.403,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 17.7237,
+   "samples": 781615,
+   "mp3StartPad": 1105,
+   "onset": 0.04615,
+   "voiceType": "adult_f",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.32735,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.40234,
+     "dur": 0.672,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.11932,
+     "dur": 0.41955,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.58385,
+     "dur": 0.29705,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 1.9259,
+     "dur": 0.36447,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.33535,
+     "dur": 0.30957,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.68991,
+     "dur": 0.4646,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.1995,
+     "dur": 0.6412,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 3.88569,
+     "dur": 0.39823,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.32891,
+     "dur": 0.40429,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.77819,
+     "dur": 0.49154,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.31472,
+     "dur": 0.35045,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.71016,
+     "dur": 0.30483,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 6.05998,
+     "dur": 0.49807,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 6.60304,
+     "dur": 0.3922,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 7.04023,
+     "dur": 0.34701,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 7.43222,
+     "dur": 0.3998,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 7.87701,
+     "dur": 0.37433,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 8.29633,
+     "dur": 0.35619,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 8.69751,
+     "dur": 0.29306,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 9.03556,
+     "dur": 0.31063,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "welcome": {
+     "start": 9.39118,
+     "dur": 0.43703,
+     "kind": "word",
+     "syl": 2,
+     "say": "왈랑"
+    },
+    "please": {
+     "start": 9.8732,
+     "dur": 0.35361,
+     "kind": "word",
+     "syl": 2,
+     "say": "뿌띵"
+    },
+    "three": {
+     "start": 10.27179,
+     "dur": 0.32814,
+     "kind": "word",
+     "syl": 1,
+     "say": "뜨렘"
+    },
+    "water": {
+     "start": 10.64492,
+     "dur": 0.39921,
+     "kind": "word",
+     "syl": 2,
+     "say": "올롱"
+    },
+    "and": {
+     "start": 11.08912,
+     "dur": 0.21456,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 11.34866,
+     "dur": 0.31474,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 11.70839,
+     "dur": 0.30887,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 12.06224,
+     "dur": 0.27039,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 12.37762,
+     "dur": 0.2749,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 12.69751,
+     "dur": 0.34898,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 13.09147,
+     "dur": 0.33902,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 13.47549,
+     "dur": 0.57821,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "아하하하"
+    },
+    "emo_surprise": {
+     "start": 14.09868,
+     "dur": 0.37029,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 14.51397,
+     "dur": 0.41968,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 14.97864,
+     "dur": 0.52118,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 15.54481,
+     "dur": 0.37451,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 15.96431,
+     "dur": 0.3727,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 16.382,
+     "dur": 0.48086,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 16.90785,
+     "dur": 0.51898,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 17.47181,
+     "dur": 0.20689,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_elder_m": {
+   "files": [
+    "voice/voice_elder_m.ogg",
+    "voice/voice_elder_m.mp3"
+   ],
+   "volume": 0.406,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 20.94846,
+   "samples": 923827,
+   "mp3StartPad": 1105,
+   "onset": 0.03485,
+   "voiceType": "elder_m",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.37211,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.4471,
+     "dur": 0.82336,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.31544,
+     "dur": 0.51401,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.87444,
+     "dur": 0.37059,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 2.29002,
+     "dur": 0.43376,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.76878,
+     "dur": 0.34755,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 3.16132,
+     "dur": 0.5778,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.7841,
+     "dur": 0.79712,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 4.62621,
+     "dur": 0.49104,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 5.16224,
+     "dur": 0.48091,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 5.68814,
+     "dur": 0.61363,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 6.34676,
+     "dur": 0.42102,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 6.81277,
+     "dur": 0.37617,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 7.23392,
+     "dur": 0.59884,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 7.87776,
+     "dur": 0.45485,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 8.3776,
+     "dur": 0.41304,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 8.83562,
+     "dur": 0.47574,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 9.35635,
+     "dur": 0.45374,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 9.85508,
+     "dur": 0.41859,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 10.31866,
+     "dur": 0.34698,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 10.71063,
+     "dur": 0.35265,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "warm": {
+     "start": 11.10828,
+     "dur": 0.38503,
+     "kind": "word",
+     "syl": 2,
+     "say": "뫼옹"
+    },
+    "tired": {
+     "start": 11.5383,
+     "dur": 0.50367,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉠롱"
+    },
+    "water": {
+     "start": 12.08696,
+     "dur": 0.46696,
+     "kind": "word",
+     "syl": 2,
+     "say": "올롱"
+    },
+    "two": {
+     "start": 12.59891,
+     "dur": 0.34073,
+     "kind": "word",
+     "syl": 1,
+     "say": "뒬"
+    },
+    "and": {
+     "start": 12.98463,
+     "dur": 0.2817,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 13.31132,
+     "dur": 0.35508,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 13.71138,
+     "dur": 0.34669,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 14.10306,
+     "dur": 0.33066,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 14.47871,
+     "dur": 0.33014,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 14.85383,
+     "dur": 0.43438,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 15.3332,
+     "dur": 0.39467,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 15.77286,
+     "dur": 0.79413,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "laugh",
+     "say": "호호호"
+    },
+    "emo_surprise": {
+     "start": 16.61197,
+     "dur": 0.43356,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 17.09052,
+     "dur": 0.49993,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 17.63544,
+     "dur": 0.62678,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 18.30721,
+     "dur": 0.47442,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 18.82662,
+     "dur": 0.49045,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 19.36206,
+     "dur": 0.59288,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 19.99993,
+     "dur": 0.63107,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 20.67599,
+     "dur": 0.22748,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_elder_f": {
+   "files": [
+    "voice/voice_elder_f.ogg",
+    "voice/voice_elder_f.mp3"
+   ],
+   "volume": 0.402,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 20.51347,
+   "samples": 904644,
+   "mp3StartPad": 1105,
+   "onset": 0.03825,
+   "voiceType": "elder_f",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.37546,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.45045,
+     "dur": 0.81236,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.3078,
+     "dur": 0.50025,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.85304,
+     "dur": 0.3381,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 2.23612,
+     "dur": 0.44633,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.72744,
+     "dur": 0.31893,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 3.09136,
+     "dur": 0.55621,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.69256,
+     "dur": 0.7756,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 4.51315,
+     "dur": 0.47512,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 5.03327,
+     "dur": 0.48197,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 5.56023,
+     "dur": 0.6102,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 6.21542,
+     "dur": 0.43986,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 6.70027,
+     "dur": 0.34288,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 7.08814,
+     "dur": 0.57887,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 7.712,
+     "dur": 0.46456,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 8.22154,
+     "dur": 0.39515,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 8.66168,
+     "dur": 0.45381,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 9.16048,
+     "dur": 0.42646,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 9.63193,
+     "dur": 0.39272,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 10.06964,
+     "dur": 0.35912,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 10.47374,
+     "dur": 0.3615,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "warm": {
+     "start": 10.88023,
+     "dur": 0.38782,
+     "kind": "word",
+     "syl": 2,
+     "say": "뫼옹"
+    },
+    "baby": {
+     "start": 11.31304,
+     "dur": 0.45261,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀뇽"
+    },
+    "sleep": {
+     "start": 11.81063,
+     "dur": 0.47154,
+     "kind": "word",
+     "syl": 2,
+     "say": "뇨롬"
+    },
+    "four": {
+     "start": 12.32717,
+     "dur": 0.32683,
+     "kind": "word",
+     "syl": 1,
+     "say": "푀"
+    },
+    "and": {
+     "start": 12.69898,
+     "dur": 0.28324,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 13.02721,
+     "dur": 0.32807,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 13.40027,
+     "dur": 0.3517,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 13.79696,
+     "dur": 0.3224,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 14.16435,
+     "dur": 0.31127,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 14.52061,
+     "dur": 0.44175,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 15.00735,
+     "dur": 0.39404,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 15.44637,
+     "dur": 0.81946,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "오호호호"
+    },
+    "emo_surprise": {
+     "start": 16.31082,
+     "dur": 0.44172,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 16.79753,
+     "dur": 0.50633,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 17.34884,
+     "dur": 0.6115,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 18.00533,
+     "dur": 0.43045,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 18.48077,
+     "dur": 0.41971,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 18.94546,
+     "dur": 0.58587,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 19.57633,
+     "dur": 0.61351,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 20.23483,
+     "dur": 0.23365,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_chief": {
+   "files": [
+    "voice/voice_chief.ogg",
+    "voice/voice_chief.mp3"
+   ],
+   "volume": 0.403,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 17.21866,
+   "samples": 759343,
+   "mp3StartPad": 1105,
+   "onset": 0.04671,
+   "voiceType": "chief",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.31769,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.39268,
+     "dur": 0.65884,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.09651,
+     "dur": 0.41283,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.55433,
+     "dur": 0.27345,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 1.87277,
+     "dur": 0.36864,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.28639,
+     "dur": 0.29122,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.62261,
+     "dur": 0.47519,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.14279,
+     "dur": 0.64229,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 3.83007,
+     "dur": 0.37678,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.25184,
+     "dur": 0.40551,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.70234,
+     "dur": 0.50676,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.25408,
+     "dur": 0.34297,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.64204,
+     "dur": 0.29857,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 5.9856,
+     "dur": 0.47946,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 6.51005,
+     "dur": 0.38283,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 6.93787,
+     "dur": 0.33322,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 7.31608,
+     "dur": 0.37143,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 7.73249,
+     "dur": 0.37234,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 8.14982,
+     "dur": 0.33349,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 8.5283,
+     "dur": 0.30635,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 8.87964,
+     "dur": 0.30898,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "help": {
+     "start": 9.23361,
+     "dur": 0.26261,
+     "kind": "word",
+     "syl": 1,
+     "say": "끌룹"
+    },
+    "welcome": {
+     "start": 9.5412,
+     "dur": 0.41327,
+     "kind": "word",
+     "syl": 2,
+     "say": "왈랑"
+    },
+    "go": {
+     "start": 9.99946,
+     "dur": 0.39964,
+     "kind": "word",
+     "syl": 1,
+     "say": "프룽"
+    },
+    "come": {
+     "start": 10.44408,
+     "dur": 0.28451,
+     "kind": "word",
+     "syl": 1,
+     "say": "옹"
+    },
+    "and": {
+     "start": 10.77358,
+     "dur": 0.22544,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 11.04401,
+     "dur": 0.29751,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 11.38651,
+     "dur": 0.29045,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 11.72195,
+     "dur": 0.25259,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 12.01952,
+     "dur": 0.27002,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 12.33454,
+     "dur": 0.33438,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 12.7139,
+     "dur": 0.33048,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 13.08937,
+     "dur": 0.52984,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "아하하핫!"
+    },
+    "emo_surprise": {
+     "start": 13.6642,
+     "dur": 0.36154,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 14.07073,
+     "dur": 0.42483,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 14.54054,
+     "dur": 0.48381,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 15.06934,
+     "dur": 0.36322,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 15.47755,
+     "dur": 0.37032,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 15.89286,
+     "dur": 0.46544,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 16.40329,
+     "dur": 0.52197,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 16.97025,
+     "dur": 0.20342,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_big_gruff": {
+   "files": [
+    "voice/voice_big_gruff.ogg",
+    "voice/voice_big_gruff.mp3"
+   ],
+   "volume": 0.419,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 19.60828,
+   "samples": 864725,
+   "mp3StartPad": 1105,
+   "onset": 0.03841,
+   "voiceType": "big_gruff",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.35363,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.42862,
+     "dur": 0.76354,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.23714,
+     "dur": 0.48372,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.76585,
+     "dur": 0.3168,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 2.12764,
+     "dur": 0.4227,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.59533,
+     "dur": 0.29782,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.93814,
+     "dur": 0.53256,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.51569,
+     "dur": 0.74522,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 4.3059,
+     "dur": 0.46172,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.81261,
+     "dur": 0.45077,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 5.30837,
+     "dur": 0.56637,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.91973,
+     "dur": 0.38687,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 6.35159,
+     "dur": 0.35197,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 6.74855,
+     "dur": 0.55707,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 7.35061,
+     "dur": 0.41973,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 7.81533,
+     "dur": 0.36655,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 8.22687,
+     "dur": 0.44172,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 8.71358,
+     "dur": 0.43424,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 9.19281,
+     "dur": 0.3746,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 9.6124,
+     "dur": 0.31642,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 9.97381,
+     "dur": 0.3454,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "wood": {
+     "start": 10.3642,
+     "dur": 0.43188,
+     "kind": "word",
+     "syl": 2,
+     "say": "똘롬"
+    },
+    "fire": {
+     "start": 10.84107,
+     "dur": 0.4395,
+     "kind": "word",
+     "syl": 2,
+     "say": "폭폴"
+    },
+    "eat": {
+     "start": 11.32556,
+     "dur": 0.29844,
+     "kind": "word",
+     "syl": 1,
+     "say": "뭄"
+    },
+    "big": {
+     "start": 11.66898,
+     "dur": 0.43506,
+     "kind": "word",
+     "syl": 2,
+     "say": "봄봄"
+    },
+    "and": {
+     "start": 12.14902,
+     "dur": 0.26249,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 12.45651,
+     "dur": 0.31837,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 12.81986,
+     "dur": 0.36152,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 13.22637,
+     "dur": 0.28481,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 13.55617,
+     "dur": 0.29995,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 13.90111,
+     "dur": 0.4202,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 14.3663,
+     "dur": 0.37932,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 14.79061,
+     "dur": 0.75984,
+     "kind": "emote",
+     "syl": 4,
+     "emote": "laugh",
+     "say": "와하하하"
+    },
+    "emo_surprise": {
+     "start": 15.59544,
+     "dur": 0.4117,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 16.05213,
+     "dur": 0.47671,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 16.57383,
+     "dur": 0.57592,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 17.19474,
+     "dur": 0.4268,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 17.66653,
+     "dur": 0.41848,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 18.13,
+     "dur": 0.54839,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 18.72338,
+     "dur": 0.58628,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 19.35465,
+     "dur": 0.20864,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_sweet": {
+   "files": [
+    "voice/voice_sweet.ogg",
+    "voice/voice_sweet.mp3"
+   ],
+   "volume": 0.401,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 19.18989,
+   "samples": 846274,
+   "mp3StartPad": 1105,
+   "onset": 0.03823,
+   "voiceType": "sweet",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.34213,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.41712,
+     "dur": 0.73701,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.19912,
+     "dur": 0.46878,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.71288,
+     "dur": 0.33526,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 2.09313,
+     "dur": 0.39787,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.53599,
+     "dur": 0.32483,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.9058,
+     "dur": 0.5095,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 3.46029,
+     "dur": 0.72254,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 4.22782,
+     "dur": 0.43918,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 4.712,
+     "dur": 0.43322,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 5.1902,
+     "dur": 0.56642,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 5.80161,
+     "dur": 0.38739,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 6.23399,
+     "dur": 0.34474,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 6.62372,
+     "dur": 0.53413,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 7.20283,
+     "dur": 0.42254,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 7.67036,
+     "dur": 0.39794,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 8.11329,
+     "dur": 0.43263,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 8.59091,
+     "dur": 0.40177,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 9.03766,
+     "dur": 0.3778,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 9.46045,
+     "dur": 0.31692,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 9.82236,
+     "dur": 0.34045,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "flake": {
+     "start": 10.2078,
+     "dur": 0.43109,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘블룸"
+    },
+    "music": {
+     "start": 10.68388,
+     "dur": 0.4132,
+     "kind": "word",
+     "syl": 2,
+     "say": "띵롱"
+    },
+    "moon": {
+     "start": 11.14206,
+     "dur": 0.30683,
+     "kind": "word",
+     "syl": 1,
+     "say": "뮌"
+    },
+    "please": {
+     "start": 11.49388,
+     "dur": 0.37156,
+     "kind": "word",
+     "syl": 2,
+     "say": "뿌띵"
+    },
+    "and": {
+     "start": 11.91043,
+     "dur": 0.23249,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 12.18791,
+     "dur": 0.30807,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 12.54098,
+     "dur": 0.32796,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 12.91392,
+     "dur": 0.28769,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 13.2466,
+     "dur": 0.30254,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 13.59413,
+     "dur": 0.38324,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 14.02236,
+     "dur": 0.3654,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 14.43274,
+     "dur": 0.6644,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "laugh",
+     "say": "후후히"
+    },
+    "emo_surprise": {
+     "start": 15.14213,
+     "dur": 0.41336,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 15.60048,
+     "dur": 0.49345,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 16.13891,
+     "dur": 0.57066,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 16.75456,
+     "dur": 0.44937,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 17.24891,
+     "dur": 0.4119,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 17.7058,
+     "dur": 0.52671,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 18.27751,
+     "dur": 0.598,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 18.9205,
+     "dur": 0.2244,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  },
+  "voice_squeaky": {
+   "files": [
+    "voice/voice_squeaky.ogg",
+    "voice/voice_squeaky.mp3"
+   ],
+   "volume": 0.401,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 15.6654,
+   "samples": 690844,
+   "mp3StartPad": 1105,
+   "onset": 0.04113,
+   "voiceType": "squeaky",
+   "sprite": true,
+   "markers": {
+    "hello": {
+     "start": 0.03,
+     "dur": 0.28939,
+     "kind": "word",
+     "syl": 2,
+     "say": "뽀얌"
+    },
+    "bye": {
+     "start": 0.36438,
+     "dur": 0.59361,
+     "kind": "word",
+     "syl": 4,
+     "say": "뿔룽뿔룽"
+    },
+    "thanks": {
+     "start": 1.00297,
+     "dur": 0.38177,
+     "kind": "word",
+     "syl": 3,
+     "say": "꼬맙뿌"
+    },
+    "yes": {
+     "start": 1.42973,
+     "dur": 0.25875,
+     "kind": "word",
+     "syl": 1,
+     "say": "뉨"
+    },
+    "no": {
+     "start": 1.73347,
+     "dur": 0.33889,
+     "kind": "word",
+     "syl": 2,
+     "say": "노뱅"
+    },
+    "good": {
+     "start": 2.11735,
+     "dur": 0.25059,
+     "kind": "word",
+     "syl": 1,
+     "say": "블룸"
+    },
+    "wow": {
+     "start": 2.41293,
+     "dur": 0.42794,
+     "kind": "word",
+     "syl": 3,
+     "say": "우와뿅"
+    },
+    "yummy": {
+     "start": 2.88585,
+     "dur": 0.54587,
+     "kind": "word",
+     "syl": 3,
+     "say": "냠냠뇹"
+    },
+    "love": {
+     "start": 3.47671,
+     "dur": 0.37834,
+     "kind": "word",
+     "syl": 2,
+     "say": "뵐랑"
+    },
+    "friend": {
+     "start": 3.90005,
+     "dur": 0.35424,
+     "kind": "word",
+     "syl": 2,
+     "say": "뮐리"
+    },
+    "chief": {
+     "start": 4.29927,
+     "dur": 0.4259,
+     "kind": "word",
+     "syl": 3,
+     "say": "촌촌님"
+    },
+    "village": {
+     "start": 4.77016,
+     "dur": 0.31868,
+     "kind": "word",
+     "syl": 2,
+     "say": "마울"
+    },
+    "snow": {
+     "start": 5.13383,
+     "dur": 0.26635,
+     "kind": "word",
+     "syl": 2,
+     "say": "뉘뉘"
+    },
+    "cold": {
+     "start": 5.44517,
+     "dur": 0.41726,
+     "kind": "word",
+     "syl": 3,
+     "say": "브르르"
+    },
+    "fish": {
+     "start": 5.90741,
+     "dur": 0.34395,
+     "kind": "word",
+     "syl": 2,
+     "say": "퓌뽈"
+    },
+    "bread": {
+     "start": 6.29635,
+     "dur": 0.30791,
+     "kind": "word",
+     "syl": 1,
+     "say": "브랑"
+    },
+    "money": {
+     "start": 6.64925,
+     "dur": 0.36478,
+     "kind": "word",
+     "syl": 2,
+     "say": "링딩"
+    },
+    "work": {
+     "start": 7.05902,
+     "dur": 0.30551,
+     "kind": "word",
+     "syl": 2,
+     "say": "똑땁"
+    },
+    "home": {
+     "start": 7.40952,
+     "dur": 0.27512,
+     "kind": "word",
+     "syl": 2,
+     "say": "옴뽁"
+    },
+    "very": {
+     "start": 7.72964,
+     "dur": 0.24655,
+     "kind": "word",
+     "syl": 1,
+     "say": "뿔"
+    },
+    "what": {
+     "start": 8.02118,
+     "dur": 0.27497,
+     "kind": "word",
+     "syl": 1,
+     "say": "뫼"
+    },
+    "play": {
+     "start": 8.34113,
+     "dur": 0.26166,
+     "kind": "word",
+     "syl": 1,
+     "say": "플링"
+    },
+    "small": {
+     "start": 8.64778,
+     "dur": 0.312,
+     "kind": "word",
+     "syl": 2,
+     "say": "찌밍"
+    },
+    "five": {
+     "start": 9.00476,
+     "dur": 0.33601,
+     "kind": "word",
+     "syl": 2,
+     "say": "빔빔"
+    },
+    "ice": {
+     "start": 9.38576,
+     "dur": 0.32669,
+     "kind": "word",
+     "syl": 2,
+     "say": "끼링"
+    },
+    "and": {
+     "start": 9.75744,
+     "dur": 0.20719,
+     "kind": "filler",
+     "syl": 1,
+     "say": "엘"
+    },
+    "youknow": {
+     "start": 10.00961,
+     "dur": 0.25773,
+     "kind": "filler",
+     "syl": 1,
+     "say": "넹"
+    },
+    "hmm": {
+     "start": 10.31234,
+     "dur": 0.27156,
+     "kind": "filler",
+     "syl": 1,
+     "say": "음"
+    },
+    "q": {
+     "start": 10.62889,
+     "dur": 0.23762,
+     "kind": "particle",
+     "syl": 1,
+     "say": "녹?"
+    },
+    "excl": {
+     "start": 10.9115,
+     "dur": 0.24946,
+     "kind": "particle",
+     "syl": 1,
+     "say": "얍!"
+    },
+    "end": {
+     "start": 11.20594,
+     "dur": 0.33776,
+     "kind": "particle",
+     "syl": 1,
+     "say": "뇽"
+    },
+    "emo_greet": {
+     "start": 11.58868,
+     "dur": 0.29202,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "greet",
+     "say": "뽀얌!"
+    },
+    "emo_laugh": {
+     "start": 11.92569,
+     "dur": 0.548,
+     "kind": "emote",
+     "syl": 6,
+     "emote": "laugh",
+     "say": "끼히히히히히"
+    },
+    "emo_surprise": {
+     "start": 12.51868,
+     "dur": 0.31104,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "surprise",
+     "say": "우와!"
+    },
+    "emo_excited": {
+     "start": 12.87472,
+     "dur": 0.37376,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "excited",
+     "say": "야호!"
+    },
+    "emo_sad": {
+     "start": 13.29347,
+     "dur": 0.43152,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "sad",
+     "say": "흐잉…"
+    },
+    "emo_grumpy": {
+     "start": 13.76998,
+     "dur": 0.31687,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "grumpy",
+     "say": "흥!"
+    },
+    "emo_question": {
+     "start": 14.13184,
+     "dur": 0.3095,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "question",
+     "say": "응?"
+    },
+    "emo_thanks": {
+     "start": 14.48633,
+     "dur": 0.41297,
+     "kind": "emote",
+     "syl": 3,
+     "emote": "thanks",
+     "say": "꼬맙뿌!"
+    },
+    "emo_yummy": {
+     "start": 14.94429,
+     "dur": 0.43617,
+     "kind": "emote",
+     "syl": 2,
+     "emote": "yummy",
+     "say": "냠냠~"
+    },
+    "emo_oops": {
+     "start": 15.42544,
+     "dur": 0.19497,
+     "kind": "emote",
+     "syl": 1,
+     "emote": "oops",
+     "say": "앗!"
+    }
+   }
+  }
+ },
+ "audioGroups": {},
+ "voices": {
+  "kid_boy": {
+   "key": "voice_kid_boy",
+   "ko": "남자아이",
+   "en": "boy",
+   "desc": "씩씩하고 빠른 꼬마. 말끝이 통통 튀어요.",
+   "f0": 290,
+   "alpha": 1.3,
+   "speed": 1.24,
+   "breath": 0.1,
+   "range": 1.2,
+   "laugh": "kihi"
+  },
+  "kid_girl": {
+   "key": "voice_kid_girl",
+   "ko": "여자아이",
+   "en": "girl",
+   "desc": "높고 맑은 목소리, 노래하듯 오르내려요.",
+   "f0": 345,
+   "alpha": 1.38,
+   "speed": 1.2,
+   "breath": 0.12,
+   "range": 1.3,
+   "laugh": "hihi"
+  },
+  "adult_m": {
+   "key": "voice_adult_m",
+   "ko": "어른 남자",
+   "en": "man",
+   "desc": "부드럽고 다정한 동네 아저씨/청년.",
+   "f0": 165,
+   "alpha": 1.12,
+   "speed": 1.06,
+   "breath": 0.07,
+   "range": 1.05,
+   "laugh": "haha"
+  },
+  "adult_f": {
+   "key": "voice_adult_f",
+   "ko": "어른 여자",
+   "en": "woman",
+   "desc": "밝고 수다스러운 이웃 아주머니/언니.",
+   "f0": 255,
+   "alpha": 1.22,
+   "speed": 1.12,
+   "breath": 0.11,
+   "range": 1.2,
+   "laugh": "ahaha"
+  },
+  "elder_m": {
+   "key": "voice_elder_m",
+   "ko": "할아버지",
+   "en": "grandpa",
+   "desc": "느릿느릿, 살짝 떨리는 따뜻한 목소리.",
+   "f0": 140,
+   "alpha": 1.04,
+   "speed": 0.86,
+   "breath": 0.15,
+   "range": 0.9,
+   "laugh": "hoho_low"
+  },
+  "elder_f": {
+   "key": "voice_elder_f",
+   "ko": "할머니",
+   "en": "grandma",
+   "desc": "다정하고 조금 떨리는 할머니 목소리.",
+   "f0": 225,
+   "alpha": 1.15,
+   "speed": 0.9,
+   "breath": 0.17,
+   "range": 0.95,
+   "laugh": "ohoho"
+  },
+  "chief": {
+   "key": "voice_chief",
+   "ko": "촌장님 (플레이어)",
+   "en": "chief",
+   "desc": "씩씩하고 따뜻한 우리 촌장님. 신나면 노래하듯.",
+   "f0": 205,
+   "alpha": 1.17,
+   "speed": 1.16,
+   "breath": 0.07,
+   "range": 1.35,
+   "laugh": "ahaha_chief"
+  },
+  "big_gruff": {
+   "key": "voice_big_gruff",
+   "ko": "덩치 큰 아저씨",
+   "en": "big uncle",
+   "desc": "낮고 둥글둥글한 곰 같은 아저씨. 무섭지 않아요!",
+   "f0": 108,
+   "alpha": 0.9,
+   "speed": 0.94,
+   "breath": 0.09,
+   "range": 1.0,
+   "laugh": "wahaha"
+  },
+  "sweet": {
+   "key": "voice_sweet",
+   "ko": "상냥한 언니",
+   "en": "sweet sister",
+   "desc": "속삭이듯 부드럽고 숨결이 섞인 목소리.",
+   "f0": 285,
+   "alpha": 1.25,
+   "speed": 0.98,
+   "breath": 0.22,
+   "range": 1.0,
+   "laugh": "hufu"
+  },
+  "squeaky": {
+   "key": "voice_squeaky",
+   "ko": "꼬마 삑삑이",
+   "en": "squeaky",
+   "desc": "아주 작고 신난 삑삑이 (아기·꼬마 요정 같은).",
+   "f0": 470,
+   "alpha": 1.52,
+   "speed": 1.36,
+   "breath": 0.08,
+   "range": 1.45,
+   "laugh": "kihi_fast"
+  }
+ }
+}

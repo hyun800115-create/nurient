@@ -18,20 +18,27 @@ export const STAGE_SCALE = { 0: 1.0, 1: 1.0, 2: 0.85, 3: 0.72, 4: 0.62 };
 const GROUND_SCALE = 0.62;
 
 /** animated sprites (prop / building work loops) baked as frame lists */
-const SPRITE_ANIMS = { station_grill: 'work', campfire: null, watchtower: 'work', park_fountain: 'water', buoy: 'bob', lighthouse: 'light' };
+// (big work loops — watchtower fire, lighthouse lamp, crane — stay static: the runtime adds live fire / glow / beam)
+const SPRITE_ANIMS = { station_grill: 'work', park_fountain: 'water', buoy: 'bob' };
 
-/** actors: [char, anim, dirs, scaleStage] */
+/** actors: { char, anim, dirs, s: scale stage, step: take every n-th frame, frames: max frames } */
 function actorList() {
   const out = [];
   const add = (char, anim, dirs, s, opts = {}) => out.push({ char, anim, dirs, s, ...opts });
   add('pet_dog', 'run', ['S', 'SE', 'E', 'NE', 'N'], 1);
-  add('pet_dog', 'idle', ['S', 'SE'], 1);
-  for (const c of L.TRAIN.cars) { add(c, 'move', ['SE'], 3, { shadow: true }); add(c, 'idle', ['SE'], 3, { shadow: true, frames: 1 }); }
-  for (const v of L.VEHICLES) add(v.char, 'move', ['SE'], v.s, { vshadow: true });
-  add('ferry', 'move', ['SE'], 4, { layered: true });
-  add('ferry', 'idle', ['SE'], 4, { layered: true, frames: 1 });
-  add('sailboat', 'move', ['NE'], 4);
-  add('boat_rowboat', 'row', ['SE'], 2);
+  add('pet_dog', 'sit', ['SE'], 1, { frames: 1 });
+  for (const c of L.TRAIN.cars) add(c, 'move', ['SE'], 3, { shadow: true, step: 2 });
+  const vdirs = {};
+  for (const v of L.VEHICLES) { const d = v.dir > 0 ? 'SE' : 'NE'; (vdirs[v.char] = vdirs[v.char] || { s: v.s, dirs: new Set() }).dirs.add(d); }
+  for (const ch in vdirs) {
+    const n = (Assets.charDef(ch).anims.move || {}).frames || 4;
+    add(ch, 'move', Array.from(vdirs[ch].dirs), vdirs[ch].s, { vshadow: true, step: n > 4 ? 2 : 1 });
+  }
+  for (const sh of L.SHIPS) {
+    if (sh.char === 'ferry') add('ferry', 'idle', [sh.dir], sh.s, { layered: true, frames: 1 });
+    else if (sh.char === 'boat_rowboat') add(sh.char, sh.anim || 'row', [sh.dir], sh.s);
+    else add(sh.char, 'move', [sh.dir], sh.s, { frames: 2, step: 2 });
+  }
   add('seagull', 'fly', ['SE', 'NE'], 2);
   return out;
 }
@@ -133,14 +140,17 @@ function trim(c, pad = 1) {
   return { c: o, x0, y0 };
 }
 
-/** render one piece: draw(ctx) with the anchor at (ax, ay) inside a (w x h) canvas, trim, return meta */
+/** render one piece: draw(ctx) with the anchor at (ax, ay) inside a (w x h) canvas, trim, return meta.
+ *  The packer writes trimmed frames with their untrimmed source size (like TexturePacker), so every frame
+ *  of an animation drawn in the same canvas geometry shares one origin (ox = ax / sw, oy = ay / sh). */
 function piece(name, w, h, ax, ay, draw) {
   const c = canvas(w, h);
   const ctx = c.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   draw(ctx);
   const t = trim(c);
-  return { name, png: t.c.toDataURL('image/png'), w: t.c.width, h: t.c.height, ax: +(ax - t.x0).toFixed(2), ay: +(ay - t.y0).toFixed(2) };
+  return { name, png: t.c.toDataURL('image/png'), w: t.c.width, h: t.c.height, sw: c.width, sh: c.height, tx: t.x0, ty: t.y0,
+    ax: +ax.toFixed(2), ay: +ay.toFixed(2), empty: !!t.empty };
 }
 
 // ------------------------------------------------------------------ sprite pieces
@@ -157,13 +167,17 @@ function bakeSprites() {
     const s = STAGE_SCALE[st[key]];
     const fi = spriteFrame(key);
     const def = Assets.def(key);
-    const meta = { key, stage: st[key], scale: s, fx: def.fxPoints || null, topPx: def.topPx || 0, footprint: def.footprint || null };
+    // `live`: the game already loads this picture before the title (core fragment, not lazy / late): the
+    // runtime draws it from the game's own atlas (no extra download); only its night glow is baked
+    const file = spriteFile(key);
+    const live = !!file && !Assets.isLazy(file) && !Assets.isUnused(file);
+    const meta = { key, stage: st[key], scale: s, fx: def.fxPoints || null, topPx: def.topPx || 0, footprint: def.footprint || null, live };
     const W = fi.rw * s + 4, H = fi.rh * s + 4, ax = fi.ax * s + 2, ay = fi.ay * s + 2;
     const p = piece(key, W, H, ax, ay, (ctx) => drawFI(ctx, fi, ax, ay, s));
     out.push(Object.assign(p, meta));
     // animated: bake its frames (same canvas geometry so they share the anchor)
     const an = SPRITE_ANIMS[key];
-    if (an && def.anims && def.anims[an]) {
+    if (an && def.anims && def.anims[an] && !live) {
       const frames = def.anims[an].frames;
       for (let i = 0; i < frames.length; i++) {
         const f2 = frameInfo(def.atlas, frames[i], def.anchor || [0.5, 0.5]);
@@ -198,15 +212,18 @@ function bakeActors() {
     const s = STAGE_SCALE[a.s];
     const an = d.anims[a.anim];
     if (!an) { B.errors.push('no anim ' + a.char + ':' + a.anim); continue; }
-    const n = a.frames || an.frames || 1;
+    const step = a.step || 1;
+    const nAll = an.frames || 1;
+    const n = Math.min(a.frames || 99, Math.ceil(nAll / step));
     for (const dir of a.dirs) {
       // canvas big enough for the frame and its shadow
       const fs = d.frameSize || [128, 128];
       const pad = a.layered ? 40 : 60;
       const W = fs[0] * s + pad * 2, H = fs[1] * s + pad * 2;
       const ax = d.anchor[0] * fs[0] * s + pad, ay = d.anchor[1] * fs[1] * s + pad;
-      for (let i = 0; i < n; i++) {
-        const name = a.char + ':' + a.anim + ':' + dir + ':' + i;
+      for (let k = 0; k < n; k++) {
+        const i = k * step;
+        const name = a.char + ':' + a.anim + ':' + dir + ':' + k;
         const p = piece(name, W, H, ax, ay, (ctx) => {
           if (a.shadow && d.shadowFrames) {
             const sf = d.shadowFrames;
@@ -222,7 +239,7 @@ function bakeActors() {
           const fname = d.frameName.replace('{anim}', a.anim).replace('{dir}', dir).replace('{i}', i);
           drawFI(ctx, frameInfo(d.atlas, fname, d.anchor), ax, ay, s);
         });
-        out.push(Object.assign(p, { key: name, stage: a.s, scale: s, actor: a.char, anim: a.anim, dir, i, n, fps: an.fps || 10 }));
+        out.push(Object.assign(p, { key: name, stage: a.s, scale: s, actor: a.char, anim: a.anim, dir, i: k, n, fps: (an.fps || 10) / step }));
       }
     }
   }
@@ -248,8 +265,13 @@ export function islandPoly() {
     let w = 0;
     for (const [f, ph, a] of waves) w += Math.sin(t * f + ph) * a;
     let mx = c * (rr + w), my = s * (rr + w);
-    // the harbour edge: straight
-    if (my < 0 && mx > I.quay.from - 1.2 && mx < I.quay.to + 0.6 && my < -R + 1.4) my = -R;
+    // the harbour edge: straight between quay.from and quay.to, blended into the natural shore at both ends
+    if (my < 0 && my < -R + 2.2) {
+      const ramp = 1.6;
+      const w = Math.max(0, Math.min(1, (mx - (I.quay.from - ramp)) / ramp, ((I.quay.to + ramp) - mx) / ramp));
+      const k = w * w * (3 - 2 * w);
+      my = my + (-R - my) * k;
+    }
     pts.push([mx, my]);
   }
   return pts;
@@ -589,6 +611,8 @@ B.bakeSprites = () => bakeSprites();
 B.bakeActors = () => bakeActors();
 B.bakeGround = () => { const out = [bakeGroundBase(GROUND_SCALE)]; for (let k = 1; k <= 4; k++) out.push(bakeGroundStage(k, GROUND_SCALE)); return out; };
 B.preview = preview;
+B.bakeFx = () => [];
+B.info = () => ({ G, groundScale: GROUND_SCALE, stageScale: STAGE_SCALE, island: islandPoly().map(([x, y]) => [+x.toFixed(3), +y.toFixed(3)]) });
 B.islandPoly = islandPoly;
 B.STAGE_SCALE = STAGE_SCALE;
 

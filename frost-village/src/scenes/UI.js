@@ -463,13 +463,17 @@ export class UI extends Phaser.Scene {
 
   banner(msg, sub) {
     const b = this.bannerBox;
-    this.bannerText.setText(msg);
-    this.bannerSub.setText(sub || '');
-    this.bannerBg.setSize(Math.max(360, this.bannerText.width + 90), 104);
+    this.bannerText.setText(msg).setScale(1);
+    this.bannerSub.setText(sub || '').setScale(1);
+    // (v4-A) a long title / subtitle shrinks to fit a narrow phone instead of running off the screen
+    const maxW = this.W - 40;
+    if (this.bannerText.width + 90 > maxW) this.bannerText.setScale((maxW - 90) / this.bannerText.width);
+    if (this.bannerSub.width + 44 > maxW) this.bannerSub.setScale((maxW - 44) / this.bannerSub.width);
+    this.bannerBg.setSize(Math.max(360, this.bannerText.displayWidth + 90), 104);
     const g = this.bannerSubBg;
     g.clear();
     if (sub) {
-      const w = this.bannerSub.width + 44, h = 50;
+      const w = this.bannerSub.displayWidth + 44, h = 50;
       g.fillStyle(0x1f3354, 0.62); g.fillRoundedRect(-w / 2, 80 - h / 2, w, h, h / 2);
     }
     this.tweens.killTweensOf(b);

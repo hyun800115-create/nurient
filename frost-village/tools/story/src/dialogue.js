@@ -285,6 +285,7 @@ export class Dialogue {
       if (place.idx === sp.work) set(C.atwork);
       if (place.kind === 'school') set(C.atschool);
       if (place.cat === 'shop') set(C.atshop);
+      if (place.kind === 'cafe' || place.kind === 'restaurant' || place.kind === 'stall') set(C.atcafe);
       if (place.cat === 'outdoor') set(C.outdoors);
     }
     // the fact / memory version
@@ -298,10 +299,12 @@ export class Dialogue {
       if (anon) set(C.anon);
       if (b.d) set(C.distort);
       if (f.a === sp.id) set(C.self);
+      if (f.p >= 0 && f.p === sp.home) set(C.myhome);
       if (f.b === sp.id) set(C.self2);
       if (ls && f.a === ls.id) set(C.lself);
       if (ls && f.b === ls.id) set(C.lvictim);
       if (b.src === SRC_SEEN) set(C.seen); else if (b.src === SRC_TOLD) set(C.told); else if (b.src === SRC_NEWS) set(C.news); else if (b.src === SRC_DID) set(C.did);
+      if (b.src <= SRC_NEWS) set(C.known);   // the speaker knows the story in some version (not just 'asked about it')
       if (f.k === 'theft' || f.k === 'wanted' || f.k === 'arrest') { if (f.st === 1) set(C.caught); else if (f.st === 2) set(C.escaped); }
       if (f.k === 'ruin' || ((f.k === 'fire' || f.k === 'fire_out') && (f.st === 2 || f.n === 1 && f.k === 'fire_out'))) set(C.ruin);
       if ((f.k === 'fire' && f.st === 1) || (f.k === 'fire_out' && f.n === 0)) set(C.minor);
@@ -309,6 +312,7 @@ export class Dialogue {
       if (age > 2) set(C.old); else if (age < 0.35) set(C.fresh);
       if (this.count(b) > 1) set(C.plural);
       if (f.v > 0) set(C.pos); else if (f.v < 0) set(C.neg);
+      if (f.k === 'farewell' || f.k === 'memorial') set(C.grave);
       if (f.k === 'snowman' && f.n >= 2) set(C.big);
       if (f.k === 'apology' && f.ref > 0) {
         const rf = e.facts.get(f.ref), rk = rf ? rf.k : '';
@@ -419,7 +423,7 @@ export class Dialogue {
 
   referKo(sp, t) {
     const e = this.e;
-    if (sp === t) return { text: '나', casual: false };
+    if (sp === t) return { text: this.ctx.level === 1 || this.ctx.level === 2 ? '저' : '나', casual: false };
     if (t.title && !t.given) return { text: t.title, casual: false, title: true };
     const rel = sp ? getRel(e, sp.id, t.id) : null;
     const gs = sp ? groupOf(e, sp) : G_ADULT, gt = groupOf(e, t);
@@ -441,10 +445,14 @@ export class Dialogue {
     const h = (mix32(sp ? sp.id : 0, t.id) & 7);
     if (gt === G_ELDER) {
       if (gs === G_ELDER && close) return { text: casualName(t.given), casual: true };
+      // elders of about the same age are '○○ 씨' to each other, not '할아버지'
+      if (gs === G_ELDER && Math.abs(at - as) < 10) return { text: t.given + ' 씨', title: true };
       return { text: (t.sur ? t.sur + ' ' : '') + (t.male ? '할아버지' : '할머니'), title: true };
     }
     if (gt === G_ADULT) {
       if (gs <= G_TEEN) {
+        // a young grown-up is 형/누나/오빠/언니 to children, not 아저씨/아줌마
+        if (at < 30) return { text: t.given + ' ' + (sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니')), title: true };
         const J = JOBS[t.job];
         if (J && J.kid && h < 5) return { text: J.kid + (t.male ? ' 아저씨' : ' 아줌마'), title: true };
         return { text: t.given + (t.male ? ' 삼촌' : ' 이모'), title: true };
@@ -583,6 +591,11 @@ export class Dialogue {
     if (!f) return lang === 'en' ? 'earlier' : '아까';
     const d = e.clock.day - f.day;
     const ago = e.now - f.sec;
+    if (this.press) {   // the morning paper: news from after midnight is 'early this morning'
+      const L = e.cfg.dayLength, early = (f.sec - f.day * L) * 1440 / L < 330;
+      if (lang === 'en') return d <= 0 ? (early ? 'early this morning' : 'today') : d === 1 ? 'yesterday' : d === 2 ? 'the day before yesterday' : 'recently';
+      return d <= 0 ? (early ? '오늘 새벽' : '오늘') : d === 1 ? '어제' : d === 2 ? '그저께' : '얼마 전';
+    }
     if (lang === 'en') return d <= 0 ? (ago < e.cfg.dayLength * 0.08 ? 'just now' : 'earlier today') : d === 1 ? 'yesterday' : d === 2 ? 'the day before yesterday' : d < 7 ? 'a few days ago' : d < 14 ? 'last week' : 'a while ago';
     return d <= 0 ? (ago < e.cfg.dayLength * 0.08 ? '방금' : '아까') : d === 1 ? '어제' : d === 2 ? '그저께' : d < 7 ? '며칠 전에' : d < 14 ? '지난주에' : '얼마 전에';
   }
@@ -697,7 +710,8 @@ export class Dialogue {
     // reuse setup for slot availability with a neutral speaker, then switch to written level 3
     this.setup(b, sp, null, null, lang, null);
     ctx.level = 3;
-    ctx.recent = null;
+    ctx.recent = opts.recent || null;
+    if (opts.recent) ctx.rpos = opts.rpos;
     ctx.p0 = 0; ctx.p1 = 0; ctx.p2 = 0; ctx.p3 = 0; ctx.noQ = true;
     const text = tidy(g.expand(r, ctx), lang);
     if (!text) this.miss(rule);
@@ -746,12 +760,20 @@ export class Dialogue {
     const rank = (k) => ({ wedding: 9, baby: 9, farewell: 9, sweetheart: 8, engaged: 8, fire: 8, ruin: 8, theft: 7, arrest: 7, move_in: 7, move_out: 7, shop_open: 7, scuffle: 6, window: 6, loan: 6, loan_paid: 6, rebuilt: 6, friend: 5, bestfriend: 6, crush: 6, confess_no: 6, meet: 4, talk: 4, big_buy: 4, outing: 5, gift: 4, help: 3, slip: 4, snowman: 4, concert: 3, pet: 3, bigcatch: 4, deposit: 2, eat: 1, buy: 1, pickup: 1 }[k] || 2);
     entries.sort((a, b) => rank(b[1]) - rank(a[1]) || a[6] - b[6]);
     const neutralB = (f) => ({ w: r.id, to: -1, r: '', f, x: 0, d: 0, alt: -1, src: SRC_DID, from: -1, o: -1, p: -1, i: -1, h: -1, n: 0, s: '', fl: [] });
-    lines.push(this.written('diary.open', lang, { b: neutralB(null), sp: r }));
+    // one page of a diary does not repeat itself: alternatives used earlier on the page are avoided
+    const recent = this.diaryRecent || (this.diaryRecent = new Int32Array(12));
+    recent.fill(0);
+    const rpos = { v: 0 };
+    lines.push(this.written('diary.open', lang, { b: neutralB(null), sp: r, recent, rpos }));
     const seen = new Set();
+    let talks = 0;
     for (const [d, kind, other, place, extra, fid] of entries) {
       if (lines.length >= 6) break;
-      const key = kind + ':' + other + ':' + (fid || 0);
+      // one line per person talked to, at most two chats a day (the rest of the day gets a say too)
+      const key = kind === 'talk' || kind === 'meet' || kind === 'friend' || kind === 'gift' || kind === 'help' ? kind + ':' + other : kind;
       if (seen.has(key) || (seen.has(kind) && rank(kind) < 4)) continue;
+      if (kind === 'talk' && talks >= 2) continue;
+      if (kind === 'talk') talks++;
       seen.add(key); seen.add(kind);
       const f = fid ? e.facts.get(fid) || null : null;
       const b = neutralB(f);
@@ -759,10 +781,10 @@ export class Dialogue {
       if (place >= 0) b.p = place;
       if (kind === 'buy' || kind === 'eat') b.i = extra;
       if (kind === 'deposit' || kind === 'loan' || kind === 'pickup') b.n = extra;
-      const t = this.written('diary.' + kind, lang, { b, sp: r });
+      const t = this.written('diary.' + kind, lang, { b, sp: r, recent, rpos });
       if (t) lines.push(t);
     }
-    lines.push(this.written('diary.close', lang, { b: neutralB(null), sp: r }));
+    lines.push(this.written('diary.close', lang, { b: neutralB(null), sp: r, recent, rpos }));
     return lines.filter(Boolean);
   }
 }

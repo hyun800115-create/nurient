@@ -1,0 +1,249 @@
+{
+ "scenes": [
+  {
+   "label": "new game (v3.5 content only)",
+   "drawPerFrame": 5,
+   "bindPerFrame": 65,
+   "uploadsPerFrame": 0,
+   "objs": 903,
+   "visible": 314,
+   "pileItems": 0,
+   "texMiB": 396.9,
+   "textures": 192,
+   "dolls": null,
+   "live": 0,
+   "visitors": 0,
+   "hour": null
+  },
+  {
+   "label": "v3 complete + rail strip open (ruin)",
+   "drawPerFrame": 14,
+   "bindPerFrame": 206.1,
+   "uploadsPerFrame": 0,
+   "objs": 1113,
+   "visible": 868,
+   "pileItems": 0,
+   "texMiB": 513.2,
+   "textures": 274,
+   "dolls": null,
+   "live": 0,
+   "visitors": 0,
+   "hour": 8
+  },
+  {
+   "label": "plaza with doll customers + visitors",
+   "drawPerFrame": 17.7,
+   "bindPerFrame": 255.4,
+   "uploadsPerFrame": 0,
+   "objs": 1572,
+   "visible": 1366,
+   "pileItems": 0,
+   "texMiB": 698.1,
+   "textures": 311,
+   "dolls": {
+    "dolls": 15,
+    "full": 12,
+    "lite": 0,
+    "dot": 0,
+    "images": 208
+   },
+   "live": 0,
+   "visitors": 6,
+   "hour": 9.91
+  },
+  {
+   "label": "town_morning",
+   "drawPerFrame": 18,
+   "bindPerFrame": 261,
+   "uploadsPerFrame": 0.08,
+   "objs": 1933,
+   "visible": 1592,
+   "pileItems": 5,
+   "texMiB": 719,
+   "textures": 320,
+   "dolls": {
+    "dolls": 47,
+    "full": 24,
+    "lite": 0,
+    "dot": 0,
+    "images": 485
+   },
+   "live": 24,
+   "visitors": 6,
+   "hour": 8.65
+  },
+  {
+   "label": "town_noon",
+   "drawPerFrame": 19,
+   "bindPerFrame": 285.5,
+   "uploadsPerFrame": 0,
+   "objs": 2278,
+   "visible": 1996,
+   "pileItems": 2,
+   "texMiB": 719,
+   "textures": 322,
+   "dolls": {
+    "dolls": 83,
+    "full": 32,
+    "lite": 29,
+    "dot": 0,
+    "images": 771
+   },
+   "live": 61,
+   "visitors": 10,
+   "hour": 12.35
+  },
+  {
+   "label": "town_dusk",
+   "drawPerFrame": 22,
+   "bindPerFrame": 294.3,
+   "uploadsPerFrame": 0,
+   "objs": 2138,
+   "visible": 1781,
+   "pileItems": 5,
+   "texMiB": 719,
+   "textures": 322,
+   "dolls": {
+    "dolls": 86,
+    "full": 31,
+    "lite": 0,
+    "dot": 0,
+    "images": 585
+   },
+   "live": 31,
+   "visitors": 10,
+   "hour": 17.95
+  },
+  {
+   "label": "town_night",
+   "drawPerFrame": 20,
+   "bindPerFrame": 246.1,
+   "uploadsPerFrame": 0.08,
+   "objs": 1773,
+   "visible": 1374,
+   "pileItems": 4,
+   "texMiB": 719,
+   "textures": 323,
+   "dolls": {
+    "dolls": 87,
+    "full": 4,
+    "lite": 0,
+    "dot": 0,
+    "images": 195
+   },
+   "live": 4,
+   "visitors": 10,
+   "hour": 21.65
+  },
+  {
+   "label": "town school out (crowd)",
+   "drawPerFrame": 21,
+   "bindPerFrame": 280.3,
+   "uploadsPerFrame": 0,
+   "objs": 2462,
+   "visible": 2083,
+   "pileItems": 24,
+   "texMiB": 719,
+   "textures": 323,
+   "dolls": {
+    "dolls": 83,
+    "full": 32,
+    "lite": 22,
+    "dot": 0,
+    "images": 823
+   },
+   "live": 55,
+   "visitors": 10,
+   "hour": 15.46
+  },
+  {
+   "label": "town zoom 0.6 (lite rigs)",
+   "drawPerFrame": 21,
+   "bindPerFrame": 302,
+   "uploadsPerFrame": 0.08,
+   "objs": 2532,
+   "visible": 1951,
+   "pileItems": 20,
+   "texMiB": 719,
+   "textures": 323,
+   "dolls": {
+    "dolls": 88,
+    "full": 0,
+    "lite": 68,
+    "dot": 0,
+    "images": 863
+   },
+   "live": 68,
+   "visitors": 10,
+   "hour": 12.63
+  },
+  {
+   "label": "overview of the neighbours area",
+   "drawPerFrame": 17,
+   "bindPerFrame": 247.4,
+   "uploadsPerFrame": 0,
+   "objs": 1814,
+   "visible": 1552,
+   "pileItems": 24,
+   "texMiB": 719,
+   "textures": 324,
+   "dolls": {
+    "dolls": 91,
+    "full": 0,
+    "lite": 0,
+    "dot": 71,
+    "images": 56
+   },
+   "live": 66,
+   "visitors": 10,
+   "hour": 12.77
+  }
+ ],
+ "bench": {
+  "plaza": {
+   "avg": 2.992,
+   "p50": 0.9,
+   "p95": 13.6,
+   "max": 50.9,
+   "objs": 1588
+  },
+  "town_noon": {
+   "avg": 5.188,
+   "p50": 2.1,
+   "p95": 14,
+   "max": 196.3,
+   "objs": 2331
+  },
+  "town_night": {
+   "avg": 2.612,
+   "p50": 0.7,
+   "p95": 9.4,
+   "max": 108.1,
+   "objs": 1785
+  },
+  "overview": {
+   "avg": 2.668,
+   "p50": 1.1,
+   "p95": 10,
+   "max": 73.4,
+   "objs": 1823
+  }
+ },
+ "town": {
+  "townMs": 0.10321554643744006,
+  "all": 0.32528461623658766,
+  "census": {
+   "town": 86,
+   "train": 4,
+   "village": 10,
+   "total": 100
+  },
+  "rigs": {
+   "dolls": 91,
+   "full": 0,
+   "lite": 0,
+   "dot": 62,
+   "images": 56
+  }
+ }
+}

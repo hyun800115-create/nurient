@@ -30,7 +30,9 @@ const MOCK = `
 (() => {
   const sleep = (ms, sig) => new Promise((res, rej) => { const t = setTimeout(res, ms); if (sig) sig.addEventListener('abort', () => { clearTimeout(t); rej(new Error('abort')); }, { once: true }); });
   const pick = (last) => {
+    if (window.__mockDeny) return { error: 'not_granted' };
     if (/에러/.test(last)) return { error: 'rate_limited' };
+    if (/길게/.test(last)) return { slow: true, reply: '음~ 그러니까 이야기가 아주 길어요. 옛날 옛적에 서리마을에 눈이 아주 많이 왔는데요, 그날 광장에서는 다들 눈사람을 만들었고요, 빵집에서는 크림빵을 구웠어요~', emote: 'music', mood: 'calm', affinity: 0, memory: '촌장님한테 옛날이야기를 해 줬다', facts: [], importance: 1, topics: ['이야기'], gossip: [], lines: [], favor: null };
     if (/생선/.test(last)) return { reply: '우와, 생선을 열 마리나요? 촌장님 낚시 솜씨 대단해요! 오늘 저녁은 생선구이겠네요~', emote: 'sparkle', mood: 'excited', affinity: 2, memory: '촌장님이 생선을 열 마리 잡았다고 자랑했다', facts: ['촌장님은 낚시를 잘한다'], importance: 3, topics: ['생선', '낚시'], gossip: ['촌장님이 오늘 생선을 열 마리나 잡았대'], lines: ['촌장님, 오늘도 낚시 다녀오셨어요? 저번엔 열 마리나 잡으셨잖아요!'], favor: null };
     if (/고양이/.test(last)) return { reply: '촌장님도 고양이 좋아하세요? 저도요! 나비가 계산대 위에서 자는 거 보셨어요?', emote: 'love', mood: 'happy', affinity: 1, memory: '촌장님이 고양이를 좋아한다고 했다', facts: ['촌장님은 고양이를 좋아한다'], importance: 3, topics: ['동물'], gossip: ['촌장님이 고양이를 엄청 좋아한대', '점원 미소랑 촌장님이 고양이 얘기로 한참 수다를 떨었대'], lines: ['촌장님, 오늘 나비 봤어요? 또 계산대 위에서 자요!'], favor: null };
     if (/소문/.test(last)) return { reply: '음~ 요즘 제일 핫한 건 촌장님 얘기죠! 다들 촌장님이 낚시왕이래요~', emote: 'exclaim', mood: 'excited', affinity: 1, memory: '촌장님한테 마을 소문을 전해 줬다', facts: [], importance: 1, topics: ['소문'], gossip: [], lines: [], favor: null };
@@ -43,14 +45,14 @@ const MOCK = `
     const step = pick(last);
     await sleep(900, opts.signal).catch(() => { throw { code: 'cancelled' }; });
     if (step.error) throw { code: step.error, message: 'mock' };
-    const full = JSON.stringify(step);
-    const n = 7, size = Math.ceil(full.length / n);
+    const full = JSON.stringify(Object.assign({}, step, { slow: undefined }));
+    const n = step.slow ? 40 : 7, size = Math.ceil(full.length / n);
     let sofar = '';
     for (let i = 0; i < n; i++) {
       const d = full.slice(i * size, (i + 1) * size); if (!d) break;
       sofar += d;
       if (opts.onText) opts.onText({ text: sofar, delta: d });
-      try { await sleep(140, opts.signal); } catch (e) { throw { code: 'cancelled', text: sofar }; }
+      try { await sleep(step.slow ? 260 : 140, opts.signal); } catch (e) { throw { code: 'cancelled', text: sofar }; }
     }
     return json ? JSON.parse(full) : { text: full, truncated: false, modelTierApplied: 'quick' };
   }
@@ -182,6 +184,21 @@ try {
     await say(page, '에러 나는 말');
     check('rate_limited note + retry', (await page.locator('.fc-note-btn:has-text("다시 보내기")').count()) > 0);
     await snap(page, 'chat_11_rate_limited.png');
+    // Stop while a long answer streams: the partial stays, marked, and a calm note appears
+    await sleep(2200);                                   // the cooldown after the last call
+    const nBefore = await page.locator('.fc-them .fc-text').count();
+    await page.fill('#fc-input', '길게 얘기해 줘');
+    await page.click('.fc-send');
+    await page.waitForFunction((n) => { const b = [...document.querySelectorAll('.fc-them .fc-text')]; return b.length > n && b[b.length - 1].textContent.length > 12; }, nBefore, { timeout: 8000 });
+    await page.click('.fc-send.fc-stop');
+    await waitIdle(page);
+    check('stop keeps the partial and says so', (await page.textContent('.fc-list')).includes('대답을 멈췄어요') && (await page.locator('.fc-cut').count()) > 0);
+    await snap(page, 'chat_13_stopped.png');
+    await page.click('#fc-tab-mem');
+    await sleep(300);
+    check('AI chats are remembered (memory tab)', (await page.locator('.fc-tag:has-text("AI 수다")').count()) > 0);
+    await snap(page, 'chat_14_ai_memory.png');
+    await page.click('#fc-tab-chat');
     await page.click('.fc-close');
     await sleep(600);
     await snap(page, 'chat_05b_spread_ai.png');
@@ -200,6 +217,24 @@ try {
     await page.click('#tab-log');
     await sleep(500);
     await snap(page, 'chat_06b_log_ai.png');
+    await ctx.close();
+  }
+  // ------------------------------------------------------------ AI declined (not_granted): quietly offline
+  {
+    const { ctx, page } = await newPage(browser, { mock: true });
+    await page.waitForFunction(() => document.getElementById('mode-pill').dataset.mode === 'ai', null, { timeout: 15000 });
+    await page.evaluate(() => { window.__mockDeny = true; });
+    await page.click('.card[data-key="npc_kid_girl"]');
+    await page.waitForSelector('.fc-them .fc-text', { timeout: 8000 });
+    await sleep(1200);
+    await say(page, '하린아 안녕!');
+    const t = await page.textContent('.fc-list');
+    check('not_granted -> offline note, still answered', t.includes('마을 말투로') && (await lastReply(page)).length > 0, t.slice(-120));
+    await say(page, '요즘 어때?');
+    const calls = await page.evaluate(() => (window.__sampleCalls || []).length);
+    check('not_granted is never asked again', calls === 1, String(calls));
+    check('mode pill shows offline after decline', (await page.locator('.fc-mode[data-mode="offline"]').count()) === 1);
+    await snap(page, 'chat_15_not_granted.png');
     await ctx.close();
   }
   // ------------------------------------------------------------ short screen (keyboard-like height)

@@ -9,7 +9,7 @@ import { World, B_OK } from './world.js';
 import { Resident, Household, makeResident, addToHousehold, setHome, ageOf, groupOf, G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER,
   S_IDLE, S_SLEEP, F_OWNER, F_EXTERNAL, F_JAILED } from './people.js';
 import { Fact, remember, nightly as memNightly, SRC_SEEN, SRC_DID, SRC_TOLD, SRC_NEWS } from './memory.js';
-import { ensureRel, getRel, stageFor, clampRel, friendsOf, ST_ACQ, ST_FRIEND, ST_BEST, ST_SWEET, ST_SPOUSE,
+import { ensureRel, getRel, removeRel, stageFor, clampRel, friendsOf, ST_ACQ, ST_FRIEND, ST_BEST, ST_SWEET, ST_SPOUSE,
   RF_FAMILY, RF_PARENT_A, RF_PARENT_B, RF_SIBLING, RF_COWORK, RF_NEIGHBOR, RF_CLASS, RF_GRAND_A, RF_GRAND_B, RF_RIVAL, RF_CRUSH_A, RF_CRUSH_B } from './relations.js';
 import { Plans, A_HOME } from './plans.js';
 import { Economy } from './econ.js';
@@ -42,8 +42,8 @@ export const DEFAULTS = {
   talkRate: 0.045,        // conversation start rate per free pair per second
   lineTime: 2.6,          // seconds per line (talk duration estimate)
   incidentRate: 1,        // multiplier for petty incidents
-  fireRate: 0.22,         // fires per day per 250 residents
-  fireRuinAfter: 40,      // seconds of burning after which a building is lost
+  fireRate: 0.18,         // fires per day per 250 residents (a fire station level / hydrants: the game lowers it)
+  fireRuinAfter: 43,      // seconds of burning after which a building is lost (a far fire station = more ruins)
   babyRate: 0.006,
   proposeAfterDays: 3,
   moveInRate: 0.12,
@@ -222,6 +222,8 @@ export class StoryEngine {
       const parent = dad || mom;
       const g = add({ age: Math.max(66, ageOf(this, parent) + 26 + rng.int(6)), male: rng.chance(0.4), sur: parent.sur });
       parentOf(g, parent);
+      const inLaw = parent === dad ? mom : dad;
+      if (inLaw) fam(g, inLaw, RF_FAMILY, ST_FRIEND);
       for (const k of kids) { const rel = fam(g, k, RF_FAMILY | (g.id < k.id ? RF_GRAND_A : RF_GRAND_B), ST_BEST); rel.aff = 900; }
     }
     return out;
@@ -276,9 +278,13 @@ export class StoryEngine {
       }
     }
     // a few rivals and crushes
-    for (let k = 0; k < Math.round(list.length * 0.03); k++) {
-      const a = list[rng.int(list.length)], b = list[rng.int(list.length)];
+    for (let k = 0; k < Math.round(list.length * 0.04); k++) {
+      // a little friction between people who see each other often (coworkers, classmates, neighbours)
+      const a = list[rng.int(list.length)];
+      const near = a.adj.filter((rel) => rel.flags & (RF_COWORK | RF_CLASS | RF_NEIGHBOR));
+      const b = near.length ? this.people[near[rng.int(near.length)].other(a.id)] : list[rng.int(list.length)];
       if (a === b || groupOf(this, a) < G_KID || groupOf(this, b) < G_KID) continue;
+      if ((groupOf(this, a) <= G_TEEN) !== (groupOf(this, b) <= G_TEEN)) continue;
       const rel = link(a, b, 250, 0);
       if (rel && !(rel.flags & RF_FAMILY)) { rel.aff = -280 - rng.int(250); rel.flags |= RF_RIVAL; rel.stage = ST_ACQ; }
     }
@@ -514,7 +520,7 @@ export class StoryEngine {
 
   lifelog(r, kind, other, place, extra, fid) {
     const L = r.log;
-    if (L.length >= 40) L.shift();
+    if (L.length >= 28) L.shift();     // today's and yesterday's diary material
     L.push([this.clock.day, kind, other === undefined ? -1 : other, place === undefined ? -1 : place, extra === undefined ? 0 : extra, fid || 0, this.clock.minute]);
   }
 
@@ -533,6 +539,21 @@ export class StoryEngine {
     // weekly full sweep (facts nobody remembers any more)
     if (this.clock.day % 7 === 0) {
       for (const f of this.facts.values()) if (f.knowers <= 0 && f.pinned <= 0 && !keepRefs.has(f.id) && this.clock.day - f.day >= 3 && this.lastChief !== f) this.facts.delete(f.id);
+    }
+    // faces met only once, long ago, are forgotten (keeps the graph and the save small; they may meet again)
+    if (this.clock.day % 2 === 0) {
+      const old = this.now - this.cfg.dayLength * 10;
+      const drop = [];
+      for (const rel of this.pairs.values()) {
+        if (rel.stage <= ST_ACQ && rel.flags === 0 && rel.n <= 1 && rel.fam < 100 && rel.last < old) drop.push(rel);
+        else if ((rel.flags & RF_RIVAL) && rel.aff < 0) rel.aff = Math.min(0, rel.aff + 45);   // time heals: rivals cool down and may make up
+      }
+      for (const rel of drop) removeRel(this, rel);
+    }
+    // a question about something nobody remembers any more fades too (no dangling fact references)
+    for (const r of this.alive) {
+      const qs = r.qs;
+      for (let i = qs.length - 1; i >= 0; i--) if (qs[i].f && !this.facts.has(qs[i].f.id)) qs.splice(i, 1);
     }
   }
 

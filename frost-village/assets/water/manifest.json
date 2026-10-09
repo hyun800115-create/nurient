@@ -159,45 +159,45 @@
    "lut": [
     [
      0.0,
-     "#A9DCE6",
+     "#A2C2CE",
      0.3
     ],
     [
      0.1,
-     "#78C7D8",
-     0.62
+     "#7FAFC0",
+     0.6
     ],
     [
      0.24,
-     "#45A3C9",
+     "#4D8DB0",
      0.86
     ],
     [
      0.45,
-     "#2C7DBA",
+     "#2D6CA6",
      0.97
     ],
     [
      0.7,
-     "#2468B0",
+     "#21589A",
      1.0
     ],
     [
      1.0,
-     "#1C559C",
+     "#1A4884",
      1.0
     ]
    ],
-   "skyHi": "#4A86C8",
-   "skyLo": "#A9CDEC",
-   "sun": "#FFF8E8",
-   "sss": "#3FB4D2",
+   "skyHi": "#3F6E9E",
+   "skyLo": "#9DB6CC",
+   "sun": "#FFF6E6",
+   "sss": "#3E97B4",
    "foam": "#FFFFFF",
-   "foamShade": "#B9D7EC",
-   "bottom": "#8FA8B8",
-   "caustic": 0.55,
-   "wet": "#7C93AE",
-   "film": "#BFE6F0",
+   "foamShade": "#B3C7D6",
+   "bottom": "#8A9DAA",
+   "caustic": 0.35,
+   "wet": "#7A8DA4",
+   "film": "#C4D6DF",
    "slush": 1.0
   },
   "harbor": {

@@ -57,7 +57,10 @@ export class VillageCorpus {
     for (const x of recent) {
       if (x.k !== kind) continue;
       if (x._n === undefined) Object.defineProperty(x, '_n', { value: normKey(x.t), writable: true, enumerable: false });
-      if (x._n === key || (x.o === meta.o && Math.abs(x._n.length - key.length) <= key.length * 0.3 && similarity(x.t, t) >= 0.86 && sameSlots(x.t, t))) {
+      const same = x._n === key;
+      if (same || (x.o === meta.o && Math.abs(x._n.length - key.length) <= key.length * 0.3 && similarity(x.t, t) >= 0.86 && sameSlots(x.t, t))) {
+        // a near-copy from the same resident is the newer version of the same story ("…하기로 했대" -> "…했대")
+        if (!same && (meta.d | 0) >= x.d) { x.t = t; x._n = key; }
         x.d = Math.max(x.d, meta.d | 0);         // heard again: fresh again
         x.r = (x.r || 0) + 1;
         if (meta.tp) for (const tp of meta.tp) if (!x.tp.includes(tp) && x.tp.length < 3) x.tp.push(tp);
@@ -98,12 +101,13 @@ export class VillageCorpus {
   // ---------------------------------------------------------------- picking material to say
   /**
    * the best rumour `speaker` could tell the chief now (not one they started, not about themselves,
-   * not one they said recently). opts: { day, topics, names, said (ids), rng }
+   * not one they said recently). opts: { day, topics, names, said (ids), rng, minFresh, own (allow the
+   * speaker's own rumours: telling another resident what the chief told them) }
    */
-  pickGossip(speaker, { day = 0, topics = [], names = [], said = [], rng = Math.random, minFresh = 0 } = {}) {
+  pickGossip(speaker, { day = 0, topics = [], names = [], said = [], rng = Math.random, minFresh = 0, own = false } = {}) {
     let best = null, bs = -1e9;
     for (const x of this.e) {
-      if (x.k !== 'g' || x.o === speaker) continue;
+      if (x.k !== 'g' || (x.o === speaker && !own)) continue;
       const kn = this.knower(x, speaker);
       if (!kn) continue;
       if (x.sb && x.sb.includes(speaker)) continue;
@@ -118,12 +122,13 @@ export class VillageCorpus {
     return best;
   }
 
-  /** one of the speaker's own learned lines for a topic (or any fresh one) */
-  pickLine(speaker, { day = 0, topics = [], said = [], rng = Math.random, needTopic = false } = {}) {
+  /** one of the speaker's own learned lines for a topic (or any fresh one); a line written in the
+   *  mood the speaker is in now scores a little higher */
+  pickLine(speaker, { day = 0, topics = [], said = [], rng = Math.random, needTopic = false, mood = '' } = {}) {
     let best = null, bs = -1e9;
     for (const x of this.e) {
       if (x.k !== 'l' || x.o !== speaker || said.includes(x.i)) continue;
-      let sc = this.fresh(x, day) * 2 - x.u * 0.7 + rng() * 0.6;
+      let sc = this.fresh(x, day) * 2 - x.u * 0.7 + rng() * 0.6 + (mood && x.md === mood ? 0.8 : 0);
       let hit = false;
       for (const tp of topics) if (x.tp.includes(tp)) { sc += 4; hit = true; }
       if (needTopic && !hit) continue;
@@ -160,6 +165,28 @@ export class VillageCorpus {
   }
 
   use(x) { x.u = (x.u || 0) + 1; }
+
+  /**
+   * look material up for other systems (the story engine's dialogue, a "마을 이야기" screen):
+   * opts { kind 'g'|'l', topic, speaker (who started it), subject (who it is about), knower,
+   * mood, day, fresh (min freshness 0..1), ai (only AI-made), limit }. Newest / freshest first.
+   */
+  query({ kind = null, topic = null, speaker = null, subject = null, knower = null, mood = null, day = 0, fresh = 0, ai = false, limit = 20 } = {}) {
+    const out = [];
+    for (const x of this.e) {
+      if (kind && x.k !== kind) continue;
+      if (topic && !x.tp.includes(topic)) continue;
+      if (speaker && x.o !== speaker) continue;
+      if (subject && !(x.sb && x.sb.includes(subject))) continue;
+      if (knower && !this.knower(x, knower)) continue;
+      if (mood && x.md !== mood) continue;
+      if (ai && x.src !== 'a') continue;
+      if (this.fresh(x, day) < fresh) continue;
+      out.push(x);
+    }
+    out.sort((a, b) => b.d - a.d || b.i - a.i);
+    return out.slice(0, limit);
+  }
 
   // ---------------------------------------------------------------- spreading over game time
   /**

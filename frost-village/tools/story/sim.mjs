@@ -3,6 +3,7 @@
 //
 //   node tools/story/sim.mjs --days 30 --residents 250 --seed 7
 //        [--lang ko|en] [--text all|visible|none] [--out DIR] [--no-incidents] [--no-life] [--perf] [--quiet]
+//        [--samples [FILE]]   also write the Korean designer samples (default docs/story_samples.md, see samples.mjs)
 //
 // Writes DIR/metrics.json, DIR/talks.log (every line said, by day / time / place), DIR/events.log
 // (incidents, moves, life events, bank, shops, buildings), DIR/news.md (every morning's paper) and
@@ -94,6 +95,13 @@ async function main() {
   fs.writeFileSync(path.join(OUT, 'talks.log'), r.talkLog.join('\n'));
   fs.writeFileSync(path.join(OUT, 'events.log'), r.eventLog.join('\n'));
   fs.writeFileSync(path.join(OUT, 'news.md'), r.news.map(paperMd).join('\n---\n\n'));
+  if (flag('samples')) {
+    const { buildSamples } = await import('./samples.mjs');
+    const i = args.indexOf('--samples');
+    const target = i >= 0 && i + 1 < args.length && !args[i + 1].startsWith('--') ? path.resolve(args[i + 1]) : path.join(HERE, '..', '..', 'docs', 'story_samples.md');
+    fs.writeFileSync(target, buildSamples({ seed: SEED, days: DAYS, residents: N }).md);
+    if (!quiet) console.log('  samples: ' + target);
+  }
   if (!quiet) {
     const s = summary;
     console.log(`story sim: seed ${SEED}, ${s.days} days, ${s.residents} residents (${LANG}, text ${TEXT})`);

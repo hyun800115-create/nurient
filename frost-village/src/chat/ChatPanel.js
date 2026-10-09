@@ -83,19 +83,20 @@ export class ChatPanel {
     this.heartsEl = h('span', 'fc-hearts');
     this.heartsEl.setAttribute('role', 'img');
     this.modeEl = h('span', 'fc-mode');
-    meta.append(this.moodEl, this.heartsEl);
+    this.stageEl = h('span', 'fc-stage');
+    meta.append(this.moodEl, this.heartsEl, this.stageEl);
     who.append(this.nameEl, this.subEl, meta);
     const close = this.closeBtn = h('button', 'fc-icon-btn fc-close');
     close.type = 'button'; close.innerHTML = CLOSE; close.setAttribute('aria-label', '수다 닫기');
     close.addEventListener('click', () => this.close());
-    head.append(this.portrait, who, this.modeEl, close);
+    head.append(this.portrait, who, close);
 
     // tabs
     const tabs = h('div', 'fc-tabs');
     tabs.setAttribute('role', 'tablist');
     this.tabChat = this.tab('수다', 'chat');
     this.tabMem = this.tab('기억', 'mem');
-    tabs.append(this.tabChat, this.tabMem);
+    tabs.append(this.tabChat, this.tabMem, this.modeEl);
 
     // chat view
     const chat = this.chatView = h('div', 'fc-view fc-chatview');
@@ -280,7 +281,8 @@ export class ChatPanel {
     if (!key) return;
     const mem = v.mem(key);
     const st = v.stage(key);
-    this.subEl.textContent = v.personas[key].job + ' · ' + st.ko;
+    this.subEl.textContent = v.personas[key].job;
+    this.stageEl.textContent = st.ko;
     const mood = mem.mood;
     this.moodEl.textContent = '';
     const em = this.img(this.assets.emote, MOOD_EMOTE[mood] || 'heart', 'fc-mood-ic');
@@ -526,7 +528,7 @@ export const PANEL_CSS = `
 .fc-sheet.fc-kb-open{height:calc(var(--fc-vh) - 8px);padding-bottom:0;border-radius:18px 18px 0 0}
 .fc-sheet.fc-in{animation:fc-up .32s cubic-bezier(.2,.9,.3,1.15)}
 @keyframes fc-up{from{transform:translateY(40%);opacity:.4}to{transform:none;opacity:1}}
-.fc-head{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:14px 14px 8px 16px}
+.fc-head{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:14px 14px 8px 16px}
 .fc-portrait{width:56px;height:56px;border-radius:50%;background:var(--fc-frost);border:3px solid var(--fc-rim);object-fit:cover;flex:none}
 .fc-who{min-width:0}
 .fc-name{margin:0;font-family:var(--fc-display);font-weight:400;font-size:21px;line-height:1.15;color:var(--fc-ink)}
@@ -542,11 +544,12 @@ export const PANEL_CSS = `
 .fc-float{position:absolute;right:-6px;top:-4px;font:700 13px var(--fc-body);color:var(--fc-berry);animation:fc-float 1.2s ease-out forwards;pointer-events:none}
 .fc-float.down{color:var(--fc-ink-soft)}
 @keyframes fc-float{from{transform:translateY(4px);opacity:0}25%{opacity:1}to{transform:translateY(-18px);opacity:0}}
-.fc-mode{align-self:start;margin-top:4px;font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 8px;border-radius:999px;background:var(--fc-frost);color:var(--fc-ink-soft);white-space:nowrap}
+.fc-stage{font-size:11.5px;font-weight:700;color:var(--fc-ink-soft);white-space:nowrap}
+.fc-mode{align-self:center;margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 8px;border-radius:999px;background:var(--fc-frost);color:var(--fc-ink-soft);white-space:nowrap}
 .fc-mode[data-mode=ai]{background:var(--fc-mint);color:var(--fc-accent-ink)}
 .fc-icon-btn{width:38px;height:38px;border-radius:50%;border:2px solid var(--fc-rim);background:var(--fc-paper);color:var(--fc-ink-soft);display:grid;place-items:center;cursor:pointer;padding:0;align-self:start}
 .fc-icon-btn svg{width:18px;height:18px}
-.fc-tabs{display:flex;gap:6px;padding:0 16px 8px;border-bottom:2px dashed var(--fc-rim)}
+.fc-tabs{display:flex;align-items:center;gap:6px;padding:0 16px 8px;border-bottom:2px dashed var(--fc-rim)}
 .fc-tab{flex:none;font:700 14px var(--fc-body);color:var(--fc-ink-soft);background:none;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}
 .fc-tab[aria-selected=true]{background:var(--fc-paper-2);color:var(--fc-ink)}
 .fc-view{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

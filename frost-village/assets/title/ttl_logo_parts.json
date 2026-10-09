@@ -1,0 +1,154 @@
+{
+ "frames": {
+  "ttl_logo_main_3": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 246,
+    "h": 290
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 246,
+    "h": 290
+   },
+   "sourceSize": {
+    "w": 246,
+    "h": 290
+   }
+  },
+  "ttl_logo_main_1": {
+   "frame": {
+    "x": 248,
+    "y": 0,
+    "w": 247,
+    "h": 281
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 247,
+    "h": 281
+   },
+   "sourceSize": {
+    "w": 247,
+    "h": 281
+   }
+  },
+  "ttl_logo_main_2": {
+   "frame": {
+    "x": 497,
+    "y": 0,
+    "w": 258,
+    "h": 276
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 258,
+    "h": 276
+   },
+   "sourceSize": {
+    "w": 258,
+    "h": 276
+   }
+  },
+  "ttl_logo_main_0": {
+   "frame": {
+    "x": 757,
+    "y": 0,
+    "w": 253,
+    "h": 272
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 253,
+    "h": 272
+   },
+   "sourceSize": {
+    "w": 253,
+    "h": 272
+   }
+  },
+  "ttl_logo_sign": {
+   "frame": {
+    "x": 1012,
+    "y": 0,
+    "w": 369,
+    "h": 183
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 369,
+    "h": 183
+   },
+   "sourceSize": {
+    "w": 369,
+    "h": 183
+   }
+  },
+  "ttl_logo_top": {
+   "frame": {
+    "x": 1383,
+    "y": 0,
+    "w": 497,
+    "h": 169
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 497,
+    "h": 169
+   },
+   "sourceSize": {
+    "w": 497,
+    "h": 169
+   }
+  },
+  "ttl_logo_emblem": {
+   "frame": {
+    "x": 1882,
+    "y": 0,
+    "w": 147,
+    "h": 145
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 147,
+    "h": 145
+   },
+   "sourceSize": {
+    "w": 147,
+    "h": 145
+   }
+  }
+ },
+ "meta": {
+  "app": "tools/blender/ttl_pack.py",
+  "image": "ttl_logo_parts.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 2031,
+   "h": 290
+  },
+  "scale": "1"
+ }
+}

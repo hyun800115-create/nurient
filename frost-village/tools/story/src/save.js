@@ -125,7 +125,7 @@ export function serialize(e) {
   }
   // households (map order)
   w.u(e.households.size);
-  for (const hh of e.households.values()) { w.u(hh.id); w.ints(hh.members); w.i(hh.home); w.i(hh.since); w.i(hh.unhappy); w.i(hh.planOut); }
+  for (const hh of e.households.values()) { w.u(hh.id); w.ints(hh.members); w.i(hh.home); w.i(hh.since); w.i(hh.unhappy); w.i(hh.planOut); w.s(hh.why || ''); }
   // alive order
   w.ints(e.alive.map((r) => r.id));
   // schedule
@@ -252,7 +252,7 @@ export function deserialize(e, str) {
   }
   // households
   const nh = r.u();
-  for (let k = 0; k < nh; k++) { const hh = new Household(r.u()); hh.members = r.ints(); hh.home = r.i(); hh.since = r.i(); hh.unhappy = r.i(); hh.planOut = r.i(); e.households.set(hh.id, hh); }
+  for (let k = 0; k < nh; k++) { const hh = new Household(r.u()); hh.members = r.ints(); hh.home = r.i(); hh.since = r.i(); hh.unhappy = r.i(); hh.planOut = r.i(); hh.why = r.s() || undefined; e.households.set(hh.id, hh); }
   e.alive = r.ints().map((id) => e.people[id]);
   e.usedNames = new Set(e.alive.map((p) => p.given));
   // schedule

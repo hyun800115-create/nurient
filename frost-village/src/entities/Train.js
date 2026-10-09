@@ -134,6 +134,15 @@ export class Train {
   /** (B) the goods wagon's load */
   loadCargo(n) { this.cargo = Math.max(0, this.cargo + (n || 0)); }
 
+  /** (B) where loaded goods land on the goods wagon (world px; null while the wagon is not drawn): the
+   *  manifest's cargoPoint for the drawn dir (NE, mirrored to NW) */
+  cargoPoint() {
+    const c = this.cars.find((q) => q.key === 'train_car_b');
+    if (!c || !c.spr.visible) return null;
+    const cp = (c.def.cargoPoint && c.def.cargoPoint[HEAD]) || [19, -46];
+    return { x: c.spr.x - cp[0], y: c.spr.y + cp[1], depth: c.spr.depth + 1 };
+  }
+
   /** sprites in the view (occlusion subjects: cars hide behind row-A shops) */
   forEachVisible(fn) { for (const c of this.cars) if (c.spr.visible) fn(c.spr, c); }
 

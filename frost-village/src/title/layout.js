@@ -47,10 +47,10 @@ export const STAGE_NAMES = {
 export const GROUND = {
   // stage 1: the trading deck under the camp (ground_plaza planks) + trodden snow
   1: {
-    plaza: [{ x0: 0.6, x1: 6.4, y0: 8.4, y1: 12.4 }],
+    plaza: [{ x0: -0.7, x1: 7.4, y0: 8.6, y1: 12.5 }],
     decals: [
-      ['decal_dirt_patch', -0.9, 10.9, 1.0], ['decal_footprints', 1.2, 13.1, 0.9], ['decal_path_b', 0.7, 13.0, 0.8],
-      ['decal_footprints', -2.6, 9.4, 0.8], ['decal_snow_drift_a', -5.2, 12.6, 1], ['decal_snow_drift_b', 9.6, 7.0, 1],
+      ['decal_dirt_patch', -1.6, 9.7, 1.0], ['decal_footprints', 1.6, 13.3, 0.9], ['decal_path_b', 1.2, 13.4, 0.8],
+      ['decal_footprints', -2.8, 9.8, 0.8], ['decal_snow_drift_a', -5.4, 12.8, 1], ['decal_snow_drift_b', 9.6, 7.0, 1],
     ],
   },
   // stage 2: a dirt lane along the shore (1-lane track, cells j 4..5) and a path down to the middle
@@ -115,34 +115,36 @@ export const OBJECTS = [
   { k: 'bush_snow', x: 11.8, y: 8.6, s: 0 }, { k: 'ice_chunk', x: 13.6, y: 14.9, s: 0, w: 1 },
   { k: 'ice_chunk', x: -14.6, y: 8.0, s: 0, w: 1 },
 
-  // ---- stage 1 개척: the camp (flag first, then tent, fire, grill, counter, pier, boat)
-  { k: 'flag_pole', x: 0.2, y: 8.8, s: 1, hero: 1 },
-  { k: 'tent_a', x: -2.4, y: 11.4, s: 1, u: 2 },
-  { k: 'campfire', x: -0.4, y: 10.6, s: 1 },
-  { k: 'log_seat_x', x: -0.6, y: 11.9, s: 1 },
-  { k: 'station_grill', x: 2.6, y: 11.0, s: 1, big: 1 },
-  { k: 'market_counter', x: 4.6, y: 9.4, s: 1, big: 1 },
+  // ---- stage 1 개척: the camp (flag first, then the grill, the counter, tent, fire, pier, boat)
+  //   grill in the middle of the trading deck, the counter to its right, the fire + tent to its left,
+  //   the pier and the rowboat behind on the shore (the sea is up-right)
+  { k: 'flag_pole', x: 5.2, y: 13.6, s: 1, hero: 1 },
+  { k: 'station_grill', x: 0.6, y: 11.4, s: 1, big: 1 },
+  { k: 'market_counter', x: 5.6, y: 10.6, s: 1, big: 1 },
+  { k: 'tent_a', x: -3.0, y: 11.4, s: 1, u: 2 },
+  { k: 'campfire', x: -1.2, y: 9.4, s: 1 },
+  { k: 'log_seat_x', x: -2.3, y: 8.3, s: 1 },
   { k: 'dock_pier', x: 1.6, y: 15.0, s: 1 },
   { k: 'boat_small', x: 3.4, y: 15.8, s: 1, w: 1 },
-  { k: 'fish_net', x: -2.8, y: 13.6, s: 1 },
-  { k: 'barrel', x: 6.4, y: 11.2, s: 1 }, { k: 'crate', x: 6.8, y: 10.2, s: 1 },
-  { k: 'firewood_pile', x: -3.6, y: 9.6, s: 1 },
+  { k: 'fish_net', x: -0.4, y: 13.9, s: 1 },
+  { k: 'barrel', x: 7.3, y: 10.1, s: 1 }, { k: 'crate', x: 6.9, y: 9.1, s: 1 },
+  { k: 'firewood_pile', x: -4.7, y: 10.0, s: 1 },
 
   // ---- stage 2 마을: houses along the shore, stations, the watchtower, the lodge
-  { k: 'house_a', x: -2.6, y: 11.6, s: 2, big: 1 },            // the tent became a cabin
-  { k: 'house_c', x: -5.6, y: 12.4, s: 2, big: 1 },
-  { k: 'worker_hut', x: -5.8, y: 9.0, s: 2 },
-  { k: 'boathouse', x: 7.4, y: 13.2, s: 2, big: 1 },
-  { k: 'watchtower', x: 10.8, y: 12.0, s: 2, big: 1 },
-  { k: 'chief_lodge', x: 9.6, y: 9.0, s: 2, big: 1 },
+  { k: 'house_a', x: -3.0, y: 11.6, s: 2, big: 1 },            // the tent became a cabin
+  { k: 'house_c', x: -5.8, y: 12.6, s: 2, big: 1 },
+  { k: 'worker_hut', x: -6.0, y: 8.8, s: 2 },
+  { k: 'boathouse', x: 8.4, y: 13.0, s: 2, big: 1 },
+  { k: 'watchtower', x: 11.2, y: 11.4, s: 2, big: 1, hero: 1 },
+  { k: 'chief_lodge', x: 9.8, y: 8.4, s: 2, big: 1 },
   { k: 'station_sawmill', x: -1.2, y: 4.6, s: 2, u: 3 },
   { k: 'station_bakery', x: 6.2, y: 4.2, s: 2 },
   { k: 'house_b', x: 9.4, y: 4.0, s: 2, u: 4 },
-  { k: 'lamp_post', x: 1.0, y: 8.0, s: 2 }, { k: 'lamp_post', x: 8.0, y: 6.0, s: 2 },
-  { k: 'snowman_3', x: -3.6, y: 7.4, s: 2 },
-  { k: 'dog_house', x: -0.8, y: 9.0, s: 2 },
+  { k: 'lamp_post', x: 2.6, y: 8.3, s: 2 }, { k: 'lamp_post', x: 8.0, y: 6.0, s: 2 },
+  { k: 'snowman_3', x: -3.6, y: 7.2, s: 2 },
+  { k: 'dog_house', x: -4.6, y: 8.0, s: 2 },
   { k: 'fence_log_x', x: 11.4, y: 6.8, s: 2 }, { k: 'fence_log_x', x: 12.4, y: 6.8, s: 2 },
-  { k: 'sled', x: 4.0, y: 7.6, s: 2 },
+  { k: 'sled', x: 4.0, y: 7.4, s: 2 },
 
   // ---- stage 3 읍: station on the rail, town houses on the cobble street, town hall, fountain
   { k: 'train_station', x: -8.4, y: 6.5, s: 3, big: 1, hero: 1 },
@@ -181,18 +183,21 @@ export const OBJECTS = [
 // paths are lists of [mx, my] waypoints; `loop` = go round, otherwise back and forth.
 export const ACTORS = [
   // the chief with a tower of grilled fish: pier -> grill -> counter and back (stage 1+)
-  { id: 'chief', char: 'player', s: 1, anim: 'carry_walk', speed: 1.55, stack: 'item_fish_cooked', stackN: 9,
-    path: [[1.4, 12.8], [2.4, 10.0], [4.4, 8.2], [2.4, 10.0]], loop: true },
+  { id: 'chief', char: 'player', s: 1, anim: 'carry_walk', speed: 1.5, stack: 'item_fish_cooked', stackN: 9,
+    path: [[1.8, 13.6], [1.5, 10.2], [4.8, 9.3], [1.5, 10.2]], loop: true },
   // 콩이 trots in circles around the camp fire
-  { id: 'kongi', char: 'pet_dog', s: 1, anim: 'run', speed: 2.4, path: [[-0.4, 9.6], [1.0, 10.6], [-0.4, 11.8], [-1.8, 10.6]], loop: true },
+  { id: 'kongi', char: 'pet_dog', s: 1, anim: 'run', speed: 2.2, path: [[-1.2, 8.1], [0.1, 9.4], [-1.2, 10.7], [-2.5, 9.4]], loop: true },
   // villagers on the dirt lane (stage 2+)
   { id: 'v1', char: 'villager_a', s: 2, anim: 'walk', speed: 1.1, path: [[-1.0, 6.4], [11.0, 6.4]] },
   { id: 'v2', char: 'villager_b', s: 2, anim: 'walk', speed: 1.0, path: [[12.0, 7.4], [-1.8, 7.4]] },
-  { id: 'fisher', char: 'fisherman', s: 2, anim: 'work', speed: 0, path: [[1.6, 16.4]], dir: 'NE' },
+  { id: 'fisher', char: 'fisherman', s: 2, anim: 'work', speed: 0, path: [[1.4, 16.2]], dir: 'NE' },
   { id: 'lumber', char: 'lumberjack', s: 2, anim: 'carry_walk', speed: 1.2, path: [[5.0, 2.2], [5.0, 8.0]] },
-  // town folk on the street (stage 3+)
-  { id: 'v3', char: 'villager_c', s: 3, anim: 'walk', speed: 1.0, path: [[-12.0, -6.0], [10.0, -6.0]] },
+  // town folk on the sidewalks (stage 3+), harbour hands (stage 4)
+  { id: 'v3', char: 'villager_c', s: 3, anim: 'walk', speed: 1.0, path: [[-12.0, -6.3], [10.0, -6.3]] },
   { id: 'v4', char: 'farmer', s: 3, anim: 'walk', speed: 1.05, path: [[9.0, 0.7], [-9.0, 0.7]] },
+  { id: 'v5', char: 'villager_a', s: 3, anim: 'walk', speed: 0.95, path: [[-10.0, 0.75], [7.0, 0.75]] },
+  { id: 'v6', char: 'hunter', s: 4, anim: 'walk', speed: 1.1, path: [[8.0, -6.5], [-8.0, -6.5]] },
+  { id: 'v7', char: 'miner', s: 4, anim: 'carry_walk', speed: 0.9, path: [[-4.0, -12.4], [7.5, -12.4]] },
 ];
 
 /** vehicles: drive along X lanes of the main street (right-hand traffic, see roadKit laneCentres) */
@@ -210,8 +215,8 @@ export const TRAIN = { s: 3, cars: ['train_engine', 'train_car_a', 'train_car_b'
 
 /** ships on the sea */
 export const SHIPS = [
-  { id: 'ferry', char: 'ferry', s: 4, my: -17.2, stopMx: 9.4, fromMx: -34, toMx: 40, speed: 1.7, dir: 'SE' },
-  { id: 'sail', char: 'sailboat', s: 4, my: 18.6, fromMx: 24, toMx: -26, speed: 0.8, dir: 'NE', flip: true, path: 'x' },
+  { id: 'ferry', char: 'ferry', s: 4, my: -17.2, stopMx: 11.5, fromMx: -34, toMx: 40, speed: 1.7, dir: 'SE' },
+  { id: 'sail', char: 'sailboat', s: 4, my: -7.4, fromMx: 15.5, toMx: 31, speed: 0.75, dir: 'SE' },
   { id: 'rowboat', char: 'boat_rowboat', s: 2, anim: 'row', my: 17.6, fromMx: -6, toMx: 12, speed: 0.6, dir: 'SE' },
 ];
 
@@ -226,8 +231,8 @@ export const GULLS = [
 // focus point (metres) and how many metres of island width the screen should show (zoom follows the
 // phone's width). The intro eases between these; the idle title holds the one of its stage.
 export const CAMERA = {
-  1: { mx: 2.0, my: 10.6, span: 15 },
-  2: { mx: 3.2, my: 7.2, span: 22 },
-  3: { mx: -1.2, my: 1.6, span: 30 },
-  4: { mx: 0.0, my: 0.0, span: 36 },
+  1: { mx: 2.2, my: 10.4, span: 11 },
+  2: { mx: 3.0, my: 7.6, span: 15 },
+  3: { mx: -0.6, my: 2.6, span: 19.5 },
+  4: { mx: 0.0, my: 0.0, span: 23.5 },
 };

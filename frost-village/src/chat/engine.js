@@ -148,10 +148,13 @@ export class ChatEngine {
     // fill what the model left out from the offline reading of the message
     if (!result.memory && SUMMARY[intent.intent]) result.memory = render(SUMMARY[intent.intent], { person: intent.names[0] ? v.personas[intent.names[0].key].short : '', topic: intent.topics[0] || '' }, CASUAL);
     if (!result.topics.length) result.topics = intent.topics.slice();
-    if (!result.gossip.length && result.facts.length && intent.intent !== 'distress') {
-      const h = toHearsay(result.facts[0]);
+    if (!result.gossip.length && intent.intent !== 'distress') {
+      // the model wrote no rumour: make one from what the chief revealed (a fact, or their own news)
+      const src = result.facts[0] || (intent.deed && intent.deed.plain) || '';
+      const h = src && isClean(src) ? toHearsay(src) : '';
       if (h) result.gossip.push(slotify(h, v.personas, v.chiefName));
     }
+    if (!result.memory && intent.deed) result.memory = intent.deed.plain;
     if (intent.intent === 'distress' || intent.intent === 'rude') { result.gossip = []; result.lines = []; }
     const out = this.apply(key, intent, result, 'a');
     out.ok = true; out.source = 'ai'; out.truncated = !!got.truncated; out.dropped = san.dropped;

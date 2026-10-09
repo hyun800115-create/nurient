@@ -1,0 +1,275 @@
+{
+ "checks": {
+  "loads: all 4 stage groups ready": {
+   "ok": true,
+   "info": {
+    "1": "ready",
+    "2": "ready",
+    "3": "ready",
+    "4": "ready"
+   }
+  },
+  "fresh player: idle title shows stage 1": {
+   "ok": true,
+   "info": {
+    "mode": "idle",
+    "t": 0.13,
+    "stage": 1,
+    "saveStage": 1,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": false,
+    "logoArt": false,
+    "tap": false,
+    "z": 0.723,
+    "reduced": false
+   }
+  },
+  "intro: ends in the idle title at stage 4 with logo + start pill": {
+   "ok": false,
+   "info": {
+    "mode": "intro",
+    "t": 11.33,
+    "stage": 4,
+    "saveStage": 1,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": true,
+    "logoArt": true,
+    "tap": true,
+    "z": 0.337,
+    "reduced": false
+   }
+  },
+  "title texture memory <= 60 MB": {
+   "ok": true,
+   "info": 58.6
+  },
+  "tap on the idle title starts the game": {
+   "ok": true
+  },
+  "title textures released when the game starts": {
+   "ok": false,
+   "info": {
+    "MB": 0.1,
+    "count": 4,
+    "keys": [
+     "ttl_fx_sky_day",
+     "ttl_fx_sky_dusk",
+     "ttl_fx_sky_night",
+     "ttl_fx_moon"
+    ]
+   }
+  },
+  "no page errors (390x844)": {
+   "ok": true,
+   "info": []
+  },
+  "gif <= 8 MB": {
+   "ok": true,
+   "info": "7.02 MB"
+  },
+  "360x640: intro reaches the idle city": {
+   "ok": true,
+   "info": {
+    "mode": "idle",
+    "t": 12.52,
+    "stage": 4,
+    "saveStage": 1,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": true,
+    "logoArt": true,
+    "tap": true,
+    "z": 0.339,
+    "reduced": false
+   }
+  },
+  "no page errors (360x640)": {
+   "ok": true,
+   "info": []
+  },
+  "returning player: no intro, save stage 2 read from the save": {
+   "ok": true,
+   "info": {
+    "mode": "idle",
+    "t": 0.13,
+    "stage": 1,
+    "saveStage": 2,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": false,
+    "logoArt": false,
+    "tap": false,
+    "z": 0.53,
+    "reduced": false
+   }
+  },
+  "returning player: the village grew to stage 2 on the title": {
+   "ok": true,
+   "info": {
+    "mode": "idle",
+    "t": 5.37,
+    "stage": 2,
+    "saveStage": 2,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": true,
+    "logoArt": true,
+    "tap": true,
+    "z": 0.535,
+    "reduced": false
+   }
+  },
+  "title prefs remember the shown stage": {
+   "ok": true,
+   "info": {
+    "introSeen": true,
+    "shown": 2,
+    "intro": null
+   }
+  },
+  "the save was not touched": {
+   "ok": true
+  },
+  "no page errors (returning)": {
+   "ok": true,
+   "info": []
+  },
+  "reduced motion: no intro": {
+   "ok": true,
+   "info": {
+    "mode": "idle",
+    "t": 0.15,
+    "stage": 1,
+    "saveStage": 1,
+    "groups": {
+     "1": "ready",
+     "2": "ready",
+     "3": "ready",
+     "4": "ready"
+    },
+    "logo": true,
+    "logoArt": true,
+    "tap": false,
+    "z": 0.723,
+    "reduced": true
+   }
+  },
+  "no page errors (reduced)": {
+   "ok": true,
+   "info": []
+  },
+  "title payload (bake + late cues) <= 1.5 MB": {
+   "ok": true,
+   "info": {
+    "bakeKB": 1331.6,
+    "lateCuesKB": 80.4,
+    "titleArtKB": 2720.6,
+    "totalKB": 1412
+   }
+  }
+ },
+ "errors": [],
+ "perf": {
+  "update": {
+   "avg": 0.098,
+   "p50": 0.1,
+   "p95": 0.3,
+   "max": 0.9,
+   "objs": 278
+  },
+  "frame": {
+   "avg": 9.62,
+   "p50": 8.6,
+   "p95": 18.1
+  },
+  "objects": 278,
+  "baselineFrame": {
+   "avg": 0.58,
+   "p50": 0
+  }
+ },
+ "memory": {
+  "heap": {
+   "before": 26000000,
+   "after": 26000000,
+   "growthKB": 0
+  },
+  "titleTextures": {
+   "MB": 58.6,
+   "count": 39,
+   "keys": [
+    "ttl_1_0",
+    "ttl_ground_base",
+    "ttl_ground_s1",
+    "ttl_fx_sky_day",
+    "ttl_fx_sky_dusk",
+    "ttl_fx_sky_night",
+    "ttl_fx_stars",
+    "ttl_fx_aurora",
+    "ttl_fx_mtn_far",
+    "ttl_fx_mtn_near",
+    "ttl_fx_haze",
+    "ttl_fx_vignette",
+    "ttl_fx_beam",
+    "ttl_fx_shine",
+    "ttl_fx_moon",
+    "ttl_ground_s2",
+    "ttl_2_0",
+    "ttl_3_0",
+    "ttl_ground_s3",
+    "ttl_4_0",
+    "ttl_ground_s4",
+    "ttl_fx",
+    "ttl_logo_parts",
+    "ttl_logo_main_shine",
+    "ttl_shine_band",
+    "ttl_aurora",
+    "ttl_logo_main_1x",
+    "ttl_city_far",
+    "ttl_city_lights",
+    "ttl_clouds",
+    "ttl_moon",
+    "ttl_forest",
+    "ttl_mtn_far",
+    "ttl_mtn_mid",
+    "ttl_sky_day",
+    "ttl_sky_dusk",
+    "ttl_sky_night",
+    "ttl_stars",
+    "ttl_fx_pop"
+   ]
+  }
+ },
+ "files": {
+  "mp4": 5403684,
+  "gif": 7355976
+ },
+ "payload": {
+  "bakeKB": 1331.6,
+  "lateCuesKB": 80.4,
+  "titleArtKB": 2720.6,
+  "totalKB": 1412
+ }
+}

@@ -200,7 +200,7 @@ function checkV4A(B) {
   if (typeof D.on !== 'boolean') { if (D.on !== undefined) warn('v4.day.on', D.on, true); D.on = true; }
   fixNum(D, 'length', 'v4.day.length', 60, 3600, 600);
   fixNum(D, 'startHour', 'v4.day.startHour', 0, 23.99, 8);
-  fixNum(D, 'darkness', 'v4.day.darkness', 0, 0.6, 0.35);
+  fixNum(D, 'darkness', 'v4.day.darkness', 0, 0.6, 0.45);
   fixNum(D, 'fade', 'v4.day.fade', 0, 60, 8);
   // hours must be in order: dawn < dayStart < dusk < night, lights on after dusk starts
   fixNum(D, 'dawn', 'v4.day.dawn', 0, 23, 6);
@@ -224,7 +224,7 @@ function checkV4A(B) {
     keys.forEach((k, n) => { fixNum(X, k, 'v4.townLife.' + o + '.' + k, lo, 23.99, dflt[n]); lo = X[k]; });
     void path;
   };
-  hours('school', 'school', ['leave', 'bell', 'recess', 'recessEnd', 'lunch', 'lunchEnd', 'out', 'home'], [7.5, 8, 10.5, 10.83, 12, 12.67, 15, 17.5]);
+  hours('school', 'school', ['leave', 'bell', 'recess', 'recessEnd', 'lunch', 'lunchEnd', 'out', 'home'], [7.2, 8, 10.5, 10.83, 12, 12.67, 15, 17.5]);
   hours('teen', 'teen', ['cafe', 'home'], [15.5, 17.5]);
   hours('shop', 'shop', ['open', 'lunch', 'lunchEnd', 'close'], [7.67, 12, 12.67, 18.5]);
   hours('civic', 'civic', ['start', 'teacherEnd', 'end'], [7.75, 16, 18]);
@@ -232,6 +232,7 @@ function checkV4A(B) {
   fixNum(AD, 'out', 'v4.townLife.adult.out', 0, 23, 8); fixNum(AD, 'home', 'v4.townLife.adult.home', AD.out, 23.5, 19);
   fixNum(AD, 'walkChance', 'v4.townLife.adult.walkChance', 0, 1, 0.3); fixNum(AD, 'walkEnd', 'v4.townLife.adult.walkEnd', AD.home, 23.9, 20);
   fixNum(AD, 'errandMin', 'v4.townLife.adult.errandMin', 1, 120, 6); fixNum(AD, 'errandMax', 'v4.townLife.adult.errandMax', AD.errandMin, 240, 15);
+  fixNum(AD, 'homeStay', 'v4.townLife.adult.homeStay', 0, 6, 0.8);
   fixNum(AD, 'tripFrom', 'v4.townLife.adult.tripFrom', AD.out, AD.home, 13); fixNum(AD, 'tripTo', 'v4.townLife.adult.tripTo', AD.tripFrom, AD.home, 18);
   const EL = TL.elder = (TL.elder && typeof TL.elder === 'object') ? TL.elder : {};
   fixNum(EL, 'out', 'v4.townLife.elder.out', 0, 23, 9); fixNum(EL, 'cafe', 'v4.townLife.elder.cafe', EL.out, 23, 11);

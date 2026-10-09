@@ -9,6 +9,8 @@
 //           firstDelayMs: 0, error: { code, afterChunks: 0, text }, truncated: false }
 
 const sleep = (ms, signal) => new Promise((res, rej) => {
+  if (signal && signal.aborted) { rej(new Error('aborted')); return; }
+  if (!(ms > 0)) { queueMicrotask(res); return; }          // still async, just no timer
   const t = setTimeout(res, ms);
   if (signal) signal.addEventListener('abort', () => { clearTimeout(t); rej(new Error('aborted')); }, { once: true });
 });

@@ -38,7 +38,7 @@ export class Actor extends Character {
     this.sprite.setAlpha(0); this.shadow.setAlpha(0);
     gs.tweens.add({ targets: [this.sprite, this.shadow], alpha: 1, duration: 300 });
   }
-  walkTo(x, y, cb) { this.route = this.gs.roads.route(this.x, this.y, x, y, []); this.ri = 0; this.target = { x, y }; this.cb = cb || null; return this; }
+  walkTo(x, y, cb) { this.route = this.nb.route(this.x, this.y, x, y); this.ri = 0; this.target = { x, y }; this.cb = cb || null; return this; }
   say(key) { const B = this.nb.bubbles(); if (B) B.chat(this, line(key) || key, null, 2.8); return this; }
   emote(key) { const B = this.nb.bubbles(); if (B) B.emote(this, key, 1.8); return this; }
   update(dt) {
@@ -50,6 +50,8 @@ export class Actor extends Character {
   }
   release() {
     if (!this.alive) return;
+    // (a townsperson who is not staying in the district rides the next train home)
+    this.nb.homeByTrain(this.c);
     const i = this.gs.agents.indexOf(this);
     if (i >= 0) this.gs.agents.splice(i, 1);
     const j = this.nb.actors.indexOf(this);
@@ -101,6 +103,8 @@ export class Neighbours {
     this.visitors = [];
     this.actors = [];
     this.onBoard = [];           // citizens on the train now
+    this.newcomers = [];         // (읍) people moving into the town: off at the town station on the next train
+    this.toTown = [];            // actors (the mayor, builders) riding home
     this.arrivals = 0;
     this.waitNext = { ours: [], town: [] };
     this.sendQ = [];
@@ -334,6 +338,9 @@ export class Neighbours {
     let k = 0;
     for (const c of this.onBoard) if (this.town) this.town.alight(c, T, pts[k++ % pts.length]);
     this.onBoard = [];
+    // newcomers (읍): up to 20 a train (the coach's seats), they step off and go to their new home; and the
+    // townsfolk who came for a scripted visit (the mayor, builders) are home again
+    for (const c of this.newcomers.splice(0, 20).concat(this.toTown.splice(0))) if (this.town) this.town.alight(c, T, pts[k++ % pts.length]);
     // and the next riders get on (the waiting ones from the platform first)
     if (this.town) {
       const n = this.firstPending ? (BALANCE.v4.train.firstRide || 6) : this.ridersWanted();
@@ -370,7 +377,7 @@ export class Neighbours {
     }
     // the visitors waiting on the platform board (during the dwell)
     let k = 0;
-    for (const v of this.visitors) if (v.stage === 'platform' || (v.stage === 'home' && st && gdist(v.x, v.y, st.x, st.y) < 380)) gs.time.delayedCall(1500 + (k++) * 300, () => { if (v.alive && (v.stage === 'platform' || v.stage === 'home')) v.boardTrain(pts[k % pts.length]); });
+    for (const v of this.visitors) if (v.stage === 'platform' || (v.stage === 'home' && st && gdist(v.x, v.y, st.x, st.y) < 380 && px2L4(v.x, v.y).j > 0.4)) gs.time.delayedCall(1500 + (k++) * 300, () => { if (v.alive && (v.stage === 'platform' || v.stage === 'home')) v.boardTrain(pts[k % pts.length]); });
   }
 
   /** a townsperson steps off the train at our station */
@@ -417,6 +424,25 @@ export class Neighbours {
     return { x: p.x + ((v.citizen.id * 17) % 30 - 15), y: p.y + ((v.citizen.id * 11) % 14 - 7) };
   }
 
+  /** a walk route that changes sides of the track only over a level crossing (a plain Roads.route would cut
+   *  straight over the rails, through a standing train): to the crossing on this side, over it, then on */
+  route(ax, ay, bx, by) {
+    const gs = this.gs, A = px2L4(ax, ay), B = px2L4(bx, by);
+    const side = (q) => (q.j > 0.4 ? 1 : q.j < -0.4 ? -1 : 0);
+    const sa = side(A), sb = side(B);
+    if (sa === sb || !sa || !sb) return gs.roads.route(ax, ay, bx, by, []);
+    const R = WORLD.v4.rail.crossings, mid = (A.i + B.i) / 2;
+    let k = R[0];
+    for (const q of R) if (Math.abs(q + 0.5 - mid) < Math.abs(k + 0.5 - mid)) k = q;
+    const [x1, y1] = L4(k + 0.5, 1.15 * sa), [x2, y2] = L4(k + 0.5, 1.15 * sb);
+    // (the sea side of the track is open ground along the platform: straight there; the land side has the roads)
+    const leg = (fx, fy, tx, ty, sd) => (sd > 0 ? [{ x: tx, y: ty }] : gs.roads.route(fx, fy, tx, ty, []));
+    const out = leg(ax, ay, x1, y1, sa).slice();
+    out.push({ x: x2, y: y2 });
+    for (const q of leg(x2, y2, bx, by, sb)) out.push(q);
+    return out;
+  }
+
   /** the level crossing nearest a point */
   xingNear(x) { const R = WORLD.v4.rail.crossings; let best = R[0], bd = Infinity; for (const k of R) { const d = Math.abs(L4(k + 0.5, 0)[0] - x); if (d < bd) { bd = d; best = k; } } return best; }
 
@@ -454,6 +480,17 @@ export class Neighbours {
     for (let k = 0; k < 8 && !c; k++) { const q = L[Math.floor(Math.random() * L.length)]; if (ok(q) && (q.act === 'errand' || q.act === 'trip' || k > 3)) c = q; }
     if (!c) return null;
     void market;
+    return { key: 'tf:' + c.person.base, person: c.person, citizen: c };
+  }
+  /** (v4-A) the trade post's buyer: a builder of the town (planks and ingots for their houses), else an adult */
+  merchantLook(prev) {
+    if (!this.gs.progress.flags.firstTrain || !this.town || !TF.ok || !TF.readyFor(Assets, 'adult')) return null;
+    const ok = (c) => c !== prev && !(c.flags & (F.ON_TRAIN | F.IN_VILLAGE | F.DISTRICT)) && TF.age(c.person.base) === 'adult' && !(c.body && c.body.alive);
+    const L = this.town.citizens;
+    const builders = L.filter((c) => c.kind === 'builder' && ok(c));
+    let c = builders.length && Math.random() < 0.7 ? builders[Math.floor(Math.random() * builders.length)] : null;
+    for (let k = 0; k < 12 && !c; k++) { const q = L[Math.floor(Math.random() * L.length)]; if ((q.kind === 'adult' || q.kind === 'shopkeeper') && ok(q)) c = q; }
+    if (!c) return null;
     return { key: 'tf:' + c.person.base, person: c.person, citizen: c };
   }
   noteVisit(c) { if (!c) return; c.visits = (c.visits || 0) + 1; if (c.visits >= (BALANCE.v4.visitors.regularAt || 3)) c.regular = true; }
@@ -559,9 +596,18 @@ export class Neighbours {
     });
     return handle;
   }
+  /** an actor's townsperson goes home by the next train (unless B moved them into the district) */
+  homeByTrain(c) {
+    if (!c || (c.flags & F.DISTRICT) || !(c.flags & F.IN_VILLAGE)) return;
+    c.flags = (c.flags & ~F.IN_VILLAGE) | F.ON_TRAIN;
+    c.sent = false;
+    if (this.toTown.indexOf(c) < 0) this.toTown.push(c);
+  }
   onNextArrival(stop, fn) { this.waitNext[stop === 'town' ? 'town' : 'ours'].push(fn); }
   addCoach() { if (this.rail.coaches > 1) return; this.rail.coaches = 2; if (this.train) this.train.build(); }
   get people() { return this.town ? this.town.population() : 0; }
+  /** (B) the station district's people (founders' households, house residents) */
+  districtPeople() { return this.town ? this.town.districtPeople() : 0; }
 
   /** tap on a townsperson: a name card (이름 · 나이 · 하는 일, 좋아하는 것, 단골 ★) */
   tap(wx, wy) {
@@ -577,11 +623,13 @@ export class Neighbours {
     if (this.town) for (const b of this.town.bodies) if (b.c) test(b, b.c);
     for (const v of this.visitors) test(v, v.citizen);
     for (const m of this.sellers()) for (const c of m.queue.concat(m.leaving)) if (c.citizen) test(c, c.citizen);
+    const tm = gs.trade && gs.trade.enabled ? gs.trade.merchant : null;
+    if (tm && tm.citizen) test(tm, tm.citizen);
     if (!best) return false;
     const { w, c } = best;
     const B = this.bubbles();
     if (!B) return false;
-    const act = c.flags & F.IN_VILLAGE || w.market ? 'shop' : c.act;
+    const act = c.flags & F.IN_VILLAGE || w.market || w === tm ? 'shop' : c.act;
     let s = t('tfCard', { name: c.name, age: c.age, act: t('act_' + (act === 'class' ? 'class' : act === 'sleep' ? 'home' : act === 'school' ? 'school' : act)) });
     s += '\n' + t('tfLikes', { fav: t(c.fav) });
     if (c.regular) s += ' · ' + t('tfRegular');

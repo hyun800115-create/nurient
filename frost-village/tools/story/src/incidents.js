@@ -44,9 +44,9 @@ export class Incidents {
     const k = (pop / 250) * Math.max(0.35, 1.1 - happy * 0.6) * e.cfg.incidentRate;
     const n = (mean) => { let c = 0, x = mean; while (x > 0) { if (rng.chance(Math.min(1, x))) c++; x -= 1; } return c; };
     const add = (kind, count, h0, h1) => { for (let i = 0; i < count; i++) e.schedule(e.clock.day * e.cfg.dayLength + Math.floor(((h0 + rng.next() * (h1 - h0)) / 24) * e.cfg.dayLength), 'incident', kind); };
-    add('theft', n(0.9 * k), 9, 19.5);
-    add('queue', n(0.9 * k), 9.5, 16.5);
-    add('window', n(0.45 * k), 10, 17);
+    add('theft', n(0.6 * k), 9, 19.5);
+    add('queue', n(0.7 * k), 9.5, 16.5);
+    add('window', n(0.4 * k), 10, 17);
     add('scuffle', n(0.3 * k), 10, 20);
     add('fire', n(e.cfg.fireRate * (pop / 250)), 7, 22);
   }
@@ -144,12 +144,13 @@ export class Incidents {
   theft() {
     const e = this.e, rng = e.rng, W = e.world;
     // a shop with customers in it
-    const shops = W.places.filter((p) => p.cat === 'shop' && p.state === B_OK && p.here.length >= 2 && p.sellIdx.length);
+    // only shops that sell something small enough to slip into a pocket (no 'cake from the appliance store')
+    const shops = W.places.filter((p) => p.cat === 'shop' && p.state === B_OK && p.here.length >= 2 && p.sellIdx.some((i) => ITEMS[i].petty));
     if (!shops.length) return null;
     const p = shops[rng.int(shops.length)];
-    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_KID && r.id !== p.owner && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE && !/police|detective/.test(r.job));
+    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.id !== p.owner && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE && !/police|detective/.test(r.job));
     if (!cand.length) return null;
-    const ws = cand.map((r) => 1 + r.tr[2] / 18 + (r.hunger > 60 ? 2 : 0) + (r.wallet < 10 ? 2 : 0) - r.tr[7] / 40);
+    const ws = cand.map((r) => Math.max(0.15, 1 + r.tr[2] / 18 + (r.hunger > 60 ? 2 : 0) + (r.wallet < 10 ? 2 : 0) - r.tr[7] / 40) * (groupOf(e, r) === G_ELDER ? 0.3 : 1));   // honest folk rarely, never 'nobody'
     const thief = cand[rng.weighted(ws)];
     const owner = p.owner >= 0 && e.people[p.owner].alive ? e.people[p.owner] : null;
     const I = this.newIncident('theft', p);
@@ -164,6 +165,7 @@ export class Incidents {
     I.fact = f; I.facts.push(f.id);
     // the thief did it; people around saw it (those who know the thief recognise them)
     e.learn(thief, f, SRC_DID);
+    if (owner && owner.loc !== p.idx) remember(e, owner, f, SRC_SEEN, -1, { d: D_ANON, alt: -1 });   // the shop phones its owner
     for (const r of this.present(p)) {
       if (r === thief) continue;
       const rel = getRel(e, r.id, thief.id);
@@ -253,6 +255,20 @@ export class Incidents {
         return;
       }
       case 'wanted': return;   // waits for a tip / surrender (daily check)
+      case 'tipped': {         // a neighbour's tip (or the thief's own conscience) in the morning
+        const thief = e.people[I.culprit];
+        if (!thief || !thief.alive) { I.outcome = 'gone'; this.unpost(I); I.phase = 'done'; return; }
+        const tipper = I.crew.length ? e.people[I.crew[0]] : null;
+        I.crew = [];
+        if (I.outcome === 'tip' && tipper && tipper.alive) {
+          this.stats.tipped++;
+          const f = e.fact('tip', { a: thief.id, b: tipper.id, ref: I.fact.id, n: I.wantedFact ? I.wantedFact.n : 0 });
+          e.learn(tipper, f, SRC_DID);
+          tipper.wallet += I.wantedFact ? I.wantedFact.n : 20;
+          this.catchLater(I);
+        } else { this.stats.surrendered++; this.catchLater(I, true); }
+        return;
+      }
     }
   }
 
@@ -282,7 +298,7 @@ export class Incidents {
     thief.flags |= F_WANTED;
     thief.wanted = I.id;
     const reward = 20 + rng.int(4) * 10;
-    const f = e.fact('wanted', { a: thief.id, b: I.victim, p: I.place, i: I.item, n: reward, ref: I.fact.id });
+    const f = e.fact('wanted', { a: thief.id, b: I.victim, p: I.fact ? I.fact.p : I.place, i: I.item, n: reward, ref: I.fact.id });   // where it was taken, not where the chase ended
     I.facts.push(f.id);
     f.pinned++;
     I.wantedFact = f;
@@ -324,15 +340,14 @@ export class Incidents {
         if (rng.chance(0.18 + r.tr[7] / 400)) { tipper = r; break; }
       }
       const age = (e.now - I.t) / e.cfg.dayLength;
+      // the police act in the morning (09:00-11:00), when the town is awake and the game can show it
+      const morning = e.clock.day * e.cfg.dayLength + Math.floor(((9 + rng.next() * 2) / 24) * e.cfg.dayLength);
       if (tipper) {
-        this.stats.tipped++;
-        const f = e.fact('tip', { a: thief.id, b: tipper.id, ref: I.fact.id, n: I.wantedFact ? I.wantedFact.n : 0 });
-        e.learn(tipper, f, SRC_DID);
-        tipper.wallet += I.wantedFact ? I.wantedFact.n : 20;
-        this.catchLater(I);
+        I.crew = [tipper.id]; I.outcome = 'tip';
+        this.phase(I, 'tipped', Math.max(1, morning - e.now));
       } else if (age > 1.5 && rng.chance(thief.tr[7] / 220 + 0.15)) {
-        this.stats.surrendered++;
-        this.catchLater(I, true);
+        I.crew = []; I.outcome = 'surrender';
+        this.phase(I, 'tipped', Math.max(1, morning - e.now));
       }
     }
   }
@@ -547,11 +562,14 @@ export class Incidents {
     I.cause = causeIdx !== undefined ? causeIdx : rng.int(FIRE_CAUSES.length);
     this.stats.fire++;
     b.state = B_BURNING; b.stateT = e.now;
-    const ownerId = b.owner >= 0 ? b.owner : b.residents.length ? b.residents[0] : -1;
+    const ownerId = b.owner >= 0 ? b.owner : W.headOf(b);
     I.victim = ownerId;
     const f = e.fact('fire', { a: ownerId, p: b.idx, n: I.cause });
     f.pinned++;
     I.fact = f;
+    // the family / the owner always hears about it (and hurries back), wherever they are
+    for (const id of b.residents) { const r = e.people[id]; if (r && r.alive && r.loc !== b.idx) e.learn(r, f, SRC_DID); }
+    if (b.owner >= 0 && e.people[b.owner] && e.people[b.owner].loc !== b.idx) e.learn(e.people[b.owner], f, SRC_DID);
     // everyone inside gets out (nobody is ever hurt) and shouts
     const inside = this.present(b);
     for (const r of inside) {

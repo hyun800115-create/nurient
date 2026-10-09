@@ -1,0 +1,830 @@
+{
+ "version": 1,
+ "generator": "tools/blender/ttl_build.sh (ttl_logo.py, ttl_icon.py in Blender; ttl_pack.py + ttl_backdrop.py + ttl_fx.py + ttl_iconpack.py in plain python)",
+ "conventions": {
+  "fragment": "title - paths are relative to frost-village/assets/. Loaded by the title modules (src/title config: artBase assets/title/, artManifest manifest.json); it can also be added to FRAGMENTS in src/core/Assets.js like any fragment. Every key starts with ttl_.",
+  "names": "All texts (game name, short name, English name) come from tools/blender/ttl_config.py TITLE and are copied to meta.texts; rename the game there and re-run tools/blender/ttl_build.sh.",
+  "scale": "Logo pictures are drawn for the 720-px-wide logical title layout: \"@2x\" textures (no suffix) are made for canvases at k = 2 - draw them with setScale(0.5 * size) - and the \"_1x\" twins for k = 1 phones (setScale(size)). meta.layout gives the suggested sizes.",
+  "backdrop": "Sky gradients stretch to the screen. Mountain / forest / cloud / city strips tile horizontally (TileSprite) and are anchored at their bottom edge; they are painted in day colours - meta.tints gives the multiply tint per time of day (dusk / night).",
+  "blend": "Everything is NORMAL-blend artwork except where a sprite says blend ADD/SCREEN (aurora, glows, twinkles, city lights).",
+  "icon": "assets/title/icon/* are store / home-screen icons (not loaded by the game); see meta.icon."
+ },
+ "meta": {
+  "texts": {
+   "full": "행복한 눈꽃마을 이야기",
+   "top": "행복한",
+   "main": "눈꽃마을",
+   "bottom": "이야기",
+   "short": "눈꽃마을",
+   "en_main": "Snowbloom",
+   "en_sub": "Village",
+   "en_full": "Snowbloom Village",
+   "emblem_in_en": "bloom"
+  },
+  "palette": {
+   "ink": "#1D2F5E",
+   "ink_wood": "#4A2A17",
+   "snow": "#FFFFFF",
+   "snow_shade": "#D6E6F7",
+   "sign_text": "#FFF6E6",
+   "emblem_core": "#FFC83D",
+   "emblem_line": "#6FB6F2",
+   "gold": "#FFC83D",
+   "red": "#D9483B"
+  },
+  "logo": {
+   "main": {
+    "size2x": [
+     900,
+     577
+    ],
+    "parts": [
+     {
+      "frame": "ttl_logo_top",
+      "z": 0,
+      "dx": -0.5,
+      "dy": -193.0,
+      "w": 497,
+      "h": 169,
+      "pivot": [
+       0.277,
+       0.479
+      ],
+      "drop": 5
+     },
+     {
+      "frame": "ttl_logo_main_0",
+      "z": 1,
+      "dx": -318.5,
+      "dy": 39.5,
+      "w": 253,
+      "h": 272,
+      "pivot": [
+       0.498,
+       0.478
+      ],
+      "drop": 0
+     },
+     {
+      "frame": "ttl_logo_main_1",
+      "z": 2,
+      "dx": -107.5,
+      "dy": 6.0,
+      "w": 247,
+      "h": 281,
+      "pivot": [
+       0.505,
+       0.496
+      ],
+      "drop": 1
+     },
+     {
+      "frame": "ttl_logo_main_2",
+      "z": 3,
+      "dx": 107.0,
+      "dy": 18.5,
+      "w": 258,
+      "h": 276,
+      "pivot": [
+       0.507,
+       0.492
+      ],
+      "drop": 2
+     },
+     {
+      "frame": "ttl_logo_main_3",
+      "z": 4,
+      "dx": 322.0,
+      "dy": 25.5,
+      "w": 246,
+      "h": 290,
+      "pivot": [
+       0.504,
+       0.49
+      ],
+      "drop": 3
+     },
+     {
+      "frame": "ttl_logo_emblem",
+      "z": 5,
+      "dx": -28.5,
+      "dy": -87.0,
+      "w": 147,
+      "h": 145,
+      "pivot": [
+       0.507,
+       0.456
+      ],
+      "drop": 4
+     },
+     {
+      "frame": "ttl_logo_sign",
+      "z": 6,
+      "dx": 16.5,
+      "dy": 197.0,
+      "w": 369,
+      "h": 183,
+      "pivot": [
+       0.503,
+       0.496
+      ],
+      "drop": 6
+     }
+    ],
+    "howTo": "Parts are @2x like ttl_logo_main. Place each at logoCentre + (dx, dy) * scale with origin 0.5, depth = z; drop them in by \"drop\" order (letters left to right, emblem pops on 꽃, 행복한 slides down, the sign swings in last). pivot = the piece's own centre in origin units if you want to rotate / squash it around its glyph centre. When all have landed, swap to ttl_logo_main (identical pixels) and sweep the shine."
+   },
+   "short": {
+    "size2x": [
+     640,
+     711
+    ]
+   },
+   "en": {
+    "size2x": [
+     900,
+     263
+    ]
+   }
+  },
+  "layout": {
+   "logoMain": {
+    "widthLogical": [
+     430,
+     520
+    ],
+    "centreY": 0.17,
+    "note": "portrait 720-wide logical layout: logo centre about 17 % down the screen (below the safe-area top), the diorama under it, \"터치하여 시작\" near 86 %."
+   },
+   "logoShort": {
+    "widthLogical": [
+     280,
+     360
+    ]
+   },
+   "logoEn": {
+    "widthLogical": [
+     460,
+     560
+    ],
+    "centreY": 0.16
+   }
+  },
+  "backdrop": {
+   "horizon": 0.7,
+   "order": [
+    "ttl_sky_*",
+    "ttl_stars",
+    "ttl_moon",
+    "ttl_aurora",
+    "ttl_clouds",
+    "ttl_mtn_far",
+    "ttl_city_far",
+    "ttl_city_lights",
+    "ttl_mtn_mid",
+    "ttl_forest",
+    "(diorama)"
+   ],
+   "parallax": {
+    "ttl_clouds": 0.05,
+    "ttl_mtn_far": 0.08,
+    "ttl_city_far": 0.1,
+    "ttl_mtn_mid": 0.16,
+    "ttl_forest": 0.3
+   },
+   "suggestedBottomY": {
+    "ttl_mtn_far": 0.5,
+    "ttl_city_far": 0.5,
+    "ttl_mtn_mid": 0.54,
+    "ttl_forest": 0.58,
+    "ttl_clouds": 0.36
+   },
+   "note": "Fractions of the screen height for a 720 x 1280..1600 logical portrait layout; strips are drawn at scale 720 / 1080 (or / 1440) x k so they fill the width; the diorama covers their lower part."
+  },
+  "tints": {
+   "day": {},
+   "dusk": {
+    "ttl_mtn_far": "#F7C4C9",
+    "ttl_mtn_mid": "#E4B3C7",
+    "ttl_forest": "#C7A2BC",
+    "ttl_clouds": "#FFC9B3",
+    "ttl_city_far": "#C79AB8"
+   },
+   "night": {
+    "ttl_mtn_far": "#5E70AC",
+    "ttl_mtn_mid": "#4C5F9C",
+    "ttl_forest": "#3D4E88",
+    "ttl_clouds": "#45527F",
+    "ttl_city_far": "#33406F"
+   }
+  },
+  "fx": {
+   "reuse": [
+    "fx_poof",
+    "fx_sparkle",
+    "fx_build_done",
+    "fx_snowflake",
+    "fx_spark",
+    "fx_glow",
+    "fx_ring"
+   ],
+   "snowRecipe": "three layers: far ttl_fx_snow_s (60-90, scale 0.5-0.9, alpha 0.6, fall 20-40 px/s), mid ttl_fx_snow_m + ttl_fx_flake_s (25-40, scale 0.6-1, fall 40-70 px/s, sway), front ttl_fx_snow_bokeh (4-6, scale 0.8-1.6, alpha 0.5-0.8, fall 70-110 px/s); one ttl_fx_bloom every ~8 s. Logical px, 720-wide layout."
+  },
+  "icon": {
+   "files": {
+    "icon_1024": "title/icon/icon_1024.png",
+    "icon_512": "title/icon/icon_512.png",
+    "icon_192": "title/icon/icon_192.png"
+   },
+   "webmanifest": [
+    {
+     "src": "assets/title/icon/icon_192.png",
+     "sizes": "192x192",
+     "type": "image/png"
+    },
+    {
+     "src": "assets/title/icon/icon_512.png",
+     "sizes": "512x512",
+     "type": "image/png"
+    },
+    {
+     "src": "assets/title/icon/icon_maskable_512.png",
+     "sizes": "512x512",
+     "type": "image/png",
+     "purpose": "maskable"
+    }
+   ],
+   "android": "mipmap-anydpi-v26/ic_launcher.xml: <adaptive-icon> background = ic_launcher_background, foreground = ic_launcher_foreground (both 432 px = 108 dp @ xxxhdpi; scale down for the other densities: 324 / 216 / 162 / 108 px).",
+   "ios": "icon_1024.png (opaque, no rounded corners - iOS masks it)."
+  },
+  "payload": {
+   "titleLoadPngBytes": 1186178,
+   "titleLoadAfterWebpBuildBytes": 741908,
+   "worstLanguage": "ko",
+   "byGroup": {
+    "logo": {
+     "png": 371278,
+     "webpBuild": 371278
+    },
+    "backdrop": {
+     "png": 809648,
+     "webpBuild": 402211
+    },
+    "fx": {
+     "png": 85401,
+     "webpBuild": 48568
+    }
+   },
+   "note": "worst case: @2x pictures (k = 2) + the larger language logo; manifest.json not counted; icons and the short logo are not loaded at title time. byGroup counts both languages."
+  },
+  "load": {
+   "ttl_logo_en": "en",
+   "ttl_logo_en_1x": "k1",
+   "ttl_logo_en_shine": "en",
+   "ttl_logo_main": "ko",
+   "ttl_logo_main_1x": "k1",
+   "ttl_logo_main_shine": "ko",
+   "ttl_logo_parts": "ko",
+   "ttl_logo_short": false,
+   "ttl_logo_short_1x": false,
+   "ttl_logo_short_shine": false,
+   "ttl_shine_band": true,
+   "ttl_aurora": true,
+   "ttl_city_far": true,
+   "ttl_city_lights": true,
+   "ttl_clouds": true,
+   "ttl_forest": true,
+   "ttl_moon": true,
+   "ttl_mtn_far": true,
+   "ttl_mtn_mid": true,
+   "ttl_sky_day": true,
+   "ttl_sky_dusk": true,
+   "ttl_sky_night": true,
+   "ttl_stars": true,
+   "ttl_fx": true,
+   "ttl_fx_pop": true
+  },
+  "files": {
+   "ttl_icon_1024": "title/icon/icon_1024.png",
+   "ttl_icon_192": "title/icon/icon_192.png",
+   "ttl_icon_512": "title/icon/icon_512.png"
+  }
+ },
+ "images": [
+  {
+   "key": "ttl_logo_en",
+   "png": "title/ttl_logo_en.png"
+  },
+  {
+   "key": "ttl_logo_en_1x",
+   "png": "title/ttl_logo_en_1x.png"
+  },
+  {
+   "key": "ttl_logo_en_shine",
+   "png": "title/ttl_logo_en_shine.png"
+  },
+  {
+   "key": "ttl_logo_main",
+   "png": "title/ttl_logo_main.png"
+  },
+  {
+   "key": "ttl_logo_main_1x",
+   "png": "title/ttl_logo_main_1x.png"
+  },
+  {
+   "key": "ttl_logo_main_shine",
+   "png": "title/ttl_logo_main_shine.png"
+  },
+  {
+   "key": "ttl_logo_short",
+   "png": "title/ttl_logo_short.png",
+   "loadAtTitle": false
+  },
+  {
+   "key": "ttl_logo_short_1x",
+   "png": "title/ttl_logo_short_1x.png",
+   "loadAtTitle": false
+  },
+  {
+   "key": "ttl_logo_short_shine",
+   "png": "title/ttl_logo_short_shine.png",
+   "loadAtTitle": false
+  },
+  {
+   "key": "ttl_shine_band",
+   "png": "title/ttl_shine_band.png"
+  },
+  {
+   "key": "ttl_aurora",
+   "png": "title/ttl_aurora.png"
+  },
+  {
+   "key": "ttl_city_far",
+   "png": "title/ttl_city_far.png"
+  },
+  {
+   "key": "ttl_city_lights",
+   "png": "title/ttl_city_lights.png"
+  },
+  {
+   "key": "ttl_clouds",
+   "png": "title/ttl_clouds.png"
+  },
+  {
+   "key": "ttl_forest",
+   "png": "title/ttl_forest.png"
+  },
+  {
+   "key": "ttl_moon",
+   "png": "title/ttl_moon.png"
+  },
+  {
+   "key": "ttl_mtn_far",
+   "png": "title/ttl_mtn_far.png"
+  },
+  {
+   "key": "ttl_mtn_mid",
+   "png": "title/ttl_mtn_mid.png"
+  },
+  {
+   "key": "ttl_sky_day",
+   "png": "title/ttl_sky_day.png"
+  },
+  {
+   "key": "ttl_sky_dusk",
+   "png": "title/ttl_sky_dusk.png"
+  },
+  {
+   "key": "ttl_sky_night",
+   "png": "title/ttl_sky_night.png"
+  },
+  {
+   "key": "ttl_stars",
+   "png": "title/ttl_stars.png"
+  }
+ ],
+ "atlases": [
+  {
+   "key": "ttl_logo_parts",
+   "png": "title/ttl_logo_parts.png",
+   "json": "title/ttl_logo_parts.json"
+  },
+  {
+   "key": "ttl_fx",
+   "png": "title/ttl_fx.png",
+   "json": "title/ttl_fx.json"
+  }
+ ],
+ "spritesheets": [
+  {
+   "key": "ttl_fx_pop",
+   "png": "title/ttl_fx_pop.png",
+   "frameWidth": 128,
+   "frameHeight": 128,
+   "frameCount": 8,
+   "fps": 30,
+   "repeat": 0,
+   "anchor": [
+    0.5,
+    0.6
+   ],
+   "blend": "NORMAL",
+   "notes": "Quick pop when a building appears on the title (white ring, snow balls, 3 gold stars), 0.27 s. Anchor = the building's ground point; scale 1-1.6 by building size. Layer fx_poof (assets/fx) under it for a softer puff."
+  }
+ ],
+ "sprites": {
+  "ttl_logo_en": {
+   "image": "ttl_logo_en",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "size2x": [
+    900,
+    263
+   ],
+   "notes": "English logo (@2x): Snowbloom (the o of bloom is the 눈꽃 emblem) / Village on the wooden sign."
+  },
+  "ttl_logo_en_1x": {
+   "image": "ttl_logo_en_1x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "ttl_logo_en at half size (k = 1 canvases)."
+  },
+  "ttl_logo_en_shine": {
+   "image": "ttl_logo_en_shine",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Shine mask of ttl_logo_en (same size)."
+  },
+  "ttl_logo_main": {
+   "image": "ttl_logo_main",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "size2x": [
+    900,
+    577
+   ],
+   "notes": "Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters with snow caps, the 눈꽃 emblem on 꽃) / 이야기 on a snowy wooden sign. Navy ink outline + soft shadow: reads over any sky."
+  },
+  "ttl_logo_main_1x": {
+   "image": "ttl_logo_main_1x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "ttl_logo_main at half size (k = 1 canvases)."
+  },
+  "ttl_logo_main_shine": {
+   "image": "ttl_logo_main_shine",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Shine mask of ttl_logo_main (same size; white, alpha = glossy letters, no ink). Use as BitmapMask for ttl_shine_band sweeping across."
+  },
+  "ttl_logo_top": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_top",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_main_0": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_main_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_main_1": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_main_1",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_main_2": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_main_2",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_main_3": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_main_3",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_emblem": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_emblem",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_sign": {
+   "atlas": "ttl_logo_parts",
+   "frame": "ttl_logo_sign",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Logo piece (@2x) - centre sits at (dx, dy) from the ttl_logo_main centre; see meta.logo.parts."
+  },
+  "ttl_logo_short": {
+   "image": "ttl_logo_short",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "size2x": [
+    640,
+    711
+   ],
+   "notes": "Short logo (@2x): 눈꽃 / 마을 in a 2 x 2 block with the emblem - splash, loading, badges."
+  },
+  "ttl_logo_short_1x": {
+   "image": "ttl_logo_short_1x",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "ttl_logo_short at half size (k = 1 canvases)."
+  },
+  "ttl_logo_short_shine": {
+   "image": "ttl_logo_short_shine",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "notes": "Shine mask of ttl_logo_short (same size)."
+  },
+  "ttl_shine_band": {
+   "image": "ttl_shine_band",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "blend": "ADD",
+   "notes": "Soft white diagonal light band (wide glow + core + thin streak). Masked by a *_shine mask, tween x from left edge to right edge of the logo in ~0.7 s every 4-6 s; scale y to the logo height."
+  },
+  "ttl_aurora": {
+   "image": "ttl_aurora",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "kind": "decor",
+   "blend": "ADD",
+   "tile": "x",
+   "notes": "Night aurora curtains (mint hem, cyan, violet tops). TileSprite across the sky ~25-45 % down, ADD (or SCREEN), alpha 0.6-0.9; drift tilePositionX slowly and breathe alpha."
+  },
+  "ttl_city_far": {
+   "image": "ttl_city_far",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "notes": "Far-away city skyline (final city stage) - sits just above the far mountains line / horizon; seamless in x; tint per meta.tints."
+  },
+  "ttl_city_lights": {
+   "image": "ttl_city_lights",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "blend": "ADD",
+   "notes": "Window lights of ttl_city_far (same size / place), ADD at dusk and night; flicker a little."
+  },
+  "ttl_clouds": {
+   "image": "ttl_clouds",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "notes": "Puffy toy clouds strip (1440 wide), seamless in x. Use 1-2 TileSprites at different scales/speeds; tint per meta.tints."
+  },
+  "ttl_forest": {
+   "image": "ttl_forest",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "size": [
+    1440,
+    574
+   ],
+   "notes": "Snowy hills with the game's pines (the nearest backdrop strip), seamless in x."
+  },
+  "ttl_moon": {
+   "image": "ttl_moon",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "notes": "Moon with a soft halo (night)."
+  },
+  "ttl_mtn_far": {
+   "image": "ttl_mtn_far",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "size": [
+    1080,
+    248
+   ],
+   "notes": "Far snowy peaks (haze baked in), seamless in x."
+  },
+  "ttl_mtn_mid": {
+   "image": "ttl_mtn_mid",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "decor",
+   "tile": "x",
+   "size": [
+    1080,
+    258
+   ],
+   "notes": "Nearer snowy mountains, seamless in x."
+  },
+  "ttl_sky_day": {
+   "image": "ttl_sky_day",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "kind": "decor",
+   "stretch": true,
+   "notes": "Sky gradient (day): stretch to the whole screen; horizon glow at 70 % of the height."
+  },
+  "ttl_sky_dusk": {
+   "image": "ttl_sky_dusk",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "kind": "decor",
+   "stretch": true,
+   "notes": "Sky gradient (dusk): stretch to the whole screen; horizon glow at 70 % of the height."
+  },
+  "ttl_sky_night": {
+   "image": "ttl_sky_night",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "kind": "decor",
+   "stretch": true,
+   "notes": "Sky gradient (night): stretch to the whole screen; horizon glow at 70 % of the height."
+  },
+  "ttl_stars": {
+   "image": "ttl_stars",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Night stars, denser at the top (720 x 900): place at the top, stretch to the screen width, alpha 0 by day; twinkle with ttl_fx_twinkle."
+  },
+  "ttl_fx_snow_s": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_snow_s",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Soft round snowflake 16 px (far snow layer)."
+  },
+  "ttl_fx_snow_m": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_snow_m",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Soft round snowflake 28 px (mid snow layer)."
+  },
+  "ttl_fx_snow_bokeh": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_snow_bokeh",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Out-of-focus foreground flake 64 px (few, big, slow; alpha 0.5-0.8)."
+  },
+  "ttl_fx_flake_s": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_flake_s",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Crisp six-arm snowflake 32 px (rounded toy strokes, ice-blue edge)."
+  },
+  "ttl_fx_flake_m": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_flake_m",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Crisp six-arm snowflake 56 px."
+  },
+  "ttl_fx_twinkle": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_twinkle",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "ADD",
+   "notes": "Four-point star with glow 64 px: logo sparkles, star twinkles (scale-pulse)."
+  },
+  "ttl_fx_glow": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_glow",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "ADD",
+   "notes": "Soft round white glow 64 px (tint warm for windows / lamps)."
+  },
+  "ttl_fx_bloom": {
+   "atlas": "ttl_fx",
+   "frame": "ttl_fx_bloom",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "decor",
+   "blend": "NORMAL",
+   "notes": "Mini 눈꽃 emblem 48 px (a rare special flake, or a sparkle on the logo)."
+  }
+ }
+}

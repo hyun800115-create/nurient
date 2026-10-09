@@ -204,6 +204,9 @@ export const STRINGS = {
     inviteTitle: '솔방울 마을 촌장님의 초대!', inviteSub: '기찻길을 따라 동쪽으로 가 보세요',
     townWelcome: '솔방울 마을에 오신 걸 환영해요', townWelcomeSub: '주민 {n}명이 사는 이웃 마을이에요',
     townName: '솔방울 마을', stn_ours: '서리역', stn_town: '솔방울역', signHarbor: '갈매기 항구 방면 (공사 중)',
+    // 길 이름 (world.js v4.streets 의 name)
+    st_link: '역 가는 길', st_square: '역 광장', st_main: '솔방울 큰길', st_back: '학교길', st_ave: '솔방울 중앙로',
+    st_shopalley: '가게 골목', st_homes: '집 앞길', st_apts: '아파트 앞길', st_alley: '역 골목', st_platform: '승강장 끝길', st_xing: '건널목',
     obj_station: '서리역을 고쳐 이웃 마을과 이어 보세요', obj_visit_town: '기찻길을 따라 솔방울 마을에 가 보세요',
     obj_off_track: '기찻길에서 비켜 주세요!',
     day: '낮', dawn: '새벽', dusk: '저녁', night: '밤', clockFmt: '{d}일째 {h}:{m}',
@@ -214,7 +217,7 @@ export const STRINGS = {
     act_home: '집에서 쉬는 중', act_school: '학교 가는 중', act_class: '수업 중', act_recess: '쉬는 시간', act_lunch: '점심 시간',
     act_play: '노는 중', act_work: '일하는 중', act_errand: '장 보는 중', act_cafe: '카페에서 쉬는 중', act_walk: '산책 중',
     act_trip: '서리마을 나들이 가는 중', act_shop: '서리마을에서 장 보는 중', act_train: '기차 타는 중', act_patrol: '순찰 중',
-    act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중', act_doze: '꾸벅꾸벅 조는 중',
+    act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중', act_doze: '꾸벅꾸벅 조는 중', act_cheer: '축하하러 온 중',
   },
 
   en: {
@@ -411,6 +414,8 @@ export const STRINGS = {
     inviteTitle: 'An invitation from the Pinecone mayor!', inviteSub: 'Follow the railway east',
     townWelcome: 'Welcome to Pinecone Village', townWelcomeSub: 'A neighbour town of {n} people',
     townName: 'Pinecone Village', stn_ours: 'Frost Station', stn_town: 'Pinecone Station', signHarbor: 'To Seagull Harbour (closed)',
+    st_link: 'Station Road', st_square: 'Station Square', st_main: 'Pinecone High Street', st_back: 'School Lane', st_ave: 'Pinecone Avenue',
+    st_shopalley: 'Shop Alley', st_homes: 'Home Row', st_apts: 'Apartment Row', st_alley: 'Station Alley', st_platform: 'Platform Walk', st_xing: 'Level Crossing',
     obj_station: 'Repair Frost Station to link up with the neighbours', obj_visit_town: 'Follow the railway to Pinecone Village',
     obj_off_track: 'Please step off the track!',
     day: 'Day', dawn: 'Dawn', dusk: 'Dusk', night: 'Night', clockFmt: 'Day {d} {h}:{m}',
@@ -420,7 +425,7 @@ export const STRINGS = {
     act_home: 'resting at home', act_school: 'off to school', act_class: 'in class', act_recess: 'at recess', act_lunch: 'lunch break',
     act_play: 'playing', act_work: 'at work', act_errand: 'running errands', act_cafe: 'at the café', act_walk: 'taking a walk',
     act_trip: 'off to Frost Village', act_shop: 'shopping in Frost Village', act_train: 'on the train', act_patrol: 'on patrol',
-    act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting', act_doze: 'dozing off',
+    act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting', act_doze: 'dozing off', act_cheer: 'here to celebrate',
   },
 };
 

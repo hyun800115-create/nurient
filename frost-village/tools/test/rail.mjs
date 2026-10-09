@@ -110,6 +110,8 @@ try {
   await ev(() => window.__FV.supply('r_station'));
   await adv(2);
   const scaff = await ev(() => window.__FV.state().sites.r_station);
+  await ev(() => window.__FV.camera(3380, 1400, 1.0));
+  await adv(0.5);
   await shot('02_site');
   step('repair: pays, takes 14 planks + 4 ingots, scaffold', built && scaff && (scaff.state === 'scaffold' || scaff.state === 'done'), JSON.stringify(scaff));
   const tRep = await ev(() => { window.__FV.finishSite('r_station'); return window.__step.t; });
@@ -123,6 +125,14 @@ try {
   await shot('03_first_train');
   const vis = await ev(() => window.__FV.state().v4);
   step('6 neighbours step off', vis.visitors.length === 6, vis.visitors.length + ' visitors');
+  // they leave the platform at its east end and cross the rails only over the level crossing (never through the train)
+  let onTrack = [], crossed = 0;
+  for (let k = 0; k < 60; k++) {
+    await adv(0.25);
+    const r = await ev(() => window.__FV.scene.v4.visitors.map((v) => { const a = (v.x - 3120) / 64, b = (v.y - 1315) / 32; return { i: (a + b) / 2, j: (a - b) / 2, id: v.citizen.id }; }));
+    for (const q of r) { if (Math.abs(q.j) < 0.55 && !(q.i > 7.6 && q.i < 9.4)) onTrack.push(q.id + '@' + q.i.toFixed(1) + ',' + q.j.toFixed(2)); if (q.j < -0.6) crossed++; }
+  }
+  step('visitors cross the rails only at the level crossing', onTrack.length === 0 && crossed > 0, onTrack.slice(0, 4).join(' ') + ' crossed samples ' + crossed);
   const cars = await ev(() => window.__FV.scene.v4.train.cars.map((c) => ({ key: c.key, flip: c.spr.flipX, anim: c.spr.anims.currentAnim && c.spr.anims.currentAnim.key, x: c.spr.x, y: c.spr.y })));
   step('every car drawn heading NW (NE frames mirrored)', cars.every((c) => c.flip && /:NE$/.test(c.anim || '')), JSON.stringify(cars.map((c) => c.anim)));
   const d01 = Math.hypot(cars[1].x - cars[0].x, (cars[1].y - cars[0].y) * 2) / 64 / 2 * 2, d12 = Math.hypot(cars[2].x - cars[1].x, (cars[2].y - cars[1].y) * 2);
@@ -160,6 +170,21 @@ try {
   const late = await ev(() => window.__FV.state().v4);
   step('people conserved (town + train + village = 100) through two minutes of trains', cons && late.town.census.total === 100, JSON.stringify(late.town.census));
   step('trains keep coming (≥ 2 arrivals at our station)', late.arrivals >= 2, 'arrivals ' + late.arrivals + ', max on board ' + maxOn);
+  // the invitation: the fallback timer runs out, the mayor comes by the next train, walks to the chief, the town opens
+  await ev(() => { window.__FV.teleport(3330, 1560); window.__FV.scene.v4.inviteT = (window.__FV.scene.v4.inviteT || 0) + 1e4; });
+  let mayor = null, opened = false;
+  for (let k = 0; k < 100 && !opened; k++) {
+    await adv(1);
+    const r = await ev(() => { const nb = window.__FV.scene.v4; const a = nb.actors[0]; return { inviting: !!nb.inviting, actor: a ? { role: a.c.role, x: Math.round(a.x), y: Math.round(a.y), doll: !!a.sprite.isDoll } : null, open: window.__FV.state().territory.town, flag: !!window.__FV.scene.progress.flags.townInvite }; });
+    if (r.actor && !mayor) mayor = r.actor;
+    opened = r.open && r.flag;
+  }
+  await ev(() => window.__FV.camera(4600, 2200, 0.8));
+  await adv(1);
+  await shot('06_town_open');
+  step('invitation (fallback timer): the mayor comes by train as a paper doll, the town opens', opened && mayor && mayor.role === 'mayor' && mayor.doll, JSON.stringify(mayor));
+  const pc = await ev(() => window.__FV.v4.census());
+  step('people still conserved after the mayor\'s visit', pc.town + pc.train + pc.village === pc.total && pc.total === 100, JSON.stringify(pc));
 } catch (e) { fatal = e; console.log('FATAL', e && e.stack || e); }
 const errs = log.errors.filter((e) => !/favicon/.test(e));
 step('no page errors', errs.length === 0 && !fatal, errs.slice(0, 3).join(' | '));

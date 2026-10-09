@@ -16,6 +16,9 @@ const CW = +(Q.get('w') || 390), CH = +(Q.get('h') || 844), DPR = +(Q.get('dpr')
 const ZOOM = +(Q.get('zoom') || 1.0);
 const PLAY = Q.get('play') === '1';
 const RENDERER = Q.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.WEBGL;
+const PRECISION = Q.get('precision') || undefined;   // 'mediump': fragment stage forced to mediump (mediump-only GPUs)
+const DARK = +(Q.get('dark') || 0);                 // night test: Water.setLighting({ dark })
+const NOCONTACT = Q.get('contacts') === '0';
 const K = (CW * DPR) / 720;                      // canvas px per logical px (the game's View.k)
 const ROOT = new URL('../../', location.href).href;
 
@@ -73,6 +76,12 @@ class Lab extends Phaser.Scene {
       W.cam = cam;
       W.game = this.game;
       W.scene = this;
+      if (W.water && DARK) {
+        W.water.setLighting({ dark: DARK });
+        // the DayClock's MULTIPLY overlay (a tinted white image, like src/systems/DayClock.js)
+        const ov = this.add.rectangle(0, 0, 8000, 8000, 0x5a6ea8).setOrigin(0.5).setScrollFactor(0).setDepth(9999).setBlendMode(Phaser.BlendModes.MULTIPLY);
+        ov.setPosition(cam.width / 2, cam.height / 2);
+      }
       if (!PLAY) this.game.loop.sleep();
       W.frame(W.t);
       W.ready = true;
@@ -102,7 +111,42 @@ W.frame = (t) => {
   g.step(1000 + t * 1000, 0);
   return true;
 };
-W.info = () => (W.water ? W.water.info() : { shader: false, mode: MODE });
+W.info = () => {
+  const gl = W.game && W.game.renderer && W.game.renderer.gl;
+  const lim = gl ? { maxFragUniformVectors: gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS), fragHighp: !!(gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT) || {}).precision } : {};
+  return Object.assign(W.water ? W.water.info() : { shader: false, mode: MODE }, lim, { precisionOpt: PRECISION || 'auto' });
+};
+/**
+ * shader height vs Water.heightAt at the same world points: the debug program writes the surface height into
+ * R/G (h = (R + G / 255) / 255 * 32 - 16), everything else hidden; a grid of canvas pixels is read back.
+ */
+W.heightSync = (times = [1.3, 4.7, 8.15]) => {
+  const wt = W.water;
+  if (!wt || !wt.isShader) return null;
+  const list = W.scene.children.list.slice();
+  const was = list.map((o) => o.visible);
+  const hide = () => { for (const o of list) if (o !== wt.body) o.setVisible(false); };
+  wt.setDebug('height');
+  const gl = W.game.renderer.gl, cam = W.cam, px = new Uint8Array(4), diffs = [];
+  const Wc = W.game.canvas.width, Hc = W.game.canvas.height;
+  for (const t of times) {
+    W.apply(t); hide();
+    W.game.step(1000 + t * 1000, 0);
+    for (let sy = 20; sy < Hc; sy += 37) for (let sx = 11; sx < Wc; sx += 41) {
+      const p = cam.getWorldPoint(sx + 0.5, sy + 0.5);
+      if (wt.shoreDistance(p.x, p.y) < 12) continue;
+      gl.readPixels(sx, Hc - 1 - sy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const hs = ((px[0] + px[1] / 255) / 255) * 32 - 16;
+      diffs.push(Math.abs(hs - wt.heightAt(p.x, p.y, t)));
+    }
+  }
+  wt.setDebug(null);
+  list.forEach((o, i) => o.setVisible(was[i]));
+  W.frame(times[0]);
+  diffs.sort((a, b) => a - b);
+  const n = diffs.length;
+  return { n, mean: +(diffs.reduce((a, b) => a + b, 0) / Math.max(1, n)).toFixed(4), p95: +(diffs[Math.floor(n * 0.95)] || 0).toFixed(4), max: +(diffs[n - 1] || 0).toFixed(4) };
+};
 W.setQuality = (q) => { if (W.water) W.water.setQuality(q); return W.info(); };
 /** average ms per synchronous frame (gl.finish) over n frames */
 W.perf = (n = 30, t0 = 0) => {
@@ -131,11 +175,15 @@ new Phaser.Game({
 // ------------------------------------------------------------------------------------------- helpers
 function obj(o) { o.__obj = true; return o; }
 
-/** floating thing: bob with the water (heightAt) and tilt a little (slopeAt) */
+/** floating thing: bob with the water (heightAt), tilt a little (slopeAt), foam collar + shadow (addContact) */
 function floater(sc, water, sprite, wx, wy, opts = {}) {
   const base = { x: wx, y: wy };
   const tiltK = opts.tilt !== undefined ? opts.tilt : 0.25;
   const slope = { x: 0, y: 0 };
+  if (water && opts.contact && !NOCONTACT) {
+    // contact circles on the water plane: [dx, dy (world px from the waterline point), r, foam, shadow]
+    for (const c of opts.contact) water.addContact(wx + c[0], wy + c[1], c[2], { foam: c[3], shadow: c[4] });
+  }
   return (t) => {
     let h = 0;
     if (water) {
@@ -205,6 +253,7 @@ function buildVillage(sc) {
       fish: [{ y0: 40, y1: 240, alpha: 0.55, scale: 1, speed: [22, 0], wobble: [5, 0.7] },
         { y0: 150, y1: 350, alpha: 0.35, scale: 0.8, speed: [14, 0], offset: [130, 40], wobble: [0, 0] }],
       manifest: loader.man.water,
+      precision: PRECISION,
     });
     if (!water.drawsFish) {
       const f1 = sc.add.tileSprite(0, 40, Wd, 200, 'fish_school').setOrigin(0, 0).setDepth(-19900).setAlpha(0.55);
@@ -224,13 +273,23 @@ function buildVillage(sc) {
   obj(loader.sprite(sc, 'crate', 1205, 492));
   obj(loader.sprite(sc, 'crate', 1182, 448)).setScale(0.8);
   void pier;
-  ticks.push(floater(sc, water, bs1, 1650, 250, { tilt: 0.3 }));
-  ticks.push(floater(sc, water, bs2, 1290, 214, { tilt: 0.3 }));
-  ticks.push(floater(sc, water, ice1, 1120, 350, { tilt: 0.15, bob: 0.7 }));
+  const hullX = (s) => [[-26 * s, -13 * s, 24 * s, 0.75, 0.22], [26 * s, 13 * s, 24 * s, 0.75, 0.22]];   // a hull along world X
+  ticks.push(floater(sc, water, bs1, 1650, 250, { tilt: 0.3, contact: hullX(1) }));
+  ticks.push(floater(sc, water, bs2, 1290, 214, { tilt: 0.3, contact: hullX(0.85) }));
+  ticks.push(floater(sc, water, ice1, 1120, 350, { tilt: 0.15, bob: 0.7, contact: [[0, 2, 26, 0.6, 0.12]] }));
+  // the pier posts standing in the water (dock_pier: 2 x 4.4 m along world +Y around its anchor)
+  if (water && !NOCONTACT) {
+    for (const [mx, my] of [[-1, 0.7], [1, 0.7], [-1, 2.2], [1, 2.2]]) {
+      const p = iso(1460, 300, mx * 0.92, my);
+      if (water.shoreDistance(p[0], p[1]) > 4) water.addContact(p[0], p[1], 7, { foam: 0.85, shadow: 0.1 });
+    }
+    water.addContact(1460, 300, 30, { foam: 0, shadow: 0.2 });           // the deck's shadow on the water
+  }
   // the rowboat moored at the pier end, the fishing boat sailing by (NE heading) with a wake
   const row = loader.character(sc, 'boat_rowboat', 'idle', 'NE', 1600, 266);
   obj(row.sprite);
-  ticks.push(floater(sc, water, row.sprite, 1600, 266, { tilt: 0.35 }));
+  // NE hull: along world -Y (screen up-right)
+  ticks.push(floater(sc, water, row.sprite, 1600, 266, { tilt: 0.35, contact: [[-22, 11, 22, 0.8, 0.22], [22, -11, 22, 0.8, 0.22]] }));
   ticks.push((t) => frameAt(row.sprite, row.frames, 3, t));
   const fb = loader.character(sc, 'boat_fishing', 'sail', 'SE', 1200, 110);
   obj(fb.sprite);
@@ -245,11 +304,13 @@ function buildVillage(sc) {
     const s = ((t * 26) % 780) - 60;
     return { x: 1180 + s * 0.894, y: 70 + s * 0.447 };
   };
+  const fbC = water && !NOCONTACT ? [water.addContact(0, 0, 30, { foam: 0.85, shadow: 0.25 }), water.addContact(0, 0, 30, { foam: 0.85, shadow: 0.25 })] : null;
   ticks.push((t) => {
     const p = path(t);
     const h = water ? water.heightAt(p.x, p.y, t) : Math.sin(t * 1.9) * 1.6;
     fb.sprite.setPosition(p.x, p.y - h).setDepth(p.y);
     frameAt(fb.sprite, fb.frames, 4, t);
+    if (fbC) { water.moveContact(fbC[0], p.x - 40, p.y - 20); water.moveContact(fbC[1], p.x + 40, p.y + 20); }
     if (wake) {
       if (wakeV2) wake.setPosition(p.x, p.y - h).setDepth(p.y - 3);         // hull centre at the waterline
       else wake.setPosition(p.x + wp[0] * 0.5, p.y + wp[1] * 0.5 - h).setDepth(p.y - 3);
@@ -258,7 +319,7 @@ function buildVillage(sc) {
     }
     fx.begin();
     const tp0 = Math.floor(t / 2.4) * 2.4;
-    fx.show('fx_splash_small', 1395, 322, tp0, t, 0.8, 330);
+    fx.show('fx_splash_small', 1592, 214, tp0, t, 0.8, 216);
     fx.end();
     if (water && MODE === 'new') {
       // a puff of ripple at the stern every 0.3 s (re-built from scratch each frame = deterministic)
@@ -271,7 +332,7 @@ function buildVillage(sc) {
       }
       // the villager's fishing line plops every 2.4 s
       const tp = Math.floor(t / 2.4) * 2.4;
-      water.ripple(1395, 322, 1.3, tp);
+      water.ripple(1592, 214, 1.3, tp);
     }
   });
   // people: a villager on the shore, the fisherman fishing off the pier
@@ -308,14 +369,16 @@ function buildHarbor(sc) {
   } else {
     water = new Water(sc, {
       region,
-      mask: { land: [{ poly: land }, { poly: breakwater, waterPx: 0 }] },
+      // one convention: z0 footprints; quay AND breakwater walls show, so both are tested WATER_PX lower
+      mask: { land: [land, breakwater] },
       waterPx: WATER_PX,
-      shoreTypes: [{ type: 'breakwater', poly: breakwater }],
+      shoreTypes: [{ type: 'breakwater', poly: breakwater.map((v, i) => (i % 2 ? v + WATER_PX : v)) }],
       defaultShore: 'quay',
       palette: 'harbor',
       quality: QUALITY,
       swellDir: [-0.55, 0.83],
       manifest: loader.man.water,
+      precision: PRECISION,
     });
   }
   // quay tiles along both camera-facing edges (chained at their stepPx)
@@ -342,17 +405,17 @@ function buildHarbor(sc) {
   const tugAt = P(-6.5, -2.2);
   const tug = loader.character(sc, 'tugboat', 'idle', 'SE', tugAt[0], tugAt[1] + WATER_PX);
   obj(tug.sprite).setFlipX(true);
-  ticks.push(floater(sc, water, tug.sprite, tugAt[0], tugAt[1] + WATER_PX, { tilt: 0.15 }));
+  ticks.push(floater(sc, water, tug.sprite, tugAt[0], tugAt[1] + WATER_PX, { tilt: 0.15, contact: [[-34, -17, 34, 0.8, 0.25], [34, 17, 34, 0.8, 0.25]] }));
   ticks.push((t) => frameAt(tug.sprite, tug.frames, 3, t));
   const sbAt = P(3.6, 1.0);
   const sb = loader.character(sc, 'sailboat', 'idle', 'NE', sbAt[0], sbAt[1] + WATER_PX);
   obj(sb.sprite);
-  ticks.push(floater(sc, water, sb.sprite, sbAt[0], sbAt[1] + WATER_PX, { tilt: 0.3 }));
+  ticks.push(floater(sc, water, sb.sprite, sbAt[0], sbAt[1] + WATER_PX, { tilt: 0.3, contact: [[-30, 15, 30, 0.8, 0.22], [30, -15, 30, 0.8, 0.22]] }));
   ticks.push((t) => frameAt(sb.sprite, sb.frames, 3, t));
   // buoy out in the basin, a rowboat crossing with ripples
   const bAt = P(6.5, -3.5);
   const buoy = obj(loader.sprite(sc, 'buoy', bAt[0], bAt[1] + WATER_PX));
-  ticks.push(floater(sc, water, buoy, bAt[0], bAt[1] + WATER_PX, { tilt: 0.6 }));
+  ticks.push(floater(sc, water, buoy, bAt[0], bAt[1] + WATER_PX, { tilt: 0.6, contact: [[0, 0, 16, 0.85, 0.15]] }));
   const rb = loader.character(sc, 'boat_rowboat', 'row', 'NE', 0, 0);
   obj(rb.sprite);
   const rdef = loader.charDef('boat_rowboat');
@@ -363,11 +426,13 @@ function buildHarbor(sc) {
   const fx = oneShots(sc);
   ticks.push((t) => {
     fx.begin();
-    if (water) water.crashEvents(t - 0.6, t, (x, y, st, tc) => fx.show('fx_wave_crash', x, y, tc, t, 0.75 + 0.3 * st));
+    if (water) water.crashEvents(t - 0.6, t, (x, y, st, tc, behind) => fx.show('fx_wave_crash', x, y, tc, t, 0.75 + 0.3 * st, behind ? -13600 : undefined));
     fx.end();
   });
+  const rbC = water && !NOCONTACT ? [water.addContact(0, 0, 22, { foam: 0.8, shadow: 0.2 }), water.addContact(0, 0, 22, { foam: 0.8, shadow: 0.2 })] : null;
   ticks.push((t) => {
     const p = rpath(t);
+    if (rbC) { water.moveContact(rbC[0], p.x - 22, p.y + 11); water.moveContact(rbC[1], p.x + 22, p.y - 11); }
     const h = water ? water.heightAt(p.x, p.y, t) : Math.sin(t * 1.9) * 1.6;
     rb.sprite.setPosition(p.x, p.y - h).setDepth(p.y);
     frameAt(rb.sprite, rb.frames, 9, t);
@@ -424,6 +489,7 @@ function buildBeach(sc) {
       palette: 'tropical',
       quality: QUALITY,
       manifest: loader.man.water,
+      precision: PRECISION,
     });
   }
   // the breakwater tiles (closed at its -Y end, running off up-right)
@@ -447,6 +513,7 @@ function buildBeach(sc) {
     let ring = null;
     if (rip) { ring = obj(sc.add.sprite(s.at[0], s.at[1], 'fx_swim_ripple')); ring.setOrigin(...(loader.sheetDef('fx_swim_ripple').anchor || [0.5, 0.5])); }
     const wl = { x: s.at[0], y: s.at[1] };
+    if (water && !NOCONTACT) water.addContact(wl.x, wl.y, 12, { foam: 0.5, shadow: 0.06 });
     const offY = Math.round(cut - c.def.anchor[1] * fr.realHeight);   // waterline below the anchor
     ticks.push((t) => {
       const h = water ? water.heightAt(wl.x, wl.y, t) : Math.sin(t * 1.9 + s.ph) * 1.6;
@@ -466,7 +533,7 @@ function buildBeach(sc) {
   const jump = P(-4.6, -1.0);
   ticks.push((t) => {
     fx.begin();
-    if (water) water.crashEvents(t - 0.6, t, (x, y, st, tc) => fx.show('fx_wave_crash', x, y, tc, t, 0.8 + 0.3 * st));
+    if (water) water.crashEvents(t - 0.6, t, (x, y, st, tc, behind) => fx.show('fx_wave_crash', x, y, tc, t, 0.8 + 0.3 * st, behind ? -13600 : undefined));
     const tj = Math.floor((t + 1.0) / 4.5) * 4.5 - 1.0;
     fx.show('fx_splash_big', jump[0], jump[1], tj, t, 0.8);
     if (water && t - tj < 3 && tj >= 0) water.ripple(jump[0], jump[1], 1.8, tj);
@@ -495,7 +562,7 @@ function buildBeach(sc) {
   const rbAt = P(-7.5, -5.0);
   const rb = loader.character(sc, 'boat_rowboat', 'idle', 'NE', rbAt[0], rbAt[1]);
   obj(rb.sprite);
-  ticks.push(floater(sc, water, rb.sprite, rbAt[0], rbAt[1], { tilt: 0.35 }));
+  ticks.push(floater(sc, water, rb.sprite, rbAt[0], rbAt[1], { tilt: 0.35, contact: [[-22, 11, 22, 0.8, 0.2], [22, -11, 22, 0.8, 0.2]] }));
   ticks.push((t) => frameAt(rb.sprite, rb.frames, 3, t));
   return { water, tick: (t) => { if (water) water.clearRipples(); for (const f of ticks) f(t); } };
 }

@@ -11,13 +11,15 @@ import { TF, mulberry32 } from '../core/Townfolk.js';
 import { Character } from '../entities/Character.js';
 import { Roads } from './Roads.js';
 import { line, t as tr, townName } from '../data/strings.js';
-import { DIR_BASE } from '../core/Iso.js';
+import { DIR_BASE, dirFromVec } from '../core/Iso.js';
+import { WORLD } from '../data/world.js';
 
 export const KINDS = ['student', 'teen', 'shopkeeper', 'civic', 'adult', 'elder', 'builder'];
 const COUNTS = { student: 18, teen: 6, shopkeeper: 7, civic: 13, adult: 36, elder: 17, builder: 3 };   // 100
 const CIVIC = ['teacher', 'teacher', 'teacher', 'police', 'police', 'postal', 'postal', 'doctor', 'nurse', 'fire', 'fire', 'mayor', 'station'];
 const FOODS_FAV = ['item_bread', 'item_fish_cooked', 'item_meat_cooked', 'item_bread', 'item_can'];
 export const F = { ON_TRAIN: 1, IN_VILLAGE: 2, WAITING: 4, DISTRICT: 8 };
+const DISTRICT_KINDS = new Set(['keeper', 'resident']);
 const HOUR = 25;               // s per clock hour (600 s day)
 const TIER_EVERY = 0.25;
 const MAX_CHAT = 2, MAX_EMOTE = 3;
@@ -54,7 +56,7 @@ class TownBody extends Character {
     const key = 'tf:' + c.person.base;
     if (key !== this.key) { this.key = key; this.def = Assets.charDef(key); const sh = this.def.shadow || [46, 18]; this.shadow.setDisplaySize(sh[0] * 1.15, sh[1] * 1.3); }
     this.sprite.setPerson(c.person, key);
-    this.animKey = ''; this.animName = '';
+    this.animKey = ''; this.animName = ''; this._faced = null;
     this.c = c;
     this.alive = true;
     this.sprite.setVisible(true);
@@ -95,6 +97,7 @@ export class TownSim {
     this.populate(this.B.town.people || 100, opts.extra || []);
     this.lastHour = -1;
     this.chatT = 3;
+    this.townX = WORLD.territory.town.rect[0];
   }
 
   // ================================================================ places
@@ -132,17 +135,18 @@ export class TownSim {
     for (const b of this.nb.buildings) if (b.cfg.home) cap[b.id] = b.cfg.home;
     const apts = this.nb.buildings.filter((b) => b.role === 'home');
     const shops = this.byRole.shop || [];
-    let id = 0, aptK = 0;
+    let aptK = 0;
     const scale = n / 100;
     const make = (kind, extraFields) => {
+      const id = this.citizens.length;
       const cr = mulberry32((this.seed * 2654435761 + id * 97 + 13) >>> 0);
       const c = Object.assign({ id, kind, role: null, person: null, name: townName(id), age: 30, home: null, work: null, fav: FOODS_FAV[Math.floor(cr() * FOODS_FAV.length)],
         act: 'home', place: null, spot: null, wakeT: 0, route: null, t0: 0, speed: 60 + cr() * 30, lane: (cr() - 0.5) * 20, jit: (cr() - 0.5) * 2,
         lod: 3, flags: 0, body: null, visits: 0, x: 0, y: 0, state: 'in', seg: -1, plan: null, day: -1, rng: cr, regular: false }, extraFields || {});
       this.citizens.push(c);
-      id++;
       return c;
     };
+    this.make = make;
     const civ = CIVIC.slice();
     const order = [];
     for (const k of KINDS) for (let q = 0; q < Math.round(COUNTS[k] * scale); q++) order.push(k);
@@ -186,7 +190,145 @@ export class TownSim {
       }
       c.person.id = c.id;
     }
-    for (const e of extra) if (Array.isArray(e)) { const c = make(e[1] || 'adult', { flags: F.DISTRICT }); c.person = TF.person(c.rng, null); c.home = e[2] || null; }
+    this.base = this.citizens.length;
+    // people who came later (saved as [id, kind, home]): newcomers of the town (읍), founders' households and
+    // house residents in the station district (a founder who was a townsperson keeps his id: converted)
+    for (const e of extra) {
+      if (!Array.isArray(e)) continue;
+      const kind = String(e[1] || 'adult'), home = e[2] || null;
+      if (DISTRICT_KINDS.has(kind) && Number.isFinite(e[0]) && e[0] < this.base && this.citizens[e[0]]) { this.toDistrict(this.citizens[e[0]], kind, home); continue; }
+      this.addCitizen(kind, home);
+    }
+  }
+
+  /** a new person: a town kind (adult, elder, student, teen) or a district kind (keeper, resident) */
+  addCitizen(kind, home) {
+    const district = DISTRICT_KINDS.has(kind);
+    const c = this.make(district ? kind : (KINDS.indexOf(kind) >= 0 ? kind : 'adult'), { flags: district ? F.DISTRICT : 0 });
+    const cr = c.rng;
+    const want = kind === 'student' ? 'child' : kind === 'elder' ? 'elder' : 'adult';
+    c.person = TF.person(cr, kind === 'student' ? 'student' : null);
+    for (let k = 0; k < 6 && TF.age(c.person.base) !== want && kind !== 'resident'; k++) c.person = TF.person(cr, kind === 'student' ? 'student' : null);
+    c.person.id = c.id;
+    c.age = want === 'child' ? 7 + Math.floor(cr() * 6) : want === 'elder' ? 64 + Math.floor(cr() * 22) : kind === 'teen' ? 13 + Math.floor(cr() * 5) : 24 + Math.floor(cr() * 36);
+    if (TF.age(c.person.base) === 'child' && kind === 'resident') c.age = 6 + Math.floor(cr() * 7);
+    c.home = home || (this.nb.buildings.find((b) => b.role === 'home') || { id: 't_apt1' }).id;
+    if (district) { c.work = kind === 'keeper' ? c.home : null; this.ensureLot(c.home); }
+    return c;
+  }
+
+  /** a townsperson becomes a station-district citizen (the founder of a shop moves in above it) */
+  toDistrict(c, kind, home) {
+    c.flags = (c.flags | F.DISTRICT) & ~(F.WAITING);
+    c.kind = DISTRICT_KINDS.has(kind) ? kind : 'resident';
+    c.home = home || c.home;
+    c.work = c.kind === 'keeper' ? c.home : null;
+    c.plan = null; c.day = -1; c.trip = false;
+    this.ensureLot(c.home);
+  }
+
+  /** places for a lot of the station district (door, the shopkeeper's spot, a short line), from its door point */
+  ensureLot(id, opts = {}) {
+    if (!id) return null;
+    if (this.places[id + ':in'] && !opts.staff && !opts.customers) return this.places[id + ':in'];
+    const sp = this.nb.roadNet && this.nb.roadNet.doorSpur ? this.nb.roadNet.doorSpur[id] : null;
+    const lot = WORLD.v4.lots[id];
+    const door = sp ? { x: sp.x, y: sp.y } : lot ? { x: lot.x, y: lot.y + 40 } : null;
+    if (!door) return null;
+    // in front of the door is toward -j: screen (−64, +32) per cell
+    const front = (d, s) => ({ x: door.x - 64 * d + 40 * s, y: door.y + 32 * d + 20 * s, dir: 'NE' });
+    const staff = opts.staff ? [Object.assign({ dir: 'SW' }, opts.staff)] : [Object.assign(front(0.5, -0.6), { dir: 'S' })];
+    const line = opts.customers && opts.customers.length ? opts.customers.map((q) => Object.assign({ dir: 'NE' }, q)) : [front(1.2, 0.3), front(1.7, 0.6), front(2.2, 0.9), front(2.7, 1.2)];
+    this.places[id + ':in'] = { id: id + ':in', bld: id, kind: 'in', spots: [door], door, cap: 999, occ: 0 };
+    this.places[id + ':staff'] = { id: id + ':staff', bld: id, kind: 'staff', spots: staff, door, cap: staff.length, occ: 0 };
+    this.places[id + ':line'] = { id: id + ':line', bld: id, kind: 'line', spots: line, door, cap: line.length + 4, occ: 0 };
+    return this.places[id + ':in'];
+  }
+
+  // ================================================================ B's API (docs/v4_plan.md §17.3)
+  /** someone from the town comes by the next train (the mayor, founders, builders): handle.onArrive(actor => …) */
+  sendByTrain(kind, opts) { return this.nb.sendByTrain(kind, opts); }
+
+  /** n people move into lot homeId of the station district (a founder's household: opts.kind 'keeper' and
+   *  opts.citizen = the founder who came by train; a house: residents). opts.staff {x, y} / opts.customers
+   *  [{x, y}] = the shop's points (else made from the lot's door). Saved; they never ride the train. */
+  addDistrictHome(homeId, n, opts = {}) {
+    const out = [];
+    this.ensureLot(homeId, opts);
+    for (let k = 0; k < n; k++) {
+      const kind = k === 0 && opts.kind === 'keeper' ? 'keeper' : 'resident';
+      let c;
+      if (k === 0 && opts.citizen && this.citizens[opts.citizen.id] === opts.citizen) {
+        c = opts.citizen;
+        c.flags &= ~(F.ON_TRAIN | F.IN_VILLAGE);
+        c.sent = false; c.visitor = null;
+        this.toDistrict(c, kind, homeId);
+        if (Number.isFinite(opts.x)) { c.x = opts.x; c.y = opts.y; }
+      } else {
+        c = this.addCitizen(kind, homeId);
+        const pl = this.places[homeId + ':in'];
+        if (pl) { c.x = pl.door.x; c.y = pl.door.y; }
+      }
+      this.nb.extra.push([c.id, c.kind, homeId]);
+      if (this.started) this.settle(c, this.T, k === 0 && Number.isFinite(opts.x) ? { x: c.x, y: c.y, bld: null } : null);
+      out.push(c);
+    }
+    return out;
+  }
+
+  /** people of the station district (founders' households + house residents) */
+  districtPeople() { let n = 0; for (const c of this.citizens) if (c.flags & F.DISTRICT) n++; return n; }
+  /** people of the town itself (100, 120 after 읍) */
+  townPeople() { return this.citizens.length - this.districtPeople(); }
+
+  /** the town grows to n people (읍): the newcomers come on the next trains and move into the apartments */
+  growTo(n, instant) {
+    const kinds = ['adult', 'student', 'adult', 'elder', 'teen', 'adult', 'student', 'elder', 'adult', 'adult'];
+    const apts = this.nb.buildings.filter((b) => b.role === 'home');
+    const out = [];
+    while (this.townPeople() < Math.min(n, 200)) {
+      const k = this.citizens.length;
+      const c = this.addCitizen(kinds[k % kinds.length], apts.length ? apts[k % apts.length].id : null);
+      this.nb.extra.push([c.id, c.kind, c.home]);
+      out.push(c);
+      if (instant || !this.nb.trainRuns()) { if (this.started) this.settle(c, this.T); continue; }
+      // on the next train to the town, with their luggage
+      c.flags |= F.ON_TRAIN; c.state = 'away'; c.act = 'train'; c.newcomer = true;
+      this.nb.newcomers.push(c);
+    }
+    return out;
+  }
+
+  /** people near (x, y) (within r ground px, outdoors) come and stand in a ring around it for `secs` s (the
+   *  ceremony); returns how many came */
+  gather(x, y, r = 900, n = 30, secs = 14) {
+    const id = 'gather:' + (this._gk = (this._gk || 0) + 1);
+    const ring = [];
+    for (let k = 0; k < n; k++) {
+      const a = (k / Math.max(1, n)) * Math.PI * 2 + 0.3, rr = 150 + (k % 3) * 46;
+      const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * 0.5;
+      ring.push({ x: px, y: py, dir: DIR_NAME[dirFromVec(x - px, y - py)] });
+    }
+    this.places[id] = { id, bld: null, kind: 'gather', spots: ring, door: ring[0], cap: n, occ: 0 };
+    const h = this.hourOf(this.T), p = { x: 0, y: 0, dx: 0, dy: 0 };
+    // the nearest people outdoors come (they stay `secs` once there, then go back to their day)
+    const near = [];
+    for (const c of this.citizens) {
+      if ((c.flags & (F.ON_TRAIN | F.IN_VILLAGE)) || c.state === 'in' || c.state === 'away' || c.over) continue;
+      this.pos(c, p);
+      const d = Math.hypot(p.x - x, (p.y - y) * 2);
+      if (d <= r) near.push([d, c, p.x, p.y]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    let k = 0;
+    for (const [, c, px, py] of near) {
+      if (k >= n) break;
+      c.x = px; c.y = py;
+      c.over = { place: id, act: 'cheer', mode: 'out', s: h, e: h + secs / HOUR, secs, run: 1.4 };
+      this.go(c, c.over, this.T, { x: px, y: py, bld: null });
+      k++;
+    }
+    return k;
   }
 
   population() { return this.citizens.length; }
@@ -219,13 +361,14 @@ export class TownSim {
     switch (c.kind) {
       case 'student': case 'teen': {
         const S0 = L.school;
+        // (kids hurry to school and run back in when the bell rings)
         seg(0, S0.leave + j * 0.25, 'sleep', home, 'in');
-        seg(S0.leave + j * 0.25, S0.bell, 'school', 't_school:gather', 'out');
-        seg(S0.bell, S0.recess, 'class', 't_school:in', 'in');
-        seg(S0.recess, S0.recessEnd, 'recess', 't_school:play', 'out');
-        seg(S0.recessEnd, S0.lunch, 'class', 't_school:in', 'in');
-        seg(S0.lunch, S0.lunchEnd, 'lunch', 't_school:play', 'out');
-        seg(S0.lunchEnd, S0.out, 'class', 't_school:in', 'in');
+        seg(S0.leave + j * 0.25, S0.bell, 'school', 't_school:gather', 'out', { run: 1.25 });
+        seg(S0.bell, S0.recess, 'class', 't_school:in', 'in', { run: 1.4 });
+        seg(S0.recess, S0.recessEnd, 'recess', 't_school:play', 'out', { run: 1.4 });
+        seg(S0.recessEnd, S0.lunch, 'class', 't_school:in', 'in', { run: 1.4 });
+        seg(S0.lunch, S0.lunchEnd, 'lunch', 't_school:play', 'out', { run: 1.3 });
+        seg(S0.lunchEnd, S0.out, 'class', 't_school:in', 'in', { run: 1.4 });
         if (c.kind === 'teen') {
           seg(S0.out, L.teen.cafe, 'play', pick(kidFun) || home, 'out', { run: 1.4 });
           seg(L.teen.cafe, L.teen.home + j * 0.3, 'cafe', pick(['t_cafe:line', 't_book:line'].filter((p) => this.places[p])) || home, 'out');
@@ -294,6 +437,33 @@ export class TownSim {
         else seg(E.home + j * 0.3, 24, 'home', home, 'in');
         break;
       }
+      case 'keeper': {
+        // (B) a founded shop's keeper: behind the counter of the shop 08–19, lunch at the café / restaurant
+        const S0 = L.shop, w = c.work || c.home;
+        seg(0, S0.open + j * 0.2, 'sleep', home, 'in');
+        seg(S0.open + j * 0.2, S0.lunch, 'work', w + ':staff', 'out');
+        seg(S0.lunch, S0.lunchEnd, 'lunch', this.places['t_cafe:line'] ? 't_cafe:line' : w + ':in', 'out');
+        seg(S0.lunchEnd, S0.close + 0.5 + j * 0.2, 'work', w + ':staff', 'out');
+        seg(S0.close + 0.5 + j * 0.2, 24, 'home', home, 'in');
+        break;
+      }
+      case 'resident': {
+        // (B) a station-district resident: errands at the district's shops and the town's, a walk, home
+        const A = L.adult;
+        const lines = Object.keys(this.places).filter((k) => /^lot.*:line$/.test(k) && this.citizens.some((q) => q.kind === 'keeper' && q.work + ':line' === k));
+        const errands = lines.concat(shopsLine.slice(0, 3));
+        seg(0, A.out + 0.4 + j * 0.3, 'sleep', home, 'in');
+        let h = A.out + 0.4 + j * 0.3;
+        while (h < A.home - 0.5) {
+          const roll = r();
+          const len = roll < 0.5 ? (A.errandMin + r() * (A.errandMax - A.errandMin)) / 60 + 0.3 : roll < 0.75 ? 0.5 + r() * 0.5 : 0.8 + r() * 0.8;
+          const place = roll < 0.5 ? pick(errands) : roll < 0.75 ? pick(parkSpots.concat(benches)) : null;
+          seg(h, Math.min(A.home, h + len), roll < 0.5 ? 'errand' : roll < 0.75 ? 'walk' : 'home', place || home, place ? 'out' : 'in');
+          h += len;
+        }
+        seg(h, 24, 'home', home, 'in');
+        break;
+      }
       case 'builder': {
         seg(0, 8, 'sleep', home, 'in');
         seg(8, 18, 'work', this.places['t_hall:gather'] ? 't_hall:gather' : 't_hall:in', 'out');
@@ -301,15 +471,25 @@ export class TownSim {
         break;
       }
       default: {     // adult
+        // out from 08:00 to 19:00: errands at the town's shops (6–15 min each), a walk or a bench in the park,
+        // the café, now and then a while at home. (An errand / a walk in the afternoon can turn into a trip to
+        // Frost Village: tripWanted.)
         const A = L.adult;
         seg(0, A.out + j * 0.3, 'sleep', home, 'in');
         let h = A.out + j * 0.3;
-        const n = 2 + Math.floor(r() * 2);
-        for (let k = 0; k < n && h < A.home - 0.6; k++) {
-          const stay = (A.errandMin + r() * (A.errandMax - A.errandMin)) / 60;
-          seg(h, h + stay + 0.35, 'errand', pick(shopsLine.concat(['t_post:line', 't_clinic:line']).filter((p) => this.places[p])) || home, 'out');
-          h += stay + 0.35;
-          if (r() < 0.5) { seg(h, h + 0.8, 'home', home, 'in'); h += 0.8; }
+        const errands = shopsLine.concat(['t_post:line', 't_clinic:line']).filter((p) => this.places[p]);
+        let last = '';
+        while (h < A.home - 0.45) {
+          const roll = r();
+          let len, act, place, mode = 'out';
+          if (roll < 0.45 || last === 'home') { len = (A.errandMin + r() * (A.errandMax - A.errandMin)) / 60 + 0.35; act = 'errand'; place = pick(errands); }
+          else if (roll < 0.68) { len = 0.4 + r() * 0.5; act = 'walk'; place = pick(parkSpots.concat(benches)); }
+          else if (roll < 0.8) { len = 0.5; act = 'cafe'; place = this.places['t_cafe:line'] ? 't_cafe:line' : pick(errands); }
+          else { len = 0.6 + r() * (A.homeStay || 0.8); act = 'home'; place = home; mode = 'in'; }
+          len = Math.min(len, A.home - h);
+          seg(h, h + len, act, place || home, place ? mode : 'in');
+          h += len;
+          last = act;
         }
         seg(h, A.home + j * 0.2, 'home', home, 'in');
         if (r() < A.walkChance) { seg(A.home + j * 0.2, A.walkEnd, 'walk', pick(parkSpots.concat(benches)) || home, 'out'); seg(A.walkEnd, 24, 'home', home, 'in'); }
@@ -363,9 +543,12 @@ export class TownSim {
     const k = pl.spots.length;
     const idx = (c.id * 7 + pl.occ * 3) % k;
     let s = pl.spots[idx];
-    // a crowd beyond the spots: spread around the spot a little
-    const over = Math.floor(pl.occ / Math.max(1, k));
-    if (over > 0) s = { x: s.x + ((c.id * 37) % 60 - 30) * 0.8, y: s.y + ((c.id * 53) % 40 - 20) * 0.6, dir: s.dir };
+    // a crowd beyond the spots: rings around the spot (wider for every extra round), so nobody stands on anyone
+    const over = Math.floor((pl.occ - 1) / Math.max(1, k));
+    if (over > 0) {
+      const ang = c.id * 2.399963 + pl.occ * 0.7, rad = 22 + 20 * over;
+      s = { x: s.x + Math.cos(ang) * rad, y: s.y + Math.sin(ang) * rad * 0.5, dir: s.dir };
+    }
     c.spot = s;
     return s;
   }
@@ -378,6 +561,8 @@ export class TownSim {
     c.act = sg.act; c.mode = sg.mode;
     c.state = sg.mode === 'in' ? 'in' : 'out';      // ('door': the postman stands at the door for a moment)
     const d = this.dayOf(T);
+    // (a gather: `secs` from arriving)
+    if (sg === c.over && sg.secs) { this.schedule(c, T + sg.secs); return; }
     this.schedule(c, Math.max(T + 0.5, this.at(d, sg.e)));
   }
 
@@ -388,7 +573,7 @@ export class TownSim {
     if (c.flags & (F.ON_TRAIN | F.IN_VILLAGE)) return;
     if (c.flags & F.WAITING) { this.schedule(c, T + 5); return; }        // waiting for the train: Neighbours decides
     if (c.state === 'walk') {
-      const sg = c.plan[c.seg];
+      const sg = c.over || c.plan[c.seg];
       // a trip to Frost Village: wait on the platform for the train
       if (c.trip && c.act === 'trip') { c.state = 'out'; c.x = c.spot.x; c.y = c.spot.y; c.route = null; c.flags |= F.WAITING; this.schedule(c, T + 5); return; }
       this.arriveAt(c, sg, T, false);
@@ -396,6 +581,7 @@ export class TownSim {
       return;
     }
     // segment over: the next one
+    if (c.over) { const pl = this.places[c.over.place]; c.over = null; if (pl && /^gather:/.test(pl.id) && pl.occ <= 1) delete this.places[pl.id]; }
     const d = this.dayOf(T), h = this.hourOf(T);
     if (c.day !== d || !c.plan) { c.plan = this.planDay(c, d); c.day = d; }
     let i = this.segAt(c.plan, h);
@@ -504,7 +690,7 @@ export class TownSim {
     this.T = T;
     // events due
     let pops = 0;
-    while (this.heap.size && this.heap.peek()[0] <= T && pops < 200) {
+    while (this.heap.size && this.heap.peek()[0] <= T && pops < 40) {      // (spread: at midnight everyone plans a new day)
       const [wt, id] = this.heap.pop();
       const c = this.citizens[id];
       if (!c || c.wakeT !== wt) continue;
@@ -539,7 +725,7 @@ export class TownSim {
       if (c.state === 'walk') walking++; else out++;
       this.pos(c, p);
       const mm = m + (c.body ? 60 : 0);
-      const inView = townOpen && p.x > v.x - mm && p.x < v.right + mm && p.y > v.y - mm && p.y - 110 < v.bottom + mm;
+      const inView = (townOpen || p.x < this.townX) && p.x > v.x - mm && p.x < v.right + mm && p.y > v.y - mm && p.y - 110 < v.bottom + mm;
       c.lod = inView ? 0 : (p.x > v.x - near && p.x < v.right + near && p.y > v.y - near && p.y < v.bottom + near ? 1 : 2);
       if (inView) { c._d = Math.abs(p.x - cx) + Math.abs(p.y - cy) * 2; want.push(c); }
     }
@@ -575,8 +761,9 @@ export class TownSim {
       b.sprite.anims.timeScale = Math.min(1.5, c.spd / 75);
     } else {
       b.vx = b.vy = 0;
-      if (c.spot && c.spot.dir) { const want = DIR_INDEX[c.spot.dir]; if (want !== undefined && b.dir !== want) { b.dir = want; b.play(b.animName || 'idle', true, true); } }
-      const anim = c.act === 'recess' || c.act === 'play' ? (((c.id + Math.floor(this.T / 3)) % 3) === 0 ? 'happy' : 'idle') : c.act === 'lunch' || c.act === 'cafe' ? (((c.id + Math.floor(this.T / 4)) % 4) === 0 ? 'talk' : 'idle') : 'idle';
+      // face the spot's way once on arriving (an anim drawn only in S / SE / E may turn them after that)
+      if (c.spot && c.spot.dir && b._faced !== c.spot) { b._faced = c.spot; const want = DIR_INDEX[c.spot.dir]; if (want !== undefined && b.dir !== want) { b.dir = want; b.play(b.animName || 'idle', true, true); } }
+      const anim = c.act === 'cheer' ? (((c.id + Math.floor(this.T / 2)) % 3) === 0 ? 'wave' : 'happy') : c.act === 'recess' || c.act === 'play' ? (((c.id + Math.floor(this.T / 3)) % 3) === 0 ? 'happy' : 'idle') : c.act === 'lunch' || c.act === 'cafe' ? (((c.id + Math.floor(this.T / 4)) % 4) === 0 ? 'talk' : 'idle') : 'idle';
       b.play(anim);
       b.sprite.anims.timeScale = 1;
     }
@@ -659,6 +846,7 @@ export class TownSim {
   alight(c, T, at) {
     c.flags &= ~(F.ON_TRAIN | F.IN_VILLAGE | F.WAITING);
     c.trip = false;
+    if (c.newcomer) { c.newcomer = false; c.visits = (c.visits || 0) - 1; }       // (moved in: not back from a visit)
     c.visits = (c.visits || 0) + 1;
     if (c.visits >= (this.B.visitors.regularAt || 3)) c.regular = true;
     c.x = at.x; c.y = at.y;
@@ -689,4 +877,5 @@ export class TownSim {
 }
 
 const DIR_INDEX = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
+const DIR_NAME = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
 export { DIR_BASE };

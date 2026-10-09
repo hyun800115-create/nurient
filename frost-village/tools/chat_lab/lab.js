@@ -197,7 +197,7 @@ function entryCard(x) {
   const card = h('article', 'entry');
   const head = h('div', 'eh');
   head.append(img(assets.portrait(x.o), ''));
-  const who = h('span');
+  const who = h('span', 'wholine');
   const p = v.personas[x.o];
   const nm = p ? p.short : '누군가';
   who.append(h('span', 'who', nm), document.createTextNode(x.k === 'g' ? ko.particle(nm, '이') + ' 시작한 소문' : '의 새 대사'));
@@ -221,8 +221,8 @@ function entryCard(x) {
       for (const n of kn.slice(0, 7)) { const f = img(assets.portrait(n[0]), ''); f.title = v.personas[n[0]] ? v.personas[n[0]].short : ''; faces.append(f); }
       row.append(faces);
       const hops = kn.map((n) => (n[2] && v.personas[n[2]] ? refName(v.personas, '__narrator__', n[2]) : '?') + '→' + (v.personas[n[0]] ? v.personas[n[0]].short : '?'));
-      row.append(document.createTextNode(kn.length + '명이 알아요 · ' + hops.slice(0, 3).join(', ') + (hops.length > 3 ? ' …' : '')));
-    } else row.append(document.createTextNode(fresh > 0 ? '아직 아무도 몰라요. 시간이 흐르면 친한 주민에게 퍼져요.' : '이제는 잊혀 가는 이야기예요.'));
+      row.append(h('span', 'kt', kn.length + '명이 알아요 · ' + hops.slice(0, 3).join(', ') + (hops.length > 3 ? ' …' : '')));
+    } else row.append(h('span', 'kt', fresh > 0 ? '아직 아무도 몰라요. 시간이 흐르면 친한 주민에게 퍼져요.' : '이제는 잊혀 가는 이야기예요.'));
     card.append(row);
   }
   return card;

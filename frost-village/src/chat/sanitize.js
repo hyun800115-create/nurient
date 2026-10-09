@@ -47,7 +47,7 @@ export function cleanSpoken(s) {
   return String(s || '')
     .replace(/\*\*?|__|`+|#+\s/g, '')
     .replace(/^\s*["'“”‘’「」『』]+|["'“”‘’「」『』]+\s*$/g, '')
-    .replace(/^\s*[^:：\s]{1,10}\s*[:：]\s*/, (m) => (/^\s*(촌장|chief|나|저)/i.test(m) ? '' : m.includes('http') ? m : ''))
+    .replace(/^\s*[가-힣A-Za-z]{1,8}(?:\s[가-힣A-Za-z]{1,8})?\s*[:：](?!\/\/)\s*/, '')   // a speaker label ("점원 미소: …")
     .replace(/\((웃음|미소|웃으며|한숨|속삭이며)[^)]*\)/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -120,7 +120,7 @@ export function slotify(text, personas, chiefName = '촌장님') {
 export function renderSlots(tpl, speaker, personas, level, chiefName = '촌장님', self3 = null) {
   const txt = String(tpl || '').replace(/\{@([a-z_]+)(?::([^}]+))?\}/g, (all, key, form) => {
     if (key === speaker) return pronoun(form || '', level);
-    if (key === self3) return form ? josa('자기', form) : '자기';      // "미소가 그러던데, 촌장님이 자기한테 …"
+    if (key === self3) return form && form !== '의' ? josa('자기', form) : '자기';      // "미소가 그러던데, 촌장님이 자기한테 …"
 
     const name = key === 'chief' ? chiefName : refName(personas, speaker, key, chiefName) || '누군가';
     return form ? josa(name, form) : name;
@@ -146,9 +146,12 @@ const asList = (v, n) => (Array.isArray(v) ? v : typeof v === 'string' && v ? [v
 export function sanitizeResult(raw, { personas, self, chiefName = '촌장님', replyMax = 140 } = {}) {
   const dropped = [];
   const r = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  // checked on the raw text too, so cleaning can never hide a link, a bad word or out-of-world talk
+  const okRaw = (v) => typeof v === 'string' && isClean(v) && isInWorld(v);
   let reply = cleanSpoken(typeof r.reply === 'string' ? r.reply : typeof r.text === 'string' ? r.text : '');
   reply = capLine(reply, replyMax);
-  if (!reply || !isClean(reply) || hangulRatio(reply) < 0.5 || /```|https?:/.test(reply)) { dropped.push('reply'); reply = ''; }
+  const rawReply = typeof r.reply === 'string' ? r.reply : typeof r.text === 'string' ? r.text : '';
+  if (!reply || !isClean(reply) || !isClean(rawReply) || /https?:|www\.|```/.test(rawReply) || hangulRatio(reply) < 0.5 || /```|https?:/.test(reply)) { dropped.push('reply'); reply = ''; }
   const out = {
     reply,
     emote: EMOTES.includes(r.emote) ? r.emote : null,
@@ -158,10 +161,10 @@ export function sanitizeResult(raw, { personas, self, chiefName = '촌장님', r
     memory: '', facts: [], topics: [], gossip: [], lines: [], favor: null,
   };
   const mem = capLine(cleanSpoken(r.memory), 60);
-  if (mem && isSpeech(mem, { max: 60 })) out.memory = mem; else if (r.memory) dropped.push('memory');
+  if (mem && okRaw(r.memory) && isSpeech(mem, { max: 60 })) out.memory = mem; else if (r.memory) dropped.push('memory');
   for (const f of asList(r.facts, 2)) {
     const t = capLine(cleanSpoken(f), 50);
-    if (t && isSpeech(t, { max: 50 }) && /촌장/.test(t)) out.facts.push(t); else dropped.push('fact');
+    if (t && okRaw(f) && isSpeech(t, { max: 50 }) && /촌장/.test(t)) out.facts.push(t); else dropped.push('fact');
   }
   for (const tp of asList(r.topics, 3)) {
     const t = String(tp || '').replace(/[^가-힣a-zA-Z0-9 ]/g, '').trim().slice(0, 8);
@@ -169,7 +172,7 @@ export function sanitizeResult(raw, { personas, self, chiefName = '촌장님', r
   }
   for (const g of asList(r.gossip, 3)) {
     const t = capLine(cleanSpoken(g), 70);
-    if (t && isSpeech(t, { max: 70, min: 6 }) && /(대|래|대요|래요|다더라|더라)[.!~…]*$/.test(t)) {
+    if (t && okRaw(g) && isSpeech(t, { max: 70, min: 6 }) && /(대|래|대요|래요|다더라|더라)[.!~…]*$/.test(t)) {
       // the attribution is added by whoever repeats it, so drop a leading "X가 그러는데"
       const g2 = slotify(t, personas || {}, chiefName).replace(/^\{@[a-z_]+(:[^}]*)?\}\s*(그러는데|그러던데|말하길|말하는데|한테 들었는데)[,\s]*/, '');
       if (g2.length >= 6) out.gossip.push(g2);
@@ -178,13 +181,13 @@ export function sanitizeResult(raw, { personas, self, chiefName = '촌장님', r
   }
   for (const l of asList(r.lines, 2)) {
     const t = capLine(cleanSpoken(l), 70);
-    if (t && isSpeech(t, { max: 70, min: 4 })) out.lines.push(slotify(t, personas || {}, chiefName));
+    if (t && okRaw(l) && isSpeech(t, { max: 70, min: 4 })) out.lines.push(slotify(t, personas || {}, chiefName));
     else dropped.push('line');
   }
   if (r.favor && typeof r.favor === 'object') {
     const ask = capLine(cleanSpoken(r.favor.ask), 70);
     const item = typeof r.favor.item === 'string' ? r.favor.item.replace(/[^가-힣 ]/g, '').trim().slice(0, 8) : '';
-    if (ask && isSpeech(ask, { max: 70 })) out.favor = { ask, item: item || null }; else dropped.push('favor');
+    if (ask && okRaw(r.favor.ask) && isSpeech(ask, { max: 70 })) out.favor = { ask, item: item || null }; else dropped.push('favor');
   }
   // gossip about the resident who just talked uses their own slot; keep at most 2
   out.gossip = out.gossip.filter((g, i, a) => a.indexOf(g) === i).slice(0, 2);

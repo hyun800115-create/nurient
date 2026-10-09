@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>눈꽃말 목소리</title>
+<style>
+:root{--bg:#F4F7FB;--card:#FFF8EC;--ink:#2B2F3A;--accent:#3D8BE0;--accent2:#E0729A;--muted:#6b7280;--chip:#E8EEF7;--line:#dfe5ee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b2130;--card:#262e40;--ink:#eef2f8;--accent:#6aa9f0;--accent2:#f08fb3;--muted:#9aa3b2;--chip:#323c52;--line:#36405a}}
+:root[data-theme="dark"]{--bg:#1b2130;--card:#262e40;--ink:#eef2f8;--accent:#6aa9f0;--accent2:#f08fb3;--muted:#9aa3b2;--chip:#323c52;--line:#36405a}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font:15px/1.45 system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:1100px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px} h2{font-size:17px;margin:24px 0 8px} p{color:var(--muted);margin:4px 0}
+code{overflow-wrap:anywhere}
+.panel{background:var(--card);border-radius:14px;padding:12px 14px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+textarea{width:100%;min-height:58px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;padding:8px}
+select,input[type=number]{border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;padding:6px 8px;min-height:38px}
+button{border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-size:14px;padding:0 14px;min-height:38px;cursor:pointer}
+button.alt{background:var(--chip);color:var(--ink)} button.pink{background:var(--accent2)}
+button:disabled{opacity:.45;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:10px}
+.voice h3{margin:0 0 2px;font-size:16px} .voice small{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chips button{min-height:32px;padding:0 9px;border-radius:16px;font-size:13px;background:var(--chip);color:var(--ink)}
+.chips button.emo{background:var(--accent2);color:#fff}
+#said{font-size:18px;margin-top:8px;min-height:28px}
+#said b{color:var(--accent2)}
+#status{font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.tablewrap{overflow-x:auto}
+.mini{font-size:12px;color:var(--muted)}
+</style></head><body><main>
+<h1>눈꽃말 목소리 미리듣기 <span class="mini">(village language voices)</span></h1>
+<p>우리 마을 말 <b>눈꽃말</b>로 주민들이 재잘재잘! 게임에서 쓰는 진짜 재생 프로그램(<code>src/voice/VillageVoice.js</code>)으로 들려줍니다.
+게임 로컬 서버로 열어 주세요: <code>node tools/test/serve.mjs 8000</code> → <code>http://localhost:8000/docs/previews/voice_preview.html</code></p>
+<p id="status">불러오는 중… (loading)</p>
+
+<div class="panel">
+  <b>말풍선 글을 눈꽃말로 들어 보기</b> <span class="mini">한국어로 쓰면 그 주민 목소리의 눈꽃말로 바뀌어요. 같은 글은 늘 같은 소리!</span>
+  <textarea id="text">안녕하세요 촌장님! 오늘 생선 많이 잡았어요~</textarea>
+  <div class="row" style="margin-top:6px">
+    <label>목소리 <select id="voice"></select></label>
+    <label>감정 <select id="emotion"><option value="">자동 (글에서)</option></select></label>
+    <label title="같은 목소리라도 주민마다 조금씩 달라요">주민 번호 <input id="rid" type="number" value="1" min="0" max="999" style="width:80px"></label>
+    <button id="speak">▶ 말하기</button>
+    <button id="again" class="alt">다른 주민으로</button>
+  </div>
+  <div id="said"></div>
+  <div class="chips" id="samples"></div>
+</div>
+
+<div class="panel">
+  <div class="row">
+    <button id="crowd" class="pink">▶ 마을 수다 (여러 명이 동시에)</button>
+    <button id="duck" class="alt">효과음이 나면? (목소리 줄이기)</button>
+    <button id="stop" class="alt">■ 멈추기</button>
+    <label>목소리 크기 <input id="vol" type="range" min="0" max="1" step="0.05" value="1"></label>
+    <label class="mini"><input id="gamevol" type="checkbox"> 게임 속 크기 (작게, 배경음악 뒤)</label>
+  </div>
+  <p class="mini">한 번에 2명까지만 말해요. 나머지는 잠깐 기다리거나 (1.2초) 조용히 넘어가요. 지금 말하는 중: <b id="active">0</b>, 기다리는 중: <b id="pending">0</b></p>
+</div>
+
+<h2>목소리 10가지 <span class="mini">(분홍 = 감정 소리, 회색 = 낱말)</span></h2>
+<div class="grid" id="voices"></div>
+
+<h2>눈꽃말 사전 <span class="mini">(전체는 docs/눈꽃말_사전.md)</span></h2>
+<div class="panel tablewrap"><table id="dict"><thead><tr><th>눈꽃말</th><th>읽기</th><th>뜻</th><th>들어 보기</th></tr></thead><tbody></tbody></table></div>
+
+<script type="module">
+import { VillageVoice, VOICE_TYPES, EMOTIONS } from '../../src/voice/VillageVoice.js';
+import { WebAudioVoiceBackend } from '../../src/voice/webaudio.js';
+import { WORDS } from '../../src/voice/lexicon.js';
+
+const BASE = '../../assets/';
+const $ = (id) => document.getElementById(id);
+const EMO_KO = { greet: '인사', laugh: '웃음', surprise: '놀람', excited: '신남', sad: '슬픔', grumpy: '투덜', question: '질문', thanks: '고마워', yummy: '냠냠', oops: '앗' };
+const SAMPLES = ['안녕하세요!', '고마워요 촌장님!', '오늘 정말 춥다…', '이 생선 얼마예요?', 'ㅋㅋㅋ 너무 웃겨', '흥, 시끄러워.', '우와! 눈사람이다!', '배고파 ㅠㅠ', '빵 맛있다~', '같이 놀자!', '앗, 깜빡했네!', '잘 가요~ 내일 또 봐요!'];
+let man, ctx, vv, buffers = {}, last = 0;
+const ogg = (() => { try { return new Audio().canPlayType('audio/ogg; codecs="vorbis"') !== ''; } catch (e) { return false; } })();
+
+function ac() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); return ctx; }
+
+async function loadAll() {
+  man = await (await fetch(BASE + 'voice/manifest.json')).json();
+  const c = ac();
+  vv = new VillageVoice({ manifest: man, maxVoices: 2 });
+  vv.backend = new WebAudioVoiceBackend(c, c.destination, (k) => buffers[k] || null, man);
+  applyVolume();
+  const keys = Object.keys(man.audio);
+  let n = 0;
+  await Promise.all(keys.map(async (k) => {
+    const f = man.audio[k].files[ogg ? 0 : 1];
+    const ab = await (await fetch(BASE + f)).arrayBuffer();
+    buffers[k] = await new Promise((ok, no) => c.decodeAudioData(ab, ok, no));
+    $('status').textContent = `목소리 불러오는 중 ${++n}/${keys.length}`;
+  }));
+  $('status').textContent = `준비 완료! 목소리 ${keys.length}개, 낱말 ${Object.keys(WORDS).length}개 (${ogg ? 'ogg' : 'mp3'})`;
+  window.__voice = { vv, man, buffers, ctx: c, VillageVoice, WebAudioVoiceBackend };     // for tools/test/voice_preview.mjs
+  const tick = (t) => { const dt = last ? Math.min(0.1, (t - last) / 1000) : 0.016; last = t; vv.update(dt); $('active').textContent = vv.activeCount; $('pending').textContent = vv.pendingCount; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+
+function applyVolume() {
+  if (!vv) return;
+  vv.baseGain = $('gamevol').checked ? 0.4 : 1.0;   // the game uses 0.4 behind the music; the page plays louder
+  vv.setVolume(+$('vol').value);
+}
+
+function speaker() { return { voice: $('voice').value, voiceId: $('voice').value + '#' + $('rid').value }; }
+
+function show(plan, text) {
+  if (!plan) { $('said').textContent = '(소리 없음)'; return; }
+  $('said').innerHTML = `“${text.replace(/</g, '&lt;')}” → <b>${plan.items.map((i) => i.hangul).join(' ')}</b> <span class="mini">${plan.mood} · ${plan.duration.toFixed(2)}초</span>`;
+}
+
+function say(text, sp, opts = {}) {
+  ac();
+  if (!vv) return;
+  const plan = vv.plan(text, sp, opts);
+  vv.speak(text, sp, Object.assign({ priority: 1 }, opts));
+  return plan;
+}
+
+function playClip(type, id) {
+  ac();
+  const a = man.audio['voice_' + type], m = a.markers[id];
+  vv.backend.setChannelGain(9, 1, 0.005);             // a channel of its own (the runtime uses 0..2)
+  vv.backend.play('voice_' + type, m.start, m.dur, ctx.currentTime + 0.02, 1, a.volume, 9);
+}
+
+function build() {
+  const vt = man.voices;
+  for (const t of VOICE_TYPES) $('voice').insertAdjacentHTML('beforeend', `<option value="${t}">${vt[t].ko}</option>`);
+  for (const e of EMOTIONS) $('emotion').insertAdjacentHTML('beforeend', `<option value="${e}">${EMO_KO[e]}</option>`);
+  for (const s of SAMPLES) { const b = document.createElement('button'); b.textContent = s; b.onclick = () => { $('text').value = s; $('speak').click(); }; $('samples').append(b); }
+  for (const t of VOICE_TYPES) {
+    const a = man.audio['voice_' + t], v = vt[t];
+    const card = document.createElement('div');
+    card.className = 'panel voice';
+    card.innerHTML = `<h3>${v.ko} <span class="mini">${t}</span></h3><small>${v.desc} · 기본 높이 ${v.f0} Hz · 빠르기 ×${v.speed}</small>`;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    const mk = Object.entries(a.markers).sort((x, y) => (x[1].kind === 'emote') - (y[1].kind === 'emote') || x[1].start - y[1].start);
+    for (const [id, m] of mk.filter(([, m]) => m.kind === 'emote')) { const b = document.createElement('button'); b.className = 'emo'; b.textContent = `${EMO_KO[m.emote]} ${m.say}`; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b>`; }; chips.append(b); }
+    for (const [id, m] of mk.filter(([, m]) => m.kind !== 'emote')) { const b = document.createElement('button'); b.textContent = m.say; b.title = (WORDS[id] && WORDS[id].ko) || id; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b> = ${b.title}`; }; chips.append(b); }
+    const hello = document.createElement('button'); hello.textContent = '▶ 인사하기'; hello.style.marginTop = '8px';
+    hello.onclick = () => show(say('안녕하세요! 오늘 날씨 정말 좋네요~', { voice: t, voiceId: t + '#card' }), '안녕하세요! 오늘 날씨 정말 좋네요~');
+    card.append(chips, hello);
+    $('voices').append(card);
+  }
+  const tb = $('dict').querySelector('tbody');
+  for (const id in WORDS) {
+    const w = WORDS[id];
+    const who = VOICE_TYPES.filter((t) => man.audio['voice_' + t].markers[id]);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${w.hangul}</b></td><td>${w.roman.replace(/\./g, '-')}</td><td>${w.ko}</td><td></td>`;
+    if (who.length) { const b = document.createElement('button'); b.className = 'alt'; b.textContent = '▶'; b.style.minHeight = '30px'; let i = 0; b.onclick = () => { playClip(who[i % who.length], id); i++; }; b.title = who.join(', '); tr.lastChild.append(b); }
+    else tr.lastChild.innerHTML = '<span class="mini">사전에만</span>';
+    tb.append(tr);
+  }
+}
+
+$('speak').onclick = () => { const t = $('text').value; show(say(t, speaker(), $('emotion').value ? { emotion: $('emotion').value } : {}), t); };
+$('again').onclick = () => { $('rid').value = (+$('rid').value + 1) % 1000; $('speak').click(); };
+$('stop').onclick = () => vv && vv.stopAll();
+$('duck').onclick = () => {
+  ac(); if (!vv) return;
+  const lines = ['오늘 생선 정말 많이 잡았어요! 빵도 구웠고요', '우와 촌장님 최고예요! 마을이 따뜻해졌어요'];
+  say(lines[0], { voice: 'adult_f', voiceId: 'duck1' }); say(lines[1], { voice: 'kid_boy', voiceId: 'duck2' });
+  setTimeout(() => { vv.duck(0.3, 0.8); const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7); o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.75); }, 600);
+};
+$('crowd').onclick = () => {
+  ac(); if (!vv) return;
+  const cast = [['kid_boy', '같이 놀자!'], ['adult_f', '빵 사세요~ 갓 구웠어요!'], ['elder_m', '허허, 오늘 참 춥구먼…'], ['kid_girl', '우와! 눈 온다!'], ['big_gruff', '흥! 나무 다 쪼갰다.'], ['sweet', '고마워요~'], ['adult_m', '생선 있어요?'], ['squeaky', '야호! 야호!'], ['elder_f', '아이고, 우리 강아지~'], ['chief', '다들 수고했어요!']];
+  cast.forEach(([t, line], i) => setTimeout(() => say(line, { voice: t, voiceId: t + '#crowd' }, { priority: 0 }), i * 450));
+};
+$('vol').oninput = applyVolume; $('gamevol').onchange = applyVolume;
+document.addEventListener('pointerdown', () => ac(), { once: true });
+loadAll().then(build).catch((e) => { $('status').textContent = '불러오기 실패: ' + e + ' — http:// 로 열어 주세요 (file:// 는 안 돼요)'; });
+</script>
+</main></body></html>

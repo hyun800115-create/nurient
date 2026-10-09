@@ -334,21 +334,23 @@ export const BALANCE = {
     //    inviteAfter = 첫 가게가 안 열려도 첫 기차 뒤 이만큼(초) 지나면 촌장님이 초대하러 와요
     town: { people: 100, peopleRank2: 120, seed: 2611, walk: 70, tripChance: 0.35, inviteAfter: 480 },
     // ── 낮과 밤: length = 하루 길이(초, 600 = 10분 = 한 시간 25초), startHour = 첫 기차가 오는 시각
-    //    darkness = 밤 어둡기(0~1), fade = 바뀌는 데 걸리는 시간(초)
+    //    darkness = 밤 어둡기(0~0.6, 0.45 = 화면이 70% 밝기까지만 어두워져요), fade = 바뀌는 데 걸리는 시간(초)
     //    dawn / dayStart / dusk / night = 새벽·낮·저녁·밤이 시작하는 시각, lightsOn / lightsOff = 가로등 켜고 끄는 시각
-    day: { on: true, length: 600, startHour: 8, darkness: 0.35, fade: 8,
+    day: { on: true, length: 600, startHour: 8, darkness: 0.45, fade: 8,
            dawn: 6, dayStart: 8, dusk: 17, night: 20, lightsOn: 19, lightsOff: 6.5 },
     // ── 성능: maxRigs = 자세히 그리는 주민 수 (가벼운 폰은 maxRigsLow), maxLite = 간단히 그리는 주민 수
     //    margin / near = 화면 밖 이만큼(px)까지 그리기 / 걷게 하기, maxGlows = 한 화면의 불빛 수
     perf: { maxRigs: 32, maxRigsLow: 16, maxLite: 40, margin: 120, near: 600, maxGlows: 40 },
     // ── 주민의 하루 (시각, 각자 ±0.4시간씩 달라요)
+    //    school.leave = 아이들이 집을 나서는 시각 (학교까지 걸어서 15초쯤 걸려요)
+    //    adult: out~home 사이에 가게 심부름(errandMin~errandMax 분)·공원 산책·카페·잠깐 집(homeStay 시간까지)을 섞어서 해요
     townLife: {
       jitter: 0.4,
-      school: { leave: 7.5, bell: 8, recess: 10.5, recessEnd: 10.83, lunch: 12, lunchEnd: 12.67, out: 15, home: 17.5 },
+      school: { leave: 7.2, bell: 8, recess: 10.5, recessEnd: 10.83, lunch: 12, lunchEnd: 12.67, out: 15, home: 17.5 },
       teen: { cafe: 15.5, home: 17.5 },
       shop: { open: 7.67, lunch: 12, lunchEnd: 12.67, close: 18.5 },
       civic: { start: 7.75, teacherEnd: 16, end: 18 },
-      adult: { out: 8, home: 19, walkChance: 0.3, walkEnd: 20, errandMin: 6, errandMax: 15, tripFrom: 13, tripTo: 18 },
+      adult: { out: 8, home: 19, walkChance: 0.3, walkEnd: 20, errandMin: 6, errandMax: 15, homeStay: 0.8, tripFrom: 13, tripTo: 18 },
       elder: { out: 9, cafe: 11, clinicChance: 0.2, home: 18, tripMorning: [9, 12], tripAfternoon: [14, 17] },
       night: { dozers: 3, patrol: 1 },
     },

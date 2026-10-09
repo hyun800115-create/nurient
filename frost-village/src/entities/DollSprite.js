@@ -14,6 +14,8 @@ const INV_MIRROR = { SE: 'SW', E: 'W', NE: 'NW' };
 const LITE_FAMILY = new Set(['top', 'bottom', 'hair', 'hat']);
 const HYST = 60;            // px: a doll that has a rig keeps it this much further out
 const FADE_IN = 0.25;       // s
+const FREE_MAX = 8;         // spare rigs kept for reuse (more are taken apart: the display list stays short)
+const LITE_KEEP = 7;        // images a spare lite rig keeps
 
 class DollAnims {
   constructor(d) {
@@ -159,8 +161,11 @@ export class DollSprite {
       let img = rig.imgs[k];
       if (!img) { img = this.pool.newImage(); rig.imgs.push(img); }
       if (img.frame !== fr) img.setFrame(fr);
-      if (l.head) img.setOrigin(T.headAnchor[0], T.headAnchor[1]); else img.setOrigin(T.anchor[0], T.anchor[1]);
-      if (l.tint == null) { if (img.isTinted) img.clearTint(); } else img.setTint(l.tint);
+      // (only what changed: setOrigin / setTint are not free on hundreds of images)
+      const hd = !!l.head;
+      if (img.__hd !== hd) { img.__hd = hd; if (hd) img.setOrigin(T.headAnchor[0], T.headAnchor[1]); else img.setOrigin(T.anchor[0], T.anchor[1]); }
+      const tn = l.tint == null ? -1 : l.tint;
+      if (img.__tn !== tn) { img.__tn = tn; if (tn < 0) img.clearTint(); else img.setTint(tn); }
       img.flipX = l.flip;
       img.__dx = l.dx; img.__dy = l.dy; img.__z = l.z; img.__sx = l.sx;
       if (!img.visible) img.setVisible(true);
@@ -168,6 +173,7 @@ export class DollSprite {
     }
     for (let j = k; j < rig.imgs.length; j++) if (rig.imgs[j].visible) rig.imgs[j].setVisible(false);
     rig.n = k;
+    rig.moved = true;
   }
 
   /** move the rig's images to where the doll stands */
@@ -178,6 +184,9 @@ export class DollSprite {
     const vis = this._visible && a > 0.003;
     const sx = this.scaleX, sy = this.scaleY;
     const y0 = this.y - this.lift;
+    // standing still with the same picture: nothing to do (most of the town at any moment)
+    if (!rig.moved && rig.px === this.x && rig.py === y0 && rig.pa === a && rig.pd === this._depth && rig.ps === sx && rig.pv === vis) return;
+    rig.moved = false; rig.px = this.x; rig.py = y0; rig.pa = a; rig.pd = this._depth; rig.ps = sx; rig.pv = vis;
     if (rig.tier === 2) {
       const d = rig.dot;
       d.setVisible(vis);
@@ -247,8 +256,15 @@ export class DollPool {
     const r = d.rig;
     if (!r) return;
     d.rig = null; d.tier = -1;
-    if (r.tier === 2) { r.dot.setVisible(false); this.freeDots.push(r); }
-    else { for (const img of r.imgs) if (img.visible) img.setVisible(false); r.n = 0; this.free.push(r); }
+    if (r.tier === 2) { r.dot.setVisible(false); if (this.freeDots.length < 96) this.freeDots.push(r); else r.dot.destroy(); }
+    else {
+      for (const img of r.imgs) if (img.visible) img.setVisible(false);
+      r.n = 0;
+      // enough spare rigs: take this one apart; a spare lite rig keeps only the images a lite rig needs
+      const drop = this.free.length >= FREE_MAX ? 0 : r.tier === 1 ? LITE_KEEP : r.imgs.length;
+      if (r.imgs.length > drop) { const gone = r.imgs.splice(drop); for (const img of gone) img.destroy(); this.stats.images -= gone.length; }
+      if (r.imgs.length || drop) this.free.push(r);
+    }
     if (d.shadow && d.shadow.visible) d.shadow.setVisible(false);
   }
 
@@ -270,6 +286,7 @@ export class DollPool {
     }
     d.tier = tier;
     d.dirty = true;
+    if (d.rig) d.rig.moved = true;
     if (fresh && !d.noFade) d.fade = 0;
     if (d.shadow && !d.shadow.visible && d._visible) d.shadow.setVisible(true);
   }

@@ -2,7 +2,12 @@
 ttl_logo.py - the 3D toy logo of the title screen (Blender, Cycles).
 
     /tmp/bvenv/bin/python tools/blender/ttl_logo.py -- --layout main --out DIR [--ppu 380] [--samples 40]
-                                                         [--pct 100] [--no-label]
+                       [--pct 100] [--no-label] [--parts | --parts-only] [--skip-existing] [--threads 2]
+
+    --parts       also render every piece ALONE (same camera) -> logo_<layout>_part<i>.png, so the
+                  title can drop the letters in one by one without holes where pieces overlap
+    --parts-only  only the pieces (ttl_pack.py composites the full logo from them; used for 'main')
+    --skip-existing  resume after an interruption (keeps PNGs already on disk)
 
 Layouts (all texts come from ttl_config.TITLE - rename the game there and re-run):
     main   "행복한" (small gold, sparkles) / "눈꽃마을" (big candy letters with snow caps, the 눈꽃
@@ -18,7 +23,6 @@ import argparse
 import json
 import math
 import os
-import random
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +30,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import bpy                                  # noqa: E402
-from mathutils import Vector, Matrix       # noqa: E402
+from mathutils import Vector               # noqa: E402
 
 import ttl_config as C                     # noqa: E402
 import ttl_lib as T                        # noqa: E402
@@ -62,7 +66,7 @@ def letter(ch, fpath, size, cols, name, pos, rot_deg=0.0, depth=0.10, bevel=0.03
     T.text_mesh(ch, fpath, size, depth, bevel, m, name + '_L', offset=-bevel * 0.35, dx=-cx, dy=-cy,
                 parent=grp)
     if snow:
-        smp = T.edge_samples(loops, step=max(0.006, snow_r * 0.33))
+        smp = T.edge_samples(loops, step=max(0.006, snow_r * 0.33), skip_holes=True)
         sn, _n = T.snow_cap(smp, depth + bevel, name.replace('.', '') + 'snow', parent=grp, r=snow_r,
                             seed=seed, drips=drips, dx=-cx, dy=-cy, mat=T.mat_snow(), up=up)
         sn.data.resolution = sn.data.render_resolution
@@ -192,7 +196,7 @@ def build_main():
     tw = sum(glyph_box(c, C.FONT_KO, ts)[1][2] - glyph_box(c, C.FONT_KO, ts)[1][0] for c in t['bottom'])
     sw = tw + ts * 0.07 * (len(t['bottom']) - 1) + 0.34
     sh = 0.36
-    sy = min(bots) - sh * 0.5 + 0.075
+    sy = min(bots) - sh * 0.5
     sg = sign('sign', sw, sh, (0.06, sy, 0.24), t['bottom'], C.FONT_KO, ts, rot_deg=-2.5)
     reg(6, 'sign', sg)
 
@@ -275,7 +279,6 @@ def lights():
 
 def all_points():
     pts = []
-    dg = bpy.context.evaluated_depsgraph_get()
     for ob in bpy.context.scene.objects:
         if ob.type != 'MESH':
             continue
@@ -286,7 +289,6 @@ def all_points():
 
 
 def frame_camera(ppu, pad_px):
-    a = math.radians(TILT)
     cam = T.ortho_camera(0.0, 0.0, 10.0, 100, 100, tilt_deg=TILT)
     bpy.context.view_layer.update()
     inv = cam.matrix_world.inverted()
@@ -323,7 +325,10 @@ def main():
     ap.add_argument('--samples', type=int, default=40)
     ap.add_argument('--pct', type=int, default=100)
     ap.add_argument('--threads', type=int, default=2)
+    ap.add_argument('--skip-existing', action='store_true', help='resume: keep renders already on disk')
     ap.add_argument('--no-label', action='store_true')
+    ap.add_argument('--parts', action='store_true', help='also render every piece alone (for the drop-in)')
+    ap.add_argument('--parts-only', action='store_true', help='render only the pieces (the packer composites them)')
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
@@ -342,7 +347,25 @@ def main():
         c = project(cam, W, H, a.ppu, grp.matrix_world.translation)
         info['pieces'][str(idx)] = {'name': PIECE_NAMES[idx], 'pivot': [round(c[0], 1), round(c[1], 1)]}
     sc.render.filepath = base + '.png'
-    bpy.ops.render.render(write_still=True)
+    if a.parts_only:
+        a.parts = True
+    elif not (a.skip_existing and os.path.exists(sc.render.filepath)):
+        bpy.ops.render.render(write_still=True)
+    if a.parts:
+        # every piece alone (nothing in front of it), same camera -> parts line up with the full logo
+        allp = {ob.name for obs in PIECES.values() for ob in obs}
+        for idx in sorted(PIECES):
+            mine = {ob.name for ob in PIECES[idx]}
+            for ob in bpy.context.scene.objects:
+                if ob.name in allp:
+                    ob.hide_render = ob.name not in mine
+            sc.render.filepath = base + '_part%d.png' % idx
+            if a.skip_existing and os.path.exists(sc.render.filepath):
+                continue
+            bpy.ops.render.render(write_still=True)
+            print('PART_DONE', idx, PIECE_NAMES[idx], flush=True)
+        for ob in bpy.context.scene.objects:
+            ob.hide_render = False
     if not a.no_label:
         T.label_pass(PIECES)
         sc.cycles.samples = 4
