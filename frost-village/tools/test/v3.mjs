@@ -160,7 +160,9 @@ try {
     const w0 = (await st()).warehouse.total;
     await wait((n) => window.__FV.state().warehouse.total > n, 150, w0);
     const w1 = (await st()).warehouse;
-    step('warehouse takes overflow from a full output pad', w1.total > w0, `${w0} -> ${JSON.stringify(w1)}`);
+    // (when it fails: what the warehouse porters were doing, and how full the outputs were)
+    const why = w1.total > w0 ? '' : ' ' + JSON.stringify(await ev(() => { const gs = window.__FV.scene; return { porters: gs.porters.filter((p) => p.wh).map((p) => [p.state, p.job && p.job.kind, p.job && p.job.src && p.job.src.id, Math.round(p.x), Math.round(p.y)]), room: gs.warehouse && gs.warehouse.room, full: gs.sources().filter((q) => q.outStack && q.outStack.max > 0 && q.outStack.count / q.outStack.max >= 0.6).map((q) => q.id) }; }));
+    step('warehouse takes overflow from a full output pad', w1.total > w0, `${w0} -> ${JSON.stringify(w1)}${why}`);
     // the smelter's own pad is emptied so only the warehouse can bring ingots back to the empty shelf
     await ev(() => { const gs = window.__FV.scene; gs.trade.stock.clear(gs.effects); gs.stations.smelter.outStack.clear(gs.effects); gs.stations.smelter.inStack.clear(gs.effects); window.__whOut = 0; for (const p of gs.warehouse.porters) { const o = p.think.bind(p); p.think = () => { const j = o(); if (j && j.kind === 'out') window.__whOut++; return j; }; } });
     const t0 = (await st()).trade.stock;

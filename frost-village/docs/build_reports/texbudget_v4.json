@@ -1,5 +1,5 @@
 {
- "when": "2026-10-09T09:15:53.440Z",
+ "when": "2026-10-09T11:55:56.506Z",
  "samples": [
   {
    "label": "title",
@@ -7,17 +7,17 @@
   },
   {
    "label": "new game +5s",
-   "MiB": 182.8,
-   "gl": 218.8,
-   "glTex": 188.9,
+   "MiB": 188.9,
+   "gl": 224.9,
+   "glTex": 194.9,
    "glRT": 30,
    "byCls": {
-    "atlas": 97.6,
+    "atlas": 103.7,
     "canvas": 9,
     "ground": 11,
     "page": 65.2
    },
-   "social": 2,
+   "social": 0,
    "areas": {
     "town": "in gap 2755 far 5.5",
     "east": "in gap 1605 far 5.5",
@@ -33,8 +33,8 @@
   {
    "label": "new game +10s",
    "MiB": 188.9,
-   "gl": 225,
-   "glTex": 195,
+   "gl": 224.9,
+   "glTex": 194.9,
    "glRT": 30,
    "byCls": {
     "atlas": 103.7,
@@ -42,7 +42,7 @@
     "ground": 11,
     "page": 65.2
    },
-   "social": 2,
+   "social": 0,
    "areas": {
     "town": "in gap 2755 far 10.5",
     "east": "in gap 1605 far 10.5",
@@ -57,18 +57,17 @@
   },
   {
    "label": "new game +15s",
-   "MiB": 197.1,
-   "gl": 233.1,
-   "glTex": 203.1,
+   "MiB": 188.9,
+   "gl": 224.9,
+   "glTex": 194.9,
    "glRT": 30,
    "byCls": {
     "atlas": 103.7,
     "canvas": 9,
     "ground": 11,
-    "page": 65.2,
-    "social": 8.1
+    "page": 65.2
    },
-   "social": 3,
+   "social": 1,
    "areas": {
     "town": "in gap 2755 far 15",
     "east": "in gap 1605 far 15",
@@ -83,18 +82,17 @@
   },
   {
    "label": "new game +20s",
-   "MiB": 195.1,
-   "gl": 231.1,
-   "glTex": 201.1,
+   "MiB": 186.9,
+   "gl": 222.9,
+   "glTex": 192.9,
    "glRT": 30,
    "byCls": {
     "atlas": 103.7,
     "canvas": 9,
     "ground": 9,
-    "page": 65.2,
-    "social": 8.1
+    "page": 65.2
    },
-   "social": 3,
+   "social": 2,
    "areas": {
     "town": "in gap 2755 far 20",
     "east": "in gap 1605 far 20",
@@ -109,18 +107,17 @@
   },
   {
    "label": "new game +25s",
-   "MiB": 195.1,
-   "gl": 231.1,
-   "glTex": 201.1,
+   "MiB": 186.9,
+   "gl": 222.9,
+   "glTex": 193,
    "glRT": 30,
    "byCls": {
     "atlas": 103.7,
     "canvas": 9,
     "ground": 9,
-    "page": 65.2,
-    "social": 8.1
+    "page": 65.2
    },
-   "social": 3,
+   "social": 2,
    "areas": {
     "town": "in gap 2755 far 25",
     "east": "in gap 1605 far 25",
@@ -135,18 +132,18 @@
   },
   {
    "label": "new game +30s",
-   "MiB": 198.9,
-   "gl": 234.9,
-   "glTex": 205,
+   "MiB": 191.1,
+   "gl": 227.1,
+   "glTex": 197.2,
    "glRT": 30,
    "byCls": {
     "atlas": 103.7,
     "canvas": 9,
     "ground": 9,
     "page": 65.2,
-    "social": 12
+    "social": 4.2
    },
-   "social": 3,
+   "social": 2,
    "areas": {
     "town": "in gap 2755 far 29.5",
     "east": "in gap 1605 far 29.5",
@@ -161,18 +158,18 @@
   },
   {
    "label": "v3.5 village complete +5s",
-   "MiB": 287.2,
-   "gl": 322.7,
-   "glTex": 292.8,
+   "MiB": 283.4,
+   "gl": 318.9,
+   "glTex": 288.9,
    "glRT": 30,
    "byCls": {
     "atlas": 175.8,
     "canvas": 6.2,
     "ground": 28,
     "page": 65.2,
-    "social": 12
+    "social": 8.1
    },
-   "social": 5,
+   "social": 3,
    "areas": {
     "town": "in gap 2915 far 3",
     "east": "in gap 1765 far 3",
@@ -187,42 +184,42 @@
   },
   {
    "label": "v3.5 village complete +10s",
-   "MiB": 312.5,
-   "gl": 348,
-   "glTex": 318,
+   "MiB": 321.6,
+   "gl": 357.1,
+   "glTex": 327.1,
    "glRT": 30,
    "byCls": {
-    "atlas": 189.8,
+    "atlas": 190.8,
     "canvas": 6.2,
     "ground": 28,
     "page": 80.2,
-    "social": 8.3
+    "social": 16.4
    },
-   "social": 5,
+   "social": 4,
    "areas": {
-    "town": "in gap 2915 far 7.5",
-    "east": "in gap 1765 far 7.5",
+    "town": "in gap 2915 far 8",
+    "east": "in gap 1765 far 8",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 41,
+    "baked": 44,
     "evictions": 6
    }
   },
   {
    "label": "v3.5 village complete +15s",
-   "MiB": 305.4,
-   "gl": 340.9,
-   "glTex": 311,
+   "MiB": 298,
+   "gl": 333.5,
+   "glTex": 303.5,
    "glRT": 30,
    "byCls": {
     "atlas": 188.2,
     "canvas": 6.2,
     "ground": 28,
     "page": 67.1,
-    "social": 15.9
+    "social": 8.5
    },
    "social": 5,
    "areas": {
@@ -239,16 +236,16 @@
   },
   {
    "label": "v3.5 village complete +20s",
-   "MiB": 284.9,
-   "gl": 320.4,
-   "glTex": 290.5,
+   "MiB": 275.3,
+   "gl": 310.8,
+   "glTex": 280.9,
    "glRT": 30,
    "byCls": {
-    "atlas": 188.2,
+    "atlas": 177.9,
     "canvas": 6.2,
     "ground": 15,
     "page": 67.1,
-    "social": 8.4
+    "social": 9.1
    },
    "social": 5,
    "areas": {
@@ -259,48 +256,48 @@
    "ground": {
     "slots": 15,
     "level": 0,
-    "baked": 47,
+    "baked": 44,
     "evictions": 6
    }
   },
   {
    "label": "full v4 plaza +5s",
-   "MiB": 386.2,
-   "gl": 420.9,
-   "glTex": 390.9,
+   "MiB": 385.3,
+   "gl": 419.9,
+   "glTex": 390,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 21.1
+    "social": 20.2
    },
    "social": 5,
    "areas": {
-    "town": "in gap 2523 far 7.5",
-    "east": "in gap 1373 far 7.5",
+    "town": "in gap 2523 far 8",
+    "east": "in gap 1373 far 8",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "full v4 plaza +10s",
-   "MiB": 353.1,
-   "gl": 387.7,
-   "glTex": 357.8,
+   "MiB": 348.1,
+   "gl": 382.8,
+   "glTex": 352.9,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 112.9,
-    "social": 21.2
+    "social": 16.3
    },
    "social": 5,
    "areas": {
@@ -311,22 +308,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "full v4 plaza +15s",
-   "MiB": 339.9,
-   "gl": 374.6,
-   "glTex": 344.7,
+   "MiB": 336.7,
+   "gl": 371.4,
+   "glTex": 341.4,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
-    "ground": 18,
+    "canvas": 0.1,
+    "ground": 17,
     "page": 112.9,
-    "social": 18
+    "social": 15.8
    },
    "social": 5,
    "areas": {
@@ -335,50 +332,50 @@
     "village": "in gap 0 far 0"
    },
    "ground": {
-    "slots": 18,
+    "slots": 17,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "full v4 plaza +20s",
-   "MiB": 333.9,
-   "gl": 368.6,
-   "glTex": 338.6,
+   "MiB": 323.8,
+   "gl": 358.5,
+   "glTex": 328.5,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 12,
     "page": 112.9,
-    "social": 18
+    "social": 7.9
    },
    "social": 5,
    "areas": {
-    "town": "out gap 2523 far 22",
-    "east": "out gap 1373 far 22",
+    "town": "out gap 2523 far 22.5",
+    "east": "out gap 1373 far 22.5",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 12,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "full v4 plaza +25s",
-   "MiB": 329.9,
-   "gl": 364.5,
-   "glTex": 334.6,
+   "MiB": 333,
+   "gl": 367.7,
+   "glTex": 337.7,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 12,
     "page": 112.9,
-    "social": 14
+    "social": 17.1
    },
    "social": 5,
    "areas": {
@@ -389,22 +386,22 @@
    "ground": {
     "slots": 12,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "full v4 plaza +30s",
-   "MiB": 329.9,
-   "gl": 364.6,
-   "glTex": 334.6,
+   "MiB": 324.7,
+   "gl": 359.5,
+   "glTex": 329.6,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 12,
     "page": 112.9,
-    "social": 14
+    "social": 8.9
    },
    "social": 5,
    "areas": {
@@ -415,22 +412,21 @@
    "ground": {
     "slots": 12,
     "level": 0,
-    "baked": 113,
-    "evictions": 26
+    "baked": 110,
+    "evictions": 27
    }
   },
   {
    "label": "east dock +5s",
-   "MiB": 333.6,
-   "gl": 368.2,
-   "glTex": 338.3,
+   "MiB": 324.9,
+   "gl": 359.6,
+   "glTex": 329.7,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 21,
-    "page": 112.9,
-    "social": 8.7
+    "page": 112.9
    },
    "social": 5,
    "areas": {
@@ -441,22 +437,22 @@
    "ground": {
     "slots": 21,
     "level": 0,
-    "baked": 122,
-    "evictions": 26
+    "baked": 119,
+    "evictions": 27
    }
   },
   {
    "label": "east dock +10s",
-   "MiB": 352.1,
-   "gl": 386.8,
-   "glTex": 356.9,
+   "MiB": 351.8,
+   "gl": 386.5,
+   "glTex": 356.6,
    "glRT": 30,
    "byCls": {
     "atlas": 201.3,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 21,
     "page": 112.9,
-    "social": 16.8
+    "social": 16.5
    },
    "social": 5,
    "areas": {
@@ -467,22 +463,22 @@
    "ground": {
     "slots": 21,
     "level": 0,
-    "baked": 122,
-    "evictions": 26
+    "baked": 119,
+    "evictions": 27
    }
   },
   {
    "label": "east dock +15s",
-   "MiB": 339.3,
-   "gl": 374,
-   "glTex": 344.1,
+   "MiB": 356.7,
+   "gl": 391.6,
+   "glTex": 361.6,
    "glRT": 30,
    "byCls": {
     "atlas": 201.3,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 21,
     "page": 112.9,
-    "social": 4
+    "social": 21.5
    },
    "social": 5,
    "areas": {
@@ -493,19 +489,19 @@
    "ground": {
     "slots": 21,
     "level": 0,
-    "baked": 122,
-    "evictions": 26
+    "baked": 119,
+    "evictions": 27
    }
   },
   {
    "label": "east dock +20s",
    "MiB": 332.3,
    "gl": 367,
-   "glTex": 337,
+   "glTex": 337.1,
    "glRT": 30,
    "byCls": {
     "atlas": 201.3,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 18,
     "page": 112.9
    },
@@ -518,22 +514,22 @@
    "ground": {
     "slots": 18,
     "level": 0,
-    "baked": 122,
-    "evictions": 26
+    "baked": 119,
+    "evictions": 27
    }
   },
   {
    "label": "our station +5s",
-   "MiB": 350.8,
-   "gl": 385.5,
-   "glTex": 355.6,
+   "MiB": 350.3,
+   "gl": 385.1,
+   "glTex": 355.2,
    "glRT": 30,
    "byCls": {
     "atlas": 201.3,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 112.9,
-    "social": 8.5
+    "social": 8.1
    },
    "social": 5,
    "areas": {
@@ -544,22 +540,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "our station +10s",
-   "MiB": 376.6,
-   "gl": 411.3,
-   "glTex": 381.4,
+   "MiB": 374.5,
+   "gl": 409.2,
+   "glTex": 379.3,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 11.6
+    "social": 9.4
    },
    "social": 5,
    "areas": {
@@ -570,22 +566,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "our station +15s",
-   "MiB": 369.6,
-   "gl": 404.3,
-   "glTex": 374.3,
+   "MiB": 373.4,
+   "gl": 408.1,
+   "glTex": 378.2,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 4.5
+    "social": 8.4
    },
    "social": 5,
    "areas": {
@@ -596,21 +592,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "our station +20s",
-   "MiB": 365.1,
-   "gl": 399.8,
-   "glTex": 369.8,
+   "MiB": 373,
+   "gl": 407.7,
+   "glTex": 377.7,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
-    "page": 134
+    "page": 134,
+    "social": 7.9
    },
    "social": 5,
    "areas": {
@@ -621,22 +618,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "along the track +5s",
-   "MiB": 377.7,
-   "gl": 412.4,
-   "glTex": 382.4,
+   "MiB": 369,
+   "gl": 403.8,
+   "glTex": 373.8,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 12.6
+    "social": 4
    },
    "social": 5,
    "areas": {
@@ -647,22 +644,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "along the track +10s",
-   "MiB": 378.1,
-   "gl": 412.8,
-   "glTex": 382.8,
+   "MiB": 368.5,
+   "gl": 403.3,
+   "glTex": 373.3,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 13
+    "social": 3.5
    },
    "social": 5,
    "areas": {
@@ -673,22 +670,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "along the track +15s",
-   "MiB": 377.7,
-   "gl": 412.4,
-   "glTex": 382.5,
+   "MiB": 373.4,
+   "gl": 408.1,
+   "glTex": 378.1,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 12.7
+    "social": 8.3
    },
    "social": 5,
    "areas": {
@@ -699,22 +696,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "along the track +20s",
-   "MiB": 380.6,
-   "gl": 415.2,
-   "glTex": 385.3,
+   "MiB": 373.9,
+   "gl": 408.7,
+   "glTex": 378.7,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 15.5
+    "social": 8.9
    },
    "social": 5,
    "areas": {
@@ -725,19 +722,19 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +5s",
-   "MiB": 365.1,
+   "MiB": 365,
    "gl": 400.2,
    "glTex": 370.2,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134
    },
@@ -750,22 +747,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +10s",
-   "MiB": 374,
-   "gl": 409,
-   "glTex": 379.1,
+   "MiB": 378.1,
+   "gl": 413.2,
+   "glTex": 383.3,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 8.9
+    "social": 13.1
    },
    "social": 5,
    "areas": {
@@ -776,22 +773,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +15s",
-   "MiB": 351.1,
-   "gl": 386.2,
-   "glTex": 356.2,
+   "MiB": 338.1,
+   "gl": 373.2,
+   "glTex": 343.3,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 17.4
+    "social": 4.4
    },
    "social": 5,
    "areas": {
@@ -802,22 +799,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +20s",
-   "MiB": 338.7,
-   "gl": 373.8,
-   "glTex": 343.8,
+   "MiB": 352,
+   "gl": 387.1,
+   "glTex": 357.1,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 5
+    "social": 18.3
    },
    "social": 5,
    "areas": {
@@ -828,21 +825,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +25s",
-   "MiB": 333.7,
-   "gl": 368.8,
-   "glTex": 338.8,
+   "MiB": 345.7,
+   "gl": 380.8,
+   "glTex": 350.8,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
-    "page": 134
+    "page": 134,
+    "social": 12
    },
    "social": 5,
    "areas": {
@@ -853,22 +851,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town square +30s",
-   "MiB": 353.8,
-   "gl": 388.9,
-   "glTex": 358.9,
+   "MiB": 341.4,
+   "gl": 376.5,
+   "glTex": 346.6,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 20.1
+    "social": 7.7
    },
    "social": 5,
    "areas": {
@@ -879,21 +877,22 @@
    "ground": {
     "slots": 28,
     "level": 0,
-    "baked": 132,
-    "evictions": 26
+    "baked": 129,
+    "evictions": 27
    }
   },
   {
    "label": "town zoom 0.6 +5s",
-   "MiB": 333.7,
-   "gl": 368.8,
-   "glTex": 338.8,
+   "MiB": 356.4,
+   "gl": 391.5,
+   "glTex": 361.5,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
-    "page": 134
+    "page": 134,
+    "social": 22.7
    },
    "social": 5,
    "areas": {
@@ -904,45 +903,45 @@
    "ground": {
     "slots": 28,
     "level": 1,
-    "baked": 156,
-    "evictions": 50
+    "baked": 153,
+    "evictions": 51
    }
   },
   {
    "label": "town zoom 0.6 +10s",
-   "MiB": 352.5,
-   "gl": 387.5,
-   "glTex": 357.6,
+   "MiB": 344.5,
+   "gl": 379.6,
+   "glTex": 349.7,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 18.7
+    "social": 10.8
    },
    "social": 5,
    "areas": {
     "town": "in gap 0 far 0",
     "east": "in gap 0 far 0",
-    "village": "out gap 1300 far 38.5"
+    "village": "out gap 1300 far 39"
    },
    "ground": {
     "slots": 28,
     "level": 1,
-    "baked": 156,
-    "evictions": 50
+    "baked": 153,
+    "evictions": 51
    }
   },
   {
    "label": "town zoom 0.6 +15s",
    "MiB": 333.7,
    "gl": 368.8,
-   "glTex": 338.8,
+   "glTex": 338.9,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134
    },
@@ -955,22 +954,22 @@
    "ground": {
     "slots": 28,
     "level": 1,
-    "baked": 156,
-    "evictions": 50
+    "baked": 153,
+    "evictions": 51
    }
   },
   {
    "label": "town zoom 0.6 +20s",
-   "MiB": 356.3,
-   "gl": 391.4,
-   "glTex": 361.4,
+   "MiB": 355.2,
+   "gl": 390.3,
+   "glTex": 360.4,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 22.6
+    "social": 21.5
    },
    "social": 5,
    "areas": {
@@ -981,21 +980,22 @@
    "ground": {
     "slots": 28,
     "level": 1,
-    "baked": 156,
-    "evictions": 50
+    "baked": 153,
+    "evictions": 51
    }
   },
   {
    "label": "overview +5s",
-   "MiB": 333.7,
-   "gl": 368.8,
-   "glTex": 338.8,
+   "MiB": 337.8,
+   "gl": 373,
+   "glTex": 343,
    "glRT": 30,
    "byCls": {
     "atlas": 171.6,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
-    "page": 134
+    "page": 134,
+    "social": 4.2
    },
    "social": 5,
    "areas": {
@@ -1006,22 +1006,22 @@
    "ground": {
     "slots": 28,
     "level": 2,
-    "baked": 164,
-    "evictions": 58
+    "baked": 161,
+    "evictions": 59
    }
   },
   {
    "label": "overview +10s",
-   "MiB": 385.7,
-   "gl": 420.8,
-   "glTex": 390.8,
+   "MiB": 382.4,
+   "gl": 417.4,
+   "glTex": 387.5,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
-    "canvas": 0.2,
+    "canvas": 0.1,
     "ground": 28,
     "page": 134,
-    "social": 20.6
+    "social": 17.4
    },
    "social": 5,
    "areas": {
@@ -1032,22 +1032,22 @@
    "ground": {
     "slots": 28,
     "level": 2,
-    "baked": 164,
-    "evictions": 58
+    "baked": 161,
+    "evictions": 59
    }
   },
   {
    "label": "overview +15s",
-   "MiB": 369.6,
-   "gl": 404.6,
-   "glTex": 374.7,
+   "MiB": 368.9,
+   "gl": 404,
+   "glTex": 374,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
     "canvas": 0.2,
     "ground": 28,
     "page": 134,
-    "social": 4.5
+    "social": 3.8
    },
    "social": 5,
    "areas": {
@@ -1058,48 +1058,48 @@
    "ground": {
     "slots": 28,
     "level": 2,
-    "baked": 164,
-    "evictions": 58
+    "baked": 161,
+    "evictions": 59
    }
   },
   {
    "label": "back at the plaza +5s",
-   "MiB": 361.5,
-   "gl": 396.6,
-   "glTex": 366.7,
+   "MiB": 366.9,
+   "gl": 401.8,
+   "glTex": 371.9,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
     "canvas": 0.2,
     "ground": 17,
     "page": 134,
-    "social": 7.4
+    "social": 12.8
    },
    "social": 5,
    "areas": {
-    "town": "in gap 2523 far 4.5",
-    "east": "in gap 1373 far 4.5",
+    "town": "in gap 2523 far 5",
+    "east": "in gap 1373 far 5",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 17,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +10s",
-   "MiB": 368.7,
-   "gl": 403.8,
-   "glTex": 373.9,
+   "MiB": 369.4,
+   "gl": 404.4,
+   "glTex": 374.5,
    "glRT": 30,
    "byCls": {
     "atlas": 202.9,
     "canvas": 0.2,
     "ground": 17,
     "page": 134,
-    "social": 14.6
+    "social": 15.4
    },
    "social": 5,
    "areas": {
@@ -1110,22 +1110,22 @@
    "ground": {
     "slots": 17,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +15s",
-   "MiB": 332.4,
-   "gl": 367.5,
-   "glTex": 337.6,
+   "MiB": 325.2,
+   "gl": 360.2,
+   "glTex": 330.3,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 17,
     "page": 112.9,
-    "social": 11.5
+    "social": 4.3
    },
    "social": 5,
    "areas": {
@@ -1136,48 +1136,48 @@
    "ground": {
     "slots": 17,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +20s",
-   "MiB": 326.7,
-   "gl": 361.8,
-   "glTex": 331.9,
+   "MiB": 335.8,
+   "gl": 370.8,
+   "glTex": 340.9,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
     "page": 112.9,
-    "social": 8.8
+    "social": 17.9
    },
    "social": 5,
    "areas": {
-    "town": "out gap 2523 far 19",
-    "east": "out gap 1373 far 19",
+    "town": "out gap 2523 far 19.5",
+    "east": "out gap 1373 far 19.5",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +25s",
-   "MiB": 326.9,
-   "gl": 362,
-   "glTex": 332.1,
+   "MiB": 331.1,
+   "gl": 366.1,
+   "glTex": 336.1,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
     "page": 112.9,
-    "social": 9
+    "social": 13.2
    },
    "social": 5,
    "areas": {
@@ -1188,22 +1188,22 @@
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +30s",
-   "MiB": 326.9,
-   "gl": 362,
-   "glTex": 332,
+   "MiB": 327.3,
+   "gl": 362.3,
+   "glTex": 332.4,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
     "page": 112.9,
-    "social": 9
+    "social": 9.4
    },
    "social": 5,
    "areas": {
@@ -1214,48 +1214,47 @@
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +35s",
-   "MiB": 324.9,
-   "gl": 360,
-   "glTex": 330.1,
+   "MiB": 317.9,
+   "gl": 352.8,
+   "glTex": 322.8,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
-    "page": 112.9,
-    "social": 7
+    "page": 112.9
    },
    "social": 5,
    "areas": {
-    "town": "out gap 2523 far 33.5",
-    "east": "out gap 1373 far 33.5",
+    "town": "out gap 2523 far 34",
+    "east": "out gap 1373 far 34",
     "village": "in gap 0 far 0"
    },
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +40s",
-   "MiB": 325.9,
-   "gl": 361,
-   "glTex": 331,
+   "MiB": 321.6,
+   "gl": 356.6,
+   "glTex": 326.6,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
     "page": 112.9,
-    "social": 8
+    "social": 3.7
    },
    "social": 5,
    "areas": {
@@ -1266,22 +1265,22 @@
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   },
   {
    "label": "back at the plaza +45s",
-   "MiB": 332.5,
-   "gl": 367.6,
-   "glTex": 337.6,
+   "MiB": 327.3,
+   "gl": 362.3,
+   "glTex": 332.3,
    "glRT": 30,
    "byCls": {
     "atlas": 190.9,
     "canvas": 0.2,
     "ground": 14,
     "page": 112.9,
-    "social": 14.6
+    "social": 9.4
    },
    "social": 5,
    "areas": {
@@ -1292,8 +1291,8 @@
    "ground": {
     "slots": 14,
     "level": 0,
-    "baked": 176,
-    "evictions": 70
+    "baked": 173,
+    "evictions": 71
    }
   }
  ],
@@ -1306,39 +1305,39 @@
   {
    "name": "new game <= 368 MiB (must)",
    "ok": true,
-   "info": 198.9
+   "info": 191.1
   },
   {
    "name": "new game <= 240 MiB (target)",
    "ok": true,
-   "info": 198.9
+   "info": 191.1
   },
   {
    "name": "v3.5 village complete <= 455 MiB (must)",
    "ok": true,
-   "info": 312.5
+   "info": 321.6
   },
   {
    "name": "full v4, any view <= 455 MiB (must)",
    "ok": true,
-   "info": 386.2
+   "info": 385.3
   },
   {
    "name": "full v4, plaza <= 300 MiB (target)",
    "ok": false,
-   "info": 329.9
+   "info": 324.7
   },
   {
    "name": "full v4 tour peak <= 300 MiB (target)",
    "ok": false,
-   "info": 386.2
+   "info": 385.3
   },
   {
    "name": "return to the start of the tour <= start + 5 MiB",
    "ok": true,
    "info": {
-    "start": 329.9,
-    "end": 332.5
+    "start": 324.7,
+    "end": 327.3
    }
   },
   {
@@ -1354,7 +1353,7 @@
   {
    "name": "full v4, GL total (textures + render targets) <= 455 MiB (must)",
    "ok": true,
-   "info": 420.9
+   "info": 419.9
   },
   {
    "name": "no page errors",

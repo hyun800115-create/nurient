@@ -827,9 +827,14 @@ export class VillageLife {
   tryTag() {
     const kids = this.candidates((r) => (r.role === 'kid' || /skater|toddler/.test(r.key)) && r.can('run') && (this.force || !r.lod));
     if (kids.length < 2) return false;
-    const a = kids[0];
-    const group = kids.filter((k) => gdist(k.x, k.y, a.x, a.y) < (this.force ? 900 : 420)).slice(0, 4);
-    if (group.length < 2) return false;
+    // (v4-B) any kid can start it: the first one alone used to fail whenever it had wandered off from the others
+    const R = this.force ? 900 : 420;
+    let a = null, group = [];
+    for (const k0 of kids) {
+      const g = kids.filter((k) => gdist(k.x, k.y, k0.x, k0.y) < R);
+      if (g.length >= 2) { a = k0; group = [k0].concat(g.filter((k) => k !== k0)).slice(0, 4); break; }
+    }
+    if (!a) return false;
     const dog = this.byKey.pet_dog;
     if (dog && !dog.event && !(this.gs.dog && this.gs.dog.busy) && gdist(dog.x, dog.y, a.x, a.y) < 500) group.push(dog);
     const pen = this.byKey.pet_penguin;

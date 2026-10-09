@@ -3,235 +3,295 @@
   {
    "label": "new game (v3.5 content only)",
    "drawPerFrame": 5,
-   "bindPerFrame": 66,
+   "bindPerFrame": 68.1,
    "uploadsPerFrame": 0,
-   "objs": 893,
-   "visible": 310,
+   "objs": 894,
+   "visible": 313,
    "pileItems": 0,
    "texMiB": 188.9,
    "textures": 229,
    "dolls": null,
    "live": 0,
    "visitors": 0,
-   "hour": null
+   "hour": null,
+   "cull": {
+    "culled": 144,
+    "passes": 39,
+    "enabled": true,
+    "ms": 0.456
+   }
   },
   {
    "label": "v3 complete + rail strip open (ruin)",
    "drawPerFrame": 8,
    "bindPerFrame": 111.8,
    "uploadsPerFrame": 0,
-   "objs": 1103,
-   "visible": 856,
+   "objs": 1104,
+   "visible": 857,
    "pileItems": 0,
    "texMiB": 277.9,
    "textures": 273,
    "dolls": null,
    "live": 0,
    "visitors": 0,
-   "hour": 8
+   "hour": 8,
+   "cull": {
+    "culled": 577,
+    "passes": 55,
+    "enabled": true,
+    "ms": 0.768
+   }
   },
   {
    "label": "plaza with doll customers + visitors",
    "drawPerFrame": 10,
-   "bindPerFrame": 148.7,
+   "bindPerFrame": 149.8,
    "uploadsPerFrame": 0,
-   "objs": 1566,
-   "visible": 1330,
+   "objs": 1572,
+   "visible": 1348,
    "pileItems": 0,
-   "texMiB": 382.2,
+   "texMiB": 383.7,
    "textures": 330,
    "dolls": {
-    "dolls": 15,
+    "dolls": 16,
     "full": 12,
     "lite": 0,
     "dot": 0,
-    "images": 235
+    "images": 212
    },
    "live": 0,
    "visitors": 6,
-   "hour": 9.91
+   "hour": 9.91,
+   "cull": {
+    "culled": 683,
+    "passes": 82,
+    "enabled": true,
+    "ms": 1.211
+   }
   },
   {
    "label": "town_morning",
    "drawPerFrame": 6,
    "bindPerFrame": 63.3,
    "uploadsPerFrame": 0.17,
-   "objs": 1875,
-   "visible": 1541,
+   "objs": 1890,
+   "visible": 1552,
    "pileItems": 0,
-   "texMiB": 382.1,
+   "texMiB": 381.2,
    "textures": 330,
    "dolls": {
     "dolls": 44,
     "full": 23,
     "lite": 0,
     "dot": 0,
-    "images": 472
+    "images": 467
    },
    "live": 23,
    "visitors": 6,
-   "hour": 8.65
+   "hour": 8.65,
+   "cull": {
+    "culled": 1080,
+    "passes": 102,
+    "enabled": true,
+    "ms": 1.986
+   }
   },
   {
    "label": "town_noon",
    "drawPerFrame": 6,
-   "bindPerFrame": 85.5,
-   "uploadsPerFrame": 0.08,
-   "objs": 2249,
-   "visible": 1964,
+   "bindPerFrame": 84,
+   "uploadsPerFrame": 0,
+   "objs": 2257,
+   "visible": 1970,
    "pileItems": 0,
-   "texMiB": 382.1,
+   "texMiB": 381.4,
    "textures": 330,
    "dolls": {
     "dolls": 81,
     "full": 32,
     "lite": 29,
     "dot": 0,
-    "images": 778
+    "images": 777
    },
    "live": 61,
    "visitors": 10,
-   "hour": 12.35
+   "hour": 12.35,
+   "cull": {
+    "culled": 1109,
+    "passes": 121,
+    "enabled": true,
+    "ms": 1.917
+   }
   },
   {
    "label": "town_dusk",
    "drawPerFrame": 7,
-   "bindPerFrame": 76.3,
+   "bindPerFrame": 76,
    "uploadsPerFrame": 0,
-   "objs": 2080,
-   "visible": 1726,
+   "objs": 2036,
+   "visible": 1748,
    "pileItems": 0,
-   "texMiB": 372.8,
+   "texMiB": 376,
    "textures": 322,
    "dolls": {
-    "dolls": 83,
+    "dolls": 87,
     "full": 31,
     "lite": 0,
     "dot": 0,
-    "images": 584
+    "images": 515
    },
    "live": 31,
    "visitors": 10,
-   "hour": 17.95
+   "hour": 17.95,
+   "cull": {
+    "culled": 1146,
+    "passes": 140,
+    "enabled": true,
+    "ms": 1.684
+   }
   },
   {
    "label": "town_night",
    "drawPerFrame": 8,
-   "bindPerFrame": 71.2,
-   "uploadsPerFrame": 0.08,
-   "objs": 1704,
-   "visible": 1311,
+   "bindPerFrame": 71,
+   "uploadsPerFrame": 0,
+   "objs": 1740,
+   "visible": 1342,
    "pileItems": 0,
-   "texMiB": 364.3,
-   "textures": 317,
+   "texMiB": 371.6,
+   "textures": 318,
    "dolls": {
-    "dolls": 84,
+    "dolls": 87,
     "full": 4,
     "lite": 0,
     "dot": 0,
-    "images": 192
+    "images": 195
    },
    "live": 4,
    "visitors": 10,
-   "hour": 21.65
+   "hour": 21.65,
+   "cull": {
+    "culled": 1172,
+    "passes": 159,
+    "enabled": true,
+    "ms": 1.373
+   }
   },
   {
    "label": "town school out (crowd)",
-   "drawPerFrame": 9,
-   "bindPerFrame": 89.6,
+   "drawPerFrame": 8,
+   "bindPerFrame": 88.6,
    "uploadsPerFrame": 0,
-   "objs": 2348,
-   "visible": 2000,
-   "pileItems": 2,
-   "texMiB": 370.7,
-   "textures": 319,
+   "objs": 2401,
+   "visible": 2047,
+   "pileItems": 0,
+   "texMiB": 370,
+   "textures": 318,
    "dolls": {
-    "dolls": 81,
+    "dolls": 86,
     "full": 32,
     "lite": 22,
     "dot": 0,
-    "images": 791
+    "images": 794
    },
    "live": 55,
    "visitors": 10,
-   "hour": 15.46
+   "hour": 15.46,
+   "cull": {
+    "culled": 1230,
+    "passes": 178,
+    "enabled": true,
+    "ms": 2.149
+   }
   },
   {
    "label": "town zoom 0.6 (lite rigs)",
    "drawPerFrame": 8,
-   "bindPerFrame": 105.2,
-   "uploadsPerFrame": 0.08,
-   "objs": 2420,
-   "visible": 1868,
-   "pileItems": 4,
-   "texMiB": 382.7,
-   "textures": 332,
-   "dolls": {
-    "dolls": 85,
-    "full": 0,
-    "lite": 68,
-    "dot": 0,
-    "images": 837
-   },
-   "live": 68,
-   "visitors": 10,
-   "hour": 12.63
-  },
-  {
-   "label": "overview of the neighbours area",
-   "drawPerFrame": 8,
    "bindPerFrame": 107,
    "uploadsPerFrame": 0,
-   "objs": 1727,
-   "visible": 1458,
-   "pileItems": 6,
-   "texMiB": 383.7,
-   "textures": 334,
+   "objs": 2489,
+   "visible": 1933,
+   "pileItems": 0,
+   "texMiB": 378.9,
+   "textures": 329,
    "dolls": {
     "dolls": 88,
     "full": 0,
+    "lite": 68,
+    "dot": 0,
+    "images": 840
+   },
+   "live": 68,
+   "visitors": 10,
+   "hour": 12.63,
+   "cull": {
+    "culled": 1245,
+    "passes": 197,
+    "enabled": true,
+    "ms": 2.314
+   }
+  },
+  {
+   "label": "overview of the neighbours area",
+   "drawPerFrame": 8.7,
+   "bindPerFrame": 108.2,
+   "uploadsPerFrame": 0.25,
+   "objs": 1789,
+   "visible": 1519,
+   "pileItems": 0,
+   "texMiB": 386.6,
+   "textures": 332,
+   "dolls": {
+    "dolls": 91,
+    "full": 0,
     "lite": 0,
-    "dot": 70,
+    "dot": 69,
     "images": 56
    },
    "live": 66,
    "visitors": 10,
-   "hour": 12.77
+   "hour": 12.77,
+   "cull": {
+    "culled": 1144,
+    "passes": 216,
+    "enabled": true,
+    "ms": 2.387
+   }
   }
  ],
  "bench": {
   "plaza": {
-   "avg": 1.157,
-   "p50": 1,
-   "p95": 2.4,
-   "max": 6.1,
-   "objs": 1592
+   "avg": 1.292,
+   "p50": 0.8,
+   "p95": 2.2,
+   "max": 41.9,
+   "objs": 1581
   },
   "town_noon": {
-   "avg": 1.51,
-   "p50": 1.2,
-   "p95": 4.2,
-   "max": 6.7,
+   "avg": 2.222,
+   "p50": 1.8,
+   "p95": 5.9,
+   "max": 20.3,
    "objs": 2310
   },
   "town_night": {
-   "avg": 1.577,
-   "p50": 0.7,
-   "p95": 4,
-   "max": 65.6,
-   "objs": 1719
+   "avg": 1.389,
+   "p50": 1,
+   "p95": 2.2,
+   "max": 50.5,
+   "objs": 1755
   },
   "overview": {
-   "avg": 1.222,
+   "avg": 1.608,
    "p50": 1,
-   "p95": 2.5,
-   "max": 7.6,
-   "objs": 1733
+   "p95": 5,
+   "max": 34.6,
+   "objs": 1793
   }
  },
  "town": {
-  "townMs": 0.09607547373564615,
-  "all": 0.18289156008987212,
+  "townMs": 0.12076736411921184,
+  "all": 0.3263576011943481,
   "census": {
    "town": 86,
    "train": 4,
@@ -239,10 +299,10 @@
    "total": 100
   },
   "rigs": {
-   "dolls": 88,
+   "dolls": 89,
    "full": 0,
    "lite": 0,
-   "dot": 61,
+   "dot": 60,
    "images": 56
   }
  }

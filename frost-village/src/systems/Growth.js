@@ -118,7 +118,7 @@ export class Growth {
     gs.lazyImage(this.board, 'notice_board');
     gs.territory.add('rail', this.board);
     this.boardObs = gs.collision.add(Q.board.x, Q.board.y, 30, 'board');
-    const LB = Object.assign({ board: [0, -150], cargo: [-34, -70], cash: [36, -128] }, Q.labels || {});
+    const LB = Object.assign({ board: [0, -150], cargo: [-34, -70], cash: [36, -172] }, Q.labels || {});
     this.boardLabel = floatLabel(gs, Q.board.x + LB.board[0], Q.board.y + LB.board[1], Assets.pick('ui_icon_mission', 'ui_icon_request', 'ui_icon_lock'));
     // the loading dock
     this.dock = { id: 'cargo', x: Q.cargo.x, y: Q.cargo.y, ux: Q.cargo.x + 34, uy: Q.cargo.y + 22, enabled: true, remote: true, isWarehouse: false, kind: 'cargo',

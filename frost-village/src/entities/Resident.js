@@ -57,7 +57,14 @@ export class Resident extends Character {
 
   get busy() { return !!(this.event || this.job); }
   get canSit() { return Assets.hasAnim(this.key, 'sit') || Assets.hasAnim(this.key, 'loaf'); }
-  can(anim) { return Assets.hasAnim(this.key, anim); }
+  can(anim) {
+    if (Assets.hasAnim(this.key, anim)) return true;
+    // (v4-B) an anim on an on-demand page (throw, run, dance...) that is not loaded right now can still be had:
+    // play() asks Residency for the page and the fallback plays until it arrives. (Gating events on the page
+    // being resident meant snowball fights and tag only happened while a kid's page was in memory.)
+    const d = this.def;
+    return !!(Assets.packed && d && d.atlas && Assets.socialPage(d.atlas, anim));
+  }
 
   // ---------------------------------------------------------------- primitives
   /** walk (or run) to (x, y); along the roads when it is far */
