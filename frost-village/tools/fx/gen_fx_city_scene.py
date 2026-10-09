@@ -379,7 +379,8 @@ def main(out=None, W=2240, H=1240, frame=5):
     add(hp[1] + 3, lambda: put(canvas, fire[frame % 12], fpos, fa, scale=fsc))
     add(hp[1] + 4, lambda: put(canvas, emb[frame % 16], hp + mt['embers'], ea))
     labels.append((fpos + [190, -150], 'fx_fire_bld_s + glow + smoke column + embers (fireMount.buildings)'))
-    labels.append((hp + [mt['windows'][0][0] - 120, mt['windows'][0][1] + 40], 'fx_fire_window'))
+    wl = max(mt['windows'], key=lambda w: w[0])
+    labels.append((hp + [wl[0] + 70, wl[1] + 34], 'fx_fire_window'))
     # --- fire truck (vehicles) with the red beacon
     tp = S(0.6, -4.4)
     timg, tanc, tdef = vehicle('fire_truck', 'siren_SE_%d' % (frame % 4))
@@ -398,8 +399,7 @@ def main(out=None, W=2240, H=1240, frame=5):
     mist, ma, _ = sheet_frames('fx_water_mist')
     steam, sta, _ = sheet_frames('fx_steam_puff')
     ffs = [(S(-0.2, -1.3), 'E', 2), (S(3.8, -2.2), 'NE', 5)]
-    wx0, wy0 = mt['windows'][0][:2]
-    targets = [fpos + [-24, -0.3 * fspec['heightPx'] * fsc], hp + [wx0, wy0]]
+    targets = [fpos + [-24, -0.3 * fspec['heightPx'] * fsc], fpos + [46, -12]]
     for k, ((fp, dr, seed), T) in enumerate(zip(ffs, targets)):
         cfp = cityfolk_person('firefighter', seed)
         if cfp:

@@ -244,8 +244,8 @@ def fight_layers_gif(path, n=12):
         im.alpha_composite(t, (8, 20))
         im.alpha_composite(X.sh_fight_cloud(i, n), (264, 28))
         d = ImageDraw.Draw(im)
-        text(d, (8, 4), 'fightGuide.play: back + residents (fight anim) + front', 12)
-        text(d, (270, 4), 'fightGuide.playSimple: fx_fight_cloud', 12)
+        text(d, (8, 4), 'play: _back + 2 residents + _front', 12)
+        text(d, (280, 4), 'playSimple: fx_fight_cloud', 12)
         frames.append(im)
     F.save_gif(frames, path, 14, panels=('#F4F7FB',))
 

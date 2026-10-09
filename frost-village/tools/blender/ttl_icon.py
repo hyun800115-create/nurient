@@ -360,7 +360,7 @@ def at(right, away, z=0.0):
 def build_scene():
     rig = build_chief()
     carrier_and_stack(rig)
-    build_dog(at(-0.30, -0.66), bc.DIR_YAW["S"] + 22)
+    build_dog(at(-0.18, -0.56), bc.DIR_YAW["S"] + 22)
     # only the red roof corner of the cabin peeks in at the top left; a few far pines on the bank
     build_house(at(-3.3, 3.1), yaw=-10.0, scale=1.30)
     rnd = random.Random(7)
