@@ -29,16 +29,18 @@ PALETTES3 = {
     'stripes_base': ['#F4EDE0', '#F7F5F0', '#ECEAE4'],
     'stripes_ink': ['#2B2F3A', '#2B3A5E', '#C8343A'],
     'suit': ['#2B2F3A', '#3B3F52', '#2B3A5E', '#4A4A52', '#5A4A3A'],
-    'teller_vest': ['#2F5E48', '#5A3A4A', '#3B3F52', '#7A5C40', '#2B3A5E'],
-    'shirt_pale': ['#F7F5F0', '#DCEBF7', '#F2ECDC'],
+    'teller_vest': ['#2F5E48', '#2F5E48', '#6A2E3A', '#5A3A2A'],      # bottle green / burgundy / chocolate (no navy)
+    'shirt_pale': ['#CFE0F2', '#D6DAE2', '#E8DCC4'],                  # pale blue / pale grey / ecru (no white blouse)
     'work': ['#B8925A', '#6E7A4A', '#3F5675', '#8A5A3A', '#5A6070'],
     'cord': ['#5A3A26', '#3B2A20', '#6B4A2E'],
-    'delivery': ['#7A4A2A', '#D9483B', '#2E6E8A', '#E07A2A'],
+    'delivery': ['#D9483B', '#2E6E8A', '#3D8A4A'],                    # no brown: a brown polo + cap became a blob
     'mover': ['#2B3A5E', '#3D6FA8', '#4A5A6A', '#5A3A2A'],
     'trench': ['#C8A878', '#B8956A', '#8A7A60', '#6A6A70'],
     'plaid': ['#8A6A4A', '#6B5A3A', '#7A5C40'],
-    'brace': ['#2B2F3A', '#3D6FB8', '#C8343A'],
+    'brace': ['#F2C230', '#F28A2A', '#3D9AD9'],                       # bright: a black brace read as burglar stripes
+    'lgx': ['#4F95D9', '#3D86CC', '#5AA2E0'],                         # logistics-centre sky blue (lgx_center WALL)
     'workglove': ['#A88A68', '#C9A030', '#6B4A2E', '#3B3F4A'],
+    'firegloves': ['#3B3F4A', '#6B4A2E', '#2A2A30'],                  # darker than the tan coat
     'phone': ['#D9483B', '#3D7CC9', '#2B2F3A', '#F2C230', '#5E9A4A', '#F59AB8'],
 }
 SLOT_PALETTE3 = {}            # no new tint slots
@@ -50,15 +52,18 @@ EXTRA_TINTS3 = {
     'top2': (PALETTES3['hivis'] + PALETTES3['stripes_ink'] + PALETTES3['shirt_pale'] + PALETTES3['cord'] +
              ['#F4F1EA', '#C8343A', '#F2C14E', '#2B2F3A', '#E8B0C0', '#9CC7E6']),
     'bottom': PALETTES3['fire_coat'] + PALETTES3['mover'] + PALETTES3['suit'] + ['#2B2F3A', '#3B3F52'],
-    'hat': PALETTES3['fire_helmet'] + PALETTES3['plaid'] + PALETTES3['delivery'] + ['#2A2A30', '#3A3040', '#F28A2A'],
-    'hat2': ['#4A3A2A', '#3B2A20', '#C8A878', '#F4F1EA', '#2B2F3A'],
-    'acc': PALETTES3['brace'] + PALETTES3['hivis'],
+    'hat': (PALETTES3['fire_helmet'] + PALETTES3['plaid'] + PALETTES3['delivery'] + PALETTES3['lgx'] +
+            ['#2A2A30', '#3A3040', '#F28A2A', '#F2C14E', '#F4F1EA', '#2B4F7E', '#5A6070']),
+    'hat2': ['#4A3A2A', '#3B2A20', '#C8A878', '#F4F1EA', '#2B2F3A', '#2B4F7E', '#F2C230', '#C8463D'],
+    'acc': PALETTES3['brace'] + PALETTES3['hivis'] + PALETTES3['lgx'],
     'acc2': PALETTES3['phone'],
     'bag': ['#8A5A33', '#6B4A2E', '#3B2A20'],
-    'hands': PALETTES3['workglove'] + ['#2A2A30', '#22242C'],
+    'hands': PALETTES3['workglove'] + PALETTES3['firegloves'] + ['#22242C'],
 }
 
 # =========================================================================== combination rules
+TIED_HAIR = ['hair_ponytail', 'hair_ponytail_long', 'hair_twintails', 'hair_twintails_long']
+JOB_HATS = ['tag:jobhat', 'hat_police', 'hat_hardhat', 'hat_station', 'hat_postal', 'hat_fedora']
 EXCLUDE3 = [
     ['acc_eye_mask', 'family:glasses'], ['acc_eye_mask', 'acc_earmuffs'],
     ['acc_visor', 'tag:tall'], ['acc_visor', 'tag:big'],
@@ -72,7 +77,12 @@ EXCLUDE3 = [
     ['bot_mover_overalls', 'top_fire_coat'], ['top_suit_3pc', 'acc_scarf'], ['top_suit_3pc', 'acc_backpack'],
     ['top_teller_vest', 'acc_scarf'], ['top_police_v2', 'acc_scarf'], ['top_police_v2', 'det_hivis'],
     ['top_hivis_jacket', 'det_hivis'], ['top_trench', 'det_hivis'], ['top_stripes', 'det_tie'],
-]
+    ['det_lgx_vest', 'det_hivis'], ['det_lgx_vest', 'top_hivis_jacket'], ['det_lgx_vest', 'top_trench'],
+    ['det_lgx_vest', 'top_coat'], ['det_lgx_vest', 'acc_back_brace'], ['acc_dust_mask', 'acc_eye_mask'],
+    ['acc_dust_mask', 'family:facial_hair'],
+] + [[h, t] for h in TIED_HAIR for t in JOB_HATS]
+# ponytail / twin-tail ties are 'noclip' hair subs: under a full job hat they poked out through the crown
+# (a brown knob above police caps, a loop above fire helmets) -> those hairs never go with a job hat
 
 # =========================================================================== named presets
 # same format as tf_presets.PRESETS ('extra' parts always added when they fit; '=slot' copies a colour)
@@ -82,10 +92,10 @@ PRESETS3 = {
                     'tops': ['top_fire_coat'], 'bottoms': ['bot_fire_pants'], 'shoes': ['shoe_rubber'],
                     'hats': ['hat_fire_helmet'], 'hatChance': 1.0, 'extra': ['acc_air_tank'], 'neck': None,
                     'bag': None, 'headAcc': None, 'glassesChance': 0.05, 'facialHairChance': 0.2,
-                    'hair': {'hair_short': 3, 'hair_buzz': 2, 'hair_sidepart': 1, 'hair_bob': 1, 'hair_ponytail': 1},
+                    'hair': {'hair_short': 3, 'hair_buzz': 2, 'hair_sidepart': 1, 'hair_bob': 1, 'hair_bun': 1},
                     'colors': {'top': ['#C9A25E', '#C9A25E', '#2E3B5C', '#3A3A40'], 'bottom': ['=top'],
                                'hat': ['#D9483B', '#D9483B', '#F2C230', '#2A2A30'], 'shoes': ['#2A2A30'],
-                               'hands': ['#A88A68', '#3B3F4A', '#6B4A2E']}},
+                               'hands': 'firegloves'}},
     'police_officer': {'label': {'ko': '경찰관', 'en': 'police officer'},
                        'bases': {'adult_slim': 3, 'adult_round': 2},
                        'tops': ['top_police_v2'], 'bottoms': ['bot_pants'], 'shoes': {'shoe_shoes': 1, 'shoe_boots': 1},
@@ -112,79 +122,88 @@ PRESETS3 = {
                            'hat': ['#3B3F4A', '#3A3040', '#4A4A52'], 'bottom': ['#2B2F3A', '#3B3F52'],
                            'shoes': ['#2A2A30'], 'hands': ['#2A2A30', '#3B3F4A']}},
     'banker': {'label': {'ko': '은행장', 'en': 'banker'},
-               'bases': {'adult_slim': 2, 'adult_round': 3, 'elder_slim': 1, 'elder_round': 2},
+               'bases': {'adult_slim': 1, 'adult_round': 2, 'elder_slim': 2, 'elder_round': 3},
                'tops': ['top_suit_3pc'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': {'hat_fedora': 1},
                'hatChance': 0.2, 'neck': None, 'bag': None, 'headAcc': None,
-               'glasses': {'acc_glasses': 1, 'acc_glasses_sq': 2}, 'glassesChance': 0.5, 'facialHairChance': 0.45,
+               # grown-up hair only (a young banker with a bob / twin-tails read as a school uniform)
+               'hair': {'hair_sidepart': 4, 'hair_short': 2, 'hair_bald': 2, 'hair_lowbun': 1, 'hair_bun': 1,
+                        'hair_wavy': 1},
+               'glasses': {'acc_glasses': 1, 'acc_glasses_sq': 2}, 'glassesChance': 0.65, 'facialHairChance': 0.5,
                'colors': {'top': 'suit', 'top2': ['#C8343A', '#2B3A5E', '#F2C14E', '#5E9A4A'], 'bottom': ['=top'],
                           'shoes': ['#2A2A30', '#3B2A20'], 'hat': ['#2B2F3A', '#3B3F52'], 'hat2': ['#2B2F3A'],
                           'hands': ['skin']}},
     'bank_teller': {'label': {'ko': '은행 창구 직원', 'en': 'bank teller'},
                     'bases': {'adult_slim': 4, 'adult_round': 2},
                     'tops': ['top_teller_vest'], 'bottoms': {'bot_pants': 3, 'bot_skirt': 1}, 'shoes': ['shoe_shoes'],
-                    'hats': ['acc_visor'], 'hatChance': 0.55, 'neck': None,
-                    'bag': None, 'headAcc': None, 'glassesChance': 0.3, 'facialHairChance': 0.1,
-                    'colors': {'top': 'teller_vest', 'top2': 'shirt_pale', 'bottom': ['#3B3F52', '#2B2F3A', '#4A3830'],
+                    'hats': ['acc_visor'], 'hatChance': 1.0, 'neck': None,
+                    'bag': None, 'headAcc': None, 'glassesChance': 0.3, 'facialHairChance': 0.15,
+                    'hair': {'hair_sidepart': 2, 'hair_short': 2, 'hair_bun': 2, 'hair_lowbun': 2, 'hair_bob': 1,
+                             'hair_wavy': 1, 'hair_curly': 1},
+                    'colors': {'top': 'teller_vest', 'top2': 'shirt_pale', 'bottom': ['#4A4E58', '#3B3F4A', '#5A5E6A'],
                                'shoes': ['#2A2A30', '#3B2A20'], 'hands': ['skin']}},
     'warehouse_worker': {'label': {'ko': '물류센터 직원', 'en': 'warehouse worker'},
                          'bases': {'adult_slim': 3, 'adult_round': 3},
                          'tops': ['top_work_jacket'], 'bottoms': ['bot_pants'],
-                         'shoes': ['shoe_boots'], 'hats': {'hat_beanie': 2, 'hat_cap': 1}, 'hatChance': 0.5,
-                         'extra': ['acc_gloves'], 'neck': None, 'bag': None, 'headAcc': None, 'gloveChance': 1.0,
-                         'colors': {'top': 'work', 'top2': 'cord', 'bottom': ['#3F5675', '#3B3F52', '#4A3830'],
-                                    'shoes': ['#3B2A20', '#6B4A2E'], 'hat': ['#F28A2A', '#3D6FB8', '#5E7A3A'],
-                                    'hat2': ['=hat'], 'hands': 'workglove'}},
+                         'shoes': ['shoe_boots'], 'hats': {'hat_beanie': 2, 'hat_cap': 2}, 'hatChance': 0.6,
+                         'extra': ['det_lgx_vest', 'acc_gloves'], 'neck': None, 'bag': None, 'headAcc': None,
+                         'gloveChance': 1.0,
+                         'colors': {'top': ['#5A6070', '#3F5675', '#6E7A4A', '#B8925A'], 'top2': 'cord', 'acc': 'lgx',
+                                    'bottom': ['#3B3F52', '#2E3440', '#4A3830'],
+                                    'shoes': ['#3B2A20', '#6B4A2E'], 'hat': ['#F2C230', '#4F95D9', '#2B4F7E'],
+                                    'hat2': ['#F2C230', '#2B4F7E'], 'hands': 'workglove'}},
     'forklift_driver': {'label': {'ko': '지게차 기사', 'en': 'forklift driver'},
                         'bases': {'adult_slim': 3, 'adult_round': 3},
                         'tops': ['top_work_jacket'], 'bottoms': ['bot_overalls'], 'shoes': ['shoe_boots'],
-                        'hats': ['hat_hardhat'], 'hatChance': 1.0, 'extra': ['det_hivis', 'acc_gloves'], 'neck': None,
+                        'hats': ['hat_bump_cap'], 'hatChance': 1.0, 'extra': ['det_hivis', 'acc_gloves'], 'neck': None,
                         'bag': None, 'headAcc': None,
-                        'colors': {'top': 'work', 'top2': 'cord', 'acc': ['#F28A2A', '#D8F040'],
-                                   'hat': ['#F2C230', '#F4F1EA'], 'bottom': ['#3D6FA8', '#4A5A6A'],
+                        'colors': {'top': 'work', 'top2': 'cord', 'acc': ['#F28A2A'],
+                                   'hat': ['#2B4F7E', '#3B3F52', '#4F95D9'], 'hat2': ['#2B4F7E', '#2A2A30'],
+                                   'bottom': ['#3D6FA8', '#4A5A6A'],
                                    'shoes': ['#3B2A20', '#2E3440'], 'hands': 'workglove'}},
     'delivery_driver': {'label': {'ko': '택배 기사', 'en': 'delivery driver'},
                         'bases': {'adult_slim': 4, 'adult_round': 2},
                         'tops': ['top_delivery_polo'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'],
                         'hats': ['hat_delivery_cap'], 'hatChance': 1.0, 'neck': None, 'bag': None,
                         'headAcc': None, 'gloveChance': 0.3,
-                        'colors': {'top': ['#7A4A2A', '#D9483B', '#2E6E8A'], 'top2': ['#F2C14E', '#F4F1EA', '#E8DCC0'],
-                                   'hat': ['=top'], 'hat2': ['=top2'], 'bottom': ['#3B3F52', '#4A3830', '#2B2F3A'],
+                        'colors': {'top': 'delivery', 'top2': ['#F2C14E', '#F2C14E', '#F4F1EA'],
+                                   'hat': ['=top2'], 'hat2': ['=top'], 'bottom': ['#3B3F52', '#4A3830', '#2B2F3A'],
                                    'shoes': ['#3B2A20', '#2A2A30'], 'bag': ['#8A5A33', '#3B2A20']}},
     'mover': {'label': {'ko': '이삿짐 일꾼', 'en': 'mover'},
               'bases': {'adult_slim': 2, 'adult_round': 4},
               'tops': {'top_sweater': 3, 'top_work_jacket': 1}, 'bottoms': ['bot_mover_overalls'],
               'shoes': ['shoe_boots'], 'hats': {'hat_beanie': 2, 'hat_cap': 1}, 'hatChance': 0.6,
               'extra': ['acc_back_brace', 'acc_gloves'], 'neck': None, 'bag': None, 'headAcc': None,
-              'colors': {'top': ['#F4EDE0', '#D9483B', '#5E9A4A', '#8A6A4A', '#3D7CC9'], 'top2': 'cord',
-                         'bottom': 'mover', 'acc': 'brace', 'hat': ['#2B3A5E', '#D9483B', '#3B3F52'],
+              'colors': {'top': ['#D9483B', '#5E9A4A', '#8A6A4A', '#3D7CC9'], 'top2': 'cord',
+                         'bottom': 'mover', 'acc': 'brace', 'hat': ['#2B3A5E', '#3B3F52', '#5A6070'],
                          'hat2': ['=hat'], 'shoes': ['#3B2A20', '#6B4A2E'], 'hands': 'workglove'}},
     'construction_worker': {'label': {'ko': '공사장 인부', 'en': 'construction worker'},
                             'bases': {'adult_slim': 3, 'adult_round': 3},
                             'tops': ['top_hivis_jacket'], 'bottoms': {'bot_pants': 2, 'bot_overalls': 1},
                             'shoes': ['shoe_boots'], 'hats': ['hat_hardhat'], 'hatChance': 1.0,
                             'extra': ['acc_toolbelt', 'acc_gloves'], 'neck': None, 'bag': None, 'headAcc': None,
-                            'colors': {'top': ['#D8F040', '#F28A2A'], 'hat': ['#F2C230', '#F2C230', '#F4F1EA'],
+                            'colors': {'top': ['#D8F040'], 'hat': ['#F2C230', '#F2C230', '#F4F1EA'],
                                        'bottom': ['#3F5675', '#4A5A6A', '#3B3F52'], 'bag': ['#8A5A33', '#6B4A2E'],
                                        'shoes': ['#3B2A20', '#6B4A2E'], 'hands': 'workglove'}},
     'demolition_worker': {'label': {'ko': '철거 작업자', 'en': 'demolition worker'},
                           'bases': {'adult_slim': 2, 'adult_round': 4},
                           'tops': ['top_work_jacket'], 'bottoms': {'bot_pants': 1, 'bot_overalls': 1},
-                          'shoes': ['shoe_boots'], 'hats': ['hat_hardhat'], 'hatChance': 1.0,
+                          'shoes': ['shoe_boots'], 'hats': ['hat_demo_helmet'], 'hatChance': 1.0,
                           'extra': ['det_hivis', 'acc_gloves', 'acc_toolbelt'], 'neck': None, 'bag': None,
-                          'headAcc': None,
+                          'headAcc': {'acc_dust_mask': 1}, 'headAccChance': 0.7, 'facialHairChance': 0.0,
                           'colors': {'top': ['#5A6070', '#6E7A4A', '#3F5675'], 'top2': 'cord',
-                                     'acc': ['#F28A2A'], 'hat': ['#F28A2A', '#F4F1EA'], 'bag': ['#6B4A2E'],
+                                     'acc': ['#F28A2A'], 'hat': ['#F28A2A'], 'bag': ['#6B4A2E'],
                                      'bottom': ['#4A5A6A', '#3B3F52'], 'shoes': ['#2E3440', '#3B2A20'],
                                      'hands': 'workglove'}},
     'reporter': {'label': {'ko': '기자', 'en': 'reporter'},
                  'bases': {'adult_slim': 4, 'adult_round': 2, 'elder_slim': 1},
                  'tops': {'top_coat': 2, 'top_cardigan': 1, 'top_parka': 1, 'top_trench': 1},
                  'bottoms': {'bot_pants': 3, 'bot_skirt': 1}, 'shoes': {'shoe_shoes': 2, 'shoe_boots': 1},
-                 'hats': {'hat_flatcap': 2, 'hat_beret': 1}, 'hatChance': 0.5,
+                 'hats': {'hat_press_fedora': 4, 'hat_flatcap': 1, 'hat_beret': 1}, 'hatChance': 0.9,
                  'extra': ['acc_camera', 'held_notepad'], 'neck': None, 'bag': {'acc_satchel': 1}, 'bagChance': 0.4,
                  'headAcc': None, 'glasses': {'acc_glasses': 1, 'acc_glasses_sq': 1}, 'glassesChance': 0.45,
                  'colors': {'top': ['#7A5C40', '#3B3F52', '#C8A878', '#5E7A3A', '#8A6A4A'],
-                            'top2': ['#F4EDE0', '#F7F5F0'], 'hat': ['#3B3F52', '#7A6A58', '#C8463D'],
+                            'top2': ['#F4EDE0', '#F7F5F0'], 'hat': ['#3B3F52', '#7A6A58', '#5A4A3A'],
+                            'hat2': ['#2A2A30', '#C8463D'],
                             'bottom': ['#3B3F52', '#4A3830', '#2E3440'], 'bag': ['#8A5A33', '#3B2A20']}},
 }
 
@@ -192,14 +211,18 @@ PRESETS3 = {
 JOB_V4 = {'top_uniform', 'top_labcoat', 'top_tunic', 'det_police', 'det_station', 'det_stethoscope', 'det_lanyard',
           'det_apron', 'det_apron_salon', 'det_hivis', 'acc_mailbag'}
 CORE = {
+    # (polish pass: + the run / crowd blockers of random residents: dresses, bombers, pleated skirts, backpacks,
+    #  elder overalls - every body part the generator gives residents is now in 'core', except the necklace
+    #  which is a drop accessory, and child vests / cardigans (<1.5 % of children))
     'child': {'top_puffer', 'top_parka', 'top_hoodie', 'top_duffle', 'top_sweater', 'top_dress', 'top_coat',
-              'bot_pants', 'bot_snowpants', 'bot_skirt', 'bot_overalls', 'bot_tights',
+              'top_bomber', 'bot_pants', 'bot_snowpants', 'bot_skirt', 'bot_overalls', 'bot_tights', 'bot_pleated',
               'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes', 'acc_scarf', 'acc_backpack'},
     'adult': {'top_parka', 'top_puffer', 'top_sweater', 'top_coat', 'top_cardigan', 'top_hoodie', 'top_duffle',
-              'top_vest', 'bot_pants', 'bot_skirt', 'bot_snowpants', 'bot_longskirt', 'bot_tights', 'bot_overalls',
-              'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes', 'acc_scarf', 'acc_satchel'},
+              'top_vest', 'top_dress', 'top_bomber', 'bot_pants', 'bot_skirt', 'bot_snowpants', 'bot_longskirt',
+              'bot_tights', 'bot_overalls', 'bot_pleated', 'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes',
+              'acc_scarf', 'acc_satchel', 'acc_backpack'},
     'elder': {'top_cardigan', 'top_coat', 'top_parka', 'top_sweater', 'top_vest', 'top_puffer', 'top_duffle',
-              'bot_pants', 'bot_longskirt', 'bot_snowpants', 'bot_skirt', 'bot_tights',
+              'top_dress', 'bot_pants', 'bot_longskirt', 'bot_snowpants', 'bot_skirt', 'bot_tights', 'bot_overalls',
               'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes', 'acc_scarf', 'acc_satchel'},
 }
 MINI = {
@@ -229,21 +252,31 @@ CF_CIVIC = FIRE + POLICE + BURGLAR + BANK + PRESS + ['top_work_jacket', 'top_del
 
 # per new anim: v4 wardrobe tier per age ('all' | 'core' | 'mini' | 'none') + extra parts (any age they exist for)
 MOVERS = ['top_work_jacket', 'acc_gloves', 'top_delivery_polo', 'bot_mover_overalls', 'acc_back_brace', 'top_sweater',
-          'top_hivis_jacket', 'acc_toolbelt', 'det_hivis', 'bot_overalls']          # + forklift / site crews
-SITE = ['top_hivis_jacket', 'top_work_jacket', 'acc_toolbelt', 'acc_gloves', 'det_hivis', 'bot_overalls']
+          'top_hivis_jacket', 'acc_toolbelt', 'det_hivis', 'bot_overalls', 'det_lgx_vest']   # + forklift / site crews
+SITE = ['top_hivis_jacket', 'top_work_jacket', 'acc_toolbelt', 'acc_gloves', 'det_hivis', 'bot_overalls',
+        'det_lgx_vest']
+# drop accessories: simply not drawn in these anims (they never block an anim) - a necklace under a coat, a bag
+# while the arms are flung up / behind the back / round a box (manifest cityfolk.cfDrop, compositor rule 7)
+CF_DROP = {'acc_necklace': ['run', 'flee', 'arrested_walk', 'carry_box', 'argue', 'fight', 'point', 'think', 'shocked',
+                            'phone', 'sweep', 'spray_hose'],
+           'acc_satchel': ['flee', 'fight', 'arrested_walk', 'carry_box', 'sweep', 'spray_hose'],
+           'acc_backpack': ['flee', 'fight', 'arrested_walk', 'carry_box', 'sweep', 'spray_hose']}
+# anims whose lower-body frames are the SAME images as a partner's (shared lower key, cf_anim.LOWER_GROUPS):
+# every bottom / shoe cast in the partner is cast here too (frame aliases, no new pixels)
+LOWER_PARTNER = {'flee': ['run'], 'arrested_walk': ['carry_box'], 'carry_box': ['arrested_walk']}
 CAST3 = {
-    # run is the everyday hurry / play / rush-to-see anim -> the core wardrobe; flee (arms-up panic) keeps the mini
-    # wardrobe and everybody else falls back flee -> run with the 'panic' face (still reads as fleeing)
+    # run is the everyday hurry / play / rush-to-see anim -> the core wardrobe; flee (arms-up panic) has the core
+    # wardrobe too since the polish pass (residents of a burning house flee in whatever they wear)
     'run':           ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       FIRE + POLICE + BURGLAR + ['top_trench', 'acc_camera', 'top_delivery_polo']),
-    'flee':          ({'child': 'mini', 'adult': 'mini', 'elder': 'mini'}, BURGLAR),
+    'flee':          ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),
     'arrested_walk': ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'carry_box':     ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, MOVERS),
     'argue':         ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),
     'fight':         ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'point':         ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       FIRE + POLICE + ['top_trench', 'acc_camera', 'top_hivis_jacket', 'acc_toolbelt', 'acc_gloves',
-                                       'top_work_jacket', 'det_hivis']),
+                                       'top_work_jacket', 'det_hivis', 'det_lgx_vest']),
     'think':         ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       ['top_trench', 'top_suit_3pc', 'det_tie', 'top_police_v2', 'det_police', 'acc_camera']),
     'shocked':       ({'child': 'core', 'adult': 'core', 'elder': 'core'},
@@ -258,18 +291,19 @@ CAST3 = {
 NEW_WEAR = ['top_fire_coat', 'bot_fire_pants', 'acc_air_tank', 'top_police_v2', 'top_stripes', 'held_loot_sack',
             'top_suit_3pc', 'top_teller_vest', 'top_work_jacket', 'acc_gloves', 'top_delivery_polo',
             'bot_mover_overalls', 'acc_back_brace', 'top_hivis_jacket', 'acc_toolbelt', 'acc_camera', 'held_notepad',
-            'top_trench']
-WORK_NEW = ['top_work_jacket', 'acc_gloves', 'top_delivery_polo', 'bot_mover_overalls', 'acc_back_brace']
+            'top_trench', 'det_lgx_vest']
 OLD_CAST3 = {
     'idle': NEW_WEAR, 'walk': NEW_WEAR, 'talk': NEW_WEAR,
     'wave': ['top_fire_coat', 'bot_fire_pants', 'acc_air_tank', 'top_police_v2'],
     'happy': ['top_fire_coat', 'bot_fire_pants', 'acc_air_tank', 'top_police_v2'],
-    'carry_walk': WORK_NEW,
+    # (no carry_walk: the v4 runtime never loads it - pack_pages drops it, dolls carry on the head)
     'sit': ['top_stripes', 'top_suit_3pc'],
     'sad': ['top_stripes'],
 }
 ANIM_FALLBACK = {
-    'run': ['walk'], 'flee': ['run', 'walk'], 'arrested_walk': ['walk'], 'carry_box': ['carry_walk', 'walk'],
+    # carry_box -> walk (NOT carry_walk: the v4 runtime drops carry_walk; the game shows its own head carry on walk);
+    # flee -> run -> idle with the panic face (never a calm walk away from a fire)
+    'run': ['walk'], 'flee': ['run', 'idle'], 'arrested_walk': ['walk'], 'carry_box': ['walk'],
     'argue': ['talk', 'idle'], 'fight': ['argue', 'talk', 'idle'], 'point': ['talk', 'idle'],
     'think': ['idle'], 'shocked': ['idle'], 'phone': ['talk', 'idle'], 'sweep': ['idle'], 'spray_hose': ['idle'],
     'wave': ['talk', 'idle'], 'happy': ['idle'], 'carry_walk': ['walk'], 'sit': ['idle'], 'sad': ['idle'],
@@ -284,6 +318,28 @@ def v4_base_parts():
     with open(TF_MANIFEST, encoding='utf-8') as f:
         T = json.load(f)['townfolk']
     return {b: set(T['bases'][b]['parts']) for b in RENDER_BASES}
+
+
+def _is_lower(pn):
+    """bottoms and shoes: the parts whose (lower) layers an anim shares with its LOWER_PARTNER."""
+    return pn.startswith('bot_') or pn.startswith('shoe_')
+
+
+def _base_cast(anim, base, v4, v4names):
+    """cast of `anim` without partners / drops (tier + extras that exist for the base)."""
+    import tf_parts as tp
+    age = AGE_OF[base]
+    tiers, extra = CAST3[anim]
+    tier = tiers.get(age, 'none')
+    out = set({'all': v4, 'core': CORE[age] & v4, 'mini': MINI[age] & v4, 'tiny': TINY[age] & v4, 'none': set()}[tier])
+    for pn in extra:
+        P = tp.PARTS.get(pn)
+        if P is None or P.space != 'body' or (P.ages and age not in P.ages):
+            continue
+        if pn in v4names and pn not in v4:
+            continue
+        out.add(pn)
+    return out
 
 
 def part_ages(pn):
@@ -304,6 +360,9 @@ def cast_parts(anim, base, v4parts=None):
         tiers, extra = CAST3[anim]
         tier = tiers.get(age, 'none')
         out |= {'all': v4, 'core': CORE[age] & v4, 'mini': MINI[age] & v4, 'tiny': TINY[age] & v4, 'none': set()}[tier]
+        extra = list(extra)
+        for partner in LOWER_PARTNER.get(anim, []):          # shared lower-body images -> free aliases
+            extra += [pn for pn in _base_cast(partner, base, v4, v4names) if _is_lower(pn)]
     else:
         extra = OLD_CAST3.get(anim, [])
     for pn in extra:
@@ -315,6 +374,7 @@ def cast_parts(anim, base, v4parts=None):
         if anim in getattr(P, 'no_anims', ()) or (getattr(P, 'only_anims', None) and anim not in P.only_anims):
             continue                    # hand-held item with busy hands in this anim
         out.add(pn)
+    out -= {pn for pn, an in CF_DROP.items() if anim in an}       # drop accessories: never rendered there
     return sorted(out)
 
 
@@ -335,7 +395,7 @@ LOOK = [
          parts=['hair_short', 'top_fire_coat', 'bot_fire_pants', 'shoe_rubber', 'hat_fire_helmet', 'acc_air_tank',
                 'fh_moustache'],
          colors=dict(skin='#E8B48C', hair='#3A2A22', top='#C9A25E', bottom='#C9A25E', shoes='#2A2A30',
-                     hat='#D9483B', sleeve='#C9A25E', hands='#A88A68')),
+                     hat='#D9483B', sleeve='#C9A25E', hands='#3B3F4A')),
     dict(name='burglar', base='adult_slim', face='std', nose='button',
          parts=['hair_short', 'top_stripes', 'bot_pants', 'shoe_shoes', 'hat_burglar_beanie', 'acc_eye_mask',
                 'held_loot_sack'],
@@ -363,20 +423,20 @@ LOOK = [
                      shoes='#2A2A30', glasses='#2B2F3A', sleeve='#2B3A5E', hands='#F2C29A')),
     dict(name='teller', base='adult_slim', face='lash', nose='dot',
          parts=['hair_bun', 'top_teller_vest', 'bot_skirt', 'shoe_shoes', 'acc_visor'],
-         colors=dict(skin='#F6CFAE', hair='#3A2A22', top='#2F5E48', top2='#F7F5F0', bottom='#3B3F52',
-                     bottom2='#2E3440', shoes='#3B2A20', sleeve='#F7F5F0', hands='#F6CFAE')),
+         colors=dict(skin='#F6CFAE', hair='#3A2A22', top='#2F5E48', top2='#CFE0F2', bottom='#4A4E58',
+                     bottom2='#2E3440', shoes='#3B2A20', sleeve='#CFE0F2', hands='#F6CFAE')),
     dict(name='warehouse', base='adult_slim', face='std', nose='button',
-         parts=['hair_short', 'top_work_jacket', 'acc_gloves', 'det_hivis', 'bot_pants', 'shoe_boots', 'hat_beanie'],
-         colors=dict(skin='#D9A07A', hair='#3A2A22', top='#B8925A', top2='#5A3A26', acc='#F28A2A', bottom='#3F5675',
-                     shoes='#3B2A20', hat='#3D6FB8', sleeve='#B8925A', hands='#C9A030')),
+         parts=['hair_short', 'top_work_jacket', 'acc_gloves', 'det_lgx_vest', 'bot_pants', 'shoe_boots', 'hat_cap'],
+         colors=dict(skin='#D9A07A', hair='#3A2A22', top='#5A6070', top2='#5A3A26', acc='#4F95D9', bottom='#3B3F52',
+                     shoes='#3B2A20', hat='#F2C230', hat2='#2B4F7E', sleeve='#5A6070', hands='#C9A030')),
     dict(name='delivery', base='adult_slim', face='lash', nose='dot',
          parts=['hair_ponytail', 'top_delivery_polo', 'bot_pants', 'shoe_boots', 'hat_delivery_cap'],
-         colors=dict(skin='#F6CFAE', hair='#5A3A26', top='#7A4A2A', top2='#F2C14E', hat='#7A4A2A', hat2='#F2C14E',
+         colors=dict(skin='#F6CFAE', hair='#5A3A26', top='#D9483B', top2='#F2C14E', hat='#F2C14E', hat2='#D9483B',
                      bottom='#3B3F52', shoes='#3B2A20', sleeve='#F2C14E', hands='#F6CFAE')),
     dict(name='mover', base='adult_slim', face='bold', nose='big',
          parts=['hair_buzz', 'top_sweater', 'bot_mover_overalls', 'acc_back_brace', 'acc_gloves', 'shoe_boots',
                 'fh_beard'],
-         colors=dict(skin='#C98E6A', hair='#2A2228', top='#D9483B', top2='#F4EDE0', bottom='#2B3A5E', acc='#2B2F3A',
+         colors=dict(skin='#C98E6A', hair='#2A2228', top='#D9483B', top2='#F4EDE0', bottom='#2B3A5E', acc='#F2C230',
                      shoes='#3B2A20', sleeve='#D9483B', hands='#A88A68')),
     dict(name='construction', base='adult_slim', face='std', nose='dot',
          parts=['hair_short', 'top_hivis_jacket', 'acc_toolbelt', 'acc_gloves', 'bot_pants', 'shoe_boots',
@@ -384,9 +444,20 @@ LOOK = [
          colors=dict(skin='#E8B48C', hair='#8A5232', top='#F28A2A', hat='#F2C230', bottom='#3F5675', bag='#8A5A33',
                      shoes='#3B2A20', sleeve='#F28A2A', hands='#C9A030')),
     dict(name='reporter', base='adult_slim', face='lash', nose='dot',
-         parts=['hair_bob_long', 'top_coat', 'acc_camera', 'held_notepad', 'bot_pants', 'shoe_shoes', 'hat_beret'],
+         parts=['hair_bob_long', 'top_coat', 'acc_camera', 'held_notepad', 'bot_pants', 'shoe_shoes',
+                'hat_press_fedora'],
          colors=dict(skin='#F2C29A', hair='#2A2228', top='#7A5C40', bottom='#3B3F52', shoes='#3B2A20',
-                     hat='#C8463D', sleeve='#7A5C40', hands='#F2C29A')),
+                     hat='#5A4A3A', hat2='#2A2A30', sleeve='#7A5C40', hands='#F2C29A')),
+    dict(name='forklift', base='adult_slim', face='std', nose='dot',
+         parts=['hair_short', 'top_work_jacket', 'acc_gloves', 'det_hivis', 'bot_overalls', 'shoe_boots',
+                'hat_bump_cap'],
+         colors=dict(skin='#D9A07A', hair='#3A2A22', top='#B8925A', top2='#5A3A26', acc='#F28A2A', bottom='#3D6FA8',
+                     shoes='#3B2A20', hat='#2B4F7E', hat2='#2A2A30', sleeve='#B8925A', hands='#C9A030')),
+    dict(name='demolition', base='adult_slim', face='bold', nose='big',
+         parts=['hair_short', 'top_work_jacket', 'acc_gloves', 'det_hivis', 'acc_toolbelt', 'bot_pants', 'shoe_boots',
+                'hat_demo_helmet', 'acc_dust_mask'],
+         colors=dict(skin='#E8B48C', hair='#3A2A22', top='#5A6070', top2='#5A3A26', acc='#F28A2A', bottom='#4A5A6A',
+                     bag='#6B4A2E', shoes='#2E3440', hat='#F28A2A', sleeve='#5A6070', hands='#C9A030')),
     dict(name='detective', base='elder_slim', face='elder', nose='big',
          parts=['hair_short', 'top_trench', 'bot_pants', 'shoe_shoes', 'hat_deerstalker', 'fh_moustache'],
          colors=dict(skin='#F2C29A', hair='#9A948E', top='#C8A878', hat='#8A6A4A', hat2='#4A3A2A', bottom='#4A3830',
@@ -417,11 +488,13 @@ LOOK_FRAMES = {
     'teller': [('idle', 'S', 0), ('walk', 'SE', 2), ('talk', 'SE', 0), ('phone', 'S', 1), ('flee', 'SE', 2),
                ('idle', 'N', 0)],
     'warehouse': [('idle', 'S', 0), ('walk', 'SE', 2), ('carry_box', 'SE', 3), ('carry_box', 'S', 0),
-                  ('carry_walk', 'S', 0), ('sweep', 'E', 2)],
+                  ('idle', 'N', 0), ('sweep', 'E', 2)],
     'delivery': [('idle', 'S', 0), ('walk', 'SE', 2), ('run', 'E', 2), ('carry_box', 'SE', 2), ('phone', 'S', 0),
                  ('idle', 'N', 0)],
-    'mover': [('idle', 'S', 0), ('walk', 'SE', 2), ('carry_box', 'S', 2), ('carry_box', 'E', 4), ('carry_walk', 'SE', 1),
+    'mover': [('idle', 'S', 0), ('walk', 'SE', 2), ('carry_box', 'S', 2), ('carry_box', 'E', 4), ('talk', 'SE', 1),
               ('idle', 'N', 0)],
+    'forklift': [('idle', 'S', 0), ('walk', 'SE', 2), ('carry_box', 'SE', 1), ('idle', 'N', 0)],
+    'demolition': [('idle', 'S', 0), ('walk', 'SE', 2), ('sweep', 'SE', 2), ('point', 'S', 1)],
     'construction': [('idle', 'S', 0), ('walk', 'SE', 2), ('sweep', 'SE', 2), ('carry_box', 'SE', 1), ('point', 'S', 1),
                      ('idle', 'N', 0)],
     'reporter': [('idle', 'S', 0), ('walk', 'SE', 2), ('talk', 'SE', 0), ('run', 'SE', 3), ('phone', 'S', 0),

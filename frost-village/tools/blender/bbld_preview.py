@@ -143,6 +143,17 @@ def preview_all(builds, frames, derived, out):
             comp.alpha_composite(im)
             ents.append((k + ' (deck, water cut out)', ko + ' (데크)', im))
             ents.append((k + ' over hotel_pool_water', '물 위에 데크 (대체 물)', comp))
+            if k + '_glow' in frames:
+                arr = np.asarray(comp).astype(np.float32)
+                g = np.asarray(frames[k + '_glow']).astype(np.float32)
+                ga = g[..., :3] * (g[..., 3:4] / 255.0)
+                a0 = arr[..., 3:4] / 255.0
+                rgb = arr[..., :3] * a0 * NIGHT_MUL + ga
+                al = np.maximum(a0[..., 0], np.clip(ga.max(-1) / 255.0, 0, 1))
+                arr[..., :3] = rgb / np.maximum(al, 1e-3)[..., None]
+                arr[..., 3] = al * 255.0
+                ents.append((k + ' at night', '밤 (DayClock + glow)', Image.fromarray(arr.clip(0, 255).astype(np.uint8),
+                                                                                      'RGBA')))
             continue
         ents.append((k, ko, im))
         if 'anims' in m:
@@ -693,7 +704,8 @@ def build_scene(builds, frames, derived, night=False, seed=7):
                 p = bf.preset(preset, seed=rnd.randrange(10 ** 6))
                 if not bf.can_play(p, anim):
                     anim = 'idle'
-                im = bf.compose(p, anim, d, i, margin=32)
+                nfr = int((bf.T.get('anims', {}).get(anim) or {}).get('frames', 1) or 1)
+                im = bf.compose(p, anim, d, i % nfr, margin=32)
             except Exception as e:             # noqa: BLE001
                 print('note: beachfolk %s %s %s: %s' % (preset, anim, d, e))
                 return

@@ -117,9 +117,11 @@ try {
   // 12 the town welcome
   await ev(() => { window.__FV.v4.invite(); window.__FV.v4.openTown(); });
   await nudge(() => window.__FV.hasTex('town_homes') && window.__FV.state().v4.tf.child, 150000);
+  console.log('  townVisit before the walk:', await ev(() => !!window.__FV.state().flags.townVisit));
   await ev(() => { window.__FV.camera(); window.__FV.teleport(4700, 2520); });
-  await until(() => !!window.__FV.state().flags.townVisit, 15, 0.5);
-  await adv(0.8);
+  await until(() => !!window.__FV.state().flags.townVisit, 15, 0.25);
+  await adv(0.6);
+  console.log('  welcome banner shown:', await ev(() => { const b = window.__FV.game.scene.getScene('UI').bannerBox; return b.visible + ' ' + b.alpha; }));
   await shot('12_town_welcome');
   // 13 the school bell, 14 dusk lamps, 15 night town
   const school = await ev(() => { const b = window.__FV.scene.v4.buildings.find((q) => q.key === 'school'); return b ? { x: b.x, y: b.y } : { x: 5000, y: 2300 }; });
@@ -137,7 +139,13 @@ try {
   await ev(() => window.__FV.v4.clock(10));
   // 16 the rank ceremony + HUD chips, 17 the cobble street
   await ev(() => { window.__FV.camera(); window.__FV.v4.foundAll(); });
-  for (let k = 0; k < 3; k++) { const id = await ev(() => window.__FV.v4.house()); if (id) await until((h) => { const x = window.__FV.v4.growth().houses[h]; return x && x.st === 'done'; }, 45, 1, id); }
+  // (the carpenter's house lots open with the 목공소: wait for the shops, then build three houses)
+  await until(() => Object.values(window.__FV.v4.growth().shops).filter((q) => q.st === 'open').length >= 5, 150, 1);
+  for (let k = 0; k < 3; k++) {
+    await until(() => Object.values(window.__FV.v4.growth().houses).some((q) => q.st === 'site'), 60, 1);
+    const id = await ev(() => window.__FV.v4.house());
+    if (id) await until((h) => { const x = window.__FV.v4.growth().houses[h]; return x && x.st === 'done'; }, 60, 1, id);
+  }
   await ev(() => window.__FV.v4.happy(Array(40).fill(1)));
   await until(() => !!window.__FV.scene.progress.pads.rank_eup, 8, 0.5);
   await ev(() => window.__FV.scene.ui.openRank());

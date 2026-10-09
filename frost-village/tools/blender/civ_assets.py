@@ -1274,12 +1274,14 @@ def safe_box(name, loc, rot_z=0.0):
 
 
 def win_cutter(name, target, x, y, z0, z1, w, axis='x', depth=0.6):
-    """Cut a window opening through a ruined wall (boolean, evaluated at render).  Polish v2: no material transfer -
-    with TRANSFER the boolean re-assigned the cutter's charcoal to the whole cut wall (the near-black townhouse); the
-    reveals now keep the wall's own sooted colour."""
+    """Cut a window opening through a ruined wall (boolean, evaluated at render).  Polish v2: the cutter carries the
+    WALL's own material - the boolean merges the wall's two identical material slots and re-points slot 1 (the big
+    front / back faces of the extruded wall) at the cutter's material, which is what turned whole walls (and the
+    townhouse) charcoal-black."""
     import veh_lib as VL
     size = (w, depth, z1 - z0) if axis == 'x' else (depth, w, z1 - z0)
-    c = box(name, size, (x, y, z0), mat=CL.charcoal(6.0, seed=3, base='#4A403B'), bevel=0.0)
+    wall_m = target.data.materials[0] if len(target.data.materials) else CL.charcoal(6.0, seed=3, base='#4A403B')
+    c = box(name, size, (x, y, z0), mat=wall_m, bevel=0.0)
     VL.add_bool(target, c, transfer=False)
     return c
 

@@ -1,0 +1,1365 @@
+{
+ "when": "2026-10-09T09:15:53.440Z",
+ "samples": [
+  {
+   "label": "title",
+   "MiB": 88.5
+  },
+  {
+   "label": "new game +5s",
+   "MiB": 182.8,
+   "gl": 218.8,
+   "glTex": 188.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 97.6,
+    "canvas": 9,
+    "ground": 11,
+    "page": 65.2
+   },
+   "social": 2,
+   "areas": {
+    "town": "in gap 2755 far 5.5",
+    "east": "in gap 1605 far 5.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 11,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "new game +10s",
+   "MiB": 188.9,
+   "gl": 225,
+   "glTex": 195,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 103.7,
+    "canvas": 9,
+    "ground": 11,
+    "page": 65.2
+   },
+   "social": 2,
+   "areas": {
+    "town": "in gap 2755 far 10.5",
+    "east": "in gap 1605 far 10.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 11,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "new game +15s",
+   "MiB": 197.1,
+   "gl": 233.1,
+   "glTex": 203.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 103.7,
+    "canvas": 9,
+    "ground": 11,
+    "page": 65.2,
+    "social": 8.1
+   },
+   "social": 3,
+   "areas": {
+    "town": "in gap 2755 far 15",
+    "east": "in gap 1605 far 15",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 11,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "new game +20s",
+   "MiB": 195.1,
+   "gl": 231.1,
+   "glTex": 201.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 103.7,
+    "canvas": 9,
+    "ground": 9,
+    "page": 65.2,
+    "social": 8.1
+   },
+   "social": 3,
+   "areas": {
+    "town": "in gap 2755 far 20",
+    "east": "in gap 1605 far 20",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 9,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "new game +25s",
+   "MiB": 195.1,
+   "gl": 231.1,
+   "glTex": 201.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 103.7,
+    "canvas": 9,
+    "ground": 9,
+    "page": 65.2,
+    "social": 8.1
+   },
+   "social": 3,
+   "areas": {
+    "town": "in gap 2755 far 25",
+    "east": "in gap 1605 far 25",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 9,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "new game +30s",
+   "MiB": 198.9,
+   "gl": 234.9,
+   "glTex": 205,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 103.7,
+    "canvas": 9,
+    "ground": 9,
+    "page": 65.2,
+    "social": 12
+   },
+   "social": 3,
+   "areas": {
+    "town": "in gap 2755 far 29.5",
+    "east": "in gap 1605 far 29.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 9,
+    "level": 0,
+    "baked": 11,
+    "evictions": 0
+   }
+  },
+  {
+   "label": "v3.5 village complete +5s",
+   "MiB": 287.2,
+   "gl": 322.7,
+   "glTex": 292.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 175.8,
+    "canvas": 6.2,
+    "ground": 28,
+    "page": 65.2,
+    "social": 12
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 2915 far 3",
+    "east": "in gap 1765 far 3",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 41,
+    "evictions": 6
+   }
+  },
+  {
+   "label": "v3.5 village complete +10s",
+   "MiB": 312.5,
+   "gl": 348,
+   "glTex": 318,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 189.8,
+    "canvas": 6.2,
+    "ground": 28,
+    "page": 80.2,
+    "social": 8.3
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 2915 far 7.5",
+    "east": "in gap 1765 far 7.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 41,
+    "evictions": 6
+   }
+  },
+  {
+   "label": "v3.5 village complete +15s",
+   "MiB": 305.4,
+   "gl": 340.9,
+   "glTex": 311,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 188.2,
+    "canvas": 6.2,
+    "ground": 28,
+    "page": 67.1,
+    "social": 15.9
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2915 far 12.5",
+    "east": "out gap 1765 far 12.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 44,
+    "evictions": 6
+   }
+  },
+  {
+   "label": "v3.5 village complete +20s",
+   "MiB": 284.9,
+   "gl": 320.4,
+   "glTex": 290.5,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 188.2,
+    "canvas": 6.2,
+    "ground": 15,
+    "page": 67.1,
+    "social": 8.4
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2915 far 17.5",
+    "east": "out gap 1765 far 17.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 15,
+    "level": 0,
+    "baked": 47,
+    "evictions": 6
+   }
+  },
+  {
+   "label": "full v4 plaza +5s",
+   "MiB": 386.2,
+   "gl": 420.9,
+   "glTex": 390.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 21.1
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 2523 far 7.5",
+    "east": "in gap 1373 far 7.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "full v4 plaza +10s",
+   "MiB": 353.1,
+   "gl": 387.7,
+   "glTex": 357.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 112.9,
+    "social": 21.2
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 12.5",
+    "east": "out gap 1373 far 12.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "full v4 plaza +15s",
+   "MiB": 339.9,
+   "gl": 374.6,
+   "glTex": 344.7,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 18,
+    "page": 112.9,
+    "social": 18
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 17.5",
+    "east": "out gap 1373 far 17.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 18,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "full v4 plaza +20s",
+   "MiB": 333.9,
+   "gl": 368.6,
+   "glTex": 338.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 12,
+    "page": 112.9,
+    "social": 18
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 22",
+    "east": "out gap 1373 far 22",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 12,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "full v4 plaza +25s",
+   "MiB": 329.9,
+   "gl": 364.5,
+   "glTex": 334.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 12,
+    "page": 112.9,
+    "social": 14
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 27",
+    "east": "out gap 1373 far 27",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 12,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "full v4 plaza +30s",
+   "MiB": 329.9,
+   "gl": 364.6,
+   "glTex": 334.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 12,
+    "page": 112.9,
+    "social": 14
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 32",
+    "east": "out gap 1373 far 32",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 12,
+    "level": 0,
+    "baked": 113,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "east dock +5s",
+   "MiB": 333.6,
+   "gl": 368.2,
+   "glTex": 338.3,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 21,
+    "page": 112.9,
+    "social": 8.7
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 1150 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 21,
+    "level": 0,
+    "baked": 122,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "east dock +10s",
+   "MiB": 352.1,
+   "gl": 386.8,
+   "glTex": 356.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 201.3,
+    "canvas": 0.2,
+    "ground": 21,
+    "page": 112.9,
+    "social": 16.8
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 1150 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 21,
+    "level": 0,
+    "baked": 122,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "east dock +15s",
+   "MiB": 339.3,
+   "gl": 374,
+   "glTex": 344.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 201.3,
+    "canvas": 0.2,
+    "ground": 21,
+    "page": 112.9,
+    "social": 4
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 1150 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 21,
+    "level": 0,
+    "baked": 122,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "east dock +20s",
+   "MiB": 332.3,
+   "gl": 367,
+   "glTex": 337,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 201.3,
+    "canvas": 0.2,
+    "ground": 18,
+    "page": 112.9
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 1150 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 18,
+    "level": 0,
+    "baked": 122,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "our station +5s",
+   "MiB": 350.8,
+   "gl": 385.5,
+   "glTex": 355.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 201.3,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 112.9,
+    "social": 8.5
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 430 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 120 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "our station +10s",
+   "MiB": 376.6,
+   "gl": 411.3,
+   "glTex": 381.4,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 11.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 430 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 120 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "our station +15s",
+   "MiB": 369.6,
+   "gl": 404.3,
+   "glTex": 374.3,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 4.5
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 430 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 120 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "our station +20s",
+   "MiB": 365.1,
+   "gl": 399.8,
+   "glTex": 369.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 430 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 120 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "along the track +5s",
+   "MiB": 377.7,
+   "gl": 412.4,
+   "glTex": 382.4,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 12.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 600 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "along the track +10s",
+   "MiB": 378.1,
+   "gl": 412.8,
+   "glTex": 382.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 13
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 600 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "along the track +15s",
+   "MiB": 377.7,
+   "gl": 412.4,
+   "glTex": 382.5,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 12.7
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 600 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "along the track +20s",
+   "MiB": 380.6,
+   "gl": 415.2,
+   "glTex": 385.3,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 15.5
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 600 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +5s",
+   "MiB": 365.1,
+   "gl": 400.2,
+   "glTex": 370.2,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 1600 far 5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +10s",
+   "MiB": 374,
+   "gl": 409,
+   "glTex": 379.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 8.9
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 1600 far 9.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +15s",
+   "MiB": 351.1,
+   "gl": 386.2,
+   "glTex": 356.2,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 17.4
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1600 far 14.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +20s",
+   "MiB": 338.7,
+   "gl": 373.8,
+   "glTex": 343.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 5
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1600 far 19.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +25s",
+   "MiB": 333.7,
+   "gl": 368.8,
+   "glTex": 338.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1600 far 24"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town square +30s",
+   "MiB": 353.8,
+   "gl": 388.9,
+   "glTex": 358.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 20.1
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1600 far 29"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 0,
+    "baked": 132,
+    "evictions": 26
+   }
+  },
+  {
+   "label": "town zoom 0.6 +5s",
+   "MiB": 333.7,
+   "gl": 368.8,
+   "glTex": 338.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1300 far 34"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 1,
+    "baked": 156,
+    "evictions": 50
+   }
+  },
+  {
+   "label": "town zoom 0.6 +10s",
+   "MiB": 352.5,
+   "gl": 387.5,
+   "glTex": 357.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 18.7
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1300 far 38.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 1,
+    "baked": 156,
+    "evictions": 50
+   }
+  },
+  {
+   "label": "town zoom 0.6 +15s",
+   "MiB": 333.7,
+   "gl": 368.8,
+   "glTex": 338.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1300 far 43.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 1,
+    "baked": 156,
+    "evictions": 50
+   }
+  },
+  {
+   "label": "town zoom 0.6 +20s",
+   "MiB": 356.3,
+   "gl": 391.4,
+   "glTex": 361.4,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 22.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "out gap 1300 far 48.5"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 1,
+    "baked": 156,
+    "evictions": 50
+   }
+  },
+  {
+   "label": "overview +5s",
+   "MiB": 333.7,
+   "gl": 368.8,
+   "glTex": 338.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 171.6,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 2,
+    "baked": 164,
+    "evictions": 58
+   }
+  },
+  {
+   "label": "overview +10s",
+   "MiB": 385.7,
+   "gl": 420.8,
+   "glTex": 390.8,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 20.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 2,
+    "baked": 164,
+    "evictions": 58
+   }
+  },
+  {
+   "label": "overview +15s",
+   "MiB": 369.6,
+   "gl": 404.6,
+   "glTex": 374.7,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 28,
+    "page": 134,
+    "social": 4.5
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 0 far 0",
+    "east": "in gap 0 far 0",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 28,
+    "level": 2,
+    "baked": 164,
+    "evictions": 58
+   }
+  },
+  {
+   "label": "back at the plaza +5s",
+   "MiB": 361.5,
+   "gl": 396.6,
+   "glTex": 366.7,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 17,
+    "page": 134,
+    "social": 7.4
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 2523 far 4.5",
+    "east": "in gap 1373 far 4.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 17,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +10s",
+   "MiB": 368.7,
+   "gl": 403.8,
+   "glTex": 373.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 202.9,
+    "canvas": 0.2,
+    "ground": 17,
+    "page": 134,
+    "social": 14.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "in gap 2523 far 9.5",
+    "east": "in gap 1373 far 9.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 17,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +15s",
+   "MiB": 332.4,
+   "gl": 367.5,
+   "glTex": 337.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 17,
+    "page": 112.9,
+    "social": 11.5
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 14.5",
+    "east": "out gap 1373 far 14.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 17,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +20s",
+   "MiB": 326.7,
+   "gl": 361.8,
+   "glTex": 331.9,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 8.8
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 19",
+    "east": "out gap 1373 far 19",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +25s",
+   "MiB": 326.9,
+   "gl": 362,
+   "glTex": 332.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 9
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 24",
+    "east": "out gap 1373 far 24",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +30s",
+   "MiB": 326.9,
+   "gl": 362,
+   "glTex": 332,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 9
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 29",
+    "east": "out gap 1373 far 29",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +35s",
+   "MiB": 324.9,
+   "gl": 360,
+   "glTex": 330.1,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 7
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 33.5",
+    "east": "out gap 1373 far 33.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +40s",
+   "MiB": 325.9,
+   "gl": 361,
+   "glTex": 331,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 8
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 38.5",
+    "east": "out gap 1373 far 38.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  },
+  {
+   "label": "back at the plaza +45s",
+   "MiB": 332.5,
+   "gl": 367.6,
+   "glTex": 337.6,
+   "glRT": 30,
+   "byCls": {
+    "atlas": 190.9,
+    "canvas": 0.2,
+    "ground": 14,
+    "page": 112.9,
+    "social": 14.6
+   },
+   "social": 5,
+   "areas": {
+    "town": "out gap 2523 far 43.5",
+    "east": "out gap 1373 far 43.5",
+    "village": "in gap 0 far 0"
+   },
+   "ground": {
+    "slots": 14,
+    "level": 0,
+    "baked": 176,
+    "evictions": 70
+   }
+  }
+ ],
+ "results": [
+  {
+   "name": "title <= 90 MiB",
+   "ok": true,
+   "info": 88.5
+  },
+  {
+   "name": "new game <= 368 MiB (must)",
+   "ok": true,
+   "info": 198.9
+  },
+  {
+   "name": "new game <= 240 MiB (target)",
+   "ok": true,
+   "info": 198.9
+  },
+  {
+   "name": "v3.5 village complete <= 455 MiB (must)",
+   "ok": true,
+   "info": 312.5
+  },
+  {
+   "name": "full v4, any view <= 455 MiB (must)",
+   "ok": true,
+   "info": 386.2
+  },
+  {
+   "name": "full v4, plaza <= 300 MiB (target)",
+   "ok": false,
+   "info": 329.9
+  },
+  {
+   "name": "full v4 tour peak <= 300 MiB (target)",
+   "ok": false,
+   "info": 386.2
+  },
+  {
+   "name": "return to the start of the tour <= start + 5 MiB",
+   "ok": true,
+   "info": {
+    "start": 329.9,
+    "end": 332.5
+   }
+  },
+  {
+   "name": "GL texture bytes agree with the source-sum within 10 % (median)",
+   "ok": true,
+   "info": 0.014
+  },
+  {
+   "name": "renderer render targets <= 40 MiB (no FX pipeline)",
+   "ok": true,
+   "info": 30
+  },
+  {
+   "name": "full v4, GL total (textures + render targets) <= 455 MiB (must)",
+   "ok": true,
+   "info": 420.9
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "info": []
+  }
+ ]
+}

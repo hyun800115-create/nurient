@@ -47,8 +47,8 @@ SOCIAL_DIRS = ta.SOCIAL_DIRS
 SPRAY_DIRS = ['S', 'SE', 'E', 'NE']
 
 ANIMS3 = {
-    'run':           dict(frames=8, fps=14, repeat=-1, dirs=LOCO_DIRS),
-    'flee':          dict(frames=8, fps=14, repeat=-1, dirs=LOCO_DIRS),
+    'run':           dict(frames=8, fps=16, repeat=-1, dirs=LOCO_DIRS),
+    'flee':          dict(frames=8, fps=16, repeat=-1, dirs=LOCO_DIRS),
     'arrested_walk': dict(frames=8, fps=9, repeat=-1, dirs=LOCO_DIRS),
     'carry_box':     dict(frames=8, fps=10, repeat=-1, dirs=LOCO_DIRS),
     'argue':         dict(frames=6, fps=8, repeat=-1, dirs=SOCIAL_DIRS),
@@ -130,8 +130,8 @@ def zfront3(anim, key, d):
 FACE_EXPR3 = {
     'shocked':    ['eye_round', 'm_O', 'cheek_blush'],
     'panic':      ['eye_chevron', 'm_D', 'cheek_blush', 'fx_sweat'],
-    'angry':      ['eye_glare', 'm_pout', 'cheek_red'],
-    'shout':      ['eye_glare', 'm_open', 'cheek_red'],
+    'angry':      ['eye_glare', 'm_pout', 'cheek_angry'],       # cheek_angry: low flush below glasses (cf_render)
+    'shout':      ['eye_glare', 'm_open', 'cheek_angry'],
     'thinking':   ['eye_dot', 'm_smirk', 'cheek_blush'],
     'determined': ['eye_dot', 'm_grin', 'cheek_blush'],
     'sheepish':   ['eye_sleep', 'm_wavy', 'cheek_blush', 'fx_sweat'],
@@ -169,18 +169,48 @@ def _age(ch):
     return ch.get('age', 'adult')
 
 
+# run / flee legs: a KEYED cartoon run (polish pass; the first pass reused the walk sine and read as a walk from
+# S / N).  Frame i of the right leg: 0 contact (heel lands in front), 1 down (stance knee bent, body lowest),
+# 2 push-off, 3 flight (both feet off the snow, trailing heel kicked up), 4..7 = the left leg.  The hips are set
+# so the stance foot touches the snow; the flight frames lift the body (cartoon bob ~5 px).
+RUN_HIP = [28.0, 4.0, -24.0, -42.0, -40.0, -12.0, 22.0, 42.0]
+RUN_KNEE = [14.0, 40.0, 6.0, 46.0, 96.0, 112.0, 74.0, 34.0]
+RUN_STANCE = {0: 'R', 1: 'R', 2: 'R', 4: 'L', 5: 'L', 6: 'L'}
+# per age: (hip amplitude scale, knee scale, flight lift m)
+RUN_AGE = {'adult': (1.0, 1.0, 0.072), 'child': (1.08, 1.0, 0.066), 'elder': (0.66, 0.62, 0.026)}
+RUN_THIGH = 0.44                      # thigh share of the leg (char_build THIGH 0.15 of the 0.34 m hip height)
+
+
+def _leg_drop(h, k, L):
+    """vertical reach (m) of a leg with hip flexion h and knee flexion k (deg)."""
+    return L * (RUN_THIGH * math.cos(math.radians(h)) + (1 - RUN_THIGH) * math.cos(math.radians(h - k)))
+
+
+def run_keys(i, ch):
+    hs, ks, fly = RUN_AGE.get(_age(ch), RUN_AGE['adult'])
+    hr, kr = RUN_HIP[i] * hs, RUN_KNEE[i] * ks
+    j = (i + 4) % 8
+    hl, kl = RUN_HIP[j] * hs, RUN_KNEE[j] * ks
+    return hr, kr, hl, kl, fly
+
+
 def run_legs(i, n, ch):
     """Shared by run and flee (identical hips / legs / root every frame)."""
     a = TAU * i / n
     s, c = math.sin(a), math.cos(a)
-    age = _age(ch)
-    amp, kn, fly = {'elder': (28.0, 50.0, 0.010), 'child': (46.0, 84.0, 0.030)}.get(age, (42.0, 80.0, 0.026))
     L = ch.get('leg_len', 0.34)
-    p = legs_walk(a, amp, kn, L, 0.0)
-    drop = L * (1 - math.cos(math.radians(amp * 0.85 * abs(s)))) * 0.7
-    p['hips@'] = (0, 0, fly * abs(math.sin(2 * a + 0.6)) - drop - 0.004)
-    p['root'] = (0, 3.0 * c, 0)
-    p['hips'] = (0, 0, -7 * s)
+    hr, kr, hl, kl, fly = run_keys(i, ch)
+    p = {'hip_R': (hr, 2, 0), 'hip_L': (hl, 2, 0), 'knee_R': (kr, 0, 0), 'knee_L': (kl, 0, 0)}
+    st = RUN_STANCE.get(i)
+    if st:
+        h, k = (hr, kr) if st == 'R' else (hl, kl)
+        z = _leg_drop(h, k, L) - L
+    else:                                 # flight: up from the contact height
+        h0, k0, _, _, _ = run_keys(0, ch)
+        z = _leg_drop(h0, k0, L) - L + fly
+    p['hips@'] = (0, 0, z)
+    p['root'] = (0, 4.0 * c, 0)
+    p['hips'] = (0, 0, -8 * s)
     return p
 
 
@@ -280,7 +310,7 @@ def box_center(age):
 
 
 SPRAY_PITCH = -7.0           # nozzle axis below horizontal (deg)
-SWEEP_DX = [-0.035, -0.012, 0.012, 0.035]
+SWEEP_DX = [-0.032, -0.011, 0.011, 0.032]        # low (right) mitten swing per sweep key (metres, chest-local)
 
 
 def item_scale(age):
@@ -295,14 +325,17 @@ def p_run(k, ch, d):
     s = math.sin(a)
     age = _age(ch)
     p = run_legs(k, n, ch)
-    lf = {'elder': 8, 'child': 10}.get(age, 11)
-    p.update({**lean(lf, 0, 8 * s), 'chest@': (0, 0, 0.004 * math.cos(2 * a))})
-    sw = {'elder': 34.0, 'child': 52.0}.get(age, 48.0)
-    out = 14 + ch.get('arm_out', 0)
-    p['sh_R'] = (-sw * s + 14, out, 0)
-    p['sh_L'] = (sw * s + 14, out, 0)
-    p['el_R'] = (82 + 10 * max(0, -s), 0, 0)
-    p['el_L'] = (82 + 10 * max(0, s), 0, 0)
+    lf = {'elder': 9, 'child': 12}.get(age, 14)
+    p.update({**lean(lf, 0, 10 * s), 'chest@': (0, 0, 0.006 * math.cos(2 * a))})
+    # big pumping arms, elbows out to the sides (they read beside the body from S and N too)
+    sw = {'elder': 40.0, 'child': 60.0}.get(age, 58.0)
+    out = {'elder': 18, 'child': 22}.get(age, 22) + ch.get('arm_out', 0)
+    hr, _, hl, _, _ = run_keys(k, ch)
+    ar, al = hl / 42.0, hr / 42.0              # each arm swings with the OTHER leg (R arm forward with the L leg)
+    p['sh_R'] = (sw * ar + 12, out, 0)
+    p['sh_L'] = (sw * al + 12, out, 0)
+    p['el_R'] = (86 + 14 * max(0, ar), 0, 0)      # (more bend when the arm is forward, like the first pass)
+    p['el_L'] = (86 + 14 * max(0, al), 0, 0)
     p['hand_R'] = (-10, 0, 0)
     p['hand_L'] = (-10, 0, 0)
     return p
@@ -321,6 +354,7 @@ def p_flee(k, ch, d):
     p['ik_L'] = (0.31 - w * s, -0.04 + 0.03 * c, 0.34 - w * s, 1.0, 0.1, -0.5)
     p['hand_R'] = (0, 0, 28 * s)
     p['hand_L'] = (0, 0, -28 * s)
+    p['_flee'] = True
     return p
 
 
@@ -441,11 +475,12 @@ def p_phone(k, ch, d):
 def p_sweep(k, ch, d):
     p = stand_legs(ch)
     dx = SWEEP_DX[k]
-    p.update({**lean(11, 0, -4 + 8 * k / 3), 'chest@': (0, 0, 0.002 * (k % 2))})
-    # both mittens stacked on the handle in front of the chest (upper = right); the broom is built along the
-    # line through the two hands and reaches the snow in front-left (sweepPoint)
-    p['ik_R'] = (-0.035 + 0.5 * dx, -0.205, 0.005, -1.0, 0.2, -0.6)
-    p['ik_L'] = (0.030 + 1.6 * dx, -0.235, -0.115, 1.0, 0.2, -0.6)
+    p.update({**lean(10, 0, -7 + 14 * k / 3), 'chest@': (0, 0, 0.002 * (k % 2))})
+    # left mitten on top of the handle, right mitten lower down: the broom is built along the line through the
+    # two mittens and reaches the snow on the RIGHT, in front of the near foot (the near side in S / SE / E, so the
+    # broom is always drawn in front of the body); the low mitten swings it in a ping-pong arc (sweepPoint)
+    p['ik_L'] = (0.010 + 0.35 * dx, -0.200, 0.060, 1.0, 0.2, -0.6)
+    p['ik_R'] = (-0.050 + 1.6 * dx, -0.255, -0.095, -1.0, 0.2, -0.6)
     p['hand_R'] = (0, 0, 70)
     p['hand_L'] = (0, 0, -70)
     p['_broom'] = k

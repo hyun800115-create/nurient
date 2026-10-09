@@ -8,7 +8,7 @@ import { start } from './serve.mjs';
 import { launch, sleep, waitFor, tapStart } from './pw.mjs';
 
 export { start, launch, sleep, waitFor, tapStart };
-export const OUT = '/tmp/fv_review/robust';
+export const OUT = process.env.FV_REVIEW_OUT || '/tmp/fv_review/robust';   // (v4-B) FV_REVIEW_OUT: write elsewhere
 fs.mkdirSync(OUT, { recursive: true });
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 

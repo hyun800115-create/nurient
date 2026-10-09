@@ -157,7 +157,7 @@ if (!noBrowser) {
   const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f3e6c8}</style>
 <script src="lib/phaser.min.js"></script></head><body><script type="module">
 import { townfolkPreload, townfolkInstall, mulberry32 } from './tools/townfolk_compose.js';
-import { mergeBeachfolkManifests, Beachfolk, BeachfolkSprite, sunbatheDirFor, headHidden } from './tools/beachfolk_compose.js';
+import { mergeBeachfolkManifests, Beachfolk, BeachfolkSprite, sunbatheDirFor, headHidden, partPlays } from './tools/beachfolk_compose.js';
 const GL = window.__GLC = { draw: 0 };
 for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext && WebGL2RenderingContext.prototype]) {
   if (!P) continue;
@@ -182,9 +182,17 @@ class S extends Phaser.Scene {
     const rng = mulberry32(77);
     this.npcs = [];
     const WATER = new Set(bf.T.water.anims);
+    const ADDON = new Set(Object.values(bf.T.generator.presets).flatMap((pr) => (pr.addOns || []).flatMap(([t]) => Object.keys(t))));
+    window.__BF.addonFallback = 0;
     const add = (p, anim, dir, x, y) => {
       const pk = bf.pickAnim(p, anim);
-      if (pk.anim !== anim && !(WATER.has(anim) && WATER.has(pk.anim))) { window.__BF.cannot++; return null; }
+      if (pk.anim !== anim) {
+        // an optional add-on (the swim ring) blocks it: the sprite plays the picked fallback (water stays water)
+        const blockers = bf.animParts(p, anim).filter((pn) => !partPlays(bf.T.parts[pn], anim));
+        const ok = blockers.length && blockers.every((b) => ADDON.has(b)) && (!WATER.has(anim) || WATER.has(pk.anim));
+        if (!ok) { window.__BF.cannot++; return null; }
+        window.__BF.addonFallback++;
+      }
       anim = pk.anim;
       const s = new BeachfolkSprite(this, bf, p, x, y);
       s.play(anim, dir);
@@ -288,6 +296,7 @@ window.__BF.game = new Phaser.Game({ type: Phaser.WEBGL, width: 720, height: 128
     for (const k of Object.keys(tex)) if (k.startsWith('bf_')) { const s = tex[k].source[0]; px += s.width * s.height; }
     return { npcs: sc.npcs.length, sprites, spritesPerPerson: +(sprites / sc.npcs.length).toFixed(1),
       drawPerFrame: +((C.draw - d0) / n).toFixed(1), layersChecked: window.__BF.checked, cannotPlay: window.__BF.cannot,
+      addonFallbacks: window.__BF.addonFallback,
       beachfolkTextureMiB: +(px * 4 / 2 ** 20).toFixed(1),
       missing: window.__BF.missing.length, missingSample: window.__BF.missing.slice(0, 5),
       neverPackedLayers: [...window.__BF.emptyLayers].slice(0, 12) };

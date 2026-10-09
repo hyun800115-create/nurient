@@ -619,6 +619,9 @@ def b_tourist_camera(rig, ctx, put):
                    loc=(-0.042, -0.262, -0.032))
 
 
+LG_HEM = 0.018          # lifeguard tank hem (spine space): just above the trunks' waistband (0.045)
+
+
 @part('lifeguard_top', 'top', 'body', {'main': sub('top', Z['top']), 'marks': sub(None, Z['top_detail'])},
       tags=['beach', 'job'], ages=['adult'], label={'ko': '구조요원 민소매', 'en': 'lifeguard tank top'})
 def b_lifeguard_top(rig, ctx, put):
@@ -626,10 +629,11 @@ def b_lifeguard_top(rig, ctx, put):
     m = M('lg_top', ctx.col('top'), 0.6)
     with put('main'):
         bm = g.bm_lathe(RASH, seg=56, sy=0.85, smooth_n=26, cap_top=False)
-        # tank: arm holes cut at the sides, scoop neck
+        # tank: arm holes cut at the sides, scoop neck; hem at the waist (LG_HEM) so the contrasting trunks show -
+        # the hip-long red tank over red trunks read as a red dress
         kill_faces(bm, lambda c: (c.z > 0.255 and abs(math.sin(math.radians(ang_front(c)))) > 0.72) or
                    (c.z > 0.345 and abs(math.cos(math.radians(ang_front(c)))) > 0.55 and c.z > 0.36 +
-                    0.04 * abs(math.sin(math.radians(ang_front(c))))))
+                    0.04 * abs(math.sin(math.radians(ang_front(c))))) or c.z < LG_HEM)
         g.mesh_obj('lg_body', bm, m, rig.j['spine'])
     with put('marks'):
         w = M('lg_cross', '#FBFAF6', 0.5)
@@ -639,7 +643,8 @@ def b_lifeguard_top(rig, ctx, put):
                        loc=(0.0, yy + side * 0.010, zz), rot=(side * 6, 0, 0))
             g.mesh_obj('lg_cross_h', g.bm_box(0.110, 0.012, 0.036, bevel=0.005), w, rig.j['spine'],
                        loc=(0.0, yy + side * 0.010, zz), rot=(side * 6, 0, 0))
-        g.mesh_obj('lg_hem', g.bm_ring(0.224, 0.010, seg=56, segr=6, sy=0.85), y, rig.j['spine'], loc=(0, 0, -0.074))
+        g.mesh_obj('lg_hem', g.bm_ring(prof_r(RASH, LG_HEM + 0.006) + 0.003, 0.010, seg=56, segr=6, sy=0.85), y,
+                   rig.j['spine'], loc=(0, 0, LG_HEM + 0.006))
 
 
 @part('whistle', 'neck', 'body', {'main': sub(None, Z['necklace'])}, tags=['beach', 'job'], ages=['adult'],

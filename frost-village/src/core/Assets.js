@@ -165,7 +165,8 @@ export const Assets = {
       const keys = [];
       for (const pg of e.pages) {
         const onDemand = pg.cls === 'social' || pg.cls === 'soc';
-        m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0 };
+        // (the artifact build embeds a small page's frame list as `data` instead of shipping its .json file)
+        m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, data: pg.data || null, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0 };
         this.fragOf[pg.key] = e.frag;
         this.pageOwner[pg.key] = key;
         keys.push(pg.key);
@@ -345,10 +346,12 @@ export const Assets = {
       const a = m.atlases[k];
       if (a.onDemand && !this.demanded.has(k)) continue;     // (v4-B) social pages: when a character needs them
       if (this.held.has(k)) continue;                          // (v4-B) a far area's pictures (Residency)
-      if (!a.png || !a.json || !want(k)) continue;
+      if (!a.png || !(a.json || a.data) || !want(k)) continue;
+      // (Phaser takes the frame list itself in place of its URL: no request for an embedded one)
+      const J = a.data || BASE + a.json;
       // (v4-A) townfolk sheets: plain image + compact frame list (installed by tfInstall)
-      if (a.format === 'tfatlas') { load.image(k, BASE + a.png); load.json(k + '#tfatlas', BASE + a.json); mark(k); continue; }
-      load.atlas(k, BASE + a.png, BASE + a.json);
+      if (a.format === 'tfatlas') { load.image(k, BASE + a.png); load.json(k + '#tfatlas', J); mark(k); continue; }
+      load.atlas(k, BASE + a.png, J);
       mark(k);
     }
     for (const k in m.images) { const a = m.images[k]; if (a.png && !this.held.has(k) && want(k)) { load.image(k, BASE + a.png); mark(k); } }

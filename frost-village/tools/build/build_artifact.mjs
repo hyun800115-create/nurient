@@ -397,6 +397,10 @@ function publishBatches(files, size) {
  * raw atlases they were made from: the copied manifests keep the atlas key (Assets.applyPages needs it) without
  * its files, the raw files are left out, the pages and a filtered index.json go in.
  */
+// (v4-B) page frame lists up to this size (bytes) are embedded in _packed/index.json, up to EMBED_TOTAL in all:
+// the package has to stay within two publishes (<= 510 files)
+const EMBED_PAGE_JSON = 24000, EMBED_TOTAL = 900000;
+const embedded = { n: 0, bytes: 0 };
 function shipPacked(frags, skipped, copied) {
   const idxPath = path.join(ROOT, 'assets', '_packed', 'index.json');
   if (!fs.existsSync(idxPath)) return 0;
@@ -416,17 +420,26 @@ function shipPacked(frags, skipped, copied) {
     for (const p of [a.png, a.json]) { const fp = path.join(OUT, 'assets', p); if (fs.existsSync(fp)) fs.rmSync(fp); }
     skipped.push('assets/' + a.png + ' (shipped as ' + e.pages.length + ' packed pages)');
     delete a.png; delete a.json; a.packed = true;
-    for (const pg of e.pages) for (const p of [pg.png, pg.json]) {
-      const dst = path.join(OUT, 'assets', p);
-      fs.mkdirSync(path.dirname(dst), { recursive: true });
-      fs.copyFileSync(path.join(ROOT, 'assets', p), dst);
-      copied.push(dst);
+    const e2 = Object.assign({}, e, { pages: e.pages.map((pg) => Object.assign({}, pg)) });
+    for (const pg of e2.pages) {
+      // (v4-B, the 511-file limit) a small page's frame list rides inside index.json instead of its own file
+      const jp = path.join(ROOT, 'assets', pg.json);
+      const jb = fs.statSync(jp).size;
+      if (jb <= EMBED_PAGE_JSON && embedded.bytes + jb <= EMBED_TOTAL) { pg.data = JSON.parse(fs.readFileSync(jp, 'utf8')); delete pg.json; embedded.n++; embedded.bytes += jb; }
+      for (const p of [pg.png, pg.json]) {
+        if (!p) continue;
+        const dst = path.join(OUT, 'assets', p);
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.copyFileSync(path.join(ROOT, 'assets', p), dst);
+        copied.push(dst);
+      }
     }
-    out.atlases[key] = e;
+    out.atlases[key] = e2;
     n++;
   }
   for (const f in mans) fs.writeFileSync(path.join(OUT, 'assets', f, 'manifest.json'), JSON.stringify(mans[f]));
   if (n) { fs.writeFileSync(path.join(OUT, 'assets', '_packed', 'index.json'), JSON.stringify(out)); copied.push(path.join(OUT, 'assets', '_packed', 'index.json')); }
+  if (embedded.n) console.log(`[build] packed pages: ${embedded.n} small frame lists embedded in _packed/index.json (${(embedded.bytes / 1024).toFixed(0)} KB)`);
   return n;
 }
 
@@ -557,7 +570,7 @@ async function main() {
   if (fs.existsSync(pidx)) {
     referenced.add('assets/_packed/index.json');
     const j = JSON.parse(fs.readFileSync(pidx, 'utf8'));
-    for (const key in j.atlases || {}) for (const pg of j.atlases[key].pages || []) for (const p of [pg.png, pg.json]) {
+    for (const key in j.atlases || {}) for (const pg of j.atlases[key].pages || []) for (const p of [pg.png, pg.json].filter(Boolean)) {
       referenced.add('assets/' + p);
       if (!fs.existsSync(path.join(OUT, 'assets', p))) problems.push(`assets/${p} is listed in _packed/index.json but missing`);
     }

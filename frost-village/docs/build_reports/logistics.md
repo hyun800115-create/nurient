@@ -1,166 +1,205 @@
 # logistics build report
 
-The logistics set for CONTRACT_V8 §AA is finished. `assets/logistics/` holds 38 sprites (the centre and its 12 cutaway layers / patches, 22 items, 2 producers) and 7 vehicles in 12 atlases, with a payload of **1.84 MB** (limit 7 MB). `lgx_check.py` reports **0 errors and 0 warnings**, and the depth-band validation list is empty. A headless Phaser 3.90 load found all 188 frames, registered 40 anims, played 9 of them and passed the reveal toggle by tap and by hover. Re-packing gives byte-identical files.
+The logistics set for CONTRACT_V8 §AA is finished and polished. `assets/logistics/` holds 55 sprites and 7 vehicles in 13 atlases:
+- the centre: its 13 cutaway layers, 4 animated patches and 8 outdoor-prop sprites;
+- 27 items;
+- 2 producers.
 
-Same house style as `assets/town` / `assets/vehicles`: `bl_common` camera and light, PPU 64, 2:1 iso, toy materials, snow on roofs and sills. Bodies, signs and helpers are imported from prop_lib, prop_assets, bld_assets, town_lib, life2_lib, veh_models and veh_render; none of those files was changed.
+The payload is **1.84 MB** (limit 7 MB). `lgx_check.py` reports **0 errors and 1 warning**. The warning is documented: `item_toolbox` is also a key in `assets/buildings`, built with the same builder and identical to it. The validation list is empty: depth bands, forklift keep-clear and stock fit all pass.
+
+A headless Phaser 3.90 load of the fragment:
+- found all 205 frames and registered 40 anims, with no page errors and no 404s;
+- drew 129 stock stacks from `itemFit` with no stack overflowing its shelf;
+- drew all 11 outdoor props;
+- drove the forklift round its path, playing the lift at each pick/drop;
+- passed the reveal toggle by tap and by hover: shell, door leaves and nameplate go to 0 while `_shadow_open` goes to 1, and back.
+
+Re-packing gives byte-identical files.
+
+The house style is the same as `assets/town` / `assets/vehicles`: `bl_common` camera and light, PPU 64, 2:1 iso, toy materials, snow on roofs and sills. Bodies, signs and helpers are imported from prop_lib, prop_assets, bld_assets, town_lib, life2_lib, veh_models and veh_render; none of those files was changed. The closed building is unchanged: outside the dock openings the new `_shell` matches the old one to palette noise.
 
 ## Keys
 - **`logistics_center`** (솔방울 물류센터 / Pinecone Logistics Centre), 11 × 8 m.
-  - **Outside:** a blue corrugated hall with a snowy barrel roof, a brick plinth, a striped entrance awning, a blank cream name board, two yellow roll-up dock doors under hazard-striped canopies, a box emblem and roof vents.
+  - **Outside:** a blue corrugated hall with a snowy barrel roof and a brick plinth. It has:
+    - a striped entrance awning;
+    - the name board, now with **baked raised navy lettering "솔방울 물류센터"** (Jua font, or "Pinecone Logistics" in Fredoka);
+    - two yellow roll-up dock doors under hazard-striped canopies;
+    - a box emblem and roof vents.
   - **Inside (revealed):**
-    - Four blue and orange pallet racks on the back wall, with round category signs: food (fish), goods (can), tools (hammer) and appliances (fridge).
-    - A furniture rack on the left wall (chair sign).
+    - Back wall: three blue and orange 3-level pallet racks with round category signs (food: fish, goods: can, tools: hammer).
+    - Next to them, a **lower, 2-level heavy rack** for appliances (fridge sign), with 1.5 m between decks.
+    - Left wall: the furniture rack (chair sign). Its lower level is now 1.58 m tall.
     - A green belt conveyor with a feeder hood and a labeller arch, and a packing table.
-    - An office corner: desk with a ledger and an abacus, a cabinet, a safe, and a heater with a sleeping cat.
-    - A green settlement counter with a ledger, a stamp, a bell and coins.
-    - Four materials floor bays, two dock levellers, floor markings, and a cone next to the empty-pallet stack.
-  - Layer and patch sprites:
+    - An office corner: desk with a ledger and an abacus, cabinet, safe, and a heater with a sleeping cat.
+    - A green settlement counter with a ledger, stamp, bell and coins.
+    - Four materials floor bays, two dock levellers, and floor markings.
+  - Layers, patches and outdoor props. Every layer and patch shares `frameSize` [1152, 864] and `anchor` [0.41493, 0.58912].
 
     | Key | Kind | depthOffset | What it is |
     |---|---|---|---|
+    | `logistics_center_apron` | layer | -0.45 | **New.** Outside ground: dock apron with bay lines and hazard edges, entrance landing, doormat, and the receiving pad (inPoint). Always drawn. |
+    | `logistics_center_shadow_open` | layer | -0.44 | **New.** Ground shadow of the open building (back walls, stub walls, racks), outside the footprint only. alpha = 1 - shell alpha. |
     | `logistics_center_back` | layer | -0.40 | Back and side walls seen from inside: lining, windows, clock, notice board, wall lamps. |
-    | `logistics_center_floor` | layer | -0.35 | Floor slab, markings, levellers and the outside apron. |
+    | `logistics_center_floor` | layer | -0.35 | Floor slab, markings and levellers. The apron moved out of this layer. |
     | `logistics_center_interior` | layer | -0.30 | Racks, conveyor body, table, office, counter and decor. |
-    | `logistics_center_lamp` | patch | -0.29 | Office desk lamp, `anims.office_lamp`: 4 frames at 4 fps, a glow pulse. |
-    | `logistics_center_interior_racks` | layer | -0.22 | Rack front uprights, front beams, beam tags and the top signs. Drawn over the stock so the goods sit inside the racks. |
-    | `logistics_center_interior_front` | layer | -0.10 | The counter, conveyor and packing table again. Staff stand behind these. |
-    | `logistics_center_conveyor` | patch | -0.09 | Belt and riding boxes, `anims.conveyor`: 8 frames at 8 fps, a seamless loop. |
-    | `logistics_center_stub` | layer | -0.02 | Front walls cut at 0.45 m with cream section caps. Always drawn. |
+    | `logistics_center_lamp` | patch | -0.29 | Office desk lamp, `anims.office_lamp`: 4 frames at 4 fps. |
+    | `logistics_center_interior_racks` | layer | -0.22 | Rack front uprights, beams, tags and top signs, drawn over the stock. |
+    | `logistics_center_interior_front` | layer | -0.10 | Counter, conveyor and packing table again; staff stand behind these. |
+    | `logistics_center_conveyor` | patch | -0.09 | Belt and parcels, `anims.conveyor`: 8 frames at 8 fps, a seamless loop. |
+    | `logistics_center_stub` | layer | -0.02 | Front walls cut at 0.45 m. |
     | `logistics_center_shell_cut` | layer | -0.015 | Optional state: walls at 1.6 m, roof off. |
-    | `logistics_center_shell` | layer | 0.00 | Front walls, roof and signage; this is the part that fades. The main entry `logistics_center` uses the same frame. |
-    | `logistics_center_dock1`, `logistics_center_dock2` | patch | 0.001 | `anims.dock_door`: 6 frames at 8 fps, repeat 0. The door rolls up; play it backwards to close. One per bay. |
-    | `logistics_center_props` | layer | 0.01 | Apron props: bins, bench, bollards, dock lights, snow lumps. Always drawn. |
-- **Items** (72 × 72, anchor [0.5, 0.75], `stackStep`, `carryScale`, `thicknessM`, `category`, `icon: true`):
+    | `logistics_center_shell` | layer | 0.00 | Front walls, roof and signage, with **open holes at the dock doors**. Carries the closed building's ground shadow. |
+    | `logistics_center_nameplate_ko`, `_en` | layer | 0.0005 | **New.** The baked name lettering. Draw one of them, with the shell's alpha. |
+    | `logistics_center_dock1`, `_dock2` | patch | 0.001 | **Now the door leaf only.** `anims.dock_door`: 6 frames at 8 fps, repeat 0. Frame 0 is closed and 5 is rolled up under the lintel. Always drawn. |
+    | `logistics_center_props` | layer | 0.01 | The wall-mounted dock bumpers only. Always drawn. |
+    | `logistics_center_prop_<kind>` | prop | own anchor | **New.** bollard, docklight, bench, bin, pallets, loadsign, snow_big, snow_small. Each is its own sprite with a ground anchor and a baked soft shadow. They are placed by `outdoorProps` and y-sorted. |
+- **Items** (72 × 72, anchor [0.5, 0.75], with `stackStep`, `carryScale`, `thicknessM`, `category`, `icon: true` and the **new `sizeClass`** small/big):
   - Furniture: `item_chair`, `item_table`, `item_sofa`, `item_bed`, `item_wardrobe`.
   - Appliances: `item_fridge`, `item_stove_iron`, `item_washer`, `item_radio`, `item_tv_retro`.
-  - Tools: `item_toolbox`.
-  - Food crates: `item_crate_food`, `item_crate_cans`, `item_crate_bread`, `item_crate_produce`.
-  - Pallets: `pallet_planks`, `pallet_ingots`, `pallet_logs`, `pallet_boxes`.
+  - Tools: `item_toolbox`, and **new `item_crate_tools`** (a crate of new axes and picks with their heads up, plus a sickle).
+  - Food: `item_crate_food`, `item_crate_cans`, `item_crate_bread`, `item_crate_produce`, and **new `item_crate_smoked`** (훈제: smoked hams and golden smoked fish).
+  - Goods: **new `item_crate_jam`** (strawberry, blueberry and apricot jars) and **new `item_cloth_rolls`** (red gingham, blue stripe and yellow bolts tied with twine).
+  - Pallets: `pallet_planks`, `pallet_ingots`, `pallet_logs`, `pallet_boxes`, and **new `pallet_ore`** (광석).
   - Boxes: `cardboard_box_s`, `cardboard_box_m`, `cardboard_box_l`.
 - **Producers** (station conventions, 3 × 3 m, baked shadow):
-  - `furniture_workshop` (가구 공방): `chain` item_plank → furniture. `anims.work` is 4 frames at 8 fps: the saw spins, sawdust sprays, the lamp glows, the chimney smokes.
-  - `appliance_factory` (가전 공장): `chain` item_ingot → appliances. `anims.work` is 4 frames at 8 fps: the press ram stamps, sparks burst, a warning lamp blinks, the chimney smokes.
-  - Both have `workSpot` {point, dir NW, forwardM, heightM}, `staffPoints`, `staffDirs` and `staffDepth: "front"`, plus `inPoint`, `outPoint` and `fxPoints`.
+  - `furniture_workshop` (가구 공방): `chain` item_plank → furniture. `anims.work` is 4 frames at 8 fps: the saw spins, sawdust sprays, the lamp glows.
+  - `appliance_factory` (가전 공장): `chain` item_ingot → appliances. `anims.work` is 4 frames at 8 fps: the press stamps, sparks burst, a lamp blinks.
+  - The chimney smoke is **no longer baked**. `smokeFx` asks the game to spawn the soft `fx_smoke` puffs (assets/fx) at `fxPoints.smoke`, as House and TownBuilding already do.
+  - `workSpot` / `staffPoints` now stand at the **screen-left of the machine, in profile, facing E**, so the saw or press stays visible. Both also have `inPoint` and `outPoint`.
 - **Vehicles** (`characters{}`, kind "vehicle", assets/vehicles conventions):
-  - All have dirs SE and NE; SW and NW are drawn mirrored. Frames are named `{anim}_{dir}_{i}`.
-  - All have `shadow`, `footprintPoly`, `wheels`, `cargoPoint` and seats with an `over_*` overlay, except the pallet jack.
+  - All have dirs SE and NE, with SW and NW drawn mirrored. All have `shadow`, `footprintPoly`, `wheels` and `cargoPoint`. All except the pallet jack have seats with an `over_*` overlay.
   - `forklift` and `forklift_loaded` (family `forklift`):
-    - `idle` is 2 frames, `move` is 4 frames with the beacon blinking.
-    - `lift` is 6 frames: the forks rise from the ground to 1.25 m. Play it backwards to lower them.
-    - `liftPx[i]` is the extra screen-y of the forks in each lift frame. `forkTipPoint` is also given.
-    - `cargoPoint.behind` is true for NE: draw the load before the truck.
-    - The `_loaded` variant carries a pallet of boxes.
-  - `delivery_van_red`, `delivery_van_blue`, `delivery_van_mint` (family `delivery_van`): rounded retro vans with the box emblem. `idle` is 2 frames and `move` is 4. They have `rearDoorPoint`, `doorPoints`, `lightPoints`, `tailPoints` and `exhaustPoint`.
-  - `moving_truck` (이삿짐 트럭): a mint cab with a cream box body and a house-with-heart emblem.
-    - `unload` is 6 frames: the roll door goes up (frames 0–3), the ramp slides out (3–4) and tilts down to the snow (5).
-    - `rampPoint` is where movers start walking up the ramp.
-  - `pallet_jack`: `idle` is 1 frame, `move` is 4. `handlePoint` and `pushOffset` place the townsfolk `push` pose.
+    - **No roof snow any more**: the overhead guard is an open frame.
+    - `idle` is 2 frames and `move` is 4.
+    - `lift` is 6 frames, with `liftPx`, `forkTipPoint` and `cargoPoint`. `cargoPoint.behind` is true for NE.
+  - `delivery_van_red`, `delivery_van_blue`, `delivery_van_mint`: `idle` is 2 frames and `move` is 4.
+  - `moving_truck`:
+    - `unload` is 6 frames, with `rampPoint`.
+    - **New `unloadDirs` ['NE', 'NW']**: the rear only faces the camera in these two.
+  - `pallet_jack`: `handlePoint` and `pushOffset` place the townfolk `push` pose.
 
 ## Fields of `logistics_center`
-All values are px offsets from the anchor. Every layer and patch shares `frameSize` [1152, 864] and `anchor` [0.41493, 0.58912].
+All values are px offsets from the anchor.
 - **Geometry:**
   - `footprint` [860, 430] and `footprintM` [11, 8].
-  - `footprintPoly`: 4 corners.
-  - `revealPoly`: 17 points. It is the hull of the shell, simplified with RDP.
-  - `topPx` 487 and `front` -Y.
-- **`layers` / `patches` / `layerOrder` / `bandDepth`:**
-  - `layerOrder`: back, floor, interior, lamp, `<stock>`, interior_racks, `<actors mid>`, interior_front, conveyor, `<actors front + floor stock>`, stub, shell_cut, shell, dock1, dock2, props.
-  - `bandDepth` gives the placeholder bands: `stock` -0.25, `mid` -0.20, `front` -0.05.
+  - **`footprintPoly` is now in anchor offsets:** [[-430,-34],[68,215],[430,34],[-68,-215]]. It used to be in frame pixels.
+  - **New `frontTest`** {a 181, b 249}. An actor at (x, y) is in front of the building when `y - x/2 > a` or `y + x/2 > b`. These are the two front edges, extended, which means world y < -4 m or x > 5.5 m.
+  - `revealPoly` (17 points), `topPx` 487, `front` -Y.
+- **`layers`, `patches`, `nameplates` {ko, en}:**
+  - `layerOrder`: apron, shadow_open, back, floor, interior, lamp, `<stock>`, interior_racks, `<actors mid>`, interior_front, conveyor, `<actors front + floor stock>`, stub, shell_cut, shell, nameplate_<lang>, dock1, dock2, props.
+  - `alwaysDrawn` and `insideLayers` are listed explicitly.
+  - `bandDepth` {stock -0.25, mid -0.20, front -0.05}.
 - **`reveal`:**
-  - `states`:
+  - `states` (shell / shell_cut / shadow_open alpha):
 
-    | State | shell alpha | shell_cut alpha |
-    |---|---|---|
-    | closed | 1 | 0 |
-    | half | 0.45 | 0 |
-    | cut | 0 | 1 |
-    | open | 0 | 0 |
-  - `fadeMs` is 350.
+    | State | shell | shell_cut | shadow_open |
+    |---|---|---|---|
+    | closed | 1 | 0 | 0 |
+    | half | 0.45 | 0 | 0.55 |
+    | cut | 0 | 1 | 1 |
+    | open | 0 | 0 | 1 |
+  - `withShell`: dock1, dock2, nameplate. `fadeMs` is 350.
 - **Docks:**
-  - `dockPoints`: 2 bays, front and back.
-  - `dockDirs`: SE.
-  - `dockNames`.
-  - `dockVehiclePoints[family][bay]`: where the vehicle anchor goes when it is backed up to a bay, for truck_cargo, delivery_van, moving_truck and forklift.
-- **`forkliftPath`:** a 10-node loop.
-  - The forklift picks at the food rack, drives along the rack lane, goes out through dock 2 to drop at the truck, and comes back down the dock corridor.
-  - It then goes out through dock 1 to pick from the van and puts away at the tools rack.
-  - Each node has `point`, `dir`, `legBand` (mid/front), an optional `action` (pick/drop) and `legCrossesWall`.
-- **`rackSlots`:** 32 slots. Each one has:
-  - `rack`, `category`, `level`, `slot` and `point` (the bottom of the stack).
-  - `maxStackPx`, `widthM` and `depthM`.
-  - `spanPx` (lane axis) and `depthPx` (row axis).
-  - `face`, `band` and `drawOrder`.
+  - `dockPoints` and `dockDirs` (SE).
+  - `dockNames` and **`dockRoles`**: dock 1 is the van bay (front, screen lower) and dock 2 the truck bay (back). Any vehicle family can use either.
+  - `dockVehiclePoints[family][bay]` for truck_cargo, delivery_van, moving_truck and forklift.
+- **`forkliftPath`:** a 10-node loop. Each node has:
+  - `point`;
+  - `dir`: the way the forklift faces while doing its action;
+  - **`legDir`**: the way it faces while driving to the next node;
+  - **`reverse`**: the leg is driven backwards;
+  - `legBand`;
+  - optional `action` (pick or drop) and `note`.
 
-  The slots are:
-  - 4 back racks × 3 levels × 2 slots.
-  - The furniture rack: 2 levels × 2 slots.
-  - 4 floor bays for materials.
+  The route:
+  1. Pick at the food rack (facing NE).
+  2. Drive the lane.
+  3. Drop at the dock-2 truck, standing on the leveller **inside** the door, and back out.
+  4. Drive the corridor.
+  5. Pick from the dock-1 van and back out.
+  6. Drive up the corridor and along the lane.
+  7. Put away at the tools rack, **now facing NE into the rack**.
+  8. Loop.
 
-  Space above the stock:
-  - Racks: `maxStackPx` is 34–35 below a shelf and 40 on the lower furniture-rack level.
-  - Top shelves: capped at 46.
-  - Floor bays: capped at 58.
-- **`rackCategories`:** for each of the six categories (materials, food, goods, furniture, tools, appliances), the item keys that belong on its slots.
-- **Staff:**
-  - `staffPoints` / `staffDirs` / `staffRoles` / `staffBands`:
+  No leg leaves the building, so there is no band switch.
+- **`rackSlots`:** 30 slots.
+  - 3 back racks × 3 levels × 2, the appliance rack 2 × 2, the furniture rack 2 × 2, and 4 floor bays.
+  - Each slot has `rack`, `category`, `level`, `slot` and `point`, plus `maxStackPx` (1 × 1 cell), `widthM`, `depthM`, `spanPx`, `depthPx`, `face`, `band` and `drawOrder`.
+  - **New:** `cells` {small: 2 lanes × 2 rows, big: 1 × 1; floor bays 1 × 1}.
+  - **New:** `maxStackPxBy[sizeClass]`, measured at every cell, so back rows are measured where they stand.
+  - **New:** `itemFit` {item key → stacks of that item that fit, at the category's stockScale}.
+- **`rackCategories`:** the six categories, including the new items. **`stockScale`** per category is 0.85 for all six: everything fits.
+- **Staff:** `staffPoints`, `staffDirs`, `staffRoles`, `staffBands`. Bands are now only mid, front or outside.
 
-    | Role | Where | Band |
-    |---|---|---|
-    | clerk | behind the counter | mid |
-    | packer | behind the conveyor | mid |
-    | packer | behind the packing table | mid |
-    | picker | food rack | any |
-    | picker | tools rack | any |
-    | picker | furniture rack | mid |
-    | dock hand | outside | outside |
-- **Customers:** `customerPoints` / `customerDirs` / `customerBands` form a 7-place shop-owner queue. Places 0–3 are inside at the settlement counter (band front); 4–6 are outside on the apron.
-- **Doors and other points:**
-  - `doorPoint` / `doorDir` for the entrance.
-  - `inPoint` and `insidePoint`.
-  - `conveyor` {start, end, axis}.
-  - `fxPoints`: board, emblem, lamp, vents, dockLights.
-- **`nameBoard`:** {point, widthPx 137, heightPx 43, shearY 0.5, text ko/en}. The board on the facade is blank, so the game writes the name onto it and fades it with the shell.
-- **`manifest.logistics.validation`:** the per-point depth test results. It is empty of issues.
+  | Role | Where | Band |
+  |---|---|---|
+  | clerk | behind the counter | mid |
+  | packer | behind the conveyor | mid |
+  | packer | behind the packing table | mid |
+  | picker | between the food and goods racks, just outside the lane line | mid |
+  | picker | between the tools and appliance racks | mid |
+  | picker | furniture rack, lower slot, clear of the lane | mid |
+  | dock hand | on the apron between the bays | outside |
+- **Customers:** `customerPoints`, `customerDirs`, `customerBands`. The 7-place shop-owner queue is now spaced 0.95 m (about 48 px):
+  - places 0–3 are inside, at the counter (front band);
+  - places 4–6 are outside, starting **1 m to the left of the door**, so the doorway stays free, and running toward the street.
+- **`outdoorProps`:** 11 placements as [{sprite, name, point}]: 2 bollards, 2 dock lamps, bench, bin, empty pallets, loading sign and 3 snow piles.
+- **Other points:**
+  - `doorPoint` / `doorDir`, `inPoint`, `insidePoint`.
+  - `conveyor` {start, end on the belt, **`heightM` 0.85, `startGround` / `endGround`**}.
+  - `fxPoints`.
+  - `nameBoard`, now only needed for a custom name.
+- **`manifest.logistics.validation`:** empty. It covers depth bands, forklift keep-clear against every person point, and stock fit.
 
 ## How the game composes and reveals it
-1. **Place the layers.** Put every layer sprite at the building anchor, with depth = building depth + `depthOffset`. Then play the patches: conveyor and lamp loop, and the dock doors play when a vehicle docks.
-   - Closed, only `_shell`, `_props` and the dock-door patches show; everything else is covered by the shell.
-   - While the shell is at alpha 1 and both doors are closed, the inside layers can be skipped to save fill-rate.
-2. **Draw the stock.** For each rack slot, choose a stock level from 0 to 1 and draw item sprites of the slot's category.
-   - Draw at `point + spanPx·t + depthPx·u`, scaled about 0.85, at depth `bandDepth.stock` plus a tiny y term. Draw back rows first.
-   - Stack by `stackStep` and never go higher than `maxStackPx`.
-   - An empty slot shows the bare shelf; a full one has every lane and row stacked to the cap.
-   - Because `_interior_racks` sits on top, the uprights and beams cover the goods.
-   - Floor-bay pallets use band `front`.
-   - The stock-level GIF shows the sequence 0 → 100 % → 0.
-3. **Draw the actors.** Inside actors go into band `mid` or `front` according to their `staffBands`, `customerBands` or forklift `legBand`, sorted by y within the band.
-   - Outside actors use normal y-sort against `footprintPoly`.
-   - A forklift leg with `legCrossesWall` uses the outside rule once it passes the wall.
-4. **Reveal.** A tap, or hover on desktop, inside `revealPoly` tweens `_shell` together with `_dock1` and `_dock2` to alpha 0 over `fadeMs`. A second tap, or pointer-out, brings them back.
-   - `_shell_cut` is an optional middle state with the walls at 1.6 m.
-   - `_stub` and `_props` are always drawn.
+1. **Place the layers.** Put every layer and patch at the building anchor, with depth = building depth + `depthOffset`.
+   - Always draw `_apron`, `_props`, the dock-door leaves (frame 0 = closed), one nameplate and the `outdoorProps`.
+   - Play the conveyor and lamp patches. Play a dock door when a vehicle docks.
+2. **Skip the inside while it is hidden.** While the shell is at alpha 1 and both doors are at frame 0, the `insideLayers` (back, floor, interior, lamp, racks, front, conveyor, stub) plus the stock and inside actors are fully covered and may be skipped.
+3. **Open dock doors.** With a door open, the real inside shows through the hole in the shell, darkened to at most 55 % by the roof shadow baked into `_shell`.
+4. **Draw the stock.** For each rack slot:
+   - pick an item key from `slot.itemFit`;
+   - draw one stack per cell of `slot.cells[item.sizeClass]` at `point + spanPx·t + depthPx·u`, at `stockScale[category]`, back rows first;
+   - each stack has up to `itemFit[key]` copies, `stackStep · scale` apart. Stock level 0 to 1 sets how many of those copies are drawn.
+   - Rack slots use band `stock`; floor bays use `front`.
+5. **Draw the actors.**
+   - Inside actors go into band `mid` or `front` by `staffBands`, `customerBands` or the forklift leg's `legBand`, sorted by y.
+   - The forklift faces `legDir` on each leg, and `dir` while it plays `lift` at an action node.
+   - Outside actors, outdoor props and docked vehicles use plain y-sort. Use `frontTest` for anything in front of the left part of the front wall: give it at least building depth + 0.02.
+6. **Reveal.** A tap or hover inside `revealPoly` tweens the shell, both dock leaves and the nameplate to 0, and `_shadow_open` to 1, over `fadeMs`. A second tap or pointer-out reverses it. `_shell_cut` is the optional middle state.
+7. **Producers.** Spawn `fx_smoke` at `fxPoints.smoke` while working. Draw the operator at `workSpot` facing E, above the station sprite.
 
-`tools/blender/lgx_preview.py` (`compose_scene`) and `tools/test/logistics_phaser.mjs` both follow these rules exactly, so either can serve as a reference implementation.
+`tools/blender/lgx_preview.py` (`Centre.draw`, `compose_scene`) and `tools/test/logistics_phaser.mjs` both follow these rules exactly.
 
 ## Pipeline
-- **`tools/blender/lgx_lib.py`:** materials (hazard stripes, corrugated, concrete), pallets, crates, boxes, toy furniture, retro appliances, and the cutaway group tagging.
-- **`tools/blender/lgx_center.py`:** the centre builder. Every object is tagged back / floor / apron / interior / rackf / front_f / belt / lamp / stub / cut / shell / door1 / door2 / props.
-- **`tools/blender/lgx_assets.py`:** items and producers, through the bld_render conventions.
-- **`tools/blender/lgx_vehicles.py`:** vehicles. They are registered into veh_models.VEH at run time.
-- **`tools/blender/lgx_render.py`:** one scene and many passes, with a fixed camera.
-  - In each pass, every group is visible, ghost (casts shadows but is not seen), holdout or hidden, so the layers align and composite back exactly.
-  - Masks: fmask and rmask. A 16-bit view-depth pass is used for validation.
-  - Patches are rendered with a render border.
-  - Cycles uses 2 fixed threads. Renders write `.tmp.png` and rename, and existing frames are skipped unless `--force`, so the cache is resumable.
-  - Cache: `/tmp/fv_cache/logistics`.
-- **`tools/blender/lgx_pack.py`:**
-  - Trims the frames into ≤ 2048 px sheets with 256-colour imagequant palettes. Layers that are drawn on top of each other share a sheet.
-  - Derives `_interior_front` (= interior × fmask) and `_interior_racks` (= interior × rmask).
-  - Validates every standing point, forklift-path sample and rack slot against the rendered depth.
-  - **Guard and merge:** like harbor_pack, it keeps unknown fields, refuses to write if a required key has no complete render, and has an `--allow-partial` option.
-- **`tools/blender/lgx_check.py`:** the contract checks.
-- **`tools/blender/lgx_preview.py`:** the previews.
-- **`tools/test/logistics_phaser.mjs`:** the Phaser load test with the reveal toggle.
+- **`lgx_lib.py`:** materials, pallets, crates, boxes, furniture, appliances and the cutaway group tagging.
+- **`lgx_center.py`:** the centre builder.
+  - Groups: back / floor / apron / interior / rackf / front_f / belt / lamp / stub / cut / shell / door1 / door2 / props, plus **new oprop** (each free-standing prop tagged with its instance and kind) and **name_ko / name_en** (text-curve lettering converted to meshes).
+  - Rack specs are now per rack (`RACK_SPEC`).
+  - Holds the queue, picker and forklift-path data.
+- **`lgx_assets.py`:** items and producers. Adds the five new items, removes the baked smoke and moves the workSpots.
+- **`lgx_vehicles.py`:** vehicles. The forklift has no roof snow.
+- **`lgx_render.py`:** one scene and many passes, with every group visible, ghost, holdout or hidden per pass.
+  - New passes: `apron`, `shadow_open` (a ground catcher with a hole the size of the footprint), `name_ko` / `name_en`, and `oprop_<kind>` (one per kind, alone on the ground catcher).
+  - The door passes now render the leaf only. The shell pass renders without the leaves, with the back walls as ghost.
+  - `footprintPoly` is written in anchor offsets.
+  - Cycles uses 2 fixed threads. Renders write `.tmp.png` and are resumable. Cache: `/tmp/fv_cache/logistics`.
+- **`lgx_pack.py`:**
+  - Builds the atlases, adding `lgx_center_d` (apron, shadow_open and outdoor props).
+  - Crops the props, and clamps the open-door roof shadow to alpha 140.
+  - Validates the depth bands and the **forklift keep-clear**: the 2.5 × 1.16 m body on every leg and at every node, plus a 0.4 m load overhang at action nodes, must not touch any person (r 0.25 m).
+  - Builds the **stock plan** (cells, per-cell heights, itemFit, stockScale), `frontTest`, `outdoorProps` and the conventions text.
+  - Guards and merges like harbor_pack. Re-packing is deterministic.
+- **`lgx_check.py`:** the contract checks plus the new rules:
+  - `footprintPoly` centroid and bbox;
+  - bands limited to mid / front / outside;
+  - every slot has cells and itemFit, and every rackCategories item fits at least one slot of its category;
+  - nameplates and outdoorProps frames exist;
+  - forklift action nodes are inside the wall, and every node has legDir;
+  - `workSpot.dir` and `smokeFx` are present;
+  - `unloadDirs` is present;
+  - no key or atlas collides with another fragment. `item_toolbox` gets a warning instead.
+- **`lgx_preview.py`:** the previews, as the reference composition. **`logistics_phaser.mjs`:** the Phaser load and reveal test.
 
 Rebuild:
 ```
@@ -170,31 +209,63 @@ node tools/test/logistics_phaser.mjs
 ```
 
 ## Previews (docs/previews)
-- `lgx_all.png`: every key, labelled. The centre closed and open, all 9 layers as thumbnails, both producers idle and working, 22 items at 2×, and every vehicle in SE, NE, lift 5 and unload 5.
-- `lgx_cutaway.png`: closed / half (shell 45 %) / cut (walls 1.6 m) / open, side by side, with the inside working.
-- `lgx_reveal.gif`: the shell fading out and back in while the forklift drives.
-- `lgx_scene.png`: at 1×, the centre open with stocked racks. It shows:
-  - Staff at their staffPoints: the clerk at the counter, packers, pickers and a dock hand.
-  - Two forklifts on the path and a worker pushing a pallet jack.
-  - A truck_cargo and a delivery van at the docks.
-  - Shop owners queuing at the settlement counter.
-- `lgx_stock.gif`: the racks going empty → full → empty.
-- `lgx_conveyor.gif`, `lgx_docks.gif`, `lgx_forklift.gif` (lift), `lgx_trucks.gif` (moving-truck unload and the vans), `lgx_producers.gif`.
-- `lgx_phaser_closed.png` and `lgx_phaser_open.png`: the Phaser test before and after the tap.
+- `lgx_all.png`: every key, labelled. It shows:
+  - the centre closed (with the nameplate) and open;
+  - all 13 layers, including the apron, shadow_open and both nameplates;
+  - the 8 outdoor props;
+  - both producers;
+  - 27 items at 2×;
+  - every vehicle.
+- `lgx_cutaway.png`: closed / half / cut / open side by side. The open-state shadow fades in.
+- `lgx_reveal.gif`: the shell, nameplate and dock leaves fade out and back in while `_shadow_open` cross-fades.
+- `lgx_scene.png`: at 1×, the centre open with full racks:
+  - the clerk, packers, pickers between the racks and the dock hand;
+  - a forklift picking at the food rack (lift), a loaded forklift on its lane leg, and a worker with a pallet jack;
+  - **the van at dock 1 and the truck at dock 2**;
+  - the shop-owner queue, spaced out.
+- `lgx_docks.gif`: the closed building with the doors rolling up. The **real inside** shows through: stock, and a loaded forklift waiting on the dock-1 leveller. The van and truck are docked.
+- `lgx_stock.gif`: racks going empty → full → empty, using `itemFit`.
+- `lgx_producers.gif`: both producers working. Each shows its operator in profile at `workSpot` and the soft game-side smoke.
+- `lgx_conveyor.gif`, `lgx_forklift.gif` (lift, no roof snow), `lgx_trucks.gif`.
+- `lgx_phaser_closed.png` and `lgx_phaser_open.png`: the Phaser test before and after the tap, with full stock and the outdoor props y-sorted against the docked van and truck.
 
-## Changes in this session (resume)
-- **Vehicle renders.** Rendering stopped after the first vehicle because `lgx_lib` had cached a material that the vehicle scene reset had freed. The material cache now checks that the material is still live. All 7 vehicles are rendered.
-- **Rack stock heights.** Every slot next to a rack end frame got `maxStackPx` 0, because the end-frame bracing rods were in front of the stack, so half of each rack could never show goods.
-  - The stack test now ignores thin rods (runs under 10 px) and stops where a solid occluder begins.
-  - All slots of one rack level now share that level's free height.
-  - The category signs on top of the racks now belong to the rack-front group (re-rendered rmask), so goods on the top shelf sit behind them. Top shelves are capped at 46 px.
-- **Front-furniture test.** The anti-aliased rims of the counter, conveyor and table now count as front furniture (mask ratio test). This cleared the false "hidden" reports for the forklift lane and the packer.
-- **Traffic cone.** The cone stood beside the dock corridor, in front of the forklift's path, so the forklift would have been drawn over it. It now stands next to the empty-pallet stack; interior, floor, stub, cut, masks and depth were re-rendered.
-- **`bandDepth`.** The numeric band offsets are now exported, so the game does not have to guess them.
-- **Scene preview.** The second forklift moved so the packer at the table is visible, and the caption is shortened.
+## Changes in this session (polish after the critic review)
+- **`footprintPoly`** is in anchor offsets, and `frontTest` gives the in-front rule as two numbers. The packer converts an old cache, and the check fails on frame pixels.
+- **Pickers vs forklift.**
+  - The pickers stand between racks, 0.25 m outside the lane line.
+  - The furniture picker stands at the lower slot, away from the forks' sweep.
+  - A keep-clear test in the packer now guards this, against staff, customers and door points.
+  - F8 faces NE into the tools rack.
+- **Apron.** It is its own always-drawn layer, so skipping the inside while closed no longer deletes it.
+- **Outdoor props.** Free-standing props are their own y-sorted sprites with soft shadows. They were moved so that no docked vehicle has one beside its camera-side flank:
+  - bollards and dock lamps hug the wall beside the doors;
+  - the loading sign and the empty pallets moved to the front-right of the apron;
+  - the bin moved off the outside queue.
+- **Item fit.**
+  - The appliance rack is now 2 levels, 1.5 m apart, and the furniture rack's lower level is 1.58 m tall.
+  - Fridge, stove, TV, chair and wardrobe all fit at scale 0.85.
+  - The stock heights are measured per cell over the item's own width. Back rows no longer poke into the deck above, and the end-frame bracing no longer zeroes the middle shelves.
+- **Stock rule.** It is fully in the data: `cells`, `sizeClass`, `itemFit`, `stockScale`, `maxStackPxBy`. Floor bays hold one stack each.
+- **Name.** A baked Korean and an English nameplate patch. The previews use the shipped patch.
+- **Producers.** The baked faceted smoke is gone; use `smokeFx` / `fxPoints.smoke` instead. The operator stands in profile at the screen-left of the machine, facing E, and the note matches.
+- **Forklift.** No roof snow.
+- **Open-state shadow.** The new `_shadow_open` layer.
+- **Dock doors.** The patches are the leaf only. The shell has holes there, so the real stock and actors show through, dimmed to at most 55 %.
+- **Forklift path.**
+  - Dock nodes sit on the leveller (x 5.0 m), so only the forks reach into the bed.
+  - `legDir` and `reverse` on every leg.
+  - Dock roles are settled: van at dock 1, truck at dock 2, matching the scene.
+- **Queue.** 0.95 m spacing; the outside head stands 1 m beside the door.
+- **Conventions.**
+  - "any" is replaced by mid; "outside" is defined.
+  - The conveyor has `heightM` and ground points.
+  - `moving_truck.unloadDirs`.
+- **Variety.** Jam crates, cloth rolls, smoked goods, tool crates and an ore pallet.
+- **Phaser test.** Uses the new data (itemFit, legDir, outdoor props, shadow_open) and fails on stock overflow or missing props.
 
 ## Known issues
-- **Thin rods under the goods.** Stock in the slot next to a rack end frame is drawn over that frame's thin diagonal bracing rods. In a real rack the rods would be in front of the goods. It only shows when you look closely at 2×.
-- **Back-row piles.** `maxStackPx` is measured at the slot centre, so a back-row stack can reach a few px into the shelf above. Keep back-row stacks one item lower than front-row stacks, or use 0.85 × `maxStackPx`.
-- **Vehicle order at the docks.** Vehicles at the docks stand outside, and the dock-door patch (depth +0.001) belongs to the building. A van backed against an open door should be y-sorted as an outside actor. That is the case at `dockVehiclePoints`, but a vehicle driven inside along `forkliftPath` must switch to the inside bands at `legCrossesWall`.
-- **No interior lighting variants.** There is no night version of the interior; it is the daylight render. The office lamp glow and the dock lights are the only animated lights.
+- **Bracing rods under the goods.** Goods next to a rack end frame still draw over that frame's thin diagonal bracing rods. Only visible at 2×.
+- **Cross-fade darkness.** While the reveal cross-fades (half state), the closed and open shadows overlap and the ground right of the building is a little darker for 350 ms.
+- **Long vehicles and plain y-sort.** The props were placed so that plain anchor y-sort is right for vehicles parked at `dockVehiclePoints`. A long vehicle driving past a prop on its camera side mid-manoeuvre can still briefly sort wrong; this is a general limitation of plain y-sort.
+- **Daylight only.** There is no night version of the interior. The office lamp and dock lamps are the only lights.
+- **`item_toolbox` key.** It is the same key as in `assets/buildings`, with an identical picture. Whichever fragment wins the merge, the game shows the same toolbox. `lgx_check` reports it as a warning.

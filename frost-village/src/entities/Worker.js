@@ -483,6 +483,18 @@ export class Porter extends Hauler {
   }
 
   /** the best (type, sink) for what lies on the output pad right now */
+  /**
+   * (v4-B) items a goods porter leaves on its output for the station porters: while a founding order card (a new
+   * shop) still needs `type` and a station porter is hired, up to `stationPorterFoundingMin` + 2 stay unless the
+   * local shelf is nearly empty (the bots saw a 슈퍼마켓 card wait 20+ min: the can porter took every can)
+   */
+  keepFor(type, prio) {
+    const G = this.gs.v4 && this.gs.v4.growth;
+    if (!G || !G.porters || !G.porters.length || !G.foundingNeedOf || G.foundingNeedOf(type) <= 0) return 0;
+    if (prio !== undefined && prio >= PRIO.SHELF_LOW) return 0;
+    return Math.max(1, Math.floor(Number(BALANCE.v4 && BALANCE.v4.stationPorterFoundingMin) || 4)) + 2;
+  }
+
   pickPlan() {
     const L = this.gs.logistics, out = this.station.outStack;
     if (!L) return null;
@@ -492,6 +504,7 @@ export class Porter extends Hauler {
       if (seen[it.type]) continue;
       seen[it.type] = true;
       const b = L.best(it.type, this.x, this.y);
+      if (b && out.countOf(it.type) <= this.keepFor(it.type, b.prio)) continue;
       if (b && (!best || b.prio > best.prio || (b.prio === best.prio && out.countOf(it.type) > out.countOf(best.type)))) best = { sink: b.sink, type: it.type, n: b.n, prio: b.prio };
     }
     return best;
@@ -525,7 +538,7 @@ export class Porter extends Hauler {
         const pl = this.plan;
         const want = pl ? Math.min(this.stack.max, Math.max(1, pl.n)) : 0;
         if (this.room <= 0 || (pl && this.stack.count + this.stack.incoming >= want)) { this.finishLoad(); break; }
-        if (pl && out.countOf(pl.type) > 0) {
+        if (pl && out.countOf(pl.type) > (pl.keep !== undefined ? pl.keep : (pl.keep = this.keepFor(pl.type, pl.prio)))) {
           this.waitT = 0;
           if (this.dropT <= 0 && gs.moveItem(out, this.stack, pl.type, { dur: 230, height: 55 })) this.dropT = 0.14;
         } else {

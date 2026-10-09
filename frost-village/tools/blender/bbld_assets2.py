@@ -21,7 +21,7 @@ from bbld_assets import (bbld, variant_x, side_faces, wface, on_face, out_dir, a
                          table_parasol)
 
 
-def emblem_disc(name, center, emblem, r=0.5, bg=B.WHITE, rim=B.TURQ, es=0.9, legs=0.0, tilt=6.0, glow=0.45):
+def emblem_disc(name, center, emblem, r=0.5, bg=B.WHITE, rim=B.TURQ, es=0.9, legs=0.0, tilt=6.0, glow=0.12):
     """Camera-facing round sign (psi-corrected for _x variants), optionally on two little legs (legs = leg length)."""
     if legs:
         a = math.radians(B.psi())
@@ -469,7 +469,7 @@ def b_souvenir_shop():
     mb.done('chime')
     # gable front: big scallop shell sign
     B.glow_objs(T.emblem_at('gshell', lambda s: B.em_shell(s, col=B.PEACH), (BX, y0 - 0.08, PL + WH + 0.42),
-                            psi=0.0, scale=0.75), strength=0.45)
+                            psi=0.0, scale=0.75), strength=0.1)
     # side window (visible side)
     B.gwin('sw', (x1, BY + 0.1, PL + 0.75), 'x+', w=0.6, h=0.7, shutters=blue, curtain=B.LEMON)
     # outside: postcard spinner + straw-hat stand
@@ -558,7 +558,7 @@ def b_swimwear_shop():
            step_col='#D8CBB6', step_depth=0.25)
     # giant striped swim ring on the roof, facing the camera
     B.glow_objs(T.emblem_at('rring', lambda s: B.em_swimring(s, c1=B.CORAL), (BX + 0.1, BY + 0.1, PL + WH + 0.62),
-                            psi=B.psi(), scale=2.0, tilt=6.0), strength=0.45)
+                            psi=B.psi(), scale=2.0, tilt=6.0), strength=0.1)
     # swim-ring rack (visible side front)
     rx, ry = x1 + 0.45, y0 - 0.1
     wm = tonal(B.WOOD_D, 0.06, 4.0)
@@ -629,7 +629,7 @@ def b_surf_shop():
     with L.Collect() as sb:
         B.em_surfboard(2.6, col=B.LEMON, stripe=B.CORAL)
     B.glow_objs(L.group(BA.top_level(sb.objs), 'rboard', loc=(BX + 0.2, BY + 0.2, PL + WH + 1.2), rot=(0, 0, B.psi())),
-                strength=0.35)
+                strength=0.1)
     # surf-school board (blank) on the front wall
     B.sign_board('sboard', (BX - 0.5, y0 - 0.08, PL + 1.92), w=1.05, h=0.3, bg='#FFF8EC', frame='#2FA7A0', psi_=0.0)
     # board rack in front (left) with 5 colourful boards leaning
@@ -1039,7 +1039,7 @@ def b_mini_aquarium():
     HA.vault('vroof', W + 0.3, D / 2 + 0.2, 0.55, (BX - W / 2 - 0.15, BY, PL + WH),
              L.stripes('#3D7CC9', '#5C9FE0', 1.0 / 0.25, 'Y', rough=0.5, soft=0.15), cap=flat('#5C8FD6', 0.5))
     B.glow_objs(T.emblem_at('whale', lambda s: B.em_whale(s), (BX + 0.2, BY + 0.1, PL + WH + 1.15), psi=B.psi(),
-                            scale=1.5, tilt=4.0), strength=0.4)
+                            scale=1.5, tilt=4.0), strength=0.1)
     # tank bay (front left): frame + glowing water box + content
     TW_, TH_, TD_ = 2.0, 1.45, 0.75
     tx, tz = BX - 0.55, PL + 0.25
@@ -1060,7 +1060,7 @@ def b_mini_aquarium():
     nbw.link(colw, nbw.p.inputs['Emission Color'])
     nbw.p.inputs['Emission Strength'].default_value = 0.42
     wmat = nbw.m
-    B.night(wmat, '#2E86D8', 1.5)
+    B.night(wmat, '#2E86D8', 0.8)
     # the back of the tank sits IN FRONT of the facade surface (y0): inside the wall it was hidden and the camera saw
     # the white stucco through the glass (= the old milky tank)
     box('twater', (TW_ - 0.02, 0.04, TH_), (tx, y0 - 0.03, tz), mat=wmat, bevel=0.0)
@@ -1069,7 +1069,8 @@ def b_mini_aquarium():
             mat=L.emissive('tws%d' % (s > 0), '#1D5BA6', '#1A58A8', 0.3), bevel=0.0)
     box('ttop', (TW_, TD_ - 0.1, 0.03), (tx, y0 - TD_ / 2 + 0.07, tz + TH_ - 0.03),
         mat=L.emissive('ttopm', '#8FD4F2', '#7FCDF0', 0.55), bevel=0.0)
-    box('tglass', (TW_, 0.02, TH_), (tx, ty0 - 0.01, tz), mat=B.tank_glass('tglass', '#9FD6F0', 0.05, 0.0), bevel=0.0)
+    box('tglass', (TW_, 0.02, TH_), (tx, ty0 - 0.01, tz), mat=B.tank_glass('tglass', '#9FD6F0', 0.05, 0.0, night_on=False),
+        bevel=0.0)
     # light from the top only (a cool spot on the sand + the fish), no wash over the whole tank
     L.point_light('tankL', (tx - 0.2, y0 - 0.3, tz + TH_ - 0.12), '#DDF4FF', 22.0, 0.3)
     L.point_light('tankL2', (tx + 0.55, y0 - 0.35, tz + TH_ - 0.2), '#CBEFFF', 12.0, 0.3)
@@ -1234,7 +1235,7 @@ def b_beach_arcade():
         cyl('sleg', 0.04, 0.6, (sx + s * 0.35 * math.cos(a), sy + s * 0.35 * math.sin(a), PL + WH + 0.1),
             mat=flat('#9AA3AE', 0.4, 0.5), segs=8)
     B.glow_objs(T.emblem_at('star', lambda s: B.em_joystick(s), (sx, sy, sz), psi=B.psi(), scale=1.6, tilt=6.0),
-                strength=0.45)
+                strength=0.1)
     ring = []
     for k in range(16):
         t = math.tau * k / 16
@@ -1300,7 +1301,7 @@ def gate_builder():
         with L.Collect() as sc:
             B.em_shell(0.16, col=(B.PEACH, B.PINK)[k % 2])
         L.group(BA.top_level(sc.objs), 'bshell%d' % k, loc=(-1.25 + 0.5 * k, -0.17, 1.98), rot=(0, 0, 0))
-    B.glow_objs(T.emblem_at('sun', lambda s: B.em_sun(s), (0.0, -0.12, 3.45), psi=0.0, scale=0.95), strength=0.45)
+    B.glow_objs(T.emblem_at('sun', lambda s: B.em_sun(s), (0.0, -0.12, 3.45), psi=0.0, scale=0.95), strength=0.1)
     B.pennant_line('pen1', (-G, -0.05, 2.9), (-0.55, -0.05, 3.05), n=6, sag=0.25)
     B.pennant_line('pen2', (0.55, -0.05, 3.05), (G, -0.05, 2.9), n=6, sag=0.25)
     for s in (-1, 1):

@@ -65,7 +65,40 @@ MERGE_RULES = [
     'Other top-level keys of the fragment (animItems, animFallback, fallbackFace, cfParts, lowerShare, overrides...): '
     'copied; objects are shallow-merged, arrays concatenated.',
     'Everything else (frame size, anchors, limbs, faces, noses, frameNames, layerNames) is the v4 block unchanged.',
+    'Draw / play rules (Cityfolk.layers / canPlay / pickAnim, both compositors): body parts with an "anims" list '
+    '(beachfolk AND cityfolk parts) follow beachfolk_compose.partPlays (the canonical per-part rule); worn hand items '
+    'list every anim and the ones they have no frames in under noAnims (not drawn there).  Head parts hidden in an anim '
+    '(beachfolk_compose.headHidden: animHideHead / noAnims) are not drawn and a hidden full hat no longer squashes the '
+    'hair.  v4 / v5 parts in a cityfolk anim need bases[b].cfCover[anim]; cfDrop[part] lists cityfolk anims a v4 '
+    'accessory is simply not drawn in (it never blocks them).  animItems[anim] are added unless noItems.',
+    'pickAnim(person, anim, {has}) walks animFallback[anim] and returns {anim, face: fallbackFace[anim]}; has(anim) '
+    '= false skips anims the runtime cannot show right now (page not resident; v4 drops carry_walk, so no fallback '
+    'ever names it).  Last resort: idle (else walk).  Scuffles: when either resident cannot play fight, use '
+    'fx_fight_cloud in its simple mode (it bakes both fighters in) instead of two dolls.',
+    'Pages: every cityfolk atlas holds one page of cfPages.groups (loco, rush, crowd, scuffle, work, fire, social + '
+    'head); frameAtlasExt has one entry per page.  cfPages.incidents lists the pages a fire / crime / logistics / bank '
+    '/ rebuild scene needs (and their MiB).',
+    'bases[b].groundSpeed[anim][dir] (px/s, mirrored dirs = their source dir): how fast the planted foot slides at '
+    'the anim fps - move the sprite at that speed, or scale the anim fps by speed / groundSpeed.',
 ]
+
+
+# PAGES: atlases are packed per incident GROUP of anims (all ages of a group together, sorted child / adult / elder so a
+# big group splits by age), so the game / a residency system can load only what an incident needs (cityfolk.cfPages)
+PAGES = {'loco': ['idle', 'walk'],                              # the job outfits walking / standing about
+         'rush': ['run', 'flee'],                               # chases, rushing to a fire, evacuating
+         'crowd': ['point', 'think', 'shocked', 'phone'],       # onlookers (fire, crime, bank)
+         'scuffle': ['argue', 'fight', 'arrested_walk'],        # petty crime
+         'work': ['carry_box', 'sweep'],                        # logistics, moving, clean-up / rebuild
+         'fire': ['spray_hose'],                                # firefighters at work
+         'social': ['talk', 'wave', 'happy', 'sit', 'sad']}     # the job outfits chatting (bank counters ...)
+PAGE_OF = {a: g for g, lst in PAGES.items() for a in lst}
+INCIDENTS = {'fire': ['head', 'loco', 'rush', 'crowd', 'fire'],
+             'crime': ['head', 'loco', 'rush', 'crowd', 'scuffle'],
+             'logistics': ['head', 'loco', 'work', 'social'],
+             'bank': ['head', 'loco', 'social', 'crowd'],
+             'rebuild': ['head', 'loco', 'work', 'crowd']}
+BASE_RANK = {'child_slim': 0, 'adult_slim': 1, 'elder_slim': 2}
 
 
 ANCHOR_ERR = 9.0          # mean RGB error (0..255) of a layer after quantizing that earns it palette anchors
@@ -130,7 +163,7 @@ def _anchor_strip(sheet, rects, layers, width, rows, rng):
     return Image.fromarray(pick.reshape(rows, width, 4).astype(np.uint8), 'RGBA')
 
 
-def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5, qlog=None):
+def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5, qlog=None, sort_key=None):
     """tf_pack.build_sheets (same dedupe, greedy layer -> sheet split, packing, quantizing, compact 'tfatlas' JSON)
     plus
       * tail merge (as bf_pack): a last group smaller than `tail` x the sheet budget is packed with the group before
@@ -159,7 +192,7 @@ def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5, 
         sizes[layer] = sum(tpk.trimmed_area(e[2]) for e in lst)
     budget = SHEET * SHEET * tpk.SHEET_FILL
     groups, cur, acc = [], [], 0
-    for layer in sorted(layers, key=lambda l: (l.split('.')[0], l)):
+    for layer in sorted(layers, key=sort_key or (lambda l: (l.split('.')[0], l))):
         if cur and acc + sizes[layer] > budget:
             groups.append(cur)
             cur, acc = [], 0
@@ -361,7 +394,11 @@ def collect_body3(cache, base, log, v4parts):
 
 # --------------------------------------------------------------------------- manifest
 
-def part_entry3(P):
+def part_entry3(P, framed=None, all_anims=()):
+    """townfolk part entry + cityfolk keys.  framed = anims the BODY part has frames in (same on every base it exists
+    for): 'anims' lists the anims its wearer can play (beachfolk_compose partPlays - the canonical rule every
+    compositor honours); worn hand items never block an anim: 'anims' = every anim, 'noAnims' = the ones they have no
+    frames in (simply not drawn there, like beachfolk's drop accessories)."""
     e = tpk.part_entry(P)
     for s, sd in P.subs.items():
         if sd.get('zfrontFollow'):
@@ -370,6 +407,15 @@ def part_entry3(P):
         e['noAnims'] = list(P.no_anims)
     if getattr(P, 'only_anims', None):
         e['onlyAnims'] = list(P.only_anims)
+    if P.space == 'body' and framed is not None:
+        tags = set(getattr(P, 'tags', None) or [])
+        if 'anim_item' in tags:
+            e['anims'] = list(P.only_anims)
+        elif 'item' in tags:
+            e['anims'] = list(all_anims)
+            e['noAnims'] = [a for a in all_anims if a not in framed]
+        else:
+            e['anims'] = [a for a in all_anims if a in framed]
     return e
 
 
@@ -418,7 +464,32 @@ def points(m, key, sx, anims, nd=1):
     return out
 
 
-def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4parts):
+def ground_speed(m, sx, fps_of):
+    """{anim: {dir: px/s}}: how fast the PLANTED foot slides back in the frame (screen px / s at the anim's fps) =
+    the speed to move the sprite at so the feet do not skate (or play the anim at fps * speed / groundSpeed)."""
+    out = {}
+    feet = m.get('feet', {})
+    anims = sorted({k.rsplit('_', 2)[0] for k in feet})
+    for a in anims:
+        out[a] = {}
+        dirs = sorted({k.rsplit('_', 2)[1] for k in feet if k.rsplit('_', 2)[0] == a})
+        for d in dirs:
+            n = len([k for k in feet if k.startswith(f'{a}_{d}_')])
+            zmin = min(min(f[0][2], f[1][2]) for k, f in feet.items() if k.startswith(f'{a}_{d}_'))
+            tol = zmin + 0.015                   # a foot this low is on the snow
+            sp = []
+            for i in range(n):
+                f0, f1 = feet[f'{a}_{d}_{i}'], feet[f'{a}_{d}_{(i + 1) % n}']
+                low = 0 if f0[0][2] <= f0[1][2] else 1
+                if f0[low][2] > tol or f1[low][2] > tol:
+                    continue                     # no foot on the snow in both frames (flight / swing)
+                dx, dy = (f1[low][0] - f0[low][0]) * sx, f1[low][1] - f0[low][1]
+                sp.append((dx * dx + dy * dy) ** 0.5)
+            out[a][d] = round(sum(sp) / len(sp) * fps_of[a], 1) if sp else None
+    return out
+
+
+def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4parts, pages=None):
     tl = ca.timeline3()
     timeline = {a: {d: [tl[(a, d, i)] for i in range(ca.ANIMS3[a]['frames'])] for d in ca.ANIMS3[a]['dirs']}
                 for a in ca.ORDER3}
@@ -438,25 +509,49 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4
             c = cpr.cast_parts(a, src, v4parts)
             if a in ca.ANIMS3 or c:
                 cover[a] = c
+        fps_of = {a: info['fps'] for a, info in ca.all_anims().items()}
         e = {'headOffset': nested3(scaled_head(m, sx)), 'parts': parts, 'cfCover': cover,
              'nozzlePoint': points(m, 'nozzle', sx, ['spray_hose']),
              'boxPoint': points(m, 'box', sx, ['carry_box']),
-             'sweepPoint': points(m, 'sweep', sx, ['sweep'])}
+             'sweepPoint': points(m, 'sweep', sx, ['sweep']),
+             'groundSpeed': ground_speed(m, sx, fps_of)}
         bases[base] = e
     # layers of cityfolk-owned parts (and the new face / brow layers) are new names -> frameAtlas; every other layer
     # (v4 / v5 parts, limbs) keeps its earlier fragment's entry and routes its cityfolk-anim frames through
     # frameAtlasExt (never touches another fragment's frameAtlas key, whichever fragment introduced it)
+    # where_body = {page: {layer@base: atlas}}.  Owned layers (cityfolk parts) get a frameAtlas default (their 'loco'
+    # page, else the first page they appear in); every page then routes its anims through one frameAtlasExt entry
+    # (only the entries that differ from the default)
     owned = set(cp.ALL_NEW)
-    frame_atlas, ext_anim = {}, {}
+    frame_atlas, ext = {}, []
     for layer, key in where_head.items():
         if layer in fa1:
             raise ValueError(f'head layer {layer} already in assets/townfolk')
         frame_atlas[layer] = key
-    for base, w in where_body.items():
-        for layer, key in w.items():
-            L = f'{layer}@{base}'
-            (frame_atlas if layer.split('.')[0] in owned else ext_anim)[L] = key
-    parts = {pn: part_entry3(tp.PARTS[pn]) for pn in cp.ALL_NEW}
+    for pg in PAGES:
+        for L, key in sorted(where_body.get(pg, {}).items()):
+            if L.split('.')[0].split('@')[0] in owned and L not in frame_atlas:
+                frame_atlas[L] = key
+    for pg, anims in PAGES.items():
+        mp = {L: key for L, key in sorted(where_body.get(pg, {}).items()) if frame_atlas.get(L) != key}
+        if mp:
+            ext.append({'anims': list(anims), 'page': pg, 'map': mp})
+    all_anims = [a for a in list(ta.ORDER) + list(ta2.ORDER2) + list(ca.ORDER3) if a != 'carry_walk']
+    framed = {}
+    for b, B in bases.items():
+        if b in tpr.ROUND_FROM:
+            continue
+        for a, lst in B['cfCover'].items():
+            for pn in lst:
+                if pn in owned:
+                    framed.setdefault(pn, {}).setdefault(b, set()).add(a)
+    fr_union = {}
+    for pn, per in framed.items():
+        sets = list(per.values())
+        if any(x != sets[0] for x in sets):
+            raise ValueError(f'{pn}: different anims on different bases {per}')
+        fr_union[pn] = sets[0]
+    parts = {pn: part_entry3(tp.PARTS[pn], fr_union.get(pn, set()), all_anims) for pn in cp.ALL_NEW}
     tint_table = {}
     for slot, cols in cpr.EXTRA_TINTS3.items():
         ref = tpr.TINT_REF.get(slot, tpr.TINT_REF['default'])
@@ -490,16 +585,20 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4
         'generator': {'presets': cpr.PRESETS3, 'slotPalette': dict(cpr.SLOT_PALETTE3), 'exclude': cpr.EXCLUDE3,
                       'extraSlots': []},
         'frameAtlas': frame_atlas,
-        'frameAtlasExt': [{'anims': list(ca.ORDER3), 'map': ext_anim}],
+        'frameAtlasExt': ext,
         'animItems': dict(ca.ANIM_ITEMS),
         'animFallback': dict(cpr.ANIM_FALLBACK),
         'fallbackFace': dict(cpr.FALLBACK_FACE),
+        'cfDrop': {k: list(v) for k, v in cpr.CF_DROP.items()},
+        'cfPages': pages or {},
         'cfParts': [p for p in cp.ALL_NEW if tp.PARTS[p].space == 'body'],
         'cityfolkAnims': list(ca.ORDER3),
         'lowerShare': {'groups': ca.LOWER_GROUPS, 'layers': sorted(cp.LOWER_SUBS),
                        'notes': 'Lower-body layers (listed) of the anims of one group are the same images where the '
                                 'legs pose is the same (run + flee, arrested_walk + carry_box, the planted stance of '
-                                'argue / point / think / shocked / phone / sweep).  Nothing to do in the game.'},
+                                'argue / point / think / shocked / phone / sweep): one rect per page.  Every bottom / '
+                                'shoe cast in run is cast in flee too, and carry_box <-> arrested_walk (aliases, no new '
+                                'pixels).  Nothing to do in the game.'},
         'items': {
             'carry_box': 'held_box is drawn automatically (animItems).  To carry a real logistics item instead, pass '
                          '{noItems:true} and draw the item with its bottom-centre at boxPoint[anim][dir][i] '
@@ -564,6 +663,7 @@ def main():
         log.append('no head renders')
         atlases, where_head = [], {}
     body_metas, where_body, body_layer_names = {}, {}, {}
+    by_page = {pg: {} for pg in PAGES}
     for base in cpr.RENDER_BASES:
         if not os.path.exists(os.path.join(cache, 'body', base, 'index.json')):
             log.append(f'no body renders for {base}')
@@ -572,13 +672,46 @@ def main():
         layers, meta = collect_body3(cache, base, log, v4parts)
         body_metas[base] = meta
         body_layer_names[base] = sorted(layers)
-        at, w = build_sheets3(f'cf_{base}', layers, lambda l, f, b=base: f'{l}@{b}/{f}', colors, dither, report, qlog=qlog)
+        for layer, frs in layers.items():
+            for fr, img in frs.items():
+                anim = fr.rsplit('_', 2)[0]
+                pg = PAGE_OF.get(anim)
+                if pg is None:
+                    log.append(f'frame {layer}@{base}/{fr}: anim {anim} has no page')
+                    continue
+                by_page[pg].setdefault(f'{layer}@{base}', {})[fr] = img
+    page_info = {}
+    for pg, lay in by_page.items():
+        if not lay:
+            continue
+        n0 = len(atlases)
+        at, w = build_sheets3(f'cf_{pg}', lay, lambda l, f: f'{l}/{f}', colors, dither, report, qlog=qlog,
+                              sort_key=lambda l: (BASE_RANK[l.split('@')[1]], l.split('.')[0], l))
         atlases += at
-        where_body[base] = w
+        where_body[pg] = w
+        keys = [a['key'] for a in atlases[n0:]]
+        ages = {}
+        for L, key in w.items():
+            ages.setdefault(key, set()).add(L.split('@')[1])
+        page_info[pg] = {'anims': PAGES[pg], 'atlases': keys, 'bases': {k: sorted(v) for k, v in ages.items()}}
+    head_keys = [a['key'] for a in atlases if a['key'].startswith('cf_head')]
+    page_info['head'] = {'anims': [], 'atlases': head_keys,
+                         'notes': 'new hats / masks + the new face expressions: load with any cityfolk page'}
     for at in atlases:
         at['png'] = 'cityfolk/' + at['png'].split('/', 1)[1]
         at['json'] = 'cityfolk/' + at['json'].split('/', 1)[1]
-    man = build_manifest3(body_metas, where_head, where_body, body_layer_names, atlases, v4parts)
+    sizes = {r[0]: r[1] for r in report}
+    for pg, inf in page_info.items():
+        inf['mib'] = round(sum(sizes[k][0] * sizes[k][1] * 4 for k in inf['atlases']) / 2 ** 20, 1)
+    pages = {'groups': page_info,
+             'incidents': {k: {'pages': v, 'mib': round(sum(page_info[g]['mib'] for g in v if g in page_info), 1)}
+                           for k, v in INCIDENTS.items()},
+             'notes': ('Every cityfolk atlas holds ONE page (group of anims, all ages; big pages split child / adult / '
+                       'elder).  Load "head" + the pages an incident needs (incidents[...].pages) and drop them again '
+                       'afterwards; a sprite asked for an anim whose page is not resident falls back like a missing '
+                       'outfit (pickAnim with a {has} predicate, see cityfolk.merge).  A pack_pages-style half-res tier '
+                       '(0.5 scale for zoom < 0.85) quarters every number.')}
+    man = build_manifest3(body_metas, where_head, where_body, body_layer_names, atlases, v4parts, pages)
     with open(os.path.join(out, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(man, f, ensure_ascii=False, separators=(',', ':'))
     total = sum(os.path.getsize(os.path.join(out, f)) for f in os.listdir(out))

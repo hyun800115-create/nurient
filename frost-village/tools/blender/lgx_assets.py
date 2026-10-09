@@ -336,8 +336,8 @@ def b_item_crate_tools():
     def f():
         X.crate_open('cr', 0.58, 0.42, 0.28, col='#C98F55')
         # tools stand in the crate, heads up, so they read as tools at phone zoom
-        BA.axe_model('ax', s=0.9, loc=(-0.13, 0.06, 0.2), rot=(0, -74, 20))
-        BA.pick_model('pk', s=0.72, loc=(0.12, 0.08, 0.2), rot=(0, -78, -15))
+        BA.axe_model('ax', s=0.78, loc=(-0.1, 0.06, 0.33), rot=(0, -74, 20))
+        BA.pick_model('pk', s=0.66, loc=(0.12, 0.08, 0.3), rot=(0, -78, -15))
         BA.sickle_model('sk', s=0.62, loc=(0.0, -0.1, 0.3), rot=(0, 0, -20), flat_blade=True)
     ground(collect(f), spin=0)
 

@@ -18,6 +18,11 @@ On top of the v4 / v5 rules:
     there, parts with noAnims never draw there.
   * can_play / pick_anim: cityfolk coverage (bases[b].cfCover) + animFallback / fallbackFace.
   * nozzle_point / box_point / sweep_point (mirrored dirs negate x).
+  (polish pass, same as the JS port)
+  * parts with an 'anims' list (beachfolk + cityfolk parts) follow beachfolk_compose.part_plays (the canonical
+    per-part rule); hidden head parts (beachfolk_compose.head_hidden) are not drawn and a hidden full hat no longer
+    squashes the hair; cfDrop accessories are not drawn in (and never block) the listed cityfolk anims;
+    pick_anim(person, anim, has=None) skips anims has(anim) rejects; ground_speed(person, anim, dir); page_of(anim).
 """
 import copy
 import json
@@ -31,6 +36,7 @@ if HERE not in sys.path:
 
 import townfolk_compose as tc            # noqa: E402
 import townfolk2_compose as tc2          # noqa: E402
+from beachfolk_compose import part_plays, head_hidden      # noqa: E402  (the canonical per-part rules)
 from townfolk_compose import MIRROR, LIMBS, iter_tf_frames     # noqa: E402
 
 ASSETS = tc.ASSETS
@@ -146,6 +152,7 @@ class AtlasSource3(tc.AtlasSource):
         super().__init__(assets)
         blocks = []
         self.mans = {}
+        self.skipped = []
         for frag in (fragments or FRAGMENT_ORDER):
             mp = os.path.join(assets, frag, 'manifest.json')
             if not os.path.exists(mp):
@@ -153,6 +160,18 @@ class AtlasSource3(tc.AtlasSource):
             with open(mp, encoding='utf-8') as f:
                 man = json.load(f)
             name, block = fragment_block(man)
+            # a fragment folder caught mid-repack (another agent / build) is skipped with a warning, never a crash
+            miss = [p for at in man['atlases'] for p in (at['json'], at['png'])
+                    if not os.path.exists(os.path.join(assets, p))]
+            if miss:
+                print(f'WARNING cityfolk_compose: skipping incomplete fragment {frag} ({len(miss)} missing files, '
+                      f'e.g. {miss[0]})', file=sys.stderr)
+                self.skipped.append(frag)
+                continue
+            if any(r not in ['townfolk'] + [b[0] for b in blocks] for r in block.get('requires', [])):
+                print(f'WARNING cityfolk_compose: skipping {frag} (needs {block.get("requires")})', file=sys.stderr)
+                self.skipped.append(frag)
+                continue
             self.mans[name] = man
             ov = set(block.get('overrides', []))
             for at in man['atlases']:
@@ -193,19 +212,11 @@ class Cityfolk(tc2.Townfolk2):
         for name, slot, z, zfront in LIMBS:
             limbz[name] = zfront if name in zf else z
             out.append((limbz[name], f'{name}@{base}/{anim}_{d}_{i}', self.tint(person, slot), 'body'))
-        hat = self.wears_full_hat(person)
         heads = []
-        parts = self.anim_parts(person, anim)
-        if not no_items:
-            parts += [it for it in self.T.get('animItems', {}).get(anim, []) if it not in parts]
-        for pn in parts:
+        vis = self.visible_parts(person, anim, no_items)
+        hat = any(self.parts[pn]['family'] == 'hat' and self.parts[pn].get('cls') == 'full' for pn in vis)
+        for pn in vis:
             P = self.parts[pn]
-            if anim in P.get('noAnims', []):
-                continue
-            if P.get('onlyAnims') and anim not in P['onlyAnims']:
-                continue
-            if 'anims' in P and anim not in P['anims']:          # beachfolk parts: frames only in their anims
-                continue
             for s, sd in P['subs'].items():
                 z = sd['z'][d] if isinstance(sd['z'], dict) else sd['z']
                 if sd.get('follow'):
@@ -258,6 +269,30 @@ class Cityfolk(tc2.Townfolk2):
         return out
 
     # ---- coverage / fallback
+    def visible_parts(self, person, anim, no_items=False):
+        """parts drawn in `anim`: anim_parts + animItems minus noAnims / onlyAnims / non-listed anims / cfDrop / hidden
+        head parts (same order as the JS port)."""
+        T = self.T
+        parts = self.anim_parts(person, anim)
+        if not no_items:
+            parts += [it for it in T.get('animItems', {}).get(anim, []) if it not in parts]
+        drop = T.get('cfDrop', {})
+        out = []
+        for pn in parts:
+            P = self.parts.get(pn)
+            if P is None or anim in P.get('noAnims', []):
+                continue
+            if P.get('onlyAnims') and anim not in P['onlyAnims']:
+                continue
+            if 'anims' in P and anim not in P['anims']:
+                continue
+            if anim in drop.get(pn, []):
+                continue
+            if P['space'] == 'head' and head_hidden(T, pn, anim):
+                continue
+            out.append(pn)
+        return out
+
     def anim_parts(self, person, anim):
         """The person's parts + the props a (beachfolk) anim always shows (generator.animParts)."""
         parts = list(person['parts'])
@@ -274,32 +309,57 @@ class Cityfolk(tc2.Townfolk2):
         if anim not in T['anims']:
             return False
         cover = T['bases'][person['base']].get('cfCover', {}).get(anim)
-        cf = set(T.get('cfParts', []))
         is_cf = anim in T.get('cityfolkAnims', [])
         old = T.get('animFragment', {}).get(anim, 'townfolk') in ('townfolk', 'townfolk2')
+        drop = T.get('cfDrop', {})
         for pn in self.anim_parts(person, anim):
             P = T['parts'].get(pn)
             if P is None or P['space'] != 'body' or is_item(P) or not P.get('subs'):
                 continue
+            if anim in drop.get(pn, []):
+                continue
             if 'anims' in P:
-                if anim not in P['anims'] and not P.get('drop'):      # beachfolk drop: not drawn there
+                if not part_plays(P, anim):
                     return False
-            elif is_cf or pn in cf:
+            elif is_cf:
                 if not cover or pn not in cover:
                     return False
             elif not old:
                 return False
         return True
 
-    def pick_anim(self, person, anim):
-        """(anim, face): `anim` if playable, else the first playable animFallback entry + fallbackFace."""
-        if self.can_play(person, anim):
+    def pick_anim(self, person, anim, has=None):
+        """(anim, face): `anim` if playable, else the first playable animFallback entry + fallbackFace.
+        has(anim) False = the runtime cannot show that anim right now (page not resident, v4 carry_walk)."""
+        def ok(a):
+            return (has is None or has(a, person)) and self.can_play(person, a)
+        if ok(anim):
             return anim, None
         face = self.T.get('fallbackFace', {}).get(anim)
         for a in self.T.get('animFallback', {}).get(anim, []):
-            if self.can_play(person, a):
+            if ok(a):
                 return a, face
-        return ('idle' if self.can_play(person, 'idle') else 'walk'), face
+        return ('idle' if ok('idle') else 'walk'), face
+
+    def ground_speed(self, person, anim, d):
+        v = self.T['bases'][person['base']].get('groundSpeed', {}).get(anim, {}).get(MIRROR.get(d, d))
+        return v
+
+    def page_needed(self, person, anim):
+        """cfPages group this person's frames of `anim` need (None: townfolk / townfolk2 frames only)."""
+        pg = self.page_of(anim)
+        if pg is None:
+            return None
+        if anim in self.T.get('cityfolkAnims', []):
+            return pg
+        cf = set(self.T.get('cfParts', []))
+        return pg if any(pn in cf for pn in person['parts']) else None
+
+    def page_of(self, anim):
+        for name, inf in self.T.get('cfPages', {}).get('groups', {}).items():
+            if anim in inf.get('anims', []):
+                return name
+        return None
 
     def _pt(self, person, table, anim, d, i):
         t = self.T['bases'][person['base']].get(table, {}).get(anim, {}).get(MIRROR.get(d, d))

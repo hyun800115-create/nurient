@@ -1178,15 +1178,17 @@ def set_phase(groups, i, hi=2.6, lo=0.35):
             L.set_emission(m, s)
 
 
-def tank_glass(name, col='#7FD3F0', alpha=0.38, glow=0.35, night_col='#5BC8F0'):
-    """See-through glowing aquarium / live-tank glass (alpha blended, so what is inside shows)."""
+def tank_glass(name, col='#7FD3F0', alpha=0.38, glow=0.35, night_col='#5BC8F0', night_on=True):
+    """See-through glowing aquarium / live-tank glass (alpha blended, so what is inside shows).  night_on=False: the
+    glass stays dark in the glow pass (an opaque glowing pane would hide the lit tank and its fish)."""
     nb = L.NB(name, rough=0.08)
     rgb = nb.rgb(col, raw=True)
     nb.p.inputs['Base Color'].default_value = rgb
     nb.p.inputs['Emission Color'].default_value = rgb
     nb.p.inputs['Emission Strength'].default_value = glow
     nb.p.inputs['Alpha'].default_value = alpha
-    night(nb.m, night_col, 1.6)
+    if night_on:
+        night(nb.m, night_col, 1.6)
     return nb.m
 
 

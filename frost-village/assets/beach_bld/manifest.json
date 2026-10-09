@@ -6,24 +6,20 @@
   "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre at ground level (z 0).",
   "front": "-Y = faces screen down-left (SW) = the SEA side (like the harbour waterfront). `<key>_x` variants are the same model rotated yaw 90: front = +X (screen down-right) for a coastline along the other iso axis; all their points / polys are already rotated. Baked shadows cannot be flipped, so never mirror a sprite.",
   "footprint": "footprint = screen-px bounding size [w, h] of the ground diamond; footprintM = metres; footprintPoly = 4 ground corners in px (depth sorting / collision).",
-  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting (their dy > 0) or just above the building.",
-  "staff": "staffPoints + staffRoles (role names; the top-level staffPresets maps every role to an existing townsfolk preset \"<fragment>:<preset>\") + staffDepth \"front\": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: draw the sprite's `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already does this for sprites with `overlay`).",
-  "balconyPoints": "resort_hotel / pension: guests standing on balconies (elevated - dy already includes the floor height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1.",
-  "night": "night: {glow, blend: ADD, tint}. At night tint every sprite with `tint` (multiply) and add the `<key>_glow` sprite (same frame + anchor, blendMode ADD, untinted) at the same position: lit windows, lamps, neon, bulbs, tiki torches, live tanks with a soft bloom. resort_hotel(_x) also has `night.frame` = <key>_night, the finished night picture (draw it UNTINTED instead of tint + glow). lightPoints (+ lightKinds, lightRadiusPx) = where to put extra fx_glow sprites or light the ground.",
-  "anims": "idle frame = rest; anims.work (+ alias grill / fish / lights / twinkle / ripple) loop with every frame sharing frameSize + anchor: spr:<key>:work like the village stations.",
-  "pool": "hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js (palette \"pool\", shore \"quay\") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + anchor, anims.work / ripple 6 f: clear turquoise water over the pool floor with a drifting caustic net) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).",
-  "atlases": "bbld_hotel (hotel, pool, night frames, water loop), bbld_shops, bbld_civic, bbld_street, bbld_glow (all night glow overlays - load it lazily, only needed at night)."
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled, height included). *Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting.",
+  "staff": "staffPoints + staffRoles (role names; the top-level staffPresets maps every role to an existing townsfolk / beachfolk preset \"<fragment>:<preset>\") + staffDepths (one per point): \"front\" = draw that character at the building depth d + 0.5 - it stands BEHIND a counter / desk / deck railing (listed in staffBehindOverlay: the sprite's `overlay` <key>_front, same frame + anchor, goes on top at d + 1 and hides its legs, exactly like assets/buildings shop_general + shop_general_front) or ON a flat part of the sprite (the pool deck); \"behind\" = ordinary y-sorting at the character's own y (staff standing in the open in front of the building: doorman, bellhop, clerks at the door) so people walking behind them are drawn behind them. staffDepth = staffDepths[0] (what src/entities/Register.js reads).",
+  "balconyPoints": "resort_hotel / pension: guests standing on balconies (elevated - dy already includes the floor height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1. The hotel balconies are CHECKERBOARDED: no balcony sits right above another, so a standing chibi guest (80 - 100 px) only overlaps the wall / windows / roof above it, never the next railing. balconyFloors = floor of each point (0 = first upper floor); balconyHeadroomPx = free height above that balcony floor (px) up to the next balcony or the eaves.",
+  "lying": "lyingPoints = hip point of a sunbather ON the lounger cushion (beachfolk `sunbathe` anchor, lyingHeightM = cushion height); lyingHeadPoints / lyingFeetPoints = the backrest top / the foot end; lyingDirs = screen direction hips -> HEAD (like assets/beach); lyingFeetDirs = the opposite = the direction to pass to beachfolk sunbathe (its dir is where the FEET point); lyingAxis = world axis of the body.",
+  "night": "Built for the game's DayClock night (src/systems/DayClock.js): ONE camera-sized MULTIPLY overlay at DEPTH.FX - 30 darkens everything (x0.71 / 0.74 / 0.85 at darkness 0.45) - do NOT tint the sprites yourself. night.glow = <key>_glow (same frame + anchor, blendMode ADD) goes in the LIGHT layer above that overlay: depth DEPTH.FX - 29 like the DayClock glows, alpha = the DayClock night factor (min(1, dayClock.cur.a / darkness)), visible while dayClock.lightsOn; only for buildings in / near the camera view. Lit windows, lamps, neon, bulbs, backlit roof signs, lit shop interiors, live tanks and the lit pool. lightPoints (+ lightKinds, lightRadiusPx, lightK) = feed each one to dayClock.addLight(ax + dx, ay + dy, lightK[i]) for the warm ground / halo light. Note: a glow in the light layer is drawn over characters standing in front of a lit window (reads as light spill).",
+  "anims": "idle frame = rest; anims.work (+ alias grill / fish / lights / twinkle / ripple) loop with every frame sharing frameSize + anchor: spr:<key>:work like the village stations. seafood_bbq has no baked smoke: emit translucent FX puffs (fx_smoke_puff, alpha 0.35 - 0.6) at fxPoints.smoke.",
+  "pool": "hotel_pool is the DECK: its visible water surface is cut out (transparent), so the water is drawn UNDER it (land over water, exactly like the sea under the land; Water.js writes alpha 1 in a stair-stepped mesh around the water and relies on the land covering it). Shader path: new Water(scene, {region: waterRegion offset by the anchor (the water bbox, NO margin: the Water.js body mesh is 64 x 32 px blocks clamped to the region, and the deck is opaque over that whole box - a bigger region lets blocks poke out past the deck), mask: {water: [waterPolyFlat offset by the anchor]}, waterPx: 0, defaultShore: \"quay\", palette: \"pool\", openSea: false, depth: d - 0.5, shoreDepth: d - 0.45}). Fallback (Canvas / low quality): `hotel_pool_water` (opaque water + pool floor, same frame + anchor, spr:hotel_pool_water:ripple) at d - 0.5. One of the two must always be drawn (the deck has a hole). Swimmers stand ON the water plane at swimPoints, drawn at d + 0.5 (over the deck, add fx_swim_ripple); sunbathers on lyingPoints at d + 0.6 (sunbathe dir = lyingFeetDirs); the pool staff stand on the deck (staffDepths \"front\").",
+  "atlases": "bbld_hotel (hotel, pool deck + water loop), bbld_shops, bbld_civic, bbld_street: always. LAZY (lazyAtlases): bbld_x (every _x building + its overlay - load only where a coast runs along Y), bbld_glow (night glows), bbld_x_glow (night glows of the _x buildings)."
  },
  "atlases": [
   {
    "key": "bbld_hotel",
    "png": "beach_bld/bbld_hotel.png",
    "json": "beach_bld/bbld_hotel.json"
-  },
-  {
-   "key": "bbld_hotel_2",
-   "png": "beach_bld/bbld_hotel_2.png",
-   "json": "beach_bld/bbld_hotel_2.json"
   },
   {
    "key": "bbld_shops",
@@ -41,9 +37,19 @@
    "json": "beach_bld/bbld_street.json"
   },
   {
+   "key": "bbld_x",
+   "png": "beach_bld/bbld_x.png",
+   "json": "beach_bld/bbld_x.json"
+  },
+  {
    "key": "bbld_glow",
    "png": "beach_bld/bbld_glow.png",
    "json": "beach_bld/bbld_glow.json"
+  },
+  {
+   "key": "bbld_x_glow",
+   "png": "beach_bld/bbld_x_glow.png",
+   "json": "beach_bld/bbld_x_glow.json"
   }
  ],
  "sprites": {
@@ -51,38 +57,38 @@
    "atlas": "bbld_hotel",
    "frame": "hotel_pool",
    "anchor": [
-    0.44833,
-    0.61224
+    0.47452,
+    0.58824
    ],
    "kind": "building",
    "frameSize": [
-    600,
-    392
+    628,
+    408
    ],
    "footprint": [
-    498,
-    249
+    557,
+    278
    ],
    "footprintM": [
     6.4,
-    4.6
+    5.9
    ],
    "footprintPoly": [
     [
-     -249,
-     -20
+     -278,
+     -6
     ],
     [
-     41,
-     124
+     11,
+     139
     ],
     [
-     249,
-     20
+     278,
+     6
     ],
     [
-     -41,
-     -124
+     -11,
+     -139
     ]
    ],
    "topPx": 219,
@@ -131,28 +137,28 @@
    ],
    "lyingPoints": [
     [
-     -9,
-     -99
+     -7,
+     -101
     ],
     [
-     41,
-     -74
+     43,
+     -76
     ],
     [
-     91,
-     -49
+     92,
+     -51
     ],
     [
-     140,
-     -24
+     142,
+     -26
     ],
     [
-     104,
-     34
+     106,
+     32
     ],
     [
-     131,
-     48
+     133,
+     46
     ]
    ],
    "lyingDirs": [
@@ -197,7 +203,7 @@
    "waterZ": -0.12,
    "waterPalette": "pool",
    "waterShore": "quay",
-   "notes": "Hotel pool deck (6.4 x 4.6 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled walls, a sun mosaic on the floor, a chrome ladder on the far wall, a little yellow-blue slide at the left end), loungers with towels and parasols along the back, a towel shelf + lifebuoy + shower at the left, potted palms.  The base sprite has NO water: the Water module draws the pool water inside `waterPoly` (px polygon of the visible water surface, the near coping already clipped) at depth d + 0.25 with palette \"pool\"; without the shader draw `hotel_pool_water` (same frame + anchor, anims.work 6 f ripple loop) there instead.  swimPoints are ON the water plane (waterZ, a swimmer anchor goes exactly there); lyingPoints / lyingDirs = loungers (head direction); staffPoints = pool attendant.",
+   "notes": "Hotel pool deck (6.4 x 5.9 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled walls, a sun mosaic on the floor, a chrome ladder, little underwater lamps, a yellow-blue slide at the left end), loungers with towels and parasols along the back and the right, a towel shelf + lifebuoy + shower, two deck lamps, potted palms.  The sprite is the DECK: the visible water surface (waterPoly) is cut out (transparent), so the water is drawn UNDER it, exactly like the sea under the land: src/systems/Water.js (palette \"pool\", shore \"quay\", mask = waterPoly) at depth d - 0.5, or the baked fallback `hotel_pool_water` (opaque water + pool floor, 6 f loop) at d - 0.5.  People on the deck / in the water are drawn at d + 0.5 (swimmers ON the water plane at swimPoints, sunbathers on lyingPoints with the beachfolk sunbathe dir = lyingFeetDirs).  Night: hotel_pool_glow = lit pool + lamps.",
    "waterPoly": [
     [
      118,
@@ -240,18 +246,149 @@
     -1.05,
     1.15
    ],
-   "waterOverlay": "hotel_pool_water"
+   "waterOverlay": "hotel_pool_water",
+   "lightPoints": [
+    [
+     -7,
+     -31
+    ],
+    [
+     51,
+     -1
+    ],
+    [
+     -85,
+     -23
+    ],
+    [
+     188,
+     -76
+    ],
+    [
+     -152,
+     -177
+    ]
+   ],
+   "lyingHeadPoints": [
+    [
+     19,
+     -122
+    ],
+    [
+     68,
+     -97
+    ],
+    [
+     118,
+     -72
+    ],
+    [
+     168,
+     -47
+    ],
+    [
+     132,
+     12
+    ],
+    [
+     159,
+     25
+    ]
+   ],
+   "lyingFeetPoints": [
+    [
+     -29,
+     -91
+    ],
+    [
+     21,
+     -66
+    ],
+    [
+     71,
+     -41
+    ],
+    [
+     121,
+     -16
+    ],
+    [
+     85,
+     43
+    ],
+    [
+     112,
+     57
+    ]
+   ],
+   "lightKinds": [
+    "pool",
+    "pool",
+    "pool",
+    "lamp",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    48,
+    48,
+    48,
+    58,
+    58
+   ],
+   "lightK": [
+    0.8,
+    0.8,
+    0.8,
+    0.97,
+    0.97
+   ],
+   "staffDepths": [
+    "front"
+   ],
+   "lyingFeetDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "lyingAxis": "y",
+   "lyingHeightM": 0.38,
+   "night": {
+    "glow": "hotel_pool_glow",
+    "blend": "ADD",
+    "layer": "light"
+   },
+   "waterPolyFlat": [
+    118,
+    14,
+    -38,
+    -65,
+    -131,
+    -18,
+    25,
+    60
+   ],
+   "waterDepth": -0.5,
+   "waterPx": 0,
+   "waterRegion": [
+    -131,
+    -65,
+    249,
+    125
+   ]
   },
   "resort_hotel": {
    "atlas": "bbld_hotel",
    "frame": "resort_hotel",
    "anchor": [
-    0.28555,
+    0.34896,
     0.67417
    ],
    "kind": "building",
    "frameSize": [
-    872,
+    960,
     844
    ],
    "footprint": [
@@ -298,6 +435,10 @@
     "domeTop": [
      -12,
      -498
+    ],
+    "chimney0": [
+     -54,
+     -501
     ]
    },
    "inPoint": [
@@ -311,8 +452,8 @@
    "doorDir": "NE",
    "staffPoints": [
     [
-     -39,
-     53
+     -92,
+     74
     ],
     [
      16,
@@ -324,7 +465,7 @@
     ]
    ],
    "staffDirs": [
-    "SW",
+    "W",
     "W",
     "SW"
    ],
@@ -349,40 +490,40 @@
    ],
    "balconyPoints": [
     [
-     -135,
-     -128
+     -172,
+     -145
     ],
     [
-     52,
-     -34
+     79,
+     -20
     ],
     [
-     -152,
-     -208
+     -116,
+     -189
     ],
     [
-     69,
-     -98
+     32,
+     -115
     ],
     [
-     -135,
-     -272
+     -181,
+     -294
     ],
     [
-     52,
-     -178
+     88,
+     -159
     ],
     [
-     207,
-     -45
+     182,
+     -31
     ],
     [
-     207,
-     -117
+     245,
+     -135
     ],
     [
-     219,
-     -195
+     182,
+     -176
     ]
    ],
    "balconyDirs": [
@@ -416,6 +557,14 @@
     [
      -51,
      -21
+    ],
+    [
+     -143,
+     -87
+    ],
+    [
+     61,
+     15
     ]
    ],
    "lightKinds": [
@@ -423,16 +572,20 @@
     "lamp",
     "sign",
     "lamp",
-    "lamp"
+    "lamp",
+    "window",
+    "window"
    ],
    "lightRadiusPx": [
     34,
     34,
     77,
     38,
-    38
+    38,
+    53,
+    53
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "doorman",
     "bellhop",
@@ -448,17 +601,52 @@
    "zone": "hotel",
    "floors": 5,
    "balconyDepth": "front",
-   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): white stucco hotel under a terracotta hip roof with dormers; a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; wide balconies on every upper floor with tiny parasols, deck chairs, potted flowers and beach towels drying on the rails, pastel curtains; lobby arched windows under coral awnings; a turquoise entrance canopy on white columns with gold stars, red carpet, potted palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman at the door, bellhop at the trolley, receptionist BEHIND the concierge desk]; customerPoints = arriving guests (queue down the carpet); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: resort_hotel_night (the whole frame lit, draw it untinted) or tint + resort_hotel_glow (ADD).",
+   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): bright white stucco hotel under a terracotta barrel-tile hip roof (scalloped tile eaves, ridge caps, dormers, two chimneys, gulls on the ridge); a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; CHECKERBOARD balconies (no balcony right above another, so a guest standing on one never pokes into the one above) with tiny parasols, deck chairs, potted flowers and beach towels on the rails, shuttered windows with flower boxes in between; a warm-lit lobby (arched windows + glass doors) under coral awnings; an entrance canopy on white columns with a coral-striped top, flower planters and gold stars, a red carpet, palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman beside the carpet in front of the canopy, bellhop at the trolley, receptionist BEHIND the concierge desk]; staffDepths says how to sort each; customerPoints = arriving guests (queue at the desk); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: <key>_glow (lit windows, lobby, marquee bulbs, tower suns) in the light layer.",
    "overlay": "resort_hotel_front",
    "night": {
     "glow": "resort_hotel_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8",
-    "frame": "resort_hotel_night"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57,
+    0.57,
+    1.28,
+    0.63,
+    0.63,
+    0.88,
+    0.88
+   ],
+   "staffDepths": [
+    "behind",
+    "behind",
+    "front"
+   ],
+   "balconyFloors": [
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    0,
+    1,
+    2
+   ],
+   "balconyHeadroomPx": [
+    144,
+    144,
+    144,
+    144,
+    72,
+    72,
+    144,
+    144,
+    72
+   ]
   },
   "resort_hotel_x": {
-   "atlas": "bbld_hotel",
+   "atlas": "bbld_x",
    "frame": "resort_hotel_x",
    "anchor": [
     0.38443,
@@ -513,6 +701,10 @@
     "domeTop": [
      12,
      -498
+    ],
+    "chimney0": [
+     -181,
+     -384
     ]
    },
    "inPoint": [
@@ -526,8 +718,8 @@
    "doorDir": "NW",
    "staffPoints": [
     [
-     106,
-     20
+     148,
+     46
     ],
     [
      238,
@@ -539,7 +731,7 @@
     ]
    ],
    "staffDirs": [
-    "SE",
+    "S",
     "S",
     "SE"
    ],
@@ -564,40 +756,40 @@
    ],
    "balconyPoints": [
     [
-     -34,
-     -43
+     -70,
+     -24
     ],
     [
-     152,
-     -136
+     181,
+     -150
     ],
     [
-     -52,
-     -106
+     -14,
+     -124
     ],
     [
-     169,
-     -217
+     134,
+     -198
     ],
     [
-     -34,
-     -187
+     -79,
+     -164
     ],
     [
-     152,
-     -280
+     190,
+     -298
     ],
     [
-     -207,
-     -45
+     -235,
+     -58
     ],
     [
-     -207,
-     -117
+     -171,
+     -98
     ],
     [
-     -195,
-     -183
+     -235,
+     -202
     ]
    ],
    "balconyDirs": [
@@ -631,6 +823,14 @@
     [
      158,
      -74
+    ],
+    [
+     -61,
+     15
+    ],
+    [
+     143,
+     -87
     ]
    ],
    "lightKinds": [
@@ -638,16 +838,20 @@
     "lamp",
     "sign",
     "lamp",
-    "lamp"
+    "lamp",
+    "window",
+    "window"
    ],
    "lightRadiusPx": [
     34,
     34,
     77,
     38,
-    38
+    38,
+    53,
+    53
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "doorman",
     "bellhop",
@@ -664,14 +868,49 @@
    "variantOf": "resort_hotel",
    "floors": 5,
    "balconyDepth": "front",
-   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): white stucco hotel under a terracotta hip roof with dormers; a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; wide balconies on every upper floor with tiny parasols, deck chairs, potted flowers and beach towels drying on the rails, pastel curtains; lobby arched windows under coral awnings; a turquoise entrance canopy on white columns with gold stars, red carpet, potted palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman at the door, bellhop at the trolley, receptionist BEHIND the concierge desk]; customerPoints = arriving guests (queue down the carpet); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: resort_hotel_night (the whole frame lit, draw it untinted) or tint + resort_hotel_glow (ADD). [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): bright white stucco hotel under a terracotta barrel-tile hip roof (scalloped tile eaves, ridge caps, dormers, two chimneys, gulls on the ridge); a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; CHECKERBOARD balconies (no balcony right above another, so a guest standing on one never pokes into the one above) with tiny parasols, deck chairs, potted flowers and beach towels on the rails, shuttered windows with flower boxes in between; a warm-lit lobby (arched windows + glass doors) under coral awnings; an entrance canopy on white columns with a coral-striped top, flower planters and gold stars, a red carpet, palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman beside the carpet in front of the canopy, bellhop at the trolley, receptionist BEHIND the concierge desk]; staffDepths says how to sort each; customerPoints = arriving guests (queue at the desk); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: <key>_glow (lit windows, lobby, marquee bulbs, tower suns) in the light layer. [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
    "overlay": "resort_hotel_x_front",
    "night": {
     "glow": "resort_hotel_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8",
-    "frame": "resort_hotel_x_night"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57,
+    0.57,
+    1.28,
+    0.63,
+    0.63,
+    0.88,
+    0.88
+   ],
+   "staffDepths": [
+    "behind",
+    "front",
+    "front"
+   ],
+   "balconyFloors": [
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    0,
+    1,
+    2
+   ],
+   "balconyHeadroomPx": [
+    144,
+    144,
+    144,
+    144,
+    72,
+    72,
+    144,
+    144,
+    72
+   ]
   },
   "beach_arcade": {
    "atlas": "bbld_shops",
@@ -795,7 +1034,7 @@
     62,
     67
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "attendant"
    ],
@@ -808,8 +1047,15 @@
    "night": {
     "glow": "beach_arcade_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    1.03,
+    1.12
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "beach_bar": {
    "atlas": "bbld_shops",
@@ -963,11 +1209,20 @@
    "night": {
     "glow": "beach_bar_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    0.72,
+    1.43,
+    0.8
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "beach_bar_x": {
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "beach_bar_x",
    "anchor": [
     0.37723,
@@ -1119,8 +1374,17 @@
    "night": {
     "glow": "beach_bar_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    0.72,
+    1.43,
+    0.8
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "beach_cafe": {
    "atlas": "bbld_shops",
@@ -1274,11 +1538,19 @@
    "night": {
     "glow": "beach_cafe_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    1.28,
+    0.48
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "beach_cafe_x": {
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "beach_cafe_x",
    "anchor": [
     0.43421,
@@ -1430,8 +1702,16 @@
    "night": {
     "glow": "beach_cafe_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    1.28,
+    0.48
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "convenience_store": {
    "atlas": "bbld_shops",
@@ -1576,11 +1856,18 @@
    "night": {
     "glow": "convenience_store_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    1.03,
+    0.48
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "convenience_store_x": {
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "convenience_store_x",
    "anchor": [
     0.43142,
@@ -1723,8 +2010,15 @@
    "night": {
     "glow": "convenience_store_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    1.03,
+    0.48
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "icecream_shop": {
    "atlas": "bbld_shops",
@@ -1861,11 +2155,17 @@
    "night": {
     "glow": "icecream_shop_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "icecream_shop_x": {
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "icecream_shop_x",
    "anchor": [
     0.45161,
@@ -2000,8 +2300,14 @@
    "night": {
     "glow": "icecream_shop_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "pension": {
    "atlas": "bbld_shops",
@@ -2116,7 +2422,7 @@
    "lightRadiusPx": [
     34
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "owner"
    ],
@@ -2130,8 +2436,14 @@
    "night": {
     "glow": "pension_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "seafood_bbq": {
    "atlas": "bbld_shops",
@@ -2220,8 +2532,8 @@
    "doorDir": "NW",
    "staffPoints": [
     [
-     -38,
-     -8
+     -45,
+     -11
     ]
    ],
    "staffDirs": [
@@ -2272,16 +2584,16 @@
    ],
    "lightPoints": [
     [
-     -81,
-     -104
+     -91,
+     -108
     ],
     [
-     -29,
-     -77
+     -11,
+     -68
     ],
     [
-     16,
-     -55
+     23,
+     -51
     ],
     [
      -16,
@@ -2312,13 +2624,22 @@
     "en": "Seafood BBQ"
    },
    "zone": "shops",
-   "notes": "Seafood BBQ \"조개구이\" (4.0 x 3.6 m): red-roofed shack with a red-white striped awning over a long charcoal grill full of clams, scallops and fish skewers; the chef stands BEHIND the grill (staffPoints[0], draw seafood_bbq_front above him), red paper lanterns, glowing blue live tanks with shellfish and fish, little tables with stools on the side (seatPoints), vertical banners.  anims.work = 4 f: smoke puffs rise from the grill, flames flicker, the lanterns sway.  inPoint = fresh fish / shellfish delivery pad.",
+   "notes": "Seafood BBQ \"조개구이\" (4.0 x 3.6 m): red-roofed shack with a red-white striped awning over a long charcoal grill full of clams, scallops and fish skewers; the chef stands BEHIND the grill (staffPoints[0], draw seafood_bbq_front above him), red paper lanterns, glowing blue live tanks with shellfish and fish, little tables with stools on the side (seatPoints), vertical banners.  anims.work = 4 f: flames flicker, embers glow, the lanterns sway.  The grill SMOKE is not baked (an opaque baked puff reads as a blob and sits behind the chef): emit translucent rising puffs from fxPoints.smoke with the FX smoke sheets (fx_smoke_puff, alpha 0.35-0.6, drifting up past the awning).  inPoint = fresh fish / shellfish delivery pad.",
    "overlay": "seafood_bbq_front",
    "night": {
     "glow": "seafood_bbq_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.48,
+    0.48,
+    0.48,
+    0.63
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "souvenir_shop": {
    "atlas": "bbld_shops",
@@ -2425,7 +2746,7 @@
     43,
     29
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "clerk"
    ],
@@ -2438,8 +2759,15 @@
    "night": {
     "glow": "souvenir_shop_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    0.48
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "surf_shop": {
    "atlas": "bbld_shops",
@@ -2559,7 +2887,7 @@
     38,
     29
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "surfer"
    ],
@@ -2572,8 +2900,15 @@
    "night": {
     "glow": "surf_shop_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.63,
+    0.48
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "swimwear_shop": {
    "atlas": "bbld_shops",
@@ -2671,7 +3006,7 @@
     43,
     29
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "clerk"
    ],
@@ -2684,8 +3019,15 @@
    "night": {
     "glow": "swimwear_shop_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72,
+    0.48
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "lifeguard_station": {
    "atlas": "bbld_civic",
@@ -2804,8 +3146,15 @@
    "night": {
     "glow": "lifeguard_station_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.8
+   ],
+   "staffDepths": [
+    "front",
+    "behind"
+   ]
   },
   "mini_aquarium": {
    "atlas": "bbld_civic",
@@ -2853,9 +3202,13 @@
       "mini_aquarium_work_0",
       "mini_aquarium_work_1",
       "mini_aquarium_work_2",
-      "mini_aquarium_work_3"
+      "mini_aquarium_work_3",
+      "mini_aquarium_work_4",
+      "mini_aquarium_work_5",
+      "mini_aquarium_work_6",
+      "mini_aquarium_work_7"
      ],
-     "fps": 5,
+     "fps": 6,
      "repeat": -1
     },
     "fish": {
@@ -2863,9 +3216,13 @@
       "mini_aquarium_work_0",
       "mini_aquarium_work_1",
       "mini_aquarium_work_2",
-      "mini_aquarium_work_3"
+      "mini_aquarium_work_3",
+      "mini_aquarium_work_4",
+      "mini_aquarium_work_5",
+      "mini_aquarium_work_6",
+      "mini_aquarium_work_7"
      ],
-     "fps": 5,
+     "fps": 6,
      "repeat": -1
     }
    },
@@ -2937,7 +3294,7 @@
    "lightRadiusPx": [
     67
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "ticket_seller"
    ],
@@ -2946,12 +3303,18 @@
     "en": "Mini aquarium"
    },
    "zone": "attraction",
-   "notes": "Mini aquarium \"꼬마 수족관\" (4.6 x 3.8 m): white building with a wave-shaped blue roof and a smiling whale on top, a big glowing glass tank bay on the front full of coral, sea-grass, a turtle and fish, a ticket window by the door.  anims.work / anims.fish = 4 f: two schools of fish swim across the tank in opposite directions and bubbles rise (seamless loop).  viewPoints = visitors in front of the glass (facing it); staffPoints = ticket seller; inPoint = where donated rare fish are delivered (mission).",
+   "notes": "Mini aquarium \"꼬마 수족관\" (4.6 x 3.8 m): white building with a wave-shaped blue roof and a smiling whale on top, a big glowing glass tank bay on the front full of coral, sea-grass, a turtle and fish, a ticket window by the door.  The tank is deep sea-blue (darker back wall, light only at the top) so the saturated fish, coral and the turtle read at phone zoom.  anims.work / anims.fish = 8 f at 6 fps: two schools of fish drift across the tank in opposite directions in small steps and bubbles rise (seamless loop).  viewPoints = visitors in front of the glass (facing it); staffPoints = ticket seller; inPoint = where donated rare fish are delivered (mission).",
    "night": {
     "glow": "mini_aquarium_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    1.12
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "restroom_shower": {
    "atlas": "bbld_civic",
@@ -3084,7 +3447,7 @@
    "lightRadiusPx": [
     34
    ],
-   "staffDepth": "front",
+   "staffDepth": "behind",
    "staffRoles": [
     "housekeeper"
    ],
@@ -3097,8 +3460,14 @@
    "night": {
     "glow": "restroom_shower_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57
+   ],
+   "staffDepths": [
+    "behind"
+   ]
   },
   "tourist_info": {
    "atlas": "bbld_civic",
@@ -3207,8 +3576,14 @@
    "night": {
     "glow": "tourist_info_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.72
+   ],
+   "staffDepths": [
+    "front"
+   ]
   },
   "beach_gate": {
    "atlas": "bbld_street",
@@ -3288,11 +3663,15 @@
    "night": {
     "glow": "beach_gate_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57,
+    0.57
+   ]
   },
   "beach_gate_x": {
-   "atlas": "bbld_street",
+   "atlas": "bbld_x",
    "frame": "beach_gate_x",
    "anchor": [
     0.34223,
@@ -3370,8 +3749,12 @@
    "night": {
     "glow": "beach_gate_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.57,
+    0.57
+   ]
   },
   "beach_lamp": {
    "atlas": "bbld_street",
@@ -3421,7 +3804,7 @@
    "night": {
     "glow": "beach_lamp_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
+    "layer": "light"
    },
    "footprintPoly": [
     [
@@ -3440,6 +3823,9 @@
      0,
      -11
     ]
+   ],
+   "lightK": [
+    0.97
    ]
   },
   "string_lights_x": {
@@ -3549,8 +3935,15 @@
    "night": {
     "glow": "string_lights_x_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.37,
+    0.37,
+    0.37,
+    0.37,
+    0.37
+   ]
   },
   "string_lights_y": {
    "atlas": "bbld_street",
@@ -3659,8 +4052,15 @@
    "night": {
     "glow": "string_lights_y_glow",
     "blend": "ADD",
-    "tint": "#6B7AB8"
-   }
+    "layer": "light"
+   },
+   "lightK": [
+    0.37,
+    0.37,
+    0.37,
+    0.37,
+    0.37
+   ]
   },
   "beach_arcade_glow": {
    "anchor": [
@@ -3676,7 +4076,7 @@
    "frame": "beach_arcade_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_arcade: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_arcade: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_bar_front": {
    "anchor": [
@@ -3707,7 +4107,7 @@
    "frame": "beach_bar_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_bar: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_bar: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_bar_x_front": {
    "anchor": [
@@ -3719,7 +4119,7 @@
     452
    ],
    "of": "beach_bar_x",
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "beach_bar_x_front",
    "kind": "overlay",
    "notes": "Occluder overlay of beach_bar_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
@@ -3734,11 +4134,11 @@
     452
    ],
    "of": "beach_bar_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "beach_bar_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_bar_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_bar_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_cafe_front": {
    "anchor": [
@@ -3769,7 +4169,7 @@
    "frame": "beach_cafe_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_cafe: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_cafe: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_cafe_x_front": {
    "anchor": [
@@ -3781,7 +4181,7 @@
     432
    ],
    "of": "beach_cafe_x",
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "beach_cafe_x_front",
    "kind": "overlay",
    "notes": "Occluder overlay of beach_cafe_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
@@ -3796,11 +4196,11 @@
     432
    ],
    "of": "beach_cafe_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "beach_cafe_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_cafe_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_cafe_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_gate_glow": {
    "anchor": [
@@ -3816,7 +4216,7 @@
    "frame": "beach_gate_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_gate: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_gate: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_gate_x_glow": {
    "anchor": [
@@ -3828,11 +4228,11 @@
     400
    ],
    "of": "beach_gate_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "beach_gate_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_gate_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_gate_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "beach_lamp_glow": {
    "anchor": [
@@ -3848,7 +4248,7 @@
    "frame": "beach_lamp_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of beach_lamp: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of beach_lamp: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "convenience_store_glow": {
    "anchor": [
@@ -3864,7 +4264,7 @@
    "frame": "convenience_store_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of convenience_store: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of convenience_store: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "convenience_store_x_glow": {
    "anchor": [
@@ -3876,25 +4276,41 @@
     416
    ],
    "of": "convenience_store_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "convenience_store_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of convenience_store_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of convenience_store_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
+  },
+  "hotel_pool_glow": {
+   "anchor": [
+    0.47452,
+    0.58824
+   ],
+   "frameSize": [
+    628,
+    408
+   ],
+   "of": "hotel_pool",
+   "atlas": "bbld_glow",
+   "frame": "hotel_pool_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of hotel_pool: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "hotel_pool_water": {
    "anchor": [
-    0.44833,
-    0.61224
+    0.47452,
+    0.58824
    ],
    "frameSize": [
-    600,
-    392
+    628,
+    408
    ],
    "of": "hotel_pool",
    "atlas": "bbld_hotel",
    "frame": "hotel_pool_water_0",
-   "kind": "overlay",
+   "kind": "underlay",
    "anims": {
     "work": {
      "frames": [
@@ -3921,7 +4337,7 @@
      "repeat": -1
     }
    },
-   "notes": "Baked fallback pool water of hotel_pool (Canvas / low quality): same frame + anchor, play spr:hotel_pool_water:ripple at depth d + 0.25."
+   "notes": "Baked fallback pool water of hotel_pool (Canvas / low quality): opaque turquoise water over the pool floor with a drifting caustic net, same frame + anchor; play spr:hotel_pool_water:ripple UNDER the deck at depth d - 0.5."
   },
   "icecream_shop_front": {
    "anchor": [
@@ -3952,7 +4368,7 @@
    "frame": "icecream_shop_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of icecream_shop: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of icecream_shop: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "icecream_shop_x_front": {
    "anchor": [
@@ -3964,7 +4380,7 @@
     408
    ],
    "of": "icecream_shop_x",
-   "atlas": "bbld_shops",
+   "atlas": "bbld_x",
    "frame": "icecream_shop_x_front",
    "kind": "overlay",
    "notes": "Occluder overlay of icecream_shop_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
@@ -3979,11 +4395,11 @@
     408
    ],
    "of": "icecream_shop_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "icecream_shop_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of icecream_shop_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of icecream_shop_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "lifeguard_station_front": {
    "anchor": [
@@ -4014,7 +4430,7 @@
    "frame": "lifeguard_station_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of lifeguard_station: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of lifeguard_station: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "mini_aquarium_glow": {
    "anchor": [
@@ -4030,7 +4446,7 @@
    "frame": "mini_aquarium_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of mini_aquarium: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of mini_aquarium: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "pension_front": {
    "anchor": [
@@ -4061,15 +4477,15 @@
    "frame": "pension_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of pension: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of pension: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "resort_hotel_front": {
    "anchor": [
-    0.28555,
+    0.34896,
     0.67417
    ],
    "frameSize": [
-    872,
+    960,
     844
    ],
    "of": "resort_hotel",
@@ -4080,11 +4496,11 @@
   },
   "resort_hotel_glow": {
    "anchor": [
-    0.28555,
+    0.34896,
     0.67417
    ],
    "frameSize": [
-    872,
+    960,
     844
    ],
    "of": "resort_hotel",
@@ -4092,22 +4508,7 @@
    "frame": "resort_hotel_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of resort_hotel: same frame + anchor, blendMode ADD, not tinted."
-  },
-  "resort_hotel_night": {
-   "anchor": [
-    0.28555,
-    0.67417
-   ],
-   "frameSize": [
-    872,
-    844
-   ],
-   "of": "resort_hotel",
-   "atlas": "bbld_hotel_2",
-   "frame": "resort_hotel_night",
-   "kind": "night",
-   "notes": "Finished night picture of resort_hotel (day x tint #6B7AB8 + glow): draw it untinted at night in place of resort_hotel."
+   "notes": "Night light of resort_hotel: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "resort_hotel_x_front": {
    "anchor": [
@@ -4119,7 +4520,7 @@
     856
    ],
    "of": "resort_hotel_x",
-   "atlas": "bbld_hotel",
+   "atlas": "bbld_x",
    "frame": "resort_hotel_x_front",
    "kind": "overlay",
    "notes": "Occluder overlay of resort_hotel_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
@@ -4134,26 +4535,11 @@
     856
    ],
    "of": "resort_hotel_x",
-   "atlas": "bbld_glow",
+   "atlas": "bbld_x_glow",
    "frame": "resort_hotel_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of resort_hotel_x: same frame + anchor, blendMode ADD, not tinted."
-  },
-  "resort_hotel_x_night": {
-   "anchor": [
-    0.38443,
-    0.67523
-   ],
-   "frameSize": [
-    848,
-    856
-   ],
-   "of": "resort_hotel_x",
-   "atlas": "bbld_hotel_2",
-   "frame": "resort_hotel_x_night",
-   "kind": "night",
-   "notes": "Finished night picture of resort_hotel_x (day x tint #6B7AB8 + glow): draw it untinted at night in place of resort_hotel_x."
+   "notes": "Night light of resort_hotel_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "restroom_shower_glow": {
    "anchor": [
@@ -4169,7 +4555,7 @@
    "frame": "restroom_shower_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of restroom_shower: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of restroom_shower: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "seafood_bbq_front": {
    "anchor": [
@@ -4200,7 +4586,7 @@
    "frame": "seafood_bbq_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of seafood_bbq: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of seafood_bbq: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "souvenir_shop_glow": {
    "anchor": [
@@ -4216,7 +4602,7 @@
    "frame": "souvenir_shop_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of souvenir_shop: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of souvenir_shop: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "string_lights_x_glow": {
    "anchor": [
@@ -4232,7 +4618,7 @@
    "frame": "string_lights_x_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of string_lights_x: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of string_lights_x: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "string_lights_y_glow": {
    "anchor": [
@@ -4248,7 +4634,7 @@
    "frame": "string_lights_y_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of string_lights_y: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of string_lights_y: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "surf_shop_glow": {
    "anchor": [
@@ -4264,7 +4650,7 @@
    "frame": "surf_shop_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of surf_shop: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of surf_shop: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "swimwear_shop_glow": {
    "anchor": [
@@ -4280,7 +4666,7 @@
    "frame": "swimwear_shop_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of swimwear_shop: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of swimwear_shop: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   },
   "tourist_info_front": {
    "anchor": [
@@ -4311,16 +4697,30 @@
    "frame": "tourist_info_glow",
    "kind": "glow",
    "blend": "ADD",
-   "notes": "Night light of tourist_info: same frame + anchor, blendMode ADD, not tinted."
+   "notes": "Night light of tourist_info: same frame + anchor, blendMode ADD, in the light layer above the DayClock overlay (conventions.night)."
   }
  },
  "night": {
-  "tint": "#6B7AB8",
+  "model": "DayClock",
+  "overlay": {
+   "color": "#5A6AA8",
+   "darkness": 0.45,
+   "blend": "MULTIPLY",
+   "depth": "DEPTH.FX - 30"
+  },
   "glowBlend": "ADD",
-  "glowAtlas": "bbld_glow"
+  "glowDepth": "DEPTH.FX - 29",
+  "glowAtlases": [
+   "bbld_glow",
+   "bbld_x_glow"
+  ],
+  "glowAlpha": "min(1, dayClock.cur.a / darkness), only while dayClock.lightsOn",
+  "lights": "dayClock.addLight(ax + dx, ay + dy, lightK[i]) for every lightPoints entry"
  },
  "lazyAtlases": [
-  "bbld_glow"
+  "bbld_glow",
+  "bbld_x",
+  "bbld_x_glow"
  ],
  "staffPresets": {
   "doorman": "beachfolk:doorman",
@@ -4338,5 +4738,9 @@
   "guide": "beachfolk:receptionist",
   "ticket_seller": "beachfolk:receptionist",
   "owner": "beachfolk:beach_tourist"
+ },
+ "retired": {
+  "resort_hotel_night": "night frames replaced by the DayClock overlay + <key>_glow",
+  "resort_hotel_x_night": "night frames replaced by the DayClock overlay + <key>_glow"
  }
 }

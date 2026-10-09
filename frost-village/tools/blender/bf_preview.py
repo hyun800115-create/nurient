@@ -416,6 +416,11 @@ def jobs_sheet(bf, path, seeds=(1, 2, 3)):
             p = bf.preset(pr, seed=seed * 31 + r)
             for j, f in enumerate(frames):
                 anim, dd, i = f or SIGNATURE[pr]
+                pa, _f = bf.pick_anim(p, anim)          # a ring wearer 'swims' bobbing in the ring (float)
+                if pa != anim:
+                    A = bf.T['anims'][pa]
+                    anim, i = pa, i % A['frames']
+                    dd = bfc.nearest_dir(A['dirs'], dd) if hasattr(bfc, 'nearest_dir') else A['dirs'][0]
                 x0 = lw + s_i * (len(frames) * cw + 12) + j * cw
                 cell = cell_bg(anim, cw, ch)
                 if anim in ('sunbathe', 'dig'):

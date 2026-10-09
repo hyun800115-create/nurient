@@ -39,7 +39,7 @@ COMMON = ['footprintPoly', 'fxPoints', 'lightPoints', 'name', 'zone', 'night']
 FIELDS = {
     'resort_hotel': ['doorPoint', 'staffPoints', 'staffRoles', 'customerPoints', 'inPoint', 'balconyPoints', 'overlay',
                      'balconyFloors', 'balconyHeadroomPx'],
-    'hotel_pool': ['waterPoly', 'waterPolyFlat', 'waterZ', 'swimPoints', 'lyingPoints', 'lyingDirs', 'lyingFeetDirs',
+    'hotel_pool': ['waterPoly', 'waterPolyFlat', 'waterRegion', 'waterZ', 'swimPoints', 'lyingPoints', 'lyingDirs', 'lyingFeetDirs',
                    'lyingHeadPoints', 'lyingFeetPoints', 'lyingAxis', 'staffPoints', 'waterOverlay'],
     'pension': ['doorPoint', 'staffPoints', 'customerPoints', 'balconyPoints', 'inPoint'],
     'beach_cafe': ['doorPoint', 'staffPoints', 'customerPoints', 'seatPoints', 'inPoint', 'overlay'],
@@ -240,6 +240,21 @@ def main():
                     a[sy:sy + c.shape[0], sx:sx + c.shape[1]] = c
                     return a
                 deck, wat = full(k), full(s['waterOverlay'])
+                # the Water.js region (water bbox) must be covered by the deck everywhere outside the water hole
+                rg = s.get('waterRegion')
+                if not rg:
+                    errs.append('%s: waterRegion missing' % k)
+                else:
+                    hole = Image.new('L', (W, H), 0)
+                    _D.Draw(hole).polygon([(ax + x, ay + y) for x, y in s['waterPoly']], fill=255)
+                    hole = np.asarray(hole.filter(__import__('PIL.ImageFilter', fromlist=['x']).MaxFilter(5))) > 0
+                    x0_, y0_ = int(round(ax + rg[0])), int(round(ay + rg[1]))
+                    box_ = np.zeros((H, W), bool)
+                    box_[max(0, y0_):y0_ + int(rg[3]) + 1, max(0, x0_):x0_ + int(rg[2]) + 1] = True
+                    open_ = box_ & ~hole & (deck < 235)
+                    if open_.sum() > 0:
+                        errs.append('%s: %d px of waterRegion outside the water are not covered by the deck (Water.js '
+                                    'blocks would show)' % (k, int(open_.sum())))
                 if deck[msk].mean() > 10:
                     errs.append('%s: the deck is not cut out inside waterPoly (mean alpha %.0f)' % (k, deck[msk].mean()))
                 if wat[msk].mean() < 245:

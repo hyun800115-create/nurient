@@ -102,6 +102,7 @@ def build3(ctx, base, parts, face_sets=(), hat_variants=True):
     tb.build_mannequin(rig, ctx, noses=tr.NOSES)
     for fs in face_sets:
         tb.build_face_set(rig, ctx, fs)
+        add_face_extras(rig, ctx, fs)
     first = [p for p in parts if p not in WORLD_ITEMS]
     for pn in first:
         tp.build_part(rig, ctx, pn)
@@ -121,6 +122,22 @@ def build3(ctx, base, parts, face_sets=(), hat_variants=True):
             tp.build_part(rig, ctx, pn)
         bpy.context.view_layer.update()
     return rig, ch
+
+
+def add_face_extras(rig, ctx, fs):
+    """Extra face toggles of the cityfolk expressions (this process only): 'cheek_angry' = the angry flush drawn
+    LOW on the cheeks, below where glasses sit (vil_face cheek_red lies under the lenses and turned glasses into
+    red glowing eyes on angry / shout faces)."""
+    import vil_face as vf
+    spec = tb.FACE_SETS[fs]
+    cu_ = spec.get('cheek_u', 0.172)
+    cv_ = spec.get('cheek_v', -0.080)
+    m = bc.mat('cheek_angry', '#EE5C5E', rough=0.6)
+    objs = []
+    for s_ in (-1, 1):
+        objs.append(vf._obj(rig, 'cheek_angry', vf.bm_blob(vf.ellipse(s_ * (cu_ + 0.016), cv_ - 0.050, 0.056, 0.032, 24),
+                                                           thick=0.026, out=0.0, edge=0.25), m))
+    ctx.move(objs, f'F_{fs}_cheek_angry')
 
 
 def measure_hose(rig):
@@ -373,6 +390,21 @@ def body_meta3(opt, base):
         targets[f'{anim}_{d}_{i}'] = round(gap, 3)
     meta['gaps'] = targets
     meta['tiles'] = {a: {'w': tile_size(a)[0], 'h': tile_size(a)[1]} for a in ca.ORDER3}
+    # feet per frame of the walking anims (+ townfolk walk for reference): [[px x, px y, world z] R, L] -> cf_pack
+    # derives groundSpeed (px/s the planted foot slides back = the speed the game should move the sprite at)
+    meta['feet'] = {}
+    infos = {a: ca.ANIMS3[a] for a in ca.WALKERS}
+    infos['walk'] = ta.ANIMS['walk']
+    for anim, info in infos.items():
+        for d in info['dirs']:
+            for i in range(info['frames']):
+                pose_any(rig, anim, d, i, place=False, by_frame=anim in ca.ANIMS3)
+                fr = []
+                for n in ('R', 'L'):
+                    w = rig.world('knee_' + n, (0, -0.02, -0.15))
+                    o = px_off(w)
+                    fr.append([round(o[0], 2), round(o[1], 2), round(w.z, 4)])
+                meta['feet'][f'{anim}_{d}_{i}'] = fr
     bdir = os.path.join(opt['cache'], 'body', base)
     os.makedirs(bdir, exist_ok=True)
     with open(os.path.join(bdir, 'meta3.json'), 'w') as f:

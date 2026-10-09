@@ -12,8 +12,8 @@
 //   3 NIGHT (DayClock)   : band 1 + ONE MULTIPLY overlay (0x5a6aa8 at darkness 0.45) at DEPTH.FX - 30 over the band,
 //                          <key>_glow (ADD) at DEPTH.FX - 29 above it, fv_glow halos at every lightPoints entry (lightK)
 // Checks (exit 1 on failure): missing frames / anims, page errors, 404s, Water.js built as a shader, and LAND OVER
-// WATER: the deck pixels on a ring just outside waterPoly are the same in bands 1 and 2 (the stair-stepped opaque
-// Water.js mesh must not show past the pool rim).
+// WATER: every 3rd pixel of the Water.js region box outside the water is the same in bands 1 and 2 (the
+// stair-stepped opaque Water.js mesh must never show past the pool rim / the deck).
 // Writes docs/previews/bbld_phaser.png + <out>/beach_bld_phaser.json (default <tmp>/fv_review).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -117,8 +117,8 @@ class S extends Phaser.Scene {
           if (shader) {
             const flat = [];
             for (let i = 0; i < s.waterPolyFlat.length; i += 2) flat.push(px + s.waterPolyFlat[i], py + s.waterPolyFlat[i + 1]);
-            const xs = flat.filter((_, i) => i % 2 === 0), ys = flat.filter((_, i) => i % 2 === 1);
-            const region = { x: Math.min(...xs) - 24, y: Math.min(...ys) - 24, w: Math.max(...xs) - Math.min(...xs) + 48, h: Math.max(...ys) - Math.min(...ys) + 48 };
+            const rg = s.waterRegion;                       // the water bbox, no margin (conventions.pool)
+            const region = { x: px + rg[0], y: py + rg[1], w: rg[2], h: rg[3] };
             try {
               const w = new Water(this, { region, mask: { water: [flat] }, waterPx: 0, defaultShore: 'quay', palette: 'pool',
                 quality: 'high', manifest: wman, openSea: false, depth: py + s.waterDepth, shoreDepth: py + s.waterDepth + 0.05 });
@@ -129,17 +129,14 @@ class S extends Phaser.Scene {
             const w = sp[s.waterOverlay];
             this.add.sprite(px, py, w.atlas, w.frame).setOrigin(s.anchor[0], s.anchor[1]).setDepth(py + s.waterDepth).play('spr:' + s.waterOverlay + ':ripple');
           }
-          if (mode !== 'night') {                       // probe ring: deck pixels just outside the water polygon
-            const P = s.waterPoly, cx = P.reduce((a, p) => a + p[0], 0) / P.length, cy = P.reduce((a, p) => a + p[1], 0) / P.length;
+          if (mode !== 'night') {   // probe: every 3rd px of the Water.js region box OUTSIDE the water (+4 px) = deck
+            const P = s.waterPoly, rg = s.waterRegion;
+            const inside = (x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+              const [xi, yi] = P[i], [xj, yj] = P[j];
+              if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; };
+            const near = (x, y) => { for (const [ox, oy] of [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4], [3, 3], [-3, -3], [3, -3], [-3, 3]]) if (inside(x + ox, y + oy)) return true; return false; };
             const ring = [];
-            for (let i = 0; i < P.length; i++) {
-              const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
-              for (let t = 0.15; t < 0.9; t += 0.07) {
-                const qx = ax + (bx - ax) * t, qy = ay + (by - ay) * t;
-                const dx = qx - cx, dy = qy - cy, l = Math.hypot(dx, dy);
-                ring.push([Math.round(px + qx + dx / l * 7), Math.round(py + qy + dy / l * 7)]);
-              }
-            }
+            for (let y = rg[1]; y <= rg[1] + rg[3]; y += 3) for (let x = rg[0]; x <= rg[0] + rg[2]; x += 3) if (!near(x, y)) ring.push([Math.round(px + x), Math.round(py + y)]);
             B.rings.push({ mode, ring });
           }
         }
@@ -241,7 +238,7 @@ fs.writeFileSync(path.join(OUTDIR, 'beach_bld_phaser.json'), JSON.stringify({ re
 await browser.close();
 await srv.close();
 const waterOk = res.water && res.water.isShader === true;
-const ringOk = ringDiff && ringDiff.mean < 6 && ringDiff.worst < 60;
+const ringOk = ringDiff && ringDiff.points > 100 && ringDiff.mean < 3 && ringDiff.worst < 40;
 if (!waterOk) console.log('FAIL: Water.js did not build as a shader', JSON.stringify(res.water));
 if (!ringOk) console.log('FAIL: the pool water shows past the deck rim (Water.js vs fallback ring differ)', JSON.stringify(ringDiff));
 process.exit(errors.length || notFound.length || res.missing.length || !waterOk || !ringOk ? 1 : 0);

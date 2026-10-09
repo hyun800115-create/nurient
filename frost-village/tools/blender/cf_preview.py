@@ -11,6 +11,8 @@ compositor tools/cityfolk_compose.py.  Plain python3 (numpy + Pillow).
   cityfolk_<anim>.gif   run / flee / argue / fight / arrested_walk / spray_hose / point / think / shocked / phone /
                         carry_box / sweep - a few people in several directions at the anim's fps
   cityfolk_proof.png    full Blender look-dev renders vs the paper-doll composites from the atlases
+  cityfolk_polish.png   polish pass: before (first pass, /tmp/fv_cache/cityfolk/old_assets) | after, per critic issue
+  cityfolk_lineup.png   every preset at phone zoom 0.6 (device pixels, 1x) + the same at CSS size (glance test)
 """
 import math
 import os
@@ -37,7 +39,7 @@ ANIMS3 = ['run', 'flee', 'argue', 'fight', 'arrested_walk', 'spray_hose', 'point
           'carry_box', 'sweep']
 SIGNATURE = {'firefighter': ('spray_hose', 'SE', 1), 'police_officer': ('run', 'SE', 3), 'detective': ('think', 'S', 0),
              'burglar': ('flee', 'S', 1), 'banker': ('think', 'SE', 2), 'bank_teller': ('phone', 'S', 0),
-             'warehouse_worker': ('carry_box', 'SE', 3), 'forklift_driver': ('point', 'SE', 1),
+             'warehouse_worker': ('carry_box', 'SE', 3), 'forklift_driver': ('carry_box', 'SE', 1),
              'delivery_driver': ('carry_box', 'S', 2), 'mover': ('carry_box', 'E', 5),
              'construction_worker': ('sweep', 'SE', 2), 'demolition_worker': ('sweep', 'S', 1),
              'reporter': ('phone', 'SE', 2)}
@@ -509,10 +511,109 @@ def proof(tf, path, full_dir='/tmp/fv_cache/cityfolk/look_proof'):
     return True
 
 
+# --------------------------------------------------------------------------- polish pass: before / after + lineup
+
+OLD_ASSETS = '/tmp/fv_cache/cityfolk/old_assets'
+
+
+def _pick(tf, pr, seed, base='adult_slim', need=(), tries=400):
+    rng = random.Random(seed)
+    last = None
+    for _ in range(tries):
+        p = tf.preset(pr, rng=rng) if pr else tf.random_person(rng=rng)
+        last = p
+        if (base is None or p['base'] == base) and all(tf.can_play(p, a) for a in need):
+            return p
+    return last
+
+
+def polish(tf, path):
+    """Each critic issue: the first pass (old atlases) next to this pass, 2x."""
+    if not os.path.isdir(os.path.join(OLD_ASSETS, 'cityfolk')):
+        return False
+    old = Cityfolk.from_assets(OLD_ASSETS, fragments=['townfolk2', 'cityfolk'])
+    glasses = lambda p: dict(p, parts=[x for x in p['parts'] if not x.startswith('acc_glasses')] + ['acc_glasses'],
+                             colors=dict(p['colors'], glasses='#2B2F3A'))
+    rows = [
+        ('bank teller ("kindergarten uniform")', 'bank_teller', [('idle', 'S', 0), ('walk', 'SE', 2), ('phone', 'S', 0)], None),
+        ('warehouse worker (read as a resident)', 'warehouse_worker', [('idle', 'S', 0), ('carry_box', 'SE', 3)], None),
+        ('forklift driver (= construction)', 'forklift_driver', [('idle', 'S', 0), ('walk', 'SE', 2)], None),
+        ('delivery driver (brown blob)', 'delivery_driver', [('idle', 'S', 0), ('carry_box', 'SE', 2)], None),
+        ('demolition worker (= construction)', 'demolition_worker', [('idle', 'S', 0), ('sweep', 'SE', 2)], None),
+        ('reporter (camera / notepad vanish)', 'reporter', [('idle', 'S', 0), ('walk', 'SE', 2)], None),
+        ('burglar flee (sack over the face)', 'burglar', [('flee', 'SE', 3), ('flee', 'E', 5), ('arrested_walk', 'S', 2)], None),
+        ('fire hose S / SE (red tab)', 'firefighter', [('spray_hose', 'S', 0), ('spray_hose', 'SE', 1)], None),
+        ('sweep (spoon broom, hip height in E)', 'construction_worker', [('sweep', 'E', 1), ('sweep', 'E', 3), ('sweep', 'S', 0)], None),
+        ('angry / shout + glasses (red eyes)', None, [('argue', 'S', 0), ('argue', 'SE', 1)], glasses),
+        ('run S (read as a walk)', None, [('run', 'S', 0), ('run', 'S', 3), ('run', 'E', 3)], None),
+    ]
+    sc = 2
+    cw, ch = 88 * sc, 120 * sc
+    nmax = max(len(r[2]) for r in rows)
+    W = 250 + 2 * (nmax * cw) + 40
+    H = 60 + len(rows) * (ch + 8)
+    img = Image.new('RGBA', (W, H), tpv.BG)
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), 'cityfolk polish: first pass (left) | this pass (right), 2x', fill=INK, font=font(18))
+    d.text((250, 36), 'before', fill=tpv.SUB, font=font(14))
+    d.text((250 + nmax * cw + 40, 36), 'after', fill=tpv.SUB, font=font(14))
+    for r, (label, pr, frames, mod) in enumerate(rows):
+        y0 = 60 + r * (ch + 8)
+        d.text((8, y0 + ch // 2 - 8), label, fill=INK, font=font(13))
+        need = tuple({a for a, _, _ in frames})
+        for side, T_ in enumerate((old, tf)):
+            p = _pick(T_, pr, 31 + r, 'adult_slim', need if side else ())
+            if mod:
+                p = mod(p)
+            for c, (a, dd, i) in enumerate(frames):
+                a2, face = T_.pick_anim(p, a)
+                fr = T_.compose(p, a2, dd, min(i, T_.T['anims'][a2]['frames'] - 1), face=face)
+                x0 = 250 + side * (nmax * cw + 40) + c * cw
+                img.alpha_composite(fr.crop((20, 4, 108, 124)).resize((cw, ch), Image.NEAREST), (x0, y0))
+                if a2 != a:
+                    d.text((x0 + 3, y0 + ch - 14), f'{a}->{a2}', fill=tpv.SUB, font=font(10))
+        d.line([(250 + nmax * cw + 20, y0), (250 + nmax * cw + 20, y0 + ch)], fill=(170, 178, 190, 255), width=2)
+    img.convert('RGB').save(path, optimize=True)
+    return True
+
+
+def lineup(tf, path, seed=61):
+    """Every preset (2 people each) + 8 random residents on snow, idle S, at 1x = phone zoom 0.6 in device pixels
+    (DPR 3: 0.6 x 1.6 = 0.96), and the same strip reduced to CSS size (what the eye gets at arm's length)."""
+    rng = random.Random(seed)
+    people = []
+    for pr in PRESETS:
+        for k in range(2):
+            people.append((pr, tf.preset(pr, rng=rng)))
+    for k in range(8):
+        people.append(('resident', tf.random_person(rng=rng)))
+    cols = 15
+    cw, ch = 46, 84
+    rows_ = (len(people) + cols - 1) // cols
+    strip = Image.new('RGBA', (cols * cw + 20, rows_ * ch + 10), (236, 241, 247, 255))
+    for k, (pr, p) in enumerate(people):
+        x, y = 10 + (k % cols) * cw, 6 + (k // cols) * ch
+        fr = tf.compose(p, 'idle', 'S' if k % 3 else 'SE', 0)
+        strip.alpha_composite(fr.crop((41, 26, 87, 110)), (x, y))
+    big = strip.resize((strip.size[0] * 2, strip.size[1] * 2), Image.NEAREST)
+    css = strip.resize((strip.size[0] // 3, strip.size[1] // 3), Image.LANCZOS).resize(
+        (strip.size[0] // 3 * 2, strip.size[1] // 3 * 2), Image.NEAREST)
+    W = big.size[0] + 20
+    H = 50 + big.size[1] + 40 + css.size[1] + 20
+    img = Image.new('RGBA', (W, H), tpv.BG)
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), 'phone zoom 0.6: device pixels (shown 2x) - 13 presets x 2 + 8 random residents', fill=INK,
+           font=font(16))
+    img.alpha_composite(big, (10, 40))
+    d.text((10, 50 + big.size[1]), 'the same at CSS size (390 px wide phone, DPR 3), shown 2x', fill=INK, font=font(14))
+    img.alpha_composite(css, (10, 50 + big.size[1] + 22))
+    img.convert('RGB').save(path, optimize=True)
+
+
 def main():
     tf = Cityfolk.from_assets(os.environ.get('CF_ASSETS', ASSETS))
     os.makedirs(PREV, exist_ok=True)
-    only = sys.argv[1:] or ['jobs', 'anims', 'crowd', 'gifs', 'proof']
+    only = sys.argv[1:] or ['jobs', 'anims', 'crowd', 'gifs', 'proof', 'polish', 'lineup']
     if 'jobs' in only:
         jobs(tf, os.path.join(PREV, 'cityfolk_jobs.png'))
         print('jobs done', flush=True)
@@ -534,6 +635,12 @@ def main():
     if 'proof' in only:
         if proof(tf, os.path.join(PREV, 'cityfolk_proof.png')):
             print('proof done', flush=True)
+    if 'polish' in only:
+        if polish(tf, os.path.join(PREV, 'cityfolk_polish.png')):
+            print('polish done', flush=True)
+    if 'lineup' in only:
+        lineup(tf, os.path.join(PREV, 'cityfolk_lineup.png'))
+        print('lineup done', flush=True)
 
 
 if __name__ == '__main__':

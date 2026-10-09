@@ -73,6 +73,28 @@ def sunbathe_dir_for(spot, i=0):
     return 'SE'
 
 
+DIR_ANG = {'S': 0, 'SE': 45, 'E': 90, 'NE': 135, 'N': 180, 'NW': 225, 'W': 270, 'SW': 315}
+UNMIRROR = {'SE': 'SW', 'E': 'W', 'NE': 'NW'}
+
+
+def nearest_dir(dirs, want):
+    """Nearest dir an anim has (its rendered dirs + their mirrors) to the wanted one (= beachfolk_compose.js)."""
+    cand = []
+    for d in dirs:
+        cand.append(d)
+        if d in UNMIRROR:
+            cand.append(UNMIRROR[d])
+    if want in cand:
+        return want
+    best, bd = None, 1e9
+    for c in cand:
+        a = abs(DIR_ANG[c] - DIR_ANG[want]) % 360
+        a = 360 - a if a > 180 else a
+        if a < bd:
+            best, bd = c, a
+    return best
+
+
 def merge_beachfolk(M2, B):
     """Merged block (townfolk v4 + v5 merged block M2 + beachfolk fragment B).  Never mutates the inputs."""
     M = copy.deepcopy(M2)

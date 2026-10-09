@@ -64,7 +64,10 @@ def main():
             with open(mp, encoding='utf-8') as f:
                 j = json.load(f)
             with open(mp, 'w', encoding='utf-8') as f:
-                json.dump(fix(j), f, ensure_ascii=False, indent=1)
+                if frag == '_packed':   # (v4-B) carries embedded frame lists: compact
+                    json.dump(fix(j), f, ensure_ascii=False, separators=(',', ':'))
+                else:
+                    json.dump(fix(j), f, ensure_ascii=False, indent=1)
     print(json.dumps({'converted': len(mapping), 'png_bytes': before, 'webp_bytes': after, 'files': sorted(mapping)}))
 
 

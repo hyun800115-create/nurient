@@ -191,7 +191,7 @@ def hotel_builder():
     # top storey of the tower: sun emblem plaques (lit at night) + side window
     for nm, sx_ in (('tsun', -0.62), ('tsun2', 0.62)):
         B.glow_objs(T.emblem_at(nm, lambda s: B.em_sun(s), (BX + sx_, yt - 0.06, TZ - 0.72), psi=0.0, scale=0.42),
-                    strength=0.5)
+                    strength=0.15)
     tsw = BX + TW / 2 if side == 'x+' else BX - TW / 2
     B.gwin('tsw', (tsw, yt + TD / 2, ZT + 0.32), side, w=0.5, h=0.7, arch=True, curtain=B.LEMON)
 
@@ -362,7 +362,7 @@ def hotel_builder():
                       flat(B.GOLD, 0.3, 0.8))
         g_ = L.group([st], 'bstarg%d' % k, loc=(sbx + u * math.cos(a), sby + u * math.sin(a),
                                                 sbz + 0.47 + (0.06 if k == 2 else 0)), rot=(0, 0, B.psi()))
-        B.glow_objs(g_, strength=0.6)
+        B.glow_objs(g_, strength=0.2)
     B.light_pt((sbx, sby, sbz), 'sign', 1.6)
     # ---- markers
     mark('door', (BX, yt - 0.55, 0.0), facing=(0, 1, 0))
@@ -402,7 +402,7 @@ variant_x('resort_hotel', hotel_builder)
 
 # =========================================================================== HOTEL POOL
 
-POOL_NOTE = ('Hotel pool deck (6.4 x 4.6 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled '
+POOL_NOTE = ('Hotel pool deck (6.4 x 5.9 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled '
              'walls, a sun mosaic on the floor, a chrome ladder, little underwater lamps, a yellow-blue slide at the '
              'left end), loungers with towels and parasols along the back and the right, a towel shelf + lifebuoy + '
              'shower, two deck lamps, potted palms.  The sprite is the DECK: the visible water surface (waterPoly) is '
@@ -419,7 +419,10 @@ POOL_ZF = -0.7                          # pool floor
 
 def pool_builder():
     x0, x1, y0, y1 = POOL
-    FX0, FX1, FY0, FY1 = -3.2, 3.2, -2.3, 2.3
+    # deck slab 6.4 x 5.9 m: 0.6 - 0.7 m deeper than the furniture layout at the front and the back, so the deck covers the
+    # whole bounding box of the water (Water.js builds its pool mesh from 64 x 32 px blocks inside that box)
+    FX0, FX1, FY0, FY1 = -3.2, 3.2, -2.95, 2.95
+    FI0, FI1 = -2.3, 2.3                 # the furniture layout keeps the old deck edges
     deck = B.tile_mat('#F3ECDF', '#EAE0CE', 2.2, '#D8CBB4')
     T_ = 0.14
     # deck slab = 4 pieces around the opening (top at z 0)
@@ -518,12 +521,14 @@ def pool_builder():
     cyl('shhead', 0.1, 0.05, (tx_ + 0.15, 2.0 - 0.32, 1.9), mat=flat('#D7DEE6', 0.2, 0.9), segs=14)
     box('shgrate', (0.6, 0.6, 0.04), (tx_ + 0.15, 1.75, 0.02), mat=tonal(B.WOOD, 0.06, 4.0), bevel=0.01)
     # palms + hedge planters on the back / left edges
-    B.planter_palm('pp1', (FX0 + 0.35, FY1 - 0.35, 0.02), h=1.7, s=0.7, seed=3)
-    B.planter_palm('pp2', (FX1 - 0.4, FY1 - 0.35, 0.02), h=1.5, s=0.65, seed=8)
+    B.planter_palm('pp1', (FX0 + 0.35, FI1 - 0.35, 0.02), h=1.7, s=0.7, seed=3)
+    B.planter_palm('pp2', (FX1 - 0.4, FI1 - 0.35, 0.02), h=1.5, s=0.65, seed=8)
+    for k, px_ in enumerate((FX0 + 0.45, FX1 - 0.45)):          # flower pots on the front corners of the deck
+        B.pot_plant('fpot%d' % k, (px_, FY0 + 0.4, 0.02), r=0.2, kind='flowers', seed=40 + k)
     for k in range(3):
-        box('hedgebox', (1.2, 0.3, 0.28), (-1.6 + 1.6 * k, FY1 - 0.05, 0.02), mat=tonal(B.WOOD_D, 0.06, 4.0), bevel=0.03)
+        box('hedgebox', (1.2, 0.3, 0.28), (-1.6 + 1.6 * k, FI1 - 0.05, 0.02), mat=tonal(B.WOOD_D, 0.06, 4.0), bevel=0.03)
         for j in range(4):
-            sphere('hedge', 0.17, (-2.05 + 1.6 * k + 0.3 * j, FY1 - 0.05, 0.42), flat(B.LEAF, 0.8),
+            sphere('hedge', 0.17, (-2.05 + 1.6 * k + 0.3 * j, FI1 - 0.05, 0.42), flat(B.LEAF, 0.8),
                    scale=(1.1, 0.9, 0.85), segs=12, rings=8)
     # flat things on the front deck: a striped towel + flip-flops + an inflatable ring lying on the deck
     box('ftowel', (0.9, 0.5, 0.012), (-0.6, -1.75, 0.02), rot=(0, 0, 8),
@@ -572,7 +577,7 @@ def pool_builder():
                       'lyingHeightM': 0.38}}
 
 
-@bbld('hotel_pool', 'building', 'bbld_hotel', fp=(6.4, 4.6), catcher=30.0, notes=POOL_NOTE, samples=28,
+@bbld('hotel_pool', 'building', 'bbld_hotel', fp=(6.4, 5.9), catcher=30.0, notes=POOL_NOTE, samples=28,
       ko='호텔 수영장', en='Hotel pool', zone='hotel')
 def b_hotel_pool():
     return pool_builder()
@@ -680,7 +685,7 @@ def cafe_builder():
                   sag=0.16)
     # roof sign: big iced coffee on a round board facing the camera
     B.glow_objs(T.sign_disc('rsign', (BX + 0.15, BY + 0.05, ridge + 0.48), r=0.55, bg=B.MINT, rim=B.STUCCO_W,
-                            emblem=lambda s: B.em_iced(s), es=0.95, psi=B.psi(), tilt=6.0, snow=False), strength=0.45)
+                            emblem=lambda s: B.em_iced(s), es=0.95, psi=B.psi(), tilt=6.0, snow=False), strength=0.1)
     a = math.radians(B.psi())
     for s in (-1, 1):
         cyl('rsleg', 0.035, 0.55, (BX + 0.15 + s * 0.3 * math.cos(a), BY + 0.05 + s * 0.3 * math.sin(a),
@@ -823,7 +828,7 @@ def icecream_builder():
         box('spr', (0.1, 0.03, 0.03), (sx, sy, RZ + 0.16), rot=(0, 0, rnd.uniform(0, 180)),
             mat=flat((B.LEMON, B.TURQ, B.CORAL, B.LILAC, B.WHITE)[k % 5], 0.5), bevel=0.01)
     B.glow_objs(T.emblem_at('bigcone', lambda s: B.em_icecream(s, scoops=(B.PINK, B.MINT, '#F7F3EC')),
-                            (BX + 0.1, BY + 0.1, RZ + 0.95), psi=B.psi(), scale=1.75, tilt=4.0), strength=0.45)
+                            (BX + 0.1, BY + 0.1, RZ + 0.95), psi=B.psi(), scale=1.75, tilt=4.0), strength=0.1)
     # outside: bench, little table, cone-shaped sign
     T.town_bench('bench', (x1 + 0.55, BY - 0.25, 0.0), rot_z=90.0 if side == 'x+' else -90.0, col=B.MINT,
                  iron='#E9E4DA', snow=False)

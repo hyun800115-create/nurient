@@ -600,6 +600,7 @@ def preview_scene(P, Pe, out):
     T_ = Frag('town')
     V = Frag('vehicles')
     LG = Frag('logistics') if os.path.exists(os.path.join(ASSETS, 'logistics', 'manifest.json')) else None
+    FX = Frag('fx_city') if os.path.exists(os.path.join(ASSETS, 'fx_city', 'manifest.json')) else None
     sc = tp.Scene(3200, 2200, 1500, 1150)
     road_p = os.path.join(ASSETS, 'ui2', 'ground_road.png')
     tex = Image.open(road_p).convert('RGBA') if os.path.exists(road_p) else Image.new('RGBA', (64, 64),
@@ -643,7 +644,7 @@ def preview_scene(P, Pe, out):
         if im is not None:
             gx, gy = off(cb)
             sc.put(im, an, PX + gx, PY + gy)
-    wx, wy = 3.0, 2.35
+    wx, wy = 3.1, 1.85              # on the pavement in front of the station (clear of its 7.2 x 4.6 m lot)
     put(P, 'wanted_board', wx, wy)
     wb = P.man['sprites'].get('wanted_board', {})
     if wb.get('posterPoints'):          # the game draws resident portraits into the poster slots
@@ -654,8 +655,8 @@ def preview_scene(P, Pe, out):
                 continue
             head = im.crop((40, 18, 88, 66)).resize(tuple(wb['posterSizePx']), Image.LANCZOS)
             sc.placed.append((sy + 0.5, head, int(sx + pt[0] - head.width / 2), int(sy + pt[1] - head.height / 2)))
-    for k, (x, y, d_, pr) in enumerate(((2.1, 1.5, 'NE', None), (5.0, 1.95, 'NW', None),
-                                        (3.9, 1.35, 'SW', 'police_officer'))):
+    for k, (x, y, d_, pr) in enumerate(((1.25, 1.05, 'NE', None), (5.3, 1.95, 'NW', None),
+                                        (4.95, 1.2, 'NW', 'police_officer'))):   # beside the board, not in front
         im, an = Pe.person(pr, seed=500 + k, d=d_, anim='point' if pr else 'idle')
         if im is None:
             im, an = Pe.person(pr, seed=500 + k, d=d_)
@@ -687,12 +688,7 @@ def preview_scene(P, Pe, out):
     plot = (-6.7, -5.7)
     put(P, 'scorch_decal_m', plot[0], plot[1], lab=False, ground=True)
     put(P, 'ruin_m', plot[0], plot[1], text='ruin_m + fence ring M (demolition)')
-    ov = P.man['sprites'].get('ruin_m_smoke')
-    if ov:
-        rim, ran = P.sprite('ruin_m')
-        sx, sy = sc.p(*plot)
-        sc.placed.append((sy + 1, P.frame(ov['atlas'], ov['anims']['smoke']['frames'][2]), int(sx - ran[0]),
-                          int(sy - ran[1])))
+    # no ruin_m_smoke here: the plot is demolished after it cooled down (fireSequence step 'cold')
     ring = P.man.get('fenceRings', {}).get('M')
     lay = layout_side(P, 'M', 'X+')
     if ring:
@@ -712,6 +708,15 @@ def preview_scene(P, Pe, out):
             sc.put(im, an, plot[0] + gx, plot[1] + gy)
             sx, sy = sc.p(plot[0] + gx, plot[1] + gy)
             sc.labels.append((vk, sx, sy - top_of(im, an) - 22))
+            if vk == 'excavator' and FX and FX.ok:       # a dust puff where the bucket bites
+                bps = P.man['characters']['excavator'].get('bucketPoint', {}).get('dig', {})
+                d_ = lay[vk]['dir'] if lay[vk]['dir'] in bps else {'SW': 'SE', 'NW': 'NE'}[lay[vk]['dir']]
+                dim, dan = FX.sheet_frame('fx_demolish_dust', 1)
+                if d_ in bps and dim is not None:
+                    bp = list(bps[d_][i])
+                    if d_ != lay[vk]['dir']:
+                        bp[0] = -bp[0]
+                    sc.placed.append((sy + 400, dim, int(sx + bp[0] - dan[0]), int(sy + bp[1] - dan[1])))
     put(P, 'insurance_sign', -10.0, -6.6)
     im, an = Pe.person('demolition_worker', seed=640, anim='point', d='NE')
     if im is None:

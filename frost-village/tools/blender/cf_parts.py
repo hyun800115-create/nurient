@@ -61,14 +61,16 @@ Z3 = {'mask': 62.6, 'tank_back': {'S': 3.2, 'SE': 3.2, 'E': 3.2, 'NE': 46.2, 'N'
       'tank_straps': 43.5, 'brace': 38.0, 'toolbelt': 42.0, 'camera': 41.0,
       'item': 45.0, 'item_box': {'S': 45.5, 'SE': 45.5, 'E': 45.5, 'NE': 2.5, 'N': 2.5},
       'hose_nozzle': {'S': 45.6, 'SE': 45.6, 'E': 45.6, 'NE': 2.6, 'N': 2.6},
-      'hose_line': {'S': 2.7, 'SE': 2.7, 'E': 2.7, 'NE': 45.7, 'N': 45.7},
+      'hose_line': {'S': 2.7, 'SE': 2.7, 'E': 45.7, 'NE': 45.7, 'N': 45.7},
       'broom': 45.8, 'stripes_torso': 30.6, 'vest3': 29.8}
 
 NEW_PARTS3 = ['top_fire_coat', 'bot_fire_pants', 'acc_air_tank', 'hat_fire_helmet', 'top_police_v2', 'top_stripes',
               'acc_eye_mask', 'hat_burglar_beanie', 'held_loot_sack', 'top_suit_3pc', 'top_teller_vest', 'acc_visor',
               'top_work_jacket', 'acc_gloves', 'hat_delivery_cap', 'top_delivery_polo', 'bot_mover_overalls',
               'acc_back_brace', 'top_hivis_jacket', 'acc_toolbelt', 'acc_camera', 'held_notepad', 'top_trench',
-              'hat_deerstalker']
+              'hat_deerstalker',
+              # polish pass: job looks that read at phone zoom
+              'det_lgx_vest', 'hat_bump_cap', 'hat_demo_helmet', 'acc_dust_mask', 'hat_press_fedora']
 ANIM_ITEM_PARTS = ['held_box', 'held_hose', 'held_broom', 'held_phone', 'hand_point']
 ALL_NEW = NEW_PARTS3 + ANIM_ITEM_PARTS
 # anim items: the ONLY anims they have frames in
@@ -267,7 +269,7 @@ def b_acc_air_tank(rig, ctx, put):
 
 
 @part('hat_fire_helmet', 'hat', 'head', {'main': sub('hat', Z['hat']), 'shield': sub(None, Z['hat_detail'])},
-      cls='full', tags=['job', 'fire'], ages=['adult'], label={'ko': '소방 헬멧', 'en': 'fire helmet'})
+      cls='full', tags=['job', 'fire', 'jobhat'], ages=['adult'], label={'ko': '소방 헬멧', 'en': 'fire helmet'})
 def b_hat_fire_helmet(rig, ctx, put):
     _lazy()
     with put('main'):
@@ -390,7 +392,7 @@ STRIPE_SHIRT = [(0.240, -0.09), (0.234, -0.02), (0.214, 0.10), (0.210, 0.22), (0
 @part('top_stripes', 'top', 'body',
       {'main': sub('top', Z['top']), 'stripes': sub('top2', Z3['stripes_torso']),
        'sleeve_R': follow('top2', 'arm_R'), 'sleeve_L': follow('top2', 'arm_L')},
-      tags=['casual', 'stripes'], label={'ko': '줄무늬 티셔츠', 'en': 'striped shirt'})
+      tags=['casual', 'stripes'], ages=['adult'], label={'ko': '줄무늬 티셔츠', 'en': 'striped shirt'})
 def b_top_stripes(rig, ctx, put):
     _lazy()
     with put('main'):
@@ -426,14 +428,26 @@ def b_acc_eye_mask(rig, ctx, put):
     def radial(x, y, z):
         d = Vector((x, y, z))
         front = cb.smoothstep(0.05, -0.55, y)                  # 1 on the face, 0 at the back
-        half = 0.13 + (0.33 - 0.13) * front                    # tall over the eyes, a strap at the back
+        half = 0.12 + (0.26 - 0.12) * front                    # over the eyes, a strap at the back
         inband = cb.smoothstep(half + 0.03, half - 0.02, abs(z - zc))
         hole = max(cb.smoothstep(0.958, 0.968, d.dot(e)) for e in eyes)
         t = inband * (1.0 - hole)
         return 0.93 + (1.040 - 0.93) * t
-    mm = M('mask', INKY, 0.45)
+    # mid-tone navy (a black mask merged with darker skin tones) + a sheen; white rims make the eyes pop
+    mm = M('mask', '#34406A', 0.32)
+    rim = M('mask_rim', '#8C98C0', 0.45)
     with put('main'):
         cb.shell(rig, mm, radial, 'eye_mask', seg=96, rings=48)
+        th = math.acos(0.963)
+        for e in eyes:
+            u = e.cross(Vector((0, 0, 1))).normalized()
+            v = e.cross(u).normalized()
+            pts = []
+            for k in range(25):
+                ph = TAU * k / 24
+                dd = (e * math.cos(th) + (u * math.cos(ph) + v * math.sin(ph)) * math.sin(th)).normalized()
+                pts.append((dd.x * rx * 1.045, dd.y * ry * 1.045, dd.z * rz * 1.045))
+            vd.ho(rig, 'mask_rim', g.bm_tube_path(pts, 0.0060, segr=6), rim)
         # knot + two ribbon tails at the back
         vd.ho(rig, 'knot', g.bm_ellipsoid(0.035, 0.030, 0.030, 12, 8), mm, loc=(0, 0.300, -0.03))
         for s in (-1, 1):
@@ -442,30 +456,37 @@ def b_acc_eye_mask(rig, ctx, put):
                                                side_ref=(0, 1, 0), flat=2.2), mm)
 
 
-@part('hat_burglar_beanie', 'hat', 'head', {'main': sub('hat', Z['hat'])}, cls='full', tags=['burglar'],
+@part('hat_burglar_beanie', 'hat', 'head', {'main': sub('hat', Z['hat'])}, cls='full', tags=['burglar', 'jobhat'],
       ages=['adult'], label={'ko': '도둑 비니', 'en': 'docker beanie'})
 def b_hat_burglar_beanie(rig, ctx, put):
     _lazy()
     with put('main'):
         k = M('bbeanie', ctx.col('hat'), 0.95)
-        cb.cap_shell(rig, k, lambda x, y: 0.36 - 0.16 * y, base=1.10, puff=0.05, name='beanie', lumps=0.035)
-        # fat folded cuff hugging the head above the ears (taller than it is thick)
-        cb.tilted_ring(rig, 'beanie_cuff', M('bbeanie_c', ctx.col('hat', 0.86), 0.95), tb.HEAD_R[0] * 1.075, 0.034,
-                       0.50, 0.26, sy=0.98, rz=2.1)
+        cb.cap_shell(rig, k, lambda x, y: 0.44 - 0.22 * y, base=1.10, puff=0.05, name='beanie', lumps=0.035)
+        # fat folded cuff hugging the head above the ears (taller than it is thick), raised in front
+        cb.tilted_ring(rig, 'beanie_cuff', M('bbeanie_c', ctx.col('hat', 0.86), 0.95), tb.HEAD_R[0] * 1.06, 0.034,
+                       0.64, 0.26, sy=0.98, rz=2.1)
         vd.ho(rig, 'beanie_nub', vd.fuzz(g.bm_ellipsoid(0.05, 0.05, 0.035, 12, 8), 0.004, 40.0), k, loc=(0, 0.02, 0.325))
 
 
-@part('held_loot_sack', 'hand', 'body', {'main': dict(sub(None, Z3['item']), zfrontFollow='hand_R')},
+@part('held_loot_sack', 'hand', 'body', {'main': dict(sub(None, Z3['item']), zfrontFollow='hand_R'),
+                                         'flee': sub(None, Z3['item'])},
       tags=['item', 'burglar'], ages=['adult'], label={'ko': '훔친 보따리', 'en': 'loot sack'})
 def b_held_loot_sack(rig, ctx, put):
     """Burlap sack hanging from the right fist (item joint 'sack_R', kept upright by place_items3):
-    a fish tail and a baguette poke out of the tied neck."""
+    a fish tail and a baguette poke out of the tied neck.  In flee the same sack ('flee' sub, joint 'sack_F')
+    hangs from the LEFT mitten over the far shoulder - behind the head in SE / E (it used to hide the face)."""
     _lazy()
-    if 'sack_R' not in rig.j:
-        rig.add('sack_R', 'root', (0, 0, 0))
-    j = rig.j['sack_R']
+    for jn in ('sack_R', 'sack_F'):
+        if jn not in rig.j:
+            rig.add(jn, 'root', (0, 0, 0))
+    for jn, sb in (('sack_R', 'main'), ('sack_F', 'flee')):
+        _sack(rig, rig.j[jn], put, sb)
+
+
+def _sack(rig, j, put, sb):
     burlap = M('burlap', '#C9A46E', 0.95)
-    with put('main'):
+    with put(sb):
         prof = [(0.0, -0.30), (0.10, -0.29), (0.150, -0.24), (0.160, -0.16), (0.130, -0.09), (0.060, -0.045),
                 (0.040, -0.02), (0.050, 0.005)]
         sack = vd.fuzz(g.bm_lathe(prof, seg=28, sy=0.86, smooth_n=16, cap_top=False), 0.004, 45.0)
@@ -561,17 +582,21 @@ def b_top_teller_vest(rig, ctx, put):
             g.mesh_obj('collar', g.bm_ellipsoid(0.050, 0.020, 0.032, 12, 8), sh, rig.j['chest'],
                        loc=(s * 0.042, -0.124, 0.088), rot=(38, s * 20, s * 32))
     with put('main'):
-        v = M('tvest', ctx.col('top'), 0.75)
-        g.mesh_obj('vest', cb.vest_lathe([(0.246, -0.10), (0.240, -0.03), (0.222, 0.10), (0.217, 0.20), (0.204, 0.28),
+        # a SHORT, fitted waistcoat (no flare): it hugs the shirt and stops at the waist in two little points,
+        # so the trousers / skirt break clearly below it (it used to read as a school pinafore)
+        v = M('tvest', ctx.col('top'), 0.6)
+        g.mesh_obj('vest', cb.vest_lathe([(0.244, -0.035), (0.238, 0.02), (0.220, 0.10), (0.215, 0.20), (0.203, 0.28),
                                           (0.17, 0.34)], gap_deg=11, seg=48, sy=0.87), v, rig.j['spine'])
-        g.mesh_obj('vest_point', vd.sector_lathe([(0.262, -0.13), (0.246, -0.08)], keep_deg=26, sy=0.87), v,
-                   rig.j['spine'])
         for s in (-1, 1):
-            g.mesh_obj('welt', g.bm_box(0.055, 0.010, 0.010, bevel=0.003), M('tvest_d', ctx.col('top', 0.7), 0.75),
-                       rig.j['spine'], loc=(s * 0.115, -0.205, 0.05), rot=(0, 0, s * 14))
+            g.mesh_obj('vest_point', vd.sector_lathe([(0.248, -0.085), (0.246, -0.03)], keep_deg=10, sy=0.87,
+                                                     center_deg=s * 14), v, rig.j['spine'])
+            g.mesh_obj('welt', g.bm_box(0.055, 0.010, 0.010, bevel=0.003), M('tvest_d', ctx.col('top', 0.7), 0.6),
+                       rig.j['spine'], loc=(s * 0.112, -0.205, 0.04), rot=(0, 0, s * 14))
+        g.mesh_obj('vest_back', vd.sector_lathe([(0.246, -0.04), (0.240, 0.0)], keep_deg=60, sy=0.87, center_deg=180),
+                   M('tvest_b', ctx.col('top', 0.82), 0.6), rig.j['spine'])
     for n in ('R', 'L'):
         with put('garter_' + n):
-            gm = M('garter', '#2E2E36', 0.5)
+            gm = M('garter', '#C8343A', 0.45)
             limb_ring(rig, 'garter_' + n, gm, 'sh_' + n, -0.100, R=0.078, r=0.012, rz=1.6)
             g.mesh_obj('garter_clip', g.bm_box(0.020, 0.012, 0.016, bevel=0.003), M('garter_m', BRASS, 0.3, metal=0.6),
                        rig.j['sh_' + n], loc=(0.0, -0.085, -0.100))
@@ -580,11 +605,16 @@ def b_top_teller_vest(rig, ctx, put):
         for z in (-0.07, -0.01, 0.05, 0.11, 0.17):
             p = cb.front_point(z, 0.238 if z < 0.05 else 0.222, 0.004)
             g.mesh_obj('tbutton', g.bm_ellipsoid(0.012, 0.007, 0.012, 8, 6), btn, rig.j['spine'], loc=p)
-        g.mesh_obj('name_pin', g.bm_box(0.060, 0.010, 0.018, bevel=0.004), M('pin_g', BRASS, 0.3, metal=0.6),
-                   rig.j['spine'], loc=(-0.112, -0.200, 0.200), rot=(-6, 0, 16))
+        # bank name badge: white card with a red bank stripe, framed in brass (reads at phone zoom)
+        g.mesh_obj('name_badge', g.bm_box(0.088, 0.010, 0.050, bevel=0.006), M('badge_w', '#FBF8F0', 0.5),
+                   rig.j['spine'], loc=(0.112, -0.205, 0.205), rot=(-6, 0, -16))
+        g.mesh_obj('name_badge_s', g.bm_box(0.090, 0.012, 0.014, bevel=0.003), M('badge_r', '#C8343A', 0.5),
+                   rig.j['spine'], loc=(0.112, -0.207, 0.222), rot=(-6, 0, -16))
+        g.mesh_obj('name_badge_f', g.bm_box(0.096, 0.008, 0.056, bevel=0.007), M('pin_g', BRASS, 0.3, metal=0.6),
+                   rig.j['spine'], loc=(0.112, -0.201, 0.205), rot=(-6, 0, -16))
         g.mesh_obj('pen', g.bm_cyl(0.008, 0.008, 0.06, seg=8), M('pen_b', '#2B3A5E', 0.3), rig.j['spine'],
-                   loc=(0.11, -0.196, 0.19))
-        bt = M('teller_bowtie', '#7A2E3A', 0.45)        # wine bow tie at the collar
+                   loc=(-0.11, -0.196, 0.19))
+        bt = M('teller_bowtie', '#2A2A30', 0.45)        # black bow tie at the collar (classic counter clerk)
         for s_ in (-1, 1):
             g.mesh_obj('bowtie_w', g.bm_ellipsoid(0.036, 0.014, 0.024, 12, 8), bt, rig.j['chest'],
                        loc=(s_ * 0.032, -0.160, 0.058), rot=(0, s_ * -14, 0))
@@ -665,7 +695,7 @@ def b_acc_gloves(rig, ctx, put):
 
 @part('hat_delivery_cap', 'hat', 'head', {'main': sub('hat', Z['hat']), 'visor': sub('hat2', Z['hat_detail']),
                                           'logo': sub(None, Z['hat_detail'] + 0.2)},
-      cls='full', tags=['job', 'delivery'], ages=['adult'], label={'ko': '택배 모자', 'en': 'courier cap'})
+      cls='full', tags=['job', 'delivery', 'jobhat'], ages=['adult'], label={'ko': '택배 모자', 'en': 'courier cap'})
 def b_hat_delivery_cap(rig, ctx, put):
     _lazy()
     with put('main'):
@@ -683,12 +713,12 @@ def b_hat_delivery_cap(rig, ctx, put):
         vd.ho(rig, 'cap_visor', visor, M('dcap_v', ctx.col('hat2'), 0.6), loc=(0, -0.27, 0.125), rot=(-12, 0, 0))
     with put('logo'):
         q = Quaternion((1, 0, 0), math.radians(-22))
-        vd.ho(rig, 'logo_bg', g.bm_box(0.085, 0.012, 0.070, bevel=0.010), M('logo_bg', '#F4F1EA', 0.5),
-              loc=(0, -0.318, 0.225), rot=q)
-        vd.ho(rig, 'logo_box', g.bm_box(0.045, 0.012, 0.038, bevel=0.004), M('logo_box', '#D98A3A', 0.5),
-              loc=(0, -0.325, 0.220), rot=q)
-        vd.ho(rig, 'logo_tape', g.bm_box(0.010, 0.012, 0.040, bevel=0.002), M('logo_tape', '#8A4A22', 0.5),
-              loc=(0, -0.329, 0.220), rot=q)
+        vd.ho(rig, 'logo_bg', g.bm_box(0.150, 0.012, 0.110, bevel=0.016), M('logo_bg', '#FBF8F0', 0.5),
+              loc=(0, -0.316, 0.215), rot=q)
+        vd.ho(rig, 'logo_box', g.bm_box(0.090, 0.014, 0.070, bevel=0.006), M('logo_box', '#E08A2E', 0.5),
+              loc=(0, -0.324, 0.208), rot=q)
+        vd.ho(rig, 'logo_tape', g.bm_box(0.018, 0.014, 0.072, bevel=0.003), M('logo_tape', '#7A3A1A', 0.5),
+              loc=(0, -0.329, 0.208), rot=q)
 
 
 POLO = [(0.236, -0.085), (0.230, -0.02), (0.212, 0.10), (0.208, 0.22), (0.195, 0.31), (0.155, 0.39),
@@ -719,10 +749,15 @@ def b_top_delivery_polo(rig, ctx, put):
                        loc=(0, -0.207, z))
         g.mesh_obj('side_stripe', band(POLO, 0.12, 0.15, out=0.003, keep=40, center=0), tm, rig.j['spine'])
     with put('logo'):
-        g.mesh_obj('logo_box', g.bm_box(0.050, 0.012, 0.044, bevel=0.005), M('logo_box', '#D98A3A', 0.5),
-                   rig.j['spine'], loc=(0.110, -0.200, 0.225), rot=(-6, 0, -14))
-        g.mesh_obj('logo_tape', g.bm_box(0.012, 0.012, 0.046, bevel=0.002), M('logo_tape', '#8A4A22', 0.5),
-                   rig.j['spine'], loc=(0.110, -0.205, 0.225), rot=(-6, 0, -14))
+        # big parcel logo on a white patch, chest and back (the courier reads at phone zoom)
+        for (lx, ly, lz, rz_), sc in (((0.0, -0.212, 0.150, 0.0), 1.0), ((0.0, 0.200, 0.200, 180.0), 1.25)):
+            g.mesh_obj('logo_bg', g.bm_box(0.150 * sc, 0.010, 0.110 * sc, bevel=0.016), M('logo_bg', '#FBF8F0', 0.5),
+                       rig.j['spine'], loc=(lx, ly, lz), rot=(-4, 0, rz_))
+            dy = -0.006 if ly < 0 else 0.006
+            g.mesh_obj('logo_box', g.bm_box(0.090 * sc, 0.012, 0.068 * sc, bevel=0.006), M('logo_box', '#E08A2E', 0.5),
+                       rig.j['spine'], loc=(lx, ly + dy, lz - 0.004), rot=(-4, 0, rz_))
+            g.mesh_obj('logo_tape', g.bm_box(0.018 * sc, 0.012, 0.070 * sc, bevel=0.003), M('logo_tape', '#7A3A1A', 0.5),
+                       rig.j['spine'], loc=(lx, ly + 2 * dy, lz - 0.004), rot=(-4, 0, rz_))
         g.mesh_obj('pen', g.bm_cyl(0.008, 0.008, 0.06, seg=8), M('pen_r', '#C8343A', 0.3), rig.j['spine'],
                    loc=(-0.105, -0.192, 0.22))
     for n in ('R', 'L'):
@@ -858,23 +893,31 @@ def b_acc_camera(rig, ctx, put):
         g.mesh_obj('cam_strap', g.bm_tube_path([(-0.10, -0.150, -0.08), (-0.13, -0.10, 0.06), (-0.11, 0.02, 0.12),
                                                 (0.0, 0.10, 0.14), (0.11, 0.02, 0.12), (0.13, -0.10, 0.06),
                                                 (0.10, -0.150, -0.08)], 0.008, segr=6), strap, rig.j['chest'])
+        # retro press camera, 1.4x the first pass, with a big silver flash reflector on a stalk (the reporter's
+        # icon at phone zoom) and a red PRESS tag on the strap
         body = M('cam_body', '#2A2A30', 0.4)
-        g.mesh_obj('cam', g.bm_box(0.20, 0.060, 0.110, bevel=0.016), body, rig.j['chest'], loc=(0, -0.205, -0.115))
-        g.mesh_obj('cam_top', g.bm_box(0.18, 0.050, 0.020, bevel=0.006), M('cam_chrome', '#D7DFE8', 0.2, metal=0.8),
-                   rig.j['chest'], loc=(0, -0.205, -0.050))
-        g.mesh_obj('lens', g.bm_cyl(0.040, 0.036, 0.055, seg=24), M('cam_lens', '#3A3A44', 0.3), rig.j['chest'],
-                   loc=(0, -0.235, -0.12), rot=(90, 0, 0))
-        g.mesh_obj('lens_glass', g.bm_cyl(0.028, 0.028, 0.006, seg=20), M('cam_glass', '#7AA6D8', 0.1,
+        chrome = M('cam_chrome', '#D7DFE8', 0.2, metal=0.8)
+        g.mesh_obj('cam', g.bm_box(0.26, 0.075, 0.140, bevel=0.020), body, rig.j['chest'], loc=(0, -0.215, -0.125))
+        g.mesh_obj('cam_top', g.bm_box(0.24, 0.062, 0.026, bevel=0.008), chrome, rig.j['chest'], loc=(0, -0.215, -0.044))
+        g.mesh_obj('lens', g.bm_cyl(0.055, 0.050, 0.070, seg=24), M('cam_lens', '#3A3A44', 0.3), rig.j['chest'],
+                   loc=(0, -0.252, -0.13), rot=(90, 0, 0))
+        g.mesh_obj('lens_ring', g.bm_ring(0.054, 0.008, seg=24, segr=6), chrome, rig.j['chest'],
+                   loc=(0, -0.288, -0.13), rot=(90, 0, 0))
+        g.mesh_obj('lens_glass', g.bm_cyl(0.040, 0.040, 0.006, seg=20), M('cam_glass', '#7AA6D8', 0.1,
                                                                            emission='#A8D0F8',
-                                                                           emission_strength=0.3),
-                   rig.j['chest'], loc=(0, -0.292, -0.12), rot=(90, 0, 0))
-        g.mesh_obj('flash', g.bm_lathe([(0.012, 0.0), (0.040, 0.020), (0.046, 0.028)], seg=20, cap_top=False),
-                   M('flash_dish', '#E4E9F0', 0.2, metal=0.6), rig.j['chest'], loc=(0.080, -0.215, -0.040),
+                                                                           emission_strength=0.35),
+                   rig.j['chest'], loc=(0, -0.322, -0.13), rot=(90, 0, 0))
+        g.mesh_obj('flash_stalk', g.bm_cyl(0.010, 0.010, 0.09, seg=8), chrome, rig.j['chest'],
+                   loc=(0.105, -0.215, -0.040))
+        g.mesh_obj('flash', g.bm_lathe([(0.016, 0.0), (0.060, 0.030), (0.070, 0.040)], seg=24, cap_top=False),
+                   M('flash_dish', '#EEF2F8', 0.18, metal=0.55), rig.j['chest'], loc=(0.105, -0.228, 0.050),
                    rot=(70, 0, 0))
-        g.mesh_obj('flash_bulb', g.bm_ellipsoid(0.014, 0.014, 0.014, 10, 8), M('bulb', '#FFF6D8', 0.2,
+        g.mesh_obj('flash_bulb', g.bm_ellipsoid(0.020, 0.020, 0.020, 10, 8), M('bulb', '#FFF6D8', 0.2,
                                                                                 emission='#FFF2C0',
-                                                                                emission_strength=0.6),
-                   rig.j['chest'], loc=(0.080, -0.226, -0.032))
+                                                                                emission_strength=0.7),
+                   rig.j['chest'], loc=(0.105, -0.242, 0.060))
+        g.mesh_obj('press_tag', g.bm_box(0.050, 0.010, 0.030, bevel=0.004), M('press_tag', '#C8343A', 0.5),
+                   rig.j['chest'], loc=(-0.12, -0.135, 0.02), rot=(-30, 0, 20))
 
 
 @part('held_notepad', 'hand', 'body', {'main': dict(sub(None, Z3['item']), zfrontFollow='hand_L')},
@@ -945,7 +988,7 @@ def b_top_trench(rig, ctx, put):
 
 
 @part('hat_deerstalker', 'hat', 'head', {'main': sub('hat', Z['hat']), 'check': sub('hat2', Z['hat_detail'])},
-      cls='full', tags=['detective'], ages=['adult', 'elder'], label={'ko': '탐정 모자', 'en': 'deerstalker'})
+      cls='full', tags=['detective', 'jobhat'], ages=['adult', 'elder'], label={'ko': '탐정 모자', 'en': 'deerstalker'})
 def b_hat_deerstalker(rig, ctx, put):
     _lazy()
     m = M('deer', ctx.col('hat'), 0.92)
@@ -977,6 +1020,132 @@ def b_hat_deerstalker(rig, ctx, put):
             base = 1.0 + 0.16 * max(0.0, z) ** 2
             return (0.90 + (1.152 - 0.90) * t * lines) * base
         cb.shell(rig, cm, radial, 'check_lines', seg=112, rings=56)
+
+
+# =========================================================================== polish: job looks that read at phone zoom
+# (the first pass made several jobs look like random residents at 0.6x: warehouse crew, forklift drivers,
+#  demolition crews and reporters each get one big, unmistakable cue)
+
+LGX_PROF = [(0.266, -0.08), (0.260, 0.0), (0.236, 0.12), (0.228, 0.24), (0.212, 0.31), (0.170, 0.38)]
+
+
+@part('det_lgx_vest', 'job', 'body', {'main': sub('acc', Z['vest']), 'trim': sub(None, Z['vest'] + 0.5)},
+      tags=['job', 'work', 'logistics'], ages=['adult'], label={'ko': '물류센터 조끼', 'en': 'logistics crew vest'})
+def b_det_lgx_vest(rig, ctx, put):
+    """Logistics-centre crew vest in the centre's sky-blue (tint 'acc'), sunflower-yellow bands (the centre's door /
+    sign yellow) and the parcel logo on the left chest and big on the back."""
+    _lazy()
+    with put('main'):
+        g.mesh_obj('lgx_vest', cb.vest_lathe(LGX_PROF, gap_deg=14, seg=48, sy=0.88), M('lgxv', ctx.col('acc'), 0.6),
+                   rig.j['spine'])
+    with put('trim'):
+        yel = M('lgx_yel', '#F2C230', 0.45, emission='#FFE070', emission_strength=0.05)
+        navy = M('lgx_navy', '#2B4F7E', 0.5)
+        for z in (0.035,):
+            bm = vd.sector_lathe([(0.270, z - 0.022), (0.270, z + 0.022)], keep_deg=172, sy=0.885)
+            kill = [f for f in bm.faces if abs(math.degrees(math.atan2(f.calc_center_median().x,
+                                                                       -f.calc_center_median().y))) < 14]
+            bmesh.ops.delete(bm, geom=kill, context='FACES')
+            g.mesh_obj('lgx_band', bm, yel, rig.j['spine'])
+        for (lx, ly, lz, rz_), k in (((0.118, -0.205, 0.215, -18.0), 1.0), ((0.0, 0.214, 0.190, 180.0), 1.6)):
+            dy = -0.007 if ly < 0 else 0.007
+            g.mesh_obj('lgx_logo', g.bm_box(0.074 * k, 0.010, 0.066 * k, bevel=0.010 * k), yel, rig.j['spine'],
+                       loc=(lx, ly, lz), rot=(-4, 0, rz_))
+            g.mesh_obj('lgx_glyph', g.bm_box(0.040 * k, 0.010, 0.034 * k, bevel=0.004 * k), navy, rig.j['spine'],
+                       loc=(lx, ly + dy, lz - 0.004 * k), rot=(-4, 0, rz_))
+            g.mesh_obj('lgx_glyph_lid', g.bm_box(0.046 * k, 0.010, 0.010 * k, bevel=0.002 * k), navy, rig.j['spine'],
+                       loc=(lx, ly + dy, lz + 0.018 * k), rot=(-4, 0, rz_))
+
+
+@part('hat_bump_cap', 'hat', 'head', {'main': sub('hat', Z['hat']), 'visor': sub('hat2', Z['hat_detail']),
+                                      'muffs': sub(None, Z['hat_detail'] + 0.3)},
+      cls='full', tags=['job', 'jobhat', 'logistics'], ages=['adult'],
+      label={'ko': '안전 캡 + 귀덮개', 'en': 'bump cap + ear defenders'})
+def b_hat_bump_cap(rig, ctx, put):
+    """Forklift driver: a baseball-style bump cap (hat_cap's shell) under big red ear defenders on a black band."""
+    _lazy()
+    tp.PARTS['hat_cap'].fn(rig, ctx, put)
+    with put('muffs'):
+        cup = M('muff_cup', '#D9483B', 0.35)
+        pad = M('muff_pad', '#2A2A30', 0.6)
+        band = M('muff_band', '#2A2A30', 0.4)
+        for s_ in (-1, 1):
+            vd.ho(rig, 'muff', g.bm_ellipsoid(0.052, 0.086, 0.094, 18, 10), cup, loc=(s_ * 0.335, 0.010, -0.020))
+            vd.ho(rig, 'muff_pad', g.bm_ring(0.070, 0.020, seg=24, segr=6, rz=1.2), pad,
+                  loc=(s_ * 0.300, 0.010, -0.020), rot=(0, 90, 0))
+            vd.ho(rig, 'muff_dot', g.bm_ellipsoid(0.012, 0.030, 0.030, 10, 6), M('muff_dot', '#F4F1EA', 0.4),
+                  loc=(s_ * 0.386, 0.010, -0.010))
+        pts = [(-0.345, 0.012, 0.05), (-0.31, 0.014, 0.22), (-0.17, 0.016, 0.36), (0.0, 0.016, 0.405),
+               (0.17, 0.016, 0.36), (0.31, 0.014, 0.22), (0.345, 0.012, 0.05)]
+        vd.ho(rig, 'muff_band', g.bm_tube_path(vd.catmull3(pts, 24), 0.018, segr=6, side_ref=(0, 1, 0), flat=1.8),
+              band)
+
+
+@part('hat_demo_helmet', 'hat', 'head', {'main': sub('hat', Z['hat']), 'shield': sub(None, Z['hat_detail'] + 0.3)},
+      cls='full', tags=['job', 'jobhat', 'demolition'], ages=['adult'],
+      label={'ko': '철거 안전모 (보안면)', 'en': 'hard hat + face shield'})
+def b_hat_demo_helmet(rig, ctx, put):
+    """Demolition: hat_hardhat's shell with a clear face shield flipped up over the brim (black frame + pivots)."""
+    _lazy()
+    tp.PARTS['hat_hardhat'].fn(rig, ctx, put)
+    with put('shield'):
+        clear = M('demo_shield', '#CFEAF6', 0.12, alpha=0.62, emission='#E8F8FF', emission_strength=0.06)
+        frame = M('demo_frame', '#2A2A30', 0.45)
+        sh = vd.sector_lathe([(0.392, 0.0), (0.385, 0.06), (0.360, 0.13), (0.330, 0.17)], keep_deg=62, seg=48,
+                             sy=1.0, center_deg=0)
+        vd.ho(rig, 'shield', sh, clear, loc=(0, -0.01, 0.13), rot=(-12, 0, 0))
+        edge = g.bm_ring(0.393, 0.011, seg=48, segr=6, sy=1.0, u0=-PI / 2 - math.radians(62),
+                         u1=-PI / 2 + math.radians(62), closed=False)
+        vd.ho(rig, 'shield_edge', edge, frame, loc=(0, -0.01, 0.13), rot=(-12, 0, 0))
+        for s_ in (-1, 1):
+            vd.ho(rig, 'pivot', g.bm_cyl(0.034, 0.034, 0.020, seg=16, centered=True), frame,
+                  loc=(s_ * 0.360, 0.03, 0.155), rot=(0, 90, 0))
+
+
+@part('acc_dust_mask', 'mask', 'head', {'main': sub(None, Z3['mask'])}, tags=['job', 'demolition'], ages=['adult'],
+      label={'ko': '방진 마스크', 'en': 'dust mask'})
+def b_acc_dust_mask(rig, ctx, put):
+    """White dust mask over the nose and mouth with a little grey valve and thin elastic straps."""
+    _lazy()
+    rx, ry, rz = tb.HEAD_R
+    with put('main'):
+        wm = M('dust_mask', '#E4EAF0', 0.7)
+        p, n = vf.surf(0.0, -0.140, 0.010)
+        cup = g.bm_ellipsoid(0.112, 0.062, 0.088, 20, 12)
+        vd.ho(rig, 'dust_cup', cup, wm, loc=(p.x, p.y + 0.030, p.z), rot=(-8, 0, 0))
+        vd.ho(rig, 'dust_valve', g.bm_cyl(0.032, 0.032, 0.022, seg=16, centered=True), M('dust_valve', '#5A6270', 0.4),
+              loc=(p.x + 0.035, p.y - 0.028, p.z - 0.020), rot=(90, 0, 0))
+        vd.ho(rig, 'dust_seam', g.bm_ring(0.112, 0.006, seg=32, segr=4, sy=0.56, u0=PI * 1.05, u1=PI * 1.95,
+                                          closed=False), M('dust_seam', '#D8D4CA', 0.7),
+              loc=(p.x, p.y + 0.030, p.z), rot=(82, 0, 0))
+        strap = M('dust_strap', '#3B3F4A', 0.6)
+        for zz in (-0.09, -0.175):
+            pts = []
+            for k in range(17):                        # round the back of the head (a = 0 at the back)
+                a = math.radians(-112 + 224 * k / 16)
+                pts.append((rx * 1.03 * math.sin(a), ry * 1.03 * math.cos(a), zz))
+            vd.ho(rig, 'dust_strap', g.bm_tube_path(pts, 0.007, segr=5), strap)
+
+
+@part('hat_press_fedora', 'hat', 'head', {'main': sub('hat', Z['hat']), 'band': sub('hat2', Z['hat_detail']),
+                                          'card': sub(None, Z['hat_detail'] + 0.3)},
+      cls='full', tags=['press', 'jobhat'], ages=['adult', 'elder'], label={'ko': '기자 중절모', 'en': 'press fedora'})
+def b_hat_press_fedora(rig, ctx, put):
+    """Reporter: hat_fedora's shape with a white PRESS card tucked into the band (red stripe + type lines)."""
+    _lazy()
+    tp.PARTS['hat_fedora'].fn(rig, ctx, put)
+    with put('card'):
+        th = math.radians(30)                          # toward the wearer's right (screen-left from the front)
+        r = 0.318                                      # outside the band (0.284 + 0.028 tube): sticks up from it
+        x, y = -r * math.sin(th), -r * math.cos(th) * 0.93 + 0.01
+        rot = (-8, 0, -math.degrees(th))
+        vd.ho(rig, 'press_card', g.bm_box(0.124, 0.012, 0.092, bevel=0.008), M('press_w', '#FBF8F0', 0.5),
+              loc=(x, y, 0.262), rot=rot)
+        vd.ho(rig, 'press_red', g.bm_box(0.126, 0.014, 0.024, bevel=0.004), M('press_r', '#C8343A', 0.5),
+              loc=(x, y - 0.003, 0.296), rot=rot)
+        for k in range(2):
+            vd.ho(rig, 'press_type', g.bm_box(0.084 - 0.024 * k, 0.014, 0.010, bevel=0.002), M('press_k', '#2A2A30', 0.5),
+                  loc=(x, y - 0.004, 0.266 - 0.022 * k), rot=rot)
 
 
 # =========================================================================== anim items
@@ -1020,21 +1189,25 @@ def b_held_hose(rig, ctx, put):
     age = rig.meta.get('ch', {}).get('age') or 'adult'
     s = ca.item_scale(age)
     mx, my, mz = rig.meta.get('hose_mid', (0.0, -0.22, 0.52))
-    red = M('hose_red', '#C8343A', 0.65)
-    redd = M('hose_red_d', '#A82A30', 0.65)
+    red = M('hose_red', '#D23A3A', 0.6)
+    redd = M('hose_red_d', '#9E2830', 0.65)
     brass = M('hose_brass', BRASS, 0.3, metal=0.75)
     blk = M('hose_blk', INKY, 0.45)
     j = rig.j['hose_J']
     L = 0.30 * s
-    ground = Vector((0.035 * s, -0.10 * s - my * 0.15, 0.034 * s))      # facing frame, in front of the feet
+    # facing frame (-x = the character's right, -y = forward): the hose leaves the nozzle, runs down in front of
+    # the RIGHT hip to the snow beside the right boot and trails away to the right / back - a clear red line from
+    # every dir (S / SE used to show only a short red tab hanging from the belt)
+    hip = Vector((-0.215 * s, -0.255 * s, 0.30 * s))
+    ground = Vector((-0.27 * s, -0.10 * s, 0.034 * s))
     with put('nozzle'):
         # nozzle along local -Y (forward): back end at +0.03, tip at -L
         prof = [(0.0, 0.0), (0.032 * s, 0.0), (0.040 * s, 0.05 * s), (0.044 * s, L * 0.40), (0.036 * s, L * 0.62),
                 (0.027 * s, L * 0.90), (0.032 * s, L), (0.0, L)]
         noz = g.bm_lathe(prof, seg=24, smooth_n=0, cap_bottom=False, cap_top=False)
         g.bm_transform(noz, Matrix.Rotation(PI / 2, 4, 'X'))            # +Z -> -Y
-        g.mesh_obj('nozzle', noz, M('nozzle_chrome', '#D7DFE8', 0.22, metal=0.85), j, loc=(0, 0.03, 0))
-        g.mesh_obj('nozzle_band', g.bm_ring(0.042 * s, 0.010 * s, seg=24, segr=6), blk, j,
+        g.mesh_obj('nozzle', noz, M('nozzle_black', '#2E3038', 0.35, metal=0.3), j, loc=(0, 0.03, 0))
+        g.mesh_obj('nozzle_band', g.bm_ring(0.042 * s, 0.010 * s, seg=24, segr=6), brass, j,
                    loc=(0, 0.03 - L * 0.62, 0), rot=(90, 0, 0))
         tipq = Quaternion((1, 0, 0), math.radians(90))
         g.mesh_obj('nozzle_tip', g.bm_ring(0.021 * s, 0.006 * s, seg=20, segr=6), brass, j,
@@ -1046,23 +1219,24 @@ def b_held_hose(rig, ctx, put):
                    loc=(0, 0.03 - L * 0.22, -0.045 * s), rot=(-14, 0, 0))
         g.mesh_obj('coupling', g.bm_cyl(0.036 * s, 0.036 * s, 0.040 * s, seg=20, centered=True), brass, j,
                    loc=(0, 0.045, 0), rot=tipq)
-        # hose: out of the back end, curling down in front of the belly to the snow in front of the feet
-        gl = ground - Vector((mx, my, mz))                               # ground point in hose_J space (key 0)
-        pts = [(0, 0.06, 0.0), (0.012, 0.10, -0.06), (0.02 + gl.x * 0.4, 0.06 + gl.y * 0.5, gl.z * 0.55),
-               (gl.x * 0.9, gl.y * 0.95 + 0.01, gl.z * 0.92), (gl.x, gl.y, gl.z)]
-        g.mesh_obj('hose_drop', g.bm_tube_path(vd.catmull3(pts, 16), 0.030 * s, segr=10), red, j)
+        # hose: out of the back end, round the right hip and down to the snow beside the right boot
+        o = Vector((mx, my, mz))
+        hl, gl = hip - o, ground - o                                     # in hose_J space (key 0)
+        pts = [(0, 0.06, 0.0), (-0.02, 0.11, -0.03), (hl.x * 0.55, hl.y * 0.6 + 0.05, hl.z * 0.45),
+               (hl.x, hl.y, hl.z), (gl.x * 0.96, gl.y * 0.9 + 0.02, (hl.z + gl.z) * 0.5), (gl.x, gl.y, gl.z)]
+        g.mesh_obj('hose_drop', g.bm_tube_path(vd.catmull3(pts, 24), 0.032 * s, segr=10), red, j)
     jl = rig.j['hoseline_J']
     with put('line'):
         g0 = ground
-        pts = [tuple(g0), (g0.x - 0.01, g0.y + 0.12 * s, 0.032 * s), (0.0, 0.16 * s, 0.031 * s),
-               (0.03 * s, 0.32 * s, 0.031 * s), (0.16 * s, 0.42 * s, 0.031 * s), (0.30 * s, 0.44 * s, 0.031 * s)]
-        g.mesh_obj('hose_line', g.bm_tube_path(vd.catmull3(pts, 22), 0.030 * s, segr=10), red, jl)
-        g.mesh_obj('hose_seam', g.bm_tube_path(vd.catmull3(pts, 22)[3:], 0.006 * s, segr=6), redd, jl,
-                   loc=(0, 0, 0.026 * s))
-        g.mesh_obj('ground_coupling', g.bm_cyl(0.040 * s, 0.040 * s, 0.050 * s, seg=20, centered=True), brass, jl,
-                   loc=tuple(g0 + Vector((0, 0.01, 0.004))), rot=(90, 0, 0))
-        g.mesh_obj('end_coupling', g.bm_cyl(0.038 * s, 0.038 * s, 0.050 * s, seg=20, centered=True), brass, jl,
-                   loc=(0.31 * s, 0.44 * s, 0.031 * s), rot=(0, 90, 0))
+        pts = [tuple(g0), (g0.x - 0.07 * s, g0.y + 0.08 * s, 0.032 * s), (-0.40 * s, 0.10 * s, 0.031 * s),
+               (-0.47 * s, 0.26 * s, 0.031 * s), (-0.46 * s, 0.44 * s, 0.031 * s), (-0.40 * s, 0.58 * s, 0.031 * s)]
+        g.mesh_obj('hose_line', g.bm_tube_path(vd.catmull3(pts, 24), 0.032 * s, segr=10), red, jl)
+        g.mesh_obj('hose_seam', g.bm_tube_path(vd.catmull3(pts, 24)[3:], 0.006 * s, segr=6), redd, jl,
+                   loc=(0, 0, 0.028 * s))
+        g.mesh_obj('ground_coupling', g.bm_cyl(0.042 * s, 0.042 * s, 0.050 * s, seg=20, centered=True), brass, jl,
+                   loc=tuple(g0 + Vector((0, 0.0, 0.004))), rot=(90, 0, 0))
+        g.mesh_obj('end_coupling', g.bm_cyl(0.040 * s, 0.040 * s, 0.050 * s, seg=20, centered=True), brass, jl,
+                   loc=(-0.40 * s, 0.60 * s, 0.031 * s), rot=(90, 0, 0))
 
 
 @part('held_broom', 'item', 'body', {'main': sub(None, Z3['broom'])}, tags=['anim_item'],
@@ -1076,20 +1250,28 @@ def b_held_broom(rig, ctx, put):
     j = rig.j['broom_J']
     age = rig.meta.get('ch', {}).get('age') or 'adult'
     s = ca.item_scale(age)
-    L = 0.92 * s
+    L = 1.02 * s
     with put('main'):
-        g.mesh_obj('handle', g.bm_cyl(0.015 * s, 0.015 * s, L - 0.10 * s, seg=10), M('broom_wood', '#C98F55', 0.6), j,
-                   loc=(0, 0, 0.10 * s))
-        g.mesh_obj('handle_tip', g.bm_ellipsoid(0.019 * s, 0.019 * s, 0.019 * s, 10, 6), M('broom_tip', '#C8343A',
+        g.mesh_obj('handle', g.bm_cyl(0.017 * s, 0.017 * s, L - 0.26 * s, seg=10), M('broom_wood', '#B07A44', 0.6), j,
+                   loc=(0, 0, 0.26 * s))
+        g.mesh_obj('handle_tip', g.bm_ellipsoid(0.021 * s, 0.021 * s, 0.021 * s, 10, 6), M('broom_tip', '#C8343A',
                                                                                          0.5),
                    j, loc=(0, 0, L))
-        straw = M('straw', '#E2B85A', 0.85)
-        head = g.bm_lathe([(0.115 * s, 0.0), (0.090 * s, 0.05 * s), (0.050 * s, 0.10 * s), (0.022 * s, 0.135 * s)],
-                          seg=24, sx=1.0, sy=0.38, smooth_n=8, cap_bottom=True, cap_top=True)
-        g.mesh_obj('broom_head', vd.fuzz(head, 0.0035, 70.0), straw, j, loc=(0, 0, 0.0))
-        for z in (0.075, 0.098):
-            g.mesh_obj('binding', g.bm_ring((0.075 if z < 0.09 else 0.058) * s, 0.008 * s, seg=20, segr=6, sy=0.42),
-                       M('broom_bind', '#C8343A', 0.5), j, loc=(0, 0, z * s))
+        # wide flat fan of straw / twigs (14+ px across at 1x), splayed on the snow
+        straw = M('straw', '#E3BC5C', 0.85)
+        twig = M('twig', '#B8893C', 0.8)
+        head = g.bm_lathe([(0.125 * s, 0.0), (0.118 * s, 0.05 * s), (0.085 * s, 0.13 * s), (0.045 * s, 0.22 * s),
+                           (0.026 * s, 0.30 * s)], seg=28, sx=1.0, sy=0.32, smooth_n=10, cap_bottom=True, cap_top=True)
+        g.mesh_obj('broom_head', vd.fuzz(head, 0.004, 60.0), straw, j, loc=(0, 0, 0.0))
+        for k in range(9):                                    # twig streaks on both faces + ends poking out
+            t = (k - 4) / 4.0
+            for side in (-1, 1):
+                pts = [(t * 0.020 * s, side * 0.008 * s, 0.29 * s), (t * 0.065 * s, side * 0.022 * s, 0.14 * s),
+                       (t * 0.118 * s, side * 0.030 * s, -0.004 * s)]
+                g.mesh_obj('twig', g.bm_tube_path(vd.catmull3(pts, 8), 0.0042 * s, segr=5), twig, j)
+        bind = M('broom_bind', '#6B4026', 0.6)
+        for z, r_ in ((0.215, 0.050), (0.262, 0.036)):
+            g.mesh_obj('binding', g.bm_ring(r_ * s, 0.010 * s, seg=20, segr=6, sy=0.45), bind, j, loc=(0, 0, z * s))
 
 
 @part('held_phone', 'item', 'body', {'main': dict(sub('acc2', Z3['item']), zfrontFollow='hand_R')}, tags=['anim_item'],
@@ -1135,6 +1317,7 @@ def place_items3(rig, d, flags):
     box on its chest-local centre (turning with the chest), fire hose nozzle at the midpoint of the mittens
     (facing frame, pitched down), broom along the line through the mittens down to the snow.
     Returns {'nozzle': (tip, ahead) world, 'sweep': ground point world, 'box': (centre, bottom) world}."""
+    _lazy()
     bpy.context.view_layer.update()
     root = rig.j['root']
     inv_root = root.matrix_world.inverted()
@@ -1142,12 +1325,18 @@ def place_items3(rig, d, flags):
     age = rig.meta.get('ch', {}).get('age', 'adult')
     out = {}
     if 'sack_R' in rig.j:
-        hw = rig.world('hand_R', (0.0, -0.004, 0.010))
-        jn = rig.j['sack_R']
-        jn.location = inv_root @ hw
-        jn.rotation_quaternion = Quaternion((1, 0, 0), math.radians(-6))
         s = item_scale3(age)
-        jn.scale = (s, s, s)
+        flee = bool(flags.get('_flee'))
+        # right fist normally; in flee the left mitten (far side in SE / E) holds it up by the shoulder
+        for jname, hand, on in (('sack_R', 'hand_R', not flee), ('sack_F', 'hand_L', flee)):
+            if jname not in rig.j:
+                continue
+            hw = rig.world(hand, (0.0, -0.004, 0.010))
+            jn = rig.j[jname]
+            jn.location = inv_root @ hw
+            jn.rotation_quaternion = Quaternion((1, 0, 0), math.radians(-6))
+            k = s if on else 1e-4
+            jn.scale = (k, k, k)
     if 'box_J' in rig.j:
         jn = rig.j['box_J']
         tx, ty, tz = rig.meta.get('torso_scale', (1, 1, 1))
@@ -1181,6 +1370,8 @@ def place_items3(rig, d, flags):
         if dirv.z < 0.2:
             dirv = (dirv + Vector((0, 0, 0.6))).normalized()
         gz = rig.j['root'].matrix_world.translation.z
+        if flags.get('_broom') in (0, len(ca.SWEEP_DX) - 1):
+            gz += 0.016                                         # bristles lift a little at both ends of the arc
         t = (p2.z - gz) / dirv.z
         ground = p2 - dirv * t
         jn = rig.j['broom_J']

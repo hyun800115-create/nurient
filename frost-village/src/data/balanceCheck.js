@@ -167,7 +167,7 @@ const V4B_SHOPS = {
   restaurant: { need: { item_fish_cooked: 40, item_meat_cooked: 15 }, rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'], after: 'zone_hunt' },
   carpenter_workshop: { need: { item_plank: 50 }, rent: 25, sells: [], after: 'zone_forest' },
   hardware_store: { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
-  supermarket: { need: { item_can: 30, item_bread: 20 }, rent: 40, sells: ['item_can', 'item_bread'], after: 'b:cannery' },
+  supermarket: { need: { item_can: 20, item_bread: 20 }, rent: 40, sells: ['item_can', 'item_bread'], after: 'b:cannery' },
 };
 const V4B_LOTS = ['lotA1', 'lotA2', 'lotA3', 'lotB1', 'lotB2', 'lotB3', 'lotB5', 'lotH1', 'lotH2', 'lotH3', 'lotH4', 'lotH5'];
 
@@ -254,7 +254,7 @@ function checkV4B(B) {
   fixNum(R2, 'people', 'v4.rank.2.people', 1, 999, 45, true);
   fixNum(R2, 'shops', 'v4.rank.2.shops', 0, F.order.length, Math.min(5, F.order.length), true);
   fixNum(R2, 'happy', 'v4.rank.2.happy', 0, 100, 70);
-  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 10000, true);
+  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 14000, true);
   const C = sub('ceremony');
   fixNum(C, 'length', 'v4.ceremony.length', 3, 60, 12);
   fixNum(C, 'skipAfter', 'v4.ceremony.skipAfter', 0, C.length, 3);

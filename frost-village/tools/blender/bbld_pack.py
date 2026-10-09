@@ -406,7 +406,9 @@ CONVENTIONS = {
     'pool': 'hotel_pool is the DECK: its visible water surface is cut out (transparent), so the water is drawn UNDER '
             'it (land over water, exactly like the sea under the land; Water.js writes alpha 1 in a stair-stepped '
             'mesh around the water and relies on the land covering it). Shader path: new Water(scene, {region: '
-            'bbox of the water poly + 24, mask: {water: [waterPolyFlat offset by the anchor]}, waterPx: 0, '
+            'waterRegion offset by the anchor (the water bbox, NO margin: the Water.js body mesh is 64 x 32 px blocks clamped to '
+            'the region, and the deck is opaque over that whole box - a bigger region lets blocks poke out past the '
+            'deck), mask: {water: [waterPolyFlat offset by the anchor]}, waterPx: 0, '
             'defaultShore: "quay", palette: "pool", openSea: false, depth: d - 0.5, shoreDepth: d - 0.45}). '
             'Fallback (Canvas / low quality): `hotel_pool_water` (opaque water + pool floor, same frame + anchor, '
             'spr:hotel_pool_water:ripple) at d - 0.5. One of the two must always be drawn (the deck has a hole). '
@@ -433,6 +435,11 @@ def build_manifest(builds, derived, frame_atlas, atlas_keys, old):
         if m.get('water'):
             s['waterPoly'] = m['water']['poly']
             s['waterPolyFlat'] = [v for p_ in m['water']['poly'] for v in p_]
+            wx_ = [p_[0] for p_ in m['water']['poly']]
+            wy_ = [p_[1] for p_ in m['water']['poly']]
+            # Water.js region = the water's bounding box with NO margin: its body mesh is made of 64 x 32 px blocks
+            # clamped to the region, and the deck is opaque over that whole box (bbld_check verifies it)
+            s['waterRegion'] = [min(wx_), min(wy_), max(wx_) - min(wx_), max(wy_) - min(wy_)]
             s['waterRectPx'] = m['water']['rectWater']
             s['waterRectM'] = m['water']['rectM']
             s['waterOverlay'] = k + '_water'

@@ -2,6 +2,8 @@
 //   node tools/test/cityfolk_phaser.mjs                       headless Chromium + Phaser 3.90 (WebGL / SwiftShader)
 //   node tools/test/cityfolk_phaser.mjs --parity cases.json   Python <-> JS compositor parity (no browser)
 //   node tools/test/cityfolk_phaser.mjs --jsgen                JS generator: presets keep their promises (no browser)
+//   node tools/test/cityfolk_phaser.mjs --incident fire        Phaser scene with ONLY that incident's cityfolk pages
+//                                                              loaded (cfPages.incidents.fire): residency check
 //
 // Phaser mode: loads assets/townfolk + assets/townfolk2 (+ assets/beachfolk when present) + assets/cityfolk,
 // merges them with mergeTownfolkFragments() (tools/cityfolk_compose.js), installs the tfatlas frames and stages a
@@ -88,8 +90,8 @@ async function jsgen() {
     police_officer: ['run', 'point', 'phone', 'think', 'walk', 'talk'], detective: ['think', 'point', 'phone', 'walk', 'talk', 'run'],
     burglar: ['flee', 'run', 'arrested_walk', 'walk', 'idle', 'fight', 'argue', 'sad', 'sit'],
     banker: ['walk', 'talk', 'think', 'shocked', 'phone', 'sit'], bank_teller: ['walk', 'talk', 'phone', 'shocked', 'idle'],
-    warehouse_worker: ['carry_box', 'carry_walk', 'walk', 'sweep'], forklift_driver: ['carry_box', 'walk', 'talk'],
-    delivery_driver: ['carry_box', 'run', 'walk', 'phone'], mover: ['carry_box', 'carry_walk', 'walk'],
+    warehouse_worker: ['carry_box', 'walk', 'sweep', 'idle', 'talk', 'point'], forklift_driver: ['carry_box', 'walk', 'talk', 'idle'],
+    delivery_driver: ['carry_box', 'run', 'walk', 'phone'], mover: ['carry_box', 'walk', 'idle', 'talk'],
     construction_worker: ['sweep', 'carry_box', 'point', 'walk'], demolition_worker: ['sweep', 'carry_box', 'point', 'walk'],
     reporter: ['run', 'phone', 'point', 'talk', 'walk', 'think', 'shocked'] };
   const tf = new Cityfolk(M.townfolk);
@@ -107,18 +109,29 @@ async function jsgen() {
       }
     }
   }
-  // random townsfolk: every anim pickAnim() returns must be playable
-  let rp = 0, badPick = 0;
-  for (let k = 0; k < 2000; k++) { const p = tf.randomPerson(rng); rp++;
-    for (const a of tf.T.cityfolkAnims) { const r = tf.pickAnim(p, a); if (!tf.canPlay(p, r.anim)) badPick++; } }
+  // random townsfolk: every anim pickAnim() returns must be playable, never carry_walk (the v4 runtime drops it),
+  // flee never falls back to a calm walk; coverage = share of residents who play the anim itself
+  let rp = 0, badPick = 0, carryWalk = 0, fleeWalk = 0; const cov = {}, fb = {};
+  const has = (a) => a !== 'carry_walk';
+  for (let k = 0; k < 3000; k++) { const p = tf.randomPerson(rng); rp++;
+    for (const a of tf.T.cityfolkAnims) {
+      const r = tf.pickAnim(p, a, { has });
+      if (!tf.canPlay(p, r.anim)) badPick++;
+      if (r.anim === 'carry_walk') carryWalk++;
+      if (a === 'flee' && r.anim === 'walk') fleeWalk++;
+      if (r.anim === a) cov[a] = (cov[a] || 0) + 1; else { const key = a + '->' + r.anim; fb[key] = (fb[key] || 0) + 1; }
+    } }
+  const coverage = Object.fromEntries(tf.T.cityfolkAnims.map((a) => [a, +(100 * (cov[a] || 0) / rp).toFixed(1)]));
+  const fallbacks = Object.fromEntries(Object.entries(fb).map(([k, v]) => [k, +(100 * v / rp).toFixed(1)]));
   const res = ({ fragments: frags, presetPeople: people, promiseFails: fails, layerFramesChecked: frames,
-    missingCore: missCore, missingOther: missOther, randomPeople: rp, unplayablePicks: badPick, ex });
+    missingCore: missCore, missingOther: missOther, randomPeople: rp, unplayablePicks: badPick, carryWalkPicks: carryWalk,
+    fleeToWalk: fleeWalk, coveragePct: coverage, fallbackPct: fallbacks, ex });
     console.log(JSON.stringify(res));
-    process.exit(fails || missCore || badPick ? 1 : 0);
+    process.exit(fails || missCore || badPick || carryWalk || fleeWalk ? 1 : 0);
   
 }
 
-const HTML = (frags) => `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#eef3f9}</style>
+const HTML = (frags, inc = null) => `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#eef3f9}</style>
 <script src="lib/phaser.min.js"></script></head><body><script type="module">
 import { townfolkPreload, townfolkInstall, mulberry32 } from './tools/townfolk_compose.js';
 import { mergeTownfolkFragments, Cityfolk, CityfolkSprite } from './tools/cityfolk_compose.js';
@@ -130,7 +143,16 @@ for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext 
 }
 const rd = async (f) => (await fetch('assets/' + f + '/manifest.json')).json();
 const man = mergeTownfolkFragments(await rd('townfolk'), ...(await Promise.all(${JSON.stringify(frags)}.map(rd))));
-window.__CF = { ready: false, missing: [], checked: 0, emptyLayers: new Set(), fallbacks: [] };
+// incident mode: only the cityfolk pages that incident needs are loaded (cfPages.incidents[INC].pages); sprites skip
+// (pickAnim {has}) anims whose page is not resident
+const INC = ${JSON.stringify(inc)};
+const PAGES = man.townfolk.cfPages || { groups: {}, incidents: {} };
+const resident = new Set(INC ? PAGES.incidents[INC].pages : Object.keys(PAGES.groups));
+if (INC) {
+  const keep = new Set([...resident].flatMap((g) => PAGES.groups[g].atlases));
+  man.atlases = man.atlases.filter((a) => !a.key.startsWith('cf_') || keep.has(a.key));
+}
+window.__CF = { ready: false, missing: [], checked: 0, emptyLayers: new Set(), fallbacks: [], inc: INC };
 class S extends Phaser.Scene {
   preload() { townfolkPreload(this, man, 'assets/'); }
   create() {
@@ -144,8 +166,11 @@ class S extends Phaser.Scene {
     g.fillStyle(0xe9e3da, 1).fillPoints([{ x: 360, y: 960 }, { x: 710, y: 1110 }, { x: 360, y: 1260 }, { x: 10, y: 1110 }], true);
     const rng = mulberry32(808);
     this.npcs = [];
+    const has = (a, p) => { const g = p ? tf.pageNeeded(p, a) : tf.pageOf(a); return !g || resident.has(g); };
+    this.has = has;
     const add = (p, anim, dir, x, y, face) => {
       const s = new CityfolkSprite(this, tf, p, x, y);
+      s.has = has;
       s.play(anim, dir); if (face) s.setFace(face);
       if (s.anim !== anim) window.__CF.fallbacks.push(anim + '->' + s.anim);
       s.frame = Math.floor(rng() * tf.T.anims[s.anim].frames); s.refresh(true);
@@ -158,6 +183,8 @@ class S extends Phaser.Scene {
     const crowd = ['shocked', 'point', 'phone', 'think', 'shocked', 'point', 'shocked', 'phone'];
     for (let k = 0; k < 8; k++) add(tf.randomPerson(rng), crowd[k], ['E', 'W', 'SE', 'SW', 'E', 'W', 'SE', 'SW'][k], 90 + k * 75, 450 + (k % 2) * 30);
     add(tf.preset('reporter', rng), 'phone', 'SE', 620, 260);
+    add(tf.preset('firefighter', rng), 'talk', 'SW', 600, 400);    // talk: social page, not resident in a fire
+    if (!INC) {
     // the chase (middle): police running after a burglar, an arrest, a scuffle
     add(tf.preset('burglar', rng), 'flee', 'W', 220, 680);
     add(tf.preset('police_officer', rng), 'run', 'W', 330, 690);
@@ -175,12 +202,13 @@ class S extends Phaser.Scene {
     add(tf.preset('banker', rng), 'talk', 'SE', 420, 1180); add(tf.preset('bank_teller', rng), 'idle', 'W', 480, 1190);
     add(tf.preset('forklift_driver', rng), 'walk', 'NE', 640, 1060);
     for (let k = 0; k < 6; k++) add(tf.randomPerson(rng), k % 2 ? 'walk' : 'run', ['SW', 'SE', 'NE', 'W', 'S', 'E'][k], 80 + k * 110, 960 + (k % 3) * 25);
-    // audit every frame of every anim these people can play
+    }
+    // audit every frame of every anim these people can play (and the runtime can show: resident pages)
     const tex = this.textures;
     let checked = 0;
     for (const s of this.npcs) {
       for (const [a, info] of Object.entries(tf.T.anims)) {
-        if (!tf.canPlay(s.person, a)) continue;
+        if (!tf.canPlay(s.person, a) || !has(a, s.person)) continue;
         for (const d of info.dirs) for (let i = 0; i < info.frames; i++) {
           for (const l of tf.layers(s.person, a, d, i)) {
             checked++;
@@ -194,6 +222,8 @@ class S extends Phaser.Scene {
     }
     window.__CF.checked = checked;
     window.__CF.textures = man.atlases.length;
+    let cfB = 0; for (const a of man.atlases) if (a.key.startsWith('cf_')) { const src = tex.get(a.key).source[0]; cfB += src.width * src.height * 4; }
+    window.__CF.cfMiB = +(cfB / 1048576).toFixed(1);
     window.__CF.scene = this; window.__CF.ready = true;
   }
   update(t, dt) { for (const s of this.npcs) { s.update(dt); s.place(); } }
@@ -202,7 +232,7 @@ window.__CF.game = new Phaser.Game({ type: Phaser.WEBGL, width: 720, height: 128
   render: { antialias: true }, scene: S, banner: false });
 </script></body></html>`;
 
-async function phaser() {
+async function phaser(inc = null) {
   const { start } = await import('./serve.mjs');
   const { launch, sleep } = await import('./pw.mjs');
   const srv = await start(0, { prefix: '/fv/' });
@@ -212,7 +242,7 @@ async function phaser() {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.route('**/fv/__cityfolk.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML(FRAGS) }));
+  await page.route('**/fv/__cityfolk.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML(FRAGS, inc) }));
   await page.goto(srv.url + '__cityfolk.html', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__CF && window.__CF.ready, null, { timeout: 300000 });
   await sleep(1500);
@@ -226,14 +256,15 @@ async function phaser() {
     return { npcs: sc.npcs.length, sprites, textures: window.__CF.textures, textureUnits: units,
       drawPerFrame: +((C.draw - d0) / n).toFixed(1), bindsPerFrame: +((C.binds - b0) / n).toFixed(1),
       layersChecked: window.__CF.checked, missing: window.__CF.missing.length, missingSample: window.__CF.missing.slice(0, 5),
-      fallbacks: window.__CF.fallbacks, neverPackedLayers: [...window.__CF.emptyLayers].slice(0, 10) };
+      fallbacks: window.__CF.fallbacks, neverPackedLayers: [...window.__CF.emptyLayers].slice(0, 10),
+      incident: window.__CF.inc, cityfolkTextureMiB: window.__CF.cfMiB };
   });
   fs.mkdirSync(path.join(ROOT, 'docs', 'previews'), { recursive: true });
-  await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'cityfolk_phaser.png') });
+  if (!inc) await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'cityfolk_phaser.png') });
   console.log(JSON.stringify(res));
   if (errors.length) console.log('ERRORS', errors.slice(0, 10));
   fs.mkdirSync('/tmp/fv_cache/cityfolk/review', { recursive: true });
-  fs.writeFileSync('/tmp/fv_cache/cityfolk/review/cityfolk_phaser.json', JSON.stringify({ res, errors }, null, 1));
+  fs.writeFileSync(`/tmp/fv_cache/cityfolk/review/cityfolk_phaser${inc ? '_' + inc : ''}.json`, JSON.stringify({ res, errors }, null, 1));
   await browser.close();
   await srv.close();
   process.exit(errors.length || res.missing ? 1 : 0);
@@ -242,4 +273,5 @@ async function phaser() {
 const i = process.argv.indexOf('--parity');
 if (i >= 0) await parity(process.argv[i + 1] || '/tmp/fv_cache/cityfolk/review/cityfolk_cases.json');
 else if (process.argv.includes('--jsgen')) await jsgen();
+else if (process.argv.includes('--incident')) await phaser(process.argv[process.argv.indexOf('--incident') + 1] || 'fire');
 else await phaser();

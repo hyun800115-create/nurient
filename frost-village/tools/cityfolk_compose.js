@@ -20,9 +20,23 @@
 //  - new face expressions (shocked, panic, angry, shout, thinking, determined, sheepish) work as face overrides
 //    on every face pose (faceExprs).
 //  - points: nozzlePoint / boxPoint / sweepPoint per frame (mirrored dirs negate x).
+//  (polish pass)
+//  - body parts with an `anims` list (beachfolk AND cityfolk parts) follow beachfolk_compose.partPlays - the canonical
+//    per-part rule every townfolk compositor honours; worn hand items list every anim and put the ones they have no
+//    frames in into noAnims (not drawn there).  Head parts hidden in an anim (beachfolk animHideHead / noAnims,
+//    beachfolk_compose.headHidden) are not drawn, and a hidden full hat no longer squashes the hair.
+//  - cfDrop[part] = cityfolk anims a v4 accessory is simply not drawn in (necklace; bags while fleeing / fighting /
+//    carrying) - it never blocks the anim.
+//  - pickAnim(person, anim, {has}) skips anims the runtime cannot show right now (has(anim, person) false: the page
+//    pageNeeded(person, anim) is not resident, or v4's dropped carry_walk) and walks animFallback; last resort idle
+//    (else walk).  CityfolkSprite.play passes sprite.has.
+//  - groundSpeed(person, anim, dir): px/s the planted foot slides at the anim's fps - move the sprite at that speed
+//    (or play the anim at fps * speed / groundSpeed) so the feet do not skate.
+//  - pageOf(anim) / cfPages: which atlas page (incident group) an anim's frames live in.
 
 import { MIRROR } from './townfolk_compose.js';
 import { Townfolk2, TownfolkSprite2 } from './townfolk2_compose.js';
+import { partPlays, headHidden } from './beachfolk_compose.js';
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -147,15 +161,11 @@ export class Cityfolk extends Townfolk2 {
       limbZ[name] = zf.has(name) ? L.zFront : L.z;
       push(limbZ[name], name, `${name}@${base}/${anim}_${d}_${i}`, this.tint(person, slot), false);
     }
-    const hat = this.wearsFullHat(person);
     const heads = [];
-    const parts = this.animParts(person, anim);
-    if (!opts.noItems) for (const it of (T.animItems || {})[anim] || []) if (!parts.includes(it)) parts.push(it);
-    for (const pn of parts) {
+    const vis = this.visibleParts(person, anim, opts.noItems);
+    const hat = vis.some((pn) => T.parts[pn].family === 'hat' && T.parts[pn].cls === 'full');
+    for (const pn of vis) {
       const P = T.parts[pn];
-      if (P.noAnims && P.noAnims.includes(anim)) continue;
-      if (P.onlyAnims && !P.onlyAnims.includes(anim)) continue;
-      if (P.anims && !P.anims.includes(anim)) continue;   // beachfolk parts: frames only in their anims
       for (const [s, sd] of Object.entries(P.subs)) {
         let z = typeof sd.z === 'object' ? sd.z[d] : sd.z;
         if (sd.follow) z = limbZ[sd.follow] + (sd.followDz ?? 0.5);
@@ -185,6 +195,25 @@ export class Cityfolk extends Townfolk2 {
     return out;
   }
 
+  /** the parts drawn in `anim` (animParts + animItems, minus noAnims / onlyAnims / non-listed anims / cfDrop /
+   *  hidden head parts), in draw order */
+  visibleParts(person, anim, noItems = false) {
+    const T = this.T;
+    const parts = this.animParts(person, anim);
+    if (!noItems) for (const it of (T.animItems || {})[anim] || []) if (!parts.includes(it)) parts.push(it);
+    const drop = T.cfDrop || {};
+    return parts.filter((pn) => {
+      const P = T.parts[pn];
+      if (!P) return false;
+      if (P.noAnims && P.noAnims.includes(anim)) return false;
+      if (P.onlyAnims && !P.onlyAnims.includes(anim)) return false;
+      if (P.anims && !P.anims.includes(anim)) return false;
+      if ((drop[pn] || []).includes(anim)) return false;
+      if (P.space === 'head' && headHidden(T, pn, anim)) return false;
+      return true;
+    });
+  }
+
   /** the person's parts + the props a (beachfolk) anim always shows (generator.animParts) */
   animParts(person, anim) {
     const parts = [...person.parts];
@@ -192,34 +221,63 @@ export class Cityfolk extends Townfolk2 {
     return parts;
   }
 
-  /** true when every worn body part has frames in `anim`: cityfolk anims / cityfolk parts -> bases[b].cfCover[anim];
-   *  parts with `anims` (beachfolk) -> that list (`drop: true` accessories are ignored: simply not drawn there);
-   *  other v4 / v5 parts -> only the anims of townfolk / townfolk2 */
+  /** true when every worn body part lets the person play `anim`:
+   *  parts with `anims` (beachfolk + cityfolk parts) -> beachfolk_compose.partPlays (the canonical rule);
+   *  v4 / v5 parts in a cityfolk anim -> bases[b].cfCover[anim] (cfDrop accessories are ignored: not drawn there);
+   *  v4 / v5 parts in any other later fragment's anim (beach) -> no */
   canPlay(person, anim) {
     const T = this.T;
     if (!T.anims[anim]) return false;
     const cover = (T.bases[person.base].cfCover || {})[anim];
-    const cf = new Set(T.cfParts || []);
     const isCf = (T.cityfolkAnims || []).includes(anim);
     const fr = (T.animFragment || {})[anim] || 'townfolk';
     const old = fr === 'townfolk' || fr === 'townfolk2';
+    const drop = T.cfDrop || {};
     for (const pn of this.animParts(person, anim)) {
       const P = T.parts[pn];
       if (!P || P.space !== 'body' || isItem(P) || !P.subs || !Object.keys(P.subs).length) continue;
-      if (P.anims) { if (!P.anims.includes(anim) && !P.drop) return false; }   // beachfolk drop: accessories not drawn there
-      else if (isCf || cf.has(pn)) { if (!cover || !cover.includes(pn)) return false; }
+      if ((drop[pn] || []).includes(anim)) continue;
+      if (P.anims) { if (!partPlays(P, anim)) return false; }
+      else if (isCf) { if (!cover || !cover.includes(pn)) return false; }
       else if (!old) return false;
     }
     return true;
   }
 
-  /** {anim, face}: `anim` if playable, else the first playable fallback (face = fallbackFace[anim] or null) */
-  pickAnim(person, anim) {
-    if (this.canPlay(person, anim)) return { anim, face: null };
+  /** {anim, face}: `anim` if playable, else the first playable fallback (face = fallbackFace[anim] or null).
+   *  opts.has(anim) = false marks anims the runtime cannot show right now (page not resident, v4 carry_walk). */
+  pickAnim(person, anim, opts = {}) {
+    const has = opts.has || (() => true);
+    const ok = (a) => has(a, person) && this.canPlay(person, a);
+    if (ok(anim)) return { anim, face: null };
     const fb = (this.T.animFallback || {})[anim] || [];
     const face = (this.T.fallbackFace || {})[anim] || null;
-    for (const a of fb) if (this.canPlay(person, a)) return { anim: a, face };
-    return { anim: this.canPlay(person, 'idle') ? 'idle' : 'walk', face };
+    for (const a of fb) if (ok(a)) return { anim: a, face };
+    return { anim: ok('idle') ? 'idle' : 'walk', face };
+  }
+
+  /** px/s the planted foot slides at the anim's fps (move the sprite at this speed), or null */
+  groundSpeed(person, anim, dir) {
+    const t = ((this.T.bases[person.base].groundSpeed || {})[anim] || {});
+    const v = t[MIRROR[dir] || dir];
+    return v == null ? null : v;
+  }
+
+  /** the cfPages group this person's frames of `anim` need (null when they draw from townfolk / townfolk2 only):
+   *  every cityfolk anim, and the older anims of people wearing cityfolk body parts */
+  pageNeeded(person, anim) {
+    const pg = this.pageOf(anim);
+    if (!pg) return null;
+    if ((this.T.cityfolkAnims || []).includes(anim)) return pg;
+    const cf = new Set(this.T.cfParts || []);
+    return person.parts.some((pn) => cf.has(pn)) ? pg : null;
+  }
+
+  /** the cfPages group an anim's cityfolk frames live in (null for anims without cityfolk frames) */
+  pageOf(anim) {
+    const g = ((this.T.cfPages || {}).groups) || {};
+    for (const [name, inf] of Object.entries(g)) if ((inf.anims || []).includes(anim)) return name;
+    return null;
   }
 
   _pt(person, table, anim, dir, i) {
@@ -241,7 +299,7 @@ export class Cityfolk extends Townfolk2 {
 /** TownfolkSprite2 + automatic fallback anims (pickAnim) and the cityfolk items (setItems(false) hides them). */
 export class CityfolkSprite extends TownfolkSprite2 {
   play(anim, dir) {
-    const pick = this.tf.pickAnim(this.person, anim);
+    const pick = this.tf.pickAnim(this.person, anim, { has: this.has });
     this.requested = anim;
     this.fallbackFace = pick.face;
     super.play(pick.anim, dir);

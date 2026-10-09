@@ -335,7 +335,7 @@ LOOK = [
 LOOK_FRAMES = [('idle', 'S', 0), ('walk', 'SE', 2), ('idle', 'N', 1), ('swim', 'S', 2), ('swim', 'SE', 5),
                ('swim', 'E', 1), ('swim', 'N', 3), ('float', 'S', 1), ('float', 'SE', 2), ('sunbathe', 'SE', 0),
                ('sunbathe', 'NE', 1), ('dig', 'SE', 2), ('ball_throw', 'S', 3), ('ball_catch', 'SE', 2),
-               ('splash_play', 'S', 2), ('surf', 'SE', 1), ('surf', 'NE', 0), ('wave', 'S', 2)]
+               ('splash_play', 'S', 2), ('surf', 'SE', 1), ('surf', 'NE', 0), ('wave', 'S', 2), ('talk', 'E', 0)]
 
 LOOK_JOBS = [
     dict(name='bellhop', base='adult_slim', face='std', nose='dot',

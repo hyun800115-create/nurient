@@ -38,7 +38,7 @@ NEW_PARTS = ['hat_fire_helmet', 'top_fire_coat', 'bot_fire_pants', 'acc_air_tank
              'acc_eye_mask', 'hat_burglar_beanie', 'held_loot_sack', 'top_suit_3pc', 'top_teller_vest', 'acc_visor',
              'top_work_jacket', 'acc_gloves', 'hat_delivery_cap', 'top_delivery_polo', 'bot_mover_overalls',
              'acc_back_brace', 'top_hivis_jacket', 'acc_toolbelt', 'acc_camera', 'held_notepad', 'top_trench',
-             'hat_deerstalker']
+             'hat_deerstalker', 'det_lgx_vest', 'hat_bump_cap', 'hat_demo_helmet', 'acc_dust_mask', 'hat_press_fedora']
 # limbs fully hidden by the body in a whole anim/dir (checked by eye on the renders): mittens behind the back seen
 # from the front, mittens hugging the box seen from behind, and the elder's short arms pumping the mitten in front of
 # the torso in run N (0 px in the render on half the frames)
@@ -55,13 +55,14 @@ PROMISE = {
     'burglar': (['top_stripes', 'hat_burglar_beanie', 'acc_eye_mask', 'held_loot_sack'],
                 ['flee', 'run', 'arrested_walk', 'walk', 'idle', 'fight', 'argue', 'sad', 'sit']),
     'banker': (['top_suit_3pc'], ['walk', 'talk', 'think', 'shocked', 'phone', 'sit']),
-    'bank_teller': (['top_teller_vest'], ['walk', 'talk', 'phone', 'shocked', 'idle']),
-    'warehouse_worker': (['top_work_jacket', 'acc_gloves'], ['carry_box', 'carry_walk', 'walk', 'sweep']),
-    'forklift_driver': (['hat_hardhat', 'det_hivis'], ['carry_box', 'walk', 'talk']),
+    'bank_teller': (['top_teller_vest', 'acc_visor'], ['walk', 'talk', 'phone', 'shocked', 'idle']),
+    'warehouse_worker': (['top_work_jacket', 'acc_gloves', 'det_lgx_vest'],
+                         ['carry_box', 'walk', 'sweep', 'idle', 'talk', 'point']),
+    'forklift_driver': (['hat_bump_cap', 'det_hivis'], ['carry_box', 'walk', 'talk', 'idle']),
     'delivery_driver': (['top_delivery_polo', 'hat_delivery_cap'], ['carry_box', 'run', 'walk', 'phone']),
-    'mover': (['bot_mover_overalls', 'acc_back_brace'], ['carry_box', 'carry_walk', 'walk']),
+    'mover': (['bot_mover_overalls', 'acc_back_brace'], ['carry_box', 'walk', 'idle', 'talk']),
     'construction_worker': (['top_hivis_jacket', 'hat_hardhat', 'acc_toolbelt'], ['sweep', 'carry_box', 'point', 'walk']),
-    'demolition_worker': (['hat_hardhat', 'det_hivis', 'acc_gloves'], ['sweep', 'carry_box', 'point', 'walk']),
+    'demolition_worker': (['hat_demo_helmet', 'det_hivis', 'acc_gloves'], ['sweep', 'carry_box', 'point', 'walk']),
     'reporter': (['acc_camera', 'held_notepad'], ['run', 'phone', 'point', 'talk', 'walk', 'think', 'shocked']),
 }
 
@@ -271,7 +272,9 @@ def main():
     nshare = 0
     for base in ('child_slim', 'adult_slim', 'elder_slim'):
         for layer in share.get('layers', []):
-            for a1, a2 in (('run', 'flee'), ('arrested_walk', 'carry_box')):
+            # run + flee live on one page (rush): the same rect; arrested_walk (scuffle page) and carry_box (work
+            # page) are separate pages, so their shared lower images are stored once per page
+            for a1, a2 in (('run', 'flee'),):
                 for d in T['anims'][a1]['dirs']:
                     for i in range(8):
                         n1, n2 = f'{layer}@{base}/{a1}_{d}_{i}', f'{layer}@{base}/{a2}_{d}_{i}'
@@ -279,7 +282,7 @@ def main():
                             nshare += 1
                             if rects3[n1] != rects3[n2]:
                                 err.append(f'lower layer not shared: {n1} vs {n2}')
-    info.append(f'{nshare} lower-body frame pairs shared run/flee + arrested_walk/carry_box')
+    info.append(f'{nshare} lower-body frame pairs shared run/flee (one rect each)')
     # tints
     for slot, tbl in F['tintTable'].items():
         ref = T['tintRef'].get(slot, T['tintRef']['default'])
@@ -288,6 +291,66 @@ def main():
             got = hex_rgb(t) * hex_rgb(ref)
             if float(abs(got - want).max()) > 0.12 and slot not in ('hands',):
                 warn.append(f'tint {slot} {c} clamps ({float(abs(got - want).max()):.2f})')
+    # fallbacks never land on an anim the v4 runtime drops (tools/build/pack_pages.py TF_DROP_ANIMS: carry_walk)
+    import re
+    pp = os.path.join(TOOLS, 'build', 'pack_pages.py')
+    dropped = set()
+    if os.path.exists(pp):
+        m_ = re.search(r'TF_DROP_ANIMS\s*=\s*\{([^}]*)\}', open(pp).read())
+        if m_:
+            dropped = set(re.findall(r"'([a-z_]+)'", m_.group(1)))
+    for a, lst in F.get('animFallback', {}).items():
+        for x in lst:
+            if x in dropped:
+                err.append(f'animFallback {a} -> {x}: the v4 runtime drops {x} (pack_pages TF_DROP_ANIMS)')
+    info.append(f'animFallback targets avoid the runtime-dropped anims {sorted(dropped)}')
+    # cityfolk body parts: 'anims' (partPlays) == the anims they are cast in, on every base they exist for
+    nanim = 0
+    for pn in F.get('cfParts', []):
+        P = T['parts'][pn]
+        tags = set(P.get('tags', []))
+        if 'anims' not in P:
+            err.append(f'{pn}: no anims list (beachfolk_compose.partPlays would treat it as a v4 part)')
+            continue
+        if 'item' in tags or 'anim_item' in tags:
+            continue
+        for b in ('child_slim', 'adult_slim', 'elder_slim'):
+            if b not in T['bases'] or pn not in T['bases'][b]['parts']:
+                continue
+            cov = {a for a, lst in T['bases'][b]['cfCover'].items() if pn in lst}
+            if cov != set(P['anims']):
+                err.append(f'{pn}@{b}: anims {sorted(P["anims"])} != cast {sorted(cov)}')
+            nanim += 1
+    info.append(f'{nanim} part/base anims lists == cfCover')
+    # walking anims publish groundSpeed (px/s) on every base
+    for b, B in T['bases'].items():
+        gs = B.get('groundSpeed', {})
+        for a in ('run', 'flee', 'arrested_walk', 'carry_box', 'walk'):
+            for d in T['anims'][a]['dirs']:
+                if not gs.get(a, {}).get(d):
+                    err.append(f'{b}: no groundSpeed {a} {d}')
+    gsa = T['bases']['adult_slim'].get('groundSpeed', {})
+    info.append('groundSpeed adult E (px/s): ' + ', '.join(f'{a} {gsa.get(a, {}).get("E")}' for a in
+                                                              ('walk', 'run', 'flee', 'carry_box', 'arrested_walk')))
+    # pages: every atlas belongs to exactly one page, every page lists its anims
+    pg = F.get('cfPages', {}).get('groups', {})
+    owner = {}
+    for name, inf in pg.items():
+        for k in inf.get('atlases', []):
+            if k in owner:
+                err.append(f'atlas {k} in pages {owner[k]} and {name}')
+            owner[k] = name
+    for a in man3['atlases']:
+        if a['key'] not in owner:
+            err.append(f'atlas {a["key"]} in no page')
+    for n, key in f3.items():
+        if '@' in n.split('/')[0]:
+            anim = n.split('/')[1].rsplit('_', 2)[0]
+            if anim not in pg.get(owner.get(key), {}).get('anims', []):
+                err.append(f'{n} in page {owner.get(key)} which does not list {anim}')
+                break
+    info.append('pages: ' + ', '.join(f'{k} {v.get("mib")} MiB' for k, v in pg.items()) + ' | incidents: ' +
+                ', '.join(f'{k} {v["mib"]} MiB' for k, v in F.get('cfPages', {}).get('incidents', {}).items()))
     # presets + generator
     tf = cc.Cityfolk(T, None)
     rng = random.Random(7)

@@ -378,7 +378,7 @@ export const BALANCE = {
                   restaurant:         { need: { item_fish_cooked: 40, item_meat_cooked: 15 },   rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'],         after: 'zone_hunt' },
                   carpenter_workshop: { need: { item_plank: 50 },                               rent: 25, sells: [],                                               after: 'zone_forest' },
                   hardware_store:     { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
-                  supermarket:        { need: { item_can: 30, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
+                  supermarket:        { need: { item_can: 20, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
                 },
                 shopShelf: 20, inlandEvery: 40 },
     // ── 역 짐꾼 (역 광장에서 고용): 첫째 / 둘째 값 (둘째는 가게가 3곳 열린 뒤), 한 번에 나르는 개수
@@ -393,8 +393,9 @@ export const BALANCE = {
     // ── 행복: window = 최근 손님 몇 명으로 계산할지, base = 가장 낮은 행복 (손님이 다 아쉬워해도)
     happiness: { window: 40, base: 50 },
     // ── 등급: 2 = 읍 (people = 사람 수, shops = 연 가게 수, happy = 행복, coins = 승격식 비용)
-    //    (v4 봇 측정: 3000 이면 조건이 다 찬 뒤 1~2분 만에 읍이 돼서 10000 으로 올림 — 잘하는 봇은 약 4분, 천천히 하는 봇은 약 9분 모아요)
-    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 10000 } },
+    //    (v4 봇 측정: 3000 이면 조건이 다 찬 뒤 1~2분 만에 읍이 돼서(잘하는 봇 39분) 14000 으로 올림 —
+    //     잘하는 봇 약 48분, 화살표만 따라가는 봇 약 49분, 천천히 하는 봇 약 55분에 읍이 돼요)
+    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 14000 } },
     // ── 승격식: length = 길이(초), skipAfter = 이만큼(초) 지나면 조이스틱으로 건너뛰기
     ceremony: { length: 12, skipAfter: 3 },
     // ── 텍스처 메모리 (MiB): mustMiB = 넘으면 안 되는 한도, targetMiB = 목표, lowMiB = 가벼운 그래픽 목표,

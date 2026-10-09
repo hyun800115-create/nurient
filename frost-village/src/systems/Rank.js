@@ -1,6 +1,6 @@
 // Rank (v4-B, docs/v4_plan.md §9): 마을 -> 읍. Three bars — people (village residents + station-district
 // citizens), founded shops open, happiness — and, when all three are full, the 승격식 pad (a Progression step,
-// balance.js v4.rank.2.coins, 10000) on the station square. Paying it starts a 12 s ceremony (bells, confetti, the badge flying to the
+// balance.js v4.rank.2.coins, 14000) on the station square. Paying it starts a 12 s ceremony (bells, confetti, the badge flying to the
 // HUD, the main street repaved to cobble tile by tile, new streetlights) and the rewards (§9.4): auto rent, a
 // second coach, the town grows to 120, new house lots, a bigger delivery bonus, the title 읍장.
 
@@ -26,7 +26,7 @@ export class Rank {
     this.applied = false;
   }
 
-  need() { return (BALANCE.v4.rank && BALANCE.v4.rank[2]) || { people: 45, shops: 5, happy: 70, coins: 10000 }; }
+  need() { return (BALANCE.v4.rank && BALANCE.v4.rank[2]) || { people: 45, shops: 5, happy: 70, coins: 14000 }; }
   /** village residents + the station district's citizens */
   people() { const gs = this.gs; return (gs.life ? gs.life.people() : 0) + (this.nb.districtPeople ? this.nb.districtPeople() : 0); }
   shops() { return this.nb.growth ? this.nb.growth.openShopCount() : 0; }

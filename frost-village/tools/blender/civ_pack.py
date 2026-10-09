@@ -638,12 +638,15 @@ def demolition_layout(vehicles, vimgs=None, frames=None, builds=None):
             e = OrderedDict()
             e['excavator'] = {'at': E_px, 'dir': ed, 'anim': 'dig', 'worldM': [round(ew[0], 2), round(ew[1], 2)],
                               'digPointWorldM': list(dg),
-                              'notes': 'outside the fence on the %s side, heading into the plot; drawn in front of '
-                                       'the ruin (y-sort by anchor)' % side}
+                              'notes': ('outside the fence on the %s side, heading into the plot; drawn in front of '
+                                        'the ruin (y-sort by anchor)' % side) if side in ('Y-', 'X+') else
+                                       ('outside the fence on the %s side (street behind the plot), heading into it; '
+                                        'drawn behind the ruin, which hides the bite' % side)}
             e['dump_truck'] = {'at': T_px, 'dir': td, 'worldM': [round(tw[0], 2), round(tw[1], 2)],
-                               'anim': 'idle -> idle_loaded after the excavator\'s dumpFrame; move_loaded to leave',
-                               'notes': 'behind the excavator (its left side, away from the camera), bed under the '
-                                        'bucket at dumpFrame'}
+                               'anim': 'idle; from the excavator\'s dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; '
+                                       'leaves with move + cargo_move_*',
+                               'notes': 'on the excavator\'s swing side, away from the camera (it never hides the '
+                                        'excavator), bed under the bucket at dumpFrame'}
             e['gateIndex'] = gate
             e['digVisible'] = bool(checks.get('digVisible', side in ('Y-', 'X+')))
             e['checks'] = checks
@@ -741,7 +744,8 @@ FIRE_SEQUENCE = [
                                    'demolitionLayout[ring].sides[street side] (default Y-); ruin -> rubble_pile_<size> '
                                    'when the excavator has knocked it down'},
     {'step': 'clearing', 'draw': 'rubble_pile_<size> -> rubble_pile_<size>_half -> nothing (dump truck leaves '
-                                 'move_loaded and plays tip at the dump); scorch decal stays'},
+                                 'with move + its cargo overlay, plays tip at the dump and drops dump_pile at tipPoint '
+                                 'from pileFrame); scorch decal stays'},
     {'step': 'rebuild', 'draw': 'assets/buildings site_plot_<S|M|L> -> site_foundation -> site_scaffold (same anchor); '
                                 'remove the fence; fade the scorch decal'},
     {'step': 'done', 'draw': 'the new building (same anchor)'},
