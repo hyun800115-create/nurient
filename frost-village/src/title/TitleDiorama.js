@@ -122,6 +122,12 @@ export class TitleDiorama {
 
   onGroup() {
     this.materialize();
+    // removals that waited for this stage's pictures
+    if (this.pendingOuts && this.stageReady(this.pendingTo)) {
+      const outs = this.pendingOuts;
+      this.pendingOuts = null;
+      outs.forEach((r, k) => { if (this.wanted(r.o, this.stage)) return; r.want = false; this.schedule(r, this.time + 0.05 * k, -1, 0.24); });
+    }
     // records that should already be visible (stage passed while their pictures were loading): fade in
     for (const r of this.recs) if (r.img && r.want && !r.shown && r.popT < 0 && r.popMode === 0) this.schedule(r, this.time, 1, 0.35);
     for (const r of this.groundRecs) if (r.img && r.want && !r.shown) { r.shown = true; r.fade = 0; r.img.setVisible(true).setAlpha(0); }
@@ -245,6 +251,7 @@ export class TitleDiorama {
   /** jump to stage s at once (idle title, reduced motion) */
   setStageInstant(s) {
     this.stage = s;
+    this.pendingOuts = null;
     for (const r of this.recs) {
       r.want = this.wanted(r.o, s);
       r.popT = -1; r.popMode = 0;
@@ -281,9 +288,18 @@ export class TitleDiorama {
     const ins = order.filter((r) => r.want);
     const outs = order.filter((r) => !r.want);
     ins.sort((a, b) => (b.o.hero ? 1 : 0) - (a.o.hero ? 1 : 0) || ((a.x - hx) ** 2 + ((a.y - hy) * 2) ** 2) - ((b.x - hx) ** 2 + ((b.y - hy) * 2) ** 2));
-    const outWin = outs.length ? Math.min(0.35, win * 0.2) : 0;
-    outs.forEach((r, k) => this.schedule(r, t0 + (outs.length > 1 ? (k / (outs.length - 1)) * outWin : 0), -1, 0.24));
-    const start = t0 + outWin + (outs.length ? 0.08 : 0);
+    // what this stage replaces goes only once its successors can be drawn (a late or missing stage never
+    // makes the island poorer): until then the old buildings stay
+    this.pendingOuts = null;
+    let outWin = 0;
+    if (outs.length && !this.stageReady(to)) {
+      for (const r of outs) r.want = true;
+      this.pendingOuts = outs; this.pendingTo = to;
+    } else if (outs.length) {
+      outWin = Math.min(0.35, win * 0.2);
+      outs.forEach((r, k) => this.schedule(r, t0 + (outs.length > 1 ? (k / (outs.length - 1)) * outWin : 0), -1, 0.24));
+    }
+    const start = t0 + outWin + (outWin ? 0.08 : 0);
     const n = ins.length;
     let end = start;
     ins.forEach((r, k) => {
@@ -661,7 +677,7 @@ export class TitleDiorama {
       cars.push({ spr, key, off });
     });
     if (!cars.length) return;
-    this.train = { cars, head: T.fromMx, state: 'in', t: 0, whistled: false, wait: 0 };
+    this.train = { cars, head: T.fromMx, from: T.fromMx, dur: ((T.stopMx - T.fromMx) / T.speed) * 1.6, state: 'in', t: 0, whistled: false, wait: 0 };
     this.placeTrain();
   }
 
@@ -682,8 +698,8 @@ export class TitleDiorama {
     const dist = T.stopMx - T.fromMx;
     const dur = dist / T.speed * 1.6;
     if (tr.state === 'in') {
-      const p = clamp01(tr.t / dur);
-      tr.head = T.fromMx + dist * (1 - Math.pow(1 - p, 2.2));
+      const p = clamp01(tr.t / tr.dur);
+      tr.head = tr.from + (T.stopMx - tr.from) * (1 - Math.pow(1 - p, 2.2));
       if (!tr.whistled && p > 0.25) { tr.whistled = true; this.cue('train', 0.7); }
       if (p > 0.15 && Math.random() < dt * 5) this.trainPuff();
       if (p >= 1) { tr.state = 'wait'; tr.t = 0; for (const c of tr.cars) c.spr.anims.pause(); }
@@ -696,7 +712,7 @@ export class TitleDiorama {
       if (Math.random() < dt * 4) this.trainPuff();
       if (p >= 1) { tr.state = 'gone'; tr.t = 0; }
     } else if (tr.state === 'gone') {
-      if (tr.t > 7) { tr.state = 'in'; tr.t = 0; tr.whistled = false; }
+      if (tr.t > 7) { tr.state = 'in'; tr.t = 0; tr.whistled = false; tr.from = T.fromMx; tr.dur = dur; }
     }
     for (const c of tr.cars) if (tr.state !== 'wait' && c.key && !c.spr.anims.isPlaying && !c.spr.anims.isPaused) c.spr.play(c.key);
     this.placeTrain();
@@ -707,8 +723,36 @@ export class TitleDiorama {
     this.smoke.emitParticleAt(e.x + 18, e.y - 118, 1);
   }
 
-  /** start the train arriving now (the intro calls this when stage 3 pops) */
-  trainArrive() { if (this.train) { this.train.state = 'in'; this.train.t = 0; this.train.whistled = false; this.train.head = L.TRAIN.fromMx; for (const c of this.train.cars) if (c.key) c.spr.play(c.key); } }
+  /**
+   * the train pulls in now (the intro calls this when stage 3 begins): it comes off the bridge a few metres
+   * before the station and stops there within ~2.3 s; the intro plays the whistle itself. Returns false when
+   * the town's pictures are not loaded (the train then arrives the long way once they are).
+   */
+  trainArrive(intro) {
+    if (!this.train) this.addTrain();
+    const tr = this.train, T = L.TRAIN;
+    if (!tr) return false;
+    tr.state = 'in'; tr.t = 0;
+    tr.from = intro ? T.stopMx - (T.introRun || 8) : T.fromMx;
+    tr.dur = intro ? (T.introSec || 2.3) : ((T.stopMx - T.fromMx) / T.speed) * 1.6;
+    tr.whistled = !!intro;
+    tr.head = tr.from;
+    for (const c of tr.cars) if (c.key && !this.reduced) c.spr.play(c.key);
+    this.placeTrain();
+    return true;
+  }
+
+  /** the ferry glides towards the terminal now (the intro's city beat); the intro plays the horn itself */
+  ferryArrive() {
+    const def = L.SHIPS.find((d) => d.char === 'ferry');
+    if (!def || def.s > this.stage) return false;
+    let sp = this.ships.find((w) => w.def === def);
+    if (!sp) { this.addShip(def); sp = this.ships.find((w) => w.def === def); }
+    if (!sp) return false;
+    sp.mx = def.stopMx - (def.introRun || 4.5); sp.state = 'in'; sp.t = 0; sp.cued = true;
+    this.placeShip(sp);
+    return true;
+  }
 
   addShip(sh) {
     const s = this.scene;
@@ -716,7 +760,7 @@ export class TitleDiorama {
     const a = TitleAssets.actor(sh.char + ':' + anim + ':' + sh.dir);
     if (!a || !TitleAssets.ready(sh.s)) return;
     const key = a.frames.length > 1 ? TitleAssets.anim(s, sh.char + ':' + anim + ':' + sh.dir, a.frames, a.fps) : null;
-    const spr = s.add.sprite(0, 0, a.frames[0][0], a.frames[0][1]).setOrigin(a.ox, a.oy).setScale(1 / a.scale);
+    const spr = s.add.sprite(0, 0, a.frames[0][0], a.frames[0][1]).setOrigin(a.ox, a.oy).setScale((sh.scale || 1) / a.scale);
     if (key && !this.reduced) spr.play(key);
     if (sh.flip) spr.setFlipX(true);
     spr.setTint(this.tint);
@@ -741,7 +785,7 @@ export class TitleDiorama {
     const p = (sp.mx - Math.min(d.fromMx, d.toMx)) / span;
     const edge = clamp01(Math.min(p, 1 - p) * 8);
     sp.spr.setAlpha(edge * sp.fade);
-    if (sp.lt) sp.lt.setPosition(x - 20, y - 90).setDepth(y - 199).setAlpha(this.lampK * edge * sp.fade * 0.75);
+    if (sp.lt) { const k = d.scale || 1; sp.lt.setPosition(x - 20 * k, y - 90 * k).setDepth(y - 199).setAlpha(this.lampK * edge * sp.fade * 0.75); }
   }
 
   updateShips(dt) {
@@ -754,7 +798,7 @@ export class TitleDiorama {
           if (sp.state === 'in') {
             const rem = d.stopMx - sp.mx;
             sp.mx += Math.max(0.12, Math.min(d.speed, rem * 0.35)) * dt;
-            if (rem < 0.05) { sp.state = 'wait'; sp.t = 0; this.cue('ship', 0.55); }
+            if (rem < 0.05) { sp.state = 'wait'; sp.t = 0; if (!sp.cued) this.cue('ship', 0.55); sp.cued = false; }
           } else if (sp.state === 'wait') {
             if (sp.t > 7) { sp.state = 'out'; sp.t = 0; }
           } else {

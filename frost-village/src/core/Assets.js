@@ -24,7 +24,7 @@ const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big)$/;
 export const MANIFEST_ONLY_FRAGMENTS = [];
 // (v4-A) fragments that are never loaded at boot: Assets.loadFragment() fetches them while the village
 // plays (docs/v4_plan.md §11.6). The artifact build packages them too (tools/build/build_artifact.mjs).
-export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3'];
+export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
 const BASE = 'assets/';
 // made for v4 (the spring ending): not used yet, never loaded
 const V3_ONLY = /^(bgm_spring)/;

@@ -31,11 +31,37 @@ const TRAITS = TRAIT_FLAGS.map(([flag, ax, op, v]) => [C[flag], AX[ax], op === '
 
 const WEATHER_KO = { clear: '맑은 하늘', sunny: '햇살', cloudy: '구름', light: '눈발', snow: '눈', heavy: '함박눈', blizzard: '눈보라', fog: '안개', mild: '포근한 날씨' };
 const WEATHER_EN = { clear: 'clear skies', sunny: 'sunshine', cloudy: 'clouds', light: 'flurries', snow: 'snow', heavy: 'heavy snow', blizzard: 'the blizzard', fog: 'fog', mild: 'mild weather' };
+// what each of the town's pets gets up to (PETS: 0 콩이 the dog, 1 나비 the cat, 2 뽀삐 the penguin); fact pet: n = pet, i = antic
 const PET_ANTICS = [
-  ['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['펭귄이랑 눈밭에서 뒹굴었', 'rolled in the snow with a penguin'],
-  ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 광장을 한 바퀴 돌았', 'pulled a sled round the plaza'],
-  ['할아버지 모자 위에서 낮잠을 잤', 'napped on Grandpa’s hat'], ['꼬리로 눈을 싹싹 쓸고 다녔', 'swept the snow with its tail'],
+  [['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['눈밭에서 데굴데굴 뒹굴었', 'rolled around in the snow'],
+    ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 광장을 한 바퀴 돌았', 'pulled a sled round the plaza'],
+    ['꼬리를 흔들며 손님들을 맞이했', 'greeted everyone, wagging its tail'], ['우체부 가방을 졸졸 따라다녔', 'followed the postman’s bag all morning']],
+  [['난롯가에서 하루 종일 낮잠을 잤', 'napped by the stove all day'], ['할아버지 모자 위에서 낮잠을 잤', 'napped on Grandpa’s hat'],
+    ['눈송이를 잡으려고 폴짝폴짝 뛰었', 'leapt about trying to catch snowflakes'], ['털실 뭉치를 데굴데굴 굴리고 다녔', 'rolled a ball of yarn all over town'],
+    ['생선 가게 앞에서 꼼짝도 안 했', 'would not budge from the fish shop'], ['창가에서 꾸벅꾸벅 졸았', 'dozed off on a windowsill']],
+  [['얼음판에서 배로 쭉 미끄럼을 탔', 'slid across the ice on its belly'], ['뒤뚱뒤뚱 광장을 한 바퀴 돌았', 'waddled all the way round the plaza'],
+    ['눈사람 옆에 서서 꼼짝 않고 있었', 'stood stock-still next to a snowman'], ['생선 가게에서 멸치를 얻어먹었', 'got an anchovy treat at the fish shop'],
+    ['아이들이랑 줄을 서서 썰매를 탔', 'queued up with the children for the sled'], ['날개를 파닥파닥하며 인사했', 'flapped its flippers to say hello']],
 ];
+// what a job is about, for introductions ('저는 소방관이에요. 마을의 불을 꺼요.') — a verb phrase before the ending
+const JOB_DO = {
+  baker: ['빵을 구워', 'bake bread'], barista: ['커피를 내려', 'make the coffee'], cook: ['요리를 해', 'do the cooking'], grocer: ['장 볼 거리를 팔아', 'sell the groceries'],
+  fishmonger: ['싱싱한 생선을 팔아', 'sell fresh fish'], stall_keeper: ['붕어빵을 구워', 'bake bungeoppang'], hairdresser: ['머리를 잘라', 'cut hair'],
+  teacher: ['아이들을 가르쳐', 'teach the children'], doctor: ['아픈 사람을 돌봐', 'look after sick people'], nurse: ['환자들을 돌봐', 'look after the patients'],
+  police: ['마을을 지켜', 'keep the town safe'], detective: ['사건을 풀어', 'solve mysteries'], firefighter: ['불을 꺼', 'put out fires'],
+  banker: ['마을 사람들 돈을 맡아 줘', 'look after people’s savings'], teller: ['은행 창구에 앉아 있어', 'work at the bank counter'],
+  picker: ['선반에서 물건을 꺼내', 'pick goods off the shelves'], forklift: ['지게차를 몰아', 'drive the forklift'], driver: ['물건을 배달해', 'deliver the goods'],
+  clerk: ['가게 정산을 해', 'settle the shops’ accounts'], carpenter: ['가구를 만들어', 'make furniture'], factory: ['냉장고랑 난로를 만들어', 'build fridges and stoves'],
+  postal: ['편지를 배달해', 'deliver the letters'], station: ['기차표를 끊어 줘', 'sell the train tickets'], hall_clerk: ['마을 일을 도와', 'help with the town’s business'],
+  reporter: ['신문 기사를 써', 'write for the paper'], librarian: ['책을 정리해', 'look after the books'], fisher: ['물고기를 잡아', 'catch fish'],
+  dock: ['배에 짐을 실어', 'load the boats'], lumberjack: ['나무를 해', 'cut wood'], farmer: ['밀을 키워', 'grow wheat'], miner: ['광석을 캐', 'dig for ore'],
+  builder: ['집을 지어', 'build houses'], mover: ['이삿짐을 날라', 'carry people’s furniture when they move'], musician: ['광장에서 연주해', 'play music in the plaza'],
+  painter: ['공원에서 그림을 그려', 'paint pictures in the park'], shopkeeper: ['가게를 해', 'run a shop'],
+};
+// one-syllable surnames that are also everyday words: '이 할머니' reads as 'this grandma', '나 순경' as 'me, officer'
+const AMBIG_SUR = /^(이|나|오|도|우|하|고|구|소|한|반|방|주|차|마|모|노|조)$/;
+// kinds of fact in which a child must not be named in the paper
+const CRIME = { theft: 1, arrest: 1, apology: 1, wanted: 1, tip: 1, queue_jump: 1, window: 1, scuffle: 1 };
 const HELP = [['무거운 짐을 들어 줬', 'carried the heavy bags'], ['집 앞 눈을 싹 치워 줬', 'shovelled the snow off the doorstep'], ['길을 친절하게 알려 줬', 'kindly showed the way'], ['미끄러졌을 때 일으켜 줬', 'helped them up after a slip'], ['잃어버린 장갑을 찾아 줬', 'found a lost mitten']];
 const PRANKS = [['등에 눈덩이를 쏙 넣었', 'slipped a snowball down the back of'], ['모자에 눈을 가득 채웠', 'filled with snow the hat of'], ['목도리에 눈을 한 움큼 넣었', 'stuffed snow into the scarf of'], ['썰매를 몰래 타고 갔', 'secretly rode off on the sled of'], ['머리 위로 눈을 와르르 쏟았', 'dumped a pile of snow on the head of']];
 const TRAIN = [['손님을 잔뜩 태우고 왔', 'arrived packed with visitors'], ['눈 때문에 조금 늦게 도착했', 'came in late because of the snow'], ['새 객차를 달고 왔', 'came with a brand-new carriage'], ['기적을 세 번이나 울렸', 'blew its whistle three times']];
@@ -107,8 +133,28 @@ export class Dialogue {
         added++;
       }
     }
+    this.fit(lines, talk.dur);
     talk.lines = lines;
     return lines;
+  }
+
+  /** the bubbles must fit in the time the simulation gave the talk (the speakers move on afterwards) */
+  fit(lines, total) {
+    if (!(total > 0) || !lines.length) return;
+    let sum = 0;
+    for (const l of lines) sum += l.dur;
+    if (sum <= total + 1e-6) return;
+    const min = Math.min(1.4, Math.floor((total / lines.length) * 10) / 10);
+    const k = total / sum;
+    sum = 0;
+    for (const l of lines) { l.dur = Math.max(min, Math.floor(l.dur * k * 10) / 10); sum += l.dur; }
+    // rounding: trim the longest bubbles by a tenth until it fits
+    for (let guard = 0; sum > total + 1e-6 && guard < 200; guard++) {
+      let j = 0;
+      for (let i = 1; i < lines.length; i++) if (lines[i].dur > lines[j].dur) j = i;
+      if (lines[j].dur <= min) break;
+      lines[j].dur = Math.round((lines[j].dur - 0.1) * 10) / 10; sum -= 0.1;
+    }
   }
 
   pushLine(lines, b, lang, talk) {
@@ -172,9 +218,17 @@ export class Dialogue {
     if (lang === 'ko') {
       const you = ls ? this.youWord(sp, ls, rel) : null;
       if (you) text = replaceYou(text, you);
+      if (sp && sp.male && /어머|호호/.test(text)) text = this.manly(text, sp);
       if (/[가-힣]$/.test(text)) text += '.';
     }
     return text;
+  }
+
+  /** '어머(나)' and '호호호' are what women say: men and boys say '오', '세상에', '아이고', '하하하' */
+  manly(text, sp) {
+    const elder = groupOf(this.e, sp) === G_ELDER;
+    return text.replace(/어머 어머/g, elder ? '아이고 아이고' : '우와').replace(/어머나/g, elder ? '아이고' : '세상에')
+      .replace(/어머(?!니)/g, elder ? '아이고' : '오').replace(/호호호/g, elder ? '허허허' : '하하하').replace(/호호/g, '하하');
   }
 
   /** true when a sentence of `text` repeats a sentence of the line just said (no parroting) */
@@ -236,7 +290,7 @@ export class Dialogue {
       const st = rel.stage;
       if (st <= ST_ACQ) set(C.acq);
       if (st >= ST_FRIEND) set(C.friend);
-      if (st >= ST_BEST && st !== ST_ENGAGED) set(C.best);
+      if (st >= ST_BEST && st !== ST_ENGAGED && st !== ST_SPOUSE) set(C.best);
       if (st === ST_SWEET || st === ST_ENGAGED) set(C.sweet);
       if (st === ST_SPOUSE) set(C.spouse);
       if (st >= ST_FRIEND || (rel.flags & RF_FAMILY)) set(C.close);
@@ -269,7 +323,7 @@ export class Dialogue {
     if (jt && C[jt] !== undefined) set(C[jt]);
     // time & weather
     const h = e.clock.minute / 60;
-    if (h >= 5 && h < 10.5) set(C.morning); else if (h >= 11 && h < 14) set(C.noon); else if (h >= 17 && h < 21) set(C.evening); else if (h >= 21 || h < 5) set(C.night);
+    if (h >= 5 && h < 10.5) set(C.morning); else if (h >= 11 && h < 14) set(C.noon); else if (h >= 14 && h < 17) set(C.afternoon); else if (h >= 17 && h < 21) set(C.evening); else if (h >= 21 || h < 5) set(C.night);
     if (e.clock.dow >= 5) set(C.weekend);
     const wx = e.weather.today;
     if (wx.kind === 'light' || wx.kind === 'snow' || wx.kind === 'heavy') set(C.snow);
@@ -316,6 +370,8 @@ export class Dialogue {
       if ((f.k === 'fire' && f.st === 1) || (f.k === 'fire_out' && f.n === 0)) set(C.minor);
       const age = (e.now - f.sec) / e.cfg.dayLength;
       if (age > 2) set(C.old); else if (age < 0.35) set(C.fresh);
+      if (e.clock.day - f.day <= 1) set(C.recent);
+      if (f.k === 'pet') { if (f.n % 3 === 1) set(C.pet_cat); else if (f.n % 3 === 2) set(C.pet_peng); }
       if (this.count(b) > 1) set(C.plural);
       if (f.v > 0) set(C.pos); else if (f.v < 0) set(C.neg);
       if (f.k === 'farewell' || f.k === 'memorial') set(C.grave);
@@ -351,9 +407,12 @@ export class Dialogue {
     else if (f && f.a >= 0 && e.people[f.a] && JOBS[e.people[f.a].job] && e.people[f.a].job !== 'none') slots |= S('J');
     if (b.p >= 0) slots |= S('P') | S('B');
     if (b.h >= 0) slots |= S('H') | S('A');
-    if (b.s && this.detailOfString(b, 'ko')) slots |= S('E');
+    if ((b.s && this.detailOfString(b, 'ko')) || b.es) slots |= S('E');
     if (b.r === 'small.bank' || b.r === 'ans.rate' || b.r === 'small.bank.re') slots |= S('R');
-    if (b.r.startsWith('small.pet')) slots |= S('G');
+    if (b.r.startsWith('small.pet')) { slots |= S('G'); if (b.n % 3 === 1) set(C.pet_cat); else if (b.n % 3 === 2) set(C.pet_peng); }
+    if (b.q >= 0) slots |= S('Q');
+    if (ls) slots |= S('F');
+    { const who = b.o >= 0 && e.people[b.o] ? e.people[b.o] : sp; if (who && JOB_DO[who.job]) slots |= S('DO'); }
     if (b.r.startsWith('answer.when') || b.r.startsWith('ans.when')) slots |= S('D');
     if (b.r.startsWith('answer.since')) slots |= S('D');
     if (b.r.startsWith('small.prices') || b.r.startsWith('ans.price')) slots |= S('M');
@@ -422,12 +481,16 @@ export class Dialogue {
     if (lang === 'en') {
       const full = (t.sur ? this.surEn(t) + ' ' : '') + this.nameEn(t);
       if (t.titleEn && !t.given) return t.titleEn;
+      const pf = this.pressFact;
+      if (pf && CRIME[pf.k] && pf.a === t.id && g <= G_TEEN) return g === G_TEEN ? 'a pupil' : 'a youngster';
       if (/^(police|detective)$/.test(t.job)) return 'Officer ' + full;
       if (t.job === 'firefighter') return 'Firefighter ' + full;
       if (g === G_TODDLER) return 'baby ' + this.nameEn(t);
       return g <= G_KID ? 'little ' + full : full;
     }
     if (t.title && !t.given) return t.title;
+    const pf = this.pressFact;
+    if (pf && CRIME[pf.k] && pf.a === t.id && g <= G_TEEN) return g === G_TEEN ? '한 학생' : '한 어린이';   // children are not named in a crime story
     const full = (t.sur || '') + t.given;
     if (/^(police|detective)$/.test(t.job)) return full + ' ' + JOBS[t.job].title;
     if (t.job === 'firefighter') return full + ' 소방관';
@@ -442,11 +505,12 @@ export class Dialogue {
     const rel = sp ? getRel(e, sp.id, t.id) : null;
     const gs = sp ? groupOf(e, sp) : G_ADULT, gt = groupOf(e, t);
     const as = sp ? ageOf(e, sp) : 30, at = ageOf(e, t);
+    const sib = (male) => (sp && sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니'));
     if (rel && (rel.flags & RF_FAMILY)) {
       if (rel.isParentOf(t.id)) return { text: t.male ? '아빠' : '엄마', kin: true };
       if (rel.isGrandOf(t.id)) return { text: t.male ? '할아버지' : '할머니', kin: true };
       if (rel.flags & RF_SIBLING) {
-        if (at > as) return { text: sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니'), kin: true };
+        if (at > as) return { text: sib(), kin: true };
         return { text: casualName(t.given), casual: true };
       }
     }
@@ -457,16 +521,27 @@ export class Dialogue {
     if (gt === G_TODDLER) return { text: casualName(t.given), casual: true };
     const close = rel && (rel.stage >= ST_FRIEND);
     const h = (mix32(sp ? sp.id : 0, t.id) & 7);
+    // '박 순경', '임 간호사' — but '이 순경' / '나 기사' read as 'this officer' / 'me, driver': then the full name
+    const surTitle = (title) => (t.sur && !AMBIG_SUR.test(t.sur) ? t.sur + ' ' + title : (t.sur || '') + t.given + ' ' + title);
     if (gt === G_ELDER) {
-      if (gs === G_ELDER && close) return { text: casualName(t.given), casual: true };
-      // elders of about the same age are '○○ 씨' to each other, not '할아버지'
-      if (gs === G_ELDER && Math.abs(at - as) < 10) return { text: t.given + ' 씨', title: true };
-      return { text: (t.sur ? t.sur + ' ' : '') + (t.male ? '할아버지' : '할머니'), title: true };
+      if (gs === G_ELDER) {
+        // grandparents call each other by name: an old friend ('순자야'), an older friend ('덕수 형님', '말순 언니'), or '○○ 씨'
+        if (close && at - as >= 5 && sp.male === t.male) return { text: t.given + (t.male ? ' 형님' : ' 언니'), title: true };
+        if (close) return { text: casualName(t.given), casual: true };
+        return { text: t.given + ' 씨', title: true };
+      }
+      // a grown-up of nearly the same age does not call them grandma: '김 선생님' (or '형님' / '언니' when close)
+      if (gs === G_ADULT && at - as < 15) {
+        if (close) return { text: t.given + ' ' + (sp.male === t.male ? (t.male ? '형님' : '언니') : sib()), title: true };
+        return { text: surTitle('선생님'), title: true };
+      }
+      // the village way: '순이 할머니', '갑수 할아버지'
+      return { text: t.given + (t.male ? ' 할아버지' : ' 할머니'), title: true };
     }
     if (gt === G_ADULT) {
       if (gs <= G_TEEN) {
         // a young grown-up is 형/누나/오빠/언니 to children, not 아저씨/아줌마
-        if (at < 30) return { text: t.given + ' ' + (sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니')), title: true };
+        if (at < 30) return { text: t.given + ' ' + sib(), title: true };
         const J = JOBS[t.job];
         if (J && J.kid && h < 5) return { text: J.kid + (t.male ? ' 아저씨' : ' 아줌마'), title: true };
         return { text: t.given + (t.male ? ' 삼촌' : ' 이모'), title: true };
@@ -474,20 +549,44 @@ export class Dialogue {
       // elders call the young adults they know well by name (and speak 반말); others '씨' with 해요체
       if (gs === G_ELDER) return close ? { text: casualName(t.given), casual: true } : { text: t.given + ' 씨', title: true };
       if (close || (rel && rel.stage === ST_SWEET)) {
-        if (at - as >= 4) return { text: t.given + ' ' + (sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니')), title: true };
+        if (at - as >= 4) return { text: t.given + ' ' + sib(), title: true };
         return { text: casualName(t.given), casual: true };
       }
       const J = JOBS[t.job];
       if (t.flags & F_OWNER && t.work >= 0 && h < 4) { const p = e.world.places[t.work]; return { text: p.K.ko + ' 사장님', title: true, nim: true }; }
-      if (J && J.title && h < 6) return { text: (t.sur || t.given) + ' ' + J.title, title: true, addNim: J.title !== '선생님' };
+      // someone a good deal older is never '○○ 씨': their job title, or '선생님'
+      if (at - as >= 12) {
+        if (t.flags & F_OWNER && t.work >= 0) { const p = e.world.places[t.work]; return { text: p.K.ko + ' 사장님', title: true, nim: true }; }
+        if (J && J.title) return { text: surTitle(J.title), title: true, addNim: J.title !== '선생님' };
+        return { text: surTitle('선생님'), title: true };
+      }
+      if (J && J.title && h < 6) return { text: surTitle(J.title), title: true, addNim: J.title !== '선생님' };
       return { text: t.given + ' 씨', title: true };
     }
     // kids and teens
     if (gs <= G_TEEN) {
-      if (at - as >= 2) return { text: t.given + ' ' + (sp.male ? (t.male ? '형' : '누나') : (t.male ? '오빠' : '언니')), title: true };
+      if (at - as >= 2) return { text: t.given + ' ' + sib(), title: true };
       return { text: casualName(t.given), casual: true };
     }
     return { text: casualName(t.given), casual: true };
+  }
+
+  /** how listener ls calls speaker sp — for introducing oneself to a child: '나는 준영 삼촌이야!' */
+  selfTitle(sp, ls, lang) {
+    const e = this.e;
+    if (lang === 'en') {
+      const gs = groupOf(e, sp);
+      if (groupOf(e, ls) <= G_TEEN && gs >= G_ADULT) return (gs === G_ELDER ? (sp.male ? 'Grandpa ' : 'Grandma ') : sp.male ? 'Uncle ' : 'Auntie ') + this.nameEn(sp);
+      return this.nameEn(sp);
+    }
+    const gs = groupOf(e, sp), gl = groupOf(e, ls), as = ageOf(e, sp);
+    if (gl <= G_TEEN && gs === G_ELDER) return sp.given + (sp.male ? ' 할아버지' : ' 할머니');
+    if (gl <= G_TEEN && gs === G_ADULT) {
+      if (as < 30) return sp.given + ' ' + (ls.male ? (sp.male ? '형' : '누나') : (sp.male ? '오빠' : '언니'));
+      return sp.given + (sp.male ? ' 삼촌' : ' 이모');
+    }
+    if (gl <= G_TEEN && gs <= G_TEEN && as - ageOf(e, ls) >= 2) return sp.given + ' ' + (ls.male ? (sp.male ? '형' : '누나') : (sp.male ? '오빠' : '언니'));
+    return sp.given;
   }
 
   vocative(sp, ls, lang) {
@@ -541,8 +640,10 @@ export class Dialogue {
     if (!(f.k === 'theft' || f.k === 'burnt_food' || f.k === 'delivery' || f.k === 'move_in' || f.k === 'move_out' || f.k === 'train' || f.k === 'snowman')) return 0;
     if (f.k === 'train') n = f.i;
     if (f.k === 'snowman') return 0;
+    const base = n;
     if (b.d === D_COUNT) n *= Math.max(2, b.alt);
     if (b.x > 0 && (f.k === 'theft' || f.k === 'burnt_food' || f.k === 'delivery')) n = n * (1 + b.x) + (b.x >= 3 ? 7 : 0);
+    if (f.k === 'move_in' || f.k === 'move_out') n = Math.min(n, base * 2 + 1);    // a rumour doubles a family, it does not make it a hundred
     return n;
   }
   money(b) {
@@ -567,7 +668,7 @@ export class Dialogue {
       case 'shop_plan': case 'shop_open': { const K = PLACE_KINDS[f.s]; return K ? (L ? K.en : K.ko) : ''; }
       case 'loan': case 'loan_paid': { const w = LOAN_FOR[f.s]; return w ? w[L] : ''; }
       case 'new_job': case 'first_job': { const J = JOBS[f.s]; return J ? (L ? J.en : J.ko) : ''; }
-      case 'pet': return PET_ANTICS[f.i % PET_ANTICS.length][L];
+      case 'pet': { const A = PET_ANTICS[((f.n | 0) % 3 + 3) % 3]; return A[((f.i | 0) % A.length + A.length) % A.length][L]; }
       case 'help': return HELP[f.i % HELP.length][L];
       case 'prank': return PRANKS[f.n % PRANKS.length][L];
       case 'train': return TRAIN[f.n % TRAIN.length][L];
@@ -646,7 +747,19 @@ export class Dialogue {
       case 'C': return f ? this.refer(sp, P(f.c), lang) : '';
       case 'O': return this.refer(sp, P(b.o), lang);
       case 'Z': return this.refer(sp, P(b.from), lang);
-      case 'L': return ls ? this.refer(sp, ls, lang) : (en ? 'Chief' : '촌장님');
+      case 'L': {
+        if (!ls) return en ? 'Chief' : '촌장님';
+        // said to one's spouse: '당신' / '자기' / '임자' / '영감', not the third-person '우리 남편'
+        if (!en && cur.rel && cur.rel.stage === ST_SPOUSE) return groupOf(e, sp) === G_ELDER ? (sp.male ? '임자' : '영감') : ageOf(e, sp) < 36 ? '자기' : '당신';
+        return this.refer(sp, ls, lang);
+      }
+      case 'F': return ls ? this.selfTitle(sp, ls, lang) : (en ? this.nameEn(sp) : sp.given);
+      case 'DO': { const who = b.o >= 0 && e.people[b.o] ? e.people[b.o] : sp; const d = JOB_DO[who.job]; return d ? d[en ? 1 : 0] : ''; }
+      case 'Q': {
+        if (b.q < 0) return '';
+        if (b.qk === 1) return this.placeName(b.q, lang);
+        const it = ITEMS[b.q]; return it ? (en ? it.en : it.ko) : '';
+      }
       case 'V': return this.vocative(sp, ls, lang);
       case 'S': {
         if (en) return this.nameEn(sp);
@@ -701,12 +814,11 @@ export class Dialogue {
       }
       case 'T': return this.timeAgo(f, lang);
       case 'W': { const k = e.weather.today.kind; return en ? WEATHER_EN[k] : WEATHER_KO[k]; }
-      case 'E': return (b.s && this.detailOfString(b, lang)) || this.detail(b, lang);
+      case 'E': return b.es || (b.s && this.detailOfString(b, lang)) || this.detail(b, lang);
       case 'G': { const i = f && f.k === 'pet' ? f.n : b.n; const p = PETS[(i >= 0 ? i : 0) % PETS.length]; return en ? p[1] : p[0]; }
       case 'H': { const l = LIKES[b.h]; return l ? (en ? l.en : l.ko) : ''; }
       case 'A': { const l = LIKES[b.h]; return l ? (en ? l.enAct : l.koAct) : ''; }
       case 'U': { const a = ageOf(e, sp); return en ? String(a) : counted(a, '살').replace(' ', ' '); }
-      case 'Q': case 'F': return '';
     }
     return '';
   }
@@ -722,6 +834,7 @@ export class Dialogue {
     cur.b = b; cur.sp = sp; cur.ls = null; cur.rel = null; cur.lang = lang; cur.f = b.f; cur.talk = null;
     for (const k in cur.cache) delete cur.cache[k];
     // reuse setup for slot availability with a neutral speaker, then switch to written level 3
+    this.pressFact = this.press && b ? b.f : null;
     this.setup(b, sp, null, null, lang, null);
     ctx.level = 3;
     ctx.recent = opts.recent || null;
@@ -759,7 +872,7 @@ export class Dialogue {
     for (const f of paper.wanted) out.sidebar.push(this.written('news.wanted', lang, { b: mk(f), sp }));
     { const b = mk(null); b.n = paper.rate; out.sidebar.push(this.written('news.rate', lang, { b, sp })); }
     if (paper.quote) out.sidebar.push((lang === 'en' ? 'Overheard: “' : '오늘의 한마디: “') + paper.quote.text + '” — ' + this.refer(null, e.people[paper.quote.who], lang));
-    this.press = false;
+    this.press = false; this.pressFact = null;
     if (reporter) out.byline = lang === 'en' ? 'Reporter ' + this.nameEn(reporter) : (reporter.sur || '') + reporter.given + ' 기자';
     return out;
   }
@@ -793,10 +906,19 @@ export class Dialogue {
       const f = fid ? e.facts.get(fid) || null : null;
       const b = neutralB(f);
       if (other >= 0) b.o = other;
-      if (place >= 0) b.p = place;
+      let rule = 'diary.' + kind;
+      if (kind === 'talk' && f && typeof extra === 'string') {
+        // say what the news was: '민지 씨한테서 광장에 좀도둑이 들었다는 이야기를 들었다.'
+        const tp = extra.replace(/[<>]$/, ''), out = extra.charAt(extra.length - 1) === '>';
+        if ((tp === 'rumor' || tp === 'ask') && f.a !== r.id && f.b !== r.id && this.grammar(lang).has('about.' + f.k)) {
+          const es = this.written('about.' + f.k, lang, { b: neutralB(f), sp: r, recent: null });
+          if (es) { b.es = es; rule = out ? 'diary.told' : 'diary.heard'; }
+        } else if (tp === 'congrats' || tp === 'comfort') rule = 'diary.' + tp + (out ? '.out' : '.in');
+        else if (place >= 0) b.p = place;
+      } else if (place >= 0) b.p = place;
       if (kind === 'buy' || kind === 'eat') b.i = extra;
       if (kind === 'deposit' || kind === 'loan' || kind === 'pickup') b.n = extra;
-      const t = this.written('diary.' + kind, lang, { b, sp: r, recent, rpos });
+      const t = this.written(rule, lang, { b, sp: r, recent, rpos });
       if (t) lines.push(t);
     }
     lines.push(this.written('diary.close', lang, { b: neutralB(null), sp: r, recent, rpos }));

@@ -42,7 +42,7 @@ export class TitleSettings {
     blocker.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); });
     this.add(this.text(cx, cy - ch / 2 + 48, tx.settings, 38, '#ffffff', { stroke: '#173d7a', strokeThickness: 6 }).setOrigin(0.5), D + 2);
     const rows = [
-      { label: tx.sound, get: () => (Settings.data.sound ? tx.on : tx.off), tap: () => { Audio.setSoundEnabled(!Settings.data.sound); } },
+      { label: tx.sfx, get: () => (Settings.data.sound ? tx.on : tx.off), tap: () => { Audio.setSoundEnabled(!Settings.data.sound); } },
       { label: tx.music, get: () => (Settings.data.music ? tx.on : tx.off), tap: () => { Audio.setMusicEnabled(!Settings.data.music); } },
       { label: tx.lang, get: () => (this.screen.lang === 'en' ? 'English' : '한국어'), tap: () => this.switchLang() },
       { label: tx.intro, get: () => tx.introModes[TitlePrefs.data.intro || TITLE_CFG.introMode] || tx.introModes.first, tap: () => {

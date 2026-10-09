@@ -8,7 +8,7 @@ Already in the game (reuse them on the title):
 Added here:
     atlas ttl_fx (frames, all white-ish, NORMAL blend unless noted):
         ttl_fx_snow_s / _m      soft round flakes 16 / 28 px for the falling-snow layers (far / mid)
-        ttl_fx_snow_bokeh       64 px out-of-focus foreground flake (big, slow, few, alpha 0.5-0.8)
+        ttl_fx_snow_bokeh       64 px out-of-focus foreground flake (faint disc + soft rim; ADD, alpha 0.3-0.5)
         ttl_fx_flake_s / _m     crisp little six-arm snowflakes 32 / 56 px (rounded toy strokes)
         ttl_fx_bloom            48 px mini 눈꽃 emblem (snow-flower) - a rare special flake / sparkle
         ttl_fx_twinkle          64 px four-point star with a glow (logo sparkle, star twinkle; ADD ok)
@@ -64,13 +64,17 @@ def soft_dot(s, core=0.30, edge=0.5, ss=4):
 
 
 def bokeh(s=64, ss=4):
+    """Out-of-focus foreground flake: a FAINT cool fill (alpha <= ~60) with a slightly brighter soft
+    rim, like a real lens bokeh - over a night sky it reads as a glint, never as a grey second moon."""
     X, Y = grid(s, ss)
     d = np.sqrt(X * X + Y * Y) / (s / 2.0)
-    a = np.clip((0.95 - d) / 0.35, 0, 1) ** 1.3 * 0.85          # soft out-of-focus blob, brighter core
-    rgb = np.ones(X.shape + (3,), np.float32) * 0.97 + hexf('#DDEBFF') * 0.03
+    disc = np.clip((0.94 - d) / 0.10, 0, 1)                         # soft-edged disc
+    rim = np.exp(-((d - 0.80) / 0.09) ** 2)                         # brighter ring just inside the edge
+    a = disc * (0.20 + 0.16 * rim) + 0.03 * np.clip(1 - d, 0, 1)
+    rgb = np.ones(X.shape + (3,), np.float32) * 0.55 + hexf('#DDEBFF') * 0.45
     r, a = down(rgb, np.clip(a, 0, 1), ss)
     im = rgba(r, a)
-    return im.filter(ImageFilter.GaussianBlur(1.0))
+    return im.filter(ImageFilter.GaussianBlur(0.8))
 
 
 def seg_dist(X, Y, ax, ay, bx, by):
@@ -251,7 +255,8 @@ def build(out_dir, rel, save_png):
     notes = {
         'ttl_fx_snow_s': ('Soft round snowflake 16 px (far snow layer).', 'NORMAL'),
         'ttl_fx_snow_m': ('Soft round snowflake 28 px (mid snow layer).', 'NORMAL'),
-        'ttl_fx_snow_bokeh': ('Out-of-focus foreground flake 64 px (few, big, slow; alpha 0.5-0.8).', 'NORMAL'),
+        'ttl_fx_snow_bokeh': ('Out-of-focus foreground flake 64 px: faint cool disc with a brighter soft rim '
+                              '(few, big, slow). ADD at alpha 0.3-0.5.', 'ADD'),
         'ttl_fx_flake_s': ('Crisp six-arm snowflake 32 px (rounded toy strokes, ice-blue edge).', 'NORMAL'),
         'ttl_fx_flake_m': ('Crisp six-arm snowflake 56 px.', 'NORMAL'),
         'ttl_fx_twinkle': ('Four-point star with glow 64 px: logo sparkles, star twinkles (scale-pulse).', 'ADD'),
@@ -272,6 +277,6 @@ def build(out_dir, rel, save_png):
                              'fx_ring'],
                    'snowRecipe': 'three layers: far ttl_fx_snow_s (60-90, scale 0.5-0.9, alpha 0.6, fall 20-40 px/s), '
                                  'mid ttl_fx_snow_m + ttl_fx_flake_s (25-40, scale 0.6-1, fall 40-70 px/s, sway), '
-                                 'front ttl_fx_snow_bokeh (4-6, scale 0.8-1.6, alpha 0.5-0.8, fall 70-110 px/s); one '
+                                 'front ttl_fx_snow_bokeh (4-6, scale 0.8-1.6, blend ADD, alpha 0.3-0.5, fall 70-110 px/s); one '
                                  'ttl_fx_bloom every ~8 s. Logical px, 720-wide layout.'}}
     return recs, meta

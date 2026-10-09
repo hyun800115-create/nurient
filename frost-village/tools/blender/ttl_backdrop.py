@@ -6,15 +6,16 @@ Layers (all keys ttl_*, paths assets/title/):
     ttl_sky_day / ttl_sky_dusk / ttl_sky_night   64 x 1024 vertical gradients: stretch to the screen
                                                  (horizon glow at meta.backdrop.horizon of the height)
     ttl_stars        720 x 900 star field (denser at the top) for the night sky - NORMAL or ADD
-    ttl_aurora       1024 x 512 soft aurora curtains, tiles horizontally - ADD / SCREEN, sway it
+    ttl_aurora       1024 x 416 aurora curtains (one soft hem each), periodic in x - ADD / SCREEN
     ttl_moon         160 x 160 moon with halo
     ttl_clouds       1440 wide puffy toy clouds (3D metaball render from ttl_backdrop3d; a flat 2D
                      painter is the fallback), tiles horizontally (two drift speeds look nice)
     ttl_mtn_far      1080 wide snowy peaks far away (haze baked in), tiles horizontally
     ttl_mtn_mid      1080 wide nearer snowy mountains, tiles horizontally
     ttl_forest       1440 wide snowy hills with the game's pines, tiles horizontally
-    ttl_city_far     1080 x 260 far city skyline silhouette (final city stage), tiles horizontally
-    ttl_city_lights  1080 x 260 its window lights - ADD at dusk / night
+    ttl_city_far     1080 wide far city (final city stage): the game's own buildings rendered in Blender
+                     (ttl_backdrop3d 'city'), tiles horizontally; the 2D painter city() is the fallback
+    ttl_city_lights  same size: its lit windows (the render's emission pass) + glow - ADD at dusk / night
 Strips are anchored on their bottom edge ([0.5, 1]) and painted in DAY colours; meta.tints holds the
 multiply tint per time of day so one set of pictures serves day, golden dusk and night.
 """
@@ -107,39 +108,59 @@ def stars(w=720, h=900, seed=4):
     return to_img(rgb, a)
 
 
-def aurora(w=1024, h=512, seed=9):
-    """Curtains: bright mint lower hem, cyan body, violet tops, vertical rays; periodic in x."""
+def aurora(w=1024, h=416, seed=9):
+    """Three overlapping curtains (different phases / heights).  Each has ONE bright hem with a soft
+    downward falloff (~14 px) - no double line - and fades upward over a long distance through cyan
+    to violet, with vertical rays that grow stronger toward the top.  Folds (where a curtain turns
+    edge-on) are brighter.  Periodic in x; the brightness envelope dips at the wrap so an untiled
+    image never shows a hard vertical cut at its ends."""
     rnd = np.random.default_rng(seed)
     x = np.arange(w, dtype=np.float32)
     y = np.arange(h, dtype=np.float32)[:, None]
     I = np.zeros((h, w), np.float32)
     rgb = np.zeros((h, w, 3), np.float32)
-    mint, cyan, vio, pink = hexf('#7DFFC9'), hexf('#58DDF5'), hexf('#9C83FF'), hexf('#FF9AD5')
-    for band, (base, amp, L, gain) in enumerate([(0.66, 0.10, 0.30, 1.0), (0.48, 0.08, 0.22, 0.55)]):
-        ph = rnd.uniform(0, math.tau, 4)
-        yb = h * (base + amp * (0.6 * np.sin(math.tau * x / w + ph[0]) + 0.3 * np.sin(2 * math.tau * x / w + ph[1])
-                                + 0.12 * np.sin(5 * math.tau * x / w + ph[2])))
+    green, cyan, vio, pink = hexf('#7CFFB2'), hexf('#5FE3F2'), hexf('#9C83FF'), hexf('#FF9AD5')
+    env = (0.25 + 0.75 * np.sin(math.pi * x / w) ** 0.8)                     # dips at the wrap
+    # (hem height, waviness, decay length, gain, id, patch centre, patch width) - mostly side by side
+    curtains = [(0.70, 0.10, 0.30, 1.15, 0, 0.36, 0.26), (0.54, 0.10, 0.26, 0.80, 1, 0.80, 0.20),
+                (0.78, 0.06, 0.22, 0.55, 2, 0.02, 0.16)]
+    for (base, amp, L, gain, band, pc, pw) in curtains:
+        ph = rnd.uniform(0, math.tau, 6)
+        t = math.tau * x / w
+        yb = (base + amp * (0.62 * np.sin(t + ph[0]) + 0.28 * np.sin(2 * t + ph[1]) + 0.10 * np.sin(5 * t + ph[2])))
+        # fold kinks: a few sharp bends
+        yb = yb + 0.035 * (np.abs(np.sin(1.5 * t + ph[3])) - 0.64) * (band != 2)
+        yb = h * yb
+        slope = np.abs(np.gradient(yb))
+        fold = 0.75 + 0.55 * np.clip(slope / 1.6, 0, 1)                       # edge-on folds glow brighter
         rays = np.zeros(w, np.float32)
-        for k in (17, 29, 43, 61, 89):
-            rays += np.sin(k * math.tau * x / w + rnd.uniform(0, 6)) / (1 + k / 30)
-        rays = 0.55 + 0.45 * (rays - rays.min()) / (rays.max() - rays.min())
-        fold = 0.65 + 0.35 * np.sin(3 * math.tau * x / w + ph[3]) ** 2
-        u = (yb[None, :] - y) / (h * L)                     # 0 at the hem, grows upward
-        up = np.where(u >= 0, np.exp(-u * 2.2) * (1 - np.exp(-u * 18)), 0.0)
-        hem = np.where(u < 0, np.exp(-(u * h * L / 7.0) ** 2), 0.0)
-        val = (up + hem * 0.9) * rays[None, :] * fold[None, :] * gain
-        t = np.clip(u, 0, 1.6) / 1.6
-        c = (mint[None, None, :] * np.clip(1 - t * 2.2, 0, 1)[..., None] +
-             cyan[None, None, :] * np.clip(1 - np.abs(t - 0.40) * 3.0, 0, 1)[..., None] +
-             vio[None, None, :] * np.clip((t - 0.45) * 2.2, 0, 1)[..., None])
+        for k in (13, 23, 37, 59, 83, 131):
+            rays += np.sin(k * t + rnd.uniform(0, 6)) / (1 + k / 40)
+        rays = (rays - rays.min()) / (rays.max() - rays.min())
+        up_px = (yb[None, :] - y)                                              # >0 above the hem
+        u = np.clip(up_px / (h * L), 0, None)
+        # ONE soft hem: a smooth rise over ~20 px (no hard edge, no second line), then a long decay
+        rise = 1.0 - np.exp(-np.clip(up_px + 16.0, 0, None) / 14.0)
+        above = rise * np.exp(-u * 1.6)
+        below = 0.0
+        ray_mod = (0.30 + 0.70 * rays[None, :]) ** (1.0 + 1.2 * np.clip(u, 0, 1.5))   # rays reach the hem too
+        # curtains come in patches along x (never one continuous luminous line)
+        dxp = (x / w - pc + 0.5) % 1.0 - 0.5
+        patch = np.exp(-(dxp / pw) ** 2) * (0.75 + 0.25 * np.sin(3 * t + ph[4]))
+        val = above * ray_mod * fold[None, :] * env[None, :] * patch[None, :] * gain
+        tt = np.clip(u, 0, 1.4) / 1.4
+        tt = np.where(up_px < 0, 0.0, tt)
+        c = (green[None, None, :] * np.clip(1 - tt * 2.6, 0, 1)[..., None] +
+             cyan[None, None, :] * np.clip(1 - np.abs(tt - 0.38) * 3.0, 0, 1)[..., None] +
+             vio[None, None, :] * np.clip((tt - 0.42) * 2.0, 0, 1)[..., None])
         if band == 1:
-            c = c * 0.7 + pink[None, None, :] * 0.3 * np.clip(t * 2, 0, 1)[..., None]
+            c = c * 0.75 + pink[None, None, :] * 0.25 * np.clip(tt * 2, 0, 1)[..., None]
         I += val
         rgb += c * val[..., None]
-    a = np.clip(I * 0.85, 0, 1)
+    a = np.clip(I * 1.40, 0, 1)
     rgb = rgb / np.maximum(I[..., None], 1e-6)
     im = to_img(rgb, a)
-    return im.filter(ImageFilter.GaussianBlur(1.2))
+    return im.filter(ImageFilter.GaussianBlur(1.0))
 
 
 def moon(s=160):
@@ -286,7 +307,7 @@ def city(w=1080, h=260, seed=21):
 
 
 # ------------------------------------------------------------------ 3D strip finishing
-HAZE = {'mtn_far': (0.42, 0.22), 'mtn_mid': (0.20, 0.06), 'forest': (0.05, 0.0)}   # (bottom, top) mix
+HAZE = {'mtn_far': (0.40, 0.22), 'mtn_mid': (0.18, 0.05), 'forest': (0.05, 0.0), 'city': (0.34, 0.20)}   # (bottom, top) mix
 
 
 def finish_strip(path, name):
@@ -298,20 +319,83 @@ def finish_strip(path, name):
     mix = ht + (hb - ht) * t
     haze = hexf('#E2F0FC')
     arr[..., :3] = arr[..., :3] * (1 - mix) + haze * mix
-    if name == 'forest':
+    if name in ('forest', 'city'):
         # soft lower edge: the snowy ground fades out over the last rows instead of ending in a ruler line
         fade = np.clip((h - 1 - np.arange(h, dtype=np.float32)) / 30.0, 0, 1) ** 0.8
         arr[..., 3] *= fade[:, None]
     return Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGBA')
 
 
+CITY_FOOT = 120          # px of transparent foot under the far city (1080-wide strip)
+
+
+def _pad_bottom(im, n):
+    out = Image.new('RGBA', (im.width, im.height + n), (0, 0, 0, 0))
+    out.paste(im, (0, 0))
+    return out
+
+
+def city3d(cache):
+    """The far city rendered in Blender from the game's own buildings (ttl_backdrop3d 'city'): the
+    colour strip with aerial haze, and its window-lights pass with a soft glow, a faint warm glow over
+    the roofs and a few red aviation lights on the tallest tops.  None when not rendered."""
+    cp = os.path.join(cache, 'bd', 'bd_city.png')
+    lp = os.path.join(cache, 'bd', 'bd_city_lights.png')
+    if not (os.path.exists(cp) and os.path.exists(lp)):
+        return None
+    sil = finish_strip(cp, 'city')
+    li = np.asarray(Image.open(lp).convert('RGBA'), np.float32) / 255.0
+    # transparent foot: the strip is anchored at its bottom edge, so this lifts the skyline over the
+    # near hills + tree line at the title's layout (TitleSky: bottom at horizon - 2.2 % H, scale 0.8)
+    sil = _pad_bottom(sil, CITY_FOOT)
+    li = np.concatenate([li, np.zeros((CITY_FOOT,) + li.shape[1:], np.float32)], axis=0)
+    h, w = li.shape[:2]
+    la = li[..., 3] * np.clip(li[..., :3].max(axis=-1) * 1.4, 0, 1)
+    lc = li[..., :3] / np.maximum(li[..., :3].max(axis=-1, keepdims=True), 1e-4)
+    def blur_wrap(a, r):
+        pad = int(r * 3) + 2
+        big = np.concatenate([a[:, -pad:], a, a[:, :pad]], axis=1)
+        b = np.asarray(Image.fromarray((np.clip(big, 0, 1) * 255).astype(np.uint8)).filter(
+            ImageFilter.GaussianBlur(r)), np.float32) / 255.0
+        return b[:, pad:-pad]
+    glow = blur_wrap(la, 3.0)
+    sa = np.asarray(sil, np.float32)[..., 3] / 255.0
+    yy = np.arange(h, dtype=np.float32)[:, None]
+    band = blur_wrap(sa, 6.0) * np.clip((yy / h - 0.35) / 0.65, 0, 1) * 0.16
+    warm, red = hexf('#FFD27A'), hexf('#FF5A4A')
+    tot = la + glow * 0.8 + band
+    col = (lc * la[..., None] + warm * (glow * 0.8 + band)[..., None]) / np.maximum(tot[..., None], 1e-6)
+    # red aviation lights on the 4 tallest tops
+    top = np.where(sa > 0.5, yy, h).min(axis=0)
+    xs = np.argsort(top)
+    picked = []
+    for x in xs:
+        if top[x] >= h:
+            break
+        if all(min(abs(x - p), w - abs(x - p)) > w // 8 for p in picked):
+            picked.append(int(x))
+        if len(picked) >= 4:
+            break
+    XX = np.arange(w, dtype=np.float32)[None, :]
+    for x in picked:
+        y = float(top[x]) - 2.0
+        dx = np.minimum(np.abs(XX - x), w - np.abs(XX - x))
+        d2 = dx ** 2 + (yy - y) ** 2
+        dot = np.exp(-d2 / 2.0) + 0.35 * np.exp(-d2 / 18.0)
+        col = col * (1 - np.clip(dot, 0, 1)[..., None]) + red * np.clip(dot, 0, 1)[..., None]
+        tot = np.maximum(tot, np.clip(dot, 0, 1))
+    return sil, to_img(col, np.clip(tot, 0, 1))
+
+
 # multiply tints per time of day (day = no tint).  Strips + clouds + city silhouette.
 TINTS = {
     'day': {},
-    'dusk': {'ttl_mtn_far': '#F7C4C9', 'ttl_mtn_mid': '#E4B3C7', 'ttl_forest': '#C7A2BC',
-             'ttl_clouds': '#FFC9B3', 'ttl_city_far': '#C79AB8'},
+    # golden hour: warm, light tints (lit snow stays peach-white, the pines keep their green)
+    'dusk': {'ttl_mtn_far': '#FFD9C8', 'ttl_mtn_mid': '#F6C9C2', 'ttl_forest': '#DDB7AE',
+             'ttl_clouds': '#FFC9B3', 'ttl_city_far': '#E8B8B4'},
+    # moonlit blue; night clouds stay light enough to read as clouds, not slate smoke
     'night': {'ttl_mtn_far': '#5E70AC', 'ttl_mtn_mid': '#4C5F9C', 'ttl_forest': '#3D4E88',
-              'ttl_clouds': '#45527F', 'ttl_city_far': '#33406F'},
+              'ttl_clouds': '#7F8FC2', 'ttl_city_far': '#4A5A92'},
 }
 
 
@@ -340,10 +424,13 @@ def build(cache, out_dir, rel, save_png):
     rec('ttl_clouds', cl_im, dict(anchor=[0.5, 1.0], kind='decor', tile='x',
                                      notes='Puffy toy clouds strip (1440 wide), seamless in x. Use 1-2 TileSprites at '
                                            'different scales/speeds; tint per meta.tints.'))
-    sil, lights = city()
+    c3 = city3d(cache)
+    sil, lights = c3 if c3 else city()
     rec('ttl_city_far', sil, dict(anchor=[0.5, 1.0], kind='decor', tile='x',
-                                  notes='Far-away city skyline (final city stage) - sits just above the far mountains '
-                                        'line / horizon; seamless in x; tint per meta.tints.'))
+                                  notes='Far-away city across the bay (final city stage), rendered from the game\'s own '
+                                        'buildings (town hall clock tower, brick apartments, resort hotel, harbour '
+                                        'crane, lighthouse) with snowy roofs and aerial haze; seamless in x; tint per '
+                                        'meta.tints.'))
     rec('ttl_city_lights', lights, dict(anchor=[0.5, 1.0], kind='decor', tile='x', blend='ADD',
                                         notes='Window lights of ttl_city_far (same size / place), ADD at dusk and '
                                               'night; flicker a little.'))
@@ -366,6 +453,11 @@ def build(cache, out_dir, rel, save_png):
                      'ttl_forest': 0.3},
         'suggestedBottomY': {'ttl_mtn_far': 0.50, 'ttl_city_far': 0.50, 'ttl_mtn_mid': 0.54, 'ttl_forest': 0.58,
                              'ttl_clouds': 0.36},
+        'cityFootPx': CITY_FOOT,
+        'cityNote': 'ttl_city_far / ttl_city_lights carry a transparent foot of cityFootPx px (of the 1080-wide '
+                    'strip) under the buildings, so with the strip bottom at the usual place (TitleSky: horizon '
+                    '- 2.2 % H, scale 0.8) about half of the skyline clears ttl_mtn_mid + ttl_forest at the city '
+                    'stage. To place it yourself, anchor the strip at (bottom - cityFootPx * scale).',
         'note': 'Fractions of the screen height for a 720 x 1280..1600 logical portrait layout; strips are drawn '
                 'at scale 720 / 1080 (or / 1440) x k so they fill the width; the diorama covers their lower part.',
     }, 'tints': TINTS}

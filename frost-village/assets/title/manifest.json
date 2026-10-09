@@ -16,10 +16,16 @@
    "main": "눈꽃마을",
    "bottom": "이야기",
    "short": "눈꽃마을",
+   "en_top": "",
    "en_main": "Snowbloom",
    "en_sub": "Village",
    "en_full": "Snowbloom Village",
-   "emblem_in_en": "bloom"
+   "emblem_in_en": "bloom",
+   "_source": {
+    "ko": "logo.ko",
+    "en": "logo.en",
+    "file": "src/title/config.js"
+   }
   },
   "palette": {
    "ink": "#1D2F5E",
@@ -36,97 +42,97 @@
    "main": {
     "size2x": [
      900,
-     577
+     619
     ],
     "parts": [
      {
       "frame": "ttl_logo_top",
       "z": 0,
-      "dx": -0.5,
-      "dy": -193.0,
-      "w": 497,
-      "h": 169,
+      "dx": 0.5,
+      "dy": -217.0,
+      "w": 501,
+      "h": 165,
       "pivot": [
-       0.277,
-       0.479
+       0.279,
+       0.503
       ],
       "drop": 5
      },
      {
       "frame": "ttl_logo_main_0",
       "z": 1,
-      "dx": -318.5,
-      "dy": 39.5,
-      "w": 253,
-      "h": 272,
+      "dx": -319.0,
+      "dy": 57.5,
+      "w": 252,
+      "h": 266,
       "pivot": [
-       0.498,
-       0.478
+       0.503,
+       0.496
       ],
       "drop": 0
      },
      {
       "frame": "ttl_logo_main_1",
       "z": 2,
-      "dx": -107.5,
-      "dy": 6.0,
-      "w": 247,
-      "h": 281,
+      "dx": -110.0,
+      "dy": 24.5,
+      "w": 244,
+      "h": 272,
       "pivot": [
-       0.505,
-       0.496
+       0.519,
+       0.511
       ],
       "drop": 1
      },
      {
       "frame": "ttl_logo_main_2",
       "z": 3,
-      "dx": 107.0,
-      "dy": 18.5,
-      "w": 258,
-      "h": 276,
+      "dx": 112.5,
+      "dy": 35.5,
+      "w": 253,
+      "h": 272,
       "pivot": [
-       0.507,
-       0.492
+       0.49,
+       0.513
       ],
       "drop": 2
      },
      {
       "frame": "ttl_logo_main_3",
       "z": 4,
-      "dx": 322.0,
-      "dy": 25.5,
-      "w": 246,
-      "h": 290,
+      "dx": 324.0,
+      "dy": 43.0,
+      "w": 242,
+      "h": 285,
       "pivot": [
-       0.504,
-       0.49
+       0.503,
+       0.508
       ],
       "drop": 3
      },
      {
       "frame": "ttl_logo_emblem",
       "z": 5,
-      "dx": -28.5,
-      "dy": -87.0,
-      "w": 147,
-      "h": 145,
+      "dx": -13.0,
+      "dy": -99.5,
+      "w": 138,
+      "h": 138,
       "pivot": [
-       0.507,
-       0.456
+       0.508,
+       0.458
       ],
       "drop": 4
      },
      {
       "frame": "ttl_logo_sign",
       "z": 6,
-      "dx": 16.5,
-      "dy": 197.0,
+      "dx": 17.5,
+      "dy": 218.0,
       "w": 369,
       "h": 183,
       "pivot": [
        0.503,
-       0.496
+       0.493
       ],
       "drop": 6
      }
@@ -136,13 +142,13 @@
    "short": {
     "size2x": [
      640,
-     711
+     733
     ]
    },
    "en": {
     "size2x": [
      900,
-     263
+     270
     ]
    }
   },
@@ -199,23 +205,25 @@
     "ttl_forest": 0.58,
     "ttl_clouds": 0.36
    },
+   "cityFootPx": 120,
+   "cityNote": "ttl_city_far / ttl_city_lights carry a transparent foot of cityFootPx px (of the 1080-wide strip) under the buildings, so with the strip bottom at the usual place (TitleSky: horizon - 2.2 % H, scale 0.8) about half of the skyline clears ttl_mtn_mid + ttl_forest at the city stage. To place it yourself, anchor the strip at (bottom - cityFootPx * scale).",
    "note": "Fractions of the screen height for a 720 x 1280..1600 logical portrait layout; strips are drawn at scale 720 / 1080 (or / 1440) x k so they fill the width; the diorama covers their lower part."
   },
   "tints": {
    "day": {},
    "dusk": {
-    "ttl_mtn_far": "#F7C4C9",
-    "ttl_mtn_mid": "#E4B3C7",
-    "ttl_forest": "#C7A2BC",
+    "ttl_mtn_far": "#FFD9C8",
+    "ttl_mtn_mid": "#F6C9C2",
+    "ttl_forest": "#DDB7AE",
     "ttl_clouds": "#FFC9B3",
-    "ttl_city_far": "#C79AB8"
+    "ttl_city_far": "#E8B8B4"
    },
    "night": {
     "ttl_mtn_far": "#5E70AC",
     "ttl_mtn_mid": "#4C5F9C",
     "ttl_forest": "#3D4E88",
-    "ttl_clouds": "#45527F",
-    "ttl_city_far": "#33406F"
+    "ttl_clouds": "#7F8FC2",
+    "ttl_city_far": "#4A5A92"
    }
   },
   "fx": {
@@ -228,7 +236,7 @@
     "fx_glow",
     "fx_ring"
    ],
-   "snowRecipe": "three layers: far ttl_fx_snow_s (60-90, scale 0.5-0.9, alpha 0.6, fall 20-40 px/s), mid ttl_fx_snow_m + ttl_fx_flake_s (25-40, scale 0.6-1, fall 40-70 px/s, sway), front ttl_fx_snow_bokeh (4-6, scale 0.8-1.6, alpha 0.5-0.8, fall 70-110 px/s); one ttl_fx_bloom every ~8 s. Logical px, 720-wide layout."
+   "snowRecipe": "three layers: far ttl_fx_snow_s (60-90, scale 0.5-0.9, alpha 0.6, fall 20-40 px/s), mid ttl_fx_snow_m + ttl_fx_flake_s (25-40, scale 0.6-1, fall 40-70 px/s, sway), front ttl_fx_snow_bokeh (4-6, scale 0.8-1.6, blend ADD, alpha 0.3-0.5, fall 70-110 px/s); one ttl_fx_bloom every ~8 s. Logical px, 720-wide layout."
   },
   "icon": {
    "files": {
@@ -261,21 +269,21 @@
    "ios": "icon_1024.png (opaque, no rounded corners - iOS masks it)."
   },
   "payload": {
-   "titleLoadPngBytes": 1171180,
-   "titleLoadAfterWebpBuildBytes": 747276,
+   "titleLoadPngBytes": 1284309,
+   "titleLoadAfterWebpBuildBytes": 864287,
    "worstLanguage": "ko",
    "byGroup": {
     "logo": {
-     "png": 371278,
-     "webpBuild": 371278
+     "png": 402619,
+     "webpBuild": 402619
     },
     "backdrop": {
-     "png": 794650,
-     "webpBuild": 407579
+     "png": 882443,
+     "webpBuild": 498714
     },
     "fx": {
-     "png": 85401,
-     "webpBuild": 48568
+     "png": 84763,
+     "webpBuild": 48470
     }
    },
    "note": "worst case: @2x pictures (k = 2) + the larger language logo; manifest.json not counted; icons and the short logo are not loaded at title time. byGroup counts both languages."
@@ -448,7 +456,7 @@
    "kind": "ui",
    "size2x": [
     900,
-    263
+    270
    ],
    "notes": "English logo (@2x): Snowbloom (the o of bloom is the 눈꽃 emblem) / Village on the wooden sign."
   },
@@ -479,7 +487,7 @@
    "kind": "ui",
    "size2x": [
     900,
-    577
+    619
    ],
    "notes": "Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters with snow caps, the 눈꽃 emblem on 꽃) / 이야기 on a snowy wooden sign. Navy ink outline + soft shadow: reads over any sky."
   },
@@ -580,7 +588,7 @@
    "kind": "ui",
    "size2x": [
     640,
-    711
+    733
    ],
    "notes": "Short logo (@2x): 눈꽃 / 마을 in a 2 x 2 block with the emblem - splash, loading, badges."
   },
@@ -631,7 +639,7 @@
    ],
    "kind": "decor",
    "tile": "x",
-   "notes": "Far-away city skyline (final city stage) - sits just above the far mountains line / horizon; seamless in x; tint per meta.tints."
+   "notes": "Far-away city across the bay (final city stage), rendered from the game's own buildings (town hall clock tower, brick apartments, resort hotel, harbour crane, lighthouse) with snowy roofs and aerial haze; seamless in x; tint per meta.tints."
   },
   "ttl_city_lights": {
    "image": "ttl_city_lights",
@@ -664,7 +672,7 @@
    "tile": "x",
    "size": [
     1440,
-    574
+    576
    ],
    "notes": "Snowy hills with the game's pines (the nearest backdrop strip), seamless in x."
   },
@@ -687,7 +695,7 @@
    "tile": "x",
    "size": [
     1080,
-    248
+    322
    ],
    "notes": "Far snowy peaks (haze baked in), seamless in x."
   },
@@ -701,7 +709,7 @@
    "tile": "x",
    "size": [
     1080,
-    258
+    256
    ],
    "notes": "Nearer snowy mountains, seamless in x."
   },
@@ -775,8 +783,8 @@
     0.5
    ],
    "kind": "decor",
-   "blend": "NORMAL",
-   "notes": "Out-of-focus foreground flake 64 px (few, big, slow; alpha 0.5-0.8)."
+   "blend": "ADD",
+   "notes": "Out-of-focus foreground flake 64 px: faint cool disc with a brighter soft rim (few, big, slow). ADD at alpha 0.3-0.5."
   },
   "ttl_fx_flake_s": {
    "atlas": "ttl_fx",

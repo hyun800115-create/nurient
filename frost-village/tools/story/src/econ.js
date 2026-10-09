@@ -4,7 +4,7 @@
 
 import { ITEMS, ITEM_BY_ID } from '../data/items.js';
 import { JOBS, SHOP_COST, PLACE_KINDS } from '../data/places.js';
-import { G_KID, G_TEEN, G_ADULT, G_ELDER, F_OWNER, groupOf } from './people.js';
+import { G_KID, G_TEEN, G_ADULT, G_ELDER, F_OWNER, groupOf, ageOf, isKept } from './people.js';
 import { A_WORK, A_SHOP, A_EAT, A_BANK, A_PICKUP, A_BIGBUY, A_HOME, A_SOCIAL, A_PLAY, A_CLINIC, A_OUTING, A_VISIT } from './plans.js';
 import { B_OK } from './world.js';
 import { SRC_DID } from './memory.js';
@@ -110,18 +110,26 @@ export class Economy {
     let avg = 0;
     for (const i of shop.sellIdx) avg += W.price(i);
     avg = Math.max(1, Math.round((avg / shop.sellIdx.length) * 0.55));
+    // first settle what is still on the shop's account, then pay cash for what the budget allows;
+    // the centre lets a shop take a little more on account (paid back at the next pick-up), so a shop
+    // with an empty till is never stuck with empty shelves
+    let settledNow = 0;
+    if (shop.owed > 0) { const pd = this.pay(r, shop.owed); shop.owed -= pd; settledNow += pd; }
     const budget = r.wallet + r.savings;
-    const qty = Math.min(want, Math.floor(budget / avg));
-    if (qty <= 0) return;
+    let qty = Math.min(want, Math.floor(budget / avg));
     const cost = qty * avg;
-    this.pay(r, cost);
+    if (cost > 0) { this.pay(r, cost); settledNow += cost; }
+    const credit = Math.max(0, Math.min(want - qty, 30 - qty, Math.floor((600 - (shop.owed || 0)) / avg)));
+    if (credit > 0) { shop.owed = (shop.owed || 0) + credit * avg; qty += credit; }
+    if (qty <= 0) return;
     shop.stock += qty;
-    this.stats.pickups++; this.stats.settled += cost;
+    this.stats.pickups++; this.stats.settled += settledNow;
+    if (credit > 0) this.stats.credit = (this.stats.credit || 0) + 1;
     if (e.bus.has('shop')) {
       const items = [];
       for (const i of shop.sellIdx) items.push(ITEMS[i].id);
       e.bus.emit('shop', { op: 'pickup', shop: shop.id, owner: r.id, place: lc.id, items, qty });
-      e.bus.emit('shop', { op: 'settle', shop: shop.id, owner: r.id, place: lc.id, coins: cost });
+      e.bus.emit('shop', { op: 'settle', shop: shop.id, owner: r.id, place: lc.id, coins: settledNow, owed: shop.owed || 0 });
     }
     e.lifelog(r, 'pickup', -1, lc.idx, qty);
   }
@@ -168,7 +176,7 @@ export class Economy {
     if (g >= G_ADULT) this.pay(r, 3);
     r.hunger = Math.min(100, r.hunger + 26);
     // move savings back to the wallet when it runs dry (a visit to the ATM)
-    if (r.wallet < 8 && r.savings > 20) { const t = Math.min(r.savings, 30); r.savings -= t; r.wallet += t; }
+    if (r.wallet < 8 && r.savings > 20) { const t = Math.min(r.savings, 30); r.savings -= t; r.wallet += t; e.bank.stats.withdrawals++; }
     // big wishes: a new sofa, a radio … (rich and vain more often)
     if (g >= G_ADULT && !r.bigBuy && r.wallet + r.savings > 450 && rng.chance(0.03 + r.tr[10] / 2000)) {
       r.bigBuy = rng.chance(0.5) ? 'furniture_store' : 'appliance_store';
@@ -179,15 +187,15 @@ export class Economy {
       r.bigBuy = 'furniture_store';
     }
     // dreams of a shop: start saving, then ask the bank
-    if (g === G_ADULT && !r.dream && !(r.flags & F_OWNER) && rng.chance(0.004 + (r.job === 'none' ? 0.01 : 0))) {
+    if (g === G_ADULT && !r.dream && !(r.flags & F_OWNER) && r.dreamShop < 0 && !isKept(e, r) && rng.chance(0.004 + (r.job === 'none' ? 0.01 : 0))) {
       const kinds = Object.keys(SHOP_COST);
       r.dream = kinds[rng.int(kinds.length)];
       const f = e.fact('shop_plan', { a: r.id, s: r.dream });
       e.learn(r, f, SRC_DID);
     }
-    if (r.dream && !r.loanWant && r.savings + r.wallet >= SHOP_COST[r.dream] * 0.25 && e.world.plots.length) {
+    if (r.dream && r.dreamShop < 0 && !r.loanWant && !(r.flags & F_OWNER) && r.savings + r.wallet >= SHOP_COST[r.dream] * 0.25 && e.world.plots.length) {
       r.loanWant = { purpose: 'shop', amount: Math.round(SHOP_COST[r.dream] * 0.8) };
-    }
+    } else if (r.dream && r.dreamShop < 0 && !e.world.plots.length && rng.chance(0.03)) r.dream = null;   // no free plot for weeks: the dream fades
   }
 
   /** open the dream shop of resident r on a free plot (after the loan) */
@@ -214,14 +222,14 @@ export class Economy {
     if (!p || p.state !== 4) return;
     p.state = B_OK; p.built = e.clock.day;
     p.stock = p.stockMax;
-    const r = e.people[p.owner];
+    const r = p.owner >= 0 ? e.people[p.owner] : null;
     if (r && r.alive) {
       r.flags |= F_OWNER;
-      r.job = PLACE_KINDS[p.kind].shop === 'bakery' ? 'baker' : p.kind === 'cafe' ? 'barista' : p.kind === 'restaurant' ? 'cook' : p.kind === 'stall' ? 'stall_keeper' : p.kind === 'salon' ? 'hairdresser' : p.kind === 'grocer' ? 'grocer' : 'shopkeeper';
+      r.job = jobForShop(p.kind);
       r.work = p.idx;
       r.dream = null;
       r.mood = Math.min(100, r.mood + 40);
-    }
+    } else p.owner = -1;     // the founder left before the opening: someone takes it over (adoptShops)
     p.jobs = [[r ? r.job : 'shopkeeper', 2]];
     const f = e.fact('shop_open', { a: p.owner, p: p.idx, s: p.kind });
     e.witness(f, p, p.owner);
@@ -229,6 +237,45 @@ export class Economy {
     if (e.bus.has('shop')) e.bus.emit('shop', { op: 'opened', shop: p.id, kind: p.kind, owner: p.owner, name: p.name });
     e.jobs.fillOpenings();
   }
+
+  /** daily: a shop whose owner has left is taken over by its staff, a resident who dreamt of a shop, or a
+   *  grown-up looking for work (and gets the till and the account) */
+  adoptShops() {
+    const e = this.e, rng = e.rng, W = e.world;
+    for (const p of W.places) {
+      if (p.cat !== 'shop' || p.state !== B_OK) continue;
+      const o = p.owner >= 0 ? e.people[p.owner] : null;
+      if (o && o.alive) continue;
+      let best = null, bs = -1;
+      for (const r of e.alive) {
+        if (groupOf(e, r) !== G_ADULT || (r.flags & F_OWNER) || r.dreamShop >= 0 || isKept(e, r) || ageOf(e, r) < 24) continue;
+        let sc = -1;
+        if (r.work === p.idx) sc = 3;
+        else if (r.dream) sc = r.dream === p.kind ? 2.5 : 2;
+        else if (r.job === 'none') sc = 1;
+        if (sc < 0) continue;
+        sc += rng.next() * 0.5;
+        if (sc > bs) { bs = sc; best = r; }
+      }
+      if (!best) { p.owner = -1; continue; }
+      p.owner = best.id;
+      best.flags |= F_OWNER;
+      best.job = jobForShop(p.kind);
+      best.work = p.idx;
+      best.dream = null;
+      best.wallet += p.till; p.till = 0;
+      best.mood = Math.min(100, best.mood + 25);
+      const f = e.fact('new_job', { a: best.id, p: p.idx, s: best.job });
+      e.witness(f, p, best.id);
+      if (e.bus.has('shop')) e.bus.emit('shop', { op: 'takeover', shop: p.id, kind: p.kind, owner: best.id, name: p.name });
+    }
+  }
+}
+
+/** the job of a shop's owner */
+export function jobForShop(kind) {
+  const K = PLACE_KINDS[kind];
+  return K && K.shop === 'bakery' ? 'baker' : kind === 'cafe' ? 'barista' : kind === 'restaurant' ? 'cook' : kind === 'stall' ? 'stall_keeper' : kind === 'salon' ? 'hairdresser' : kind === 'grocer' ? 'grocer' : kind === 'fishmonger' ? 'fishmonger' : 'shopkeeper';
 }
 
 export { FURN, APPL };

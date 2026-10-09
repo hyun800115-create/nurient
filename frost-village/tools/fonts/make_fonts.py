@@ -13,7 +13,9 @@ Fonts
                        syllables) merged with files/jua-latin-400-normal.woff2.
   Fredoka-Bold.ttf     Fredoka 700 (Milena Brandao), round toy Latin.          @fontsource/fredoka 5.3.0
   Fredoka-SemiBold.ttf Fredoka 600.
-Licences: OFL-Jua.txt, OFL-Fredoka.txt (copied from the packages' LICENSE files).
+  Pretendard-ExtraBold.ttf  Pretendard ExtraBold (all 11,172 Hangul) - fallback for syllables Jua lacks.
+                       npm pretendard 1.3.9 (dist/public/static/alternative/Pretendard-ExtraBold.ttf, as is)
+Licences: OFL-Jua.txt, OFL-Fredoka.txt, OFL-Pretendard.txt (copied from the packages' LICENSE files).
 """
 import io
 import os
@@ -27,6 +29,7 @@ from fontTools.merge import Merger
 HERE = os.path.dirname(os.path.abspath(__file__))
 REG = 'https://registry.npmjs.org/@fontsource/{p}/-/{p}-{v}.tgz'
 PKGS = {'jua': '5.3.0', 'fredoka': '5.3.0'}
+PRETENDARD = ('https://registry.npmjs.org/pretendard/-/pretendard-1.3.9.tgz', 'pretendard-1.3.9.tgz')
 
 
 def fetch(pkg, ver, cache):
@@ -68,6 +71,16 @@ def main():
         to_ttf(member(tf, 'files/fredoka-latin-%d-normal.woff2' % w), os.path.join(HERE, 'Fredoka-%s.ttf' % nm))
     with open(os.path.join(HERE, 'OFL-Fredoka.txt'), 'wb') as f:
         f.write(member(tf, 'LICENSE').read())
+    # Pretendard ExtraBold (fallback for the rare syllables Jua does not draw) - copied unmodified
+    tgz = os.path.join(cache, PRETENDARD[1])
+    if not os.path.exists(tgz):
+        with urllib.request.urlopen(PRETENDARD[0]) as r, open(tgz, 'wb') as f:
+            f.write(r.read())
+    tf = tarfile.open(tgz)
+    with open(os.path.join(HERE, 'Pretendard-ExtraBold.ttf'), 'wb') as f:
+        f.write(member(tf, 'dist/public/static/alternative/Pretendard-ExtraBold.ttf').read())
+    with open(os.path.join(HERE, 'OFL-Pretendard.txt'), 'wb') as f:
+        f.write(member(tf, 'dist/LICENSE.txt').read())
     for fn in sorted(os.listdir(HERE)):
         if fn.endswith('.ttf'):
             t = TTFont(os.path.join(HERE, fn))

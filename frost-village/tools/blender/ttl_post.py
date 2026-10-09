@@ -37,6 +37,22 @@ def dilate(a, r):
     return np.clip((b - 0.04) * 6.0, 0, 1)
 
 
+def gaps(a, r):
+    """Narrow background between parts of the art (closing by a disc of radius r minus the art: the
+    gaps between two jamo of a letter, between letters) + every enclosed counter.  0..1 float map."""
+    inside = a > 0.5
+    if _ndi is not None:
+        dil = _ndi.distance_transform_edt(~inside) <= r
+        closed = _ndi.distance_transform_edt(dil) > r
+    else:                                                       # pragma: no cover
+        d = dilate(a, r) > 0.5
+        closed = 1.0 - dilate((~d).astype(np.float32), r) > 0.5
+    g = closed & ~inside
+    if _ndi is not None:
+        g |= _ndi.binary_fill_holes(inside) & ~inside          # enclosed counters (o, ㅇ, ㅁ ...)
+    return g.astype(np.float32)
+
+
 def blur(a, r):
     im = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))
     return np.asarray(im.filter(ImageFilter.GaussianBlur(r)), dtype=np.float32) / 255.0
@@ -78,7 +94,10 @@ def ink(im, width, color, shadow=None, inner=None, pad=0):
         out = over(out, solid(art.shape, shadow['rgba'][:3], sh))
     out = over(out, solid(art.shape, hex_rgb(color), ring))
     if inner:
-        rim = dilate(a, inner[0])
+        # the light rim only runs round the OUTER silhouette: inside a narrow gap between two strokes
+        # (ㄲ's two ㄱ, ㄹ's bars) and inside a counter (o, ㅇ) it stays solid ink, so the jamo and the
+        # counters read open at phone size
+        rim = dilate(a, inner[0]) * (1.0 - np.clip(blur(gaps(a, width), 0.6) * 1.5, 0, 1))
         out = over(out, solid(art.shape, hex_rgb(inner[1]), rim * inner[2]))
     out = over(out, art)
     return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGBA')

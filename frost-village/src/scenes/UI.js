@@ -11,6 +11,8 @@ import { View } from '../core/View.js';
 import { BALANCE } from '../data/balance.js';
 import { VERSION, BUILD_DATE } from '../data/version.js';
 import { buildCost } from '../entities/Site.js';
+// ---- (v4-B) the neighbour-town HUD: rank chip, order chip, clock, train edge icon, order / rank panels
+import { HudV4 } from './UIv4.js';
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -100,6 +102,9 @@ export class UI extends Phaser.Scene {
     // ---- debug
     if (window.__FV_DEBUG) this.fps = this.add.text(12, 0, '', { fontFamily: 'monospace', fontSize: '20px', color: '#2b2f3a', backgroundColor: 'rgba(255,255,255,0.6)' }).setDepth(100);
 
+    // ---- (v4-B) the neighbour-town chips and panels (hidden until the station opens)
+    this.hud4 = new HudV4(this);
+
     this.layout();
     this.scale.on('resize', this.onResize, this);
     this.events.once('shutdown', () => { this.ready = false; this.panelOpen = false; this.scale.off('resize', this.onResize, this); });
@@ -110,7 +115,7 @@ export class UI extends Phaser.Scene {
       // (v3.5 review) a finger landing on the dog bar may still be the start of a drag: the joystick starts
       // too, and the button only fires when the finger lifts without moving (dogBarRelease)
       const onBar = over && over.length && over.every((o) => o.isDogBtn);
-      if (this.panelOpen || this.buildOpen || (over && over.length && !onBar)) return;
+      if (this.panelOpen || this.buildOpen || this.v4PanelOpen || (over && over.length && !onBar)) return;
       if (!onBar) this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
       if (other && !this.pinch) {
@@ -199,7 +204,13 @@ export class UI extends Phaser.Scene {
     if (this.fps) this.fps.setPosition(12, H - 34);
     if (this.panel) this.layoutPanel();
     if (this.buildOpen) this.closeBuildMenu(true);
+    if (this.hud4) this.hud4.layout();
   }
+
+  // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
+  openOrders() { if (this.hud4 && !this.panelOpen && !this.buildOpen) this.hud4.openOrders(); }
+  openRank() { if (this.hud4 && !this.panelOpen && !this.buildOpen) this.hud4.openRank(); }
+  rankBadgeFly(wx, wy) { if (this.hud4) this.hud4.badgeFly(wx, wy); }
 
   // ---------------------------------------------------------------- widgets
   makeIconButton(x, y, iconKey, size, onClick) {
@@ -379,7 +390,8 @@ export class UI extends Phaser.Scene {
     let top = sp.y - half - 10 - 8 * zk;
     if (p && Math.abs(p.x - r.x) < 160 && Math.abs(p.y - r.y) < 90) { const pp = this.worldToScreen(p.x, p.y + p.headTop); top = Math.min(top, pp.y - half - 12 - 26 * zk); sp.x = (sp.x + pp.x) / 2; }
     // never over the guide text / the population badge at the top, nor the buttons at the bottom
-    const minY = 62 + View.safeTop + 152 + 26 + half, maxY = this.H - 250 - View.safeBottom - half * 0.4;
+    // ((v4-B) below the rank / order chips too)
+    const minY = (this.hud4 ? Math.max(62 + View.safeTop + 152 + 26, this.hud4.bottom()) : 62 + View.safeTop + 152 + 26) + half, maxY = this.H - 250 - View.safeBottom - half * 0.4;
     const x = Phaser.Math.Clamp(sp.x, 180, this.W - 180), y = Phaser.Math.Clamp(top, minY, Math.max(minY, maxY));
     this.dogBar.setPosition(this.dogBar.x ? this.dogBar.x + (x - this.dogBar.x) * Math.min(1, dt * 12) : x, this.dogBar.y ? this.dogBar.y + (y - this.dogBar.y) * Math.min(1, dt * 12) : y);
     const love = d.hearts;
@@ -682,7 +694,7 @@ export class UI extends Phaser.Scene {
     const c = this.add.container(0, 0).setDepth(80);
     const dim = this.add.rectangle(W / 2, H / 2, W * 2, H * 2, 0x1b2638, 0.5).setInteractive();
     dim.on('pointerdown', () => {});
-    const bg = panel(this, W / 2, H / 2, 'ui_panel', 560, 640).setOrigin(0.5);
+    const bg = panel(this, W / 2, H / 2, 'ui_panel', 560, 840).setOrigin(0.5);
     c.add([dim, bg]);
     this.panel = c; this.panelBg = bg; this.panelDim = dim;
     this.buildPanelContent(false);
@@ -702,37 +714,42 @@ export class UI extends Phaser.Scene {
     const W = this.W, H = this.H, cx = W / 2, cy = H / 2;
     const add = (o) => { this.panel.add(o); this.panelItems.push(o); return o; };
     if (!confirm) {
-      add(this.add.text(cx, cy - 262, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
+      add(this.add.text(cx, cy - 362, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
       const row = (y, label, value, style, cb, icon) => {
         if (icon) { const ic = add(Assets.image(this, cx - 200, y, icon).setOrigin(0.5)); ic.setScale(54 / Math.max(ic.frame.realWidth, 1)); }
         add(this.add.text(cx - 160, y, label, TXT(32, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
         add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
       };
       const S = Settings.data;
-      row(cy - 150, t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
-      row(cy - 50, t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
+      row(cy - 250, t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
+      row(cy - 155, t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
       // globe icon for the language row (drawn, there is no icon sprite for it)
       const gl = add(this.add.graphics());
-      gl.fillStyle(0x3d8be0, 1); gl.fillCircle(cx - 200, cy + 50, 25);
-      gl.lineStyle(3, 0xffffff, 0.95); gl.strokeCircle(cx - 200, cy + 50, 25);
-      gl.strokeEllipse(cx - 200, cy + 50, 22, 50); gl.lineBetween(cx - 225, cy + 50, cx - 175, cy + 50);
-      gl.lineBetween(cx - 221, cy + 37, cx - 179, cy + 37); gl.lineBetween(cx - 221, cy + 63, cx - 179, cy + 63);
-      row(cy + 50, t('language'), t('langName'), 'blue', () => {
+      const ly = cy - 60;
+      gl.fillStyle(0x3d8be0, 1); gl.fillCircle(cx - 200, ly, 25);
+      gl.lineStyle(3, 0xffffff, 0.95); gl.strokeCircle(cx - 200, ly, 25);
+      gl.strokeEllipse(cx - 200, ly, 22, 50); gl.lineBetween(cx - 225, ly, cx - 175, ly);
+      gl.lineBetween(cx - 221, ly - 13, cx - 179, ly - 13); gl.lineBetween(cx - 221, ly + 13, cx - 179, ly + 13);
+      row(ly, t('language'), t('langName'), 'blue', () => {
         const l = getLang() === 'ko' ? 'en' : 'ko';
         setLang(l); Settings.data.lang = l; Settings.save();
         this.onLanguage();
         this.buildPanelContent(false);
       });
-      add(this.makeButton(cx - 130, cy + 170, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
-      add(this.makeButton(cx + 130, cy + 170, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
-      add(this.add.text(cx, cy - 214, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
-      add(this.makeButton(cx, cy + 262, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+      // ---- (v4-B) 낮과 밤 (day & night tint on / off) and 그래픽 (auto / sharp / light)
+      row(cy + 35, t('set_daynight'), S.daynight !== false ? t('on') : t('off'), S.daynight !== false ? 'green' : 'gray', () => { S.daynight = S.daynight === false; Settings.save(); this.buildPanelContent(false); }, Assets.pick('ui_icon_night', 'ui_icon_day', 'ui_icon_star'));
+      const gfx = S.gfx === 'high' || S.gfx === 'low' ? S.gfx : 'auto';
+      row(cy + 130, t('set_gfx'), t('gfx_' + gfx), 'blue', () => { S.gfx = gfx === 'auto' ? 'high' : gfx === 'high' ? 'low' : 'auto'; Settings.save(); if (this.gs.applyGfx) this.gs.applyGfx(); this.buildPanelContent(false); }, Assets.pick('ui_icon_speed', 'ui_icon_settings'));
+      add(this.makeButton(cx - 130, cy + 245, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
+      add(this.makeButton(cx + 130, cy + 245, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
+      add(this.add.text(cx, cy - 314, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
+      add(this.makeButton(cx, cy + 345, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
       add(this.makeButton(cx, cy + 60, 360, 84, 'gray', t('yes'), () => { this.closeSettings(true); this.gs.resetProgress(); }, 30));
       add(this.makeButton(cx, cy + 160, 360, 84, 'green', t('no'), () => this.buildPanelContent(false), 30));
     }
-    const close = add(this.makeIconButton(cx + 250, cy - 290, 'ui_icon_close', 70, () => this.closeSettings()));
+    const close = add(this.makeIconButton(cx + 250, cy - 390, 'ui_icon_close', 70, () => this.closeSettings()));
     void close;
   }
 
@@ -814,6 +831,7 @@ export class UI extends Phaser.Scene {
       } else this.edge.setVisible(false);
     } else this.edge.setVisible(false);
     this.updateDogBar(dt);
+    if (this.hud4) this.hud4.update(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }
 }

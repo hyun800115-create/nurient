@@ -6,8 +6,9 @@ Run from anywhere (about 1 min on 3 cores; deterministic, safe to re-run):
     python3 tools/voice/build_voice.py --no-check
     python3 tools/voice/build_voice.py --lexicon-only  # after editing lexicon.json keywords (no re-render)
 Outputs
-    assets/voice/voice_<type>.ogg / .mp3   one audio sprite per voice type (mono 44.1 kHz): ~20 words +
-                                           fillers + sentence-end particles + 10 emotive one-shots
+    assets/voice/voice_<type>.ogg / .mp3   one audio sprite per voice type (mono 44.1 kHz): 28 words, 12
+                                           babble words, fillers, sentence-end particles, 10 emotive
+                                           one-shots (+ 2 extra 'excited' takes)
     assets/voice/manifest.json             audio fragment (CONTRACT section 2 conventions: files [ogg, mp3],
                                            volume, loop, kind, duration) + per-sprite `markers`
                                            {clip: {start, dur, kind, ...}} + `voices` (cast / timbre table)
@@ -16,7 +17,8 @@ Outputs
 Loudness: every clip is normalised to the same active-speech loudness inside its sprite (CLIP_LUFS,
 peak <= -1.5 dBFS), and the sprite's manifest `volume` brings it to the effective level of the old
 chatter (assets/audio2 sfx_chatter_*: -21.1 LUFS active at volume 1; VillageLife plays chatter x0.4,
-VillageVoice uses the same 0.4 base gain).
+VillageVoice uses the same 0.4 base gain); a voice that loses more than the old chatter on a phone speaker
+(low voices) gets half of the difference back (<= PHONE_COMP_MAX dB).
 Needs numpy, scipy, pyworld, espeakng-loader, ffmpeg (see deps.py).
 """
 from __future__ import annotations
@@ -53,10 +55,13 @@ CLIP_LUFS = -13.0          # active loudness of every clip inside a sprite (file
 EMOTE_DB = {"laugh": 0.5, "surprise": 0.5, "excited": 0.5, "sad": -1.0, "grumpy": 0.0}
 EFFECTIVE = -21.0          # active LUFS at manifest volume (old chatter: -21.1 +- 0.2)
 PEAK_DB = -1.5
-LEAD, GAP = 0.03, 0.045    # sprite: silence before the first clip and between clips (> 25 ms mp3 pad error)
+LEAD, GAP = 0.03, 0.04     # sprite: silence before the first clip and between clips (> 25 ms mp3 pad error)
 OGG_Q = 3
-MP3_KBPS = 56
-CODE_FILES = ["render.py", "vocoder.py", "espeak.py", "prosody.py", "phonology.py"]
+MP3_KBPS = 48
+CODE_FILES = ["render.py", "vocoder.py", "espeak.py", "prosody.py", "phonology.py", "voices.py"]
+PHONE_COMP_MAX = 1.5       # dB: low voices lose more on a phone speaker; half of the extra loss is made up
+TAIL_DB = -20.0            # marker `tail`: the end of a clip below this (re its peak) may overlap the next clip
+CLOSURE = 0.03             # s: an unreleased final stop keeps this much silence before the next clip
 
 
 # ----------------------------------------------------------------------------- plans
@@ -65,6 +70,7 @@ def plans_for(voice: str):
     out = [PR.word_plan(lex[w], voice) for w in VV.word_list(voice)]
     style = VV.VOICES[voice]["laugh"]
     out += [PR.emote_plan(e, voice, style) for e in VV.EMOTES]
+    out += [PR.emote_plan(e, voice, style, take) for e, takes in VV.EMOTE_TAKES.items() for take in takes]
     return out
 
 
@@ -115,16 +121,28 @@ def level_clip(y, plan):
 HANGUL = {w["id"]: w["hangul"] for w in P.load_lexicon()["words"]}
 
 
+def tail_of(y, fin):
+    """seconds at the end of a clip that the next clip may overlap: below TAIL_DB (5 ms RMS) re the clip's
+    peak - the room tail and soft fade - minus the closure an unreleased final stop needs"""
+    n = S.n_of(0.005)
+    e = np.sqrt(np.convolve(y ** 2, np.ones(n) / n, "same"))
+    above = np.nonzero(e > e.max() * S.undb(TAIL_DB))[0]
+    end = (above[-1] + 1) / S.SR if len(above) else len(y) / S.SR
+    tail = len(y) / S.SR - end - (CLOSURE if fin == "s" else 0.0)
+    return round(max(0.0, tail), 4)
+
+
 def build_sprite(voice, clips):
     parts = [np.zeros(S.n_of(LEAD))]
     pos = len(parts[0])
     markers = {}
     for plan, path in clips:
         y = level_clip(S.read_wav(path)[0], plan)
-        m = {"start": round(pos / S.SR, 5), "dur": round(len(y) / S.SR, 5), "kind": plan["kind"], "syl": plan["syl"]}
+        m = {"start": round(pos / S.SR, 5), "dur": round(len(y) / S.SR, 5), "kind": plan["kind"], "syl": plan["syl"],
+             "fin": plan["fin"], "tail": tail_of(y, plan["fin"]), "roman": plan["roman"]}
         if plan["kind"] == "emote":
             m["emote"] = plan["emote"]
-            m["say"] = VV.emote_say(voice, plan["emote"])
+            m["say"] = plan.get("say") or VV.emote_say(voice, plan["emote"])
         else:
             m["say"] = HANGUL.get(plan["id"], "")
         markers[plan["id"]] = m
@@ -161,13 +179,27 @@ def first_onset(x, thr=0.02):
 
 
 def clip_levels(path, markers):
-    """active loudness of every marker, measured on the decoded file."""
+    """active loudness of every marker, measured on the decoded file (+ '_phone': dB the voice loses on a
+    phone speaker, over all its words)"""
     d = F.decode(path, 1)[0]
     out = {}
+    words = []
     for k, m in markers.items():
         a, b = int(round(m["start"] * S.SR)), int(round((m["start"] + m["dur"]) * S.SR))
         out[k] = LD.active_lufs(d[a:b])
+        if m["kind"] != "emote":
+            words.append(d[a:b])
+    out["_phone"] = LD.phone_drop(np.concatenate(words))
     return out
+
+
+def chatter_phone_drop():
+    """the old chatter's phone-speaker loss (reference for PHONE_COMP)"""
+    import re
+    a2 = os.path.join(ROOT, "assets", "audio2")
+    man = json.load(open(os.path.join(a2, "manifest.json")))["audio"]
+    xs = [F.decode(os.path.join(a2, k + ".ogg"), 1)[0] for k in sorted(man) if re.match(r"sfx_chatter_\d$", k)]
+    return float(np.mean([LD.phone_drop(x) for x in xs]))
 
 
 def write_lexicon_js(lex):
@@ -176,10 +208,13 @@ def write_lexicon_js(lex):
     for w in lex["words"]:
         words[w["id"]] = {"hangul": w["hangul"], "roman": w["roman"], "ko": w["ko"], "en": w["en"], "cat": w["cat"],
                           "kw": w.get("kw", [])}
+        if w.get("kwNot"):
+            words[w["id"]]["kwNot"] = w["kwNot"]
     body = json.dumps(words, ensure_ascii=False, indent=1)
     js = ("// GENERATED by tools/voice/build_voice.py from tools/voice/lexicon.json - do not edit by hand.\n"
           "// 눈꽃말 (the village language): word id -> hangul spelling, romanisation, meaning, category and the\n"
-          "// Korean stems (kw) that make VillageVoice say this word when a bubble contains them.\n"
+          "// Korean stems (kw; '^' = only at the start of a word) that make VillageVoice say this word when a bubble\n"
+          "// contains them, and longer words that contain a stem but mean something else (kwNot: 선물 is not 물).\n"
           f"export const LANGUAGE = {{ name: '{lex['name']}', roman: '{lex['roman']}' }};\n"
           f"export const WORDS = {body};\n")
     with open(os.path.join(SRC, "lexicon.js"), "w", encoding="utf-8") as f:
@@ -188,11 +223,13 @@ def write_lexicon_js(lex):
 
 def write_manifest(sprites, levels, gains):
     audio, vtable = {}, {}
+    ref_drop = chatter_phone_drop()
     for voice, (x, markers, key) in sprites.items():
         lv = levels[voice]
         words = [lv[k] for k, m in markers.items() if m["kind"] != "emote"]
         file_level = float(np.median(words))
-        vol = round(min(1.0, max(0.05, S.undb(EFFECTIVE - file_level))), 3)
+        comp = float(np.clip(0.5 * (ref_drop - lv["_phone"]), 0.0, PHONE_COMP_MAX))
+        vol = round(min(1.0, max(0.05, S.undb(EFFECTIVE + comp - file_level))), 3)
         gl = F.mp3_gapless(os.path.join(OUT, key + ".mp3"))
         audio[key] = {"files": [f"voice/{key}.ogg", f"voice/{key}.mp3"], "volume": vol, "loop": False, "kind": "sfx",
                       "duration": round(len(x) / S.SR, 5), "samples": int(len(x)),
@@ -201,7 +238,7 @@ def write_manifest(sprites, levels, gains):
         v = VV.VOICES[voice]
         vtable[voice] = {"key": key, "ko": v["ko"], "en": v["en"], "desc": v["desc"], "f0": v["f0"],
                          "alpha": v["alpha"], "speed": v["speed"], "breath": v["breath"], "range": v["range"],
-                         "laugh": v["laugh"]}
+                         "laugh": v["laugh"], "phoneDrop": round(lv["_phone"], 2), "phoneComp": round(comp, 2)}
     man = {"version": 1,
            "generator": "tools/voice/build_voice.py (눈꽃말: eSpeak NG articulation -> WORLD vocoder voices; "
                         "loudness matched to assets/audio2 chatter)",
@@ -209,7 +246,10 @@ def write_manifest(sprites, levels, gains):
            "notes": "Audio sprites: play a marker with source.start(when, start, dur). Not loaded at boot: "
                     "Assets.loadFragment(scene, 'voice', {audio: [keys...]}). Runtime: src/voice/VillageVoice.js. "
                     "`onset` = time of the first sound: if a decoded file has it later (an mp3 decoder that ignores "
-                    "the LAME gapless tag adds ~mp3StartPad samples), shift every marker by the difference.",
+                    "the LAME gapless tag adds ~mp3StartPad samples), shift every marker by the difference. Marker `tail` = "
+                    "seconds at the clip's end (room tail, soft fade) the next clip may overlap; `fin` = how it ends "
+                    "(s unreleased stop, n nasal/liquid, v open vowel). `phoneComp` (voices) = dB added to the volume "
+                    "because that voice loses more than the old chatter on a phone speaker.",
            "audio": audio, "audioGroups": {}, "voices": vtable}
     with open(os.path.join(OUT, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(man, f, indent=1, ensure_ascii=False)

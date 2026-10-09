@@ -416,6 +416,113 @@ def edge_samples(loops, step=0.02, skip_holes=False):
     return res
 
 
+class GlyphMask:
+    """The glyph rasterised (numpy, crossing parity) at `ppe` px per unit, with a GAP map: the narrow
+    background between two strokes of the same glyph (morphological closing minus the glyph).  Snow,
+    lumps and drips are kept out of the gaps so every jamo stays separate (ㄲ shows two ㄱ, ㄹ three
+    bars) - the logo must read at 215 px wide on a phone."""
+
+    def __init__(self, loops, bbox, ppe=300.0, gap=0.06, pad=0.20):
+        import numpy as np
+        self.np = np
+        self.ppe = ppe
+        self.x0 = bbox[0] - pad
+        self.y0 = bbox[1] - pad
+        W = int(math.ceil((bbox[2] - bbox[0] + 2 * pad) * ppe))
+        H = int(math.ceil((bbox[3] - bbox[1] + 2 * pad) * ppe))
+        ys = self.y0 + (np.arange(H) + 0.5) / ppe
+        xs = self.x0 + (np.arange(W) + 0.5) / ppe
+        T_ = np.zeros((H, W + 1), np.int32)
+        for l in loops:
+            a = np.asarray(l, np.float64)
+            b = np.roll(a, -1, axis=0)
+            for (xi, yi), (xj, yj) in zip(a, b):
+                if yi == yj:
+                    continue
+                lo, hi = (yi, yj) if yi < yj else (yj, yi)
+                r0 = int(np.searchsorted(ys, lo, side='right'))
+                r1 = int(np.searchsorted(ys, hi, side='right'))
+                if r1 <= r0:
+                    continue
+                Y = ys[r0:r1]
+                xc = xj + (Y - yj) * (xi - xj) / (yi - yj)
+                k = np.searchsorted(xs, xc, side='left')       # columns c < k are left of the crossing
+                np.add.at(T_, (np.arange(r0, r1), k), 1)
+        flips = np.cumsum(T_[:, ::-1], axis=1)[:, ::-1][:, 1:]
+        self.mask = (flips % 2) == 1
+        n = max(1, int(round(gap * ppe)))
+        closed = self._erode(self._dilate(self.mask, n), n)
+        self.gap = closed & ~self.mask
+        self.H, self.W = H, W
+
+    def _dilate(self, m, n):
+        np = self.np
+        out = m.copy()
+        for i in range(n):
+            o = out.copy()
+            o[1:, :] |= out[:-1, :]
+            o[:-1, :] |= out[1:, :]
+            o[:, 1:] |= out[:, :-1]
+            o[:, :-1] |= out[:, 1:]
+            if i % 2:                                   # alternate cross / box -> octagon ~ disc
+                o[1:, 1:] |= out[:-1, :-1]
+                o[:-1, :-1] |= out[1:, 1:]
+                o[1:, :-1] |= out[:-1, 1:]
+                o[:-1, 1:] |= out[1:, :-1]
+            out = o
+        return out
+
+    def _erode(self, m, n):
+        return ~self._dilate(~m, n)
+
+    def _ij(self, x, y):
+        return int((y - self.y0) * self.ppe), int((x - self.x0) * self.ppe)
+
+    def inside(self, x, y):
+        i, j = self._ij(x, y)
+        if 0 <= i < self.H and 0 <= j < self.W:
+            return bool(self.mask[i, j])
+        return False
+
+    def disc_hits(self, x, y, r, what='gap'):
+        """True when a disc (centre x, y, radius r) touches the gap map (or the glyph: what='glyph')."""
+        np = self.np
+        m = self.gap if what == 'gap' else self.mask
+        i0, j0 = self._ij(x - r, y - r)
+        i1, j1 = self._ij(x + r, y + r)
+        i0, j0 = max(0, i0), max(0, j0)
+        i1, j1 = min(self.H - 1, i1 + 1), min(self.W - 1, j1 + 1)
+        if i1 <= i0 or j1 <= j0:
+            return False
+        sub = m[i0:i1, j0:j1]
+        if not sub.any():
+            return False
+        yy = self.y0 + (np.arange(i0, i1) + 0.5)[:, None] / self.ppe
+        xx = self.x0 + (np.arange(j0, j1) + 0.5)[None, :] / self.ppe
+        return bool((sub & ((xx - x) ** 2 + (yy - y) ** 2 <= r * r)).any())
+
+    def clearance_up(self, x, y, reach):
+        """Distance straight up from (x, y) (just outside the glyph) to the next glyph pixel, or reach."""
+        step = 1.0 / self.ppe
+        d = 2 * step
+        while d < reach:
+            if self.inside(x, y + d):
+                return d
+            d += step
+        return reach
+
+    def fits_inside(self, x, y_top, y_bot, half_w, margin=0.012):
+        """A vertical drip from y_top down to y_bot (half width half_w) stays on the glyph's face."""
+        yb = y_bot - margin
+        n = max(2, int((y_top - yb) * self.ppe / 3))
+        for k in range(n + 1):
+            yy = y_top + (yb - y_top) * k / n
+            for xx in (x - half_w - margin, x, x + half_w + margin):
+                if not self.inside(xx, yy):
+                    return False
+        return True
+
+
 def text_mesh(body, fpath, size, depth, bevel, mat, name, offset=0.0, bevel_res=5, dx=0.0, dy=0.0,
               parent=None):
     """3D letters: a text object extruded to +-depth with a round bevel, converted to a mesh."""
@@ -446,10 +553,15 @@ def text_mesh(body, fpath, size, depth, bevel, mat, name, offset=0.0, bevel_res=
 
 # ------------------------------------------------------------------ puffy snow (metaballs)
 def snow_cap(samples, depth, name, parent=None, r=0.06, seed=1, drips=0.18, up=0.42, front_z=None,
-             dx=0.0, dy=0.0, mat=None, res=0.012, thick=1.0, side_drip=True):
+             dx=0.0, dy=0.0, mat=None, res=0.012, thick=1.0, side_drip=True, mask=None, reach=0.12,
+             lift=0.30, lumps=0.18):
     """Snow along every up-facing outline edge: a row of soft capsules running through the letter's
     depth (so the cap covers the top bevel front and back), lumpy radii, a few drips hanging down the
-    front face.  `samples` = edge_samples(); `depth` = half depth of the letter (front face z)."""
+    front face.  `samples` = edge_samples(); `depth` = half depth of the letter (front face z).
+    mask (GlyphMask): snow only on EXPOSED tops - an edge with the same glyph less than `reach` above
+    it gets none, a blob that would reach into a gap between two strokes is shrunk (or dropped), and
+    a drip must hang on the stroke's own face (shortened or dropped) - so no snow ever bridges two
+    jamo."""
     rnd = random.Random(seed)
     mb = bpy.data.metaballs.new(name)
     mb.resolution = res * 2
@@ -460,15 +572,27 @@ def snow_cap(samples, depth, name, parent=None, r=0.06, seed=1, drips=0.18, up=0
     zf = depth if front_z is None else front_z
     rot = Quaternion((0, 1, 0), math.radians(90))      # capsule axis X -> Z (through the depth)
     count = 0
+    # metaball blobs show at ~0.75 of their radius (threshold 0.6, stiffness 2)
+    VIS = 0.80
     for loop in samples:
         n = len(loop)
         flags = [nrm.y > up for (_p, nrm) in loop]
+        if mask is not None:
+            for i, (p, nrm) in enumerate(loop):
+                if flags[i] and mask.clearance_up(p.x, p.y, reach) < reach:
+                    flags[i] = False                     # covered: another stroke sits just above
         for i, (p, nrm) in enumerate(loop):
             if not flags[i]:
                 continue
             w = min(1.0, (nrm.y - up) / 0.25 + 0.35)      # thinner where the edge turns to a side
             rr = r * thick * (0.80 + 0.35 * rnd.random()) * (0.55 + 0.45 * w)
-            c = p + Vector((0, rr * 0.30)) - nrm * rr * 0.05
+            c = p + Vector((0, rr * lift)) - nrm * rr * 0.05
+            if mask is not None:
+                while rr > r * 0.40 and mask.disc_hits(c.x, c.y, rr * VIS + 0.006):
+                    rr *= 0.85
+                    c = p + Vector((0, rr * lift)) - nrm * rr * 0.05
+                if mask.disc_hits(c.x, c.y, rr * VIS + 0.006):
+                    continue
             el = mb.elements.new(type='CAPSULE')
             el.co = (c.x + dx, c.y + dy, 0.0)
             el.radius = rr
@@ -477,29 +601,49 @@ def snow_cap(samples, depth, name, parent=None, r=0.06, seed=1, drips=0.18, up=0
             el.stiffness = 2.0
             count += 1
             # little lumps on the top of the cap
-            if rnd.random() < 0.18:
-                el2 = mb.elements.new(type='BALL')
-                el2.co = (c.x + dx + rnd.uniform(-0.01, 0.01), c.y + dy + rr * 0.45, rnd.uniform(-zf, zf) * 0.7)
-                el2.radius = rr * 0.75
-                el2.stiffness = 1.6
+            if rnd.random() < lumps:
+                lx, ly = c.x + rnd.uniform(-0.01, 0.01), c.y + rr * 0.45
+                if mask is None or not mask.disc_hits(lx, ly, rr * 0.75 * VIS + 0.006):
+                    el2 = mb.elements.new(type='BALL')
+                    el2.co = (lx + dx, ly + dy, rnd.uniform(-zf, zf) * 0.7)
+                    el2.radius = rr * 0.75
+                    el2.stiffness = 1.6
             # drips hanging over the front face where the edge is close to flat
             if rnd.random() < drips * w and nrm.y > 0.80:
-                _drip(mb, c.x + dx, c.y + dy, zf, r, rnd)
+                _drip(mb, c.x + dx, c.y + dy, zf, r, rnd, mask=mask, gx=c.x, gy=c.y)
         # drips at the ends of a run (edge turning down the side)
         if side_drip:
             for i in range(n):
                 if (flags[i] and not flags[(i + 1) % n]) or (flags[i] and not flags[i - 1]):
                     if rnd.random() < 0.22:
                         p, nrm = loop[i]
-                        _drip(mb, p.x + dx, p.y + dy, zf, r * 0.85, rnd)
+                        _drip(mb, p.x + dx, p.y + dy, zf, r * 0.85, rnd, mask=mask, gx=p.x, gy=p.y)
     if mat is not None:
         mb.materials.append(mat)
     return ob, count
 
 
-def _drip(mb, x, y, zf, r, rnd):
-    """A cartoon drip on the front face: a soft neck + a round drop at its end."""
+def _drip(mb, x, y, zf, r, rnd, mask=None, gx=0.0, gy=0.0):
+    """A cartoon drip on the front face: a soft neck + a round drop at its end.  With a GlyphMask the
+    drip must hang on the stroke's own face (gx, gy = the drip top in glyph space): it is shortened
+    until it fits, moved a little inward at a stroke's end, or left out."""
     L = r * (0.7 + 1.1 * rnd.random())
+    if mask is not None:
+        hw = r * 0.62 * 0.80
+        ok = False
+        for sx in (0.0, 0.03, -0.03, 0.06, -0.06):
+            LL = L
+            while LL >= r * 0.55:
+                if mask.fits_inside(gx + sx, gy - r * 0.35, gy - LL * 0.95 - r * 0.62 * 0.80, hw):
+                    ok = True
+                    break
+                LL *= 0.8
+            if ok:
+                x += sx
+                L = LL
+                break
+        if not ok:
+            return
     el = mb.elements.new(type='ELLIPSOID')
     el.co = (x, y - L * 0.45, zf + r * 0.05)
     el.radius = r * 0.62

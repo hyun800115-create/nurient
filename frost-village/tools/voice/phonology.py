@@ -13,7 +13,9 @@ Syllables     (C)(C)V(C) with onset clusters bl pl br pr fl fr gl gr kl kr tr an
 Why it does not sound Japanese: Japanese babble is CV CV CV over a i u e o with a flat melody.
 눈꽃말 words use closed syllables (-m -ng -l -p -k), onset clusters (bl, pr, fr...), front rounded
 vowels (ü, ö) and æ, the rolled r, f / v / l, reduplication (뉘뉘, 뿔룽뿔룽) and a bouncy, sung
-melody. check() verifies every content word carries at least one of these "not-Japanese" markers.
+melody. check() verifies every content word has at least one syllable that Japanese phonotactics do not
+allow (strict rules: see ja_legal; the designer's own 꼬맙뿌 / 촌촌님 / 우와뿅 are kept as they are), and that
+every meaningless babble word is mostly non-Japanese syllables.
 
     python3 tools/voice/phonology.py        # prints every lexicon word: roman -> eSpeak / IPA + markers
 """
@@ -90,42 +92,90 @@ def to_ipa(roman: str, stress: int = 0) -> str:
     return ".".join(out)
 
 
+# ----------------------------------------------------------------------------- "does it sound Japanese?"
+# Strict Japanese phonotactics (what a Japanese syllable can be), used to measure how Japanese the village
+# sounds. A syllable is Japanese-legal when
+#   onset   is empty, one consonant (l counts as Japanese r, f as the f of fu) or a consonant + y (kya, nyo)
+#   nucleus uses only a e i o u and eu [ɯ] (= the Japanese u), at most two vowels in a row (ai, oi)
+#   coda    is a nasal (m / n / ng = the moraic ん), or a stop before another stop (= the geminate っ:
+#           kip.pa, tok.tap), or a stop ending a one-syllable interjection (あっ: at, yap)
+# Everything else is not Japanese: l / r / s codas, a word-final stop after the first syllable (ttok.tap̚),
+# a stop before a non-stop (kik.lo), onset clusters (bl, pr, fr...), ü / ö / æ, and the trilled brrr.
+# Not counted as "not Japanese" any more (polish review): nasal codas, geminate stops, reduplication
+# (Japanese mimetics do it: ぽんぽん) and eu, which is the Japanese u.
+J_ONSETS = {"", "k", "g", "s", "t", "d", "n", "h", "b", "p", "m", "y", "r", "w", "ch", "sh", "f", "l"}
+J_ONSETS |= {c + "y" for c in ("k", "g", "n", "h", "b", "p", "m", "r", "l", "t", "d")}
+J_NUCLEUS = {"a", "e", "i", "o", "u", "eu"}
+STOP_C = {"p", "t", "k", "ch", "b", "d", "g"}
+
+
+def ja_legal(roman: str):
+    """-> one bool per syllable: True = the syllable could be Japanese (strict rules above)."""
+    sy = [split_syllable(t) for t in syllables(roman)]
+    out = []
+    for i, (on, nu, co) in enumerate(sy):
+        nxt = sy[i + 1][0] if i + 1 < len(sy) else None
+        vowels = [v for v in nu if v in VOWELS]
+        ok = "".join(on) in J_ONSETS and bool(vowels) and len(vowels) <= 2 and all(v in J_NUCLEUS for v in vowels)
+        for c in co:
+            if c in ("m", "n", "ng"):
+                continue                                   # moraic N
+            if c in STOP_C and nxt is not None and nxt and nxt[0] in STOP_C:
+                continue                                   # geminate (sokuon) before a stop
+            if c in STOP_C and nxt is None and len(sy) == 1:
+                continue                                   # あっ-like one-syllable interjection
+            ok = False
+        out.append(ok)
+    return out
+
+
 def markers(roman: str):
-    """'Not Japanese' markers of a word (closed syllable other than -n, onset cluster, vowel outside
-    a/e/i/o/u, l / f / v / rolled-r cluster, reduplicated closed syllable)."""
+    """'Not Japanese' markers of a word (strict: see ja_legal). Empty = the whole word could be Japanese."""
     m = set()
     sy = syllables(roman)
-    for toks in sy:
+    legal = ja_legal(roman)
+    for i, toks in enumerate(sy):
         on, nu, co = split_syllable(toks)
-        if any(c != "n" for c in co):
-            m.add("closed")
+        last = i == len(sy) - 1
+        if any(c in ("l", "r", "s") for c in co):
+            m.add("l/r/s coda")
+        if co and co[-1] in STOP_C and last and len(sy) > 1:
+            m.add("final stop")
+        if co and co[-1] in STOP_C and not last and not (sy[i + 1] and split_syllable(sy[i + 1])[0][:1] and
+                                                         split_syllable(sy[i + 1])[0][0] in STOP_C):
+            m.add("stop + other")
         if len(on) >= 2 and "".join(on) in CLUSTERS:
             m.add("cluster")
-        if any(v not in JA_VOWELS for v in nu if v in VOWELS):
-            m.add("vowel")
-        if len(nu) > 1:
-            m.add("diphthong")
+        if any(v in ("ü", "ö", "ae") for v in nu):
+            m.add("ü/ö/æ")
         if not nu:
             m.add("trill")
-        if any(c in ("l", "f", "v") for c in on + co):
-            m.add("l/f/v")
-    if len(sy) >= 2 and len(sy) % 2 == 0 and sy[: len(sy) // 2] == sy[len(sy) // 2:]:
-        m.add("redup")
+        if not legal[i] and not m:
+            m.add("other")
     return sorted(m)
 
 
-def stats(romans):
-    """Syllable statistics of a list of words (for the report): share of closed syllables, of onset
-    clusters, of non-a/e/i/o/u vowels."""
-    n = closed = clus = nonja = 0
-    for r in romans:
-        for toks in syllables(r):
+def stats(romans, weights=None):
+    """Syllable statistics of a list of words (optionally weighted, e.g. by how often each is heard):
+    share of closed syllables, onset clusters, vowels outside a/e/i/o/u/eu, and (strict) Japanese-legal
+    syllables / whole words."""
+    weights = weights or [1.0] * len(romans)
+    n = closed = clus = nonja = jleg = 0.0
+    wn = wleg = 0.0
+    for r, wt in zip(romans, weights):
+        legal = ja_legal(r)
+        wn += wt
+        wleg += wt * all(legal)
+        for toks, lg in zip(syllables(r), legal):
             on, nu, co = split_syllable(toks)
-            n += 1
-            closed += bool(co)
-            clus += len(on) >= 2
-            nonja += any(v not in JA_VOWELS for v in nu if v in VOWELS) or not nu
-    return {"syllables": n, "closed": closed / max(n, 1), "cluster": clus / max(n, 1), "nonJaVowel": nonja / max(n, 1)}
+            n += wt
+            closed += wt * bool(co)
+            clus += wt * (len(on) >= 2)
+            nonja += wt * (any(v in ("ü", "ö", "ae") for v in nu) or not nu)
+            jleg += wt * lg
+    d = max(n, 1e-9)
+    return {"syllables": n, "closed": closed / d, "cluster": clus / d, "nonJaVowel": nonja / d,
+            "jaLegal": jleg / d, "jaLegalWords": wleg / max(wn, 1e-9)}
 
 
 def load_lexicon():
@@ -138,6 +188,10 @@ FORBIDDEN = ["bello", "poopaye", "poopayee", "tank yu", "tankyu", "bee do", "bee
              "baboi", "poka", "gelato", "tulaliloo", "tatata", "bapple", "muak", "hana", "dul", "sae", "la boda",
              "kanpai", "kampai", "para tu", "bulaka", "pwede", "bable", "sul sul", "sulsul", "dag dag", "dagdag",
              "vadish", "nooboo", "chumcha", "geelfrob", "fredishay", "whippna", "boobasnot", "shoo flee", "litcha"]
+
+
+# the designer's own example words (docs/기획서_마을말.md) are kept as they are, even where they are Japanese-legal
+KEEP_DESIGNER = {"thanks", "chief", "wow"}
 
 
 def check(lex=None):
@@ -159,8 +213,10 @@ def check(lex=None):
             to_espeak(r, w.get("stress", 0))
         except ValueError as e:
             bad.append(f"{w['id']}: {e}")
-        if w.get("cat") not in ("filler", "particle") and not markers(r):
-            bad.append(f"{w['id']}: '{r}' has no not-Japanese marker (plain CV with a/e/i/o/u)")
+        if w.get("cat") not in ("filler", "particle") and not markers(r) and w["id"] not in KEEP_DESIGNER:
+            bad.append(f"{w['id']}: '{r}' could be a Japanese word (no closed l/r/s or final stop, cluster or ü/ö/æ)")
+        if w.get("cat") == "babble" and sum(ja_legal(r)) * 2 > len(ja_legal(r)):
+            bad.append(f"{w['id']}: babble '{r}' has more Japanese-legal syllables than not")
     return bad
 
 
@@ -170,5 +226,6 @@ if __name__ == "__main__":
         print(f"{w['id']:10s} {w['hangul']:8s} {w['roman']:20s} {to_espeak(w['roman'], w.get('stress', 0)):18s} "
               f"/{to_ipa(w['roman'], w.get('stress', 0))}/  {','.join(markers(w['roman']))}")
     print(stats([w["roman"] for w in lex["words"]]))
+    print("Japanese-legal words:", [w["hangul"] for w in lex["words"] if all(ja_legal(w["roman"]))])
     probs = check(lex)
     print("\n".join(probs) if probs else "lexicon OK")

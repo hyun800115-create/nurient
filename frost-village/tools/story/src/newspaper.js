@@ -6,7 +6,7 @@
 import { FACT_KINDS } from '../data/facts.js';
 import { remember, SRC_NEWS } from './memory.js';
 import { ITEMS } from '../data/items.js';
-import { groupOf, G_KID } from './people.js';
+import { groupOf, ageOf, G_KID } from './people.js';
 
 export class Newspaper {
   constructor(e) {
@@ -33,10 +33,14 @@ export class Newspaper {
     // upcoming weddings
     for (const f of e.facts.values()) if (f.k === 'engaged' && f.n >= day && f.n <= day + 2 && (!printed.has(f.id) || f.n === day) && cands.every((c) => c[1] !== f)) cands.push([70, f]);
     cands.sort((a, b) => b[0] - a[0] || a[1].id - b[1].id);
-    // one story per kind per paper (two for the big ones: fires, thefts, weddings, babies, newcomers)
-    const per = Object.create(null), items = [];
+    // one story per kind per paper (two for the big ones: fires, thefts, weddings, babies, newcomers), and one
+    // article per story: a scuffle and the apology that ended it, a theft and its arrest are printed once
+    const per = Object.create(null), items = [], roots = new Set();
     const TWICE = { fire: 1, theft: 1, wedding: 1, baby: 1, move_in: 1, shop_open: 1 };
     for (const [, f] of cands) {
+      const root = f.ref || f.id;
+      if (roots.has(root)) continue;
+      roots.add(root);
       per[f.k] = (per[f.k] || 0) + 1;
       if (per[f.k] > (TWICE[f.k] ? 2 : 1)) continue;
       items.push(f);
@@ -72,7 +76,7 @@ export class Newspaper {
     r.readDay = e.clock.day;
     const p = this.latest();
     if (!p || p.day !== e.clock.day) return;
-    if (groupOf(e, r) < G_KID) return;
+    if (groupOf(e, r) < G_KID || ageOf(e, r) < 8) return;     // the little ones hear the news from their parents
     if (!rng.chance(0.35 + r.tr[3] / 250)) return;
     this.stats.readers++;
     if (p.head) remember(e, r, p.head, SRC_NEWS);

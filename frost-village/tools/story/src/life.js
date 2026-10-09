@@ -3,7 +3,7 @@
 // toggle), moving in (new households when there are empty homes) and moving out (unhappy, jobless,
 // or simply off to new adventures), staying with friends after a fire and coming home again.
 
-import { makeResident, Household, addToHousehold, removeFromHousehold, setHome, ageOf, groupOf, ageGroupOf,
+import { makeResident, Household, addToHousehold, removeFromHousehold, setHome, ageOf, groupOf, ageGroupOf, isKept,
   G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, F_NEWCOMER, F_GONE, F_DEAD, F_HOMELESS, F_OWNER, S_IDLE, S_AWAY, S_EVENT } from './people.js';
 import { ensureRel, getRel, removeAllRels, ST_FRIEND, ST_BEST, ST_SWEET, ST_ENGAGED, ST_SPOUSE, RF_FAMILY, RF_PARENT_A, RF_PARENT_B, RF_SIBLING, RF_NEIGHBOR, RF_CRUSH_A, RF_CRUSH_B } from './relations.js';
 import { SRC_SEEN, SRC_DID, remember, forgetAll } from './memory.js';
@@ -21,6 +21,7 @@ export class Life {
     if (!e.cfg.lifeEvents) return false;
     if (rel.flags & RF_FAMILY) return false;
     if (rel.stage >= ST_SWEET) return true;
+    if (isKept(e, a) || isKept(e, b)) return false;     // the game's named villagers stay as the game draws them
     if (groupOf(e, a) !== G_ADULT || groupOf(e, b) !== G_ADULT) return false;
     if (a.spouse >= 0 || b.spouse >= 0) return false;
     if (!e.cfg.romanceAnySex && a.male === b.male) return false;
@@ -33,7 +34,7 @@ export class Life {
   /** a single adult who could fall in love */
   canRomanceSolo(r) {
     const e = this.e;
-    if (!e.cfg.lifeEvents || r.spouse >= 0 || groupOf(e, r) !== G_ADULT) return false;
+    if (!e.cfg.lifeEvents || r.spouse >= 0 || groupOf(e, r) !== G_ADULT || isKept(e, r)) return false;
     const age = ageOf(e, r);
     return age >= 21 && age <= 55 && this.partnerOf(r) < 0;
   }
@@ -109,18 +110,54 @@ export class Life {
     const e = this.e;
     const ha = e.households.get(a.hh), hb = e.households.get(b.hh);
     if (ha && hb && ha === hb) return;
-    // both move with their dependants? keep it simple: the spouse joins; kids from before stay with them
-    const into = !ha ? hb : !hb ? ha : ha.members.length >= hb.members.length ? ha : hb;
+    // the bigger household's home (a named villager keeps the home the game draws)
+    let into = !ha ? hb : !hb ? ha : ha.members.length >= hb.members.length ? ha : hb;
+    if (ha && hb && isKept(e, b) && !isKept(e, a)) into = hb;
+    else if (ha && hb && isKept(e, a) && !isKept(e, b)) into = ha;
     const mover = into === ha ? b : a;
     if (!into) return;
+    // the spouse moves in with their children (and any other child who would be left without a grown-up)
+    const old = e.households.get(mover.hh);
+    const movers = [mover];
+    if (old) {
+      const rest = old.members.filter((id) => id !== mover.id);
+      const grownLeft = rest.some((id) => groupOf(e, e.people[id]) >= G_ADULT);
+      for (const id of rest) { const k = e.people[id]; if (groupOf(e, k) <= G_TEEN && (!grownLeft || mover.kids.indexOf(id) >= 0)) movers.push(k); }
+    }
     const home = into.home >= 0 ? e.world.places[into.home] : null;
-    if (home && into.members.length + 1 > home.cap) {
-      const free = this.findHome(into.members.length + 1);
+    if (home && into.members.length + movers.length > home.cap) {
+      const free = this.findHome(into.members.length + movers.length);
       if (free) { setHome(e, into, free.idx); this.stats.movedWithin++; if (e.bus.has('move')) e.bus.emit('move', { op: 'within', household: into.id, members: into.members.slice(), home: free.id }); }
     }
-    addToHousehold(e, into, mover);
+    for (const r of movers) addToHousehold(e, into, r);
     const f = e.fact('move_within', { a: mover.id, p: into.home });
-    e.learn(mover, f, SRC_DID);
+    for (const r of movers) e.learn(r, f, SRC_DID);
+    if (e.bus.has('move')) e.bus.emit('move', { op: 'within', household: into.id, members: movers.map((r) => r.id), home: home ? home.id : null, why: 'wedding' });
+  }
+
+  /** a household left with children only (a parent's gentle farewell, a parent moving in with a new spouse):
+   *  the children go to live with a parent, a grandparent or a grown-up sibling — or the family moves to relatives */
+  ensureGuardian(hh) {
+    const e = this.e;
+    if (!hh || hh.leaving || !hh.members.length) return;
+    for (const id of hh.members) if (groupOf(e, e.people[id]) >= G_ADULT) return;
+    const kids = hh.members.map((id) => e.people[id]);
+    let host = null;
+    for (const k of kids) {
+      for (const pid of k.parents) { const p = e.people[pid]; if (p && p.alive && p.hh >= 0 && p.hh !== hh.id) { host = e.households.get(p.hh); break; } }
+      if (host) break;
+      for (const rel of k.adj) {
+        const o = e.people[rel.other(k.id)];
+        if (o.alive && (rel.flags & RF_FAMILY) && groupOf(e, o) >= G_ADULT && o.hh >= 0 && o.hh !== hh.id) { host = e.households.get(o.hh); break; }
+      }
+      if (host) break;
+    }
+    if (host) {
+      const home = host.home >= 0 ? e.world.places[host.home] : null;
+      if (home && host.members.length + kids.length > home.cap) { const free = this.findHome(host.members.length + kids.length); if (free) setHome(e, host, free.idx); }
+      for (const k of kids) addToHousehold(e, host, k);
+      if (e.bus.has('move')) e.bus.emit('move', { op: 'within', household: host.id, members: kids.map((k) => k.id), home: host.home >= 0 ? e.world.places[host.home].id : null, why: 'family' });
+    } else { hh.why = 'family'; this.moveOut(hh); }
   }
 
   findHome(size) {
@@ -150,7 +187,7 @@ export class Life {
       r.lastGroup = g;
       if (r.flags & F_NEWCOMER && day - (r.arrived || 0) >= 3) r.flags &= ~F_NEWCOMER;
       // gentle farewell of the very old (can be switched off)
-      if (e.cfg.lifeEvents && e.cfg.farewell && g === G_ELDER && age >= 86 && rng.chance(0.004 * (age - 85))) this.farewell(r);
+      if (e.cfg.lifeEvents && e.cfg.farewell && g === G_ELDER && age >= 86 && !isKept(e, r) && rng.chance(0.004 * (age - 85))) this.farewell(r);
       // agenda clean-up
       if (r.agenda.length) r.agenda = r.agenda.filter((a) => a[0] >= day);
     }
@@ -185,6 +222,7 @@ export class Life {
       r.job = 'student';
       const sc = e.world.first('school');
       r.work = sc ? sc.idx : -1;
+      if (sc) e.introduceAt(r, sc);
       const f = e.fact('grow', { a: r.id, s: 'school' });
       e.learn(r, f, SRC_DID);
       for (const pid of r.parents) { const p = e.people[pid]; if (p && p.alive) e.learn(p, f, SRC_DID); }
@@ -306,6 +344,7 @@ export class Life {
     const e = this.e;
     e.bank.settleLeaving(r);
     e.world.leave(r);
+    const oldHH = e.households.get(r.hh);
     removeFromHousehold(e, r);
     removeAllRels(e, r);
     forgetAll(e, r);
@@ -330,6 +369,8 @@ export class Life {
     }
     // pending loans are settled by the town's mutual-aid fund (Bank.daily forgives them)
     this.stats.leftResidents++;
+    // children are never left on their own
+    if (oldHH && e.households.get(oldHH.id) === oldHH) this.ensureGuardian(oldHH);
   }
 
   // ---------------------------------------------------------------- moving in / out
@@ -337,7 +378,9 @@ export class Life {
     const e = this.e, rng = e.rng, day = e.clock.day;
     // leaving: households who are unhappy for days, or simply off on an adventure
     for (const hh of Array.from(e.households.values())) {
+      if (!e.households.has(hh.id)) continue;
       if (hh.planOut >= 0) { if (day >= hh.planOut) this.moveOut(hh); continue; }
+      if (hh.members.some((id) => isKept(e, e.people[id]))) continue;   // the game's named villagers stay
       let mood = 0, adults = 0, jobless = 0, friends = 0;
       for (const id of hh.members) {
         const r = e.people[id];
@@ -369,6 +412,7 @@ export class Life {
 
   moveOut(hh) {
     const e = this.e;
+    hh.leaving = true;
     const members = hh.members.slice();
     const home = hh.home >= 0 ? e.world.places[hh.home] : null;
     const head = e.people[members[0]];
@@ -396,7 +440,7 @@ export class Life {
     e.jobs.fillOpenings(true);
     this.stats.movedIn++;
     this.stats.newResidents += members.length;
-    const f = e.fact('move_in', { a: members[0].id, n: hh.id, p: home.idx });
+    const f = e.fact('move_in', { a: members[0].id, n: members.length, s: 'hh' + hh.id, p: home.idx });
     for (const r of members) e.learn(r, f, SRC_DID);
     // people outside see the moving truck and wonder who it is
     for (const p of e.world.places) {

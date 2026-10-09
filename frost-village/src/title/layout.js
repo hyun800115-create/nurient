@@ -209,9 +209,11 @@ export const VEHICLES = [
   { id: 'car3', char: 'car_d_cream', s: 4, lane: -1.41, dir: -1, speed: 3.0, gap: 9 },
 ];
 
-/** the snow train: engine + coach + wagon arrive over the bridge and stop at the station */
+/** the snow train: engine + coach + wagon arrive over the bridge and stop at the station.
+ *  The idle title's train comes the long way (fromMx); the intro's pulls in from introRun metres before the
+ *  stop within introSec (its whistle is part of the 읍 beat). */
 export const TRAIN = { s: 3, cars: ['train_engine', 'train_car_a', 'train_car_b'], spacing: [2.34, 2.24],
-  stopMx: -8.4 + 2.34, fromMx: -30, speed: 2.6 };
+  stopMx: -8.4 + 2.34, fromMx: -30, speed: 2.6, introRun: 8, introSec: 2.3 };
 
 /** ships on the sea */
 export const SHIPS = [
@@ -230,6 +232,10 @@ export const GULLS = [
 // ---------------------------------------------------------------- camera
 // focus point (metres) and how many metres of island width the screen should show (zoom follows the
 // phone's width). The intro eases between these; the idle title holds the one of its stage.
+/** the idle title's framing where it differs from the intro's CAMERA (the intro ends on IDLE_CAMERA[4]) */
+export const IDLE_CAMERA = {
+};
+
 export const CAMERA = {
   1: { mx: 2.2, my: 10.4, span: 11 },
   2: { mx: 2.5, my: 8.7, span: 14.5 },

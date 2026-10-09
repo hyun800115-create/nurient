@@ -10,7 +10,7 @@ import { Rel, pairKey } from './relations.js';
 import { Loan } from './bank.js';
 
 const MAGIC = 0x46565331; // 'FVS1'
-const VERSION = 1;
+const VERSION = 2;          // 2: + pending day-change pieces, sub-step clock, shop credit, loan reschedules, ack waits
 
 // ---------------------------------------------------------------- byte codec
 class Writer {
@@ -62,7 +62,7 @@ export function serialize(e) {
   const w = new Writer();
   w.s(JSON.stringify(e.cfg));
   w.ints(e.rng.getState());
-  w.u(e.now); w.u(e.accMs);
+  w.u(e.now); w.u(0);
   w.u(e.nextPersonId); w.u(e.nextHH); w.u(e.nextFactId); w.u(e.talkSeq); w.u(e.chiefFacts); w.i(e.lastChief ? e.lastChief.id : -1);
   w.i(e.newestShop); w.u(e.initialPop); w.i(e.upkeepI);
   // weather
@@ -151,6 +151,13 @@ export function serialize(e) {
   w.s('[]');   // overheard quotes are text (wording), not story state: not saved
   // statistics
   w.s(JSON.stringify({ social: e.social.stats, incidents: In.stats, life: e.life.stats, bank: B.stats, econ: e.econ.stats, jobs: e.jobs.stats, news: e.news.stats }));
+  // v2: state that used to be flushed before saving (a save no longer changes the story), and newer fields
+  const owed = [];
+  for (const p of W.places) if (p.owed) owed.push(p.idx, p.owed);
+  w.s(JSON.stringify({
+    accUs: e.accUs, dayQ: e.dayQ, nightI: e.nightI, nightIds: e.nightIds, owed,
+    restr: B.loans.map((L) => L.restr || 0), ack: In.active.map((I) => (I.ackWait ? 1 : 0) | (I.acked ? 2 : 0)), wait: In.active.map((I) => I.waitUntil || 0),
+  }));
   // assemble: magic, version, string table, body
   const head = new Writer();
   head.u(MAGIC); head.u(VERSION); head.u(w.list.length);
@@ -168,14 +175,14 @@ export function deserialize(e, str) {
   const r = new Reader(bytes);
   if (r.u() !== MAGIC) throw new Error('story: not a story save');
   const ver = r.u();
-  if (ver !== VERSION) throw new Error('story: unsupported save version ' + ver);
+  if (ver !== VERSION && ver !== 1) throw new Error('story: unsupported save version ' + ver);
   const nStr = r.u();
   const dec = new TextDecoder();
   for (let k = 0; k < nStr; k++) { const len = r.u(); r.list.push(dec.decode(bytes.subarray(r.pos, r.pos + len))); r.pos += len; }
   const cfg = JSON.parse(r.s());
   Object.assign(e.cfg, cfg);
   e.rng.setState(r.ints());
-  e.now = r.u(); e.accMs = r.u();
+  e.now = r.u(); e.accUs = r.u() * 1000;
   e.nextPersonId = r.u(); e.nextHH = r.u(); e.nextFactId = r.u(); e.talkSeq = r.u(); e.chiefFacts = r.u();
   const lastChiefId = r.i();
   e.newestShop = r.i(); e.initialPop = r.u(); e.upkeepI = r.i();
@@ -289,4 +296,14 @@ export function deserialize(e, str) {
   const st = JSON.parse(r.s());
   Object.assign(e.social.stats, st.social); Object.assign(In.stats, st.incidents); Object.assign(e.life.stats, st.life); Object.assign(B.stats, st.bank);
   Object.assign(e.econ.stats, st.econ); Object.assign(e.jobs.stats, st.jobs); Object.assign(e.news.stats, st.news);
+  if (ver >= 2) {
+    const x = JSON.parse(r.s());
+    e.accUs = x.accUs || 0;
+    e.dayQ = x.dayQ || [];
+    e.nightI = x.nightI === undefined ? -1 : x.nightI;
+    e.nightIds = x.nightIds || null;
+    for (let k = 0; k + 1 < (x.owed || []).length; k += 2) W.places[x.owed[k]].owed = x.owed[k + 1];
+    (x.restr || []).forEach((n, k) => { if (B.loans[k]) B.loans[k].restr = n; });
+    (x.ack || []).forEach((a, k) => { const I = In.active[k]; if (I) { I.ackWait = !!(a & 1); I.acked = !!(a & 2); I.waitUntil = (x.wait || [])[k] || 0; } });
+  }
 }

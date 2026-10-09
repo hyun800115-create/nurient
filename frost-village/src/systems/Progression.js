@@ -20,6 +20,9 @@ export function stepCost(s) {
   if (s.type === 'hire2') return BALANCE.hire2[s.id];
   if (s.type === 'hire3') return BALANCE.hire3 && BALANCE.hire3[s.id];
   if (s.type === 'boat') return (s.level >= 2 ? BALANCE.boats.fishing : BALANCE.boats.rowboat).coins;
+  // ---- (v4-B) the station porters, the 승격식 (rank ceremony)
+  if (s.type === 'stationPorter') { const a = (BALANCE.v4 && BALANCE.v4.stationPorter) || [600, 1100]; return a[s.id === 'stn_porter2' ? 1 : 0]; }
+  if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 3000 }).coins;
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
   return BALANCE.costs3 && BALANCE.costs3[s.id];
 }
@@ -90,12 +93,18 @@ export const STEPS = [
   { id: 'op_cannery', type: 'operator', station: 'cannery', after: 'b:cannery', v3: true, side: true },
   { id: 'porter_cannery', type: 'porter', station: 'cannery', after: 'op_cannery', v3: true, side: true },
   { id: 'hire_clerk_store', type: 'clerk', seller: 'store', after: 'b:store', flag: 'firstStoreSale', v3: true, side: true },
+
+  // ---------------- (v4-B) 이웃 마을 (docs/v4_plan.md §15.1): after: 'f:<flag>' = a one-time event happened
+  // station porters on the station square (surplus -> the loading dock / new shops), the town ceremony (읍)
+  { id: 'stn_porter', type: 'stationPorter', after: 'f:firstTrain', v4: true, side: true },
+  { id: 'stn_porter2', type: 'stationPorter', after: 'f:shops3', also: 'stn_porter', v4: true, side: true },
+  { id: 'rank_eup', type: 'rank', after: 'f:rankReady', v4: true },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
-// (v3) the main goals after the village is complete, in order (tutorial "next goal" + the v3 finale)
+// (v3) the main goals after the village is complete, in order (the v3 finale: "개척 완료")
 //   kind: region (a watchtower lit), build (a building finished), step (a pad), flag (an event)
-export const GOALS = [
+export const GOALS_V3 = [
   { id: 'east', kind: 'region', step: 'tower_east' },
   { id: 'toolsmith', kind: 'build' },
   { id: 'fedMiners', kind: 'flag' },
@@ -108,6 +117,32 @@ export const GOALS = [
   { id: 'store', kind: 'build' },
   { id: 'se', kind: 'region', step: 'tower_se' },
   { id: 'boat_fishing', kind: 'step' },
+];
+// ---- (v4-B) the "next goal" walk: the v3 goals interleaved with the v4 ones (docs/v4_plan.md §15.1)
+//   passive: a goal that comes by itself (a train, shops opening, people moving in); while one of them is in
+//   progress, the next goal the chief can work on is shown instead. when: only once that is met (f:<flag>).
+//   shops / people: the numbers come from balance.js v4.rank.2 (n is the default)
+export const GOALS = [
+  { id: 'east', kind: 'region', step: 'tower_east' },
+  { id: 'station', kind: 'build', v4: true },
+  { id: 'firstTrain', kind: 'flag', passive: true, v4: true },
+  { id: 'toolsmith', kind: 'build' },
+  { id: 'fedMiners', kind: 'flag' },
+  { id: 'shops:1', kind: 'shops', n: 1, passive: true, v4: true },
+  { id: 'hire2_lumberjack', kind: 'step' },
+  { id: 'townVisit', kind: 'flag', when: 'f:townInvite', v4: true },
+  { id: 'boathouse', kind: 'build' },
+  { id: 'boat_rowboat', kind: 'step' },
+  { id: 'shops:3', kind: 'shops', n: 3, passive: true, v4: true },
+  { id: 'south', kind: 'region', step: 'tower_south' },
+  { id: 'warehouse', kind: 'build' },
+  { id: 'cannery', kind: 'build' },
+  { id: 'store', kind: 'build' },
+  { id: 'se', kind: 'region', step: 'tower_se' },
+  { id: 'boat_fishing', kind: 'step' },
+  { id: 'shops:5', kind: 'shops', n: 5, rankKey: 'shops', passive: true, v4: true },
+  { id: 'people:45', kind: 'people', n: 45, rankKey: 'people', passive: true, v4: true },
+  { id: 'rank:2', kind: 'rank', n: 2, v4: true },
 ];
 // (v3) which building each card of the build menu needs first (shown on the locked card)
 export const BUILD_UNLOCK = {
@@ -147,6 +182,7 @@ export class Progression {
   /** (v3) an `after` condition: step id, 'b:<building>' (finished) or 'r:<land>' (open) */
   met(cond) {
     if (!cond) return true;
+    if (cond.startsWith('f:')) return !!this.flags[cond.slice(2)];     // (v4-B) a one-time event
     if (cond.startsWith('b:')) return !!(this.gs.isBuilt && this.gs.isBuilt(cond.slice(2)));
     if (cond.startsWith('r:')) return !!(this.gs.territory && this.gs.territory.isOpen(cond.slice(2)));
     return !!this.done[cond];
@@ -154,17 +190,41 @@ export class Progression {
   /** (v3) is goal `g` reached? */
   goalDone(g) {
     if (g.kind === 'region') return !!(this.gs.territory && this.gs.territory.isOpen(g.id));
+    // ---- (v4-B) shops open, people, the rank (read from gs.v4, null-safe)
+    if (g.kind === 'shops' || g.kind === 'people' || g.kind === 'rank') { const v = this.goalValue(g); return v !== null && v >= this.goalNeed(g); }
     if (g.kind === 'build') return !!(this.gs.isBuilt && this.gs.isBuilt(g.id));
     if (g.kind === 'flag') return !!this.flags[g.id];
     return !!this.done[g.id];
   }
-  /** (v3) the first main goal not reached yet (null before the village is complete / when all are done) */
-  nextGoal() {
-    if (!this.complete) return null;
-    for (const g of GOALS) if (!this.goalDone(g)) return g;
+  /** (v4-B) the number a shops / people / rank goal counts (null when v4 is not running) */
+  goalValue(g) {
+    const v4 = this.gs.v4;
+    if (!v4) return null;
+    if (g.kind === 'shops') return v4.growth ? v4.growth.openShopCount() : 0;
+    if (g.kind === 'people') return v4.rank ? v4.rank.people() : 0;
+    if (g.kind === 'rank') return v4.rank ? v4.rank.level : 1;
     return null;
   }
-  get v3Complete() { return this.complete && GOALS.every((g) => this.goalDone(g)); }
+  goalNeed(g) {
+    const R = BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2];
+    if (g.rankKey && R && Number.isFinite(R[g.rankKey])) return R[g.rankKey];
+    return g.n || 1;
+  }
+  /** (v3) the first main goal not reached yet (null before the village is complete / when all are done).
+   *  (v4-B) passive goals in progress (a train, shops opening, people moving in) give way to a later goal the
+   *  chief can work on; a goal with `when` waits for it (the town visit needs the invitation) */
+  nextGoal() {
+    if (!this.complete) return null;
+    let passive = null;
+    for (const g of GOALS) {
+      if (this.goalDone(g)) continue;
+      if (g.when && !this.met(g.when)) { if (!passive) passive = g; continue; }
+      if (g.passive) { if (!passive) passive = g; continue; }
+      return g;
+    }
+    return passive;
+  }
+  get v3Complete() { return this.complete && GOALS_V3.every((g) => this.goalDone(g)); }
   anyDone(re) { for (const k in this.done) if (this.done[k] && re.test(k)) return true; return false; }
   capacity() { return BALANCE.upgrades.capacity.values[this.up.capacity]; }
   speedMult() { return BALANCE.upgrades.speed.values[this.up.speed]; }
@@ -217,12 +277,14 @@ export class Progression {
       else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
       else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
+      else if (s.type === 'stationPorter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');     // (v4-B)
+      else if (s.type === 'rank') icon = Assets.pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_star', 'ui_icon_lock_open', 'ui_icon_lock');
       if (s.type === 'hire2' || s.type === 'hire3') items = { [TOOL_OF[s.worker]]: 1 };
-      const kind = s.type === 'zone' || s.type === 'tower' ? 'unlock' : 'hire';
-      const padTex = s.type === 'clerk' || s.type === 'operator' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
+      const kind = s.type === 'zone' || s.type === 'tower' || s.type === 'rank' ? 'unlock' : 'hire';
+      const padTex = s.type === 'clerk' || s.type === 'operator' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : 54,
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
         padTex, items, got: this.got[s.id],
         onComplete: (p) => this.completeStep(s, p),
       });
@@ -256,6 +318,7 @@ export class Progression {
     else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
     else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'));
     else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'));
+    else if (s.type === 'stationPorter') gs.ui.banner(t('hired', { name: t('stn_porter') }), t('stnPorterSub'));      // (v4-B)
     gs.events.emit('step', s.id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
@@ -279,6 +342,9 @@ export class Progression {
     else if (s.type === 'porter') gs.hirePorter(s.station, instant, x, y);
     else if (s.type === 'tower') gs.startTower(s.id, instant);
     else if (s.type === 'boat') { if (gs.boathouse) gs.boathouse.setBoat(s.level, instant); }
+    // ---- (v4-B) a station porter on the square; the town ceremony (마을 -> 읍)
+    else if (s.type === 'stationPorter') { if (gs.v4 && gs.v4.growth) gs.v4.growth.hireStationPorter(instant, x, y); }
+    else if (s.type === 'rank') { if (gs.v4 && gs.v4.rank) gs.v4.rank.ceremony(instant); }
   }
 
   openBench(instant) {

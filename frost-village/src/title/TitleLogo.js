@@ -165,8 +165,10 @@ export class TitleLogo {
     this.lang = opts.lang === 'en' ? 'en' : 'ko';
     this.y0 = opts.y || H * layout.logoY;
     this.reduced = !!opts.reduced;
+    this.useParts = opts.parts !== false;      // the per-letter drop (intro); the idle title drops it in one piece
     this.state = 'hidden';
     this.t = 0;
+    this.alphaK = 1; this.alphaTo = 1; this.alphaV = 0; this.onFaded = null;
     this.build();
   }
 
@@ -189,7 +191,7 @@ export class TitleLogo {
     // per-letter parts (main logo, @2x atlas): positions are @2x px from the logo centre
     this.parts = [];
     const pm = meta && meta.logo && meta.logo[this.lang === 'en' ? 'en' : 'main'];
-    if (this.fromArt && pm && pm.parts && s.textures.exists(LOGO_KEYS.parts) && !this.reduced) {
+    if (this.fromArt && this.useParts && pm && pm.parts && s.textures.exists(LOGO_KEYS.parts) && !this.reduced) {
       const s2 = this.dispW / pm.size2x[0];
       for (const p of pm.parts) {
         if (!s.textures.get(LOGO_KEYS.parts).has(p.frame)) continue;
@@ -239,6 +241,7 @@ export class TitleLogo {
 
   destroy() {
     for (const o of [this.img, this.shine, this.shineMaskImg]) if (o) { if (o.mask) o.clearMask(true); o.destroy(); }
+    this.img = null; this.shine = null; this.shineMaskImg = null;
     for (const s of this.sparks) s.sp.destroy();
     for (const p of this.parts) p.im.destroy();
     this.sparks.length = 0; this.parts.length = 0;
@@ -251,7 +254,13 @@ export class TitleLogo {
     else this.img.setVisible(true);
   }
 
-  showNow() { this.state = 'idle'; this.t = 0; for (const p of this.parts) p.im.setVisible(false); this.img.setVisible(true).setAlpha(1).setScale(this.scale); this.img.y = this.y0; this.shineAt = 0.4; this.landed = true; }
+  showNow() { this.state = 'idle'; this.t = 0; for (const p of this.parts) p.im.setVisible(false); this.img.setVisible(true).setAlpha(this.alphaK).setScale(this.scale); this.img.y = this.y0; this.shineAt = 0.4; this.landed = true; }
+
+  /** appear in place with a soft fade (a late 3D logo taking over from the text logo) */
+  fadeIn(dur = 0.6) { this.alphaK = 0; this.fadeTo(1, dur); this.showNow(); this.shineAt = dur + 0.2; }
+
+  /** fade to alpha `to` over `dur` seconds; onDone() when there */
+  fadeTo(to, dur, onDone) { this.alphaTo = to; this.alphaV = Math.abs(to - this.alphaK) / Math.max(0.01, dur); this.onFaded = onDone || null; }
 
   updateParts() {
     const H = this.H;
@@ -287,6 +296,11 @@ export class TitleLogo {
     if (this.state === 'hidden') return;
     this.t += dt;
     const img = this.img;
+    if (this.alphaV > 0) {
+      const d = this.alphaTo - this.alphaK, step = this.alphaV * dt;
+      if (Math.abs(d) <= step) { this.alphaK = this.alphaTo; this.alphaV = 0; if (this.onFaded) { const f = this.onFaded; this.onFaded = null; f(); if (!this.img) return; } } else this.alphaK += Math.sign(d) * step;
+      if (this.state === 'idle') img.setAlpha(this.alphaK);
+    }
     if (this.state === 'drop') {
       const p = Math.min(1, this.t / this.dur);
       if (this.parts.length) {
@@ -321,13 +335,13 @@ export class TitleLogo {
           sh.setVisible(true);
           sh.x = this.W / 2 - w * 0.62 + (k / 0.9) * w * 1.24;
           sh.y = img.y;
-          sh.setAlpha(0.9);
+          sh.setAlpha(0.9 * this.alphaK);
         } else sh.setVisible(false);
       }
       for (const s of this.sparks) {
         const q = ((this.t + s.ph) % s.per) / s.per;
         const v = q < 0.35 ? Math.sin((q / 0.35) * Math.PI) : 0;
-        s.sp.setVisible(v > 0.01).setScale(s.base * v).setRotation(this.t * 1.5 + s.ph);
+        s.sp.setVisible(v > 0.01 && this.alphaK > 0.05).setScale(s.base * v).setAlpha(this.alphaK).setRotation(this.t * 1.5 + s.ph);
       }
     }
   }

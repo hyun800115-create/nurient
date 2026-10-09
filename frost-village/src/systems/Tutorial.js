@@ -80,6 +80,8 @@ export class Tutorial {
     // (review fix) a pad that appeared under the chief waits until he steps off once: say so
     if (this.stepOffHint(pad)) return;
     if (pad) return;
+    // ---- (v4-B) a ribbon to cut (free, ranked like an affordable pad)
+    if (!this.inTutorial && this.ribbonHint(set)) return;
     if (this.inTutorial) { this.firstLoop(set); return; }
     if (this.unloadHint(set)) return;
     if (this.registerHint(set, dt, false)) return;
@@ -91,6 +93,8 @@ export class Tutorial {
     if (this.labourHint(set, idle)) return;
     // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
     if (this.v3Hint(set, dt, idle)) return;
+    // ---- (v4-B) the neighbours: goods for an order card, the town visit, planks for the carpenter, empty shelves
+    if (this.v4Hint(set, dt, idle)) return;
     const nx = prog.nextPad();
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
     if (prog.complete) goal = this.goalText();
@@ -155,7 +159,83 @@ export class Tutorial {
 
   cashes() {
     const gs = this.gs;
-    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null].filter(Boolean);
+    // ((v4-B) + the station till: wholesale, card bonuses and rent)
+    const g = gs.v4 && gs.v4.growth;
+    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null].filter(Boolean);
+  }
+
+  // ---------------------------------------------------------------- (v4-B, docs/v4_plan.md §15.3)
+  growth() { const v4 = this.gs.v4; return v4 && v4.growth && v4.growth.active ? v4.growth : null; }
+
+  /** 2. a founded shop waits for its ribbon */
+  ribbonHint(set) {
+    const gs = this.gs, p = gs.player, nb = gs.v4;
+    if (!nb || !nb.growth) return false;
+    for (const id in nb.growth.shops) {
+      const sh = nb.growth.shops[id];
+      if (sh.st !== 'ribbon' || !sh.ribbonPad) continue;
+      if (sh.ribbonPad.contains(p.x, p.y)) { this.textKey = 'obj_ribbon'; return true; }
+      set(sh.ribbonPad.x, sh.ribbonPad.y, 60, 'obj_ribbon');
+      return true;
+    }
+    return false;
+  }
+
+  /** the loading dock as a target (the chief carries `ty`, an open card needs it) */
+  dockFor(ty) { const g = this.growth(); return g && g.needOf(ty) > 0 ? g.dockPad : null; }
+
+  /** 3–8 of §15.3 */
+  v4Hint(set, dt, idle) {
+    const gs = this.gs, p = gs.player, prog = gs.progress, nb = gs.v4;
+    if (!nb) return false;
+    const g = this.growth();
+    // 3. carrying goods an open card needs while their shelf is half full or more: to the loading dock
+    if (g) {
+      for (let i = p.stack.items.length - 1; i >= 0; i--) {
+        const ty = p.stack.items[i].type;
+        if (g.needOf(ty) <= 0) continue;
+        const shelf = FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
+        const full = !shelf || !shelf.enabled || shelf.stock.countOf(ty) >= shelf.maxPerType * 0.5;
+        if (!full) continue;
+        const key = 'obj_cargo:' + ty, text = t('obj_cargo', { item: t(ty) });
+        if (g.dockPad.contains(p.x, p.y)) { this.textKey = key; this.text = text; }
+        else set(g.dockPad.x, g.dockPad.y, 60, key, text);
+        return true;
+      }
+    }
+    // 4. the invitation is open and the town not visited: to the town gate, then the fountain
+    if (prog.flags.townInvite && !prog.flags.townVisit && gs.territory.isOpen('town')) {
+      const gate = (nb.buildings || []).find((b) => b.id === 't_gate'), fn = (nb.buildings || []).find((b) => b.id === 't_fountain');
+      const tg = gate && p.x < gate.x - 60 ? gate : fn;
+      if (tg) { set(tg.x, tg.y - 20, tg === gate ? 180 : 120, 'obj_visit_town'); return true; }
+    }
+    // 5. the carpenter waits for planks (the chief idle for a moment)
+    if (g && idle) {
+      const h = Object.values(g.houses).find((q) => q.st === 'site' && q.got < q.need());
+      if (h) {
+        if (p.stack.countOf('item_plank') > 0) { if (h.pad && h.pad.contains(p.x, p.y)) this.textKey = 'obj_feed_carpenter'; else set(h.dropX, h.dropY, 60, 'obj_feed_carpenter'); return true; }
+        const porterBrings = g.porters.some((w) => w.job && w.job.sink === h);
+        const src = this.sourceOf('item_plank') || (gs.trade.enabled && gs.trade.stock.countOf('item_plank') > 0 ? null : null);
+        if (!porterBrings && src && p.room > 0) { if (src.outPad.contains(p.x, p.y)) this.textKey = 'obj_feed_carpenter'; else set(src.outPad.x, src.outPad.y, 80, 'obj_feed_carpenter'); return true; }
+      }
+    }
+    // 7. happiness below the bar and a shelf item is gone: that shelf (idle only)
+    if (g && idle && nb.rank && nb.rank.level < 2 && g.happiness() < ((BALANCE.v4.rank && BALANCE.v4.rank[2] && BALANCE.v4.rank[2].happy) || 70)) {
+      const m = gs.market;
+      const ty = m.availableFoods ? FOODS.find((f) => m.stock.countOf(f) === 0 && gs.stationList.some((st) => st.output === f && st.enabled)) : null;
+      if (ty) { set(m.shelf.x, m.shelf.y, 60, 'obj_happy_low:' + ty, t('obj_happy_low', { item: t(ty) })); return true; }
+    }
+    // 8. idle with nothing else to do: the focus order card (text)
+    if (g && idle && !p.stack.count) {
+      const c = g.focusCard();
+      if (c && !g.cardDone(c)) {
+        const ty = Object.keys(c.need).find((k) => c.got[k] < c.need[k]);
+        const src = ty && this.sourceOf(ty);
+        const text = c.shop ? t('obj_order_focus', { item: t(ty), got: c.got[ty], need: c.need[ty], shop: t('shop_' + c.shop) }) : t('obj_order_standing', { item: t(ty), got: c.got[ty], need: c.need[ty] });
+        if (src && p.room > 0 && g.porters.length === 0) { if (src.outPad.contains(p.x, p.y)) { this.textKey = 'obj_order:' + c.id; this.text = text; } else set(src.outPad.x, src.outPad.y, 80, 'obj_order:' + c.id + ':' + c.got[ty], text); return true; }
+      }
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------- (v3)
@@ -175,6 +255,19 @@ export class Tutorial {
       if (gs.isBuilding(g.id)) return { key: 'obj_site_wait', text: null };
       const cost = buildCost(g.id).coins || 0;
       return { key: 'obj_next_build:' + g.id, text: t('obj_next_build', { name: t('b_' + g.id), cost: fmt(cost) }) };
+    }
+    // ---- (v4-B) the first train, the town visit, shops / people / the rank
+    if (g.kind === 'flag' && g.id === 'firstTrain') return { key: 'obj_first_train', text: null };
+    if (g.kind === 'flag' && g.id === 'townVisit') return { key: 'obj_visit_town', text: null };
+    if (g.kind === 'shops' || g.kind === 'people') {
+      const n = prog.goalNeed(g), have = prog.goalValue(g) || 0;
+      const k = g.kind === 'shops' ? 'obj_next_shops' : 'obj_next_people';
+      return { key: k + ':' + n + ':' + have, text: t(k, { n, have }) };
+    }
+    if (g.kind === 'rank') {
+      const pad = prog.pads.rank_eup;
+      if (!pad) { const nb = gs.v4; const bars = nb && nb.rank ? nb.rank.bars() : []; const b = bars.find((x) => !x.full); if (b) return { key: 'obj_next_' + b.key + ':' + b.v, text: t(b.key === 'shops' ? 'obj_next_shops' : b.key === 'people' ? 'obj_next_people' : 'obj_happy_bar', { n: b.need, have: b.v }) }; return { key: 'obj_rank', text: null }; }
+      return pad.remaining <= gs.economy.coins ? { key: 'obj_rank', text: null } : { key: 'obj_rank_save:' + pad.remaining, text: t('obj_rank_save', { coins: fmt(pad.remaining) }) };
     }
     if (g.kind === 'flag') return { key: 'obj_food', text: null };
     const pad = prog.pads[g.id];
@@ -359,12 +452,24 @@ export class Tutorial {
         void pad;
       }
     }
+    // ---- (v4-B) a full shelf: an open order card takes it at the loading dock
+    const dock = this.dockFor(type);
+    if (dock && !this.shelfRoom(type)) return { pad: dock, key: 'obj_cargo:' + type, text: t('obj_cargo', { item: t(type) }) };
     if (STORE_GOODS.indexOf(type) >= 0) return gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType ? { pad: gs.store.shelf, key: null } : (gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null);
     if (type === 'item_fish_big') return gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null;
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? { pad: gs.market.shelf, key: SELL_KEY[type] } : null;
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? { pad: gs.trade.shelf, key: SELL_KEY[type] } : null;
     const st = gs.stationByInput[type];
     return st && st.enabled && st.inStack.room > 0 ? this.stationDest(st) : null;
+  }
+
+  /** (v4-B) does the shelf that sells `type` have room? */
+  shelfRoom(type) {
+    const gs = this.gs;
+    if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType;
+    if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType;
+    if (STORE_GOODS.indexOf(type) >= 0) return !!(gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType);
+    return true;
   }
 
   /** (v3.5) where to bring a station's raw items: its work spot while nobody works it, else the input pad */
@@ -417,8 +522,8 @@ export class Tutorial {
       if (FOODS.indexOf(ty) < 0 && GOODS.indexOf(ty) < 0) continue;
       const d = this.destination(ty);
       if (!d) continue;
-      if (d.pad.contains(p.x, p.y)) this.textKey = d.key;
-      else set(d.pad.x, d.pad.y, 60, d.key);
+      if (d.pad.contains(p.x, p.y)) { this.textKey = d.key; this.text = d.text || null; }
+      else set(d.pad.x, d.pad.y, 60, d.key, d.text);
       return true;
     }
     // (carrying raw items: those go on first — no mixed bag of fish and grilled fish)
@@ -451,8 +556,8 @@ export class Tutorial {
       if (dist < bd) { bd = dist; best = d; }
     }
     if (best) {
-      if (best.pad.contains(p.x, p.y)) this.textKey = best.key;
-      else set(best.pad.x, best.pad.y, 60, best.key);
+      if (best.pad.contains(p.x, p.y)) { this.textKey = best.key; this.text = best.text || null; }
+      else set(best.pad.x, best.pad.y, 60, best.key, best.text);
       return true;
     }
     // nothing accepts what we carry (e.g. raw fish while the grill is full both ways): the discard spot
@@ -523,7 +628,7 @@ export class Tutorial {
     // carrying something: take it where it goes
     for (let i = p.stack.items.length - 1; i >= 0; i--) {
       const d = this.destination(p.stack.items[i].type);
-      if (d && !d.pad.contains(p.x, p.y)) { set(d.pad.x, d.pad.y, 60, d.key); return true; }
+      if (d && !d.pad.contains(p.x, p.y)) { set(d.pad.x, d.pad.y, 60, d.key, d.text); return true; }
     }
     if (p.room <= 0) return false;
     // coins waiting

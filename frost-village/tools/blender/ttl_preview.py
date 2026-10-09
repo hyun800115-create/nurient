@@ -9,6 +9,8 @@ Writes docs/previews/title_art_sheet.png       every piece of assets/title on on
                                                + "터치하여 시작"
        docs/previews/title_art_mock_times.png  the same mock at day / golden dusk / night (tints)
        docs/previews/title_art_icon.png        the app icon at 48 / 96 / 192 px (+ masks, adaptive pair)
+       docs/previews/title_art_band.png        the backdrop laid out exactly like src/title/TitleSky.js
+                                               (day / dusk / night, before and at the city stage)
 """
 import json
 import os
@@ -168,32 +170,9 @@ def mock(time='night', W=1080, H=2340, label=True):
     m = man()
     t = TIMES[time]
     tints = m['meta'].get('tints', {}).get(time, {})
-    out = img(t['sky'], m).resize((W, H), Image.BICUBIC)
     k = W / 720.0                                        # logical px -> mock px
-    if t['stars']:
-        st = img('ttl_stars', m)
-        st = st.resize((W, int(st.height * W / st.width)), Image.LANCZOS)
-        st.putalpha(st.getchannel('A').point(lambda v: int(v * t['stars'])))
-        out.alpha_composite(st, (0, 0))
-    if t['moon']:
-        mo = img('ttl_moon', m).resize((int(150 * k), int(150 * k)), Image.LANCZOS)
-        out.alpha_composite(mo, (int(W * 0.74), int(H * 0.25)))
-    if t['aurora']:
-        au = tile_x(img('ttl_aurora', m), W, k * 0.9)
-        out = add_blend(out, au, (0, int(H * 0.20)), t['aurora'])
-    cl = tile_x(tint(img('ttl_clouds', m), tints.get('ttl_clouds')), W, k * 0.55)
-    out.alpha_composite(cl, (0, int(H * 0.40) - cl.height))
-    base = {'ttl_mtn_far': 0.50, 'ttl_city_far': 0.505, 'ttl_mtn_mid': 0.545, 'ttl_forest': 0.585}
-    for key, sc in (('ttl_mtn_far', 720 / 1080.0), ('ttl_city_far', 720 / 1080.0 * 0.9), ('ttl_mtn_mid', 720 / 1080.0),
-                    ('ttl_forest', 720 / 1440.0)):
-        im = img(key, m)
-        if im is None:
-            continue
-        lay = tile_x(tint(im, tints.get(key)), W, k * sc)
-        out.alpha_composite(lay, (0, int(H * base[key]) - lay.height))
-        if key == 'ttl_city_far' and t['lights']:
-            li = tile_x(img('ttl_city_lights', m), W, k * sc)
-            out = add_blend(out, li, (0, int(H * base[key]) - li.height), t['lights'])
+    # the backdrop exactly as src/title/TitleSky.js lays it out (city stage: the placeholder is a town)
+    out = sky_band(time, city=1.0, LW=720, LH=int(720 * H / W), out_w=W, full=True)
     out.alpha_composite(diorama(W, H, night=1.0 if time == 'night' else (0.4 if time == 'dusk' else 0.0)))
     # falling snow
     rnd = np.random.default_rng(3)
@@ -243,6 +222,76 @@ def mock(time='night', W=1080, H=2340, label=True):
         d.text((int(24 * k), int(H * 0.33)), 'diorama area = PLACEHOLDER (title_code builds the real one)',
                font=font(int(16 * k), ko=False), fill=(255, 255, 255, 150))
     return out.convert('RGB')
+
+
+# ------------------------------------------------------------------ the title's own sky band
+def sky_band(time='night', city=0.0, LW=720, LH=1558, out_w=540, full=False):
+    """The backdrop exactly as src/title/TitleSky.js lays it out (strip bottoms relative to the horizon,
+    scales, aurora sizes, tints from the manifest) - the top of the title down to just under the
+    horizon, at out_w px wide.  city = 0..1 (the far city fades in at the city stage)."""
+    m = man()
+    k = out_w / float(LW)
+    W, H = out_w, int(LH * k)
+    hz = int(H * 0.40)
+    night = {'day': 0.0, 'dusk': 0.0, 'night': 1.0}[time]
+    tints = m['meta'].get('tints', {}).get(time, {})
+    out = img(TIMES[time]['sky'], m).resize((W + 4, hz + 60), Image.BICUBIC)
+    canvas = Image.new('RGBA', (W, H if full else hz + int(H * 0.06)), (0, 0, 0, 255))
+    canvas.alpha_composite(out.crop((2, 0, W + 2, min(out.height, canvas.height))), (0, 0))
+    out = canvas
+    if night:
+        st = img('ttl_stars', m)
+        st = st.resize((W, int(st.height * W / st.width)), Image.LANCZOS)
+        out.alpha_composite(st, (0, 0))
+        mo = img('ttl_moon', m)
+        ms = int(mo.width * 0.62 * k)
+        mo = mo.resize((ms, ms), Image.LANCZOS)
+        out.alpha_composite(mo, (int(W * 0.12 - ms / 2), int(H * 0.075 - ms / 2)))
+        au = img('ttl_aurora', m)
+        a1 = au.resize((int(W * 1.45), int(hz * 0.85)), Image.LANCZOS)
+        out = add_blend(out, a1, (int(W * 0.5 - a1.width / 2), int(H * 0.02)), 0.9)
+        a2 = au.transpose(Image.FLIP_LEFT_RIGHT).resize((int(W * 1.2), int(hz * 0.6)), Image.LANCZOS)
+        out = add_blend(out, a2, (int(W * 0.56 - a2.width / 2), int(H * 0.06)), 0.55)
+
+    def strip(key, y, scale=1.0, alpha=1.0, add=False, tint_=True):
+        im = img(key, m)
+        if im is None or alpha <= 0:
+            return
+        sc = W / float(im.width) * scale
+        lay = tile_x(tint(im, tints.get(key)) if tint_ else im, W, sc)
+        nonlocal out
+        if add:
+            out = add_blend(out, lay, (0, int(y) - lay.height), alpha)
+        else:
+            if alpha < 1:
+                lay.putalpha(lay.getchannel('A').point(lambda v: int(v * alpha)))
+            out.alpha_composite(lay, (0, int(y) - lay.height))
+    strip('ttl_clouds', hz - H * 0.115)
+    strip('ttl_mtn_far', hz - H * 0.035)
+    strip('ttl_city_far', hz - H * 0.022, 0.8, city * 0.9)
+    strip('ttl_city_lights', hz - H * 0.022, 0.8, city * night, add=True, tint_=False)
+    strip('ttl_mtn_mid', hz - H * 0.006)
+    strip('ttl_forest', hz + 4, 0.42)
+    # the sea from the horizon down (flat stand-in for the game's water texture)
+    sea = {'day': (70, 140, 210), 'dusk': (150, 120, 170), 'night': (34, 56, 120)}[time]
+    d = ImageDraw.Draw(out)
+    d.rectangle((0, hz + 4, W, out.height), fill=sea + (255,))
+    return out.convert('RGB') if not full else out
+
+
+def band_sheet():
+    cols = [('day', 0.0), ('dusk', 0.0), ('night', 0.0), ('day', 1.0), ('dusk', 1.0), ('night', 1.0)]
+    ims = [sky_band(t, c) for t, c in cols]
+    w, h = ims[0].size
+    out = Image.new('RGB', (w * 3 + 40, h * 2 + 100), (236, 242, 250))
+    d = ImageDraw.Draw(out)
+    f = font(22)
+    for i, (im, (t, c)) in enumerate(zip(ims, cols)):
+        x, y = 10 + (i % 3) * (w + 10), 40 + (i // 3) * (h + 50)
+        out.paste(im, (x, y))
+        d.text((x, y - 30), '%s  %s' % ({'day': '낮', 'dusk': '노을', 'night': '밤'}[t], '도시 단계' if c else '개척~읍'),
+               font=f, fill=(29, 47, 94))
+    return out
 
 
 # ------------------------------------------------------------------ icon preview
@@ -438,6 +487,7 @@ def main():
     ip = icon_preview()
     if ip is not None:
         ip.save(os.path.join(PREV, 'title_art_icon.png'), optimize=True)
+    band_sheet().save(os.path.join(PREV, 'title_art_band.png'), optimize=True)
     print('PREVIEW_DONE')
 
 

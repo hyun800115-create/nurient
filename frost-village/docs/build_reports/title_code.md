@@ -209,7 +209,7 @@ fade, Game.
 ## 8. Lab
 
 ```sh
-node tools/test/title_lab.mjs            # everything: video, stills, checks, perf (~10-15 min on a busy box)
+node tools/test/title_lab.mjs            # everything: video, stills, checks, perf (10-25 min in SwiftShader on a busy box)
 node tools/test/title_lab.mjs --quick    # stills + checks only
 node tools/title/bake_title.mjs --preview 1,2,3,4 --previewDir /tmp/p   # layout composites while editing layout.js
 ```

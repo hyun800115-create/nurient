@@ -74,6 +74,10 @@ class UIProxy {
   openBuildMenu(site) { const s = this.s; if (s && s.openBuildMenu) s.openBuildMenu(site); }
   setPopulation(n, cap, waiting) { const s = this.s; if (s && s.setPopulation) s.setPopulation(n, cap, waiting); }
   zoomChanged() { const s = this.s; if (s && s.zoomChanged) s.zoomChanged(); }
+  // ---- (v4-B) the order board / rank panels, the ceremony's badge
+  openOrders() { const s = this.s; if (s && s.openOrders) s.openOrders(); }
+  openRank() { const s = this.s; if (s && s.openRank) s.openRank(); }
+  rankBadgeFly(wx, wy) { const s = this.s; if (s && s.rankBadgeFly) s.rankBadgeFly(wx, wy); }
 }
 
 export class Game extends Phaser.Scene {
@@ -1045,6 +1049,9 @@ export class Game extends Phaser.Scene {
       return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
     if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
+    // ---- (v4-B) the station porters' pad and the 승격식 pad on the station square
+    if (s.type === 'stationPorter') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.porter.x, y: q.porter.y } : null; }
+    if (s.type === 'rank') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.rank.x, y: q.rank.y } : null; }
     // (v3.5) the operator of a v3 workshop: on the porter pad's spot (the porter pad follows it)
     if (s.type === 'operator') {
       const src = this.sourceById(s.station);
@@ -1601,6 +1608,8 @@ export class Game extends Phaser.Scene {
     }
     this.trash.setEnabled(this.progress.isDone('hire_fisherman') || !!this._trashEarly);
     if (this.trash.update(dt)) on = true;
+    // ---- (v4-B) the loading dock, the station till, a founded shop's delivery pad, a ribbon, a house site
+    if (this.v4 && this.v4.growth && this.v4.growth.onPad) on = true;
     return on;
   }
 
@@ -1784,7 +1793,7 @@ export class Game extends Phaser.Scene {
       unlockAll() {
         const pr = gs.progress;
         for (const s of STEPS) {
-          if (pr.done[s.id] || s.v3) continue;     // (v3 steps: unlockV3)
+          if (pr.done[s.id] || s.v3 || s.v4) continue;     // (v3 steps: unlockV3; v4 steps come with the neighbours)
           pr.done[s.id] = true;
           const pad = pr.pads[s.id];
           if (pad) { pad.destroy(); delete pr.pads[s.id]; }
@@ -1903,6 +1912,8 @@ export class Game extends Phaser.Scene {
       dog(cmd) { return gs.dog ? gs.dog.command(cmd) : false; },
       save() { gs.save(true); },
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
+      /** (v4-B) put n items of `type` in the chief's bag (test setup) */
+      carry(type, n) { const st = gs.player.stack; for (let i = 0; i < (n || 1) && st.count < gs.player.capacity; i++) st.push(type, null, gs.effects); return st.count; },
       reset() { gs.resetProgress(); },
       warnings() { return Array.from(Assets.warned); },
     });

@@ -69,7 +69,13 @@ export class Resident {
   }
 }
 
-export function ageOf(e, r) { return Math.floor((e.clock.day - r.birth) / e.cfg.yearDays); }
+export function ageOf(e, r) {
+  // the game's named villagers keep the age their sprite shows (keepNamed)
+  if ((r.flags & F_EXTERNAL) && e.cfg.keepNamed) return Math.floor((r.arrived - r.birth) / e.cfg.yearDays);
+  return Math.floor((e.clock.day - r.birth) / e.cfg.yearDays);
+}
+/** a game-named villager the story must not take away or turn into a culprit (keepNamed) */
+export function isKept(e, r) { return (r.flags & F_EXTERNAL) !== 0 && !!e.cfg.keepNamed; }
 export function groupOf(e, r) { return ageGroupOf(ageOf(e, r)); }
 
 /** random personality (optionally nudged by a persona key) */
@@ -141,7 +147,7 @@ export function makeResident(e, spec = {}) {
   r.titleEn = spec.titleEn || null;
   r.key = spec.key || null;
   r.persona = spec.persona || 'plain';
-  if (spec.external) r.flags |= F_EXTERNAL;
+  if (spec.external) { r.flags |= F_EXTERNAL; r.arrived = e.clock.day; }
   rollTraits(rng, r.tr, r.persona, group);
   if (spec.traits) for (const k in spec.traits) { const i = AXES.indexOf(k); if (i >= 0) r.tr[i] = spec.traits[k]; }
   rollLikes(rng, r, group);

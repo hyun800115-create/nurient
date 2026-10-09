@@ -31,3 +31,15 @@ def active_lufs(x, gate_db: float = 15.0) -> float:
 
 def peak_db(x) -> float:
     return float(20 * np.log10(max(np.max(np.abs(x)), 1e-12)))
+
+
+def phone(x, sr: int = 44100):
+    """a small phone speaker: nothing under ~550 Hz (4th-order high-pass), soft top above 9 kHz"""
+    from scipy.signal import butter, sosfilt
+    y = sosfilt(butter(4, 550, "hp", fs=sr, output="sos"), np.asarray(x, dtype=float))
+    return sosfilt(butter(2, 9000, "lp", fs=sr, output="sos"), y)
+
+
+def phone_drop(x, sr: int = 44100) -> float:
+    """dB lost on a phone speaker (active loudness through phone() minus full-range active loudness)"""
+    return active_lufs(phone(x, sr)) - active_lufs(x)

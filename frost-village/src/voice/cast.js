@@ -1,23 +1,23 @@
 // 눈꽃말 voices — who speaks with which voice (pure data + helpers, no Phaser).
 // A resident keeps one voice type for life; residents that share a type still differ a little
-// (VillageVoice derives a small pitch / tempo offset from the speaker id).
+// (VillageVoice puts each speaker id on one of five registers, -2.2..+2.2 semitones).
 
-export const VOICE_TYPES = ['kid_boy', 'kid_girl', 'adult_m', 'adult_f', 'elder_m', 'elder_f', 'chief', 'big_gruff', 'sweet', 'squeaky'];
+export const VOICE_TYPES = ['kid_boy', 'kid_girl', 'adult_m', 'young_m', 'adult_f', 'elder_m', 'elder_f', 'chief', 'big_gruff', 'sweet', 'squeaky'];
 
 /** character key (assets villagers / villagers2 / villagers3 / workers) -> voice type */
 export const CAST = {
   player: 'chief',
   npc_kid_boy: 'kid_boy', npc_kid_girl: 'kid_girl', npc_kid_prankster: 'kid_boy', npc_teen_girl: 'kid_girl',
-  npc_young_man: 'adult_m', npc_aunt: 'adult_f', npc_uncle: 'big_gruff', npc_grandma: 'elder_f', npc_grandpa: 'elder_m',
-  npc_merchant: 'adult_m', npc_herbalist: 'sweet', npc_bard: 'adult_m', npc_blacksmith: 'adult_f', npc_fashion: 'sweet',
+  npc_young_man: 'young_m', npc_aunt: 'adult_f', npc_uncle: 'big_gruff', npc_grandma: 'elder_f', npc_grandpa: 'elder_m',
+  npc_merchant: 'adult_m', npc_herbalist: 'sweet', npc_bard: 'young_m', npc_blacksmith: 'adult_f', npc_fashion: 'sweet',
   npc_yellow: 'adult_m', npc_red: 'adult_f', npc_blue: 'adult_m',
-  npc_clerk_a: 'sweet', npc_clerk_b: 'adult_m', npc_porter_a: 'big_gruff', npc_porter_b: 'kid_boy',
-  npc_captain: 'elder_m', npc_chef: 'big_gruff', npc_postman: 'adult_m', npc_doctor: 'adult_f', npc_painter: 'sweet',
+  npc_clerk_a: 'sweet', npc_clerk_b: 'young_m', npc_porter_a: 'big_gruff', npc_porter_b: 'kid_boy',
+  npc_captain: 'elder_m', npc_chef: 'big_gruff', npc_postman: 'young_m', npc_doctor: 'adult_f', npc_painter: 'sweet',
   npc_guard: 'big_gruff', npc_skater: 'kid_girl', npc_toddler: 'squeaky',
   npc_sawyer: 'adult_m', npc_smoker: 'adult_m', npc_cannery: 'adult_f',
-  fisherman: 'adult_m', lumberjack: 'big_gruff', farmer: 'adult_f', miner: 'adult_m', hunter: 'adult_m',
-  fisherman_b: 'elder_m', fisherman_c: 'sweet', lumberjack_b: 'big_gruff', lumberjack_c: 'adult_m',
-  farmer_b: 'elder_m', farmer_c: 'adult_f', miner_b: 'elder_m', miner_c: 'adult_m', hunter_b: 'big_gruff', hunter_c: 'adult_f',
+  fisherman: 'adult_m', lumberjack: 'big_gruff', farmer: 'adult_f', miner: 'adult_m', hunter: 'young_m',
+  fisherman_b: 'elder_m', fisherman_c: 'sweet', lumberjack_b: 'big_gruff', lumberjack_c: 'young_m',
+  farmer_b: 'elder_m', farmer_c: 'adult_f', miner_b: 'elder_m', miner_c: 'young_m', hunter_b: 'big_gruff', hunter_c: 'adult_f',
   villager_a: 'adult_f', villager_b: 'adult_m', villager_c: 'kid_girl',
 };
 
@@ -54,11 +54,11 @@ export function voiceFor(sp) {
   const role = cz && cz.kind ? cz.kind : (sp.role || sp.kind || 'adult');
   const h = hashStr(String(speakerId(sp)));
   if (role === 'kid' || role === 'student' || role === 'child') return (h & 1) ? 'kid_girl' : 'kid_boy';
-  if (role === 'teen') return (h & 1) ? 'kid_girl' : 'adult_m';
+  if (role === 'teen') return (h & 1) ? 'kid_girl' : 'young_m';
   if (role === 'elder') return (h & 1) ? 'elder_f' : 'elder_m';
   if (role === 'toddler' || role === 'baby') return 'squeaky';
   const r = h % 10;
-  return r < 4 ? 'adult_f' : r < 8 ? 'adult_m' : r < 9 ? 'sweet' : 'big_gruff';
+  return r < 4 ? 'adult_f' : r < 6 ? 'adult_m' : r < 8 ? 'young_m' : r < 9 ? 'sweet' : 'big_gruff';
 }
 
 /** a stable id for per-resident offsets (Resident: key; citizen: 'c' + id; plain strings as they are) */

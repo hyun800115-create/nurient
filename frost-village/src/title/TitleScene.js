@@ -8,6 +8,7 @@
 import { VERSION } from '../data/version.js';
 import { TitleAssets } from './TitleAssets.js';
 import { mountTitle } from './TitleScreen.js';
+import { armAudioUnlock } from './audioUnlock.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() { super('Title'); }
@@ -17,21 +18,26 @@ export class TitleScene extends Phaser.Scene {
     this.opts = (data && data.title) || {};
   }
 
-  preload() {
-    // tiny when Preload already queued these (TitleAssets.queueEarly / queueGroup(load, 1)); otherwise the
-    // title waits for ~200 KB (manifest + ground + stage 1) and streams the rest while it plays
-    TitleAssets.queueEarly(this.load);
-    TitleAssets.queueGroup(this.load, 1);
-  }
-
-  create() {
+  hooks() {
     const hooks = Object.assign({
       version: VERSION,
       onStart: () => this.scene.start('Game'),
     }, this.opts);
     if (this.fromResize) hooks.intro = false;
     if (window.__FV_TITLE_HOOKS) Object.assign(hooks, window.__FV_TITLE_HOOKS);    // e.g. { onSettings }
-    this.screen = mountTitle(this, hooks);
+    return hooks;
+  }
+
+  preload() {
+    // what this player's first frame needs: the stage they see (or the camp, for the intro), the backdrop
+    // and the logo. Nothing to wait for when the game's Preload already fetched it (integration doc §2);
+    // the rest streams in while the title plays. A tap while this loads already turns the sound on.
+    armAudioUnlock();
+    TitleAssets.queueFirstPaint(this.load, this.hooks());
+  }
+
+  create() {
+    this.screen = mountTitle(this, this.hooks());
 
     const onResize = () => { if (!this.screen.started && this.sys.isActive()) this.scene.restart({ fromResize: true, title: this.opts }); };
     this.scale.on('resize', onResize);

@@ -43,6 +43,12 @@ export const CONDS = [
   'srcq',
   // a child under seven (kindergarten age): '유치원 다녀요', not '학교 다녀요'
   'little',
+  // the story is from today or yesterday ('오늘 신문 봤어?' only about this morning's paper)
+  'recent',
+  // 14:00-17:00 ('학교 끝났어?' after school, not at nine in the morning)
+  'afternoon',
+  // which pet the story is about (the dog is the default): the cat does not pull sleds, the penguin has no tail to wag
+  'pet_cat', 'pet_peng',
 ];
 
 if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');
@@ -67,6 +73,8 @@ export const TAGS = [
   'hair',    // 'did you get a haircut?'
   'newfam',  // 'what are the new neighbours like?'
   'leave',   // a goodbye that already says 'I have to go' (no second 'I have to go' in the same line)
+  'wish',    // a goodbye that wishes the listener well ('잘 가!', '감기 조심해!'): the reply may wish back ('{V}도 잘 가!')
+  'goq',     // 'leaving already?' said to the one who is leaving
 ]; 
 if (TAGS.length > 128) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 128)');
 export const TAG = Object.create(null);

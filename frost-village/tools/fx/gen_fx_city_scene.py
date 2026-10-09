@@ -131,20 +131,30 @@ def _paste_clip(canvas, img, x, y):
 
 
 # =========================================================================== hose aiming (manifest.hoseAim)
-def hose_curve(N, T, h=None):
+def hose_curve(N, T, h=None, t=0.0):
+    """manifest.hoseAim.arc: arc height from the horizontal distance (capped so the jet never hooks back down onto
+    a target above it), a soft side bow for near-vertical aims and a little sway with time t (s)."""
     N, T = np.asarray(N, float), np.asarray(T, float)
-    dist = float(np.hypot(*(T - N)))
-    h = float(np.clip(0.3 * dist, 20, 120)) if h is None else h
+    dx, dy = T - N
+    L = float(np.hypot(dx, dy)) or 1.0
+    if h is None:
+        h = float(np.clip(0.3 * abs(dx), 8, 120))
+        h = min(h, max(8.0, (1.2 * abs(dx) - dy) / 4))
+    b = 0.06 * L * max(0.0, 1 - abs(dx) / (0.5 * abs(dy) + 1)) + 0.025 * L * math.sin(t * 1.7)
+    nrm = np.array([-dy, dx]) / L
+    if nrm[0] < 0:
+        nrm = -nrm
 
     def P(s):
-        return N + (T - N) * s + np.array([0.0, -h * 4 * s * (1 - s)])
+        k = 4 * s * (1 - s)
+        return N + (T - N) * s + np.array([0.0, -h * k]) + nrm * b * k
     return P
 
 
-def hose_arc(canvas, N, T, seg, tip, step=32.0, h=None):
+def hose_arc(canvas, N, T, seg, tip, step=32.0, h=None, t=0.0):
     """Chain fx_hose_stream segments along P(s) by arc length (origin (0, 0.5), rotated to the tangent, scaleX =
     (L + 1) / 32, scaleY 1 -> 0.7) and put fx_hose_tip at the end - exactly manifest.hoseAim.chain."""
-    P = hose_curve(N, T, h)
+    P = hose_curve(N, T, h, t)
     ss = np.linspace(0, 1, 400)
     pts = np.array([P(s) for s in ss])
     seglen = np.hypot(*np.diff(pts, axis=0).T)
@@ -160,22 +170,25 @@ def hose_arc(canvas, N, T, seg, tip, step=32.0, h=None):
         sx, sy = (L + 1.0) / seg.width, 1.0 - 0.3 * (k / max(1, n - 1))
         _put_rot(canvas, seg, p0, (0.0, 0.5), ang, sx, sy)
     pe = P(1.0)
-    pb = P(0.995)
+    pb = P(0.99)
     ang = math.atan2(pe[1] - pb[1], pe[0] - pb[0])
-    _put_rot(canvas, tip, pe - np.array([math.cos(ang), math.sin(ang)]) * 6, (0.0, 0.5), ang, 0.75, 0.7)
+    flip = T[0] < N[0]                                     # hoseAim.flip: droplets keep falling down
+    _put_rot(canvas, tip.transpose(Image.FLIP_TOP_BOTTOM) if flip else tip, pe, (0.0, 0.5), ang, 0.8, 0.7)
 
 
-def hose_rope(canvas, N, T, rope, tip, h=None, thin=0.3, ss=2):
+def hose_rope(canvas, N, T, rope, tip, h=None, thin=0.3, ss=2, t=0.0, rope_long=None):
     """Python stand-in for the recommended Phaser Rope (manifest.hoseAim.rope): the fx_hose_rope texture mapped
     once along P(s) like a Rope mesh (u = arc length / total * texture width, v = signed distance from the curve /
     scaleY), rendered by inverse mapping with 2x supersampling so bends are smooth.  The jet thins by `thin` toward
     the end; fx_hose_tip goes on the end."""
-    P = hose_curve(N, T, h)
+    P = hose_curve(N, T, h, t)
     ss_ = np.linspace(0, 1, 500)
     pts = np.array([P(s) for s in ss_])
     seg = np.diff(pts, axis=0)
     cum = np.concatenate([[0], np.cumsum(np.hypot(*seg.T))])
     total = cum[-1]
+    if rope_long is not None and total > 360:              # hoseAim.ropeLongFromPx: keep the bead size
+        rope = rope_long
     tan = np.vstack([seg, seg[-1:]])
     tan /= np.maximum(np.hypot(*tan.T)[:, None], 1e-6)
     nrm = np.stack([-tan[:, 1], tan[:, 0]], 1)
@@ -216,9 +229,11 @@ def hose_rope(canvas, N, T, rope, tip, h=None, thin=0.3, ss=2):
     rgb = np.where(a > 1e-4, img[..., :3] / np.maximum(a, 1e-4), 0)
     layer = Image.fromarray((np.dstack([np.clip(rgb, 0, 1), np.clip(a, 0, 1)]) * 255 + 0.5).astype(np.uint8), 'RGBA')
     _paste_clip(canvas, layer, x0, y0)
-    pe, pb = P(1.0), P(0.995)
+    pe, pb = P(1.0), P(0.99)
     ang = math.atan2(pe[1] - pb[1], pe[0] - pb[0])
-    _put_rot(canvas, tip, pe - np.array([math.cos(ang), math.sin(ang)]) * 6, (0.0, 0.5), ang, 0.75, 1.0 - thin)
+    flip = T[0] < N[0]                                     # hoseAim.flip
+    _put_rot(canvas, tip.transpose(Image.FLIP_TOP_BOTTOM) if flip else tip, pe, (0.0, 0.5), ang, 1.0 - thin,
+             1.0 - thin)
 
 
 def _put_rot(canvas, img, xy, origin, ang, sx=1.0, sy=1.0):
@@ -331,29 +346,40 @@ def main(out=None, W=2240, H=1240, frame=5):
         drawn.append((y, len(drawn), fn))
 
     labels = []
-    # --- houses (assets/town, read-only)
+    # --- houses (assets/town, read-only); the burning one is tinted warm like fireMount.tint
     row = [('cafe', -1.0), ('townhouse_b', 2.6), ('bookstore', 6.2), ('flower_shop', 9.8), ('hair_salon', 13.4)]
     fire_house = None
     for k, x in row:
         img, anc, s_ = sprite('town', k)
         p = S(x, 1.9)
-        add(p[1], (lambda img=img, anc=anc, p=p: put(canvas, img, p, anc)))
         if k == 'townhouse_b':
             fire_house = (p, s_)
-    # --- the fire on townhouse_b (manifest.fireMount)
+            arr = np.asarray(img).astype(np.float32)
+            arr[..., :3] *= np.array([255, 222, 196], np.float32) / 255.0
+            img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
+        add(p[1], (lambda img=img, anc=anc, p=p: put(canvas, img, p, anc)))
+    # --- the fire on townhouse_b exactly per manifest.fireMount.buildings['townhouse_b']
     hp, hs = fire_house
-    fire, fa, fspec = sheet_frames('fx_fire_bld_s')
-    fsc = float(np.clip(0.85 * hs['footprint'][0] / fspec['baseWidthPx'], 0.7, 1.3))
-    fpos = hp + [0, -0.55 * hs['topPx']]
+    mt = _man('fx_city')['fireMount']['buildings']['townhouse_b']
     smoke, sa, _ = sheet_frames('fx_smoke_column')
     emb, ea, _ = sheet_frames('fx_embers')
     win, wa, _ = sheet_frames('fx_fire_window')
-    add(hp[1] + 1, lambda: put(canvas, smoke[frame % 16], fpos + [8, -0.55 * fspec['heightPx'] * fsc], sa))
-    add(hp[1] + 2, lambda: put(canvas, win[frame % 12], hp + [-58, -96], wa, scale=0.85))
-    add(hp[1] + 3, lambda: put(canvas, fire[frame % 16], fpos, fa, scale=fsc))
-    add(hp[1] + 4, lambda: put(canvas, emb[frame % 16], fpos + [4, -70], ea))
-    labels.append((fpos + [150, -150], 'fx_fire_bld_s + fx_smoke_column + fx_embers'))
-    labels.append((hp + [-150, -84], 'fx_fire_window'))
+    glow, ga, _ = sheet_frames('fx_fire_glow')
+    fdx, fdy, fkey, fsc, _dep = mt['fires'][0]
+    fire, fa, fspec = sheet_frames(fkey)
+    fpos = hp + [fdx, fdy]
+    gdx, gdy, gsc = mt['glow']
+    add(hp[1] + 0.5, lambda: put(canvas, glow[frame % 8], hp + [gdx, gdy], ga, scale=gsc, alpha=0.85))
+    add(hp[1] - 1.0, lambda: put(canvas, glow[(frame + 3) % 8], hp + [10, 70], ga, scale=2.2, alpha=0.6))  # snow
+    sdx, sdy, ssc = mt['smoke']
+    add(hp[1] + 1, lambda: put(canvas, smoke[frame % 16], hp + [sdx, sdy], sa, scale=ssc))
+    for j, (wx, wy, wflip, wsc) in enumerate(mt['windows'][:2]):
+        add(hp[1] + 2, (lambda wx=wx, wy=wy, wflip=wflip, wsc=wsc, j=j:
+                        put(canvas, win[(frame + 5 * j) % 12], hp + [wx, wy], wa, scale=wsc, flip=wflip)))
+    add(hp[1] + 3, lambda: put(canvas, fire[frame % 12], fpos, fa, scale=fsc))
+    add(hp[1] + 4, lambda: put(canvas, emb[frame % 16], hp + mt['embers'], ea))
+    labels.append((fpos + [190, -150], 'fx_fire_bld_s + glow + smoke column + embers (fireMount.buildings)'))
+    labels.append((hp + [mt['windows'][0][0] - 120, mt['windows'][0][1] + 40], 'fx_fire_window'))
     # --- fire truck (vehicles) with the red beacon
     tp = S(0.6, -4.4)
     timg, tanc, tdef = vehicle('fire_truck', 'siren_SE_%d' % (frame % 4))
@@ -367,11 +393,13 @@ def main(out=None, W=2240, H=1240, frame=5):
     labels.append((tp + [-10, 70], 'fire_truck (assets/vehicles) + fx_siren_glow_red'))
     # --- firefighters (cityfolk when available, else townfolk in red helmets) + aimed hose streams
     rope, _, _ = sheet_frames('fx_hose_rope')
+    rope_l, _, _ = sheet_frames('fx_hose_rope_long')
     tip, _, _ = sheet_frames('fx_hose_tip')
     mist, ma, _ = sheet_frames('fx_water_mist')
     steam, sta, _ = sheet_frames('fx_steam_puff')
     ffs = [(S(-0.2, -1.3), 'E', 2), (S(3.8, -2.2), 'NE', 5)]
-    targets = [hp + [-36, -176], hp + [70, -140]]
+    wx0, wy0 = mt['windows'][0][:2]
+    targets = [fpos + [-24, -0.3 * fspec['heightPx'] * fsc], hp + [wx0, wy0]]
     for k, ((fp, dr, seed), T) in enumerate(zip(ffs, targets)):
         cfp = cityfolk_person('firefighter', seed)
         if cfp:
@@ -394,7 +422,8 @@ def main(out=None, W=2240, H=1240, frame=5):
             dd.line(pts, fill=(200, 64, 50, 255), width=4, joint='curve')
         add(min(fp[1], tp[1]) - 3, hose_line)
         add(hp[1] + 5 + k, (lambda T=T: put(canvas, mist[(frame + 3) % 12], T, ma)))
-        add(hp[1] + 7 + k, (lambda nz=nz, T=T, k=k: hose_rope(canvas, nz, T, rope[(frame + k) % 8], tip[(frame + k) % 8])))
+        add(hp[1] + 7 + k, (lambda nz=nz, T=T, k=k: hose_rope(canvas, nz, T, rope[(frame + k) % 8], tip[(frame + k) % 8],
+                                                             t=0.4 * frame + k, rope_long=rope_l[(frame + k) % 8])))
         add(hp[1] + 9 + k, (lambda T=T, k=k: put(canvas, steam[(frame * 2 + k * 6) % 14], T + [14, -10], sta, 0.9)))
     labels.append((ffs[1][0] + [150, 30], 'firefighters: aimed fx_hose_rope + fx_hose_tip'))
     labels.append((targets[1] + [150, 10], 'fx_water_mist + fx_steam_puff'))
@@ -459,9 +488,9 @@ def main(out=None, W=2240, H=1240, frame=5):
     try:                                                # composed like the game: portrait + text in the boxes
         import gen_fx_city_preview as PV
         pe = _man('fx_city')['sprites']['ui_wanted_poster']
+        sil = Image.open(os.path.join(ASSETS, 'fx_city', 'ui_wanted_silhouette.png')).convert('RGBA')
         posters = [PV.wanted_mock(poster, pe, seed=12),
-                   PV.wanted_mock(poster, pe, seed=27, name='눈덩이 장난꾼 "통통이"', reward='포상금 300',
-                                  mask=False)]
+                   PV.wanted_mock(poster, pe, name='도둑을 찾아라!', reward='포상금 300', portrait=sil)]
     except Exception as e:                              # pragma: no cover
         print('  (poster mock skipped: %s)' % e)
         posters = [poster, poster]
@@ -550,16 +579,17 @@ def main(out=None, W=2240, H=1240, frame=5):
 
 def snapshot(w, h, frame=3):
     """Small 'press photo' of a burning townhouse with smoke and steam for the newspaper mock (assets only)."""
-    big = tile_fill((440, 360), os.path.join(ASSETS, 'ground', 'ground_snow.png'))
+    big = tile_fill((440, 420), os.path.join(ASSETS, 'ground', 'ground_snow.png'))
     img, anc, s = sprite('town', 'townhouse_b')
-    p = np.array([210.0, 320.0])
+    p = np.array([210.0, 390.0])
     put(big, img, p, anc)
-    fire, fa, fs = sheet_frames('fx_fire_bld_s')
+    mt = _man('fx_city')['fireMount']['buildings']['townhouse_b']
+    fdx, fdy, fkey, fsc, _d = mt['fires'][0]
+    fire, fa, fs = sheet_frames(fkey)
     smoke, sa, _ = sheet_frames('fx_smoke_column')
-    fpos = p + [0, -0.55 * s['topPx']]
-    put(big, smoke[frame], fpos + [8, -80], sa)
-    put(big, fire[frame], fpos, fa)
-    crop = big.crop((40, 20, 420, 340)).resize((w, h), Image.LANCZOS)
+    put(big, smoke[frame], p + mt['smoke'][:2], sa, scale=mt['smoke'][2])
+    put(big, fire[frame], p + [fdx, fdy], fa, scale=fsc)
+    crop = big.crop((30, 90, 410, 410)).resize((w, h), Image.LANCZOS)
     # newsprint look: slight desaturation + warm tone
     a = np.asarray(crop).astype(np.float32)
     g = a[..., :3].mean(axis=2, keepdims=True)

@@ -17,16 +17,21 @@ import { Rail } from './Rail.js';
 import { RoadNet } from './RoadNet.js';
 import { TownSim, F } from './TownSim.js';
 import { DayClock } from './DayClock.js';
-import { V4Paint, PAINT_FILES } from './V4Paint.js';
+// ---- (v4-B) the streets and the rails baked into the ground (replaces A's stub painter)
+import { RoadPaint, PAINT_FILES } from './RoadPaint.js';
 import { Train } from '../entities/Train.js';
 import { RailStation, stationSign } from '../entities/RailStation.js';
 import { TownBuilding } from '../entities/TownBuilding.js';
 import { Visitor } from '../entities/Visitor.js';
 import { Character } from '../entities/Character.js';
+// ---- (v4-B) orders, founding, houses, happiness; rank 마을 -> 읍
+import { Growth } from './Growth.js';
+import { Rank } from './Rank.js';
 
 const TOWN_FIRST = ['town_rails', 'town_civic', 'town_street'];
 const TOWN_REST = ['town_shops', 'town_homes', 'town_park'];
 const TRAIN_FILES = ['train_engine', 'train_car_a', 'train_car_b'];
+const UI3_FILES = ['ui3_icons', 'ui_mission_card', 'ui_mission_card_done', 'ui_mission_board', 'ui_progress_bg', 'ui_progress_fill'];
 const AUDIO3 = ['sfx_steam_whistle', 'sfx_brakes', 'sfx_door', 'sfx_school_bell', 'sfx_bell_hall', 'sfx_mission_done', 'sfx_fame_up', 'sfx_sleigh_bells', 'amb_town', 'amb_night'];
 
 /** a townsperson actor for scripted moments (the mayor, founders, builders): a Character with a doll */
@@ -91,6 +96,8 @@ export class Neighbours {
     gs._v4pre = true;
     Assets.loadFragment(gs, 'town', { only: TOWN_FIRST });
     Assets.loadFragment(gs, 'roads', { only: PAINT_FILES });
+    // ---- (v4-B) the HUD of the neighbours (rank badges, order cards, the clock icons)
+    Assets.loadFragment(gs, 'ui3', { only: UI3_FILES });
   }
 
   constructor(gs, saved, instant) {
@@ -113,13 +120,17 @@ export class Neighbours {
     this.regulars = Array.isArray(s.town && s.town.regulars) ? s.town.regulars : [];
     this.seed = (s.town && Number.isFinite(s.town.seed)) ? s.town.seed >>> 0 : (BALANCE.v4.town.seed >>> 0);
     this.ready = false;
+    // ---- (v4-B) the order board / founded shops / houses, and the rank (made before the town manifest
+    // callback below, which can run at once when the manifest is cached)
+    this.growth = new Growth(this, s);
+    this.rank = new Rank(this, s);
     this.clock = new DayClock(gs, s.clock);
     this.rail = new Rail();
     this.rail.on((ev, stop) => this.onRail(ev, stop));
     this.buildings = [];
     Neighbours.prefetch(gs);
     gs.queueLate = gs.queueLate || (() => gs.queueLateFiles && gs.queueLateFiles());
-    this.paint = new V4Paint(gs, { drifts: true });
+    this.paint = null;           // (v4-B) RoadPaint: made with the street grid (onTownManifest)
     // the town pictures / data arrive late: build the town as soon as the town manifest is here
     Assets.loadFragment(gs, 'town', { only: TOWN_FIRST }, () => this.onTownManifest());
     if (!instant || !gs.progress.seen.railFound) this.revealSoon(instant ? 2000 : 1400);
@@ -158,6 +169,10 @@ export class Neighbours {
     this.roadNet = new RoadNet(V, { doors });
     gs.roadNet = this.roadNet;
     if (gs.roads.addGraph) gs.roads.addGraph(this.roadNet.walkGraph());
+    // ---- (v4-B) the streets + rails in the ground tiles; walkers wait at a crossing while the train is near it
+    const st0 = gs.sites && gs.sites[V.stations.ours.plot];
+    this.paint = new RoadPaint(gs, this.roadNet, { drifts: !(st0 && st0.state === 'done') });
+    gs.roads.edgeBlocked = (e) => !!(e && e.xing >= 0 && this.rail && this.rail.blocking(e.xing));
     // our station (the ruin until repaired) on the plot r_station
     const site = gs.sites && gs.sites[V.stations.ours.plot];
     const open = !!(site && site.state === 'done');
@@ -197,6 +212,8 @@ export class Neighbours {
     // the people of the town (when their manifest is here)
     if (open || this._preStation) this.prefetchStation();
     if (gs.territory.isOpen('town')) this.onTownOpen(true);
+    // ---- (v4-B) shops / houses come back from the save, the square comes alive (after the first train)
+    if (this.growth) this.growth.onReady();
   }
 
   /** the town station: collision on its building only (the platform is walkable), its platform for the sim */
@@ -216,6 +233,9 @@ export class Neighbours {
     this.town = new TownSim(this, { seed: this.seed, extra: this.extra });
     for (const [id, v] of this.regulars) { const c = this.town.get(id); if (c && Number.isFinite(v)) { c.visits = Math.min(999, v); c.regular = v >= (BALANCE.v4.visitors.regularAt || 3); } }
     if (this.clock.on) this.town.start(this.clock.simT());
+    // ---- (v4-B) the founded shops' points for their keepers / lines; the 읍 newcomers
+    if (this.growth && this.growth.onTown) this.growth.onTown();
+    if (this.growPending) { this.town.growTo(this.growPending, true); this.growPending = 0; }
   }
 
   // ---------------------------------------------------------------- reveal / station / town
@@ -529,6 +549,10 @@ export class Neighbours {
     this.msRail = (this.msRail || 0) * 0.95 + (ts0 - tr0) * 0.05;
     for (let i = this.visitors.length - 1; i >= 0; i--) { const v = this.visitors[i]; if (v.alive && v.stage !== 'shop') v.update(dt); }
     for (const a of this.actors.slice()) a.update(dt);
+    // ---- (v4-B)
+    if (this.paint) this.paint.update(dt);
+    if (this.growth) this.growth.onPad = this.growth.update(dt);
+    if (this.rank) this.rank.update(dt);
     if (gs.dollPool) gs.dollPool.update(dt);
     // townsfolk sheets that were asked for before the manifest arrived
     if (this._wantChild && TF.ok) { this._wantChild = false; for (const k of TF.sheetsFor('child')) Assets.lateWant.add(k); gs.queueLateFiles(); }
@@ -656,12 +680,16 @@ export class Neighbours {
     const regs = [];
     if (this.town) for (const c of this.town.citizens) if (c.visits > 0 && regs.length < 40) regs.push([c.id, c.visits]);
     const prev = this.saved || {};
-    return Object.assign({}, prev, {
+    const o = Object.assign({}, prev, {
       v: 1,
       clock: this.clock.serialize(),
       town: { seed: this.seed, open: this.gs.territory.isOpen('town'), extra: this.extra.slice(0, 64), regulars: regs },
-      growth: this.growth && this.growth.serialize ? this.growth.serialize() : prev.growth,
     });
+    // ---- (v4-B) docs/v4_plan.md §12: orders, cargo, shops, houses, cash, rentAcc, happy, porters; rank
+    delete o.growth;
+    if (this.growth) Object.assign(o, this.growth.serialize());
+    o.rank = this.rank ? this.rank.level : (prev.rank === 2 ? 2 : 1);
+    return o;
   }
 
   state() {
@@ -675,6 +703,10 @@ export class Neighbours {
       dolls: this.gs.dollPool ? Object.assign({}, this.gs.dollPool.stats) : null,
       arrivals: this.arrivals, ms: { all: +(this.ms || 0).toFixed(3), town: +(this.msTown || 0).toFixed(3), rail: +(this.msRail || 0).toFixed(3) },
       tf: TF.ok ? { adult: TF.readyFor(Assets, 'adult'), elder: TF.readyFor(Assets, 'elder'), child: TF.readyFor(Assets, 'child') } : null,
+      // ---- (v4-B)
+      growth: this.growth ? this.growth.state() : null,
+      rank: this.rank ? this.rank.state() : null,
+      district: this.districtPeople(),
     };
   }
 
@@ -695,6 +727,44 @@ export class Neighbours {
       census: () => (nb.town ? nb.town.census() : null),
       town: () => nb.town,
       citizen: (id) => { const c = nb.town && nb.town.get(id); return c ? { id: c.id, kind: c.kind, role: c.role, act: c.act, state: c.state, x: Math.round(c.x), y: Math.round(c.y), home: c.home, flags: c.flags, lod: c.lod, body: !!c.body, name: c.name } : null; },
+      // ---- (v4-B) test hooks: the order board, founding, houses, the rank
+      growth: () => (nb.growth ? nb.growth.state() : null),
+      rank: () => (nb.rank ? nb.rank.state() : null),
+      /** deliver n items (default: all that is missing) to order card i, as the loading dock would */
+      fill(i, n) {
+        const g = nb.growth; if (!g || !g.active) return false;
+        const c = g.cards[i || 0]; if (!c) return false;
+        let left = n === undefined ? Infinity : n;
+        for (const k in c.need) while (c.got[k] < c.need[k] && left > 0) { c.got[k]++; left--; g.payWholesale(k, 1, g.dock.x, g.dock.y); }
+        c.idle = 0;
+        if (g.cardDone(c)) g.completeCard(c);
+        return true;
+      },
+      /** a shop jumps ahead: 'build' | 'ribbon' | 'open' (lot id or shop key) */
+      shop(id, st) {
+        const g = nb.growth; if (!g) return false;
+        const sh = g.shops[id] || Object.values(g.shops).find((q) => q.shop === id);
+        if (!sh) return false;
+        if (st === 'build' || st === 'ribbon' || st === 'open') { if (sh.st === 'wait') sh.startBuild(false); }
+        if (st === 'ribbon' || st === 'open') { if (sh.st === 'build') sh.built(false); }
+        if (st === 'open' && sh.st === 'ribbon') sh.open(false, false);
+        return sh.st;
+      },
+      /** found every shop at once (open), for later-game test setups */
+      foundAll() {
+        const g = nb.growth; if (!g || !g.ready) return 0;
+        for (const k of BALANCE.v4.founding.order) {
+          if (g.done.indexOf(k) < 0) g.done.push(k);
+          const i = g.cards.findIndex((c) => c.shop === k); if (i >= 0) g.cards.splice(i, 1);
+          const sh = g.found(k) || Object.values(g.shops).find((q) => q.shop === k);
+          if (sh && sh.st !== 'open') { if (sh.st === 'wait') sh.startBuild(true); if (sh.st === 'build') sh.built(true); sh.open(false, true); }
+        }
+        g.refill();
+        return g.openShopCount();
+      },
+      /** fill the current house site with planks */
+      house() { const g = nb.growth; if (!g) return false; const h = Object.values(g.houses).find((q) => q.st === 'site'); if (!h) return false; while (h.got < h.need()) { h.got++; } h.refreshLabel(); return h.id; },
+      happy: (list) => { if (nb.growth) for (const f of list || []) nb.growth.addSatisfaction(f); return nb.growth ? nb.growth.happiness() : null; },
     };
   }
 

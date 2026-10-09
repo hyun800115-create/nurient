@@ -27,13 +27,15 @@ export function titleName(lang, short) {
 
 /** title-only texts (the game's strings.js is not touched) */
 export const TITLE_TEXT = {
-  ko: { tap: '터치하여 시작', click: '클릭하여 시작', skip: '탭하면 건너뛰어요', stages: ['', '개척', '마을', '읍', '도시'],
+  ko: { tap: '터치하여 시작', click: '클릭하여 시작', skip: '탭하면 건너뛰어요', skipClick: '클릭하면 건너뛰어요', sound: '탭하면 소리가 켜져요',
+    soundClick: '클릭하면 소리가 켜져요', again: '한 번 더 탭하면 건너뛰어요', againClick: '한 번 더 클릭하면 건너뛰어요', skipBtn: '건너뛰기', stages: ['', '개척', '마을', '읍', '도시'],
     stageLong: ['', '작은 개척지', '눈꽃 마을', '기찻길 읍내', '반짝이는 도시'], grew: '마을이 자랐어요!', settings: '설정',
-    sound: '효과음', music: '음악', lang: '언어', intro: '오프닝', on: '켜짐', off: '꺼짐', replay: '오프닝 다시 보기', close: '닫기',
+    sfx: '효과음', music: '음악', lang: '언어', intro: '오프닝', on: '켜짐', off: '꺼짐', replay: '오프닝 다시 보기', close: '닫기',
     introModes: { first: '처음 한 번', always: '항상', never: '안 보기' } },
-  en: { tap: 'Tap to start', click: 'Click to start', skip: 'Tap to skip', stages: ['', 'Camp', 'Village', 'Town', 'City'],
+  en: { tap: 'Tap to start', click: 'Click to start', skip: 'Tap to skip', skipClick: 'Click to skip', sound: 'Tap for sound',
+    soundClick: 'Click for sound', again: 'Tap again to skip', againClick: 'Click again to skip', skipBtn: 'Skip', stages: ['', 'Camp', 'Village', 'Town', 'City'],
     stageLong: ['', 'A tiny camp', 'Snowbloom village', 'Railway town', 'Twinkling city'], grew: 'Your village grew!', settings: 'Settings',
-    sound: 'Sound', music: 'Music', lang: 'Language', intro: 'Opening', on: 'On', off: 'Off', replay: 'Replay opening', close: 'Close',
+    sfx: 'Sound', music: 'Music', lang: 'Language', intro: 'Opening', on: 'On', off: 'Off', replay: 'Replay opening', close: 'Close',
     introModes: { first: 'Once', always: 'Always', never: 'Never' } },
 };
 

@@ -106,7 +106,7 @@ def main():
     for i, t in enumerate(ev["dog"]):
         place(mix, dog, t, a2["sfx_dog_bark"]["volume"] * 0.5, 0.15 - 0.1 * i)
     bgm = F.decode(os.path.join(ASSETS, "audio", "bgm_village.ogg"), 2)
-    m0 = 50.5
+    m0 = 50.0
     n0 = int(m0 * SR)
     nm = min(bgm.shape[1], mix.shape[1] - n0)
     fade = S.env_pts([(0, 0), (2.5, 1), (nm / SR - 1.2, 1), (nm / SR, 0)], nm)
@@ -128,7 +128,7 @@ def main():
         state = "" if ln["spoken"] else "  (dropped)"
         lines.append(f"{ln['at']:5.1f}s  {ko.get(ln['voice'], ln['voice']):10s}  {ln['text']}\n        -> {ln['say']}{state}")
     lines += ["", f"runtime stats: {json.dumps(ev['stats'])}",
-              "0-26 s: every voice says hello + something in character; 27 s-: the snowy-day scene;"
+              "0-27 s: every voice says hello + something in character; 28 s-: the snowy-day scene;"
               " from 50 s the village music fades in at the game's level (voices sit behind it, like in the game).",
               f"mix: voices + wind bed, normalised to -16 LUFS; voices-only loudness before normalising {S.lufs(voices_only):.1f} LUFS"]
     with open(os.path.join(PREV, "voice_demo.txt"), "w", encoding="utf-8") as f:

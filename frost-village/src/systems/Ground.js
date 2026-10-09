@@ -1,6 +1,7 @@
-// Static ground: scrolling sea + fish schools (live tileSprites) and the snowy land baked once
-// into a few canvas textures (snow pattern, shoreline foam, paths, decals). Zone floors are
-// separate baked images so locked zones can fade in when they unlock.
+// Static ground: scrolling sea + fish schools (live tileSprites that follow the view) and the snowy land
+// baked into a fixed pool of reused 512² canvas tiles (snow pattern, shoreline foam, paths, decals, rails and
+// streets through bake hooks, zone floors and zone / region roads once they are shown). (v4-B, docs/v4_plan.md
+// §11.3c: the old 1024² tiles, zone floors and road overlays were canvases that were never freed.)
 
 import { Assets } from '../core/Assets.js';
 import { WORLD } from '../data/world.js';
@@ -29,8 +30,50 @@ function drawFrame(ctx, key, x, y, scale = 1, rot = 0, alpha = 1) {
   ctx.restore();
 }
 
-const TILE = 1024;          // (v3) the land is baked in square tiles, lazily, as the camera comes near
-const TILE_MARGIN = 420;   // px around the camera view that should already be baked
+// (v4-B, docs/v4_plan.md §11.3c) the land is baked into a FIXED POOL of 512² canvas slots, reused (never
+// created / destroyed while playing: Phaser keeps a removed canvas in its pool). Level 0 = one world px per
+// tile px (512 world px a tile) at zoom >= 0.85; level 1 = half resolution (1024 world px in a slot) below
+// that; level 2 = quarter (2048 px) for the overview. A slot far from the view is re-used for a new tile.
+const SLOT = 512;
+// a 1-texel gutter on every side: neighbouring tiles overlap by two texels, so no seam shows between them at
+// fractional zooms (a tile covers TW world px: 510 at full resolution)
+const GUT = 1;
+const TW = SLOT - 2 * GUT;
+const LEVEL_ZOOM = [0.85, 0.42];
+const LEVEL_MARGIN = [200, 320, 480];   // world px around the view that should already be baked
+const POOL = 28;                         // slots (1 MiB each); about 24 cover a phone view at zoom 0.85
+export function levelFor(z) { return z >= LEVEL_ZOOM[0] ? 0 : z >= LEVEL_ZOOM[1] ? 1 : 2; }
+/** device px per user px of a 2D context (shadow offsets / blur are in device px) */
+export function devScale(ctx) {
+  try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch (e) { return 1; }
+}
+
+/**
+ * (v4-B) a picture that lies on the ground (a zone floor, a region's roads): drawn into the ground tiles once
+ * it is fully shown; while it fades in (or before the tiles under it are re-baked) it is its own image. Same
+ * surface as the Image it replaces: alpha / visible / setAlpha / setVisible / setEnabled, tweenable.
+ */
+class GroundLayer {
+  constructor(ground, id, rect, draw, order, depth) {
+    this.ground = ground; this.id = id; this.rect = rect; this.draw = draw; this.order = order; this.depth = depth;
+    this.x = rect.x; this.y = rect.y;
+    this._a = 1; this._v = true;
+    this.merged = false;     // drawn into the tiles
+    this.img = null;         // its own image (fading in / until the tiles are re-baked)
+    this.active = true;
+    ground.watch(this);
+  }
+  get alpha() { return this._a; }
+  set alpha(v) { v = +v; if (v !== this._a) { this._a = v; this.ground.watch(this); } }
+  get visible() { return this._v; }
+  set visible(v) { v = !!v; if (v !== this._v) { this._v = v; this.ground.watch(this); } }
+  setAlpha(a) { this.alpha = a === undefined ? 1 : a; return this; }
+  setVisible(v) { this.visible = v; return this; }
+  setEnabled(v) { this.visible = v; return this; }
+  setDepth() { return this; }
+  get want() { return this._v && this._a > 0.001; }
+  get full() { return this._v && this._a >= 0.999; }
+}
 
 export class Ground {
   constructor(gs) {
@@ -41,47 +84,187 @@ export class Ground {
     for (let x = 0; x <= W; x += 8) maxShore = Math.max(maxShore, shoreY(x));
     this.maxShore = maxShore;
 
-    // --- sea (live, scrolling)
-    const seaH = Math.ceil(maxShore + 40);
-    this.sea = gs.add.tileSprite(0, -200, W, seaH + 200, Assets.sprite('water_sea').tex).setOrigin(0, 0).setDepth(DEPTH.WATER);
-    this.fish1 = null; this.fish2 = null;
-    const fs = Assets.sprite('fish_school');
-    this.fish1 = gs.add.tileSprite(0, 40, W, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.55);
-    this.fish2 = gs.add.tileSprite(0, 150, W, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.35).setTilePosition(130, 40);
-    this.fish2.setTileScale(0.8, 0.8);
+    // --- sea (live, scrolling): Ground.makeSea() — the one place the sea is made (the living water of v7
+    // replaces this method only)
+    this.seaH = Math.ceil(maxShore + 40);
+    this.makeSea();
     this.t = 0;
 
-    // --- baked land: square tiles made when the camera first comes near (a big map costs nothing until seen)
-    this.cols = Math.ceil(W / TILE); this.rows = Math.ceil(H / TILE);
-    this.tiles = new Array(this.cols * this.rows).fill(null);
+    // --- baked land: a pool of 512² slots, tiles made when the camera comes near and re-used far away
+    this.slots = [];
+    this.tiles = this.slots;     // (perf tests read tiles.length / baked)
+    this.byId = new Map();       // tile id (level * 1e6 + ty * 1000 + tx) -> slot
+    this.pool = POOL;
+    this.minLevel = 0;           // (low graphics: 1 = never full resolution)
+    this.level = 0;
     this.baked = 0;
+    this.evictions = 0;
     this.checkT = 0;
     // (v4-A, plan §10.2) extra layers baked into the tiles (rails, v4 streets: fn(ctx, x0, y0, w, h)) and
     // tiles to re-bake in place (one per check) when such a layer changes
     this.hooks = [];
     this.dirty = new Set();
+    // (v4-B) zone floors and roads of zones / regions: merged into the tiles once shown
+    this.layers = [];
+    this.watched = new Set();
     gs.events.once('shutdown', () => this.destroyTiles());
   }
 
+  /** (v4-B) low graphics: tiles at half resolution at every zoom, a smaller pool */
+  setLow(low) {
+    const lv = low ? 1 : 0;
+    if (lv === this.minLevel) return;
+    this.minLevel = lv;
+    this.pool = low ? 20 : POOL;
+  }
+
+  /**
+   * (v4-B, docs/v4_plan.md §10.2 / §11.3c) the sea and the two fish schools. A Phaser TileSprite owns a canvas as
+   * big as itself: one as wide as the 6144 px world cost 63 MiB (+ 9 for the fish). These follow the camera
+   * instead and are only as big as the view (below zoom 0.5 they are drawn at half resolution and scaled 2x —
+   * the sea is soft anyway). The pattern stays fixed in the world: tilePosition = the sprite's world position
+   * (+ the drift), so moving the sprite never moves the waves.
+   */
+  makeSea() {
+    const gs = this.gs;
+    this.sea = gs.add.tileSprite(0, -200, 64, 64, Assets.sprite('water_sea').tex).setOrigin(0, 0).setDepth(DEPTH.WATER);
+    const fs = Assets.sprite('fish_school');
+    this.fish1 = gs.add.tileSprite(0, 40, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.55);
+    this.fish2 = gs.add.tileSprite(0, 150, 64, 200, fs.tex, fs.frame).setOrigin(0, 0).setDepth(DEPTH.FISH).setAlpha(0.35);
+    this.seaFit(true);
+  }
+
+  /** fit the sea / fish sprites to the camera view (called every frame, cheap; resizes only on a new size class) */
+  seaFit(force) {
+    const gs = this.gs, cam = gs.cameras && gs.cameras.main;
+    if (!cam || !this.sea) return;
+    const z = Math.max(0.05, cam.zoom || 1);
+    const wv = cam.worldView;
+    // the view (the world view is refreshed only when a frame is drawn: use the camera's own numbers)
+    const vw = cam.width / z, vh = cam.height / z;
+    const ct = gs.camTarget;
+    const cx = ct ? ct.x : (wv.width ? wv.centerX : cam.scrollX + cam.width / 2);
+    const cy = ct ? ct.y : (wv.height ? wv.centerY : cam.scrollY + cam.height / 2);
+    const k = (gs.zoomCur || 1) < 0.5 ? 2 : 1;
+    // size class: the view + a margin, rounded up to 256 px (a resize re-allocates the canvas: rarely)
+    const sw = Math.ceil((vw + 640) / k / 256) * 256;
+    let x0 = Math.floor((cx - vw / 2 - 320) / (64 * k)) * 64 * k;
+    // inside the world only (beyond its edges there is no land to cover the sea)
+    const span = sw * k;
+    if (span <= this.W) x0 = Math.max(0, Math.min(this.W - span, x0));
+    const top = -200, bottom = this.seaH;
+    const vis = cy - vh / 2 - 320 < bottom;
+    const sh = Math.ceil((bottom - top) / k / 64) * 64;
+    if (force || this.sea.__k !== k || this.sea.__w !== sw) {
+      this.sea.setSize(sw, sh);
+      this.sea.setScale(k); this.sea.setTileScale(1 / k, 1 / k);
+      this.sea.__k = k; this.sea.__w = sw;
+      for (const f of [this.fish1, this.fish2]) { f.setSize(sw, Math.ceil(200 / k)); f.setScale(k); }
+      this.fish1.setTileScale(1 / k, 1 / k);
+      this.fish2.setTileScale(0.8 / k, 0.8 / k);
+    }
+    this.sea.setPosition(x0, top);
+    this.fish1.setPosition(x0, 40);
+    this.fish2.setPosition(x0, 150);
+    this.sea.setVisible(vis);
+    this.fish1.setVisible(vis);
+    this.fish2.setVisible(vis);
+  }
+
+  /** the camera zoom the tiles are made for */
+  zoomNow() { const gs = this.gs; return gs.zoomCur || (gs.cameras && gs.cameras.main ? gs.cameras.main.zoom : 1) || 1; }
+
   /** bake the tiles around the camera view (`max` per call; Infinity = all that are needed now) */
-  ensure(view, max = 1, margin = TILE_MARGIN) {
-    const x0 = Math.max(0, Math.floor((view.x - margin) / TILE)), x1 = Math.min(this.cols - 1, Math.floor((view.right + margin) / TILE));
-    const y0 = Math.max(0, Math.floor((view.y - margin) / TILE)), y1 = Math.min(this.rows - 1, Math.floor((view.bottom + margin) / TILE));
-    // tiles inside the view first, then the margin
-    let n = 0;
-    for (let pass = 0; pass < 2 && n < max; pass++) {
-      for (let ty = y0; ty <= y1 && n < max; ty++) {
-        for (let tx = x0; tx <= x1 && n < max; tx++) {
-          const i = ty * this.cols + tx;
-          if (this.tiles[i]) continue;
-          const inView = tx * TILE < view.right && (tx + 1) * TILE > view.x && ty * TILE < view.bottom && (ty + 1) * TILE > view.y;
-          if (pass === 0 && !inView) continue;
-          this.bakeTile(tx, ty);
-          n++;
-        }
+  ensure(view, max = 1, margin) {
+    this.settleLayers();
+    const lv = Math.min(2, Math.max(this.minLevel, levelFor(this.zoomNow())));
+    const T = TW << lv;
+    const m = margin !== undefined ? margin : LEVEL_MARGIN[lv];
+    const cols = Math.ceil(this.W / T), rows = Math.ceil(this.H / T);
+    const x0 = Math.max(0, Math.floor((view.x - m) / T)), x1 = Math.min(cols - 1, Math.floor((view.right + m) / T));
+    const y0 = Math.max(0, Math.floor((view.y - m) / T)), y1 = Math.min(rows - 1, Math.floor((view.bottom + m) / T));
+    const cx = (view.x + view.right) / 2, cy = (view.y + view.bottom) / 2;
+    const need = this._need || (this._need = new Set());
+    need.clear();
+    const list = this._list || (this._list = []);
+    list.length = 0;
+    const now = this.t;
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        const id = lv * 1e6 + ty * 1000 + tx;
+        need.add(id);
+        const s = this.byId.get(id);
+        if (s) { s.used = now; continue; }
+        const inView = tx * T < view.right && (tx + 1) * T > view.x && ty * T < view.bottom && (ty + 1) * T > view.y;
+        const d = Math.abs((tx + 0.5) * T - cx) + Math.abs((ty + 0.5) * T - cy);
+        list.push({ id, tx, ty, k: (inView ? 0 : 1e7) + d });
       }
     }
+    this.level = lv;
+    if (!list.length) return 0;
+    list.sort((a, b) => a.k - b.k);
+    let n = 0;
+    for (const c of list) {
+      if (n >= max) break;
+      const slot = this.takeSlot(view, need);
+      if (!slot) break;
+      this.bakeInto(slot, lv, c.tx, c.ty);
+      n++;
+    }
     return n;
+  }
+
+  /** a free slot (a new one while the pool is not full, else the one farthest from the view that is not needed) */
+  takeSlot(view, need) {
+    for (const s of this.slots) if (s.id < 0) return s;
+    if (this.slots.length < this.pool) {
+      const gs = this.gs, i = this.slots.length;
+      const key = 'fv_gslot_' + i;
+      if (gs.textures.exists(key)) gs.textures.remove(key);
+      const ct = gs.textures.createCanvas(key, SLOT, SLOT);
+      const img = gs.add.image(0, 0, key).setOrigin(0, 0).setDepth(DEPTH.GROUND).setVisible(false);
+      const s = { i, key, ct, img, id: -1, lv: 0, tx: 0, ty: 0, used: 0 };
+      this.slots.push(s);
+      return s;
+    }
+    const cx = (view.x + view.right) / 2, cy = (view.y + view.bottom) / 2;
+    let best = null, bk = -1;
+    for (const s of this.slots) {
+      if (need.has(s.id)) continue;
+      const T = TW << s.lv;
+      const x = s.tx * T, y = s.ty * T;
+      const inView = x < view.right && x + T > view.x && y < view.bottom && y + T > view.y;
+      const k = (inView ? 0 : 1e7) + Math.abs(x + T / 2 - cx) + Math.abs(y + T / 2 - cy);
+      if (k > bk) { bk = k; best = s; }
+    }
+    if (!best) return null;
+    this.byId.delete(best.id);
+    this.dirty.delete(best.id);
+    best.id = -1;
+    best.img.setVisible(false);
+    this.evictions++;
+    return best;
+  }
+
+  /** bake tile (lv, tx, ty) into a slot (also a re-bake in place: the old picture shows until refresh) */
+  bakeInto(slot, lv, tx, ty) {
+    const T = TW << lv, s = 1 / (1 << lv), g = GUT << lv;
+    const x0 = tx * T - g, y0 = ty * T - g;
+    const w = Math.min(SLOT << lv, this.W + g - x0), h = Math.min(SLOT << lv, this.H + g - y0);
+    const ctx = slot.ct.context;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, SLOT, SLOT);
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    this.bakeChunk(ctx, x0, y0, w, h);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    slot.ct.refresh();
+    const id = lv * 1e6 + ty * 1000 + tx;
+    if (slot.id !== id) { if (slot.id >= 0) this.byId.delete(slot.id); slot.id = id; this.byId.set(id, slot); }
+    slot.lv = lv; slot.tx = tx; slot.ty = ty; slot.used = this.t;
+    // finer levels above coarser ones (a coarse tile shows under while the fine one is on its way)
+    slot.img.setPosition(x0, y0).setScale(1 << lv).setDepth(DEPTH.GROUND - lv).setVisible(true);
+    this.dirty.delete(id);
+    this.baked++;
   }
 
   /** (v4-A) a layer baked into the ground tiles after the paths: fn(ctx, x0, y0, w, h) for tiles meeting rect {x, y, w, h} */
@@ -96,35 +279,40 @@ export class Ground {
 
   /** (v4-A) baked tiles meeting rect (all when null) are re-baked in place, one per check, nearest the view first */
   invalidate(rect) {
-    for (let ty = 0; ty < this.rows; ty++) {
-      for (let tx = 0; tx < this.cols; tx++) {
-        const i = ty * this.cols + tx;
-        if (!this.tiles[i]) continue;
-        if (rect && (tx * TILE > rect.x + rect.w || (tx + 1) * TILE < rect.x || ty * TILE > rect.y + rect.h || (ty + 1) * TILE < rect.y)) continue;
-        this.dirty.add(i);
-      }
+    for (const s of this.slots) {
+      if (s.id < 0) continue;
+      const T = TW << s.lv, x = s.tx * T, y = s.ty * T;
+      if (rect && (x > rect.x + rect.w || x + T < rect.x || y > rect.y + rect.h || y + T < rect.y)) continue;
+      this.dirty.add(s.id);
     }
   }
 
-  /** (v4-A) re-bake one dirty tile into its own canvas (no hole while it is redrawn) */
+  /** is a baked tile meeting rect waiting for its re-bake? */
+  dirtyIn(rect) {
+    for (const id of this.dirty) {
+      const s = this.byId.get(id);
+      if (!s) continue;
+      const T = TW << s.lv, x = s.tx * T, y = s.ty * T;
+      if (!(x > rect.x + rect.w || x + T < rect.x || y > rect.y + rect.h || y + T < rect.y)) return true;
+    }
+    return false;
+  }
+
+  /** (v4-A) re-bake one dirty tile in its own slot (no hole while it is redrawn) */
   rebakeOne(view) {
     if (!this.dirty.size) return false;
-    let best = -1, bd = Infinity;
+    let best = null, bd = Infinity;
     const cx = view ? (view.x + view.right) / 2 : 0, cy = view ? (view.y + view.bottom) / 2 : 0;
-    for (const i of this.dirty) {
-      const tx = i % this.cols, ty = Math.floor(i / this.cols);
-      const d = Math.abs((tx + 0.5) * TILE - cx) + Math.abs((ty + 0.5) * TILE - cy);
-      if (d < bd) { bd = d; best = i; }
+    for (const id of this.dirty) {
+      const s = this.byId.get(id);
+      if (!s) { this.dirty.delete(id); continue; }
+      const T = TW << s.lv;
+      // tiles of the level in use first (a coarse tile hidden under fine ones can wait)
+      const d = (s.lv === this.level ? 0 : 1e7) + Math.abs((s.tx + 0.5) * T - cx) + Math.abs((s.ty + 0.5) * T - cy);
+      if (d < bd) { bd = d; best = s; }
     }
-    this.dirty.delete(best);
-    const img = this.tiles[best];
-    if (!img || !img.texture || !img.texture.context) return false;
-    const tx = best % this.cols, ty = Math.floor(best / this.cols);
-    const ct = img.texture, ctx = ct.context;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, ct.width, ct.height);
-    this.bakeChunk(ctx, tx * TILE, ty * TILE, ct.width, ct.height);
-    ct.refresh();
+    if (!best) return false;
+    this.bakeInto(best, best.lv, best.tx, best.ty);
     return true;
   }
 
@@ -136,27 +324,69 @@ export class Ground {
     }
   }
 
-  bakeTile(tx, ty) {
-    const gs = this.gs;
-    const x0 = tx * TILE, y0 = ty * TILE;
-    const w = Math.min(TILE, this.W - x0), h = Math.min(TILE, this.H - y0);
-    const key = 'fv_ground_' + tx + '_' + ty;
-    if (gs.textures.exists(key)) gs.textures.remove(key);
-    const ct = gs.textures.createCanvas(key, w, h);
-    this.bakeChunk(ct.context, x0, y0, w, h);
-    ct.refresh();
-    this.tiles[ty * this.cols + tx] = gs.add.image(x0, y0, key).setOrigin(0, 0).setDepth(DEPTH.GROUND);
-    this.baked++;
-  }
-
   destroyTiles() {
     const gs = this.gs;
-    for (let i = 0; i < this.tiles.length; i++) {
-      if (!this.tiles[i]) continue;
-      const k = this.tiles[i].texture.key;
-      this.tiles[i].destroy();
-      this.tiles[i] = null;
-      try { if (gs.textures.exists(k)) gs.textures.remove(k); } catch (e) { /* scene teardown */ }
+    for (const s of this.slots) {
+      try { s.img.destroy(); if (gs.textures.exists(s.key)) gs.textures.remove(s.key); } catch (e) { /* scene teardown */ }
+    }
+    this.slots.length = 0;
+    this.byId.clear();
+    this.dirty.clear();
+    for (const L of this.layers) this.dropImg(L);
+  }
+
+  // ---------------------------------------------------------------- (v4-B) layers merged into the tiles
+  watch(L) { this.watched.add(L); }
+
+  /** layer states: merge fully shown layers into the tiles, give fading ones their own image (runs every frame) */
+  settleLayers() {
+    if (!this.watched.size) return;
+    for (const L of this.watched) {
+      if (!L.active) { this.watched.delete(L); this.dropImg(L); continue; }
+      const full = L.full, want = L.want;
+      if (full !== L.merged) { L.merged = full; this.invalidate(L.rect); }
+      // its own image while it is not (yet) in the tiles under it
+      const needImg = want && (!L.merged || this.dirtyIn(L.rect));
+      if (needImg) {
+        if (!L.img) this.makeImg(L);
+        if (L.img) { L.img.setAlpha(L.merged ? 1 : L._a); L.img.setVisible(true); }
+      } else if (L.img) this.dropImg(L);
+      if (!needImg && !L.img) this.watched.delete(L);
+    }
+  }
+
+  makeImg(L) {
+    const gs = this.gs, r = L.rect;
+    const key = 'fv_layer_' + L.id;
+    if (gs.textures.exists(key)) gs.textures.remove(key);
+    const ct = gs.textures.createCanvas(key, Math.max(1, Math.ceil(r.w)), Math.max(1, Math.ceil(r.h)));
+    if (!ct) return;
+    const ctx = ct.context;
+    ctx.save();
+    ctx.translate(-r.x, -r.y);
+    try { L.draw(ctx, r.x, r.y, r.w, r.h); } catch (e) { console.error(e); }
+    ctx.restore();
+    ct.refresh();
+    L.img = gs.add.image(r.x, r.y, key).setOrigin(0, 0).setDepth(L.depth);
+  }
+
+  dropImg(L) {
+    if (!L.img) return;
+    const gs = this.gs, key = L.img.texture && L.img.texture.key;
+    L.img.destroy();
+    L.img = null;
+    try { if (key && gs.textures.exists(key)) gs.textures.remove(key); } catch (e) { /* teardown */ }
+  }
+
+  /** merged layers meeting the tile, floors first then roads */
+  drawLayers(ctx, x0, y0, w, h) {
+    for (let o = 0; o < 2; o++) {
+      for (const L of this.layers) {
+        if (L.order !== o || !L.merged) continue;
+        const r = L.rect;
+        if (x0 > r.x + r.w || x0 + w < r.x || y0 > r.y + r.h || y0 + h < r.y) continue;
+        try { ctx.save(); L.draw(ctx, x0, y0, w, h); } catch (e) { console.error(e); } finally { ctx.restore(); }
+      }
     }
   }
 
@@ -193,23 +423,27 @@ export class Ground {
     this.bakePaths(ctx, x0, y0, w, h);
     if (this.hooks.length) this.runHooks(ctx, x0, y0, w, h);
     this.bakeDecals(ctx, x0, y0, w, h);
+    // (v4-B) zone floors and the roads of zones / regions, once shown (they were images of their own)
+    if (this.layers.length) this.drawLayers(ctx, x0, y0, w, h);
     ctx.restore();
     void H;
   }
 
   /** the shallow band (~130 px above the wavy shoreline, alpha ramping toward the beach) for one tile */
   drawShallow(ctx, x0, y0, w, h) {
+    // (v4-B) scratch canvases at the tile's resolution (a half-resolution tile needs a quarter of the pixels)
+    const k = devScale(ctx), cw = Math.max(1, Math.ceil(w * k)), ch = Math.max(1, Math.ceil(h * k));
     const c = document.createElement('canvas');
-    c.width = w; c.height = h;
+    c.width = cw; c.height = ch;
     const g = c.getContext('2d');
-    g.translate(-x0, -y0);
+    g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     g.fillStyle = pattern(g, 'water_shallow') || 'rgba(120,200,230,1)';
     g.fillRect(x0, y0, w, h);
     // (build the mask separately: destination-in clears everything outside each drawn shape)
     const m = document.createElement('canvas');
-    m.width = w; m.height = h;
+    m.width = cw; m.height = ch;
     const mg = m.getContext('2d');
-    mg.translate(-x0, -y0);
+    mg.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     const band = 130;
     for (let x = x0 - 6; x < x0 + w + 6; x += 6) {
       const sy = shoreY(x + 3);
@@ -224,7 +458,8 @@ export class Ground {
     g.globalCompositeOperation = 'destination-in';
     g.drawImage(m, 0, 0);
     g.globalCompositeOperation = 'source-over';
-    ctx.drawImage(c, x0, y0);
+    ctx.drawImage(c, x0, y0, w, h);
+    c.width = c.height = m.width = m.height = 1;
   }
 
   bakeShore(ctx, xa, xb) {
@@ -276,10 +511,12 @@ export class Ground {
       for (const pts of paths) pts.forEach((p, i) => (i ? c.lineTo(p[0] - ox, p[1]) : c.moveTo(p[0] - ox, p[1])));
     };
     // stroke far off-canvas: only its blurred shadow lands (soft feathered edges in every browser)
+    // (shadow offset / blur are device px: scaled with the context, so half-resolution tiles look the same)
     const soft = (c, lw, color, blur) => {
+      const k = devScale(c);
       c.save();
       c.lineCap = 'round'; c.lineJoin = 'round';
-      c.shadowColor = color; c.shadowBlur = blur; c.shadowOffsetX = OFF; c.shadowOffsetY = 0;
+      c.shadowColor = color; c.shadowBlur = blur * k; c.shadowOffsetX = OFF * k; c.shadowOffsetY = 0;
       c.strokeStyle = '#000'; c.lineWidth = lw;
       stroke(c, OFF); c.stroke();
       c.restore();
@@ -287,21 +524,23 @@ export class Ground {
     if (Assets.has('ground_road') && typeof document !== 'undefined') {
       // textured road: a soft mask filled with the road texture, over a soft shadowy rim
       soft(ctx, 92, 'rgba(110,130,170,0.30)', 22);
+      const k = devScale(ctx);
       const tmp = document.createElement('canvas');
-      tmp.width = Math.ceil(w); tmp.height = Math.ceil(h);
+      tmp.width = Math.max(1, Math.ceil(w * k)); tmp.height = Math.max(1, Math.ceil(h * k));
       const t = tmp.getContext('2d');
-      t.translate(-x0, -y0);
+      t.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
       soft(t, 70, 'rgba(0,0,0,1)', 14);
       t.setTransform(1, 0, 0, 1, 0, 0);
       t.globalCompositeOperation = 'source-in';
       const pat = pattern(t, 'ground_road', 0.5);
-      if (pat && pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().translate(-x0, -y0).scale(0.5));
+      if (pat && pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().translate(-x0 * k, -y0 * k).scale(0.5 * k));
       t.fillStyle = pat || '#b7a99a';
       t.fillRect(0, 0, tmp.width, tmp.height);
       ctx.save();
       ctx.globalAlpha = 0.92;
-      ctx.drawImage(tmp, x0, y0);
+      ctx.drawImage(tmp, x0, y0, w, h);
       ctx.restore();
+      tmp.width = tmp.height = 1;
       return;
     }
     soft(ctx, 80, 'rgba(136,160,198,0.36)', 26);   // packed, slightly blue-grey trodden snow
@@ -366,40 +605,42 @@ export class Ground {
     }
   }
 
-  /** roads that belong to a zone, baked into their own image above the zone floor (shown when the zone opens) */
+  /**
+   * roads that belong to a zone / a region (shown when it opens). (v4-B) A GroundLayer: its own image only
+   * while it fades in, then part of the ground tiles (the separate canvas is released).
+   */
   roadOverlay(id, paths) {
     if (!paths || !paths.length) return null;
-    const gs = this.gs;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const pts of paths) for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
     x0 = Math.floor(x0 - 90); y0 = Math.floor(y0 - 90); x1 = Math.ceil(x1 + 90); y1 = Math.ceil(y1 + 90);
-    const key = 'fv_roads_' + id;
-    if (gs.textures.exists(key)) gs.textures.remove(key);
-    const ct = gs.textures.createCanvas(key, x1 - x0, y1 - y0);
-    const ctx = ct.context;
-    ctx.save();
-    ctx.translate(-x0, -y0);
-    this.drawRoads(ctx, paths, x0, y0, x1 - x0, y1 - y0);
-    this.pathDecor(ctx, paths);
-    ctx.restore();
-    ct.refresh();
-    return gs.add.image(x0, y0, key).setOrigin(0, 0).setDepth(DEPTH.FLOOR + 10);
+    const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    const L = new GroundLayer(this, 'roads_' + id, rect, (ctx, cx, cy, cw, ch) => {
+      this.drawRoads(ctx, paths, cx, cy, cw, ch);
+      this.pathDecor(ctx, paths, cx, cy, cw, ch);
+    }, 1, DEPTH.FLOOR + 10);
+    this.layers.push(L);
+    return L;
   }
 
-  /** bake one zone floor (iso parallelogram) into its own image; returns the Image */
+  /** one zone floor (iso parallelogram); (v4-B) a GroundLayer like the roads (an image only while it fades in) */
   zoneFloor(id, z) {
-    const gs = this.gs;
     const [cx, cy] = z.center;
     const pts = isoRect(cx, cy, z.size[0], z.size[1]);
     const pad = 24;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of pts) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
     x0 = Math.floor(x0 - pad); y0 = Math.floor(y0 - pad); x1 = Math.ceil(x1 + pad); y1 = Math.ceil(y1 + pad);
-    const key = 'fv_floor_' + id;
-    if (gs.textures.exists(key)) gs.textures.remove(key);
-    const ct = gs.textures.createCanvas(key, x1 - x0, y1 - y0);
-    const ctx = ct.context;
-    ctx.translate(-x0, -y0);
+    const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    const L = new GroundLayer(this, 'floor_' + id, rect, (ctx) => this.drawFloor(ctx, z, pts, rect), 0, DEPTH.FLOOR);
+    this.layers.push(L);
+    return L;
+  }
+
+  /** draw a zone floor in world coordinates */
+  drawFloor(ctx, z, pts, rect) {
+    const [cx, cy] = z.center;
+    const k = devScale(ctx);
     const poly = (inset = 0) => {
       ctx.beginPath();
       // inset toward the centre
@@ -411,21 +652,20 @@ export class Ground {
     };
     // soft snow-bank shadow around the floor
     ctx.save();
-    ctx.shadowColor = 'rgba(90,110,150,0.35)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4;
+    ctx.shadowColor = 'rgba(90,110,150,0.35)'; ctx.shadowBlur = 18 * k; ctx.shadowOffsetY = 4 * k;
     ctx.fillStyle = 'rgba(0,0,0,1)';
     poly(); ctx.fill();
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
     ctx.save();
     poly(); ctx.clip();
     ctx.fillStyle = pattern(ctx, z.floor) || '#d9a08a';
     ctx.globalAlpha = 1;
-    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     if (z.floorAlpha !== undefined && z.floorAlpha < 1) {
       // blend toward snow for soft floors (forest, hunting ground)
       ctx.globalAlpha = 1 - z.floorAlpha;
       ctx.fillStyle = pattern(ctx, 'ground_snow') || '#eef3f9';
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       ctx.globalAlpha = 1;
     }
     // inner bevel / edge darkening
@@ -433,25 +673,27 @@ export class Ground {
     ctx.strokeStyle = 'rgba(80,50,40,0.18)'; ctx.lineWidth = 14; poly(); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3; poly(0.012); ctx.stroke();
     ctx.restore();
-    // remove the black used for the shadow inside: redraw done above covers it; outside keep only shadow
     // snow lip on the border
     ctx.strokeStyle = 'rgba(244,247,251,0.9)'; ctx.lineWidth = 5; poly(); ctx.stroke();
-    ct.refresh();
-    return gs.add.image(x0, y0, key).setOrigin(0, 0).setDepth(DEPTH.FLOOR);
   }
 
   update(dt) {
     this.t += dt;
     // bake the land the camera is about to see (one tile per check, so a walk never hitches for long)
+    // (v4-B) 512 px tiles: up to two per check (a quarter of the old tile each)
+    this.settleLayers();
     this.checkT -= dt;
     if (this.checkT <= 0) {
       this.checkT = 0.12;
       const view = this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView;
-      if (!this.ensure(view, 1) && this.dirty.size) this.rebakeOne(view);
+      if (!this.ensure(view, 2) && this.dirty.size) this.rebakeOne(view);
     }
-    this.sea.tilePositionX = this.t * 6;
-    this.sea.tilePositionY = Math.sin(this.t * 0.4) * 6;
-    if (this.fish1) { this.fish1.tilePositionX = this.t * 22; this.fish1.tilePositionY = Math.sin(this.t * 0.7) * 5; }
-    if (this.fish2) { this.fish2.tilePositionX = 130 + this.t * 14; }
+    // (the sprites follow the view; the pattern stays put in the world: offset by the sprite's own position)
+    this.seaFit(false);
+    const sea = this.sea;
+    sea.tilePositionX = sea.x + this.t * 6;
+    sea.tilePositionY = sea.y + 200 + Math.sin(this.t * 0.4) * 6;
+    if (this.fish1) { this.fish1.tilePositionX = this.fish1.x + this.t * 22; this.fish1.tilePositionY = Math.sin(this.t * 0.7) * 5; }
+    if (this.fish2) { this.fish2.tilePositionX = (this.fish2.x / 0.8) + 130 + this.t * 14; this.fish2.tilePositionY = 40; }
   }
 }

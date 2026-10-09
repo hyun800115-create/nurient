@@ -769,3 +769,131 @@ export class WarehousePorter extends Hauler {
 
 function L_reserve(gs, sink, type, n) { if (gs.logistics) gs.logistics.reserve(sink, type, n); }
 function L_release(gs, sink, type, n) { if (gs.logistics && n > 0) gs.logistics.release(sink, type, n); }
+
+/**
+ * (v4-B, docs/v4_plan.md §8.5) 역 짐꾼, a station porter: waits on the station square and carries surplus to the
+ * station district's remote sinks (the loading dock, the founded shops' shelves, the carpenter's house sites).
+ * Sources: what the warehouse holds, and any station / workshop output that is at least `warehouse.overflowAt`
+ * full — so it only ever takes surplus and never starves the plaza. Regular porters never walk there.
+ */
+export class StationPorter extends Hauler {
+  constructor(gs, growth, x, y, index = 0, home = null) {
+    const pk = Porter.pickKey(gs, index);
+    super(gs, pk.key, x, y, Math.max(1, Math.floor(BALANCE.v4 && BALANCE.v4.stationPorterCapacity) || 12));
+    this.wantKey = pk.later;
+    this.checkT = 1;
+    this.type = 'porter';
+    this.role = 'stationPorter';
+    this.index = index;
+    this.growth = growth;
+    this.station = null;
+    this.wh = null;
+    this.state = 'idle';
+    this.thinkT = 0.6 + (index % 3) * 0.3;
+    this.job = null;
+    this.homePt = home || { x, y };
+    gs.keysInUse.add(pk.key);
+    if (pk.later) gs.keysInUse.add(pk.later);
+  }
+
+  /** the next surplus run: { src (a source or the warehouse), type, sink, n } or null */
+  think() {
+    const gs = this.gs, L = gs.logistics;
+    if (!L) return null;
+    let best = null;
+    const others = gs.porters.filter((p) => p !== this && p.role === 'stationPorter' && p.job);
+    const consider = (src, ty, have, ox, oy) => {
+      if (have <= 0) return;
+      const b = L.best(ty, ox, oy, { onlyRemote: true });
+      if (!b || b.n <= 0) return;
+      if (others.some((p) => p.job.sink === b.sink && p.job.type === ty)) return;
+      const n = Math.min(this.stack.max, b.n, have);
+      if (!best || b.prio > best.prio || (b.prio === best.prio && n > best.n)) best = { src, type: ty, sink: b.sink, n, prio: b.prio };
+    };
+    const W = gs.warehouse;
+    if (W && W.enabled) for (const ty of W.types()) consider(W, ty, W.count(ty), W.outPad.x, W.outPad.y);
+    const over = (BALANCE.warehouse && BALANCE.warehouse.overflowAt) || 0.6;
+    for (const s of gs.sources()) {
+      if (!s.enabled || !s.outStack || s.outStack.max <= 0 || s.outStack.count / s.outStack.max < over) continue;
+      const seen = {};
+      for (const it of s.outStack.items) { if (seen[it.type]) continue; seen[it.type] = true; consider(s, it.type, s.outStack.countOf(it.type), s.outPad.x, s.outPad.y); }
+    }
+    return best;
+  }
+
+  /** only the remote sinks */
+  planDest(exclude) {
+    const L = this.gs.logistics, ty = this.carriedType();
+    if (!L || !ty) return null;
+    const b = L.best(ty, this.x, this.y, { exclude, onlyRemote: true });
+    return b ? b.sink : null;
+  }
+
+  afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.3; }
+
+  update(dt) {
+    const gs = this.gs;
+    this.checkSkin(dt);
+    switch (this.state) {
+      case 'idle': {
+        if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
+        this.thinkT -= dt;
+        if (this.thinkT <= 0) {
+          this.thinkT = 0.8;
+          const j = this.think();
+          if (j) {
+            this.job = j;
+            gs.logistics.reserve(j.sink, j.type, j.n); this.jobResv = j.n;
+            const op = j.src.outPad;
+            this.state = 'toSrc';
+            this.go(op.x + 22, op.y + 20);
+            break;
+          }
+        }
+        if (gs.moveAgent(this, this.homePt.x, this.homePt.y, this.speed * 0.6, dt, 10)) { this.vx = this.vy = 0; this.locomotion(false); }
+        break;
+      }
+      case 'toSrc': {
+        const src = this.job.src;
+        this.tripT += dt;
+        if (!src.enabled || this.tripT > 120) { this.dropJob(); break; }
+        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
+        break;
+      }
+      case 'grab': {
+        this.vx = this.vy = 0;
+        this.dropT -= dt;
+        const j = this.job;
+        if (this.dropT <= 0) {
+          this.dropT = 0.14;
+          const have = this.stack.count + this.stack.incoming;
+          const W = gs.warehouse;
+          let took = false;
+          if (have < j.n && this.room > 0) {
+            if (W && j.src === W) took = W.count(j.type) > 0 && W.giveTo(this, j.type);
+            else if (j.src.outStack && j.src.outStack.countOf(j.type) > 0) took = gs.moveItem(j.src.outStack, this.stack, j.type, { dur: 230, height: 55 });
+          }
+          if (!took && this.stack.incoming === 0) {
+            gs.logistics.release(j.sink, j.type, this.jobResv || 0); this.jobResv = 0;
+            if (this.stack.count > 0) { const ok = gs.logistics.want(j.sink, j.type) > 0 ? j.sink : this.planDest(); if (ok) this.startHaul(ok); else { this.state = 'idle'; } }
+            else this.dropJob();
+          }
+        }
+        this.locomotion(false);
+        break;
+      }
+      case 'haul': this.haul(dt); break;
+      case 'unload': this.unload(dt); break;
+      default: this.state = 'idle';
+    }
+    this.sync(dt);
+  }
+
+  dropJob() {
+    if (this.job && this.jobResv) this.gs.logistics.release(this.job.sink, this.job.type, this.jobResv);
+    this.jobResv = 0;
+    this.job = null;
+    this.state = 'idle';
+    this.thinkT = 1;
+  }
+}

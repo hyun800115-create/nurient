@@ -22,8 +22,10 @@ button:disabled{opacity:.45;cursor:default}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .chips button{min-height:32px;padding:0 9px;border-radius:16px;font-size:13px;background:var(--chip);color:var(--ink)}
 .chips button.emo{background:var(--accent2);color:#fff}
+.chips button.bab{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.chiplabel{width:100%;font-size:12px;color:var(--muted);margin-top:4px}
 #said{font-size:18px;margin-top:8px;min-height:28px}
-#said b{color:var(--accent2)}
+#said b{color:var(--accent2)} #said u{text-decoration-color:var(--accent);text-decoration-thickness:2px}
 #status{font-size:13px}
 table{border-collapse:collapse;width:100%;font-size:14px}
 td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
@@ -33,6 +35,7 @@ th{color:var(--muted);font-weight:600}
 </style></head><body><main>
 <h1>눈꽃말 목소리 미리듣기 <span class="mini">(village language voices)</span></h1>
 <p>우리 마을 말 <b>눈꽃말</b>로 주민들이 재잘재잘! 게임에서 쓰는 진짜 재생 프로그램(<code>src/voice/VillageVoice.js</code>)으로 들려줍니다.
+말풍선에 아는 말(촌장, 생선, 빵, 고마워…)이 있으면 그 눈꽃말이 들리고(<u>밑줄</u>), 나머지는 뜻 없는 재잘 소리예요.
 게임 로컬 서버로 열어 주세요: <code>node tools/test/serve.mjs 8000</code> → <code>http://localhost:8000/docs/previews/voice_preview.html</code></p>
 <p id="status">불러오는 중… (loading)</p>
 
@@ -61,7 +64,7 @@ th{color:var(--muted);font-weight:600}
   <p class="mini">한 번에 2명까지만 말해요. 나머지는 잠깐 기다리거나 (1.2초) 조용히 넘어가요. 지금 말하는 중: <b id="active">0</b>, 기다리는 중: <b id="pending">0</b></p>
 </div>
 
-<h2>목소리 10가지 <span class="mini">(분홍 = 감정 소리, 회색 = 낱말)</span></h2>
+<h2>목소리 11가지 <span class="mini">(분홍 = 감정 소리, 회색 = 뜻 있는 낱말, 점선 = 뜻 없는 재잘 소리)</span></h2>
 <div class="grid" id="voices"></div>
 
 <h2>눈꽃말 사전 <span class="mini">(전체는 docs/눈꽃말_사전.md)</span></h2>
@@ -75,7 +78,7 @@ import { WORDS } from '../../src/voice/lexicon.js';
 const BASE = '../../assets/';
 const $ = (id) => document.getElementById(id);
 const EMO_KO = { greet: '인사', laugh: '웃음', surprise: '놀람', excited: '신남', sad: '슬픔', grumpy: '투덜', question: '질문', thanks: '고마워', yummy: '냠냠', oops: '앗' };
-const SAMPLES = ['안녕하세요!', '고마워요 촌장님!', '오늘 정말 춥다…', '이 생선 얼마예요?', 'ㅋㅋㅋ 너무 웃겨', '흥, 시끄러워.', '우와! 눈사람이다!', '배고파 ㅠㅠ', '빵 맛있다~', '같이 놀자!', '앗, 깜빡했네!', '잘 가요~ 내일 또 봐요!'];
+const SAMPLES = ['안녕하세요!', '고마워요 촌장님!', '오늘 정말 춥다…', '이 생선 얼마예요?', 'ㅋㅋㅋ 너무 웃겨', '흥, 시끄러워.', '우와! 눈사람이다!', '배고파 ㅠㅠ', '빵 맛있다~', '같이 놀자!', '앗, 깜빡했네!', '잘 가요~ 내일 또 봐요!', '야호! 신난다!!', '손주 줄 선물 사야지'];
 let man, ctx, vv, buffers = {}, last = 0;
 const ogg = (() => { try { return new Audio().canPlayType('audio/ogg; codecs="vorbis"') !== ''; } catch (e) { return false; } })();
 
@@ -111,7 +114,7 @@ function speaker() { return { voice: $('voice').value, voiceId: $('voice').value
 
 function show(plan, text) {
   if (!plan) { $('said').textContent = '(소리 없음)'; return; }
-  $('said').innerHTML = `“${text.replace(/</g, '&lt;')}” → <b>${plan.items.map((i) => i.hangul).join(' ')}</b> <span class="mini">${plan.mood} · ${plan.duration.toFixed(2)}초</span>`;
+  $('said').innerHTML = `“${text.replace(/</g, '&lt;')}” → <b>${plan.items.map((i) => (i.kw ? `<u title="${(WORDS[i.id] || {}).ko || ''}">${i.hangul}</u>` : i.hangul)).join(' ')}</b> <span class="mini">${plan.mood} · ${plan.duration.toFixed(2)}초</span>`;
 }
 
 function say(text, sp, opts = {}) {
@@ -141,8 +144,13 @@ function build() {
     card.innerHTML = `<h3>${v.ko} <span class="mini">${t}</span></h3><small>${v.desc} · 기본 높이 ${v.f0} Hz · 빠르기 ×${v.speed}</small>`;
     const chips = document.createElement('div'); chips.className = 'chips';
     const mk = Object.entries(a.markers).sort((x, y) => (x[1].kind === 'emote') - (y[1].kind === 'emote') || x[1].start - y[1].start);
+    const label = (s) => { const d = document.createElement('div'); d.className = 'chiplabel'; d.textContent = s; chips.append(d); };
+    label('감정 소리');
     for (const [id, m] of mk.filter(([, m]) => m.kind === 'emote')) { const b = document.createElement('button'); b.className = 'emo'; b.textContent = `${EMO_KO[m.emote]} ${m.say}`; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b>`; }; chips.append(b); }
-    for (const [id, m] of mk.filter(([, m]) => m.kind !== 'emote')) { const b = document.createElement('button'); b.textContent = m.say; b.title = (WORDS[id] && WORDS[id].ko) || id; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b> = ${b.title}`; }; chips.append(b); }
+    label('낱말 · 이음말 · 끝말');
+    for (const [id, m] of mk.filter(([, m]) => m.kind !== 'emote' && m.kind !== 'babble')) { const b = document.createElement('button'); b.textContent = m.say; b.title = (WORDS[id] && WORDS[id].ko) || id; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b> = ${b.title}`; }; chips.append(b); }
+    label('재잘 소리 (뜻 없음)');
+    for (const [id, m] of mk.filter(([, m]) => m.kind === 'babble')) { const b = document.createElement('button'); b.className = 'bab'; b.textContent = m.say; b.onclick = () => { playClip(t, id); $('said').innerHTML = `${v.ko}: <b>${m.say}</b> (재잘)`; }; chips.append(b); }
     const hello = document.createElement('button'); hello.textContent = '▶ 인사하기'; hello.style.marginTop = '8px';
     hello.onclick = () => show(say('안녕하세요! 오늘 날씨 정말 좋네요~', { voice: t, voiceId: t + '#card' }), '안녕하세요! 오늘 날씨 정말 좋네요~');
     card.append(chips, hello);
@@ -154,7 +162,7 @@ function build() {
     const who = VOICE_TYPES.filter((t) => man.audio['voice_' + t].markers[id]);
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><b>${w.hangul}</b></td><td>${w.roman.replace(/\./g, '-')}</td><td>${w.ko}</td><td></td>`;
-    if (who.length) { const b = document.createElement('button'); b.className = 'alt'; b.textContent = '▶'; b.style.minHeight = '30px'; let i = 0; b.onclick = () => { playClip(who[i % who.length], id); i++; }; b.title = who.join(', '); tr.lastChild.append(b); }
+    if (who.length) { const b = document.createElement('button'); b.className = 'alt'; b.textContent = '▶'; b.style.minHeight = '30px'; b.setAttribute('aria-label', w.hangul + ' 들어 보기'); let i = 0; b.onclick = () => { playClip(who[i % who.length], id); i++; }; b.title = who.join(', '); tr.lastChild.append(b); }
     else tr.lastChild.innerHTML = '<span class="mini">사전에만</span>';
     tb.append(tr);
   }
@@ -171,7 +179,7 @@ $('duck').onclick = () => {
 };
 $('crowd').onclick = () => {
   ac(); if (!vv) return;
-  const cast = [['kid_boy', '같이 놀자!'], ['adult_f', '빵 사세요~ 갓 구웠어요!'], ['elder_m', '허허, 오늘 참 춥구먼…'], ['kid_girl', '우와! 눈 온다!'], ['big_gruff', '흥! 나무 다 쪼갰다.'], ['sweet', '고마워요~'], ['adult_m', '생선 있어요?'], ['squeaky', '야호! 야호!'], ['elder_f', '아이고, 우리 강아지~'], ['chief', '다들 수고했어요!']];
+  const cast = [['kid_boy', '같이 놀자!'], ['adult_f', '빵 사세요~ 갓 구웠어요!'], ['elder_m', '허허, 오늘 참 춥구먼…'], ['kid_girl', '우와! 눈 온다!'], ['big_gruff', '흥! 나무 다 쪼갰다.'], ['sweet', '고마워요~'], ['adult_m', '생선 있어요?'], ['young_m', '기차 타고 놀러 가요!'], ['squeaky', '야호! 야호!'], ['elder_f', '아이고, 우리 강아지~'], ['chief', '다들 수고했어요!']];
   cast.forEach(([t, line], i) => setTimeout(() => say(line, { voice: t, voiceId: t + '#crowd' }, { priority: 0 }), i * 450));
 };
 $('vol').oninput = applyVolume; $('gamevol').onchange = applyVolume;

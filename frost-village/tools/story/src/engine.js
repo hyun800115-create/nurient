@@ -52,6 +52,8 @@ export const DEFAULTS = {
   gamePrices: false,      // true when the game feeds prices (no random drift)
   population: 250,        // generated residents when no save is given
   targetPop: 0,           // move-ins aim at this population (0 = the starting population)
+  ackWait: false,         // the game shows incident phases and calls ack(id): phases that need pictures wait for it (with a safety timeout)
+  keepNamed: true,        // the game's named villagers (residents with a key) keep their age, home and job, never move away or misbehave
 };
 
 export class StoryEngine {
@@ -62,7 +64,7 @@ export class StoryEngine {
     this.rng = new Rng(cfg.seedNum);
     this.bus = new Bus();
     this.now = 0;
-    this.accMs = 0;
+    this.accUs = 0;             // sub-step time not yet simulated (microseconds: no drift at 60 / 120 / 144 Hz)
     this.clock = { day: 0, minute: 0, dow: 0 };
     this.world = new World(this);
     this.people = [];
@@ -249,21 +251,29 @@ export class StoryEngine {
     for (const [, staff] of byWork) {
       const isSchool = staff.length > 12;
       for (let i = 0; i < staff.length; i++) {
-        const n = isSchool ? 4 : staff.length;
-        for (let k = 0; k < n && k < staff.length; k++) {
-          const j = isSchool ? rng.int(staff.length) : k;
-          if (j <= i && !isSchool) continue;
-          const a = staff[i], b = staff[j];
-          const bothKids = groupOf(this, a) <= G_TEEN && groupOf(this, b) <= G_TEEN;
-          link(a, b, 150 + rng.int(500), 80 + rng.int(500), bothKids ? RF_CLASS : RF_COWORK);
+        const a = staff[i];
+        if (isSchool) {
+          // classmates: children of about the same age know each other; teachers know their pupils
+          const kidA = groupOf(this, a) <= G_TEEN;
+          const pool = staff.filter((b) => b !== a && (kidA ? groupOf(this, b) > G_TEEN || Math.abs(ageOf(this, b) - ageOf(this, a)) <= 2 : true));
+          for (let k = 0; k < 7 && pool.length; k++) {
+            const b = pool.splice(rng.int(pool.length), 1)[0];
+            const bothKids = kidA && groupOf(this, b) <= G_TEEN;
+            link(a, b, 150 + rng.int(500), 80 + rng.int(500), bothKids ? RF_CLASS : RF_COWORK);
+          }
+          continue;
         }
+        for (let j = i + 1; j < staff.length; j++) link(a, staff[j], 150 + rng.int(500), 80 + rng.int(500), RF_COWORK);
       }
     }
-    // neighbours (same neighbourhood, adjacent homes)
+    // neighbours (same neighbourhood: the homes next door and across the lane know each other)
     const homes = W.homes();
-    for (let i = 0; i + 4 < homes.length; i++) {
-      const h1 = homes[i], h2 = homes[i + 4];
-      for (const a of h1.residents) for (const b of h2.residents) if (rng.chance(0.5)) link(this.people[a], this.people[b], 100 + rng.int(300), 60 + rng.int(350), RF_NEIGHBOR);
+    for (let i = 0; i < homes.length; i++) {
+      for (const d of [1, 4]) {
+        if (i + d >= homes.length) continue;
+        const h1 = homes[i], h2 = homes[i + d];
+        for (const a of h1.residents) for (const b of h2.residents) if (rng.chance(d === 1 ? 0.8 : 0.5)) link(this.people[a], this.people[b], 100 + rng.int(300), 60 + rng.int(350), RF_NEIGHBOR);
+      }
     }
     // old friends of the same age group
     const list = this.alive.slice();
@@ -304,13 +314,33 @@ export class StoryEngine {
     }
   }
 
+  /** a new worker or pupil gets to know the people they will see every day at place p (no 'nice to meet you' every morning) */
+  introduceAt(r, p) {
+    if (!p) return;
+    const ga = groupOf(this, r);
+    let n = 0;
+    for (const o of this.alive) {
+      if (n >= 8) break;
+      if (o === r || o.work !== p.idx || !o.alive) continue;
+      const go = groupOf(this, o);
+      const kids = ga <= G_TEEN && go <= G_TEEN;
+      if (kids && Math.abs(ageOf(this, o) - ageOf(this, r)) > 2) continue;
+      const rel = ensureRel(this, r, o);
+      if (rel.flags & RF_FAMILY) continue;
+      rel.flags |= kids ? RF_CLASS : RF_COWORK;
+      if (rel.n === 0) { rel.fam = Math.max(rel.fam, 140); rel.aff = Math.max(rel.aff, 60); rel.n = 1; rel.met = this.clock.day; rel.last = this.now; if (rel.stage < ST_ACQ) rel.stage = ST_ACQ; }
+      n++;
+    }
+  }
+
   // ================================================================ time
   /** advance the story by dt game seconds */
   tick(dt) {
-    this.accMs += Math.round(dt * 1000);
-    const stepMs = this.cfg.step * 1000;
+    if (!(dt > 0)) return;
+    this.accUs += Math.round(dt * 1e6);
+    const stepUs = this.cfg.step * 1e6;
     let n = 0;
-    while (this.accMs >= stepMs && n < 600) { this.accMs -= stepMs; this.step(); n++; }
+    while (this.accUs >= stepUs && n < 600) { this.accUs -= stepUs; this.step(); n++; }
   }
 
   /** run whole days quickly (headless) */
@@ -374,7 +404,7 @@ export class StoryEngine {
       case 'aging': this.life.aging(); break;
       case 'babies': if (this.cfg.lifeEvents) this.life.babies(); break;
       case 'moves': this.life.moves(); break;
-      case 'jobs': this.jobs.fillOpenings(true); break;
+      case 'jobs': this.jobs.fillOpenings(true); this.econ.adoptShops(); break;
       case 'curiosity': this.curiosity(); break;
       case 'gc': this.gcFacts(); break;
       case 'day': if (this.bus.has('day')) this.bus.emit('day', { day: this.clock.day, weather: this.weather.today }); break;
@@ -578,8 +608,9 @@ export class StoryEngine {
       if (notable) {
         const fid = notable.f ? notable.f.id : 0;
         const tp = notable.topic.split(':')[0];
-        this.lifelog(this.people[talk.a], 'talk', talk.b, talk.placeIdx, tp, fid);
-        if (talk.b >= 0) this.lifelog(this.people[talk.b], 'talk', talk.a, talk.placeIdx, tp, fid);
+        // '>' : the diary's writer said it (told the story), '<' : heard it
+        this.lifelog(this.people[talk.a], 'talk', talk.b, talk.placeIdx, tp + (notable.w === talk.a ? '>' : '<'), fid);
+        if (talk.b >= 0) this.lifelog(this.people[talk.b], 'talk', talk.a, talk.placeIdx, tp + (notable.w === talk.b ? '>' : '<'), fid);
       }
     }
     if (talk.lines) {
@@ -694,8 +725,8 @@ export class StoryEngine {
   }
 
   // ---------------------------------------------------------------- save
-  /** compact save string (pending daily work is finished first, so a save never splits a day change) */
-  serialize() { this.flushQueues(); return doSerialize(this); }
+  /** compact save string. Pure: saving never changes the story (pending day-change pieces are saved as they are) */
+  serialize() { return doSerialize(this); }
   deserialize(s) { doDeserialize(this, s); }
 }
 

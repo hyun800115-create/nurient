@@ -6,9 +6,12 @@
 // Three cameras: sky (sky, mountains, sea; screen space), world (the diorama; zooms / pans), ui (snow,
 // logo, buttons; screen space). Two modes:
 //   intro  first run: ~11 s cinematic of the whole growth (camp -> village -> town -> city), morning ->
-//          dusk -> night, camera dolly out, logo drop, "터치하여 시작". A tap skips to the end.
+//          dusk -> night, camera dolly out, logo drop, "터치하여 시작". The first tap turns the sound on (the
+//          opening goes on); the skip pill or a second tap skips to the end.
 //   idle   afterwards: the stage of the player's save (src/title/progress.js), its life loops; if the save
 //          moved on since the title last showed it, the new buildings pop in once ("마을이 자랐어요!").
+// The intro runs on a "director" clock: when the pictures of the next stage are late it holds the script
+// (camera, time of day, growth) for at most TITLE_CFG.intro.maxWaitSec while everything keeps living.
 // prefers-reduced-motion: no intro, no camera motion, no pops / snowfall / moving life; fades only.
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
@@ -17,8 +20,9 @@ import { getLang } from '../data/strings.js';
 import * as L from './layout.js';
 import { TITLE_CFG, TITLE_LAYOUT } from './config.js';
 import { TitleAssets } from './TitleAssets.js';
-import { TitlePrefs, prefersReducedMotion, lowMemoryDevice } from './prefs.js';
-import { readProgress } from './progress.js';
+import { TitlePrefs } from './prefs.js';
+import { titlePlan, firstPaintPacks, streamPacks } from './plan.js';
+import { disarmAudioUnlock } from './audioUnlock.js';
 import { TitleFx } from './TitleFx.js';
 import { TitleSky } from './TitleSky.js';
 import { TitleDiorama } from './TitleDiorama.js';
@@ -31,19 +35,26 @@ const SPAN_PX = 2 * L.AX;     // screen px per metre of "span"
 /** zoom (logical px per world px) that shows `span` metres across the 720 logical width */
 function zoomOf(span, W) { return W / (span * SPAN_PX); }
 
-// intro camera keys: time, focus (metres), span (metres); Catmull-Rom through them (continuous speed)
-function introKeys() {
-  const c = L.CAMERA;
-  return [
+/** camera of the idle title at a stage (layout IDLE_CAMERA, else the stage's CAMERA) */
+function idleCam(stage) { return (L.IDLE_CAMERA && L.IDLE_CAMERA[stage]) || L.CAMERA[stage]; }
+
+// intro camera keys: time, focus (metres), span (metres); Catmull-Rom through them (continuous speed).
+// The last stage (4, or the phone's cap) ends on its idle framing, so the hand-over does not jump.
+function introKeys(cap) {
+  const c = L.CAMERA, end = idleCam(cap);
+  const k = (t, s) => ({ t, mx: s.mx, my: s.my, span: s.span });
+  const keys = [
     { t: -1.0, mx: c[1].mx + 0.4, my: c[1].my + 0.3, span: c[1].span * 0.72 },
     { t: 0.0, mx: c[1].mx + 0.3, my: c[1].my + 0.2, span: c[1].span * 0.74 },
-    { t: 2.3, mx: c[1].mx, my: c[1].my, span: c[1].span },
-    { t: 4.6, mx: c[2].mx, my: c[2].my, span: c[2].span },
-    { t: 7.1, mx: c[3].mx, my: c[3].my, span: c[3].span },
-    { t: 9.6, mx: c[4].mx, my: c[4].my, span: c[4].span },
-    { t: 12.0, mx: c[4].mx, my: c[4].my, span: c[4].span },
-    { t: 14.0, mx: c[4].mx, my: c[4].my, span: c[4].span },
+    k(2.3, c[1]),
   ];
+  if (cap >= 2) keys.push(k(4.6, cap === 2 ? end : c[2]));
+  if (cap >= 3) keys.push(k(7.1, cap === 3 ? end : c[3]));
+  if (cap >= 4) keys.push(k(9.6, end));
+  const last = keys[keys.length - 1];
+  keys.push({ t: Math.max(12.0, last.t + 2), mx: last.mx, my: last.my, span: last.span });
+  keys.push({ t: Math.max(14.0, last.t + 4), mx: last.mx, my: last.my, span: last.span });
+  return keys;
 }
 // time of day keys of the intro (0 day, 1 dusk, 2 night)
 const TOD_KEYS = [[0, 0.12], [2.6, 0.3], [5.0, 0.9], [7.5, 1.45], [9.5, 2.0]];
@@ -51,14 +62,6 @@ const TOD_KEYS = [[0, 0.12], [2.6, 0.3], [5.0, 0.9], [7.5, 1.45], [9.5, 2.0]];
 function cr(p0, p1, p2, p3, u) {
   const u2 = u * u, u3 = u2 * u;
   return 0.5 * (2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
-}
-
-function idleTod(stage) {
-  const m = TITLE_CFG.idleTime;
-  if (m === 'day') return 0.15;
-  if (m === 'dusk') return 1.0;
-  if (m === 'auto') return stage <= 2 ? 1.15 : 2;
-  return 2;
 }
 
 export function mountTitle(scene, hooks = {}) { return new TitleScreen(scene, hooks); }
@@ -69,16 +72,21 @@ export class TitleScreen {
     this.hooks = hooks;
     this.W = View.W; this.H = View.H;
     this.lang = hooks.lang || getLang() || 'ko';
-    this.reduced = hooks.reduced !== undefined ? !!hooks.reduced : prefersReducedMotion();
+    this.plan = titlePlan({ intro: hooks.intro, stage: hooks.stage, reduced: hooks.reduced });
+    this.reduced = this.plan.reduced;
     this.touch = hooks.touch !== undefined ? !!hooks.touch : !!scene.sys.game.device.input.touch;
-    TitlePrefs.load();
-    const prog = readProgress();
-    this.saveStage = Math.max(1, Math.min(4, hooks.stage || prog.stage));
-    this.cap = lowMemoryDevice() ? TITLE_CFG.lowMemStageCap : 4;
-    this.mode = (hooks.intro !== undefined ? hooks.intro : TitlePrefs.wantIntro()) && !this.reduced ? 'intro' : 'idle';
-    this.t = 0;
+    this.saveStage = this.plan.saveStage;
+    this.cap = this.plan.cap;
+    this.mode = this.plan.intro ? 'intro' : 'idle';
+    this.t = 0;                 // director clock (the intro script / idle title)
+    this.hold = 0;
     this.started = false;
     this.cam = { fx: 0, fy: 0, z: 0.3 };
+    this.dTimers = []; this.rTimers = [];
+    // the title takes the taps from here on (the early unlock of the loading screen would eat the first one)
+    disarmAudioUnlock();
+    TitleAssets.setArtOpts({ lang: this.lang, k: View.k });
+    TitleAssets.listeners.push((n) => this.onPack(n));
     this.setupCameras();
     TitleFx.make(scene);
     this.sky = new TitleSky(scene, this.putSky, this.W, this.H, TITLE_LAYOUT);
@@ -88,15 +96,16 @@ export class TitleScreen {
     const onSettings = hooks.onSettings || (this.settings ? () => this.settings.show() : null);
     this.ui = new TitleUI(scene, this.putUI, this.W, this.H, TITLE_LAYOUT, {
       lang: this.lang, touch: this.touch, version: hooks.version, safeTop: View.safeTop, safeBottom: View.safeBottom,
-      onSettings, reduced: this.reduced,
+      onSettings, reduced: this.reduced, cap: this.cap, onSkip: () => this.skipIntro(),
     });
     this.makeSnow();
-    this.logo = null;
-    this.loadRest();
-    // title art still on its way (the game's Preload did not fetch it): swap it in when it lands
-    this.builtWithoutArt = !TitleAssets.artSettled(scene.textures);
+    this.logo = null; this.oldLogo = null;
+    // what the first frame needs (a no-op when the game's Preload or the title's preload fetched it)
+    TitleAssets.request(scene.load, firstPaintPacks(this.plan));
     if (this.mode === 'intro') this.startIntro(); else this.startIdle();
     this.bindInput();
+    // a player who already tapped (loading screen) hears the title music from the first frame
+    if (Audio.started) Audio.playMusic('bgm_title');
     if (typeof window !== 'undefined') window.__TITLE = this;
   }
 
@@ -126,7 +135,7 @@ export class TitleScreen {
   }
 
   cameraAtStage(stage, drift) {
-    const c = L.CAMERA[stage];
+    const c = idleCam(stage);
     let fx = L.wx(c.mx, c.my), fy = L.wy(c.mx, c.my), z = zoomOf(c.span, this.W);
     if (drift && !this.reduced) {
       // a slow breathing drift that starts from rest (no jump when the intro hands over)
@@ -137,7 +146,7 @@ export class TitleScreen {
   }
 
   cameraIntro(t) {
-    const K = this.keys || (this.keys = introKeys());
+    const K = this.keys || (this.keys = introKeys(this.cap));
     let i = 1;
     while (i < K.length - 2 && t > K[i + 1].t) i++;
     const a = K[i - 1], b = K[i], c = K[i + 1], d = K[i + 2];
@@ -147,23 +156,28 @@ export class TitleScreen {
     this.applyCamera(L.wx(mx, my), L.wy(mx, my), zoomOf(Math.exp(ls), this.W));
   }
 
-  // ------------------------------------------------------------------ loading
-  loadRest() {
-    const s = this.scene, load = s.load;
-    TitleAssets.listeners.push((g) => this.onGroup(g));
-    TitleAssets.queueEarly(load);
-    for (let g = 1; g <= this.cap; g++) TitleAssets.queueGroup(load, g);
-    TitleAssets.queueArt(load, { lang: this.lang, k: View.k });
-    TitleAssets.queueLateCues(load);
-    if (load.list.size > 0 && !load.isLoading()) load.start();
-    // title art arriving after the title opened: swap the stand-ins (sky strips, snow) once all of it is in
-    const check = () => { if (!this.started && this.builtWithoutArt && !this.artSwapped && TitleAssets.artSettled(this.scene.textures)) this.later(0, () => this.swapArt()); };
-    load.on('filecomplete', (key) => { if (TitleAssets.artKeys.has(key)) check(); });
-    load.on('complete', check);
+  // ------------------------------------------------------------------ late pictures
+  /** a pack of pictures arrived (TitleAssets): use it */
+  onPack(n) {
+    if (this.started) return;
+    if (n[0] === 'g') { this.dio.onGroup(); return; }
+    if (n === 'art:sky' || n === 'art:night' || n === 'art:city') this.sky.lateArt();
+    else if (n === 'art:fx') this.upgradeSnow();
+    else if (n === 'art:logo') this.upgradeLogo();
+    else if (n === 'art:pop') this.dio.popPool = undefined;      // made on the next big pop
   }
 
-  onGroup() {
-    this.dio.onGroup();
+  /** the 3D logo landed while the text logo is up: cross-fade to it */
+  upgradeLogo() {
+    const old = this.logo;
+    if (!old || old.fromArt || old.state === 'hidden') return;
+    const nu = this.makeLogo(false);
+    if (!nu.fromArt) { nu.destroy(); return; }
+    if (this.oldLogo) this.oldLogo.destroy();
+    this.oldLogo = old;
+    this.logo = nu;
+    nu.fadeIn(0.6);
+    old.fadeTo(0, 0.6, () => { old.destroy(); if (this.oldLogo === old) this.oldLogo = null; });
   }
 
   // ------------------------------------------------------------------ modes
@@ -172,6 +186,10 @@ export class TitleScreen {
     this.t = 0;
     this.nextStage = 1;
     this.hold = 0;
+    this.cityAt = undefined;
+    this.keys = introKeys(this.cap);
+    this.hintMode = Audio.started ? 'skip' : 'sound';
+    TitleAssets.stream(this.scene.load, streamPacks(this.plan, true));
     this.dio.setStageInstant(0);
     this.dio.setLight(0.12);
     this.sky.setTime(0.12);
@@ -186,107 +204,138 @@ export class TitleScreen {
     this.idleT = 0;
     if (!fromIntro) {
       this.t = 0;
-      const want = Math.min(this.cap, this.saveStage);
-      const shown = TitlePrefs.data.shown;
+      const want = this.plan.idleStage;
       this.idleStage = want;
-      const growFrom = shown >= 1 && shown < want && !this.reduced ? shown : 0;
+      const growFrom = this.plan.grows ? this.plan.shown : 0;
       this.dio.setStageInstant(growFrom || want);
       if (growFrom) this.growAt = 1.0;
-      const tod = idleTod(want);
+      const tod = this.plan.tod;
       this.dio.setLight(tod); this.sky.setTime(tod);
       this.cameraAtStage(want, false);
       this.logoAt = this.reduced ? 0 : 0.25;
       this.camUI.fadeIn(this.reduced ? 500 : 700, 236, 244, 252);
+      TitleAssets.stream(this.scene.load, streamPacks(this.plan, false));
     } else {
-      this.idleStage = 4;
+      this.idleStage = this.cap;
       this.logoAt = -1;
     }
-    TitlePrefs.data.shown = Math.max(TitlePrefs.data.shown, Math.min(this.cap, this.saveStage));
+    TitlePrefs.data.shown = Math.max(TitlePrefs.data.shown, this.plan.idleStage);
     if (was === 'intro') TitlePrefs.data.introSeen = true;
     TitlePrefs.save();
   }
 
-  /** tap during the intro: jump to the end (city at night, logo, start pill) */
+  /** skip pill / second tap during the intro: jump to the end (the last stage at night, logo, start pill) */
   skipIntro() {
-    if (this.mode !== 'intro') return;
+    if (this.mode !== 'intro' || this.started) return;
+    Audio.start();
+    Audio.playMusic('bgm_title');
+    this.cue('whoosh', 0.5);
     this.camUI.flash(260, 240, 246, 252);
-    this.dio.setStageInstant(4);
+    this.dTimers.length = 0;
+    this.hold = 0;
+    this.dio.setStageInstant(this.cap);
     this.dio.setLight(2); this.sky.setTime(2);
     this.t = TITLE_CFG.intro.end;
+    this.cityAt = undefined;
     this.ui.hideChips(); this.ui.showSkip(false);
-    this.cameraIntro(12);
-    if (!this.logo) this.dropLogo(0.6);
+    this.cameraIntro(this.keys[this.keys.length - 2].t);
+    if (!this.logo) this.dropLogo(0.6, true);
     this.ui.showTap();
     this.startIdle(true);
   }
 
-  dropLogo(dur) {
+  makeLogo(parts) {
+    return new TitleLogo(this.scene, this.putUI, this.W, this.H, TITLE_LAYOUT, { lang: this.lang, reduced: this.reduced, parts, y: this.H * TITLE_LAYOUT.logoY + View.safeTop * 0.6 });
+  }
+
+  dropLogo(dur, parts) {
     if (this.logo) return;
-    this.logo = new TitleLogo(this.scene, this.putUI, this.W, this.H, TITLE_LAYOUT, { lang: this.lang, reduced: this.reduced, y: this.H * TITLE_LAYOUT.logoY + View.safeTop * 0.6 });
+    this.logo = this.makeLogo(parts);
     this.logo.drop(this.reduced ? 0.6 : dur, () => { this.cue('logo', 0.6); });
   }
 
   // ------------------------------------------------------------------ frame
   update(dt) {
     if (dt > 0.1) dt = 0.1;
-    const I = TITLE_CFG.intro;
+    TitleAssets.poll();
+    // the director's clock: it waits (at most maxWaitSec) at a stage whose pictures are still on their way;
+    // people, vehicles, the sea, the sky and the snow keep going meanwhile
+    let ddt = dt;
     if (this.mode === 'intro') {
-      // hold the clock at a stage start while that stage's pictures are still on their way
+      const I = TITLE_CFG.intro;
       const ns = this.nextStage;
-      if (ns <= 4 && this.t + dt >= I.stageStart[ns - 1] && !this.dio.stageReady(ns) && this.hold < I.maxWaitSec) { this.hold += dt; dt = 0; }
-      const t0 = this.t;
-      this.t += dt;
-      const t = this.t;
-      while (this.nextStage <= 4 && t >= I.stageStart[this.nextStage - 1]) {
-        const s = this.nextStage++;
-        this.hold = 0;
-        this.dio.grow(s, s === 1 ? 1.5 : 1.7);
-        this.ui.setChip(s);
-        if (s === 3) this.dio.trainArrive();
-        if (s === 4) { this.later(1.2, () => this.cue('bus', 0.5)); this.cityAt = this.t; }
-      }
-      if (t0 < 1.0 && t >= 1.0) this.ui.showSkip(true);
-      if (t0 < I.logoAt && t >= I.logoAt) { this.dropLogo(0.85); this.ui.hideChips(); this.ui.showSkip(false); }
-      if (t0 < I.tapAt && t >= I.tapAt) this.ui.showTap();
-      // light + camera follow the script
-      let tod = TOD_KEYS[TOD_KEYS.length - 1][1];
-      for (let k = 0; k < TOD_KEYS.length - 1; k++) {
-        const A = TOD_KEYS[k], B = TOD_KEYS[k + 1];
-        if (t < B[0]) { const u = Math.max(0, (t - A[0]) / (B[0] - A[0])); tod = A[1] + (B[1] - A[1]) * u * u * (3 - 2 * u); break; }
-      }
-      this.dio.setLight(tod); this.sky.setTime(tod);
-      this.cameraIntro(t);
-      if (t >= I.end) this.startIdle(true);
-    } else {
-      this.t += dt;
-      this.idleT += dt;
-      if (this.logoAt >= 0 && this.t >= this.logoAt) {
-        // give a late title-art logo a moment (up to 1 s) before falling back to the text logo
-        if (TitleAssets.artSettled(this.scene.textures) || this.t >= this.logoAt + 1.0) { this.dropLogo(0.7); this.later(0.45, () => this.ui.showTap()); this.logoAt = -1; }
-      }
-      if (this.growAt !== undefined && this.t >= this.growAt && this.dio.stageReady(this.idleStage)) {
-        this.growAt = undefined;
-        this.dio.grow(this.idleStage, TITLE_CFG.growSec);
-        this.ui.showRibbon();
-        this.cue('stage', 0.8);
-      }
-      this.cameraAtStage(this.idleStage, true);
-    }
-    this.runLater(dt);
+      if (ns <= this.cap && this.t + dt >= I.stageStart[ns - 1] && !this.dio.stageReady(ns) && this.hold < I.maxWaitSec) { this.hold += dt; ddt = 0; }
+      if (ddt > 0) this.directIntro(ddt);
+    } else this.directIdle(dt);
+    this.runLater(ddt, dt);
     const cityK = this.dio.stage >= 4 ? (this.cityAt !== undefined ? Math.min(1, (this.t - this.cityAt) / 2) : 1) : 0;
     if (cityK !== this.sky.cityK) this.sky.setCity(cityK);
     this.sky.update(dt, this.cam.z, this.cam.fx, this.cam.fy, this.reduced);
     this.dio.update(dt);
     if (this.logo) this.logo.update(dt);
+    if (this.oldLogo) this.oldLogo.update(dt);
     this.ui.update(dt);
   }
 
-  // tiny timer list (no Phaser timers: the title runs on its own clock)
-  later(sec, fn) { (this.timers || (this.timers = [])).push([sec, fn]); }
-  runLater(dt) {
-    const T = this.timers;
-    if (!T || !T.length) return;
-    for (let i = T.length - 1; i >= 0; i--) { T[i][0] -= dt; if (T[i][0] <= 0) { const fn = T[i][1]; T.splice(i, 1); fn(); } }
+  directIntro(ddt) {
+    const I = TITLE_CFG.intro;
+    const t0 = this.t;
+    this.t += ddt;
+    const t = this.t;
+    while (this.nextStage <= this.cap && t >= I.stageStart[this.nextStage - 1]) {
+      const s = this.nextStage++;
+      this.hold = 0;
+      this.dio.grow(s, s === 1 ? 1.5 : 1.7);
+      this.ui.setChip(s);
+      // sound beats, spaced so they never pile up: hero pop (+0.4), whistle (+0.9) / bus (+1.1), ferry (+1.9), logo
+      if (s === 3 && this.dio.trainArrive(true)) this.later(0.9, () => this.cue('train', 0.7));
+      if (s === 4) {
+        this.cityAt = this.t;
+        this.later(1.1, () => this.cue('bus', 0.5));
+        if (this.dio.ferryArrive()) this.later(1.9, () => this.cue('ship', 0.55));
+      }
+    }
+    if (t0 < 1.0 && t >= 1.0) this.ui.showSkip(true, this.hintMode);
+    if (t0 < I.logoAt && t >= I.logoAt) { this.dropLogo(0.85, true); this.ui.hideChips(); this.ui.showSkip(false); }
+    if (t0 < I.tapAt && t >= I.tapAt) this.ui.showTap();
+    // light + camera follow the script
+    let tod = TOD_KEYS[TOD_KEYS.length - 1][1];
+    for (let k = 0; k < TOD_KEYS.length - 1; k++) {
+      const A = TOD_KEYS[k], B = TOD_KEYS[k + 1];
+      if (t < B[0]) { const u = Math.max(0, (t - A[0]) / (B[0] - A[0])); tod = A[1] + (B[1] - A[1]) * u * u * (3 - 2 * u); break; }
+    }
+    this.dio.setLight(tod); this.sky.setTime(tod);
+    this.cameraIntro(t);
+    if (t >= I.end) this.startIdle(true);
+  }
+
+  directIdle(dt) {
+    this.t += dt;
+    this.idleT += dt;
+    if (this.logoAt >= 0 && this.t >= this.logoAt) {
+      // give a late 3D logo a moment (up to 1 s) before the text logo stands in (it cross-fades when it lands)
+      if (TitleAssets.settled('art:logo') || this.t >= this.logoAt + 1.0) { this.dropLogo(0.7, false); this.later(0.45, () => this.ui.showTap()); this.logoAt = -1; }
+    }
+    if (this.growAt !== undefined && this.t >= this.growAt && this.dio.stageReady(this.idleStage)) {
+      this.growAt = undefined;
+      this.dio.grow(this.idleStage, TITLE_CFG.growSec);
+      this.ui.showRibbon();
+      this.cue('stage', 0.8);
+    }
+    this.cameraAtStage(this.idleStage, true);
+  }
+
+  // tiny timer lists (no Phaser timers: the title runs on its own clocks). Director timers follow the
+  // intro script (and are dropped by a skip / replay); real ones always run.
+  later(sec, fn, real) { (real ? this.rTimers : this.dTimers).push([sec, fn]); }
+  runLater(ddt, dt) { this.runList(this.dTimers, ddt); this.runList(this.rTimers, dt); }
+  runList(T, d) {
+    if (!T.length || d <= 0) return;
+    for (let i = T.length - 1; i >= 0; i--) {
+      if (i >= T.length) continue;          // (a timer emptied the list: skip / replay)
+      T[i][0] -= d;
+      if (T[i][0] <= 0) { const fn = T[i][1]; T.splice(i, 1); fn(); }
+    }
   }
 
   // ------------------------------------------------------------------ input / start
@@ -301,15 +350,21 @@ export class TitleScreen {
 
   tap() {
     if (this.started || (this.settings && this.settings.open)) return;
-    // the first tap is a user gesture: audio may start now
+    // every tap is a user gesture: audio may start now
+    const wasOn = Audio.started;
     Audio.start();
     if (this.mode === 'intro' && this.t < TITLE_CFG.intro.tapAt) {
-      Audio.playMusic('bgm_title');
-      this.cue('whoosh', 0.5);
+      if (!wasOn) {
+        // a first visit's first tap: the sound comes on and the opening goes on (the pill / a second tap skips)
+        Audio.playMusic('bgm_title');
+        this.hintMode = 'again';
+        this.ui.showSkip(true, 'again');
+        return;
+      }
       this.skipIntro();
       return;
     }
-    if (!this.ui.tapOn) { this.ui.showTap(); if (!this.logo) this.dropLogo(0.5); return; }
+    if (!this.ui.tapOn) { this.ui.showTap(); if (!this.logo) this.dropLogo(0.5, false); return; }
     this.start();
   }
 
@@ -339,20 +394,22 @@ export class TitleScreen {
   }
 
   /** falling snow: the title art's three layers (far flakes behind the island, mid + big soft ones in
-   *  front), or the game's snowflake when the art is not there. Particles are pooled by Phaser. */
-  makeSnow() {
+   *  front), or the game's snowflake when the art is not there (yet). Particles are pooled by Phaser. */
+  makeSnow(fresh) {
     if (this.reduced) return;
     const s = this.scene, W = this.W, H = this.H;
     const has = s.textures.exists('ttl_fx') && s.textures.get('ttl_fx').has('ttl_fx_snow_s');
+    const adv = (ms) => (fresh ? 0 : ms);         // a late swap starts from the top (the old flakes fall out)
     const emit = (tex, cfg, put, depth) => { const e = s.add.particles(0, 0, tex, cfg).setDepth(depth); put(e); return e; };
+    this.snowArt = has;
     if (has) {
       this.snow = [
-        emit('ttl_fx', { frame: 'ttl_fx_snow_s', x: { min: -10, max: W + 10 }, y: { min: -20, max: H * 0.95 }, lifespan: 9000, speedY: { min: 20, max: 40 }, speedX: { min: -6, max: 8 },
-          scale: { min: 0.5, max: 0.9 }, alpha: { start: 0.65, end: 0 }, frequency: 130, advance: 9000 }, this.putSky, 9.5),
-        emit('ttl_fx', { frame: ['ttl_fx_snow_m', 'ttl_fx_flake_s'], x: { min: -20, max: W + 20 }, y: { min: -30, max: H * 0.8 }, lifespan: 8000, speedY: { min: 40, max: 70 },
-          speedX: { min: -16, max: 18 }, scale: { min: 0.6, max: 1.0 }, alpha: { start: 0.95, end: 0.1 }, rotate: { min: 0, max: 360 }, frequency: 240, advance: 8000 }, this.putUI, 40),
-        emit('ttl_fx', { frame: 'ttl_fx_snow_bokeh', x: { min: -40, max: W + 40 }, y: { min: -60, max: H * 0.7 }, lifespan: 9000, speedY: { min: 70, max: 110 }, speedX: { min: -12, max: 14 },
-          scale: { min: 0.8, max: 1.6 }, alpha: { start: 0.75, end: 0.25 }, frequency: 1700, advance: 9000 }, this.putUI, 41),
+        emit('ttl_fx', { frame: 'ttl_fx_snow_s', x: { min: -10, max: W + 10 }, y: { min: -20, max: fresh ? 0 : H * 0.95 }, lifespan: 9000, speedY: { min: 20, max: 40 }, speedX: { min: -6, max: 8 },
+          scale: { min: 0.5, max: 0.9 }, alpha: { start: 0.65, end: 0 }, frequency: 130, advance: adv(9000) }, this.putSky, 9.5),
+        emit('ttl_fx', { frame: ['ttl_fx_snow_m', 'ttl_fx_flake_s'], x: { min: -20, max: W + 20 }, y: { min: -30, max: fresh ? 0 : H * 0.8 }, lifespan: 8000, speedY: { min: 40, max: 70 },
+          speedX: { min: -16, max: 18 }, scale: { min: 0.6, max: 1.0 }, alpha: { start: 0.95, end: 0.1 }, rotate: { min: 0, max: 360 }, frequency: 240, advance: adv(8000) }, this.putUI, 40),
+        emit('ttl_fx', { frame: 'ttl_fx_snow_bokeh', x: { min: -40, max: W + 40 }, y: { min: -60, max: fresh ? 0 : H * 0.7 }, lifespan: 9000, speedY: { min: 70, max: 110 }, speedX: { min: -12, max: 14 },
+          scale: { min: 0.8, max: 1.6 }, alpha: { start: 0.75, end: 0.25 }, frequency: 1700, advance: adv(9000) }, this.putUI, 41),
       ];
       return;
     }
@@ -362,51 +419,46 @@ export class TitleScreen {
     const cfg = {
       x: { min: -20, max: W + 20 }, y: -20, lifespan: 12000, speedY: { min: 38, max: 96 }, speedX: { min: -22, max: 26 },
       scale: { min: base * 0.55, max: base * 1.5 }, alpha: { min: 0.55, max: 0.95 }, rotate: { min: 0, max: 360 }, frequency: 85, quantity: 1,
-      advance: 9000,
+      advance: adv(9000),
     };
     if (sf.frame !== undefined) cfg.frame = sf.frame;
     this.snow = [emit(sf.tex, cfg, this.putUI, 40)];
   }
 
-  /** the title art finished loading after the title opened: rebuild the backdrop and the snow with it */
-  swapArt() {
-    if (this.artSwapped) return;
-    this.artSwapped = true;
-    const tod = this.sky.tod;
-    const city = this.sky.cityK;
-    const oldFx = this.sky.usedFx;
-    this.sky.destroy();
-    this.sky = new TitleSky(this.scene, this.putSky, this.W, this.H, TITLE_LAYOUT);
-    this.sky.setTime(tod < 0 ? 0 : tod); this.sky.setCity(city);
-    // stand-ins the art replaced: free their texture memory now
-    for (const k of oldFx) if (!this.sky.usedFx.has(k) && this.scene.textures.exists(k)) { this.scene.textures.remove(k); TitleAssets.keys.delete(k); }
-    if (this.snow) for (const e of this.snow) e.destroy();
-    this.makeSnow();
+  /** the title art's snow landed after the title opened: new flakes start falling, the old ones fall out */
+  upgradeSnow() {
+    if (this.reduced || this.snowArt) return;
+    const old = this.snow || [];
+    for (const e of old) e.stop();
+    this.makeSnow(true);
+    this.later(12, () => { for (const e of old) e.destroy(); }, true);
   }
 
-  /** play the intro again from the start (settings "인트로 다시 보기", tests) */
+  /** play the intro again from the start (settings "오프닝 다시 보기", tests) */
   replayIntro() {
     if (this.started) return;
     if (this.settings) this.settings.hide();
     this.dio.clearLife();
     this.dio.setStageInstant(0);
     if (this.logo) { this.logo.destroy(); this.logo = null; }
+    if (this.oldLogo) { this.oldLogo.destroy(); this.oldLogo = null; }
     this.ui.reset();
-    this.timers = null;
+    this.dTimers.length = 0;
     this.growAt = undefined;
-    this.keys = null;
     this.startIntro();
   }
 
   /** test / debug state */
   state() {
-    return { mode: this.mode, t: +this.t.toFixed(2), stage: this.dio.stage, saveStage: this.saveStage, groups: Object.assign({}, TitleAssets.state),
+    const groups = {};
+    for (let g = 1; g <= 4; g++) { const p = TitleAssets.packs['g' + g]; groups[g] = p ? p.state : (this.cap < g ? 'capped' : 'none'); }
+    return { mode: this.mode, t: +this.t.toFixed(2), hold: +this.hold.toFixed(2), stage: this.dio.stage, saveStage: this.saveStage, cap: this.cap, groups,
       logo: !!this.logo, logoArt: !!(this.logo && this.logo.fromArt), tap: this.ui.tapOn, z: +this.cam.z.toFixed(3), reduced: this.reduced };
   }
 
   destroy() {
     if (typeof window !== 'undefined' && window.__TITLE === this) window.__TITLE = null;
     this.dio.destroy();
-    this.timers = null;
+    this.dTimers.length = 0; this.rTimers.length = 0;
   }
 }

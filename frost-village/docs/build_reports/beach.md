@@ -1,9 +1,11 @@
 # beach build report
 
-The Sunny Beach (햇살 해변) ground and prop set for CONTRACT_V7 §W is in `assets/beach/`: @@SPRITES@@ sprite keys in
-@@ATLASES@@ atlases plus 6 characters-style atlases (boats and the crab), and two seamless sand textures. The payload is
-@@PAYLOAD@@ MB (limit 6 MB). `beach_check.py` reports @@CHECK@@, and `check_beach_ground.py` reports 0 errors.
-A headless Phaser 3.90 load (`tools/test/beach_phaser.mjs`) found all @@FRAMES@@ frames and registered @@ANIMS@@ anims.
+The Sunny Beach (햇살 해변) ground and prop set for CONTRACT_V7 §W is in `assets/beach/`: 97 sprite keys (61 props in
+7 atlases, 34 ground decals and transition pieces in 1 atlas, 2 seamless sand textures) plus 6 characters-style
+atlases (boats and the crab). The payload is 1.91 MB (limit 6 MB). `beach_check.py` reports 0 errors and
+0 warnings (97 sprites, 6 characters, 383 frame names), and `check_beach_ground.py` reports 0 errors and 0 warnings
+(36 ground keys). A headless Phaser 3.90 load (`tools/test/beach_phaser.mjs`) checked 439 frames with none missing,
+registered 92 anims, and logged no console errors and no 404s.
 
 Style: the village's soft toy-like 3D chibi look, PPU 64, 2:1 iso, the shared `bl_common` camera and light, Cycles with
 denoising, baked soft cool shadows falling screen down-right (lighter on the water plane). Materials: woven canvas
@@ -100,7 +102,10 @@ convention). Every prop has `anchor`, `frameSize`, `footprint`, `footprintM`, `f
 3. **Levels:** z 0 is the sand, and people walk on the boardwalk with no lift. The sea surface is 0.55 m lower
    (`waterPx` 30). Put the anchor of every water-plane prop and boat on a sea point.
 4. **Sea:** the beach faces the sea on −Y (screen down-left), like the harbour waterfront. Draw the water with
-   `assets/water` (tropical LUT, waves, foam, `fx_shore_wave_*`).
+   `assets/water` (`Water.js`, palette `tropical`, shore type `sand`). Without the shader, use `fx_shore_wave_x`
+   (scale 2, chained every (+256, +128) px on the waterline), but that sheet is drawn for a sea on the far (+Y)
+   side. For this beach, flip it both ways (`setFlip(true, true)`, which is a 180° turn). That keeps the coast line
+   and puts the sea on the near side. `beach_scene.png` shows it this way.
 5. **Tiles:** chain the boardwalk and buoy-line tiles at `stepPx`; the joins are seamless, shadows included. Play
    all buoy-line tiles' `bob` at the same frame index so the wave travels along the line.
 6. **Lifeguard tower:** draw the tower at depth d, the guard at `staffPoint` at d + 0.5, and `lifeguard_tower_front`
@@ -127,6 +132,7 @@ existing script or asset was edited.
 python3 tools/fx/gen_beach_ground.py                                  # ground textures + kit + decals (+ check)
 /tmp/bvenv/bin/python tools/blender/beach_render.py -- [keys] [--force]   # cache /tmp/fv_cache/beach (resumable)
 python3 tools/blender/beach_pack.py                                   # atlases + merged manifest + previews
+python3 tools/blender/beach_pack.py --previews-only                   # redraw docs/previews/beach_* only
 python3 tools/blender/beach_check.py
 python3 tools/fx/check_beach_ground.py
 node tools/test/beach_phaser.mjs
@@ -136,13 +142,38 @@ a key it owns has no complete render in the cache.
 
 ## Previews (`docs/previews/`)
 - `beach_all.png`: every key at 1x, labelled, with one anim frame each; water props on turquoise.
-- `beach_scene.png`: a 1x mock beach: sand with the snow kit and bays, the wet slope, the sea from `assets/water`,
-  props, the buoy line and raft, boats with riders, the towed banana boat, crabs, townsfolk and the chief (1.45 m) for
+- `beach_scene.png`: a 1x mock beach: sand with the snow kit and bays, the wet slope, the sea from `assets/water`
+  (tropical LUT, ripples, and the `fx_shore_wave_x` crest turned 180°), props, the buoy line and raft, boats with riders, the towed banana boat, crabs, townsfolk and the chief (1.45 m) for
   scale.
 - `beach_ground.png`: ground textures, kit and decals.
-- GIFs: `beach_parasols.gif`, `beach_palms.gif`, `beach_service.gif`, `beach_play.gif`, `beach_sandcastle.gif`,
-  `beach_water_props.gif`, `beach_swan.gif`, `beach_crab.gif`.
+- GIFs: `beach_parasols.gif` (flutter), `beach_palms.gif` (sway), `beach_service.gif` (shower water, ice-cream bell,
+  corn grill), `beach_play.gif` (ball bounce, kite), `beach_sandcastle.gif` (4 build stages),
+  `beach_water_props.gif` (buoy line, raft), `beach_swan.gif`, `beach_kayak.gif`, `beach_banana.gif`,
+  `beach_crab.gif`.
 - `beach_phaser.png`: the headless Phaser load.
 
 ## Known issues
-@@ISSUES@@
+- **Beachfolk was not finished when the previews were drawn.** `assets/beachfolk` had only `bf_adult_slim_0` and
+  `bf_head_0`. Where beachfolk had no frames (lifeguard, sunbathers, swimmers, kids digging), `beach_scene.png` uses
+  Townfolk2 people, so some figures wear winter clothes. When beachfolk is complete, run
+  `python3 tools/blender/beach_pack.py --previews-only`. It redraws only `docs/previews/beach_*` and does not touch
+  `assets/beach`.
+- **The shore wave faces the wrong way for this beach.** `fx_shore_wave_x` / `_y` from `assets/water` assume the sea
+  is on the far side. This beach faces −Y, so flip the sheet both ways (see "How the game should use them", item 4),
+  or let the `Water.js` shader draw the swash.
+- **The sea in `beach_scene.png` is not the game's water.** It is a still numpy imitation of the `Water.js` look:
+  the tropical LUT, the two ripple textures, foam lace, and one shore-wave frame. In the game the shader animates the
+  swell, the swash and the wet band.
+- **Boats render 3 headings.** Boats have S, SE and NE; SW and NW are mirrors, and E, W and N use `nearest`, as the
+  ships do. The crab has 5 rendered directions plus mirrors.
+- **Some things are left for the game to draw:**
+  - the crab's soft shadow (`shadow` [34, 14]),
+  - the kite string from `stringPoint` to the kid's hand,
+  - the banana boat's tow rope,
+  - wakes (`fx_wake_v2` at `wakePoint`),
+  - the text on the `beach_sign_*` boards (at `fxPoints.board`).
+- **No `_snow` variants.** The contract makes them optional. Props at the snowy edge sit on the sand side of the
+  `ground_sand_snow_*` kit.
+- **Previews were redrawn with `--previews-only`.** This picked up the current `assets/water` (water polish) and
+  the new scene framing. `assets/beach` is byte-identical to the last full pack, which was deterministic: two runs
+  gave the same md5 sums.

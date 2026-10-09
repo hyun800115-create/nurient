@@ -403,27 +403,52 @@ def _move_house(c, x, y):
 
 
 def icon_move_in():
-    """Move in: a cosy house with a green arrow pointing in at the door and a moving box waiting outside."""
+    """Move in (welcome home): a cosy house whose front doorway stands OPEN and glows with warm light, a pink heart
+    welcome mat on the step, a big green arrow curving INTO the doorway and a moving box waiting beside it.
+    Shape-coded (open lit doorway + inward arrow + heart mat) so it never relies on the arrow colour alone."""
     c = canvas(0.95)
-    walls, rf = house_sd(c, 58, 80, 0.95)
-    arr = arrow_sd(c.X, c.Y, [(10, 50), (24, 58), (36, 66)], 4.4, 8.5)
-    bx = F.sd_box(c.X, c.Y, 20, 80, 13, 9, 2)
-    shadow(c, U(walls, rf, arr, bx))
-    paint_house(c, 58, 80, 0.95)
-    box_iso(c, 22, 89, 13, 15, 12)
+    hx, hy = 60, 80
+    walls, rf = house_sd(c, hx, hy, 1.1)
+    mat = F.sd_box(c.X, c.Y, hx - 7, hy + 3.8, 11, 3.2, 1.6)
+    arr = arrow_sd(c.X, c.Y, [(6, 34), (18, 42), (30, 54), (37, 63)], 4.6, 8.0)
+    bx = box_iso(c, 86, 92, 9, 11, 9, paint=False)
+    shadow(c, U(walls, rf, arr, bx, mat))
+    paint_house(c, hx, hy, 1.1, door=False)
+    door = F.sd_box(c.X, c.Y, hx - 7, hy - 11, 6.6, 11, 2.0)
+    part(c, door + 1.6, WOOD_D, ow=1.6, bevel=1.5, gloss=0.0, tint='wood')        # door frame
+    t = np.clip((c.Y - (hy - 22)) / 22, 0, 1)
+    c.paint(c.cov(door), F.mix(hexc('#FFF6C8'), hexc('#FFB43D'), t))            # warm light inside
+    c.paint(c.cov(door) * np.clip(1 - np.abs(c.X - (hx - 7)) / 6.6, 0, 1), WHITE, 0.45)
+    part(c, mat, ('#FFB0C4', '#E85A86', '#7A1E40'), ow=1.4, bevel=1.5, gloss=0.1, tint='pink')
+    c.fill(F.sd_heart(c.X, c.Y, hx - 7, hy + 3.9, 2.4), WHITE, 0.95)
+    box_iso(c, 87, 92, 9, 11, 9)
     part(c, arr, GREEN, ow=2.4, bevel=3, gloss=0.3, tint='green')
     return c.image()
 
 
 def icon_move_out():
-    """Move out: a house with an orange arrow leaving through the door, a moving box riding along."""
+    """Move out (goodbye): a chubby orange moving truck loaded with boxes driving off, speed lines behind it - a
+    truck silhouette, unmistakable next to move_in at 32 px (not only a different arrow colour)."""
     c = canvas(0.95)
-    walls, rf = house_sd(c, 34, 80, 0.95)
-    arr = arrow_sd(c.X, c.Y, [(46, 70), (64, 60), (78, 52)], 4.4, 8.5)
-    shadow(c, U(walls, rf, arr, F.sd_box(c.X, c.Y, 76, 80, 14, 12, 2)))
-    paint_house(c, 34, 80, 0.95)
-    part(c, arr, ('#FFD08A', '#F08A3D', '#7A3A0E'), ow=2.4, bevel=3, gloss=0.3, tint='#C05A1A')
-    box_iso(c, 74, 90, 13, 15, 12)
+    cargo = F.sd_box(c.X, c.Y, 40, 54, 26, 19, 4)
+    cab = F.smin(F.sd_box(c.X, c.Y, 74, 60, 11, 13, 5), F.sd_box(c.X, c.Y, 79, 66, 9, 7, 4), 2.5)
+    wheels = [(26, 76), (70, 76)]
+    allsh = U(cargo, cab, *[F.sd_circle(c.X, c.Y, x, y, 9.5) for x, y in wheels])
+    shadow(c, allsh)
+    for k, (yy, ln) in enumerate(((42, 7), (52, 9), (62, 6))):                  # speed lines behind the truck
+        c.fill(F.sd_segment(c.X, c.Y, 3 + k, yy, 3 + k + ln, yy, 1.8), hexc('#8FA6C8'), 0.9)
+    part(c, cargo, ('#FFD08A', '#F08A3D', '#7A3A0E'), ow=3.0, bevel=6, gloss=0.3, tint='#C05A1A', spec=0.1)
+    c.fill(F.intersect(F.sd_box(c.X, c.Y, 40, 62, 26, 2.0, 1.0), cargo + 1.5), WHITE, 0.9)
+    box_iso(c, 30, 46, 8, 9, 8)                                             # boxes peeking over the rail
+    box_iso(c, 46, 44, 9, 11, 9)
+    part(c, cab, ('#FFD08A', '#F08A3D', '#7A3A0E'), ow=3.0, bevel=5, gloss=0.35, tint='#C05A1A', spec=0.1)
+    win = F.sd_box(c.X, c.Y, 77, 55, 5.5, 5.5, 2.4)
+    part(c, win, SKY, ow=1.4, bevel=2, gloss=0.4, hi=0.6)
+    part(c, F.sd_circle(c.X, c.Y, 87, 68, 2.6), ('#FFF6C8', '#FFC83D', '#7A4A0E'), ow=1.2, bevel=1.5, gloss=0.3,
+         hi=0.8)
+    for x, y in wheels:
+        part(c, F.sd_circle(c.X, c.Y, x, y, 9.5), TIRE, ow=2.2, bevel=3.5, gloss=0.15)
+        part(c, F.sd_circle(c.X, c.Y, x, y, 4.4), STEEL, ow=1.3, bevel=2, gloss=0.2, spec=0.3)
     return c.image()
 
 
@@ -784,8 +809,10 @@ ICONS = [
     ('ui_icon_question', icon_question, 'Question: speech bubble with a glossy blue "?" (질문).'),
     ('ui_icon_friend_new', icon_friend_new, 'New friend: two villager heads under a pink heart, green "+" (새 친구).'),
     ('ui_icon_memory', icon_memory, 'Memory: tilted instant photo of the snowy village with a heart sticker (기억).'),
-    ('ui_icon_move_in', icon_move_in, 'Moving in: house + green arrow in at the door + moving box (이사 옴).'),
-    ('ui_icon_move_out', icon_move_out, 'Moving out: house + orange arrow leaving + moving box (이사 감).'),
+    ('ui_icon_move_in', icon_move_in, 'Moving in: house with the door open (warm light), heart welcome mat, green '
+                                      'arrow curving in + a moving box (이사 옴).'),
+    ('ui_icon_move_out', icon_move_out, 'Moving out: orange moving truck loaded with boxes driving off, speed lines '
+                                        '(이사 감) - a different silhouette from move_in.'),
     ('ui_icon_newspaper', icon_newspaper, 'Town paper "솔방울 신문": folded paper with a pinecone emblem (신문).'),
     ('ui_icon_badge', icon_badge, 'Police: gold shield badge, blue enamel, white star (경찰).'),
     ('ui_icon_wanted', icon_wanted, 'Wanted: pinned poster with a red band, sepia portrait and reward coin (현상수배).'),
@@ -913,48 +940,130 @@ def newspaper_page():
     return c.image()
 
 
-MAST_W, MAST_H = 320, 96
-MAST_MARGINS = dict(left=96, right=96, top=18, bottom=28)
+MAST_W, MAST_H = 320, 104
+MAST_MARGINS = dict(left=96, right=96, top=18, bottom=26)
+MAST_TITLE = [96, 12, 128, 64]          # title area (x from 96 to width - 96): fits 44-52 px game text or the logo
 
 
 def newspaper_masthead():
     """'솔방울 신문' masthead strip (9-slice, stretch horizontally): pinecone medallions left and right, a thin rule
-    on top and the classic thick + thin double rule underneath.  The middle stays empty for the title text."""
+    on top and the classic thick + thin double rule underneath.  The middle (titleBox, 64 px tall) stays empty for
+    the title - ui_newspaper_logo or game text."""
     W, H = MAST_W, MAST_H
     c = F.Canvas(W, H)
-    c.fill(F.sd_box(c.X, c.Y, W / 2, 9, W / 2 - 4, 0.8, 0.4), hexc('#3A3A44'), 0.9)
-    c.fill(F.sd_box(c.X, c.Y, W / 2, H - 20, W / 2 - 4, 2.4, 0.8), hexc('#3A3A44'), 0.95)
-    c.fill(F.sd_box(c.X, c.Y, W / 2, H - 13, W / 2 - 4, 0.8, 0.4), hexc('#3A3A44'), 0.9)
+    my = 46
+    c.fill(F.sd_box(c.X, c.Y, W / 2, 7, W / 2 - 4, 0.8, 0.4), hexc('#3A3A44'), 0.9)
+    c.fill(F.sd_box(c.X, c.Y, W / 2, H - 18, W / 2 - 4, 2.4, 0.8), hexc('#3A3A44'), 0.95)
+    c.fill(F.sd_box(c.X, c.Y, W / 2, H - 11, W / 2 - 4, 0.8, 0.4), hexc('#3A3A44'), 0.9)
     for cx, flip in ((44, 1), (W - 44, -1)):
-        med = F.sd_circle(c.X, c.Y, cx, 44, 26)
+        med = F.sd_circle(c.X, c.Y, cx, my, 27)
         c.shadow(c.cov(med), dy=2, sigma=1.6, opacity=0.25)
         part(c, med, ('#FFFDF6', '#EFE3C8', '#6E5E44'), ow=2.2, bevel=4, gloss=0.25, hi=0.4)
-        stroke(c, F.sd_circle(c.X, c.Y, cx, 44, 21), 1.0, '#9A8A6A', 0.8)
+        stroke(c, F.sd_circle(c.X, c.Y, cx, my, 22), 1.0, '#9A8A6A', 0.8)
         for k in range(7):                                     # laurel ticks around the medallion
             a = math.radians(110 + k * 22) if flip > 0 else math.radians(70 - k * 22)
-            lx, ly = cx + 23.5 * math.cos(a), 44 + 23.5 * math.sin(a)
+            lx, ly = cx + 24.5 * math.cos(a), my + 24.5 * math.sin(a)
             Xl, Yl = rot(c, lx, ly, math.degrees(a) + 90)
             c.fill(F.sd_ellipse(Xl, Yl, lx, ly, 3.2, 1.5), hexc('#5CA05A'), 0.9)
-        pinecone(c, cx, 47, 1.25, ow=1.6)
-        # little snowflake / sparkle next to the medallion (towards the title)
-        EA.twinkle(c, cx + flip * 38, 30, 5.0, edge='#56739F', core='#FFFFFF', tip='#BFE6FF')
+        pinecone(c, cx, my + 3, 1.3, ow=1.6)
+        EA.twinkle(c, cx + flip * 39, 26, 5.0, edge='#56739F', core='#FFFFFF', tip='#BFE6FF')
     return c.image()
 
 
-COL_MARGINS = dict(left=16, right=16, top=40, bottom=16)
+FONT_DIR = os.path.join(os.path.dirname(HERE), 'fonts')
+
+
+def _text_mask(txt, font_file, size, ss=4, pad=8):
+    """Anti-aliased text coverage (float 0..1) rendered at ss x, plus its box size in output px."""
+    from PIL import ImageDraw, ImageFont
+    f = ImageFont.truetype(os.path.join(FONT_DIR, font_file), size * ss)
+    l, t, r, b = f.getbbox(txt)
+    W, H = (r - l) + 2 * pad * ss, (b - t) + 2 * pad * ss
+    im = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(im).text((pad * ss - l, pad * ss - t), txt, font=f, fill=255)
+    return np.asarray(im).astype(np.float32) / 255.0, (W // ss, H // ss)
+
+
+def newspaper_logo(en=False):
+    """Optional baked logotype for the masthead (CONTRACT_V8 §AC 솔방울 신문): chunky rounded Jua letters (Fredoka
+    for the English variant) in warm newsprint ink with a letterpress highlight, lumpy snow caps on the first word
+    and a little pinecone hanging off the end.  The masthead strip itself stays text-free for other languages."""
+    txt, ff, size = ('Pinecone News', 'Fredoka-Bold.ttf', 40) if en else ('솔방울 신문', 'Jua-Regular.ttf', 50)
+    ss = 4
+    m, (tw, th) = _text_mask(txt, ff, size, ss)
+    W, H = tw + 34, th + 6
+    c = F.Canvas(W, H, ss=ss)
+    Hm, Wm = m.shape
+    cov = np.zeros(c.a.shape, np.float32)
+    oy = (c.a.shape[0] - Hm) // 2 + 2 * ss
+    cov[max(0, oy):oy + Hm, :Wm] = m[:c.a.shape[0] - max(0, oy), :c.a.shape[1]]
+    c.shadow(cov, dy=2.0, sigma=1.2, opacity=0.25)
+    c.paint(np.clip(F.blur(cov, 1.6 * ss), 0, 1) * 1.6, hexc('#FFFDF6'), 0.9)          # paper halo (outline)
+    t = np.clip((c.Y - 4) / (H - 8), 0, 1)
+    ink = F.mix(hexc('#4A3A30'), hexc('#2A2220'), t)
+    c.paint(cov, ink)
+    hl = np.clip(cov - F.shift(cov, 0, 1.2 * ss), 0, 1)                # letterpress highlight on top edges
+    c.paint(hl, hexc('#9A8670'), 0.8)
+    # snow caps on the first word: lumps along the top edge of the letters
+    first = len(txt.split(' ')[0]) / len(txt)
+    xs_end = Wm * (first * (0.92 if en else 0.95))
+    top = np.argmax(cov > 0.5, axis=0)
+    has = (cov > 0.5).any(axis=0)
+    caps = np.zeros(c.a.shape, np.float32)
+    rng = np.random.default_rng(3)
+    for x in range(0, int(xs_end), int(3.2 * ss)):
+        if not has[x]:
+            continue
+        y = top[x]
+        r = rng.uniform(2.2, 3.4) * ss
+        yy, xx = np.ogrid[:c.a.shape[0], :c.a.shape[1]]
+        caps = np.maximum(caps, np.clip(1 - (np.hypot((xx - x) / 1.25, yy - y + r * 0.2) - r) / ss, 0, 1)
+                          * (yy < y + r * 0.6))
+    caps = np.clip(caps, 0, 1)
+    c.paint(caps, hexc('#8FA6C8'), 1.0)
+    c.paint(np.clip(F.shift(caps, 0, -0.9 * ss) * caps, 0, 1), hexc('#FFFFFF'), 1.0)
+    # pinecone dangling from the last letter on a thread
+    px_ = Wm / ss + 10
+    c.fill(F.sd_segment(c.X, c.Y, px_ - 6, 10, px_, 16, 0.6), hexc('#6A4A2A'), 0.9)
+    pinecone(c, px_ + 2, H * 0.6, 0.95, ow=1.4)
+    return c.image()
+
+
+def wanted_silhouette():
+    """Unknown culprit portrait (128x128, for portraitWindow of ui_wanted_poster - '도둑을 찾아라'): a navy shadow bust
+    with a beanie and a big glossy yellow '?' on the face.  Cute, not scary."""
+    c = F.Canvas(128, 128)
+    head = F.sd_circle(c.X, c.Y, 64, 56, 30)
+    hat = F.smin(F.intersect(F.sd_ellipse(c.X, c.Y, 64, 50, 32, 30), c.Y - 46), F.sd_circle(c.X, c.Y, 64, 18, 7), 3)
+    brim = F.sd_box(c.X, c.Y, 64, 46, 33, 5, 4)
+    body = F.sd_ellipse(c.X, c.Y, 64, 132, 52, 42)
+    allb = U(head, hat, brim, body)
+    c.shadow(c.cov(allb), dy=3, sigma=2.4, opacity=0.25)
+    sil = ('#6A7894', '#3A4560', '#1C2234')
+    part(c, body, sil, ow=2.4, bevel=8, gloss=0.15, hi=0.35)
+    part(c, head, sil, ow=2.4, bevel=8, gloss=0.2, hi=0.35)
+    part(c, hat, ('#5A6684', '#323C56', '#1C2234'), ow=2.4, bevel=5, gloss=0.2, hi=0.35)
+    part(c, brim, ('#7A88A6', '#4A5674', '#1C2234'), ow=2.0, bevel=3, gloss=0.1)
+    q = FXC.qmark_sd(c.X, c.Y, 64, 76, 1.25)
+    toy(c, q, '#FFF4AE', '#F5A623', '#8E520A', ow=2.6, bevel=4.0, gloss=0.0, shadow=0, hi=0.6, lo=0.4)
+    return c.image()
+
+
+COL_MARGINS = dict(left=16, right=16, top=54, bottom=16)
+COL_BAR = 36                            # headline bar height (fits the game's 24-30 px headlines)
 
 
 def newspaper_column():
-    """Article box (9-slice): thin ink frame, a grey headline bar on top with a rule under it.  Headline text goes in
-    the bar (contentInset top area), body text below."""
-    W, H = 112, 128
+    """Article box (9-slice): thin ink frame, a 36 px grey headline bar on top with a rule under it.  Headline text
+    goes in the bar (headlineBox), body text below (contentInset)."""
+    W, H = 112, 140
     c = F.Canvas(W, H)
     box = F.sd_box(c.X, c.Y, W / 2, H / 2, W / 2 - 4, H / 2 - 4, 3)
     c.fill(box, hexc('#FBF8EF'), 0.6)
     stroke(c, box, 1.2, '#4A4A52', 0.9)
-    bar = F.sd_box(c.X, c.Y, W / 2, 20, W / 2 - 9, 11, 2)
+    bar = F.sd_box(c.X, c.Y, W / 2, 9 + COL_BAR / 2, W / 2 - 9, COL_BAR / 2, 2)
     c.fill(bar, hexc('#E3DDCF'))
-    c.fill(F.sd_box(c.X, c.Y, W / 2, 34.5, W / 2 - 9, 0.9, 0.4), hexc('#4A4A52'), 0.9)
+    c.fill(F.sd_box(c.X, c.Y, W / 2, 9 + COL_BAR + 3.5, W / 2 - 9, 0.9, 0.4), hexc('#4A4A52'), 0.9)
     return c.image()
 
 
@@ -1090,14 +1199,19 @@ PANELS = [
     ('ui_newspaper', newspaper_page, NEWS_MARGINS, dict(contentInset=[24, 24, 24, 28], minSize=[64, 64]),
      '솔방울 신문 page (9-slice newsprint): stretch to the panel size, then lay out ui_newspaper_masthead at the '
      'top and ui_newspaper_column / _photo / _divider pieces inside contentInset.'),
-    ('ui_newspaper_masthead', newspaper_masthead, MAST_MARGINS, dict(titleBox=[96, 14, 128, 52], minSize=[200, 96]),
-     'Masthead strip (9-slice, stretch horizontally only, keep 96 px tall): pinecone medallions left / right, rules '
-     'top and bottom.  Draw the paper title "솔방울 신문" centred in titleBox (relative to the stretched strip: '
-     'x from 96 to width-96).'),
-    ('ui_newspaper_column', newspaper_column, COL_MARGINS, dict(contentInset=[12, 42, 12, 10], headlineBox=[10, 9, -10, 22],
-                                                              minSize=[40, 60]),
-     'Article box (9-slice): headline in the grey bar (headlineBox: x, y, width relative to the right edge, h), body '
-     'text in contentInset.'),
+    ('ui_newspaper_masthead', newspaper_masthead, MAST_MARGINS, dict(titleBox=list(MAST_TITLE), minSize=[200, 104]),
+     'Masthead strip (9-slice, stretch horizontally only, keep 104 px tall): pinecone medallions left / right, rules '
+     'top and bottom.  Put ui_newspaper_logo (Korean) / ui_newspaper_logo_en centred in titleBox (64 px tall, x '
+     'from 96 to width-96 of the stretched strip), or draw the title as text (44-52 px) for other languages.'),
+    ('ui_newspaper_logo', lambda: newspaper_logo(False), None, dict(fitsIn='ui_newspaper_masthead.titleBox'),
+     'Optional baked logotype "솔방울 신문" (Jua, OFL): chunky newsprint-ink letters, snow caps on 솔방울, a '
+     'pinecone dangling at the end.  Plain image; centre it in ui_newspaper_masthead.titleBox (scale <= 1).'),
+    ('ui_newspaper_logo_en', lambda: newspaper_logo(True), None, dict(fitsIn='ui_newspaper_masthead.titleBox'),
+     'Optional baked logotype "Pinecone News" (Fredoka, OFL) for the English UI, same style.'),
+    ('ui_newspaper_column', newspaper_column, COL_MARGINS, dict(contentInset=[12, 56, 12, 10],
+                                                              headlineBox=[10, 9, -10, COL_BAR], minSize=[40, 74]),
+     'Article box (9-slice): headline in the 36 px grey bar (headlineBox: x, y, width relative to the right edge, h; '
+     'fits 24-30 px headline text), body text in contentInset.'),
     ('ui_newspaper_photo', newspaper_photo, PHOTO_MARGINS, dict(contentInset=[10, 10, 10, 10], minSize=[32, 32]),
      'Photo slot (9-slice): draw a snapshot / portrait clipped to the inner rect (contentInset).'),
     ('ui_newspaper_divider', newspaper_divider, DIV_MARGINS, dict(minSize=[52, 16]),
@@ -1109,6 +1223,9 @@ PANELS = [
      'stamp deposits with ui_stamp_bank (x0.3).'),
     ('ui_passbook_row', passbook_row, ROW_MARGINS, dict(rowHeight=32, minSize=[24, 32]),
      'One passbook line (9-slice, stretch horizontally, 32 px tall).'),
+    ('ui_wanted_silhouette', wanted_silhouette, None, dict(),
+     'Unknown-culprit portrait (128x128, navy shadow bust in a beanie with a big yellow "?") - draw it in '
+     'ui_wanted_poster.portraitWindow for the "도둑을 찾아라" (find the thief) mission until the culprit is known.'),
     ('ui_story_card', lambda: story_card(False), STORY_MARGINS, dict(contentInset=[18, 34, 16, 28], iconPoint=[24, 20],
                                                                    minSize=[80, 80]),
      'Rumour / story card (9-slice): lilac band on top, speech tail bottom-left (in the margin).  Put ui_icon_rumor '

@@ -365,8 +365,8 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     lib = atlas_reader('beach/manifest.json')
     mm, getb = lib
     sp = mm['sprites']
-    W, H = 2600, 1500
-    ox, oy = 1180, 760
+    W, H = 2600, 1700
+    ox, oy = 1180, 960                   # room above the snow line for the tall props (booth, shower, pine)
     sc = Scene(W, H, ox, oy)
     people = People()
     chs = Chars()
@@ -385,7 +385,7 @@ def preview_scene(builds, frames, chars, cframes, man, out):
                                                                                            (244, 247, 251, 255))
     img = tile_tex(snow_tex, W, H)
     # grid cells (i along X, j along Y), cell min corner at world (i*SQ2, j*SQ2); sand for j <= 7 except a few
-    I0, I1, J0, J1 = -17, 16, -8, 13
+    I0, I1, J0, J1 = -25, 25, -22, 27      # covers the whole canvas (no hard sand/snow cut at the sides)
 
     def is_sand(i, j):
         if j < 0:
@@ -465,11 +465,28 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     sea_im = Image.fromarray((sea_rgb * 255 + 0.5).astype(np.uint8), 'RGB').convert('RGBA')
     smask = Image.fromarray((sea * 255).astype(np.uint8), 'L')
     img.paste(sea_im, (0, 0), smask)
+    # rolling shore-wave crests from assets/water: fx_shore_wave_x is drawn for a coast along X with the sea on the far
+    # (+Y) side; this beach faces -Y, so the frame is turned 180 deg (= flipX + flipY in Phaser), which keeps the coast
+    # line and puts the sea on the near side.  One frame for all segments (seamless chain every (+256, +128) px).
+    swp = os.path.join(ASSETS, 'water', 'fx_shore_wave_x.png')
+    if os.path.exists(swp):
+        sheet = Image.open(swp).convert('RGBA')
+        fi = 9
+        fw, fh = 192, 128
+        cols = sheet.width // fw
+        fr = sheet.crop((fw * (fi % cols), fh * (fi // cols), fw * (fi % cols) + fw, fh * (fi // cols) + fh))
+        fr = fr.rotate(180).resize((fw * 2, fh * 2), Image.LANCZOS)
+        xw = X0
+        while xw < X1 + 6:
+            sx, sy = sc.p(xw, 0.0)
+            sc.put_px(fr, (fw, fh * 2 * 0.45), sx, sy + WATER_PX, -2000, ground=True)
+            xw += 4 * SQ2
     # ---------- decals (ground layer)
     for key, x, y in (('decal_towel_blue', -9.0, 3.6), ('decal_towel_red_x', 5.2, 3.8), ('decal_towel_yellow', 9.2, 6.6),
                       ('decal_towel_green_x', -3.8, 7.2), ('decal_shells', 3.2, 1.6), ('decal_seaweed', -6.5, 1.75),
                       ('decal_footprints_sand', -1.0, 5.6), ('decal_sand_ripples', -12.0, 6.0),
-                      ('decal_shells', -11.5, 2.6), ('decal_volleyball_court', 13.5, 5.5)):
+                      ('decal_shells', -11.5, 2.6), ('decal_volleyball_court', 13.5, 5.5),
+                      ('decal_towel_green', -18.0, 4.0), ('decal_footprints_sand', -15.0, 3.2)):
         if key in sp:
             im, an = spr(key)
             sc.put(im, an, x, y, ground=True)
@@ -544,6 +561,13 @@ def preview_scene(builds, frames, chars, cframes, man, out):
                       ('dune_grass_b', -2.6, 12.9), ('dune_grass_a', 11.2, 11.9), ('dune_grass_c', 13.2, 12.0)):
         prop(key, x, y)
     prop('driftwood', -4.5, 1.9, 'driftwood')
+    # a quieter family spot on the far left: parasol, towel, deck chair, palm, dune grass
+    prop('parasol_yellow', -18.6, 5.4, frame='parasol_yellow_flutter_2')
+    prop('beach_chair_folding_x', -17.2, 6.2)
+    prop('palm_tree_b', -21.0, 4.4, frame='palm_tree_b_sway_2')     # crown stays inside the frame
+    for key, x, y in (('dune_grass_a', -16.4, 12.3), ('dune_grass_c', -21.8, 12.1), ('dune_grass_b', -18.8, 12.6)):
+        prop(key, x, y)
+    prop('swim_ring_red', -16.0, 2.8)
     prop('starfish', 8.6, 1.5)
     # water: buoy line, raft, boats
     yb = -6.4
@@ -683,6 +707,15 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             if fr:
                 lp = e['seatPoints'][0]
                 sc.put_px(fr[0], fr[1], bx + lp[0], by + lp[1], by + 0.5)
+    # a sunbather on the towel of the far-left family spot (towel lyingPoints)
+    e = sp.get('decal_towel_green')
+    if e and e.get('lyingPoints'):
+        pe = people.person('sunbather', 33)
+        fr = people.frame(pe, 'sunbathe', e['lyingDirs'][0], 0)
+        if fr:
+            bx, by = sc.p(-18.0, 4.0)
+            lp = e['lyingPoints'][0]
+            sc.put_px(fr[0], fr[1], bx + lp[0], by + lp[1], by + 0.5)
     # deck chair sitter
     e = sp.get('beach_chair_folding')
     if e:
@@ -769,7 +802,7 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     d = ImageDraw.Draw(img)
     d.rectangle([0, img.height - 40, img.width, img.height], fill=(20, 140, 160, 255))
     cap = ('Sunny Beach (햇살 해변) mock at 1x (PPU 64): assets/beach props + ground (sand, wet band, sand<->snow kit, '
-           'decals), sea = assets/water tropical LUT + ripples (static), people = %s + the chief' %
+           'decals), sea = assets/water tropical LUT + ripples + fx_shore_wave_x crest (static), people = %s + the chief' %
            (people.kind or 'none'))
     d.text((14, img.height - 32), cap, fill=(255, 255, 255), font=font(17))
     img.convert('RGB').save(out, optimize=True)

@@ -1,18 +1,21 @@
 """
-ttl_icon.py - the app icon scene (Blender, Cycles): the chief (the game's player model, char_build)
-with a tall stack of goods on a wooden A-frame carrier (지게) on his back, 콩이 the shiba sitting up
-beside him (pet2_build), the cosy red-roofed log cabin from the game (bld_assets house_a) with warm
-windows, snowy pines (prop_assets.pine) and a little red pennant with the 눈꽃 emblem on the stack.
+ttl_icon.py - the app icon scene (Blender, Cycles): a close, bold portrait of the chief (the game's
+player model, char_build) with a big happy smile and a TALL, leaning tower of salmon steaks on his
+wooden A-frame carrier (지게) rising to the top-right corner, a red pennant with the 눈꽃 emblem on
+top; 콩이 the shiba (pet2_build) pops in at the bottom left with her ^^ eyes; behind them only a
+saturated ice-blue sky, the red roof corner of the game's log cabin (bld_assets house_a) and a
+snowy bank - so the face and the stack read at 48 px.
 
-    /tmp/bvenv/bin/python tools/blender/ttl_icon.py -- --out DIR [--size 1024] [--samples 96]
-                       [--passes full,fg,bg] [--pct 100] [--threads 2] [--skip-existing]
+    /tmp/bvenv/bin/python tools/blender/ttl_icon.py -- --out DIR [--size 1024] [--samples 48]
+                       [--passes full,mask,fg,bg] [--pct 100] [--threads 2] [--skip-existing]
 
 Passes (DIR/icon_<pass>.png):
     full   the whole picture, square, opaque (sky is the world background)
-    fg     Android adaptive foreground: chief + dog + stack only, transparent, with their snow
-           shadows (shadow catcher), framed smaller so they sit inside the 66/108 safe circle
-    bg     Android adaptive background: everything else, same wider framing, opaque
-ttl_iconpack.py adds the falling snow + finishing and writes assets/title/icon/.
+    mask   alpha of the chief + stack + dog in the full framing (ttl_iconpack draws the navy rim)
+    fg     Android adaptive foreground: chief + dog + stack only, transparent, framed so the head is
+           ~40 % of the 66 dp safe circle
+    bg     Android adaptive background: sky + roof corner + snow bank, same framing, opaque
+ttl_iconpack.py adds the navy rim, falling snow + finishing and writes assets/title/icon/.
 """
 import argparse
 import math
@@ -31,7 +34,10 @@ from mathutils import Vector, Euler   # noqa: E402
 import bl_common as bc           # noqa: E402
 
 CAM_YAW = 45.0                   # camera sits at world (+x, -y): the side the game's sprites are seen from
-CHAR_YAW = bc.DIR_YAW['S'] - 8   # chief faces the camera, turned a little toward 콩이
+CHAR_YAW = bc.DIR_YAW['S'] - 4   # chief faces the camera, turned a little toward 콩이
+STACK_N = 9                      # salmon steaks in the tower
+STEAK_TILT = (38.0, 66.0)        # each steak tips its orange cut face toward the camera, more toward the top
+                                 # (they sit above eye level; a casual-game 'fanned' stack)
 FG_OBJECTS = set()               # names of chief / dog / stack objects (fg pass)
 
 
@@ -67,17 +73,51 @@ def build_chief():
     rig = char_build.build('player')                    # resets the scene
     pose = char_anim.pose_for('human', 'idle', 0, 4, 'player')
     pose.update({
-        'ik_R': (-0.42, -0.14, 0.20, -1.0, 0.2, -1.0), 'hand_R': (15, 0, 30),    # wave beside the face
-        'ik_L': (0.235, 0.02, -0.26),                                        # fist on the hip
-        'spine': (-6, 6, 6), 'head': (-10, -8, 4),                           # leans back under the load
+        'ik_R': (-0.30, -0.16, 0.02, -1.0, 0.2, -1.0), 'hand_R': (10, 0, 20),   # cheery raised fist, low
+        'ik_L': (0.20, -0.10, 0.02),                                         # hand on the strap
+        'spine': (-4, 4, 4), 'head': (-6, -6, 3),                            # leans back a little under the load
         'hip_R': (4, 7, 0), 'hip_L': (-3, 9, 0),
     })
-    pose['_show'] = {'face_smile'}
+    pose['_show'] = {'face_normal'}
     rig.apply(pose, yaw_deg=CHAR_YAW)
     rig.update_strings()
+    big_smile(rig)
     for o in bpy.data.objects:
         FG_OBJECTS.add(o.name)
     return rig
+
+
+def big_smile(rig):
+    """Swap the little mouth for a wide open D smile with a tongue (an icon must read 'happy' at
+    48 px; the game's small arc / round 'o' mouths read as neutral / surprised at that size)."""
+    import bmesh
+    import char_build as cb
+    import ttl_lib as TL
+    for o in bpy.data.objects:
+        if o.name.startswith('mouth'):
+            o.hide_render = True
+            o.hide_viewport = True
+    head = rig.j['head']
+
+    def d_shape(R, h, depth, top=0.0):
+        bm = bmesh.new()
+        pts = []
+        N = 18
+        for i in range(N + 1):                       # round bottom
+            a = math.pi + math.pi * i / N
+            pts.append((R * math.cos(a), -h * abs(math.sin(a)) ** 0.9))
+        vs = [bm.verts.new((x, 0.0, z + top)) for x, z in pts]
+        f = bm.faces.new(vs)
+        r = bmesh.ops.extrude_face_region(bm, geom=[f])
+        for v in [e for e in r['geom'] if isinstance(e, bmesh.types.BMVert)]:
+            v.co.y += depth
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        return bm
+
+    dark = TL.mat_flat('smile_dark', '#5A2025', rough=0.5)
+    pink = TL.mat_flat('smile_tongue', '#F2737E', rough=0.45)
+    cb.on_head('smile', d_shape(0.060, 0.058, 0.010, top=0.012), dark, head, 0.0, -0.33, out=-0.004)
+    cb.on_head('smile_tongue', d_shape(0.034, 0.022, 0.012, top=-0.020), pink, head, 0.0, -0.36, out=-0.001)
 
 
 def carrier_and_stack(rig, seed=4):
@@ -113,42 +153,30 @@ def carrier_and_stack(rig, seed=4):
     parent_all = group([o for o in made if o.parent is None], 'jige', parent=chest)
     parent_all.location = (0, 0, 0)
 
-    # goods tower (built in world units, scaled down like the in-game carry)
+    # the goods tower: a TALL, leaning stack of salmon steaks (the game's stacking hook, like the
+    # style reference) - raw cut faces up (orange flesh + white fat lines), silver-blue skin sides
     k = 0.8
     rnd = random.Random(seed)
-    items = [
-        ('crate', lambda: PA.crate_model('crate', s=0.62, snow=False), 0.62),
-        ('log2', None, 0.26),
-        ('steak', lambda: PA.steak_model('steak', R=0.34, thick=0.17, cooked=True), 0.17),
-        ('steak', lambda: PA.steak_model('steak', R=0.34, thick=0.17, cooked=True), 0.17),
-        ('bread', lambda: PA.bread_model('bread', L_=0.62, W=0.38, H=0.25), 0.25),
-        ('fish', lambda: PA.fish_model('fish', length=0.8, height=0.4, thick=0.2, loc=(0, 0, 0.1)), 0.2),
-        ('coin', None, 0.14),
-    ]
     tower = bpy.data.objects.new('tower', None)
     bpy.context.scene.collection.objects.link(tower)
     tower.parent = chest
-    tower.location = (0.14, by + 0.24, -0.27)
-    tower.rotation_euler = (math.radians(-4), 0, 0)
+    tower.location = (0.36, by + 0.24, -0.27)
+    tower.rotation_euler = (math.radians(-4), math.radians(-7), 0)
     z = 0.0
-    for i, (kind, fn, th) in enumerate(items):
-        objs = []
-        if kind == 'log2':
-            for sy in (-1, 1):
-                _r, o = new_objects(PA.log, 'log', 0.12, 0.78, (0, sy * 0.13, 0.12), rot=(0, 90, 0),
-                                    bark=L.tonal('#8A5A33', 0.15, 6.0), end=L.end_grain(scale=14.0), segs=18,
-                                    bevel=0.03)
-                objs += o
-        elif kind == 'coin':
-            _r, objs = new_objects(_coin)
-        else:
-            _r, objs = new_objects(fn)
+    n_steaks = STACK_N
+    th = 0.15
+    for i in range(n_steaks):
+        _r, objs = new_objects(PA.steak_model, 'steak', R=0.36, thick=th, cooked=False)
         made.extend(objs)
-        wob = 0.035 * math.sin(i * 1.25) + rnd.uniform(-0.01, 0.01)
-        g = group(objs, 'item_%d' % i, loc=(wob, 0.02 * math.cos(i * 0.9), z * k), scale=k,
-                  rot_deg=(0, 0, rnd.uniform(-14, 14) + (90 if kind == 'fish' else 0)))
+        u = i / max(1, n_steaks - 1)
+        lean = 0.20 * u * u + rnd.uniform(-0.012, 0.012)          # a gentle banana lean to the right
+        tilt = STEAK_TILT[0] + (STEAK_TILT[1] - STEAK_TILT[0]) * u
+        g = group(objs, 'item_%d' % i, loc=(lean, 0.015 * math.sin(i * 1.7), z * k), scale=k,
+                  rot_deg=(0, 0, 0))
+        g.rotation_mode = 'ZXY'          # spin about its own axis first, then tip the cut face to the camera
+        g.rotation_euler = (math.radians(tilt), 0, math.radians(180 + rnd.uniform(-9, 9)))
         g.parent = tower
-        z += th * (1.0 if kind != 'steak' else 0.98)
+        z += th * 1.05
     # red pennant with the 눈꽃 emblem on top
     import ttl_lib as TL
     pole_h = 0.42
@@ -159,7 +187,7 @@ def carrier_and_stack(rig, seed=4):
                          loc=(0.0, 0.0, pole_h - 0.02), rot=(math.radians(90), 0, math.radians(-90)))
     em = TL.emblem('flag_emblem', 0.075, loc=(0.0, -0.035, pole_h - 0.12), rot_deg=0)
     em.rotation_euler = (math.radians(90), 0, math.radians(-90))
-    gpen = group(o + [flag, em], 'pennant_g', loc=(0.0, 0.0, z * k + 0.02))
+    gpen = group(o + [flag, em], 'pennant_g', loc=(0.10, 0.0, z * k + 0.02))
     gpen.parent = tower
     gpen.rotation_euler = (0, 0, math.radians(20))
     # everything under the chest that is new belongs to the foreground
@@ -266,12 +294,13 @@ def sky_world(strength=1.0):
     nt.links.new(tc.outputs['Generated'], sep.inputs[0])
     nt.links.new(sep.outputs['Z'], ramp.inputs['Fac'])
     cr = ramp.color_ramp
-    cr.elements[0].position = 0.49
-    cr.elements[0].color = (*TL.lin('#CBE9FF'), 1)
-    cr.elements[1].position = 0.72
-    cr.elements[1].color = (*TL.lin('#2F7FDB'), 1)
-    e = cr.elements.new(0.56)
-    e.color = (*TL.lin('#78BDF5'), 1)
+    # world 'Generated' = the view direction, so Z runs -1 (down) .. 0 (horizon) .. 1 (up)
+    cr.elements[0].position = 0.0
+    cr.elements[0].color = (*TL.lin('#A6DAFF'), 1)
+    cr.elements[1].position = 0.38
+    cr.elements[1].color = (*TL.lin('#1C69D3'), 1)
+    e = cr.elements.new(0.12)
+    e.color = (*TL.lin('#56AEF6'), 1)
     nt.links.new(ramp.outputs['Color'], bg.inputs['Color'])
     bg.inputs['Strength'].default_value = strength
     sc.world = wd
@@ -321,27 +350,34 @@ def render_setup(size, samples, threads):
     return sc
 
 
+def at(right, away, z=0.0):
+    """camera-relative ground position: screen right = (+0.707, +0.707), away = (-0.707, +0.707)"""
+    r = Vector((0.7071, 0.7071, 0.0))
+    a = Vector((-0.7071, 0.7071, 0.0))
+    return tuple(r * right + a * away + Vector((0, 0, z)))
+
+
 def build_scene():
     rig = build_chief()
     carrier_and_stack(rig)
-    # camera-relative helpers: screen right = (+0.707, +0.707), away from the camera = (-0.707, +0.707)
-    def at(right, away, z=0.0):
-        r = Vector((0.7071, 0.7071, 0.0))
-        a = Vector((-0.7071, 0.7071, 0.0))
-        return tuple(r * right + a * away + Vector((0, 0, z)))
-    build_dog(at(-0.58, -0.62), bc.DIR_YAW['S'] + 24)
-    build_house(at(-1.9, 3.0), yaw=-10.0, scale=1.0)
+    build_dog(at(-0.30, -0.66), bc.DIR_YAW["S"] + 22)
+    # only the red roof corner of the cabin peeks in at the top left; a few far pines on the bank
+    build_house(at(-3.3, 3.1), yaw=-10.0, scale=1.30)
     rnd = random.Random(7)
-    for (rr, aa, v, s) in ((1.25, 2.6, 1, 1.0), (2.6, 4.6, 0, 1.1), (0.4, 8.6, 2, 1.2), (-5.2, 6.4, 1, 1.0),
-                           (-4.4, 9.0, 0, 1.2), (3.6, 2.2, 2, 0.9), (-0.9, 11.5, 0, 1.3), (5.6, 8.4, 0, 1.1)):
-        build_pine(at(rr, aa), variant=v, scale=s, rot=rnd.uniform(0, 360))
+    for (rr, aa, v, s_) in ((3.4, 7.5, 0, 1.2), (5.2, 9.5, 1, 1.3), (-6.5, 9.0, 2, 1.2), (7.5, 12.0, 0, 1.4)):
+        build_pine(at(rr, aa), variant=v, scale=s_, rot=rnd.uniform(0, 360))
     import life_assets as LA
-    for i, (rr, aa, r) in enumerate(((1.5, 0.9, 0.35), (-1.6, 1.4, 0.3), (2.4, -1.0, 0.28), (-2.6, -0.4, 0.25))):
+    for i, (rr, aa, r) in enumerate(((1.2, 0.9, 0.35), (-1.7, 1.2, 0.3), (1.6, -0.9, 0.28))):
         LA.snow_drift('drift%d' % i, r, at(rr, aa), seed=40 + i)
     build_ground()
     lights()
     sky_world(1.0)
     return rig
+
+
+# framing: (camera target, distance, lens, elevation deg, shift) per pass family
+FRAME_FULL = dict(target=(0.0, 0.0, 1.00), dist=1.75, lens=40.0, elev=7.0, shift=(0.07, -0.03))
+FRAME_ADAPTIVE = dict(target=(0.0, 0.0, 1.05), dist=1.75 * 1.75, lens=40.0, elev=7.0, shift=(0.02, 0.0))
 
 
 def face_emblem_to_camera():
@@ -373,8 +409,8 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--size', type=int, default=1024)
     ap.add_argument('--ad-size', type=int, default=432)
-    ap.add_argument('--samples', type=int, default=96)
-    ap.add_argument('--passes', default='full,fg,bg')
+    ap.add_argument('--samples', type=int, default=48)
+    ap.add_argument('--passes', default='full,mask,fg,bg')
     ap.add_argument('--pct', type=int, default=100)
     ap.add_argument('--threads', type=int, default=2)
     ap.add_argument('--skip-existing', action='store_true')
@@ -383,37 +419,38 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     build_scene()
     base_hidden = {o.name for o in bpy.context.scene.objects if o.hide_render}   # toggled-off tools, faces...
-    target = (0.06, 0.0, 1.16)
     for ps in a.passes.split(','):
         out = os.path.join(a.out, 'icon_%s.png' % ps)
         if a.skip_existing and os.path.exists(out):
             continue
         for o in bpy.context.scene.objects:
             o.hide_render = o.name in base_hidden
-        sc = render_setup(a.size if ps == 'full' else a.ad_size, a.samples, a.threads)
+        for c in [o for o in bpy.context.scene.objects if o.type == 'CAMERA']:
+            bpy.data.objects.remove(c)
+        fr = FRAME_FULL if ps in ('full', 'mask') else FRAME_ADAPTIVE
+        sc = render_setup(a.size if ps in ('full', 'mask') else a.ad_size, a.samples if ps != 'mask' else 4,
+                          a.threads)
         sc.render.resolution_percentage = a.pct
-        if ps == 'full':
-            camera(target, 4.7, 70, a.size, elev=6.0, shift=(0.0, 0.0))
-            sc.render.film_transparent = False
-        else:
-            # adaptive layers: wider framing so the chief + stack fit the 66/108 safe circle
-            camera(target, 4.7 * 1.78, 70, a.ad_size, elev=6.0, shift=(0.0, 0.0))
-            if ps == 'fg':
-                sc.render.film_transparent = True
-                for o in bpy.context.scene.objects:
-                    if o.type in ('MESH', 'META', 'CURVE') and o.name not in FG_OBJECTS:
-                        if o.name == 'ground':
-                            o.is_shadow_catcher = True
-                        else:
-                            o.hide_render = True
-            else:
-                sc.render.film_transparent = False
-                for o in bpy.context.scene.objects:
-                    if o.name in FG_OBJECTS and o.type in ('MESH', 'META', 'CURVE'):
-                        o.hide_render = True
+        camera(fr['target'], fr['dist'], fr['lens'], 0, elev=fr['elev'], shift=fr['shift'])
         g = bpy.data.objects.get('ground')
-        if g is not None and ps != 'fg':
+        if g is not None:
             g.is_shadow_catcher = False
+        if ps in ('mask', 'fg'):
+            # chief + stack + dog only, transparent (no shadow catcher: the adaptive foreground floats
+            # over its background layer, a grey blob of shadow would only muddy it)
+            sc.render.film_transparent = True
+            for o in bpy.context.scene.objects:
+                if o.type in ('MESH', 'META', 'CURVE') and o.name not in FG_OBJECTS:
+                    o.hide_render = True
+            if ps == 'mask':
+                sc.cycles.use_denoising = False
+        elif ps == 'bg':
+            sc.render.film_transparent = False
+            for o in bpy.context.scene.objects:
+                if o.name in FG_OBJECTS and o.type in ('MESH', 'META', 'CURVE'):
+                    o.hide_render = True
+        else:
+            sc.render.film_transparent = False
         face_emblem_to_camera()
         sc.render.filepath = out
         bpy.ops.render.render(write_still=True)

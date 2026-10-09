@@ -9,7 +9,7 @@ const D = 60;
 
 export class TitleUI {
   /**
-   * opts: { lang, touch, version, safeTop, safeBottom, onSettings, reduced }
+   * opts: { lang, touch, version, safeTop, safeBottom, onSettings, onSkip, reduced, cap (stages the intro shows) }
    */
   constructor(scene, put, W, H, layout, opts) {
     this.scene = scene; this.put = put; this.W = W; this.H = H; this.L = layout; this.o = opts;
@@ -66,14 +66,39 @@ export class TitleUI {
       btn.setAlpha(0);
       this.gear = btn;
     }
-    // --- skip hint (intro)
+    // --- intro hint (bottom centre): "탭하면 소리가 켜져요" -> "한 번 더 탭하면 건너뛰어요", or "탭하면 건너뛰어요"
     this.skip = this.add(this.text(W / 2, H - 46 - sb, this.tx.skip, 22, { fontStyle: '700', color: '#ffffff', strokeThickness: 5 }).setOrigin(0.5).setAlpha(0));
-    // --- stage chips (intro): 개척 › 마을 › 읍 › 도시
+    this.hintMode = 'skip';
+    // --- skip pill (intro, bottom right): skips at once, sound or not
+    if (o.onSkip) {
+      const lb = this.text(0, 0, this.tx.skipBtn, 24, { fontStyle: '800', strokeThickness: 0, color: '#ffffff' }).setOrigin(1, 0.5);
+      const bw = Math.max(150, lb.width + 74), bh = 54;
+      const bx = W - 22 - bw / 2, by = H - 44 - sb;
+      const pill = this.add(s.add.container(bx, by), D + 3);
+      const g = s.add.graphics();
+      g.fillStyle(0x0d1d3d, 0.42); g.fillRoundedRect(-bw / 2, -bh / 2, bw, bh, bh / 2);
+      g.lineStyle(2.5, 0xffffff, 0.75); g.strokeRoundedRect(-bw / 2 + 1, -bh / 2 + 1, bw - 2, bh - 2, bh / 2 - 1);
+      // two small "fast forward" triangles (drawn: no font glyph needed)
+      g.fillStyle(0xffffff, 1);
+      const ax = bw / 2 - 40;
+      g.fillTriangle(ax - 9, -9, ax - 9, 9, ax + 3, 0); g.fillTriangle(ax + 3, -9, ax + 3, 9, ax + 15, 0);
+      lb.setX(ax - 16);
+      pill.add([g, lb]);
+      pill.setSize(bw + 20, bh + 24).setInteractive({ useHandCursor: true });
+      pill.on('pointerdown', () => { pill.setScale(0.92); });
+      pill.on('pointerup', () => { pill.setScale(1); if (this.skipOn) o.onSkip(); });
+      pill.on('pointerout', () => pill.setScale(1));
+      pill.setAlpha(0);
+      this.skipPill = pill;
+      this.skipOn = false;
+    }
+    // --- stage chips (intro): 개척 › 마을 › 읍 › 도시 (up to the stages this phone shows)
     this.chips = [];
     const names = this.tx.stages;
-    const cw = 118, gap = 26, total = cw * 4 + gap * 3;
+    const nc = Math.max(1, Math.min(4, o.cap || 4));
+    const cw = 118, gap = 26, total = cw * nc + gap * (nc - 1);
     const cy = H * this.L.chipsY - sb;
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= nc; i++) {
       const x = W / 2 - total / 2 + cw / 2 + (i - 1) * (cw + gap);
       const ct = this.add(s.add.container(x, cy), D + 1);
       const bg = s.add.graphics();
@@ -81,7 +106,7 @@ export class TitleUI {
       ct.add([bg, lb]);
       ct.setAlpha(0);
       this.chips.push({ ct, bg, lb, on: false, k: 0 });
-      if (i < 4) {
+      if (i < nc) {
         const ar = this.add(this.text(x + cw / 2 + gap / 2, cy, '›', 30, { strokeThickness: 0, color: '#ffffff' }).setOrigin(0.5).setAlpha(0), D + 1);
         this.chips[i - 1].arrow = ar;
       }
@@ -120,7 +145,18 @@ export class TitleUI {
   /** intro: show the stage chips with stage `s` active */
   setChip(s) { this.chipsTarget = 1; if (s !== this.cur) this.drawChips(s); }
   hideChips() { this.chipsTarget = 0; }
-  showSkip(on) { this.skipTarget = on ? 1 : 0; }
+  /** intro hint + skip pill; mode 'sound' | 'again' | 'skip' picks the hint text */
+  showSkip(on, mode) {
+    this.skipTarget = on ? 1 : 0;
+    this.skipOn = !!on;
+    if (mode && mode !== this.hintMode) {
+      this.hintMode = mode;
+      const c = !this.o.touch;
+      const tx = this.tx;
+      this.skip.setText(mode === 'sound' ? (c ? tx.soundClick : tx.sound) : mode === 'again' ? (c ? tx.againClick : tx.again) : (c ? tx.skipClick : tx.skip));
+      if (on) this.hintPop = 1;
+    }
+  }
   showTap() { if (this.tapOn) return; this.tapOn = true; this.tapBox.setVisible(true); this.tapK = 0; }
   showRibbon() { this.ribbonT = 0; this.ribbon.setVisible(true); }
 
@@ -129,7 +165,8 @@ export class TitleUI {
     this.tapOn = false; this.tapK = 0; this.tapBox.setVisible(false).setAlpha(0);
     if (this.pcHint) this.pcHint.setAlpha(0);
     if (this.gear) this.gear.setAlpha(0);
-    this.skipTarget = 0; this.skip.setAlpha(0);
+    this.skipTarget = 0; this.skip.setAlpha(0); this.skipOn = false;
+    if (this.skipPill) this.skipPill.setAlpha(0);
     this.chipsTarget = 0; this.chipsAlpha = 0; this.drawChips(0);
     this.ribbonT = -1; this.ribbon.setVisible(false);
   }
@@ -146,10 +183,16 @@ export class TitleUI {
       const pop = red ? 1 : 1 + Math.sin((1 - c.k) * Math.PI) * c.k * 0.35;
       c.ct.setScale(pop);
     }
-    // skip hint
+    // intro hint + skip pill
     if (this.skipTarget !== undefined) {
-      const a = this.skip.alpha + ((this.skipTarget * 0.8) - this.skip.alpha) * Math.min(1, dt * 4);
+      const a = this.skip.alpha + ((this.skipTarget * 0.9) - this.skip.alpha) * Math.min(1, dt * 4);
       this.skip.setAlpha(a);
+      if (this.hintPop > 0) { this.hintPop = Math.max(0, this.hintPop - dt * 3); this.skip.setScale(red ? 1 : 1 + 0.12 * Math.sin(this.hintPop * Math.PI)); }
+      if (this.skipPill) {
+        const pa = this.skipPill.alpha + ((this.skipTarget) - this.skipPill.alpha) * Math.min(1, dt * 4);
+        this.skipPill.setAlpha(pa);
+        if (this.skipPill.input) this.skipPill.input.enabled = pa > 0.3;
+      }
     }
     // start pill: pop in, then a gentle pulse
     if (this.tapOn) {
@@ -160,6 +203,8 @@ export class TitleUI {
       if (this.pcHint) this.pcHint.setAlpha(k * 0.95);
       if (this.gear) this.gear.setAlpha(k);
     }
+    // the gear only takes taps while it can be seen
+    if (this.gear && this.gear.input) this.gear.input.enabled = this.tapOn && this.gear.alpha > 0.5;
     // ribbon: pop, hold, fade
     if (this.ribbonT >= 0) {
       this.ribbonT += dt;

@@ -22,7 +22,9 @@ import { particle, finalKind, article } from './josa.js';
 
 const T_TEXT = 0, T_RULE = 1, T_SLOT = 2, T_JOSA = 3, T_LEVEL = 4, T_CHOICE = 5;
 
-export const SLOTS = ['X', 'Y', 'Z', 'P', 'Q', 'I', 'N', 'B', 'J', 'T', 'W', 'S', 'L', 'V', 'K', 'M', 'R', 'D', 'H', 'A', 'C', 'G', 'U', 'E', 'F', 'O'];
+// Q = the other version of a story (place or item: '{Q} 말고 {P}'), F = how the listener calls the speaker ('준영 삼촌'),
+// DO = what the person's job is about ('빵을 구워')
+export const SLOTS = ['X', 'Y', 'Z', 'P', 'Q', 'I', 'N', 'B', 'J', 'T', 'W', 'S', 'L', 'V', 'K', 'M', 'R', 'D', 'H', 'A', 'C', 'G', 'U', 'E', 'F', 'O', 'DO'];
 const SLOT_BIT = Object.create(null);
 SLOTS.forEach((s, i) => { SLOT_BIT[s] = 1 << i; });
 // S (speaker self) / L (listener) / V (vocative) / W (weather) / T (when) / K (chief) / R (bank rate) are always there

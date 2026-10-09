@@ -4,85 +4,85 @@
    "frame": {
     "x": 0,
     "y": 0,
-    "w": 246,
-    "h": 290
+    "w": 242,
+    "h": 285
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 246,
-    "h": 290
+    "w": 242,
+    "h": 285
    },
    "sourceSize": {
-    "w": 246,
-    "h": 290
+    "w": 242,
+    "h": 285
    }
   },
   "ttl_logo_main_1": {
    "frame": {
-    "x": 248,
+    "x": 244,
     "y": 0,
-    "w": 247,
-    "h": 281
+    "w": 244,
+    "h": 272
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 247,
-    "h": 281
+    "w": 244,
+    "h": 272
    },
    "sourceSize": {
-    "w": 247,
-    "h": 281
+    "w": 244,
+    "h": 272
    }
   },
   "ttl_logo_main_2": {
    "frame": {
-    "x": 497,
+    "x": 490,
     "y": 0,
-    "w": 258,
-    "h": 276
+    "w": 253,
+    "h": 272
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 258,
-    "h": 276
+    "w": 253,
+    "h": 272
    },
    "sourceSize": {
-    "w": 258,
-    "h": 276
+    "w": 253,
+    "h": 272
    }
   },
   "ttl_logo_main_0": {
    "frame": {
-    "x": 757,
+    "x": 745,
     "y": 0,
-    "w": 253,
-    "h": 272
+    "w": 252,
+    "h": 266
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 253,
-    "h": 272
+    "w": 252,
+    "h": 266
    },
    "sourceSize": {
-    "w": 253,
-    "h": 272
+    "w": 252,
+    "h": 266
    }
   },
   "ttl_logo_sign": {
    "frame": {
-    "x": 1012,
+    "x": 999,
     "y": 0,
     "w": 369,
     "h": 183
@@ -102,42 +102,42 @@
   },
   "ttl_logo_top": {
    "frame": {
-    "x": 1383,
+    "x": 1370,
     "y": 0,
-    "w": 497,
-    "h": 169
+    "w": 501,
+    "h": 165
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 497,
-    "h": 169
+    "w": 501,
+    "h": 165
    },
    "sourceSize": {
-    "w": 497,
-    "h": 169
+    "w": 501,
+    "h": 165
    }
   },
   "ttl_logo_emblem": {
    "frame": {
-    "x": 1882,
+    "x": 1873,
     "y": 0,
-    "w": 147,
-    "h": 145
+    "w": 138,
+    "h": 138
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 147,
-    "h": 145
+    "w": 138,
+    "h": 138
    },
    "sourceSize": {
-    "w": 147,
-    "h": 145
+    "w": 138,
+    "h": 138
    }
   }
  },
@@ -146,8 +146,8 @@
   "image": "ttl_logo_parts.png",
   "format": "RGBA8888",
   "size": {
-   "w": 2031,
-   "h": 290
+   "w": 2013,
+   "h": 285
   },
   "scale": "1"
  }

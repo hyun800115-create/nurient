@@ -118,10 +118,12 @@ def _frame_scale(box, w2x):
 
 
 LOGO_NOTES = {
-    'main': 'Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters with snow caps, the 눈꽃 emblem on 꽃) / '
-            '이야기 on a snowy wooden sign. Navy ink outline + soft shadow: reads over any sky.',
+    'main': 'Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters, snow caps only on the exposed tops so every '
+            'jamo stays apart at phone size; the 눈꽃 emblem blooms on the snow above 꽃) / 이야기 on a snowy wooden '
+            'sign. Navy ink outline (solid in the gaps between strokes) + soft shadow: reads over any sky.',
     'short': 'Short logo (@2x): 눈꽃 / 마을 in a 2 x 2 block with the emblem - splash, loading, badges.',
-    'en': 'English logo (@2x): Snowbloom (the o of bloom is the 눈꽃 emblem) / Village on the wooden sign.',
+    'en': 'English logo (@2x): Snowbloom in Fredoka 600 (open counters; the o of bloom is the 눈꽃 emblem) / '
+          'Village on the wooden sign.',
 }
 
 
@@ -177,8 +179,8 @@ def logo_main(cache):
         json.dump({'frames': frames, 'meta': {'app': 'tools/blender/ttl_pack.py', 'image': 'ttl_logo_parts.png',
                                               'format': 'RGBA8888', 'size': {'w': atlas.width, 'h': atlas.height},
                                               'scale': '1'}}, f, indent=1)
-    drop_order = ['ttl_logo_main_0', 'ttl_logo_main_1', 'ttl_logo_main_2', 'ttl_logo_main_3', 'ttl_logo_emblem',
-                  'ttl_logo_top', 'ttl_logo_sign']
+    letters = sorted([n for n in place if n.startswith('ttl_logo_main_')], key=lambda n: int(n.rsplit('_', 1)[1]))
+    drop_order = letters + ['ttl_logo_emblem', 'ttl_logo_top', 'ttl_logo_sign']
     fr_sprites, parts_meta = {}, []
     for name in sorted(place, key=lambda n: place[n]['index']):
         p = place[name]
@@ -193,7 +195,7 @@ def logo_main(cache):
     logo_meta = {'main': {'size2x': [out_w, out_h], 'parts': parts_meta,
                           'howTo': 'Parts are @2x like ttl_logo_main. Place each at logoCentre + (dx, dy) * '
                                    'scale with origin 0.5, depth = z; drop them in by "drop" order (letters '
-                                   'left to right, emblem pops on 꽃, 행복한 slides down, the sign swings in '
+                                   'left to right, emblem pops above 꽃, 행복한 slides down, the sign swings in '
                                    'last). pivot = the piece\'s own centre in origin units if you want to '
                                    'rotate / squash it around its glyph centre. When all have landed, swap '
                                    'to ttl_logo_main (identical pixels) and sweep the shine.'}}

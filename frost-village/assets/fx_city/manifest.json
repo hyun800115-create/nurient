@@ -6,6 +6,7 @@
   "blend": "Every sheet is NORMAL-blend artwork (saturated cores + darker warm / cool rims) so it reads on white snow, where ADD vanishes (handoff doc 04 §2.5). Fire / glows also look fine with ADD at night or over dark ground.",
   "sheets": "Frames left->right, wrapped into balanced rows so no sheet is wider than 2048 px (Phaser reads the grid row-major). Phaser anim key = sheet key (Assets.sheetAnims). Loops are seamless (every motion periodic over the frame count); one-shots show the effect from frame 0 and fade out on the last frames.",
   "tone": "Cute and family-friendly: comic dust-cloud scuffles (stars, no injuries), nobody is ever hurt in a fire, demolition is soft dust and planks.",
+  "lazy": "Texture memory: sheets with lazy: true are big and only needed during an incident - load their group on demand (group \"fire\" when the first fire starts, \"fight\" on the first scuffle, \"demolish\" before a demolition) and textures.remove() them a while after the last incident. GPU memory per group is listed in docs/build_reports/fx_city.md (fire ~29 MB, fight ~6 MB, demolish 3 MB; always-loaded core ~3.5 MB).",
   "icons": "ui4_icons: 96x96 soft-toy icons (house style of assets/ui, ui2, ui3), anchor [0.5, 0.5], trimmed atlas with sourceSize kept; they read at 32 px on cream and dark. No text baked anywhere.",
   "panels": "Panels are plain images (not atlas frames) so Phaser NineSlice can use them; margins in nineSlice, layout boxes in sprites[key] (contentInset = [left, top, right, bottom] px from the stretched edges; *Box = [x, y, w, h] in source px)."
  },
@@ -16,25 +17,2796 @@
   "stepPx": 32,
   "ropeTexture": "fx_hose_rope",
   "ropeLengthPx": 256,
+  "ropeTextureLong": "fx_hose_rope_long",
+  "ropeLengthLongPx": 512,
+  "ropeLongFromPx": 360,
   "tip": "fx_hose_tip",
   "impact": [
    "fx_water_mist",
    "fx_steam_puff"
   ],
-  "arc": "N = nozzle (cityfolk spray_hose nozzlePoint, or the fire truck hosePoint), T = target (fire anchor + [0, -0.3 * heightPx] or a window). Curve P(s) = N + (T - N) * s + [0, -h * 4 * s * (1 - s)] for s in 0..1 with arc height h = clamp(0.3 * |T - N|, 20, 120) px (the jet arcs up, then falls onto the target).",
-  "chain": "Split the curve into n = ceil(length / stepPx) equal arc-length steps L (<= 32 px): at each step place a sprite of fx_hose_stream with origin (0, 0.5) at the step start, rotation = angle of the curve tangent there, scaleX = (L + 1) / 32 (the texture is seamless, +1 px hides hairline gaps at the bends), scaleY = 1.0 -> 0.7 along the arc (the jet thins). All segments play the same anim in sync. Depth: above the firefighter, below the building fire. Put fx_hose_tip at the end point with the last rotation and fx_water_mist at T. Re-aim every frame by recomputing the points (cheap: ~8 sprites).",
-  "rope": "RECOMMENDED on WebGL: rope = this.add.rope(N.x, N.y, \"fx_hose_rope\", 0, points) with points = P(s) - N sampled every ~12 px (s = 0..1) and rope.setFrame((frame + 1) % 8) at 30 fps (or follow the fx_hose_rope anim); setPoints() again when re-aiming. One draw call, perfectly smooth bends; the 256 px texture is mapped once over the arc, so 200-450 px jets keep about the bead size. Thin it toward the end with rope.setColors / a slightly smaller scaleY, add fx_hose_tip + fx_water_mist at T.",
-  "chainNote": "The segment chain works on every renderer (Canvas too) but shows faint joints at tight bends; prefer the rope on WebGL.",
-  "demo": "tools/test/fx_city_phaser.mjs aims chained streams and ropes; gen_fx_city_scene.hose_rope() / hose_arc() are the Python versions of the rope / chain used by docs/previews/fxcity_scene.png and fxcity_hose_arc.gif."
+  "arc": "N = nozzle (cityfolk spray_hose nozzlePoint, or the fire truck hosePoint), T = target (a fire anchor + [0, -0.3 * heightPx * scale], or a window point). dx = T.x - N.x, dy = T.y - N.y, L = |T - N|. Arc height from the HORIZONTAL distance: h = clamp(0.3 * |dx|, 8, 120), then h = min(h, max(8, (1.2 * |dx| - dy) / 4)) so the jet never overshoots and hooks back down onto a target above it (end slope <= ~50 deg). Side bow b = 0.06 * L * max(0, 1 - |dx| / (0.5 * |dy| + 1)) (near-vertical aims get a soft curve instead of a rigid pole) + 0.025 * L * sin(time * 1.7) (the hose sways a little). Curve P(s) = N + (T - N) * s + [0, -h * 4 * s * (1 - s)] + nrm * b * 4 * s * (1 - s), s = 0..1, with nrm = the unit normal [-dy, dx] / L flipped so that nrm.x >= 0. End tangent = P(1) - P(0.99).",
+  "flip": "The jet textures (fx_hose_stream / _rope / _rope_long) are vertically symmetric: no flip at any angle. fx_hose_tip carries falling droplets: tip.setFlipY(T.x < N.x) so they fall down for leftward aims too.",
+  "depth": "Rope / chain depth = max(firefighter.depth, building.depth + 1) + 0.5 (the jet draws over the fire it hits); fx_hose_tip, fx_water_mist and fx_steam_puff at rope depth + 1.",
+  "chain": "Canvas fallback: split the curve into n = ceil(length / stepPx) equal arc-length steps L (<= 32 px): at each step a sprite of fx_hose_stream with origin (0, 0.5) at the step start, rotation = curve tangent there, scaleX = (L + 1) / 32 (seamless texture, +1 px hides hairline gaps), scaleY = 1.0 -> 0.7 along the arc (the jet thins). All segments play the same anim in sync. fx_hose_tip at the end point with the last rotation and scaleY 0.7, fx_water_mist at T. Re-aim every frame (~8-15 sprites).",
+  "rope": "RECOMMENDED on WebGL: tex = arcLength > ropeLongFromPx ? fx_hose_rope_long : fx_hose_rope; rope = this.add.rope(N.x, N.y, tex, 0, points) with points = P(s) - N sampled every ~12 px and rope.setFrame((frame + 1) % 8) at 30 fps; setPoints() again when re-aiming (and every frame for the sway). The texture is mapped once over the arc, so the beads stay 0.7-1.4x their size. Thin it toward the end (scaleY 1 -> 0.7 via setPoints width or a smaller rope.scaleY), then fx_hose_tip (scaleY 0.7) + fx_water_mist at T.",
+  "chainNote": "The segment chain shows faint steps at tight bends (rotated straight segments); the Rope is smooth - prefer it whenever the renderer is WebGL.",
+  "demo": "tools/test/fx_city_phaser.mjs aims ropes and chains in 8 directions with these exact rules; gen_fx_city_scene.hose_rope() / hose_arc() are the Python versions used by docs/previews/fxcity_scene.png and fxcity_hose_arc.gif."
  },
  "fireMount": {
-  "pick": "Pick the fire sheet from the building footprint width fw = sprites[k].footprint[0]: fw <= 280 -> fx_fire_bld_s, fw <= 380 -> fx_fire_bld_m, else fx_fire_bld_l.",
-  "place": "Fire anchor = building anchor + [0, -0.55 * topPx] (base of the flames at about eave height so the crown engulfs the roof); scale = clamp(0.85 * fw / baseWidthPx, 0.7, 1.3); depth = building depth + 1.",
-  "grow": "Start: one fx_fire_window (alpha tween in) + fx_smoke_column at scale 0.5. Full fire: fx_fire_bld_* + 1-2 fx_fire_window + fx_smoke_column (scale 1) + fx_embers. Dying: lower the fire alpha / scale to 0.6, spawn fx_steam_puff more often, tint the smoke lighter (0xdfe4ec) -> swap the building for the civic ruin_* sprite and keep a small smoke column (scale 0.45) + fx_embers (alpha 0.5) for a while.",
-  "alarm": "fx_alarm_flash on the fire_alarm_post (or above the building, anchor + [0, -topPx - 30]) until the fire truck arrives; fx_siren_glow_red at the truck sirenPoint."
+  "buildings": {
+   "clinic": {
+    "fires": [
+     [
+      0,
+      -200,
+      "fx_fire_bld_m",
+      0.97,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -306,
+     0.97
+    ],
+    "embers": [
+     0,
+     -251
+    ],
+    "glow": [
+     0,
+     -196,
+     1.44
+    ],
+    "windows": [
+     [
+      -84,
+      -137,
+      false,
+      0.8
+     ],
+     [
+      60,
+      -97,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -361
+    ],
+    "fragment": "town"
+   },
+   "fire_station": {
+    "fires": [
+     [
+      0,
+      -184,
+      "fx_fire_bld_m",
+      1.111,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -305,
+     1.11
+    ],
+    "embers": [
+     0,
+     -243
+    ],
+    "glow": [
+     0,
+     -180,
+     1.65
+    ],
+    "windows": [
+     [
+      -129,
+      -128,
+      false,
+      0.8
+     ],
+     [
+      77,
+      -120,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -378
+    ],
+    "fragment": "town"
+   },
+   "police_box": {
+    "fires": [
+     [
+      0,
+      -113,
+      "fx_fire_bld_s",
+      0.738,
+      1.0
+     ]
+    ],
+    "smoke": [
+     6,
+     -175,
+     0.74
+    ],
+    "embers": [
+     0,
+     -143
+    ],
+    "glow": [
+     0,
+     -109,
+     1.0
+    ],
+    "windows": [
+     [
+      -51,
+      -66,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -205
+    ],
+    "fragment": "town"
+   },
+   "post_office": {
+    "fires": [
+     [
+      0,
+      -196,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -299,
+     0.94
+    ],
+    "embers": [
+     0,
+     -246
+    ],
+    "glow": [
+     0,
+     -192,
+     1.4
+    ],
+    "windows": [
+     [
+      -82,
+      -136,
+      false,
+      0.8
+     ],
+     [
+      65,
+      -91,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -361
+    ],
+    "fragment": "town"
+   },
+   "school": {
+    "fires": [
+     [
+      -57,
+      -281,
+      "fx_fire_bld_s",
+      1.041,
+      1.0
+     ],
+     [
+      57,
+      -183,
+      "fx_fire_bld_s",
+      1.041,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -49,
+     -369,
+     1.2
+    ],
+    "embers": [
+     -57,
+     -323
+    ],
+    "glow": [
+     0,
+     -277,
+     2.25
+    ],
+    "windows": [
+     [
+      -120,
+      -180,
+      false,
+      0.8
+     ],
+     [
+      128,
+      -139,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -489
+    ],
+    "fragment": "town"
+   },
+   "town_hall": {
+    "fires": [
+     [
+      0,
+      -222,
+      "fx_fire_bld_l",
+      0.967,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -351,
+     0.97
+    ],
+    "embers": [
+     0,
+     -285
+    ],
+    "glow": [
+     0,
+     -218,
+     1.87
+    ],
+    "windows": [
+     [
+      -104,
+      -149,
+      false,
+      0.8
+     ],
+     [
+      95,
+      -104,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -423
+    ],
+    "fragment": "town"
+   },
+   "train_station": {
+    "fires": [
+     [
+      -63,
+      -198,
+      "fx_fire_bld_s",
+      1.138,
+      1.0
+     ],
+     [
+      63,
+      -136,
+      "fx_fire_bld_s",
+      1.138,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -54,
+     -294,
+     1.2
+    ],
+    "embers": [
+     -63,
+     -244
+    ],
+    "glow": [
+     0,
+     -194,
+     2.46
+    ],
+    "windows": [
+     [
+      -144,
+      -101,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -326
+    ],
+    "fragment": "town"
+   },
+   "bookstore": {
+    "fires": [
+     [
+      0,
+      -212,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -305,
+     0.86
+    ],
+    "embers": [
+     0,
+     -257
+    ],
+    "glow": [
+     0,
+     -208,
+     1.28
+    ],
+    "windows": [
+     [
+      -78,
+      -136,
+      false,
+      0.8
+     ],
+     [
+      60,
+      -94,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -361
+    ],
+    "fragment": "town"
+   },
+   "cafe": {
+    "fires": [
+     [
+      0,
+      -202,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -295,
+     0.86
+    ],
+    "embers": [
+     0,
+     -247
+    ],
+    "glow": [
+     0,
+     -198,
+     1.28
+    ],
+    "windows": [
+     [
+      -55,
+      -185,
+      false,
+      0.8
+     ],
+     [
+      62,
+      -110,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -325
+    ],
+    "fragment": "town"
+   },
+   "carpenter_workshop": {
+    "fires": [
+     [
+      0,
+      -182,
+      "fx_fire_bld_m",
+      0.913,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -282,
+     0.91
+    ],
+    "embers": [
+     0,
+     -230
+    ],
+    "glow": [
+     0,
+     -178,
+     1.36
+    ],
+    "windows": [
+     [
+      -78,
+      -101,
+      false,
+      1.0
+     ],
+     [
+      78,
+      -101,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -339
+    ],
+    "windowsGuess": true,
+    "fragment": "town"
+   },
+   "clothing_store": {
+    "fires": [
+     [
+      0,
+      -212,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -305,
+     0.86
+    ],
+    "embers": [
+     0,
+     -257
+    ],
+    "glow": [
+     0,
+     -208,
+     1.28
+    ],
+    "windows": [
+     [
+      -78,
+      -136,
+      false,
+      0.8
+     ],
+     [
+      51,
+      -102,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -361
+    ],
+    "fragment": "town"
+   },
+   "flower_shop": {
+    "fires": [
+     [
+      0,
+      -202,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -295,
+     0.86
+    ],
+    "embers": [
+     0,
+     -247
+    ],
+    "glow": [
+     0,
+     -198,
+     1.28
+    ],
+    "windows": [
+     [
+      -85,
+      -141,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -352
+    ],
+    "fragment": "town"
+   },
+   "hair_salon": {
+    "fires": [
+     [
+      0,
+      -217,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -310,
+     0.86
+    ],
+    "embers": [
+     0,
+     -262
+    ],
+    "glow": [
+     0,
+     -213,
+     1.28
+    ],
+    "windows": [
+     [
+      -55,
+      -185,
+      false,
+      0.8
+     ],
+     [
+      60,
+      -110,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -352
+    ],
+    "fragment": "town"
+   },
+   "hardware_store": {
+    "fires": [
+     [
+      0,
+      -144,
+      "fx_fire_bld_m",
+      0.885,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -241,
+     0.88
+    ],
+    "embers": [
+     0,
+     -191
+    ],
+    "glow": [
+     0,
+     -140,
+     1.32
+    ],
+    "windows": [
+     [
+      -76,
+      -86,
+      false,
+      1.0
+     ],
+     [
+      76,
+      -86,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -295
+    ],
+    "windowsGuess": true,
+    "fragment": "town"
+   },
+   "restaurant": {
+    "fires": [
+     [
+      0,
+      -211,
+      "fx_fire_bld_m",
+      0.885,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -308,
+     0.88
+    ],
+    "embers": [
+     0,
+     -258
+    ],
+    "glow": [
+     0,
+     -207,
+     1.32
+    ],
+    "windows": [
+     [
+      -80,
+      -137,
+      false,
+      0.8
+     ],
+     [
+      65,
+      -92,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -364
+    ],
+    "fragment": "town"
+   },
+   "supermarket": {
+    "fires": [
+     [
+      0,
+      -130,
+      "fx_fire_bld_m",
+      1.111,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -251,
+     1.11
+    ],
+    "embers": [
+     0,
+     -189
+    ],
+    "glow": [
+     0,
+     -126,
+     1.65
+    ],
+    "windows": [
+     [
+      -119,
+      -65,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -308
+    ],
+    "fragment": "town"
+   },
+   "toy_shop": {
+    "fires": [
+     [
+      0,
+      -206,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -299,
+     0.86
+    ],
+    "embers": [
+     0,
+     -251
+    ],
+    "glow": [
+     0,
+     -202,
+     1.28
+    ],
+    "windows": [
+     [
+      -65,
+      -135,
+      false,
+      0.8
+     ],
+     [
+      60,
+      -111,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -326
+    ],
+    "fragment": "town"
+   },
+   "apartment_a": {
+    "fires": [
+     [
+      0,
+      -328,
+      "fx_fire_bld_m",
+      1.083,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -446,
+     1.08
+    ],
+    "embers": [
+     0,
+     -385
+    ],
+    "glow": [
+     0,
+     -324,
+     1.61
+    ],
+    "windows": [
+     [
+      -112,
+      -298,
+      false,
+      1.15
+     ],
+     [
+      120,
+      -276,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -475
+    ],
+    "fragment": "town"
+   },
+   "apartment_b": {
+    "fires": [
+     [
+      0,
+      -281,
+      "fx_fire_bld_m",
+      1.055,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -396,
+     1.05
+    ],
+    "embers": [
+     0,
+     -337
+    ],
+    "glow": [
+     0,
+     -277,
+     1.57
+    ],
+    "windows": [
+     [
+      -72,
+      -301,
+      false,
+      1.04
+     ],
+     [
+      104,
+      -256,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -454
+    ],
+    "fragment": "town"
+   },
+   "townhouse_a": {
+    "fires": [
+     [
+      0,
+      -207,
+      "fx_fire_bld_s",
+      1.019,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -293,
+     1.02
+    ],
+    "embers": [
+     0,
+     -249
+    ],
+    "glow": [
+     0,
+     -203,
+     1.1
+    ],
+    "windows": [
+     [
+      -57,
+      -186,
+      false,
+      0.8
+     ],
+     [
+      48,
+      -112,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -332
+    ],
+    "fragment": "town"
+   },
+   "townhouse_b": {
+    "fires": [
+     [
+      0,
+      -190,
+      "fx_fire_bld_s",
+      1.019,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -276,
+     1.02
+    ],
+    "embers": [
+     0,
+     -232
+    ],
+    "glow": [
+     0,
+     -186,
+     1.1
+    ],
+    "windows": [
+     [
+      -76,
+      -134,
+      false,
+      0.8
+     ],
+     [
+      37,
+      -106,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -321
+    ],
+    "fragment": "town"
+   },
+   "townhouse_c": {
+    "fires": [
+     [
+      0,
+      -209,
+      "fx_fire_bld_s",
+      1.019,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -295,
+     1.02
+    ],
+    "embers": [
+     0,
+     -251
+    ],
+    "glow": [
+     0,
+     -205,
+     1.1
+    ],
+    "windows": [
+     [
+      -57,
+      -186,
+      false,
+      0.8
+     ],
+     [
+      48,
+      -112,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -332
+    ],
+    "fragment": "town"
+   },
+   "townhouse_d": {
+    "fires": [
+     [
+      0,
+      -190,
+      "fx_fire_bld_s",
+      1.019,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -276,
+     1.02
+    ],
+    "embers": [
+     0,
+     -232
+    ],
+    "glow": [
+     0,
+     -186,
+     1.1
+    ],
+    "windows": [
+     [
+      -77,
+      -134,
+      false,
+      0.8
+     ],
+     [
+      47,
+      -113,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -321
+    ],
+    "fragment": "town"
+   },
+   "warehouse": {
+    "fires": [
+     [
+      0,
+      -134,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -227,
+     0.86
+    ],
+    "embers": [
+     0,
+     -179
+    ],
+    "glow": [
+     0,
+     -130,
+     1.28
+    ],
+    "windows": [
+     [
+      -73,
+      -78,
+      false,
+      1.0
+     ],
+     [
+      73,
+      -78,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -269
+    ],
+    "windowsGuess": true,
+    "fragment": "buildings"
+   },
+   "station_cannery": {
+    "fires": [
+     [
+      0,
+      -160,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -253,
+     0.86
+    ],
+    "embers": [
+     0,
+     -205
+    ],
+    "glow": [
+     0,
+     -156,
+     1.28
+    ],
+    "windows": [
+     [
+      19,
+      -70,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -277
+    ],
+    "fragment": "buildings"
+   },
+   "shop_general": {
+    "fires": [
+     [
+      0,
+      -155,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -248,
+     0.86
+    ],
+    "embers": [
+     0,
+     -200
+    ],
+    "glow": [
+     0,
+     -151,
+     1.28
+    ],
+    "windows": [
+     [
+      -99,
+      -108,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -285
+    ],
+    "fragment": "buildings"
+   },
+   "station_toolsmith": {
+    "fires": [
+     [
+      0,
+      -130,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -223,
+     0.86
+    ],
+    "embers": [
+     0,
+     -175
+    ],
+    "glow": [
+     0,
+     -126,
+     1.28
+    ],
+    "windows": [
+     [
+      -73,
+      -88,
+      false,
+      1.0
+     ],
+     [
+      73,
+      -88,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -300
+    ],
+    "windowsGuess": true,
+    "fragment": "buildings"
+   },
+   "house_a": {
+    "fires": [
+     [
+      0,
+      -102,
+      "fx_fire_bld_s",
+      0.863,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -175,
+     0.86
+    ],
+    "embers": [
+     0,
+     -137
+    ],
+    "glow": [
+     0,
+     -98,
+     1.0
+    ],
+    "windows": [
+     [
+      -75,
+      -66,
+      false,
+      0.8
+     ],
+     [
+      59,
+      -39,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -237
+    ],
+    "fragment": "buildings"
+   },
+   "house_b": {
+    "fires": [
+     [
+      0,
+      -116,
+      "fx_fire_bld_s",
+      0.926,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -194,
+     0.93
+    ],
+    "embers": [
+     0,
+     -154
+    ],
+    "glow": [
+     0,
+     -112,
+     1.06
+    ],
+    "windows": [
+     [
+      -77,
+      -40,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -223
+    ],
+    "fragment": "buildings"
+   },
+   "house_c": {
+    "fires": [
+     [
+      0,
+      -150,
+      "fx_fire_bld_s",
+      0.85,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -222,
+     0.85
+    ],
+    "embers": [
+     0,
+     -185
+    ],
+    "glow": [
+     0,
+     -146,
+     1.0
+    ],
+    "windows": [
+     [
+      -48,
+      -114,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -271
+    ],
+    "fragment": "buildings"
+   },
+   "watchtower": {
+    "fires": [
+     [
+      0,
+      -213,
+      "fx_fire_bld_s",
+      0.85,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -285,
+     0.85
+    ],
+    "embers": [
+     0,
+     -248
+    ],
+    "glow": [
+     0,
+     -209,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -375
+    ],
+    "windowsGuess": true,
+    "fragment": "buildings"
+   },
+   "boathouse": {
+    "fires": [
+     [
+      0,
+      -116,
+      "fx_fire_bld_s",
+      0.98,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -199,
+     0.98
+    ],
+    "embers": [
+     0,
+     -156
+    ],
+    "glow": [
+     0,
+     -112,
+     1.06
+    ],
+    "windows": [
+     [
+      -13,
+      -49,
+      false,
+      0.8
+     ],
+     [
+      37,
+      -55,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -236
+    ],
+    "fragment": "buildings"
+   },
+   "harbor_crane": {
+    "fires": [
+     [
+      0,
+      -192,
+      "fx_fire_bld_s",
+      1.136,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -288,
+     1.14
+    ],
+    "embers": [
+     0,
+     -238
+    ],
+    "glow": [
+     0,
+     -188,
+     1.23
+    ],
+    "windows": [
+     [
+      -60,
+      -166,
+      false,
+      0.86
+     ],
+     [
+      55,
+      -192,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -313
+    ],
+    "fragment": "harbor"
+   },
+   "lighthouse": {
+    "fires": [
+     [
+      0,
+      -263,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -366,
+     0.94
+    ],
+    "embers": [
+     0,
+     -313
+    ],
+    "glow": [
+     0,
+     -259,
+     1.4
+    ],
+    "windows": [
+     [
+      3,
+      -97,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -462
+    ],
+    "fragment": "harbor"
+   },
+   "customs_house": {
+    "fires": [
+     [
+      0,
+      -172,
+      "fx_fire_bld_m",
+      1.14,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -296,
+     1.14
+    ],
+    "embers": [
+     0,
+     -232
+    ],
+    "glow": [
+     0,
+     -168,
+     1.7
+    ],
+    "windows": [
+     [
+      -66,
+      -185,
+      false,
+      0.8
+     ],
+     [
+      91,
+      -133,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -342
+    ],
+    "fragment": "harbor"
+   },
+   "ferry_terminal": {
+    "fires": [
+     [
+      -56,
+      -192,
+      "fx_fire_bld_s",
+      1.021,
+      1.0
+     ],
+     [
+      56,
+      -153,
+      "fx_fire_bld_s",
+      1.021,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -48,
+     -278,
+     1.2
+    ],
+    "embers": [
+     -56,
+     -234
+    ],
+    "glow": [
+     0,
+     -188,
+     2.21
+    ],
+    "windows": [
+     [
+      -130,
+      -110,
+      false,
+      0.96
+     ],
+     [
+      115,
+      -137,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -326
+    ],
+    "fragment": "harbor"
+   },
+   "fish_auction": {
+    "fires": [
+     [
+      -53,
+      -204,
+      "fx_fire_bld_s",
+      0.982,
+      1.0
+     ],
+     [
+      53,
+      -172,
+      "fx_fire_bld_s",
+      0.982,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -45,
+     -287,
+     1.2
+    ],
+    "embers": [
+     -53,
+     -244
+    ],
+    "glow": [
+     0,
+     -200,
+     2.12
+    ],
+    "windows": [
+     [
+      125,
+      -65,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -333
+    ],
+    "fragment": "harbor"
+   },
+   "harbor_market": {
+    "fires": [
+     [
+      0,
+      -84,
+      "fx_fire_bld_l",
+      0.923,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -208,
+     0.92
+    ],
+    "embers": [
+     0,
+     -144
+    ],
+    "glow": [
+     0,
+     -80,
+     1.78
+    ],
+    "windows": [
+     [
+      -103,
+      -72,
+      false,
+      1.0
+     ],
+     [
+      103,
+      -72,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -251
+    ],
+    "windowsGuess": true,
+    "fragment": "harbor"
+   },
+   "harbor_office": {
+    "fires": [
+     [
+      0,
+      -224,
+      "fx_fire_bld_m",
+      0.885,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -321,
+     0.88
+    ],
+    "embers": [
+     0,
+     -271
+    ],
+    "glow": [
+     0,
+     -220,
+     1.32
+    ],
+    "windows": [
+     [
+      -25,
+      -245,
+      false,
+      1.11
+     ],
+     [
+      57,
+      -245,
+      true,
+      1.11
+     ]
+    ],
+    "alarm": [
+     0,
+     -430
+    ],
+    "fragment": "harbor"
+   },
+   "harbor_warehouse": {
+    "fires": [
+     [
+      57,
+      -189,
+      "fx_fire_bld_s",
+      1.08,
+      1.0
+     ],
+     [
+      -57,
+      -188,
+      "fx_fire_bld_s",
+      1.08,
+      1.01
+     ]
+    ],
+    "smoke": [
+     66,
+     -280,
+     1.2
+    ],
+    "embers": [
+     57,
+     -233
+    ],
+    "glow": [
+     0,
+     -185,
+     2.33
+    ],
+    "windows": [
+     [
+      -130,
+      -200,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -346
+    ],
+    "fragment": "harbor"
+   },
+   "sailor_lodge": {
+    "fires": [
+     [
+      0,
+      -255,
+      "fx_fire_bld_m",
+      0.913,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -355,
+     0.91
+    ],
+    "embers": [
+     0,
+     -303
+    ],
+    "glow": [
+     0,
+     -251,
+     1.36
+    ],
+    "windows": [
+     [
+      -55,
+      -234,
+      false,
+      0.8
+     ],
+     [
+      70,
+      -196,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -402
+    ],
+    "fragment": "harbor"
+   },
+   "seafood_restaurant": {
+    "fires": [
+     [
+      0,
+      -190,
+      "fx_fire_bld_m",
+      0.97,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -296,
+     0.97
+    ],
+    "embers": [
+     0,
+     -241
+    ],
+    "glow": [
+     0,
+     -186,
+     1.44
+    ],
+    "windows": [
+     [
+      -64,
+      -199,
+      false,
+      0.8
+     ],
+     [
+      99,
+      -142,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -357
+    ],
+    "fragment": "harbor"
+   },
+   "shipyard": {
+    "fires": [
+     [
+      62,
+      -56,
+      "fx_fire_bld_m",
+      0.816,
+      1.0
+     ],
+     [
+      -62,
+      -52,
+      "fx_fire_bld_m",
+      0.816,
+      1.01
+     ]
+    ],
+    "smoke": [
+     69,
+     -145,
+     1.02
+    ],
+    "embers": [
+     62,
+     -99
+    ],
+    "glow": [
+     0,
+     -52,
+     2.55
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -225
+    ],
+    "fragment": "harbor"
+   },
+   "bus_depot": {
+    "fires": [
+     [
+      -60,
+      -237,
+      "fx_fire_bld_m",
+      0.855,
+      1.0
+     ],
+     [
+      60,
+      -219,
+      "fx_fire_bld_m",
+      0.855,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -53,
+     -330,
+     1.07
+    ],
+    "embers": [
+     -60,
+     -282
+    ],
+    "glow": [
+     0,
+     -233,
+     2.55
+    ],
+    "windows": [
+     [
+      -130,
+      -113,
+      false,
+      0.8
+     ],
+     [
+      217,
+      -69,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -369
+    ],
+    "fragment": "vehicles"
+   },
+   "bus_depot_open": {
+    "fires": [
+     [
+      -60,
+      -237,
+      "fx_fire_bld_m",
+      0.855,
+      1.0
+     ],
+     [
+      60,
+      -219,
+      "fx_fire_bld_m",
+      0.855,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -53,
+     -330,
+     1.07
+    ],
+    "embers": [
+     -60,
+     -282
+    ],
+    "glow": [
+     0,
+     -233,
+     2.55
+    ],
+    "windows": [
+     [
+      -130,
+      -113,
+      false,
+      0.8
+     ],
+     [
+      217,
+      -69,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -369
+    ],
+    "fragment": "vehicles"
+   },
+   "fuel_depot": {
+    "fires": [
+     [
+      -46,
+      -130,
+      "fx_fire_bld_s",
+      0.902,
+      1.0
+     ],
+     [
+      46,
+      -108,
+      "fx_fire_bld_s",
+      0.902,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -39,
+     -206,
+     1.13
+    ],
+    "embers": [
+     -46,
+     -167
+    ],
+    "glow": [
+     0,
+     -126,
+     1.95
+    ],
+    "windows": [
+     [
+      -72,
+      -142,
+      false,
+      0.8
+     ],
+     [
+      70,
+      -90,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -277
+    ],
+    "fragment": "vehicles"
+   },
+   "garage_small": {
+    "fires": [
+     [
+      0,
+      -137,
+      "fx_fire_bld_m",
+      1.111,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -258,
+     1.11
+    ],
+    "embers": [
+     0,
+     -196
+    ],
+    "glow": [
+     0,
+     -133,
+     1.65
+    ],
+    "windows": [
+     [
+      -142,
+      -53,
+      false,
+      0.82
+     ],
+     [
+      100,
+      -59,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -295
+    ],
+    "fragment": "vehicles"
+   },
+   "garage_small_open": {
+    "fires": [
+     [
+      0,
+      -137,
+      "fx_fire_bld_m",
+      1.111,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -258,
+     1.11
+    ],
+    "embers": [
+     0,
+     -196
+    ],
+    "glow": [
+     0,
+     -133,
+     1.65
+    ],
+    "windows": [
+     [
+      100,
+      -59,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -295
+    ],
+    "fragment": "vehicles"
+   },
+   "stable_depot": {
+    "fires": [
+     [
+      -44,
+      -203,
+      "fx_fire_bld_s",
+      0.883,
+      1.0
+     ],
+     [
+      44,
+      -144,
+      "fx_fire_bld_s",
+      0.883,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -37,
+     -277,
+     1.1
+    ],
+    "embers": [
+     -44,
+     -239
+    ],
+    "glow": [
+     0,
+     -199,
+     1.91
+    ],
+    "windows": [
+     [
+      -174,
+      -57,
+      false,
+      0.8
+     ],
+     [
+      192,
+      -97,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -339
+    ],
+    "fragment": "vehicles"
+   },
+   "logistics_center": {
+    "fires": [
+     [
+      -129,
+      -351,
+      "fx_fire_bld_m",
+      0.902,
+      1.0
+     ],
+     [
+      0,
+      -286,
+      "fx_fire_bld_m",
+      0.902,
+      1.01
+     ],
+     [
+      129,
+      -198,
+      "fx_fire_bld_m",
+      0.902,
+      1.02
+     ]
+    ],
+    "smoke": [
+     7,
+     -384,
+     1.2
+    ],
+    "embers": [
+     0,
+     -334
+    ],
+    "glow": [
+     0,
+     -282,
+     4.03
+    ],
+    "windows": [
+     [
+      -232,
+      -161,
+      false,
+      1.0
+     ],
+     [
+      232,
+      -161,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -521
+    ],
+    "windowsGuess": true,
+    "fragment": "logistics"
+   },
+   "furniture_workshop": {
+    "fires": [
+     [
+      0,
+      -140,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -233,
+     0.86
+    ],
+    "embers": [
+     0,
+     -185
+    ],
+    "glow": [
+     0,
+     -136,
+     1.28
+    ],
+    "windows": [
+     [
+      18,
+      -62,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -275
+    ],
+    "fragment": "logistics"
+   },
+   "appliance_factory": {
+    "fires": [
+     [
+      0,
+      -99,
+      "fx_fire_bld_m",
+      0.856,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -192,
+     0.86
+    ],
+    "embers": [
+     0,
+     -144
+    ],
+    "glow": [
+     0,
+     -95,
+     1.28
+    ],
+    "windows": [
+     [
+      73,
+      -91,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -308
+    ],
+    "windowsGuess": true,
+    "fragment": "logistics"
+   },
+   "station_grill": {
+    "fires": [
+     [
+      0,
+      -23,
+      "fx_fire_bld_s",
+      0.51,
+      1.0
+     ]
+    ],
+    "smoke": [
+     4,
+     -66,
+     0.51
+    ],
+    "embers": [
+     0,
+     -44
+    ],
+    "glow": [
+     0,
+     -19,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -123
+    ],
+    "fragment": "props"
+   },
+   "station_sawmill": {
+    "fires": [
+     [
+      0,
+      -27,
+      "fx_fire_bld_s",
+      0.518,
+      1.0
+     ]
+    ],
+    "smoke": [
+     4,
+     -71,
+     0.52
+    ],
+    "embers": [
+     0,
+     -48
+    ],
+    "glow": [
+     0,
+     -23,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -125
+    ],
+    "fragment": "props"
+   },
+   "station_bakery": {
+    "fires": [
+     [
+      0,
+      -34,
+      "fx_fire_bld_s",
+      0.717,
+      1.0
+     ]
+    ],
+    "smoke": [
+     6,
+     -94,
+     0.72
+    ],
+    "embers": [
+     0,
+     -63
+    ],
+    "glow": [
+     0,
+     -30,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -193
+    ],
+    "fragment": "props"
+   },
+   "station_smelter": {
+    "fires": [
+     [
+      0,
+      -69,
+      "fx_fire_bld_s",
+      0.686,
+      1.0
+     ]
+    ],
+    "smoke": [
+     5,
+     -127,
+     0.69
+    ],
+    "embers": [
+     0,
+     -97
+    ],
+    "glow": [
+     0,
+     -65,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -192
+    ],
+    "fragment": "props"
+   },
+   "station_smokehouse": {
+    "fires": [
+     [
+      0,
+      -80,
+      "fx_fire_bld_s",
+      0.669,
+      1.0
+     ]
+    ],
+    "smoke": [
+     5,
+     -136,
+     0.67
+    ],
+    "embers": [
+     0,
+     -107
+    ],
+    "glow": [
+     0,
+     -76,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -188
+    ],
+    "fragment": "props"
+   },
+   "market_counter": {
+    "fires": [
+     [
+      0,
+      -132,
+      "fx_fire_bld_s",
+      0.85,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -204,
+     0.85
+    ],
+    "embers": [
+     0,
+     -167
+    ],
+    "glow": [
+     0,
+     -128,
+     1.0
+    ],
+    "windows": [
+     [
+      -53,
+      -66,
+      false,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -234
+    ],
+    "windowsGuess": true,
+    "fragment": "props"
+   },
+   "trade_post": {
+    "fires": [
+     [
+      0,
+      -129,
+      "fx_fire_bld_s",
+      0.924,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -207,
+     0.92
+    ],
+    "embers": [
+     0,
+     -167
+    ],
+    "glow": [
+     0,
+     -125,
+     1.0
+    ],
+    "windows": [
+     [
+      -38,
+      -47,
+      false,
+      0.8
+     ],
+     [
+      13,
+      -53,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -235
+    ],
+    "fragment": "props"
+   },
+   "worker_hut": {
+    "fires": [
+     [
+      0,
+      -112,
+      "fx_fire_bld_s",
+      1.019,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -198,
+     1.02
+    ],
+    "embers": [
+     0,
+     -154
+    ],
+    "glow": [
+     0,
+     -108,
+     1.1
+    ],
+    "windows": [
+     [
+      -63,
+      -73,
+      false,
+      1.0
+     ],
+     [
+      63,
+      -73,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -254
+    ],
+    "windowsGuess": true,
+    "fragment": "props"
+   },
+   "chief_lodge": {
+    "fires": [
+     [
+      0,
+      -155,
+      "fx_fire_bld_l",
+      0.901,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -276,
+     0.9
+    ],
+    "embers": [
+     0,
+     -213
+    ],
+    "glow": [
+     0,
+     -151,
+     1.74
+    ],
+    "windows": [
+     [
+      -100,
+      -110,
+      false,
+      1.0
+     ],
+     [
+      100,
+      -110,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -368
+    ],
+    "windowsGuess": true,
+    "fragment": "props"
+   },
+   "tent_a": {
+    "fires": [
+     [
+      0,
+      -46,
+      "fx_fire_bld_s",
+      0.527,
+      1.0
+     ]
+    ],
+    "smoke": [
+     4,
+     -90,
+     0.53
+    ],
+    "embers": [
+     0,
+     -68
+    ],
+    "glow": [
+     0,
+     -42,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -158
+    ],
+    "fragment": "props"
+   },
+   "upgrade_bench": {
+    "fires": [
+     [
+      0,
+      -83,
+      "fx_fire_bld_s",
+      0.62,
+      1.0
+     ]
+    ],
+    "smoke": [
+     5,
+     -135,
+     0.62
+    ],
+    "embers": [
+     0,
+     -108
+    ],
+    "glow": [
+     0,
+     -79,
+     1.0
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -179
+    ],
+    "fragment": "props"
+   },
+   "fish_net": {
+    "fires": [
+     [
+      0,
+      29,
+      "fx_fire_bld_s",
+      0.658,
+      1.0
+     ]
+    ],
+    "smoke": [
+     5,
+     -27,
+     0.66
+    ],
+    "embers": [
+     0,
+     2
+    ],
+    "glow": [
+     0,
+     33,
+     1.19
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -87
+    ],
+    "fragment": "props"
+   },
+   "dock_pier": {
+    "fires": [
+     [
+      0,
+      -5,
+      "fx_fire_bld_m",
+      0.79,
+      1.0
+     ]
+    ],
+    "smoke": [
+     6,
+     -91,
+     0.79
+    ],
+    "embers": [
+     0,
+     -47
+    ],
+    "glow": [
+     0,
+     -1,
+     1.36
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -206
+    ],
+    "fragment": "props"
+   },
+   "mine_entrance": {
+    "fires": [
+     [
+      0,
+      -79,
+      "fx_fire_bld_s",
+      0.971,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -161,
+     0.97
+    ],
+    "embers": [
+     0,
+     -119
+    ],
+    "glow": [
+     0,
+     -75,
+     1.2
+    ],
+    "windows": [
+     [
+      0,
+      -50,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -209
+    ],
+    "fragment": "props"
+   }
+  },
+  "buildingsFormat": "buildings[spriteKey] = {fires: [[dx, dy, sheetKey, scale, depthOffset], ...] (back -> front), glow: [dx, dy, scale] (fx_fire_glow, depth = building + 0.9), smoke: [dx, dy, scale] (fx_smoke_column), embers: [dx, dy], windows: [[dx, dy, flipX, scale], ...] (fx_fire_window; windowsGuess = no lit panes found, heuristic points), alarm: [dx, dy] (fx_alarm_flash), fragment}. Offsets in px from the building anchor at scale 1 (multiply by the building scale). MEASURED from each building render by tools/fx/gen_fx_city_mount.py (roof line = median top edge, so towers / chimneys / floating shop signs do not lift the fire); preview: docs/previews/fxcity_firemount.png.",
+  "pick": "Fallback for buildings not in the table (new fragments): fw = footprint[0]; n = ceil(fw / 400) fires; each covers fw / n: S if 0.85 * fw / n <= 225, M if <= 310, else L; scale = clamp(0.85 * (fw / n) / baseWidthPx, 0.85, 1.15).",
+  "place": "Fallback placement: roof line y_r ~ -0.8 * topPx for pitched roofs / -0.92 * topPx for flat roofs (or the eave height when known; NOT -topPx: towers and signs), fire anchor = building anchor + [x_j, y_r + 0.22 * fw / n], with x_j spread along the footprintPoly long axis (step 0.78 * edge / n, y following the axis * 0.35); depth = building depth + 1 (+0.01 per fire, back to front). fx_smoke_column at the middle fire + [8 * scale, -0.62 * heightPx * scale]; windows: left wall anchor + [-0.27 * fw, -0.33 * topPx], right wall [+0.27 * fw, -0.33 * topPx] with flipX.",
+  "multi": "Wide buildings (footprint > 400 px: school, harbour halls, logistics centre) burn with n = ceil(fw / 400) fires along the roof (the table already lists them) - never one giant fire.",
+  "tint": "While it burns, tint the building warm so it looks lit by its own fire: setTint flickering between 0xffe2c8 and 0xffcfa6 (new value every 0.12-0.18 s); while dying fade toward 0xd9cfc8 (soot) before the swap to the ruin sprite; clearTint when rebuilt.",
+  "grow": "Start: one fx_fire_window (alpha tween in) + fx_smoke_column at scale 0.5. Full fire: the table fires + fx_fire_glow + 1-2 fx_fire_window + fx_smoke_column (scale from the table) + fx_embers. Dying: lower the fire alpha / scale to 0.6, spawn fx_steam_puff more often, tint the smoke lighter (0xdfe4ec) -> swap the building for the civic ruin_* sprite and keep fx_fire_glow (alpha 0.5) + a small smoke column (scale 0.45) + fx_embers (alpha 0.5) for a while.",
+  "alarm": "fx_alarm_flash on the fire_alarm_post (or above the building at buildings[k].alarm) until the fire truck arrives; fx_siren_glow_red at the truck sirenPoint."
  },
  "fightGuide": {
-  "play": "Scuffle: walk the two residents together, hide both, play fx_fight_cloud at their midpoint (ground) for 2-4 s, then fx_poof (assets/fx) and show them again apart, dizzy / sulking (emotes). A police officer arrives (police car with fx_siren_glow_red + fx_siren_glow_blue). Nobody gets hurt.",
+  "play": "Scuffle (preferred, with the cityfolk `fight` anim - CONTRACT_V8 §AD \"for use inside fx_fight_cloud\"): walk the two residents together, stand them ~44 px apart facing each other and play their `fight` anims; at their ground midpoint play fx_fight_cloud_back (depth = min(resident depths) - 0.5) and fx_fight_cloud_front (depth = max(resident depths) + 0.5) on the same frame for 2-4 s, then fx_poof (assets/fx) and part them, dizzy / sulking (emotes). A police officer arrives (police car with fx_siren_glow_red + fx_siren_glow_blue). Nobody gets hurt.",
+  "playSimple": "Simple mode (far zoom / LOD / no cityfolk yet): hide both residents and play fx_fight_cloud at their midpoint (ground) instead - it already shows the two fighters (faces, fists, boots in two consistent outfits).",
   "curious": "Story network: fx_question_mark over a resident asking about something new, fx_lightbulb_idea when they learn it / get an idea, fx_memory_sparkle while recalling a memory or hearing a rumour."
  },
  "atlases": [
@@ -58,6 +2830,14 @@
    "png": "fx_city/ui_newspaper_masthead.png"
   },
   {
+   "key": "ui_newspaper_logo",
+   "png": "fx_city/ui_newspaper_logo.png"
+  },
+  {
+   "key": "ui_newspaper_logo_en",
+   "png": "fx_city/ui_newspaper_logo_en.png"
+  },
+  {
    "key": "ui_newspaper_column",
    "png": "fx_city/ui_newspaper_column.png"
   },
@@ -78,6 +2858,10 @@
    "png": "fx_city/ui_passbook_row.png"
   },
   {
+   "key": "ui_wanted_silhouette",
+   "png": "fx_city/ui_wanted_silhouette.png"
+  },
+  {
    "key": "ui_story_card",
    "png": "fx_city/ui_story_card.png"
   },
@@ -90,56 +2874,79 @@
   {
    "key": "fx_fire_bld_s",
    "png": "fx_city/fx_fire_bld_s.png",
-   "frameWidth": 208,
-   "frameHeight": 224,
-   "frameCount": 16,
+   "frameWidth": 240,
+   "frameHeight": 272,
+   "frameCount": 12,
    "fps": 14,
    "repeat": -1,
    "anchor": [
     0.5,
-    0.86
+    0.7757352941176471
    ],
    "blend": "NORMAL",
-   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
-   "baseWidthPx": 140,
-   "heightPx": 150,
-   "plot": "S (townhouses, small shops: footprint <= 280 px)"
+   "notes": "Building fire loop: toy flame tongues rising out of an iso (2:1) ellipse lying on the roof plane - big tongues root on its back half, lower ones on its front half, and the fire melts into the roof along a curved, noisy front edge (no straight base); warm roof glow, halo, licks tearing off the top, embers. Anchor = centre of that iso base ellipse (put it on the roof). Use manifest.fireMount.buildings[key] (measured per building) or the fireMount rule; add fx_fire_glow under it, fx_smoke_column above, fx_fire_window at the window points and fx_embers.",
+   "baseWidthPx": 196,
+   "heightPx": 136,
+   "plot": "S: footprint <= 240 px (townhouses, small shops)",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_fire_bld_m",
    "png": "fx_city/fx_fire_bld_m.png",
-   "frameWidth": 280,
-   "frameHeight": 288,
-   "frameCount": 16,
+   "frameWidth": 328,
+   "frameHeight": 360,
+   "frameCount": 12,
    "fps": 14,
    "repeat": -1,
    "anchor": [
     0.5,
-    0.86
+    0.7791666666666667
    ],
    "blend": "NORMAL",
-   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
-   "baseWidthPx": 192,
-   "heightPx": 200,
-   "plot": "M (shops, civic: footprint <= 380 px)"
+   "notes": "Building fire loop: toy flame tongues rising out of an iso (2:1) ellipse lying on the roof plane - big tongues root on its back half, lower ones on its front half, and the fire melts into the roof along a curved, noisy front edge (no straight base); warm roof glow, halo, licks tearing off the top, embers. Anchor = centre of that iso base ellipse (put it on the roof). Use manifest.fireMount.buildings[key] (measured per building) or the fireMount rule; add fx_fire_glow under it, fx_smoke_column above, fx_fire_window at the window points and fx_embers.",
+   "baseWidthPx": 270,
+   "heightPx": 176,
+   "plot": "M: footprint <= 330 px (shops, civic)",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_fire_bld_l",
    "png": "fx_city/fx_fire_bld_l.png",
-   "frameWidth": 352,
-   "frameHeight": 352,
-   "frameCount": 16,
+   "frameWidth": 424,
+   "frameHeight": 432,
+   "frameCount": 12,
    "fps": 14,
    "repeat": -1,
    "anchor": [
     0.5,
-    0.86
+    0.7696759259259259
    ],
    "blend": "NORMAL",
-   "notes": "Building fire loop: a wide crown of toy flame tongues over a glowing base that melts away at the bottom (sits on the roof / wall top), warm halo, licks tearing off the top and embers. Anchor = middle of the fire base. Add fx_smoke_column above it and fx_fire_window at 1-2 windows; fx_embers for big fires. Scale = 0.85 * building footprint width / baseWidthPx (clamp 0.7-1.3). See manifest.fireMount.",
-   "baseWidthPx": 248,
-   "heightPx": 255,
-   "plot": "L (apartments, big halls, warehouses)"
+   "notes": "Building fire loop: toy flame tongues rising out of an iso (2:1) ellipse lying on the roof plane - big tongues root on its back half, lower ones on its front half, and the fire melts into the roof along a curved, noisy front edge (no straight base); warm roof glow, halo, licks tearing off the top, embers. Anchor = centre of that iso base ellipse (put it on the roof). Use manifest.fireMount.buildings[key] (measured per building) or the fireMount rule; add fx_fire_glow under it, fx_smoke_column above, fx_fire_window at the window points and fx_embers.",
+   "baseWidthPx": 350,
+   "heightPx": 216,
+   "plot": "L: footprint <= 400 px; wider buildings get several fires (fireMount.multi)",
+   "lazy": true,
+   "group": "fire"
+  },
+  {
+   "key": "fx_fire_glow",
+   "png": "fx_city/fx_fire_glow.png",
+   "frameWidth": 192,
+   "frameHeight": 96,
+   "frameCount": 12,
+   "fps": 10,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra: warm flickering firelight lying on a plane (2:1 ellipse, saturated orange edge so it reads on snow). Under each building fire (fireMount.buildings[k].glow; depth = fire depth - 0.1), on the snow in front of a burning building (scale 1.5-2.5), at a window fire, or alone on a smouldering ruin.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_fire_window",
@@ -154,7 +2961,9 @@
     0.74
    ],
    "blend": "NORMAL",
-   "notes": "Flames licking out of a window and up the wall, with a flickering glow of the burning room. Anchor = window centre (the bottom of the flames melts into the window). flipX freely."
+   "notes": "Flames curling out of the top of a glowing iso window opening (burning room inside, sooty lintel, soot streak up the wall, licks + sparks, warm wall glow). Drawn for a LEFT-facing wall (window edges fall to the right); setFlipX(true) for a right-facing wall. Anchor = window centre: put it on fireMount.buildings[k].windows [dx, dy, flipX, scale].",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_smoke_column",
@@ -169,7 +2978,9 @@
     0.95
    ],
    "blend": "NORMAL",
-   "notes": "Tall smoke plume loop: sooty billows from a glowing source (underside lit orange by the fire) swell, drift right with the wind and turn light grey as they rise. Anchor = base of the column: put it on top of the fire (fire anchor + [8, -0.55 * heightPx]). flipX for wind from the other side; scale 0.5 for a starting fire or a smouldering ruin."
+   "notes": "Tall smoke plume loop: sooty billows from a glowing source (underside lit orange by the fire) swell, drift right with the wind and turn light grey as they rise; every puff fades by its own age so the top breaks into ragged puffs that drift off. Anchor = base of the column: fireMount.buildings[k].smoke [dx, dy, scale]. flipX for wind from the other side; scale 0.5 for a starting fire or a smouldering ruin.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_embers",
@@ -184,7 +2995,9 @@
     0.96
    ],
    "blend": "NORMAL",
-   "notes": "Sparks / embers with short trails spiralling up. Anchor = bottom centre (on the fire). Use over big fires and smouldering ruins."
+   "notes": "Sparks / embers (solid warm 6-8 px cores with a dark-orange rim, short trails) spiralling up. Anchor = bottom centre (fireMount.buildings[k].embers). Big fires and smouldering ruins.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_hose_stream",
@@ -199,7 +3012,9 @@
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Fire-hose water jet SEGMENT (one 32 px bead period), seamless in x, flowing toward +x by 4 px per frame. Chain copies along an arc from the nozzle to the target (see manifest.hoseAim) or map it onto a Phaser Rope. All segments play the same anim in sync."
+   "notes": "Fire-hose water jet SEGMENT (one 32 px bead period), seamless in x, flowing toward +x by 4 px per frame: cyan-white core, translucent edges, light rim - water, not a pipe. Vertically symmetric, so any rotation (also leftward aims) is fine. Chain copies along the aimed arc (manifest.hoseAim.chain, Canvas fallback) - prefer the Rope on WebGL.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_hose_rope",
@@ -214,13 +3029,15 @@
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Extra: the same flowing jet, 8 bead periods long, as the texture of a Phaser Rope laid along the aimed arc (recommended on WebGL: smooth bends, one draw call; see manifest.hoseAim.rope)."
+   "notes": "Extra: the same flowing jet, 8 bead periods long, as the texture of a Phaser Rope laid along the aimed arc (recommended: smooth bends, one draw call; manifest.hoseAim.rope). For arcs up to ~360 px.",
+   "lazy": true,
+   "group": "fire"
   },
   {
-   "key": "fx_hose_tip",
-   "png": "fx_city/fx_hose_tip.png",
-   "frameWidth": 96,
-   "frameHeight": 64,
+   "key": "fx_hose_rope_long",
+   "png": "fx_city/fx_hose_rope_long.png",
+   "frameWidth": 512,
+   "frameHeight": 24,
    "frameCount": 8,
    "fps": 30,
    "repeat": -1,
@@ -229,7 +3046,26 @@
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Extra: end of the jet breaking up into a fan of droplets. Attach its anchor (left middle) to the end of the last hose segment with the same rotation."
+   "notes": "Extra: 16 bead periods (512 px) rope texture for long arcs (> ~360 px) so the beads keep their size (the Rope maps the texture once over its length).",
+   "lazy": true,
+   "group": "fire"
+  },
+  {
+   "key": "fx_hose_tip",
+   "png": "fx_city/fx_hose_tip.png",
+   "frameWidth": 96,
+   "frameHeight": 80,
+   "frameCount": 8,
+   "fps": 30,
+   "repeat": -1,
+   "anchor": [
+    0.0,
+    0.5
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra: end of the jet - starts at exactly the jet width, necks into blobs and fans out into filled teardrop droplets that fall with gravity (+y). Anchor (left middle) on the end of the jet, rotation = end tangent, setFlipY(true) when T.x < N.x (manifest.hoseAim.flip).",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_water_mist",
@@ -244,7 +3080,9 @@
     0.6
    ],
    "blend": "NORMAL",
-   "notes": "Where the hose hits: translucent pale-blue spray cloud, splash flicks, falling droplets, glints. Anchor = impact point. Pair with fx_steam_puff while the fire is still burning."
+   "notes": "Where the hose hits: translucent pale-blue spray cloud, splash flicks, falling droplets, glints. Anchor = impact point. Pair with fx_steam_puff while the fire is still burning.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_steam_puff",
@@ -259,7 +3097,9 @@
     0.9
    ],
    "blend": "NORMAL",
-   "notes": "One-shot white steam billow (water meets fire): spawn every ~0.3-0.5 s near the impact point (more often as the fire dies). Anchor = source."
+   "notes": "One-shot white steam billow (water meets fire): spawn every ~0.3-0.5 s near the impact point (more often as the fire dies). Anchor = source.",
+   "lazy": true,
+   "group": "fire"
   },
   {
    "key": "fx_fight_cloud",
@@ -274,7 +3114,45 @@
     0.86
    ],
    "blend": "NORMAL",
-   "notes": "Cartoon scuffle loop: tumbling dust ball with fists and boots popping out, dizzy stars, pow bursts, speed swooshes and kicked-up dust. Hide the two residents while it plays (see manifest.fightGuide). Anchor = ground under the middle."
+   "notes": "Cartoon scuffle of TWO residents (simple mode): a tumbling ball of snow powder with two distinct faces peeking out every frame (A: round eyes + big brows, red parka / jeans; B: squinty eyes under a yellow beanie, blue parka / brown trousers), their fists and boots popping out in turn, a red bobble hat knocked off, dizzy stars, pow bursts, swooshes, kicked-up snow. Hide the two residents while it plays (manifest.fightGuide.playSimple). Anchor = ground under the middle.",
+   "lazy": true,
+   "group": "fight"
+  },
+  {
+   "key": "fx_fight_cloud_back",
+   "png": "fx_city/fx_fight_cloud_back.png",
+   "frameWidth": 224,
+   "frameHeight": 192,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra (layered scuffle, preferred with the cityfolk `fight` anim - CONTRACT_V8 §AD): ground shadow, kicked-up snow and the far half of a ring of snow-powder billows. Draw BEHIND the two residents (manifest.fightGuide.play).",
+   "pair": "fx_fight_cloud_front",
+   "lazy": true,
+   "group": "fight"
+  },
+  {
+   "key": "fx_fight_cloud_front",
+   "png": "fx_city/fx_fight_cloud_front.png",
+   "frameWidth": 224,
+   "frameHeight": 192,
+   "frameCount": 12,
+   "fps": 14,
+   "repeat": -1,
+   "anchor": [
+    0.5,
+    0.86
+   ],
+   "blend": "NORMAL",
+   "notes": "Extra (layered scuffle): the near half of the billow ring with gaps (the fighters show through), swooshes, pow bursts and dizzy stars. Draw IN FRONT of the two residents, same position / frame as fx_fight_cloud_back.",
+   "pair": "fx_fight_cloud_back",
+   "lazy": true,
+   "group": "fight"
   },
   {
    "key": "fx_alarm_flash",
@@ -289,7 +3167,7 @@
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Alarm loop: red lamp with \"!\" pulsing, red warning burst flashing, ringing arcs, ripple ring. Anchor = centre. Use on fire_alarm_post, above a building in trouble, police calls."
+   "notes": "Alarm loop: red lamp with \"!\" pulsing, red warning burst flashing (~2.5 Hz, under the 3 Hz photosensitivity limit), ringing arcs, ripple ring. Anchor = centre. Use on fire_alarm_post, above a building in trouble (fireMount.buildings[k].alarm), police calls."
   },
   {
    "key": "fx_siren_glow_red",
@@ -304,7 +3182,7 @@
     0.5
    ],
    "blend": "NORMAL",
-   "notes": "Rotating beacon (red): light fan sweeping on the ground plane, lamp flares when it faces the camera. Anchor = beacon (vehicles sirenPoint). Fire truck: red only; police car: red + blue (blue is half a turn later - start both on the same frame).",
+   "notes": "Rotating beacon (red): saturated light fan sweeping on the ground plane, a pulsing light ring with a saturated edge and a big four-point flare (16 -> 48 px) when it faces the camera - reads on snow by day. Anchor = beacon (vehicles sirenPoint). Fire truck: red only; police car: red + blue (blue is half a turn later - start both on the same frame).",
    "pair": "fx_siren_glow_blue"
   },
   {
@@ -336,7 +3214,9 @@
     0.78
    ],
    "blend": "NORMAL",
-   "notes": "One-shot demolition / collapse: dust ring rolls out on the ground, a cloud billows up, planks, bricks and soot bits fly. Anchor = building footprint centre; scale x1.2-1.6 for big plots; x0.6 for each excavator bucket hit."
+   "notes": "One-shot demolition / collapse: dust ring rolls out on the ground, a cloud billows up, planks, bricks and soot bits fly. Anchor = building footprint centre; scale x1.2-1.6 for big plots; x0.6 for each excavator bucket hit.",
+   "lazy": true,
+   "group": "demolish"
   },
   {
    "key": "fx_question_mark",
@@ -537,7 +3417,7 @@
     96,
     96
    ],
-   "notes": "Moving in: house + green arrow in at the door + moving box (이사 옴)."
+   "notes": "Moving in: house with the door open (warm light), heart welcome mat, green arrow curving in + a moving box (이사 옴)."
   },
   "ui_icon_move_out": {
    "atlas": "ui4_icons",
@@ -551,7 +3431,7 @@
     96,
     96
    ],
-   "notes": "Moving out: house + orange arrow leaving + moving box (이사 감)."
+   "notes": "Moving out: orange moving truck loaded with boxes driving off, speed lines (이사 감) - a different silhouette from move_in."
   },
   "ui_icon_newspaper": {
    "atlas": "ui4_icons",
@@ -810,19 +3690,47 @@
    "kind": "ui",
    "frameSize": [
     320,
-    96
+    104
    ],
-   "notes": "Masthead strip (9-slice, stretch horizontally only, keep 96 px tall): pinecone medallions left / right, rules top and bottom.  Draw the paper title \"솔방울 신문\" centred in titleBox (relative to the stretched strip: x from 96 to width-96).",
+   "notes": "Masthead strip (9-slice, stretch horizontally only, keep 104 px tall): pinecone medallions left / right, rules top and bottom.  Put ui_newspaper_logo (Korean) / ui_newspaper_logo_en centred in titleBox (64 px tall, x from 96 to width-96 of the stretched strip), or draw the title as text (44-52 px) for other languages.",
    "titleBox": [
     96,
-    14,
+    12,
     128,
-    52
+    64
    ],
    "minSize": [
     200,
-    96
+    104
    ]
+  },
+  "ui_newspaper_logo": {
+   "image": "ui_newspaper_logo",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    266,
+    65
+   ],
+   "notes": "Optional baked logotype \"솔방울 신문\" (Jua, OFL): chunky newsprint-ink letters, snow caps on 솔방울, a pinecone dangling at the end.  Plain image; centre it in ui_newspaper_masthead.titleBox (scale <= 1).",
+   "fitsIn": "ui_newspaper_masthead.titleBox"
+  },
+  "ui_newspaper_logo_en": {
+   "image": "ui_newspaper_logo_en",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    317,
+    52
+   ],
+   "notes": "Optional baked logotype \"Pinecone News\" (Fredoka, OFL) for the English UI, same style.",
+   "fitsIn": "ui_newspaper_masthead.titleBox"
   },
   "ui_newspaper_column": {
    "image": "ui_newspaper_column",
@@ -833,12 +3741,12 @@
    "kind": "ui",
    "frameSize": [
     112,
-    128
+    140
    ],
-   "notes": "Article box (9-slice): headline in the grey bar (headlineBox: x, y, width relative to the right edge, h), body text in contentInset.",
+   "notes": "Article box (9-slice): headline in the 36 px grey bar (headlineBox: x, y, width relative to the right edge, h; fits 24-30 px headline text), body text in contentInset.",
    "contentInset": [
     12,
-    42,
+    56,
     12,
     10
    ],
@@ -846,11 +3754,11 @@
     10,
     9,
     -10,
-    22
+    36
    ],
    "minSize": [
     40,
-    60
+    74
    ]
   },
   "ui_newspaper_photo": {
@@ -941,6 +3849,19 @@
     32
    ]
   },
+  "ui_wanted_silhouette": {
+   "image": "ui_wanted_silhouette",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "ui",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "Unknown-culprit portrait (128x128, navy shadow bust in a beanie with a big yellow \"?\") - draw it in ui_wanted_poster.portraitWindow for the \"도둑을 찾아라\" (find the thief) mission until the culprit is known."
+  },
   "ui_story_card": {
    "image": "ui_story_card",
    "anchor": [
@@ -1009,13 +3930,13 @@
    "left": 96,
    "right": 96,
    "top": 18,
-   "bottom": 28
+   "bottom": 26
   },
   "ui_newspaper_column": {
    "image": "ui_newspaper_column",
    "left": 16,
    "right": 16,
-   "top": 40,
+   "top": 54,
    "bottom": 16
   },
   "ui_newspaper_photo": {

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>눈꽃말 Phaser 연결 시험</title>
+<!-- the game loads assets/ relative to its own page at the repo root: so does this test page -->
+<base href="../../">
+<style>
+:root{--bg:#F4F7FB;--ink:#2B2F3A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b2130;--ink:#eef2f8}}
+:root[data-theme="dark"]{--bg:#1b2130;--ink:#eef2f8}
+body{margin:0;padding:16px;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,"Noto Sans KR",sans-serif}
+#log{white-space:pre-wrap;overflow-wrap:anywhere}
+</style></head><body>
+<p>눈꽃말 목소리를 진짜 Phaser 게임 장면에 붙여 보는 시험 페이지예요 (tools/test/voice_phaser.mjs가 열어요).
+<code>src/voice/phaser.js</code> → 늦게 받는 voice 조각(Assets.loadFragment) → 주민 목소리를 처음 말할 때 받기 → 반 샘플레이트로 줄이기 → 장면 멈춤/다시.</p>
+<div id="log"></div>
+<script src="lib/phaser.min.js"></script>
+<script type="module">
+import { attachVillageVoice } from './src/voice/phaser.js';
+import { Assets } from './src/core/Assets.js';
+
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+class Game extends Phaser.Scene {
+  constructor() { super('Game'); }
+  // the same late-file hook the game's Game scene has (Game.queueLateFiles): queue what Assets was asked for
+  queueLateFiles() { if (Assets.queueLateAudio(this.load) && !this.load.isLoading()) this.load.start(); }
+  isOnScreen() { return true; }
+  create() {
+    this.voice = attachVillageVoice(this, {});
+    window.__vt = { scene: this, vv: this.voice, game: this.game, Assets };
+    log('attached: ' + !!this.voice);
+  }
+  update(t, dt) { if (this.voice) this.voice.update(dt / 1000); }
+}
+new Phaser.Game({ type: Phaser.CANVAS, width: 320, height: 200, parent: document.body, backgroundColor: '#dfe8f2',
+  audio: { disableWebAudio: false }, scene: [Game] });
+</script>
+</body></html>

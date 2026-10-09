@@ -23,7 +23,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "audio"))
 import espeak as E  # noqa: E402
 import vocoder as V  # noqa: E402
-from voices import VOICES  # noqa: E402
+from voices import F0_CEIL, VOICES  # noqa: E402
 
 import synth as S  # noqa: E402  (tools/audio toolkit, imported read-only)
 
@@ -93,7 +93,18 @@ def segments(an, ev):
     return segs
 
 
-def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
+def soft_ceiling(f0, ceil: float, knee: float = 0.85):
+    """pitch never passes `ceil` Hz: above knee x ceil it bends smoothly towards it (tanh)"""
+    f0 = np.asarray(f0, dtype=np.float64).copy()
+    k = knee * ceil
+    over = f0 > k
+    f0[over] = k + (ceil - k) * np.tanh((f0[over] - k) / (ceil - k))
+    return f0
+
+
+def time_map(plan: dict, voice: str):
+    """the clip's new timing: walk the eSpeak phonemes, scale each (voice speed, plan vowel lengths, snappy
+    consonants), remember where the vowels land and each segment's level. -> dict (render_clip, checks)"""
     v = VOICES[voice]
     an, ev = articulation(plan["es"])
     segs = segments(an, ev)
@@ -107,6 +118,9 @@ def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
     lead = segs[0][0] if segs else 0.0
     ain[0] = max(0.0, lead - 0.01)                       # drop eSpeak's leading silence
     last_sound = max((i for i, s in enumerate(segs) if not _ph(s[2]).startswith("_")), default=-1)
+    stop_final = last_sound >= 0 and _ph(segs[last_sound][2]) in STOPS
+    open_final = last_sound >= 0 and is_vowel(segs[last_sound][2])
+    t_close = None                                        # output time where a final stop closes (cut there)
     for i, (t0, t1, p) in enumerate(segs):
         q = _ph(p)
         d = t1 - t0
@@ -120,14 +134,20 @@ def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
         elif q == "r":
             f, g = 1.0, 0.95                              # keep the roll
         elif q in STOPS:
-            g = 0.08 if i == last_sound else (0.38 if q == "tS" else 0.5)       # final stops unreleased (ㄱ ㅂ)
+            # final stops are unreleased (Korean 받침 ㄱ ㅂ ㄷ): the vowel runs at full level into the closure
+            # and is cut there (post-synthesis gate below); keep the gain track up so it does not sag early
+            g = 0.6 if i == last_sound else (0.38 if q == "tS" else 0.5)
             f = plan.get("cons", 0.8)
         elif q in FRICS:
             f, g = plan.get("cons", 0.8), (0.45 if q in ("s", "S") else 0.62)
         else:
             f, g = plan.get("cons", 0.8), 1.0             # nasals, l, glides: part of the tune
         f /= speed
+        if is_vowel(p) and d > 1e-3:
+            f = max(f, MIN_VOWEL / d)                     # an unstressed vowel is quick, never swallowed
         o0 = aout[-1]
+        if stop_final and i == last_sound:
+            t_close = o0
         ain.append(t1)
         aout.append(o0 + d * f)
         gk.append((o0, aout[-1], g, "v" if is_vowel(p) else q))
@@ -137,6 +157,34 @@ def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
                         "vib": max(spec.get("vib", 0.0), v["vib"][2]), "gain": spec.get("gain", 1.0),
                         **({"scoop": spec["scoop"]} if "scoop" in spec else {})})
             k += 1
+    return {"v": v, "an": an, "segs": segs, "speed": speed, "ain": ain, "aout": aout, "nuc": nuc, "gk": gk,
+            "stop_final": stop_final, "open_final": open_final, "t_close": t_close}
+
+
+def vowel_durations(plan: dict, voice: str):
+    """output length (s) of every vowel of a clip, in order (before an open final vowel's ring-out)"""
+    return [b - a for (a, b, g, kind) in time_map(plan, voice)["gk"] if kind == "v"]
+
+
+def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
+    tm = time_map(plan, voice)
+    v, an, speed, ain, aout, nuc, gk = tm["v"], tm["an"], tm["speed"], tm["ain"], tm["aout"], tm["nuc"], tm["gk"]
+    stop_final, open_final, t_close = tm["stop_final"], tm["open_final"], tm["t_close"]
+    if open_final and gk:                                 # open vowel: let it ring out (held, decaying)
+        j = max(i for i, s in enumerate(gk) if s[3] == "v")
+        a, b, g, kind = gk[j]
+        hold = OPEN_HOLD / np.sqrt(speed)
+        t_hold = b + hold
+        # shift whatever followed the vowel (eSpeak's trailing pause) and hold the vowel's last frame
+        cut_in = ain[j + 1]
+        ain = ain[:j + 2] + [cut_in] + [x for x in ain[j + 2:]]
+        aout = aout[:j + 2] + [t_hold] + [x + hold for x in aout[j + 2:]]
+        ain[j + 2] = max(ain[j + 1] - 0.001, ain[j])     # stay on the vowel's last frame
+        ain[j + 1] = ain[j + 1] - 0.006
+        gk[j] = (a, t_hold, g, "vhold")
+        gk = gk[:j + 1] + [(t_hold + (o - b), t_hold + (p - b), gg, kk) for (o, p, gg, kk) in gk[j + 1:]]
+        if nuc:
+            nuc[-1]["t1"] = max(nuc[-1]["t1"], b)
     T = aout[-1]
     n_out = int(np.ceil(T * 1000.0 / V.FP)) + 1
     tt = np.arange(n_out) * V.FP / 1000.0
@@ -146,11 +194,19 @@ def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
     vib_c = plan.get("vib_cents", v["vib"][0])
     f0 = V.melody(tt, nuc, rng, v["f0"], vib_cents=vib_c, vib_rate=v["vib"][1], jitter_cents=v["jitter"],
                   decl=-0.8)
+    f0 = soft_ceiling(f0, F0_CEIL)
     # ---- level track: syllable gains, softer stop bursts / fricatives, a release on the last sound
     kt, kv = [], []
-    last_voiced = max((j for j, s in enumerate(gk) if s[3] not in STOPS and s[2] > 0), default=-1)
+    last_voiced = max((j for j, s in enumerate(gk) if s[3] not in STOPS and s[2] > 0 and not str(s[3]).startswith("_")),
+                      default=-1)
     for j, (a, b, g, kind) in enumerate(gk):
-        if j == last_voiced:                              # eSpeak stops the last vowel while it is still loud
+        if j == last_voiced and stop_final:               # vowel at full level right up to the closure
+            kt += [a + 0.002, b]
+            kv += [g, g]
+        elif kind == "vhold":                             # an open vowel rings out softly (60-90 ms decay)
+            kt += [a, a + 0.55 * (b - a), b]
+            kv += [g, g * 0.55, g * 0.04]
+        elif j == last_voiced:                            # eSpeak stops the last sound while it is still loud
             kt += [a, a + 0.5 * (b - a), b]
             kv += [g, g, g * 0.22]
         else:
@@ -166,10 +222,16 @@ def render_clip(plan: dict, voice: str, seed_extra: str = "") -> np.ndarray:
     nf = min(len(y) // 4, int(0.02 * an["fs"]))           # dry fade: no click where the sound stops
     if nf > 0:
         y[-nf:] *= np.linspace(1.0, 0.0, nf) ** 2
-    return post(y, an["fs"], v)
+    return post(y, an["fs"], v, cut=t_close)
 
 
-def post(y, fs: int, v: dict) -> np.ndarray:
+MIN_VOWEL = 0.032          # s: shortest vowel in the output
+OPEN_HOLD = 0.06           # s (at speed 1): an open final vowel rings on this long while it fades
+CUT_MS = 6.0               # final stop: the vowel is cut off this fast at the closure (받침)
+ROOM_AFTER_CUT = 0.15      # ...and the little room rings on only this much (so the stop still reads as a stop)
+
+
+def post(y, fs: int, v: dict, cut=None) -> np.ndarray:
     from scipy.signal import resample_poly
     y = np.asarray(y, dtype=np.float64)
     if fs != S.SR:
@@ -179,10 +241,25 @@ def post(y, fs: int, v: dict) -> np.ndarray:
     y = S.lp(y, min(v["hicut"] + 1800.0, 11000.0), order=1)
     y = y / max(S.peak(y), 1e-9)
     y = S.compress(y, thr_db=-16.0, ratio=2.2, tau=0.025, makeup_db=0.0)
+    n0 = None
+    if cut is not None:                                   # unreleased final stop: abrupt (6 ms) cut-off
+        n0 = min(len(y), int(round(cut * S.SR)))
+        nf = S.n_of(CUT_MS / 1000.0)
+        g = np.ones(len(y))
+        k = np.arange(min(nf, len(y) - n0))
+        g[n0:n0 + len(k)] = 0.5 * (1 + np.cos(np.pi * k / nf))
+        g[n0 + len(k):] = 0.0
+        y = y * g
     pad = np.concatenate((y, np.zeros(S.n_of(0.12))))
-    wet = S.reverb(pad, rt60=0.32, hf_rt60=0.16, predelay=0.006, size=0.38, lo_cut=200.0, hi_cut=5200.0)
-    y = pad + 0.07 * wet[0]
-    y = S.trim_silence(y, -52.0, 3.0)
+    wet = S.reverb(pad, rt60=0.32, hf_rt60=0.16, predelay=0.006, size=0.38, lo_cut=200.0, hi_cut=5200.0)[0]
+    if n0 is not None:
+        gw = np.ones(len(wet))
+        n1, nf2 = n0 + S.n_of(0.004), S.n_of(0.010)
+        gw[n1:n1 + nf2] = np.linspace(1.0, ROOM_AFTER_CUT, len(gw[n1:n1 + nf2]))
+        gw[n1 + nf2:] = ROOM_AFTER_CUT
+        wet = wet * gw
+    y = pad + 0.07 * wet
+    y = S.trim_silence(y, -48.0, 3.0)
     dur = len(y) / S.SR
     y = S.fade(y, min(0.003, dur / 6), min(0.03, dur / 4))
     return y / max(S.peak(y), 1e-12) * S.undb(-1.5)

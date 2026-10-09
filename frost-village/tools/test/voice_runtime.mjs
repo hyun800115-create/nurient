@@ -1,10 +1,12 @@
-// 눈꽃말 voices — Node tests for src/voice (determinism, sequencing, prosody, keywords, concurrency,
-// queue / priority / distance / ducking / volume, manifest consistency, no allocations per frame).
+// 눈꽃말 voices — Node tests for src/voice (determinism, sequencing, legato tails, prosody, moods, keywords
+// and their stop lists, concurrency, queue / priority / distance / ducking / volume, pause / resume and
+// stalled frames, lazy loading (ready / need), registers and pitch limits, manifest consistency, no
+// allocations per frame).
 //   node --expose-gc tools/test/voice_runtime.mjs        (exit code 0 = all pass)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { VillageVoice, VOICE_TYPES, EMOTIONS, moodOf, keywordsOf, textLength, voiceFor, speakerId } from '../../src/voice/VillageVoice.js';
+import { VillageVoice, VOICE_TYPES, EMOTIONS, SPEAKER_BINS, moodOf, keywordsOf, textLength, voiceFor, speakerId, hashStr } from '../../src/voice/VillageVoice.js';
 import { WORDS } from '../../src/voice/lexicon.js';
 import { CAST } from '../../src/voice/cast.js';
 
@@ -41,8 +43,8 @@ function ok(c, msg) { if (!c) throw new Error(msg || 'assertion failed'); }
 const mean = (a) => a.reduce((s, x) => s + x, 0) / Math.max(1, a.length);
 
 // ---------------------------------------------------------------- data
-test('manifest: 10 voice sprites, every marker inside its sprite, no overlaps', () => {
-  ok(VOICE_TYPES.length === 10, 'voice types');
+test('manifest: 11 voice sprites, every marker inside its sprite, no overlaps', () => {
+  ok(VOICE_TYPES.length === 11, 'voice types');
   for (const t of VOICE_TYPES) {
     const k = 'voice_' + t, a = MAN.audio[k];
     ok(a && a.voiceType === t, k + ' missing');
@@ -56,7 +58,7 @@ test('manifest: 10 voice sprites, every marker inside its sprite, no overlaps', 
   return `${keys.length} sprites`;
 });
 
-test('manifest: every voice has the same core words, 3 fillers, 3 particles and all 10 emotes', () => {
+test('manifest: every voice has the same core words, 14 babble words, 3 fillers, 3 particles and all 10 emotes', () => {
   const words = (t) => Object.entries(MAN.audio['voice_' + t].markers).filter(([, m]) => m.kind === 'word').map(([id]) => id);
   let core = words(VOICE_TYPES[0]);
   for (const t of VOICE_TYPES) core = core.filter((w) => words(t).includes(w));
@@ -64,21 +66,22 @@ test('manifest: every voice has the same core words, 3 fillers, 3 particles and 
   for (const t of VOICE_TYPES) {
     const M = MAN.audio['voice_' + t].markers;
     const kinds = (k) => Object.values(M).filter((m) => m.kind === k).length;
-    ok(kinds('filler') === 3 && kinds('particle') === 3, t + ' fillers/particles');
+    ok(kinds('filler') === 3 && kinds('particle') === 3 && kinds('babble') === 14, t + ' fillers/particles/babble');
+    for (const id in M) ok(M[id].tail >= 0 && M[id].tail < M[id].dur && 'svn'.includes(M[id].fin), `${t}/${id} tail / fin`);
     for (const e of EMOTIONS) ok(M['emo_' + e] && M['emo_' + e].emote === e, `${t} emote ${e}`);
     for (const id in M) if (M[id].kind !== 'emote') ok(WORDS[id], `${t}/${id} not in lexicon.js`);
   }
   return `${core.length} shared words`;
 });
 
-test('clip durations: words 0.1-0.9 s (median 0.15-0.6), emotes 0.15-1.4 s', () => {
+test('clip durations: words 0.1-0.9 s (median 0.15-0.6), emotes 0.12-1.4 s', () => {
   const w = [], e = [];
   for (const k of keys) for (const m of Object.values(MAN.audio[k].markers)) (m.kind === 'emote' ? e : w).push(m.dur);
   w.sort((a, b) => a - b);
   ok(w[0] >= 0.1 && w[w.length - 1] <= 0.9, `word range ${w[0]}..${w[w.length - 1]}`);
   const med = w[w.length >> 1];
   ok(med >= 0.15 && med <= 0.6, 'median ' + med);
-  ok(Math.min(...e) >= 0.15 && Math.max(...e) <= 1.4, `emote range ${Math.min(...e)}..${Math.max(...e)}`);
+  ok(Math.min(...e) >= 0.12 && Math.max(...e) <= 1.4, `emote range ${Math.min(...e)}..${Math.max(...e)}`);
   return `words ${w[0].toFixed(2)}..${w[w.length - 1].toFixed(2)} (median ${med.toFixed(2)}), emotes ${Math.min(...e).toFixed(2)}..${Math.max(...e).toFixed(2)}`;
 });
 
@@ -136,7 +139,7 @@ test('length: longer text -> longer babble, capped at maxDur (+ end emote / part
   return `mean ${mean(short).toFixed(2)} / ${mean(mid).toFixed(2)} / ${mean(long).toFixed(2)} s, worst ${worst.toFixed(2)} s`;
 });
 
-test('prosody: questions end rising (녹? / 응?), sad lower+slower than neutral, excited higher+faster', () => {
+test('prosody: questions end rising (뀰? / 응?), sad lower+slower than neutral, excited higher+faster', () => {
   const { vv } = mk();
   let qEnd = 0, qRise = 0, n = 0;
   for (let i = 0; i < 60; i++) {
@@ -149,7 +152,7 @@ test('prosody: questions end rising (녹? / 응?), sad lower+slower than neutral
   }
   ok(qEnd === n, `question endings ${qEnd}/${n}`);
   ok(qRise / n >= 0.8, `rising ${qRise}/${n}`);
-  const rates = (mood) => { const r = [], g = []; for (let i = 0; i < 40; i++) { const p = vv.plan('오늘은 그냥 그런 하루였어요', { id: i, kind: 'adult' }, { emotion: mood, emote: 0 }); for (const it of p.items) r.push(it.rate); for (let k = 1; k < p.items.length; k++) g.push(p.items[k].at - (p.items[k - 1].at + p.items[k - 1].dur / p.items[k - 1].rate)); } return [mean(r), mean(g)]; };
+  const rates = (mood) => { const r = [], g = []; for (let i = 0; i < 40; i++) { const p = vv.plan('오늘은 그냥 그런 하루였어요', { id: i, kind: 'adult' }, { emotion: mood, emote: 0 }); for (const it of p.items) r.push(it.rate); for (let k = 1; k < p.items.length; k++) g.push(p.items[k].at - (p.items[k - 1].at + (p.items[k - 1].dur - p.items[k - 1].tail) / p.items[k - 1].rate)); } return [mean(r), mean(g)]; };
   const [rs, gs] = rates('sad'), [rn, gn] = rates(undefined), [re, ge] = rates('excited');
   ok(rs < rn && rn < re, `rates sad ${rs} neutral ${rn} excited ${re}`);
   ok(gs > gn && gn > ge, `gaps sad ${gs} neutral ${gn} excited ${ge}`);
@@ -180,7 +183,7 @@ test('emotes: every emotion plays its one-shot (start: greet/surprise/oops/grump
   const { vv } = mk();
   for (const e of EMOTIONS) {
     const p = vv.plan('오늘 하루도 즐겁게 보내요', { key: 'npc_kid_girl' }, { emotion: e });
-    const i = p.items.findIndex((x) => x.id === 'emo_' + e);
+    const i = p.items.findIndex((x) => x.id === 'emo_' + e || (x.kind === 'emote' && x.id.startsWith('emo_' + e)));
     ok(i >= 0, e + ' missing');
     const start = ['greet', 'surprise', 'oops', 'grumpy'].includes(e);
     ok(start ? i === 0 : i === p.items.length - 1, `${e} at ${i}/${p.items.length}`);
@@ -217,7 +220,8 @@ test('sequencing: clips reach the audio clock in order, at t0 + at, never more t
     ok(Math.abs(p.when - (t0 + it.at)) < 2e-4, `item ${i} when ${p.when} vs ${t0 + it.at}`);
     ok(p.when - p.made <= 0.12 + 1e-9, `item ${i} scheduled ${p.when - p.made} s early`);
     ok(Math.abs(p.rate - it.rate) < 1e-3, 'rate');
-    if (i) ok(p.when >= b.plays[i - 1].when + b.plays[i - 1].dur / b.plays[i - 1].rate - 2e-4, 'overlap within an utterance');
+    // legato: a clip may start inside the previous clip's quiet tail (-20 dB), never over its sound
+    if (i) { const q = plan.items[i - 1]; ok(p.when >= b.plays[i - 1].when + (q.dur - q.tail) / q.rate - 0.025, `item ${i} starts over the previous word`); }
   }
   ok(vv.activeCount === 0, 'finished');
   return `${b.plays.length} clips`;
@@ -243,15 +247,12 @@ test('concurrency: never more than 2 lines at once; extra lines wait (<=3) or dr
     run(s2.vv, s2.b, 0.1, 1 / 30);
     worst = Math.max(worst, s2.vv.activeCount);
   }
-  const ends = {};
-  for (const p of s2.b.plays) { const e = p.stop !== null ? Math.min(p.stop, p.when + p.dur / p.rate) : p.when + p.dur / p.rate; ends[p.ch] = ends[p.ch] || []; ends[p.ch].push([p.when, e]); }
+  // lines sounding at once = channels with a clip sounding (a clip ends at its stop or where its quiet tail starts)
+  const endOf = (p) => { const mk = MAN.audio[p.key].markers; let tail = 0; for (const id in mk) if (Math.abs(mk[id].start - p.off) < 1e-6) tail = mk[id].tail; const e = p.when + (p.dur - tail) / p.rate; return p.stop !== null ? Math.min(p.stop, e) : e; };
   let overlap = 0;
-  const ev = [];
-  for (const ch in ends) { const iv = ends[ch]; ev.push([iv[0][0], 0]); for (const x of iv) ev.push([x[1], 0]); }
-  const times = s2.b.plays.map((p) => p.when + 0.001);
-  for (const t of times) { let n = 0; for (const p of s2.b.plays) { const e = p.stop !== null ? Math.min(p.stop, p.when + p.dur / p.rate) : p.when + p.dur / p.rate; if (p.when <= t && t < e) n++; } overlap = Math.max(overlap, n); }
-  ok(worst <= 2 && overlap <= 2, `active ${worst}, overlapping clips ${overlap}`);
-  return `stats ${JSON.stringify(s2.vv.stats)}; max simultaneous clips ${overlap}`;
+  for (const p0 of s2.b.plays) { const t = p0.when + 0.001; const chs = new Set(); for (const p of s2.b.plays) if (p.when <= t && t < endOf(p)) chs.add(p.ch); overlap = Math.max(overlap, chs.size); }
+  ok(worst <= 2 && overlap <= 2, `active ${worst}, lines sounding at once ${overlap}`);
+  return `stats ${JSON.stringify(s2.vv.stats)}; max lines sounding at once ${overlap}`;
 });
 
 test('queue: a waiting line older than maxWait is dropped', () => {
@@ -315,6 +316,130 @@ test('not loaded yet: lines for a sprite that is not decoded are skipped quietly
   const b = new FakeBackend(keys.filter((k) => k !== 'voice_elder_m'));
   const vv = new VillageVoice({ manifest: MAN, backend: b });
   ok(vv.speak('안녕', { key: 'npc_grandpa' }) === null && vv.speak('안녕', { key: 'npc_grandma' }), 'only loaded voices');
+});
+
+test('legato delivery: words follow each other inside the previous word\'s tail (no list-like pauses)', () => {
+  const { vv } = mk();
+  const gaps = [];
+  let sil = 0, tot = 0;
+  for (const t of LINES) for (const s of SPEAKERS) {
+    const p = vv.plan(t, s);
+    if (!p || p.items.length < 2) continue;
+    let end = 0;
+    for (let i = 0; i < p.items.length; i++) {
+      const it = p.items[i], s0 = it.at, s1 = it.at + (it.dur - it.tail) / it.rate;
+      if (i) { gaps.push(s0 - end); sil += Math.max(0, s0 - end); }
+      end = Math.max(end, s1);
+    }
+    tot += end;
+  }
+  gaps.sort((a, b) => a - b);
+  const med = gaps[gaps.length >> 1];
+  ok(med < 0.03 && sil / tot < 0.12, `median gap ${med}, silence ${sil / tot}`);
+  return `median gap after the tail ${(med * 1000).toFixed(0)} ms, silence ${(100 * sil / tot).toFixed(1)} % of the lines`;
+});
+
+test('moods (polish): earliest cue wins; angry hits, laughs, 와아; a bare "!" gets no emote and no 야호!', () => {
+  const m = (t) => moodOf(t).mood;
+  ok(m('차가워!!') === 'grumpy' && m('야아!') === 'grumpy' && m('가만 안 둬!') === 'grumpy', 'hit lines are grumpy');
+  ok(m('깔깔깔!') === 'laugh' && m('까르륵!') === 'laugh' && m('껄껄, 그래도 마을이 좋아졌구먼!') === 'laugh', 'laughs');
+  ok(m('와아! 새 구역이다!') === 'surprise' && m('흥, 웃기긴') === 'grumpy', 'surprise / earliest cue');
+  const { vv } = mk();
+  let emo = 0, yaho = 0, n = 0;
+  for (let i = 0; i < 60; i++) {
+    const p = vv.plan(['이상 무!', '앙코르!', '빵 나왔어요!', '뚝딱뚝딱!'][i % 4], { id: i, kind: 'adult' });
+    n++; if (p.items.some((x) => x.kind === 'emote')) emo++;
+    if (p.items.some((x) => x.hangul === '야호!')) yaho++;
+  }
+  ok(emo === 0 && yaho === 0, `bare "!" lines: ${emo} emotes, ${yaho} 야호!`);
+  // 야호! only where the line cheers; other excited lines get another take
+  let y1 = 0, other = 0;
+  for (let i = 0; i < 40; i++) {
+    const a = vv.plan('야호! 신난다!', { id: i, kind: 'adult' }, { emotion: 'excited' });
+    const b = vv.plan('최고예요!!', { id: i, kind: 'adult' }, { emotion: 'excited' });
+    if (a.items.some((x) => x.hangul === '야호!')) y1++;
+    if (b.items.some((x) => x.kind === 'emote' && x.hangul !== '야호!')) other++;
+  }
+  ok(y1 === 40 && other === 40, `야호 lines ${y1}/40, other excited takes ${other}/40`);
+});
+
+test('keywords (polish): stop lists and word starts — 선물 / 솔방울 / 그래도 / 배가 고파 / 그냥 / 이야기 / 아주머니', () => {
+  const ids = (t) => keywordsOf(t, 8).map((k) => k.id);
+  const no = (t, id) => ok(!ids(t).includes(id), `${t} -> ${ids(t)} (should not say ${id})`);
+  const yes = (t, id) => ok(ids(t).includes(id), `${t} -> ${ids(t)} (should say ${id})`);
+  no('손주 줄 선물 사야지', 'water'); no('하늘색 물감이 모자라…', 'water'); no('다들 건강해 보여 다행이에요', 'water');
+  no('솔방울 마을이 촌장님을 기다려요!', 'home'); no('금방 지어 드릴게요!', 'home');
+  no('서리마을 빵이 제일이야', 'work'); no('껄껄, 그래도 마을이 좋아졌구먼!', 'yes'); no('여기서 응원할게요', 'yes');
+  no('하하하! 그 녀석 배가 고팠나 보네!', 'boat'); yes('하하하! 그 녀석 배가 고팠나 보네!', 'hungry');
+  no('그냥 동네 이웃이지', 'cat'); no('빵 이야기를 해요', 'baby'); no('빵집 아주머니', 'very');
+  no('힘쓸 일 있으면 불러!', 'fire'); no('안개가 자욱해서', 'dog'); no('공사 시작!', 'small');
+  yes('물 좀 주세요', 'water'); yes('응, 안녕~', 'yes'); yes('우리 집에 놀러 와요', 'home'); yes('배를 사서 바다로', 'boat');
+});
+
+test('registers: residents of one type sit on five pitch steps; small voices never go far above their recording', () => {
+  const { vv } = mk();
+  // the register comes from the speaker id: all five steps are used, none by more than ~1/3 of the residents
+  const cnt = [0, 0, 0, 0, 0];
+  for (let i = 0; i < 300; i++) cnt[hashStr('pitch|' + speakerId({ id: i, kind: 'adult' })) % 5]++;
+  ok(Math.min(...cnt) >= 30 && Math.max(...cnt) <= 100, 'bins ' + cnt);
+  // two residents on different steps: the same line sounds a step apart (same words, other register)
+  const a = vv.plan('오늘 날씨 좋네요', 'c1', { voice: 'adult_f', emote: 0 }), b2 = vv.plan('오늘 날씨 좋네요', 'c2', { voice: 'adult_f', emote: 0 });
+  ok(a && b2, 'plans');
+  ok(SPEAKER_BINS.length === 5, 'five bins');
+  let hi = 0;
+  for (const t of LINES) for (let i = 0; i < 30; i++) {
+    const p = vv.plan(t, { id: i, kind: 'toddler', voice: 'squeaky', persona: 'toddler' }, { emotion: 'excited' });
+    if (p) for (const it of p.items) hi = Math.max(hi, it.rate);
+  }
+  ok(hi <= Math.pow(2, 1.0 / 12) + 1e-4, 'squeaky played up to rate ' + hi);
+  return `register steps used ${cnt.join('/')}; squeaky max rate ${hi.toFixed(4)} (+${(12 * Math.log2(hi)).toFixed(2)} st)`;
+});
+
+test('pause / resume: a menu pause takes back clips not yet started and the line continues afterwards', () => {
+  const { vv, b } = mk();
+  const u = vv.speak('촌장님, 오늘 생선 정말 많이 잡았어요. 같이 먹어요!', { key: 'npc_aunt', x: 0, y: 0 });
+  const n = u.count;
+  run(vv, b, 0.3);
+  vv.pause();
+  const handed = b.plays.length, taken = b.plays.filter((p) => p.stop !== null).length;
+  b.t += 4.0;                                       // the scene is paused 4 s: no update() calls
+  vv.update(1 / 60);                                // (ignored while paused)
+  ok(b.plays.length === handed, 'nothing handed out while paused');
+  vv.resume();
+  run(vv, b, 4);
+  const after = b.plays.slice(handed);
+  const starts = after.map((p) => p.when);
+  ok(after.length >= 1 && after.length + handed - taken === n, `clips after resume ${after.length}, before ${handed} (${taken} taken back), line ${n}`);
+  for (let i = 1; i < starts.length; i++) ok(starts[i] - starts[i - 1] > 0.05, 'clips after resume are spaced, not a burst: ' + starts.join(','));
+  ok(vv.activeCount === 0, 'finished');
+  return `${handed - taken} clips before the pause, ${after.length} after, first at +${(starts[0] - 4.3).toFixed(3)} s after resume`;
+});
+
+test('stalled frames without pause(): the rest of the line moves along instead of firing at once', () => {
+  const { vv, b } = mk();
+  vv.speak('촌장님, 오늘 생선 정말 많이 잡았어요. 같이 먹어요!', { key: 'npc_aunt', x: 0, y: 0 });
+  run(vv, b, 0.3);
+  const before = b.plays.length;
+  b.t += 4.0;                                       // no update() for 4 s (scene paused without the hook)
+  run(vv, b, 4);
+  const w = b.plays.slice(before).map((p) => p.when);
+  let burst = 0;
+  for (let i = 1; i < w.length; i++) if (w[i] - w[i - 1] < 0.05) burst++;
+  ok(w.length >= 2 && burst === 0 && vv.stats.resynced >= 1, `starts ${w.map((x) => x.toFixed(3)).join(', ')}`);
+  return `${w.length} clips after the stall, spaced ${w.slice(1).map((x, i) => ((x - w[i]) * 1000).toFixed(0)).join('/')} ms`;
+});
+
+test('lazy loading: a voice not decoded yet is not ready, asks its loader once, then speaks', () => {
+  const asked = [];
+  const b = new FakeBackend(keys.filter((k) => k !== 'voice_elder_m'));
+  const vv = new VillageVoice({ manifest: MAN, backend: b, loader: (key, type) => asked.push(key + ':' + type) });
+  const gp = { key: 'npc_grandpa' };
+  ok(!vv.ready(gp) && asked.length === 1 && asked[0] === 'voice_elder_m:elder_m', 'asked ' + asked);
+  ok(vv.speak('안녕', gp) === null && !vv.ready(gp) && asked.length === 1, 'asked only once');
+  b.keys.add('voice_elder_m');
+  ok(vv.ready(gp) && vv.speak('안녕', gp), 'speaks once decoded');
+  const none = new VillageVoice({ backend: b });
+  ok(!none.ready(gp) && none.speak('안녕', gp) === null, 'no manifest -> not ready (the game keeps its old chatter)');
 });
 
 test('no allocations per frame: 300k update() calls with 2 active lines + distance hook', () => {

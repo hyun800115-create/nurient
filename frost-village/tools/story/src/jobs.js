@@ -45,6 +45,7 @@ export class Jobs {
   assign(r, job, p) {
     r.job = job; r.work = p ? p.idx : -1; r.jobless = 0;
     this.stats.hired++;
+    if (p && this.e.initialPop > 0) this.e.introduceAt(r, p);    // (while the town is being set up, coworkers are seeded in seedRelations)
   }
 
   /** give every jobless adult a job if there are openings (used at start and after shops open) */

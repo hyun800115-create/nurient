@@ -43,7 +43,9 @@ export class UnlockPad {
     this.maxBadge = null;
 
     // floating label: icon + title on a little panel
-    const lab = gs.add.container(x, y - 62).setDepth(y + 2000);
+    // ((v4-B) opts.labelAt [dx, dy]: a label beside the pad where the one above would cover a neighbour pad)
+    const la = Array.isArray(opts.labelAt) ? opts.labelAt : [0, -62];
+    const lab = gs.add.container(x + la[0], y + la[1]).setDepth(y + 2000);
     const title = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '22px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0, 0.5);
     const icon = Assets.image(gs, 0, 0, opts.icon || 'ui_icon_lock').setOrigin(0.5, 0.5);
     const icf = icon.frame;
@@ -51,7 +53,8 @@ export class UnlockPad {
     const bg = panel(gs, 0, 0, 'ui_panel', 100, 56).setOrigin(0.5, 0.5);
     lab.add([bg, icon, title]);
     this.label = lab; this.labelBg = bg; this.labelIcon = icon; this.labelText = title;
-    this.labelBaseY = y - 62;
+    this.labelBaseY = y + la[1];
+    this.labelDx = la[0];
 
     // progress ring (drawn while paying)
     this.ringBg = Assets.image(gs, x, y - 118, 'ui_ring_bg').setDepth(DEPTH.LABEL).setVisible(false);
@@ -169,8 +172,9 @@ export class UnlockPad {
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 420 + this.x * 0.01) * 4;
     // keep the floating label inside the screen while its pad is visible
     const v = gs.cameras.main.worldView, hw = this.labelBg.width * 0.5 + 8;
-    let lx = this.x;
-    if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, this.x));
+    const bx = this.x + (this.labelDx || 0);
+    let lx = bx;
+    if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, bx));
     if (this.label.x !== lx) this.label.x = lx;
     // "ready" highlight when the player can afford it
     const afford = !this.maxed && this.remaining > 0 && gs.economy.coins >= this.remaining;

@@ -35,7 +35,12 @@ from mathutils import Vector               # noqa: E402
 import ttl_config as C                     # noqa: E402
 import ttl_lib as T                        # noqa: E402
 
-TILT = 8.0            # camera looks down a little: snow caps and letter tops show
+TILT = 5.0            # camera looks down a little: snow caps and letter tops show.  Kept low (with
+                      # thin-ish letters, DEPTH) so the top face of a lower stroke does not fill the
+                      # narrow gap under the stroke above it (Jua's gaps are only ~0.05 em)
+DEPTH = 0.070         # half depth of the big letters (extrude)
+BEVEL = 0.032         # round bevel; the letter's outer edge stays ON the font outline (offset = -bevel)
+SNOW_R = 0.062
 PIECES = {}           # piece index -> [objects]
 PIECE_NAMES = {}
 
@@ -50,34 +55,50 @@ def reg(idx, name, *obs):
 
 
 # ------------------------------------------------------------------ one 3D letter with its snow
+def pick_font(ch, fpath):
+    """Jua / Fredoka, or the fallback font for a character the logo font cannot draw (ttl_config)."""
+    if C.has_glyph(fpath, ch):
+        return fpath
+    lang = 'en' if fpath in (C.FONT_EN, C.FONT_EN_MAIN) else 'ko'
+    return C.font_for(ch, lang) or fpath
+
+
 def glyph_box(ch, fpath, size):
-    loops, bb = T.glyph_outline(ch, fpath, size)
+    loops, bb = T.glyph_outline(ch, pick_font(ch, fpath), size)
     return loops, bb
 
 
-def letter(ch, fpath, size, cols, name, pos, rot_deg=0.0, depth=0.10, bevel=0.034, snow_r=0.055,
+def letter(ch, fpath, size, cols, name, pos, rot_deg=0.0, depth=DEPTH, bevel=BEVEL, snow_r=SNOW_R,
            seed=1, drips=0.12, snow=True, parent=None, rough=0.30, coat=0.6, z=0.0, up=0.42, sss=0.0):
-    """A glyph centred on its own pivot at `pos` (centre of its bbox)."""
+    """A glyph centred on its own pivot at `pos` (centre of its bbox).  The bevel grows INWARD from the
+    font outline (offset = -bevel), so the silhouette is the font's and the gaps between jamo stay
+    open; the snow only sits on exposed tops (ttl_lib.GlyphMask)."""
+    fpath = pick_font(ch, fpath)
     loops, bb = glyph_box(ch, fpath, size)
     cx, cy = (bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2
     grp = T.empty(name, loc=(pos[0], pos[1], z), rot=(0, 0, math.radians(rot_deg)), parent=parent)
     top, bot = cols
     m = T.mat_gradient(name + '_mat', top, bot, bb[1] - cy, bb[3] - cy, rough=rough, coat=coat, sss=sss)
-    T.text_mesh(ch, fpath, size, depth, bevel, m, name + '_L', offset=-bevel * 0.35, dx=-cx, dy=-cy,
+    T.text_mesh(ch, fpath, size, depth, bevel, m, name + '_L', offset=-bevel, dx=-cx, dy=-cy,
                 parent=grp)
     if snow:
+        mask = T.GlyphMask(loops, bb, ppe=300.0 / max(size, 0.3), gap=0.06 * size)
         smp = T.edge_samples(loops, step=max(0.006, snow_r * 0.33), skip_holes=True)
         sn, _n = T.snow_cap(smp, depth + bevel, name.replace('.', '') + 'snow', parent=grp, r=snow_r,
-                            seed=seed, drips=drips, dx=-cx, dy=-cy, mat=T.mat_snow(), up=up)
-        sn.data.resolution = sn.data.render_resolution
-        T.snow_to_mesh(sn)
+                            seed=seed, drips=drips, dx=-cx, dy=-cy, mat=T.mat_snow(), up=up, mask=mask,
+                            reach=0.12 * size, lift=0.45, lumps=0.28)
+        if len(sn.data.elements):
+            sn.data.resolution = sn.data.render_resolution
+            T.snow_to_mesh(sn)
+        else:
+            bpy.data.objects.remove(sn)
     return grp, (bb[2] - bb[0], bb[3] - bb[1]), (cx, cy)
 
 
 def word_row(text, fpath, size, palette, prefix, y, gap, arch=0.0, tilt=0.0, bounce=0.0, seed=10,
              parent=None, x0=0.0, **kw):
     """Letters side by side (bbox spacing), centred on x0, on a gentle arch."""
-    boxes = [glyph_box(ch, fpath, size)[1] for ch in text]
+    boxes = [glyph_box(ch, fpath, size)[1] if ch.strip() else (0, 0, size * 0.28, size * 0.7) for ch in text]
     ws = [b[2] - b[0] for b in boxes]
     total = sum(ws) + gap * (len(text) - 1)
     x = x0 - total / 2
@@ -129,7 +150,8 @@ def sign(name, w, h, loc, text, fpath, text_size, rot_deg=0.0, parent=None, seed
     sn.data.resolution = sn.data.render_resolution
     T.snow_to_mesh(sn)
     tc = text_cols or (C.PAL['sign_text'], '#F1D6AE')
-    boxes = [glyph_box(ch, fpath, text_size)[1] for ch in text]
+    boxes = [glyph_box(ch, fpath, text_size)[1] if ch.strip() else (0, 0, text_size * 0.28, text_size * 0.7)
+             for ch in text]
     letters = []
     if fpath == C.FONT_EN:
         adv = advances(text, fpath)
@@ -148,9 +170,11 @@ def sign(name, w, h, loc, text, fpath, text_size, rot_deg=0.0, parent=None, seed
         total = sum(ws) + gap * (len(text) - 1)
         x = -total / 2
         for i, ch in enumerate(text):
-            g, _wh, _c = letter(ch, fpath, text_size, tc, '%s_t%d' % (name, i), (x + ws[i] / 2, -0.02), 0.0,
-                                depth=0.022, bevel=0.014, snow=False, parent=root, z=d + 0.035, rough=0.45, coat=0.2)
-            letters.append(g)
+            if ch.strip():
+                g, _wh, _c = letter(ch, fpath, text_size, tc, '%s_t%d' % (name, i), (x + ws[i] / 2, -0.02), 0.0,
+                                    depth=0.022, bevel=0.014, snow=False, parent=root, z=d + 0.035, rough=0.45,
+                                    coat=0.2)
+                letters.append(g)
             x += ws[i] + gap
     return root
 
@@ -164,41 +188,68 @@ def advances(text, fpath):
 
 
 # ------------------------------------------------------------------ layouts
+EMBLEM_R = 0.19
+
+
+def emblem_spot(g, wh, R):
+    """Where the 눈꽃 emblem blooms on a letter: ABOVE its top-right corner (centre 0.6 R over the
+    glyph top, 0.1 R in from its right edge), on the snow line - it never hides a stroke of the
+    letter (ttl_check.py fails if it covers more than 3 % of any letter piece)."""
+    x = g.location.x + wh[0] / 2 - 0.10 * R
+    y = g.location.y + wh[1] / 2 + 0.60 * R
+    return x, y
+
+
+def top_row(text, y, parent=None):
+    """행복한: smaller ribbon-red candy letters (no snow) + four gold sparkles."""
+    if not text.strip():
+        return [], 0.0
+    row = word_row(text, C.FONT_KO, 0.50, [C.PAL['top']], 'T', y, 0.035, arch=0.04, tilt=4.0,
+                   bounce=0.0, depth=0.06, bevel=0.022, snow=False, rough=0.25, coat=0.8)
+    w = sum(wh[0] for _c, _g, wh in row) + 0.035 * max(0, len(row) - 1)
+    return row, w
+
+
+def sparkles(w, y):
+    return [sparkle('spk0', 0.075, (-w / 2 - 0.15, y + 0.02, 0.05), 0),
+            sparkle('spk1', 0.045, (-w / 2 - 0.05, y + 0.17, 0.05), 20),
+            sparkle('spk2', 0.075, (w / 2 + 0.15, y + 0.06, 0.05), 10),
+            sparkle('spk3', 0.04, (w / 2 + 0.05, y - 0.12, 0.05), 35)]
+
+
 def build_main():
+    """Pieces: 0 = top row (+ sparkles), 1..n = the big letters, n+1 = emblem, n+2 = sign."""
     t = C.TITLE
-    S = 1.0
     main = t['main']
-    rows = word_row(main, C.FONT_KO, S, C.PAL['main'], 'M', 0.0, 0.045, arch=0.10, tilt=5.0, bounce=0.025,
-                    depth=0.105, bevel=0.036, snow_r=0.056, drips=0.10)
+    rows = word_row(main, C.FONT_KO, 1.0, C.PAL['main'], 'M', 0.0, 0.045, arch=0.10, tilt=5.0, bounce=0.025,
+                    snow_r=SNOW_R, drips=0.16)
+    n = len(rows)
     tops, bots = [], []
     for i, (ch, g, wh) in enumerate(rows):
         reg(1 + i, 'main_%d' % i, g)
         tops.append(g.location.y + wh[1] / 2)
         bots.append(g.location.y - wh[1] / 2)
-    # the emblem sits on 꽃 (or on the 2nd syllable when the name has no 꽃)
-    k = main.index('꽃') if '꽃' in main else min(1, len(rows) - 1)
+    # the emblem blooms over 꽃 (or over the 2nd syllable when the name has no 꽃)
+    letters = [ch for ch, _g, _w in rows]
+    k = letters.index('꽃') if '꽃' in letters else min(1, n - 1)
     ch, g, wh = rows[k]
-    em = T.emblem('emblem', 0.205, loc=(g.location.x + wh[0] * 0.40, g.location.y + wh[1] * 0.52, 0.26),
-                  rot_deg=12)
-    reg(5, 'emblem', em)
-    # 행복한: smaller gold letters over the main word, with sparkles
-    top_y = max(tops) + 0.36
-    trow = word_row(t['top'], C.FONT_KO, 0.50, [C.PAL['top']], 'T', top_y, 0.035, arch=0.04, tilt=4.0,
-                    bounce=0.0, depth=0.075, bevel=0.026, snow=False, rough=0.25, coat=0.8)
-    trow_w = sum(w for _c, _g, (w, _h) in trow) + 0.03 * (len(trow) - 1)
-    sp = [sparkle('spk0', 0.075, (-trow_w / 2 - 0.15, top_y + 0.02, 0.05), 0),
-          sparkle('spk1', 0.045, (-trow_w / 2 - 0.05, top_y + 0.17, 0.05), 20),
-          sparkle('spk2', 0.075, (trow_w / 2 + 0.15, top_y + 0.06, 0.05), 10),
-          sparkle('spk3', 0.04, (trow_w / 2 + 0.05, top_y - 0.12, 0.05), 35)]
-    reg(0, 'top', *[g for _c, g, _w in trow], *sp)
+    ex, ey = emblem_spot(g, wh, EMBLEM_R)
+    em = T.emblem('emblem', EMBLEM_R, loc=(ex, ey, 0.20), rot_deg=12)
+    reg(n + 1, 'emblem', em)
+    # 행복한 above the big word - raised so its letters clear the emblem's petals
+    top_y = max(max(tops) + 0.34, ey + EMBLEM_R + 0.20)
+    trow, tw = top_row(t['top'], top_y)
+    if trow:
+        reg(0, 'top', *[g for _c, g, _w in trow], *sparkles(tw, top_y))
     # 이야기 on a little wooden sign under the main word (in front of it)
-    ts = 0.34
-    tw = sum(glyph_box(c, C.FONT_KO, ts)[1][2] - glyph_box(c, C.FONT_KO, ts)[1][0] for c in t['bottom'])
-    sw = tw + ts * 0.07 * (len(t['bottom']) - 1) + 0.34
-    sh = 0.36
-    sy = min(bots) - sh * 0.5
-    sg = sign('sign', sw, sh, (0.06, sy, 0.24), t['bottom'], C.FONT_KO, ts, rot_deg=-2.5)
-    reg(6, 'sign', sg)
+    if t['bottom'].strip():
+        ts = 0.34
+        tw = sum(glyph_box(c, C.FONT_KO, ts)[1][2] - glyph_box(c, C.FONT_KO, ts)[1][0] for c in t['bottom'] if c.strip())
+        sw = tw + ts * 0.07 * (len(t['bottom']) - 1) + 0.34
+        sh = 0.36
+        sy = min(bots) - sh * 0.5
+        sg = sign('sign', sw, sh, (0.06, sy, 0.24), t['bottom'], C.FONT_KO, ts, rot_deg=-2.5)
+        reg(n + 2, 'sign', sg)
 
 
 def build_short():
@@ -211,58 +262,82 @@ def build_short():
     ys = [0.40, -0.42] if len(lines) == 2 else [0.0]
     idx = 0
     pal = C.PAL['main']
+    kk = None
+    allrows = []
     for li, line in enumerate(lines):
         rows = word_row(line, C.FONT_KO, S, pal[idx % len(pal):] + pal[:idx % len(pal)], 'S%d' % li, ys[li],
                         0.05, arch=0.0, tilt=3.0 if li == 0 else -3.0, bounce=0.02, seed=20 + li * 5,
-                        depth=0.105, bevel=0.036, snow_r=0.056, drips=0.10)
+                        snow_r=SNOW_R, drips=0.16)
         for ch, g, wh in rows:
             reg(1 + idx, 'short_%d' % idx, g)
-            if ch == '꽃':
-                em = T.emblem('emblem', 0.205, loc=(g.location.x + wh[0] * 0.40, g.location.y + wh[1] * 0.52, 0.26),
-                              rot_deg=12)
-                reg(9, 'emblem', em)
+            allrows.append((ch, g, wh))
+            if ch == '꽃' and kk is None:
+                kk = (g, wh)
             idx += 1
-    if 9 not in PIECES:
-        em = T.emblem('emblem', 0.2, loc=(0.0, ys[0] + 0.55, 0.26), rot_deg=12)
-        reg(9, 'emblem', em)
+    if kk is None:                                   # no 꽃: bloom over the last letter of the first line
+        _c, g, wh = allrows[min(len(allrows), len(lines[0])) - 1]
+        kk = (g, wh)
+    ex, ey = emblem_spot(kk[0], kk[1], EMBLEM_R * 1.05)
+    em = T.emblem('emblem', EMBLEM_R * 1.05, loc=(ex, ey, 0.20), rot_deg=12)
+    reg(idx + 1, 'emblem', em)
 
 
 def build_en():
     t = C.TITLE
     word = t['en_main']
     S = 1.0
-    adv = advances(word, C.FONT_EN)
+    FM = C.FONT_EN_MAIN
+    adv = advances(word, FM)
     total = adv[-1] * S
     # which 'o' becomes the emblem
     part = t.get('emblem_in_en', '')
     p0 = word.find(part) if part else -1
-    eo = word.find('o', p0) if p0 >= 0 else -1
+    eo = word.lower().find('o', p0) if p0 >= 0 else -1
     blue, pink = C.PAL['main'][0], C.PAL['main'][1]
     split = p0 if p0 > 0 else len(word)
     half = total / 2
     piece = 1
+    tops = []
     for i, ch in enumerate(word):
-        b = glyph_box(ch, C.FONT_EN, S)[1]
+        b = glyph_box(ch, FM, S)[1]
         cx = -half + adv[i] * S + (b[0] + b[2]) / 2
         cy = (b[1] + b[3]) / 2
         u = cx / half
         y = cy - 0.07 * u * u + (0.018 if i % 2 else -0.018)
         rot = -4.0 * u
+        tops.append(y + (b[3] - b[1]) / 2)
         if i == eo:
             em = T.emblem('emblem', (b[2] - b[0]) * 0.66, loc=(cx, y + 0.01, 0.20), rot_deg=10)
             reg(piece, 'en_%d' % i, em)
         else:
-            g, wh, c = letter(ch, C.FONT_EN, S, blue if i < split else pink, 'E%d' % i, (cx, y), rot,
-                              seed=40 + i, depth=0.10, bevel=0.034, snow_r=0.05, drips=0.10)
+            g, wh, c = letter(ch, FM, S, blue if i < split else pink, 'E%d' % i, (cx, y), rot,
+                              seed=40 + i, bevel=0.022, snow_r=0.048, drips=0.10)
             reg(piece, 'en_%d' % i, g)
         piece += 1
+    # optional small line above (TITLE_NAME.logo.en.top, e.g. "Happy")
+    if t.get('en_top', '').strip():
+        ty = max(tops) + 0.30
+        tsz = 0.42
+        tadv = advances(t['en_top'], C.FONT_EN)
+        tw = tadv[-1] * tsz
+        objs = []
+        for i, ch in enumerate(t['en_top']):
+            if not ch.strip():
+                continue
+            b = glyph_box(ch, C.FONT_EN, tsz)[1]
+            cx = -tw / 2 + tadv[i] * tsz + (b[0] + b[2]) / 2
+            g, _wh, _c = letter(ch, C.FONT_EN, tsz, C.PAL['top'], 'ET%d' % i, (cx, ty + (b[1] + b[3]) / 2 - 0.15),
+                                0.0, depth=0.05, bevel=0.018, snow=False, rough=0.25, coat=0.8)
+            objs.append(g)
+        reg(0, 'top', *objs, *sparkles(tw, ty))
     # Village on the sign
-    ts = 0.36
     sub = t['en_sub']
-    sadv = advances(sub, C.FONT_EN)
-    sw = sadv[-1] * ts + 0.36
-    sg = sign('sign', sw, 0.36, (0.10, -0.33, 0.22), sub, C.FONT_EN, ts, rot_deg=-2.5)
-    reg(piece, 'sign', sg)
+    if sub.strip():
+        ts = 0.36
+        sadv = advances(sub, C.FONT_EN)
+        sw = sadv[-1] * ts + 0.36
+        sg = sign('sign', sw, 0.36, (0.10, -0.33, 0.22), sub, C.FONT_EN, ts, rot_deg=-2.5)
+        reg(piece, 'sign', sg)
 
 
 LAYOUTS = {'main': build_main, 'short': build_short, 'en': build_en}
@@ -331,6 +406,13 @@ def main():
     ap.add_argument('--parts-only', action='store_true', help='render only the pieces (the packer composites them)')
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
     a = ap.parse_args(argv)
+    errs, warns = C.validate_title()
+    for w_ in warns:
+        print('ttl_logo: note:', w_)
+    if errs:
+        for e in errs:
+            print('ttl_logo: ERROR:', e)
+        sys.exit(2)
     os.makedirs(a.out, exist_ok=True)
     T.reset()
     PIECES.clear()

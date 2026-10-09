@@ -12,6 +12,7 @@ const MIN_ROAD_DIST = 300;
 const DETOUR = 1.9;
 const OFFROAD = 1.8;   // walking through the snow counts this much more than walking on the road (prefer roads)
 const TRIM = 170;      // a road node this close behind the walker / beyond the target is skipped
+const BUCKET = 256;    // (v4-B) px: the nearest-node search grid
 
 export class Roads {
   /** isOpen(zoneId) -> bool : whether edges of that zone can be used; regionOpen(id): (v3) new land revealed */
@@ -46,6 +47,25 @@ export class Roads {
     const N = this.nodes.length;
     this.g = new Float64Array(N); this.f = new Float64Array(N); this.from = new Int32Array(N); this.fromEdge = new Array(N);
     this.open = []; this.closed = new Uint8Array(N);
+    this.buildBuckets();
+  }
+
+  /** (v4-B) a level crossing the train is near: true = wait at the stop point (the walker does not re-route).
+   *  Neighbours sets this; the route itself stays the same */
+  edgeBlocked(e) { void e; return false; }
+
+  /** (v4-B) nodes in a 256 px grid (nearestK looks at the cells around a point, ring by ring) */
+  buildBuckets() {
+    const b = this.buckets = new Map();
+    for (const n of this.nodes) {
+      const k = Math.floor(n.x / BUCKET) * 4096 + Math.floor(n.y / BUCKET);
+      let l = b.get(k);
+      if (!l) b.set(k, l = []);
+      l.push(n);
+    }
+    let maxX = 0, maxY = 0;
+    for (const n of this.nodes) { maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y); }
+    this.bucketSpan = Math.ceil(Math.max(maxX, maxY * 2, 1) / BUCKET) + 2;
   }
 
   /** zones changed (unlock): forget cached paths */
@@ -75,6 +95,7 @@ export class Roads {
     const N = this.nodes.length;
     this.g = new Float64Array(N); this.f = new Float64Array(N); this.from = new Int32Array(N); this.fromEdge = new Array(N);
     this.closed = new Uint8Array(N);
+    this.buildBuckets();
     this.invalidate();
     return n;
   }
@@ -84,39 +105,54 @@ export class Roads {
   /** nearest node that has a usable edge */
   nearest(x, y) { const k = this.nearestK(x, y, 1, this._k1 || (this._k1 = [])); return k.length ? k[0] : -1; }
 
-  /** the `k` nearest nodes with a usable edge (indices, nearest first) */
+  /** the `k` nearest nodes with a usable edge (indices, nearest first). (v4-B) searched ring by ring in a
+   *  256 px bucket grid: the rings stop once the k-th best is closer than anything the next ring can hold */
   nearestK(x, y, k, out) {
     out = out || [];
     out.length = 0;
     const ds = this._ds || (this._ds = []);
     ds.length = 0;
-    for (const n of this.nodes) {
-      if (!n.edges.some((e) => this.usable(e))) continue;
+    const bx = Math.floor(x / BUCKET), by = Math.floor(y / BUCKET);
+    const consider = (n) => {
+      if (!n.edges.some((e) => this.usable(e))) return;
       const d = gd(x, y, n.x, n.y);
       let j = out.length;
-      if (j >= k && d >= ds[k - 1]) continue;
+      if (j >= k && d >= ds[k - 1]) return;
       if (j >= k) j = k - 1;
       out[j] = n.i; ds[j] = d;
       while (j > 0 && ds[j - 1] > ds[j]) { const t = ds[j]; ds[j] = ds[j - 1]; ds[j - 1] = t; const u = out[j]; out[j] = out[j - 1]; out[j - 1] = u; j--; }
+    };
+    for (let r = 0; r <= this.bucketSpan; r++) {
+      // nodes in ring r are at least (r - 1) * BUCKET px away along x, (r - 1) * BUCKET * 2 ground px along y
+      if (out.length >= k && ds[k - 1] < (r - 1) * BUCKET) break;
+      for (let cx = bx - r; cx <= bx + r; cx++) {
+        for (let cy = by - r; cy <= by + r; cy++) {
+          if (Math.max(Math.abs(cx - bx), Math.abs(cy - by)) !== r) continue;
+          const l = this.buckets.get(cx * 4096 + cy);
+          if (l) for (const n of l) consider(n);
+        }
+      }
     }
     return out;
   }
 
-  /** list of [nodeIndex, edgeTaken] from node a to node b (A*), cached; null when unreachable */
+  /** list of [nodeIndex, edgeTaken] from node a to node b (A*), cached; null when unreachable.
+   *  (v4-B) the open list is a binary heap (it was a linear scan; the v4 grid has ~200 nodes) */
   path(a, b) {
-    const key = a * 4096 + b;
+    const key = a * 65536 + b;
     if (this.cache.has(key)) return this.cache.get(key);
-    const N = this.nodes.length, g = this.g, f = this.f, from = this.from, fe = this.fromEdge, closed = this.closed, open = this.open;
-    g.fill(Infinity); closed.fill(0); from.fill(-1); open.length = 0;
+    const g = this.g, f = this.f, from = this.from, fe = this.fromEdge, closed = this.closed;
+    const heap = this.open;
+    g.fill(Infinity); closed.fill(0); from.fill(-1); heap.length = 0;
     const tb = this.nodes[b];
-    g[a] = 0; f[a] = gd(this.nodes[a].x, this.nodes[a].y, tb.x, tb.y); open.push(a);
+    const push = (n) => { heap.push(n); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (f[heap[p]] <= f[heap[i]]) break; const t = heap[p]; heap[p] = heap[i]; heap[i] = t; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && f[heap[l]] < f[heap[m]]) m = l; if (r < heap.length && f[heap[r]] < f[heap[m]]) m = r; if (m === i) break; const t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m; } } return top; };
+    g[a] = 0; f[a] = gd(this.nodes[a].x, this.nodes[a].y, tb.x, tb.y); push(a);
     let found = false;
-    while (open.length) {
-      // small graph: linear scan for the lowest f
-      let bi = 0;
-      for (let k = 1; k < open.length; k++) if (f[open[k]] < f[open[bi]]) bi = k;
-      const cur = open[bi];
-      open[bi] = open[open.length - 1]; open.pop();
+    let guard = 0;
+    const N = this.nodes.length;
+    while (heap.length) {
+      const cur = pop();
       if (cur === b) { found = true; break; }
       if (closed[cur]) continue;
       closed[cur] = 1;
@@ -129,10 +165,10 @@ export class Roads {
           g[nx] = ng; from[nx] = cur; fe[nx] = e;
           const n = this.nodes[nx];
           f[nx] = ng + gd(n.x, n.y, tb.x, tb.y);
-          open.push(nx);
+          push(nx);
         }
       }
-      if (open.length > N * 8) break;
+      if (++guard > N * 8) break;
     }
     let res = null;
     if (found || a === b) {

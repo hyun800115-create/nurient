@@ -2,6 +2,9 @@
 // (private mode, sandboxed iframes and full quotas must never crash the game).
 
 import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
+// ---- (v4-B) the v4 block is checked against the lots and the shops it may name
+import { WORLD } from '../data/world.js';
+import { BALANCE } from '../data/balance.js';
 
 export const SAVE_KEY = 'frostVillage.save.v1';
 export const SETTINGS_KEY = 'frostVillage.settings.v1';
@@ -33,7 +36,7 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
@@ -96,6 +99,9 @@ export const MIGRATE = {
     o.progress = pr;
     return o;
   },
+  // v3.5 -> v4 (이웃 마을): nothing else changes — the v4 state starts fresh when the rail strip opens (a v3.5
+  // save with the east coast open gets the rail strip and the ruined station on load; sanitizeSave does that)
+  4: (s) => Object.assign({}, s, { v: 5 }),
 };
 const LINE_STATION = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
 const STATION_ZONE = { grill: null, sawmill: 'zone_forest', bakery: 'zone_farm', smelter: 'zone_mine', smokehouse: 'zone_hunt' };
@@ -182,31 +188,76 @@ export function sanitizeSave(raw) {
   return s;
 }
 
-/** (v4-A) a plain JSON value with bounded size (numbers finite, strings short, at most 64 items / keys a level) */
-function plainJSON(v, depth) {
-  if (v === null || typeof v === 'boolean') return v;
-  if (typeof v === 'number') return Number.isFinite(v) ? Math.max(-1e12, Math.min(1e12, v)) : undefined;
-  if (typeof v === 'string') return v.length <= 64 ? v : v.slice(0, 64);
-  if (depth <= 0) return undefined;
-  if (Array.isArray(v)) { const o = []; for (const x of v.slice(0, 64)) { const y = plainJSON(x, depth - 1); if (y !== undefined) o.push(y); } return o; }
-  if (isObj(v)) { const o = {}; let n = 0; for (const k in v) { if (++n > 64 || !/^[A-Za-z0-9_]{1,40}$/.test(k)) continue; const y = plainJSON(v[k], depth - 1); if (y !== undefined) o[k] = y; } return o; }
-  return undefined;
-}
-
-/** (v4-A) the v4 save block (docs/v4_plan.md §12): clock and town checked here, the rest passed through bounded */
+/**
+ * (v4-B, docs/v4_plan.md §12) the v4 save block: every field checked, unknown lots / shops dropped, counts
+ * clamped. Always kept (also while the neighbours are not running yet: Game.serialize passes it through).
+ */
 export function sanitizeV4(raw) {
   if (!isObj(raw)) return null;
-  const o = plainJSON(raw, 5) || {};
-  o.v = 1;
+  const o = { v: 1 };
   const ck = isObj(raw.clock) ? raw.clock : {};
   o.clock = { t: Math.max(0, Math.min(3600, num(ck.t, 200))), day: count(ck.day, 1e6), on: ck.on === true };
   const tw = isObj(raw.town) ? raw.town : {};
   o.town = {
     seed: Math.max(0, Math.min(4294967295, Math.floor(num(tw.seed, 2611)))),
     open: tw.open === true,
-    extra: Array.isArray(tw.extra) ? tw.extra.filter((e) => Array.isArray(e) && e.length >= 2 && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(0, 64).map((e) => [count(e[0], 999), String(e[1]).slice(0, 20), typeof e[2] === 'string' ? e[2].slice(0, 40) : null]) : [],
+    extra: Array.isArray(tw.extra) ? tw.extra.filter((e) => Array.isArray(e) && e.length >= 2 && Number.isFinite(e[0]) && typeof e[1] === 'string' && /^[a-z]{1,20}$/.test(e[1])).slice(0, 64).map((e) => [count(e[0], 999), String(e[1]).slice(0, 20), typeof e[2] === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(e[2]) ? e[2] : null]) : [],
     regulars: Array.isArray(tw.regulars) ? tw.regulars.filter((e) => Array.isArray(e) && Number.isFinite(e[0]) && Number.isFinite(e[1])).slice(0, 40).map((e) => [count(e[0], 999), count(e[1], 999)]) : [],
   };
+  const V = (BALANCE.v4 && BALANCE.v4.founding) || { shops: {} };
+  const SHOPS = V.shops || {};
+  const LOTS = (WORLD.v4 && WORLD.v4.lots) || {};
+  // the order board
+  const od = isObj(raw.orders) ? raw.orders : {};
+  const cards = [];
+  for (const c of Array.isArray(od.cards) ? od.cards.slice(0, 3) : []) {
+    if (!isObj(c)) continue;
+    const shop = typeof c.shop === 'string' && SHOPS[c.shop] ? c.shop : null;
+    if (c.shop && !shop) continue;
+    const need = counts(c.need, ITEMS);
+    for (const k in need) if (need[k] < 1 || need[k] > 999) delete need[k];
+    if (!shop && !Object.keys(need).length) continue;
+    const got = counts(c.got, Object.keys(shop ? SHOPS[shop].need || {} : need));
+    cards.push({ shop, need, got, idle: Math.max(0, Math.min(3600, num(c.idle, 0))) });
+  }
+  o.orders = {
+    cards,
+    done: Array.isArray(od.done) ? od.done.filter((k, i, a) => typeof k === 'string' && SHOPS[k] && a.indexOf(k) === i).slice(0, 5) : [],
+    standing: count(od.standing, 1e6),
+  };
+  o.cargo = counts(raw.cargo, ITEMS);
+  for (const k in o.cargo) o.cargo[k] = Math.min(999, o.cargo[k]);
+  // founded shops (lot ids validated against WORLD.v4.lots, one shop of a kind)
+  o.shops = {};
+  const seen = new Set();
+  if (isObj(raw.shops)) {
+    for (const id in raw.shops) {
+      const d = raw.shops[id];
+      if (!LOTS[id] || !isObj(d) || typeof d.shop !== 'string' || !SHOPS[d.shop] || seen.has(d.shop)) continue;
+      seen.add(d.shop);
+      const st = ['wait', 'build', 'ribbon', 'open'].indexOf(d.st) >= 0 ? d.st : 'wait';
+      const stock = counts(d.stock, (SHOPS[d.shop].sells || []).filter((k) => ITEMS.indexOf(k) >= 0));
+      for (const k in stock) stock[k] = Math.min(999, stock[k]);
+      o.shops[id] = { shop: d.shop, st, t: Math.max(0, Math.min(600, num(d.t, 0))), stock };
+    }
+  }
+  // the carpenter's houses
+  o.houses = {};
+  if (isObj(raw.houses)) {
+    for (const id in raw.houses) {
+      const d = raw.houses[id];
+      if (!LOTS[id] || o.shops[id] || !isObj(d)) continue;
+      o.houses[id] = { st: ['site', 'build', 'done'].indexOf(d.st) >= 0 ? d.st : 'site', got: { item_plank: count(isObj(d.got) ? d.got.item_plank : 0, 999) }, t: Math.max(0, Math.min(600, num(d.t, 0))), look: Math.max(0, Math.min(3, Math.floor(num(d.look, 0)))) };
+    }
+  }
+  const cap = Math.max(1, Math.floor(num(BALANCE.v4 && BALANCE.v4.rent && BALANCE.v4.rent.cap, 2000)));
+  o.cash = count(raw.cash, 1e9);
+  o.rentAcc = count(raw.rentAcc, cap);
+  const hp = isObj(raw.happy) ? raw.happy : {};
+  const hn = count(hp.n, 200);
+  o.happy = { n: hn, sum: Math.max(0, Math.min(hn, num(hp.sum, 0))) };
+  o.rank = raw.rank === 2 ? 2 : 1;
+  o.porters = count(raw.porters, 2);
   return o;
 }
 
@@ -255,7 +306,7 @@ export const Save = {
 };
 
 export const Settings = {
-  data: { sound: true, music: true, lang: null, zoom: null, daynight: true },
+  data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto' },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -265,6 +316,7 @@ export const Settings = {
       const z = typeof s.zoom === 'number' ? s.zoom : NaN;
       this.data.zoom = Number.isFinite(z) && z > 0.2 && z < 5 ? z : null;
       this.data.daynight = s.daynight !== false;     // (v4-A) 낮과 밤
+      this.data.gfx = s.gfx === 'high' || s.gfx === 'low' ? s.gfx : 'auto';     // (v4-B) 그래픽: 자동 / 선명하게 / 가볍게
     }
     return this.data;
   },

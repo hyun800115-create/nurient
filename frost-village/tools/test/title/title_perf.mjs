@@ -25,14 +25,14 @@ const srv = await start(0, { prefix: '/fv/' });
 async function open(html, isNew) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'ko-KR' });
   if (isNew) await ctx.addInitScript(() => {
-    localStorage.setItem('frostVillage.save.v1', JSON.stringify({ v: 4, progress: { done: {} }, city: { open: true } }));
+    localStorage.setItem('frostVillage.save.v1', JSON.stringify({ v: 4, progress: { done: {} }, v4: { v: 1, rank: 3 } }));
     localStorage.setItem('frostVillage.title.v1', JSON.stringify({ introSeen: true, shown: 4 }));
   });
   const page = await ctx.newPage();
   await page.route('**/fv/__perf.html*', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: html }));
   await page.goto(srv.url + '__perf.html', { waitUntil: 'load' });
   if (isNew) {
-    await page.waitForFunction(() => { const T = window.__TITLE; if (!T) return false; const st = window.__LAB.TitleAssets.state; return [1, 2, 3, 4].every((g) => st[g] === 'ready') && window.__LAB.TitleAssets.artSettled(); }, null, { timeout: 180000 });
+    await page.waitForFunction(() => { const T = window.__TITLE, A = window.__LAB.TitleAssets; return !!T && A.idle() && [1, 2, 3, 4].every((g) => A.ready(g)); }, null, { timeout: 180000 });
   } else {
     await page.waitForFunction(() => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), null, { timeout: 180000 });
   }

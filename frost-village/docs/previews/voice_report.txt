@@ -4,23 +4,37 @@ old chatter effective level (active LUFS + 20log10 volume): -21.14  (-21.3, -20.
 
 key              clips  dur s    vol    eff spread  peak ogg/mp3  DC max  gap dB   edge  >6k %  F0 Hz (base) range st     KB
 ----------------------------------------------------------------------------------------------------------------------------
-voice_kid_boy       41  16.49  0.401 -21.01   0.84  -1.40/ -2.12  0.0001   -59.9  0.004   0.52    316    290      6.1  220.3
-voice_kid_girl      41  17.06  0.401 -21.00   1.14  -1.52/ -1.70  0.0000   -87.1  0.018   0.85    384    345      6.5  229.7
-voice_adult_m       41  18.08  0.406 -21.01   1.02  -1.40/ -1.67  0.0001   -62.6  0.002   0.28    174    165      5.6  240.0
-voice_adult_f       41  17.69  0.403 -21.01   0.46  -1.17/ -1.72  0.0000   -55.1  0.008   0.38    265    255      6.0  234.0
-voice_elder_m       41  20.91  0.406 -21.01   1.10  -1.40/ -1.67  0.0001   -66.7  0.005   0.14    148    140      5.0  274.8
-voice_elder_f       41  20.45  0.402 -21.00   0.51  -1.62/ -1.93  0.0000   -68.4  0.002   0.20    237    225      5.5  266.7
-voice_chief         41  17.19  0.403 -21.00   0.67  -1.37/ -1.89  0.0000   -69.2  0.003   0.51    231    205      6.4  227.1
-voice_big_gruff     41  19.55  0.419 -20.99   1.05  -1.40/ -1.98  0.0002   -62.2  0.005   0.03    113    108      5.0  255.9
-voice_sweet         41  19.15  0.401 -21.01   0.39  -1.49/ -1.71  0.0000   -62.7  0.005   0.31    307    285      5.5  253.1
-voice_squeaky       41  15.61  0.401 -21.00   0.40  -1.43/ -1.87  0.0000   -82.6  0.024   0.99    523    470      7.3  212.0
+voice_kid_boy       60  21.97  0.400 -20.99   0.35  -1.52/ -1.87  0.0000   -60.1  0.003   0.69    384    332      4.7  277.8
+voice_kid_girl      60  22.70  0.400 -21.00   0.32  -1.55/ -1.90  0.0000   -55.9  0.017   0.70    441    382      4.8  287.8
+voice_adult_m       60  23.39  0.414 -20.84   0.94  -1.45/ -1.71  0.0001   -65.1  0.004   0.53    186    165      4.2  291.7
+voice_young_m       60  22.59  0.415 -20.95   0.88  -1.31/ -1.97  0.0000   -64.2  0.003   0.61    205    178      4.5  280.8
+voice_adult_f       60  22.54  0.401 -21.01   0.46  -1.39/ -1.77  0.0000   -63.0  0.007   0.52    303    258      5.0  279.7
+voice_elder_m       60  28.23  0.422 -20.69   1.12  -1.00/ -1.71  0.0002   -59.1  0.009   0.26    156    140      3.9  349.9
+voice_elder_f       60  26.93  0.406 -20.89   0.74  -1.40/ -1.69  0.0001   -59.1  0.006   0.31    231    208      4.1  329.6
+voice_chief         60  22.68  0.401 -20.99   0.45  -1.36/ -1.54  0.0001   -59.5  0.006   0.68    269    225      4.8  281.2
+voice_big_gruff     60  26.41  0.444 -20.40   0.97  -1.27/ -1.44  0.0003   -57.2  0.008   0.08    121    108      4.3  327.7
+voice_sweet         60  25.05  0.400 -21.00   0.66  -1.38/ -1.70  0.0001   -65.5  0.003   0.40    326    290      4.3  311.6
+voice_squeaky       60  21.08  0.400 -21.00   0.33  -1.61/ -1.97  0.0000   -58.6  0.016   0.55    481    420      4.8  267.7
 ----------------------------------------------------------------------------------------------------------------------------
-word clips 310: 0.21..0.82 s (median 0.36); emotes 100: 0.19..0.76 s; melodic range per clip median 5.8 st (p90 9.1)
-payload 2,531,579 bytes (2.53 MB of 4 MB), 20 files + manifest
+word clips 528: 0.17..0.82 s (median 0.34); emotes 132: 0.16..0.67 s; melodic range per clip median 4.5 st (p90 9.1)
+voice pitch (median F0 of its clips, Hz): big_gruff 121, elder_m 156, adult_m 186, young_m 205, elder_f 231, chief 269, adult_f 303, sweet 326, kid_boy 384, kid_girl 441, squeaky 481
+  closest pair: adult_f / sweet 1.28 st
+highest clip pitch (p95 of its F0, two trackers agreeing): 641 Hz (voice_squeaky/emo_excited); highest in the game with the runtime's per-voice limit: 696 Hz (voice_kid_girl/emo_oops)
+2-5 kHz share of the words (%) / phone-speaker loss (dB): kid_boy 7.1/-1.8, kid_girl 8.2/-1.7, adult_m 6.1/-2.2, young_m 8.1/-2.0, adult_f 6.1/-1.9, elder_m 5.0/-2.5, elder_f 4.7/-2.1, chief 6.1/-1.9, big_gruff 4.9/-3.1, sweet 5.9/-1.7, squeaky 7.4/-1.6
+  levels on a phone speaker (effective + loss) spread 0.96 dB across voices
+endings (ms from the last strong point to -30 dB): unreleased stops 18 (n=118), open vowels 58 (n=111), nasals / l 57 (n=299)
+stress: stressed / unstressed vowel length median 2.03 (p10 1.07), vocalic nPVI median 67 over 367 words (Japanese ~41, English ~57)
+payload 3,499,418 bytes (3.50 MB of 4 MB), 22 files + manifest
 
-language: 78 words in the dictionary, 57 recorded somewhere in the village
-  recorded words: 99 syllables, closed 75 %, onset clusters 18 %, vowels outside a/e/i/o/u 18 %
-  whole dictionary: closed 73 %, clusters 16 %, non-a/e/i/o/u 23 %   (old chatter / Japanese-like babble: 0 % / 0 % / 0 %)
+language: 106 words in the dictionary, 75 recorded somewhere in the village
+  recorded words: 143.0 syllables, closed 71 %, onset clusters 22 %, vowels outside a/e/i/o/u 26 %
+  whole dictionary: closed 73 %, clusters 19 %, non-a/e/i/o/u 28 %   (old chatter / Japanese-like babble: 0 % / 0 % / 0 %)
+  strict Japanese phonotactics (phonology.ja_legal): dictionary 31 % of syllables, words that could be Japanese: 꼬맙뿌, 우와뿅, 촌촌님
+what the village hears (tools/voice/heard.mjs: 1110 planned game lines, 3844 clips):
+  Japanese-legal syllables 27.3 % (play-weighted), whole clips 5.6 %; closed 67 %, clusters 25 %, ü/ö/æ 28 %
+  pace 5.8 syllables/s, sound 92 % of each line, gaps after tails p10/median/p90 -7/6/72 ms
+  84 different clips; most heard word 쁠록까 2.97 %, particles 뇰 3.67 %, 얄! 3.25 %; most common one-shot ending 응? 2.4 % of lines
 spectrograms: docs/previews/voice_spectrograms.png
 
+WARN assets/voice is not in LATE_FRAGMENTS (src/core/Assets.js): the artifact build will not package the voices yet - add 'voice' when the voices go into the game (docs/build_reports/voice.md section 7)
 RESULT: OK

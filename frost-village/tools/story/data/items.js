@@ -32,7 +32,7 @@ export const ITEMS = [
   ['item_yarn', '털실', 'yarn', '뭉치', 'materials', 4, 1],
   // goods
   ['item_scarf', '목도리', 'scarf', '개', 'goods', 10, 1],
-  ['item_mittens', '벙어리장갑', 'mittens', '켤레', 'goods', 8, 1],
+  ['item_mittens', '손모아장갑', 'mittens', '켤레', 'goods', 8, 1],
   ['item_hat', '털모자', 'woolly hat', '개', 'goods', 12, 1],
   ['item_book', '책', 'book', '권', 'goods', 9, 0],
   ['item_flower', '꽃다발', 'bouquet', '개', 'goods', 12, 1],

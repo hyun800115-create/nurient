@@ -35,7 +35,7 @@ const RECALL = { outing: 1, snowman: 1, concert: 1, fire: 1, wedding: 1, slip: 1
 const FOLLOW = { theft: 'caught', fire: 'hurt', ruin: 'after', engaged: 'when', baby: 'name', move_in: 'who', move_out: 'why', move_plan: 'why',
   shop_open: 'what', scuffle: 'why', wanted: 'who', window: 'who', arrest: 'after', loan: 'why', sweetheart: 'since', farewell: 'after' };
 
-const SMALL = ['weather', 'prices', 'chief', 'pet', 'train', 'shop', 'work', 'hobby', 'family', 'bank', 'logistics', 'food', 'plans', 'news', 'town', 'health', 'school', 'play', 'oldtimes', 'dream', 'newcomer', 'season', 'sleep', 'money', 'fashion', 'music', 'snow'];
+const SMALL = ['home', 'weather', 'prices', 'chief', 'pet', 'train', 'shop', 'work', 'hobby', 'family', 'bank', 'logistics', 'food', 'plans', 'news', 'town', 'health', 'school', 'play', 'oldtimes', 'dream', 'newcomer', 'season', 'sleep', 'money', 'fashion', 'music', 'snow'];
 
 export class Beat {
   constructor() {
@@ -45,6 +45,7 @@ export class Beat {
     this.fl = [];
     this.em = null; this.an = 'talk'; this.topic = '';
     this.nq = false;      // the line must not ask a question (a follow-up question comes next)
+    this.q = -1; this.qk = 0;   // the other version's place (qk 1) or item (qk 2): '{Q} 말고 {P}'
   }
 }
 
@@ -92,10 +93,14 @@ export class Social {
     const e = this.e, rng = e.rng, ws = this.tmpW;
     ws.length = 0;
     const ga = groupOf(e, a);
+    let known = 0, strange = 0;
+    const early = e.clock.day < 3;
     for (const q of free) {
       if (q === a) { ws.push(0); continue; }
       const rel = getRel(e, a.id, q.id);
       let w = 1;
+      const gq = groupOf(e, q);
+      const ageW = ga === gq ? 1.6 : Math.abs(ga - gq) >= 2 ? 0.6 : 1;
       if (rel && rel.n > 0) {
         w += rel.fam / 220 + Math.max(0, rel.aff) / 300;
         if (rel.stage >= ST_SWEET) w += 3;
@@ -103,14 +108,21 @@ export class Social {
         if (rel.crushOf(q.id) && rel.aff > 200) w += 1.5;
         if (rel.flags & RF_RIVAL) w += 0.6;
         if (e.now - rel.last < e.cfg.dayLength * 0.08) w *= 0.15;   // just talked
+        w *= ageW;
+        known += w;
       } else {
-        // strangers: curious / sociable people say hello; newcomers attract attention
-        w = 0.1 + (a.tr[0] + a.tr[3]) / 700 + (q.flags & F_NEWCOMER ? 0.9 : 0);
+        // strangers: curious / sociable people say hello; newcomers attract attention. Once the town has
+        // settled in (day 3+) people mostly talk to people they know — a full introduction is an event
+        w = (0.1 + (a.tr[0] + a.tr[3]) / 700) * (early ? 1 : 0.45) + (q.flags & F_NEWCOMER ? 0.9 : 0);
+        w *= ageW;
+        if (!(q.flags & F_NEWCOMER)) { strange += w; w = -w; }    // marked: may be scaled below
       }
-      const gq = groupOf(e, q);
-      if (ga === gq) w *= 1.6; else if (Math.abs(ga - gq) >= 2) w *= 0.6;
       ws.push(w);
     }
+    // a crowd of strangers (a busy plaza at the weekend) does not drown out the people one knows
+    const cap = known > 0 ? known * (early ? 0.5 : 0.14) : strange;
+    const k = strange > cap && strange > 0 ? cap / strange : 1;
+    for (let i = 0; i < ws.length; i++) if (ws[i] < 0) ws[i] = -ws[i] * k;
     const i = rng.weighted(ws, free.length);
     return i >= 0 && free[i] !== a ? free[i] : null;
   }
@@ -118,6 +130,9 @@ export class Social {
   // ---------------------------------------------------------------- one conversation
   converse(a, b, place) {
     const e = this.e, rng = e.rng;
+    // two strangers passing each other mostly just nod hello; newcomers, the curious and the chatty introduce themselves
+    const had = getRel(e, a.id, b.id);
+    if ((!had || (had.n === 0 && !(had.flags & RF_FAMILY))) && !((a.flags | b.flags) & F_NEWCOMER) && e.clock.day >= 2 && rng.chance(0.62 - (a.tr[0] + a.tr[3]) / 500)) return this.nod(a, b, place);
     const rel = ensureRel(e, a, b);
     const beats = [];
     this.affAcc = 0;
@@ -153,8 +168,8 @@ export class Social {
     else if (ns < rel.stage && rel.stage < ST_SWEET) rel.stage = ns;
     // needs
     for (const r of [a, b]) { r.socialNeed = Math.max(0, r.socialNeed - 22); r.mood = Math.min(100, r.mood + 2); r.talks++; r.lastTalk = e.now; }
-    // timing
-    const dur = beats.length * e.cfg.lineTime;
+    // timing: one spare line for a short answer the realizer may insert (lines are fitted into dur)
+    const dur = (beats.length + 1) * e.cfg.lineTime;
     a.busyUntil = b.busyUntil = e.now + Math.ceil(dur);
     this.stats.talks++; this.stats.beats += beats.length;
     const talk = { id: e.talkSeq++, a: a.id, b: b.id, place: place.id, placeIdx: place.idx, start: e.now, dur, beats, lines: null, topics: this.topicsOf(beats) };
@@ -188,20 +203,34 @@ export class Social {
   }
 
   // ---------------------------------------------------------------- openings & closings
+  /** two strangers passing by: a nod and a hello (no introduction, no relationship yet) */
+  nod(a, b, place) {
+    const e = this.e, rng = e.rng;
+    const beats = [];
+    let bt = this.beat(beats, a, b, 'nod', 'nod'); bt.an = 'wave';
+    if (rng.chance(0.7)) { bt = this.beat(beats, b, a, 'nod.re', 'nod'); bt.an = 'wave'; }
+    this.stats.nods = (this.stats.nods || 0) + 1;
+    const dur = beats.length * e.cfg.lineTime;
+    a.busyUntil = b.busyUntil = e.now + Math.ceil(dur);
+    const talk = { id: e.talkSeq++, a: a.id, b: b.id, place: place.id, placeIdx: place.idx, start: e.now, dur, beats, lines: null, topics: ['nod'] };
+    e.onTalk(talk);
+    return talk;
+  }
+
   intro(a, b, rel, beats) {
-    const e = this.e;
+    const e = this.e, rng = e.rng;
     this.stats.intros++;
     let bt = this.beat(beats, a, b, 'intro.hello', 'intro'); bt.em = 'emote_wave'; bt.an = 'wave';
     bt = this.beat(beats, b, a, 'intro.hello.re', 'intro'); bt.an = 'wave';
     bt = this.beat(beats, a, b, 'intro.self', 'intro'); bt.o = a.id; bt.p = a.work; bt.h = a.likes[0];
     bt = this.beat(beats, b, a, 'intro.self.re', 'intro'); bt.o = b.id; bt.p = b.work; bt.h = b.likes[0];
-    if (a.likes.some((x) => b.likes.indexOf(x) >= 0)) {
+    if (a.likes.some((x) => b.likes.indexOf(x) >= 0) && rng.chance(0.6)) {
       const li = a.likes.find((x) => b.likes.indexOf(x) >= 0);
       bt = this.beat(beats, a, b, 'intro.samelike', 'intro'); bt.h = li; bt.em = 'emote_question';
       bt = this.beat(beats, b, a, 'intro.samelike.re', 'intro'); bt.h = li; bt.em = 'emote_heart';
       this.affAcc += 30;
     }
-    bt = this.beat(beats, b, a, 'intro.end', 'intro'); bt.em = 'emote_heart';
+    if (rng.chance(0.3)) { bt = this.beat(beats, b, a, 'intro.end', 'intro'); bt.em = 'emote_heart'; }
     const f = e.fact('meet', { a: a.id, b: b.id, p: a.loc });
     e.learn(a, f, SRC_DID); e.learn(b, f, SRC_DID);
     // a newcomer who was asked about: questions answered by meeting
@@ -237,7 +266,8 @@ export class Social {
     if (cg) add('congrats', 3);
     const cf = this.pickAbout(s, l, false);
     if (cf) add('comfort', 3);
-    if (this.nextQ(s)) add('ask', 1.3 + s.tr[3] / 60);
+    const nq = this.nextQ(s);
+    if (nq && this.canAsk(l, nq)) add('ask', 1.3 + s.tr[3] / 60);
     const rc = rel.n > 1 ? this.pickRecall(s, l) : null;
     if (rc) add('recall', 1.0);
     if (rel.crushOf(s.id) || rel.stage >= ST_SWEET && rel.stage <= ST_SPOUSE) add('romance', rel.stage >= ST_SWEET ? 1.4 : 1.8);
@@ -357,8 +387,10 @@ export class Social {
       if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0) about = e.world.places[f.p].residents.indexOf(l.id) >= 0 || e.world.places[f.p].owner === l.id;
       if (f.k === 'farewell') about = l.parents.indexOf(f.a) >= 0 || l.kids.indexOf(f.a) >= 0 || l.spouse === f.a;
       if (f.k === 'baby') about = f.a === l.id || f.b === l.id;
-      // no 'congratulations on our wedding!' to one's own spouse, no comfort about one's own fire
+      // no 'congratulations on our wedding!' to one's own spouse, no comfort about one's own fire,
+      // no 'welcome to the town!' to the family one moved in with
       if (f.a === s.id || f.b === s.id) about = false;
+      if (s.hh === l.hh && s.hh >= 0 && (f.k === 'move_in' || f.k === 'rebuilt' || f.k === 'ruin' || f.k === 'fire' || f.k === 'baby' || f.k === 'wedding')) about = false;
       if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0 && (e.world.places[f.p].residents.indexOf(s.id) >= 0 || e.world.places[f.p].owner === s.id)) about = false;
       if (about) return m;
     }
@@ -395,8 +427,18 @@ export class Social {
     bt.an = f.v < 0 ? 'point' : 'talk';
     // the listener
     if (known) {
-      bt = this.beat(beats, l, s, 'react.known.' + f.k, 'rumor:' + f.k); this.setVersion(bt, known); bt.em = 'emote_idea';
-      if (known.x !== m.x || known.d !== m.d) { bt = this.beat(beats, l, s, 'react.differs.' + f.k, 'rumor:' + f.k); this.setVersion(bt, known); }
+      const dk = this.differs(f, m, known);
+      if (!dk) { bt = this.beat(beats, l, s, 'react.known.' + f.k, 'rumor:' + f.k); this.setVersion(bt, known); bt.em = 'emote_idea'; }
+      else {
+        // 'I heard it differently' — and the listener says how (a different place, a different item, a
+        // bigger story, or who it was); the teller laughs it off
+        bt = this.beat(beats, l, s, 'react.differs.' + dk, 'rumor:' + f.k);
+        this.setVersion(bt, dk === 'unknown' ? m : known);
+        if (dk === 'place') { bt.q = m.d === D_PLACE ? m.alt : f.p; bt.qk = 1; }
+        if (dk === 'item') { bt.q = m.d === D_ITEM ? m.alt : f.i; bt.qk = 2; }
+        bt.em = 'emote_question'; bt.an = 'think';
+        bt = this.beat(beats, s, l, 'react.differs.re.' + dk, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_laugh'; bt.an = 'laugh';
+      }
     } else {
       const doubt = s.tr[7] < 35 && l.tr[7] > 65 && m.x > 0;
       const rule = doubt ? 'react.doubt' : f.k === 'slip' || f.k === 'prank' || f.k === 'pet' || f.k === 'burnt_food' ? 'react.funny' : f.v < 0 ? 'react.bad' : f.v > 0 ? 'react.good' : 'react.neutral';
@@ -422,6 +464,22 @@ export class Social {
     this.tell(s, l, m);
     // gossip bonds friends a little; honest people do not like it much
     this.affAcc += l.tr[7] > 72 && f.v < 0 ? -8 : 6;
+  }
+
+  /** how the listener's version `k` of fact f really differs from the teller's version `m` (null: it does not) */
+  differs(f, m, k) {
+    const placeOf = (v) => (v.d === D_PLACE ? v.alt : f.p), itemOf = (v) => (v.d === D_ITEM ? v.alt : f.i);
+    if (f.p >= 0 && placeOf(k) >= 0 && placeOf(m) >= 0 && placeOf(k) !== placeOf(m)) return 'place';
+    if (f.i >= 0 && itemOf(k) >= 0 && itemOf(m) >= 0 && itemOf(k) !== itemOf(m)) return 'item';
+    if (f.a >= 0 && f.k !== 'wanted') {
+      const ka = k.d === D_ANON, ma = m.d === D_ANON;
+      if (ka && !ma) return 'unknown';      // the teller says who it was: 'oh, so it was X!'
+      if (!ka && ma) return 'who';          // the listener knows who it was
+    }
+    const big = (v) => v.x + (v.d === D_COUNT ? Math.max(1, v.alt - 1) : 0);
+    if (big(k) >= big(m) + 1) return 'bigger';
+    if (big(k) + 1 <= big(m)) return 'smaller';
+    return null;
   }
 
   answerFollow(s, l, m, fq, beats) {
@@ -490,7 +548,7 @@ export class Social {
     this.stats.gossip++;
     if (lm && !had) {
       // new rumours make people wonder
-      if ((f.k === 'theft' || f.k === 'window' || f.k === 'prank') && (d === D_ANON || f.st === 0)) this.addQ(l, 'who', f);
+      if ((f.k === 'theft' || f.k === 'window' || f.k === 'prank') && (d === D_ANON || f.a < 0)) this.addQ(l, 'who', f);   // only when the story did not say who
       if (f.k === 'theft' && f.st !== 1) this.addQ(l, 'caught', f);
       if (f.k === 'fire' && d === D_PLACE && alt < 0) this.addQ(l, 'where', f);
       if (f.k === 'move_in') this.addQ(l, 'who', f);
@@ -566,6 +624,16 @@ export class Social {
     }
   }
 
+  /** a question that makes sense to ask l (no bank rates from a six-year-old, no 'how is X?' to X) */
+  canAsk(l, q) {
+    const gl = groupOf(this.e, l);
+    if ((q.k === 'price' || q.k === 'buy') && gl < G_TEEN) return false;
+    if ((q.k === 'rate' || q.k === 'job') && gl < G_ADULT) return false;
+    if (q.k === 'how' && q.o === l.id) return false;
+    if (q.f && (q.f.a === l.id || q.f.b === l.id) && (q.k === 'who' || q.k === 'caught')) return false;
+    return true;
+  }
+
   /** the first open question of s not yet asked in this conversation */
   nextQ(s) {
     for (let i = 0; i < s.qs.length; i++) if (this.askedNow.indexOf(s.qs[i]) < 0) return s.qs[i];
@@ -619,7 +687,7 @@ export class Social {
       const lm = findMem(l, q.f);
       if (q.k === 'who') {
         if (q.f.k === 'move_in') { // newcomers: whoever met one of them can say
-          const hh = e.households.get(q.f.n);
+          const hh = q.f.s && q.f.s.charAt(0) === 'h' ? e.households.get(+q.f.s.slice(2)) : null;
           if (hh) for (const id of hh.members) { const rel = getRel(e, l.id, id); if (rel && rel.n > 0) return { bt: { o: id, f: q.f }, m: lm }; }
           return null;
         }
@@ -823,6 +891,8 @@ export class Social {
     const ws = [], ks = [];
     const add = (k, w) => { if (w > 0) { ks.push(k); ws.push(w); } };
     const wx = e.weather.today;
+    const home = s.hh === l.hh && s.hh >= 0;     // people who live together talk about home things
+    if (home) add('home', 3.2);
     add('weather', 1.0 + (wx.kind === 'blizzard' || wx.kind === 'heavy' ? 1.2 : 0) + (wx.first ? 2 : 0));
     add('snow', gs <= G_TEEN ? 1.2 : 0.3);
     if (gs >= G_TEEN) add('prices', 0.5 + (W.priceDelta.some((d) => d !== 0) ? 0.5 : 0));
@@ -843,7 +913,7 @@ export class Social {
     if (gs <= G_TEEN && s.job === 'student') add('school', 1.0);
     if (gs <= G_KID) add('play', 1.4);
     if (s.dream) add('dream', 0.6);
-    if (l.flags & F_NEWCOMER) add('newcomer', 1.6);
+    if ((l.flags & F_NEWCOMER) && !home) add('newcomer', 1.6);
     add('season', 0.25);
     if (s.energy < 40 || s.tr[4] < 25) add('sleep', 0.4);
     if (gs >= G_ADULT) add('money', 0.25 + (s.wallet < 20 ? 0.5 : 0));
@@ -888,6 +958,7 @@ export class Social {
       case 'dream': bt.s = s.dream || ''; break;
       case 'logistics': bt.i = ITEMS[rng.int(ITEMS.length)].idx; break;
       case 'music': { const li = s.likes.find((x) => /music|singing|dancing/.test(LIKES[x].id)); bt.h = li === undefined ? -1 : li; break; }
+      case 'home': { bt.o = l.id; bt.p = s.work >= 0 ? s.work : -1; bt.n = rng.int(3); break; }
     }
   }
 
@@ -961,6 +1032,6 @@ export class Social {
 const SMALL_EMOTE = { weather: 'emote_cold', snow: 'emote_snowball', prices: 'emote_dots', chief: 'emote_thumbs', pet: 'emote_heart', train: 'emote_exclaim', shop: 'emote_sparkle',
   work: 'emote_sweat', hobby: 'emote_heart', family: 'emote_love', bank: 'emote_dots', logistics: 'emote_exclaim', food: 'emote_bread', plans: 'emote_idea', news: 'emote_exclaim',
   town: 'emote_star', health: 'emote_heart', school: 'emote_star', play: 'emote_snowball', oldtimes: 'emote_dots', dream: 'emote_sparkle', newcomer: 'emote_wave', season: 'emote_cold',
-  sleep: 'emote_zzz', money: 'emote_sweat', fashion: 'emote_sparkle', music: 'emote_music' };
+  sleep: 'emote_zzz', money: 'emote_sweat', fashion: 'emote_sparkle', music: 'emote_music', home: 'emote_heart' };
 
 export { SMALL };

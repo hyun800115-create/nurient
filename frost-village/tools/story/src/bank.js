@@ -8,7 +8,7 @@ import { SHOP_COST } from '../data/places.js';
 import { SRC_DID } from './memory.js';
 
 export class Loan {
-  constructor(id) { this.id = id; this.who = -1; this.purpose = 'personal'; this.principal = 0; this.bal = 0; this.inst = 0; this.start = 0; this.term = 0; this.missed = 0; this.paused = 0; this.acc = 0; this.done = 0; this.target = -1; }
+  constructor(id) { this.id = id; this.who = -1; this.purpose = 'personal'; this.principal = 0; this.bal = 0; this.inst = 0; this.start = 0; this.term = 0; this.missed = 0; this.paused = 0; this.acc = 0; this.done = 0; this.target = -1; this.restr = 0; }
 }
 
 const PURPOSE_TERM = { shop: 45, house: 50, rebuild: 45, furniture: 12, personal: 8 };
@@ -40,7 +40,9 @@ export class Bank {
     if (r.loanWant) {
       const w = r.loanWant;
       r.loanWant = null;
-      this.lend(r, w.purpose, w.amount, w.target, bankPlace);
+      // a shop loan only while there is a free plot and the dream is still a dream (one shop per person)
+      const ok = w.purpose !== 'shop' || (r.dream && r.dreamShop < 0 && !(r.flags & F_OWNER) && e.world.plots.length);
+      if (ok) this.lend(r, w.purpose, w.amount, w.target, bankPlace);
     }
     if (r.wallet > buffer * 2) {
       const amt = r.wallet - buffer;
@@ -118,14 +120,15 @@ export class Bank {
   restructure(L, r) {
     const e = this.e;
     L.missed = 0;
+    // stretched at most twice; a loan that still cannot be paid is settled by the town's mutual-aid fund
+    if (L.restr >= 2) { this.forgive(L, r, 'fund'); const f = e.fact('bank_help', { a: r.id, n: 0 }); e.learn(r, f, SRC_DID); return; }
+    L.restr++;
     L.term += Math.ceil(L.term / 2);
     L.inst = Math.max(1, Math.ceil(L.inst / 2));
     this.stats.restructured++;
     const f = e.fact('bank_help', { a: r.id, n: L.inst });
     e.learn(r, f, SRC_DID);
     if (e.bus.has('bank')) e.bus.emit('bank', { op: 'restructure', who: r.id, loan: L.id, inst: L.inst });
-    // a loan that keeps getting stretched gets forgiven by the town's mutual-aid fund
-    if (L.inst <= 2 && L.bal > 0 && e.clock.day - L.start > L.term) this.forgive(L, r, 'fund');
   }
 
   paidOff(L, r) {

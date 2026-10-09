@@ -33,7 +33,7 @@ CONTRACT_ICONS = ['ui_icon_piggy', 'ui_icon_loan', 'ui_icon_interest', 'ui_icon_
 CONTRACT_PANELS = ['ui_wanted_poster', 'ui_newspaper', 'ui_passbook', 'ui_story_card']
 PAYLOAD_MAX = 3 * 1024 * 1024
 SNOW = np.array([0xF4, 0xF7, 0xFB], np.float32)
-EDGE_OK = {'fx_hose_stream', 'fx_hose_rope', 'fx_hose_tip'}            # meant to touch their frame edges (tiling / attach side)
+EDGE_OK = {'fx_hose_stream', 'fx_hose_rope', 'fx_hose_rope_long', 'fx_hose_tip'}   # touch their frame edges on purpose (tiling / attach side)
 HOLD_LAST = {'fx_lightbulb_idea'}                     # one-shots that end visible on purpose (hold frame)
 
 
@@ -127,7 +127,10 @@ def check_sheet(R, s):
     if best < 90:
         R.e('%s: hardly visible on snow (95th pct colour distance %.0f)' % (k, best))
     # hose segment: seamless in x + constant flow
-    if k in ('fx_hose_stream', 'fx_hose_rope'):
+    if k in ('fx_hose_stream', 'fx_hose_rope', 'fx_hose_rope_long'):
+        sym = max(float(np.abs(f[..., 3] - f[::-1, :, 3]).mean()) for f in fr)
+        if sym > 0.02:
+            R.e('%s: jet not vertically symmetric (alpha diff %.3f) - leftward aims would look lit from below' % (k, sym))
         wrap, inner = 0.0, 0.0
         for f0 in fr:                      # column step across the tile seam vs. the largest step inside the tile
             a = np.concatenate([f0[..., :3] * f0[..., 3:], f0[..., 3:]], axis=2)
@@ -247,6 +250,59 @@ def main(quiet=False):
     for blk in ('hoseAim', 'fireMount', 'fightGuide'):
         if blk not in man:
             R.e('manifest.%s missing' % blk)
+    fm = man.get('fireMount', {})
+    btab = fm.get('buildings') or {}
+    if not btab:
+        R.e('fireMount.buildings (per-building mount table) missing or empty')
+    for bk, be in btab.items():
+        for f in be.get('fires', []):
+            if len(f) != 5 or f[2] not in sheets:
+                R.e('fireMount.buildings.%s: bad fire entry %r' % (bk, f))
+            elif not (0.5 <= f[3] <= 1.2):
+                R.e('fireMount.buildings.%s: fire scale %.2f outside 0.5-1.2' % (bk, f[3]))
+        for w in be.get('windows', []):
+            if len(w) != 4 or not isinstance(w[2], bool):
+                R.e('fireMount.buildings.%s: bad window entry %r' % (bk, w))
+        for fld in ('smoke', 'embers', 'glow', 'alarm'):
+            if fld not in be:
+                R.e('fireMount.buildings.%s: %s missing' % (bk, fld))
+    try:                                         # every building that exists NOW should have an entry
+        sys.path.insert(0, HERE)
+        import gen_fx_city_mount as MT
+        missing = [k for _f, k, _m in MT.buildings() if k not in btab]
+        if missing:
+            R.w('fireMount.buildings lacks %d current buildings (re-run gen_fx_city.py): %s' % (
+                len(missing), ', '.join(missing[:12])))
+        R.i('fireMount.buildings: %d buildings (%d with several fires, %d with guessed windows)' % (
+            len(btab), sum(1 for e in btab.values() if len(e['fires']) > 1),
+            sum(1 for e in btab.values() if e.get('windowsGuess'))))
+    except Exception as ex:                      # pragma: no cover
+        R.w('could not cross-check fireMount.buildings: %s' % ex)
+    # GPU memory (RGBA8) per load group: lazy groups are only resident during an incident
+    vram = {}
+    for k, s_ in sheets.items():
+        p_ = os.path.join(ASSETS, s_['png'])
+        if os.path.exists(p_):
+            w_, h_ = Image.open(p_).size
+            g = s_.get('group', 'core') if s_.get('lazy') else 'core'
+            if s_.get('lazy') and not s_.get('group'):
+                R.e('%s: lazy sheet without a group' % k)
+            vram[g] = vram.get(g, 0) + w_ * h_ * 4
+    for key, a in atl.items():
+        p_ = os.path.join(ASSETS, a['png'])
+        if os.path.exists(p_):
+            w_, h_ = Image.open(p_).size
+            vram['core'] = vram.get('core', 0) + w_ * h_ * 4
+    for k, i in imgs.items():
+        p_ = os.path.join(ASSETS, i['png'])
+        if os.path.exists(p_):
+            w_, h_ = Image.open(p_).size
+            vram['ui'] = vram.get('ui', 0) + w_ * h_ * 4
+    R.i('GPU memory by load group (MB): ' + ', '.join('%s %.1f' % (g, v / 1048576) for g, v in sorted(vram.items())) +
+        ' (total %.1f; always resident: core + ui %.1f)' % (sum(vram.values()) / 1048576,
+                                                            (vram.get('core', 0) + vram.get('ui', 0)) / 1048576))
+    if (vram.get('core', 0) + vram.get('ui', 0)) > 8 * 1048576:
+        R.w('always-resident fx_city textures exceed 8 MB')
     # payload + stray files
     tot = 0
     for fn in os.listdir(DIR):

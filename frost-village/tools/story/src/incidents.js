@@ -14,7 +14,7 @@
 // Everything is driven by phase timers in game seconds; the game renders the phases it receives on
 // the 'incident' / 'build' / 'wanted' events and may call engine.ack(id) to move a phase on early.
 
-import { G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, S_IDLE, S_EVENT, F_WANTED, F_JAILED, F_HOMELESS, F_OWNER, groupOf } from './people.js';
+import { G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, S_IDLE, S_EVENT, F_WANTED, F_JAILED, F_HOMELESS, F_OWNER, groupOf, ageOf, isKept } from './people.js';
 import { SRC_SEEN, SRC_DID, D_ANON, findMem, remember } from './memory.js';
 import { getRel, ensureRel, clampRel, RF_RIVAL } from './relations.js';
 import { ITEMS } from '../data/items.js';
@@ -23,9 +23,15 @@ import { B_OK, B_BURNING, B_RUIN, B_DEMOLISH, B_BUILD, B_DAMAGED } from './world
 import { A_HOME, A_JAIL, A_EVENT, A_SOCIAL } from './plans.js';
 
 const PETTY = ITEMS.filter((i) => i.petty).map((i) => i.idx);
-// scuffles only between people of the same age band: children with children, teens with teens, grown-ups (and elders) with grown-ups
-const bandOf = (e, r) => { const g = groupOf(e, r); return g <= G_KID ? 0 : g === G_TEEN ? 1 : 2; };
-const sameBand = (e, a, b) => bandOf(e, a) === bandOf(e, b);
+// phases that wait for the game's pictures when cfg.ackWait is on
+const ACK_PHASES = { 'theft:chase': 1, 'fire:dispatch': 1, 'fire:spray': 1, 'scuffle:fight': 1 };
+// scuffles only between people of the same age band: children with children, teens with teens, grown-ups of
+// about the same age with each other. Grandparents never scuffle (their rows stay words: 티격태격)
+const bandOf = (e, r) => { const g = groupOf(e, r); return g <= G_KID ? 0 : g === G_TEEN ? 1 : g === G_ADULT ? 2 : 3; };
+const sameBand = (e, a, b) => bandOf(e, a) === bandOf(e, b) && bandOf(e, a) < 3 && (bandOf(e, a) < 2 || Math.abs(ageOf(e, a) - ageOf(e, b)) <= 18);
+// people the town trusts to keep it safe and sound never turn into culprits (and grandparents never do)
+const ROLE_MODEL = /^(police|detective|firefighter|teacher|doctor|nurse|banker|teller|bank_clerk)$/;
+const canMisbehave = (e, r) => groupOf(e, r) !== G_ELDER && !ROLE_MODEL.test(r.job) && e.jobTag(r) !== 'j_bank' && !isKept(e, r);
 
 export class Incidents {
   constructor(e) {
@@ -84,20 +90,26 @@ export class Incidents {
   }
 
   phase(I, name, wait) {
+    const e = this.e;
     I.phase = name;
-    I.t = this.e.now;
-    I.next = this.e.now + Math.max(1, Math.round(wait));
-    this.emit(I);
+    I.t = e.now;
+    I.next = e.now + Math.max(1, Math.round(wait));
+    // with cfg.ackWait the phases the game has to show (the chase, the fire truck on its way, the hose, the
+    // dust cloud) wait for ack(id) — with a safety timeout, so a phase the game never shows cannot block the story
+    I.ackWait = !!(e.cfg.ackWait && ACK_PHASES[I.kind + ':' + name]);
+    I.acked = false;
+    I.waitUntil = I.ackWait ? e.now + Math.max(Math.round(wait) * 3, Math.round(wait) + 30) : 0;
+    this.emit(I, I.ackWait ? { ack: true } : null);
   }
 
-  /** the game says it has shown phase `phase` of incident `id` — move on now */
-  ack(id) { for (const I of this.active) if (I.id === id) I.next = this.e.now; }
+  /** the game has shown the current phase of incident `id` (the truck arrived, the chase loop is done): move on now */
+  ack(id) { for (const I of this.active) if (I.id === id) { I.acked = true; if (I.next > 0) I.next = this.e.now; } }
 
   update() {
     const now = this.e.now;
     for (let i = this.active.length - 1; i >= 0; i--) {
       const I = this.active[i];
-      if (I.next > 0 && now >= I.next) {
+      if (I.next > 0 && now >= I.next && !(I.ackWait && !I.acked && now < I.waitUntil)) {
         I.next = 0;
         this.advance(I);
       }
@@ -150,6 +162,13 @@ export class Incidents {
     return false;
   }
 
+  /** took part in a fact of kind k (as a or b) in the last `days` days — read from memory (saves need nothing extra) */
+  lately(r, k, days) {
+    const day = this.e.clock.day;
+    for (const m of r.mem) if (m.f.k === k && (m.f.a === r.id || m.f.b === r.id) && day - m.f.day < days) return true;
+    return false;
+  }
+
   // ---------------------------------------------------------------- theft
   theft() {
     const e = this.e, rng = e.rng, W = e.world;
@@ -158,9 +177,10 @@ export class Incidents {
     const shops = W.places.filter((p) => p.cat === 'shop' && p.state === B_OK && p.here.length >= 2 && p.sellIdx.some((i) => ITEMS[i].petty));
     if (!shops.length) return null;
     const p = shops[rng.int(shops.length)];
-    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.id !== p.owner && r.work !== p.idx && !this.stoleLately(r) && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE && !/police|detective/.test(r.job));
+    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && canMisbehave(e, r) && r.id !== p.owner && r.work !== p.idx && !this.stoleLately(r) && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE);
     if (!cand.length) return null;
-    const ws = cand.map((r) => Math.max(0.15, 1 + r.tr[2] / 18 + (r.hunger > 60 ? 2 : 0) + (r.wallet < 10 ? 2 : 0) - r.tr[7] / 40) * (groupOf(e, r) === G_ELDER ? 0.3 : 1));   // honest folk rarely, never 'nobody'
+    // mischief, not need: the cheeky and the less honest are tempted by something that looks too good
+    const ws = cand.map((r) => Math.max(0.15, 1 + r.tr[2] / 18 - r.tr[7] / 40));
     const thief = cand[rng.weighted(ws)];
     const owner = p.owner >= 0 && e.people[p.owner].alive ? e.people[p.owner] : null;
     const I = this.newIncident('theft', p);
@@ -393,7 +413,11 @@ export class Incidents {
     const ppl = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.state === S_IDLE && r.busyUntil <= e.now);
     if (ppl.length < 2) return null;
     ppl.sort((a, b) => (a.tr[1] - a.tr[2] * 0.5) - (b.tr[1] - b.tr[2] * 0.5) || a.id - b.id);
-    const cutter = ppl[0], victim = ppl[1 + rng.int(ppl.length - 1)];
+    const ci = ppl.findIndex((r) => canMisbehave(e, r) && !this.lately(r, 'queue_jump', 10));
+    if (ci < 0) return null;
+    const cutter = ppl[ci];
+    const others = ppl.filter((r) => r !== cutter);
+    const victim = others[rng.int(others.length)];
     const I = this.newIncident('queue', p);
     I.culprit = cutter.id; I.victim = victim.id;
     this.stats.queue++;
@@ -431,7 +455,7 @@ export class Incidents {
   // ---------------------------------------------------------------- snowball through a window
   window() {
     const e = this.e, rng = e.rng, W = e.world;
-    const kids = e.alive.filter((r) => groupOf(e, r) === G_KID && r.state === S_IDLE && r.loc >= 0 && W.places[r.loc].cat === 'outdoor' && r.tr[2] > 50);
+    const kids = e.alive.filter((r) => groupOf(e, r) === G_KID && r.state === S_IDLE && r.loc >= 0 && W.places[r.loc].cat === 'outdoor' && r.tr[2] > 50 && !isKept(e, r) && !this.lately(r, 'window', 12));
     if (!kids.length) return null;
     const kid = kids[rng.int(kids.length)];
     const targets = W.places.filter((p) => (p.cat === 'home' || p.cat === 'shop') && p.state === B_OK && p.hh !== kid.hh && (p.residents.length || p.owner >= 0));
@@ -494,11 +518,11 @@ export class Incidents {
     // rivals (or two grumpy people who do not get on) who happen to be in the same place
     let cand = null;
     for (const r of e.alive) {
-      if (r.state !== S_IDLE || r.loc < 0 || groupOf(e, r) < G_KID) continue;
+      if (r.state !== S_IDLE || r.loc < 0 || groupOf(e, r) < G_KID || !canMisbehave(e, r)) continue;
       for (const rel of r.adj) {
         if (!(rel.flags & RF_RIVAL) && !(rel.aff < 0 && r.tr[1] < 40)) continue;
         const o = e.people[rel.other(r.id)];
-        if (o.loc === r.loc && o.state === S_IDLE && sameBand(e, r, o)) { cand = [r, o]; if (rng.chance(0.5)) break; }
+        if (o.loc === r.loc && o.state === S_IDLE && sameBand(e, r, o) && canMisbehave(e, o) && !this.lately(r, 'scuffle', 10) && !this.lately(o, 'scuffle', 10)) { cand = [r, o]; if (rng.chance(0.5)) break; }
       }
       if (cand && rng.chance(0.3)) break;
     }
@@ -507,7 +531,7 @@ export class Incidents {
     const busy = e.world.places.filter((p) => p.here.length >= 4 && p.cat !== 'home');
     if (!busy.length) return null;
     const p = busy[rng.int(busy.length)];
-    const all = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.state === S_IDLE).sort((x, y) => x.tr[1] - y.tr[1] || x.id - y.id);
+    const all = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.state === S_IDLE && canMisbehave(e, r)).sort((x, y) => x.tr[1] - y.tr[1] || x.id - y.id);
     if (!all.length) return null;
     const ppl = all.filter((r) => sameBand(e, r, all[0]));   // teens squabble with teens, grown-ups with grown-ups
     if (ppl.length < 2 || ppl[1].tr[1] > 45) return null;
@@ -517,6 +541,10 @@ export class Incidents {
   scuffle(a, b, p) {
     const e = this.e, rng = e.rng;
     if (!this.enabled() || !p) return null;
+    // only between people of the same band, never grandparents, the town's helpers or the game's named villagers,
+    // and not again for the same person within ten days
+    if (!sameBand(e, a, b) || !canMisbehave(e, a) || !canMisbehave(e, b)) return null;
+    if (this.lately(a, 'scuffle', 10) || this.lately(b, 'scuffle', 10)) return null;
     for (const I of this.active) if (I.kind === 'scuffle' && (I.culprit === a.id || I.victim === a.id || I.culprit === b.id || I.victim === b.id)) return null;
     const I = this.newIncident('scuffle', p);
     I.culprit = a.id; I.victim = b.id;

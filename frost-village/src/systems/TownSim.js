@@ -268,13 +268,18 @@ export class TownSim {
         c = this.addCitizen(kind, homeId);
         const pl = this.places[homeId + ':in'];
         if (pl) { c.x = pl.door.x; c.y = pl.door.y; }
+        // (v4-B) new neighbours of a house walk in from the town gate (opts.from)
+        if (opts.from && Number.isFinite(opts.x)) { c.x = opts.x + (k % 2 ? 22 : -22); c.y = opts.y + k * 12; }
       }
       this.nb.extra.push([c.id, c.kind, homeId]);
-      if (this.started) this.settle(c, this.T, k === 0 && Number.isFinite(opts.x) ? { x: c.x, y: c.y, bld: null } : null);
+      if (this.started) this.settle(c, this.T, (k === 0 || opts.from) && Number.isFinite(opts.x) ? { x: c.x, y: c.y, bld: null } : null);
       out.push(c);
     }
     return out;
   }
+
+  /** (v4-B) does lot `id` have its household already? */
+  districtOf(id) { for (const c of this.citizens) if ((c.flags & F.DISTRICT) && c.home === id) return true; return false; }
 
   /** people of the station district (founders' households + house residents) */
   districtPeople() { let n = 0; for (const c of this.citizens) if (c.flags & F.DISTRICT) n++; return n; }
