@@ -218,6 +218,32 @@ export const STRINGS = {
     act_play: '노는 중', act_work: '일하는 중', act_errand: '장 보는 중', act_cafe: '카페에서 쉬는 중', act_walk: '산책 중',
     act_trip: '서리마을 나들이 가는 중', act_shop: '서리마을에서 장 보는 중', act_train: '기차 타는 중', act_patrol: '순찰 중',
     act_mail: '우편 배달 중', act_bench: '의자에서 쉬는 중', act_clinic: '병원 가는 중', act_sleep: '자는 중', act_wait: '기다리는 중', act_doze: '꾸벅꾸벅 조는 중', act_cheer: '축하하러 온 중',
+
+    // ---------------- (v4-B) 주문판 · 가게 열기 · 월세 · 목수의 집 · 등급 (마을 → 읍)
+    orderDone: '주문 완료!', shopFounding: '{shop} 창업 준비 중', shopFounded: '{shop} 개업!', shopFoundedSub: '월세 +{rent}/분 · 역 금고에 쌓여요',
+    shopOpenAuto: '{shop}이(가) 문을 열었어요', standingDone: '정기 납품 완료! +{n}',
+    houseMoved: '새 이웃 {n}명이 이사 왔어요!', houseMovedSub: '목수가 집을 다 지었어요',
+    rankUp: '서리마을 → 서리읍!', rankUpSub: '이제 읍장님이에요!', newcomers: '솔방울 마을에 새 이웃 {n}명이 와요',
+    rewardCobble: '큰길이 돌길이 되었어요', rewardRent: '역 금고가 저절로 비워져요', rewardCoach: '객차가 하나 더 달렸어요',
+    rewardTown: '솔방울 마을이 커져요', rewardLots: '새 집터 4곳', rewardOrders: '정기 납품 보너스가 커졌어요', rewardTitle: '칭호: 읍장',
+    // 발판 · 부지 · 표지
+    cargo_pad: '짐 싣는 곳', order_board: '주문판', stn_cash: '역 금고', hire_stn_porter: '역 짐꾼 고용', stn_porter: '역 짐꾼', stn_porter2: '역 짐꾼 2',
+    rank_eup: '승격식', rank_pad: '승격식', ribbon: '테이프 자르기', house_site: '목수가 집을 지어요', house_site_need: '판자 {n}',
+    lot_wait: '{shop} 자리', rentPerMin: '+{n}/분', stnPorterSub: '남는 물건을 짐 싣는 곳과 새 가게로 날라요',
+    // 목표 / 안내
+    obj_cargo: '{item}을(를) 짐 싣는 곳으로', obj_ribbon: '테이프를 잘라 가게를 열어요!', obj_feed_carpenter: '목수에게 판자를 가져다줘요',
+    obj_rank: '승격식을 열어요!', obj_rank_save: '승격식 준비 {coins}', obj_happy_low: '손님들이 {item}이(가) 없어 아쉬워해요',
+    obj_order_focus: '솔방울 주문: {item} {got}/{need} → {shop}', obj_order_standing: '솔방울 주문: {item} {got}/{need}',
+    obj_next_shops: '가게 {n}곳 열기 ({have}/{n})', obj_next_people: '사람 {n}명 ({have}/{n})', obj_first_train: '첫 기차를 기다려요',
+    // HUD · 패널
+    rank_1: '마을', rank_2: '읍', rank_3: '도시', rank_title_1: '촌장', rank_title_2: '읍장',
+    bar_people: '사람', bar_shops: '가게', bar_happy: '행복',
+    rank_panel: '서리마을 등급', rank_next: '읍이 되려면', rank_city_later: '도시는 다음 버전에서', rank_rewards: '읍이 되면',
+    orders_title: '솔방울 주문판', order_to: '→ {shop}', order_swap: '다른 주문', order_reward: '보상 {n}', order_standing: '정기 납품',
+    order_empty: '지금은 주문이 없어요', order_hint: '짐 싣는 곳에 물건을 놓으면 도매가 70%가 역 금고에 쌓여요',
+    set_gfx: '그래픽', gfx_auto: '자동', gfx_high: '선명하게', gfx_low: '가볍게',
+    // 가게 이름
+    shop_cafe: '역앞 카페', shop_restaurant: '생선구이 식당', shop_carpenter_workshop: '목공소', shop_hardware_store: '철물점', shop_supermarket: '슈퍼마켓',
   },
 
   en: {
@@ -426,6 +452,28 @@ export const STRINGS = {
     act_play: 'playing', act_work: 'at work', act_errand: 'running errands', act_cafe: 'at the café', act_walk: 'taking a walk',
     act_trip: 'off to Frost Village', act_shop: 'shopping in Frost Village', act_train: 'on the train', act_patrol: 'on patrol',
     act_mail: 'delivering mail', act_bench: 'resting on a bench', act_clinic: 'going to the clinic', act_sleep: 'asleep', act_wait: 'waiting', act_doze: 'dozing off', act_cheer: 'here to celebrate',
+
+    // ---------------- (v4-B) the order board · new shops · rent · the carpenter's houses · rank (village → town)
+    orderDone: 'Order complete!', shopFounding: '{shop} is getting ready', shopFounded: '{shop} is open!', shopFoundedSub: 'Rent +{rent}/min · it piles up at the station till',
+    shopOpenAuto: '{shop} opened its doors', standingDone: 'Delivery complete! +{n}',
+    houseMoved: '{n} new neighbours moved in!', houseMovedSub: 'The carpenter finished a house',
+    rankUp: 'Frost Village → Frost Town!', rankUpSub: 'You are the town mayor now!', newcomers: '{n} newcomers are moving to Pinecone Village',
+    rewardCobble: 'The high street is cobbled now', rewardRent: 'The station till empties itself', rewardCoach: 'The train got another coach',
+    rewardTown: 'Pinecone Village is growing', rewardLots: '4 new house lots', rewardOrders: 'Bigger delivery bonus', rewardTitle: 'Title: Town Mayor',
+    cargo_pad: 'Loading dock', order_board: 'Order board', stn_cash: 'Station till', hire_stn_porter: 'Hire a station porter', stn_porter: 'Station porter', stn_porter2: 'Station porter 2',
+    rank_eup: 'Town ceremony', rank_pad: 'Town ceremony', ribbon: 'Cut the ribbon', house_site: 'The carpenter builds a house', house_site_need: 'Planks {n}',
+    lot_wait: '{shop} lot', rentPerMin: '+{n}/min', stnPorterSub: 'Carries surplus to the loading dock and the new shops',
+    obj_cargo: 'Bring {item} to the loading dock', obj_ribbon: 'Cut the ribbon to open the shop!', obj_feed_carpenter: 'Bring planks to the carpenter',
+    obj_rank: 'Hold the town ceremony!', obj_rank_save: 'Saving for the ceremony {coins}', obj_happy_low: 'Shoppers miss {item}',
+    obj_order_focus: 'Pinecone order: {item} {got}/{need} → {shop}', obj_order_standing: 'Pinecone order: {item} {got}/{need}',
+    obj_next_shops: 'Open {n} shops ({have}/{n})', obj_next_people: '{n} people ({have}/{n})', obj_first_train: 'Waiting for the first train',
+    rank_1: 'Village', rank_2: 'Town', rank_3: 'City', rank_title_1: 'Chief', rank_title_2: 'Mayor',
+    bar_people: 'People', bar_shops: 'Shops', bar_happy: 'Happy',
+    rank_panel: 'Frost Village rank', rank_next: 'To become a town', rank_city_later: 'City comes in the next version', rank_rewards: 'As a town',
+    orders_title: 'Pinecone order board', order_to: '→ {shop}', order_swap: 'Other order', order_reward: 'Reward {n}', order_standing: 'Regular delivery',
+    order_empty: 'No orders right now', order_hint: 'Goods on the loading dock pay 70% wholesale into the station till',
+    set_gfx: 'Graphics', gfx_auto: 'Auto', gfx_high: 'Sharp', gfx_low: 'Light',
+    shop_cafe: 'Station Café', shop_restaurant: 'Grill House', shop_carpenter_workshop: 'Carpenter', shop_hardware_store: 'Hardware', shop_supermarket: 'Supermarket',
   },
 };
 

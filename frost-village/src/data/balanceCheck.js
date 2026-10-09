@@ -155,6 +155,114 @@ export function checkBalance() {
   fixNum(A, 'respawn', 'resources.animal.respawn', 0.1, 600, 6);
   // ---- (v4-A) 이웃 마을·기차·주민·밤낮 (docs/v4_plan.md §13)
   checkV4A(B);
+  // ---- (v4-B) 주문·가게·등급·집·텍스처
+  checkV4B(B);
+}
+
+// ---- (v4-B) 주문·가게·등급·집·텍스처 (docs/v4_plan.md §13)
+const V4B_ITEMS = ['item_fish_raw', 'item_fish_cooked', 'item_log', 'item_plank', 'item_wheat', 'item_bread', 'item_ore', 'item_ingot', 'item_meat_raw', 'item_meat_cooked',
+  'item_can', 'item_fish_big', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
+const V4B_SHOPS = {
+  cafe: { need: { item_bread: 30 }, rent: 20, sells: ['item_bread'], after: 'zone_farm' },
+  restaurant: { need: { item_fish_cooked: 40, item_meat_cooked: 15 }, rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'], after: 'zone_hunt' },
+  carpenter_workshop: { need: { item_plank: 50 }, rent: 25, sells: [], after: 'zone_forest' },
+  hardware_store: { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
+  supermarket: { need: { item_can: 30, item_bread: 20 }, rent: 40, sells: ['item_can', 'item_bread'], after: 'b:cannery' },
+};
+const V4B_LOTS = ['lotA1', 'lotA2', 'lotA3', 'lotB1', 'lotB2', 'lotB3', 'lotB5', 'lotH1', 'lotH2', 'lotH3', 'lotH4', 'lotH5'];
+
+/** an { item: count } table: known items, whole counts 1..999; an empty / broken table becomes `def` */
+function fixNeed(obj, key, path, def) {
+  const v = obj[key];
+  const out = {};
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    for (const k in v) {
+      if (V4B_ITEMS.indexOf(k) < 0) { warn(path + '.' + k, v[k], '(dropped: unknown item)'); continue; }
+      const n = Math.round(Number(v[k]));
+      if (!Number.isFinite(n) || n < 1) { warn(path + '.' + k, v[k], '(dropped)'); continue; }
+      out[k] = Math.min(999, n);
+    }
+  }
+  if (!Object.keys(out).length) { if (v !== undefined) warn(path, v, def); obj[key] = Object.assign({}, def); return; }
+  obj[key] = out;
+}
+
+function checkV4B(B) {
+  const V = B.v4 = (B.v4 && typeof B.v4 === 'object') ? B.v4 : {};
+  const sub = (k) => (V[k] = (V[k] && typeof V[k] === 'object' && !Array.isArray(V[k])) ? V[k] : {});
+  const W = sub('wholesale');
+  fixNum(W, 'rate', 'v4.wholesale.rate', 0.1, 1, 0.7);
+  const O = sub('orders');
+  fixNum(O, 'cards', 'v4.orders.cards', 1, 3, 3, true);
+  fixNum(O, 'swapAfter', 'v4.orders.swapAfter', 10, 3600, 180);
+  fixNum(O, 'bonus', 'v4.orders.bonus', 0, 3, 0.5);
+  fixNum(O, 'standingBonus', 'v4.orders.standingBonus', 0, 3, 0.3);
+  fixNum(O, 'standingBonusRank2', 'v4.orders.standingBonusRank2', 0, 3, 0.5);
+  const SD = [{ item_bread: 40 }, { item_fish_cooked: 50 }, { item_plank: 40 }, { item_ingot: 25 }, { item_can: 30 }, { item_meat_cooked: 25 }];
+  if (!Array.isArray(O.standing) || !O.standing.length) { if (O.standing !== undefined) warn('v4.orders.standing', O.standing, SD); O.standing = SD.map((o) => Object.assign({}, o)); }
+  for (let i = 0; i < O.standing.length; i++) { const box = { n: O.standing[i] }; fixNeed(box, 'n', 'v4.orders.standing[' + i + ']', SD[i % SD.length]); O.standing[i] = box.n; }
+  const F = sub('founding');
+  fixNum(F, 'buildTime', 'v4.founding.buildTime', 1, 600, 25);
+  fixNum(F, 'ribbonAuto', 'v4.founding.ribbonAuto', 1, 3600, 90);
+  fixNum(F, 'household', 'v4.founding.household', 1, 6, 2, true);
+  fixNum(F, 'shopShelf', 'v4.founding.shopShelf', 1, 200, 20, true);
+  fixNum(F, 'inlandEvery', 'v4.founding.inlandEvery', 1, 3600, 40);
+  const S = F.shops = (F.shops && typeof F.shops === 'object' && !Array.isArray(F.shops)) ? F.shops : {};
+  for (const k in V4B_SHOPS) {
+    const d = V4B_SHOPS[k];
+    const s = S[k] = (S[k] && typeof S[k] === 'object') ? S[k] : (warn('v4.founding.shops.' + k, S[k], d), Object.assign({}, d));
+    fixNeed(s, 'need', 'v4.founding.shops.' + k + '.need', d.need);
+    fixNum(s, 'rent', 'v4.founding.shops.' + k + '.rent', 0, 1e6, d.rent, true);
+    if (!Array.isArray(s.sells)) { if (s.sells !== undefined) warn('v4.founding.shops.' + k + '.sells', s.sells, d.sells); s.sells = d.sells.slice(); }
+    s.sells = s.sells.filter((it) => { const ok = V4B_ITEMS.indexOf(it) >= 0; if (!ok) warn('v4.founding.shops.' + k + '.sells', it, '(dropped: unknown item)'); return ok; });
+    if (typeof s.after !== 'string' && s.after !== null) { if (s.after !== undefined) warn('v4.founding.shops.' + k + '.after', s.after, d.after); s.after = d.after; }
+  }
+  // the order: only shops that exist, each once; every shop needs its lot
+  const order = Array.isArray(F.order) ? F.order.filter((k, i, a) => S[k] && a.indexOf(k) === i) : [];
+  if (!order.length || (Array.isArray(F.order) && order.length !== F.order.length)) { warn('v4.founding.order', F.order, order.length ? order : Object.keys(V4B_SHOPS)); }
+  F.order = order.length ? order : Object.keys(V4B_SHOPS);
+  const DL = { cafe: 'lotA1', restaurant: 'lotA2', carpenter_workshop: 'lotA3', hardware_store: 'lotB1', supermarket: 'lotB5' };
+  const L = F.lots = (F.lots && typeof F.lots === 'object' && !Array.isArray(F.lots)) ? F.lots : {};
+  const used = new Set();
+  for (const k of F.order) {
+    let lot = L[k];
+    if (V4B_LOTS.indexOf(lot) < 0 || used.has(lot)) { const d = DL[k] && !used.has(DL[k]) ? DL[k] : V4B_LOTS.find((x) => !used.has(x) && /^lot[AB]/.test(x)); warn('v4.founding.lots.' + k, lot, d); lot = d; L[k] = d; }
+    used.add(lot);
+  }
+  const SP = V.stationPorter = Array.isArray(V.stationPorter) ? V.stationPorter : [600, 1100];
+  while (SP.length < 2) SP.push(SP.length ? SP[SP.length - 1] : 600);
+  fixList(SP, 'v4.stationPorter', 1, 1e9, true);
+  fixNum(V, 'stationPorterCapacity', 'v4.stationPorterCapacity', 1, 60, 12, true);
+  const H = sub('houses');
+  fixNum(H, 'item_plank', 'v4.houses.item_plank', 1, 999, 20, true);
+  fixNum(H, 'time', 'v4.houses.time', 1, 600, 30);
+  fixNum(H, 'people', 'v4.houses.people', 1, 8, 4, true);
+  for (const [k, d] of [['lots', ['lotH1', 'lotH2', 'lotH3']], ['lotsRank2', ['lotH4', 'lotH5', 'lotB2', 'lotB3']]]) {
+    if (!Array.isArray(H[k])) { if (H[k] !== undefined) warn('v4.houses.' + k, H[k], d); H[k] = d.slice(); }
+    H[k] = H[k].filter((x) => { const ok = V4B_LOTS.indexOf(x) >= 0 && !used.has(x); if (!ok) warn('v4.houses.' + k, x, '(dropped: unknown lot or a shop lot)'); return ok; });
+  }
+  const R = sub('rent');
+  fixNum(R, 'cap', 'v4.rent.cap', 1, 1e9, 2000, true);
+  fixNum(R, 'autoFromRank', 'v4.rent.autoFromRank', 1, 9, 2, true);
+  fixNum(R, 'autoEvery', 'v4.rent.autoEvery', 1, 600, 15);
+  const HP = sub('happiness');
+  fixNum(HP, 'window', 'v4.happiness.window', 1, 200, 40, true);
+  fixNum(HP, 'base', 'v4.happiness.base', 0, 99, 50);
+  const RK = sub('rank');
+  const R2 = RK[2] = (RK[2] && typeof RK[2] === 'object') ? RK[2] : {};
+  fixNum(R2, 'people', 'v4.rank.2.people', 1, 999, 45, true);
+  fixNum(R2, 'shops', 'v4.rank.2.shops', 0, F.order.length, Math.min(5, F.order.length), true);
+  fixNum(R2, 'happy', 'v4.rank.2.happy', 0, 100, 70);
+  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 3000, true);
+  const C = sub('ceremony');
+  fixNum(C, 'length', 'v4.ceremony.length', 3, 60, 12);
+  fixNum(C, 'skipAfter', 'v4.ceremony.skipAfter', 0, C.length, 3);
+  const T = sub('tex');
+  fixNum(T, 'mustMiB', 'v4.tex.mustMiB', 64, 4096, 455);
+  fixNum(T, 'targetMiB', 'v4.tex.targetMiB', 48, T.mustMiB, 300);
+  fixNum(T, 'lowMiB', 'v4.tex.lowMiB', 48, T.targetMiB, 200);
+  fixNum(T, 'softGap', 'v4.tex.softGap', 0, 200, 24);
+  fixNum(T, 'uploadsPerSec', 'v4.tex.uploadsPerSec', 1, 60, 10);
 }
 
 function checkV4A(B) {

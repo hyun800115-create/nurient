@@ -9,7 +9,7 @@ beam sweeps, the aurora rises, and finally the title_art 3D logo drops in letter
 adapter) with its everyday life, and grows it once when the save has moved on.
 
 Verified with `node tools/test/title_lab.mjs`: the real Boot + Preload + Assets.js in headless Chromium on
-a fixed-step clock. All 20 checks pass (§7).
+a fixed-step clock. All 18 checks pass (§7).
 
 ## 1. Files
 
@@ -184,7 +184,7 @@ fade, Game.
 | JS heap after 20 s of title updates (GC'd, precise memory info) | **−81 KB** (no per-frame garbage) | – |
 | Title texture memory, all 4 stages + title art resident | **55.5 MB** (bake 35.3 MB, title art ≈ 20 MB) → **0 MB after the game starts** | – |
 | Extra download of the title (beyond the game's own boot files) | **1,412 KB**: bake 1,332 KB (stage 1 205 / 2 175 / 3 463 / 4 468 KB + manifest) + late cue sounds 80 KB | – |
-| title_art files this phone fetched (its own budget, see title_art.md) | 1,110 KB (main logo _1x, parts, shine, sky, strips, fx) | (ui_title_bg 358 KB + portrait 120 KB, see §2) |
+| title_art files this phone fetched (its own budget, see title_art.md) | 1,096 KB (main logo _1x, parts, shine, sky, strips, fx) | (ui_title_bg 358 KB + portrait 120 KB, see §2) |
 
 - The numbers come from `tools/test/title/title_perf.mjs` (old and new title in the same browser and on the
   same canvas, measured interleaved) and `tools/test/title_lab.mjs`.
@@ -204,7 +204,7 @@ fade, Game.
   - reduced motion
   - texture memory ≤ 60 MB, and every title texture is released when the game starts
   - no page errors
-  - payload ≤ 1.5 MB, GIF ≤ 8 MB (6.9 MB)
+  - payload ≤ 1.5 MB, GIF ≤ 8 MB (6.95 MB; the MP4 is 14 s, 720×1558, 30 fps)
 
 ## 8. Lab
 
@@ -220,6 +220,21 @@ every stage, then replays the intro on the fixed-step clock (60 steps per game s
 a returning player (save at stage 2, title last showed 1 → growth + ribbon, prefs updated, save
 untouched) and reduced motion. It also measures perf, heap growth, texture memory before and after the
 game starts, and payload.
+
+## 8b. What the code reads from title_art (assets/title)
+
+The title code reads these keys at runtime, so title_art can re-render any of them without a code change.
+A missing key falls back to a procedural stand-in.
+- Sky and backdrop: `ttl_sky_day` / `_dusk` / `_night` (stretched), `ttl_stars`, `ttl_moon`, `ttl_aurora`
+  (ADD), and the tiling strips `ttl_clouds`, `ttl_mtn_far`, `ttl_city_far`, `ttl_city_lights` (ADD),
+  `ttl_mtn_mid` and `ttl_forest` (the forest at 0.42× as a far tree line). Strips are tinted from
+  `meta.tints`.
+- Logo: `ttl_logo_main` (or `ttl_logo_main_1x` when k < 1.5, `ttl_logo_en*` in English), with width from
+  `meta.layout.logoMain.widthLogical`. Then `ttl_logo_main_shine` (mask) + `ttl_shine_band`,
+  `ttl_logo_parts` with `meta.logo.main.parts`, and the `ttl_fx` frames `ttl_fx_twinkle`, `ttl_fx_snow_s`,
+  `ttl_fx_snow_m`, `ttl_fx_flake_s` and `ttl_fx_snow_bokeh`.
+- Pop: the `ttl_fx_pop` spritesheet.
+- Not loaded: `_short` logos and icons, plus the other language's and the other scale's logo.
 
 ## 9. Known issues and follow-ups
 

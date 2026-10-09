@@ -18,6 +18,8 @@ export const PRIO = {
   FOOD: 50,         // topping the food box up
   SHELF_LOW: 45,    // a shop shelf is nearly empty
   SHELF: 40,        // a shop shelf
+  SHOP: 35,         // (v4) a founded shop's shelf at the station district (remote)
+  WHOLESALE: 30,    // (v4) the loading dock at the station square (remote)
   STORE: 10,        // the warehouse
 };
 
@@ -43,12 +45,15 @@ export class Logistics {
 
   /**
    * best place for `type` from (x, y): { sink, n } or null. opts: minPrio, maxPrio (exclusive),
-   * exclude (a sink), noStore (never the warehouse)
+   * exclude (a sink), noStore (never the warehouse), remote (v4: also the far station-district sinks —
+   * the loading dock, the new shops, the carpenter's house sites; regular porters never walk there),
+   * onlyRemote (v4: only those — the station porters)
    */
   best(type, x, y, opts = {}) {
     let best = null, bp = -1, bd = Infinity, bn = 0;
     for (const s of this.sinks) {
       if (s === opts.exclude || (opts.noStore && s.isWarehouse)) continue;
+      if (s.remote ? !(opts.remote || opts.onlyRemote) : opts.onlyRemote) continue;
       const n = this.want(s, type);
       if (n <= 0) continue;
       const p = s.prio(type);

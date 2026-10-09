@@ -28,6 +28,7 @@ export class TitleSettings {
     this.open = true;
     const s = this.scene, W = this.screen.W, H = this.screen.H;
     const tx = TITLE_TEXT[this.screen.lang] || TITLE_TEXT.ko;
+    Audio.start();                 // the gear tap is a user gesture: sound may start now
     Audio.play('sfx_click');
     // dim + swallow taps
     const dim = this.add(s.add.rectangle(W / 2, H / 2, W, H, 0x0b1430, 0.55).setInteractive());
