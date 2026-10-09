@@ -140,7 +140,7 @@ try {
   await adv(6);
   const blk = await ev(() => { const r = window.__FV.scene.v4.rail; const sp = r.span(r.m); return { rate: r.rate, blockedT: r.blockedT, nose: sp[0], phase: r.phase, p: { x: window.__FV.scene.player.x, y: window.__FV.scene.player.y } }; });
   const pm = await ev(() => { const r = window.__FV.scene.v4.rail; const p = window.__FV.scene.player; const a = (p.x - 3120) / 64, b = (p.y - 1315) / 32; return r.mAt((a + b) / 2); });
-  await ev(() => window.__FV.camera(p0.x, p0.y, 1.1));
+  await ev((q) => window.__FV.camera(q.x, q.y, 1.1), p0);
   await shot('04_chief_on_track');
   step('chief on the track: the train waits ≥ 1.5 m before him', blk.rate < 0.05 && blk.blockedT > 1 && blk.nose - pm > 1.2 && Math.hypot(blk.p.x - p0.x, blk.p.y - p0.y) < 2, JSON.stringify(blk) + ' chief m ' + pm.toFixed(2));
   await ev(() => window.__FV.teleport(3300, 1560));
