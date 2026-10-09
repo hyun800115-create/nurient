@@ -10,7 +10,7 @@ It has five parts:
 
 The title code (`src/title/TitleAssets.js`, `TitleSky.js`, `TitleLogo.js`) already reads this fragment, including `meta.logo.main.parts`, `meta.layout` and `meta.tints`.
 
-The title loads __PAYLOAD_PNG__ in the worst case: @2x pictures, Korean logo and parts, every backdrop layer and the FX. After the deploy build's WebP pass that is __PAYLOAD_WEBP__. The limit is 1.5 MB.
+The title loads **1.12 MB** (1,171,180 bytes of PNG) in the worst case: @2x pictures, Korean logo and parts, every backdrop layer and the FX. After the deploy build's WebP pass that is about **0.71 MB** (747,276 bytes). The limit is 1.5 MB.
 
 Previews:
 - `docs/previews/title_art_sheet.png`: every piece.
@@ -26,7 +26,7 @@ The name lives in **one** place: `TITLE_NAME` in `src/title/config.js`, the titl
 
 To rename the game:
 1. Edit `TITLE_NAME`.
-2. Run `sh tools/blender/ttl_build.sh` (add `--resume` to keep finished renders).
+2. Run `sh tools/blender/ttl_build.sh`. Do not pass `--resume` after a rename: it keeps the old logo renders. `--resume` is only for an interrupted build.
 
 Only the logos depend on the name. The icon and the backdrop have no text. `meta.texts` in the manifest carries the texts the logos were built from.
 
@@ -70,7 +70,7 @@ Every strip tiles seamlessly in x (use a `TileSprite`), is anchored at its botto
 | `ttl_clouds` | 1440 × 284 | 3D puffy metaball clouds (soft white with blue undersides) |
 | `ttl_mtn_far` | 1080 × 248 | far snowy peaks with lavender shadows and rocky gullies; haze baked in |
 | `ttl_mtn_mid` | 1080 × 258 | nearer, rounder mountains with small pines on the lower slopes |
-| `ttl_forest` | 1440 × 574 | snowy hills with the game's own pines (`prop_assets.pine`, the `tree_pine_*` sprites); the nearest strip |
+| `ttl_forest` | 1440 × 574 | snowy hills with the game's own pines (`prop_assets.pine`, the `tree_pine_*` sprites); the nearest strip. The bottom 30 px fade out, so the strip can sit on the sea without a ruler-straight edge. |
 | `ttl_city_far` | 1080 × 260 | far city skyline silhouette (with a clock spire and a dome) for the final city stage |
 | `ttl_city_lights` | 1080 × 260 | its window lights, a few red aviation lights and a warm city glow, ADD at dusk and night |
 
@@ -113,6 +113,20 @@ The scene, rendered in Blender:
 
 `meta.icon.webmanifest` holds ready-made entries for `manifest.webmanifest`. The lead should apply them; this agent does not edit that file.
 
+## How the title code uses them
+`src/title/TitleAssets.js`, `TitleSky.js` and `TitleLogo.js` already load and use this fragment; the `title_idle_city_night.png` preview shows it in the real title. The full sequence is:
+1. Load `assets/title/manifest.json`.
+2. Queue only what the phone needs: the logo of its language, @2x or `_1x` by render scale, everything with `loadAtTitle !== false`.
+3. **Backdrop:**
+   - Stretch the three sky images and cross-fade them by time of day.
+   - Stars and aurora fade in at night.
+   - The strips are TileSprites anchored at the bottom, tinted per `meta.tints`, with `meta.backdrop.parallax`.
+4. **Logo:** drop the parts in by `drop` order using `dx` / `dy` / `pivot`, swap to the full image, then loop the shine (`*_shine` mask + `ttl_shine_band`) and `ttl_fx_twinkle` sparkles.
+5. **FX:** snowfall from `ttl_fx_snow_*`, `ttl_fx_flake_*` and `ttl_fx_snow_bokeh`; `ttl_fx_pop` + `fx_poof` when a building appears.
+6. **Lead to-do:**
+   - Copy the `meta.icon.webmanifest` entries into `manifest.webmanifest`.
+   - Set the Android adaptive icon from `icon/ic_launcher_*`.
+
 ## Font + licence
 - **Jua** (BM JUA, Woowa Brothers; "The BM JUA Project Authors", SIL OFL 1.1) for all Hangul. It is rounded and chunky. Source: npm `@fontsource/jua` 5.3.0, Korean and Latin woff2 subsets merged into `tools/fonts/Jua-Regular.ttf` with fontTools. All 2,515 KS X 1001 syllables are covered.
 - **Fredoka** 700 / 600 (SIL OFL 1.1) for the English logo, from npm `@fontsource/fredoka` 5.3.0.
@@ -121,7 +135,14 @@ The scene, rendered in Blender:
 Only rendered PNGs ship; no font file goes into the game. A credit line is a nice courtesy: "Jua © The BM JUA Project Authors, Fredoka © The Fredoka Project Authors — SIL OFL 1.1".
 
 ## Payload (what the title loads)
-__PAYLOAD_TABLE__
+| group | what the title loads (worst case: k = 2, Korean) | PNG | after the WebP deploy pass |
+|---|---|---|---|
+| logo | `ttl_logo_main` 107 KB, `ttl_logo_main_shine` 39 KB, `ttl_logo_parts` 124 KB (+ json), `ttl_shine_band` 15 KB | 0.28 MB | same (already palette PNGs) |
+| backdrop | 3 skies 4 KB, `ttl_stars` 58 KB, `ttl_aurora` 101 KB, `ttl_moon` 6 KB, `ttl_clouds` 46 KB, `ttl_mtn_far` 117 KB, `ttl_mtn_mid` 108 KB, `ttl_forest` 289 KB, `ttl_city_far` 3 KB, `ttl_city_lights` 44 KB | 0.76 MB | 0.39 MB |
+| fx | `ttl_fx` 23 KB (+ json), `ttl_fx_pop` 60 KB | 0.08 MB | 0.05 MB |
+| **total** | | **1.12 MB** (limit 1.5 MB) | **0.71 MB** |
+
+The English set (`ttl_logo_en` + `_shine`, 80 KB) replaces the Korean logo, main shine and parts (270 KB). `meta.payload` and `meta.load` in the manifest hold the same numbers and each key's load flag: `true` for always, `"ko"` / `"en"` for one language only, `"k1"` for a `_1x` twin, `false` for not loaded at title time.
 
 The icons and the short logo are not loaded at title time. The English logo replaces the Korean one, so only the larger of the two is counted. The `_1x` twins replace the @2x pictures on k = 1 phones. Big RGBA pictures are palette-quantized with imagequant (dithered), so the PNGs are already small. `tools/build/webp_assets.py` shrinks the backdrop further at deploy time.
 
@@ -143,7 +164,7 @@ The icons and the short logo are not loaded at title time. The English logo repl
 - **`ttl_pack.py` + `ttl_manifest.py`**: everything into `assets/title` and the manifest, with load flags and the payload count. Records for partial re-packs go to `<cache>/ttl_records.json`.
 - **`ttl_preview.py`**: the four preview images.
 
-Render time on the shared 4-core box: logo pieces about 6.5 min, short and English logos about 4 min, four strips about 5 min, icon about __ICON_MIN__ min. Packing and previews take under 1 min.
+Each step was run with exactly the arguments in `ttl_build.sh`. The script itself was not run end to end in one go, because the box was shared and the steps were run as they were finished. Render time on the shared 4-core box (load 10–14): logo pieces about 6.5 min, short and English logos about 4 min, four strips about 5 min, icon about 20 min. Packing and previews take under 1 min.
 
 ## Known issues / notes
 - The mock's diorama is a **placeholder** (real game sprites on a white island ellipse). The real growing diorama is the title_code agent's work.

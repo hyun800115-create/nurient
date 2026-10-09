@@ -10,6 +10,7 @@
 // page has none (the lab defines its own, with a dark theme).
 
 import { MOOD_KO, MOOD_EMOTE } from './sanitize.js';
+import { CARE_NOTE } from './safety.js';
 import { SRC_KO } from './memory.js';
 import { refName } from './personas.js';
 import { josa } from './ko.js';
@@ -91,17 +92,31 @@ export class ChatPanel {
     close.addEventListener('click', () => this.close());
     head.append(this.portrait, who, close);
 
-    // tabs
+    // tabs (the tablist holds only the two tabs; the AI / 마을 말투 badge sits beside it)
+    const tabRow = h('div', 'fc-tabrow');
     const tabs = h('div', 'fc-tabs');
     tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', '수다 보기');
     this.tabChat = this.tab('수다', 'chat');
     this.tabMem = this.tab('기억', 'mem');
-    tabs.append(this.tabChat, this.tabMem, this.modeEl);
+    tabs.append(this.tabChat, this.tabMem);
+    tabs.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const toMem = this.tabMem.getAttribute('aria-selected') !== 'true';
+      this.showTab(toMem ? 'mem' : 'chat');
+      (toMem ? this.tabMem : this.tabChat).focus();
+    });
+    tabRow.append(tabs, this.modeEl);
 
     // chat view
     const chat = this.chatView = h('div', 'fc-view fc-chatview');
     chat.id = 'fc-view-chat';
     chat.setAttribute('role', 'tabpanel');
+    chat.setAttribute('aria-labelledby', 'fc-tab-chat');
+    // follow new messages only while the reader is at the bottom (never yank them back down)
+    this.stick = true;
+    chat.addEventListener('scroll', () => { this.stick = chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48; }, { passive: true });
     this.list = h('div', 'fc-list');
     this.list.setAttribute('role', 'log');
     this.live = h('div', 'fc-sr');
@@ -112,11 +127,14 @@ export class ChatPanel {
     const mem = this.memView = h('div', 'fc-view fc-memview');
     mem.id = 'fc-view-mem';
     mem.setAttribute('role', 'tabpanel');
+    mem.setAttribute('aria-labelledby', 'fc-tab-mem');
+    mem.tabIndex = 0;
     mem.hidden = true;
 
     // chips + gift tray + input
     const foot = this.foot = h('div', 'fc-foot');
     const chips = this.chips = h('div', 'fc-chips');
+    chips.setAttribute('role', 'group');
     chips.setAttribute('aria-label', '빠른 대답');
     for (const c of CHIPS) {
       const b = h('button', 'fc-chip', c.text);
@@ -151,13 +169,20 @@ export class ChatPanel {
     count.setAttribute('aria-hidden', 'true');
     input.addEventListener('input', () => this.updateCount());
     input.addEventListener('focus', () => setTimeout(() => this.scrollEnd(), 250));
+    // the button sends, or stops an AI reply while one streams in; Enter only ever sends (while a
+    // reply is on its way Enter does nothing and the typed text stays in the box)
     const send = this.sendBtn = h('button', 'fc-send');
-    send.type = 'submit';
+    send.type = 'button';
     send.innerHTML = SEND;
     send.setAttribute('aria-label', '보내기');
+    send.addEventListener('click', () => {
+      if (this.ctl) { this.ctl.abort(); return; }
+      if (this.sending) return;
+      this.submit(input.value);
+    });
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (this.ctl) { this.ctl.abort(); return; }
+      if (this.ctl || this.sending) return;
       this.submit(input.value);
     });
     const wrap = h('div', 'fc-inputwrap');
@@ -165,7 +190,7 @@ export class ChatPanel {
     form.append(wrap, send);
     foot.append(chips, tray, form);
 
-    sheet.append(head, tabs, chat, mem, foot);
+    sheet.append(head, tabRow, chat, mem, foot);
     root.append(back, sheet);
     this.mount.append(root);
 
@@ -211,7 +236,9 @@ export class ChatPanel {
     this.sheet.style.setProperty('--fc-kb', kb + 'px');
     this.sheet.style.setProperty('--fc-vh', vv.height + 'px');
     this.sheet.classList.toggle('fc-kb-open', kb > 60);
-    if (kb > 60) this.scrollEnd();
+    // a short screen with the keyboard up: fold the gift tray and the chips so the chat stays readable
+    this.sheet.classList.toggle('fc-tight', kb > 60 && vv.height < 560);
+    if (kb > 60) { if (!this.tray.hidden) this.toggleTray(false, true); this.scrollEnd(); }
   }
 
   // ---------------------------------------------------------------- open / close
@@ -231,6 +258,10 @@ export class ChatPanel {
     this.toggleTray(false);
     this.root.hidden = false;
     document.documentElement.classList.add('fc-lock');
+    // the page behind the sheet is out of reach for keyboards and screen readers while it is open
+    this.inerted = [];
+    for (const el of [...this.mount.children]) if (el !== this.root && !el.inert && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') { el.inert = true; el.setAttribute('aria-hidden', 'true'); this.inerted.push(el); }
+    this.stick = true;
     if (!reduceMotion()) { this.sheet.classList.remove('fc-in'); void this.sheet.offsetWidth; this.sheet.classList.add('fc-in'); }
     if (window.visualViewport) { window.visualViewport.addEventListener('resize', this.onViewport); window.visualViewport.addEventListener('scroll', this.onViewport); }
     this.fitViewport();
@@ -266,6 +297,8 @@ export class ChatPanel {
     this.key = null;
     this.root.hidden = true;
     document.documentElement.classList.remove('fc-lock');
+    for (const el of this.inerted || []) { el.inert = false; el.removeAttribute('aria-hidden'); }
+    this.inerted = [];
     if (window.visualViewport) { window.visualViewport.removeEventListener('resize', this.onViewport); window.visualViewport.removeEventListener('scroll', this.onViewport); }
     const spread = this.engine.close(key);
     if (this.returnFocus && this.returnFocus.focus) { try { this.returnFocus.focus({ preventScroll: true }); } catch (e) { /* */ } }
@@ -331,7 +364,7 @@ export class ChatPanel {
     this.list.append(row);
     if (reveal && !reduceMotion() && who !== 'p') this.typewrite(t, text);
     else t.textContent = text;
-    this.scrollEnd();
+    this.scrollEnd(who === 'p');
     return { row, b, t };
   }
 
@@ -393,7 +426,13 @@ export class ChatPanel {
 
   announce(text) { this.live.textContent = ''; setTimeout(() => { this.live.textContent = text; }, 30); }
 
-  scrollEnd() { const l = this.chatView; if (l) l.scrollTop = l.scrollHeight; }
+  /** keep the newest message in view (only while the reader is at the bottom, unless forced) */
+  scrollEnd(force) {
+    const l = this.chatView;
+    if (!l || (!force && this.stick === false)) return;
+    l.scrollTop = l.scrollHeight;
+    this.stick = true;
+  }
 
   updateCount() {
     const n = this.input.value.length, max = this.input.maxLength;
@@ -401,24 +440,29 @@ export class ChatPanel {
     this.countEl.classList.toggle('near', n > max - 10);
   }
 
-  toggleTray(force) {
+  toggleTray(force, quiet) {
     const show = force === undefined ? this.tray.hidden : !!force;
     this.tray.hidden = !show;
     if (this.giftChip) this.giftChip.setAttribute('aria-expanded', String(show));
-    if (show) { const f = this.tray.querySelector('button'); if (f) f.focus(); }
+    if (show && !quiet) { const f = this.tray.querySelector('button'); if (f) f.focus(); }
   }
 
-  setBusy(on) {
-    this.sendBtn.innerHTML = on ? STOP : SEND;
-    this.sendBtn.setAttribute('aria-label', on ? '대답 멈추기' : '보내기');
-    this.sendBtn.classList.toggle('fc-stop', on);
+  /** on: a reply is on its way. stoppable: it is an AI reply (the button becomes Stop) */
+  setBusy(on, stoppable) {
+    const stop = on && stoppable;
+    this.sendBtn.innerHTML = stop ? STOP : SEND;
+    this.sendBtn.setAttribute('aria-label', stop ? '대답 멈추기' : '보내기');
+    this.sendBtn.classList.toggle('fc-stop', stop);
+    this.sendBtn.classList.toggle('fc-wait', on && !stoppable);
+    if (on && !stoppable) this.sendBtn.setAttribute('aria-disabled', 'true'); else this.sendBtn.removeAttribute('aria-disabled');
     for (const b of this.chips.querySelectorAll('button')) b.disabled = on;
+    for (const b of this.tray.querySelectorAll('button')) b.disabled = on;
   }
 
   // ---------------------------------------------------------------- sending
   async submit(text, retry) {
     const key = this.key;
-    if (!key || this.ctl || this.engine.busy) return;
+    if (!key || this.ctl || this.sending || this.engine.busy) return;
     const clean = String(text || '').trim();
     if (!clean && !retry) { this.input.focus(); return; }
     const wait = this.engine.waitMs();
@@ -427,11 +471,17 @@ export class ChatPanel {
       setTimeout(() => this.sendBtn.classList.remove('fc-wait'), wait);
       return;
     }
+    this.sending = true;
+    try { await this.exchange(key, clean, retry); } finally { this.sending = false; if (this.key === key) this.setBusy(false); }
+  }
+
+  /** one message and its reply (submit() makes sure only one runs at a time) */
+  async exchange(key, clean, retry) {
     if (!retry) { this.bubble('p', clean); this.input.value = ''; this.updateCount(); }
     const ai = this.engine.modeFor(key) === 'ai';
     const typing = this.typing();
     const ctl = this.ctl = new AbortController();
-    this.setBusy(true);
+    this.setBusy(true, ai);
     let bub = null, started = performance.now();
     const onPartial = (p) => {
       if (this.key !== key) return;
@@ -440,13 +490,14 @@ export class ChatPanel {
     };
     const out = retry ? await this.engine.retry(key, { signal: ctl.signal, onPartial }) : await this.engine.send(key, clean, { signal: ctl.signal, onPartial });
     this.ctl = null;
-    if (this.key !== key) { this.setBusy(false); return; }
-    // offline replies "type" for a moment so the chat breathes
+    if (this.key !== key) return;
+    // offline replies "type" for a moment so the chat breathes (the button waits, it is not a Stop)
     if (out.source !== 'ai' && out.ok) {
+      this.setBusy(true, false);
       const min = reduceMotion() ? 120 : 520 + Math.min(700, (out.reply || '').length * 9);
       const left = min - (performance.now() - started);
       if (left > 0) await new Promise((r) => setTimeout(r, left));
-      if (this.key !== key) { this.setBusy(false); return; }
+      if (this.key !== key) return;
     }
     typing.remove();
     this.setBusy(false);
@@ -460,6 +511,8 @@ export class ChatPanel {
       this.announce(out.reply);
       this.updateHeader(out.affinity && out.affinity.delta);
       if (out.note && NOTE_TEXT[out.note] && !this.notesShown.has(out.note)) { this.notesShown.add(out.note); this.note(out.note, NOTE_TEXT[out.note], 'warn'); }
+      // the chief may be in real trouble: a plain note from the game itself (outside the story)
+      if (out.care && !this.notesShown.has('care')) { this.notesShown.add('care'); this.note('care', CARE_NOTE, 'care'); }
       const fresh = (out.gossip || []).filter((g) => !g.dup);
       if (fresh.length) this.note('story', '마을이 새 이야기를 배웠어요 · “' + fresh[0].text + '”', 'story');
       if (out.favor) this.note('favor', '부탁을 받았어요 · ' + out.favor.s, 'info');
@@ -497,8 +550,8 @@ export class ChatPanel {
     const dayKo = (d) => (d === v.day ? '오늘' : d === v.day - 1 ? '어제' : d + 1 + '일째');
     box.append(h('p', 'fc-mlead', josa(v.personas[key].name, '이') + ' 촌장님과 나눈 이야기 중 기억하는 것들이에요. 수다를 떨수록 쌓이고, 오래된 일은 짧게 요약돼요.'));
     sec('촌장님에 대해 아는 것', mem.facts.slice().reverse().map((f) => item(f.s, [dayKo(f.d)])), '아직 몰라요. 좋아하는 걸 알려 줘 보세요.');
-    sec('기억하는 일', mem.ep.slice().reverse().map((e) => item(e.s, [dayKo(e.d), e.src === 't' && e.by ? refName(v.personas, key, e.by) + '한테 들음' : SRC_KO[e.src] || '직접 함', e.ai ? 'AI 수다' : '마을 말투'].concat(e.tp.slice(0, 1), e.ex ? ['예시'] : []))), '아직 없어요.');
-    if (mem.sum.length) sec('오래된 기억 (요약)', mem.sum.map((s) => item(s.s, [s.tp + ' 얘기 ' + s.n + '번', '마지막 ' + dayKo(s.d)])), '');
+    sec('기억하는 일', mem.ep.slice().reverse().map((e) => item(e.s, [dayKo(e.d), e.src === 't' && e.by ? refName(v.personas, key, e.by) + '한테 들음' : SRC_KO[e.src] || '직접 함', e.ai ? 'AI 수다' : '마을 말투'].concat(e.pv ? ['마음속에만 (안 퍼뜨려요)'] : e.tp.slice(0, 1), e.ex ? ['예시'] : []))), '아직 없어요.');
+    if (mem.sum.length) sec('오래된 기억 (요약)', mem.sum.map((s) => item(s.s, [s.pv ? '마음속에만' : s.tp + ' 얘기 ' + s.n + '번', '마지막 ' + dayKo(s.d)])), '');
     sec('부탁', mem.favors.map((f) => item(f.s, [f.done ? '해결!' : '아직', dayKo(f.d)])), '받은 부탁이 없어요.');
     const heard = v.corpus.knownBy(key, 'g').filter((x) => x.o !== key).sort((a, b) => b.d - a.d).slice(0, 8);
     sec('들은 소문', heard.map((x) => { const kn = v.corpus.knower(x, key); return item(v.corpus.plain(x, v.personas, v.chiefName), [kn && kn[2] ? refName(v.personas, key, kn[2]) + '한테 들음' : '마을 소문', dayKo(x.d)]); }), '아직 들은 소문이 없어요.');
@@ -508,7 +561,7 @@ export class ChatPanel {
 
   // ---------------------------------------------------------------- styles
   static tokensCss() {
-    return ':root{--fc-paper:#fffaf0;--fc-paper-2:#fde9c4;--fc-rim:#efd6a3;--fc-ink:#3a4562;--fc-ink-soft:#7a84a0;--fc-accent:#f39b2f;--fc-accent-ink:#ffffff;--fc-berry:#ff5f8f;--fc-heart-empty:#c3cee0;--fc-mint:#2f9e86;--fc-frost:#e6eef8;--fc-shade:rgba(40,52,84,.38);--fc-shadow:rgba(58,69,98,.2);--fc-focus:#2f7de1;--fc-display:"Jua","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--fc-body:Pretendard,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}';
+    return ':root{--fc-paper:#fffaf0;--fc-paper-2:#fde9c4;--fc-rim:#efd6a3;--fc-ink:#3a4562;--fc-ink-soft:#56617e;--fc-accent:#f39b2f;--fc-accent-ink:#ffffff;--fc-berry:#ff5f8f;--fc-heart-empty:#c3cee0;--fc-mint:#23806c;--fc-mint-ink:#ffffff;--fc-frost:#e6eef8;--fc-shade:rgba(40,52,84,.38);--fc-shadow:rgba(58,69,98,.2);--fc-focus:#2f7de1;--fc-display:"Jua","Apple SD Gothic Neo","Noto Sans KR",sans-serif;--fc-body:Pretendard,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}';
   }
 
   static injectCss() {
@@ -546,10 +599,11 @@ export const PANEL_CSS = `
 @keyframes fc-float{from{transform:translateY(4px);opacity:0}25%{opacity:1}to{transform:translateY(-18px);opacity:0}}
 .fc-stage{font-size:11.5px;font-weight:700;color:var(--fc-ink-soft);white-space:nowrap}
 .fc-mode{align-self:center;margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 8px;border-radius:999px;background:var(--fc-frost);color:var(--fc-ink-soft);white-space:nowrap}
-.fc-mode[data-mode=ai]{background:var(--fc-mint);color:var(--fc-accent-ink)}
+.fc-mode[data-mode=ai]{background:var(--fc-mint);color:var(--fc-mint-ink,#fff)}
 .fc-icon-btn{width:38px;height:38px;border-radius:50%;border:2px solid var(--fc-rim);background:var(--fc-paper);color:var(--fc-ink-soft);display:grid;place-items:center;cursor:pointer;padding:0;align-self:start}
 .fc-icon-btn svg{width:18px;height:18px}
-.fc-tabs{display:flex;align-items:center;gap:6px;padding:0 16px 8px;border-bottom:2px dashed var(--fc-rim)}
+.fc-tabrow{display:flex;align-items:center;gap:6px;padding:0 16px 8px;border-bottom:2px dashed var(--fc-rim)}
+.fc-tabs{display:flex;align-items:center;gap:6px}
 .fc-tab{flex:none;font:700 14px var(--fc-body);color:var(--fc-ink-soft);background:none;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}
 .fc-tab[aria-selected=true]{background:var(--fc-paper-2);color:var(--fc-ink)}
 .fc-view{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
@@ -573,6 +627,7 @@ export const PANEL_CSS = `
 .fc-divider{align-self:center;font-size:11.5px;color:var(--fc-ink-soft);padding:2px 10px;margin:4px 0;border-radius:999px;background:var(--fc-frost)}
 .fc-note{align-self:center;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;max-width:94%;font-size:12.5px;line-height:1.45;color:var(--fc-ink);background:var(--fc-paper);border:2px dashed var(--fc-rim);border-radius:14px;padding:7px 11px;margin:2px 0}
 .fc-note-story{border-style:solid;background:var(--fc-paper-2)}
+.fc-note-care{border-style:solid;border-color:var(--fc-mint);background:var(--fc-paper);font-weight:700}
 .fc-note-ic{width:22px;height:22px;flex:none}
 .fc-note-text{min-width:0;flex:1}
 .fc-note-btn{font:700 12.5px var(--fc-body);border:0;border-radius:999px;background:var(--fc-accent);color:var(--fc-accent-ink);padding:5px 12px;cursor:pointer}
@@ -595,7 +650,10 @@ export const PANEL_CSS = `
 .fc-send{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:var(--fc-accent);color:var(--fc-accent-ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 0 var(--fc-shadow)}
 .fc-send svg{width:22px;height:22px}
 .fc-send.fc-stop{background:var(--fc-ink);color:var(--fc-paper)}
-.fc-send.fc-wait{opacity:.55}
+.fc-send.fc-wait{opacity:.55;cursor:default}
+.fc-tight .fc-chips,.fc-tight .fc-tray{display:none}
+.fc-tight .fc-head{padding-top:8px;padding-bottom:4px}
+.fc-tight .fc-portrait{width:40px;height:40px}
 .fc-memview{padding:12px 16px 20px}
 .fc-mlead{margin:0 0 10px;font-size:13px;line-height:1.55;color:var(--fc-ink-soft)}
 .fc-msec{margin:0 0 14px}

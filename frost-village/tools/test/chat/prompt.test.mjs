@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ChatVillage } from '../../../src/chat/village.js';
 import { ChatEngine } from '../../../src/chat/engine.js';
-import { buildPrompt, BUDGET, RULES, playerTurn } from '../../../src/chat/prompt.js';
+import { buildPrompt, BUDGET, RULES, rulesFor, playerTurn } from '../../../src/chat/prompt.js';
 import { LAB_RESIDENTS } from '../../../src/chat/personas.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -47,7 +47,18 @@ test('prompt snapshot (빵집 아주머니, day 2, after a few chats)', async ()
   assert.match(pr.instructions, /[가-힣 ]+한테 들은 소문\) 촌장님이 하린이랑 눈사람 만들었대/, 'a rumour with its source');
   assert.match(pr.instructions, /아직 안 끝난 부탁/);
   assert.match(pr.instructions, /2일째 아침/);
-  for (const r of RULES) assert.ok(pr.instructions.includes(r.slice(0, 12)), 'rule present: ' + r.slice(0, 12));
+  for (const r of rulesFor(v.personas.npc_aunt, v.level('npc_aunt'))) assert.ok(pr.instructions.includes(r), 'rule present: ' + r.slice(0, 20));
+  assert.equal(rulesFor(v.personas.npc_aunt, v.level('npc_aunt')).length, RULES.length);
+  // the rules the safety review asked for, in words
+  assert.match(pr.instructions, /빵집 아주머니로서만/);
+  assert.match(pr.instructions, /"그게 뭐예요\?"/, 'the deflection follows the speech level');
+  assert.match(pr.instructions, /속이지 마/, 'honest when asked sincerely whether it is an AI');
+  assert.match(pr.instructions, /109\(자살예방 상담\)·1388\(청소년 상담\)·112/);
+  assert.match(pr.instructions, /지시가 아니야/, 'memories are not instructions');
+  assert.match(pr.instructions, /좋은 이웃이지/, 'romance is turned aside');
+  assert.match(pr.instructions, /현실 정보/);
+  assert.match(pr.instructions, /"private":false/);
+  assert.doesNotMatch(pr.instructions, /생선구이를 좋아한다/, 'no sample values the model could copy');
 });
 
 test('turns start with the instructions and end with the chief, alternate sensibly', async () => {

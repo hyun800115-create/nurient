@@ -287,8 +287,8 @@ def icon_preview():
         xx += s + 24
     out.alpha_composite(dark, (x, 70))
     # 1024 thumbnail + adaptive pair
-    out.alpha_composite(ic.resize((300, 300), Image.LANCZOS), (30, 300))
-    dr.text((30, 606 - 24), 'icon_1024 (iOS / store)', font=fs, fill=(60, 70, 90, 255))
+    out.alpha_composite(ic.resize((250, 250), Image.LANCZOS), (30, 300))
+    dr.text((30, 556), 'icon_1024 (iOS / store)', font=fs, fill=(60, 70, 90, 255))
     fg_p, bg_p = os.path.join(d, 'ic_launcher_foreground.png'), os.path.join(d, 'ic_launcher_background.png')
     if os.path.exists(fg_p):
         fg = Image.open(fg_p).convert('RGBA').resize((216, 216), Image.LANCZOS)
@@ -314,7 +314,7 @@ def icon_preview():
         out.alpha_composite(rounded(sq, 50), (1090, 330))
         dr.text((360, 556), 'adaptive background', font=fs, fill=(60, 70, 90, 255))
         dr.text((600, 556), 'adaptive foreground', font=fs, fill=(60, 70, 90, 255))
-        dr.text((840, 556), 'circle mask (red = safe zone)', font=fs, fill=(60, 70, 90, 255))
+        dr.text((840, 556), 'circle (red = safe)', font=fs, fill=(60, 70, 90, 255))
         dr.text((1090, 556), 'squircle mask', font=fs, fill=(60, 70, 90, 255))
     return out.convert('RGB')
 

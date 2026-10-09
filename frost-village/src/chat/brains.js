@@ -21,6 +21,7 @@
 //   the Claude API key (never in the client) and returns the same JSON object.
 
 import { extractPartialReply, parseJsonLoose, isSpeech, cleanSpoken, capLine } from './sanitize.js';
+import { PROMPT_VERSION } from './prompt.js';
 
 /** what the page does about each sample error code (sample.d.ts SampleErrorCode) */
 export const ACTION = {
@@ -116,7 +117,7 @@ export class SampleBrain {
  *   4xx/5xx -> { code } with a sample-style code; the proxy also does moderation and per-player quotas.
  */
 export class ServerBrain {
-  constructor({ endpoint = '', headers = {}, fetchImpl = typeof fetch === 'function' ? fetch : null, promptVersion = 3 } = {}) {
+  constructor({ endpoint = '', headers = {}, fetchImpl = typeof fetch === 'function' ? fetch : null, promptVersion = PROMPT_VERSION } = {}) {
     this.id = 'server';
     this.endpoint = endpoint;
     this.headers = headers;

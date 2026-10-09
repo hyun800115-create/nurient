@@ -8,8 +8,9 @@ import { PERSONAS, RELATIONS, relationTable, levelToChief, stageOf } from './per
 import { ResidentMemory } from './memory.js';
 import { VillageCorpus } from './corpus.js';
 import { POLITE } from './ko.js';
+import { gossipOk, sensitiveWhy, ORDER } from './safety.js';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export const WEATHERS = [
   { id: 'snow', ko: '눈' }, { id: 'heavy', ko: '함박눈' }, { id: 'clear', ko: '맑은 하늘' },
@@ -35,6 +36,25 @@ export function makeRng(seed) {
 export const MIGRATIONS = {
   // 0 -> 1: the first public format. A save without `v` (an early lab build) is shaped the same.
   0: (o) => Object.assign({}, o, { v: 1 }),
+  // 1 -> 2: the safety pass. Saves from before it may hold rumours and memories the village should
+  // not keep (unkind, sad, real-life, romance, orders, rewards); they are removed, and old
+  // distress / rude episodes become private ones.
+  1: (o) => {
+    const keys = Array.isArray(o.k) ? o.k : [];
+    const c = o.c && Array.isArray(o.c.e) ? Object.assign({}, o.c, { e: o.c.e.filter((x) => x && typeof x.t === 'string' && (x.k === 'g' ? gossipOk(x.t, { origin: keys[x.o] || null }) : !sensitiveWhy(x.t))) }) : o.c;
+    const m = {};
+    for (const k in o.m || {}) {
+      const r = Object.assign({}, o.m[k]);
+      const bad = (t) => !!sensitiveWhy(t, { aboutChief: true }) || ORDER.test(t);
+      if (Array.isArray(r.e)) r.e = r.e.filter((e) => e && typeof e.s === 'string').map((e) => (/힘들어 보였|서운한 말/.test(e.s) ? Object.assign({}, e, { pv: 1, f: Math.min(-1, e.f | 0), k: /힘들어/.test(e.s) ? 'care' : e.k, ck: 1 }) : e)).filter((e) => e.pv || !bad(e.s));
+      if (Array.isArray(r.su)) r.su = r.su.filter((x) => x && typeof x.s === 'string' && !bad(x.s));
+      if (Array.isArray(r.fa)) r.fa = r.fa.filter((x) => x && typeof x.s === 'string' && !bad(x.s));
+      m[k] = r;
+    }
+    const w = Object.assign({}, o.w || {});
+    if (Array.isArray(w.news)) w.news = w.news.filter((n) => !/^소문:/.test(String(n)));
+    return Object.assign({}, o, { v: 2, c, m, w });
+  },
 };
 
 export function migrate(o) {
@@ -141,8 +161,10 @@ export class ChatVillage {
     const w = WEATHERS[Math.floor(this.rng() * WEATHERS.length)];
     this.world.weather = w.id; this.world.weatherKo = w.ko;
     const news = [NEWS[(this.day * 7 + 3) % NEWS.length]];
-    // the hottest learned rumour makes the morning paper
-    const hot = this.corpus.e.filter((x) => x.k === 'g' && x.src === 'a' && x.d >= this.day - 2).sort((a, b) => (b.kn ? b.kn.length : 0) - (a.kn ? a.kn.length : 0))[0];
+    // the hottest learned rumour makes the morning paper: only happy news about the chief that at
+    // least two residents already know
+    const hot = this.corpus.e.filter((x) => x.k === 'g' && x.src === 'a' && x.d >= this.day - 2 && x.sb && x.sb.includes('chief') && (x.kn ? x.kn.length : 0) >= 2 && gossipOk(x.t, { origin: x.o }))
+      .sort((a, b) => (b.kn ? b.kn.length : 0) - (a.kn ? a.kn.length : 0))[0];
     if (hot) news.unshift('소문: ' + this.corpus.plain(hot, this.personas, this.chiefName) + '…?');
     this.world.news = news;
     for (const k of this.roster) { const m = this.mems[k]; if (m) m.mood = (this.personas[k] && this.personas[k].mood) || 'happy'; }
@@ -211,6 +233,16 @@ export class ChatVillage {
   }
 
   sizeBytes() { return byteLength(JSON.stringify(this.serialize())); }
+
+  /**
+   * for the game's save code: a clean copy of a chat save (any version; bad data -> a fresh one).
+   * Save.js should store `chat` with this instead of its generic plain-JSON pass, which cuts long
+   * strings and drops the nested arrays (who knows each rumour).
+   */
+  static sanitizeSave(raw, opts = {}) { return ChatVillage.deserialize(raw, opts).serialize(); }
+
+  /** is a stored save from a newer version of the game? (then do not overwrite it blindly) */
+  static isFuture(raw) { const o = typeof raw === 'string' ? safeParse(raw) : raw; return !!(o && typeof o === 'object' && (o.v | 0) > SAVE_VERSION); }
 }
 
 function safeParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }

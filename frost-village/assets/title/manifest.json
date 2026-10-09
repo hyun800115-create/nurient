@@ -188,6 +188,7 @@
     "ttl_clouds": 0.05,
     "ttl_mtn_far": 0.08,
     "ttl_city_far": 0.1,
+    "ttl_city_lights": 0.1,
     "ttl_mtn_mid": 0.16,
     "ttl_forest": 0.3
    },
@@ -233,7 +234,10 @@
    "files": {
     "icon_1024": "title/icon/icon_1024.png",
     "icon_512": "title/icon/icon_512.png",
-    "icon_192": "title/icon/icon_192.png"
+    "icon_192": "title/icon/icon_192.png",
+    "ic_launcher_foreground": "title/icon/ic_launcher_foreground.png",
+    "ic_launcher_background": "title/icon/ic_launcher_background.png",
+    "icon_maskable_512": "title/icon/icon_maskable_512.png"
    },
    "webmanifest": [
     {
@@ -257,8 +261,8 @@
    "ios": "icon_1024.png (opaque, no rounded corners - iOS masks it)."
   },
   "payload": {
-   "titleLoadPngBytes": 1186178,
-   "titleLoadAfterWebpBuildBytes": 741908,
+   "titleLoadPngBytes": 1171180,
+   "titleLoadAfterWebpBuildBytes": 747276,
    "worstLanguage": "ko",
    "byGroup": {
     "logo": {
@@ -266,8 +270,8 @@
      "webpBuild": 371278
     },
     "backdrop": {
-     "png": 809648,
-     "webpBuild": 402211
+     "png": 794650,
+     "webpBuild": 407579
     },
     "fx": {
      "png": 85401,
@@ -304,9 +308,12 @@
    "ttl_fx_pop": true
   },
   "files": {
+   "ttl_ic_launcher_background": "title/icon/ic_launcher_background.png",
+   "ttl_ic_launcher_foreground": "title/icon/ic_launcher_foreground.png",
    "ttl_icon_1024": "title/icon/icon_1024.png",
    "ttl_icon_192": "title/icon/icon_192.png",
-   "ttl_icon_512": "title/icon/icon_512.png"
+   "ttl_icon_512": "title/icon/icon_512.png",
+   "ttl_icon_maskable_512": "title/icon/icon_maskable_512.png"
   }
  },
  "images": [

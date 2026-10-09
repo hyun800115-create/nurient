@@ -298,6 +298,10 @@ def finish_strip(path, name):
     mix = ht + (hb - ht) * t
     haze = hexf('#E2F0FC')
     arr[..., :3] = arr[..., :3] * (1 - mix) + haze * mix
+    if name == 'forest':
+        # soft lower edge: the snowy ground fades out over the last rows instead of ending in a ruler line
+        fade = np.clip((h - 1 - np.arange(h, dtype=np.float32)) / 30.0, 0, 1) ** 0.8
+        arr[..., 3] *= fade[:, None]
     return Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGBA')
 
 

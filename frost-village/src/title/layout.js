@@ -232,7 +232,7 @@ export const GULLS = [
 // phone's width). The intro eases between these; the idle title holds the one of its stage.
 export const CAMERA = {
   1: { mx: 2.2, my: 10.4, span: 11 },
-  2: { mx: 3.0, my: 7.6, span: 15 },
+  2: { mx: 2.5, my: 8.7, span: 14.5 },
   3: { mx: -0.6, my: 2.6, span: 19.5 },
   4: { mx: 0.0, my: 0.0, span: 23.5 },
 };

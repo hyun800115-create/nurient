@@ -9,8 +9,15 @@ Exit 0 = OK, 1 = errors.   python3 tools/fx/check_water.py
   * water_lut: one row per palette, matching the palette stops (colour + opacity), shore ramp rows
   * palettes in the manifest == DEFAULT_PALETTES in src/systems/Water.js
   * fx sheets: frame grid matches the png (rows wrapped <= 2048 px), every frame non-empty, one-shots visible
-    at frame 0, loops close (last -> first change ~ a normal frame step), shore-wave strips chain seamlessly
+    at frame 0, loops close (last -> first change <= 1.3 x a normal frame step), shore-wave strips chain seamlessly
+  * palettes: the village (winter_sea) shallows stay clearly colder / greyer than the beach (tropical) ones, and
+    the winter deep water is no lighter than the old water_sea tileSprite
+  * baked fields (fields.* in the manifest): the PNG matches its meta, and it is not stale for the current world
+    (node tools/fx/gen_water_field.mjs --check)
+  * memory: decoded RGBA size of every sheet + the default village set (the Game loads sheets on demand)
 """
+import colorsys
+import subprocess
 import json
 import os
 import re
@@ -27,6 +34,8 @@ PAYLOAD_MAX = int(2.5 * 1024 * 1024)
 REQUIRED_SHEETS = ['fx_wave_crash', 'fx_splash_small', 'fx_splash_big', 'fx_swim_ripple', 'fx_wake_v2',
                    'fx_sparkle_water', 'fx_shore_wave_x', 'fx_shore_wave_y']
 REQUIRED_IMAGES = ['water_waves_a', 'water_waves_b', 'water_foam', 'water_lut', 'water_shore_ramp']
+LOOP_MAX = 1.3            # loops: last -> first change at most 1.3 x the mean frame step
+OLD_SEA = os.path.join(ROOT, 'assets', 'ground', 'water_sea.png')
 
 errors, warns, notes = [], [], []
 err = errors.append
@@ -146,8 +155,19 @@ def main():
                 err('palette %s missing' % need)
     jp = js_palettes()
     if jp is not None:
-        if json.dumps(jp, sort_keys=True) != json.dumps(pals, sort_keys=True):
-            diff = [k for k in set(jp) | set(pals) if json.dumps(jp.get(k), sort_keys=True) != json.dumps(pals.get(k), sort_keys=True)]
+        def nf(v):     # numbers compare as floats (node writes 1, python 1.0)
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, list):
+                return [nf(x) for x in v]
+            if isinstance(v, dict):
+                return {k: nf(x) for k, x in v.items()}
+            return v
+        jp, pals_n = nf(jp), nf(pals)
+        if json.dumps(jp, sort_keys=True) != json.dumps(pals_n, sort_keys=True):
+            diff = [k for k in set(jp) | set(pals_n) if json.dumps(jp.get(k), sort_keys=True) != json.dumps(pals_n.get(k), sort_keys=True)]
             err('palettes in Water.js and the manifest differ: %s (re-run gen_water.py / edit both)' % diff)
         else:
             notes.append('Water.js DEFAULT_PALETTES == manifest palettes (%d)' % len(jp))
@@ -178,26 +198,71 @@ def main():
             close = np.abs(frames[0] - frames[-1]).mean()
             ratio = close / max(np.mean(steps), 1e-3)
             notes.append('loop %-18s close/step %.2f' % (k, ratio))
-            if ratio > 2.2:
-                err('%s does not loop (last->first %.1fx a normal step)' % (k, ratio))
+            if ratio > LOOP_MAX:
+                err('%s does not loop smoothly (last->first %.2fx a normal step > %.1f)' % (k, ratio, LOOP_MAX))
         if not (0 <= s['anchor'][0] <= 1 and 0 <= s['anchor'][1] <= 1):
             err('%s anchor out of range' % k)
         if k.startswith('fx_shore_wave'):
             # chain 3 copies one segment apart (like the game): no visible seam at the two joins
-            dy = 128 if k.endswith('_x') else -128
+            sc = s.get('drawScale', 1)
+            sx_, sy_ = int(256 / sc), int(128 / sc)          # one segment in sheet px
+            dy = sy_ if k.endswith('_x') else -sy_
             fr = frames[n // 2][..., 3] / 255.0
-            acc = np.zeros((fh + 256, fw + 512))
+            acc = np.zeros((fh + 2 * sy_, fw + 2 * sx_))
             for j in range(3):
-                ox, oy = j * 256, (j * dy if dy > 0 else 256 + j * dy)
+                ox, oy = j * sx_, (j * dy if dy > 0 else 2 * sy_ + j * dy)
                 sub = acc[oy:oy + fh, ox:ox + fw]
                 acc[oy:oy + fh, ox:ox + fw] = 1 - (1 - sub) * (1 - fr)
             prof = np.abs(np.diff(acc, axis=1)).sum(axis=0)
-            joins = [fw // 2 + 128 + 256 * j for j in range(2)]
+            joins = [fw // 2 + sx_ // 2 + sx_ * j for j in range(2)]
             jv = max(prof[x - 2:x + 2].max() for x in joins)
-            ratio = jv / max(np.median(prof[fw // 2:fw // 2 + 512]), 1e-3)
+            ratio = jv / max(np.median(prof[fw // 2:fw // 2 + 2 * sx_]), 1e-3)
             notes.append('chain %-16s join / median column change %.2f' % (k, ratio))
             if ratio > 3.0:
                 err('%s: visible seam where the strips join (%.1fx)' % (k, ratio))
+    # ---------------------------------------------------------------- palettes: winter vs tropical, deep vs old sea
+    def hls(hx):
+        r, g, b = hexrgb(hx) / 255.0
+        return colorsys.rgb_to_hls(r, g, b)
+    if 'winter_sea' in pals and 'tropical' in pals:
+        ws = [hls(st[1]) for st in pals['winter_sea']['lut'] if 0.05 <= st[0] <= 0.3]
+        ts = [hls(st[1]) for st in pals['tropical']['lut'] if 0.05 <= st[0] <= 0.4]
+        wsat = float(np.mean([x[2] for x in ws])); tsat = float(np.mean([x[2] for x in ts]))
+        whue = float(np.mean([x[0] for x in ws])) * 360; thue = float(np.mean([x[0] for x in ts])) * 360
+        notes.append('shallows: winter_sea hue %.0f sat %.2f | tropical hue %.0f sat %.2f' % (whue, wsat, thue, tsat))
+        if abs(whue - thue) < 8 and tsat - wsat < 0.15:
+            err('winter_sea shallows too close to the tropical ones (hue %.0f vs %.0f, sat %.2f vs %.2f)' % (whue, thue, wsat, tsat))
+        deep = hls(pals['winter_sea']['lut'][-1][1])
+        if os.path.exists(OLD_SEA):
+            old = np.asarray(Image.open(OLD_SEA).convert('RGB')).reshape(-1, 3).astype(np.float32).mean(0) / 255.0
+            ol = colorsys.rgb_to_hls(*old)[1]
+            notes.append('winter deep L %.2f (old water_sea L %.2f)' % (deep[1], ol))
+            if deep[1] > ol + 0.01:
+                err('winter_sea deep water (L %.2f) is lighter than the old water_sea (L %.2f)' % (deep[1], ol))
+    # ---------------------------------------------------------------- baked fields
+    for name, f in (man.get('fields') or {}).items():
+        p = os.path.join(ROOT, 'assets', f.get('png', ''))
+        if not os.path.exists(p):
+            err('baked field %s: %s missing' % (name, f.get('png')))
+            continue
+        im = Image.open(p)
+        if im.mode != 'RGB' or im.size != (f['fnx'], f['fny'] * 3):
+            err('baked field %s: %s %s, expected RGB %dx%d' % (name, im.mode, im.size, f['fnx'], f['fny'] * 3))
+        notes.append('baked field %s %dx%d (x%d) sig %s, %.0f KB' % (name, f['fnx'], f['fny'], f['s'], f['sig'], os.path.getsize(p) / 1024))
+    if man.get('fields'):
+        try:
+            r = subprocess.run(['node', os.path.join(ROOT, 'tools', 'fx', 'gen_water_field.mjs'), '--check'], capture_output=True, text=True, timeout=300)
+            if r.returncode != 0:
+                err('a baked field is stale for the current world / Water.js (re-run node tools/fx/gen_water_field.mjs): ' + r.stdout.replace('\n', ' ')[:300])
+            else:
+                notes.append('baked fields are current (gen_water_field.mjs --check)')
+        except Exception as e:  # noqa: BLE001
+            warn('could not run gen_water_field.mjs --check (%s)' % e)
+    # ---------------------------------------------------------------- memory (decoded RGBA)
+    dec = {k: s_['frameWidth'] * s_['frameHeight'] * s_['frameCount'] * 4 for k, s_ in sheets.items()}
+    if dec:
+        notes.append('decoded fx sheets: all %.1f MB; biggest %s' % (sum(dec.values()) / 1048576,
+                     ', '.join('%s %.1f' % (k, v / 1048576) for k, v in sorted(dec.items(), key=lambda kv: -kv[1])[:4])))
     # ---------------------------------------------------------------- Water.js sanity
     src = open(WATER_JS, encoding='utf-8').read()
     m = re.search(r'\n  _draw\(renderer, camera, calc, isShore\) \{(.*?)\n  \}\n', src, re.S)

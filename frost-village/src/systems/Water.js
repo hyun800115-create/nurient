@@ -149,7 +149,7 @@ const LUT_ROWS = 8;
 
 /** per-palette look knobs that are not colours (reflection strength, glints, whitecaps, swell size) */
 const LOOK = {
-  winter_sea: { refl: 1.0, glint: 1.0, whitecap: 0.75, swell: 1.0, surf: 1.0, ripple: 0.6 },
+  winter_sea: { refl: 1.0, glint: 1.0, whitecap: 0.62, swell: 1.0, surf: 1.0, ripple: 0.6 },
   harbor: { refl: 1.0, glint: 0.9, whitecap: 0.0, swell: 0.45, surf: 0.5, ripple: 0.5 },
   tropical: { refl: 0.9, glint: 1.15, whitecap: 0.3, swell: 0.8, surf: 1.0, ripple: 0.55 },
   pool: { refl: 0.9, glint: 1.0, whitecap: 0.0, swell: 0.0, surf: 0.0, ripple: 0.35 },
@@ -440,7 +440,7 @@ void main() {
   float ndh = max(dot(N, HALF), 0.0);
   float shin = mix(140.0, 480.0, smoothstep(0.5, 1.4, zm));
   float gate = 0.35 + 0.65 * smoothstep(0.3, 0.72, fo.b);
-  float gl = uMisc.y * uLight.x * gate * (pow(ndh, shin) * 0.75 + pow(ndh, shin * 4.0) * 0.7) * mix(0.5, 1.0, zf);
+  float gl = uMisc.y * uLight.x * gate * (pow(ndh, shin) * 0.75 + pow(ndh, shin * 4.0) * 0.7) * mix(0.35, 1.0, zf);
   gl = 0.8 * (1.0 - exp(-gl * 1.7));
   col += mix(uSun, sky, 0.3) * gl * (1.0 - 0.6 * fishA) + uSun * (pow(ndh, 24.0) * 0.035 * uLight.x);
   // ---- hard shores: slap collar bursting when a crest arrives (shore swell where it reaches, else the
@@ -470,12 +470,14 @@ void main() {
   pot = max(pot, ringFoam);
   // ---- whitecaps: short soft streaks riding the swell crests offshore, born and fading (~1.5 s);
   //      the shore swell's crest line rolling in gets the same soft white horses
-  float sn = 0.55 * sin(dot(g, uWcA.xy) + uWc.x) + 0.45 * sin(dot(g, uWcA.zw) + uWc.y);
-  float life = smoothstep(0.38, 0.92, sn);
+  // (fo.b: slow, irregular wind patches -> no regular lattice of streaks)
+  float sn = 0.42 * sin(dot(g, uWcA.xy) + uWc.x) + 0.3 * sin(dot(g, uWcA.zw) + uWc.y) + 0.9 * (fo.b - 0.5);
+  float life = smoothstep(0.42, 0.95, sn);
   float wCore = smoothstep(0.962, 0.999, s0);
-  float wc = (wCore * 0.95 + smoothstep(0.75, 0.99, s0) * 0.22) * life * smoothstep(80.0, 260.0, dpos) * (0.6 + 0.4 * av) * wDir;
+  float wc = (wCore * 0.95 + smoothstep(0.75, 0.99, s0) * 0.2) * life * smoothstep(80.0, 260.0, dpos) * (0.6 + 0.4 * av) * wDir;
   wc = max(wc, crestLine * 1.5 * smoothstep(0.2, 0.85, sn) * (0.6 + 0.4 * av));
-  float wcA = clamp(wc * uPal.w * (0.72 + 0.3 * fo.g + 0.12 * fo.r), 0.0, 0.85);
+  // soft body broken up by bubbles + lace (soft ramps, never a hard lace threshold)
+  float wcA = clamp(wc * uPal.w * (0.3 + 0.55 * smoothstep(0.25, 0.85, fo.r) + 0.35 * fo.g), 0.0, 0.85) * mix(0.6, 1.0, zf);
   col = mix(col, mix(uFoamS, uFoamC, 0.45 + 0.55 * wCore), wcA);
   // ---- lace foam (hard shores, rings, contacts)
   float aa = 0.06 + 0.10 / clamp(zm, 0.4, 3.0);
@@ -1195,14 +1197,16 @@ export class Water {
     // smoothed harder so the crest lines stay round. Land cells take their nearest WATER cell's value first,
     // so the blur never drags land distances into the water next to a breakwater.
     const w = new Float32Array(N);
-    let ox3 = null, oy3 = null;
+    let ox3 = null, oy3 = null, wRaw = null;     // wRaw: unclamped (the sea bed keeps deepening offshore)
     if (anyWave) {
       ox3 = new Int16Array(N); oy3 = new Int16Array(N);
       edt(nx, ny, seedV, ox3, oy3);
       yield;
+      wRaw = new Float32Array(N);
       for (let i = 0; i < N; i++) {
         if (!water[i]) continue;
-        w[i] = ox3[i] < EDT_INF ? Math.min(DM, Math.max(0, Math.sqrt(ox3[i] * ox3[i] + oy3[i] * oy3[i]) * cG - cG * 0.5)) : DM;
+        wRaw[i] = ox3[i] < EDT_INF ? Math.max(0, Math.sqrt(ox3[i] * ox3[i] + oy3[i] * oy3[i]) * cG - cG * 0.5) : 4 * DM;
+        w[i] = Math.min(DM, wRaw[i]);
       }
       for (let i = 0; i < N; i++) {
         if (water[i]) continue;
@@ -1243,7 +1247,7 @@ export class Water {
       yield;
     }
     for (let i = 0; i < N; i++) {
-      const dS = anyWave ? bedProfile(Math.max(0, w[i]) / PPU, bedS[i]) : DEEP_M;
+      const dS = anyWave ? Math.min(DEEP_M, bedProfile((water[i] ? wRaw[i] : 0) / PPU, bedS[i])) : DEEP_M;
       let dep = dS;
       const k = hardK[i];
       if (k) {
@@ -1276,7 +1280,7 @@ export class Water {
       const gl = Math.hypot(gx, gy);                // per G px (a distance field: ~1)
       if (gl > 0.25) { cx[i] = -gx / gl; cy[i] = -gy / gl; } else { cx[i] = autoDir[0]; cy[i] = autoDir[1]; }
     }
-    blur(cx, nx, ny, 1.0, tmp); blur(cy, nx, ny, 1.0, tmp);
+    blur(cx, nx, ny, 2.0, tmp); blur(cy, nx, ny, 2.0, tmp);
     yield;
     // pack: A = d, wave distance (sqrt-encoded +-DM), run-up, depth;  B = coast dir x, y, edge kind, snow
     const pxA = new Uint8Array(N * 4), pxB = new Uint8Array(N * 4);
@@ -1536,6 +1540,33 @@ export class Water {
   }
 
   removeContact(id) { if (id >= 0 && id < CONTACT_POOL) this._conOn[id] = 0; return this; }
+
+  /**
+   * contacts for a boat / ship (a character def of assets/ships or assets/buildings with bowPoint / wakePoint,
+   * lengthM, beamM): three circles from stern to bow under the hull. (x, y) = the sprite anchor (waterline
+   * centre); dir = the drawn heading ('SW' etc. use the mirrored points). Returns ids for moveHull.
+   */
+  addHull(x, y, def, dir, o = {}) {
+    const ids = [this.addContact(x, y, 1, o), this.addContact(x, y, 1, o), this.addContact(x, y, 1, o)];
+    return this.moveHull(ids, x, y, def, dir);
+  }
+
+  /** move a hull's contacts (no allocations): every frame for a sailing boat */
+  moveHull(ids, x, y, def, dir) {
+    if (!ids || !def) return ids;
+    const mir = def.mirror && def.mirror[dir];
+    let base = mir || dir;
+    if (!(def.bowPoint && def.bowPoint[base]) && def.nearest && def.nearest[base]) base = def.nearest[base];
+    const bp = def.bowPoint && def.bowPoint[base], wp = def.wakePoint && def.wakePoint[base];
+    const fx = mir ? -1 : 1;
+    const len = (def.lengthM || 2.5) * PPU, r = Math.min(len * 0.3, (def.beamM || (def.lengthM || 2.5) * 0.42) * 0.5 * PPU * 0.95);
+    for (let k = 0; k < ids.length; k++) {
+      const f = ids.length > 1 ? 0.2 + 0.6 * k / (ids.length - 1) : 0.5;
+      const ox = bp && wp ? (wp[0] + (bp[0] - wp[0]) * f) * fx : 0, oy = bp && wp ? wp[1] + (bp[1] - wp[1]) * f : 0;
+      this.moveContact(ids[k], x + ox, y + oy, r);
+    }
+    return ids;
+  }
   clearContacts() { this._conOn.fill(0); return this; }
 
   // ------------------------------------------------------------------ palette / quality / fish / light
@@ -2110,6 +2141,63 @@ export function waterShaderCosts() {
     out[v] = { fetches: countFetches(src), fragUniformVectors: countUniformVectors(src) };
   }
   return out;
+}
+
+/**
+ * region configs shared by the game and the field bake tool (tools/fx/gen_water_field.mjs), so the baked
+ * field's signature matches: WaterPresets.village(WORLD.width, shoreY) = the Ground.js sea.
+ */
+export const WaterPresets = {
+  village(width, shoreY) {
+    let maxShore = 0;
+    for (let x = 0; x <= width; x += 8) maxShore = Math.max(maxShore, shoreY(x));
+    const seaH = Math.ceil(maxShore + 40);
+    return { region: { x: 0, y: -200, w: width, h: seaH + 200 }, mask: WaterMask.shoreY(shoreY), defaultShore: 'snowbank', palette: 'winter_sea' };
+  },
+};
+
+/** the baked field `name` of the assets/water manifest as opts.baked ({ image, meta }), or null */
+export function bakedField(scene, manifest, name) {
+  const m = manifest && manifest.fields && manifest.fields[name];
+  if (!m || !scene || !scene.textures.exists(m.key)) return null;
+  return { image: m.key, meta: m };
+}
+
+/**
+ * weak-GPU guess from the renderer string (WEBGL_debug_renderer_info): 'low' for GPUs where the high water
+ * shader would take a large part of the frame (Mali-G5x / G6x with <= 3 cores, Mali-4xx / T6xx-T8xx, Adreno
+ * 3xx-5xx / 60x-61x, PowerVR GE8xxx / Rogue), else 'high'. Use it as the default of the '물결 품질' setting.
+ */
+export function suggestWaterQuality(gl) {
+  let r = '';
+  try {
+    const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    r = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : (gl ? gl.getParameter(gl.RENDERER) : '')) || '';
+  } catch (e) { r = ''; }
+  const m = r.match(/Mali-G(\d+)\s*M[PC](\d+)/i);
+  if (m && +m[1] < 70 && +m[2] <= 3) return 'low';
+  if (/Mali-(4\d\d|T[678]\d\d)|Adreno.*\b([345]\d\d|6[01]\d)\b|PowerVR.*(GE8\d{3}|Rogue)|SwiftShader/i.test(r)) return 'low';
+  return 'high';
+}
+
+/**
+ * frame-time watchdog for the water: feed it the frame delta while the sea is on screen; after `seconds` of
+ * samples it answers 'low' when the median frame took longer than `budgetMs` (default 22 ms ~ 45 fps), once.
+ * Drop the water to low BEFORE lowering the resolution (View.forceK), and store the answer in Settings.water.
+ */
+export class WaterBudget {
+  constructor(seconds = 3, budgetMs = 22) { this.need = seconds; this.budget = budgetMs; this.t = 0; this.buf = new Float32Array(512); this.n = 0; this.done = false; }
+  /** dt in ms of the last frame; returns 'low' | 'high' once decided, else null */
+  sample(dtMs, seaOnScreen = true) {
+    if (this.done || !seaOnScreen || !(dtMs > 0) || dtMs > 250) return null;
+    if (this.n < this.buf.length) this.buf[this.n++] = dtMs;
+    this.t += dtMs / 1000;
+    if (this.t < this.need) return null;
+    this.done = true;
+    const a = Array.from(this.buf.subarray(0, this.n)).sort((x, y) => x - y);
+    this.median = a[a.length >> 1];
+    return this.median > this.budget ? 'low' : 'high';
+  }
 }
 
 /** helpers for building masks */

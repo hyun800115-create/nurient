@@ -52,6 +52,8 @@ export class Social {
   constructor(e) {
     this.e = e;
     this.tmp = []; this.tmpW = [];
+    this.ended = false;       // a row ends the conversation
+    this.byeAt = -1;          // where the goodbyes of the current conversation start
     this.toldNow = [];        // stories (root fact ids) told in the current conversation
     this.askedNow = [];       // questions already asked in the current conversation
     this.stats = { talks: 0, beats: 0, intros: 0, gossip: 0, gossipNew: 0, distortions: 0, exaggerations: 0, questions: 0, answered: 0, dunno: 0,
@@ -126,11 +128,14 @@ export class Social {
     if (first) this.intro(a, b, rel, beats);
     else this.greet(a, b, rel, beats, place);
     let turns = first ? (rng.chance(0.45) ? 1 : 0) : 1 + (rng.chance((a.tr[0] + b.tr[0]) / 260) ? 1 : 0) + (rng.chance(0.18) ? 1 : 0);
+    if (rel.flags & RF_RIVAL) turns = Math.min(turns, 1);   // rivals do not chat on after a row
     let s = a, l = b;
-    for (let t = 0; t < turns; t++) {
+    this.ended = false;
+    for (let t = 0; t < turns && !this.ended; t++) {
       this.topic(s, l, rel, place, beats);
       if (rng.chance(0.65)) { const x = s; s = l; l = x; }
     }
+    this.byeAt = beats.length;   // a confession or a proposal goes in before the goodbyes
     this.bye(a, b, rel, beats);
     // the relationship
     const compat = this.compat(a, b);
@@ -324,6 +329,7 @@ export class Social {
       if (f.a !== s.id && f.b !== s.id && !famHH) continue;
       // family news is not news to the family
       if (FAMILY_NEWS[f.k] && (f.a === l.id || f.b === l.id || f.c === l.id || (f.a >= 0 && e.people[f.a] && e.people[f.a].hh === l.hh))) continue;
+      if (f.a === l.id || f.b === l.id) continue;   // no 'I went to the beach with my husband!' to the husband (that is a shared memory: recall)
       if (this.toldNow.indexOf(f.ref || f.id) >= 0) continue;
       if (this.stale(f)) continue;
       if ((f.k === 'crush' || f.k === 'confess_no') && rel.stage < ST_BEST) continue;
@@ -351,6 +357,9 @@ export class Social {
       if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0) about = e.world.places[f.p].residents.indexOf(l.id) >= 0 || e.world.places[f.p].owner === l.id;
       if (f.k === 'farewell') about = l.parents.indexOf(f.a) >= 0 || l.kids.indexOf(f.a) >= 0 || l.spouse === f.a;
       if (f.k === 'baby') about = f.a === l.id || f.b === l.id;
+      // no 'congratulations on our wedding!' to one's own spouse, no comfort about one's own fire
+      if (f.a === s.id || f.b === s.id) about = false;
+      if ((f.k === 'fire' || f.k === 'ruin') && f.p >= 0 && (e.world.places[f.p].residents.indexOf(s.id) >= 0 || e.world.places[f.p].owner === s.id)) about = false;
       if (about) return m;
     }
     return null;
@@ -381,6 +390,7 @@ export class Social {
     const known = findMem(l, f);
     let bt = this.beat(beats, s, l, 'rumor.' + f.k, 'rumor:' + f.k);
     this.setVersion(bt, m);
+    const rb = bt;
     bt.em = f.v < 0 ? 'emote_exclaim' : f.v > 0 ? 'emote_heart' : 'emote_dots';
     bt.an = f.v < 0 ? 'point' : 'talk';
     // the listener
@@ -396,6 +406,7 @@ export class Social {
       // follow-up question and answer
       let fq = FOLLOW[f.k];
       if (fq === 'who' && m.d !== D_ANON && f.a >= 0 && (f.k !== 'wanted' || e.dialogue.knowsCulprit(s, f))) fq = null;   // already said who
+      if (fq === 'caught' && this.followFact(s, f, 'caught')) fq = null;   // the teller knows how it ended (and mostly says so)
       if (fq === 'what' && f.k === 'shop_open' && !(m.d === D_PLACE && m.alt < 0)) fq = null;   // the shop's name already says what it sells
       if (fq && rng.chance(0.55)) {
         bt.nq = true;
@@ -403,6 +414,7 @@ export class Social {
         this.answerFollow(s, l, m, fq, beats);
       } else if (m.src === SRC_TOLD && m.from >= 0 && rng.chance(0.3)) {
         bt.nq = true;
+        rb.fl.push(COND.srcq);   // so the story itself does not already say who told it
         bt = this.beat(beats, l, s, 'follow.source', 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_question';
         bt = this.beat(beats, s, l, 'answer.source', 'rumor:' + f.k); this.setVersion(bt, m);
       }
@@ -720,7 +732,7 @@ export class Social {
       const s = rel.crushOf(a.id) ? a : b, l = s === a ? b : a;
       this.stats.confessions++;
       const yes = rel.rom >= 450 && (l.tr[5] > 30 || rel.crushOf(l.id)) && rng.chance(0.62 + (rel.rom - 450) / 900);
-      beats.splice(beats.length - 1, 0, ...this.confessBeats(s, l, yes));
+      beats.splice(this.byeAt >= 0 ? this.byeAt : beats.length - 1, 0, ...this.confessBeats(s, l, yes));
       if (yes) { this.stats.confessYes++; e.life.becomeSweethearts(s, l, rel); }
       else {
         rel.rom = Math.max(0, rel.rom - 260);
@@ -734,7 +746,7 @@ export class Social {
     if (rel.stage === ST_SWEET && rel.rom >= 700 && e.clock.day - (rel.sweetDay || 0) >= e.cfg.proposeAfterDays && rng.chance(0.35)) {
       this.stats.proposals++;
       const s = a.male ? a : b, l = s === a ? b : a;
-      beats.splice(beats.length - 1, 0, ...this.proposeBeats(s, l));
+      beats.splice(this.byeAt >= 0 ? this.byeAt : beats.length - 1, 0, ...this.proposeBeats(s, l));
       e.life.engage(s, l, rel);
     }
   }
@@ -761,6 +773,7 @@ export class Social {
     bt = this.beat(beats, s, l, 'argue.huff', 'quarrel'); bt.em = 'emote_sweat';
     this.affAcc -= 40;
     rel.fights++;
+    this.ended = true;
     // two grumpy rivals: a comic dust-cloud scuffle (the police come and they shake hands)
     if (rel.aff < -300 && (s.tr[1] < 50 || l.tr[1] < 50) && rng.chance(0.35)) e.incidents.scuffle(s, l, place);
   }
@@ -926,7 +939,7 @@ export class Social {
     rel.stage = ns;
     this.stats.promotions = this.stats.promotions || {};
     this.stats.promotions[ns] = (this.stats.promotions[ns] || 0) + 1;
-    if (ns === ST_FRIEND || ns === ST_BEST) {
+    if ((ns === ST_FRIEND || ns === ST_BEST) && !(rel.flags & RF_FAMILY)) {   // no 'Dad and I became best friends!'
       const f = e.fact(ns === ST_BEST ? 'bestfriend' : 'friend', { a: a.id, b: b.id, p: place.idx });
       e.learn(a, f, SRC_DID); e.learn(b, f, SRC_DID);
       if (e.bus.has('relation')) e.bus.emit('relation', { a: a.id, b: b.id, stage: ns });

@@ -316,7 +316,8 @@ export class Life {
     r.qs.length = 0; r.agenda.length = 0;
     const i = e.alive.indexOf(r);
     if (i >= 0) e.alive.splice(i, 1);
-    e.usedNames.delete(r.given);
+    // two residents can share a given name: free it only when nobody living still has it (a loaded save rebuilds the set the same way)
+    if (!e.alive.some((p) => p.given === r.given)) e.usedNames.delete(r.given);
     if (r.work >= 0 && (r.flags & F_OWNER)) {
       // the shop is taken over by someone else (or stays open with its staff)
       const p = e.world.places[r.work];

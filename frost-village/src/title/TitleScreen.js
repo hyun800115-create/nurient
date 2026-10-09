@@ -251,8 +251,8 @@ export class TitleScreen {
       // light + camera follow the script
       let tod = TOD_KEYS[TOD_KEYS.length - 1][1];
       for (let k = 0; k < TOD_KEYS.length - 1; k++) {
-        const [ta, va] = TOD_KEYS[k], [tb, vb] = TOD_KEYS[k + 1];
-        if (t < tb) { const u = Math.max(0, (t - ta) / (tb - ta)); tod = va + (vb - va) * u * u * (3 - 2 * u); break; }
+        const A = TOD_KEYS[k], B = TOD_KEYS[k + 1];
+        if (t < B[0]) { const u = Math.max(0, (t - A[0]) / (B[0] - A[0])); tod = A[1] + (B[1] - A[1]) * u * u * (3 - 2 * u); break; }
       }
       this.dio.setLight(tod); this.sky.setTime(tod);
       this.cameraIntro(t);
@@ -374,9 +374,12 @@ export class TitleScreen {
     this.artSwapped = true;
     const tod = this.sky.tod;
     const city = this.sky.cityK;
+    const oldFx = this.sky.usedFx;
     this.sky.destroy();
     this.sky = new TitleSky(this.scene, this.putSky, this.W, this.H, TITLE_LAYOUT);
     this.sky.setTime(tod < 0 ? 0 : tod); this.sky.setCity(city);
+    // stand-ins the art replaced: free their texture memory now
+    for (const k of oldFx) if (!this.sky.usedFx.has(k) && this.scene.textures.exists(k)) { this.scene.textures.remove(k); TitleAssets.keys.delete(k); }
     if (this.snow) for (const e of this.snow) e.destroy();
     this.makeSnow();
   }

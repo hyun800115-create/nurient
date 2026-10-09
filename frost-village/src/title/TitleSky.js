@@ -6,7 +6,7 @@
 // manifest meta; procedural stand-ins (TitleFx) for anything that is missing.
 import { Assets } from '../core/Assets.js';
 import { TitleAssets } from './TitleAssets.js';
-import { lerpColor } from './TitleFx.js';
+import { lerpColor, TitleFx } from './TitleFx.js';
 
 const HAZE = [0xf4f9ff, 0xffd9b8, 0x5873ac];        // horizon haze per time
 const SEA = [0xffffff, 0xe7b3bd, 0x5f73b2];         // sea tint
@@ -27,10 +27,14 @@ export class TitleSky {
     const meta = TitleAssets.art && TitleAssets.art.meta;
     this.tints = (meta && meta.tints) || {};
     this.strips = [];
+    this.usedFx = new Set();
     this.build();
   }
 
   art(key) { return TitleAssets.artSprite(this.scene, key); }
+
+  /** a procedural stand-in (made on first use; remembered so a later art swap can drop it) */
+  fb(key) { this.usedFx.add(key); return TitleFx.ensure(this.scene, key); }
 
   /** a horizontal strip (tile x) with its bottom at y; returns null when the art is missing */
   strip(key, y, depth, opts = {}) {
@@ -52,7 +56,7 @@ export class TitleSky {
     const s = this.scene, W = this.W, H = this.H, hz = this.horizon;
     const add = (o, d) => { o.setDepth(d); this.put(o); return o; };
     const sky = (key, fb, d) => {
-      const a = this.art(key) || { tex: fb, frame: undefined };
+      const a = this.art(key) || { tex: this.fb(fb), frame: undefined };
       const im = add(s.add.image(W / 2, 0, a.tex, a.frame).setOrigin(0.5, 0), d);
       im.setDisplaySize(W + 4, hz + 60);
       return im;
@@ -62,11 +66,11 @@ export class TitleSky {
     this.skyNight = sky('ttl_sky_night', 'ttl_fx_sky_night', 2);
     const st = this.art('ttl_stars');
     if (st) { this.stars = add(s.add.image(W / 2, 0, st.tex, st.frame).setOrigin(0.5, 0), 3); this.stars.setScale(W / this.stars.frame.realWidth); }
-    else { this.stars = add(s.add.image(W / 2, 0, 'ttl_fx_stars').setOrigin(0.5, 0), 3); this.stars.setDisplaySize(W * 1.1, hz * 0.95); }
+    else { this.stars = add(s.add.image(W / 2, 0, this.fb('ttl_fx_stars')).setOrigin(0.5, 0), 3); this.stars.setDisplaySize(W * 1.1, hz * 0.95); }
     const mo = this.art('ttl_moon');
-    this.moon = mo ? add(s.add.image(W * 0.12, H * 0.075, mo.tex, mo.frame), 4).setScale(0.62) : add(s.add.image(W * 0.12, H * 0.075, 'ttl_fx_moon'), 4).setScale(1.2);
+    this.moon = mo ? add(s.add.image(W * 0.12, H * 0.075, mo.tex, mo.frame), 4).setScale(0.62) : add(s.add.image(W * 0.12, H * 0.075, this.fb('ttl_fx_moon')), 4).setScale(1.2);
     const au = this.art('ttl_aurora');
-    const auTex = au ? au.tex : 'ttl_fx_aurora';
+    const auTex = au ? au.tex : this.fb('ttl_fx_aurora');
     this.aurora1 = add(s.add.image(W * 0.5, H * 0.02, auTex, au && au.frame).setOrigin(0.5, 0), 5).setBlendMode(Phaser.BlendModes.ADD);
     this.aurora1.setDisplaySize(W * 1.45, hz * 0.85);
     this.aurora2 = add(s.add.image(W * 0.56, H * 0.06, auTex, au && au.frame).setOrigin(0.5, 0), 5).setBlendMode(Phaser.BlendModes.ADD).setFlipX(true);
@@ -83,9 +87,9 @@ export class TitleSky {
     this.forest = this.strip('ttl_forest', hz + 4, 7.5, { scale: 0.42 });
     if (!this.mtnFar && !this.mtnMid) {
       // procedural stand-ins
-      this.fbFar = add(s.add.image(W / 2, hz + 2, 'ttl_fx_mtn_far').setOrigin(0.5, 1), 6);
+      this.fbFar = add(s.add.image(W / 2, hz + 2, this.fb('ttl_fx_mtn_far')).setOrigin(0.5, 1), 6);
       this.fbFar.setScale((W * 1.5) / this.fbFar.frame.realWidth, ((W * 1.5) / this.fbFar.frame.realWidth) * 0.62);
-      this.fbNear = add(s.add.image(W / 2, hz + 4, 'ttl_fx_mtn_near').setOrigin(0.5, 1), 7);
+      this.fbNear = add(s.add.image(W / 2, hz + 4, this.fb('ttl_fx_mtn_near')).setOrigin(0.5, 1), 7);
       this.fbNear.setScale((W * 1.6) / this.fbNear.frame.realWidth, ((W * 1.6) / this.fbNear.frame.realWidth) * 0.5);
     }
     if (this.cityFar) this.cityFar.ts.setAlpha(0);
@@ -93,7 +97,7 @@ export class TitleSky {
     // the sea: world-locked texture under the horizon
     const sea = Assets.sprite('water_sea');
     this.sea = add(s.add.tileSprite(0, hz, W, H - hz, sea.tex, sea.frame).setOrigin(0, 0), 8);
-    this.haze = add(s.add.image(W / 2, hz - 2, 'ttl_fx_haze').setOrigin(0.5, 0), 9);
+    this.haze = add(s.add.image(W / 2, hz - 2, TitleFx.ensure(s, 'ttl_fx_haze')).setOrigin(0.5, 0), 9);
     this.haze.setDisplaySize(W + 4, Math.max(70, H * 0.07));
   }
 

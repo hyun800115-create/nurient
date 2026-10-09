@@ -6,7 +6,12 @@ The engine is plain JavaScript (ES modules) with no Phaser or DOM. It is determi
 
 The engine is complete and tested: **21 of 21 tests pass**. It has not been wired into the game yet; that is planned for v5 (§6).
 
-{{HEADLINE}}
+**At a glance** (seed 7, 250 residents, 30 game days):
+
+- 22,273 conversations and 168,189 spoken lines, 33,002 of them different;
+- no missing-rule lines in Korean or English;
+- 0.31 ms of CPU per game second in the game's text mode, against a budget of 2 ms;
+- a 630 KB save that restores exactly.
 
 **Deliverables** (all under `frost-village/`)
 
@@ -145,7 +150,7 @@ Each run writes four files to `out/seed_N/`:
   - Plans are made over the evening.
   - The day change runs as a queue of small steps.
   - Nightly memory and money upkeep is done 40 residents per step.
-  - The grammar is compiled once (about 0.1–0.3 s) when the engine is created.
+  - The grammar is compiled once (about 0.15–0.35 s) when the engine is created.
 
 ---
 
@@ -155,12 +160,12 @@ Each run writes four files to `out/seed_N/`:
 
 | | Rules | Templates | Template coverage in a 30-day run |
 |---|---|---|---|
-| Korean | {{KO_RULES}} | {{KO_ALTS}} | {{KO_COV}} |
-| English | {{EN_RULES}} | {{EN_ALTS}} | {{EN_COV}} |
+| Korean | 627 | 2,407 | 67.6 % |
+| English | 616 | 2,179 | 67.7 % |
 
 - Most Korean templates have three speech-level wordings, and many contain `<a|b>` choices and slots, so there are many times more surface forms than templates.
-- In 30 days the Korean run produced **{{KO_UNIQUE}} distinct lines** out of {{KO_LINES}}.
-- Only **{{KO_PAIRREP}}** of lines repeat word-for-word between the same speaker and listener.
+- In 30 days the Korean run produced **33,002 distinct lines** out of 168,189 (19.6 %; English: 25,607 of 168,443).
+- Only **3.2 %** of lines repeat word-for-word between the same speaker and listener.
 
 **Markup** (documented in `lang/grammar.js`)
 
@@ -217,30 +222,56 @@ Slots are filled from the conversation's people, places, items and facts: X/Y/C 
 
 **Quality pass (this session)**
 
+The samples were read line by line, as the designer would read them, and every oddity was traced to its cause. The fixes below are in the engine and grammar, so they apply to the game, not only to the samples.
+
+*Who does what (simulation)*
+
 | Problem | Fix |
 |---|---|
-| Kid thieves | Thieves are now teens and up, and elders rarely |
-| Grown‑up/child feuds | Removed |
-| Crushes inside couples | Removed |
-| Grandparents and in-laws who had never met | They now know each other |
-| Family news gossiped as someone else's ("우리 남편네 가족이 이사 왔어요") | Now told as own news ("저희 아기가 태어났어요! 이름은 ○○예요") |
-| Double congratulations | Fixed |
-| The same question asked twice in one talk | Fixed |
-| "왜?" questions about fights answered with moving reasons | `why` questions now depend on the fact kind |
-| Reactions from the wrong side ("착하다!" to the person whose things were found) | Help and lost‑and‑found replies depend on whose side the teller was on |
-| "Our fight" recalled by bystanders | Recalls now depend on who took part |
-| "나랑 우리 아내 결혼식" | Became "우리 결혼식 기억나?" |
-| Diary lines about other people's engagements written as "결혼하기로 했다!" | Diary uses third-person wording for other people |
-| A diary page repeating the same line | Fixed |
-| Haircut questions answered by greetings | Fixed |
-| "아기 보러 가도 돼?" answered with "다 이웃들 덕분이에요" | Now answered "그럼! 언제든 놀러 와!" |
-| A newspaper story printed twice | Fixed |
-| Wanted poster naming the wrong place | Fixed |
-| "아기의 이름은 아기 가윤" | Fixed |
-| Fire owner a five-year-old | The household's grown-up is the owner |
-| Home names changing after a fire | Homes are named after their head of household |
+| Kid thieves; a cook pinching from his own restaurant; the same teenager pinching again the day after saying sorry | Thieves are teens and up (elders rarely), never staff at their own workplace, and nobody steals again within 12 days |
+| A cake stolen from the appliance store | Thefts only happen in shops that sell small things |
+| A grown-up in a dust-cloud scuffle with a six-year-old | Scuffles only happen within an age band: children, teens, grown-ups |
 | Midnight tip-off arrests | Moved to the morning |
+| Fire owner a five-year-old; home names changing after a fire | The household's eldest grown-up owns the home, and homes are named after them |
 | Children who were 4–6 when the town began never started school ("8살·어린이") | Every child aged 4–12 is enrolled, as children who grow up into that age already were |
+| Grandparents and in-laws who had never met; crushes inside couples | They know each other; no crushes inside couples |
+| Rivals quarrelling and then chatting about a prank | A row ends the conversation |
+| A proposal after "또 만나!" | Confessions and proposals come before the goodbyes |
+
+*What people say (dialogue)*
+
+| Problem | Fix |
+|---|---|
+| Family news gossiped as someone else's ("우리 남편네 가족이 이사 왔어요"); "어제 우리 남편이랑 바닷가 갔었어!" said to the husband | Family news is told as one's own ("저희 아기가 태어났어요!"); own news is not told to people who took part in it |
+| "결혼 축하해!" to one's own spouse; double congratulations | Nobody congratulates or comforts someone about an event they shared; one congratulation per talk |
+| "대박 소식!" before a fire or a farewell | Excited openers are for good news. Bad news opens with "큰일 났어!", a farewell with "슬픈 소식이 있어요." |
+| "아까 연기 봤어?" days after a fire; "결혼식 언제예요?" about a past wedding | Questions use the right time ("어제 불났다던데, 어디였어요?"); date questions only about engagements |
+| "나도 들었어" from someone who saw it; "눈 뭉치만 봤어" from someone who knew nothing | Replies depend on how the speaker knows the story: saw it, did it, heard it, read it, or never heard of it |
+| "금방 잡혔다니 다행이다!" followed by "그래서 잡혔대?" | Residents only talk about an arrest they know of; the question is skipped when the teller knows how it ended |
+| "홍 소방관한테 들었는데…" followed by "누가 그래?" | When the listener is about to ask, the story does not name its source first |
+| "무슨 가게래?" right after the shop's name; "어디선가 불이 났대" when the rumour had moved the fire to another house | Asked only when the name was not heard; "somewhere" only when the place was lost |
+| "왜?" about a fight answered with moving reasons; haircut questions answered by greetings; "너 몇 살이야?" answered with "어, 반가워!" | Answers depend on the fact kind and on the question asked |
+| "아기 보러 가도 돼?" answered with "다 이웃들 덕분이에요"; "전보다 더 멋지게 지었다며?" answered with "그건 나도 모르겠어" | "그럼! 언제든 놀러 와!"; the reaction is now a statement |
+| "착하다!" to the person whose things were found; "our fight" recalled by bystanders; "나랑 우리 아내 결혼식" | Replies and recalls depend on who took part ("우리 결혼식 기억나?") |
+| "퇴근했어?" to schoolchildren; "장 보러 왔어?" in a café; "수진아도"; "혹시 새로 온 분이야?" | "학교 끝났어?", "뭐 먹으러 왔어?", "수진이도", "혹시 새로 왔어?" |
+| "대단하다! 축하해!" about an outing; "저 춤 정말 좋아하잖아요" to someone just met; "뽀삐가 또 사고 쳤군요!" about the dog greeting people | "재밌었겠다!"; "~잖아요" only to friends; "또 동네를 들썩이게 했군요!" |
+| A 5-year-old calling a 23-year-old "우체부 아줌마"; a 70-year-old calling a 74-year-old "할아버지"; a six-year-old saying "학교 다녀!" | Young grown-ups are 형/누나/오빠/언니 to children; elders of about the same age call each other ○○ 씨; children under seven go to "유치원" |
+
+*Diary and newspaper*
+
+| Problem | Fix |
+|---|---|
+| "이말순 어르신 어르신"; "아기의 이름은 아기 가윤"; a story printed twice; a wanted poster naming the wrong place; "오늘 새벽" about an afternoon event | Fixed |
+| Other people's engagements written as "결혼하기로 했다!"; the thief writing "노 순경이 도둑을 잡았다" and "내가 사과하는 걸 봤다"; "어디선가 연기가…" about one's own house; "나네 집들이" | Diary lines depend on whether the writer took part ("경찰에게 잡혔다", "우리 집 집들이를 했다") |
+| "아빠랑 단짝이 됐다"; a page repeating a line or naming the same person twice | No friendship news inside a family; one line per person per page |
+
+*Save and samples*
+
+| Problem | Fix |
+|---|---|
+| A loaded save could give a newcomer a different name than the original game (two residents shared a given name and one left) | The used-name list is only cleared when nobody living has that name, so a save and the original stay identical (caught by the three-week save test) |
+| Sample rumour chains with a missing link ("누리한테 들은 건데요" on a step told by 봉준) | Chains follow only the steps where the listener really learnt the story |
+| Cries from another fire or chase in a story's timeline; the same rumour quoted five times | Each timeline shows only its own incident; quotes are all different |
 
 ---
 
@@ -327,7 +358,7 @@ Add one new module, `src/systems/StoryLife.js`, owned by Game.js. No other syste
    - Create with `this.story = createStory(sv.story ? { save: sv.story } : { seed, lang: Settings.lang, dayLength: BALANCE.v4.day.length (600), world: storyWorld(this), residents: namedVillagers(this), textMode: 'visible' })`.
      - `storyWorld` maps the buildings in `src/data/world.js` and the v4 TownSim places (bakery, café, school, station, bank, police, fire station, logistics centre, homes) to place kinds by id.
      - `namedVillagers` gives the v2 villagers (`npc_aunt` …) their names and titles.
-   - Write `story: this.story.serialize()` next to `life:` in the save (Game.js ~l.1700). It is about {{SAVE_KB}} KB after 30 game days; round trips are exact (tested).
+   - Write `story: this.story.serialize()` next to `life:` in the save (Game.js ~l.1700). It is about 630 KB after 30 game days; round trips are exact (tested).
    - The engine starts at 06:00 on day 0, and DayClock starts at 08:00. Tick the story once by the difference when it is created; after that both use the same 600 s day.
 2. **Update loop**: in `Game.update` (where `this.life.update(dt)` runs, ~l.1429), call `this.story.tick(dt)` with DayClock's dt (it respects pause and fast-forward). Then call `setVisible(id => bodyOf(id) && gs.isOnScreen(...))`.
 3. **Bodies**:
@@ -372,18 +403,85 @@ Add one new module, `src/systems/StoryLife.js`, owned by Game.js. No other syste
 
 All figures are for 250 residents in Node 22. The machine is a shared 4-core container that other agents were also using (load average 12–15 during the final measurements), so wall-clock numbers are inflated. CPU time (`process.cpuUsage`) is the fairer figure.
 
-{{PERF_TABLE}}
+Measured over 10 game days (6,000 steps), seed 7, CPU time per game second. One in ten residents is "on screen" in `visible` mode.
 
-- **Budget.** The target is ≤ 2 ms per game second. The game's mode (`visible`) averages **{{PERF_VIS}} ms of CPU per game second**, and the unit test reports {{PERF_TEST}} ms. A mid-range phone is roughly 3–4× slower than one server core, which gives about {{PERF_PHONE}} ms per game second. That is within budget.
-- **Spikes.** Single steps sometimes take 5–25 ms of CPU, mostly from garbage collection, the shared machine, and the busiest talk moments (a crowded plaza at lunch). The day-change work is already spread out. On a quiet machine the maximum step was about 5 ms (`visible`, measured earlier in this session).
-- **Creation** takes about 0.1–0.33 s, almost all of it compiling the grammar.
-- **Save** after 30 days: {{SAVE_LINE}}.
+| Text mode | Which talks get words | CPU avg | CPU p99 | CPU max | Wall avg | Wall p99 |
+|---|---|---|---|---|---|---|
+| `visible` (the game) | Talks on screen | **0.31 ms** | 4.95 ms | 14.9 ms | 0.37 ms | 6.5 ms |
+| `all` (runner, samples) | Every talk | 0.55 ms | 6.5 ms | 58.6 ms | 0.92 ms | 13.6 ms |
+| `none` | No text | 0.20 ms | 3.3 ms | 25.2 ms | 0.22 ms | 2.9 ms |
+
+The same build measured by the runner (`sim.mjs --perf`, wall clock, a less busy moment): `visible` 0.20 ms average and 1.1 ms p99; `all` 0.35 ms and 5.1 ms; `none` 0.11 ms and 0.43 ms. Earlier in the session, on a quiet machine, `visible` was 0.09 ms average and 0.47 ms p99.
+
+- **Budget.** The target is ≤ 2 ms per game second. The game's mode (`visible`) averages **0.31 ms of CPU per game second**, and the unit test reports 0.38 ms. A mid-range phone is roughly 3–4× slower than one server core, which gives about 1–1.3 ms per game second. That is within budget.
+- **Spikes.** On the busy machine one step in a hundred took 4–5 ms of CPU and the worst took 15 ms (`visible`). These come from garbage collection, the other agents' load, and the busiest talk moments (a crowded plaza at lunch); the day-change work is already spread out. On a quiet machine the same p99 was 0.47 ms and the worst step about 6.5 ms. On a slow phone the occasional step could reach 15–20 ms. If that shows as a hitch, run the engine in a Web Worker (§6, step 9).
+- **Creation** takes about 0.15–0.35 s, almost all of it compiling the grammar.
+- **Save** after 30 days: 645,304 characters (630 KB) for 264 residents, 1,855 facts and 5,305 relationship pairs. Saving took 82 ms and loading 38 ms on the busy machine, and the loaded copy saves back identically.
 
 ---
 
 ## 8. Metrics (30 game days, 250 residents, seed 7)
 
-{{METRICS}}
+Seed 7, Korean, every talk realised (`textMode 'all'`). The town ends the month with 264 residents.
+
+**Talk and rumours**
+
+| Metric | Value |
+|---|---|
+| Conversations | 22,273 (5.6 per resident per day) |
+| Lines spoken | 168,189, of which 33,002 different (19.6 %) |
+| Same line again between the same two people | 3.2 % |
+| Missing-rule lines | 0 (Korean and English) |
+| Big stories tracked | 262 |
+| Reach of a big story | median 29 % of the town; a quarter of the town in 15.2 game hours |
+| Longest learning chain | 4 hops |
+| Exaggerations / distortions while retold | 1,110 / 127 |
+
+**Relationships and life**
+
+| Metric | Value |
+|---|---|
+| Pairs at month end | 4,327 acquaintances, 498 friends, 408 best friends, 72 married couples, 4 rival pairs |
+| New couples / engagements / weddings | 2 / 4 / 4 |
+| Babies | 7 |
+| Residents who moved up an age group / first jobs | 44 / 15 |
+| Households moved in / out / within town | 19 / 17 / 3 (48 new residents, 34 left) |
+| Housewarmings / outings together | 3 / 422 |
+| Gentle farewells | 1 |
+
+**Incidents** (all non-violent; nobody is hurt)
+
+| Metric | Value |
+|---|---|
+| Petty thefts | 12, all caught (5 after a wanted poster and a neighbour's tip) |
+| Queue-jumping / snowball windows / dust-cloud scuffles | 10 / 6 / 11 |
+| Fires | 4: 1 small, 3 burnt down and rebuilt (3 insurance pay-outs) |
+| Cat rescues | 1 |
+| Incidents resolved / still open at day 30 | 43 / 0 |
+
+**Bank**
+
+| Metric | Value |
+|---|---|
+| Deposits | 331 (82,066 coins); savings at month end 119,784 coins |
+| Loans | 38 (15,480 coins): furniture 19, shop 14, rebuild 3, house 2 |
+| Paid off / restructured / paused / forgiven | 12 / 13 / 5 / 1 |
+| Missed instalments | 42 |
+| Interest paid to savers | 2,357 coins |
+
+**Other seeds** (30 days, 250 residents)
+
+| Seed | Residents | Thefts (caught) | Queue / window / scuffle | Fires (lost, rebuilt) | Couples / engaged / weddings | Babies | Households in / out | Loans (paid off) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 247 | 12 (10) | 15 / 8 / 17 | 7 (1, 1) | 2 / 4 / 4 | 7 | 12 / 13 | 39 (8) |
+| 2 | 252 | 6 (6) | 15 / 5 / 11 | 5 (3, 3) | 2 / 2 / 2 | 5 | 24 / 22 | 34 (5) |
+| 3 | 266 | 12 (12) | 19 / 7 / 11 | 7 (1, 1) | 0 / 2 / 2 | 8 | 15 / 13 | 33 (3) |
+| 7 | 264 | 12 (12) | 10 / 6 / 11 | 4 (3, 3) | 2 / 4 / 4 | 7 | 19 / 17 | 38 (12) |
+| 11 | 268 | 10 (10) | 15 / 1 / 11 | 5 (2, 2) | 1 / 3 / 3 | 8 | 13 / 10 | 33 (8) |
+| 21 | 265 | 10 (10) | 15 / 3 / 10 | 8 (5, 5) | 1 / 3 / 2 | 3 | 20 / 14 | 38 (8) |
+| 33 | 243 | 10 (9) | 21 / 4 / 11 | 8 (3, 3) | 4 / 2 / 2 | 3 | 18 / 18 | 32 (5) |
+
+Seed 21 in Korean: 22,472 conversations, 34,342 different lines (20.2 %), 3.2 % pair repeats, 0 missing-rule lines. In English, seed 7 has 0 missing-rule lines and 3.9 % pair repeats.
 
 ---
 
@@ -416,9 +514,14 @@ All figures are for 250 residents in Node 22. The machine is a shared 4-core con
   | `talkRate` | 0.045 |
 
 - **Fast aging.** With `yearDays` = 6, children grow up visibly within a month of play (the samples point this out). The designer may want a slower value.
-- **Fires.** Over 30 days there are 4–8 fires per seed and 0–4 buildings lost. A higher fire-station level shortens the response (fewer ruins). The game should lower `fireRate` when hydrants are built.
-- **Romance.** 1–3 new couples, 2–6 engagements and 2–4 weddings per 30 days (seeded couples included).
-- **Rumours** reach a median 25 % of the town in about 16 game hours. The longest chains are 4–6 hops.
+- **Fires.** Over 30 days there are 4–8 fires per seed and 1–5 buildings lost and rebuilt (seed 21: 8 fires, 5 rebuilt). That may be more drama than a cozy month needs; the number of fires scales roughly with `fireRate`, so 0.12 would give about two thirds as many. A higher fire-station level shortens the response (fewer ruins). The game should lower `fireRate` when hydrants are built.
+- **Romance.** 0–4 new couples, 2–4 engagements and 2–4 weddings per 30 days (seeded couples included).
+- **Rumours** reach a median 29 % of the town, and a quarter of the town within about 15 game hours. Most people learn big news from the morning paper, so a chain in which each person learnt the story from the one before is at most 3–4 hops long.
 - **Save size.** About 0.6 MB as base64 after 30 days. It levels off because memories are capped and one-off acquaintances are forgotten. Packing 15 bits per UTF‑16 character would cut the character count by about 2.5× if localStorage becomes tight.
-- **What the samples still show.** Some lines are generic ("응, 그거 이미 들었어!"), and a few replies are only loosely matched to the line before. All 30 days produce no "missing rule" lines in Korean or English apart from the one case fixed in this pass.
+- **What the samples still show.**
+  - Some lines are generic ("응, 그거 이미 들었어!").
+  - A few replies are only loosely matched to the line before ("오늘 같은 날은 코코아가 최고야." → "이따 같이 눈 치우자.").
+  - A diary can say "새 친구가 생겼다. 이름은 ○○!" about someone already mentioned on earlier pages.
+  - Invitations built from a shared like can be funny rather than natural ("다음에 같이 낮잠 자러 가시죠!").
+  - 30 days produce no missing-rule lines in Korean or English.
 - **Not done here.** The game-side wiring (§6) is v5 work for the code agents. The engine was built against the current game code but does not import any of it.

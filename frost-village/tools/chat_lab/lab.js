@@ -20,7 +20,13 @@ const assets = {
 
 // ------------------------------------------------------------------ state
 function load() {
-  try { const raw = localStorage.getItem(STORE); if (raw) return ChatVillage.deserialize(raw, { roster: LAB_RESIDENTS }); } catch (e) { /* storage blocked */ }
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (!raw) return null;
+    // a save from a newer build is kept aside, never overwritten by this older page
+    if (ChatVillage.isFuture(raw)) { if (!localStorage.getItem(STORE + ':newer')) localStorage.setItem(STORE + ':newer', raw); return null; }
+    return ChatVillage.deserialize(raw, { roster: LAB_RESIDENTS });
+  } catch (e) { /* storage blocked */ }
   return null;
 }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(village.serialize())); } catch (e) { /* storage blocked or full */ } }
@@ -48,7 +54,12 @@ let aiPref = pref() !== 'off';
 
 const panel = new ChatPanel({
   engine, assets,
-  onClose: (key, spread) => { save(); render(); showSpread(spread); },
+  onClose: (key, spread) => {
+    save(); render(); showSpread(spread);
+    // the cards were redrawn: give focus back to the one that opened the chat
+    const card = document.querySelector('.card[data-key="' + key + '"]');
+    if (card) { try { card.focus({ preventScroll: true }); } catch (e) { /* */ } }
+  },
   onChange: (what) => { if (what === 'message') { save(); renderCounts(); renderMode(); } },
 });
 

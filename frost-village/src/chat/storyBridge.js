@@ -108,6 +108,6 @@ export class StoryBridge {
     const young = (p) => (p.group === 'kid' || p.group === 'toddler' ? 0 : p.group === 'teen' ? 1 : p.group === 'elder' ? 3 : 2);
     const close = (rel && (rel.stage === 'friend' || rel.stage === 'best friend' || rel.family)) || (v.relation(speaker, listener) || { aff: 0 }).aff >= 55;
     const level = close || young(sp) >= young(ls) ? CASUAL : POLITE;
-    return levelize(v.corpus.sayGossip(g.entry, g.kn, speaker, v.personas, level, v.chiefName), level);
+    return levelize(v.corpus.sayGossip(g.entry, g.kn, speaker, v.personas, level, v.chiefName, Math.random, { toChief: false }), level);
   }
 }

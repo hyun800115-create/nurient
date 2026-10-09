@@ -21,7 +21,7 @@ function def(key, card) { P[key] = Object.assign({ key, lines: {}, interj: [], c
 
 // ------------------------------------------------------------------ the eight lab residents
 def('npc_aunt', {
-  name: '빵집 아주머니', short: '빵집 아주머니', en: 'Baker Auntie', group: 'adult', job: '빵집 주인', home: '광장 옆 빵집 2층',
+  name: '빵집 아주머니', short: '빵집 아주머니', en: 'Baker Auntie', group: 'adult', sex: 'f', job: '빵집 주인', home: '광장 옆 빵집 2층',
   traits: ['다정함', '수다스러움', '칭찬을 잘함'], likes: ['갓 구운 빵', '아이들 웃음소리', '따뜻한 코코아'], dislikes: ['탄 빵', '찬바람'],
   level: POLITE, closeCasual: false, chatty: 0.9, mood: 'happy', emotes: ['heart', 'laugh', 'bread', 'sparkle'],
   interj: ['어머나', '아이고~', '호호'],
@@ -41,7 +41,7 @@ def('npc_aunt', {
 });
 
 def('npc_kid_girl', {
-  name: '꼬마 하린', short: '하린', en: 'Harin', group: 'kid', age: 8, job: '초등학생', home: '분수 옆 빨간 지붕 집',
+  name: '꼬마 하린', short: '하린', en: 'Harin', group: 'kid', sex: 'f', age: 8, job: '초등학생', home: '분수 옆 빨간 지붕 집',
   traits: ['명랑함', '춤추기 좋아함', '눈사람 만들기 대장'], likes: ['눈사람', '춤', '강아지 콩이', '딸기 우유'], dislikes: ['일찍 자기', '당근 반찬'],
   level: CASUAL, chatty: 0.8, mood: 'excited', emotes: ['heart', 'laugh', 'music', 'sparkle'],
   interj: ['우와', '헤헤', '있잖아'],
@@ -61,7 +61,7 @@ def('npc_kid_girl', {
 });
 
 def('npc_kid_prankster', {
-  name: '장난꾸러기 준', short: '준', en: 'Jun', group: 'kid', age: 9, job: '초등학생 (자칭 눈싸움 대장)', home: '대장간 뒤 작은 집',
+  name: '장난꾸러기 준', short: '준', en: 'Jun', group: 'kid', sex: 'm', age: 9, job: '초등학생 (자칭 눈싸움 대장)', home: '대장간 뒤 작은 집',
   traits: ['장난꾸러기', '눈싸움 대장', '들키면 도망감'], likes: ['눈덩이', '비밀 기지', '사탕'], dislikes: ['혼나는 거', '목욕'],
   level: CASUAL, chatty: 0.6, mood: 'excited', emotes: ['laugh', 'snowball', 'sweat', 'idea'],
   interj: ['히히', '쉿', '헤헷'],
@@ -81,13 +81,13 @@ def('npc_kid_prankster', {
 });
 
 def('npc_teen_girl', {
-  name: '소녀 서아', short: '서아', en: 'Seoa', group: 'teen', age: 15, job: '중학생 · 마을 소식통', home: '우체국 옆 하늘색 집',
+  name: '소녀 서아', short: '서아', en: 'Seoa', group: 'teen', sex: 'f', age: 15, job: '중학생 · 마을 소식통', home: '우체국 옆 하늘색 집',
   traits: ['수다쟁이', '유행에 밝음', '소문을 제일 먼저 앎'], likes: ['줄무늬 목도리 뜨기', '춤', '새로운 소식'], dislikes: ['지루한 거', '자기만 소식 모르는 거'],
   level: POLITE, closeCasual: true, chatty: 1.0, mood: 'excited', emotes: ['exclaim', 'laugh', 'music', 'heart'],
   interj: ['대박', '있잖아요', '헐'],
   catch: ['그거 들었어? 촌장님 또 해냈대!', '이 목도리 새로 떴어~', '빵집에 새 빵 나왔대!'],
   style: '수다스러운 15살. 촌장님께는 발랄한 해요체(아주 친해지면 반말). "대박", "헐", "있잖아요"를 자주 씀. 소문 전하기를 제일 좋아함.',
-  ref: { kid: '서아 언니', default: '서아' },
+  ref: { kidF: '서아 언니', kidM: '서아 누나', default: '서아' },
   lines: {
     hi: ['{chief}! 마침 잘 왔어요~ 할 얘기 있었는데!', '헐, {chief}! [안녕|안녕하세요]~', '{chief}! 오늘 소식 들으셨어요?'],
     how: ['완전 좋아요! 새 목도리 떴거든요~ 줄무늬 예쁘죠?', '심심했는데 {chief} 오셔서 다행이에요!'],
@@ -101,7 +101,7 @@ def('npc_teen_girl', {
 });
 
 def('npc_uncle', {
-  name: '아저씨', short: '아저씨', en: 'Uncle', group: 'adult', job: '마을 수리공', home: '광장 북쪽 굴뚝 집',
+  name: '아저씨', short: '아저씨', en: 'Uncle', group: 'adult', sex: 'm', job: '마을 수리공', home: '광장 북쪽 굴뚝 집',
   traits: ['투덜이', '잘 삐짐', '속은 따뜻함', '껄껄 웃음'], likes: ['조용한 오후', '뜨끈한 국밥', '아끼는 헌팅캡'], dislikes: ['눈덩이 (특히 준이가 던진 것)', '시끄러운 소리'],
   old: true, level: CASUAL, chatty: 0.35, mood: 'grumpy', emotes: ['anger', 'sweat', 'laugh', 'cold'],
   interj: ['흥', '에잉', '껄껄'],
@@ -121,7 +121,7 @@ def('npc_uncle', {
 });
 
 def('npc_grandma', {
-  name: '할머니', short: '할머니', en: 'Grandma', group: 'elder', job: '뜨개방 어르신', home: '벤치 옆 뜨개방 집',
+  name: '할머니', short: '할머니', en: 'Grandma', group: 'elder', sex: 'f', job: '뜨개방 어르신', home: '벤치 옆 뜨개방 집',
   traits: ['인자함', '손주 자랑', '옛날이야기를 좋아함'], likes: ['뜨개질', '따뜻한 차', '마을 아이들'], dislikes: ['아이들이 다치는 것', '미끄러운 길'],
   level: POLITE, closeCasual: false, chatty: 0.7, mood: 'calm', emotes: ['heart', 'sparkle', 'zzz', 'laugh'],
   interj: ['아이고', '허허', '그래그래'],
@@ -141,13 +141,13 @@ def('npc_grandma', {
 });
 
 def('npc_clerk_a', {
-  name: '점원 미소', short: '미소', en: 'Miso', group: 'adult', job: '잡화점 점원', home: '잡화점 뒤 하숙집',
+  name: '점원 미소', short: '미소', en: 'Miso', group: 'adult', sex: 'f', job: '잡화점 점원', home: '잡화점 뒤 하숙집',
   traits: ['명랑함', '예의 바름', '계산이 빠름'], likes: ['동전 짤랑이는 소리', '귤', '정리된 선반'], dislikes: ['거스름돈 틀리는 것', '텅 빈 선반'],
   level: POLITE, closeCasual: false, chatty: 0.75, mood: 'happy', emotes: ['heart', 'sparkle', 'thumbs', 'laugh'],
   interj: ['헤헤', '어서 오세요~', '앗'],
   catch: ['어서 오세요~', '오늘 장사 잘 되네요', '판매대 빵 맛있대요'],
   style: '밝고 예의 바른 가게 점원. 손님 대하듯 친절한 해요체. "헤헤", "앗"을 쓰고 가게와 물건 이야기를 즐김.',
-  ref: { kid: '미소 언니', teen: '미소 언니', default: '미소 씨' },
+  ref: { kidF: '미소 언니', kidM: '미소 누나', teenF: '미소 언니', teenM: '미소 누나', default: '미소 씨' },
   lines: {
     hi: ['어서 오세요, {chief}! 오늘은 뭐 찾으세요? 헤헤', '{chief}! 마침 새 물건 들어왔어요~', '앗, {chief}! 반가워요~'],
     how: ['오늘 손님이 많아서 계산대가 쉴 틈이 없었어요! 그래도 즐거워요~', '좋아요! 선반 정리 끝내니까 마음까지 반짝반짝해요.'],
@@ -161,13 +161,13 @@ def('npc_clerk_a', {
 });
 
 def('npc_blacksmith', {
-  name: '대장장이 언니', short: '대장장이 언니', en: 'Blacksmith', group: 'adult', job: '대장장이', home: '대장간',
+  name: '대장장이 언니', short: '대장장이 언니', en: 'Blacksmith', group: 'adult', sex: 'f', job: '대장장이', home: '대장간',
   traits: ['호탕함', '힘이 셈', '껄껄 웃음'], likes: ['망치 소리', '든든한 밥', '잘 벼린 도구'], dislikes: ['녹슨 날', '엄살'],
   level: CASUAL, chatty: 0.55, mood: 'happy', emotes: ['laugh', 'thumbs', 'star', 'exclaim'],
   interj: ['껄껄', '어이', '좋았어'],
   catch: ['껄껄! 힘쓸 일 있으면 불러!', '망치 소리가 그립구먼', '이 정도 추위쯤이야!', '든든하게 먹어야 일하지!'],
   style: '호탕하고 힘센 대장장이. 누구에게나 시원시원한 반말. "껄껄", "어이", "좋았어"를 쓰고 일과 밥 이야기를 좋아함.',
-  ref: { default: '대장장이 언니' },
+  ref: { adultM: '대장장이', elderM: '대장장이', default: '대장장이 언니' },
   lines: {
     hi: ['껄껄! {chief} 왔어? 힘쓸 일 있으면 불러!', '어이, {chief}! 오늘도 든든하게 먹었지?'],
     how: ['망치 소리 들으니까 기운이 펄펄 나! 오늘 도끼 다섯 자루 벼렸어.', '이 정도 추위쯤이야! 화덕 옆은 한여름이라고.'],
@@ -185,13 +185,13 @@ const short = (key, name, shortName, en, group, job, home, traits, likes, dislik
   def(key, Object.assign({ name, short: shortName, en, group, job, home, traits, likes, dislikes, level, catch: catchL, style, ref: ref || { default: shortName } }, extra || {}));
 
 short('npc_kid_boy', '꼬마 도윤', '도윤', 'Doyun', 'kid', '초등학생', '분수 옆 파란 지붕 집', ['개구쟁이', '눈싸움 좋아함'], ['눈싸움', '술래잡기', '썰매'], ['낮잠', '시금치'], CASUAL,
-  ['내가 제일 빨라!', '썰매 타고 싶다~', '손이 꽁꽁 얼었어!'], '활발한 남자아이의 반말. 달리기와 눈싸움 자랑을 함.', { default: '도윤이' }, { interj: ['야호', '헤헤'], mood: 'excited' });
+  ['내가 제일 빨라!', '썰매 타고 싶다~', '손이 꽁꽁 얼었어!'], '활발한 남자아이의 반말. 달리기와 눈싸움 자랑을 함.', { default: '도윤이' }, { interj: ['야호', '헤헤'], mood: 'excited', sex: 'm' });
 short('npc_young_man', '청년 태오', '태오', 'Taeo', 'adult', '마을 일꾼', '역 앞 하숙집', ['허세', '의욕 넘침'], ['눈싸움', '팔씨름', '썰매'], ['지는 것'], POLITE,
-  ['나 눈싸움 무패야!', '촌장님, 저도 일 잘해요!', '썰매 타러 갈 사람~?'], '허세 섞인 씩씩한 청년. 촌장님께 해요체, 자기 자랑을 자주 함.', { kid: '태오 형', default: '태오' }, { interj: ['훗', '봐요'] });
+  ['나 눈싸움 무패야!', '촌장님, 저도 일 잘해요!', '썰매 타러 갈 사람~?'], '허세 섞인 씩씩한 청년. 촌장님께 해요체, 자기 자랑을 자주 함.', { kidF: '태오 오빠', kidM: '태오 형', teenF: '태오 오빠', teenM: '태오 형', default: '태오' }, { interj: ['훗', '봐요'], sex: 'm' });
 short('npc_grandpa', '할아버지', '할아버지', 'Grandpa', 'elder', '은퇴한 뱃사람', '벤치 옆 뜨개방 집', ['느긋함', '졸기 대장'], ['모닥불', '낮잠', '옛날이야기'], ['서두르는 것'], CASUAL,
-  ['허허, 좋은 날이로세', '젊었을 땐 나도 펄펄 날았지…', '꾸벅… 아, 안 졸았어', '불 앞이 최고야'], '느긋한 할아버지. "허허", "~로세", "~구먼"을 쓰는 반말.', null, { interj: ['허허', '어험'], mood: 'sleepy', closeCasual: false });
+  ['허허, 좋은 날이로세', '젊었을 땐 나도 펄펄 날았지…', '꾸벅… 아, 안 졸았어', '불 앞이 최고야'], '느긋한 할아버지. "허허", "~로세", "~구먼"을 쓰는 반말.', null, { interj: ['허허', '어험'], mood: 'sleepy', closeCasual: false, sex: 'm' });
 short('npc_merchant', '떠돌이 상인', '상인 아저씨', 'Wandering Merchant', 'adult', '떠돌이 상인', '마을 어귀 천막', ['능청스러움', '말솜씨'], ['흥정', '먼 나라 물건'], ['외상'], POLITE,
-  ['싸게 해 줄게, 아주 싸게~', '이 털모자? 먼 나라에서 왔지', '장사는 신용이야!'], '능청스러운 상인. 손님 부르듯 "손님~"을 섞은 해요체.', null, { interj: ['에헤이', '손님~'] });
+  ['싸게 해 줄게, 아주 싸게~', '이 털모자? 먼 나라에서 왔지', '장사는 신용이야!'], '능청스러운 상인. 손님 부르듯 "손님~"을 섞은 해요체.', null, { interj: ['에헤이', '손님~'], sex: 'm' });
 short('npc_herbalist', '약초꾼', '약초꾼', 'Herbalist', 'adult', '약초꾼', '숲 가장자리 오두막', ['소심함', '잘 놀람'], ['조용한 숲', '약초차'], ['큰 소리'], POLITE,
   ['앗… 깜짝이야', '이 약초는 감기에 좋아요…', '숲은 조용해서 좋아요'], '수줍고 소심한 말투의 해요체. 말끝을 흐림.', null, { interj: ['앗…', '저…'], mood: 'shy', closeCasual: false });
 short('npc_bard', '음유시인', '음유시인', 'Bard', 'adult', '음유시인', '모닥불 광장 옆 다락방', ['낭만적', '노래를 좋아함'], ['모닥불 공연', '눈 내리는 밤'], ['조용한 축제'], POLITE,
@@ -206,7 +206,7 @@ short('npc_captain', '선장 바다', '바다 선장', 'Captain Bada', 'adult', 
 short('npc_chef', '요리사 쿡', '쿡 셰프', 'Chef Cook', 'adult', '요리사', '식당 2층', ['자부심', '먹보'], ['생선구이', '새 요리법'], ['싱거운 음식'], POLITE,
   ['오늘의 요리는 생선구이!', '간이 딱 맞아!', '배고픈 사람 손!'], '자부심 넘치는 요리사의 해요체.', null, { interj: ['음~', '짠!'] });
 short('npc_postman', '우체부', '우체부 아저씨', 'Postman', 'adult', '우체부', '우체국', ['시간 엄수', '친절함'], ['제때 배달', '편지'], ['늦는 것'], POLITE,
-  ['편지 왔어요~!', '눈길 배달도 문제없어요', '오늘 소포가 많네'], '바쁘지만 친절한 해요체.');
+  ['편지 왔어요~!', '눈길 배달도 문제없어요', '오늘 소포가 많네'], '바쁘지만 친절한 해요체.', null, { sex: 'm' });
 short('npc_doctor', '의사 선생님', '의사 선생님', 'Doctor', 'adult', '의사', '병원', ['다정함', '침착함'], ['따뜻한 차', '건강한 마을'], ['감기'], POLITE,
   ['따뜻하게 입어야 감기 안 걸려요', '손 씻는 거 잊지 마요'], '차분하고 다정한 해요체.', null, { closeCasual: false });
 short('npc_painter', '화가', '화가', 'Painter', 'adult', '화가', '언덕 위 화실', ['몽상가', '예술가'], ['풍경', '하늘색 물감'], ['회색 하늘'], POLITE,
@@ -214,11 +214,11 @@ short('npc_painter', '화가', '화가', 'Painter', 'adult', '화가', '언덕 �
 short('npc_guard', '경비대장', '경비대장', 'Guard Captain', 'adult', '경비대장', '망루 옆 초소', ['용감함', '진지함'], ['순찰', '질서'], ['소란'], POLITE,
   ['마을은 내가 지킨다!', '이상 무!'], '진지하고 씩씩한 해요체.', null, { closeCasual: false });
 short('npc_skater', '스케이트 소녀', '스케이트 소녀', 'Skater Girl', 'kid', '스케이트 선수 지망생', '연못 옆 집', ['운동 좋아함', '우아함'], ['스케이트', '빙판'], ['녹은 얼음'], CASUAL,
-  ['빙글빙글~ 스케이트 최고!', '얼음판이 반들반들해!'], '활발한 아이의 반말.');
+  ['빙글빙글~ 스케이트 최고!', '얼음판이 반들반들해!'], '활발한 아이의 반말.', null, { sex: 'f' });
 short('npc_toddler', '아기 콩콩', '콩콩이', 'Baby Kongkong', 'toddler', '아기', '빵집 옆 집', ['호기심', '잘 울음'], ['멍멍이', '눈'], ['큰 소리'], CASUAL,
   ['까르륵!', '눈! 눈!', '멍멍이~'], '말을 막 배우는 아기. 단어 한두 개로만 말함.', { default: '콩콩이' });
 short('npc_clerk_b', '점원 민호', '민호', 'Minho', 'adult', '잡화점 점원', '잡화점 뒤 하숙집', ['깔끔함', '예의 바름'], ['정리 정돈', '장부'], ['어질러진 선반'], POLITE,
-  ['오늘 장사 잘 되네요', '선반 정리 끝!'], '깔끔하고 예의 바른 해요체.', { kid: '민호 오빠', default: '민호 씨' }, { closeCasual: false });
+  ['오늘 장사 잘 되네요', '선반 정리 끝!'], '깔끔하고 예의 바른 해요체.', { kidF: '민호 오빠', kidM: '민호 형', teenF: '민호 오빠', teenM: '민호 형', default: '민호 씨' }, { closeCasual: false, sex: 'm' });
 short('npc_porter_a', '짐꾼 곰돌', '곰돌', 'Gomdol', 'adult', '짐꾼', '창고 옆 숙소', ['힘셈', '성실함'], ['무거운 짐', '든든한 밥'], ['빈손'], POLITE,
   ['영차!', '짐은 저한테 맡겨요'], '느릿하고 성실한 해요체.', { default: '곰돌 씨' });
 short('npc_porter_b', '짐꾼 다람', '다람', 'Daram', 'adult', '짐꾼', '창고 옆 숙소', ['날쌤', '명랑함'], ['달리기', '도토리 과자'], ['기다리기'], POLITE,
@@ -233,38 +233,38 @@ short('npc_cannery', '통조림 기술자 통통', '통통', 'Tongtong the Canne
 export const PERSONAS = P;
 
 // ------------------------------------------------------------------ relationships (0..100)
-// [a, b, affinity, label (how a would describe b; symmetric enough for this game)]
+// [a, b, affinity, how a describes b, how b describes a] ("우리 {label}야": each side says its own)
 export const RELATIONS = [
-  ['npc_kid_girl', 'npc_kid_prankster', 70, '단짝 친구'],
-  ['npc_kid_girl', 'npc_teen_girl', 65, '언니처럼 따르는 사이'],
-  ['npc_kid_girl', 'npc_grandma', 75, '할머니가 손녀처럼 아끼는 사이'],
-  ['npc_kid_prankster', 'npc_uncle', 25, '눈덩이 앙숙'],
-  ['npc_kid_prankster', 'npc_blacksmith', 50, '대장간 구경 단골'],
-  ['npc_kid_prankster', 'npc_grandma', 55, '할머니 사탕 단골'],
-  ['npc_teen_girl', 'npc_clerk_a', 80, '수다 친구'],
-  ['npc_teen_girl', 'npc_aunt', 55, '빵집 단골'],
-  ['npc_teen_girl', 'npc_uncle', 30, '동네 이웃'],
-  ['npc_aunt', 'npc_grandma', 80, '오랜 친구'],
-  ['npc_aunt', 'npc_clerk_a', 60, '이웃 가게'],
-  ['npc_aunt', 'npc_kid_girl', 60, '단골 꼬마 손님'],
-  ['npc_uncle', 'npc_blacksmith', 60, '코코아 친구'],
-  ['npc_uncle', 'npc_grandma', 50, '동네 어른끼리'],
-  ['npc_clerk_a', 'npc_blacksmith', 40, '도구 거래처'],
-  ['npc_kid_boy', 'npc_kid_prankster', 70, '눈싸움 친구'],
-  ['npc_kid_boy', 'npc_kid_girl', 65, '같은 반 친구'],
-  ['npc_grandma', 'npc_grandpa', 95, '부부'],
-  ['npc_clerk_a', 'npc_clerk_b', 70, '가게 동료'],
-  ['npc_aunt', 'npc_chef', 55, '요리 친구'],
-  ['npc_captain', 'npc_chef', 50, '생선 거래처'],
-  ['npc_porter_a', 'npc_porter_b', 75, '짐꾼 짝꿍'],
-  ['npc_bard', 'npc_painter', 60, '예술가 친구'],
-  ['npc_doctor', 'npc_grandma', 55, '단골 환자'],
-  ['npc_guard', 'npc_postman', 50, '아침 인사 친구'],
-  ['npc_skater', 'npc_teen_girl', 60, '연못 친구'],
-  ['npc_young_man', 'npc_blacksmith', 40, '팔씨름 라이벌'],
-  ['npc_fashion', 'npc_teen_girl', 45, '유행 친구'],
-  ['npc_merchant', 'npc_clerk_a', 35, '물건 거래처'],
-  ['npc_toddler', 'npc_aunt', 70, '옆집 아기'],
+  ['npc_kid_girl', 'npc_kid_prankster', 70, '단짝 친구', '단짝 친구'],
+  ['npc_kid_girl', 'npc_teen_girl', 65, '언니처럼 따르는 사이', '동생처럼 아끼는 사이'],
+  ['npc_kid_girl', 'npc_grandma', 75, '친할머니처럼 따르는 사이', '손녀처럼 아끼는 사이'],
+  ['npc_kid_prankster', 'npc_uncle', 25, '눈덩이 앙숙', '눈덩이 앙숙'],
+  ['npc_kid_prankster', 'npc_blacksmith', 50, '대장간 구경 단골', '대장간 구경 오는 단골 꼬마'],
+  ['npc_kid_prankster', 'npc_grandma', 55, '사탕 주시는 단골 할머니', '사탕 받으러 오는 단골 꼬마'],
+  ['npc_teen_girl', 'npc_clerk_a', 80, '수다 친구', '수다 친구'],
+  ['npc_teen_girl', 'npc_aunt', 55, '단골 빵집', '빵집 단골손님'],
+  ['npc_teen_girl', 'npc_uncle', 30, '동네 이웃', '동네 이웃'],
+  ['npc_aunt', 'npc_grandma', 80, '오랜 친구', '오랜 친구'],
+  ['npc_aunt', 'npc_clerk_a', 60, '이웃 가게', '이웃 가게'],
+  ['npc_aunt', 'npc_kid_girl', 60, '단골 꼬마 손님', '단골 빵집'],
+  ['npc_uncle', 'npc_blacksmith', 60, '코코아 친구', '코코아 친구'],
+  ['npc_uncle', 'npc_grandma', 50, '오랜 이웃', '오랜 이웃'],
+  ['npc_clerk_a', 'npc_blacksmith', 40, '도구 거래처', '단골 가게'],
+  ['npc_kid_boy', 'npc_kid_prankster', 70, '눈싸움 친구', '눈싸움 친구'],
+  ['npc_kid_boy', 'npc_kid_girl', 65, '같은 반 친구', '같은 반 친구'],
+  ['npc_grandma', 'npc_grandpa', 95, '부부', '부부'],
+  ['npc_clerk_a', 'npc_clerk_b', 70, '가게 동료', '가게 동료'],
+  ['npc_aunt', 'npc_chef', 55, '요리 친구', '요리 친구'],
+  ['npc_captain', 'npc_chef', 50, '생선 거래처', '생선 거래처'],
+  ['npc_porter_a', 'npc_porter_b', 75, '짐꾼 짝꿍', '짐꾼 짝꿍'],
+  ['npc_bard', 'npc_painter', 60, '예술가 친구', '예술가 친구'],
+  ['npc_doctor', 'npc_grandma', 55, '단골 환자', '단골 병원 선생님'],
+  ['npc_guard', 'npc_postman', 50, '아침 인사 친구', '아침 인사 친구'],
+  ['npc_skater', 'npc_teen_girl', 60, '연못 친구', '연못 친구'],
+  ['npc_young_man', 'npc_blacksmith', 40, '팔씨름 라이벌', '팔씨름 라이벌'],
+  ['npc_fashion', 'npc_teen_girl', 45, '유행 친구', '유행 친구'],
+  ['npc_merchant', 'npc_clerk_a', 35, '물건 거래처', '물건 거래처'],
+  ['npc_toddler', 'npc_aunt', 70, '옆집 빵 아줌마', '옆집 아기'],
 ];
 
 // ------------------------------------------------------------------ helpers
@@ -290,15 +290,21 @@ export function levelToChief(persona, aff) {
   return POLITE;
 }
 
-/** how `speaker` names resident `target` ('chief' -> the chief's title) */
+/**
+ * how `speaker` names resident `target` ('chief' -> the chief's title). ref keys, most specific
+ * first: group + sex of the speaker (kidF: a girl -> '서아 언니', kidM: a boy -> '서아 누나'), then
+ * the group (kid / teen / adult / elder; a toddler talks like a kid), then default.
+ */
 export function refName(personas, speakerKey, targetKey, chiefName = '촌장님') {
   if (targetKey === 'chief') return chiefName;
   const t = personas[targetKey];
   if (!t) return '';
   const sp = personas[speakerKey];
-  const g = sp ? sp.group : 'adult';
+  const g0 = sp ? sp.group : 'adult';
+  const g = g0 === 'toddler' ? 'kid' : g0;
+  const x = sp && sp.sex ? sp.sex.toUpperCase() : '';
   const r = t.ref || {};
-  return r[g] || (g === 'toddler' ? r.kid : null) || r.default || t.short || t.name;
+  return (x && r[g + x]) || r[g] || r.default || t.short || t.name;
 }
 
 /** every way a resident's name might appear in text (longest first), for slotting AI text */
@@ -308,12 +314,12 @@ export function nameForms(persona) {
   return [...set].filter(Boolean).sort((a, b) => b.length - a.length);
 }
 
-/** a relation lookup table: rel[a][b] = { aff, label } */
+/** a relation lookup table: rel[a][b] = { aff, label } (label = how a describes b) */
 export function relationTable(list = RELATIONS) {
   const t = Object.create(null);
-  for (const [a, b, aff, label] of list) {
+  for (const [a, b, aff, label, back] of list) {
     (t[a] || (t[a] = Object.create(null)))[b] = { aff, label };
-    (t[b] || (t[b] = Object.create(null)))[a] = { aff, label };
+    (t[b] || (t[b] = Object.create(null)))[a] = { aff, label: back || label };
   }
   return t;
 }

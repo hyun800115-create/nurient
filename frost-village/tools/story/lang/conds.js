@@ -37,6 +37,12 @@ export const CONDS = [
   'grave',
   // talking in a café, restaurant or food stall (no 'did you come grocery shopping?')
   'atcafe',
+  // the speaker's version lost the place ('somewhere, a fire!')
+  'noplace',
+  // the listener is about to ask 'who told you?': the teller does not name the source first
+  'srcq',
+  // a child under seven (kindergarten age): '유치원 다녀요', not '학교 다녀요'
+  'little',
 ];
 
 if (CONDS.length > 160) throw new Error('story: too many condition flags (' + CONDS.length + ' > 160)');

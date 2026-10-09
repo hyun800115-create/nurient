@@ -12,8 +12,8 @@
    "volume": 0.401,
    "loop": false,
    "kind": "sfx",
-   "duration": 16.52549,
-   "samples": 728774,
+   "duration": 16.48705,
+   "samples": 727079,
    "mp3StartPad": 1105,
    "onset": 0.04145,
    "voiceType": "kid_boy",
@@ -246,14 +246,14 @@
     },
     "emo_laugh": {
      "start": 12.55247,
-     "dur": 0.50583,
+     "dur": 0.46739,
      "kind": "emote",
      "syl": 5,
      "emote": "laugh",
      "say": "키히히히히"
     },
     "emo_surprise": {
-     "start": 13.10329,
+     "start": 13.06485,
      "dur": 0.34342,
      "kind": "emote",
      "syl": 2,
@@ -261,7 +261,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 13.4917,
+     "start": 13.45327,
      "dur": 0.40068,
      "kind": "emote",
      "syl": 2,
@@ -269,7 +269,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 13.93737,
+     "start": 13.89893,
      "dur": 0.46653,
      "kind": "emote",
      "syl": 2,
@@ -277,7 +277,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 14.44889,
+     "start": 14.41045,
      "dur": 0.37592,
      "kind": "emote",
      "syl": 1,
@@ -285,7 +285,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 14.8698,
+     "start": 14.83136,
      "dur": 0.35451,
      "kind": "emote",
      "syl": 1,
@@ -293,7 +293,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 15.2693,
+     "start": 15.23086,
      "dur": 0.43578,
      "kind": "emote",
      "syl": 3,
@@ -301,7 +301,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 15.75007,
+     "start": 15.71163,
      "dur": 0.4837,
      "kind": "emote",
      "syl": 2,
@@ -309,7 +309,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 16.27875,
+     "start": 16.24032,
      "dur": 0.20175,
      "kind": "emote",
      "syl": 1,
@@ -326,8 +326,8 @@
    "volume": 0.401,
    "loop": false,
    "kind": "sfx",
-   "duration": 17.07937,
-   "samples": 753200,
+   "duration": 17.06023,
+   "samples": 752356,
    "mp3StartPad": 1105,
    "onset": 0.04592,
    "voiceType": "kid_girl",
@@ -560,14 +560,14 @@
     },
     "emo_laugh": {
      "start": 13.00265,
-     "dur": 0.51388,
+     "dur": 0.49474,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "히히히힛"
     },
     "emo_surprise": {
-     "start": 13.56152,
+     "start": 13.54238,
      "dur": 0.37111,
      "kind": "emote",
      "syl": 2,
@@ -575,7 +575,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 13.97762,
+     "start": 13.95848,
      "dur": 0.40358,
      "kind": "emote",
      "syl": 2,
@@ -583,7 +583,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 14.42619,
+     "start": 14.40705,
      "dur": 0.47249,
      "kind": "emote",
      "syl": 2,
@@ -591,7 +591,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 14.94367,
+     "start": 14.92454,
      "dur": 0.36061,
      "kind": "emote",
      "syl": 1,
@@ -599,7 +599,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 15.34927,
+     "start": 15.33014,
      "dur": 0.34433,
      "kind": "emote",
      "syl": 1,
@@ -607,7 +607,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 15.73859,
+     "start": 15.71946,
      "dur": 0.47429,
      "kind": "emote",
      "syl": 3,
@@ -615,7 +615,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 16.25787,
+     "start": 16.23873,
      "dur": 0.50846,
      "kind": "emote",
      "syl": 2,
@@ -623,7 +623,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 16.81132,
+     "start": 16.79218,
      "dur": 0.22306,
      "kind": "emote",
      "syl": 1,
@@ -640,8 +640,8 @@
    "volume": 0.406,
    "loop": false,
    "kind": "sfx",
-   "duration": 18.12327,
-   "samples": 799236,
+   "duration": 18.0846,
+   "samples": 797531,
    "mp3StartPad": 1105,
    "onset": 0.04766,
    "voiceType": "adult_m",
@@ -874,14 +874,14 @@
     },
     "emo_laugh": {
      "start": 13.74122,
-     "dur": 0.65565,
+     "dur": 0.61698,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "하하하하"
     },
     "emo_surprise": {
-     "start": 14.44186,
+     "start": 14.4032,
      "dur": 0.37048,
      "kind": "emote",
      "syl": 2,
@@ -889,7 +889,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 14.85732,
+     "start": 14.81866,
      "dur": 0.42497,
      "kind": "emote",
      "syl": 2,
@@ -897,7 +897,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 15.32728,
+     "start": 15.28862,
      "dur": 0.50746,
      "kind": "emote",
      "syl": 2,
@@ -905,7 +905,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 15.87973,
+     "start": 15.84107,
      "dur": 0.38921,
      "kind": "emote",
      "syl": 1,
@@ -913,7 +913,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 16.31392,
+     "start": 16.27526,
      "dur": 0.37689,
      "kind": "emote",
      "syl": 1,
@@ -921,7 +921,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 16.7358,
+     "start": 16.69714,
      "dur": 0.50134,
      "kind": "emote",
      "syl": 3,
@@ -929,7 +929,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 17.28213,
+     "start": 17.24347,
      "dur": 0.53916,
      "kind": "emote",
      "syl": 2,
@@ -937,7 +937,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 17.86628,
+     "start": 17.82762,
      "dur": 0.212,
      "kind": "emote",
      "syl": 1,
@@ -954,8 +954,8 @@
    "volume": 0.403,
    "loop": false,
    "kind": "sfx",
-   "duration": 17.7237,
-   "samples": 781615,
+   "duration": 17.69252,
+   "samples": 780240,
    "mp3StartPad": 1105,
    "onset": 0.04615,
    "voiceType": "adult_f",
@@ -1188,14 +1188,14 @@
     },
     "emo_laugh": {
      "start": 13.47549,
-     "dur": 0.57821,
+     "dur": 0.54703,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "아하하하"
     },
     "emo_surprise": {
-     "start": 14.09868,
+     "start": 14.06751,
      "dur": 0.37029,
      "kind": "emote",
      "syl": 2,
@@ -1203,7 +1203,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 14.51397,
+     "start": 14.48279,
      "dur": 0.41968,
      "kind": "emote",
      "syl": 2,
@@ -1211,7 +1211,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 14.97864,
+     "start": 14.94746,
      "dur": 0.52118,
      "kind": "emote",
      "syl": 2,
@@ -1219,7 +1219,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 15.54481,
+     "start": 15.51363,
      "dur": 0.37451,
      "kind": "emote",
      "syl": 1,
@@ -1227,7 +1227,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 15.96431,
+     "start": 15.93313,
      "dur": 0.3727,
      "kind": "emote",
      "syl": 1,
@@ -1235,7 +1235,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 16.382,
+     "start": 16.35082,
      "dur": 0.48086,
      "kind": "emote",
      "syl": 3,
@@ -1243,7 +1243,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 16.90785,
+     "start": 16.87667,
      "dur": 0.51898,
      "kind": "emote",
      "syl": 2,
@@ -1251,7 +1251,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 17.47181,
+     "start": 17.44063,
      "dur": 0.20689,
      "kind": "emote",
      "syl": 1,
@@ -1268,8 +1268,8 @@
    "volume": 0.406,
    "loop": false,
    "kind": "sfx",
-   "duration": 20.94846,
-   "samples": 923827,
+   "duration": 20.91209,
+   "samples": 922223,
    "mp3StartPad": 1105,
    "onset": 0.03485,
    "voiceType": "elder_m",
@@ -1502,14 +1502,14 @@
     },
     "emo_laugh": {
      "start": 15.77286,
-     "dur": 0.79413,
+     "dur": 0.75776,
      "kind": "emote",
      "syl": 3,
      "emote": "laugh",
      "say": "호호호"
     },
     "emo_surprise": {
-     "start": 16.61197,
+     "start": 16.5756,
      "dur": 0.43356,
      "kind": "emote",
      "syl": 2,
@@ -1517,7 +1517,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 17.09052,
+     "start": 17.05415,
      "dur": 0.49993,
      "kind": "emote",
      "syl": 2,
@@ -1525,7 +1525,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 17.63544,
+     "start": 17.59907,
      "dur": 0.62678,
      "kind": "emote",
      "syl": 2,
@@ -1533,7 +1533,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 18.30721,
+     "start": 18.27084,
      "dur": 0.47442,
      "kind": "emote",
      "syl": 1,
@@ -1541,7 +1541,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 18.82662,
+     "start": 18.79025,
      "dur": 0.49045,
      "kind": "emote",
      "syl": 1,
@@ -1549,7 +1549,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 19.36206,
+     "start": 19.32569,
      "dur": 0.59288,
      "kind": "emote",
      "syl": 3,
@@ -1557,7 +1557,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 19.99993,
+     "start": 19.96356,
      "dur": 0.63107,
      "kind": "emote",
      "syl": 2,
@@ -1565,7 +1565,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 20.67599,
+     "start": 20.63961,
      "dur": 0.22748,
      "kind": "emote",
      "syl": 1,
@@ -1582,8 +1582,8 @@
    "volume": 0.402,
    "loop": false,
    "kind": "sfx",
-   "duration": 20.51347,
-   "samples": 904644,
+   "duration": 20.45066,
+   "samples": 901874,
    "mp3StartPad": 1105,
    "onset": 0.03825,
    "voiceType": "elder_f",
@@ -1816,14 +1816,14 @@
     },
     "emo_laugh": {
      "start": 15.44637,
-     "dur": 0.81946,
+     "dur": 0.75664,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "오호호호"
     },
     "emo_surprise": {
-     "start": 16.31082,
+     "start": 16.248,
      "dur": 0.44172,
      "kind": "emote",
      "syl": 2,
@@ -1831,7 +1831,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 16.79753,
+     "start": 16.73472,
      "dur": 0.50633,
      "kind": "emote",
      "syl": 2,
@@ -1839,7 +1839,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 17.34884,
+     "start": 17.28603,
      "dur": 0.6115,
      "kind": "emote",
      "syl": 2,
@@ -1847,7 +1847,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 18.00533,
+     "start": 17.94252,
      "dur": 0.43045,
      "kind": "emote",
      "syl": 1,
@@ -1855,7 +1855,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 18.48077,
+     "start": 18.41796,
      "dur": 0.41971,
      "kind": "emote",
      "syl": 1,
@@ -1863,7 +1863,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 18.94546,
+     "start": 18.88265,
      "dur": 0.58587,
      "kind": "emote",
      "syl": 3,
@@ -1871,7 +1871,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 19.57633,
+     "start": 19.51351,
      "dur": 0.61351,
      "kind": "emote",
      "syl": 2,
@@ -1879,7 +1879,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 20.23483,
+     "start": 20.17202,
      "dur": 0.23365,
      "kind": "emote",
      "syl": 1,
@@ -1896,8 +1896,8 @@
    "volume": 0.403,
    "loop": false,
    "kind": "sfx",
-   "duration": 17.21866,
-   "samples": 759343,
+   "duration": 17.19032,
+   "samples": 758093,
    "mp3StartPad": 1105,
    "onset": 0.04671,
    "voiceType": "chief",
@@ -2130,14 +2130,14 @@
     },
     "emo_laugh": {
      "start": 13.08937,
-     "dur": 0.52984,
+     "dur": 0.5015,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "아하하핫!"
     },
     "emo_surprise": {
-     "start": 13.6642,
+     "start": 13.63585,
      "dur": 0.36154,
      "kind": "emote",
      "syl": 2,
@@ -2145,7 +2145,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 14.07073,
+     "start": 14.04238,
      "dur": 0.42483,
      "kind": "emote",
      "syl": 2,
@@ -2153,7 +2153,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 14.54054,
+     "start": 14.5122,
      "dur": 0.48381,
      "kind": "emote",
      "syl": 2,
@@ -2161,7 +2161,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 15.06934,
+     "start": 15.041,
      "dur": 0.36322,
      "kind": "emote",
      "syl": 1,
@@ -2169,7 +2169,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 15.47755,
+     "start": 15.44921,
      "dur": 0.37032,
      "kind": "emote",
      "syl": 1,
@@ -2177,7 +2177,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 15.89286,
+     "start": 15.86451,
      "dur": 0.46544,
      "kind": "emote",
      "syl": 3,
@@ -2185,7 +2185,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 16.40329,
+     "start": 16.37494,
      "dur": 0.52197,
      "kind": "emote",
      "syl": 2,
@@ -2193,7 +2193,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 16.97025,
+     "start": 16.9419,
      "dur": 0.20342,
      "kind": "emote",
      "syl": 1,
@@ -2210,8 +2210,8 @@
    "volume": 0.419,
    "loop": false,
    "kind": "sfx",
-   "duration": 19.60828,
-   "samples": 864725,
+   "duration": 19.54868,
+   "samples": 862097,
    "mp3StartPad": 1105,
    "onset": 0.03841,
    "voiceType": "big_gruff",
@@ -2444,14 +2444,14 @@
     },
     "emo_laugh": {
      "start": 14.79061,
-     "dur": 0.75984,
+     "dur": 0.70025,
      "kind": "emote",
      "syl": 4,
      "emote": "laugh",
      "say": "와하하하"
     },
     "emo_surprise": {
-     "start": 15.59544,
+     "start": 15.53585,
      "dur": 0.4117,
      "kind": "emote",
      "syl": 2,
@@ -2459,7 +2459,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 16.05213,
+     "start": 15.99254,
      "dur": 0.47671,
      "kind": "emote",
      "syl": 2,
@@ -2467,7 +2467,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 16.57383,
+     "start": 16.51424,
      "dur": 0.57592,
      "kind": "emote",
      "syl": 2,
@@ -2475,7 +2475,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 17.19474,
+     "start": 17.13515,
      "dur": 0.4268,
      "kind": "emote",
      "syl": 1,
@@ -2483,7 +2483,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 17.66653,
+     "start": 17.60694,
      "dur": 0.41848,
      "kind": "emote",
      "syl": 1,
@@ -2491,7 +2491,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 18.13,
+     "start": 18.07041,
      "dur": 0.54839,
      "kind": "emote",
      "syl": 3,
@@ -2499,7 +2499,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 18.72338,
+     "start": 18.66379,
      "dur": 0.58628,
      "kind": "emote",
      "syl": 2,
@@ -2507,7 +2507,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 19.35465,
+     "start": 19.29506,
      "dur": 0.20864,
      "kind": "emote",
      "syl": 1,
@@ -2524,8 +2524,8 @@
    "volume": 0.401,
    "loop": false,
    "kind": "sfx",
-   "duration": 19.18989,
-   "samples": 846274,
+   "duration": 19.14669,
+   "samples": 844369,
    "mp3StartPad": 1105,
    "onset": 0.03823,
    "voiceType": "sweet",
@@ -2758,14 +2758,14 @@
     },
     "emo_laugh": {
      "start": 14.43274,
-     "dur": 0.6644,
+     "dur": 0.6212,
      "kind": "emote",
      "syl": 3,
      "emote": "laugh",
      "say": "후후히"
     },
     "emo_surprise": {
-     "start": 15.14213,
+     "start": 15.09893,
      "dur": 0.41336,
      "kind": "emote",
      "syl": 2,
@@ -2773,7 +2773,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 15.60048,
+     "start": 15.55728,
      "dur": 0.49345,
      "kind": "emote",
      "syl": 2,
@@ -2781,7 +2781,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 16.13891,
+     "start": 16.09571,
      "dur": 0.57066,
      "kind": "emote",
      "syl": 2,
@@ -2789,7 +2789,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 16.75456,
+     "start": 16.71136,
      "dur": 0.44937,
      "kind": "emote",
      "syl": 1,
@@ -2797,7 +2797,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 17.24891,
+     "start": 17.20571,
      "dur": 0.4119,
      "kind": "emote",
      "syl": 1,
@@ -2805,7 +2805,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 17.7058,
+     "start": 17.66261,
      "dur": 0.52671,
      "kind": "emote",
      "syl": 3,
@@ -2813,7 +2813,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 18.27751,
+     "start": 18.23431,
      "dur": 0.598,
      "kind": "emote",
      "syl": 2,
@@ -2821,7 +2821,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 18.9205,
+     "start": 18.8773,
      "dur": 0.2244,
      "kind": "emote",
      "syl": 1,
@@ -2838,8 +2838,8 @@
    "volume": 0.401,
    "loop": false,
    "kind": "sfx",
-   "duration": 15.6654,
-   "samples": 690844,
+   "duration": 15.60971,
+   "samples": 688388,
    "mp3StartPad": 1105,
    "onset": 0.04113,
    "voiceType": "squeaky",
@@ -3072,14 +3072,14 @@
     },
     "emo_laugh": {
      "start": 11.92569,
-     "dur": 0.548,
+     "dur": 0.49231,
      "kind": "emote",
      "syl": 6,
      "emote": "laugh",
      "say": "끼히히히히히"
     },
     "emo_surprise": {
-     "start": 12.51868,
+     "start": 12.46299,
      "dur": 0.31104,
      "kind": "emote",
      "syl": 2,
@@ -3087,7 +3087,7 @@
      "say": "우와!"
     },
     "emo_excited": {
-     "start": 12.87472,
+     "start": 12.81902,
      "dur": 0.37376,
      "kind": "emote",
      "syl": 2,
@@ -3095,7 +3095,7 @@
      "say": "야호!"
     },
     "emo_sad": {
-     "start": 13.29347,
+     "start": 13.23778,
      "dur": 0.43152,
      "kind": "emote",
      "syl": 2,
@@ -3103,7 +3103,7 @@
      "say": "흐잉…"
     },
     "emo_grumpy": {
-     "start": 13.76998,
+     "start": 13.71429,
      "dur": 0.31687,
      "kind": "emote",
      "syl": 1,
@@ -3111,7 +3111,7 @@
      "say": "흥!"
     },
     "emo_question": {
-     "start": 14.13184,
+     "start": 14.07615,
      "dur": 0.3095,
      "kind": "emote",
      "syl": 1,
@@ -3119,7 +3119,7 @@
      "say": "응?"
     },
     "emo_thanks": {
-     "start": 14.48633,
+     "start": 14.43063,
      "dur": 0.41297,
      "kind": "emote",
      "syl": 3,
@@ -3127,7 +3127,7 @@
      "say": "꼬맙뿌!"
     },
     "emo_yummy": {
-     "start": 14.94429,
+     "start": 14.88859,
      "dur": 0.43617,
      "kind": "emote",
      "syl": 2,
@@ -3135,7 +3135,7 @@
      "say": "냠냠~"
     },
     "emo_oops": {
-     "start": 15.42544,
+     "start": 15.36975,
      "dur": 0.19497,
      "kind": "emote",
      "syl": 1,

@@ -87,8 +87,16 @@ async function newPage(browser, { mock = false, dark = false, height = 844 } = {
 
 const lastReply = (page) => page.evaluate(() => { const b = [...document.querySelectorAll('.fc-them .fc-text')]; return b.length ? b[b.length - 1].textContent : ''; });
 async function waitIdle(page) {
-  await page.waitForFunction(() => !document.querySelector('.fc-typing-row') && !document.querySelector('.fc-send.fc-stop'), null, { timeout: 20000 });
-  await sleep(900);
+  await page.waitForFunction(() => !document.querySelector('.fc-typing-row') && !document.querySelector('.fc-send.fc-stop') && !document.querySelector('.fc-send.fc-wait'), null, { timeout: 20000 });
+  // and the typewriter has finished the last bubble
+  let last = null;
+  for (let i = 0; i < 40; i++) {
+    const t = await lastReply(page);
+    if (t === last) break;
+    last = t;
+    await sleep(350);
+  }
+  await sleep(300);
 }
 async function say(page, text) {
   await page.fill('#fc-input', text);
@@ -110,6 +118,7 @@ try {
     await page.click('.card[data-key="npc_aunt"]');
     await page.waitForSelector('.fc-them .fc-text', { timeout: 8000 });
     await sleep(1500);
+    check('page behind the sheet is inert', await page.evaluate(() => document.getElementById('app').inert === true));
     await snap(page, 'chat_02_open_offline.png');
     await say(page, '안녕하세요! 오늘 생선 많이 잡았어요');
     await chip(page, '무슨 소문 있어?');
@@ -117,6 +126,16 @@ try {
     await page.click('.fc-tray-item:has-text("빵")');
     await waitIdle(page);
     await say(page, '아주머니 정말 최고예요!');
+    // a second Enter while the resident is still "typing" waits: no double send, the text stays
+    const nMe = await page.locator('.fc-me').count();
+    await page.fill('#fc-input', '오늘 날씨 좋네요');
+    await page.press('#fc-input', 'Enter');
+    await page.fill('#fc-input', '두번째 말');
+    await page.press('#fc-input', 'Enter');
+    await sleep(150);
+    check('offline: Enter during a reply does not double-send', (await page.locator('.fc-me').count()) === nMe + 1 && (await page.inputValue('#fc-input')) === '두번째 말');
+    await waitIdle(page);
+    await page.fill('#fc-input', '');
     const r = await lastReply(page);
     check('offline reply in Korean', /[가-힣]/.test(r), r);
     const inputBox = await page.locator('#fc-input').boundingBox();
@@ -130,8 +149,10 @@ try {
     check('memory tab lists episodes', (await page.locator('.fc-mitem').count()) > 0);
     await snap(page, 'chat_04_memory.png');
 
+    await page.click('#fc-tab-chat');
     await page.click('.fc-close');
     await sleep(700);
+    check('focus returns to the resident card', await page.evaluate(() => document.activeElement && document.activeElement.dataset.key === 'npc_aunt' && !document.getElementById('app').inert));
     const spreadShown = await page.evaluate(() => !document.getElementById('spread').hidden);
     check('spread moment after chat', spreadShown);
     await snap(page, 'chat_05_spread.png');
@@ -158,6 +179,48 @@ try {
     await snap(page, 'chat_07_dark.png');
     await ctx.close();
   }
+  // ------------------------------------------------------------ the careful moments (offline)
+  {
+    const { ctx, page } = await newPage(browser);
+    await page.click('.card[data-key="npc_kid_girl"]');
+    await page.waitForSelector('.fc-them .fc-text', { timeout: 8000 });
+    await sleep(1200);
+    const learned0 = await page.evaluate(() => window.__lab.village.corpus.size);
+    await say(page, '나랑 결혼할래?');
+    check('romance: a kid turns it aside', /이웃|어른들/.test(await lastReply(page)), await lastReply(page));
+    await say(page, '요즘 너무 힘들어 죽겠어');
+    const txt = await page.textContent('.fc-list');
+    check('distress: kind reply + care note with help lines', /믿을 수 있는|선생님/.test(await lastReply(page)) && txt.includes('1388') && txt.includes('109'), txt.slice(-200));
+    check('distress / romance: nothing becomes a rumour', (await page.evaluate(() => window.__lab.village.corpus.size)) === learned0 && !txt.includes('새 이야기를 배웠어요'));
+    await snap(page, 'chat_16_care.png');
+    await page.click('#fc-tab-mem');
+    await sleep(300);
+    check('memory tab marks the private moment', (await page.locator('.fc-tag:has-text("마음속에만")').count()) > 0);
+    await page.click('#fc-tab-chat');
+    await page.click('.fc-close');
+    await sleep(300);
+    // the next day she checks in once, quietly
+    await page.evaluate(() => { const lab = window.__lab; for (let i = 0; i < 4; i++) lab.village.advance(); lab.save(); lab.render(); });
+    await page.click('.card[data-key="npc_kid_girl"]');
+    await sleep(3200);
+    const open2 = (await page.textContent('.fc-list')).split('다시 만났어요').pop();
+    check('next day: one gentle check-in, no cheerful replay', open2.includes('괜찮아?') && !/힘들어 보였잖|헤헤/.test(open2), open2.slice(-160));
+    await snap(page, 'chat_17_checkin.png');
+    await ctx.close();
+  }
+  // ------------------------------------------------------------ a save from a newer build is kept aside
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, locale: 'ko-KR' });
+    const FUTURE = JSON.stringify({ v: 99, d: 5, m: {}, c: { e: [] } });
+    await ctx.addInitScript((f) => { if (!sessionStorage.getItem('__seeded')) { localStorage.setItem('frost-chat-lab:v1', f); sessionStorage.setItem('__seeded', '1'); } }, FUTURE);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => result.errors.push('pageerror: ' + e.message));
+    await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+    await page.waitForFunction(() => window.__lab && document.querySelectorAll('.card').length === 8, null, { timeout: 20000 });
+    const kept = await page.evaluate(() => localStorage.getItem('frost-chat-lab:v1:newer'));
+    check('a newer save is backed up, not lost', kept === FUTURE, String(kept).slice(0, 60));
+    await ctx.close();
+  }
   // ------------------------------------------------------------ AI (mocked sample)
   {
     const { ctx, page } = await newPage(browser, { mock: true });
@@ -165,6 +228,14 @@ try {
     check('AI pill lights up', true);
     await page.click('.card[data-key="npc_clerk_a"]');
     await page.waitForSelector('.fc-note', { timeout: 8000 });
+    const ratio = await page.evaluate(() => {
+      const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+      const lum = (c) => { const [r, g, b] = rgb(c).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const el = document.querySelector('.fc-mode'); const cs = getComputedStyle(el);
+      const a = lum(cs.color), b = lum(cs.backgroundColor);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    check('AI badge text contrast >= 4.5', ratio >= 4.5, ratio.toFixed(2));
     check('consent note before first AI message', (await page.textContent('.fc-list')).includes('확인 창'));
     await sleep(1300);
     await page.fill('#fc-input', '나 오늘 생선 열 마리 잡았어!');
@@ -190,6 +261,16 @@ try {
     await page.fill('#fc-input', '길게 얘기해 줘');
     await page.click('.fc-send');
     await page.waitForFunction((n) => { const b = [...document.querySelectorAll('.fc-them .fc-text')]; return b.length > n && b[b.length - 1].textContent.length > 12; }, nBefore, { timeout: 8000 });
+    // Enter while the answer streams in: nothing is cancelled, the typed text waits in the box
+    await page.fill('#fc-input', '다음 말이에요');
+    await page.press('#fc-input', 'Enter');
+    await sleep(500);
+    check('Enter while streaming does not stop the reply', (await page.locator('.fc-send.fc-stop').count()) === 1 && (await page.inputValue('#fc-input')) === '다음 말이에요' && !(await page.textContent('.fc-list')).includes('대답을 멈췄어요'));
+    // reading back up while it streams: the view is not yanked down
+    await page.evaluate(() => { document.querySelector('.fc-chatview').scrollTop = 0; });
+    await sleep(800);
+    check('scrolling up while a reply streams stays put', (await page.evaluate(() => document.querySelector('.fc-chatview').scrollTop)) < 40);
+    await page.fill('#fc-input', '');
     await page.click('.fc-send.fc-stop');
     await waitIdle(page);
     check('stop keeps the partial and says so', (await page.textContent('.fc-list')).includes('대답을 멈췄어요') && (await page.locator('.fc-cut').count()) > 0);
@@ -212,6 +293,7 @@ try {
     await chip(page, '무슨 소문 있어?');
     const relay = await page.textContent('.fc-list');
     check('offline resident relays AI-learned gossip', /미소|고양이|생선/.test(relay), relay.slice(-160));
+    result.relay = relay.slice(-160);
     await snap(page, 'chat_10_gossip_relay.png');
     await page.click('.fc-close');
     await page.click('#tab-log');

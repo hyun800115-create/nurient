@@ -3,6 +3,8 @@
 // the lighthouse beam, the logo shine band, a moon. The title_art pictures (assets/title) replace the
 // sky / mountains / aurora / stars when they exist (see TitleSky.js).
 
+import { TitleAssets } from './TitleAssets.js';
+
 const SKY = {
   // top, upper, lower, horizon
   day: ['#5aa6e6', '#8cc6f1', '#c8e5f8', '#eef7fd'],
@@ -20,23 +22,41 @@ function canvasTex(scene, key, w, h, draw) {
   const ctx = ct.getContext();
   draw(ctx, w, h);
   ct.refresh();
+  TitleAssets.keys.add(key);        // removed with the rest of the title's textures (TitleAssets.release)
   return key;
 }
+
+const MAKERS = {};
 
 export const TitleFx = {
   SKY,
 
+  /** the texture `key` (made on first use); only what a scene really draws is ever made */
+  ensure(scene, key) {
+    if (scene.textures.exists(key)) return key;
+    if (!MAKERS.ready) this.defineMakers();
+    const m = MAKERS[key];
+    return m ? m(scene) : null;
+  },
+
+  /** textures every title needs (the rest are stand-ins for missing title art, made on demand) */
   make(scene) {
+    for (const k of ['ttl_fx_haze', 'ttl_fx_beam']) this.ensure(scene, k);
+  },
+
+  defineMakers() {
+    MAKERS.ready = true;
+    const def = (key, fn) => { MAKERS[key] = (scene) => fn(scene); };
     for (const name in SKY) {
-      canvasTex(scene, 'ttl_fx_sky_' + name, 4, 512, (ctx, w, h) => {
+      def('ttl_fx_sky_' + name, (scene) => canvasTex(scene, 'ttl_fx_sky_' + name, 4, 512, (ctx, w, h) => {
         const c = SKY[name];
         const g = ctx.createLinearGradient(0, 0, 0, h);
         g.addColorStop(0, c[0]); g.addColorStop(0.42, c[1]); g.addColorStop(0.8, c[2]); g.addColorStop(1, c[3]);
         ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-      });
+      }));
     }
     // stars: a few bright ones with a soft cross, many faint dots
-    canvasTex(scene, 'ttl_fx_stars', 512, 384, (ctx, w, h) => {
+    def('ttl_fx_stars', (scene) => canvasTex(scene, 'ttl_fx_stars', 512, 384, (ctx, w, h) => {
       const r = rng(5);
       for (let i = 0; i < 170; i++) {
         const x = r() * w, y = Math.pow(r(), 1.35) * h, a = 0.25 + r() * 0.6, s = r() < 0.08 ? 1.6 : 0.7 + r() * 0.6;
@@ -51,9 +71,9 @@ export const TitleFx = {
         ctx.fillStyle = 'rgba(255,255,245,0.55)';
         ctx.fillRect(x - 7, y - 0.5, 14, 1); ctx.fillRect(x - 0.5, y - 7, 1, 14);
       }
-    });
+    }));
     // aurora: soft vertical curtains along a wavy ribbon, green -> teal with a pink fringe on top
-    canvasTex(scene, 'ttl_fx_aurora', 512, 256, (ctx, w, h) => {
+    def('ttl_fx_aurora', (scene) => canvasTex(scene, 'ttl_fx_aurora', 512, 256, (ctx, w, h) => {
       const r = rng(23);
       ctx.globalCompositeOperation = 'lighter';
       for (let band = 0; band < 2; band++) {
@@ -74,9 +94,9 @@ export const TitleFx = {
           ctx.fillRect(x, y - len, 3, len + 6);
         }
       }
-    });
+    }));
     // far mountains (white snow, soft blue shade) and the near forested hills; tinted per time of day
-    canvasTex(scene, 'ttl_fx_mtn_far', 1024, 220, (ctx, w, h) => {
+    def('ttl_fx_mtn_far', (scene) => canvasTex(scene, 'ttl_fx_mtn_far', 1024, 220, (ctx, w, h) => {
       const r = rng(41);
       const peaks = [];
       let x = -60;
@@ -98,8 +118,8 @@ export const TitleFx = {
       g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(225,236,248,0.85)');
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
-    canvasTex(scene, 'ttl_fx_mtn_near', 1024, 160, (ctx, w, h) => {
+    }));
+    def('ttl_fx_mtn_near', (scene) => canvasTex(scene, 'ttl_fx_mtn_near', 1024, 160, (ctx, w, h) => {
       const r = rng(77);
       // rolling snowy hills
       ctx.fillStyle = '#dce7f3';
@@ -121,20 +141,15 @@ export const TitleFx = {
       g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(235,242,250,0.9)');
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
+    }));
     // horizon haze (white, tinted per time) and a soft vignette
-    canvasTex(scene, 'ttl_fx_haze', 4, 128, (ctx, w, h) => {
+    def('ttl_fx_haze', (scene) => canvasTex(scene, 'ttl_fx_haze', 4, 128, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       for (let i = 0; i <= 16; i++) { const u = i / 16; const a = Math.pow(1 - u, 2.2) * (0.6 + 0.4 * (1 - u)); g.addColorStop(u, `rgba(255,255,255,${a.toFixed(3)})`); }
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
-    canvasTex(scene, 'ttl_fx_vignette', 128, 256, (ctx, w, h) => {
-      const g = ctx.createRadialGradient(w / 2, h * 0.55, h * 0.18, w / 2, h * 0.55, h * 0.72);
-      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
+    }));
     // lighthouse beam: a long soft wedge, origin at the left middle
-    canvasTex(scene, 'ttl_fx_beam', 512, 128, (ctx, w, h) => {
+    def('ttl_fx_beam', (scene) => canvasTex(scene, 'ttl_fx_beam', 512, 128, (ctx, w, h) => {
       for (let x = 0; x < w; x++) {
         const t = x / w;
         const half = 3 + t * (h / 2 - 4);
@@ -143,16 +158,16 @@ export const TitleFx = {
         g.addColorStop(0, 'rgba(255,240,190,0)'); g.addColorStop(0.5, `rgba(255,245,210,${a})`); g.addColorStop(1, 'rgba(255,240,190,0)');
         ctx.fillStyle = g; ctx.fillRect(x, h / 2 - half, 1, half * 2);
       }
-    });
+    }));
     // the logo shine: a soft diagonal white band
-    canvasTex(scene, 'ttl_fx_shine', 160, 256, (ctx, w, h) => {
+    def('ttl_fx_shine', (scene) => canvasTex(scene, 'ttl_fx_shine', 160, 256, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, 0);
       g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.42, 'rgba(255,255,255,0.15)'); g.addColorStop(0.5, 'rgba(255,255,255,0.85)');
       g.addColorStop(0.58, 'rgba(255,255,255,0.15)'); g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    });
+    }));
     // a friendly moon
-    canvasTex(scene, 'ttl_fx_moon', 96, 96, (ctx, w, h) => {
+    def('ttl_fx_moon', (scene) => canvasTex(scene, 'ttl_fx_moon', 96, 96, (ctx, w, h) => {
       const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
       g.addColorStop(0, 'rgba(255,250,225,0.5)'); g.addColorStop(0.42, 'rgba(255,248,220,0.25)'); g.addColorStop(1, 'rgba(255,248,220,0)');
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -160,7 +175,7 @@ export const TitleFx = {
       ctx.beginPath(); ctx.arc(w / 2, h / 2, 17, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(225,212,170,0.55)';
       for (const [x, y, rr] of [[-5, -4, 4], [6, 3, 3], [-2, 8, 2.4], [7, -7, 2]]) { ctx.beginPath(); ctx.arc(w / 2 + x, h / 2 + y, rr, 0, Math.PI * 2); ctx.fill(); }
-    });
+    }));
   },
 };
 

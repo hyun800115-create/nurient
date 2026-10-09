@@ -56,15 +56,15 @@ window.__FV = { game };
 </script></body></html>`;
 
 const { chromium } = loadPlaywright();
-const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--no-sandbox', '--js-flags=--expose-gc'] });
+const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--no-sandbox', '--js-flags=--expose-gc', '--enable-precise-memory-info'] });
 const srv = await start(0, { prefix: '/fv/' });
 const report = { checks: {}, errors: [], perf: {}, memory: {}, files: {} };
 const fail = [];
 const check = (name, ok, info) => { report.checks[name] = { ok: !!ok, info }; if (!ok) fail.push(name); console.log((ok ? 'ok   ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : '')); };
 
-async function open(vp, query = '', init = null) {
+async function open(vp, query = '', init = null, initArg) {
   const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, deviceScaleFactor: vp.dpr || 2, isMobile: true, hasTouch: true, locale: 'ko-KR' });
-  if (init) await ctx.addInitScript(init);
+  if (init) await ctx.addInitScript(init, initArg);
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push('pageerror: ' + (e && e.stack ? e.stack : e)));
@@ -102,7 +102,7 @@ fs.mkdirSync(PREV, { recursive: true });
   fs.rmSync(frames, { recursive: true, force: true });
   fs.mkdirSync(frames, { recursive: true });
   const total = 14.0;
-  const stills = { 2.45: 'title_stage_1.png', 4.95: 'title_stage_2.png', 7.45: 'title_stage_3.png', 9.75: 'title_stage_4.png' };
+  const stills = { 2.4: 'title_stage_1.png', 4.9: 'title_stage_2.png', 7.4: 'title_stage_3.png', 9.7: 'title_stage_4.png' };
   const stillAt = Object.keys(stills).map(Number);
   let n = 0;
   const t0 = Date.now();
@@ -116,7 +116,7 @@ fs.mkdirSync(PREV, { recursive: true });
       if (f % 30 === 0) console.log(`[lab] frame ${f} / ${total * FPS}`);
     }
     // stills: the canvas already shows this frame (video mode); quick mode draws one first
-    for (const st of stillAt) if (Math.abs(t - st) < 0.5 / FPS) { if (QUICK) await render(page, 1); await page.screenshot({ path: path.join(PREV, stills[st]) }); }
+    for (const st of stillAt) if (Math.round(st * FPS) === f + 1) { if (QUICK) await render(page, 1); await page.screenshot({ path: path.join(PREV, stills[st]) }); }
   }
   console.log(`[lab] intro rendered in ${((Date.now() - t0) / 1000).toFixed(0)} s (${n} frames)`);
   const s1 = await state(page);
@@ -143,7 +143,7 @@ fs.mkdirSync(PREV, { recursive: true });
   const tex = () => page.evaluate(() => {
     const tm = window.__FV.game.textures; let bytes = 0; const keys = [];
     for (const k of Object.keys(tm.list)) {
-      if (!/^ttl_/.test(k) && !window.__LAB.TitleAssets.artKeys.has(k)) continue;
+      if (!/^ttl_/.test(k)) continue;           // every title texture (bake, title art, stand-ins) is ttl_*
       const t = tm.list[k]; let b = 0;
       for (const src of t.source) b += src.width * src.height * 4;
       bytes += b; keys.push(k);
@@ -151,6 +151,7 @@ fs.mkdirSync(PREV, { recursive: true });
     return { MB: +(bytes / 1048576).toFixed(1), count: keys.length, keys };
   });
   report.memory.titleTextures = await tex();
+  report.artLoaded = await page.evaluate(() => Array.from(window.__LAB.TitleAssets.artKeys));
   check('title texture memory <= 60 MB', report.memory.titleTextures.MB <= 60, report.memory.titleTextures.MB);
   // baseline: an empty scene of the same size renders this fast
   await page.evaluate(() => window.__TITLE.tap());
@@ -207,12 +208,14 @@ fs.mkdirSync(PREV, { recursive: true });
 
 // ------------------------------------------------------------------ 3) returning player: save at the village stage, title last showed the camp
 {
-  const init = () => {
-    localStorage.setItem('frostVillage.save.v1', JSON.stringify({ v: 4, t: 1, coins: 500, progress: { done: { zone_forest: true, hire_fisherman: true }, celebrated: true } }));
-    localStorage.setItem('frostVillage.title.v1', JSON.stringify({ introSeen: true, shown: 1 }));
+  const SAVE_STR = JSON.stringify({ v: 4, t: 1, coins: 500, progress: { done: { zone_forest: true, hire_fisherman: true }, celebrated: true } });
+  const init = (str) => {
+    // (init scripts run on every navigation of the context: only seed an empty storage)
+    if (!localStorage.getItem('frostVillage.save.v1')) localStorage.setItem('frostVillage.save.v1', str);
+    if (!localStorage.getItem('frostVillage.title.v1')) localStorage.setItem('frostVillage.title.v1', JSON.stringify({ introSeen: true, shown: 1 }));
   };
   const vp = { w: 390, h: 844, dpr: 2 };
-  const { ctx, page, errs } = await open(vp, '', init);
+  const { ctx, page, errs } = await open(vp, '', init, SAVE_STR);
   const s0 = await state(page);
   check('returning player: no intro, save stage 2 read from the save', s0.mode === 'idle' && s0.saveStage === 2, s0);
   await step(page, 2.2);
@@ -223,7 +226,7 @@ fs.mkdirSync(PREV, { recursive: true });
   const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.title.v1')));
   check('title prefs remember the shown stage', prefs && prefs.shown === 2, prefs);
   const save = await page.evaluate(() => localStorage.getItem('frostVillage.save.v1'));
-  check('the save was not touched', JSON.parse(save).coins === 500 && !('title' in JSON.parse(save)));
+  check('the save was not touched (same string)', save === SAVE_STR, save && save.length);
   await shot(page, path.join(PREV, 'title_idle_village.png'));
   check('no page errors (returning)', errs.length === 0, errs.slice(0, 5));
   report.errors.push(...errs);
@@ -257,8 +260,17 @@ fs.mkdirSync(PREV, { recursive: true });
     for (const k of keys) if (m.audio[k]) lb += fs.statSync(path.join(ROOT, 'assets', m.audio[k].files[0])).size;
   }
   report.payload.lateCuesKB = +(lb / 1024).toFixed(1);
-  const art = path.join(ROOT, 'assets', 'title');
-  if (fs.existsSync(art)) { let ab = 0; const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else ab += fs.statSync(p).size; } }; walk(art); report.payload.titleArtKB = +(ab / 1024).toFixed(1); }
+  // the title_art files this phone actually fetched (logo of its language and scale, backdrop, fx)
+  const artMan = path.join(ROOT, 'assets', 'title', 'manifest.json');
+  if (fs.existsSync(artMan) && report.artLoaded) {
+    const m = JSON.parse(fs.readFileSync(artMan, 'utf8'));
+    let ab = fs.statSync(artMan).size;
+    const files = {};
+    for (const a of m.atlases || []) files[a.key] = [a.png, a.json];
+    for (const a of (m.images || []).concat(m.spritesheets || [])) files[a.key] = [a.png];
+    for (const k of report.artLoaded) for (const f of files[k] || []) if (fs.existsSync(path.join(ROOT, 'assets', f))) ab += fs.statSync(path.join(ROOT, 'assets', f)).size;
+    report.payload.titleArtKB = +(ab / 1024).toFixed(1);
+  }
   report.payload.totalKB = +(report.payload.bakeKB + report.payload.lateCuesKB).toFixed(1);
   check('title payload (bake + late cues) <= 1.5 MB', report.payload.totalKB <= 1536, report.payload);
 }

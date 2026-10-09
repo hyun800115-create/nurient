@@ -8,13 +8,13 @@ export default {
   // lead + source, said before a rumour ("I heard from Mina that …")
   pre: ['#lead##src#'],
   lead: [
-    '*14 ', '?!grave? *2 [Guess what — |You know what? |Have you heard? ]', '?!grave? [Oh, by the way, |By the way, |Incidentally, ]', '?chatty !grave? *2 [Big news! |Big news! |There is news. ]',
+    '*14 ', '?!grave? *2 [Guess what — |You know what? |Have you heard? ]', '?!grave? [Oh, by the way, |By the way, |Incidentally, ]', '?chatty !neg? *2 [Big news! |Big news! |There is news. ]', '?chatty neg !grave? *2 [Oh no, listen — |Oh no, listen: |Dear me, listen: ]',
     '?grave? *8 [Sad news — |I have some sad news. |I am sorry to say, ]',
     '?gossip !grave? *2 [Don’t tell anyone, but |Just between us, |This is confidential, but ]', '?kid !grave? [Guess what, guess what! |Guess what! |Guess what! ]', '?elder? [Well now, |Well now, |Well, ]',
     '?shy? [Um… |Um… |Um… ]', '?fresh !grave? [I just heard: |I just heard: |I have just heard: ]', '?teen !grave? [OMG. |Okay, so, |So, ]',
   ],
   src: [
-    '*10 ', '?told? *2 I heard from {Z} that ', '?told? {Z} says ', '?told? {Z} told me ',
+    '*10 ', '?told !srcq? *2 I heard from {Z} that ', '?told !srcq? {Z} says ', '?told !srcq? {Z} told me ',
     '?news =paper? *2 the paper says ', '?news =paper? it’s in the paper: ', '?seen? *2 I saw it myself — ', '?seen? with my own eyes: ',
   ],
   wow: ['*3 [Really?|Really?|Is that so?]', '?!grave? [Whoa!|Oh my!|Goodness!]', '?!grave? [No way!|No way!|Good heavens!]', '?elder? *2 Oh dear!', '?kid !grave? *2 Woooow!', '?teen !grave? For real?!', '?grumpy? Tsk tsk!', '?shy? Oh…'],
@@ -48,7 +48,7 @@ export default {
     '?tired =tired? [*yawn* …hi, {V}.|*yawn* …hello, {V}.|*yawn* …hello.]', '?hungry =hungry? [{V}, I’m starving!|{V}, I’m so hungry!|{V}, I’m rather peckish!]',
     '?l_newcomer =q =newq? *2 [Hey, you’re the new neighbour, right? Hi!|You must be the new neighbour! Hello!|You must be our new neighbour. Welcome!]',
     '?atwork cowork !kid !teen !j_student =work? *2 [Let’s do our best today!|Let’s work hard today!|Another busy day ahead!]', '?atschool classmate =q =hw? *2 [{V}! Did you do the homework?|{V}! Did you do the homework?|{V}! Did you do the homework?]',
-    '?atshop !atcafe =q =shopq? [Oh, {V}, shopping too?|Oh, {V}, are you shopping too?|Are you shopping too, {V}?]', '?atcafe =q =shopq? [Oh, {V}, grabbing a bite too?|Oh, {V}, here for a bite too?|Here for a meal too, {V}?]',
+    '?atshop !atwork !atcafe =q =shopq? [Oh, {V}, shopping too?|Oh, {V}, are you shopping too?|Are you shopping too, {V}?]', '?atcafe !atwork =q =shopq? [Oh, {V}, grabbing a bite too?|Oh, {V}, here for a bite too?|Here for a meal too, {V}?]',
   ],
   'greet.add': [
     '?snow =snowy? [So much snow!|It’s really coming down!|What a snowfall.]', '?cold =cold !@cold? [It’s freezing today!|It’s freezing today!|It’s bitterly cold today.]', '?sunny =sunny !@sunny? [Gorgeous weather!|Such lovely weather!|What lovely weather.]',
@@ -58,7 +58,7 @@ export default {
     '?morning !@q =q =meal? [Had breakfast?|Have you had breakfast?|Have you had breakfast?]', '?noon !@q =q =meal? [What did you have for lunch?|What did you have for lunch?|What did you have for lunch?]', '?evening =work? [Good job today!|You worked hard today!|You must be tired after today.]',
     '?hungry =hungry !@hungry? [I’m so hungry.|I’m starving.|I’m a little peckish.]', '?happy =happy !@happy? [I feel great today!|I feel great today!|I’m in fine spirits today.]', '?tired =tired !@tired? [I’m a bit tired…|I’m a little tired…|I’m rather tired today.]',
     '?kid =snowman? [I built a snowman today!|I built a snowman today!|I built a snowman today!]', '?teen =play? [I was so bored, good timing!|I was bored — good timing!|Good timing.]', '?elder =sick? [My back is a bit stiff today.|My back is a little stiff today.|My back is rather stiff today.]',
-    '?outdoors !@q =q =doing? [Out for some fresh air?|Out for some fresh air?|Out for a walk?]', '?atshop !@q =q =shopq? [What are you buying?|What are you buying?|What are you shopping for?]', '?atwork !@q =q =busy? [Lots of work today?|Lots to do today?|Busy at work today?]',
+    '?outdoors !@q =q =doing? [Out for some fresh air?|Out for some fresh air?|Out for a walk?]', '?atshop !atwork !@q =q =shopq? [What are you buying?|What are you buying?|What are you shopping for?]', '?atwork !@q =q =busy? [Lots of work today?|Lots to do today?|Busy at work today?]',
     '?weekend =happy !@happy? [Love the weekend!|Weekends are the best!|How nice to have the weekend.]', '?close =miss !@miss? [I was just hoping to see you!|I was hoping I’d see you!|I was just thinking of you.]',
   ],
   'greet.ask': ['?!@q =q =how? [How’s it going?|How are you doing?|How are you keeping?]', '?!@q =q =how? [All good?|Is everything well?|I trust all is well?]', '?!@q =q =how? [How have you been?|How have you been?|How have you been?]', '?!@q =q =doing? [What did you do today?|What did you do today?|What did you do today?]'],
@@ -91,7 +91,7 @@ export default {
     '?^praise? *4 [Yep! Got it yesterday. Like it?|Yes! I got it yesterday. Do you like it?|Yes, it is new.]',
     '?^hurtq? *8 [Luckily nobody got hurt!|Luckily, nobody was hurt!|Fortunately, no one was hurt.]', '?^firetruck? *8 [Yep, sirens and all!|Yes, with the siren on!|Yes, the fire engine came quickly.]', '?^ring? *8 [Not yet! Apparently it sparkles.|Not yet! They say it sparkles.|Not yet. It sparkles, I hear.]',
     '?^why? *4 [No idea, honestly.|I don’t know either.|I really couldn’t say.]', '?^newfam? *6 [It’s {X}’s family — they all seemed really nice!|It’s {X}’s family. They all seemed lovely!|It is {X}’s family. They seemed very kind.]', '?^newfam? *4 [They brought round rice cakes. So sweet!|They brought round rice cakes. Very sweet!|They kindly brought rice cakes round.]', '?^newfam? *2 [Haven’t said hi yet. Wanna come with me?|I haven’t said hello yet. Shall we go together?|I have yet to greet them.]', '?^whyfight? *6 [Over something silly, apparently.|Over something silly, apparently.|A trifle, I believe.]', '?^whyfight? *4 [Something about whose snowman spot it was!|Something about a snowman spot!|Something about a snowman.]', '?^whyfight? *3 [The last fish bun, I heard.|The last fish bun, I heard.|The last fish bun, they say.]',
-    '?^differ? *6 [Really? That’s what I heard.|Really? That’s what I heard.|That is what I was told.]', '?^differ? *4 [Rumours grow as they go!|Rumours grow as they travel!|Rumours do tend to change.]',
+    '?^differ? *6 [Really? I was sure of it.|Really? I was so sure.|I was quite sure of it.]', '?^differ? *4 [Rumours grow as they go!|Rumours grow as they travel!|Rumours do tend to change.]',
     '?^doubt? *6 [It’s true! I’m sure.|It’s true, I’m sure!|I am quite certain.]', '?^doubt? *4 [Well… I only heard it too.|Well, I only heard it too.|I only heard it, mind you.]',
     '?^newsq2? *8 [Loads of town news! Read it later!|Lots of town news! Do read it later!|Plenty of town news. Do read it.]', '?^newsq2? *6 [The front page is great — read it yourself!|The front page is great! Have a look!|The front page is most interesting.]', '?^newsq2? *3 [The overheard quote is the funniest bit!|The quote of the day is the funniest part!|The quote of the day is rather amusing.]',
     '?^newsq? *4 [Yep, read it!|Yes, I read it!|Yes, I read it.]', '?^newsq =q =newsq2? *3 [Not yet! What did it say?|Not yet! What did it say?|Not yet.]',
@@ -188,7 +188,7 @@ export default {
   ],
   'intro.self.re': [
     '*3 [I’m {S}! Nice to meet you!|I’m {S}. Nice to meet you!|I am {S}. Pleased to meet you.]', '?!j_student !j_retired !j_none? *2 [I’m {S}, I work at {P}.|I’m {S}; I work at {P}.|I am {S}, of {P}.]',
-    '?!j_student !j_retired !j_none? [I’m {S}! {J:a}!|I’m {S}, {J:a}.|I am {S}, {J:a}.]', '?j_student? *2 [I’m {S}! I go to {P} too!|I’m {S}. I go to {P}!|I’m {S}. I go to {P}!]',
+    '?!j_student !j_retired !j_none? [I’m {S}! {J:a}!|I’m {S}, {J:a}.|I am {S}, {J:a}.]', '?j_student? *2 [I’m {S}! I go to {P}!|I’m {S}. I go to {P}!|I’m {S}. I go to {P}!]',
     '?j_retired? [I’m {S}. Retired — I play all day!|I’m {S}. I’m retired, so I walk a lot.|I am {S}. I am retired.]', '?owner? *2 [I’m {S}, I run {P}!|I’m {S}; I run {P}!|I am {S}, owner of {P}.]',
     '[I’m {S}. I like {H}!|I’m {S}. I like {H}.|I am {S}. I enjoy {H}.]', '?shy? [I-I’m {S}…|I’m… {S}…|I am… {S}…]', '?newcomer? *2 [I’m {S}, the new neighbour!|I’m {S}, the new neighbour!|I am {S}, your new neighbour!]',
   ],
@@ -299,6 +299,7 @@ export default {
   'react.crush': ['*2 [Ooh, you like them? Tell them!|Ooh, you like them? Tell them!|Oh, you are fond of them?]', '[My lips are sealed! You’d be cute together!|I’ll keep it secret! You’d be cute together!|I shall keep your secret.]', '[Be brave! I’m rooting for you!|Be brave! I’m cheering for you!|Take heart! I wish you luck.]'],
   'react.happyfor.help': ['?lself *3? [That’s so kind of you!|That was really kind!|How very kind of you.]', '?lself? [You’re the best!|You’re wonderful!|How admirable.]', '?lself !family? [I should do that too!|I should follow your example!|I ought to follow your example.]', '?lvictim *3? [What a kind person!|What a kind person!|How very kind of them.]', '?lvictim? [Phew! Be sure to thank them!|Phew! Do thank them later!|Do thank them properly.]', '?!lself !lvictim? [That’s heart-warming!|How heart-warming!|How heart-warming.]'],
   'react.happyfor.lost_found': ['?lvictim *3? [So kind! They must’ve been thrilled!|How kind! They must have been delighted!|How kind. They must have been delighted.]', '?lvictim? [Wow, sharp eyes!|Wow, you’ve got sharp eyes!|You have keen eyes.]', '?lself *3? [Phew, so glad you got it back!|Phew, I’m so glad you got it back!|I am so glad it was found.]', '?lself? [Glad the {I} is back! Don’t lose it again!|So glad you got the {I} back!|How fortunate the {I} was found.]', '?!lself !lvictim? [Good news!|That’s good news!|Good news indeed.]'],
+  'react.happyfor.outing': ['*2 [That sounds fun!|That sounds like fun!|How lovely.]', '[Nice! Take me next time!|Nice! Take me with you next time!|How nice.]', '[Lucky! I want to go too!|Lucky you! I want to go too!|How enviable.]'],
   'react.happyfor': ['*3 [Yay, good for you!|How wonderful!|Wonderful!]', '?!family? [Lucky you! I’m jealous!|Lucky you! I’m jealous!|How fortunate!]', '?family *3? [Great news for the family!|What great news for our family!|Splendid news for the family.]', '?spouse *3? [That’s my love! Let’s have something nice for dinner!|That’s my dear! Let’s treat ourselves tonight!|That is my dear one.]', '[That’s so you!|That’s so like you!|That is just like you.]', '?kind? [I’m as happy as you are!|I’m so happy for you!|I am delighted for you.]'],
   'react.sorry': ['*2 [Aww, that’s rough.|Oh, that must be hard.|Oh dear, how upsetting.]', '[Hang in there! It’ll be fine.|Hang in there! It will be fine.|Courage. All will be well.]', '[Tell me if I can help!|Let me know if I can help!|Do let me know if I can help.]'],
 

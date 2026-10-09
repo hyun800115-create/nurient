@@ -68,6 +68,19 @@ export function buildSamples(opts = {}) {
   const traits = (r) => { const out = []; for (const [flag, ax, op, v] of TRAIT_FLAGS) { const x = r.tr[AX[ax]]; if (op === '>' ? x > v : x < v) out.push(TRAIT_LABEL[flag][0]); } return out.slice(0, 2); };
   const who = (id) => { const r = P(id); if (!r) return nm(id); const t = traits(r); return `${nm(id)}(${ageOf(e, r)}살·${jobKo(r)}${t.length ? '·' + t.join('·') : ''})`; };
   const whoShort = (id) => { const r = P(id); return r ? `${nm(id)}(${ageOf(e, r)}살·${jobKo(r)})` : nm(id); };
+  // up to n tellings spread over time, each saying something different
+  const spread = (list, n) => {
+    const out = [], shown = new Set(), core = (t) => t.replace(/[^가-힣]/g, '').slice(0, 6);   // the same opening words = the same line again
+    const step = Math.max(1, Math.floor(list.length / n));
+    for (let k = 0; k < list.length && out.length < n; k += step) {
+      let j = k;
+      while (j < list.length && shown.has(core(list[j].text))) j++;
+      if (j >= list.length) break;
+      shown.add(core(list[j].text)); out.push(list[j]);
+      k = j;
+    }
+    return out;
+  };
   const clockKo = (sec) => {
     const L = e.cfg.dayLength, d = Math.floor(sec / L), m = Math.floor(((sec - d * L) * 1440) / L), h = Math.floor(m / 60), mm = String(m % 60).padStart(2, '0');
     const part = h < 6 ? '새벽' : h < 12 ? '오전' : h < 18 ? '오후' : '저녁';
@@ -428,7 +441,8 @@ export function buildSamples(opts = {}) {
     for (const x of evs) timeline.push([x.t, `${PH[x.phase] || x.phase}${x.crew && x.crew.length && (x.phase === 'dispatch' || x.phase === 'spray') ? ` (소방관 ${x.crew.map(nm).join('·')})` : ''}`]);
     for (const x of buildEv) if (x.place === bId && x.t >= t0 && x.t <= tEnd + e.cfg.dayLength) timeline.push([x.t, `[건물] ${({ ruin: '불탄 건물로 바뀜', demolish: '철거 시작', construct: '다시 짓기 시작', done: x.level > 1 ? `새 건물 완성 — 전보다 한 단계 좋아짐(레벨 ${x.level})` : '새 건물 완성', scorched: '그을림', repaired: '수리 끝' })[x.op] || x.op}`]);
     for (const x of bankEv) if ((x.op === 'insurance' && x.place === bId) || (x.op === 'loan' && x.purpose === 'rebuild' && x.who === owner)) timeline.push([x.t, x.op === 'insurance' ? `[은행] 화재 보험금 ${x.amount}코인 지급` : `[은행] ${nm(x.who)}에게 재건축 대출 ${x.amount}코인 (하루 ${x.inst}코인씩 ${x.term}일)`]);
-    for (const s of shouts) if (s.t >= t0 && s.t <= t0 + e.cfg.dayLength && s.topics.some((tp) => /fire|cheer/.test(tp) || /shout\.(fire|firefighter|cheer_fire)/.test(s.lines[0].rule))) if (/shout\.(fire|firefighter|cheer_fire)/.test(s.lines[0].rule)) timeline.push([s.t, `[외침] ${nm(s.lines[0].who)}: “${s.lines[0].text}”`]);
+    const tOut = (evs.find((x) => x.phase === 'ruin' || x.phase === 'repair' || x.phase === 'out') || { t: t0 + e.cfg.dayLength }).t;   // later cries belong to another fire
+    for (const s of shouts) if (s.t >= t0 && s.t <= tOut && s.topics.some((tp) => /fire|cheer/.test(tp) || /shout\.(fire|firefighter|cheer_fire)/.test(s.lines[0].rule))) if (/shout\.(fire|firefighter|cheer_fire)/.test(s.lines[0].rule)) timeline.push([s.t, `[외침] ${nm(s.lines[0].who)}: “${s.lines[0].text}”`]);
     timeline.sort((a, b) => a[0] - b[0]);
     for (const [t, s] of timeline) w(`- ${clockKo(t)} — ${s}`);
     w();
@@ -441,8 +455,7 @@ export function buildSamples(opts = {}) {
     if (said.length) {
       w(`**마을 사람들은 이렇게 이야기했어요** (모두 ${said.length}번 중 일부)`);
       w();
-      const step = Math.max(1, Math.floor(said.length / 8));
-      for (let k = 0; k < said.length && k / step < 8; k += step) { const s = said[k]; w(`- ${clockKo(s.t)} ${nm(s.from)} → ${nm(s.to)}: “${s.text}”`); }
+      for (const s of spread(said, 8)) w(`- ${clockKo(s.t)} ${nm(s.from)} → ${nm(s.to)}: “${s.text}”`);
       w();
     }
     const fp = papers.filter((p) => [p.head].concat(p.items).some((f) => f && fireFacts.has(f.id)));
@@ -485,7 +498,11 @@ export function buildSamples(opts = {}) {
     const tl = [];
     for (const x of evs) tl.push([x.t, `${PH[x.phase] || x.phase}${x.officers && x.officers.length && (x.phase === 'chase' || x.phase === 'arrest') ? ` (${x.officers.map(nm).join('·')})` : ''}`]);
     const t0 = x0.t, tLast = evs[evs.length - 1].t, tEnd = tLast + e.cfg.dayLength;
-    for (const s of shouts) if (s.t >= t0 && s.t <= tLast && (s.a === x0.culprit || s.a === x0.victim || evs.some((x) => (x.officers || []).includes(s.a))) && /^shout\./.test(s.lines[0].rule) && !/fight|scuffle|separate|fire|cheer|queue|window|stop/.test(s.lines[0].rule)) tl.push([s.t, `[외침] ${nm(s.lines[0].who)}: “${s.lines[0].text}”`]);
+    // officers' cries only while they are on this case (the same officer may be chasing someone else later that day)
+    const onCase = [];
+    for (let i = 0; i < evs.length; i++) if (evs[i].phase === 'chase' || evs[i].phase === 'tipped') { const end = evs.slice(i + 1).find((x) => x.phase === 'arrest' || x.phase === 'wanted'); onCase.push([evs[i].t, end ? end.t : tLast]); }
+    const isCop = (id) => evs.some((x) => (x.officers || []).includes(id)) && id !== x0.culprit && id !== x0.victim;
+    for (const s of shouts) if (s.t >= t0 && s.t <= tLast && (s.a === x0.culprit || s.a === x0.victim || isCop(s.a)) && (!isCop(s.a) || onCase.some(([a, b]) => s.t >= a && s.t <= b)) && /^shout\./.test(s.lines[0].rule) && !/fight|scuffle|separate|fire|cheer|queue|window|stop/.test(s.lines[0].rule)) tl.push([s.t, `[외침] ${nm(s.lines[0].who)}: “${s.lines[0].text}”`]);
     tl.sort((a, b) => a[0] - b[0]);
     for (const [t, s] of tl) w(`- ${clockKo(t)} — ${s}`);
     w();
@@ -497,8 +514,7 @@ export function buildSamples(opts = {}) {
     if (said.length) {
       w(`**소문은 이렇게 돌았어요** (모두 ${said.length}번 중 일부)`);
       w();
-      const step = Math.max(1, Math.floor(said.length / 8));
-      for (let k = 0; k < said.length && k / step < 8; k += step) { const s = said[k]; w(`- ${clockKo(s.t)} ${nm(s.from)} → ${nm(s.to)}: “${s.text}”`); }
+      for (const s of spread(said, 8)) w(`- ${clockKo(s.t)} ${nm(s.from)} → ${nm(s.to)}: “${s.text}”`);
       w();
     }
     const tp = papers.filter((p) => [p.head].concat(p.items).some((f) => f && tf.has(f.id)));

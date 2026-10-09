@@ -238,9 +238,6 @@ export const TitleAssets = {
       for (const k of this.anims) if (game.anims.exists(k)) game.anims.remove(k);
       for (const k of this.keys) if (game.textures.exists(k)) game.textures.remove(k);
       for (const k of this.artKeys) if (game.textures.exists(k)) game.textures.remove(k);
-      for (const k of ['ttl_fx_sky', 'ttl_fx_glow', 'ttl_fx_beam', 'ttl_fx_pool', 'ttl_fx_aurora', 'ttl_fx_stars', 'ttl_fx_mtn_far', 'ttl_fx_mtn_near', 'ttl_fx_haze', 'ttl_fx_shine', 'ttl_logo_fb', 'ttl_fx_pill', 'ttl_fx_vignette']) {
-        if (game.textures.exists(k)) game.textures.remove(k);
-      }
       for (const k of this.jsonKeys) if (game.cache.json.exists(k)) game.cache.json.remove(k);
     } catch (e) { /* never block the game start */ }
     this.anims.clear(); this.keys.clear(); this.artKeys.clear(); this.artPending = 0;

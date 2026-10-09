@@ -13,7 +13,8 @@ export const PATCHES = [
   ['src/core/Assets.js',
     `'ui2', 'audio2', 'workers', 'pets2'];`,
     `'ui2', 'audio2', 'workers', 'pets2', 'water'];`],
-  // its effect sheets are only needed once the village plays: after the title, like fx_wake
+  // its effect sheets are after-title files, and the Game's lazy gate lets through only the ones a system
+  // asked for (WaterSheets.want): the village never decodes the beach-only sheets
   ['src/core/Assets.js',
     `const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big)$/;`,
     `const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big|wave_crash|splash_small|splash_big|swim_ripple|wake_v2(_[a-z]+)?|sparkle_water|shore_wave_[xy])$/;`],
@@ -22,7 +23,7 @@ export const PATCHES = [
   ['src/systems/Ground.js',
     `import { rng } from '../core/Placeholders.js';`,
     `import { rng } from '../core/Placeholders.js';
-import { Water, WaterMask } from './Water.js';
+import { Water, WaterPresets, bakedField, suggestWaterQuality } from './Water.js';
 import { Settings } from '../core/Save.js';
 
 // the two fish-school bands of the old tileSprites (world px); Water draws them UNDER its surface
@@ -41,19 +42,17 @@ const FISH_BANDS = [
     this.fish2.setTileScale(0.8, 0.8);
     this.t = 0;`,
     `    // --- sea (v7): living water (src/systems/Water.js) — swells, ripples, glints, depth colour, the fish
-    // under the surface and the live shore foam. Canvas renderer / no water textures: Water falls back
-    // to the old scrolling water_sea tileSprite (this.sea) and the fish stay tileSprites.
-    const seaH = Math.ceil(maxShore + 40);
-    this.water = new Water(gs, {
-      region: { x: 0, y: -200, w: W, h: seaH + 200 },
-      mask: WaterMask.shoreY(shoreY),          // water above the shoreline curve
-      defaultShore: 'snowbank',                 // (rocky stretches: shoreTypes: [{ type: 'rock', x: [x0, x1] }])
-      palette: 'winter_sea',
-      quality: Settings.data.water === 'low' ? 'low' : 'high',
+    // under the surface and the live shore foam. Its shoreline field is baked (assets/water/field_village.png,
+    // tools/fx/gen_water_field.mjs). Canvas renderer / no water textures: Water falls back to the old
+    // scrolling water_sea tileSprite (this.sea) and the fish stay tileSprites.
+    const wm = gs.cache.json.exists('manifest_water') ? gs.cache.json.get('manifest_water') : null;
+    this.water = new Water(gs, Object.assign(WaterPresets.village(W, shoreY), {
+      quality: Settings.data.water || suggestWaterQuality(gs.sys.renderer && gs.sys.renderer.gl),   // '물결 품질'
       fish: FISH_BANDS,
       fishKey: Assets.sprite('fish_school').tex,
-      manifest: gs.cache.json.exists('manifest_water') ? gs.cache.json.get('manifest_water') : null,
-    });
+      manifest: wm,
+      baked: bakedField(gs, wm, 'village'),
+    }));
     this.sea = this.water.fallback || null;
     this.liveShore = this.water.isShader;       // the shallows + shore foam are drawn live, not baked
     this.fish1 = null; this.fish2 = null;
@@ -96,12 +95,35 @@ const FISH_BANDS = [
     this.sea.tilePositionY = Math.sin(this.t * 0.4) * 6;`,
     `    this.water.update(dt);                      // (also scrolls the fallback tileSprite)`],
 
+  // ---------------------------------------------------------------- Game.js: water sheets on demand
+  ['src/scenes/Game.js',
+    `import { Ground } from '../systems/Ground.js';`,
+    `import { Ground } from '../systems/Ground.js';
+import { WaterSheets } from '../systems/Water.js';`],
+  ['src/scenes/Game.js',
+    `    const pr = this.progress, f = Assets.fragOf[k];
+    if (!pr) return true;`,
+    `    const pr = this.progress, f = Assets.fragOf[k];
+    if (f === 'water') return WaterSheets.allowed(k);     // (v7) only the water effect sheets a system asked for
+    if (!pr) return true;`],
   // ---------------------------------------------------------------- Game.js: decor in the sea bobs with the swell
   ['src/scenes/Game.js',
     `      if ((key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10) {
         this.tweens.add(`,
-    `      if ((key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10 && this.ground.water && this.ground.water.isShader) {
+    `      const wv = this.ground.water;
+      if (key === 'dock_pier' && wv && wv.isShader) {
+        // (v7) the pier's posts stand in the water: foam collars + the deck's shadow on the water
+        for (const [mx, my] of [[-0.92, 0.7], [0.92, 0.7], [-0.92, 2.2], [0.92, 2.2]]) {
+          const px = x + 45.25 * (mx + my), py = y + 22.63 * (mx - my);
+          if (wv.shoreDistance(px, py) > 4) wv.addContact(px, py, 7, { foam: 0.85, shadow: 0.1 });
+        }
+        wv.addContact(x, y, 30, { foam: 0, shadow: 0.2 });
+      }
+      if ((key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10 && wv && wv.isShader) {
         (this.floaters = this.floaters || []).push({ img, x, y, tilt: key === 'boat_small' ? 0.3 : 0.15, rot: img.rotation || 0 });
+        const s = (o && o.scale) || 1;
+        if (key === 'boat_small') { wv.addContact(x - 34 * s, y - 17 * s, 32 * s, { foam: 0.75, shadow: 0.22 }); wv.addContact(x + 34 * s, y + 17 * s, 32 * s, { foam: 0.75, shadow: 0.22 }); }
+        else wv.addContact(x, y + 2, 26 * s, { foam: 0.6, shadow: 0.12 });
       } else if ((key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10) {
         this.tweens.add(`],
   ['src/scenes/Game.js',

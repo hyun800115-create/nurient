@@ -125,9 +125,10 @@ W.heightSync = (times = [1.3, 4.7, 8.15]) => {
   if (!wt || !wt.isShader) return null;
   const list = W.scene.children.list.slice();
   const was = list.map((o) => o.visible);
-  const hide = () => { for (const o of list) if (o !== wt.body) o.setVisible(false); };
+  // (live list: one-shot sprites may be created while the clock is applied)
+  const hide = () => { for (const o of W.scene.children.list) if (o !== wt.body) o.setVisible(false); };
   wt.setDebug('height');
-  const gl = W.game.renderer.gl, cam = W.cam, px = new Uint8Array(4), diffs = [];
+  const gl = W.game.renderer.gl, cam = W.cam, px = new Uint8Array(4), diffs = [], worst = [];
   const Wc = W.game.canvas.width, Hc = W.game.canvas.height;
   for (const t of times) {
     W.apply(t); hide();
@@ -137,7 +138,9 @@ W.heightSync = (times = [1.3, 4.7, 8.15]) => {
       if (wt.shoreDistance(p.x, p.y) < 12) continue;
       gl.readPixels(sx, Hc - 1 - sy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
       const hs = ((px[0] + px[1] / 255) / 255) * 32 - 16;
-      diffs.push(Math.abs(hs - wt.heightAt(p.x, p.y, t)));
+      const dd = Math.abs(hs - wt.heightAt(p.x, p.y, t));
+      diffs.push(dd);
+      if (dd > 1) worst.push([+p.x.toFixed(0), +p.y.toFixed(0), +wt.shoreDistance(p.x, p.y).toFixed(1), +hs.toFixed(2), +wt.heightAt(p.x, p.y, t).toFixed(2), px[2], px[3]]);
     }
   }
   wt.setDebug(null);
@@ -145,7 +148,7 @@ W.heightSync = (times = [1.3, 4.7, 8.15]) => {
   W.frame(times[0]);
   diffs.sort((a, b) => a - b);
   const n = diffs.length;
-  return { n, mean: +(diffs.reduce((a, b) => a + b, 0) / Math.max(1, n)).toFixed(4), p95: +(diffs[Math.floor(n * 0.95)] || 0).toFixed(4), max: +(diffs[n - 1] || 0).toFixed(4) };
+  return { n, mean: +(diffs.reduce((a, b) => a + b, 0) / Math.max(1, n)).toFixed(4), p95: +(diffs[Math.floor(n * 0.95)] || 0).toFixed(4), max: +(diffs[n - 1] || 0).toFixed(4), worst: worst.slice(0, 5) };
 };
 W.setQuality = (q) => { if (W.water) W.water.setQuality(q); return W.info(); };
 /** average ms per synchronous frame (gl.finish) over n frames */
@@ -184,6 +187,7 @@ function floater(sc, water, sprite, wx, wy, opts = {}) {
     // contact circles on the water plane: [dx, dy (world px from the waterline point), r, foam, shadow]
     for (const c of opts.contact) water.addContact(wx + c[0], wy + c[1], c[2], { foam: c[3], shadow: c[4] });
   }
+  if (water && opts.hull && !NOCONTACT) water.addHull(wx, wy, opts.hull[0], opts.hull[1], { foam: 0.8, shadow: 0.24 });
   return (t) => {
     let h = 0;
     if (water) {
@@ -273,7 +277,7 @@ function buildVillage(sc) {
   obj(loader.sprite(sc, 'crate', 1205, 492));
   obj(loader.sprite(sc, 'crate', 1182, 448)).setScale(0.8);
   void pier;
-  const hullX = (s) => [[-26 * s, -13 * s, 24 * s, 0.75, 0.22], [26 * s, 13 * s, 24 * s, 0.75, 0.22]];   // a hull along world X
+  const hullX = (s) => [[-34 * s, -17 * s, 32 * s, 0.75, 0.22], [34 * s, 17 * s, 32 * s, 0.75, 0.22]];   // boat_small: 2.6 x 1.1 m along world X
   ticks.push(floater(sc, water, bs1, 1650, 250, { tilt: 0.3, contact: hullX(1) }));
   ticks.push(floater(sc, water, bs2, 1290, 214, { tilt: 0.3, contact: hullX(0.85) }));
   ticks.push(floater(sc, water, ice1, 1120, 350, { tilt: 0.15, bob: 0.7, contact: [[0, 2, 26, 0.6, 0.12]] }));
@@ -289,7 +293,7 @@ function buildVillage(sc) {
   const row = loader.character(sc, 'boat_rowboat', 'idle', 'NE', 1600, 266);
   obj(row.sprite);
   // NE hull: along world -Y (screen up-right)
-  ticks.push(floater(sc, water, row.sprite, 1600, 266, { tilt: 0.35, contact: [[-22, 11, 22, 0.8, 0.22], [22, -11, 22, 0.8, 0.22]] }));
+  ticks.push(floater(sc, water, row.sprite, 1600, 266, { tilt: 0.35, hull: [row.def, 'NE'] }));
   ticks.push((t) => frameAt(row.sprite, row.frames, 3, t));
   const fb = loader.character(sc, 'boat_fishing', 'sail', 'SE', 1200, 110);
   obj(fb.sprite);
@@ -304,13 +308,13 @@ function buildVillage(sc) {
     const s = ((t * 26) % 780) - 60;
     return { x: 1180 + s * 0.894, y: 70 + s * 0.447 };
   };
-  const fbC = water && !NOCONTACT ? [water.addContact(0, 0, 30, { foam: 0.85, shadow: 0.25 }), water.addContact(0, 0, 30, { foam: 0.85, shadow: 0.25 })] : null;
+  const fbC = water && !NOCONTACT ? water.addHull(0, 0, fb.def, 'SE', { foam: 0.85, shadow: 0.25 }) : null;
   ticks.push((t) => {
     const p = path(t);
     const h = water ? water.heightAt(p.x, p.y, t) : Math.sin(t * 1.9) * 1.6;
     fb.sprite.setPosition(p.x, p.y - h).setDepth(p.y);
     frameAt(fb.sprite, fb.frames, 4, t);
-    if (fbC) { water.moveContact(fbC[0], p.x - 40, p.y - 20); water.moveContact(fbC[1], p.x + 40, p.y + 20); }
+    if (fbC) water.moveHull(fbC, p.x, p.y, fb.def, 'SE');
     if (wake) {
       if (wakeV2) wake.setPosition(p.x, p.y - h).setDepth(p.y - 3);         // hull centre at the waterline
       else wake.setPosition(p.x + wp[0] * 0.5, p.y + wp[1] * 0.5 - h).setDepth(p.y - 3);
@@ -405,12 +409,12 @@ function buildHarbor(sc) {
   const tugAt = P(-6.5, -2.2);
   const tug = loader.character(sc, 'tugboat', 'idle', 'SE', tugAt[0], tugAt[1] + WATER_PX);
   obj(tug.sprite).setFlipX(true);
-  ticks.push(floater(sc, water, tug.sprite, tugAt[0], tugAt[1] + WATER_PX, { tilt: 0.15, contact: [[-34, -17, 34, 0.8, 0.25], [34, 17, 34, 0.8, 0.25]] }));
+  ticks.push(floater(sc, water, tug.sprite, tugAt[0], tugAt[1] + WATER_PX, { tilt: 0.15, hull: [tug.def, 'SW'] }));
   ticks.push((t) => frameAt(tug.sprite, tug.frames, 3, t));
   const sbAt = P(3.6, 1.0);
   const sb = loader.character(sc, 'sailboat', 'idle', 'NE', sbAt[0], sbAt[1] + WATER_PX);
   obj(sb.sprite);
-  ticks.push(floater(sc, water, sb.sprite, sbAt[0], sbAt[1] + WATER_PX, { tilt: 0.3, contact: [[-30, 15, 30, 0.8, 0.22], [30, -15, 30, 0.8, 0.22]] }));
+  ticks.push(floater(sc, water, sb.sprite, sbAt[0], sbAt[1] + WATER_PX, { tilt: 0.3, hull: [sb.def, 'NE'] }));
   ticks.push((t) => frameAt(sb.sprite, sb.frames, 3, t));
   // buoy out in the basin, a rowboat crossing with ripples
   const bAt = P(6.5, -3.5);
@@ -429,10 +433,10 @@ function buildHarbor(sc) {
     if (water) water.crashEvents(t - 0.6, t, (x, y, st, tc, behind) => fx.show('fx_wave_crash', x, y, tc, t, 0.75 + 0.3 * st, behind ? -13600 : undefined));
     fx.end();
   });
-  const rbC = water && !NOCONTACT ? [water.addContact(0, 0, 22, { foam: 0.8, shadow: 0.2 }), water.addContact(0, 0, 22, { foam: 0.8, shadow: 0.2 })] : null;
+  const rbC = water && !NOCONTACT ? water.addHull(0, 0, rb.def, 'NE') : null;
   ticks.push((t) => {
     const p = rpath(t);
-    if (rbC) { water.moveContact(rbC[0], p.x - 22, p.y + 11); water.moveContact(rbC[1], p.x + 22, p.y - 11); }
+    if (rbC) water.moveHull(rbC, p.x, p.y, rb.def, 'NE');
     const h = water ? water.heightAt(p.x, p.y, t) : Math.sin(t * 1.9) * 1.6;
     rb.sprite.setPosition(p.x, p.y - h).setDepth(p.y);
     frameAt(rb.sprite, rb.frames, 9, t);
@@ -562,7 +566,7 @@ function buildBeach(sc) {
   const rbAt = P(-7.5, -5.0);
   const rb = loader.character(sc, 'boat_rowboat', 'idle', 'NE', rbAt[0], rbAt[1]);
   obj(rb.sprite);
-  ticks.push(floater(sc, water, rb.sprite, rbAt[0], rbAt[1], { tilt: 0.35, contact: [[-22, 11, 22, 0.8, 0.2], [22, -11, 22, 0.8, 0.2]] }));
+  ticks.push(floater(sc, water, rb.sprite, rbAt[0], rbAt[1], { tilt: 0.35, hull: [rb.def, 'NE'] }));
   ticks.push((t) => frameAt(rb.sprite, rb.frames, 3, t));
   return { water, tick: (t) => { if (water) water.clearRipples(); for (const f of ticks) f(t); } };
 }

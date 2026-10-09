@@ -23,6 +23,9 @@ import { B_OK, B_BURNING, B_RUIN, B_DEMOLISH, B_BUILD, B_DAMAGED } from './world
 import { A_HOME, A_JAIL, A_EVENT, A_SOCIAL } from './plans.js';
 
 const PETTY = ITEMS.filter((i) => i.petty).map((i) => i.idx);
+// scuffles only between people of the same age band: children with children, teens with teens, grown-ups (and elders) with grown-ups
+const bandOf = (e, r) => { const g = groupOf(e, r); return g <= G_KID ? 0 : g === G_TEEN ? 1 : 2; };
+const sameBand = (e, a, b) => bandOf(e, a) === bandOf(e, b);
 
 export class Incidents {
   constructor(e) {
@@ -140,6 +143,13 @@ export class Incidents {
     return out.slice(0, n);
   }
 
+  /** someone who pinched something in the last 12 days (and said sorry) does not do it again so soon; read from memory, so saves need nothing extra */
+  stoleLately(r) {
+    const day = this.e.clock.day;
+    for (const m of r.mem) if (m.f.k === 'theft' && m.f.a === r.id && day - m.f.day < 12) return true;
+    return false;
+  }
+
   // ---------------------------------------------------------------- theft
   theft() {
     const e = this.e, rng = e.rng, W = e.world;
@@ -148,7 +158,7 @@ export class Incidents {
     const shops = W.places.filter((p) => p.cat === 'shop' && p.state === B_OK && p.here.length >= 2 && p.sellIdx.some((i) => ITEMS[i].petty));
     if (!shops.length) return null;
     const p = shops[rng.int(shops.length)];
-    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.id !== p.owner && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE && !/police|detective/.test(r.job));
+    const cand = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.id !== p.owner && r.work !== p.idx && !this.stoleLately(r) && !(r.flags & (F_WANTED | F_JAILED)) && r.state === S_IDLE && !/police|detective/.test(r.job));
     if (!cand.length) return null;
     const ws = cand.map((r) => Math.max(0.15, 1 + r.tr[2] / 18 + (r.hunger > 60 ? 2 : 0) + (r.wallet < 10 ? 2 : 0) - r.tr[7] / 40) * (groupOf(e, r) === G_ELDER ? 0.3 : 1));   // honest folk rarely, never 'nobody'
     const thief = cand[rng.weighted(ws)];
@@ -401,7 +411,7 @@ export class Incidents {
     const a = e.people[I.culprit], b = e.people[I.victim];
     if (I.phase === 'argue') {
       const rel = ensureRel(e, a, b);
-      if (a.tr[1] < 35 && b.tr[1] < 40 && rng.chance(0.25)) {
+      if (a.tr[1] < 35 && b.tr[1] < 40 && sameBand(e, a, b) && rng.chance(0.25)) {
         this.release(a); this.release(b);
         I.outcome = 'scuffle';
         this.phase(I, 'done', 1); I.next = 0;
@@ -488,7 +498,7 @@ export class Incidents {
       for (const rel of r.adj) {
         if (!(rel.flags & RF_RIVAL) && !(rel.aff < 0 && r.tr[1] < 40)) continue;
         const o = e.people[rel.other(r.id)];
-        if (o.loc === r.loc && o.state === S_IDLE) { cand = [r, o]; if (rng.chance(0.5)) break; }
+        if (o.loc === r.loc && o.state === S_IDLE && sameBand(e, r, o)) { cand = [r, o]; if (rng.chance(0.5)) break; }
       }
       if (cand && rng.chance(0.3)) break;
     }
@@ -497,7 +507,9 @@ export class Incidents {
     const busy = e.world.places.filter((p) => p.here.length >= 4 && p.cat !== 'home');
     if (!busy.length) return null;
     const p = busy[rng.int(busy.length)];
-    const ppl = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.state === S_IDLE).sort((x, y) => x.tr[1] - y.tr[1] || x.id - y.id);
+    const all = this.present(p).filter((r) => groupOf(e, r) >= G_TEEN && r.state === S_IDLE).sort((x, y) => x.tr[1] - y.tr[1] || x.id - y.id);
+    if (!all.length) return null;
+    const ppl = all.filter((r) => sameBand(e, r, all[0]));   // teens squabble with teens, grown-ups with grown-ups
     if (ppl.length < 2 || ppl[1].tr[1] > 45) return null;
     return this.scuffle(ppl[0], ppl[1], p);
   }

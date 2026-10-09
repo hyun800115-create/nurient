@@ -5,6 +5,10 @@
 //
 // Affinity cannot be farmed: each game day a resident can gain at most DAY_GAIN from chatting, the
 // same kind of remark gives less each time it is repeated that day, and a gift counts once a day.
+//
+// Private episodes (pv: the chief was sad, hurt, flirting or rude) are kept with a gentle generic
+// line, never brought up first ("저번에 …잖아요~" skips them), never merged into a topic summary
+// and never shared. A sad or worrying one ('care') earns one quiet check-in the next day.
 
 import { toReminder, normKey, similarity } from './ko.js';
 
@@ -44,19 +48,21 @@ export class ResidentMemory {
 
   // ---------------------------------------------------------------- episodes
   /**
-   * remember something. ep: { d, k ('chat'|'gift'|'favor'|'heard'|'saw'), s (plain-form summary),
-   * tp [topics], f (-2..2 feeling), m (1..5 importance), src ('d'|'s'|'t'), by (who told) }
+   * remember something. ep: { d, k ('chat'|'gift'|'favor'|'heard'|'saw'|'care'), s (plain-form
+   * summary), tp [topics], f (-2..2 feeling), m (1..5 importance), src ('d'|'s'|'t'), by (who told),
+   * pv (private: never brought up first, never shared) }
    */
   add(ep) {
     if (!ep || !ep.s) return null;
     // a near-duplicate of a recent episode reinforces it instead
     for (let i = this.ep.length - 1; i >= Math.max(0, this.ep.length - 6); i--) {
       const e = this.ep[i];
-      if (similarity(e.s, ep.s) >= 0.82) { e.m = Math.min(5, Math.max(e.m, ep.m || 2)); e.d = ep.d; return e; }
+      if (similarity(e.s, ep.s) >= 0.82 && !!e.pv === !!ep.pv) { e.m = Math.min(5, Math.max(e.m, ep.m || 2)); e.d = ep.d; if (ep.k === 'care') delete e.ck; return e; }
     }
     const e = { i: epSeq++, d: ep.d | 0, k: ep.k || 'chat', s: String(ep.s).slice(0, 80), tp: (ep.tp || []).slice(0, 3), f: Math.max(-2, Math.min(2, ep.f | 0)), m: Math.max(1, Math.min(5, ep.m || 2)), src: ep.src || 'd' };
     if (ep.by) e.by = ep.by;
     if (ep.ai) e.ai = 1;
+    if (ep.pv) e.pv = 1;
     this.ep.push(e);
     if (this.ep.length > EP_CAP) this.consolidate(ep.d | 0);
     return e;
@@ -73,9 +79,11 @@ export class ResidentMemory {
       }
       if (wi < 0) wi = 0;
       const e = this.ep.splice(wi, 1)[0];
-      const tp = e.tp[0] || (e.k === 'gift' ? '선물' : e.k === 'heard' ? '소문' : '수다');
+      // a private moment fades into one gentle line, never into a topic summary that could be retold
+      const tp = e.pv ? '속마음' : e.tp[0] || (e.k === 'gift' ? '선물' : e.k === 'heard' ? '소문' : '수다');
+      if (e.pv) e.s = e.k === 'care' ? '촌장님이 힘든 마음을 털어놓은 적 있다' : '촌장님이랑 조금 어색한 얘기를 한 적 있다';
       let s = this.sum.find((x) => x.tp === tp);
-      if (!s) { s = { tp, n: 0, d: e.d, s: e.s, f: 0, m: e.m }; this.sum.push(s); }
+      if (!s) { s = { tp, n: 0, d: e.d, s: e.s, f: 0, m: e.m }; if (e.pv) s.pv = 1; this.sum.push(s); }
       s.n++; s.f = Math.max(-2, Math.min(2, Math.round((s.f * (s.n - 1) + e.f) / s.n)));
       if (e.m >= s.m || e.d >= s.d) { s.s = e.s; s.m = Math.max(s.m, e.m); }
       s.d = Math.max(s.d, e.d);
@@ -151,24 +159,39 @@ export class ResidentMemory {
     const tpScore = (tp) => (tp || []).reduce((a, t) => a + (topics.includes(t) ? 3 : 0), 0);
     for (const e of this.ep) {
       const nm = names.some((k) => e.by === k || e.s.includes(k)) ? 2 : 0;
-      out.push({ kind: 'ep', s: e.s, d: e.d, src: e.src, by: e.by, m: e.m, tp: e.tp, ai: e.ai, score: e.m * 1.6 + tpScore(e.tp) + nm - Math.max(0, day - e.d) * 0.35 + (e.f !== 0 ? 0.5 : 0) });
+      out.push({ kind: 'ep', s: e.s, d: e.d, src: e.src, by: e.by, m: e.m, tp: e.tp, ai: e.ai, f: e.f, pv: e.pv, k: e.k, score: e.m * 1.6 + tpScore(e.tp) + nm - Math.max(0, day - e.d) * 0.35 + (e.f !== 0 ? 0.5 : 0) });
     }
-    for (const s of this.sum) out.push({ kind: 'sum', s: s.s, d: s.d, src: 'd', m: s.m, tp: [s.tp], n: s.n, score: s.m + Math.min(3, s.n * 0.5) + tpScore([s.tp]) - Math.max(0, day - s.d) * 0.2 });
+    for (const s of this.sum) out.push({ kind: 'sum', s: s.s, d: s.d, src: 'd', m: s.m, tp: [s.tp], n: s.n, f: s.f, pv: s.pv, score: s.m + Math.min(3, s.n * 0.5) + tpScore([s.tp]) - Math.max(0, day - s.d) * 0.2 });
     for (const f of this.facts) out.push({ kind: 'fact', s: f.s, d: f.d, src: 'd', m: 3, score: 3 + f.n * 0.5 + (topics.some((t) => f.s.includes(t)) ? 3 : 0) });
     for (const f of this.openFavors()) out.push({ kind: 'favor', s: f.s, d: f.d, src: 'd', m: 3, item: f.item, score: 2.5 });
     out.sort((a, b) => b.score - a.score);
     return out.slice(0, n);
   }
 
-  /** a reminder sentence for the offline brain ("저번에 …했잖아") from a memory worth recalling */
+  /**
+   * a reminder sentence for the offline brain ("저번에 …했잖아") from a memory worth recalling:
+   * only happy or neutral ones the resident may bring up (never private ones, never sad or rude ones)
+   */
   reminder(opts) {
-    for (const m of this.recall(Object.assign({ n: 8 }, opts))) {
-      if (m.kind === 'favor') continue;
+    for (const m of this.recall(Object.assign({ n: 10 }, opts))) {
+      if (m.kind === 'favor' || m.pv || (m.f || 0) < 0) continue;
       const r = toReminder(m.s);
       if (r) return { text: r, mem: m };
     }
     return null;
   }
+
+  /** a private sad moment from an earlier day not checked on yet (one quiet "요즘은 괜찮아요?") */
+  careDue(day) {
+    for (let i = this.ep.length - 1; i >= 0; i--) {
+      const e = this.ep[i];
+      if (e.k === 'care' && e.pv && !e.ck && e.d < day && day - e.d <= 3) return e;
+    }
+    return null;
+  }
+
+  /** the check-in happened: every earlier sad moment counts as checked on */
+  cared(day) { for (const e of this.ep) if (e.k === 'care' && e.d < day) e.ck = 1; }
 
   // ---------------------------------------------------------------- chat log
   pushLog(who, text, emote, src) {

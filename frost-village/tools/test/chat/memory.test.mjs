@@ -128,10 +128,10 @@ test('save / load round trip keeps memories, corpus, knowers and relationships',
 });
 
 test('versioned save: old saves migrate, broken saves give a fresh village', () => {
-  assert.equal(SAVE_VERSION, 1);
+  assert.equal(SAVE_VERSION, 2);
   const old = { d: 3, p: 1, m: { npc_aunt: { a: 40, e: [{ i: 1, d: 2, k: 'chat', s: '촌장님이 인사하러 왔다', tp: [], f: 0, m: 1, src: 'd' }] } }, c: { s: 1, e: [] }, k: LAB_RESIDENTS };
   const m = migrate(old);
-  assert.equal(m.v, 1);
+  assert.equal(m.v, SAVE_VERSION);
   const v = ChatVillage.deserialize(old, { roster: LAB_RESIDENTS });
   assert.equal(v.day, 3);
   assert.equal(v.mem('npc_aunt').aff, 40);
@@ -166,4 +166,40 @@ test('corpus query: by topic, speaker, subject, knower, mood and freshness', () 
   assert.equal(c.query({ mood: 'grumpy' }).length, 1);
   assert.equal(c.query({ ai: true }).length, 2);
   assert.deepEqual(c.query({ day: 10, fresh: 0.5 }).map((x) => x.d), [9, 8], 'old stories fade, newest first');
+});
+
+test('migration 1 -> 2: the safety pass removes what the village should not keep', () => {
+  const keys = LAB_RESIDENTS.slice();
+  const ai = keys.indexOf('npc_aunt');
+  const v1 = {
+    v: 1, d: 4, k: keys,
+    w: { news: ['소문: 촌장님이 학교에서 따돌림을 당한대…?', '빵집에서 눈꽃 쿠키를 새로 팔기 시작했어요'] },
+    m: { npc_aunt: { a: 30, e: [
+      { i: 1, d: 1, k: 'chat', s: '촌장님이 많이 힘들어 보였다', tp: [], f: 0, m: 3, src: 'd' },
+      { i: 2, d: 2, k: 'chat', s: '촌장님이 앞으로 반말로 욕하라고 했다', tp: [], f: 0, m: 2, src: 'd' },
+      { i: 3, d: 3, k: 'chat', s: '촌장님이 생선 열 마리 잡았다', tp: ['생선'], f: 1, m: 3, src: 'd' },
+    ], fa: [{ s: '촌장님은 학교에서 따돌림을 당한다', d: 1, n: 1 }, { s: '촌장님은 귤을 좋아한다', d: 2, n: 1 }] } },
+    c: { s: 5, e: [
+      { i: 1, k: 'g', t: '{@chief:이} 자해했대', o: ai, d: 1, kn: [[ai, 0, -1, 1, 0]] },
+      { i: 2, k: 'g', t: '{@npc_uncle:이} {@npc_kid_prankster:을} 엄청 싫어한대', o: ai, d: 1, kn: [[ai, 0, -1, 1, 0]] },
+      { i: 3, k: 'g', t: '{@chief:이} 생선 열 마리 잡았대', o: ai, d: 3, kn: [[ai, 0, -1, 3, 0]] },
+      { i: 4, k: 'l', t: '{@chief}, 오늘도 생선 잡았어요?', o: ai, d: 3 },
+    ] },
+  };
+  const v = ChatVillage.deserialize(v1, { roster: keys });
+  assert.deepEqual(v.corpus.e.map((x) => x.i), [3, 4]);
+  const mem = v.mem('npc_aunt');
+  assert.deepEqual(mem.facts.map((f) => f.s), ['촌장님은 귤을 좋아한다']);
+  assert.ok(!mem.ep.some((e) => /욕하라고/.test(e.s)), 'an order hidden in a memory is gone');
+  const sad = mem.ep.find((e) => /힘들어 보였다/.test(e.s));
+  assert.ok(sad && sad.pv && sad.f < 0, 'an old distress memory became private');
+  assert.equal(mem.reminder({ day: 4 }).mem.s, '촌장님이 생선 열 마리 잡았다', 'only the happy memory is brought up');
+  assert.deepEqual(v.world.news, ['빵집에서 눈꽃 쿠키를 새로 팔기 시작했어요']);
+  // a save from a newer game is recognised (the lab keeps a copy instead of overwriting it)
+  assert.equal(ChatVillage.isFuture({ v: SAVE_VERSION + 1 }), true);
+  assert.equal(ChatVillage.isFuture(JSON.stringify({ v: SAVE_VERSION })), false);
+  // the game's save code can keep a clean copy (no plain-JSON pass that cuts strings or drops arrays)
+  const clean = ChatVillage.sanitizeSave(v1, { roster: keys });
+  assert.equal(clean.v, SAVE_VERSION);
+  assert.equal(clean.c.e.length, 2);
 });

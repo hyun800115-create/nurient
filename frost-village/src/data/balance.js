@@ -354,5 +354,48 @@ export const BALANCE = {
       elder: { out: 9, cafe: 11, clinicChance: 0.2, home: 18, tripMorning: [9, 12], tripAfternoon: [14, 17] },
       night: { dozers: 3, patrol: 1 },
     },
+
+    // ---- (v4-B) 주문·가게·등급·집·텍스처
+    // ── 도매: 짐 싣는 곳 / 새 가게 선반 / 목수 집터에 물건을 보내면 '판매 가격 × rate' 코인이 역 금고에 쌓여요
+    wholesale: { rate: 0.7 },
+    // ── 주문판: cards = 한 번에 걸리는 주문 카드 수, swapAfter = 진행이 없으면 이만큼(초) 뒤 '다른 주문' 버튼
+    //    bonus = 가게를 여는 주문을 다 채우면 (필요한 물건 값 합계 × bonus) 코인을 더 줘요
+    //    standingBonus = 정기 납품 주문의 보너스 (standingBonusRank2 = 읍이 된 뒤)
+    //    standing = 가게 5곳이 다 열린 뒤 돌아가며 나오는 정기 납품 주문 (물건: 개수)
+    orders: { cards: 3, swapAfter: 180, bonus: 0.5, standingBonus: 0.3, standingBonusRank2: 0.5,
+              standing: [{ item_bread: 40 }, { item_fish_cooked: 50 }, { item_plank: 40 }, { item_ingot: 25 }, { item_can: 30 }, { item_meat_cooked: 25 }] },
+    // ── 가게 열기 (주문을 다 채우면 다음 기차로 가게 주인과 목수가 와서 지어요)
+    //    buildTime = 짓는 시간(초), ribbonAuto = 테이프를 안 잘라도 이만큼(초) 뒤 저절로 개업, household = 주인 가족 수
+    //    order = 주문이 나오는 순서, lots = 가게가 서는 자리 (world.js v4.lots)
+    //    shops.<가게>: need = 주문 (물건: 개수), rent = 월세(코인/분), sells = 파는 물건 (= 채워 주는 물건),
+    //                  after = 이게 있어야 주문이 나와요 (zone_xxx = 땅, b:건물 = 지은 건물)
+    //    shopShelf = 새 가게 선반 한 칸(물건 하나)에 들어가는 개수, inlandEvery = 솔방울 마을 손님이 이만큼(초)마다 하나씩 사 감
+    founding: { buildTime: 25, ribbonAuto: 90, household: 2,
+                order: ['cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'],
+                lots: { cafe: 'lotA1', restaurant: 'lotA2', carpenter_workshop: 'lotA3', hardware_store: 'lotB1', supermarket: 'lotB5' },
+                shops: {
+                  cafe:               { need: { item_bread: 30 },                               rent: 20, sells: ['item_bread'],                                   after: 'zone_farm' },
+                  restaurant:         { need: { item_fish_cooked: 40, item_meat_cooked: 15 },   rent: 30, sells: ['item_fish_cooked', 'item_meat_cooked'],         after: 'zone_hunt' },
+                  carpenter_workshop: { need: { item_plank: 50 },                               rent: 25, sells: [],                                               after: 'zone_forest' },
+                  hardware_store:     { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
+                  supermarket:        { need: { item_can: 30, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
+                },
+                shopShelf: 20, inlandEvery: 40 },
+    // ── 역 짐꾼 (역 광장에서 고용): 첫째 / 둘째 값 (둘째는 가게가 3곳 열린 뒤), 한 번에 나르는 개수
+    stationPorter: [600, 1100], stationPorterCapacity: 12,
+    // ── 목수의 집 (목공소가 열리면): item_plank = 집 하나에 드는 판자, time = 짓는 시간(초), people = 이사 오는 사람 수
+    //    lots = 집터 (lotsRank2 = 읍이 된 뒤 더 생기는 집터)
+    houses: { item_plank: 20, time: 30, people: 4, lots: ['lotH1', 'lotH2', 'lotH3'], lotsRank2: ['lotH4', 'lotH5', 'lotB2', 'lotB3'] },
+    // ── 월세: cap = 역 금고에 쌓이는 월세의 최대, autoFromRank = 이 등급부터 역 금고가 저절로 비워짐, autoEvery = 몇 초마다
+    rent: { cap: 2000, autoFromRank: 2, autoEvery: 15 },
+    // ── 행복: window = 최근 손님 몇 명으로 계산할지, base = 가장 낮은 행복 (손님이 다 아쉬워해도)
+    happiness: { window: 40, base: 50 },
+    // ── 등급: 2 = 읍 (people = 사람 수, shops = 연 가게 수, happy = 행복, coins = 승격식 비용)
+    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 3000 } },
+    // ── 승격식: length = 길이(초), skipAfter = 이만큼(초) 지나면 조이스틱으로 건너뛰기
+    ceremony: { length: 12, skipAfter: 3 },
+    // ── 텍스처 메모리 (MiB): mustMiB = 넘으면 안 되는 한도, targetMiB = 목표, lowMiB = 가벼운 그래픽 목표,
+    //    softGap = 목표보다 이만큼 아래부터 안 쓰는 그림을 치워요, uploadsPerSec = 1초에 새로 올리는 그림 수
+    tex: { mustMiB: 455, targetMiB: 300, lowMiB: 200, softGap: 24, uploadsPerSec: 10 },
   },
 };

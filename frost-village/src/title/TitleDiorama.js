@@ -14,12 +14,18 @@ import { TitleAssets } from './TitleAssets.js';
 import { tod3 } from './TitleFx.js';
 
 const ADD = () => Phaser.BlendModes.ADD;
+// window / lamp / headlight glows are many and sit between the buildings in depth order: they use NORMAL
+// blending (a warm, partly transparent picture) so they batch with the sprites around them instead of
+// breaking the batch with a blend switch each (about 90 -> 30 draw calls at night). The few big lights
+// (fires, lighthouse) stay additive.
+const LIGHT = () => Phaser.BlendModes.NORMAL;
 const D_GROUND = -100000;
 const D_AIR = 100000;
 const WARM = 0xffd58f;
 const LAMP_KEYS = { streetlight: ['light'], streetlight_double: ['lightA', 'lightB'], harbor_lamp: ['light'], lamp_post: null, buoy: ['light'] };
 const TINT = [0xffffff, 0xf6c7ad, 0x6d7dbd];      // pictures: day, dusk, night
 const SMOKE_TINT = [0xffffff, 0xf3d6cc, 0x9aa6d0];
+const GULL_SE = 'seagull:fly:SE', GULL_NE = 'seagull:fly:NE';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smooth = (a, b, v) => { const t = clamp01((v - a) / (b - a)); return t * t * (3 - 2 * t); };
@@ -170,7 +176,7 @@ export class TitleDiorama {
     // night glow of the windows
     const g = r.sp && r.sp.glow;
     if (g && s.textures.exists(g.tex)) {
-      const gi = s.add.image(r.x, r.y, g.tex, g.frame).setOrigin(g.ox, g.oy).setScale(1 / (r.sp.scale * g.res)).setBlendMode(ADD())
+      const gi = s.add.image(r.x, r.y, g.tex, g.frame).setOrigin(g.ox, g.oy).setScale(1 / (r.sp.scale * g.res)).setBlendMode(LIGHT())
         .setDepth(r.y + 0.5).setVisible(false).setAlpha(0);
       if (o.f) gi.setFlipX(true);
       this.put(gi);
@@ -194,11 +200,11 @@ export class TitleDiorama {
   addLamp(r, x, y, sc, pool) {
     const s = this.scene;
     const gl = Assets.sprite('fx_glow');
-    const img = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(ADD()).setTint(WARM).setScale(sc).setDepth(r.y + 0.6).setVisible(false).setAlpha(0);
+    const img = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(LIGHT()).setTint(WARM).setScale(sc).setDepth(r.y + 0.6).setVisible(false).setAlpha(0);
     this.put(img);
     let pl = null;
     if (pool) {
-      pl = s.add.image(r.x, r.y + 2, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xffc777).setScale(sc * 2.6, sc * 1.25).setDepth(r.y - 30).setVisible(false).setAlpha(0);
+      pl = s.add.image(r.x, r.y + 2, gl.tex, gl.frame).setBlendMode(LIGHT()).setTint(0xffc777).setScale(sc * 2.6, sc * 1.25).setDepth(r.y - 30).setVisible(false).setAlpha(0);
       this.put(pl);
     }
     this.lamps.push({ img, pool: pl, rec: r, ph: hash(this.lamps.length + 11) * 6.28 });
@@ -483,7 +489,15 @@ export class TitleDiorama {
       key = Assets.charAnim(w.char, anim, base);
       if (key !== w.key) { const d = Assets.charDef(w.char); w.spr.setOrigin(d.anchor[0], d.anchor[1]).setScale(1); }
     }
-    if (key && key !== w.key) { w.key = key; if (this.reduced) w.spr.anims.stop(); else w.spr.play(key, true); if (this.reduced) w.spr.setFrame(this.scene.anims.get(key).frames[0].frame.name); }
+    if (key && key !== w.key) {
+      w.key = key;
+      if (this.reduced) {
+        // reduced motion: hold the first pose of the anim
+        const f0 = this.scene.anims.get(key).frames[0];
+        w.spr.anims.stop();
+        w.spr.setTexture(f0.textureKey, f0.textureFrame);
+      } else w.spr.play(key, true);
+    }
     w.spr.setFlipX(flip);
     w.dir = dirIdx;
   }
@@ -492,7 +506,9 @@ export class TitleDiorama {
     const cs = this.charSprite(a.char);
     if (!cs) return;
     const s = this.scene;
-    const w = { def: a, char: a.char, spr: cs.spr, baked: cs.baked, key: null, i: 0, mx: a.path[0][0], my: a.path[0][1], back: false, dir: 1, shadow: null, stack: null, appear: 0 };
+    // (reduced motion: everyone stands still at the second point of the path, facing the camera)
+    const p0 = this.reduced && a.path.length > 1 ? a.path[1] : a.path[0];
+    const w = { def: a, char: a.char, spr: cs.spr, baked: cs.baked, key: null, i: this.reduced && a.path.length > 1 ? 1 : 0, mx: p0[0], my: p0[1], back: false, dir: 1, shadow: null, stack: null, appear: 0 };
     const d = cs.baked ? null : Assets.charDef(a.char);
     const sh = s.add.image(0, 0, 'fv_shadow').setAlpha(0.5);
     const shw = d && d.shadow ? d.shadow : [46, 18];
@@ -511,7 +527,9 @@ export class TitleDiorama {
         w.stack.push(im);
       }
     }
-    if (a.speed > 0) {
+    if (this.reduced) {
+      this.playChar(w, a.speed > 0 ? a.anim : a.anim, 2);
+    } else if (a.speed > 0) {
       const p1 = a.path[1] || a.path[0];
       this.playChar(w, a.anim, dirFromVec(wx(p1[0], p1[1]) - wx(w.mx, w.my), wy(p1[0], p1[1]) - wy(w.mx, w.my)));
     } else {
@@ -587,7 +605,7 @@ export class TitleDiorama {
     this.put(spr);
     // headlights at night
     const gl = Assets.sprite('fx_glow');
-    const hl = s.add.image(0, 0, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xfff1c4).setScale(0.32, 0.22).setAlpha(0);
+    const hl = s.add.image(0, 0, gl.tex, gl.frame).setBlendMode(LIGHT()).setTint(0xfff1c4).setScale(0.32, 0.22).setAlpha(0);
     this.put(hl);
     const span = 15.5;
     const veh = { def: v, spr, hl, mx: v.dir > 0 ? -span + v.gap * 0.8 : span - v.gap * 0.8, v: v.speed, wait: 0, span, retired: false, alpha: 0 };
@@ -774,14 +792,13 @@ export class TitleDiorama {
       const x = wx(mx, my), y = wy(mx, my) - g.h - Math.sin(gl.ang * 2) * 12;
       // direction of travel (tangent)
       const vx = wx(-Math.sin(gl.ang), Math.cos(gl.ang)), vy = wy(-Math.sin(gl.ang), Math.cos(gl.ang));
-      const dir = vy >= 0 ? 'SE' : 'NE';
       const flip = vx < 0;
-      const name = 'seagull:fly:' + dir;
+      const name = vy >= 0 ? GULL_SE : GULL_NE;
       if (gl.key !== name) {
         const a = TitleAssets.actor(name);
         if (a) {
           const k = TitleAssets.anim(this.scene, name, a.frames, a.fps);
-          if (k) { if (this.reduced) gl.spr.setFrame(a.frames[0][1]); else gl.spr.play(k, true); gl.spr.setOrigin(a.ox, a.oy); }
+          if (k) { if (this.reduced) gl.spr.setTexture(a.frames[0][0], a.frames[0][1]); else gl.spr.play(k, true); gl.spr.setOrigin(a.ox, a.oy); }
         }
         gl.key = name;
       }

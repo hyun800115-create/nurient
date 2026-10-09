@@ -211,6 +211,7 @@ export class Dialogue {
     const set = (i) => { m[i >> 5] |= 1 << (i & 31); };
     const gs = groupOf(e, sp);
     set([C.toddler, C.kid, C.teen, C.adult, C.elder][gs]);
+    if (gs === G_KID && ageOf(e, sp) < 7) set(C.little);
     set(sp.male ? C.male : C.female);
     const lv = ls ? this.levelFor(sp, ls, rel) : b.to === CHIEF ? 2 : 0;
     ctx.level = lv;
@@ -298,6 +299,7 @@ export class Dialogue {
       const anon = b.d === D_ANON || f.a < 0 || (f.k === 'wanted' && !this.knowsCulprit(sp, f));
       if (anon) set(C.anon);
       if (b.d) set(C.distort);
+      if (b.d === D_PLACE && b.alt < 0) set(C.noplace);
       if (f.a === sp.id) set(C.self);
       if (f.p >= 0 && f.p === sp.home) set(C.myhome);
       if (f.b === sp.id) set(C.self2);
@@ -305,7 +307,11 @@ export class Dialogue {
       if (ls && f.b === ls.id) set(C.lvictim);
       if (b.src === SRC_SEEN) set(C.seen); else if (b.src === SRC_TOLD) set(C.told); else if (b.src === SRC_NEWS) set(C.news); else if (b.src === SRC_DID) set(C.did);
       if (b.src <= SRC_NEWS) set(C.known);   // the speaker knows the story in some version (not just 'asked about it')
-      if (f.k === 'theft' || f.k === 'wanted' || f.k === 'arrest') { if (f.st === 1) set(C.caught); else if (f.st === 2) set(C.escaped); }
+      if (f.k === 'theft' || f.k === 'wanted' || f.k === 'arrest') {
+        // what the speaker knows, not what really happened (only the paper knows everything)
+        const st = f.k === 'arrest' ? 1 : this.press || !sp || !sp.mem ? f.st : this.knowsCaught(sp, f.k === 'theft' ? f.id : f.ref, f.k === 'wanted');
+        if (st === 1) set(C.caught); else if (st === 2) set(C.escaped);
+      }
       if (f.k === 'ruin' || ((f.k === 'fire' || f.k === 'fire_out') && (f.st === 2 || f.n === 1 && f.k === 'fire_out'))) set(C.ruin);
       if ((f.k === 'fire' && f.st === 1) || (f.k === 'fire_out' && f.n === 0)) set(C.minor);
       const age = (e.now - f.sec) / e.cfg.dayLength;
@@ -400,6 +406,14 @@ export class Dialogue {
     if (this.press) return this.pressName(t, lang);
     if (lang === 'en') return this.referEn(sp, t);
     return this.referKo(sp, t).text;
+  }
+
+  /** 1 if sp knows the thief of theft fact `tid` was caught, 2 if sp knows they got away (a wanted poster), else 0 */
+  knowsCaught(sp, tid, wanted) {
+    for (const m of sp.mem) if ((m.f.k === 'arrest' || m.f.k === 'apology') && m.f.ref === tid) return 1;
+    if (wanted) return 2;
+    for (const m of sp.mem) if (m.f.k === 'wanted' && m.f.ref === tid) return 2;
+    return 0;
   }
 
   /** how the paper names people: full name with a neutral title (박민수 씨, 김도윤 어린이, 최순자 어르신 …) */
@@ -772,7 +786,8 @@ export class Dialogue {
       // one line per person talked to, at most two chats a day (the rest of the day gets a say too)
       const key = kind === 'talk' || kind === 'meet' || kind === 'friend' || kind === 'gift' || kind === 'help' ? kind + ':' + other : kind;
       if (seen.has(key) || (seen.has(kind) && rank(kind) < 4)) continue;
-      if (kind === 'talk' && talks >= 2) continue;
+      if (kind === 'talk' && (talks >= 2 || (other >= 0 && seen.has('who:' + other)))) continue;   // 'became friends with X' already says they met
+      if (other >= 0) seen.add('who:' + other);
       if (kind === 'talk') talks++;
       seen.add(key); seen.add(kind);
       const f = fid ? e.facts.get(fid) || null : null;

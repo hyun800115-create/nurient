@@ -83,7 +83,7 @@ function ffmpegGif(dir, pattern, fps, out, scale) {
 }
 
 const GIFS = {
-  village: { zoom: 1.0, t0: 2.0, frames: 72, fps: 15, crop: { x: 0, y: 140, width: 390, height: 560 } },
+  village: { zoom: 1.0, t0: 2.0, frames: 72, fps: 15, crop: { x: 0, y: 40, width: 390, height: 560 } },
   harbor: { zoom: 0.9, t0: 1.0, frames: 72, fps: 15, crop: { x: 0, y: 140, width: 390, height: 560 } },
   beach: { zoom: 0.95, t0: 4.0, frames: 90, fps: 15, crop: { x: 0, y: 150, width: 390, height: 560 } },
 };
@@ -167,9 +167,31 @@ async function check() {
       const { page, ctx, errors } = await open({ scene, mode, quality, zoom: 1.0 });
       for (const t of [0, 1.7, 9.3]) await page.evaluate((tt) => window.__W.frame(tt), t);
       const info = await page.evaluate(() => window.__W.info());
-      out.push({ scene, mode, quality, info, errors });
+      // the shader's own height vs Water.heightAt (debug readback), both qualities
+      const heightSync = mode === 'new' ? await page.evaluate(() => window.__W.heightSync()) : null;
+      if (heightSync && heightSync.p95 > 0.25) errors.push(`heightSync ${scene} ${quality}: p95 ${heightSync.p95} px`);
+      if (info.fragUniformVectors > 60) errors.push(`${scene} ${quality}: ${info.fragUniformVectors} fragment uniform vectors (> 60)`);
+      out.push({ scene, mode, quality, info, heightSync, errors });
       await ctx.close();
     }
+  }
+  // a mediump-only GPU: the fragment stage forced to mediump (no uniform may be shared with the vertex stage)
+  for (const scene of ['village', 'beach']) {
+    const { page, ctx, errors } = await open({ scene, mode: 'new', quality: 'high', precision: 'mediump' });
+    await page.evaluate(() => window.__W.frame(3));
+    const info = await page.evaluate(() => window.__W.info());
+    if (!info.shader) errors.push('mediump: the shader did not link (fell back to the old sea)');
+    await page.locator('canvas').screenshot({ path: path.join(TMP, `mediump_${scene}.png`) });
+    out.push({ scene, mode: 'new', precision: 'mediump', info, errors });
+    await ctx.close();
+  }
+  // night (DayClock-like MULTIPLY overlay + Water.setLighting({ dark }))
+  {
+    const { page, ctx, errors } = await open({ scene: 'village', mode: 'new', quality: 'high', dark: 0.6 });
+    await page.evaluate(() => window.__W.frame(4));
+    await page.locator('canvas').screenshot({ path: path.join(TMP, 'night_village.png') });
+    out.push({ scene: 'village', mode: 'new', dark: 0.6, info: await page.evaluate(() => window.__W.info()), errors });
+    await ctx.close();
   }
   // canvas renderer fallback
   const { page, ctx, errors } = await open({ scene: 'village', mode: 'new', renderer: 'canvas' });
@@ -196,10 +218,12 @@ async function ingame() {
   const camOpt = opt('cam') ? opt('cam').split(',').map(Number) : null;
   const runs = [
     { name: 'old', patch: false, zoom: 1.0, cam: [1440, 580] },
-    { name: 'new_high', patch: true, zoom: 1.0, cam: [1440, 580] },
-    { name: 'new_high_z06', patch: true, zoom: 0.6, cam: [1440, 1100] },
-    { name: 'new_high_z12', patch: true, zoom: 1.2, cam: [1440, 470] },
+    { name: 'new_high', patch: true, zoom: 1.0, quality: 'high', cam: [1440, 580] },
+    { name: 'new_high_z06', patch: true, zoom: 0.6, quality: 'high', cam: [1440, 1100] },
+    { name: 'new_high_z12', patch: true, zoom: 1.2, quality: 'high', cam: [1440, 470] },
     { name: 'new_low', patch: true, zoom: 1.0, quality: 'low', cam: [1440, 580] },
+    { name: 'old_z06_top', patch: false, zoom: 0.6, cam: [1300, 250] },
+    { name: 'new_high_z06_top', patch: true, zoom: 0.6, quality: 'high', cam: [1300, 250] },
   ];
   const only = opt('only');
   const out = { missing: {}, runs: [] };
@@ -273,10 +297,12 @@ async function ingame() {
   const f = (n) => path.join(TMP, `ingame_${n}.png`);
   if (!only) {
     const crop = (src, dst) => execFileSync('python3', ['-c', `from PIL import Image; Image.open('${src}').convert('RGB').crop((0, 0, 780, 1240)).save('${dst}')`]);
-    for (const n of ['old', 'new_high', 'new_high_z06', 'new_high_z12', 'new_low']) crop(f(n), f(n + '_c'));
-    execFileSync('python3', [path.join(ROOT, 'tools', 'test', 'water_lab', 'compose.py'), 'strip', path.join(PREV, 'water_ingame.png'), '5',
-      f('old_c'), f('new_high_c'), f('new_low_c'), f('new_high_z06_c'), f('new_high_z12_c'),
-      'GAME TODAY (tileSprite sea), zoom 1.0', 'GAME + Ground.js patch, Water high, zoom 1.0', '... Water low (물결 품질: 간단)', '... Water high, zoom 0.6', '... Water high, zoom 1.2']);
+    const names = ['old', 'new_high', 'new_low', 'new_high_z12', 'old_z06_top', 'new_high_z06_top'];
+    for (const n of names) crop(f(n), f(n + '_c'));
+    execFileSync('python3', [path.join(ROOT, 'tools', 'test', 'water_lab', 'compose.py'), 'strip', path.join(PREV, 'water_ingame.png'), '3',
+      ...names.map((n) => f(n + '_c')),
+      'GAME TODAY (tileSprite sea), zoom 1.0', 'GAME + patch: Water high, zoom 1.0', '... Water low (물결 품질: 간단)', '... Water high, zoom 1.2 (default)',
+      'TODAY, zoom 0.6 above the sea edge', 'Water high, zoom 0.6: open sea past the edge']);
     out.preview = path.join(PREV, 'water_ingame.png');
   }
   fs.writeFileSync(path.join(TMP, 'ingame.json'), JSON.stringify(out, null, 1));

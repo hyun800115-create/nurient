@@ -106,7 +106,7 @@ const END_PUNCT = /([\s.!?~…♪♡ㅎㅋ^]*)$/;
  */
 export function levelize(text, level) {
   if (!text) return '';
-  const parts = String(text).split(/(?<=[.!?…~])\s+/);
+  const parts = String(text).replace(/([.!?…~])\s+/g, '$1\u0000').split('\u0000');
   return parts.map((s) => levelOne(s, level)).join(' ');
 }
 

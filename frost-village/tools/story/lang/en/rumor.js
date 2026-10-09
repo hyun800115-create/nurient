@@ -10,7 +10,7 @@ export default {
     '?foodie? #pre#{X} must have been hungry — they took the {I} from {P}.', '?anon? *3 #pre#a little thief visited {P} {T}!', '?anon? *2 #pre#someone took the {I} from {P}!', '?anon? #pre#the {I} at {P} vanished into thin air!',
     '?ex1? *2 #pre#{X} took an armful of {I} from {P}!', '?ex1 anon? #pre#a thief cleared out a whole sack of {I} from {P}!', '?ex2? *2 #pre#{X} took every last bit of {I} at {P}!', '?ex2 anon? #pre#not a single {I} is left at {P} — a thief took it all!',
     '?ex3? *3 #pre#{X} practically emptied {P}! The shelves are bare!', '?ex3 anon? #pre#a whole gang of thieves hit {P} and loaded everything on a sled!',
-    '?caught? *2 #pre#{X} got caught red-handed taking the {I}!', '?escaped? *2 #pre#the thief who took the {I} from {P} still hasn’t been caught!',
+    '?caught? *8 #pre#{X} got caught red-handed taking the {I}!', '?escaped? *2 #pre#the thief who took the {I} from {P} still hasn’t been caught!',
     '?self2? *4 [Guess what, a thief got into our {B} {T}! They took the {I}.|Would you believe it, a thief got into our {B} {T}! They took the {I}.|A thief got into our {B} {T}, I’m afraid.]',
     '?kid? *2 [{X} stole the {I} at {P}! The police ran after them!|{X} stole the {I} at {P}! The police chased them!|{X} took the {I} at {P}!]', '?kid anon? [A thief came to {P}! Scary!|A thief came to {P}! Scary!|A thief came to {P}!]',
     '?elder? [A theft at {P}, of all things. Tsk.|A theft at {P}, of all things.|A theft at {P}, they say.]',
@@ -37,7 +37,7 @@ export default {
   'rumor.reconcile': ['*2 #pre#{X} and {Y} made up.', '#pre#{X} and {Y} decided to be friends again.', '#pre#{X} reached out to {Y} first.', '?ex1? #pre#{X} and {Y} made up and even shared fish buns!'],
   'rumor.fire': [
     '*3 #pre#there was a fire at {P} {T}!', '*2 #pre#{P} caught fire because of {E}.', '#pre#{X}’s {B} caught fire!', '#pre#the fire engine went racing to {P} with its siren on!',
-    '?distort? *3 #pre#there was a fire somewhere {T}! Smoke went up into the sky!', '?minor? *2 #pre#there was a fire at {P}, but it was put out quickly.', '?ruin? *2 #pre#{P} burnt right down!',
+    '?noplace? *3 #pre#there was a fire somewhere {T}! Smoke went up into the sky!', '?minor? *2 #pre#there was a fire at {P}, but it was put out quickly.', '?ruin? *2 #pre#{P} burnt right down!',
     '?ex1? #pre#the smoke from {P} covered the whole sky!', '?ex2? #pre#the fire at {P} was so big they saw it from the next village!', '?ex3? #pre#the whole town nearly went up because of the fire at {P}!',
     '?seen? *2 [I saw smoke pouring out of {P}!|I saw smoke coming out of {P}!|I saw smoke over {P}.]', '?kid? [There was a fire at {P}! The fire truck came!|There was a fire at {P}! The fire engine came!|There was a fire at {P}.]',
     '?elder? [Oh dear, a fire at {P}.|Oh dear, a fire at {P}.|A fire at {P}, I hear.]',

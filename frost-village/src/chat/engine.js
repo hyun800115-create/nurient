@@ -14,10 +14,11 @@ import { OfflineBrain } from './offline.js';
 import { SampleBrain, ChatError, salvageReply } from './brains.js';
 import { buildPrompt, BUDGET } from './prompt.js';
 import { sanitizeResult, cleanPlayerText, isClean } from './sanitize.js';
-import { detectIntent } from './intent.js';
+import { detectIntent, PRIVATE_INTENTS } from './intent.js';
 import { SUMMARY } from './lines.js';
 import { toHearsay, render, CASUAL } from './ko.js';
 import { slotify } from './sanitize.js';
+import { gossipOk, isSensitive } from './safety.js';
 
 export const DEFAULTS = {
   cooldownMs: 1800,        // between AI calls
@@ -145,17 +146,29 @@ export class ChatEngine {
       return this.finishFallback(key, intent, 'empty_reply');
     }
     const result = san.result;
-    // fill what the model left out from the offline reading of the message
-    if (!result.memory && SUMMARY[intent.intent]) result.memory = render(SUMMARY[intent.intent], { person: intent.names[0] ? v.personas[intent.names[0].key].short : '', topic: intent.topics[0] || '' }, CASUAL);
-    if (!result.topics.length) result.topics = intent.topics.slice();
-    if (!result.gossip.length && intent.intent !== 'distress') {
-      // the model wrote no rumour: make one from what the chief revealed (a fact, or their own news)
-      const src = result.facts[0] || (intent.deed && intent.deed.plain) || '';
-      const h = src && isClean(src) ? toHearsay(src) : '';
-      if (h) result.gossip.push(slotify(h, v.personas, v.chiefName));
+    // a private moment: the model said so, the offline reading says so, the resident sounds worried
+    // about something the chief said, or the chief's words are sensitive (school, family, health …)
+    const priv = result.private || PRIVATE_INTENTS.includes(intent.intent) || (intent.deed && !intent.deed.share) ||
+      (['sad', 'worried'].includes(result.mood) && ['unknown', 'tell', 'sad', 'distress', 'vent'].includes(intent.intent)) || isSensitive(clean, { aboutChief: true });
+    if (priv) {
+      result.private = true;
+      result.gossip = []; result.lines = []; result.facts = [];
+      // what is kept is a gentle generic line, never the details
+      result.memory = intent.intent === 'distress' ? SUMMARY.distress : intent.intent === 'sad' || ['sad', 'worried'].includes(result.mood) ? SUMMARY.sad : intent.intent === 'rude' ? SUMMARY.rude : '';
+      if (result.memory === SUMMARY.distress || result.memory === SUMMARY.sad) result.memKind = 'care';
+      if (intent.intent === 'distress') result.care = true;
+    } else {
+      // fill what the model left out from the offline reading of the message
+      if (!result.memory && SUMMARY[intent.intent]) result.memory = render(SUMMARY[intent.intent], { person: intent.names[0] ? v.personas[intent.names[0].key].short : '', topic: intent.topics[0] || '' }, CASUAL);
+      if (!result.memory && intent.deed) result.memory = intent.deed.plain;
+      // the model wrote no rumour, but the chief told their own shareable news: that one travels
+      // (never a rumour made from a "fact": the model leaving gossip out is a choice)
+      if (!result.gossip.length && intent.deed && intent.deed.share) {
+        const h = toHearsay(intent.deed.plain);
+        if (h) result.gossip.push(slotify(h, v.personas, v.chiefName));
+      }
     }
-    if (!result.memory && intent.deed) result.memory = intent.deed.plain;
-    if (intent.intent === 'distress' || intent.intent === 'rude') { result.gossip = []; result.lines = []; }
+    if (!result.topics.length) result.topics = intent.topics.slice();
     const out = this.apply(key, intent, result, 'a');
     out.ok = true; out.source = 'ai'; out.truncated = !!got.truncated; out.dropped = san.dropped;
     return out;
@@ -216,10 +229,23 @@ export class ChatEngine {
     return out;
   }
 
+  /**
+   * the AI could not answer (refused, empty, broken, or a reply we will not show): the resident still
+   * answers in character — kindly when the chief is hurting, otherwise the village-voice answer to the
+   * same message. Nothing from this exchange is kept or shared.
+   */
   finishFallback(key, intent, code) {
-    const r = this.offline.confused(this.village, key, this.rng);
+    const v = this.village;
+    let r;
+    if (intent.intent === 'distress' || intent.intent === 'sad') r = this.offline.comfort(v, key, intent, this.rng);
+    else if (intent.intent === 'gift' || intent.intent === 'favor' || intent.intent === 'answer') r = this.offline.confused(v, key, this.rng);
+    else {
+      const o = this.offline.reply({ village: v, key, intent, session: Object.assign({}, this.session(key), { expect: null, asked: 9 }), rng: this.rng });
+      r = { reply: o.reply, emote: o.emote };
+    }
     const out = this.apply(key, intent, { reply: r.reply, emote: r.emote, mood: null, affinity: 0, importance: 1, memory: '', facts: [], topics: [], gossip: [], lines: [], favor: null, private: true }, 'o');
     out.ok = true; out.source = 'offline'; out.note = 'fallback'; out.error = { code };
+    if (intent.intent === 'distress') out.care = true;
     return out;
   }
 
@@ -241,10 +267,12 @@ export class ChatEngine {
     if (src === 'a') { mem.ai++; v.stats.ai++; } else v.stats.off++;
     if (mem.met < 0) mem.met = day;
     mem.last = day;
-    const kind = intent.intent === 'gift' ? 'gift' : r.favor || intent.intent === 'favor' ? 'favor' : 'chat';
+    const kind = r.memKind || (intent.intent === 'gift' ? 'gift' : r.favor || intent.intent === 'favor' ? 'favor' : 'chat');
     let episode = null;
-    if (r.memory) episode = mem.add({ d: day, k: kind, s: r.memory, tp: r.topics, f: Math.sign(r.affinity || 0) * Math.min(2, Math.abs(r.affinity || 0)), m: r.importance || 1, src: 'd', ai: src === 'a' });
-    for (const f of r.facts || []) mem.addFact(f, day);
+    // a private moment is kept with a negative feeling, so it is never brought up cheerfully
+    const feel = r.private ? Math.min(-1, Math.sign(r.affinity || 0) * 2) : Math.sign(r.affinity || 0) * Math.min(2, Math.abs(r.affinity || 0));
+    if (r.memory) episode = mem.add({ d: day, k: kind, s: r.memory, tp: r.private ? [] : r.topics, f: feel, m: r.importance || 1, src: 'd', ai: src === 'a', pv: !!r.private });
+    if (!r.private) for (const f of r.facts || []) mem.addFact(f, day);
     let favor = null;
     if (r.favor) favor = mem.addFavor(r.favor.ask, r.favor.item, day);
     if (src === 'a' && intent.intent === 'gift' && intent.items[0]) mem.fulfil(intent.items[0].name);
@@ -256,7 +284,7 @@ export class ChatEngine {
     if (!r.private) {
       for (const g of r.gossip || []) {
         const tpl = g.replace(/\{@me(?=[:}])/g, '{@' + key);
-        if (!isClean(tpl)) continue;
+        if (!isClean(tpl) || !gossipOk(tpl, { origin: key })) continue;
         const a = v.corpus.add('g', tpl, { o: key, tp: r.topics, md: r.mood || mem.mood, d: day, src });
         if (a) { gossip.push({ id: a.entry.i, dup: a.dup, text: v.corpus.plain(a.entry, v.personas, v.chiefName) }); if (!a.dup) { v.stats.learned++; (this.created[key] || (this.created[key] = [])).push(a.entry.i); } }
       }
@@ -273,7 +301,8 @@ export class ChatEngine {
     return {
       reply: r.reply, emote: r.emote || null, mood: mem.mood,
       affinity: { before, after: mem.aff, delta },
-      stage: v.stage(key), memory: episode, facts: r.facts || [], gossip, lines, favor, question: r.question || null, intent: intent.intent,
+      stage: v.stage(key), memory: episode, facts: r.private ? [] : r.facts || [], gossip, lines, favor, question: r.question || null, intent: intent.intent,
+      private: !!r.private, care: !!r.care,
     };
   }
 

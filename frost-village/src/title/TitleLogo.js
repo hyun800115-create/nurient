@@ -5,6 +5,7 @@ import { FONT } from '../data/strings.js';
 import { Assets } from '../core/Assets.js';
 import { TitleAssets } from './TitleAssets.js';
 import { TITLE_NAME } from './config.js';
+import { TitleFx } from './TitleFx.js';
 
 // title_art keys (assets/title): the full logo (@2x, or its _1x twin on k = 1 phones), its shine mask,
 // and the per-letter parts (meta.logo.main.parts) for the drop-in
@@ -152,6 +153,7 @@ export function makeTextLogo(scene, lang) {
     ctx.fillStyle = '#fff8e8'; ctx.fillText(parts.sign, cx, sy + sh / 2 + 34);
   }
   ct.refresh();
+  TitleAssets.keys.add(key);
   return key;
 }
 
@@ -212,7 +214,7 @@ export class TitleLogo {
         maskSrc = this.shineMaskImg;
       }
       const band = TitleAssets.artSprite(s, LOGO_KEYS.band);
-      this.shine = band ? s.add.image(0, this.y0, band.tex, band.frame) : s.add.image(0, this.y0, 'ttl_fx_shine');
+      this.shine = band ? s.add.image(0, this.y0, band.tex, band.frame) : s.add.image(0, this.y0, TitleFx.ensure(s, 'ttl_fx_shine'));
       this.shine.setDepth(51).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
       const bf = this.shine.frame;
       this.shine.setScale((this.dispH * 1.5) / bf.realHeight);

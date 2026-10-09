@@ -9,7 +9,7 @@
 // and particle. The store is indexed by topic / speaker / subject / freshness, de-duplicated by a
 // normalised key, and capped (old, stale, little-known entries go first).
 
-import { normKey, similarity, josa, levelize, tidy } from './ko.js';
+import { normKey, similarity, josa, levelize, tidy, POLITE as POLITE_L } from './ko.js';
 import { renderSlots, slotKeys } from './sanitize.js';
 import { refName } from './personas.js';
 
@@ -28,8 +28,9 @@ export function exaggerate(text, x) {
   let s = text, changed = false;
   s = s.replace(new RegExp('(^|\\s)(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스무)(\\s?)' + COUNTER, 'g'), (a, pre, n, sp, c) => { changed = true; return pre + (NUM_UP[n] || n) + sp + c; });
   s = s.replace(new RegExp('(\\d+)(\\s?)' + COUNTER, 'g'), (a, n, sp, c) => { changed = true; return String(Number(n) * 2) + sp + c; });
+  // "엄청" only in front of a verb it fits (좋아한대 → 엄청 좋아한대; never 엄청 봤대 / 엄청 다녀왔대)
   if ((!changed || x >= 2) && !/엄청|완전|진짜|정말|너무/.test(s)) {
-    s = s.replace(/(\s)([가-힣]+(?:대|래))([.!~…]*)$/, (a, sp, w, p) => (/^(그랬대|했대|이래|래)$/.test(w) ? a : sp + '엄청 ' + w + p));
+    s = s.replace(/(\s)([가-힣]+(?:대|래))([.!~…]*)$/, (a, sp, w, p) => (/(좋아한|칭찬했|잘한|잘했|맛있|예쁘|멋있|기뻐했|신났|재밌었|웃었|많이 ?했|열심히|크|많)대$/.test(w) ? sp + '엄청 ' + w + p : a));
   }
   return s;
 }
@@ -139,11 +140,27 @@ export class VillageCorpus {
 
   /**
    * say a rumour as `speaker` (to the chief) at `level`, with attribution ("서아가 그러던데, …").
-   * kn = the speaker's knower record. Returns the text.
+   * kn = the speaker's knower record. A rumour about the chief, told to the chief, is asked back
+   * ("…잡았다면서요?") instead of announced. opts.toChief = false for resident-to-resident talk.
    */
-  sayGossip(x, kn, speaker, personas, level, chiefName = '촌장님', rng = Math.random) {
+  sayGossip(x, kn, speaker, personas, level, chiefName = '촌장님', rng = Math.random, opts = {}) {
     const from = kn && kn[2];
-    const body = renderSlots(exaggerate(x.t, kn ? kn[4] : 0), speaker, personas, level, chiefName, from && personas[from] ? from : null);
+    const toChief = opts.toChief !== false;
+    const ex = exaggerate(x.t, kn ? kn[4] : 0);
+    const aboutChief = toChief && /^\s*\{@chief(:(이|은|도))?\}\s/.test(ex) && /(대|래)[.!~…]*$/.test(ex);
+    let body;
+    // asked back about the person who told it ("…아줌마를 칭찬했다면서? 아줌마가 자랑하던데!"): "자기" would
+    // be read as "you" here, so the teller is named and credited after the question instead
+    const tellerInside = aboutChief && from && personas[from] && slotKeys(ex).includes(from);
+    if (aboutChief) {
+      const rest = ex.replace(/^\s*\{@chief(:[^}]*)?\}\s*/, '').replace(/[.!~…]+$/, '');
+      const asked = rest.replace(/이래$/, '이라면서').replace(/래$/, '라면서').replace(/대$/, '다면서');
+      body = renderSlots(asked, speaker, personas, level, chiefName, tellerInside ? null : from && personas[from] ? from : null) + (level === POLITE_L ? '요?' : '?');
+    } else body = renderSlots(ex, speaker, personas, level, chiefName, from && personas[from] ? from : null);
+    if (tellerInside) {
+      const nm = refName(personas, speaker, from, chiefName);
+      return tidy(body + ' ' + josa(nm, '이') + (level === POLITE_L ? ' 자랑하던데요!' : ' 자랑하던데!'));
+    }
     let pre = '';
     if (from && personas[from]) {
       const nm = refName(personas, speaker, from, chiefName);
@@ -151,6 +168,7 @@ export class VillageCorpus {
       const forms = kn[1] >= 2 ? [josa(nm, '한테') + ' 들었는데, ', '소문으로 들었는데, '] : [josa(nm, '이') + ' 그러던데, ', josa(nm, '한테') + ' 들었는데, '];
       pre = (kid ? '있잖아, ' : '') + forms[Math.floor(rng() * forms.length)];
     }
+    if (aboutChief) return tidy(pre + body);
     return levelize(tidy(pre + body), level).replace(/([^.!?~…])$/, '$1!');
   }
 

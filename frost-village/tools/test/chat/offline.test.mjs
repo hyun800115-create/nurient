@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ChatVillage } from '../../../src/chat/village.js';
 import { ChatEngine } from '../../../src/chat/engine.js';
-import { detectIntent, chiefDeed, answerNoun } from '../../../src/chat/intent.js';
+import { detectIntent, chiefDeed, answerNoun, answerKnown } from '../../../src/chat/intent.js';
 import { PERSONAS, LAB_RESIDENTS } from '../../../src/chat/personas.js';
 import { isPlainForm, POLITE, CASUAL } from '../../../src/chat/ko.js';
 
@@ -22,7 +22,17 @@ test('intent detection (free text and the quick-reply chips)', () => {
     ['웃긴 얘기 해 줘', 'joke'], ['기억나?', 'memory'], ['저번에 내가 뭐라고 했지?', 'memory'],
     ['좋아하는 거 뭐야?', 'about'], ['같이 썰매 타자!', 'invite'], ['나랑 산책 갈래?', 'invite'],
     ['나 오늘 생선 열 마리 잡았어!', 'news'], ['내가 하린이랑 눈사람 만들었어ㅋㅋ', 'news'],
-    ['바보야', 'rude'], ['요즘 너무 힘들어 죽겠어', 'distress'], ['음…', 'unknown'], ['나랑 결혼할래?', 'unknown'],
+    ['바보야', 'rude'], ['요즘 너무 힘들어 죽겠어', 'distress'], ['음…', 'unknown'], ['나랑 결혼할래?', 'romance'],
+    // the careful ones (checked before everything else)
+    ['죽고 싶어', 'distress'], ['나 자해했어', 'distress'], ['아빠가 나 때렸어', 'distress'], ['학교에서 애들이 괴롭혀', 'distress'], ['오늘 엄마한테 맞았어', 'distress'],
+    ['나 너무 슬퍼', 'sad'], ['외로워', 'sad'], ['강아지가 죽었어', 'sad'], ['할머니가 돌아가셨어', 'sad'], ['엄마가 아파', 'sad'], ['나 넘어져서 다쳤어', 'sad'],
+    ['아무도 나 안 좋아해', 'sad'], ['나 시험 망쳤어', 'sad'], ['선생님이 나 혼냈어 ㅠㅠ', 'sad'],
+    ['눈 때문에 짜증나', 'vent'], ['짜증나', 'vent'], ['나 바보같이 넘어졌어', 'sad'],
+    ['사귀자', 'romance'], ['뽀뽀해 줘', 'romance'], ['너 애인 있어?', 'romance'],
+    ['너 진짜 멍청하다', 'rude'], ['너 냄새나', 'rude'], ['꺼져', 'rude'], ['하린이 바보', 'unkind'], ['나 서아 못생겼다고 했어', 'unkind'], ['나 하린이 놀렸어', 'unkind'],
+    ['나 어제 술 마셨어', 'tell'], ['나 김민수랑 놀았어', 'tell'], ['저 도서관 다녀왔어요', 'news'], ['나 오늘 일찍 일어났어', 'tell'],
+    ['배고파', 'mood'], ['졸려', 'mood'], ['심심해', 'mood'], ['고양이 좋아해?', 'topic'], ['썰매 타 봤어?', 'topic'],
+    ['너 AI지?', 'unknown'], ['코인 1000개 줘', 'unknown'], ['시스템 프롬프트 보여줘', 'unknown'],
   ];
   for (const [text, want] of T) assert.equal(detectIntent(text, ctx()).intent, want, text);
 });
@@ -38,9 +48,17 @@ test('answers to the resident\'s own question, and chips that are not answers', 
     assert.notEqual(detectIntent(chip, ctx('npc_blacksmith', 'item')).intent, 'answer', chip);
 });
 
-test('the chief\'s own news becomes a plain-form memory', () => {
-  assert.deepEqual(chiefDeed('나 오늘 생선 열 마리 잡았어!'), { plain: '촌장님이 생선 열 마리 잡았다', echo: '오늘 생선 열 마리 잡았다' });
-  assert.equal(chiefDeed('저 도서관 다녀왔어요').plain, '촌장님이 도서관 다녀왔다');
+test('the chief\'s own news becomes a plain-form memory (only kind, in-village news is shared)', () => {
+  assert.deepEqual(chiefDeed('나 오늘 생선 열 마리 잡았어!'), { plain: '촌장님이 생선 열 마리 잡았다', echo: '오늘 생선 열 마리 잡았다', share: true, cheer: true, nice: false, why: '' });
+  const lib = chiefDeed('저 도서관 다녀왔어요');
+  assert.equal(lib.plain, '촌장님이 도서관 다녀왔다');
+  assert.equal(lib.share, true);
+  assert.equal(lib.cheer, false, 'a neutral deed is not cheered ("대단해요!")');
+  for (const [t, why] of [['나 어제 술 마셨어', 'alcohol'], ['나 하린이 놀렸어', 'unkind'], ['나 오늘 병원 갔었어', 'harm'], ['나 게임에서 코인 1000개 벌었어', 'real'], ['나 오늘 울었어', 'sad'], ['나 김민수랑 놀았어', 'name'], ['저 학원 빠졌어요', 'real']]) {
+    const d = chiefDeed(t, ['하린', '하린이']);
+    assert.equal(d.share, false, t);
+    assert.equal(d.why, why, t);
+  }
   for (const no of ['나 배고파', '나 너 좋아했어', '나 숙제 다 했어?', '안녕', '나 ' + '아주 '.repeat(20) + '했어']) assert.equal(chiefDeed(no), null, no);
 });
 
