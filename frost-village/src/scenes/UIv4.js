@@ -329,6 +329,57 @@ export class HudV4 {
     });
   }
 
+  /**
+   * (v4-C) the town hall's notice board (마을 게시판): today's requests and village news, read from the systems
+   * that already run (TownHall.boardLines); the place v5's missions will go
+   */
+  openBoard() {
+    const gs = this.ui.gs, hall = gs && gs.civic && gs.civic.hall;
+    if (!hall) return;
+    this.openPanel((p) => {
+      const ui = this.ui, W = ui.W, H = ui.H;
+      const pw = Math.min(W - 40, 640), ph = 760;
+      const top = Math.max(110 + View.safeTop, (H - ph) / 2);
+      const boardKey = has('ui_mission_board') ? 'ui_mission_board' : 'ui_panel';
+      const bg = panel(ui, W / 2, top + ph / 2, boardKey, pw, ph).setOrigin(0.5).setInteractive();
+      bg.on('pointerup', () => {});
+      p.c.add(bg);
+      p.c.add(ui.add.text(W / 2, top + 58, t('board_title'), TXT(32, '#ffffff', '#5a3a26', 7, '900')).setOrigin(0.5));
+      p.c.add(ui.makeIconButton(W / 2 + pw / 2 - 36, top + 30, 'ui_icon_close', 62, () => this.closePanel()));
+      const content = ui.add.container(0, 0);
+      p.c.add(content);
+      p.c.add(ui.add.text(W / 2, top + ph - 46, t('board_soon'), TXT(18, '#5d4632', '#ffffff', 0, '800')).setOrigin(0.5));
+      let lastKey = '';
+      p.refresh = () => {
+        const L = hall.boardLines();
+        const key = JSON.stringify(L);
+        if (key === lastKey) return;
+        lastKey = key;
+        content.removeAll(true);
+        const x0 = W / 2 - pw / 2 + 50, cw = pw - 80;
+        let y = top + 116;
+        const head = (txt) => { content.add(ui.add.text(x0, y, txt, TXT(24, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5)); y += 42; };
+        const row = (r) => {
+          const card = panel(ui, W / 2, y, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', cw, 56).setOrigin(0.5);
+          content.add(card);
+          content.add(icon(ui, x0 + 26, y, [r.icon, 'ui_icon_goal', 'ui_icon_coin'], 34));
+          const tx = ui.add.text(x0 + 56, y, r.text, Object.assign(TXT(19, '#2b2f3a', '#ffffff', 0, '800'), { wordWrap: { width: cw - 80, useAdvancedWrap: true } })).setOrigin(0, 0.5);
+          if (tx.height > 52) tx.setScale(52 / tx.height);
+          content.add(tx);
+          y += 62;
+        };
+        head(t('board_requests'));
+        if (!L.requests.length) { content.add(ui.add.text(W / 2, y, t('board_empty'), TXT(20, '#6b7686', '#ffffff', 0, '800')).setOrigin(0.5)); y += 50; }
+        for (const r of L.requests.slice(0, 4)) row(r);
+        y += 10;
+        head(t('board_news'));
+        const room = Math.max(1, Math.floor((top + ph - 90 - y) / 62));
+        for (const r of L.news.slice(0, room)) row(r);
+      };
+      p.refresh();
+    });
+  }
+
   /** the ceremony: the badge flies from the square (world) to the rank chip */
   badgeFly(wx, wy) {
     const ui = this.ui;

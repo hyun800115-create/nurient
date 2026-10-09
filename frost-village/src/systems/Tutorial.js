@@ -18,6 +18,7 @@ import { FOODS, GOODS } from '../entities/Seller.js';
 import { MINER_FOOD, MATERIALS, STORE_GOODS } from '../data/items.js';
 import { buildCost } from '../entities/Site.js';
 import { BALANCE } from '../data/balance.js';
+import { MENU } from './Civic.js';
 
 const ZONE_CHAINS = [
   { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'trade', worker: 'hire_lumberjack' },
@@ -69,6 +70,8 @@ export class Tutorial {
     const pad = prog.affordablePad(eco.coins, p);
     // (v2) customers waiting at an empty register come before buying things (the line is stuck)
     if (!this.inTutorial && this.registerHint(set, dt, true)) return;
+    // ((v4-C) the big restaurant's first meals: guests waiting at its register / for the kitchen come first too)
+    if (!this.inTutorial && this.civicHint(set, dt, idle, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
       const key = this.inTutorial ? (pad.id === 'op_grill' ? 'obj_operator' : pad.id === 'hire_clerk_market' ? 'obj_clerk' : 'obj_unlock')
         : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
@@ -93,6 +96,8 @@ export class Tutorial {
     if (this.labourHint(set, idle)) return;
     // (v3) hungry miners, materials for a site nobody brings, a tool for a hire pad, the next building
     if (this.v3Hint(set, dt, idle)) return;
+    // ---- (v4-C) the big restaurant: guests at an empty register / orders waiting in the kitchen / food for the pantry
+    if (this.civicHint(set, dt, idle)) return;
     // ---- (v4-B) the neighbours: goods for an order card, the town visit, planks for the carpenter, empty shelves
     if (this.v4Hint(set, dt, idle)) return;
     const nx = prog.nextPad();
@@ -161,7 +166,10 @@ export class Tutorial {
     const gs = this.gs;
     // ((v4-B) + the station till: wholesale, card bonuses and rent)
     const g = gs.v4 && gs.v4.growth;
-    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null].filter(Boolean);
+    // ((v4-C) + the town hall's tax box and the big restaurant's cash pad)
+    const cv = gs.civic;
+    return [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null,
+      cv && cv.hall && cv.hall.enabled ? cv.hall.tax : null, cv && cv.restaurant && cv.restaurant.enabled ? cv.restaurant.cash : null].filter(Boolean);
   }
 
   // ---------------------------------------------------------------- (v4-B, docs/v4_plan.md §15.3)
@@ -275,6 +283,36 @@ export class Tutorial {
     return { key: 'obj_next:' + g.id + ':' + cost, text: t('obj_next', { name: t(g.id), cost: fmt(cost) }) };
   }
 
+  /**
+   * (v4-C) the big restaurant: 1. guests wait at the counter and nobody takes their order (no 계산 점원 yet),
+   * 2. orders wait in the kitchen (no 요리사 / 서빙 직원 yet) while guests sit at the tables,
+   * 3. the chief carries cooked food and the pantry is empty
+   */
+  civicHint(set, dt, idle, urgent) {
+    const gs = this.gs, p = gs.player, R = gs.civic && gs.civic.restaurant;
+    if (!R || !R.enabled) return false;
+    // (taught first thing for the first meals (urgent), later only while the chief stands idle: the restaurant must
+    // never keep him from the rest of the village — the staff pads take it over)
+    if (urgent ? R.served >= 3 : (!idle && R.served >= 3)) return false;
+    // (a guest already at the table first: it is the one who leaves without paying)
+    const tk = R.tickets.find((q) => (q.state === 'cook' && !R.cook) || (q.state === 'ready' && !R.server));
+    if (tk && tk.g && tk.g.state === 'seated' && (tk.g.wait || 0) > (idle ? 1 : 4)) {
+      if (R.kitchenPad.contains(p.x, p.y)) this.textKey = 'obj_operating';
+      else set(R.kitchenPad.x, R.kitchenPad.y, 46, 'obj_rest_kitchen');
+      return true;
+    }
+    const front = R.queue[0];
+    if (front && front.at && !R.register.staffed && (front.waitPay || 0) > (idle ? 1 : 5) && R.freeSeat() && R.hasFood()) {
+      if (R.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait';
+      else set(R.register.x, R.register.y, 46, 'obj_rest_register');
+      return true;
+    }
+    if (idle && !R.hasFood() && p.stack.hasAny(FOODS)) {
+      if (!R.pantryPad.contains(p.x, p.y)) { set(R.pantryPad.x, R.pantryPad.y, 60, 'obj_rest_pantry'); return true; }
+    }
+    return false;
+  }
+
   /** a free plot that can take building `bkey`, nearest to the chief */
   plotFor(bkey) {
     const gs = this.gs, p = gs.player;
@@ -282,9 +320,10 @@ export class Tutorial {
     for (const id in gs.sites) {
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
-      if (st.only ? st.only !== bkey : (bkey === 'boathouse' || (st.size === 'S' && !/^house_/.test(bkey)))) continue;
-      // (a house on a big plot only where the build menu allows it)
-      if (/^house_/.test(bkey) && st.size !== 'S') { const c = gs.buildChoices(st).find((q) => q.key === bkey); if (!c || c.locked) continue; }
+      // ((v4-C) the plot's build menu decides: Civic MENU by size — the XL plots take the hall and the restaurant)
+      if (st.only ? st.only !== bkey : (MENU[st.size] || MENU.M).indexOf(bkey) < 0) continue;
+      // (a house or decor on a big plot only where the build menu allows it)
+      if ((/^house_/.test(bkey) || /^deco_/.test(bkey)) && st.size !== 'S') { const c = gs.buildChoices(st).find((q) => q.key === bkey); if (!c || c.locked) continue; }
       const d = gdist(p.x, p.y, st.dropX, st.dropY);
       if (d < bd) { bd = d; best = st; }
     }

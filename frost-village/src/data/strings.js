@@ -135,7 +135,7 @@ export const STRINGS = {
     lock_toolsmith: '동쪽 망루를 세우면 열려요', lock_boathouse: '대장간을 지으면 열려요', lock_warehouse: '남쪽 망루를 세우면 열려요',
     lock_cannery: '나룻배를 사면 열려요', lock_store: '통조림 공장을 지으면 열려요',
     lock_house_a: '광부를 고용하면 열려요', lock_house_b: '대장간을 지으면 열려요', lock_house_c: '광부를 고용하면 열려요',
-    lockBuilt: '이미 있어요', lockNoOne: '이사 올 주민이 없어요', lockBigPlot: '큰 건물 자리예요',
+    lockBuilt: '이미 있어요 (마을에 하나만)', lockNoOne: '이사 올 주민이 없어요', lockBigPlot: '큰 건물 자리예요',
     buildTitle: '무엇을 지을까요?', buildSize_S: '작은 부지 (2×2m)', buildSize_M: '건설 부지 (3×3m)', buildSize_L: '넓은 부지 (4×4m)',
     buildPick: '지을 건물을 골라 주세요', buildBtn: '{name} 짓기', buildNoCoins: '코인이 부족해요',
     buildStart: '{name} 공사 시작!', buildStartSub: '판자·주괴를 공사장으로 날라 주세요', builtDone: '{name} 완성!',
@@ -244,6 +244,41 @@ export const STRINGS = {
     set_gfx: '그래픽', gfx_auto: '자동', gfx_high: '선명하게', gfx_low: '가볍게',
     // 가게 이름
     shop_cafe: '역앞 카페', shop_restaurant: '생선구이 식당', shop_carpenter_workshop: '목공소', shop_hardware_store: '철물점', shop_supermarket: '슈퍼마켓',
+
+    // ---------------- (v4-C) 서쪽 땅 · 부지 메뉴 · 마을회관 · 큰 식당 · 꾸미기
+    r_west: '서쪽 숲길', r_west_s: '서쪽 눈밭',
+    plot_XL: '아주 큰 부지',
+    // 부지 메뉴 탭
+    tab_work: '일터', tab_home: '집', tab_decor: '꾸미기', tab_civic: '마을',
+    // 건물 이름 · 한 줄 설명 · 다 지은 뒤 배너
+    b_town_hall: '마을회관', b_big_restaurant: '큰 식당',
+    b_deco_snowman: '눈사람 동상', b_deco_bench: '쉼터 의자', b_deco_lamp: '가로등', b_deco_flowers: '꽃밭',
+    b_deco_rink: '스케이트장', b_deco_playground: '놀이터', b_deco_fountain: '분수 공원',
+    bp_town_hall: '세금 상자 · 마을 게시판 · 주민 +{n}', bp_big_restaurant: '구운 생선·빵·훈제 고기로 정식을 팔아요',
+    bp_deco: '행복 +{n} · 주민들이 놀러 와요',
+    bsub_town_hall: '주민마다 세금이 세금 상자에 쌓여요', bsub_big_restaurant: '손님이 앉아서 먹고 가요 · 계산대에 서 주세요',
+    bsub_deco: '마을이 더 행복해졌어요! (행복 +{n})',
+    // 잠긴 카드: 무엇을 하면 열리는지
+    lock_town_hall: '동쪽 망루를 세우면 열려요', lock_big_restaurant: '동쪽 망루를 세우면 열려요',
+    lock_deco_snowman: '광부를 고용하면 열려요', lock_deco_bench: '광부를 고용하면 열려요', lock_deco_lamp: '광부를 고용하면 열려요',
+    lock_deco_rink: '사냥터를 열면 열려요', lock_deco_flowers: '동쪽 망루를 세우면 열려요', lock_deco_playground: '동쪽 망루를 세우면 열려요',
+    lock_deco_fountain: '동쪽 망루를 세우면 열려요',
+    lockBuilding: '지금 짓고 있어요', lockVacant: '빈 방 {n}개에 이주민이 오는 중 · 들어오면 또 지어요',
+    lockBigPlot2: '{names} 자리로 남겨 둬요 · 작은 부지에 지어 주세요',
+    // 이주민
+    settlersCame: '이주민 {n}명이 빈 집에 들어왔어요!',
+    // 마을회관 · 게시판
+    hall_board: '마을 게시판', hall_tax: '세금 +{n}/분', hall_tax_full: '세금 상자 가득!',
+    board_title: '서리마을 게시판', board_requests: '오늘의 부탁', board_news: '마을 소식', board_soon: '마을 임무는 곧 찾아와요!', board_empty: '오늘은 부탁이 없어요',
+    board_order: '{shop}: {item} {got}/{need}', board_rest_low: '큰 식당에 {item}이(가) 떨어져 가요', board_homes: '집을 기다리는 주민 {n}명',
+    board_miners: '광부들이 배가 고파요 · 식량 상자를 채워 주세요', board_people: '주민 {n}명 / 집 {cap}칸', board_vacant: '빈 집 {n}칸 · 이주민을 기다려요',
+    board_settlers: '이주해 온 주민 {n}명', board_rest_special: '오늘의 정식 {coins}코인', board_happy: '행복 {n}', board_decor: '꾸미기 행복 +{n}', board_tax: '세금 +{n}/분',
+    // 큰 식당
+    rest_pantry: '식재료 칸', rest_kitchen_cook: '서서 요리하기', rest_kitchen_serve: '서서 서빙하기', rest_combo: '정식!',
+    rest_cashier: '계산 점원 고용', rest_cook: '요리사 고용', rest_server: '서빙 직원 고용',
+    restStaffSub_cashier: '이제 점원이 계산대를 지켜요', restStaffSub_cook: '이제 요리사가 주문을 요리해요', restStaffSub_server: '이제 서빙 직원이 음식을 날라요',
+    obj_rest_register: '큰 식당 계산대에 서서 주문을 받아요', obj_rest_kitchen: '큰 식당 주방 발판에 서서 요리해요',
+    obj_rest_pantry: '구운 생선·빵·훈제 고기를 식재료 칸에 넣어 주세요', obj_hall_tax: '마을회관 세금 상자에서 코인을 걷어요',
   },
 
   en: {
@@ -371,7 +406,7 @@ export const STRINGS = {
     lock_toolsmith: 'Opens with the East Watchtower', lock_boathouse: 'Opens after the Toolsmith', lock_warehouse: 'Opens with the South Watchtower',
     lock_cannery: 'Opens after buying a rowboat', lock_store: 'Opens after the Cannery',
     lock_house_a: 'Opens after hiring a miner', lock_house_b: 'Opens after the Toolsmith', lock_house_c: 'Opens after hiring a miner',
-    lockBuilt: 'Already built', lockNoOne: 'Nobody needs a home', lockBigPlot: 'Kept for big buildings',
+    lockBuilt: 'Already built (one per village)', lockNoOne: 'Nobody needs a home', lockBigPlot: 'Kept for big buildings',
     buildTitle: 'What shall we build?', buildSize_S: 'Small plot (2×2 m)', buildSize_M: 'Building plot (3×3 m)', buildSize_L: 'Large plot (4×4 m)',
     buildPick: 'Pick a building', buildBtn: 'Build {name}', buildNoCoins: 'Not enough coins',
     buildStart: '{name} started!', buildStartSub: 'Bring planks and ingots to the site', builtDone: '{name} built!',
@@ -474,6 +509,35 @@ export const STRINGS = {
     order_empty: 'No orders right now', order_hint: 'Fill an order and its shop opens by the station\nGoods on the loading dock pay 70% of their price into the station till',
     set_gfx: 'Graphics', gfx_auto: 'Auto', gfx_high: 'Sharp', gfx_low: 'Light',
     shop_cafe: 'Station Café', shop_restaurant: 'Grill House', shop_carpenter_workshop: 'Carpenter', shop_hardware_store: 'Hardware', shop_supermarket: 'Supermarket',
+
+    // ---------------- (v4-C) the west strip · the plot menu · town hall · big restaurant · decor
+    r_west: 'West Woods', r_west_s: 'West Snowfield',
+    plot_XL: 'Very large plot',
+    tab_work: 'Work', tab_home: 'Homes', tab_decor: 'Decor', tab_civic: 'Village',
+    b_town_hall: 'Town Hall', b_big_restaurant: 'Big Restaurant',
+    b_deco_snowman: 'Snowman statue', b_deco_bench: 'Bench corner', b_deco_lamp: 'Street lamps', b_deco_flowers: 'Flower beds',
+    b_deco_rink: 'Skating rink', b_deco_playground: 'Playground', b_deco_fountain: 'Fountain park',
+    bp_town_hall: 'Tax box · notice board · +{n} residents', bp_big_restaurant: 'Sells set meals of grilled fish, bread and smoked meat',
+    bp_deco: 'Happiness +{n} · villagers come to play',
+    bsub_town_hall: 'Every resident pays tax into the tax box', bsub_big_restaurant: 'Guests sit down to eat · stand at the register',
+    bsub_deco: 'The village is happier! (happiness +{n})',
+    lock_town_hall: 'Opens with the East Watchtower', lock_big_restaurant: 'Opens with the East Watchtower',
+    lock_deco_snowman: 'Opens when you hire a miner', lock_deco_bench: 'Opens when you hire a miner', lock_deco_lamp: 'Opens when you hire a miner',
+    lock_deco_rink: 'Opens with the hunting grounds', lock_deco_flowers: 'Opens with the East Watchtower', lock_deco_playground: 'Opens with the East Watchtower',
+    lock_deco_fountain: 'Opens with the East Watchtower',
+    lockBuilding: 'Being built now', lockVacant: 'Settlers are coming for {n} empty beds · build more once they move in',
+    lockBigPlot2: 'Kept for {names} · build it on a small plot',
+    settlersCame: '{n} settlers moved into empty homes!',
+    hall_board: 'Notice board', hall_tax: 'Tax +{n}/min', hall_tax_full: 'Tax box full!',
+    board_title: 'Frost Village notice board', board_requests: 'Today\'s requests', board_news: 'Village news', board_soon: 'Village missions are coming soon!', board_empty: 'No requests today',
+    board_order: '{shop}: {item} {got}/{need}', board_rest_low: 'The big restaurant is running low on {item}', board_homes: '{n} villagers waiting for a home',
+    board_miners: 'The miners are hungry · fill the food box', board_people: '{n} residents / {cap} beds', board_vacant: '{n} empty beds · waiting for settlers',
+    board_settlers: '{n} settlers live here', board_rest_special: 'Today\'s set meal {coins} coins', board_happy: 'Happiness {n}', board_decor: 'Decor happiness +{n}', board_tax: 'Tax +{n}/min',
+    rest_pantry: 'Pantry', rest_kitchen_cook: 'Stand to cook', rest_kitchen_serve: 'Stand to serve', rest_combo: 'Set meal!',
+    rest_cashier: 'Hire a cashier', rest_cook: 'Hire a cook', rest_server: 'Hire a server',
+    restStaffSub_cashier: 'The cashier minds the register now', restStaffSub_cook: 'The cook cooks the orders now', restStaffSub_server: 'The server carries the plates now',
+    obj_rest_register: 'Stand at the big restaurant register to take orders', obj_rest_kitchen: 'Stand on the kitchen pad to cook',
+    obj_rest_pantry: 'Bring grilled fish, bread or smoked meat to the pantry', obj_hall_tax: 'Collect the coins in the town hall tax box',
   },
 };
 

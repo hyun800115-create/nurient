@@ -78,7 +78,12 @@ export class Site {
         this.xlParts = XL_PART.map(([dx, dy]) => { const r = Assets.sprite(this.sprite('foundation')); return gs.add.image(dx, dy, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]); });
         this.img.add(this.xlParts);
       }
-      for (const p of this.xlParts) { if (stage === 'plot') p.setVisible(false); else { Assets.apply(p, this.sprite(stage)); p.setVisible(true); } }
+      // (the old station's plot is its ruin: nothing on the plot stage; (v4-C) any other XL plot shows two L plots)
+      const ruin = this.only === 'station';
+      for (const p of this.xlParts) {
+        if (stage === 'plot' && ruin) p.setVisible(false);
+        else { Assets.apply(p, this.sprite(stage)); p.setVisible(true); if (gs.lazyImage) gs.lazyImage(p, this.sprite(stage)); }
+      }
       this.img.setVisible(this.shown);
       return;
     }
@@ -373,6 +378,8 @@ export class Site {
 
   serialize() {
     if (this.state === 'plot') return null;
+    // ((v4-C) a finished building needs no materials or timer: a smaller save — the v4.1 village has more buildings)
+    if (this.state === 'done') return { b: this.building, st: 'done' };
     const got = {};
     for (const m in this.need) got[m] = Math.min(this.need[m], this.stock.countWithIncoming(m));
     // materials a porter is carrying here count as delivered (the porter is not saved)

@@ -23,6 +23,8 @@ export function stepCost(s) {
   // ---- (v4-B) the station porters, the 승격식 (rank ceremony)
   if (s.type === 'stationPorter') { const a = (BALANCE.v4 && BALANCE.v4.stationPorter) || [600, 1100]; return a[s.id === 'stn_porter2' ? 1 : 0]; }
   if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 14000 }).coins;
+  // ---- (v4-C) the big restaurant's staff
+  if (s.type === 'restStaff') { const S = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.staff) || {}; return S[s.role] || 500; }
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
   return BALANCE.costs3 && BALANCE.costs3[s.id];
 }
@@ -99,6 +101,12 @@ export const STEPS = [
   { id: 'stn_porter', type: 'stationPorter', after: 'f:firstTrain', v4: true, side: true },
   { id: 'stn_porter2', type: 'stationPorter', after: 'f:shops3', also: 'stn_porter', v4: true, side: true },
   { id: 'rank_eup', type: 'rank', after: 'f:rankReady', v4: true },
+
+  // ---------------- (v4-C) 큰 식당 직원 (docs/기획서_v4_추가요청.md §4): 처음엔 촌장이 직접 (계산대 · 주방 발판)
+  //   계산 점원 → 요리사 → 서빙 직원, 한 자리에서 차례로 (식당 옆 고용 발판)
+  { id: 'rest_cashier', type: 'restStaff', role: 'cashier', after: 'b:big_restaurant', c1: true, side: true },
+  { id: 'rest_cook', type: 'restStaff', role: 'cook', after: 'rest_cashier', c1: true, side: true },
+  { id: 'rest_server', type: 'restStaff', role: 'server', after: 'rest_cook', c1: true, side: true },
 ];
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
@@ -129,6 +137,8 @@ export const GOALS = [
   { id: 'toolsmith', kind: 'build' },
   { id: 'fedMiners', kind: 'flag' },
   { id: 'shops:1', kind: 'shops', n: 1, passive: true, v4: true },
+  // ---- (v4-C) the big restaurant on the west strip (its staff are side pads)
+  { id: 'big_restaurant', kind: 'build', c1: true },
   { id: 'hire2_lumberjack', kind: 'step' },
   { id: 'townVisit', kind: 'flag', when: 'f:townInvite', v4: true },
   { id: 'boathouse', kind: 'build' },
@@ -136,6 +146,8 @@ export const GOALS = [
   { id: 'shops:3', kind: 'shops', n: 3, passive: true, v4: true },
   { id: 'south', kind: 'region', step: 'tower_south' },
   { id: 'warehouse', kind: 'build' },
+  // ---- (v4-C) the town hall (tax box, notice board, the ceremony's venue)
+  { id: 'town_hall', kind: 'build', c1: true },
   { id: 'cannery', kind: 'build' },
   { id: 'store', kind: 'build' },
   { id: 'se', kind: 'region', step: 'tower_se' },
@@ -148,6 +160,11 @@ export const GOALS = [
 export const BUILD_UNLOCK = {
   toolsmith: 'r:east', boathouse: 'b:toolsmith', warehouse: 'r:south', cannery: 'boat_rowboat', store: 'b:cannery',
   house_a: 'hire_miner', house_b: 'b:toolsmith', house_c: 'hire_miner',
+  // ---- (v4-C) the town hall and the big restaurant come when the east watchtower's site starts (the neighbours'
+  // art comes then too); early decor uses the village's own props, the park / street / flower ones the town's
+  town_hall: 'tower_east', big_restaurant: 'tower_east',
+  deco_snowman: 'hire_miner', deco_bench: 'hire_miner', deco_lamp: 'hire_miner', deco_rink: 'zone_hunt',
+  deco_flowers: 'tower_east', deco_playground: 'tower_east', deco_fountain: 'tower_east',
 };
 export const UNIQUE_BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store'];
 const ZONE_IDS = ['zone_forest', 'zone_farm', 'zone_mine', 'zone_hunt'];
@@ -279,12 +296,13 @@ export class Progression {
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
       else if (s.type === 'stationPorter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');     // (v4-B)
       else if (s.type === 'rank') icon = Assets.pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_star', 'ui_icon_lock_open', 'ui_icon_lock');
+      else if (s.type === 'restStaff') icon = s.role === 'cashier' ? Assets.pick('ui_icon_clerk', 'portrait_npc_clerk_b', 'ui_icon_worker') : s.role === 'cook' ? Assets.pick('ui_icon_food', 'portrait_npc_chef', 'ui_icon_worker') : Assets.pick('ui_icon_porter', 'ui_icon_worker');     // (v4-C)
       if (s.type === 'hire2' || s.type === 'hire3') items = { [TOOL_OF[s.worker]]: 1 };
       const kind = s.type === 'zone' || s.type === 'tower' || s.type === 'rank' ? 'unlock' : 'hire';
-      const padTex = s.type === 'clerk' || s.type === 'operator' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
+      const padTex = s.type === 'clerk' || s.type === 'operator' || s.type === 'restStaff' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' || s.type === 'restStaff' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
         padTex, items, got: this.got[s.id],
         onComplete: (p) => this.completeStep(s, p),
       });
@@ -345,6 +363,8 @@ export class Progression {
     // ---- (v4-B) a station porter on the square; the town ceremony (마을 -> 읍)
     else if (s.type === 'stationPorter') { if (gs.v4 && gs.v4.growth) gs.v4.growth.hireStationPorter(instant, x, y); }
     else if (s.type === 'rank') { if (gs.v4 && gs.v4.rank) gs.v4.rank.ceremony(instant); }
+    // ---- (v4-C) the big restaurant's cashier / cook / server
+    else if (s.type === 'restStaff') { if (gs.civic && gs.civic.restaurant) gs.civic.restaurant.hire(s.role, instant, x, y); }
   }
 
   openBench(instant) {

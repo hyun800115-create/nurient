@@ -90,7 +90,9 @@ export class ItemStack {
     let col = 0, h = 0;
     if (this.typeCols && type) {
       col = this.typeCols[type] || 0;
-      for (const it of this.items) if (this.typeCols[it.type] === col) h += stackStep(it.type) * this.scale;
+      let k = 0;
+      const lim = this.drawMax || Infinity;
+      for (const it of this.items) if (this.typeCols[it.type] === col && ++k < lim) h += stackStep(it.type) * this.scale;
     } else if (this.alternate) {
       const nc = this.cols.length;
       col = n % nc;
@@ -131,6 +133,8 @@ export class ItemStack {
     const n = items.length;
     if (this.typeCols) {
       const hs = [0, 0, 0, 0, 0, 0];
+      // ((v4-C) drawMax: a tower shows at most this many layers, the rest stay on its top)
+      const lim = this.drawMax || Infinity, cs = [0, 0, 0, 0, 0, 0];
       for (let i = 0; i < n; i++) {
         const it = items[i];
         const col = this.typeCols[it.type] || 0;
@@ -141,7 +145,7 @@ export class ItemStack {
         it.spr.setPosition(bx + c[0], by + c[1] - hs[col] - hop);
         const d = depth + c[1] * 0.01 + hs[col] * 0.0001 + 0.001;
         if (it.spr.depth !== d) it.spr.setDepth(d);
-        hs[col] += st;
+        if (++cs[col] < lim) hs[col] += st;
       }
       return;
     }

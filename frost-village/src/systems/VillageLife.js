@@ -136,23 +136,7 @@ export class VillageLife {
   }
 
   buildSeats() {
-    const add = (rec, pts, dirs, depthMode, kind) => {
-      if (!Array.isArray(pts)) return;
-      pts.forEach((q, i) => {
-        if (!Array.isArray(q)) return;
-        const dir = DIR_IDX[(dirs && dirs[i]) || 'S'] !== undefined ? DIR_IDX[(dirs && dirs[i]) || 'S'] : 2;
-        const sx = rec.x + q[0] * (rec.img.flipX ? -1 : 1), sy = rec.y + q[1];
-        const v = DIR_VEC[dir];
-        const seat = {
-          prop: rec, x: sx, y: sy, dir: rec.img.flipX ? (dir === 1 ? 3 : dir === 3 ? 1 : dir) : dir, kind: kind || 'seat', by: null,
-          standX: sx + v[0] * 40, standY: sy + Math.max(18, v[1] * 40 + 22),
-          depth: depthMode === 'behind' ? undefined : rec.y + 1 + q[1] * 0.001,
-        };
-        this.gs.collision.resolve(seat.standXY = { x: seat.standX, y: seat.standY }, 12);
-        seat.standX = seat.standXY.x; seat.standY = seat.standXY.y;
-        this.seats.push(seat);
-      });
-    };
+    const add = (rec, pts, dirs, depthMode, kind) => this.seatsFor(rec, pts, dirs, depthMode, kind);
     for (const rec of this.propList) {
       const d = rec.def;
       if (d.seatPoints && !/kids_swing/.test(rec.key)) add(rec, d.seatPoints, d.seatDirs, d.seatDepth);
@@ -166,6 +150,44 @@ export class VillageLife {
       add(rec, bs.petPoints || [[0, -30]], ['SW'], 'front', 'pet');
     }
     for (const s of this.seats) s.area = this.nearestArea(s.x, s.y, 260);
+  }
+
+  /** seats of a prop (rec: { x, y, img, key }) at its seat points; returns the new seats */
+  seatsFor(rec, pts, dirs, depthMode, kind) {
+    const out = [];
+    if (!Array.isArray(pts)) return out;
+    const sc = rec.scale || 1;
+    pts.forEach((q, i) => {
+      if (!Array.isArray(q)) return;
+      const dir = DIR_IDX[(dirs && dirs[i]) || 'S'] !== undefined ? DIR_IDX[(dirs && dirs[i]) || 'S'] : 2;
+      const flip = !!(rec.img && rec.img.flipX);
+      const sx = rec.x + q[0] * sc * (flip ? -1 : 1), sy = rec.y + q[1] * sc;
+      const v = DIR_VEC[dir];
+      const seat = {
+        prop: rec, x: sx, y: sy, dir: flip ? (dir === 1 ? 3 : dir === 3 ? 1 : dir) : dir, kind: kind || 'seat', by: null,
+        standX: sx + v[0] * 40, standY: sy + Math.max(18, v[1] * 40 + 22),
+        depth: depthMode === 'behind' ? undefined : rec.y + 1 + q[1] * 0.001,
+      };
+      this.gs.collision.resolve(seat.standXY = { x: seat.standX, y: seat.standY }, 12);
+      seat.standX = seat.standXY.x; seat.standY = seat.standXY.y;
+      this.seats.push(seat);
+      out.push(seat);
+    });
+    return out;
+  }
+
+  /** (v4-C) a place built later (decor, the town hall): residents go there too. cfg: { at, r, acts, fire } */
+  addArea(id, cfg) {
+    if (!cfg || !Array.isArray(cfg.at)) return null;
+    const a = this.areas[id] = { id, x: cfg.at[0], y: cfg.at[1], r: cfg.r || 120, acts: cfg.acts || ['wander'], fire: cfg.fire ? { x: cfg.fire[0], y: cfg.fire[1] } : null, stage: null, after: null, n: 0 };
+    return a;
+  }
+
+  /** (v4-C) seats of a prop built later, belonging to area `a` */
+  addSeats(rec, pts, dirs, depthMode, a) {
+    const ss = this.seatsFor(rec, pts, dirs, depthMode);
+    for (const s of ss) s.area = a || this.nearestArea(s.x, s.y, 260);
+    return ss;
   }
 
   nearestArea(x, y, maxD) {
@@ -228,8 +250,8 @@ export class VillageLife {
   }
 
   isPetKey(k) { const d = Assets.m.characters[k]; return !!(d && d.kind === 'pet'); }
-  /** residents who live here (pets not counted) */
-  people() { let n = 0; for (const k of this.moved) if (!this.isPetKey(k)) n++; return n; }
+  /** residents who live here (pets not counted); (v4-C) + the settlers who moved into empty houses */
+  people() { let n = 0; for (const k of this.moved) if (!this.isPetKey(k)) n++; const c = this.gs.civic; return n + (c ? c.settlers : 0); }
 
   /** people of every step done so far (and of the steps to come) who have no home yet */
   futurePeople() {

@@ -60,7 +60,8 @@ try {
   const fog = await ev(() => { const gs = window.__FV.scene, T = gs.territory; return { east: !!T.regions.east.fog, south: !!T.regions.south.fog, walk: gs.collision.inWalk(2300, 1000), walkStart: gs.collision.inWalk(990, 1200), cam: T.camRect }; });
   step('fog walls stand before every closed land', fog.east && fog.south && !s.territory.east && !s.territory.south, JSON.stringify(fog));
   step('closed land is not walkable', !fog.walk && fog.walkStart);
-  step('camera bounds stop at the fog (with a peek)', fog.cam && fog.cam.w < 2300 && fog.cam.h < 3100, JSON.stringify(fog.cam));
+  // ((v4-C) the west strip is open from the start: the bounds reach WORLD.left, the fog side (east) still stops them)
+  step('camera bounds stop at the fog (with a peek)', fog.cam && fog.cam.x + fog.cam.w < 2300 && fog.cam.h < 3100, JSON.stringify(fog.cam));
   await ev(() => window.__FV.camera(1650, 900, 0.7));
   await adv(1);
   await shot('01_fog_wall');

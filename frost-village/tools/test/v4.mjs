@@ -240,6 +240,25 @@ try {
       step('9 ... and settles back when the label is gone', w2.y >= w2.base - 1 || w2.lift > 0, w2);
     }
   }
+  // ---- 10. (v4-C) the big restaurant feeds train visitors; the town hall hosts the ceremony
+  await ev(() => {
+    window.__FV.give(20000);
+    for (const [id, k] of [['w_rest', 'big_restaurant'], ['w_hall', 'town_hall']]) { window.__FV.build(id, k); window.__FV.supply(id); window.__FV.finishSite(id); }
+  });
+  await adv(2);
+  await nudge(() => window.__FV.civic().rest && window.__FV.civic().rest.art && window.__FV.civic().hall.art, 120000);
+  await ev(() => {
+    window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 });
+    for (const k of ['rest_cashier', 'rest_cook', 'rest_server']) window.__FV.doneStep(k);
+    const R = window.__FV.scene.civic.C.restaurant; window.__c1vc = R.visitorChance; R.visitorChance = 1;
+  });
+  const tV = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.visitor && (g.state === 'seated' || g.state === 'eat')), 300, 2);
+  step('10 (v4-C) train visitors walk to the big restaurant and sit down to eat', tV >= 0, { t: tV, rest: await ev(() => window.__FV.civic().rest.visitors) });
+  const tVd = await until(() => window.__FV.scene.civic.restaurant.served > 0, 60, 1);
+  step('10 (v4-C) ... and pay for the meal', tVd >= 0, await ev(() => ({ served: window.__FV.civic().rest.served, cash: window.__FV.civic().rest.cash })));
+  await ev(() => { window.__FV.scene.civic.C.restaurant.visitorChance = window.__c1vc; });
+  const ven = await ev(() => { const gs = window.__FV.scene, a = gs.padSpot({ type: 'rank', id: 'rank_eup' }), b = gs.civic.hall.venue('rank'); return { a, b, happy: gs.v4.growth.happiness(), bonus: gs.civic.happyBonus() }; });
+  step('10 (v4-C) with the town hall the ceremony spot is in front of it; the hall adds happiness', ven.a && ven.a.x === ven.b.x && ven.a.y === ven.b.y && ven.bonus >= 8, ven);
   // §16.4 save gate: a full v4 save (5 shops, 3 houses, 읍) stays small and quick (best of 5: a shared machine)
   const sv = await ev(() => {
     const gs = window.__FV.scene; let ms = 1e9;

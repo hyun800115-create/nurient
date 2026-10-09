@@ -426,6 +426,9 @@ export class Neighbours {
     // (B) a founded shop with something on its shelves
     const shops = this.growth && this.growth.shopTargets ? this.growth.shopTargets() : [];
     if (shops.length && r() < V.shopChance) { const sh = shops[Math.floor(r() * shops.length)]; if (sh) targets.splice(r() < 0.5 ? 0 : targets.length, 0, sh); }
+    // (v4-C) the big restaurant: some visitors sit down for a meal after shopping
+    const RS = gs.civic && gs.civic.restaurant, RC = (BALANCE.civic && BALANCE.civic.restaurant) || {};
+    if (RS && RS.enabled && RS.hasFood() && r() < (Number(RC.visitorChance) || 0)) targets.push(RS);
     const n = V.wantMin + Math.floor(r() * (V.wantMax - V.wantMin + 1));
     return { targets, want: { type: (mk.availableFoods()[0]) || 'item_fish_cooked', count: n } };
   }

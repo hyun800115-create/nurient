@@ -48,6 +48,11 @@ import { Residency } from '../core/Residency.js';
 import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
 // ---- (v4-A) the neighbour town, the snow train, day and night
 import { Neighbours } from '../systems/Neighbours.js';
+// ---- (v4-C) the west strip: the town hall, the big restaurant, decor, settlers, houses that can always be built
+import { Civic, isDecor } from '../systems/Civic.js';
+import { TownHall } from '../entities/TownHall.js';
+import { BigRestaurant } from '../entities/BigRestaurant.js';
+import { Amenity } from '../entities/Amenity.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -143,6 +148,9 @@ export class Game extends Phaser.Scene {
     this.rawPorters = [];         // (v3.5) pile -> station porters
 
     this.ground = new Ground(this);
+    // ---- (v4-C) the civic buildings + settlers (before the plots and the village life: people() counts settlers)
+    this.civic = new Civic(this, sv.c1);
+    this.queueLate = this.queueLate || (() => this.queueLateFiles());
     Residency.attach(this);
     this.applyGfx();
     this.territory = new Territory(this, sv.territory);
@@ -172,7 +180,8 @@ export class Game extends Phaser.Scene {
     this.buildV3();
 
     const ps = sv.player || {};
-    const okPos = Number.isFinite(ps.x) && Number.isFinite(ps.y) && ps.x >= 40 && ps.x <= W - 40 && ps.y >= 0 && ps.y <= H - 40;
+    const X0 = Math.min(0, Number(WORLD.left) || 0);     // (v4-C) the west strip lies at negative x
+    const okPos = Number.isFinite(ps.x) && Number.isFinite(ps.y) && ps.x >= X0 + 40 && ps.x <= W - 40 && ps.y >= 0 && ps.y <= H - 40;
     const sp = { x: okPos ? ps.x : WORLD.player.x, y: okPos ? ps.y : WORLD.player.y };
     if (okPos) this.collision.resolve(sp, 16);
     const px = sp.x, py = sp.y;
@@ -533,14 +542,18 @@ export class Game extends Phaser.Scene {
     // decorative border forest
     const r = rng(1234);
     const kinds = ['tree_pine_a', 'tree_pine_b', 'tree_pine_snow', 'tree_pine_snow'];
+    const X0 = Math.min(0, Number(WORLD.left) || 0);
     for (const [x0, y0, x1, y1, step, region, until] of WORLD.borderTrees) {
+      // (v4-C) a band that makes room for land open from the start (the old west edge, beside the west strip) is
+      // not made at all — its random numbers are still drawn, so every other pine stays exactly where it was
+      const skip = !!(until && this.territory.regions[until] && this.territory.regions[until].cfg.open === true);
       let row = 0;
       for (let y = y0; y <= y1; y += step * 0.55, row++) {
         for (let x = x0; x <= x1; x += step) {
           const x2 = x + (r() - 0.5) * step * 0.6 + ((row % 2) * step) / 2;
           const y2 = y + (r() - 0.5) * step * 0.3;
           const k = kinds[Math.floor(r() * kinds.length)], fl = r() < 0.5, sc = 0.9 + r() * 0.25;
-          if (y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2) || x2 > this.W - 20 || y2 > this.H) continue;
+          if (skip || y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2) || x2 > this.W - 20 || x2 < X0 + 20 || y2 > this.H) continue;
           this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc, region: region || this.territory.regionAt(x2, y2), until });   // (v4-A) until: gone when that land opens
         }
       }
@@ -817,6 +830,10 @@ export class Game extends Phaser.Scene {
       for (const ty in v.store.stock || {}) if (STORE_GOODS.indexOf(ty) >= 0) for (let i = 0; i < Math.min(this.store.maxPerType, v.store.stock[ty] || 0); i++) this.store.stock.push(ty, null, fx);
       this.store.cash.restore(v.store.cash);
     }
+    // ---- (v4-C) the town hall's tax box, the big restaurant's pantry and cash
+    const c1 = sv.c1 || {};
+    if (this.civic && this.civic.hall && c1.hall) this.civic.hall.restore(c1.hall);
+    if (this.civic && this.civic.restaurant && c1.rest) this.civic.restaurant.restore(c1.rest);
   }
 
   /** (v3) the miners' food box appears (after the forge is built): miners eat bread / smoked meat from now on */
@@ -834,6 +851,7 @@ export class Game extends Phaser.Scene {
   popCap() {
     let n = Math.max(0, Math.floor(BALANCE.population3.baseCap) || 19);
     for (const h of this.houses) n += h.people;
+    if (this.civic) n += this.civic.popBonus();     // (v4-C) the town hall's rooms
     return n;
   }
 
@@ -947,6 +965,19 @@ export class Game extends Phaser.Scene {
       this.lazyImage(b.img, bkey);
       this.houses.push(b);
       if (this.life) this.life.capChanged(b, instant);
+    } else if (bkey === 'town_hall') {
+      // ---- (v4-C) the town hall: tax box, notice board, more room, the ceremony venue
+      b = new TownHall(this, site, instant);
+      this.civic.hall = b;
+      this.townHall = b;
+      if (this.life) this.life.capChanged(b, instant);
+    } else if (bkey === 'big_restaurant') {
+      b = new BigRestaurant(this, site, instant);
+      this.civic.restaurant = b;
+      this.restaurant = b;
+    } else if (isDecor(bkey)) {
+      b = new Amenity(this, bkey, site);
+      this.civic.addAmenity(b);
     }
     if (b && !instant) {
       for (const o of b.revealObjects ? b.revealObjects() : []) {
@@ -1061,7 +1092,13 @@ export class Game extends Phaser.Scene {
     if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
     // ---- (v4-B) the station porters' pad and the 승격식 pad on the station square
     if (s.type === 'stationPorter') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.porter.x, y: q.porter.y } : null; }
-    if (s.type === 'rank') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.rank.x, y: q.rank.y } : null; }
+    if (s.type === 'rank') {
+      // ---- (v4-C) the 승격식 is held in front of the town hall once it stands
+      if (this.civic && this.civic.hall) return this.civic.hall.venue('rank');
+      const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.rank.x, y: q.rank.y } : null;
+    }
+    // ---- (v4-C) the big restaurant's staff (계산 점원 → 요리사 → 서빙 직원) on one spot beside it
+    if (s.type === 'restStaff') { const r = this.civic && this.civic.restaurant; return r ? { x: r.staffSpot.x, y: r.staffSpot.y } : null; }
     // (v3.5) the operator of a v3 workshop: on the porter pad's spot (the porter pad follows it)
     if (s.type === 'operator') {
       const src = this.sourceById(s.station);
@@ -1074,26 +1111,9 @@ export class Game extends Phaser.Scene {
   // ---------------------------------------------------------------- build menu
   openBuildMenu(site) { if (site && site.state === 'plot' && site.shown) this.ui.openBuildMenu(site); }
 
-  /** the cards of the build menu for a plot: [{ key, cost, locked, reason, fits }] */
-  buildChoices(site) {
-    const keys = site.only ? [site.only] : (site.size === 'S' ? ['house_c', 'house_a', 'house_b'] : ['toolsmith', 'boathouse', 'warehouse', 'cannery', 'store', 'house_c', 'house_a', 'house_b'].filter((k) => k !== 'boathouse'));
-    const out = [];
-    for (const k of keys) {
-      const c = buildCost(k);
-      let reason = null;
-      const need = BUILD_UNLOCK[k];
-      if (need && !this.progress.met(need)) reason = 'lock_' + k;
-      else if (UNIQUE_BUILDINGS.indexOf(k) >= 0 && (this.isBuilt(k) || this.isBuilding(k))) reason = 'lockBuilt';
-      else if (/^house_/.test(k) && this.life && !this.life.wantsHouse()) reason = 'lockNoOne';
-      // a big plot is kept for the big buildings until every one of them stands (no plot left for the
-      // store would stop the progression); after that, houses may fill the spare big plots too
-      else if (/^house_/.test(k) && site.size !== 'S' && UNIQUE_BUILDINGS.some((u) => u !== 'boathouse' && !this.isBuilt(u) && !this.isBuilding(u))) reason = 'lockBigPlot';
-      out.push({ key: k, cost: c, locked: !!reason, reason });
-    }
-    // what can be built first
-    out.sort((a, b) => (a.locked - b.locked));
-    return out;
-  }
+  /** the cards of the build menu for a plot: [{ key, cost, locked, reason, text, cat }] ((v4-C) Civic: houses can
+   *  always be built, decor, the town hall and the big restaurant, and every locked card says what unlocks it) */
+  buildChoices(site) { return this.civic.choices(site); }
 
   isBuilding(bkey) { for (const id in this.sites) { const s = this.sites[id]; if (s.building === bkey && s.state !== 'done') return true; } return false; }
 
@@ -1466,6 +1486,8 @@ export class Game extends Phaser.Scene {
     for (const w of this.rawPorters) w.update(dt);
     if (this.life) this.life.update(dt);
     if (this.dog) this.dog.update(dt);
+    // ---- (v4-C) the town hall, the big restaurant, decor, settlers
+    if (this.civic) this.civic.update(dt);
     // ---- (v4-A) the rail strip, the train, the town, day and night
     if (this.v4) this.v4.update(dt);
     this.checkLazyGates(dt);
@@ -1641,6 +1663,8 @@ export class Game extends Phaser.Scene {
     if (this.trash.update(dt)) on = true;
     // ---- (v4-B) the loading dock, the station till, a founded shop's delivery pad, a ribbon, a house site
     if (this.v4 && this.v4.growth && this.v4.growth.onPad) on = true;
+    // ---- (v4-C) the restaurant's pantry / register / kitchen / cash, the town hall's tax box / notice board
+    if (this.civic && this.civic.playerPads(dt)) on = true;
     return on;
   }
 
@@ -1742,6 +1766,8 @@ export class Game extends Phaser.Scene {
       dog: this.dog ? this.dog.serialize() : undefined,
       // ---- (v4-A) the v4 block (kept as it was when v4 is not running yet)
       v4: this.v4 ? this.v4.serialize() : (this.saved && this.saved.v4) || undefined,
+      // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry and cash
+      c1: this.civic ? this.civic.serialize() : undefined,
     };
   }
 
@@ -1818,13 +1844,15 @@ export class Game extends Phaser.Scene {
           fps: Math.round(gs.game.loop.actualFps),
           // ---- (v4-A)
           v4: gs.v4 ? gs.v4.state() : null,
+          // ---- (v4-C)
+          civic: gs.civic ? gs.civic.state() : null,
         };
       },
       give(c) { gs.economy.add(Math.floor(c || 0)); return gs.economy.coins; },
       unlockAll() {
         const pr = gs.progress;
         for (const s of STEPS) {
-          if (pr.done[s.id] || s.v3 || s.v4) continue;     // (v3 steps: unlockV3; v4 steps come with the neighbours)
+          if (pr.done[s.id] || s.v3 || s.v4 || s.c1) continue;     // (v3 steps: unlockV3; v4 steps come with the neighbours; (v4-C) staff come with their building)
           pr.done[s.id] = true;
           const pad = pr.pads[s.id];
           if (pad) { pad.destroy(); delete pr.pads[s.id]; }
@@ -1875,6 +1903,10 @@ export class Game extends Phaser.Scene {
         for (const id in gs.piles) m['pile:' + id] = gs.piles[id];
         if (gs.dog && gs.dog.r) m.dog = gs.dog.r;
         for (const id in gs.territory.regions) { const r = gs.territory.regions[id]; const c = r.cfg.center || [(r.rect[0] + r.rect[2]) / 2, (r.rect[1] + r.rect[3]) / 2]; m['region:' + id] = { x: c[0], y: c[1] }; }
+        // (v4-C) the town hall (tax box, notice board pad, venue) and the big restaurant (pantry, kitchen, register, cash, staff pad)
+        const cv = gs.civic;
+        if (cv && cv.hall) { m.hallTax = cv.hall.tax.pad; m.hallBoard = cv.hall.boardPad; m.hallVenue = cv.hall.venue('rank'); m.hall = cv.hall; }
+        if (cv && cv.restaurant) { const w = cv.restaurant.where(); m.restPantry = w.pantry; m.restKitchen = w.kitchen; m.restRegister = w.register; m.restCash = w.cash; m.restStaff = w.staff; m.restQueue = w.queue; }
         if (name === 'tree') { const tr = gs.trees.find((n) => n.ready()); return tr && tr.standPoint(tr.x + 60, tr.y + 30); }
         if (name === 'rock') { const n = gs.rocks.find((r) => r.ready()); return n && n.standPoint(n.x + 80, n.y + 60); }
         if (name === 'wheat') { const n = gs.wheat.find((r) => r.ready()); return n && n.standPoint(n.x - 60, n.y + 30); }
@@ -1907,7 +1939,7 @@ export class Game extends Phaser.Scene {
       /** choose building `bkey` on plot `id` like the build menu (pays its coins); false if not allowed */
       build(id, bkey) { const st = gs.sites[id]; return st ? gs.tryBuild(st, bkey) : false; },
       /** the build menu's cards for plot `id` */
-      choices(id) { const st = gs.sites[id]; return st ? gs.buildChoices(st).map((c) => ({ key: c.key, locked: c.locked, reason: c.reason, coins: c.cost.coins })) : null; },
+      choices(id) { const st = gs.sites[id]; return st ? gs.buildChoices(st).map((c) => ({ key: c.key, locked: c.locked, reason: c.reason, coins: c.cost.coins, text: c.text || undefined, cat: c.cat })) : null; },
       openMenu(id) { const st = gs.sites[id]; if (st) gs.openBuildMenu(st); return !!st; },
       /** put every missing material on a site at once (test setup) */
       supply(id) { const st = gs.sites[id]; if (!st || st.state !== 'foundation') return false; for (const m in st.need) while (st.stock.countWithIncoming(m) < st.need[m]) st.stock.push(m, null, gs.effects); return true; },
@@ -1953,6 +1985,15 @@ export class Game extends Phaser.Scene {
       clearStack() { gs.player.stack.clear(gs.effects); gs.player.node = null; return 0; },
       /** (v4-B) put n items of `type` in the chief's bag (test setup) */
       carry(type, n) { const st = gs.player.stack; for (let i = 0; i < (n || 1) && st.count < gs.player.capacity; i++) st.push(type, null, gs.effects); return st.count; },
+      // ---------------- (v4-C) test helpers
+      /** settlers, the hall, the restaurant, decor (Civic.state) */
+      civic() { return gs.civic ? gs.civic.state() : null; },
+      /** n settlers move in now (instant: no walk) */
+      settlers(n, instant) { return gs.civic ? gs.civic.settlersArrive(n || 1, instant !== false) : 0; },
+      /** put cooked food straight into the big restaurant's pantry ({ item_bread: 5, ... }) */
+      restFood(m) { const R = gs.civic && gs.civic.restaurant; if (!R) return null; for (const k in m || {}) for (let i = 0; i < m[k] && R.pantry.countWithIncoming(k) < R.pantryMax(); i++) R.pantry.push(k, null, gs.effects); return R.state().pantry; },
+      /** the build menu's tabs and cards as shown (UI scene) */
+      menu() { const ui = gs.scene.get('UI'); return ui && ui.buildOpen ? { tab: ui.buildTab, tabs: ui.buildTabs, cards: (ui.buildCards || []).map((c) => ({ key: c.ch.key, locked: c.ch.locked, text: c.ch.text })), all: (ui.buildChoicesList || []).map((c) => ({ key: c.key, cat: c.cat, locked: c.locked, text: c.text })) } : null; },
       reset() { gs.resetProgress(); },
       warnings() { return Array.from(Assets.warned); },
     });

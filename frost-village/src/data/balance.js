@@ -223,6 +223,17 @@ export const BALANCE = {
     house_c:   { coins: 80,   item_plank: 6,  item_ingot: 0, time: 6, people: 2 },   // 뾰족집 (2명)
     house_a:   { coins: 160,  item_plank: 10, item_ingot: 0, time: 7, people: 3 },   // 통나무집 (3명)
     house_b:   { coins: 320,  item_plank: 10, item_ingot: 3, time: 8, people: 4 },   // 돌집 (4명)
+    // ---- (v4-C) 마을 건물 (서쪽 숲마을의 아주 큰 부지) — 하는 일은 아래 civic 칸에 있어요
+    town_hall:      { coins: 2400, item_plank: 30, item_ingot: 10, time: 14 },   // 마을회관 (시청)
+    big_restaurant: { coins: 1500, item_plank: 24, item_ingot: 6, time: 12 },    // 큰 식당
+    // ---- (v4-C) 꾸미기: happy = 마을 행복도가 이만큼 올라요 (같은 것을 또 지으면 절반씩만)
+    deco_snowman:    { coins: 120, item_plank: 0,  item_ingot: 0, time: 3, happy: 2 },   // 눈사람 동상 (작은 부지)
+    deco_bench:      { coins: 90,  item_plank: 4,  item_ingot: 0, time: 3, happy: 1 },   // 쉼터 의자 + 가로등 (작은 부지, 주민이 앉아요)
+    deco_lamp:       { coins: 80,  item_plank: 0,  item_ingot: 1, time: 3, happy: 1 },   // 가로등 한 쌍 (작은 부지, 밤에 불이 켜져요)
+    deco_flowers:    { coins: 160, item_plank: 3,  item_ingot: 0, time: 4, happy: 2 },   // 꽃밭 (작은 부지)
+    deco_rink:       { coins: 400, item_plank: 0,  item_ingot: 0, time: 5, happy: 3 },   // 스케이트장 (건설 부지)
+    deco_playground: { coins: 550, item_plank: 12, item_ingot: 0, time: 6, happy: 4 },   // 놀이터 (건설 부지, 아이들이 놀아요)
+    deco_fountain:   { coins: 750, item_plank: 0,  item_ingot: 4, time: 6, happy: 5 },   // 분수 공원 (건설 부지, 주민이 둘레에 앉아요)
   },
   // ── 인구: 처음부터 살 수 있는 주민 수 (이보다 많으면 집을 지어야 이사 옴; 강아지·고양이·펭귄은 세지 않음)
   population3: {
@@ -403,5 +414,45 @@ export const BALANCE = {
     //    socialPages = 주민의 몸짓 그림(웃기, 손 흔들기...)을 한 번에 몇 명 것까지 들고 있을지,
     //    socialTtl = 안 쓴 몸짓 그림을 몇 초 뒤에 치울지, townTtl = 멀리 있는 동네 그림을 몇 초 뒤에 치울지
     tex: { mustMiB: 455, targetMiB: 300, lowMiB: 200, softGap: 24, uploadsPerSec: 10, socialPages: 5, socialTtl: 30, townTtl: 10 },
+  },
+
+  // =====================================================================
+  //  (v4-C) 서쪽 숲마을 · 마을회관 · 큰 식당 · 꾸미기 · 이주민 (docs/기획서_v4_추가요청.md)
+  //   짓는 비용은 위 buildings 칸 (town_hall, big_restaurant, deco_...) 에 있어요
+  // =====================================================================
+  civic: {
+    // ── 마을회관 (시청)
+    hall: {
+      taxPerPerson: 1.2,      // 주민 1명이 1분에 내는 세금(코인) → 마을회관 앞 세금 상자에 쌓여요
+      taxCap: 1500,           // 세금 상자에 쌓이는 최대 코인 (촌장이 가져가야 다시 쌓여요)
+      people: 6,              // 마을회관이 늘려 주는 집 자리 (주민 수 한도 +)
+      happy: 8,               // 마을 행복도 +
+    },
+    // ── 큰 식당
+    restaurant: {
+      dishMult: 1.3,          // 한 접시 값 = 그 음식의 판매 가격 × dishMult
+      comboMult: 1.6,         // 정식(생선구이 + 빵 + 훈제고기) 값 = 세 가지 판매 가격의 합 × comboMult
+      comboChance: 0.4,       // 세 가지가 다 있을 때 손님이 정식을 시킬 확률
+      spawnEvery: 5,          // 손님이 오는 간격(초)
+      maxQueue: 6,            // 주문하려고 줄 서는 최대 손님 수
+      pantryMax: 30,          // 식재료 칸 하나(음식 한 종류)에 넣어 두는 최대 개수
+      cookTime: 1.4,          // 한 접시 요리하는 시간(초)
+      cookTimeCombo: 2.4,     // 정식 요리하는 시간(초)
+      eatTime: 9,             // 앉아서 먹는 시간(초)
+      eatTimeCombo: 13,       // 정식을 먹는 시간(초)
+      patience: 70,           // 자리에서 음식을 기다리는 최대 시간(초) — 넘으면 돈을 안 내고 그냥 가요
+      visitorChance: 0.3,     // 기차 타고 온 이웃이 큰 식당에 들를 확률
+      // 직원 고용비 (처음엔 촌장이 직접: 계산대에 서고, 주방 발판에 서서 요리·서빙)
+      staff: { cashier: 450, cook: 700, server: 900 },   // 계산 점원 / 요리사 / 서빙 직원
+    },
+    // ── 꾸미기·마을회관이 올려 주는 행복도의 합이 이보다 커지지 않아요
+    happyCap: 24,
+    // ── 이주민: 주민이 다 들어가고도 빈 방이 남으면 이웃 마을·바깥 길에서 새 이웃이 이사 와요 (광부를 고용한 뒤부터)
+    settlers: {
+      every: 45,              // 이만큼(초)마다 한 가족 (행복도가 높을수록 조금 더 자주)
+      householdMin: 1,        // 한 번에 오는 사람 수 (최소)
+      householdMax: 2,        //                    (최대)
+      maxVacant: 6,           // 집의 빈 방이 이만큼 남아 있으면 이주민이 들어올 때까지 집을 더 짓지 않아요 (마을회관 방은 안 세요)
+    },
   },
 };

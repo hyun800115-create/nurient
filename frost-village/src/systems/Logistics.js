@@ -16,6 +16,8 @@ export const PRIO = {
   INPUT: 70,        // a workshop (toolsmith / cannery) input
   GRILL: 60,        // boat fish for the grill
   FOOD: 50,         // topping the food box up
+  PANTRY_LOW: 46,   // (v4-C) the big restaurant's pantry is nearly empty (it pays more per dish than the market:
+                    //   a porter whose food could go to either fills the pantry first, then the shelves again)
   SHELF_LOW: 45,    // a shop shelf is nearly empty
   SHELF: 40,        // a shop shelf
   SHOP: 35,         // (v4) a founded shop's shelf at the station district (remote)

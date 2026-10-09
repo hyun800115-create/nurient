@@ -15,16 +15,19 @@ export const FOG_DEPTH = DEPTH.FLY - 1000;   // above every world object, below 
 const EDGE_IN = 46;        // the walkable land stops this far before the fog (px)
 const CAM_PEEK = 260;      // how far the camera may look into the fog (px)
 const FILL = 0xe6eef6;
+/** (v4-C) the world's left edge (the west strip lies at negative x) */
+const worldLeft = () => Math.min(0, Number(WORLD.left) || 0);
 
 export class Territory {
   constructor(gs, saved) {
     this.gs = gs;
     this.regions = {};
-    const T = WORLD.territory || { start: { rect: [0, 0, WORLD.width, WORLD.height] } };
+    const T = WORLD.territory || { start: { rect: [worldLeft(), 0, WORLD.width, WORLD.height] } };
     for (const id in T) {
       const r = T[id];
       if (!r || !Array.isArray(r.rect)) continue;
-      this.regions[id] = { id, cfg: r, rect: r.rect, open: id === 'start' || !!(saved && saved[id]), objs: [], fog: null };
+      // (v4-C) `open: true` in world.js: open from the very start (the west strip beside the first village)
+      this.regions[id] = { id, cfg: r, rect: r.rect, open: id === 'start' || r.open === true || !!(saved && saved[id]), objs: [], fog: null };
     }
     // (v4-A) a region that opens together with another one (rail with east): a save with that one open has it open too
     for (const id in this.regions) { const r = this.regions[id]; if (!r.open && r.cfg.openWith && this.regions[r.cfg.openWith] && this.regions[r.cfg.openWith].open) r.open = true; }
@@ -81,11 +84,11 @@ export class Territory {
   /** walkable rects: every open region inset from the fog / map edge, plus bridges where two open regions touch */
   walkRects() {
     const open = Object.values(this.regions).filter((r) => r.open);
-    const W = WORLD.width, H = WORLD.height;
+    const W = WORLD.width, H = WORLD.height, X0 = worldLeft();
     const out = [];
     for (const r of open) {
       const [x0, y0, x1, y1] = r.rect;
-      out.push([Math.max(40, x0 + EDGE_IN), Math.max(0, y0 + (y0 > 0 ? EDGE_IN : 0)), Math.min(W - 40, x1 - EDGE_IN), Math.min(H - 40, y1 - EDGE_IN)]);
+      out.push([Math.max(X0 + 40, x0 + EDGE_IN), Math.max(0, y0 + (y0 > 0 ? EDGE_IN : 0)), Math.min(W - 40, x1 - EDGE_IN), Math.min(H - 40, y1 - EDGE_IN)]);
     }
     for (let i = 0; i < open.length; i++) {
       for (let j = 0; j < open.length; j++) {
@@ -94,7 +97,7 @@ export class Territory {
         // a's right edge on b's left edge
         if (a[2] === b[0]) { const ya = Math.max(a[1], b[1]), yb = Math.min(a[3], b[3]); if (yb - ya > 2 * EDGE_IN) out.push([a[2] - EDGE_IN - 2, ya + (ya > 0 ? EDGE_IN : 0), a[2] + EDGE_IN + 2, yb - EDGE_IN]); }
         // a's bottom edge on b's top edge
-        if (a[3] === b[1]) { const xa = Math.max(a[0], b[0]), xb = Math.min(a[2], b[2]); if (xb - xa > 2 * EDGE_IN) out.push([Math.max(40, xa + EDGE_IN), a[3] - EDGE_IN - 2, Math.min(W - 40, xb - EDGE_IN), a[3] + EDGE_IN + 2]); }
+        if (a[3] === b[1]) { const xa = Math.max(a[0], b[0]), xb = Math.min(a[2], b[2]); if (xb - xa > 2 * EDGE_IN) out.push([Math.max(X0 + 40, xa + EDGE_IN), a[3] - EDGE_IN - 2, Math.min(W - 40, xb - EDGE_IN), a[3] + EDGE_IN + 2]); }
       }
     }
     return out;
@@ -126,7 +129,8 @@ export class Territory {
     if (touches('r')) x1 += CAM_PEEK;
     if (touches('b')) y1 += CAM_PEEK;
     if (touches('l')) x0 -= CAM_PEEK;
-    return { x: Math.max(0, x0), y: Math.max(0, y0), w: Math.min(WORLD.width, x1) - Math.max(0, x0), h: Math.min(WORLD.height, y1) - Math.max(0, y0) };
+    const X0 = worldLeft();
+    return { x: Math.max(X0, x0), y: Math.max(0, y0), w: Math.min(WORLD.width, x1) - Math.max(X0, x0), h: Math.min(WORLD.height, y1) - Math.max(0, y0) };
   }
 
   /** walkable land + camera bounds + fog walls follow the open regions */
@@ -373,7 +377,8 @@ export class Territory {
 
   serialize() {
     const o = {};
-    for (const id in this.regions) if (id !== 'start' && this.regions[id].open) o[id] = true;
+    // ((v4-C) land open from the start — the west strip — is not saved: it is open in every game)
+    for (const id in this.regions) if (id !== 'start' && this.regions[id].open && this.regions[id].cfg.open !== true) o[id] = true;
     return o;
   }
 }

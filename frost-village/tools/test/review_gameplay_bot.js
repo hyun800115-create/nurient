@@ -154,7 +154,10 @@
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
       if (own && st.only !== bkey) continue;
-      if (st.only ? st.only !== bkey : (bkey === 'boathouse' || (st.size === 'S' && !/^house_/.test(bkey)))) continue;
+      if (st.only ? st.only !== bkey : bkey === 'boathouse') continue;
+      // ((v4-C) the plot's own build menu: sizes by Civic MENU; a card locked only for its kind (lock_<key>) still
+      // marks the right plot, a card locked for this plot (big plots kept for the workshops, empty beds) does not)
+      if (!st.only) { const c = gs.buildChoices(st).find((q) => q.key === bkey); if (!c || (c.locked && !/^lock_/.test(c.reason))) continue; }
       if (/^house_/.test(bkey) && st.size !== 'S' && Object.values(gs.sites).some((q) => q.kind === 'plot' && q.state === 'plot' && q.shown && q.size === 'S')) continue;
       const d = gd(p.x, p.y, st.dropX, st.dropY);
       if (d < bd) { bd = d; best = st; }

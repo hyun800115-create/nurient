@@ -63,9 +63,10 @@ export class Roads {
       if (!l) b.set(k, l = []);
       l.push(n);
     }
-    let maxX = 0, maxY = 0;
-    for (const n of this.nodes) { maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y); }
-    this.bucketSpan = Math.ceil(Math.max(maxX, maxY * 2, 1) / BUCKET) + 2;
+    let maxX = 0, maxY = 0, minX = 0;
+    for (const n of this.nodes) { maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y); minX = Math.min(minX, n.x); }
+    // ((v4-C) nodes of the west strip lie at negative x)
+    this.bucketSpan = Math.ceil(Math.max(maxX - minX, maxY * 2, 1) / BUCKET) + 2;
   }
 
   /** zones changed (unlock): forget cached paths */

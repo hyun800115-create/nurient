@@ -58,6 +58,9 @@ export const WORLD = {
   // (v4) 동쪽으로 넓어짐: 3000 → 6144 (서리역 앞 3000~4150, 솔방울 마을 4150~6144)
   width: 6144,
   height: 3450,
+  // (v4-C) 서쪽 숲마을: 처음부터 열려 있는 서쪽 땅. 지도의 왼쪽 끝이 x = left 예요 (0 보다 작아요).
+  //   (예전 마을의 좌표는 하나도 바뀌지 않았어요 — 땅만 왼쪽으로 늘어났어요)
+  left: -1400,
 
   // 바닷가: y 값보다 위쪽이 바다. 물결 모양 = base + Σ amp*sin(x*freq + phase)
   //   slope: x 가 from 보다 크면 해안선이 k 비율로 내려감 (knee = 부드럽게 꺾이는 길이 px)
@@ -193,6 +196,10 @@ export const WORLD = {
       se_n: [2330, 1650], se_c: [2330, 2330], se_s: [2320, 2960], se_gate: [1830, 2400], se_e: [2700, 2420],
       // ---- (v4-A) 역 가는 길 (동쪽 해안 → 서리역 광장). 그 너머 길은 WORLD.v4.walk 에서 자동으로 만들어져요
       v_link_w: [2640, 1139], v_link_e: [3184, 1411],
+      // ---- (v4-C) 서쪽 숲마을 가는 길 (바닷가 뒤 '바닷가 길' + 마을 마당 옆 '숲길') 과 서쪽 숲마을 안의 길
+      w_b1: [420, 700], w_b2: [230, 620], w_gate_n: [-60, 640],
+      w_m1: [560, 1700], w_m2: [300, 1660], w_gate_m: [-40, 1640],
+      w_rest: [-330, 900], w_x: [-470, 1190], w_hall: [-560, 1640], w_sq: [-900, 1640], w_s: [-420, 2120], w_nw: [-860, 1040], w_front: [-880, 2110],
     },
     edges: [
       ['plaza_c', 'plaza_s', { draw: false }], ['plaza_c', 'plaza_sw', { draw: false }], ['plaza_c', 'plaza_se', { draw: false }],
@@ -222,6 +229,11 @@ export const WORLD = {
       ['tents_e', 'se_gate', { region: 'se', via: [[1600, 2400]] }], ['se_gate', 'se_c', { region: 'se', via: [[2080, 2360]] }], ['se_c', 'se_e', { region: 'se' }],
       // ---- (v4-A) 역 가는 길
       ['e_east', 'v_link_w', { region: 'rail' }], ['v_link_w', 'v_link_e', { region: 'rail' }],
+      // ---- (v4-C) 서쪽 숲마을 길 (처음부터 열려 있어요)
+      ['plaza_w', 'w_b1'], ['w_b1', 'w_b2'], ['w_b2', 'w_gate_n'],
+      ['green', 'w_m1'], ['w_m1', 'w_m2'], ['w_m2', 'w_gate_m'],
+      ['w_gate_n', 'w_rest', { via: [[-200, 760]] }], ['w_rest', 'w_x'], ['w_x', 'w_nw'], ['w_x', 'w_hall', { via: [[-520, 1420]] }],
+      ['w_gate_m', 'w_hall'], ['w_hall', 'w_sq'], ['w_hall', 'w_s', { via: [[-400, 1900]] }], ['w_s', 'w_front'],
     ],
   },
   paths: null,   // (자동: 위 roads 에서 그리는 길만 모아 만듦)
@@ -290,16 +302,28 @@ export const WORLD = {
     ['tree_stump', 2150, 1960, { region: 'se' }], ['snow_pile_a', 2600, 2350, { region: 'se' }], ['snow_pile_b', 1980, 3200, { region: 'se' }],
     ['bush_snow', 2850, 2520, { region: 'se' }], ['bush_snow', 2200, 3150, { region: 'se' }], ['firewood_pile', 2480, 2520, { region: 'se' }],
     ['campfire', 2440, 2620, { region: 'se' }], ['ice_chunk', 2750, 3220, { region: 'se', scale: 0.6 }],
+    // ---- (v4-C) 서쪽 숲마을 (처음부터 보여요)
+    ['ice_chunk', -380, 330], ['ice_chunk', -1050, 322, { scale: 0.7 }], ['boat_small', -760, 262, { flip: true, scale: 0.85 }],
+    ['signpost', -40, 720], ['lamp_post', -190, 690], ['lamp_post', -470, 1080], ['lamp_post', -640, 1580], ['lamp_post', -330, 1820],
+    ['snow_pile_a', -140, 500], ['bush_snow', -520, 520], ['barrel', -960, 520], ['crate', -930, 546], ['snow_pile_b', -1250, 520],
+    ['bush_snow', -1300, 1250], ['snow_pile_a', -1000, 1450], ['bush_snow', -60, 1500], ['snow_pile_b', -180, 2300],
+    ['campfire', -260, 2350], ['firewood_pile', -390, 2420], ['tree_stump', -1200, 900], ['tree_stump', -1120, 860],
+    ['hay_bale', -1220, 2100, { scale: 0.9 }], ['bush_snow', -820, 2200], ['flag_pole', -1000, 1520],
   ],
 
   // 가장자리 소나무 숲 (장식, 벨 수 없음): 자동 배치 영역 [x0, y0, x1, y1, 간격, (v3) 이 땅이 열려야 보임]
   borderTrees: [
-    [0, 420, 150, 2620, 100], [1650, 420, 1800, 2620, 100], [0, 2560, 760, 2620, 115], [1180, 2560, 1800, 2620, 115],
+    // ((v4-C) 첫 줄의 맨 앞 숲은 예전 지도 왼쪽 끝이라 서쪽 숲마을이 생기면서 비켜 줬어요: 7번째 값 'west')
+    [0, 420, 150, 2620, 100, null, 'west'], [1650, 420, 1800, 2620, 100], [0, 2560, 760, 2620, 115], [1180, 2560, 1800, 2620, 115],
     // (v4) 7번째 값 = 이 땅이 열리면 사라지는 나무 (동쪽 끝 숲은 서리역 앞 땅이 열리면 비켜 줌)
     [2880, 300, 3000, 1500, 100, 'east', 'rail'], [2880, 1500, 3000, 3450, 100, 'se', 'rail'], [1800, 3380, 3000, 3450, 115, 'se'],
-    [0, 2620, 150, 3450, 100, 'south'], [0, 3380, 1800, 3450, 115, 'south'],
+    [0, 2620, 150, 3450, 100, 'south', 'west_s'], [0, 3380, 1800, 3450, 115, 'south'],
     // ---- (v4-A) 서리역 앞·솔방울 마을의 가장자리 숲
     [3000, 3380, 4150, 3450, 115, 'rail'], [4150, 3380, 6144, 3450, 115, 'town'], [6024, 300, 6144, 3450, 100, 'town'],
+    // ---- (v4-C) 서쪽 숲마을의 가장자리 숲과 숲속 (자리를 옮기려면 숫자만 고치세요: 길·부지 둘레는 자동으로 비워져요)
+    [-1400, 420, -1250, 2620, 100], [-1400, 2560, 0, 2620, 115],
+    [-1400, 2620, -1250, 3450, 100, 'west_s'], [-1400, 3380, 0, 3450, 115, 'west_s'],
+    [-1240, 2180, -980, 2520, 120], [-820, 2280, -560, 2520, 120],
   ],
   // 그 밖에 흩어진 소나무 [x, y, 종류] (구역 안이나 길 위면 자동으로 빠짐)
   extraTrees: [
@@ -308,6 +332,9 @@ export const WORLD = {
     [1660, 1640, 'tree_pine_snow'], [760, 2220, 'tree_pine_a'], [1540, 2300, 'tree_pine_snow'], [330, 2330, 'tree_pine_b'],
     [600, 2570, 'tree_pine_snow'], [1340, 2580, 'tree_pine_a'], [180, 2260, 'tree_pine_a'], [1700, 2230, 'tree_pine_b'],
     [1240, 2260, 'tree_pine_a'], [520, 2240, 'tree_pine_snow'],
+    // ((v4-C) 서쪽 숲길의 소나무 몇 그루 — 눈밭이 너무 비어 보이지 않게)
+    [-1180, 1390, 'tree_pine_snow'], [-1060, 1440, 'tree_pine_a'], [-1230, 1480, 'tree_pine_b'], [-130, 1900, 'tree_pine_b'],
+    [-60, 2060, 'tree_pine_snow'], [-1210, 1820, 'tree_pine_a'], [-180, 560, 'tree_pine_snow'], [-1120, 1260, 'tree_pine_b'],
     // (v3) 새 땅의 소나무 [x, y, 종류, 땅]
     [1960, 1380, 'tree_pine_a', 'east'], [2120, 1420, 'tree_pine_snow', 'east'], [1900, 760, 'tree_pine_b', 'east'], [2480, 860, 'tree_pine_snow', 'east'],
     [2700, 840, 'tree_pine_a', 'east'], [2250, 1440, 'tree_pine_b', 'east'],
@@ -323,6 +350,9 @@ export const WORLD = {
     ['decal_snow_drift_a', 1580, 2420, 1], ['decal_snow_drift_b', 330, 2440, 1], ['decal_puddle_ice', 1120, 1520, 1], ['decal_puddle_ice', 640, 2250, 0.9],
     ['decal_dirt_patch', 560, 1720, 0.9], ['decal_dirt_patch', 300, 2120, 1],
     ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
+    // (v4-C) 서쪽 숲마을
+    ['decal_snow_drift_a', -700, 1200, 1.1], ['decal_snow_drift_b', -1150, 1450, 1], ['decal_puddle_ice', -980, 1880, 1.2], ['decal_snow_drift_a', -360, 2200, 1],
+    ['decal_footprints', -280, 820, 0.9], ['decal_dirt_patch', -1000, 980, 0.9],
   ],
 
   // ── (v3) 땅 넓히기 ───────────────────────────────────────
@@ -337,6 +367,10 @@ export const WORLD = {
     rail:  { rect: [3000, 0, 4150, 3450], name: 'r_rail', center: [3420, 1560], openWith: 'east' },
     // ---- (v4-A) 솔방울 마을: 촌장님 초대(첫 가게 개업 뒤)로 열려요 (openFlag)
     town:  { rect: [4150, 0, 6144, 3450], name: 'r_town', center: [4900, 2450], openFlag: 'townInvite' },
+    // ---- (v4-C) 서쪽 숲마을: 처음부터 열려 있어요 (open: true). 마을회관·큰 식당 자리가 여기 있어요
+    west:   { rect: [-1400, 0, 0, 2620], name: 'r_west', center: [-660, 1250], open: true },
+    // ---- (v4-C) 서쪽 숲마을 아래쪽 눈밭: 남쪽 들판(south)이 열릴 때 함께 열려요
+    west_s: { rect: [-1400, 2620, 0, 3450], name: 'r_west_s', center: [-700, 3000], openWith: 'south' },
   },
   // 망루 공사장 (x, y = 망루 중심). 비용 발판은 공사장 앞(자재 내려놓는 곳)에 생김
   //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
@@ -365,6 +399,17 @@ export const WORLD = {
     se_s2:    { x: 2060, y: 1820, size: 'S', region: 'se' },
     // ---- (v4-A) 눈에 덮인 옛 기차역 (XL 부지, 서리역만 고칠 수 있음). drop = 자재 내려놓는 발판 (승격식 발판 자리)
     r_station: { x: 3410, y: 1330, size: 'XL', region: 'rail', only: 'station', drop: [3200, 1441] },
+    // ---- (v4-C) 서쪽 숲마을의 부지. XL = 마을회관·큰 식당 자리 (동쪽 망루 공사가 시작되면 나타나요)
+    //   drop = 자재 내려놓는 발판 위치 (XL 부지만)
+    w_rest:  { x: -600, y: 880,  size: 'XL', region: 'west', after: 'tower_east', drop: [-390, 1000] },
+    w_hall:  { x: -780, y: 1880, size: 'XL', region: 'west', after: 'tower_east', drop: [-570, 2000] },
+    w_m1:    { x: -250, y: 1360, size: 'M', region: 'west', after: 'zone_hunt' },
+    w_m2:    { x: -1100, y: 1130, size: 'M', region: 'west', after: 'hire_hunter' },
+    w_s1:    { x: -170, y: 1080, size: 'S', region: 'west', after: 'hire_miner' },
+    w_s2:    { x: -330, y: 1660, size: 'S', region: 'west', after: 'hire_miner' },
+    w_s3:    { x: -1150, y: 1660, size: 'S', region: 'west', after: 'hire_hunter' },
+    w_s4:    { x: -440, y: 2290, size: 'S', region: 'west', after: 'hire_hunter' },
+    w_s5:    { x: -250, y: 2010, size: 'S', region: 'west', after: 'hire_hunter' },
   },
   // 새 땅의 자원: 벨 수 있는 소나무, 광석 바위, 밀밭 (그 땅이 열리면 나타남)
   regionTrees: [
@@ -375,6 +420,9 @@ export const WORLD = {
     [230, 2860, 'tree_pine_snow', 'south'], [320, 2940, 'tree_pine_a', 'south'], [220, 3020, 'tree_pine_b', 'south'], [300, 3150, 'tree_pine_snow', 'south'],
     // 동남쪽 언덕 숲
     [2770, 1900, 'tree_pine_a', 'se'], [2860, 1990, 'tree_pine_snow', 'se'], [2780, 2090, 'tree_pine_b', 'se'], [2880, 2140, 'tree_pine_a', 'se'],
+    // (v4-C) 서쪽 숲마을 북쪽 숲 (벨 수 있어요, 처음부터)
+    [-1170, 660, 'tree_pine_a', 'west'], [-1080, 720, 'tree_pine_snow', 'west'], [-1200, 780, 'tree_pine_b', 'west'], [-1110, 840, 'tree_pine_a', 'west'],
+    [-1010, 640, 'tree_pine_snow', 'west'], [-990, 780, 'tree_pine_b', 'west'], [-1180, 920, 'tree_pine_snow', 'west'],
   ],
   regionRocks: [
     [...Z('quarry', -1.6, -0.6), 'rock_ore'], [...Z('quarry', 0.4, -1.8), 'rock_ore_b'], [...Z('quarry', 1.6, 0.2), 'rock_ore'],
@@ -460,6 +508,9 @@ export const WORLD = {
       ['picnic_table', 470, 2760, { id: 'picnic_s', after: 'r:south' }], ['sled', 700, 2840, { id: 'sled_s', after: 'r:south' }],
       ['log_seat', 2440, 2570, { id: 'seat_se_n', after: 'r:se' }], ['log_seat_x', 2535, 2595, { id: 'seat_se_e', after: 'r:se' }],
       ['igloo', 2120, 2420, { id: 'igloo_se', after: 'r:se' }], ['snow_fort', 2620, 2860, { id: 'fort_se', after: 'r:se' }],
+      // (v4-C) 서쪽 숲마을 모닥불 둘레 의자, 눈 요새
+      ['log_seat', -260, 2296, { id: 'seat_west_n', after: 'zone_forest' }], ['log_seat_y', -355, 2321, { id: 'seat_west_w', after: 'zone_forest' }],
+      ['log_seat_x', -165, 2321, { id: 'seat_west_e', after: 'zone_forest' }], ['snow_fort', -880, 1260, { id: 'fort_west', after: 'zone_farm' }],
     ],
     // 주민이 머무는 곳: 중심 [x, y], 반지름 r(px), 하는 일 acts, after = 이 단계를 마쳐야 사람들이 감
     //   acts: sit(의자에 앉기) warm(불 쬐기) chat(수다) read(게시판) play(눈싸움·술래잡기·눈사람) wander(산책) concert(공연)
@@ -478,6 +529,9 @@ export const WORLD = {
       east_dock: { at: [2080, 830], r: 140, acts: ['sit', 'warm', 'chat', 'wander'], fire: [2060, 790], after: 'r:east' },
       south_fields: { at: [560, 2730], r: 140, acts: ['chat', 'wander', 'warm', 'play'], fire: [560, 2700], after: 'r:south' },
       se_hill:   { at: [2400, 2650], r: 170, acts: ['sit', 'warm', 'chat', 'play', 'wander'], fire: [2440, 2620], after: 'r:se' },
+      // (v4-C) 서쪽 숲마을: 모닥불 쉼터와 눈밭
+      west_camp: { at: [-260, 2370], r: 140, acts: ['sit', 'warm', 'chat'], fire: [-260, 2350], after: 'zone_forest' },
+      west_field: { at: [-760, 1220], r: 170, acts: ['play', 'chat', 'wander'], after: 'zone_farm' },
     },
     // 주민 이사 순서 (balance.js 의 population 과 함께): 단계 이름 -> 이사 오는 주민
     //   목록에 있는 주민의 그림이 아직 없으면 (예: 2차 주민) 건너뛰고 다음 사람이 옴

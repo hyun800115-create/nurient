@@ -21,7 +21,7 @@ const check = (name, ok, info = '') => { console.log((ok ? '  ok  ' : ' FAIL ') 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const migrate = (o) => { o = clone(o); while (o.v !== SAVE_VERSION) o = MIGRATE[o.v](o); return sanitizeSave(o); };
 
-check('SAVE_VERSION is 5 (v4)', SAVE_VERSION === 5, String(SAVE_VERSION));
+check('SAVE_VERSION is 5 or later (v4: 5, v4.1: 6)', SAVE_VERSION >= 5, String(SAVE_VERSION));
 check('a v4 (v3.5) -> v5 step exists', typeof MIGRATE[4] === 'function');
 
 // ---------------------------------------------------------------- real v3.5 saves

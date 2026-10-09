@@ -11,8 +11,9 @@ Reads the existing manifests + atlases (never edits a source folder) and writes 
                                               <key>@soc    talk / wave / happy + the other head poses
                                               (carry_walk is dropped: v4 dolls carry on the head)
   * train atlases                          -> <key>@ne     the NE frames only (the train is drawn NE / mirrored NW)
-  * town_shops / town_civic                -> <key>@b / @a and @station / @rest (the founded shops and our
-                                              station are what the district needs)
+  * town_shops / town_civic                -> <key>@b / @a and @station / @hall / @rest (the founded shops and our
+                                              station are what the district needs; (v4-C) the town hall is a
+                                              page of its own: our village builds one too)
 
 A page is a normal Phaser "JSON Hash" atlas (tfatlas for townfolk) packed with a skyline packer; frames that
 share one source rectangle stay shared. Texture keys use '@'; file names use '.' (key 'x@core' -> x.core.png).
@@ -54,9 +55,10 @@ TF_LOCO_POSES = {'loco'}
 TRAIN = re.compile(r'^train_(engine|car_a|car_b)$')
 TRAIN_DIR = 'NE'
 TOWN_SPLIT = {
-    # atlas: (page suffix for the listed frame groups, the rest)
-    'town_shops': ('b', 'a', {'cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'}),
-    'town_civic': ('station', 'rest', {'train_station'}),
+    # atlas: [(page suffix, the frame groups on it), ..., (suffix of the rest, None)]
+    'town_shops': [('b', {'cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'}), ('a', None)],
+    # (v4-C) the town hall on a page of its own (the village's 마을회관 uses it far from the neighbour town)
+    'town_civic': [('station', {'train_station'}), ('hall', {'town_hall'}), ('rest', None)],
 }
 CHAR_FRAGS = ['villagers', 'villagers2', 'villagers3']
 TF_FRAGS = ['townfolk']
@@ -369,12 +371,15 @@ def main():
                     return 'ne' if mm.group(2) == TRAIN_DIR else None
                 order = ['ne']
             elif key in TOWN_SPLIT:
-                a_suf, b_suf, names = TOWN_SPLIT[key]
+                groups = TOWN_SPLIT[key]
 
-                def classify(name, a_suf=a_suf, b_suf=b_suf, names=names):
+                def classify(name, groups=groups):
                     base = re.sub(r'_work(_\d+)?$', '', re.sub(r'_\d+$', '', name))
-                    return a_suf if base in names else b_suf
-                order = [a_suf, b_suf]
+                    for suf, names in groups:
+                        if names is None or base in names:
+                            return suf
+                    return groups[-1][0]
+                order = [g[0] for g in groups]
             else:
                 continue
 

@@ -36,15 +36,17 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
 // (v3) what a construction site may hold, and the land
 // (v4-A) + the repaired station (plot r_station) and the rail strip / neighbour town
-const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station'];
+// (v4-C) + the town hall, the big restaurant, the decor; the west strip (open from the start) and its south end
+const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station',
+  'town_hall', 'big_restaurant', 'deco_snowman', 'deco_bench', 'deco_lamp', 'deco_flowers', 'deco_rink', 'deco_playground', 'deco_fountain'];
 const SITE_STATES = ['foundation', 'scaffold', 'done'];
-const REGIONS = ['east', 'south', 'se', 'rail', 'town'];
+const REGIONS = ['east', 'south', 'se', 'rail', 'town', 'west', 'west_s'];
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 /** finite number (numeric strings accepted) or `d` */
@@ -102,6 +104,11 @@ export const MIGRATE = {
   // v3.5 -> v4 (이웃 마을): nothing else changes — the v4 state starts fresh when the rail strip opens (a v3.5
   // save with the east coast open gets the rail strip and the ruined station on load; sanitizeSave does that)
   4: (s) => Object.assign({}, s, { v: 5 }),
+  // v4 -> v4.1 (서쪽 땅 · 마을회관 · 큰 식당): the west strip lies at negative x, west of everything that was there
+  // (world.js WORLD.left), so no position in an old save moves — the chief, every site, the residents stay where
+  // they were. The strip is open from the start; its south end opens with the south fields (Territory openWith).
+  // Settlers, the hall and the restaurant start fresh (the c1 block).
+  5: (s) => Object.assign({}, s, { v: 6 }),
 };
 const LINE_STATION = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
 const STATION_ZONE = { grill: null, sawmill: 'zone_forest', bakery: 'zone_farm', smelter: 'zone_mine', smokehouse: 'zone_hunt' };
@@ -185,7 +192,28 @@ export function sanitizeSave(raw) {
   // ---- (v4-A) the v4 block: always kept (also while v4 is not running); BUILD-B's sanitizeV4 takes over its own keys
   const v4 = sanitizeV4(raw.v4);
   if (v4) s.v4 = v4;
+  // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry / cash
+  const c1 = sanitizeC1(raw.c1);
+  if (c1) s.c1 = c1;
+  // (v4-C) the south end of the west strip opens with the south fields
+  if (s.territory.south) s.territory.west_s = true;
   return s;
+}
+
+/** (v4-C) the civic block: counts clamped, unknown foods dropped (the restaurant's pantry holds cooked food only) */
+export function sanitizeC1(raw) {
+  if (!isObj(raw)) return null;
+  const C = (BALANCE.civic || {});
+  const R = C.restaurant || {}, Hh = C.hall || {};
+  const o = { settlers: count(raw.settlers, 500), settleT: Math.max(0, Math.min(3600, num(raw.settleT, 0))) };
+  if (isObj(raw.hall)) o.hall = { tax: count(raw.hall.tax, Math.max(1, Math.floor(num(Hh.taxCap, 1500)))), acc: Math.max(0, Math.min(1000, num(raw.hall.acc, 0))) };
+  if (isObj(raw.rest)) {
+    const max = Math.max(1, Math.floor(num(R.pantryMax, 30)));
+    const pantry = {};
+    if (isObj(raw.rest.pantry)) for (const f of FOODS) if (f in raw.rest.pantry) pantry[f] = count(raw.rest.pantry[f], max);
+    o.rest = { pantry, cash: count(raw.rest.cash, 1e9), served: count(raw.rest.served, 1e9) };
+  }
+  return o;
 }
 
 /**

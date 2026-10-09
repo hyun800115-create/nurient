@@ -43,6 +43,8 @@ const LEVEL_ZOOM = [0.85, 0.42];
 const LEVEL_MARGIN = [200, 320, 480];   // world px around the view that should already be baked
 const POOL = 28;                         // slots (1 MiB each); about 24 cover a phone view at zoom 0.85
 const TRIM_AFTER = 15;                   // s a slot may keep a tile nobody needed before it is given back
+/** tile id (level, column, row); (v4-C) columns may be negative (the west strip): offset so ids never collide */
+const tileId = (lv, tx, ty) => lv * 1e7 + ty * 2000 + (tx + 500);
 export function levelFor(z) { return z >= LEVEL_ZOOM[0] ? 0 : z >= LEVEL_ZOOM[1] ? 1 : 2; }
 /** device px per user px of a 2D context (shadow offsets / blur are in device px) */
 export function devScale(ctx) {
@@ -81,8 +83,10 @@ export class Ground {
     this.gs = gs;
     const W = WORLD.width, H = WORLD.height;
     this.W = W; this.H = H;
+    // (v4-C) the world starts at x = WORLD.left (the west strip lies at negative x)
+    this.X0 = Math.min(0, Math.floor(Number(WORLD.left) || 0));
     let maxShore = 0;
-    for (let x = 0; x <= W; x += 8) maxShore = Math.max(maxShore, shoreY(x));
+    for (let x = this.X0; x <= W; x += 8) maxShore = Math.max(maxShore, shoreY(x));
     this.maxShore = maxShore;
 
     // --- sea (live, scrolling): Ground.makeSea() — the one place the sea is made (the living water of v7
@@ -154,7 +158,7 @@ export class Ground {
     let x0 = Math.floor((cx - vw / 2 - 320) / (64 * k)) * 64 * k;
     // inside the world only (beyond its edges there is no land to cover the sea)
     const span = sw * k;
-    if (span <= this.W) x0 = Math.max(0, Math.min(this.W - span, x0));
+    if (span <= this.W - this.X0) x0 = Math.max(this.X0, Math.min(this.W - span, x0));
     const top = -200, bottom = this.seaH;
     const vis = cy - vh / 2 - 320 < bottom;
     const sh = Math.ceil((bottom - top) / k / 64) * 64;
@@ -184,7 +188,8 @@ export class Ground {
     const T = TW << lv;
     const m = margin !== undefined ? margin : LEVEL_MARGIN[lv];
     const cols = Math.ceil(this.W / T), rows = Math.ceil(this.H / T);
-    const x0 = Math.max(0, Math.floor((view.x - m) / T)), x1 = Math.min(cols - 1, Math.floor((view.right + m) / T));
+    const tx0 = Math.floor(this.X0 / T);      // (v4-C) tiles left of x = 0 (the west strip)
+    const x0 = Math.max(tx0, Math.floor((view.x - m) / T)), x1 = Math.min(cols - 1, Math.floor((view.right + m) / T));
     const y0 = Math.max(0, Math.floor((view.y - m) / T)), y1 = Math.min(rows - 1, Math.floor((view.bottom + m) / T));
     const cx = (view.x + view.right) / 2, cy = (view.y + view.bottom) / 2;
     const need = this._need || (this._need = new Set());
@@ -194,7 +199,7 @@ export class Ground {
     const now = this.t;
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
-        const id = lv * 1e6 + ty * 1000 + tx;
+        const id = tileId(lv, tx, ty);
         need.add(id);
         const s = this.byId.get(id);
         if (s) { s.used = now; continue; }
@@ -286,7 +291,7 @@ export class Ground {
     this.bakeChunk(ctx, x0, y0, w, h);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     slot.ct.refresh();
-    const id = lv * 1e6 + ty * 1000 + tx;
+    const id = tileId(lv, tx, ty);
     if (slot.id !== id) { if (slot.id >= 0) this.byId.delete(slot.id); slot.id = id; this.byId.set(id, slot); }
     slot.lv = lv; slot.tx = tx; slot.ty = ty; slot.used = this.t;
     // finer levels above coarser ones (a coarse tile shows under while the fine one is on its way)
@@ -441,8 +446,9 @@ export class Ground {
     land(); ctx.fill();
     // soft blue shading toward the map edges (gives depth). (v4-A) a 240 px band on each side whatever the
     // map width (the v3 map was 3000 px wide: 8 % of it), so the first village looks exactly as before
-    const vg = ctx.createLinearGradient(0, 0, W, 0);
-    const band = Math.min(0.5, 240 / W);
+    const X0 = this.X0;
+    const vg = ctx.createLinearGradient(X0, 0, W, 0);
+    const band = Math.min(0.5, 240 / (W - X0));
     vg.addColorStop(0, 'rgba(120,150,200,0.10)'); vg.addColorStop(band, 'rgba(120,150,200,0)');
     vg.addColorStop(1 - band, 'rgba(120,150,200,0)'); vg.addColorStop(1, 'rgba(120,150,200,0.10)');
     ctx.fillStyle = vg; land(); ctx.fill();

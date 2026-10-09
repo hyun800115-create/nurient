@@ -94,8 +94,9 @@ export class Visitor extends Customer {
         break;
       }
       case 'shopB':
-        // (B) waiting at a founded shop; never longer than its patience
-        this.vx = this.vy = 0;
+        // (B) waiting at a founded shop; never longer than its patience. ((v4-C) the big restaurant walks its guests
+        // itself — to the line, a table and out — so their steps are left alone)
+        if (!(this.target && this.target.drivesGuests)) this.vx = this.vy = 0;
         if ((this.shopBT += dt) > (BALANCE.v4.visitors.patience || 60) * 1.5) this.finishTarget(0.3);
         break;
       case 'platform':

@@ -27,7 +27,8 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4)\./.test(path) || /^costs\.(op|raw)_/.test(path);
+// (v4-C) the town hall / big restaurant / decor and the civic settings too
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|civic)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -157,6 +158,50 @@ export function checkBalance() {
   checkV4A(B);
   // ---- (v4-B) 주문·가게·등급·집·텍스처
   checkV4B(B);
+  // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민
+  checkC1(B);
+}
+
+// ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)
+const C1_BUILD = {
+  town_hall: { coins: 2400, item_plank: 30, item_ingot: 10, time: 14 }, big_restaurant: { coins: 1500, item_plank: 24, item_ingot: 6, time: 12 },
+  deco_snowman: { coins: 120, item_plank: 0, item_ingot: 0, time: 3, happy: 2 }, deco_bench: { coins: 90, item_plank: 4, item_ingot: 0, time: 3, happy: 1 },
+  deco_lamp: { coins: 80, item_plank: 0, item_ingot: 1, time: 3, happy: 1 }, deco_flowers: { coins: 160, item_plank: 3, item_ingot: 0, time: 4, happy: 2 },
+  deco_rink: { coins: 400, item_plank: 0, item_ingot: 0, time: 5, happy: 3 }, deco_playground: { coins: 550, item_plank: 12, item_ingot: 0, time: 6, happy: 4 },
+  deco_fountain: { coins: 750, item_plank: 0, item_ingot: 4, time: 6, happy: 5 },
+};
+function checkC1(B) {
+  const BL = B.buildings = (B.buildings && typeof B.buildings === 'object') ? B.buildings : {};
+  for (const k in C1_BUILD) {
+    const d = C1_BUILD[k];
+    const o = BL[k] = (BL[k] && typeof BL[k] === 'object') ? BL[k] : Object.assign({}, d);
+    fixNum(o, 'coins', 'buildings.' + k + '.coins', 1, 1e9, d.coins, true);
+    fixNum(o, 'item_plank', 'buildings.' + k + '.item_plank', 0, 200, d.item_plank, true);
+    fixNum(o, 'item_ingot', 'buildings.' + k + '.item_ingot', 0, 200, d.item_ingot, true);
+    fixNum(o, 'time', 'buildings.' + k + '.time', 1, 600, d.time);
+    if ('happy' in d) fixNum(o, 'happy', 'buildings.' + k + '.happy', 0, 50, d.happy, true);
+  }
+  const C = B.civic = (B.civic && typeof B.civic === 'object') ? B.civic : {};
+  const H = C.hall = (C.hall && typeof C.hall === 'object') ? C.hall : {};
+  fixNum(H, 'taxPerPerson', 'civic.hall.taxPerPerson', 0, 100, 1.2);
+  fixNum(H, 'taxCap', 'civic.hall.taxCap', 1, 1e7, 1500, true);
+  fixNum(H, 'people', 'civic.hall.people', 0, 40, 6, true);
+  fixNum(H, 'happy', 'civic.hall.happy', 0, 50, 8, true);
+  const R = C.restaurant = (C.restaurant && typeof C.restaurant === 'object') ? C.restaurant : {};
+  const RN = { dishMult: [0.1, 20, 1.3], comboMult: [0.1, 20, 1.6], comboChance: [0, 1, 0.4], spawnEvery: [0.5, 600, 5], cookTime: [0.1, 120, 1.4],
+    cookTimeCombo: [0.1, 120, 2.4], eatTime: [0.5, 600, 9], eatTimeCombo: [0.5, 600, 13], patience: [5, 3600, 70], visitorChance: [0, 1, 0.3] };
+  for (const k in RN) { const [lo, hi, d] = RN[k]; fixNum(R, k, 'civic.restaurant.' + k, lo, hi, d); }
+  fixNum(R, 'maxQueue', 'civic.restaurant.maxQueue', 1, 20, 6, true);
+  fixNum(R, 'pantryMax', 'civic.restaurant.pantryMax', 1, 200, 30, true);
+  const S = R.staff = (R.staff && typeof R.staff === 'object') ? R.staff : {};
+  const SD = { cashier: 450, cook: 700, server: 900 };
+  for (const k in SD) fixNum(S, k, 'civic.restaurant.staff.' + k, 1, 1e9, SD[k], true);
+  fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 24, true);
+  const ST = C.settlers = (C.settlers && typeof C.settlers === 'object') ? C.settlers : {};
+  fixNum(ST, 'every', 'civic.settlers.every', 5, 3600, 45);
+  fixNum(ST, 'householdMin', 'civic.settlers.householdMin', 1, 10, 1, true);
+  fixNum(ST, 'householdMax', 'civic.settlers.householdMax', ST.householdMin, 10, 2, true);
+  fixNum(ST, 'maxVacant', 'civic.settlers.maxVacant', 1, 100, 6, true);
 }
 
 // ---- (v4-B) 주문·가게·등급·집·텍스처 (docs/v4_plan.md §13)

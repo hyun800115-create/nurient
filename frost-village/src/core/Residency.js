@@ -8,6 +8,7 @@
 import { Assets } from './Assets.js';
 import { TF } from './Townfolk.js';
 import { BALANCE } from '../data/balance.js';
+import { WORLD } from '../data/world.js';
 
 const TF_SOC_ANIMS = new Set(['talk', 'wave', 'happy']);
 
@@ -22,9 +23,19 @@ function dropAnim(g, key) {
 // `regionBld`), back when it comes near. Rects in world px [x0, y0, x1, y1].
 // (the district by our station uses the street props and the townhouses too: those belong to rail strip + town)
 const REGIONS = [
-  { id: 'town', rect: [4150, 0, 6144, 3450], pages: ['town_civic@rest', 'town_shops@a', 'town_park'] },
+  { id: 'town', rect: [4150, 0, 6144, 3450], pages: ['town_civic@rest', 'town_civic@hall', 'town_shops@a', 'town_park'] },
   { id: 'east', rect: [3000, 0, 6144, 3450], pages: ['town_homes', 'town_street'] },
-  { id: 'village', rect: [0, 0, 3000, 3450], pages: ['bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing'] },
+  // ((v4-C) from the west strip's edge, WORLD.left. The town art the village uses too stays while the camera is near
+  //  the village — but only once the village has it: the hall's page when the town hall stands, the park page when a
+  //  playground / fountain park does (else a tour of the town would leave those pages in memory back home))
+  { id: 'village', rect: [Math.min(0, Number(WORLD.left) || 0), 0, 3000, 3450], pages: ['bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing'],
+    extra: (gs) => {
+      const cv = gs.civic, out = [];
+      if (!cv) return out;
+      if (cv.hall) out.push('town_civic@hall');
+      if (cv.amenities.some((a) => a.key === 'deco_playground' || a.key === 'deco_fountain')) out.push('town_park');
+      return out;
+    } },
 ];
 const ACQUIRE = 800, RELEASE = 1200;      // px between the view and the area
 
@@ -251,21 +262,33 @@ export const Residency = {
     const T = this.cfg();
     const ttl = (T.townTtl || 10);
     this.areas = this.areas || {};
+    // (v4-C) a page may belong to more than one area (the village's town hall and park props are town art too):
+    // it goes only once every area that lists it has been far for `ttl` s, and comes back when any is near
+    const far = new Map(), near = new Map();
     for (const R of REGIONS) {
       const st = this.areas[R.id] || (this.areas[R.id] = { farT: 0, out: false });
       const gap = st.gap = this.areaGap(view, R.rect);
-      const pages = R.pages.filter((k) => Assets.m.atlases[k] || Assets.m.images[k]);
       if (gap > RELEASE) st.farT += 0.5; else st.farT = 0;
-      if (!st.out && st.farT >= ttl && pages.some((k) => tex.exists(k)) && !(gs.camFocus)) {
-        if (this.evictArea(pages)) st.out = true;
-      } else if (st.out && gap < ACQUIRE) {
-        st.out = false;
-        for (const k of pages) { Assets.held.delete(k); Assets.queued.delete(k); }
-        this.loads += pages.length;
-        if (gs.queueLateFiles) gs.queueLateFiles();
-        if (gs.checkLazyGates) { gs.lazyGateT = 0; }
+      for (const k of R.extra ? R.pages.concat(R.extra(gs)) : R.pages) {
+        if (!(Assets.m.atlases[k] || Assets.m.images[k])) continue;
+        far.set(k, (far.has(k) ? far.get(k) : true) && st.farT >= ttl);
+        near.set(k, (near.get(k) || false) || gap < ACQUIRE);
       }
     }
+    if (!gs.camFocus) {
+      const go = [];
+      for (const [k, f] of far) if (f && tex.exists(k)) go.push(k);
+      if (go.length) this.evictArea(go);
+    }
+    const back = [];
+    for (const [k, n] of near) if (n && Assets.held.has(k)) back.push(k);
+    if (back.length) {
+      for (const k of back) { Assets.held.delete(k); Assets.queued.delete(k); }
+      this.loads += back.length;
+      if (gs.queueLateFiles) gs.queueLateFiles();
+      if (gs.checkLazyGates) { gs.lazyGateT = 0; }
+    }
+    for (const R of REGIONS) { const st = this.areas[R.id]; st.out = R.pages.every((k) => !tex.exists(k)); }
   },
 
   /** take an area's building pictures out of memory: what shows them gets a stand-in and is re-skinned on arrival */

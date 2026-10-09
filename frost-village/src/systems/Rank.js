@@ -71,7 +71,10 @@ export class Rank {
     this.cT = 0;
     this.cLen = Math.max(3, Number(C.length) || 12);
     this.cSkip = Math.max(0, Number(C.skipAfter) || 3);
-    this.cx = Q.rank.x; this.cy = Q.rank.y - 40;
+    // ((v4-C) in front of the town hall once it stands: its square is the village's venue)
+    const venue = gs.civic && gs.civic.hall ? gs.civic.hall.venue('rank') : null;
+    this.cx = venue ? venue.x : Q.rank.x; this.cy = (venue ? venue.y : Q.rank.y) - 40;
+    this.atHall = !!venue;
     this.steps = [];
     this.inputAtStart = !!(Input.joy && Input.joy.active);
     gs.focusCamera(this.cx + 120, this.cy + 80, this.cLen * 1000);
@@ -139,7 +142,9 @@ export class Rank {
     if (nb.paint && nb.paint.setRank) nb.paint.setRank(2, !instant);
     if (instant || !nb.paint || !nb.paint.wipeRects) return;
     // the wipe: re-bake the street tiles nearest the square first, one ring every 0.25 s, with a poof at the front
-    const rects = nb.paint.wipeRects(this.cx, this.cy);
+    // (the wipe starts at the station square: also when the ceremony is held at the town hall)
+    const Q = WORLD.v4.square;
+    const rects = this.atHall ? nb.paint.wipeRects(Q.rank.x, Q.rank.y - 40) : nb.paint.wipeRects(this.cx, this.cy);
     rects.forEach((r, i) => gs.time.delayedCall(i * 250, () => {
       gs.ground.invalidate(r.rect);
       if (gs.isOnScreen(r.x, r.y, 200)) gs.effects.sheet('fx_poof', r.x, r.y, { size: 200 });

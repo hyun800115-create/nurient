@@ -13,6 +13,9 @@ import { VERSION, BUILD_DATE } from '../data/version.js';
 import { buildCost } from '../entities/Site.js';
 // ---- (v4-B) the neighbour-town HUD: rank chip, order chip, clock, train edge icon, order / rank panels
 import { HudV4 } from './UIv4.js';
+// ---- (v4-C) the build menu's tabs
+import { CATALOG, TABS } from '../systems/Civic.js';
+const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
   fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, stroke, strokeThickness: st, resolution: 2,
@@ -211,6 +214,7 @@ export class UI extends Phaser.Scene {
   // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
   openOrders() { if (this.hud4 && !this.panelOpen && !this.buildOpen) this.hud4.openOrders(); }
   openRank() { if (this.hud4 && !this.panelOpen && !this.buildOpen) this.hud4.openRank(); }
+  openBoard() { if (this.hud4 && !this.panelOpen && !this.buildOpen) this.hud4.openBoard(); }   // (v4-C) the town hall's notice board
   rankBadgeFly(wx, wy) { if (this.hud4) this.hud4.badgeFly(wx, wy); }
 
   // ---------------------------------------------------------------- widgets
@@ -582,7 +586,11 @@ export class UI extends Phaser.Scene {
   resumeGame() { const m = this.game.scene; if (m.isPaused('Game')) m.resume('Game'); }
 
   // ---------------------------------------------------------------- (v3) build menu
-  /** the chief stands on an empty plot: pick a building (cards: picture, name, cost, what it does) */
+  /**
+   * the chief stands on an empty plot: pick a building (cards: picture, name, cost, what it does).
+   * (v4-C) the cards sit in tabs (일터 · 집 · 꾸미기 · 마을) — only the tabs this plot offers; every locked card says
+   * what opens it (Civic.choices `text`)
+   */
   openBuildMenu(site) {
     if (this.panelOpen || this.buildOpen) return;
     const gs = this.gs;
@@ -593,11 +601,16 @@ export class UI extends Phaser.Scene {
     const W = this.W, H = this.H;
     const choices = gs.buildChoices(site);
     this.buildChoicesList = choices;
-    const cols = Math.min(4, Math.max(2, choices.length));
+    const catOf = (q) => q.cat || 'work';
+    const tabs = TABS.filter((k) => choices.some((q) => catOf(q) === k));
+    const per = Math.max(1, ...tabs.map((k) => choices.filter((q) => catOf(q) === k).length));
+    const cols = Math.min(4, Math.max(2, per));
     const cw = cols === 4 ? 160 : 200, chh = 262, gap = 10;
-    const rows = Math.ceil(choices.length / cols);
-    const sheetW = Math.min(W - 24, cols * cw + (cols - 1) * gap + 40);
-    const sheetH = 130 + rows * chh + (rows - 1) * gap + 130;
+    const rows = Math.ceil(per / cols);
+    const tabH = tabs.length > 1 ? 80 : 0;
+    const gridW = cols * cw + (cols - 1) * gap;
+    const sheetW = Math.min(W - 24, Math.max(gridW + 40, tabs.length * 150 + 40));
+    const sheetH = 130 + tabH + rows * chh + (rows - 1) * gap + 130;
     const top = H - sheetH - 20 - View.safeBottom;
     const c = this.add.container(0, 0).setDepth(85);
     const dim = this.add.rectangle(W / 2, H / 2, W * 2, H * 2, 0x1b2638, 0.35).setInteractive();
@@ -609,22 +622,33 @@ export class UI extends Phaser.Scene {
     c.add([title, sub]);
     const close = this.makeIconButton(W / 2 + sheetW / 2 - 40, top + 40, 'ui_icon_close', 62, () => this.closeBuildMenu());
     c.add(close);
+    // (v4-C) the tab row
+    this.buildTabs = tabs;
+    this.buildTabBtns = [];
+    if (tabs.length > 1) {
+      const tw = Math.min(170, (sheetW - 40 - (tabs.length - 1) * 8) / tabs.length), ty = top + 120 + 30;
+      const tx0 = W / 2 - (tabs.length * tw + (tabs.length - 1) * 8) / 2 + tw / 2;
+      tabs.forEach((k, i) => {
+        const b = this.makeTab(k, tx0 + i * (tw + 8), ty, tw, 60, choices.filter((q) => catOf(q) === k));
+        c.add(b.c);
+        this.buildTabBtns.push(b);
+      });
+    }
+    this.buildGrid = { gx0: W / 2 - gridW / 2 + cw / 2, y0: top + 120 + tabH + chh / 2, cols, cw, chh, gap };
+    this.buildCardsC = this.add.container(0, 0);
+    c.add(this.buildCardsC);
     this.buildCards = [];
-    const gx0 = W / 2 - ((cols * cw + (cols - 1) * gap) / 2) + cw / 2;
-    choices.forEach((ch, i) => {
-      const col = i % cols, row = Math.floor(i / cols);
-      const x = gx0 + col * (cw + gap), y = top + 120 + chh / 2 + row * (chh + gap);
-      const card = this.makeCard(ch, x, y, cw, chh);
-      c.add(card.c);
-      this.buildCards.push(card);
-    });
     // confirm button
     const btn = this.makeButton(W / 2, top + sheetH - 72, Math.min(sheetW - 60, 460), 92, 'green', '', () => this.confirmBuild(), 30);
     c.add(btn);
     this.buildBtn = btn;
     this.buildPanel = c;
-    const firstOk = choices.find((q) => !q.locked);
-    this.selectCard(firstOk ? firstOk.key : null);
+    // the first card: the next goal's building when this plot offers it, else the first open card
+    const g = gs.progress && gs.progress.nextGoal ? gs.progress.nextGoal() : null;
+    const goalCard = g && g.kind === 'build' ? choices.find((q) => q.key === g.id && !q.locked) : null;
+    const firstOk = goalCard || choices.find((q) => !q.locked);
+    this.buildTab = firstOk ? catOf(firstOk) : tabs[0];
+    this.showBuildTab(this.buildTab, firstOk ? firstOk.key : null);
     c.setAlpha(0);
     this.tweens.add({ targets: c, alpha: 1, duration: 150 });
     bg.setScale(0.9);
@@ -633,17 +657,76 @@ export class UI extends Phaser.Scene {
     if (window.__FV) window.__FV.buildMenuOpen = true;
   }
 
+  /** (v4-C) a tab of the build menu: icon + name (+ a dot when it has a card that can be built now) */
+  makeTab(cat, x, y, w, h, cards) {
+    const c = this.add.container(x, y);
+    const g = this.add.graphics();
+    const ic = Assets.image(this, -w / 2 + 30, 0, Assets.pick(...TAB_ICON[cat])).setOrigin(0.5);
+    ic.setScale(34 / Math.max(1, ic.frame.realWidth, ic.frame.realHeight));
+    const tx = this.add.text(-w / 2 + 54, 0, t('tab_' + cat), TXT(w < 150 ? 20 : 22, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+    c.add([g, ic, tx]);
+    const open = cards.filter((q) => !q.locked).length;
+    if (!open) { ic.setAlpha(0.5); tx.setAlpha(0.6); }
+    const draw = (on) => {
+      g.clear();
+      g.fillStyle(0x1f3354, 0.18); g.fillRoundedRect(-w / 2, -h / 2 + 4, w, h, 18);
+      g.fillStyle(on ? 0xffe9a8 : 0xf4f7fb, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+      g.lineStyle(4, on ? 0xffb52e : 0xd7e3f2, 1); g.strokeRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 4, 16);
+    };
+    draw(false);
+    c.setSize(w, h);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => { Audio.play('sfx_click'); this.showBuildTab(cat); });
+    return { c, cat, draw };
+  }
+
+  /** (v4-C) show one tab's cards; `sel`: the card to pick (else keep the pick when it is in this tab) */
+  showBuildTab(cat, sel) {
+    if (!this.buildOpen || !this.buildCardsC) return;
+    this.buildTab = cat;
+    for (const b of this.buildTabBtns || []) b.draw(b.cat === cat);
+    const G = this.buildGrid;
+    this.buildCardsC.removeAll(true);
+    this.buildCards = [];
+    const list = (this.buildChoicesList || []).filter((q) => (q.cat || 'work') === cat);
+    this.buildThumbWait = [];
+    list.forEach((ch, i) => {
+      const col = i % G.cols, row = Math.floor(i / G.cols);
+      const n = Math.min(G.cols, list.length - row * G.cols);
+      const x = G.gx0 + col * (G.cw + G.gap) + ((G.cols - n) * (G.cw + G.gap)) / 2, y = G.y0 + row * (G.chh + G.gap);
+      const card = this.makeCard(ch, x, y, G.cw, G.chh);
+      this.buildCardsC.add(card.c);
+      this.buildCards.push(card);
+      if (card.waiting) this.buildThumbWait.push(ch.key);
+    });
+    // (the pictures still missing are asked for again: Residency may have let their page go)
+    if (this.buildThumbWait.length && this.gs.civic && this.gs.progress.met('tower_east')) {
+      const keys = [];
+      for (const k of this.buildThumbWait) for (const a of (CATALOG[k] && CATALOG[k].art) || []) keys.push(a);
+      this.gs.civic.needArt(keys, () => {});
+    }
+    let key = sel !== undefined ? sel : this.buildSel;
+    if (!list.some((q) => q.key === key)) { const ok = list.find((q) => !q.locked); key = ok ? ok.key : null; }
+    this.selectCard(key, true);
+  }
+
   makeCard(ch, x, y, w, h) {
     const c = this.add.container(x, y);
     const bg = panel(this, 0, 0, 'ui_card', w, h).setOrigin(0.5);
     const bgSel = panel(this, 0, 0, Assets.pick('ui_card_selected', 'ui_card'), w, h).setOrigin(0.5).setVisible(false);
     c.add([bg, bgSel]);
-    const spr = { toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower', station: 'train_station' }[ch.key] || ch.key;   // (v4-A) station
+    // the picture: (v4-C) Civic.thumb (a late town picture shows the hammer until it is here)
+    const civ = this.gs.civic;
+    let spr = civ ? civ.thumb(ch.key) : null;
+    const waiting = !spr && !!(civ && CATALOG[ch.key]);
+    if (!spr) spr = waiting ? 'ui_icon_hammer' : ({ toolsmith: 'station_toolsmith', cannery: 'station_cannery', store: 'shop_general', warehouse: 'warehouse', boathouse: 'boathouse', watchtower: 'watchtower', station: 'train_station' }[ch.key] || ch.key);   // (v4-A) station
     const th = Assets.image(this, 0, -h / 2 + 64, spr).setOrigin(0.5, 0.5);
     const fw = Math.max(1, th.frame.realWidth), fh = Math.max(1, th.frame.realHeight);
-    th.setScale(Math.min((w - 24) / fw, 104 / fh));
+    th.setScale(Math.min((w - 24) / fw, (waiting ? 64 : 104) / fh));
+    if (waiting) th.setAlpha(0.7);
     c.add(th);
     const name = this.add.text(0, -h / 2 + 132, t('b_' + ch.key), TXT(w < 180 ? 21 : 23, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5);
+    if (name.width > w - 14) name.setScale((w - 14) / name.width);
     c.add(name);
     // cost: coins, then materials
     const coin = Assets.image(this, 0, 0, 'ui_icon_coin').setOrigin(0.5);
@@ -659,8 +742,14 @@ export class UI extends Phaser.Scene {
     let mx = -mw / 2;
     for (const [ic, tx] of mparts) { ic.setPosition(mx + 14, cy + 30); tx.setPosition(mx + 30, cy + 31); mx += 30 + tx.width + 10; c.add([ic, tx]); }
     const people = Math.floor(Number(ch.cost.people) || 0);
-    const line = ch.locked ? t(ch.reason) : t('bp_' + ch.key, { n: people });
-    const desc = this.add.text(0, h / 2 - 40, line, Object.assign(TXT(15, ch.locked ? '#a5532a' : '#5d6b80', '#ffffff', 0, '800'), { align: 'center', wordWrap: { width: w - 26, useAdvancedWrap: true }, lineSpacing: 1 })).setOrigin(0.5);
+    // what it does, or (locked) what opens it
+    let line;
+    if (ch.locked) line = ch.text || t(ch.reason);
+    else if (/^deco_/.test(ch.key)) line = t('bp_deco', { n: ch.happy || 0 });
+    else if (ch.key === 'town_hall') line = t('bp_town_hall', { n: Math.floor(Number(((BALANCE.civic || {}).hall || {}).people) || 0) });
+    else line = t('bp_' + ch.key, { n: people });
+    const fs = line.length > 24 ? 14 : 15;
+    const desc = this.add.text(0, h / 2 - 40, line, Object.assign(TXT(fs, ch.locked ? '#a5532a' : '#5d6b80', '#ffffff', 0, '800'), { align: 'center', wordWrap: { width: w - 22, useAdvancedWrap: true }, lineSpacing: 0 })).setOrigin(0.5);
     c.add(desc);
     if (ch.locked) {
       for (const o of [th, name, coin, coinT]) o.setAlpha(0.45);
@@ -668,29 +757,48 @@ export class UI extends Phaser.Scene {
       const lk = Assets.image(this, w / 2 - 26, -h / 2 + 26, 'ui_icon_lock').setOrigin(0.5);
       lk.setScale(34 / Math.max(1, lk.frame.realWidth));
       c.add(lk);
+    } else if (ch.happy > 0) {
+      // decor: a little heart badge with the happiness it brings
+      const hb = Assets.image(this, w / 2 - 28, -h / 2 + 28, Assets.pick('ui_icon_happy', 'ui_icon_heart_full', 'ui_icon_check')).setOrigin(0.5);
+      hb.setScale(34 / Math.max(1, hb.frame.realWidth, hb.frame.realHeight));
+      c.add(hb);
     }
     c.setSize(w, h);
     c.setInteractive({ useHandCursor: !ch.locked });
     c.on('pointerdown', () => { if (ch.locked) { this.tweens.add({ targets: c, x: c.x + 6, duration: 50, yoyo: true, repeat: 2 }); Audio.play('sfx_error', { volume: 0.4 }); return; } Audio.play('sfx_click'); this.selectCard(ch.key); });
-    return { c, bg, bgSel, ch };
+    return { c, bg, bgSel, ch, waiting };
   }
 
-  selectCard(key) {
+  selectCard(key, fromTab) {
+    // (v4-C) a card of another tab: show that tab first
+    if (!fromTab && key) {
+      const ch0 = (this.buildChoicesList || []).find((q) => q.key === key);
+      if (ch0 && (ch0.cat || 'work') !== this.buildTab && this.buildCardsC) { this.showBuildTab(ch0.cat || 'work', key); return; }
+    }
     this.buildSel = key;
     for (const cd of this.buildCards || []) {
       const on = cd.ch.key === key;
       cd.bg.setVisible(!on); cd.bgSel.setVisible(on);
-      if (on) { this.tweens.killTweensOf(cd.c); cd.c.setScale(1.06); this.tweens.add({ targets: cd.c, scale: 1, duration: 200, ease: 'Back.easeOut' }); }
+      if (on && !fromTab) { this.tweens.killTweensOf(cd.c); cd.c.setScale(1.06); this.tweens.add({ targets: cd.c, scale: 1, duration: 200, ease: 'Back.easeOut' }); }
     }
     const ch = (this.buildChoicesList || []).find((q) => q.key === key);
     const b = this.buildBtn;
     if (!b) return;
-    if (!ch) { b.text.setText(t('buildPick')); b.setAlpha(0.6); b.ok = false; return; }
+    if (!ch || ch.locked) { b.text.setText(t('buildPick')); b.setAlpha(0.6); b.ok = false; return; }
     const cost = buildCost(ch.key).coins || 0;
     const ok = this.gs.economy.coins >= cost;
     b.text.setText(ok ? t('buildBtn', { name: t('b_' + ch.key) }) + '  ' + fmt(cost) : t('buildNoCoins') + ' (' + fmt(cost) + ')');
     b.setAlpha(ok ? 1 : 0.6);
     b.ok = ok;
+  }
+
+  /** (v4-C) a card waits for its late picture: redraw the tab once it is here */
+  updateBuildThumbs(dt) {
+    if (!this.buildOpen || !this.buildThumbWait || !this.buildThumbWait.length || !this.gs.civic) return;
+    this.buildThumbT = (this.buildThumbT || 0) - dt;
+    if (this.buildThumbT > 0) return;
+    this.buildThumbT = 0.4;
+    if (this.buildThumbWait.some((k) => this.gs.civic.thumb(k))) this.showBuildTab(this.buildTab, this.buildSel);
   }
 
   confirmBuild() {
@@ -705,7 +813,7 @@ export class UI extends Phaser.Scene {
     if (!this.buildOpen) return;
     this.buildOpen = false;
     const c = this.buildPanel;
-    this.buildPanel = null; this.buildCards = null; this.buildBtn = null;
+    this.buildPanel = null; this.buildCards = null; this.buildBtn = null; this.buildCardsC = null; this.buildTabBtns = null; this.buildThumbWait = null;
     if (!this.panelOpen) this.resumeGame();
     if (window.__FV) window.__FV.buildMenuOpen = false;
     if (!c) return;
@@ -861,6 +969,7 @@ export class UI extends Phaser.Scene {
     } else this.edge.setVisible(false);
     this.updateDogBar(dt);
     if (this.hud4) this.hud4.update(dt);
+    this.updateBuildThumbs(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }
 }

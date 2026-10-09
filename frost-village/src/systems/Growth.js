@@ -444,7 +444,9 @@ export class Growth {
     const H = BALANCE.v4.happiness, base = Number(H.base) || 50;
     if (!this.happyList.length) return 100;
     const mean = this.happyList.reduce((a, b) => a + b, 0) / this.happyList.length;
-    return Math.round(base + (100 - base) * mean);
+    // (v4-C) the town hall and the decor make the village happier (Civic.happyBonus, capped by civic.happyCap)
+    const bonus = this.gs.civic ? this.gs.civic.happyBonus() : 0;
+    return Math.min(100, Math.round(base + (100 - base) * mean) + bonus);
   }
 
   // ================================================================== station porters (§8.5)
