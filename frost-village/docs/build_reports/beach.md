@@ -1,10 +1,12 @@
 # beach build report (after the polish pass)
 
-The Sunny Beach (햇살 해변) ground and prop set for CONTRACT_V7 §W is in `assets/beach/`: @SPRITES@ sprite keys
-(61 props in 7 atlases, 54 ground decals and transition pieces in 1 atlas, 2 seamless sand textures) plus 6
-characters-style atlases (boats and the crab). The payload is @PAYLOAD@ MB (limit 6 MB). `beach_check.py` reports
-@CHECK@, and `check_beach_ground.py` reports @GCHECK@. A headless Phaser 3.90 load (`tools/test/beach_phaser.mjs`)
-@PHASER@
+The Sunny Beach (햇살 해변) ground and prop set for CONTRACT_V7 §W is in `assets/beach/`: 117 sprite keys
+(61 prop keys in 6 atlases, 2 of them aliases; 54 ground decals and transition pieces in 1 atlas; 2 seamless sand textures) plus 6
+characters-style atlases (boats and the crab). The payload is 2.33 MB (limit 6 MB). `beach_check.py` reports
+0 errors and 0 warnings (117 sprites, 6 characters, 419 frame names), and `check_beach_ground.py` reports 0 errors and 0 warnings (56 ground keys; dry ↔ wet seam excess ≤ 13, limit 20). A headless Phaser 3.90 load (`tools/test/beach_phaser.mjs`)
+loads every texture and frame with no errors and no 404s: 117 sprites, 6 characters, 92 anims and 475 frames checked,
+0 missing, 57 anims playing (`docs/previews/beach_phaser.png`). A phone check (390 × 844 at DPR 3, live Water.js
+shader, zoom 0.6 / 1.0 / 1.2) showed no errors either.
 
 Style: the village's soft toy-like 3D chibi look, PPU 64, 2:1 iso, the shared `bl_common` camera and light, Cycles with
 denoising, baked soft cool shadows falling screen down-right (lighter on the water plane). Materials: woven canvas
@@ -203,7 +205,43 @@ renders occluder masks at 0 EV.
 - `beach_phaser.png`: the headless Phaser load.
 
 ## Known issues
-@KNOWN@
+- The game draws a few things itself: the crab's soft shadow, the kite string (from `stringPoint`), the banana boat's
+  tow rope, boat wakes (`fx_wake_v2` at `wakePoint`), and the sign text (the boards are blank on purpose; centre
+  the text on `fxPoints.board`).
+- Boats are rendered for 3 headings (S, SE, NE + mirrors); E / W / N use the nearest one.
+- No `_snow` variants: the beach is a summer zone.
+- `beach_scene.png`'s sea is a still imitation of Water.js (tropical LUT, ripples, a static `fx_shore_wave_x` crest);
+  the live shader animates the swash over the baked wet band.
+- `fx_shore_wave_x` is drawn for a sea on the far (+Y) side, so this beach (sea on −Y) must turn it 180°.
+- Tonal range is only partly at the critic's target: the dark-framed props reach it (loungers spread 0.51 / 0.46,
+  darkest 5 % at 0.44), but the white-and-colour canvas canopies stay light by design (parasols spread 0.23–0.42,
+  darkest 5 % 0.49–0.58; ice-cream cart 0.39 / 0.51). Going darker made the canvas look dirty at phone zoom.
+- Volleyball: the near-side players' true facing (toward the net, away from the camera) has no ball frames, so
+  `ballDirs` turns them side-on.
+- Picnic table: `sit` has no N / NE frames, so the near-bench sitters face the sea (SW) with their backs to the table;
+  only the far-bench sitters face the camera across the table top.
+- Wet tongues one or two cells wide (wet cells reaching inland) read as soft rounded-rectangle damp patches; the kit
+  is at its best along a long shore band.
+- The coconuts show through a window kept in the frond ring toward the camera, so the palms must not be flipped
+  (true of all baked-shadow sprites).
+- The beachfolk owner could not be messaged (this workflow has no messaging). Beachfolk's own manifest already uses
+  the same rules (`sunbathe` dir = the feet, sand-beach sea level 0), so nothing is needed there. If its polish pass
+  changes the `sunbathe` convention, `lyingFeetDirs` must follow it.
 
 ## Critic issues (polish pass)
-@TABLE@
+| # | severity | critic issue | status | what was done / evidence |
+|---|---|---|---|---|
+| 1 | high | `lyingDirs` (hips → head) contradicts beachfolk `sunbathe` (dir = where the feet point) | fixed | Reproduced: a sunbather played with `lyingDirs` lay head-to-feet reversed. New `lyingFeetPoints` / `lyingFeetDirs` (the `sunbathe` dir: loungers along Y and towels SW, `_x` SE) on loungers and all 8 towels; `lyingDirs` stays for reference only. `beach_check` verifies `lyingFeetDirs` against the geometry and the `sunbathe` dirs; the scene and the points sheet use it. |
+| 2 | high | sandcastle / bucket_spade `workDirs` NE / N have no `dig` frames; diggers hide the castle | fixed | Reproduced (NE / N have no `dig` frames, and near-side kids covered the castle). Work points moved to the far side facing SE / SW / S (`sandcastle_l` 3 kids, `_m` / `_build` 2, `_s` 1), `workDepth` "behind"; `bucket_spade` `playPoints` behind the toys facing SE, `playAnim` "dig". `beach_check` now refuses any dir without frames. |
+| 3 | high | wet sand is a hard-edged brown strip, no dry → wet transition | fixed | Reproduced. New 20-piece dry ↔ wet kit `ground_sand_wet_*` (wavy edge, damp ramp, dried-foam line; `manifest.wetKit`, same rules as `sandKit`); `ground_sand_wet` recoloured to the Water.js wet-sand colour; seam check ≤ 13 (limit 20); the scene and the Phaser test chain the edge pieces along the shore. |
+| 4 | medium | lounger seat points: seat 19 px too low; `_x` seat on the far rail facing NE | fixed | Partly reproduced: the seat sat at 0.37 m instead of the `sit` seat height 0.45 m, and the `_x` seat really was on the far rail facing NE. Seats now on the cushion edge on the camera side (SE / SW) at 0.45 m with `seatGroundPoints`, `seatHeightM`, `seatDepth` "front"; `beach_check` measures seat height from the points (0.25–0.65 m and ± 0.05 m of `seatHeightM`). |
+| 5 | medium | picnic table seats facing NE have no `sit` frames | fixed | Reproduced. The near bench now faces out to sea (SW) and the far bench faces the camera (SW / SE) - only dirs with frames; `seatDepths` ["behind", "front", "behind", "front"], `seatHeightM` 0.46. |
+| 6 | medium | ice-cream cart: `bell` anim is a no-op (diff 0.02), no giant cone, vendor drawn over the cart | fixed | Reproduced (frame diff 0.02). Rebuilt cart: a brass hand bell that swings ±25° with a glint and orange "ding" strokes on frames 1 and 3 (step diff now 0.45–0.73 between packed frames, `bellFrames` [1, 3]), a giant three-scoop cone with a cherry on the roof, mint body, rubber tyres; the vendor stands behind (`staffDepth` "behind"). `beach_check` now fails any anim whose frames barely change. |
+| 7 | medium | sea level: beach `waterPx` 30 vs water / beachfolk 0 on sand beaches | fixed | Reproduced. `waterPx` 0 plus `waterPxByShore` {sand 0, quay / pier / breakwater 30}; docs, notes, the scene and the Phaser test use 0; `beach_check` enforces it. |
+| 8 | medium | tonal range: spread 0.31 vs ~0.52, darkest 5 % 0.60–0.72 vs 0.27–0.45 | partly fixed | Reproduced. Darker secondary materials and −0.2 EV (−0.3 on the pastel props). Measured after: loungers 0.51 / 0.44 (were 0.29 / 0.62), `_x` 0.46 / 0.44, cart 0.39 / 0.51 (0.25 / 0.70), parasols 0.23–0.42 / 0.49–0.58 (0.20–0.37 / 0.58–0.73), lifeguard tower 0.36 / 0.51. The white-striped canvas stays lighter than the target on purpose (see known issues). |
+| 9 | medium | palms: paper-cutout fronds, no coconuts, 4-frame sway that pops | fixed | Reproduced (step diffs 3.2–4.3 between 4 frames). New pinnate fronds (midrib + hanging leaflets, bare petiole, spear fronds, a dried frond), a coconut cluster seen through a window in the frond ring toward the camera, 8-frame rigid sway at 8 fps (step diffs 1.6–3.0 between 8 frames). |
+| 10 | medium | `ground_sand` repeating blotches + pepper grains; `ground_sand_wet` dash grid | fixed | Reproduced. `ground_sand`: soft large undulation, wind ripples, warm and bright grains, no dark pepper, no camouflage blotches; `ground_sand_wet`: smooth with a soft sheen, sparse broken backwash threads, no grid. |
+| low | low | sign boards are blank | fixed (text stays blank by design) | The boards keep a blank text area (the game writes the text at `fxPoints.board`), but the frames are now decorated: painted rims and sun / wave / cone icons on the arrow sign, a flower lei and shells on the surfboard sign, a turquoise header, pinned notes, a life ring and shells on the notice board (whose face used to sit inside its frame). |
+| low | low | footprint and ripple decals invisible | fixed | `decal_footprints_sand` larger and darker, `decal_sand_ripples` stronger; both read at 1x in the scene. |
+| low | low | sandcastles blend into the sand | fixed | Castles use a damper, darker sand (#D9B57C) and −0.3 EV: darkest 5 % 0.65 → 0.55 (`_l`), 0.69 → 0.59 (`_m`), 0.68 → 0.60 (`_s`), and the new `ground_sand` is lighter and calmer, so they stand out at 1x. |
+| low | low | (the critic's JSON was cut off after "Lower the b…") | not reproduced | The rest of that item was not in the review text, so it could not be identified. |

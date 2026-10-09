@@ -1,3613 +1,6 @@
 {
  "version": 1,
  "sprites": {
-  "beach_chair_folding": {
-   "atlas": "beach_shade",
-   "frame": "beach_chair_folding",
-   "anchor": [
-    0.40909,
-    0.58824
-   ],
-   "kind": "decor",
-   "frameSize": [
-    132,
-    136
-   ],
-   "footprint": [
-    68,
-    34
-   ],
-   "footprintM": [
-    0.7,
-    0.8
-   ],
-   "footprintPoly": [
-    [
-     -34,
-     1
-    ],
-    [
-     -2,
-     17
-    ],
-    [
-     34,
-     -1
-    ],
-    [
-     2,
-     -17
-    ]
-   ],
-   "topPx": 59,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     -15,
-     -9
-    ]
-   ],
-   "seatDirs": [
-    "SW"
-   ],
-   "name": {
-    "ko": "접이식 비치 의자",
-    "en": "Folding beach chair"
-   },
-   "zone": "shade",
-   "notes": "Folding wooden deck chair (faces -Y = screen down-left): oiled teak frame with brass pivots, a blue-and-white striped canvas sling that sags with the weight lines of real cloth, a little cushion at the head. seatPoints[0] = the sling seat (villagers `sit` anchor, faces SW)."
-  },
-  "beach_chair_folding_x": {
-   "atlas": "beach_shade",
-   "frame": "beach_chair_folding_x",
-   "anchor": [
-    0.36429,
-    0.58824
-   ],
-   "kind": "decor",
-   "frameSize": [
-    140,
-    136
-   ],
-   "footprint": [
-    68,
-    34
-   ],
-   "footprintM": [
-    0.7,
-    0.8
-   ],
-   "footprintPoly": [
-    [
-     2,
-     17
-    ],
-    [
-     34,
-     1
-    ],
-    [
-     -2,
-     -17
-    ],
-    [
-     -34,
-     -1
-    ]
-   ],
-   "topPx": 59,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     15,
-     -9
-    ]
-   ],
-   "seatDirs": [
-    "SE"
-   ],
-   "name": {
-    "ko": "접이식 비치 의자 (X)",
-    "en": "Folding beach chair (X)"
-   },
-   "zone": "shade",
-   "notes": "Folding wooden deck chair (faces +X = screen down-right): oiled teak frame with brass pivots, a coral-and-white striped canvas sling that sags with the weight lines of real cloth, a little cushion at the head. seatPoints[0] = the sling seat (villagers `sit` anchor, faces SE)."
-  },
-  "beach_swing": {
-   "atlas": "beach_shade",
-   "frame": "beach_swing",
-   "anchor": [
-    0.36111,
-    0.62857
-   ],
-   "kind": "decor",
-   "frameSize": [
-    288,
-    280
-   ],
-   "footprint": [
-    167,
-    84
-   ],
-   "footprintM": [
-    2.4,
-    1.3
-   ],
-   "footprintPoly": [
-    [
-     -84,
-     -12
-    ],
-    [
-     25,
-     42
-    ],
-    [
-     84,
-     12
-    ],
-    [
-     -25,
-     -42
-    ]
-   ],
-   "topPx": 156,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     -24,
-     -32
-    ],
-    [
-     1,
-     -19
-    ]
-   ],
-   "seatDirs": [
-    "SW",
-    "SW"
-   ],
-   "name": {
-    "ko": "해변 그네",
-    "en": "Beach swing"
-   },
-   "zone": "shade",
-   "notes": "Beach swing: chunky driftwood A-frame (2.4 m wide) with a two-seat teak bench hanging on ropes, a striped cushion and a little shell garland on the top beam; faces the sea (-Y). seatPoints = 2 sitters (faces SW)."
-  },
-  "parasol_blue": {
-   "atlas": "beach_shade",
-   "frame": "parasol_blue",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_blue_flutter_0",
-      "parasol_blue_flutter_1",
-      "parasol_blue_flutter_2",
-      "parasol_blue_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_blue_flutter_0",
-      "parasol_blue_flutter_1",
-      "parasol_blue_flutter_2",
-      "parasol_blue_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (파랑)",
-    "en": "Parasol (blue)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "blue",
-   "notes": "Beach parasol \"blue\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "parasol_green": {
-   "atlas": "beach_shade",
-   "frame": "parasol_green",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_green_flutter_0",
-      "parasol_green_flutter_1",
-      "parasol_green_flutter_2",
-      "parasol_green_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_green_flutter_0",
-      "parasol_green_flutter_1",
-      "parasol_green_flutter_2",
-      "parasol_green_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (초록)",
-    "en": "Parasol (green)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "green",
-   "notes": "Beach parasol \"green\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "parasol_pink": {
-   "atlas": "beach_shade",
-   "frame": "parasol_pink",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_pink_flutter_0",
-      "parasol_pink_flutter_1",
-      "parasol_pink_flutter_2",
-      "parasol_pink_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_pink_flutter_0",
-      "parasol_pink_flutter_1",
-      "parasol_pink_flutter_2",
-      "parasol_pink_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (분홍)",
-    "en": "Parasol (pink)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "pink",
-   "notes": "Beach parasol \"pink\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "parasol_rainbow": {
-   "atlas": "beach_shade",
-   "frame": "parasol_rainbow",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_rainbow_flutter_0",
-      "parasol_rainbow_flutter_1",
-      "parasol_rainbow_flutter_2",
-      "parasol_rainbow_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_rainbow_flutter_0",
-      "parasol_rainbow_flutter_1",
-      "parasol_rainbow_flutter_2",
-      "parasol_rainbow_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (무지개)",
-    "en": "Parasol (rainbow)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "rainbow",
-   "notes": "Beach parasol \"rainbow\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "parasol_red": {
-   "atlas": "beach_shade",
-   "frame": "parasol_red",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_red_flutter_0",
-      "parasol_red_flutter_1",
-      "parasol_red_flutter_2",
-      "parasol_red_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_red_flutter_0",
-      "parasol_red_flutter_1",
-      "parasol_red_flutter_2",
-      "parasol_red_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (빨강)",
-    "en": "Parasol (red)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "red",
-   "notes": "Beach parasol \"red\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "parasol_yellow": {
-   "atlas": "beach_shade",
-   "frame": "parasol_yellow",
-   "anchor": [
-    0.34286,
-    0.60075
-   ],
-   "kind": "decor",
-   "frameSize": [
-    280,
-    268
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 140,
-   "front": "-Y",
-   "anims": {
-    "flutter": {
-     "frames": [
-      "parasol_yellow_flutter_0",
-      "parasol_yellow_flutter_1",
-      "parasol_yellow_flutter_2",
-      "parasol_yellow_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "parasol_yellow_flutter_0",
-      "parasol_yellow_flutter_1",
-      "parasol_yellow_flutter_2",
-      "parasol_yellow_flutter_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "top": [
-     0,
-     -132
-    ]
-   },
-   "shadePoint": [
-    78,
-    39
-   ],
-   "name": {
-    "ko": "파라솔 (노랑)",
-    "en": "Parasol (yellow)"
-   },
-   "zone": "shade",
-   "shadeRadiusM": 1.05,
-   "canopyTopPx": -133,
-   "colourway": "yellow",
-   "notes": "Beach parasol \"yellow\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
-  },
-  "picnic_table_beach": {
-   "atlas": "beach_shade",
-   "frame": "picnic_table_beach",
-   "anchor": [
-    0.35547,
-    0.6129
-   ],
-   "kind": "decor",
-   "frameSize": [
-    256,
-    248
-   ],
-   "footprint": [
-    154,
-    77
-   ],
-   "footprintM": [
-    1.8,
-    1.6
-   ],
-   "footprintPoly": [
-    [
-     -77,
-     -2
-    ],
-    [
-     5,
-     38
-    ],
-    [
-     77,
-     2
-    ],
-    [
-     -5,
-     -38
-    ]
-   ],
-   "topPx": 131,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     5,
-     -45
-    ],
-    [
-     -41,
-     -23
-    ],
-    [
-     41,
-     -27
-    ],
-    [
-     -5,
-     -5
-    ]
-   ],
-   "seatDirs": [
-    "SW",
-    "NE",
-    "SW",
-    "NE"
-   ],
-   "name": {
-    "ko": "해변 피크닉 테이블",
-    "en": "Beach picnic table"
-   },
-   "zone": "shade",
-   "notes": "Beach picnic table: weathered teak table with attached benches, a blue-and-white parasol through the middle, a pitcher of lemonade and two cups. seatPoints: 2 on the +Y bench (face SW, sit frames) and 2 on the -Y bench (face NE = backs: draw an idle NE frame at seatsStand or skip); seatDirs per seat."
-  },
-  "sun_lounger": {
-   "atlas": "beach_shade",
-   "frame": "sun_lounger",
-   "anchor": [
-    0.42021,
-    0.59615
-   ],
-   "kind": "decor",
-   "frameSize": [
-    188,
-    156
-   ],
-   "footprint": [
-    120,
-    60
-   ],
-   "footprintM": [
-    0.7,
-    1.95
-   ],
-   "footprintPoly": [
-    [
-     -60,
-     14
-    ],
-    [
-     -28,
-     30
-    ],
-    [
-     60,
-     -14
-    ],
-    [
-     28,
-     -30
-    ]
-   ],
-   "topPx": 72,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     0,
-     -4
-    ]
-   ],
-   "seatDirs": [
-    "SE"
-   ],
-   "lyingPoints": [
-    [
-     -5,
-     -23
-    ]
-   ],
-   "lyingDirs": [
-    "NE"
-   ],
-   "lyingHeadPoints": [
-    [
-     27,
-     -56
-    ]
-   ],
-   "lyingFeetPoints": [
-    [
-     -37,
-     -7
-    ]
-   ],
-   "lyingAxis": "y",
-   "name": {
-    "ko": "선베드",
-    "en": "Sun lounger"
-   },
-   "zone": "shade",
-   "lyingHeightM": 0.47,
-   "backrestDeg": 38,
-   "notes": "Wooden sun lounger (along world Y, head at +Y = screen up-right): white-painted frame with leg pairs and two little wheels at the head, oiled teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white piping and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion (anchor of a `sunbathe` character lying on its back), lyingHeadPoints / lyingFeetPoints = where the head / feet rest, lyingDirs = screen direction from hips to head (NE); seatPoints = sitting on the side rail (facing SE)."
-  },
-  "sun_lounger_x": {
-   "atlas": "beach_shade",
-   "frame": "sun_lounger_x",
-   "anchor": [
-    0.43889,
-    0.59615
-   ],
-   "kind": "decor",
-   "frameSize": [
-    180,
-    156
-   ],
-   "footprint": [
-    120,
-    60
-   ],
-   "footprintM": [
-    0.7,
-    1.95
-   ],
-   "footprintPoly": [
-    [
-     28,
-     30
-    ],
-    [
-     60,
-     14
-    ],
-    [
-     -28,
-     -30
-    ],
-    [
-     -60,
-     -14
-    ]
-   ],
-   "topPx": 72,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     32,
-     -21
-    ]
-   ],
-   "seatDirs": [
-    "NE"
-   ],
-   "lyingPoints": [
-    [
-     5,
-     -23
-    ]
-   ],
-   "lyingDirs": [
-    "NW"
-   ],
-   "lyingHeadPoints": [
-    [
-     -27,
-     -56
-    ]
-   ],
-   "lyingFeetPoints": [
-    [
-     37,
-     -7
-    ]
-   ],
-   "lyingAxis": "x",
-   "name": {
-    "ko": "선베드 (X축)",
-    "en": "Sun lounger (X axis)"
-   },
-   "zone": "shade",
-   "lyingHeightM": 0.47,
-   "backrestDeg": 38,
-   "notes": "Wooden sun lounger (along world X, head at -X = screen up-left): white-painted frame with leg pairs and two little wheels at the head, oiled teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white piping and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion (anchor of a `sunbathe` character lying on its back), lyingHeadPoints / lyingFeetPoints = where the head / feet rest, lyingDirs = screen direction from hips to head (NW); seatPoints = sitting on the side rail (facing NE)."
-  },
-  "beach_ball": {
-   "atlas": "beach_play",
-   "frame": "beach_ball",
-   "anchor": [
-    0.5,
-    0.75
-   ],
-   "kind": "item",
-   "frameSize": [
-    72,
-    72
-   ],
-   "topPx": 20,
-   "stackStep": 19,
-   "icon": true,
-   "carryScale": 0.6,
-   "name": {
-    "ko": "비치볼",
-    "en": "Beach ball"
-   },
-   "zone": "play",
-   "notes": "Beach ball item / icon (72x72, anchor (36,54) like every item): six glossy vinyl gores (red, white, blue, yellow, white, green) with white caps. For the bouncing ball on the sand use beach_ball_bounce."
-  },
-  "beach_ball_bounce": {
-   "atlas": "beach_play",
-   "frame": "beach_ball_bounce",
-   "anchor": [
-    0.27419,
-    0.62838
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    148
-   ],
-   "footprint": [
-    26,
-    13
-   ],
-   "footprintM": {
-    "radius": 0.2
-   },
-   "topPx": 23,
-   "front": "-Y",
-   "anims": {
-    "bounce": {
-     "frames": [
-      "beach_ball_bounce_bounce_0",
-      "beach_ball_bounce_bounce_1",
-      "beach_ball_bounce_bounce_2",
-      "beach_ball_bounce_bounce_3",
-      "beach_ball_bounce_bounce_4",
-      "beach_ball_bounce_bounce_5",
-      "beach_ball_bounce_bounce_6",
-      "beach_ball_bounce_bounce_7"
-     ],
-     "fps": 12,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "beach_ball_bounce_bounce_0",
-      "beach_ball_bounce_bounce_1",
-      "beach_ball_bounce_bounce_2",
-      "beach_ball_bounce_bounce_3",
-      "beach_ball_bounce_bounce_4",
-      "beach_ball_bounce_bounce_5",
-      "beach_ball_bounce_bounce_6",
-      "beach_ball_bounce_bounce_7"
-     ],
-     "fps": 12,
-     "repeat": -1
-    }
-   },
-   "impactFrame": 0,
-   "name": {
-    "ko": "통통 비치볼",
-    "en": "Bouncing beach ball"
-   },
-   "zone": "play",
-   "notes": "Beach ball bouncing on the sand: idle = resting on the sand; anims.bounce (= work) = 8-frame loop at 12 fps (squash on contact frame 0, rise, spin, fall) with its baked shadow shrinking / softening with the height. Anchor = the contact point on the sand; impactFrame 0 (play sfx_beachball_bounce)."
-  },
-  "bucket_spade": {
-   "atlas": "beach_play",
-   "frame": "bucket_spade",
-   "anchor": [
-    0.43,
-    0.54762
-   ],
-   "kind": "decor",
-   "frameSize": [
-    100,
-    84
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 26,
-   "front": "-Y",
-   "playPoints": [
-    [
-     -23,
-     11
-    ]
-   ],
-   "playDirs": [
-    "NE"
-   ],
-   "name": {
-    "ko": "양동이와 삽",
-    "en": "Bucket and spade"
-   },
-   "zone": "play",
-   "notes": "Toy bucket (red, sand inside) + blue spade stuck in a little heap + a yellow star mould next to the sand star it just made. Decor; kids play here (playPoints)."
-  },
-  "kite": {
-   "atlas": "beach_play",
-   "frame": "kite",
-   "anchor": [
-    0.45833,
-    0.23404
-   ],
-   "kind": "decor",
-   "frameSize": [
-    72,
-    188
-   ],
-   "topPx": 35,
-   "anims": {
-    "fly": {
-     "frames": [
-      "kite_fly_0",
-      "kite_fly_1",
-      "kite_fly_2",
-      "kite_fly_3",
-      "kite_fly_4",
-      "kite_fly_5"
-     ],
-     "fps": 8,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "kite_fly_0",
-      "kite_fly_1",
-      "kite_fly_2",
-      "kite_fly_3",
-      "kite_fly_4",
-      "kite_fly_5"
-     ],
-     "fps": 8,
-     "repeat": -1
-    }
-   },
-   "name": {
-    "ko": "연",
-    "en": "Kite"
-   },
-   "zone": "play",
-   "stringPoint": [
-    0,
-    0
-   ],
-   "flyHeightM": [
-    5,
-    7
-   ],
-   "notes": "Diamond kite in four colours with cross spars and a bow tail. NO baked shadow (it flies): anchor = the bridle point where the string attaches; fly it ~5-7 m above the kid holding it (draw a thin line from the hand to the anchor + optionally a soft small shadow on the sand). anims.fly (= work) = 6-frame loop: the kite pitches / rolls, the tail ripples."
-  },
-  "sandcastle_build_0": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_build_0",
-   "anchor": [
-    0.42742,
-    0.55645
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    124
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 30,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -44,
-     6
-    ],
-    [
-     5,
-     25
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 쌓기",
-    "en": "Sandcastle (building)"
-   },
-   "zone": "play",
-   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; stages lists every stage key in order.",
-   "stage": 0,
-   "stages": [
-    "sandcastle_build_0",
-    "sandcastle_build_1",
-    "sandcastle_build_2",
-    "sandcastle_build_3"
-   ],
-   "build": "sandcastle_build"
-  },
-  "sandcastle_build_1": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_build_1",
-   "anchor": [
-    0.42742,
-    0.55645
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    124
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 24,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -44,
-     6
-    ],
-    [
-     5,
-     25
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 쌓기",
-    "en": "Sandcastle (building)"
-   },
-   "zone": "play",
-   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; stages lists every stage key in order.",
-   "stage": 1,
-   "stages": [
-    "sandcastle_build_0",
-    "sandcastle_build_1",
-    "sandcastle_build_2",
-    "sandcastle_build_3"
-   ],
-   "build": "sandcastle_build"
-  },
-  "sandcastle_build_2": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_build_2",
-   "anchor": [
-    0.42742,
-    0.55645
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    124
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 24,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -44,
-     6
-    ],
-    [
-     5,
-     25
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 쌓기",
-    "en": "Sandcastle (building)"
-   },
-   "zone": "play",
-   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; stages lists every stage key in order.",
-   "stage": 2,
-   "stages": [
-    "sandcastle_build_0",
-    "sandcastle_build_1",
-    "sandcastle_build_2",
-    "sandcastle_build_3"
-   ],
-   "build": "sandcastle_build"
-  },
-  "sandcastle_build_3": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_build_3",
-   "anchor": [
-    0.42742,
-    0.55645
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    124
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 48,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -44,
-     6
-    ],
-    [
-     5,
-     25
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 쌓기",
-    "en": "Sandcastle (building)"
-   },
-   "zone": "play",
-   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; stages lists every stage key in order.",
-   "stage": 3,
-   "stages": [
-    "sandcastle_build_0",
-    "sandcastle_build_1",
-    "sandcastle_build_2",
-    "sandcastle_build_3"
-   ],
-   "build": "sandcastle_build"
-  },
-  "sandcastle_l": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_l",
-   "anchor": [
-    0.46739,
-    0.59028
-   ],
-   "kind": "decor",
-   "frameSize": [
-    184,
-    144
-   ],
-   "footprint": [
-    181,
-    91
-   ],
-   "footprintM": [
-    2.0,
-    2.0
-   ],
-   "footprintPoly": [
-    [
-     -91,
-     0
-    ],
-    [
-     0,
-     45
-    ],
-    [
-     91,
-     0
-    ],
-    [
-     0,
-     -45
-    ]
-   ],
-   "topPx": 65,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -75,
-     15
-    ],
-    [
-     -23,
-     38
-    ],
-    [
-     57,
-     28
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "NE",
-    "NW"
-   ],
-   "name": {
-    "ko": "모래성 (대)",
-    "en": "Sandcastle L"
-   },
-   "zone": "play",
-   "notes": "Sandcastle L (4 towers, walls, keep, moat with water + plank bridge): damp packed sand (fine grain), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. Decor on the sand (no collision needed for S)."
-  },
-  "sandcastle_m": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_m",
-   "anchor": [
-    0.42742,
-    0.59483
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    116
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 48,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -43,
-     6
-    ],
-    [
-     5,
-     23
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 (중)",
-    "en": "Sandcastle M"
-   },
-   "zone": "play",
-   "notes": "Sandcastle M (keep + 2 towers): damp packed sand (fine grain), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. Decor on the sand (no collision needed for S)."
-  },
-  "sandcastle_s": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_s",
-   "anchor": [
-    0.38542,
-    0.53409
-   ],
-   "kind": "decor",
-   "frameSize": [
-    96,
-    88
-   ],
-   "footprint": [
-    32,
-    16
-   ],
-   "footprintM": {
-    "radius": 0.25
-   },
-   "topPx": 27,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -23,
-     9
-    ]
-   ],
-   "workDirs": [
-    "NE"
-   ],
-   "name": {
-    "ko": "모래성 (소)",
-    "en": "Sandcastle S"
-   },
-   "zone": "play",
-   "notes": "Sandcastle S (one bucket tower): damp packed sand (fine grain), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. Decor on the sand (no collision needed for S)."
-  },
-  "surfboard_rack": {
-   "atlas": "beach_play",
-   "frame": "surfboard_rack",
-   "anchor": [
-    0.34746,
-    0.63362
-   ],
-   "kind": "decor",
-   "frameSize": [
-    236,
-    232
-   ],
-   "footprint": [
-    131,
-    66
-   ],
-   "footprintM": [
-    2.0,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     -12
-    ],
-    [
-     25,
-     33
-    ],
-    [
-     66,
-     12
-    ],
-    [
-     -25,
-     -33
-    ]
-   ],
-   "topPx": 126,
-   "front": "-Y",
-   "name": {
-    "ko": "서핑보드 거치대",
-    "en": "Surfboard rack"
-   },
-   "zone": "play",
-   "notes": "Wooden A-frame surfboard rack (2 m along world X) with four boards standing nose-up (turquoise, sunny yellow, white-blue, coral) and a little bodyboard; a towel on the end post. Belongs by surf_shop (beach_bld)."
-  },
-  "swim_ring_donut": {
-   "atlas": "beach_play",
-   "frame": "swim_ring_donut",
-   "anchor": [
-    0.45192,
-    0.53571
-   ],
-   "kind": "decor",
-   "frameSize": [
-    104,
-    84
-   ],
-   "footprint": [
-    49,
-    24
-   ],
-   "footprintM": {
-    "radius": 0.38
-   },
-   "topPx": 25,
-   "front": "-Y",
-   "name": {
-    "ko": "도넛 튜브",
-    "en": "Donut swim ring"
-   },
-   "zone": "play",
-   "notes": "Inflatable swim ring lying on the sand (pink frosted donut with sprinkles), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
-  },
-  "swim_ring_duck": {
-   "atlas": "beach_play",
-   "frame": "swim_ring_duck",
-   "anchor": [
-    0.43519,
-    0.51042
-   ],
-   "kind": "decor",
-   "frameSize": [
-    108,
-    96
-   ],
-   "footprint": [
-    51,
-    26
-   ],
-   "footprintM": {
-    "radius": 0.4
-   },
-   "topPx": 29,
-   "front": "-Y",
-   "name": {
-    "ko": "오리 튜브",
-    "en": "Duck swim ring"
-   },
-   "zone": "play",
-   "notes": "Inflatable swim ring lying on the sand (yellow duck ring with an orange beak and a curly tail), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
-  },
-  "swim_ring_red": {
-   "atlas": "beach_play",
-   "frame": "swim_ring_red",
-   "anchor": [
-    0.44231,
-    0.52381
-   ],
-   "kind": "decor",
-   "frameSize": [
-    104,
-    84
-   ],
-   "footprint": [
-    49,
-    24
-   ],
-   "footprintM": {
-    "radius": 0.38
-   },
-   "topPx": 23,
-   "front": "-Y",
-   "name": {
-    "ko": "튜브 (빨강)",
-    "en": "Swim ring (red)"
-   },
-   "zone": "play",
-   "notes": "Inflatable swim ring lying on the sand (red and white stripes), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
-  },
-  "volleyball_net": {
-   "atlas": "beach_play",
-   "frame": "volleyball_net",
-   "anchor": [
-    0.41146,
-    0.60938
-   ],
-   "kind": "decor",
-   "frameSize": [
-    384,
-    320
-   ],
-   "footprint": [
-    213,
-    106
-   ],
-   "footprintM": [
-    4.4,
-    0.3
-   ],
-   "footprintPoly": [
-    [
-     -106,
-     -46
-    ],
-    [
-     93,
-     53
-    ],
-    [
-     106,
-     46
-    ],
-    [
-     -93,
-     -53
-    ]
-   ],
-   "topPx": 175,
-   "front": "-Y",
-   "playPoints": [
-    [
-     -118,
-     14
-    ],
-    [
-     -27,
-     59
-    ],
-    [
-     27,
-     -59
-    ],
-    [
-     118,
-     -14
-    ]
-   ],
-   "playDirs": [
-    "NE",
-    "NE",
-    "SW",
-    "SW"
-   ],
-   "netAxis": "x",
-   "name": {
-    "ko": "비치발리볼 네트",
-    "en": "Beach volleyball net"
-   },
-   "zone": "play",
-   "notes": "Beach volleyball net (net along world X, posts 4.2 m apart, top band 1.9 m high): padded white posts with blue covers, black mesh with a white top band, red-white antennas, guy ropes to sand pegs. Put it on the middle line of decal_volleyball_court (court long axis along world Y). playPoints = 2 players a side (facing the net)."
-  },
-  "volleyball_net_y": {
-   "atlas": "beach_play",
-   "frame": "volleyball_net_y",
-   "anchor": [
-    0.41146,
-    0.60938
-   ],
-   "kind": "decor",
-   "frameSize": [
-    384,
-    320
-   ],
-   "footprint": [
-    213,
-    106
-   ],
-   "footprintM": [
-    4.4,
-    0.3
-   ],
-   "footprintPoly": [
-    [
-     -93,
-     53
-    ],
-    [
-     106,
-     -46
-    ],
-    [
-     93,
-     -53
-    ],
-    [
-     -106,
-     46
-    ]
-   ],
-   "topPx": 175,
-   "front": "-Y",
-   "playPoints": [
-    [
-     27,
-     59
-    ],
-    [
-     118,
-     14
-    ],
-    [
-     -118,
-     -14
-    ],
-    [
-     -27,
-     -59
-    ]
-   ],
-   "playDirs": [
-    "NW",
-    "NW",
-    "SE",
-    "SE"
-   ],
-   "netAxis": "y",
-   "name": {
-    "ko": "비치발리볼 네트 (Y)",
-    "en": "Beach volleyball net (Y)"
-   },
-   "zone": "play",
-   "notes": "Beach volleyball net (net along world Y, posts 4.2 m apart, top band 1.9 m high): padded white posts with blue covers, black mesh with a white top band, red-white antennas, guy ropes to sand pegs. Put it on the middle line of decal_volleyball_court (court long axis along world X). playPoints = 2 players a side (facing the net)."
-  },
-  "beach_shower": {
-   "atlas": "beach_service",
-   "frame": "beach_shower",
-   "anchor": [
-    0.29545,
-    0.67213
-   ],
-   "kind": "decor",
-   "frameSize": [
-    220,
-    244
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.0,
-    1.0
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     0
-    ],
-    [
-     0,
-     23
-    ],
-    [
-     45,
-     0
-    ],
-    [
-     0,
-     -23
-    ]
-   ],
-   "topPx": 144,
-   "front": "-Y",
-   "anims": {
-    "water": {
-     "frames": [
-      "beach_shower_water_0",
-      "beach_shower_water_1",
-      "beach_shower_water_2",
-      "beach_shower_water_3"
-     ],
-     "fps": 10,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "beach_shower_water_0",
-      "beach_shower_water_1",
-      "beach_shower_water_2",
-      "beach_shower_water_3"
-     ],
-     "fps": 10,
-     "repeat": -1
-    }
-   },
-   "standPoints": [
-    [
-     -6,
-     -16
-    ],
-    [
-     24,
-     0
-    ]
-   ],
-   "standDirs": [
-    "SW",
-    "SW"
-   ],
-   "name": {
-    "ko": "해변 샤워기",
-    "en": "Beach shower"
-   },
-   "zone": "service",
-   "notes": "Outdoor beach shower: teak grate on a little platform, a chrome T-post (2.3 m) with two rain heads and a push button, a low foot tap. idle = off; anims.water (= work) = 4-frame loop: water falls from both heads (glinting streams + droplets), splashes and a wet sheen on the grate. showerPoints = where a person stands under each head."
-  },
-  "beach_sign_arrow": {
-   "atlas": "beach_service",
-   "frame": "beach_sign_arrow",
-   "anchor": [
-    0.21795,
-    0.65
-   ],
-   "kind": "decor",
-   "frameSize": [
-    156,
-    200
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 110,
-   "front": "-Y",
-   "fxPoints": {
-    "board": [
-     8,
-     -81
-    ]
-   },
-   "name": {
-    "ko": "해변 화살표 표지판",
-    "en": "Beach arrow sign"
-   },
-   "zone": "service",
-   "notes": "Blank beach sign (driftwood post with three pastel arrow boards pointing different ways, a starfish on top). The game writes the text at fxPoints.board (centre of the board face)."
-  },
-  "beach_sign_board": {
-   "atlas": "beach_service",
-   "frame": "beach_sign_board",
-   "anchor": [
-    0.26316,
-    0.64362
-   ],
-   "kind": "decor",
-   "frameSize": [
-    152,
-    188
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 100,
-   "front": "-Y",
-   "fxPoints": {
-    "board": [
-     -3,
-     -47
-    ]
-   },
-   "name": {
-    "ko": "서핑보드 표지판",
-    "en": "Surfboard sign"
-   },
-   "zone": "service",
-   "notes": "Blank beach sign (a turquoise surfboard stuck nose-up in the sand as a sign board, with a hibiscus flower). The game writes the text at fxPoints.board (centre of the board face)."
-  },
-  "beach_sign_notice": {
-   "atlas": "beach_service",
-   "frame": "beach_sign_notice",
-   "anchor": [
-    0.27941,
-    0.62281
-   ],
-   "kind": "decor",
-   "frameSize": [
-    204,
-    228
-   ],
-   "footprint": [
-    68,
-    34
-   ],
-   "footprintM": [
-    1.2,
-    0.3
-   ],
-   "footprintPoly": [
-    [
-     -34,
-     -10
-    ],
-    [
-     20,
-     17
-    ],
-    [
-     34,
-     10
-    ],
-    [
-     -20,
-     -17
-    ]
-   ],
-   "topPx": 121,
-   "front": "-Y",
-   "fxPoints": {
-    "board": [
-     -1,
-     -67
-    ]
-   },
-   "name": {
-    "ko": "해변 안내판",
-    "en": "Beach notice board"
-   },
-   "zone": "service",
-   "notes": "Blank beach sign (framed notice board on two white posts under a little coral roof (rules / opening hours)). The game writes the text at fxPoints.board (centre of the board face)."
-  },
-  "changing_booth": {
-   "atlas": "beach_service",
-   "frame": "changing_booth",
-   "anchor": [
-    0.3209,
-    0.63889
-   ],
-   "kind": "building",
-   "frameSize": [
-    268,
-    288
-   ],
-   "footprint": [
-    109,
-    54
-   ],
-   "footprintM": [
-    1.2,
-    1.2
-   ],
-   "footprintPoly": [
-    [
-     -54,
-     0
-    ],
-    [
-     0,
-     27
-    ],
-    [
-     54,
-     0
-    ],
-    [
-     0,
-     -27
-    ]
-   ],
-   "topPx": 164,
-   "front": "-Y",
-   "fxPoints": {
-    "flag": [
-     0,
-     -161
-    ]
-   },
-   "doorPoint": [
-    -48,
-    24
-   ],
-   "doorDir": "NE",
-   "name": {
-    "ko": "탈의실",
-    "en": "Changing booth"
-   },
-   "zone": "service",
-   "notes": "Changing booth (1.2 x 1.2 m, 2.4 m): candy-striped turquoise-and-white plank walls, a little peaked roof with a scalloped trim and a flag, a coral door with a heart cut-out and a \"occupied\" slider, towel hooks with a towel on the side. doorPoint = in front of the door (people walk in and fade)."
-  },
-  "corn_stand": {
-   "atlas": "beach_service",
-   "frame": "corn_stand",
-   "anchor": [
-    0.31786,
-    0.6338
-   ],
-   "kind": "station",
-   "frameSize": [
-    280,
-    284
-   ],
-   "footprint": [
-    127,
-    63
-   ],
-   "footprintM": [
-    1.8,
-    1.0
-   ],
-   "footprintPoly": [
-    [
-     -63,
-     -9
-    ],
-    [
-     18,
-     32
-    ],
-    [
-     63,
-     9
-    ],
-    [
-     -18,
-     -32
-    ]
-   ],
-   "topPx": 159,
-   "front": "-Y",
-   "anims": {
-    "grill": {
-     "frames": [
-      "corn_stand_grill_0",
-      "corn_stand_grill_1",
-      "corn_stand_grill_2",
-      "corn_stand_grill_3"
-     ],
-     "fps": 8,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "corn_stand_grill_0",
-      "corn_stand_grill_1",
-      "corn_stand_grill_2",
-      "corn_stand_grill_3"
-     ],
-     "fps": 8,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "smoke": [
-     -14,
-     -84
-    ],
-    "board": [
-     0,
-     -4
-    ]
-   },
-   "staffPoints": [
-    [
-     20,
-     -24
-    ]
-   ],
-   "staffDirs": [
-    "SW"
-   ],
-   "customerPoints": [
-    [
-     -52,
-     17
-    ],
-    [
-     -34,
-     26
-    ],
-    [
-     -16,
-     35
-    ]
-   ],
-   "customerDirs": [
-    "NE",
-    "NE",
-    "NE"
-   ],
-   "staffDepth": "behind",
-   "staffPoint": [
-    20,
-    -24
-   ],
-   "staffDir": "SW",
-   "name": {
-    "ko": "옥수수·핫도그 노점",
-    "en": "Corn & hot-dog stand"
-   },
-   "zone": "service",
-   "notes": "Grilled corn & hot-dog stand: teak stall with a yellow-and-red striped awning, a charcoal grill with corn cobs (char marks, butter shine) and sausages on sticks, a basket of fresh cobs, a mustard / ketchup pair and a blank menu board. idle = coals dark; anims.work (= grill) = 4-frame loop: glowing coals, rising smoke puffs. staffPoints[0] = cook behind the grill (faces SW), customerPoints = in front."
-  },
-  "icecream_cart": {
-   "atlas": "beach_service",
-   "frame": "icecream_cart",
-   "anchor": [
-    0.30328,
-    0.62308
-   ],
-   "kind": "station",
-   "frameSize": [
-    244,
-    260
-   ],
-   "footprint": [
-    113,
-    57
-   ],
-   "footprintM": [
-    1.6,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -57,
-     -8
-    ],
-    [
-     16,
-     28
-    ],
-    [
-     57,
-     8
-    ],
-    [
-     -16,
-     -28
-    ]
-   ],
-   "topPx": 141,
-   "front": "-Y",
-   "anims": {
-    "bell": {
-     "frames": [
-      "icecream_cart_bell_0",
-      "icecream_cart_bell_1",
-      "icecream_cart_bell_2",
-      "icecream_cart_bell_3"
-     ],
-     "fps": 8,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "icecream_cart_bell_0",
-      "icecream_cart_bell_1",
-      "icecream_cart_bell_2",
-      "icecream_cart_bell_3"
-     ],
-     "fps": 8,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "bell": [
-     -1,
-     -91
-    ],
-    "sign": [
-     -16,
-     -94
-    ]
-   },
-   "staffPoints": [
-    [
-     28,
-     -14
-    ]
-   ],
-   "staffDirs": [
-    "SW"
-   ],
-   "customerPoints": [
-    [
-     -38,
-     15
-    ],
-    [
-     -68,
-     32
-    ],
-    [
-     -97,
-     49
-    ]
-   ],
-   "customerDirs": [
-    "NE",
-    "NE",
-    "NE"
-   ],
-   "staffDepth": "front",
-   "staffPoint": [
-    28,
-    -14
-   ],
-   "staffDir": "SW",
-   "name": {
-    "ko": "아이스크림 수레",
-    "en": "Ice-cream cart"
-   },
-   "zone": "service",
-   "notes": "Ice-cream cart: pastel mint cart on two spoked wheels with a push handle, two round freezer lids, a cone rack, a giant strawberry cone on the roof, a pink-and-white umbrella and a brass bell. idle = still; anims.bell (= work) = 4-frame bell ring (swinging + a little glint) when calling customers (sfx_icecream_bell). staffPoints[0] = the vendor behind the cart (+Y, faces SW), customerPoints = queue in front (-Y side, first at the counter, facing NE), fxPoints.bell."
-  },
-  "lifeguard_tower": {
-   "atlas": "beach_service",
-   "frame": "lifeguard_tower",
-   "anchor": [
-    0.27747,
-    0.67188
-   ],
-   "kind": "building",
-   "frameSize": [
-    364,
-    448
-   ],
-   "footprint": [
-    145,
-    72
-   ],
-   "footprintM": [
-    1.6,
-    1.6
-   ],
-   "footprintPoly": [
-    [
-     -72,
-     0
-    ],
-    [
-     0,
-     36
-    ],
-    [
-     72,
-     0
-    ],
-    [
-     0,
-     -36
-    ]
-   ],
-   "topPx": 280,
-   "front": "-Y",
-   "fxPoints": {
-    "flag": [
-     12,
-     -260
-    ],
-    "whistle": [
-     -16,
-     -159
-    ]
-   },
-   "ladderPoint": [
-    87,
-    27
-   ],
-   "lookPoint": [
-    -136,
-    68
-   ],
-   "staffPoints": [
-    [
-     -16,
-     -89
-    ]
-   ],
-   "staffDirs": [
-    "SW"
-   ],
-   "seatPoints": [
-    [
-     5,
-     -128
-    ]
-   ],
-   "seatDirs": [
-    "SW"
-   ],
-   "staffDepth": "front",
-   "staffPoint": [
-    -16,
-    -89
-   ],
-   "staffDir": "SW",
-   "name": {
-    "ko": "인명구조 감시탑",
-    "en": "Lifeguard tower"
-   },
-   "zone": "service",
-   "platformM": 1.76,
-   "lookDir": "SW",
-   "overlay": "lifeguard_tower_front",
-   "notes": "Lifeguard tower (1.6 x 1.6 m, ~4.3 m tall to the flag): splayed white legs with red bands, cross braces, a teak platform at 1.76 m with a white railing, a tall wooden high chair, a red-and-white striped canvas roof with scalloped valance, a teak ladder on the +X side, red/yellow lifeguard flag, an orange rescue tube on the front rail, a red board with a white cross, a life ring and binoculars. It faces the sea (-Y). staffPoint = the guard standing at the front rail (feet on the platform, height included), lookDir = SW (the sea); seatPoints = the high chair. Draw: tower -> guard (staffDepth front) -> lifeguard_tower_front (overlay: the railing / board in front of the guard, same frame + anchor). ladderPoint = foot of the ladder (climb from there)."
-  },
-  "lifeguard_tower_front": {
-   "atlas": "beach_service",
-   "frame": "lifeguard_tower_front",
-   "anchor": [
-    0.27747,
-    0.67188
-   ],
-   "kind": "overlay",
-   "of": "lifeguard_tower",
-   "frameSize": [
-    364,
-    448
-   ],
-   "notes": "Occluder overlay for lifeguard_tower (same frame + anchor): draw it ABOVE the guard standing at lifeguard_tower.staffPoints[0] (tower depth d, guard d + 0.5, overlay d + 1) so the front railing and the sign board pass in front of the guard's legs."
-  },
-  "rental_stand": {
-   "atlas": "beach_service",
-   "frame": "rental_stand",
-   "anchor": [
-    0.41096,
-    0.66197
-   ],
-   "kind": "station",
-   "frameSize": [
-    292,
-    284
-   ],
-   "footprint": [
-    154,
-    77
-   ],
-   "footprintM": [
-    2.2,
-    1.2
-   ],
-   "footprintPoly": [
-    [
-     -77,
-     -11
-    ],
-    [
-     23,
-     38
-    ],
-    [
-     77,
-     11
-    ],
-    [
-     -23,
-     -38
-    ]
-   ],
-   "topPx": 168,
-   "front": "-Y",
-   "fxPoints": {
-    "board": [
-     -35,
-     -23
-    ]
-   },
-   "staffPoints": [
-    [
-     21,
-     -26
-    ]
-   ],
-   "staffDirs": [
-    "SW"
-   ],
-   "customerPoints": [
-    [
-     -54,
-     11
-    ],
-    [
-     -32,
-     23
-    ]
-   ],
-   "customerDirs": [
-    "NE",
-    "NE"
-   ],
-   "staffDepth": "behind",
-   "staffPoint": [
-    21,
-    -26
-   ],
-   "staffDir": "SW",
-   "name": {
-    "ko": "대여소",
-    "en": "Rental stand"
-   },
-   "zone": "service",
-   "notes": "Rental stand (튜브·파라솔 대여): a little teak kiosk with a blue-and-white striped roof, a counter with a cash box and a bell, a peg rack of stacked swim rings (red, yellow, pink, mint), folded parasols in a barrel, two stacked loungers and a blank price board. staffPoints[0] = clerk behind the counter (faces SW), customerPoints = in front, fxPoints.board."
-  },
-  "rescue_board": {
-   "atlas": "beach_service",
-   "frame": "rescue_board",
-   "anchor": [
-    0.23404,
-    0.66667
-   ],
-   "kind": "decor",
-   "frameSize": [
-    188,
-    228
-   ],
-   "footprint": [
-    54,
-    27
-   ],
-   "footprintM": [
-    0.6,
-    0.6
-   ],
-   "footprintPoly": [
-    [
-     -27,
-     0
-    ],
-    [
-     0,
-     14
-    ],
-    [
-     27,
-     0
-    ],
-    [
-     0,
-     -14
-    ]
-   ],
-   "topPx": 132,
-   "front": "-Y",
-   "name": {
-    "ko": "구조 보드",
-    "en": "Rescue board"
-   },
-   "zone": "service",
-   "notes": "Red rescue paddleboard (2.3 m) standing nose-up in a teak cradle with a sand heap: yellow rails, a white cross and a carry handle; ready for the lifeguard."
-  },
-  "rescue_buoy_stand": {
-   "atlas": "beach_service",
-   "frame": "rescue_buoy_stand",
-   "anchor": [
-    0.25658,
-    0.64362
-   ],
-   "kind": "decor",
-   "frameSize": [
-    152,
-    188
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 101,
-   "front": "-Y",
-   "fxPoints": {
-    "board": [
-     -2,
-     -31
-    ]
-   },
-   "name": {
-    "ko": "구명환 거치대",
-    "en": "Rescue buoy stand"
-   },
-   "zone": "service",
-   "notes": "Rescue buoy post: white post with a little red roof cap, a red-white ring buoy hanging on a hook with its coiled throw rope, and a small red board with a white cross."
-  },
-  "beach_pine": {
-   "atlas": "beach_nature",
-   "frame": "beach_pine",
-   "anchor": [
-    0.26543,
-    0.62209
-   ],
-   "kind": "decor",
-   "frameSize": [
-    324,
-    344
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 194,
-   "front": "-Y",
-   "name": {
-    "ko": "해송",
-    "en": "Seaside pine"
-   },
-   "zone": "nature",
-   "notes": "Seaside black pine (해송, ~3.6 m): dark twisting trunk with plated bark leaning away from the sea, layered cloud-like needle pads (deep pine green with lighter tops), a few cones. No snow."
-  },
-  "driftwood": {
-   "atlas": "beach_nature",
-   "frame": "driftwood",
-   "anchor": [
-    0.45833,
-    0.525
-   ],
-   "kind": "decor",
-   "frameSize": [
-    144,
-    120
-   ],
-   "footprint": [
-    95,
-    48
-   ],
-   "footprintM": [
-    1.6,
-    0.5
-   ],
-   "footprintPoly": [
-    [
-     -48,
-     -12
-    ],
-    [
-     25,
-     24
-    ],
-    [
-     48,
-     12
-    ],
-    [
-     -25,
-     -24
-    ]
-   ],
-   "topPx": 43,
-   "front": "-Y",
-   "seatPoints": [
-    [
-     -14,
-     -17
-    ]
-   ],
-   "seatDirs": [
-    "SW"
-   ],
-   "name": {
-    "ko": "유목",
-    "en": "Driftwood"
-   },
-   "zone": "nature",
-   "notes": "Bleached driftwood log (1.6 m) with a stubby branch, worn grain, a wisp of seaweed and a shell; a kid can sit on it (seatPoints, faces SW)."
-  },
-  "dune_grass_a": {
-   "atlas": "beach_nature",
-   "frame": "dune_grass_a",
-   "anchor": [
-    0.4,
-    0.53125
-   ],
-   "kind": "decor",
-   "frameSize": [
-    100,
-    96
-   ],
-   "topPx": 31,
-   "front": "-Y",
-   "name": {
-    "ko": "갯그령 (작은)",
-    "en": "Dune grass A"
-   },
-   "zone": "nature",
-   "notes": "Dune grass: small tuft of marram grass on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
-  },
-  "dune_grass_b": {
-   "atlas": "beach_nature",
-   "frame": "dune_grass_b",
-   "anchor": [
-    0.34286,
-    0.56034
-   ],
-   "kind": "decor",
-   "frameSize": [
-    140,
-    116
-   ],
-   "topPx": 44,
-   "front": "-Y",
-   "name": {
-    "ko": "갯그령 (큰)",
-    "en": "Dune grass B"
-   },
-   "zone": "nature",
-   "notes": "Dune grass: a wide clump of dune grass on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
-  },
-  "dune_grass_c": {
-   "atlas": "beach_nature",
-   "frame": "dune_grass_c",
-   "anchor": [
-    0.35,
-    0.57692
-   ],
-   "kind": "decor",
-   "frameSize": [
-    120,
-    104
-   ],
-   "topPx": 40,
-   "front": "-Y",
-   "name": {
-    "ko": "해당화 덤불",
-    "en": "Dune grass C"
-   },
-   "zone": "nature",
-   "notes": "Dune grass: dune grass with pink beach roses (해당화) on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
-  },
-  "palm_tree_a": {
-   "atlas": "beach_nature",
-   "frame": "palm_tree_a",
-   "anchor": [
-    0.25,
-    0.6125
-   ],
-   "kind": "decor",
-   "frameSize": [
-    468,
-    480
-   ],
-   "footprint": [
-    38,
-    19
-   ],
-   "footprintM": {
-    "radius": 0.3
-   },
-   "topPx": 266,
-   "front": "-Y",
-   "anims": {
-    "sway": {
-     "frames": [
-      "palm_tree_a_sway_0",
-      "palm_tree_a_sway_1",
-      "palm_tree_a_sway_2",
-      "palm_tree_a_sway_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "palm_tree_a_sway_0",
-      "palm_tree_a_sway_1",
-      "palm_tree_a_sway_2",
-      "palm_tree_a_sway_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "crown": [
-     18,
-     -226
-    ]
-   },
-   "name": {
-    "ko": "야자수 A",
-    "en": "Palm tree A"
-   },
-   "zone": "nature",
-   "notes": "Coconut palm (~4.6 m): ringed, gently curved trunk, a crown of nine drooping serrated fronds and green / brown coconuts, two fallen coconuts at the foot. idle = still; anims.sway (= work) = 4-frame breeze loop (crown bends, fronds flutter). Footprint = the trunk only."
-  },
-  "palm_tree_b": {
-   "atlas": "beach_nature",
-   "frame": "palm_tree_b",
-   "anchor": [
-    0.34328,
-    0.60092
-   ],
-   "kind": "decor",
-   "frameSize": [
-    536,
-    436
-   ],
-   "footprint": [
-    45,
-    22
-   ],
-   "footprintM": {
-    "radius": 0.35
-   },
-   "topPx": 232,
-   "front": "-Y",
-   "anims": {
-    "sway": {
-     "frames": [
-      "palm_tree_b_sway_0",
-      "palm_tree_b_sway_1",
-      "palm_tree_b_sway_2",
-      "palm_tree_b_sway_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "palm_tree_b_sway_0",
-      "palm_tree_b_sway_1",
-      "palm_tree_b_sway_2",
-      "palm_tree_b_sway_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "fxPoints": {
-    "crown": [
-     61,
-     -195
-    ]
-   },
-   "name": {
-    "ko": "야자수 B",
-    "en": "Palm tree B"
-   },
-   "zone": "nature",
-   "notes": "Twin palm (3.7 m + 2.8 m trunks leaning apart from one sandy foot). idle = still; anims.sway (= work) = 4-frame breeze loop."
-  },
-  "starfish": {
-   "atlas": "beach_nature",
-   "frame": "starfish",
-   "anchor": [
-    0.45588,
-    0.46667
-   ],
-   "kind": "decor",
-   "frameSize": [
-    68,
-    60
-   ],
-   "topPx": 7,
-   "front": "-Y",
-   "name": {
-    "ko": "불가사리",
-    "en": "Starfish"
-   },
-   "zone": "nature",
-   "notes": "A big orange starfish (with cream dots) and a pink cone shell lying on the sand; pick-up / decor."
-  },
-  "float_raft": {
-   "atlas": "beach_water",
-   "frame": "float_raft",
-   "anchor": [
-    0.45635,
-    0.61818
-   ],
-   "kind": "decor",
-   "frameSize": [
-    252,
-    220
-   ],
-   "footprint": [
-    181,
-    91
-   ],
-   "footprintM": [
-    2.0,
-    2.0
-   ],
-   "footprintPoly": [
-    [
-     -91,
-     0
-    ],
-    [
-     0,
-     45
-    ],
-    [
-     91,
-     0
-    ],
-    [
-     0,
-     -45
-    ]
-   ],
-   "topPx": 114,
-   "anims": {
-    "bob": {
-     "frames": [
-      "float_raft_bob_0",
-      "float_raft_bob_1",
-      "float_raft_bob_2",
-      "float_raft_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "float_raft_bob_0",
-      "float_raft_bob_1",
-      "float_raft_bob_2",
-      "float_raft_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "ladderPoint": [
-    52,
-    26
-   ],
-   "playPoints": [
-    [
-     -41,
-     -22
-    ],
-    [
-     -5,
-     0
-    ],
-    [
-     38,
-     -19
-    ],
-    [
-     2,
-     -39
-    ]
-   ],
-   "playDirs": [
-    "SW",
-    "SW",
-    "SW",
-    "SW"
-   ],
-   "name": {
-    "ko": "물 위 놀이 뗏목",
-    "en": "Floating raft"
-   },
-   "zone": "water",
-   "waterPlane": true,
-   "waterline": "anchor",
-   "deckM": 0.35,
-   "notes": "Swim platform (2 x 2 m) floating on four blue barrels: sun-bleached plank deck 0.35 m above the water, chrome ladder down the +X side, a life ring and a little pennant. Waterline anchor (sea surface). idle = still; anims.bob (= work) = 4-frame gentle rock with pulsing foam. playPoints = 4 standing / diving spots on the deck (height included), ladderPoint = foot of the ladder at the water."
-  },
-  "swim_buoy_line_end": {
-   "atlas": "beach_water",
-   "frame": "swim_buoy_line_end",
-   "anchor": [
-    0.40833,
-    0.56061
-   ],
-   "kind": "decor",
-   "frameSize": [
-    120,
-    132
-   ],
-   "footprint": [
-    45,
-    22
-   ],
-   "footprintM": {
-    "radius": 0.35
-   },
-   "topPx": 53,
-   "anims": {
-    "bob": {
-     "frames": [
-      "swim_buoy_line_end_bob_0",
-      "swim_buoy_line_end_bob_1",
-      "swim_buoy_line_end_bob_2",
-      "swim_buoy_line_end_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "swim_buoy_line_end_bob_0",
-      "swim_buoy_line_end_bob_1",
-      "swim_buoy_line_end_bob_2",
-      "swim_buoy_line_end_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "ropePoint": [
-    0,
-    0
-   ],
-   "name": {
-    "ko": "부표 (끝)",
-    "en": "Swim line end buoy"
-   },
-   "zone": "water",
-   "waterPlane": true,
-   "waterline": "anchor",
-   "notes": "Big yellow marker buoy that ends / turns the swim-area line (put it on the open end of a buoy-line tile, or at a corner where an _x and a _y run meet). Waterline anchor; anims.bob (= work) 4 frames (in sync with the line). ropePoint = where the line ties on."
-  },
-  "swim_buoy_line_x": {
-   "atlas": "beach_water",
-   "frame": "swim_buoy_line_x",
-   "anchor": [
-    0.49265,
-    0.48611
-   ],
-   "kind": "decor",
-   "frameSize": [
-    136,
-    72
-   ],
-   "footprint": [
-    78,
-    39
-   ],
-   "footprintM": [
-    1.4142135623730951,
-    0.3
-   ],
-   "footprintPoly": [
-    [
-     -39,
-     -13
-    ],
-    [
-     25,
-     19
-    ],
-    [
-     39,
-     13
-    ],
-    [
-     -25,
-     -19
-    ]
-   ],
-   "topPx": 115,
-   "anims": {
-    "bob": {
-     "frames": [
-      "swim_buoy_line_x_bob_0",
-      "swim_buoy_line_x_bob_1",
-      "swim_buoy_line_x_bob_2",
-      "swim_buoy_line_x_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "swim_buoy_line_x_bob_0",
-      "swim_buoy_line_x_bob_1",
-      "swim_buoy_line_x_bob_2",
-      "swim_buoy_line_x_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "tileAxis": "x",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "x",
-     "neg",
-     -0.7071067811865476
-    ],
-    [
-     "x",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "수영 구역 부표 줄",
-    "en": "Swim buoy line"
-   },
-   "zone": "water",
-   "waterPlane": true,
-   "waterline": "anchor",
-   "tileLayer": "water",
-   "notes": "Swim-area buoy line tile (sqrt(2) m along world X): white rope with four orange / white sausage floats and foam rings, ON THE WATER: anchor = waterline (sea surface 0.55 m = waterPx 30 below the land). Chain tiles (+64, +32) px apart; play every tile's anims.bob (= work) IN SYNC (same frame index): the wave travels one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end."
-  },
-  "swim_buoy_line_y": {
-   "atlas": "beach_water",
-   "frame": "swim_buoy_line_y",
-   "anchor": [
-    0.49265,
-    0.48611
-   ],
-   "kind": "decor",
-   "frameSize": [
-    136,
-    72
-   ],
-   "footprint": [
-    78,
-    39
-   ],
-   "footprintM": [
-    0.3,
-    1.4142135623730951
-   ],
-   "footprintPoly": [
-    [
-     -39,
-     13
-    ],
-    [
-     -25,
-     19
-    ],
-    [
-     39,
-     -13
-    ],
-    [
-     25,
-     -19
-    ]
-   ],
-   "topPx": 115,
-   "anims": {
-    "bob": {
-     "frames": [
-      "swim_buoy_line_y_bob_0",
-      "swim_buoy_line_y_bob_1",
-      "swim_buoy_line_y_bob_2",
-      "swim_buoy_line_y_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    },
-    "work": {
-     "frames": [
-      "swim_buoy_line_y_bob_0",
-      "swim_buoy_line_y_bob_1",
-      "swim_buoy_line_y_bob_2",
-      "swim_buoy_line_y_bob_3"
-     ],
-     "fps": 4,
-     "repeat": -1
-    }
-   },
-   "tileAxis": "y",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    -32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "y",
-     "neg",
-     -0.7071067811865476
-    ],
-    [
-     "y",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "수영 구역 부표 줄",
-    "en": "Swim buoy line"
-   },
-   "zone": "water",
-   "waterPlane": true,
-   "waterline": "anchor",
-   "tileLayer": "water",
-   "notes": "Swim-area buoy line tile (sqrt(2) m along world Y): white rope with four orange / white sausage floats and foam rings, ON THE WATER: anchor = waterline (sea surface 0.55 m = waterPx 30 below the land). Chain tiles (+64, -32) px apart; play every tile's anims.bob (= work) IN SYNC (same frame index): the wave travels one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end."
-  },
-  "boardwalk_end_xn": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_end_xn",
-   "anchor": [
-    0.44068,
-    0.61111
-   ],
-   "kind": "decal",
-   "frameSize": [
-    236,
-    144
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.4142135623730951,
-    1.5
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     1
-    ],
-    [
-     -2,
-     33
-    ],
-    [
-     66,
-     -1
-    ],
-    [
-     2,
-     -33
-    ]
-   ],
-   "topPx": 68,
-   "tileAxis": "x",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": false,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "x",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "ramp",
-   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Closed end at -X (screen up-left)."
-  },
-  "boardwalk_end_xp": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_end_xp",
-   "anchor": [
-    0.45175,
-    0.47857
-   ],
-   "kind": "decal",
-   "frameSize": [
-    228,
-    140
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.4142135623730951,
-    1.5
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     1
-    ],
-    [
-     -2,
-     33
-    ],
-    [
-     66,
-     -1
-    ],
-    [
-     2,
-     -33
-    ]
-   ],
-   "topPx": 135,
-   "tileAxis": "x",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": false
-   },
-   "cuts": [
-    [
-     "x",
-     "neg",
-     -0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "ramp",
-   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Closed end at +X (screen down-right): low ramp down to the sand between two rope posts."
-  },
-  "boardwalk_end_yn": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_end_yn",
-   "anchor": [
-    0.45614,
-    0.46528
-   ],
-   "kind": "decal",
-   "frameSize": [
-    228,
-    144
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.5,
-    1.4142135623730951
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     -1
-    ],
-    [
-     2,
-     33
-    ],
-    [
-     66,
-     1
-    ],
-    [
-     -2,
-     -33
-    ]
-   ],
-   "topPx": 130,
-   "tileAxis": "y",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    -32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": false,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "y",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "ramp",
-   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at -Y (screen down-left, toward the sea)."
-  },
-  "boardwalk_end_yp": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_end_yp",
-   "anchor": [
-    0.51984,
-    0.57895
-   ],
-   "kind": "decal",
-   "frameSize": [
-    252,
-    152
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.5,
-    1.4142135623730951
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     -1
-    ],
-    [
-     2,
-     33
-    ],
-    [
-     66,
-     1
-    ],
-    [
-     -2,
-     -33
-    ]
-   ],
-   "topPx": 68,
-   "tileAxis": "y",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    -32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": false
-   },
-   "cuts": [
-    [
-     "y",
-     "neg",
-     -0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "ramp",
-   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at +Y (screen up-right)."
-  },
-  "boardwalk_x": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_x",
-   "anchor": [
-    0.5049,
-    0.49038
-   ],
-   "kind": "decal",
-   "frameSize": [
-    204,
-    104
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.4142135623730951,
-    1.5
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     1
-    ],
-    [
-     -2,
-     33
-    ],
-    [
-     66,
-     -1
-    ],
-    [
-     2,
-     -33
-    ]
-   ],
-   "topPx": 135,
-   "tileAxis": "x",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "x",
-     "neg",
-     -0.7071067811865476
-    ],
-    [
-     "x",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "none",
-   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Straight piece."
-  },
-  "boardwalk_y": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_y",
-   "anchor": [
-    0.48529,
-    0.49038
-   ],
-   "kind": "decal",
-   "frameSize": [
-    204,
-    104
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.5,
-    1.4142135623730951
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     -1
-    ],
-    [
-     2,
-     33
-    ],
-    [
-     66,
-     1
-    ],
-    [
-     -2,
-     -33
-    ]
-   ],
-   "topPx": 130,
-   "tileAxis": "y",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    -32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": true,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "y",
-     "neg",
-     -0.7071067811865476
-    ],
-    [
-     "y",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "none",
-   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Straight piece."
-  },
-  "boardwalk_end": {
-   "atlas": "beach_tiles",
-   "frame": "boardwalk_end_yn",
-   "anchor": [
-    0.45614,
-    0.46528
-   ],
-   "kind": "decal",
-   "frameSize": [
-    228,
-    144
-   ],
-   "footprint": [
-    132,
-    66
-   ],
-   "footprintM": [
-    1.5,
-    1.4142135623730951
-   ],
-   "footprintPoly": [
-    [
-     -66,
-     -1
-    ],
-    [
-     2,
-     33
-    ],
-    [
-     66,
-     1
-    ],
-    [
-     -2,
-     -33
-    ]
-   ],
-   "topPx": 130,
-   "tileAxis": "y",
-   "segM": 1.41421,
-   "stepPx": [
-    64,
-    -32
-   ],
-   "rampM": 0.1,
-   "openEnds": {
-    "neg": false,
-    "pos": true
-   },
-   "cuts": [
-    [
-     "y",
-     "pos",
-     0.7071067811865476
-    ]
-   ],
-   "name": {
-    "ko": "나무 산책로",
-    "en": "Boardwalk"
-   },
-   "zone": "tiles",
-   "tileLayer": "ground",
-   "widthM": 1.5,
-   "deckTopM": 0.07,
-   "capKind": "ramp",
-   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at -Y (screen down-left, toward the sea).",
-   "aliasOf": "boardwalk_end_yn"
-  },
-  "sandcastle_build": {
-   "atlas": "beach_play",
-   "frame": "sandcastle_build_0",
-   "anchor": [
-    0.42742,
-    0.55645
-   ],
-   "kind": "decor",
-   "frameSize": [
-    124,
-    124
-   ],
-   "footprint": [
-    91,
-    45
-   ],
-   "footprintM": [
-    1.1,
-    0.9
-   ],
-   "footprintPoly": [
-    [
-     -45,
-     -2
-    ],
-    [
-     5,
-     23
-    ],
-    [
-     45,
-     2
-    ],
-    [
-     -5,
-     -23
-    ]
-   ],
-   "topPx": 30,
-   "front": "-Y",
-   "workPoints": [
-    [
-     -44,
-     6
-    ],
-    [
-     5,
-     25
-    ]
-   ],
-   "workDirs": [
-    "NE",
-    "N"
-   ],
-   "name": {
-    "ko": "모래성 쌓기",
-    "en": "Sandcastle (building)"
-   },
-   "zone": "play",
-   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints = two kneeling diggers (beachfolk `dig`) facing the castle; stages lists every stage key in order.",
-   "stage": 0,
-   "stages": [
-    "sandcastle_build_0",
-    "sandcastle_build_1",
-    "sandcastle_build_2",
-    "sandcastle_build_3"
-   ],
-   "build": "sandcastle_build",
-   "aliasOf": "sandcastle_build_0"
-  },
   "ground_sand": {
    "image": "ground_sand",
    "anchor": [
@@ -5443,6 +1836,3745 @@
    ],
    "netAxis": "y",
    "notes": "Beach volleyball court lines (blue rope with red corner pegs), 7.0 x 3.6 m, long axis along world X. Put volleyball_net_y at the anchor (the court centre)."
+  },
+  "beach_chair_folding": {
+   "atlas": "beach_shade",
+   "frame": "beach_chair_folding",
+   "anchor": [
+    0.40909,
+    0.58824
+   ],
+   "kind": "decor",
+   "frameSize": [
+    132,
+    136
+   ],
+   "footprint": [
+    68,
+    34
+   ],
+   "footprintM": [
+    0.7,
+    0.8
+   ],
+   "footprintPoly": [
+    [
+     -34,
+     1
+    ],
+    [
+     -2,
+     17
+    ],
+    [
+     34,
+     -1
+    ],
+    [
+     2,
+     -17
+    ]
+   ],
+   "topPx": 59,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     -15,
+     -11
+    ]
+   ],
+   "seatDirs": [
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     -15,
+     8
+    ]
+   ],
+   "name": {
+    "ko": "접이식 비치 의자",
+    "en": "Folding beach chair"
+   },
+   "zone": "shade",
+   "seatHeightM": 0.33,
+   "seatDepth": "front",
+   "notes": "Folding wooden deck chair (faces -Y = screen down-left): oiled teak frame with brass pivots, a blue-and-white striped canvas sling that sags with the weight lines of real cloth, a little cushion at the head. seatPoints[0] = the sling seat (villagers `sit` anchor, faces SW)."
+  },
+  "beach_chair_folding_x": {
+   "atlas": "beach_shade",
+   "frame": "beach_chair_folding_x",
+   "anchor": [
+    0.36429,
+    0.58824
+   ],
+   "kind": "decor",
+   "frameSize": [
+    140,
+    136
+   ],
+   "footprint": [
+    68,
+    34
+   ],
+   "footprintM": [
+    0.7,
+    0.8
+   ],
+   "footprintPoly": [
+    [
+     2,
+     17
+    ],
+    [
+     34,
+     1
+    ],
+    [
+     -2,
+     -17
+    ],
+    [
+     -34,
+     -1
+    ]
+   ],
+   "topPx": 59,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     15,
+     -11
+    ]
+   ],
+   "seatDirs": [
+    "SE"
+   ],
+   "seatGroundPoints": [
+    [
+     15,
+     8
+    ]
+   ],
+   "name": {
+    "ko": "접이식 비치 의자 (X)",
+    "en": "Folding beach chair (X)"
+   },
+   "zone": "shade",
+   "seatHeightM": 0.33,
+   "seatDepth": "front",
+   "notes": "Folding wooden deck chair (faces +X = screen down-right): oiled teak frame with brass pivots, a coral-and-white striped canvas sling that sags with the weight lines of real cloth, a little cushion at the head. seatPoints[0] = the sling seat (villagers `sit` anchor, faces SE)."
+  },
+  "beach_swing": {
+   "atlas": "beach_shade",
+   "frame": "beach_swing",
+   "anchor": [
+    0.36111,
+    0.62857
+   ],
+   "kind": "decor",
+   "frameSize": [
+    288,
+    280
+   ],
+   "footprint": [
+    167,
+    84
+   ],
+   "footprintM": [
+    2.4,
+    1.3
+   ],
+   "footprintPoly": [
+    [
+     -84,
+     -12
+    ],
+    [
+     25,
+     42
+    ],
+    [
+     84,
+     12
+    ],
+    [
+     -25,
+     -42
+    ]
+   ],
+   "topPx": 156,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     -24,
+     -32
+    ],
+    [
+     1,
+     -19
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     -24,
+     -1
+    ],
+    [
+     1,
+     12
+    ]
+   ],
+   "name": {
+    "ko": "해변 그네",
+    "en": "Beach swing"
+   },
+   "zone": "shade",
+   "seatHeightM": 0.56,
+   "seatDepth": "front",
+   "notes": "Beach swing: chunky driftwood A-frame (2.4 m wide) with a two-seat teak bench hanging on ropes, a striped cushion and a little shell garland on the top beam; faces the sea (-Y). seatPoints = 2 sitters (faces SW)."
+  },
+  "parasol_blue": {
+   "atlas": "beach_shade",
+   "frame": "parasol_blue",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_blue_flutter_0",
+      "parasol_blue_flutter_1",
+      "parasol_blue_flutter_2",
+      "parasol_blue_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_blue_flutter_0",
+      "parasol_blue_flutter_1",
+      "parasol_blue_flutter_2",
+      "parasol_blue_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (파랑)",
+    "en": "Parasol (blue)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "blue",
+   "notes": "Beach parasol \"blue\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "parasol_green": {
+   "atlas": "beach_shade",
+   "frame": "parasol_green",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_green_flutter_0",
+      "parasol_green_flutter_1",
+      "parasol_green_flutter_2",
+      "parasol_green_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_green_flutter_0",
+      "parasol_green_flutter_1",
+      "parasol_green_flutter_2",
+      "parasol_green_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (초록)",
+    "en": "Parasol (green)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "green",
+   "notes": "Beach parasol \"green\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "parasol_pink": {
+   "atlas": "beach_shade",
+   "frame": "parasol_pink",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_pink_flutter_0",
+      "parasol_pink_flutter_1",
+      "parasol_pink_flutter_2",
+      "parasol_pink_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_pink_flutter_0",
+      "parasol_pink_flutter_1",
+      "parasol_pink_flutter_2",
+      "parasol_pink_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (분홍)",
+    "en": "Parasol (pink)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "pink",
+   "notes": "Beach parasol \"pink\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "parasol_rainbow": {
+   "atlas": "beach_shade",
+   "frame": "parasol_rainbow",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_rainbow_flutter_0",
+      "parasol_rainbow_flutter_1",
+      "parasol_rainbow_flutter_2",
+      "parasol_rainbow_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_rainbow_flutter_0",
+      "parasol_rainbow_flutter_1",
+      "parasol_rainbow_flutter_2",
+      "parasol_rainbow_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (무지개)",
+    "en": "Parasol (rainbow)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "rainbow",
+   "notes": "Beach parasol \"rainbow\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "parasol_red": {
+   "atlas": "beach_shade",
+   "frame": "parasol_red",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_red_flutter_0",
+      "parasol_red_flutter_1",
+      "parasol_red_flutter_2",
+      "parasol_red_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_red_flutter_0",
+      "parasol_red_flutter_1",
+      "parasol_red_flutter_2",
+      "parasol_red_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (빨강)",
+    "en": "Parasol (red)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "red",
+   "notes": "Beach parasol \"red\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "parasol_yellow": {
+   "atlas": "beach_shade",
+   "frame": "parasol_yellow",
+   "anchor": [
+    0.34286,
+    0.60075
+   ],
+   "kind": "decor",
+   "frameSize": [
+    280,
+    268
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 140,
+   "front": "-Y",
+   "anims": {
+    "flutter": {
+     "frames": [
+      "parasol_yellow_flutter_0",
+      "parasol_yellow_flutter_1",
+      "parasol_yellow_flutter_2",
+      "parasol_yellow_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "parasol_yellow_flutter_0",
+      "parasol_yellow_flutter_1",
+      "parasol_yellow_flutter_2",
+      "parasol_yellow_flutter_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "top": [
+     0,
+     -132
+    ]
+   },
+   "shadePoint": [
+    78,
+    39
+   ],
+   "name": {
+    "ko": "파라솔 (노랑)",
+    "en": "Parasol (yellow)"
+   },
+   "zone": "shade",
+   "shadeRadiusM": 1.05,
+   "canopyTopPx": -133,
+   "colourway": "yellow",
+   "notes": "Beach parasol \"yellow\" (canopy 2.1 m across, ~2.35 m tall): 8 woven canvas panels that sag between the ribs, darker seam piping on every rib, scalloped valance flaps with a cream tassel fringe, white rib tips, two-tone pole with a chrome tilt joint and wooden finial, foot pushed into a little sand mound. idle = still; anims.flutter (= work) = 4-frame breeze loop (flaps lift and ripple, panels breathe). points.shade = centre of its baked canopy shadow on the sand (put a lounger / towel there); footprint = the pole only (walk under the canopy)."
+  },
+  "picnic_table_beach": {
+   "atlas": "beach_shade",
+   "frame": "picnic_table_beach",
+   "anchor": [
+    0.35547,
+    0.6129
+   ],
+   "kind": "decor",
+   "frameSize": [
+    256,
+    248
+   ],
+   "footprint": [
+    154,
+    77
+   ],
+   "footprintM": [
+    1.8,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -2
+    ],
+    [
+     5,
+     38
+    ],
+    [
+     77,
+     2
+    ],
+    [
+     -5,
+     -38
+    ]
+   ],
+   "topPx": 131,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     4,
+     -45
+    ],
+    [
+     -52,
+     -17
+    ],
+    [
+     40,
+     -27
+    ],
+    [
+     -16,
+     1
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     4,
+     -20
+    ],
+    [
+     -52,
+     8
+    ],
+    [
+     40,
+     -2
+    ],
+    [
+     -16,
+     26
+    ]
+   ],
+   "name": {
+    "ko": "해변 피크닉 테이블",
+    "en": "Beach picnic table"
+   },
+   "zone": "shade",
+   "seatHeightM": 0.46,
+   "seatDepths": [
+    "behind",
+    "front",
+    "behind",
+    "front"
+   ],
+   "seatDepth": "per seat: seatDepths",
+   "notes": "Beach picnic table: weathered teak table with attached benches, a blue-and-white parasol through the middle, a pitcher of lemonade and two cups. seatPoints (all `sit` SW): seats 0 / 2 on the far (+Y) bench facing the table (seatDepths \"behind\": normal y-sort, the table top hides their laps), seats 1 / 3 on the near (-Y) bench sitting with their backs to the table, looking out to sea (seatDepths \"front\": draw them just above the table)."
+  },
+  "sun_lounger": {
+   "atlas": "beach_shade",
+   "frame": "sun_lounger",
+   "anchor": [
+    0.42021,
+    0.59615
+   ],
+   "kind": "decor",
+   "frameSize": [
+    188,
+    156
+   ],
+   "footprint": [
+    120,
+    60
+   ],
+   "footprintM": [
+    0.7,
+    1.95
+   ],
+   "footprintPoly": [
+    [
+     -60,
+     14
+    ],
+    [
+     -28,
+     30
+    ],
+    [
+     60,
+     -14
+    ],
+    [
+     28,
+     -30
+    ]
+   ],
+   "topPx": 72,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     0,
+     -11
+    ]
+   ],
+   "seatDirs": [
+    "SE"
+   ],
+   "lyingPoints": [
+    [
+     -5,
+     -23
+    ]
+   ],
+   "lyingDirs": [
+    "NE"
+   ],
+   "lyingHeadPoints": [
+    [
+     27,
+     -56
+    ]
+   ],
+   "lyingFeetPoints": [
+    [
+     -37,
+     -7
+    ]
+   ],
+   "seatGroundPoints": [
+    [
+     0,
+     14
+    ]
+   ],
+   "lyingFeetDirs": [
+    "SW"
+   ],
+   "lyingAxis": "y",
+   "seatDepth": "front",
+   "name": {
+    "ko": "선베드",
+    "en": "Sun lounger"
+   },
+   "zone": "shade",
+   "lyingHeightM": 0.47,
+   "backrestDeg": 38,
+   "seatHeightM": 0.45,
+   "notes": "Wooden sun lounger (along world Y, head at +Y = screen up-right): oiled dark-teak frame with leg pairs and two rubber wheels at the head, lighter teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white piping and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion (anchor of a beachfolk `sunbathe` frame), lyingHeadPoints / lyingFeetPoints = where the head / feet rest. lyingFeetDirs = screen direction hips -> FEET (SW) = the `dir` to play beachfolk `sunbathe` with (its dir is where the feet point); lyingDirs = hips -> head (NE), kept for reference. seatPoints = sitting sideways on the +X (screen down-right) cushion edge (townsfolk2 `sit` anchor = seat front-centre at 0.45 m, faces SE); seatGroundPoints = the sand under it."
+  },
+  "sun_lounger_x": {
+   "atlas": "beach_shade",
+   "frame": "sun_lounger_x",
+   "anchor": [
+    0.43889,
+    0.59615
+   ],
+   "kind": "decor",
+   "frameSize": [
+    180,
+    156
+   ],
+   "footprint": [
+    120,
+    60
+   ],
+   "footprintM": [
+    0.7,
+    1.95
+   ],
+   "footprintPoly": [
+    [
+     28,
+     30
+    ],
+    [
+     60,
+     14
+    ],
+    [
+     -28,
+     -30
+    ],
+    [
+     -60,
+     -14
+    ]
+   ],
+   "topPx": 72,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     0,
+     -11
+    ]
+   ],
+   "seatDirs": [
+    "SW"
+   ],
+   "lyingPoints": [
+    [
+     5,
+     -23
+    ]
+   ],
+   "lyingDirs": [
+    "NW"
+   ],
+   "lyingHeadPoints": [
+    [
+     -27,
+     -56
+    ]
+   ],
+   "lyingFeetPoints": [
+    [
+     37,
+     -7
+    ]
+   ],
+   "seatGroundPoints": [
+    [
+     0,
+     14
+    ]
+   ],
+   "lyingFeetDirs": [
+    "SE"
+   ],
+   "lyingAxis": "x",
+   "seatDepth": "front",
+   "name": {
+    "ko": "선베드 (X축)",
+    "en": "Sun lounger (X axis)"
+   },
+   "zone": "shade",
+   "lyingHeightM": 0.47,
+   "backrestDeg": 38,
+   "seatHeightM": 0.45,
+   "notes": "Wooden sun lounger (along world X, head at -X = screen up-left): oiled dark-teak frame with leg pairs and two rubber wheels at the head, lighter teak slats, raised backrest on a prop bar, a turquoise-and-white striped cushion with white piping and tufting buttons, a rolled pink towel at the head. lyingPoints[0] = hip point on the cushion (anchor of a beachfolk `sunbathe` frame), lyingHeadPoints / lyingFeetPoints = where the head / feet rest. lyingFeetDirs = screen direction hips -> FEET (SE) = the `dir` to play beachfolk `sunbathe` with (its dir is where the feet point); lyingDirs = hips -> head (NW), kept for reference. seatPoints = sitting sideways on the -Y (screen down-left) cushion edge (townsfolk2 `sit` anchor = seat front-centre at 0.45 m, faces SW); seatGroundPoints = the sand under it."
+  },
+  "beach_ball": {
+   "atlas": "beach_play",
+   "frame": "beach_ball",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 20,
+   "stackStep": 19,
+   "icon": true,
+   "carryScale": 0.6,
+   "name": {
+    "ko": "비치볼",
+    "en": "Beach ball"
+   },
+   "zone": "play",
+   "notes": "Beach ball item / icon (72x72, anchor (36,54) like every item): six glossy vinyl gores (red, white, blue, yellow, white, green) with white caps. For the bouncing ball on the sand use beach_ball_bounce."
+  },
+  "beach_ball_bounce": {
+   "atlas": "beach_play",
+   "frame": "beach_ball_bounce",
+   "anchor": [
+    0.27419,
+    0.62838
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    148
+   ],
+   "footprint": [
+    26,
+    13
+   ],
+   "footprintM": {
+    "radius": 0.2
+   },
+   "topPx": 23,
+   "front": "-Y",
+   "anims": {
+    "bounce": {
+     "frames": [
+      "beach_ball_bounce_bounce_0",
+      "beach_ball_bounce_bounce_1",
+      "beach_ball_bounce_bounce_2",
+      "beach_ball_bounce_bounce_3",
+      "beach_ball_bounce_bounce_4",
+      "beach_ball_bounce_bounce_5",
+      "beach_ball_bounce_bounce_6",
+      "beach_ball_bounce_bounce_7"
+     ],
+     "fps": 12,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "beach_ball_bounce_bounce_0",
+      "beach_ball_bounce_bounce_1",
+      "beach_ball_bounce_bounce_2",
+      "beach_ball_bounce_bounce_3",
+      "beach_ball_bounce_bounce_4",
+      "beach_ball_bounce_bounce_5",
+      "beach_ball_bounce_bounce_6",
+      "beach_ball_bounce_bounce_7"
+     ],
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "impactFrame": 0,
+   "name": {
+    "ko": "통통 비치볼",
+    "en": "Bouncing beach ball"
+   },
+   "zone": "play",
+   "notes": "Beach ball bouncing on the sand: idle = resting on the sand; anims.bounce (= work) = 8-frame loop at 12 fps (squash on contact frame 0, rise, spin, fall) with its baked shadow shrinking / softening with the height. Anchor = the contact point on the sand; impactFrame 0 (play sfx_beachball_bounce)."
+  },
+  "bucket_spade": {
+   "atlas": "beach_play",
+   "frame": "bucket_spade",
+   "anchor": [
+    0.43,
+    0.54762
+   ],
+   "kind": "decor",
+   "frameSize": [
+    100,
+    84
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 26,
+   "front": "-Y",
+   "playPoints": [
+    [
+     -22,
+     -12
+    ]
+   ],
+   "playDirs": [
+    "SE"
+   ],
+   "name": {
+    "ko": "양동이와 삽",
+    "en": "Bucket and spade"
+   },
+   "zone": "play",
+   "playDepth": "behind",
+   "playAnim": "dig",
+   "notes": "Toy bucket (red, sand inside) + blue spade stuck in a little heap + a yellow star mould next to the sand star it just made. Decor; kids play here (playPoints)."
+  },
+  "kite": {
+   "atlas": "beach_play",
+   "frame": "kite",
+   "anchor": [
+    0.45833,
+    0.23404
+   ],
+   "kind": "decor",
+   "frameSize": [
+    72,
+    188
+   ],
+   "topPx": 35,
+   "anims": {
+    "fly": {
+     "frames": [
+      "kite_fly_0",
+      "kite_fly_1",
+      "kite_fly_2",
+      "kite_fly_3",
+      "kite_fly_4",
+      "kite_fly_5"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "kite_fly_0",
+      "kite_fly_1",
+      "kite_fly_2",
+      "kite_fly_3",
+      "kite_fly_4",
+      "kite_fly_5"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "name": {
+    "ko": "연",
+    "en": "Kite"
+   },
+   "zone": "play",
+   "stringPoint": [
+    0,
+    0
+   ],
+   "flyHeightM": [
+    5,
+    7
+   ],
+   "notes": "Diamond kite in four colours with cross spars and a bow tail. NO baked shadow (it flies): anchor = the bridle point where the string attaches; fly it ~5-7 m above the kid holding it (draw a thin line from the hand to the anchor + optionally a soft small shadow on the sand). anims.fly (= work) = 6-frame loop: the kite pitches / rolls, the tail ripples."
+  },
+  "sandcastle_build_0": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_build_0",
+   "anchor": [
+    0.42742,
+    0.55645
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    124
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 30,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 쌓기",
+    "en": "Sandcastle (building)"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE / SW) on the far side of the castle (workDepth \"behind\": normal y-sort draws the castle in front of them); stages lists every stage key in order.",
+   "stage": 0,
+   "stages": [
+    "sandcastle_build_0",
+    "sandcastle_build_1",
+    "sandcastle_build_2",
+    "sandcastle_build_3"
+   ],
+   "build": "sandcastle_build"
+  },
+  "sandcastle_build_1": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_build_1",
+   "anchor": [
+    0.42742,
+    0.55645
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    124
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 24,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 쌓기",
+    "en": "Sandcastle (building)"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE / SW) on the far side of the castle (workDepth \"behind\": normal y-sort draws the castle in front of them); stages lists every stage key in order.",
+   "stage": 1,
+   "stages": [
+    "sandcastle_build_0",
+    "sandcastle_build_1",
+    "sandcastle_build_2",
+    "sandcastle_build_3"
+   ],
+   "build": "sandcastle_build"
+  },
+  "sandcastle_build_2": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_build_2",
+   "anchor": [
+    0.42742,
+    0.55645
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    124
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 24,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 쌓기",
+    "en": "Sandcastle (building)"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE / SW) on the far side of the castle (workDepth \"behind\": normal y-sort draws the castle in front of them); stages lists every stage key in order.",
+   "stage": 2,
+   "stages": [
+    "sandcastle_build_0",
+    "sandcastle_build_1",
+    "sandcastle_build_2",
+    "sandcastle_build_3"
+   ],
+   "build": "sandcastle_build"
+  },
+  "sandcastle_build_3": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_build_3",
+   "anchor": [
+    0.42742,
+    0.55645
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    124
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 48,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 쌓기",
+    "en": "Sandcastle (building)"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE / SW) on the far side of the castle (workDepth \"behind\": normal y-sort draws the castle in front of them); stages lists every stage key in order.",
+   "stage": 3,
+   "stages": [
+    "sandcastle_build_0",
+    "sandcastle_build_1",
+    "sandcastle_build_2",
+    "sandcastle_build_3"
+   ],
+   "build": "sandcastle_build"
+  },
+  "sandcastle_l": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_l",
+   "anchor": [
+    0.46739,
+    0.59028
+   ],
+   "kind": "decor",
+   "frameSize": [
+    184,
+    144
+   ],
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 65,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -58,
+     -29
+    ],
+    [
+     58,
+     -29
+    ],
+    [
+     0,
+     -43
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW",
+    "S"
+   ],
+   "name": {
+    "ko": "모래성 (대)",
+    "en": "Sandcastle L"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle L (4 towers, walls, keep, moat with water + plank bridge): damp packed sand (fine grain, one step darker than the dry sand), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. workPoints / workDirs = kneeling diggers (beachfolk `dig`: SE / SW / S) on the FAR side so the castle stays in front of them (workDepth \"behind\" = normal y-sort). Decor on the sand (no collision needed for S)."
+  },
+  "sandcastle_m": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_m",
+   "anchor": [
+    0.42742,
+    0.59483
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    116
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 48,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 (중)",
+    "en": "Sandcastle M"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle M (keep + 2 towers): damp packed sand (fine grain, one step darker than the dry sand), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. workPoints / workDirs = kneeling diggers (beachfolk `dig`: SE / SW / S) on the FAR side so the castle stays in front of them (workDepth \"behind\" = normal y-sort). Decor on the sand (no collision needed for S)."
+  },
+  "sandcastle_s": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_s",
+   "anchor": [
+    0.38542,
+    0.53409
+   ],
+   "kind": "decor",
+   "frameSize": [
+    96,
+    88
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 27,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -23,
+     -14
+    ]
+   ],
+   "workDirs": [
+    "SE"
+   ],
+   "name": {
+    "ko": "모래성 (소)",
+    "en": "Sandcastle S"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle S (one bucket tower): damp packed sand (fine grain, one step darker than the dry sand), bucket-moulded towers with ridges and crenellations, drip spires, scallop / cone shells, a little starfish and a paper pennant flag. workPoints / workDirs = kneeling diggers (beachfolk `dig`: SE / SW / S) on the FAR side so the castle stays in front of them (workDepth \"behind\" = normal y-sort). Decor on the sand (no collision needed for S)."
+  },
+  "surfboard_rack": {
+   "atlas": "beach_play",
+   "frame": "surfboard_rack",
+   "anchor": [
+    0.34746,
+    0.63362
+   ],
+   "kind": "decor",
+   "frameSize": [
+    236,
+    232
+   ],
+   "footprint": [
+    131,
+    66
+   ],
+   "footprintM": [
+    2.0,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -12
+    ],
+    [
+     25,
+     33
+    ],
+    [
+     66,
+     12
+    ],
+    [
+     -25,
+     -33
+    ]
+   ],
+   "topPx": 126,
+   "front": "-Y",
+   "name": {
+    "ko": "서핑보드 거치대",
+    "en": "Surfboard rack"
+   },
+   "zone": "play",
+   "notes": "Wooden A-frame surfboard rack (2 m along world X) with four boards standing nose-up (turquoise, sunny yellow, white-blue, coral) and a little bodyboard; a towel on the end post. Belongs by surf_shop (beach_bld)."
+  },
+  "swim_ring_donut": {
+   "atlas": "beach_play",
+   "frame": "swim_ring_donut",
+   "anchor": [
+    0.45192,
+    0.53571
+   ],
+   "kind": "decor",
+   "frameSize": [
+    104,
+    84
+   ],
+   "footprint": [
+    49,
+    24
+   ],
+   "footprintM": {
+    "radius": 0.38
+   },
+   "topPx": 25,
+   "front": "-Y",
+   "name": {
+    "ko": "도넛 튜브",
+    "en": "Donut swim ring"
+   },
+   "zone": "play",
+   "notes": "Inflatable swim ring lying on the sand (pink frosted donut with sprinkles), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
+  },
+  "swim_ring_duck": {
+   "atlas": "beach_play",
+   "frame": "swim_ring_duck",
+   "anchor": [
+    0.43519,
+    0.51042
+   ],
+   "kind": "decor",
+   "frameSize": [
+    108,
+    96
+   ],
+   "footprint": [
+    51,
+    26
+   ],
+   "footprintM": {
+    "radius": 0.4
+   },
+   "topPx": 29,
+   "front": "-Y",
+   "name": {
+    "ko": "오리 튜브",
+    "en": "Duck swim ring"
+   },
+   "zone": "play",
+   "notes": "Inflatable swim ring lying on the sand (yellow duck ring with an orange beak and a curly tail), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
+  },
+  "swim_ring_red": {
+   "atlas": "beach_play",
+   "frame": "swim_ring_red",
+   "anchor": [
+    0.44231,
+    0.52381
+   ],
+   "kind": "decor",
+   "frameSize": [
+    104,
+    84
+   ],
+   "footprint": [
+    49,
+    24
+   ],
+   "footprintM": {
+    "radius": 0.38
+   },
+   "topPx": 23,
+   "front": "-Y",
+   "name": {
+    "ko": "튜브 (빨강)",
+    "en": "Swim ring (red)"
+   },
+   "zone": "play",
+   "notes": "Inflatable swim ring lying on the sand (red and white stripes), glossy vinyl with seams and a little valve; ~0.75 m across. Pick-up / decor (the worn ring is a beachfolk part)."
+  },
+  "volleyball_net": {
+   "atlas": "beach_play",
+   "frame": "volleyball_net",
+   "anchor": [
+    0.41146,
+    0.60938
+   ],
+   "kind": "decor",
+   "frameSize": [
+    384,
+    320
+   ],
+   "footprint": [
+    213,
+    106
+   ],
+   "footprintM": [
+    4.4,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -106,
+     -46
+    ],
+    [
+     93,
+     53
+    ],
+    [
+     106,
+     46
+    ],
+    [
+     -93,
+     -53
+    ]
+   ],
+   "topPx": 175,
+   "front": "-Y",
+   "playPoints": [
+    [
+     -118,
+     14
+    ],
+    [
+     -27,
+     59
+    ],
+    [
+     27,
+     -59
+    ],
+    [
+     118,
+     -14
+    ]
+   ],
+   "playDirs": [
+    "NE",
+    "NE",
+    "SW",
+    "SW"
+   ],
+   "netAxis": "x",
+   "ballDirs": [
+    "E",
+    "E",
+    "SW",
+    "SW"
+   ],
+   "name": {
+    "ko": "비치발리볼 네트",
+    "en": "Beach volleyball net"
+   },
+   "zone": "play",
+   "notes": "Beach volleyball net (net along world X, posts 4.2 m apart, top band 1.9 m high): padded white posts with blue covers, black mesh with a white top band, red-white antennas, guy ropes to sand pegs. Put it on the middle line of decal_volleyball_court (court long axis along world Y). playPoints / playDirs = 2 players a side (true facing: toward the net). ballDirs = the dir to play beachfolk ball_throw / ball_catch with at each point (those anims have S / SE / E + mirrors only): the far side uses its true facing, the near side (backs to the camera) turns side-on (E / W) to the nearest dir that has frames."
+  },
+  "volleyball_net_y": {
+   "atlas": "beach_play",
+   "frame": "volleyball_net_y",
+   "anchor": [
+    0.41146,
+    0.60938
+   ],
+   "kind": "decor",
+   "frameSize": [
+    384,
+    320
+   ],
+   "footprint": [
+    213,
+    106
+   ],
+   "footprintM": [
+    4.4,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -93,
+     53
+    ],
+    [
+     106,
+     -46
+    ],
+    [
+     93,
+     -53
+    ],
+    [
+     -106,
+     46
+    ]
+   ],
+   "topPx": 175,
+   "front": "-Y",
+   "playPoints": [
+    [
+     27,
+     59
+    ],
+    [
+     118,
+     14
+    ],
+    [
+     -118,
+     -14
+    ],
+    [
+     -27,
+     -59
+    ]
+   ],
+   "playDirs": [
+    "NW",
+    "NW",
+    "SE",
+    "SE"
+   ],
+   "netAxis": "y",
+   "ballDirs": [
+    "W",
+    "W",
+    "SE",
+    "SE"
+   ],
+   "name": {
+    "ko": "비치발리볼 네트 (Y)",
+    "en": "Beach volleyball net (Y)"
+   },
+   "zone": "play",
+   "notes": "Beach volleyball net (net along world Y, posts 4.2 m apart, top band 1.9 m high): padded white posts with blue covers, black mesh with a white top band, red-white antennas, guy ropes to sand pegs. Put it on the middle line of decal_volleyball_court (court long axis along world X). playPoints / playDirs = 2 players a side (true facing: toward the net). ballDirs = the dir to play beachfolk ball_throw / ball_catch with at each point (those anims have S / SE / E + mirrors only): the far side uses its true facing, the near side (backs to the camera) turns side-on (E / W) to the nearest dir that has frames."
+  },
+  "beach_shower": {
+   "atlas": "beach_service",
+   "frame": "beach_shower",
+   "anchor": [
+    0.29545,
+    0.67213
+   ],
+   "kind": "decor",
+   "frameSize": [
+    220,
+    244
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.0,
+    1.0
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     0
+    ],
+    [
+     0,
+     23
+    ],
+    [
+     45,
+     0
+    ],
+    [
+     0,
+     -23
+    ]
+   ],
+   "topPx": 144,
+   "front": "-Y",
+   "anims": {
+    "water": {
+     "frames": [
+      "beach_shower_water_0",
+      "beach_shower_water_1",
+      "beach_shower_water_2",
+      "beach_shower_water_3"
+     ],
+     "fps": 10,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "beach_shower_water_0",
+      "beach_shower_water_1",
+      "beach_shower_water_2",
+      "beach_shower_water_3"
+     ],
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "standPoints": [
+    [
+     -6,
+     -16
+    ],
+    [
+     24,
+     0
+    ]
+   ],
+   "standDirs": [
+    "SW",
+    "SW"
+   ],
+   "name": {
+    "ko": "해변 샤워기",
+    "en": "Beach shower"
+   },
+   "zone": "service",
+   "notes": "Outdoor beach shower: teak grate on a little platform, a chrome T-post (2.3 m) with two rain heads and a push button, a low foot tap. idle = off; anims.water (= work) = 4-frame loop: water falls from both heads (glinting streams + droplets), splashes and a wet sheen on the grate. showerPoints = where a person stands under each head."
+  },
+  "beach_sign_arrow": {
+   "atlas": "beach_service",
+   "frame": "beach_sign_arrow",
+   "anchor": [
+    0.21795,
+    0.65
+   ],
+   "kind": "decor",
+   "frameSize": [
+    156,
+    200
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 110,
+   "front": "-Y",
+   "fxPoints": {
+    "board": [
+     8,
+     -81
+    ]
+   },
+   "name": {
+    "ko": "해변 화살표 표지판",
+    "en": "Beach arrow sign"
+   },
+   "zone": "service",
+   "notes": "Beach sign (driftwood post with three pastel arrow boards pointing different ways, each with a white painted rim and a little icon at its tail (sun, wave, ice cream), rope lashings, a starfish on top; fxPoints.board = the top arrow). The text area stays blank (the game writes the text at fxPoints.board = centre of the blank area); the frame around it is decorated (polish: plain blank boards looked cheap)."
+  },
+  "beach_sign_board": {
+   "atlas": "beach_service",
+   "frame": "beach_sign_board",
+   "anchor": [
+    0.26316,
+    0.63021
+   ],
+   "kind": "decor",
+   "frameSize": [
+    152,
+    192
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 100,
+   "front": "-Y",
+   "fxPoints": {
+    "board": [
+     -3,
+     -47
+    ]
+   },
+   "name": {
+    "ko": "서핑보드 표지판",
+    "en": "Surfboard sign"
+   },
+   "zone": "service",
+   "notes": "Beach sign (a turquoise surfboard stuck nose-up in the sand as a sign board: a cream text panel with a blue wave band under it, a flower lei draped over the nose, a hibiscus and two shells). The text area stays blank (the game writes the text at fxPoints.board = centre of the blank area); the frame around it is decorated (polish: plain blank boards looked cheap)."
+  },
+  "beach_sign_notice": {
+   "atlas": "beach_service",
+   "frame": "beach_sign_notice",
+   "anchor": [
+    0.27941,
+    0.62281
+   ],
+   "kind": "decor",
+   "frameSize": [
+    204,
+    228
+   ],
+   "footprint": [
+    68,
+    34
+   ],
+   "footprintM": [
+    1.2,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -34,
+     -10
+    ],
+    [
+     20,
+     17
+    ],
+    [
+     34,
+     10
+    ],
+    [
+     -20,
+     -17
+    ]
+   ],
+   "topPx": 121,
+   "front": "-Y",
+   "fxPoints": {
+    "board": [
+     -2,
+     -64
+    ]
+   },
+   "name": {
+    "ko": "해변 안내판",
+    "en": "Beach notice board"
+   },
+   "zone": "service",
+   "notes": "Beach sign (framed notice board on two white posts under a little coral roof: a turquoise header strip with sun / wave icons, two pinned paper notes in the lower corners, a life ring on the post and shells along the roof (rules / opening hours go in the blank middle)). The text area stays blank (the game writes the text at fxPoints.board = centre of the blank area); the frame around it is decorated (polish: plain blank boards looked cheap)."
+  },
+  "changing_booth": {
+   "atlas": "beach_service",
+   "frame": "changing_booth",
+   "anchor": [
+    0.3209,
+    0.63889
+   ],
+   "kind": "building",
+   "frameSize": [
+    268,
+    288
+   ],
+   "footprint": [
+    109,
+    54
+   ],
+   "footprintM": [
+    1.2,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -54,
+     0
+    ],
+    [
+     0,
+     27
+    ],
+    [
+     54,
+     0
+    ],
+    [
+     0,
+     -27
+    ]
+   ],
+   "topPx": 164,
+   "front": "-Y",
+   "fxPoints": {
+    "flag": [
+     0,
+     -161
+    ]
+   },
+   "doorPoint": [
+    -48,
+    24
+   ],
+   "doorDir": "NE",
+   "name": {
+    "ko": "탈의실",
+    "en": "Changing booth"
+   },
+   "zone": "service",
+   "notes": "Changing booth (1.2 x 1.2 m, 2.4 m): candy-striped turquoise-and-white plank walls, a little peaked roof with a scalloped trim and a flag, a coral door with a heart cut-out and a \"occupied\" slider, towel hooks with a towel on the side. doorPoint = in front of the door (people walk in and fade)."
+  },
+  "corn_stand": {
+   "atlas": "beach_service",
+   "frame": "corn_stand",
+   "anchor": [
+    0.31786,
+    0.6338
+   ],
+   "kind": "station",
+   "frameSize": [
+    280,
+    284
+   ],
+   "footprint": [
+    127,
+    63
+   ],
+   "footprintM": [
+    1.8,
+    1.0
+   ],
+   "footprintPoly": [
+    [
+     -63,
+     -9
+    ],
+    [
+     18,
+     32
+    ],
+    [
+     63,
+     9
+    ],
+    [
+     -18,
+     -32
+    ]
+   ],
+   "topPx": 159,
+   "front": "-Y",
+   "anims": {
+    "grill": {
+     "frames": [
+      "corn_stand_grill_0",
+      "corn_stand_grill_1",
+      "corn_stand_grill_2",
+      "corn_stand_grill_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "corn_stand_grill_0",
+      "corn_stand_grill_1",
+      "corn_stand_grill_2",
+      "corn_stand_grill_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "smoke": [
+     -14,
+     -84
+    ],
+    "board": [
+     0,
+     -4
+    ]
+   },
+   "staffPoints": [
+    [
+     20,
+     -24
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -52,
+     17
+    ],
+    [
+     -34,
+     26
+    ],
+    [
+     -16,
+     35
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "behind",
+   "staffPoint": [
+    20,
+    -24
+   ],
+   "staffDir": "SW",
+   "name": {
+    "ko": "옥수수·핫도그 노점",
+    "en": "Corn & hot-dog stand"
+   },
+   "zone": "service",
+   "notes": "Grilled corn & hot-dog stand: teak stall with a yellow-and-red striped awning, a charcoal grill with corn cobs (char marks, butter shine) and sausages on sticks, a basket of fresh cobs, a mustard / ketchup pair and a blank menu board. idle = coals dark; anims.work (= grill) = 4-frame loop: glowing coals, rising smoke puffs. staffPoints[0] = cook behind the grill (faces SW), customerPoints = in front."
+  },
+  "icecream_cart": {
+   "atlas": "beach_service",
+   "frame": "icecream_cart",
+   "anchor": [
+    0.25,
+    0.63028
+   ],
+   "kind": "station",
+   "frameSize": [
+    268,
+    284
+   ],
+   "footprint": [
+    113,
+    57
+   ],
+   "footprintM": [
+    1.6,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -57,
+     -8
+    ],
+    [
+     16,
+     28
+    ],
+    [
+     57,
+     8
+    ],
+    [
+     -16,
+     -28
+    ]
+   ],
+   "topPx": 158,
+   "front": "-Y",
+   "anims": {
+    "bell": {
+     "frames": [
+      "icecream_cart_bell_0",
+      "icecream_cart_bell_1",
+      "icecream_cart_bell_2",
+      "icecream_cart_bell_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "icecream_cart_bell_0",
+      "icecream_cart_bell_1",
+      "icecream_cart_bell_2",
+      "icecream_cart_bell_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "bell": [
+     31,
+     -40
+    ],
+    "sign": [
+     -22,
+     -114
+    ]
+   },
+   "staffPoints": [
+    [
+     33,
+     -12
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -38,
+     15
+    ],
+    [
+     -68,
+     32
+    ],
+    [
+     -97,
+     49
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "behind",
+   "staffPoint": [
+    33,
+    -12
+   ],
+   "staffDir": "SW",
+   "name": {
+    "ko": "아이스크림 수레",
+    "en": "Ice-cream cart"
+   },
+   "zone": "service",
+   "bellFrames": [
+    1,
+    3
+   ],
+   "notes": "Ice-cream cart: minty cart on two spoked wheels with rubber tyres and a push handle, two round freezer lids, a cone rack, a giant three-scoop cone (strawberry, mint, vanilla + a cherry) standing on the roof at the left end, a pink-and-white umbrella set back over the vendor, and a brass hand bell hung from a curled bracket on the front of the handle. idle = still; anims.bell (= work) = 4-frame ring at 8 fps: the bell swings +-25 deg with a glint and little \"ding\" marks (sfx_icecream_bell on frames 1 and 3). staffPoints[0] = the vendor behind the cart (+Y, faces SW; staffDepth \"behind\" = normal y-sort, the cart body hides his legs), customerPoints = queue in front (-Y side, first at the counter, facing NE), fxPoints.bell (the bell), fxPoints.sign (top of the giant cone)."
+  },
+  "lifeguard_tower": {
+   "atlas": "beach_service",
+   "frame": "lifeguard_tower",
+   "anchor": [
+    0.27747,
+    0.67188
+   ],
+   "kind": "building",
+   "frameSize": [
+    364,
+    448
+   ],
+   "footprint": [
+    145,
+    72
+   ],
+   "footprintM": [
+    1.6,
+    1.6
+   ],
+   "footprintPoly": [
+    [
+     -72,
+     0
+    ],
+    [
+     0,
+     36
+    ],
+    [
+     72,
+     0
+    ],
+    [
+     0,
+     -36
+    ]
+   ],
+   "topPx": 280,
+   "front": "-Y",
+   "fxPoints": {
+    "flag": [
+     12,
+     -260
+    ],
+    "whistle": [
+     -16,
+     -159
+    ]
+   },
+   "ladderPoint": [
+    87,
+    27
+   ],
+   "lookPoint": [
+    -136,
+    68
+   ],
+   "staffPoints": [
+    [
+     -16,
+     -89
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "seatPoints": [
+    [
+     5,
+     -128
+    ]
+   ],
+   "seatDirs": [
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     5,
+     -100
+    ]
+   ],
+   "staffDepth": "front",
+   "staffPoint": [
+    -16,
+    -89
+   ],
+   "staffDir": "SW",
+   "name": {
+    "ko": "인명구조 감시탑",
+    "en": "Lifeguard tower"
+   },
+   "zone": "service",
+   "platformM": 1.76,
+   "lookDir": "SW",
+   "overlay": "lifeguard_tower_front",
+   "notes": "Lifeguard tower (1.6 x 1.6 m, ~4.3 m tall to the flag): splayed white legs with red bands, cross braces, a teak platform at 1.76 m with a white railing, a tall wooden high chair, a red-and-white striped canvas roof with scalloped valance, a teak ladder on the +X side, red/yellow lifeguard flag, an orange rescue tube on the front rail, a red board with a white cross, a life ring and binoculars. It faces the sea (-Y). staffPoint = the guard standing at the front rail (feet on the platform, height included), lookDir = SW (the sea); seatPoints = the high chair. Draw: tower -> guard (staffDepth front) -> lifeguard_tower_front (overlay: the railing / board in front of the guard, same frame + anchor). ladderPoint = foot of the ladder (climb from there)."
+  },
+  "lifeguard_tower_front": {
+   "atlas": "beach_service",
+   "frame": "lifeguard_tower_front",
+   "anchor": [
+    0.27747,
+    0.67188
+   ],
+   "kind": "overlay",
+   "of": "lifeguard_tower",
+   "frameSize": [
+    364,
+    448
+   ],
+   "notes": "Occluder overlay for lifeguard_tower (same frame + anchor): draw it ABOVE the guard standing at lifeguard_tower.staffPoints[0] (tower depth d, guard d + 0.5, overlay d + 1) so the front railing and the sign board pass in front of the guard's legs."
+  },
+  "rental_stand": {
+   "atlas": "beach_service",
+   "frame": "rental_stand",
+   "anchor": [
+    0.41096,
+    0.66197
+   ],
+   "kind": "station",
+   "frameSize": [
+    292,
+    284
+   ],
+   "footprint": [
+    154,
+    77
+   ],
+   "footprintM": [
+    2.2,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -77,
+     -11
+    ],
+    [
+     23,
+     38
+    ],
+    [
+     77,
+     11
+    ],
+    [
+     -23,
+     -38
+    ]
+   ],
+   "topPx": 168,
+   "front": "-Y",
+   "fxPoints": {
+    "board": [
+     -35,
+     -23
+    ]
+   },
+   "staffPoints": [
+    [
+     21,
+     -26
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -54,
+     11
+    ],
+    [
+     -32,
+     23
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffDepth": "behind",
+   "staffPoint": [
+    21,
+    -26
+   ],
+   "staffDir": "SW",
+   "name": {
+    "ko": "대여소",
+    "en": "Rental stand"
+   },
+   "zone": "service",
+   "notes": "Rental stand (튜브·파라솔 대여): a little teak kiosk with a blue-and-white striped roof, a counter with a cash box and a bell, a peg rack of stacked swim rings (red, yellow, pink, mint), folded parasols in a barrel, two stacked loungers and a blank price board. staffPoints[0] = clerk behind the counter (faces SW), customerPoints = in front, fxPoints.board."
+  },
+  "rescue_board": {
+   "atlas": "beach_service",
+   "frame": "rescue_board",
+   "anchor": [
+    0.23404,
+    0.66667
+   ],
+   "kind": "decor",
+   "frameSize": [
+    188,
+    228
+   ],
+   "footprint": [
+    54,
+    27
+   ],
+   "footprintM": [
+    0.6,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -27,
+     0
+    ],
+    [
+     0,
+     14
+    ],
+    [
+     27,
+     0
+    ],
+    [
+     0,
+     -14
+    ]
+   ],
+   "topPx": 132,
+   "front": "-Y",
+   "name": {
+    "ko": "구조 보드",
+    "en": "Rescue board"
+   },
+   "zone": "service",
+   "notes": "Red rescue paddleboard (2.3 m) standing nose-up in a teak cradle with a sand heap: yellow rails, a white cross and a carry handle; ready for the lifeguard."
+  },
+  "rescue_buoy_stand": {
+   "atlas": "beach_service",
+   "frame": "rescue_buoy_stand",
+   "anchor": [
+    0.25658,
+    0.64362
+   ],
+   "kind": "decor",
+   "frameSize": [
+    152,
+    188
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 101,
+   "front": "-Y",
+   "fxPoints": {
+    "board": [
+     -2,
+     -31
+    ]
+   },
+   "name": {
+    "ko": "구명환 거치대",
+    "en": "Rescue buoy stand"
+   },
+   "zone": "service",
+   "notes": "Rescue buoy post: white post with a little red roof cap, a red-white ring buoy hanging on a hook with its coiled throw rope, and a small red board with a white cross."
+  },
+  "beach_pine": {
+   "atlas": "beach_nature",
+   "frame": "beach_pine",
+   "anchor": [
+    0.26543,
+    0.62209
+   ],
+   "kind": "decor",
+   "frameSize": [
+    324,
+    344
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 194,
+   "front": "-Y",
+   "name": {
+    "ko": "해송",
+    "en": "Seaside pine"
+   },
+   "zone": "nature",
+   "notes": "Seaside black pine (해송, ~3.6 m): dark twisting trunk with plated bark leaning away from the sea, layered cloud-like needle pads (deep pine green with lighter tops), a few cones. No snow."
+  },
+  "driftwood": {
+   "atlas": "beach_nature",
+   "frame": "driftwood",
+   "anchor": [
+    0.4527,
+    0.525
+   ],
+   "kind": "decor",
+   "frameSize": [
+    148,
+    120
+   ],
+   "footprint": [
+    95,
+    48
+   ],
+   "footprintM": [
+    1.6,
+    0.5
+   ],
+   "footprintPoly": [
+    [
+     -48,
+     -12
+    ],
+    [
+     25,
+     24
+    ],
+    [
+     48,
+     12
+    ],
+    [
+     -25,
+     -24
+    ]
+   ],
+   "topPx": 43,
+   "front": "-Y",
+   "seatPoints": [
+    [
+     -17,
+     -21
+    ]
+   ],
+   "seatDirs": [
+    "SW"
+   ],
+   "seatGroundPoints": [
+    [
+     -17,
+     -1
+    ]
+   ],
+   "name": {
+    "ko": "유목",
+    "en": "Driftwood"
+   },
+   "zone": "nature",
+   "seatHeightM": 0.36,
+   "seatDepth": "front",
+   "notes": "Bleached driftwood log (1.6 m) with a stubby branch, worn grain, a wisp of seaweed and a shell; a kid can sit on it (seatPoints, faces SW)."
+  },
+  "dune_grass_a": {
+   "atlas": "beach_nature",
+   "frame": "dune_grass_a",
+   "anchor": [
+    0.4,
+    0.53125
+   ],
+   "kind": "decor",
+   "frameSize": [
+    100,
+    96
+   ],
+   "topPx": 31,
+   "front": "-Y",
+   "name": {
+    "ko": "갯그령 (작은)",
+    "en": "Dune grass A"
+   },
+   "zone": "nature",
+   "notes": "Dune grass: small tuft of marram grass on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
+  },
+  "dune_grass_b": {
+   "atlas": "beach_nature",
+   "frame": "dune_grass_b",
+   "anchor": [
+    0.34286,
+    0.56034
+   ],
+   "kind": "decor",
+   "frameSize": [
+    140,
+    116
+   ],
+   "topPx": 44,
+   "front": "-Y",
+   "name": {
+    "ko": "갯그령 (큰)",
+    "en": "Dune grass B"
+   },
+   "zone": "nature",
+   "notes": "Dune grass: a wide clump of dune grass on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
+  },
+  "dune_grass_c": {
+   "atlas": "beach_nature",
+   "frame": "dune_grass_c",
+   "anchor": [
+    0.35,
+    0.57692
+   ],
+   "kind": "decor",
+   "frameSize": [
+    120,
+    104
+   ],
+   "topPx": 40,
+   "front": "-Y",
+   "name": {
+    "ko": "해당화 덤불",
+    "en": "Dune grass C"
+   },
+   "zone": "nature",
+   "notes": "Dune grass: dune grass with pink beach roses (해당화) on a little sand hump; green blades fading to straw tips. Decor (walk-through)."
+  },
+  "palm_tree_a": {
+   "atlas": "beach_nature",
+   "frame": "palm_tree_a",
+   "anchor": [
+    0.26261,
+    0.60163
+   ],
+   "kind": "decor",
+   "frameSize": [
+    476,
+    492
+   ],
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "topPx": 274,
+   "front": "-Y",
+   "anims": {
+    "sway": {
+     "frames": [
+      "palm_tree_a_sway_0",
+      "palm_tree_a_sway_1",
+      "palm_tree_a_sway_2",
+      "palm_tree_a_sway_3",
+      "palm_tree_a_sway_4",
+      "palm_tree_a_sway_5",
+      "palm_tree_a_sway_6",
+      "palm_tree_a_sway_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "palm_tree_a_sway_0",
+      "palm_tree_a_sway_1",
+      "palm_tree_a_sway_2",
+      "palm_tree_a_sway_3",
+      "palm_tree_a_sway_4",
+      "palm_tree_a_sway_5",
+      "palm_tree_a_sway_6",
+      "palm_tree_a_sway_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "crown": [
+     18,
+     -226
+    ]
+   },
+   "name": {
+    "ko": "야자수 A",
+    "en": "Palm tree A"
+   },
+   "zone": "nature",
+   "notes": "Coconut palm (~4.6 m): ringed, gently curved trunk, a fibrous crown with ten drooping pinnate fronds (yellow-green midrib, two rows of hanging leaflets), a dried brown frond, a cluster of glossy coconuts and two fallen coconuts at the foot. idle = still; anims.sway (= work) = 8-frame breeze loop at 8 fps: the crown nods ~1 deg and every frond lifts / dips 2.5 deg about its base (rigid, <= 3 px per step). Footprint = the trunk only."
+  },
+  "palm_tree_b": {
+   "atlas": "beach_nature",
+   "frame": "palm_tree_b",
+   "anchor": [
+    0.36594,
+    0.61574
+   ],
+   "kind": "decor",
+   "frameSize": [
+    552,
+    432
+   ],
+   "footprint": [
+    45,
+    22
+   ],
+   "footprintM": {
+    "radius": 0.35
+   },
+   "topPx": 243,
+   "front": "-Y",
+   "anims": {
+    "sway": {
+     "frames": [
+      "palm_tree_b_sway_0",
+      "palm_tree_b_sway_1",
+      "palm_tree_b_sway_2",
+      "palm_tree_b_sway_3",
+      "palm_tree_b_sway_4",
+      "palm_tree_b_sway_5",
+      "palm_tree_b_sway_6",
+      "palm_tree_b_sway_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "palm_tree_b_sway_0",
+      "palm_tree_b_sway_1",
+      "palm_tree_b_sway_2",
+      "palm_tree_b_sway_3",
+      "palm_tree_b_sway_4",
+      "palm_tree_b_sway_5",
+      "palm_tree_b_sway_6",
+      "palm_tree_b_sway_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "crown": [
+     61,
+     -195
+    ]
+   },
+   "name": {
+    "ko": "야자수 B",
+    "en": "Palm tree B"
+   },
+   "zone": "nature",
+   "notes": "Twin palm (3.7 m + 2.8 m trunks leaning apart from one sandy foot), pinnate fronds, coconuts on the tall one. idle = still; anims.sway (= work) = 8-frame breeze loop at 8 fps."
+  },
+  "starfish": {
+   "atlas": "beach_nature",
+   "frame": "starfish",
+   "anchor": [
+    0.45588,
+    0.46667
+   ],
+   "kind": "decor",
+   "frameSize": [
+    68,
+    60
+   ],
+   "topPx": 7,
+   "front": "-Y",
+   "name": {
+    "ko": "불가사리",
+    "en": "Starfish"
+   },
+   "zone": "nature",
+   "notes": "A big orange starfish (with cream dots) and a pink cone shell lying on the sand; pick-up / decor."
+  },
+  "float_raft": {
+   "atlas": "beach_water",
+   "frame": "float_raft",
+   "anchor": [
+    0.45635,
+    0.61818
+   ],
+   "kind": "decor",
+   "frameSize": [
+    252,
+    220
+   ],
+   "footprint": [
+    181,
+    91
+   ],
+   "footprintM": [
+    2.0,
+    2.0
+   ],
+   "footprintPoly": [
+    [
+     -91,
+     0
+    ],
+    [
+     0,
+     45
+    ],
+    [
+     91,
+     0
+    ],
+    [
+     0,
+     -45
+    ]
+   ],
+   "topPx": 114,
+   "anims": {
+    "bob": {
+     "frames": [
+      "float_raft_bob_0",
+      "float_raft_bob_1",
+      "float_raft_bob_2",
+      "float_raft_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "float_raft_bob_0",
+      "float_raft_bob_1",
+      "float_raft_bob_2",
+      "float_raft_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "ladderPoint": [
+    52,
+    26
+   ],
+   "playPoints": [
+    [
+     -41,
+     -22
+    ],
+    [
+     -5,
+     0
+    ],
+    [
+     38,
+     -19
+    ],
+    [
+     2,
+     -39
+    ]
+   ],
+   "playDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "name": {
+    "ko": "물 위 놀이 뗏목",
+    "en": "Floating raft"
+   },
+   "zone": "water",
+   "waterPlane": true,
+   "waterline": "anchor",
+   "deckM": 0.35,
+   "notes": "Swim platform (2 x 2 m) floating on four blue barrels: sun-bleached plank deck 0.35 m above the water, chrome ladder down the +X side, a life ring and a little pennant. Waterline anchor (sea surface). idle = still; anims.bob (= work) = 4-frame gentle rock with pulsing foam. playPoints = 4 standing / diving spots on the deck (height included), ladderPoint = foot of the ladder at the water."
+  },
+  "swim_buoy_line_end": {
+   "atlas": "beach_water",
+   "frame": "swim_buoy_line_end",
+   "anchor": [
+    0.40833,
+    0.56061
+   ],
+   "kind": "decor",
+   "frameSize": [
+    120,
+    132
+   ],
+   "footprint": [
+    45,
+    22
+   ],
+   "footprintM": {
+    "radius": 0.35
+   },
+   "topPx": 53,
+   "anims": {
+    "bob": {
+     "frames": [
+      "swim_buoy_line_end_bob_0",
+      "swim_buoy_line_end_bob_1",
+      "swim_buoy_line_end_bob_2",
+      "swim_buoy_line_end_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "swim_buoy_line_end_bob_0",
+      "swim_buoy_line_end_bob_1",
+      "swim_buoy_line_end_bob_2",
+      "swim_buoy_line_end_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "ropePoint": [
+    0,
+    0
+   ],
+   "name": {
+    "ko": "부표 (끝)",
+    "en": "Swim line end buoy"
+   },
+   "zone": "water",
+   "waterPlane": true,
+   "waterline": "anchor",
+   "notes": "Big yellow marker buoy that ends / turns the swim-area line (put it on the open end of a buoy-line tile, or at a corner where an _x and a _y run meet). Waterline anchor; anims.bob (= work) 4 frames (in sync with the line). ropePoint = where the line ties on."
+  },
+  "swim_buoy_line_x": {
+   "atlas": "beach_water",
+   "frame": "swim_buoy_line_x",
+   "anchor": [
+    0.49265,
+    0.48611
+   ],
+   "kind": "decor",
+   "frameSize": [
+    136,
+    72
+   ],
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -39,
+     -13
+    ],
+    [
+     25,
+     19
+    ],
+    [
+     39,
+     13
+    ],
+    [
+     -25,
+     -19
+    ]
+   ],
+   "topPx": 115,
+   "anims": {
+    "bob": {
+     "frames": [
+      "swim_buoy_line_x_bob_0",
+      "swim_buoy_line_x_bob_1",
+      "swim_buoy_line_x_bob_2",
+      "swim_buoy_line_x_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "swim_buoy_line_x_bob_0",
+      "swim_buoy_line_x_bob_1",
+      "swim_buoy_line_x_bob_2",
+      "swim_buoy_line_x_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "수영 구역 부표 줄",
+    "en": "Swim buoy line"
+   },
+   "zone": "water",
+   "waterPlane": true,
+   "waterline": "anchor",
+   "tileLayer": "water",
+   "notes": "Swim-area buoy line tile (sqrt(2) m along world X): white rope with four orange / white sausage floats and foam rings, ON THE WATER: anchor = waterline (on the sand beach the sea surface is level with the sand: waterPx 0; 30 beside quays). Chain tiles (+64, +32) px apart; play every tile's anims.bob (= work) IN SYNC (same frame index): the wave travels one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end."
+  },
+  "swim_buoy_line_y": {
+   "atlas": "beach_water",
+   "frame": "swim_buoy_line_y",
+   "anchor": [
+    0.49265,
+    0.48611
+   ],
+   "kind": "decor",
+   "frameSize": [
+    136,
+    72
+   ],
+   "footprint": [
+    78,
+    39
+   ],
+   "footprintM": [
+    0.3,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -39,
+     13
+    ],
+    [
+     -25,
+     19
+    ],
+    [
+     39,
+     -13
+    ],
+    [
+     25,
+     -19
+    ]
+   ],
+   "topPx": 115,
+   "anims": {
+    "bob": {
+     "frames": [
+      "swim_buoy_line_y_bob_0",
+      "swim_buoy_line_y_bob_1",
+      "swim_buoy_line_y_bob_2",
+      "swim_buoy_line_y_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "work": {
+     "frames": [
+      "swim_buoy_line_y_bob_0",
+      "swim_buoy_line_y_bob_1",
+      "swim_buoy_line_y_bob_2",
+      "swim_buoy_line_y_bob_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "수영 구역 부표 줄",
+    "en": "Swim buoy line"
+   },
+   "zone": "water",
+   "waterPlane": true,
+   "waterline": "anchor",
+   "tileLayer": "water",
+   "notes": "Swim-area buoy line tile (sqrt(2) m along world Y): white rope with four orange / white sausage floats and foam rings, ON THE WATER: anchor = waterline (on the sand beach the sea surface is level with the sand: waterPx 0; 30 beside quays). Chain tiles (+64, -32) px apart; play every tile's anims.bob (= work) IN SYNC (same frame index): the wave travels one tile per loop so the line ripples continuously. Cap the ends / corners with swim_buoy_line_end."
+  },
+  "boardwalk_end_xn": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_end_xn",
+   "anchor": [
+    0.44068,
+    0.61111
+   ],
+   "kind": "decal",
+   "frameSize": [
+    236,
+    144
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    1.5
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     1
+    ],
+    [
+     -2,
+     33
+    ],
+    [
+     66,
+     -1
+    ],
+    [
+     2,
+     -33
+    ]
+   ],
+   "topPx": 68,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "ramp",
+   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Closed end at -X (screen up-left)."
+  },
+  "boardwalk_end_xp": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_end_xp",
+   "anchor": [
+    0.45175,
+    0.47857
+   ],
+   "kind": "decal",
+   "frameSize": [
+    228,
+    140
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    1.5
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     1
+    ],
+    [
+     -2,
+     33
+    ],
+    [
+     66,
+     -1
+    ],
+    [
+     2,
+     -33
+    ]
+   ],
+   "topPx": 135,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "ramp",
+   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Closed end at +X (screen down-right): low ramp down to the sand between two rope posts."
+  },
+  "boardwalk_end_yn": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_end_yn",
+   "anchor": [
+    0.45614,
+    0.46528
+   ],
+   "kind": "decal",
+   "frameSize": [
+    228,
+    144
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.5,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -1
+    ],
+    [
+     2,
+     33
+    ],
+    [
+     66,
+     1
+    ],
+    [
+     -2,
+     -33
+    ]
+   ],
+   "topPx": 130,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "ramp",
+   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at -Y (screen down-left, toward the sea)."
+  },
+  "boardwalk_end_yp": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_end_yp",
+   "anchor": [
+    0.51984,
+    0.57895
+   ],
+   "kind": "decal",
+   "frameSize": [
+    252,
+    152
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.5,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -1
+    ],
+    [
+     2,
+     33
+    ],
+    [
+     66,
+     1
+    ],
+    [
+     -2,
+     -33
+    ]
+   ],
+   "topPx": 68,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": false
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "ramp",
+   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at +Y (screen up-right)."
+  },
+  "boardwalk_x": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_x",
+   "anchor": [
+    0.5049,
+    0.49038
+   ],
+   "kind": "decal",
+   "frameSize": [
+    204,
+    104
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    1.5
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     1
+    ],
+    [
+     -2,
+     33
+    ],
+    [
+     66,
+     -1
+    ],
+    [
+     2,
+     -33
+    ]
+   ],
+   "topPx": 135,
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "x",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "x",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "none",
+   "notes": "Boardwalk tile (sqrt(2) m along world X, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, +32) px apart (ground layer; characters walk on it with no lift). Straight piece."
+  },
+  "boardwalk_y": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_y",
+   "anchor": [
+    0.48529,
+    0.49038
+   ],
+   "kind": "decal",
+   "frameSize": [
+    204,
+    104
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.5,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -1
+    ],
+    [
+     2,
+     33
+    ],
+    [
+     66,
+     1
+    ],
+    [
+     -2,
+     -33
+    ]
+   ],
+   "topPx": 130,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": true,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "neg",
+     -0.7071067811865476
+    ],
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "none",
+   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Straight piece."
+  },
+  "boardwalk_end": {
+   "atlas": "beach_tiles",
+   "frame": "boardwalk_end_yn",
+   "anchor": [
+    0.45614,
+    0.46528
+   ],
+   "kind": "decal",
+   "frameSize": [
+    228,
+    144
+   ],
+   "footprint": [
+    132,
+    66
+   ],
+   "footprintM": [
+    1.5,
+    1.4142135623730951
+   ],
+   "footprintPoly": [
+    [
+     -66,
+     -1
+    ],
+    [
+     2,
+     33
+    ],
+    [
+     66,
+     1
+    ],
+    [
+     -2,
+     -33
+    ]
+   ],
+   "topPx": 130,
+   "tileAxis": "y",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    -32
+   ],
+   "rampM": 0.1,
+   "openEnds": {
+    "neg": false,
+    "pos": true
+   },
+   "cuts": [
+    [
+     "y",
+     "pos",
+     0.7071067811865476
+    ]
+   ],
+   "name": {
+    "ko": "나무 산책로",
+    "en": "Boardwalk"
+   },
+   "zone": "tiles",
+   "tileLayer": "ground",
+   "widthM": 1.5,
+   "deckTopM": 0.07,
+   "capKind": "ramp",
+   "notes": "Boardwalk tile (sqrt(2) m along world Y, 1.5 m wide, deck 7 cm above the sand): sun-bleached plank deck on two stringers, a little sand creeping over the edges. Tiles join seamlessly (+64, -32) px apart (ground layer; characters walk on it with no lift). Closed end at -Y (screen down-left, toward the sea).",
+   "aliasOf": "boardwalk_end_yn"
+  },
+  "sandcastle_build": {
+   "atlas": "beach_play",
+   "frame": "sandcastle_build_0",
+   "anchor": [
+    0.42742,
+    0.55645
+   ],
+   "kind": "decor",
+   "frameSize": [
+    124,
+    124
+   ],
+   "footprint": [
+    91,
+    45
+   ],
+   "footprintM": [
+    1.1,
+    0.9
+   ],
+   "footprintPoly": [
+    [
+     -45,
+     -2
+    ],
+    [
+     5,
+     23
+    ],
+    [
+     45,
+     2
+    ],
+    [
+     -5,
+     -23
+    ]
+   ],
+   "topPx": 30,
+   "front": "-Y",
+   "workPoints": [
+    [
+     -36,
+     -20
+    ],
+    [
+     38,
+     -17
+    ]
+   ],
+   "workDirs": [
+    "SE",
+    "SW"
+   ],
+   "name": {
+    "ko": "모래성 쌓기",
+    "en": "Sandcastle (building)"
+   },
+   "zone": "play",
+   "workDepth": "behind",
+   "notes": "Sandcastle being built: 4 stages sharing one frame + anchor (swap the frame in place as kids dig): sandcastle_build_0 = a dug pile of damp sand with a toppled bucket and a spade, _1 = smoothed mound + the first moulded tower, _2 = two towers and the front wall, _3 = finished castle with flag and shells (= a sandcastle_m look). workPoints / workDirs = two kneeling diggers (beachfolk `dig`, dirs SE / SW) on the far side of the castle (workDepth \"behind\": normal y-sort draws the castle in front of them); stages lists every stage key in order.",
+   "stage": 0,
+   "stages": [
+    "sandcastle_build_0",
+    "sandcastle_build_1",
+    "sandcastle_build_2",
+    "sandcastle_build_3"
+   ],
+   "build": "sandcastle_build",
+   "aliasOf": "sandcastle_build_0"
   }
  },
  "images": [
@@ -5456,6 +5588,11 @@
   }
  ],
  "atlases": [
+  {
+   "key": "beach_ground_decals",
+   "png": "beach/beach_ground_decals.png",
+   "json": "beach/beach_ground_decals.json"
+  },
   {
    "key": "beach_nature",
    "png": "beach/beach_nature.png",
@@ -5515,20 +5652,15 @@
    "key": "beach_swan_pedal_boat",
    "png": "beach/beach_swan_pedal_boat.png",
    "json": "beach/beach_swan_pedal_boat.json"
-  },
-  {
-   "key": "beach_ground_decals",
-   "png": "beach/beach_ground_decals.png",
-   "json": "beach/beach_ground_decals.json"
   }
  ],
  "conventions": {
   "ground": "gen_beach_ground: ground_sand / ground_sand_wet = 512 seamless textures (draw as patterns anchored at the grid origin G, scale 1; the cell grid of assets/roads: one cell = sqrt(2) m = (64, 32) px along X, (64, -32) along Y). ground_sand_snow_* = the sand<->snow transition kit (placement rules in sandKit). decal_* = flat ground decals (draw on the ground layer below every depth-sorted sprite).",
   "ppu": 64,
-  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre ON THE SAND (z 0); water-plane props (swim_buoy_line_*, float_raft, boats) = their WATERLINE (sea surface), like assets/ships and harbor/buoy: put them on a sea point that is already on the water plane (the sea is 0.55 m = waterPx 30 screen px below the land).",
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre ON THE SAND (z 0); water-plane props (swim_buoy_line_*, float_raft, boats) = their WATERLINE (sea surface), like assets/ships and harbor/buoy: put the anchor on the sea point. Sea level (polish, one rule with assets/water and assets/beachfolk): on a sand beach the sea surface is LEVEL with the sand (waterPx 0, the Water.js sand polygon ends at the waterline), so a water-plane anchor = the world point itself; only beside walls that show (quay, pier, breakwater) is the sea waterPx 30 (0.55 m) lower - see waterPxByShore.",
   "front": "-Y = faces screen down-left (SW) = the sea side of the beach (like the harbour waterfront). _x variants are the same prop turned 90 deg (front +X = screen down-right).",
   "shadows": "baked soft cool shadows falling screen down-right (lighter on the water for water-plane props). Do not flipX baked-shadow sprites. Characters-style atlases (boats, crab) have NO baked shadow and a 1 px ink outline like the characters.",
-  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled, height included). *Dirs = facing of a character there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). staffDepth \"front\": draw the character above the sprite; \"behind\": normal anchor-y sorting (the counter hides the legs). lyingPoints = hip point of a sunbather on their back (beachfolk `sunbathe`), lyingHeadPoints / lyingFeetPoints = head / feet ends, lyingDirs = screen direction hips -> head, lyingAxis = the world axis of the body. seatPoints = seat-surface front-centre (`sit` anchor, villagers / townsfolk2 convention). workPoints = kneeling diggers (beachfolk `dig`). playPoints = players. standPoints = people under the beach shower.",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled, height included). *Dirs = facing of a character there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX); every *Dirs value has frames in the anim that is played there (beach_check verifies it). staffDepth / seatDepth / workDepth / playDepth \"front\": draw the character just above the sprite; \"behind\": normal anchor-y sorting (the counter / table / sandcastle hides the legs); seatDepths = per seat. lyingPoints = hip point of a sunbather on their back, lyingHeadPoints / lyingFeetPoints = head / feet ends; play beachfolk `sunbathe` with dir = lyingFeetDirs[i] (the FEET direction - its dir convention); lyingDirs = hips -> head (reference only). seatPoints = seat front-centre at the seat height (townsfolk2 / villagers `sit` anchor, 0.45 m seat), seatGroundPoints = the floor under it (shadow: draw it there), seatHeightM. workPoints = kneeling diggers (beachfolk `dig`, S / SE / E + mirrors). playPoints = players (playAnim when given; volleyball: ballDirs = the dir for ball_throw / ball_catch). standPoints = people under the beach shower.",
   "anims": "idle frame = resting state; named loops (flutter, sway, water, bob, bounce, bell, grill, fly) are also listed as anims.work; every frame shares frameSize + anchor (swap frames in place; Assets.js registers spr:<key>:<anim>). Water-plane bob loops of the swim-buoy line tiles must play IN SYNC (same frame index on every tile).",
   "tiles": "boardwalk_* and swim_buoy_line_x/_y: one tile = sqrt(2) m along world X (step (+64, +32) px) or Y (step (+64, -32) px); chained tiles composite seamlessly incl. the baked shadow (partition-of-unity cuts +-rampM at the open ends). boardwalk_* are kind decal (ground layer, walk on them with no lift); boardwalk_end_* close a run; swim_buoy_line_end caps / turns a buoy line.",
   "stages": "sandcastle_build_0..3 share one frame + anchor: swap the frame as the kids dig (stage / stages).",
@@ -6399,7 +6531,7 @@
    "notes": "Swan pedal boat (오리배, ~2.7 m): glossy white swan hull with sculpted wings and a curled feather tail, a long S-curved neck with a cute face (orange beak, shiny black eyes, pink blush) and a pink ribbon bow, a sky-blue cockpit with a two-seat bench and a steering lever. idle 2 f (gentle bob), move 4 f (the neck nods, foam at the bow, churning at the stern paddle). Riders are drawn by the game at seats / seatsStand + the over_* overlay (two seats side by side, both facing the bow)."
   }
  },
- "waterPx": 30,
+ "waterPx": 0,
  "wetKit": {
   "cellM": 1.4142135623730951,
   "cellPx": {
@@ -6423,5 +6555,12 @@
   "rules": "Exactly the sandKit edgeRule + cornerRule with SNOW read as WET and SAND read as DRY: X edge between cells (i,j-1) and (i,j): ground_sand_wet_edge_x if the WET cell is (i,j) (+Y), _x_near if it is (i,j-1) (-Y) - on this beach (sea at -Y) the shore band uses _x_near; anchor = lattice (i,j) + (32,16). Y edge between (i-1,j) and (i,j): _y if the wet cell is (i-1,j), _y_near if it is (i,j); anchor = lattice (i,j) + (32,-16). Variant = (i*7 + j*13) mod 3. Corners: one WET quarter -> ground_sand_wet_corner_<q>, three WET quarters -> ground_sand_wet_inner_<dry q>; a corner owns the first cell of both edges toward its quarter. No piece is needed where wet sand meets the water.",
   "look": "each piece paints the wet sand tone over the cell line, pushes the wet edge 0.1 - 0.3 m into the dry cell along a wavy line, then a ragged damp ramp ~0.8 m (40 - 60 px) with a soft band of dried foam at the tide mark. Colour = water_shore_ramp sand row at u ~0.5, like ground_sand_wet and the Water.js swash band (palette tropical, wet #BFA27A at 0.45), so the baked and the animated wet sand meet without a step.",
   "reference": "tools/fx/gen_beach_ground.py kit_compose_preview(prefix=\"ground_sand_wet\") implements these rules."
+ },
+ "waterPxByShore": {
+  "sand": 0,
+  "quay": 30,
+  "pier": 30,
+  "breakwater": 30,
+  "notes": "polish: one rule with assets/water (water.md 6.6) and assets/beachfolk: on a SAND beach the sea surface is level with the sand (waterPx 0), so water-plane anchors go on the sea point itself; only next to walls that show (quay, pier, breakwater) is the surface 30 px (0.55 m) lower, like the harbour."
  }
 }

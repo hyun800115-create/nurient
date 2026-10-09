@@ -142,6 +142,10 @@ def anim_motion(sp, atl_imgs, errors):
                 arr.append(im)
             if len(arr) < 2:
                 continue
+            if len({a.shape for a in arr}) > 1:
+                errors.append('%s.anims.%s: frames differ in size %s (all frames of a key must share frameSize)'
+                              % (k, an, sorted({a.shape[:2] for a in arr})))
+                continue
             mx = max(float(np.abs(a - arr[0]).mean()) for a in arr[1:])
             if mx < 0.25:
                 errors.append('%s.anims.%s: frames barely change (max mean diff %.2f) - a dead anim' % (k, an, mx))

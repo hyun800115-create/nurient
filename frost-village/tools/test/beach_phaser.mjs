@@ -197,9 +197,10 @@ const res = await page.evaluate(() => {
     sprites: B.sprites, characters: B.chars, anims: B.anims.length, framesChecked: B.frames, missing: B.missing, playing,
     shelfBottom: B.shelfBottom };
 });
-fs.mkdirSync(path.dirname(SHOT), { recursive: true });
-await page.screenshot({ path: SHOT });
 console.log(JSON.stringify(res));
+fs.mkdirSync(path.dirname(SHOT), { recursive: true });
+// generous timeout: the WebGL canvas is large and the CPU is shared with Blender renders
+await page.screenshot({ path: SHOT, timeout: 240000 });
 if (errors.length) console.log('ERRORS', errors.slice(0, 10));
 if (notFound.length) console.log('404', notFound.slice(0, 10));
 fs.mkdirSync('/tmp/fv_review', { recursive: true });

@@ -1154,7 +1154,7 @@ def pinnate_frond(name, length=1.8, lift=0.55, droop=1.05, n=28, seed=0, mats=No
         return Vector((length * t, 0.0, lift * t - droop * t * t))
     verts, faces, fm = [], [], []
     for k in range(n):
-        t = 0.07 + 0.9 * (k + 0.5) / n
+        t = 0.17 + 0.8 * (k + 0.5) / n          # bare petiole near the crown (the coconuts show under it)
         p = rach(t)
         tan = (rach(min(1.0, t + 0.01)) - rach(max(0.0, t - 0.01))).normalized()
         side0 = Vector((0, 1, 0))
@@ -1212,20 +1212,28 @@ def palm(name, h=4.4, lean=(0.5, -0.15), n_fr=10, seed=0, coconuts=True, x0=(0, 
     mbr.done(name + '_rings')
     top = pts[-1]
     crown = L.group([], name + '_crown', loc=tuple(top))
-    boss = blob(name + '_boss', 0.21, (0, 0, -0.04), B.teak('#8A6A44', along='Z'), scale=(1, 1, 0.85), seed=seed,
+    boss = blob(name + '_boss', 0.18, (0, 0, -0.02), B.teak('#8A6A44', along='Z'), scale=(1, 1, 0.85), seed=seed,
                 amp=0.18, freq=3.0, subdiv=3)
     boss.parent = crown
     rnd = L.rng(seed)
     fronds = []
+    # fronds evenly round the crown, phased so the camera direction (azimuth -45 deg) falls in the GAP between two
+    # fronds: the coconut cluster hanging there stays visible
+    a0 = math.radians(-45.0) + math.pi / n_fr
     for k in range(n_fr):
-        a = math.tau * k / n_fr + rnd.uniform(-0.18, 0.18)
-        up = k % 2 == 0
+        a = a0 + math.tau * k / n_fr + rnd.uniform(-0.07, 0.07)
+        # the two fronds flanking the camera gap lean further aside, arch higher and carry narrower leaflets: a
+        # window onto the coconut cluster (otherwise their drooping leaflets curtain it from the iso camera)
+        flank = k in (0, n_fr - 1)
+        a += math.radians(15.0) if k == 0 else (-math.radians(15.0) if k == n_fr - 1 else 0.0)
+        up = k % 2 == 0 or flank
         fg = L.group([], '%s_fg%d' % (name, k))
         fg.parent = crown
         fg.rotation_euler = Euler((0, 0, a), 'XYZ')
         o = pinnate_frond('%s_fr%d' % (name, k), length=rnd.uniform(1.65, 2.0) * (0.92 if up else 1.0),
-                          lift=rnd.uniform(0.55, 0.75) if up else rnd.uniform(0.3, 0.45),
-                          droop=rnd.uniform(0.95, 1.2) if up else rnd.uniform(1.05, 1.35), seed=seed * 31 + k)
+                          lift=(0.85 if flank else rnd.uniform(0.55, 0.75)) if up else rnd.uniform(0.3, 0.45),
+                          droop=(1.0 if flank else rnd.uniform(0.95, 1.2)) if up else rnd.uniform(1.05, 1.35),
+                          seed=seed * 31 + k, spread=0.62 if flank else 1.0)
         o.parent = fg
         o.location = (0.06, 0, 0.02 if up else -0.04)
         fronds.append((fg, a))
@@ -1252,10 +1260,12 @@ def palm(name, h=4.4, lean=(0.5, -0.15), n_fr=10, seed=0, coconuts=True, x0=(0, 
         fronds.append((fg, a))
     if coconuts:
         # a cluster of glossy coconuts hanging under the crown on the CAMERA side (+X -Y) so it shows between fronds
-        cm = [VL.paint('#6E4C2C', 0.4, 0.5), VL.paint('#8C9A3C', 0.36, 0.55), VL.paint('#7A5A30', 0.4, 0.5)]
-        for k, (dx, dy, dz) in enumerate(((0.16, -0.1, -0.2), (0.06, -0.18, -0.23), (0.2, 0.02, -0.27),
-                                          (0.1, -0.06, -0.34), (-0.02, -0.12, -0.31))):
-            sphere('%s_co%d' % (name, k), 0.12 - 0.008 * (k % 2), (dx, dy, dz), cm[k % 3], scale=(1, 1, 1.12),
+        # young green + ripe dark-brown nuts: they read apart from the tan crown boss and the green fronds
+        cm = [VL.paint('#9DB43A', 0.3, 0.7), VL.paint('#55361E', 0.3, 0.7), VL.paint('#B6CB4A', 0.3, 0.7)]
+        # (tight around azimuth -45 deg, i.e. inside the camera window between the flank fronds)
+        for k, (dx, dy, dz) in enumerate(((0.106, -0.205, -0.1), (0.212, -0.099, -0.1), (0.184, -0.184, -0.2),
+                                          (0.028, -0.198, -0.24), (0.212, -0.028, -0.22))):
+            sphere('%s_co%d' % (name, k), 0.15 - 0.012 * (k % 2), (dx, dy, dz), cm[k % 3], scale=(1, 1, 1.12),
                    segs=16, rings=10).parent = crown
 
     def pose(i, n_):

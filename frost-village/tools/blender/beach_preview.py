@@ -544,8 +544,8 @@ def preview_scene(builds, frames, chars, cframes, man, out):
     prop('beach_shower', -13.6, 8.8, 'beach_shower', frame='beach_shower_water_1')
     prop('changing_booth', -14.0, 11.2, 'changing_booth')
     prop('beach_sign_board', -11.2, 4.6)
-    prop('beach_sign_arrow', 1.4, 11.6, 'beach_sign_arrow')
-    prop('beach_sign_notice', -4.4, 11.6)
+    prop('beach_sign_arrow', -19.8, 9.0, 'beach_sign_arrow')             # in the open, clear of crowns and the kite
+    prop('beach_sign_notice', -5.0, 14.4, 'beach_sign_notice')          # at the top of the boardwalk entrance
     prop('beach_swing', 15.2, 9.8, 'beach_swing')
     prop('picnic_table_beach', -9.6, 10.6, 'picnic_table_beach')
     # nature
@@ -795,7 +795,7 @@ def preview_scene(builds, frames, chars, cframes, man, out):
             sc.put(fr[0], fr[1], kx, ky, bias=0.5)
         im, an = spr('kite', 'kite_fly_2')
         hx, hy = sc.p(kx, ky, 1.0)
-        tx, ty = hx - 120, hy - 330
+        tx, ty = hx + 90, hy - 330            # up and right, over the open snow (keeps the signs and crowns clear)
         line = Image.new('RGBA', (W, H), (0, 0, 0, 0))
         ImageDraw.Draw(line).line([(hx, hy), (tx, ty)], fill=(255, 255, 255, 200), width=1)
         sc.items.append((9e9 - 1, line, 0, 0))
