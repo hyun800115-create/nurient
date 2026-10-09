@@ -506,6 +506,13 @@ def proof(tf, path, full_dir='/tmp/fv_cache/cityfolk/look_proof'):
             if a in tf.T['anims'] and tf.can_play(p, a):
                 comp = tf.compose(p, a, dd, i)
                 img.alpha_composite(comp.crop((20, 0, 108, 124)).resize((cw, ch), Image.NEAREST), (x0, y0 + ch))
+            elif a in tf.T['anims']:
+                # the cast does not cover this outfit for `a`: show what the runtime plays instead (pickAnim)
+                fa, ff = tf.pick_anim(p, a)
+                if fa in tf.T['anims'] and MIRROR_OF.get(dd, dd) in tf.T['anims'][fa]['dirs']:
+                    comp = tf.compose(p, fa, dd, i % tf.T['anims'][fa]['frames'], face=ff)
+                    img.alpha_composite(comp.crop((20, 0, 108, 124)).resize((cw, ch), Image.NEAREST), (x0, y0 + ch))
+                d.text((x0 + 3, y0 + ch + 2), f'not cast -> {fa}' + (f' ({ff})' if ff else ''), fill=(170, 60, 50), font=font(11))
             d.text((x0 + 3, y0 + 2), f'{a} {dd}{i}', fill=tpv.SUB, font=font(11))
     img.convert('RGB').save(path, optimize=True)
     return True
@@ -587,14 +594,14 @@ def lineup(tf, path, seed=61):
             people.append((pr, tf.preset(pr, rng=rng)))
     for k in range(8):
         people.append(('resident', tf.random_person(rng=rng)))
-    cols = 15
-    cw, ch = 46, 84
+    cols = 13
+    cw, ch = 64, 96
     rows_ = (len(people) + cols - 1) // cols
     strip = Image.new('RGBA', (cols * cw + 20, rows_ * ch + 10), (236, 241, 247, 255))
     for k, (pr, p) in enumerate(people):
         x, y = 10 + (k % cols) * cw, 6 + (k // cols) * ch
         fr = tf.compose(p, 'idle', 'S' if k % 3 else 'SE', 0)
-        strip.alpha_composite(fr.crop((41, 26, 87, 110)), (x, y))
+        strip.alpha_composite(fr.crop((32, 14, 96, 110)), (x, y))
     big = strip.resize((strip.size[0] * 2, strip.size[1] * 2), Image.NEAREST)
     css = strip.resize((strip.size[0] // 3, strip.size[1] // 3), Image.LANCZOS).resize(
         (strip.size[0] // 3 * 2, strip.size[1] // 3 * 2), Image.NEAREST)
