@@ -36,12 +36,12 @@ try {
   await adv(1);
   await ev(() => { window.__FV.unlockV3(); window.__FV.give(50000); });
   await adv(1);
-  await nudge(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready && window.__FV.game.textures.exists('town_civic'));
+  await nudge(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready && window.__FV.hasTex('town_civic'));
   await ev(() => window.__FV.v4.repair());
-  await nudge(() => window.__FV.game.textures.exists('train_engine') && window.__FV.scene.v4.town && window.__FV.state().v4.tf && window.__FV.state().v4.tf.adult, 150000);
+  await nudge(() => window.__FV.hasTex('train_engine') && window.__FV.scene.v4.town && window.__FV.state().v4.tf && window.__FV.state().v4.tf.adult, 150000);
   await adv(8);
   await ev(() => window.__FV.v4.openTown());
-  await nudge(() => ['town_shops', 'town_homes', 'town_park', 'town_street'].every((k) => window.__FV.game.textures.exists(k)) && window.__FV.state().v4.tf.child, 150000);
+  await nudge(() => ['town_shops', 'town_homes', 'town_park', 'town_street'].every((k) => window.__FV.hasTex(k)) && window.__FV.state().v4.tf.child, 150000);
   // the camera in the middle of the town (bodies for the people in view)
   await ev(() => window.__FV.camera(4900, 2450, 1.0));
   await adv(2);

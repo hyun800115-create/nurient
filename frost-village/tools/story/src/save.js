@@ -155,7 +155,7 @@ export function serialize(e) {
   const owed = [];
   for (const p of W.places) if (p.owed) owed.push(p.idx, p.owed);
   w.s(JSON.stringify({
-    accUs: e.accUs, dayQ: e.dayQ, nightI: e.nightI, nightIds: e.nightIds, owed,
+    accUs: Math.round(e.accUs), dayQ: e.dayQ, nightI: e.nightI, nightIds: e.nightIds, nightDay: e.nightDay, owed,
     restr: B.loans.map((L) => L.restr || 0), ack: In.active.map((I) => (I.ackWait ? 1 : 0) | (I.acked ? 2 : 0)), wait: In.active.map((I) => I.waitUntil || 0),
   }));
   // assemble: magic, version, string table, body
@@ -302,6 +302,7 @@ export function deserialize(e, str) {
     e.dayQ = x.dayQ || [];
     e.nightI = x.nightI === undefined ? -1 : x.nightI;
     e.nightIds = x.nightIds || null;
+    e.nightDay = x.nightDay || 0;
     for (let k = 0; k + 1 < (x.owed || []).length; k += 2) W.places[x.owed[k]].owed = x.owed[k + 1];
     (x.restr || []).forEach((n, k) => { if (B.loans[k]) B.loans[k].restr = n; });
     (x.ack || []).forEach((a, k) => { const I = In.active[k]; if (I) { I.ackWait = !!(a & 1); I.acked = !!(a & 2); I.waitUntil = (x.wait || [])[k] || 0; } });

@@ -58,6 +58,8 @@ def main():
         return v
     for frag in os.listdir(assets):
         mp = os.path.join(assets, frag, 'manifest.json')
+        if frag == '_packed':
+            mp = os.path.join(assets, frag, 'index.json')   # (v4-B) the packed pages' index
         if os.path.isfile(mp):
             with open(mp, encoding='utf-8') as f:
                 j = json.load(f)

@@ -14,7 +14,8 @@
 //  - generator.animParts[anim] are drawn in that anim even when the person does not wear them (float: swim ring,
 //    surf: surfboard, dig: toy spade).  Their colours come from the person's beach slots (always filled).
 //  - parts with an `anims` list draw only in those anims; canPlay(person, anim) is true when every body part of the
-//    person has frames for the anim (parts without `anims` = townfolk parts: the v4 + v5 anims).
+//    person has frames for the anim (parts without `anims` = townfolk parts: the v4 + v5 anims), except accessories
+//    with `drop: true` (towel, swim ring, flip-flops, camera, rescue tube, floaties): simply not drawn there.
 //  - follow subs: z = limb z + (followDz ?? 0.5).
 //  - water anims (swim, float, splash_play, surf): the anchor is ON THE WATER SURFACE (townfolk.water).
 //  - sunbathe dir = where the feet point, surf dir = where the board nose points (SE / NE rendered, SW / NW mirrored).
@@ -100,7 +101,7 @@ export class Beachfolk extends Townfolk2 {
     for (const pn of this.animParts(person, anim)) {
       const P = this.T.parts[pn];
       if (P.space !== 'body' || !Object.keys(P.subs).length) continue;
-      if (!(P.anims || OLD_ANIMS).includes(anim)) return false;
+      if (!(P.anims || OLD_ANIMS).includes(anim) && !P.drop) return false;
     }
     return true;
   }

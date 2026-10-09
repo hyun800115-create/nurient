@@ -155,6 +155,9 @@ def main():
                 errs.append('%s: lightKinds / lightPoints length mismatch' % k)
         if 'staffPoints' in s and 'staffRoles' in s and len(s['staffRoles']) != len(s['staffPoints']):
             errs.append('%s: staffRoles %d != staffPoints %d' % (k, len(s['staffRoles']), len(s['staffPoints'])))
+        for r in s.get('staffRoles', []):
+            if r not in man.get('staffPresets', {}):
+                errs.append('%s: staff role %s has no staffPresets entry' % (k, r))
         if base == 'resort_hotel':
             roles = s.get('staffRoles', [])
             for r in ('doorman', 'bellhop', 'receptionist'):

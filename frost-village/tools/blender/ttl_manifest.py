@@ -94,7 +94,9 @@ def finish(man):
         'meta': {},
         'images': [], 'atlases': [], 'spritesheets': [], 'sprites': {},
     }
-    meta = {'texts': C.TITLE, 'palette': {k: v for k, v in C.PAL.items() if isinstance(v, str)}}
+    meta = {'texts': {k: v for k, v in C.TITLE.items() if not k.startswith('_')},
+            'textsSource': C.TITLE.get('_source', {'file': 'tools/blender/ttl_config.py DEFAULT_TITLE'}),
+            'palette': {k: v for k, v in C.PAL.items() if isinstance(v, str)}}
     meta.update(man['meta'])
     for r in recs:
         t = r['type']

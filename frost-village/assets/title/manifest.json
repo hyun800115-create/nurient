@@ -20,12 +20,12 @@
    "en_main": "Snowbloom",
    "en_sub": "Village",
    "en_full": "Snowbloom Village",
-   "emblem_in_en": "bloom",
-   "_source": {
-    "ko": "logo.ko",
-    "en": "logo.en",
-    "file": "src/title/config.js"
-   }
+   "emblem_in_en": "bloom"
+  },
+  "textsSource": {
+   "ko": "logo.ko",
+   "en": "logo.en",
+   "file": "src/title/config.js"
   },
   "palette": {
    "ink": "#1D2F5E",
@@ -137,7 +137,7 @@
       "drop": 6
      }
     ],
-    "howTo": "Parts are @2x like ttl_logo_main. Place each at logoCentre + (dx, dy) * scale with origin 0.5, depth = z; drop them in by \"drop\" order (letters left to right, emblem pops on 꽃, 행복한 slides down, the sign swings in last). pivot = the piece's own centre in origin units if you want to rotate / squash it around its glyph centre. When all have landed, swap to ttl_logo_main (identical pixels) and sweep the shine."
+    "howTo": "Parts are @2x like ttl_logo_main. Place each at logoCentre + (dx, dy) * scale with origin 0.5, depth = z; drop them in by \"drop\" order (letters left to right, emblem pops above 꽃, 행복한 slides down, the sign swings in last). pivot = the piece's own centre in origin units if you want to rotate / squash it around its glyph centre. When all have landed, swap to ttl_logo_main (identical pixels) and sweep the shine."
    },
    "short": {
     "size2x": [
@@ -148,7 +148,7 @@
    "en": {
     "size2x": [
      900,
-     270
+     263
     ]
    }
   },
@@ -274,8 +274,8 @@
    "worstLanguage": "ko",
    "byGroup": {
     "logo": {
-     "png": 402619,
-     "webpBuild": 402619
+     "png": 399933,
+     "webpBuild": 399933
     },
     "backdrop": {
      "png": 882443,
@@ -456,9 +456,9 @@
    "kind": "ui",
    "size2x": [
     900,
-    270
+    263
    ],
-   "notes": "English logo (@2x): Snowbloom (the o of bloom is the 눈꽃 emblem) / Village on the wooden sign."
+   "notes": "English logo (@2x): Snowbloom in Fredoka 600 (open counters; the o of bloom is the 눈꽃 emblem) / Village on the wooden sign."
   },
   "ttl_logo_en_1x": {
    "image": "ttl_logo_en_1x",
@@ -489,7 +489,7 @@
     900,
     619
    ],
-   "notes": "Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters with snow caps, the 눈꽃 emblem on 꽃) / 이야기 on a snowy wooden sign. Navy ink outline + soft shadow: reads over any sky."
+   "notes": "Main title logo (@2x): 행복한 / 눈꽃마을 (candy toy letters, snow caps only on the exposed tops so every jamo stays apart at phone size; the 눈꽃 emblem blooms on the snow above 꽃) / 이야기 on a snowy wooden sign. Navy ink outline (solid in the gaps between strokes) + soft shadow: reads over any sky."
   },
   "ttl_logo_main_1x": {
    "image": "ttl_logo_main_1x",

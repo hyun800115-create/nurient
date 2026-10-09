@@ -271,7 +271,7 @@ def main(quiet=False):
         import gen_fx_city_mount as MT
         missing = [k for _f, k, _m in MT.buildings() if k not in btab]
         if missing:
-            R.w('fireMount.buildings lacks %d current buildings (re-run gen_fx_city.py): %s' % (
+            R.w('fireMount.buildings lacks %d current buildings (run gen_fx_city.py --mount-only): %s' % (
                 len(missing), ', '.join(missing[:12])))
         R.i('fireMount.buildings: %d buildings (%d with several fires, %d with guessed windows)' % (
             len(btab), sum(1 for e in btab.values() if len(e['fires']) > 1),

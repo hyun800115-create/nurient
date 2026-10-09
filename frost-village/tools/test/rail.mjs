@@ -98,7 +98,7 @@ try {
   await adv(1);
   const after = await ev(() => ({ v4: !!window.__FV.scene.v4, rail: window.__FV.state().territory.rail, east: window.__FV.state().territory.east }));
   step('the rail strip opens with the east coast (and v4 starts only then)', !before.v4 && before.rail === false && after.v4 && after.rail && after.east, JSON.stringify({ before, after }));
-  await nudge(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready && window.__FV.game.textures.exists('town_civic') && window.__FV.game.textures.exists('town_rails'));
+  await nudge(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready && window.__FV.hasTex('town_civic') && window.__FV.hasTex('town_rails'));
   const ruin = await ev(() => { const gs = window.__FV.scene, nb = gs.v4, st = gs.sites.r_station; return { plot: st && st.state, shown: st && st.shown, ruin: !!(nb.ours && !nb.ours.open && nb.ours.img.isTinted), choices: window.__FV.choices('r_station') }; });
   step('the ruin stands on plot r_station (XL, only the station)', ruin.plot === 'plot' && ruin.shown && ruin.ruin && ruin.choices.length === 1 && ruin.choices[0].key === 'station' && !ruin.choices[0].locked, JSON.stringify(ruin));
   await ev(() => window.__FV.camera(3330, 1420, 1.0));
@@ -115,7 +115,7 @@ try {
   await shot('02_site');
   step('repair: pays, takes 14 planks + 4 ingots, scaffold', built && scaff && (scaff.state === 'scaffold' || scaff.state === 'done'), JSON.stringify(scaff));
   const tRep = await ev(() => { window.__FV.finishSite('r_station'); return window.__step.t; });
-  await nudge(() => window.__FV.game.textures.exists('train_engine') && window.__FV.game.textures.exists('train_car_b') && window.__FV.scene.v4.town && window.__FV.state().v4.tf && window.__FV.state().v4.tf.adult, 150000);
+  await nudge(() => window.__FV.hasTex('train_engine') && window.__FV.hasTex('train_car_b') && window.__FV.scene.v4.town && window.__FV.state().v4.tf && window.__FV.state().v4.tf.adult, 150000);
   // the first train: arrives within 6 s of the repair with 6 neighbours
   let arr = null;
   for (let k = 0; k < 40; k++) { await adv(0.25); const s = await ev(() => window.__FV.state().v4); if (s.arrivals > 0) { arr = { t: await ev(() => window.__step.t), s }; break; } }

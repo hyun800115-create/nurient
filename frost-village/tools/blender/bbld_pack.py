@@ -61,6 +61,16 @@ STAFF_ROLES = {
     'tourist_info': ['guide'], 'restroom_shower': ['housekeeper'], 'mini_aquarium': ['ticket_seller'],
     'beach_arcade': ['attendant'],
 }
+# staffRoles -> an existing townsfolk preset ("<fragment>:<preset>": assets/beachfolk bf_presets, assets/townfolk
+# generator.presets) so the game can dress every role without new art
+STAFF_PRESETS = {
+    'doorman': 'beachfolk:doorman', 'bellhop': 'beachfolk:bellhop', 'receptionist': 'beachfolk:receptionist',
+    'housekeeper': 'beachfolk:housekeeper', 'lifeguard': 'beachfolk:lifeguard',
+    'icecream_vendor': 'beachfolk:icecream_vendor', 'beach_bar_staff': 'beachfolk:beach_bar_staff',
+    'surfer': 'beachfolk:surfer', 'barista': 'townfolk:barista', 'chef': 'townfolk:barista',
+    'clerk': 'beachfolk:beach_bar_staff', 'attendant': 'beachfolk:beach_bar_staff',
+    'guide': 'beachfolk:receptionist', 'ticket_seller': 'beachfolk:receptionist', 'owner': 'beachfolk:beach_tourist',
+}
 # which staff stand BEHIND an occluder of the `_front` overlay (index list) - documentation for the game
 STAFF_BEHIND = {'resort_hotel': [2], 'beach_cafe': [0], 'icecream_shop': [0], 'beach_bar': [0], 'seafood_bbq': [0],
                 'tourist_info': [0], 'lifeguard_station': [0]}
@@ -273,7 +283,7 @@ CONVENTIONS = {
               'a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, '
               'seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting '
               '(their dy > 0) or just above the building.',
-    'staff': 'staffPoints + staffRoles (beachfolk preset names) + staffDepth "front": draw staff at building depth '
+    'staff': 'staffPoints + staffRoles (role names; top-level staffPresets maps each role to an existing townsfolk preset) + staffDepth "front": draw staff at building depth '
              'd + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: '
              'draw the sprite\'s `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their '
              'legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already '
@@ -345,6 +355,7 @@ def build_manifest(builds, derived, frame_atlas, atlas_keys, old):
     man['atlases'] = [{'key': a, 'png': 'beach_bld/%s.png' % a, 'json': 'beach_bld/%s.json' % a} for a in atlas_keys]
     oldsp = (old or {}).get('sprites', {})
     man['sprites'] = {k: dict(oldsp.get(k, {}), **v) for k, v in sprites.items()}
+    man['staffPresets'] = STAFF_PRESETS
     man['night'] = {'tint': NIGHT_HEX, 'glowBlend': 'ADD', 'glowAtlas': 'bbld_glow'}
     man['lazyAtlases'] = ['bbld_glow']
     return man

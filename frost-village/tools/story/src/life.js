@@ -245,8 +245,19 @@ export class Life {
     if (e.bus.has('life')) e.bus.emit('life', { op: 'grow', who: r.id, group: ['toddler', 'kid', 'teen', 'adult', 'elder'][to] });
   }
 
+  /** share of children (and teens) and of grandparents in town — move-ins and babies lean against an ageing town */
+  ageMix() {
+    const e = this.e;
+    let young = 0, old = 0;
+    for (const r of e.alive) { const g = groupOf(e, r); if (g <= G_TEEN) young++; else if (g === G_ELDER) old++; }
+    const n = Math.max(1, e.alive.length);
+    return { young: young / n, old: old / n };
+  }
+
   babies() {
     const e = this.e, rng = e.rng;
+    const mix = this.ageMix();
+    const boost = mix.young < 0.22 ? 1 + 2.5 * (0.22 - mix.young) / 0.22 : 1;
     for (const r of e.alive) {
       if (r.male || r.spouse < 0 || !r.alive) continue;
       const sp = e.people[r.spouse];
@@ -255,7 +266,7 @@ export class Life {
       if (age < 23 || age > 42) continue;
       if (r.kids.length >= 3) continue;
       if (r.lastBaby && e.clock.day - r.lastBaby < 8) continue;
-      if (!rng.chance(e.cfg.babyRate)) continue;
+      if (!rng.chance(e.cfg.babyRate * boost)) continue;
       this.baby(r, sp);
     }
   }
@@ -427,7 +438,11 @@ export class Life {
 
   moveIn() {
     const e = this.e, rng = e.rng;
-    const kinds = [['single', 3], ['couple', 3], ['family', 4], ['elders', 1.5], ['single_parent', 1]];
+    // young families are drawn to a town with few children; fewer grandparents move into a town full of them
+    const mix = this.ageMix();
+    const fam = mix.young < 0.24 ? 1 + 4 * (0.24 - mix.young) / 0.24 : 1;
+    const eld = mix.old > 0.16 ? Math.max(0.15, 1 - 4 * (mix.old - 0.16)) : 1;
+    const kinds = [['single', 3], ['couple', 3], ['family', 4 * fam], ['elders', 1.5 * eld], ['single_parent', 1 * fam]];
     const k = kinds[rng.weighted(kinds.map((x) => x[1]))][0];
     const size = k === 'single' ? 1 : k === 'couple' || k === 'elders' ? 2 : k === 'single_parent' ? 2 + rng.int(2) : 3 + rng.int(2);
     const home = this.findHome(size) || this.findHome(1);

@@ -153,7 +153,7 @@ export class Economy {
 
   /** nightly money: wages, pensions, pocket money, home food, shop takings, dreams */
   nightly(r) {
-    const e = this.e, rng = e.rng, day = e.clock.day;
+    const e = this.e, rng = e.rng, day = e.nightDay;    // the day that is ending (the slices may run past midnight)
     const g = groupOf(e, r);
     const job = JOBS[r.job];
     if (job && job.wage && r.workedDay === day) {

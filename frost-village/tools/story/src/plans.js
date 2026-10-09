@@ -82,10 +82,15 @@ export class Plans {
       const h0 = job.h[0] * 60, h1 = job.h[1] * 60;
       const place = r.work;
       // elders go for a morning walk first; shop owners low on stock pick up goods at the logistics centre
+      // (before work — or, for the early birds who bake and sell fish from dawn, after work)
+      let pickupAfter = false;
       if (r.flags & F_OWNER) {
         const shop = W.places[place];
         const lc = W.first('logistics');
-        if (lc && lc.state === B_OK && shop.stock < shop.stockMax * 0.5 && h0 - 60 > wake) push(h0 - 55, lc.idx, A_PICKUP);
+        if (lc && lc.state === B_OK && shop.sellIdx.length && shop.stock < shop.stockMax * 0.5) {
+          if (h0 - 60 > wake) push(h0 - 55, lc.idx, A_PICKUP);
+          else if (h1 + 70 < 19 * 60) pickupAfter = true;
+        }
       }
       push(Math.max(t, h0 - 10 - rng.int(20)), place, isStudent ? A_SCHOOL : A_WORK);
       if (h0 < 690 && h1 > 800 && !isStudent) {
@@ -93,6 +98,7 @@ export class Plans {
         if (rng.chance(0.45)) { const ep = this.pickKind(EAT_PLACES, place); if (ep && ep.idx !== place) { push(715 + rng.int(25), ep.idx, A_EAT); push(770 + rng.int(20), place, A_WORK); } }
       }
       t = h1 + rng.int(15);
+      if (pickupAfter) { push(t, W.first('logistics').idx, A_PICKUP); t += 50; }
     }
     // leisure / errands until bed time
     const end = bed - 50 - rng.int(40);

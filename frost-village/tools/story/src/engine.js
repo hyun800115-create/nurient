@@ -86,7 +86,7 @@ export class StoryEngine {
     this.initialPop = 0;
     this.upkeepI = -1;
     this.dayQ = [];             // pieces of the day change, run one per step (no frame spikes)
-    this.nightIds = null; this.nightI = -1;   // residents whose nightly money / mood is still to do
+    this.nightIds = null; this.nightI = -1; this.nightDay = 0;   // residents whose nightly money / mood is still to do
     this.likes = LIKES;
     this.visible = null;
     this.metrics = opts.metrics || null;
@@ -280,7 +280,7 @@ export class StoryEngine {
     for (const r of list) {
       const g = groupOf(this, r);
       if (g === G_TODDLER) continue;
-      const n = 1 + rng.int(3);
+      const n = g === G_ELDER ? 3 + rng.int(4) : 1 + rng.int(3);      // the old folk of a village know everybody
       for (let k = 0; k < n; k++) {
         const o = list[rng.int(list.length)];
         if (Math.abs(groupOf(this, o) - g) > (g === G_ADULT ? 1 : 0) || groupOf(this, o) === G_TODDLER) continue;
@@ -337,7 +337,7 @@ export class StoryEngine {
   /** advance the story by dt game seconds */
   tick(dt) {
     if (!(dt > 0)) return;
-    this.accUs += Math.round(dt * 1e6);
+    this.accUs += dt * 1e6;      // float: no rounding drift at any frame rate (the save rounds it to a microsecond)
     const stepUs = this.cfg.step * 1e6;
     let n = 0;
     while (this.accUs >= stepUs && n < 600) { this.accUs -= stepUs; this.step(); n++; }
@@ -421,6 +421,7 @@ export class StoryEngine {
     this.flushQueues();
     this.nightIds = this.alive.map((r) => r.id);
     this.nightI = 0;
+    this.nightDay = this.clock.day;     // the slices may run past midnight: wages are for the day that ended
   }
 
   /** memories fade / consolidate at night, a slice of residents per step (no frame spikes) */

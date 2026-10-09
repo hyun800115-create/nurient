@@ -10,6 +10,10 @@ import { DEPTH } from '../systems/DepthSort.js';
 import { ItemStack } from './ItemStack.js';
 import { BALANCE } from '../data/balance.js';
 import { DollSprite } from './DollSprite.js';
+import { Residency } from '../core/Residency.js';
+
+// anims that are always resident (no on-demand page lookup for them: they are played every frame)
+const LOCO = new Set(['idle', 'walk', 'run', 'sit', 'work', 'operate']);
 
 // small sideways shift of a head-carried tower per rendered direction (the head leans a little)
 const HEAD_DX = { S: 0, SE: 3, E: 5, NE: 3, N: 0 };
@@ -34,6 +38,7 @@ export class Character {
     this.shadow.setDisplaySize(sh[0] * 1.15, sh[1] * 1.3);
     // (v4-A) opts.person: a townsperson paper doll ('tf:<base>') instead of a single-atlas sprite
     this.sprite = opts.person ? new DollSprite(gs, key, opts.person, x, y) : gs.add.sprite(x, y, '__WHITE');
+    if (!opts.person) this.sprite.__ch = this;     // (v4-B) Residency finds the characters showing a page
     if (opts.person) this.sprite.shadow = this.shadow;
     this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this._onFrame, this);
@@ -57,6 +62,11 @@ export class Character {
 
   /** play anim `name` in the current direction; keepFrame keeps the cycle phase on turns */
   play(name, force, keepFrame) {
+    // (v4-B) a social anim lives on an on-demand page: ask for it (Residency; the fallback plays meanwhile)
+    if (!LOCO.has(name) && Assets.packed && !this.sprite.isDoll && this.def && this.def.atlas) {
+      const sp = Assets.socialPage(this.def.atlas, name);
+      if (sp) Residency.want(sp);
+    }
     const res = Assets.resolveAnim(this.key, name);
     const dirs = Assets.animDirs(this.key, res);
     if (dirs.length && dirs.indexOf(DIR_BASE[this.dir]) < 0) this.dir = nearestDir(this.dir, dirs, this.sprite.flipX);

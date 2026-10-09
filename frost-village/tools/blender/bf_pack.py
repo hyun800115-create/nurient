@@ -65,7 +65,9 @@ MERGE_RULES = [
     'slots generate3 always fills (preset colour or slot palette); animParts (new): {anim: [part]} props drawn in that '
     'anim even when the person does not wear them (float: swim_ring_worn, surf: surfboard, dig: toy_spade).',
     'parts[p].anims (new): the anims this beach part has frames for (a part without it = a v4 / v5 part: frames for '
-    'the v4 + v5 anims only).  canPlay(person, anim) = every BODY part of the person has frames for the anim.',
+    'the v4 + v5 anims only).  canPlay(person, anim) = every BODY part of the person has frames for the anim, '
+    'except parts with drop: true (accessories: towel, swim ring, flip-flops, camera, rescue tube, arm floaties), '
+    'which are simply not drawn (put down / taken off) in the anims they have no frames for.',
     'timeline[anim][dir][i].hd (new, optional): the head frame dir when it differs from the anim dir (surf NE looks E).',
     'subs followDz (new, optional): z = limb z + followDz instead of + 0.5 (bare_arms 0.2 < sleeve cuffs 0.5 < '
     'arm floaties 0.7).',
@@ -74,6 +76,93 @@ MERGE_RULES = [
 
 def load(p):
     return tpk.load(p)
+
+
+def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5):
+    """tf_pack.build_sheets (same dedupe, greedy layer -> sheet split, packing, quantizing, compact JSON) plus a
+    tail merge: a last group smaller than `tail` x the sheet budget is packed together with the group before it
+    when the pair still fits one 2048 sheet (no 60-px stub atlases = one texture / draw-call batch less)."""
+    import hashlib
+    from PIL import Image
+    import pack_utils
+    SHEET = tpk.SHEET
+    items, sizes = [], {}
+    for layer in sorted(layers):
+        seen, lst = {}, []
+        for fr, img in layers[layer].items():
+            h = hashlib.md5(img.tobytes()).hexdigest()
+            name = frame_name(layer, fr)
+            if h in seen:
+                seen[h][1].append(name)
+                continue
+            ent = [layer, [name], img]
+            seen[h] = ent
+            lst.append(ent)
+        items.extend(lst)
+        sizes[layer] = sum(tpk.trimmed_area(e[2]) for e in lst)
+    budget = SHEET * SHEET * tpk.SHEET_FILL
+    groups, cur, acc = [], [], 0
+    for layer in sorted(layers, key=lambda l: (l.split('.')[0], l)):
+        if cur and acc + sizes[layer] > budget:
+            groups.append(cur)
+            cur, acc = [], 0
+        cur.append(layer)
+        acc += sizes[layer]
+    if cur:
+        groups.append(cur)
+
+    def pack(grp):
+        gs = set(grp)
+        frames, alias = [], {}
+        for layer, names, img in items:
+            if layer not in gs:
+                continue
+            frames.append((names[0], Image.fromarray(img, 'RGBA')))
+            for n in names[1:]:
+                alias[n] = names[0]
+        sheet, atlas = pack_utils.pack_atlas(frames, max_width=SHEET, trim=True, padding=2)
+        return sheet, atlas, frames, alias
+
+    atlases, where = [], {}
+    k = 0
+    pending = list(groups)
+    while pending:
+        grp = pending.pop(0)
+        res = None
+        if len(pending) == 1 and sum(sizes[l] for l in pending[0]) < tail * budget:
+            res = pack(grp + pending[0])
+            if res[0].size[1] <= SHEET:
+                grp = grp + pending.pop(0)
+            else:
+                res = None
+        if res is None:
+            res = pack(grp)
+        sheet, atlas, frames, alias = res
+        if sheet.size[1] > SHEET and len(grp) > 1:          # too tall: split the group and retry
+            h = len(grp) // 2
+            pending[:0] = [grp[:h], grp[h:]]
+            continue
+        key = f'{prefix}_{k}'
+        k += 1
+        for n, src in alias.items():
+            atlas['frames'][n] = dict(atlas['frames'][src])
+        png = os.path.join(tpk.OUT, key + '.png')
+        js = os.path.join(tpk.OUT, key + '.json')
+        if tpk.imagequant is not None:
+            q = tpk.imagequant.quantize_pil_image(sheet, dithering_level=dither, max_quality=100, min_quality=0,
+                                                  max_colors=colors)
+            q.save(png, optimize=True)
+        else:
+            sheet.save(png, optimize=True)
+        with open(js, 'w', encoding='utf-8') as f:
+            json.dump(tpk.compact_atlas(atlas, key + '.png', sheet.size), f, separators=(',', ':'))
+        for layer in grp:
+            where[layer] = key
+        atlases.append({'key': key, 'png': f'townfolk/{key}.png', 'json': f'townfolk/{key}.json', 'format': 'tfatlas'})
+        report.append((key, sheet.size, len(frames), len(alias), os.path.getsize(png)))
+        print(f'  {key}: {sheet.size[0]}x{sheet.size[1]}  {len(frames)} frames (+{len(alias)} dup)  '
+              f'{os.path.getsize(png) / 1024:.0f} KB', flush=True)
+    return atlases, where
 
 
 def to_u8(img):
@@ -181,6 +270,8 @@ def part_entry3(P):
             e['subs'][s]['followDz'] = sd['followDz']
     if P.name in bpr.PART_ANIMS:
         e['anims'] = list(bpr.PART_ANIMS[P.name])
+    if P.name in bpr.DROP_PARTS:
+        e['drop'] = True
     auto = [a for a, ps in bpr.ANIM_PARTS.items() if P.name in ps]
     if auto:
         e['autoFor'] = auto
@@ -362,7 +453,7 @@ def main():
     log, report = [], []
     print('[head3] collecting', flush=True)
     head_layers, head_meta = collect_head3(cache, log)
-    atlases, where_head = tpk.build_sheets('bf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report)
+    atlases, where_head = build_sheets3('bf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report)
     body_metas, where_body, body_layer_names = {}, {}, {}
     for base in tpr.RENDER_BASES:
         if not os.path.exists(os.path.join(cache, 'body', base, 'meta3.json')):
@@ -372,7 +463,7 @@ def main():
         layers, meta = collect_body3(cache, base, log)
         body_metas[base] = meta
         body_layer_names[base] = sorted(layers)
-        at, w = tpk.build_sheets(f'bf_{base}', layers, lambda l, f, b=base: f'{l}@{b}/{f}', colors, dither, report)
+        at, w = build_sheets3(f'bf_{base}', layers, lambda l, f, b=base: f'{l}@{b}/{f}', colors, dither, report)
         atlases += at
         where_body[base] = w
     for at in atlases:

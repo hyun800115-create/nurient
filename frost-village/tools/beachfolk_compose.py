@@ -16,7 +16,8 @@ On top of the v4 / v5 rules (townfolk_compose.py / townfolk2_compose.py):
   * head frames: '<layer>/<hp>_<hd>' with hd = timeline hd (default the anim dir); faces / brows only when
     hd is in faceDirsByPose[hp] (default faceDirs).
   * animParts: props drawn in an anim even if the person does not wear them (float ring, surf board, dig spade).
-  * parts with 'anims' have frames only in those anims (others: nothing drawn); can_play() checks the body parts.
+  * parts with 'anims' have frames only in those anims (others: nothing drawn); can_play() checks the body parts,
+    except accessories with 'drop' (towel, swim ring, flip-flops, camera, rescue tube, floaties): put down there.
   * followDz: follow subs use limb z + followDz (default 0.5).
   * generate3(): v4 generator + townfolk2 extra slots + beachSlots (preset colour or slot palette) + addOns
     (optional extra parts) + bare-arm sleeves.  Deterministic; the JS port consumes the rng in the same order.
@@ -125,7 +126,7 @@ class Beachfolk(tc2.Townfolk2):
             P = self.parts[pn]
             if P['space'] != 'body' or not P['subs']:
                 continue
-            if anim not in P.get('anims', OLD_ANIMS):
+            if anim not in P.get('anims', OLD_ANIMS) and not P.get('drop'):
                 return False
         return True
 

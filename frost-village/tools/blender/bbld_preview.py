@@ -5,6 +5,7 @@ bbld_preview.py - previews for assets/beach_bld (called by bbld_pack.py, or on i
                                     with lamps and string lights, a sand strip with the bar / lifeguard station, the sea
                                     in front; people = existing assets/townfolk (+ townfolk2 sit) at the sprite points
     docs/previews/bbld_night.png    the same street at night (tint + <key>_glow ADD + hotel night frame + lamp halos)
+    docs/previews/bbld_phone.png    the day street as a 390 x 844 phone screen shows it at zoom 0.6 / 0.9 / 1.2
     docs/previews/bbld_anims.gif    seafood_bbq grill, mini_aquarium fish, beach_arcade lights, string lights
     docs/previews/bbld_pool.gif     hotel pool with the baked fallback water loop
     docs/previews/bbld_hotel_daynight.gif   resort hotel fading day -> night -> day
@@ -12,8 +13,10 @@ Standalone:  python3 tools/blender/bbld_preview.py [--cache DIR]   (re-reads the
 The ground (promenade paving, boardwalk, sand, wet sand, foam, sea) is drawn here, per pixel, from the inverse iso
 projection - a stand-in for the real ground: the sand uses assets/beach ground_sand(_wet) and the sea is a static
 look-alike of src/systems/Water.js built from assets/water (tropical palette LUT, ripple normals, caustics, foam lace)
-when those fragments exist, else a procedural fallback.  Beach props (parasols, loungers, palms, towels, dune grass,
-sandcastle) come from assets/beach when present.
+when those fragments exist, else a procedural fallback; behind the shops a stand-in back street (curbs, road, sidewalk,
+flower bed, park lawn).  Beach props (parasols, loungers, palms, pines, towels, dune grass, sandcastle, volleyball net,
+ice-cream cart, swim-area buoy line, raft, banana boat / kayak / swan pedal boat) come from assets/beach when present.
+People are the existing townsfolk with in-memory warm-coast presets (SUMMER below) until assets/beachfolk is packed.
 """
 import json
 import math
@@ -55,31 +58,79 @@ def _gif(frames_rgb, durs, out):
 
 # --------------------------------------------------------------------------- labelled sheet
 
+SHEET_ORDER = ['resort_hotel', 'resort_hotel_x', 'hotel_pool', 'pension', 'beach_cafe', 'beach_cafe_x', 'beach_bar',
+               'beach_bar_x', 'seafood_bbq', 'icecream_shop', 'icecream_shop_x', 'souvenir_shop', 'swimwear_shop',
+               'surf_shop', 'convenience_store', 'convenience_store_x', 'mini_aquarium', 'beach_arcade',
+               'lifeguard_station', 'tourist_info', 'restroom_shower', 'beach_gate', 'beach_gate_x', 'beach_lamp',
+               'string_lights_x', 'string_lights_y']
+
+
+def shelf(entries, out, max_w=3000, bg=(236, 222, 190), pad=18, title=None):
+    """Labelled shelf like prop_pack.shelf_preview, but with a Hangul-capable font and two-line labels
+    (key on top, Korean name below).  entries: list of (key label, korean label, RGBA image)."""
+    f, fk, tf = font(17), font(17), font(26)
+    lh = 22
+    cells = []
+    for lab, ko, im in entries:
+        bb = im.getbbox() or (0, 0, 1, 1)
+        im2 = im.crop(bb)
+        tw = int(max(f.getlength(lab), fk.getlength(ko))) + 6
+        cells.append((lab, ko, im2, max(im2.width, tw) + pad, im2.height + 2 * lh + pad + 6))
+    rows, row, x, h = [], [], 0, 0
+    for c in cells:
+        if x + c[3] > max_w - pad and row:
+            rows.append((row, h))
+            row, x, h = [], 0, 0
+        row.append(c)
+        x += c[3]
+        h = max(h, c[4])
+    if row:
+        rows.append((row, h))
+    top = 52 if title else 0
+    sheet = Image.new('RGBA', (max_w, top + sum(h for _, h in rows) + pad), bg + (255,))
+    d = ImageDraw.Draw(sheet)
+    if title:
+        d.text((pad, 12), title, fill=(25, 30, 40), font=tf)
+    y = top
+    for row, h in rows:
+        x = pad
+        for lab, ko, im, cw, ch in row:
+            base = y + h - 2 * lh - pad
+            sheet.alpha_composite(im, (x + (cw - pad - im.width) // 2, max(y, base - 4 - im.height)))
+            d.text((x + (cw - pad - int(f.getlength(lab))) // 2, base), lab, fill=(20, 24, 32), font=f)
+            d.text((x + (cw - pad - int(fk.getlength(ko))) // 2, base + lh), ko, fill=(96, 74, 52), font=fk)
+            x += cw
+        y += h
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    sheet.convert('RGB').save(out, optimize=True)
+    print('wrote', out, sheet.size)
+
+
 def preview_all(builds, frames, derived, out):
     ents = []
-    order = sorted(builds, key=lambda k: (['bbld_hotel', 'bbld_shops', 'bbld_civic', 'bbld_street'].index(
-        builds[k]['atlas']) if builds[k]['atlas'] in ('bbld_hotel', 'bbld_shops', 'bbld_civic', 'bbld_street') else 9,
-        k.endswith('_x'), k))
+    order = [k for k in SHEET_ORDER if k in builds] + sorted(k for k in builds if k not in SHEET_ORDER)
     for k in order:
         m = builds[k]
+        ko = ((m.get('extra') or {}).get('name') or m.get('name') or {}).get('ko', '')
+        if k.endswith('_x') and k[:-2] in builds:      # a side-facing variant (not string_lights_x)
+            ko = (ko + ' (옆 방향)') if ko else '옆 방향'
         im = frames[m['frames'][0]]
         if m.get('water'):
             comp = im.copy()
             comp.alpha_composite(frames[m['water']['frames'][0]])
-            ents.append((k, im))
-            ents.append((k + ' + hotel_pool_water', comp))
+            ents.append((k, ko, im))
+            ents.append((k + ' + hotel_pool_water', '물 (대체 애니)', comp))
             continue
-        ents.append((k, im))
+        ents.append((k, ko, im))
         if 'anims' in m:
             nfr = m['anims']['work']['frames']
-            ents.append((k + ' (%s)' % (m.get('animAlias') or 'work'), frames[nfr[1]]))
+            ents.append((k + ' (%s)' % (m.get('animAlias') or 'work'), '움직임 프레임', frames[nfr[1]]))
         if k + '_night' in frames:
             bg = Image.new('RGBA', im.size, (24, 30, 58, 255))
             bg.alpha_composite(frames[k + '_night'])
-            ents.append((k + '_night', bg))
-    pp.shelf_preview(ents, out, max_w=3000, bg=(236, 222, 190),
-                     title='Sunny Beach (햇살 해변) - assets/beach_bld at 1x, PPU 64: hotel + pool, shops, civic, street; '
-                           'idle + one anim frame, resort_hotel_night, pool with the fallback water')
+            ents.append((k + '_night', '밤 (창문 불빛)', bg))
+    shelf(ents, out, title='햇살 해변 Sunny Beach - assets/beach_bld at 1x (PPU 64): hotel + pool, shops, civic, street '
+                           '- idle + one anim frame, the hotel night frames, the pool with its fallback water')
 
 
 # --------------------------------------------------------------------------- procedural beach ground
@@ -149,8 +200,8 @@ def water_sea(W, H, ox, oy, d, wx, t=0.0):
     # broken white caps only on the first two crests in front of the beach (fade out to sea), lace-textured
     win = np.clip((d - 1.0) / 1.0, 0, 1) * np.clip((8.5 - d) / 3.0, 0, 1)
     var = fo[(gy // 4 + 31) % 256, (gx // 4 + 77) % 256, 2]
-    crest = np.clip((sw - 0.9) / 0.1, 0, 1) * win * (fo[(gy // 2) % 256, gx % 256, 0] > 0.5) * np.clip(
-        (var - 0.35) / 0.2, 0, 1)
+    lace_c = np.clip((fo[(gy // 2) % 256, gx % 256, 0] - 0.45) / 0.3, 0, 1)
+    crest = np.clip((sw - 0.93) / 0.07, 0, 1) * win * lace_c * np.clip((var - 0.45) / 0.25, 0, 1) * 0.7
     # ripple shading + sky reflection (Fresnel-ish on slope) + sun glints
     lit = nx * -0.55 + ny * -0.8
     sea = sea * (1.0 + 0.22 * lit[..., None])
@@ -238,6 +289,37 @@ def ground(W, H, ox, oy, t=0.0):
     grout = (np.abs(wx / 0.7 - np.round(wx / 0.7)) < 0.03) | (np.abs(wy / 0.7 - np.round(wy / 0.7)) < 0.03)
     pave = np.where(grout[..., None], pave * 0.9, pave)
     img = np.where(pv[..., None], pave, img)
+    # the back street behind the shops: granite curbs, a two-lane road (white edge lines, double yellow centre line),
+    # the far sidewalk and a lawn beyond it
+    r0, r1 = ROAD
+    asph = np.array([126, 130, 138], np.float32) * (0.95 + 0.08 * n1[..., None]) - 7 * (n2[..., None] > 0.85)
+    road = (wy > r0) & (wy <= r1)
+    img = np.where(road[..., None], asph, img)
+    edge_l = road & ((np.abs(wy - (r0 + 0.3)) < 0.06) | (np.abs(wy - (r1 - 0.3)) < 0.06))
+    img = np.where(edge_l[..., None], np.array([238, 238, 232], np.float32), img)
+    mid = (r0 + r1) / 2
+    cen = road & ((np.abs(wy - mid + 0.08) < 0.045) | (np.abs(wy - mid - 0.08) < 0.045))
+    img = np.where(cen[..., None], np.array([242, 198, 66], np.float32), img)
+    curb = ((wy > r0 - 0.25) & (wy <= r0)) | ((wy > r1) & (wy <= r1 + 0.25))
+    img = np.where(curb[..., None], np.array([212, 208, 200], np.float32) * (0.96 + 0.05 * n2[..., None]), img)
+    lip = (wy > r0 - 0.05) & (wy <= r0)
+    img = np.where(lip[..., None], np.array([150, 146, 140], np.float32), img)
+    side = (wy > r1 + 0.25) & (wy <= r1 + 2.0)
+    img = np.where(side[..., None], pave, img)
+    # a soft park lawn (mowing stripes) behind a flower bed along the sidewalk
+    lawn = wy > r1 + 2.0
+    stripe = (np.floor((wy - r1) / 1.3) % 2)[..., None]
+    grass = np.array([160, 200, 132], np.float32) * (0.96 + 0.06 * n1[..., None]) * (0.97 + 0.05 * stripe)
+    img = np.where(lawn[..., None], grass, img)
+    bed = (wy > r1 + 2.0) & (wy <= r1 + 2.7)
+    leaf = np.array([98, 152, 92], np.float32) * (0.9 + 0.2 * n2[..., None])
+    nf = value_noise(H, W, 1.4, 11)
+    fl = np.where((nf > 0.78)[..., None], np.where((n1 > 0.5)[..., None], np.array([248, 150, 176], np.float32),
+                                                    np.array([255, 214, 102], np.float32)), leaf)
+    fl = np.where((nf < 0.07)[..., None], np.array([250, 250, 244], np.float32), fl)
+    img = np.where(bed[..., None], fl, img)
+    rim = (wy > r1 + 1.92) & (wy <= r1 + 2.0)
+    img = np.where(rim[..., None], np.array([196, 186, 168], np.float32), img)
     return img
 
 
@@ -317,6 +399,42 @@ class Scene:
         return img
 
 
+# Warm-coast stand-in presets for the existing townsfolk (in memory only, assets untouched): light tops, no scarves /
+# winter boots, sun hats.  The real beach crowd is assets/beachfolk (swimwear, lifeguards, hotel uniforms).
+_SUN = {'top': ['#FF8A80', '#FFD166', '#7FD8C8', '#8EC5FF', '#F7A8C8', '#FFFFFF', '#C3E88D'], 'top2': ['#FFFFFF', '=top'],
+        'bottom': ['#F4EDE0', '#3B6EA5', '#E8D7B0', '#7FB7E8'], 'hat': ['#F4E2B8', '#FF8A80', '#7FD8C8', '#FFFFFF'],
+        'hat2': ['=hat'], 'acc': ['=hat'], 'shoes': ['#F4EDE0', '#E8743B', '#3B6EA5']}
+SUMMER = {
+    'beachgoer': {'label': {'ko': '피서객', 'en': 'beachgoer'},
+                  'bases': {'child_slim': 1, 'adult_slim': 5, 'adult_round': 3, 'elder_slim': 1, 'elder_round': 1},
+                  'tops': {'top_vest': 3, 'top_dress': 2, 'top_cardigan': 1}, 'bottoms': {'bot_pants': 2, 'bot_skirt': 2},
+                  'shoes': ['shoe_shoes'], 'hats': {'hat_bucket': 3, 'hat_cap': 3, 'hat_fedora': 1}, 'hatChance': 0.65,
+                  'neck': None, 'bag': None, 'headAcc': None, 'colors': _SUN},
+    'beachkid': {'label': {'ko': '아이', 'en': 'kid'}, 'bases': {'child_slim': 2, 'child_round': 1},
+                 'tops': {'top_vest': 3, 'top_dress': 2}, 'bottoms': {'bot_pants': 2, 'bot_skirt': 1},
+                 'shoes': ['shoe_shoes'], 'hats': {'hat_bucket': 2, 'hat_cap': 2}, 'hatChance': 0.7,
+                 'neck': None, 'bag': None, 'headAcc': None, 'colors': _SUN},
+    'hotel_staff': {'label': {'ko': '호텔 직원', 'en': 'hotel staff'}, 'bases': {'adult_slim': 3, 'adult_round': 2},
+                    'tops': ['top_uniform'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': ['hat_station'],
+                    'hatChance': 1.0, 'extra': ['det_station'], 'neck': None, 'bag': None, 'headAcc': None,
+                    'colors': {'top': ['#1F8A8A'], 'top2': ['#E8B84A'], 'hat': ['=top'], 'bottom': ['#22305A'],
+                               'shoes': ['#1E1E26']}},
+    'receptionist': {'label': {'ko': '안내원', 'en': 'receptionist'}, 'bases': {'adult_slim': 3, 'adult_round': 1},
+                     'tops': ['top_blazer'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': [],
+                     'hatChance': 0.0, 'extra': ['det_tie'], 'neck': None, 'bag': None, 'headAcc': None,
+                     'colors': {'top': ['#1F8A8A'], 'top2': ['#FFFFFF'], 'bottom': ['#22305A'], 'shoes': ['#1E1E26']}},
+    'beach_staff': {'label': {'ko': '가게 직원', 'en': 'shop staff'}, 'bases': {'adult_slim': 4, 'adult_round': 2},
+                    'tops': ['top_vest'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'],
+                    'hats': {'hat_cap': 1, 'hat_bucket': 1}, 'hatChance': 0.6, 'extra': ['det_apron'], 'neck': None,
+                    'bag': None, 'headAcc': None, 'colors': dict(_SUN, top=['#FF8A80', '#7FD8C8', '#FFD166', '#8EC5FF'])},
+    'lifeguard_t': {'label': {'ko': '구조요원', 'en': 'lifeguard'}, 'bases': {'adult_slim': 3},
+                    'tops': ['top_vest'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'], 'hats': ['hat_cap'],
+                    'hatChance': 1.0, 'neck': None, 'bag': None, 'headAcc': None,
+                    'colors': {'top': ['#E8403A'], 'top2': ['#FFD23F'], 'hat': ['#FFD23F'], 'hat2': ['=hat'],
+                               'bottom': ['#FFD23F'], 'shoes': ['#E8403A']}},
+}
+
+
 def townfolk():
     try:
         import townfolk_compose as tc
@@ -326,6 +444,7 @@ def townfolk():
             tf.T['generator']['presets'].update(pres)
         except Exception:                      # noqa: BLE001
             pass
+        tf.T['generator']['presets'].update(SUMMER)
         tf2 = None
         try:
             import townfolk2_compose as tc2
@@ -334,6 +453,7 @@ def townfolk():
                 tf2.T['generator']['presets'].update(pres)
             except Exception:                  # noqa: BLE001
                 pass
+            tf2.T['generator']['presets'].update(SUMMER)
         except Exception as e:                 # noqa: BLE001
             print('note: townfolk2 (sit) unavailable: %s' % e)
         return tf, tf2
@@ -353,6 +473,32 @@ LAYOUT = [
     ('lifeguard_station', 32.6, -6.3), ('restroom_shower', 38.4, -5.0),
 ]
 FACE_FALLBACK = {'NE': 'E', 'N': 'SE', 'NW': 'W'}
+LABEL_TOP = {'pension', 'convenience_store'}     # back row: label above the roof (the front row hides their feet)
+LABEL_MID = {'hotel_pool'}
+ROAD = (10.0, 14.0)                              # the back street behind the shops (world y), see ground()
+
+
+_BEACH = {}
+
+
+def put_beach(sc, key, x, y):
+    if 'lib' not in _BEACH:
+        try:
+            import bld_pack as bp
+            _BEACH['lib'] = bp.atlas_lib('beach/manifest.json')
+        except Exception:                      # noqa: BLE001
+            _BEACH['lib'] = None
+    if not _BEACH['lib']:
+        return
+    man, get = _BEACH['lib']
+    s = man.get('sprites', {}).get(key)
+    if not s or 'atlas' not in s:
+        return
+    im = get(s['atlas'], s['frame'])
+    if im is None:
+        return
+    fw, fh = s.get('frameSize', im.size)
+    sc.put(im, s.get('anchorPx') or (s['anchor'][0] * fw, s['anchor'][1] * fh), x, y)
 
 
 def beach_props(sc, night):
@@ -362,7 +508,7 @@ def beach_props(sc, night):
     except Exception:                          # noqa: BLE001
         lib = None
     if not lib:
-        return
+        return {}
     man, get = lib
     sp = man.get('sprites', {})
 
@@ -397,6 +543,33 @@ def beach_props(sc, night):
     B('sandcastle_m', 9.6, -9.0)
     B('bucket_spade', 10.4, -9.3)
     B('beach_ball', 14.2, -8.7)
+    B('volleyball_net', 41.0, -7.2)                      # on the court centre line
+    B('icecream_cart', 13.2, -1.15)
+    # the sea (drawn at land level in this preview): swim-area buoy line, a raft, boats with their crews
+    n = 15
+    for k in range(n):
+        B('swim_buoy_line_x', 3.2 + k * 1.41421, -15.4)
+    B('swim_buoy_line_end', 3.2 - 0.72, -15.4)
+    B('swim_buoy_line_end', 3.2 + (n - 1) * 1.41421 + 0.72, -15.4)
+    B('float_raft', 12.6, -18.2)
+    C = man.get('characters', {})
+
+    def boat(key, x, y, d, anim='move', i=0):
+        c = C.get(key)
+        if not c:
+            return None
+        im = get(c['atlas'], c['frameName'].format(anim=anim, dir=d, i=i))
+        if im is None:
+            return None
+        fw, fh = c['frameSize']
+        anc = (c['anchor'][0] * fw, c['anchor'][1] * fh)
+        sc.put(im, anc, x, y)
+        ov = c.get('overlay')
+        over = get(ov['atlas'], ov['frameName'].format(anim=anim, dir=d, i=i)) if ov else None
+        return {'c': c, 'x': x, 'y': y, 'd': d, 'anc': anc, 'over': over}
+    boat('banana_boat_crew', 27.0, -19.6, 'SE')
+    boat('kayak_crew', 35.0, -15.2, 'SE', i=1)
+    return {'swan': boat('swan_pedal_boat', 20.0, -13.4, 'SE', 'idle')}
 
 
 def build_scene(builds, frames, derived, night=False, seed=7):
@@ -425,7 +598,14 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             sc.put(frames[m['water']['frames'][0]], m['anchorPx'], x, y, depth=sy + 0.25)
         if label:
             fh = m.get('footprint', [0, 40])[1]
-            sc.labels.append((key, sx, sy + fh / 2 + 4))
+            if key in LABEL_TOP:
+                tp = m.get('topPx', {})
+                tp = tp.get(fr, 200) if isinstance(tp, dict) else tp
+                sc.labels.append((key, sx, sy - tp - 24))
+            elif key in LABEL_MID:
+                sc.labels.append((key, sx, sy - 8))
+            else:
+                sc.labels.append((key, sx, sy + fh / 2 + 4))
         return m
 
     def pts(key, kind):
@@ -472,7 +652,21 @@ def build_scene(builds, frames, derived, night=False, seed=7):
         if 'string_lights_x' in builds and k % 3 != 2:
             sc.pools.append(sc.p(x + 2.0, -3.15))
     # optional: the parallel beach fragment (assets/beach) - towels, parasols, loungers, palms if they exist
-    beach_props(sc, night)
+    extra = beach_props(sc, night) or {}
+    # the back street: palms and lamps on the far sidewalk
+    for k in range(8):                     # x <= 29: further right the street leaves the picture
+        x = -3.0 + 4.6 * k
+        if k % 2 == 0:
+            B_ = 'palm_tree_a' if k % 4 == 0 else 'palm_tree_b'
+            put_beach(sc, B_, x, ROAD[1] + 1.0)
+        elif 'beach_lamp' in builds:
+            m = builds['beach_lamp']
+            sc.put(frames[m['frames'][0]], m['anchorPx'], x, ROAD[1] + 0.6)
+            if night and 'beach_lamp_glow' in frames:
+                sc.put(frames['beach_lamp_glow'], m['anchorPx'], x, ROAD[1] + 0.6, kind='glow')
+            sc.pools.append(sc.p(x, ROAD[1] + 0.6))
+    for x, y in ((1.5, ROAD[1] + 4.6), (8.8, ROAD[1] + 5.6), (15.6, ROAD[1] + 4.4), (22.4, ROAD[1] + 5.4)):
+        put_beach(sc, 'beach_pine', x, y)                # a few sea pines in the park
     # people at the sprite points
     if tf:
         def at(key, kind, k, preset, d=None, anim='idle', i=0, lib=None, depth_off=None):
@@ -487,53 +681,53 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             depth = (ay + depth_off) if depth_off is not None else None
             person(preset, ax + P[k][0], ay + P[k][1], d=dd, anim=anim, i=i, depth=depth, lib=lib)
         # hotel staff + guests
-        at('resort_hotel', 'staff', 0, 'sailor', 'SW', 'idle', 1, depth_off=0.5)
-        at('resort_hotel', 'staff', 1, 'dock_worker', 'SW', 'wave', 2, depth_off=0.5)
-        at('resort_hotel', 'staff', 2, 'station', 'SW', 'talk', 3, depth_off=0.5)
+        at('resort_hotel', 'staff', 0, 'hotel_staff', 'SW', 'idle', 1, depth_off=0.5)
+        at('resort_hotel', 'staff', 1, 'hotel_staff', 'SW', 'wave', 2, depth_off=0.5)
+        at('resort_hotel', 'staff', 2, 'receptionist', 'SW', 'talk', 3, depth_off=0.5)
         for k in range(2):
-            at('resort_hotel', 'customer', k, 'tourist', 'NE', 'idle', k)
+            at('resort_hotel', 'customer', k, 'beachgoer', 'NE', 'idle', k)
         for k in (0, 3, 5, 7):
-            at('resort_hotel', 'balcony', k, 'tourist' if k % 2 else None, None, 'wave' if k == 3 else 'idle', k % 4,
+            at('resort_hotel', 'balcony', k, 'beachgoer', None, 'wave' if k == 3 else 'idle', k % 4,
                depth_off=0.5)
         for k in (1, 3):
-            at('pension', 'balcony', k - 1, None, None, 'idle', 1, depth_off=0.5)
-        at('pension', 'staff', 0, None, 'SW', 'wave', 1)
-        at('pension', 'customer', 0, 'tourist', 'NE', 'idle', 0)
-        at('beach_cafe', 'staff', 0, 'barista', 'SW', 'talk', 2, depth_off=0.5)
+            at('pension', 'balcony', k - 1, 'beachgoer', None, 'idle', 1, depth_off=0.5)
+        at('pension', 'staff', 0, 'beachgoer', 'SW', 'wave', 1)
+        at('pension', 'customer', 0, 'beachgoer', 'NE', 'idle', 0)
+        at('beach_cafe', 'staff', 0, 'beach_staff', 'SW', 'talk', 2, depth_off=0.5)
         for k in range(2):
-            at('beach_cafe', 'customer', k, 'tourist', 'NE', 'idle', k)
+            at('beach_cafe', 'customer', k, 'beachgoer', 'NE', 'idle', k)
         for k in (0, 2):
-            at('beach_cafe', 'seat', k, None, None, 'sit', 0, lib=tf2)
-        at('icecream_shop', 'staff', 0, 'barista', 'SW', 'talk', 1, depth_off=0.5)
+            at('beach_cafe', 'seat', k, 'beachgoer', None, 'sit', 0, lib=tf2)
+        at('icecream_shop', 'staff', 0, 'beach_staff', 'SW', 'talk', 1, depth_off=0.5)
         for k in range(3):
-            at('icecream_shop', 'customer', k, 'student', 'NE', 'idle', k)
-        at('seafood_bbq', 'staff', 0, 'barista', 'SW', 'idle', 0, depth_off=0.5)
-        at('seafood_bbq', 'seat', 0, 'sailor', None, 'sit', 0, lib=tf2)
-        at('seafood_bbq', 'customer', 0, 'tourist', 'NE', 'idle', 2)
-        at('souvenir_shop', 'customer', 0, 'tourist', 'NE', 'idle', 1)
-        at('swimwear_shop', 'customer', 0, None, 'NE', 'idle', 3)
-        at('convenience_store', 'seat', 0, None, None, 'sit', 0, lib=tf2)
-        at('convenience_store', 'seat', 4, None, None, 'sit', 0, lib=tf2)
-        at('convenience_store', 'staff', 0, 'factory', 'S', 'idle', 0)
+            at('icecream_shop', 'customer', k, 'beachkid', 'NE', 'idle', k)
+        at('seafood_bbq', 'staff', 0, 'beach_staff', 'SW', 'idle', 0, depth_off=0.5)
+        at('seafood_bbq', 'seat', 0, 'beachgoer', None, 'sit', 0, lib=tf2)
+        at('seafood_bbq', 'customer', 0, 'beachgoer', 'NE', 'idle', 2)
+        at('souvenir_shop', 'customer', 0, 'beachgoer', 'NE', 'idle', 1)
+        at('swimwear_shop', 'customer', 0, 'beachgoer', 'NE', 'idle', 3)
+        at('convenience_store', 'seat', 0, 'beachgoer', None, 'sit', 0, lib=tf2)
+        at('convenience_store', 'seat', 4, 'beachgoer', None, 'sit', 0, lib=tf2)
+        at('convenience_store', 'staff', 0, 'beach_staff', 'S', 'idle', 0)
         for k in range(2):
-            at('beach_arcade', 'customer', k, 'student', 'NE', 'idle', k)
-        at('surf_shop', 'staff', 0, 'sailor', 'SW', 'talk', 2)
-        at('beach_bar', 'staff', 0, 'barista', 'SW', 'talk', 1, depth_off=0.5)
+            at('beach_arcade', 'customer', k, 'beachkid', 'NE', 'idle', k)
+        at('surf_shop', 'staff', 0, 'beach_staff', 'SW', 'talk', 2)
+        at('beach_bar', 'staff', 0, 'beach_staff', 'SW', 'talk', 1, depth_off=0.5)
         for k in (0, 2, 3):
-            at('beach_bar', 'seat', k, 'tourist' if k else None, None, 'sit', 0, lib=tf2)
-        at('lifeguard_station', 'staff', 0, 'police', 'SW', 'idle', 0, depth_off=0.5)
-        at('tourist_info', 'staff', 0, 'station', 'SW', 'talk', 0, depth_off=0.5)
-        at('tourist_info', 'customer', 0, 'tourist', 'NE', 'idle', 0)
-        at('mini_aquarium', 'view', 0, 'student', 'NE', 'idle', 0)
-        at('mini_aquarium', 'view', 2, None, 'NE', 'happy', 2)
-        at('hotel_pool', 'staff', 0, 'police', 'SE', 'idle', 0)
-        at('restroom_shower', 'customer', 0, None, 'NE', 'idle', 2)
+            at('beach_bar', 'seat', k, 'beachgoer', None, 'sit', 0, lib=tf2)
+        at('lifeguard_station', 'staff', 0, 'lifeguard_t', 'SW', 'idle', 0, depth_off=0.5)
+        at('tourist_info', 'staff', 0, 'receptionist', 'SW', 'talk', 0, depth_off=0.5)
+        at('tourist_info', 'customer', 0, 'beachgoer', 'NE', 'idle', 0)
+        at('mini_aquarium', 'view', 0, 'beachkid', 'NE', 'idle', 0)
+        at('mini_aquarium', 'view', 2, 'beachgoer', 'NE', 'happy', 2)
+        at('hotel_pool', 'staff', 0, 'lifeguard_t', 'SE', 'idle', 0)
+        at('restroom_shower', 'customer', 0, 'beachgoer', 'NE', 'idle', 2)
         # walkers on the boardwalk and the sand
         for k in range(13):
             x = -3.0 + k * 3.3 + rnd.uniform(-0.8, 0.8)
             y = rnd.uniform(-3.1, -2.1) if k % 2 else rnd.uniform(-1.6, -0.9)
             sx, sy = sc.p(x, y)
-            person(rnd.choice(['tourist', 'tourist', None, 'student', 'sailor']), sx, sy,
+            person(rnd.choice(['beachgoer', 'beachgoer', 'beachgoer', 'beachkid', 'beachgoer']), sx, sy,
                    d=rnd.choice(['SE', 'NW', 'SE', 'E', 'W']), anim='walk', i=k % 8)
         for k in range(9):
             x = -1.0 + k * 4.6 + rnd.uniform(-1, 1)
@@ -541,8 +735,31 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             if any(abs(x - px) < 2.5 and abs(y - py) < 2.5 for kk, (px, py) in placed.items() if py < 0):
                 continue
             sx, sy = sc.p(x, y)
-            person(rnd.choice(['tourist', None, 'student']), sx, sy, d=rnd.choice(['S', 'SE', 'SW']),
+            person(rnd.choice(['beachgoer', 'beachgoer', 'beachkid']), sx, sy, d=rnd.choice(['S', 'SE', 'SW']),
                    anim=rnd.choice(['idle', 'wave', 'happy']), i=k % 4)
+        # beach volleyball: one player on each side of the net
+        for (x, y, d, an) in ((40.4, -5.7, 'S', 'wave'), (41.6, -8.9, 'E', 'happy')):
+            sx, sy = sc.p(x, y)
+            person('beachgoer', sx, sy, d=d, anim=an, i=1)
+        # swan pedal boat riders (sit frames on the boat's seats, under its overlay)
+        sw = extra.get('swan')
+        if sw and tf2:
+            bx, by = sc.p(sw['x'], sw['y'])
+            seats = sw['c']['seats'][sw['d']]
+            order = sw['c'].get('seatDrawOrder', {}).get(sw['d'], list(range(len(seats))))
+            for rank, j in enumerate(order):               # person() adds 0.5 to the depth
+                dx, dy = seats[j]
+                person('beachkid' if j else 'beachgoer', bx + dx, by + dy, d=sw['d'], anim='sit', i=0,
+                       depth=by + 0.1 + 0.01 * rank, lib=tf2)
+            if sw['over'] is not None:
+                sc.put(sw['over'], sw['anc'], sw['x'], sw['y'], depth=by + 1.0)
+        # strollers on the back-street sidewalks
+        for k in range(6):
+            x = -1.0 + k * 5.6 + rnd.uniform(-1, 1)
+            y = ROAD[1] + 0.55 if k % 2 else ROAD[0] - 0.7
+            sx, sy = sc.p(x, y)
+            person(rnd.choice(['beachgoer', 'beachgoer', 'beachkid']), sx, sy, d=rnd.choice(['SE', 'NW']),
+                   anim='walk', i=(k * 3) % 8)
     return sc
 
 
@@ -566,7 +783,30 @@ def preview_scene(builds, frames, derived, out_day, out_night):
                    'Night: sprites tinted #6B7AB8 + their <key>_glow (blend ADD); resort_hotel draws resort_hotel_night; '
                    'warm pools under the lamps / string lights (lightPoints)')
     img2.convert('RGB').save(out_night, optimize=True)
+    # phone check: what a 390 x 844 portrait screen shows at zoom 0.6 / 0.9 / 1.2 (centred on the hotel + pool)
+    cx, cy = sc.p(10.0, -0.5)
+    phone_preview(img.convert('RGB'), (cx - box[0], cy - box[1]),
+                  os.path.join(os.path.dirname(out_day), 'bbld_phone.png'))
     return img, img2
+
+
+def phone_preview(img, centre, out, zooms=(0.6, 0.9, 1.2), size=(390, 844)):
+    W, H = size
+    gap, top = 24, 46
+    sheet = Image.new('RGB', (len(zooms) * (W + gap) + gap, H + top + gap), (40, 44, 56))
+    d = ImageDraw.Draw(sheet)
+    f = font(20)
+    for i, z in enumerate(zooms):
+        w, h = W / z, H / z
+        x0 = int(round(min(max(0, centre[0] - w / 2), img.width - w)))
+        y0 = int(round(min(max(0, centre[1] - h / 2), img.height - h - 40)))
+        crop = img.crop((x0, y0, x0 + int(w), y0 + int(h))).resize((W, H), Image.LANCZOS)
+        x = gap + i * (W + gap)
+        sheet.paste(crop, (x, top))
+        d.rounded_rectangle([x - 3, top - 3, x + W + 3, top + H + 3], radius=14, outline=(230, 232, 240), width=3)
+        d.text((x + 4, 12), '폰 화면 390x844  zoom %.1fx' % z, fill=(240, 240, 248), font=f)
+    sheet.save(out, optimize=True)
+    print('wrote', out, sheet.size)
 
 
 # --------------------------------------------------------------------------- GIFs
@@ -646,8 +886,8 @@ def all_previews(builds, frames, derived, prev):
     anims_gif(builds, frames, os.path.join(prev, 'bbld_anims.gif'))
     pool_gif(builds, frames, os.path.join(prev, 'bbld_pool.gif'))
     hotel_daynight_gif(builds, frames, os.path.join(prev, 'bbld_hotel_daynight.gif'))
-    print('previews: docs/previews/bbld_all.png, bbld_scene.png, bbld_night.png, bbld_anims.gif, bbld_pool.gif, '
-          'bbld_hotel_daynight.gif')
+    print('previews: docs/previews/bbld_all.png, bbld_scene.png, bbld_night.png, bbld_phone.png, bbld_anims.gif, '
+          'bbld_pool.gif, bbld_hotel_daynight.gif')
 
 
 if __name__ == '__main__':

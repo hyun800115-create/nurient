@@ -93,6 +93,8 @@ export const Assets = {
   // ---------- loading ----------
   queueManifests(load) {
     for (const f of activeFragments()) load.json('manifest_' + f, BASE + f + '/manifest.json');
+    // (v4-B) the packed pages (tools/build/pack_pages.py); without it the raw atlases are used
+    if (!(typeof window !== 'undefined' && window.__FV_NO_PACKED)) load.json('packed_index', BASE + '_packed/index.json');
   },
 
   mergeManifests(jsonCache) {
@@ -125,14 +127,81 @@ export const Assets = {
       // (v3.5) workers manifest: hire order of the looks of each profession (base first, then variants)
       if (j.professions && typeof j.professions === 'object') for (const k in j.professions) if (Array.isArray(j.professions[k])) this.professions[k] = j.professions[k].filter((x) => typeof x === 'string');
     }
+    // (v4-B) packed pages replace the atlases they were made from
+    this.packed = jsonCache.exists('packed_index') ? jsonCache.get('packed_index') : null;
+    this.applyPages(null);
     // (v3.5) a character atlas a later fragment replaced (pets2 pet_dog -> the old vil_pet_dog) is
     // never used: do not download it
     const used = new Set();
     for (const k in this.m.characters) { const d = this.m.characters[k]; if (d && d.atlas) used.add(d.atlas); }
     for (const k in this.m.sprites) { const d = this.m.sprites[k]; if (d && d.atlas) used.add(d.atlas); }
     this.unusedAtlas = new Set();
-    for (const k in this.m.atlases) if (!used.has(k) && /^(vil_|wkr_|char_)/.test(k)) this.unusedAtlas.add(k);
+    for (const k in this.m.atlases) if (!used.has(this.pageOwner[k] || k) && /^(vil_|wkr_|char_)/.test(k)) this.unusedAtlas.add(k);
   },
+
+  // ---------------------------------------------------------------- (v4-B) packed pages (docs/v4_plan.md §11.3a)
+  // tools/build/pack_pages.py splits big atlases into pages: a resident's @core (what the systems play) and
+  // @social (talk, happy, dance... loaded on demand and evicted by Residency), the townsfolk @loco / @soc, the
+  // train's @ne and the town's @b / @station... A page is an ordinary atlas file; lookups go through texOf().
+  packed: null,
+  pages: {},          // atlas key -> page keys (core first)
+  pageOwner: {},      // page key -> atlas key
+  animPage: {},       // 'atlas:anim' -> page key (character pages)
+  framePage: {},      // 'atlas|frame' -> page key (split building atlases)
+  demanded: new Set(),// on-demand pages asked for (social)
+  held: new Set(),    // pictures Residency took out of memory (a far area): not re-queued until it lets them go
+  pageUse: {},        // page key -> last time a character used it (ms)
+  /** replace the atlases of fragment `frag` (all merged fragments when null) by their pages */
+  applyPages(frag) {
+    const P = this.packed;
+    if (!P || !P.atlases) return;
+    const m = this.m;
+    for (const key in P.atlases) {
+      const e = P.atlases[key];
+      const src = m.atlases[key];
+      if (!src || !e || !Array.isArray(e.pages) || !e.pages.length) continue;
+      if (this.fragOf[key] !== e.frag || (frag && e.frag !== frag)) continue;
+      delete m.atlases[key];
+      const keys = [];
+      for (const pg of e.pages) {
+        const onDemand = pg.cls === 'social' || pg.cls === 'soc';
+        m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0 };
+        this.fragOf[pg.key] = e.frag;
+        this.pageOwner[pg.key] = key;
+        keys.push(pg.key);
+        for (const an of pg.anims || []) this.animPage[key + ':' + an] = pg.key;
+        for (const fr of pg.frames || []) this.framePage[key + '|' + fr] = pg.key;
+      }
+      // the resident page first (lookups try pages in order)
+      keys.sort((a, b) => (m.atlases[a].onDemand ? 1 : 0) - (m.atlases[b].onDemand ? 1 : 0));
+      this.pages[key] = keys;
+    }
+  },
+  /** the page of atlas `a` that is always loaded with it (the atlas itself when it is not packed) */
+  corePage(a) { const P = this.pages[a]; return P ? P[0] : a; },
+  /** page keys of atlas `a` that load with it (not the on-demand ones) */
+  basePages(a) { const P = this.pages[a]; return P ? P.filter((k) => !this.m.atlases[k].onDemand) : [a]; },
+  /** the page frame `fr` of atlas `a` lives in (loaded or not) */
+  pageOfFrame(a, fr) {
+    const P = this.pages[a];
+    if (!P) return a;
+    const fp = this.framePage[a + '|' + fr];
+    if (fp) return fp;
+    const mm = typeof fr === 'string' ? /^(.*)_(S|SE|E|NE|N|SW|W|NW)_\d+$/.exec(fr) : null;
+    if (mm) { const ap = this.animPage[a + ':' + mm[1]]; if (ap) return ap; }
+    return P[0];
+  },
+  /** the loaded texture that holds frame `fr` of atlas `a` (any loaded page when fr is undefined), or null */
+  texOf(a, fr) {
+    const tex = this.game && this.game.textures;
+    if (!tex || !a) return null;
+    const P = this.pages[a];
+    if (!P) return tex.exists(a) && (fr === undefined || tex.get(a).has(fr)) ? a : null;
+    for (const p of P) if (tex.exists(p) && (fr === undefined || tex.get(p).has(fr))) return p;
+    return null;
+  },
+  /** the on-demand page an anim of atlas `a` needs (null when it is resident / not packed) */
+  socialPage(a, anim) { const p = this.animPage[a + ':' + anim]; return p && this.m.atlases[p] && this.m.atlases[p].onDemand ? p : null; },
   unusedAtlas: new Set(),
   queued: new Set(),     // (v3.5 review) after-title files already handed to the loader
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
@@ -158,7 +227,12 @@ export const Assets = {
   loadFragment(scene, name, opts = {}, onReady) {
     if (!scene || !scene.load) return false;
     const want = () => {
-      for (const k of opts.only || []) this.lateWant.add(k);
+      // (v4-B) a packed atlas: the pages that load with it (townsfolk social pages and the like on demand)
+      // ('atlas@page' asks for one page: the raw atlas when nothing is packed)
+      for (const k of opts.only || []) {
+        if (k.indexOf('@') > 0) this.lateWant.add(this.m.atlases[k] ? k : k.slice(0, k.indexOf('@')));
+        else for (const p of this.basePages(k)) this.lateWant.add(p);
+      }
       for (const k of opts.audio || []) this.lateAudio.add(k);
       if (onReady) { try { onReady(); } catch (e) { console.error(e); } }
       if (scene.queueLate) scene.queueLate();
@@ -203,10 +277,11 @@ export const Assets = {
     for (const k in j.audioGroups || {}) if (!m.audioGroups[k]) m.audioGroups[k] = j.audioGroups[k];
     this.lateManifest = this.lateManifest || {};
     this.lateManifest[f] = j;
+    this.applyPages(f);
   },
 
   /** the Game's lazy gate for late files: only what a system asked for */
-  lateAllowed(key) { return this.lateWant.has(key); },
+  lateAllowed(key) { return this.lateWant.has(key) || this.demanded.has(key); },
 
   /** queue late sounds that were asked for (and are not loaded yet) */
   queueLateAudio(load) {
@@ -247,7 +322,8 @@ export const Assets = {
   /** a static picture whose atlas is still on its way (after the title) */
   pending(key) {
     const def = this.m.sprites[key];
-    const f = def && (def.atlas || def.image);
+    let f = def && (def.atlas || def.image);
+    if (f && def.atlas && this.pages[f]) f = this.pageOfFrame(f, def.frame);
     return !!(f && this.isLazy(f) && !this.fileDone(f));
   },
 
@@ -267,13 +343,15 @@ export const Assets = {
     const mark = (k) => { if (opts.lazy) this.queued.add(k); n++; };
     for (const k in m.atlases) {
       const a = m.atlases[k];
+      if (a.onDemand && !this.demanded.has(k)) continue;     // (v4-B) social pages: when a character needs them
+      if (this.held.has(k)) continue;                          // (v4-B) a far area's pictures (Residency)
       if (!a.png || !a.json || !want(k)) continue;
       // (v4-A) townfolk sheets: plain image + compact frame list (installed by tfInstall)
       if (a.format === 'tfatlas') { load.image(k, BASE + a.png); load.json(k + '#tfatlas', BASE + a.json); mark(k); continue; }
       load.atlas(k, BASE + a.png, BASE + a.json);
       mark(k);
     }
-    for (const k in m.images) { const a = m.images[k]; if (a.png && want(k)) { load.image(k, BASE + a.png); mark(k); } }
+    for (const k in m.images) { const a = m.images[k]; if (a.png && !this.held.has(k) && want(k)) { load.image(k, BASE + a.png); mark(k); } }
     for (const k in m.spritesheets) {
       const a = m.spritesheets[k];
       if (a.png && a.frameWidth && want(k)) { load.spritesheet(k, BASE + a.png, { frameWidth: a.frameWidth, frameHeight: a.frameHeight || a.frameWidth, endFrame: a.frameCount ? a.frameCount - 1 : -1 }); mark(k); }
@@ -286,7 +364,7 @@ export const Assets = {
   queueLazy(load, first = [], firstKeys = []) {
     let n = 0;
     const order = firstKeys.slice();
-    for (const c of first) { const d = this.m.characters[c]; if (d && d.atlas) order.push(d.atlas); }
+    for (const c of first) { const d = this.m.characters[c]; if (d && d.atlas) order.push(this.corePage(d.atlas)); }
     const firstSet = new Set(order);
     n += this.queueAssets(load, { lazy: true, filter: (k) => firstSet.has(k) });
     n += this.queueAssets(load, { lazy: true, filter: (k) => !firstSet.has(k) });
@@ -311,8 +389,10 @@ export const Assets = {
     this.cache.delete(key);
     if (this.m.spritesheets[key]) this.sheetAnims(g, key);
     if (this.m.atlases[key]) {
-      for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.atlas === key) { this.cache.delete(sk); this.spriteAnims(g, sk); } }
-      for (const c in this.m.characters) { const d = this.m.characters[c]; if (d && d.atlas === key && !this.built[c]) this.buildCharacter(g, c); }
+      // (v4-B) a page: the atlas it belongs to (a social page adds anims to a character already built)
+      const own = this.pageOwner[key] || key, page = own !== key;
+      for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.atlas === own) { this.cache.delete(sk); this.spriteAnims(g, sk); } }
+      for (const c in this.m.characters) { const d = this.m.characters[c]; if (d && d.atlas === own && (!this.built[c] || page)) this.buildCharacter(g, c); }
     }
     for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.image === key) this.cache.delete(sk); }
     for (const fn of this.arrivals) { try { fn(key); } catch (e) { /* keep loading */ } }
@@ -322,13 +402,14 @@ export const Assets = {
   /** characters whose atlas is still on its way */
   charPending(key) {
     const d = this.m.characters[key];
-    return !!(d && d.atlas && this.isLazy(d.atlas) && !this.fileDone(d.atlas));
+    const a = d && d.atlas && this.corePage(d.atlas);
+    return !!(a && this.isLazy(a) && !this.fileDone(a));
   },
 
   /** character art ready to use (real atlas loaded and anims built) */
   charReady(key) {
     const d = this.m.characters[key];
-    return !!(d && d.atlas && this.game && this.game.textures.exists(d.atlas) && this.built[key]);
+    return !!(d && d.atlas && this.game && this.game.textures.exists(this.corePage(d.atlas)) && this.built[key]);
   },
 
   /** manifest keys of characters of a kind ('villager', 'pet', ...) from the given fragments */
@@ -410,13 +491,13 @@ export const Assets = {
   },
 
   spriteAnims(game, k) {
-    const s = this.m.sprites[k], tex = game.textures, anims = game.anims;
-    if (!s || !s.anims || !s.atlas || !tex.exists(s.atlas)) return;
-    const t = tex.get(s.atlas);
+    const s = this.m.sprites[k], anims = game.anims;
+    if (!s || !s.anims || !s.atlas || !this.texOf(s.atlas)) return;
     for (const an in s.anims) {
       const a = s.anims[an];
       if (!a || !Array.isArray(a.frames)) continue;
-      const frames = a.frames.filter((f) => t.has(f)).map((f) => ({ key: s.atlas, frame: f }));
+      const frames = [];
+      for (const f of a.frames) { const tk = this.texOf(s.atlas, f); if (tk) frames.push({ key: tk, frame: f }); }
       if (!frames.length) continue;
       const key = 'spr:' + k + ':' + an;
       if (!anims.exists(key)) anims.create({ key, frames, frameRate: a.fps || 8, repeat: a.repeat !== undefined ? a.repeat : -1 });
@@ -442,8 +523,8 @@ export const Assets = {
   buildCharacter(game, key) {
     const tex = game.textures, anims = game.anims;
     const def = this.charDef(key);
-    const atlasOk = !!(def.atlas && tex.exists(def.atlas));
-    const t = atlasOk ? tex.get(def.atlas) : null;
+    // (v4-B) a packed atlas: frames come from whichever of its pages are loaded (core now, social later)
+    const atlasOk = !!(def.atlas && this.texOf(def.atlas));
     const fname = typeof def.frameName === 'string' ? def.frameName : '{anim}_{dir}_{i}';
     const baseDirs = Array.isArray(def.dirs) && def.dirs.length ? def.dirs : COMMON_CHAR.dirs;
     def._dirs = def._dirs || {};
@@ -461,7 +542,8 @@ export const Assets = {
           const list = [];
           for (let i = 0; i < (a.frames || 1); i++) {
             const fn = fname.replace('{anim}', an).replace('{dir}', dir).replace('{i}', i);
-            if (t.has(fn)) list.push({ key: def.atlas, frame: fn });
+            const tk = this.texOf(def.atlas, fn);
+            if (tk) list.push({ key: tk, frame: fn });
           }
           if (list.length) frames = list;
           else continue;      // this dir is not rendered: play() turns to one that is
@@ -485,7 +567,8 @@ export const Assets = {
   resolveAnim(key, anim) {
     const def = this.charDef(key);
     const d = def._dirs || {};
-    if (d[anim] && d[anim].length) return anim;
+    // (v4-B) a townsperson's social anim needs its age group's social pages (Residency fetches them when it may)
+    if (d[anim] && d[anim].length && !(def.doll && this.tfSocial && !this.tfSocial(def.age, anim))) return anim;
     const chain = ANIM_FALLBACK[anim] || ['idle'];
     for (const a of chain) if (d[a] && d[a].length) return a;
     return 'idle';
@@ -534,7 +617,8 @@ export const Assets = {
       return { tex: 'fv_blank', frame: undefined, anchor: def.anchor || [0.5, 0.5], def, pending: true };
     }
     if (def) {
-      if (def.atlas && tex.exists(def.atlas) && tex.get(def.atlas).has(def.frame)) r = { tex: def.atlas, frame: def.frame, anchor: def.anchor || [0.5, 0.5], def };
+      const tk = def.atlas ? this.texOf(def.atlas, def.frame) : null;
+      if (tk) r = { tex: tk, frame: def.frame, anchor: def.anchor || [0.5, 0.5], def };
       else if (def.image && tex.exists(def.image)) r = { tex: def.image, frame: undefined, anchor: def.anchor || [0.5, 0.5], def };
     }
     if (!r && tex.exists(key) && !this.failed.has(key)) {
@@ -558,7 +642,7 @@ export const Assets = {
   has(key) {
     const tex = this.game.textures;
     const def = this.m.sprites[key];
-    if (def && def.atlas) return tex.exists(def.atlas) && tex.get(def.atlas).has(def.frame);
+    if (def && def.atlas) return !!this.texOf(def.atlas, def.frame);
     if (def && def.image) return tex.exists(def.image);
     return tex.exists(key) && !this.failed.has(key);
   },
@@ -608,4 +692,7 @@ export const Assets = {
 
   audioDef(key) { return this.m.audio[key] || null; },
   audioGroup(key) { return this.m.audioGroups[key] || null; },
+  tfSocial: null,      // (v4-B) fn(age, anim) -> may a doll play this anim now (Residency)
 };
+// (v4-B) the townsfolk runtime resolves packed pages through the registry
+TF.assets = Assets;

@@ -186,6 +186,7 @@ def main():
         if pn not in P3:
             err.append(f'job outfit {job}: part {pn} missing')
     render_bases = sorted({Bb.get('render', b) for b, Bb in T['bases'].items()})
+    hidden_uw = []
     missing_groups = 0
     for pn, P in P3.items():
         if P['space'] != 'body' or not P['subs']:
@@ -198,13 +199,18 @@ def main():
                 err.append(f'{pn}: not packed for {rb}')
                 continue
             for a in P.get('anims', []):
-                for d in T['anims'][a]['dirs']:
-                    n = T['anims'][a]['frames']
-                    got = sum(1 for s in P['subs'] for i in range(n) if has(f'{pn}.{s}@{rb}/{a}_{d}_{i}'))
-                    if got == 0:
-                        missing_groups += 1
-                        if pn not in ('toy_spade',):
-                            err.append(f'{pn}@{rb}: no frames in {a}_{d}')
+                n = T['anims'][a]['frames']
+                empty = [d for d in T['anims'][a]['dirs']
+                         if not any(has(f'{pn}.{s}@{rb}/{a}_{d}_{i}') for s in P['subs'] for i in range(n))]
+                missing_groups += len(empty)
+                if not empty:
+                    continue
+                if a in ('swim', 'float') and P['family'] in ('bottom', 'shoes'):
+                    hidden_uw.append(f'{pn}@{rb}/{a}')              # entirely under the water surface: legit
+                elif len(empty) < len(T['anims'][a]['dirs']) or pn in ('toy_spade',):
+                    info.append(f'{pn}@{rb}: hidden in {a} {",".join(empty)}')   # e.g. feet behind a kneeling body
+                else:
+                    err.append(f'{pn}@{rb}: no frames in {a} at all')
     # head layers in the new poses
     v4_head = [n.split('/')[0] for n in f1 if '@' not in n.split('/')[0]]
     v4_layers = sorted(set(v4_head))
@@ -314,6 +320,8 @@ def main():
     print(f'beachfolk: {len(man3["atlases"])} atlases, {len(f3)} frames, payload {total / 1e6:.2f} MB, '
           f'sheets {px / 1e6:.2f} Mpx (~{gpu:.1f} MiB GPU), {people} generated people, {len(cases)} cases')
     print(f'limb frames empty (hidden far limb / under water): {len(limb_missing)}')
+    print(f'body parts fully under water in swim / float (nothing drawn, by design): {len(hidden_uw)} '
+          f'{sorted(set(h.split("@")[0] for h in hidden_uw))}')
     for x in info:
         if x.count(' ') != 2:
             print('INFO', x)

@@ -79,8 +79,21 @@ def letter(ch, fpath, size, cols, name, pos, rot_deg=0.0, depth=DEPTH, bevel=BEV
     grp = T.empty(name, loc=(pos[0], pos[1], z), rot=(0, 0, math.radians(rot_deg)), parent=parent)
     top, bot = cols
     m = T.mat_gradient(name + '_mat', top, bot, bb[1] - cy, bb[3] - cy, rough=rough, coat=coat, sss=sss)
-    T.text_mesh(ch, fpath, size, depth, bevel, m, name + '_L', offset=-bevel, dx=-cx, dy=-cy,
-                parent=grp)
+    mo = T.text_mesh(ch, fpath, size, depth, bevel, m, name + '_L', offset=-bevel, dx=-cx, dy=-cy,
+                     parent=grp)
+    # an inward offset can throw a spike out of a very sharp inner notch (Fredoka's n / m / h): when
+    # the mesh pokes out of the glyph's own box, rebuild that letter with a gentler offset
+    xs = [v.co.x for v in mo.data.vertices]
+    ys = [v.co.y for v in mo.data.vertices]
+    hw, hh = (bb[2] - bb[0]) / 2, (bb[3] - bb[1]) / 2
+    tol = bevel * 0.6 + 0.004
+    if xs and (max(xs) > hw + tol or min(xs) < -hw - tol or max(ys) > hh + tol or min(ys) < -hh - tol):
+        me = mo.data
+        bpy.data.objects.remove(mo)
+        bpy.data.meshes.remove(me)
+        T.text_mesh(ch, fpath, size, depth, bevel * 0.75, m, name + '_L', offset=-bevel * 0.2, dx=-cx, dy=-cy,
+                    parent=grp)
+        print('ttl_logo: %s %r - offset spike, rebuilt with a gentler offset' % (name, ch), flush=True)
     if snow:
         mask = T.GlyphMask(loops, bb, ppe=300.0 / max(size, 0.3), gap=0.06 * size)
         smp = T.edge_samples(loops, step=max(0.006, snow_r * 0.33), skip_holes=True)

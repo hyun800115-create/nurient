@@ -42,6 +42,7 @@ const TW = SLOT - 2 * GUT;
 const LEVEL_ZOOM = [0.85, 0.42];
 const LEVEL_MARGIN = [200, 320, 480];   // world px around the view that should already be baked
 const POOL = 28;                         // slots (1 MiB each); about 24 cover a phone view at zoom 0.85
+const TRIM_AFTER = 15;                   // s a slot may keep a tile nobody needed before it is given back
 export function levelFor(z) { return z >= LEVEL_ZOOM[0] ? 0 : z >= LEVEL_ZOOM[1] ? 1 : 2; }
 /** device px per user px of a 2D context (shadow offsets / blur are in device px) */
 export function devScale(ctx) {
@@ -99,6 +100,8 @@ export class Ground {
     this.level = 0;
     this.baked = 0;
     this.evictions = 0;
+    this.trimmed = 0;
+    this.trimT = 0;
     this.checkT = 0;
     // (v4-A, plan §10.2) extra layers baked into the tiles (rails, v4 streets: fn(ctx, x0, y0, w, h)) and
     // tiles to re-bake in place (one per check) when such a layer changes
@@ -218,7 +221,7 @@ export class Ground {
   takeSlot(view, need) {
     for (const s of this.slots) if (s.id < 0) return s;
     if (this.slots.length < this.pool) {
-      const gs = this.gs, i = this.slots.length;
+      const gs = this.gs, i = this.slotN = (this.slotN || 0) + 1;
       const key = 'fv_gslot_' + i;
       if (gs.textures.exists(key)) gs.textures.remove(key);
       const ct = gs.textures.createCanvas(key, SLOT, SLOT);
@@ -244,6 +247,28 @@ export class Ground {
     best.img.setVisible(false);
     this.evictions++;
     return best;
+  }
+
+  /**
+   * slots whose tile was not needed for TRIM_AFTER s and that are out of view are given back (a destroyed canvas
+   * texture shrinks its canvas to 1×1: the memory is freed); the pool grows again when the view needs it
+   */
+  trim(view) {
+    const now = this.t, need = this._need;
+    for (let k = this.slots.length - 1; k >= 0; k--) {
+      const s = this.slots[k];
+      if (need && need.has(s.id)) continue;
+      if (now - s.used < TRIM_AFTER) continue;
+      if (s.id >= 0) {
+        const T = TW << s.lv, x = s.tx * T, y = s.ty * T;
+        if (x < view.right && x + T > view.x && y < view.bottom && y + T > view.y) continue;
+        this.byId.delete(s.id);
+        this.dirty.delete(s.id);
+      }
+      try { s.img.destroy(); if (this.gs.textures.exists(s.key)) this.gs.textures.remove(s.key); } catch (e) { /* teardown */ }
+      this.slots.splice(k, 1);
+      this.trimmed++;
+    }
   }
 
   /** bake tile (lv, tx, ty) into a slot (also a re-bake in place: the old picture shows until refresh) */
@@ -687,6 +712,8 @@ export class Ground {
       this.checkT = 0.12;
       const view = this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView;
       if (!this.ensure(view, 2) && this.dirty.size) this.rebakeOne(view);
+      this.trimT -= 0.12;
+      if (this.trimT <= 0) { this.trimT = 2; this.trim(view); }
     }
     // (the sprites follow the view; the pattern stays put in the world: offset by the sprite's own position)
     this.seaFit(false);

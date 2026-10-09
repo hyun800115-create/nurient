@@ -41,7 +41,7 @@ try {
   await realWaitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 180000);
   // (v3.5 review) a new village does not need the v3 buildings (nor the 2nd / 3rd workers' looks) yet:
   // they wait until the village gets there (less memory on the phone early on)
-  await realWaitFor(page, () => window.__FV.game.textures.exists('vil_npc_chef'), 90000).catch(() => {});
+  await realWaitFor(page, () => window.__FV.hasTex('vil_npc_chef'), 90000).catch(() => {});
   await realSleep(1500);
   const early = await ev(() => ({ b: window.__FV.game.textures.exists('bld_buildings'), w: window.__FV.game.textures.exists('wkr_fisherman_b') }));
   await installStepper(page);

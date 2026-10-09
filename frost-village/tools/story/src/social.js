@@ -31,6 +31,8 @@ const FAMILY_NEWS = { baby: 1, wedding: 1, engaged: 1, sweetheart: 1, move_in: 1
 const CONGRATS = { wedding: 1, engaged: 1, baby: 1, shop_open: 1, new_job: 1, first_job: 1, loan_paid: 1, rebuilt: 1, move_in: 1, bigcatch: 1, sweetheart: 1, retire: 1 };
 const COMFORT = { theft: 1, ruin: 1, fire: 1, move_plan: 1, farewell: 1, window: 1, confess_no: 1 };
 const RECALL = { outing: 1, snowman: 1, concert: 1, fire: 1, wedding: 1, slip: 1, prank: 1, meet: 1, gift: 1, help: 1, scuffle: 1, cat_rescue: 1, pet: 1, bigcatch: 1, housewarming: 1, reconcile: 1, arrest: 1 };
+// stories that carry a number (a bigger or smaller version is something the listener can say)
+const COUNTED = { theft: 1, burnt_food: 1, delivery: 1, move_in: 1, bigcatch: 1 };
 // follow-up questions after a rumour
 const FOLLOW = { theft: 'caught', fire: 'hurt', ruin: 'after', engaged: 'when', baby: 'name', move_in: 'who', move_out: 'why', move_plan: 'why',
   shop_open: 'what', scuffle: 'why', wanted: 'who', window: 'who', arrest: 'after', loan: 'why', sweetheart: 'since', farewell: 'after' };
@@ -118,6 +120,12 @@ export class Social {
         if (!(q.flags & F_NEWCOMER)) { strange += w; w = -w; }    // marked: may be scaled below
       }
       ws.push(w);
+    }
+    // nobody one knows here: once the town has settled in, people mostly keep to themselves (a newcomer still gets a hello)
+    if (known === 0 && !early && rng.chance(0.72)) {
+      let nc = false;
+      for (const q of free) if (q !== a && (q.flags & F_NEWCOMER)) { nc = true; break; }
+      if (!nc) return null;
     }
     // a crowd of strangers (a busy plaza at the weekend) does not drown out the people one knows
     const cap = known > 0 ? known * (early ? 0.5 : 0.14) : strange;
@@ -432,12 +440,12 @@ export class Social {
       else {
         // 'I heard it differently' — and the listener says how (a different place, a different item, a
         // bigger story, or who it was); the teller laughs it off
-        bt = this.beat(beats, l, s, 'react.differs.' + dk, 'rumor:' + f.k);
+        bt = this.beat(beats, l, s, 'react.differs.' + dk + '.' + f.k, 'rumor:' + f.k);
         this.setVersion(bt, dk === 'unknown' ? m : known);
         if (dk === 'place') { bt.q = m.d === D_PLACE ? m.alt : f.p; bt.qk = 1; }
         if (dk === 'item') { bt.q = m.d === D_ITEM ? m.alt : f.i; bt.qk = 2; }
         bt.em = 'emote_question'; bt.an = 'think';
-        bt = this.beat(beats, s, l, 'react.differs.re.' + dk, 'rumor:' + f.k); this.setVersion(bt, m); bt.em = 'emote_laugh'; bt.an = 'laugh';
+        bt = this.beat(beats, s, l, 'react.differs.re.' + dk + '.' + f.k, 'rumor:' + f.k); this.setVersion(bt, dk === 'item' ? known : m); bt.em = 'emote_laugh'; bt.an = 'laugh';
       }
     } else {
       const doubt = s.tr[7] < 35 && l.tr[7] > 65 && m.x > 0;
@@ -476,9 +484,14 @@ export class Social {
       if (ka && !ma) return 'unknown';      // the teller says who it was: 'oh, so it was X!'
       if (!ka && ma) return 'who';          // the listener knows who it was
     }
-    const big = (v) => v.x + (v.d === D_COUNT ? Math.max(1, v.alt - 1) : 0);
-    if (big(k) >= big(m) + 1) return 'bigger';
-    if (big(k) + 1 <= big(m)) return 'smaller';
+    // a bigger or smaller version only where the story has a number one can hear ('붕어빵 열두 개', '1미터 참치')
+    if (COUNTED[f.k]) {
+      const D = this.e.dialogue;
+      const cnt = (v) => (f.k === 'bigcatch' ? f.n * (1 + v.x * 0.5) * (v.d === D_COUNT ? v.alt : 1) : D.count({ f, x: v.x, d: v.d, alt: v.alt, n: 0 }));
+      const ck = cnt(k), cm = cnt(m);
+      if (ck > cm) return 'bigger';
+      if (ck < cm) return 'smaller';
+    }
     return null;
   }
 
@@ -634,9 +647,16 @@ export class Social {
     return true;
   }
 
-  /** the first open question of s not yet asked in this conversation */
+  /** the first open question of s not yet asked in this conversation (nor one just like it: no asking the
+   *  same thing back after 'I don't know either') */
   nextQ(s) {
-    for (let i = 0; i < s.qs.length; i++) if (this.askedNow.indexOf(s.qs[i]) < 0) return s.qs[i];
+    for (let i = 0; i < s.qs.length; i++) {
+      const q = s.qs[i];
+      if (this.askedNow.indexOf(q) >= 0) continue;
+      let same = false;
+      for (const a of this.askedNow) if (a.k === q.k && a.f === q.f && a.o === q.o) { same = true; break; }
+      if (!same) return q;
+    }
     return null;
   }
 

@@ -48,10 +48,10 @@ export class Train {
     for (const c of this.cars) {
       const def = Assets.charDef(c.key);
       c.def = def;
-      if (c.sh && c.sh.__sf && gs.textures.exists(c.sh.__sf.atlas)) {
-        const fr = c.sh.__sf.frames && c.sh.__sf.frames.NW;
-        if (fr && gs.textures.get(c.sh.__sf.atlas).has(fr)) { c.sh.setTexture(c.sh.__sf.atlas, fr); const a = c.sh.__sf.anchor || [0.5, 0.6]; c.sh.setOrigin(a[0], a[1]); c.sh.__ok = true; }
-      }
+      // (v4-B) the atlas may be packed into pages (tools/build/pack_pages.py: the NE frames + shadow_NW)
+      const fr = c.sh && c.sh.__sf && c.sh.__sf.frames && c.sh.__sf.frames.NW;
+      const tk = fr ? Assets.texOf(c.sh.__sf.atlas, fr) : null;
+      if (tk) { c.sh.setTexture(tk, fr); const a = c.sh.__sf.anchor || [0.5, 0.6]; c.sh.setOrigin(a[0], a[1]); c.sh.__ok = true; }
       // reversed move loop (pushed toward the town: the wheels turn the other way)
       const fwd = c.key + ':move:' + HEAD, rev = c.key + ':move_rev:' + HEAD;
       if (gs.anims.exists(fwd) && !gs.anims.exists(rev)) {

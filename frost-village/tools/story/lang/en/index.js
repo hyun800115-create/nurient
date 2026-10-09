@@ -4,8 +4,9 @@ import rumor from './rumor.js';
 import small from './small.js';
 import social from './social.js';
 import news from './news.js';
+import polish from './polish.js';
 
-const parts = [core, rumor, small, social, news];
+const parts = [core, rumor, small, social, news, polish];
 const EN = Object.create(null);
 for (const p of parts) for (const k in p) { if (EN[k]) EN[k] = EN[k].concat(p[k]); else EN[k] = p[k].slice(); }
 // 'why' questions about moving away: the same lines for a plan and for the move itself

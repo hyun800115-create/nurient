@@ -263,6 +263,9 @@ function checkV4B(B) {
   fixNum(T, 'lowMiB', 'v4.tex.lowMiB', 48, T.targetMiB, 200);
   fixNum(T, 'softGap', 'v4.tex.softGap', 0, 200, 24);
   fixNum(T, 'uploadsPerSec', 'v4.tex.uploadsPerSec', 1, 60, 10);
+  fixNum(T, 'socialPages', 'v4.tex.socialPages', 0, 40, 5);
+  fixNum(T, 'socialTtl', 'v4.tex.socialTtl', 1, 600, 30);
+  fixNum(T, 'townTtl', 'v4.tex.townTtl', 1, 600, 10);
 }
 
 function checkV4A(B) {

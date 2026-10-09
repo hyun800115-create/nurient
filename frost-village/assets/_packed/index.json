@@ -11,9 +11,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_kid_boy.core.png",
      "json": "_packed/vil_npc_kid_boy.core.json",
-     "bytes": 2539520,
+     "bytes": 2015232,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -24,9 +23,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_kid_boy.social.png",
      "json": "_packed/vil_npc_kid_boy.social.json",
-     "bytes": 3911680,
+     "bytes": 4669440,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -40,7 +40,7 @@
      ]
     }
    ],
-   "src": "bc2c62f89f426dbd"
+   "src": "158408c4c3244cab"
   },
   "vil_npc_kid_girl": {
    "frag": "villagers",
@@ -51,9 +51,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_kid_girl.core.png",
      "json": "_packed/vil_npc_kid_girl.core.json",
-     "bytes": 2490368,
+     "bytes": 1867776,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -64,9 +63,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_kid_girl.social.png",
      "json": "_packed/vil_npc_kid_girl.social.json",
-     "bytes": 3833856,
+     "bytes": 4382720,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -80,7 +80,7 @@
      ]
     }
    ],
-   "src": "8917e980c03b5343"
+   "src": "46d8738ff5f9669b"
   },
   "vil_npc_kid_prankster": {
    "frag": "villagers",
@@ -91,9 +91,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_kid_prankster.core.png",
      "json": "_packed/vil_npc_kid_prankster.core.json",
-     "bytes": 2396160,
+     "bytes": 1691648,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -104,9 +103,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_kid_prankster.social.png",
      "json": "_packed/vil_npc_kid_prankster.social.json",
-     "bytes": 3506176,
+     "bytes": 4161536,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -120,7 +120,7 @@
      ]
     }
    ],
-   "src": "34c9e01005f7eb44"
+   "src": "37a2f5d2e15660ec"
   },
   "vil_npc_teen_girl": {
    "frag": "villagers",
@@ -131,9 +131,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_teen_girl.core.png",
      "json": "_packed/vil_npc_teen_girl.core.json",
-     "bytes": 2465792,
+     "bytes": 1835008,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -144,9 +143,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_teen_girl.social.png",
      "json": "_packed/vil_npc_teen_girl.social.json",
-     "bytes": 3809280,
+     "bytes": 4526080,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -160,7 +160,7 @@
      ]
     }
    ],
-   "src": "329e9ac326611955"
+   "src": "d9aeb578d1b33082"
   },
   "vil_npc_young_man": {
    "frag": "villagers",
@@ -200,7 +200,7 @@
      ]
     }
    ],
-   "src": "ae7366f8bb91ad37"
+   "src": "98697b5ceb5faf78"
   },
   "vil_npc_aunt": {
    "frag": "villagers3",
@@ -240,7 +240,7 @@
      ]
     }
    ],
-   "src": "7aeebaa212975a8f"
+   "src": "aa4c2f58dd154f29"
   },
   "vil_npc_uncle": {
    "frag": "villagers",
@@ -251,9 +251,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_uncle.core.png",
      "json": "_packed/vil_npc_uncle.core.json",
-     "bytes": 2260992,
+     "bytes": 1318912,
      "anims": [
-      "carry_walk",
       "idle",
       "walk"
      ]
@@ -263,9 +262,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_uncle.social.png",
      "json": "_packed/vil_npc_uncle.social.json",
-     "bytes": 3956736,
+     "bytes": 4710400,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -278,7 +278,7 @@
      ]
     }
    ],
-   "src": "513ac2acd5759aa6"
+   "src": "12df8d675b7c8474"
   },
   "vil_npc_grandma": {
    "frag": "villagers",
@@ -289,9 +289,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_grandma.core.png",
      "json": "_packed/vil_npc_grandma.core.json",
-     "bytes": 2129920,
+     "bytes": 1331200,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -302,9 +301,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_grandma.social.png",
      "json": "_packed/vil_npc_grandma.social.json",
-     "bytes": 3067904,
+     "bytes": 3686400,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -316,7 +316,7 @@
      ]
     }
    ],
-   "src": "d230021be70813e0"
+   "src": "f1193fe2db2d0460"
   },
   "vil_npc_grandpa": {
    "frag": "villagers",
@@ -327,9 +327,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_grandpa.core.png",
      "json": "_packed/vil_npc_grandpa.core.json",
-     "bytes": 2080768,
+     "bytes": 1376256,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -340,9 +339,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_grandpa.social.png",
      "json": "_packed/vil_npc_grandpa.social.json",
-     "bytes": 3031040,
+     "bytes": 3612672,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -354,7 +354,7 @@
      ]
     }
    ],
-   "src": "b3f75422ef6b6f8c"
+   "src": "c7fb11214272feb7"
   },
   "vil_npc_merchant": {
    "frag": "villagers",
@@ -365,9 +365,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_merchant.core.png",
      "json": "_packed/vil_npc_merchant.core.json",
-     "bytes": 2555904,
+     "bytes": 1576960,
      "anims": [
-      "carry_walk",
       "idle",
       "walk"
      ]
@@ -377,9 +376,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_merchant.social.png",
      "json": "_packed/vil_npc_merchant.social.json",
-     "bytes": 4239360,
+     "bytes": 5189632,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -391,7 +391,7 @@
      ]
     }
    ],
-   "src": "96f28f69b959757b"
+   "src": "2c0ec75c58df6009"
   },
   "vil_npc_herbalist": {
    "frag": "villagers",
@@ -402,9 +402,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_herbalist.core.png",
      "json": "_packed/vil_npc_herbalist.core.json",
-     "bytes": 2211840,
+     "bytes": 1392640,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -415,9 +414,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_herbalist.social.png",
      "json": "_packed/vil_npc_herbalist.social.json",
-     "bytes": 3276800,
+     "bytes": 3928064,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -429,7 +429,7 @@
      ]
     }
    ],
-   "src": "941f9f2a701a72df"
+   "src": "804bf0b79d972702"
   },
   "vil_npc_bard": {
    "frag": "villagers",
@@ -440,9 +440,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_bard.core.png",
      "json": "_packed/vil_npc_bard.core.json",
-     "bytes": 2838528,
+     "bytes": 1818624,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -453,9 +452,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_bard.social.png",
      "json": "_packed/vil_npc_bard.social.json",
-     "bytes": 4227072,
+     "bytes": 5160960,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -468,7 +468,7 @@
      ]
     }
    ],
-   "src": "c60cc1efd5a4b39c"
+   "src": "cb7d589bd75c6bac"
   },
   "vil_npc_blacksmith": {
    "frag": "villagers3",
@@ -507,7 +507,7 @@
      ]
     }
    ],
-   "src": "0872d1b451bf5fab"
+   "src": "22474b77bf14f517"
   },
   "vil_npc_fashion": {
    "frag": "villagers",
@@ -518,9 +518,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_fashion.core.png",
      "json": "_packed/vil_npc_fashion.core.json",
-     "bytes": 2768896,
+     "bytes": 1495040,
      "anims": [
-      "carry_walk",
       "idle",
       "walk"
      ]
@@ -530,9 +529,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_fashion.social.png",
      "json": "_packed/vil_npc_fashion.social.json",
-     "bytes": 4546560,
+     "bytes": 5636096,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -545,7 +545,7 @@
      ]
     }
    ],
-   "src": "4ee0b98d3360b449"
+   "src": "0a9b013128c9a4c8"
   },
   "vil_npc_yellow": {
    "frag": "villagers",
@@ -582,7 +582,7 @@
      ]
     }
    ],
-   "src": "542c1a13c7549a58"
+   "src": "5b2b64b5405cd820"
   },
   "vil_npc_red": {
    "frag": "villagers",
@@ -619,7 +619,7 @@
      ]
     }
    ],
-   "src": "c60d37595464c222"
+   "src": "4d2ad9a5491676f4"
   },
   "vil_npc_blue": {
    "frag": "villagers",
@@ -656,7 +656,7 @@
      ]
     }
    ],
-   "src": "aa25da1a58038793"
+   "src": "5014317d4cd9c84d"
   },
   "vil_npc_clerk_a": {
    "frag": "villagers2",
@@ -667,9 +667,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_clerk_a.core.png",
      "json": "_packed/vil_npc_clerk_a.core.json",
-     "bytes": 2334720,
+     "bytes": 1671168,
      "anims": [
-      "carry_walk",
       "idle",
       "serve",
       "walk"
@@ -680,10 +679,11 @@
      "cls": "social",
      "png": "_packed/vil_npc_clerk_a.social.png",
      "json": "_packed/vil_npc_clerk_a.social.json",
-     "bytes": 3735552,
+     "bytes": 4497408,
      "anims": [
       "angry",
       "bow",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -695,7 +695,7 @@
      ]
     }
    ],
-   "src": "9e621ec83f10d7c3"
+   "src": "d5d8d54931d306a5"
   },
   "vil_npc_clerk_b": {
    "frag": "villagers2",
@@ -706,9 +706,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_clerk_b.core.png",
      "json": "_packed/vil_npc_clerk_b.core.json",
-     "bytes": 2260992,
+     "bytes": 1507328,
      "anims": [
-      "carry_walk",
       "idle",
       "serve",
       "walk"
@@ -719,10 +718,11 @@
      "cls": "social",
      "png": "_packed/vil_npc_clerk_b.social.png",
      "json": "_packed/vil_npc_clerk_b.social.json",
-     "bytes": 3440640,
+     "bytes": 4194304,
      "anims": [
       "angry",
       "bow",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -734,7 +734,7 @@
      ]
     }
    ],
-   "src": "d3857f48b687d407"
+   "src": "805126eea632df6d"
   },
   "vil_npc_porter_a": {
    "frag": "villagers2",
@@ -772,7 +772,7 @@
      ]
     }
    ],
-   "src": "6eacbcf7d4f371d2"
+   "src": "9cc40872f4f2c9c8"
   },
   "vil_npc_porter_b": {
    "frag": "villagers2",
@@ -810,7 +810,7 @@
      ]
     }
    ],
-   "src": "76e25851c50ab667"
+   "src": "475d73dfdcf40bf0"
   },
   "vil_npc_captain": {
    "frag": "villagers2",
@@ -821,9 +821,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_captain.core.png",
      "json": "_packed/vil_npc_captain.core.json",
-     "bytes": 2801664,
+     "bytes": 1794048,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -834,9 +833,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_captain.social.png",
      "json": "_packed/vil_npc_captain.social.json",
-     "bytes": 3997696,
+     "bytes": 4816896,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -848,7 +848,7 @@
      ]
     }
    ],
-   "src": "ff6ad8a7fbebad7e"
+   "src": "6262509b9c7560b6"
   },
   "vil_npc_chef": {
    "frag": "villagers3",
@@ -888,7 +888,7 @@
      ]
     }
    ],
-   "src": "3ee7429f88a37dcd"
+   "src": "b9b9ea629be7bac4"
   },
   "vil_npc_postman": {
    "frag": "villagers2",
@@ -899,9 +899,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_postman.core.png",
      "json": "_packed/vil_npc_postman.core.json",
-     "bytes": 2867200,
+     "bytes": 2260992,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -912,9 +911,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_postman.social.png",
      "json": "_packed/vil_npc_postman.social.json",
-     "bytes": 3354624,
+     "bytes": 4030464,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -926,7 +926,7 @@
      ]
     }
    ],
-   "src": "c12c98bf14e1adc7"
+   "src": "c594ec8dd79998f5"
   },
   "vil_npc_doctor": {
    "frag": "villagers2",
@@ -937,9 +937,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_doctor.core.png",
      "json": "_packed/vil_npc_doctor.core.json",
-     "bytes": 2211840,
+     "bytes": 1392640,
      "anims": [
-      "carry_walk",
       "idle",
       "sit",
       "walk"
@@ -950,9 +949,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_doctor.social.png",
      "json": "_packed/vil_npc_doctor.social.json",
-     "bytes": 3268608,
+     "bytes": 3928064,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -964,7 +964,7 @@
      ]
     }
    ],
-   "src": "5fca1ebb17a06459"
+   "src": "84ea0581c62ff9b9"
   },
   "vil_npc_painter": {
    "frag": "villagers2",
@@ -975,9 +975,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_painter.core.png",
      "json": "_packed/vil_npc_painter.core.json",
-     "bytes": 2064384,
+     "bytes": 1347584,
      "anims": [
-      "carry_walk",
       "idle",
       "walk"
      ]
@@ -987,9 +986,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_painter.social.png",
      "json": "_packed/vil_npc_painter.social.json",
-     "bytes": 4063232,
+     "bytes": 4841472,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -1002,7 +1002,7 @@
      ]
     }
    ],
-   "src": "60116b62d60b3d27"
+   "src": "0db23f796b215f1b"
   },
   "vil_npc_guard": {
    "frag": "villagers2",
@@ -1013,9 +1013,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_guard.core.png",
      "json": "_packed/vil_npc_guard.core.json",
-     "bytes": 2523136,
+     "bytes": 1490944,
      "anims": [
-      "carry_walk",
       "idle",
       "walk"
      ]
@@ -1025,9 +1024,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_guard.social.png",
      "json": "_packed/vil_npc_guard.social.json",
-     "bytes": 4218880,
+     "bytes": 5263360,
      "anims": [
       "angry",
+      "carry_walk",
       "happy",
       "hit",
       "laugh",
@@ -1040,7 +1040,7 @@
      ]
     }
    ],
-   "src": "855f7c2b0ae0bdb2"
+   "src": "907abdf158b1c21c"
   },
   "vil_npc_skater": {
    "frag": "villagers2",
@@ -1051,9 +1051,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_skater.core.png",
      "json": "_packed/vil_npc_skater.core.json",
-     "bytes": 3866624,
+     "bytes": 3080192,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "skate",
@@ -1065,9 +1064,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_skater.social.png",
      "json": "_packed/vil_npc_skater.social.json",
-     "bytes": 3948544,
+     "bytes": 4718592,
      "anims": [
       "angry",
+      "carry_walk",
       "dance",
       "happy",
       "hit",
@@ -1080,7 +1080,7 @@
      ]
     }
    ],
-   "src": "9594d3354d94499e"
+   "src": "1afc59dcf1c00835"
   },
   "vil_npc_toddler": {
    "frag": "villagers2",
@@ -1091,9 +1091,8 @@
      "cls": "core",
      "png": "_packed/vil_npc_toddler.core.png",
      "json": "_packed/vil_npc_toddler.core.json",
-     "bytes": 1933312,
+     "bytes": 1392640,
      "anims": [
-      "carry_walk",
       "idle",
       "run",
       "walk"
@@ -1104,9 +1103,10 @@
      "cls": "social",
      "png": "_packed/vil_npc_toddler.social.png",
      "json": "_packed/vil_npc_toddler.social.json",
-     "bytes": 2260992,
+     "bytes": 2818048,
      "anims": [
       "angry",
+      "carry_walk",
       "fall",
       "happy",
       "hit",
@@ -1119,7 +1119,7 @@
      ]
     }
    ],
-   "src": "d196c32587dfbf11"
+   "src": "3fa940208c1c4b17"
   },
   "vil_npc_sawyer": {
    "frag": "villagers3",
@@ -1157,7 +1157,7 @@
      ]
     }
    ],
-   "src": "fefbc0c0c1210f42"
+   "src": "7e8e0efe5945d8b1"
   },
   "vil_npc_smoker": {
    "frag": "villagers3",
@@ -1195,7 +1195,7 @@
      ]
     }
    ],
-   "src": "a77a8fd45239e459"
+   "src": "b77b76fed6d9a532"
   },
   "vil_npc_cannery": {
    "frag": "villagers3",
@@ -1233,7 +1233,7 @@
      ]
     }
    ],
-   "src": "e3dfca96bded8a52"
+   "src": "cdca81ec249d527b"
   },
   "tf_head_0": {
    "frag": "townfolk",
@@ -1256,7 +1256,7 @@
      "bytes": 8400896
     }
    ],
-   "src": "6cfdc945e5f9e21e"
+   "src": "d7521081f8027e3c"
   },
   "tf_head_1": {
    "frag": "townfolk",
@@ -1279,7 +1279,7 @@
      "bytes": 4374528
     }
    ],
-   "src": "e68998be01f897bd"
+   "src": "49f28c907f8c7378"
   },
   "tf_child_slim_0": {
    "frag": "townfolk",
@@ -1302,7 +1302,7 @@
      "bytes": 4620288
     }
    ],
-   "src": "75e266fd1b993aa6"
+   "src": "f7d40119d3d70909"
   },
   "tf_child_slim_1": {
    "frag": "townfolk",
@@ -1325,7 +1325,7 @@
      "bytes": 3768320
     }
    ],
-   "src": "5890e26eb0eea88b"
+   "src": "1f08aa0e3476372c"
   },
   "tf_adult_slim_0": {
    "frag": "townfolk",
@@ -1348,7 +1348,7 @@
      "bytes": 4530176
     }
    ],
-   "src": "dc2c7f51fd35ed1e"
+   "src": "dfae48cdb8a56655"
   },
   "tf_adult_slim_1": {
    "frag": "townfolk",
@@ -1371,7 +1371,7 @@
      "bytes": 4587520
     }
    ],
-   "src": "9313a86bc423bce0"
+   "src": "35aa5d8769a7002b"
   },
   "tf_adult_slim_2": {
    "frag": "townfolk",
@@ -1394,7 +1394,7 @@
      "bytes": 4415488
     }
    ],
-   "src": "6d7c80ca39bda305"
+   "src": "b227473b5a1e130c"
   },
   "tf_adult_slim_3": {
    "frag": "townfolk",
@@ -1417,7 +1417,7 @@
      "bytes": 3047424
     }
    ],
-   "src": "4f9a39a732a67bef"
+   "src": "2c4afa37f74066ed"
   },
   "tf_elder_slim_0": {
    "frag": "townfolk",
@@ -1440,7 +1440,7 @@
      "bytes": 4620288
     }
    ],
-   "src": "63d2b48b754318a1"
+   "src": "22a3d594479d3b1a"
   },
   "tf_elder_slim_1": {
    "frag": "townfolk",
@@ -1463,7 +1463,7 @@
      "bytes": 4448256
     }
    ],
-   "src": "57942114347d0308"
+   "src": "5a817289ef95dcf1"
   },
   "tf_elder_slim_2": {
    "frag": "townfolk",
@@ -1486,7 +1486,7 @@
      "bytes": 1081344
     }
    ],
-   "src": "437202ac314d179a"
+   "src": "7e0e33c68635e023"
   },
   "town_civic": {
    "frag": "town",
@@ -1523,7 +1523,7 @@
     }
    ],
    "dropped": 0,
-   "src": "0cfd46255524768f"
+   "src": "5a35f7b4bbf72b98"
   },
   "town_shops": {
    "frag": "town",
@@ -1563,7 +1563,7 @@
     }
    ],
    "dropped": 0,
-   "src": "5b1f027830542194"
+   "src": "b285ae772c6a3707"
   },
   "train_engine": {
    "frag": "town",
@@ -1578,7 +1578,7 @@
     }
    ],
    "dropped": 55,
-   "src": "5867f8fe3a0ba919"
+   "src": "5cc0619795092483"
   },
   "train_car_a": {
    "frag": "town",
@@ -1589,11 +1589,11 @@
      "cls": "ne",
      "png": "_packed/train_car_a.ne.png",
      "json": "_packed/train_car_a.ne.json",
-     "bytes": 1060864
+     "bytes": 1032192
     }
    ],
    "dropped": 43,
-   "src": "45f3c206189e7148"
+   "src": "2b6b9b48174e8dd3"
   },
   "train_car_b": {
    "frag": "town",
@@ -1608,7 +1608,7 @@
     }
    ],
    "dropped": 43,
-   "src": "a43784e1f160ffb5"
+   "src": "0f3f751f5ac9584f"
   }
  }
 }

@@ -72,23 +72,37 @@ LAND_FULL = ['idle', 'walk', 'carry_walk', 'talk', 'wave', 'happy', 'sad', 'clap
 BEACH = ['dig', 'ball_throw', 'ball_catch', 'splash_play', 'sunbathe']
 WATER = ['swim', 'float', 'surf']
 SWIMWEAR = LAND_CORE + BEACH + WATER
+# Job outfits only carry the anims their job uses (GPU budget: every anim of a layered outfit is ~0.1-0.2 Mpx of
+# atlas per base); the v4 / v5 generator never gives these parts to anyone else.
+JOB_CORE = ['idle', 'walk', 'talk', 'wave', 'happy']
+LAND_CASUAL = [a for a in LAND_FULL if a not in ('push', 'sad')]          # beach casual: no pushing / moping
+LIFEGUARD = JOB_CORE + ['sit', 'swim', 'splash_play', 'ball_throw', 'ball_catch']
 PART_ANIMS = {
-    'bare_skin': LAND_FULL + BEACH + WATER, 'bare_arms': LAND_FULL + BEACH + WATER,
-    'swimsuit_one': SWIMWEAR, 'swim_trunks': SWIMWEAR, 'rash_guard': SWIMWEAR, 'wetsuit': SWIMWEAR,
+    'bare_skin': [a for a in LAND_FULL if a != 'sad'] + BEACH + WATER,
+    'bare_arms': [a for a in LAND_FULL if a != 'sad'] + BEACH + WATER,
+    'no_top': [a for a in LAND_FULL if a != 'sad'] + BEACH + WATER,
+    'swimsuit_one': SWIMWEAR, 'swim_trunks': SWIMWEAR, 'rash_guard': SWIMWEAR,
+    'wetsuit': LAND_CORE + ['splash_play'] + WATER,                      # surfers: no sandcastles / ball games
     'flip_flops': LAND_CORE + ['dig', 'ball_throw', 'ball_catch', 'sunbathe'],
-    'towel_shoulder': LAND_CORE,
-    'swim_ring_worn': ['idle', 'walk', 'talk', 'wave', 'happy', 'splash_play', 'float'],
+    'towel_shoulder': list(JOB_CORE),
+    'swim_ring_worn': ['idle', 'walk', 'wave', 'splash_play', 'float'],
     'arm_floaties': LAND_CORE + BEACH + ['swim', 'float'],
-    'aloha_shirt': LAND_FULL + BEACH, 'beach_shorts': LAND_FULL + BEACH,
+    'aloha_shirt': LAND_CASUAL + BEACH,
+    'beach_shorts': [a for a in LAND_FULL if a != 'sad'] + BEACH,       # + push: ice-cream vendors in shorts
     'tourist_camera': LAND_CORE + ['clap'],
-    'lifeguard_top': LAND_FULL + ['swim', 'splash_play', 'ball_throw', 'ball_catch'],
-    'whistle': LAND_FULL + ['swim', 'splash_play', 'ball_throw', 'ball_catch'],
+    'lifeguard_top': list(LIFEGUARD), 'whistle': list(LIFEGUARD),
     'rescue_tube': LAND_CORE,
-    'bellhop_jacket': LAND_FULL, 'hotel_vest': LAND_FULL, 'doorman_coat': LAND_FULL,
-    'housekeeper_dress': LAND_FULL, 'vendor_shirt': LAND_FULL, 'bar_apron': LAND_FULL,
+    'bellhop_jacket': JOB_CORE + ['carry_walk', 'push'],                 # suitcases, luggage trolley
+    'hotel_vest': JOB_CORE + ['clap'],                                   # front desk; claps at ceremonies
+    'doorman_coat': JOB_CORE + ['clap'],
+    'housekeeper_dress': JOB_CORE + ['carry_walk', 'push'],              # towel stacks, linen cart
+    'vendor_shirt': JOB_CORE + ['push'],                                 # ice-cream cart
+    'bar_apron': JOB_CORE + ['carry_walk'],                              # drinks tray
     'surfboard': ['surf'], 'toy_spade': ['dig'],
-    'no_top': LAND_FULL + BEACH + WATER,
 }
+# Accessories that are simply put down / taken off in the anims they have no frames for (nothing drawn there):
+# canPlay() ignores them, so a swimmer with a towel on the shoulder can still swim, dig or sunbathe.
+DROP_PARTS = ['towel_shoulder', 'swim_ring_worn', 'flip_flops', 'tourist_camera', 'rescue_tube', 'arm_floaties']
 # parts drawn automatically in an anim even when the person does not wear them (anim props)
 ANIM_PARTS = {'float': ['swim_ring_worn'], 'surf': ['surfboard'], 'dig': ['toy_spade']}
 
@@ -151,7 +165,7 @@ PRESETS3 = {
                      'colors': dict(_BEACH_COLORS, top='rash', top2='rash2', swim='swim_kid')},
     'lifeguard': {'label': {'ko': '인명구조요원', 'en': 'lifeguard'},
                   'bases': {'adult_slim': 5, 'adult_round': 2},
-                  'tops': ['lifeguard_top'], 'bottoms': {'swim_trunks': 3, 'beach_shorts': 1},
+                  'tops': ['lifeguard_top'], 'bottoms': ['swim_trunks'],
                   'shoes': ['flip_flops'], 'shoesChance': 0.5,
                   'hats': {'sun_visor': 3, 'hat_cap': 2}, 'hatChance': 0.7,
                   'glasses': {'sunglasses': 1}, 'glassesChance': 0.5, 'headAcc': None,
@@ -159,8 +173,7 @@ PRESETS3 = {
                   'extra': list(_SKIN), 'gloveChance': 0.0, 'facialHairChance': 0.2,
                   'hair': {'hair_short': 3, 'hair_sidepart': 2, 'hair_ponytail': 3, 'hair_bun': 2, 'hair_buzz': 1,
                            'hair_curly': 1, 'hair_spiky': 1},
-                  'anims': ['idle', 'walk', 'talk', 'wave', 'happy', 'sit', 'sad', 'clap', 'carry_walk', 'push', 'swim',
-                            'splash_play', 'ball_throw', 'ball_catch'],
+                  'anims': list(LIFEGUARD),
                   'colors': {'top': ['#D8302A'], 'swim': ['#F2C230', '#D8302A'], 'swim2': ['#D8302A', '#F7F5F0'],
                              'bottom': ['#D8302A', '#F2C230'], 'hat': ['#D8302A', '#F2C230'], 'hat2': ['#D8302A'],
                              'shoes': ['#D8302A', '#2B2F3A', '#F2C230'], 'glasses': ['#2B2F3A', '#F2C230'],
@@ -170,7 +183,7 @@ PRESETS3 = {
                 'tops': ['bellhop_jacket'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_shoes'],
                 'hats': ['bellhop_cap'], 'hatChance': 1.0, 'neck': None, 'bag': None, 'headAcc': None,
                 'glassesChance': 0.05, 'facialHairChance': 0.05, 'gloveChance': 0.0, 'hair': _HAIR_TIDY,
-                'anims': list(LAND_FULL),
+                'anims': JOB_CORE + ['carry_walk', 'push'],
                 'colors': {'top': ['#8A2432', '#8A2432', '#2B3A5E', '#1F4A3A'], 'hat': ['=top'], 'bottom': ['#2B2F3A'],
                            'shoes': ['#1E1E26'], 'hands': ['skin']}},
     'receptionist': {'label': {'ko': '호텔 안내원', 'en': 'hotel receptionist'},
@@ -178,7 +191,7 @@ PRESETS3 = {
                      'tops': ['hotel_vest'], 'bottoms': {'bot_pants': 2, 'bot_skirt': 2}, 'shoes': ['shoe_shoes'],
                      'hats': None, 'neck': None, 'bag': None, 'headAcc': None, 'glasses': {'acc_glasses_sq': 1},
                      'glassesChance': 0.2, 'facialHairChance': 0.05, 'gloveChance': 0.0, 'hair': _HAIR_TIDY,
-                     'anims': list(LAND_FULL),
+                     'anims': JOB_CORE + ['clap'],
                      'colors': {'top': 'hotel', 'top2': ['#F7F5F0'], 'acc2': ['#C9A045', '#D8302A', '#3FB8C8'],
                                 'bottom': ['#2B2F3A', '#3B3F52'], 'bottom2': ['#2E3440'], 'shoes': ['#1E1E26'],
                                 'hands': ['skin']}},
@@ -188,7 +201,7 @@ PRESETS3 = {
                 'hats': ['doorman_hat'], 'hatChance': 1.0, 'neck': None, 'bag': None, 'headAcc': None,
                 'glassesChance': 0.05, 'facialHairChance': 0.45, 'gloveChance': 0.0,
                 'hair': {'hair_short': 3, 'hair_sidepart': 3, 'hair_bald': 1, 'hair_buzz': 1, 'hair_lowbun': 1},
-                'anims': list(LAND_FULL),
+                'anims': JOB_CORE + ['clap'],
                 'colors': {'top': ['#8A2432', '#2B3A5E', '#1F4A3A'], 'hat': ['=top'], 'bottom': ['#2B2F3A'],
                            'shoes': ['#1E1E26'], 'hands': ['skin']}},
     'housekeeper': {'label': {'ko': '객실 청소원', 'en': 'housekeeper'},
@@ -197,7 +210,7 @@ PRESETS3 = {
                     'neck': None, 'bag': None, 'headAcc': None, 'glassesChance': 0.1, 'facialHairChance': 0.0,
                     'gloveChance': 0.0, 'hair': {'hair_bun': 3, 'hair_lowbun': 3, 'hair_bob': 2, 'hair_short': 2,
                                                  'hair_ponytail': 1},
-                    'anims': list(LAND_FULL),
+                    'anims': JOB_CORE + ['carry_walk', 'push'],
                     'colors': {'top': ['#BFE3EA', '#D8EAC8', '#F7C8D8', '#3F5675'], 'hat': ['#F7F5F0', '#BFE3EA'],
                                'hat2': ['#3F5675', '#F59AB8'], 'bottom2': ['#F4F1EA', '#2E3440'],
                                'shoes': ['#1E1E26', '#F4F1EA'], 'hands': ['skin']}},
@@ -207,7 +220,7 @@ PRESETS3 = {
                         'shoes': ['shoe_shoes'], 'hats': ['paper_cap'], 'hatChance': 0.9, 'neck': None, 'bag': None,
                         'headAcc': None, 'glassesChance': 0.15, 'facialHairChance': 0.45, 'gloveChance': 0.0,
                         'extra': ['bare_arms', 'bare_skin'],
-                        'anims': list(LAND_FULL),
+                        'anims': JOB_CORE + ['push'],
                         'colors': {'top': ['#F7F5F0'], 'top2': ['#F59AB8', '#3FB8C8', '#E8524A'], 'hat': ['#F7F5F0'],
                                    'hat2': ['=top2'], 'acc': ['#F7F5F0', '#F7C8D8', '#BFE3EA'],
                                    'acc2': ['#E8524A', '#2B3A5E', '=top2'], 'bottom': ['#F4E8C8', '#3F5675', '#E8DCC0'],
@@ -218,12 +231,12 @@ PRESETS3 = {
                         'hats': {'straw_hat': 1, 'hat_cap': 1}, 'hatChance': 0.35, 'neck': None, 'bag': None,
                         'headAcc': None, 'glasses': {'sunglasses': 1}, 'glassesChance': 0.2, 'gloveChance': 0.0,
                         'extra': ['bare_skin', 'bare_arms', 'bar_apron'],
-                        'anims': list(LAND_FULL),
+                        'anims': JOB_CORE + ['carry_walk'],
                         'colors': {'top': 'aloha', 'top2': 'aloha_print', 'bottom': 'shorts',
                                    'acc': ['#2B2F3A', '#F7F5F0', '#3F5675', '#7A5C40'], 'shoes': 'flipflop',
                                    'hat2': 'hatband', 'glasses': 'sunglasses', 'hands': ['skin']}},
     'surfer': {'label': {'ko': '서퍼', 'en': 'surfer'},
-               'bases': {'adult_slim': 6, 'adult_round': 2, 'child_slim': 1, 'elder_slim': 1},
+               'bases': {'adult_slim': 6, 'adult_round': 2, 'child_slim': 1},
                'tops': ['wetsuit'], 'shoes': None, 'hats': None, 'neck': None, 'bag': None, 'headAcc': None,
                'glasses': {'sunglasses': 1}, 'glassesChance': 0.15, 'gloveChance': 0.0, 'facialHairChance': 0.3,
                'extra': ['bare_skin'],
@@ -235,12 +248,12 @@ PRESETS3 = {
                           'hands': ['skin']}},
     'beach_tourist': {'label': {'ko': '해변 관광객', 'en': 'beach tourist'},
                       'bases': {'adult_slim': 5, 'adult_round': 5, 'elder_slim': 3, 'elder_round': 3},
-                      'tops': ['aloha_shirt'], 'bottoms': ['beach_shorts'], 'shoes': {'flip_flops': 3, 'shoe_shoes': 1},
+                      'tops': ['aloha_shirt'], 'bottoms': ['beach_shorts'], 'shoes': ['flip_flops'],
                       'hats': {'sun_hat_wide': 3, 'straw_hat': 3, 'hat_bucket': 2, 'hat_cap': 1}, 'hatChance': 0.75,
                       'glasses': {'sunglasses': 3, 'acc_glasses': 1}, 'glassesChance': 0.55,
                       'neck': {'tourist_camera': 1}, 'neckChance': 0.7, 'bag': None, 'headAcc': None,
                       'extra': list(_SKIN), 'gloveChance': 0.0, 'facialHairChance': 0.35,
-                      'anims': ['idle', 'walk', 'talk', 'wave', 'happy', 'sit', 'clap', 'carry_walk', 'push', 'sad',
+                      'anims': ['idle', 'walk', 'talk', 'wave', 'happy', 'sit', 'clap', 'carry_walk',
                                 'dig', 'ball_throw', 'ball_catch', 'splash_play', 'sunbathe'],
                       'colors': {'top': 'aloha', 'top2': 'aloha_print', 'bottom': 'shorts', 'shoes': 'flipflop',
                                  'hat': 'sunhat', 'hat2': 'hatband', 'glasses': 'sunglasses', 'hands': ['skin']}},

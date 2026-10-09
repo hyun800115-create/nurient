@@ -323,7 +323,7 @@ export class Growth {
     const gs = this.gs;
     if (this._art) return;
     this._art = true;
-    Assets.loadFragment(gs, 'town', { only: ['town_shops'] });
+    Assets.loadFragment(gs, 'town', { only: ['town_shops@b'] });     // (the founded shops' page)
     Assets.loadFragment(gs, 'life2', { only: ['life2_wedding'] });
   }
 

@@ -73,7 +73,7 @@ let fatal = null;
 try {
   // ================================================================ the fish line, from the first minute
   await boot(true);
-  await realWaitFor(page, () => ['vil_npc_chef'].every((k) => window.__FV.game.textures.exists(k)), 90000).catch(() => {});
+  await realWaitFor(page, () => ['vil_npc_chef'].every((k) => window.__FV.hasTex(k)), 90000).catch(() => {});
   // 01: the chief cooks at the grill himself (no cook yet)
   await walk(await where('net'), 18);
   await wait(() => window.__FV.state().player.stack.length >= 6, 30);
@@ -130,9 +130,9 @@ try {
   // ================================================================ the whole village (v1 + v3 lands)
   await ev(() => { window.__FV.give(100000); window.__FV.unlockAll(); window.__FV.unlockV3(); });
   await adv(2);
-  await realWaitFor(page, () => ['vil_npc_sawyer', 'vil_npc_smoker', 'vil_npc_cannery', 'vil_npc_aunt', 'vil_npc_blacksmith', 'wkr_miner_b'].every((k) => window.__FV.game.textures.exists(k)), 90000).catch(() => {});
+  await realWaitFor(page, () => ['vil_npc_sawyer', 'vil_npc_smoker', 'vil_npc_cannery', 'vil_npc_aunt', 'vil_npc_blacksmith', 'wkr_miner_b'].every((k) => window.__FV.hasTex(k)), 90000).catch(() => {});
   for (const id of ['hire2_fisherman', 'hire3_fisherman', 'hire2_lumberjack', 'hire3_lumberjack', 'hire2_farmer', 'hire3_farmer', 'hire2_miner', 'hire2_hunter', 'hire3_hunter']) await ev((k) => window.__FV.doneStep(k), id);
-  await realWaitFor(page, () => ['wkr_fisherman_b', 'wkr_fisherman_c', 'wkr_lumberjack_b', 'wkr_lumberjack_c', 'wkr_farmer_b', 'wkr_farmer_c', 'wkr_miner_c', 'wkr_hunter_b', 'wkr_hunter_c'].every((k) => window.__FV.game.textures.exists(k)), 90000).catch(() => {});
+  await realWaitFor(page, () => ['wkr_fisherman_b', 'wkr_fisherman_c', 'wkr_lumberjack_b', 'wkr_lumberjack_c', 'wkr_farmer_b', 'wkr_farmer_c', 'wkr_miner_c', 'wkr_hunter_b', 'wkr_hunter_c'].every((k) => window.__FV.hasTex(k)), 90000).catch(() => {});
   await ev(() => window.__FV.teleport(1000, 1500));
   await adv(4);
   // 05: every operator at work (stations stocked, outputs emptied)

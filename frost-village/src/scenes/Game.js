@@ -43,6 +43,7 @@ import { FoodBox } from '../entities/FoodBox.js';
 import { Tower } from '../entities/Tower.js';
 import { Boathouse } from '../entities/Boathouse.js';
 import { BUILD_UNLOCK, UNIQUE_BUILDINGS } from '../systems/Progression.js';
+import { Residency } from '../core/Residency.js';
 import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
 // ---- (v4-A) the neighbour town, the snow train, day and night
 import { Neighbours } from '../systems/Neighbours.js';
@@ -137,6 +138,8 @@ export class Game extends Phaser.Scene {
     this.rawPorters = [];         // (v3.5) pile -> station porters
 
     this.ground = new Ground(this);
+    Residency.attach(this);
+    this.applyGfx();
     this.territory = new Territory(this, sv.territory);
     this.buildZones();
     // roads inside zones: their own picture, shown when the zone opens
@@ -1154,6 +1157,26 @@ export class Game extends Phaser.Scene {
     this.time.delayedCall(500, () => { this.effects.sheet('fx_poof', cx, cy, { size: 360 }); this.effects.shake(220, 0.006); });
   }
 
+  /**
+   * (v4-B, docs/v4_plan.md §11.3e) graphics tier: '가볍게' (low) or, on 자동, a phone with little memory / a small
+   * GPU / the weak-GPU fallback: ground tiles at half resolution, fewer social pages and paper-doll rigs, a
+   * 200 MiB texture budget.
+   */
+  applyGfx() {
+    const g = (Settings.data && Settings.data.gfx) || 'auto';
+    let low = g === 'low';
+    if (g === 'auto') {
+      let maxTex = 4096;
+      try { const gl = this.game.renderer && this.game.renderer.gl; if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { /* canvas renderer */ }
+      const dm = typeof navigator !== 'undefined' ? navigator.deviceMemory : 0;
+      low = (!!dm && dm <= 3) || maxTex < 4096 || View.forceK === 1;
+    }
+    this.gfxLow = low;
+    if (this.ground && this.ground.setLow) this.ground.setLow(low);
+    if (this.dollPool) this.dollPool.low = low;
+    return low;
+  }
+
   focusCamera(x, y, ms) { this.camFocus = { x, y, until: this.time.now + ms }; }
 
   /** the part of the world the camera shows (or is about to: it follows camTarget) */
@@ -1404,6 +1427,7 @@ export class Game extends Phaser.Scene {
     const inp = Input.update(time);
     const p = this.player;
     this.ground.update(dt);
+    Residency.tick(dt);
     p.update(dt, inp);
 
     // player pad interactions
@@ -1810,6 +1834,10 @@ export class Game extends Phaser.Scene {
         gs.save(true);
         return Object.keys(pr.done);
       },
+      /** (v4-B) texture residency: MiB by class, budget, loads / evictions (docs/v4_plan.md §11.5) */
+      texStats() { return Residency.stats(); },
+      /** (v4-B) is atlas / image `k` loaded (any of its packed pages)? */
+      hasTex(k) { return !!Assets.texOf(k); },
       teleport(x, y) { gs.player.x = x; gs.player.y = y; gs.camTarget.x = x; gs.camTarget.y = y - 30; gs.player.sync(0); },
       setInput(vx, vy) { Input.override = (vx || vy) ? { x: vx, y: vy } : null; },
       where(name) {

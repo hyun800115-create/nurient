@@ -268,18 +268,33 @@ export const TF = {
 
   get ok() { return !!this.T; },
 
-  /** atlas keys a given age group needs (heads + its body sheets) */
-  sheetsFor(age) {
+  /** atlas keys a given age group needs (heads + its body sheets). (v4-B) packed: the @loco pages that load
+   *  with them (the @soc pages come on demand, Residency); raw = the atlas keys themselves */
+  sheetsFor(age, raw) {
     const re = AGE_SHEETS[age];
-    return this.sheets.filter((k) => /^tf_head/.test(k) || (re && re.test(k)));
+    const keys = this.sheets.filter((k) => /^tf_head/.test(k) || (re && re.test(k)));
+    if (raw || !this.assets) return keys;
+    const out = [];
+    for (const k of keys) for (const p of this.assets.basePages(k)) out.push(p);
+    return out;
   },
 
   /** are the sheets of an age group (and the heads) installed? */
   readyFor(Assets, age) { return this.ok && this.sheetsFor(age).every((k) => Assets.tfReady.has(k)); },
 
+  /** (v4-B) the page of a packed sheet a frame lives in: idle / walk bodies and `loco` heads are resident */
+  pageOf(atlas, name) {
+    const P = this.assets && this.assets.pages[atlas];
+    if (!P) return atlas;
+    const i = name.indexOf('/');
+    const rest = i >= 0 ? name.slice(i + 1) : name;
+    return (rest.startsWith('idle_') || rest.startsWith('walk_') || rest.startsWith('loco_')) ? P[0] : (P[1] || P[0]);
+  },
+
   /** the Phaser frame for (atlas, frame name), or null = draw nothing (cached) */
-  frame(atlas, name) {
-    if (!atlas) return null;
+  frame(atlas0, name) {
+    if (!atlas0) return null;
+    const atlas = this.pageOf(atlas0, name);
     const key = atlas + '|' + name;
     let f = this._frames.get(key);
     if (f !== undefined) return f;

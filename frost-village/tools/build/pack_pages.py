@@ -40,8 +40,13 @@ PAD = 2
 
 # ---------------------------------------------------------------- rules
 # villagers: anims the systems play (jobs, stations, porters, seats) stay resident; the rest is social
-CORE_ANIMS = {'idle', 'walk', 'run', 'sit', 'carry_walk', 'carry_idle', 'work', 'operate', 'serve', 'give',
-              'chop', 'mine', 'harvest', 'pet', 'skate', 'run_ball'}
+CORE_ANIMS = {'idle', 'walk', 'run', 'sit', 'work', 'operate', 'serve', 'give', 'chop', 'mine', 'harvest', 'pet',
+              'skate', 'run_ball'}
+# carry anims stay resident only for the residents who carry for a living (the porters, the porters' stand-ins
+# in Worker.js PORTER_FALLBACK, the station operators); anyone else carrying plays walk (Assets ANIM_FALLBACK)
+CARRY_ANIMS = {'carry_walk', 'carry_idle'}
+CARRIERS = {'vil_npc_porter_a', 'vil_npc_porter_b', 'vil_npc_yellow', 'vil_npc_red', 'vil_npc_blue', 'vil_npc_young_man',
+            'vil_npc_chef', 'vil_npc_aunt', 'vil_npc_blacksmith', 'vil_npc_sawyer', 'vil_npc_smoker', 'vil_npc_cannery'}
 SPLIT_CHAR = re.compile(r'^vil_npc_')
 TF_LOCO_ANIMS = {'idle', 'walk'}
 TF_DROP_ANIMS = {'carry_walk'}
@@ -284,11 +289,12 @@ def main():
             if not (os.path.exists(png) and os.path.exists(js)):
                 continue
 
-            def classify(name):
+            def classify(name, key=key):
                 mm = ANIM_RE.match(name)
                 if not mm:
                     return 'core'
-                return 'core' if mm.group(1) in CORE_ANIMS else 'social'
+                an = mm.group(1)
+                return 'core' if an in CORE_ANIMS or (an in CARRY_ANIMS and key in CARRIERS) else 'social'
 
             def build(key=key, png=png, js=js, frag=frag, classify=classify):
                 pages, dropped, allf = split_hash(key, png, js, classify, ['core', 'social'])
@@ -354,7 +360,10 @@ def main():
                 continue
             if TRAIN.match(key):
                 def classify(name):
-                    mm = ANIM_RE.match(name) or DIR_RE.match(name)
+                    # the NE frames (drawn mirrored as NW) and the NW ground shadow (the light does not flip)
+                    if name.startswith('shadow_'):
+                        return 'ne' if name == 'shadow_NW' else None
+                    mm = ANIM_RE.match(name)
                     if not mm:
                         return 'ne'
                     return 'ne' if mm.group(2) == TRAIN_DIR else None

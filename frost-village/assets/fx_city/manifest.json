@@ -2794,6 +2794,855 @@
      -209
     ],
     "fragment": "props"
+   },
+   "hotel_pool": {
+    "fires": [
+     [
+      -57,
+      -115,
+      "fx_fire_bld_s",
+      1.08,
+      1.0
+     ],
+     [
+      57,
+      -96,
+      "fx_fire_bld_s",
+      1.08,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -48,
+     -206,
+     1.2
+    ],
+    "embers": [
+     -57,
+     -159
+    ],
+    "glow": [
+     0,
+     -111,
+     2.33
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -253
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "resort_hotel": {
+    "fires": [
+     [
+      -71,
+      -369,
+      "fx_fire_bld_m",
+      0.984,
+      1.0
+     ],
+     [
+      71,
+      -305,
+      "fx_fire_bld_m",
+      0.984,
+      1.01
+     ]
+    ],
+    "smoke": [
+     -63,
+     -476,
+     1.2
+    ],
+    "embers": [
+     -71,
+     -421
+    ],
+    "glow": [
+     0,
+     -365,
+     2.93
+    ],
+    "windows": [
+     [
+      -191,
+      -344,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -582
+    ],
+    "fragment": "beach_bld"
+   },
+   "resort_hotel_x": {
+    "fires": [
+     [
+      71,
+      -367,
+      "fx_fire_bld_m",
+      0.984,
+      1.0
+     ],
+     [
+      -71,
+      -305,
+      "fx_fire_bld_m",
+      0.984,
+      1.01
+     ]
+    ],
+    "smoke": [
+     79,
+     -474,
+     1.2
+    ],
+    "embers": [
+     71,
+     -419
+    ],
+    "glow": [
+     0,
+     -363,
+     2.93
+    ],
+    "windows": [
+     [
+      -169,
+      -184,
+      false,
+      1.0
+     ],
+     [
+      169,
+      -184,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -590
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "beach_arcade": {
+    "fires": [
+     [
+      0,
+      -143,
+      "fx_fire_bld_m",
+      1.083,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -261,
+     1.08
+    ],
+    "embers": [
+     0,
+     -200
+    ],
+    "glow": [
+     0,
+     -139,
+     1.61
+    ],
+    "windows": [
+     [
+      -91,
+      -98,
+      false,
+      0.8
+     ],
+     [
+      157,
+      -138,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -298
+    ],
+    "fragment": "beach_bld"
+   },
+   "beach_bar": {
+    "fires": [
+     [
+      0,
+      -113,
+      "fx_fire_bld_m",
+      1.026,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -225,
+     1.03
+    ],
+    "embers": [
+     0,
+     -167
+    ],
+    "glow": [
+     0,
+     -109,
+     1.53
+    ],
+    "windows": [
+     [
+      -78,
+      -177,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -293
+    ],
+    "fragment": "beach_bld"
+   },
+   "beach_bar_x": {
+    "fires": [
+     [
+      0,
+      -113,
+      "fx_fire_bld_m",
+      1.026,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -225,
+     1.03
+    ],
+    "embers": [
+     0,
+     -167
+    ],
+    "glow": [
+     0,
+     -109,
+     1.53
+    ],
+    "windows": [
+     [
+      -42,
+      -142,
+      false,
+      0.8
+     ],
+     [
+      151,
+      -109,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -293
+    ],
+    "fragment": "beach_bld"
+   },
+   "beach_cafe": {
+    "fires": [
+     [
+      0,
+      -117,
+      "fx_fire_bld_m",
+      1.14,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -241,
+     1.14
+    ],
+    "embers": [
+     0,
+     -177
+    ],
+    "glow": [
+     0,
+     -113,
+     1.7
+    ],
+    "windows": [
+     [
+      -98,
+      -86,
+      false,
+      1.0
+     ],
+     [
+      98,
+      -86,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -293
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "beach_cafe_x": {
+    "fires": [
+     [
+      0,
+      -110,
+      "fx_fire_bld_m",
+      1.14,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -234,
+     1.14
+    ],
+    "embers": [
+     0,
+     -170
+    ],
+    "glow": [
+     0,
+     -106,
+     1.7
+    ],
+    "windows": [
+     [
+      -98,
+      -88,
+      false,
+      1.0
+     ],
+     [
+      98,
+      -88,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -300
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "convenience_store": {
+    "fires": [
+     [
+      0,
+      -130,
+      "fx_fire_bld_m",
+      1.083,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -248,
+     1.08
+    ],
+    "embers": [
+     0,
+     -187
+    ],
+    "glow": [
+     0,
+     -126,
+     1.61
+    ],
+    "windows": [
+     [
+      -93,
+      -125,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -275
+    ],
+    "fragment": "beach_bld"
+   },
+   "convenience_store_x": {
+    "fires": [
+     [
+      0,
+      -130,
+      "fx_fire_bld_m",
+      1.083,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -248,
+     1.08
+    ],
+    "embers": [
+     0,
+     -187
+    ],
+    "glow": [
+     0,
+     -126,
+     1.61
+    ],
+    "windows": [
+     [
+      6,
+      -98,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -275
+    ],
+    "fragment": "beach_bld"
+   },
+   "icecream_shop": {
+    "fires": [
+     [
+      0,
+      -105,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -208,
+     0.94
+    ],
+    "embers": [
+     0,
+     -155
+    ],
+    "glow": [
+     0,
+     -101,
+     1.4
+    ],
+    "windows": [
+     [
+      89,
+      -55,
+      true,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -281
+    ],
+    "fragment": "beach_bld"
+   },
+   "icecream_shop_x": {
+    "fires": [
+     [
+      0,
+      -98,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -201,
+     0.94
+    ],
+    "embers": [
+     0,
+     -148
+    ],
+    "glow": [
+     0,
+     -94,
+     1.4
+    ],
+    "windows": [
+     [
+      -81,
+      -81,
+      false,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -277
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "pension": {
+    "fires": [
+     [
+      0,
+      -172,
+      "fx_fire_bld_m",
+      1.026,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -284,
+     1.03
+    ],
+    "embers": [
+     0,
+     -226
+    ],
+    "glow": [
+     0,
+     -168,
+     1.53
+    ],
+    "windows": [
+     [
+      104,
+      -192,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -338
+    ],
+    "fragment": "beach_bld"
+   },
+   "seafood_bbq": {
+    "fires": [
+     [
+      0,
+      -149,
+      "fx_fire_bld_m",
+      1.083,
+      1.0
+     ]
+    ],
+    "smoke": [
+     9,
+     -267,
+     1.08
+    ],
+    "embers": [
+     0,
+     -206
+    ],
+    "glow": [
+     0,
+     -145,
+     1.61
+    ],
+    "windows": [
+     [
+      32,
+      -210,
+      true,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -292
+    ],
+    "fragment": "beach_bld"
+   },
+   "souvenir_shop": {
+    "fires": [
+     [
+      0,
+      -129,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -232,
+     0.94
+    ],
+    "embers": [
+     0,
+     -179
+    ],
+    "glow": [
+     0,
+     -125,
+     1.4
+    ],
+    "windows": [
+     [
+      -4,
+      -79,
+      false,
+      0.86
+     ]
+    ],
+    "alarm": [
+     0,
+     -274
+    ],
+    "fragment": "beach_bld"
+   },
+   "surf_shop": {
+    "fires": [
+     [
+      0,
+      -127,
+      "fx_fire_bld_m",
+      0.998,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -236,
+     1.0
+    ],
+    "embers": [
+     0,
+     -180
+    ],
+    "glow": [
+     0,
+     -123,
+     1.49
+    ],
+    "windows": [
+     [
+      -45,
+      -85,
+      false,
+      1.15
+     ]
+    ],
+    "alarm": [
+     0,
+     -300
+    ],
+    "fragment": "beach_bld"
+   },
+   "swimwear_shop": {
+    "fires": [
+     [
+      0,
+      -132,
+      "fx_fire_bld_m",
+      0.941,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -235,
+     0.94
+    ],
+    "embers": [
+     0,
+     -182
+    ],
+    "glow": [
+     0,
+     -128,
+     1.4
+    ],
+    "windows": [
+     [
+      -77,
+      -108,
+      false,
+      1.11
+     ]
+    ],
+    "alarm": [
+     0,
+     -262
+    ],
+    "fragment": "beach_bld"
+   },
+   "lifeguard_station": {
+    "fires": [
+     [
+      0,
+      -163,
+      "fx_fire_bld_m",
+      1.026,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -275,
+     1.03
+    ],
+    "embers": [
+     0,
+     -217
+    ],
+    "glow": [
+     0,
+     -159,
+     1.53
+    ],
+    "windows": [
+     [
+      -88,
+      -96,
+      false,
+      1.0
+     ],
+     [
+      88,
+      -96,
+      true,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -324
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "mini_aquarium": {
+    "fires": [
+     [
+      0,
+      -145,
+      "fx_fire_bld_l",
+      0.923,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -269,
+     0.92
+    ],
+    "embers": [
+     0,
+     -205
+    ],
+    "glow": [
+     0,
+     -141,
+     1.78
+    ],
+    "windows": [
+     [
+      -81,
+      -92,
+      false,
+      0.8
+     ]
+    ],
+    "alarm": [
+     0,
+     -288
+    ],
+    "fragment": "beach_bld"
+   },
+   "restroom_shower": {
+    "fires": [
+     [
+      0,
+      -113,
+      "fx_fire_bld_m",
+      0.913,
+      1.0
+     ]
+    ],
+    "smoke": [
+     7,
+     -213,
+     0.91
+    ],
+    "embers": [
+     0,
+     -161
+    ],
+    "glow": [
+     0,
+     -109,
+     1.36
+    ],
+    "windows": [
+     [
+      -78,
+      -69,
+      false,
+      1.0
+     ]
+    ],
+    "alarm": [
+     0,
+     -244
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
+   },
+   "tourist_info": {
+    "fires": [
+     [
+      0,
+      -117,
+      "fx_fire_bld_s",
+      1.058,
+      1.0
+     ]
+    ],
+    "smoke": [
+     8,
+     -206,
+     1.06
+    ],
+    "embers": [
+     0,
+     -160
+    ],
+    "glow": [
+     0,
+     -113,
+     1.14
+    ],
+    "windows": [],
+    "alarm": [
+     0,
+     -273
+    ],
+    "windowsGuess": true,
+    "fragment": "beach_bld"
    }
   },
   "buildingsFormat": "buildings[spriteKey] = {fires: [[dx, dy, sheetKey, scale, depthOffset], ...] (back -> front), glow: [dx, dy, scale] (fx_fire_glow, depth = building + 0.9), smoke: [dx, dy, scale] (fx_smoke_column), embers: [dx, dy], windows: [[dx, dy, flipX, scale], ...] (fx_fire_window; windowsGuess = no lit panes found, heuristic points), alarm: [dx, dy] (fx_alarm_flash), fragment}. Offsets in px from the building anchor at scale 1 (multiply by the building scale). MEASURED from each building render by tools/fx/gen_fx_city_mount.py (roof line = median top edge, so towers / chimneys / floating shop signs do not lift the fire); preview: docs/previews/fxcity_firemount.png.",

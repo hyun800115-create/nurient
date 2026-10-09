@@ -217,7 +217,9 @@ export const TRAIN = { s: 3, cars: ['train_engine', 'train_car_a', 'train_car_b'
 
 /** ships on the sea */
 export const SHIPS = [
-  { id: 'ferry', char: 'ferry', s: 4, my: -17.2, stopMx: 11.5, fromMx: -34, toMx: 40, speed: 1.7, dir: 'SE' },
+  // the ferry docks below the lighthouse, in the open water under the city (drawn at 0.85: a full-size
+  // ferry would hide the harbour); the intro has it glide in from introRun metres out
+  { id: 'ferry', char: 'ferry', s: 4, my: -19.0, stopMx: 13.0, fromMx: -34, toMx: 40, speed: 1.7, dir: 'SE', scale: 0.85, introRun: 4.5 },
   { id: 'sail', char: 'sailboat', s: 4, my: -7.4, fromMx: 15.5, toMx: 31, speed: 0.75, dir: 'SE' },
   { id: 'rowboat', char: 'boat_rowboat', s: 2, anim: 'row', my: 17.6, fromMx: -6, toMx: 12, speed: 0.6, dir: 'SE' },
 ];
@@ -232,13 +234,16 @@ export const GULLS = [
 // ---------------------------------------------------------------- camera
 // focus point (metres) and how many metres of island width the screen should show (zoom follows the
 // phone's width). The intro eases between these; the idle title holds the one of its stage.
-/** the idle title's framing where it differs from the intro's CAMERA (the intro ends on IDLE_CAMERA[4]) */
+/** the idle title's framing where it differs from the intro's CAMERA: the camp and the village sit in the
+ *  middle of the screen with the sea above them, instead of floating over a field of empty snow */
 export const IDLE_CAMERA = {
+  1: { mx: 1.4, my: 12.0, span: 9.8 },
+  2: { mx: 1.8, my: 9.8, span: 13.2 },
 };
 
 export const CAMERA = {
   1: { mx: 2.2, my: 10.4, span: 11 },
   2: { mx: 2.5, my: 8.7, span: 14.5 },
   3: { mx: -0.6, my: 2.6, span: 19.5 },
-  4: { mx: 0.0, my: 0.0, span: 23.5 },
+  4: { mx: 0.0, my: 0.0, span: 24.5 },
 };

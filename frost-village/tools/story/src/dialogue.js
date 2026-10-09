@@ -34,13 +34,13 @@ const WEATHER_EN = { clear: 'clear skies', sunny: 'sunshine', cloudy: 'clouds', 
 // what each of the town's pets gets up to (PETS: 0 콩이 the dog, 1 나비 the cat, 2 뽀삐 the penguin); fact pet: n = pet, i = antic
 const PET_ANTICS = [
   [['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['눈밭에서 데굴데굴 뒹굴었', 'rolled around in the snow'],
-    ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 광장을 한 바퀴 돌았', 'pulled a sled round the plaza'],
+    ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 신나게 달렸', 'pulled a sled at full speed'],
     ['꼬리를 흔들며 손님들을 맞이했', 'greeted everyone, wagging its tail'], ['우체부 가방을 졸졸 따라다녔', 'followed the postman’s bag all morning']],
-  [['난롯가에서 하루 종일 낮잠을 잤', 'napped by the stove all day'], ['할아버지 모자 위에서 낮잠을 잤', 'napped on Grandpa’s hat'],
-    ['눈송이를 잡으려고 폴짝폴짝 뛰었', 'leapt about trying to catch snowflakes'], ['털실 뭉치를 데굴데굴 굴리고 다녔', 'rolled a ball of yarn all over town'],
-    ['생선 가게 앞에서 꼼짝도 안 했', 'would not budge from the fish shop'], ['창가에서 꾸벅꾸벅 졸았', 'dozed off on a windowsill']],
-  [['얼음판에서 배로 쭉 미끄럼을 탔', 'slid across the ice on its belly'], ['뒤뚱뒤뚱 광장을 한 바퀴 돌았', 'waddled all the way round the plaza'],
-    ['눈사람 옆에 서서 꼼짝 않고 있었', 'stood stock-still next to a snowman'], ['생선 가게에서 멸치를 얻어먹었', 'got an anchovy treat at the fish shop'],
+  [['하루 종일 따끈한 데서 낮잠을 잤', 'napped somewhere warm all day'], ['할아버지 모자 위에서 낮잠을 잤', 'napped on Grandpa’s hat'],
+    ['눈송이를 잡으려고 폴짝폴짝 뛰었', 'leapt about trying to catch snowflakes'], ['털실 뭉치를 데굴데굴 굴리고 다녔', 'rolled a ball of yarn all over the place'],
+    ['생선 냄새를 따라 졸졸 따라다녔', 'followed the smell of fish everywhere'], ['꾸벅꾸벅 졸다가 벤치에서 미끄러졌', 'dozed off and slid off a bench']],
+  [['배를 깔고 쭉 미끄럼을 탔', 'slid along on its belly'], ['뒤뚱뒤뚱 한 바퀴 산책을 했', 'went for a waddling stroll'],
+    ['눈사람 옆에 서서 꼼짝 않고 있었', 'stood stock-still next to a snowman'], ['멸치 간식을 얻어먹었', 'got an anchovy treat'],
     ['아이들이랑 줄을 서서 썰매를 탔', 'queued up with the children for the sled'], ['날개를 파닥파닥하며 인사했', 'flapped its flippers to say hello']],
 ];
 // what a job is about, for introductions ('저는 소방관이에요. 마을의 불을 꺼요.') — a verb phrase before the ending
@@ -59,7 +59,7 @@ const JOB_DO = {
   painter: ['공원에서 그림을 그려', 'paint pictures in the park'], shopkeeper: ['가게를 해', 'run a shop'],
 };
 // one-syllable surnames that are also everyday words: '이 할머니' reads as 'this grandma', '나 순경' as 'me, officer'
-const AMBIG_SUR = /^(이|나|오|도|우|하|고|구|소|한|반|방|주|차|마|모|노|조)$/;
+const AMBIG_SUR = /^(이|나|오|도|우|하|고|구|소|한|반|방|주|차|마|모|노|조|안)$/;
 // kinds of fact in which a child must not be named in the paper
 const CRIME = { theft: 1, arrest: 1, apology: 1, wanted: 1, tip: 1, queue_jump: 1, window: 1, scuffle: 1 };
 const HELP = [['무거운 짐을 들어 줬', 'carried the heavy bags'], ['집 앞 눈을 싹 치워 줬', 'shovelled the snow off the doorstep'], ['길을 친절하게 알려 줬', 'kindly showed the way'], ['미끄러졌을 때 일으켜 줬', 'helped them up after a slip'], ['잃어버린 장갑을 찾아 줬', 'found a lost mitten']];
@@ -464,7 +464,9 @@ export class Dialogue {
     if (t === CHIEF) return lang === 'en' ? 'the chief' : '촌장님';
     if (this.press) return this.pressName(t, lang);
     if (lang === 'en') return this.referEn(sp, t);
-    return this.referKo(sp, t).text;
+    const r = this.referKo(sp, t, this.cur && t === this.cur.ls);
+    // speaking politely, a title takes 님: '박 순경님이 잡았대요' ('박 순경이 잡았대' among friends)
+    return r.addNim && this.ctx.level >= 1 ? r.text + '님' : r.text;
   }
 
   /** 1 if sp knows the thief of theft fact `tid` was caught, 2 if sp knows they got away (a wanted poster), else 0 */
@@ -498,7 +500,8 @@ export class Dialogue {
     return full + (g <= G_KID ? ' 어린이' : g === G_TEEN ? ' 학생' : g === G_ELDER ? ' 어르신' : ' 씨');
   }
 
-  referKo(sp, t) {
+  /** how sp names t (second = t is the one being spoken to: an address form) */
+  referKo(sp, t, second = true) {
     const e = this.e;
     if (sp === t) return { text: this.ctx.level === 1 || this.ctx.level === 2 ? '저' : '나', casual: false };
     if (t.title && !t.given) return { text: t.title, casual: false, title: true };
@@ -533,16 +536,18 @@ export class Dialogue {
       // a grown-up of nearly the same age does not call them grandma: '김 선생님' (or '형님' / '언니' when close)
       if (gs === G_ADULT && at - as < 15) {
         if (close) return { text: t.given + ' ' + (sp.male === t.male ? (t.male ? '형님' : '언니') : sib()), title: true };
-        return { text: surTitle('선생님'), title: true };
+        return { text: second ? surTitle('선생님') : (t.sur || '') + t.given + ' 씨', title: true };
       }
       // the village way: '순이 할머니', '갑수 할아버지'
       return { text: t.given + (t.male ? ' 할아버지' : ' 할머니'), title: true };
     }
     if (gt === G_ADULT) {
       if (gs <= G_TEEN) {
+        const J = JOBS[t.job];
+        // teachers and doctors are '선생님' to children ('안 선생님', '의사 선생님')
+        if (J && J.title === '선생님') return { text: t.job === 'doctor' ? '의사 선생님' : surTitle('선생님'), title: true };
         // a young grown-up is 형/누나/오빠/언니 to children, not 아저씨/아줌마
         if (at < 30) return { text: t.given + ' ' + sib(), title: true };
-        const J = JOBS[t.job];
         if (J && J.kid && h < 5) return { text: J.kid + (t.male ? ' 아저씨' : ' 아줌마'), title: true };
         return { text: t.given + (t.male ? ' 삼촌' : ' 이모'), title: true };
       }
@@ -558,7 +563,8 @@ export class Dialogue {
       if (at - as >= 12) {
         if (t.flags & F_OWNER && t.work >= 0) { const p = e.world.places[t.work]; return { text: p.K.ko + ' 사장님', title: true, nim: true }; }
         if (J && J.title) return { text: surTitle(J.title), title: true, addNim: J.title !== '선생님' };
-        return { text: surTitle('선생님'), title: true };
+        // to their face '김 선생님'; talking about them, the full name ('김대현 씨') — two '김 선생님's would be confusing
+        return { text: second ? surTitle('선생님') : (t.sur || '') + t.given + ' 씨', title: true };
       }
       if (J && J.title && h < 6) return { text: surTitle(J.title), title: true, addNim: J.title !== '선생님' };
       return { text: t.given + ' 씨', title: true };
@@ -764,6 +770,8 @@ export class Dialogue {
       case 'S': {
         if (en) return this.nameEn(sp);
         if (sp.title && !sp.given) return sp.title;
+        // a grown-up introduces themselves to a child the way the child will call them: '나는 진아 이모야!'
+        if (this.ctx.level === 0 && ls && groupOf(e, ls) <= G_TEEN && groupOf(e, sp) >= G_ADULT) return this.selfTitle(sp, ls, lang);
         return this.ctx.level === 0 ? sp.given : (sp.sur || '') + sp.given;
       }
       case 'K': return en ? 'the chief' : '촌장님';

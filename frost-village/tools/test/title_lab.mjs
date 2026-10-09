@@ -330,31 +330,37 @@ if (want('sound')) {
 // ------------------------------------------------------------------ 6) leak: the game starts while title files are still on their way
 if (want('leak')) {
   const vp = { w: 390, h: 844, dpr: 2 };
-  // first visit: the intro streams stage 2-4, the logo parts, the city; hold most of it in the network
-  const hold = /\/fv\/(src\/title\/bake\/ttl_(3|4)_0|src\/title\/bake\/ttl_ground_s[34]|assets\/title\/ttl_(logo_parts|city_|stars|aurora|moon|logo_main_shine|shine_band))/;
-  const { ctx, page, errs, held } = await open(vp, { query: '?intro=1', hold, wait: 'title' });
-  await page.waitForFunction(() => window.__LAB.TitleAssets.ready(1), null, { timeout: 120000 });
-  await step(page, 1.2);
-  await waitReal(800);
-  await step(page, 0.3);
-  const heldUrls = held.map((r) => r.request().url().replace(/^.*\/fv\//, ''));
-  await page.evaluate(() => window.__TITLE.skipIntro());
-  await step(page, 0.4);
-  await page.evaluate(() => window.__TITLE.tap());
-  await step(page, 1.0);
-  const started = await page.evaluate(() => window.__LAB.started);
-  const before = await ttlTex(page);
-  for (const r of held) await r.continue().catch(() => {});
-  await waitReal(3000);
-  await step(page, 0.5);
-  await waitReal(1500);
-  await step(page, 0.5);
-  const after = await ttlTex(page);
-  check('leak: files still loading when the game starts never stay in memory', started && heldUrls.length >= 4 && before.count === 0 && after.count === 0,
-    { started, held: heldUrls.length, before: before.MB, after: { MB: after.MB, keys: after.keys } });
-  check('no page errors (leak)', errs.length === 0, errs.slice(0, 5));
-  report.errors.push(...errs);
-  await ctx.close();
+  // first visit on a slow network: the stage 3-4 bake, the logo parts, the night sky and the far city are
+  // still downloading (held here) when the player skips and starts. (a) downloads in flight are aborted;
+  // (b) files that finish anyway (already downloaded, being decoded) are removed the moment they land.
+  const hold = /\/fv\/(src\/title\/bake\/ttl_(3|4)_0|src\/title\/bake\/ttl_ground_s[34]|assets\/title\/ttl_(logo_parts|city_|stars|aurora|moon|logo_main_shine|shine_band|fx_pop))/;
+  for (const mode of ['abort', 'land']) {
+    const { ctx, page, errs, held } = await open(vp, { query: '?intro=1', hold, wait: 'title' });
+    await page.evaluate((all) => { window.__LAB.TitleAssets.request(window.__FV.scene.load, all); }, ALL_PACKS);
+    await page.waitForFunction(() => window.__LAB.TitleAssets.ready(2), null, { timeout: 120000 });
+    await waitReal(600);
+    await step(page, 1.2);
+    const heldUrls = held.map((r) => r.request().url().replace(/^.*\/fv\//, ''));
+    // 'land': pretend every held file was already downloaded (nothing left to abort) - they will land late
+    if (mode === 'land') await page.evaluate(() => window.__LAB.TitleAssets.files.clear());
+    await page.evaluate(() => window.__TITLE.skipIntro());
+    await step(page, 0.4);
+    await page.evaluate(() => window.__TITLE.tap());
+    await step(page, 1.0);
+    const started = await page.evaluate(() => window.__LAB.started);
+    const before = await ttlTex(page);
+    for (const r of held) await r.continue().catch(() => {});
+    await waitReal(3000);
+    await step(page, 0.5);
+    await waitReal(1500);
+    await step(page, 0.5);
+    const after = await ttlTex(page);
+    check(`leak (${mode}): title files still loading when the game starts never stay in memory`, started && heldUrls.length >= 6 && before.count === 0 && after.count === 0,
+      { started, held: heldUrls.length, before: before.MB, after: { MB: after.MB, keys: after.keys } });
+    check(`no page errors (leak ${mode})`, errs.length === 0, errs.slice(0, 5));
+    report.errors.push(...errs);
+    await ctx.close();
+  }
 }
 
 // ------------------------------------------------------------------ 7) low-memory phone: the intro ends at 읍, nothing of the city is fetched
@@ -385,16 +391,25 @@ if (want('late')) {
   const vp = { w: 390, h: 844, dpr: 2 };
   const hold = /\/fv\/src\/title\/bake\/(ttl_4_0|ttl_ground_s4)/;
   const { ctx, page, errs, held } = await open(vp, { query: '?intro=1', hold, wait: 'title' });
-  await page.waitForFunction(() => [1, 2, 3].every((g) => window.__LAB.TitleAssets.ready(g)) && window.__LAB.TitleAssets.packReady('art:sky'), null, { timeout: 120000 });
+  // everything but the city's bake comes in (the clock stands still meanwhile); then the intro starts over
+  await page.evaluate((all) => { window.__LAB.TitleAssets.request(window.__FV.scene.load, all); }, ALL_PACKS);
+  try {
+    await page.waitForFunction(() => [1, 2, 3].every((g) => window.__LAB.TitleAssets.ready(g)) && ['art:sky', 'art:night', 'art:city', 'art:parts'].every((n) => window.__LAB.TitleAssets.settled(n)), null, { timeout: 120000 });
+  } catch (e) {
+    console.log(JSON.stringify(await page.evaluate(() => { const A = window.__LAB.TitleAssets, L = window.__FV.scene.load; return { packs: Object.fromEntries(Object.entries(A.packs).map(([k, v]) => [k, [v.state, v.keys]])), open: A.open, waiting: A.waiting, list: L.list.size, inflight: L.inflight.size, state: L.state }; })));
+    throw e;
+  }
+  await page.evaluate(() => window.__TITLE.replayIntro());
   const trace = [];
-  const shown = () => page.evaluate(() => window.__TITLE.dio.recs.filter((r) => r.shown && r.o.s >= 1).length);
+  const shown = () => page.evaluate(() => window.__TITLE.dio.recs.filter((r) => r.shown && r.o.s >= 1 && r.o.s <= 3).length);
   let minShownAfter3 = 1e9, released = false;
   for (let i = 0; i < 75; i++) {
     await step(page, 0.2);
     const s = await state(page);
     const chief = await page.evaluate(() => { const w = window.__TITLE.dio.walkers[0]; return w ? +w.mx.toFixed(3) : null; });
     trace.push({ gt: +((i + 1) * 0.2).toFixed(1), t: s.t, hold: s.hold, stage: s.stage, chief });
-    if (s.stage >= 3 && s.t >= 6.5) minShownAfter3 = Math.min(minShownAfter3, await shown());
+    // (from the end of the 읍 pops until the city's pictures land)
+    if (s.stage >= 3 && s.t >= 7.3 && s.groups[4] !== 'ready') minShownAfter3 = Math.min(minShownAfter3, await shown());
     if (!released && (i + 1) * 0.2 >= 11.5) { released = true; for (const r of held) await r.continue().catch(() => {}); await waitReal(2500); }
   }
   const holdRows = trace.filter((r) => r.hold > 0);
@@ -403,7 +418,7 @@ if (want('late')) {
   report.late = { trace };
   check('late stage: the script waits <= 2.5 s while people keep walking', holdRows.length > 0 && maxHold <= 2.55 && chiefMoves, { maxHold, holdRows: holdRows.length, chiefMoves });
   const s3count = await page.evaluate(() => window.__TITLE.dio.recs.filter((r) => r.o.s >= 1 && r.o.s <= 3 && !(r.o.u && r.o.u <= 3)).length);
-  check('late stage: the town keeps its buildings while the city is on its way', minShownAfter3 >= s3count - 1, { minShownAfter3, stage3Objects: s3count });
+  check('late stage: the town keeps its buildings while the city is on its way', minShownAfter3 >= s3count && minShownAfter3 < 1e9, { minShownAfter3, stage3Objects: s3count });
   const s = await state(page);
   check('late stage: the city still arrives once its pictures land', s.stage === 4 && s.groups[4] === 'ready', s);
   check('no page errors (late)', errs.length === 0, errs.slice(0, 5));

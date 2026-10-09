@@ -10,6 +10,8 @@ Re-run (from anywhere; deterministic; ~2-4 min with 2 worker processes):
     python3 frost-village/tools/fx/gen_fx_city.py --only fx_fight_cloud,ui_icon_piggy   # scratch only
                                                                    #   -> <tmp>/fv_cache/fx_city/ (assets untouched)
     python3 frost-village/tools/fx/gen_fx_city.py --jobs 1         # worker processes (default 2)
+    python3 frost-village/tools/fx/gen_fx_city.py --mount-only     # building fragments changed: re-measure fires
+                                                                   #   -> manifest.fireMount.buildings + firemount preview
 Check:  python3 frost-village/tools/fx/check_fx_city.py
 Art modules: gen_fx_city_fx.py (FX sheets), gen_ui4.py (icons + panels), gen_fx_city_scene.py (street mock-up),
 gen_fx_city_preview.py (sheet / UI previews).  fxlib, gen_fx, gen_ui3, emote_art, ui2_art and pack_utils are
@@ -436,12 +438,31 @@ def build(only=None, gifs=True, scene=True, jobs=2):
         SC.main()
 
 
+def mount_only():
+    """Re-measure the buildings (new / changed building fragments) and refresh manifest.fireMount.buildings +
+    docs/previews/fxcity_firemount.png without re-rendering any sheet."""
+    import gen_fx_city_mount as MT
+    mp = os.path.join(OUT, 'manifest.json')
+    with open(mp, encoding='utf-8') as f:
+        man = json.load(f)
+    tab = MT.table()
+    man['fireMount']['buildings'] = tab
+    with open(mp, 'w', encoding='utf-8') as f:
+        json.dump(man, f, indent=1, ensure_ascii=False)
+    print('fireMount.buildings: %d buildings' % len(tab))
+    MT.preview(tab)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--mount-only', action='store_true', help='only re-measure buildings -> manifest.fireMount')
     ap.add_argument('--only', default='', help='comma separated keys -> scratch previews only')
     ap.add_argument('--no-gif', action='store_true')
     ap.add_argument('--no-scene', action='store_true')
     ap.add_argument('--jobs', type=int, default=int(os.environ.get('FV_JOBS', '2')))
     a = ap.parse_args()
+    if a.mount_only:
+        mount_only()
+        sys.exit(0)
     only = set(k for k in a.only.split(',') if k) or None
     build(only, gifs=not a.no_gif, scene=not a.no_scene, jobs=max(1, a.jobs))

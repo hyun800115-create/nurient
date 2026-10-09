@@ -75,6 +75,8 @@ export const TAGS = [
   'leave',   // a goodbye that already says 'I have to go' (no second 'I have to go' in the same line)
   'wish',    // a goodbye that wishes the listener well ('잘 가!', '감기 조심해!'): the reply may wish back ('{V}도 잘 가!')
   'goq',     // 'leaving already?' said to the one who is leaving
+  'errand',  // 'I'm going shopping — shall I get you anything?'
+  'clothes', // a compliment on something one wears ('목도리 예쁘다!' — '응! 어제 샀어.')
 ]; 
 if (TAGS.length > 128) throw new Error('story: too many conversation tags (' + TAGS.length + ' > 128)');
 export const TAG = Object.create(null);

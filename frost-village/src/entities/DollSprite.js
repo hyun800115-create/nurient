@@ -224,7 +224,7 @@ function dotTint(person) {
 // ------------------------------------------------------------------ pool
 export class DollPool {
   /** the pool of a scene (made on first use) */
-  static of(gs) { return gs.dollPool || (gs.dollPool = new DollPool(gs)); }
+  static of(gs) { if (!gs.dollPool) { gs.dollPool = new DollPool(gs); gs.dollPool.low = !!gs.gfxLow; } return gs.dollPool; }
 
   constructor(gs) {
     this.gs = gs;

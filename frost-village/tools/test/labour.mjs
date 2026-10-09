@@ -95,7 +95,7 @@ try {
   const paidLater = await ev(() => { const p = window.__FV.scene.progress.pads.hire_fisherman; return p ? p.paid : -1; });
   step('the next pad of the line pops up under the chief without draining his coins', !!padUnder && padUnder.under && padUnder.needsLeave && paidLater === 0, JSON.stringify(padUnder) + ' paid=' + paidLater);
   await walk({ x: 1000, y: 820 }, 20);
-  await realWaitFor(page, () => window.__FV.game.textures.exists('vil_npc_chef'), 60000).catch(() => {});
+  await realWaitFor(page, () => window.__FV.hasTex('vil_npc_chef'), 60000).catch(() => {});
   await wait(() => window.__FV.state().ops.grill.ready, 20);
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 12; i++) gs.stations.grill.inStack.push('item_fish_raw', null, gs.effects); window.__impacts = 0; const op = gs.stations.grill.op.operator; const f = op.impact.bind(op); op.impact = () => { window.__impacts++; f(); }; });
   await adv(1.5);
@@ -173,7 +173,7 @@ try {
   // ------------------------------------------------------------------ 5. every line, every operator, variants
   await ev(() => { window.__FV.give(100000); window.__FV.unlockV3(); });
   await adv(2);
-  await realWaitFor(page, () => ['vil_npc_sawyer', 'vil_npc_smoker', 'vil_npc_cannery', 'vil_npc_aunt', 'vil_npc_blacksmith', 'wkr_miner_b'].every((k) => window.__FV.game.textures.exists(k)), 90000).catch(() => {});
+  await realWaitFor(page, () => ['vil_npc_sawyer', 'vil_npc_smoker', 'vil_npc_cannery', 'vil_npc_aunt', 'vil_npc_blacksmith', 'wkr_miner_b'].every((k) => window.__FV.hasTex(k)), 90000).catch(() => {});
   await adv(3);
   s = await st();
   const want = { grill: 'npc_chef', sawmill: 'npc_sawyer', bakery: 'npc_aunt', smelter: 'npc_blacksmith', smokehouse: 'npc_smoker', toolsmith: 'miner_b', cannery: 'npc_cannery' };
@@ -195,7 +195,7 @@ try {
   await ev(() => window.__FV.camera());
   // 2nd / 3rd hires get the profession's other looks (workers manifest professions{})
   for (const id of ['hire2_fisherman', 'hire3_fisherman', 'hire2_lumberjack', 'hire3_lumberjack', 'hire2_farmer', 'hire3_farmer', 'hire2_miner', 'hire2_hunter', 'hire3_hunter']) await ev((k) => window.__FV.doneStep(k), id);
-  await realWaitFor(page, () => ['wkr_fisherman_b', 'wkr_fisherman_c', 'wkr_lumberjack_c', 'wkr_farmer_c', 'wkr_miner_c', 'wkr_hunter_c'].every((k) => window.__FV.game.textures.exists(k)), 90000).catch(() => {});
+  await realWaitFor(page, () => ['wkr_fisherman_b', 'wkr_fisherman_c', 'wkr_lumberjack_c', 'wkr_farmer_c', 'wkr_miner_c', 'wkr_hunter_c'].every((k) => window.__FV.hasTex(k)), 90000).catch(() => {});
   await adv(3);
   s = await st();
   const wk = s.workerKeys;

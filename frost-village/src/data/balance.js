@@ -396,6 +396,8 @@ export const BALANCE = {
     ceremony: { length: 12, skipAfter: 3 },
     // ── 텍스처 메모리 (MiB): mustMiB = 넘으면 안 되는 한도, targetMiB = 목표, lowMiB = 가벼운 그래픽 목표,
     //    softGap = 목표보다 이만큼 아래부터 안 쓰는 그림을 치워요, uploadsPerSec = 1초에 새로 올리는 그림 수
-    tex: { mustMiB: 455, targetMiB: 300, lowMiB: 200, softGap: 24, uploadsPerSec: 10 },
+    //    socialPages = 주민의 몸짓 그림(웃기, 손 흔들기...)을 한 번에 몇 명 것까지 들고 있을지,
+    //    socialTtl = 안 쓴 몸짓 그림을 몇 초 뒤에 치울지, townTtl = 멀리 있는 동네 그림을 몇 초 뒤에 치울지
+    tex: { mustMiB: 455, targetMiB: 300, lowMiB: 200, softGap: 24, uploadsPerSec: 10, socialPages: 5, socialTtl: 30, townTtl: 10 },
   },
 };

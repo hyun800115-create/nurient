@@ -117,8 +117,13 @@ export const TitleAssets = {
     if (added) this.kick(load);
   },
 
+  /** start the loader, or (already running) hand it the new files now instead of on its next scene update */
   kick(load) {
-    try { if (load.list.size > 0 && !load.isLoading()) load.start(); } catch (e) { /* a loader of a scene that is going away */ }
+    try {
+      if (!load.list.size) return;
+      if (!load.isLoading()) load.start();
+      else if (load.inflight.size < load.maxParallelDownloads) load.checkLoadQueue();
+    } catch (e) { /* a loader of a scene that is going away */ }
   },
 
   /** queue one pack (no-op when queued / ready) */

@@ -1,0 +1,4307 @@
+{
+ "version": 1,
+ "generator": "tools/blender/bbld_render.py + bbld_pack.py (docs/CONTRACT_V7.md section X)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre at ground level (z 0).",
+  "front": "-Y = faces screen down-left (SW) = the SEA side (like the harbour waterfront). `<key>_x` variants are the same model rotated yaw 90: front = +X (screen down-right) for a coastline along the other iso axis; all their points / polys are already rotated. Baked shadows cannot be flipped, so never mirror a sprite.",
+  "footprint": "footprint = screen-px bounding size [w, h] of the ground diamond; footprintM = metres; footprintPoly = 4 ground corners in px (depth sorting / collision).",
+  "points": "every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting (their dy > 0) or just above the building.",
+  "staff": "staffPoints + staffRoles (beachfolk preset names) + staffDepth \"front\": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: draw the sprite's `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already does this for sprites with `overlay`).",
+  "balconyPoints": "resort_hotel / pension: guests standing on balconies (elevated - dy already includes the floor height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1.",
+  "night": "night: {glow, blend: ADD, tint}. At night tint every sprite with `tint` (multiply) and add the `<key>_glow` sprite (same frame + anchor, blendMode ADD, untinted) at the same position: lit windows, lamps, neon, bulbs, tiki torches, live tanks with a soft bloom. resort_hotel(_x) also has `night.frame` = <key>_night, the finished night picture (draw it UNTINTED instead of tint + glow). lightPoints (+ lightKinds, lightRadiusPx) = where to put extra fx_glow sprites or light the ground.",
+  "anims": "idle frame = rest; anims.work (+ alias grill / fish / lights / twinkle / ripple) loop with every frame sharing frameSize + anchor: spr:<key>:work like the village stations.",
+  "pool": "hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js (palette \"pool\", shore \"quay\") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + anchor, anims.work / ripple 6 f) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).",
+  "atlases": "bbld_hotel (hotel, pool, night frames, water loop), bbld_shops, bbld_civic, bbld_street, bbld_glow (all night glow overlays - load it lazily, only needed at night)."
+ },
+ "atlases": [
+  {
+   "key": "bbld_hotel",
+   "png": "beach_bld/bbld_hotel.png",
+   "json": "beach_bld/bbld_hotel.json"
+  },
+  {
+   "key": "bbld_hotel_2",
+   "png": "beach_bld/bbld_hotel_2.png",
+   "json": "beach_bld/bbld_hotel_2.json"
+  },
+  {
+   "key": "bbld_shops",
+   "png": "beach_bld/bbld_shops.png",
+   "json": "beach_bld/bbld_shops.json"
+  },
+  {
+   "key": "bbld_civic",
+   "png": "beach_bld/bbld_civic.png",
+   "json": "beach_bld/bbld_civic.json"
+  },
+  {
+   "key": "bbld_street",
+   "png": "beach_bld/bbld_street.png",
+   "json": "beach_bld/bbld_street.json"
+  },
+  {
+   "key": "bbld_glow",
+   "png": "beach_bld/bbld_glow.png",
+   "json": "beach_bld/bbld_glow.json"
+  }
+ ],
+ "sprites": {
+  "hotel_pool": {
+   "atlas": "bbld_hotel",
+   "frame": "hotel_pool",
+   "anchor": [
+    0.44833,
+    0.61224
+   ],
+   "kind": "building",
+   "frameSize": [
+    600,
+    392
+   ],
+   "footprint": [
+    498,
+    249
+   ],
+   "footprintM": [
+    6.4,
+    4.6
+   ],
+   "footprintPoly": [
+    [
+     -249,
+     -20
+    ],
+    [
+     41,
+     124
+    ],
+    [
+     249,
+     20
+    ],
+    [
+     -41,
+     -124
+    ]
+   ],
+   "topPx": 219,
+   "front": "-Y",
+   "fxPoints": {
+    "slideEnd": [
+     -66,
+     -60
+    ],
+    "shower": [
+     -46,
+     -202
+    ],
+    "poolCentre": [
+     -7,
+     1
+    ]
+   },
+   "staffPoints": [
+    [
+     -190,
+     -16
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     -115,
+     -60
+    ],
+    [
+     195,
+     36
+    ],
+    [
+     7,
+     83
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "lyingPoints": [
+    [
+     -9,
+     -99
+    ],
+    [
+     41,
+     -74
+    ],
+    [
+     91,
+     -49
+    ],
+    [
+     140,
+     -24
+    ],
+    [
+     104,
+     34
+    ],
+    [
+     131,
+     48
+    ]
+   ],
+   "lyingDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "swimPoints": [
+    [
+     -41,
+     -23
+    ],
+    [
+     -16,
+     15
+    ],
+    [
+     61,
+     17
+    ],
+    [
+     11,
+     -17
+    ],
+    [
+     29,
+     42
+    ]
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "lifeguard"
+   ],
+   "name": {
+    "ko": "호텔 수영장",
+    "en": "Hotel pool"
+   },
+   "zone": "hotel",
+   "waterZ": -0.12,
+   "waterPalette": "pool",
+   "waterShore": "quay",
+   "notes": "Hotel pool deck (6.4 x 4.6 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled walls, a sun mosaic on the floor, a chrome ladder on the far wall, a little yellow-blue slide at the left end), loungers with towels and parasols along the back, a towel shelf + lifebuoy + shower at the left, potted palms.  The base sprite has NO water: the Water module draws the pool water inside `waterPoly` (px polygon of the visible water surface, the near coping already clipped) at depth d + 0.25 with palette \"pool\"; without the shader draw `hotel_pool_water` (same frame + anchor, anims.work 6 f ripple loop) there instead.  swimPoints are ON the water plane (waterZ, a swimmer anchor goes exactly there); lyingPoints / lyingDirs = loungers (head direction); staffPoints = pool attendant.",
+   "waterPoly": [
+    [
+     118,
+     14
+    ],
+    [
+     -38,
+     -65
+    ],
+    [
+     -131,
+     -18
+    ],
+    [
+     25,
+     60
+    ]
+   ],
+   "waterRectPx": [
+    [
+     -138,
+     -15
+    ],
+    [
+     25,
+     67
+    ],
+    [
+     124,
+     17
+    ],
+    [
+     -38,
+     -65
+    ]
+   ],
+   "waterRectM": [
+    -2.0,
+    1.6,
+    -1.05,
+    1.15
+   ],
+   "waterOverlay": "hotel_pool_water"
+  },
+  "resort_hotel": {
+   "atlas": "bbld_hotel",
+   "frame": "resort_hotel",
+   "anchor": [
+    0.28555,
+    0.67417
+   ],
+   "kind": "building",
+   "frameSize": [
+    872,
+    844
+   ],
+   "footprint": [
+    625,
+    312
+   ],
+   "footprintM": [
+    8.0,
+    5.8
+   ],
+   "footprintPoly": [
+    [
+     -312,
+     -25
+    ],
+    [
+     50,
+     156
+    ],
+    [
+     312,
+     25
+    ],
+    [
+     -50,
+     -156
+    ]
+   ],
+   "topPx": 549,
+   "front": "-Y",
+   "fxPoints": {
+    "boardCentre": [
+     163,
+     -395
+    ],
+    "flag": [
+     -12,
+     -535
+    ],
+    "bell": [
+     -114,
+     -24
+    ],
+    "domeTop": [
+     -12,
+     -498
+    ]
+   },
+   "inPoint": [
+    274,
+    62
+   ],
+   "doorPoint": [
+    -75,
+    38
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -39,
+     53
+    ],
+    [
+     16,
+     119
+    ],
+    [
+     -102,
+     15
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "W",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -146,
+     40
+    ],
+    [
+     -163,
+     53
+    ],
+    [
+     -180,
+     66
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "balconyPoints": [
+    [
+     -135,
+     -128
+    ],
+    [
+     52,
+     -34
+    ],
+    [
+     -152,
+     -208
+    ],
+    [
+     69,
+     -98
+    ],
+    [
+     -135,
+     -272
+    ],
+    [
+     52,
+     -178
+    ],
+    [
+     207,
+     -45
+    ],
+    [
+     207,
+     -117
+    ],
+    [
+     219,
+     -195
+    ]
+   ],
+   "balconyDirs": [
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "SW",
+    "SE",
+    "SE",
+    "SE"
+   ],
+   "lightPoints": [
+    [
+     -95,
+     -62
+    ],
+    [
+     -28,
+     -29
+    ],
+    [
+     163,
+     -395
+    ],
+    [
+     -158,
+     -74
+    ],
+    [
+     -51,
+     -21
+    ]
+   ],
+   "lightKinds": [
+    "lamp",
+    "lamp",
+    "sign",
+    "lamp",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34,
+    34,
+    77,
+    38,
+    38
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "doorman",
+    "bellhop",
+    "receptionist"
+   ],
+   "staffBehindOverlay": [
+    2
+   ],
+   "name": {
+    "ko": "햇살 리조트 호텔",
+    "en": "Sunny Resort Hotel"
+   },
+   "zone": "hotel",
+   "floors": 5,
+   "balconyDepth": "front",
+   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): white stucco hotel under a terracotta hip roof with dormers; a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; wide balconies on every upper floor with tiny parasols, deck chairs, potted flowers and beach towels drying on the rails, pastel curtains; lobby arched windows under coral awnings; a turquoise entrance canopy on white columns with gold stars, red carpet, potted palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman at the door, bellhop at the trolley, receptionist BEHIND the concierge desk]; customerPoints = arriving guests (queue down the carpet); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: resort_hotel_night (the whole frame lit, draw it untinted) or tint + resort_hotel_glow (ADD).",
+   "overlay": "resort_hotel_front",
+   "night": {
+    "glow": "resort_hotel_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8",
+    "frame": "resort_hotel_night"
+   }
+  },
+  "resort_hotel_x": {
+   "atlas": "bbld_hotel",
+   "frame": "resort_hotel_x",
+   "anchor": [
+    0.38443,
+    0.67523
+   ],
+   "kind": "building",
+   "frameSize": [
+    848,
+    856
+   ],
+   "footprint": [
+    625,
+    312
+   ],
+   "footprintM": [
+    8.0,
+    5.8
+   ],
+   "footprintPoly": [
+    [
+     -50,
+     156
+    ],
+    [
+     312,
+     -25
+    ],
+    [
+     50,
+     -156
+    ],
+    [
+     -312,
+     25
+    ]
+   ],
+   "topPx": 558,
+   "front": "+X",
+   "fxPoints": {
+    "boardCentre": [
+     -163,
+     -395
+    ],
+    "flag": [
+     12,
+     -535
+    ],
+    "bell": [
+     60,
+     3
+    ],
+    "domeTop": [
+     12,
+     -498
+    ]
+   },
+   "inPoint": [
+    -201,
+    98
+   ],
+   "doorPoint": [
+    75,
+    38
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     106,
+     20
+    ],
+    [
+     238,
+     -8
+    ],
+    [
+     29,
+     51
+    ]
+   ],
+   "staffDirs": [
+    "SE",
+    "S",
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     80,
+     73
+    ],
+    [
+     106,
+     81
+    ],
+    [
+     132,
+     90
+    ]
+   ],
+   "customerDirs": [
+    "NW",
+    "NW",
+    "NW"
+   ],
+   "balconyPoints": [
+    [
+     -34,
+     -43
+    ],
+    [
+     152,
+     -136
+    ],
+    [
+     -52,
+     -106
+    ],
+    [
+     169,
+     -217
+    ],
+    [
+     -34,
+     -187
+    ],
+    [
+     152,
+     -280
+    ],
+    [
+     -207,
+     -45
+    ],
+    [
+     -207,
+     -117
+    ],
+    [
+     -195,
+     -183
+    ]
+   ],
+   "balconyDirs": [
+    "SE",
+    "SE",
+    "SE",
+    "SE",
+    "SE",
+    "SE",
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "lightPoints": [
+    [
+     28,
+     -29
+    ],
+    [
+     95,
+     -62
+    ],
+    [
+     -163,
+     -395
+    ],
+    [
+     51,
+     -21
+    ],
+    [
+     158,
+     -74
+    ]
+   ],
+   "lightKinds": [
+    "lamp",
+    "lamp",
+    "sign",
+    "lamp",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34,
+    34,
+    77,
+    38,
+    38
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "doorman",
+    "bellhop",
+    "receptionist"
+   ],
+   "staffBehindOverlay": [
+    2
+   ],
+   "name": {
+    "ko": "햇살 리조트 호텔",
+    "en": "Sunny Resort Hotel"
+   },
+   "zone": "hotel",
+   "variantOf": "resort_hotel",
+   "floors": 5,
+   "balconyDepth": "front",
+   "notes": "Resort hotel \"햇살 리조트\" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome flag): white stucco hotel under a terracotta hip roof with dormers; a peach central tower with arched windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; wide balconies on every upper floor with tiny parasols, deck chairs, potted flowers and beach towels drying on the rails, pastel curtains; lobby arched windows under coral awnings; a turquoise entrance canopy on white columns with gold stars, red carpet, potted palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  staffPoints = [doorman at the door, bellhop at the trolley, receptionist BEHIND the concierge desk]; customerPoints = arriving guests (queue down the carpet); balconyPoints = guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on the side.  Night: resort_hotel_night (the whole frame lit, draw it untinted) or tint + resort_hotel_glow (ADD). [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "overlay": "resort_hotel_x_front",
+   "night": {
+    "glow": "resort_hotel_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8",
+    "frame": "resort_hotel_x_night"
+   }
+  },
+  "beach_arcade": {
+   "atlas": "bbld_shops",
+   "frame": "beach_arcade",
+   "anchor": [
+    0.27928,
+    0.67857
+   ],
+   "kind": "building",
+   "frameSize": [
+    444,
+    420
+   ],
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    4.0,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -172,
+     -5
+    ],
+    [
+     9,
+     86
+    ],
+    [
+     172,
+     5
+    ],
+    [
+     -9,
+     -86
+    ]
+   ],
+   "topPx": 265,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "beach_arcade_work_0",
+      "beach_arcade_work_1",
+      "beach_arcade_work_2",
+      "beach_arcade_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "lights": {
+     "frames": [
+      "beach_arcade_work_0",
+      "beach_arcade_work_1",
+      "beach_arcade_work_2",
+      "beach_arcade_work_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "star": [
+     43,
+     -221
+    ],
+    "coins": [
+     91,
+     -25
+    ]
+   },
+   "inPoint": [
+    -43,
+    -78
+   ],
+   "doorPoint": [
+    -27,
+    14
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     68,
+     57
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -106,
+     1
+    ],
+    [
+     -2,
+     53
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -20,
+     -63
+    ],
+    [
+     43,
+     -221
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "sign"
+   ],
+   "lightRadiusPx": [
+    62,
+    67
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "attendant"
+   ],
+   "name": {
+    "ko": "반짝 오락실",
+    "en": "Beach arcade"
+   },
+   "zone": "attraction",
+   "notes": "Beach arcade \"반짝 오락실\" (4.0 x 3.6 m): lilac-and-pink fun house with a wide open entrance under a striped awning, two claw machines full of plush balls flanking it, a coin booth, a big star-and-coin marquee on the roof and marquee bulbs around the facade.  anims.work / anims.lights = 4 f chasing bulbs (seamless).  customerPoints = kids at the claw machines (facing them); staffPoints = coin booth attendant.",
+   "night": {
+    "glow": "beach_arcade_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_bar": {
+   "atlas": "bbld_shops",
+   "frame": "beach_bar",
+   "anchor": [
+    0.38034,
+    0.6422
+   ],
+   "kind": "building",
+   "frameSize": [
+    468,
+    436
+   ],
+   "footprint": [
+    326,
+    163
+   ],
+   "footprintM": [
+    3.8,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -163,
+     -5
+    ],
+    [
+     9,
+     81
+    ],
+    [
+     163,
+     5
+    ],
+    [
+     -9,
+     -81
+    ]
+   ],
+   "topPx": 260,
+   "front": "-Y",
+   "fxPoints": {
+    "sign": [
+     2,
+     -227
+    ],
+    "torchL": [
+     -152,
+     -110
+    ],
+    "torchR": [
+     16,
+     -27
+    ]
+   },
+   "inPoint": [
+    -167,
+    -5
+   ],
+   "staffPoints": [
+    [
+     18,
+     -5
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     41,
+     45
+    ],
+    [
+     25,
+     58
+    ]
+   ],
+   "customerDirs": [
+    "NW",
+    "NW"
+   ],
+   "seatPoints": [
+    [
+     -88,
+     3
+    ],
+    [
+     -61,
+     17
+    ],
+    [
+     -33,
+     30
+    ],
+    [
+     -6,
+     44
+    ]
+   ],
+   "seatDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -152,
+     -110
+    ],
+    [
+     16,
+     -27
+    ],
+    [
+     -71,
+     -78
+    ],
+    [
+     34,
+     -89
+    ]
+   ],
+   "lightKinds": [
+    "torch",
+    "torch",
+    "string",
+    "window"
+   ],
+   "lightRadiusPx": [
+    43,
+    43,
+    86,
+    48
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "beach_bar_staff"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "코코넛 바",
+    "en": "Beach bar"
+   },
+   "zone": "shops",
+   "notes": "Beach bar \"코코넛 바\" (3.8 x 3.4 m): open-air palapa on palm-trunk posts under a shaggy thatched roof with a coconut-cocktail sign on top, a bamboo-fronted bar counter with four stools (seatPoints, facing the bar), the bartender BEHIND the counter (staffPoints[0], draw beach_bar_front above him), a back bar of colourful bottles and coconuts, tiki torches, party bulbs along the eaves, a surfboard and a menu board.  customerPoints = standing guests at the counter end.",
+   "overlay": "beach_bar_front",
+   "night": {
+    "glow": "beach_bar_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_bar_x": {
+   "atlas": "bbld_shops",
+   "frame": "beach_bar_x",
+   "anchor": [
+    0.36842,
+    0.6422
+   ],
+   "kind": "building",
+   "frameSize": [
+    456,
+    436
+   ],
+   "footprint": [
+    326,
+    163
+   ],
+   "footprintM": [
+    3.8,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -9,
+     81
+    ],
+    [
+     163,
+     -5
+    ],
+    [
+     9,
+     -81
+    ],
+    [
+     -163,
+     5
+    ]
+   ],
+   "topPx": 260,
+   "front": "+X",
+   "fxPoints": {
+    "sign": [
+     -2,
+     -227
+    ],
+    "torchL": [
+     -16,
+     -27
+    ],
+    "torchR": [
+     152,
+     -110
+    ]
+   },
+   "inPoint": [
+    167,
+    -5
+   ],
+   "staffPoints": [
+    [
+     -5,
+     -12
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     -41,
+     45
+    ],
+    [
+     -25,
+     58
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     6,
+     44
+    ],
+    [
+     33,
+     30
+    ],
+    [
+     61,
+     17
+    ],
+    [
+     88,
+     3
+    ]
+   ],
+   "seatDirs": [
+    "NW",
+    "NW",
+    "NW",
+    "NW"
+   ],
+   "lightPoints": [
+    [
+     -16,
+     -27
+    ],
+    [
+     152,
+     -110
+    ],
+    [
+     71,
+     -78
+    ],
+    [
+     -34,
+     -89
+    ]
+   ],
+   "lightKinds": [
+    "torch",
+    "torch",
+    "string",
+    "window"
+   ],
+   "lightRadiusPx": [
+    43,
+    43,
+    86,
+    48
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "beach_bar_staff"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "코코넛 바",
+    "en": "Beach bar"
+   },
+   "zone": "shops",
+   "variantOf": "beach_bar",
+   "notes": "Beach bar \"코코넛 바\" (3.8 x 3.4 m): open-air palapa on palm-trunk posts under a shaggy thatched roof with a coconut-cocktail sign on top, a bamboo-fronted bar counter with four stools (seatPoints, facing the bar), the bartender BEHIND the counter (staffPoints[0], draw beach_bar_front above him), a back bar of colourful bottles and coconuts, tiki torches, party bulbs along the eaves, a surfboard and a menu board.  customerPoints = standing guests at the counter end. [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "overlay": "beach_bar_x_front",
+   "night": {
+    "glow": "beach_bar_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_cafe": {
+   "atlas": "bbld_shops",
+   "frame": "beach_cafe",
+   "anchor": [
+    0.42342,
+    0.66038
+   ],
+   "kind": "building",
+   "frameSize": [
+    444,
+    424
+   ],
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.4,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -181,
+     -9
+    ],
+    [
+     18,
+     91
+    ],
+    [
+     181,
+     9
+    ],
+    [
+     -18,
+     -91
+    ]
+   ],
+   "topPx": 260,
+   "front": "-Y",
+   "fxPoints": {
+    "steam": [
+     20,
+     -138
+    ],
+    "sign": [
+     5,
+     -224
+    ]
+   },
+   "inPoint": [
+    -186,
+    -9
+   ],
+   "doorPoint": [
+    -41,
+    29
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -53,
+     -21
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -103,
+     2
+    ],
+    [
+     -126,
+     11
+    ],
+    [
+     -149,
+     20
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     6,
+     64
+    ],
+    [
+     53,
+     61
+    ],
+    [
+     78,
+     28
+    ],
+    [
+     126,
+     24
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "NW",
+    "SW",
+    "NW"
+   ],
+   "lightPoints": [
+    [
+     -88,
+     -117
+    ],
+    [
+     -70,
+     -88
+    ],
+    [
+     -5,
+     -42
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "string",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    43,
+    77,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "barista"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "파도 카페",
+    "en": "Beach cafe"
+   },
+   "zone": "shops",
+   "notes": "Beach cafe \"파도 카페\" (4.4 x 3.6 m): white-washed plank cafe with a turquoise roof, a big iced-coffee sign on the roof, a walk-up service window under a coral-white scalloped awning (the barista stands INSIDE behind the counter: staffPoints[0], draw beach_cafe_front above her), a menu board, a surfboard, party bulbs along the eaves and a wooden terrace with two parasol tables and bistro chairs on the visible side (seatPoints).  customerPoints = the queue at the window; doorPoint = the door.",
+   "overlay": "beach_cafe_front",
+   "night": {
+    "glow": "beach_cafe_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_cafe_x": {
+   "atlas": "bbld_shops",
+   "frame": "beach_cafe_x",
+   "anchor": [
+    0.43421,
+    0.66435
+   ],
+   "kind": "building",
+   "frameSize": [
+    456,
+    432
+   ],
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    4.4,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -18,
+     91
+    ],
+    [
+     181,
+     -9
+    ],
+    [
+     18,
+     -91
+    ],
+    [
+     -181,
+     9
+    ]
+   ],
+   "topPx": 266,
+   "front": "+X",
+   "fxPoints": {
+    "steam": [
+     7,
+     -152
+    ],
+    "sign": [
+     9,
+     -231
+    ]
+   },
+   "inPoint": [
+    186,
+    -9
+   ],
+   "doorPoint": [
+    41,
+    29
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     58,
+     -23
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     103,
+     2
+    ],
+    [
+     121,
+     13
+    ],
+    [
+     140,
+     25
+    ]
+   ],
+   "customerDirs": [
+    "NW",
+    "NW",
+    "NW"
+   ],
+   "seatPoints": [
+    [
+     -6,
+     64
+    ],
+    [
+     -53,
+     61
+    ],
+    [
+     -78,
+     28
+    ],
+    [
+     -126,
+     24
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "NE",
+    "SE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     88,
+     -117
+    ],
+    [
+     70,
+     -88
+    ],
+    [
+     5,
+     -42
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "string",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    43,
+    77,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "barista"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "파도 카페",
+    "en": "Beach cafe"
+   },
+   "zone": "shops",
+   "variantOf": "beach_cafe",
+   "notes": "Beach cafe \"파도 카페\" (4.4 x 3.6 m): white-washed plank cafe with a turquoise roof, a big iced-coffee sign on the roof, a walk-up service window under a coral-white scalloped awning (the barista stands INSIDE behind the counter: staffPoints[0], draw beach_cafe_front above her), a menu board, a surfboard, party bulbs along the eaves and a wooden terrace with two parasol tables and bistro chairs on the visible side (seatPoints).  customerPoints = the queue at the window; doorPoint = the door. [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "overlay": "beach_cafe_x_front",
+   "night": {
+    "glow": "beach_cafe_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "convenience_store": {
+   "atlas": "bbld_shops",
+   "frame": "convenience_store",
+   "anchor": [
+    0.35135,
+    0.62981
+   ],
+   "kind": "building",
+   "frameSize": [
+    444,
+    416
+   ],
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    4.0,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -172,
+     -5
+    ],
+    [
+     9,
+     86
+    ],
+    [
+     172,
+     5
+    ],
+    [
+     -9,
+     -86
+    ]
+   ],
+   "topPx": 241,
+   "front": "-Y",
+   "fxPoints": {
+    "sign": [
+     20,
+     -196
+    ]
+   },
+   "inPoint": [
+    -63,
+    -91
+   ],
+   "doorPoint": [
+    -4,
+    32
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -122,
+     -9
+    ]
+   ],
+   "staffDirs": [
+    "NE"
+   ],
+   "customerPoints": [
+    [
+     -26,
+     43
+    ],
+    [
+     -51,
+     51
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     29,
+     71
+    ],
+    [
+     75,
+     49
+    ],
+    [
+     75,
+     71
+    ],
+    [
+     97,
+     37
+    ],
+    [
+     143,
+     15
+    ],
+    [
+     143,
+     37
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "NE",
+    "NW",
+    "SW",
+    "NE",
+    "NW"
+   ],
+   "lightPoints": [
+    [
+     -54,
+     -71
+    ],
+    [
+     -10,
+     -91
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    62,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "clerk"
+   ],
+   "name": {
+    "ko": "바닷가 편의점",
+    "en": "Convenience store"
+   },
+   "zone": "shops",
+   "notes": "Convenience store \"바닷가 편의점\" (4.0 x 3.6 m): bright white box with a green-orange stripe fascia, a big lit glass front full of shelves, a basket sign, an ice-cream chest freezer and a drinks cooler by the door, packs of water, a recycling bin, and on the visible side two plastic tables with green parasols (the Korean beach-store terrace, seatPoints).  staffPoints = clerk restocking the freezer; customerPoints = at the door; inPoint = delivery (cans / bread from the village).",
+   "night": {
+    "glow": "convenience_store_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "convenience_store_x": {
+   "atlas": "bbld_shops",
+   "frame": "convenience_store_x",
+   "anchor": [
+    0.43142,
+    0.62981
+   ],
+   "kind": "building",
+   "frameSize": [
+    452,
+    416
+   ],
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    4.0,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -9,
+     86
+    ],
+    [
+     172,
+     -5
+    ],
+    [
+     9,
+     -86
+    ],
+    [
+     -172,
+     5
+    ]
+   ],
+   "topPx": 241,
+   "front": "+X",
+   "fxPoints": {
+    "sign": [
+     -20,
+     -196
+    ]
+   },
+   "inPoint": [
+    63,
+    -91
+   ],
+   "doorPoint": [
+    4,
+    32
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     122,
+     -9
+    ]
+   ],
+   "staffDirs": [
+    "NW"
+   ],
+   "customerPoints": [
+    [
+     26,
+     43
+    ],
+    [
+     42,
+     56
+    ]
+   ],
+   "customerDirs": [
+    "NW",
+    "NW"
+   ],
+   "seatPoints": [
+    [
+     -29,
+     71
+    ],
+    [
+     -75,
+     49
+    ],
+    [
+     -75,
+     71
+    ],
+    [
+     -97,
+     37
+    ],
+    [
+     -143,
+     15
+    ],
+    [
+     -143,
+     37
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "NW",
+    "NE",
+    "SE",
+    "NW",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     54,
+     -71
+    ],
+    [
+     10,
+     -91
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    62,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "clerk"
+   ],
+   "name": {
+    "ko": "바닷가 편의점",
+    "en": "Convenience store"
+   },
+   "zone": "shops",
+   "variantOf": "convenience_store",
+   "notes": "Convenience store \"바닷가 편의점\" (4.0 x 3.6 m): bright white box with a green-orange stripe fascia, a big lit glass front full of shelves, a basket sign, an ice-cream chest freezer and a drinks cooler by the door, packs of water, a recycling bin, and on the visible side two plastic tables with green parasols (the Korean beach-store terrace, seatPoints).  staffPoints = clerk restocking the freezer; customerPoints = at the door; inPoint = delivery (cans / bread from the village). [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "night": {
+    "glow": "convenience_store_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "icecream_shop": {
+   "atlas": "bbld_shops",
+   "frame": "icecream_shop",
+   "anchor": [
+    0.41364,
+    0.70052
+   ],
+   "kind": "building",
+   "frameSize": [
+    440,
+    384
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.4,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -2
+    ],
+    [
+     5,
+     75
+    ],
+    [
+     149,
+     2
+    ],
+    [
+     -5,
+     -75
+    ]
+   ],
+   "topPx": 248,
+   "front": "-Y",
+   "fxPoints": {
+    "cone": [
+     27,
+     -217
+    ],
+    "bell": [
+     -16,
+     -83
+    ]
+   },
+   "inPoint": [
+    -131,
+    -14
+   ],
+   "doorPoint": [
+    109,
+    16
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     -10,
+     -15
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -61,
+     17
+    ],
+    [
+     -83,
+     25
+    ],
+    [
+     -105,
+     33
+    ],
+    [
+     -126,
+     41
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     70,
+     35
+    ],
+    [
+     102,
+     19
+    ]
+   ],
+   "seatDirs": [
+    "SE",
+    "SE"
+   ],
+   "lightPoints": [
+    [
+     -43,
+     -97
+    ]
+   ],
+   "lightKinds": [
+    "window"
+   ],
+   "lightRadiusPx": [
+    43
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "icecream_vendor"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "구름 아이스크림",
+    "en": "Ice-cream shop"
+   },
+   "zone": "shops",
+   "notes": "Ice-cream shop \"구름 아이스크림\" (3.4 x 3.2 m): candy-striped pink-and-white kiosk with a mint scalloped awning over a big service window (the vendor stands INSIDE behind a lit freezer counter of colourful tubs: staffPoints[0], draw icecream_shop_front above), a giant two-scoop cone with a cherry on the roof, sprinkle-dotted roof trim, a cone-shaped standing sign, a bench and a little table outside.  customerPoints = the kids' queue in front of the window; seatPoints = bench.",
+   "overlay": "icecream_shop_front",
+   "night": {
+    "glow": "icecream_shop_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "icecream_shop_x": {
+   "atlas": "bbld_shops",
+   "frame": "icecream_shop_x",
+   "anchor": [
+    0.45161,
+    0.64706
+   ],
+   "kind": "building",
+   "frameSize": [
+    372,
+    408
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.4,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -5,
+     75
+    ],
+    [
+     149,
+     -2
+    ],
+    [
+     5,
+     -75
+    ],
+    [
+     -149,
+     2
+    ]
+   ],
+   "topPx": 244,
+   "front": "+X",
+   "fxPoints": {
+    "cone": [
+     -36,
+     -213
+    ],
+    "bell": [
+     29,
+     -90
+    ]
+   },
+   "inPoint": [
+    -27,
+    66
+   ],
+   "doorPoint": [
+    -104,
+    36
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -30,
+     5
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "customerPoints": [
+    [
+     34,
+     31
+    ],
+    [
+     50,
+     41
+    ],
+    [
+     67,
+     52
+    ],
+    [
+     83,
+     63
+    ]
+   ],
+   "customerDirs": [
+    "NW",
+    "NW",
+    "NW",
+    "NW"
+   ],
+   "seatPoints": [
+    [
+     -88,
+     44
+    ],
+    [
+     -120,
+     28
+    ]
+   ],
+   "seatDirs": [
+    "SW",
+    "SW"
+   ],
+   "lightPoints": [
+    [
+     11,
+     -82
+    ]
+   ],
+   "lightKinds": [
+    "window"
+   ],
+   "lightRadiusPx": [
+    43
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "icecream_vendor"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "구름 아이스크림",
+    "en": "Ice-cream shop"
+   },
+   "zone": "shops",
+   "variantOf": "icecream_shop",
+   "notes": "Ice-cream shop \"구름 아이스크림\" (3.4 x 3.2 m): candy-striped pink-and-white kiosk with a mint scalloped awning over a big service window (the vendor stands INSIDE behind a lit freezer counter of colourful tubs: staffPoints[0], draw icecream_shop_front above), a giant two-scoop cone with a cherry on the roof, sprinkle-dotted roof trim, a cone-shaped standing sign, a bench and a little table outside.  customerPoints = the kids' queue in front of the window; seatPoints = bench. [_x variant: rendered with yaw 90 -> the front faces +X (screen down-right) for a coastline along world Y; every point / poly is already rotated.]",
+   "overlay": "icecream_shop_x_front",
+   "night": {
+    "glow": "icecream_shop_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "pension": {
+   "atlas": "bbld_shops",
+   "frame": "pension",
+   "anchor": [
+    0.39504,
+    0.69444
+   ],
+   "kind": "building",
+   "frameSize": [
+    524,
+    468
+   ],
+   "footprint": [
+    326,
+    163
+   ],
+   "footprintM": [
+    3.8,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -163,
+     -5
+    ],
+    [
+     9,
+     81
+    ],
+    [
+     163,
+     5
+    ],
+    [
+     -9,
+     -81
+    ]
+   ],
+   "topPx": 304,
+   "front": "-Y",
+   "fxPoints": {
+    "smoke": [
+     0,
+     -304
+    ],
+    "sign": [
+     -161,
+     -97
+    ]
+   },
+   "inPoint": [
+    38,
+    62
+   ],
+   "doorPoint": [
+    -32,
+    32
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -48,
+     46
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -81,
+     57
+    ],
+    [
+     -103,
+     65
+    ],
+    [
+     -124,
+     73
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "balconyPoints": [
+    [
+     -54,
+     -88
+    ],
+    [
+     -16,
+     -68
+    ]
+   ],
+   "balconyDirs": [
+    "SW",
+    "SW"
+   ],
+   "lightPoints": [
+    [
+     -35,
+     -60
+    ]
+   ],
+   "lightKinds": [
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "owner"
+   ],
+   "name": {
+    "ko": "바다 민박",
+    "en": "Seaside pension"
+   },
+   "zone": "lodging",
+   "notes": "Pension / guesthouse \"바다 민박\" (3.8 x 3.4 m): two-storey lemon-yellow cottage with white trims, a terracotta gable roof, sky-blue shutters, a pergola porch draped in pink bougainvillea, a wooden balcony with beach towels on a line, a swim ring on the wall, a bicycle, a little front garden with a white picket fence and a house-and-heart sign.  staffPoints = the owner at the gate; customerPoints = family guests arriving; balconyPoints (draw at d + 0.5, pension_front = railing at d + 1).",
+   "overlay": "pension_front",
+   "night": {
+    "glow": "pension_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "seafood_bbq": {
+   "atlas": "bbld_shops",
+   "frame": "seafood_bbq",
+   "anchor": [
+    0.36538,
+    0.70455
+   ],
+   "kind": "building",
+   "frameSize": [
+    468,
+    396
+   ],
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    4.0,
+    3.6
+   ],
+   "footprintPoly": [
+    [
+     -172,
+     -5
+    ],
+    [
+     9,
+     86
+    ],
+    [
+     172,
+     5
+    ],
+    [
+     -9,
+     -86
+    ]
+   ],
+   "topPx": 258,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "seafood_bbq_work_0",
+      "seafood_bbq_work_1",
+      "seafood_bbq_work_2",
+      "seafood_bbq_work_3"
+     ],
+     "fps": 7,
+     "repeat": -1
+    },
+    "grill": {
+     "frames": [
+      "seafood_bbq_work_0",
+      "seafood_bbq_work_1",
+      "seafood_bbq_work_2",
+      "seafood_bbq_work_3"
+     ],
+     "fps": 7,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "smoke": [
+     -57,
+     -64
+    ],
+    "grill": [
+     -57,
+     -48
+    ],
+    "chimney": [
+     104,
+     -203
+    ]
+   },
+   "inPoint": [
+    -183,
+    -3
+   ],
+   "doorPoint": [
+    134,
+    12
+   ],
+   "doorDir": "NW",
+   "staffPoints": [
+    [
+     -38,
+     -8
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -84,
+     26
+    ],
+    [
+     -100,
+     38
+    ],
+    [
+     -115,
+     51
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     14,
+     77
+    ],
+    [
+     54,
+     57
+    ],
+    [
+     72,
+     48
+    ],
+    [
+     113,
+     27
+    ]
+   ],
+   "seatDirs": [
+    "NE",
+    "SW",
+    "NE",
+    "SW"
+   ],
+   "lightPoints": [
+    [
+     -81,
+     -104
+    ],
+    [
+     -29,
+     -77
+    ],
+    [
+     16,
+     -55
+    ],
+    [
+     -16,
+     -93
+    ]
+   ],
+   "lightKinds": [
+    "lantern",
+    "lantern",
+    "lantern",
+    "window"
+   ],
+   "lightRadiusPx": [
+    29,
+    29,
+    29,
+    38
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "chef"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "조개구이",
+    "en": "Seafood BBQ"
+   },
+   "zone": "shops",
+   "notes": "Seafood BBQ \"조개구이\" (4.0 x 3.6 m): red-roofed shack with a red-white striped awning over a long charcoal grill full of clams, scallops and fish skewers; the chef stands BEHIND the grill (staffPoints[0], draw seafood_bbq_front above him), red paper lanterns, glowing blue live tanks with shellfish and fish, little tables with stools on the side (seatPoints), vertical banners.  anims.work = 4 f: smoke puffs rise from the grill, flames flicker, the lanterns sway.  inPoint = fresh fish / shellfish delivery pad.",
+   "overlay": "seafood_bbq_front",
+   "night": {
+    "glow": "seafood_bbq_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "souvenir_shop": {
+   "atlas": "bbld_shops",
+   "frame": "souvenir_shop",
+   "anchor": [
+    0.3301,
+    0.67969
+   ],
+   "kind": "building",
+   "frameSize": [
+    412,
+    384
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.4,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -2
+    ],
+    [
+     5,
+     75
+    ],
+    [
+     149,
+     2
+    ],
+    [
+     -5,
+     -75
+    ]
+   ],
+   "topPx": 241,
+   "front": "-Y",
+   "fxPoints": {
+    "sign": [
+     -29,
+     -143
+    ],
+    "chime": [
+     -70,
+     -81
+    ]
+   },
+   "inPoint": [
+    138,
+    10
+   ],
+   "doorPoint": [
+    -11,
+    35
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -34,
+     24
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -115,
+     31
+    ],
+    [
+     0,
+     63
+    ],
+    [
+     -70,
+     8
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -52,
+     -65
+    ],
+    [
+     -20,
+     -70
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    43,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "clerk"
+   ],
+   "name": {
+    "ko": "조개 기념품",
+    "en": "Souvenir shop"
+   },
+   "zone": "shops",
+   "notes": "Souvenir shop \"조개 기념품\" (3.4 x 3.2 m): white shop with sea-blue trims and a blue gable roof, a big scallop-shell sign, a lit display window with a giant snow globe of the frost village, shells, starfish and a little lighthouse, a blue-white awning with a shell wind chime, a postcard spinner and a straw-hat stand outside.  staffPoints = the clerk at the door; customerPoints = browsing tourists at the racks.",
+   "night": {
+    "glow": "souvenir_shop_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "surf_shop": {
+   "atlas": "bbld_shops",
+   "frame": "surf_shop",
+   "anchor": [
+    0.3467,
+    0.69231
+   ],
+   "kind": "building",
+   "frameSize": [
+    424,
+    416
+   ],
+   "footprint": [
+    317,
+    158
+   ],
+   "footprintM": [
+    3.6,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -158,
+     -2
+    ],
+    [
+     5,
+     79
+    ],
+    [
+     158,
+     2
+    ],
+    [
+     -5,
+     -79
+    ]
+   ],
+   "topPx": 267,
+   "front": "-Y",
+   "fxPoints": {
+    "boardCentre": [
+     -46,
+     -124
+    ],
+    "sign": [
+     41,
+     -212
+    ]
+   },
+   "inPoint": [
+    145,
+    7
+   ],
+   "doorPoint": [
+    -7,
+    26
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -23,
+     48
+    ]
+   ],
+   "staffDirs": [
+    "W"
+   ],
+   "customerPoints": [
+    [
+     -66,
+     -1
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -70,
+     -51
+    ]
+   ],
+   "seatDirs": [
+    "NW"
+   ],
+   "workPoints": [
+    [
+     -136,
+     20
+    ],
+    [
+     -91,
+     43
+    ]
+   ],
+   "workDirs": [
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -48,
+     -81
+    ],
+    [
+     -14,
+     -78
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    38,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "surfer"
+   ],
+   "name": {
+    "ko": "파도타기 서핑샵",
+    "en": "Surf shop"
+   },
+   "zone": "shops",
+   "notes": "Surf shop & surf school \"파도타기\" (3.6 x 3.4 m): weathered driftwood shack with a teal tin roof and a big surfboard on top, a rack of colourful boards out front, wetsuits hanging on a rail, a bench, a blank surf-school board (fxPoints.boardCentre).  staffPoints = the instructor by the rack; workPoints = two students waxing boards on the sand; customerPoints = at the counter window.",
+   "night": {
+    "glow": "surf_shop_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "swimwear_shop": {
+   "atlas": "bbld_shops",
+   "frame": "swimwear_shop",
+   "anchor": [
+    0.33879,
+    0.66667
+   ],
+   "kind": "building",
+   "frameSize": [
+    428,
+    372
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    3.4,
+    3.2
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -2
+    ],
+    [
+     5,
+     75
+    ],
+    [
+     149,
+     2
+    ],
+    [
+     -5,
+     -75
+    ]
+   ],
+   "topPx": 228,
+   "front": "-Y",
+   "fxPoints": {
+    "sign": [
+     29,
+     -187
+    ]
+   },
+   "inPoint": [
+    -34,
+    -74
+   ],
+   "doorPoint": [
+    -9,
+    32
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     7,
+     64
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -72,
+     5
+    ],
+    [
+     20,
+     35
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "SE"
+   ],
+   "lightPoints": [
+    [
+     -52,
+     -70
+    ],
+    [
+     -18,
+     -76
+    ]
+   ],
+   "lightKinds": [
+    "window",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    43,
+    29
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "clerk"
+   ],
+   "name": {
+    "ko": "튜브 가게",
+    "en": "Swimwear shop"
+   },
+   "zone": "shops",
+   "notes": "Swimwear & swim-ring shop \"튜브 가게\" (3.4 x 3.2 m): sky-blue shop with white trims and a flat roof crowned by a giant striped swim ring, a lit window with a swimsuit mannequin and flip-flops, a yellow-white awning, a rack of colourful swim rings and a pink flamingo float outside, beach balls in a net.  staffPoints = clerk by the ring rack; customerPoints = tourists at the window / rack.",
+   "night": {
+    "glow": "swimwear_shop_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "lifeguard_station": {
+   "atlas": "bbld_civic",
+   "frame": "lifeguard_station",
+   "anchor": [
+    0.29583,
+    0.70045
+   ],
+   "kind": "building",
+   "frameSize": [
+    480,
+    444
+   ],
+   "footprint": [
+    326,
+    163
+   ],
+   "footprintM": [
+    3.8,
+    3.4
+   ],
+   "footprintPoly": [
+    [
+     -163,
+     -5
+    ],
+    [
+     9,
+     81
+    ],
+    [
+     163,
+     5
+    ],
+    [
+     -9,
+     -81
+    ]
+   ],
+   "topPx": 291,
+   "front": "-Y",
+   "fxPoints": {
+    "horn": [
+     -9,
+     -254
+    ],
+    "flag": [
+     77,
+     -272
+    ]
+   },
+   "inPoint": [
+    -138,
+    -37
+   ],
+   "doorPoint": [
+    -18,
+    29
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     -34,
+     -101
+    ],
+    [
+     -16,
+     28
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -86,
+     38
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -9,
+     -153
+    ]
+   ],
+   "lightKinds": [
+    "window"
+   ],
+   "lightRadiusPx": [
+    48
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "lifeguard",
+    "lifeguard"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "lookoutPoint": [
+    -34,
+    -101
+   ],
+   "name": {
+    "ko": "인명구조대",
+    "en": "Lifeguard station"
+   },
+   "zone": "beach_ops",
+   "lookoutDepth": "front",
+   "notes": "Lifeguard station \"구조대\" (3.8 x 3.4 m): white ground floor with red trims holding the rescue boards, a yellow look-out room on top with windows all round, a wraparound look-out deck (railing), red cross sign, loud-hailer and a red-yellow flag on the roof, an outside stair on the visible side, rescue boards and life rings.  staffPoints[0] = the lifeguard ON THE LOOK-OUT DECK (elevated: draw at d + 0.5 with lifeguard_station_front = deck railing at d + 1), staffPoints[1] = at the door below; lookoutPoint = staffPoints[0].",
+   "overlay": "lifeguard_station_front",
+   "night": {
+    "glow": "lifeguard_station_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "mini_aquarium": {
+   "atlas": "bbld_civic",
+   "frame": "mini_aquarium",
+   "anchor": [
+    0.29661,
+    0.66106
+   ],
+   "kind": "building",
+   "frameSize": [
+    472,
+    416
+   ],
+   "footprint": [
+    380,
+    190
+   ],
+   "footprintM": [
+    4.6,
+    3.8
+   ],
+   "footprintPoly": [
+    [
+     -190,
+     -9
+    ],
+    [
+     18,
+     95
+    ],
+    [
+     190,
+     9
+    ],
+    [
+     -18,
+     -95
+    ]
+   ],
+   "topPx": 254,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "mini_aquarium_work_0",
+      "mini_aquarium_work_1",
+      "mini_aquarium_work_2",
+      "mini_aquarium_work_3"
+     ],
+     "fps": 5,
+     "repeat": -1
+    },
+    "fish": {
+     "frames": [
+      "mini_aquarium_work_0",
+      "mini_aquarium_work_1",
+      "mini_aquarium_work_2",
+      "mini_aquarium_work_3"
+     ],
+     "fps": 5,
+     "repeat": -1
+    }
+   },
+   "fxPoints": {
+    "tank": [
+     -66,
+     -53
+    ],
+    "whale": [
+     52,
+     -250
+    ]
+   },
+   "inPoint": [
+    186,
+    18
+   ],
+   "doorPoint": [
+    14,
+    43
+   ],
+   "doorDir": "NE",
+   "staffPoints": [
+    [
+     45,
+     54
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -5,
+     54
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "viewPoints": [
+    [
+     -118,
+     7
+    ],
+    [
+     -91,
+     20
+    ],
+    [
+     -63,
+     34
+    ]
+   ],
+   "viewDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -68,
+     -52
+    ]
+   ],
+   "lightKinds": [
+    "tank"
+   ],
+   "lightRadiusPx": [
+    67
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "ticket_seller"
+   ],
+   "name": {
+    "ko": "꼬마 수족관",
+    "en": "Mini aquarium"
+   },
+   "zone": "attraction",
+   "notes": "Mini aquarium \"꼬마 수족관\" (4.6 x 3.8 m): white building with a wave-shaped blue roof and a smiling whale on top, a big glowing glass tank bay on the front full of coral, sea-grass, a turtle and fish, a ticket window by the door.  anims.work / anims.fish = 4 f: two schools of fish swim across the tank in opposite directions and bubbles rise (seamless loop).  viewPoints = visitors in front of the glass (facing it); staffPoints = ticket seller; inPoint = where donated rare fish are delivered (mission).",
+   "night": {
+    "glow": "mini_aquarium_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "restroom_shower": {
+   "atlas": "bbld_civic",
+   "frame": "restroom_shower",
+   "anchor": [
+    0.40365,
+    0.67941
+   ],
+   "kind": "building",
+   "frameSize": [
+    384,
+    340
+   ],
+   "footprint": [
+    290,
+    145
+   ],
+   "footprintM": [
+    3.6,
+    2.8
+   ],
+   "footprintPoly": [
+    [
+     -145,
+     -9
+    ],
+    [
+     18,
+     72
+    ],
+    [
+     145,
+     9
+    ],
+    [
+     -18,
+     -72
+    ]
+   ],
+   "topPx": 210,
+   "front": "-Y",
+   "fxPoints": {
+    "shower0": [
+     57,
+     -72
+    ],
+    "shower1": [
+     97,
+     -92
+    ]
+   },
+   "inPoint": [
+    -57,
+    -76
+   ],
+   "doorPoint": [
+    -91,
+    -5
+   ],
+   "doorDir": "NE",
+   "doorPoints": [
+    [
+     -91,
+     -5
+    ],
+    [
+     -45,
+     18
+    ]
+   ],
+   "doorDirs": [
+    "NE",
+    "NE"
+   ],
+   "staffPoints": [
+    [
+     -23,
+     29
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -127,
+     14
+    ],
+    [
+     -81,
+     36
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "seatPoints": [
+    [
+     -86,
+     9
+    ]
+   ],
+   "seatDirs": [
+    "SW"
+   ],
+   "showerPoints": [
+    [
+     57,
+     28
+    ],
+    [
+     97,
+     8
+    ]
+   ],
+   "showerDirs": [
+    "NW",
+    "NW"
+   ],
+   "lightPoints": [
+    [
+     -59,
+     -93
+    ]
+   ],
+   "lightKinds": [
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "housekeeper"
+   ],
+   "name": {
+    "ko": "화장실·샤워장",
+    "en": "Restrooms & showers"
+   },
+   "zone": "beach_ops",
+   "notes": "Restrooms & showers (3.6 x 2.8 m): small white-and-aqua tiled block with two doors (blue / pink) under a pictogram sign, a water tank on the flat roof, and on the visible side two outdoor showers on a wooden grate with a foot-wash tap and a bench.  showerPoints = where a character stands under a shower (fxPoints.shower0 / shower1 = shower heads for the water fx); staffPoints = cleaner; customerPoints = waiting at the doors.",
+   "night": {
+    "glow": "restroom_shower_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "tourist_info": {
+   "atlas": "bbld_civic",
+   "frame": "tourist_info",
+   "anchor": [
+    0.30882,
+    0.69892
+   ],
+   "kind": "building",
+   "frameSize": [
+    340,
+    372
+   ],
+   "footprint": [
+    244,
+    122
+   ],
+   "footprintM": [
+    2.8,
+    2.6
+   ],
+   "footprintPoly": [
+    [
+     -122,
+     -2
+    ],
+    [
+     5,
+     61
+    ],
+    [
+     122,
+     2
+    ],
+    [
+     -5,
+     -61
+    ]
+   ],
+   "topPx": 240,
+   "front": "-Y",
+   "fxPoints": {
+    "sign": [
+     7,
+     -211
+    ]
+   },
+   "inPoint": [
+    36,
+    -54
+   ],
+   "staffPoints": [
+    [
+     18,
+     -18
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "customerPoints": [
+    [
+     -45,
+     14
+    ],
+    [
+     -68,
+     23
+    ],
+    [
+     -11,
+     44
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "lightPoints": [
+    [
+     -29,
+     -73
+    ]
+   ],
+   "lightKinds": [
+    "window"
+   ],
+   "lightRadiusPx": [
+    43
+   ],
+   "staffDepth": "front",
+   "staffRoles": [
+    "guide"
+   ],
+   "staffBehindOverlay": [
+    0
+   ],
+   "name": {
+    "ko": "관광 안내소",
+    "en": "Tourist info"
+   },
+   "zone": "beach_ops",
+   "notes": "Tourist information kiosk \"관광 안내소\" (2.8 x 2.6 m): round white kiosk with a striped turquoise parasol-like roof and a big blue \"i\" sign, a service window (the guide stands INSIDE: staffPoints[0], draw tourist_info_front above), a beach map board and a brochure rack.  customerPoints = queue at the window and a spot at the map board.",
+   "overlay": "tourist_info_front",
+   "night": {
+    "glow": "tourist_info_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_gate": {
+   "atlas": "bbld_street",
+   "frame": "beach_gate",
+   "anchor": [
+    0.38318,
+    0.625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    428,
+    400
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    5.4,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -149,
+     -48
+    ],
+    [
+     95,
+     75
+    ],
+    [
+     149,
+     48
+    ],
+    [
+     -95,
+     -75
+    ]
+   ],
+   "topPx": 229,
+   "front": "-Y",
+   "fxPoints": {
+    "boardCentre": [
+     -6,
+     -124
+    ],
+    "sun": [
+     -5,
+     -189
+    ]
+   },
+   "lightPoints": [
+    [
+     -104,
+     -160
+    ],
+    [
+     77,
+     -70
+    ]
+   ],
+   "lightKinds": [
+    "lamp",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34,
+    34
+   ],
+   "name": {
+    "ko": "햇살 해변 입구",
+    "en": "Beach gate"
+   },
+   "zone": "street",
+   "passage": "between the pillars (x in [-1.75, 1.75] m, both directions)",
+   "notes": "Beach entrance gate \"햇살 해변\" (5.4 x 1.2 m): two rope-wrapped driftwood pillars with starfish and life rings, a curved wooden arch carrying a big BLANK sign board (fxPoints.boardCentre - the game writes \"햇살 해변\"), a smiling sun on top, pennant flags, agave pots.  The passage runs along world Y (screen up-right <-> down-left); faces screen down-left (-Y).",
+   "night": {
+    "glow": "beach_gate_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_gate_x": {
+   "atlas": "bbld_street",
+   "frame": "beach_gate_x",
+   "anchor": [
+    0.34223,
+    0.625
+   ],
+   "kind": "decor",
+   "frameSize": [
+    412,
+    400
+   ],
+   "footprint": [
+    299,
+    149
+   ],
+   "footprintM": [
+    5.4,
+    1.2
+   ],
+   "footprintPoly": [
+    [
+     -95,
+     75
+    ],
+    [
+     149,
+     -48
+    ],
+    [
+     95,
+     -75
+    ],
+    [
+     -149,
+     48
+    ]
+   ],
+   "topPx": 229,
+   "front": "+X",
+   "fxPoints": {
+    "boardCentre": [
+     6,
+     -124
+    ],
+    "sun": [
+     5,
+     -189
+    ]
+   },
+   "lightPoints": [
+    [
+     -77,
+     -70
+    ],
+    [
+     104,
+     -160
+    ]
+   ],
+   "lightKinds": [
+    "lamp",
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    34,
+    34
+   ],
+   "name": {
+    "ko": "햇살 해변 입구",
+    "en": "Beach gate"
+   },
+   "zone": "street",
+   "variantOf": "beach_gate",
+   "passage": "between the pillars (x in [-1.75, 1.75] m, both directions)",
+   "notes": "Beach entrance gate \"햇살 해변\" (5.4 x 1.2 m): two rope-wrapped driftwood pillars with starfish and life rings, a curved wooden arch carrying a big BLANK sign board (fxPoints.boardCentre - the game writes \"햇살 해변\"), a smiling sun on top, pennant flags, agave pots.  The passage runs along world X (screen up-left <-> down-right); faces screen down-right (+X).",
+   "night": {
+    "glow": "beach_gate_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_lamp": {
+   "atlas": "bbld_street",
+   "frame": "beach_lamp",
+   "anchor": [
+    0.17,
+    0.66319
+   ],
+   "kind": "decor",
+   "frameSize": [
+    200,
+    288
+   ],
+   "footprint": [
+    32,
+    16
+   ],
+   "footprintM": {
+    "radius": 0.25
+   },
+   "topPx": 171,
+   "front": "-Y",
+   "fxPoints": {
+    "light": [
+     0,
+     -150
+    ]
+   },
+   "lightPoints": [
+    [
+     0,
+     -150
+    ]
+   ],
+   "lightKinds": [
+    "lamp"
+   ],
+   "lightRadiusPx": [
+    58
+   ],
+   "name": {
+    "ko": "해변 가로등",
+    "en": "Beach lamp"
+   },
+   "zone": "street",
+   "notes": "Seaside lamp post (white fluted post, turquoise nautical lantern head, ~2.9 m). fxPoints.light = lantern centre; lightPoints[0] the same (night glow).",
+   "night": {
+    "glow": "beach_lamp_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "string_lights_x": {
+   "atlas": "bbld_street",
+   "frame": "string_lights_x",
+   "anchor": [
+    0.33807,
+    0.61607
+   ],
+   "kind": "decor",
+   "frameSize": [
+    352,
+    336
+   ],
+   "footprint": [
+    204,
+    102
+   ],
+   "footprintM": [
+    4.2,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -102,
+     -44
+    ],
+    [
+     88,
+     51
+    ],
+    [
+     102,
+     44
+    ],
+    [
+     -88,
+     -51
+    ]
+   ],
+   "topPx": 187,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "string_lights_x_work_0",
+      "string_lights_x_work_1",
+      "string_lights_x_work_2",
+      "string_lights_x_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "twinkle": {
+     "frames": [
+      "string_lights_x_work_0",
+      "string_lights_x_work_1",
+      "string_lights_x_work_2",
+      "string_lights_x_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "lightPoints": [
+    [
+     -71,
+     -152
+    ],
+    [
+     -32,
+     -121
+    ],
+    [
+     6,
+     -98
+    ],
+    [
+     45,
+     -85
+    ],
+    [
+     84,
+     -81
+    ]
+   ],
+   "lightKinds": [
+    "bulb",
+    "bulb",
+    "bulb",
+    "bulb",
+    "bulb"
+   ],
+   "lightRadiusPx": [
+    22,
+    22,
+    22,
+    22,
+    22
+   ],
+   "name": {
+    "ko": "전구 줄",
+    "en": "String lights"
+   },
+   "zone": "street",
+   "notes": "Party string lights (4.2 m): two white posts with a sagging string of coloured bulbs (axis world X, screen up-left <-> down-right). Chain them post-to-post every 4.0 m (step (+181, +91) px along +X). anims.work / anims.twinkle = 4 f gentle chase; lightPoints = bulbs for night glow (or use the _glow overlay).",
+   "night": {
+    "glow": "string_lights_x_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "string_lights_y": {
+   "atlas": "bbld_street",
+   "frame": "string_lights_y",
+   "anchor": [
+    0.33807,
+    0.61607
+   ],
+   "kind": "decor",
+   "frameSize": [
+    352,
+    336
+   ],
+   "footprint": [
+    204,
+    102
+   ],
+   "footprintM": [
+    4.2,
+    0.3
+   ],
+   "footprintPoly": [
+    [
+     -88,
+     51
+    ],
+    [
+     102,
+     -44
+    ],
+    [
+     88,
+     -51
+    ],
+    [
+     -102,
+     44
+    ]
+   ],
+   "topPx": 187,
+   "front": "-Y",
+   "anims": {
+    "work": {
+     "frames": [
+      "string_lights_y_work_0",
+      "string_lights_y_work_1",
+      "string_lights_y_work_2",
+      "string_lights_y_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    },
+    "twinkle": {
+     "frames": [
+      "string_lights_y_work_0",
+      "string_lights_y_work_1",
+      "string_lights_y_work_2",
+      "string_lights_y_work_3"
+     ],
+     "fps": 4,
+     "repeat": -1
+    }
+   },
+   "lightPoints": [
+    [
+     -71,
+     -81
+    ],
+    [
+     -32,
+     -88
+    ],
+    [
+     6,
+     -105
+    ],
+    [
+     45,
+     -130
+    ],
+    [
+     84,
+     -165
+    ]
+   ],
+   "lightKinds": [
+    "bulb",
+    "bulb",
+    "bulb",
+    "bulb",
+    "bulb"
+   ],
+   "lightRadiusPx": [
+    22,
+    22,
+    22,
+    22,
+    22
+   ],
+   "name": {
+    "ko": "전구 줄",
+    "en": "String lights"
+   },
+   "zone": "street",
+   "notes": "Party string lights (4.2 m): two white posts with a sagging string of coloured bulbs (axis world Y, screen down-left <-> up-right). Chain them post-to-post every 4.0 m (step (+181, -91) px along +Y). anims.work / anims.twinkle = 4 f gentle chase; lightPoints = bulbs for night glow (or use the _glow overlay).",
+   "night": {
+    "glow": "string_lights_y_glow",
+    "blend": "ADD",
+    "tint": "#6B7AB8"
+   }
+  },
+  "beach_arcade_glow": {
+   "anchor": [
+    0.27928,
+    0.67857
+   ],
+   "frameSize": [
+    444,
+    420
+   ],
+   "of": "beach_arcade",
+   "atlas": "bbld_glow",
+   "frame": "beach_arcade_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_arcade: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_bar_front": {
+   "anchor": [
+    0.38034,
+    0.6422
+   ],
+   "frameSize": [
+    468,
+    436
+   ],
+   "of": "beach_bar",
+   "atlas": "bbld_shops",
+   "frame": "beach_bar_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of beach_bar (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "beach_bar_glow": {
+   "anchor": [
+    0.38034,
+    0.6422
+   ],
+   "frameSize": [
+    468,
+    436
+   ],
+   "of": "beach_bar",
+   "atlas": "bbld_glow",
+   "frame": "beach_bar_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_bar: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_bar_x_front": {
+   "anchor": [
+    0.36842,
+    0.6422
+   ],
+   "frameSize": [
+    456,
+    436
+   ],
+   "of": "beach_bar_x",
+   "atlas": "bbld_shops",
+   "frame": "beach_bar_x_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of beach_bar_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "beach_bar_x_glow": {
+   "anchor": [
+    0.36842,
+    0.6422
+   ],
+   "frameSize": [
+    456,
+    436
+   ],
+   "of": "beach_bar_x",
+   "atlas": "bbld_glow",
+   "frame": "beach_bar_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_bar_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_cafe_front": {
+   "anchor": [
+    0.42342,
+    0.66038
+   ],
+   "frameSize": [
+    444,
+    424
+   ],
+   "of": "beach_cafe",
+   "atlas": "bbld_shops",
+   "frame": "beach_cafe_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of beach_cafe (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "beach_cafe_glow": {
+   "anchor": [
+    0.42342,
+    0.66038
+   ],
+   "frameSize": [
+    444,
+    424
+   ],
+   "of": "beach_cafe",
+   "atlas": "bbld_glow",
+   "frame": "beach_cafe_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_cafe: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_cafe_x_front": {
+   "anchor": [
+    0.43421,
+    0.66435
+   ],
+   "frameSize": [
+    456,
+    432
+   ],
+   "of": "beach_cafe_x",
+   "atlas": "bbld_shops",
+   "frame": "beach_cafe_x_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of beach_cafe_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "beach_cafe_x_glow": {
+   "anchor": [
+    0.43421,
+    0.66435
+   ],
+   "frameSize": [
+    456,
+    432
+   ],
+   "of": "beach_cafe_x",
+   "atlas": "bbld_glow",
+   "frame": "beach_cafe_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_cafe_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_gate_glow": {
+   "anchor": [
+    0.38318,
+    0.625
+   ],
+   "frameSize": [
+    428,
+    400
+   ],
+   "of": "beach_gate",
+   "atlas": "bbld_glow",
+   "frame": "beach_gate_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_gate: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_gate_x_glow": {
+   "anchor": [
+    0.34223,
+    0.625
+   ],
+   "frameSize": [
+    412,
+    400
+   ],
+   "of": "beach_gate_x",
+   "atlas": "bbld_glow",
+   "frame": "beach_gate_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_gate_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "beach_lamp_glow": {
+   "anchor": [
+    0.17,
+    0.66319
+   ],
+   "frameSize": [
+    200,
+    288
+   ],
+   "of": "beach_lamp",
+   "atlas": "bbld_glow",
+   "frame": "beach_lamp_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of beach_lamp: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "convenience_store_glow": {
+   "anchor": [
+    0.35135,
+    0.62981
+   ],
+   "frameSize": [
+    444,
+    416
+   ],
+   "of": "convenience_store",
+   "atlas": "bbld_glow",
+   "frame": "convenience_store_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of convenience_store: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "convenience_store_x_glow": {
+   "anchor": [
+    0.43142,
+    0.62981
+   ],
+   "frameSize": [
+    452,
+    416
+   ],
+   "of": "convenience_store_x",
+   "atlas": "bbld_glow",
+   "frame": "convenience_store_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of convenience_store_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "hotel_pool_water": {
+   "anchor": [
+    0.44833,
+    0.61224
+   ],
+   "frameSize": [
+    600,
+    392
+   ],
+   "of": "hotel_pool",
+   "atlas": "bbld_hotel",
+   "frame": "hotel_pool_water_0",
+   "kind": "overlay",
+   "anims": {
+    "work": {
+     "frames": [
+      "hotel_pool_water_0",
+      "hotel_pool_water_1",
+      "hotel_pool_water_2",
+      "hotel_pool_water_3",
+      "hotel_pool_water_4",
+      "hotel_pool_water_5"
+     ],
+     "fps": 6,
+     "repeat": -1
+    },
+    "ripple": {
+     "frames": [
+      "hotel_pool_water_0",
+      "hotel_pool_water_1",
+      "hotel_pool_water_2",
+      "hotel_pool_water_3",
+      "hotel_pool_water_4",
+      "hotel_pool_water_5"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "notes": "Baked fallback pool water of hotel_pool (Canvas / low quality): same frame + anchor, play spr:hotel_pool_water:ripple at depth d + 0.25."
+  },
+  "icecream_shop_front": {
+   "anchor": [
+    0.41364,
+    0.70052
+   ],
+   "frameSize": [
+    440,
+    384
+   ],
+   "of": "icecream_shop",
+   "atlas": "bbld_shops",
+   "frame": "icecream_shop_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of icecream_shop (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "icecream_shop_glow": {
+   "anchor": [
+    0.41364,
+    0.70052
+   ],
+   "frameSize": [
+    440,
+    384
+   ],
+   "of": "icecream_shop",
+   "atlas": "bbld_glow",
+   "frame": "icecream_shop_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of icecream_shop: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "icecream_shop_x_front": {
+   "anchor": [
+    0.45161,
+    0.64706
+   ],
+   "frameSize": [
+    372,
+    408
+   ],
+   "of": "icecream_shop_x",
+   "atlas": "bbld_shops",
+   "frame": "icecream_shop_x_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of icecream_shop_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "icecream_shop_x_glow": {
+   "anchor": [
+    0.45161,
+    0.64706
+   ],
+   "frameSize": [
+    372,
+    408
+   ],
+   "of": "icecream_shop_x",
+   "atlas": "bbld_glow",
+   "frame": "icecream_shop_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of icecream_shop_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "lifeguard_station_front": {
+   "anchor": [
+    0.29583,
+    0.70045
+   ],
+   "frameSize": [
+    480,
+    444
+   ],
+   "of": "lifeguard_station",
+   "atlas": "bbld_civic",
+   "frame": "lifeguard_station_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of lifeguard_station (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "lifeguard_station_glow": {
+   "anchor": [
+    0.29583,
+    0.70045
+   ],
+   "frameSize": [
+    480,
+    444
+   ],
+   "of": "lifeguard_station",
+   "atlas": "bbld_glow",
+   "frame": "lifeguard_station_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of lifeguard_station: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "mini_aquarium_glow": {
+   "anchor": [
+    0.29661,
+    0.66106
+   ],
+   "frameSize": [
+    472,
+    416
+   ],
+   "of": "mini_aquarium",
+   "atlas": "bbld_glow",
+   "frame": "mini_aquarium_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of mini_aquarium: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "pension_front": {
+   "anchor": [
+    0.39504,
+    0.69444
+   ],
+   "frameSize": [
+    524,
+    468
+   ],
+   "of": "pension",
+   "atlas": "bbld_shops",
+   "frame": "pension_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of pension (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "pension_glow": {
+   "anchor": [
+    0.39504,
+    0.69444
+   ],
+   "frameSize": [
+    524,
+    468
+   ],
+   "of": "pension",
+   "atlas": "bbld_glow",
+   "frame": "pension_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of pension: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "resort_hotel_front": {
+   "anchor": [
+    0.28555,
+    0.67417
+   ],
+   "frameSize": [
+    872,
+    844
+   ],
+   "of": "resort_hotel",
+   "atlas": "bbld_hotel",
+   "frame": "resort_hotel_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of resort_hotel (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "resort_hotel_glow": {
+   "anchor": [
+    0.28555,
+    0.67417
+   ],
+   "frameSize": [
+    872,
+    844
+   ],
+   "of": "resort_hotel",
+   "atlas": "bbld_glow",
+   "frame": "resort_hotel_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of resort_hotel: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "resort_hotel_night": {
+   "anchor": [
+    0.28555,
+    0.67417
+   ],
+   "frameSize": [
+    872,
+    844
+   ],
+   "of": "resort_hotel",
+   "atlas": "bbld_hotel_2",
+   "frame": "resort_hotel_night",
+   "kind": "night",
+   "notes": "Finished night picture of resort_hotel (day x tint #6B7AB8 + glow): draw it untinted at night in place of resort_hotel."
+  },
+  "resort_hotel_x_front": {
+   "anchor": [
+    0.38443,
+    0.67523
+   ],
+   "frameSize": [
+    848,
+    856
+   ],
+   "of": "resort_hotel_x",
+   "atlas": "bbld_hotel",
+   "frame": "resort_hotel_x_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of resort_hotel_x (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "resort_hotel_x_glow": {
+   "anchor": [
+    0.38443,
+    0.67523
+   ],
+   "frameSize": [
+    848,
+    856
+   ],
+   "of": "resort_hotel_x",
+   "atlas": "bbld_glow",
+   "frame": "resort_hotel_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of resort_hotel_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "resort_hotel_x_night": {
+   "anchor": [
+    0.38443,
+    0.67523
+   ],
+   "frameSize": [
+    848,
+    856
+   ],
+   "of": "resort_hotel_x",
+   "atlas": "bbld_hotel_2",
+   "frame": "resort_hotel_x_night",
+   "kind": "night",
+   "notes": "Finished night picture of resort_hotel_x (day x tint #6B7AB8 + glow): draw it untinted at night in place of resort_hotel_x."
+  },
+  "restroom_shower_glow": {
+   "anchor": [
+    0.40365,
+    0.67941
+   ],
+   "frameSize": [
+    384,
+    340
+   ],
+   "of": "restroom_shower",
+   "atlas": "bbld_glow",
+   "frame": "restroom_shower_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of restroom_shower: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "seafood_bbq_front": {
+   "anchor": [
+    0.36538,
+    0.70455
+   ],
+   "frameSize": [
+    468,
+    396
+   ],
+   "of": "seafood_bbq",
+   "atlas": "bbld_shops",
+   "frame": "seafood_bbq_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of seafood_bbq (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "seafood_bbq_glow": {
+   "anchor": [
+    0.36538,
+    0.70455
+   ],
+   "frameSize": [
+    468,
+    396
+   ],
+   "of": "seafood_bbq",
+   "atlas": "bbld_glow",
+   "frame": "seafood_bbq_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of seafood_bbq: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "souvenir_shop_glow": {
+   "anchor": [
+    0.3301,
+    0.67969
+   ],
+   "frameSize": [
+    412,
+    384
+   ],
+   "of": "souvenir_shop",
+   "atlas": "bbld_glow",
+   "frame": "souvenir_shop_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of souvenir_shop: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "string_lights_x_glow": {
+   "anchor": [
+    0.33807,
+    0.61607
+   ],
+   "frameSize": [
+    352,
+    336
+   ],
+   "of": "string_lights_x",
+   "atlas": "bbld_glow",
+   "frame": "string_lights_x_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of string_lights_x: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "string_lights_y_glow": {
+   "anchor": [
+    0.33807,
+    0.61607
+   ],
+   "frameSize": [
+    352,
+    336
+   ],
+   "of": "string_lights_y",
+   "atlas": "bbld_glow",
+   "frame": "string_lights_y_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of string_lights_y: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "surf_shop_glow": {
+   "anchor": [
+    0.3467,
+    0.69231
+   ],
+   "frameSize": [
+    424,
+    416
+   ],
+   "of": "surf_shop",
+   "atlas": "bbld_glow",
+   "frame": "surf_shop_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of surf_shop: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "swimwear_shop_glow": {
+   "anchor": [
+    0.33879,
+    0.66667
+   ],
+   "frameSize": [
+    428,
+    372
+   ],
+   "of": "swimwear_shop",
+   "atlas": "bbld_glow",
+   "frame": "swimwear_shop_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of swimwear_shop: same frame + anchor, blendMode ADD, not tinted."
+  },
+  "tourist_info_front": {
+   "anchor": [
+    0.30882,
+    0.69892
+   ],
+   "frameSize": [
+    340,
+    372
+   ],
+   "of": "tourist_info",
+   "atlas": "bbld_civic",
+   "frame": "tourist_info_front",
+   "kind": "overlay",
+   "notes": "Occluder overlay of tourist_info (same frame + anchor): draw it ABOVE the characters standing behind its railings / counter / desk (building d, those characters d + 0.5, this overlay d + 1)."
+  },
+  "tourist_info_glow": {
+   "anchor": [
+    0.30882,
+    0.69892
+   ],
+   "frameSize": [
+    340,
+    372
+   ],
+   "of": "tourist_info",
+   "atlas": "bbld_glow",
+   "frame": "tourist_info_glow",
+   "kind": "glow",
+   "blend": "ADD",
+   "notes": "Night light of tourist_info: same frame + anchor, blendMode ADD, not tinted."
+  }
+ },
+ "night": {
+  "tint": "#6B7AB8",
+  "glowBlend": "ADD",
+  "glowAtlas": "bbld_glow"
+ },
+ "lazyAtlases": [
+  "bbld_glow"
+ ]
+}

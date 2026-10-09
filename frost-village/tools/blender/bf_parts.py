@@ -364,7 +364,7 @@ PARTS['rash_guard'].sleeves = 'top'
 # =========================================================================== wetsuit
 
 @part('wetsuit', 'top', 'body', {'main': sub('top', Z['top']), 'panel': sub('top2', Z['top_detail'])},
-      tags=['beach', 'swimwear', 'surf'], ages=['child', 'adult', 'elder'], label={'ko': '웻슈트', 'en': 'wetsuit'})
+      tags=['beach', 'swimwear', 'surf'], ages=['child', 'adult'], label={'ko': '웻슈트', 'en': 'wetsuit'})
 def b_wetsuit(rig, ctx, put):
     _lazy()
     m = M('wetsuit', ctx.col('top'), 0.38)
@@ -1031,46 +1031,61 @@ def b_swim_cap_flower(rig, ctx, put):
                 k += 1
 
 
+def rot_x(p, deg, pivot):
+    """Point p (head space) rotated about the X axis through pivot by deg (same sense as an object rot=(deg, 0, 0))."""
+    t = math.radians(deg)
+    y, z = p[1] - pivot[1], p[2] - pivot[2]
+    return (p[0], pivot[1] + y * math.cos(t) - z * math.sin(t), pivot[2] + y * math.sin(t) + z * math.cos(t))
+
+
+# Sun hats are worn pushed back (front brim up): from the 30 deg game camera a level brim hides the eyes, and a
+# chibi face under a hat must stay readable.
+STRAW_TILT = -13.0
+SUNHAT_TILT = -18.0
+
+
 @part('straw_hat', 'hat', 'head', {'main': HATFIX, 'band': HAT2}, cls='full', tags=['beach', 'sun'],
       label={'ko': '밀짚모자', 'en': 'straw hat'})
 def b_straw_hat(rig, ctx, put):
     _lazy()
     straw = M('straw', '#E6C887', 0.85)
     straw_d = M('straw_d', '#D4AE6A', 0.88)
+    T = STRAW_TILT
     with put('main'):
-        cb.cap_shell(rig, straw, lambda x, y: 0.26 - 0.14 * y, base=1.13, puff=0.0, name='crown_base', soft=0.03)
+        cb.cap_shell(rig, straw, lambda x, y: 0.27 - 0.22 * y, base=1.13, puff=0.0, name='crown_base', soft=0.03)
         crown = g.bm_lathe([(0.282, 0.0), (0.288, 0.09), (0.270, 0.165), (0.150, 0.198), (0.0, 0.205)], seg=48,
                            sy=0.96, smooth_n=16, cap_bottom=False)
         for v in crown.verts:                                  # woven rows
             v.co.x *= 1 + 0.010 * math.sin(v.co.z * 140)
             v.co.y *= 1 + 0.010 * math.sin(v.co.z * 140)
-        vd.ho(rig, 'crown', crown, straw, loc=(0, 0.01, 0.17), rot=(-7, 0, 0))
+        vd.ho(rig, 'crown', crown, straw, loc=(0, 0.015, 0.17), rot=(T, 0, 0))
         prof = []
         for k in range(12):
             r = 0.28 + 0.25 * k / 11
             prof.append((r, -0.004 - 0.05 * ((r - 0.28) / 0.25) ** 1.6 + 0.004 * math.sin(k * PI)))
         brim = g.bm_lathe(prof + [(0.535, -0.062), (0.52, -0.070)] + [(r, z - 0.012) for r, z in prof[::-1]], seg=64,
                           sy=1.0, cap_top=False, cap_bottom=False)
-        vd.ho(rig, 'brim', brim, straw, loc=(0, 0.01, 0.17), rot=(-8, 0, 0))
+        vd.ho(rig, 'brim', brim, straw, loc=(0, 0.015, 0.17), rot=(T - 1, 0, 0))
         for r in (0.315, 0.355, 0.395, 0.435, 0.475):
             zr = -0.004 - 0.05 * ((r - 0.28) / 0.25) ** 1.6 + 0.004
             ring = g.bm_ring(r, 0.0055, seg=72, segr=5, rz=0.7)
-            vd.ho(rig, 'brim_row', ring, straw_d, loc=(0, 0.01, 0.17 + zr), rot=(-8, 0, 0))
+            vd.ho(rig, 'brim_row', ring, straw_d, loc=(0, 0.015, 0.17 + zr), rot=(T - 1, 0, 0))
         for zc in (0.04, 0.09, 0.14):
             vd.ho(rig, 'crown_row', g.bm_ring(prof_r([(0.282, 0.0), (0.288, 0.09), (0.270, 0.165)], zc) + 0.002, 0.005,
-                                              seg=64, segr=5, sy=0.96, rz=0.7), straw_d, loc=(0, 0.01, 0.17 + zc),
-                  rot=(-7, 0, 0))
-        vd.ho(rig, 'brim_edge', g.bm_ring(0.525, 0.012, seg=64, segr=6), straw_d, loc=(0, 0.01, 0.17 - 0.064),
-              rot=(-8, 0, 0))
+                                              seg=64, segr=5, sy=0.96, rz=0.7), straw_d,
+                  loc=rot_x((0, 0.015, 0.17 + zc), T, (0, 0.015, 0.17)), rot=(T, 0, 0))
+        vd.ho(rig, 'brim_edge', g.bm_ring(0.525, 0.012, seg=64, segr=6), straw_d,
+              loc=rot_x((0, 0.015, 0.17 - 0.064), T - 1, (0, 0.015, 0.17)), rot=(T - 1, 0, 0))
     with put('band'):
         bm_ = M('straw_band', ctx.col('hat2'), 0.6)
-        vd.ho(rig, 'band', g.bm_ring(0.288, 0.030, seg=56, segr=8, sy=0.96, rz=1.2), bm_, loc=(0, 0.01, 0.20),
-              rot=(-7, 0, 0))
-        for s in (-1, 1):
+        piv = (0, 0.015, 0.17)
+        vd.ho(rig, 'band', g.bm_ring(0.288, 0.030, seg=56, segr=8, sy=0.96, rz=1.2), bm_,
+              loc=rot_x((0, 0.015, 0.20), T, piv), rot=(T, 0, 0))
+        for s_ in (-1, 1):
             vd.ho(rig, 'band_bow', g.bm_ellipsoid(0.034, 0.014, 0.024, 10, 6), bm_,
-                  loc=(0.285, 0.06 + s * 0.035, 0.205), rot=(0, 0, 70 + s * 20))
-        vd.ho(rig, 'band_tail', g.bm_box(0.014, 0.028, 0.075, bevel=0.005), bm_, loc=(0.29, 0.085, 0.16),
-              rot=(10, 0, 0))
+                  loc=rot_x((0.285, 0.06 + s_ * 0.035, 0.205), T, piv), rot=(0, 0, 70 + s_ * 20))
+        vd.ho(rig, 'band_tail', g.bm_box(0.014, 0.028, 0.075, bevel=0.005), bm_,
+              loc=rot_x((0.29, 0.085, 0.16), T, piv), rot=(10, 0, 0))
 
 
 @part('sun_hat_wide', 'hat', 'head', {'main': HAT, 'ribbon': HAT2}, cls='full', tags=['beach', 'sun'],
@@ -1078,31 +1093,35 @@ def b_straw_hat(rig, ctx, put):
 def b_sun_hat_wide(rig, ctx, put):
     _lazy()
     m = M('sunhat', ctx.col('hat'), 0.9)
+    T = SUNHAT_TILT
+    piv = (0, 0.02, 0.17)
     with put('main'):
-        cb.cap_shell(rig, m, lambda x, y: 0.24 - 0.14 * y, base=1.13, puff=0.02, name='crown_base', soft=0.03)
+        cb.cap_shell(rig, m, lambda x, y: 0.26 - 0.26 * y, base=1.13, puff=0.02, name='crown_base', soft=0.03)
         crown = g.bm_lathe([(0.284, 0.0), (0.290, 0.07), (0.262, 0.135), (0.13, 0.160), (0.0, 0.163)], seg=48,
                            sy=0.97, smooth_n=14, cap_bottom=False)
-        vd.ho(rig, 'crown', crown, m, loc=(0, 0.01, 0.165), rot=(-6, 0, 0))
-        prof = [(0.28, 0.004), (0.36, -0.012), (0.44, -0.040), (0.52, -0.080), (0.56, -0.106), (0.565, -0.118),
-                (0.52, -0.094), (0.44, -0.054), (0.36, -0.024), (0.28, -0.008)]
+        vd.ho(rig, 'crown', crown, m, loc=rot_x((0, 0.02, 0.165), T, piv), rot=(T + 1, 0, 0))
+        # brim: a softer droop than a garden hat (0.09 at the rim), floppy waves, pushed back
+        prof = [(0.28, 0.004), (0.36, -0.010), (0.44, -0.032), (0.52, -0.064), (0.56, -0.084), (0.565, -0.094),
+                (0.52, -0.076), (0.44, -0.046), (0.36, -0.022), (0.28, -0.008)]
         brim = g.bm_lathe(prof, seg=96, sy=1.0, cap_top=False, cap_bottom=False)
         for v in brim.verts:                                   # floppy waves
             r = math.hypot(v.co.x, v.co.y)
             a = math.atan2(v.co.y, v.co.x)
             k = max(0.0, (r - 0.30) / 0.26)
-            v.co.z += k * (0.030 * math.sin(5 * a + 0.6) - 0.018 * max(0.0, math.sin(a)))
-        vd.ho(rig, 'brim', brim, m, loc=(0, 0.01, 0.17), rot=(-7, 0, 0))
+            v.co.z += k * (0.026 * math.sin(5 * a + 0.6) - 0.014 * max(0.0, math.sin(a)))
+        vd.ho(rig, 'brim', brim, m, loc=piv, rot=(T, 0, 0))
     with put('ribbon'):
         rm = M('sunhat_ribbon', ctx.col('hat2'), 0.5)
-        vd.ho(rig, 'ribbon', g.bm_ring(0.290, 0.032, seg=56, segr=8, sy=0.97, rz=1.25), rm, loc=(0, 0.01, 0.195),
-              rot=(-6, 0, 0))
-        for s in (-1, 1):
+        vd.ho(rig, 'ribbon', g.bm_ring(0.290, 0.032, seg=56, segr=8, sy=0.97, rz=1.25), rm,
+              loc=rot_x((0, 0.02, 0.195), T, piv), rot=(T + 1, 0, 0))
+        for s_ in (-1, 1):
             vd.ho(rig, 'ribbon_bow', g.bm_ellipsoid(0.060, 0.022, 0.036, 12, 8), rm,
-                  loc=(s * 0.055, 0.29, 0.205), rot=(0, s * -18, 0))
-            pts = [(s * 0.03, 0.30, 0.18), (s * 0.06, 0.36, 0.08), (s * 0.08, 0.39, -0.04)]
+                  loc=rot_x((s_ * 0.055, 0.30, 0.205), T, piv), rot=(T + 6, s_ * -18, 0))
+            pts = [rot_x(q, T, piv) for q in ((s_ * 0.03, 0.31, 0.18), (s_ * 0.06, 0.37, 0.08))]
+            pts.append((s_ * 0.08, pts[1][1] + 0.03, pts[1][2] - 0.12))              # tails hang straight down
             vd.ho(rig, 'ribbon_tail', g.bm_tube_path(vd.catmull3(pts, 10), 0.014, segr=6, side_ref=(1, 0, 0), flat=2.2),
                   rm)
-        vd.ho(rig, 'ribbon_knot', g.bm_ellipsoid(0.026, 0.022, 0.026, 10, 6), rm, loc=(0, 0.298, 0.205))
+        vd.ho(rig, 'ribbon_knot', g.bm_ellipsoid(0.026, 0.022, 0.026, 10, 6), rm, loc=rot_x((0, 0.308, 0.205), T, piv))
 
 
 @part('sunglasses', 'glasses', 'head', {'main': sub('glasses', Z['glasses']), 'lens': sub(None, Z['glasses'] + 0.3)},

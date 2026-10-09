@@ -20,8 +20,9 @@ const RAIL_KEYS = ['rail_x', 'rail_x_crossing', 'rail_x_end_n', 'rail_x_end_p'];
 export const PAINT_FILES = ['road_dirt', 'road_dirt_y', 'road_dirt_cross', 'sidewalk', 'roads_decals'];
 const EUP_FILES = ['road_cobble_wide'];
 const BAKE_ONLY = ['road_dirt', 'road_dirt_y', 'road_dirt_cross', 'sidewalk', 'road_cobble_wide', 'roads_decals', 'town_rails'];
-const RELEASE_AFTER = 12;      // s with the view far from the streets before their pictures leave the memory
-const FAR = 1400;              // px from the street area that counts as far
+const RELEASE_AFTER = 10;      // s with the view far from the streets before their pictures leave the memory
+const FAR = 800;               // px from the street area that counts as far (the ground bakes ~710 px around the view)
+const NEAR = 1300;             // px: coming back closer than this fetches them again before a tile needs them
 
 /** draw one atlas sprite with its anchor at (x, y) (trimmed frames placed where the untrimmed frame would be) */
 function drawAt(ctx, key, x, y, alpha = 1, scale = 1) {
@@ -128,7 +129,16 @@ export class RoadPaint {
     const far = (q) => v.right < q.x - FAR || v.x > q.x + q.w + FAR || v.bottom < q.y - FAR || v.y > q.y + q.h + FAR;
     if (far(r) && far(rr) && !gs.ground.dirty.size) this.farT += dt; else this.farT = 0;
     if (this.farT > RELEASE_AFTER && !this.released) this.release();
+    // (the ground tiles are a pool: a street tile is baked again when the camera comes back; fetch the pictures
+    //  while the camera approaches, so the tile is baked with its street, not re-baked a moment later)
+    if (this.released) {
+      const near = (q) => !(v.right < q.x - NEAR || v.x > q.x + q.w + NEAR || v.bottom < q.y - NEAR || v.y > q.y + q.h + NEAR);
+      if (near(r) || near(rr)) { this.released = false; this.want(BAKE_ONLY.filter((k) => this.needs(k))); }
+    }
   }
+
+  /** a bake-only picture this painter uses now (the 읍 cobble only after the upgrade) */
+  needs(k) { return EUP_FILES.indexOf(k) < 0 || this.rank >= 2; }
 
   release() {
     const gs = this.gs;

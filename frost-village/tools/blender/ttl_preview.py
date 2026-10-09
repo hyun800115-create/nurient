@@ -11,6 +11,7 @@ Writes docs/previews/title_art_sheet.png       every piece of assets/title on on
        docs/previews/title_art_icon.png        the app icon at 48 / 96 / 192 px (+ masks, adaptive pair)
        docs/previews/title_art_band.png        the backdrop laid out exactly like src/title/TitleSky.js
                                                (day / dusk / night, before and at the city stage)
+       docs/previews/title_art_logo_phone.png  the logos at real phone size (215 px) + 3x, every sky
 """
 import json
 import os
@@ -219,7 +220,7 @@ def mock(time='night', W=1080, H=2340, label=True):
     fs = font(int(20 * k), ko=False)
     d.text((int(24 * k), H - int(48 * k)), 'v4.0  (placeholder)', font=fs, fill=(255, 255, 255, 180))
     if label:
-        d.text((int(24 * k), int(H * 0.33)), 'diorama area = PLACEHOLDER (title_code builds the real one)',
+        d.text((int(24 * k), int(H * 0.47)), 'diorama area = PLACEHOLDER (title_code builds the real one)',
                font=font(int(16 * k), ko=False), fill=(255, 255, 255, 150))
     return out.convert('RGB')
 
@@ -292,6 +293,44 @@ def band_sheet():
         d.text((x, y - 30), '%s  %s' % ({'day': '낮', 'dusk': '노을', 'night': '밤'}[t], '도시 단계' if c else '개척~읍'),
                font=f, fill=(29, 47, 94))
     return out
+
+
+# ------------------------------------------------------------------ the logo at phone size
+def logo_phone():
+    """The main logo as a 360-px-wide phone shows it (215 px wide at k = 1) over the day / dusk /
+    night skies, shown 1:1 and enlarged 3x (nearest) so every navy gap between the jamo is visible;
+    plus the plain Jua glyphs for comparison and the English logo at the same width."""
+    m = man()
+    lg = img('ttl_logo_main', m)
+    en = img('ttl_logo_en', m)
+    W1 = 215
+    sm = lg.resize((W1, round(lg.height * W1 / lg.width)), Image.LANCZOS)
+    se = en.resize((W1 + 40, round(en.height * (W1 + 40) / en.width)), Image.LANCZOS)
+    skies = [img('ttl_sky_' + t, m) for t in ('day', 'dusk', 'night')]
+    cells = []
+    for sk in skies:
+        bg = sk.resize((W1 + 50, 400), Image.BICUBIC).crop((0, 60, W1 + 50, 60 + sm.height + se.height + 40))
+        bg.alpha_composite(sm, (25, 10))
+        bg.alpha_composite(se, (5, sm.height + 25))
+        cells.append(bg)
+    cw, ch = cells[0].size
+    row1 = Image.new('RGBA', (cw * 3 + 20, ch), (255, 255, 255, 255))
+    for i, c in enumerate(cells):
+        row1.alpha_composite(c, (i * (cw + 10), 0))
+    big = row1.resize((row1.width * 3, row1.height * 3), Image.NEAREST)
+    f = font(30)
+    raw = Image.new('RGBA', (big.width, 150), (29, 47, 94, 255))
+    ImageDraw.Draw(raw).text((30, 20), C.TITLE['main'] + '   (plain Jua - every jamo of the logo must stay apart like this)',
+                             font=f, fill=(255, 255, 255, 255))
+    ImageDraw.Draw(raw).text((30, 80), C.TITLE['main'], font=font(56), fill=(255, 255, 255, 255))
+    out = Image.new('RGBA', (big.width, row1.height + big.height + raw.height + 70), (236, 242, 250, 255))
+    d = ImageDraw.Draw(out)
+    d.text((10, 6), '실제 크기 (360 px 폰, 로고 215 px)', font=font(22), fill=(29, 47, 94, 255))
+    out.alpha_composite(row1, (10, 36))
+    d.text((10, row1.height + 42), '3배 확대 (픽셀 그대로)', font=font(22), fill=(29, 47, 94, 255))
+    out.alpha_composite(big, (0, row1.height + 70))
+    out.alpha_composite(raw, (0, row1.height + 70 + big.height))
+    return out.convert('RGB')
 
 
 # ------------------------------------------------------------------ icon preview
@@ -488,6 +527,7 @@ def main():
     if ip is not None:
         ip.save(os.path.join(PREV, 'title_art_icon.png'), optimize=True)
     band_sheet().save(os.path.join(PREV, 'title_art_band.png'), optimize=True)
+    logo_phone().save(os.path.join(PREV, 'title_art_logo_phone.png'), optimize=True)
     print('PREVIEW_DONE')
 
 

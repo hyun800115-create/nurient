@@ -378,7 +378,7 @@ function pageWithFragments(page, frags) {
  * name) always travel together, so a picture never meets the frame list of another build.
  */
 function publishBatches(files, size) {
-  const isBoot = (p) => p === 'game.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p);
+  const isBoot = (p) => p === 'game.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p) || p === 'assets/_packed/index.json';
   const boot = files.filter(isBoot);
   const groups = new Map();
   for (const p of files.filter((f) => !isBoot(f))) { const k = p.replace(/\.[^./]+$/, ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
@@ -390,6 +390,44 @@ function publishBatches(files, size) {
   if (batches[batches.length - 1].length + boot.length > size) batches.push([]);
   batches[batches.length - 1].push(...boot);
   return batches.filter((b) => b.length);
+}
+
+/**
+ * (v4-B, docs/v4_plan.md §11.3a) ship the packed pages (assets/_packed, tools/build/pack_pages.py) instead of the
+ * raw atlases they were made from: the copied manifests keep the atlas key (Assets.applyPages needs it) without
+ * its files, the raw files are left out, the pages and a filtered index.json go in.
+ */
+function shipPacked(frags, skipped, copied) {
+  const idxPath = path.join(ROOT, 'assets', '_packed', 'index.json');
+  if (!fs.existsSync(idxPath)) return 0;
+  const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+  const out = { version: idx.version, tool: idx.tool, atlases: {} };
+  const mans = {};
+  let n = 0;
+  for (const key in idx.atlases || {}) {
+    const e = idx.atlases[key];
+    if (!frags.includes(e.frag)) continue;
+    const mp = path.join(OUT, 'assets', e.frag, 'manifest.json');
+    if (!fs.existsSync(mp)) continue;
+    const j = mans[e.frag] || (mans[e.frag] = JSON.parse(fs.readFileSync(mp, 'utf8')));
+    const a = (j.atlases || []).find((x) => x && x.key === key);
+    if (!a || !a.png) continue;
+    if (!e.pages.every((pg) => fs.existsSync(path.join(ROOT, 'assets', pg.png)) && fs.existsSync(path.join(ROOT, 'assets', pg.json)))) continue;
+    for (const p of [a.png, a.json]) { const fp = path.join(OUT, 'assets', p); if (fs.existsSync(fp)) fs.rmSync(fp); }
+    skipped.push('assets/' + a.png + ' (shipped as ' + e.pages.length + ' packed pages)');
+    delete a.png; delete a.json; a.packed = true;
+    for (const pg of e.pages) for (const p of [pg.png, pg.json]) {
+      const dst = path.join(OUT, 'assets', p);
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'assets', p), dst);
+      copied.push(dst);
+    }
+    out.atlases[key] = e;
+    n++;
+  }
+  for (const f in mans) fs.writeFileSync(path.join(OUT, 'assets', f, 'manifest.json'), JSON.stringify(mans[f]));
+  if (n) { fs.writeFileSync(path.join(OUT, 'assets', '_packed', 'index.json'), JSON.stringify(out)); copied.push(path.join(OUT, 'assets', '_packed', 'index.json')); }
+  return n;
 }
 
 // ------------------------------------------------------------------ build
@@ -457,6 +495,8 @@ async function main() {
   // blacksmith) or that no character uses any more (the old dog atlas, pets2 has the new one) are never
   // loaded by the game (Assets.mergeManifests: the later fragment wins key by key): leave them out
   pruneOverridden(frags, skipped);
+  const packedN = shipPacked(frags.concat(late), skipped, copied);
+  if (packedN) console.log(`[build] packed pages: ${packedN} atlases shipped as pages (assets/_packed)`);
   const notLoaded = fs.readdirSync(path.join(ROOT, 'assets'), { withFileTypes: true }).filter((e) => e.isDirectory() && !frags.includes(e.name) && !late.includes(e.name)).map((e) => 'assets/' + e.name + '/');
   if (notLoaded.length) skipped.push(...notLoaded.map((d) => d + ' (not loaded by the game yet)'));
 
@@ -510,6 +550,16 @@ async function main() {
       const fp = path.join(OUT, 'assets', p);
       referenced.add('assets/' + p);
       if (!fs.existsSync(fp)) problems.push(`assets/${p} is listed in ${frag}/manifest.json but missing`);
+    }
+  }
+  // (v4-B) the packed pages listed by assets/_packed/index.json
+  const pidx = path.join(OUT, 'assets', '_packed', 'index.json');
+  if (fs.existsSync(pidx)) {
+    referenced.add('assets/_packed/index.json');
+    const j = JSON.parse(fs.readFileSync(pidx, 'utf8'));
+    for (const key in j.atlases || {}) for (const pg of j.atlases[key].pages || []) for (const p of [pg.png, pg.json]) {
+      referenced.add('assets/' + p);
+      if (!fs.existsSync(path.join(OUT, 'assets', p))) problems.push(`assets/${p} is listed in _packed/index.json but missing`);
     }
   }
   const unreferenced = files.map(rel).filter((r) => r.startsWith('assets/') && !referenced.has(r));
