@@ -33,6 +33,8 @@
 //  - groundSpeed(person, anim, dir): px/s the planted foot slides at the anim's fps - move the sprite at that speed
 //    (or play the anim at fps * speed / groundSpeed) so the feet do not skate.
 //  - pageOf(anim) / cfPages: which atlas page (incident group) an anim's frames live in.
+//  - a sub with onlyAnims / noAnims is drawn only in / never in those anims (held_loot_sack: 'main' in the fist,
+//    'flee' slung over the far shoulder in flee).
 
 import { MIRROR } from './townfolk_compose.js';
 import { Townfolk2, TownfolkSprite2 } from './townfolk2_compose.js';
@@ -167,6 +169,8 @@ export class Cityfolk extends Townfolk2 {
     for (const pn of vis) {
       const P = T.parts[pn];
       for (const [s, sd] of Object.entries(P.subs)) {
+        if (sd.onlyAnims && !sd.onlyAnims.includes(anim)) continue;     // sub drawn only there (sack over the shoulder)
+        if (sd.noAnims && sd.noAnims.includes(anim)) continue;
         let z = typeof sd.z === 'object' ? sd.z[d] : sd.z;
         if (sd.follow) z = limbZ[sd.follow] + (sd.followDz ?? 0.5);
         if (sd.zfrontFollow && zf.has(sd.zfrontFollow)) z = T.limbs[sd.zfrontFollow].zFront + 0.5;

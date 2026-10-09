@@ -76,7 +76,10 @@ await page.evaluate(() => {
   const g = window.__FV.game, gs = window.__FV.scene;
   const R = window.__RV = { upd: [], ren: [], gsUpd: [], frames: 0, soundPlays: 0, playsByKey: {}, botLog: [] };
   const su = g.scene.update.bind(g.scene), sr = g.scene.render.bind(g.scene);
-  g.scene.update = function (t, d) { const a = performance.now(); su(t, d); R.upd.push(performance.now() - a); R.frames++; };
+  // (v4) R.sim = game seconds simulated (the Game scene clamps each frame to 0.05 s: at 1-2 fps under SwiftShader a
+  // wall minute is only a few game seconds, so the samples report both)
+  R.sim = 0;
+  g.scene.update = function (t, d) { const a = performance.now(); su(t, d); R.upd.push(performance.now() - a); R.frames++; R.sim += Math.min(0.05, d / 1000); };
   g.scene.render = function (r) { const a = performance.now(); sr(r); R.ren.push(performance.now() - a); };
   const gu = gs.sys.sceneUpdate;
   gs.sys.sceneUpdate = function (t, d) { const a = performance.now(); gu.call(this, t, d); R.gsUpd.push(performance.now() - a); };
@@ -140,7 +143,7 @@ while (Date.now() - t0 < secs * 1000) {
     for (const k of texKeys) { const t = g.textures.get(k); const s = t.source[0]; if (s && s.isCanvas) { canvasTex++; canvasPx += s.width * s.height; } }
     const evCount = (em) => { if (!em || !em.eventNames) return -1; let n = 0; for (const e of em.eventNames()) n += em.listenerCount(e); return n; };
     const out = {
-      gameTime: Math.round(gs.time.now / 1000), frames: R.frames,
+      gameTime: Math.round(gs.time.now / 1000), sim: Math.round(R.sim), frames: R.frames,
       upd: R.upd.splice(0), ren: R.ren.splice(0), gsUpd: R.gsUpd.splice(0),
       children: gs.children.length, visible, types, uiChildren: ui.children.length,
       tweens: gs.tweens.getTweens().length, uiTweens: ui.tweens.getTweens().length,
@@ -187,7 +190,7 @@ while (Date.now() - t0 < secs * 1000) {
     ...Object.fromEntries(Object.entries(inPage).filter(([k]) => !['upd', 'ren', 'gsUpd', 'frames', 'gameTime'].includes(k))),
   };
   samples.push(s);
-  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, life: s.life, porters: s.porters, ops: s.ops, piles: s.piles, raw: s.raw, dog: s.dog, v4: s.v4, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
+  console.log(JSON.stringify({ i: s.i, wall: s.wall, gt: s.gameTime, sim: s.sim, fps: s.fps, logic: s.logicMs, gsUpd: s.gameUpdMs, render: s.renderMs, heapGc: s.heapAfterGcMB, heap: s.heapMB, listeners: s.jsListeners, children: s.children, vis: s.visible, tweens: s.tweens, timers: s.timers, sounds: s.sounds, playing: s.playing, plays: s.soundPlays, pool: s.itemPool, sheetPool: s.sheetPool, agents: s.agents, q: s.queue, leaving: s.leaving, coins: s.coins, int: s.coinsInt, tex: s.textures, life: s.life, porters: s.porters, ops: s.ops, piles: s.piles, raw: s.raw, dog: s.dog, v4: s.v4, emit: s.emitters, up: s.up, shelf: s.shelf, lv: s.leavingPos, st: s.stations, ws: s.workerStates, bot: s.bot }));
   writeJSON(TAG + '_samples.json', { samples, errors: log.errors, warnings: log.warnings });
 }
 await page.evaluate(() => { window.__RV_BOT = false; });

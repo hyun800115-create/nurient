@@ -218,6 +218,10 @@ class Cityfolk(tc2.Townfolk2):
         for pn in vis:
             P = self.parts[pn]
             for s, sd in P['subs'].items():
+                if sd.get('onlyAnims') and anim not in sd['onlyAnims']:
+                    continue
+                if anim in sd.get('noAnims', []):
+                    continue
                 z = sd['z'][d] if isinstance(sd['z'], dict) else sd['z']
                 if sd.get('follow'):
                     z = limbz[sd['follow']] + sd.get('followDz', 0.5)

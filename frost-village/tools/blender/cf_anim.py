@@ -173,8 +173,8 @@ def _age(ch):
 # S / N).  Frame i of the right leg: 0 contact (heel lands in front), 1 down (stance knee bent, body lowest),
 # 2 push-off, 3 flight (both feet off the snow, trailing heel kicked up), 4..7 = the left leg.  The hips are set
 # so the stance foot touches the snow; the flight frames lift the body (cartoon bob ~5 px).
-RUN_HIP = [28.0, 4.0, -24.0, -42.0, -40.0, -12.0, 22.0, 42.0]
-RUN_KNEE = [14.0, 40.0, 6.0, 46.0, 96.0, 112.0, 74.0, 34.0]
+RUN_HIP = [28.0, 24.0, -24.0, -42.0, -40.0, -12.0, 22.0, 42.0]
+RUN_KNEE = [14.0, 50.0, 6.0, 46.0, 96.0, 112.0, 74.0, 34.0]
 RUN_STANCE = {0: 'R', 1: 'R', 2: 'R', 4: 'L', 5: 'L', 6: 'L'}
 # per age: (hip amplitude scale, knee scale, flight lift m)
 RUN_AGE = {'adult': (1.0, 1.0, 0.072), 'child': (1.08, 1.0, 0.066), 'elder': (0.66, 0.62, 0.026)}

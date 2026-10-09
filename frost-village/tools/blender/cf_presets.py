@@ -211,18 +211,18 @@ PRESETS3 = {
 JOB_V4 = {'top_uniform', 'top_labcoat', 'top_tunic', 'det_police', 'det_station', 'det_stethoscope', 'det_lanyard',
           'det_apron', 'det_apron_salon', 'det_hivis', 'acc_mailbag'}
 CORE = {
-    # (polish pass: + the run / crowd blockers of random residents: dresses, bombers, pleated skirts, backpacks,
-    #  elder overalls - every body part the generator gives residents is now in 'core', except the necklace
-    #  which is a drop accessory, and child vests / cardigans (<1.5 % of children))
+    # (polish pass: + the run / crowd blockers of random residents: dresses, adult bombers, pleated skirts, adult
+    #  backpacks - the generator's residents now nearly all fit 'core'; the necklace is a drop accessory; left out for
+    #  the 7 MB payload: child bombers / vests / cardigans and elder overalls, ~5 % of residents, who fall back)
     'child': {'top_puffer', 'top_parka', 'top_hoodie', 'top_duffle', 'top_sweater', 'top_dress', 'top_coat',
-              'top_bomber', 'bot_pants', 'bot_snowpants', 'bot_skirt', 'bot_overalls', 'bot_tights', 'bot_pleated',
+              'bot_pants', 'bot_snowpants', 'bot_skirt', 'bot_overalls', 'bot_tights', 'bot_pleated',
               'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes', 'acc_scarf', 'acc_backpack'},
     'adult': {'top_parka', 'top_puffer', 'top_sweater', 'top_coat', 'top_cardigan', 'top_hoodie', 'top_duffle',
               'top_vest', 'top_dress', 'top_bomber', 'bot_pants', 'bot_skirt', 'bot_snowpants', 'bot_longskirt',
               'bot_tights', 'bot_overalls', 'bot_pleated', 'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes',
               'acc_scarf', 'acc_satchel', 'acc_backpack'},
     'elder': {'top_cardigan', 'top_coat', 'top_parka', 'top_sweater', 'top_vest', 'top_puffer', 'top_duffle',
-              'top_dress', 'bot_pants', 'bot_longskirt', 'bot_snowpants', 'bot_skirt', 'bot_tights', 'bot_overalls',
+              'top_dress', 'bot_pants', 'bot_longskirt', 'bot_snowpants', 'bot_skirt', 'bot_tights',
               'shoe_boots', 'shoe_furboots', 'shoe_rubber', 'shoe_shoes', 'acc_scarf', 'acc_satchel'},
 }
 MINI = {
@@ -261,15 +261,18 @@ CF_DROP = {'acc_necklace': ['run', 'flee', 'arrested_walk', 'carry_box', 'argue'
                             'phone', 'sweep', 'spray_hose'],
            'acc_satchel': ['flee', 'fight', 'arrested_walk', 'carry_box', 'sweep', 'spray_hose'],
            'acc_backpack': ['flee', 'fight', 'arrested_walk', 'carry_box', 'sweep', 'spray_hose']}
-# anims whose lower-body frames are the SAME images as a partner's (shared lower key, cf_anim.LOWER_GROUPS):
-# every bottom / shoe cast in the partner is cast here too (frame aliases, no new pixels)
-LOWER_PARTNER = {'flee': ['run'], 'arrested_walk': ['carry_box'], 'carry_box': ['arrested_walk']}
+# anims whose lower-body frames are the SAME images as a partner's (shared lower key, cf_anim.LOWER_GROUPS) on the
+# SAME atlas page: every bottom / shoe cast in the partner is cast here too (frame aliases, no new pixels).
+# (arrested_walk / carry_box share their legs too, but live on different pages - scuffle / work - so aliasing them
+#  would store the images twice; not done)
+LOWER_PARTNER = {'flee': ['run']}
 CAST3 = {
     # run is the everyday hurry / play / rush-to-see anim -> the core wardrobe; flee (arms-up panic) has the core
-    # wardrobe too since the polish pass (residents of a burning house flee in whatever they wear)
+    # wardrobe for adults since the polish pass (residents of a burning house flee in whatever they wear), the mini
+    # one for children and elders (+ every run bottom / shoe as free aliases); the rest run with the panic face
     'run':           ({'child': 'core', 'adult': 'core', 'elder': 'core'},
                       FIRE + POLICE + BURGLAR + ['top_trench', 'acc_camera', 'top_delivery_polo']),
-    'flee':          ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),
+    'flee':          ({'child': 'mini', 'adult': 'core', 'elder': 'mini'}, BURGLAR),
     'arrested_walk': ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, BURGLAR),
     'carry_box':     ({'child': 'tiny', 'adult': 'tiny', 'elder': 'tiny'}, MOVERS),
     'argue':         ({'child': 'core', 'adult': 'core', 'elder': 'core'}, BURGLAR),

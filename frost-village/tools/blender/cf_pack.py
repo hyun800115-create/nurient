@@ -358,8 +358,15 @@ def collect_body3(cache, base, log, v4parts):
             log.append(f'missing job {base}/{jid}')
             continue
         mask = load(mpath)
+        # only layers of parts cast for this job's anim(s) NOW (the cache may hold renders of an older, wider cast)
+        janims = {t[0] for t in job['tiles']}
+        if job['pass'] == 'lower':
+            janims = set(ca.LOWER_GROUPS[job['group']])
+        jcast = set().union(*[cast.get(a) or set(cpr.cast_parts(a, base, v4parts)) for a in janims])
         for layer in job['layers']:
             if layer == 'mask':
+                continue
+            if layer not in LIMB_LAYERS and layer.split('.')[0] not in jcast:
                 continue
             p = os.path.join(jd, layer + '.png')
             if not os.path.exists(p):
@@ -407,6 +414,11 @@ def part_entry3(P, framed=None, all_anims=()):
         e['noAnims'] = list(P.no_anims)
     if getattr(P, 'only_anims', None):
         e['onlyAnims'] = list(P.only_anims)
+    for s_, sd in P.subs.items():                    # sub-level anims (held_loot_sack: fist / over the shoulder)
+        if sd.get('onlyAnims'):
+            e['subs'][s_]['onlyAnims'] = list(sd['onlyAnims'])
+        if sd.get('noAnims'):
+            e['subs'][s_]['noAnims'] = list(sd['noAnims'])
     if P.space == 'body' and framed is not None:
         tags = set(getattr(P, 'tags', None) or [])
         if 'anim_item' in tags:
@@ -466,25 +478,33 @@ def points(m, key, sx, anims, nd=1):
 
 def ground_speed(m, sx, fps_of):
     """{anim: {dir: px/s}}: how fast the PLANTED foot slides back in the frame (screen px / s at the anim's fps) =
-    the speed to move the sprite at so the feet do not skate (or play the anim at fps * speed / groundSpeed)."""
+    the speed to move the sprite at so the feet do not skate (or play the anim at fps * speed / groundSpeed).
+    Per frame step the planted foot is the lower of the feet that move BACKWARD (against the facing direction,
+    taken from the spray_hose / walker nozzle table: the unit screen vector of 'forward' per dir)."""
     out = {}
     feet = m.get('feet', {})
+    fwd = {}
+    for k, v in m.get('nozzle', {}).items():
+        a, d, i = k.rsplit('_', 2)
+        fwd.setdefault(d, (v[2], v[3]))
     anims = sorted({k.rsplit('_', 2)[0] for k in feet})
     for a in anims:
         out[a] = {}
         dirs = sorted({k.rsplit('_', 2)[1] for k in feet if k.rsplit('_', 2)[0] == a})
         for d in dirs:
+            ux, uy = fwd.get(d, (1.0, 0.0))
             n = len([k for k in feet if k.startswith(f'{a}_{d}_')])
-            zmin = min(min(f[0][2], f[1][2]) for k, f in feet.items() if k.startswith(f'{a}_{d}_'))
-            tol = zmin + 0.015                   # a foot this low is on the snow
             sp = []
             for i in range(n):
                 f0, f1 = feet[f'{a}_{d}_{i}'], feet[f'{a}_{d}_{(i + 1) % n}']
-                low = 0 if f0[0][2] <= f0[1][2] else 1
-                if f0[low][2] > tol or f1[low][2] > tol:
-                    continue                     # no foot on the snow in both frames (flight / swing)
-                dx, dy = (f1[low][0] - f0[low][0]) * sx, f1[low][1] - f0[low][1]
-                sp.append((dx * dx + dy * dy) ** 0.5)
+                best = None
+                for j in (0, 1):
+                    dx, dy = (f1[j][0] - f0[j][0]) * sx, f1[j][1] - f0[j][1]
+                    along = dx * ux + dy * uy
+                    if along < 0 and (best is None or max(f0[j][2], f1[j][2]) < best[0]):
+                        best = (max(f0[j][2], f1[j][2]), -along)
+                if best is not None and best[0] < 0.12:
+                    sp.append(best[1])
             out[a][d] = round(sum(sp) / len(sp) * fps_of[a], 1) if sp else None
     return out
 
@@ -632,7 +652,7 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4
 
 def main():
     args = sys.argv[1:]
-    cache, colors, dither = DEFAULT_CACHE, 56, 0.5
+    cache, colors, dither = DEFAULT_CACHE, 52, 0.5      # 52 (townfolk 56): keeps the payload <= 7 MB
     out = OUT
     i = 0
     while i < len(args):

@@ -469,8 +469,8 @@ def b_hat_burglar_beanie(rig, ctx, put):
         vd.ho(rig, 'beanie_nub', vd.fuzz(g.bm_ellipsoid(0.05, 0.05, 0.035, 12, 8), 0.004, 40.0), k, loc=(0, 0.02, 0.325))
 
 
-@part('held_loot_sack', 'hand', 'body', {'main': dict(sub(None, Z3['item']), zfrontFollow='hand_R'),
-                                         'flee': sub(None, Z3['item'])},
+@part('held_loot_sack', 'hand', 'body', {'main': dict(sub(None, Z3['item']), zfrontFollow='hand_R', noAnims=['flee']),
+                                         'flee': dict(sub(None, Z3['item']), onlyAnims=['flee'])},
       tags=['item', 'burglar'], ages=['adult'], label={'ko': '훔친 보따리', 'en': 'loot sack'})
 def b_held_loot_sack(rig, ctx, put):
     """Burlap sack hanging from the right fist (item joint 'sack_R', kept upright by place_items3):

@@ -74,7 +74,13 @@ def font(size):
 
 
 def _gif(frames_rgb, durs, out):
-    pal = frames_rgb[min(2, len(frames_rgb) - 1)].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+    # one palette from a strip of the frames (day AND night frames of a fade get colours, no speckle)
+    pick = sorted({0, len(frames_rgb) // 2, len(frames_rgb) - 1, min(2, len(frames_rgb) - 1)})
+    w, h = frames_rgb[0].size
+    strip = Image.new('RGB', (w, h * len(pick)))
+    for j, i in enumerate(pick):
+        strip.paste(frames_rgb[i], (0, h * j))
+    pal = strip.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames_rgb]
     q[0].save(out, save_all=True, append_images=q[1:], duration=durs, loop=0, optimize=False, disposal=1)
 

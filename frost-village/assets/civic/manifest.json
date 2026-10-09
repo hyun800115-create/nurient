@@ -1037,7 +1037,19 @@
      -52
     ]
    ],
-   "notes": "Police station \"솔방울 경찰서\" (7.2 x 4.6 m footprint incl. the car bay): white-and-navy clapboard station with a slate-blue gable roof, a red/blue light bar on the ridge, a gold star badge sign, a blue police lamp over the double door and a painted car bay on its right side for the police_car. CUTAWAY like the bank: police_station_floor (wood floor, rugs, car bay, ground shadow), _back (far walls from inside: notice board, town map, clock, windows, the cell's barred window), _interior (the cosy cell: cot with a patchwork quilt, teddy, cocoa, flower; stove with kettle, filing cabinet, coat hooks, visitor bench, plants), _front (reception desk + the cell bars = what stands in front of 'behind' characters), police_station_cell (barred cell door overlay: anims.open 6 f, close reverses; draw it AFTER the behind slot because the prisoner is inside; friendly powder-blue bars with gold knobs, 1.7 m high, 0.16 m apart + a sleepy-moon time-out sign), _shell_cut, _shell. staffPoints = desk officer + filing officer (behind slot), customerPoints = visitor at the desk (+ one waiting), cellPoints = prisoner spots inside the cell (behind slot), cellSeatPoint = sitting on the cot, cellDoorPoint = just outside the cell door, carBayPoint + carBayDir = where the police_car parks (nose out, SW; its near door point stays 0.35 m off the wall), sideDoorPoint = staff door to the car bay (on the step, clear of the parked car), doorPoint / entryPoint."
+   "notes": "Police station \"솔방울 경찰서\" (7.2 x 4.6 m footprint incl. the car bay): white-and-navy clapboard station with a slate-blue gable roof, a red/blue light bar on the ridge, a gold star badge sign, a blue police lamp over the double door and a painted car bay on its right side for the police_car. CUTAWAY like the bank: police_station_floor (wood floor, rugs, car bay, ground shadow), _back (far walls from inside: notice board, town map, clock, windows, the cell's barred window), _interior (the cosy cell: cot with a patchwork quilt, teddy, cocoa, flower; stove with kettle, filing cabinet, coat hooks, visitor bench, plants), _front (reception desk + the cell bars = what stands in front of 'behind' characters), police_station_cell (barred cell door overlay: anims.open 6 f, close reverses; draw it AFTER the behind slot because the prisoner is inside; friendly powder-blue bars with gold knobs, 1.7 m high, 0.16 m apart + a sleepy-moon time-out sign), _shell_cut, _shell. staffPoints = desk officer + filing officer (behind slot), customerPoints = visitor at the desk (+ one waiting), cellPoints = prisoner spots inside the cell (behind slot), cellSeatPoint = sitting on the cot, cellDoorPoint = just outside the cell door, carBayPoint + carBayDir = where the police_car parks (nose out, SW; its near door point stays 0.35 m off the wall), sideDoorPoint = staff door to the car bay (on the step, clear of the parked car), doorPoint / entryPoint.",
+   "buildingRectM": [
+    -3.1,
+    0.9,
+    -1.4,
+    1.8
+   ],
+   "carBayRectM": [
+    1.38,
+    3.56,
+    -2.18,
+    2.18
+   ]
   },
   "police_station_floor": {
    "atlas": "civ_police",
@@ -5015,8 +5027,8 @@
        -2.57,
        -4.87
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": true,
@@ -5055,8 +5067,8 @@
        4.87,
        2.57
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 7,
      "digVisible": true,
@@ -5083,7 +5095,7 @@
        -0.36,
        -0.01
       ],
-      "notes": "outside the fence on the X- side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the X- side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5095,8 +5107,8 @@
        -4.88,
        2.59
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": false,
@@ -5123,7 +5135,7 @@
        0.01,
        0.36
       ],
-      "notes": "outside the fence on the Y+ side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the Y+ side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5135,8 +5147,8 @@
        -2.59,
        4.88
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 7,
      "digVisible": false,
@@ -5175,8 +5187,8 @@
      -2.57,
      -4.87
     ],
-    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-    "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+    "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+    "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
    },
    "gateIndex": 2
   },
@@ -5211,8 +5223,8 @@
        -2.67,
        -5.28
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": true,
@@ -5251,8 +5263,8 @@
        5.28,
        2.67
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 11,
      "digVisible": true,
@@ -5279,7 +5291,7 @@
        -0.77,
        -0.07
       ],
-      "notes": "outside the fence on the X- side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the X- side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5291,8 +5303,8 @@
        -5.29,
        2.53
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": false,
@@ -5319,7 +5331,7 @@
        0.07,
        0.77
       ],
-      "notes": "outside the fence on the Y+ side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the Y+ side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5331,8 +5343,8 @@
        -2.53,
        5.29
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 11,
      "digVisible": false,
@@ -5371,8 +5383,8 @@
      -2.67,
      -5.28
     ],
-    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-    "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+    "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+    "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
    },
    "gateIndex": 2
   },
@@ -5407,8 +5419,8 @@
        -2.57,
        -6.02
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": true,
@@ -5447,8 +5459,8 @@
        6.02,
        2.57
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 15,
      "digVisible": true,
@@ -5475,7 +5487,7 @@
        -1.48,
        -0.07
       ],
-      "notes": "outside the fence on the X- side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the X- side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5487,8 +5499,8 @@
        -6.0,
        2.53
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 2,
      "digVisible": false,
@@ -5515,7 +5527,7 @@
        0.07,
        1.48
       ],
-      "notes": "outside the fence on the Y+ side, heading into the plot; drawn in front of the ruin (y-sort by anchor)"
+      "notes": "outside the fence on the Y+ side (street behind the plot), heading into it; drawn behind the ruin, which hides the bite"
      },
      "dump_truck": {
       "at": [
@@ -5527,8 +5539,8 @@
        -2.53,
        6.0
       ],
-      "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-      "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+      "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+      "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
      },
      "gateIndex": 15,
      "digVisible": false,
@@ -5567,8 +5579,8 @@
      -2.57,
      -6.02
     ],
-    "anim": "idle -> idle_loaded after the excavator's dumpFrame; move_loaded to leave",
-    "notes": "behind the excavator (its left side, away from the camera), bed under the bucket at dumpFrame"
+    "anim": "idle; from the excavator's dumpFrame on, draw the cargo overlay (cargo_idle_*) on top; leaves with move + cargo_move_*",
+    "notes": "on the excavator's swing side, away from the camera (it never hides the excavator), bed under the bucket at dumpFrame"
    },
    "gateIndex": 2
   }
@@ -5588,7 +5600,7 @@
   },
   {
    "step": "clearing",
-   "draw": "rubble_pile_<size> -> rubble_pile_<size>_half -> nothing (dump truck leaves move_loaded and plays tip at the dump); scorch decal stays"
+   "draw": "rubble_pile_<size> -> rubble_pile_<size>_half -> nothing (dump truck leaves with move + its cargo overlay, plays tip at the dump and drops dump_pile at tipPoint from pileFrame); scorch decal stays"
   },
   {
    "step": "rebuild",

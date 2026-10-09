@@ -176,11 +176,19 @@ export class Shop {
     const gs = this.gs;
     if (this.ribbonPad) return;
     const d = this.door;
-    for (const dx of [-40, 40]) {
-      const fs = Assets.image(gs, d.x + dx, d.y + 30 - dx * 0.25, 'flower_stand').setDepth(d.y + 40);
-      gs.lazyImage(fs, 'flower_stand');
-      this.objs.push(fs);
-    }
+    // (the stands come from the life2 fragment: when its manifest isn't merged yet — a shop founded the moment
+    // the card finished, a slow network — they are placed once it arrives instead of as a placeholder)
+    const stands = () => {
+      if (this.dead || this._stands) return;
+      this._stands = true;
+      for (const dx of [-40, 40]) {
+        const fs = Assets.image(gs, d.x + dx, d.y + 30 - dx * 0.25, 'flower_stand').setDepth(d.y + 40);
+        gs.lazyImage(fs, 'flower_stand');
+        this.objs.push(fs);
+      }
+    };
+    if (Assets.has('flower_stand') || Assets.pending('flower_stand')) stands();
+    else Assets.loadFragment(gs, 'life2', { only: ['life2_wedding'] }, stands);
     const g = gs.add.graphics().setDepth(d.y + 41);
     this.ribbonG = g;
     this.drawRibbon(0);
@@ -434,6 +442,7 @@ export class Shop {
   }
 
   destroy() {
+    this.dead = true;
     if (this.label) this.label.destroy();
     this.clearRing();
     this.clearRibbon(true);

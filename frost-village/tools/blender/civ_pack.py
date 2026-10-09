@@ -349,6 +349,9 @@ def entries_for(k, m, fa):
         s['pointSlots'] = {f: SLOT[f] for f in SLOT if f in s}
         if m.get('fxPoints'):
             s['fxPoints'] = m['fxPoints']
+        for f in ('buildingRectM', 'carBayRectM'):        # walls / painted bay, metres from the anchor [x0, x1, y0, y1]
+            if m.get(f):
+                s[f] = [round(float(v), 3) for v in m[f]]
         lay_keys = {lay: '%s_%s' % (k, lay) for lay in m['cutaway']['layers']}
         order = []
         for lay in draw_layers(m):

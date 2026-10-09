@@ -418,7 +418,7 @@ export const WORLD = {
       cannery:    { pad: [-60, 70],  op: [-44, 20],  dir: 'E',  who: 'npc_cannery',    chiefAnim: 'give', chiefDir: 'SE' },
     },
     piles: {
-      fish:  { x: 772, y: 532, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'barrel', propAt: [-52, -18], zone: 'plaza' },
+      fish:  { x: 772, y: 510, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'barrel', propAt: [-52, -18], zone: 'plaza' },   // (v4: 22px 위로 — 교역소 썰매 차양에 가려지지 않게)
       log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
       wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
       ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [46, -30], propR: 24, zone: 'mine' },   // (v3.5 리뷰: 상자를 뒤로 — 서쪽 바위로 가는 길을 막지 않게)
