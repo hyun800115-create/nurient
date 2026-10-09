@@ -6,7 +6,10 @@
 //    (people + draw lists made by tools/beachfolk_compose.py); every draw list is recomputed with
 //    Beachfolk.layers() (tools/beachfolk_compose.js) and compared (frame names, order, z, tints +-1).  Also: every
 //    frame of every beachfolk atlas resolves to its atlas through the merged lookup, and 3000 JS-generated people
-//    (every beach preset + beach families) only draw frames that exist and can play their preset anims.
+//    (every beach preset + beach families) only draw frames that exist and can play their preset anims (an anim
+//    blocked by an optional add-on - the swim ring - must resolve through pickAnim, water stays water), never draw a
+//    hat that animHideHead hides.  Cross-compositor: the same beach people through tools/cityfolk_compose.js
+//    mergeTownfolkFragments (when present) must agree on canPlay; draw-list differences are reported by cause.
 // 2. Browser: merges assets/townfolk + townfolk2 + beachfolk with mergeBeachfolkManifests(), installs the tfatlas
 //    frames and stages a beach (sand + a strip of sea): swimmers, floaters, surfers, splashing kids at the waterline,
 //    sunbathers with their lieShadow, diggers with a sandcastle marker at digPoint, ball players with the ball at
@@ -76,17 +79,27 @@ if (parityPath) {
   const rng = mulberry32(2026);
   const presets = ['swimmer', 'sunbather', 'family_beach', 'lifeguard', 'bellhop', 'receptionist', 'doorman', 'housekeeper',
     'icecream_vendor', 'beach_bar_staff', 'surfer', 'beach_tourist'];
-  let people = 0, missingCore = 0, cannot = 0, noAtlas = 0;
+  let people = 0, missingCore = 0, cannot = 0, noAtlas = 0, addonBlocked = 0, hatsInWater = 0;
+  const WATER = new Set(['swim', 'float', 'splash_play', 'surf']);
+  const { partPlays, headHidden } = await import('../beachfolk_compose.js');
   const check = (p, pr) => {
     people++;
+    const addon = new Set(pr ? (T.generator.presets[pr].addOns || []).flatMap(([t]) => Object.keys(t)) : []);
     for (const a of (pr ? T.generator.presets[pr].anims : Object.keys(T.anims))) {
-      if (!bf.canPlay(p, a)) { if (pr) { cannot++; if (cannot < 4) console.log('cannot play', pr, a, p.parts.join(',')); } continue; }
+      if (!bf.canPlay(p, a)) {
+        const blockers = bf.animParts(p, a).filter((pn) => !partPlays(T.parts[pn], a));
+        const pk = bf.pickAnim(p, a);
+        if (pr && blockers.length && blockers.every((b) => addon.has(b)) && (!WATER.has(a) || WATER.has(pk.anim))) { addonBlocked++; continue; }
+        if (pr) { cannot++; if (cannot < 4) console.log('cannot play', pr, a, p.parts.join(',')); }
+        continue;
+      }
       const info = T.anims[a];
       const d = info.dirs[people % info.dirs.length];
       const i = people % info.frames;
       for (const l of bf.layers(p, a, d, i)) {
         if (/^(head\.|face\.|brow\.)/.test(l.layer) && !frames.has(l.frame)) { missingCore++; if (missingCore < 4) console.log('missing core', l.frame); }
         if (!l.atlas && frames.has(l.frame)) { noAtlas++; }
+        if (l.head && T.parts[l.layer.split('.')[0]] && T.parts[l.layer.split('.')[0]].family === 'hat' && headHidden(T, l.layer.split('.')[0], a)) hatsInWater++;
       }
     }
   };
@@ -96,8 +109,46 @@ if (parityPath) {
     check(bf.preset(pr, rng), pr);
   }
   console.log(`parity: ${n - bad}/${n} draw lists identical; lookup ${total - wrong}/${total}; JS generator ${people} people, ` +
-    `${cannot} cannot play a preset anim, ${missingCore} missing core frames, ${noAtlas} frames without atlas`);
-  if (bad || wrong || cannot || missingCore || noAtlas) failed = 1;
+    `${cannot} cannot play a preset anim (+${addonBlocked} add-on blocks resolved by pickAnim), ${missingCore} missing core ` +
+    `frames, ${noAtlas} frames without atlas, ${hatsInWater} hidden hats drawn`);
+  if (bad || wrong || cannot || missingCore || noAtlas || hatsInWater) failed = 1;
+  // cross-compositor: tools/cityfolk_compose.js (v8, another fragment owner) merging the same three manifests
+  if (fs.existsSync(path.join(ROOT, 'tools', 'cityfolk_compose.js'))) {
+    const cf = await import('../cityfolk_compose.js');
+    let C = null;
+    try { C = new cf.Cityfolk(cf.mergeTownfolkFragments(rd('townfolk/manifest.json'), rd('townfolk2/manifest.json'), rd('beachfolk/manifest.json')).townfolk); }
+    catch (e) { console.log('cityfolk merge of beachfolk throws:', e.message); failed = 1; }
+    if (C) {
+      const r2 = mulberry32(5);
+      const why = {};
+      let checks = 0, playMis = 0, layerMis = 0, pickMis = 0;
+      const prs = ['swimmer', 'sunbather', 'family_beach', 'lifeguard', 'beach_tourist', 'surfer', 'beach_bar_staff', 'housekeeper', 'icecream_vendor', 'bellhop'];
+      for (let k = 0; k < 1500; k++) {
+        const pr = prs[k % prs.length];
+        const p = bf.preset(pr, r2);
+        for (const a of ['idle', 'walk', 'talk', 'sit', 'swim', 'float', 'sunbathe', 'dig', 'ball_throw', 'ball_catch', 'splash_play', 'surf']) {
+          checks++;
+          const x = bf.canPlay(p, a), y = C.canPlay(p, a);
+          if (x !== y) { playMis++; if (playMis < 4) console.log('cityfolk canPlay differs', pr, a, x, y, p.parts.join(',')); }
+          if (bf.pickAnim(p, a).anim !== C.pickAnim(p, a).anim) pickMis++;
+          if (x && y) {
+            const d = bf.T.anims[a].dirs[k % bf.T.anims[a].dirs.length];
+            const l1 = bf.layers(p, a, d, 0).map((l) => l.frame + '|' + l.tint), l2 = C.layers(p, a, d, 0).map((l) => l.frame + '|' + l.tint);
+            if (l1.join(';') !== l2.join(';')) {
+              layerMis++;
+              const extra = l2.filter((f) => !l1.includes(f)).map((f) => f.split('/')[0]);
+              const cause = extra.some((f) => (T.parts[f.split('.')[0]] || {}).family === 'hat') ? 'hat not hidden (animHideHead)'
+                : extra.some((f) => f.includes('~hat')) ? 'hair squashed under a hidden hat' : 'other';
+              why[cause] = (why[cause] || 0) + 1;
+            }
+          }
+        }
+      }
+      console.log(`cityfolk_compose: ${checks} checks, canPlay mismatch ${playMis}, pickAnim mismatch ${pickMis}, ` +
+        `draw-list differences ${layerMis} ${JSON.stringify(why)} (cityfolk does not implement animHideHead yet)`);
+      if (playMis || pickMis) failed = 1;
+    }
+  }
 }
 
 if (!noBrowser) {
@@ -106,7 +157,7 @@ if (!noBrowser) {
   const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f3e6c8}</style>
 <script src="lib/phaser.min.js"></script></head><body><script type="module">
 import { townfolkPreload, townfolkInstall, mulberry32 } from './tools/townfolk_compose.js';
-import { mergeBeachfolkManifests, Beachfolk, BeachfolkSprite } from './tools/beachfolk_compose.js';
+import { mergeBeachfolkManifests, Beachfolk, BeachfolkSprite, sunbatheDirFor, headHidden } from './tools/beachfolk_compose.js';
 const GL = window.__GLC = { draw: 0 };
 for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext && WebGL2RenderingContext.prototype]) {
   if (!P) continue;
@@ -130,8 +181,11 @@ class S extends Phaser.Scene {
     const fx = this.add.graphics().setDepth(-5e4);
     const rng = mulberry32(77);
     this.npcs = [];
+    const WATER = new Set(bf.T.water.anims);
     const add = (p, anim, dir, x, y) => {
-      if (!bf.canPlay(p, anim)) { window.__BF.cannot++; return null; }
+      const pk = bf.pickAnim(p, anim);
+      if (pk.anim !== anim && !(WATER.has(anim) && WATER.has(pk.anim))) { window.__BF.cannot++; return null; }
+      anim = pk.anim;
       const s = new BeachfolkSprite(this, bf, p, x, y);
       s.play(anim, dir);
       s.frame = Math.floor(rng() * bf.T.anims[anim].frames); s.refresh(true);
@@ -156,7 +210,10 @@ class S extends Phaser.Scene {
     for (let k = 0; k < 4; k++) add(pr('family_beach'), 'splash_play', ['SE', 'S', 'SW', 'E'][k], 90 + k * 160, 760 - k * 80);
     add(pr('lifeguard'), 'swim', 'SE', 640, 860);
     // sand: sunbathers, diggers, ball players, staff, tourists
-    for (let k = 0; k < 5; k++) add(pr('sunbather'), 'sunbathe', ['SE', 'NE', 'SW', 'NW', 'SE'][k], 90 + k * 130, 560 - k * 50);
+    // sunbathers on the beach props' lying spots: dir from sunbatheDirFor (lyingFeetDirs, else opposite lyingDirs)
+    const spots = [{ lyingDirs: ['NE'] }, { lyingDirs: ['NW'] }, { lyingFeetDirs: ['SW'], lyingDirs: ['NE'] },
+      { lyingFeetDirs: ['SE'], lyingDirs: ['NW'] }, { lyingDirs: ['NE'] }];
+    for (let k = 0; k < 5; k++) add(pr('sunbather'), 'sunbathe', sunbatheDirFor(spots[k], 0), 90 + k * 130, 560 - k * 50);
     for (let k = 0; k < 3; k++) {
       const s = add(pr('family_beach'), 'dig', ['S', 'SE', 'SW'][k], 80 + k * 110, 380 + k * 20);
       if (s) { const dp = bf.digPoint(s.person, s.dir); fx.fillStyle(0xd2b37a, 1).fillEllipse(s.x + dp[0], s.y + dp[1], 22, 11); }
@@ -168,7 +225,7 @@ class S extends Phaser.Scene {
     }
     add(pr('lifeguard'), 'idle', 'SW', 560, 470); add(pr('lifeguard'), 'wave', 'S', 620, 520);
     add(pr('icecream_vendor'), 'push', 'SE', 360, 300);
-    for (const [name, anim, dir, x, y] of [['bellhop', 'carry_walk', 'SW', 520, 120], ['receptionist', 'talk', 'S', 600, 150],
+    for (const [name, anim, dir, x, y] of [['bellhop', 'push', 'SW', 520, 120], ['receptionist', 'talk', 'S', 600, 150],
       ['doorman', 'wave', 'SE', 660, 110], ['housekeeper', 'walk', 'W', 420, 120], ['beach_bar_staff', 'idle', 'S', 250, 140],
       ['beach_tourist', 'walk', 'SE', 160, 250], ['beach_tourist', 'clap', 'SW', 300, 230], ['sunbather', 'sit', 'SE', 640, 380],
       ['surfer', 'walk', 'SW', 470, 400], ['swimmer', 'happy', 'S', 30, 300]]) add(pr(name), anim, dir, x, y);
@@ -182,6 +239,8 @@ class S extends Phaser.Scene {
         for (const d of info.dirs) for (let i = 0; i < info.frames; i++) {
           for (const l of bf.layers(s.person, a, d, i)) {
             checked++;
+            const hp = bf.T.parts[l.layer.split('.')[0]];
+            if (l.head && hp && hp.family === 'hat' && headHidden(bf.T, l.layer.split('.')[0], a)) window.__BF.missing.push('hidden hat drawn ' + l.frame);
             const core = /^(head\\.|face\\.|brow\\.)/.test(l.layer);
             if (!l.atlas) { if (core) window.__BF.missing.push('no atlas ' + l.frame); else window.__BF.emptyLayers.add(l.layer); }
             else if (!tex.exists(l.atlas)) window.__BF.missing.push('no texture ' + l.atlas);

@@ -9,8 +9,11 @@ Items (kind "item", atlas lgx_items):
   appliances  item_fridge, item_stove_iron, item_washer, item_radio, item_tv_retro
   tools       item_toolbox (the SAME builder as assets/buildings item_toolbox, re-rendered so this fragment is
               self-contained - identical look)
-  crates      item_crate_food, item_crate_cans, item_crate_bread, item_crate_produce
-  pallets     pallet_planks, pallet_ingots, pallet_logs, pallet_boxes
+  crates      item_crate_food, item_crate_cans, item_crate_bread, item_crate_produce, item_crate_smoked (food)
+  goods       item_crate_jam, item_cloth_rolls (polish: printed / coloured goods so the goods rack is not only
+              brown boxes)
+  tools       item_crate_tools (polish: a crate of new axes / picks / sickles - the tools rack reads as tools)
+  pallets     pallet_planks, pallet_ingots, pallet_logs, pallet_boxes, pallet_ore (polish: 광석 for materials)
   boxes       cardboard_box_s, cardboard_box_m, cardboard_box_l
 Producers (kind "station", atlas lgx_producers, 3 x 3 m, front -Y):
   furniture_workshop (planks -> furniture), appliance_factory (ingots -> appliances)
@@ -265,15 +268,102 @@ def b_cardboard_box_l():
     ground(collect(lambda: X.cardboard_box('cb', 0.62, 0.5, 0.44)), spin=-16)
 
 
+# =========================================================================================== (polish) more goods
+
+@item('item_crate_jam', 0.34, 'Crate of jam jars - strawberry, blueberry and apricot jam with cloth-capped lids and '
+                              'white labels (goods).', 'goods')
+def b_item_crate_jam():
+    def f():
+        X.crate_open('cr', 0.6, 0.44, 0.3, col='#D4A26A', dark='#A87442')
+        fills = [('#D9483B', '#F4F1EA'), ('#5A4FA3', '#F2C14E'), ('#E8A23C', '#3D7CC9')]
+        k = 0
+        for j, y in enumerate((0.09, -0.09)):
+            for i, x in enumerate((-0.17, 0.0, 0.17)):
+                fl, lid = fills[(i + j) % 3]
+                BA.jar_model('jar%d' % k, r=0.07, h=0.23, loc=(x, y, 0.22 + 0.015 * j), fill=fl, lid=lid)
+                k += 1
+    ground(collect(f), spin=0)
+
+
+def _gingham(name, c1, c2, scale=14.0):
+    nb = L.NB(name, rough=0.85)
+    tc = nb.n('ShaderNodeTexCoord')
+    chk = nb.n('ShaderNodeTexChecker')
+    chk.inputs['Scale'].default_value = scale
+    chk.inputs['Color1'].default_value = nb.rgb(c1)
+    chk.inputs['Color2'].default_value = nb.rgb(c2)
+    nb.link(tc.outputs['Object'], chk.inputs['Vector'])
+    nb.base(chk.outputs['Color'])
+    return nb.m
+
+
+@item('item_cloth_rolls', 0.34, 'Bolts of fabric on a low tray - red gingham, blue stripes and sunny yellow, tied with '
+                                'twine (goods).', 'goods')
+def b_item_cloth_rolls():
+    def f():
+        X.pallet('tray', 0.66, 0.5, 0.06, col='#C98F55')
+        mats = [_gingham('ging', '#D9483B', '#FBF6EA'), L.stripes('#3D7CC9', '#F4F1EA', 9.0, 'Y', soft=0.05),
+                flat('#F2C14E', 0.7)]
+        twine = flat('#C9A46A', 0.85)
+        for k, (y, z, m) in enumerate(((-0.11, 0.165, mats[0]), (0.11, 0.165, mats[1]), (0.0, 0.345, mats[2]))):
+            cyl('roll%d' % k, 0.105, 0.58, (0.0, y, z), rot=(0, 90, 0), mat=m, segs=24, origin='center', bevel=0.02)
+            cyl('core%d' % k, 0.03, 0.6, (0.0, y, z), rot=(0, 90, 0), mat=flat('#8A5A33', 0.7), segs=10,
+                origin='center', bevel=0.0)
+            for x in (-0.16, 0.16):
+                cyl('tw%d' % k, 0.109, 0.025, (x, y, z), rot=(0, 90, 0), mat=twine, segs=24, origin='center',
+                    bevel=0.0)
+    ground(collect(f), spin=-14)
+
+
+@item('item_crate_smoked', 0.34, 'Crate of smoked goods (훈제): two glossy smoked hams and a pair of golden smoked fish '
+                                 '(food).', 'food')
+def b_item_crate_smoked():
+    def f():
+        X.crate_open('cr', 0.6, 0.44, 0.3, col='#B9874F', dark='#8E6338')
+        PA.meat_model('ham1', cooked=True, loc=(0.02, 0.09, 0.23), rot=(0, 0, 4), scale=0.6)
+        PA.fish_model('sf1', cooked=True, loc=(-0.02, -0.07, 0.33), rot=(0, 0, 6), scale=0.4)
+        PA.fish_model('sf2', cooked=True, loc=(0.04, -0.01, 0.39), rot=(0, 0, -10), scale=0.36)
+        tw = flat('#C9A46A', 0.85)
+        for x in (-0.06, 0.08):
+            box('twine', (0.012, 0.16, 0.012), (x, -0.04, 0.43), mat=tw, bevel=0.0)
+        box('tag', (0.12, 0.012, 0.08), (0.2, -0.225, 0.2), rot=(0, 0, 0), mat=flat('#F4F1EA', 0.6), bevel=0.004)
+    ground(collect(f), spin=0)
+
+
+@item('item_crate_tools', 0.36, 'Crate of brand-new tools: an axe and a pickaxe with their heads up and a sickle '
+                                '(tools).', 'tools')
+def b_item_crate_tools():
+    def f():
+        X.crate_open('cr', 0.58, 0.42, 0.28, col='#C98F55')
+        # tools stand in the crate, heads up, so they read as tools at phone zoom
+        BA.axe_model('ax', s=0.9, loc=(-0.13, 0.06, 0.2), rot=(0, -74, 20))
+        BA.pick_model('pk', s=0.72, loc=(0.12, 0.08, 0.2), rot=(0, -78, -15))
+        BA.sickle_model('sk', s=0.62, loc=(0.0, -0.1, 0.3), rot=(0, 0, -20), flat_blade=True)
+    ground(collect(f), spin=0)
+
+
+@item('pallet_ore', 0.42, 'Pallet of raw ore: grey rocks studded with orange ore nuggets (materials).',
+      'materials')
+def b_pallet_ore():
+    def f():
+        X.pallet('pl', 0.74, 0.74, 0.12)
+        for k, (x, y, r) in enumerate(((-0.16, 0.14, 0.17), (0.16, 0.12, 0.16), (-0.12, -0.15, 0.16),
+                                       (0.17, -0.14, 0.15), (0.0, 0.0, 0.17))):
+            z = 0.12 + 0.45 * r * 0.8 + (0.1 if k == 4 else 0.0)
+            PA.ore_rock('or%d' % k, r, (x, y, z), (1.0, 1.0, 0.8), 11 + k, 2, ore_size=0.06)
+    ground(collect(f), spin=0)
+
+
 # =========================================================================================== producers
 
 WORKSHOP_NOTE = ('Furniture workshop (가구 공방, 3 x 3 m): warm plank workshop with a red snowy gable roof, a stove-pipe '
                  'chimney, an open barn door with tools on the back wall and a giant 3D chair on the ridge. In front '
                  '(screen down-left) a table saw on a work bench running along Y: a pallet of planks at its back end '
                  '(input side), a freshly made chair and a mint sofa at the right (output). anims.work = the saw '
-                 'blade spins (3 red marks, seamless), sawdust spray, lamp glow, chimney smoke. workSpot = the '
-                 'operator at the bench (in front of it, facing W), inPoint = planks pad (front-left), outPoint = '
-                 'furniture pad (right).')
+                 'blade spins (3 red marks, seamless), sawdust spray, lamp glow (chimney smoke = the game\'s soft '
+                 'fx_smoke puffs at fxPoints.smoke, not baked). workSpot = the operator at the screen-LEFT end of the '
+                 'bench, seen in profile facing E (the saw stays visible), inPoint = planks pad (front-left), '
+                 'outPoint = furniture pad (right).')
 
 
 def saw_blade(name, r=0.22):
@@ -376,14 +466,13 @@ def b_furniture_workshop():
                    r=0.04, spread=0.3, seed=7)
     dcloud = L.Smoke('dcloud', (bx + 0.02, -1.05, bz + 0.1), n=3, rise=0.35, drift=(0.05, -0.35), r0=0.07, r1=0.2,
                      color='#F3E2C0', alpha=0.8, seed=9)
-    smoke = L.Smoke('wsmoke', (chx, chy, 3.6), n=3, rise=0.95, drift=(0.25, 0.1), r0=0.1, r1=0.3, color='#A7AEB8',
-                    alpha=0.85, seed=8)
+    # (polish) no baked chimney smoke: the faceted low-poly puffs read as grey rocks at 8 fps - the game spawns its
+    # soft fx_smoke at fxPoints.smoke (like the houses / town buildings)
 
     def idle():
         blade.rotation_euler = (0, math.radians(10), math.radians(90))
         dust.show(False)
         dcloud.show(False)
-        smoke.show(False)
         L.set_emission(lamp_m, 1.0)
         glow.data.energy = 3.0
 
@@ -391,30 +480,35 @@ def b_furniture_workshop():
         blade.rotation_euler = (0, math.radians(10 + 30 * i), math.radians(90))
         dust.set(i)
         dcloud.set(i)
-        smoke.set(i)
         L.set_emission(lamp_m, [2.0, 2.6, 2.2, 2.8][i])
         glow.data.energy = [6.0, 8.0, 7.0, 9.0][i]
 
     idle()
     mark('in', (-0.9, -2.6, 0.0))
     mark('out', (2.6, -0.9, 0.0))
-    mark('work', (bx + 0.55, -0.85, 0.0), facing=(-1, 0, 0))
-    mark('staff', (bx + 0.55, -0.85, 0.0), facing=(-1, 0, 0))
+    # (polish) the operator stands at the screen-LEFT end of the bench (world -X/-Y of the saw) and faces E (= world
+    # +X+Y, screen right): seen in profile, he no longer hides the saw + sawdust (he used to stand in front of it,
+    # back to the camera)
+    ws = (bx - 0.6, -1.45, 0.0)
+    mark('work', ws, facing=(1, 1, 0))
+    mark('staff', ws, facing=(1, 1, 0))
     return {'idle': idle, 'work': work,
             'fx': {'saw': (bx, -0.85, bz + 0.2), 'dust': (bx, -1.0, bz + 0.25), 'smoke': (chx, chy, 3.75),
                    'input': (-1.0, -0.75, 0.7), 'output': (1.0, -0.65, 0.6), 'emblem': (0.0, yc, rz + 0.6)},
-            'extra': {'workSpot': {'forwardM': 0.55, 'heightM': bz, 'dir': 'W',
-                                   'note': 'stand at the bench end facing W (= E mirrored); the bench is behind the '
-                                           'operator in depth, so draw him above the station sprite'}}}
+            'extra': {'workSpot': {'forwardM': 0.6, 'heightM': bz, 'dir': 'E',
+                                   'note': 'stand at the screen-left end of the bench facing E (profile, the saw stays '
+                                           'visible); he is in front of the station in depth: draw him above the '
+                                           'station sprite'}}}
 
 
 FACTORY_NOTE = ('Appliance factory (가전 공장, 3 x 3 m): little brick factory with a saw-tooth roof of glowing '
                 'skylights, a tall striped chimney, a mint roll-up door and a TV emblem on the front. In front '
                 '(screen down-left) a stamping press on a steel table: a crate of ingots at its back (input side), '
                 'finished appliances (a fridge, a radio, a washer) on a pallet at the right (output). anims.work = '
-                'the press ram stamps, sparks burst, a warning lamp blinks, chimney smoke. workSpot = the operator at '
-                'the press (in front of it, facing W), inPoint = ingots pad (front-left), outPoint = appliance pad '
-                '(right).')
+                'the press ram stamps, sparks burst, a warning lamp blinks (chimney smoke = the game\'s soft fx_smoke '
+                'at fxPoints.smoke, not baked). workSpot = the operator at the screen-LEFT corner of the press table, '
+                'in profile facing E (the press + sparks stay visible), inPoint = ingots pad (front-left), outPoint = '
+                'appliance pad (right).')
 
 
 @lgx('appliance_factory', 'station', 'lgx_producers', fp=(3.0, 3.0), front='-Y', catcher=22.0, work=4, fps=8,
@@ -501,14 +595,11 @@ def b_appliance_factory():
     with L.Collect() as c3:
         X.radio_model('ora', 0.34, 0.16, 0.22, '#B9783F')
     L.group(BA.top_level(c3.objs), 'ora_g', loc=(0.88, -0.95, 0.6), rot=(0, 0, -10))
-    smoke = L.Smoke('fsmoke', (chx, chy, 4.12), n=3, rise=1.0, drift=(0.28, 0.12), r0=0.12, r1=0.34,
-                    color='#A7AEB8', alpha=0.88, seed=10)
     stroke = [0.0, -0.18, -0.36, -0.18]
 
     def idle():
         ram.location.z = pz + 0.95
         sparks.show(False)
-        smoke.show(False)
         L.set_emission(lamp_m, 0.3)
         glow.data.energy = 0.0
 
@@ -518,7 +609,6 @@ def b_appliance_factory():
             sparks.set(i)
         else:
             sparks.show(False)
-        smoke.set(i)
         on = i in (1, 2)
         L.set_emission(lamp_m, 4.0 if on else 0.8)
         glow.data.energy = 12.0 if on else 2.0
@@ -526,12 +616,13 @@ def b_appliance_factory():
     idle()
     mark('in', (-0.9, -2.6, 0.0))
     mark('out', (2.6, -0.9, 0.0))
-    mark('work', (px_ + 0.72, py_, 0.0), facing=(-1, 0, 0))
-    mark('staff', (px_ + 0.72, py_, 0.0), facing=(-1, 0, 0))
+    ws = (px_ - 0.65, py_ - 0.65, 0.0)          # (polish) screen-left of the press, profile facing E
+    mark('work', ws, facing=(1, 1, 0))
+    mark('staff', ws, facing=(1, 1, 0))
     return {'idle': idle, 'work': work,
             'fx': {'press': (px_, py_, pz + 0.1), 'sparks': (px_ + 0.12, py_ - 0.1, pz + 0.12),
                    'smoke': (chx, chy, 4.3), 'input': (-1.0, -0.75, 0.6), 'output': (1.05, -0.75, 0.9),
                    'emblem': (0.55, Y0 - 0.3, 1.7)},
-            'extra': {'workSpot': {'forwardM': 0.5, 'heightM': pz, 'dir': 'W',
-                                   'note': 'stand at the press table end facing W (= E mirrored); draw the operator '
-                                           'above the station sprite'}}}
+            'extra': {'workSpot': {'forwardM': 0.65, 'heightM': pz, 'dir': 'E',
+                                   'note': 'stand at the screen-left corner of the press table facing E (profile, the '
+                                           'press + sparks stay visible); draw the operator above the station sprite'}}}

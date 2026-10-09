@@ -65,7 +65,7 @@ Z3 = {
 NEW_BODY = ['bare_skin', 'bare_arms', 'no_top', 'swimsuit_one', 'swim_trunks', 'rash_guard', 'wetsuit', 'flip_flops',
             'towel_shoulder', 'swim_ring_worn', 'arm_floaties', 'aloha_shirt', 'beach_shorts', 'tourist_camera',
             'lifeguard_top', 'whistle', 'rescue_tube', 'bellhop_jacket', 'hotel_vest', 'doorman_coat',
-            'housekeeper_dress', 'vendor_shirt', 'bar_apron', 'surfboard', 'toy_spade']
+            'housekeeper_dress', 'vendor_shirt', 'bar_apron', 'surfboard', 'toy_spade', 'cleaning_caddy']
 NEW_HEAD = ['swim_cap', 'swim_cap_flower', 'straw_hat', 'sun_hat_wide', 'sunglasses', 'snorkel_mask', 'bellhop_cap',
             'doorman_hat', 'paper_cap', 'kerchief', 'sun_visor']
 NEW_PARTS = NEW_BODY + NEW_HEAD
@@ -451,7 +451,9 @@ RING_SEGS = 8          # alternating colour segments (main / stripe); near = seg
 
 
 def ring_scale(age):
-    return {'child': 0.80, 'elder': 1.04}.get(age, 1.0)
+    # kids' rings are huge relative to the body (was 0.80: in float S the big head hid 87-89 % of the ring;
+    # 1.08 -> the ring is >= 20 % of a floating child from every dir, bf_check)
+    return {'child': 1.08, 'elder': 1.04}.get(age, 1.0)
 
 
 def _ensure_item(rig, name):
@@ -465,7 +467,7 @@ def _ensure_item(rig, name):
 @part('swim_ring_worn', 'bag', 'body',
       {'near': sub('ring', Z3['ring_near']), 'near2': sub('ring2', Z3['ring_near2']),
        'far': sub('ring', Z3['ring_far']), 'far2': sub('ring2', Z3['ring_far2'])},
-      tags=['beach', 'item', 'ring'], label={'ko': '튜브', 'en': 'swim ring'})
+      tags=['beach', 'ring', 'worn'], label={'ko': '튜브', 'en': 'swim ring'})
 def b_swim_ring_worn(rig, ctx, put):
     """Ring meshes live on the item joint 'ring_item' (bf_render.place_items3 moves it to the waist every frame
     and keeps its local -Y pointing at the camera)."""
@@ -659,19 +661,36 @@ def b_whistle(rig, ctx, put):
 @part('rescue_tube', 'bag', 'body', {'tube': sub(None, Z3['tube_back']), 'strap': sub(None, Z['bag_front'])},
       tags=['beach', 'job'], ages=['adult'], label={'ko': '구조 튜브', 'en': 'rescue tube'})
 def b_rescue_tube(rig, ctx, put):
+    """Strap on the spine; the tube itself lives on item joints: 'tube_item' (slung across the back - place_items3
+    copies the spine transform onto it every frame) and 'tube_float' (towed behind a swimming lifeguard on a short
+    leash in swim; parked far off-camera in every other anim, and 'tube_item' is parked in swim)."""
     _lazy()
     with put('strap'):
         g.mesh_obj('rt_strap', g.bm_ring(0.224, 0.013, seg=64, segr=8, sy=0.86, rz=1.7),
                    M('rt_strap', '#2B2F3A', 0.6), rig.j['spine'], loc=(0, 0, 0.19), rot=(0, 42, 0))
+    jb = _ensure_item(rig, 'tube_item')
+    jf = _ensure_item(rig, 'tube_float')
+    red = M('rt_tube', '#E23A2E', 0.55)
+    blk = M('rt_clip', '#2B2F3A', 0.5)
+    wht = M('rt_white', '#FBFAF6', 0.5)
     with put('tube'):
-        red = M('rt_tube', '#E23A2E', 0.55)
         pts = [(-0.20, 0.215, 0.36), (-0.05, 0.255, 0.20), (0.10, 0.255, 0.02), (0.22, 0.225, -0.12)]
-        g.mesh_obj('rt_tube', g.bm_tube_path(vd.catmull3(pts, 16), 0.052, segr=14), red, rig.j['spine'])
-        blk = M('rt_clip', '#2B2F3A', 0.5)
-        for p in (pts[0], pts[-1]):
-            g.mesh_obj('rt_end', g.bm_ellipsoid(0.040, 0.040, 0.040, 10, 8), blk, rig.j['spine'], loc=p)
-        g.mesh_obj('rt_word', g.bm_box(0.12, 0.012, 0.036, bevel=0.006), M('rt_white', '#FBFAF6', 0.5), rig.j['spine'],
-                   loc=(0.02, 0.305, 0.10), rot=(0, -45, 0))
+        g.mesh_obj('rt_tube', g.bm_tube_path(vd.catmull3(pts, 16), 0.052, segr=14), red, jb)
+        for p_ in (pts[0], pts[-1]):
+            g.mesh_obj('rt_end', g.bm_ellipsoid(0.040, 0.040, 0.040, 10, 8), blk, jb, loc=p_)
+        g.mesh_obj('rt_word', g.bm_box(0.12, 0.012, 0.036, bevel=0.006), wht, jb, loc=(0.02, 0.305, 0.10),
+                   rot=(0, -45, 0))
+        # towed version: lying on the water ACROSS the swim direction a little behind the swimmer (local +Y = toward
+        # the swimmer; a lengthwise tow 0.8 m back did not fit the 96 x 128 swim tile in N / NE / E), leash from one end
+        fpts = [(-0.27, 0.0, 0.0), (-0.09, 0.012, 0.0), (0.09, 0.012, 0.0), (0.27, 0.0, 0.0)]
+        g.mesh_obj('rt_tube_f', g.bm_tube_path(vd.catmull3(fpts, 16), 0.052, segr=14, side_ref=(0, 0, 1), flat=1.0),
+                   red, jf)
+        for p_ in (fpts[0], fpts[-1]):
+            g.mesh_obj('rt_end_f', g.bm_ellipsoid(0.040, 0.040, 0.040, 10, 8), blk, jf, loc=p_)
+        g.mesh_obj('rt_word_f', g.bm_box(0.15, 0.040, 0.012, bevel=0.005), wht, jf, loc=(0.0, 0.008, 0.050))
+        cord = M('rt_cord', '#2B2F3A', 0.6)
+        g.mesh_obj('rt_leash', g.bm_tube_path(vd.catmull3([(0.30, 0.0, 0.02), (0.31, 0.13, 0.035), (0.24, 0.30, 0.0),
+                                                             (0.14, 0.44, -0.08)], 10), 0.008, segr=6), cord, jf)
 
 
 # =========================================================================== hotel / job outfits
@@ -929,6 +948,54 @@ def _board_bm(wide=1.0, lift=0.0, sx=1.0):
         v.co.z += 0.07 * max(0.0, -t) ** 2.2 + 0.012 * t * t + lift   # nose rocker
         v.co.x *= sx
     return bm
+
+
+# =========================================================================== housekeeping caddy (left hand)
+
+CADDY_FROM_HAND = (0.0, -0.010, 0.012)       # grip point in the hand_L frame (top of the fist)
+CADDY_OUT = 0.065                             # held a little away from the skirt (character's left, facing frame)
+CADDY_SCALE = 1.3                             # chibi scale (hand items are drawn big, like the townfolk2 bouquet)
+
+
+@part('cleaning_caddy', 'hand', 'body',
+      {'main': follow('acc2', 'hand_L', 0.6), 'stuff': follow(None, 'hand_L', 0.7)},
+      tags=['job', 'hotel'], ages=['adult'], label={'ko': '청소 바구니', 'en': 'cleaning caddy'})
+def b_cleaning_caddy(rig, ctx, put):
+    """Housekeeping caddy carried in the LEFT hand (the right hand talks / waves): tinted plastic tote with a centre
+    handle, a spray bottle, rolled cloths and a scrub brush.  Built around item joint 'caddy_item' (place_items3 hangs
+    it from hand_L every frame, upright, long axis along the facing direction)."""
+    _lazy()
+    j = _ensure_item(rig, 'caddy_item')
+    pm = M('caddy', ctx.col('acc2'), 0.38)
+    with put('main'):
+        tray = g.bm_box(0.112, 0.212, 0.072, bevel=0.013)
+        for v in tray.verts:                                      # slightly tapered tote
+            if v.co.z < 0:
+                v.co.x *= 0.90
+                v.co.y *= 0.94
+        g.mesh_obj('caddy_tray', tray, pm, j, loc=(0, 0, -0.136))
+        g.mesh_obj('caddy_rim', g.bm_box(0.124, 0.228, 0.010, bevel=0.004), pm, j, loc=(0, 0, -0.098))
+        g.mesh_obj('caddy_wall', g.bm_box(0.010, 0.200, 0.075, bevel=0.003), pm, j, loc=(0, 0, -0.060))
+        g.mesh_obj('caddy_grip', g.bm_box(0.026, 0.090, 0.020, bevel=0.008), pm, j, loc=(0, 0, -0.016))
+        for s_ in (-1, 1):
+            g.mesh_obj('caddy_post', g.bm_box(0.020, 0.016, 0.040, bevel=0.005), pm, j, loc=(0, s_ * 0.045, -0.030))
+    with put('stuff'):
+        bot = M('spray_bottle', '#F4F6F8', 0.25)
+        trig = M('spray_trigger', '#3FB8C8', 0.35)
+        liq = M('spray_liquid', '#9ED8E8', 0.15)
+        g.mesh_obj('spray_body', g.bm_lathe([(0.022, 0.0), (0.024, 0.05), (0.020, 0.072), (0.010, 0.082),
+                                             (0.0, 0.084)], seg=16), bot, j, loc=(0.030, 0.055, -0.170))
+        g.mesh_obj('spray_label', g.bm_lathe([(0.0250, 0.012), (0.0255, 0.040)], seg=16, cap_top=False,
+                                              cap_bottom=False), liq, j, loc=(0.030, 0.055, -0.170))
+        g.mesh_obj('spray_head', g.bm_box(0.020, 0.038, 0.020, bevel=0.006), trig, j, loc=(0.030, 0.045, -0.078))
+        g.mesh_obj('spray_trig', g.bm_box(0.008, 0.010, 0.022, bevel=0.003), trig, j, loc=(0.030, 0.030, -0.095))
+        for k, (col, x, z) in enumerate((('#F2C230', -0.030, -0.100), ('#7FB0E0', -0.030, -0.072))):
+            g.mesh_obj('cloth_roll', g.bm_cyl(0.020, 0.020, 0.075, seg=14, centered=True),
+                       M('cloth_%d' % k, col, 0.9), j, loc=(x, -0.050 + 0.012 * k, z), rot=(0, 90, 15 - 30 * k))
+        g.mesh_obj('brush_back', g.bm_box(0.034, 0.070, 0.016, bevel=0.006), M('brush_wood', '#C48A52', 0.7), j,
+                   loc=(0.028, -0.055, -0.088), rot=(0, 0, 8))
+        g.mesh_obj('brush_bristle', g.bm_box(0.030, 0.064, 0.012, bevel=0.003), M('brush_br', '#F2EEE2', 0.9), j,
+                   loc=(0.028, -0.055, -0.100), rot=(0, 0, 8))
 
 
 @part('surfboard', 'board', 'body', {'main': sub('board', Z3['board']), 'stripe': sub('board2', Z3['board_stripe'])},
@@ -1222,24 +1289,42 @@ def b_doorman_hat(rig, ctx, put):
               loc=(0, -0.222, 0.244), rot=(-6, 0, 0))
 
 
-@part('paper_cap', 'hat', 'head', {'main': HAT, 'stripe': HAT2}, cls='top', tags=['job', 'beach'],
+@part('paper_cap', 'hat', 'head', {'main': HAT, 'stripe': HAT2, 'badge': HATFIX}, cls='full', tags=['job', 'beach'],
       ages=['adult', 'elder'], label={'ko': '종이 모자', 'en': 'paper cap'})
 def b_paper_cap(rig, ctx, put):
-    """Folded 'soda-jerk' paper cap: a soft boat-shaped wedge sitting front-to-back on the crown."""
+    """Soda-jerk garrison cap: a LOW, wide folded cap along the crown (front-to-back), cocked a little to one side,
+    coloured piping along the edge + the top fold, and an embroidered ice-cream cone on its left side.
+    (The first version was a 15 cm tall narrow wedge: from the game camera a teardrop cone.)"""
     _lazy()
     m = M('paper', ctx.col('hat'), 0.7)
+    rot = (-6, 7, 0)
+    zc = 0.215
+    rx, ry, rz = 0.158, 0.270, 0.118
     with put('main'):
-        cap = g.bm_ellipsoid(0.115, 0.300, 0.150, 32, 16)
+        cap = g.bm_ellipsoid(rx, ry, rz, 40, 18)
         kill_faces(cap, lambda c: c.z < 0.0)
         for v in cap.verts:
-            v.co.x *= 1.0 - 0.55 * max(0.0, v.co.z / 0.15) ** 1.5      # pinched top fold
-        vd.ho(rig, 'paper_cap', cap, m, loc=(0, 0.0, 0.245), rot=(-10, 0, 0))
-        vd.ho(rig, 'paper_rim', g.bm_ring(0.10, 0.022, seg=40, segr=8, sx=1.12, sy=2.85, rz=1.0), m,
-              loc=(0, 0.0, 0.255), rot=(-10, 0, 0))
+            t = max(0.0, v.co.z / rz)
+            v.co.x *= 1.0 - 0.42 * t ** 1.8                       # folded ridge on top
+            v.co.z *= 1.0 - 0.18 * (abs(v.co.y) / ry) ** 2        # flatter toward the front / back peaks
+        vd.ho(rig, 'garrison', cap, m, loc=(0, 0.0, zc), rot=rot)
+        # inner fold lip just above the edge (the turned-up cuff of a folded cap)
+        vd.ho(rig, 'garrison_cuff', g.bm_ring(0.10, 0.016, seg=48, segr=8, sx=rx / 0.10 * 1.01, sy=ry / 0.10 * 1.0,
+                                             rz=1.0), m, loc=(0, 0.0, zc + 0.026), rot=rot)
     with put('stripe'):
-        sm = M('paper_s', ctx.col('hat2'), 0.7)
-        vd.ho(rig, 'paper_stripe', g.bm_ring(0.104, 0.014, seg=40, segr=8, sx=1.12, sy=2.85, rz=1.0), sm,
-              loc=(0, 0.0, 0.292), rot=(-10, 0, 0))
+        sm = M('paper_s', ctx.col('hat2'), 0.6)
+        vd.ho(rig, 'garrison_piping', g.bm_ring(0.10, 0.011, seg=48, segr=8, sx=rx / 0.10 * 1.03, sy=ry / 0.10 * 1.01,
+                                               rz=1.0), sm, loc=(0, 0.0, zc + 0.006), rot=rot)
+    with put('badge'):
+        # tiny embroidered cone (left side of the cap): waffle cone + strawberry scoop
+        cone = M('badge_cone', '#D49A52', 0.7)
+        scoop = M('badge_scoop', '#F28AAE', 0.6)
+        side = -1
+        bx = side * rx * 0.83
+        vd.ho(rig, 'badge_cone', g.bm_slab([(0.0, -0.040), (0.022, 0.006), (-0.022, 0.006)], 0.010, bevel=0.003),
+              cone, loc=(bx, -0.05, zc + 0.045), rot=(rot[0], rot[1] + side * 18, 0))
+        vd.ho(rig, 'badge_scoop', g.bm_ellipsoid(0.008, 0.026, 0.022, 12, 8), scoop,
+              loc=(bx + side * 0.002, -0.05, zc + 0.062), rot=(rot[0], rot[1] + side * 18, 0))
 
 
 @part('kerchief', 'hat', 'head', {'main': HAT, 'dots': HAT2}, cls='full', tags=['job', 'hotel'],
@@ -1285,6 +1370,8 @@ def b_sun_visor(rig, ctx, put):
 # =========================================================================== item placement
 
 SPADE_FROM_HAND = (0.0, -0.010, 0.020)
+TUBE_TOW = 0.55          # towed rescue tube: this far behind the swimmer's head (fits the 96 x 128 swim tile)
+TUBE_SKEW = 20.0         # ... lying across the swim direction, skewed 20 deg (drifting on its leash)
 
 
 def place_items3(rig, info):
@@ -1314,6 +1401,30 @@ def place_items3(rig, info):
             @ Quaternion((0, 1, 0), math.radians(roll))
         pos = Vector((anchor.x, anchor.y, b.get('z', 0.0) + ba.BOARD_TOP - BOARD_T * 1.15))
         j.matrix_world = Matrix.Translation(pos) @ rotw.to_matrix().to_4x4() @ Matrix.Diagonal((s, s, s, 1.0))
+    if 'tube_item' in rig.j:
+        park = Matrix.Translation(Vector((0.0, 0.0, -50.0)))
+        anim = info.get('anim')
+        if anim == 'swim':
+            # towed on its leash: lying on the surface behind the swimmer, bobbing with the strokes
+            a = TAU * info.get('frame', 0) / 8.0
+            anchor = info.get('anchor', Vector((0, 0, 0)))
+            yaw = info.get('yaw', 0.0)
+            rot = Quaternion((0, 0, 1), math.radians(yaw)) @ Quaternion((0, 1, 0), math.radians(6 * math.sin(a))) \
+                @ Quaternion((0, 0, 1), math.radians(8 * math.sin(a + 0.8)))
+            back = rot @ Vector((0.0, TUBE_TOW, 0.0))              # local +Y points back (facing is -Y)
+            pos = Vector((anchor.x + back.x, anchor.y + back.y, 0.012 + 0.012 * math.sin(a + 1.4)))
+            rig.j['tube_float'].matrix_world = Matrix.Translation(pos) @ rot.to_matrix().to_4x4() @ \
+                Matrix.Rotation(PI + math.radians(TUBE_SKEW), 4, 'Z')
+            rig.j['tube_item'].matrix_world = park
+        else:
+            rig.j['tube_item'].matrix_world = rig.j['spine'].matrix_world.copy()
+            rig.j['tube_float'].matrix_world = park
+    if 'caddy_item' in rig.j:
+        j = rig.j['caddy_item']
+        hw = rig.world('hand_L', CADDY_FROM_HAND)
+        yaw = Quaternion((0, 0, 1), math.radians(info.get('yaw', 0.0)))
+        hw = hw + yaw @ Vector((CADDY_OUT, 0.0, 0.0))
+        j.matrix_world = Matrix.Translation(hw) @ yaw.to_matrix().to_4x4() @ Matrix.Diagonal((CADDY_SCALE,) * 3 + (1.0,))
     if 'spade_item' in rig.j:
         j = rig.j['spade_item']
         hw = rig.world('hand_R', SPADE_FROM_HAND)

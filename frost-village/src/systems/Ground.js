@@ -225,7 +225,10 @@ export class Ground {
       const key = 'fv_gslot_' + i;
       if (gs.textures.exists(key)) gs.textures.remove(key);
       const ct = gs.textures.createCanvas(key, SLOT, SLOT);
-      const img = gs.add.image(0, 0, key).setOrigin(0, 0).setDepth(DEPTH.GROUND).setVisible(false);
+      // (§18 #5, the faint line across the sea) only the tile itself is drawn, not its gutter: neighbours used to
+      // overlap by the gutter, and where the bake is see-through (the shallow water fading out to sea) the overlap
+      // drew twice — a thin darker line along every tile edge. The gutter stays in the canvas for the filtering.
+      const img = gs.add.image(0, 0, key).setOrigin(0, 0).setDepth(DEPTH.GROUND).setVisible(false).setCrop(GUT, GUT, TW, TW);
       const s = { i, key, ct, img, id: -1, lv: 0, tx: 0, ty: 0, used: 0 };
       this.slots.push(s);
       return s;

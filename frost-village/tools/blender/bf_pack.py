@@ -64,10 +64,19 @@ MERGE_RULES = [
     'generator.presets: add (throws on a clash); slotPalette: add; exclude: concatenate; beachSlots (new): colour '
     'slots generate3 always fills (preset colour or slot palette); animParts (new): {anim: [part]} props drawn in that '
     'anim even when the person does not wear them (float: swim_ring_worn, surf: surfboard, dig: toy_spade).',
-    'parts[p].anims (new): the anims this beach part has frames for (a part without it = a v4 / v5 part: frames for '
-    'the v4 + v5 anims only).  canPlay(person, anim) = every BODY part of the person has frames for the anim, '
-    'except parts with drop: true (accessories: towel, swim ring, flip-flops, camera, rescue tube, arm floaties), '
-    'which are simply not drawn (put down / taken off) in the anims they have no frames for.',
+    'parts[p].anims (new): the anims a beach part lets its wearer PLAY (a part without it = a v4 / v5 part: the v4 + '
+    'v5 anims).  canPlay(person, anim) = every BODY part of the person lists the anim (partPlays()).  parts[p].noAnims: '
+    'the anims where nothing of the part is drawn - drop accessories (drop: true: towel, flip-flops, camera, rescue '
+    'tube, arm floaties, cleaning caddy) list EVERY anim in anims and the ones they have no frames for in noAnims '
+    '(put down / taken off there), so any compositor honouring anims + noAnims (beachfolk, cityfolk, townfolk2) agrees '
+    'on canPlay.  The swim ring is not a drop part: wearers cannot swim / surf / dig / play ball / sunbathe.',
+    'animFallback (new, cityfolk-compatible): {anim: [fallbacks]} - pickAnim(person, anim) = anim when canPlay, else '
+    'the first playable fallback (swim -> float: a ring wearer bobs in the ring), else idle / walk.  BeachfolkSprite.'
+    'play() goes through pickAnim.  For water anims check canPlay / the picked anim stays a water anim.',
+    'animHideHead (new): {anim: [head parts hidden there]} - hats come off for swim / surf, only swim caps + sun hats + '
+    'the visor and the two v4 beach hats stay on in float, only the swim caps + laid-over-face sun hats in sunbathe.  A '
+    'hidden FULL hat no longer squashes the hair (hair draws its normal layer, not ~hat).  The beachfolk hats also '
+    'carry these anims in noAnims.  Hat frames nobody can see in the swim / lie poses are not packed.',
     'timeline[anim][dir][i].hd (new, optional): the head frame dir when it differs from the anim dir (surf NE looks E).',
     'subs followDz (new, optional): z = limb z + followDz instead of + 0.5 (bare_arms 0.2 < sleeve cuffs 0.5 < '
     'arm floaties 0.7).',
@@ -76,6 +85,52 @@ MERGE_RULES = [
 
 def load(p):
     return tpk.load(p)
+
+
+PACKER = 'skyline'      # 'shelf' = tools/pack_utils.pack_atlas (the townfolk packer)
+SKYLINE_FILL = 0.70     # greedy layer -> sheet split budget (townfolk shelf packing: 0.62)
+
+
+def skyline_pack(frames, max_width=2048, padding=2):
+    """Bottom-left skyline packing (tallest first; for every frame the lowest x on the skyline, leftmost on ties) -
+    same output as pack_utils.pack_atlas (sheet, Phaser JSON-hash atlas; trimmed with a 1-px pad).  The shelf packer
+    leaves a strip above every shorter frame of a shelf: ~12 % less sheet area here for the same frames."""
+    from PIL import Image
+    import pack_utils
+    items = []
+    for name, im in frames:
+        im = im.convert('RGBA')
+        box = pack_utils._trim_box(im)
+        items.append((name, im.size, box, im.crop(box)))
+    order = sorted(range(len(items)), key=lambda i: (-items[i][3].height, -items[i][3].width))
+    W = max_width
+    sky = np.zeros(W + padding, np.int32)
+    place = {}
+    H = 0
+    for i in order:
+        w, h = items[i][3].size
+        ww = min(w + padding, W + padding)
+        win = np.lib.stride_tricks.sliding_window_view(sky, ww).max(axis=1)[:max(1, W - w + 1)]
+        x = int(np.argmin(win))
+        y = int(win[x])
+        place[i] = (x, y)
+        sky[x:x + ww] = y + h + padding
+        H = max(H, y + h)
+    used_w = max(place[i][0] + items[i][3].width for i in place)
+    sw, sh = (used_w + 3) // 4 * 4, (H + 3) // 4 * 4
+    sw = min(sw, max(W, used_w))
+    sheet = Image.new('RGBA', (sw, sh), (0, 0, 0, 0))
+    fr = {}
+    for i, (name, (ow, oh), box, crop) in enumerate(items):
+        x, y = place[i]
+        sheet.paste(crop, (x, y))
+        fr[name] = {'frame': {'x': x, 'y': y, 'w': crop.width, 'h': crop.height}, 'rotated': False,
+                    'trimmed': (crop.width, crop.height) != (ow, oh),
+                    'spriteSourceSize': {'x': box[0], 'y': box[1], 'w': crop.width, 'h': crop.height},
+                    'sourceSize': {'w': ow, 'h': oh}}
+    atlas = {'frames': fr, 'meta': {'app': 'frost-village/tools/blender/bf_pack.py skyline', 'version': '1.0',
+                                    'image': '', 'format': 'RGBA8888', 'size': {'w': sw, 'h': sh}, 'scale': '1'}}
+    return sheet, atlas
 
 
 def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5):
@@ -100,7 +155,7 @@ def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5):
             lst.append(ent)
         items.extend(lst)
         sizes[layer] = sum(tpk.trimmed_area(e[2]) for e in lst)
-    budget = SHEET * SHEET * tpk.SHEET_FILL
+    budget = SHEET * SHEET * (SKYLINE_FILL if PACKER == 'skyline' else tpk.SHEET_FILL)
     groups, cur, acc = [], [], 0
     for layer in sorted(layers, key=lambda l: (l.split('.')[0], l)):
         if cur and acc + sizes[layer] > budget:
@@ -120,7 +175,10 @@ def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5):
             frames.append((names[0], Image.fromarray(img, 'RGBA')))
             for n in names[1:]:
                 alias[n] = names[0]
-        sheet, atlas = pack_utils.pack_atlas(frames, max_width=SHEET, trim=True, padding=2)
+        if PACKER == 'skyline':
+            sheet, atlas = skyline_pack(frames, max_width=SHEET, padding=2)
+        else:
+            sheet, atlas = pack_utils.pack_atlas(frames, max_width=SHEET, trim=True, padding=2)
         return sheet, atlas, frames, alias
 
     atlases, where = [], {}
@@ -175,7 +233,79 @@ def process(img, kind, mask):
 
 # --------------------------------------------------------------------------- collect
 
-def collect_head3(cache, log):
+SPECK_GAP = 6          # px of empty rows between a speck and the layer's main body
+SPECK_FRAC = 0.12      # a speck holds less than this share of the layer's pixels
+
+
+def despeckle(img, tl, tag, log):
+    """Erase detached slivers glued to the TOP / BOTTOM edge of a body tile: geometry of the neighbouring tile rig in
+    the tiled render (e.g. the toy spade dug into the sand in dig frame 0 reached into frame 4's tile, a 3-px pink
+    sliver 60 px above the head).  Rows only: a speck is a run of occupied rows touching the tile edge, separated from
+    the rest by >= SPECK_GAP empty rows, not the layer's biggest run, and holding < SPECK_FRAC of its pixels or at most
+    4 rows tall (a mostly hidden spade can be smaller than the leaked sliver)."""
+    a = img[..., 3] > 0.02
+    tot = int(a.sum())
+    if not tot:
+        return img
+    occ = a.any(axis=1)
+    idx = np.nonzero(occ)[0]
+    if len(idx) < 2:
+        return img
+    br = np.nonzero(np.diff(idx) >= SPECK_GAP)[0]
+    if not len(br):
+        return img
+    segs, s0 = [], 0
+    for b in br:
+        segs.append((int(idx[s0]), int(idx[b])))
+        s0 = b + 1
+    segs.append((int(idx[s0]), int(idx[-1])))
+    top, bot = tl['oy'], tl['oy'] + tl['h'] - 1
+    biggest = max(segs, key=lambda sg: int(a[sg[0]:sg[1] + 1].sum()))
+    for r0, r1 in segs:
+        if (r0 > top + 1 and r1 < bot - 1) or (r0, r1) == biggest:
+            continue
+        cnt = int(a[r0:r1 + 1].sum())
+        if cnt < SPECK_FRAC * tot or r1 - r0 < 4:
+            img = img.copy()
+            img[r0:r1 + 1] = 0
+            log.append(f'despeckle {tag}: rows {r0}-{r1} ({cnt} of {tot} px)')
+    return img
+
+
+def all_hats():
+    """Every hat of townfolk + townfolk2 + beachfolk (tf_parts registry, in-process)."""
+    return sorted(pn for pn, P in tp.PARTS.items() if P.family == 'hat' and P.space == 'head')
+
+
+def anim_hide_head():
+    """{anim: [hats hidden there]} = every hat but bf_presets.HEAD_KEEP[anim]."""
+    hats = all_hats()
+    return {a: [h for h in hats if h not in keep] for a, keep in bpr.HEAD_KEEP.items()}
+
+
+def pose_users():
+    """{(head pose, head dir): {anims whose timeline shows it}} for the beachfolk-only poses swim / lie."""
+    out = {}
+    for (a, d, i), e in ba.timeline3().items():
+        if e['hp'] in ba.HEAD_POSES3:
+            out.setdefault((e['hp'], e.get('hd', d)), set()).add(a)
+    return out
+
+
+def head_frame_hidden(layer, hp, d, users, hide):
+    """True when this head layer frame can never be drawn: a hat hidden in every anim that uses (hp, d)."""
+    if hp not in ba.HEAD_POSES3:
+        return False
+    pn = layer.split('.')[0]
+    P = tp.PARTS.get(pn)
+    if P is None or P.family != 'hat':
+        return False
+    us = users.get((hp, d), set())
+    return bool(us) and all(pn in hide.get(a, ()) for a in us)
+
+
+def collect_head3(cache, log, dropped=None):
+    users, hide = pose_users(), anim_hide_head()
     hd = os.path.join(cache, 'head')
     meta = json.load(open(os.path.join(hd, 'meta.json')))
     out = {}
@@ -199,6 +329,12 @@ def collect_head3(cache, log):
                 continue
             pn = layer.split('.')[0]
             if kind == 'layer' and not layer.startswith('head.') and pn not in tp.PARTS:
+                continue
+            if pn in bpr.RETIRED:
+                continue
+            if head_frame_hidden(layer, hp, d, users, hide):
+                if dropped is not None:
+                    dropped.append(f'{layer}/{name}')
                 continue
             img = load(os.path.join(fd, f))
             if img[..., 3].max() <= 2 / 255:
@@ -254,6 +390,7 @@ def collect_body3(cache, base, log):
                 if img[..., 3].max() <= 2 / 255:
                     continue
                 res = process(img, kind, tpk.body_tile(mask, i, tl)[..., 3])
+                res = despeckle(res, tl, f'{layer}@{base}/{anim}_{d}_{i}', log)
                 if res[..., 3].max() <= 2 / 255:
                     continue
                 fr[f'{anim}_{d}_{i}'] = to_u8(res)
@@ -263,15 +400,25 @@ def collect_body3(cache, base, log):
 
 # --------------------------------------------------------------------------- manifest
 
-def part_entry3(P):
+def part_entry3(P, hide=None):
+    """anims = the anims this part lets a person PLAY (canPlay); noAnims = anims where nothing of it is drawn.
+    Drop accessories: anims = every anim, noAnims = the anims without frames (put down / taken off there).
+    Beach hats: noAnims = the anims they are hidden in (= animHideHead; for compositors that only know noAnims)."""
     e = tpk2.part_entry2(P)
     for s, sd in P.subs.items():
         if sd.get('followDz') is not None:
             e['subs'][s]['followDz'] = sd['followDz']
     if P.name in bpr.PART_ANIMS:
-        e['anims'] = list(bpr.PART_ANIMS[P.name])
-    if P.name in bpr.DROP_PARTS:
-        e['drop'] = True
+        frames = list(bpr.PART_ANIMS[P.name])
+        e['anims'] = frames
+        if P.name in bpr.DROP_PARTS:
+            e['anims'] = list(bpr.ALL_ANIMS)
+            e['noAnims'] = [a for a in bpr.ALL_ANIMS if a not in frames]
+            e['drop'] = True
+    if P.space == 'head' and hide:
+        hid = [a for a in bpr.HEAD_KEEP if P.name in hide.get(a, ())]
+        if hid:
+            e['noAnims'] = hid
     auto = [a for a, ps in bpr.ANIM_PARTS.items() if P.name in ps]
     if auto:
         e['autoFor'] = auto
@@ -331,7 +478,8 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, he
             (ext_anim if L in old else frame_atlas)[L] = key
     frame_atlas_ext = [{'anims': list(ba.ORDER3), 'map': ext_anim}]
     frame_atlas_ext += [{'poses': [hp], 'map': mp} for hp, mp in sorted(ext_pose.items())]
-    parts = {pn: part_entry3(tp.PARTS[pn]) for pn in bp.NEW_PARTS}
+    hide = anim_hide_head()
+    parts = {pn: part_entry3(tp.PARTS[pn], hide) for pn in bp.NEW_PARTS if pn not in bpr.RETIRED}
     # colours
     tint_ref = dict(bpr.TINT_REF3)
     model = dict(tpr.TINT_MODEL)
@@ -402,25 +550,48 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, he
             'surf': {'boardDeckAboveWaterM': ba.BOARD_TOP, 'dir': 'dir = where the board nose points (SE / NE rendered, '
                      'SW / NW mirrored); fx_wake_v2 behind the tail'},
             'shadow': 'no ground shadow in water anims (draw the ripple instead)'},
-        'sunbathe': {'dir': 'dir = where the FEET point (SE / NE rendered, SW / NW mirrored); the head is at the other '
+        'sunbathe': {'dirMeans': 'feet',
+                     'dir': 'dir = where the FEET point (SE / NE rendered, SW / NW mirrored); the head is at the other '
                             'end.  Anchor = under the hips ON the lying surface (towel decal / lounger lyingPoint).',
+                     'spotDir': 'Use sunbatheDirFor(spot, i) (beachfolk_compose.js / sunbathe_dir_for in .py): '
+                                'spot.lyingFeetDirs[i] when the prop has it (assets/beach towels + loungers after the '
+                                'beach polish), else the OPPOSITE of spot.lyingDirs[i] (lyingDirs = hips -> head, the '
+                                'assets/beach convention; beach_bld hotel_pool lists lyingDirs only).  Never play '
+                                'sunbathe with lyingDirs directly: the person lies reversed (head off the foot end).',
                      'lieHeightM': ba.LIE_HIPS_Z,
                      'shadow': 'instead of the round shadow draw an ellipse bases[b].lieShadow[dir] = {center [dx, dy], '
                                'length, width, angleDeg} (mirrored dirs: negate dx and the angle)'},
         'dig': {'anchor': 'ground under the hips (kneeling)', 'digPoint': 'bases[b].digPoint[dir] = where the sandcastle '
                                                                         '(beach sandcastle_build stages) stands'},
-        'ball': {'radiusM': ba.BALL_R,
+        'ball': {'radiusM': ba.BALL_R, 'radiusMByAge': {'child': ba.ball_r('child'), 'adult': ba.ball_r('adult'),
+                                                         'elder': ba.ball_r('elder')},
                  'ballPoint': 'bases[b].ballPoint[anim][dir][i] = [dx, dy, front, radiusPx] centre of the held ball '
                               '(null = no ball in the hands).  ball_throw: release on impactFrame 3 (spawn the flying '
                               'ball there), ball_catch: the ball arrives on impactFrame 2.  front: draw the ball sprite '
-                              'over the person (else under).  Scale the beach ball item so its radius = radiusPx.'},
+                              'over the person (else under).  Scale the beach ball item so its radius = radiusPx.',
+                 'size': 'The held ball has a fixed WORLD size: 0.19 m radius (12.2 px) for adults / elders = the beach '
+                         'prop beach_ball_bounce (footprintM.radius 0.2), 0.15 m (9.6 px) for children (short chibi '
+                         'arms).  Flying ball: lerp its radius from the thrower radiusPx to the catcher radiusPx; on '
+                         'the sand use beach_ball_bounce at its own size.'},
+        'animHideHead': anim_hide_head(),
+        'animFallback': dict(bpr.ANIM_FALLBACK),
+        'pageClasses': {'loco': ['idle', 'walk'],
+                        'soc': ['talk', 'wave', 'happy', 'sad', 'clap', 'sit', 'push'],
+                        'beach': ['dig', 'ball_throw', 'ball_catch', 'sunbathe'],
+                        'water': ['swim', 'float', 'splash_play', 'surf'],
+                        'headPoses': {'beach': ['swim', 'lie']},
+                        'notes': 'For a pack_pages-style residency split (v4-B): loco resident near the beach, the '
+                                 'rest on demand; the swim / lie head poses only serve the water / beach classes.  '
+                                 'carry_walk has no beachfolk frames (dolls carry on the head).'},
         'merge': MERGE_RULES,
         'notes': ('Partial townfolk block (CONTRACT_V7 Y).  Merge after townfolk2 (rules in "merge"), then compose '
                   'exactly like tools/beachfolk_compose.py: the v4 + v5 rules plus (1) head frames use timeline hd '
                   '(default dir) and faceDirsByPose; (2) animParts are drawn in their anim even if not worn; '
-                  '(3) parts with "anims" draw only in those anims (canPlay checks a whole person, except '
-                  '"drop" accessories, which are simply put down there); (4) followDz; '
-                  '(5) water anims are anchored on the water surface (see water).'),
+                  '(3) parts draw only in their "anims" minus "noAnims" (canPlay = every body part lists the anim; '
+                  'drop accessories list every anim and are simply put down where they have no frames); (4) followDz; '
+                  '(5) water anims are anchored on the water surface (see water); (6) animHideHead hides hats per '
+                  'anim (and un-squashes the hair); (7) pickAnim / animFallback (swim -> float for ring wearers); '
+                  '(8) sunbathe dir = feet: sunbatheDirFor(spot, i).'),
     }
     return {'version': 1, 'notes': ('Beachfolk fragment (CONTRACT_V7 Y): swim / float / sunbathe / dig / beach ball / '
                                     'splash / surf anims for every townsperson body, swimwear and beach + hotel job '
@@ -447,6 +618,9 @@ def main():
             dither = float(args[i + 1]); i += 2; continue
         if a == '--out':
             out = os.path.abspath(args[i + 1]); i += 2; continue
+        if a == '--packer':
+            global PACKER
+            PACKER = args[i + 1]; i += 2; continue
         i += 1
     tpk.OUT = out
     t0 = time.time()

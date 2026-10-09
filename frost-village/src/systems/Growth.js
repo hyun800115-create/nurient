@@ -202,6 +202,12 @@ export class Growth {
     for (const c of this.cards) if (c.need[type]) n += Math.max(0, c.need[type] - c.got[type]);
     return n;
   }
+  /** what the open founding cards (a new shop, not the 정기 납품) still need of `type` */
+  foundingNeedOf(type) {
+    let n = 0;
+    for (const c of this.cards) if (c.shop && c.need[type]) n += Math.max(0, c.need[type] - c.got[type]);
+    return n;
+  }
   cardDone(c) { for (const k in c.need) if (c.got[k] < c.need[k]) return false; return true; }
   /** the card the HUD shows: the first one that is not done */
   focusCard() { return this.cards.find((c) => !this.cardDone(c)) || this.cards[0] || null; }

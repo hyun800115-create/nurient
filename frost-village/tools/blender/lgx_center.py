@@ -21,11 +21,16 @@ Groups (custom property 'lgx' on every object):
   cut       front walls cut at 1.6 m (the 'half' reveal state)
   shell     front walls (full) + roof + gables + signs + canopies (the part that fades)
   door1/2   dock roll-up door leaves (6-frame open/close patches over the shell)
-  props     outside props (bumpers, bollards, dock lamps, bench, snow) - drawn above the shell, never fade
+  props     wall-mounted outside props (the dock bumpers) - drawn above the shell, never fade
+  oprop     free-standing outside props (bollards, dock lamps, loading sign, bench, bin, empty pallets, snow piles):
+            each instance also carries 'lgxp' = its instance name and 'lgxk' = its kind; lgx_render renders one
+            sprite per KIND with its own ground anchor (the game y-sorts them like town props)
+  name_ko / name_en   the baked name lettering on the facade board (one patch per language, fades with the shell)
 
 Not run directly - see lgx_render.py.
 """
 import math
+import os
 
 import bpy  # noqa: F401
 from mathutils import Vector
@@ -70,12 +75,15 @@ CAT_COL = {'materials': '#7BB661', 'food': '#F08A3C', 'goods': '#4F95D9', 'furni
 RACK_YF, RACK_D = 2.78, 0.9
 RACK_LEVELS = [0.12, 1.32, 2.52]
 RACK_TOP = 3.3
+# (polish) the appliances rack is a lower 2-level heavy-goods rack: a fridge / stove / TV needs ~1.5 m between decks
+# (with 1.2 m they never fitted under the deck above).  {key: (levels, top)}
+RACK_SPEC = {'rack_appliances': ([0.12, 1.62], 2.85)}
 BACK_RACKS = [('rack_food', 'food', -4.0, -1.85), ('rack_goods', 'goods', -1.7, 0.45),
               ('rack_tools', 'tools', 0.6, 2.75), ('rack_appliances', 'appliances', 2.9, 5.05)]
 # furniture rack along the -X wall: front x = FRACK_XF (faces +X), y range
 FRACK_XF, FRACK_D, FRACK_Y = -4.2, 1.0, (0.0, 2.35)
-FRACK_LEVELS = [0.12, 1.45]
-FRACK_TOP = 2.65
+FRACK_LEVELS = [0.12, 1.7]          # (polish) was 1.45: chairs / wardrobes now fit the lower level
+FRACK_TOP = 2.95
 # floor bays (materials staging, front right)
 BAYS = [(0.95, 2.3, -3.55, -2.45), (2.4, 3.75, -3.55, -2.45), (0.95, 2.3, -2.35, -1.25), (2.4, 3.75, -2.35, -1.25)]
 CONV = (-2.6, 2.3, -0.5, 0.1, 0.85)     # conveyor x0, x1, y0, y1, belt height
@@ -83,6 +91,15 @@ PACK = (2.45, 3.75, -0.65, 0.25, 0.86)  # packing table x0, x1, y0, y1, top
 COUNTER = (-5.22, -3.2, -2.45, -1.95, 1.05)
 LANE_Y = 1.65
 CORR_X = 4.45
+# (polish) settlement queue: 0.95 m apart (~48 px at 1x, a chibi is ~45 px wide), c0 at the counter, c3 just inside the
+# door; outside the queue starts 1 m to the -X side of the door (not in the doorway) and runs -Y toward the street
+QUEUE_IN = [(-4.45, -2.95), (-3.5, -3.05), (-2.55, -3.15), (-1.6, -3.3)]
+QUEUE_OUT = [(-2.6, -4.75), (-2.6, -5.7), (-2.6, -6.65)]
+DOCK_NODE_X = 5.0          # forklift anchor at a dock node: on the leveller INSIDE the door (only the forks reach out)
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'fonts')
+NAME_TEXT = {'ko': ('솔방울 물류센터', 'Jua-Regular.ttf', 0.44), 'en': ('Pinecone Logistics', 'Fredoka-Bold.ttf', 0.36)}
+NAME_COL = '#2B4F7E'
+BOARD = (-3.0, 0.1, 2.75, 3.6)        # facade name board x0, x1, z0, z1 (on the -Y wall)
 BELT_SPACING = 1.6                      # box spacing on the belt (one spacing per 8-frame loop)
 BELT_FRAMES = 8
 CLEAT_P = BELT_SPACING / 3.0
@@ -321,7 +338,7 @@ def floor_and_markings():
                         bevel=0.0))
     # customer zone (soft green walkway) + queue footprints
     objs.append(X.decal_box('walk', -5.15, -0.95, -3.68, -2.62, flat('#A9D8A3', 0.75), z, t=0.008))
-    for (x, y) in [(-4.2, -3.0), (-3.35, -3.1), (-2.5, -3.2)]:
+    for (x, y) in [(q[0], q[1] - 0.05) for q in QUEUE_IN[:3]]:
         for s in (-1, 1):
             objs.append(sphere('foot', 0.09, (x + s * 0.09, y, z + 0.004), flat('#FBF6EA', 0.7), scale=(0.6, 1.0,
                                                                                                        0.05),
@@ -458,16 +475,16 @@ EMBLEM = {
 def racks():
     objs, slots = [], []
     for key, cat, x0, x1 in BACK_RACKS:
+        levels, top = RACK_SPEC.get(key, (RACK_LEVELS, RACK_TOP))
         with L.Collect() as c:
-            o, sl = rack_unit(key, x1 - x0, RACK_D, RACK_LEVELS, RACK_TOP, cat)
+            o, sl = rack_unit(key, x1 - x0, RACK_D, levels, top, cat)
         L.group(BA.top_level(c.objs), key + '_g', loc=((x0 + x1) / 2, RACK_YF, 0))
         objs += c.objs
         for s in sl:
             lx, ly, lz = s['local']
             slots.append(dict(rack=key, category=cat, level=s['level'], slot=s['slot'],
                               world=wpt((x0 + x1) / 2 + lx, RACK_YF + ly, lz), widthM=round(s['width'], 3),
-                              face='SW', upper=(RACK_LEVELS[s['level'] + 1] if s['level'] + 1 < len(RACK_LEVELS)
-                                                else None)))
+                              face='SW', upper=(levels[s['level'] + 1] if s['level'] + 1 < len(levels) else None)))
     # furniture rack on the -X wall, facing +X (local front -Y -> world +X: rotate +90)
     L_ = FRACK_Y[1] - FRACK_Y[0]
     with L.Collect() as c:
@@ -978,7 +995,7 @@ def facade_front():
         objs.append(T.win('fwin%d' % k, (x, -Y0, z1 - 0.02), face='y-', w=w - 0.06, h=z1 - z0 - 0.06,
                           frame=TRIM, cross=True, seed=k))
     # name board (blank: the game writes '물류센터') + emblem bracket sign at the corner
-    bx0, bx1, bz0, bz1 = -3.0, 0.1, 2.75, 3.6
+    bx0, bx1, bz0, bz1 = BOARD
     bd = [box('board_fr', (bx1 - bx0 + 0.12, 0.1, bz1 - bz0 + 0.12), ((bx0 + bx1) / 2, -Y0 - 0.06, bz0 - 0.06),
               mat=flat(SIGN_YEL, 0.4), bevel=0.03),
           box('board', (bx1 - bx0 - 0.08, 0.1, bz1 - bz0 - 0.08), ((bx0 + bx1) / 2, -Y0 - 0.1, bz0 + 0.04),
@@ -1042,47 +1059,122 @@ def dock_doors():
 
 # =================================================================================================== props (outside)
 
-def outside_props():
+def wall_props():
+    """Wall-mounted outside props (group 'props'): the rubber dock bumpers either side of each door.  Every vehicle /
+    actor outside is in front of the wall, so these stay in the always-drawn _props layer."""
     objs = []
     rub = flat('#2E323C', 0.75)
     for k, (y0, y1, _) in enumerate((DOCK1, DOCK2)):
         for y in (y0 - 0.2, y1 + 0.2):
             objs.append(box('bumper', (0.16, 0.24, 0.32), (X0 + 0.08, y, 0.08), mat=rub, bevel=0.04))
-        # wheel stop + bollards at the outer bay corners
-        for y in (y0 - 0.22, y1 + 0.22):
-            objs.append(cyl('bol', 0.09, 0.85, (X0 + 1.45, y, 0.0), mat=X.hazard(X.LINE_YEL, X.INK, 4.0, 0.0,
-                                                                                 ('X', 'Z')),
-                            segs=16, bevel=0.03))
-            objs.append(sphere('bol_s', 0.1, (X0 + 1.45, y, 0.86), flat('snow_mat', 0.9), scale=(1, 1, 0.55), segs=12,
-                               rings=6))
-        # dock lamp on a post between door and bollard
-        ly = y1 + 0.42 if k == 0 else y0 - 0.42
-        objs.append(cyl('dlpost', 0.04, 2.6, (X0 + 0.35, ly, 0), mat=flat(X.INK, 0.5), segs=10, bevel=0.0))
-        objs.append(cyl('dlbase', 0.12, 0.08, (X0 + 0.35, ly, 0), mat=flat(X.INK, 0.5), segs=14, bevel=0.01))
-        dl = L.emissive('dlamp%d' % k, '#FFE2A0', '#FFD27A', 2.0)
-        objs.append(box('dlhead', (0.2, 0.28, 0.14), (X0 + 0.42, ly, 2.55), mat=flat(X.LINE_YEL, 0.4), bevel=0.03))
-        objs.append(box('dllens', (0.04, 0.2, 0.08), (X0 + 0.53, ly, 2.58), mat=dl, bevel=0.01))
-        POINTS['fx_dockLights'].append(wpt(X0 + 0.55, ly, 2.6))
-    # bench + bin + mailbox by the entrance
-    with L.Collect() as c:
-        T.town_bench('bench', (ENTR[1] + 1.3, -Y0 - 0.55, 0), rot_z=0.0)
-    objs += c.objs
-    objs.append(cyl('obin', 0.2, 0.62, (ENTR[0] - 0.55, -Y0 - 0.45, 0), mat=flat('#3E8E57', 0.5), segs=18,
-                    bevel=0.03))
-    objs.append(L.snow_slab('obin_s', 0.36, 0.36, 0.06, (ENTR[0] - 0.55, -Y0 - 0.45, 0.62), seed=4))
-    # snow piles + a few pallets stacked outside the right corner
-    for k, (x, y, r) in enumerate(((X0 + 0.5, -Y0 - 0.35, 0.36), (-X0 + 0.6, -Y0 - 0.3, 0.3),
-                                  (X0 + 1.2, Y0 - 0.1, 0.32), (4.2, -Y0 - 0.4, 0.26))):
-        objs.append(blob('snowpile%d' % k, r, (x, y, 0.0), flat('snow_mat', 0.9), scale=(1.4, 1.0, 0.55), seed=k + 2,
-                         amp=0.2, subdiv=2, flat_bottom=0.5))
-    for k in range(3):
-        objs.append(X.pallet('opal%d' % k, 0.78, 0.78, 0.12, loc=(X0 + 0.75, -Y0 + 0.75 - 0.0, k * 0.12),
-                             rot_z=k * 5))
-    objs.append(L.snow_slab('opal_s', 0.7, 0.7, 0.07, (X0 + 0.75, -Y0 + 0.75, 0.36), seed=9))
-    # loading-zone post sign (blank) at the apron's front end
-    objs += T.post_sign('loadsign', (X0 + 1.15, -Y0 + 0.15, 0.0), h=2.0, r=0.28, bg=X.LINE_YEL, rim=X.INK,
-                        emblem=lambda s=1.0: em_forklift_icon(s), es=0.8)
     return objs
+
+
+# free-standing outside props: (instance, kind, ground point).  (polish) placed so that a vehicle backed up to a dock
+# never has one of them beside its camera-side flank (anchor y-sort would draw the vehicle over it): bollards and dock
+# lamps hug the wall beside the doors, the loading sign + empty pallets moved to the front-right corner of the apron,
+# the bin moved off the outside queue
+OPROPS = [('bollard_1', 'bollard', (X0 + 0.28, DOCK1[0] - 0.32)), ('bollard_2', 'bollard', (X0 + 0.28, DOCK2[1] + 0.32)),
+          ('docklight_1', 'docklight', (X0 + 0.35, DOCK1[1] + 0.42)),
+          ('docklight_2', 'docklight', (X0 + 0.35, DOCK2[0] - 0.42)),
+          ('bench', 'bench', (ENTR[1] + 1.3, -Y0 - 0.55)), ('bin', 'bin', (-3.45, -Y0 - 0.4)),
+          ('pallets', 'pallets', (3.95, -Y0 - 0.62)), ('loadsign', 'loadsign', (4.85, -Y0 - 0.55)),
+          ('snow_a', 'snow_big', (6.15, -Y0 - 0.55)), ('snow_b', 'snow_small', (-4.35, -Y0 - 0.6)),
+          ('snow_c', 'snow_big', (X0 + 1.2, Y0 - 0.1))]
+
+
+def oprop_kind(kind, x, y, k=0):
+    """Build one free-standing prop of `kind` with its ground point at (x, y)."""
+    if kind == 'bollard':
+        cyl('bol', 0.09, 0.85, (x, y, 0.0), mat=X.hazard(X.LINE_YEL, X.INK, 4.0, 0.0, ('X', 'Z')), segs=16,
+            bevel=0.03)
+        sphere('bol_s', 0.1, (x, y, 0.86), flat('snow_mat', 0.9), scale=(1, 1, 0.55), segs=12, rings=6)
+    elif kind == 'docklight':
+        cyl('dlpost', 0.04, 2.6, (x, y, 0), mat=flat(X.INK, 0.5), segs=10, bevel=0.0)
+        cyl('dlbase', 0.12, 0.08, (x, y, 0), mat=flat(X.INK, 0.5), segs=14, bevel=0.01)
+        dl = L.emissive('dlamp%d' % k, '#FFE2A0', '#FFD27A', 2.0)
+        box('dlhead', (0.2, 0.28, 0.14), (x + 0.07, y, 2.55), mat=flat(X.LINE_YEL, 0.4), bevel=0.03)
+        box('dllens', (0.04, 0.2, 0.08), (x + 0.18, y, 2.58), mat=dl, bevel=0.01)
+        sphere('dlsnow', 0.11, (x + 0.07, y, 2.63), flat('snow_mat', 0.9), scale=(1.0, 1.35, 0.4), segs=12, rings=6)
+    elif kind == 'bench':
+        T.town_bench('bench', (x, y, 0), rot_z=0.0)
+    elif kind == 'bin':
+        cyl('obin', 0.2, 0.62, (x, y, 0), mat=flat('#3E8E57', 0.5), segs=18, bevel=0.03)
+        L.snow_slab('obin_s', 0.36, 0.36, 0.06, (x, y, 0.62), seed=4)
+    elif kind == 'pallets':
+        for j in range(3):
+            X.pallet('opal%d' % j, 0.78, 0.78, 0.12, loc=(x, y, j * 0.12), rot_z=j * 5)
+        L.snow_slab('opal_s', 0.7, 0.7, 0.07, (x, y, 0.36), seed=9)
+    elif kind == 'loadsign':
+        T.post_sign('loadsign', (x, y, 0.0), h=2.0, r=0.28, bg=X.LINE_YEL, rim=X.INK,
+                    emblem=lambda s=1.0: em_forklift_icon(s), es=0.8)
+    elif kind in ('snow_big', 'snow_small'):
+        r, seed = (0.36, 2) if kind == 'snow_big' else (0.28, 3)
+        blob('snowpile', r, (x, y, 0.0), flat('snow_mat', 0.9), scale=(1.4, 1.0, 0.55), seed=seed, amp=0.2,
+             subdiv=2, flat_bottom=0.5)
+    else:
+        raise ValueError(kind)
+
+
+def oprops():
+    """Every free-standing outside prop in its own tagged group (lgx='oprop', lgxp=instance, lgxk=kind)."""
+    out = []
+    for k, (inst, kind, (x, y)) in enumerate(OPROPS):
+        with Group('oprop') as g:
+            oprop_kind(kind, x, y, k)
+        for o in g.objs:
+            for ob in [o] + list(o.children_recursive):
+                ob['lgxp'] = inst
+                ob['lgxk'] = kind
+        out.append(dict(name=inst, kind=kind, at=wpt(x, y)))
+        if kind == 'docklight':
+            POINTS['fx_dockLights'].append(wpt(x + 0.2, y, 2.6))
+    POINTS['oprops'] = out
+    return out
+
+
+def name_lettering(lang):
+    """Raised painted letters of the centre's name on the blank facade board (group 'name_<lang>'): a text curve
+    fitted into the board (88 % of its width, ~55 % of its height), converted to a mesh (FONT objects are not
+    handled by the pass control), facing -Y."""
+    body, font, h_frac = NAME_TEXT[lang]
+    bx0, bx1, bz0, bz1 = BOARD
+    w, h = bx1 - bx0 - 0.08, bz1 - bz0 - 0.08
+    fnt = bpy.data.fonts.load(os.path.join(FONT_DIR, font), check_existing=True)
+    cu = bpy.data.curves.new('nm_' + lang, 'FONT')
+    cu.body = body
+    cu.font = fnt
+    cu.size = 1.0
+    cu.align_x = 'CENTER'
+    cu.align_y = 'CENTER'
+    cu.extrude = 0.012
+    cu.bevel_depth = 0.006
+    cu.bevel_resolution = 2
+    cu.resolution_u = 8
+    ob = bpy.data.objects.new('nm_tmp_' + lang, cu)
+    bpy.context.scene.collection.objects.link(ob)
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    bpy.data.objects.remove(ob)
+    bpy.data.curves.remove(cu)
+    xs = [v.co.x for v in me.vertices]
+    ys = [v.co.y for v in me.vertices]
+    tw, th = max(xs) - min(xs), max(ys) - min(ys)
+    sc = min(w * 0.88 / tw, h * h_frac / th * (1.0 if lang == 'ko' else 1.25))
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    from mathutils import Matrix
+    me.transform(Matrix.Translation((-cx, -cy, 0)))
+    me.transform(Matrix.Diagonal((sc, sc, 1.0, 1.0)))
+    for p in me.polygons:
+        p.use_smooth = True
+    mo = bpy.data.objects.new('name_' + lang, me)
+    bpy.context.scene.collection.objects.link(mo)
+    mo.data.materials.append(flat(NAME_COL, 0.45))
+    mo.rotation_euler = (math.radians(90), 0, 0)
+    mo.location = ((bx0 + bx1) / 2, -Y0 - 0.152, (bz0 + bz1) / 2 + 0.01)
+    X.tag([mo], 'name_' + lang)
+    POINTS.setdefault('nameplate', {})[lang] = {'textWidthM': round(tw * sc, 3), 'textHeightM': round(th * sc, 3)}
+    return mo
 
 
 def em_forklift_icon(s=1.0):
@@ -1108,49 +1200,60 @@ def interaction_points():
                                                                'ledger)'),
         dict(role='packer', at=wpt(-0.4, 0.55), dir='SW', note='packer behind the conveyor'),
         dict(role='packer', at=wpt(3.1, 0.68), dir='SW', note='packer behind the packing table'),
-        dict(role='picker', at=wpt(-2.9, 2.42), dir='NE', note='picker at the food rack'),
-        dict(role='picker', at=wpt(1.7, 2.42), dir='NE', note='picker at the tools rack'),
-        dict(role='picker', at=wpt(-3.72, 1.15), dir='NW', note='picker at the furniture rack'),
+        # (polish) pickers stand between two racks, just outside the rack-lane line (y 2.3), in front of the rack faces:
+        # clear of the forklift's forks at its pick / put-away nodes AND of its body while it drives the lane (edge 2.23)
+        dict(role='picker', at=wpt(-1.78, 2.55), dir='NE', note='picker at the right end of the food rack (between '
+                                                                 'the food and goods racks)'),
+        dict(role='picker', at=wpt(2.83, 2.55), dir='NE', note='picker at the right end of the tools rack (between '
+                                                                'the tools and appliances racks)'),
+        dict(role='picker', at=wpt(-3.85, 0.45), dir='NW', note='picker at the furniture rack (lower slot, clear of '
+                                                                 'the rack lane)'),
         dict(role='dockhand', at=wpt(X0 + 0.75, -0.25), dir='SE', note='dock hand on the apron between the two bays '
                                                                         '(outside)'),
     ]
-    P['customers'] = [
-        dict(at=wpt(-4.2, -2.95), dir='NE', note='at the settlement counter (first in the queue)'),
-        dict(at=wpt(-3.35, -3.05), dir='NW'),
-        dict(at=wpt(-2.5, -3.15), dir='NW'),
-        dict(at=wpt(-1.6, -3.3), dir='NW', note='just inside the door'),
-        dict(at=wpt(-1.6, -4.75), dir='NE', note='outside the door'),
-        dict(at=wpt(-1.6, -5.55), dir='NE'),
-        dict(at=wpt(-1.6, -6.35), dir='NE'),
-    ]
+    P['customers'] = [dict(at=wpt(*QUEUE_IN[0]), dir='NE', note='at the settlement counter (first in the queue)')]
+    P['customers'] += [dict(at=wpt(*q), dir='NW') for q in QUEUE_IN[1:3]]
+    P['customers'].append(dict(at=wpt(*QUEUE_IN[3]), dir='NW', note='just inside the door'))
+    P['customers'] += [dict(at=wpt(*q), dir='NE', note=('outside, 1 m beside the door (the doorway stays free)'
+                                                         if k == 0 else 'outside'))
+                       for k, q in enumerate(QUEUE_OUT)]
     P['doorPoint'] = wpt((ENTR[0] + ENTR[1]) / 2, -Y0 - 0.55)
     P['inside'] = wpt((ENTR[0] + ENTR[1]) / 2, -YI + 0.45)
-    # forklift loop: axis-aligned legs; dir = heading the forklift FACES (it may reverse); action at the node
+    # forklift loop.  node: at + dir (= the way the forklift FACES while it does node.action there); the leg to the
+    # next node: legDir = the way it faces while driving that leg, reverse = it backs up (faces legDir, moves the other
+    # way).  Dock nodes stand on the leveller INSIDE the door (x = DOCK_NODE_X): only the forks reach into the bed.
     F = []
 
-    def n(x, y, d, act=None, note=None):
-        e = dict(at=wpt(x, y), dir=d)
+    def n(x, y, d, leg_dir, act=None, note=None, reverse=False):
+        e = dict(at=wpt(x, y), dir=d, legDir=leg_dir)
+        if reverse:
+            e['reverse'] = True
         if act:
             e['action'] = act
         if note:
             e['note'] = note
         F.append(e)
-    n(-2.9, LANE_Y, 'NE', 'pick', 'turn to the food rack, forks in, lift (anim lift), back out')
-    n(CORR_X, LANE_Y, 'SE', None, 'drive +X along the lane')
-    n(X0 + 0.15, (DOCK2[0] + DOCK2[1]) / 2, 'SE', 'drop', 'through dock 2 to the truck: lift, set the pallet down')
-    n(CORR_X, (DOCK2[0] + DOCK2[1]) / 2, 'SE', None, 'reverse back inside (still facing SE)')
-    n(CORR_X, (DOCK1[0] + DOCK1[1]) / 2, 'SW', None, 'drive -Y down the dock corridor')
-    n(X0 + 0.15, (DOCK1[0] + DOCK1[1]) / 2, 'SE', 'pick', 'through dock 1: pick a pallet from the van')
-    n(CORR_X, (DOCK1[0] + DOCK1[1]) / 2, 'SE', None, 'reverse back inside')
-    n(CORR_X, LANE_Y, 'NE', None, 'drive +Y up the corridor')
-    n(1.7, LANE_Y, 'NW', 'drop', 'back along the lane to the tools rack: put away (lift)')
-    n(-2.9, LANE_Y, 'NW', None, 'continue to the food rack -> loop')
+    d1y, d2y = (DOCK1[0] + DOCK1[1]) / 2, (DOCK2[0] + DOCK2[1]) / 2
+    n(-2.9, LANE_Y, 'NE', 'SE', 'pick', 'food rack: face NE, forks in, lift (anim lift), then drive +X along the lane')
+    n(CORR_X, LANE_Y, 'SE', 'SE', None, 'corner: keep going +X to dock 2')
+    n(DOCK_NODE_X, d2y, 'SE', 'SE', 'drop', 'dock 2 (truck bay): on the leveller, forks into the truck bed, lift and '
+                                            'set the pallet down, then reverse back inside', reverse=True)
+    n(CORR_X, d2y, 'SE', 'SW', None, 'corner: drive -Y down the dock corridor')
+    n(CORR_X, d1y, 'SW', 'SE', None, 'corner: turn to dock 1')
+    n(DOCK_NODE_X, d1y, 'SE', 'SE', 'pick', 'dock 1 (van bay): on the leveller, pick a pallet from the van, then '
+                                            'reverse back inside', reverse=True)
+    n(CORR_X, d1y, 'SE', 'NE', None, 'corner: drive +Y up the corridor')
+    n(CORR_X, LANE_Y, 'NE', 'NW', None, 'corner: drive -X along the rack lane')
+    n(1.7, LANE_Y, 'NE', 'NW', 'drop', 'tools rack: face NE (forks into the rack), put away (lift), then go on -X')
+    n(-2.9, LANE_Y, 'NW', 'NE', None, 'arrive at the food rack, turn NE -> loop (node 0)')
     P['forkliftPath'] = F
     P['docks'] = [
         dict(bay=1, door=wpt(X0, (DOCK1[0] + DOCK1[1]) / 2), widthM=round(DOCK1[1] - DOCK1[0], 2), dir='SE',
-             suits='any (delivery_van, truck_cargo, moving_truck)', note='front bay (screen lower)'),
+             role='delivery_van', suits='any (delivery_van, truck_cargo, moving_truck)',
+             note='dock 1 = van bay (front, screen lower)'),
         dict(bay=2, door=wpt(X0, (DOCK2[0] + DOCK2[1]) / 2), widthM=round(DOCK2[1] - DOCK2[0], 2), dir='SE',
-             suits='any (delivery_van, truck_cargo, moving_truck)', note='back bay (screen upper)'),
+             role='truck_cargo', suits='any (delivery_van, truck_cargo, moving_truck)',
+             note='dock 2 = truck bay (back, screen upper)'),
     ]
 
 
@@ -1207,7 +1310,10 @@ def build():
         facade_front()
     set_door = dock_doors()
     with Group('props'):
-        outside_props()
+        wall_props()
+    oprops()
+    for lang in ('ko', 'en'):
+        name_lettering(lang)
     interaction_points()
     set_belt(0)
     set_door(0, 0)

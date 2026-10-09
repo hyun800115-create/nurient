@@ -24,25 +24,30 @@ const check = (name, ok, info = '') => { results.push({ name, ok: !!ok, info });
 
 // live GL texture bytes (level 0 of every texImage2D / texStorage2D, minus deleted textures)
 const GL_PROBE = `(() => {
-  const live = new Map(); let bound = new WeakMap(); let total = 0;
+  const live = new Map(); const rt = new Set(); let total = 0, rtBytes = 0;
   const wrap = (P) => {
     if (!P || P.__fvWrapped) return; P.__fvWrapped = true;
     const bind = P.bindTexture, img = P.texImage2D, sto = P.texStorage2D, del = P.deleteTexture, act = P.activeTexture;
     P.activeTexture = function (u) { this.__unit = u; return act.call(this, u); };
     P.bindTexture = function (t, tex) { const m = this.__bound || (this.__bound = {}); m[(this.__unit || 0) + ':' + t] = tex; return bind.call(this, t, tex); };
     const cur = (gl, t) => (gl.__bound || {})[(gl.__unit || 0) + ':' + t];
-    const set = (tex, bytes) => { if (!tex) return; const was = live.get(tex) || 0; live.set(tex, bytes); total += bytes - was; };
+    // (render targets — texImage2D with no pixels: the renderer's own screen-sized buffers — are counted apart)
+    const set = (tex, bytes, isRT) => {
+      if (!tex) return; const was = live.get(tex) || 0; live.set(tex, bytes); total += bytes - was;
+      if (rt.has(tex)) rtBytes -= was;
+      if (isRT) { rt.add(tex); rtBytes += bytes; } else rt.delete(tex);
+    };
     P.texImage2D = function (...a) {
       const r = img.apply(this, a);
-      if (a[1] === 0) { let w = 0, h = 0; if (a.length >= 9) { w = a[3]; h = a[4]; } else { const s = a[5]; w = s && (s.width || s.videoWidth || s.displayWidth) || 0; h = s && (s.height || s.videoHeight || s.displayHeight) || 0; } set(cur(this, a[0]), w * h * 4); }
+      if (a[1] === 0) { let w = 0, h = 0, isRT = false; if (a.length >= 9) { w = a[3]; h = a[4]; isRT = !a[8]; } else { const s = a[5]; w = s && (s.width || s.videoWidth || s.displayWidth) || 0; h = s && (s.height || s.videoHeight || s.displayHeight) || 0; } set(cur(this, a[0]), w * h * 4, isRT); }
       return r;
     };
-    if (sto) P.texStorage2D = function (t, lv, f, w, h) { const r = sto.call(this, t, lv, f, w, h); set(cur(this, t), w * h * 4); return r; };
-    P.deleteTexture = function (tex) { const b = live.get(tex) || 0; total -= b; live.delete(tex); return del.call(this, tex); };
+    if (sto) P.texStorage2D = function (t, lv, f, w, h) { const r = sto.call(this, t, lv, f, w, h); set(cur(this, t), w * h * 4, false); return r; };
+    P.deleteTexture = function (tex) { const b = live.get(tex) || 0; total -= b; if (rt.has(tex)) { rtBytes -= b; rt.delete(tex); } live.delete(tex); return del.call(this, tex); };
   };
   wrap(window.WebGLRenderingContext && WebGLRenderingContext.prototype);
   wrap(window.WebGL2RenderingContext && WebGL2RenderingContext.prototype);
-  window.__glTex = () => ({ MiB: +(total / 1048576).toFixed(1), n: live.size });
+  window.__glTex = () => ({ MiB: +(total / 1048576).toFixed(1), texMiB: +((total - rtBytes) / 1048576).toFixed(1), rtMiB: +(rtBytes / 1048576).toFixed(1), n: live.size });
 })();`;
 
 const srv = await start(0, { prefix: '/fv/' });
@@ -53,9 +58,9 @@ const nudge = (fn, ms = 120000) => waitFor(page, `(() => { const L = window.__FV
 const samples = [];
 const sample = async (label) => {
   const s = await ev(() => { const st = window.__FV.texStats ? window.__FV.texStats() : null; return { st, gl: window.__glTex ? window.__glTex() : null }; });
-  const r = { label, MiB: s.st ? s.st.totalMiB : null, gl: s.gl ? s.gl.MiB : null, byCls: s.st && s.st.byCls, social: s.st && s.st.social, areas: s.st && s.st.areas, ground: s.st && s.st.ground };
+  const r = { label, MiB: s.st ? s.st.totalMiB : null, gl: s.gl ? s.gl.MiB : null, glTex: s.gl ? s.gl.texMiB : null, glRT: s.gl ? s.gl.rtMiB : null, byCls: s.st && s.st.byCls, social: s.st && s.st.social, areas: s.st && s.st.areas, ground: s.st && s.st.ground };
   samples.push(r);
-  console.log(`  [${label}] ${r.MiB} MiB (GL ${r.gl})`);
+  console.log(`  [${label}] ${r.MiB} MiB (GL ${r.gl}: textures ${r.glTex} + render targets ${r.glRT})`);
   return r;
 };
 /** advance `sec` game s sampling every `every` s; returns the samples */
@@ -121,8 +126,12 @@ try {
   check('full v4, plaza <= 300 MiB (target)', plaza0.MiB <= 300, plaza0.MiB);
   check('full v4 tour peak <= 300 MiB (target)', peak <= 300, peak);
   check('return to the start of the tour <= start + 5 MiB', plaza1.MiB <= plaza0.MiB + 5, { start: plaza0.MiB, end: plaza1.MiB });
-  const agree = tour.filter((r) => r.gl).map((r) => Math.abs(r.gl - r.MiB) / Math.max(1, r.MiB));
-  check('GL bytes agree with the source-sum within 10 % (median)', agree.length && agree.sort((a, b) => a - b)[Math.floor(agree.length / 2)] <= 0.10, agree.length ? +agree[Math.floor(agree.length / 2)].toFixed(3) : 'no GL probe');
+  const agree = tour.filter((r) => r.glTex).map((r) => Math.abs(r.glTex - r.MiB) / Math.max(1, r.MiB));
+  check('GL texture bytes agree with the source-sum within 10 % (median)', agree.length && agree.sort((a, b) => a - b)[Math.floor(agree.length / 2)] <= 0.10, agree.length ? +agree[Math.floor(agree.length / 2)].toFixed(3) : 'no GL probe');
+  // the renderer's own render targets (screen-sized) come on top; without Phaser's FX pipeline (disablePreFX) ~17 MiB
+  const rts = tour.filter((r) => r.glRT !== null).map((r) => r.glRT);
+  check('renderer render targets <= 40 MiB (no FX pipeline)', rts.length && Math.max(...rts) <= 40, rts.length ? Math.max(...rts) : 'no GL probe');
+  check('full v4, GL total (textures + render targets) <= 455 MiB (must)', tour.filter((r) => r.gl > 455).length * 5 <= 2, Math.max(...tour.map((r) => r.gl || 0)));
 } catch (e) { fatal = e; console.log('FATAL', e && e.stack || e); }
 check('no page errors', !log.errors.length && !fatal, log.errors.slice(0, 3));
 fs.mkdirSync(path.dirname(OUT), { recursive: true });

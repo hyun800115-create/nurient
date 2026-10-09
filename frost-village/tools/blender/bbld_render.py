@@ -161,10 +161,30 @@ def _mat_emission(m):
     return (c[0], c[1], c[2]), s
 
 
+_HEX = __import__('re').compile(r'([0-9A-Fa-f]{6})')
+
+
+def _base_rgb(m):
+    """Linear base colour of a material (its Principled base colour, else the hex in its name, else warm white).
+    flat() albedos are pre-scaled by prop_lib.ALBEDO_K -> undo that so a sign glows in its palette colour."""
+    if m is not None and m.use_nodes:
+        p = m.node_tree.nodes.get('Principled BSDF')
+        if p is not None and not p.inputs['Base Color'].is_linked:
+            c = p.inputs['Base Color'].default_value
+            k = 1.0 / getattr(L, 'ALBEDO_K', 1.0)
+            return (min(1.0, c[0] * k), min(1.0, c[1] * k), min(1.0, c[2] * k))
+    if m is not None:
+        h = _HEX.search(m.name)
+        if h:
+            return bc.srgb_to_linear('#' + h.group(1))
+    return bc.srgb_to_linear('#FFE6B0')
+
+
 def _swap_materials(fn):
-    """Replace every material slot of every visible mesh / curve via fn(material) -> material."""
+    """Replace every material slot of every visible mesh / curve via fn(material) -> material (objects already
+    handled by the per-object glow are skipped)."""
     for o in bpy.context.scene.objects:
-        if o.type not in ('MESH', 'CURVE') or o.name.startswith('ShadowCatcher'):
+        if o.type not in ('MESH', 'CURVE') or o.name.startswith('ShadowCatcher') or o.get('_glow_done'):
             continue
         mats = o.data.materials
         for i in range(len(mats)):
@@ -198,6 +218,28 @@ def render_glow(path, samples=16):
             cache[key] = _emit('G_' + m.name, rgb, s)
         any_lit[0] = True
         return cache[key]
+    # whole objects lit in their own colours (backlit signs, interiors seen through a window): per object, so a
+    # shared material (a white flat()) glows only on these objects
+    gob = {o.name: (col, s_, tint) for o, col, s_, tint in B.GLOWOBJ}
+
+    def own(m, col, s_, tint):
+        rgb = bc.srgb_to_linear(L.C(col)) if col else _base_rgb(m)
+        if tint:
+            rgb = tuple(c * t for c, t in zip(rgb, tint))
+        key = ('own', m.name if m else '-', col, s_, tint)
+        if key not in cache:
+            cache[key] = _emit('GO_%d' % len(cache), rgb, s_)
+        any_lit[0] = True
+        return cache[key]
+    for o in bpy.context.scene.objects:
+        if o.name in gob and o.type in ('MESH', 'CURVE'):
+            col, s_, tint = gob[o.name]
+            mats = o.data.materials
+            for i in range(len(mats)):
+                mats[i] = own(mats[i], col, s_, tint)
+            if o.type == 'MESH' and not len(mats):
+                mats.append(own(None, col or '#FFE6B0', s_, tint))
+            o['_glow_done'] = 1
     _swap_materials(fn)
     for o in sc.objects:
         if o.type == 'LIGHT' or o.name.startswith('ShadowCatcher'):

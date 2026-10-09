@@ -14,9 +14,12 @@ and drops the missing keys on purpose.  An empty manifest is never written.
 Derived sprites (made here from the render passes, same frame size + anchor as their building):
   <key>_front   occluder overlay = base frame x the front mask (railings / desk / counter): draw ABOVE characters
                 standing behind them (building d, staff / balcony guests d + 0.5, overlay d + 1)
-  <key>_glow    additive night light (windows, lamps, neon, bulbs, live tanks) with a soft bloom; blend ADD
-  <key>_night   resort_hotel(_x): the whole night picture (day x NIGHT_TINT + glow) - draw it UNTINTED at night
-  hotel_pool_water  the baked fallback pool water (6-frame ripple loop) cut to waterPoly
+  <key>_glow    additive night light (windows, lamps, neon, bulbs, backlit signs, lit interiors, live tanks) with a
+                soft bloom; blend ADD, drawn in the LIGHT layer above the game's DayClock night overlay
+  hotel_pool    is the DECK: the visible water surface (waterPoly) is cut out, the water is drawn UNDER it (Water.js or
+  hotel_pool_water, the baked fallback: opaque pool water + floor, 6-frame caustic loop) - land over water, like the sea
+Atlases: the `_x` builds (+ their overlays) live in the lazy atlas bbld_x, their glows in bbld_x_glow; every glow in
+bbld_glow (lazy).  The old resort_hotel(_x)_night frames are retired (the DayClock overlay + glow make the night).
 """
 import json
 import math
@@ -40,19 +43,29 @@ OUT = os.path.join(ASSETS, 'beach_bld')
 PREV = os.path.join(GAME, 'docs', 'previews')
 MAX_SHEET = 2048
 BUDGET_MB = 7.0
-ATLAS_ORDER = ['bbld_hotel', 'bbld_shops', 'bbld_civic', 'bbld_street', 'bbld_glow']
+ATLAS_ORDER = ['bbld_hotel', 'bbld_shops', 'bbld_civic', 'bbld_street', 'bbld_x', 'bbld_glow', 'bbld_x_glow']
+LAZY_ATLASES = ['bbld_glow', 'bbld_x', 'bbld_x_glow']
 KX, KY, KZ = 45.2548, 22.6274, 55.4256
-NIGHT_TINT = (0.42, 0.48, 0.72)
-NIGHT_HEX = '#6B7AB8'
-NIGHT_FRAMES = ('resort_hotel', 'resort_hotel_x')
+# the game's night (src/systems/DayClock.js): ONE camera-sized MULTIPLY image at DEPTH.FX - 30 tinted
+# (1 - a) * white + a * 0x5a6aa8 with a = BALANCE.v4.day.darkness (0.45), pooled ADD fv_glow lights at FX - 29
+DAYCLOCK_NIGHT = 0x5A6AA8
+DAYCLOCK_DARK = 0.45
+NIGHT_MUL = tuple((1 - DAYCLOCK_DARK) + DAYCLOCK_DARK * (((DAYCLOCK_NIGHT >> s_) & 255) / 255.0) for s_ in (16, 8, 0))
+GLOW_GAIN = 0.85            # glow sprites sit ABOVE the night overlay (x0.71..0.85), so they are a little softer
+RETIRED = {'resort_hotel_night', 'resort_hotel_x_night'}   # night frames dropped on purpose (DayClock night model)
 POINT_SINGLE = {'in': 'inPoint', 'door': 'doorPoint'}
 POINT_LIST = {'staff': 'staffPoints', 'customer': 'customerPoints', 'seat': 'seatPoints', 'balcony': 'balconyPoints',
               'lie': 'lyingPoints', 'swim': 'swimPoints', 'work': 'workPoints', 'view': 'viewPoints',
-              'shower': 'showerPoints', 'light': 'lightPoints'}
+              'shower': 'showerPoints', 'light': 'lightPoints', 'liehead': 'lyingHeadPoints',
+              'liefeet': 'lyingFeetPoints'}
 DIR_LIST = {'staff': 'staffDirs', 'customer': 'customerDirs', 'seat': 'seatDirs', 'balcony': 'balconyDirs',
             'lie': 'lyingDirs', 'work': 'workDirs', 'view': 'viewDirs', 'shower': 'showerDirs', 'door': 'doorDir'}
 EXTRA_FIELDS = ('name', 'zone', 'variantOf', 'floors', 'staffRoles', 'balconyDepth', 'waterZ', 'waterPalette',
-                'waterShore', 'lookoutDepth', 'passage')
+                'waterShore', 'lookoutDepth', 'passage', 'balconyFloors', 'balconyHeadroomPx', 'lyingAxis',
+                'lyingHeightM')
+OPP = {'S': 'N', 'N': 'S', 'E': 'W', 'W': 'E', 'SE': 'NW', 'NW': 'SE', 'NE': 'SW', 'SW': 'NE'}
+# staff that stand ON a flat part of the sprite (pool deck) must be drawn above it like the counter staff
+STAFF_ON_SPRITE = {'hotel_pool'}
 STAFF_ROLES = {
     'resort_hotel': ['doorman', 'bellhop', 'receptionist'], 'hotel_pool': ['lifeguard'], 'pension': ['owner'],
     'beach_cafe': ['barista'], 'beach_bar': ['beach_bar_staff'], 'seafood_bbq': ['chef'],
@@ -75,7 +88,8 @@ STAFF_PRESETS = {
 STAFF_BEHIND = {'resort_hotel': [2], 'beach_cafe': [0], 'icecream_shop': [0], 'beach_bar': [0], 'seafood_bbq': [0],
                 'tourist_info': [0], 'lifeguard_station': [0]}
 CLIP = (60, 128, 18)        # plane-overlay clip around a staff point: +-x, up, down (px)
-WATER_SEE = 0.72            # hotel_pool_water body opacity (the rest shows the pool floor of the base frame)
+WATER_SEE = 0.72            # water body opacity over the pool floor inside the baked fallback hotel_pool_water
+WATER_PAD = 3               # the fallback water reaches this many px past waterPoly (tucks under the deck edge)
 
 
 # --------------------------------------------------------------------------- post
@@ -120,9 +134,12 @@ def glow_rgb(cache, name):
     return np.clip(g * 0.78 + blur * 0.45 + wide * 0.3, 0, 255)
 
 
-def make_glow(cache, name):
-    """Additive light overlay: straight RGB + alpha = brightness (premultiplied by Phaser -> adds the glow)."""
-    out = glow_rgb(cache, name)
+def make_glow(cache, name, extra=None):
+    """Additive light overlay: straight RGB + alpha = brightness (premultiplied by Phaser -> adds the glow).
+    extra = an optional RGB float array added before packing (the lit pool water)."""
+    out = glow_rgb(cache, name) * GLOW_GAIN
+    if extra is not None:
+        out = out + extra
     a = out.max(-1)
     rgb = out * (255.0 / np.maximum(a, 1.0))[..., None]
     a = np.where(a < 5, 0, a)
@@ -130,16 +147,17 @@ def make_glow(cache, name):
     return Image.fromarray(im, 'RGBA')
 
 
-def make_night(day, cache, name):
-    d = np.asarray(day).astype(np.float32)
-    g = glow_rgb(cache, name)
-    rgb = d[..., :3] * np.array(NIGHT_TINT)
-    alpha = d[..., 3:4] / 255.0
-    lit = rgb * alpha + g                       # premultiplied composite of day*tint + additive glow
-    a = np.maximum(d[..., 3], np.clip(g.max(-1), 0, 255))
-    aa = np.maximum(a, 1.0)[..., None] / 255.0
-    out = np.dstack([np.clip(lit / aa, 0, 255), a])
-    return Image.fromarray(out.clip(0, 255).astype(np.uint8), 'RGBA')
+def pool_glow_fill(pm, glow_rgb_arr):
+    """Lit pool at night: a soft turquoise body inside waterPoly, brighter where the underwater lamps shine."""
+    body = pm[..., None] * np.array([18.0, 92.0, 108.0], np.float32)
+    lamps = np.asarray(Image.fromarray(glow_rgb_arr.clip(0, 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(14))).astype(np.float32)
+    return body + pm[..., None] * lamps * 0.9
+
+
+def dilate(mask, px):
+    im = Image.fromarray((mask * 255).astype(np.uint8))
+    return np.asarray(im.filter(ImageFilter.MaxFilter(2 * px + 1))).astype(np.float32) / 255.0
 
 
 def poly_mask(W, H, pts, ss=4):
@@ -222,22 +240,35 @@ def load(cache):
             n = m['overlay']['key']
             frames[n] = make_overlay(m, base, cache)
             derived[n] = ('overlay', k)
-        if m.get('glow'):
-            n = k + '_glow'
-            frames[n] = make_glow(cache, m['glow'])
-            derived[n] = ('glow', k)
-            if k in NIGHT_FRAMES:
-                n2 = k + '_night'
-                frames[n2] = make_night(base, cache, m['glow'])
-                derived[n2] = ('night', k)
+        pm = None
         if m.get('water'):
             W, H = m['frameSize']
             ax, ay = m['anchorPx']
             pm = poly_mask(W, H, [(ax + x, ay + y) for x, y in m['water']['poly']])
+        if m.get('glow'):
+            n = k + '_glow'
+            extra = None
+            if pm is not None:
+                extra = pool_glow_fill(pm, glow_rgb(cache, m['glow']))
+            frames[n] = make_glow(cache, m['glow'], extra)
+            derived[n] = ('glow', k)
+        if pm is not None:
+            # the base sprite becomes the DECK: the visible water surface is cut out (the water goes UNDER it)
+            full = np.asarray(base).astype(np.float32)
+            deck = full.copy()
+            deck[..., 3] *= (1.0 - pm)
+            frames[m['frames'][0]] = pu.clean_alpha(Image.fromarray(deck.clip(0, 255).astype(np.uint8), 'RGBA'),
+                                                    floor=3)
+            pad = dilate(pm, WATER_PAD)
             nfr = len(m['water']['frames'])
             for i, n in enumerate(m['water']['frames']):
                 a = np.asarray(Image.open(os.path.join(cache, n + '.png')).convert('RGBA')).astype(np.float32)
-                frames[n] = pool_water(a, pm, i, nfr)
+                wtr = np.asarray(pool_water(a, pad, i, nfr)).astype(np.float32)
+                # opaque fallback: the water over the empty basin of the render (pool floor, sun mosaic, tiles)
+                wa = wtr[..., 3:4] / 255.0
+                rgb = full[..., :3] * (1 - wa) + wtr[..., :3] * wa
+                out = np.dstack([rgb, pad * 255.0 * (full[..., 3] > 8)])
+                frames[n] = pu.clean_alpha(Image.fromarray(out.clip(0, 255).astype(np.uint8), 'RGBA'), floor=3)
             derived[k + '_water'] = ('water', k)
     return builds, frames, derived
 
@@ -298,15 +329,29 @@ def sprite_entry(k, m, frame_atlas):
         meta = m.get('lightMeta') or []
         s['lightKinds'] = [x[0] for x in meta][:len(s['lightPoints'])]
         s['lightRadiusPx'] = [int(round(x[1] * 48)) for x in meta][:len(s['lightPoints'])]
+        # DayClock.addLight(x, y, k): its fv_glow is 96 px x 1.25 k -> radius 60 k px
+        s['lightK'] = [round(r / 60.0, 2) for r in s['lightRadiusPx']]
     if 'staffPoints' in s:
-        s['staffDepth'] = 'front'
         base = k[:-2] if k.endswith('_x') and k[:-2] in STAFF_ROLES else k
+        behind = STAFF_BEHIND.get(base, [])
+        # per point: 'front' = draw at building depth d + 0.5 (behind a counter / desk / railing, under the
+        # `overlay` at d + 1, or standing ON a flat part of the sprite); 'behind' = ordinary y-sorting at the
+        # character's own y (staff standing in the open in front of the building) - the beach set's vocabulary
+        sd = []
+        for i, (dx, dy) in enumerate(s['staffPoints']):
+            sd.append('front' if (i in behind or base in STAFF_ON_SPRITE or dy < 8) else 'behind')
+        s['staffDepths'] = sd
+        s['staffDepth'] = sd[0]                 # = staffPoints[0] (src/entities/Register.js reads this one)
         if base in STAFF_ROLES:
             s['staffRoles'] = STAFF_ROLES[base][:len(s['staffPoints'])]
-        if base in STAFF_BEHIND:
-            s['staffBehindOverlay'] = STAFF_BEHIND[base]
+        if behind:
+            s['staffBehindOverlay'] = behind
         if base == 'lifeguard_station':
             s['lookoutPoint'] = s['staffPoints'][0]
+    if 'lyingPoints' in s:
+        # assets/beach vocabulary: lyingDirs = screen direction hips -> HEAD; the beachfolk sunbathe anim takes the
+        # FEET direction (beachfolk.sunbathe.dir) -> lyingFeetDirs is what you pass to it
+        s['lyingFeetDirs'] = [OPP[d] for d in s.get('lyingDirs', [])]
     for f in EXTRA_FIELDS:
         if f in m:
             s[f] = m[f]
@@ -323,31 +368,54 @@ CONVENTIONS = {
              'all their points / polys are already rotated. Baked shadows cannot be flipped, so never mirror a sprite.',
     'footprint': 'footprint = screen-px bounding size [w, h] of the ground diamond; footprintM = metres; footprintPoly = 4 '
                  'ground corners in px (depth sorting / collision).',
-    'points': 'every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled). *Dirs = facing of '
-              'a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground spots (door, customer, '
-              'seat, in, work, view, shower) are in front of the geometry: draw characters there with normal y-sorting '
-              '(their dy > 0) or just above the building.',
+    'points': 'every *Point / *Points value is a px offset [dx, dy] from the sprite anchor (unscaled, height included). '
+              '*Dirs = facing of a character standing there (S, SE, E, NE, N, SW, W, NW; SW/W/NW = flipX). Ground '
+              'spots (door, customer, seat, in, work, view, shower) are in front of the geometry: draw characters '
+              'there with normal y-sorting.',
     'staff': 'staffPoints + staffRoles (role names; the top-level staffPresets maps every role to an existing '
-             'townsfolk preset "<fragment>:<preset>") + staffDepth "front": draw staff at building depth d + 0.5. staffBehindOverlay lists the staff indices that stand BEHIND a counter / desk / deck railing: '
-             'draw the sprite\'s `overlay` (<key>_front, same frame + anchor) at d + 1 so the occluder hides their '
-             'legs (exactly like assets/buildings shop_general + shop_general_front; src/entities/Register.js already '
-             'does this for sprites with `overlay`).',
+             'townsfolk / beachfolk preset "<fragment>:<preset>") + staffDepths (one per point): "front" = draw that '
+             'character at the building depth d + 0.5 - it stands BEHIND a counter / desk / deck railing (listed in '
+             'staffBehindOverlay: the sprite\'s `overlay` <key>_front, same frame + anchor, goes on top at d + 1 and '
+             'hides its legs, exactly like assets/buildings shop_general + shop_general_front) or ON a flat part of '
+             'the sprite (the pool deck); "behind" = ordinary y-sorting at the character\'s own y (staff standing in '
+             'the open in front of the building: doorman, bellhop, clerks at the door) so people walking behind '
+             'them are drawn behind them. staffDepth = staffDepths[0] (what src/entities/Register.js reads).',
     'balconyPoints': 'resort_hotel / pension: guests standing on balconies (elevated - dy already includes the floor '
-                     'height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1.',
-    'night': 'night: {glow, blend: ADD, tint}. At night tint every sprite with `tint` (multiply) and add the '
-             '`<key>_glow` sprite (same frame + anchor, blendMode ADD, untinted) at the same position: lit windows, '
-             'lamps, neon, bulbs, tiki torches, live tanks with a soft bloom. resort_hotel(_x) also has '
-             '`night.frame` = <key>_night, the finished night picture (draw it UNTINTED instead of tint + glow). '
-             'lightPoints (+ lightKinds, lightRadiusPx) = where to put extra fx_glow sprites or light the ground.',
+                     'height). Draw them at d + 0.5 and the `_front` overlay (railings + towels) at d + 1. The hotel '
+                     'balconies are CHECKERBOARDED: no balcony sits right above another, so a standing chibi guest '
+                     '(80 - 100 px) only overlaps the wall / windows / roof above it, never the next railing. '
+                     'balconyFloors = floor of each point (0 = first upper floor); balconyHeadroomPx = free height '
+                     'above that balcony floor (px) up to the next balcony or the eaves.',
+    'lying': 'lyingPoints = hip point of a sunbather ON the lounger cushion (beachfolk `sunbathe` anchor, '
+             'lyingHeightM = cushion height); lyingHeadPoints / lyingFeetPoints = the backrest top / the foot end; '
+             'lyingDirs = screen direction hips -> HEAD (like assets/beach); lyingFeetDirs = the opposite = the '
+             'direction to pass to beachfolk sunbathe (its dir is where the FEET point); lyingAxis = world axis of '
+             'the body.',
+    'night': 'Built for the game\'s DayClock night (src/systems/DayClock.js): ONE camera-sized MULTIPLY overlay at '
+             'DEPTH.FX - 30 darkens everything (x0.71 / 0.74 / 0.85 at darkness 0.45) - do NOT tint the sprites '
+             'yourself. night.glow = <key>_glow (same frame + anchor, blendMode ADD) goes in the LIGHT layer above '
+             'that overlay: depth DEPTH.FX - 29 like the DayClock glows, alpha = the DayClock night factor '
+             '(min(1, dayClock.cur.a / darkness)), visible while dayClock.lightsOn; only for buildings in / near the '
+             'camera view. Lit windows, lamps, neon, bulbs, backlit roof signs, lit shop interiors, live tanks and '
+             'the lit pool. lightPoints (+ lightKinds, lightRadiusPx, lightK) = feed each one to '
+             'dayClock.addLight(ax + dx, ay + dy, lightK[i]) for the warm ground / halo light. Note: a glow in the '
+             'light layer is drawn over characters standing in front of a lit window (reads as light spill).',
     'anims': 'idle frame = rest; anims.work (+ alias grill / fish / lights / twinkle / ripple) loop with every frame '
-             'sharing frameSize + anchor: spr:<key>:work like the village stations.',
-    'pool': 'hotel_pool: the base sprite has NO water. waterPoly = px polygon (from the anchor) of the VISIBLE pool water '
-            'surface (near coping already clipped) at waterZ (m, below the deck); give it to src/systems/Water.js '
-            '(palette "pool", shore "quay") at depth d + 0.25. Without the shader draw `hotel_pool_water` (same frame + '
-            'anchor, anims.work / ripple 6 f: clear turquoise water over the pool floor with a drifting caustic net) at d + 0.25. swimPoints are ON the water plane (a swimmer anchor goes '
-            'there, add fx_swim_ripple); lyingPoints / lyingDirs = loungers (seat surface, head direction).',
-    'atlases': 'bbld_hotel (hotel, pool, night frames, water loop), bbld_shops, bbld_civic, bbld_street, bbld_glow '
-               '(all night glow overlays - load it lazily, only needed at night).',
+             'sharing frameSize + anchor: spr:<key>:work like the village stations. seafood_bbq has no baked smoke: '
+             'emit translucent FX puffs (fx_smoke_puff, alpha 0.35 - 0.6) at fxPoints.smoke.',
+    'pool': 'hotel_pool is the DECK: its visible water surface is cut out (transparent), so the water is drawn UNDER '
+            'it (land over water, exactly like the sea under the land; Water.js writes alpha 1 in a stair-stepped '
+            'mesh around the water and relies on the land covering it). Shader path: new Water(scene, {region: '
+            'bbox of the water poly + 24, mask: {water: [waterPolyFlat offset by the anchor]}, waterPx: 0, '
+            'defaultShore: "quay", palette: "pool", openSea: false, depth: d - 0.5, shoreDepth: d - 0.45}). '
+            'Fallback (Canvas / low quality): `hotel_pool_water` (opaque water + pool floor, same frame + anchor, '
+            'spr:hotel_pool_water:ripple) at d - 0.5. One of the two must always be drawn (the deck has a hole). '
+            'Swimmers stand ON the water plane at swimPoints, drawn at d + 0.5 (over the deck, add fx_swim_ripple); '
+            'sunbathers on lyingPoints at d + 0.6 (sunbathe dir = lyingFeetDirs); the pool staff stand on the deck '
+            '(staffDepths "front").',
+    'atlases': 'bbld_hotel (hotel, pool deck + water loop), bbld_shops, bbld_civic, bbld_street: always. LAZY '
+               '(lazyAtlases): bbld_x (every _x building + its overlay - load only where a coast runs along Y), '
+               'bbld_glow (night glows), bbld_x_glow (night glows of the _x buildings).',
 }
 
 
@@ -361,14 +429,15 @@ def build_manifest(builds, derived, frame_atlas, atlas_keys, old):
         if m.get('overlay'):
             s['overlay'] = m['overlay']['key']
         if m.get('glow'):
-            s['night'] = {'glow': k + '_glow', 'blend': 'ADD', 'tint': NIGHT_HEX}
-            if k in NIGHT_FRAMES:
-                s['night']['frame'] = k + '_night'
+            s['night'] = {'glow': k + '_glow', 'blend': 'ADD', 'layer': 'light'}
         if m.get('water'):
             s['waterPoly'] = m['water']['poly']
+            s['waterPolyFlat'] = [v for p_ in m['water']['poly'] for v in p_]
             s['waterRectPx'] = m['water']['rectWater']
             s['waterRectM'] = m['water']['rectM']
             s['waterOverlay'] = k + '_water'
+            s['waterDepth'] = -0.5
+            s['waterPx'] = 0
         sprites[k] = s
     for n, (kind, k) in sorted(derived.items()):
         m = builds[k]
@@ -380,18 +449,16 @@ def build_manifest(builds, derived, frame_atlas, atlas_keys, old):
                                     'overlay d + 1).' % k)
         elif kind == 'glow':
             sprites[n] = dict(base, atlas=frame_atlas[n], frame=n, kind='glow', blend='ADD',
-                              notes='Night light of %s: same frame + anchor, blendMode ADD, not tinted.' % k)
-        elif kind == 'night':
-            sprites[n] = dict(base, atlas=frame_atlas[n], frame=n, kind='night',
-                              notes='Finished night picture of %s (day x tint %s + glow): draw it untinted at night in '
-                                    'place of %s.' % (k, NIGHT_HEX, k))
+                              notes='Night light of %s: same frame + anchor, blendMode ADD, in the light layer above '
+                                    'the DayClock overlay (conventions.night).' % k)
         elif kind == 'water':
             fr = m['water']['frames']
-            sprites[n] = dict(base, atlas=frame_atlas[fr[0]], frame=fr[0], kind='overlay',
+            sprites[n] = dict(base, atlas=frame_atlas[fr[0]], frame=fr[0], kind='underlay',
                               anims={'work': {'frames': fr, 'fps': m['water']['fps'], 'repeat': -1},
                                      'ripple': {'frames': fr, 'fps': m['water']['fps'], 'repeat': -1}},
-                              notes='Baked fallback pool water of %s (Canvas / low quality): same frame + anchor, play '
-                                    'spr:%s:ripple at depth d + 0.25.' % (k, n))
+                              notes='Baked fallback pool water of %s (Canvas / low quality): opaque turquoise water over '
+                                    'the pool floor with a drifting caustic net, same frame + anchor; play '
+                                    'spr:%s:ripple UNDER the deck at depth d - 0.5.' % (k, n))
     man = dict(old) if old else {}
     man['version'] = 1
     man['generator'] = 'tools/blender/bbld_render.py + bbld_pack.py (docs/CONTRACT_V7.md section X)'
@@ -400,8 +467,14 @@ def build_manifest(builds, derived, frame_atlas, atlas_keys, old):
     oldsp = (old or {}).get('sprites', {})
     man['sprites'] = {k: dict(oldsp.get(k, {}), **v) for k, v in sprites.items()}
     man['staffPresets'] = STAFF_PRESETS
-    man['night'] = {'tint': NIGHT_HEX, 'glowBlend': 'ADD', 'glowAtlas': 'bbld_glow'}
-    man['lazyAtlases'] = ['bbld_glow']
+    man['night'] = {'model': 'DayClock', 'overlay': {'color': '#5A6AA8', 'darkness': DAYCLOCK_DARK, 'blend': 'MULTIPLY',
+                                                     'depth': 'DEPTH.FX - 30'},
+                    'glowBlend': 'ADD', 'glowDepth': 'DEPTH.FX - 29', 'glowAtlases': ['bbld_glow', 'bbld_x_glow'],
+                    'glowAlpha': 'min(1, dayClock.cur.a / darkness), only while dayClock.lightsOn',
+                    'lights': 'dayClock.addLight(ax + dx, ay + dy, lightK[i]) for every lightPoints entry'}
+    man['lazyAtlases'] = [a for a in LAZY_ATLASES if a in atlas_keys]
+    man.pop('retired', None)
+    man['retired'] = {k: 'night frames replaced by the DayClock overlay + <key>_glow' for k in sorted(RETIRED)}
     return man
 
 
@@ -446,11 +519,10 @@ def pack_all(builds, frames, derived, mode):
             fr.append((m['overlay']['key'], frames[m['overlay']['key']]))
         if m.get('water'):
             fr += [(n, frames[n]) for n in m['water']['frames']]
-        if k + '_night' in frames:
-            groups.setdefault(m['atlas'], []).append([(k + '_night', frames[k + '_night'])])
-        groups.setdefault(m['atlas'], []).append(fr)
+        xvar = bool(m.get('variantOf'))                        # a side-facing `_x` variant (lazy atlases)
+        groups.setdefault('bbld_x' if xvar else m['atlas'], []).append(fr)
         if k + '_glow' in frames:
-            groups.setdefault('bbld_glow', []).append([(k + '_glow', frames[k + '_glow'])])
+            groups.setdefault('bbld_x_glow' if xvar else 'bbld_glow', []).append([(k + '_glow', frames[k + '_glow'])])
     sheets = pack_groups(groups)
     for akey, sheet, atlas in sheets:
         if sheet.width > MAX_SHEET or sheet.height > MAX_SHEET:
@@ -537,6 +609,7 @@ def main():
     if old:
         in_man = set(old.get('sprites', {}))
         need |= in_man
+    need -= RETIRED
     guard(cache, have, need, in_man, '--allow-partial' in args)
     sheets, frame_atlas, total = pack_all(builds, frames, derived, mode)
     man = build_manifest(builds, derived, frame_atlas, [s[0] for s in sheets], old)

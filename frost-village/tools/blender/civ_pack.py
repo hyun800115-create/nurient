@@ -29,6 +29,7 @@ import math
 import os
 import sys
 import tempfile
+from collections import OrderedDict
 
 import numpy as np
 from PIL import Image
@@ -45,7 +46,8 @@ OUT = os.path.join(ASSETS, 'civic')
 PREV = os.path.join(GAME, 'docs', 'previews')
 MAX_SHEET = 2048
 BUDGET_MB = 7.0
-ATLAS_ORDER = ['civ_bank', 'civ_police', 'civ_ruins', 'civ_props', 'civ_moving', 'civ_demo', 'civ_decals']
+ATLAS_ORDER = ['civ_bank', 'civ_police', 'civ_ruins', 'civ_smoke', 'civ_props', 'civ_moving', 'civ_demo', 'civ_decals']
+RGBA_ATLASES = {'civ_smoke'}      # soft smoke alpha: keep 8-bit alpha (no palette speckle)
 VEH_KEYS = ['excavator', 'dump_truck']
 SQ2 = math.sqrt(2.0)
 PX_X, PX_Y = 45.2548, 22.6274
@@ -103,6 +105,10 @@ def load(cache):
             m = json.load(open(os.path.join(p, 'meta.json')))
             names = ['%s_%s_%d' % (a, d, i) for a, info in m['anims'].items() for d in m['dirs']
                      for i in range(info['frames'])]
+            co = m.get('cargoOverlay')
+            if co:
+                names += ['cargo_%s_%s_%d' % (a, d, i) for a in co['anims'] for d in m['dirs']
+                          for i in range(co['frames'][a])]
             if all(os.path.exists(os.path.join(p, n + '.png')) for n in names):
                 m['names'] = names
                 vehicles[fn] = m
@@ -168,8 +174,29 @@ def build_images(cache, m):
         out[n] = im
     for name, ov in m.get('overlays', {}).items():
         for f in ov['frames']:
-            out[f] = pu.clean_alpha(raw(f), floor=3)
+            out[f] = smooth_smoke(pu.clean_alpha(raw(f), floor=3)) if name == 'smoke' else pu.clean_alpha(raw(f), floor=3)
     return out
+
+
+def smooth_smoke(im, radius=1.3):
+    """Polish v2: Cycles leaves the soft smoke's ALPHA speckled (the denoiser only cleans colour).  Blur the frame in
+    premultiplied space, but keep the original pixels where they are (nearly) opaque - the embers and the crisp
+    edges where a wall cuts the wisp stay sharp."""
+    from PIL import ImageFilter
+    a = np.asarray(im).astype(np.float32) / 255.0
+    pre = np.dstack([a[..., :3] * a[..., 3:4], a[..., 3:4]])
+    chans = [np.asarray(Image.fromarray((pre[..., i] * 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(radius))).astype(np.float32) / 255.0 for i in range(4)]
+    bl = np.dstack(chans)
+    alpha = bl[..., 3:4]
+    rgb = np.where(alpha > 1e-4, bl[..., :3] / np.maximum(alpha, 1e-4), 0.0)
+    keep = (a[..., 3:4] > 0.8).astype(np.float32)
+    out_rgb = rgb * (1 - keep) + a[..., :3] * keep
+    out_a = alpha * (1 - keep) + a[..., 3:4] * keep
+    res = np.dstack([out_rgb, out_a])
+    res = np.clip(res * 255.0 + 0.5, 0, 255).astype(np.uint8)
+    res[res[..., 3] < 2] = 0
+    return Image.fromarray(res, 'RGBA')
 
 
 def draw_layers(m):
@@ -182,9 +209,35 @@ def draw_layers(m):
     return [x for x in order if x.startswith('@') or x in m['cutaway']['layers'] or x in m.get('overlays', {})]
 
 
+def centre_anchor(m):
+    """Polish v2: pad every frame of a vehicle symmetrically so the anchor x is EXACTLY the frame centre (ax = 0.5).
+    Phaser mirrors a flipped frame around the frame centre (Sprite.setFlipX with setOrigin(anchor), as Train.js
+    does), so an off-centre anchor would shift a mirrored SW / NW vehicle sideways (excavator 42 px).  The padding is
+    trimmed away in the atlas (no memory) and every point stays an offset from the anchor (unchanged).
+    Returns (pad_left, pad_right)."""
+    W, H = m['frameSize']
+    ax, ay = m['anchorPx']
+    left, right = ax, W - ax
+    pl, pr = max(0, right - left), max(0, left - right)
+    m['frameSize'] = [W + pl + pr, H]
+    m['anchorPx'] = [ax + pl, ay]
+    m['anchor'] = [0.5, round(ay / float(H), 5)]
+    m['anchorPad'] = [pl, pr]
+    return pl, pr
+
+
 def veh_images(cache, key, m):
     import char_pack as cp      # read-only reuse of the characters' ink outline
-    return {n: cp.ink_outline(Image.open(os.path.join(cache, key, n + '.png'))) for n in m['names']}
+    pl, pr = m.get('anchorPad') or centre_anchor(m)
+    out = {}
+    for n in m['names']:
+        im = cp.ink_outline(Image.open(os.path.join(cache, key, n + '.png')))
+        if pl or pr:
+            big = Image.new('RGBA', (im.width + pl + pr, im.height), (0, 0, 0, 0))
+            big.paste(im, (pl, 0))
+            im = big
+        out[n] = im
+    return out
 
 
 # --------------------------------------------------------------------------- manifest helpers
@@ -385,10 +438,10 @@ def veh_entry(k, m, atlas_key):
     e = vp.veh_entry(k, m, atlas_key, None)
     e.pop('overlay', None)
     for a, info in m['anims'].items():
-        for f in ('digFrame', 'dumpFrame', 'tipFrame'):
+        for f in ('digFrame', 'dumpFrame', 'tipFrame', 'pileFrame'):
             if f in info:
                 e['anims'][a][f] = info[f]
-    for f in ('cargoGround', 'tipPoint', 'dumpPoint', 'digPoint', 'framePoints'):
+    for f in ('cargoGround', 'tipPoint', 'dumpPoint', 'digPoint', 'framePoints', 'cargoOverlay'):
         if f in m:
             e[f] = m[f]
     fp = m.get('framePoints', {})
@@ -430,67 +483,286 @@ def to_world(dx, dy):
     return (dx / PX_X + dy / PX_Y) / 2.0, (dx / PX_X - dy / PX_Y) / 2.0
 
 
-def demolition_layout(vehicles):
-    """Where the excavator and the dump truck stand while clearing an S / M / L plot (px from the plot centre):
-    the excavator outside the fence ring on the plot's -X side (screen up-left) heading SE, so its bucket bites
-    inside the plot at digFrame; the dump truck beside it (the excavator's right = world -Y) with its bed under the
-    bucket at dumpFrame.  The pair is slid along Y (nearest to y = 0.2 first, both ways) until neither footprint
-    touches the fence ring and the bucket's dig point still lands inside the plot."""
-    out = {}
+MIRROR_OF = {'SW': 'SE', 'NW': 'NE'}
+SIDES = OrderedDict([            # street side of the plot -> (inward unit vector u, excavator heading)
+    ('Y-', ((0.0, 1.0), 'NE')),    # front-left (screen down-left)  - the default: building fronts face -Y
+    ('X+', ((-1.0, 0.0), 'NW')),   # front-right (screen down-right) - mirror of Y-
+    ('X-', ((1.0, 0.0), 'SE')),    # back-left: the ruin hides the bite (digVisible false)
+    ('Y+', ((0.0, -1.0), 'SW')),   # back-right: mirror of X-
+])
+TRUCK_DIRS = {'NE': ('SW', 'NE'), 'NW': ('SE', 'NW'), 'SE': ('NW', 'SE'), 'SW': ('NE', 'SW')}
+PLOT_HALF = {'S': (1.0, 1.0), 'M': (1.5, 1.5), 'L': (2.0, 2.0)}
+
+
+def dir_pt(by_dir, d):
+    if d in by_dir:
+        return list(by_dir[d][:2])
+    p = by_dir[MIRROR_OF[d]]
+    return [-p[0], p[1]]
+
+
+def dir_poly(by_dir, d):
+    if d in by_dir:
+        return [list(p) for p in by_dir[d]]
+    return [[-p[0], p[1]] for p in by_dir[MIRROR_OF[d]]]
+
+
+def poly_world(at_px, poly_px):
+    ox, oy = to_world(*at_px)
+    return [(ox + to_world(*p)[0], oy + to_world(*p)[1]) for p in poly_px]
+
+
+def sat_gap(a, b):
+    """Separation distance between two convex polygons (0 if they overlap) along their edge normals."""
+    best = -1e9
+    for poly in (a, b):
+        n = len(poly)
+        for i in range(n):
+            x0, y0 = poly[i]
+            x1, y1 = poly[(i + 1) % n]
+            nx, ny = y1 - y0, -(x1 - x0)
+            ln = math.hypot(nx, ny) or 1.0
+            nx, ny = nx / ln, ny / ln
+            pa = [x * nx + y * ny for x, y in a]
+            pb = [x * nx + y * ny for x, y in b]
+            gap = max(min(pb) - max(pa), min(pa) - max(pb))
+            best = max(best, gap)
+    return max(0.0, best)
+
+
+def square(h):
+    return [(-h, -h), (h, -h), (h, h), (-h, h)]
+
+
+def sprite_alpha(img, anchor, at, px):
+    """alpha of a sprite drawn with its anchor at `at` (px, plot space) at plot-space pixel px (0 outside)."""
+    x = int(round(px[0] - at[0] + anchor[0]))
+    y = int(round(px[1] - at[1] + anchor[1]))
+    if 0 <= x < img.width and 0 <= y < img.height:
+        return img.getpixel((x, y))[3]
+    return 0
+
+
+def covered_fraction(target, others):
+    """Fraction of the opaque pixels of target (img, anchor, at) covered by opaque pixels of the others drawn on top."""
+    img, anc, at = target
+    a = np.asarray(img)[..., 3] > 128
+    ys, xs = np.nonzero(a)
+    if not len(xs):
+        return 0.0
+    cov = np.zeros(len(xs), bool)
+    for oimg, oanc, oat in others:
+        oa = np.asarray(oimg)[..., 3] > 128
+        ox = xs + int(round(- anc[0] + at[0] - oat[0] + oanc[0]))
+        oy = ys + int(round(- anc[1] + at[1] - oat[1] + oanc[1]))
+        ok = (ox >= 0) & (ox < oimg.width) & (oy >= 0) & (oy < oimg.height)
+        hit = np.zeros(len(xs), bool)
+        hit[ok] = oa[oy[ok], ox[ok]]
+        cov |= hit
+    return float(cov.mean())
+
+
+def demolition_layout(vehicles, vimgs=None, frames=None, builds=None):
+    """Polish v2 - where the excavator and the dump truck stand while clearing an S / M / L plot, for each street
+    side of the plot (px offsets from the plot centre = the ruin / site anchor):
+      * the excavator stands OUTSIDE the fence ring on the street side, heading into the plot, so it is drawn in
+        front of the ruin and its bucket bites the ruin's front at digFrame (front sides Y- / X+);
+      * it swings LEFT (away from the camera) to dump, so the dump truck parks BEHIND it (never hides it), with its
+        cargoGround under the excavator's dumpPoint, >= 0.5 m clear of the fence ring and of the excavator;
+      * gateIndex = a fence piece (fenceRings[size].pieces index) on a camera-facing side that no vehicle blocks -
+        leave it out so the crew / chief can walk in.
+    The search runs in world metres (convex footprints, separating axes); the best few candidates are then checked
+    in screen space with the real sprites: the bucket at digFrame must not be covered by anything drawn after the
+    excavator (front sides), and the truck must not cover more than 30 % of the excavator."""
     exc, dump = vehicles.get('excavator'), vehicles.get('dump_truck')
-    cands = sorted((round(0.2 + 0.1 * k, 2) for k in range(-50, 31)), key=lambda v: (abs(v - 0.2), v))
+    if not exc or not dump:
+        return {}
+    rings = fence_rings()
+    dig_f = exc['anims']['dig'].get('digFrame', 2)
+    out = OrderedDict()
     for sz, n in (('S', 2), ('M', 3), ('L', 4)):
         h = n * SQ2 / 2
-        e = {}
-        ex_x = -h - 1.85
-        for ex_y in cands:
-            ex = iso(ex_x, ex_y)
-            ok = True
-            if exc:
-                xs = [to_world(*p)[0] + ex_x for p in exc['footprintPoly']['SE']]
-                ok = max(xs) < -h - 0.15
-                dg = exc.get('digPoint', {}).get('SE')
-                if dg:
-                    gx, gy = to_world(*dg)
-                    ok = ok and abs(ex_x + gx) < h - 0.2 and abs(ex_y + gy) < h - 0.2
-            tr = None
-            if exc and dump and exc.get('dumpPoint') and dump.get('cargoGround'):
-                dp = exc['dumpPoint']['SE']
-                cg = dump['cargoGround']['SE']
-                tr = [ex[0] + dp[0] - cg[0], ex[1] + dp[1] - cg[1]]
-                tx, ty = to_world(*tr)
-                pts = [to_world(*p) for p in dump['footprintPoly']['SE']]
-                wx = [tx + p[0] for p in pts]
-                wy = [ty + p[1] for p in pts]
-                inside_x = max(wx) > -h - 0.15 and min(wx) < h + 0.15
-                inside_y = max(wy) > -h - 0.15 and min(wy) < h + 0.15
-                ok = ok and not (inside_x and inside_y)
-            if ok:
-                break
-        else:
-            print('WARNING: demolitionLayout %s: no clear spot for the excavator + dump truck' % sz)
-        e['excavator'] = {'at': ex, 'dir': 'SE', 'anim': 'dig', 'worldM': [round(ex_x, 2), round(ex_y, 2)],
-                          'notes': 'outside the fence on the plot\'s -X side (screen up-left), arm over the fence'}
-        if tr:
-            e['dump_truck'] = {'at': tr, 'dir': 'SE', 'worldM': [round(tx, 2), round(ty, 2)],
+        ph = PLOT_HALF[sz][0]
+        fence = square(h + 0.06)
+        ruin_key = 'ruin_%s' % sz.lower()
+        per = OrderedDict()
+        for side, (u, edir) in SIDES.items():
+            w = (-u[1], u[0])
+            epoly = dir_poly(exc['footprintPoly'], edir)
+            dig = dir_pt(exc['digPoint'], edir)
+            dump_p = dir_pt(exc['dumpPoint'], edir)
+            cands = []
+            for di in range(0, 80):
+                d_ = h + 0.4 + di * 0.05
+                for li in range(-60, 61):
+                    l_ = li * 0.05
+                    E = (-u[0] * d_ + w[0] * l_, -u[1] * d_ + w[1] * l_)
+                    E_px = iso(*E)
+                    ep = poly_world(E_px, epoly)
+                    if sat_gap(ep, fence) < 0.12:
+                        continue
+                    gx, gy = to_world(E_px[0] + dig[0], E_px[1] + dig[1])
+                    if abs(gx) > ph - 0.15 or abs(gy) > ph - 0.15:
+                        continue
+                    depth = (gx * u[0] + gy * u[1]) + ph          # from the street edge of the plot
+                    lat = gx * w[0] + gy * w[1]
+                    for tdir in TRUCK_DIRS[edir]:
+                        cg = dir_pt(dump['cargoGround'], tdir)
+                        T_px = [E_px[0] + dump_p[0] - cg[0], E_px[1] + dump_p[1] - cg[1]]
+                        tp = poly_world(T_px, dir_poly(dump['footprintPoly'], tdir))
+                        if sat_gap(tp, fence) < 0.5 or sat_gap(tp, ep) < 0.25:
+                            continue
+                        score = abs(depth - 0.32 * 2 * ph) * 3.0 + abs(lat) * 1.0 + d_ * 0.2 + \
+                            (0.0 if tdir in ('SW', 'SE') else 0.35)     # prefer the truck's cab toward the camera
+                        cands.append((score, E_px, edir, T_px, tdir, (round(gx, 2), round(gy, 2))))
+            cands.sort(key=lambda c: c[0])
+            pick, checks = None, {}
+            for c in cands[:400]:
+                _, E_px, ed, T_px, td, dg = c
+                ck = layout_pixels(E_px, ed, T_px, td, exc, dump, vimgs, frames, builds, rings[sz], dig_f, ruin_key)
+                if ck is None or (ck['truckCoversExcavator'] <= 0.3 and (side in ('X-', 'Y+') or ck['digVisible'])):
+                    pick, checks = c, ck or {}
+                    break
+            if pick is None and cands:
+                pick = cands[0]
+                checks = layout_pixels(pick[1], pick[2], pick[3], pick[4], exc, dump, vimgs, frames, builds,
+                                       rings[sz], dig_f, ruin_key) or {}
+                print('WARNING: demolitionLayout %s %s: no candidate passed the screen checks' % (sz, side))
+            if pick is None:
+                print('WARNING: demolitionLayout %s %s: no clear spot' % (sz, side))
+                continue
+            _, E_px, ed, T_px, td, dg = pick
+            ew, tw = to_world(*E_px), to_world(*T_px)
+            gate = gate_piece(rings[sz], h, side, [poly_world(E_px, epoly),
+                                                   poly_world(T_px, dir_poly(dump['footprintPoly'], td))])
+            e = OrderedDict()
+            e['excavator'] = {'at': E_px, 'dir': ed, 'anim': 'dig', 'worldM': [round(ew[0], 2), round(ew[1], 2)],
+                              'digPointWorldM': list(dg),
+                              'notes': 'outside the fence on the %s side, heading into the plot; drawn in front of '
+                                       'the ruin (y-sort by anchor)' % side}
+            e['dump_truck'] = {'at': T_px, 'dir': td, 'worldM': [round(tw[0], 2), round(tw[1], 2)],
                                'anim': 'idle -> idle_loaded after the excavator\'s dumpFrame; move_loaded to leave',
-                               'notes': 'beside the excavator (its right side), bed under the bucket at dumpFrame'}
-        out[sz] = e
+                               'notes': 'behind the excavator (its left side, away from the camera), bed under the '
+                                        'bucket at dumpFrame'}
+            e['gateIndex'] = gate
+            e['digVisible'] = bool(checks.get('digVisible', side in ('Y-', 'X+')))
+            e['checks'] = checks
+            per[side] = e
+        lay = OrderedDict([('default', 'Y-'), ('sides', per)])
+        if 'Y-' in per:                                    # backwards-compatible flat fields (= the default side)
+            lay['excavator'] = per['Y-']['excavator']
+            lay['dump_truck'] = per['Y-']['dump_truck']
+            lay['gateIndex'] = per['Y-']['gateIndex']
+        out[sz] = lay
     return out
+
+
+def gate_piece(ring, h, side, vehicle_polys):
+    """Index of a fence piece on a camera-facing side (-Y row or +X row) whose walk-in strip (1 m deep, outside the
+    ring) no vehicle touches; nearest the front corner first."""
+    best = None
+    for i, pc in enumerate(ring['pieces']):
+        if pc['key'] == 'demolition_fence_post':
+            continue
+        cx, cy = to_world(*pc['at'])
+        if abs(cy + h) < 0.05:                              # -Y row (x tiles)
+            strip = [(cx - 0.5, cy - 1.0), (cx + 0.5, cy - 1.0), (cx + 0.5, cy), (cx - 0.5, cy)]
+            corner = abs(cx - h)
+        elif abs(cx - h) < 0.05:                            # +X row (y tiles)
+            strip = [(cx, cy - 0.5), (cx + 1.0, cy - 0.5), (cx + 1.0, cy + 0.5), (cx, cy + 0.5)]
+            corner = abs(cy + h)
+        else:
+            continue
+        if any(sat_gap(strip, vp) < 0.05 for vp in vehicle_polys):
+            continue
+        pref = 0 if (side in ('Y-', 'X-') and abs(cx - h) < 0.05) or (side in ('X+', 'Y+') and abs(cy + h) < 0.05) \
+            else 1
+        key = (pref, corner)
+        if best is None or key < best[0]:
+            best = (key, i)
+    return best[1] if best else None
+
+
+def sprite_frame(builds, frames, key):
+    """(image, anchorPx) of a plain-build sprite key (fence tiles, ruins) or None."""
+    for bk, m in builds.items():
+        sps = m.get('sprites') or {bk: {'frame': m['frames'][0]}}
+        if key in sps and sps[key]['frame'] in frames:
+            return frames[sps[key]['frame']], m['anchorPx']
+    return None
+
+
+def layout_pixels(E_px, ed, T_px, td, exc, dump, vimgs, frames, builds, ring, dig_f, ruin_key):
+    """Screen-space checks of one candidate with the real sprites (None if the images are not available)."""
+    if not vimgs or 'excavator' not in vimgs or 'dump_truck' not in vimgs or not frames or not builds:
+        return None
+
+    def vframe(key, anim, d, i):
+        src = d if d in ('SE', 'NE') else MIRROR_OF[d]
+        im = vimgs[key]['%s_%s_%d' % (anim, src, i)]
+        if src != d:
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+        return im
+    exc_img = vframe('excavator', 'dig', ed, dig_f)
+    truck_img = vframe('dump_truck', 'idle', td, 0)
+    ea = (exc_img.width / 2.0, exc['anchorPx'][1])
+    da = (truck_img.width / 2.0, dump['anchorPx'][1])
+    items = []
+    for pc in ring['pieces']:
+        sf = sprite_frame(builds, frames, pc['key'])
+        if sf:
+            items.append((sf[0], sf[1], pc['at']))
+    sf = sprite_frame(builds, frames, ruin_key)
+    if sf:
+        items.append((sf[0], sf[1], [0, 0]))
+    items.append((truck_img, da, T_px))
+    later = [it for it in items if it[2][1] > E_px[1]]
+    bp = exc['framePoints']['bucketPoints']['dig']
+    b = dir_pt({d: v[dig_f] for d, v in bp.items()}, ed)
+    P = (E_px[0] + b[0], E_px[1] + b[1])
+    hits = 0
+    for dx in (-3, 0, 3):
+        for dy in (-3, 0, 3):
+            if any(sprite_alpha(im, an, at, (P[0] + dx, P[1] + dy)) > 128 for im, an, at in later):
+                hits += 1
+    cover = covered_fraction((exc_img, ea, E_px), [(truck_img, da, T_px)]) if T_px[1] > E_px[1] else 0.0
+    truck_vis = 1.0 - (covered_fraction((truck_img, da, T_px), [(exc_img, ea, E_px)]) if E_px[1] > T_px[1] else 0.0)
+    return {'digVisible': hits <= 2, 'bucketCoveredSamples': hits, 'truckCoversExcavator': round(cover, 3),
+            'truckVisible': round(truck_vis, 3)}
 
 
 FIRE_SEQUENCE = [
     {'step': 'burning', 'draw': 'the building + fx_city fx_fire_bld_<s|m|l> / fx_smoke_column (fx_city fragment)'},
-    {'step': 'ruin', 'draw': 'scorch_decal_<size> (ground) + ruin_<size> (or ruin_house_town for town houses) + '
-                             'ruin_<size>_smoke overlay while it smoulders; insurance_sign nearby'},
-    {'step': 'demolition', 'draw': 'fenceRings[size] + excavator (dig) + dump_truck at demolitionLayout[size]; '
-                                   'ruin -> rubble_pile_<size> when the excavator has knocked it down'},
+    {'step': 'ruin', 'draw': 'scorch_decal_<size> (ground) + ruinFor[building] at the building\'s anchor (ruin_s / '
+                             'ruin_m / ruin_l on village plots, ruin_house_town / ruin_shop_town / ruin_l_town on town '
+                             'lots) + its <ruin>_smoke overlay (smoke wisps + flickering embers) while it smoulders; '
+                             'insurance_sign nearby. Remove the overlay when it has cooled: the base ruin is cold.'},
+    {'step': 'demolition', 'draw': 'fenceRings[ring] without the gateIndex piece + excavator (dig) + dump_truck at '
+                                   'demolitionLayout[ring].sides[street side] (default Y-); ruin -> rubble_pile_<size> '
+                                   'when the excavator has knocked it down'},
     {'step': 'clearing', 'draw': 'rubble_pile_<size> -> rubble_pile_<size>_half -> nothing (dump truck leaves '
-                                 'move_loaded); scorch decal stays'},
+                                 'move_loaded and plays tip at the dump); scorch decal stays'},
     {'step': 'rebuild', 'draw': 'assets/buildings site_plot_<S|M|L> -> site_foundation -> site_scaffold (same anchor); '
                                 'remove the fence; fade the scorch decal'},
     {'step': 'done', 'draw': 'the new building (same anchor)'},
 ]
+
+# building key -> ruin / scorch / rubble / fence ring (polish v2: town buildings get town ruins, not a log cabin)
+RUIN_FOR = OrderedDict()
+for _k in ('house_a', 'house_b', 'house_c', 'watchtower'):
+    RUIN_FOR[_k] = {'ruin': 'ruin_s', 'scorch': 'scorch_decal_s', 'rubble': 'rubble_pile_s', 'ring': 'S'}
+for _k in ('warehouse', 'shop_general', 'boathouse'):
+    RUIN_FOR[_k] = {'ruin': 'ruin_m', 'scorch': 'scorch_decal_m', 'rubble': 'rubble_pile_m', 'ring': 'M'}
+for _k in ('townhouse_a', 'townhouse_b', 'townhouse_c', 'townhouse_d', 'police_box'):
+    RUIN_FOR[_k] = {'ruin': 'ruin_house_town', 'scorch': 'scorch_decal_m', 'rubble': 'rubble_pile_s', 'ring': 'S'}
+for _k in ('cafe', 'bookstore', 'clothing_store', 'flower_shop', 'hair_salon', 'toy_shop', 'hardware_store',
+           'restaurant', 'carpenter_workshop', 'post_office'):
+    RUIN_FOR[_k] = {'ruin': 'ruin_shop_town', 'scorch': 'scorch_decal_m', 'rubble': 'rubble_pile_m', 'ring': 'M'}
+for _k in ('supermarket', 'apartment_a', 'apartment_b', 'clinic', 'fire_station'):
+    RUIN_FOR[_k] = {'ruin': 'ruin_l_town', 'scorch': 'scorch_decal_l', 'rubble': 'rubble_pile_l', 'ring': 'L'}
+RUIN_FOR['*'] = {'note': 'any other building: site_plot size S / M / L -> ruin_s / ruin_m / ruin_l (village) or the '
+                         'town ruin whose footprint covers it; the bank, police station, school, town hall and train '
+                         'station never burn down'}
 
 
 CONVENTIONS = {
@@ -508,7 +780,11 @@ CONVENTIONS = {
                'building silhouette for tap / hover tests.',
     'shadows': 'buildings / props have a baked soft cool shadow falling screen down-right (the cutaway ground shadow '
                'lives in _floor); vehicles none (use characters[key].shadow ellipse).',
-    'overlays': '<ruin>_smoke: draw on top of the ruin at the same position, play its smoke anim (4 f loop).',
+    'overlays': '<ruin>_smoke: draw on top of the ruin at the same position, play its smoke anim (4 f loop) - smoke '
+                'wisps + flickering embers (the base ruin frame is cold; remove the overlay once it has cooled). '
+                'Packed RGBA (atlas civ_smoke) so the soft alpha has no palette speckle.',
+    'flip': 'excavator + dump_truck frames are padded so anchor x == 0.5 exactly: setOrigin(anchor) + setFlipX(true) '
+            'mirrors a SW / NW vehicle around its anchor (no sideways jump); mirror every point by negating dx.',
     'tiles': 'demolition_fence_x / _y: one tile = sqrt(2) m, step (64, 32) / (64, -32) px; the tile owns the post at '
              'its -axis end; shadows join seamlessly; close chains with demolition_fence_post. fenceRings = rings '
              'around S / M / L plots.',
@@ -517,7 +793,13 @@ CONVENTIONS = {
                 '(world +Y), mirror SW <- SE, NW <- NE, frame names {anim}_{dir}_{i}; an operator is baked into each '
                 'cab. framePoints[field][anim][dir][i] = per-frame px points (excavator bucketPoints, dump_truck '
                 'bedPoints / tipPoints). excavator dig: digFrame / dumpFrame (+ digPoint / dumpPoint = ground point '
-                'under the bucket); dump_truck tip: tipFrame + tipPoint.',
+                'under the bucket; it swings LEFT, away from the camera, to dump); dump_truck tip: tipFrame + tipPoint '
+                '+ pileFrame (place dump_pile at tipPoint). Loaded dump truck = its idle / move frame + the cargo '
+                'overlay frame cargo_{anim}_{dir}_{i} drawn on top (characters.dump_truck.cargoOverlay).',
+    'demolition': 'demolitionLayout[S|M|L].sides[Y- | X+ | X- | Y+] = where the excavator (heading into the plot, '
+                  'digging over the fence from the street side) and the dump truck (behind it) stand for a plot whose '
+                  'street is on that side; .default = Y- (fronts face -Y). gateIndex = the fenceRings piece to leave '
+                  'out. Front sides (Y-, X+) keep the bite visible; back sides are allowed (digVisible false).',
 }
 
 
@@ -617,7 +899,11 @@ def main(argv=None):
         if m.get('cutaway'):
             m['revealPoly'] = reveal_poly(imgs['%s_shell' % k], m['anchorPx'])
         frames.update(imgs)
-        groups.setdefault(m['atlas'], []).append(list(imgs.items()))
+        smoke = set()
+        if not m.get('cutaway') and 'smoke' in m.get('overlays', {}):
+            smoke = set(m['overlays']['smoke']['frames'])
+            groups.setdefault('civ_smoke', []).append([(n, im) for n, im in imgs.items() if n in smoke])
+        groups.setdefault(m['atlas'], []).append([(n, im) for n, im in imgs.items() if n not in smoke])
     for k, (im, meta) in decals.items():
         frames[k] = im
         groups.setdefault('civ_decals', []).append([(k, im)])
@@ -641,7 +927,7 @@ def main(argv=None):
         png = os.path.join(out_dir, akey + '.png')
         jsn = os.path.join(out_dir, akey + '.json')
         pu.save_atlas(sheet, atlas, png, jsn, quantize=False)
-        if mode in ('on', 'auto'):
+        if mode in ('on', 'auto') and akey.split('_2')[0] not in RGBA_ATLASES:
             try:
                 quantize(sheet).save(png, optimize=True)
             except ImportError:
@@ -683,8 +969,9 @@ def main(argv=None):
     man['sprites'] = {k: dict(oldsp.get(k, {}), **v) for k, v in sprites.items()}
     man['characters'] = {k: dict(oldch.get(k, {}), **v) for k, v in chars.items()}
     man['fenceRings'] = fence_rings()
-    man['demolitionLayout'] = demolition_layout(vehicles)
+    man['demolitionLayout'] = demolition_layout(vehicles, vimgs, frames, builds)
     man['fireSequence'] = FIRE_SEQUENCE
+    man['ruinFor'] = RUIN_FOR
     if not man['sprites'] and not man['characters']:
         raise SystemExit('civ_pack: refusing to write an empty manifest')
     with open(man_path, 'w') as f:

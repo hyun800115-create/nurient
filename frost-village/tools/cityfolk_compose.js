@@ -193,7 +193,8 @@ export class Cityfolk extends Townfolk2 {
   }
 
   /** true when every worn body part has frames in `anim`: cityfolk anims / cityfolk parts -> bases[b].cfCover[anim];
-   *  parts with `anims` (beachfolk) -> that list; other v4 / v5 parts -> only the anims of townfolk / townfolk2 */
+   *  parts with `anims` (beachfolk) -> that list (`drop: true` accessories are ignored: simply not drawn there);
+   *  other v4 / v5 parts -> only the anims of townfolk / townfolk2 */
   canPlay(person, anim) {
     const T = this.T;
     if (!T.anims[anim]) return false;
@@ -205,7 +206,7 @@ export class Cityfolk extends Townfolk2 {
     for (const pn of this.animParts(person, anim)) {
       const P = T.parts[pn];
       if (!P || P.space !== 'body' || isItem(P) || !P.subs || !Object.keys(P.subs).length) continue;
-      if (P.anims) { if (!P.anims.includes(anim)) return false; }
+      if (P.anims) { if (!P.anims.includes(anim) && !P.drop) return false; }   // beachfolk drop: accessories not drawn there
       else if (isCf || cf.has(pn)) { if (!cover || !cover.includes(pn)) return false; }
       else if (!old) return false;
     }

@@ -145,10 +145,10 @@ EXC_NOTE = ('Toy excavator (tracked, 2.9 m long + arm): sunny yellow house with 
             'the counterweight, a round-cornered cab with big windows and a friendly operator in a yellow hard hat, an '
             'amber beacon, a jointed boom + stick + steel bucket with teeth. idle = engine shake; move = tracks run '
             '(sprockets + cleats) and the beacon blinks; dig = 8-frame loop: reach out (1), bucket bites the ground '
-            '(2 = digFrame: dust FX at bucketPoints), curls up a load of rubble (3), swings 90 deg to its right side '
-            '(4-5) and dumps it (5 = dumpFrame: drop FX at bucketPoints / dumpPoint), swings back (6-7). Park a '
-            'dump_truck so that its cargoPoint is under dumpPoint (the truck stands beside the excavator, same '
-            'heading, on the excavator\'s right = the camera side).')
+            '(2 = digFrame: teeth on the ground ~3.3 m ahead, dust FX at bucketPoints), curls up a load of rubble (3), swings 90 deg to its LEFT side '
+            '(4-5) and dumps it (5 = dumpFrame: drop FX at bucketPoints / dumpPoint), swings back (6-7). The left side '
+            'is the side AWAY from the camera, so the dump truck parks behind the excavator (it never hides it): use '
+            'demolitionLayout, or park a dump_truck so that its cargoGround is under dumpPoint.')
 
 TRK_RT, TRK_W, TRK_X = 0.27, 0.34, 0.6
 TRK_SYM = 6
@@ -157,15 +157,15 @@ TRK_N = 18
 TRK_LS = (TRK_N * TRK_SPACING - 2 * math.pi * TRK_RT) / 2
 
 EXC_REST = dict(sw=0.0, boom=-14.0, stick=30.0, bucket=55.0)
-EXC_DIG = [  # swing (deg, - = toward the right side), boom, stick, bucket (rotation about the joint X axes)
+EXC_DIG = [  # swing (deg, + = toward the LEFT side = away from the camera), boom, stick, bucket (joint X axes)
     dict(sw=0.0, boom=-14.0, stick=30.0, bucket=55.0),       # 0 raised
-    dict(sw=0.0, boom=8.0, stick=-22.0, bucket=-15.0),       # 1 reach out
-    dict(sw=0.0, boom=26.0, stick=-8.0, bucket=-35.0),       # 2 bite (teeth at the ground ~2.8 m ahead)
-    dict(sw=0.0, boom=-4.0, stick=8.0, bucket=80.0),         # 3 scoop + lift
-    dict(sw=-45.0, boom=-18.0, stick=14.0, bucket=85.0),     # 4 swing with the load
-    dict(sw=-90.0, boom=-22.0, stick=0.0, bucket=-40.0),     # 5 dump on the right side
-    dict(sw=-45.0, boom=-18.0, stick=16.0, bucket=25.0),     # 6 swing back
-    dict(sw=-12.0, boom=-15.0, stick=26.0, bucket=48.0),     # 7 almost home
+    dict(sw=0.0, boom=6.0, stick=-42.0, bucket=-10.0),       # 1 reach far out (stick extended)
+    dict(sw=0.0, boom=25.0, stick=-35.0, bucket=-5.0),       # 2 bite (teeth at the ground ~3.3 m ahead: over the fence)
+    dict(sw=0.0, boom=6.0, stick=-16.0, bucket=75.0),        # 3 scoop: drag back + curl
+    dict(sw=45.0, boom=-18.0, stick=14.0, bucket=85.0),      # 4 swing with the load
+    dict(sw=90.0, boom=-22.0, stick=0.0, bucket=-40.0),      # 5 dump on the left side (into the truck behind)
+    dict(sw=45.0, boom=-18.0, stick=16.0, bucket=25.0),      # 6 swing back
+    dict(sw=12.0, boom=-15.0, stick=26.0, bucket=48.0),      # 7 almost home
 ]
 EXC_ANIMS = OrderedDict([
     ('idle', dict(frames=2, fps=4, repeat=-1, bob=[0, 1], spin=False, blink=False, smoke=False)),
@@ -356,19 +356,22 @@ def b_excavator():
 
 DUMP_NOTE = ('Toy dump truck (5.2 m): chunky orange cab-over cab with big round lamps and a friendly operator in a '
              'yellow hard hat, dark chassis, six fat wheels, a sunny-yellow ribbed tipping bed with a hinged '
-             'tailgate. idle / move = empty; idle_loaded / move_loaded = the bed heaped with charred beams, bricks and '
-             'ash (after the excavator dumped into it, cargoPoint = bed centre); tip = 6 frames, play once: the bed '
-             'rises, the tailgate swings, the load slides out behind the truck (tipFrame 2-3: dust FX at tipPoint) '
-             'and the empty bed settles back down (ends = idle).')
+             'tailgate. idle / move = empty; LOADED = the same frame + the cargo overlay frame cargo_{anim}_{dir}_{i} '
+             '(the heap of charred beams, bricks and ash, rendered with the truck as holdout: draw it on top at the '
+             'same position / origin / flip; cargoPoint = bed centre). tip = 6 frames, play once: the bed rises, the '
+             'tailgate swings, a stream of rubble pours out of the tail onto the ground at tipPoint (tipFrame 2-3: '
+             'place the dump_pile prop at tipPoint from pileFrame 3 on, dust FX) and the empty bed settles back down '
+             '(ends = idle).')
 
 DUMP_ANIMS = OrderedDict([
     ('idle', dict(frames=2, fps=4, repeat=-1, bob=[0, 1], spin=False, blink=False, smoke=False)),
     ('move', dict(frames=4, fps=10, repeat=-1, bob=[0, 1, 1, 0], spin=True, blink=False, smoke=False)),
-    ('idle_loaded', dict(frames=2, fps=4, repeat=-1, bob=[0, 1], spin=False, blink=False, smoke=False)),
-    ('move_loaded', dict(frames=4, fps=10, repeat=-1, bob=[0, 1, 1, 0], spin=True, blink=False, smoke=False)),
     ('tip', dict(frames=6, fps=6, repeat=0, bob=[0, 0, 1, 1, 0, 0], spin=False, blink=False, smoke=True,
-                 tipFrame=2)),
+                 tipFrame=2, pileFrame=3)),
 ])
+# polish v2: the loaded look is an overlay (only the heap) instead of two whole extra truck anims (GPU memory)
+CARGO_ANIMS = OrderedDict([('idle', 'idle_loaded'), ('move', 'move_loaded')])
+LOADED_POSE = {'idle_loaded': dict(DUMP_ANIMS['idle']), 'move_loaded': dict(DUMP_ANIMS['move'])}
 DUMP_TIP = [0.0, 22.0, 46.0, 56.0, 30.0, 0.0]          # bed angle per tip frame (deg, front up)
 
 
@@ -462,13 +465,19 @@ def b_dump_truck():
                 rot=(15 * (k % 2), -12, 30 * k), mat=flat(['#C8473A', '#3D6FA8'][k % 2], 0.7), bevel=0.01)
     load_static = collect_to(bed, load_fn)
 
-    def fall_fn():
-        for k, (dy, dz, r) in enumerate(((0.35, -0.2, 0.18), (0.6, -0.6, 0.14), (0.45, -0.95, 0.12),
-                                         (0.8, -0.85, 0.1), (0.3, -0.75, 0.09))):
-            blob('fall', r, (0.3 * (k - 2) * 0.6, 2.25 - hy + dy, dz), CL.charcoal(5.0, seed=100 + k) if k % 2 == 0
-                 else snowy_ash(), seed=100 + k, amp=0.3, subdiv=2)
-        CL.bricks('fbricks', (0.0, 2.25 - hy + 0.5), 0.25, 3, seed=106, col='#B4593F', z=-0.6)
-    load_fall = collect_to(bed, fall_fn)
+    # polish v2: a rubble STREAM pours from the tailgate lip down to tipPoint (frames 2-3), parented to the body
+    stream = []
+    for k in range(11):
+        if k % 3 == 2:
+            o = box('sbrick', (0.2, 0.1, 0.08), (0, 0, 0), mat=flat(['#B4593F', '#C2654A'][k % 2], 0.85), bevel=0.015,
+                    origin='center')
+        else:
+            o = blob('stream', 0.07 + 0.012 * k, (0, 0, 0), CL.charcoal(5.0, seed=100 + k) if k % 2 == 0 else
+                     snowy_ash(), seed=100 + k, amp=0.3, subdiv=2)
+        o.parent = B.body
+        o.rotation_mode = 'XYZ'
+        stream.append(o)
+    load_fall = stream
     rig = operator_rig(B.body, (-0.45, -1.7, 1.12))
     B.rigs.append(rig)
     rbox('seat', (0.5, 0.42, 0.12), (-0.45, -1.48, 1.0), paint('#3D424C', 0.6), r=0.05).parent = B.body
@@ -501,6 +510,22 @@ def b_dump_truck():
         for o in BA.descendants(objs):
             o.hide_render = not on
 
+    def place_stream(i):
+        bpy.context.view_layer.update()
+        inv = B.body.matrix_world.inverted()
+        lip = inv @ (bed.matrix_world @ Vector((0, 2.25 - hy + 0.12, 0.16)))
+        ground = Vector((0.0, 3.0, 0.06))
+        n_on = 7 if i == 2 else len(stream)
+        for k, o in enumerate(stream):
+            t = (k + (0.0 if i == 2 else 0.4)) / float(len(stream))
+            o.hide_render = k >= n_on
+            p = lip.lerp(ground, t)
+            p.z = lip.z - (lip.z - ground.z) * (t ** 1.4)          # falls faster as it goes
+            p.y = lip.y + (ground.y - lip.y) * math.sqrt(t)        # thrown slightly back off the lip
+            p.x = 0.22 * math.sin(k * 2.3) * (0.4 + t)
+            o.location = p
+            o.rotation_euler = Euler((k * 0.7, k * 1.3, k * 0.9), 'XYZ')
+
     def hook(anim, i, n):
         loaded = anim.endswith('_loaded') or (anim == 'tip' and i <= 2)
         ang = DUMP_TIP[i] if anim == 'tip' else 0.0
@@ -508,8 +533,11 @@ def b_dump_truck():
         tg.rotation_euler = Euler((math.radians(ang * (1.0 if anim == 'tip' and i in (2, 3) else 0.6)), 0, 0),
                                   'XYZ')
         show(load_static, loaded)
-        show(load_fall, anim == 'tip' and i in (2, 3))
         place_ram()
+        if anim == 'tip' and i in (2, 3):
+            place_stream(i)
+        else:
+            show(load_fall, False)
         bpy.context.view_layer.update()
         VL.pose_driver(rig, B.body.matrix_world @ wheel_c, anim, i, n, wave=(anim.startswith('idle') and i == 1),
                        face='face_happy' if anim == 'tip' and i in (2, 3) else 'face_smile')
@@ -524,6 +552,7 @@ def b_dump_truck():
     B.extra_points = {'bedPoints': G.empty('bed_pt', bed, (0, 0.75 - hy + 0.0, 0.9)), 'tipPoints': tip_g}
     B.crew_note = {'driver': 'operator (yellow hard hat, hi-vis vest)', 'seat': 'cab, baked'}
     B.driver_seat = None
+    B.cargo_objs = load_static
     for sx in (-1, 1):
         B.point('lightPoints', (sx * 0.75, -2.36, 1.0), many=True)
         B.point('tailPoints', (sx * 0.8, 2.32, 0.5), many=True)
@@ -555,6 +584,62 @@ def render(key, opts):
     VM.VEH[key] = VEH[key]
     VR.render_vehicle(key, opts)
     write_extra_meta(key, opts['cache'])
+    if key == 'dump_truck':
+        render_cargo(key, opts)
+
+
+def render_cargo(key, opts):
+    """Polish v2: the dump truck's load as an OVERLAY (cargo_{anim}_{dir}_{i}): same camera, frame and anchor as the
+    truck frames, the load posed exactly as in the old idle_loaded / move_loaded anims, every other object a
+    holdout - so the game draws truck frame + cargo frame instead of keeping two whole loaded truck anims in memory."""
+    import veh_render as VR
+    out = os.path.join(opts['cache'], key)
+    mp = os.path.join(out, 'meta.json')
+    if not os.path.exists(mp):
+        return
+    meta = json.load(open(mp))
+    names = ['cargo_%s_%s_%d' % (a, d, i) for a in CARGO_ANIMS for d in VR.DIRS
+             for i in range(VEH[key]['anims'][a]['frames'])]
+    if not opts.get('force') and all(os.path.exists(os.path.join(out, n + '.png')) for n in names) and \
+            'cargoOverlay' in meta:
+        print('[%s] cargo overlay cached' % key)
+        return
+    spec = dict(VEH[key])
+    spec['anims'] = OrderedDict(list(VEH[key]['anims'].items()) + list(LOADED_POSE.items()))
+    bc.reset_scene()
+    L._CUSTOM.clear()
+    VL._PAINT.clear()
+    bc.setup_lighting()
+    B = spec['fn']()
+    bpy.context.view_layer.update()
+    VR.bake_booleans(B)
+    W, H = meta['frameSize']
+    VR.setup_scene(W, H, tuple(meta['anchorPx']), opts.get('samples') or spec['samples'])
+    cargo = set(o.name for o in BA.descendants(B.cargo_objs))
+    objs = VR.veh_objects(B)
+    for anim, loaded in CARGO_ANIMS.items():
+        for d in VR.DIRS:
+            B.root.rotation_euler.z = bc.yaw_for_dir(d)
+            for i in range(spec['anims'][anim]['frames']):
+                VR.pose(B, spec, loaded, i)
+                for o in objs:
+                    if o.name in cargo:
+                        o.is_holdout = False
+                    elif not o.hide_render:
+                        o.is_holdout = True
+                for s_ in B.smokes:
+                    s_.show(False)
+                bpy.context.view_layer.update()
+                VR.render_png(os.path.join(out, 'cargo_%s_%s_%d.png' % (anim, d, i)))
+    meta = json.load(open(mp))
+    meta['cargoOverlay'] = {'frameName': 'cargo_{anim}_{dir}_{i}', 'anims': list(CARGO_ANIMS),
+                            'frames': {a: VEH[key]['anims'][a]['frames'] for a in CARGO_ANIMS},
+                            'notes': 'loaded truck = truck frame {anim}_{dir}_{i} + overlay cargo_{anim}_{dir}_{i} '
+                                     'drawn on top (same position, origin and flip); use after the excavator\'s '
+                                     'dumpFrame, hide it from tip frame 0 on (the tip frames carry their own load)'}
+    with open(mp, 'w') as f:
+        json.dump(meta, f, indent=1)
+    print('[%s] cargo overlay: %d frames' % (key, len(names)), flush=True)
 
 
 def write_extra_meta(key, cache):
@@ -588,7 +673,7 @@ def write_extra_meta(key, cache):
     meta['framePointsWorldSE'] = {f: {an: [[round(v, 2) for v in w] for w in ws.get('SE', [])]
                                       for an, ws in byanim.items()} for f, byanim in world.items()}
     for anim, a in spec['anims'].items():
-        for f in ('digFrame', 'dumpFrame', 'tipFrame', 'impactFrame'):
+        for f in ('digFrame', 'dumpFrame', 'tipFrame', 'pileFrame', 'impactFrame'):
             if f in a:
                 meta['anims'][anim][f] = a[f]
         if 'dumpFrame' in a and 'bucketPoints' in world:

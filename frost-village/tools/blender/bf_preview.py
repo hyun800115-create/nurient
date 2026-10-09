@@ -8,10 +8,12 @@ tools/beachfolk_compose.py.  Plain python3 (numpy + Pillow).
                                splashing kids, sunbathers on towels, sandcastle builders, ball players, staff
   beachfolk_jobs.png           the 12 presets x 3 seeds: idle S | walk SE | idle N | signature anim
   beachfolk_parts.png          the new wardrobe on several bases
+  beachfolk_lineup.png         job outfits at phone zoom 1.0 / 0.6 next to the townfolk nurse / teacher
   beachfolk_swim.gif / _float / _sunbathe / _dig / _ball / _splash / _surf   animated loops (2x)
   beachfolk_proof.png          full Blender renders (top) vs paper-doll composites (bottom)
 Water anims are drawn with a placeholder ripple ring at the anchor (the game uses fx_swim_ripple from assets/water);
-the beach ball / sandcastle / towel are simple placeholders drawn at ballPoint / digPoint / lieShadow.
+the beach ball is the game's beach_ball item (assets/beach) scaled to ballPoint radiusPx; sandcastle / towel are simple
+placeholders drawn at digPoint / lieShadow.
 """
 import json
 import math
@@ -161,7 +163,31 @@ def towel(img, x, y, sh, cols):
     d.polygon(ellipse_poly(cx, cy + 2, sh['length'] * 0.9, sh['width'] * 0.9, sh['angleDeg']), fill=(90, 70, 40, 40))
 
 
+_BALL = []
+
+
+def ball_sprite():
+    """The game's beach ball item (assets/beach beach_play 'beach_ball', ~0.2 m radius); None when missing."""
+    if not _BALL:
+        im = None
+        try:
+            js = json.load(open(os.path.join(GAME, 'assets', 'beach', 'beach_play.json')))
+            fr = js['frames']['beach_ball']['frame']
+            sheet = Image.open(os.path.join(GAME, 'assets', 'beach', 'beach_play.png')).convert('RGBA')
+            im = sheet.crop((fr['x'], fr['y'], fr['x'] + fr['w'], fr['y'] + fr['h']))
+        except Exception:                                   # noqa: BLE001
+            im = None
+        _BALL.append(im)
+    return _BALL[0]
+
+
 def ball(img, x, y, r):
+    sp = ball_sprite()
+    if sp is not None:
+        s = 2 * r / max(sp.size)
+        im = sp.resize((max(2, int(round(sp.size[0] * s))), max(2, int(round(sp.size[1] * s)))), Image.LANCZOS)
+        paste(img, im, int(round(x - im.size[0] / 2)), int(round(y - im.size[1] / 2)))
+        return
     d = ImageDraw.Draw(img, 'RGBA')
     box = [x - r, y - r, x + r, y + r]
     d.ellipse(box, fill=(250, 248, 244, 255), outline=(70, 60, 60, 255))
@@ -314,10 +340,12 @@ def crowd(bf, path, n=60, seed=2027):
         anim = {'staff': rng.choice(['idle', 'wave'])}.get(job, job)
         for _ in range(30):
             p = bf.preset(pr, rng=rng)
-            if bf.can_play(p, anim):
+            pa, _f = bf.pick_anim(p, anim)
+            if pa == anim or (anim in WATER and pa in WATER):
                 break
         else:
             continue
+        anim = pa
         dirs = T['anims'][anim]['dirs']
         d = rng.choice(dirs + [{'SE': 'SW', 'E': 'W', 'NE': 'NW'}.get(x_, x_) for x_ in dirs])
         i = rng.randrange(T['anims'][anim]['frames'])
@@ -354,8 +382,8 @@ def crowd(bf, path, n=60, seed=2027):
 # --------------------------------------------------------------------------- jobs sheet
 
 SIGNATURE = {'swimmer': ('swim', 'S', 2), 'sunbather': ('sunbathe', 'SE', 0), 'family_beach': ('dig', 'S', 2),
-             'lifeguard': ('wave', 'S', 2), 'bellhop': ('carry_walk', 'SE', 2), 'receptionist': ('talk', 'S', 0),
-             'doorman': ('wave', 'SE', 1), 'housekeeper': ('push', 'SE', 3), 'icecream_vendor': ('push', 'S', 2),
+             'lifeguard': ('swim', 'SE', 2), 'bellhop': ('push', 'SE', 2), 'receptionist': ('talk', 'S', 0),
+             'doorman': ('wave', 'SE', 1), 'housekeeper': ('walk', 'S', 1), 'icecream_vendor': ('push', 'S', 2),
              'beach_bar_staff': ('talk', 'SE', 0), 'surfer': ('surf', 'SE', 1), 'beach_tourist': ('clap', 'S', 2)}
 
 
@@ -410,9 +438,9 @@ def parts_sheet(bf, path):
          dict(swim='#3D7CC9', swim2='#F7F5F0', shoes='#E8524A', acc='#F2C230', acc2='#E8524A', glasses='#2B2F3A')),
         ('adult_slim', 'lash', ['hair_bob', 'bare_skin', 'bare_arms', 'swimsuit_one', 'sun_hat_wide', 'flip_flops', 'sunglasses'],
          dict(swim='#2E8A8A', swim2='#F7F5F0', hat='#F4E8C8', hat2='#E8524A', shoes='#F59AB8', glasses='#F59AB8')),
-        ('adult_round', 'bold', ['hair_short', 'bare_skin', 'bare_arms', 'lifeguard_top', 'swim_trunks', 'whistle', 'sun_visor',
+        ('adult_round', 'bold', ['hair_short', 'bare_skin', 'bare_arms', 'lifeguard_top', 'swim_trunks', 'whistle', 'straw_hat',
                                  'sunglasses', 'rescue_tube'],
-         dict(top='#D8302A', swim='#F2C230', swim2='#D8302A', hat='#D8302A', hat2='#F2C230', glasses='#2B2F3A')),
+         dict(top='#D8302A', swim='#2B3A5E', swim2='#D8302A', hat='#D8302A', hat2='#D8302A', glasses='#2B2F3A')),
         ('adult_slim', 'std', ['hair_long', 'bare_skin', 'wetsuit'], dict(top='#2B2F3A', top2='#3FB8C8', hair='#C89A52')),
         ('elder_round', 'elder', ['hair_bald', 'bare_skin', 'bare_arms', 'aloha_shirt', 'beach_shorts', 'flip_flops',
                                   'tourist_camera', 'straw_hat', 'sunglasses', 'fh_moustache'],
@@ -426,12 +454,12 @@ def parts_sheet(bf, path):
          dict(top='#2B3A5E', top2='#F7F5F0', acc2='#C9A045', bottom='#2B2F3A', bottom2='#2E3440', shoes='#1E1E26')),
         ('adult_round', 'bold', ['hair_short', 'fh_moustache', 'doorman_coat', 'bot_pants', 'shoe_shoes', 'doorman_hat'],
          dict(top='#1F4A3A', hat='#1F4A3A', bottom='#2B2F3A', shoes='#1E1E26')),
-        ('adult_slim', 'lash', ['hair_lowbun', 'housekeeper_dress', 'bot_tights', 'shoe_shoes', 'kerchief'],
-         dict(top='#BFE3EA', hat='#F7F5F0', hat2='#3F5675', bottom2='#F4F1EA', shoes='#1E1E26')),
-        ('adult_slim', 'std', ['hair_curly', 'bare_skin', 'bare_arms', 'vendor_shirt', 'beach_shorts', 'shoe_shoes',
-                               'paper_cap'],
-         dict(top='#F7F5F0', top2='#F59AB8', hat='#F7F5F0', hat2='#F59AB8', acc='#BFE3EA', acc2='#E8524A',
-              bottom='#F4E8C8', shoes='#F7F5F0')),
+        ('adult_slim', 'lash', ['hair_lowbun', 'housekeeper_dress', 'bot_tights', 'shoe_shoes', 'hat_headband',
+                                'cleaning_caddy'],
+         dict(top='#2E3A55', hat='#2E3A55', acc2='#F2C230', bottom2='#2E3440', shoes='#1E1E26')),
+        ('adult_slim', 'std', ['hair_curly', 'bare_arms', 'vendor_shirt', 'bot_pants', 'shoe_shoes', 'paper_cap'],
+         dict(top='#F7F5F0', top2='#E8524A', hat='#F7F5F0', hat2='#E8524A', acc='#2B3A5E', acc2='#F2C230',
+              bottom='#F7F5F0', shoes='#2B2F3A')),
         ('adult_slim', 'std', ['hair_wavy', 'bare_skin', 'bare_arms', 'aloha_shirt', 'beach_shorts', 'bar_apron', 'flip_flops'],
          dict(top='#2E8A8A', top2='#F7F5F0', bottom='#C8A878', acc='#2B2F3A', shoes='#F2C230', skin='#C98E6A')),
     ]
@@ -578,7 +606,8 @@ def ball_gif(bf, path, rng):
                 x0, y0 = pos[thr][0] + p0[0], pos[thr][1] + p0[1]
                 x1, y1 = pos[cat][0] + p1[0], pos[cat][1] + p1[1]
                 u = (t - timp) / flight
-                ball(bg, x0 + (x1 - x0) * u, y0 + (y1 - y0) * u - 60 * u * (1 - u) * 4 * 0.5, p0[3])
+                ball(bg, x0 + (x1 - x0) * u, y0 + (y1 - y0) * u - 60 * u * (1 - u) * 4 * 0.5,
+                     p0[3] + (p1[3] - p0[3]) * u)
             frames.append(bg.resize((W * 2, H * 2), Image.NEAREST))
     save_gif(frames, path, 8)
 
@@ -629,6 +658,40 @@ def proof(bf, path, full_dir=os.path.join(SCRATCH, 'proof')):
     print('->', path, 'mean |diff| %.1f / 255 over %d frames' % (float(np.mean(diffs)) if diffs else -1, len(diffs)))
 
 
+def lineup(bf, path):
+    """Job outfits side by side with the townfolk nurse / teacher at phone zoom 1.0 and 0.6 (idle S, walk SE, idle N):
+    the readability check for the 'kindergarten uniform' risk."""
+    rows = [('lifeguard', 3), ('housekeeper', 3), ('icecream_vendor', 3), ('beach_bar_staff', 1), ('bellhop', 1),
+            ('doorman', 1), ('receptionist', 1), ('nurse', 2), ('teacher', 1)]
+    people = []
+    for pr, n in rows:
+        for k in range(n):
+            people.append((pr, bf.preset(pr, seed=11 + 7 * k)))
+    frames = [('idle', 'S', 0), ('walk', 'SE', 2), ('idle', 'N', 1)]
+    cw, ch = 64, 92
+    strip = Image.new('RGBA', (len(people) * cw, len(frames) * ch), (0, 0, 0, 0))
+    for j, (pr, p) in enumerate(people):
+        for r, (anim, dd, i) in enumerate(frames):
+            cell = beach_bg(cw, ch, lambda x: 9999, 0.0, 9)
+            draw_person(cell, bf, p, anim, dd, i, cw // 2, ch - 10)
+            strip.alpha_composite(cell, (j * cw, r * ch))
+    s06 = strip.resize((int(strip.size[0] * 0.6), int(strip.size[1] * 0.6)), Image.LANCZOS)
+    W = strip.size[0] + 20
+    H = 70 + strip.size[1] + 40 + s06.size[1] + 20
+    img = Image.new('RGBA', (W, H), (236, 228, 208, 255))
+    d = ImageDraw.Draw(img)
+    d.text((10, 8), 'Job outfits at phone zoom 1.0 (top) and 0.6 (bottom) next to the townfolk nurse / teacher',
+           fill=INK, font=font(14))
+    for j, (pr, p) in enumerate(people):
+        lab = bf.T['generator']['presets'][pr]['label']['ko']
+        d.text((10 + j * cw + 2, 34 + (j % 2) * 14), lab[:6], fill=INK, font=font(11))
+    img.alpha_composite(strip, (10, 66))
+    d.text((10, 66 + strip.size[1] + 12), '0.6x', fill=INK, font=font(13))
+    img.alpha_composite(s06, (10, 66 + strip.size[1] + 34))
+    img.convert('RGB').save(path, optimize=True)
+    print('->', path)
+
+
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else 'all'
     bf = bfc.Beachfolk.from_assets(os.environ.get('BF_ASSETS', bfc.ASSETS))
@@ -641,6 +704,8 @@ def main():
         jobs_sheet(bf, os.path.join(PREV, 'beachfolk_jobs.png'))
     if what in ('parts', 'all'):
         parts_sheet(bf, os.path.join(PREV, 'beachfolk_parts.png'))
+    if what in ('lineup', 'all'):
+        lineup(bf, os.path.join(PREV, 'beachfolk_lineup.png'))
     if what in ('gifs', 'all'):
         gifs(bf)
     if what in ('proof', 'all'):

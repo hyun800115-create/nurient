@@ -12,7 +12,13 @@ digPoint, splashPoint, lieShadow; limb frames for every new frame; every beach b
 (anim, dir) of its anim set for every base that can wear it; every v4 head layer has frames in the new poses; new
 head parts in every head frame; new face exprs on their poses; tint slots have refs / tables and no palette colour
 clamps (> 12 %); presets only name existing parts; 1200 generated people (every preset + families) can play every
-anim their preset lists and compose them without missing core layers; payload / GPU budgets.
+anim their preset lists (except anims blocked by an optional add-on such as the swim ring, which must resolve
+through pickAnim / animFallback) and compose them without missing core layers; payload / GPU budgets.
+Polish rules: drop accessories list every anim (anims) and keep the frameless ones in noAnims; no non-swim hat is drawn
+in swim / surf, only the allowed hats in float / sunbathe (animHideHead) and a hidden full hat never squashes the hair;
+the swim ring shows >= 20 % of a floating person (every base, S / SE / E); no body frame carries a detached speck at
+the tile edge (tiled-render leaks); the held ball matches the beach prop (adult radius within 10 % of 0.2 m); no
+carry_walk frames.
 --dump writes person + draw-list cases for tools/test/beachfolk_phaser.mjs --parity.
 """
 import json
@@ -37,6 +43,7 @@ NEW_POSES = {'swim': ['S', 'SE', 'E', 'NE', 'N'], 'lie': ['SE', 'NE']}
 CONTRACT_PARTS = ['swimsuit_one', 'swim_trunks', 'rash_guard', 'swim_cap', 'straw_hat', 'sun_hat_wide', 'sunglasses',
                   'flip_flops', 'towel_shoulder', 'swim_ring_worn', 'snorkel_mask', 'arm_floaties', 'aloha_shirt',
                   'wetsuit']
+OLD_ALL = ['idle', 'walk', 'talk', 'wave', 'happy', 'sad', 'clap', 'sit', 'push']
 CONTRACT_PRESETS = ['swimmer', 'sunbather', 'family_beach', 'lifeguard', 'bellhop', 'receptionist', 'doorman',
                     'housekeeper', 'icecream_vendor', 'beach_bar_staff', 'surfer', 'beach_tourist']
 LIMBS = ['arm_R', 'arm_L', 'hand_R', 'hand_L']
@@ -71,7 +78,7 @@ def load_frames(assets, man, err, tag, sizes=None):
 def main():
     args = sys.argv[1:]
     assets = os.path.join(GAME, 'assets')
-    budget, gpu_budget, dump = 7.0, 80.0, None
+    budget, gpu_budget, dump = 7.0, 75.0, None
     if '--assets' in args:
         assets = os.path.abspath(args[args.index('--assets') + 1])
     if '--budget-mb' in args:
@@ -198,7 +205,7 @@ def main():
             if pn not in T['bases'][rb]['parts']:
                 err.append(f'{pn}: not packed for {rb}')
                 continue
-            for a in P.get('anims', []):
+            for a in [x for x in P.get('anims', []) if x not in P.get('noAnims', [])]:
                 n = T['anims'][a]['frames']
                 empty = [d for d in T['anims'][a]['dirs']
                          if not any(has(f'{pn}.{s}@{rb}/{a}_{d}_{i}') for s in P['subs'] for i in range(n))]
@@ -211,6 +218,37 @@ def main():
                     info.append(f'{pn}@{rb}: hidden in {a} {",".join(empty)}')   # e.g. feet behind a kneeling body
                 else:
                     err.append(f'{pn}@{rb}: no frames in {a} at all')
+    for pn, P in P3.items():
+        if P.get('drop'):
+            if sorted(P.get('anims', [])) != sorted(set(P.get('anims', []))) or not P.get('noAnims'):
+                err.append(f'drop part {pn}: needs anims = every anim + noAnims')
+            if any(a not in P['anims'] for a in T['anims'] if a in B['anims'] or a in OLD_ALL):
+                err.append(f'drop part {pn}: anims must list every townfolk / beachfolk anim')
+        if P['space'] == 'body' and 'carry_walk' in [a for a in P.get('anims', []) if a not in P.get('noAnims', [])]:
+            err.append(f'{pn}: carry_walk frames (dropped for dolls: head carry)')
+    if any(n.split('/')[1].startswith('carry_walk_') for n in f3 if '@' in n.split('/')[0]):
+        err.append('carry_walk frames packed')
+    # pose users (anims whose timeline shows each beachfolk head frame) for the hidden-hat rules
+    users = {}
+    for a in NEW_ANIMS:
+        for d in T['anims'][a]['dirs']:
+            for e in T['timeline'][a][d]:
+                if e['hp'] in NEW_POSES:
+                    users.setdefault((e['hp'], e.get('hd', d)), set()).add(a)
+    AH = T.get('animHideHead', {})
+
+    def never_seen(layer, hp, d):
+        pn = layer.split('.')[0]
+        P = T['parts'].get(pn)
+        if not P or P.get('family') != 'hat':
+            return False
+        us = users.get((hp, d), set())
+        return bool(us) and all(pn in AH.get(a, []) for a in us)
+    for a in ('swim', 'surf', 'float', 'sunbathe'):
+        if a not in AH:
+            err.append(f'animHideHead.{a} missing')
+    if 'float' not in B.get('animFallback', {}).get('swim', []):
+        err.append('animFallback.swim must fall back to float (ring wearers)')
     # head layers in the new poses
     v4_head = [n.split('/')[0] for n in f1 if '@' not in n.split('/')[0]]
     v4_layers = sorted(set(v4_head))
@@ -220,8 +258,10 @@ def main():
             if L.startswith('face.') or L.startswith('brow.'):
                 continue
             for d in dirs:
-                if not has(f'{L}/{hp}_{d}'):
+                if not has(f'{L}/{hp}_{d}') and not never_seen(L, hp, d):
                     miss.append(f'{L}/{hp}_{d}')
+                elif has(f'{L}/{hp}_{d}') and never_seen(L, hp, d):
+                    warn.append(f'{L}/{hp}_{d} packed but never drawn (animHideHead)')
         if miss:
             info.append(f'{len(miss)} v4 head layer frames empty in pose {hp} (fully hidden there): {miss[:6]}')
         for d in dirs:
@@ -234,7 +274,7 @@ def main():
         for hp, H in T['headPoses'].items():
             for d in H['dirs']:
                 got = any(has(f'{pn}.{s}/{hp}_{d}') or has(f'{pn}.{s}~hat/{hp}_{d}') for s in P['subs'])
-                if not got:
+                if not got and not never_seen(pn + '.main', hp, d):
                     err.append(f'head part {pn}: no frame in {hp}_{d}')
     faces = list(T['faces'])
     for hp, exprs in B['faceExprs'].items():
@@ -267,6 +307,8 @@ def main():
         if pr not in G['presets']:
             err.append(f'preset {pr} missing')
     rng = random.Random(1234)
+    WATER = ('swim', 'float', 'splash_play', 'surf')
+    blocked_by_addon, hidden_hat_people = {}, {}
     cases, persons = [], []
     people = 0
     bad_play = {}
@@ -277,9 +319,31 @@ def main():
         for pn in p['parts']:
             if pn not in T['parts']:
                 err.append(f'{pr}: unknown part {pn}')
+        addon_parts = {k for table, _ in G['presets'][pr].get('addOns', []) for k in table}
         for a in G['presets'][pr].get('anims', []):
             if not bf.can_play(p, a):
+                blockers = [pn for pn in bf.anim_parts(p, a) if not bfc.part_plays(T['parts'][pn], a)]
+                if blockers and all(b in addon_parts for b in blockers):
+                    pa, _ = bf.pick_anim(p, a)
+                    blocked_by_addon[(a, pa)] = blocked_by_addon.get((a, pa), 0) + 1
+                    if a in WATER and pa not in WATER:
+                        err.append(f'{pr}: {a} blocked by {blockers} falls back to land anim {pa}')
+                    continue
                 bad_play.setdefault((pr, a), []).append(p['parts'])
+        for a in ('swim', 'surf', 'float', 'sunbathe'):
+            if not bf.can_play(p, a):
+                continue
+            d = T['anims'][a]['dirs'][k % len(T['anims'][a]['dirs'])]
+            lay = bf.layers(p, a, d, 0)
+            shown = {name.split('/')[0].split('.')[0] for _, name, _, sp in lay if sp == 'head'}
+            bad_hats = [h for h in shown if T['parts'].get(h, {}).get('family') == 'hat' and h in AH.get(a, [])]
+            if bad_hats:
+                err.append(f'{pr}: hat {bad_hats} drawn in {a}')
+            worn_full = [h for h in p['parts'] if T['parts'][h]['family'] == 'hat' and T['parts'][h].get('cls') == 'full']
+            if worn_full and all(h in AH.get(a, []) for h in worn_full):
+                if any('~hat' in name for _, name, _, sp in lay if sp == 'head'):
+                    err.append(f'{pr}: hidden hat still squashes the hair in {a}')
+                hidden_hat_people[a] = hidden_hat_people.get(a, 0) + 1
         if k < 240:
             persons.append(p)
             for a in G['presets'][pr].get('anims', [])[:6] + list(NEW_ANIMS):
@@ -305,6 +369,78 @@ def main():
         kids = sum(1 for p in fam if T['bases'][p['base']]['age'] == 'child')
         if kids < 1 or len(fam) - kids < 1:
             err.append(f'beach family {k}: {len(fam)} people, {kids} kids')
+    # ---- swim ring readable in float (>= 20 % of the floating person), every base
+    import numpy as np
+    ring_share = {}
+    for b in T['bases']:
+        if 'swim_ring_worn' not in T['bases'][b]['parts']:
+            continue
+        rr = random.Random(77)
+        p = None
+        for _ in range(400):
+            q = bf.preset('swimmer', rng=rr)
+            if q['base'] == b and bf.can_play(q, 'float') and 'swim_ring_worn' not in q['parts']:
+                p = q
+                break
+        if p is None:
+            continue
+        for d in ('S', 'SE', 'E'):
+            full = np.asarray(bf.compose(p, 'float', d, 1, margin=24), np.float32)
+            ap = T['generator']['animParts']
+            keep = ap['float']
+            ap['float'] = []
+            try:
+                bare = np.asarray(bf.compose(p, 'float', d, 1, margin=24), np.float32)
+            finally:
+                ap['float'] = keep
+            vis = full[..., 3] > 40
+            diff = (np.abs(full - bare).max(axis=2) > 24) & vis
+            share = diff.sum() / max(1, vis.sum())
+            ring_share[f'{b} {d}'] = round(float(share), 3)
+            if share < 0.20:
+                err.append(f'float {b} {d}: swim ring only {share * 100:.0f} % of the person (< 20 %)')
+    # ---- held ball vs the beach prop
+    bm = None
+    try:
+        bm = json.load(open(os.path.join(assets, 'beach', 'manifest.json')))['sprites']['beach_ball_bounce']['footprintM']['radius']
+    except Exception:                                       # noqa: BLE001
+        pass
+    if bm:
+        for b, Bb in T['bases'].items():
+            if T['bases'][b]['age'] == 'child':
+                continue
+            rads = {v[3] for a in ('ball_throw', 'ball_catch') for d in Bb['ballPoint'][a] for v in Bb['ballPoint'][a][d] if v}
+            for r in rads:
+                if abs(r / 64.0 - bm) > 0.1 * bm:
+                    err.append(f'{b}: held ball radius {r} px != beach prop {bm} m (+-10 %)')
+    # ---- detached specks at the tile edge (tiled-render leaks)
+    from PIL import Image
+    specks = []
+    for at in man3['atlases']:
+        if at['key'].startswith('bf_head'):
+            continue
+        js = json.load(open(os.path.join(assets, at['json'])))
+        img = np.asarray(Image.open(os.path.join(assets, at['png'])).convert('RGBA'))
+        for n, (x, y, fw, fh, dx, dy) in iter_tf_frames(js):
+            if dy > 1 and dy + fh < 127:
+                continue
+            a = img[y:y + fh, x:x + fw, 3] > 40
+            rows = np.nonzero(a.any(axis=1))[0]
+            if len(rows) < 2:
+                continue
+            gaps = np.nonzero(np.diff(rows) >= 6)[0]
+            if not len(gaps):
+                continue
+            first = a[:rows[gaps[0]] + 1].sum()
+            last = a[rows[gaps[-1] + 1]:].sum()
+            tot = a.sum()
+            h_first = rows[gaps[0]] - rows[0] + 1
+            h_last = rows[-1] - rows[gaps[-1] + 1] + 1
+            if (dy <= 1 and (first < 0.12 * tot or h_first <= 4) and first < tot / 2) or \
+                    (dy + fh >= 127 and (last < 0.12 * tot or h_last <= 4) and last < tot / 2):
+                specks.append(n)
+    for n in specks[:20]:
+        err.append(f'{n}: detached speck at the frame edge')
     # ---- budgets
     total = sum(os.path.getsize(os.path.join(d3, f)) for f in os.listdir(d3))
     px = sum(w * h for w, h in sizes.values())
@@ -313,6 +449,23 @@ def main():
         err.append(f'payload {total / 1e6:.2f} MB > {budget} MB')
     if gpu > gpu_budget:
         warn.append(f'GPU memory {gpu:.1f} MiB > {gpu_budget} MiB')
+    # GPU by page class (unique packed rects, x4 bytes; sheets add packing slack on top)
+    cls_px = {}
+    pc = B.get('pageClasses', {})
+    a2c = {a: c for c, lst in pc.items() if isinstance(lst, list) for a in lst}
+    for at in man3['atlases']:
+        js = json.load(open(os.path.join(assets, at['json'])))
+        seen = set()
+        for n, (x, y, fw, fh, dx, dy) in iter_tf_frames(js):
+            if (x, y) in seen:
+                continue
+            seen.add((x, y))
+            layer, fr = n.split('/')
+            if '@' in layer:
+                c = a2c.get(fr.rsplit('_', 2)[0], 'other')
+            else:
+                c = 'head:' + ('beach' if fr.split('_')[0] in ('swim', 'lie') else 'other')
+            cls_px[c] = cls_px.get(c, 0) + fw * fh
     if dump:
         with open(dump, 'w') as f:
             json.dump({'persons': persons, 'cases': cases}, f)
@@ -320,6 +473,10 @@ def main():
     print(f'beachfolk: {len(man3["atlases"])} atlases, {len(f3)} frames, payload {total / 1e6:.2f} MB, '
           f'sheets {px / 1e6:.2f} Mpx (~{gpu:.1f} MiB GPU), {people} generated people, {len(cases)} cases')
     print(f'limb frames empty (hidden far limb / under water): {len(limb_missing)}')
+    print('GPU by page class (packed rects, MiB):', {c: round(v * 4 / 2 ** 20, 1) for c, v in sorted(cls_px.items())})
+    print('anims blocked by an add-on -> pickAnim:', {f'{a}->{b}': n for (a, b), n in sorted(blocked_by_addon.items())})
+    print('people whose hats come off (hair un-squashed):', hidden_hat_people)
+    print('swim ring share of the floating person:', ring_share)
     print(f'body parts fully under water in swim / float (nothing drawn, by design): {len(hidden_uw)} '
           f'{sorted(set(h.split("@")[0] for h in hidden_uw))}')
     for x in info:

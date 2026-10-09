@@ -3,8 +3,13 @@ lgx_render.py - render the v8 logistics set (docs/CONTRACT_V8.md section AA) int
 builds assets/logistics/ (atlases + manifest.json) and the docs/previews/lgx_* previews.
 
   * logistics_center (lgx_center.build): ONE scene, many passes that share the frame + anchor (camera never moves):
-        back, floor, interior, fmask (front-furniture mask), rmask (rack-front mask), stub, cut, shell, props
-        door1_<f>, door2_<f> (f 0..5), belt_<f> (f 0..7), lamp_<f> (f 0..3)              (border-rendered patches)
+        back, floor, apron, interior, fmask (front-furniture mask), rmask (rack-front mask), stub, cut, shell, props,
+        shadow_open (the open building's ground shadow: back walls + stub + interior on a ground catcher OUTSIDE the
+        footprint, shadow only)
+        door1_<f>, door2_<f> (f 0..5: the roll-up LEAF only), belt_<f> (f 0..7), lamp_<f> (f 0..3),
+        name_ko / name_en (the baked name lettering on the facade board)                 (border-rendered patches)
+        oprop_<kind> (one free-standing outside prop per kind + its own ground shadow, border-rendered; lgx_pack
+        crops each into its own sprite with a ground anchor)
         depth_interior (16-bit view-depth of the interior, used by lgx_pack to validate the depth bands)
     Per pass every group is VISIBLE, GHOST (invisible to the camera, still casts shadows / bounces light),
     HOLDOUT (cuts alpha where it is in front) or HIDDEN - see PASSES.  So the layers composite back exactly.
@@ -54,19 +59,25 @@ MARGIN = 10
 DMIN, DMAX = 40.0, 80.0                         # view-depth range encoded in the 16-bit depth pass
 
 ALL = ['back', 'floor', 'apron', 'interior', 'rackf', 'front_f', 'lamp', 'belt', 'stub', 'cut', 'shell', 'door1',
-       'door2', 'props']
+       'door2', 'props', 'oprop', 'name_ko', 'name_en']
 # pass -> (visible, ghost, holdout, ghost-without-shadow); everything else hidden.  'rackf' (rack front parts) is a
 # sub-group of the interior: wherever 'interior' is listed, 'rackf' is too.
+# (polish) the outside apron is its own always-drawn layer (it used to be inside _floor, so skipping the inside layers
+# while closed deleted it); the shell is rendered WITHOUT the dock-door leaves (the openings show the real inside layers,
+# darkened by the roof shadow on the shell's ground catcher) - the door patches are the leaves only; free-standing
+# outside props (group 'oprop') are rendered one by one into their own sprites and are hidden in every layer pass.
 PASSES = {
     'back': (['back'], ['floor', 'apron', 'interior', 'rackf', 'front_f', 'stub', 'props'], [], []),
-    'floor': (['floor', 'apron'], ['interior', 'rackf', 'front_f', 'stub', 'props', 'lamp'], [], ['back']),
+    'floor': (['floor'], ['interior', 'rackf', 'front_f', 'stub', 'props', 'lamp'], ['apron'], ['back']),
+    'apron': (['apron'], [], ['floor'], []),
     'interior': (['interior', 'rackf', 'front_f', 'lamp'], ['floor', 'apron', 'stub', 'props'], [], ['back']),
     'stub': (['stub'], ['interior', 'rackf', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
     'cut': (['cut'], ['interior', 'rackf', 'front_f', 'floor', 'apron', 'props'], [], ['back']),
-    'shell': (['shell', 'back', 'door1', 'door2'], [], [], []),
+    'shell': (['shell'], ['back'], [], []),
     'props': (['props'], ['shell', 'back', 'door1', 'door2', 'floor', 'apron'], [], []),
+    'shadow_open': ([], ['back', 'interior', 'rackf', 'front_f', 'lamp', 'stub'], [], []),
 }
-LAYER_PASSES = ['back', 'floor', 'interior', 'stub', 'cut', 'shell', 'props']
+LAYER_PASSES = ['back', 'floor', 'apron', 'interior', 'stub', 'cut', 'shell', 'props', 'shadow_open']
 DESK_PREFIX = ('desk', 'papers', 'abacus', 'mug', 'lamp_base', 'lamp_stem')
 
 
@@ -170,6 +181,23 @@ def catcher(name, x0, x1, y0, y1, z=0.0):
     return ob
 
 
+def catcher_ring(name, hx, hy, R=30.0, z=0.0):
+    """Shadow-catcher ground OUTSIDE the footprint rectangle (+-hx, +-hy): four quads around a hole."""
+    import bmesh
+    bm = bmesh.new()
+    for (x0, x1, y0, y1) in ((-R, -hx, -R, R), (hx, R, -R, R), (-hx, hx, -R, -hy), (-hx, hx, hy, R)):
+        vs = [bm.verts.new(p) for p in ((x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z))]
+        bm.faces.new(vs)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.is_shadow_catcher = True
+    ob.hide_render = True
+    return ob
+
+
 def set_border(sc, W, H, box_px=None):
     if box_px is None:
         sc.render.use_border = False
@@ -263,6 +291,7 @@ def render_center(opts):
     sc.render.use_persistent_data = True
     bc.setup_camera(W, H, anchor)
     ground = catcher('LgxCatchGround', -30, 30, -30, 30, 0.0)
+    ring = catcher_ring('LgxCatchRing', LC.X0, LC.Y0)
     snapshot()
     only = set(opts['passes'].split(',')) if opts.get('passes') else None
 
@@ -276,7 +305,8 @@ def render_center(opts):
             return
         t1 = time.time()
         setup()
-        ground.hide_render = not catch
+        ground.hide_render = not (catch is True)
+        ring.hide_render = catch != 'ring'
         sc.cycles.samples = spp or samples
         sc.cycles.use_denoising = denoise
         sc.cycles.use_adaptive_sampling = denoise
@@ -291,7 +321,8 @@ def render_center(opts):
     # ---------------------------------------------------------------- full-frame layers
     for name in LAYER_PASSES:
         v, g, ho, gns = PASSES[name]
-        go(name, lambda v=v, g=g, ho=ho, gns=gns: apply_pass(v, g, ho, gns), catch=(name == 'shell'))
+        go(name, lambda v=v, g=g, ho=ho, gns=gns: apply_pass(v, g, ho, gns),
+           catch={'shell': True, 'shadow_open': 'ring'}.get(name, False))
     # front-furniture mask: F white emission, the rest of the interior as holdout
     mw = mask_white()
 
@@ -328,19 +359,47 @@ def render_center(opts):
         go('belt_%d' % f, setup_belt, border=bb)
     ctl['belt'](0)
     del belt_objs
-    # dock doors (6 each): leaf + what is seen through the opening (interior lit under the roof), shell = holdout
+    # dock doors (6 each): (polish) the roll-up LEAF only (the shell is rendered without the leaves, so the real
+    # inside layers / stock / actors show through an open door); shell = holdout (the lintel hides the rolled-up part)
+    door_boxes = []
     for k, (dy0, dy1, dh) in enumerate((LC.DOCK1, LC.DOCK2)):
         db = bbox_px([(LC.X0, dy0 - 0.1, 0.0), (LC.X0, dy1 + 0.1, 0.0), (LC.X0, dy1 + 0.1, dh + 0.1),
                       (LC.X0, dy0 - 0.1, dh + 0.1)], anchor, pad=8)
+        door_boxes.append(list(db))
         me = 'door%d' % (k + 1)
-        other = 'door%d' % (2 - k)
         for f in range(6):
-            def setup_door(k=k, f=f, me=me, other=other):
+            def setup_door(k=k, f=f, me=me):
                 ctl['door'](k, f)
-                apply_pass([me, 'interior', 'rackf', 'front_f', 'floor', 'back', 'lamp'], [other],
-                           ['shell', 'props', 'apron'], [])
+                apply_pass([me], [], ['shell'], [])
             go('%s_%d' % (me, f), setup_door, border=db)
         ctl['door'](k, 0)
+    # name lettering on the facade board (one patch per language), shell = holdout
+    name_boxes = {}
+    for lang in ('ko', 'en'):
+        objs = [o for o in bpy.context.scene.objects if o.get('lgx') == 'name_' + lang]
+        nb = objs_bbox_px(objs, anchor, pad=8)
+        name_boxes[lang] = list(nb)
+        go('name_' + lang, lambda lang=lang: apply_pass(['name_' + lang], [], ['shell'], []), border=nb)
+    # free-standing outside props: one render per KIND (its first instance), alone on the ground catcher with its own
+    # soft shadow -> lgx_pack crops it into a sprite anchored at the prop's ground point
+    oprops = []
+    done_kind = {}
+    for op in P['oprops']:
+        objs = [o for o in bpy.context.scene.objects if o.get('lgxp') == op['name'] and o.type in ('MESH', 'CURVE')]
+        pts = L.world_points(objs)
+        sh = [(p.x + p.z * L.SHADOW_K, p.y, 0.0) for p in pts if p.z > 0.02]
+        box_ = bbox_px([tuple(p) for p in pts] + sh, anchor, pad=22)
+        gx, gy = px_of(op['at'], anchor)
+        rec = dict(op, groundPx=[round(gx, 2), round(gy, 2)], box=[int(math.floor(box_[0])), int(math.floor(box_[1])),
+                                                                     int(math.ceil(box_[2])), int(math.ceil(box_[3]))])
+        if op['kind'] not in done_kind:
+            done_kind[op['kind']] = op['name']
+            rec['render'] = 'oprop_' + op['kind']
+
+            def setup_op(inst=op['name']):
+                apply_pass([], [], [], [], extra_vis=lambda o, inst=inst: o.get('lgxp') == inst)
+            go('oprop_' + op['kind'], setup_op, border=rec['box'], catch=True)
+        oprops.append(rec)
     # office desk lamp (4): lamp head + the desk top, the rest of the interior as holdout
     lb = bbox_px([P['lampPoint'], (-5.25, -1.8, 0.75), (-4.55, -0.7, 0.75), (-4.6, -1.25, 1.25)], anchor, pad=12)
 
@@ -364,13 +423,16 @@ def render_center(opts):
                                           'note': 'depth_interior.png: 16-bit grey = (viewZ - min) / (max - min)'},
             'camBack': list(cam_back()), 'points': jsonable(P),
             'patches': {'belt': {'frames': LC.BELT_FRAMES, 'box': list(bb)},
-                        'lamp': {'frames': 4, 'box': list(lb)}},
+                        'lamp': {'frames': 4, 'box': list(lb)}, 'doors': door_boxes, 'names': name_boxes},
+            'oprops': oprops,
             'dims': {'W': LC.W, 'D': LC.D, 'eave': LC.EAVE, 'rise': LC.RISE, 'stubZ': LC.STUB_Z, 'cutZ': LC.CUT_Z,
-                     'rackLevels': LC.RACK_LEVELS, 'frackLevels': LC.FRACK_LEVELS, 'rackYF': LC.RACK_YF,
+                     'rackLevels': LC.RACK_LEVELS, 'rackSpec': {k: list(v) for k, v in LC.RACK_SPEC.items()},
+                     'frackLevels': LC.FRACK_LEVELS, 'rackYF': LC.RACK_YF,
                      'rackD': LC.RACK_D, 'frackXF': LC.FRACK_XF, 'frackD': LC.FRACK_D,
                      'conv': LC.CONV, 'pack': LC.PACK, 'counter': LC.COUNTER, 'docks': [LC.DOCK1, LC.DOCK2],
                      'entr': LC.ENTR, 'beltSpacing': LC.BELT_SPACING},
-            'shellHull': hull_px(anchor), 'footprintPoly': [list(map(round_px, px_of(p, anchor)))
+            # (polish) footprintPoly in px OFFSETS from the anchor (like every other manifest), not frame pixels
+            'shellHull': hull_px(anchor), 'footprintPoly': [list(map(round_px, px_of(p, (0.0, 0.0))))
                                                            for p in ((-LC.X0, -LC.Y0, 0), (LC.X0, -LC.Y0, 0),
                                                                      (LC.X0, LC.Y0, 0), (-LC.X0, LC.Y0, 0))]}
     with open(os.path.join(out, 'meta.json'), 'w') as f:

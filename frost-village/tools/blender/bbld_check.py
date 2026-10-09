@@ -27,16 +27,20 @@ BUILDINGS = ['resort_hotel', 'hotel_pool', 'pension', 'beach_cafe', 'beach_bar',
 STREET = ['beach_gate', 'beach_lamp', 'string_lights_x', 'string_lights_y']
 X_VARIANTS = ['resort_hotel_x', 'beach_cafe_x', 'icecream_shop_x', 'beach_bar_x', 'convenience_store_x',
               'beach_gate_x']
-DERIVED = ['resort_hotel_front', 'resort_hotel_x_front', 'resort_hotel_night', 'resort_hotel_x_night',
+DERIVED = ['resort_hotel_front', 'resort_hotel_x_front',
            'hotel_pool_water', 'beach_cafe_front', 'icecream_shop_front', 'beach_bar_front', 'seafood_bbq_front',
            'tourist_info_front', 'lifeguard_station_front', 'pension_front']
 REQUIRED = BUILDINGS + STREET + X_VARIANTS + DERIVED
-ANIM = {'seafood_bbq': (4, 'grill'), 'mini_aquarium': (4, 'fish'), 'beach_arcade': (4, 'lights'),
+RETIRED = ['resort_hotel_night', 'resort_hotel_x_night']
+LAZY = ['bbld_glow', 'bbld_x', 'bbld_x_glow']
+ANIM = {'seafood_bbq': (4, 'grill'), 'mini_aquarium': (8, 'fish'), 'beach_arcade': (4, 'lights'),
         'string_lights_x': (4, 'twinkle'), 'string_lights_y': (4, 'twinkle'), 'hotel_pool_water': (6, 'ripple')}
 COMMON = ['footprintPoly', 'fxPoints', 'lightPoints', 'name', 'zone', 'night']
 FIELDS = {
-    'resort_hotel': ['doorPoint', 'staffPoints', 'staffRoles', 'customerPoints', 'inPoint', 'balconyPoints', 'overlay'],
-    'hotel_pool': ['waterPoly', 'waterZ', 'swimPoints', 'lyingPoints', 'lyingDirs', 'staffPoints', 'waterOverlay'],
+    'resort_hotel': ['doorPoint', 'staffPoints', 'staffRoles', 'customerPoints', 'inPoint', 'balconyPoints', 'overlay',
+                     'balconyFloors', 'balconyHeadroomPx'],
+    'hotel_pool': ['waterPoly', 'waterPolyFlat', 'waterZ', 'swimPoints', 'lyingPoints', 'lyingDirs', 'lyingFeetDirs',
+                   'lyingHeadPoints', 'lyingFeetPoints', 'lyingAxis', 'staffPoints', 'waterOverlay'],
     'pension': ['doorPoint', 'staffPoints', 'customerPoints', 'balconyPoints', 'inPoint'],
     'beach_cafe': ['doorPoint', 'staffPoints', 'customerPoints', 'seatPoints', 'inPoint', 'overlay'],
     'beach_bar': ['staffPoints', 'seatPoints', 'customerPoints', 'inPoint', 'overlay'],
@@ -55,7 +59,7 @@ FIELDS = {
     'beach_lamp': ['fxPoints', 'lightPoints'],
 }
 NO_COMMON = {'beach_lamp': ['name'], 'string_lights_x': ['fxPoints'], 'string_lights_y': ['fxPoints'],
-             'hotel_pool': ['lightPoints', 'night'], 'beach_gate': [], 'beach_gate_x': []}
+             'beach_gate': [], 'beach_gate_x': []}
 DIRS = {'S', 'SE', 'E', 'NE', 'N', 'SW', 'W', 'NW'}
 PAIRS = {'staffPoints': 'staffDirs', 'customerPoints': 'customerDirs', 'seatPoints': 'seatDirs',
          'balconyPoints': 'balconyDirs', 'lyingPoints': 'lyingDirs', 'workPoints': 'workDirs', 'viewPoints': 'viewDirs',
@@ -153,6 +157,26 @@ def main():
                 errs.append('%s.lightPoints: not int pairs' % k)
             if len(s.get('lightKinds', [])) != len(s['lightPoints']):
                 errs.append('%s: lightKinds / lightPoints length mismatch' % k)
+        if 'staffPoints' in s:
+            sd = s.get('staffDepths')
+            if not isinstance(sd, list) or len(sd) != len(s['staffPoints']) or not all(v in ('front', 'behind')
+                                                                                       for v in sd):
+                errs.append('%s: staffDepths %s does not match %d staffPoints' % (k, sd, len(s['staffPoints'])))
+            elif s.get('staffDepth') != sd[0]:
+                errs.append('%s: staffDepth != staffDepths[0]' % k)
+            for i in s.get('staffBehindOverlay', []):
+                if isinstance(sd, list) and i < len(sd) and sd[i] != 'front':
+                    errs.append('%s: staff %d is behind the overlay but not drawn "front"' % (k, i))
+        if 'lyingPoints' in s:
+            n = len(s['lyingPoints'])
+            opp = {'S': 'N', 'N': 'S', 'E': 'W', 'W': 'E', 'SE': 'NW', 'NW': 'SE', 'NE': 'SW', 'SW': 'NE'}
+            for f in ('lyingHeadPoints', 'lyingFeetPoints', 'lyingFeetDirs'):
+                if len(s.get(f, [])) != n:
+                    errs.append('%s.%s: %d entries for %d lyingPoints' % (k, f, len(s.get(f, [])), n))
+            if [opp[d] for d in s.get('lyingDirs', [])] != s.get('lyingFeetDirs', []):
+                errs.append('%s: lyingFeetDirs is not the opposite of lyingDirs' % k)
+        if 'lightPoints' in s and len(s.get('lightK', [])) != len(s['lightPoints']):
+            errs.append('%s: lightK / lightPoints length mismatch' % k)
         if 'staffPoints' in s and 'staffRoles' in s and len(s['staffRoles']) != len(s['staffPoints']):
             errs.append('%s: staffRoles %d != staffPoints %d' % (k, len(s['staffRoles']), len(s['staffPoints'])))
         for r in s.get('staffRoles', []):
@@ -165,16 +189,30 @@ def main():
                     errs.append('%s: no %s staff point' % (k, r))
             if len(s.get('balconyPoints', [])) < 6:
                 errs.append('%s: only %d balconyPoints' % (k, len(s.get('balconyPoints', []))))
-            if not s.get('night', {}).get('frame'):
-                errs.append('%s: night.frame missing' % k)
+            # a standing guest is 80 - 100 px tall: no balcony may sit right above another one
+            for i, (hp, fl) in enumerate(zip(s.get('balconyHeadroomPx', []), s.get('balconyFloors', []))):
+                if hp < 70:
+                    errs.append('%s: balcony %d (floor %d) has only %d px headroom' % (k, i, fl, hp))
+            bp = s.get('balconyPoints', [])
+            for i in range(len(bp)):
+                for j in range(len(bp)):
+                    if i != j and abs(bp[i][0] - bp[j][0]) < 30 and 0 < bp[i][1] - bp[j][1] < 100:
+                        errs.append('%s: balcony %d is right under balcony %d (%s / %s)' % (k, i, j, bp[i], bp[j]))
         if 'overlay' in s and s['overlay'] not in sp:
             errs.append('%s: overlay %s missing' % (k, s['overlay']))
         nt = s.get('night')
         if nt:
             if nt.get('glow') not in sp:
                 errs.append('%s: night.glow %s missing' % (k, nt.get('glow')))
-            if nt.get('frame') and nt['frame'] not in sp:
-                errs.append('%s: night.frame %s missing' % (k, nt['frame']))
+            if nt.get('frame') or nt.get('tint'):
+                errs.append('%s: night.frame / night.tint are retired (DayClock night model)' % k)
+            g = sp.get(nt.get('glow'), {})
+            if g.get('atlas') in sheets:
+                f = atl[g['atlas']][g['frame']]['frame']
+                ga = np.asarray(sheets[g['atlas']].convert('RGBA').crop((f['x'], f['y'], f['x'] + f['w'],
+                                                                         f['y'] + f['h'])))[..., 3]
+                if (ga > 90).sum() < 40:
+                    errs.append('%s: night glow %s is (almost) empty' % (k, nt.get('glow')))
         if 'waterPoly' in s:
             W, H = s['frameSize']
             ax, ay = s['anchor'][0] * W, s['anchor'][1] * H
@@ -184,6 +222,28 @@ def main():
                 errs.append('%s.waterPoly leaves the frame' % k)
             if s.get('waterOverlay') not in sp:
                 errs.append('%s: waterOverlay %s missing' % (k, s.get('waterOverlay')))
+            elif s.get('atlas') in sheets:
+                # land over water: the deck must be transparent inside waterPoly, the fallback water opaque there
+                from PIL import ImageDraw as _D
+                msk = Image.new('L', (W, H), 0)
+                _D.Draw(msk).polygon([(ax + x, ay + y) for x, y in s['waterPoly']], fill=255)
+                msk = np.asarray(msk.filter(__import__('PIL.ImageFilter', fromlist=['x']).MinFilter(5))) > 0
+
+                def full(key):
+                    e = sp[key]
+                    fr = atl[e['atlas']][e['frame']]
+                    a = np.zeros((H, W), np.uint8)
+                    c = np.asarray(sheets[e['atlas']].convert('RGBA').crop(
+                        (fr['frame']['x'], fr['frame']['y'], fr['frame']['x'] + fr['frame']['w'],
+                         fr['frame']['y'] + fr['frame']['h'])))[..., 3]
+                    sx, sy = fr['spriteSourceSize']['x'], fr['spriteSourceSize']['y']
+                    a[sy:sy + c.shape[0], sx:sx + c.shape[1]] = c
+                    return a
+                deck, wat = full(k), full(s['waterOverlay'])
+                if deck[msk].mean() > 10:
+                    errs.append('%s: the deck is not cut out inside waterPoly (mean alpha %.0f)' % (k, deck[msk].mean()))
+                if wat[msk].mean() < 245:
+                    errs.append('%s: the fallback water is not opaque inside waterPoly' % k)
         if base in ANIM or k in ANIM:
             n, alias = ANIM.get(k, ANIM.get(base))
             a = s.get('anims', {})
@@ -204,6 +264,16 @@ def main():
     for k in ANIM:
         if k in sp and 'anims' not in sp[k]:
             errs.append('%s: anims missing' % k)
+    for k in RETIRED:
+        if k in sp:
+            errs.append('retired sprite %s is still in the manifest' % k)
+    lazy = man.get('lazyAtlases', [])
+    for a in LAZY:
+        if a not in lazy:
+            errs.append('atlas %s should be lazy (lazyAtlases)' % a)
+    for k in X_VARIANTS:
+        if k in sp and sp[k].get('atlas') not in ('bbld_x',) and not str(sp[k].get('atlas', '')).startswith('bbld_x_'):
+            errs.append('%s: _x variant not in the lazy bbld_x atlas (%s)' % (k, sp[k].get('atlas')))
     if snow_hits:
         warns.append('possible snow-coloured areas: ' + ', '.join(snow_hits))
     # key collisions with the other fragments

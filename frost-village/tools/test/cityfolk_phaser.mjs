@@ -1,6 +1,7 @@
 // Cityfolk (CONTRACT_V8 AD) tests.
 //   node tools/test/cityfolk_phaser.mjs                       headless Chromium + Phaser 3.90 (WebGL / SwiftShader)
 //   node tools/test/cityfolk_phaser.mjs --parity cases.json   Python <-> JS compositor parity (no browser)
+//   node tools/test/cityfolk_phaser.mjs --jsgen                JS generator: presets keep their promises (no browser)
 //
 // Phaser mode: loads assets/townfolk + assets/townfolk2 (+ assets/beachfolk when present) + assets/cityfolk,
 // merges them with mergeTownfolkFragments() (tools/cityfolk_compose.js), installs the tfatlas frames and stages a
@@ -60,6 +61,61 @@ async function parity(casesPath) {
   console.log(`fragments: townfolk + ${FRAGS.join(' + ')}; generic merge(v4,v5) == mergeTownfolk: ${same}`);
   console.log(`parity: ${n - bad}/${n} draw lists identical, pickAnim/canPlay mismatches ${badPick}, point mismatches ${badPts}`);
   process.exit(bad || badPick || badPts || !same ? 1 : 0);
+}
+
+async function jsgen() {
+  // JS generator check: people made by Cityfolk.preset() in JS play their promised anims (cf_check PROMISE) and
+  // every core head / face / brow frame of every frame they can play resolves; pickAnim() of random townsfolk is
+  // always playable.  ('missingOther' = empty layer frames hidden by the body, skipped at runtime.)
+  const rd = (f) => JSON.parse(fs.readFileSync(path.join(ASSETS, f, 'manifest.json'), 'utf8'));
+  const { mergeTownfolkFragments, Cityfolk } = await import('../cityfolk_compose.js');
+  const { mulberry32 } = await import('../townfolk_compose.js');
+  const frags = FRAGS;
+  const M = mergeTownfolkFragments(rd('townfolk'), ...frags.map(rd));
+  // frame index per atlas
+  const have = {};
+  for (const a of M.atlases) {
+    const js = JSON.parse(fs.readFileSync(path.join(ASSETS, a.json), 'utf8'));
+    const set = have[a.key] = new Set();
+    if (js.tfatlas) {
+      for (const [pre, g] of Object.entries(js.frames)) for (const [grp, v] of Object.entries(g)) {
+        if (v.some((x) => Array.isArray(x))) v.forEach((r, i) => { if (r) set.add(`${pre}/${grp}_${i}`); });
+        else set.add(`${pre}/${grp}`);
+      }
+    } else for (const k of Object.keys(js.frames)) set.add(k);
+  }
+  const PROMISE = { firefighter: ['spray_hose', 'run', 'point', 'idle', 'walk', 'talk', 'happy', 'wave'],
+    police_officer: ['run', 'point', 'phone', 'think', 'walk', 'talk'], detective: ['think', 'point', 'phone', 'walk', 'talk', 'run'],
+    burglar: ['flee', 'run', 'arrested_walk', 'walk', 'idle', 'fight', 'argue', 'sad', 'sit'],
+    banker: ['walk', 'talk', 'think', 'shocked', 'phone', 'sit'], bank_teller: ['walk', 'talk', 'phone', 'shocked', 'idle'],
+    warehouse_worker: ['carry_box', 'carry_walk', 'walk', 'sweep'], forklift_driver: ['carry_box', 'walk', 'talk'],
+    delivery_driver: ['carry_box', 'run', 'walk', 'phone'], mover: ['carry_box', 'carry_walk', 'walk'],
+    construction_worker: ['sweep', 'carry_box', 'point', 'walk'], demolition_worker: ['sweep', 'carry_box', 'point', 'walk'],
+    reporter: ['run', 'phone', 'point', 'talk', 'walk', 'think', 'shocked'] };
+  const tf = new Cityfolk(M.townfolk);
+  const rng = mulberry32(2026);
+  let people = 0, fails = 0, frames = 0, missCore = 0, missOther = 0; const ex = [];
+  for (let k = 0; k < 130; k++) for (const [pr, anims] of Object.entries(PROMISE)) {
+    const p = tf.preset(pr, rng); people++;
+    for (const a of anims) {
+      if (!tf.canPlay(p, a)) { fails++; if (ex.length < 5) ex.push([pr, a, p.base, p.parts.join(',')]); continue; }
+      const info = tf.T.anims[a];
+      for (const d of info.dirs) for (let i = 0; i < info.frames; i++) for (const l of tf.layers(p, a, d, i)) {
+        frames++;
+        const ok = l.atlas && have[l.atlas] && have[l.atlas].has(l.frame);
+        if (!ok) { if (/^(head\.|face\.|brow\.)/.test(l.layer)) missCore++; else missOther++; }
+      }
+    }
+  }
+  // random townsfolk: every anim pickAnim() returns must be playable
+  let rp = 0, badPick = 0;
+  for (let k = 0; k < 2000; k++) { const p = tf.randomPerson(rng); rp++;
+    for (const a of tf.T.cityfolkAnims) { const r = tf.pickAnim(p, a); if (!tf.canPlay(p, r.anim)) badPick++; } }
+  const res = ({ fragments: frags, presetPeople: people, promiseFails: fails, layerFramesChecked: frames,
+    missingCore: missCore, missingOther: missOther, randomPeople: rp, unplayablePicks: badPick, ex });
+    console.log(JSON.stringify(res));
+    process.exit(fails || missCore || badPick ? 1 : 0);
+  
 }
 
 const HTML = (frags) => `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#eef3f9}</style>
@@ -185,4 +241,5 @@ async function phaser() {
 
 const i = process.argv.indexOf('--parity');
 if (i >= 0) await parity(process.argv[i + 1] || '/tmp/fv_cache/cityfolk/review/cityfolk_cases.json');
+else if (process.argv.includes('--jsgen')) await jsgen();
 else await phaser();

@@ -233,6 +233,7 @@ function checkV4B(B) {
   while (SP.length < 2) SP.push(SP.length ? SP[SP.length - 1] : 600);
   fixList(SP, 'v4.stationPorter', 1, 1e9, true);
   fixNum(V, 'stationPorterCapacity', 'v4.stationPorterCapacity', 1, 60, 12, true);
+  fixNum(V, 'stationPorterFoundingMin', 'v4.stationPorterFoundingMin', 1, 60, 4, true);
   const H = sub('houses');
   fixNum(H, 'item_plank', 'v4.houses.item_plank', 1, 999, 20, true);
   fixNum(H, 'time', 'v4.houses.time', 1, 600, 30);
@@ -253,7 +254,7 @@ function checkV4B(B) {
   fixNum(R2, 'people', 'v4.rank.2.people', 1, 999, 45, true);
   fixNum(R2, 'shops', 'v4.rank.2.shops', 0, F.order.length, Math.min(5, F.order.length), true);
   fixNum(R2, 'happy', 'v4.rank.2.happy', 0, 100, 70);
-  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 3000, true);
+  fixNum(R2, 'coins', 'v4.rank.2.coins', 1, 1e9, 10000, true);
   const C = sub('ceremony');
   fixNum(C, 'length', 'v4.ceremony.length', 3, 60, 12);
   fixNum(C, 'skipAfter', 'v4.ceremony.skipAfter', 0, C.length, 3);

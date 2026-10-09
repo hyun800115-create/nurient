@@ -49,6 +49,9 @@ const config = {
   backgroundColor: '#dbe6f2',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { antialias: true, pixelArt: false, roundPixels: false, powerPreference: 'high-performance' },
+  // (v4-B, texture memory) nothing uses sprite.preFX, and Phaser's FX pipeline would otherwise allocate ~75 MiB of
+  // render targets at boot (72 squares from 32² to 768² plus 4 screen-sized ones) — measured by texbudget.mjs's GL probe
+  disablePreFX: true,
   input: { activePointers: 3, keyboard: true, windowEvents: true },
   audio: { disableWebAudio: false },
   fps: { target: 60, smoothStep: true },

@@ -22,7 +22,7 @@ export function stepCost(s) {
   if (s.type === 'boat') return (s.level >= 2 ? BALANCE.boats.fishing : BALANCE.boats.rowboat).coins;
   // ---- (v4-B) the station porters, the 승격식 (rank ceremony)
   if (s.type === 'stationPorter') { const a = (BALANCE.v4 && BALANCE.v4.stationPorter) || [600, 1100]; return a[s.id === 'stn_porter2' ? 1 : 0]; }
-  if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 3000 }).coins;
+  if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 10000 }).coins;
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
   return BALANCE.costs3 && BALANCE.costs3[s.id];
 }

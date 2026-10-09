@@ -21,7 +21,7 @@ from bbld_assets import (bbld, variant_x, side_faces, wface, on_face, out_dir, a
                          table_parasol)
 
 
-def emblem_disc(name, center, emblem, r=0.5, bg=B.WHITE, rim=B.TURQ, es=0.9, legs=0.0, tilt=6.0):
+def emblem_disc(name, center, emblem, r=0.5, bg=B.WHITE, rim=B.TURQ, es=0.9, legs=0.0, tilt=6.0, glow=0.45):
     """Camera-facing round sign (psi-corrected for _x variants), optionally on two little legs (legs = leg length)."""
     if legs:
         a = math.radians(B.psi())
@@ -29,7 +29,9 @@ def emblem_disc(name, center, emblem, r=0.5, bg=B.WHITE, rim=B.TURQ, es=0.9, leg
             cyl(name + '_leg', 0.035, legs, (center[0] + s * r * 0.55 * math.cos(a), center[1] + s * r * 0.55 *
                                             math.sin(a), center[2] - r - legs + 0.08), mat=flat('#9AA3AE', 0.4, 0.5),
                 segs=8)
-    return T.sign_disc(name, center, r=r, bg=bg, rim=rim, emblem=emblem, es=es, psi=B.psi(), tilt=tilt, snow=False)
+    g = T.sign_disc(name, center, r=r, bg=bg, rim=rim, emblem=emblem, es=es, psi=B.psi(), tilt=tilt, snow=False)
+    B.glow_objs(g, strength=glow)            # backlit sign at night (own colours)
+    return g
 
 
 def mark_light_window(loc, size=0.8):
@@ -271,8 +273,11 @@ variant_x('beach_bar', bar_builder)
 BBQ_NOTE = ('Seafood BBQ "조개구이" (4.0 x 3.6 m): red-roofed shack with a red-white striped awning over a long charcoal '
             'grill full of clams, scallops and fish skewers; the chef stands BEHIND the grill (staffPoints[0], draw '
             'seafood_bbq_front above him), red paper lanterns, glowing blue live tanks with shellfish and fish, '
-            'little tables with stools on the side (seatPoints), vertical banners.  anims.work = 4 f: smoke puffs '
-            'rise from the grill, flames flicker, the lanterns sway.  inPoint = fresh fish / shellfish delivery pad.')
+            'little tables with stools on the side (seatPoints), vertical banners.  anims.work = 4 f: flames '
+            'flicker, embers glow, the lanterns sway.  The grill SMOKE is not baked (an opaque baked puff reads as a '
+            'blob and sits behind the chef): emit translucent rising puffs from fxPoints.smoke with the FX smoke '
+            'sheets (fx_smoke_puff, alpha 0.35-0.6, drifting up past the awning).  inPoint = fresh fish / '
+            'shellfish delivery pad.')
 
 
 @bbld('seafood_bbq', 'building', 'bbld_shops', fp=(4.0, 3.6), work=4, fps=7, notes=BBQ_NOTE, ko='조개구이',
@@ -296,7 +301,7 @@ def b_seafood_bbq():
         cyl('apost', 0.05, 1.95, (BX + s * (W / 2 - 0.05), AY + 0.06, 0.0), mat=flat(B.STUCCO_W, 0.5), segs=10)
     # lanterns hanging from the awning front (sway in the work frames)
     lant = []
-    for k, lx in enumerate((-1.1, 0.05, 1.05)):
+    for k, lx in enumerate((-1.3, 0.45, 1.2)):        # clear of the chef's face (staffPoints[0])
         lm = B.neon_mat('lant%d' % k, '#E8443A', 0.5, 3.0)
         with L.Collect() as lc:
             sphere('lan%d' % k, 0.15, (0, 0, -0.42), lm, scale=(1, 1, 1.2), segs=16, rings=10)
@@ -336,10 +341,16 @@ def b_seafood_bbq():
     box('tongs', (0.3, 0.03, 0.03), (BX + 0.75, GY - 0.25, 0.9), rot=(0, 0, 20), mat=flat('#C9CED6', 0.3, 0.8),
         bevel=0.005)
     flames = L.Flames('gfl', [((BX - 1.0 + 0.4 * k, GY, 0.86), 0.06, 0.16 + 0.04 * (k % 2)) for k in range(5)])
-    smoke = L.Smoke('gsm', (BX - 0.2, GY - 0.05, 1.1), n=3, rise=1.1, drift=(0.25, -0.3), r0=0.15, r1=0.42,
-                    alpha=0.85, seed=4)
-    smoke2 = L.Smoke('gsm2', (BX - 0.9, GY - 0.05, 1.05), n=3, rise=0.9, drift=(0.2, -0.25), r0=0.12, r1=0.32,
-                     alpha=0.8, seed=9)
+    # (no baked smoke: the game emits translucent FX puffs at fxPoints.smoke)
+    embers = []
+    erm = L.emissive('ember', '#FFB347', '#FF8A2A', 2.5)
+    B.night(erm, '#FFA040', 3.0)
+    ern = L.rng(17)
+    for k in range(10):
+        e = sphere('ember%d' % k, 0.014, (BX - 1.1 + 1.9 * ern.random(), GY + ern.uniform(-0.15, 0.15), 1.05), erm,
+                   segs=6, rings=4)
+        e.visible_shadow = False
+        embers.append((e, ern.random(), ern.uniform(0.25, 0.5)))
     # live tanks (right front, under the awning, glowing blue) with shellfish and fish
     TX = x1 - 0.2
     box('tankbase', (0.55, 0.9, 0.5), (TX - 0.1, -0.35, 0.0), mat=flat(B.STUCCO_W, 0.5), bevel=0.03)
@@ -377,7 +388,7 @@ def b_seafood_bbq():
                 bg='#FFF1D6', rim='#D9483B', es=0.95, legs=0.35)
     _, chim = T.chimney('chim', x1 - 0.4, BY + 0.35, PL + WH, PL + WH + 0.9, col='#8E6A5A')
     # markers
-    mark('staff', (BX - 0.35, GY + 0.55, 0.0), facing=(0, -1, 0))
+    mark('staff', (BX - 0.5, GY + 0.55, 0.0), facing=(0, -1, 0))
     for k in range(3):
         mark('customer', (BX - 0.1 + 0.1 * k, GY - 0.7 - 0.45 * k, 0.0), facing=(0, 1, 0))
     for sx, sy, f in seats:
@@ -386,17 +397,24 @@ def b_seafood_bbq():
     mark('in', (x0 - 0.3, -1.95, 0.0))
     B.light_pt((BX - 0.2, y0 - 0.2, PL + 1.3), 'window', 0.8)
 
+    def place_embers(i):
+        for e, ph, rise in embers:
+            u = (ph + i / 4.0) % 1.0
+            e.location.z = 1.05 + rise * u
+            e.scale = (1.0 - 0.7 * u,) * 3
+
     def idle():
         flames.show(False)
-        smoke.show(False)
-        smoke2.show(False)
+        for e, ph, rise in embers:
+            e.hide_render = True
         for g in lant:
             g.rotation_euler.x = 0.0
 
     def work(i):
         flames.set(i)
-        smoke.set(i)
-        smoke2.set((i + 2) % 4)
+        for e, ph, rise in embers:
+            e.hide_render = False
+        place_embers(i)
         for k, g in enumerate(lant):
             g.rotation_euler.x = math.radians(5.0 * math.sin(math.tau * (i / 4.0 + k * 0.3)))
     return {'idle': idle, 'work': work, 'overlay_plane': True,
@@ -450,8 +468,8 @@ def b_souvenir_shop():
                   scale=(1, 0.5, 1.2), segs=8, rings=6)
     mb.done('chime')
     # gable front: big scallop shell sign
-    T.emblem_at('gshell', lambda s: B.em_shell(s, col=B.PEACH), (BX, y0 - 0.08, PL + WH + 0.42), psi=0.0,
-                scale=0.75)
+    B.glow_objs(T.emblem_at('gshell', lambda s: B.em_shell(s, col=B.PEACH), (BX, y0 - 0.08, PL + WH + 0.42),
+                            psi=0.0, scale=0.75), strength=0.45)
     # side window (visible side)
     B.gwin('sw', (x1, BY + 0.1, PL + 0.75), 'x+', w=0.6, h=0.7, shutters=blue, curtain=B.LEMON)
     # outside: postcard spinner + straw-hat stand
@@ -539,8 +557,8 @@ def b_swimwear_shop():
     T.door('door', (BX + 0.8, y0, PL), 'y-', w=0.64, h=1.4, col=B.NAVY, frame_col=B.STUCCO_W, glass=True,
            step_col='#D8CBB6', step_depth=0.25)
     # giant striped swim ring on the roof, facing the camera
-    T.emblem_at('rring', lambda s: B.em_swimring(s, c1=B.CORAL), (BX + 0.1, BY + 0.1, PL + WH + 0.62),
-                psi=B.psi(), scale=2.0, tilt=6.0)
+    B.glow_objs(T.emblem_at('rring', lambda s: B.em_swimring(s, c1=B.CORAL), (BX + 0.1, BY + 0.1, PL + WH + 0.62),
+                            psi=B.psi(), scale=2.0, tilt=6.0), strength=0.45)
     # swim-ring rack (visible side front)
     rx, ry = x1 + 0.45, y0 - 0.1
     wm = tonal(B.WOOD_D, 0.06, 4.0)
@@ -610,7 +628,8 @@ def b_surf_shop():
     # big surfboard on the roof
     with L.Collect() as sb:
         B.em_surfboard(2.6, col=B.LEMON, stripe=B.CORAL)
-    L.group(BA.top_level(sb.objs), 'rboard', loc=(BX + 0.2, BY + 0.2, PL + WH + 1.2), rot=(0, 0, B.psi()))
+    B.glow_objs(L.group(BA.top_level(sb.objs), 'rboard', loc=(BX + 0.2, BY + 0.2, PL + WH + 1.2), rot=(0, 0, B.psi())),
+                strength=0.35)
     # surf-school board (blank) on the front wall
     B.sign_board('sboard', (BX - 0.5, y0 - 0.08, PL + 1.92), w=1.05, h=0.3, bg='#FFF8EC', frame='#2FA7A0', psi_=0.0)
     # board rack in front (left) with 5 colourful boards leaning
@@ -891,6 +910,22 @@ def b_tourist_info():
         else:
             box('wall', (ln + 0.02, 0.1, H_), (px_, py_, PL), rot=(0, 0, math.degrees(mid) + 90), mat=wm, bevel=0.02)
     box('iback', (1.3, 0.05, 1.4), (cx, cy + 0.55, PL), mat=T.glow_mat('iglow', 0.8, '#FFF0D6'), bevel=0.0)
+    # warm-lit inner lining where the camera actually looks through the window (the back-LEFT panels; the camera
+    # looks along (-1, +1)), with posters: the kiosk reads as open + lit by day and glows at night
+    lin = T.glow_mat('ilin', 0.75, '#FFE7C2')
+    for k, adeg in enumerate((90.0, 135.0, 180.0)):
+        a_ = math.radians(adeg)
+        rr = R * 0.92 - 0.075
+        ln = 2 * R * math.sin(math.pi / 8)
+        box('ilin%d' % k, (ln * 0.98, 0.02, H_ - 0.12), (cx + rr * math.cos(a_), cy + rr * math.sin(a_), PL),
+            rot=(0, 0, adeg + 90), mat=lin, bevel=0.0)
+        rp = rr - 0.02
+        for j, c in enumerate(((B.SKY, B.LEMON), (B.CORAL, B.MINT), (B.TURQ, B.PINK))[k]):
+            box('ipost%d%d' % (k, j), (0.2, 0.012, 0.28), (cx + rp * math.cos(a_) + (j - 0.5) * 0.24 *
+                                                           math.cos(a_ + math.pi / 2),
+                                                           cy + rp * math.sin(a_) + (j - 0.5) * 0.24 *
+                                                           math.sin(a_ + math.pi / 2), PL + 1.15 + 0.12 * j),
+                rot=(0, 0, adeg + 90), mat=flat(c, 0.6), bevel=0.0)
     for k in range(3):
         box('ibro', (0.3, 0.03, 0.4), (cx - 0.4 + 0.4 * k, cy + 0.5, PL + 0.95), mat=flat((B.SKY, B.CORAL, B.LEMON)[k],
                                                                                          0.6), bevel=0.01)
@@ -985,12 +1020,14 @@ def b_restroom_shower():
 
 AQ_NOTE = ('Mini aquarium "꼬마 수족관" (4.6 x 3.8 m): white building with a wave-shaped blue roof and a smiling whale on '
            'top, a big glowing glass tank bay on the front full of coral, sea-grass, a turtle and fish, a ticket '
-           'window by the door.  anims.work / anims.fish = 4 f: two schools of fish swim across the tank in opposite '
-           'directions and bubbles rise (seamless loop).  viewPoints = visitors in front of the glass (facing it); '
+           'window by the door.  The tank is deep sea-blue (darker back wall, light only at the top) so the '
+           'saturated fish, coral and the turtle read at phone zoom.  anims.work / anims.fish = 8 f at 6 fps: two '
+           'schools of fish drift across the tank in opposite directions in small steps and bubbles rise (seamless '
+           'loop).  viewPoints = visitors in front of the glass (facing it); '
            'staffPoints = ticket seller; inPoint = where donated rare fish are delivered (mission).')
 
 
-@bbld('mini_aquarium', 'building', 'bbld_civic', fp=(4.6, 3.8), work=4, fps=5, notes=AQ_NOTE, ko='꼬마 수족관',
+@bbld('mini_aquarium', 'building', 'bbld_civic', fp=(4.6, 3.8), work=8, fps=6, notes=AQ_NOTE, ko='꼬마 수족관',
       en='Mini aquarium', zone='attraction', anim_name='fish')
 def b_mini_aquarium():
     BX, BY, W, D = 0.0, 0.85, 3.6, 2.2
@@ -1001,8 +1038,8 @@ def b_mini_aquarium():
     import harbor_assets as HA
     HA.vault('vroof', W + 0.3, D / 2 + 0.2, 0.55, (BX - W / 2 - 0.15, BY, PL + WH),
              L.stripes('#3D7CC9', '#5C9FE0', 1.0 / 0.25, 'Y', rough=0.5, soft=0.15), cap=flat('#5C8FD6', 0.5))
-    T.emblem_at('whale', lambda s: B.em_whale(s), (BX + 0.2, BY + 0.1, PL + WH + 1.15), psi=B.psi(), scale=1.5,
-                tilt=4.0)
+    B.glow_objs(T.emblem_at('whale', lambda s: B.em_whale(s), (BX + 0.2, BY + 0.1, PL + WH + 1.15), psi=B.psi(),
+                            scale=1.5, tilt=4.0), strength=0.4)
     # tank bay (front left): frame + glowing water box + content
     TW_, TH_, TD_ = 2.0, 1.45, 0.75
     tx, tz = BX - 0.55, PL + 0.25
@@ -1012,54 +1049,69 @@ def b_mini_aquarium():
     box('tframe_t', (TW_ + 0.2, TD_ + 0.1, 0.14), (tx, y0 - TD_ / 2 + 0.05, tz + TH_), mat=fm, bevel=0.03)
     for s in (-1, 1):
         box('tframe_s', (0.1, TD_ + 0.1, TH_), (tx + s * (TW_ / 2 + 0.05), y0 - TD_ / 2 + 0.05, tz), mat=fm, bevel=0.02)
-    wmat = L.emissive('tankwater', '#3FA9E0', '#2F9AD8', 0.95)
-    B.night(wmat, '#4FB8F0', 2.2)
-    box('twater', (TW_, 0.05, TH_), (tx, y0 + 0.03, tz), mat=wmat, bevel=0.0)
+    # deep sea-blue water: the back wall darkens toward the bottom (light comes from the top), so the fish pop
+    nbw = L.NB('tankwater', rough=0.4)
+    tcw = nbw.n('ShaderNodeTexCoord')
+    spw = nbw.n('ShaderNodeSeparateXYZ')
+    nbw.link(tcw.outputs['Generated'], spw.inputs[0])
+    gz = nbw.map_range(spw.outputs['Z'], 0.0, 1.0)
+    colw = nbw.mix_rgb(gz, '#0E3F86', '#2C86C8')
+    nbw.base(colw)
+    nbw.link(colw, nbw.p.inputs['Emission Color'])
+    nbw.p.inputs['Emission Strength'].default_value = 0.42
+    wmat = nbw.m
+    B.night(wmat, '#2E86D8', 1.5)
+    # the back of the tank sits IN FRONT of the facade surface (y0): inside the wall it was hidden and the camera saw
+    # the white stucco through the glass (= the old milky tank)
+    box('twater', (TW_ - 0.02, 0.04, TH_), (tx, y0 - 0.03, tz), mat=wmat, bevel=0.0)
     for s in (-1, 1):
         box('twside', (0.03, TD_ - 0.1, TH_), (tx + s * (TW_ / 2 - 0.02), y0 - TD_ / 2 + 0.07, tz),
-            mat=L.emissive('tws%d' % (s > 0), '#5FB8E6', '#4FB0E0', 0.35), bevel=0.0)
+            mat=L.emissive('tws%d' % (s > 0), '#1D5BA6', '#1A58A8', 0.3), bevel=0.0)
     box('ttop', (TW_, TD_ - 0.1, 0.03), (tx, y0 - TD_ / 2 + 0.07, tz + TH_ - 0.03),
-        mat=L.emissive('ttopm', '#BFE9F8', '#9FDCF5', 0.6), bevel=0.0)
-    box('tglass', (TW_, 0.02, TH_), (tx, ty0 - 0.01, tz), mat=B.tank_glass('tglass', '#CFF0FA', 0.1, 0.0), bevel=0.0)
-    L.point_light('tankL', (tx - 0.3, y0 - 0.35, tz + TH_ - 0.15), '#DDF4FF', 70.0, 0.3)
-    L.point_light('tankL2', (tx + 0.5, y0 - 0.45, tz + 0.5), '#BFE9FF', 30.0, 0.3)
+        mat=L.emissive('ttopm', '#8FD4F2', '#7FCDF0', 0.55), bevel=0.0)
+    box('tglass', (TW_, 0.02, TH_), (tx, ty0 - 0.01, tz), mat=B.tank_glass('tglass', '#9FD6F0', 0.05, 0.0), bevel=0.0)
+    # light from the top only (a cool spot on the sand + the fish), no wash over the whole tank
+    L.point_light('tankL', (tx - 0.2, y0 - 0.3, tz + TH_ - 0.12), '#DDF4FF', 22.0, 0.3)
+    L.point_light('tankL2', (tx + 0.55, y0 - 0.35, tz + TH_ - 0.2), '#CBEFFF', 12.0, 0.3)
     box('tlip', (TW_ + 0.22, 0.06, 0.08), (tx, ty0 - 0.04, tz + TH_ + 0.1), mat=flat(B.TURQ, 0.5), bevel=0.02)
     box('tlip2', (TW_ + 0.22, 0.06, 0.06), (tx, ty0 - 0.04, tz - 0.1), mat=flat(B.TURQ, 0.5), bevel=0.02)
-    gm = flat('#F2FBFF', 0.05)
-    for k in range(3):
-        box('tsheen%d' % k, (0.05, 0.01, TH_ * 0.6), (tx - 0.7 + 0.25 * k, ty0 - 0.025, tz + 0.3), rot=(0, -28, 0),
-            mat=gm, bevel=0.0)
+    gm = flat('#D6F1FF', 0.05)
+    for k in range(2):                         # two thin glints on the glass (not a milky veil)
+        box('tsheen%d' % k, (0.025, 0.008, TH_ * (0.45 - 0.15 * k)), (tx - 0.78 + 0.13 * k, ty0 - 0.025, tz + 0.55),
+            rot=(0, -28, 0), mat=gm, bevel=0.0)
     # content: sand, rocks, coral, sea grass, turtle
-    box('tsand', (TW_ - 0.05, TD_ - 0.1, 0.12), (tx, y0 - TD_ / 2 + 0.07, tz), mat=flat('#F2E2B8', 0.8), bevel=0.02)
+    box('tsand', (TW_ - 0.05, TD_ - 0.1, 0.12), (tx, y0 - TD_ / 2 + 0.07, tz), mat=flat('#E9D29C', 0.8), bevel=0.02)
     rnd = L.rng(21)
     for k in range(6):
         x = tx - 0.85 + 0.34 * k
         h = rnd.uniform(0.4, 0.95)
         for j in range(3):
             cyl('grass', 0.025, h * rnd.uniform(0.7, 1.0), (x + 0.04 * j, y0 - 0.2, tz + 0.1),
-                mat=flat(('#3E9A5A', '#58B36B')[j % 2], 0.6), segs=6, r_top=0.008, rot=(0, rnd.uniform(-12, 12), 0))
-    for k, (dx, c) in enumerate(((-0.55, '#F48FB1'), (0.25, '#F28C38'), (0.7, '#B9A3E3'))):
+                mat=flat(('#2F8F4E', '#4DBA62')[j % 2], 0.6), segs=6, r_top=0.008, rot=(0, rnd.uniform(-12, 12), 0))
+    for k, (dx, c) in enumerate(((-0.55, '#FF6FA0'), (0.25, '#FF8A2A'), (0.7, '#B48CFF'))):
         for j in range(4):
             sphere('coral', 0.07 + 0.02 * (j % 2), (tx + dx + rnd.uniform(-0.1, 0.1), y0 - 0.32, tz + 0.15 + 0.08 * j),
                    flat(c, 0.6), segs=10, rings=6)
     with L.Collect() as tc:
-        sphere('tshell', 0.16, (0, 0, 0), flat('#5FA97A', 0.6), scale=(1.2, 1.0, 0.55), segs=16, rings=10)
-        sphere('thead', 0.07, (0.22, 0, 0.02), flat('#8FD08A', 0.6), segs=12, rings=8)
+        sphere('tshell', 0.16, (0, 0, 0), flat('#3FAE6A', 0.6), scale=(1.2, 1.0, 0.55), segs=16, rings=10)
+        sphere('thead', 0.07, (0.22, 0, 0.02), flat('#9BE08E', 0.6), segs=12, rings=8)
         for s in (-1, 1):
-            sphere('tfin', 0.06, (0.08, s * 0.16, -0.02), flat('#8FD08A', 0.6), scale=(1.4, 0.6, 0.3), segs=10,
+            sphere('tfin', 0.06, (0.08, s * 0.16, -0.02), flat('#9BE08E', 0.6), scale=(1.4, 0.6, 0.3), segs=10,
                    rings=6)
+            sphere('teye', 0.016, (0.27, s * 0.045, 0.06), flat('#1E2430', 0.3), segs=8, rings=6)
     turtle = L.group(BA.top_level(tc.objs), 'turtle', loc=(tx + 0.45, y0 - 0.35, tz + 1.0), rot=(70, 0, 15))
     # fish schools (animated): right-movers and left-movers, wrapping across the tank
     fish = []
-    cols = ('#F2C14E', '#F08A5D', '#5BC8D8', '#F48FB1', '#F4F1EA', '#F28C38')
+    cols = ('#FFC21A', '#FF6A2A', '#FF4F7B', '#3FE0FF', '#FFE45C', '#FF8A2A', '#B48CFF')
     for k in range(7):
         d = 1 if k % 2 == 0 else -1
         z = tz + 0.32 + 0.15 * k
         y = y0 - 0.3 - 0.05 * (k % 3)
-        o = PA.fish_model('afish%d' % k, length=0.34, height=0.17, thick=0.08, loc=(tx, y, z), rot=(90, 0, 0))
+        o = PA.fish_model('afish%d' % k, length=0.38, height=0.19, thick=0.09, loc=(tx, y, z), rot=(90, 0, 0))
         body = bpy.data.objects.get('afish%d_body' % k)
         if body is not None:
-            body.data.materials[0] = flat(cols[k % len(cols)], 0.45)
+            fm_ = L.emissive('afm%d' % k, cols[k % len(cols)], cols[k % len(cols)], 0.25)
+            body.data.materials[0] = fm_
         fish.append((o, d, (k * 0.37) % 1.0, z))
     bubbles = []
     for k in range(5):
@@ -1084,7 +1136,7 @@ def b_mini_aquarium():
     B.light_pt((tx, ty0 - 0.05, tz + 0.7), 'tank', 1.4)
 
     def place(i):
-        t4 = i / 4.0
+        t4 = i / 8.0                      # 8 frames: half the step per frame of the old 4-frame loop
         for o, d, ph, z in fish:
             u = (ph + t4) % 1.0
             x = tx - TW_ / 2 + 0.15 + (TW_ - 0.3) * (u if d > 0 else 1.0 - u)
@@ -1181,7 +1233,8 @@ def b_beach_arcade():
     for s in (-1, 1):
         cyl('sleg', 0.04, 0.6, (sx + s * 0.35 * math.cos(a), sy + s * 0.35 * math.sin(a), PL + WH + 0.1),
             mat=flat('#9AA3AE', 0.4, 0.5), segs=8)
-    T.emblem_at('star', lambda s: B.em_joystick(s), (sx, sy, sz), psi=B.psi(), scale=1.6, tilt=6.0)
+    B.glow_objs(T.emblem_at('star', lambda s: B.em_joystick(s), (sx, sy, sz), psi=B.psi(), scale=1.6, tilt=6.0),
+                strength=0.45)
     ring = []
     for k in range(16):
         t = math.tau * k / 16
@@ -1247,7 +1300,7 @@ def gate_builder():
         with L.Collect() as sc:
             B.em_shell(0.16, col=(B.PEACH, B.PINK)[k % 2])
         L.group(BA.top_level(sc.objs), 'bshell%d' % k, loc=(-1.25 + 0.5 * k, -0.17, 1.98), rot=(0, 0, 0))
-    T.emblem_at('sun', lambda s: B.em_sun(s), (0.0, -0.12, 3.45), psi=0.0, scale=0.95)
+    B.glow_objs(T.emblem_at('sun', lambda s: B.em_sun(s), (0.0, -0.12, 3.45), psi=0.0, scale=0.95), strength=0.45)
     B.pennant_line('pen1', (-G, -0.05, 2.9), (-0.55, -0.05, 3.05), n=6, sag=0.25)
     B.pennant_line('pen2', (0.55, -0.05, 3.05), (G, -0.05, 2.9), n=6, sag=0.25)
     for s in (-1, 1):

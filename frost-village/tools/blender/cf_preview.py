@@ -6,7 +6,8 @@ compositor tools/cityfolk_compose.py.  Plain python3 (numpy + Pillow).
 
   cityfolk_jobs.png     every preset x 3 people: idle S / walk SE / its signature anim / idle N
   cityfolk_anims.png    the twelve new anims on child / adult / elder (slim + round) bases
-  cityfolk_crowd.png    80 mixed townsfolk + cityfolk around a small incident (+ cityfolk_crowd_1x.png)
+  cityfolk_crowd.png    80 mixed townsfolk + cityfolk on a town street around a house fire, staged with the real
+                        town / vehicles / civic / fx_city assets (+ cityfolk_crowd_2x.png close-up)
   cityfolk_<anim>.gif   run / flee / argue / fight / arrested_walk / spray_hose / point / think / shocked / phone /
                         carry_box / sweep - a few people in several directions at the anim's fps
   cityfolk_proof.png    full Blender look-dev renders vs the paper-doll composites from the atlases
@@ -106,13 +107,22 @@ def jobs(tf, path, seed=8):
 def anims_sheet(tf, path, seed=11):
     rng = random.Random(seed)
     people = []
+    import cf_presets as cpr
+    need = ('run', 'flee', 'carry_box', 'spray_hose', 'fight', 'arrested_walk', 'sweep')
     for base in ('child_slim', 'child_round', 'adult_slim', 'adult_round', 'elder_slim', 'elder_round'):
-        for _ in range(400):
+        found = None
+        for _ in range(3000):
             p = tf.random_person(rng=rng)
-            if p['base'] == base and all(tf.can_play(p, a) for a in ('run', 'flee', 'carry_box', 'spray_hose', 'fight',
-                                                                         'arrested_walk', 'sweep')):
-                break
-        people.append(p)
+            if p['base'] == base:
+                if all(tf.can_play(p, a) for a in need):
+                    found = p
+                    break
+                last = p
+        if found is None:                 # dress the last person of that base in the age's 'tiny' wardrobe
+            age = base.split('_')[0]
+            keep = [pn for pn in last['parts'] if tf.T['parts'][pn]['space'] == 'head']
+            found = dict(last, parts=keep + sorted(cpr.TINY[age]))
+        people.append(found)
     frames = [('run', 'SE', 2), ('flee', 'S', 1), ('arrested_walk', 'N', 3), ('carry_box', 'SE', 1), ('argue', 'S', 0),
               ('fight', 'SE', 1), ('point', 'S', 1), ('think', 'S', 0), ('shocked', 'S', 1), ('phone', 'SE', 0),
               ('sweep', 'S', 1), ('spray_hose', 'SE', 1)]
@@ -174,6 +184,235 @@ def crowd(tf, path, n=80, seed=2027):
     img.convert('RGB').save(path.replace('.png', '_1x.png'), optimize=True)
     big = img.crop((cx - 520, cy - 330, cx + 520, cy + 330)).resize((2080, 1320), Image.NEAREST)
     big.convert('RGB').save(path, optimize=True)
+
+
+COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+MIRROR_OF = {'SW': 'SE', 'W': 'E', 'NW': 'NE'}
+
+
+def snap_dir(tf, anim, d):
+    """nearest dir the anim has (own dirs + mirrored SW / W / NW)."""
+    own = tf.T['anims'][anim]['dirs']
+    ok = [x for x in COMPASS if x in own or MIRROR_OF.get(x) in own]
+    k = COMPASS.index(d)
+    return min(ok, key=lambda x: min((COMPASS.index(x) - k) % 8, (k - COMPASS.index(x)) % 8))
+
+
+def crowd_scene(tf, path, frame=5, seed=2028):
+    """80 people (about half cityfolk presets, half random townsfolk) on a snowy town street around a house fire,
+    staged with the real game assets (assets/town houses, assets/vehicles, assets/civic props, assets/fx_city fire /
+    smoke / hose / mist / fight cloud via tools/fx/gen_fx_city_scene.py helpers, all read-only)."""
+    import numpy as np
+    sys.path.insert(0, os.path.join(TOOLS, 'fx'))
+    import gen_fx_city_scene as FX
+    rng = random.Random(seed)
+    W, H = 2240, 1240
+    O = np.array([1060.0, 600.0])
+
+    def S(x, y):
+        return O + FX.AX * x + FX.AY * y
+
+    canvas = FX.tile_fill((W, H), os.path.join(ASSETS, 'ground', 'ground_snow.png'))
+    FX.band(canvas, O, -24, 26, -0.2, -1.6, os.path.join(ASSETS, 'roads', 'sidewalk.png'), 1.5)
+    FX.band(canvas, O, -24, 26, -1.6, -6.2, os.path.join(ASSETS, 'roads', 'road_cobble_wide.png'), 1.5)
+    FX.band(canvas, O, -24, 26, -6.2, -7.8, os.path.join(ASSETS, 'roads', 'sidewalk.png'), 1.5)
+    drawn = []
+    count = {'city': 0, 'town': 0}
+    spots_used = []
+
+    def add(y, fn):
+        drawn.append((y, len(drawn), fn))
+
+    def place(p, anim, d, xy, face=None, i=None, no_items=False, city=False):
+        a2, f2 = tf.pick_anim(p, anim)
+        d2 = snap_dir(tf, a2, d)
+        nfr = tf.T['anims'][a2]['frames']
+        i = (frame + rng.randrange(nfr)) % nfr if i is None else i % nfr
+        img = tf.compose(p, a2, d2, i, face=face or f2, no_items=no_items)
+        sw, sh = tf.T['bases'][p['base']]['shadow']
+        xy = np.array(xy, float)
+        spots_used.append(xy)
+        add(xy[1], lambda: (person_at_shadow(canvas, xy, sw, sh), FX.put(canvas, img, xy, (0.5, 104 / 128))))
+        count['city' if city else 'town'] += 1
+        return a2, d2, i
+
+    def person_at_shadow(cv, xy, sw, sh):
+        shadow(cv, xy[0], xy[1], int(sw * 0.55), int(sh * 0.6), a=70)
+
+    def city(pr):
+        return tf.preset(pr, rng=rng)
+
+    def town():
+        return tf.random_person(rng=rng)
+
+    # ---- houses along the street; townhouse_b is on fire (fireMount)
+    row = [('toy_shop', -8.2), ('restaurant', -4.6), ('cafe', -1.0), ('townhouse_b', 2.6), ('bookstore', 6.2),
+           ('flower_shop', 9.8), ('hair_salon', 13.4), ('post_office', 17.0)]
+    hp = None
+    for k, x in row:
+        img, anc, s_ = FX.sprite('town', k)
+        p = S(x, 1.9)
+        if k == 'townhouse_b':
+            hp = p
+            arr = np.asarray(img).astype(np.float32)
+            arr[..., :3] *= np.array([255, 224, 200], np.float32) / 255.0
+            img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGBA')
+        add(p[1], (lambda img=img, anc=anc, p=p: FX.put(canvas, img, p, anc)))
+    mt = FX._man('fx_city')['fireMount']['buildings']['townhouse_b']
+    smoke, sa, _ = FX.sheet_frames('fx_smoke_column')
+    emb, ea, _ = FX.sheet_frames('fx_embers')
+    win, wa, _ = FX.sheet_frames('fx_fire_window')
+    glow, ga, _ = FX.sheet_frames('fx_fire_glow')
+    fdx, fdy, fkey, fsc, _ = mt['fires'][0]
+    fire, fa, fspec = FX.sheet_frames(fkey)
+    fpos = hp + [fdx, fdy]
+    add(hp[1] + 0.5, lambda: FX.put(canvas, glow[frame % 12], hp + mt['glow'][:2], ga, scale=mt['glow'][2], alpha=0.85))
+    add(hp[1] - 1.0, lambda: FX.put(canvas, glow[(frame + 3) % 12], hp + [10, 70], ga, scale=2.2, alpha=0.55))
+    add(hp[1] + 1, lambda: FX.put(canvas, smoke[frame % 16], hp + mt['smoke'][:2], sa, scale=mt['smoke'][2]))
+    for j, (wx, wy, wflip, wsc) in enumerate(mt['windows'][:2]):
+        add(hp[1] + 2, (lambda wx=wx, wy=wy, wflip=wflip, wsc=wsc, j=j:
+                        FX.put(canvas, win[(frame + 5 * j) % 12], hp + [wx, wy], wa, scale=wsc, flip=wflip)))
+    add(hp[1] + 3, lambda: FX.put(canvas, fire[frame % 12], fpos, fa, scale=fsc))
+    add(hp[1] + 4, lambda: FX.put(canvas, emb[frame % 16], hp + mt['embers'], ea))
+    # ---- vehicles + civic props
+    tp = S(-3.0, -4.7)
+    timg, tanc, tdef = FX.vehicle('fire_truck', 'siren_SE_%d' % (frame % 4))
+    add(tp[1] - 0.5, lambda: FX.shadow_ellipse(canvas, tp, tdef['shadow']['SE'][0] * 0.9, tdef['shadow']['SE'][1] * 0.9,
+                                               0.25))
+    add(tp[1], lambda: FX.put(canvas, timg, tp, tanc))
+    gr, gra, _ = FX.sheet_frames('fx_siren_glow_red')
+    add(tp[1] + 1, lambda: FX.put(canvas, gr[frame % 8], tp + np.array(tdef['sirenPoint']['SE']), gra))
+    hosep = tp + np.array(tdef['hosePoint']['SE'])
+    pcp = S(-14.0, -5.0)
+    pimg, panc, pdef = FX.vehicle('police_car', 'siren_SE_%d' % (frame % 4))
+    add(pcp[1] - 0.5, lambda: FX.shadow_ellipse(canvas, pcp, pdef['shadow']['SE'][0] * 0.9,
+                                                pdef['shadow']['SE'][1] * 0.9, 0.25))
+    add(pcp[1], lambda: FX.put(canvas, pimg, pcp, panc))
+    gb, gba, _ = FX.sheet_frames('fx_siren_glow_blue')
+    add(pcp[1] + 1, lambda: FX.put(canvas, gb[frame % 8], pcp + np.array(pdef['sirenPoint']['SE']), gba))
+    kp = S(9.0, -4.9)
+    kimg, kanc, kdef = FX.vehicle('truck_cargo', 'idle_NE_0')
+    add(kp[1] - 0.5, lambda: FX.shadow_ellipse(canvas, kp, kdef['shadow']['NE'][0] * 0.9, kdef['shadow']['NE'][1] * 0.9,
+                                               0.25))
+    add(kp[1], lambda: FX.put(canvas, kimg, kp, kanc))
+    for key, (x, y) in [('fire_hydrant', (-1.6, -0.5)), ('moving_boxes_stack', (7.4, -6.9)),
+                        ('furniture_pile_s', (11.0, -7.1)), ('wanted_board', (-9.8, -7.2)),
+                        ('scorch_decal_s', (3.6, -0.8))]:
+        try:
+            img, anc, _ = FX.sprite('civic', key)
+        except Exception:
+            continue
+        p = S(x, y)
+        add(p[1] - (60 if key.startswith('scorch') else 0), (lambda img=img, anc=anc, p=p: FX.put(canvas, img, p, anc)))
+    # ---- firefighters spraying the fire (nozzlePoint -> fx_hose_rope + tip, mist / steam at the target)
+    rope, _, _ = FX.sheet_frames('fx_hose_rope')
+    rope_l, _, _ = FX.sheet_frames('fx_hose_rope_long')
+    tip, _, _ = FX.sheet_frames('fx_hose_tip')
+    mist, ma, _ = FX.sheet_frames('fx_water_mist')
+    steam, sta, _ = FX.sheet_frames('fx_steam_puff')
+    hgt = fspec.get('heightPx', 200)
+    targets = [fpos + [-30, -0.3 * hgt * fsc], fpos + [40, -14], fpos + [-70, 10]]
+    for k, ((x, y), d) in enumerate([((-0.6, -1.0), 'NE'), ((5.9, -0.7), 'NW'), ((1.3, -2.6), 'NE')]):
+        ff = city('firefighter')
+        fp = S(x, y)
+        a2, d2, i = place(ff, 'spray_hose', d, fp, i=frame + k, city=True)
+        nz = tf.nozzle_point(ff, d2, i)
+        N = fp + np.array(nz[:2]) if nz else fp + [16, -42]
+        T = targets[k]
+
+        def hose_line(fp=fp, k=k):                        # canvas hose on the ground: truck -> firefighter
+            dd = ImageDraw.Draw(canvas)
+            a_, b_ = hosep + [0, 26], fp + [-6, -2]
+            mid = (a_ + b_) / 2 + [0, 30 + 12 * k]
+            pts = [tuple(a_ * (1 - t) ** 2 + 2 * mid * t * (1 - t) + b_ * t * t) for t in np.linspace(0, 1, 28)]
+            dd.line(pts, fill=(110, 30, 24, 255), width=7, joint='curve')
+            dd.line(pts, fill=(200, 64, 50, 255), width=4, joint='curve')
+        add(min(fp[1], tp[1]) - 3, hose_line)
+        add(hp[1] + 5 + k, (lambda T=T: FX.put(canvas, mist[(frame + 3 + k) % 12], T, ma)))
+        add(fp[1] - 0.5 if d2 in ('NE', 'NW', 'N') else fp[1] + 0.5,
+            (lambda N=N, T=T, k=k: FX.hose_rope(canvas, N, T, rope[(frame + k) % 8], tip[(frame + k) % 8],
+                                                t=0.4 * frame + k, rope_long=rope_l[(frame + k) % 8])))
+        add(hp[1] + 9 + k, (lambda T=T, k=k: FX.put(canvas, steam[(frame * 2 + k * 6) % 14], T + [14, -10], sta, 0.9)))
+    # a fourth firefighter runs in from the truck, a police officer points the crowd back
+    place(city('firefighter'), 'run', 'NE', S(-0.9, -3.2), city=True)
+    place(city('police_officer'), 'point', 'W', S(-3.0, -1.2), city=True)
+    # ---- residents fleeing the burning house across the street (+ a kid and a dog-less grandpa hurrying)
+    for (x, y), d in [((2.0, -1.9), 'SW'), ((3.6, -2.4), 'S'), ((4.6, -3.4), 'SE'), ((1.2, -3.6), 'SW'),
+                      ((3.0, -4.6), 'S'), ((5.4, -2.0), 'SE')]:
+        place(town(), 'flee', d, S(x, y))
+    # ---- the crowd watching from both sides of the house: shocked / pointing / phoning / thinking / talking
+    left = [(-9.6 + 0.9 * k + rng.uniform(-0.2, 0.2), -0.5 - 0.6 * (k % 3) + rng.uniform(-0.1, 0.1)) for k in range(9)]
+    right = [(8.4 + 0.95 * k + rng.uniform(-0.2, 0.2), -0.4 - 0.6 * (k % 3) + rng.uniform(-0.1, 0.1)) for k in range(9)]
+    moods = ['shocked', 'point', 'phone', 'shocked', 'think', 'talk', 'point', 'shocked', 'phone']
+    for k, (x, y) in enumerate(left):
+        place(town() if k % 3 else city(['reporter', 'banker', 'bank_teller'][k // 3]), moods[k], 'E', S(x, y),
+              city=k % 3 == 0)
+    for k, (x, y) in enumerate(right):
+        place(town() if k % 3 else city(['reporter', 'warehouse_worker', 'detective'][k // 3]),
+              moods[(k + 4) % 9], 'W', S(x, y), city=k % 3 == 0)
+    # ---- the chase: a burglar flees with the loot sack, two police officers run after him
+    place(city('burglar'), 'flee', 'W', S(-11.0, -3.4), city=True)
+    place(city('police_officer'), 'run', 'W', S(-8.8, -2.8), city=True)
+    place(city('police_officer'), 'run', 'W', S(-8.0, -4.1), city=True)
+    # ---- the arrest: a police officer walks a caught burglar to the patrol car
+    place(city('burglar'), 'arrested_walk', 'SW', S(-11.6, -6.6), city=True)
+    place(city('police_officer'), 'walk', 'SW', S(-10.6, -6.2), city=True)
+    place(city('detective'), 'think', 'S', S(-8.6, -7.0), city=True)
+    place(town(), 'point', 'W', S(-7.8, -7.4))
+    # ---- a scuffle (fight inside fx_fight_cloud back / front), a police officer and gawkers
+    fa_ = S(14.0, -6.9)
+    fb_ = fa_ + [44, 0]
+    pa, pb = town(), town()
+    place(pa, 'fight', 'E', fa_)
+    place(pb, 'fight', 'W', fb_)
+    fback, fba, _ = FX.sheet_frames('fx_fight_cloud_back')
+    ffront, ffa, _ = FX.sheet_frames('fx_fight_cloud_front')
+    mid = (fa_ + fb_) / 2
+    add(mid[1] - 0.5, lambda: FX.put(canvas, fback[frame % 12], mid, fba))
+    add(mid[1] + 0.5, lambda: FX.put(canvas, ffront[frame % 12], mid, ffa))
+    place(city('police_officer'), 'run', 'E', S(11.2, -5.4), city=True)
+    for (x, y), m in [((15.6, -7.6), 'shocked'), ((12.6, -7.7), 'argue'), ((16.4, -6.6), 'point')]:
+        place(town(), m, 'W' if x > 14 else 'E', S(x, y))
+    # ---- moving day by the truck: movers / warehouse crew / a courier carry boxes, a forklift driver directs
+    for (x, y), d, pr in [((6.2, -6.6), 'NE', 'mover'), ((7.0, -7.4), 'E', 'mover'), ((8.6, -6.9), 'NE', 'warehouse_worker'),
+                          ((10.0, -7.4), 'N', 'delivery_driver')]:
+        place(city(pr), 'carry_box', d, S(x, y), city=True)
+    place(city('forklift_driver'), 'point', 'SE', S(10.6, -6.3), city=True)
+    # ---- clean-up crew sweeping the snow on the far sidewalk, a demolition worker passing by
+    place(city('construction_worker'), 'sweep', 'SE', S(-4.0, -7.0), city=True)
+    place(city('demolition_worker'), 'sweep', 'S', S(-2.4, -7.4), city=True)
+    place(town(), 'sweep', 'E', S(-0.6, -7.0))
+    # ---- everyday life goes on: walkers, runners, chatting neighbours on both sidewalks (fill to 80)
+    cand = [(x, y) for x in np.arange(-20.0, 26.0, 0.9) for y in (-0.7, -1.3, -6.7, -7.4)]
+    rng.shuffle(cand)
+    k = 0
+    for x, y in cand:
+        if count['city'] + count['town'] >= 80:
+            break
+        xy = S(x + rng.uniform(-0.2, 0.2), y + rng.uniform(-0.1, 0.1))
+        if not (60 < xy[0] < W - 60 and 150 < xy[1] < H - 90):
+            continue
+        if any(np.hypot(*(xy - q)) < 46 for q in spots_used) or abs(x - 2.6) < 4.5 and y > -2:
+            continue
+        an = rng.choice(['walk', 'walk', 'talk', 'idle', 'run', 'phone', 'think', 'talk', 'wave'])
+        d = rng.choice(['SE', 'SW', 'NE', 'NW', 'S', 'E', 'W'])
+        if k % 4 == 0:
+            place(city(rng.choice(PRESETS)), an, d, xy, city=True)
+        else:
+            place(town(), an, d, xy)
+        k += 1
+    drawn.sort(key=lambda t: (t[0], t[1]))
+    for _, _, fn in drawn:
+        fn()
+    n = count['city'] + count['town']
+    caption(canvas, f'Cityfolk crowd at 1x: {n} people ({count["city"]} cityfolk presets + {count["town"]} random '
+                    'townsfolk) on a town street around a house fire',
+            'firefighters aim the hose (nozzlePoint) at fx_city fire, residents flee, the crowd is shocked / points / '
+            'phones, police chase a burglar, an arrest, a scuffle in fx_fight_cloud, movers with boxes, sweepers')
+    canvas.convert('RGB').save(path, optimize=True)
+    big = canvas.crop((600, 300, 1640, 960)).resize((2080, 1320), Image.NEAREST)
+    big.convert('RGB').save(path.replace('.png', '_2x.png'), optimize=True)
+    return n
 
 
 # --------------------------------------------------------------------------- gifs
@@ -281,8 +520,13 @@ def main():
         anims_sheet(tf, os.path.join(PREV, 'cityfolk_anims.png'))
         print('anims done', flush=True)
     if 'crowd' in only:
-        crowd(tf, os.path.join(PREV, 'cityfolk_crowd.png'))
-        print('crowd done', flush=True)
+        try:
+            n = crowd_scene(tf, os.path.join(PREV, 'cityfolk_crowd.png'))
+            print(f'crowd scene done ({n} people)', flush=True)
+        except Exception as e:                    # fx_city / town / vehicles not available: plain plaza crowd
+            print('crowd scene failed (%s) - plain crowd' % e, flush=True)
+            crowd(tf, os.path.join(PREV, 'cityfolk_crowd.png'))
+            print('crowd done', flush=True)
     if 'gifs' in only:
         for a in ANIMS3:
             anim_gif(tf, a, os.path.join(PREV, f'cityfolk_{a}.gif'))

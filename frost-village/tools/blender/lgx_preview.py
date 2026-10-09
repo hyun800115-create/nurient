@@ -93,6 +93,28 @@ class Lib:
         s = self.S[key]
         return self.get(s['atlas'], s['frame']), s
 
+    def prop_ops(self, ox, oy):
+        """outdoorProps as draw ops (img, x, y, sort_y): sprite anchor (= ground point) at building anchor + point."""
+        ops = []
+        for op in self.C.get('outdoorProps', []):
+            s = self.S[op['sprite']]
+            im = self.get(s['atlas'], s['frame'])
+            w, h = s['frameSize']
+            gx, gy = ox + op['point'][0], oy + op['point'][1]
+            ops.append((im, int(round(gx - s['anchor'][0] * w)), int(round(gy - s['anchor'][1] * h)), gy))
+        return ops
+
+    def smoke(self):
+        if not hasattr(self, '_smoke'):
+            self._smoke = None
+            try:
+                man, get = bp.atlas_lib('fx/manifest.json')
+                d = man['sprites']['fx_smoke']
+                self._smoke = get(d['atlas'], d['frame'])
+            except Exception as e:                       # noqa: BLE001
+                print('note: fx_smoke not available (%s)' % e)
+        return self._smoke
+
     def vehicle(self, key, anim, d, i, over=False):
         if key in self.V:
             v = self.V[key]
@@ -164,35 +186,30 @@ class Centre:
         self.stock = self.make_stock(fill, rng_seed)
 
     def make_stock(self, fill=0.85, seed=3):
-        """Reference stock layout: every slot holds lanes x rows of item stacks (spanPx / depthPx), filled to
-        `fill` (0 = empty shelves, 1 = every stack at maxStackPx).  Small items (content <= 44 px wide at 1x) get
-        2 lanes x 2 rows, big ones (sofa, bed, fridge ...) 1 x 1.  -> list of (slot, key, img, scale, pos list)."""
+        """Reference stock layout (manifest conventions.stock): every slot holds stacks of one item key taken from
+        slot.itemFit, one stack per slot.cells[item.sizeClass] cell, at stockScale[category]; `fill` 0 = bare
+        shelves, 1 = every cell stacked to itemFit[key].  -> list of (slot, key, img, scale, pos list)."""
         rnd = random.Random(seed)
         out = []
         cats = self.C['rackCategories']
+        scales = self.C.get('stockScale', {})
         for s in sorted(self.C['rackSlots'], key=lambda s: s['drawOrder']):
-            key = cats[s['category']][(s['level'] * 2 + s['slot'] + seed) % len(cats[s['category']])]
+            fit = s.get('itemFit') or {}
+            keys = [k for k in cats[s['category']] if k in fit]
+            if not keys:
+                continue
+            key = keys[(s['level'] * 2 + s['slot'] + seed) % len(keys)]
             im, sd = self.L.item(key)
-            bb = im.getbbox() or (0, 0, 72, 72)
-            small = (bb[2] - bb[0]) <= 44
-            sc = STOCK_SCALE
-            lanes, rows = (2, 2) if small else (1, 1)
-            if s['rack'] == 'floor_bays':
-                lanes, rows = (1, 1) if not small else (2, 1)
-            h1 = (sd.get('topPx') or 40) * sc         # topPx = height of one item above its anchor (px)
+            sc = scales.get(s['category'], STOCK_SCALE)
+            cells = s['cells'][sd.get('sizeClass', 'big')]
             step = max(4.0, (sd.get('stackStep') or 12) * sc)
-            if h1 > s['maxStackPx'] + 6:
-                continue                               # (never happens with the shipped items)
-            nmax = 1 + max(0, int((s['maxStackPx'] - h1) // step))
+            nmax = fit[key]
             stacks = []
-            for r in range(rows):
-                u = (r + 0.5) / rows - 0.5 if rows > 1 else 0.0
-                for ln in range(lanes):
-                    t = (ln + 0.5) / lanes - 0.5 if lanes > 1 else 0.0
-                    x = s['point'][0] + s['spanPx'][0] * t + s['depthPx'][0] * u
-                    y = s['point'][1] + s['spanPx'][1] * t + s['depthPx'][1] * u
-                    stacks.append((r, y, x))
-            stacks.sort(key=lambda q: (q[0], q[1]))
+            for t, u in cells:
+                x = s['point'][0] + s['spanPx'][0] * t + s['depthPx'][0] * u
+                y = s['point'][1] + s['spanPx'][1] * t + s['depthPx'][1] * u
+                stacks.append((u, y, x))
+            stacks.sort(key=lambda q: (q[0], q[1]))            # back rows first, then by screen y
             total = len(stacks) * nmax
             want = int(round(total * fill * rnd.uniform(0.85, 1.15))) if fill < 1 else total
             want = max(0, min(total, want))
@@ -203,7 +220,7 @@ class Centre:
                 idx = sorted(range(len(stacks)), key=lambda q: (per[q], -stacks[q][0], rnd.random()))[0]
                 per[idx] += 1
             pos = []
-            for (r, y, x), n in zip(stacks, per):
+            for (u, y, x), n in zip(stacks, per):
                 for k in range(n):
                     pos.append((x, y, k * step))
             out.append((s, key, im, sc, pos))
@@ -222,15 +239,21 @@ class Centre:
                 ops.append((ims, int(round(ox + x - ax)), int(round(oy + y - ay - lift)), oy + y + lift * 0.0001))
         return ops
 
-    def draw(self, canvas, ox, oy, shell=1.0, cut=0.0, belt=0, doors=(0, 0), lamp=0, actors=None, stock=True):
+    def draw(self, canvas, ox, oy, shell=1.0, cut=0.0, belt=0, doors=(0, 0), lamp=0, actors=None, stock=True,
+             lang='ko', props=True):
         """ox, oy = where the building anchor lands on the canvas.  actors = {'mid': [...], 'front': [...],
-        'outside': [...]} each (img, x, y, depth) with x, y = top-left on the canvas."""
+        'outside': [...]} each (img, x, y, depth) with x, y = top-left on the canvas.  Follows layerOrder: apron +
+        shadow_open, the inside (only when it can be seen), shell + nameplate + dock leaves (shell alpha), props, then
+        the outdoor props y-sorted with the outside actors."""
         actors = actors or {}
         L = self.L
         ax, ay = L.A
 
         def put(im, a=1.0):
-            canvas.alpha_composite(with_alpha(im, a), (ox - ax, oy - ay))
+            if im is not None and a > 0.001:
+                canvas.alpha_composite(with_alpha(im, a), (ox - ax, oy - ay))
+        put(L.layer('apron'))
+        put(L.layer('shadow_open'), 1.0 if cut > 0.001 else 1.0 - shell)
         inside = shell < 0.999 or doors[0] > 0 or doors[1] > 0
         if inside:
             put(L.layer('back'))
@@ -249,52 +272,16 @@ class Centre:
             for im, x, y, _ in sorted(front, key=lambda t: t[3]):
                 canvas.alpha_composite(im, (x, y))
             put(L.layer('stub'))
-        else:
-            put(L.layer('floor'))           # the apron outside the walls is in the floor layer
         if cut > 0.001:
             put(L.layer('shell_cut'), cut)
-        if shell > 0.001:
-            put(L.layer('shell'), shell)
-            nb = name_board(L)
-            if nb:
-                canvas.alpha_composite(with_alpha(nb[0], shell), (ox + nb[1], oy + nb[2]))
-            put(L.patch('dock1', doors[0]), shell)
-            put(L.patch('dock2', doors[1]), shell)
+        put(L.layer('shell'), shell)
+        put(L.layer('nameplate_' + lang), shell)
+        put(L.patch('dock1', doors[0]), shell)
+        put(L.patch('dock2', doors[1]), shell)
         put(L.layer('props'))
-        for im, x, y, _ in sorted(actors.get('outside', []), key=lambda t: t[3]):
+        outside = list(actors.get('outside', [])) + (L.prop_ops(ox, oy) if props else [])
+        for im, x, y, _ in sorted(outside, key=lambda t: t[3]):
             canvas.alpha_composite(im, (x, y))
-
-
-_BOARD = {}
-
-
-def name_board(lib, lang='ko'):
-    """The game-side name label on the blank board (manifest nameBoard): text fitted into the board, sheared onto
-    the -Y facade.  Returns (img, dx, dy) with dx, dy = top-left relative to the building anchor."""
-    nb = lib.C.get('nameBoard')
-    if not nb:
-        return None
-    if lang in _BOARD:
-        return _BOARD[lang]
-    w, h = nb['widthPx'], nb['heightPx']
-    txt = nb['text'][lang]
-    big = Image.new('RGBA', (w * 4, h * 4), (0, 0, 0, 0))
-    d = ImageDraw.Draw(big)
-    size = h * 4
-    f = kfont(size)
-    while size > 8 and (f.getlength(txt) > w * 4 * 0.9 or size > h * 4 * 0.62):
-        size -= 2
-        f = kfont(size)
-    tw = f.getlength(txt)
-    col = tuple(int(nb['color'][i:i + 2], 16) for i in (1, 3, 5))
-    d.text(((w * 4 - tw) / 2, (h * 4 - size) / 2 - size * 0.12), txt, fill=col + (255,), font=f)
-    flat_ = big.resize((w, h), Image.LANCZOS)
-    k = nb['shearY']
-    H2 = int(h + w * k + 2)
-    sheared = flat_.transform((w, H2), Image.AFFINE, (1, 0, 0, -k, 1, 0), resample=Image.BICUBIC)
-    cx, cy = nb['point']
-    _BOARD[lang] = (sheared, int(round(cx - w / 2)), int(round(cy - h / 2 - w * k / 2)))
-    return _BOARD[lang]
 
 
 def person_op(lib, preset, pt, d, ox, oy, anim='idle', i=0, seed=0, vil=None):
@@ -405,35 +392,40 @@ def scene_actors(lib, ox, oy, rich=True, t=0):
     return act
 
 
+def leg_point(fp, i, u):
+    p0, p1 = fp[i]['point'], fp[(i + 1) % len(fp)]['point']
+    return (p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u)
+
+
+def band_of(b):
+    return 'mid' if b in ('mid', 'mixed') else ('outside' if b == 'outside' else 'front')
+
+
 def compose_scene(lib, rich=True, shell=0.0, cut=0.0, t=0, size=(2200, 1400), origin=(980, 760), roads=True,
-                  forklift_at=None, doors=(5, 5), with_vehicles=True):
+                  forklift_at=None, doors=(5, 5), with_vehicles=True, stock_fill=0.85):
     canvas = Image.new('RGBA', size, BG + (255,))
     ox, oy = origin
     ground(canvas, ox, oy, roads)
     C = lib.C
-    cen = Centre(lib)
+    cen = Centre(lib, fill=stock_fill)
     act = scene_actors(lib, ox, oy, rich, t)
-    # forklift (loaded) on the lane heading SE + driver; a second empty one heading SW in the dock corridor
     fp = C['forkliftPath']
+    # loaded forklift driving the rack lane toward the tools rack (leg 7, facing its legDir) + driver
     if forklift_at is None:
-        p0, p1 = fp[0]['point'], fp[1]['point']
-        u = 0.35
-        pt = (p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u)
+        pt, d, band = leg_point(fp, 7, 0.78), fp[7]['legDir'], fp[7]['legBand']
     else:
-        pt = forklift_at
-    band = fp[0]['legBand']
-    for op in vehicle_ops(lib, 'forklift_loaded', 'move', 'SE', t % 4, pt, ox, oy, driver='factory', seed=7):
-        act['mid' if band in ('mid', 'any', 'mixed') else band].append(op)
+        pt, d, band = forklift_at
+    for op in vehicle_ops(lib, 'forklift_loaded', 'move', d, t % 4, pt, ox, oy, driver='factory', seed=7):
+        act[band_of(band)].append(op)
     if rich:
-        q0, q1 = fp[3]['point'], fp[4]['point']
-        pt2 = (q0[0] + (q1[0] - q0[0]) * 0.2, q0[1] + (q1[1] - q0[1]) * 0.2)     # beside (not over) the packer
-        for op in vehicle_ops(lib, 'forklift', 'idle', 'SW', t % 2, pt2, ox, oy, driver='dock_worker', seed=9):
-            act['front'].append(op)
+        # an empty forklift at node 0 picking at the food rack (faces node.dir, forks lifted)
+        n0 = fp[0]
+        for op in vehicle_ops(lib, 'forklift', 'lift', n0['dir'], 3, n0['point'], ox, oy, driver='dock_worker',
+                              seed=9):
+            act[band_of(n0['legBand'])].append(op)
         # pallet jack pushed by a worker toward the materials bays
-        jp = (C['rackSlots'][0]['point'][0], C['rackSlots'][0]['point'][1])
         jx = [s for s in C['rackSlots'] if s['rack'] == 'floor_bays'][0]['point']
         jpt = (jx[0] - 70, jx[1] - 6)
-        del jp
         vj = lib.V['pallet_jack']
         hp = vj['handlePoint']['SE']
         for op in vehicle_ops(lib, 'pallet_jack', 'move', 'SE', t % 4, jpt, ox, oy):
@@ -444,13 +436,14 @@ def compose_scene(lib, rich=True, shell=0.0, cut=0.0, t=0, size=(2200, 1400), or
             pp_ = lib.tf.push_point(p, 'SE')
             px_ = (jpt[0] + hp[0] - pp_[0], jpt[1] + hp[1] - pp_[1])
             act['front'].append((pim, int(round(ox + px_[0] - 64)), int(round(oy + px_[1] - 104)), oy + px_[1]))
-    # vehicles at the docks (outside)
+    # vehicles at the docks (outside): dock 1 = van bay, dock 2 = truck bay (dockRoles)
     if with_vehicles:
         dv = C['dockVehiclePoints']
-        for op in vehicle_ops(lib, 'truck_cargo', 'idle', 'SE', 0, dv['truck_cargo'][0], ox, oy, driver='postal', seed=3):
-            act['outside'].append(op)
-        for op in vehicle_ops(lib, 'delivery_van_red', 'idle', 'SE', 0, dv['delivery_van'][1], ox, oy,
+        for op in vehicle_ops(lib, 'delivery_van_red', 'idle', 'SE', 0, dv['delivery_van'][0], ox, oy,
                               driver='station', seed=5):
+            act['outside'].append(op)
+        for op in vehicle_ops(lib, 'truck_cargo', 'idle', 'SE', 0, dv['truck_cargo'][1], ox, oy, driver='postal',
+                              seed=3):
             act['outside'].append(op)
     cen.draw(canvas, ox, oy, shell=shell, cut=cut, belt=t % 8, doors=doors, lamp=t % 4, actors=act)
     return canvas
@@ -495,14 +488,14 @@ def preview_scene(lib, out):
         seen.add(r)
         L_(roles[r], pt, 8)
     L_('shop owners queue', C['customerPoints'][2], 8)
-    L_('truck at dock 1', C['dockVehiclePoints']['truck_cargo'][0], 40)
-    L_('van at dock 2', C['dockVehiclePoints']['delivery_van'][1], 40)
-    p0, p1 = C['forkliftPath'][0]['point'], C['forkliftPath'][1]['point']
-    L_('forklift on its path', (p0[0] + (p1[0] - p0[0]) * 0.35, p0[1] + (p1[1] - p0[1]) * 0.35), 14)
+    L_('van at dock 1', C['dockVehiclePoints']['delivery_van'][0], 40)
+    L_('truck at dock 2', C['dockVehiclePoints']['truck_cargo'][1], 40)
+    L_('forklift on its path', leg_point(C['forkliftPath'], 7, 0.78), -96)
+    L_('forklift picking', C['forkliftPath'][0]['point'], 14)
     label(cv, labs)
     cv = cv.crop((330, 250, 1880, 1130))
-    caption(cv, 'logistics_center at 1x, open: stocked rackSlots, staff (townsfolk), forklifts on forkliftPath, '
-                'truck + van at the docks, shop owners queuing').save(out, optimize=True)
+    caption(cv, 'logistics_center at 1x, open: stocked racks, staff, forklifts on forkliftPath, van at dock 1, truck at '
+                'dock 2, shop owners queuing').save(out, optimize=True)
 
 
 def preview_cutaway(lib, out):
@@ -536,13 +529,12 @@ def gif(frames, out, dur=100):
 def preview_reveal(lib, out):
     seq = [1.0] * 5 + [1.0 - k / 8.0 for k in range(1, 9)] + [0.0] * 10 + [k / 8.0 for k in range(1, 9)] + [1.0] * 3
     fp = lib.C['forkliftPath']
-    p0, p1 = fp[0]['point'], fp[1]['point']
     frames = []
     for t, a in enumerate(seq):
         u = (t % 34) / 34.0
-        pt = (p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u)
+        pt = leg_point(fp, 7, u)
         cv = compose_scene(lib, rich=True, shell=a, t=t, size=(1500, 1000), origin=(640, 560), roads=False,
-                           forklift_at=pt, doors=(0, 0), with_vehicles=False)
+                           forklift_at=(pt, fp[7]['legDir'], fp[7]['legBand']), doors=(0, 0), with_vehicles=False)
         cv = cv.crop((60, 40, 1340, 940)).resize((768, 540), Image.LANCZOS)
         frames.append(cv)
     gif(frames, out, 110)
@@ -573,19 +565,35 @@ def preview_conveyor(lib, out):
 
 
 def preview_docks(lib, out):
+    """Shell closed, both dock doors rolling up / down: the leaf patches only, so the REAL inside shows through the
+    opening (stock, a forklift waiting on the dock-1 leveller node), darkened by the roof shadow; a van at dock 1 and
+    a truck at dock 2."""
     ox, oy = 640, 560
     C = lib.C
     d1, d2 = C['dockPoints']
-    box = (ox + min(d1[0], d2[0]) - 160, oy + min(d1[1], d2[1]) - 260, ox + max(d1[0], d2[0]) + 260,
-           oy + max(d1[1], d2[1]) + 140)
+    box = (ox + min(d1[0], d2[0]) - 200, oy + min(d1[1], d2[1]) - 270, ox + max(d1[0], d2[0]) + 330,
+           oy + max(d1[1], d2[1]) + 170)
     seq = [0, 0, 1, 2, 3, 4, 5, 5, 5, 5, 4, 3, 2, 1, 0, 0]
+    fp = C['forkliftPath']
+    n5 = fp[5]
+    base = Image.new('RGBA', (1500, 1000), BG + (255,))
+    ground(base, ox, oy, roads=False)
+    cen = Centre(lib)
 
     def fn(i):
-        cv = Image.new('RGBA', (1500, 1000), BG + (255,))
-        ground(cv, ox, oy, roads=False)
-        Centre(lib).draw(cv, ox, oy, shell=1.0, doors=(seq[i], seq[(i + 3) % len(seq)]))
+        cv = base.copy()
+        act = {'mid': [], 'front': [], 'outside': []}
+        for op in vehicle_ops(lib, 'forklift_loaded', 'idle', n5['dir'], i % 2, n5['point'], ox, oy, driver='factory',
+                              seed=7):
+            act[band_of(n5['legBand'])].append(op)
+        dv = C['dockVehiclePoints']
+        act['outside'] += vehicle_ops(lib, 'delivery_van_blue', 'idle', 'SE', 0, dv['delivery_van'][0], ox, oy,
+                                      driver='station', seed=5)
+        act['outside'] += vehicle_ops(lib, 'truck_cargo', 'idle', 'SE', 0, dv['truck_cargo'][1], ox, oy,
+                                      driver='postal', seed=3)
+        cen.draw(cv, ox, oy, shell=1.0, doors=(seq[i], seq[(i + 3) % len(seq)]), actors=act, belt=i % 8)
         return cv
-    crop_anim(lib, out, box, fn, len(seq), 1, 110)
+    crop_anim(lib, out, box, fn, len(seq), 1, 120)
 
 
 def vehicle_frame(lib, key, anim, d, i, size=(420, 360), driver=None, bg=BG + (255,)):
@@ -631,17 +639,61 @@ def preview_trucks(lib, out):
     gif(fr, out, 130)
 
 
+def operator_img(lib, preset, d, anim='serve', i=0, seed=31):
+    """A townfolk operator facing d (falls back to the nearest rendered facing)."""
+    if not lib.tf:
+        return None
+    p = lib.tf.preset(preset, seed)
+    for dd, an in ((d, anim), (d, 'idle'), ('SE', anim), ('SE', 'idle')):
+        try:
+            return lib.tf.compose(p, an, dd, i)
+        except Exception:                                 # noqa: BLE001
+            continue
+    return None
+
+
+def smoke_ops(lib, x, y, t, n=3, period=8):
+    """Soft fx_smoke puffs rising from (x, y) - the game-side chimney smoke (smokeFx) the producers expect."""
+    sm = lib.smoke()
+    ops = []
+    if sm is None:
+        return ops
+    for k in range(n):
+        ph = ((t + k * period / n) % period) / period            # 0 .. 1 life of this puff
+        sc = 0.16 + 0.22 * ph
+        im = sm.resize((max(1, int(sm.width * sc)), max(1, int(sm.height * sc))), Image.LANCZOS)
+        arr = np.asarray(im).astype(np.float32)
+        arr[..., :3] = arr[..., :3] * 0.0 + np.array([224, 230, 238], np.float32)
+        arr[..., 3] *= 0.85 * (1.0 - ph) ** 0.8 * min(1.0, ph * 6 + 0.2)
+        im = Image.fromarray(arr.clip(0, 255).astype(np.uint8), 'RGBA')
+        ops.append((im, int(x + 10 * ph - im.width / 2), int(y - 46 * ph - im.height / 2)))
+    return ops
+
+
 def preview_producers(lib, out):
+    """Both producers working: baked work anim + the operator at workSpot (profile, facing workSpot.dir) + the
+    game-side soft chimney smoke at fxPoints.smoke."""
     fr = []
     for i in range(8):
-        row = Image.new('RGBA', (1000, 520), BG + (255,))
+        row = Image.new('RGBA', (1000, 560), BG + (255,))
         x = 0
-        for key in ('furniture_workshop', 'appliance_factory'):
+        for key, preset in (('furniture_workshop', 'factory'), ('appliance_factory', 'factory')):
             s = lib.S[key]
             frs = s['anims']['work']['frames']
             im = lib.get(s['atlas'], frs[i % 4])
             W, H = s['frameSize']
-            row.alpha_composite(im, (x + (500 - W) // 2, (520 - H) // 2))
+            x0, y0 = x + (500 - W) // 2, (560 - H) // 2 + 30
+            row.alpha_composite(im, (x0, y0))
+            ax, ay = s['anchor'][0] * W, s['anchor'][1] * H
+            ws = s.get('workSpot', {})
+            if ws.get('point'):
+                op = operator_img(lib, preset, ws.get('dir', 'E'), 'serve', i % 4, seed=31 + x)
+                if op is not None:
+                    row.alpha_composite(op, (int(x0 + ax + ws['point'][0] - 64), int(y0 + ay + ws['point'][1] - 104)))
+            sp = (s.get('fxPoints') or {}).get('smoke')
+            if sp:
+                for sim, sx, sy in smoke_ops(lib, x0 + ax + sp[0], y0 + ay + sp[1], i):
+                    row.alpha_composite(sim, (sx, sy))
             x += 500
         fr.append(row)
     gif(fr, out, 125)
@@ -655,8 +707,12 @@ def preview_all(lib, out):
     op = Image.new('RGBA', (lib.W, lib.H), (0, 0, 0, 0))
     Centre(lib).draw(op, lib.A[0], lib.A[1], shell=0.0, stock=False)
     ents.append(('logistics_center (open, empty racks)', op))
-    for name in ('back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub', 'shell_cut', 'props'):
+    for name in ('apron', 'shadow_open', 'back', 'floor', 'interior', 'interior_racks', 'interior_front', 'stub',
+                 'shell_cut', 'nameplate_ko', 'nameplate_en', 'props'):
         ents.append(('_' + name, lib.layer(name).resize((lib.W // 2, lib.H // 2), Image.LANCZOS)))
+    for k, sd in lib.S.items():
+        if sd.get('kind') == 'prop' and sd.get('of') == CENTER:
+            ents.append((k.replace(CENTER + '_', ''), lib.spr(k)))
     for key in ('furniture_workshop', 'appliance_factory'):
         s = lib.S[key]
         ents.append((key, lib.spr(key)))

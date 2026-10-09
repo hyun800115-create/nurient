@@ -170,9 +170,10 @@ def render_overlays(spec, cache, meta, samples):
     snap = snapshot(objs)
     cat = bpy.data.objects.get('ShadowCatcher')
     sc = bpy.context.scene
-    sc.cycles.samples = samples or spec['samples']
     ovs = {}
     for name, ov in CL.OVERLAYS.items():
+        # soft smoke alpha is not denoised (OIDN works on colour only): more samples for the smoke overlays
+        sc.cycles.samples = max(samples or spec['samples'], 64) if name == 'smoke' else (samples or spec['samples'])
         mine = set(o.name for o in ov['objs'])
         names = overlay_frames(key, name, ov['frames'])
         for i, fn in enumerate(names):

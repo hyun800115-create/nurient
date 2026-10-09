@@ -219,7 +219,7 @@ try {
   // ---- 9. (§18 #6) the whistle steps up when a world label would sit under it
   if (await ev(() => !!(window.__FV.scene.dog && window.__FV.scene.dog.r))) {
     const lab = await ev(() => {
-      const gs = window.__FV.scene, ui = window.__FV.scene.ui;
+      const gs = window.__FV.scene, ui = window.__FV.game.scene.getScene('UI');
       const all = [...Object.values(gs.progress.pads), ...Object.values(gs.sites)].filter((o) => o && o.label && o.labelBg && o.label.visible);
       const o = all[0]; if (!o) return null;
       // put that label right under the whistle: centre the camera so the label lands at (62, base)
@@ -232,11 +232,11 @@ try {
     });
     if (lab) {
       await adv(1.5);
-      const w = await ev(() => { const ui = window.__FV.scene.ui; return { y: Math.round(ui.whistleBtn.y), lift: ui.whistleLift, base: ui.whistleBaseY }; });
+      const w = await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); return { y: Math.round(ui.whistleBtn.y), lift: ui.whistleLift, base: ui.whistleBaseY }; });
       step('9 the whistle steps up over a pad / plot label', w.lift > 0 && w.y < w.base - 60, { ...w, label: lab.id });
       await ev(() => window.__FV.camera());
       await adv(1.5);
-      const w2 = await ev(() => { const ui = window.__FV.scene.ui; return { y: Math.round(ui.whistleBtn.y), lift: ui.whistleLift, base: ui.whistleBaseY }; });
+      const w2 = await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); return { y: Math.round(ui.whistleBtn.y), lift: ui.whistleLift, base: ui.whistleBaseY }; });
       step('9 ... and settles back when the label is gone', w2.y >= w2.base - 1 || w2.lift > 0, w2);
     }
   }

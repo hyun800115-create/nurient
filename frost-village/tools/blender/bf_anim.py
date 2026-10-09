@@ -68,6 +68,8 @@ SPLASH_DEPTH = 0.14       # splash_play: feet this deep under the surface (shin-
 BOARD_TOP = 0.045         # surf: board deck height above the water (board ~0.07 thick, bottom submerged)
 LIE_HIPS_Z = 0.13         # sunbathe: hip joint height above the lying surface (towel / lounger top)
 SWIM_HEAD_CUT = SWIM_HEAD_Z   # head frames of pose 'swim' are cut this far below the head centre
+FLOAT_BOB = 0.032        # float: ring bobs +-3.2 cm with the swell (~ +-1.5 px; was 1.4 cm = static at phone zoom)
+SWIM_BOB = 0.026         # swim: head rises +-2.6 cm with every stroke (2 bobs per 8-frame cycle)
 
 # --------------------------------------------------------------------------- head poses / faces
 # (look_down_deg, tilt_deg, turn_deg); 'swim' cheats toward the camera in S/SE/E like the social poses
@@ -193,7 +195,7 @@ def p_swim(i, n, ch, d):
     p['hand_R'] = (-20, 0, 0)
     p['hand_L'] = (-20, 0, 0)
     faces = ['smile', 'neutral', 'smile', 'happy', 'smile', 'neutral', 'blink', 'smile']
-    p.update(meta('swim', faces[i % 8], place=('head', SWIM_HEAD_Z + 0.012 * math.sin(2 * a)), ikw=ik,
+    p.update(meta('swim', faces[i % 8], place=('head', SWIM_HEAD_Z + SWIM_BOB * math.sin(2 * a)), ikw=ik,
                   water=True))
     return p
 
@@ -204,15 +206,15 @@ def p_swim(i, n, ch, d):
 def p_float(i, n, ch, d):
     a = TAU * i / n
     s, c = math.sin(a), math.cos(a)
-    p = {'root': (9.0 + 2.0 * s, 3.0 * c, 4.0 * s),
-         **lean(-2, 1.5 * c, 0), 'chest@': (0, 0, 0.004 * s),
+    p = {'root': (9.0 + 3.5 * s, 4.5 * c, 5.0 * s),
+         **lean(-2, 2.5 * c, 0), 'chest@': (0, 0, 0.004 * s),
          'hip_R': (58 + 6 * s, 10, 0), 'hip_L': (52 - 6 * s, 10, 0),
          'knee_R': (60 - 10 * s, 0, 0), 'knee_L': (66 + 10 * s, 0, 0)}
     ik = {'R': ('ring', (-38.0, 0.035), (-0.9, 0.2, 0.3)), 'L': ('ring', (38.0, 0.035), (0.9, 0.2, 0.3))}
     p['hand_R'] = (-50, 0, 20)
     p['hand_L'] = (-50, 0, -20)
     faces = ['smile', 'relax', 'relax', 'blink']
-    p.update(meta('swim', faces[i % 4], place=('ring', FLOAT_RING_Z + 0.014 * s), ikw=ik, water=True,
+    p.update(meta('swim', faces[i % 4], place=('ring', FLOAT_RING_Z + FLOAT_BOB * s), ikw=ik, water=True,
                   ring=True))
     return p
 
@@ -266,21 +268,33 @@ def p_dig(i, n, ch, d):
 
 
 # --------------------------------------------------------------------------- beach ball
-BALL_R = 0.10            # radius of the beach ball the hands hold (m); game: scale its ball sprite to match
+# The held ball has a FIXED world size (not scaled with the body): 0.19 m radius for adults / elders = the beach prop
+# beach_ball_bounce (footprintM.radius 0.2), 0.15 m for children (their short chibi arms cannot span a bigger one;
+# the game lerps the flying ball's radius between the thrower's and the catcher's radiusPx).
+BALL_R = 0.19
+BALL_R_AGE = {'child': 0.15}
+BALL_GRIP = 0.022        # hand centre this far outside the ball's surface
+BALL_HOLD_DEG = 42.0     # palms this far round the back of the ball from its widest point (short arms)
 
 
-def _ball_hands(cx, cf, cz, spread=BALL_R + 0.035):
-    """Both hands at the sides of a ball centred at (cx, cf, cz) (facing frame, from the anchor)."""
-    return {'R': ('anchor', (cx - spread, cf, cz), (-0.9, -0.1, -0.3)),
-            'L': ('anchor', (cx + spread, cf, cz), (0.9, -0.1, -0.3))}
+def ball_r(age):
+    return BALL_R_AGE.get(age, BALL_R)
 
 
-THROW_KEYS = [  # ball centre (x, f, z), body extras, head pose, face
-    ((0.0, 0.27, 0.44), {**legs_stand(4, 6)}, 'soc', 'smile'),
-    ((0.0, 0.25, 0.26), {**squat(26, 0.34), **lean(18)}, 'nod', 'smile'),
-    ((0.0, 0.29, 0.46), {**legs_stand(4, 4), **lean(4)}, 'soc', 'talk_open'),
-    ((0.0, 0.30, 0.74), {**legs_stand(3, 0), **body(0, 0, 0.035), **lean(-6)}, 'up', 'talk_open'),
-    (None, {**legs_stand(3, 2), **body(0, 0, 0.02), **lean(-4)}, 'up', 'happy'),
+def _ball_hands(cx, cf, cz):
+    """Both hands on the sides of the ball.  (cx, cf, cz) in adult units from the anchor (facing frame, scaled by the
+    body size k): cf = where the ball's BACK surface is, so the centre is at cf * k + radius (it never sinks into a
+    round tummy) - see bf_render.solve_world_arms kind 'ball'."""
+    return {'R': ('ball', (cx, cf, cz, -1.0), (-0.9, -0.1, -0.3)),
+            'L': ('ball', (cx, cf, cz, 1.0), (0.9, -0.1, -0.3))}
+
+
+THROW_KEYS = [  # ball (x, back-surface f, centre z), body extras, head pose, face
+    ((0.0, 0.13, 0.55), {**legs_stand(4, 6)}, 'soc', 'smile'),                                   # hold at the tummy
+    ((0.0, 0.12, 0.44), {**squat(22, 0.34), **lean(14)}, 'nod', 'smile'),                       # dip (wind-up)
+    ((0.0, 0.16, 0.62), {**legs_stand(4, 4), **lean(2)}, 'soc', 'talk_open'),                   # swing up
+    ((0.0, 0.17, 0.82), {**legs_stand(3, 0), **body(0, 0, 0.045), **lean(-8)}, 'up', 'laugh'),   # RELEASE (impact)
+    (None, {**legs_stand(3, 2), **body(0, 0, 0.03), **lean(-5)}, 'up', 'happy'),               # follow-through
     (None, {**legs_stand(3, 4)}, 'soc', 'happy'),
 ]
 
@@ -290,10 +304,10 @@ def p_ball_throw(i, n, ch, d):
     p = dict(extra)
     if ball is not None:
         ik = _ball_hands(*ball)
-    elif i % 6 == 4:          # follow-through: arms up in a V
-        ik = {'R': ('anchor', (-0.24, 0.20, 0.82), (-0.8, 0.0, -0.4)), 'L': ('anchor', (0.24, 0.20, 0.82), (0.8, 0.0, -0.4))}
+    elif i % 6 == 4:          # follow-through: arms up and forward in a V after the ball
+        ik = {'R': ('anchor', (-0.25, 0.26, 0.86), (-0.8, 0.0, -0.4)), 'L': ('anchor', (0.25, 0.26, 0.86), (0.8, 0.0, -0.4))}
     else:
-        ik = {'R': ('anchor', (-0.22, 0.12, 0.52), (-0.8, 0.2, -0.3)), 'L': ('anchor', (0.22, 0.12, 0.52), (0.8, 0.2, -0.3))}
+        ik = {'R': ('anchor', (-0.24, 0.12, 0.52), (-0.8, 0.2, -0.3)), 'L': ('anchor', (0.24, 0.12, 0.52), (0.8, 0.2, -0.3))}
     p['hand_R'] = (0, 0, 60)
     p['hand_L'] = (0, 0, -60)
     p.update(meta(hp, face, ikw=ik, ball=ball))
@@ -301,12 +315,12 @@ def p_ball_throw(i, n, ch, d):
 
 
 CATCH_KEYS = [
-    (None, (0.30, 0.24, 0.56), {**legs_stand(5, 8), **lean(6)}, 'up', 'neutral'),        # ready, hands apart
-    (None, (0.32, 0.30, 0.66), {**legs_stand(5, 4), **lean(2)}, 'up', 'wow'),            # reach
-    ((0.0, 0.32, 0.60), None, {**legs_stand(5, 10), **lean(-2)}, 'up', 'wow'),          # CATCH (impact)
-    ((0.0, 0.26, 0.48), None, {**squat(16, 0.34), **lean(8)}, 'soc', 'happy'),          # pull in
-    ((0.0, 0.27, 0.50), None, {**legs_stand(4, 2), **body(0, 0, 0.03)}, 'soc', 'happy'),  # hop
-    ((0.0, 0.27, 0.44), None, {**legs_stand(4, 6)}, 'soc', 'smile'),                    # = ball_throw frame 0
+    (None, (0.46, 0.24, 0.58), {**legs_stand(5, 8), **lean(6)}, 'up', 'neutral'),        # ready, hands apart
+    (None, (0.50, 0.30, 0.70), {**legs_stand(5, 4), **lean(2)}, 'up', 'wow'),            # reach
+    ((0.0, 0.19, 0.70), None, {**legs_stand(5, 10), **lean(-2)}, 'up', 'wow'),          # CATCH (impact)
+    ((0.0, 0.12, 0.50), None, {**squat(16, 0.34), **lean(8)}, 'soc', 'happy'),          # pull in (hug)
+    ((0.0, 0.13, 0.58), None, {**legs_stand(4, 2), **body(0, 0, 0.03)}, 'soc', 'happy'),  # hop
+    ((0.0, 0.13, 0.55), None, {**legs_stand(4, 6)}, 'soc', 'smile'),                    # = ball_throw frame 0
 ]
 
 

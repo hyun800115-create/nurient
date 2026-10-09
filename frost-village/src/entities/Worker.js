@@ -816,10 +816,19 @@ export class StationPorter extends Hauler {
     const W = gs.warehouse;
     if (W && W.enabled) for (const ty of W.types()) consider(W, ty, W.count(ty), W.outPad.x, W.outPad.y);
     const over = (BALANCE.warehouse && BALANCE.warehouse.overflowAt) || 0.6;
+    // (v4-B bots: a 슈퍼마켓 card waited 10+ min for cans the general store's porter always took first) what a
+    // founding card still needs is taken from a station / workshop output once a few are there, not only the
+    // overflow; the 정기 납품 cards keep to the surplus
+    const G = this.growth, early = Math.max(1, Math.floor(Number(BALANCE.v4 && BALANCE.v4.stationPorterFoundingMin) || 4));
     for (const s of gs.sources()) {
-      if (!s.enabled || !s.outStack || s.outStack.max <= 0 || s.outStack.count / s.outStack.max < over) continue;
+      if (!s.enabled || !s.outStack || s.outStack.max <= 0) continue;
+      const surplus = s.outStack.count / s.outStack.max >= over;
       const seen = {};
-      for (const it of s.outStack.items) { if (seen[it.type]) continue; seen[it.type] = true; consider(s, it.type, s.outStack.countOf(it.type), s.outPad.x, s.outPad.y); }
+      for (const it of s.outStack.items) {
+        if (seen[it.type]) continue; seen[it.type] = true;
+        const have = s.outStack.countOf(it.type);
+        if (surplus || (G && G.foundingNeedOf && G.foundingNeedOf(it.type) > 0 && have >= early)) consider(s, it.type, have, s.outPad.x, s.outPad.y);
+      }
     }
     return best;
   }

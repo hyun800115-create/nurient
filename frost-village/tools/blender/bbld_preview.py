@@ -4,8 +4,11 @@ bbld_preview.py - previews for assets/beach_bld (called by bbld_pack.py, or on i
     docs/previews/bbld_scene.png    a beachfront street at 1x: hotel + pool + shops along a promenade, a boardwalk
                                     with lamps and string lights, a sand strip with the bar / lifeguard station, the sea
                                     in front; people = existing assets/townfolk (+ townfolk2 sit) at the sprite points
-    docs/previews/bbld_night.png    the same street at night (tint + <key>_glow ADD + hotel night frame + lamp halos)
-    docs/previews/bbld_phone.png    the day street as a 390 x 844 phone screen shows it at zoom 0.6 / 0.9 / 1.2
+    docs/previews/bbld_night.png    the same street at night, drawn with the game's DayClock model: one MULTIPLY overlay
+                                    (0x5a6aa8 at darkness 0.45) over everything, then <key>_glow (ADD) in the light layer
+                                    above it + DayClock fv_glow halos at every lightPoints entry (lightK)
+    docs/previews/bbld_phone.png    the day street as a 390 x 844 phone screen REALLY shows it at zoom 0.6 / 0.9 / 1.2
+                                    (the game shows 720 logical px across at zoom 1: View.W = 720)
     docs/previews/bbld_anims.gif    seafood_bbq grill, mini_aquarium fish, beach_arcade lights, string lights
     docs/previews/bbld_pool.gif     hotel pool with the baked fallback water loop
     docs/previews/bbld_hotel_daynight.gif   resort hotel fading day -> night -> day
@@ -16,7 +19,9 @@ look-alike of src/systems/Water.js built from assets/water (tropical palette LUT
 when those fragments exist, else a procedural fallback; behind the shops a stand-in back street (curbs, road, sidewalk,
 flower bed, park lawn).  Beach props (parasols, loungers, palms, pines, towels, dune grass, sandcastle, volleyball net,
 ice-cream cart, swim-area buoy line, raft, banana boat / kayak / swan pedal boat) come from assets/beach when present.
-People are the existing townsfolk with in-memory warm-coast presets (SUMMER below) until assets/beachfolk is packed.
+People: assets/beachfolk (tools/beachfolk_compose.py) when it loads - hotel uniforms, lifeguards, swimmers ON the pool
+water, sunbathers on the loungers (sunbathe dir = lyingFeetDirs), tourists; else the townsfolk in the in-memory
+warm-coast presets (SUMMER below).
 """
 import json
 import math
@@ -35,7 +40,25 @@ import prop_pack as pp   # noqa: E402
 
 ASSETS = os.path.join(GAME, 'assets')
 KX, KY, KZ = 45.2548, 22.6274, 55.4256
-NIGHT_TINT = np.array([0.42, 0.48, 0.72])
+# the game's night (src/systems/DayClock.js at BALANCE.v4.day.darkness 0.45): x (1 - a) + a * 0x5a6aa8
+NIGHT_MUL = np.array([(1 - 0.45) + 0.45 * c / 255.0 for c in (0x5A, 0x6A, 0xA8)], np.float32)
+PHONE_LOGICAL_W = 720                            # src/core/View.js W: logical px across the screen at zoom 1
+
+
+def fv_glow(size=96):
+    """DayClock makeGlow(): 96 px radial gradient (premultiplied RGB, 0..1)."""
+    r = np.hypot(*np.meshgrid(np.arange(size) + 0.5 - size / 2, np.arange(size) + 0.5 - size / 2)) / (size / 2)
+    stops = [(0.0, (255, 236, 180, 0.95)), (0.25, (255, 214, 140, 0.55)), (0.6, (255, 190, 110, 0.16)),
+             (1.0, (255, 180, 100, 0.0))]
+    out = np.zeros((size, size, 3), np.float32)
+    for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
+        m = (r >= t0) & (r < t1)
+        f = ((r - t0) / (t1 - t0))[m]
+        for ch in range(3):
+            col = c0[ch] + (c1[ch] - c0[ch]) * f
+            a = c0[3] + (c1[3] - c0[3]) * f
+            out[..., ch][m] = col * a / 255.0
+    return out
 
 
 def font(size):
@@ -116,21 +139,32 @@ def preview_all(builds, frames, derived, out):
             ko = (ko + ' (옆 방향)') if ko else '옆 방향'
         im = frames[m['frames'][0]]
         if m.get('water'):
-            comp = im.copy()
-            comp.alpha_composite(frames[m['water']['frames'][0]])
-            ents.append((k, ko, im))
-            ents.append((k + ' + hotel_pool_water', '물 (대체 애니)', comp))
+            comp = frames[m['water']['frames'][0]].copy()        # water UNDER the deck
+            comp.alpha_composite(im)
+            ents.append((k + ' (deck, water cut out)', ko + ' (데크)', im))
+            ents.append((k + ' over hotel_pool_water', '물 위에 데크 (대체 물)', comp))
             continue
         ents.append((k, ko, im))
         if 'anims' in m:
             nfr = m['anims']['work']['frames']
             ents.append((k + ' (%s)' % (m.get('animAlias') or 'work'), '움직임 프레임', frames[nfr[1]]))
-        if k + '_night' in frames:
-            bg = Image.new('RGBA', im.size, (24, 30, 58, 255))
-            bg.alpha_composite(frames[k + '_night'])
-            ents.append((k + '_night', '밤 (창문 불빛)', bg))
+        if k in ('resort_hotel', 'beach_cafe', 'icecream_shop', 'tourist_info', 'hotel_pool') and k + '_glow' in frames:
+            bg = Image.new('RGBA', im.size, (0, 0, 0, 0))
+            if m.get('water'):
+                bg.alpha_composite(frames[m['water']['frames'][0]])
+            bg.alpha_composite(im)
+            arr = np.asarray(bg).astype(np.float32)
+            g = np.asarray(frames[k + '_glow']).astype(np.float32)
+            ga = g[..., :3] * (g[..., 3:4] / 255.0)
+            a0 = arr[..., 3:4] / 255.0
+            rgb = arr[..., :3] * a0 * NIGHT_MUL + ga                      # premultiplied: sprite x overlay + glow
+            al = np.maximum(a0[..., 0], np.clip(ga.max(-1) / 255.0, 0, 1))
+            arr[..., :3] = rgb / np.maximum(al, 1e-3)[..., None]
+            arr[..., 3] = al * 255.0
+            ents.append((k + ' at night', '밤 (DayClock + glow)', Image.fromarray(arr.clip(0, 255).astype(np.uint8),
+                                                                                  'RGBA')))
     shelf(ents, out, title='햇살 해변 Sunny Beach - assets/beach_bld at 1x (PPU 64): hotel + pool, shops, civic, street '
-                           '- idle + one anim frame, the hotel night frames, the pool with its fallback water')
+                           '- idle + one anim frame, a few at night (game DayClock + glow), the pool deck over its water')
 
 
 # --------------------------------------------------------------------------- procedural beach ground
@@ -330,7 +364,8 @@ class Scene:
         self.W, self.H, self.ox, self.oy = W, H, ox, oy
         self.items = []              # (depth, image, x, y, kind)  kind: 'n' normal, 'glow' additive (night only)
         self.labels = []
-        self.pools = []              # night: warm light pools on the ground (screen px)
+        self.pools = []              # (unused: the night uses DayClock lights below)
+        self.lights = []             # night: (screen x, screen y, k) -> DayClock.addLight halos
 
     def content_box(self, pad=(70, 70, 70, 260)):
         xs0 = [x for _, im, x, y, k in self.items if k != 'glow']
@@ -353,12 +388,6 @@ class Scene:
 
     def render(self, ground_rgb, night=False, labels=True, caption=''):
         base = ground_rgb.copy()
-        if night:
-            base = base * NIGHT_TINT * 0.82
-            X, Y = np.meshgrid(np.arange(self.W), np.arange(self.H))
-            for (px, py) in self.pools:
-                r2 = ((X - px) / 95.0) ** 2 + ((Y - py) / 48.0) ** 2
-                base += np.exp(-r2 * 2.2)[..., None] * np.array([120, 84, 38], np.float32)
         img = Image.fromarray(base.clip(0, 255).astype(np.uint8)).convert('RGBA')
         glow = np.zeros((self.H, self.W, 3), np.float32)
         for d, im, x, y, kind in sorted(self.items, key=lambda t: t[0]):
@@ -376,13 +405,21 @@ class Scene:
                 continue
             if kind == 'nightonly' and not night:
                 continue
-            if night and kind != 'nightonly':
-                a = np.asarray(im).astype(np.float32)
-                a[..., :3] *= NIGHT_TINT
-                im = Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGBA')
-            img.alpha_composite(im, (x, y)) if (x >= 0 and y >= 0) else img.paste(im, (x, y), im)
+            _paste(img, im, x, y)
         if night:
+            # DayClock: ONE multiply overlay over the whole world (sprites are NOT tinted one by one), then the light
+            # layer above it: the <key>_glow sprites (ADD) and the fv_glow halos of DayClock.addLight(x, y, k)
             arr = np.asarray(img).astype(np.float32)
+            arr[..., :3] *= NIGHT_MUL
+            G = fv_glow()
+            for (lx, ly, k) in self.lights:
+                sz = max(8, int(round(96 * 1.25 * k)))
+                g = np.asarray(Image.fromarray((G * 255).astype(np.uint8)).resize((sz, sz), Image.BILINEAR)
+                               ).astype(np.float32) * 0.75
+                x0, y0 = int(round(lx - sz / 2)), int(round(ly - sz / 2))
+                xa, ya, xb, yb = max(0, x0), max(0, y0), min(self.W, x0 + sz), min(self.H, y0 + sz)
+                if xb > xa and yb > ya:
+                    glow[ya:yb, xa:xb] += g[ya - y0:yb - y0, xa - x0:xb - x0]
             arr[..., :3] = np.clip(arr[..., :3] + glow, 0, 255)
             img = Image.fromarray(arr.astype(np.uint8), 'RGBA')
         d_ = ImageDraw.Draw(img)
@@ -397,6 +434,13 @@ class Scene:
             d_.rectangle([0, self.H - 40, self.W, self.H], fill=(23, 132, 160, 255))
             d_.text((16, self.H - 33), caption, fill=(255, 255, 255), font=font(18))
         return img
+
+
+def _paste(img, im, x, y):
+    if x >= 0 and y >= 0:
+        img.alpha_composite(im, (x, y))
+    else:
+        img.paste(im, (x, y), im)
 
 
 # Warm-coast stand-in presets for the existing townsfolk (in memory only, assets untouched): light tops, no scarves /
@@ -572,10 +616,32 @@ def beach_props(sc, night):
     return {'swan': boat('swan_pedal_boat', 20.0, -13.4, 'SE', 'idle')}
 
 
+def beachfolk_lib():
+    """assets/beachfolk compositor (hotel uniforms, lifeguards, swimmers, sunbathers) or None."""
+    if 'bf' not in _BEACH:
+        try:
+            import beachfolk_compose as bfc
+            _BEACH['bf'] = bfc.Beachfolk.from_assets()
+        except Exception as e:                 # noqa: BLE001
+            print('note: beachfolk unavailable (%s) - townsfolk stand-ins' % e)
+            _BEACH['bf'] = None
+    return _BEACH['bf']
+
+
+def entries(builds):
+    """Manifest-style entries (staffDepths, lyingFeetDirs ...) for the raw builds, via bbld_pack.sprite_entry."""
+    import collections
+    import bbld_pack as bpk
+    fa = collections.defaultdict(str)
+    return {k: bpk.sprite_entry(k, m, fa) for k, m in builds.items()}
+
+
 def build_scene(builds, frames, derived, night=False, seed=7):
     W, H = 3600, 2400
     sc = Scene(W, H, 900, 1100)
     tf, tf2 = townfolk()
+    bf = beachfolk_lib()
+    ent = entries(builds)
     rnd = random.Random(seed)
 
     def S(key, x, y, frame=None, label=True):
@@ -585,17 +651,16 @@ def build_scene(builds, frames, derived, night=False, seed=7):
         sx, sy = sc.p(x, y)
         fr = frame or m['frames'][0]
         img = frames[fr]
-        if night and key + '_night' in frames:
-            sc.put(frames[key + '_night'], m['anchorPx'], x, y, kind='nightonly')
-            sc.put(img, m['anchorPx'], x, y, kind='dayonly')
-        else:
-            sc.put(img, m['anchorPx'], x, y)
-            if key + '_glow' in frames:
-                sc.put(frames[key + '_glow'], m['anchorPx'], x, y, kind='glow', bias=0.2)
+        sc.put(img, m['anchorPx'], x, y)
+        if key + '_glow' in frames:
+            sc.put(frames[key + '_glow'], m['anchorPx'], x, y, kind='glow', bias=0.2)
         if m.get('overlay'):
             sc.put(frames[m['overlay']['key']], m['anchorPx'], x, y, depth=sy + 1.0)
-        if m.get('water'):
-            sc.put(frames[m['water']['frames'][0]], m['anchorPx'], x, y, depth=sy + 0.25)
+        if m.get('water'):                     # the pool water goes UNDER the deck (the deck has the hole)
+            sc.put(frames[m['water']['frames'][0]], m['anchorPx'], x, y, depth=sy - 0.5)
+        lp = m['framePoints'][m['frames'][0]].get('light', [])
+        for (dx, dy), lm in zip(lp, m.get('lightMeta') or []):
+            sc.lights.append((sx + dx, sy + dy, lm[1] * 48 / 60.0))
         if label:
             fh = m.get('footprint', [0, 40])[1]
             if key in LABEL_TOP:
@@ -617,6 +682,24 @@ def build_scene(builds, frames, derived, night=False, seed=7):
         return m['frameDirs'][m['frames'][0]].get(kind, []) if m else []
 
     def person(preset, sx, sy, d='S', anim='idle', i=0, depth=None, lib=None):
+        """lib: None / tf2 = townsfolk (128 frames, anchor 64,104); 'bf' = beachfolk with a 32 px margin."""
+        if lib == 'bf':
+            if not bf:
+                return person(FALLBACK_TF.get(preset, 'beachgoer'), sx, sy, d,
+                              anim if anim in ('idle', 'walk', 'talk', 'wave', 'happy') else 'idle', i, depth)
+            if anim not in ('idle', 'walk', 'swim', 'sunbathe'):
+                d = FACE_FALLBACK.get(d, d)
+            try:
+                p = bf.preset(preset, seed=rnd.randrange(10 ** 6))
+                if not bf.can_play(p, anim):
+                    anim = 'idle'
+                im = bf.compose(p, anim, d, i, margin=32)
+            except Exception as e:             # noqa: BLE001
+                print('note: beachfolk %s %s %s: %s' % (preset, anim, d, e))
+                return
+            sc.items.append(((sy + 0.5) if depth is None else depth, im, int(round(sx - 96)), int(round(sy - 136)),
+                             'n'))
+            return
         L_ = lib or tf
         if not L_:
             return
@@ -642,17 +725,9 @@ def build_scene(builds, frames, derived, night=False, seed=7):
         if 'string_lights_x' in builds and k % 3 != 2:
             m = builds['string_lights_x']
             fr = m['anims']['work']['frames'][k % 4] if not night else m['frames'][0]
-            sc.put(frames[fr], m['anchorPx'], x + 2.0, -3.15)
-            if night and 'string_lights_x_glow' in frames:
-                sc.put(frames['string_lights_x_glow'], m['anchorPx'], x + 2.0, -3.15, kind='glow')
+            S('string_lights_x', x + 2.0, -3.15, frame=fr, label=False)
         if 'beach_lamp' in builds and k % 3 == 2:
-            m = builds['beach_lamp']
-            sc.put(frames[m['frames'][0]], m['anchorPx'], x, -1.95)
-            if night and 'beach_lamp_glow' in frames:
-                sc.put(frames['beach_lamp_glow'], m['anchorPx'], x, -1.95, kind='glow')
-            sc.pools.append(sc.p(x, -1.95))
-        if 'string_lights_x' in builds and k % 3 != 2:
-            sc.pools.append(sc.p(x + 2.0, -3.15))
+            S('beach_lamp', x, -1.95, label=False)
     # optional: the parallel beach fragment (assets/beach) - towels, parasols, loungers, palms if they exist
     extra = beach_props(sc, night) or {}
     # the back street: palms and lamps on the far sidewalk
@@ -662,15 +737,11 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             B_ = 'palm_tree_a' if k % 4 == 0 else 'palm_tree_b'
             put_beach(sc, B_, x, ROAD[1] + 1.0)
         elif 'beach_lamp' in builds:
-            m = builds['beach_lamp']
-            sc.put(frames[m['frames'][0]], m['anchorPx'], x, ROAD[1] + 0.6)
-            if night and 'beach_lamp_glow' in frames:
-                sc.put(frames['beach_lamp_glow'], m['anchorPx'], x, ROAD[1] + 0.6, kind='glow')
-            sc.pools.append(sc.p(x, ROAD[1] + 0.6))
+            S('beach_lamp', x, ROAD[1] + 0.6, label=False)
     for x, y in ((1.5, ROAD[1] + 4.6), (8.8, ROAD[1] + 5.6), (15.6, ROAD[1] + 4.4), (22.4, ROAD[1] + 5.4)):
         put_beach(sc, 'beach_pine', x, y)                # a few sea pines in the park
     # people at the sprite points
-    if tf:
+    if tf or bf:
         def at(key, kind, k, preset, d=None, anim='idle', i=0, lib=None, depth_off=None):
             if key not in placed:
                 return
@@ -680,69 +751,87 @@ def build_scene(builds, frames, derived, night=False, seed=7):
             bx, by = placed[key]
             ax, ay = sc.p(bx, by)
             dd = d or (dirs(key, kind)[k] if len(dirs(key, kind)) > k else 'S')
+            if kind == 'staff' and depth_off is None:          # the manifest rule (staffDepths)
+                sd = ent.get(key, {}).get('staffDepths', [])
+                depth_off = 0.5 if (k < len(sd) and sd[k] == 'front') else None
             depth = (ay + depth_off) if depth_off is not None else None
             person(preset, ax + P[k][0], ay + P[k][1], d=dd, anim=anim, i=i, depth=depth, lib=lib)
-        # hotel staff + guests
-        at('resort_hotel', 'staff', 0, 'hotel_staff', 'SW', 'idle', 1, depth_off=0.5)
-        at('resort_hotel', 'staff', 1, 'hotel_staff', 'SW', 'wave', 2, depth_off=0.5)
-        at('resort_hotel', 'staff', 2, 'receptionist', 'SW', 'talk', 3, depth_off=0.5)
+        # hotel staff (doorman + bellhop y-sorted in front, receptionist behind the desk) + guests
+        at('resort_hotel', 'staff', 0, 'doorman', 'SW', 'idle', 1, lib='bf')
+        at('resort_hotel', 'staff', 1, 'bellhop', 'SW', 'wave', 2, lib='bf')
+        at('resort_hotel', 'staff', 2, 'receptionist', 'SW', 'talk', 3, lib='bf')
         for k in range(2):
-            at('resort_hotel', 'customer', k, 'beachgoer', 'NE', 'idle', k)
-        for k in (0, 3, 5, 7):
-            at('resort_hotel', 'balcony', k, 'beachgoer', None, 'wave' if k == 3 else 'idle', k % 4,
-               depth_off=0.5)
+            at('resort_hotel', 'customer', k, 'beach_tourist', 'NE', 'idle', k, lib='bf')
+        for k in range(9):
+            if k in (1, 4, 6):
+                continue
+            at('resort_hotel', 'balcony', k, ('beach_tourist', 'sunbather', 'swimmer')[k % 3], None,
+               'wave' if k == 3 else 'idle', k % 4, lib='bf', depth_off=0.5)
         for k in (1, 3):
-            at('pension', 'balcony', k - 1, 'beachgoer', None, 'idle', 1, depth_off=0.5)
+            at('pension', 'balcony', k - 1, 'beach_tourist', None, 'idle', 1, lib='bf', depth_off=0.5)
         at('pension', 'staff', 0, 'beachgoer', 'SW', 'wave', 1)
-        at('pension', 'customer', 0, 'beachgoer', 'NE', 'idle', 0)
-        at('beach_cafe', 'staff', 0, 'beach_staff', 'SW', 'talk', 2, depth_off=0.5)
+        at('pension', 'customer', 0, 'beach_tourist', 'NE', 'idle', 0, lib='bf')
+        at('beach_cafe', 'staff', 0, 'barista', 'SW', 'talk', 2, lib='bf')
         for k in range(2):
-            at('beach_cafe', 'customer', k, 'beachgoer', 'NE', 'idle', k)
+            at('beach_cafe', 'customer', k, 'beach_tourist', 'NE', 'idle', k, lib='bf')
         for k in (0, 2):
             at('beach_cafe', 'seat', k, 'beachgoer', None, 'sit', 0, lib=tf2)
-        at('icecream_shop', 'staff', 0, 'beach_staff', 'SW', 'talk', 1, depth_off=0.5)
+        at('icecream_shop', 'staff', 0, 'icecream_vendor', 'SW', 'talk', 1, lib='bf')
         for k in range(3):
             at('icecream_shop', 'customer', k, 'beachkid', 'NE', 'idle', k)
-        at('seafood_bbq', 'staff', 0, 'beach_staff', 'SW', 'idle', 0, depth_off=0.5)
+        at('seafood_bbq', 'staff', 0, 'barista', 'SW', 'idle', 0, lib='bf')
         at('seafood_bbq', 'seat', 0, 'beachgoer', None, 'sit', 0, lib=tf2)
-        at('seafood_bbq', 'customer', 0, 'beachgoer', 'NE', 'idle', 2)
-        at('souvenir_shop', 'customer', 0, 'beachgoer', 'NE', 'idle', 1)
-        at('swimwear_shop', 'customer', 0, 'beachgoer', 'NE', 'idle', 3)
+        at('seafood_bbq', 'customer', 0, 'beach_tourist', 'NE', 'idle', 2, lib='bf')
+        at('souvenir_shop', 'customer', 0, 'beach_tourist', 'NE', 'idle', 1, lib='bf')
+        at('souvenir_shop', 'staff', 0, 'beach_bar_staff', 'S', 'idle', 0, lib='bf')
+        at('swimwear_shop', 'customer', 0, 'swimmer', 'NE', 'idle', 3, lib='bf')
         at('convenience_store', 'seat', 0, 'beachgoer', None, 'sit', 0, lib=tf2)
         at('convenience_store', 'seat', 4, 'beachgoer', None, 'sit', 0, lib=tf2)
-        at('convenience_store', 'staff', 0, 'beach_staff', 'S', 'idle', 0)
+        at('convenience_store', 'staff', 0, 'beach_bar_staff', 'S', 'idle', 0, lib='bf')
         for k in range(2):
             at('beach_arcade', 'customer', k, 'beachkid', 'NE', 'idle', k)
-        at('surf_shop', 'staff', 0, 'beach_staff', 'SW', 'talk', 2)
-        at('beach_bar', 'staff', 0, 'beach_staff', 'SW', 'talk', 1, depth_off=0.5)
+        at('surf_shop', 'staff', 0, 'surfer', 'SW', 'talk', 2, lib='bf')
+        at('beach_bar', 'staff', 0, 'beach_bar_staff', 'SW', 'talk', 1, lib='bf')
         for k in (0, 2, 3):
             at('beach_bar', 'seat', k, 'beachgoer', None, 'sit', 0, lib=tf2)
-        at('lifeguard_station', 'staff', 0, 'lifeguard_t', 'SW', 'idle', 0, depth_off=0.5)
-        at('tourist_info', 'staff', 0, 'receptionist', 'SW', 'talk', 0, depth_off=0.5)
-        at('tourist_info', 'customer', 0, 'beachgoer', 'NE', 'idle', 0)
+        at('lifeguard_station', 'staff', 0, 'lifeguard', 'SW', 'idle', 0, lib='bf')
+        at('tourist_info', 'staff', 0, 'receptionist', 'SW', 'talk', 0, lib='bf')
+        at('tourist_info', 'customer', 0, 'beach_tourist', 'NE', 'idle', 0, lib='bf')
         at('mini_aquarium', 'view', 0, 'beachkid', 'NE', 'idle', 0)
-        at('mini_aquarium', 'view', 2, 'beachgoer', 'NE', 'happy', 2)
-        at('hotel_pool', 'staff', 0, 'lifeguard_t', 'SE', 'idle', 0)
-        at('restroom_shower', 'customer', 0, 'beachgoer', 'NE', 'idle', 2)
+        at('mini_aquarium', 'view', 2, 'beach_tourist', 'NE', 'happy', 2, lib='bf')
+        at('restroom_shower', 'customer', 0, 'swimmer', 'NE', 'idle', 2, lib='bf')
+        at('restroom_shower', 'staff', 0, 'housekeeper', 'SW', 'idle', 0, lib='bf')
+        # the pool: lifeguard on the deck, swimmers ON the water, sunbathers on the loungers (dir = feet)
+        at('hotel_pool', 'staff', 0, 'lifeguard', 'SE', 'idle', 0, lib='bf')
+        pe = ent.get('hotel_pool', {})
+        for k in (0, 2, 4):
+            at('hotel_pool', 'swim', k, 'swimmer', ('SE', 'S', 'E')[k % 3], 'swim', k, lib='bf', depth_off=0.5)
+        for k in (1, 2, 4):
+            fd = (pe.get('lyingFeetDirs') or ['SW'] * 6)[k]
+            at('hotel_pool', 'lie', k, 'sunbather', fd, 'sunbathe', 0, lib='bf', depth_off=0.6)
         # walkers on the boardwalk and the sand
         for k in range(13):
             x = -3.0 + k * 3.3 + rnd.uniform(-0.8, 0.8)
             y = rnd.uniform(-3.1, -2.1) if k % 2 else rnd.uniform(-1.6, -0.9)
             sx, sy = sc.p(x, y)
-            person(rnd.choice(['beachgoer', 'beachgoer', 'beachgoer', 'beachkid', 'beachgoer']), sx, sy,
-                   d=rnd.choice(['SE', 'NW', 'SE', 'E', 'W']), anim='walk', i=k % 8)
+            if k % 3 == 0:
+                person(rnd.choice(['beach_tourist', 'swimmer']), sx, sy, d=rnd.choice(['SE', 'NW', 'E', 'W']),
+                       anim='walk', i=k % 8, lib='bf')
+            else:
+                person(rnd.choice(['beachgoer', 'beachgoer', 'beachkid']), sx, sy,
+                       d=rnd.choice(['SE', 'NW', 'SE', 'E', 'W']), anim='walk', i=k % 8)
         for k in range(9):
             x = -1.0 + k * 4.6 + rnd.uniform(-1, 1)
             y = rnd.uniform(-9.2, -4.5)
             if any(abs(x - px) < 2.5 and abs(y - py) < 2.5 for kk, (px, py) in placed.items() if py < 0):
                 continue
             sx, sy = sc.p(x, y)
-            person(rnd.choice(['beachgoer', 'beachgoer', 'beachkid']), sx, sy, d=rnd.choice(['S', 'SE', 'SW']),
-                   anim=rnd.choice(['idle', 'wave', 'happy']), i=k % 4)
+            person(rnd.choice(['swimmer', 'beach_tourist', 'sunbather']), sx, sy, d=rnd.choice(['S', 'SE', 'SW']),
+                   anim=rnd.choice(['idle', 'wave', 'happy']), i=k % 4, lib='bf')
         # beach volleyball: one player on each side of the net
         for (x, y, d, an) in ((40.4, -5.7, 'S', 'wave'), (41.6, -8.9, 'E', 'happy')):
             sx, sy = sc.p(x, y)
-            person('beachgoer', sx, sy, d=d, anim=an, i=1)
+            person('swimmer', sx, sy, d=d, anim=an, i=1, lib='bf')
         # swan pedal boat riders (sit frames on the boat's seats, under its overlay)
         sw = extra.get('swan')
         if sw and tf2:
@@ -765,6 +854,11 @@ def build_scene(builds, frames, derived, night=False, seed=7):
     return sc
 
 
+FALLBACK_TF = {'doorman': 'hotel_staff', 'bellhop': 'hotel_staff', 'receptionist': 'receptionist',
+               'lifeguard': 'lifeguard_t', 'beach_bar_staff': 'beach_staff', 'icecream_vendor': 'beach_staff',
+               'barista': 'beach_staff', 'surfer': 'beach_staff', 'housekeeper': 'beach_staff'}
+
+
 def caption(img, text):
     d = ImageDraw.Draw(img)
     d.rectangle([0, img.height - 40, img.width, img.height], fill=(23, 132, 160, 255))
@@ -777,13 +871,13 @@ def preview_scene(builds, frames, derived, out_day, out_night):
     gr = ground(sc.W, sc.H, sc.ox, sc.oy, 0.0)
     box = sc.content_box()
     img = caption(sc.render(gr, night=False).crop(box),
-                  'Sunny Beach (햇살 해변) beachfront at 1x (PPU 64): assets/beach_bld on a stand-in promenade / boardwalk; '
-                  'sand + props = assets/beach, sea = static assets/water look; people = assets/townfolk (+ townfolk2 sit)')
+                  'Sunny Beach (햇살 해변) at 1x (PPU 64): assets/beach_bld on a stand-in promenade; sand + props = '
+                  'assets/beach, sea = static assets/water look; people = assets/beachfolk + townsfolk at the sprite points')
     img.convert('RGB').save(out_day, optimize=True)
     sc2 = build_scene(builds, frames, derived, night=True)
     img2 = caption(sc2.render(gr, night=True, labels=False).crop(box),
-                   'Night: sprites tinted #6B7AB8 + their <key>_glow (blend ADD); resort_hotel draws resort_hotel_night; '
-                   'warm pools under the lamps / string lights (lightPoints)')
+                   'Night = the game DayClock: one MULTIPLY overlay (0x5a6aa8, darkness 0.45) over everything, then '
+                   '<key>_glow (ADD) in the light layer + DayClock.addLight halos at every lightPoints entry (lightK)')
     img2.convert('RGB').save(out_night, optimize=True)
     # phone check: what a 390 x 844 portrait screen shows at zoom 0.6 / 0.9 / 1.2 (centred on the hotel + pool)
     cx, cy = sc.p(8.5, 0.6)
@@ -794,20 +888,27 @@ def preview_scene(builds, frames, derived, out_day, out_night):
 
 
 def phone_preview(img, centre, out, zooms=(0.6, 0.9, 1.2), size=(390, 844)):
+    """What a 390 x 844 (css px) portrait phone REALLY shows: the game lays out 720 logical px across the screen
+    (src/core/View.js W) and the camera zoom is z x View.k, so the screen spans 720 / z world px (not 390 / z)."""
     W, H = size
     gap, top = 24, 46
     sheet = Image.new('RGB', (len(zooms) * (W + gap) + gap, H + top + gap), (40, 44, 56))
     d = ImageDraw.Draw(sheet)
     f = font(20)
     for i, z in enumerate(zooms):
-        w, h = W / z, H / z
+        w, h = PHONE_LOGICAL_W / z, PHONE_LOGICAL_W * H / W / z
+        if w > img.width or h > img.height - 40:          # the scene is too small: pad it with its edge colour
+            big = Image.new('RGB', (int(max(img.width, w + 2)), int(max(img.height, h + 42))), img.getpixel((2, 2)))
+            big.paste(img, ((big.width - img.width) // 2, (big.height - img.height) // 2))
+            centre = (centre[0] + (big.width - img.width) // 2, centre[1] + (big.height - img.height) // 2)
+            img = big
         x0 = int(round(min(max(0, centre[0] - w / 2), img.width - w)))
         y0 = int(round(min(max(0, centre[1] - h / 2), img.height - h - 40)))
         crop = img.crop((x0, y0, x0 + int(w), y0 + int(h))).resize((W, H), Image.LANCZOS)
         x = gap + i * (W + gap)
         sheet.paste(crop, (x, top))
         d.rounded_rectangle([x - 3, top - 3, x + W + 3, top + H + 3], radius=14, outline=(230, 232, 240), width=3)
-        d.text((x + 4, 12), '폰 화면 390x844  zoom %.1fx' % z, fill=(240, 240, 248), font=f)
+        d.text((x + 4, 12), '폰 390x844 · zoom %.1f (가로 %d px)' % (z, int(w)), fill=(240, 240, 248), font=f)
     sheet.save(out, optimize=True)
     print('wrote', out, sheet.size)
 
@@ -832,7 +933,8 @@ def anims_gif(builds, frames, out):
     Wt = sum(c[2][2] - c[2][0] for c in crops) + 10 * (len(crops) + 1)
     Ht = max(c[2][3] - c[2][1] for c in crops) + 34
     seq = []
-    for i in range(4):
+    nmax = max(len(c[1]) for c in crops)
+    for i in range(nmax):
         im = Image.new('RGBA', (Wt, Ht), (236, 222, 190, 255))
         x = 10
         d = ImageDraw.Draw(im)
@@ -842,7 +944,7 @@ def anims_gif(builds, frames, out):
                    font=pp.font(13))
             x += (x1 - x0) + 10
         seq.append(im.convert('RGB'))
-    _gif(seq, [180] * 4, out)
+    _gif(seq, [160] * nmax, out)
 
 
 def pool_gif(builds, frames, out):
@@ -854,8 +956,8 @@ def pool_gif(builds, frames, out):
     seq = []
     for n in m['water']['frames']:
         im = Image.new('RGBA', base.size, (241, 222, 178, 255))
+        im.alpha_composite(frames[n])            # the water UNDER the deck
         im.alpha_composite(base)
-        im.alpha_composite(frames[n])
         im = im.crop(bb)
         im = im.resize((int(im.width * 1.5), int(im.height * 1.5)), Image.LANCZOS)
         seq.append(im.convert('RGB'))
@@ -863,21 +965,25 @@ def pool_gif(builds, frames, out):
 
 
 def hotel_daynight_gif(builds, frames, out):
-    if 'resort_hotel' not in builds or 'resort_hotel_night' not in frames:
+    """resort_hotel fading day -> night -> day the way DayClock does it: the overlay strength a goes 0 -> 0.45 and the
+    glow alpha follows a / 0.45 (the glow sits in the light layer above the overlay)."""
+    if 'resort_hotel' not in builds or 'resort_hotel_glow' not in frames:
         return
     day = frames[builds['resort_hotel']['frames'][0]]
-    night = frames['resort_hotel_night']
+    glow = np.asarray(frames['resort_hotel_glow']).astype(np.float32)
+    glow = glow[..., :3] * (glow[..., 3:4] / 255.0)
     bb = day.getbbox()
     W, H = day.size
     gr = np.zeros((H, W, 3), np.float32) + np.array([241, 222, 178], np.float32)
+    bgd = Image.fromarray(gr.astype(np.uint8)).convert('RGBA')
+    bgd.alpha_composite(day)
+    dayarr = np.asarray(bgd).astype(np.float32)[..., :3]
     seq = []
     steps = [0, 0, 0.25, 0.5, 0.75, 1, 1, 1, 0.75, 0.5, 0.25]
     for t in steps:
-        bgd = Image.fromarray(gr.astype(np.uint8)).convert('RGBA')
-        bgd.alpha_composite(day)
-        bgn = Image.fromarray((gr * NIGHT_TINT * 0.9).astype(np.uint8)).convert('RGBA')
-        bgn.alpha_composite(night)
-        im = Image.blend(bgd, bgn, t).crop(bb)
+        mul = 1.0 - t * (1.0 - NIGHT_MUL)
+        arr = dayarr * mul + glow * t
+        im = Image.fromarray(arr.clip(0, 255).astype(np.uint8)).crop(bb)
         seq.append(im.convert('RGB'))
     _gif(seq, [700 if t in (0, 1) else 160 for t in steps], out)
 

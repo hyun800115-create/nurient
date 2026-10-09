@@ -62,6 +62,10 @@ function pileSpots() {
   for (const id in P) out.push([P[id].x, P[id].y, 125]);
   return out;
 }
+/** (v4-B, v3.5 known issue) a pine standing just in front of (below) a pile hides the pile and its label */
+function hidesPile(x, y) {
+  return pileSpots().some(([ax, ay]) => gdist(x, y, ax, ay) < 80 || (y > ay && y - ay < 150 && Math.abs(x - ax) < 110));
+}
 
 class UIProxy {
   constructor(game) { this.game = game; }
@@ -561,7 +565,7 @@ export class Game extends Phaser.Scene {
         // the zone's far-left corner runs into the border pines: a chief chopping there would vanish
         if (mx + my < (cfg.cornerCut !== undefined ? cfg.cornerCut : -1e9)) continue;
         // (v3.5) the collection pile of the wood line keeps a clearing
-        if (pileSpots().some(([ax, ay]) => gdist(p.x, p.y, ax, ay) < 80)) continue;
+        if (hidesPile(p.x, p.y)) continue;
         const tr = new Tree(this, p.x, p.y, kinds[Math.floor(r() * kinds.length)]);
         if (cfg.scale) { tr.img.setScale(cfg.scale); tr.img.__bs = cfg.scale; tr.scale = cfg.scale; }
         this.addOccluder(tr.img);
@@ -572,6 +576,7 @@ export class Game extends Phaser.Scene {
     // (v3.5) a few more pines of the forest
     for (const [mx, my] of cfg.extra || []) {
       const p = isoPt(tz.center[0], tz.center[1], mx, my);
+      if (hidesPile(p.x, p.y)) continue;
       const tr = new Tree(this, p.x, p.y, kinds[Math.floor((mx * 7 + my * 3 + 9) % 3)]);
       if (cfg.scale) { tr.img.setScale(cfg.scale); tr.img.__bs = cfg.scale; tr.scale = cfg.scale; }
       this.addOccluder(tr.img);

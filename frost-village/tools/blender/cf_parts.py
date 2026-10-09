@@ -297,8 +297,9 @@ def b_hat_fire_helmet(rig, ctx, put):
                 bm.faces.new((a_[j], b_[j], b_[(j + 1) % 4], a_[(j + 1) % 4]))
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         vd.ho(rig, 'brim', bm, m, loc=(0, 0.0, 0.098), rot=(-7, 0, 0))
-        cb.tilted_ring(rig, 'helm_band', lime_mat(), tb.HEAD_R[0] * 1.13, 0.021, 0.50, 0.28, sy=1.0, rz=1.3)
     with put('shield'):
+        # reflective lime band around the dome: untinted (in 'main' the hat tint turned it into a darker red)
+        cb.tilted_ring(rig, 'helm_band', lime_mat(), tb.HEAD_R[0] * 1.13, 0.021, 0.50, 0.28, sy=1.0, rz=1.3)
         # tall leather front shield above the brim lip: gold rim, white number plate, red '1'
         pts = []
         for k in range(16):

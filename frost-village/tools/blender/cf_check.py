@@ -40,8 +40,10 @@ NEW_PARTS = ['hat_fire_helmet', 'top_fire_coat', 'bot_fire_pants', 'acc_air_tank
              'acc_back_brace', 'top_hivis_jacket', 'acc_toolbelt', 'acc_camera', 'held_notepad', 'top_trench',
              'hat_deerstalker']
 # limbs fully hidden by the body in a whole anim/dir (checked by eye on the renders): mittens behind the back seen
-# from the front, mittens hugging the box seen from behind
-HIDDEN_LIMBS = {('arrested_walk', 'S'): ('hand_R', 'hand_L'), ('carry_box', 'N'): ('hand_R', 'hand_L')}
+# from the front, mittens hugging the box seen from behind, and the elder's short arms pumping the mitten in front of
+# the torso in run N (0 px in the render on half the frames)
+HIDDEN_LIMBS = {('arrested_walk', 'S'): ('hand_R', 'hand_L'), ('carry_box', 'N'): ('hand_R', 'hand_L'),
+                ('run', 'N'): ('hand_R', 'hand_L')}
 PRESETS = ['firefighter', 'police_officer', 'detective', 'burglar', 'banker', 'bank_teller', 'warehouse_worker',
            'forklift_driver', 'delivery_driver', 'mover', 'construction_worker', 'demolition_worker', 'reporter']
 # what each preset must wear, and the anims it must be able to play (its job in the living city)

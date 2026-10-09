@@ -111,17 +111,20 @@ def wall_open(name, x0, x1, y_wall, z0, z1, hole, mat, t=0.12):
 # =========================================================================== RESORT HOTEL
 
 HOTEL_NOTE = ('Resort hotel "햇살 리조트" (8.0 x 5.8 m, four storeys + a five-storey central tower, ~9.5 m with the dome '
-              'flag): white stucco hotel under a terracotta hip roof with dormers; a peach central tower with arched '
-              'windows, flower boxes, sun plaques and a turquoise dome with a gold finial and flag; wide balconies on '
-              'every upper floor with tiny parasols, deck chairs, potted flowers and beach towels drying on the rails, '
-              'pastel curtains; lobby arched windows under coral awnings; a turquoise entrance canopy on white columns '
-              'with gold stars, red carpet, potted palms, a concierge desk (bell + guest book) and a brass luggage '
-              'trolley; a blank marquee sign board with bulbs and five stars on the roof (fxPoints.boardCentre - the '
-              'game writes the name).  staffPoints = [doorman at the door, bellhop at the trolley, receptionist '
-              'BEHIND the concierge desk]; customerPoints = arriving guests (queue down the carpet); balconyPoints = '
-              'guests on the balconies (draw at depth d + 0.5, then resort_hotel_front = railings + towels + desk at '
-              'd + 1); inPoint = supply pad at the service door on the side.  Night: resort_hotel_night (the whole '
-              'frame lit, draw it untinted) or tint + resort_hotel_glow (ADD).')
+              'flag): bright white stucco hotel under a terracotta barrel-tile hip roof (scalloped tile eaves, ridge '
+              'caps, dormers, two chimneys, gulls on the ridge); a peach central tower with arched windows, flower '
+              'boxes, sun plaques and a turquoise dome with a gold finial and flag; CHECKERBOARD balconies (no '
+              'balcony right above another, so a guest standing on one never pokes into the one above) with tiny '
+              'parasols, deck chairs, potted flowers and beach towels on the rails, shuttered windows with flower '
+              'boxes in between; a warm-lit lobby (arched windows + glass doors) under coral awnings; an entrance '
+              'canopy on white columns with a coral-striped top, flower planters and gold stars, a red carpet, '
+              'palms, a concierge desk (bell + guest book) and a brass luggage trolley; a blank marquee sign board '
+              'with bulbs and five stars on the roof (fxPoints.boardCentre - the game writes the name).  '
+              'staffPoints = [doorman beside the carpet in front of the canopy, bellhop at the trolley, receptionist '
+              'BEHIND the concierge desk]; staffDepths says how to sort each; customerPoints = arriving guests '
+              '(queue at the desk); balconyPoints = guests on the balconies (draw at depth d + 0.5, then '
+              'resort_hotel_front = railings + towels + desk at d + 1); inPoint = supply pad at the service door on '
+              'the side.  Night: <key>_glow (lit windows, lobby, marquee bulbs, tower suns) in the light layer.')
 
 
 def hotel_builder():
@@ -134,26 +137,30 @@ def hotel_builder():
     TW, TP, TD = 2.0, 0.26, 1.7          # central tower width / projection / depth
     TZ = ZT + ST + 0.1                   # tower top (one storey above the eaves)
     side = side_faces()
-    walls = B.stucco(B.STUCCO)
-    T.plinth('plinth', W, D, h=PL, col='#D8CBB6', x=BX, y=BY)
+    WALL = '#FFFCF5'
+    WHITE_T = '#FFFFFF'
+    walls = B.stucco(WALL, var=0.03)
+    T.plinth('plinth', W, D, h=PL, col='#DCCFBA', x=BX, y=BY)
     box('walls', (W, D, ZT - PL), (BX, BY, PL), mat=walls, bevel=0.04)
-    box('gfwall', (W + 0.06, D + 0.06, GF - 0.12), (BX, BY, PL), mat=B.stucco('#F1E7D7'), bevel=0.03)
+    box('gfwall', (W + 0.06, D + 0.06, GF - 0.12), (BX, BY, PL), mat=B.stucco('#F7EEDF', var=0.03), bevel=0.03)
     for f in range(NF):
-        T.band('band%d' % f, W, D, Z1 + f * ST - 0.07, B.TURQ if f == 0 else B.STUCCO_W, h=0.08 if f else 0.1,
+        T.band('band%d' % f, W, D, Z1 + f * ST - 0.07, B.TURQ if f == 0 else WHITE_T, h=0.08 if f else 0.1,
                out=0.04, x=BX, y=BY)
-    T.band('cornice', W, D, ZT - 0.16, B.STUCCO_W, h=0.16, out=0.08, x=BX, y=BY)
-    T.corner_trims('ctrim', W, D, Z1, ZT - Z1, B.STUCCO_W, t=0.14, x=BX, y=BY)
-    roof_objs, roof_z = B.hip_roof('roof', x0, x1, y0, y1, ZT, 1.15, over=0.32, col=B.TERRA)
+    T.band('cornice', W, D, ZT - 0.16, WHITE_T, h=0.16, out=0.08, x=BX, y=BY)
+    T.band('cornice2', W, D, ZT - 0.24, B.TURQ, h=0.05, out=0.06, x=BX, y=BY)
+    T.corner_trims('ctrim', W, D, Z1, ZT - Z1, WHITE_T, t=0.14, x=BX, y=BY)
+    RISE, OVER = 1.15, 0.32
+    roof_objs, roof_z = B.hip_roof('roof', x0, x1, y0, y1, ZT, RISE, over=OVER, col=B.TERRA, barrel=True)
     # ---- central tower (peach), one storey above the roof, turquoise dome
-    tower = B.stucco('#F7C9A6')
+    tower = B.stucco('#F9CBA7', var=0.03)
     yt = y0 - TP
     box('tower', (TW, TD, TZ - PL), (BX, yt + TD / 2, PL), mat=tower, bevel=0.03)
     for s in (-1, 1):
-        box('ttrim', (0.12, 0.12, TZ - Z1), (BX + s * TW / 2, yt, Z1), mat=flat(B.STUCCO_W, 0.7), bevel=0.02)
+        box('ttrim', (0.12, 0.12, TZ - Z1), (BX + s * TW / 2, yt, Z1), mat=flat(WHITE_T, 0.7), bevel=0.02)
     for z, h in ((ZT - 0.16, 0.16), (TZ - 0.18, 0.18)):
-        box('tcorn', (TW + 0.16, TD + 0.16, h), (BX, yt + TD / 2, z), mat=flat(B.STUCCO_W, 0.7), bevel=0.03)
+        box('tcorn', (TW + 0.16, TD + 0.16, h), (BX, yt + TD / 2, z), mat=flat(WHITE_T, 0.7), bevel=0.03)
     box('tband', (TW + 0.1, TD + 0.1, 0.09), (BX, yt + TD / 2, Z1 - 0.07), mat=flat(B.TURQ, 0.5), bevel=0.02)
-    box('tparapet', (TW + 0.1, TD + 0.1, 0.22), (BX, yt + TD / 2, TZ), mat=flat(B.STUCCO_W, 0.7), bevel=0.03)
+    box('tparapet', (TW + 0.1, TD + 0.1, 0.22), (BX, yt + TD / 2, TZ), mat=flat(WHITE_T, 0.7), bevel=0.03)
     box('tpcap', (TW + 0.18, TD + 0.18, 0.06), (BX, yt + TD / 2, TZ + 0.22), mat=flat(B.TURQ, 0.5), bevel=0.02)
     DZ = TZ + 0.28
     cyl('drum', 0.66, 0.34, (BX, yt + TD / 2, DZ), mat=walls, segs=32, bevel=0.02)
@@ -163,6 +170,11 @@ def hotel_builder():
                h=0.2, arch=True, sill=None, mull=False).rotation_euler.z = a + math.pi / 2
     cyl('drumband', 0.7, 0.06, (BX, yt + TD / 2, DZ + 0.3), mat=flat(B.GOLD, 0.3, 0.8), segs=32)
     sphere('dome', 0.68, (BX, yt + TD / 2, DZ + 0.34), flat(B.TURQ, 0.35), scale=(1.0, 1.0, 0.95), segs=32, rings=16)
+    for k in range(8):                       # gold ribs on the dome
+        a = math.tau * k / 8
+        pts = [(BX + 0.69 * math.cos(a) * math.cos(t), yt + TD / 2 + 0.69 * math.sin(a) * math.cos(t),
+                DZ + 0.34 + 0.655 * math.sin(t)) for t in [i * (math.pi / 2) / 8 for i in range(9)]]
+        L.smooth_tube('drib%d' % k, pts, 0.018, flat(B.GOLD, 0.3, 0.8))
     cyl('domefin', 0.04, 0.5, (BX, yt + TD / 2, DZ + 0.95), mat=flat(B.GOLD, 0.3, 0.8), segs=10)
     sphere('domeball', 0.09, (BX, yt + TD / 2, DZ + 1.48), flat(B.GOLD, 0.3, 0.8), segs=12, rings=8)
     B.flag_pole('tflag', (BX + 0.02, yt + TD / 2, DZ + 1.52), h=0.85, col=B.CORAL, w=0.55, fh=0.34, seed=3)
@@ -176,73 +188,127 @@ def hotel_builder():
             for k in range(5):
                 sphere('twfl%d' % f, 0.06, (BX - 0.26 + 0.13 * k, yt - 0.12, z - 0.06),
                        flat((B.PINK, B.LEMON, B.CORAL, B.WHITE, B.PINK)[k], 0.5), segs=8, rings=6)
-    # top storey of the tower: sun emblem plaque + side window
-    T.emblem_at('tsun', lambda s: B.em_sun(s), (BX - 0.62, yt - 0.06, TZ - 0.72), psi=0.0, scale=0.42)
-    T.emblem_at('tsun2', lambda s: B.em_sun(s), (BX + 0.62, yt - 0.06, TZ - 0.72), psi=0.0, scale=0.42)
+    # top storey of the tower: sun emblem plaques (lit at night) + side window
+    for nm, sx_ in (('tsun', -0.62), ('tsun2', 0.62)):
+        B.glow_objs(T.emblem_at(nm, lambda s: B.em_sun(s), (BX + sx_, yt - 0.06, TZ - 0.72), psi=0.0, scale=0.42),
+                    strength=0.5)
     tsw = BX + TW / 2 if side == 'x+' else BX - TW / 2
     B.gwin('tsw', (tsw, yt + TD / 2, ZT + 0.32), side, w=0.5, h=0.7, arch=True, curtain=B.LEMON)
-    # ---- wings: a wide balcony per floor on the front, one per floor on the visible side
+
+    def flower_box(name, loc_face, face, w=0.6):
+        """window flower box on a face (loc = window bottom-centre on the wall)"""
+        objs = [box(name, (w, 0.16, 0.12), (0, -0.09, -0.24), mat=flat(B.TURQ, 0.5), bevel=0.02)]
+        for k in range(5):
+            objs.append(sphere(name + '_f', 0.055, (-w / 2 + 0.08 + (w - 0.16) * k / 4, -0.12, -0.1),
+                               flat((B.PINK, B.LEMON, B.CORAL, B.WHITE, B.PINK)[(k + len(name)) % 5], 0.5),
+                               segs=8, rings=6))
+            objs.append(sphere(name + '_l', 0.06, (-w / 2 + 0.12 + (w - 0.24) * k / 4, -0.08, -0.13),
+                               flat(B.LEAF, 0.8), segs=8, rings=6))
+        return T.face_group(objs, face, loc_face, name)
+
+    # ---- wings: CHECKERBOARD balconies (outer half on floors 0 / 2, inner half on floor 1) so no balcony sits
+    # right above another one: a guest (a ~1.5 m chibi) on a balcony never pokes into the balcony above
     wing_w = (W - TW) / 2
     wing_c = [x0 + wing_w / 2, x1 - wing_w / 2]
     items = [['parasol:%s:%s' % (B.CORAL, B.WHITE), 'chair:%s' % B.AQUA, 'towel:%s:0.34' % B.LEMON],
-             ['towel:%s:-0.3' % B.PINK, 'towel:%s:0.18' % B.AQUA, 'plant'],
-             ['towel:%s:0.3' % B.CORAL, 'plant', 'table'],
-             ['parasol:%s:%s' % (B.TURQ, B.WHITE), 'table', 'towel:%s:-0.34' % B.LEMON],
-             ['parasol:%s:%s' % (B.LEMON, B.WHITE), 'chair:%s' % B.CORAL, 'towel:%s:0.3' % B.MINT],
-             ['towel:%s:-0.25' % B.TURQ, 'towel:%s:0.25' % B.PINK, 'plant'],
-             ['plant', 'towel:%s:0.3' % B.MINT, 'chair:%s' % B.LEMON],
-             ['parasol:%s:%s' % (B.PINK, B.WHITE), 'table', 'towel:%s:-0.3' % B.AQUA]]
+             ['towel:%s:-0.3' % B.PINK, 'chair:%s' % B.CORAL, 'plant'],
+             ['parasol:%s:%s' % (B.TURQ, B.WHITE), 'plant', 'towel:%s:0.3' % B.CORAL],
+             ['parasol:%s:%s' % (B.LEMON, B.WHITE), 'chair:%s' % B.MINT, 'towel:%s:-0.3' % B.AQUA],
+             ['towel:%s:0.3' % B.MINT, 'chair:%s' % B.LEMON, 'plant'],
+             ['parasol:%s:%s' % (B.PINK, B.WHITE), 'plant', 'towel:%s:-0.32' % B.SKY]]
     bal_pts = []
+    HALF = 0.62
     for f in range(NF):
         zf = Z1 + f * ST
+        outer = (f % 2 == 0)
         for k, xc in enumerate(wing_c):
-            g, stand = B.balcony('bal%d_%d' % (f, k), (xc, y0, zf + 0.02), 'y-', w=wing_w - 0.4, depth=0.58,
+            h = -1 if k == 0 else 1                     # outer side of this wing
+            bx_ = xc + h * HALF if outer else xc - h * HALF
+            wx_ = xc - h * HALF if outer else xc + h * HALF
+            g, stand = B.balcony('bal%d_%d' % (f, k), (bx_, y0, zf + 0.02), 'y-', w=1.12, depth=0.62,
                                  items=items[(2 * f + k) % len(items)], seed=f * 2 + k)
-            for j, dx in enumerate((-0.5, 0.5)):
-                B.gwin('bd%d_%d_%d' % (f, k, j), (xc + dx, y0, zf + 0.06), 'y-', w=0.46, h=0.92, sill=None,
-                       curtain=curtains[(f * 3 + k * 2 + j) % 8], lit=rnd.random() > 0.2)
-            bal_pts.append((B.face_to_local('y-', (xc, y0, zf + 0.02), (stand[0], stand[1], 0.0)), (0, -1, 0)))
+            B.gwin('bd%d_%d' % (f, k), (bx_, y0, zf + 0.06), 'y-', w=0.5, h=0.94, sill=None,
+                   curtain=curtains[(f * 3 + k * 2) % 8], lit=rnd.random() > 0.2)
+            B.gwin('bw%d_%d' % (f, k), (wx_, y0, zf + 0.42), 'y-', w=0.5, h=0.62, shutters=B.TURQ,
+                   curtain=curtains[(f * 3 + k * 2 + 3) % 8], lit=rnd.random() > 0.25)
+            flower_box('bfb%d_%d' % (f, k), (wx_, y0, zf + 0.42), 'y-', w=0.62)
+            bal_pts.append((B.face_to_local('y-', (bx_, y0, zf + 0.02), (stand[0], stand[1], 0.0)), (0, -1, 0), f))
     sw, sc, sl = wface(side, x0, x1, y0, y1)
     sg = along_sign(side)
     for f in range(NF):
         zf = Z1 + f * ST
-        g, stand = B.balcony('sbal%d' % f, on_face(side, sw, sc, zf + 0.02), side, w=1.5, depth=0.5,
-                             items=items[(f + 5) % len(items)], seed=20 + f)
-        for j, dx in enumerate((-0.32, 0.32)):
-            B.gwin('sd%d_%d' % (f, j), on_face(side, sw, sc + sg * dx, zf + 0.06), side, w=0.42, h=0.92, sill=None,
+        s_f = -1 if f % 2 == 0 else 1                  # front half on floors 0 / 2, back half on floor 1
+        ub, uw = sc + sg * s_f * 0.82, sc - sg * s_f * 0.82
+        g, stand = B.balcony('sbal%d' % f, on_face(side, sw, ub, zf + 0.02), side, w=1.3, depth=0.55,
+                             items=items[(f + 3) % len(items)], seed=20 + f)
+        for j, dx in enumerate((-0.3, 0.3)):
+            B.gwin('sd%d_%d' % (f, j), on_face(side, sw, ub + sg * dx, zf + 0.06), side, w=0.4, h=0.92, sill=None,
                    curtain=curtains[(f + j * 3 + 1) % 8], lit=rnd.random() > 0.2)
-        for j, du in enumerate((-1.15, 1.15)):
-            B.gwin('sw%d_%d' % (f, j), on_face(side, sw, sc + sg * du, zf + 0.42), side, w=0.42, h=0.58,
-                   shutters=B.TURQ, curtain=curtains[(f + j) % 8], lit=rnd.random() > 0.3)
-        bal_pts.append((B.face_to_local(side, on_face(side, sw, sc, zf + 0.02), (stand[0], stand[1], 0.0)),
-                        out_dir(side)))
-    # dormers on the front slope of each wing (+ one on the visible hip)
+        B.gwin('sw%d' % f, on_face(side, sw, uw, zf + 0.42), side, w=0.5, h=0.6, shutters=B.TURQ,
+               curtain=curtains[(f + 4) % 8], lit=rnd.random() > 0.3)
+        flower_box('sfb%d' % f, on_face(side, sw, uw, zf + 0.42), side, w=0.62)
+        bal_pts.append((B.face_to_local(side, on_face(side, sw, ub, zf + 0.02), (stand[0], stand[1], 0.0)),
+                        out_dir(side), f))
+    # dormers on the front slope of each wing (+ chimneys on the back slope, gulls on the ridge)
     for k, xc in enumerate(wing_c):
         yf = y0 + 0.3
         B.dormer('dorm%d' % k, xc, yf, roof_z(xc, yf) - 0.32, w=0.78, h=0.72, depth=0.9, curtain=curtains[k + 2])
-    # ---- ground floor: lobby arched windows with awnings, entrance, side service door
+    for k, cx_ in enumerate((x0 + 0.9,)):
+        cy_ = BY + 0.55
+        z0 = roof_z(cx_, cy_) - 0.3
+        box('chim%d' % k, (0.36, 0.36, 0.95), (cx_, cy_, z0), mat=B.stucco(WALL, var=0.03), bevel=0.03)
+        box('chimc%d' % k, (0.46, 0.46, 0.07), (cx_, cy_, z0 + 0.95), mat=flat(B.TERRA, 0.6), bevel=0.02)
+        for s in (-1, 1):
+            box('chimt%d' % k, (0.14, 0.42, 0.14), (cx_ + s * 0.12, cy_, z0 + 1.02), mat=flat(B.TERRA, 0.6),
+                bevel=0.03)
+        box('chimh%d' % k, (0.1, 0.24, 0.02), (cx_, cy_, z0 + 1.03), mat=flat('#3A302A', 0.9), bevel=0.0)
+    ridge_y = BY
+    H.gull('gull0', (x0 + 1.55, ridge_y, ZT + RISE + 0.06), rz=-120.0, s=1.25)
+    H.gull('gull1', (x1 - 1.85, ridge_y, ZT + RISE + 0.06), rz=-60.0, s=1.25)
+    # ---- ground floor: warm-lit lobby (arched windows + glass doors), awnings, flower planters
+    LOB_T, LOB_B = '#FFF3D9', '#FFCB8E'
     for k, xc in enumerate(wing_c):
         for j, dx in enumerate((-0.55, 0.55)):
             B.gwin('lw%d_%d' % (k, j), (xc + dx, y0 - 0.03, PL + 0.32), 'y-', w=0.66, h=1.0, arch=True,
-                   curtain=None, strength=2.6)
+                   curtain=None, strength=2.6, glass_top=LOB_T, glass_bot=LOB_B)
         B.awning_at('lawn%d' % k, 'y-', (xc, y0 - 0.03, PL + 1.38), wing_w - 0.35, 0.5, 0.22, -0.05, B.CORAL,
                     B.WHITE, n=10)
-    B.glass_door('door', (BX, yt, PL - 0.02), 'y-', w=1.0, h=1.42, frame='#E7DED0')
-    tr = T.ext_xz('transom', PA.arch_pts(0.86, 0.3, 10), 0.06, B.glass_mat('transom_g', strength=2.4), y=yt - 0.01)
+        # long flower planter under the lobby windows
+        box('lplant%d' % k, (wing_w - 0.5, 0.3, 0.3), (xc, y0 - 0.2, 0.0), mat=B.stucco('#F1E3CC', var=0.03),
+            bevel=0.03)
+        for j in range(9):
+            u = xc - (wing_w - 0.7) / 2 + (wing_w - 0.7) * j / 8
+            sphere('lpl%d' % k, 0.13, (u, y0 - 0.2, 0.36), flat(B.LEAF if j % 2 else '#58B36B', 0.8),
+                   scale=(1.1, 1.0, 0.8), segs=10, rings=6)
+            sphere('lpf%d' % k, 0.05, (u + 0.03, y0 - 0.3, 0.44), flat((B.PINK, B.LEMON, B.CORAL, B.WHITE)[j % 4],
+                                                                        0.5), segs=8, rings=6)
+    B.glass_door('door', (BX, yt, PL - 0.02), 'y-', w=1.0, h=1.42, frame='#E7DED0', glass_top=LOB_T,
+                 glass_bot=LOB_B)
+    tr = T.ext_xz('transom', PA.arch_pts(0.86, 0.3, 10), 0.06, B.glass_mat('transom_g', LOB_T, LOB_B, strength=2.4),
+                  y=yt - 0.01)
     tr.location = (BX, yt - 0.01, PL + 1.45)
     for s in (-1, 1):
         T.lamp_wall('dlamp%d' % (s > 0), (BX + s * 0.74, yt, PL + 1.2), 'y-', strength=2.5)
         B.light_pt((BX + s * 0.74, yt - 0.24, PL + 1.15), 'lamp', 0.7)
-    # entrance canopy (flat, turquoise fascia, gold stars) on two columns
+    # entrance canopy on two columns: coral-striped canvas top, turquoise fascia, gold stars, flower planters on top
     cz = Z1 - 0.12
     cy0 = y0 - 1.6
-    B.canopy_flat('canopy', BX - 1.3, BX + 1.3, cy0, yt, cz, col=B.STUCCO_W, edge=B.TURQ,
-                  posts=[(BX - 1.18, cy0 + 0.14), (BX + 1.18, cy0 + 0.14)], post_col=B.STUCCO_W)
+    ctop = L.stripes(B.CORAL, '#FFF8F0', 1.0 / 0.22, 'X', rough=0.75, soft=0.04)
+    B.canopy_flat('canopy', BX - 1.3, BX + 1.3, cy0, yt, cz, col=WHITE_T, edge=B.TURQ,
+                  posts=[(BX - 1.18, cy0 + 0.14), (BX + 1.18, cy0 + 0.14)], post_col=WHITE_T, top=ctop)
     for k in range(5):
         st = T.ext_xz('cstar%d' % k, T.star_pts(0.1, 0.045), 0.03, flat(B.GOLD, 0.3, 0.8), y=cy0 - 0.02)
         st.location = (BX - 0.52 + 0.26 * k, cy0 - 0.02, cz + 0.07)
+    for s in (-1, 1):                          # planter boxes on the canopy corners
+        px_ = BX + s * 1.0
+        box('cpl%d' % (s > 0), (0.5, 0.26, 0.18), (px_, cy0 + 0.2, cz + 0.12), mat=flat(WHITE_T, 0.6), bevel=0.02)
+        for j in range(4):
+            sphere('cplf%d' % (s > 0), 0.1, (px_ - 0.18 + 0.12 * j, cy0 + 0.2, cz + 0.36), flat(B.LEAF, 0.8),
+                   scale=(1, 1, 0.85), segs=10, rings=6)
+            sphere('cplb%d' % (s > 0), 0.045, (px_ - 0.17 + 0.12 * j, cy0 + 0.13, cz + 0.42),
+                   flat((B.PINK, B.CORAL, B.LEMON, B.WHITE)[j], 0.5), segs=8, rings=6)
     box('cpave', (2.5, abs(cy0 - yt) + 0.2, 0.03), (BX, (cy0 + yt) / 2, 0.0),
-        mat=B.tile_mat('#F4EEE2', '#E9DFCD', 3.0, '#D9CDB8'), bevel=0.01)
+        mat=B.tile_mat('#F7F1E6', '#EDE3D2', 3.0, '#D9CDB8'), bevel=0.01)
     box('carpet', (0.9, abs(cy0 - yt) + 0.55, 0.035), (BX, (cy0 + yt) / 2 - 0.18, 0.0), mat=flat('#C8333E', 0.8),
         bevel=0.01)
     for s in (-1, 1):
@@ -250,6 +316,12 @@ def hotel_builder():
             mat=flat(B.GOLD, 0.3, 0.8), bevel=0.0)
     for s in (-1, 1):
         B.planter_palm('ppalm%d' % (s > 0), (BX + s * 1.62, y0 - 0.38, 0.0), h=1.5, s=0.62, seed=4 + s)
+    # big palms at the front corners of the hotel
+    B.palm('cpalmL', (x0 - 0.25, y0 - 0.45, 0.0), h=2.9, lean=(-0.3, -0.25), s=1.0, seed=31)
+    pr_ = (x1 + 0.4, y0 - 0.15, 0.0) if side == 'x+' else (x1 + 0.2, y0 - 0.45, 0.0)
+    B.palm('cpalmR', pr_, h=2.4, lean=(0.5, 0.42) if side == 'x+' else (0.45, -0.35), s=0.92, seed=32)
+    for nm, pp_ in (('cpotL', (x0 - 0.25, y0 - 0.45, 0.0)), ('cpotR', pr_)):
+        cyl(nm, 0.3, 0.22, pp_, mat=B.stucco('#F1E3CC', var=0.03), segs=20, bevel=0.03)
     # concierge desk (left, under the canopy) - the receptionist stands BEHIND it (front overlay)
     dx_, dy_ = BX - 0.78, y0 - 1.02
     with L.Collect() as dc:
@@ -268,7 +340,7 @@ def hotel_builder():
     B.luggage_cart('cart', (BX + 2.25, y0 - 1.05, 0.0), rz=-12.0)
     # side face ground floor: service door, window, crates (supply pad = inPoint)
     sdu = sc + sg * 0.8
-    T.door('sdoor', on_face(side, sw, sdu, PL), side, w=0.7, h=1.3, col=B.TURQ, frame_col=B.STUCCO_W, glass=False,
+    T.door('sdoor', on_face(side, sw, sdu, PL), side, w=0.7, h=1.3, col=B.TURQ, frame_col=WHITE_T, glass=False,
            step_col='#D8CBB6')
     B.gwin('sgw', on_face(side, sw, sc - sg * 0.7, PL + 0.5), side, w=0.5, h=0.75, shutters=B.TURQ, curtain=B.MINT)
     o = out_dir(side)
@@ -288,25 +360,35 @@ def hotel_builder():
         u = (k - 2) * 0.32
         st = T.ext_xz('bstar%d' % k, T.star_pts(0.12 if k != 2 else 0.16, 0.055 if k != 2 else 0.07), 0.04,
                       flat(B.GOLD, 0.3, 0.8))
-        L.group([st], 'bstarg%d' % k, loc=(sbx + u * math.cos(a), sby + u * math.sin(a),
-                                           sbz + 0.47 + (0.06 if k == 2 else 0)), rot=(0, 0, B.psi()))
+        g_ = L.group([st], 'bstarg%d' % k, loc=(sbx + u * math.cos(a), sby + u * math.sin(a),
+                                                sbz + 0.47 + (0.06 if k == 2 else 0)), rot=(0, 0, B.psi()))
+        B.glow_objs(g_, strength=0.6)
     B.light_pt((sbx, sby, sbz), 'sign', 1.6)
     # ---- markers
     mark('door', (BX, yt - 0.55, 0.0), facing=(0, 1, 0))
-    mark('staff', (BX + 0.74, yt - 0.5, 0.0), facing=(-0.3, -1, 0))                  # doorman
+    # doorman: beside the carpet IN FRONT of the canopy (clear of the columns on screen), greeting arrivals
+    mark('staff', (BX + 0.62, cy0 - 0.2, 0.0), facing=(-0.5, -1, 0))
     mark('staff', (BX + 2.8, y0 - 1.6, 0.0), facing=(-1, -0.6, 0))                   # bellhop
     mark('staff', (dx_ - 0.02, dy_ + 0.42, 0.0), facing=(0.2, -1, 0))                # receptionist (behind desk)
     for k in range(3):
         mark('customer', (dx_ + 0.05 + 0.1 * k, dy_ - 0.62 - 0.48 * k, 0.0), facing=(0, 1, 0))
-    for p, fdir in bal_pts:
+    for p, fdir, f in bal_pts:
         mark('balcony', p, facing=fdir)
     ip = on_face(side, sw, sdu, 0.0)
     mark('in', (ip[0] + o[0] * 0.9, ip[1] + o[1] * 0.9, 0.0))
     for s in (-1, 1):
         B.light_pt((BX + s * 1.18, cy0 + 0.14, cz - 0.05), 'lamp', 0.8)
+    for k, xc in enumerate(wing_c):
+        B.light_pt((xc, y0 - 0.05, PL + 0.8), 'window', 1.1)
+    floors = [f for _, _, f in bal_pts]
+    head = []
+    for p, _, f in bal_pts:                     # px from a balcony floor up to the next thing above it
+        head.append(int(round((2 * ST if f + 2 < NF else ZT - (Z1 + f * ST)) * 55.4256)))
     return {'fx': {'boardCentre': (sbx, sby, sbz), 'flag': (BX, yt + TD / 2, DZ + 2.2),
-                   'bell': (dx_ + 0.18, dy_ - 0.06, 0.98), 'domeTop': (BX, yt + TD / 2, DZ + 1.55)},
-            'extra': {'floors': 5, 'staffRoles': ['doorman', 'bellhop', 'receptionist'], 'balconyDepth': 'front'}}
+                   'bell': (dx_ + 0.18, dy_ - 0.06, 0.98), 'domeTop': (BX, yt + TD / 2, DZ + 1.55),
+                   'chimney0': (x0 + 0.9, BY + 0.55, roof_z(x0 + 0.9, BY + 0.55) + 0.85)},
+            'extra': {'floors': 5, 'staffRoles': ['doorman', 'bellhop', 'receptionist'], 'balconyDepth': 'front',
+                      'balconyFloors': floors, 'balconyHeadroomPx': head}}
 
 
 @bbld('resort_hotel', 'building', 'bbld_hotel', fp=(8.0, 5.8), catcher=40.0, notes=HOTEL_NOTE, samples=28,
@@ -321,13 +403,14 @@ variant_x('resort_hotel', hotel_builder)
 # =========================================================================== HOTEL POOL
 
 POOL_NOTE = ('Hotel pool deck (6.4 x 4.6 m): pale stone deck with a 3.6 x 2.2 m pool (white coping, turquoise tiled '
-             'walls, a sun mosaic on the floor, a chrome ladder on the far wall, a little yellow-blue slide at the '
-             'left end), loungers with towels and parasols along the back, a towel shelf + lifebuoy + shower at the '
-             'left, potted palms.  The base sprite has NO water: the Water module draws the pool water inside '
-             '`waterPoly` (px polygon of the visible water surface, the near coping already clipped) at depth '
-             'd + 0.25 with palette "pool"; without the shader draw `hotel_pool_water` (same frame + anchor, anims.work '
-             '6 f ripple loop) there instead.  swimPoints are ON the water plane (waterZ, a swimmer anchor goes '
-             'exactly there); lyingPoints / lyingDirs = loungers (head direction); staffPoints = pool attendant.')
+             'walls, a sun mosaic on the floor, a chrome ladder, little underwater lamps, a yellow-blue slide at the '
+             'left end), loungers with towels and parasols along the back and the right, a towel shelf + lifebuoy + '
+             'shower, two deck lamps, potted palms.  The sprite is the DECK: the visible water surface (waterPoly) is '
+             'cut out (transparent), so the water is drawn UNDER it, exactly like the sea under the land: '
+             'src/systems/Water.js (palette "pool", shore "quay", mask = waterPoly) at depth d - 0.5, or the baked '
+             'fallback `hotel_pool_water` (opaque water + pool floor, 6 f loop) at d - 0.5.  People on the deck / in '
+             'the water are drawn at d + 0.5 (swimmers ON the water plane at swimPoints, sunbathers on lyingPoints with '
+             'the beachfolk sunbathe dir = lyingFeetDirs).  Night: hotel_pool_glow = lit pool + lamps.')
 
 POOL = (-2.0, 1.6, -1.05, 1.15)         # x0, x1, y0, y1 of the pool opening
 POOL_ZW = -0.12                         # water surface
@@ -402,13 +485,13 @@ def pool_builder():
     for k, (lx_, c, tw) in enumerate(((-1.85, B.AQUA, B.CORAL), (-0.75, B.CORAL, B.LEMON), (0.35, B.LEMON, B.TURQ),
                                       (1.45, B.AQUA, B.PINK))):
         B.lounger('lg%d' % k, (lx_, 1.75, 0.02), rz=90.0, col=c, towel=tw)
-        lie.append((lx_, 1.75 - 0.1, 0.36))
+        lie.append((lx_, 1.75 - 0.06, 0.38))
     for k, (px_, c) in enumerate(((-1.3, B.CORAL), (0.9, B.TURQ))):
         B.parasol('ps%d' % k, (px_, 2.05, 0.02), r=0.85, h=1.95, c1=c, n=8)
     # right side: two loungers along Y heads toward +Y, a little side table with drinks
     for k, lx_ in enumerate((2.35, 2.95)):
         B.lounger('lr%d' % k, (lx_, 0.05, 0.02), rz=90.0, col=(B.MINT, B.PINK)[k], towel=(B.SKY, B.LEMON)[k])
-        lie.append((lx_, 0.05 - 0.1, 0.36))
+        lie.append((lx_, 0.05 - 0.06, 0.38))
     cyl('stab', 0.16, 0.04, (2.65, -0.95, 0.42), mat=flat(B.STUCCO_W, 0.4), segs=18)
     cyl('stabl', 0.02, 0.42, (2.65, -0.95, 0.02), mat=flat(B.STUCCO_W, 0.4), segs=8)
     for k in range(2):
@@ -450,6 +533,14 @@ def pool_builder():
     for k in range(2):
         box('flip', (0.12, 0.26, 0.025), (-1.55 + 0.15 * k, -1.85, 0.02), rot=(0, 0, 10 * k), mat=flat(B.CORAL, 0.5),
             bevel=0.01)
+    # underwater lamps on the two far walls (seen through the water; lit at night) + two deck lamps
+    plm = B.neon_mat('poollamp', '#C9F7FF', 0.5, 4.5)
+    for k, (px_, py_, rz_) in enumerate(((-1.25, y1 - 0.065, 0.0), (0.05, y1 - 0.065, 0.0),
+                                         (x0 + 0.065, 0.05, 90.0))):
+        cyl('plamp%d' % k, 0.075, 0.025, (px_, py_, -0.45), rot=(90, 0, rz_), mat=plm, segs=16, origin='center')
+        B.light_pt((px_, py_, -0.4), 'pool', 1.0)
+    B.lamp_post('dlampA', (3.0, 1.15, 0.02), h=1.9)
+    B.lamp_post('dlampB', (-3.0, -0.35, 0.02), h=1.9)
     # water surface (hidden in the idle frame, animated in the water frames)
     wmats = {}
     wat = box('water', (x1 - x0, y1 - y0, 0.004), ((x0 + x1) / 2, (y0 + y1) / 2, POOL_ZW - 0.004),
@@ -465,7 +556,11 @@ def pool_builder():
     for (sx, sy) in ((-1.1, 0.2), (0.0, -0.35), (0.9, 0.45), (-0.4, 0.65), (1.1, -0.45)):
         mark('swim', (sx, sy, POOL_ZW), facing=(1, 0.3, 0))
     for k, p in enumerate(lie):
+        # hips ON the cushion (beachfolk sunbathe anchor), head end = top of the backrest (+Y), feet end = foot of
+        # the bed; lyingDirs = head direction (like assets/beach), the sunbathe dir = feet direction
         mark('lie', p, facing=(0, 1, 0))
+        mark('liehead', (p[0], p[1] + 0.57, 0.52))
+        mark('liefeet', (p[0], p[1] - 0.47, 0.38))
     mark('staff', (-2.45, -1.75, 0.0), facing=(1, 0.2, 0))
     for p in ((-2.6, 0.05), (2.95, 1.35), (1.9, -1.75)):
         mark('customer', (p[0], p[1], 0.0), facing=(0, 1, 0))
@@ -473,7 +568,8 @@ def pool_builder():
             'holes': [(x0, x1, y0, y1)],
             'fx': {'slideEnd': (x0 + 0.1, sy_, 0.12), 'shower': (tx_ + 0.15, 2.0 - 0.32, 1.85),
                    'poolCentre': ((x0 + x1) / 2, (y0 + y1) / 2, POOL_ZW)},
-            'extra': {'waterZ': POOL_ZW, 'waterPalette': 'pool', 'waterShore': 'quay'}}
+            'extra': {'waterZ': POOL_ZW, 'waterPalette': 'pool', 'waterShore': 'quay', 'lyingAxis': 'y',
+                      'lyingHeightM': 0.38}}
 
 
 @bbld('hotel_pool', 'building', 'bbld_hotel', fp=(6.4, 4.6), catcher=30.0, notes=POOL_NOTE, samples=28,
@@ -549,6 +645,18 @@ def cafe_builder():
     for k in range(2):
         cyl('ipend', 0.1, 0.12, (wx - 0.3 + 0.6 * k, BY - 0.1, PL + 1.7), mat=ilm, segs=14, r_top=0.04)
     L.point_light('iL', (wx, BY - 0.3, PL + 1.5), 'window', 25.0, 0.3)
+    # warm-lit lining on the inner face of the side wall the camera sees through the service window (camera looks
+    # along (-1, +1) at yaw 0 -> the left wall; the _x build sees the right one) + a cup shelf on it
+    lx_ = x0 + 0.135 if sgn > 0 else x1 - 0.135
+    box('ilin', (0.02, D - 0.4, WH - 0.15), (lx_, BY - 0.05, PL + 0.05), mat=T.glow_mat('ilinm', 0.7, '#FFE6C0'),
+        bevel=0.0)
+    for k in range(2):
+        box('ilsh%d' % k, (0.16, 1.1, 0.035), (lx_ + 0.08 * sgn, BY - 0.25, PL + 1.2 + 0.3 * k),
+            mat=tonal(B.WOOD, 0.06, 4.0), bevel=0.01)
+        for j in range(5):
+            c = (B.CORAL, B.MINT, B.LEMON, B.SKY, B.PINK)[(j + k) % 5]
+            cyl('ilcup%d' % k, 0.045, 0.11, (lx_ + 0.08 * sgn, BY - 0.7 + 0.22 * j, PL + 1.235 + 0.3 * k),
+                mat=flat(c, 0.4), segs=10)
     # service counter at the opening with iced drinks
     box('scount', (HX1 - HX0 + 0.2, 0.42, 0.08), (wx, y0 - 0.1, HZ0 - 0.04), mat=flat(B.STUCCO_W, 0.5), bevel=0.02)
     box('scbase', (HX1 - HX0 + 0.1, 0.06, HZ0 - PL - 0.1), (wx, y0 - 0.02, PL), mat=flat(B.CORAL, 0.6), bevel=0.02)
@@ -571,8 +679,8 @@ def cafe_builder():
     B.bulb_string('lights', (x0 - 0.2, y0 - 0.34, eave_z - 0.05), (x1 + 0.2, y0 - 0.34, eave_z - 0.05), n=11,
                   sag=0.16)
     # roof sign: big iced coffee on a round board facing the camera
-    T.sign_disc('rsign', (BX + 0.15, BY + 0.05, ridge + 0.48), r=0.55, bg=B.MINT, rim=B.STUCCO_W,
-                emblem=lambda s: B.em_iced(s), es=0.95, psi=B.psi(), tilt=6.0, snow=False)
+    B.glow_objs(T.sign_disc('rsign', (BX + 0.15, BY + 0.05, ridge + 0.48), r=0.55, bg=B.MINT, rim=B.STUCCO_W,
+                            emblem=lambda s: B.em_iced(s), es=0.95, psi=B.psi(), tilt=6.0, snow=False), strength=0.45)
     a = math.radians(B.psi())
     for s in (-1, 1):
         cyl('rsleg', 0.035, 0.55, (BX + 0.15 + s * 0.3 * math.cos(a), BY + 0.05 + s * 0.3 * math.sin(a),
@@ -666,6 +774,15 @@ def icecream_builder():
         c = (B.PINK, B.MINT, B.LEMON, '#C98A5A', B.LILAC, B.CORAL)[k]
         box('icard', (0.22, 0.02, 0.22), (BX - 0.6 + 0.24 * k, y1 - 0.2, PL + 1.45), mat=flat(c, 0.6), bevel=0.01)
     L.point_light('iL', (BX - 0.2, BY - 0.2, PL + 1.6), 'window', 20.0, 0.3)
+    # warm-lit lining + flavour cards on the inner side wall the camera sees through the window (see cafe_builder)
+    sgn_ = 1.0 if side == 'x+' else -1.0
+    lx_ = x0 + 0.135 if sgn_ > 0 else x1 - 0.135
+    box('ilin', (0.02, D - 0.4, WH - 0.15), (lx_, BY - 0.05, PL + 0.05), mat=T.glow_mat('ilinm', 0.75, '#FFE9C8'),
+        bevel=0.0)
+    for k in range(4):
+        c = (B.PINK, B.MINT, B.LEMON, B.LILAC)[k]
+        box('ilcard%d' % k, (0.012, 0.2, 0.2), (lx_ + 0.012 * sgn_, BY - 0.55 + 0.26 * k, PL + 1.35 + 0.08 * (k % 2)),
+            mat=flat(c, 0.6), bevel=0.0)
     # freezer counter at the opening: glass top showing tubs (lit)
     fc = (HX0 + HX1) / 2
     box('freezer', (HX1 - HX0 + 0.1, 0.55, HZ0 - PL - 0.02), (fc, y0 + 0.2, PL), mat=flat(B.STUCCO_W, 0.5), bevel=0.03)
@@ -705,8 +822,8 @@ def icecream_builder():
         sy = rnd.uniform(y0, y1)
         box('spr', (0.1, 0.03, 0.03), (sx, sy, RZ + 0.16), rot=(0, 0, rnd.uniform(0, 180)),
             mat=flat((B.LEMON, B.TURQ, B.CORAL, B.LILAC, B.WHITE)[k % 5], 0.5), bevel=0.01)
-    T.emblem_at('bigcone', lambda s: B.em_icecream(s, scoops=(B.PINK, B.MINT, '#F7F3EC')),
-                (BX + 0.1, BY + 0.1, RZ + 0.95), psi=B.psi(), scale=1.75, tilt=4.0)
+    B.glow_objs(T.emblem_at('bigcone', lambda s: B.em_icecream(s, scoops=(B.PINK, B.MINT, '#F7F3EC')),
+                            (BX + 0.1, BY + 0.1, RZ + 0.95), psi=B.psi(), scale=1.75, tilt=4.0), strength=0.45)
     # outside: bench, little table, cone-shaped sign
     T.town_bench('bench', (x1 + 0.55, BY - 0.25, 0.0), rot_z=90.0 if side == 'x+' else -90.0, col=B.MINT,
                  iron='#E9E4DA', snow=False)

@@ -7,6 +7,10 @@
 // shows the dollhouse cut, the vault + cell door anims, smouldering ruins, a fence ring with the excavator digging
 // and the dump truck tipping.  Writes docs/previews/civ_phaser.png (+ civ_phaser_closed.png) and
 // /tmp/fv_review/civic_phaser.json.  Exit 1 on missing frames / page errors / failed reveal test.
+// Polish v2: the demolition plots use demolitionLayout.M.sides (Y- and the MIRRORED X+ side: the excavator / truck
+// flipped with setOrigin(anchor) + setFlipX like src/entities/Train.js - the anchors are now exactly centred), the
+// gate piece is left out, the loaded truck = truck anim + its cargo overlay anim, the town ruins smoulder too, and the
+// dump truck tips onto a dump_pile.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,15 +41,18 @@ class S extends Phaser.Scene {
       }
     }
     for (const [k, c] of Object.entries(ch)) {
-      for (const [an, a] of Object.entries(c.anims)) for (const d of c.dirs) {
-        const names = []; for (let i = 0; i < a.frames; i++) names.push(an + '_' + d + '_' + i);
+      const reg = (an, a, prefix) => { for (const d of c.dirs) {
+        const names = []; for (let i = 0; i < a.frames; i++) names.push(prefix + an + '_' + d + '_' + i);
         C.frames += names.length;
         const fr = names.filter((f) => has(c.atlas, f)).map((f) => ({ key: c.atlas, frame: f }));
-        if (fr.length !== names.length) C.missing.push(k + '.' + an + '.' + d);
-        const key = 'veh:' + k + ':' + an + ':' + d;
+        if (fr.length !== names.length) C.missing.push(k + '.' + prefix + an + '.' + d);
+        const key = 'veh:' + k + ':' + prefix + an + ':' + d;
         this.anims.create({ key, frames: fr, frameRate: a.fps || 8, repeat: a.repeat ?? -1 });
         C.anims.push(key);
-      }
+      } };
+      for (const [an, a] of Object.entries(c.anims)) reg(an, a, '');
+      if (c.cargoOverlay) for (const an of c.cargoOverlay.anims) reg(an, c.anims[an], 'cargo_');
+      if (Math.abs(c.anchor[0] - 0.5) * c.frameSize[0] > 2) C.missing.push(k + ': anchor x not centred');
     }
     // ---- helpers
     const img = (k, x, y, depth, frame) => { const s = sp[k]; const o = this.add.sprite(x, y, s.atlas, frame || s.frame).setOrigin(s.anchor[0], s.anchor[1]); o.setDepth(depth ?? y); return o; };
@@ -80,52 +87,72 @@ class S extends Phaser.Scene {
       cutaways[key] = st;
       return st;
     };
-    const bank = building('bank', 360, 430);
-    const police = building('police_station', 1000, 430);
+    const bank = building('bank', 380, 470);
+    const police = building('police_station', 1060, 470);
     this.input.on('pointermove', (p) => { for (const st of Object.values(cutaways)) st.set(Phaser.Geom.Polygon.Contains(st.poly, p.x, p.y)); });
     bank.objs.bank_vault.play('spr:bank_vault:vault');
     police.objs.police_station_cell.play('spr:police_station_cell:open');
-    // ---- ruins smouldering on their scorch decals
-    let rx = 70;
-    for (const [k, d] of [['ruin_s', 'scorch_decal_s'], ['ruin_m', 'scorch_decal_m'], ['ruin_l', 'scorch_decal_l'], ['ruin_house_town', 'scorch_decal_m']]) {
-      const fw = sp[k].frameSize[0], ax = sp[k].anchor[0];
-      rx += fw * ax * 0.8;
-      img(d, rx, 820, -1000);
-      img(k, rx, 820);
-      img(k + '_smoke', rx, 820, 821).play('spr:' + k + '_smoke:smoke');
-      rx += fw * (1 - ax) * 0.75;
+    // ---- vehicles the way the game draws them: SW / NW = the SE / NE frames flipped around the (centred) anchor
+    const MIR = { SW: 'SE', NW: 'NE' };
+    const veh = (k, x, y, d, an, cargo) => {
+      const c = ch[k], src = MIR[d] || d;
+      const mk = (prefix) => { const o = this.add.sprite(x, y, c.atlas, prefix + an + '_' + src + '_0').setOrigin(c.anchor[0], c.anchor[1]);
+        o.setFlipX(!!MIR[d]); o.setDepth(y + (prefix ? 0.001 : 0)); o.play('veh:' + k + ':' + prefix + an + ':' + src); return o; };
+      const o = mk('');
+      if (cargo && c.cargoOverlay && c.cargoOverlay.anims.includes(an)) mk('cargo_');
+      return o;
+    };
+    // ---- demolition on two M plots: the default street side (Y-) and the mirrored X+ side, gate piece left out
+    const demo = (px, py, side, stage) => {
+      const L = man.demolitionLayout.M.sides[side];
+      img('scorch_decal_m', px, py, -1000);
+      img(stage, px, py);
+      man.fenceRings.M.pieces.forEach((pc, i) => {
+        if (i === L.gateIndex) return;
+        const o = img(pc.key, px + pc.at[0], py + pc.at[1]);
+        if (sp[pc.key].anims && sp[pc.key].anims.blink) o.play('spr:' + pc.key + ':blink');
+      });
+      veh('excavator', px + L.excavator.at[0], py + L.excavator.at[1], L.excavator.dir, 'dig');
+      veh('dump_truck', px + L.dump_truck.at[0], py + L.dump_truck.at[1], L.dump_truck.dir, 'idle', true);
+    };
+    demo(640, 960, 'Y-', 'ruin_m');
+    demo(1560, 960, 'X+', 'rubble_pile_m');
+    // ---- the dump truck tipping at the dump (NE, tail toward the camera) onto a dump_pile
+    const dt = ch.dump_truck;
+    const tpx = 2150, tpy = 470;
+    const tp = dt.tipPoint && dt.tipPoint.NE ? dt.tipPoint.NE : [0, 0];
+    img('dump_pile', tpx + tp[0], tpy + tp[1]);
+    const tip = this.add.sprite(tpx, tpy, dt.atlas, 'tip_NE_0').setOrigin(dt.anchor[0], dt.anchor[1]).setDepth(tpy - 1);
+    tip.play({ key: 'veh:dump_truck:tip:NE', repeat: -1, repeatDelay: 400 });
+    // ---- ruins smouldering on their scorch decals (0.6x)
+    let rx = 40;
+    for (const [k, d] of [['ruin_s', 'scorch_decal_s'], ['ruin_m', 'scorch_decal_m'], ['ruin_l', 'scorch_decal_l'],
+      ['ruin_house_town', 'scorch_decal_m'], ['ruin_shop_town', 'scorch_decal_m'], ['ruin_l_town', 'scorch_decal_l']]) {
+      const fw = sp[k].frameSize[0], ax = sp[k].anchor[0], sc = 0.6;
+      rx += fw * ax * sc;
+      img(d, rx, 1330, -1000).setScale(sc);
+      img(k, rx, 1330).setScale(sc);
+      img(k + '_smoke', rx, 1330, 1331).setScale(sc).play('spr:' + k + '_smoke:smoke');
+      rx += fw * (1 - ax) * sc + 6;
     }
-    // ---- demolition on an M plot: fence ring + excavator + dump truck
-    const px = 1700, py = 770;
-    img('rubble_pile_m', px, py);
-    for (const pc of man.fenceRings.M.pieces) {
-      const o = img(pc.key, px + pc.at[0], py + pc.at[1]);
-      if (sp[pc.key].anims && sp[pc.key].anims.blink) o.play('spr:' + pc.key + ':blink');
-    }
-    const lay = man.demolitionLayout.M;
-    const veh = (k, at, d, an) => { const c = ch[k]; const o = this.add.sprite(px + at[0], py + at[1], c.atlas, an + '_' + d + '_0').setOrigin(c.anchor[0], c.anchor[1]).setDepth(py + at[1]); o.play('veh:' + k + ':' + an + ':' + d); return o; };
-    veh('excavator', lay.excavator.at, 'SE', 'dig');
-    if (lay.dump_truck) veh('dump_truck', lay.dump_truck.at, 'SE', 'idle_loaded');
-    const tip = this.add.sprite(1750, 400, ch.dump_truck.atlas, 'tip_SE_0').setOrigin(ch.dump_truck.anchor[0], ch.dump_truck.anchor[1]);
-    tip.play({ key: 'veh:dump_truck:tip:SE', repeat: -1, repeatDelay: 400 });
     // ---- props row
-    let x = 70;
-    for (const k of ['wanted_board', 'fire_hydrant', 'fire_alarm_post', 'insurance_sign', 'for_sale_sign', 'sold_sign', 'welcome_mat', 'moving_boxes_stack', 'furniture_pile_s', 'furniture_pile']) {
-      const s = sp[k]; const o = img(k, x + s.frameSize[0] * s.anchor[0] * 0.8, 1040);
-      o.setScale(0.8);
+    let x = rx + 20;
+    for (const k of ['wanted_board', 'fire_hydrant', 'fire_alarm_post', 'insurance_sign', 'for_sale_sign', 'sold_sign', 'moving_boxes_stack', 'furniture_pile']) {
+      const s = sp[k]; const o = img(k, x + s.frameSize[0] * s.anchor[0] * 0.6, 1330);
+      o.setScale(0.6);
       if (s.anims && s.anims.ring) o.play('spr:' + k + ':ring');
-      x += s.frameSize[0] * 0.8 + 6;
+      x += s.frameSize[0] * 0.6 + 4;
     }
     C.scene = this; C.ready = true;
   }
 }
-window.__C.game = new Phaser.Game({ type: Phaser.WEBGL, width: 2000, height: 1120, backgroundColor: '#eef3f9',
+window.__C.game = new Phaser.Game({ type: Phaser.WEBGL, width: 2600, height: 1420, backgroundColor: '#eef3f9',
   render: { antialias: true }, scene: S, banner: false });
 </script></body></html>`;
 
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
-const ctx = await browser.newContext({ viewport: { width: 2000, height: 1120 }, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: 2600, height: 1420 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 const errors = [];
 const notFound = [];
@@ -142,7 +169,7 @@ await sleep(500);
 await page.screenshot({ path: path.join(ROOT, 'docs', 'previews', 'civ_phaser_closed.png') });
 // reveal test: hover the bank (inside revealPoly) -> its shell must fade, the police station stays closed
 // headless WebGL on a busy shared CPU can run the game loop slowly: move in steps, then wait for the tween
-for (let k = 1; k <= 5; k++) { await page.mouse.move(5 + (355 * k) / 5, 5 + (325 * k) / 5); await sleep(120); }
+for (let k = 1; k <= 5; k++) { await page.mouse.move(5 + (375 * k) / 5, 5 + (365 * k) / 5); await sleep(120); }
 await page.waitForFunction(() => {
   const o = window.__C.scene.children.list.find((c) => c.frame && c.frame.name === 'bank_shell');
   return o && o.alpha < 0.3;

@@ -167,6 +167,7 @@ def add_water_to_specs(L, uw_visible):
 # standing on edge behind the lying head like a big disc.  hat -> its own tilt (bf_parts), cancelled on the face.
 LIE_FACE_HATS = {'straw_hat': bp.STRAW_TILT, 'sun_hat_wide': bp.SUNHAT_TILT}
 LIE_HAT_OFFSET = (0.0, -0.035, 0.0)        # head-centre space: hat opening just in front of the face
+LIE_HAT_SCALE = 0.8                         # the laid-over-face brim at full size read as 'a hat with legs' (2x torso)
 
 
 def hat_pivots(rig, ctx):
@@ -199,11 +200,18 @@ def hat_pivots(rig, ctx):
 def set_lie_hats(piv, on):
     for pn, e in piv.items():
         if on:
-            e.rotation_euler = (math.radians(90.0 - LIE_FACE_HATS[pn]), 0.0, 0.0)
-            e.location = (LIE_HAT_OFFSET[0], LIE_HAT_OFFSET[1], tb.HEAD_C + LIE_HAT_OFFSET[2])
+            th = math.radians(90.0 - LIE_FACE_HATS[pn])
+            e.rotation_euler = (th, 0.0, 0.0)
+            # scaled about the hat OPENING (0.17 above the head centre in hat space), not the head centre, so the
+            # smaller hat still rests on the face instead of sinking into it
+            off = (1.0 - LIE_HAT_SCALE) * 0.17
+            e.location = (LIE_HAT_OFFSET[0], LIE_HAT_OFFSET[1] - off * math.sin(th),
+                          tb.HEAD_C + LIE_HAT_OFFSET[2] + off * math.cos(th))
+            e.scale = (LIE_HAT_SCALE,) * 3
         else:
             e.rotation_euler = (0.0, 0.0, 0.0)
             e.location = (0.0, 0.0, tb.HEAD_C)
+            e.scale = (1.0, 1.0, 1.0)
     if piv:
         bpy.context.view_layer.update()
 
@@ -282,6 +290,8 @@ def solve_world_arms(rig, ikw, yaw, anchor):
             tgt = rig.world('sh_' + side) + fvec(yaw, tuple(c * ar for c in v))
         elif kind == 'anchor':
             tgt = anchor + fvec(yaw, tuple(c * k for c in v))
+        elif kind == 'ball':
+            tgt = ball_hand_target(rig, v, yaw, anchor)
         elif kind == 'ring':
             a, up = v
             s = bp.ring_scale(rig.meta['ch']['age'])
@@ -295,6 +305,23 @@ def solve_world_arms(rig, ikw, yaw, anchor):
         pl = crot @ fvec(yaw, pole)
         rig.solve_arm(side, tuple(inv @ tgt), tuple(pl))
     bpy.context.view_layer.update()
+
+
+def ball_center(rig, v, yaw, anchor):
+    """World centre of the held beach ball for an _ikw 'ball' spec (cx, cf, cz, side) - bf_anim._ball_hands."""
+    k = body_k(rig)
+    r = ba.ball_r(rig.meta['ch'].get('age', 'adult'))
+    cx, cf, cz = v[:3]
+    return anchor + fvec(yaw, (cx * k, cf * k + r, cz * k))
+
+
+def ball_hand_target(rig, v, yaw, anchor):
+    """Palms on the ball's BACK-sides (ba.BALL_HOLD_DEG behind its widest point): the short chibi arms cannot reach
+    round to the sides of a 0.38 m ball, so it is hugged / pushed from behind, like a toddler with a big ball."""
+    r = ba.ball_r(rig.meta['ch'].get('age', 'adult')) + ba.BALL_GRIP
+    side = v[3]
+    t = math.radians(ba.BALL_HOLD_DEG)
+    return ball_center(rig, v, yaw, anchor) + fvec(yaw, (side * r * math.cos(t), -r * math.sin(t), 0.0))
 
 
 def pose_body3(rig, anim, d, i, water_ob=None):
@@ -320,9 +347,9 @@ def pose_body3(rig, anim, d, i, water_ob=None):
         stabilize_head3(rig, hp, hd)
     if p.get('_ikw'):
         solve_world_arms(rig, p['_ikw'], yaw, anchor)
-    info = {'yaw': yaw, 'board': p.get('_board'), 'anchor': anchor}
+    info = {'yaw': yaw, 'board': p.get('_board'), 'anchor': anchor, 'anim': anim, 'frame': i, 'dir': d}
     if anim == 'float':
-        info['ring_tilt'] = (3.0 * math.sin(TAU * i / 4), 2.5 * math.cos(TAU * i / 4))
+        info['ring_tilt'] = (5.0 * math.sin(TAU * i / 4), 4.0 * math.cos(TAU * i / 4))
     bp.place_items3(rig, info)
     tp2.place_items(rig)
     return p
@@ -408,12 +435,19 @@ def body_meta3(rig, base, bdir):
         meta['zfront'][key] = sorted(limb_front(rig))
         yaw = bc.DIR_YAW[d] + p.get('_yaw', 0.0)
         if p.get('_ball') is not None:
-            hr, hl = rig.world('hand_R'), rig.world('hand_L')
-            bcen = (hr + hl) * 0.5
+            spec = p['_ikw']['R'][1]
+            bcen = ball_center(rig, spec, yaw, anchor)
             chest = rig.world('chest')
             o = tr.px_off(bcen)
+            r = ba.ball_r(rig.meta['ch'].get('age', 'adult'))
             meta['ballPoint'][key] = [round(o[0], 1), round(o[1], 1), bool(depth(bcen) < depth(chest) - 0.02),
-                                      round(ba.BALL_R * k * bc.PPU, 1)]
+                                      round(r * bc.PPU, 1)]
+            # grip check: how far each hand ended from its target on the ball's side (IK reach)
+            gr = []
+            for side, sgn in (('R', -1.0), ('L', 1.0)):
+                t = ball_hand_target(rig, tuple(spec[:3]) + (sgn,), yaw, anchor)
+                gr.append(round((rig.world('hand_' + side) - t).length, 3))
+            meta.setdefault('ballGrip', {})[key] = gr
         if anim == 'dig' and i == 0:
             o = tr.px_off(fvec(yaw, tuple(c * k for c in ba.DIG_POINT)))
             meta['digPoint'][d] = [round(o[0], 1), round(o[1], 1)]
@@ -772,6 +806,10 @@ def render_full(opt):
         os.makedirs(outdir, exist_ok=True)
         for anim, d, i in todo:
             tl = ba.pose3(anim, i, rig.meta['ch'], d)
+            # hats come off / are put down like in the compositors (bf_presets.HEAD_KEEP = animHideHead)
+            keep_h = bpr.HEAD_KEEP.get(anim)
+            hidden = {p for p in parts if keep_h is not None and tp.PARTS[p].family == 'hat' and p not in keep_h}
+            hat_now = any(tp.PARTS[p].family == 'hat' and tp.PARTS[p].cls == 'full' for p in parts if p not in hidden)
             for cname in ctx.cols:
                 lc = vl.layer_collection.children.get(cname)
                 if cname == 'WATER':
@@ -783,7 +821,9 @@ def render_full(opt):
                     pn = cname.split('.')[1]
                     is_hat = cname.endswith('~hat')
                     if tp.PARTS[pn].hatfit:
-                        keep = is_hat == hat
+                        keep = is_hat == hat_now
+                    if pn in hidden:
+                        keep = False
                     pa = bpr.PART_ANIMS.get(pn)
                     if pa is not None and anim not in pa:
                         keep = False

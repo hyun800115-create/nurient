@@ -16,8 +16,12 @@ On top of the v4 / v5 rules (townfolk_compose.py / townfolk2_compose.py):
   * head frames: '<layer>/<hp>_<hd>' with hd = timeline hd (default the anim dir); faces / brows only when
     hd is in faceDirsByPose[hp] (default faceDirs).
   * animParts: props drawn in an anim even if the person does not wear them (float ring, surf board, dig spade).
-  * parts with 'anims' have frames only in those anims (others: nothing drawn); can_play() checks the body parts,
-    except accessories with 'drop' (towel, swim ring, flip-flops, camera, rescue tube, floaties): put down there.
+  * parts draw only in their 'anims' minus 'noAnims'; can_play() = every body part LISTS the anim (part_plays()).
+    Drop accessories (towel, flip-flops, camera, rescue tube, floaties, caddy) list every anim and keep the ones they
+    have no frames for in noAnims (put down there); the swim ring blocks swim / surf / dig / ball / sunbathe.
+  * animHideHead[anim]: hats hidden there (swim / surf / float / sunbathe); a hidden full hat un-squashes the hair.
+  * pick_anim() / animFallback (swim -> float for ring wearers), the same rule as cityfolk_compose pick_anim.
+  * sunbathe dir = where the FEET point: sunbathe_dir_for(spot, i) (lyingFeetDirs, else opposite lyingDirs).
   * followDz: follow subs use limb z + followDz (default 0.5).
   * generate3(): v4 generator + townfolk2 extra slots + beachSlots (preset colour or slot palette) + addOns
     (optional extra parts) + bare-arm sleeves.  Deterministic; the JS port consumes the rng in the same order.
@@ -38,6 +42,35 @@ from townfolk_compose import MIRROR, LIMBS, iter_tf_frames      # noqa: E402
 
 ASSETS = tc.ASSETS
 OLD_ANIMS = ['idle', 'walk', 'carry_walk', 'talk', 'wave', 'happy', 'sad', 'clap', 'sit', 'push']
+
+
+def part_plays(P, anim, old_anims=OLD_ANIMS):
+    """Canonical per-part play rule for every townfolk compositor (see beachfolk_compose.js partPlays)."""
+    if not P or P.get('space') != 'body' or not P.get('subs'):
+        return True
+    return anim in P.get('anims', old_anims)
+
+
+def head_hidden(T, pn, anim):
+    P = T['parts'].get(pn)
+    if P is None:
+        return True
+    if anim in P.get('noAnims', []):
+        return True
+    return pn in T.get('animHideHead', {}).get(anim, [])
+
+
+OPP = {'N': 'S', 'NE': 'SW', 'E': 'W', 'SE': 'NW', 'S': 'N', 'SW': 'NE', 'W': 'E', 'NW': 'SE'}
+
+
+def sunbathe_dir_for(spot, i=0):
+    """sunbathe dir (= where the FEET point) for lying spot i of a prop sprite def: lyingFeetDirs[i], else the
+    opposite of lyingDirs[i] (hips -> head)."""
+    if spot.get('lyingFeetDirs'):
+        return spot['lyingFeetDirs'][min(i, len(spot['lyingFeetDirs']) - 1)]
+    if spot.get('lyingDirs'):
+        return OPP[spot['lyingDirs'][min(i, len(spot['lyingDirs']) - 1)]]
+    return 'SE'
 
 
 def merge_beachfolk(M2, B):
@@ -75,9 +108,10 @@ def merge_beachfolk(M2, B):
     G['exclude'] = list(G['exclude']) + [list(x) for x in GB.get('exclude', [])]
     G['beachSlots'] = list(GB.get('beachSlots', []))
     G['animParts'] = copy.deepcopy(GB.get('animParts', {}))
-    for key in ('water', 'sunbathe', 'dig', 'ball'):
+    for key in ('water', 'sunbathe', 'dig', 'ball', 'animHideHead', 'pageClasses'):
         if key in B:
             M[key] = copy.deepcopy(B[key])
+    M['animFallback'] = dict(M.get('animFallback', {}), **copy.deepcopy(B.get('animFallback', {})))
     fa_anim, fa_pose = M.setdefault('frameAtlasAnim', {}), M.setdefault('frameAtlasPose', {})
     for ext in B.get('frameAtlasExt', []):
         for a in ext.get('anims', []):
@@ -122,13 +156,30 @@ class Beachfolk(tc2.Townfolk2):
     def can_play(self, person, anim):
         if anim not in self.T['anims']:
             return False
+        return all(part_plays(self.parts[pn], anim) for pn in self.anim_parts(person, anim))
+
+    def pick_anim(self, person, anim):
+        """(anim, face): anim when playable, else the first playable animFallback entry, else idle / walk."""
+        if self.can_play(person, anim):
+            return anim, None
+        face = self.T.get('fallbackFace', {}).get(anim)
+        for a in self.T.get('animFallback', {}).get(anim, []):
+            if self.can_play(person, a):
+                return a, face
+        return ('idle' if self.can_play(person, 'idle') else 'walk'), face
+
+    def visible_parts(self, person, anim):
+        out = []
         for pn in self.anim_parts(person, anim):
             P = self.parts[pn]
-            if P['space'] != 'body' or not P['subs']:
+            if anim in P.get('noAnims', []):
                 continue
-            if anim not in P.get('anims', OLD_ANIMS) and not P.get('drop'):
-                return False
-        return True
+            if 'anims' in P and anim not in P['anims']:
+                continue
+            if P['space'] == 'head' and head_hidden(self.T, pn, anim):
+                continue
+            out.append(pn)
+        return out
 
     def layers(self, person, anim, d, i, face=None):
         """[(z, frame name, tint or None, 'body'|'head')] in draw order for a RENDERED dir."""
@@ -145,14 +196,11 @@ class Beachfolk(tc2.Townfolk2):
         for name, slot, z, zfront in LIMBS:
             limbz[name] = zfront if name in zf else z
             out.append((limbz[name], f'{name}@{base}/{anim}_{d}_{i}', self.tint(person, slot), 'body'))
-        hat = self.wears_full_hat(person)
+        vis = self.visible_parts(person, anim)
+        hat = any(self.parts[pn]['family'] == 'hat' and self.parts[pn].get('cls') == 'full' for pn in vis)
         heads = []
-        for pn in self.anim_parts(person, anim):
+        for pn in vis:
             P = self.parts[pn]
-            if anim in P.get('noAnims', []):
-                continue
-            if 'anims' in P and anim not in P['anims']:
-                continue
             for s, sd in P['subs'].items():
                 z = sd['z'][d] if isinstance(sd['z'], dict) else sd['z']
                 if sd.get('follow'):

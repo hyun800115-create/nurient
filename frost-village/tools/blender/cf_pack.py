@@ -23,6 +23,7 @@ import sys
 import time
 
 import numpy as np
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -65,6 +66,177 @@ MERGE_RULES = [
     'copied; objects are shallow-merged, arrays concatenated.',
     'Everything else (frame size, anchors, limbs, faces, noses, frameNames, layerNames) is the v4 block unchanged.',
 ]
+
+
+ANCHOR_ERR = 9.0          # mean RGB error (0..255) of a layer after quantizing that earns it palette anchors
+ANCHOR_ROWS = 24          # height of the temporary anchor strip appended below a sheet while quantizing
+
+
+def _untinted(layer):
+    """True for layers drawn with their rendered colours (no tint): items, badges, reflective trims, faces."""
+    pn, _, s = layer.partition('.')
+    if pn in ('face', 'head') or layer.startswith('face.'):
+        return True
+    P = tp.PARTS.get(pn)
+    if P is None or s not in P.subs:
+        return False
+    return P.subs[s].get('tint') is None
+
+
+def _quantize(sheet, colors, dither):
+    if tpk.imagequant is None:
+        return sheet
+    return tpk.imagequant.quantize_pil_image(sheet, dithering_level=dither, max_quality=100, min_quality=0,
+                                             max_colors=colors)
+
+
+def _layer_errors(sheet, q, rects):
+    """mean |RGB| error per layer over its opaque pixels: rects = {layer: [(x, y, w, h), ...]}."""
+    a = np.asarray(sheet.convert('RGBA')).astype(np.int16)
+    b = np.asarray(q.convert('RGBA')).astype(np.int16)
+    out = {}
+    for layer, rs in rects.items():
+        tot = n = 0
+        for x, y, w, h in rs:
+            pa, pb = a[y:y + h, x:x + w], b[y:y + h, x:x + w]
+            m = pa[..., 3] > 200
+            if m.any():
+                tot += np.abs(pa[..., :3][m] - pb[..., :3][m]).mean(axis=1).sum()
+                n += int(m.sum())
+        if n:
+            out[layer] = tot / n
+    return out
+
+
+def _anchor_strip(sheet, rects, layers, width, rows, rng):
+    """rows x width strip of opaque pixels sampled equally from `layers` (their colours gain weight in the palette
+    imagequant picks; the strip is cut off again after quantizing)."""
+    a = np.asarray(sheet.convert('RGBA'))
+    pools = []
+    for layer in layers:
+        px = [a[y:y + h, x:x + w][a[y:y + h, x:x + w][..., 3] > 200] for x, y, w, h in rects[layer][:40]]
+        px = np.concatenate([p for p in px if len(p)] or [np.zeros((0, 4), np.uint8)])
+        if len(px):
+            pools.append(px)
+    if not pools:
+        return None
+    n = width * rows
+    per = max(1, n // len(pools))
+    pick = np.concatenate([p[rng.integers(0, len(p), per)] for p in pools])
+    pick = pick[rng.permutation(len(pick))][:n]
+    if len(pick) < n:
+        pick = np.concatenate([pick, pick[rng.integers(0, len(pick), n - len(pick))]])
+    pick[:, 3] = 255
+    return Image.fromarray(pick.reshape(rows, width, 4).astype(np.uint8), 'RGBA')
+
+
+def build_sheets3(prefix, layers, frame_name, colors, dither, report, tail=0.5, qlog=None):
+    """tf_pack.build_sheets (same dedupe, greedy layer -> sheet split, packing, quantizing, compact 'tfatlas' JSON)
+    plus
+      * tail merge (as bf_pack): a last group smaller than `tail` x the sheet budget is packed with the group before
+        it when the pair still fits one 2048 sheet (no 240-px stub atlas = one texture / batch less);
+      * palette anchors: the sheet is quantized once, every UNTINTED layer (red fire hose, brass, chrome, hi-vis
+        trims, cardboard box, faces ...) whose mean colour error exceeds ANCHOR_ERR gets pixels in a temporary strip
+        below the sheet and the sheet is quantized again - small saturated items no longer collapse onto the
+        dominant neutral palette (the red hose came out tan).  Tinted layers are rendered near-white, so the
+        palette they need is cheap.  qlog collects (sheet, layer, error before, error after)."""
+    import hashlib
+    import pack_utils
+    SHEET = tpk.SHEET
+    items, sizes = [], {}
+    for layer in sorted(layers):
+        seen, lst = {}, []
+        for fr, img in layers[layer].items():
+            h = hashlib.md5(img.tobytes()).hexdigest()
+            name = frame_name(layer, fr)
+            if h in seen:
+                seen[h][1].append(name)
+                continue
+            ent = [layer, [name], img]
+            seen[h] = ent
+            lst.append(ent)
+        items.extend(lst)
+        sizes[layer] = sum(tpk.trimmed_area(e[2]) for e in lst)
+    budget = SHEET * SHEET * tpk.SHEET_FILL
+    groups, cur, acc = [], [], 0
+    for layer in sorted(layers, key=lambda l: (l.split('.')[0], l)):
+        if cur and acc + sizes[layer] > budget:
+            groups.append(cur)
+            cur, acc = [], 0
+        cur.append(layer)
+        acc += sizes[layer]
+    if cur:
+        groups.append(cur)
+
+    def pack(grp):
+        gs = set(grp)
+        frames, alias, owner = [], {}, {}
+        for layer, names, img in items:
+            if layer not in gs:
+                continue
+            frames.append((names[0], Image.fromarray(img, 'RGBA')))
+            owner[names[0]] = layer
+            for n in names[1:]:
+                alias[n] = names[0]
+        sheet, atlas = pack_utils.pack_atlas(frames, max_width=SHEET, trim=True, padding=2)
+        return sheet, atlas, frames, alias, owner
+
+    rng = np.random.default_rng(7)
+    atlases, where = [], {}
+    k = 0
+    pending = list(groups)
+    while pending:
+        grp = pending.pop(0)
+        res = None
+        if len(pending) == 1 and sum(sizes[l] for l in pending[0]) < tail * budget:
+            res = pack(grp + pending[0])
+            if res[0].size[1] <= SHEET:
+                grp = grp + pending.pop(0)
+            else:
+                res = None
+        if res is None:
+            res = pack(grp)
+        sheet, atlas, frames, alias, owner = res
+        if sheet.size[1] > SHEET and len(grp) > 1:          # too tall: split the group and retry
+            h = len(grp) // 2
+            pending[:0] = [grp[:h], grp[h:]]
+            continue
+        key = f'{prefix}_{k}'
+        k += 1
+        rects = {}
+        for name, fr in atlas['frames'].items():
+            r = fr['frame']
+            rects.setdefault(owner[name], []).append((r['x'], r['y'], r['w'], r['h']))
+        q = _quantize(sheet, colors, dither)
+        err0 = _layer_errors(sheet, q, rects)
+        bad = sorted([l for l, e in err0.items() if e > ANCHOR_ERR and _untinted(l)], key=lambda l: -err0[l])
+        if bad and tpk.imagequant is not None:
+            strip = _anchor_strip(sheet, rects, bad, sheet.size[0], ANCHOR_ROWS, rng)
+            big = Image.new('RGBA', (sheet.size[0], sheet.size[1] + ANCHOR_ROWS), (0, 0, 0, 0))
+            big.paste(sheet, (0, 0))
+            big.paste(strip, (0, sheet.size[1]))
+            q2 = _quantize(big, colors, dither).crop((0, 0, sheet.size[0], sheet.size[1]))
+            err1 = _layer_errors(sheet, q2, rects)
+            worse = sum(err1.get(l, 0) - err0.get(l, 0) for l in err0 if not _untinted(l)) / max(1, len(err0))
+            if qlog is not None:
+                for l in bad:
+                    qlog.append((key, l, round(err0[l], 1), round(err1.get(l, 0), 1)))
+                qlog.append((key, '(tinted layers, mean change)', 0.0, round(worse, 2)))
+            q = q2
+        png = os.path.join(tpk.OUT, key + '.png')
+        js = os.path.join(tpk.OUT, key + '.json')
+        q.save(png, optimize=True)
+        for n, src in alias.items():
+            atlas['frames'][n] = dict(atlas['frames'][src])
+        with open(js, 'w', encoding='utf-8') as f:
+            json.dump(tpk.compact_atlas(atlas, key + '.png', sheet.size), f, separators=(',', ':'))
+        for layer in grp:
+            where[layer] = key
+        atlases.append({'key': key, 'png': f'townfolk/{key}.png', 'json': f'townfolk/{key}.json', 'format': 'tfatlas'})
+        report.append((key, sheet.size, len(frames), len(alias), os.path.getsize(png)))
+        print(f'  {key}: {sheet.size[0]}x{sheet.size[1]}  {len(frames)} frames (+{len(alias)} dup)  '
+              f'{os.path.getsize(png) / 1024:.0f} KB  anchors {len(bad)}', flush=True)
+    return atlases, where
 
 
 def load(p):
@@ -381,12 +553,13 @@ def main():
     for f in os.listdir(out):
         if f.startswith('cf_') and (f.endswith('.png') or f.endswith('.json')):
             os.remove(os.path.join(out, f))
-    log, report = [], []
+    log, report, qlog = [], [], []
     v4parts = cpr.v4_base_parts()
     if os.path.exists(os.path.join(cache, 'head', 'meta.json')):
         print('[head3] collecting', flush=True)
         head_layers, head_meta = collect_head3(cache, log)
-        atlases, where_head = tpk.build_sheets('cf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report)
+        atlases, where_head = build_sheets3('cf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report,
+                                            qlog=qlog)
     else:
         log.append('no head renders')
         atlases, where_head = [], {}
@@ -399,7 +572,7 @@ def main():
         layers, meta = collect_body3(cache, base, log, v4parts)
         body_metas[base] = meta
         body_layer_names[base] = sorted(layers)
-        at, w = tpk.build_sheets(f'cf_{base}', layers, lambda l, f, b=base: f'{l}@{b}/{f}', colors, dither, report)
+        at, w = build_sheets3(f'cf_{base}', layers, lambda l, f, b=base: f'{l}@{b}/{f}', colors, dither, report, qlog=qlog)
         atlases += at
         where_body[base] = w
     for at in atlases:
@@ -415,6 +588,8 @@ def main():
           f'{time.time() - t0:.0f}s')
     for l in log:
         print('WARN', l)
+    for key, layer, e0, e1 in qlog:
+        print(f'PALETTE {key} {layer}: mean colour error {e0} -> {e1}')
 
 
 if __name__ == '__main__':

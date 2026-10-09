@@ -107,6 +107,9 @@
     huntChase: 0, huntCatches: 0, huntChaseTime: 0, warnings: [], stallT: 0, soldItems: 0,
     seenBuilt: {}, seenRegion: {}, hungryT: 0, lastWait: 0,
   };
+  // (v4) order cards done and the carpenter's houses are "something new" too (beats)
+  gs.events.on('v4:cardDone', (c) => { bot.events.push({ t: bot.t, ev: 'card:' + (c && c.shop ? c.shop : 'standing'), coins: gs.economy.coins }); });
+  gs.events.on('v4:houseDone', (h) => { bot.events.push({ t: bot.t, ev: 'house:' + (h && h.id ? h.id : '?'), coins: gs.economy.coins }); });
   const eco = () => gs.economy;
   const P = () => gs.player;
   const bag = () => { const o = {}; for (const it of P().stack.items) o[it.type] = (o[it.type] || 0) + 1; return o; };
@@ -263,6 +266,12 @@
           if (src) { setTask('fetch', src.outPad, { st: src, type: c.type, chore: c, label: 'fetch ' + c.type, tol: 6, maxT: 30 }); return; }
         }
       }
+    }
+    // 1c'. (v4) saving for the 승격식: the coins lying on the cash pads first (a player watching the rank chip
+    //      would; the standing orders kept the bot busy for 20 min with 1000 coins in hand)
+    {
+      const rp = gs.progress.pads && gs.progress.pads.rank_eup;
+      if (rp && rp.active && !rp.done && rp.remaining > coins && cashTotal() >= 150) { cashTask(); if (bot.task) return; }
     }
     // 1d. (v4) the neighbours: cut a ribbon, visit the town when invited, carry for the order cards, feed the
     //     carpenter's house sites (bot.opts.v4 === false turns it off)
@@ -576,7 +585,19 @@
       bot.huntChaseTime += dt;
       if (d < 55) { FV.setInput(0, 0); arrived = true; }
       else arrived = steerTo(a.x, a.y, 50);
-    } else arrived = steerTo(tk.target.x, tk.target.y, tk.tol);
+    } else {
+      // a pad that popped up under the chief only takes coins after he steps off once (like a player would)
+      // (the same for a plot whose build menu was closed: it opens again after one step off)
+      const leave = !tk.off && ((tk.kind === 'pay' && tk.pad.needsLeave && tk.pad.pad.contains(p.x, p.y))
+        || (tk.kind === 'build' && tk.site.leaveNeeded && tk.site.pad && tk.site.pad.contains(p.x, p.y) && !window.__FV.buildMenuOpen));
+      if (leave) {
+        const c = tk.kind === 'pay' ? tk.pad : { x: tk.site.dropX, y: tk.site.dropY };
+        const offs = [[0, 110], [170, 0], [-170, 0], [0, -110], [130, 80], [-130, 80]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy }));
+        tk.off = offs.find((q) => los(p.x, p.y, q.x, q.y)) || offs[0];
+      }
+      if (tk.off && gd(p.x, p.y, tk.off.x, tk.off.y) < 24) tk.off = null;
+      arrived = tk.off ? (steerTo(tk.off.x, tk.off.y, 16), false) : steerTo(tk.target.x, tk.target.y, tk.tol);
+    }
     // stuck detection
     const mv = Math.hypot(p.x - bot.lastPos.x, p.y - bot.lastPos.y);
     bot.lastPos.x = p.x; bot.lastPos.y = p.y;

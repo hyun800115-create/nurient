@@ -45,6 +45,7 @@ YAW = 0.0                         # yaw of the build being modelled (set by bbld
 NIGHT = []                        # [(material, night colour, strength)] lit in the glow pass
 FRONT = []                        # occluder objects for the overlay pass
 LIGHTS = []                       # [(kind, size_m)] parallel to the 'light' markers
+GLOWOBJ = []                      # [(object, colour hex | None, strength, tint)] lit WHOLE in the glow pass
 SEG = math.sqrt(2.0)
 
 # warm-coast palette (inside the CONTRACT palette family: same saturation / value range as town + harbour)
@@ -142,6 +143,7 @@ def reset():
     NIGHT.clear()
     FRONT.clear()
     LIGHTS.clear()
+    GLOWOBJ.clear()
 
 
 # =========================================================================== registries
@@ -159,6 +161,19 @@ def front(objs):
     for o in BA.descendants(list(objs)):
         if o is not None and o not in FRONT:
             FRONT.append(o)
+    return objs
+
+
+def glow_objs(objs, col=None, strength=0.85, tint=None):
+    """Light whole objects (and their children) in the night glow pass - a backlit sign / medallion, or an interior
+    seen through a window.  col None = every material glows in its OWN base colour (a sign keeps its picture),
+    tint = optional (r, g, b) multiplier (warm interior light); col = one colour for everything.  Shared materials
+    are not touched (the glow pass swaps per object), so other objects using the same material stay dark."""
+    if not isinstance(objs, (list, tuple)):
+        objs = [objs]
+    for o in BA.descendants(list(objs)):
+        if o is not None and o.type in ('MESH', 'CURVE') and all(g[0] is not o for g in GLOWOBJ):
+            GLOWOBJ.append((o, col, strength, tint))
     return objs
 
 
@@ -514,10 +529,10 @@ def gwin(name, loc, face='y-', w=0.5, h=0.62, frame=WHITE, shutters=None, curtai
 
 
 def glass_door(name, loc, face='y-', w=1.0, h=1.5, frame='#E9E4DA', double=True, handle=GOLD, lit=True,
-               strength=2.2):
+               strength=2.2, glass_top='#D7EFF6', glass_bot='#86C6DF'):
     """Glass entrance door(s) in a light frame (loc = bottom-centre on the wall)."""
     fm = flat(frame, 0.5, 0.3)
-    gm = glass_mat(name + '_gl', '#D7EFF6', '#86C6DF', strength=strength, lit=lit)
+    gm = glass_mat(name + '_gl', glass_top, glass_bot, strength=strength, lit=lit)
     objs = [box(name + '_fr', (w + 0.14, 0.1, h + 0.08), (0, -0.01, 0.0), mat=fm, bevel=0.02),
             box(name + '_g', (w, 0.1, h), (0, -0.04, 0.02), mat=gm, bevel=0.005)]
     if double:
@@ -588,9 +603,12 @@ def face_to_local(face, loc, p):
     return (loc[0] + x * math.cos(rz) - y * math.sin(rz), loc[1] + x * math.sin(rz) + y * math.cos(rz), loc[2] + z)
 
 
-def canopy_flat(name, x0, x1, y0, y1, z, t=0.12, col=WHITE, edge=TURQ, posts=(), post_col=WHITE, light=True):
-    """Flat entrance canopy slab with a coloured fascia, optional posts [(x, y)], underside downlights."""
-    objs = [box(name, (x1 - x0, y1 - y0, t), ((x0 + x1) / 2, (y0 + y1) / 2, z), mat=flat(col, 0.6), bevel=0.03),
+def canopy_flat(name, x0, x1, y0, y1, z, t=0.12, col=WHITE, edge=TURQ, posts=(), post_col=WHITE, light=True,
+                top=None):
+    """Flat entrance canopy slab with a coloured fascia, optional posts [(x, y)], underside downlights.
+    top = optional material for the slab (e.g. a striped canvas top)."""
+    objs = [box(name, (x1 - x0, y1 - y0, t), ((x0 + x1) / 2, (y0 + y1) / 2, z), mat=top or flat(col, 0.6),
+                bevel=0.03),
             box(name + '_fa', (x1 - x0 + 0.04, 0.06, t + 0.08), ((x0 + x1) / 2, y0 - 0.01, z - 0.04),
                 mat=flat(edge, 0.5), bevel=0.02),
             box(name + '_fs', (0.06, y1 - y0, t + 0.08), (x1 + 0.01, (y0 + y1) / 2, z - 0.04), mat=flat(edge, 0.5),
@@ -987,7 +1005,63 @@ def tile_roof_mat(col=TERRA, rows=0.17):
     return L.stripes(col, hexmix(col, '#000000', 0.16), 1.0 / rows, 'Z', rough=0.7, soft=0.12)
 
 
-def hip_roof(name, x0, x1, y0, y1, z, rise, over=0.3, col=TERRA, fascia=STUCCO_W, t=0.09, ridge_col=None):
+def barrel_roof_mat(col=TERRA, pitch=0.17, course=0.21):
+    """Mediterranean barrel tiles: rounded tile crowns running DOWN every slope (light crowns, darker channels) over
+    horizontal courses with a shadow line.  The crown direction follows the OBJECT-space normal, so front / back
+    slopes get crowns along X and the hip ends along Y (and a yaw-rotated `_x` build keeps them right)."""
+    key = ('barrel', C_(col), pitch, course)
+    if key in L._CUSTOM:
+        return L._CUSTOM[key]
+    nb = L.NB('barrel_' + C_(col).lstrip('#'), rough=0.6)
+    tc = nb.n('ShaderNodeTexCoord')
+    sp = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Object'], sp.inputs[0])
+    sn = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Normal'], sn.inputs[0])
+    ax = nb.math('ABSOLUTE', sn.outputs['X'])
+    ay = nb.math('ABSOLUTE', sn.outputs['Y'])
+    u = nb.math('ADD', nb.math('MULTIPLY', sp.outputs['X'], ay), nb.math('MULTIPLY', sp.outputs['Y'], ax))
+    wave = nb.math('SINE', nb.math('MULTIPLY', u, math.tau / pitch))
+    crown = nb.map_range(wave, -0.7, 1.0)
+    c1 = nb.mix_rgb(crown, hexmix(col, '#000000', 0.2), hexmix(col, '#FFFFFF', 0.1))
+    f = nb.math('FRACT', nb.math('MULTIPLY', sp.outputs['Z'], 1.0 / course))
+    line = nb.map_range(f, 0.0, 0.16)
+    nb.base(nb.mix_rgb(line, hexmix(col, '#000000', 0.3), c1))
+    L._CUSTOM[key] = nb.m
+    return nb.m
+
+
+def C_(c):
+    return L.C(c)
+
+
+def eave_caps(name, ex0, ex1, ey0, ey1, z, rise, col=TERRA, pitch=0.17, r=0.055, length=0.2):
+    """Row of round barrel-tile ends along the four eaves of a hip roof (eave rectangle ex0..ex1 x ey0..ey1 at z,
+    ridge `rise` above it): a scalloped Mediterranean eave edge instead of a flat slab edge."""
+    Wd, Dd = ex1 - ex0, ey1 - ey0
+    d = min(Wd, Dd) / 2
+    k = rise / d
+    mb = L.MB()
+    m = flat(hexmix(col, '#FFFFFF', 0.06), 0.6)
+    edges = (((ex0, ey0), (1, 0), (0, 1)), ((ex0, ey1), (1, 0), (0, -1)),
+             ((ex0, ey0), (0, 1), (1, 0)), ((ex1, ey0), (0, 1), (-1, 0)))
+    for (sx, sy), (ux, uy), (nx, ny) in edges:
+        L_ = Wd if ux else Dd
+        n = int(L_ / pitch)
+        off = (L_ - n * pitch) / 2
+        for i in range(n + 1):
+            t = off + i * pitch
+            if t < 0.14 or t > L_ - 0.14:
+                continue
+            x, y = sx + ux * t, sy + uy * t
+            p = Vector((x, y, z + 0.035))
+            dvec = Vector((nx, ny, k)).normalized()
+            mb.seg(p, p + dvec * length, r, m, segs=8)
+    return mb.done(name)
+
+
+def hip_roof(name, x0, x1, y0, y1, z, rise, over=0.3, col=TERRA, fascia=STUCCO_W, t=0.09, ridge_col=None,
+             barrel=False):
     """Hip roof over the rectangle x0..x1, y0..y1 (eaves at z, overhang `over`), 45-degree hips in plan, ridge along
     the longer axis.  Returns (objs, roof_z(x, y) function for placing things on the slopes)."""
     ex0, ex1, ey0, ey1 = x0 - over, x1 + over, y0 - over, y1 + over
@@ -1011,7 +1085,7 @@ def hip_roof(name, x0, x1, y0, y1, z, rise, over=0.3, col=TERRA, fascia=STUCCO_W
         bm.faces.new([V[k] for k in f])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=-t)
-    m = tile_roof_mat(col)
+    m = barrel_roof_mat(col) if barrel else tile_roof_mat(col)
     objs = [L.finish(name, bm, [m], smooth=False)]
     rc = ridge_col or hexmix(col, '#000000', 0.25)
     rm = flat(rc, 0.6)
@@ -1021,7 +1095,15 @@ def hip_roof(name, x0, x1, y0, y1, z, rise, over=0.3, col=TERRA, fascia=STUCCO_W
         mb.seg(c, r, 0.055, rm, segs=8)
     mb.sphere(0.09, rm, loc=r0, segs=10, rings=6)
     mb.sphere(0.09, rm, loc=r1, segs=10, rings=6)
+    if barrel:                      # half-round ridge caps: little bumps along the ridge and the hips
+        for (a_, b_) in [(r0, r1)] + [(c, r) for c, r in ((c00, r0), (c01, r0), (c10, r1), (c11, r1))]:
+            A_, B_ = Vector(a_), Vector(b_)
+            nn = max(2, int((B_ - A_).length / 0.26))
+            for i in range(1, nn):
+                mb.sphere(0.08, rm, loc=tuple(A_.lerp(B_, i / nn)), segs=10, rings=6)
     objs.append(mb.done(name + '_ridge'))
+    if barrel:
+        objs.append(eave_caps(name + '_eave', ex0, ex1, ey0, ey1, z, rise, col=col))
     fm = flat(fascia, 0.6)
     objs.append(box(name + '_fa', (Wd, 0.06, 0.12), (cx, ey0 + 0.03, z - 0.12), mat=fm, bevel=0.02))
     objs.append(box(name + '_fb', (Wd, 0.06, 0.12), (cx, ey1 - 0.03, z - 0.12), mat=fm, bevel=0.02))

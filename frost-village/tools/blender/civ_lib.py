@@ -174,10 +174,11 @@ def charcoal(scale=6.0, warm=0.0, snow=0.0, seed=0, base=CHAR, name=None):
     return nb.m
 
 
-def scorched(base, z0=0.4, z1=2.0, soot=SOOT, amount=1.0, scale=2.4, rough=0.85, name=None, snow=0.0):
+def scorched(base, z0=0.4, z1=2.0, soot=SOOT, amount=1.0, scale=2.4, rough=0.85, name=None, snow=0.0, siding=0.0):
     """Base colour (plaster, brick, paint) blackened by soot rising toward the top: world Z ramp z0 -> z1 broken up by
-    noise, so walls keep their cute colour at the bottom and char at the jagged top."""
-    key = ('civ_scorch', C(base), z0, z1, C(soot), amount, scale, rough, snow)
+    noise, so walls keep their cute colour at the bottom and char at the jagged top.  siding > 0 = clapboard: a thin
+    darker plank line every 1/siding m (world Z)."""
+    key = ('civ_scorch', C(base), z0, z1, C(soot), amount, scale, rough, snow, siding)
     if _cached(key):
         return L._CUSTOM[key]
     nb = L.NB(name or 'scorched_' + C(base).lstrip('#'), rough=rough)
@@ -198,6 +199,10 @@ def scorched(base, z0=0.4, z1=2.0, soot=SOOT, amount=1.0, scale=2.4, rough=0.85,
     nb.link(geo.outputs['Position'], tn.inputs['Vector'])
     btone = nb.map_range(tn.outputs['Fac'], 0.35, 0.65)
     bcol = nb.mix_rgb(btone, hexmix(base, '#000000', 0.07), base)
+    if siding > 0:
+        fr = nb.math('FRACT', nb.math('MULTIPLY', sep.outputs['Z'], siding))
+        line = nb.map_range(fr, 0.86, 0.93)                                  # 0 on the board, 1 on the shadow line
+        bcol = nb.mix_rgb(line, bcol, hexmix(base, '#000000', 0.2))
     col = nb.mix_rgb(fac, bcol, soot)
     if snow > 0:
         sep2 = nb.n('ShaderNodeSeparateXYZ')
@@ -392,12 +397,13 @@ def charred_post(name, x, y, h, w=0.17, lean=(0.0, 0.0), seed=0, snow=True, warm
     return g
 
 
-def charred_beam(name, p, q, r=0.08, seed=0, snow=True, warm=0.0, square=True):
-    """A charred beam (rounded square or log) from p to q with charcoal crackle + a little snow on top."""
+def charred_beam(name, p, q, r=0.08, seed=0, snow=True, warm=0.0, square=True, ends=None, base=CHAR):
+    """A charred beam (rounded square or log) from p to q with charcoal crackle + a little snow on top.
+    ends = a wood colour -> the broken ends show un-burnt timber (reads as 'burnt wood', not a black stick)."""
     p, q = Vector(p), Vector(q)
     d = q - p
     ln = d.length
-    m = charcoal(5.5, warm=warm, snow=0.3 if snow else 0.0, seed=seed)
+    m = charcoal(5.5, warm=warm, snow=0.3 if snow else 0.0, seed=seed, base=base)
     if square:
         o = box(name, (r * 2, ln, r * 2), (0, 0, 0), mat=m, bevel=r * 0.35, origin='center')
     else:
@@ -405,6 +411,12 @@ def charred_beam(name, p, q, r=0.08, seed=0, snow=True, warm=0.0, square=True):
     o.rotation_mode = 'QUATERNION'
     o.rotation_quaternion = Vector((0, 1, 0)).rotation_difference(d.normalized())
     o.location = (p + q) / 2
+    if ends:
+        em = flat(ends, 0.8)
+        for s_ in (-1, 1):
+            e = box(name + '_end', (r * 1.9, 0.05, r * 1.9), (0, s_ * (ln / 2 - 0.02), 0), mat=em, bevel=r * 0.3,
+                    origin='center')
+            e.parent = o
     return o
 
 
@@ -534,6 +546,78 @@ def soot_streak(name, loc, face, w=0.5, h=0.8, alpha=0.75):
                     rot=(90, 0, 0), top=m, side=m, bevel=0.0)]
     objs[0].location.y = -0.006
     return T.face_group(objs, face, loc, name)
+
+
+def rubble_mat(seed=0, snow=0.18, name=None):
+    """Demolition rubble (polish v2): mottled ash-grey / warm charcoal with brick-red crumbs and only a light,
+    broken dusting of snow on the flattest tops - so a heap reads as burnt debris, not as a snowdrift."""
+    key = ('civ_rubble', seed, snow)
+    if _cached(key):
+        return L._CUSTOM[key]
+    nb = L.NB(name or 'rubble', rough=0.92)
+    tc = nb.n('ShaderNodeTexCoord')
+    mp = nb.n('ShaderNodeMapping')
+    mp.inputs['Location'].default_value = (seed * 1.7, seed * 0.9, seed * 2.3)
+    nb.link(tc.outputs['Object'], mp.inputs['Vector'])
+    nz = nb.n('ShaderNodeTexNoise')
+    nz.inputs['Scale'].default_value = 3.2
+    nz.inputs['Detail'].default_value = 3.0
+    nb.link(mp.outputs['Vector'], nz.inputs['Vector'])
+    tone = nb.map_range(nz.outputs['Fac'], 0.32, 0.7)
+    col = nb.mix_rgb(tone, '#574C46', '#9C928B')                      # warm charcoal -> ash grey
+    vor = nb.n('ShaderNodeTexVoronoi')
+    vor.inputs['Scale'].default_value = 9.0
+    nb.link(mp.outputs['Vector'], vor.inputs['Vector'])
+    crumb = nb.map_range(vor.outputs['Distance'], 0.16, 0.1)         # small round flecks
+    nz2 = nb.n('ShaderNodeTexNoise')
+    nz2.inputs['Scale'].default_value = 1.4
+    nb.link(mp.outputs['Vector'], nz2.inputs['Vector'])
+    patch = nb.map_range(nz2.outputs['Fac'], 0.5, 0.6)
+    col = nb.mix_rgb(nb.math('MULTIPLY', crumb, patch), col, '#B4593F')  # brick-red crumbs in patches
+    if snow > 0:
+        geo = nb.n('ShaderNodeNewGeometry')
+        sep = nb.n('ShaderNodeSeparateXYZ')
+        nb.link(geo.outputs['Normal'], sep.inputs[0])
+        up = nb.map_range(sep.outputs['Z'], 0.86, 0.97)
+        nz3 = nb.n('ShaderNodeTexNoise')
+        nz3.inputs['Scale'].default_value = 7.0
+        nb.link(mp.outputs['Vector'], nz3.inputs['Vector'])
+        speck = nb.map_range(nz3.outputs['Fac'], 0.62 - snow * 0.4, 0.68 - snow * 0.4)
+        col = nb.mix_rgb(nb.math('MULTIPLY', up, speck), col, C('snow_mat'))
+    nb.base(col)
+    L._CUSTOM[key] = nb.m
+    return nb.m
+
+
+class SoftSmoke2(SoftSmoke):
+    """Polish v2 ruin smoke: more, bigger, overlapping puffs (one continuous wisp instead of separate beads), a warm
+    grey core at the base that lightens as it rises (reads on snow AND on dark ground)."""
+
+    def __init__(self, name, base, dark='#7E7671', light='#C9C3BD', **kw):
+        SoftSmoke.__init__(self, name, base, color=dark, **kw)
+        self.dark, self.light = dark, light
+
+    def set(self, i, frames=4):
+        SoftSmoke.set(self, i, frames)
+        for j, m in enumerate(self.mats):
+            t = (j + i / float(frames)) / self.n
+            p = m.node_tree.nodes.get('Principled BSDF')
+            p.inputs['Base Color'].default_value = bc.srgb_to_linear(
+                hexmix(self.dark, self.light, min(1.0, t * 1.25))) + (1.0,)
+
+
+def smoke_wisps2(name, bases, seed=0, rise=1.5, alpha=0.66, r0=0.1, r1=0.4, n=6):
+    """Ruin smoke v2 (see SoftSmoke2).  Returns (list of SoftSmoke2, setter(i, frames))."""
+    sm = []
+    for k, b in enumerate(bases):
+        s_ = SoftSmoke2('%s%d' % (name, k), b, n=n, rise=rise * (0.85 + 0.3 * ((seed + k) % 3) / 2.0),
+                        drift=(0.3, 0.18), r0=r0, r1=r1, alpha=alpha, seed=seed + k, fade_in=0.12)
+        sm.append(s_)
+
+    def setter(i, frames=4):
+        for k, s_ in enumerate(sm):
+            s_.set((i + k) % frames, frames=frames)
+    return sm, setter
 
 
 # =========================================================================== small props

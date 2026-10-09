@@ -183,19 +183,24 @@ def em_piggy(s=1.0, col='#F4A6B8', coin=True):
 
 # =========================================================================== BANK (cutaway)
 
-BANK_NOTE = ('Bank "솔방울 은행" (5.4 x 4.6 m footprint): cream sandstone hall on a stone plinth with a white columned '
-             'portico, teal pediment with a gold pinecone coin, a big gold coin standing on the roof and a piggy-bank '
+BANK_NOTE = ('Bank "솔방울 은행" (5.4 x 4.6 m footprint): honey-sandstone ashlar hall with cream quoins on a stone '
+             'plinth, a burgundy slate MANSARD roof with round gold-rimmed coin dormer windows and a big gold coin '
+             'finial on a burgundy drum, a cream columned portico (gold capitals) with a burgundy frieze sign (gold coin '
+             'stacks) and pediment (gold pinecone coin), a round coin window on the side, a burgundy door and a piggy '
              'bracket sign. CUTAWAY: bank_floor (checker marble floor, red runner, steps, planters, ground shadow), '
              'bank_back (the two far walls from inside: wallpaper, wainscot, windows, clock, number display), '
-             'bank_interior (vault room, teller stools, money cart, ATM, waiting chairs, piggy statue, manager '
-             'corner), bank_front (teller counter with glass partitions + manager desk = what stands in front of '
-             'staff), bank_vault (round vault door overlay: anims.vault 8 f opens, vault_close reverses), '
-             'bank_shell_cut (dollhouse wall stubs), bank_shell (closed hall). bank = the closed building in one '
-             'frame. staffPoints = 3 tellers + manager (behind slot), counterPoints = where customers are served, '
-             'customerPoints = the queue (first = next in line), seatPoints = waiting chairs, atmPoint, vaultPoint, '
-             'entryPoint (just inside), doorPoint (outside, foot of the steps).')
+             'bank_interior (vault room, teller stools, money cart, red velvet waiting bench on the front-left wall, '
+             'piggy statue, ATM in the front-right corner, manager corner), bank_front (teller counter with glass '
+             'partitions + manager desk = what stands in front of staff), bank_vault (round vault door overlay: '
+             'anims.vault 8 f opens, vault_close reverses), bank_shell_cut (dollhouse wall stubs), bank_shell (closed '
+             'hall). bank = the closed building in one frame. staffPoints = 3 tellers + manager (behind slot), '
+             'counterPoints = where customers are served, customerPoints = the queue (first = next in line), seatPoints '
+             '= the waiting bench (seat height, facing SE; >= 30 px from every counter / queue point), atmPoint (faces '
+             'SE), vaultPoint, entryPoint (just inside), doorPoint (outside, foot of the steps).')
 
 B_X0, B_X1, B_Y0, B_Y1 = -2.3, 2.3, -1.4, 1.9
+SANDSTONE, SANDSTONE_D = '#E8C88F', '#DDB97C'
+BURG, BURG_D = '#8E2B3A', '#73202D'
 B_T, B_PL, B_H = 0.16, 0.32, 3.02
 B_STUB = 0.55
 
@@ -221,9 +226,9 @@ def b_bank():
         for s in (-1, 1):
             box('runner_e', (0.05, 1.5, 0.014), (door_x + s * 0.37, yi0 + 0.75, PL + 0.02), mat=flat('#F2C14E', 0.6),
                 bevel=0.0)
-        # round rug in the waiting corner
-        cyl('rug', 0.62, 0.012, (1.4, -0.75, PL + 0.02), mat=flat('#E8C25A', 0.9), segs=36, bevel=0.0)
-        cyl('rug2', 0.5, 0.014, (1.4, -0.75, PL + 0.02), mat=flat('#D9A93E', 0.9), segs=36, bevel=0.0)
+        # round rug in the waiting corner (front-left, in front of the waiting bench)
+        cyl('rug', 0.5, 0.012, (-1.45, -0.86, PL + 0.02), mat=flat('#E8C25A', 0.9), segs=36, bevel=0.0)
+        cyl('rug2', 0.4, 0.014, (-1.45, -0.86, PL + 0.02), mat=flat('#D9A93E', 0.9), segs=36, bevel=0.0)
         # landing + steps in front of the portico
         sm = snowy(stone, lo=0.62, hi=0.8, noise_amt=0.3)
         box('landing', (2.9, 0.62, PL), (0, y0 - 0.31, 0), mat=sm, bevel=0.03)
@@ -347,31 +352,46 @@ def b_bank():
         box('mchair', (0.44, 0.48, 0.1), (mx - 0.5, my, PL + 0.4), mat=flat('#2F7D73', 0.6), bevel=0.04)
         box('mchairb', (0.1, 0.5, 0.62), (mx - 0.72, my, PL + 0.46), mat=flat('#2F7D73', 0.6), bevel=0.05)
         cyl('mchairp', 0.03, 0.4, (mx - 0.5, my, PL), mat=flat('#2B2F3A', 0.5), segs=8)
-        # waiting chairs (row facing the door) + coffee table
-        for k, x in enumerate((0.95, 1.4, 1.85)):
-            CL.chair('wchair%d' % k, (x, -0.42, PL), rot_z=0.0, col='#C0392B')
-        cyl('ctable', 0.2, 0.03, (1.4, -0.98, PL + 0.36), mat=flat('#C98F55', 0.55), segs=24, bevel=0.01)
-        cyl('ctablep', 0.03, 0.36, (1.4, -0.98, PL), mat=CL.brass(), segs=8)
-        box('mag', (0.18, 0.12, 0.012), (1.37, -0.98, PL + 0.4), rot=(0, 0, 18), mat=flat('#3D7CC9', 0.7), bevel=0.0)
-        # ATM against the left wall (faces +X), front-left corner
+        # waiting bench (red velvet, brass feet) against the LEFT wall in the front-left corner, seats face +X:
+        # far left in screen space, so seated customers never stack on the counter / queue spots (polish v2)
+        bx0_, bx1_, by0_, by1_ = xi0, xi0 + 0.46, -1.21, -0.52
+        velvet = flat('#C0392B', 0.75)
+        walnut = flat('#7A4E2E', 0.6)
+        box('wbench', (bx1_ - bx0_, by1_ - by0_, 0.3), ((bx0_ + bx1_) / 2, (by0_ + by1_) / 2, PL + 0.08), mat=walnut,
+            bevel=0.04)
+        box('wbench_seat', (bx1_ - bx0_ - 0.04, by1_ - by0_ - 0.1, 0.09), ((bx0_ + bx1_) / 2 + 0.02, (by0_ + by1_) / 2,
+                                                                          PL + 0.36), mat=velvet, bevel=0.04)
+        box('wbench_back', (0.12, by1_ - by0_ - 0.1, 0.42), (bx0_ + 0.08, (by0_ + by1_) / 2, PL + 0.42), mat=velvet,
+            bevel=0.05)
+        for k, y in enumerate((by0_ + 0.03, by1_ - 0.03)):
+            box('wbench_arm', (bx1_ - bx0_, 0.07, 0.3), ((bx0_ + bx1_) / 2, y, PL + 0.36), mat=walnut, bevel=0.03)
+            sphere('wbench_knob', 0.04, (bx1_ - 0.02, y, PL + 0.68), CL.brass(), segs=10, rings=6)
+            for x in (bx0_ + 0.06, bx1_ - 0.06):
+                cyl('wbench_foot', 0.035, 0.08, (x, y, PL), mat=CL.brass(), segs=10, bevel=0.01)
+        for k, y in enumerate((-0.98, -0.72)):                       # two little cushions + a pink scarf
+            blob('wcush', 0.11, (bx0_ + 0.2, y, PL + 0.52), flat(['#F2C14E', '#5FA7D9'][k], 0.8),
+                 scale=(0.55, 1.0, 0.9), seed=60 + k, amp=0.08, subdiv=2)
+        # ATM in the front-right corner against the RIGHT wall (faces -X); the user stands at atmPoint facing +X
+        # (screen down-right, face visible).  Its back carries a gold coin so the far side reads as 'the ATM' too.
         ay = -0.98
-        box('atm', (0.44, 0.5, 1.32), (xi0 + 0.22, ay, PL), mat=flat('#2F7D73', 0.45), bevel=0.05)
-        box('atm_face', (0.04, 0.4, 0.6), (xi0 + 0.45, ay, PL + 0.55), mat=flat('#F2EEE6', 0.5), bevel=0.02)
-        box('atm_scr', (0.03, 0.28, 0.22), (xi0 + 0.47, ay, PL + 0.86), mat=L.emissive('atmscr', '#7FD3C6', '#9FF0E0',
-                                                                                     1.6), bevel=0.01)
-        box('atm_pad', (0.12, 0.22, 0.04), (xi0 + 0.52, ay, PL + 0.66), rot=(0, -25, 0), mat=flat('#B9C2CE', 0.4, 0.5),
+        ax_ = xi1 - 0.22
+        box('atm', (0.44, 0.5, 1.2), (ax_, ay, PL), mat=flat('#2F7D73', 0.45), bevel=0.05)
+        box('atm_face', (0.04, 0.4, 0.58), (ax_ - 0.23, ay, PL + 0.5), mat=flat('#F2EEE6', 0.5), bevel=0.02)
+        box('atm_scr', (0.03, 0.28, 0.22), (ax_ - 0.25, ay, PL + 0.8), mat=L.emissive('atmscr', '#7FD3C6', '#9FF0E0',
+                                                                                    1.6), bevel=0.01)
+        box('atm_pad', (0.12, 0.22, 0.04), (ax_ - 0.3, ay, PL + 0.62), rot=(0, 25, 0), mat=flat('#B9C2CE', 0.4, 0.5),
             bevel=0.01)
-        box('atm_slot', (0.03, 0.14, 0.025), (xi0 + 0.48, ay, PL + 0.6), mat=flat('#2B2F3A', 0.4), bevel=0.0)
-        box('atm_top', (0.5, 0.58, 0.1), (xi0 + 0.24, ay, PL + 1.32), mat=flat('#F2C14E', 0.4), bevel=0.03)
-        cyl('atm_coin', 0.09, 0.02, (xi0 + 0.48, ay, PL + 1.18), rot=(0, 90, 0), mat=CL.gold(), segs=18,
+        box('atm_slot', (0.03, 0.14, 0.025), (ax_ - 0.26, ay, PL + 0.56), mat=flat('#2B2F3A', 0.4), bevel=0.0)
+        box('atm_top', (0.5, 0.58, 0.1), (ax_ - 0.02, ay, PL + 1.2), mat=flat('#F2C14E', 0.4), bevel=0.03)
+        cyl('atm_coin', 0.13, 0.02, (ax_, ay - 0.26, PL + 0.82), rot=(90, 0, 0), mat=CL.gold(), segs=22,
             origin='center', bevel=0.004)
         # piggy statue on a pedestal (front, left of the door)
-        box('ped', (0.46, 0.46, 0.5), (-0.98, -0.95, PL), mat=flat('#F2EEE6', 0.5), bevel=0.04)
-        box('pedtop', (0.52, 0.52, 0.06), (-0.98, -0.95, PL + 0.5), mat=CL.gold(), bevel=0.02)
+        px_, py_ = -0.86, -1.0
+        box('ped', (0.42, 0.42, 0.44), (px_, py_, PL), mat=flat('#F2EEE6', 0.5), bevel=0.04)
+        box('pedtop', (0.48, 0.48, 0.06), (px_, py_, PL + 0.44), mat=CL.gold(), bevel=0.02)
         with L.Collect() as pg:
-            em_piggy(1.0)
-        L.group(BA.top_level(pg.objs), 'piggy', loc=(-0.98, -0.95, PL + 0.94), rot=(0, 0, 40))
-        CL.potted_plant('fplant', (xi1 - 0.22, yi0 + 0.22, PL), s=1.0, seed=7)
+            em_piggy(0.9)
+        L.group(BA.top_level(pg.objs), 'piggy', loc=(px_, py_, PL + 0.84), rot=(0, 0, 40))
         CL.potted_plant('vplant', (-0.5, 0.82, PL), s=0.9, seed=8, pot='#2F7D73')
         L.point_light('in_l1', (0.6, 0.6, PL + 2.4), 'window', 30.0, 0.3)
         L.point_light('in_l2', (-0.9, -0.4, PL + 2.4), 'window', 25.0, 0.3)
@@ -460,54 +480,103 @@ def b_bank():
                extra={'drawAfter': 'interior', 'reverse': 'vault_close'})
     CL.bounds_marker('vb', (hinge_x + 0.05, vy0 - vr - 0.3, vcz))
     # ------------------------------------------------------------------ shell (closed building)
-    plaster = T.plaster(cream)
+    # polish v2: the bank has its OWN identity (it read as a town-hall annex): warm honey sandstone ashlar with cream
+    # quoins, a burgundy + gold palette, a burgundy slate MANSARD roof with round gold-rimmed 'coin' dormer windows and
+    # a big gold coin finial, a frieze sign board with a coin pictogram over the portico, a round coin window on the
+    # side and a burgundy door.  Layer split + anchor unchanged.
+    plaster = L.brick(SANDSTONE, SANDSTONE_D, '#F4E6C6', scale=1.0, row_h=0.3, brick_w=0.62, snow_top=False,
+                      name='bank_ashlar')
+    burg, burg_d, goldc = BURG, BURG_D, '#F2C14E'
+    quoin = '#F6ECD6'
     with layer('shell'):
         box('wall_front', (x1 - x0, t, H - PL), (0, y0 + t / 2, PL), mat=plaster, bevel=0.02)
         box('wall_right', (t, y1 - y0 - t, H - PL), (x1 - t / 2, (y0 + y1) / 2 + t / 2, PL), mat=plaster, bevel=0.02)
-        T.corner_trims('ctrim', x1 - x0, y1 - y0, PL, H - PL, trim, x=0, y=(y0 + y1) / 2, t=0.2)
-        T.band('base', x1 - x0, y1 - y0, PL, '#D9CBAE', h=0.22, out=0.03, x=0, y=(y0 + y1) / 2)
-        T.band('cornice', x1 - x0, y1 - y0, H - 0.16, trim, h=0.18, out=0.08, x=0, y=(y0 + y1) / 2)
-        T.flat_roof('roof', x1 - x0 + 0.12, y1 - y0 + 0.12, H + 0.02, col='#E6D9BC', parapet=0.34,
-                    y=(y0 + y1) / 2, seed=91, cap_col=trim)
-        T.door('door', (door_x, y0, PL), 'y-', w=1.0, h=1.8, col=teal, frame_col=trim, double=True, step=False,
+        T.corner_trims('ctrim', x1 - x0, y1 - y0, PL, H - PL, quoin, x=0, y=(y0 + y1) / 2, t=0.22)
+        T.band('base', x1 - x0, y1 - y0, PL, '#C49A62', h=0.26, out=0.04, x=0, y=(y0 + y1) / 2)
+        T.band('goldband', x1 - x0, y1 - y0, H - 0.25, goldc, h=0.06, out=0.05, x=0, y=(y0 + y1) / 2)
+        T.band('cornice', x1 - x0, y1 - y0, H - 0.19, burg, h=0.2, out=0.1, x=0, y=(y0 + y1) / 2, snow=True,
+               seed=88)
+        # mansard roof: steep burgundy slate (rows) on all sides, a snowy flat top with a gold edge
+        yc = (y0 + y1) / 2
+        rw, rd, rh, ins = x1 - x0 + 0.2, y1 - y0 + 0.2, 1.0, 0.58
+        slate = L.stripes(burg, burg_d, 6.5, 'Z', rough=0.55, soft=0.05)
+        box('mansard', (rw, rd, rh), (0, yc, H + 0.01), mat=slate, bevel=0.035,
+            taper=((rw - 2 * ins) / rw, (rd - 2 * ins) / rd))
+        tw, td = rw - 2 * ins, rd - 2 * ins
+        box('mtop_gold', (tw + 0.08, td + 0.08, 0.07), (0, yc, H + rh - 0.04), mat=CL.gold(), bevel=0.02)
+        L.snow_slab('mtop_snow', tw + 0.02, td + 0.02, 0.13, (0, yc, H + rh + 0.02), seed=94, droop=0.04)
+        # dormers with round gold-rimmed coin windows (two on the front slope, one on the right slope)
+        def dormer(name, cx, cy, face):
+            w_, d_, h_ = 0.62, 0.62, 0.5
+            sx_, sy_ = (w_, d_) if face == 'y-' else (d_, w_)
+            box(name, (sx_, sy_, h_), (cx, cy, H + 0.12), mat=flat(quoin, 0.7), bevel=0.04)
+            if face == 'y-':
+                cyl(name + '_cap', w_ / 2 + 0.05, d_ + 0.04, (cx, cy, H + 0.12 + h_), rot=(90, 0, 0), mat=slate,
+                    segs=24, origin='center', bevel=0.02)
+                L.snow_slab(name + '_sn', w_ * 0.6, d_ * 0.8, 0.07, (cx, cy + 0.02, H + 0.12 + h_ + w_ / 2), seed=7)
+                T.win(name + '_w', (cx, cy - d_ / 2, H + 0.1 + h_), 'y-', w=0.36, round_=True, frame=goldc,
+                      seed=31)
+            else:
+                cyl(name + '_cap', w_ / 2 + 0.05, d_ + 0.04, (cx, cy, H + 0.12 + h_), rot=(0, 90, 0), mat=slate,
+                    segs=24, origin='center', bevel=0.02)
+                L.snow_slab(name + '_sn', d_ * 0.8, w_ * 0.6, 0.07, (cx - 0.02, cy, H + 0.12 + h_ + w_ / 2), seed=8)
+                T.win(name + '_w', (cx + d_ / 2, cy, H + 0.1 + h_), 'x+', w=0.36, round_=True, frame=goldc,
+                      seed=32)
+        for k, x in enumerate((-1.35, 1.35)):
+            dormer('dorm%d' % k, x, y0 + 0.22, 'y-')
+        dormer('dorm2', x1 - 0.22, 0.75, 'x+')
+        # big gold coin finial on a burgundy drum on the roof top (faces the camera)
+        cyl('drum', 0.34, 0.22, (0.25, yc + 0.1, H + rh + 0.06), mat=flat(burg, 0.55), segs=28, bevel=0.03)
+        cyl('drumrim', 0.37, 0.05, (0.25, yc + 0.1, H + rh + 0.26), mat=CL.gold(), segs=28, bevel=0.015)
+        with L.Collect() as rc:
+            em_coin(1.4)
+        L.group(BA.top_level(rc.objs), 'roofcoin', loc=(0.25, yc + 0.1, H + rh + 0.28 + 0.53), rot=(0, 0, T.CAM_PSI))
+        L.snow_slab('rcsnow', 0.56, 0.15, 0.07, (0.25, yc + 0.1, H + rh + 0.28 + 1.06), rot=(0, 0, T.CAM_PSI),
+                    seed=97)
+        T.door('door', (door_x, y0, PL), 'y-', w=1.0, h=1.8, col=burg, frame_col=quoin, double=True, step=False,
                knob='gold')
         for k, x in enumerate((-1.62, 1.62)):
-            T.win('fw%d' % k, (x, y0, PL + 2.2), 'y-', w=0.62, h=1.05, shutters=None, frame=trim, seed=10 + k)
-            box('fwkey%d' % k, (0.16, 0.08, 0.2), (x, y0 - 0.06, PL + 2.22), mat=flat(trim, 0.6), bevel=0.02)
-        for k, y in enumerate((-0.45, 1.05)):
-            T.win('sw%d' % k, (x1, y, PL + 2.2), 'x+', w=0.62, h=1.05, shutters=None, frame=trim, seed=20 + k)
+            T.win('fw%d' % k, (x, y0, PL + 2.2), 'y-', w=0.62, h=1.05, shutters=None, frame=quoin, seed=10 + k)
+            box('fwkey%d' % k, (0.18, 0.08, 0.22), (x, y0 - 0.06, PL + 2.22), mat=CL.gold(), bevel=0.02)
+            box('fwsill%d' % k, (0.86, 0.12, 0.08), (x, y0 - 0.05, PL + 1.05), mat=flat(burg, 0.6), bevel=0.02)
+        T.win('sw0', (x1, -0.45, PL + 2.2), 'x+', w=0.62, h=1.05, shutters=None, frame=quoin, seed=20)
+        box('swkey0', (0.08, 0.18, 0.22), (x1 + 0.06, -0.45, PL + 2.22), mat=CL.gold(), bevel=0.02)
+        # round 'coin' window on the side: gold rim with beads
+        T.win('sw1', (x1, 1.05, PL + 2.3), 'x+', w=0.74, round_=True, frame=goldc, seed=21)
         T.lamp_wall('dl0', (door_x - 0.75, y0, PL + 1.95), 'y-')
         T.lamp_wall('dl1', (door_x + 0.75, y0, PL + 1.95), 'y-')
-        # portico: 4 columns, entablature, pediment with the gold pinecone coin
+        # portico: 4 cream columns with gold capitals, burgundy frieze sign board, pediment with the gold pinecone coin
         cyp = y0 - 0.4
         for k, x in enumerate((-1.08, -0.38, 0.38, 1.08)):
-            column('col%d' % k, x, cyp, PL, 2.32, r=0.12)
+            column('col%d' % k, x, cyp, PL, 2.32, r=0.12, col=quoin, cap_col=goldc)
         ez = PL + 2.32
-        box('entab', (2.75, 0.62, 0.3), (0, y0 - 0.25, ez), mat=flat(trim, 0.6), bevel=0.03)
-        box('entab_band', (2.77, 0.64, 0.07), (0, y0 - 0.25, ez + 0.12), mat=flat(teal, 0.55), bevel=0.01)
-        ped = extrude('ped', [(-1.5, 0.0), (1.5, 0.0), (0.0, 0.78)], 0.62, rot=(90, 0, 0), top=flat(teal, 0.6),
-                      side=flat(trim, 0.6), bevel=0.03)
+        box('entab', (2.75, 0.62, 0.3), (0, y0 - 0.25, ez), mat=flat(quoin, 0.6), bevel=0.03)
+        box('entab_band', (2.77, 0.64, 0.07), (0, y0 - 0.25, ez + 0.23), mat=flat(burg, 0.55), bevel=0.01)
+        # frieze sign: burgundy board with a gold border and a coin-stack pictogram (no text)
+        fsy = y0 - 0.57
+        box('fsign', (1.36, 0.05, 0.27), (0, fsy, ez + 0.015), mat=flat(burg, 0.55), bevel=0.015)
+        box('fsign_rim', (1.42, 0.035, 0.33), (0, fsy + 0.012, ez - 0.015), mat=CL.gold(), bevel=0.012)
+        for k, (dx, n) in enumerate(((-0.42, 2), (-0.26, 3), (0.26, 3), (0.42, 2))):
+            for j in range(n):
+                cyl('fscoin', 0.055, 0.025, (dx, fsy - 0.04, ez + 0.05 + 0.03 * j), mat=CL.gold(), segs=16,
+                    bevel=0.006)
+        cyl('fsbig', 0.11, 0.03, (0, fsy - 0.04, ez + 0.15), rot=(90, 0, 0), mat=CL.gold(), segs=24, origin='center',
+            bevel=0.008)
+        ped = extrude('ped', [(-1.5, 0.0), (1.5, 0.0), (0.0, 0.78)], 0.62, rot=(90, 0, 0), top=flat(burg, 0.6),
+                      side=flat(quoin, 0.6), bevel=0.03)
         ped.location = (0, y0 + 0.06, ez + 0.3)
-        for s in (-1, 1):
+        for s_ in (-1, 1):
             ln = math.hypot(1.55, 0.8)
-            ang = s * math.degrees(math.atan2(0.8, 1.55))
-            box('pedr', (ln, 0.7, 0.1), (s * 0.77, y0 - 0.25, ez + 0.3 + 0.42), rot=(0, ang, 0), mat=flat(trim, 0.6),
-                bevel=0.02, origin='center')
-            sn = L.snow_slab('pedsn', ln * 0.85, 0.6, 0.06, (0, 0, 0), seed=93 + s)
-            sn.location = (s * 0.74, y0 - 0.25, ez + 0.3 + 0.48)
+            ang = s_ * math.degrees(math.atan2(0.8, 1.55))
+            box('pedr', (ln, 0.7, 0.1), (s_ * 0.77, y0 - 0.25, ez + 0.3 + 0.42), rot=(0, ang, 0),
+                mat=flat(quoin, 0.6), bevel=0.02, origin='center')
+            sn = L.snow_slab('pedsn', ln * 0.85, 0.6, 0.06, (0, 0, 0), seed=93 + s_)
+            sn.location = (s_ * 0.74, y0 - 0.25, ez + 0.3 + 0.48)
             sn.rotation_euler = Euler((0, math.radians(ang), 0), 'XYZ')
         T.sign_disc('pedcoin', (0, y0 - 0.58, ez + 0.6), r=0.26, bg='#F2C14E', rim='#D9A93E', psi=0.0, tilt=0.0,
                     emblem=lambda s: T.em_pinecone(s * 0.62, col='#B47A2A'), es=1.0, snow=False)
-        # big coin on the roof facing the camera
-        with L.Collect() as rc:
-            em_coin(1.25)
-        L.group(BA.top_level(rc.objs), 'roofcoin', loc=(0.55, 0.85, H + 0.85), rot=(0, 0, T.CAM_PSI))
-        for s in (-1, 1):
-            cyl('rcleg', 0.04, 0.42, (0.55 + s * 0.22, 0.85 - s * 0.22, H + 0.05), mat=flat('#3D424C', 0.4, 0.6),
-                segs=8)
-        L.snow_slab('rcsnow', 0.5, 0.14, 0.06, (0.55, 0.85, H + 1.29), rot=(0, 0, T.CAM_PSI), seed=97)
         # piggy bracket sign on the front-right corner
-        T.bracket_sign('psign', (x1, y0), z=PL + 2.6, arm=0.55, r=0.36, bg='#2F7D73', rim='#F2C14E',
+        T.bracket_sign('psign', (x1, y0), z=PL + 2.6, arm=0.55, r=0.36, bg=burg, rim='#F2C14E',
                        emblem=lambda s: em_piggy(s * 0.8), es=1.0)
     # ------------------------------------------------------------------ dollhouse stubs
     with layer('shell_cut'):
@@ -515,9 +584,9 @@ def b_bank():
                        holes=[(door_x - 0.6, door_x + 0.6, PL - 0.01, PL + B_STUB + 0.1)])
         rt = CL.wall_y('stub_right', y0 + t, y1, x1 - t / 2, PL, PL + B_STUB, t, plaster)
         cap_strip('stubcap', fr + rt)
-        box('stub_base', (x1 - x0 + 0.06, 0.04, 0.22), (0, y0 - 0.01, PL), mat=flat('#D9CBAE', 0.7), bevel=0.0)
+        box('stub_base', (x1 - x0 + 0.06, 0.04, 0.26), (0, y0 - 0.01, PL), mat=flat('#C49A62', 0.7), bevel=0.0)
         for k, x in enumerate((-1.08, -0.38, 0.38, 1.08)):
-            cs = column('ccol%d' % k, x, y0 - 0.4, PL, 2.32, r=0.12)
+            cs = column('ccol%d' % k, x, y0 - 0.4, PL, 2.32, r=0.12, col=quoin)
             for o in cs[3:]:
                 bpy.data.objects.remove(o, do_unlink=True)
             cs[2].scale.z = (B_STUB - 0.2) / (2.32 - 0.42)
@@ -532,9 +601,9 @@ def b_bank():
         mark('counter', (x, 0.04, PL), facing=(0, 1, 0))
     for (x, y) in ((-0.05, -0.22), (-0.2, -0.58), (-0.35, -0.95)):
         mark('customer', (x, y, PL), facing=(0.3, 1, 0))
-    for x in (0.95, 1.4, 1.85):
-        mark('seat', (x, -0.42 - 0.21, PL + 0.45), facing=(0, -1, 0))
-    mark('atm', (xi0 + 0.78, -0.98, PL), facing=(-1, 0, 0))
+    for y in (-1.02, -0.68):                                   # waiting bench (left wall), facing +X (SE)
+        mark('seat', (xi0 + 0.36, y, PL + 0.45), facing=(1, 0, 0))
+    mark('atm', (xi1 - 0.78, -0.98, PL), facing=(1, 0, 0))
     mark('vault', (vcx + 0.15, vy0 - 0.75, PL), facing=(0, 1, 0))
     mark('desk', (mx + 0.55, my, PL), facing=(-1, 0, 0))
     return {'fx': {'sign': (0.55, 0.85, H + 0.85), 'display': (0.92, yi1 - 0.1, PL + 2.25),
@@ -592,14 +661,15 @@ def mailbox(name, loc, col='#3D7CC9', lean=0.0, snow=True, flag=True):
     return g
 
 
-def iron_stove(name, loc, s=1.0, kettle=True):
+def iron_stove(name, loc, s=1.0, kettle=True, glow=False):
     x, y, z = loc
     im = flat('#3B3F47', 0.45, 0.55)
+    door_m = L.emissive(name + '_glow', '#FF9A3A', '#FF7A1A', 1.4) if glow else flat('#5A4A44', 0.6)
     objs = [box(name, (0.48 * s, 0.42 * s, 0.52 * s), (x, y, z + 0.1 * s), mat=im, bevel=0.05),
             box(name + '_top', (0.54 * s, 0.48 * s, 0.05 * s), (x, y, z + 0.62 * s), mat=flat('#2B2F3A', 0.4, 0.6),
                 bevel=0.02),
             box(name + '_door', (0.2 * s, 0.03 * s, 0.18 * s), (x, y - 0.22 * s, z + 0.24 * s),
-                mat=L.emissive(name + '_glow', '#FF9A3A', '#FF7A1A', 1.4), bevel=0.01),
+                mat=door_m, bevel=0.01),
             cyl(name + '_pipe', 0.06 * s, 0.75 * s, (x + 0.1 * s, y + 0.12 * s, z + 0.66 * s), mat=im, segs=12,
                 bevel=0.01)]
     for sx in (-1, 1):
@@ -624,6 +694,31 @@ def chimney_stack(name, x, y, h, w=0.46, col='#8E8682', seed=0):
     return objs, (x, y, h + 0.15)
 
 
+def ruin_smoke(bases, seed=0, rise=1.5, embers=(), top=1.6):
+    """Polish v2 smoulder overlay '<ruin>_smoke': continuous warm-grey smoke wisps (civ_lib.smoke_wisps2) PLUS the
+    glowing embers.  The embers are hidden in the base ruin frame, so removing the overlay leaves a COLD ruin (insurance,
+    demolition and clearing steps); while it plays they flicker (strength x 1.0 / 0.7 / 1.15 / 0.85)."""
+    sm, set_sm = CL.smoke_wisps2('wisp', bases, seed=seed, rise=rise)
+    emb = BA.descendants(list(embers))
+    mats = []
+    for o in emb:
+        o.hide_render = True
+        for m in getattr(o.data, 'materials', []) or []:
+            if m and m not in mats:
+                mats.append(m)
+    base_str = {m.name: m.node_tree.nodes['Principled BSDF'].inputs['Emission Strength'].default_value for m in mats}
+
+    def setter(i):
+        set_sm(i, 4)
+        for m in mats:
+            L.set_emission(m, base_str[m.name] * (1.0, 0.7, 1.15, 0.85)[i % 4])
+    CL.overlay('smoke', [o for s_ in sm for o in s_.obs] + emb, setter, 4, fps=6, repeat=-1,
+               extra={'embers': bool(emb)})
+    for b in bases:
+        CL.bounds_marker('wb', (b[0] + 0.55, b[1] + 0.2, b[2] + top))
+    return sm
+
+
 @civ('ruin_m', 'ruin', 'civ_ruins', fp=(3.0, 3.0), catcher=22.0, samples=40,
      notes=RUIN_NOTE % ('M', 3, 3, 'M', 'warehouse / cannery / shop / toolsmith / boathouse', 'a burnt log cottage - '
                         'the back and left log walls stand half high with jagged charred ends, two tall corner posts, '
@@ -641,7 +736,7 @@ def b_ruin_m():
     for k, ln in enumerate(lens):
         x = -1.15 + ln / 2 + (0.0 if k % 2 == 0 else 0.05)
         log('blog%d' % k, r, ln, (x, 1.0, 0.28 + k * 0.22), rot=(0, 90, 0),
-            bark=CL.charcoal(5.0, snow=0.3, seed=k, warm=0.5 if k == 1 else 0.0),
+            bark=CL.charcoal(5.0, snow=0.3, seed=k),
             end=CL.charcoal(9.0, seed=k + 9, base='#4A3A33'), segs=12)
     # left wall (-X): stacked logs, shorter toward the front
     lens = [2.1, 1.8, 1.3, 0.8]
@@ -676,9 +771,10 @@ def b_ruin_m():
     rsn.location = (0.35, 0.45, 0.06)
     # beams crossing the room
     CL.charred_beam('beam0', (-0.95, -0.55, 0.08), (0.75, 0.6, 0.55), r=0.075, seed=60)
-    CL.charred_beam('beam1', (0.4, -0.85, 0.08), (1.05, 0.2, 0.42), r=0.07, seed=61, warm=3.0)
-    CL.embers('emb0', (0.45, -0.3, 0.32), 0.18, 7, seed=15)
-    CL.embers('emb1', (-0.62, -0.55, 0.26), 0.12, 4, seed=16)
+    CL.charred_beam('beam1', (0.4, -0.85, 0.08), (1.05, 0.2, 0.42), r=0.07, seed=61)
+    emb = [CL.embers('emb0', (0.45, -0.3, 0.32), 0.18, 7, seed=15),
+           CL.embers('emb1', (-0.62, -0.55, 0.26), 0.12, 4, seed=16),
+           CL.embers('emb2', (0.72, -0.33, 0.3), 0.08, 3, seed=17, size=0.04)]
     mailbox('mbox', (-1.45, -1.3, 0.0), col='#3D7CC9', lean=-8)
     CL.charred_beam('beam2', (-0.6, 0.85, 1.05), (-0.95, -0.2, 0.1), r=0.07, seed=62)
     # chimney (back-left) + stove survived
@@ -694,10 +790,7 @@ def b_ruin_m():
     LA.snow_drift('d1', 0.24, (1.4, 1.35, 0.0), seed=14)
     # smoke wisps (overlay)
     bases = [(0.45, -0.3, 0.3), (1.0, 0.0, 0.45), (-0.55, 1.28, 2.85)]
-    sm, set_sm = CL.smoke_wisps('wisp', bases, seed=3, rise=1.5)
-    CL.overlay('smoke', [o for s in sm for o in s.obs], lambda i: set_sm(i, 4), 4, fps=6, repeat=-1)
-    for b in bases:
-        CL.bounds_marker('wb', (b[0] + 0.5, b[1] + 0.2, b[2] + 1.55))
+    ruin_smoke(bases, seed=3, rise=1.5, embers=emb, top=1.75)
     mark('work', (-0.3, -1.85, 0.0), facing=(0, 1, 0))
     mark('work', (1.85, 0.2, 0.0), facing=(-1, 0, 0))
     mark('work', (0.7, -1.8, 0.0), facing=(0, 1, 0))
@@ -706,7 +799,7 @@ def b_ruin_m():
 
 # =========================================================================== POLICE STATION (cutaway)
 
-POLICE_NOTE = ('Police station "솔방울 경찰서" (6.4 x 4.6 m footprint incl. the car bay): white-and-navy clapboard '
+POLICE_NOTE = ('Police station "솔방울 경찰서" (7.2 x 4.6 m footprint incl. the car bay): white-and-navy clapboard '
                'station with a slate-blue gable roof, a red/blue light bar on the ridge, a gold star badge sign, a '
                'blue police lamp over the double door and a painted car bay on its right side for the police_car. '
                'CUTAWAY like the bank: police_station_floor (wood floor, rugs, car bay, ground shadow), _back (far '
@@ -714,15 +807,19 @@ POLICE_NOTE = ('Police station "솔방울 경찰서" (6.4 x 4.6 m footprint incl
                '(the cosy cell: cot with a patchwork quilt, teddy, cocoa, flower; stove with kettle, filing cabinet, '
                'coat hooks, visitor bench, plants), _front (reception desk + the cell bars = what stands in front of '
                '\'behind\' characters), police_station_cell (barred cell door overlay: anims.open 6 f, close '
-               'reverses; draw it AFTER the behind slot because the prisoner is inside), _shell_cut, _shell. '
+               'reverses; draw it AFTER the behind slot because the prisoner is inside; friendly powder-blue bars '
+               'with gold knobs, 1.7 m high, 0.16 m apart + a sleepy-moon time-out sign), _shell_cut, _shell. '
                'staffPoints = desk officer + filing officer (behind slot), customerPoints = visitor at the desk '
                '(+ one waiting), cellPoints = prisoner spots inside the cell (behind slot), cellSeatPoint = sitting '
                'on the cot, cellDoorPoint = just outside the cell door, carBayPoint + carBayDir = where the '
-               'police_car parks (nose out, SW), sideDoorPoint = staff door to the car bay, doorPoint / entryPoint.')
+               'police_car parks (nose out, SW; its near door point stays 0.35 m off the wall), sideDoorPoint = staff '
+               'door to the car bay (on the step, clear of the parked car), doorPoint / entryPoint.')
 
 P_X0, P_X1, P_Y0, P_Y1 = -3.1, 0.9, -1.4, 1.8
 P_T, P_PL, P_H = 0.16, 0.22, 2.84
 P_STUB = 0.55
+CELL_BAR, CELL_H, CELL_STEP = '#A9CBEA', 1.7, 0.16
+CAR_BAY_X = 2.55          # police_car parks here heading SW: its near door point stays 0.35 m off the wall
 
 
 def quilt_mat():
@@ -801,7 +898,7 @@ def police_lamp(name, loc, face='y-'):
     return T.face_group(objs, face, loc, name)
 
 
-@civ('police_station', 'building', 'civ_police', fp=(6.4, 4.6), catcher=32.0, samples=48, notes=POLICE_NOTE,
+@civ('police_station', 'building', 'civ_police', fp=(7.2, 4.6), catcher=32.0, samples=48, notes=POLICE_NOTE,
      ko='경찰서', en='Police station', zone='police', cutaway=True)
 def b_police_station():
     x0, x1, y0, y1, t, PL, H = P_X0, P_X1, P_Y0, P_Y1, P_T, P_PL, P_H
@@ -823,10 +920,10 @@ def b_police_station():
         cyl('rug3', 0.36, 0.016, (-0.55, -0.55, PL + 0.02), mat=flat('#3D7CC9', 0.9), segs=36, bevel=0.0)
         box('cellrug', (0.55, 0.75, 0.012), (xi0 + 1.0, 1.0, PL + 0.02), mat=flat('#C0392B', 0.9), bevel=0.0)
         box('step', (1.3, 0.45, PL * 0.6), (door_x, y0 - 0.23, 0), mat=snowy('#8E96A3', lo=0.6, hi=0.8), bevel=0.03)
-        box('sstep', (0.42, 0.9, PL * 0.6), (x1 + 0.21, sdoor_y, 0), mat=snowy('#8E96A3', lo=0.6, hi=0.8),
+        box('sstep', (0.46, 0.9, PL * 0.6), (x1 + 0.23, sdoor_y, 0), mat=snowy('#8E96A3', lo=0.6, hi=0.8),
             bevel=0.03)
         # car bay: asphalt pad, stall lines, painted star, cone, P sign
-        bx0, bx1, by0, by1 = 1.08, 3.14, -2.18, 2.18
+        bx0, bx1, by0, by1 = 1.38, 3.56, -2.18, 2.18          # polish v2: wider bay, car 0.45 m further out
         box('bay', (bx1 - bx0, by1 - by0, 0.03), ((bx0 + bx1) / 2, 0.0, 0.0), mat=tonal('#6E7480', 0.06, 2.0),
             bevel=0.02)
         lm = flat('#F4F1EA', 0.7)
@@ -950,13 +1047,15 @@ def b_police_station():
         blob('scarf', 0.08, (-1.33, -1.02, PL + 1.45), flat('#D9483B', 0.8), scale=(1.4, 1.0, 0.6), seed=10,
              amp=0.1, subdiv=2)
         # desk chair (desk itself is in 'front')
-        box('dchair', (0.44, 0.42, 0.1), (door_x, 0.5, PL + 0.4), mat=flat(navy, 0.6), bevel=0.04)
-        box('dchairb', (0.46, 0.1, 0.55), (door_x, 0.72, PL + 0.46), mat=flat(navy, 0.6), bevel=0.05)
-        cyl('dchairp', 0.03, 0.4, (door_x, 0.5, PL), mat=flat('#2B2F3A', 0.5), segs=8)
+        ox_ = door_x + 0.3                       # desk officer sits 0.3 m right of the door axis (clear of the cell)
+        box('dchair', (0.44, 0.42, 0.1), (ox_, 0.5, PL + 0.4), mat=flat(navy, 0.6), bevel=0.04)
+        box('dchairb', (0.46, 0.1, 0.55), (ox_, 0.72, PL + 0.46), mat=flat(navy, 0.6), bevel=0.05)
+        cyl('dchairp', 0.03, 0.4, (ox_, 0.5, PL), mat=flat('#2B2F3A', 0.5), segs=8)
         L.point_light('in_l1', (-0.6, 0.3, PL + 2.3), 'window', 26.0, 0.3)
         L.point_light('in_l2', (-2.2, 0.9, PL + 2.2), 'window', 14.0, 0.3)
     # ------------------------------------------------------------------ front occluders: desk + cell bars
-    iron_m = flat('#4A5563', 0.35, 0.6)
+    # polish v2: friendly powder-blue bars with gold knobs, airy 0.16 m spacing, only 1.7 m high (the cosy cell reads)
+    iron_m = flat(CELL_BAR, 0.35, 0.25)
     cdx0, cdx1 = -2.14, -1.66                  # cell door opening in the front bar line
     with layer('front'):
         dw = flat('#7A4E2E', 0.55)
@@ -985,19 +1084,45 @@ def b_police_station():
         cyl('dlamps', 0.07, 0.1, (door_x + 0.55, -0.13, PL + 1.15), rot=(-20, 0, 0),
             mat=L.emissive('dlamp', '#3E8E57', '#FFE7B0', 1.2), segs=14, r_top=0.11)
         # cell bars (front line with the door gap + right side)
-        zb0, zb1 = PL, PL + 2.05
-        bars_x('bars_f1', xi0, cdx0, cy0, zb0, zb1, iron_m)
-        bars_y('bars_r', cy0, yi1, cx1, zb0, zb1, iron_m)
+        zb0, zb1 = PL, PL + CELL_H
+        bf = bars_x('bars_f1', xi0, cdx0, cy0, zb0, zb1, iron_m, step=CELL_STEP, r=0.02)
+        br_ = bars_y('bars_r', cy0, yi1, cx1, zb0, zb1, iron_m, step=CELL_STEP, r=0.02)
+        mbk = L.MB()
+        for k_ in range(int(round((cdx0 - xi0) / CELL_STEP)) + 1):
+            mbk.sphere(0.034, CL.gold(), loc=(xi0 + (cdx0 - xi0) * k_ / max(1, int(round((cdx0 - xi0) / CELL_STEP))),
+                                             cy0, zb1 + 0.03), segs=10, rings=6)
+        nby = int(round((yi1 - cy0) / CELL_STEP))
+        for k_ in range(nby + 1):
+            mbk.sphere(0.034, CL.gold(), loc=(cx1, cy0 + (yi1 - cy0) * k_ / nby, zb1 + 0.03), segs=10, rings=6)
+        mbk.done('bar_knobs')
+        del bf, br_
+        # a little 'time-out' sign on the bars: cream board with a sleepy moon + stars
+        ts = [box('ts_b', (0.36, 0.03, 0.22), (0, 0, -0.11), mat=flat('#FBF3DF', 0.8), bevel=0.012),
+              box('ts_f', (0.4, 0.025, 0.26), (0, 0.01, -0.11), mat=flat('#C98F55', 0.7), bevel=0.012)]
+        moon = T.ext_xz('ts_moon', [(0.07 * math.cos(a_), 0.07 * math.sin(a_)) for a_ in
+                                    [math.pi * 0.35 + math.pi * 1.3 * k_ / 18 for k_ in range(19)]] +
+                        [(0.045 * math.cos(a_) + 0.03, 0.045 * math.sin(a_) + 0.01) for a_ in
+                         [math.pi * 1.65 - math.pi * 1.3 * k_ / 14 for k_ in range(15)]], 0.012, CL.gold(), y=-0.03,
+                        bevel=0.003)
+        moon.location.x, moon.location.z = -0.07, -0.11
+        ts.append(moon)
+        for k_, (dx_, dz_) in enumerate(((0.06, -0.06), (0.12, -0.14), (0.02, -0.17))):
+            st2 = T.ext_xz('ts_star', T.star_pts(0.028, 0.012), 0.012, flat('#3D7CC9', 0.5), y=-0.03, bevel=0.002)
+            st2.location.x, st2.location.z = dx_, dz_
+            ts.append(st2)
+        L.group(ts, 'timeout_sign', loc=(xi0 + 0.42, cy0 - 0.04, zb0 + 1.35))
         for x in (cdx0, cdx1):
             box('cdpost', (0.07, 0.07, zb1 - zb0), (x, cy0, zb0), mat=iron_m, bevel=0.01)
         box('cdtop', (cdx1 - cdx0 + 0.07, 0.08, 0.1), ((cdx0 + cdx1) / 2, cy0, zb1 - 0.05), mat=iron_m, bevel=0.01)
+        for x_ in (cdx0, cdx1):
+            sphere('cdknob', 0.045, (x_, cy0, zb1 + 0.04), CL.gold(), segs=10, rings=6)
         box('cornerpost', (0.08, 0.08, zb1 - zb0), (cx1, cy0, zb0), mat=iron_m, bevel=0.01)
         sphere('cknob', 0.05, (cx1, cy0, zb1 + 0.05), CL.gold(), segs=10, rings=6)
     # ------------------------------------------------------------------ cell door (overlay)
     with layer('cell'):
         with L.Collect() as dc:
             door_w = cdx1 - cdx0 - 0.04
-            bars_x('cd_bars', -door_w, 0.0, 0.0, zb0 + 0.04, zb1 - 0.14, iron_m, step=0.12)
+            bars_x('cd_bars', -door_w, 0.0, 0.0, zb0 + 0.04, zb1 - 0.14, iron_m, step=CELL_STEP, r=0.02)
             box('cd_frame', (0.05, 0.05, zb1 - zb0 - 0.18), (-door_w, 0, zb0 + 0.04), mat=iron_m, bevel=0.01)
             box('cd_lock', (0.12, 0.08, 0.16), (-door_w + 0.04, -0.03, zb0 + 0.95), mat=CL.brass(), bevel=0.02)
             sphere('cd_heart', 0.04, (-door_w / 2, -0.03, zb0 + 1.5), flat('#E8749A', 0.4), scale=(1, 0.4, 1),
@@ -1060,9 +1185,9 @@ def b_police_station():
     # ------------------------------------------------------------------ markers
     mark('door', (door_x, y0 - 0.85, 0.0), facing=(0, 1, 0))
     mark('entry', (door_x, yi0 + 0.3, PL), facing=(0, 1, 0))
-    mark('staff', (door_x, 0.48, PL), facing=(0, -1, 0))
+    mark('staff', (door_x + 0.3, 0.48, PL), facing=(0, -1, 0))
     mark('staff', (fcx - 0.05, yi1 - 0.82, PL), facing=(0, -1, 0))
-    mark('customer', (door_x, -0.42, PL), facing=(0, 1, 0))
+    mark('customer', (door_x + 0.25, -0.42, PL), facing=(0, 1, 0))
     mark('customer', (door_x + 0.45, -0.85, PL), facing=(-0.3, 1, 0))
     for y in (-0.95, -0.35):
         mark('seat', (bench_x + 0.2, y, PL + 0.45), facing=(1, 0, 0))
@@ -1071,11 +1196,12 @@ def b_police_station():
     mark('cell', (-2.0, 0.55, PL), facing=(1, 0, 0))
     mark('cellseat', (bx_ + 0.33, by_ - 0.1, PL + 0.45), facing=(1, 0, 0))
     mark('celldoor', ((cdx0 + cdx1) / 2, cy0 - 0.45, PL), facing=(0, 1, 0))
-    mark('carbay', (2.11, 0.0, 0.0), facing=(0, -1, 0))
-    mark('sidedoor', (x1 + 0.55, sdoor_y, 0.0), facing=(-1, 0, 0))
+    mark('carbay', (CAR_BAY_X, 0.0, 0.0), facing=(0, -1, 0))
+    mark('sidedoor', (x1 + 0.27, sdoor_y, 0.0), facing=(-1, 0, 0))
     return {'fx': {'siren': (-0.6, (y0 + y1) / 2, rz + 0.2), 'smoke': smoke, 'sign': (-1.75, y0 + 0.62, H + 0.95),
                    'lamp': (door_x, y0 - 0.32, PL + 2.1), 'stove': (sx_, sy_, PL + 0.7)},
-            'extra': {'floorLiftPx': int(round(PL * 55.4256)), 'stubM': P_STUB}}
+            'extra': {'floorLiftPx': int(round(PL * 55.4256)), 'stubM': P_STUB,
+                      'buildingRectM': [x0, x1, y0, y1], 'carBayRectM': [bx0, bx1, by0, by1]}}
 
 
 # =========================================================================== more RUINS
@@ -1148,11 +1274,13 @@ def safe_box(name, loc, rot_z=0.0):
 
 
 def win_cutter(name, target, x, y, z0, z1, w, axis='x', depth=0.6):
-    """Cut a window opening through a ruined wall (boolean, evaluated at render)."""
+    """Cut a window opening through a ruined wall (boolean, evaluated at render).  Polish v2: no material transfer -
+    with TRANSFER the boolean re-assigned the cutter's charcoal to the whole cut wall (the near-black townhouse); the
+    reveals now keep the wall's own sooted colour."""
     import veh_lib as VL
     size = (w, depth, z1 - z0) if axis == 'x' else (depth, w, z1 - z0)
     c = box(name, size, (x, y, z0), mat=CL.charcoal(6.0, seed=3, base='#4A403B'), bevel=0.0)
-    VL.add_bool(target, c, transfer=True)
+    VL.add_bool(target, c, transfer=False)
     return c
 
 
@@ -1171,24 +1299,22 @@ def charred_sill(name, x, y, z, w, axis='x'):
 def b_ruin_s():
     stone_course('found', -0.78, 0.78, -0.72, 0.8, seed=311)
     charred_floor('floor', 1.35, 1.32, 0.0, 0.04, seed=4)
-    log_wall_x('blog', -0.8, [1.6, 1.25, 0.7], 0.72, 0.12, seed=1, warm_k=1)
+    log_wall_x('blog', -0.8, [1.6, 1.25, 0.7], 0.72, 0.12, seed=1)
     log_wall_y('llog', 0.78, [1.4, 0.9], -0.75, 0.12, seed=5)
     CL.charred_post('post0', -0.78, 0.74, 1.75, seed=1)
     CL.charred_post('post1', 0.78, 0.74, 1.05, seed=2, lean=(0, 8))
     door_frame('dframe', 0.2, -0.72, w=0.62, h=1.42, col='#3D7CC9', seed=3)
     iron_stove('stove', (-0.35, 0.3, 0.05), s=0.85)
-    CL.charred_beam('beam0', (-0.65, -0.45, 0.08), (0.55, 0.45, 0.4), r=0.07, seed=60, warm=2.5)
+    CL.charred_beam('beam0', (-0.65, -0.45, 0.08), (0.55, 0.45, 0.4), r=0.07, seed=60)
     CL.charred_beam('beam1', (0.6, -0.5, 0.06), (-0.1, 0.65, 0.5), r=0.065, seed=61)
     CL.ash_mound('ash0', 0.3, (0.3, -0.15, 0.05), seed=17)
-    CL.embers('emb0', (0.3, -0.15, 0.27), 0.14, 5, seed=18)
+    emb = [CL.embers('emb0', (0.3, -0.15, 0.27), 0.14, 5, seed=18),
+           CL.embers('emb1', (-0.1, 0.05, 0.25), 0.07, 3, seed=19, size=0.04)]
     CL.cinder_bits('cinders', (0.0, 0.0), 0.75, 18, seed=19, z=0.05)
     mailbox('mbox', (-1.0, -0.95, 0.0), col='#D9483B', lean=6)
     LA.snow_drift('d0', 0.22, (0.95, 1.0, 0.0), seed=21)
     bases = [(0.3, -0.15, 0.28), (-0.35, 0.3, 0.75)]
-    sm, set_sm = CL.smoke_wisps('wisp', bases, seed=7, rise=1.3)
-    CL.overlay('smoke', [o for s in sm for o in s.obs], lambda i: set_sm(i, 4), 4, fps=6, repeat=-1)
-    for b in bases:
-        CL.bounds_marker('wb', (b[0] + 0.5, b[1] + 0.2, b[2] + 1.6))
+    ruin_smoke(bases, seed=7, rise=1.3, embers=emb, top=1.7)
     mark('work', (-0.2, -1.4, 0.0), facing=(0, 1, 0))
     mark('work', (1.35, 0.15, 0.0), facing=(-1, 0, 0))
     return {'fx': {'smoke': bases[0], 'smoke2': bases[1], 'ember': (0.3, -0.15, 0.3)}}
@@ -1226,7 +1352,7 @@ def b_ruin_l():
     objs, top = chimney_stack('chim', 1.05, 1.15, 3.2, w=0.5, col='#9A6A5A', seed=8)
     # collapsed trusses + beams
     CL.charred_beam('tr0', (-1.3, 1.2, 2.2), (0.6, -0.6, 0.15), r=0.08, seed=70)
-    CL.charred_beam('tr1', (-1.3, -0.4, 1.0), (1.2, 0.8, 0.12), r=0.08, seed=71, warm=2.5)
+    CL.charred_beam('tr1', (-1.3, -0.4, 1.0), (1.2, 0.8, 0.12), r=0.08, seed=71)
     CL.charred_beam('tr2', (-0.2, 1.3, 1.7), (-0.9, -1.0, 0.1), r=0.075, seed=72)
     CL.charred_beam('tr3', (0.9, -1.1, 0.12), (1.3, 0.6, 0.75), r=0.07, seed=73)
     rp = box('roofp', (1.5, 1.2, 0.08), (0, 0, 0), mat=CL.charcoal(4.0, snow=0.2, seed=74), bevel=0.03,
@@ -1242,7 +1368,8 @@ def b_ruin_l():
         sh.location = (-0.5 + 0.36 * (k % 3) + 0.08 * ((k // 3) % 2), -0.4 + 0.3 * (k // 3), 0.055)
     CL.ash_mound('ash0', 0.55, (-0.2, -0.2, 0.06), seed=31, h=0.38)
     CL.ash_mound('ash1', 0.32, (0.9, -0.75, 0.06), seed=32)
-    CL.embers('emb0', (-0.2, -0.2, 0.36), 0.25, 8, seed=33)
+    emb = [CL.embers('emb0', (-0.2, -0.2, 0.36), 0.25, 8, seed=33),
+           CL.embers('emb1', (0.5, 0.35, 0.3), 0.12, 4, seed=34, size=0.045)]
     CL.cinder_bits('cinders', (0.0, 0.0), 1.5, 40, seed=34, z=0.06)
     CL.bricks('bricks0', (0.5, -1.05), 0.45, 9, seed=35, col='#B4593F', z=0.02)
     CL.bricks('bricks1', (-1.0, -0.6), 0.35, 6, seed=36, col='#B4593F', z=0.02)
@@ -1252,84 +1379,348 @@ def b_ruin_l():
     LA.snow_drift('d0', 0.32, (-1.95, -1.7, 0.0), seed=38)
     LA.snow_drift('d1', 0.26, (1.95, 1.9, 0.0), seed=39)
     bases = [(-0.2, -0.2, 0.4), (0.5, 0.35, 0.6), (1.05, 1.15, 3.3)]
-    sm, set_sm = CL.smoke_wisps('wisp', bases, seed=11, rise=1.6)
-    CL.overlay('smoke', [o for s in sm for o in s.obs], lambda i: set_sm(i, 4), 4, fps=6, repeat=-1)
-    for b in bases:
-        CL.bounds_marker('wb', (b[0] + 0.55, b[1] + 0.2, b[2] + 1.8))
+    ruin_smoke(bases, seed=11, rise=1.6, embers=emb, top=1.9)
     mark('work', (-0.4, -2.4, 0.0), facing=(0, 1, 0))
     mark('work', (2.4, 0.3, 0.0), facing=(-1, 0, 0))
     mark('work', (0.9, -2.35, 0.0), facing=(0, 1, 0))
     return {'fx': {'smoke': bases[0], 'smoke2': bases[1], 'chimney': top, 'ember': (-0.2, -0.2, 0.4)}}
 
 
+WARM_CHAR = '#4A3F3A'          # polish v2: warm charcoal (never near-black) for the town ruins
+SIDING = '#F1E6CC'             # neutral cream siding: one ruin fits every townhouse / shop colour
+
+
+def top_snow(name, pts, seed=0, every=1, r=0.085):
+    """Fresh snow caps on the peaks of a jagged wall top (pts = [(x, y, z), ...]) - keeps a ruin soft and snowy."""
+    for k, (x, y, z) in enumerate(pts):
+        if k % every == 0:
+            PA.snow_cap('%s%d' % (name, k), r, (x, y, z - 0.02), h=0.05, seed=seed + k, scale=(1.3, 1.0, 1.0))
+
+
+def tatter(name, loc, w, h, rot_z=0.0, c1='#D9483B', c2='#F4F1EA', lean=8.0):
+    """A scorched strip of striped awning canvas hanging from a bar."""
+    m = CL.scorched(c1, loc[2] - h, loc[2] + 0.05, soot=WARM_CHAR, amount=0.55)
+    o = box(name, (w, 0.02, h), (0, 0, -h), mat=L.stripes(c1, c2, 1.0 / max(0.05, w * 0.5), 'X', rough=0.8),
+            bevel=0.005)
+    o2 = box(name + '_s', (w + 0.004, 0.024, h * 0.35), (0, 0, -h), mat=m, bevel=0.004)
+    return L.group([o, o2], name, loc=loc, rot=(lean, 0, rot_z))
+
+
+def hanging_bell(name, loc, s=0.5):
+    with L.Collect() as bc_:
+        T.bell_model(name, s=s, col='#E2B33C')
+    g = L.group(BA.top_level(bc_.objs), name + '_g', loc=loc)
+    cyl(name + '_cord', 0.008, 0.12, (loc[0], loc[1], loc[2] + 0.12 * s + 0.05), mat=flat('#3D424C', 0.5), segs=6)
+    return g
+
+
+def mug(name, loc, col='#D9483B'):
+    m = flat(col, 0.4)
+    objs = [cyl(name, 0.05, 0.1, loc, mat=m, segs=16, bevel=0.012),
+            cyl(name + '_in', 0.042, 0.004, (loc[0], loc[1], loc[2] + 0.096), mat=flat('#7A4A2A', 0.4), segs=14)]
+    mb = L.MB()
+    T.ring_seg(mb, (loc[0] + 0.055, loc[1], loc[2] + 0.05), 0.03, 0.01, m, axis='y', a0=-1.4, a1=1.4, n=8)
+    objs.append(mb.done(name + '_h'))
+    return objs
+
+
 @civ('ruin_house_town', 'ruin', 'civ_ruins', fp=(2.6, 2.6), catcher=22.0, samples=40,
      notes=('Burnt townhouse (2.6 x 2.6 m, same anchor / footprint as townhouse_a..d in assets/town, so it replaces '
-            'one in place): butter-yellow plaster walls blackened toward their jagged tops, the front door frame and '
-            'window holes with soot plumes, half of the gable standing, a collapsed red roof leaning in, the brick '
-            'chimney still up, and the flower box under the window - flowers and all - survived. '
-            'ruin_house_town_smoke = smoke overlay (anims.smoke). Draw scorch_decal_m under it.'),
+            'one in place). Polish v2: neutral cream clapboard (fits all four townhouse colours) sooted only toward '
+            'the jagged tops in WARM charcoal, the gable knocked down by a third, lots of fresh snow caps on the broken '
+            'edges, the front door frame with its green door hanging askew, a collapsed roof leaning in, the brick '
+            'chimney at the back-left like the townhouses\' - and the big flower box under the window, flowers and '
+            'all, survived. Cold in the base frame: ruin_house_town_smoke = smoke wisps + flickering embers '
+            '(anims.smoke). Draw scorch_decal_m under it.'),
      ko='불탄 주택', en='Burnt townhouse', zone='ruins')
 def b_ruin_house_town():
     W, D, X, Y, PL = 2.2, 2.1, -0.05, 0.15, 0.18
     x0, x1, y0, y1 = X - W / 2, X + W / 2, Y - D / 2, Y + D / 2
-    wall = CL.scorched('#F6DD8A', 0.9, 2.6, amount=1.0, snow=0.2)
-    T.plinth('plinth', W, D, h=PL, col='#6E6866', x=X, y=Y)
-    charred_floor('floor', W - 0.2, D - 0.2, X, Y, seed=6)
+    wall = CL.scorched(SIDING, 1.05, 2.6, soot=WARM_CHAR, amount=0.85, snow=0.22, siding=4.6)
+    T.plinth('plinth', W, D, h=PL, col='#8E96A3', x=X, y=Y)
+    box('floor', (W - 0.2, D - 0.2, 0.06), (X, Y, 0.02 + PL - 0.06),
+        mat=CL.charcoal(3.5, seed=6, base='#6E625C', snow=0.0), bevel=0.02)
     # front wall (-Y) with the door hole and a window hole
-    fw = CL.jagged_wall_x('fwall', x0, x1, y0 + 0.08, 0.16, [(x0, 2.2), (x0 + 0.5, 2.45), (x0 + 0.9, 1.9),
-                                                           (x0 + 1.3, 1.65), (x0 + 1.7, 1.35), (x1, 1.0)], wall,
-                          z0=PL, seed=11)
+    ft = [(x0, 1.75), (x0 + 0.45, 1.95), (x0 + 0.85, 1.62), (x0 + 1.25, 1.45), (x0 + 1.65, 1.2), (x1, 0.95)]
+    fw = CL.jagged_wall_x('fwall', x0, x1, y0 + 0.08, 0.16, ft, wall, z0=PL, seed=11)
     win_cutter('fdoor', fw[0], x1 - 0.55, y0 + 0.08, PL - 0.02, PL + 1.3, 0.66, axis='x')
     win_cutter('fwin', fw[0], x0 + 0.6, y0 + 0.08, PL + 0.55, PL + 1.15, 0.55, axis='x')
-    CL.soot_streak('ss0', (x0 + 0.6, y0 - 0.005, PL + 1.15), 'y-', w=0.6, h=0.75)
-    CL.soot_streak('ss1', (x1 - 0.55, y0 - 0.005, PL + 1.3), 'y-', w=0.6, h=0.6)
+    CL.soot_streak('ss0', (x0 + 0.6, y0 - 0.005, PL + 1.15), 'y-', w=0.5, h=0.45, alpha=0.6)
     charred_sill('fsill', x0 + 0.6, y0 - 0.02, PL + 0.55, 0.55)
-    # the survivor: flower box under the window
-    box('fbox', (0.66, 0.18, 0.14), (x0 + 0.6, y0 - 0.1, PL + 0.36), mat=flat('#A86A36', 0.8), bevel=0.03)
-    for k in range(5):
-        sphere('fbl', 0.055, (x0 + 0.4 + 0.1 * k, y0 - 0.1, PL + 0.54), flat(['#E8524A', '#F2C14E'][k % 2], 0.5),
-               segs=8, rings=6)
+    top_snow('fsn', [(x, y0 + 0.08, z) for x, z in ft[:4]], seed=40)
+    # the survivor: a BIG flower box under the window (reads at phone zoom)
+    box('fbox', (0.92, 0.26, 0.2), (x0 + 0.62, y0 - 0.14, PL + 0.3), mat=flat('#A86A36', 0.8), bevel=0.035)
+    box('fbox_rim', (0.96, 0.3, 0.04), (x0 + 0.62, y0 - 0.14, PL + 0.5), mat=flat('#C98F55', 0.7), bevel=0.012)
+    for k in range(6):
+        sphere('fbl', 0.078, (x0 + 0.27 + 0.14 * k, y0 - 0.15, PL + 0.6 + 0.03 * (k % 2)),
+               flat(['#E8524A', '#F2C14E', '#F28DB2'][k % 3], 0.5), segs=10, rings=7)
+        sphere('fleaf', 0.05, (x0 + 0.34 + 0.14 * k, y0 - 0.1, PL + 0.53), flat('#3E8E57', 0.6), segs=8, rings=5)
+    PA.snow_cap('fbox_sn', 0.1, (x0 + 0.95, y0 - 0.14, PL + 0.52), h=0.04, seed=3, scale=(1.4, 1.0, 1.0))
     door_frame('dframe', x1 - 0.55, y0 + 0.02, w=0.64, h=1.32, col='#3E8E57', door=True, lean=-30, seed=12)
     # right wall (+X), low and broken
-    rw = CL.jagged_wall_y('rwall', y0 + 0.08, y1, x1 - 0.08, 0.16, [(y0 + 0.08, 0.9), (y0 + 0.6, 1.15),
-                                                                   (Y + 0.1, 0.7), (y1 - 0.4, 1.0), (y1, 1.3)], wall,
-                          z0=PL, seed=13)
-    win_cutter('rwin', rw[0], x1 - 0.08, Y - 0.2, PL + 0.4, PL + 0.95, 0.5, axis='y')
-    # back wall (+Y) high with half of the gable, left wall (-X)
-    bw = CL.jagged_wall_x('bwall', x0, x1, y1 - 0.08, 0.16, [(x0, 2.9), (x0 + 0.4, 3.15), (X, 3.5), (X + 0.35, 3.0),
-                                                           (x1 - 0.5, 2.4), (x1, 1.8)], wall, z0=PL, seed=15)
-    win_cutter('bwin', bw[0], X + 0.35, y1 - 0.08, PL + 1.75, PL + 2.3, 0.45, axis='x')
-    CL.jagged_wall_y('lwall', y0, y1 - 0.08, x0 + 0.08, 0.16, [(y0, 2.1), (y0 + 0.5, 1.6), (Y, 2.4), (y1 - 0.6, 2.7),
-                                                              (y1 - 0.08, 3.0)], wall, z0=PL, seed=17)
-    # collapsed red roof leaning in from the back
-    for k, (loc, rot, size) in enumerate((((X - 0.25, Y + 0.25, 1.05), (-38, 8, 6), (1.5, 1.2)),
-                                          ((X + 0.55, Y - 0.25, 0.42), (16, -20, -25), (0.9, 0.8)))):
-        rp = box('roofp%d' % k, (size[0], size[1], 0.08), (0, 0, 0), mat=CL.charcoal(4.0, snow=0.2, seed=80 + k),
-                 bevel=0.03, origin='center')
+    rtp = [(y0 + 0.08, 0.9), (y0 + 0.6, 1.15), (Y + 0.1, 0.72), (y1 - 0.4, 1.0), (y1, 1.25)]
+    rw = CL.jagged_wall_y('rwall', y0 + 0.08, y1, x1 - 0.08, 0.16, rtp, wall, z0=PL, seed=13)
+    win_cutter('rwin', rw[0], x1 - 0.08, Y - 0.2, PL + 0.4, PL + 0.85, 0.5, axis='y')
+    top_snow('rsn', [(x1 - 0.08, y, z) for y, z in rtp], seed=50)
+    # back wall (+Y) with what is left of the gable (a third lower than before), left wall (-X)
+    btp = [(x0, 2.08), (x0 + 0.4, 2.26), (X, 2.5), (X + 0.35, 2.15), (x1 - 0.5, 1.73), (x1, 1.31)]
+    bw = CL.jagged_wall_x('bwall', x0, x1, y1 - 0.08, 0.16, btp, wall, z0=PL, seed=15)
+    win_cutter('bwin', bw[0], X + 0.35, y1 - 0.08, PL + 1.15, PL + 1.65, 0.45, axis='x')
+    top_snow('bsn', [(x, y1 - 0.08, z) for x, z in btp], seed=60)
+    ltp = [(y0, 1.52), (y0 + 0.5, 1.17), (Y, 1.73), (y1 - 0.6, 1.94), (y1 - 0.08, 2.15)]
+    CL.jagged_wall_y('lwall', y0, y1 - 0.08, x0 + 0.08, 0.16, ltp, wall, z0=PL, seed=17)
+    top_snow('lsn', [(x0 + 0.08, y, z) for y, z in ltp], seed=70)
+    # collapsed roof leaning in from the back (warm charcoal boards with a few muted tiles left + snow)
+    for k, (loc, rot, size) in enumerate((((X - 0.2, Y + 0.3, 0.9), (-34, 8, 6), (1.4, 1.1)),
+                                          ((X + 0.55, Y - 0.25, 0.4), (16, -20, -25), (0.85, 0.75)))):
+        rp = box('roofp%d' % k, (size[0], size[1], 0.08), (0, 0, 0),
+                 mat=CL.charcoal(4.0, snow=0.35, seed=80 + k, base='#5A4D47'), bevel=0.03, origin='center')
         rp.location = loc
         rp.rotation_euler = Euler([math.radians(v) for v in rot], 'XYZ')
-        n = 8 if k == 0 else 4
+        n = 7 if k == 0 else 3
         for j in range(n):
-            sh = box('shingle', (0.3, 0.22, 0.03), (0, 0, 0), mat=flat(['#C8473A', '#A83A30'][j % 2], 0.7),
+            sh = box('shingle', (0.3, 0.22, 0.03), (0, 0, 0), mat=flat(['#B9604A', '#8E6A5A'][j % 2], 0.7),
                      bevel=0.012, origin='center')
             sh.parent = rp
             sh.location = (-size[0] / 2 + 0.25 + 0.34 * (j % 4), -size[1] / 2 + 0.25 + 0.3 * (j // 4), 0.055)
-    chimney_stack('chim', x0 + 0.45, Y + D * 0.25, 3.85, w=0.36, col='#B4593F', seed=9)
-    CL.charred_beam('beam0', (x0 + 0.2, y0 + 0.3, 0.25), (x1 - 0.3, y1 - 0.3, 1.2), r=0.07, seed=90, warm=2.5)
+        sn = L.snow_slab('roofsn%d' % k, size[0] * 0.5, size[1] * 0.45, 0.05, (0, 0, 0), seed=85 + k)
+        sn.parent = rp
+        sn.location = (0.15, 0.2, 0.05)
+    chimney_stack('chim', x0 + 0.42, y1 - 0.36, 3.2, w=0.36, col='#B4593F', seed=9)
+    CL.charred_beam('beam0', (x0 + 0.2, y0 + 0.3, 0.25), (x1 - 0.3, y1 - 0.3, 1.1), r=0.07, seed=90, base=WARM_CHAR,
+                    ends='#B98A5A')
     CL.ash_mound('ash0', 0.32, (X + 0.2, Y - 0.3, PL), seed=91)
-    CL.embers('emb0', (X + 0.2, Y - 0.3, PL + 0.22), 0.14, 5, seed=92)
+    emb = [CL.embers('emb0', (X + 0.2, Y - 0.3, PL + 0.22), 0.14, 5, seed=92)]
     CL.cinder_bits('cinders', (X, Y), 0.9, 20, seed=93, z=PL)
     LA.snow_drift('d0', 0.24, (x1 + 0.3, y1 + 0.1, 0.0), seed=94)
+    LA.snow_drift('d1', 0.2, (x1 + 0.25, y0 - 0.35, 0.0), seed=96)
     T.flower_tub('tub', (x0 - 0.12, y0 - 0.3, 0.0), r=0.17, evergreen=True, seed=95)
-    bases = [(X + 0.2, Y - 0.3, PL + 0.25), (x0 + 0.45, Y + D * 0.25, 4.0)]
-    sm, set_sm = CL.smoke_wisps('wisp', bases, seed=13, rise=1.4)
-    CL.overlay('smoke', [o for s in sm for o in s.obs], lambda i: set_sm(i, 4), 4, fps=6, repeat=-1)
-    for b in bases:
-        CL.bounds_marker('wb', (b[0] + 0.55, b[1] + 0.2, b[2] + 1.7))
+    bases = [(X + 0.2, Y - 0.3, PL + 0.25), (x0 + 0.42, y1 - 0.36, 3.3)]
+    ruin_smoke(bases, seed=13, rise=1.4, embers=emb, top=1.8)
     mark('door', (x1 - 0.55, y0 - 0.85, 0.0), facing=(0, 1, 0))
     mark('work', (X - 0.3, y0 - 0.9, 0.0), facing=(0, 1, 0))
     mark('work', (x1 + 0.7, Y, 0.0), facing=(-1, 0, 0))
     return {'fx': {'smoke': bases[0], 'chimney': bases[1], 'ember': (X + 0.2, Y - 0.3, PL + 0.25)}}
+
+
+SHOP_RUIN_NOTE = ('Burnt town shop (lot M: 3.4 x 3.0 m footprint, same anchor as the M town lots / cafe, bookstore, '
+                  'toy_shop, flower_shop, hair_salon, clothing_store, hardware_store, restaurant, carpenter_workshop '
+                  'and post_office): a two-storey cream clapboard shell sooted toward its jagged tops (warm charcoal), '
+                  'the big shop-window hole with its charred awning frame and two scorched striped tatters, the door '
+                  'frame with the shop bell still hanging, and the round bracket sign (a little shopping basket) that '
+                  'survived; a red mug and a flower pot sit on the window sill. Cold base frame; ruin_shop_town_smoke '
+                  '= smoke + embers overlay. Draw scorch_decal_m under it.')
+
+
+@civ('ruin_shop_town', 'ruin', 'civ_ruins', fp=(3.4, 3.0), catcher=24.0, samples=40, notes=SHOP_RUIN_NOTE,
+     ko='불탄 가게', en='Burnt town shop', zone='ruins')
+def b_ruin_shop_town():
+    W, D, X, Y, PL = 2.6, 2.3, 0.0, 0.25, 0.18
+    x0, x1, y0, y1 = X - W / 2, X + W / 2, Y - D / 2, Y + D / 2
+    wall = CL.scorched(SIDING, 1.15, 3.1, soot=WARM_CHAR, amount=0.85, snow=0.22, siding=4.6)
+    T.plinth('plinth', W, D, h=PL, col='#8E96A3', x=X, y=Y)
+    box('floor', (W - 0.2, D - 0.2, 0.06), (X, Y, PL - 0.04), mat=CL.charcoal(3.5, seed=7, base='#6E625C'),
+        bevel=0.02)
+    # front (-Y): two storeys on the left, broken down to the right
+    ft = [(x0, 2.95), (x0 + 0.45, 3.15), (x0 + 0.8, 2.62), (x0 + 1.2, 2.2), (x0 + 1.6, 1.78), (x0 + 2.0, 1.55),
+          (x1, 1.2)]
+    fw = CL.jagged_wall_x('fwall', x0, x1, y0 + 0.08, 0.16, ft, wall, z0=PL, seed=21)
+    win_cutter('fshop', fw[0], x0 + 0.85, y0 + 0.08, PL + 0.35, PL + 1.25, 1.1, axis='x')
+    win_cutter('fdoor', fw[0], x1 - 0.45, y0 + 0.08, PL - 0.02, PL + 1.32, 0.62, axis='x')
+    win_cutter('fup', fw[0], x0 + 0.5, y0 + 0.08, PL + 1.78, PL + 2.35, 0.45, axis='x')
+    CL.soot_streak('ss0', (x0 + 0.85, y0 - 0.005, PL + 1.25), 'y-', w=0.8, h=0.4, alpha=0.55)
+    charred_sill('fsill', x0 + 0.85, y0 - 0.03, PL + 0.35, 1.1)
+    top_snow('fsn', [(x, y0 + 0.08, z) for x, z in ft[:5]], seed=140)
+    # survivors on the sill: a red mug + a little flower pot
+    mug('mug', (x0 + 0.55, y0 - 0.06, PL + 0.36))
+    CL.potted_plant('sillpot', (x0 + 1.12, y0 - 0.06, PL + 0.36), s=0.55, pot='#E8749A', leaf='#3E8E57', seed=21)
+    # charred awning frame over the shop window + scorched striped tatters
+    im = flat('#3B3F47', 0.5, 0.5)
+    mb = L.MB()
+    az0, az1, ad = PL + 1.5, PL + 1.28, 0.6
+    for xx in (x0 + 0.28, x0 + 1.42):
+        mb.seg(Vector((xx, y0, az0)), Vector((xx, y0 - ad, az1)), 0.022, im, segs=8)
+    mb.seg(Vector((x0 + 0.28, y0 - ad, az1)), Vector((x0 + 1.42, y0 - ad, az1 - 0.05)), 0.022, im, segs=8)
+    mb.seg(Vector((x0 + 0.28, y0 - 0.02, az0)), Vector((x0 + 1.42, y0 - 0.02, az0)), 0.025, im, segs=8)
+    mb.done('awning_frame')
+    tatter('tat0', (x0 + 0.45, y0 - ad + 0.02, az1), 0.26, 0.24, rot_z=4, lean=10)
+    tatter('tat1', (x0 + 1.15, y0 - ad + 0.02, az1 - 0.04), 0.22, 0.18, rot_z=-6, lean=6)
+    door_frame('dframe', x1 - 0.45, y0 + 0.02, w=0.6, h=1.32, col='#C0473A', door=True, lean=-22, seed=22)
+    hanging_bell('sbell', (x1 - 0.45, y0 - 0.06, PL + 1.2), s=0.45)
+    # right wall (+X) low with a window hole, back wall (+Y) taller, left wall (-X)
+    rtp = [(y0 + 0.08, 1.3), (y0 + 0.7, 1.05), (Y, 1.5), (y1 - 0.5, 1.2), (y1, 1.7)]
+    rw = CL.jagged_wall_y('rwall', y0 + 0.08, y1, x1 - 0.08, 0.16, rtp, wall, z0=PL, seed=23)
+    win_cutter('rwin', rw[0], x1 - 0.08, Y - 0.15, PL + 0.45, PL + 1.0, 0.5, axis='y')
+    top_snow('rsn', [(x1 - 0.08, y, z) for y, z in rtp], seed=150)
+    btp = [(x0, 2.8), (x0 + 0.6, 3.0), (X, 2.5), (x1 - 0.7, 2.2), (x1, 1.6)]
+    bw = CL.jagged_wall_x('bwall', x0, x1, y1 - 0.08, 0.16, btp, wall, z0=PL, seed=25)
+    win_cutter('bwin', bw[0], x0 + 0.75, y1 - 0.08, PL + 1.75, PL + 2.3, 0.45, axis='x')
+    top_snow('bsn', [(x, y1 - 0.08, z) for x, z in btp], seed=160)
+    ltp = [(y0, 2.95), (y0 + 0.6, 2.4), (Y, 2.7), (y1 - 0.5, 2.25), (y1 - 0.08, 2.75)]
+    CL.jagged_wall_y('lwall', y0, y1 - 0.08, x0 + 0.08, 0.16, ltp, wall, z0=PL, seed=27)
+    top_snow('lsn', [(x0 + 0.08, y, z) for y, z in ltp], seed=170)
+    # charred joists of the upper floor sticking out of the back + left walls, a collapsed roof panel
+    for k, (p_, q_) in enumerate((((x0 + 0.1, y1 - 0.2, PL + 1.5), (x0 + 1.2, y1 - 0.8, PL + 1.3)),
+                                  ((x0 + 0.1, Y + 0.1, PL + 1.5), (x0 + 0.9, Y - 0.2, PL + 0.6)),
+                                  ((x1 - 0.5, y1 - 0.15, PL + 1.45), (X + 0.2, Y - 0.4, 0.25)))):
+        CL.charred_beam('joist%d' % k, p_, q_, r=0.065, seed=180 + k, base=WARM_CHAR, ends='#B98A5A')
+    rp = box('roofp', (1.5, 1.1, 0.08), (0, 0, 0), mat=CL.charcoal(4.0, snow=0.35, seed=185, base='#5A4D47'),
+             bevel=0.03, origin='center')
+    rp.location = (X + 0.35, Y + 0.25, 0.75)
+    rp.rotation_euler = Euler((math.radians(-30), math.radians(10), math.radians(-12)), 'XYZ')
+    for j in range(7):
+        sh = box('shingle', (0.3, 0.22, 0.03), (0, 0, 0), mat=flat(['#B9604A', '#6E7F95'][j % 2], 0.7), bevel=0.012,
+                 origin='center')
+        sh.parent = rp
+        sh.location = (-0.5 + 0.34 * (j % 4), -0.3 + 0.3 * (j // 4), 0.055)
+    # round bracket sign (shopping basket) survived on the left corner
+    T.bracket_sign('bsign', (x0, y0), out_dir=(-1.0, -1.0), z=PL + 2.3, arm=0.45, r=0.3, bg='#F4F1EA',
+                   rim='#F2C14E', emblem=lambda s_: T.em_basket(s_ * 0.8), es=1.0)
+    CL.ash_mound('ash0', 0.36, (X + 0.25, Y - 0.25, PL), seed=191)
+    CL.ash_mound('ash1', 0.24, (X - 0.6, Y + 0.45, PL), seed=192, snow=0.3)
+    emb = [CL.embers('emb0', (X + 0.25, Y - 0.25, PL + 0.24), 0.16, 6, seed=193),
+           CL.embers('emb1', (X - 0.6, Y + 0.45, PL + 0.16), 0.1, 3, seed=194, size=0.04)]
+    CL.cinder_bits('cinders', (X, Y), 1.1, 26, seed=195, z=PL)
+    CL.plank_scatter('planks', (X + 0.6, Y + 0.3), 0.35, 3, seed=196, cols=(WARM_CHAR, '#C98F55', '#8A5A33'), z=PL)
+    LA.snow_drift('d0', 0.26, (x1 + 0.35, y1 + 0.05, 0.0), seed=197)
+    LA.snow_drift('d1', 0.2, (x0 - 0.2, y1 - 0.2, 0.0), seed=198)
+    bases = [(X + 0.25, Y - 0.25, PL + 0.3), (X - 0.6, Y + 0.45, PL + 0.25)]
+    ruin_smoke(bases, seed=17, rise=1.5, embers=emb, top=1.8)
+    mark('door', (x1 - 0.45, y0 - 0.85, 0.0), facing=(0, 1, 0))
+    mark('work', (X - 0.35, y0 - 0.95, 0.0), facing=(0, 1, 0))
+    mark('work', (x1 + 0.7, Y, 0.0), facing=(-1, 0, 0))
+    mark('work', (X + 0.6, y0 - 0.95, 0.0), facing=(0, 1, 0))
+    return {'fx': {'smoke': bases[0], 'smoke2': bases[1], 'ember': (X + 0.25, Y - 0.25, PL + 0.3),
+                   'sign': (x0 - 0.32, y0 - 0.32, PL + 1.9)}}
+
+
+L_TOWN_NOTE = ('Burnt big town building (lot L: 4.4 x 3.4 m footprint, same anchor as the L town lot / supermarket; '
+               'also fits apartment_a / _b, clinic and fire_station plots): a one-storey cream plaster store with its '
+               'false front still half standing (jagged, sooted toward the top in warm charcoal, a green stripe left), '
+               'two big shop-window holes and the door hole, the collapsed flat roof tilted in, a toppled shelf with '
+               'colourful cans and boxes, a charred awning frame with tatters - and a shopping cart that survived. '
+               'Cold base frame; ruin_l_town_smoke = smoke + embers overlay. Draw scorch_decal_l under it.')
+
+
+def shopping_cart(name, loc, rot_z=0.0):
+    wire = flat('#B9C2CE', 0.35, 0.6)
+    mb = L.MB()
+    w, d, h, z0 = 0.62, 0.42, 0.34, 0.42
+    corners = [(-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2)]
+    for zz in (z0, z0 + h):
+        for (ax, ay), (bx, by) in zip(corners, corners[1:] + corners[:1]):
+            mb.seg(Vector((ax, ay, zz)), Vector((bx, by, zz)), 0.014, wire, segs=6)
+    for k in range(8):
+        x = -w / 2 + w * k / 7
+        for sy in (-1, 1):
+            mb.seg(Vector((x, sy * d / 2, z0)), Vector((x, sy * d / 2, z0 + h)), 0.008, wire, segs=5)
+    for k in range(5):
+        y = -d / 2 + d * k / 4
+        for sx in (-1, 1):
+            mb.seg(Vector((sx * w / 2, y, z0)), Vector((sx * w / 2, y, z0 + h)), 0.008, wire, segs=5)
+    for sx in (-1, 1):
+        mb.seg(Vector((sx * 0.22, 0, 0.08)), Vector((sx * 0.25, 0, z0)), 0.016, wire, segs=6)
+    mb.seg(Vector((-w / 2 - 0.05, -0.2, z0 + h + 0.08)), Vector((-w / 2 - 0.05, 0.2, z0 + h + 0.08)), 0.03,
+           flat('#D9483B', 0.5), segs=8)
+    for sy in (-1, 1):
+        mb.seg(Vector((-w / 2, sy * 0.18, z0 + h)), Vector((-w / 2 - 0.05, sy * 0.18, z0 + h + 0.08)), 0.012, wire,
+               segs=5)
+    objs = [mb.done(name + '_wire')]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            objs.append(cyl(name + '_wh', 0.05, 0.03, (sx * 0.25, sy * 0.16, 0.05), rot=(90, 0, 0),
+                            mat=flat('#2B2F3A', 0.6), segs=12, origin='center'))
+        objs.append(box(name + '_base', (0.56, 0.05, 0.03), (0, sx * 0.16, 0.07), mat=wire, bevel=0.01))
+    objs.append(PA.snow_cap(name + '_sn', 0.12, (0.05, 0.0, z0 + h + 0.02), h=0.04, seed=3, scale=(1.6, 1.2, 1.0)))
+    objs.append(box(name + '_box', (0.22, 0.16, 0.14), (0.12, 0.02, z0 + 0.02), rot=(0, 0, 12),
+                    mat=flat('#F2C14E', 0.7), bevel=0.02))
+    return L.group(objs, name, loc=loc, rot=(0, 0, rot_z))
+
+
+@civ('ruin_l_town', 'ruin', 'civ_ruins', fp=(4.4, 3.4), catcher=28.0, samples=40, notes=L_TOWN_NOTE,
+     ko='불탄 큰 건물', en='Burnt big town building', zone='ruins')
+def b_ruin_l_town():
+    W, D, X, Y, PL = 4.0, 2.6, 0.0, 0.3, 0.18
+    x0, x1, y0, y1 = X - W / 2, X + W / 2, Y - D / 2, Y + D / 2
+    wall = CL.scorched('#EFE7D6', 1.0, 3.0, soot=WARM_CHAR, amount=0.85, snow=0.22)
+    T.plinth('plinth', W, D, h=PL, col='#8E96A3', x=X, y=Y)
+    box('floor', (W - 0.2, D - 0.2, 0.06), (X, Y, PL - 0.04), mat=CL.charcoal(3.0, seed=8, base='#6E625C'),
+        bevel=0.02)
+    # false front (-Y): jagged, two big window holes + the door
+    ft = [(x0, 2.2), (x0 + 0.6, 2.75), (x0 + 1.2, 3.05), (x0 + 1.7, 2.55), (X + 0.2, 2.0), (X + 0.9, 2.3),
+          (x1 - 0.8, 1.6), (x1 - 0.3, 1.25), (x1, 0.95)]
+    fw = CL.jagged_wall_x('fwall', x0, x1, y0 + 0.09, 0.18, ft, wall, z0=PL, seed=31)
+    win_cutter('fw0', fw[0], x0 + 0.95, y0 + 0.09, PL + 0.35, PL + 1.45, 1.3, axis='x')
+    win_cutter('fdoor', fw[0], X + 0.55, y0 + 0.09, PL - 0.02, PL + 1.45, 0.8, axis='x')
+    win_cutter('fw1', fw[0], x1 - 0.8, y0 + 0.09, PL + 0.35, PL + 1.15, 0.9, axis='x')
+    stripe_m = CL.scorched('#3E8E57', 1.6, 2.6, soot=WARM_CHAR, amount=0.6)
+    box('stripe', (2.4, 0.04, 0.2), (x0 + 1.2, y0 - 0.005, PL + 1.68), mat=stripe_m, bevel=0.0)
+    CL.soot_streak('ss0', (x0 + 0.95, y0 - 0.01, PL + 1.45), 'y-', w=0.9, h=0.4, alpha=0.55)
+    charred_sill('fs0', x0 + 0.95, y0 - 0.03, PL + 0.35, 1.3)
+    charred_sill('fs1', x1 - 0.8, y0 - 0.03, PL + 0.35, 0.9)
+    top_snow('fsn', [(x, y0 + 0.09, z) for x, z in ft[:7]], seed=240)
+    # charred awning frame over the left window + green/cream tatters
+    im = flat('#3B3F47', 0.5, 0.5)
+    mb = L.MB()
+    az0, az1, ad = PL + 1.62, PL + 1.38, 0.62
+    for xx in (x0 + 0.3, x0 + 1.6):
+        mb.seg(Vector((xx, y0, az0)), Vector((xx, y0 - ad, az1)), 0.022, im, segs=8)
+    mb.seg(Vector((x0 + 0.3, y0 - ad, az1)), Vector((x0 + 1.6, y0 - ad, az1 - 0.06)), 0.022, im, segs=8)
+    mb.done('awning_frame')
+    tatter('tat0', (x0 + 0.55, y0 - ad + 0.02, az1), 0.28, 0.26, rot_z=3, lean=8, c1='#3E8E57')
+    tatter('tat1', (x0 + 1.3, y0 - ad + 0.02, az1 - 0.05), 0.24, 0.18, rot_z=-5, lean=5, c1='#3E8E57')
+    door_frame('dframe', X + 0.55, y0 + 0.02, w=0.78, h=1.45, col='#3E8E57', door=False, seed=32)
+    # right (+X) low, back (+Y) mid, left (-X)
+    rtp = [(y0 + 0.09, 0.95), (y0 + 0.8, 1.3), (Y + 0.2, 0.85), (y1 - 0.4, 1.4), (y1, 1.75)]
+    rw = CL.jagged_wall_y('rwall', y0 + 0.09, y1, x1 - 0.09, 0.18, rtp, wall, z0=PL, seed=33)
+    win_cutter('rwin', rw[0], x1 - 0.09, Y, PL + 0.4, PL + 1.0, 0.7, axis='y')
+    top_snow('rsn', [(x1 - 0.09, y, z) for y, z in rtp], seed=250)
+    btp = [(x0, 2.4), (x0 + 0.9, 2.55), (x0 + 1.5, 2.0), (X + 0.4, 2.25), (x1 - 1.0, 1.7), (x1, 1.85)]
+    bw = CL.jagged_wall_x('bwall', x0, x1, y1 - 0.09, 0.18, btp, wall, z0=PL, seed=35)
+    win_cutter('bwin', bw[0], x0 + 1.1, y1 - 0.09, PL + 0.9, PL + 1.6, 0.7, axis='x')
+    top_snow('bsn', [(x, y1 - 0.09, z) for x, z in btp], seed=260)
+    ltp = [(y0, 2.2), (y0 + 0.7, 1.7), (Y, 2.35), (y1 - 0.6, 2.1), (y1 - 0.09, 2.4)]
+    CL.jagged_wall_y('lwall', y0, y1 - 0.09, x0 + 0.09, 0.18, ltp, wall, z0=PL, seed=37)
+    top_snow('lsn', [(x0 + 0.09, y, z) for y, z in ltp], seed=270)
+    # collapsed flat roof slabs (snow on top), beams with wood ends
+    for k, (loc, rot, size) in enumerate((((X + 0.7, Y + 0.45, 0.85), (-22, 9, 4), (2.1, 1.3)),
+                                          ((X - 1.0, Y + 0.25, 0.55), (14, -18, -10), (1.3, 1.0)))):
+        rp = box('slab%d' % k, (size[0], size[1], 0.1), (0, 0, 0),
+                 mat=CL.charcoal(3.5, snow=0.45, seed=280 + k, base='#5A4D47'), bevel=0.03, origin='center')
+        rp.location = loc
+        rp.rotation_euler = Euler([math.radians(v) for v in rot], 'XYZ')
+    for k, (p_, q_) in enumerate((((x0 + 0.2, y1 - 0.25, 2.0), (X - 0.2, Y - 0.6, 0.25)),
+                                  ((x1 - 0.3, y1 - 0.2, 1.6), (X + 0.6, Y - 0.5, 0.2)),
+                                  ((X - 0.8, Y - 0.7, 0.2), (X + 0.4, Y + 0.6, 0.7)))):
+        CL.charred_beam('beam%d' % k, p_, q_, r=0.075, seed=290 + k, base=WARM_CHAR, ends='#B98A5A')
+    # toppled shelf with colourful cans + boxes (the store's goods), and the survivor: a shopping cart
+    shelf = box('shelf', (1.2, 0.36, 0.08), (0, 0, 0), mat=flat('#C98F55', 0.7), bevel=0.02, origin='center')
+    shelf.location = (X - 1.05, Y - 0.3, 0.32)
+    shelf.rotation_euler = Euler((math.radians(-60), 0, math.radians(8)), 'XYZ')
+    rnd = L.rng(301)
+    for k in range(7):
+        BA.can_model('can', r=0.05, h=0.09, loc=(X - 1.5 + 0.15 * k + rnd.uniform(-0.03, 0.03),
+                                                 Y - 0.62 + rnd.uniform(-0.08, 0.08), PL + 0.0),
+                     label=['#3D7CC9', '#D9483B', '#3E9A5A', '#F2C14E'][k % 4], fish=False)
+    for k in range(3):
+        box('gbox', (0.2, 0.16, 0.14), (X - 1.4 + 0.3 * k, Y - 0.05 + 0.1 * k, PL + 0.02), rot=(0, 0, 20 * k),
+            mat=flat(['#E8749A', '#F2C14E', '#5FA7D9'][k], 0.7), bevel=0.02)
+    shopping_cart('cart', (x1 + 0.35, y0 - 0.35, 0.0), rot_z=-28)
+    CL.ash_mound('ash0', 0.48, (X + 0.35, Y - 0.2, PL), seed=311, h=0.34)
+    CL.ash_mound('ash1', 0.3, (X + 1.25, Y + 0.6, PL), seed=312)
+    emb = [CL.embers('emb0', (X + 0.35, Y - 0.2, PL + 0.3), 0.22, 8, seed=313),
+           CL.embers('emb1', (X + 1.25, Y + 0.6, PL + 0.2), 0.12, 4, seed=314, size=0.045)]
+    CL.cinder_bits('cinders', (X, Y), 1.7, 44, seed=315, z=PL)
+    CL.bricks('bricks', (X + 0.9, Y - 0.85), 0.4, 7, seed=316, col='#B4593F', z=PL)
+    LA.snow_drift('d0', 0.3, (x1 + 0.3, y1 + 0.1, 0.0), seed=317)
+    LA.snow_drift('d1', 0.24, (x0 - 0.15, y0 - 0.3, 0.0), seed=318)
+    bases = [(X + 0.35, Y - 0.2, PL + 0.35), (X + 1.25, Y + 0.6, PL + 0.3), (X - 1.0, Y + 0.25, 0.8)]
+    ruin_smoke(bases, seed=19, rise=1.6, embers=emb, top=1.9)
+    mark('door', (X + 0.55, y0 - 0.9, 0.0), facing=(0, 1, 0))
+    mark('work', (X - 0.6, y0 - 1.0, 0.0), facing=(0, 1, 0))
+    mark('work', (x1 + 0.75, Y + 0.2, 0.0), facing=(-1, 0, 0))
+    mark('work', (X + 1.2, y0 - 1.0, 0.0), facing=(0, 1, 0))
+    return {'fx': {'smoke': bases[0], 'smoke2': bases[1], 'ember': (X + 0.35, Y - 0.2, PL + 0.35)}}
 
 
 # =========================================================================== RUBBLE (after demolition)
@@ -1342,46 +1733,53 @@ RUBBLE_NOTE = ('Rubble pile for a %s plot (%g x %g m, same anchor / footprint as
 
 
 def _rubble_builder(sz, a):
+    """Polish v2: the heap reads as burnt debris (mottled ash-grey / warm charcoal with brick-red crumbs, charred
+    timber with light un-burnt ends, lots of red bricks) with only a light dusting of snow - not a snowdrift."""
     def fn():
         rnd = L.rng(500 + int(a * 10))
         h = a / 2
         with L.Collect() as base:
-            CL.cinder_bits('cind', (0, 0), h * 0.95, int(14 * a), seed=501, z=0.0)
-            for k in range(int(a * 2)):
-                LA.snow_drift('sd', rnd.uniform(0.15, 0.25), (rnd.uniform(-h, h), rnd.uniform(-h, h), 0.0),
+            CL.cinder_bits('cind', (0, 0), h * 0.95, int(16 * a), seed=501, z=0.0)
+            for k in range(int(a * 1.5)):
+                LA.snow_drift('sd', rnd.uniform(0.1, 0.16), (rnd.uniform(-h, h), rnd.uniform(-h, h), 0.0),
                               seed=510 + k)
         with L.Collect() as full:
-            CL.ash_mound('mound', h * 0.62, (0.0, 0.05, 0.0), seed=520, h=0.42, snow=0.12)
-            CL.ash_mound('mound2', h * 0.38, (h * 0.5, -h * 0.35, 0.0), seed=521, h=0.4, snow=0.14)
-            blob('charheap', h * 0.4, (-h * 0.25, h * 0.2, 0.0), CL.charcoal(4.0, snow=0.25, seed=522),
+            blob('mound', h * 0.62, (0.0, 0.05, 0.0), CL.rubble_mat(1), scale=(1.25, 1.0, 0.42), seed=520, amp=0.26,
+                 freq=2.2, subdiv=3, flat_bottom=0.2)
+            blob('mound2', h * 0.38, (h * 0.5, -h * 0.35, 0.0), CL.rubble_mat(2), scale=(1.2, 1.0, 0.45), seed=521,
+                 amp=0.26, freq=2.2, subdiv=3, flat_bottom=0.2)
+            blob('charheap', h * 0.4, (-h * 0.25, h * 0.2, 0.0), CL.charcoal(4.0, snow=0.06, seed=522, base=WARM_CHAR),
                  scale=(1.2, 1.0, 0.5), seed=523, amp=0.3, subdiv=3, flat_bottom=0.3)
             for k in range(int(4 + a * 2)):
                 p = (rnd.uniform(-h * 0.75, h * 0.75), rnd.uniform(-h * 0.75, h * 0.75), rnd.uniform(0.15, 0.32))
                 ang = rnd.uniform(0, math.tau)
                 ln = rnd.uniform(0.5, 0.45 + a * 0.25)
                 q = (p[0] + ln * math.cos(ang), p[1] + ln * math.sin(ang), p[2] + rnd.uniform(-0.05, 0.28))
-                CL.charred_beam('rb', p, q, r=rnd.uniform(0.055, 0.085), seed=530 + k, warm=0.0)
-            CL.bricks('rbricks', (0.0, 0.0), h * 0.8, int(10 * a), seed=540, col='#B4593F', z=0.2)
-            CL.bricks('rbricks2', (h * 0.3, -h * 0.4), h * 0.4, int(4 * a), seed=542, col='#9A6A5A', z=0.05)
+                CL.charred_beam('rb', p, q, r=rnd.uniform(0.055, 0.085), seed=530 + k, snow=False, base=WARM_CHAR,
+                                ends='#B98A5A')
+            CL.bricks('rbricks', (0.0, 0.0), h * 0.8, int(14 * a), seed=540, col='#B4593F', z=0.2, soot=0.25)
+            CL.bricks('rbricks2', (h * 0.3, -h * 0.4), h * 0.45, int(6 * a), seed=542, col='#C2654A', z=0.05,
+                      soot=0.2)
             CL.cinder_bits('rchunks', (0.0, 0.0), h * 0.7, int(10 * a), seed=543, size=0.09, z=0.25)
             CL.plank_scatter('rplanks', (0.0, 0.0), h * 0.6, int(1 + a * 0.5), seed=541,
-                             cols=(CL.CHAR, '#C98F55', '#3D6FA8'), z=0.3, length=(0.4, 0.7))
+                             cols=(WARM_CHAR, '#C98F55', '#3D6FA8'), z=0.3, length=(0.4, 0.7))
             for k in range(int(a * 1.5)):
                 box('tile', (0.26, 0.18, 0.03), (rnd.uniform(-h * 0.6, h * 0.6), rnd.uniform(-h * 0.6, h * 0.6),
                                                 rnd.uniform(0.28, 0.42)), rot=(rnd.uniform(-25, 25), rnd.uniform(-25, 25),
                                                                                rnd.uniform(0, 180)),
                     mat=flat(['#C8473A', '#A83A30'][k % 2], 0.7), bevel=0.01)
         with L.Collect() as half:
-            CL.ash_mound('hmound', h * 0.45, (h * 0.15, 0.25, 0.0), seed=550, h=0.32, snow=0.14)
-            blob('hcharheap', h * 0.25, (-h * 0.1, h * 0.35, 0.0), CL.charcoal(4.0, snow=0.25, seed=551),
+            blob('hmound', h * 0.45, (h * 0.15, 0.25, 0.0), CL.rubble_mat(3), scale=(1.25, 1.0, 0.36), seed=550,
+                 amp=0.26, freq=2.2, subdiv=3, flat_bottom=0.2)
+            blob('hcharheap', h * 0.25, (-h * 0.1, h * 0.35, 0.0), CL.charcoal(4.0, snow=0.06, seed=551, base=WARM_CHAR),
                  scale=(1.2, 1.0, 0.5), seed=552, amp=0.3, subdiv=3, flat_bottom=0.3)
             for k in range(int(2 + a * 0.6)):
                 p = (rnd.uniform(-h * 0.4, h * 0.6), rnd.uniform(-h * 0.2, h * 0.7), 0.06)
                 ang = rnd.uniform(0, math.tau)
                 ln = rnd.uniform(0.5, 0.4 + a * 0.2)
                 q = (p[0] + ln * math.cos(ang), p[1] + ln * math.sin(ang), p[2] + rnd.uniform(0.1, 0.35))
-                CL.charred_beam('hb', p, q, r=0.06, seed=560 + k)
-            CL.bricks('hbricks', (h * 0.2, 0.3), h * 0.45, int(5 * a), seed=570, col='#B4593F', z=0.12)
+                CL.charred_beam('hb', p, q, r=0.06, seed=560 + k, snow=False, base=WARM_CHAR, ends='#B98A5A')
+            CL.bricks('hbricks', (h * 0.2, 0.3), h * 0.45, int(7 * a), seed=570, col='#B4593F', z=0.12, soot=0.25)
         every = BA.descendants(base.objs + full.objs + half.objs)
 
         def setter(groups):
@@ -1404,23 +1802,51 @@ for _sz, _a in (('S', 2.0), ('M', 3.0), ('L', 4.0)):
         en='Rubble pile %s' % _sz, zone='demolition')(_rubble_builder(_sz, _a))
 
 
+@civ('dump_pile', 'decor', 'civ_demo', fp=(1.4, 1.2), catcher=10.0, samples=40,
+     notes=('Dump pile (1.4 x 1.2 m): the little heap of charred beams, bricks and ash the dump truck tips out at the '
+            'dump (same debris look as the rubble piles, light snow dusting). Place it at the truck\'s tipPoint from '
+            'anims.tip.pileFrame on; remove it whenever the game clears the dump.'),
+     ko='쏟은 잔해 더미', en='Dump pile', zone='demolition')
+def b_dump_pile():
+    blob('heap', 0.5, (0.0, 0.0, 0.0), CL.rubble_mat(7), scale=(1.3, 1.1, 0.62), seed=601, amp=0.28, freq=2.2,
+         subdiv=3, flat_bottom=0.2)
+    for k, (p, q) in enumerate((((-0.45, -0.1, 0.12), (0.2, 0.25, 0.42)), ((0.1, -0.4, 0.1), (0.55, 0.15, 0.3)),
+                                ((-0.2, 0.35, 0.15), (0.35, 0.4, 0.05)))):
+        CL.charred_beam('pb', p, q, r=0.06, seed=610 + k, snow=False, base=WARM_CHAR, ends='#B98A5A')
+    CL.bricks('pbricks', (0.05, -0.05), 0.42, 9, seed=620, col='#B4593F', z=0.18, soot=0.25)
+    CL.cinder_bits('pcind', (0.0, 0.0), 0.75, 18, seed=621, z=0.0)
+    box('ptile', (0.24, 0.17, 0.03), (-0.2, -0.25, 0.3), rot=(12, -18, 30), mat=flat('#C8473A', 0.7), bevel=0.01)
+    mark('work', (0.0, -0.95, 0.0), facing=(0, 1, 0))
+    return {}
+
+
 # =========================================================================== POLICE / FIRE PROPS
 
-WANTED_NOTE = ('Wanted board (2.3 m wide, faces the camera): a little roofed wooden notice board with a gold police '
-               'star on top and three blank cream WANTED posters (red header band, empty portrait window, gold reward '
-               'strip, red pins). posterPoints = centre of each portrait window, posterSizePx = its size at 1x - '
-               'the game draws a resident portrait (and name / reward text) there; gatherPoints = where villagers '
+WANTED_NOTE = ('Wanted board (2.9 m wide, faces the camera): a little roofed wooden notice board with a gold police '
+               'star on top and three big blank cream WANTED posters (red header band with a white magnifier '
+               'pictogram, a large empty portrait window, a gold reward strip with a coin, red pins). posterPoints = '
+               'centre of each portrait window, posterSizePx = its size at 1x (42 x 35 px: a resident portrait still '
+               'reads at phone zoom) - the game draws the portrait there; tapping the board should open fx_city '
+               'ui_wanted_poster (the big close-up card with name / crime / reward). gatherPoints = where villagers '
                'stand to read it (facing the board).')
 
 
-@civ('wanted_board', 'decor', 'civ_props', fp=(2.3, 0.5), yaw=45.0, front='S', catcher=12.0, samples=40,
+def magnifier(name, s=1.0, col='#FFFFFF'):
+    m = flat(col, 0.5)
+    mb = L.MB()
+    T.ring_seg(mb, (0, -0.012, 0.012 * s), 0.045 * s, 0.011 * s, m, axis='y', n=20)
+    mb.seg(Vector((0.032 * s, -0.012, -0.02 * s)), Vector((0.07 * s, -0.012, -0.058 * s)), 0.013 * s, m, segs=6)
+    return mb.done(name)
+
+
+@civ('wanted_board', 'decor', 'civ_props', fp=(2.9, 0.5), yaw=45.0, front='S', catcher=12.0, samples=40,
      notes=WANTED_NOTE, ko='현상수배 게시판', en='Wanted board', zone='police')
 def b_wanted_board():
     wood = flat('#8A5A33', 0.7)
-    W, Hb, zb = 2.1, 1.12, 0.62
-    for s in (-1, 1):
-        box('post', (0.12, 0.12, zb + Hb + 0.3), (s * (W / 2 + 0.02), 0.0, 0.0), mat=wood, bevel=0.025)
-        PA.snow_cap('psn', 0.07, (s * (W / 2 + 0.02), 0.0, zb + Hb + 0.62), h=0.04, seed=s + 3)
+    W, Hb, zb = 2.72, 1.34, 0.56
+    for s_ in (-1, 1):
+        box('post', (0.13, 0.13, zb + Hb + 0.3), (s_ * (W / 2 + 0.02), 0.0, 0.0), mat=wood, bevel=0.025)
+        PA.snow_cap('psn', 0.07, (s_ * (W / 2 + 0.02), 0.0, zb + Hb + 0.62), h=0.04, seed=s_ + 3)
     box('panel', (W, 0.08, Hb), (0, 0.02, zb), mat=flat('#C9A06B', 0.9), bevel=0.02)
     box('frame_t', (W + 0.1, 0.12, 0.1), (0, 0.0, zb + Hb), mat=wood, bevel=0.02)
     box('frame_b', (W + 0.1, 0.12, 0.1), (0, 0.0, zb - 0.08), mat=wood, bevel=0.02)
@@ -1428,27 +1854,35 @@ def b_wanted_board():
             L.stripes('#2E4F8A', '#27467C', 6.0, 'Y'), snow_frac=0.85, seed=3)
     LA.roof('roofB', W + 0.5, 0.38, zb + Hb + 0.12, 0.0, zb + Hb + 0.42, 0.05,
             L.stripes('#2E4F8A', '#27467C', 6.0, 'Y'), snow_frac=0.85, seed=4)
-    T.sign_disc('star', (0, -0.1, zb + Hb + 0.62), r=0.22, bg='#2E4F8A', rim='#F2C14E', emblem=T.em_star, es=0.55,
+    T.sign_disc('star', (0, -0.1, zb + Hb + 0.62), r=0.24, bg='#2E4F8A', rim='#F2C14E', emblem=T.em_star, es=0.6,
                 psi=0.0, tilt=0.0, snow=False)
-    pw, ph = 0.56, 0.86
-    for k, x in enumerate((-0.68, 0.0, 0.68)):
-        z0 = zb + 0.13
-        box('poster', (pw, 0.02, ph), (x, -0.03, z0), rot=(0, (k - 1) * 1.5, 0), mat=flat('#FBF3DF', 0.85),
+    pw, ph = 0.8, 1.14
+    ww, wh = 0.66, 0.64                       # portrait window (posterSizePx 42 x 35)
+    for k, x in enumerate((-0.88, 0.0, 0.88)):
+        z0 = zb + 0.1
+        box('poster', (pw, 0.02, ph), (x, -0.03, z0), rot=(0, (k - 1) * 1.2, 0), mat=flat('#FBF3DF', 0.85),
             bevel=0.0)
-        box('phead', (pw - 0.06, 0.025, 0.13), (x, -0.045, z0 + ph - 0.18), mat=flat('#C0392B', 0.7), bevel=0.0)
-        box('pwin_f', (0.44, 0.024, 0.4), (x, -0.045, z0 + 0.3), mat=flat('#7A4E2E', 0.7), bevel=0.0)
-        box('pwin', (0.38, 0.03, 0.34), (x, -0.05, z0 + 0.33), mat=flat('#F2E3C4', 0.9), bevel=0.0)
-        box('preward', (pw - 0.12, 0.025, 0.08), (x, -0.045, z0 + 0.1), mat=flat('#F2C14E', 0.5), bevel=0.0)
+        box('phead', (pw - 0.06, 0.025, 0.17), (x, -0.045, z0 + ph - 0.22), mat=flat('#C0392B', 0.7), bevel=0.0)
+        mg = magnifier('pmag%d' % k, s=1.25)
+        mg.location = (x, -0.06, z0 + ph - 0.135)
         for sx in (-1, 1):
-            sphere('pin', 0.025, (x + sx * (pw / 2 - 0.05), -0.07, z0 + ph - 0.04), flat('#D9483B', 0.4), segs=8,
+            sphere('pdot', 0.016, (x + sx * 0.2, -0.062, z0 + ph - 0.135), flat('#FFFFFF', 0.5), segs=8, rings=5)
+        box('pwin_f', (ww + 0.06, 0.024, wh + 0.06), (x, -0.045, z0 + 0.2), mat=flat('#7A4E2E', 0.7), bevel=0.0)
+        box('pwin', (ww, 0.03, wh), (x, -0.05, z0 + 0.23), mat=flat('#F2E3C4', 0.9), bevel=0.0)
+        box('preward', (pw - 0.12, 0.025, 0.1), (x, -0.045, z0 + 0.06), mat=flat('#F2C14E', 0.5), bevel=0.0)
+        cyl('pcoin', 0.035, 0.012, (x - 0.24, -0.06, z0 + 0.11), rot=(90, 0, 0), mat=flat('#D9A93E', 0.3, 0.7),
+            segs=16, origin='center')
+        for sx in (-1, 1):
+            sphere('pin', 0.028, (x + sx * (pw / 2 - 0.05), -0.07, z0 + ph - 0.04), flat('#D9483B', 0.4), segs=8,
                    rings=5)
-        mark('poster', (x, -0.06, z0 + 0.5), facing=(0, -1, 0))
+        mark('poster', (x, -0.06, z0 + 0.23 + wh / 2), facing=(0, -1, 0))
     LA.snow_drift('d0', 0.2, (W / 2 + 0.25, 0.2, 0.0), seed=7)
-    for x in (-0.7, 0.0, 0.7):
+    for x in (-0.9, 0.0, 0.9):
         mark('gather', (x, -1.0, 0.0), facing=(0, 1, 0))
-    return {'extra': {'posterSizePx': [int(round(0.38 * 64)), int(round(0.34 * 0.866 * 64))],
-                      'posterNote': 'portrait window 0.38 x 0.34 m facing the camera (no skew); draw the portrait '
-                                    'centred on posterPoints[i], scaled to posterSizePx'}}
+    return {'extra': {'posterSizePx': [int(round(ww * 64)), int(round(wh * 0.866 * 64))],
+                      'posterNote': 'portrait window %.2f x %.2f m facing the camera (no skew); draw the portrait '
+                                    'centred on posterPoints[i], scaled to posterSizePx. Tap: open fx_city '
+                                    'ui_wanted_poster.' % (ww, wh)}}
 
 
 HYDRANT_NOTE = ('Fire hydrant (0.75 m): chunky red toy hydrant with gold caps on little chains, a gold top nut and a '
@@ -1484,8 +1918,9 @@ def b_fire_hydrant():
 
 
 ALARM_NOTE = ('Fire alarm post (1.7 m): red post with a glass-fronted alarm box (white push button), a little hammer '
-              'on a chain, a gold bell on top and a red lamp. idle = quiet; anims.work / anims.ring = 4-frame alarm '
-              'loop (lamp flashes, bell hammer shakes) - play it when a resident reports a fire (sfx_fire_alarm_bell).')
+              'on a chain, a gold bell on top and an amber lamp. idle = quiet; anims.work / anims.ring = 4-frame alarm '
+              'loop: the lamp flashes bright yellow-white with a soft halo and the bell swings +-15 deg - play it when '
+              'a resident reports a fire (sfx_fire_alarm_bell) and add fx_city fx_alarm_flash at fxPoints.lamp.')
 
 
 @civ('fire_alarm_post', 'decor', 'civ_props', fp=('r', 0.2), catcher=8.0, samples=48, work=4, fps=10,
@@ -1504,21 +1939,36 @@ def b_fire_alarm_post():
     with L.Collect() as bc_:
         T.bell_model('bell', s=0.7, col='#E2B33C')
     bell = L.group(BA.top_level(bc_.objs), 'bellg', loc=(0, -0.04, 1.58))
-    lamp_m = L.emissive('alarmlamp', '#A83A30', '#FF3A2A', 0.0)
+    # amber lamp (yellow-white when it flashes - it no longer disappears into the red post) + a soft halo
+    lamp_m = L.emissive('alarmlamp', '#E8A93A', '#FFF3C4', 0.0)
     sphere('lamp', 0.1, (0.12, -0.06, 1.38), lamp_m, scale=(1, 1, 0.85), segs=16, rings=8)
     cyl('lampb', 0.08, 0.04, (0.12, -0.06, 1.33), mat=flat('#2B2F3A', 0.5), segs=14, bevel=0.01)
+    halo_m = CL.soft_smoke_mat('alarm_halo', '#FFF0B0', 0.55)
+    hp = halo_m.node_tree.nodes.get('Principled BSDF')
+    hp.inputs['Emission Color'].default_value = (1.0, 0.9, 0.55, 1.0)
+    hp.inputs['Emission Strength'].default_value = 2.2
+    halo = sphere('halo', 0.17, (0.13, -0.08, 1.37), halo_m, segs=20, rings=12)
+    halo.visible_shadow = False
     hm = sphere('clapper', 0.03, (0.12, -0.04, 1.5), flat('#3D424C', 0.4, 0.6), segs=8, rings=6)
     PA.snow_cap('sn', 0.1, (-0.08, -0.04, 1.37), h=0.04, seed=3, scale=(1.2, 0.9, 1))
 
+    def swing(deg):
+        # swing about the camera axis (1, -1, 0) -> the bell rocks left / right on screen
+        a = math.radians(deg) * 0.7071
+        bell.rotation_euler = Euler((a, a, 0), 'XYZ')
+
     def idle():
         L.set_emission(lamp_m, 0.0)
-        bell.rotation_euler = Euler((0, 0, 0), 'XYZ')
+        halo.hide_render = True
+        swing(0)
         hm.location = (0.12, -0.04, 1.5)
 
     def work(i):
-        L.set_emission(lamp_m, [3.5, 0.6, 3.5, 0.6][i])
-        bell.rotation_euler = Euler((math.radians([8, -8, 6, -6][i]), 0, 0), 'XYZ')
-        hm.location = (0.12 if i % 2 == 0 else 0.07, -0.04, 1.5)
+        on = i % 2 == 0
+        L.set_emission(lamp_m, 6.5 if on else 0.3)
+        halo.hide_render = not on
+        swing([15, -15, 12, -12][i])
+        hm.location = (0.12 if i % 2 == 0 else 0.06, -0.04, 1.5)
     idle()
     return {'idle': idle, 'work': work, 'fx': {'bell': (0, -0.04, 1.6), 'lamp': (0.12, -0.06, 1.4)}}
 
@@ -1569,7 +2019,8 @@ def sign_board(name, center, w, h, border='#2E4F8A', face='#FBF6EA', t=0.06):
 
 INSURE_NOTE = ('Insurance sign (blank board on two posts, faces the camera) with a red umbrella sheltering a little '
                'house on top - put it on a burnt plot while insurance + the rebuild loan are arranged. '
-               'fxPoints.board = board centre, boardPx = writable board size (the game renders the text).')
+               'fxPoints.board = centre of the free board area under the umbrella pictogram, boardPx = its size (the '
+               'game renders the text).')
 
 
 @civ('insurance_sign', 'decor', 'civ_props', fp=(1.2, 0.3), yaw=45.0, front='S', catcher=10.0, samples=40,
@@ -1584,7 +2035,7 @@ def b_insurance_sign():
         umbrella_emblem(0.8)
     L.group(BA.top_level(ec.objs), 'umbrella', loc=(0, -0.08, 1.56))
     LA.snow_drift('d0', 0.16, (0.55, 0.15, 0.0), seed=7)
-    return {'fx': {'board': (0, -0.1, 0.96)}, 'extra': {'boardPx': [int(0.92 * 64), int(0.5 * 0.866 * 64)]}}
+    return {'fx': {'board': (0, -0.1, 1.15)}, 'extra': {'boardPx': [int(0.92 * 64), int(0.3 * 0.866 * 64)]}}
 
 
 def yard_sign(sold=False):
@@ -1602,33 +2053,48 @@ def yard_sign(sold=False):
     L.group(BA.top_level(ec.objs), 'house', loc=(-0.42, -0.06, 1.62))
     PA.snow_cap('psn', 0.06, (-0.42, 0.0, 1.46), h=0.03, seed=5)
     L.snow_slab('asn', 0.7, 0.07, 0.03, (0.05, 0.0, 1.355), seed=6)
+    # baked pictogram on the board (polish v2: reads without text): a little house + a gold price-tag coin
+    with L.Collect() as hc:
+        em_house(0.36, col='#3E8E57')
+    L.group(BA.top_level(hc.objs), 'bhouse', loc=(-0.06, -0.07, 1.25))
+    tag = T.ext_xz('ptag', [(-0.07, -0.06), (0.05, -0.06), (0.1, 0.0), (0.05, 0.06), (-0.07, 0.06)], 0.02,
+                   flat('#F2C14E', 0.4, 0.4), y=-0.07, bevel=0.006)
+    tag.location = (0.2, 0.0, 1.25)
+    cyl('ptagcoin', 0.035, 0.012, (0.18, -0.095, 1.25), rot=(90, 0, 0), mat=flat('#D9A93E', 0.3, 0.7), segs=16,
+        origin='center')
     if sold:
-        rib = box('ribbon', (0.82, 0.03, 0.12), (0.07, -0.07, 0.98), rot=(0, -24, 0), mat=flat('#D9483B', 0.5),
+        rib = box('ribbon', (0.82, 0.03, 0.12), (0.07, -0.1, 1.2), rot=(0, -24, 0), mat=flat('#D9483B', 0.5),
                   bevel=0.01, origin='center')
         del rib
-        ht = T.ext_xz('heart', [(x * 0.07, z * 0.07) for x, z in T.heart_pts(1.0, 24)], 0.03, flat('#E8749A', 0.45),
-                      y=-0.08, bevel=0.008)
-        ht.location.x = 0.3
-        ht.location.z = 1.06
+        ht = T.ext_xz('heart', [(x * 0.15, z * 0.15) for x, z in T.heart_pts(1.0, 32)], 0.035, flat('#E8749A', 0.45),
+                      y=-0.12, bevel=0.01)
+        ht.location.x = 0.07
+        ht.location.z = 1.19
+        hl = T.ext_xz('heartl', [(x * 0.05, z * 0.05) for x, z in T.heart_pts(1.0, 20)], 0.01,
+                      flat('#FBD3E0', 0.4), y=-0.145, bevel=0.003)
+        hl.location.x = 0.03
+        hl.location.z = 1.23
     LA.snow_drift('d0', 0.14, (-0.2, 0.18, 0.0), seed=8)
 
 
 @civ('for_sale_sign', 'decor', 'civ_props', fp=(1.0, 0.3), yaw=45.0, front='S', catcher=10.0, samples=40,
-     notes=('For-sale yard sign (faces the camera): white post + arm, a blank green-bordered board hanging on two '
-            'chains, a little house with a heart on top. fxPoints.board / boardPx = where the game writes the text.'),
+     notes=('For-sale yard sign (faces the camera): white post + arm, a green-bordered board hanging on two chains '
+            'with a baked pictogram (a little house + a gold price tag), a house with a heart on top. Reads without '
+            'text; fxPoints.board / boardPx = the free strip under the pictogram where the game may add a small '
+            'price label.'),
      ko='매물 표지판', en='For sale sign', zone='moving')
 def b_for_sale_sign():
     yard_sign(False)
-    return {'fx': {'board': (0.07, -0.05, 0.99)}, 'extra': {'boardPx': [int(0.58 * 64), int(0.38 * 0.866 * 64)]}}
+    return {'fx': {'board': (0.07, -0.05, 1.07)}, 'extra': {'boardPx': [int(0.56 * 64), int(0.12 * 0.866 * 64)]}}
 
 
 @civ('sold_sign', 'decor', 'civ_props', fp=(1.0, 0.3), yaw=45.0, front='S', catcher=10.0, samples=40,
-     notes=('Sold yard sign: the for-sale sign with a red diagonal ribbon across the board and a pink heart sticker '
-            '(no baked text). Swap for_sale_sign -> sold_sign when somebody buys the house.'),
+     notes=('Sold yard sign: the for-sale sign with a red diagonal ribbon across the board and a BIG pink heart '
+            'stamped over it (no baked text). Swap for_sale_sign -> sold_sign when somebody buys the house.'),
      ko='판매 완료 표지판', en='Sold sign', zone='moving')
 def b_sold_sign():
     yard_sign(True)
-    return {'fx': {'board': (0.07, -0.05, 0.99)}, 'extra': {'boardPx': [int(0.58 * 64), int(0.38 * 0.866 * 64)]}}
+    return {'fx': {'board': (0.07, -0.05, 1.07)}, 'extra': {'boardPx': [int(0.56 * 64), int(0.12 * 0.866 * 64)]}}
 
 
 @civ('welcome_mat', 'decal', 'civ_props', fp=(0.9, 0.6), shadow=False, catcher=4.0, samples=32,

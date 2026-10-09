@@ -268,7 +268,8 @@ class Cityfolk(tc2.Townfolk2):
 
     def can_play(self, person, anim):
         """Every worn body part has frames in `anim`: cityfolk anims / cityfolk parts -> bases[b].cfCover[anim];
-        parts with 'anims' (beachfolk) -> that list; other v4 / v5 parts -> only anims of townfolk / townfolk2."""
+        parts with 'anims' (beachfolk) -> that list ('drop' accessories are ignored: simply not drawn there);
+        other v4 / v5 parts -> only anims of townfolk / townfolk2."""
         T = self.T
         if anim not in T['anims']:
             return False
@@ -281,7 +282,7 @@ class Cityfolk(tc2.Townfolk2):
             if P is None or P['space'] != 'body' or is_item(P) or not P.get('subs'):
                 continue
             if 'anims' in P:
-                if anim not in P['anims']:
+                if anim not in P['anims'] and not P.get('drop'):      # beachfolk drop: not drawn there
                     return False
             elif is_cf or pn in cf:
                 if not cover or pn not in cover:

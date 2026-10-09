@@ -383,6 +383,8 @@ export const BALANCE = {
                 shopShelf: 20, inlandEvery: 40 },
     // ── 역 짐꾼 (역 광장에서 고용): 첫째 / 둘째 값 (둘째는 가게가 3곳 열린 뒤), 한 번에 나르는 개수
     stationPorter: [600, 1100], stationPorterCapacity: 12,
+    // 역 짐꾼은 남는 물건만 나르지만, 새 가게 주문(창업 주문)에 필요한 물건은 공장 앞에 이만큼만 쌓여도 가져가요
+    stationPorterFoundingMin: 4,
     // ── 목수의 집 (목공소가 열리면): item_plank = 집 하나에 드는 판자, time = 짓는 시간(초), people = 이사 오는 사람 수
     //    lots = 집터 (lotsRank2 = 읍이 된 뒤 더 생기는 집터)
     houses: { item_plank: 20, time: 30, people: 4, lots: ['lotH1', 'lotH2', 'lotH3'], lotsRank2: ['lotH4', 'lotH5', 'lotB2', 'lotB3'] },
@@ -391,7 +393,8 @@ export const BALANCE = {
     // ── 행복: window = 최근 손님 몇 명으로 계산할지, base = 가장 낮은 행복 (손님이 다 아쉬워해도)
     happiness: { window: 40, base: 50 },
     // ── 등급: 2 = 읍 (people = 사람 수, shops = 연 가게 수, happy = 행복, coins = 승격식 비용)
-    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 3000 } },
+    //    (v4 봇 측정: 3000 이면 조건이 다 찬 뒤 1~2분 만에 읍이 돼서 10000 으로 올림 — 잘하는 봇은 약 4분, 천천히 하는 봇은 약 9분 모아요)
+    rank: { 2: { people: 45, shops: 5, happy: 70, coins: 10000 } },
     // ── 승격식: length = 길이(초), skipAfter = 이만큼(초) 지나면 조이스틱으로 건너뛰기
     ceremony: { length: 12, skipAfter: 3 },
     // ── 텍스처 메모리 (MiB): mustMiB = 넘으면 안 되는 한도, targetMiB = 목표, lowMiB = 가벼운 그래픽 목표,

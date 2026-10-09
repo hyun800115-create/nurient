@@ -13,12 +13,19 @@
 //  - head frames use timeline hd (head frame dir; default the anim dir) and faceDirsByPose[hp] (default faceDirs).
 //  - generator.animParts[anim] are drawn in that anim even when the person does not wear them (float: swim ring,
 //    surf: surfboard, dig: toy spade).  Their colours come from the person's beach slots (always filled).
-//  - parts with an `anims` list draw only in those anims; canPlay(person, anim) is true when every body part of the
-//    person has frames for the anim (parts without `anims` = townfolk parts: the v4 + v5 anims), except accessories
-//    with `drop: true` (towel, swim ring, flip-flops, camera, rescue tube, floaties): simply not drawn there.
+//  - parts draw only in their `anims` minus `noAnims`; canPlay(person, anim) is true when every body part of the
+//    person LISTS the anim (partPlays(); parts without `anims` = townfolk parts: the v4 + v5 anims).  Drop accessories
+//    (towel, flip-flops, camera, rescue tube, floaties, caddy) list every anim in `anims` and the ones they have no
+//    frames for in `noAnims` (simply put down there), so canPlay agrees with any compositor honouring anims + noAnims.
+//    The swim ring is no drop part: ring wearers cannot swim / surf / dig / play ball / sunbathe.
+//  - animHideHead[anim]: hats taken off (swim / surf), put down (sunbathe) or never worn there (float); a hidden full
+//    hat no longer squashes the hair (normal hair layer instead of ~hat).
+//  - pickAnim(person, anim) / animFallback (cityfolk-compatible): swim -> float for ring wearers.  BeachfolkSprite.play
+//    goes through it (sprite.anim = what is really played).
 //  - follow subs: z = limb z + (followDz ?? 0.5).
 //  - water anims (swim, float, splash_play, surf): the anchor is ON THE WATER SURFACE (townfolk.water).
-//  - sunbathe dir = where the feet point, surf dir = where the board nose points (SE / NE rendered, SW / NW mirrored).
+//  - sunbathe dir = where the FEET point: sunbatheDirFor(spot, i) for towel / lounger / pool spots; surf dir = where the
+//    board nose points (SE / NE rendered, SW / NW mirrored).
 
 import { Townfolk2, TownfolkSprite2, mergeTownfolk } from './townfolk2_compose.js';
 import { MIRROR } from './townfolk_compose.js';
@@ -36,6 +43,29 @@ function pick(rng, opts) {          // same algorithm as townfolk_compose.js (no
   let x = rng() * tot;
   for (const n of names) { x -= opts[n]; if (x < 0) return n; }
   return names[names.length - 1];
+}
+
+/** Canonical per-part play rule for EVERY townfolk compositor: true when body part P lets its wearer play `anim`. */
+export function partPlays(P, anim, oldAnims = OLD_ANIMS) {
+  if (!P || P.space !== 'body' || !P.subs || !Object.keys(P.subs).length) return true;
+  return (P.anims || oldAnims).includes(anim);
+}
+
+/** True when head part pn is hidden in `anim` (animHideHead or the part's noAnims). */
+export function headHidden(T, pn, anim) {
+  const P = T.parts[pn];
+  if (!P) return true;
+  if (P.noAnims && P.noAnims.includes(anim)) return true;
+  return ((T.animHideHead || {})[anim] || []).includes(pn);
+}
+
+const OPP = { N: 'S', NE: 'SW', E: 'W', SE: 'NW', S: 'N', SW: 'NE', W: 'E', NW: 'SE' };
+/** sunbathe dir (= where the FEET point) for lying spot i of a prop sprite def (assets/beach towels / loungers,
+ *  beach_bld pools): lyingFeetDirs[i] when present, else the opposite of lyingDirs[i] (hips -> head). */
+export function sunbatheDirFor(spot, i = 0) {
+  if (spot.lyingFeetDirs && spot.lyingFeetDirs.length) return spot.lyingFeetDirs[Math.min(i, spot.lyingFeetDirs.length - 1)];
+  if (spot.lyingDirs && spot.lyingDirs.length) return OPP[spot.lyingDirs[Math.min(i, spot.lyingDirs.length - 1)]];
+  return 'SE';
 }
 
 /** Merged block: (townfolk v4 + v5 merged block M2) + beachfolk fragment B (see beachfolk.merge in the manifest). */
@@ -71,7 +101,8 @@ export function mergeBeachfolk(M2, B) {
   G.exclude = [...G.exclude, ...(GB.exclude || [])];
   G.beachSlots = [...(GB.beachSlots || [])];
   G.animParts = clone(GB.animParts || {});
-  for (const key of ['water', 'sunbathe', 'dig', 'ball']) if (key in B) M[key] = clone(B[key]);
+  for (const key of ['water', 'sunbathe', 'dig', 'ball', 'animHideHead', 'pageClasses']) if (key in B) M[key] = clone(B[key]);
+  M.animFallback = Object.assign({}, M.animFallback || {}, clone(B.animFallback || {}));
   M.frameAtlasAnim = M.frameAtlasAnim || {};
   M.frameAtlasPose = M.frameAtlasPose || {};
   for (const ext of B.frameAtlasExt || []) {
@@ -95,15 +126,32 @@ export class Beachfolk extends Townfolk2 {
     return parts;
   }
 
-  /** true when every body part of the person has frames for the anim. */
+  /** true when every body part of the person lets it play the anim (partPlays). */
   canPlay(person, anim) {
     if (!this.T.anims[anim]) return false;
-    for (const pn of this.animParts(person, anim)) {
-      const P = this.T.parts[pn];
-      if (P.space !== 'body' || !Object.keys(P.subs).length) continue;
-      if (!(P.anims || OLD_ANIMS).includes(anim) && !P.drop) return false;
-    }
+    for (const pn of this.animParts(person, anim)) if (!partPlays(this.T.parts[pn], anim)) return false;
     return true;
+  }
+
+  /** {anim, face}: `anim` if playable, else the first playable animFallback entry, else idle / walk
+   *  (the same rule as cityfolk_compose.js pickAnim). */
+  pickAnim(person, anim) {
+    if (this.canPlay(person, anim)) return { anim, face: null };
+    const face = (this.T.fallbackFace || {})[anim] || null;
+    for (const a of (this.T.animFallback || {})[anim] || []) if (this.canPlay(person, a)) return { anim: a, face };
+    return { anim: this.canPlay(person, 'idle') ? 'idle' : 'walk', face };
+  }
+
+  /** the parts drawn in `anim` (animParts minus noAnims / non-listed anims / hidden head parts), in draw order */
+  visibleParts(person, anim) {
+    const T = this.T;
+    return this.animParts(person, anim).filter((pn) => {
+      const P = T.parts[pn];
+      if (P.noAnims && P.noAnims.includes(anim)) return false;
+      if (P.anims && !P.anims.includes(anim)) return false;
+      if (P.space === 'head' && headHidden(T, pn, anim)) return false;
+      return true;
+    });
   }
 
   /** draw list for one frame; dir may be mirrored.  opts.face = optional face expression override */
@@ -134,12 +182,11 @@ export class Beachfolk extends Townfolk2 {
       limbZ[name] = zf.has(name) ? L.zFront : L.z;
       push(limbZ[name], name, `${name}@${base}/${anim}_${d}_${i}`, this.tint(person, slot), false);
     }
-    const hat = this.wearsFullHat(person);
+    const vis = this.visibleParts(person, anim);
+    const hat = vis.some((pn) => T.parts[pn].family === 'hat' && T.parts[pn].cls === 'full');
     const heads = [];
-    for (const pn of this.animParts(person, anim)) {
+    for (const pn of vis) {
       const P = T.parts[pn];
-      if (P.noAnims && P.noAnims.includes(anim)) continue;
-      if (P.anims && !P.anims.includes(anim)) continue;
       for (const [s, sd] of Object.entries(P.subs)) {
         let z = typeof sd.z === 'object' ? sd.z[d] : sd.z;
         if (sd.follow) z = limbZ[sd.follow] + (sd.followDz ?? 0.5);
@@ -255,10 +302,12 @@ export function nearestDir(dirs, want) {
   return best;
 }
 
-/** TownfolkSprite2 for Beachfolk: dirs an anim lacks (sunbathe / surf have SE NE SW NW only) snap to the nearest. */
+/** TownfolkSprite2 for Beachfolk: the anim goes through pickAnim (swim -> float for ring wearers; this.anim is what is
+ *  really played) and dirs an anim lacks (sunbathe / surf have SE NE SW NW only) snap to the nearest. */
 export class BeachfolkSprite extends TownfolkSprite2 {
   play(anim, dir) {
     const T = this.tf.T;
+    if (this.tf.pickAnim) anim = this.tf.pickAnim(this.person, anim).anim;
     dir = nearestDir(T.anims[anim].dirs, dir);
     if (anim !== this.anim) { this.anim = anim; this.frame = 0; this.t = 0; }
     this.dir = dir;

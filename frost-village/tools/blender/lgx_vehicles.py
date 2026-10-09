@@ -52,7 +52,8 @@ FORKLIFT_ANIMS = OrderedDict([('idle', anim(2, 6, bob=[0, 1])),
                               ('move', anim(4, 10, bob=[0, 1, 1, 0], spin=True, blink=True)),
                               ('lift', anim(6, 8, repeat=0))])
 FORKLIFT_NOTE = ('Toy forklift (2.5 m incl. forks): sunny yellow body, dark counterweight with hazard stripes and the '
-                 'Frost Village snowflake, black overhead guard with a snowy roof and an orange beacon, steel mast '
+                 'Frost Village snowflake, open black overhead guard (no roof snow: it works indoors) and an orange '
+                 'beacon, steel mast '
                  'with a hydraulic ram, two forks. Seat 0 = the driver (empty: the game draws a townsfolk in `sit` at '
                  'seats + the over_* overlay). idle = engine shake, move = wheels + beacon blink, lift = 6 frames, '
                  'carriage + forks rise from the ground to 1.25 m (play forward to lift, backward to lower). '
@@ -84,7 +85,7 @@ def b_forklift(key, loaded=False):
                                 (-0.5, 0.06, 2.08)], 0.04, gm)
         for x in (-0.25, 0.0, 0.25):
             VL.rod('fk_bar', (x, 0.06, 2.1), (x, 0.95, 2.1), 0.025, gm)
-        VL.snow_cap('fk_snow', 0.82, 0.7, (0.02, 0.52, 2.1), t=0.06, seed=4)
+        # (polish) no snow cap on the overhead guard: the forklift works indoors (it read as a white lid)
         cyl('fk_beacon_b', 0.06, 0.05, (0.3, 0.75, 2.12), mat=flat('#2B2F3A', 0.5), segs=12)
         # mast (outer channels, cross bars, hydraulic ram)
         mm = flat('#5A606B', 0.35, 0.55)

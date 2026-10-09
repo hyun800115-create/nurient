@@ -195,8 +195,8 @@ if (args.includes('--browser')) {
       await sleep(1500);
       await installStepper(pg);
       await advance(pg, 5);
-      // (coins + what waits on the two cash pads)
-      const money = () => pg.evaluate(() => { const s = window.__FV.state(); return s.coins + (Number(s.market && s.market.cash) || 0) + (Number(s.trade && s.trade.cash) || 0); });
+      // (coins + what waits on the cash pads: market, trade post, general store)
+      const money = () => pg.evaluate(() => { const gs = window.__FV.scene, v = (c) => (c && c.cash ? Number(c.cash.value) || 0 : 0); return gs.economy.coins + v(gs.market) + v(gs.trade) + v(gs.store); });
       const a = await money();
       await advance(pg, 120);
       const b = await money();
@@ -205,10 +205,11 @@ if (args.includes('--browser')) {
     if (V35 && last) {
       const srv2 = await start(0, { prefix: '/fv/', root: V35 });
       const p2 = await openPage(browser, srv2.url + 'index.html', { viewport: { width: 390, height: 844 } });
-      const inc35 = await idle(p2.page, last);
-      const inc4 = await idle(page, last);
+      // (two runs each: one 120 s run swings ±6 % on its own with the random customers)
+      const inc35 = Math.round(((await idle(p2.page, last)) + (await idle(p2.page, last))) / 2);
+      const inc4 = Math.round(((await idle(page, last)) + (await idle(page, last))) / 2);
       const diff = inc35 ? Math.abs(inc4 - inc35) / Math.max(1, inc35) : 0;
-      check('idle income over 120 s within ±6 % of v3.5 (' + inc4 + ' vs ' + inc35 + ')', diff <= 0.06, { inc4, inc35, diff: +diff.toFixed(3) });
+      check('idle income over 120 s (mean of 2 runs) within ±6 % of v3.5 (' + inc4 + ' vs ' + inc35 + ')', diff <= 0.06, { inc4, inc35, diff: +diff.toFixed(3) });
       await srv2.close();
     } else console.log('  (skipped: idle income vs v3.5 — pass --v35 <dir of the v3.5 build>)');
   } catch (e) { check('browser part ran', false, e && e.stack || String(e)); }
