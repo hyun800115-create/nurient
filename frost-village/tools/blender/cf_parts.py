@@ -585,14 +585,15 @@ def b_top_teller_vest(rig, ctx, put):
         # a SHORT, fitted waistcoat (no flare): it hugs the shirt and stops at the waist in two little points,
         # so the trousers / skirt break clearly below it (it used to read as a school pinafore)
         v = M('tvest', ctx.col('top'), 0.6)
-        g.mesh_obj('vest', cb.vest_lathe([(0.244, -0.035), (0.238, 0.02), (0.220, 0.10), (0.215, 0.20), (0.203, 0.28),
+        # (stops at the waist: a sliver of shirt, then the trousers / skirt - a clear break)
+        g.mesh_obj('vest', cb.vest_lathe([(0.240, 0.035), (0.232, 0.08), (0.220, 0.12), (0.215, 0.20), (0.203, 0.28),
                                           (0.17, 0.34)], gap_deg=11, seg=48, sy=0.87), v, rig.j['spine'])
         for s in (-1, 1):
-            g.mesh_obj('vest_point', vd.sector_lathe([(0.248, -0.085), (0.246, -0.03)], keep_deg=10, sy=0.87,
+            g.mesh_obj('vest_point', vd.sector_lathe([(0.244, -0.012), (0.240, 0.040)], keep_deg=10, sy=0.87,
                                                      center_deg=s * 14), v, rig.j['spine'])
             g.mesh_obj('welt', g.bm_box(0.055, 0.010, 0.010, bevel=0.003), M('tvest_d', ctx.col('top', 0.7), 0.6),
-                       rig.j['spine'], loc=(s * 0.112, -0.205, 0.04), rot=(0, 0, s * 14))
-        g.mesh_obj('vest_back', vd.sector_lathe([(0.246, -0.04), (0.240, 0.0)], keep_deg=60, sy=0.87, center_deg=180),
+                       rig.j['spine'], loc=(s * 0.112, -0.200, 0.085), rot=(0, 0, s * 14))
+        g.mesh_obj('vest_back', vd.sector_lathe([(0.240, 0.030), (0.236, 0.07)], keep_deg=60, sy=0.87, center_deg=180),
                    M('tvest_b', ctx.col('top', 0.82), 0.6), rig.j['spine'])
     for n in ('R', 'L'):
         with put('garter_' + n):
@@ -602,8 +603,8 @@ def b_top_teller_vest(rig, ctx, put):
                        rig.j['sh_' + n], loc=(0.0, -0.085, -0.100))
     with put('trim'):
         btn = M('tvbtn', BRASS, 0.3, metal=0.6)
-        for z in (-0.07, -0.01, 0.05, 0.11, 0.17):
-            p = cb.front_point(z, 0.238 if z < 0.05 else 0.222, 0.004)
+        for z in (0.005, 0.06, 0.115, 0.17):
+            p = cb.front_point(z, 0.236 if z < 0.06 else 0.222, 0.004)
             g.mesh_obj('tbutton', g.bm_ellipsoid(0.012, 0.007, 0.012, 8, 6), btn, rig.j['spine'], loc=p)
         # bank name badge: white card with a red bank stripe, framed in brass (reads at phone zoom)
         g.mesh_obj('name_badge', g.bm_box(0.088, 0.010, 0.050, bevel=0.006), M('badge_w', '#FBF8F0', 0.5),

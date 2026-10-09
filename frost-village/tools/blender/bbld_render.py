@@ -20,13 +20,14 @@ copy-and-extend of bld_render.render_build() / harbor_render.render_harbor() wit
   * ground: a z = 0 shadow catcher with optional rectangular holes (the pool opening).
 
 Re-run (build machine, Blender as a Python module):
-    /tmp/bvenv/bin/python tools/blender/bbld_render.py -- [keys ...] [--force] [--samples N] [--cache DIR] [--list]
+    /tmp/bvenv/bin/python tools/blender/bbld_render.py -- [keys ...] [--force] [--samples N] [--cache DIR] [--list] [--only glow]
 Re-run (your PC, Blender 4.2+):
     blender -b -P tools/blender/bbld_render.py -- [same args]
 
   * no keys -> render every build that is not cached yet (resumable)
   * keys    -> build keys (resort_hotel, beach_cafe_x ...), prefixes with a trailing * (beach_*), or an atlas / zone name
   * --force -> re-render even if cached
+  * --only glow -> re-render only the night glow pass of the given builds (keeps their frames / masks)
 Default cache: <tmp>/fv_cache/beach_bld.  Deterministic: fixed seeds + sample counts.
 Frames are written as <name>.tmp.png and renamed, so an interrupted run resumes cleanly.
 """

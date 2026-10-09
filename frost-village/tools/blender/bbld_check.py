@@ -3,14 +3,18 @@ bbld_check.py - verify assets/beach_bld/ against docs/CONTRACT_V7.md section X.
 
     python3 tools/blender/bbld_check.py [--out DIR]
 
-Checks: every REQUIRED sprite exists (contract keys + _x variants + derived overlay / glow / night / pool water
-sprites); atlases exist and every sheet is <= 2048 px; every referenced frame exists in its atlas JSON; anchors are
+Checks: every REQUIRED sprite exists (contract keys + _x variants + derived overlay / glow / pool
+water sprites); atlases exist and every sheet is <= 2048 px; every referenced frame exists in its atlas JSON; anchors are
 normalised and agree with sourceSize (derived sprites share their building's frame + anchor); anims have the expected
 frame counts and share the idle frame size; points are [dx, dy] int pairs with matching *Dirs; the per-building fields
 the game needs (doorPoint, staffPoints for doorman / bellhop / receptionist, customerPoints, inPoint, balconyPoints,
 fxPoints, lightPoints, footprintPoly, waterPoly ...); waterPoly lies inside the frame; no warm-coast sprite has snow
 (no near-white flat top areas the snow albedo would leave, see SNOW); no sprite / atlas key collides with another
-fragment; payload <= 7 MB.  Exit 1 on errors.
+fragment; payload <= 7 MB.  Polish rules: staffDepths per point (overlay staff drawn "front"); lying*Points /
+lyingFeetDirs opposite lyingDirs; hotel balconies checkerboarded with enough headroom; night = DayClock model (no
+night.frame / night.tint, every glow non-empty, hotel_pool lit); the pool deck is cut out inside waterPoly, the
+fallback water is opaque there and the deck covers waterRegion (Water.js mesh); retired sprites gone; bbld_glow /
+bbld_x / bbld_x_glow lazy and every _x building in bbld_x.  Exit 1 on errors.
 """
 import json
 import os

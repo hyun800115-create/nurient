@@ -240,8 +240,16 @@ try {
       step('9 ... and settles back when the label is gone', w2.y >= w2.base - 1 || w2.lift > 0, w2);
     }
   }
+  // §16.4 save gate: a full v4 save (5 shops, 3 houses, 읍) stays small and quick (best of 5: a shared machine)
+  const sv = await ev(() => {
+    const gs = window.__FV.scene; let ms = 1e9;
+    for (let i = 0; i < 5; i++) { const t0 = performance.now(); gs.save(true); ms = Math.min(ms, performance.now() - t0); }
+    let bytes = 0; try { bytes = (localStorage.getItem('frostVillage.save.v1') || '').length; } catch (e) { /* */ }
+    return { bytes, KB: +(bytes / 1024).toFixed(2), ms: +ms.toFixed(2) };
+  });
+  step('8 a full v4 save <= 6 KB and <= 2 ms (§16.4)', sv.bytes > 0 && sv.bytes <= 6144 && sv.ms <= 2, sv);
   // reload in the middle: save, reload, nothing lost
-  const before = await ev(() => { window.__FV.save(); const g = window.__FV.v4.growth(); return { shops: Object.keys(g.shops).length, done: g.done.length, rank: window.__FV.v4.rank().level, coins: window.__FV.state().coins }; });
+  const before =await ev(() => { window.__FV.save(); const g = window.__FV.v4.growth(); return { shops: Object.keys(g.shops).length, done: g.done.length, rank: window.__FV.v4.rank().level, coins: window.__FV.state().coins }; });
   titleFrom = log.warnings.length;     // (the title screen's own pictures are not this test's business)
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);

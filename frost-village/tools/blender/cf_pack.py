@@ -652,7 +652,9 @@ def build_manifest3(body_metas, where_head, where_body, body_layers, atlases, v4
 
 def main():
     args = sys.argv[1:]
-    cache, colors, dither = DEFAULT_CACHE, 52, 0.5      # 52 (townfolk 56): keeps the payload <= 7 MB
+    # body pages 50 colours each (every page has its own palette: the fire page keeps the red hose true without
+    # anchors); the small head sheet (hats, masks, 7 x 6 face sets) gets 96 - payload <= 7 MB
+    cache, colors, dither, head_colors = DEFAULT_CACHE, 50, 0.5, 96
     out = OUT
     i = 0
     while i < len(args):
@@ -661,6 +663,8 @@ def main():
             cache = args[i + 1]; i += 2; continue
         if a == '--colors':
             colors = int(args[i + 1]); i += 2; continue
+        if a == '--head-colors':
+            head_colors = int(args[i + 1]); i += 2; continue
         if a == '--dither':
             dither = float(args[i + 1]); i += 2; continue
         if a == '--out':
@@ -677,8 +681,8 @@ def main():
     if os.path.exists(os.path.join(cache, 'head', 'meta.json')):
         print('[head3] collecting', flush=True)
         head_layers, head_meta = collect_head3(cache, log)
-        atlases, where_head = build_sheets3('cf_head', head_layers, lambda l, f: f'{l}/{f}', colors, dither, report,
-                                            qlog=qlog)
+        atlases, where_head = build_sheets3('cf_head', head_layers, lambda l, f: f'{l}/{f}', head_colors, dither,
+                                            report, qlog=qlog)
     else:
         log.append('no head renders')
         atlases, where_head = [], {}
