@@ -28,6 +28,13 @@ export class HappeningClock {
     this.next = null;
   }
 
+  /** cheap check before the ports are asked for spots (critique M14): could one start at T? */
+  peek(T, busy) {
+    if (this.active || busy) return false;
+    if (this.next === null) this.next = Math.max(this.last + this.T.gapMin, T + this.T.every * (0.6 + this.rng() * 0.8));
+    return T >= this.next;
+  }
+
   /** due(T, ctx) -> a happening to start or null. ctx: { busy (ceremony / drive), open: { bus, wagon, … }, spots: { market: {x,y} … } } */
   due(T, ctx = {}) {
     if (this.active || ctx.busy) return null;

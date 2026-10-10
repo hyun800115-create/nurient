@@ -41,6 +41,7 @@ export class FakeWorld {
     this.up = 0;
     this.roster = JSON.parse(JSON.stringify(opts.roster || ROSTER));
     this.screen = new Set(opts.onScreen || []);
+    this.unwired = !!opts.unwired;
     this.refresh();
     const self = this;
     this.env = {
@@ -68,6 +69,8 @@ export class FakeWorld {
     if (this.rankN >= 3) base.push('rank:2');
     this.facts = closureOf(base.concat(Array.from(this.extra)));
     for (const k of this.extra) this.facts.add(k);
+    // the modules that perform drive / contract / choose / tap steps run (a host answers these in the game)
+    if (!this.unwired) for (const k of ['step:drive', 'step:contract', 'step:choose', 'step:tap']) this.facts.add(k);
   }
   set(fact, on = true) { if (on) this.extra.add(fact); else this.extra.delete(fact); this.refresh(); }
   rank(n) { this.rankN = n; this.refresh(); }
@@ -115,7 +118,7 @@ export function feedFor(sig, n = 1) {
     riders: { t: 'train', ev: 'arrive', n }, bus_riders: { t: 'veh:arrive', riders: n, line: 1 }, chief_ride: { t: 'veh:ride', chief: true, line: 1 },
     chat: { t: 'chat' }, tax: { t: 'collect', pad: 'tax' }, flower: { t: 'flower' }, paper_read: { t: 'paperRead' },
     auction: { t: 'harbor:auction' }, export: { t: 'harbor:export', n }, beach_guest: { t: 'beach:arrive', n }, hotel_guest: { t: 'beach:checkin', n },
-    settle: { t: 'lgx:settle' },
+    settle: { t: 'lgx:settle' }, deposit: { t: 'bank:deposit', saved: n, repaid: 0 },
   })[sig] || null;
 }
 

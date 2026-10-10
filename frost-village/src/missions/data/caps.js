@@ -8,6 +8,8 @@
 //   rank:N · b:<building> · item:<item> (producible now) · craft:bouquet|cake|gift · p:<place> · sig:<counter source>
 //   life · paper · toggle:farewell|incidents · v6 · v6:star2 · v7 · v7:star2 · v8 · import:sugar · veh:sled|truck
 //   fame:N (answered by the model itself) · shops:N · towers:N · pet:<key> · v:<key>   (counts: env.count)
+//   step:<how> — a step another module performs (drive: vehicles_runtime, contract: harbour, choose / tap: beach) is
+//   offered only while that module is wired: the host answers it (critique C-2), never the static closure.
 
 /** items the v4 village makes (the chief can carry them) → the fact that says they can be made now */
 export const V4_ITEMS = ['item_fish_raw', 'item_fish_cooked', 'item_log', 'item_plank', 'item_wheat', 'item_bread', 'item_ore', 'item_ingot',
@@ -23,7 +25,7 @@ export const BAG_ITEMS = {
 
 /** places a mission sends the chief to → the fact that says the place exists */
 export const PLACE_CAP = {
-  'p:snowman': 'p:snowman', 'p:plaza': 'p:plaza', 'p:picnic': 'p:picnic', 'p:feast': 'p:feast', 'p:officiant': 'p:officiant',
+  'p:snowman': 'p:snowman', 'p:plaza': 'p:plaza', 'p:board': 'p:board', 'p:farm': 'p:farm', 'p:auction': 'v6', 'p:picnic': 'p:picnic', 'p:feast': 'p:feast', 'p:officiant': 'p:officiant',
   'p:statue': 'p:statue', 'p:festival': 'p:festival', 'p:carpenter': 'p:carpenter', 'p:school_gate': 'p:school_gate',
   'p:towers': 'p:towers', 'p:rink': 'b:deco_rink', 'p:depot': 'b:depot', 'p:school': 'b:school', 'p:clinic': 'b:clinic',
   'p:memorial': 'b:memorial', 'p:reporter': 'paper', 'p:old_sign': 'p:old_sign',
@@ -44,22 +46,30 @@ export function sigCap(sig) {
     cust: 'rank:2', wholesale: 'rank:2', visitor: 'rank:2', riders: 'rank:2', chat: 'rank:2', req_done: 'rank:2',
     combo: 'b:big_restaurant', bus_riders: 'b:depot', chief_ride: 'b:depot', tax: 'b:town_hall', flower: 'b:deco_flowers',
     celebrate: 'life', paper_read: 'paper', auction: 'v6', export: 'v6', 'ride:coast': 'v6',
-    beach_guest: 'v7', hotel_guest: 'v7', settle: 'v8',
+    beach_guest: 'v7', hotel_guest: 'v7', settle: 'v8', deposit: 'b:bank',
   })[sig] || ('sig:' + sig);
 }
 
 /** step kinds → what has to run for the host to stage them */
 export function stepCaps(o) {
   const out = [];
-  if (o.how === 'drive') out.push(o.vehicle === 'dog_sled' ? 'veh:sled' : 'veh:truck');
+  // steps another module performs: only while it runs (step:<how> is answered by the host from the wired modules)
+  if (o.how === 'drive') out.push(o.vehicle === 'dog_sled' ? 'veh:sled' : 'veh:truck', 'step:drive');
+  if (o.how === 'contract') out.push('v6', 'step:contract');
+  if (o.how === 'choose' && !o.soft) out.push('step:choose');
+  if (o.how === 'tap') out.push('v7', 'step:tap');
+  // steps the missions host stages itself (stand, speech, find, return, lead, escort, carry, identify, ask, pay)
   if (o.how === 'escort') out.push('life');
   if (o.how === 'ask') out.push('paper');
-  if (o.how === 'contract') out.push('v6');
   if (o.how === 'carry' || o.how === 'identify') out.push('v8');
-  if (o.how === 'tap' || (o.how === 'find' && ['swim_ring', 'litter', 'shell'].indexOf(o.what) >= 0)) out.push('v7');
+  if (o.how === 'find' && ['swim_ring', 'litter', 'shell'].indexOf(o.what) >= 0) out.push('v7');
   if (o.at && PLACE_CAP[o.at]) out.push(PLACE_CAP[o.at]);
+  if (o.to && PLACE_CAP[o.to]) out.push(PLACE_CAP[o.to]);
   return out;
 }
+
+/** step kinds the missions host performs by itself (the rest come from other modules: report / feed) */
+export const HOST_STEPS = ['stand', 'speech', 'find', 'return', 'lead', 'escort', 'carry', 'identify', 'ask', 'pay'];
 
 /** every requirement of a template (declared + implied), as fact names */
 export function requirements(t) {
@@ -83,14 +93,14 @@ export function requirements(t) {
 }
 
 /** facts that are dynamic only (counts, people, running modules): checked at offer time, never implied */
-export function isDynamic(cap) { return /^(shops|towers):\d+$/.test(cap) || /^(pet|v):/.test(cap) || /^veh:/.test(cap) || /^fame:\d+$/.test(cap); }
+export function isDynamic(cap) { return /^(shops|towers):\d+$/.test(cap) || /^(pet|v|veh|step):/.test(cap) || /^fame:\d+$/.test(cap); }
 
 // ---------------------------------------------------------------------------------------------------------------
 // CLOSURE: what an unlock fact guarantees in the game as it is designed (v4 rules + docs/v5_v8_plan.md §2–§4).
 // 읍 (rank 2) needs all five founded shops (cafe after zone_farm, restaurant after zone_hunt, carpenter after
 // zone_forest, hardware after b:toolsmith, supermarket after b:cannery), so every v4 line runs; the town (with its
 // 꽃집, 학교, 병원) is open; 콩이 is there; the plaza has its snowman, notice board and picnic space.
-const RANK2 = ['rank:2', 'dog', 'p:snowman', 'p:plaza', 'p:picnic', 'p:feast', 'p:officiant', 'p:statue', 'p:festival', 'p:carpenter',
+const RANK2 = ['rank:2', 'dog', 'p:snowman', 'p:plaza', 'p:board', 'p:farm', 'p:picnic', 'p:feast', 'p:officiant', 'p:statue', 'p:festival', 'p:carpenter',
   'p:school_gate', 'p:towers', 'craft:bouquet', 'craft:cake', 'site:memorial', 'b:station', 'b:toolsmith', 'b:cannery']
   .concat(V4_ITEMS.filter((k) => k !== 'item_fish_big').map((k) => 'item:' + k));
 export const CLOSURE = {

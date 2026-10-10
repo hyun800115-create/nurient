@@ -50,6 +50,8 @@ export class PersonRegistry {
   /** the chief tapped this person (name card / chat) */
   tapped(pid) { const m = this.meta.get(String(pid)); if (m) m.tapped++; return m ? m.tapped : 0; }
   setMission(pid, on) { const m = this.meta.get(String(pid)); if (m) m.mission = !!on; }
+  /** the game already counted this person's visits (TownSim c.visits: v4 regulars) — the story starts from there */
+  seedServed(pid, n) { const m = this.meta.get(String(pid)); if (m && Number.isFinite(n) && n > m.served) m.served = Math.min(999, n | 0); }
 
   /** a person the chief knows: their life beats get story cards (plan §6.1 "Known people") */
   known(pid) {
@@ -57,7 +59,8 @@ export class PersonRegistry {
     const m = this.meta.get(pid);
     if (!m) return false;
     if (m.kept || m.mission) return true;
-    if (/^[vsd]:/.test(pid) || m.role === 'district' || m.role === 'keeper' || m.role === 'resident' || m.role === 'settler') return true;
+    // (settlers are adopted only once they have a body the player can see: then their role makes them known)
+    if (/^[vd]:/.test(pid) || m.role === 'district' || m.role === 'keeper' || m.role === 'resident' || m.role === 'settler') return true;
     return m.served + m.tapped >= this.knownServed;
   }
   regular(pid) { const m = this.meta.get(String(pid)); return !!m && m.served >= this.knownServed; }

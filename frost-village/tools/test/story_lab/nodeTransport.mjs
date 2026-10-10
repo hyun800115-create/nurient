@@ -7,8 +7,10 @@ export class NodeWorkerTransport {
     this.inbox = [];
     this.failed = false;
     this.onwake = null;
+    this.onsaved = null;
     this.w = new Worker(new URL('./node_worker.mjs', import.meta.url));
-    this.w.on('message', (m) => { this.inbox.push(m); if (this.onwake) this.onwake(); });
+    // as WorkerTransport: a side save is written the moment it arrives, without waiting for a frame
+    this.w.on('message', (m) => { if (m && m.t === 'saved' && this.onsaved) { this.onsaved(m); return; } this.inbox.push(m); if (this.onwake) this.onwake(); });
     this.w.on('error', (e) => { this.failed = true; this.error = String(e); });
   }
   post(m, transfer) { this.w.postMessage(m, transfer || []); }

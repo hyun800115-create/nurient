@@ -14,6 +14,16 @@
 
 import { hashStr } from '../../missions/lib/rng.js';
 
+/** at most this many insured buildings (the 1 KB slice holds them with room to spare, critique L-8) */
+export const MAX_POLICIES = 24;
+/** a building id as the bank keeps it (≤ 10 chars): short ids as they are, longer ones hashed (critique M-11) */
+export function policyId(id) {
+  const s = String(id == null ? '' : id);
+  if (!s) return '';
+  if (s.length <= 10 && /^[A-Za-z0-9:_.#\-]+$/.test(s)) return s;
+  return 'h' + (hashStr('bld:' + s) >>> 0).toString(36).slice(0, 9);
+}
+
 export class Account {
   /** cfg = bank tuning; saved = the bank slice */
   constructor(cfg, saved) {
@@ -42,7 +52,7 @@ export class Account {
     // (v8) insured buildings: id → { cost, lapsed, fire (last fire paid) }
     this.policies = new Map();
     // (saved compactly: [id, cost in hundreds (negative = lapsed), hash of the last fire paid])
-    for (const r of Array.isArray(s.ins) ? s.ins.slice(0, 32) : []) {
+    for (const r of Array.isArray(s.ins) ? s.ins.slice(0, MAX_POLICIES) : []) {
       if (Array.isArray(r) && typeof r[0] === 'string') this.policies.set(r[0], { cost: Math.abs(r[1] | 0) * 100, lapsed: (r[1] | 0) < 0 ? 1 : 0, fire: r[2] | 0 });
     }
   }
@@ -120,7 +130,7 @@ export class Account {
     if (rest <= 0) return { withdraw, amount: 0, fee: 0, total: 0, short, covered: true };
     const max = this.maxLoan(I, kind, cost);
     let amount = Math.min(max, Math.ceil(rest / 10) * 10);
-    if (amount < Math.min(this.cfg.minLoan, rest)) amount = 0;
+    if (amount < this.cfg.minLoan) amount = 0;            // (a tiny shortfall: earning a little more is enough)
     if (!amount && !withdraw) return null;
     const fee = Math.ceil(amount * this.cfg.loanFee);
     return { withdraw, amount, fee, total: amount + fee, short, covered: withdraw + amount >= short };
@@ -135,7 +145,8 @@ export class Account {
       const fee = Math.ceil(q.amount * this.cfg.loanFee);
       this.loan = { amt: q.amount, left: q.amount + fee, fee, t0: T, day0: day | 0, rs: 0, ps: 0, kind: kind === 'ceremony' ? 'ceremony' : 'build' };
       wallet.add(q.amount);
-      this.row(day, 'loan', q.amount);
+      // the passbook shows what the loan does to the balance (−630 for 600 borrowed with a 30 fee, critique L-4)
+      this.row(day, 'loan', -(q.amount + fee));
       this.emit({ t: 'bank:loan', amount: q.amount, fee, left: this.loan.left });
     }
     return true;
@@ -185,15 +196,20 @@ export class Account {
   }
 
   // ------------------------------------------------------------------------------------------------ (v8) insurance
-  insured(id) { const p = this.policies.get(id); return !!(p && !p.lapsed); }
+  insured(id) { const p = this.policies.get(policyId(id)); return !!(p && !p.lapsed); }
+  /** a policy exists (paid up or lapsed) */
+  hasPolicy(id) { return this.policies.has(policyId(id)); }
+  premiumOf(cost) { return Math.ceil(Math.max(100, Math.round((Number(cost) || 0) / 100) * 100) * this.cfg.insurance.premiumPerDay); }
   insure(id, cost) {
-    if (!this.open || typeof id !== 'string' || id.length > 10 || this.policies.size >= 32 || this.policies.has(id)) return false;
-    this.policies.set(id, { cost: Math.max(100, Math.round((Number(cost) || 0) / 100) * 100), lapsed: 0, fire: 0 });
-    this.emit({ t: 'bank:insure', id });
+    const k = policyId(id);
+    if (!this.open || !k || this.policies.size >= MAX_POLICIES || this.policies.has(k)) return false;
+    this.policies.set(k, { cost: Math.max(100, Math.round((Number(cost) || 0) / 100) * 100), lapsed: 0, fire: 0 });
+    this.emit({ t: 'bank:insure', id: k, building: String(id) });
     return true;
   }
   /** a fire made building `id` a ruin (fire id `fireId`): pays its rebuild once */
   claim(id, fireId, wallet, day) {
+    id = policyId(id);
     const p = this.policies.get(id);
     const fk = fireId ? (hashStr(String(fireId)) % 999983) + 1 : 0;
     if (!p || p.lapsed || !fk || p.fire === fk) return 0;

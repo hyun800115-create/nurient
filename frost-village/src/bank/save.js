@@ -1,7 +1,8 @@
 // The `bank` save slice: v1 (v5), v2 adds `ins` (v8 insurance). Cap 1 KB. sanitizeBank(raw) → a clean copy or null;
 // never throws and accepts its own output unchanged. Keys: open · sv savings · ld last interest day · tk next ticket ·
 // v6 (bigger cap) · so site offered · t5 module start T · ln loan { a amount, l left, f fee left, t0, d0 day taken / restructured, rs restructures, ps paused,
-// k 'build'|'ceremony' } · rw passbook rows [day, op, amount, balance] ≤ 8 · ins [[bldId ≤ 10 chars, cost in hundreds (negative = lapsed), hash of the last fire paid]] ≤ 32
+// k 'build'|'ceremony' } · rw passbook rows [day, op, amount, balance] ≤ 8 · ins [[bldId ≤ 10 chars (longer game ids are
+// hashed: account.policyId), cost in hundreds (negative = lapsed), hash of the last fire paid]] ≤ 24 (MAX_POLICIES)
 
 export const BANK_SLICE = { key: 'bank', version: 2, cap: 1024 };
 const OPS = new Set(['deposit', 'withdraw', 'interest', 'loan', 'repay', 'premium', 'claim', 'waive']);
@@ -32,7 +33,7 @@ export function sanitizeBank(raw) {
       if (!c) continue;
       seen.add(r[0]);
       ins.push([r[0], c, int(r[2], 0, 999983, 0)]);
-      if (ins.length >= 32) break;
+      if (ins.length >= 24) break;
     }
     if (ins.length) { s.ins = ins; s.v = 2; }
   }
@@ -41,10 +42,13 @@ export function sanitizeBank(raw) {
 
 export const sizeOf = (o) => JSON.stringify(o).length;
 
-/** trim the passbook rows until the slice fits its cap (money fields are never dropped) */
+/** trim the passbook rows until the slice fits its cap (money fields are never dropped; with ≤ 24 policies of
+ *  ≤ 10-char ids the slice always fits once the rows are gone: 24 × 31 B + 150 B < 1 KB) */
 export function fitBank(o, cap = BANK_SLICE.cap) {
   if (sizeOf(o) <= cap) return o;
   const s = JSON.parse(JSON.stringify(o));
   while (sizeOf(s) > cap && s.rw && s.rw.length) { s.rw.shift(); if (!s.rw.length) delete s.rw; }
+  // (a hand-made slice past that: lapsed policies go before paid ones)
+  while (sizeOf(s) > cap && s.ins && s.ins.length) { const j = s.ins.findIndex((r) => r[1] < 0); s.ins.splice(j >= 0 ? j : 0, 1); if (!s.ins.length) delete s.ins; }
   return s;
 }

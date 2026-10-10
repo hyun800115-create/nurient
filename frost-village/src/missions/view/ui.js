@@ -50,10 +50,18 @@ export function fit(t, maxW, maxH) {
   return t;
 }
 
+/** a button face (ui_button_*): its rim slices need 68 px (32 + 36), so a shorter button draws the face 68 px
+ *  tall and scales it down whole (the rim keeps its shape instead of squashing); other panels as they are */
+export function face(scene, x, y, key, w, h) {
+  if (!/^ui_button_/.test(key) || h >= 68) return panel(scene, x, y, key, w, h);
+  const s = h / 68;
+  return panel(scene, x, y, key, Math.max(68, w / s), 68).setScale(s);
+}
+
 /** a rounded button (style blue / green / gray) with a label; onClick on press */
 export function button(scene, x, y, w, h, style, label, onClick, size = 26, sound) {
   const c = scene.add.container(x, y);
-  const bg = panel(scene, 0, 0, 'ui_button_' + style, w, h).setOrigin(0.5);
+  const bg = face(scene, 0, 0, 'ui_button_' + style, w, h).setOrigin(0.5);
   const tx = scene.add.text(0, -3, label, style === 'gray' ? TXT(size, '#ffffff', '#4a5361', 6, '900') : TXT(size, '#ffffff', 'rgba(0,0,0,0.25)', 4, '900')).setOrigin(0.5);
   fit(tx, w - 24);
   c.add([bg, tx]);
@@ -125,3 +133,38 @@ export const KIND_ICON = {
   request: 'ui_icon_request', drive: 'ui_icon_steer', event: 'ui_icon_event', goal: 'ui_icon_goal', explore: 'ui_icon_explore',
   daily: 'ui_icon_calendar', weekly: 'ui_icon_calendar', streak: 'ui_icon_calendar',
 };
+
+/** a five-point star into graphics g (centre, outer radius, rotation 0 = point up) */
+function starPath(g, x, y, r) {
+  const pts = [];
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.48 : r;
+    pts.push({ x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr });
+  }
+  return pts;
+}
+
+/**
+ * the chief-title badge: the crown (ui_icon_title) over 1–5 small gold stars in a gentle smile (unearned ones grey).
+ * The village rank keeps ui_badge_rank_* (docs/v5_v8_plan.md: "fame titles use ui_icon_title + 1–5 small stars").
+ * Returns a container; `dim` greys the whole badge (a title not reached yet).
+ */
+export function titleBadge(scene, x, y, level, size, dim = false) {
+  const c = scene.add.container(x, y);
+  const crown = icon(scene, 0, -size * 0.14, ['ui_icon_title', 'ui_icon_fame'], size * 0.78);
+  const g = scene.add.graphics();
+  const r = Math.max(4, size * 0.085);
+  for (let k = 0; k < 5; k++) {
+    const sx = (k - 2) * r * 2.25, sy = size * 0.39 - Math.abs(k - 2) * Math.abs(k - 2) * r * 0.22;
+    const on = k < level && !dim;
+    // a soft shadow, the star, its rim and a tiny highlight
+    g.fillStyle(0x1f3354, 0.18); g.fillPoints(starPath(g, sx, sy + r * 0.18, r), true);
+    g.fillStyle(on ? 0xffc83d : 0xdde2ea, 1); g.fillPoints(starPath(g, sx, sy, r), true);
+    g.lineStyle(Math.max(1.5, r * 0.22), on ? 0xb5770f : 0xa7b0bf, 1); g.strokePoints(starPath(g, sx, sy, r), true);
+    if (on) { g.fillStyle(0xfff4c2, 0.9); g.fillCircle(sx - r * 0.22, sy - r * 0.2, r * 0.22); }
+  }
+  c.add([crown, g]);
+  if (dim) crown.setTint(0xb8bec8).setAlpha(0.75);
+  c.crown = crown;
+  return c;
+}

@@ -64,8 +64,10 @@ export class Life {
     this.stats.engaged++;
     // (E9) the wedding is weddingInDays later at weddingHour, and never closer than weddingGapDays to the last one
     const inDays = opts && opts.inDays !== undefined ? opts.inDays : c.weddingInDays !== undefined ? c.weddingInDays : 2;
-    let day = e.clock.day + Math.max(0, inDays | 0);
-    if (c.weddingGapDays > 0 && !(opts && opts.ignoreGap)) day = Math.max(day, this.lastWeddingDay + c.weddingGapDays);
+    let day = opts && Number.isFinite(opts.day) ? Math.max(e.clock.day, opts.day | 0) : e.clock.day + Math.max(0, inDays | 0);
+    if (c.weddingGapDays > 0 && !(opts && (opts.ignoreGap || Number.isFinite(opts.day)))) day = Math.max(day, this.lastWeddingDay + c.weddingGapDays);
+    // (story_runtime) one ceremony a day: never on the day of a gentle farewell (the memorial garden at 10:00)
+    if (c.avoidClash && !(opts && Number.isFinite(opts.day))) for (let k = 0; k < 4 && this.dayBusy(day, 'wedding'); k++) day++;
     if (day > this.lastWeddingDay) this.lastWeddingDay = day;
     const hour = opts && opts.hour !== undefined ? opts.hour : c.weddingHour !== undefined ? c.weddingHour : 11;
     const f = e.fact('engaged', { a: a.id, b: b.id, n: day, p: a.loc });
@@ -73,7 +75,7 @@ export class Life {
     e.learn(a, f, SRC_DID); e.learn(b, f, SRC_DID);
     if (a.loc >= 0) e.witness(f, e.world.places[a.loc], a.id, b.id);
     e.schedule(day * c.dayLength + Math.floor(c.dayLength * (hour / 24)), 'wedding', [a.id, b.id, f.id]);
-    if (e.bus.has('life')) e.bus.emit('life', { op: 'engaged', a: a.id, b: b.id, day, hour, place: a.loc >= 0 ? e.world.places[a.loc].id : null, scripted: !!(opts && opts.scripted) });
+    if (e.bus.has('life')) e.bus.emit('life', { op: 'engaged', a: a.id, b: b.id, day, hour, place: a.loc >= 0 ? e.world.places[a.loc].id : null, scripted: !!(opts && opts.scripted), silent: !!(opts && opts.silent) });
   }
 
   wedding(data) {
@@ -223,6 +225,8 @@ export class Life {
   farewellAllowed(r) {
     const e = this.e, c = e.cfg, day = e.clock.day;
     if (c.farewellHold) return false;
+    // (story_runtime) one ceremony a day: no farewell (tomorrow, after the last day) on a wedding day
+    if (c.avoidClash && this.dayBusy(day + (c.farewellLastDay ? 1 : 0), 'farewell')) return false;
     if (c.farewellNeedsGarden && !e.world.first('memorial')) return false;
     if (c.farewellFromDay && day < c.farewellFromDay) return false;
     if (c.farewellGapDays && day - this.lastFarewellDay < c.farewellGapDays) return false;
@@ -234,6 +238,19 @@ export class Life {
       if (hh) for (const id of hh.members) { const m = e.people[id]; if (m && day - m.birth < gap && m.birth <= day) return false; }
     }
     return true;
+  }
+
+  /** (story_runtime) a day that already has a ceremony: a booked wedding (for a farewell), a farewell or the memorial
+   *  ceremony (for a wedding) */
+  dayBusy(day, forKind) {
+    const e = this.e, L = e.cfg.dayLength;
+    for (const [at, kind] of e.sched) {
+      if (Math.floor(at / L) !== day) continue;
+      if (forKind === 'farewell' && kind === 'wedding') return true;
+      if (forKind === 'wedding' && kind === 'memorial') return true;
+    }
+    if (forKind === 'wedding') for (const r of e.alive) if (r.farewellDay === day) return true;
+    return false;
   }
 
   /** sweethearts and the engaged plan a date for tomorrow evening (a café, the park, the ice rink …) */

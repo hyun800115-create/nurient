@@ -24,7 +24,8 @@ import { B_OK } from './world.js';
 export const RUNTIME_KEYS = ['incidents', 'lifeEvents', 'farewell', 'happenings', 'memCap', 'talkRate', 'incidentRate', 'fireRate', 'fireRuinAfter',
   'babyRate', 'proposeAfterDays', 'moveInRate', 'moveOutRate', 'targetPop', 'ackWait', 'keepNamed', 'externalPlans', 'yearDaysKid', 'yearDaysAdult',
   'freezeAgeWhenOff', 'weddingInDays', 'weddingHour', 'weddingGapDays', 'babyAfterWeddingDays', 'birthAfterNews', 'farewellHold',
-  'farewellNeedsGarden', 'farewellFromDay', 'farewellGapDays', 'farewellBirthGapDays', 'farewellLastDay', 'memorialHour', 'birthHour', 'textMode'];
+  'farewellNeedsGarden', 'farewellFromDay', 'farewellGapDays', 'farewellBirthGapDays', 'farewellLastDay', 'memorialHour', 'birthHour', 'textMode',
+  'avoidClash', 'paperRateBp'];
 
 const SOLO_JOBS = { student: 'student', retired: 'retired', none: 'none' };
 
@@ -255,7 +256,7 @@ export function installExtensions(StoryEngine) {
   };
 
   // ---------------------------------------------------------------- E8 arranged beats
-  /** 'propose' { a, b, inDays, hour } · 'nameBaby' { sid, name: { ko, en } } · 'expect' { a (mother), b, inDays } */
+  /** 'propose' { a, b, inDays | day, hour, silent } · 'nameBaby' { sid, name: { ko, en } } · 'expect' { a, b (a married couple), inDays } */
   P.arrange = function arrange(op, data = {}) {
     if (op === 'propose') {
       const a = this.people[data.a], b = this.people[data.b];
@@ -265,7 +266,8 @@ export function installExtensions(StoryEngine) {
       if (rel.n === 0) { rel.n = 3; rel.fam = Math.max(rel.fam, 520); rel.aff = Math.max(rel.aff, 520); rel.met = this.clock.day - 10; }
       if (rel.stage < ST_SWEET) this.life.becomeSweethearts(a, b, rel);
       rel.rom = Math.max(rel.rom, 760);
-      this.life.engage(a, b, rel, { inDays: data.inDays, hour: data.hour, scripted: true, ignoreGap: true });
+      // silent: a promise the player already saw is re-made after a stale side record (no second card or banner)
+      this.life.engage(a, b, rel, { inDays: data.inDays, day: data.day, hour: data.hour, scripted: true, ignoreGap: true, silent: !!data.silent });
       const f = this.facts.get(Array.from(this.facts.keys()).pop());
       return { a: a.id, b: b.id, day: f && f.k === 'engaged' ? f.n : this.clock.day + (data.inDays || 0) };
     }
@@ -282,7 +284,11 @@ export function installExtensions(StoryEngine) {
     }
     if (op === 'expect') {
       const a = this.people[data.a], b = this.people[data.b];
-      if (!a || !b || !a.alive || !b.alive || a.expecting) return null;
+      if (!a || !b || !a.alive || !b.alive || a === b || a.expecting || b.expecting) return null;
+      // only a married couple of grown-ups under 50, a man and a woman (critique H3: stale ids never make a baby)
+      if (a.spouse !== b.id || b.spouse !== a.id || a.male === b.male) return null;
+      const ga = ageOf(this, a), gb = ageOf(this, b);
+      if (ga < 19 || gb < 19 || ga >= 50 || gb >= 50) return null;
       this.life.expect(a.male ? b : a, a.male ? a : b, data.inDays);
       return { a: a.id, b: b.id };
     }

@@ -5,7 +5,7 @@
 //                 badge flies to the fame chip (sfx_fame_up)
 //   EdgeMarker  — the focus target off screen: a round badge at the screen edge pointing to it (a moving recipient too)
 
-import { TXT, COL, icon, reicon, fit, panel, button, has, Assets, KIND_ICON } from './ui.js';
+import { TXT, COL, icon, reicon, fit, panel, button, has, Assets, KIND_ICON, titleBadge } from './ui.js';
 import { mt, titleOf, fmtN } from '../strings.js';
 
 const W0 = 720;
@@ -24,44 +24,45 @@ export class AcceptCard {
     this.id = id; this.why = why || 'tap';
     const ui = this.ui, W = this.W, H = this.H, lang = h.lang(), t = m.template(i);
     const names = h.namesOf(i);
-    const cw = Math.min(W - 40, 664), ch = 270;
-    const cy = H - 330 - (h.ports.ui.safeBottom || 0);
+    // compact, and only its buttons take touches: a drag that starts on the card still walks the chief (critique M-4)
+    const cw = Math.min(W - 40, 664), ch = 236;
+    const cy = H - 316 - (h.ports.ui.safeBottom || 0);
     const c = this.c = ui.add.container(W / 2, cy).setDepth(66);
-    const bg = panel(ui, 0, 0, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', cw, ch).setOrigin(0.5).setInteractive();
-    bg.on('pointerup', () => {});
+    const bg = panel(ui, 0, 0, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', cw, ch).setOrigin(0.5);
     c.add(bg);
     const x0 = -cw / 2;
     // the giver's face (a portrait for named villagers and pets, else the request icon)
     const plate = ui.add.graphics();
-    plate.fillStyle(0xfff3d6, 1); plate.fillCircle(x0 + 104, -46, 58);
-    plate.lineStyle(5, 0xe35d8c, 1); plate.strokeCircle(x0 + 104, -46, 58);
+    plate.fillStyle(0xfff3d6, 1); plate.fillCircle(x0 + 96, -36, 54);
+    plate.lineStyle(5, 0xe35d8c, 1); plate.strokeCircle(x0 + 96, -36, 54);
     c.add(plate);
     const pk = h.ports.people.portrait ? h.ports.people.portrait(i.gv) : null;
-    if (pk && has(pk)) c.add(icon(ui, x0 + 104, -48, [pk], 106));
-    else c.add(icon(ui, x0 + 104, -46, [t.icon, 'ui_icon_request'], 72));
-    c.add(icon(ui, x0 + 150, -92, ['ui_icon_request'], 40));
-    const nm = ui.add.text(x0 + 184, -96, mt(lang, 'm_from', { giver: names.from }), TXT(23, COL.pink)).setOrigin(0, 0.5);
-    fit(nm, cw - 220);
+    if (pk && has(pk)) c.add(icon(ui, x0 + 96, -38, [pk], 98));
+    else c.add(icon(ui, x0 + 96, -36, [t.icon, 'ui_icon_request'], 68));
+    c.add(icon(ui, x0 + 140, -80, ['ui_icon_request'], 38));
+    const nm = ui.add.text(x0 + 172, -82, mt(lang, 'm_from', { giver: names.from }), TXT(23, COL.pink)).setOrigin(0, 0.5);
+    fit(nm, cw - 210);
     c.add(nm);
-    const say = t.say && t.say.offer ? (t.say.offer[lang] || t.say.offer.ko) : titleOf(t, lang, names);
-    const q = ui.add.text(x0 + 184, -48, '“' + fill(say, names) + '”', Object.assign(TXT(21, COL.ink, '#ffffff', 0, '800'), { lineSpacing: 4, wordWrap: { width: cw - 210, useAdvancedWrap: true } })).setOrigin(0, 0.5);
-    fit(q, cw - 210, 92);
+    const line = t.say && (i.gv === i.nm && t.say.offerSelf ? t.say.offerSelf : t.say.offer);
+    const say = line ? (line[lang] || line.ko) : titleOf(t, lang, names);
+    const q = ui.add.text(x0 + 172, -36, '“' + fill(say, names) + '”', Object.assign(TXT(21, COL.ink, '#ffffff', 0, '800'), { lineSpacing: 4, wordWrap: { width: cw - 200, useAdvancedWrap: true } })).setOrigin(0, 0.5);
+    fit(q, cw - 200, 80);
     c.add(q);
-    const tt = ui.add.text(x0 + 46, 40, titleOf(t, lang, names), TXT(19, COL.soft, '#ffffff', 0, '900')).setOrigin(0, 0.5);
-    fit(tt, cw - 90);
+    const tt = ui.add.text(x0 + 40, 36, titleOf(t, lang, names), TXT(19, COL.soft, '#ffffff', 0, '900')).setOrigin(0, 0.5);
+    fit(tt, cw - 80);
     c.add(tt);
     // the reward
     const coins = m.pay(t.pay);
-    c.add(icon(ui, x0 + 62, 92, ['ui_icon_coin'], 34));
-    c.add(ui.add.text(x0 + 84, 92, '+' + fmtN(coins), TXT(23, COL.gold)).setOrigin(0, 0.5));
-    c.add(icon(ui, x0 + 210, 92, ['ui_icon_fame'], 34));
-    c.add(ui.add.text(x0 + 232, 92, '+' + t.fame, TXT(23, '#c4517a')).setOrigin(0, 0.5));
+    c.add(icon(ui, x0 + 56, 80, ['ui_icon_coin'], 34));
+    c.add(ui.add.text(x0 + 78, 80, '+' + fmtN(coins), TXT(23, COL.gold)).setOrigin(0, 0.5));
+    c.add(icon(ui, x0 + 200, 80, ['ui_icon_fame'], 34));
+    c.add(ui.add.text(x0 + 222, 80, '+' + t.fame, TXT(23, '#c4517a')).setOrigin(0, 0.5));
     const snd = (k, o) => h.ports.sound.play(k, o);
-    c.add(button(ui, cw / 2 - 300, 88, 150, 66, 'gray', mt(lang, 'm_later'), () => { m.later(id); this.hide(); h.declined(id); }, 24, snd));
-    c.add(button(ui, cw / 2 - 118, 88, 196, 66, 'green', mt(lang, 'm_accept'), () => { h.accept(id); this.hide(); }, 27, snd));
+    c.add(button(ui, cw / 2 - 300, 76, 150, 64, 'gray', mt(lang, 'm_later'), () => { m.later(id); this.hide(); h.declined(id); }, 24, snd));
+    c.add(button(ui, cw / 2 - 118, 76, 196, 64, 'green', mt(lang, 'm_accept'), () => { h.accept(id); this.hide(); }, 27, snd));
     c.setAlpha(0).setY(cy + 60);
     ui.tweens.add({ targets: c, alpha: 1, y: cy, duration: 240, ease: 'Back.easeOut' });
-    h.ports.sound.play('sfx_pop', { volume: 0.5 });
+    h.ports.sound.play('sfx_whoosh', { volume: 0.35 });
   }
 
   hide(immediate) {
@@ -102,7 +103,7 @@ export class DoneStamp {
     const d = this.q.shift();
     if (!d) return;
     const ui = this.ui, W = this.W, h = this.host, lang = h.lang();
-    const y = 330 + (h.ports.ui.safeTop || 0);
+    const y = 470 + (h.ports.ui.safeTop || 0);       // (below the chips, also when v4's order chip shows)
     const cw = 470, ch = 116;
     const c = this.c = ui.add.container(W / 2, y).setDepth(64);
     c.add(panel(ui, 0, 0, has('ui_mission_card_done') ? 'ui_mission_card_done' : 'ui_panel', cw, ch).setOrigin(0.5));
@@ -146,8 +147,9 @@ export class TitleBanner {
     }
     rays.setAlpha(0.5);
     c.add(rays);
-    const badge = icon(ui, 0, -10, ['ui_badge_rank_' + level, 'ui_icon_title'], 220);
-    const bs = badge.scaleX;
+    // the chief-title badge: the crown with as many gold stars as the title (the village rank keeps its shield)
+    const badge = titleBadge(ui, 0, -10, level, 230);
+    const bs = 1;
     c.add(badge);
     const rib = ui.add.container(0, 150);
     const name = ui.add.text(0, -4, mt(lang, 't_' + level), TXT(44, '#ffffff', '#1f4f8f', 9)).setOrigin(0.5);
@@ -185,7 +187,7 @@ export class TitleBanner {
       const tg = h.fameTarget ? h.fameTarget() : { x: W - 200, y: 220 };
       const lx = tg.x - c.x, ly = tg.y - c.y;
       ui.tweens.add({ targets: [rays, rib].concat(glow ? [glow] : []).concat(c.list.filter((o) => o !== badge && o !== rays && o !== rib && o !== glow)), alpha: 0, duration: 300 });
-      ui.tweens.add({ targets: badge, x: lx, y: ly, scale: bs * (44 / 220), duration: 800, ease: 'Cubic.easeIn', onComplete: () => { c.destroy(); if (this.c === c) this.c = null; if (h.onBadgeLanded) h.onBadgeLanded(); } });
+      ui.tweens.add({ targets: badge, x: lx, y: ly, scale: bs * (44 / 230), duration: 800, ease: 'Cubic.easeIn', onComplete: () => { c.destroy(); if (this.c === c) this.c = null; if (h.onBadgeLanded) h.onBadgeLanded(); } });
     });
     if (em) ui.time.delayedCall(6000, () => em.destroy());
   }

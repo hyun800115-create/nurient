@@ -1,17 +1,21 @@
 // =====================================================================
-//  촌장 미션 목록 (98개) — 한 줄(또는 두 줄)이 미션 하나예요.  docs/v5_v8_plan.md §7 그대로.
+//  촌장 미션 목록 (99개) — 한 줄(또는 두 줄)이 미션 하나예요.  docs/v5_v8_plan.md §7 그대로 + 은행 첫 저금 (§6.2).
 // ---------------------------------------------------------------------
 //  code    짧은 이름 (저장 파일에 쓰여요. 바꾸거나 지우지 마세요. 새 미션은 맨 뒤에 붙여요)
-//  title   미션 이름 (한국어 ko / 영어 en).  {name} = 주인공 이름, {to} = 받는 사람, {from} = 보내는 사람
+//  title   미션 이름 (한국어 ko / 영어 en).  {name} = 주인공 이름, {to} = 받는 사람, {from} = 보내는 사람,
+//          {elder} = 어르신 이름 (이야기 속 이름에 이미 '할머니·할아버지'가 붙어 있으면 그대로, 아니면 '○○ 어르신')
 //  giver   부탁하는 사람 (v:주민, pet:동물, role:역할 — kid 아이 / elder 어르신 / adult 어른 / settler 새 이웃,
 //          owner:가게, ev:행사 주인공)
 //  obj     할 일:  deliver = 물건 갖다주기 (items 물건: 개수, to 받는 사람·장소)
 //                  count   = 숫자 채우기 (sig 무엇을 셀지, n 몇 개, win: 'day' 면 그날 안에)
-//                  step    = 그 자리에서 하기 (how: stand 서 있기 · find 찾기 · drive 운전 · escort 함께 가기 …)
+//                  step    = 그 자리에서 하기 (how: stand 서 있기 · find 찾기 · lead 데려가기 · drive 운전 ·
+//                            escort 함께 가기 · carry 짐 나르기 · ask 물어보기 · pay 후원하기 …)
+//                            (from = 운전 출발 장소, each = 차례로 갈 장소들, soft = 못 해도 나머지를 다 하면 완료)
 //                  build   = 짓기
 //  unlock  이게 다 있어야 미션이 나와요 (rank:2 = 읍, rank:3 = 도시, b:건물, life = 주민의 일생, paper = 신문,
 //          v6 항구 · v7 해변 · v8 살아 있는 도시, toggle:설정, fame:명성)
 //  need    (게임이 자동으로 더 확인하는 것 — 막다른 미션이 안 나오게 덧붙인 조건)
+//  minLead 행사까지 이만큼(초) 안 남았으면 아예 안 나와요 (못 끝낼 미션은 주지 않아요)
 //  repeat  다시 나오기까지 (분, 'day' = 게임 하루 10분, 'once' = 한 번만, 'event' = 그 일이 생길 때마다)
 //  pay     보상 코인 = '지금 1분 수입' × pay  (아무리 적어도 100 × 시대)     fame = 명성 (운전은 ★/★★/★★★)
 //  weight  여러 미션 중에 뽑힐 확률 (클수록 자주)       say = 주민이 하는 말 (부탁할 때 offer / 고마울 때 thanks)
@@ -36,9 +40,9 @@ export const CATALOG = [
   { code: 'A5', id: 'req_bouquet_secret', kind: 'request', src: 'bubble', title: T('몰래 꽃다발 전해 주기', 'A secret bouquet'),
     giver: 'role:adult', obj: [{ t: 'deliver', items: { item_bouquet: 1 }, to: 'crush' }], unlock: ['rank:2', 'life'], repeat: 30, pay: 0.3, fame: 8, weight: 1, icon: 'item_bouquet',
     say: { offer: T('쉿… {to}에게 꽃다발 좀 몰래 전해 줄래요? 제 이름은 비밀이에요!', 'Shh… could you secretly give {to} a bouquet? Don\'t say it is from me!'), thanks: T('어머, 누가 보낸 꽃일까? 너무 예쁘다…', 'Oh, who could these be from? They are lovely…') } },
-  { code: 'A6', id: 'req_firewood_elder', kind: 'request', src: 'bubble', title: T('할아버지 난로에 장작 10개', 'Firewood for Grandpa\'s stove'),
+  { code: 'A6', id: 'req_firewood_elder', kind: 'request', src: 'bubble', title: T('어르신 난로에 장작 10개', 'Firewood for an elder\'s stove'),
     giver: 'role:elder', obj: [{ t: 'deliver', items: { item_log: 10 }, to: 'giver' }], unlock: ['rank:2'], repeat: 20, pay: 0.3, fame: 5, weight: 2, icon: 'item_log',
-    say: { offer: T('아이고, 난로 장작이 똑 떨어졌네. 장작 10개만 부탁해도 될까?', 'Oh dear, my stove is out of firewood. Could you bring me 10 logs?'), thanks: T('허허, 이제 따뜻하게 자겠구먼. 고마우이!', 'Ho ho, now I will sleep warm. Thank you kindly!') } },
+    say: { offer: T('아이고, 난로 장작이 똑 떨어졌네. 장작 10개만 부탁해도 될까요?', 'Oh dear, my stove is out of firewood. Could you bring me 10 logs?'), thanks: T('이제 밤에도 따뜻하겠어요. 고마워요, 촌장님!', 'Now the nights will be warm. Thank you, Chief!') } },
   { code: 'A7', id: 'req_tools_newcomer', kind: 'request', src: 'bubble', title: T('새 이웃에게 도구 선물하기', 'A tool for the new neighbour'),
     giver: 'role:settler', obj: [{ t: 'deliver', any: ['item_axe', 'item_pickaxe', 'item_sickle', 'item_rod'], n: 1, to: 'giver' }], unlock: ['rank:2'], repeat: 30, pay: 0.4, fame: 6, weight: 1, icon: 'item_axe',
     say: { offer: T('이사 와서 아직 도구가 하나도 없어요. 하나만 나눠 주실 수 있나요?', 'I just moved in and have no tools at all. Could you spare one?'), thanks: T('와, 새 도구다! 내일부터 열심히 일할게요!', 'A new tool! I will work hard from tomorrow!') } },
@@ -51,12 +55,12 @@ export const CATALOG = [
   { code: 'A10', id: 'req_bread_skaters', kind: 'request', src: 'bubble', title: T('스케이트장 손님에게 빵 8개', 'Bread for the skaters'),
     giver: 'role:kid', obj: [{ t: 'deliver', items: { item_bread: 8 }, to: 'p:rink' }], unlock: ['rank:2', 'b:deco_rink'], repeat: 30, pay: 0.3, fame: 5, weight: 2, icon: 'item_bread',
     say: { offer: T('스케이트 타다 보니 배가 고파요. 스케이트장에 빵 8개만 가져다주실래요?', 'Skating makes us hungry! Could you bring 8 loaves to the rink?'), thanks: T('냠냠! 이제 한 바퀴 더 돌 수 있어요!', 'Yum! Now we can do another lap!') } },
-  { code: 'A11', id: 'req_planks_carpenter', kind: 'request', src: 'bubble', title: T('목수 아저씨에게 판자 30장', '30 planks for the carpenter'),
+  { code: 'A11', id: 'req_planks_carpenter', kind: 'request', src: 'bubble', title: T('목공소에 판자 30장', '30 planks for the workshop'),
     giver: 'owner:carpenter_workshop', obj: [{ t: 'deliver', items: { item_plank: 30 }, to: 'p:carpenter' }], unlock: ['rank:2'], repeat: 20, pay: 0.6, fame: 6, weight: 2, icon: 'item_plank',
     say: { offer: T('목공소에 판자가 똑 떨어졌어요. 30장만 부탁해요!', 'The workshop is out of planks. Could you bring 30?'), thanks: T('이제 의자도 침대도 만들 수 있겠어요!', 'Now I can make chairs and beds again!') } },
-  { code: 'A12', id: 'req_birthday_meat', kind: 'request', src: 'bubble', trigger: 'life:birthday', title: T('{name} 생일 잔치에 훈제고기 10개', 'Smoked meat for {name}\'s birthday'),
+  { code: 'A12', id: 'req_birthday_meat', kind: 'request', src: 'bubble', trigger: 'life:birthday', title: T('{name}의 생일 잔치에 훈제고기 10개', 'Smoked meat for {name}\'s birthday'),
     giver: 'ev:family', obj: [{ t: 'deliver', items: { item_meat_cooked: 10 }, to: 'giver' }], unlock: ['life'], repeat: 'event', pay: 0.5, fame: 10, weight: 1, icon: 'item_meat_cooked',
-    say: { offer: T('곧 {name}의 생일이에요! 훈제고기 10개만 도와주실래요?', 'It is {name}\'s birthday soon! Could you help with 10 smoked meats?'), thanks: T('잔치가 푸짐해졌어요! 촌장님도 꼭 오세요!', 'What a feast! Please come to the party, Chief!') } },
+    say: { offer: T('곧 {name}의 생일이에요! 훈제고기 10개만 도와주실래요?', 'It is {name}\'s birthday soon! Could you help with 10 smoked meats?'), offerSelf: T('곧 제 생일이에요! 잔치에 훈제고기 10개만 도와주실래요?', 'My birthday is coming! Could you help with 10 smoked meats for the party?'), thanks: T('잔치가 푸짐해졌어요! 촌장님도 꼭 오세요!', 'What a feast! Please come to the party, Chief!') } },
   { code: 'A13', id: 'req_horse_wheat', kind: 'request', src: 'bubble', title: T('말들에게 밀 한 줌 (6개)', 'Wheat for the horses'),
     giver: 'role:adult', obj: [{ t: 'deliver', items: { item_wheat: 6 }, to: 'p:depot' }], unlock: ['rank:2', 'b:depot'], repeat: 30, pay: 0.2, fame: 5, weight: 1, icon: 'item_wheat',
     say: { offer: T('마구간 말들이 밀을 좋아해요. 한 줌만 가져다주실래요?', 'The stable horses love wheat. Could you bring a handful?'), thanks: T('히이잉~ 말들이 촌장님께 코를 비벼요!', 'Neigh~ The horses nuzzle you happily!') } },
@@ -91,49 +95,49 @@ export const CATALOG = [
   // ───────────────────────── B. 배달 운전 (게시판) — 12 ─────────────────────────
   //  기준 시간(par) = 길 길이 ÷ (최고 속도의 0.6) + 정류장마다 8초.  ★★★ ≤ par, ★★ ≤ 1.3 × par, 그 밖엔 ★ (실패는 없어요)
   { code: 'B1', id: 'drv_sled_mail', kind: 'drive', src: 'board', title: T('개썰매 편지 배달', 'Dog-sled mail run'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'dog_sled', route: 'mail', stops: 4, par: 70, n: 1 }], unlock: ['rank:2', 'b:yard'], need: ['veh:sled'], repeat: 15, pay: 0.8, fame: [8, 12, 18], weight: 2, icon: 'ui_icon_steer' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'dog_sled', route: 'mail', stops: 4, par: 70, n: 1 }], unlock: ['rank:2', 'b:yard'], need: ['veh:sled'], repeat: 15, pay: 0.8, fame: [8, 12, 18], weight: 2, icon: 'ui_icon_steer' },
   { code: 'B2', id: 'drv_sled_herbs', kind: 'drive', src: 'board', title: T('약초꾼 약초 배달', 'Herbs for the clinic'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'dog_sled', route: 'herbs', stops: 1, par: 60, n: 1 }], unlock: ['rank:2'], need: ['veh:sled'], repeat: 20, pay: 0.6, fame: [8, 12, 18], weight: 2, icon: 'ui_icon_steer' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'dog_sled', route: 'herbs', stops: 1, par: 60, n: 1 }], unlock: ['rank:2'], need: ['veh:sled'], repeat: 20, pay: 0.6, fame: [8, 12, 18], weight: 2, icon: 'ui_icon_steer' },
   { code: 'B3', id: 'drv_first_truck', kind: 'drive', src: 'board', title: T('첫 운전: 카페에 빵 배달', 'First drive: bread to the café'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'cafe', stops: 1, par: 90, n: 1 }], unlock: ['rank:3'], need: ['veh:truck'], repeat: 'once', pay: 0.5, fame: [15, 15, 15], weight: 9, icon: 'ui_icon_delivery' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'cafe', stops: 1, par: 90, n: 1 }], unlock: ['rank:3'], need: ['veh:truck'], repeat: 'once', pay: 0.5, fame: [15, 15, 15], weight: 9, icon: 'ui_icon_delivery' },
   { code: 'B4', id: 'drv_shop_round', kind: 'drive', src: 'board', title: T('가게 한 바퀴 배달', 'Shop round'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'shops', stops: 4, par: 95, n: 1 }], unlock: ['rank:3'], need: ['veh:truck', 'shops:3'], repeat: 10, pay: 1.2, fame: [10, 15, 22], weight: 3, icon: 'ui_icon_delivery' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'shops', stops: 4, par: 95, n: 1 }], unlock: ['rank:3'], need: ['veh:truck', 'shops:3'], repeat: 10, pay: 1.2, fame: [10, 15, 22], weight: 3, icon: 'ui_icon_delivery' },
   { code: 'B5', id: 'drv_lunch_rush', kind: 'drive', src: 'board', title: T('점심 러시: 식당 두 곳에 생선구이 20', 'Lunch rush'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'lunch', stops: 2, par: 75, cargo: { item_fish_cooked: 20 }, n: 1, hours: [11.5, 12.67] }], due: { hour: 12.67 }, offerHours: [5, 11.3],
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'lunch', stops: 2, par: 75, cargo: { item_fish_cooked: 20 }, n: 1, hours: [11.5, 12.67] }], due: { hour: 12.67 }, offerHours: [5, 11.3],
     unlock: ['rank:3', 'b:big_restaurant'], need: ['veh:truck'], repeat: 'day', pay: 1.2, fame: [10, 15, 22], weight: 2, icon: 'ui_icon_timer' },
   { code: 'B6', id: 'drv_wedding_cake', kind: 'drive', src: 'event', trigger: 'life:engaged', title: T('웨딩 케이크 조심조심 배달', 'Wedding-cake delivery'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'cake', stops: 1, par: 80, capSpeed: 0.7, n: 1 }], due: { at: 'event', hour: 10.5 },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'cake', stops: 1, par: 80, capSpeed: 0.7, n: 1 }], due: { at: 'event', hour: 10.5 }, minLead: 110,
     unlock: ['rank:3', 'life'], need: ['veh:truck'], repeat: 'event', pay: 0.8, fame: [15, 20, 28], weight: 1, icon: 'ui_icon_ring' },
   { code: 'B7', id: 'drv_export_load', kind: 'drive', src: 'event', trigger: 'harbor:cargo', title: T('수출 화물선에 짐 싣기', 'Load the export ship'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'export', stops: 3, par: 150, n: 1 }], due: { at: 'event' }, unlock: ['v6'], need: ['veh:truck'], repeat: 'event', pay: 2.0, fame: [15, 20, 30], weight: 1, icon: 'ui_icon_delivery' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'export', stops: 3, par: 150, n: 1 }], due: { at: 'event' }, unlock: ['v6'], need: ['veh:truck'], repeat: 'event', pay: 2.0, fame: [15, 20, 30], weight: 1, icon: 'ui_icon_delivery' },
   { code: 'B8', id: 'drv_auction_fresh', kind: 'drive', src: 'event', trigger: 'harbor:trawler', title: T('경매장에 싱싱한 생선 배달', 'Fresh fish to the auction'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'auction', stops: 1, par: 60, cargo: { item_fish_raw: 30 }, n: 1 }], due: { after: 75 }, unlock: ['v6'], need: ['veh:truck'], repeat: 'event', pay: 1.2, fame: [10, 14, 20], weight: 1, icon: 'ui_icon_timer' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'auction', stops: 1, par: 60, cargo: { item_fish_raw: 30 }, n: 1 }], due: { after: 75 }, unlock: ['v6'], need: ['veh:truck'], repeat: 'event', pay: 1.2, fame: [10, 14, 20], weight: 1, icon: 'ui_icon_timer' },
   { code: 'B9', id: 'drv_icecream_supply', kind: 'drive', src: 'board', title: T('해변 아이스크림 수레 보급', 'Restock the ice-cream cart'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'icecream', stops: 1, par: 70, cargo: { item_bread: 20 }, n: 1 }], unlock: ['v7'], need: ['veh:truck'], repeat: 15, pay: 1.0, fame: [10, 14, 20], weight: 2, icon: 'ui_icon_delivery' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:yard', vehicle: 'truck_cargo_chief', route: 'icecream', stops: 1, par: 70, cargo: { item_bread: 20 }, n: 1 }], unlock: ['v7'], need: ['veh:truck'], repeat: 15, pay: 1.0, fame: [10, 14, 20], weight: 2, icon: 'ui_icon_delivery' },
   { code: 'B10', id: 'drv_hotel_luggage', kind: 'drive', src: 'event', trigger: 'harbor:ferry', title: T('호텔 손님 짐 배달', 'Hotel luggage run'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'hotel', stops: 1, par: 70, n: 1 }], due: { after: 75 }, unlock: ['v7'], need: ['veh:truck'], repeat: 'event', pay: 1.0, fame: [10, 14, 20], weight: 1, icon: 'ui_icon_delivery' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:ferry', vehicle: 'truck_cargo_chief', route: 'hotel', stops: 1, par: 70, n: 1 }], due: { after: 75 }, unlock: ['v7'], need: ['veh:truck'], repeat: 'event', pay: 1.0, fame: [10, 14, 20], weight: 1, icon: 'ui_icon_delivery' },
   { code: 'B11', id: 'drv_logistics_round', kind: 'drive', src: 'board', title: T('물류 센터 배송', 'Logistics run'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'logistics', stops: 4, par: 110, n: 1 }], unlock: ['v8'], need: ['veh:truck'], repeat: 10, pay: 1.5, fame: [12, 18, 25], weight: 2, icon: 'ui_icon_forklift' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:logistics_office', vehicle: 'truck_cargo_chief', route: 'logistics', stops: 4, par: 110, n: 1 }], unlock: ['v8'], need: ['veh:truck'], repeat: 10, pay: 1.5, fame: [12, 18, 25], weight: 2, icon: 'ui_icon_forklift' },
   { code: 'B12', id: 'drv_furniture_home', kind: 'drive', src: 'event', trigger: 'move:in', title: T('새 집에 가구 배달', 'Furniture for a new home'),
-    obj: [{ t: 'step', how: 'drive', vehicle: 'truck_cargo_chief', route: 'furniture', stops: 1, par: 80, n: 1 }], due: { after: 150 }, unlock: ['v8'], need: ['veh:truck'], repeat: 'event', pay: 1.2, fame: [12, 18, 25], weight: 1, icon: 'ui_icon_move_in' },
+    obj: [{ t: 'step', how: 'drive', from: 'p:logistics_office', vehicle: 'truck_cargo_chief', route: 'furniture', stops: 1, par: 80, n: 1 }], due: { after: 150 }, unlock: ['v8'], need: ['veh:truck'], repeat: 'event', pay: 1.2, fame: [12, 18, 25], weight: 1, icon: 'ui_icon_move_in' },
 
-  // ───────────────────────── C. 행사 — 16 ─────────────────────────
+  // ───────────────────────── C. 행사 — 17 ─────────────────────────
   { code: 'C1', id: 'evt_wedding_prep', kind: 'event', src: 'event', trigger: 'life:engaged', title: T('결혼식 준비: 잔치 음식 · 꽃 · 케이크', 'Get the wedding ready'),
     obj: [{ t: 'deliver', items: { item_bread: 20, item_fish_cooked: 20, item_meat_cooked: 10 }, to: 'p:feast' }, { t: 'deliver', items: { item_bouquet: 6, item_cake: 1 }, to: 'p:feast' }],
-    due: { at: 'event', hour: 10.5 }, unlock: ['rank:2', 'life'], repeat: 'event', pay: 2.0, fame: 30, weight: 1, icon: 'ui_icon_ring' },
+    due: { at: 'event', hour: 10.5 }, minLead: 200, unlock: ['rank:2', 'life'], repeat: 'event', pay: 2.0, fame: 30, weight: 1, icon: 'ui_icon_ring' },
   { code: 'C2', id: 'evt_wedding_speech', kind: 'event', src: 'event', trigger: 'life:wedding', title: T('촌장님 축사', 'The chief\'s speech'),
     obj: [{ t: 'step', how: 'speech', at: 'p:officiant', secs: 2, n: 1 }], due: { after: 75 }, unlock: ['life'], repeat: 'event', pay: 0, fame: 10, weight: 1, icon: 'ui_icon_ring' },
   { code: 'C3', id: 'evt_baby_welcome', kind: 'event', src: 'event', trigger: 'life:baby', title: T('아기 탄생 축하 · 이름 지어 주기', 'Welcome and name the baby'),
-    obj: [{ t: 'deliver', items: { item_gift_box: 1 }, to: 'ev:family' }, { t: 'step', how: 'choose', n: 1 }], due: { after: 600 }, unlock: ['life'], need: ['b:store'], repeat: 'event', pay: 0.5, fame: 15, weight: 1, icon: 'ui_icon_baby' },
+    obj: [{ t: 'deliver', items: { item_gift_box: 1 }, to: 'ev:family' }, { t: 'step', how: 'choose', n: 1, soft: true }], due: { after: 600 }, unlock: ['life'], need: ['b:store'], repeat: 'event', pay: 0.5, fame: 15, weight: 1, icon: 'ui_icon_baby' },
   { code: 'C4', id: 'evt_school_day', kind: 'event', src: 'event', trigger: 'life:school', title: T('첫 등교 함께 가기', 'Walk a child to school'),
     obj: [{ t: 'step', how: 'escort', at: 'p:school_gate', n: 1 }], due: { at: 'next', hour: 8 }, unlock: ['life'], repeat: 'event', pay: 0.3, fame: 15, weight: 1, icon: 'ui_icon_event' },
   { code: 'C5', id: 'evt_welcome_party', kind: 'event', src: 'event', trigger: 'settlers:6', title: T('새 이웃 환영회', 'Welcome party'),
     obj: [{ t: 'deliver', items: { item_bread: 15 }, to: 'p:picnic' }], due: { hour: 18 }, offerHours: [5, 16], unlock: ['rank:2'], repeat: 'day', pay: 1.0, fame: 20, weight: 1, icon: 'ui_icon_event' },
   { code: 'C6', id: 'evt_snow_festival', kind: 'event', src: 'board', title: T('눈꽃 축제 준비', 'Snow festival'),
-    obj: [{ t: 'step', how: 'stand', at: 'p:statue', secs: 3, n: 3 }, { t: 'deliver', items: { item_bread: 40, item_fish_cooked: 40 }, to: 'p:festival' }], unlock: ['rank:2', 'fame:400'], repeat: 70, pay: 3.0, fame: 40, weight: 2, icon: 'ui_icon_event' },
+    obj: [{ t: 'step', how: 'stand', at: 'p:statue', each: ['p:statue1', 'p:statue2', 'p:statue3'], secs: 3, n: 3 }, { t: 'deliver', items: { item_bread: 40, item_fish_cooked: 40 }, to: 'p:festival' }], unlock: ['rank:2', 'fame:400'], repeat: 70, pay: 3.0, fame: 40, weight: 2, icon: 'ui_icon_event' },
   { code: 'C7a', id: 'evt_elder_garden', kind: 'event', src: 'event', trigger: 'garden', title: T('어르신들의 정원 만들기', 'A quiet garden for the elders'),
     obj: [{ t: 'build', key: 'memorial' }], unlock: ['rank:2'], repeat: 'once', pay: 0.5, fame: 15, weight: 1, icon: 'ui_icon_flower' },
-  { code: 'C7', id: 'evt_elder_wish', kind: 'event', src: 'event', trigger: 'life:wish', title: T('{name} 할머니의 소원 (3가지)', 'Grandma {name}\'s three wishes'),
+  { code: 'C7', id: 'evt_elder_wish', kind: 'event', src: 'event', trigger: 'life:wish', title: T('{elder}의 소원 (3가지)', '{elder}\'s three wishes'),
     obj: [{ t: 'step', how: 'escort', n: 3 }], stages: true, unlock: ['life'], repeat: 'event', pay: 0.9, fame: 45, weight: 1, icon: 'ui_icon_heart_pair' },
   { code: 'C8', id: 'evt_farewell', kind: 'event', src: 'event', trigger: 'life:farewell', title: T('함께 배웅하기', 'Saying goodbye together'),
     obj: [{ t: 'deliver', items: { item_bouquet: 1 }, to: 'p:memorial' }], due: { after: 600 }, optional: true, unlock: ['life', 'toggle:farewell'], need: ['b:memorial'], repeat: 'event', pay: 0, fame: 10, weight: 1, icon: 'ui_icon_flower' },
@@ -151,6 +155,9 @@ export const CATALOG = [
     obj: [{ t: 'step', how: 'stand', at: 'p:hydrant', secs: 5, n: 1 }], unlock: ['v8'], repeat: 'once', pay: 0.5, fame: 20, weight: 3, icon: 'ui_icon_hydrant' },
   { code: 'C15', id: 'evt_first_paper', kind: 'event', src: 'event', trigger: 'paper:first', title: T('솔방울 신문 창간 인터뷰', 'The paper\'s first interview'),
     obj: [{ t: 'step', how: 'stand', at: 'p:reporter', secs: 5, n: 1 }], due: { after: 300 }, unlock: ['paper'], repeat: 'once', pay: 0.5, fame: 15, weight: 1, icon: 'ui_icon_newspaper' },
+  // (plan §6.2: the bank's opening brings its first mission)
+  { code: 'C16', id: 'evt_first_deposit', kind: 'event', src: 'event', trigger: 'bank:open', title: T('서리 은행 첫 저금 (500코인)', 'First deposit at Seori Bank'),
+    obj: [{ t: 'count', sig: 'deposit', n: 500 }], unlock: ['rank:2'], need: ['b:bank'], repeat: 'once', pay: 0.3, fame: 10, weight: 1, icon: 'ui_icon_piggy' },
 
   // ───────────────────────── D. 생산 목표 (게시판) — 14 ─────────────────────────
   { code: 'D1', id: 'goal_cans_today', kind: 'goal', src: 'board', title: T('오늘 통조림 30개 만들기', 'Make 30 cans today'),
@@ -184,11 +191,11 @@ export const CATALOG = [
 
   // ───────────────────────── E. 탐험 (게시판) — 13 ─────────────────────────
   { code: 'E1', id: 'exp_lost_puppy', kind: 'explore', src: 'board', title: T('잃어버린 강아지 찾기', 'Find the lost puppy'),
-    obj: [{ t: 'step', how: 'find', what: 'puppy', n: 1 }, { t: 'step', how: 'lead', n: 1 }], unlock: ['rank:2'], repeat: 40, pay: 0.5, fame: 15, weight: 2, icon: 'ui_icon_explore' },
+    obj: [{ t: 'step', how: 'find', what: 'puppy', n: 1 }, { t: 'step', how: 'lead', to: 'p:board', n: 1 }], unlock: ['rank:2'], repeat: 40, pay: 0.5, fame: 15, weight: 2, icon: 'ui_icon_explore' },
   { code: 'E2', id: 'exp_tower_stars', kind: 'explore', src: 'board', title: T('망루에 올라 별 보기', 'Stargazing from the watchtowers'),
-    obj: [{ t: 'step', how: 'stand', at: 'p:towers', secs: 3, n: 3, night: true }], unlock: ['rank:2'], need: ['towers:3'], repeat: 'once', pay: 0.3, fame: 10, weight: 2, icon: 'ui_icon_night' },
+    obj: [{ t: 'step', how: 'stand', at: 'p:towers', each: ['p:tower1', 'p:tower2', 'p:tower3'], secs: 3, n: 3, night: true }], unlock: ['rank:2'], need: ['towers:3'], repeat: 'once', pay: 0.3, fame: 10, weight: 2, icon: 'ui_icon_night' },
   { code: 'E3', id: 'exp_lost_penguin', kind: 'explore', src: 'board', title: T('길 잃은 뽀삐 데려오기', 'Bring Ppoppi home'),
-    obj: [{ t: 'step', how: 'find', what: 'penguin', n: 1 }, { t: 'step', how: 'lead', n: 1 }], unlock: ['rank:2', 'pet:pet_penguin'], repeat: 40, pay: 0.3, fame: 10, weight: 2, icon: 'ui_icon_explore' },
+    obj: [{ t: 'step', how: 'find', what: 'penguin', n: 1 }, { t: 'step', how: 'lead', to: 'p:farm', n: 1 }], unlock: ['rank:2', 'pet:pet_penguin'], repeat: 40, pay: 0.3, fame: 10, weight: 2, icon: 'ui_icon_explore' },
   { code: 'E4', id: 'exp_old_sign', kind: 'explore', src: 'board', title: T('"갈매기 항구 방면" 표지판 조사', 'The old harbour sign'),
     obj: [{ t: 'step', how: 'stand', at: 'p:old_sign', secs: 2, n: 1 }], unlock: ['rank:3'], repeat: 'once', pay: 0, fame: 10, weight: 9, icon: 'ui_icon_explore', flag: 'harborSign' },
   { code: 'E5', id: 'exp_first_harbour_train', kind: 'explore', src: 'board', title: T('첫 기차 타고 항구로', 'First train to the harbour'),
@@ -202,7 +209,7 @@ export const CATALOG = [
   { code: 'E9', id: 'exp_shells', kind: 'explore', src: 'board', title: T('조개껍데기 10개 모으기', 'Collect 10 shells'),
     obj: [{ t: 'step', how: 'find', what: 'shell', n: 10 }], unlock: ['v7'], repeat: 15, pay: 0.3, fame: 8, weight: 2, icon: 'ui_icon_explore' },
   { code: 'E10', id: 'exp_rare_fish', kind: 'explore', src: 'event', trigger: 'harbor:rare', title: T('희귀 물고기 기증', 'Donate a rare fish'),
-    obj: [{ t: 'step', how: 'stand', at: 'p:aquarium', secs: 1, n: 1 }], unlock: ['b:mini_aquarium'], repeat: 'event', pay: 1.0, fame: 20, weight: 1, icon: 'item_fish_big' },
+    obj: [{ t: 'step', how: 'stand', at: 'p:auction', secs: 1, n: 1, carry: 'item_fish_big' }, { t: 'step', how: 'stand', at: 'p:aquarium', secs: 1, n: 1 }], unlock: ['b:mini_aquarium'], repeat: 'event', pay: 1.0, fame: 20, weight: 1, icon: 'item_fish_big' },
   { code: 'E11', id: 'exp_crab_count', kind: 'explore', src: 'board', title: T('꽃게 8마리 세기', 'Count 8 crabs'),
     obj: [{ t: 'step', how: 'tap', what: 'crab', n: 8 }], unlock: ['v7'], repeat: 20, pay: 0.2, fame: 6, weight: 2, icon: 'ui_icon_explore' },
   { code: 'E12', id: 'exp_wanted', kind: 'explore', src: 'event', trigger: 'inc:wanted', title: T('현상수배범을 찾아라', 'Find the wanted thief'),

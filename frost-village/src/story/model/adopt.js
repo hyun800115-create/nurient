@@ -10,7 +10,9 @@
 //   { pid: 'v:npc_aunt', kind: 'villager', key, persona: { name, short, en, group, sex, age, job, home } , home }
 //   { pid: 't:12', kind: 'citizen', townKind: 'adult'|'student'|'teen'|'elder'|'shopkeeper'|'civic'|'builder'|'keeper'|'resident',
 //     role, name, nameEn, age, home, work, sex: 'm'|'f'|null (doll look), workKey }
-//   { pid: 's:3', kind: 'settler', home, age, sex, name }
+//   { pid: 's:3', kind: 'settler', home, age, sex, name, body: true }   (skipped while the settler has no body in the game)
+//   { pid: 'k:203', kind: 'citizen', townKind: 'toddler'|'student', sid: 203, age, home, … }   (a story child's body, P6)
+//   any row may carry visits (TownSim c.visits: the v4 regulars) and sid (the engine id the body was made for)
 // Households are inferred from shared homes: adult pairs within 12 years -> couple; students / teens with the first
 // adults of their home -> children; two elders -> couple; everyone else lives alone. TownSim given names are kept,
 // a surname is drawn from the pid; a wife keeps her own surname, children take the father's.
@@ -131,7 +133,8 @@ export function adoptRoster(roster, opts = {}) {
     rels.push([i, j, kind]);
   }
   // ---- townsfolk, district households and settlers: households by shared home
-  const others = roster.filter((r) => r.kind !== 'villager');
+  // (critique M13) v4 settlers are a count, not people: a settler row is adopted only once the game gives it a body
+  const others = roster.filter((r) => r.kind !== 'villager' && !(r.kind === 'settler' && !r.body));
   const byHome = new Map();
   for (const row of others) {
     const h = row.home || 'town';

@@ -1,7 +1,10 @@
 // FakePorts for the story Node tests: the stand-in town (standin.mjs) behind the ports surface (src/story/ports.js),
 // a controllable clock, a Map storage, and recorders for everything the story shows (cards, banners, says, events).
+// The stand-in town plays TownSim's part of patch S6: story children get a body with the pid the story asks for
+// ('k:<sid>') and are kept in the roster (nb.extra in the game); people who leave are retired for good (nb.gone).
+// Pass `town` to carry one town across a reload (the game's own save of its people).
 import { nullPorts } from '../../../src/story/ports.js';
-import { makeStandInTown, BUILDINGS, BYID, DAY, HOUR } from './standin.mjs';
+import { makeStandInTown, BUILDINGS, BYID, DAY, HOUR, VILLAGE_AREAS } from './standin.mjs';
 
 export class MemStorage {
   constructor() { this.m = new Map(); }
@@ -10,21 +13,23 @@ export class MemStorage {
   removeItem(k) { this.m.delete(k); }
 }
 
-/** opts: { seed, T0, storage, settings, scale, rank, garden } */
+/** opts: { seed, T0, storage, settings, scale, rank, garden, town, villagers: 'square' | 'village', visible, bankRate } */
 export function makeFakePorts(opts = {}) {
-  const town = makeStandInTown({ seed: opts.seed || 2611, scale: opts.scale || 1 });
+  const town = opts.town || makeStandInTown({ seed: opts.seed || 2611, scale: opts.scale || 1, villagers: opts.villagers });
   const clock = { T: opts.T0 !== undefined ? opts.T0 : 2 * DAY + 9 * HOUR };
-  const rec = { cards: [], banners: [], toasts: [], chips: [], events: [], says: [], sounds: [] };
+  const rec = { cards: [], banners: [], toasts: [], chips: [], events: [], says: [], sounds: [], left: [] };
   const settings = Object.assign({ lifeFarewell: true, missionToasts: true }, opts.settings || {});
   const garden = opts.garden !== false;
-  const buildings = BUILDINGS.filter((b) => garden || b.key !== 'memorial_garden');
+  const buildings = BUILDINGS.filter((b) => garden || b.key !== 'memorial_garden').concat(town.villageAreas || []);
+  const byId = Object.assign({}, BYID);
+  for (const a of town.villageAreas || []) byId[a.id] = a;
   const ports = nullPorts({
     seed: () => opts.seed || 2611, cid: () => opts.cid || 'labsave1', lang: () => opts.lang || 'ko', T: () => clock.T,
     storage: opts.storage || new MemStorage(), sideKey: 'frostVillage.save.v1.story',
     settings: { get: (k) => settings[k] },
     world: {
       buildings: () => buildings, spots: () => [],
-      spot: (id) => { const b = BYID[id]; return b ? { x: b.x, y: b.y + 60, dir: 'NE' } : null; },
+      spot: (id) => { const b = byId[id]; return b ? { x: b.x, y: b.y + 60, dir: 'NE' } : null; },
       has: (key) => buildings.some((b) => b.key === key),
       names: (k) => ({ ko: { town_hall: '마을회관', school: '학교', memorial_garden: '기억의 정원' }[k] || k, en: k }),
     },
@@ -32,15 +37,16 @@ export function makeFakePorts(opts = {}) {
     town: {
       whereabouts: (out) => town.whereabouts(clock.T, out),
       visible: (out, max) => { for (let i = 0; i < Math.min(max, opts.visible || 0); i++) out.push('t:' + i); },
-      addCitizen: (spec) => { const pid = 'k:' + (rec.events.length + 1000) + ':' + spec.sid; rec.events.push(['addCitizen', spec]); return pid; },
-      leave: (pid) => rec.events.push(['leave', pid]),
+      addCitizen: (spec) => { rec.events.push(['addCitizen', spec]); return town.addStoryChild(spec); },
+      leave: (pid, why) => { rec.events.push(['leave', pid]); rec.left.push([pid, why]); town.retire(pid); },
     },
     say: (pid, text, emote) => { rec.says.push([pid, text, emote]); return true; },
     ui: {
-      card: (c) => rec.cards.push(c), banner: (b) => rec.banners.push(b), toast: (t) => rec.toasts.push(t), chip: (id, c) => rec.chips.push([id, c]),
+      card: (c) => rec.cards.push(c), banner: (b) => rec.banners.push(b), toast: (t, sec) => rec.toasts.push([t, sec]), chip: (id, c) => rec.chips.push([id, c]),
     },
     sound: { play: (k) => rec.sounds.push(k), at: () => {}, music: () => {}, duck: () => {} },
     events: { emit: (name, payload) => rec.events.push([name, payload]) },
+    bank: { rate: () => (opts.bankRate === undefined ? null : opts.bankRate) },
   });
   ports.settingsTable = settings;
   return { ports, clock, rec, town };
@@ -60,4 +66,4 @@ export async function run(host, clock, secs, opts = {}) {
   }
 }
 
-export { DAY, HOUR };
+export { DAY, HOUR, VILLAGE_AREAS };

@@ -834,7 +834,7 @@ export class Dialogue {
         const day = b.n > 0 && !f ? b.n : f ? f.n : b.n;
         return this.dayPhrase(day, lang);
       }
-      case 'R': return (e.bank.depositBp / 100).toFixed(2) + '%';
+      case 'R': { const bp = Number.isFinite(e.cfg.paperRateBp) && e.cfg.paperRateBp >= 0 ? e.cfg.paperRateBp : e.bank.depositBp; return Number.isFinite(e.cfg.paperRateBp) ? String(+(bp / 100).toFixed(2)) + '%' : (bp / 100).toFixed(2) + '%'; }
       case 'J': {
         const who = b.o >= 0 ? P(b.o) : f ? P(f.a) : sp;
         if (who && (who.flags & F_OWNER) && who.work >= 0 && e.world.places[who.work].cat === 'shop') { const K = e.world.places[who.work].K; return en ? K.en.replace(/^the /, '') + ' owner' : K.ko + ' 사장'; }
@@ -899,7 +899,7 @@ export class Dialogue {
       out.sidebar.push(this.written('news.price', lang, { b, sp }));
     }
     for (const f of paper.wanted) out.sidebar.push(this.written('news.wanted', lang, { b: mk(f), sp }));
-    { const b = mk(null); b.n = paper.rate; out.sidebar.push(this.written('news.rate', lang, { b, sp })); }
+    if (!(paper.rate < 0)) { const b = mk(null); b.n = paper.rate; out.sidebar.push(this.written('news.rate', lang, { b, sp })); }
     if (paper.quote) out.sidebar.push((lang === 'en' ? 'Overheard: “' : '오늘의 한마디: “') + paper.quote.text + '” — ' + this.refer(null, e.people[paper.quote.who], lang));
     this.press = false; this.pressFact = null;
     if (reporter) out.byline = lang === 'en' ? 'Reporter ' + this.nameEn(reporter) : (reporter.sur || '') + reporter.given + ' 기자';

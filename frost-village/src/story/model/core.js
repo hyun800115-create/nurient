@@ -142,12 +142,21 @@ export class StoryCore {
       // both languages for the panel (the paper is compiled at 05:00; the game shows it at 07:00)
       const e = this.e, p = e.news.latest();
       this.paper = p ? { day: ev.day, ko: e.dialogue.paperText(p, 'ko'), en: e.dialogue.paperText(p, 'en') } : null;
-      this.out.push({ e: 'news', day: ev.day, paper: this.paper });
+      this.out.push({ e: 'news', day: ev.day, paper: this.paper, T: e.now });
       return;
     } else if (name === 'bank' && !this.kept.has(ev.who)) return;
     const o = slimEvent(name, ev);
     o.e = name;
+    // the engine time of the event: after a stale side record the host replays what the player saw quietly (H1)
+    o.T = this.e.now;
     if (name === 'life' || name === 'move' || name === 'goTo') o.nm = this.names(ev);
+    if (name === 'life') {
+      const r = this.e.people[ev.who];
+      const alive = (id) => id >= 0 && this.e.people[id] && this.e.people[id].alive;
+      // the family of a departed elder (the garden ceremony), the parents of a child (a party's host, the school day)
+      if (ev.op === 'farewell' && r) o.fam = r.kids.filter(alive).concat(alive(r.spouse) ? [r.spouse] : []).slice(0, 4);
+      else if ((ev.op === 'birthday' || ev.op === 'grow') && r && r.parents.length && this.e.ageOfId(ev.who) < 18) o.par = r.parents.filter(alive).slice(0, 2);
+    }
     this.out.push(o);
   }
 
@@ -241,6 +250,25 @@ export class StoryCore {
         out.sort((x, y) => y.rom - x.rom || x.a - y.a);
         return out.slice(0, a.n || 12);
       }
+      case 'singles': {
+        // grown-ups who could become the first couple when the town has no sweethearts yet: [{ a, b, rom }]
+        const pool = e.alive.filter((r) => r.spouse < 0 && !this.kept.has(r.id) && e.ageOfId(r.id) >= 20 && e.ageOfId(r.id) <= 45 && e.life.partnerOf(r) < 0);
+        const out = [];
+        for (const r of pool) {
+          if (!r.male) continue;
+          let best = null, bs = -1;
+          for (const q of pool) {
+            if (q.male || Math.abs(e.ageOfId(q.id) - e.ageOfId(r.id)) > 10) continue;
+            const rel = e.relationship(r.id, q.id), sc = (rel.affinity || 0) + (rel.familiarity || 0);
+            if (sc > bs) { bs = sc; best = q; }
+          }
+          if (best) out.push({ a: r.id, b: best.id, rom: bs });
+        }
+        out.sort((x, y) => y.rom - x.rom || x.a - y.a);
+        return out.slice(0, a.n || 12);
+      }
+      case 'alive': { const r = e.people[a.sid]; return r && r.alive ? { sid: r.id, age: e.ageOfId(r.id), kept: this.kept.has(r.id) } : null; }
+      case 'paperNow': { const p = e.news.latest(); return p ? { day: p.day, ko: e.dialogue.paperText(p, 'ko'), en: e.dialogue.paperText(p, 'en') } : null; }
       case 'family': {
         const r = e.people[a.sid];
         if (!r) return null;

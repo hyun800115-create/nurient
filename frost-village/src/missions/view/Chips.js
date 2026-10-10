@@ -1,6 +1,7 @@
 // The mission chip (the focus mission: kind badge, short title, progress / deadline) and the fame chip (crown,
 // title stars, points and a thin bar to the next title). UI scene, logical 720-wide space. The mission chip takes the
-// v4 order chip's place (28, top + 212) once missions run (patch P31); the fame chip sits on the right under the clock.
+// space under v4's order chip (28, top + 212 → top + 290 while the order chip shows; v4 keeps its chip: P31 is
+// gone, critique H-6); the fame chip sits on the right under the clock.
 
 import { TXT, COL, icon, reicon, fit, panel, progressBar, KIND_ICON } from './ui.js';
 import { mt, titleOf, hourLabel } from '../strings.js';
@@ -14,6 +15,7 @@ export class MissionChip {
     this.host = host;
     const ui = this.ui = host.ports.ui.scene;
     const c = this.c = ui.add.container(x, y).setDepth(20).setVisible(false);
+    this.baseY = y;
     this.w = 316;
     this.bg = panel(ui, 0, 0, 'ui_panel', this.w, 72).setOrigin(0, 0.5).setAlpha(0.96);
     this.ring = ui.add.graphics();
@@ -26,7 +28,7 @@ export class MissionChip {
     this.num = ui.add.container(this.w - 6, -30);
     const ng = ui.add.graphics();
     ng.fillStyle(0xd4426f, 1); ng.fillCircle(0, 0, 14); ng.lineStyle(3, 0xffffff, 1); ng.strokeCircle(0, 0, 14);
-    this.numT = ui.add.text(0, -1, '', TXT(16, '#ffffff', '#ffffff', 0, '900')).setOrigin(0.5);
+    this.numT = ui.add.text(0, -1, '', TXT(17, '#ffffff', '#ffffff', 0, '900')).setOrigin(0.5);
     this.num.add([ng, this.numT]);
     c.add([this.bg, this.ring, this.badge, this.title, this.bar, this.count, this.timer, this.item, this.num]);
     c.setSize(this.w, 72);
@@ -37,7 +39,7 @@ export class MissionChip {
     this.t = 0;
   }
 
-  setPosition(x, y) { this.c.setPosition(x, y); }
+  setPosition(x, y) { this.baseY = y; this.c.setPosition(x, y); }
 
   update(dt) {
     this.t += dt;
@@ -46,6 +48,9 @@ export class MissionChip {
     const show = !!f && h.chipsVisible();
     if (this.c.visible !== show) this.pop(show);
     if (!show) return;
+    // below v4's order chip while it shows (ports.ui.orderChip(): is it on screen)
+    const UI = h.ports.ui, y = this.baseY + (UI && UI.orderChip && UI.orderChip() ? 78 : 0);
+    if (Math.abs(this.c.y - y) > 0.5) this.c.y += (y - this.c.y) * Math.min(1, dt * 12);
     if (f.id !== this.fid) { this.fid = f.id; this.key = ''; if (this.c.visible) this.bounce(); }
     const t = m.template(f), lang = h.lang();
     const U = unitsOf(t);

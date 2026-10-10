@@ -28,14 +28,18 @@ export async function playWedding(sh, beat, ctx) {
     if (it.sprite === 'wedding_arch') arch = { x, y };
     if (it.sprite === 'wedding_carpet') carpet = { x, y };
     if (it.sprite === 'wedding_cake_table') cake = { x, y };
-    if (it.sprite === 'wedding_chairs') chairs.push({ x, y, img });
+    if (it.sprite === 'wedding_chairs') chairs.push({ x, y, img, m: Array.isArray(it.m) ? it.m : [0, 0] });
   });
+  // our own 마을회관: its notice board and pads step aside while the wedding dresses its front (critique M4)
+  if (hall.ours && hall.id) sh.stageVenue(hall.id);
   if (!arch) arch = { x: H.x - 324, y: H.y + 162 };
   if (!carpet) carpet = { x: H.x - 215, y: H.y + 107 };
   if (!cake) cake = { x: H.x - 138, y: H.y + 218 };
+  // the front rows fill first, both blocks of a row before the next row (the layout's m: [side, rows toward the arch]):
+  // a half-full wedding has its guests in front, beside the aisle, not behind the arch (critique M4)
+  chairs.sort((p, q) => p.m[1] - q.m[1] || p.m[0] - q.m[0]);
   const seats = [];
   for (const c of chairs) for (let s = 0; s < 3; s++) { const p = sh.point('wedding_chairs', c.x, c.y, 'seatPoints', s); if (p) seats.push(Object.assign(p, { depth: c.y + 1 + s * 0.01 })); }
-  seats.sort((p, q) => p.y - q.y);
   const stand = (L && L.standPoints ? L.standPoints : []).map((v, i) => ({ x: H.x + v[0], y: H.y + v[1], dir: (L.standDirs || [])[i] || 'SW' }));
   const door = sh.point('town_hall', H.x, H.y, 'doorPoint') || { x: H.x - 127, y: H.y + 63 };
   const aisle0 = sh.point('wedding_carpet', carpet.x, carpet.y, 'aislePoints', 0), aisle1 = sh.point('wedding_carpet', carpet.x, carpet.y, 'aislePoints', 1);
@@ -52,7 +56,11 @@ export async function playWedding(sh, beat, ctx) {
   const guests = (d.guests || []).filter((p) => p !== d.a && p !== d.b && sh.hold(p));
   const kids = new Set(d.kids || []);
   const seated = [], standing = [];
-  guests.forEach((pid, i) => { if (seats[i]) seated.push([pid, seats[i]]); else if (stand[i - seats.length]) standing.push([pid, stand[i - seats.length]]); });
+  // guests whose townfolk2 pages are not resident (no sit anim, everyday clothes) stand at the sides
+  for (const pid of guests) {
+    if (sh.canDress(pid) && seated.length < seats.length) seated.push([pid, seats[seated.length]]);
+    else if (standing.length < stand.length) standing.push([pid, stand[standing.length]]);
+  }
   const enter = async ([pid, spot], i, sit) => {
     await sh.wait(0.35 * i * k);
     const b = sh.body(pid);

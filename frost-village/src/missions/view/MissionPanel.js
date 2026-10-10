@@ -1,9 +1,13 @@
 // The mission panel (non-pausing, like the v4 order board): the cork board (ui3 ui_mission_board) with tabs
 // 진행 중 · 게시판 · 오늘 · 이번 주 · 칭호, mission cards (ui_mission_card / _done) with kind icons, progress bars
-// (ui_progress_bg / _fill), coin and fame rewards, '받기' / '다른 미션' buttons, the streak strip with the snowman
-// shield, the week's three stages with the decor it gives, and the five chief titles with their badges.
+// (ui_progress_bg / _fill), coin and fame rewards, '받기' / '다른 미션' / '출발' / '후원' buttons, the station's
+// standing order (read only, v4 still owns it), the streak strip with the snowman shield, the week's three stages
+// with the decor it gives, and the five chief titles (crown + stars; the village rank keeps its shield).
+//
+// Cost (critique M-6): the panel is built once per tab and per *structural* change (missions added / removed /
+// moved, a daily done, a title, the language); progress bars, counts, deadlines and fame points update in place.
 
-import { TXT, COL, icon, fit, panel, button, roundButton, progressBar, has, KIND_ICON, Assets } from './ui.js';
+import { TXT, COL, icon, fit, panel, face, button, roundButton, progressBar, has, KIND_ICON, Assets, titleBadge } from './ui.js';
 import { mt, titleOf, hourLabel, fmtN } from '../strings.js';
 import { unitsOf } from '../model/units.js';
 import { tpl as tplOf } from '../data/catalog.js';
@@ -19,12 +23,21 @@ const TABS = [
 const HOUR = 25;
 const CARD_H = 142, GAP = 10;
 
+/** got / need over a template's units for progress g */
+function sums(t, g) {
+  let need = 0, got = 0, item = null;
+  unitsOf(t).forEach((u, j) => { need += u.need; const gj = (g && g[j]) || 0; got += Math.min(u.need, gj); if (!item && gj < u.need) item = u.item || (u.any && u.any[0]) || null; });
+  return { need, got, item };
+}
+
 export class MissionPanel {
   constructor(host) {
     this.host = host;
     this.ui = host.ports.ui.scene;
     this.p = null;
     this.tab = 'active';
+    this.live = [];
+    this.builds = 0;
   }
 
   get W() { return this.ui.W || 720; }
@@ -52,6 +65,7 @@ export class MissionPanel {
     const p = this.p;
     if (!p) return;
     this.p = null;
+    this.live = [];
     if (this.host.ports.ui.panelOpened) this.host.ports.ui.panelOpened(false);
     if (immediate) { p.c.destroy(); return; }
     this.ui.tweens.add({ targets: p.c, alpha: 0, duration: 120, onComplete: () => p.c.destroy() });
@@ -62,21 +76,35 @@ export class MissionPanel {
     this.t = (this.t || 0) - dt;
     if (this.t > 0) return;
     this.t = 0.25;
-    const key = this.contentKey();
+    const key = this.structKey();
     if (key !== this.lastKey) this.build();
+    else for (const f of this.live) f();
   }
 
-  contentKey() {
-    const m = this.host.model, T = Math.floor(this.host.ports.clock.T() / 5);
-    const L = m.list.map((i) => i.id + i.s + i.g.join('.')).join('|');
+  /** what changes the panel's layout (everything else is updated in place) */
+  structKey() {
+    const h = this.host, m = h.model;
+    const L = m.list.map((i) => i.id + i.s + (i.s === 'b' && m.canSwap(i.id) ? '~' : '') + (i.wi || '')).join('|');
     const td = m.today(), wk = m.week(), fi = m.fameInfo();
-    return [this.tab, L, JSON.stringify(td), JSON.stringify(wk), fi.pts, this.host.lang(), T, Object.values(m.bag).join(',')].join('#');
+    const tdk = td ? td.d + ':' + td.list.map((x) => x.code + (x.done ? 1 : 0)).join(',') + (td.all ? '*' : '') : '';
+    const wkk = wk ? wk.code + wk.stage + ':' + wk.w : '';
+    const o = this.order();
+    return [this.tab, L, tdk, wkk, fi.title, h.lang(), Object.values(m.bag).join(','), h.driving, h.wired('drive') ? 1 : 0, o ? o.id + (o.got >= o.need ? '!' : '') : ''].join('#');
+  }
+
+  /** the station's standing order, read only (v4 keeps the order chip and pays it): { id, item, got, need, shop, reward } */
+  order() {
+    const O = this.host.ports.orders;
+    if (!O || !O.focus) return null;
+    try { return O.focus() || null; } catch (e) { return null; }
   }
 
   /** (re)build the whole panel for the current tab */
   build() {
     const ui = this.ui, W = this.W, H = this.H, h = this.host, lang = h.lang();
-    this.lastKey = this.contentKey();
+    this.lastKey = this.structKey();
+    this.live = [];
+    this.builds++;
     if (this.p.root) this.p.root.destroy();
     const root = this.p.root = ui.add.container(0, 0);
     this.p.c.add(root);
@@ -99,7 +127,7 @@ export class MissionPanel {
       const x = W / 2 - (pw - 76) / 2 + tw * i + tw / 2;
       const on = tb.id === this.tab;
       const c = ui.add.container(x, ty);
-      const b = panel(ui, 0, 0, on ? 'ui_button_blue' : 'ui_panel', tw - 6, 58).setOrigin(0.5);
+      const b = face(ui, 0, 0, on ? 'ui_button_blue' : 'ui_panel', tw - 6, 58).setOrigin(0.5);
       if (!on) b.setAlpha(0.95);
       const ic = icon(ui, -tw / 2 + 24, -1, [tb.icon], 28);
       const lb = ui.add.text(10, -2, mt(lang, tb.key), on ? TXT(19, '#ffffff', 'rgba(0,0,0,0.25)', 4) : TXT(19, COL.brown)).setOrigin(0.5);
@@ -132,17 +160,25 @@ export class MissionPanel {
     const fi = this.host.model.fameInfo();
     root.add(panel(ui, W / 2, y, 'ui_panel', w, 62).setOrigin(0.5).setAlpha(0.97));
     const x0 = W / 2 - w / 2;
-    root.add(icon(ui, x0 + 36, y - 1, ['ui_badge_rank_' + fi.title, 'ui_icon_title'], 54));
+    root.add(titleBadge(ui, x0 + 36, y - 2, fi.title, 56));
     const nm = ui.add.text(x0 + 72, y - 12, mt(lang, 't_' + fi.title), TXT(21, COL.ink)).setOrigin(0, 0.5);
     root.add(nm);
-    const pts = ui.add.text(x0 + w - 18, y - 12, mt(lang, 'm_fame_n', { n: fmtN(fi.pts) }), TXT(19, COL.gold)).setOrigin(1, 0.5);
+    const pts = ui.add.text(x0 + w - 18, y - 12, '', TXT(19, COL.gold)).setOrigin(1, 0.5);
     root.add(pts);
-    const bar = progressBar(ui, x0 + 72, y + 14, w - 92 - 150, 16, COL.fame);
-    bar.set(fi.next ? (fi.pts - fi.at) / Math.max(1, fi.next - fi.at) : 1);
+    const bar = progressBar(ui, x0 + 72, y + 14, w - 92 - 160, 16, COL.fame);
     root.add(bar);
-    const nx = ui.add.text(x0 + w - 18, y + 14, fi.next ? mt(lang, 'm_next_title', { n: fmtN(fi.next - fi.pts) }) : mt(lang, 'm_title_max'), TXT(15, COL.soft, '#ffffff', 0, '800')).setOrigin(1, 0.5);
-    fit(nx, 160);
+    const nx = ui.add.text(x0 + w - 18, y + 14, '', TXT(17, COL.soft, '#ffffff', 0, '800')).setOrigin(1, 0.5);
     root.add(nx);
+    const upd = () => {
+      const f = this.host.model.fameInfo();
+      const a = mt(lang, 'm_fame_n', { n: fmtN(f.pts) });
+      if (pts.text !== a) pts.setText(a);
+      bar.set(f.next ? (f.pts - f.at) / Math.max(1, f.next - f.at) : 1);
+      const b = f.next ? mt(lang, 'm_next_title', { n: fmtN(f.next - f.pts) }) : mt(lang, 'm_title_max');
+      if (nx.text !== b) { nx.setText(b); fit(nx, 170); }
+    };
+    upd();
+    this.live.push(upd);
   }
 
   // ------------------------------------------------------------------------------------------------ tabs
@@ -170,10 +206,12 @@ export class MissionPanel {
     const m = this.host.model, lang = this.host.lang();
     let y = a.y;
     for (const i of m.board()) { this.missionCard(root, a.x0, y, a.w, i, { swap: true }); y += CARD_H + GAP; }
-    if (!m.board().length) this.empty(root, a, mt(lang, 'm_empty_board'));
+    const o = this.order();
+    if (o && y + CARD_H - 18 <= a.bottom - 60) { this.orderCard(root, a.x0, y, a.w); y += CARD_H - 18 + GAP; }
+    if (!m.board().length && !o) this.empty(root, a, mt(lang, 'm_empty_board'));
     else {
       // how the board works, in one easy line (no 받기: these fill up as the chief plays)
-      const note = this.ui.add.text(this.W / 2, y + 14, mt(lang, 'm_board_note', { n: Math.round(this.host.cfg.swapAfter / 60) }),
+      const note = this.ui.add.text(this.W / 2, y + 10, mt(lang, 'm_board_note', { n: Math.round(this.host.cfg.swapAfter / 60) }),
         Object.assign(TXT(19, COL.brown, '#ffffff', 0, '800'), { align: 'center', lineSpacing: 4, wordWrap: { width: a.w - 60, useAdvancedWrap: true } })).setOrigin(0.5, 0).setAlpha(0.85);
       root.add(note);
     }
@@ -189,13 +227,14 @@ export class MissionPanel {
     y += 32;
     if (td) for (let k = 0; k < td.list.length; k++) {
       const it = td.list[k], t = tplOf(it.code);
-      this.card(root, a.x0, y, a.w, { t, g: it.g, done: it.done, coins: this.host.model.pay(this.host.cfg.daily.pay), fame: this.host.cfg.daily.fame, title: titleOf(t, lang, {}), sub: mt(lang, 'm_kind_daily') });
+      const g = () => { const d = m.today(); return d && d.list[k] ? d.list[k].g : []; };
+      this.card(root, a.x0, y, a.w, { t, g, done: it.done, coins: this.host.model.pay(this.host.cfg.daily.pay), fame: this.host.cfg.daily.fame, title: titleOf(t, lang, {}), sub: mt(lang, 'm_kind_daily') });
       y += CARD_H - 18 + GAP;
     }
     // the bonus for all three
     const allC = this.host.model.pay(this.host.cfg.daily.allPay);
     const bonus = ui.add.container(W / 2, y + 30);
-    bonus.add(panel(ui, 0, 0, td && td.all ? 'ui_button_green' : 'ui_panel', a.w, 56).setOrigin(0.5));
+    bonus.add(face(ui, 0, 0, td && td.all ? 'ui_button_green' : 'ui_panel', a.w, 56).setOrigin(0.5));
     const bt = ui.add.text(0, -2, mt(lang, 'm_daily_all', { coins: fmtN(allC), fame: this.host.cfg.daily.allFame }), td && td.all ? TXT(20, '#ffffff', 'rgba(0,0,0,0.25)', 4) : TXT(20, COL.ink)).setOrigin(0.5);
     fit(bt, a.w - 40);
     bonus.add(bt);
@@ -205,10 +244,10 @@ export class MissionPanel {
   }
 
   streakStrip(root, a, y) {
-    const ui = this.ui, m = this.host.model, lang = this.host.lang(), W = this.W;
+    const ui = this.ui, m = this.host.model, lang = this.host.lang();
     const st = m.streak();
-    const H = 170;
-    root.add(panel(ui, W / 2, y + H / 2, 'ui_panel', a.w, H).setOrigin(0.5).setAlpha(0.97));
+    const H = 176;
+    root.add(panel(ui, this.W / 2, y + H / 2, 'ui_panel', a.w, H).setOrigin(0.5).setAlpha(0.97));
     root.add(icon(ui, a.x0 + 36, y + 32, ['ui_icon_calendar'], 40));
     root.add(ui.add.text(a.x0 + 66, y + 32, st.n ? mt(lang, 'm_streak', { n: st.n }) : mt(lang, 'm_streak_none'), TXT(22, COL.ink)).setOrigin(0, 0.5));
     // seven days: rewards on 2, 3, 5, 7
@@ -226,12 +265,12 @@ export class MissionPanel {
       const ik = r ? (r.flair ? 'ui_icon_title' : r.decor ? 'ui_icon_flower' : r.pay ? 'ui_icon_coin' : 'ui_icon_fame') : null;
       if (ik) root.add(icon(ui, x, yy, [ik], 32).setAlpha(done ? 1 : 0.75));
       else root.add(ui.add.text(x, yy, String(d), TXT(20, done ? '#ffffff' : COL.soft, done ? '#e8a33d' : '#ffffff', done ? 3 : 0)).setOrigin(0.5));
-      root.add(ui.add.text(x, yy + 36, String(d), TXT(14, COL.soft, '#ffffff', 0, '800')).setOrigin(0.5));
+      root.add(ui.add.text(x, yy + 38, String(d), TXT(17, COL.soft, '#ffffff', 0, '800')).setOrigin(0.5));
     }
     // the snowman shield
     const sh = has('snowman_3') ? Assets.image(ui, a.x0 + a.w - 34, y + 40, 'snowman_3') : null;
     if (sh) { sh.setScale(46 / Math.max(1, sh.frame.realHeight)).setOrigin(0.5, 0.55); if (!st.shield) sh.setAlpha(0.35); root.add(sh); }
-    const shT = ui.add.text(a.x0 + a.w - 62, y + 32, st.shield ? mt(lang, 'm_shield_free') : mt(lang, 'm_shield_used'), TXT(14, st.shield ? COL.blue : COL.soft, '#ffffff', 0, '800')).setOrigin(1, 0.5);
+    const shT = ui.add.text(a.x0 + a.w - 62, y + 32, st.shield ? mt(lang, 'm_shield_free') : mt(lang, 'm_shield_used'), TXT(17, st.shield ? COL.blue : COL.soft, '#ffffff', 0, '800')).setOrigin(1, 0.5);
     fit(shT, a.w - 300);
     root.add(shT);
   }
@@ -242,7 +281,7 @@ export class MissionPanel {
     if (!wk) { this.empty(root, a, mt(lang, 'm_empty_board')); return; }
     const t = tplOf(wk.code);
     let y = a.y + 8;
-    const Hc = 250;
+    const Hc = 256;
     root.add(panel(ui, W / 2, y + Hc / 2, wk.stage >= 3 ? 'ui_mission_card_done' : 'ui_mission_card', a.w, Hc).setOrigin(0.5));
     root.add(icon(ui, a.x0 + 82, y + 58, [t.icon, 'ui_icon_calendar'], 66));
     const tt = ui.add.text(a.x0 + 128, y + 44, mt(lang, 'm_week_title') + ' · ' + titleOf(t, lang, {}), TXT(25, COL.ink)).setOrigin(0, 0.5);
@@ -256,7 +295,6 @@ export class MissionPanel {
     const bx = a.x0 + 60, bw = a.w - 120, by = y + 150;
     const max = t.stages[2];
     const bar = progressBar(ui, bx, by, bw, 24, wk.stage >= 3 ? COL.barDone : COL.fame);
-    bar.set(Math.min(1, wk.g / max));
     root.add(bar);
     t.stages.forEach((s, k) => {
       const x = bx + bw * (s / max);
@@ -267,11 +305,15 @@ export class MissionPanel {
       root.add(icon(ui, x, by, [done ? 'ui_icon_check' : 'ui_icon_fame'], 22));
       const lx = Math.min(x, a.x0 + a.w - 74);      // the last stage's labels stay inside the card
       root.add(ui.add.text(lx, by + 34, fmtN(s), TXT(17, COL.ink, '#ffffff', 0, '900')).setOrigin(0.5));
-      const r = ui.add.text(lx, by + 58, '+' + fmtN(m.pay(cfg.weekly.pay[k])) + ' · ★' + cfg.weekly.fame[k], TXT(14, COL.gold, '#ffffff', 0, '800')).setOrigin(0.5);
-      fit(r, bw / 3);
+      const r = ui.add.text(lx, by + 60, '+' + fmtN(m.pay(cfg.weekly.pay[k])) + ' · ★' + cfg.weekly.fame[k], TXT(17, COL.gold, '#ffffff', 0, '800')).setOrigin(0.5);
+      fit(r, bw / 3 - 6);
       root.add(r);
     });
-    root.add(ui.add.text(bx + bw, by - 32, fmtN(wk.g) + ' / ' + fmtN(max), TXT(17, COL.ink)).setOrigin(1, 0.5));
+    const cnt = ui.add.text(bx + bw, by - 32, '', TXT(17, COL.ink)).setOrigin(1, 0.5);
+    root.add(cnt);
+    const upd = () => { const w = m.week(); if (!w) return; bar.set(Math.min(1, w.g / max)); const s = fmtN(w.g) + ' / ' + fmtN(max); if (cnt.text !== s) cnt.setText(s); };
+    upd();
+    this.live.push(upd);
     // the decor of the week, shown for real
     y += Hc + 18;
     const dec = cfg.weekly.decor[Math.floor(wk.w / 7) % cfg.weekly.decor.length];
@@ -286,7 +328,7 @@ export class MissionPanel {
     }
     const dt = ui.add.text(a.x0 + 270, y + 80, mt(lang, 'm_week_decor', { decor: mt(lang, 'd_' + dec) }), Object.assign(TXT(22, COL.ink), { wordWrap: { width: a.w - 300, useAdvancedWrap: true } })).setOrigin(0, 0.5);
     root.add(dt);
-    root.add(ui.add.text(a.x0 + 270, y + 150, mt(lang, 'm_daily_reset').replace(/내일 새벽 5시에/, '월요일 새벽 5시에').replace('New ones at 5 a.m.', 'New goal on Monday 5 a.m.'), TXT(16, COL.soft, '#ffffff', 0, '800')).setOrigin(0, 0.5));
+    root.add(ui.add.text(a.x0 + 270, y + 150, mt(lang, 'm_daily_reset').replace(/내일 새벽 5시에/, '월요일 새벽 5시에').replace('New ones at 5 a.m.', 'New goal on Monday 5 a.m.'), TXT(17, COL.soft, '#ffffff', 0, '800')).setOrigin(0, 0.5));
   }
 
   tabTitles(root, a) {
@@ -299,14 +341,13 @@ export class MissionPanel {
       const bg = panel(ui, W / 2, y + rh / 2, cur ? 'ui_mission_card_done' : 'ui_mission_card', a.w, rh).setOrigin(0.5);
       if (!got) bg.setAlpha(0.8);
       root.add(bg);
-      const b = icon(ui, a.x0 + 86, y + rh / 2, ['ui_badge_rank_' + lv, 'ui_icon_title'], rh - 30);
-      if (!got) b.setTint(0xb8bec8).setAlpha(0.75);
-      root.add(b);
+      // the chief's crown with this title's stars (the village rank keeps its shields)
+      root.add(titleBadge(ui, a.x0 + 82, y + rh / 2 - 2, lv, rh - 34, !got));
       root.add(ui.add.text(a.x0 + 150, y + rh / 2 - 30, mt(lang, 't_' + lv), TXT(24, got ? COL.ink : COL.soft)).setOrigin(0, 0.5));
       root.add(ui.add.text(a.x0 + a.w - 24, y + rh / 2 - 30, mt(lang, 'm_fame_n', { n: fmtN(T[lv - 1]) }), TXT(18, got ? COL.gold : COL.soft)).setOrigin(1, 0.5));
       const desc = mt(lang, 'tr_' + lv) + (mt(lang, 'tx_' + lv) ? '\n' + mt(lang, 'tx_' + lv) : '');
       if (desc) {
-        const d = ui.add.text(a.x0 + 150, y + rh / 2 + 14, desc, Object.assign(TXT(16, got ? COL.brown : COL.soft, '#ffffff', 0, '800'), { lineSpacing: 2, wordWrap: { width: a.w - 270, useAdvancedWrap: true } })).setOrigin(0, 0.5);
+        const d = ui.add.text(a.x0 + 150, y + rh / 2 + 14, desc, Object.assign(TXT(17, got ? COL.brown : COL.soft, '#ffffff', 0, '800'), { lineSpacing: 2, wordWrap: { width: a.w - 270, useAdvancedWrap: true } })).setOrigin(0, 0.5);
         fit(d, a.w - 270, rh - 64);
         root.add(d);
       }
@@ -320,48 +361,82 @@ export class MissionPanel {
       }
       if (cur) {
         const bar = progressBar(ui, a.x0 + 150, y + rh - 22, a.w - 320, 14, COL.fame);
-        bar.set(fi.next ? (fi.pts - fi.at) / Math.max(1, fi.next - fi.at) : 1);
         root.add(bar);
+        const upd = () => { const f = m.fameInfo(); bar.set(f.next ? (f.pts - f.at) / Math.max(1, f.next - f.at) : 1); };
+        upd();
+        this.live.push(upd);
       }
     }
   }
 
   // ------------------------------------------------------------------------------------------------ cards
-  /** a live mission instance as a card */
+  /** a live mission instance as a card (its progress and deadline update in place) */
   missionCard(root, x0, y, w, inst, opts) {
     const h = this.host, m = h.model, lang = h.lang(), t = m.template(inst);
     const names = h.namesOf(inst);
     let sub = mt(lang, 'm_kind_' + t.kind);
     if (inst.gv && t.kind === 'request') sub = mt(lang, 'm_from', { giver: names.from }) + (inst.w && inst.w !== inst.gv ? '  ' + mt(lang, 'm_to', { to: names.to }) : '');
-    const T = h.ports.clock.T();
-    let dueTxt = null;
-    if (inst.d) {
-      const left = inst.d - T;
-      dueTxt = left < h.cfg.focusDeadline ? mt(lang, 'm_due_soon') : mt(lang, 'm_due', { h: hourLabel((h.ports.clock.hour() + left / HOUR) % 24) });
-    }
+    const wish = h.wishOf(inst);
+    if (wish) sub = mt(lang, 'm_wish', { wish });
+    const cur = h.current(inst);
+    const how = cur && cur.u.t === 'step' ? cur.u.how : null;
+    if (how === 'drive' && !h.driving) sub = mt(lang, 'm_drive_hint');
+    if (how === 'ask') sub = mt(lang, 'm_ask_hint');
     const fame = Array.isArray(t.fame) ? t.fame[0] + '~' + t.fame[2] : t.fame;
-    const coins = t.stages ? m.pay(t.pay / 3) : (t.kind === 'drive' ? m.pay(t.pay) : m.pay(t.pay));
-    const card = this.card(root, x0, y, w, { t, g: inst.g, done: false, coins, fame, title: titleOf(t, lang, names), sub, due: dueTxt });
-    if (opts.swap && m.canSwap(inst.id)) {
-      card.add(button(this.ui, w - 92, CARD_H / 2 - 4, 150, 50, 'blue', mt(lang, 'm_swap'), () => { m.swap(inst.id); this.lastKey = ''; }, 21, (k, o) => this.snd(k, o)));
-    }
-    if (opts.accept) {
-      card.add(button(this.ui, w - 92, CARD_H / 2 - 4, 150, 50, 'green', mt(lang, 'm_accept'), () => { h.accept(inst.id); this.lastKey = ''; }, 22, (k, o) => this.snd(k, o)));
+    const coins = t.stages ? m.pay(t.pay / 3) : m.pay(t.pay);
+    // one action button at most: 받기 (a bubble) / 출발 (a drive) / 후원 (fireworks) / 다른 미션 (an idle board card)
+    let btn = null;
+    if (opts.accept) btn = { style: 'green', label: mt(lang, 'm_accept'), fn: () => { h.accept(inst.id); this.lastKey = ''; } };
+    else if (how === 'drive' && h.wired('drive')) btn = h.driving ? { style: 'gray', label: mt(lang, 'm_drive_busy'), off: true } : { style: 'green', label: mt(lang, 'm_drive_go'), fn: () => { if (h.startDrive(inst.id)) this.close(); } };
+    else if (how === 'pay') btn = { style: 'green', label: mt(lang, 'm_pay_btn', { n: fmtN(h.fundCost(inst)) }), fn: () => { h.fund(inst.id); this.lastKey = ''; } };
+    else if (opts.swap && m.canSwap(inst.id)) btn = { style: 'blue', label: mt(lang, 'm_swap'), fn: () => { m.swap(inst.id); this.lastKey = ''; } };
+    const card = this.card(root, x0, y, w, { t, g: () => inst.g, done: false, coins, fame, title: titleOf(t, lang, names), sub, due: inst.d ? () => this.dueText(inst) : null, btn: !!btn });
+    if (btn) {
+      const b = button(this.ui, w - 92, CARD_H - 36, 140, 50, btn.style, btn.label, btn.fn || (() => {}), 20, (k, o) => this.snd(k, o));
+      if (btn.off) b.setAlpha(0.6).disableInteractive();
+      card.add(b);
     }
     return card;
   }
 
-  /** a card: { t, g, done, coins, fame, title, sub, due } — x0 = left edge, y = top */
+  dueText(inst) {
+    const h = this.host, lang = h.lang(), left = inst.d - h.ports.clock.T();
+    return left < h.cfg.focusDeadline ? mt(lang, 'm_due_soon') : mt(lang, 'm_due', { h: hourLabel((h.ports.clock.hour() + left / HOUR) % 24) });
+  }
+
+  /** the station's standing order (v4's chip keeps it; shown here so the board tells the whole story) */
+  orderCard(root, x0, y, w) {
+    const ui = this.ui, lang = this.host.lang(), o = this.order();
+    const Hc = CARD_H - 18;
+    const c = ui.add.container(x0, y);
+    root.add(c);
+    c.add(panel(ui, w / 2, Hc / 2, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', w, Hc).setOrigin(0.5).setAlpha(0.92));
+    const plate = ui.add.graphics(); plate.fillStyle(0xffffff, 0.75); plate.fillCircle(80, Hc / 2 - 2, 38); c.add(plate);
+    c.add(icon(ui, 80, Hc / 2 - 2, ['ui_icon_delivery', 'ui_icon_goal'], 56));
+    c.add(icon(ui, 102, Hc / 2 + 20, [o.item], 32));
+    const shop = o.shop ? (o.shop[lang] || o.shop.ko || '') : '';
+    const title = ui.add.text(128, 30, mt(lang, 'm_order_card') + (shop ? ' · ' + shop : ''), TXT(23, COL.ink)).setOrigin(0, 0.5);
+    fit(title, w - 128 - 150); c.add(title);
+    const sub = ui.add.text(128, 60, mt(lang, 'm_order_sub'), TXT(17, COL.soft, '#ffffff', 0, '800')).setOrigin(0, 0.5);
+    fit(sub, w - 128 - 40); c.add(sub);
+    const bw = w - 128 - 210, by = Hc - 30;
+    const bar = progressBar(ui, 128, by, bw, 22, COL.bar); c.add(bar);
+    const cnt = ui.add.text(128 + bw + 12, by, '', TXT(18, COL.ink)).setOrigin(0, 0.5); c.add(cnt);
+    if (o.reward > 0) { c.add(icon(ui, w - 130, 30, ['ui_icon_coin'], 26)); c.add(ui.add.text(w - 114, 30, '+' + fmtN(o.reward), TXT(19, COL.gold)).setOrigin(0, 0.5)); }
+    const upd = () => { const q = this.order(); if (!q) return; bar.set(q.need ? q.got / q.need : 0); const s = q.got + '/' + q.need; if (cnt.text !== s) cnt.setText(s); };
+    upd();
+    this.live.push(upd);
+  }
+
+  /** a card: { t, g() → progress, done, coins, fame, title, sub, due() → text | null, btn } — x0 = left edge, y = top */
   card(root, x0, y, w, d) {
-    const ui = this.ui, lang = this.host.lang();
+    const ui = this.ui;
     const daily = d.t.kind === 'daily';
     const Hc = daily ? CARD_H - 18 : CARD_H;
     const c = ui.add.container(x0, y);
     root.add(c);
-    const U = unitsOf(d.t);
-    let need = 0, got = 0, item = null;
-    U.forEach((u, j) => { need += u.need; const gj = (d.g && d.g[j]) || 0; got += Math.min(u.need, gj); if (!item && gj < u.need) item = u.item || (u.any && u.any[0]) || null; });
-    const done = d.done || (need > 0 && got >= need);
+    const s0 = sums(d.t, d.g());
+    const done = d.done || (s0.need > 0 && s0.got >= s0.need);
     c.add(panel(ui, w / 2, Hc / 2, done ? (has('ui_mission_card_done') ? 'ui_mission_card_done' : 'ui_panel') : (has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel'), w, Hc).setOrigin(0.5));
     // kind / item icon in a soft round plate
     const plate = ui.add.graphics();
@@ -377,20 +452,21 @@ export class MissionPanel {
     const sub = ui.add.text(tx, 64, d.sub || '', TXT(17, COL.soft, '#ffffff', 0, '800')).setOrigin(0, 0.5);
     fit(sub, w - tx - 150);
     c.add(sub);
+    let dueT = null;
     if (d.due) {
       const tm = icon(ui, tx + sub.displayWidth + 22, 64, ['ui_icon_timer'], 24);
-      const dt = ui.add.text(tm.x + 16, 64, d.due, TXT(17, '#d4426f', '#ffffff', 0, '900')).setOrigin(0, 0.5);
-      c.add([tm, dt]);
+      dueT = ui.add.text(tm.x + 16, 64, '', TXT(17, '#d4426f', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+      c.add([tm, dueT]);
     }
-    // progress
-    const bw = w - tx - 210, by = Hc - 34;
+    // progress (and the button's room on the right of it)
+    const bw = w - tx - 210 - (d.btn ? 150 : 0), by = Hc - 34;
     const bar = progressBar(ui, tx, by, bw, 22, done ? COL.barDone : COL.bar);
-    bar.set(need ? got / need : 0);
     c.add(bar);
     let cx = tx + bw + 10;
-    if (item) { c.add(icon(ui, cx + 14, by, [item], 28)); cx += 32; }
-    c.add(ui.add.text(cx, by, got + '/' + need, TXT(18, done ? COL.green : COL.ink)).setOrigin(0, 0.5));
-    // rewards (top right): coins, fame
+    if (s0.item) { c.add(icon(ui, cx + 14, by, [s0.item], 28)); cx += 32; }
+    const cnt = ui.add.text(cx, by, '', TXT(18, done ? COL.green : COL.ink)).setOrigin(0, 0.5);
+    c.add(cnt);
+    // rewards (top right): coins, fame — never under a button
     if (d.coins > 0) {
       c.add(icon(ui, colR - 108, 30, ['ui_icon_coin'], 26));
       c.add(ui.add.text(colR - 92, 30, '+' + fmtN(d.coins), TXT(19, COL.gold)).setOrigin(0, 0.5));
@@ -398,6 +474,15 @@ export class MissionPanel {
     c.add(icon(ui, colR - 108, d.coins > 0 ? 62 : 30, ['ui_icon_fame'], 26));
     c.add(ui.add.text(colR - 92, d.coins > 0 ? 62 : 30, '+' + d.fame, TXT(19, '#c4517a')).setOrigin(0, 0.5));
     if (done) { const ck = icon(ui, w - 30, 18, ['ui_icon_check'], 30); c.add(ck); }
+    const upd = () => {
+      const s = sums(d.t, d.g());
+      bar.set(s.need ? s.got / s.need : 0);
+      const txt = s.got + '/' + s.need;
+      if (cnt.text !== txt) cnt.setText(txt);
+      if (dueT) { const q = d.due(); if (dueT.text !== q) dueT.setText(q); }
+    };
+    upd();
+    this.live.push(upd);
     return c;
   }
 

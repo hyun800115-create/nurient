@@ -15,7 +15,7 @@ import { Fame } from './fame.js';
 import { Calendar } from './calendar.js';
 import { signalsOf } from './signals.js';
 import { unitsOf, zeroes, fraction, isDone, inHours, isNight } from './units.js';
-import { sanitizeMissions } from '../save.js';
+import { sanitizeMissions, MAX } from '../save.js';
 
 const REQ = new Map(CATALOG.map((t) => [t.code, Array.from(requirements(t))]));
 const POOL = { board: [], bubble: [], daily: [], weekly: [] };
@@ -30,16 +30,21 @@ const DAY = 600;
 const round10 = (x) => Math.round(x / 10) * 10;
 
 /**
- * story_runtime events name people by engine id (a, b, who, baby: integers) and add the game's ids next to them
- * (aPid, bPid, whoPid, babyPid). Missions only ever use game ids: `who` = the person, `family` = the other parent /
- * the family member to visit. A person the game cannot show (no pid) gives no mission (the template's giver is null).
+ * Module events (story_runtime, incidents …) name people by engine id (a, b, who, baby: integers) and add the game's
+ * ids next to them (aPid, bPid, whoPid, babyPid). Missions only ever use game ids: `who` = the person, `family` = the
+ * other parent / the family member to visit, `sid` = the engine id of `who` (kept to match later events such as
+ * 'named' or 'wish'). A person the game cannot show (no pid) gives no mission (the template's giver is null).
+ * Applied to every event that names people, not only story:* (critique H-4: inc:move carries a numeric `who`).
  */
-function storyIds(ev) {
+function normIds(ev) {
   const pid = (v, p) => (typeof p === 'string' && p ? p : typeof v === 'string' && v ? v : null);
   const a = pid(ev.a, ev.aPid), b = pid(ev.b, ev.bPid), who = pid(ev.who, ev.whoPid) || a;
-  const key = ev.key || ev.id || (Number.isInteger(ev.a) ? 'c' + ev.a + '_' + (ev.b | 0) : Number.isInteger(ev.who) ? 's' + ev.who : who);
-  return Object.assign({}, ev, { who, family: ev.family || b || a || who, key });
+  const key = ev.key || (ev.id !== undefined && ev.id !== null && ev.id !== '' ? String(ev.id) : null) ||
+    (Number.isInteger(ev.a) ? 'c' + ev.a + '_' + (ev.b | 0) : Number.isInteger(ev.who) ? 's' + ev.who : who);
+  return Object.assign({}, ev, { who, family: (typeof ev.family === 'string' && ev.family) || b || a || who, key, sid: Number.isInteger(ev.who) ? ev.who : null });
 }
+const namesPeople = (ev) => ev.t.startsWith('story:') || 'who' in ev || 'whoPid' in ev || 'aPid' in ev || 'a' in ev;
+const safeId = (v, n) => (typeof v === 'string' && v.length <= n && /^[A-Za-z0-9:_.\-]+$/.test(v) ? v : null);
 
 export class MissionModel {
   /**
@@ -69,8 +74,11 @@ export class MissionModel {
     this.rq = Number.isFinite(s.rq) ? s.rq : T + 20;  // next request bubble (the first one soon)
     this.fl = Object.assign({}, s.fl || {});          // one-shot flags: paper, age80, bday (game day of the last birthday)
     this.sett = s.st2 ? { d: s.st2.d | 0, n: s.st2.n | 0 } : { d: -1, n: 0 };
+    this.craftState = s.cr ? JSON.parse(JSON.stringify(s.cr)) : null;   // the craft pads' state (CraftPads reads it)
     this.out = [];
     this.lastSec = null;
+    this.asked = new Map();      // E13: mission id → residents already asked (this session)
+    this.chatDay = { d: -1, who: new Set() };   // F5: people chatted with today (each counts once)
   }
 
   // ------------------------------------------------------------------------------------------------ helpers
@@ -119,7 +127,7 @@ export class MissionModel {
     if (!t) return null;
     const g = zeroes(t);
     if (Array.isArray(o.g)) for (let k = 0; k < g.length && k < o.g.length; k++) g[k] = Math.max(0, Math.min(unitsOf(t)[k].need, Number(o.g[k]) | 0));
-    return { id: o.i, c: o.c, s: st, g, t0: o.t0 || 0, tp: Number.isFinite(o.tp) ? o.tp : (o.t0 || 0), d: o.d || 0, gv: o.gv || null, w: o.w || null, nm: o.nm || null, k: o.k || null, x: o.x || null, stg: o.sg | 0 };
+    return { id: o.i, c: o.c, s: st, g, t0: o.t0 || 0, tp: Number.isFinite(o.tp) ? o.tp : (o.t0 || 0), d: o.d || 0, gv: o.gv || null, w: o.w || null, nm: o.nm || null, k: o.k || null, pl: o.pl || null, wi: o.wi || null, stg: o.sg | 0 };
   }
 
   /** a new instance of template t (null when its people cannot be found) */
@@ -136,7 +144,7 @@ export class MissionModel {
         const onScr = this.list.filter((i) => i.s === 'o' && i.gv && ppl.onScreen && ppl.onScreen(i.gv)).length;
         gv = ppl.pick(t.giver, { exclude, offScreen: st === 'o' && onScr >= this.cfg.bubblesOnScreen, rng: this.rng });
       }
-      if (!gv) return null;
+      if (typeof gv !== 'string' || !gv) return null;          // (pids are strings; an engine number is nobody here)
     }
     // the recipient (or place) of the first objective that names one
     let w = null;
@@ -149,13 +157,21 @@ export class MissionModel {
       else if (to === 'friend' || to === 'crush') w = ppl.pick(to, { of: gv, rng: this.rng, exclude: new Set([gv]) });
       else if (to.startsWith('v:') || to.startsWith('pet:')) w = ppl.has(to) ? to : null;
       else w = ppl.pick(to, { rng: this.rng });
-      if (!w) return null;
+      if (typeof w !== 'string' || !w) return null;
       break;
     }
     const T = this.T;
-    const inst = { id: this.nextId++, c: t.code, s: st, g: zeroes(t), t0: Math.round(T), tp: Math.round(T), d: this.dueOf(t, ev), gv, w, nm: ev && ev.who ? ev.who : null, k: ev && ev.key ? String(ev.key).slice(0, 24) : null, x: ev && ev.x ? ev.x : null, stg: 0 };
+    const d = this.dueOf(t, ev);
+    // never offer what cannot be done in time (C1's wedding food when the wedding is an hour away …)
+    if (d && d - T < Math.max(10, t.minLead || 0)) return null;
+    const inst = { id: this.nextId++, c: t.code, s: st, g: zeroes(t), t0: Math.round(T), tp: Math.round(T), d, gv, w,
+      nm: ev && typeof ev.who === 'string' && ev.who ? ev.who : null, k: ev && ev.key ? String(ev.key).slice(0, 24) : null,
+      pl: ev ? safeId(ev.pl, 24) : null, wi: ev ? safeId(ev.wi, 16) : null, stg: 0 };
     return inst;
   }
+
+  /** game T of (game day, clock hour), in the same day numbering as env.day() (the story's `day` too) */
+  tAt(day, hour) { return Math.round(this.T + ((day - this.env.day()) * 24 + (hour - this.env.hour())) * HOUR); }
 
   /** deadline (game T) of a template's instance created now (0 = none) */
   dueOf(t, ev) {
@@ -167,6 +183,8 @@ export class MissionModel {
     if (D.at === 'event') {
       if (ev && Number.isFinite(ev.at)) return Math.round(ev.at);
       if (ev && Number.isFinite(ev.due)) return Math.round(ev.due);
+      // story_runtime's engaged: { day (the wedding day), hour } → that day's prep hour (10:30), not "the next 10:30"
+      if (ev && Number.isFinite(ev.day)) return this.tAt(ev.day, D.hour !== undefined ? D.hour : (Number.isFinite(ev.hour) ? ev.hour : 12));
       if (D.hour !== undefined) return at(D.hour, h < D.hour ? 0 : 1);
       return Math.round(T + 300);
     }
@@ -199,12 +217,15 @@ export class MissionModel {
     // the calendar (daily / weekly)
     for (const e of this.cal.check(this.env, POOL, (t) => this.reqOk(t))) this.emit(e);
     // deadlines and untouched bubbles
-    for (let k = this.list.length - 1; k >= 0; k--) {
-      const i = this.list[k];
-      if (i.d && T > i.d) this.expire(i, 'late');
+    for (const i of this.list.slice().reverse()) {
+      if (this.list.indexOf(i) < 0) continue;            // (ended by another one's completion this second)
+      if (i.d && T > i.d) { if (this.softDone(i)) this.complete(i, i.stars || 0); else this.expire(i, 'late'); }
       else if (i.s === 'o' && T - i.t0 > cfg.bubbleLife) this.expire(i, 'pop');
       // an event without a deadline that nothing moved for days (its owner module never reported the step): ends gently
-      else if (!i.d && i.s === 'a' && cfg.eventStale > 0 && T - i.tp > cfg.eventStale && tplOf(i.c).src === 'event') this.expire(i, 'late');
+      else if (!i.d && i.s === 'a' && cfg.eventStale > 0 && T - i.tp > cfg.eventStale) this.expire(i, 'stale');
+      // a board card nobody worked on for days leaves quietly and a fresh one takes its place (a safety net: the
+      // board never fills up with cards that cannot move, critique C-2 e)
+      else if (i.s === 'b' && cfg.boardStale > 0 && T - i.tp > cfg.boardStale) this.expire(i, 'stale');
     }
     // the board: one new card a second while a slot is free and the refresh delay has passed
     if (this.count('b') < cfg.board && T >= this.bt) this.fillBoard();
@@ -268,6 +289,12 @@ export class MissionModel {
     if (t.repeat !== 'event' && this.present(code)) return null;
     if (!this.reqOk(t)) return null;
     if (t.offerHours && !inHours(this.env.hour(), t.offerHours)) return null;
+    // an event's request bubble counts against the bubbles in the world: the oldest everyday bubble makes room
+    if (t.src === 'bubble' && this.count('o') >= this.cfg.bubblesWorld) {
+      const old = this.list.filter((i) => i.s === 'o' && !tplOf(i.c).trigger).sort((a, b) => a.t0 - b.t0)[0];
+      if (!old) return null;
+      this.expire(old, 'pop');
+    }
     const inst = this.make(t, t.src === 'bubble' ? 'o' : 'a', ev);
     if (!inst) return null;
     if (t.repeat === 'once') this.cool[code] = -1;                       // (offered once, ever)
@@ -287,26 +314,43 @@ export class MissionModel {
   // ------------------------------------------------------------------------------------------------ the feed
   onFeed(ev) {
     if (!ev || typeof ev.t !== 'string') return;
-    for (const [sig, n] of signalsOf(ev)) this.signal(sig, n);
-    if (ev.t.startsWith('story:')) ev = storyIds(ev);
-    const op = ev.op;
+    for (const [sig, n] of signalsOf(ev)) {
+      // F5 "주민 3명과 수다 떨기": a resident counts once a day (a talk tap and the message after it are one chat)
+      if (sig === 'chat' && typeof (ev.pid || ev.whoPid) === 'string' && !this.chatOnce(ev.pid || ev.whoPid)) continue;
+      this.signal(sig, n);
+    }
+    if (namesPeople(ev)) ev = normIds(ev);
+    const op = ev.op, key = (k) => ({ ...ev, key: k });
     switch (ev.t) {
       case 'story:life':
-        if (op === 'engaged') { this.spawnEvent('C1', { ...ev, key: ev.key || ev.id || ev.who }); this.spawnEvent('B6', { ...ev, key: ev.key || ev.id || ev.who }); }
-        else if (op === 'wedding') { this.spawnEvent('C2', { ...ev, key: ev.key || ev.id || ev.who }); if (ev.ours !== false) this.fameAdd(this.cfg.fame.lifeBeat, 'wedding'); }
-        else if (op === 'baby') { this.spawnEvent('C3', { ...ev, key: ev.key || ev.id || ev.who }); if (ev.ours !== false) this.fameAdd(this.cfg.fame.lifeBeat, 'baby'); }
-        else if (op === 'school') this.spawnEvent('C4', { ...ev, key: ev.key || ev.who });
-        else if (op === 'wish') this.spawnEvent('C7', { ...ev, key: ev.key || ev.who });
-        else if (op === 'farewell') this.spawnEvent('C8', { ...ev, key: ev.key || ev.who });
+        if (op === 'engaged') { this.spawnEvent('C1', ev); this.spawnEvent('B6', ev); }
+        else if (op === 'wedding') { this.spawnEvent('C2', ev); if (this.ours(ev)) this.fameAdd(this.cfg.fame.lifeBeat, 'wedding'); }
+        else if (op === 'baby') {
+          // keyed by the baby's engine id, so the story's 'named' (the naming sheet) finds this C3 later
+          this.spawnEvent('C3', key(Number.isInteger(ev.baby) ? 'n' + ev.baby : ev.babyPid || ev.key));
+          if (this.ours(ev)) this.fameAdd(this.cfg.fame.lifeBeat, 'baby');
+        } else if (op === 'named') this.named(ev);
+        else if (op === 'school') this.spawnEvent('C4', key('k' + (ev.sid !== null ? ev.sid : ev.who)));
+        else if (op === 'wish') this.wish(ev);
+        else if (op === 'farewell') this.spawnEvent('C8', ev);
         else if (op === 'birthday') {
           const d = this.env.day();
-          if (this.fl.bday !== d) { this.fl.bday = d; this.spawnEvent('C9', { ...ev, key: 'b' + (ev.who || '') + d }); this.spawnEvent('A12', { ...ev, key: 'm' + (ev.who || '') + d }); }
+          if (Number(ev.age) === this.cfg.schoolAge) this.spawnEvent('C4', key('k' + (ev.sid !== null ? ev.sid : ev.who)));    // school tomorrow
+          else if (this.fl.bday !== d) { this.fl.bday = d; this.spawnEvent('C9', key('b' + (ev.who || '') + d)); this.spawnEvent('A12', key('m' + (ev.who || '') + d)); }
         } else if (op === 'age80') this.fl.age80 = 1;
         break;
+      case 'story:wish': this.wish(ev); break;                 // an elder's wish (story's wish card) → C7, one stage
+      case 'story:wisher': this.fl.age80 = 1; break;           // an elder turned the wish age → C7a soon
       case 'story:move':
-        if (op === 'in') { this.spawnEvent('A8', { ...ev, key: ev.key || ev.home || ev.who }); this.spawnEvent('A21', { ...ev, key: ev.key || ev.home || ev.who }); this.spawnEvent('B12', { ...ev, key: ev.key || ev.home || ev.who }); }
+      case 'inc:move':
+        if (op === 'in') {
+          const k = ev.t === 'inc:move' ? (ev.id !== undefined ? 'mv' + ev.id : ev.home) : (ev.home || ev.key);
+          const e2 = { ...ev, key: k, pl: typeof ev.home === 'string' ? ev.home : null };
+          if (ev.t === 'story:move') this.spawnEvent('A8', e2);
+          this.spawnEvent('A21', e2); this.spawnEvent('B12', e2);
+        }
         break;
-      case 'houseDone': this.spawnEvent('A8', { ...ev, key: ev.key || ev.house || ev.id }); this.fameAdd(this.cfg.fame.newThing, 'house'); break;
+      case 'houseDone': this.spawnEvent('A8', key(ev.key || ev.house || ev.id)); this.fameAdd(this.cfg.fame.newThing, 'house'); break;
       case 'shopOpen': this.fameAdd(this.cfg.fame.newThing, 'shop'); break;
       case 'harbor:star': case 'beach:star': this.fameAdd(this.cfg.fame.newThing, 'star'); break;
       case 'story:happening': if (ev.watched) this.fameAdd(this.cfg.fame.happening, 'happen'); break;
@@ -316,21 +360,93 @@ export class MissionModel {
         this.sett.n += Math.max(0, Math.min(50, ev.n | 0 || 1));
         break;
       }
-      case 'story:news': if (!this.fl.paper) { this.fl.paper = 1; this.spawnEvent('C15', { key: 'paper' }); } break;
+      case 'bank:open': this.spawnEvent('C16', key('bank')); break;
+      case 'story:news': if (!this.fl.paper) { this.fl.paper = 1; this.spawnEvent('C15', key('paper')); } break;
       case 'harbor:ship':
-        if (ev.kind === 'cargo' && op === 'arrive') { this.spawnEvent('B7', { ...ev, key: ev.id, due: ev.leaves }); this.spawnEvent('D10', { ...ev, key: ev.id, due: ev.leaves }); }
-        else if (ev.kind === 'trawler' && op === 'home') this.spawnEvent('B8', { ...ev, key: ev.id });
-        else if (ev.kind === 'ferry' && op === 'arrive') this.spawnEvent('B10', { ...ev, key: ev.id });
+        if (ev.kind === 'cargo' && op === 'arrive') {
+          this.spawnEvent('B7', { ...ev, key: String(ev.id), due: ev.leaves });
+          // the export contract is due when the next cargo ship leaves (harbour: due = leaves + a day)
+          this.spawnEvent('D10', { ...ev, key: String(ev.id), due: Number.isFinite(ev.due) ? ev.due : ev.leaves });
+        } else if (ev.kind === 'trawler' && op === 'home') this.spawnEvent('B8', key(String(ev.id)));
+        else if (ev.kind === 'ferry' && op === 'arrive') this.spawnEvent('B10', key(String(ev.id)));
         break;
-      case 'harbor:rare': this.spawnEvent('E10', { ...ev, key: ev.id || ('f' + this.T) }); break;
-      case 'inc:wanted': if (op === 'post') this.spawnEvent('E12', { ...ev, key: ev.id }); break;
-      case 'inc:move': if (op === 'in') { this.spawnEvent('A21', { ...ev, key: ev.id || ev.home }); this.spawnEvent('B12', { ...ev, key: ev.id || ev.home }); } break;
+      case 'harbor:export': {
+        // a contract filled → D10's step; a contract that missed its ship → D10 ends now (no +1 export either)
+        const i = this.list.find((x) => x.c === 'D10' && x.k === String(ev.id));
+        if (i && ev.done) this.step(i.id, 'contract', 1);
+        else if (i && ev.expired) this.expire(i, 'late');
+        break;
+      }
+      case 'harbor:rare': this.spawnEvent('E10', key(ev.id !== undefined ? String(ev.id) : ('f' + Math.round(this.T)))); break;
+      case 'inc:wanted': if (op === 'post' && typeof ev.pid === 'string') this.spawnEvent('E12', { ...ev, key: String(ev.id), who: ev.pid }); break;
       case 'built': this.built(ev.key); break;
       case 'day': this.newDay(); break;
-      case 'veh:driveDone': if (ev.mid) this.step(ev.mid, 'drive', 1, { stars: ev.stars }); break;
+      case 'veh:driveDone': if (ev.mid && ev.stars > 0) this.step(ev.mid, 'drive', 1, { stars: ev.stars }); break;
       case 'mstep': if (ev.mid) this.step(ev.mid, ev.how, ev.n || 1, ev); break;
+      case 'tap': case 'chat':
+        if (ev.t === 'chat' || ev.talk) this.ask(ev.pid || ev.whoPid);
+        if (ev.t === 'tap') this.identify(ev.pid);
+        break;
       default: break;
     }
+  }
+
+  /** a resident counted for F5 today? (true the first time a day) */
+  chatOnce(pid) {
+    const d = this.env.day();
+    if (this.chatDay.d !== d) this.chatDay = { d, who: new Set() };
+    if (this.chatDay.who.has(pid)) return false;
+    if (this.chatDay.who.size < 64) this.chatDay.who.add(pid);
+    return true;
+  }
+
+  /** E13 "소문의 진실": every resident the chief talks to (once each) is one question asked */
+  ask(pid) {
+    if (typeof pid !== 'string' || /^pet:/.test(pid)) return;
+    for (const i of this.list.slice()) {
+      if (i.s !== 'a' && i.s !== 'b') continue;
+      if (!unitsOf(tplOf(i.c)).some((u, j) => u.how === 'ask' && i.g[j] < u.need)) continue;
+      const seen = this.asked.get(i.id) || new Set();
+      if (seen.has(pid)) continue;
+      seen.add(pid); this.asked.set(i.id, seen);
+      this.step(i.id, 'ask', 1);
+    }
+  }
+
+  /** E12: the chief taps (or stands by) the face on the wanted poster */
+  identify(pid) {
+    if (typeof pid !== 'string') return false;
+    let hit = false;
+    for (const i of this.list.slice()) {
+      if ((i.s !== 'a' && i.s !== 'b') || i.nm !== pid) continue;
+      if (unitsOf(tplOf(i.c)).some((u, j) => u.how === 'identify' && i.g[j] < u.need)) hit = this.step(i.id, 'identify', 1) > 0 || hit;
+    }
+    return hit;
+  }
+
+  /** the story's naming sheet chose a name (story:life 'named' { who: the baby's engine id }) → C3's 'choose' */
+  named(ev) {
+    const c3 = this.list.filter((i) => i.c === 'C3');
+    const i = c3.find((x) => ev.sid !== null && x.k === 'n' + ev.sid) || (c3.length === 1 ? c3[0] : null);
+    if (i) this.step(i.id, 'choose', 1);
+  }
+
+  /** an elder's wish (story:wish { who, wish, place }): a new C7 for that elder, or the next stage of theirs */
+  wish(ev) {
+    const k = ev.sid !== null ? 's' + ev.sid : (typeof ev.who === 'string' ? ev.who : null);
+    if (!k) return;
+    const pl = safeId(ev.place, 24), wi = safeId(ev.wish, 16);
+    const i = this.list.find((x) => x.c === 'C7' && x.k === k.slice(0, 24));
+    if (i) { i.pl = pl; i.wi = wi; i.tp = Math.round(this.T); this.emit({ t: 'mission:progress', id: i.id, code: i.c, f: Math.round(this.fraction(i) * 100) / 100, wish: true }); return; }
+    this.spawnEvent('C7', { ...ev, key: k, pl, wi });
+  }
+
+  /** a life beat in our village (passive fame): the story says so, or one of the couple lives here */
+  ours(ev) {
+    if (ev.ours === true) return true;
+    if (ev.ours === false) return false;
+    const ppl = this.env.people;
+    return [ev.aPid, ev.bPid, ev.who].some((p) => typeof p === 'string' && p && ppl.has(p));
   }
 
   /** a counter moved: board cards and active missions, today's dailies and the week, passive fame */
@@ -383,6 +499,13 @@ export class MissionModel {
     }
   }
 
+  /** every unit done except `soft` ones (C3's naming, which the parents may do themselves) */
+  softDone(i) {
+    const t = tplOf(i.c), U = unitsOf(t);
+    if (!U.some((u) => u.o && u.o.soft)) return false;
+    return U.every((u, j) => (u.o && u.o.soft) || i.g[j] >= u.need);
+  }
+
   progressed(i) {
     const t = tplOf(i.c);
     this.emit({ t: 'mission:progress', id: i.id, code: i.c, f: Math.round(fraction(t, i.g) * 100) / 100 });
@@ -410,7 +533,15 @@ export class MissionModel {
     i.s = 'p'; i.tp = Math.round(this.T);
     this.emit({ t: 'mission:park', id, code: i.c });
     const parked = this.list.filter((x) => x.s === 'p').sort((a, b) => a.tp - b.tp);
-    while (parked.length > this.cfg.maxParked) { const old = parked.shift(); this.remove(old); this.setCooldown(tplOf(old.c)); }
+    // too many parked: the oldest leaves (a 'once' story card — E4, B3 … — only when nothing else can, and then it
+    // may come back later: it is never marked as used, critique M-10)
+    while (parked.length > this.cfg.maxParked) {
+      let j = parked.findIndex((x) => tplOf(x.c).repeat !== 'once');
+      if (j < 0) j = 0;
+      const old = parked.splice(j, 1)[0];
+      this.remove(old);
+      if (tplOf(old.c).repeat !== 'once') this.setCooldown(tplOf(old.c));
+    }
     this.bt = Math.round(this.T);
     // the fresh card comes at once, and never the one just parked
     const before = this.cool[i.c];
@@ -480,7 +611,8 @@ export class MissionModel {
         const per = U[j].need;
         i.stg = (i.stg | 0) + k;
         const coins = this.pay((t.pay || 0) / per) * k, fame = Math.round((t.fame || 0) / per) * k;
-        this.emit({ t: 'mission:stage', id, code: i.c, stage: i.stg, coins, fame, gv: i.gv, w: i.w, nm: i.nm });
+        this.emit({ t: 'mission:stage', id, code: i.c, stage: i.stg, coins, fame, gv: i.gv, w: i.w, nm: i.nm, key: i.k, wi: i.wi });
+        i.wi = null; i.pl = null;                  // (C7: the next wish comes from the story)
         if (fame) this.fameAdd(fame, i.c);
       }
       this.progressed(i);
@@ -496,7 +628,15 @@ export class MissionModel {
     this.bag[item] = Math.min(this.cfg.craft.bagMax, before + Math.max(1, n | 0));
     const k = this.bag[item] - before;
     if (k) this.emit({ t: 'bag', item, n: this.bag[item], add: k });
-    if (item === 'item_bouquet' && k) this.signal('flower', k);
+    return k;
+  }
+
+  /** flowers picked at a 꽃밭: a bouquet into the bag (when there is room) and F7's count (always: a full bag never
+   *  stops today's mission, critique H-1) */
+  pick(n = 1) {
+    n = Math.max(1, n | 0);
+    const k = this.craft('item_bouquet', n);
+    this.signal('flower', n);
     return k;
   }
 
@@ -508,6 +648,7 @@ export class MissionModel {
     const t = tplOf(i.c);
     this.remove(i);
     this.setCooldown(t);
+    this.asked.delete(i.id);
     const st = Math.max(0, Math.min(3, stars | 0));
     let coins = 0, fame = 0;
     if (t.stages) fame = 0;                                                // (paid per stage)
@@ -517,7 +658,7 @@ export class MissionModel {
       fame = Array.isArray(t.fame) ? t.fame[Math.max(0, (st || 1) - 1)] : (t.fame | 0);
       if (t.kind === 'drive' && st === 3) fame += this.cfg.drive.bonusFame3;
     }
-    this.emit({ t: 'mission:done', id: i.id, code: i.c, kind: t.kind, coins, fame, stars: st, gv: i.gv, w: i.w, nm: i.nm });
+    this.emit({ t: 'mission:done', id: i.id, code: i.c, kind: t.kind, coins, fame, stars: st, gv: i.gv, w: i.w, nm: i.nm, key: i.k });
     if (t.flag) this.emit({ t: 'mission:flag', flag: t.flag });
     if (fame) this.fameAdd(fame, i.c);
     // side effects: the week, the combo, the drive streak, celebrations
@@ -533,7 +674,8 @@ export class MissionModel {
     this.remove(i);
     if (t.gives && i.s === 'a') for (const k in t.gives) this.bag[k] = Math.max(0, (this.bag[k] || 0) - t.gives[k]);
     if (t.repeat !== 'once' && t.repeat !== 'event') this.setCooldown(t);
-    this.emit({ t: 'mission:expire', id: i.id, code: i.c, why, gv: i.gv });
+    this.emit({ t: 'mission:expire', id: i.id, code: i.c, why, gv: i.gv, key: i.k });
+    this.asked.delete(i.id);
     if (i.s === 'b') this.bt = Math.round(this.T + this.cfg.refresh);
   }
 
@@ -567,13 +709,17 @@ export class MissionModel {
   template(i) { return tplOf(i.c); }
   fraction(i) { return fraction(tplOf(i.c), i.g); }
 
-  /** the focus rule: an event due within 3 game hours → an accepted request → the board card with most progress */
+  /** the focus rule: an event due within 3 game hours → an accepted request → a life event with someone in it →
+   *  the board card with most progress → anything else running */
   focus() {
     const T = this.T, F = this.cfg.focusDeadline;
     let best = null;
     for (const i of this.list) if (i.s === 'a' && i.d && i.d - T <= F && tplOf(i.c).src !== 'bubble' && (!best || i.d < best.d)) best = i;
     if (best) return best;
     for (const i of this.list) if (i.s === 'a' && tplOf(i.c).src === 'bubble' && (!best || i.t0 < best.t0)) best = i;
+    if (best) return best;
+    // a life event with someone in it (an elder's wish, a first school day, a baby's welcome) before the board's goals
+    for (const i of this.list) if (i.s === 'a' && (i.nm || i.gv) && tplOf(i.c).src === 'event' && (!best || (i.d || 1e12) < (best.d || 1e12) || ((i.d || 1e12) === (best.d || 1e12) && i.t0 < best.t0))) best = i;
     if (best) return best;
     let bf = -1;
     for (const i of this.list) {
@@ -608,13 +754,20 @@ export class MissionModel {
       if (i.nm) o.nm = i.nm;
       if (i.k) o.k = i.k;
       if (i.stg) o.sg = i.stg;
+      if (i.pl) o.pl = i.pl;
+      if (i.wi) o.wi = i.wi;
       return o;
     };
     const T = this.T;
     const cool = {};
     for (const t of CATALOG) { const v = this.cool[t.code]; if (v === -1 || v > T) cool[t.code] = v; }   // (catalog order: stable)
     const o = { v: 1, sd: this.seed, rs: this.rng.state, n: this.nextId, t5: Math.round(this.t5), bt: Math.round(this.bt), rq: Math.round(this.rq) };
-    for (const st of ['b', 'a', 'p', 'o']) { const l = this.instances(st); if (l.length) o[st] = l.map(ser); }
+    for (const st of ['b', 'a', 'p', 'o']) {
+      let l = this.instances(st);
+      // (never more than the slice keeps: the running missions with a deadline or progress first)
+      if (l.length > MAX[st]) l = l.slice().sort((x, y) => ((y.d ? 2 : 0) + (y.g.some((v) => v) ? 1 : 0)) - ((x.d ? 2 : 0) + (x.g.some((v) => v) ? 1 : 0)) || x.id - y.id).slice(0, MAX[st]).sort((x, y) => this.list.indexOf(x) - this.list.indexOf(y));
+      if (l.length) o[st] = l.map(ser);
+    }
     if (Object.keys(cool).length) o.c = cool;
     const bag = {};
     for (const k in this.bag) if (this.bag[k] > 0) bag[k] = this.bag[k];
@@ -625,6 +778,7 @@ export class MissionModel {
     o.fm = this.fame.serialize();
     if (Object.keys(this.fl).length) o.fl = Object.assign({}, this.fl);
     if (this.sett.n) o.st2 = { d: this.sett.d, n: this.sett.n };
+    if (this.craftState && (this.craftState.p || this.craftState.k !== undefined)) o.cr = JSON.parse(JSON.stringify(this.craftState));
     return o;
   }
 }

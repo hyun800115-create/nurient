@@ -12,6 +12,15 @@ import { mt } from '../../missions/strings.js';
 const ENTER_MS = 900;
 
 export class BankBuilding {
+  /** the civic bank art is in memory (the module loads it only once the site is offered: critique M-8) */
+  static artReady() {
+    try {
+      const cut = Assets.def('bank').cutaway || {};
+      const first = (cut.drawOrder || ['bank']).find((k) => !k.startsWith('@')) || 'bank';
+      return Assets.has(first);
+    } catch (e) { return false; }
+  }
+
   /** host = BankHost; (x, y) = the building's anchor in the world */
   constructor(host, x, y) {
     this.host = host;
@@ -179,6 +188,20 @@ export class BankBuilding {
     v.f.setPose('walk', 'SW');
     this.s.tweens.killTweensOf(o);
     this.s.tweens.add({ targets: o, x: ex, y: ey, duration: 700, onComplete: () => this.s.tweens.add({ targets: o, x: this.x + door[0], y: this.y + door[1], alpha: 0, duration: 600, onComplete: () => { if (done) done(); } }) });
+  }
+
+  /** the opening: the tellers and the manager come in from the back room one after another and take their places
+   *  (plan §6.2 "a banker arrives"), the shell opens for a moment so it is seen */
+  arrive() {
+    this.want = true; this.tapT = 4;
+    this.staff.forEach((f, k) => {
+      const o = f.obj, x = o.x, y = o.y;
+      this.s.tweens.killTweensOf(o);
+      o.setPosition(x + 46, y - 24).setAlpha(0);
+      f.setPose('walk', 'SW');
+      this.s.tweens.add({ targets: o, alpha: 1, duration: 260, delay: 500 + k * 650 });
+      this.s.tweens.add({ targets: o, x, y, duration: 1100, delay: 500 + k * 650, ease: 'Sine.easeInOut', onComplete: () => { try { f.setPose(k === 3 ? 'wave' : 'idle', 'SW'); } catch (e) { f.setPose('idle', 'SW'); } } });
+    });
   }
 
   /** a number is called: queued, so the pills come one after another like a real counter display */

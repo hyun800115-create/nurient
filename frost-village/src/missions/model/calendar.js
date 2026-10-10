@@ -1,17 +1,16 @@
 // 오늘의 미션 (3 a day) · 이번 주 목표 (one a week, 3 stages) · 연속 달성 (streak + 눈사람 방패). Pure.
 // The day is the device's local date with a 05:00 reset (tuning.daily.clock 'real', the default; 'game' uses the game
 // day instead). Rules:
-//   - a clock moved backward never re-opens or double-counts a day (keys only move forward);
-//   - with the real clock, at most one rollover per launch (a long session gets another after 20 h of uptime), so
-//     moving the phone's clock forward and back cannot farm fresh dailies;
-//   - the dailies of a date are drawn from a seed of (save seed, date), so a reload shows the same three;
+//   - keys only move forward: a clock moved backward never re-opens, re-rolls or double-counts a day, and a date's
+//     dailies are drawn from a seed of (save seed, date), so a reload shows the same three. A tab left open overnight
+//     (a phone that slept) rolls at the first tick of the new day (critique H-2: the old "one rollover per launch"
+//     rule kept yesterday's set all day). Pushing the phone's clock ahead only plays future days early: those dates
+//     are then used up, so nothing can be farmed;
 //   - the streak counts days whose three dailies were all done; once per week a shield forgives one missed day.
 
 import { Rng, hashStr } from '../lib/rng.js';
 import { dayKey, weekKey } from '../lib/calendarKeys.js';
 import { unitsOf, isDone } from './units.js';
-
-const UPTIME_REROLL = 20 * 3600 * 1000;
 
 export class Calendar {
   /**
@@ -26,8 +25,6 @@ export class Calendar {
     this.dy = s.dy && typeof s.dy === 'object' ? { d: s.dy.d | 0, ids: (s.dy.ids || []).slice(0, 3), g: (s.dy.g || []).map((a) => (Array.isArray(a) ? a.slice(0, 4) : [])), k: (s.dy.k || []).slice(0, 3), a: s.dy.a ? 1 : 0 } : null;
     this.wk = s.wk && typeof s.wk === 'object' ? { w: s.wk.w | 0, c: s.wk.c || null, g: Math.max(0, s.wk.g | 0), s: Math.max(0, Math.min(3, s.wk.s | 0)) } : null;
     this.st = s.st && typeof s.st === 'object' ? { n: Math.max(0, s.st.n | 0), last: s.st.last | 0, sw: s.st.sw | 0 } : { n: 0, last: 0, sw: 0 };
-    this.rolled = false;        // a rollover happened in this launch (real clock)
-    this.rollUp = 0;
   }
 
   /** today's day key (real or game clock) */
@@ -44,17 +41,9 @@ export class Calendar {
     const out = [];
     const key = this.keyOf(env);
     if (!key) return out;
-    const real = this.cfg.daily.clock !== 'game';
     if (!this.dy || key > this.dy.d) {
-      const up = env.uptime ? env.uptime() : 0;
-      if (this.dy && real && this.rolled && up - this.rollUp < UPTIME_REROLL) {
-        // a second date change in one launch (a clock pushed forward again): ignored until the next launch
-      } else {
-        const fresh = !this.dy;
-        this.draw(key, catalog.daily, eligible);
-        if (real && !fresh) { this.rolled = true; this.rollUp = up; }
-        out.push({ t: 'daily:new', d: key, ids: this.dy.ids.slice() });
-      }
+      this.draw(key, catalog.daily, eligible);
+      out.push({ t: 'daily:new', d: key, ids: this.dy.ids.slice() });
     }
     // the week (a week key is the day key of its reset day)
     const wkey = weekKey(this.dy ? Math.max(this.dy.d, key) : key, this.cfg.weekly.resetDay);

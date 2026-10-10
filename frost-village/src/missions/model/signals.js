@@ -31,10 +31,11 @@ const MAP = {
   flower: () => [['flower', 1]],
   paperRead: () => [['paper_read', 1]],
   'harbor:auction': () => [['auction', 1]],
-  'harbor:export': (e) => [['export', n1(e.n)]],
+  'harbor:export': (e) => (nOr0(e.n) ? [['export', nOr0(e.n)]] : []),     // (an expired contract says n: 0)
   'beach:arrive': (e) => [['beach_guest', n1(e.n)]],
   'beach:checkin': (e) => [['hotel_guest', n1(e.n)]],
   'lgx:settle': () => [['settle', 1]],
+  'bank:deposit': (e) => (nOr0(e.saved) ? [['deposit', nOr0(e.saved)]] : []),     // (the bank module's event)
   'lgx:produced': (e) => (e.kind === 'furniture' || e.kind === 'appliance' ? [['made:' + e.kind, n1(e.n)]] : []),
 };
 

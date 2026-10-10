@@ -5,6 +5,11 @@
 // cancel() releases the bodies, removes the props with a poof and settles the pending waits.
 
 export const DIRS8 = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+/** townfolk2 anims and what a body without its townfolk2 pages plays instead (everyday look, critique H8) */
+export const TF2_PLAIN = { sit: 'idle', clap: 'happy', sad: 'idle', push: 'walk' };
+/** townfolk2 parts (assets/townfolk2 parts): the presets bride, groom, wedding_guest, flower_girl, mourner and
+ *  mourner_family are made of them */
+export const TF2_PARTS = { wedding_dress: 1, veil: 1, groom_suit: 1, flower_crown: 1, mourning_coat: 1, black_hat: 1, held_bouquet: 1 };
 /** the 8-way direction of a screen vector (iso screen: y down) */
 export function dirOf(dx, dy) {
   const a = Math.atan2(dy, dx);
@@ -24,6 +29,8 @@ export class Stagehand {
     this.cancelled = false;
     this.music = null;
     this.extras = [];
+    this.venues = new Set();
+    this.preview = false;     // the designer's preview: nothing it makes stays in the world
   }
 
   get scene() { return this.ctx.scene; }
@@ -82,8 +89,20 @@ export class Stagehand {
   place(pid, x, y, dir) { if (!this.cancelled && this.town.place) this.town.place(pid, x, y, dir); }
   face(pid, d) { if (!this.cancelled && this.town.face) this.town.face(pid, d); }
   faceTo(pid, other) { const a = this.body(pid), b = typeof other === 'object' && other && other.x !== undefined ? other : this.body(other); if (a && b) this.face(pid, dirOf(b.x - a.x, b.y - a.y)); }
-  anim(pid, name, opts) { if (!this.cancelled && pid && this.town.anim) this.town.anim(pid, name, opts || {}); }
-  dress(pid, preset, opts) { if (!this.cancelled && pid && this.town.dress) this.town.dress(pid, preset, opts || {}); }
+  /** may this body wear townfolk2 clothes / play townfolk2 anims now (its age group's pages are resident)? */
+  canDress(pid) { const f = this.ctx.canDress; return !f || !!f(pid); }
+  anim(pid, name, opts) {
+    if (this.cancelled || !pid || !this.town.anim) return;
+    this.town.anim(pid, TF2_PLAIN[name] && !this.canDress(pid) ? TF2_PLAIN[name] : name, opts || {});
+  }
+  dress(pid, preset, opts) {
+    if (this.cancelled || !pid || !this.town.dress) return;
+    const needs = !!preset || ((opts && opts.add) || []).some((p) => TF2_PARTS[p]);
+    if (needs && !this.canDress(pid)) return;
+    this.town.dress(pid, preset, opts || {});
+  }
+  /** a venue of ours is the stage (our 마을회관 hides its notice board and pads, P13 / critique M4) */
+  stageVenue(id) { const W = this.ctx.ports.world; if (id && W && W.stage && !this.venues.has(id)) { W.stage(id, true, this.name); this.venues.add(id); } }
   say(pid, text, emote, dur = 2.6) { const P = this.ctx.ports; return !this.cancelled && pid && P.say ? P.say(pid, text, emote, dur, { story: true }) : false; }
   emote(pid, key, dur = 1.8) { const P = this.ctx.ports; return !this.cancelled && pid && P.emote ? P.emote(pid, key, dur) : false; }
   attach(pid, kind, opts) { return this.town.attach ? this.town.attach(pid, kind, opts || {}) : null; }
@@ -160,6 +179,9 @@ export class Stagehand {
   }
   end() {
     if (this.reserved && this.town.reserve) { this.town.reserve(this.name, null); this.reserved = false; }
+    const W = this.ctx.ports.world;
+    if (W && W.stage) for (const id of this.venues) W.stage(id, false, this.name);
+    this.venues.clear();
     this.releaseAll();
     this.stopMusic();
     this.clearProps(!this.cancelled);

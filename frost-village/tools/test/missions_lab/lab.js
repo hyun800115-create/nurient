@@ -29,7 +29,7 @@ const LATE = ['ui3', 'fx_city', 'civic', 'life2', 'town'];
 const VIL = { 'v:npc_aunt': 'npc_aunt', 'v:npc_uncle': 'npc_uncle', 'v:npc_grandma': 'npc_grandma', 'v:npc_grandpa': 'npc_grandpa', 'v:npc_kid_boy': 'npc_kid_boy', 'v:npc_kid_girl': 'npc_kid_girl',
   'v:npc_teen_girl': 'npc_teen_girl', 'v:npc_young_man': 'npc_young_man', 'pet:pet_cat': 'pet_cat', 'pet:pet_penguin': 'pet_penguin',
   't:12': 'npc_merchant', 't:31': 'npc_teen_girl', 't:47': 'npc_grandma', 't:58': 'npc_kid_boy', 's:1': 'npc_doctor', 's:2': 'npc_skater' };
-const CHARS = ['player', 'npc_aunt', 'npc_uncle', 'npc_grandma', 'npc_grandpa', 'npc_kid_boy', 'npc_kid_girl', 'npc_teen_girl', 'npc_young_man', 'pet_cat', 'pet_penguin', 'npc_merchant', 'npc_bard', 'npc_clerk_a', 'npc_clerk_b', 'npc_doctor', 'npc_skater'];
+const CHARS = ['player', 'pet_dog', 'npc_aunt', 'npc_uncle', 'npc_grandma', 'npc_grandpa', 'npc_kid_boy', 'npc_kid_girl', 'npc_teen_girl', 'npc_young_man', 'pet_cat', 'pet_penguin', 'npc_merchant', 'npc_bard', 'npc_clerk_a', 'npc_clerk_b', 'npc_doctor', 'npc_skater'];
 const ATLASES = ['ui_icons', 'ui2_icons', 'ui3_icons', 'ui4_icons', 'emotes', 'fx_particles', 'props_nature', 'props_decor', 'props_items', 'props_buildings', 'life_props', 'life2_items', 'life2_decor', 'life2_wedding', 'civ_bank', 'town_street'];
 const IMAGES = ['ui_panel', 'ui_button_blue', 'ui_button_green', 'ui_button_gray', 'ui_coin_bar', 'ui_mission_card', 'ui_mission_card_done', 'ui_mission_board', 'ui_progress_bg', 'ui_progress_fill',
   'ui_passbook', 'ui_passbook_row', 'ui_chat_bubble', 'ground_snow', 'ground_plaza', 'decal_path_a', 'decal_path_b', 'decal_snow_drift_a', 'decal_snow_drift_b', 'decal_footprints', 'portrait_player'];
@@ -190,6 +190,11 @@ class World extends Phaser.Scene {
     this.places.set('p:rink', { x: 640, y: 1240 });
     this.places.set('p:depot', { x: 1900, y: 700 });
     this.places.set('p:bank', { x: 2140, y: 860 });
+    // the freight yard where drives set off (the 출발 pad), the farm (Ppoppi's home), the flower shop
+    S('crate', 1730, 1150, 0.9); S('barrel', 1775, 1172, 0.9);
+    this.places.set('p:yard', { x: 1600, y: 1180 });
+    this.places.set('p:farm', { x: 520, y: 1280 });
+    this.places.set('p:florist', { x: 1160, y: 1250 });
   }
 
   residents() {
@@ -210,6 +215,7 @@ class World extends Phaser.Scene {
     add('pet:pet_penguin', 1300, 790, 'SW');
     add('t:12', 1340, 1030, 'SW');
     add('v:npc_young_man', 1090, 760, 'SW');
+    add('t:47', 1470, 860, 'SW');
     // grandma sits on the bench (seat height)
     const g = this.people.get('v:npc_grandma');
     g.obj.y -= 22; g.obj.setDepth(926);
@@ -256,7 +262,16 @@ class World extends Phaser.Scene {
   }
 
   movePeople(dt) {
+    const ch = this.chiefFig.obj;
     for (const f of this.people.values()) {
+      if (f.follow) {
+        // a leased resident walks a step behind the chief (ports.people.follow)
+        const tx = ch.x - 56, ty = ch.y + 26, dx = tx - f.obj.x, dy = ty - f.obj.y, d = Math.hypot(dx, dy);
+        if (d > 8) { const sp = Math.min(d, (d > 120 ? 260 : 170) * dt); f.obj.setPosition(f.obj.x + (dx / d) * sp, f.obj.y + (dy / d) * sp); f.setPose('walk', dirOf(dx, dy)); }
+        else if (!this.chiefMove) f.setPose('idle', f.dir);
+        f.obj.setDepth(f.obj.y); f.shadow.setPosition(f.obj.x, f.obj.y).setDepth(f.obj.y - 1);
+        continue;
+      }
       const w = f.walk;
       if (!w) { f.shadow.setPosition(f.obj.x, f.obj.y + (f.pose === 'sit' ? 22 : 0)); continue; }
       const o = f.obj, tg = w.path[w.i];
@@ -392,11 +407,17 @@ class UI extends Phaser.Scene {
     this.bannerBox.add([this.bannerBg, this.bannerText]);
     this.flyPool = [];
     this.bubbles = [];
+    // v4's order chip (UIv4 at (28, top + 212)): shown when the lab says the station has an order
+    const oc = this.orderChipC = this.add.container(28, top + 212).setVisible(false);
+    oc.add(this.nine('ui_panel', 0, 0, 290, 66).setOrigin(0, 0.5).setAlpha(0.96));
+    const oi = Assets.image(this, 34, 0, 'item_plank'); oi.setScale(40 / oi.frame.realWidth);
+    oc.add([oi, this.add.text(64, 0, '12/30  목공소 주문', TXT(21, '#2b2f3a', '#ffffff', 0)).setOrigin(0, 0.5)]);
   }
   nine(key, x, y, w, h) { const n = Assets.nine(key); return this.add.nineslice(x, y, n.tex, n.frame, w, h, n.l, n.r, n.t, n.b); }
   blocking() { return this.panels > 0; }
 
   tick(dt) {
+    if (this.orderChipC.visible !== !!LAB.orderChip) this.orderChipC.setVisible(!!LAB.orderChip);
     if (this.shownCoins !== this.coins) {
       const d = this.coins - this.shownCoins;
       this.shownCoins += Math.sign(d) * Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 6)));

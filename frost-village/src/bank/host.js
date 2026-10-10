@@ -3,13 +3,16 @@
 // views (the cutaway building with tellers and customers, the counter sheet, the passbook, the loan sheet).
 // Coins move only through a wallet over ports.coins (bank payouts are tagged 'bank', so the income meter ignores them).
 
-import { Account } from './model/account.js';
+import { Account, MAX_POLICIES, policyId as policyKey } from './model/account.js';
 import { Branch } from './model/branch.js';
 import { bankTuning } from './tuning.js';
 import { sanitizeBank, fitBank } from './save.js';
 import { mt, fmtN } from '../missions/strings.js';
 import { BankBuilding } from './view/BankBuilding.js';
-import { CounterSheet, PassbookPanel, LoanSheet } from './view/BankPanels.js';
+import { CounterSheet, PassbookPanel, LoanSheet, InsureSheet } from './view/BankPanels.js';
+
+/** the civic art the bank's building needs (loaded when the site is offered, not with the module: critique M-8) */
+export const BANK_AREA_ART = { civic: ['civ_bank'] };
 
 export class BankHost {
   /**
@@ -31,14 +34,32 @@ export class BankHost {
     this.padT = 0;
     this.closedDay = -1;
     this.views = opts.views !== false && !!(P.ui && P.ui.scene);
-    const at = opts.at || (P.places && P.places.pos('p:bank'));
+    this.at = opts.at || null;
+    this.building = null;              // made when the site is offered and civ_bank is resident (ensureBuilding)
+    this.artAsked = false;
     if (this.views) {
-      this.building = at ? new BankBuilding(this, at.x, at.y) : null;
       this.sheet = new CounterSheet(this);
       this.passbook = new PassbookPanel(this);
       this.loanSheet = new LoanSheet(this);
+      this.insureSheet = new InsureSheet(this);
     }
     this.api = this.makeApi();
+  }
+
+  /** the bank area's art is wanted once the site is offered or the bank is open (an area residency class) */
+  wantsArt() { return !!(this.account.open || this.account.siteOffered); }
+  artKeys() { return this.wantsArt() ? BANK_AREA_ART.civic.slice() : []; }
+
+  /** the building view: only when it is wanted and its art is in memory (asked for once through ports.assets) */
+  ensureBuilding() {
+    if (this.building || !this.views || !this.wantsArt()) return;
+    const P = this.ports;
+    if (!BankBuilding.artReady()) {
+      if (!this.artAsked && P.assets && P.assets.fragment) { this.artAsked = true; try { P.assets.fragment('civic', { only: BANK_AREA_ART.civic }); } catch (e) { /* retried by the game's residency */ } }
+      return;
+    }
+    const at = this.at || (P.places && P.places.pos('p:bank'));
+    if (at) this.building = new BankBuilding(this, at.x, at.y);
   }
 
   lang() { return this.ports.lang ? this.ports.lang() : 'ko'; }
@@ -48,7 +69,13 @@ export class BankHost {
   openBank(quiet) {
     if (this.account.open) return;
     this.account.open = true;
-    if (!quiet) { this.ports.ui.banner(mt(this.lang(), 'b_open'), ''); this.ports.sound.play('sfx_cheer', { volume: 0.7 }); }
+    if (quiet) return;
+    this.ports.ui.banner(mt(this.lang(), 'b_open'), '');
+    this.ports.sound.play('sfx_cheer', { volume: 0.7 });
+    this.ensureBuilding();
+    if (this.building) this.building.arrive();
+    // missions hears it: the first mission of the bank, "첫 저금"
+    if (this.ports.emit) this.ports.emit({ t: 'bank:open' });
   }
 
   /** the site appears at title 2 (믿음직한 촌장) or 읍 + 20 min (P29 builds it with porters, scaffold and ribbon) */
@@ -77,19 +104,21 @@ export class BankHost {
     for (const e of this.branch.drain()) this.applyBranch(e);
     for (const e of a.drain()) this.apply(e);
     if (!this.views) return;
+    this.ensureBuilding();
     const b = this.building;
     if (b) {
       b.update(dt);
       b.syncPeople(this.branch.people());
       // the counter pad: stand still for a moment → the counter sheet
       const on = a.open && b.onPad(P.chief.x(), P.chief.y());
-      // not under the passbook / the loan question (they sit on top; the sheet comes back when they close)
-      const busy = this.passbook.isOpen() || this.loanSheet.isOpen();
+      // not under the passbook / the loan question / the insurance list (they sit on top; the sheet comes back)
+      const busy = this.passbook.isOpen() || this.loanSheet.isOpen() || this.insureSheet.isOpen();
       if (busy) { if (this.sheet.isOpen()) this.sheet.close(); }
       else if (on && !P.chief.moving()) { this.padT += dt; if (this.padT > 0.5) this.sheet.open(); }
       else if (!on) { this.padT = 0; if (this.sheet.isOpen()) this.sheet.close(); }
     }
     this.sheet.update(dt);
+    this.insureSheet.update(dt);
   }
 
   applyBranch(e) {
@@ -112,6 +141,8 @@ export class BankHost {
       case 'bank:loan': P.sound.play('sfx_stamp', { volume: 0.6 }); break;
       case 'bank:repaid': P.ui.toast(mt(lang, 'b_repaid'), 2000); P.sound.play('sfx_unlock', { volume: 0.6 }); break;
       case 'bank:restructure': if (e.waived > 0) P.ui.toast(mt(lang, 'b_restructure'), 2000); break;
+      case 'bank:insure': P.ui.toast(mt(lang, 'b_insure_paid', { name: this.buildingName(e.building || e.id) }), 1800); P.sound.play('sfx_stamp', { volume: 0.6 }); break;
+      case 'bank:lapsed': P.ui.toast(mt(lang, 'b_insure_lapsed'), 1800); break;
       case 'bank:interest': break;
       default: break;
     }
@@ -133,10 +164,33 @@ export class BankHost {
     const a = this.account;
     const q = a.quote(short, this.ports.income.perMin(), kind, cost);
     if (!q) return false;
+    if (this.loanSheet && this.loanSheet.isOpen()) return false;      // (one question at a time)
     const yes = this.loanSheet ? await this.loanSheet.ask(q) : true;
     if (!yes) return false;
     return a.take(q, this.wallet, this.ports.clock.T(), this.day(), kind);
   }
+
+  // ------------------------------------------------------------------------------------------------ (v8) insurance
+  /** the chief's buildings that can be insured: [{ id, name, cost, premium, insured, lapsed }] (ports.buildings) */
+  insurable() {
+    const B = this.ports.buildings;
+    const list = B && B.list ? (B.list() || []) : [];
+    return list.filter((b) => b && b.id && b.cost > 0).slice(0, 40).map((b) => {
+      const k = this.account.policies.get(policyKey(b.id));
+      return { id: b.id, name: b.name || null, cost: b.cost, premium: this.account.premiumOf(b.cost), insured: !!(k && !k.lapsed), lapsed: !!(k && k.lapsed), has: !!k };
+    });
+  }
+  insuranceOn() { return !!(this.ports.facts && (this.ports.facts.has('v8') || this.ports.facts.has('toggle:incidents'))); }
+  insure(id, cost) {
+    if (this.account.policies.size >= MAX_POLICIES) { this.ports.ui.toast(mt(this.lang(), 'b_insure_full', { n: MAX_POLICIES }), 1600); return false; }
+    return this.account.insure(id, cost);
+  }
+  buildingName(id) {
+    const B = this.ports.buildings, lang = this.lang();
+    const b = B && B.list ? (B.list() || []).find((x) => x.id === id) : null;
+    return b && b.name ? (b.name[lang] || b.name.ko || String(id)) : String(id);
+  }
+  openInsurance() { if (this.insureSheet) { if (this.sheet) this.sheet.close(); this.insureSheet.open(); } }
 
   // ------------------------------------------------------------------------------------------------ residents
   onFeed(ev) {
@@ -199,7 +253,11 @@ export class BankHost {
       deposit: (n) => this.deposit(n),
       withdraw: (n) => this.withdraw(n),
       insured: (id) => a.insured(id),
-      insure: (id, cost) => a.insure(id, cost),
+      insure: (id, cost) => this.insure(id, cost),
+      /** a pad's shortfall as the bank would cover it now (null: nothing to offer → the pad says "코인이 모자라요") */
+      quote: (short, kind = 'build', cost = 0) => a.quote(short, this.ports.income.perMin(), kind, cost),
+      /** the bank area's late art (Residency: an area class near row D) */
+      artKeys: () => this.artKeys(),
       claim: (id, fireId) => a.claim(id, fireId, this.wallet, this.day()),
       passbookRows: (pids) => (pids || []).map((p) => ({ pid: p, rows: p === 'chief' ? a.rows.slice() : this.residentRows(p) })),
       open: () => this.openBank(),

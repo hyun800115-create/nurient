@@ -6,16 +6,19 @@
 import { BALANCE } from '../data/balance.js';
 import { MissionsHost } from './host.js';
 import { sanitizeMissions, MISSIONS_SLICE } from './save.js';
-import { BankHost } from '../bank/host.js';
+import { BankHost, BANK_AREA_ART } from '../bank/host.js';
 import { sanitizeBank, BANK_SLICE } from '../bank/save.js';
 
 const v5 = () => (BALANCE && BALANCE.v5) || {};
 const rank2 = (gs) => !!(gs && gs.v4 && gs.v4.rank && gs.v4.rank.level >= 2);
 
-/** art and sound the module needs (late fragments: only these files) */
+/** art and sound the module needs with it (late fragments: only these files). The bank building's cutaway
+ *  (civ_bank, 5 MiB) is not here: it is an area residency class (BANK_AREA_ART), asked for when the bank site is
+ *  offered and dropped by the game's Residency far from row D (critique M-8). */
 export const FRAGMENTS = {
   missions: { ui3: ['ui3_icons', 'ui_mission_card', 'ui_mission_card_done', 'ui_mission_board', 'ui_progress_bg', 'ui_progress_fill'], life2: ['life2_items', 'life2_decor'], audio3: ['sfx_mission_done', 'sfx_fame_up'] },
-  bank: { civic: ['civ_bank'], fx_city: ['ui4_icons', 'ui_passbook', 'ui_passbook_row'], audio6: ['sfx_coin_count', 'sfx_stamp', 'sfx_ticket_chime', 'sfx_vault_door', 'amb_bank'] },
+  bank: { fx_city: ['ui4_icons', 'ui_passbook', 'ui_passbook_row'], audio6: ['sfx_coin_count', 'sfx_stamp', 'sfx_ticket_chime', 'sfx_vault_door', 'amb_bank'] },
+  bankArea: BANK_AREA_ART,
 };
 
 export const MISSIONS_MODULE = {

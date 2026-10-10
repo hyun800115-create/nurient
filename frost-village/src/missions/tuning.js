@@ -16,7 +16,7 @@ export const MISSIONS_TUNING = {
   requestEvery: [45, 90],  // 새 부탁 말풍선이 생기는 간격 (최소, 최대 초)
   bubbleLife: 360,         // 아무도 안 받은 말풍선은 이만큼(초) 뒤에 사라져요
   acceptRange: 90,         // 주민 곁 이만큼(px) 안에 0.5초 서 있으면 부탁 카드가 떠요
-  acceptStill: 0.5,        //   (가만히 서 있어야 하는 시간, 초)
+  acceptStill: 0.5,        //   (가만히 서 있어야 하는 시간, 초) — 걸어와서 멈췄을 때만 떠요 (일하느라 서 있을 땐 안 떠요)
   payFloor: 100,           // 보상 코인의 최소값 (× 시대: 읍 1, 도시 2, 큰 도시 3)
   income: { window: 300 }, // '지금 1분 수입' = 최근 300초 동안 번 코인의 1분 평균 (미션·대출 돈은 빼고)
   focusDeadline: 75,       // 마감이 이만큼(초 = 게임 3시간) 안에 있는 행사 미션이 맨 먼저 칩에 떠요
@@ -27,13 +27,17 @@ export const MISSIONS_TUNING = {
   streak: { rewards: { 2: { fame: 10 }, 3: { decor: 'deco_flowers' }, 5: { pay: 3 }, 7: { fame: 50, flair: 'crown' } },
             shieldPerWeek: 1, comboRequests: 5, comboWindow: 900, comboFame: 5, driveStars: 3, driveFame: 20,
             crownHours: 24, driverFlair: 600 },  // 왕관은 실제 24시간, '베스트 드라이버'는 게임 하루(600초)
-  drive:  { par: { slackPerStop: 8, vmaxShare: 0.6 }, stars: [1.0, 1.3, 2.0], payByStars: [0.6, 0.85, 1.0], bonusFame3: 5 },
+  drive:  { par: { slackPerStop: 8, vmaxShare: 0.6 }, stars: [1.0, 1.3, 2.0], payByStars: [0.6, 0.85, 1.0], bonusFame3: 5,
+            startStand: 0.6 },   // 화물장 '출발' 발판에 이만큼(초) 서 있으면 운전이 시작돼요 (게시판 카드의 '출발' 버튼도 돼요)
   fame:   { titles: [0, 150, 400, 900, 2000], riders: 25, lifeBeat: 5, newThing: 5, happening: 2,
             settlerBoost: [0, 0.1, 0.1, 0.2, 0.3], touristBoost: [0, 0, 0, 0.2, 0.3] },
-  craft:  { bouquetStand: 3, bouquetsPerBed: 6, bouquetBuy: 25, cakeBread: 12, cakeTime: 20, giftItems: 3, bagMax: 12 },
+  craft:  { bouquetStand: 3, bouquetsPerBed: 12, bouquetBuy: 25, cakeBread: 12, cakeTime: 20, giftItems: 3, bagMax: 12 },
+  escort: { near: 110, along: 12 },  // 함께 가기: 주민 곁 이만큼(px) 안에 가면 따라와요 / 목적지를 모르면 이만큼(초) 함께 걸으면 끝
   goalLastHour: 18,        // '오늘' 목표(통조림 30개 등)는 이 시각 전에만 새로 걸려요 (끝낼 시간이 있게)
   maxParked: 6,            // 보관함에 넣어 둘 수 있는 미션 수
   eventStale: 1800,        // 마감이 없는 행사 미션이 이만큼(초 = 게임 3일) 아무 진행이 없으면 조용히 끝나요
+  boardStale: 1500,        // 게시판 카드가 이만큼(초 = 게임 2.5일) 아무 진행이 없으면 조용히 내려가고 새 카드가 걸려요
+  schoolAge: 7,            // 이 나이 생일이면 다음 날 '첫 등교 함께 가기' (이야기 엔진의 schoolAge 와 같아야 해요)
 };
 
 /** BALANCE.v5.missions (when it exists) over these defaults — one level deep, unknown keys ignored */

@@ -1,6 +1,6 @@
 {
  "phone": {
-  "texMiB": 183.7,
+  "texMiB": 186.8,
   "moduleMiB": 9.65,
   "moduleTex": {
    "ui3_icons": 1.17,
@@ -14,15 +14,15 @@
    "ui_mission_board": 0.14,
    "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
-   "ui_passbook": 0.15,
-   "ui_passbook_row": 0.02
+   "ui_passbook_row": 0.02,
+   "ui_passbook": 0.15
   },
-  "msMissions": 0.0224,
-  "msBank": 0.0029,
+  "msMissions": 0.0362,
+  "msBank": 0.0078,
   "p95Missions": 0.1,
-  "worldObjects": 101,
-  "uiObjects": 52,
-  "moduleObjects": 29,
+  "worldObjects": 139,
+  "uiObjects": 72,
+  "moduleObjects": 23,
   "placeholders": [],
   "errors": []
  },
@@ -34,8 +34,12 @@
   "docs/previews/missions_lab_band.png",
   "docs/previews/missions_lab_bank_closed.png",
   "docs/previews/missions_lab_bank_counter.png",
+  "docs/previews/missions_lab_bank_counter_v8.png",
+  "docs/previews/missions_lab_bank_insurance.png",
   "docs/previews/missions_lab_bank_loan.png",
   "docs/previews/missions_lab_bank_open_queue.png",
+  "docs/previews/missions_lab_bank_opening.gif",
+  "docs/previews/missions_lab_bank_opening.png",
   "docs/previews/missions_lab_bank_passbook.png",
   "docs/previews/missions_lab_bank_passbook_resident.png",
   "docs/previews/missions_lab_bank_queue.gif",
@@ -45,7 +49,16 @@
   "docs/previews/missions_lab_delivery_done.png",
   "docs/previews/missions_lab_desktop_panel.png",
   "docs/previews/missions_lab_desktop_plaza.png",
+  "docs/previews/missions_lab_drive_done.png",
+  "docs/previews/missions_lab_drive_pad.png",
   "docs/previews/missions_lab_edge_marker.png",
+  "docs/previews/missions_lab_escort_done.png",
+  "docs/previews/missions_lab_escort_walk.gif",
+  "docs/previews/missions_lab_escort_wish.png",
+  "docs/previews/missions_lab_f7_bed.png",
+  "docs/previews/missions_lab_lead_find.png",
+  "docs/previews/missions_lab_lead_home.png",
+  "docs/previews/missions_lab_lead_puppy.gif",
   "docs/previews/missions_lab_moving_done.png",
   "docs/previews/missions_lab_moving_recipient.gif",
   "docs/previews/missions_lab_panel_active.png",
@@ -60,9 +73,9 @@
   "docs/previews/missions_lab_zoom06.png",
   "docs/previews/missions_lab_zoom12.png"
  ],
- "seconds": 10,
+ "seconds": 251,
  "bank": {
-  "texMiB": 183.7,
+  "texMiB": 186.8,
   "moduleMiB": 9.65,
   "moduleTex": {
    "ui3_icons": 1.17,
@@ -76,18 +89,18 @@
    "ui_mission_board": 0.14,
    "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
-   "ui_passbook": 0.15,
-   "ui_passbook_row": 0.02
+   "ui_passbook_row": 0.02,
+   "ui_passbook": 0.15
   },
-  "msMissions": 0.0357,
-  "msBank": 0.0532,
-  "p95Missions": 0.1,
-  "worldObjects": 136,
-  "uiObjects": 65,
+  "msMissions": 0.0503,
+  "msBank": 0.0713,
+  "p95Missions": 0.2,
+  "worldObjects": 115,
+  "uiObjects": 69,
   "moduleObjects": 26,
   "placeholders": [],
   "errors": [],
-  "drawCalls": 7
+  "drawCalls": 5
  },
  "bankAfterLoan": {
   "coins": 2000,
@@ -141,10 +154,34 @@
   "chip": {
    "seconds": 10,
    "at": "2026-10-10T01:25:31.691Z"
+  },
+  "bubbles+accept+drive+lead+checks": {
+   "seconds": 142,
+   "at": "2026-10-10T08:34:41.826Z"
+  },
+  "panel+escort+flowers+chip": {
+   "seconds": 41,
+   "at": "2026-10-10T08:35:57.182Z"
+  },
+  "escort": {
+   "seconds": 11,
+   "at": "2026-10-10T08:36:57.609Z"
+  },
+  "bubbles+accept+delivery+moving+panel": {
+   "seconds": 109,
+   "at": "2026-10-10T08:39:15.131Z"
+  },
+  "drive+lead+escort+flowers+chip+title+zoom": {
+   "seconds": 124,
+   "at": "2026-10-10T08:41:23.050Z"
+  },
+  "bank+checks+desktop": {
+   "seconds": 251,
+   "at": "2026-10-10T08:45:38.086Z"
   }
  },
  "desktop": {
-  "texMiB": 183.7,
+  "texMiB": 186.8,
   "moduleMiB": 9.65,
   "moduleTex": {
    "ui3_icons": 1.17,
@@ -161,11 +198,11 @@
    "ui_passbook": 0.15,
    "ui_passbook_row": 0.02
   },
-  "msMissions": 0.1497,
-  "msBank": 0.0264,
-  "p95Missions": 0.2,
-  "worldObjects": 104,
-  "uiObjects": 136,
+  "msMissions": 0.195,
+  "msBank": 0.1472,
+  "p95Missions": 0.3,
+  "worldObjects": 108,
+  "uiObjects": 142,
   "moduleObjects": 29,
   "placeholders": [],
   "errors": [],
@@ -173,31 +210,77 @@
  },
  "consoleErrorsDesktop": [],
  "bubbles": {
-  "texMiB": 183.7,
+  "texMiB": 186.8,
   "moduleMiB": 9.65,
   "moduleTex": {
    "ui3_icons": 1.17,
    "ui4_icons": 1.02,
    "life2_items": 0.03,
    "life2_decor": 0.3,
-   "civ_bank": 5.02,
    "life2_wedding": 1.63,
+   "civ_bank": 5.02,
    "ui_mission_card": 0.08,
    "ui_mission_card_done": 0.08,
    "ui_mission_board": 0.14,
-   "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
    "ui_passbook": 0.15,
-   "ui_passbook_row": 0.02
+   "ui_passbook_row": 0.02,
+   "ui_progress_bg": 0.01
   },
-  "msMissions": 0.1003,
-  "msBank": 0.0114,
-  "p95Missions": 0.1,
-  "worldObjects": 116,
-  "uiObjects": 52,
+  "msMissions": 0.1571,
+  "msBank": 0.0696,
+  "p95Missions": 0.2,
+  "worldObjects": 120,
+  "uiObjects": 56,
   "moduleObjects": 41,
   "placeholders": [],
   "errors": [],
   "drawCalls": 5
+ },
+ "drive": {
+  "started": [
+   "B1#5 dog_sled mail"
+  ],
+  "done": true
+ },
+ "lead": {
+  "done": true
+ },
+ "checks": {
+  "gift": {
+   "breadBefore": 2,
+   "breadAfter": 2,
+   "giftBoxes": 0,
+   "padShown": true
+  },
+  "f7": {
+   "bedPadShown": true,
+   "f7progress": 1
+  },
+  "bubbles": {
+   "fullOnScreen": 2,
+   "smallHearts": 2
+  },
+  "counter": {
+   "frames": 300,
+   "rebuilds": 0,
+   "msPerFrame": 3.01
+  },
+  "panel": {
+   "secs": 60,
+   "rebuilds": 3
+  }
+ },
+ "escort": {
+  "stage": true,
+  "told": true
+ },
+ "f7": {
+  "picked": 5,
+  "done": true,
+  "bouquets": 5
+ },
+ "bankOpening": {
+  "c16": false
  }
 }

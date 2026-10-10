@@ -24,6 +24,13 @@ export const BUILDINGS = [
   { id: 'v_garden', key: 'memorial_garden', role: 'memorial', x: 2050, y: 1880, ours: true },
 ];
 export const BYID = Object.fromEntries(BUILDINGS.map((b) => [b.id, b]));
+/** our village's VillageLife areas as the kit reports them (patch S7: { id: 'va:<area>', key: 'village_area' }), far from
+ *  the town square: the named villagers spend the day here when `villagers: 'village'` (the game's real situation, H9) */
+export const VILLAGE_AREAS = [
+  { id: 'va:plaza_s', key: 'village_area', role: 'plaza', x: -2400, y: 1210, ours: true },
+  { id: 'va:notice', key: 'village_area', role: 'plaza', x: -2870, y: 870, ours: true },
+  { id: 'va:green_fire', key: 'village_area', role: 'plaza', x: -2610, y: 1610, ours: true },
+];
 
 const VILLAGERS = ['npc_aunt', 'npc_kid_girl', 'npc_kid_prankster', 'npc_teen_girl', 'npc_uncle', 'npc_grandma', 'npc_grandpa', 'npc_clerk_a', 'npc_blacksmith', 'npc_kid_boy',
   'npc_bard', 'npc_doctor', 'npc_postman', 'npc_chef'];
@@ -73,18 +80,47 @@ export function makeStandInTown(opts = {}) {
   for (const key of VILLAGERS) { const p = PERSONAS[key]; if (p) roster.push({ pid: 'v:' + key, kind: 'villager', key, persona: { name: p.name, short: p.short, en: p.en, group: p.group, sex: p.sex, age: p.age, job: p.job }, home: 'v_hall' }); }
   for (const c of citizens) roster.push({ pid: 't:' + c.id, kind: 'citizen', townKind: c.kind, role: c.role, name: c.name, nameEn: c.nameEn, age: c.age, home: c.home, work: c.work, workKind: c.work === 't_cafe' ? 'cafe' : c.work === 't_book' ? 'bookstore' : null, sex: c.sex });
   const spots = [];
+  const inVillage = opts.villagers === 'village';
+  const extras = [];                 // story children's bodies (TownSim nb.extra in the game)
+  const gone = new Set();            // people who left for good (TownSim nb.gone)
   return {
-    buildings: BUILDINGS, spots, roster, relations: RELATIONS, citizens,
+    buildings: BUILDINGS, spots, roster, relations: RELATIONS, citizens, extras, gone,
+    villageAreas: inVillage ? VILLAGE_AREAS : [],
+    /** a story child's body (S6 addCitizen): the pid the story asked for, kept in the roster across a reload */
+    addStoryChild(spec) {
+      const pid = spec.pid || ('k:' + spec.sid);
+      if (roster.some((r) => r.pid === pid)) return pid;
+      const like = spec.home && spec.home.like ? roster.find((r) => r.pid === spec.home.like) : null;
+      const row = { pid, kind: 'citizen', townKind: spec.townKind || (spec.age < 7 ? 'toddler' : 'student'), name: '아이', nameEn: 'Kid', age: spec.age, home: like ? like.home : 't_apt1', sid: spec.sid };
+      roster.push(row);
+      extras.push(row);
+      return pid;
+    },
+    /** moved away or departed: the body is gone for good (and stays gone after a reload) */
+    retire(pid) {
+      gone.add(pid);
+      const i = roster.findIndex((r) => r.pid === pid);
+      if (i >= 0) roster.splice(i, 1);
+    },
     chronicle: { flags: { firstTrain: true, townVisit: true }, rank: 2, built: ['town_hall'], shops: [{ ko: '눈꽃 카페', en: 'Snowflake Café', id: 't_cafe' }] },
     /** where every citizen is at T: rows [pid, building | null, act, state, busy] (TownSim-like) */
     whereabouts(T, out) {
       const h = ((T / HOUR) % 24 + 24) % 24;
       for (const c of citizens) {
+        if (gone.has('t:' + c.id)) continue;
         const seg = segmentOf(c, h);
         out.push(['t:' + c.id, seg[1], seg[0], seg[2], null]);
       }
+      // story children: home, the playground in the afternoon
+      for (const r of extras) if (!gone.has(r.pid)) out.push(h >= 13 && h < 17 ? [r.pid, 't_play', 'play', 'out', null] : [r.pid, r.home, h < 8 || h >= 20 ? 'sleep' : 'home', 'in', null]);
+      const day = h >= 8 && h < 20;
+      if (inVillage) {
+        // our village: the named villagers spend the day in the village areas (S7 rows), at home at night
+        for (const key of VILLAGERS) out.push(['v:' + key, day ? VILLAGE_AREAS[key.length % 3].id : null, day ? 'bench' : 'sleep', day ? 'out' : 'in', null]);
+        return out;
+      }
       // the named villagers stay around the square in the daytime
-      for (const key of VILLAGERS) out.push(['v:' + key, h >= 8 && h < 20 ? (key.length % 3 === 0 ? 't_fountain' : key.length % 3 === 1 ? 't_cafe' : 'v_hall') : 'v_hall', h >= 8 && h < 20 ? 'bench' : 'sleep', h >= 8 && h < 20 ? 'out' : 'in', null]);
+      for (const key of VILLAGERS) out.push(['v:' + key, day ? (key.length % 3 === 0 ? 't_fountain' : key.length % 3 === 1 ? 't_cafe' : 'v_hall') : 'v_hall', day ? 'bench' : 'sleep', day ? 'out' : 'in', null]);
       return out;
     },
   };

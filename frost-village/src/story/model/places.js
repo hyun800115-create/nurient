@@ -22,6 +22,9 @@ export const KIND_BY_KEY = {
   market: 'plaza', plaza: 'plaza', big_restaurant: 'restaurant', station_bakery: 'bakery', bakery: 'bakery', house: 'home', village_house: 'home',
   ice_rink: 'ice_rink', campfire: 'beach_fire', log_seat: 'beach_fire', shop_general: 'general', fishing_dock: 'harbor', station_sawmill: 'forest',
   station_smelter: 'mine', station_farm: 'farm', notice_board: 'plaza', village_school: 'school', village_clinic: 'clinic',
+  // VillageLife areas (WORLD.life.areas: plaza_s, notice, playground, green_fire, east_dock …) where the named villagers
+  // spend the day: the kit reports them as buildings { id: 'va:<area>', key: 'village_area' } (critique H9)
+  village_area: 'plaza',
 };
 
 /** game role -> story kind (when the key is unknown) */
@@ -41,7 +44,7 @@ export function buildStoryWorld(input = {}) {
   const seen = new Set();
   const cell = (v) => Math.round((v || 0) / PX_PER_CELL);
   for (const b of input.buildings || []) {
-    const kind = KIND_BY_KEY[b.key] || KIND_BY_ROLE[b.role];
+    const kind = b.kind || KIND_BY_KEY[b.key] || KIND_BY_ROLE[b.role];
     if (!kind || seen.has(b.id)) continue;
     seen.add(b.id);
     byGame[b.id] = b.id;

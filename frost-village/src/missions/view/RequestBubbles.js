@@ -2,6 +2,7 @@
 // (the item, or the mission's icon), a little pink heart (ui3 ui_icon_request) and "×5". Accepted deliveries show a
 // smaller "for me" bubble over the recipient with the count still missing, and a soft pink ring at their feet. Bubbles
 // pop in, bob gently, keep a readable size between zoom 0.6 and 1.2, and are pooled (no allocation once warm).
+// Only the two nearest bubbles on screen are full size; any others wait as small hearts.
 
 import { Assets, icon, reicon, TXT } from './ui.js';
 import { unitsOf } from '../model/units.js';
@@ -74,24 +75,36 @@ export class RequestBubbles {
     const z = (cam.zoom || 1) / (h.ports.view.k ? h.ports.view.k() : 1);
     const k = Math.max(0.95, Math.min(1.35, 1 / Math.sqrt(Math.max(0.3, z))));      // keep them readable zoomed out
     const want = new Set();
-    // offered requests: a bubble over the giver
+    // offered requests: a bubble over the giver. At most `bubblesOnScreen` full bubbles show on screen (the ones
+    // nearest the chief); the others shrink to a small heart that can still be tapped (critique M-3)
+    const ch = h.ports.chief, cx = ch.x(), cy = ch.y(), V = h.ports.view;
+    const offered = [];
     for (const i of m.bubbles()) {
       if (!i.gv) continue;
       const p = ppl.pos(i.gv);
       if (!p) continue;
+      const on = V && V.onScreen ? V.onScreen(p.x, p.y + (p.headTop || -80), 0) : true;
+      offered.push({ i, p, on, d: Math.hypot(p.x - cx, p.y - cy) });
+    }
+    const full = new Set(offered.filter((o) => o.on).sort((a, b) => a.d - b.d).slice(0, h.cfg.bubblesOnScreen).map((o) => o.i.id));
+    for (const { i, p, on } of offered) {
       const key = 'b:' + i.id;
       want.add(key);
       const v = this.get(key);
       v.id = i.id; v.pid = i.gv;
+      const small = on && !full.has(i.id);
+      v.small = small;
       const w = this.what(i);
       reicon(v.it, [w.key, 'ui_icon_request']);
-      v.it.setScale(v.it.scaleX);
       v.heart.setVisible(true);
-      v.cnt.setText(w.n > 1 ? '×' + w.n : '').setVisible(w.n > 1);
+      v.cnt.setText(w.n > 1 ? '×' + w.n : '').setVisible(w.n > 1 && !small);
+      v.it.setVisible(!small);
       const bob = Math.sin((this.t + i.id * 0.37) * 2.6) * 3;
       v.c.setPosition(p.x, p.y + (p.headTop || -80) - 4 + bob);
-      v.c.list[0].setScale(SCALE * k); v.it.setScale((46 / Math.max(1, v.it.frame.realWidth, v.it.frame.realHeight)) * k).setY(-54.5 * SCALE * k);
-      v.heart.setPosition(27 * k, -78 * k).setScale((30 / Math.max(1, v.heart.frame.realWidth)) * k);
+      const kb = small ? k * 0.5 : k;
+      v.c.list[0].setScale(SCALE * kb); v.it.setScale((46 / Math.max(1, v.it.frame.realWidth, v.it.frame.realHeight)) * k).setY(-54.5 * SCALE * k);
+      if (small) v.heart.setPosition(0, -54.5 * SCALE * kb).setScale((30 / Math.max(1, v.heart.frame.realWidth)) * k);
+      else v.heart.setPosition(27 * k, -78 * k).setScale((30 / Math.max(1, v.heart.frame.realWidth)) * k);
       v.cnt.setPosition(22 * k, -24 * k).setScale(k);
       // an untouched bubble fades a little in its last minute
       const left = h.cfg.bubbleLife - (h.ports.clock.T() - i.t0);
@@ -110,6 +123,7 @@ export class RequestBubbles {
       const v = this.get(key);
       v.id = i.id; v.pid = i.w;
       reicon(v.it, [w.key]);
+      v.it.setVisible(true); v.small = false;
       v.heart.setVisible(false);
       v.cnt.setText('×' + w.n).setVisible(true);
       const kk = k * 0.8;
@@ -133,7 +147,7 @@ export class RequestBubbles {
     let best = 0, bd = 70 * 70;
     for (const [key, v] of this.live) {
       if (!key.startsWith('b:') || !v.c.visible) continue;
-      const dx = x - v.c.x, dy = y - (v.c.y - 44);
+      const dx = x - v.c.x, dy = y - (v.c.y - (v.small ? 24 : 44));
       const d = dx * dx + dy * dy;
       if (d < bd) { bd = d; best = v.id; }
     }

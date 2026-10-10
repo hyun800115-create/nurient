@@ -15,6 +15,15 @@ export function makePorts(world) {
   const fw = world.fw, ui = world.ui;
   let earned = 0;                       // v4 income since the bank last asked (module payouts excluded)
   const sounds = LAB.sounds = [];
+  // a stand-in for vehicles_runtime's API: a drive "takes" a few seconds and reports veh:driveDone (★★★)
+  LAB.drives = [];
+  const vehicles = {
+    drive: (spec) => new Promise((resolve) => {
+      LAB.drives.push(spec);
+      world.time.delayedCall((LAB.driveSecs || 4) * 1000, () => { world.missions.onFeed({ t: 'veh:driveDone', mid: spec.mid, tpl: spec.tpl, stars: 3 }); resolve({ stars: 3, timeS: 60, par: 70 }); LAB.drives.splice(LAB.drives.indexOf(spec), 1); });
+    }),
+    chiefDriving: () => LAB.drives.length > 0,
+  };
   const ports = {
     world: { scene: world },
     ui: {
@@ -24,6 +33,7 @@ export function makePorts(world) {
       coinFly: (x, y, n) => ui.coinFly(x, y, n),
       overview: () => false,
       panelOpened: (on) => { ui.panels = Math.max(0, ui.panels + (on ? 1 : -1)); },
+      orderChip: () => !!LAB.orderChip,
     },
     coins: {
       value: () => ui.coins,
@@ -69,16 +79,19 @@ export function makePorts(world) {
         return f;
       },
       nearby: (x, y, n) => Array.from(world.people.values()).filter((f) => !f.pid.startsWith('pet:')).sort((a, b) => Math.hypot(a.obj.x - x, a.obj.y - y) - Math.hypot(b.obj.x - x, b.obj.y - y)).slice(0, n).map((f) => f.pid),
+      // the game leases a resident to walk behind the chief (escort, a found pet): here the figure just follows
+      follow: (pid, on) => { const f = world.people.get(pid); if (f) { f.follow = !!on; if (!on) { f.setPose('happy', 'S'); world.time.delayedCall(1200, () => f.setPose('idle', f.dir)); } } },
     },
     places: {
       pos: (id) => { const p = world.places.get(id); return p ? { x: p.x, y: p.y } : null; },
       list: (kind) => Array.from(world.places.entries()).filter(([, p]) => p.kind === kind).map(([id, p]) => ({ id, x: p.x, y: p.y })),
       name: (id, lang) => ({ 'p:rink': lang === 'en' ? 'the rink' : '스케이트장', 'p:school': lang === 'en' ? 'the school' : '학교', 'p:snowman': lang === 'en' ? 'the snowman' : '눈사람' })[id] || '',
-      findSpot: (what, near, id) => { const a = (id * 2.4) % (Math.PI * 2); return { x: (near ? near.x : 1000) + Math.cos(a) * 260, y: (near ? near.y : 700) + Math.sin(a) * 130 }; },
+      findSpot: (what, near, id) => (LAB.findAt ? LAB.findAt : (() => { const a = (id * 2.4) % (Math.PI * 2); return { x: (near ? near.x : 1000) + Math.cos(a) * 260, y: (near ? near.y : 700) + Math.sin(a) * 130 }; })()),
     },
     chief: {
       x: () => world.chiefFig.obj.x, y: () => world.chiefFig.obj.y,
       moving: () => !!world.chiefMove,
+      onPad: () => !!LAB.onPad,
       count: (item) => world.count(item),
       take: (item, n, tx, ty) => world.take(item, n, tx, ty),
       flyIn: (item, x, y) => world.fly(item, x, y, world.chiefFig.obj.x, world.chiefFig.obj.y - 100),
@@ -97,7 +110,17 @@ export function makePorts(world) {
       voucher: (key) => LAB.log.push('voucher ' + key),
       effect: (key) => LAB.log.push('effect ' + key),
     },
-    later: (id) => (id === 'missions' ? world.missions && world.missions.api : id === 'bank' ? world.bank && world.bank.api : null),
+    later: (id) => (id === 'missions' ? world.missions && world.missions.api : id === 'bank' ? world.bank && world.bank.api : id === 'vehicles' ? vehicles : null),
+    // the station's standing order (v4 Growth.focusCard), read only
+    orders: { focus: () => LAB.order || null },
+    // the chief's buildings for fire insurance (v8): the game lists founded shops, houses and civic buildings
+    buildings: { list: () => [
+      { id: 'shop:bakery#1', name: { ko: '빵집', en: 'Bakery' }, cost: 12000 },
+      { id: 'house:row_d_12', name: { ko: '김씨네 집', en: 'The Kims\' house' }, cost: 8000 },
+      { id: 'town_hall', name: { ko: '마을회관', en: 'Town hall' }, cost: 30000 },
+      { id: 'shop:carpenter#2', name: { ko: '목공소', en: 'Carpenter' }, cost: 15000 },
+    ] },
+    assets: { fragment: () => null },
     sites: { offer: (def) => LAB.log.push('site ' + def.id) },
     progress: { setFlag: (f) => LAB.log.push('flag ' + f) },
     story: { passbook: (pid) => (LAB.books && LAB.books[pid]) || null },

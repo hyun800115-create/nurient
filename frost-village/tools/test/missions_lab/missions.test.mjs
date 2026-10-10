@@ -60,13 +60,13 @@ function finish(m, world, inst) {
 }
 
 // ---------------------------------------------------------------------------------------------------- catalog
-test('catalog: 98 templates, unique, ko + en, valid fields', () => {
-  assert.equal(CATALOG.length, 98);
+test('catalog: 99 templates (the plan\'s 98 + 첫 저금), unique, ko + en, valid fields', () => {
+  assert.equal(CATALOG.length, 99);
   const per = {};
   for (const t of CATALOG) per[t.code[0]] = (per[t.code[0]] || 0) + 1;
-  assert.deepEqual(per, { A: 22, B: 12, C: 16, D: 14, E: 13, F: 12, G: 6, H: 3 });
-  assert.equal(new Set(CATALOG.map((t) => t.code)).size, 98);
-  assert.equal(new Set(CATALOG.map((t) => t.id)).size, 98);
+  assert.deepEqual(per, { A: 22, B: 12, C: 17, D: 14, E: 13, F: 12, G: 6, H: 3 });
+  assert.equal(new Set(CATALOG.map((t) => t.code)).size, 99);
+  assert.equal(new Set(CATALOG.map((t) => t.id)).size, 99);
   for (const t of CATALOG) {
     assert.ok(t.title && t.title.ko && t.title.en, t.code + ' title');
     assert.ok(Array.isArray(t.unlock) && t.unlock.length, t.code + ' unlock');
@@ -106,7 +106,7 @@ test('anti-softlock (static): every implied requirement is covered by the declar
 
 // ---------------------------------------------------------------------------------------------------- objectives
 test('every objective type of every mission template progresses from synthetic events to done', () => {
-  const world = new FakeWorld({ rank: 3, facts: ['life', 'paper', 'toggle:farewell', 'toggle:incidents', 'v8', 'v6:star2', 'v7:star2', 'import:sugar',
+  const world = new FakeWorld({ rank: 3, facts: ['life', 'paper', 'toggle:farewell', 'toggle:incidents', 'v8', 'v6:star2', 'v7:star2', 'import:sugar', 'b:bank',
     'b:deco_rink', 'b:depot', 'b:school', 'b:clinic', 'b:big_restaurant', 'b:boat_fishing', 'b:town_hall', 'b:deco_flowers', 'b:store', 'b:yard',
     'b:memorial', 'b:mini_aquarium', 'b:swimwear_shop', 'veh:sled', 'veh:truck', 'pet:pet_penguin'], income: 2000 });
   const m = mk(world, null);
@@ -121,7 +121,7 @@ test('every objective type of every mission template progresses from synthetic e
     if (t.pay > 0 && !t.stages) assert.ok(done.coins >= 100, t.code + ' pays');
     n++;
   }
-  assert.equal(n, 98 - 12 - 6 - 3);
+  assert.equal(n, 99 - 12 - 6 - 3);
 });
 
 test('dailies and weeklies progress from their counters (every F and G template)', () => {
@@ -293,7 +293,7 @@ test('calendar keys: 05:00 reset, midnight, DST and week keys', () => {
   assert.equal(weekKey(mon5), weekKey(sun) + 7);
 });
 
-test('rollover: across 05:00, clock moved backward (no re-roll, no double count), one rollover per launch', () => {
+test('rollover: across 05:00, a tab left open overnight, clock moved backward (no re-roll, no double count)', () => {
   const world = new FakeWorld({ rank: 2, wall0: Date.UTC(2026, 9, 9, 4, 30) });
   let m = mk(world, null);
   world.advance(1); m.tick();
@@ -317,21 +317,21 @@ test('rollover: across 05:00, clock moved backward (no re-roll, no double count)
   assert.deepEqual(m.today().list.map((x) => x.code), ids);
   for (const u of unitsOf(tpl(code))) m.onFeed(feedFor(u.sig, 99));
   assert.equal(m.drain().filter((e) => e.t === 'daily:done').length, 0, 'no double count');
-  // the 05:00 roll above was this launch's rollover: a phone clock pushed forward now changes nothing …
-  world.setWall(Date.UTC(2026, 9, 11, 10)); world.advance(1); m.tick();
-  assert.ok(!m.drain().some((e) => e.t === 'daily:new'), 'second rollover in one launch');
-  // … until the next launch; then forward twice in that launch: only the first rolls
-  m = new MissionModel(cfg(), world.env, m.serialize());
-  world.setWall(Date.UTC(2026, 9, 12, 10)); world.advance(1); m.tick();
-  assert.ok(m.drain().some((e) => e.t === 'daily:new'));
-  const d2 = m.today().d;
-  world.setWall(Date.UTC(2026, 9, 14, 10)); world.advance(1); m.tick();
-  assert.ok(!m.drain().some((e) => e.t === 'daily:new'));
-  assert.equal(m.today().d, d2);
-  // the next launch (a reload) rolls
+  // the same launch, the next morning (a phone that slept with the game open): today's set at once (critique H-2)
+  world.setWall(Date.UTC(2026, 9, 11, 8, 10)); world.up += 60 * 1000; world.advance(1); m.tick();
+  assert.ok(m.drain().some((e) => e.t === 'daily:new'), 'the open tab rolls to the new day');
+  assert.equal(m.today().d, dayKey({ y: 2026, m: 10, d: 11, h: 8.2 }));
+  const d2 = m.today().d, ids2 = m.today().list.map((x) => x.code);
+  // a reload the same day shows the same three (seeded by the date)
   m = new MissionModel(cfg(), world.env, m.serialize());
   world.advance(1); m.tick();
-  assert.ok(m.drain().some((e) => e.t === 'daily:new'));
+  assert.ok(!m.drain().some((e) => e.t === 'daily:new'));
+  assert.deepEqual(m.today().list.map((x) => x.code), ids2);
+  // a clock pushed ahead plays that future day now; going back again never re-opens it
+  world.setWall(Date.UTC(2026, 9, 13, 10)); world.advance(1); m.tick(); m.drain();
+  assert.equal(m.today().d, d2 + 2);
+  world.setWall(Date.UTC(2026, 9, 11, 12)); world.advance(1); m.tick();
+  assert.ok(!m.drain().some((e) => e.t === 'daily:new' && e.d <= d2 + 2));
   assert.equal(m.today().d, d2 + 2);
 });
 
@@ -339,7 +339,7 @@ test('streak + 눈사람 방패: one missed day a week is forgiven, a second one
   const world = new FakeWorld({ rank: 2, wall0: Date.UTC(2026, 9, 12, 9) });     // Monday
   const m = mk(world, null);
   const doAll = () => { for (const it of m.today().list) for (const u of unitsOf(tpl(it.code))) for (let g = 0; g < u.need;) { m.onFeed(feedFor(u.sig, 9)); g += feedGives(u.sig, 9); } };
-  const nextDay = (k = 1) => { world.setWall(world.env.wall() + k * 86400000); m.cal.rolled = false; world.advance(1); m.tick(); m.drain(); };
+  const nextDay = (k = 1) => { world.setWall(world.env.wall() + k * 86400000); world.advance(1); m.tick(); m.drain(); };
   world.advance(1); m.tick(); m.drain();
   doAll(); assert.equal(m.streak().n, 1);                 // Mon
   nextDay(); doAll(); assert.equal(m.streak().n, 2);      // Tue (+10 fame)
@@ -355,7 +355,7 @@ test('streak rewards: day 2 fame, day 3 a free 꽃밭, day 5 income, day 7 fame 
   const m = mk(world, null);
   const all = [];
   for (let d = 0; d < 7; d++) {
-    world.setWall(Date.UTC(2026, 9, 12 + d, 9)); m.cal.rolled = false; world.advance(1); m.tick();
+    world.setWall(Date.UTC(2026, 9, 12 + d, 9)); world.advance(1); m.tick();
     for (const it of m.today().list) for (const u of unitsOf(tpl(it.code))) for (let g = 0; g < u.need;) { m.onFeed(feedFor(u.sig, 9)); g += feedGives(u.sig, 9); }
     all.push(...m.drain());
   }
@@ -534,7 +534,7 @@ test('story_runtime payloads (engine ids + *Pid): couples, babies and birthdays 
   m.drain();
   world.advance(cfg().eventStale + 2); m.tick();
   ev = m.drain();
-  assert.ok(ev.some((e) => e.t === 'mission:expire' && e.code === 'C7' && e.why === 'late'), 'stale event ends');
+  assert.ok(ev.some((e) => e.t === 'mission:expire' && e.code === 'C7' && e.why === 'stale'), 'stale event ends quietly');
 });
 
 test('gentle expiry: the recipient moves away → the request ends quietly and its letter leaves the bag', () => {
@@ -655,4 +655,162 @@ test('perf: ≤ 0.02 ms per tick (60 fps, feed events included)', () => {
   const ms = (performance.now() - t0) / N;
   console.log('    missions: ' + ms.toFixed(4) + ' ms per tick (' + N + ' ticks)');
   assert.ok(ms <= 0.02, ms + ' ms');
+});
+
+// ---------------------------------------------------------------------------------------------------- polish (critique)
+test('C-1: fitCap always returns, even for a slice it cannot shrink below the cap; a legal heavy slice fits', () => {
+  const t0 = Date.now();
+  const big = { v: 1, n: 5, fm: { p: 10, lg: [[1, 2, 'x'], [3, 4, 'y']] }, pad: 'x'.repeat(3100) };
+  const out = fitCap(big);
+  assert.ok(Date.now() - t0 < 500, 'returned');
+  assert.ok(!(out.fm && out.fm.lg), 'the fame log went first');
+  // every list full, long ids, every cooldown, the full fame log, the craft state: trimmed to the cap, board + calendar kept
+  const pid = (k) => ('t:' + String(100000 + k)).padEnd(40, 'x').slice(0, 40);
+  let n = 1;
+  const inst = (c) => ({ i: n++, c, t0: 123456, tp: 123999, d: 124999, g: [9, 9, 9, 9], gv: pid(n), w: pid(n + 1), nm: pid(n + 2), k: 'k'.repeat(24), sg: 3, pl: 'p'.repeat(24), wi: 'w'.repeat(16) });
+  const codes = CATALOG.filter((t) => t.obj).map((t) => t.code);
+  const raw = { v: 1, sd: 1, rs: 2, n: 9999, t5: 1, bt: 1, rq: 1, b: codes.slice(0, 3).map(inst), a: codes.slice(3, 11).map(inst), p: codes.slice(11, 17).map(inst), o: codes.slice(17, 21).map(inst),
+    c: Object.fromEntries(CATALOG.map((t, k) => [t.code, k % 3 ? 1234567 : -1])), dy: { d: 20735, ids: ['F1', 'F2', 'F4'], g: [[60], [40], [1, 1, 1]], k: [1, 1, 1], a: 1 },
+    fm: { p: 9999, lg: Array.from({ length: 12 }, () => [1e9, 50, 'abcdefgh']) }, cr: { d: 3, p: [['flowerbed1', 4]], k: 12.5 } };
+  const s = sanitizeMissions(raw);
+  const f = fitCap(s);
+  assert.ok(JSON.stringify(f).length <= MISSIONS_SLICE.cap, 'size ' + JSON.stringify(f).length);
+  assert.deepEqual(f.b, s.b);
+  assert.deepEqual(f.dy, s.dy);
+  assert.deepEqual(sanitizeMissions(f), f, 'still a clean slice');
+});
+
+test('C-2: drive / contract / choose / tap missions are offered only while their module runs (step:<how>)', () => {
+  const world = new FakeWorld({ rank: 3, facts: ['b:yard', 'veh:sled', 'veh:truck'], unwired: true });
+  const m = mk(world, null);
+  for (let s = 0; s < 3600; s++) { world.advance(1); m.tick(); for (const i of m.board()) if (m.canSwap(i.id)) m.swap(i.id); }
+  const offered = new Set(m.drain().filter((e) => e.t === 'mission:offer').map((e) => e.code));
+  for (const c of ['B1', 'B2', 'B3', 'B4']) assert.ok(!offered.has(c), c + ' offered without a vehicles module');
+  world.unwired = false; world.refresh();
+  for (let s = 0; s < 3600; s++) { world.advance(1); m.tick(); for (const i of m.board()) if (m.canSwap(i.id)) m.swap(i.id); }
+  const later = new Set(m.drain().filter((e) => e.t === 'mission:offer').map((e) => e.code));
+  assert.ok(['B1', 'B2', 'B3', 'B4'].some((c) => later.has(c)), 'drives come once vehicles run');
+});
+
+test('C-2 e: a board card nobody can move leaves quietly after boardStale; parked "once" cards are never lost (M-10)', () => {
+  const world = new FakeWorld({ rank: 3, facts: ['life'] });
+  const m = mk(world, null);
+  world.advance(1); m.tick(); m.drain();
+  for (const i of m.list.slice()) m.remove(i);
+  const d5 = force(m, 'D5', 'b');
+  world.advance(cfg().boardStale + 2); m.tick();
+  const ev = m.drain();
+  assert.ok(ev.some((e) => e.t === 'mission:expire' && e.id === d5.id && e.why === 'stale'));
+  // E4 (a story beat, once) is the oldest parked card when the parked list overflows: an everyday card leaves instead
+  for (const i of m.list.slice()) m.remove(i);
+  m.cool = {};
+  const e4 = force(m, 'E4', 'p'); e4.tp = m.T - 900;
+  ['D1', 'D2', 'D3', 'D5', 'D6', 'D8'].forEach((c, k) => { const x = force(m, c, 'p'); x.tp = m.T - 800 + k; });
+  const card = force(m, 'D9', 'b'); card.tp = m.T - 200;
+  assert.ok(m.swap(card.id));
+  assert.ok(m.get(e4.id) && e4.s === 'p', 'E4 kept');
+  assert.equal(m.parked().length, cfg().maxParked);
+  assert.notEqual(m.cool.E4, -1);
+});
+
+test('H-3: story engaged { day, hour } → C1 due the wedding day 10:30; too close to the wedding → no C1', () => {
+  for (const [hourNow, inDays] of [[9.5, 1], [14, 1], [9.5, 2], [14, 2]]) {
+    const world = new FakeWorld({ rank: 2, facts: ['life'] });
+    world.T = (hourNow - 8) * 25 + 600;
+    const m = mk(world, null);
+    m.tick();
+    const wedDay = world.day() + inDays;
+    m.onFeed({ t: 'story:life', op: 'engaged', a: 12, b: 14, aPid: 't:31', bPid: 't:47', day: wedDay, hour: 11, venue: 'hall' });
+    const c1 = m.list.find((i) => i.c === 'C1');
+    assert.ok(c1, 'C1 offered');
+    const prep = m.tAt(wedDay, 10.5);
+    assert.equal(c1.d, prep, 'due at the wedding day 10:30');
+  }
+  // a wedding later today (an hour away): C1 needs a day of work → not offered at all
+  const world = new FakeWorld({ rank: 2, facts: ['life'] });
+  world.T = (9 - 8) * 25 + 600;
+  const m = mk(world, null);
+  m.tick();
+  m.onFeed({ t: 'story:life', op: 'engaged', a: 1, b: 2, aPid: 't:31', bPid: 't:47', day: world.day(), hour: 11 });
+  assert.ok(!m.list.some((i) => i.c === 'C1'));
+});
+
+test('H-4: real sibling payloads — named → C3, story:wish / wisher → C7 / C7a, inc:move numeric who, harbour export done / expired', () => {
+  const world = new FakeWorld({ rank: 3, facts: ['life', 'b:store', 'v6', 'v8'] });
+  const m = mk(world, null);
+  world.advance(1); m.tick(); m.drain();
+  // baby { a, b, baby } → C3 keyed by the baby; the gift, then the story's naming sheet: 'named' { who: baby }
+  m.onFeed({ t: 'story:life', op: 'baby', a: 12, b: 14, baby: 40, aPid: 't:31', bPid: 't:47', babyPid: null });
+  const c3 = m.list.find((i) => i.c === 'C3');
+  assert.ok(c3 && c3.k === 'n40');
+  m.craft('item_gift_box', 1); m.delivered(c3.id, 'item_gift_box', 1);
+  m.onFeed({ t: 'story:life', op: 'named', who: 40, ko: '보람', en: 'Boram' });
+  assert.ok(m.drain().some((e) => e.t === 'mission:done' && e.code === 'C3'), 'C3 done after naming');
+  // the parents named the baby themselves (no 'named'): the gift alone finishes C3 at its deadline
+  m.onFeed({ t: 'story:life', op: 'baby', a: 15, b: 16, baby: 41, aPid: 't:31', bPid: 't:47' });
+  const c3b = m.list.find((i) => i.c === 'C3' && i.k === 'n41');
+  m.craft('item_gift_box', 1); m.delivered(c3b.id, 'item_gift_box', 1);
+  world.advance(610); m.tick();
+  assert.ok(m.drain().some((e) => e.t === 'mission:done' && e.code === 'C3'), 'soft naming');
+  // an elder's wish: story:wish { who (engine id), whoPid, wish, place } → C7 for that elder, one stage per wish
+  m.onFeed({ t: 'story:wish', who: 3, whoPid: 't:47', wish: 'sea_dock', place: 'v_dock', ko: '부두에서 바다 바라보기' });
+  const c7 = m.list.find((i) => i.c === 'C7');
+  assert.ok(c7 && c7.k === 's3' && c7.pl === 'v_dock' && c7.wi === 'sea_dock' && c7.nm === 't:47');
+  m.step(c7.id, 'escort', 1);
+  const st = m.drain().find((e) => e.t === 'mission:stage');
+  assert.equal(st.wi, 'sea_dock'); assert.equal(st.key, 's3');
+  m.onFeed({ t: 'story:wish', who: 3, whoPid: 't:47', wish: 'park_bench', place: 't_fountain' });
+  assert.equal(m.list.filter((i) => i.c === 'C7').length, 1, 'the next wish is the same C7');
+  assert.equal(c7.wi, 'park_bench');
+  m.onFeed({ t: 'story:wisher', who: 9 });
+  assert.equal(m.fl.age80, 1, 'C7a armed');
+  // incidents: inc:move { who: engine id, whoPid } → A21 with a string giver (not expired as "gone")
+  m.onFeed({ t: 'inc:move', op: 'in', id: 'mv1', home: 'h12', who: 3, whoPid: 's:1' });
+  const a21 = m.list.find((i) => i.c === 'A21');
+  assert.ok(a21 && a21.gv === 's:1' && a21.pl === 'h12');
+  m.accept(a21.id);
+  for (let s = 0; s < 30; s++) { world.advance(1); m.tick(); }
+  assert.ok(m.get(a21.id), 'A21 still running');
+  // harbour: a cargo ship → D10 due with its contract; done → D10 done; an expired contract → no export counted
+  m.onFeed({ t: 'harbor:ship', kind: 'cargo', id: 'cg1', op: 'arrive', leaves: m.T + 200, due: m.T + 800 });
+  const d10 = m.list.find((i) => i.c === 'D10');
+  assert.ok(d10 && d10.d === Math.round(m.T + 800 - 0) || d10.d > m.T + 700);
+  m.drain();
+  m.onFeed({ t: 'harbor:export', id: 'cg1', n: 5, item: 'item_can', done: true });
+  assert.ok(m.drain().some((e) => e.t === 'mission:done' && e.code === 'D10'));
+  m.cal.wk = { w: m.cal.wk ? m.cal.wk.w : 0, c: 'G4', g: 0, s: 0 };
+  m.onFeed({ t: 'harbor:export', id: 'cg2', n: 0, expired: true });
+  assert.equal(m.cal.wk.g, 0, 'an expired contract is not an export');
+});
+
+test('H-1 / L-5 / E13: picks count for F7 even with a full bag; F5 and E13 count each resident once', () => {
+  const world = new FakeWorld({ rank: 2, facts: ['b:deco_flowers', 'paper', 'life'] });
+  const m = mk(world, null);
+  world.advance(1); m.tick(); m.drain();
+  m.cal.dy = { d: m.cal.dy.d, ids: ['F7', 'F5', 'F1'], g: [[0], [0], [0]], k: [0, 0, 0], a: 0 };
+  m.bag.item_bouquet = cfg().craft.bagMax;
+  for (let k = 0; k < 5; k++) m.pick(1);
+  assert.equal(m.cal.dy.k[0], 1, 'F7 done with a full bag');
+  for (const p of ['t:31', 't:31', 't:47', 't:31']) m.onFeed({ t: 'tap', pid: p, talk: true });
+  m.onFeed({ t: 'chat', pid: 't:47' });
+  assert.equal(m.cal.dy.g[1][0], 2, 'two residents, each once');
+  const e13 = force(m, 'E13', 'b');
+  for (const p of ['t:31', 't:31', 'pet:pet_cat', 't:47', 't:12']) m.onFeed({ t: 'tap', pid: p, talk: true });
+  assert.ok(m.drain().some((e) => e.t === 'mission:done' && e.id === e13.id), 'E13 done after three different residents');
+});
+
+test('M-3 / L-7: event bubbles respect the world cap; passive fame only for life beats of our people', () => {
+  const world = new FakeWorld({ rank: 2, facts: ['b:store', 'life'] });
+  const m = mk(world, null);
+  world.advance(1); m.tick(); m.drain();
+  for (const c of ['A1', 'A2', 'A6', 'A14']) force(m, c, 'o');
+  assert.equal(m.bubbles().length, 4);
+  m.onFeed({ t: 'story:move', op: 'in', who: 5, whoPid: 's:2', members: [5] });   // A8 (a housewarming bubble) makes room
+  assert.ok(m.bubbles().length <= cfg().bubblesWorld);
+  assert.ok(m.bubbles().some((i) => i.c === 'A8'));
+  const f0 = m.fame.pts;
+  m.onFeed({ t: 'story:life', op: 'wedding', a: 70, b: 71, aPid: 'x:70', bPid: 'x:71' });
+  assert.equal(m.fame.pts, f0, 'not our people: no fame');
+  m.onFeed({ t: 'story:life', op: 'wedding', a: 72, b: 73, aPid: 't:31', bPid: 'x:73' });
+  assert.equal(m.fame.pts, f0 + cfg().fame.lifeBeat);
 });

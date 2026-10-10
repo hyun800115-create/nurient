@@ -55,7 +55,8 @@ export class Newspaper {
     const reporter = e.alive.find((r) => r.job === 'reporter') || null;
     const paper = {
       day, head: items[0] || null, items: items.slice(1), weather: Object.assign({}, e.weather.today), prices: moved.slice(0, 3),
-      rate: e.bank.depositBp, wanted, reporter: reporter ? reporter.id : -1, quote: e.quotePick(), no: this.stats.papers + 1,
+      // (story_runtime) the rate the game's own bank pays (paperRateBp), -1 = no bank line; undefined = the engine's bank
+      rate: Number.isFinite(e.cfg.paperRateBp) ? (e.cfg.paperRateBp >= 0 ? e.cfg.paperRateBp : -1) : e.bank.depositBp, wanted, reporter: reporter ? reporter.id : -1, quote: e.quotePick(), no: this.stats.papers + 1,
     };
     for (const f of items) f.pinned++;
     for (const f of wanted) f.pinned++;

@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Account } from '../../../src/bank/model/account.js';
+import { Account, MAX_POLICIES, policyId } from '../../../src/bank/model/account.js';
 import { Branch } from '../../../src/bank/model/branch.js';
 import { bankTuning, BANK_TUNING } from '../../../src/bank/tuning.js';
 import { sanitizeBank, fitBank, BANK_SLICE } from '../../../src/bank/save.js';
@@ -192,10 +192,15 @@ test('save slice: sanitize fuzz (200), idempotent, ≤ 1 KB', () => {
   const a = openAcct(), w = new Wallet(9000);
   a.deposit(4000, w, 1); a.clock(2, 7, w); a.withdraw(500, w, 2); a.deposit(100, w, 2); a.clock(3, 7, w); a.withdraw(3000, w, 3);
   a.take(a.quote(5000, 1000), w, 0, 3);
-  for (let k = 0; k < 32; k++) assert.ok(a.insure('t_house' + k, 30000));   // (site / building ids are short: ≤ 10 chars)
-  for (let k = 0; k < 32; k++) a.claim('t_house' + k, 'fire' + (1000 + k), w, 4);
+  // the most policies the bank keeps, with long game ids (hashed to ≤ 10 chars) and every fire hash set: still ≤ 1 KB
+  for (let k = 0; k < MAX_POLICIES; k++) assert.ok(a.insure('shop:bakery#' + k, 30000 + k * 100));
+  assert.equal(a.insure('one_more_house', 1000), false, 'at most ' + MAX_POLICIES);
+  for (let k = 0; k < MAX_POLICIES; k++) a.claim('shop:bakery#' + k, 'fire' + (1000 + k), w, 4);
   const s = a.serialize();
-  assert.ok(JSON.stringify(fitBank(sanitizeBank(s))).length <= BANK_SLICE.cap, 'cap');
+  assert.ok(JSON.stringify(s).length <= BANK_SLICE.cap + 400);
+  const fitted = fitBank(sanitizeBank(s));
+  assert.ok(JSON.stringify(fitted).length <= BANK_SLICE.cap, 'cap ' + JSON.stringify(fitted).length);
+  assert.equal(fitted.ins.length, MAX_POLICIES, 'no policy is dropped to fit');
   const rng = new Rng(7);
   const mut = (o, d = 0) => {
     if (!o || typeof o !== 'object') return o;
@@ -238,4 +243,17 @@ test('perf: bank ≤ 0.01 ms per tick (clock + income share + branch at 60 fps)'
   const ms = (performance.now() - t0) / N;
   console.log('    bank: ' + ms.toFixed(4) + ' ms per tick');
   assert.ok(ms <= 0.01, ms + ' ms');
+});
+
+test('insurance ids: long game ids are hashed the same way by insure / insured / claim; loans read −(amount + fee) in the passbook', () => {
+  const a = openAcct(), w = new Wallet(100000);
+  assert.ok(a.insure('house:row_d_long_id#7', 24000));
+  assert.ok(policyId('house:row_d_long_id#7').length <= 10);
+  assert.equal(a.insured('house:row_d_long_id#7'), true);
+  assert.equal(a.claim('house:row_d_long_id#7', 'f1', w, 1), 24000);
+  assert.equal(a.claim('house:row_d_long_id#7', 'f1', w, 1), 0, 'once per fire');
+  const b = openAcct(), w2 = new Wallet(0);
+  b.take(b.quote(600, 1000), w2, 0, 2);
+  const row = b.rows[b.rows.length - 1];
+  assert.equal(row[1], 'loan'); assert.equal(row[2], -630); assert.equal(row[3], -630);
 });

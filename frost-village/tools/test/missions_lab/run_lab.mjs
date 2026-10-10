@@ -1,5 +1,6 @@
 // missions_bank lab runner (Playwright, one Chromium, fixed-step clock, ≤ 2 min):
 //   nice -n 15 node tools/test/missions_lab/run_lab.mjs [--only name,name] [--no-gif]
+//   groups: bubbles accept delivery moving panel drive lead escort flowers chip title zoom bank checks desktop
 // Phone 390 × 844 at DPR 3 (+ one desktop 1280 × 800 shot): request bubbles, the accept card, a delivery, a moving
 // recipient with the edge marker, the panel tabs (ko + en), chip focus, the title-up + 마을 악단, the bank (closed,
 // queue of 6 with tickets, vault, counter, passbook, loan sheet), zoom 0.6 / 1.2. Captures to
@@ -209,7 +210,7 @@ try {
       L.clear();
       L.teleport(1000, 860); L.look(1000, 820, 1);
       W.give('item_log', 4);
-      let id = L.offer('A6', 'o', 'v:npc_grandpa'); M.accept(id);
+      let id = L.offer('A6', 'o', 'v:npc_grandpa', 'v:npc_grandpa'); M.accept(id);
       id = L.offer('C1', 'a', null, 'p:feast', { who: 't:31', at: W.fw.T + 2 * 600 + 25 * 2.5 });
       id = L.offer('C9', 'a', null, 't:12', { who: 't:58', family: 't:12' });
       L.offer('A2', 'o', 'pet:pet_cat'); L.offer('A14', 'o', 'pet:pet_penguin');
@@ -221,6 +222,7 @@ try {
       const b1 = m.board().find((i) => i.c === 'B1'); if (b1) b1.tp = m.T - 200;   // up long enough → 다른 미션
       m.fame.pts = 96; m.fame.title = 1;
       W.fw.set('b:yard'); W.fw.set('veh:sled');
+      L.order = { id: 'o1', item: 'item_plank', got: 12, need: 30, shop: { ko: '목공소', en: 'Carpenter' }, reward: 540 };
     });
     await run(PH, 1);
     await ev(PH, () => window.__LAB.scene.missions.open('active'));
@@ -248,7 +250,72 @@ try {
     await ev(PH, () => { window.__LAB.lang = 'en'; window.__LAB.scene.missions.open('active'); });
     await run(PH, 0.4);
     await shot(PH, 'panel_active_en');
-    await ev(PH, () => { window.__LAB.lang = 'ko'; window.__LAB.scene.missions.panel.close(true); const m = window.__LAB.scene.missions.model; m.fame.pts = 96; m.fame.title = 1; });
+    await ev(PH, () => { window.__LAB.lang = 'ko'; window.__LAB.scene.missions.panel.close(true); const m = window.__LAB.scene.missions.model; m.fame.pts = 96; m.fame.title = 1; window.__LAB.order = null; });
+  }
+
+  if (want('drive')) {
+    // a drive card on the board: the 출발 pad at the yard; standing on it sets off (the vehicles module drives)
+    await ev(PH, () => { const L = window.__LAB, W = L.scene; L.clear(); W.fw.set('b:yard'); W.fw.set('veh:sled'); L.offer('B1', 'b'); L.teleport(1480, 1110); L.look(1560, 1080, 1.1); });
+    await run(PH, 1.2);
+    await shot(PH, 'drive_pad');
+    await walkTo(PH, [[1600, 1182]]);
+    await run(PH, 1.2);
+    NUM.drive = await ev(PH, () => ({ started: window.__LAB.drives.map((d) => d.tpl + '#' + d.mid + ' ' + d.vehicle + ' ' + d.route) }));
+    await run(PH, 4.6);
+    await shot(PH, 'drive_done');
+    NUM.drive.done = await ev(PH, () => window.__LAB.events.some((e) => e.t === 'mission:done' && e.code === 'B1'));
+  }
+
+  if (want('lead')) {
+    // the lost puppy: the sparkle, then the puppy trots behind the chief to its owner at the notice board
+    await ev(PH, () => { const L = window.__LAB; L.clear(); L.findAt = { x: 1250, y: 720 }; L.offer('E1', 'b'); L.teleport(1150, 790); L.look(1130, 720, 1.1); L.follow(false); });
+    await run(PH, 1);
+    await shot(PH, 'lead_find');
+    await walkTo(PH, [[1250, 722]]);
+    await run(PH, 0.6);
+    await ev(PH, () => window.__LAB.walk([[1160, 700], [1020, 650]]));
+    await gif(PH, 'lead_puppy', 46, 0.12, null);
+    await walkTo(PH, [[1020, 650]]);
+    await run(PH, 1.2);
+    await shot(PH, 'lead_home');
+    NUM.lead = await ev(PH, () => ({ done: window.__LAB.events.some((e) => e.t === 'mission:done' && e.code === 'E1') }));
+    await ev(PH, () => { window.__LAB.findAt = null; });
+  }
+
+  if (want('escort')) {
+    // an elder's wish (story:wish): she walks with the chief to the picnic table; the stage stamp; the story hears it
+    await ev(PH, () => {
+      const L = window.__LAB, W = L.scene;
+      L.clear(); L.look(1300, 900, 1);
+      W.missions.onFeed({ t: 'story:wish', who: 47, whoPid: 't:47', wish: 'park_bench', place: 'p:picnic', ko: '공원 벤치에서 햇볕 쬐기', en: 'sit in the sun on a park bench' });
+      L.teleport(1300, 830);
+    });
+    await run(PH, 1.2);
+    await walkTo(PH, [[1405, 868]]);
+    await run(PH, 1.4);
+    await shot(PH, 'escort_wish');
+    await ev(PH, () => { window.__LAB.follow(true); window.__LAB.walk([[1180, 960], [880, 1060]]); });
+    await gif(PH, 'escort_walk', 44, 0.12, null);
+    await walkTo(PH, [[880, 1060]]);
+    await run(PH, 1);
+    await shot(PH, 'escort_done');
+    NUM.escort = await ev(PH, () => ({ stage: window.__LAB.events.some((e) => e.t === 'mission:stage' && e.code === 'C7'), told: window.__LAB.events.some((e) => e.t === 'mission:done' && e.wish === 'park_bench' && e.who === 47) }));
+    await ev(PH, () => { const L = window.__LAB; L.follow(false); const f = L.scene.people.get('t:47'); f.follow = false; f.obj.setPosition(1470, 860); f.setPose('idle', 'SW'); });
+  }
+
+  if (want('flowers')) {
+    // today's "꽃 5송이 꺾기" with no bouquet mission running: the flower bed pad is there (critique H-1)
+    await ev(PH, () => {
+      const L = window.__LAB, m = L.scene.missions.model;
+      L.clear(); m.bag.item_bouquet = 0;
+      m.cal.dy = { d: m.cal.dy ? m.cal.dy.d : 1, ids: ['F7', 'F1', 'F5'], g: [[0], [0], [0]], k: [0, 0, 0], a: 0 };
+      L.teleport(1100, 1060); L.look(1060, 1060, 1.1);
+    });
+    await run(PH, 1);
+    await shot(PH, 'f7_bed');
+    await walkTo(PH, [[1030, 1162]]);
+    await run(PH, 16);
+    NUM.f7 = await ev(PH, () => { const m = window.__LAB.scene.missions.model; return { picked: m.cal.dy.g[0][0], done: !!m.cal.dy.k[0], bouquets: m.bag.item_bouquet }; });
   }
 
   if (want('chip')) {
@@ -263,6 +330,11 @@ try {
     await ev(PH, () => { const L = window.__LAB; L.offer('C2', 'a', null, 'p:officiant', { who: 't:31' }); });
     await run(PH, 0.6);
     const c = await shot(PH, 'chip_3', crop);
+    // v4's order chip keeps its place: the mission chip slides below it (critique H-6)
+    await ev(PH, () => { window.__LAB.orderChip = true; });
+    await run(PH, 0.8);
+    const d4 = await shot(PH, 'chip_4', { x: 0, y: 70, width: 390, height: 175 });
+    await ev(PH, () => { window.__LAB.orderChip = false; });
     execFileSync('python3', ['-I', '-c', `
 import sys
 from PIL import Image
@@ -270,8 +342,8 @@ ims=[Image.open(p) for p in sys.argv[2:]]
 w=max(i.size[0] for i in ims); h=sum(i.size[1] for i in ims)+8*(len(ims)-1)
 out=Image.new('RGB',(w,h),(255,255,255)); y=0
 for i in ims: out.paste(i,(0,y)); y+=i.size[1]+8
-out.save(sys.argv[1])`, path.join(OUT, 'missions_lab_chip_focus.png'), a, b, c]);
-    for (const f of [a, b, c]) { fs.rmSync(f); SHOTS.splice(SHOTS.indexOf(path.relative(ROOT, f)), 1); }
+out.save(sys.argv[1])`, path.join(OUT, 'missions_lab_chip_focus.png'), a, b, c, d4]);
+    for (const f of [a, b, c, d4]) { fs.rmSync(f); SHOTS.splice(SHOTS.indexOf(path.relative(ROOT, f)), 1); }
     SHOTS.push('docs/previews/missions_lab_chip_focus.png');
   }
 
@@ -307,7 +379,7 @@ out.save(sys.argv[1])`, path.join(OUT, 'missions_lab_chip_focus.png'), a, b, c])
       const who = ['t:31', 't:47', 's:1', 's:2', 'v:npc_teen_girl', 'v:npc_young_man'];
       L.figureOf = (pid) => ({ 't:31': 'npc_teen_girl', 't:47': 'npc_grandma', 's:1': 'npc_doctor', 's:2': 'npc_skater', 'v:npc_teen_girl': 'npc_kid_girl', 'v:npc_young_man': 'npc_young_man' })[pid];
       who.forEach((p, k) => W.time.delayedCall(k * 350, () => B.onFeed({ t: 'story:bank', op: k % 3 === 1 ? 'loan' : 'deposit', who: p, amount: 120 + k * 40 })));
-      L.books = { 't:31': { rows: [[3, 'deposit', 300, 300], [5, 'interest', 2, 302], [7, 'deposit', 120, 422]] }, 't:47': { rows: [[2, 'loan', 600, -630], [4, 'repay', 100, -530], [6, 'repay', 100, -430]] } };
+      L.books = { 't:31': { rows: [[3, 'deposit', 300, 300], [5, 'interest', 2, 302], [7, 'deposit', 120, 422]] }, 't:47': { rows: [[2, 'loan', 630, -630], [4, 'repay', 100, -530], [6, 'repay', 100, -430]] } };
     });
     // the chief walks up to the steps (near enough to see inside, not yet on the counter pad)
     await walkTo(PH, [[1905, 1035]]);
@@ -346,6 +418,78 @@ out.save(sys.argv[1])`, path.join(OUT, 'missions_lab_chip_focus.png'), a, b, c])
     await ev(PH, () => window.__LAB.scene.bank.loanSheet.done(true));
     await run(PH, 0.5);
     NUM.bankAfterLoan = await ev(PH, () => ({ coins: window.__LAB.ui.coins, account: window.__LAB.scene.bank.account.state() }));
+    // (v8) fire insurance from the counter sheet: the chief's buildings, the premium a day, 가입
+    await ev(PH, () => { const L = window.__LAB, W = L.scene; W.fw.set('toggle:incidents'); L.ui.coins = 9000; W.bank.insure('shop:bakery#1', 12000); });
+    await run(PH, 1);
+    await shot(PH, 'bank_counter_v8');
+    await ev(PH, () => window.__LAB.scene.bank.openInsurance());
+    await run(PH, 0.5);
+    await shot(PH, 'bank_insurance');
+    await ev(PH, () => { const B = window.__LAB.scene.bank; B.insureSheet.close(); });
+    await run(PH, 0.4);
+    // the opening day: banner, the staff come in from the back room, the first mission "첫 저금"
+    await walkTo(PH, [[1905, 1035]]);
+    await ev(PH, () => { const W = window.__LAB.scene, B = W.bank; W.fw.set('b:bank'); B.account.open = false; for (const f of B.building.staff) f.obj.setAlpha(0); B.openBank(); window.__LAB.look(2085, 820, 1.2); });
+    await gif(PH, 'bank_opening', 36, 0.12, null);
+    await shot(PH, 'bank_opening');
+    NUM.bankOpening = await ev(PH, () => ({ c16: window.__LAB.scene.missions.model.list.some((i) => i.c === 'C16') }));
+  }
+
+  if (want('checks')) {
+    // the critique's probes, re-run on the fixed module (numbers into the numbers file; the runner fails on a regression)
+    const R = {};
+    R.gift = await ev(PH, () => {
+      const L = window.__LAB, W = L.scene, M = W.missions, m = M.model;
+      L.clear(); L.hour(10); m.bag.item_gift_box = 0;
+      W.stack.length = 0; L.give('item_bread', 2);
+      L.offer('A8', 'a', 't:31', 't:31');
+      L.teleport(1270, 1150); L.run(3);
+      return { breadBefore: 2, breadAfter: W.count('item_bread'), giftBoxes: m.bag.item_gift_box, padShown: M.pads.pads.has('p:gift') };
+    });
+    R.f7 = await ev(PH, () => {
+      const L = window.__LAB, M = L.scene.missions, m = M.model;
+      L.clear(); m.bag.item_bouquet = 0;
+      m.cal.dy = { d: m.cal.dy ? m.cal.dy.d : 1, ids: ['F7', 'F1', 'F5'], g: [[0], [0], [0]], k: [0, 0, 0], a: 0 };
+      L.teleport(1030, 1160); L.run(6);
+      return { bedPadShown: M.pads.pads.has('flowerbed1'), f7progress: m.cal.dy.g[0][0] };
+    });
+    R.bubbles = await ev(PH, () => {
+      const L = window.__LAB, M = L.scene.missions;
+      L.clear(); L.offer('A1', 'o', 'v:npc_aunt', 'v:npc_grandma'); L.offer('A2', 'o', 'pet:pet_cat'); L.offer('A14', 'o', 'pet:pet_penguin'); L.offer('A3', 'o', 'v:npc_kid_boy');
+      L.look(1000, 840, 1); L.run(1);
+      let full = 0, small = 0;
+      for (const [k, v] of M.bubbles.live) if (k.startsWith('b:') && v.c.visible && M.ports.view.onScreen(v.c.x, v.c.y, 0)) { if (v.small) small++; else full++; }
+      return { fullOnScreen: full, smallHearts: small };
+    });
+    R.counter = await ev(PH, () => {
+      const L = window.__LAB, W = L.scene, B = W.bank;
+      L.clear(); B.account.open = true; L.hour(10);
+      L.teleport(1996, 966); L.run(1.2);
+      if (!B.sheet.isOpen()) B.sheet.open();
+      const b0 = B.sheet.builds || 0;
+      const a = performance.now();
+      for (let i = 0; i < 300; i++) { L.ui.coins += 7; L.frame(); }
+      return { frames: 300, rebuilds: (B.sheet.builds || 0) - b0, msPerFrame: +((performance.now() - a) / 300).toFixed(2) };
+    });
+    R.panel = await ev(PH, () => {
+      const L = window.__LAB, W = L.scene, M = W.missions, P = M.panel;
+      L.clear(); L.offer('D3', 'b'); L.offer('D5', 'b'); L.offer('E1', 'b');
+      L.teleport(1045, 1075); M.open('board');
+      const b0 = P.builds;
+      // sales tick the board's progress while the panel is open (60 s of game time)
+      for (let s = 0; s < 60; s++) { M.onFeed({ t: 'sold', item: 'item_bread', n: 1, value: 7 }); M.onFeed({ t: 'produced', item: 'item_ingot', n: 1 }); L.run(1); }
+      const n = P.builds - b0; P.close(true);
+      return { secs: 60, rebuilds: n };
+    });
+    NUM.checks = R;
+    console.log(JSON.stringify(R));
+    const bad = [];
+    if (R.gift.breadAfter !== 2 || R.gift.giftBoxes !== 0) bad.push('gift pad took goods');
+    if (!R.f7.bedPadShown || R.f7.f7progress < 1) bad.push('no F7 bed');
+    if (R.bubbles.fullOnScreen > 2) bad.push('bubbles ' + R.bubbles.fullOnScreen);
+    if (R.counter.rebuilds > 2) bad.push('counter rebuilds ' + R.counter.rebuilds);
+    if (R.panel.rebuilds > 3) bad.push('panel rebuilds ' + R.panel.rebuilds);
+    if (bad.length) { console.error('checks failed: ' + bad.join(', ')); failed = true; }
   }
 
   // logic cost over a busy minute (bubbles, bank queue, board), then the log
