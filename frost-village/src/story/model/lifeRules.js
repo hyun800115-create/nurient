@@ -136,7 +136,7 @@ export class LifeDirector {
         const fam = String(b || '').split(',').filter(isPid);
         if (T < beatAt) this.later(Math.max(cardAt, T), this.farewellCard(g.ko, g.en, cardAt, a === '-' ? null : a));
         this.later(Math.max(beatAt, T), { a: 'beat', kind: 'farewell', key: 'f:' + day, at: beatAt, until: this.bookEnd(x), sids: [-1], venue: this.h.garden ? this.h.garden() : null,
-          data: { slot: Math.max(0, this.s.garden.indexOf(g)), nameKo: g.ko, nameEn: g.en, family: fam }, book: ref, restored: true });
+          data: { slot: g.s, nameKo: g.ko, nameEn: g.en, family: fam }, book: ref, restored: true });
       }
     }
     return out;
@@ -294,12 +294,15 @@ export class LifeDirector {
     const nameKo = this.elderName(ev.who, male, 'ko'), nameEn = this.elderName(ev.who, male, 'en');
     // a stone in the garden (six slots; the seventh name goes to the garden's "기억하는 사람들" list); a replay of the
     // same farewell after a reload does not add a second stone
+    // every stone keeps its own slot; the seventh takes the oldest one's place (that name joins the flower bed's list)
     const g = s.garden;
     if (!g.some((x) => x.day === today && x.ko === nameKo)) {
-      if (g.length >= L.stones) { const old = g.shift(); s.gardenOld.push(old.ko); if (s.gardenOld.length > 24) s.gardenOld.shift(); }
-      g.push({ ko: nameKo, en: nameEn, day: today });
+      let slot = -1;
+      if (g.length >= L.stones) { const old = g.shift(); slot = old.s; s.gardenOld.push(old.ko); if (s.gardenOld.length > 24) s.gardenOld.shift(); }
+      for (let i = 0; slot < 0 && i < L.stones; i++) if (!g.some((x) => x.s === i)) slot = i;
+      g.push({ ko: nameKo, en: nameEn, day: today, s: Math.max(0, slot) });
     }
-    const slot = Math.max(0, g.findIndex((x) => x.day === today && x.ko === nameKo));
+    const slot = (g.find((x) => x.day === today && x.ko === nameKo) || { s: 0 }).s;
     const fam = (Array.isArray(ev.fam) ? ev.fam : []).map((x) => this.pid(x)).filter(Boolean).slice(0, 2);
     const cardAt = this.at(today, L.farewellCardHour), beatAt = this.at(today, L.farewellHour);
     this.book('f', today, pid || '-', fam.join(','));
@@ -410,8 +413,12 @@ export function sanitizeLifeState(raw) {
   if (Array.isArray(o.firstCouple) && o.firstCouple.length === 2 && o.firstCouple.every(isPid) && o.firstCouple[0] !== o.firstCouple[1]) S.firstCouple = o.firstCouple.slice();
   if (Array.isArray(o.names)) for (const n of o.names) if (Array.isArray(n) && typeof n[0] === 'string' && typeof n[1] === 'string' && n[1].length <= 8) S.names.push([n[0].slice(0, 24), n[1], typeof n[2] === 'string' ? n[2].slice(0, 16) : '']);
   S.names = S.names.slice(-40);
-  if (Array.isArray(o.garden)) for (const g of o.garden) if (g && typeof g.ko === 'string') S.garden.push({ ko: g.ko.slice(0, 16), en: String(g.en || '').slice(0, 24), day: Number.isFinite(g.day) ? Math.floor(g.day) : 0 });
+  if (Array.isArray(o.garden)) for (const g of o.garden) if (g && typeof g.ko === 'string') S.garden.push({ ko: g.ko.slice(0, 16), en: String(g.en || '').slice(0, 24), day: Number.isFinite(g.day) ? Math.floor(g.day) : 0, s: Number.isInteger(g.s) && g.s >= 0 && g.s < 6 ? g.s : -1 });
   S.garden = S.garden.slice(-6);
+  // each stone its own slot (0..5): missing or doubled slots get the first free one
+  const taken = new Set();
+  for (const g of S.garden) { if (g.s >= 0 && !taken.has(g.s)) taken.add(g.s); else g.s = -1; }
+  for (const g of S.garden) if (g.s < 0) { let i = 0; while (taken.has(i)) i++; g.s = i; taken.add(i); }
   if (Array.isArray(o.gardenOld)) S.gardenOld = o.gardenOld.filter((x) => typeof x === 'string').map((x) => x.slice(0, 16)).slice(-24);
   if (o.wishes && typeof o.wishes === 'object' && !Array.isArray(o.wishes)) for (const k of Object.keys(o.wishes).slice(-8)) if (isPid(k) && Number.isFinite(o.wishes[k])) S.wishes[k] = Math.max(0, Math.min(3, o.wishes[k] | 0));
   if (o.wishDone && typeof o.wishDone === 'object' && !Array.isArray(o.wishDone)) for (const k of Object.keys(o.wishDone).slice(-8)) if (isPid(k) && Array.isArray(o.wishDone[k])) S.wishDone[k] = o.wishDone[k].filter((x) => typeof x === 'string').map((x) => x.slice(0, 16)).slice(0, 3);

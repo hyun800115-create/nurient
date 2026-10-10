@@ -4,7 +4,18 @@
 // step to the stone and lay their flowers; light snow drifts upward, the blossom tree glows, 콩이 sits beside the
 // chief, bgm_farewell plays. No camera grab, ever. The words are only 하늘나라 여행, 배웅, 기억.
 
-/** data: { slot, nameKo, nameEn, family [pids], friends [pids], chief (pid), dog (pid), garden (id | {x, y}), fast } */
+/** depth of a stone in the garden: above the garden picture, the front row above the back row (small offsets only:
+ *  the engraved name sits just above its own stone, critique M2) */
+export function stoneDepth(gdepth, gy, sy) { return gdepth + 1 + (sy - gy + 40) * 0.001; }
+
+/** the given name engraved on a stone's plaque ('순자 할머니' -> '순자', 'Grandma Sunja' -> 'Sunja') */
+export function engraved(name, lang) {
+  const n = String(name || '');
+  if (lang === 'en') return n.replace(/^(Grandma|Grandpa)\s+/, '').slice(0, 9);
+  return n.replace(/\s*(할머니|할아버지)$/, '').slice(0, 3);
+}
+
+/** data: { slot, nameKo, nameEn, family [pids], friends [pids], chief (pid), dog (pid), garden (id | {x, y}), fast, preview } */
 export async function playFarewell(sh, beat, ctx) {
   const d = beat.data || {};
   const lang = ctx.lang || 'ko';
@@ -14,13 +25,17 @@ export async function playFarewell(sh, beat, ctx) {
   const slot = Math.max(0, Math.min(5, d.slot | 0));
   const gdepth = g.depth !== undefined ? g.depth : g.y;
   const st = sh.point('memorial_garden', g.x, g.y, 'stonePoints', slot) || { x: g.x, y: g.y - 13 };
+  const sd = stoneDepth(gdepth, g.y, st.y);
   sh.reserve({ x: g.x - 220, y: g.y - 140, w: 440, h: 300 });
   sh.playMusic('bgm_farewell');
-  // the new stone and its wreath
-  sh.prop('memorial_stone', st.x, st.y, { depth: gdepth + 1 + st.y * 0.001 });
-  const wr = sh.point('memorial_stone', st.x, st.y, 'wreathPoint') || { x: st.x, y: st.y - 18 };
-  sh.prop('flower_wreath', st.x + 34, st.y + 4, { depth: gdepth + 1.2 + st.y * 0.001, delay: 400 });
-  if (ctx.nameplate) ctx.nameplate(st.x, st.y - 14, lang === 'en' ? d.nameEn : d.nameKo, gdepth + 2);
+  // the new stone, its engraved name and its wreath (the garden keeps the stone: StoryLife redraws it from the slice)
+  sh.prop('memorial_stone', st.x, st.y, { depth: sd });
+  const name = lang === 'en' ? d.nameEn : d.nameKo;
+  const pl = sh.point('memorial_stone', st.x, st.y, 'plaquePoint') || { x: st.x, y: st.y - 14 };
+  if (ctx.nameplate) { const t = ctx.nameplate(pl.x, pl.y, engraved(name, lang), sd + 0.0005, { engraved: true, lang }); if (t) sh.props.push(t); }
+  sh.prop('flower_wreath', st.x + 34, st.y + 4, { depth: sd + 0.0008, delay: 400 });
+  // the full name, softly, above the stone while the family says goodbye
+  if (ctx.nameLabel) { const lb = ctx.nameLabel(st.x, st.y - 92, name, sd + 0.5); if (lb) sh.props.push(lb); }
   // the tree glows softly, snow drifts upward
   const tree = sh.point('memorial_garden', g.x, g.y, 'fxPoints') || null;
   const T = sh.art.def('memorial_garden');
@@ -61,7 +76,7 @@ export async function playFarewell(sh, beat, ctx) {
     sh.face(pid, 'N');
     sh.anim(pid, 'sad', { face: 'sad' });
     await sh.wait(1.3 * k);
-    sh.prop('item_bouquet', st.x - 16 + i * 7, st.y + 10, { depth: gdepth + 1.1 + st.y * 0.001 + i * 0.0001 });
+    sh.prop('item_bouquet', st.x - 16 + i * 7, st.y + 10, { depth: sd + 0.0006 + i * 0.00001 });
     sh.dress(pid, 'mourner', { remove: ['held_bouquet'] });
     if (i === 1) sh.say(pid, lang === 'en' ? 'Have a lovely journey.' : '좋은 여행 하세요.', 'emote_heart', 2.4);
     await sh.walk(pid, back.x, back.y + 14, { speed: 0.6 });
@@ -72,9 +87,8 @@ export async function playFarewell(sh, beat, ctx) {
   if (d.chief) sh.emote(d.chief, 'emote_heart', 2.4);
   await sh.wait(6 * k);
   sh.stopMusic();
-  // the stone stays (StoryLife keeps the garden's stones); everything else is cleared without a poof
-  const stone = sh.props.shift();
-  if (stone && ctx.keepStone) ctx.keepStone(stone, slot);
+  // everything the scene made goes softly (no poof); the garden's stones are redrawn from the slice by StoryLife
+  // (a preview leaves nothing behind)
 }
 
 /** a soft warm shimmer (small: on snow a big additive glow reads as fog) */
