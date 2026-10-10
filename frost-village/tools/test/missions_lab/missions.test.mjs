@@ -814,3 +814,36 @@ test('M-3 / L-7: event bubbles respect the world cap; passive fame only for life
   m.onFeed({ t: 'story:life', op: 'wedding', a: 72, b: 73, aPid: 't:31', bPid: 'x:73' });
   assert.equal(m.fame.pts, f0 + cfg().fame.lifeBeat);
 });
+
+test('story_runtime payloads as sent today: engaged { at, prepAt, day, hour }, wish twice, birthday familyPid, school', () => {
+  const world = new FakeWorld({ rank: 2, facts: ['life', 'b:store', 'item:item_meat_cooked', 'craft:cake'] });
+  world.T = (9.5 - 8) * 25 + 600;
+  const m = mk(world, null);
+  m.tick(); m.drain();
+  // engaged carries the ceremony time (`at`, 11:00) and `prepAt` (10:30): C1 is due at the prep, as its template says
+  const day = world.day() + 1;
+  const at = m.tAt(day, 11), prepAt = m.tAt(day, 10.5);
+  m.onFeed({ t: 'story:life', op: 'engaged', a: 12, b: 14, aPid: 't:31', bPid: 't:47', day, hour: 11, at, prepAt, venue: 'hall', ours: true });
+  const c1 = m.list.find((i) => i.c === 'C1');
+  assert.ok(c1 && c1.d === prepAt, 'C1 due at the 10:30 prep, not the 11:00 ceremony');
+  // each wish arrives as story:life { op: 'wish' } and story:wish with the same data: one C7, one offer, no echo
+  m.drain();
+  const wish = { who: 3, whoPid: 't:47', wish: 'sea_dock', place: 'v_dock', ko: '부두에서 바다 바라보기', en: 'Watch the sea' };
+  m.onFeed(Object.assign({ t: 'story:life', op: 'wish' }, wish));
+  m.onFeed(Object.assign({ t: 'story:wish' }, wish));
+  assert.equal(m.list.filter((i) => i.c === 'C7').length, 1);
+  const ev = m.drain();
+  assert.equal(ev.filter((e) => e.t === 'mission:offer' && e.code === 'C7').length, 1);
+  assert.ok(!ev.some((e) => e.t === 'mission:progress' && e.code === 'C7'), 'the twin event changes nothing');
+  // birthday { who: child, family: parent } with the pids (story out() maps family → familyPid): A12's giver = the parent
+  m.onFeed({ t: 'story:life', op: 'birthday', who: 20, whoPid: 't:12', age: 9, family: 12, familyPid: 't:31' });
+  const a12 = m.list.find((i) => i.c === 'A12');
+  assert.ok(a12, 'A12 offered');
+  assert.equal(a12.gv, 't:31', 'the parent asks for the party food');
+  assert.equal(a12.nm, 't:12', 'for the child');
+  // without familyPid (story today) the child asks for its own party, with the self line (offerSelf)
+  // school { who, day, at, venue } (and the age-7 birthday the same day): one C4 per child
+  m.onFeed({ t: 'story:life', op: 'birthday', who: 21, whoPid: 't:12', age: 7 });
+  m.onFeed({ t: 'story:life', op: 'school', who: 21, whoPid: 't:12', day: world.day() + 1, at: m.tAt(world.day() + 1, 7), venue: 'school' });
+  assert.equal(m.list.filter((i) => i.c === 'C4').length, 1);
+});

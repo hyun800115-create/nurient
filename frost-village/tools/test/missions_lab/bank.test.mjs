@@ -257,3 +257,27 @@ test('insurance ids: long game ids are hashed the same way by insure / insured /
   const row = b.rows[b.rows.length - 1];
   assert.equal(row[1], 'loan'); assert.equal(row[2], -630); assert.equal(row[3], -630);
 });
+
+test('credit (v4.2 courier income): repays a loan first, saves up to the cap, the rest to the wallet; conserves; Bank42 slice adopted', () => {
+  // a v4.2 Bank42 slice (v5 keys only) passes the sanitizer unchanged and opens the account (no second site)
+  const b42 = { v: 1, open: 1, sv: 45000, ld: 12, tk: 7, rw: [[3, 'deposit', 1200, 1200], [4, 'interest', 12, 1212], [5, 'withdraw', -200, 1012]] };
+  assert.deepEqual(sanitizeBank(JSON.parse(JSON.stringify(b42))), b42);
+  const a = new Account(cfg(), sanitizeBank(b42)), w = new Wallet(0);
+  assert.ok(a.open && a.savings === 45000);
+  let n0 = net(w, a);
+  const r1 = a.credit(8000, w, 13);
+  assert.deepEqual(r1, { repaid: 0, saved: 5000, wallet: 3000 }, 'over the 50,000 cap: the rest goes to the wallet');
+  assert.equal(net(w, a), n0 + 8000);
+  // with a loan open: the courier's coins repay it first
+  const b = openAcct(), w2 = new Wallet(0);
+  b.loan = { amt: 1000, left: 1050, fee: 50, t0: 0, day0: 0, rs: 0, ps: 0, kind: 'build' };
+  n0 = net(w2, b);
+  const r2 = b.credit(1500, w2, 2);
+  assert.equal(r2.repaid, 1050); assert.equal(r2.saved, 450); assert.equal(b.loan, null);
+  assert.equal(net(w2, b), n0 + 1500);
+  // a closed bank: everything to the wallet; nonsense amounts do nothing
+  const c = new Account(cfg(), null), w3 = new Wallet(0);
+  assert.deepEqual(c.credit(300, w3, 0), { repaid: 0, saved: 0, wallet: 300 });
+  assert.deepEqual(c.credit(-5, w3, 0), { repaid: 0, saved: 0, wallet: 0 });
+  assert.equal(w3.value, 300);
+});

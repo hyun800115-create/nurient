@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|civic)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -160,6 +160,8 @@ export function checkBalance() {
   checkV4B(B);
   // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민
   checkC1(B);
+  // ---- (v4.2) 촌장의 하루
+  checkV42(B);
 }
 
 // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)
@@ -402,4 +404,79 @@ function checkV4A(B) {
   }
   const NI = TL.night = (TL.night && typeof TL.night === 'object') ? TL.night : {};
   fixNum(NI, 'dozers', 'v4.townLife.night.dozers', 0, 10, 3, true); fixNum(NI, 'patrol', 'v4.townLife.night.patrol', 0, 2, 1, true);
+}
+
+// ---- (v4.2) 촌장의 하루 (docs/v42_plan.md §11): every key of BALANCE.v42 has [min, max, default, whole?] here.
+// A missing key is filled in silently (older balance.js), a broken one is replaced and reported.
+const R = (min, max, d, int) => ({ min, max, d, int: !!int });
+const LINES5 = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse'];
+const costs5 = (d) => Object.fromEntries(LINES5.map((k, i) => [k, R(1, 1e9, d[i], true)]));
+export const V42_SPEC = {
+  aura: { ringPx: R(10, 400, 70), fullZoom: R(0.2, 4, 1.2), maxScale: R(1, 6, 2), pinZoom: R(0.1, 4, 0.8), crowdN: R(1, 50, 4, true), crowdR: R(20, 2000, 160), glowDay: R(0, 1, 0.35), glowNight: R(0, 1, 0.6) },
+  cheer: { mult: R(1, 3, 1.1), still: R(0.1, 60, 2), radius: R(10, 2000, 200) },
+  pickup: { stillS: R(0, 5, 0.35), stillSpeed: R(1, 500, 20), gatherStillS: R(0, 5, 0.35), tipSpeed: R(0.05, 1, 0.6) },
+  nav: { dotEvery: R(8, 400, 48), maxDots: R(0, 64, 16, true), hideNear: R(0, 1000, 90), replanEvery: R(0.1, 30, 1.0), strayPx: R(10, 2000, 80), straightUnder: R(0, 5000, 360) },
+  porters: { shelfEmptyPrio: R(1, 99, 48), shelfEmptyAfter: R(0, 600, 10), inputUrgentBelow: R(0, 1, 0.25), inputCalmPrio: R(1, 99, 42), travelPxPerPoint: R(10, 1e6, 300) },
+  warehouse: { direct: 'bool:true', directMinPrio: R(1, 99, 40) },
+  porter2: { fullAt: R(0.1, 1, 0.8), fullForS: R(1, 3600, 90), costs: costs5([500, 600, 700, 800, 900]) },
+  station2: { timeMult: R(0.1, 1, 0.66), costs: costs5([900, 1000, 1100, 1400, 1600]) },
+  surplus: { outAt: R(0.1, 1, 0.7), outForS: R(0, 3600, 20), localPx: R(0, 1e5, 1500), pileAt: R(0.1, 1, 0.95), pileForS: R(0, 3600, 30), pileKeep: R(0, 500, 20, true), whAt: R(0.1, 1, 0.7), whKeep: R(0, 1, 0.5), boatAt: R(0.1, 1, 0.9) },
+  stationPorter34: [R(1, 1e9, 1000, true), R(1, 1e9, 1500, true)],
+  freight: { perTrain: R(0, 999, 56, true), big: R(0, 999, 88, true), bigCost: R(1, 1e9, 2000, true), bigOfferWait: R(1, 999, 60, true), bigOfferS: R(1, 3600, 120), exportRate: R(0, 2, 0.5), loadEvery: R(0.02, 5, 0.14) },
+  depot: {
+    site: { coins: R(1, 1e9, 6000, true), item_plank: R(0, 999, 40, true), item_ingot: R(0, 999, 20, true), time: R(1, 600, 20) },
+    caps: { materials: R(1, 9999, 160, true), food: R(1, 9999, 160, true), goods: R(1, 9999, 120, true), tools: R(1, 9999, 60, true) },
+    sleigh: { cap: R(1, 999, 60, true), speed: R(0.2, 20, 2.5), loadS: R(0, 120, 8), secondCost: R(1, 1e9, 2500, true) },
+    sell: { every: R(0.5, 600, 8), rate: R(0, 2, 0.6), open: R(0, 23, 7), close: R(1, 24, 20), perMin: { materials: R(0, 999, 20), food: R(0, 999, 30), goods: R(0, 999, 20), tools: R(0, 999, 6) } },
+    rawPrice: { item_fish_raw: R(0, 999, 1), item_log: R(0, 999, 1), item_wheat: R(0, 999, 1), item_ore: R(0, 999, 2), item_meat_raw: R(0, 999, 3) },
+  },
+  office: {
+    site: { coins: R(1, 1e9, 1800, true), item_plank: R(0, 999, 20, true), item_ingot: R(0, 999, 6, true), time: R(1, 600, 10) },
+    hire: { sem: R(1, 1e9, 500, true), ttal: R(1, 1e9, 900, true), bok: R(1, 1e9, 700, true), chong: R(1, 1e9, 900, true) },
+    revealPx: R(40, 2000, 260), revealHyst: R(0, 500, 60), deskPadS: R(0, 10, 0.4),
+  },
+  courier: { every: R(5, 3600, 60), rushAt: R(1, 1e7, 1000, true), minPad: R(1, 1e7, 100, true), speed: R(20, 1000, 150), vaultAt: R(1, 1e9, 5000, true) },
+  bank: { site: { coins: R(1, 1e9, 3000, true), item_plank: R(0, 999, 24, true), item_ingot: R(0, 999, 12, true), time: R(1, 600, 12) } },
+  ledger: { window: R(10, 3600, 300), emptyS: R(1, 3600, 30), fullS: R(1, 3600, 60) },
+  news: { hour: R(0, 23, 6), keep: R(1, 10, 3, true) },
+  letters: { minH: R(0.1, 48, 2), maxH: R(0.1, 96, 4), maxUnread: R(1, 20, 6, true), archiveDays: R(1, 30, 2, true) },
+  pilot: { decideEvery: R(0.1, 10, 0.5), jitter: R(0, 1, 0.1), hysteresis: R(0, 2, 0.2), minZoom: R(0.3, 2, 0.7), camLerp: R(0.005, 1, 0.08),
+    cutEvery: [R(5, 3600, 45), R(5, 3600, 90)], cutHold: [R(1, 60, 6), R(1, 60, 8)], cutRange: R(100, 20000, 2500), stuckSide: R(0.5, 60, 3), stuckDrop: R(1, 600, 8), agenda: 'agenda' },
+  train: { speed: R(0.5, 20, 3.4), curve: R(0.3, 20, 2.2), accel: R(0.05, 10, 0.7), brake: R(0.05, 10, 0.8), dwellOurs: R(2, 600, 12), dwellTown: R(2, 600, 8), coachSeats: R(1, 99, 16, true), labels: R(0, 99, 3, true) },
+};
+const AGENDA_DEF = [[7, 9, 'office', 1.5], [9, 12, 'work', 1.3], [13, 17, 'work', 1.15], [17, 20, 'chat', 1.5], [17, 20, 'rest', 1.2]];
+const AGENDA_ACTS = ['urgent', 'lunch', 'work', 'evening', 'collect', 'train', 'chat', 'office', 'rest', 'dog'];
+
+function fixSpec(obj, spec, path) {
+  for (const k in spec) {
+    const sp = spec[k], p = path + '.' + k;
+    if (sp === 'bool:true') { if (typeof obj[k] !== 'boolean') { if (obj[k] !== undefined) warn(p, obj[k], true); obj[k] = true; } continue; }
+    if (sp === 'agenda') {
+      const v = obj[k];
+      const ok = Array.isArray(v) ? v.filter((r) => Array.isArray(r) && r.length === 4 && Number.isFinite(Number(r[0])) && Number.isFinite(Number(r[1])) && AGENDA_ACTS.indexOf(r[2]) >= 0 && Number(r[3]) > 0) : null;
+      if (!ok || ok.length !== (Array.isArray(v) ? v.length : -1)) { if (v !== undefined) warn(p, v, ok && ok.length ? ok : AGENDA_DEF); obj[k] = ok && ok.length ? ok : AGENDA_DEF.map((r) => r.slice()); }
+      for (const r of obj[k]) { r[0] = Math.max(0, Math.min(24, Number(r[0]))); r[1] = Math.max(r[0], Math.min(24, Number(r[1]))); r[3] = Math.max(0.05, Math.min(10, Number(r[3]))); }
+      continue;
+    }
+    if (Array.isArray(sp)) {
+      if (!Array.isArray(obj[k]) || obj[k].length !== sp.length) { if (obj[k] !== undefined) warn(p, obj[k], sp.map((q) => q.d)); obj[k] = sp.map((q) => q.d); }
+      sp.forEach((q, i) => fixNum(obj[k], i, p + '[' + i + ']', i > 0 && /cutEvery|cutHold/.test(k) ? Math.max(q.min, obj[k][i - 1]) : q.min, q.max, q.d, q.int));
+      continue;
+    }
+    if (sp && typeof sp === 'object' && sp.d === undefined) {
+      if (!obj[k] || typeof obj[k] !== 'object' || Array.isArray(obj[k])) { if (obj[k] !== undefined) warn(p, obj[k], '{…}'); obj[k] = {}; }
+      fixSpec(obj[k], sp, p);
+      continue;
+    }
+    fixNum(obj, k, p, sp.min, sp.max, sp.d, sp.int);
+  }
+}
+
+function checkV42(B) {
+  const V = B.v42 = (B.v42 && typeof B.v42 === 'object' && !Array.isArray(B.v42)) ? B.v42 : {};
+  fixSpec(V, V42_SPEC, 'v42');
+  // letters: the longest gap is never shorter than the shortest; the depot's shop closes after it opens
+  if (V.letters.maxH < V.letters.minH) { warn('v42.letters.maxH', V.letters.maxH, V.letters.minH); V.letters.maxH = V.letters.minH; }
+  if (V.depot.sell.close <= V.depot.sell.open) { warn('v42.depot.sell.close', V.depot.sell.close, Math.min(24, V.depot.sell.open + 1)); V.depot.sell.close = Math.min(24, V.depot.sell.open + 1); }
+  if (V.freight.big < V.freight.perTrain) { warn('v42.freight.big', V.freight.big, V.freight.perTrain); V.freight.big = V.freight.perTrain; }
 }

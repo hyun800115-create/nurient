@@ -460,4 +460,78 @@ export const BALANCE = {
       maxVacant: 6,           // 집의 빈 방이 이만큼 남아 있으면 이주민이 들어올 때까지 집을 더 짓지 않아요 (마을회관 방은 안 세요)
     },
   },
+  // =====================================================================
+  //  (v4.2) 촌장의 하루 — 후광 · 자동 줍기 · 길 안내 · 넘치는 재고 · 새 기차 · 촌장 사무실 · 은행 · 물류창고 · 관망 모드
+  //  (docs/v42_plan.md, 대표님용: docs/기획서_v4_2_촌장.md)
+  // =====================================================================
+  v42: {
+    // ── 촌장 후광: ringPx = 고리 너비(px, 화면 배율 1일 때), fullZoom 보다 작게 보면 고리를 키워서 폰에서 늘 같은 크기로 보여요
+    //    (maxScale = 최대 몇 배까지 키울지), pinZoom = 이보다 멀리 보면 머리 위에 별 표시,
+    //    crowdN / crowdR = 반경 crowdR(px) 안에 사람이 crowdN 명 이상이면 별 표시, glowDay / glowNight = 몸 뒤 광채 진하기(낮·밤)
+    aura: { ringPx: 70, fullZoom: 1.2, maxScale: 2, pinZoom: 0.8, crowdN: 4, crowdR: 160, glowDay: 0.35, glowNight: 0.6 },
+    // ── 촌장 응원 (마을이 다 갖춰진 뒤): 일꾼 근처(radius px)에 still 초 이상 가만히 서 있으면 그 일꾼들이 mult 배 빨리 일해요
+    //    (mult 를 1 로 하면 꺼져요)
+    cheer: { mult: 1.1, still: 2, radius: 200 },
+    // ── 자동 줍기 '멈추면': 발판 위에서 stillSpeed(px/초)보다 느리게 stillS 초 있어야 집어요 (채집은 gatherStillS 초)
+    //    tipSpeed = 처음으로 '지나가다 주웠어요' 알림을 띄우는 빠르기 (최고 속도의 비율)
+    pickup: { stillS: 0.35, stillSpeed: 20, gatherStillS: 0.35, tipSpeed: 0.6 },
+    // ── 길 안내: dotEvery = 점 사이 간격(px), maxDots = 점 최대 개수, hideNear = 촌장 가까이(px)의 점은 숨김,
+    //    replanEvery = 길을 다시 찾는 최소 간격(초), strayPx = 길에서 이만큼 벗어나면 다시 찾기, straightUnder = 이보다 가까우면 곧장
+    nav: { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360 },
+    // ── 짐꾼 규칙 (F1·F2): 판매대가 shelfEmptyAfter 초 넘게 비면 그곳이 먼저 (우선순위 shelfEmptyPrio),
+    //    대장간·통조림 공장 재료는 inputUrgentBelow(0~1) 아래로 줄었을 때만 급하고 그 밖엔 inputCalmPrio,
+    //    travelPxPerPoint = 이만큼(px) 멀 때마다 우선순위 1 깎기 (먼 곳보다 가까운 곳)
+    porters: { shelfEmptyPrio: 48, shelfEmptyAfter: 10, inputUrgentBelow: 0.25, inputCalmPrio: 42, travelPxPerPoint: 300 },
+    // ── 창고 짐꾼 (F3): direct = 가득 찬 출구의 물건을 원하는 판매대가 있으면 창고를 거치지 않고 바로 (directMinPrio 이상인 곳)
+    warehouse: { direct: true, directMinPrio: 40 },
+    // ── 짐꾼 2 (F4): 그 줄의 출구가 fullAt(0~1) 이상 찬 시간이 모두 fullForS 초가 되고 창고가 있으면 발판이 생겨요. costs = 줄마다 값
+    porter2: { fullAt: 0.8, fullForS: 90, costs: { grill: 500, sawmill: 600, bakery: 700, smelter: 800, smokehouse: 900 } },
+    // ── 가공소 2단 (F5): timeMult = 한 개 만드는 시간 배율 (0.66 = 1.5배 빨리), 그 줄 일꾼이 3명이 되면 발판이 생겨요
+    station2: { timeMult: 0.66, costs: { grill: 900, sawmill: 1000, bakery: 1100, smelter: 1400, smokehouse: 1600 } },
+    // ── 남는 물건 (기차 수출 · 물류창고로 보낼 것)
+    //    outAt / outForS = 가공소 출구가 outAt 이상으로 outForS 초 → 남음 (가까운 localPx 안에 원하는 곳이 없을 때)
+    //    pileAt / pileForS / pileKeep = 모아두는 곳이 pileAt 이상으로 pileForS 초 → 남음 (pileKeep 개는 남겨 둬요)
+    //    whAt / whKeep = 창고가 whAt 넘게 차면 whKeep 까지 줄여요, boatAt = 배 창고 생선이 이만큼 차면 남음
+    surplus: { outAt: 0.7, outForS: 20, localPx: 1500, pileAt: 0.95, pileForS: 30, pileKeep: 20, whAt: 0.7, whKeep: 0.5, boatAt: 0.9 },
+    // ── 역 짐꾼 3 / 4 (물류창고가 생긴 뒤): 값
+    stationPorter34: [1000, 1500],
+    // ── 기차 수출 (F7): perTrain = 기차 한 번에 싣는 상자 (화물칸 32 + 무개화차 24), big = '화물칸 크게' 뒤,
+    //    bigCost = 화물칸 크게 값, bigOfferWait / bigOfferS = 수출 상자가 이만큼 bigOfferS 초 기다리면 '화물칸 크게' 제안,
+    //    exportRate = 수출 값 (판매 가격 × exportRate, 역 금고로), loadEvery = 상자 하나 싣는 간격(초)
+    freight: { perTrain: 56, big: 88, bigCost: 2000, bigOfferWait: 60, bigOfferS: 120, exportRate: 0.5, loadEvery: 0.14 },
+    // ── 서리 물류창고 (F8)
+    depot: {
+      site: { coins: 6000, item_plank: 40, item_ingot: 20, time: 20 },              // 짓는 값 (코인 + 자재), 짓는 시간(초)
+      caps: { materials: 160, food: 160, goods: 120, tools: 60 },                   // 선반 종류별 최대 개수
+      sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500 },                  // 화물 썰매: 한 번에 싣는 개수, 속도(m/초), 싣는 시간(초), 한 대 더 값
+      sell: { every: 8, rate: 0.6, open: 7, close: 20,                              // 상인이 오는 간격(초), 값 비율, 여는 시각 ~ 닫는 시각
+              perMin: { materials: 20, food: 30, goods: 20, tools: 6 } },           // 종류별 1분에 팔 수 있는 최대 개수
+      rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 },   // 날것을 팔 때 값 (추정 — 봇으로 맞춰요)
+    },
+    // ── 촌장 사무실: site = 짓는 값, hire = 직원 값 (셈이 / 딸랑이 / 소복이 / 총총이),
+    //    revealPx / revealHyst = 촌장이 문에서 이만큼(px) 안에 오면 지붕이 투명해져요 (떨림 방지 여유), deskPadS = 책상 발판에 서 있는 시간(초)
+    office: { site: { coins: 1800, item_plank: 20, item_ingot: 6, time: 10 },
+              hire: { sem: 500, ttal: 900, bok: 700, chong: 900 }, revealPx: 260, revealHyst: 60, deskPadS: 0.4 },
+    // ── 수금원 딸랑이: every = 도는 간격(초), rushAt = 한 곳에 이만큼 쌓이면 바로 출발, minPad = 이만큼 넘게 쌓인 곳만 들러요,
+    //    speed = 걷는 속도(px/초), vaultAt = 이만큼 넘게 입금하면 금고 문이 빙글
+    courier: { every: 60, rushAt: 1000, minPad: 100, speed: 150, vaultAt: 5000 },
+    // ── 서리 은행: 짓는 값
+    bank: { site: { coins: 3000, item_plank: 24, item_ingot: 12, time: 12 } },
+    // ── 재고판(셈이): window = 흐름을 재는 시간(초), emptyS / fullS = 이만큼(초) 비어 / 차 있으면 '부족·길 막힘' / '남음'
+    ledger: { window: 300, emptyS: 30, fullS: 60 },
+    // ── 서리 소식(신문): hour = 신문이 나오는 시각, keep = 보관하는 신문 수
+    news: { hour: 6, keep: 3 },
+    // ── 편지: minH ~ maxH = 새 편지 간격(게임 시간), maxUnread = 안 읽은 편지 최대, archiveDays = 답장 안 한 편지가 사라지는 날 수
+    letters: { minH: 2, maxH: 4, maxUnread: 6, archiveDays: 2 },
+    // ── 관망 모드: decideEvery = 할 일을 고르는 간격(초), jitter = 고를 때 섞는 정도, hysteresis = 하던 일을 계속하려는 정도,
+    //    minZoom = 관망 중 가장 멀리 보는 배율, camLerp = 카메라가 따라가는 부드러움, cutEvery = 볼거리로 카메라가 가는 간격(초, 최소~최대),
+    //    cutHold = 볼거리를 보여 주는 시간(초), cutRange = 이만큼(px) 안의 볼거리만, stuckSide / stuckDrop = 막혔을 때 비키기 / 포기(초)
+    //    agenda = 시간대별 하고 싶은 일 배율 [시작 시, 끝 시, 일, 배율]
+    pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, cutEvery: [45, 90], cutHold: [6, 8],
+             cutRange: 2500, stuckSide: 3, stuckDrop: 8,
+             agenda: [[7, 9, 'office', 1.5], [9, 12, 'work', 1.3], [13, 17, 'work', 1.15], [17, 20, 'chat', 1.5], [17, 20, 'rest', 1.2]] },
+    // ── 새 기차: speed = 곧은 길 속도(m/초), curve = 고리를 돌 때 속도, accel / brake = 출발·멈출 때, dwellOurs / dwellTown = 서 있는 시간(초)
+    //    coachSeats = 객차 한 칸 자리, labels = 새 기차가 처음 몇 번 들어올 때 칸마다 이름표를 띄울지
+    train: { speed: 3.4, curve: 2.2, accel: 0.7, brake: 0.8, dwellOurs: 12, dwellTown: 8, coachSeats: 16, labels: 3 },
+  },
 };

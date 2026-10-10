@@ -99,6 +99,27 @@ export class Account {
     return { repaid, saved };
   }
 
+  /**
+   * income that reaches the bank without passing through the wallet (v4.2's 수금원 carries a cash pad's takings to
+   * the counter): an open loan is repaid first, then it is saved up to the cap; the rest goes to the wallet.
+   * It is income (the caller counts it as earned), never a way to make coins: `n` must be coins the village earned.
+   * Returns { repaid, saved, wallet }.
+   */
+  credit(n, wallet, day) {
+    let k = Math.max(0, Math.floor(Number(n) || 0));
+    if (!k) return { repaid: 0, saved: 0, wallet: 0 };
+    if (!this.open) { wallet.add(k); return { repaid: 0, saved: 0, wallet: k }; }
+    let repaid = 0, saved = 0;
+    if (this.loan) { repaid = this.payDown(Math.min(k, this.loan.left)); k -= repaid; if (repaid) this.row(day, 'repay', repaid); }
+    if (k > 0 && !this.loan) {
+      saved = Math.min(k, Math.max(0, this.cap - this.savings));
+      if (saved > 0) { this.savings += saved; k -= saved; this.row(day, 'deposit', saved); }
+    }
+    if (k > 0) wallet.add(k);
+    if (repaid || saved) this.emit({ t: 'bank:deposit', repaid, saved, savings: this.savings, vault: saved >= this.cfg.vaultAt, by: 'courier' });
+    return { repaid, saved, wallet: k };
+  }
+
   /** take up to n coins out of savings */
   withdraw(n, wallet, day) {
     if (!this.open) return 0;

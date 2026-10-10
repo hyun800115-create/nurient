@@ -39,9 +39,10 @@ const round10 = (x) => Math.round(x / 10) * 10;
 function normIds(ev) {
   const pid = (v, p) => (typeof p === 'string' && p ? p : typeof v === 'string' && v ? v : null);
   const a = pid(ev.a, ev.aPid), b = pid(ev.b, ev.bPid), who = pid(ev.who, ev.whoPid) || a;
+  const fam = pid(ev.family, ev.familyPid);          // (story birthday / school: `family` = a parent's engine id)
   const key = ev.key || (ev.id !== undefined && ev.id !== null && ev.id !== '' ? String(ev.id) : null) ||
     (Number.isInteger(ev.a) ? 'c' + ev.a + '_' + (ev.b | 0) : Number.isInteger(ev.who) ? 's' + ev.who : who);
-  return Object.assign({}, ev, { who, family: (typeof ev.family === 'string' && ev.family) || b || a || who, key, sid: Number.isInteger(ev.who) ? ev.who : null });
+  return Object.assign({}, ev, { who, family: fam || b || a || who, key, sid: Number.isInteger(ev.who) ? ev.who : null });
 }
 const namesPeople = (ev) => ev.t.startsWith('story:') || 'who' in ev || 'whoPid' in ev || 'aPid' in ev || 'a' in ev;
 const safeId = (v, n) => (typeof v === 'string' && v.length <= n && /^[A-Za-z0-9:_.\-]+$/.test(v) ? v : null);
@@ -181,10 +182,12 @@ export class MissionModel {
     const at = (hour, dayOff) => Math.round(T + ((dayOff * 24 + hour - h) * HOUR));
     if (D.after) return Math.round(T + D.after);
     if (D.at === 'event') {
+      // story_runtime's engaged: { day (the wedding day), hour, at (the wedding itself), prepAt } → the template's own
+      // hour on that day (C1 / B6: the 10:30 prep), never "the next 10:30" and never the 11:00 ceremony
+      if (ev && Number.isFinite(ev.day) && D.hour !== undefined) return this.tAt(ev.day, D.hour);
       if (ev && Number.isFinite(ev.at)) return Math.round(ev.at);
       if (ev && Number.isFinite(ev.due)) return Math.round(ev.due);
-      // story_runtime's engaged: { day (the wedding day), hour } → that day's prep hour (10:30), not "the next 10:30"
-      if (ev && Number.isFinite(ev.day)) return this.tAt(ev.day, D.hour !== undefined ? D.hour : (Number.isFinite(ev.hour) ? ev.hour : 12));
+      if (ev && Number.isFinite(ev.day)) return this.tAt(ev.day, Number.isFinite(ev.hour) ? ev.hour : 12);
       if (D.hour !== undefined) return at(D.hour, h < D.hour ? 0 : 1);
       return Math.round(T + 300);
     }
@@ -437,6 +440,7 @@ export class MissionModel {
     if (!k) return;
     const pl = safeId(ev.place, 24), wi = safeId(ev.wish, 16);
     const i = this.list.find((x) => x.c === 'C7' && x.k === k.slice(0, 24));
+    if (i && i.wi === wi && i.pl === pl) return;            // (the story sends each wish twice: story:life 'wish' + story:wish)
     if (i) { i.pl = pl; i.wi = wi; i.tp = Math.round(this.T); this.emit({ t: 'mission:progress', id: i.id, code: i.c, f: Math.round(this.fraction(i) * 100) / 100, wish: true }); return; }
     this.spawnEvent('C7', { ...ev, key: k, pl, wi });
   }

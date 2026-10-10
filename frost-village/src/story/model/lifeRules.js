@@ -288,7 +288,7 @@ export class LifeDirector {
     // the departed leaves the town at once (asleep at home at 00:03): never seen again, never cast again (critique H4).
     // The 'leave' goes last: the story:life emit before it still names the elder by pid (missions C8).
     const leave = { a: 'leave', sids: [ev.who], why: 'farewell' };
-    if (s.wishActive && s.wishActive === pid) { s.wishActive = null; s.wishAt = -1; }
+    if (s.wishActive && s.wishActive === pid) this.wishEnded(pid);
     if (!(this.h.farewellOn && this.h.farewellOn())) { out.push(leave); return; }
     s.seen.farewell = true;
     const today = this.today();
@@ -343,7 +343,7 @@ export class LifeDirector {
       out.push({ a: 'emit', name: 'story:move', data: { op: 'out', who: (ev.members || [])[0], members: ev.members || [] } });
       out.push({ a: 'leave', sids: ev.members || [], why: 'moved' });
       const wp = this.s.wishActive;
-      if (wp && (ev.members || []).some((m) => this.pid(m) === wp)) { this.s.wishActive = null; this.s.wishAt = -1; }
+      if (wp && (ev.members || []).some((m) => this.pid(m) === wp)) this.wishEnded(wp);
       out.push({ a: 'banner', kind: 'move', ko: '이웃 한 가족이 이사를 떠났어요', en: 'A family has moved away', subKo: '새로운 모험을 찾아서', subEn: 'off on a new adventure' });
     } else if (ev.op === 'within' && ev.why === 'wedding') out.push({ a: 'emit', name: 'story:move', data: { op: 'within', household: ev.household, members: ev.members, home: ev.home } });
   }
@@ -352,14 +352,20 @@ export class LifeDirector {
     out.push({ a: 'emit', name: 'story:day', data: { day: ev.day, weather: ev.weather } });
     // a wish nobody granted for wishTimeoutDays is let go (the elder may wish again another day)
     const s = this.s;
-    if (s.wishActive && s.wishAt >= 0 && ev.day - s.wishAt >= this.L.wishTimeoutDays) { out.push({ a: 'emit', name: 'story:life', data: { op: 'wishEnd', whoPid: s.wishActive, why: 'late' } }); s.wishActive = null; s.wishAt = -1; }
+    if (s.wishActive && s.wishAt >= 0 && ev.day - s.wishAt >= this.L.wishTimeoutDays) { out.push({ a: 'emit', name: 'story:life', data: { op: 'wishEnd', whoPid: s.wishActive, why: 'late' } }); this.wishEnded(s.wishActive); }
     out.push({ a: 'wishcheck' });
   }
 
   /** an elder's wish (≤ 1 elder at a time): pick the first wisher whose likes fit a wish that is open in this version */
   pickWish(wishers, opts = {}) {
     if (this.s.wishActive) return null;
-    for (const w of wishers || []) {
+    const order = (wishers || []).slice();
+    const last = this.s.wishLast;
+    if (last) {
+      const i = order.findIndex((w) => this.pid(w.id) === last);
+      if (i >= 0) { const [w] = order.splice(i, 1); if (this.s.wishLastOk) order.unshift(w); else order.push(w); }
+    }
+    for (const w of order) {
       const pid = this.pid(w.id);
       if (!pid || (this.s.wishes[pid] || 0) >= this.L.wishes) continue;
       for (const W of WISHES) {
@@ -369,6 +375,7 @@ export class LifeDirector {
         if ((this.s.wishDone[pid] || []).indexOf(W.id) >= 0) continue;
         this.s.wishActive = pid;
         this.s.wishAt = this.today();
+        this.s.wishId = W.id;
         return { sid: w.id, pid, wish: W, ko: `${this.elderName(w.id, !!w.male, 'ko')}의 소원: ${W.ko}`, en: `${this.elderName(w.id, !!w.male, 'en')}’s wish: ${W.en}` };
       }
     }
@@ -380,13 +387,22 @@ export class LifeDirector {
     if (!isPid(pid)) return;
     s.wishes[pid] = Math.min(3, (s.wishes[pid] || 0) + 1);
     if (wishId) { const d = s.wishDone[pid] || (s.wishDone[pid] = []); if (d.indexOf(wishId) < 0) d.push(String(wishId).slice(0, 16)); if (d.length > 3) d.shift(); }
-    if (s.wishActive === pid) { s.wishActive = null; s.wishAt = -1; }
+    if (s.wishActive === pid) { s.wishActive = null; s.wishAt = -1; s.wishId = null; }
+    s.wishLast = pid; s.wishLastOk = true;
     s.seen.wish = true;
     const keys = Object.keys(s.wishes);
     if (keys.length > 8) { delete s.wishes[keys[0]]; delete s.wishDone[keys[0]]; }
   }
-  /** a wish ended without being granted (the mission expired, the wisher left) */
-  wishEnded(pid) { const s = this.s; if (!pid || s.wishActive === pid) { s.wishActive = null; s.wishAt = -1; } }
+  /** a wish ended without being granted (the mission expired or ran out, the wisher left): it counts as tried, so the
+   *  same elder is not offered the same wish again, and the next wish goes to another elder first */
+  wishEnded(pid) {
+    const s = this.s;
+    if (pid && s.wishActive !== pid) return;
+    const who = s.wishActive;
+    if (who && s.wishId) { const d = s.wishDone[who] || (s.wishDone[who] = []); if (d.indexOf(s.wishId) < 0) d.push(s.wishId); if (d.length > 3) d.shift(); }
+    if (who) { s.wishLast = who; s.wishLastOk = false; }
+    s.wishActive = null; s.wishAt = -1; s.wishId = null;
+  }
 
   /** timed beats due at T */
   update(T) {
@@ -410,7 +426,8 @@ export class LifeDirector {
 export function sanitizeLifeState(raw) {
   const o = raw && typeof raw === 'object' ? raw : {};
   const seen = o.seen && typeof o.seen === 'object' ? o.seen : {};
-  const S = { seen: {}, firstCouple: [], names: [], garden: [], gardenOld: [], wishes: {}, wishDone: {}, wishActive: null, wishAt: -1, paperFrom: 0, paperDay: -1, paperNo: 0, booked: [] };
+  const S = { seen: {}, firstCouple: [], names: [], garden: [], gardenOld: [], wishes: {}, wishDone: {}, wishActive: null, wishAt: -1, wishId: null, wishLast: null, wishLastOk: false,
+    paperFrom: 0, paperDay: -1, paperNo: 0, booked: [] };
   for (const k of ['proposal', 'engaged', 'wedding', 'expect', 'baby', 'school', 'wish', 'farewell', 'farewellBeat', 'paper']) if (seen[k] === true || seen[k] === 1) S.seen[k] = true;
   if (Array.isArray(o.firstCouple) && o.firstCouple.length === 2 && o.firstCouple.every(isPid) && o.firstCouple[0] !== o.firstCouple[1]) S.firstCouple = o.firstCouple.slice();
   if (Array.isArray(o.names)) for (const n of o.names) if (Array.isArray(n) && typeof n[0] === 'string' && typeof n[1] === 'string' && n[1].length <= 8) S.names.push([n[0].slice(0, 24), n[1], typeof n[2] === 'string' ? n[2].slice(0, 16) : '']);
@@ -424,7 +441,11 @@ export function sanitizeLifeState(raw) {
   if (Array.isArray(o.gardenOld)) S.gardenOld = o.gardenOld.filter((x) => typeof x === 'string').map((x) => x.slice(0, 16)).slice(-24);
   if (o.wishes && typeof o.wishes === 'object' && !Array.isArray(o.wishes)) for (const k of Object.keys(o.wishes).slice(-8)) if (isPid(k) && Number.isFinite(o.wishes[k])) S.wishes[k] = Math.max(0, Math.min(3, o.wishes[k] | 0));
   if (o.wishDone && typeof o.wishDone === 'object' && !Array.isArray(o.wishDone)) for (const k of Object.keys(o.wishDone).slice(-8)) if (isPid(k) && Array.isArray(o.wishDone[k])) S.wishDone[k] = o.wishDone[k].filter((x) => typeof x === 'string').map((x) => x.slice(0, 16)).slice(0, 3);
-  if (isPid(o.wishActive)) { S.wishActive = o.wishActive; S.wishAt = Number.isFinite(o.wishAt) ? Math.floor(o.wishAt) : -1; }
+  if (isPid(o.wishActive)) {
+    S.wishActive = o.wishActive; S.wishAt = Number.isFinite(o.wishAt) ? Math.floor(o.wishAt) : -1;
+    if (typeof o.wishId === 'string' && o.wishId.length <= 16) S.wishId = o.wishId;
+  }
+  if (isPid(o.wishLast)) { S.wishLast = o.wishLast; S.wishLastOk = !!o.wishLastOk; }
   if (Number.isFinite(o.paperFrom)) S.paperFrom = Math.max(0, Math.floor(o.paperFrom));
   if (Number.isFinite(o.paperDay)) S.paperDay = Math.max(-1, Math.floor(o.paperDay));
   if (Number.isFinite(o.paperNo)) S.paperNo = Math.max(0, Math.min(1e6, Math.floor(o.paperNo)));

@@ -509,7 +509,12 @@ export class StoryHost {
   playBeat(b, retry) {
     if (!retry) this.stats.beats++;
     const slot = SLOT_OF[b.kind];
-    if (!slot) { if (this.view) this.view.play(b, { ok: true, staged: true, ambient: true }, null); return; }
+    if (!slot) {
+      // no slot (the last day, a birth, good news …): played where it is; a promised one is crossed off when it ends
+      const fin = () => { if (b.book) this.director.unbook(b.book); if (SAVE_AFTER[b.kind]) this.saveSoon = true; this.emit('beatEnd', b); };
+      if (this.view) this.view.play(b, { ok: true, staged: true, ambient: true }, fin); else fin();
+      return;
+    }
     const T = this.now();
     if (b.until && T > b.until) { this.skipBeat(b); return; }
     const venue = b.venue ? this.venueXY(b.venue, 'gather') : null;

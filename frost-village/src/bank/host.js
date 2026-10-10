@@ -251,6 +251,8 @@ export class BankHost {
       maxLoan: (kind, cost) => a.maxLoan(this.ports.income.perMin(), kind, cost),
       offerFor: (short, padId, kind, cost) => this.offerFor(short, padId, kind, cost),
       deposit: (n) => this.deposit(n),
+      /** income delivered straight to the bank (v4.2's courier): repays a loan, then saves; the rest to the wallet */
+      credit: (n) => this.account.credit(n, this.wallet, this.day()),
       withdraw: (n) => this.withdraw(n),
       insured: (id) => a.insured(id),
       insure: (id, cost) => this.insure(id, cost),
