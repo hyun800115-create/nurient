@@ -63,6 +63,8 @@ export function installExtensions(StoryEngine) {
     const job = spec.job && JOBS[spec.job] ? spec.job : undefined;
     const r = makeResident(this, { key: spec.key || null, given: spec.given, sur: spec.sur, title: spec.title, titleEn: spec.titleEn,
       age: spec.age, male: spec.male, job, persona: spec.persona, wallet: spec.wallet, savings: spec.savings, external: !!spec.kept });
+    // a named villager known only by a title ('빵집 아주머니'): no rolled given name (name() shows the title)
+    if (spec.title && !spec.given) { if (!this.alive.some((p) => p !== r && p.given === r.given)) this.usedNames.delete(r.given); r.given = ''; r.sur = ''; }
     r.role = spec.role || null;
     r.gid = spec.gid != null ? String(spec.gid) : null;
     if (spec.xplan !== undefined ? spec.xplan : this.cfg.externalPlans) r.flags |= F_XPLAN;

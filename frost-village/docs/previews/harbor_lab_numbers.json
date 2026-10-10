@@ -1,0 +1,230 @@
+{
+ "smoke": {
+  "texMiB": 435.4,
+  "moduleMiB": 122.3,
+  "msHost": 0.3177,
+  "p95Host": 0.7,
+  "msModel": 0.0084,
+  "p95Model": 0.1,
+  "maxModel": 0.9,
+  "msView": 0.2988,
+  "view": {
+   "ships": 2,
+   "atSea": 2,
+   "rigs": 25,
+   "displayObjects": 70,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.29880222032162795
+  },
+  "worldObjects": 645,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 9
+ },
+ "sleepy": {
+  "texMiB": 423.1,
+  "moduleMiB": 122.1,
+  "msHost": 0.135,
+  "p95Host": 0.3,
+  "msModel": 0.0081,
+  "p95Model": 0.1,
+  "maxModel": 0.2,
+  "msView": 0.1244,
+  "view": {
+   "ships": 0,
+   "atSea": 0,
+   "rigs": 0,
+   "displayObjects": 91,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.1243902439084964
+  },
+  "worldObjects": 160,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 5,
+  "what": "sleepy harbour, zoom 0.72, phone DPR 3"
+ },
+ "ferry": {
+  "texMiB": 407.2,
+  "moduleMiB": 122.3,
+  "msHost": 0.272,
+  "p95Host": 0.6,
+  "msModel": 0.0087,
+  "p95Model": 0.1,
+  "maxModel": 0.6,
+  "msView": 0.2548,
+  "view": {
+   "ships": 2,
+   "atSea": 2,
+   "rigs": 15,
+   "displayObjects": 70,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.2547905908697683
+  },
+  "worldObjects": 459,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 7,
+  "what": "ferry berthed + passengers, zoom 0.9, phone DPR 3"
+ },
+ "crane": {
+  "texMiB": 415.2,
+  "moduleMiB": 122.3,
+  "msHost": 0.3087,
+  "p95Host": 0.8,
+  "msModel": 0.0103,
+  "p95Model": 0.1,
+  "maxModel": 0.8,
+  "msView": 0.2754,
+  "view": {
+   "ships": 1,
+   "atSea": 2,
+   "rigs": 12,
+   "displayObjects": 64,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.27537537541042817
+  },
+  "worldObjects": 441,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 7,
+  "what": "cargo ship + crane cycle, zoom 1.0, phone DPR 3"
+ },
+ "export": {
+  "contract": {
+   "id": "c3",
+   "items": {
+    "item_ingot": 50,
+    "tools": 3
+   },
+   "got": {
+    "item_ingot": 20,
+    "tools": 1
+   },
+   "due": 2859,
+   "done": false,
+   "n": 21
+  },
+  "coins": 480
+ },
+ "night": {
+  "texMiB": 423.6,
+  "moduleMiB": 122.5,
+  "msHost": 0.6862,
+  "p95Host": 1.1,
+  "msModel": 0.0276,
+  "p95Model": 0.2,
+  "maxModel": 0.3,
+  "msView": 0.6447,
+  "view": {
+   "ships": 2,
+   "atSea": 3,
+   "rigs": 16,
+   "displayObjects": 70,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.6447154472211027
+  },
+  "worldObjects": 428,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 11,
+  "what": "night, lighthouse beams + the night ferry coming in, zoom 0.62, phone DPR 3"
+ },
+ "auction": {
+  "sold": [
+   {
+    "t": "harbor:auction",
+    "coins": 114,
+    "fish": 11,
+    "boxes": 0,
+    "big": false
+   }
+  ],
+  "sounds": [
+   "sfx_seagull_3",
+   "sfx_auction_bell"
+  ]
+ },
+ "phone06": {
+  "texMiB": 435.4,
+  "moduleMiB": 122.3,
+  "msHost": 0.3569,
+  "p95Host": 0.8,
+  "msModel": 0.0118,
+  "p95Model": 0.1,
+  "maxModel": 0.3,
+  "msView": 0.3346,
+  "view": {
+   "ships": 2,
+   "atSea": 2,
+   "rigs": 11,
+   "displayObjects": 68,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.3346405230657338
+  },
+  "worldObjects": 340,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 8,
+  "what": "busy harbour 11:30, zoom 0.6, phone DPR 3"
+ },
+ "happenings": {
+  "toasts": [
+   "유명한 요리사가 왔어요! 오늘 해산물 식당 매출 두 배",
+   "화물선 도착! 수출 주문: 주괴 50 + 도구 3",
+   "크레인 상자가 흔들흔들~",
+   "갈매기가 관광객 생선구이를 낚아챘어요!"
+  ],
+  "P7": true,
+  "P8": true
+ },
+ "reveal": {
+  "banners": [
+   "갈매기 항구를 찾았어요! / 항구를 살리면 바다 너머 사람과 물건이 와요"
+  ],
+  "toasts": [
+   "동쪽 바다 끝에서 뱃고동 소리가 들려요…"
+  ],
+  "sites": [
+   "h_step_railExt",
+   "h_step_station"
+  ]
+ },
+ "desktop": {
+  "texMiB": 423.3,
+  "moduleMiB": 122.3,
+  "msHost": 0.5593,
+  "p95Host": 1.1,
+  "msModel": 0.0211,
+  "p95Model": 0.1,
+  "maxModel": 0.3,
+  "msView": 0.526,
+  "view": {
+   "ships": 2,
+   "atSea": 2,
+   "rigs": 12,
+   "displayObjects": 68,
+   "gulls": 6,
+   "water": "shader",
+   "msView": 0.5260162600051097
+  },
+  "worldObjects": 353,
+  "uiObjects": 11,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 8,
+  "what": "desktop 1280 × 800, zoom 0.6"
+ }
+}

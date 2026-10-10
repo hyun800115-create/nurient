@@ -1,0 +1,203 @@
+{
+ "phone": {
+  "texMiB": 183.7,
+  "moduleMiB": 9.65,
+  "moduleTex": {
+   "ui3_icons": 1.17,
+   "ui4_icons": 1.02,
+   "life2_items": 0.03,
+   "life2_decor": 0.3,
+   "life2_wedding": 1.63,
+   "civ_bank": 5.02,
+   "ui_mission_card": 0.08,
+   "ui_mission_card_done": 0.08,
+   "ui_mission_board": 0.14,
+   "ui_progress_bg": 0.01,
+   "ui_progress_fill": 0.01,
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
+  },
+  "msMissions": 0.0224,
+  "msBank": 0.0029,
+  "p95Missions": 0.1,
+  "worldObjects": 101,
+  "uiObjects": 52,
+  "moduleObjects": 29,
+  "placeholders": [],
+  "errors": []
+ },
+ "consoleErrors": [],
+ "missing404": [],
+ "shots": [
+  "docs/previews/missions_lab_accept_card.png",
+  "docs/previews/missions_lab_accepted.png",
+  "docs/previews/missions_lab_band.png",
+  "docs/previews/missions_lab_bank_closed.png",
+  "docs/previews/missions_lab_bank_counter.png",
+  "docs/previews/missions_lab_bank_loan.png",
+  "docs/previews/missions_lab_bank_open_queue.png",
+  "docs/previews/missions_lab_bank_passbook.png",
+  "docs/previews/missions_lab_bank_passbook_resident.png",
+  "docs/previews/missions_lab_bank_queue.gif",
+  "docs/previews/missions_lab_bank_vault.gif",
+  "docs/previews/missions_lab_chip_focus.png",
+  "docs/previews/missions_lab_delivery.gif",
+  "docs/previews/missions_lab_delivery_done.png",
+  "docs/previews/missions_lab_desktop_panel.png",
+  "docs/previews/missions_lab_desktop_plaza.png",
+  "docs/previews/missions_lab_edge_marker.png",
+  "docs/previews/missions_lab_moving_done.png",
+  "docs/previews/missions_lab_moving_recipient.gif",
+  "docs/previews/missions_lab_panel_active.png",
+  "docs/previews/missions_lab_panel_active_en.png",
+  "docs/previews/missions_lab_panel_board.png",
+  "docs/previews/missions_lab_panel_titles.png",
+  "docs/previews/missions_lab_panel_today.png",
+  "docs/previews/missions_lab_panel_week.png",
+  "docs/previews/missions_lab_plaza_bubbles.png",
+  "docs/previews/missions_lab_title_up.gif",
+  "docs/previews/missions_lab_title_up.png",
+  "docs/previews/missions_lab_zoom06.png",
+  "docs/previews/missions_lab_zoom12.png"
+ ],
+ "seconds": 10,
+ "bank": {
+  "texMiB": 183.7,
+  "moduleMiB": 9.65,
+  "moduleTex": {
+   "ui3_icons": 1.17,
+   "ui4_icons": 1.02,
+   "life2_items": 0.03,
+   "life2_decor": 0.3,
+   "life2_wedding": 1.63,
+   "civ_bank": 5.02,
+   "ui_mission_card": 0.08,
+   "ui_mission_card_done": 0.08,
+   "ui_mission_board": 0.14,
+   "ui_progress_bg": 0.01,
+   "ui_progress_fill": 0.01,
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
+  },
+  "msMissions": 0.0357,
+  "msBank": 0.0532,
+  "p95Missions": 0.1,
+  "worldObjects": 136,
+  "uiObjects": 65,
+  "moduleObjects": 26,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 7
+ },
+ "bankAfterLoan": {
+  "coins": 2000,
+  "account": {
+   "open": true,
+   "savings": 0,
+   "cap": 50000,
+   "loan": {
+    "left": 1890,
+    "fee": 90,
+    "amt": 1800,
+    "paused": false,
+    "restructured": 0
+   },
+   "ticket": 7
+  }
+ },
+ "runs": {
+  "bank": {
+   "seconds": 72,
+   "at": "2026-10-10T01:10:16.386Z"
+  },
+  "zoom+desktop": {
+   "seconds": 26,
+   "at": "2026-10-10T01:02:55.092Z"
+  },
+  "panel+chip": {
+   "seconds": 26,
+   "at": "2026-10-10T01:03:34.615Z"
+  },
+  "bubbles+accept+delivery": {
+   "seconds": 76,
+   "at": "2026-10-10T01:06:40.512Z"
+  },
+  "moving+title": {
+   "seconds": 79,
+   "at": "2026-10-10T01:08:04.434Z"
+  },
+  "panel+chip+zoom+desktop": {
+   "seconds": 51,
+   "at": "2026-10-10T01:08:59.911Z"
+  },
+  "bank+panel": {
+   "seconds": 129,
+   "at": "2026-10-10T01:17:26.047Z"
+  },
+  "bubbles+accept": {
+   "seconds": 42,
+   "at": "2026-10-10T01:19:14.506Z"
+  },
+  "chip": {
+   "seconds": 10,
+   "at": "2026-10-10T01:25:31.691Z"
+  }
+ },
+ "desktop": {
+  "texMiB": 183.7,
+  "moduleMiB": 9.65,
+  "moduleTex": {
+   "ui3_icons": 1.17,
+   "ui4_icons": 1.02,
+   "life2_items": 0.03,
+   "life2_decor": 0.3,
+   "life2_wedding": 1.63,
+   "civ_bank": 5.02,
+   "ui_mission_card": 0.08,
+   "ui_mission_card_done": 0.08,
+   "ui_mission_board": 0.14,
+   "ui_progress_bg": 0.01,
+   "ui_progress_fill": 0.01,
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
+  },
+  "msMissions": 0.1497,
+  "msBank": 0.0264,
+  "p95Missions": 0.2,
+  "worldObjects": 104,
+  "uiObjects": 136,
+  "moduleObjects": 29,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 8
+ },
+ "consoleErrorsDesktop": [],
+ "bubbles": {
+  "texMiB": 183.7,
+  "moduleMiB": 9.65,
+  "moduleTex": {
+   "ui3_icons": 1.17,
+   "ui4_icons": 1.02,
+   "life2_items": 0.03,
+   "life2_decor": 0.3,
+   "civ_bank": 5.02,
+   "life2_wedding": 1.63,
+   "ui_mission_card": 0.08,
+   "ui_mission_card_done": 0.08,
+   "ui_mission_board": 0.14,
+   "ui_progress_bg": 0.01,
+   "ui_progress_fill": 0.01,
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
+  },
+  "msMissions": 0.1003,
+  "msBank": 0.0114,
+  "p95Missions": 0.1,
+  "worldObjects": 116,
+  "uiObjects": 52,
+  "moduleObjects": 41,
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 5
+ }
+}

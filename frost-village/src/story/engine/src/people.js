@@ -161,8 +161,10 @@ export function makeResident(e, spec = {}) {
   const r = new Resident(e.nextPersonId++);
   const age = spec.age !== undefined ? spec.age : 30;
   r.male = spec.male !== undefined ? !!spec.male : rng.chance(0.5);
-  // (E7) Math.floor: a fractional year (yearDaysKid 1.5) still gives a whole birth day
-  r.birth = Math.floor(e.clock.day - daysForAge(e, age) - rng.int(Math.max(1, Math.round(age < 19 ? yearKid(e) : yearAdult(e)))));
+  // (E7) whole days lived, inside [daysForAge(age), daysForAge(age + 1)) also for a fractional year (yearDaysKid 1.5);
+  // with whole years this is the engine's own `age * yearDays + rng.int(yearDays)`
+  const d0 = Math.ceil(daysForAge(e, age)), d1 = Math.ceil(daysForAge(e, age + 1));
+  r.birth = e.clock.day - d0 - rng.int(Math.max(1, d1 - d0));
   const group = ageGroupOf(age);
   if (spec.given) { r.given = spec.given; r.sur = spec.sur || ''; }
   else { const [s, g] = rollName(rng, e, age, r.male); r.sur = spec.sur || s; r.given = g; }

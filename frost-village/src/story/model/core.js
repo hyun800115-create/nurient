@@ -232,6 +232,7 @@ export class StoryCore {
       case 'clock': return { clock: Object.assign({}, e.clock), now: e.now };
       case 'booked': return e.booked();
       case 'placeIds': return e.world.places.map((p) => p.id);
+      case 'homes': { const out = []; for (const r of e.alive) if (r.home >= 0) out.push([r.id, e.world.places[r.home].id]); return out; }
       case 'guests': return e.guestsOf(a.a, a.b);
       case 'sweethearts': {
         // pairs of sweethearts (for the scripted first proposal): [{ a, b }]

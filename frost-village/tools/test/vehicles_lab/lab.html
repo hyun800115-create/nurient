@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- every relative URL (assets/, lib/, src/) resolves from frost-village/, like index.html -->
+<base href="../../../">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>vehicles_runtime lab · 탈것의 시대</title>
+<style>
+  @font-face { font-family: 'Pretendard'; src: url('tools/fonts/Pretendard-ExtraBold.ttf') format('truetype'); font-weight: 100 900; font-display: block; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #dbe6f2; touch-action: none; }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; }
+  #fontprobe { position: absolute; left: -999px; font-family: Pretendard; font-weight: 800; }
+</style>
+<script src="lib/phaser.min.js"></script>
+</head>
+<body>
+<div id="game"></div>
+<div id="fontprobe">다음 버스 서리역 솔방울 0123</div>
+<script>
+  // raw atlases (no packed pages): the lab loads only what it needs, file by file
+  window.__FV_NO_PACKED = true;
+  window.__FV_FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'emotes', 'ui2', 'life_props'];
+</script>
+<script type="module" src="tools/test/vehicles_lab/lab.js"></script>
+</body>
+</html>

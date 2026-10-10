@@ -73,8 +73,9 @@ export class Calendar {
     const rng = new Rng(hashStr(this.seed + ':' + key));
     const list = pool.filter((t) => eligible(t));
     const ids = [];
-    while (ids.length < this.cfg.daily.count && list.length) ids.push(list.splice(rng.int(list.length), 1)[0].code);
-    this.dy = { d: key, ids, g: ids.map(() => []), k: ids.map(() => 0), a: 0 };
+    const g = [];
+    while (ids.length < this.cfg.daily.count && list.length) { const t = list.splice(rng.int(list.length), 1)[0]; ids.push(t.code); g.push(unitsOf(t).map(() => 0)); }
+    this.dy = { d: key, ids, g, k: ids.map(() => 0), a: 0 };
   }
 
   /**
@@ -89,6 +90,8 @@ export class Calendar {
         if (dy.k[i]) continue;
         const t = tplOf(dy.ids[i]);
         const u = unitsOf(t);
+        const gi = dy.g[i] || (dy.g[i] = []);
+        while (gi.length < u.length) gi.push(0);
         let hit = false;
         for (let j = 0; j < u.length; j++) {
           if (u[j].sig !== sig) continue;
@@ -160,7 +163,7 @@ export class Calendar {
 
   serialize() {
     const o = {};
-    if (this.dy) o.dy = { d: this.dy.d, ids: this.dy.ids, g: this.dy.g.map((a) => a.map((v) => v | 0)), k: this.dy.k.map((v) => (v ? 1 : 0)), a: this.dy.a };
+    if (this.dy) o.dy = { d: this.dy.d, ids: this.dy.ids, g: this.dy.g.map((a) => Array.from(a || [], (v) => v | 0)), k: this.dy.k.map((v) => (v ? 1 : 0)), a: this.dy.a };
     if (this.wk) o.wk = { w: this.wk.w, c: this.wk.c, g: this.wk.g, s: this.wk.s };
     if (this.st.n || this.st.last || this.st.sw) o.st = { n: this.st.n, last: this.st.last, sw: this.st.sw };
     return o;

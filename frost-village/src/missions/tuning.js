@@ -33,6 +33,7 @@ export const MISSIONS_TUNING = {
   craft:  { bouquetStand: 3, bouquetsPerBed: 6, bouquetBuy: 25, cakeBread: 12, cakeTime: 20, giftItems: 3, bagMax: 12 },
   goalLastHour: 18,        // '오늘' 목표(통조림 30개 등)는 이 시각 전에만 새로 걸려요 (끝낼 시간이 있게)
   maxParked: 6,            // 보관함에 넣어 둘 수 있는 미션 수
+  eventStale: 1800,        // 마감이 없는 행사 미션이 이만큼(초 = 게임 3일) 아무 진행이 없으면 조용히 끝나요
 };
 
 /** BALANCE.v5.missions (when it exists) over these defaults — one level deep, unknown keys ignored */

@@ -16,7 +16,8 @@ export const STORY_TUNING = {
           birthAfterNews: 2.5,        // 기쁜 소식 → 아기 탄생까지 게임 날 수
           birthHour: 18,              // 병원에 가는 시각 (저녁 6시), 새벽에 유모차를 밀고 나와요
           babyRate: 0.012,            // 부부가 하루에 아기 소식을 들을 확률 (아기가 너무 많으면 낮춰요)
-          memorialHour: 10 },         // 배웅식 시각 (아침 10시)
+          memorialHour: 10,           // 배웅식 시각 (아침 10시)
+          lastDayHour: 15 },          // 마지막 하루: 오후 3시에 촌장님께 인사하고 정원 벤치에 앉아요
   talk: { maxDist: 220, chatCap: 2, emoteCap: 3 },  // 말풍선: 두 사람 사이 거리(px), 화면에 말풍선 / 이모티콘 최대 수
   paper: { hour: 7, firstAfterWedding: true },      // 솔방울 신문: 아침 7시, 첫 결혼식 다음 날부터
   happenings: { gapMin: 150, every: 300, maxActive: 1, range: 900 },   // 귀여운 일: 최소 간격(초), 평균 간격(초), 동시에 1개, 촌장님과의 거리(px)

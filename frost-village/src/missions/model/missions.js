@@ -29,6 +29,18 @@ const HOUR = 25;                 // game seconds per clock hour (600 s day)
 const DAY = 600;
 const round10 = (x) => Math.round(x / 10) * 10;
 
+/**
+ * story_runtime events name people by engine id (a, b, who, baby: integers) and add the game's ids next to them
+ * (aPid, bPid, whoPid, babyPid). Missions only ever use game ids: `who` = the person, `family` = the other parent /
+ * the family member to visit. A person the game cannot show (no pid) gives no mission (the template's giver is null).
+ */
+function storyIds(ev) {
+  const pid = (v, p) => (typeof p === 'string' && p ? p : typeof v === 'string' && v ? v : null);
+  const a = pid(ev.a, ev.aPid), b = pid(ev.b, ev.bPid), who = pid(ev.who, ev.whoPid) || a;
+  const key = ev.key || ev.id || (Number.isInteger(ev.a) ? 'c' + ev.a + '_' + (ev.b | 0) : Number.isInteger(ev.who) ? 's' + ev.who : who);
+  return Object.assign({}, ev, { who, family: ev.family || b || a || who, key });
+}
+
 export class MissionModel {
   /**
    * @param cfg   missions tuning (tuning.js / BALANCE.v5.missions)
@@ -58,9 +70,7 @@ export class MissionModel {
     this.fl = Object.assign({}, s.fl || {});          // one-shot flags: paper, age80, bday (game day of the last birthday)
     this.sett = s.st2 ? { d: s.st2.d | 0, n: s.st2.n | 0 } : { d: -1, n: 0 };
     this.out = [];
-    this.acc = 0;
-    this.rv = 0;
-    this.started = false;
+    this.lastSec = null;
   }
 
   // ------------------------------------------------------------------------------------------------ helpers
@@ -115,6 +125,8 @@ export class MissionModel {
   /** a new instance of template t (null when its people cannot be found) */
   make(t, st, ev) {
     const env = this.env, ppl = env.people;
+    // an escort (school day, three wishes) needs the very person to walk with
+    if ((t.obj || []).some((o) => o.how === 'escort') && !(ev && typeof ev.who === 'string' && ev.who)) return null;
     let gv = null;
     if (t.giver) {
       if (t.giver === 'ev:who') gv = ev && ev.who ? ev.who : null;
@@ -173,17 +185,16 @@ export class MissionModel {
   remove(inst) { const k = this.list.indexOf(inst); if (k >= 0) this.list.splice(k, 1); }
 
   // ------------------------------------------------------------------------------------------------ the clock
-  /** every frame (cheap): the 1 Hz work runs once a second of game time */
-  tick(dt) {
-    this.acc += dt;
-    if (this.acc < 1 && this.started) return;
-    this.acc = this.started ? this.acc - 1 : 0;
-    if (this.acc > 3) this.acc = 0;
-    this.started = true;
-    this.second();
+  /** every frame (cheap): the 1 Hz work runs once per whole second of game time (T-based, so a reload resumes it
+   *  on exactly the same schedule) */
+  tick() {
+    const s = Math.floor(this.T);
+    if (s === this.lastSec) return;
+    this.lastSec = s;
+    this.second(s);
   }
 
-  second() {
+  second(sec) {
     const T = this.T, cfg = this.cfg;
     // the calendar (daily / weekly)
     for (const e of this.cal.check(this.env, POOL, (t) => this.reqOk(t))) this.emit(e);
@@ -192,6 +203,8 @@ export class MissionModel {
       const i = this.list[k];
       if (i.d && T > i.d) this.expire(i, 'late');
       else if (i.s === 'o' && T - i.t0 > cfg.bubbleLife) this.expire(i, 'pop');
+      // an event without a deadline that nothing moved for days (its owner module never reported the step): ends gently
+      else if (!i.d && i.s === 'a' && cfg.eventStale > 0 && T - i.tp > cfg.eventStale && tplOf(i.c).src === 'event') this.expire(i, 'late');
     }
     // the board: one new card a second while a slot is free and the refresh delay has passed
     if (this.count('b') < cfg.board && T >= this.bt) this.fillBoard();
@@ -204,8 +217,7 @@ export class MissionModel {
     if ((this.fl.age80 || T - this.t5 >= 2400) && !this.onCooldown('C7a')) this.spawnEvent('C7a', { key: 'garden' });
     if (this.sett.n >= 6 && this.sett.d === this.env.day()) this.spawnEvent('C5', { key: 'party' + this.sett.d });
     // still possible? (the recipient moved away, a toggle was switched off …)
-    this.rv += 1;
-    if (this.rv >= cfg.revalidate) { this.rv = 0; this.revalidate(); }
+    if (sec % cfg.revalidate === 0) this.revalidate();
   }
 
   count(st) { let n = 0; for (const i of this.list) if (i.s === st) n++; return n; }
@@ -276,6 +288,7 @@ export class MissionModel {
   onFeed(ev) {
     if (!ev || typeof ev.t !== 'string') return;
     for (const [sig, n] of signalsOf(ev)) this.signal(sig, n);
+    if (ev.t.startsWith('story:')) ev = storyIds(ev);
     const op = ev.op;
     switch (ev.t) {
       case 'story:life':
@@ -397,7 +410,7 @@ export class MissionModel {
     i.s = 'p'; i.tp = Math.round(this.T);
     this.emit({ t: 'mission:park', id, code: i.c });
     const parked = this.list.filter((x) => x.s === 'p').sort((a, b) => a.tp - b.tp);
-    while (parked.length > this.cfg.maxParked) this.remove(parked.shift());
+    while (parked.length > this.cfg.maxParked) { const old = parked.shift(); this.remove(old); this.setCooldown(tplOf(old.c)); }
     this.bt = Math.round(this.T);
     // the fresh card comes at once, and never the one just parked
     const before = this.cool[i.c];
@@ -599,7 +612,7 @@ export class MissionModel {
     };
     const T = this.T;
     const cool = {};
-    for (const k in this.cool) { const v = this.cool[k]; if (v === -1 || v > T) cool[k] = v; }
+    for (const t of CATALOG) { const v = this.cool[t.code]; if (v === -1 || v > T) cool[t.code] = v; }   // (catalog order: stable)
     const o = { v: 1, sd: this.seed, rs: this.rng.state, n: this.nextId, t5: Math.round(this.t5), bt: Math.round(this.bt), rq: Math.round(this.rq) };
     for (const st of ['b', 'a', 'p', 'o']) { const l = this.instances(st); if (l.length) o[st] = l.map(ser); }
     if (Object.keys(cool).length) o.c = cool;

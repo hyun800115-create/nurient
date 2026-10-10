@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Story Lab</title>
+<style>
+  @font-face { font-family: Pretendard; font-weight: 600 900; src: url('../../fonts/Pretendard-ExtraBold.ttf') format('truetype'); }
+  html, body { margin: 0; height: 100%; background: #c9d8e8; overflow: hidden; touch-action: none; }
+  body { font-family: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  #game { position: fixed; inset: 0; }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #5d6b80; font-weight: 800; font-size: 18px; }
+</style>
+<script>
+  // draw-call probe (lab only): counts WebGL draws per rendered frame
+  (function () {
+    const P = window.__GL = { calls: 0, frames: 0, last: 0, max: 0, cur: 0 };
+    for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+      if (!C) continue;
+      for (const fn of ['drawElements', 'drawArrays']) {
+        const o = C.prototype[fn];
+        C.prototype[fn] = function () { P.calls++; P.cur++; return o.apply(this, arguments); };
+      }
+      P.ops = {};
+      for (const fn of ['texImage2D', 'texSubImage2D', 'createTexture', 'deleteTexture', 'bufferData', 'bufferSubData', 'createFramebuffer', 'clear']) {
+        const o = C.prototype[fn];
+        C.prototype[fn] = function () { P.ops[fn] = (P.ops[fn] || 0) + 1; return o.apply(this, arguments); };
+      }
+    }
+    P.endFrame = function () { P.frames++; P.last = P.cur; if (P.cur > P.max) P.max = P.cur; P.cur = 0; };
+  })();
+</script>
+<script src="../../../lib/phaser.min.js"></script>
+</head>
+<body>
+<div id="boot">이야기 실험실 준비 중…</div>
+<div id="game"></div>
+<script type="module" src="./lab/lab.js"></script>
+</body>
+</html>

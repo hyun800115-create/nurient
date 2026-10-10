@@ -10,6 +10,8 @@
 //           | { a: 'arrange', op, data } | { a: 'config', config } | { a: 'paper', day } | { a: 'body', … }
 // hooks: { pidOf(sid), known(pid), farewellOn(), gardenReady(), v5T(), nameOf(sid, lang), hall(), clinic(), garden(), school() }
 
+import { josa, casualName } from '../engine/lang/josa.js';
+
 export const HOUR = 25;          // game seconds per clock hour (600 s day)
 
 /** elders' wishes (v5 set; v6/v7 add the lighthouse beam, cake with harbour sugar, feet in the warm sea) */
@@ -29,7 +31,7 @@ export class LifeDirector {
   constructor(tuning = {}, state = null, hooks = {}) {
     this.L = Object.assign({
       weddingHour: 11, weddingPrepHour: 10.5, firstWeddingInDays: 1, birthdaysPerDay: 1, schoolAge: 7, walkAge: 4, firstJobAge: 16,
-      wishAge: 82, wishes: 3, stones: 6, paperHour: 7, farewellCardHour: 9, farewellHour: 10, birthDuskHour: 18, birthDawnHour: 6.5,
+      wishAge: 82, wishes: 3, stones: 6, paperHour: 7, farewellCardHour: 9, farewellHour: 10, lastDayHour: 15, birthDuskHour: 18, birthDawnHour: 6.5,
     }, tuning);
     this.h = hooks;
     this.s = sanitizeLifeState(state);
@@ -47,6 +49,13 @@ export class LifeDirector {
     let i = this.timers.length;
     while (i > 0 && this.timers[i - 1].at > at) i--;
     this.timers.splice(i, 0, { at, action });
+  }
+  /** a child as the village says it: '보검이가' (given name, casual 이, then the particle) */
+  kid(sid, form) {
+    const n = this.name(sid, 'ko');
+    const given = /^[가-힣]{3}$/.test(n) ? n.slice(1) : n;
+    const c = casualName(given);
+    return form ? josa(c, form) : c;
   }
   card(kind, sids, ko, en, extra) { return { a: 'card', card: Object.assign({ kind, sids, pids: sids.map((s) => this.pid(s)), ko, en }, extra || {}) }; }
 
@@ -82,6 +91,11 @@ export class LifeDirector {
         break;
       case 'engaged': {
         const day = ev.day, hour = ev.hour === undefined ? L.weddingHour : ev.hour;
+        if (ev.restored) {
+          // a reload: only the timed wedding beat comes back (cards and banners were shown before)
+          this.later(this.at(day, L.weddingPrepHour), { a: 'beat', kind: 'wedding', at: this.at(day, L.weddingPrepHour), sids: [ev.a, ev.b], venue: this.h.hall ? this.h.hall() : null, data: { hour, first: !s.seen.wedding } });
+          break;
+        }
         const first = !s.seen.wedding && !s.seen.engaged;
         s.seen.engaged = true;
         out.push({ a: 'emit', name: 'story:life', data: { op: 'engaged', a: ev.a, b: ev.b, day, hour, venue: this.h.hall ? this.h.hall() : null } });
@@ -120,7 +134,9 @@ export class LifeDirector {
         break;
       case 'lastday':
         if (!(this.h.farewellOn && this.h.farewellOn())) break;
-        out.push({ a: 'beat', kind: 'lastday', at: null, sids: [ev.who], venue: this.h.garden ? this.h.garden() : null, data: { day: ev.day } });
+        out.push({ a: 'emit', name: 'story:life', data: { op: 'lastday', who: ev.who, day: ev.day } });
+        // the whole last day is gentle; the staged part is the afternoon: a thank-you to the chief, then the garden bench
+        { const at = this.at(ev.day - 1, this.L.lastDayHour || 15); this.later(at, { a: 'beat', kind: 'lastday', at, sids: [ev.who], venue: this.h.garden ? this.h.garden() : null, data: { day: ev.day } }); }
         break;
       case 'farewell': this.farewell(ev, out); break;
       case 'memorial': out.push({ a: 'route', kind: 'farewell', ev }); break;
@@ -138,17 +154,17 @@ export class LifeDirector {
     if (age === L.walkAge) {
       out.push({ a: 'body', op: 'child', sid, age });                        // a small child doll joins the town
       out.push({ a: 'beat', kind: 'firststeps', at: null, sids: [sid], venue: null, data: {} });
-      if (this.known(sid)) out.push(this.card('firststeps', [sid], `${this.name(sid, 'ko')}가 아장아장 걷기 시작했어요!`, `${this.name(sid, 'en')} took their first steps!`, { icon: 'ui_icon_story' }));
+      if (this.known(sid)) out.push(this.card('firststeps', [sid], `${this.kid(sid, '이')} 아장아장 걷기 시작했어요!`, `${this.name(sid, 'en')} took their first steps!`, { icon: 'ui_icon_story' }));
       return;
     }
     if (age === L.schoolAge) {
       const today = this.h.today ? this.h.today() : 0;
       const at = this.at(today + 1, 7);
       this.later(at, { a: 'beat', kind: 'school', at, sids: [sid], venue: this.h.school ? this.h.school() : null, data: { first: !this.s.seen.school } });
-      if (this.known(sid) || !this.s.seen.school) out.push(this.card('school', [sid], `${this.name(sid, 'ko')}가 내일 처음 학교에 가요!`, `${this.name(sid, 'en')} starts school tomorrow!`, { icon: 'ui_icon_story', mission: 'C4' }));
+      if (this.known(sid) || !this.s.seen.school) out.push(this.card('school', [sid], `${this.kid(sid, '이')} 내일 처음 학교에 가요!`, `${this.name(sid, 'en')} starts school tomorrow!`, { icon: 'ui_icon_story', mission: 'C4' }));
       return;
     }
-    if (age === L.firstJobAge) { if (this.known(sid)) out.push(this.card('firstjob', [sid], `${this.name(sid, 'ko')}의 첫 아르바이트!`, `${this.name(sid, 'en')}’s first part-time job!`, { icon: 'ui_icon_story' })); out.push({ a: 'beat', kind: 'firstjob', at: null, sids: [sid], venue: null, data: {} }); return; }
+    if (age === L.firstJobAge) { if (this.known(sid)) out.push(this.card('firstjob', [sid], `${this.kid(sid)}의 첫 아르바이트!`, `${this.name(sid, 'en')}’s first part-time job!`, { icon: 'ui_icon_story' })); out.push({ a: 'beat', kind: 'firstjob', at: null, sids: [sid], venue: null, data: {} }); return; }
     if (age === L.wishAge) { out.push({ a: 'emit', name: 'story:wisher', data: { who: sid } }); }
     // a birthday party for people the chief knows (≤ 1 a game day)
     const today = this.h.today ? this.h.today() : 0;
@@ -172,7 +188,7 @@ export class LifeDirector {
     g.push({ ko: nameKo, en: nameEn, day: today });
     const slot = g.length - 1;
     const cardAt = this.at(today, L.farewellCardHour), beatAt = this.at(today, L.farewellHour);
-    this.later(cardAt, this.card('farewell', [ev.who], `${nameKo}가 하늘나라로 여행을 떠났어요.`, `${nameEn} has gone on a journey to the sky.`,
+    this.later(cardAt, this.card('farewell', [ev.who], `${josa(nameKo, '이')} 하늘나라로 여행을 떠났어요.`, `${nameEn} has gone on a journey to the sky.`,
       { icon: 'ui_icon_memory', flower: true, subKo: `가족과 이웃들이 기억의 정원에서 배웅해요 · ${L.farewellHour}시`, subEn: `Family and neighbours say goodbye in the memorial garden · ${L.farewellHour}:00`, mission: 'C8', at: cardAt }));
     this.later(beatAt, { a: 'beat', kind: 'farewell', at: beatAt, sids: [ev.who], venue: this.h.garden ? this.h.garden() : null, data: { slot, nameKo, nameEn, male, age: ev.age } });
     out.push({ a: 'emit', name: 'story:life', data: { op: 'farewell', who: ev.who } });
@@ -193,6 +209,8 @@ export class LifeDirector {
   }
 
   move(ev, out) {
+    // the event goes out before the banner (the banner lets the bodies leave and unbinds their pids)
+    if (ev.op === 'out') out.push({ a: 'emit', name: 'story:move', data: { op: 'out', who: (ev.members || [])[0], members: ev.members || [] } });
     if (ev.op === 'out') out.push({ a: 'banner', kind: 'move', ko: '이웃 한 가족이 이사를 떠났어요', en: 'A family has moved away', subKo: '새로운 모험을 찾아서', subEn: 'off on a new adventure', sids: ev.members, leave: true });
     else if (ev.op === 'within' && ev.why === 'wedding') out.push({ a: 'emit', name: 'story:move', data: { op: 'within', household: ev.household, members: ev.members, home: ev.home } });
   }
@@ -252,7 +270,7 @@ export function sanitizeLifeState(raw) {
   const o = raw && typeof raw === 'object' ? raw : {};
   const seen = o.seen && typeof o.seen === 'object' ? o.seen : {};
   const S = { seen: {}, firstCouple: [], names: [], garden: [], gardenOld: [], wishes: {}, wishDone: {}, wishActive: -1, paperFrom: 0 };
-  for (const k of ['proposal', 'engaged', 'wedding', 'baby', 'school', 'wish', 'farewell', 'paper']) if (seen[k] === true) S.seen[k] = true;
+  for (const k of ['proposal', 'engaged', 'wedding', 'expect', 'baby', 'school', 'wish', 'farewell', 'paper']) if (seen[k] === true) S.seen[k] = true;
   if (Array.isArray(o.firstCouple)) S.firstCouple = o.firstCouple.filter((x) => Number.isInteger(x) && x >= 0).slice(0, 2);
   if (Array.isArray(o.names)) for (const n of o.names) if (Array.isArray(n) && typeof n[0] === 'string' && typeof n[1] === 'string' && n[1].length <= 8) S.names.push([n[0].slice(0, 24), n[1], typeof n[2] === 'string' ? n[2].slice(0, 16) : '']);
   S.names = S.names.slice(-40);

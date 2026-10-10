@@ -4,7 +4,7 @@
 // or simply off to new adventures), staying with friends after a fire and coming home again.
 
 import { makeResident, Household, addToHousehold, removeFromHousehold, setHome, ageOf, groupOf, ageGroupOf, isKept,
-  G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, F_NEWCOMER, F_GONE, F_DEAD, F_HOMELESS, F_OWNER, F_LEASED, S_IDLE, S_AWAY, S_EVENT } from './people.js';
+  G_TODDLER, G_KID, G_TEEN, G_ADULT, G_ELDER, F_NEWCOMER, F_GONE, F_DEAD, F_HOMELESS, F_OWNER, F_LEASED, F_XPLAN, S_IDLE, S_AWAY, S_EVENT } from './people.js';
 import { ensureRel, getRel, removeAllRels, ST_FRIEND, ST_BEST, ST_SWEET, ST_ENGAGED, ST_SPOUSE, RF_FAMILY, RF_PARENT_A, RF_PARENT_B, RF_SIBLING, RF_NEIGHBOR, RF_CRUSH_A, RF_CRUSH_B } from './relations.js';
 import { SRC_SEEN, SRC_DID, remember, forgetAll } from './memory.js';
 import { B_OK } from './world.js';
@@ -340,6 +340,7 @@ export class Life {
     const hh = e.households.get(mom.hh);
     const b = makeResident(e, { age: 0, sur: dad.sur });
     b.birth = e.clock.day;
+    if (e.cfg.externalPlans) b.flags |= F_XPLAN;     // (E1) the game gives the child a body (a stroller, then a doll at 4)
     b.lastGroup = G_TODDLER;
     b.parents = [mom.id, dad.id];
     mom.kids.push(b.id); dad.kids.push(b.id);
@@ -520,7 +521,7 @@ export class Life {
     setHome(e, hh, home.idx);
     hh.since = e.clock.day;
     const members = e.makeFamily(hh, k, size);
-    for (const r of members) { r.flags |= F_NEWCOMER; r.arrived = e.clock.day; }
+    for (const r of members) { r.flags |= F_NEWCOMER; r.arrived = e.clock.day; if (e.cfg.externalPlans) r.flags |= F_XPLAN; }
     e.jobs.fillOpenings(true);
     this.stats.movedIn++;
     this.stats.newResidents += members.length;

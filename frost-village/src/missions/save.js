@@ -23,7 +23,7 @@ function inst(o, seen) {
   if (!i || seen.has(i)) return null;
   seen.add(i);
   const r = { i, c: o.c, t0: int(o.t0, -1e9, 1e10, 0) };
-  if (Array.isArray(o.g)) r.g = o.g.slice(0, 8).map((v) => int(v, 0, 1e6, 0));
+  if (Array.isArray(o.g)) r.g = Array.from(o.g.slice(0, 8), (v) => int(v, 0, 1e6, 0));
   const tp = fin(o.tp); if (tp !== undefined) r.tp = Math.round(tp);
   const d = fin(o.d, 0); if (d) r.d = Math.round(d);
   for (const k of ['gv', 'w', 'nm']) { const p = pid(o[k]); if (p) r[k] = p; }
@@ -56,7 +56,7 @@ export function sanitizeMissions(raw) {
   if (isObj(raw.dy)) {
     const ids = Array.isArray(raw.dy.ids) ? Array.from(new Set(raw.dy.ids.filter((c) => DAILY.has(c)))).slice(0, 3) : [];
     if (ids.length) {
-      const g = ids.map((_, k) => (Array.isArray(raw.dy.g) && Array.isArray(raw.dy.g[k]) ? raw.dy.g[k].slice(0, 4).map((v) => int(v, 0, 1e6, 0)) : []));
+      const g = ids.map((_, k) => (Array.isArray(raw.dy.g) && Array.isArray(raw.dy.g[k]) ? Array.from(raw.dy.g[k].slice(0, 4), (v) => int(v, 0, 1e6, 0)) : []));
       const kk = ids.map((_, k) => (Array.isArray(raw.dy.k) && raw.dy.k[k] ? 1 : 0));
       s.dy = { d: int(raw.dy.d, 0, 1e7, 0), ids, g, k: kk, a: raw.dy.a && kk.every((v) => v) ? 1 : 0 };
     }
