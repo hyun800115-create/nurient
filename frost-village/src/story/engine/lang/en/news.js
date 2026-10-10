@@ -104,7 +104,7 @@ export default {
   'news.more.fire_out': ['After the fire, steam drifted gently around {P}.'],
   'news.more.ruin': ['Insurance has been paid, and the bank will lend the rest at a low rate.'],
   'news.more.rebuilt': ['The new building has a sturdy chimney and a fire extinguisher. The housewarming date will be set soon.'],
-  'news.more.wedding': ['Guests threw snowflake confetti, and the couple had their first dance in the snow.'],
+  'news.more.wedding': ['The children did not leave the three-tier cake all afternoon.'],
   'news.more.baby': ['The baby is healthy, and neighbours have already sent hand-knitted socks.'],
   'news.more.move_in': ['The new family brought rice cakes round to the neighbours. Let’s give them a warm welcome.'],
   'news.more.move_out': ['On moving day the neighbours lined the road to wave goodbye.'],

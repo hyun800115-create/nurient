@@ -136,7 +136,7 @@ export class LifeDirector {
         const fam = String(b || '').split(',').filter(isPid);
         if (T < beatAt) this.later(Math.max(cardAt, T), this.farewellCard(g.ko, g.en, cardAt, a === '-' ? null : a));
         this.later(Math.max(beatAt, T), { a: 'beat', kind: 'farewell', key: 'f:' + day, at: beatAt, until: this.bookEnd(x), sids: [-1], venue: this.h.garden ? this.h.garden() : null,
-          data: { slot: g.s, nameKo: g.ko, nameEn: g.en, family: fam }, book: ref, restored: true });
+          data: { slot: g.s, day, nameKo: g.ko, nameEn: g.en, family: fam }, book: ref, restored: true });
       }
     }
     return out;
@@ -210,6 +210,8 @@ export class LifeDirector {
         const venue = ev.place || (this.h.clinic ? this.h.clinic() : null);
         out.push({ a: 'emit', name: 'story:life', data: { op: 'baby', a: ev.a, b: ev.b, baby: ev.baby, venue, ours: this.ours(venue) } });
         out.push({ a: 'beat', kind: 'birth', at: null, sids: [ev.a, ev.b, ev.baby], venue, data: { first } });
+        // the night at the clinic; at dawn the parents come out pushing the stroller (critique L6)
+        { const at = this.at(this.today() + 1, L.birthDawnHour); this.later(at, { a: 'beat', kind: 'birthdawn', key: 'bd:' + ev.baby, at, sids: [ev.a, ev.b, ev.baby], venue, data: {} }); }
         out.push({ a: 'banner', kind: 'baby', ko: '아기 탄생!', en: 'A baby is born!', subKo: `${this.name(ev.a, 'ko')} 씨네 아기`, subEn: `${this.name(ev.a, 'en')}’s baby` });
         if (first || this.known(ev.a) || this.known(ev.b)) out.push(this.card('naming', [ev.baby, ev.a, ev.b], '아기 이름을 지어 주세요!', 'Name the baby!', { icon: 'ui_icon_story', mission: 'C3', sheet: 'naming' }));
         break;
@@ -308,7 +310,7 @@ export class LifeDirector {
     this.book('f', today, pid || '-', fam.join(','));
     this.later(cardAt, this.farewellCard(nameKo, nameEn, cardAt, pid));
     this.later(beatAt, { a: 'beat', kind: 'farewell', key: 'f:' + today, at: beatAt, until: this.at(today, L.farewellUntilHour), sids: [ev.who], venue: this.h.garden ? this.h.garden() : null,
-      data: { slot, nameKo, nameEn, male, age: ev.age, family: fam }, book: ['f', today, pid || '-'] });
+      data: { slot, day: today, nameKo, nameEn, male, age: ev.age, family: fam }, book: ['f', today, pid || '-'] });
     out.push({ a: 'emit', name: 'story:life', data: { op: 'farewell', who: ev.who, day: today, at: beatAt, venue: this.h.garden ? this.h.garden() : null } });
     out.push(leave);
   }

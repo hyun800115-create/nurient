@@ -87,7 +87,7 @@ export class CounterSheet {
     // (v8) fire insurance: a small button under the loan column
     if (h.insuranceOn()) {
       const n = h.account.policies.size;
-      const ib = button(ui, lx + 150, y0 + 168, 212, 46, 'blue', mt(lang, 'b_insure') + (n ? ' · ' + n : ''), () => h.openInsurance(), 19, (k, o) => this.snd(k, o));
+      const ib = button(ui, lx + 150, y0 + 171, 212, 46, 'blue', mt(lang, 'b_insure') + (n ? ' · ' + n : ''), () => h.openInsurance(), 19, (k, o) => this.snd(k, o));
       ib.add(icon(ui, -84, -2, ['ui_icon_insurance', 'ui_icon_fire_alert'], 30));
       ib.text.setX(14);
       this.c.add(ib);

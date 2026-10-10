@@ -26,6 +26,7 @@ export async function playFarewell(sh, beat, ctx) {
   const gdepth = g.depth !== undefined ? g.depth : g.y;
   const st = sh.point('memorial_garden', g.x, g.y, 'stonePoints', slot) || { x: g.x, y: g.y - 13 };
   const sd = stoneDepth(gdepth, g.y, st.y);
+  sh.noPoof = true;                         // a farewell never ends with a poof
   sh.reserve({ x: g.x - 220, y: g.y - 140, w: 440, h: 300 });
   sh.playMusic('bgm_farewell');
   // the new stone, its engraved name and its wreath (the garden keeps the stone: StoryLife redraws it from the slice)
@@ -87,8 +88,9 @@ export async function playFarewell(sh, beat, ctx) {
   if (d.chief) sh.emote(d.chief, 'emote_heart', 2.4);
   await sh.wait(6 * k);
   sh.stopMusic();
-  // everything the scene made goes softly (no poof); the garden's stones are redrawn from the slice by StoryLife
-  // (a preview leaves nothing behind)
+  // the garden keeps the new stone (StoryLife draws the garden's stones from the slice); what the scene made fades
+  // softly. A preview leaves nothing behind.
+  if (!d.preview && ctx.gardenDone) ctx.gardenDone(d.day);
 }
 
 /** a soft warm shimmer (small: on snow a big additive glow reads as fog) */

@@ -18,23 +18,33 @@ export async function playGoodNews(sh, beat, ctx) {
   await sh.wait(6 * k);
 }
 
-/** birth: data { a (mother), b (father), clinic: { x, y } door, home: { x, y }, pink, fast } */
+/** birth, at dusk (the engine's baby event, 18:00): the parents walk to the clinic and go in, the window glows warm.
+ *  They come out again at dawn with the stroller (playBirthDawn, 06:30 the next morning — critique L6).
+ *  data { a (mother), b (father), clinic: { x, y } door, fast } */
 export async function playBirth(sh, beat, ctx) {
+  const d = beat.data || {};
+  const k = d.fast ? 0.5 : 1;
+  const door = d.clinic;
+  if (!door || !sh.hold(d.a)) return;
+  sh.hold(d.b);
+  await Promise.all([sh.walk(d.a, door.x, door.y, { speed: 0.7 }), d.b ? sh.walk(d.b, door.x + 26, door.y + 10, { speed: 0.7 }) : null].filter(Boolean));
+  if (ctx.hide) { ctx.hide(d.a, true); if (d.b) ctx.hide(d.b, true); }
+  // the warm window (the clinic's sign glows) while the night comes
+  const glow = sh.art.image(sh.scene, door.x + 40, door.y - 140, 'fx_glow');
+  if (glow) { glow.setBlendMode(1).setDepth(door.y + 300).setTint(0xffe2a8).setAlpha(0.7).setScale(1.4); sh.props.push(glow); sh.scene.tweens.add({ targets: glow, alpha: 0.95, duration: 900, yoyo: true, repeat: -1 }); }
+  await sh.wait(6 * k);
+  // the parents stay the night (their bodies go back to their evening; the town sees them again at dawn)
+  if (ctx.hide) { ctx.hide(d.a, false); if (d.b) ctx.hide(d.b, false); }
+}
+
+/** dawn after a birth (06:30): out of the clinic with the stroller, a giggle, home. data { a, b, clinic, home, pink, fast } */
+export async function playBirthDawn(sh, beat, ctx) {
   const d = beat.data || {};
   const lang = ctx.lang || 'ko';
   const k = d.fast ? 0.5 : 1;
   const door = d.clinic;
   if (!door || !sh.hold(d.a)) return;
   sh.hold(d.b);
-  // dusk: the walk to the clinic
-  await Promise.all([sh.walk(d.a, door.x, door.y, { speed: 0.7 }), d.b ? sh.walk(d.b, door.x + 26, door.y + 10, { speed: 0.7 }) : null].filter(Boolean));
-  if (ctx.hide) { ctx.hide(d.a, true); if (d.b) ctx.hide(d.b, true); }
-  // the warm window all night (the clinic's sign glows)
-  const glow = sh.art.image(sh.scene, door.x + 40, door.y - 140, 'fx_glow');
-  if (glow) { glow.setBlendMode(1).setDepth(door.y + 300).setTint(0xffe2a8).setAlpha(0.7).setScale(1.4); sh.props.push(glow); sh.scene.tweens.add({ targets: glow, alpha: 0.95, duration: 900, yoyo: true, repeat: -1 }); }
-  await sh.wait(5 * k);
-  // dawn: out with the stroller
-  if (ctx.hide) { ctx.hide(d.a, false); if (d.b) ctx.hide(d.b, false); }
   sh.place(d.a, door.x, door.y, 'S');
   const stroller = sh.attach(d.a, 'stroller', { pink: !!d.pink });
   sh.anim(d.a, 'push');

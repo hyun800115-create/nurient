@@ -27,7 +27,9 @@ export class NewsPanel {
     if (logo) { logo.setOrigin(0.5, 0.5); const s = Math.min(1, (inW - 200) / logo.width, 64 / logo.height); logo.setScale(s); c.add(logo); }
     else c.add(text(scene, x0 + W / 2, 74, paper.masthead, { size: 44, ox: 0.5, oy: 0.5, color: NEWS_INK }));
     let y = 26 + 104 + 8;
-    c.add(text(scene, inX + 4, y, (lang === 'en' ? 'No. ' : '제 ') + paper.no + (lang === 'en' ? '' : '호') + '  ·  ' + paper.date, { size: 17, weight: '700', color: SOFT }));
+    // the first edition the chief gets is the 창간호 (the host numbers issues from it, critique M3)
+    const issue = paper.first || paper.no === 1 ? str(lang, 'newsFirst') : str(lang, 'newsNo', { n: paper.no });
+    c.add(text(scene, inX + 4, y, issue + '  ·  ' + paper.date, { size: 17, weight: '700', color: SOFT }));
     if (paper.byline) c.add(text(scene, inX + inW - 4, y, paper.byline, { size: 17, weight: '700', color: SOFT, ox: 1 }));
     y += 32;
     // the headline story with a photo slot
@@ -45,17 +47,20 @@ export class NewsPanel {
     const divider = (yy) => { const dv = art.nine(scene, inX + inW / 2, yy, 'ui_newspaper_divider', inW, 16); if (dv) { dv.setOrigin(0.5, 0.5); c.add(dv); } };
     divider(y);
     y += 18;
-    // up to three articles in columns (as tall as the longest)
+    // up to three articles in columns (as tall as the longest). The column art has a 36 px headline band (headlineBox
+    // y 9) and its body starts below the band's rule (nineSlice top 54 / contentInset top 56): the title fits the band
+    // (smaller type, two lines when long), the body starts under the rule — never through it (critique M3)
     const arts = (paper.articles || []).slice(0, 3);
     if (arts.length) {
       const n = arts.length, gap = 12, colW = Math.floor((inW - gap * (n - 1)) / n);
+      const band = { top: 9, h: 36 }, bodyTop = 58;
       const parts = arts.map((a, i) => {
         const cx = inX + i * (colW + gap);
-        const t = text(scene, cx + 12, y + 12, clip(a.title, 30), { size: 18, wrap: colW - 24, color: NEWS_INK, lineSpacing: 2 });
-        const b = text(scene, cx + 12, t.y + t.height + 8, clip(a.body, n === 1 ? 160 : 80), { size: 16, weight: '600', wrap: colW - 24, color: NEWS_INK, lineSpacing: 5 });
+        const t = headline(scene, cx + 12, y + band.top, colW - 24, band.h, a.title);
+        const b = text(scene, cx + 12, y + bodyTop, clip(a.body, n === 1 ? 160 : 90), { size: 16, weight: '600', wrap: colW - 24, color: NEWS_INK, lineSpacing: 5 });
         return { cx, t, b };
       });
-      const colH = Math.min(330, Math.max(...parts.map((p) => p.b.y + p.b.height - y)) + 16);
+      const colH = Math.min(340, Math.max(...parts.map((p) => p.b.y + p.b.height - y)) + 16);
       for (const p of parts) {
         const col = art.nine(scene, p.cx + colW / 2, y + colH / 2, 'ui_newspaper_column', colW, colH);
         if (col) { col.setOrigin(0.5, 0.5); c.add(col); }
@@ -90,3 +95,16 @@ export class NewsPanel {
 }
 
 function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+/** a column title inside its headline band: one line at 18 px, else 15 px, else two lines at 14 px, centred in the band */
+function headline(scene, x, y, w, h, title) {
+  const s = String(title || '');
+  for (const size of [18, 15]) {
+    const t = text(scene, x, y + h / 2, s, { size, color: NEWS_INK, oy: 0.5 });
+    if (t.width <= w) return t;
+    t.destroy();
+  }
+  const t = text(scene, x, y + h / 2, clip(s, 40), { size: 14, wrap: w, color: NEWS_INK, lineSpacing: 0, oy: 0.5 });
+  if (t.height > h + 2) { t.setText(clip(s, 22)); }
+  return t;
+}

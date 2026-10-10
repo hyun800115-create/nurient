@@ -14,15 +14,15 @@
    "ui_mission_board": 0.14,
    "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
-   "ui_passbook_row": 0.02,
-   "ui_passbook": 0.15
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
   },
-  "msMissions": 0.0362,
-  "msBank": 0.0078,
+  "msMissions": 0.0186,
+  "msBank": 0.0031,
   "p95Missions": 0.1,
-  "worldObjects": 139,
-  "uiObjects": 72,
-  "moduleObjects": 23,
+  "worldObjects": 117,
+  "uiObjects": 56,
+  "moduleObjects": 29,
   "placeholders": [],
   "errors": []
  },
@@ -73,7 +73,7 @@
   "docs/previews/missions_lab_zoom06.png",
   "docs/previews/missions_lab_zoom12.png"
  ],
- "seconds": 251,
+ "seconds": 77,
  "bank": {
   "texMiB": 186.8,
   "moduleMiB": 9.65,
@@ -89,15 +89,15 @@
    "ui_mission_board": 0.14,
    "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
-   "ui_passbook_row": 0.02,
-   "ui_passbook": 0.15
+   "ui_passbook": 0.15,
+   "ui_passbook_row": 0.02
   },
-  "msMissions": 0.0503,
-  "msBank": 0.0713,
+  "msMissions": 0.1225,
+  "msBank": 0.0528,
   "p95Missions": 0.2,
-  "worldObjects": 115,
+  "worldObjects": 132,
   "uiObjects": 69,
-  "moduleObjects": 26,
+  "moduleObjects": 29,
   "placeholders": [],
   "errors": [],
   "drawCalls": 5
@@ -178,6 +178,14 @@
   "bank+checks+desktop": {
    "seconds": 251,
    "at": "2026-10-10T08:45:38.086Z"
+  },
+  "bank+panel+accept": {
+   "seconds": 77,
+   "at": "2026-10-10T08:50:39.270Z"
+  },
+  "bubbles+accept+bank": {
+   "seconds": 77,
+   "at": "2026-10-10T08:52:20.562Z"
   }
  },
  "desktop": {
@@ -222,14 +230,14 @@
    "ui_mission_card": 0.08,
    "ui_mission_card_done": 0.08,
    "ui_mission_board": 0.14,
+   "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
    "ui_passbook": 0.15,
-   "ui_passbook_row": 0.02,
-   "ui_progress_bg": 0.01
+   "ui_passbook_row": 0.02
   },
-  "msMissions": 0.1571,
-  "msBank": 0.0696,
-  "p95Missions": 0.2,
+  "msMissions": 0.1353,
+  "msBank": 0.0455,
+  "p95Missions": 0.3,
   "worldObjects": 120,
   "uiObjects": 56,
   "moduleObjects": 41,

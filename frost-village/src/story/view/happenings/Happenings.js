@@ -2,7 +2,7 @@
 // roof) are fully staged with the village pets; P2, P4–P6 need the snowman hat / the sleigh bus and wagon
 // (vehicles_runtime) — until those run they come as a small toast with 보러 가기. One at a time, ≥ 150 s apart.
 
-/** ctx: { sh (a Stagehand), spots: { market, plaza, house, chief }, pets: { dog, cat }, kids [pids], keeper (pid), lang } */
+/** ctx: { sh (a Stagehand), spots: { market, plaza, house, chief }, pets: { dog, cat }, kids [pids], keeper (pid), keeperMale, lang } */
 export async function playHappening(h, sh, ctx) {
   const lang = ctx.lang || 'ko';
   if (h.id === 'P1' && ctx.pets && ctx.pets.dog && ctx.spots.market) {
@@ -13,7 +13,8 @@ export async function playHappening(h, sh, ctx) {
     await sh.wait(0.6);
     if (loaf) sh.scene.tweens.add({ targets: loaf, alpha: 0, duration: 150 });
     sh.anim(dog, 'run');
-    sh.say(ctx.keeper, lang === 'en' ? 'Hey! My bread!' : '어머, 내 빵!', 'emote_anger', 1.8);
+    // (critique L4) the village's own rule: no man says 어머
+    sh.say(ctx.keeper, lang === 'en' ? 'Hey! My bread!' : ctx.keeperMale ? '어이쿠, 내 빵!' : '어머, 내 빵!', 'emote_anger', 1.8);
     const chase = (ctx.kids || []).filter((p) => sh.hold(p)).slice(0, 3);
     const dogRun = sh.walk(dog, run.x, run.y, { speed: 1.9 });
     chase.forEach((pid, i) => sh.wait(0.4 + i * 0.3).then(() => sh.walk(pid, run.x + 50 + i * 30, run.y + 30 - i * 12, { speed: 1.4 })).then(() => { sh.anim(pid, 'happy'); sh.emote(pid, 'emote_laugh', 1.8); }));

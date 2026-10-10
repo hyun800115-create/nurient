@@ -30,7 +30,7 @@ export class Stagehand {
     this.music = null;
     this.extras = [];
     this.venues = new Set();
-    this.preview = false;     // the designer's preview: nothing it makes stays in the world
+    this.dressAges = null;    // null: every age may be dressed (the lab loads all townfolk2 pages)
   }
 
   get scene() { return this.ctx.scene; }
@@ -89,8 +89,13 @@ export class Stagehand {
   place(pid, x, y, dir) { if (!this.cancelled && this.town.place) this.town.place(pid, x, y, dir); }
   face(pid, d) { if (!this.cancelled && this.town.face) this.town.face(pid, d); }
   faceTo(pid, other) { const a = this.body(pid), b = typeof other === 'object' && other && other.x !== undefined ? other : this.body(other); if (a && b) this.face(pid, dirOf(b.x - a.x, b.y - a.y)); }
-  /** may this body wear townfolk2 clothes / play townfolk2 anims now (its age group's pages are resident)? */
-  canDress(pid) { const f = this.ctx.canDress; return !f || !!f(pid); }
+  /** may this body wear townfolk2 clothes / play townfolk2 anims now (its age group's pages are resident)? The kit
+   *  says which age groups it could page in for this set piece (ports.dressAges(kind), index.js beatPlan); null = all */
+  canDress(pid) {
+    if (!this.dressAges) return true;
+    const g = this.ctx.ageGroup ? this.ctx.ageGroup(pid) : null;
+    return !g || this.dressAges.indexOf(g) >= 0;
+  }
   anim(pid, name, opts) {
     if (this.cancelled || !pid || !this.town.anim) return;
     this.town.anim(pid, TF2_PLAIN[name] && !this.canDress(pid) ? TF2_PLAIN[name] : name, opts || {});
@@ -184,7 +189,7 @@ export class Stagehand {
     this.venues.clear();
     this.releaseAll();
     this.stopMusic();
-    this.clearProps(!this.cancelled);
+    this.clearProps(!this.cancelled && !this.noPoof);
     if (this.town.despawn) for (const pid of this.extras) this.town.despawn(pid);
     this.extras = [];
   }
