@@ -121,6 +121,14 @@
   const stations = () => gs.stationList.filter((s) => s.enabled);
   const L = (m) => { bot.log.push(bot.t.toFixed(1) + ' ' + m); if (bot.log.length > 4000) bot.log.shift(); };
 
+  /** (v4.2) may the bot spend `cost` on a v4.2 extra now? after 읍 always; before it only with the rank's price kept */
+  function v42Spare(cost) {
+    const rk = gs.v4 && gs.v4.rank;
+    if (!rk || rk.level >= 2) return true;
+    const rp = gs.progress.pads.rank_eup;
+    const keep = rp && !rp.done ? rp.remaining : ((((window.__BAL.v4 || {}).rank || {})[2] || {}).coins || 11000);
+    return eco().coins >= keep + cost;
+  }
   function desiredPad() {
     const prog = gs.progress, coins = eco().coins;
     const main = prog.nextPad();
@@ -134,6 +142,10 @@
         const u = prog.upPads[k];
         if (!u.maxed && !u.done && u.active) cands.push(u);
       }
+      // ((v4.2) the line offers: 짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게 — pads like any upgrade)
+      //  a sensible player keeps the 읍 money: before 읍 they are bought only with the rank's price left over)
+      const LU = gs.v42 && gs.v42.lines;
+      if (LU && bot.opts.v42 !== false) for (const id in LU.pads) { const u = LU.pads[id]; if (u && u.active && !u.done && v42Spare(u.remaining)) cands.push(u); }
     }
     const un = bot.unreach || {};
     for (let i = cands.length - 1; i >= 0; i--) if (un[cands[i].id] && bot.t - un[cands[i].id] < 120) cands.splice(i, 1);
@@ -151,7 +163,8 @@
   // ------------------------------------------------------------------ (v3) helpers
   const B3 = () => window.__BAL.buildings;
   // ((v4) the station's repair is priced in BALANCE.v4.station)
-  const costOf = (k) => (k === 'station' && window.__BAL.v4 && window.__BAL.v4.station ? window.__BAL.v4.station.coins : (B3()[k] || {}).coins) || 0;
+  const V42SITE = { chief_office: 'office', bank42: 'bank', depot42: 'depot' };
+  const costOf = (k) => (V42SITE[k] ? (((window.__BAL.v42 || {})[V42SITE[k]] || {}).site || {}).coins : k === 'station' && window.__BAL.v4 && window.__BAL.v4.station ? window.__BAL.v4.station.coins : (B3()[k] || {}).coins) || 0;
   function plotFor(bkey) {
     const p = P();
     let best = null, bd = 1e12;
@@ -178,6 +191,14 @@
       const ch = gs.buildChoices(plotFor(g.id) || { size: 'M', only: g.id === 'boathouse' ? 'boathouse' : null });
       const c = ch.find((q) => q.key === g.id);
       if (c && !c.locked && coins >= costOf(g.id)) { const pl = plotFor(g.id); if (pl) return { site: pl, bkey: g.id }; }
+    }
+    // ((v4.2) once the village is complete: the 촌장 사무실, then the 서리 물류창고 and the 서리 은행 when their plots show)
+    if (bot.opts.v42 !== false && gs.v42 && gs.v42.complete) {
+      for (const k of ['chief_office', 'depot42', 'bank42']) {
+        if (gs.isBuilt(k) || gs.isBuilding(k)) continue;
+        const pl = plotFor(k);
+        if (pl && coins >= costOf(k) + 300 && v42Spare(costOf(k))) return { site: pl, bkey: k };
+      }
     }
     if (bot.opts.houses !== false && gs.life && gs.life.waiting.length && !Object.values(gs.sites).some((q) => q.state !== 'plot' && q.state !== 'done' && /^house_/.test(q.building))) {
       for (const k of ['house_a', 'house_c', 'house_b']) {

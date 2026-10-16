@@ -179,7 +179,7 @@ export class HudV4 {
     const ui = this.ui, gs = ui.gs, nb = this.nb;
     let show = false;
     if (nb && nb.rail && nb.rail.running && gs.territory && gs.territory.areaOf && gs.territory.areaOf(gs.player.x) === 'neighbours' && !gs.overview && !this.panel) {
-      const [x, y] = L4(nb.rail.iAt(nb.rail.m), 0);
+      const [x, y] = nb.rail.point ? (({ x: px, y: py }) => [px, py])(nb.rail.point()) : L4(nb.rail.iAt(nb.rail.m), 0);
       const p = ui.worldToScreen(x, y - 60);
       if (p.x < -20 || p.x > ui.W + 20 || p.y < 140 || p.y > ui.H + 20) {
         const M = 56, cx = ui.W / 2, cy = ui.H / 2;

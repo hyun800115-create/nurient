@@ -15,6 +15,9 @@ import { PRIO } from '../systems/Logistics.js';
 export { FOODS, GOODS };
 
 // ------------------------------------------------------------------ cash pad
+/** (v4.2 F1) has this shelf had none of `ty` for porters.shelfEmptyAfter s? (Surplus keeps the clocks) */
+function shelfEmpty(gs, seller, ty) { const S = gs.v42 && gs.v42.surplus; return !!(S && S.shelfEmpty(seller, ty)); }
+
 export class CashPad {
   constructor(gs, x, y) {
     this.gs = gs; this.x = x; this.y = y;
@@ -131,7 +134,7 @@ export class Market {
       id: this.id + '_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
       accepts: (ty) => this.goods.indexOf(ty) >= 0,
       room: (ty) => (this.enabled ? Math.max(0, this.maxPerType - this.stock.countWithIncoming(ty)) : 0),
-      prio: (ty) => (this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
+      prio: (ty) => (shelfEmpty(gs, this, ty) ? PRIO.SHELF_EMPTY : this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
       feed: (ch) => this.feedFrom(ch),
     };
     if (gs.logistics) gs.logistics.add(this.sink);
@@ -559,7 +562,7 @@ export class TradePost {
       id: 'trade_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
       accepts: (ty) => GOODS.indexOf(ty) >= 0,
       room: (ty) => (this.enabled ? Math.max(0, this.maxPerType - this.stock.countWithIncoming(ty)) : 0),
-      prio: (ty) => (this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
+      prio: (ty) => (shelfEmpty(gs, this, ty) ? PRIO.SHELF_EMPTY : this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
       feed: (ch) => this.feedFrom(ch),
     };
     if (gs.logistics) gs.logistics.add(this.sink);

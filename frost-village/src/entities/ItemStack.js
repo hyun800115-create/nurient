@@ -108,12 +108,12 @@ export class ItemStack {
   /** add an item (optionally reusing a sprite that just flew in) */
   push(type, spr, fx) {
     if (this.bakeOn) {
-      // (v4.2) baked: the item is data; a sprite that flew in goes back to the pool (it is drawn in the next bake)
-      const f = fx || this.scene.effects;
-      if (spr && f) f.releaseItem(spr);
-      this.items.push({ type, spr: null, hop: 0, x: this.bx, y: this.by });
+      // (v4.2) baked: the item is data; a sprite that flew in stays on its place until the next bake draws it
+      // (StackBaker.flush releases it then: no gap between landing and being drawn)
+      if (spr) { spr.setScale(this.scale).setVisible(this.visible).setAngle(0); }
+      this.items.push({ type, spr: spr || null, pend: !!spr, hop: 0, x: this.bx, y: this.by });
       this.bakeDirty = true;
-      return null;
+      return spr || null;
     }
     if (!spr) spr = fx.takeItem(type);
     spr.setScale(this.scale).setVisible(this.visible).setAngle(0);
@@ -144,7 +144,7 @@ export class ItemStack {
     for (const it of this.items) if (it.spr) fx.releaseItem(it.spr);
     this.items.length = 0;
     this.bakeDirty = true;
-    if (this.bakeImg && this.slot && this.baker) this.baker.bake(this);
+    if (this.bakeImg && this.slot && this.baker) this.baker.queue(this, true);
   }
 
   /** world position where the next item would land (for flights) */
@@ -285,7 +285,7 @@ export class ItemStack {
         }
       }
     }
-    // live sprites (none normally: items flying in are released on arrival) keep their place
+    // live sprites (items that landed since the last bake) keep their place
     for (let i = 0; i < n; i++) { const it = items[i]; if (it.spr) { it.spr.setPosition(it.x, it.y); if (it.spr.depth !== depth + 0.001) it.spr.setDepth(depth + 0.001); } }
     if (!this.bakeImg && (!n || !this.ensureBake())) return;
     const img = this.bakeImg;
@@ -293,8 +293,9 @@ export class ItemStack {
     if (img.depth !== depth + 0.001) img.setDepth(depth + 0.001);
     if (this.bakeDirty) {
       const gs = this.scene;
-      // (off screen it waits: a stack far away is baked when it comes near)
-      if (!gs.isOnScreen || gs.isOnScreen(bx, by, 700) || !this.bakedOnce) { this.baker.bake(this); this.bakeDirty = false; this.bakedOnce = true; }
+      // (off screen it waits: a stack far away is baked when it comes near; the baker draws every queued stack in
+      //  one pass right before the frame is drawn, a few times a second)
+      if (!gs.isOnScreen || gs.isOnScreen(bx, by, 700) || !this.bakedOnce) this.baker.queue(this);
     }
   }
 

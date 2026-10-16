@@ -268,6 +268,28 @@ export const TF = {
 
   get ok() { return !!this.T; },
 
+  /** (v4.2) code presets (src/data/staffLooks.js), merged into the generator's presets — never replacing one the
+   *  manifest has (officefolk's own presets win in CODE-2). Parts the manifest does not know are dropped. */
+  addPresets(obj) {
+    if (!this.T || !obj) return 0;
+    const G = this.T.generator, parts = this.T.parts || {};
+    if (!G || !G.presets) return 0;
+    let n = 0;
+    const keep = (v) => {
+      if (Array.isArray(v)) return v.filter((p) => typeof p !== 'string' || !/^(top|bot|shoe|hat|acc|det|hair)_/.test(p) || parts[p]);
+      if (v && typeof v === 'object') { const o = {}; for (const k in v) if (!/^(top|bot|shoe|hat|acc|det|hair)_/.test(k) || parts[k]) o[k] = v[k]; return o; }
+      return v;
+    };
+    for (const k in obj) {
+      if (G.presets[k]) continue;
+      const P = {};
+      for (const f in obj[k]) P[f] = f === 'colors' || f === 'label' || f === 'bases' ? obj[k][f] : keep(obj[k][f]);
+      G.presets[k] = P;
+      n++;
+    }
+    return n;
+  },
+
   /** atlas keys a given age group needs (heads + its body sheets). (v4-B) packed: the @loco pages that load
    *  with them (the @soc pages come on demand, Residency); raw = the atlas keys themselves */
   sheetsFor(age, raw) {

@@ -1,0 +1,441 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_chief_fx.py (procedural numpy + Pillow on fxlib; fx / ui house style)",
+ "conventions": {
+  "contract": "CONTRACT_V42 §AG. Paths relative to frost-village/assets/. Fragment name: chief_fx (the build packs it with ui5_icons into the v42_core page).",
+  "blend": "NORMAL",
+  "frames": "Atlas frames are named {key}_{i} (nav_chevron_{ii}); trimmed JSON-hash with sourceSize kept, so anchors refer to the full contract frame. sprites[key]: frame (first), anchor, frameSize, frames, frameNames, fps, repeat; animated keys also carry anims.play, so Assets.spriteAnims creates 'spr:<key>:play' (e.g. sprite.play('spr:chief_halo:play')).",
+  "readability": "Every bright shape has a darker cool (teal / navy) or amber rim and the nav pieces a soft navy contact shadow, so they read on white snow, grey cobbles, brown dirt and under the night MULTIPLY overlay (darkness 0.45, #5A6AA8). Drawn on a 4x supersampled canvas, clean from 0.5x to 2x.",
+  "screenSize": {
+   "chief_halo": "drawn 45 CSS px wide on a 390 px phone at every zoom: world width = aura.ringPx 70 x min(2, 1.2 / zoom) (zoom < aura.fullZoom 1.2, else 70); setScale(width / 192). CSS px per world px = zoom x 390 / 720.",
+   "chief_marker": "drawn 22 CSS px wide: setScale(22 / (zoom x 390 / 720) / 72), 14 px above the head or the top of the carried stack.",
+   "nav": "nav_chevron / nav_dot / nav_ring at world scale 1 (0.8 next to the tutorial arrow); nav_badge scale 1 in the world; nav_edge in the UI scene at scale 0.75-1."
+  },
+  "depth": "ring + rank band DEPTH.PAD + 2 (band - 0.01), glow chief - 0.5, sparkles chief +- 1, marker DEPTH.LABEL - 30; nav chevron / dots / ring DEPTH.PAD + 3, badge DEPTH.LABEL - 40.",
+  "pageSize": [
+   856,
+   858
+  ],
+  "pageMiB": 2.802
+ },
+ "atlases": [
+  {
+   "key": "chief_fx",
+   "png": "chief_fx/chief_fx.png",
+   "json": "chief_fx/chief_fx.json"
+  }
+ ],
+ "sprites": {
+  "chief_halo": {
+   "atlas": "chief_fx",
+   "frame": "chief_halo_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    192,
+    96
+   ],
+   "frames": 12,
+   "frameNames": [
+    "chief_halo_0",
+    "chief_halo_1",
+    "chief_halo_2",
+    "chief_halo_3",
+    "chief_halo_4",
+    "chief_halo_5",
+    "chief_halo_6",
+    "chief_halo_7",
+    "chief_halo_8",
+    "chief_halo_9",
+    "chief_halo_10",
+    "chief_halo_11"
+   ],
+   "fps": 10,
+   "repeat": -1,
+   "anims": {
+    "play": {
+     "frames": [
+      "chief_halo_0",
+      "chief_halo_1",
+      "chief_halo_2",
+      "chief_halo_3",
+      "chief_halo_4",
+      "chief_halo_5",
+      "chief_halo_6",
+      "chief_halo_7",
+      "chief_halo_8",
+      "chief_halo_9",
+      "chief_halo_10",
+      "chief_halo_11"
+     ],
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "replaces": "fv_halo",
+   "notes": "Aurora ring on the ground under the chief (DEPTH.PAD + 2: over pads and decals, under shadows and every character). Hollow 2:1 jelly tube, outer 184 x 92, ring 7 px; mint -> sky -> lilac gradient travels once round per loop; 1 px gold inner line, 1 px darker teal outer rim (snow), soft glow; 6 tiny stars twinkle on it. Centre fully transparent. World width = aura.ringPx 70 x min(2, 1.2 / zoom) for zoom < 1.2 (else 70) -> setScale(width / 192): ~45 CSS px on a 390 px phone at every zoom."
+  },
+  "chief_halo_gold": {
+   "atlas": "chief_fx",
+   "frame": "chief_halo_gold_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    192,
+    96
+   ],
+   "frames": 8,
+   "frameNames": [
+    "chief_halo_gold_0",
+    "chief_halo_gold_1",
+    "chief_halo_gold_2",
+    "chief_halo_gold_3",
+    "chief_halo_gold_4",
+    "chief_halo_gold_5",
+    "chief_halo_gold_6",
+    "chief_halo_gold_7"
+   ],
+   "fps": 12,
+   "repeat": -1,
+   "anims": {
+    "play": {
+     "frames": [
+      "chief_halo_gold_0",
+      "chief_halo_gold_1",
+      "chief_halo_gold_2",
+      "chief_halo_gold_3",
+      "chief_halo_gold_4",
+      "chief_halo_gold_5",
+      "chief_halo_gold_6",
+      "chief_halo_gold_7"
+     ],
+     "fps": 12,
+     "repeat": -1
+    }
+   },
+   "replaces": "fv_halo_gold",
+   "notes": "The working state (chief at a station work spot, labour.chiefSpeed x1.25 made visible): same ellipse in warm gold, brighter glow, a sunburst of 12 short rays inside the ring pointing out at it (frames 0-3 grow, 4-7 settle). Same scale / position as chief_halo; crossfade."
+  },
+  "chief_halo_rank2": {
+   "atlas": "chief_fx",
+   "frame": "chief_halo_rank2_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    216,
+    108
+   ],
+   "frames": 1,
+   "frameNames": [
+    "chief_halo_rank2_0"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "replaces": "fv_halo_rank2",
+   "notes": "From 읍 on: thin double gold band (2 px + 1 px, 4 px apart), outer 208 x 104, drawn just under the ring (depth ring - 0.01) at the ring scale x 192 / 192 (it already sits 12 px outside the 184 px ring in its own 216 px frame: use the SAME scale as the ring)."
+  },
+  "chief_glow_back": {
+   "atlas": "chief_fx",
+   "frame": "chief_glow_back_0",
+   "anchor": [
+    0.5,
+    0.82
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    160,
+    200
+   ],
+   "frames": 8,
+   "frameNames": [
+    "chief_glow_back_0",
+    "chief_glow_back_1",
+    "chief_glow_back_2",
+    "chief_glow_back_3",
+    "chief_glow_back_4",
+    "chief_glow_back_5",
+    "chief_glow_back_6",
+    "chief_glow_back_7"
+   ],
+   "fps": 8,
+   "repeat": -1,
+   "anims": {
+    "play": {
+     "frames": [
+      "chief_glow_back_0",
+      "chief_glow_back_1",
+      "chief_glow_back_2",
+      "chief_glow_back_3",
+      "chief_glow_back_4",
+      "chief_glow_back_5",
+      "chief_glow_back_6",
+      "chief_glow_back_7"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   },
+   "replaces": "fv_halo_glow",
+   "notes": "광채: soft vertical oval radiance behind the body (depth = chief - 0.5), anchor = his feet. Pale gold core #FFE7A3 55 % fading to mint (left) / lilac (right) at 0 %, slow shimmer, no hard edge. Drawn 1:1 it spans ~1.4 x the 128 px chief frame. Alpha aura.glowDay 0.35 by day, aura.glowNight 0.6 at night."
+  },
+  "chief_sparkle": {
+   "atlas": "chief_fx",
+   "frame": "chief_sparkle_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    32,
+    32
+   ],
+   "frames": 6,
+   "frameNames": [
+    "chief_sparkle_0",
+    "chief_sparkle_1",
+    "chief_sparkle_2",
+    "chief_sparkle_3",
+    "chief_sparkle_4",
+    "chief_sparkle_5"
+   ],
+   "fps": 12,
+   "repeat": 0,
+   "anims": {
+    "play": {
+     "frames": [
+      "chief_sparkle_0",
+      "chief_sparkle_1",
+      "chief_sparkle_2",
+      "chief_sparkle_3",
+      "chief_sparkle_4",
+      "chief_sparkle_5"
+     ],
+     "fps": 12,
+     "repeat": 0
+    }
+   },
+   "replaces": "fv_halo_mote / fx_sparkle",
+   "notes": "One mote twinkle (appears, peaks on frames 1-2, fades): <= 6 pooled, riding the ring (depth chief +- 1) at setScale(ring scale x (0.45 .. 0.75)), and the x1.25 / 응원 sparkles at scale ~1."
+  },
+  "chief_marker": {
+   "atlas": "chief_fx",
+   "frame": "chief_marker_0",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    72,
+    88
+   ],
+   "frames": 4,
+   "frameNames": [
+    "chief_marker_0",
+    "chief_marker_1",
+    "chief_marker_2",
+    "chief_marker_3"
+   ],
+   "fps": 6,
+   "repeat": -1,
+   "anims": {
+    "play": {
+     "frames": [
+      "chief_marker_0",
+      "chief_marker_1",
+      "chief_marker_2",
+      "chief_marker_3"
+     ],
+     "fps": 6,
+     "repeat": -1
+    }
+   },
+   "replaces": "fv_halo_pin (ui3 ui_icon_fame stand-in)",
+   "notes": "Far-zoom / crowd / 관망 star pin over his head (or his carried tower), DEPTH.LABEL - 30 (above the night overlay). Anchor = pointer tip. Draw 22 CSS px wide: world scale = 22 / (zoom x 390 / 720) / 72. Star 32 px across in the frame (>= 30). 4-frame light sweep at 6 fps, no bob."
+  },
+  "nav_chevron": {
+   "atlas": "chief_fx",
+   "frame": "nav_chevron_00",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    64,
+    40
+   ],
+   "frames": 16,
+   "frameNames": [
+    "nav_chevron_00",
+    "nav_chevron_01",
+    "nav_chevron_02",
+    "nav_chevron_03",
+    "nav_chevron_04",
+    "nav_chevron_05",
+    "nav_chevron_06",
+    "nav_chevron_07",
+    "nav_chevron_08",
+    "nav_chevron_09",
+    "nav_chevron_10",
+    "nav_chevron_11",
+    "nav_chevron_12",
+    "nav_chevron_13",
+    "nav_chevron_14",
+    "nav_chevron_15"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "headings": 16,
+   "headingStepDeg": 22.5,
+   "replaces": "fv_nav_chevron (frames c0..c15)",
+   "notes": "Flat ground chevron (double >) lying on the 2:1 ground, pre-projected like a decal. Frame k = nav_chevron_{k:02d} points along SCREEN angle k x 22.5 deg (0 = screen right, clockwise): k = round(atan2(dy, dx) / 22.5 deg) mod 16 for the screen vector to the next route point. DEPTH.PAD + 3, 56 px ahead of his boots, scale 1 (0.8 when the tutorial arrow also shows)."
+  },
+  "nav_dot": {
+   "atlas": "chief_fx",
+   "frame": "nav_dot_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    28,
+    14
+   ],
+   "frames": 2,
+   "frameNames": [
+    "nav_dot_0",
+    "nav_dot_1"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "states": {
+    "normal": "nav_dot_0",
+    "highlight": "nav_dot_1"
+   },
+   "replaces": "fv_nav_dot (frames d0, d1)",
+   "notes": "Footprint dot along the route every nav.dotEvery 48 px: nav_dot_0 normal, nav_dot_1 highlight for the light wave running toward the target every 1.2 s. DEPTH.PAD + 3."
+  },
+  "nav_ring": {
+   "atlas": "chief_fx",
+   "frame": "nav_ring_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    160,
+    80
+   ],
+   "frames": 8,
+   "frameNames": [
+    "nav_ring_0",
+    "nav_ring_1",
+    "nav_ring_2",
+    "nav_ring_3",
+    "nav_ring_4",
+    "nav_ring_5",
+    "nav_ring_6",
+    "nav_ring_7"
+   ],
+   "fps": 10,
+   "repeat": -1,
+   "anims": {
+    "play": {
+     "frames": [
+      "nav_ring_0",
+      "nav_ring_1",
+      "nav_ring_2",
+      "nav_ring_3",
+      "nav_ring_4",
+      "nav_ring_5",
+      "nav_ring_6",
+      "nav_ring_7"
+     ],
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "replaces": "fv_nav_ring",
+   "notes": "Destination ring on the pad (DEPTH.PAD + 3): 12 teal capsule dashes with gold cores pulsing outward and fading (frame 0 small / bright -> 7 large / faint), dashes creep 1/12 turn per loop. Play the anim at scale 1 (drop the code pulse)."
+  },
+  "nav_badge": {
+   "atlas": "chief_fx",
+   "frame": "nav_badge_0",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    88,
+    100
+   ],
+   "frames": 1,
+   "frameNames": [
+    "nav_badge_0"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "iconRect": [
+    16,
+    14,
+    56,
+    56
+   ],
+   "replaces": "Navigator badge container (ui_panel + item icon)",
+   "notes": "Badge 90 px above the destination ring (DEPTH.LABEL - 40). Anchor = pointer tip. Draw the item icon into iconRect [x, y, w, h] (a 56 px cream disc; icon ~44 px), the short name as text beside or under it."
+  },
+  "nav_edge": {
+   "atlas": "chief_fx",
+   "frame": "nav_edge_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    80,
+    80
+   ],
+   "frames": 1,
+   "frameNames": [
+    "nav_edge_0"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "iconRect": [
+    18,
+    18,
+    44,
+    44
+   ],
+   "pointsAtRad": 0.0,
+   "replaces": "fv_nav_edge (ui_arrow)",
+   "notes": "Screen-edge badge (UI scene): rotate it so its RIGHT-side notch points at the off-screen target (rotation = atan2(dy, dx)); keep the icon upright (draw the icon as a separate image at the badge centre, iconRect [x, y, w, h] = 44 px disc) and the route metres under it."
+  }
+ }
+}

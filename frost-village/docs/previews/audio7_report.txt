@@ -1,0 +1,41 @@
+audio7 QA - sprite 5.700 s (9 slices), payload 315710 bytes
+key                   dur      I   Mmax   peak    tpk    vol    eff   want  phone  >4k%  centr
+sfx_typewriter      0.600  -21.0  -18.8   -1.9   -1.8  0.617  -23.0  -23.0    1.3   0.6    931
+    onsets [np.float64(0.0), np.float64(0.132), np.float64(0.264), np.float64(0.384)]
+sfx_typewriter_2    0.600  -24.5  -22.5   -2.0   -1.9  0.944  -23.0  -23.0    1.4   0.9    945
+    onsets [np.float64(0.0), np.float64(0.108), np.float64(0.244), np.float64(0.4)]
+sfx_typewriter_3    0.600  -17.1  -16.0   -2.0   -1.9  0.447  -23.0  -23.0    0.5   0.5   1214
+    onsets [np.float64(0.0), np.float64(0.12), np.float64(0.224), np.float64(0.312), np.float64(0.4)]
+    F6 margin bell: 1397.9 Hz (+1.3 cents)
+sfx_switch_clack    0.400  -22.9  -21.3   -1.9   -1.9  1.000  -21.3  -20.5    4.0   0.7    544
+sfx_wheel_squeal    1.200   -7.6   -5.0   -1.9   -1.9  0.071  -28.0  -28.0    0.0   0.0   1920
+    ends -77 / -74 dB re peak; centroid 1920 Hz
+sfx_mailbox_flag    0.300  -22.4  -19.7   -1.9   -1.9  0.861  -21.0  -21.0    0.2   1.7   1589
+    C7 mailbox bell: 2092.9 Hz (-0.1 cents)
+sfx_coin_sack       0.500  -17.4  -14.4   -1.9   -1.7  0.495  -20.5  -20.5    0.4   7.7   2377
+sfx_coin_sack_2     0.500  -16.1  -14.5   -1.8   -1.7  0.501  -20.5  -20.5    0.4  21.4   2979
+sfx_coin_sack_3     0.500  -16.1  -14.0   -2.1   -2.1  0.473  -20.5  -20.5    0.3  11.6   2632
+amb_office         24.000  -20.5  -14.1   -1.9   -1.8  0.422  -28.0  -28.0    1.5   5.8   1175
+    loop seam hf 0.260 d2 0.160 (fail >= 1)
+    clock: envelope autocorrelation peak at 800 ms
+    xcorr sfx_coin_sack / sfx_coin_sack_2: 0.10
+    xcorr sfx_coin_sack / sfx_coin_sack_3: 0.11
+    xcorr sfx_coin_sack_2 / sfx_coin_sack_3: 0.08
+Chromium 141.0.7390.37: decodeAudioData at 44.1 / 48 kHz
+    sprite: 44.1k 251370 smp (seam 0.00), 48k 273600 smp (seam 0.00)
+    every slice cut like Assets.sliceSprite lines up with ffmpeg within 1 ms (44.1 and 48 kHz)
+    amb_office: 44.1k 1058400 smp (seam 0.16), 48k 1152000 smp (seam 0.16)
+demo: bed -28.5 LUFS | sfx layer -25.6 LUFS | mix -25.8 LUFS, peak -2.2 dBFS
+demo timeline (4 s windows, max momentary LUFS)  bed | sfx
+   0s   -23.7 |  -23.8
+   4s   -24.0 |  -22.9
+   8s   -25.8 |  -20.5
+  12s   -24.6 |  -20.5
+  16s   -20.9 |  -22.7
+  20s   -27.8 |  -24.9
+  24s   -26.0 |  -21.3
+  28s   -24.5 |  -99.0
+  32s   -25.1 |  -25.2
+  36s   -31.0 |  -26.6
+
+RESULT: OK (0 errors, 0 warnings)

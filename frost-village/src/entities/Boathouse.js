@@ -105,7 +105,7 @@ export class Boathouse {
   restore(s) {
     if (!s) return;
     if (s.level) this.setBoat(Math.min(2, s.level), true);
-    if (s.catch) for (const ty of ['item_fish_raw', 'item_fish_big']) for (let i = 0; i < (s.catch[ty] || 0) && this.outStack.count < this.outStack.max; i++) this.outStack.push(ty, null, this.gs.effects);
+    if (s.catch) for (const ty of ['item_fish_raw', 'item_fish_big']) for (let i = 0; i < (s.catch[ty] || 0) && this.outStack.count + this.outStack.incoming < this.outStack.max; i++) this.outStack.push(ty, null, this.gs.effects);
   }
 }
 

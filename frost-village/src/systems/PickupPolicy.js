@@ -34,6 +34,8 @@ export class PickupPolicy {
   get mode() {
     const gs = this.gs;
     if (gs.tutorial && gs.tutorial.inTutorial) return 'auto';
+    // (관망: the pilot picks up like the v4.1 chief)
+    if (this.v42 && this.v42.pilot && this.v42.pilot.on) return 'auto';
     const m = Settings.data.pickup;
     return m === 'still' || m === 'off' ? m : 'auto';
   }
@@ -67,10 +69,11 @@ export class PickupPolicy {
     const mode = this.mode;
     if (mode === 'auto') return true;
     if (mode === 'still') return (p.stillT || 0) >= P().gatherStillS;
-    return this.held || this.oneLoad;
+    // ('off': gathering only while 줍기 is held — a tap's "one load" is for pads)
+    return this.held;
   }
   /** keep gathering the node he works (the button released in 'off' mode stops him) */
-  keepGathering(p) { return this.mode !== 'off' || this.held || this.oneLoad; }
+  keepGathering(p) { void p; return this.mode !== 'off' || this.held; }
 
   /** a take happened (tests; the one-time tip when 'auto' grabbed while crossing fast) */
   took(p) {

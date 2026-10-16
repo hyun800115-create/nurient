@@ -151,6 +151,9 @@ try {
 
   // 7. warehouse: overflow from a full output pad goes in, an empty shelf is restocked from it
   {
+    // ((v4.2) after village complete the 창고 porters take a full output straight to a shelf that wants it (F3,
+    //  checked in v42.mjs / the census); this v3 check is about the warehouse itself, so F3 is off for it)
+    await ev(async () => { const m = await import(new URL('src/data/balance.js', location.href).href); if (m.BALANCE.v42 && m.BALANCE.v42.warehouse) { window.__f3 = m.BALANCE.v42.warehouse.direct; m.BALANCE.v42.warehouse.direct = false; } });
     // (everything else that takes ingots is full, so the overflow has nowhere to go but the warehouse)
     await ev(() => {
       const gs = window.__FV.scene; const S = gs.stations.smelter;
@@ -175,6 +178,7 @@ try {
     await adv(0.5);
     await shot('06_warehouse');
     await ev(() => window.__FV.camera());
+    await ev(async () => { const m = await import(new URL('src/data/balance.js', location.href).href); if (window.__f3 !== undefined) m.BALANCE.v42.warehouse.direct = window.__f3; });
   }
 
   // 8. boats: the rowboat (coins), then the fishing boat (coins + a rod from the toolsmith) brings tuna

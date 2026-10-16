@@ -222,13 +222,16 @@ v4.2 sinks (empty shelf F1, depot dock F8). It already orders sites / hire pads 
 | Source | Surplus when | Keeps |
 |---|---|---|
 | station / workshop output | ≥ `surplus.outAt` 70 % for 20 s **and** no sink with prio ≥ 40 wants that item within 1,500 px | 30 % for the goods porter |
-| collection pile | ≥ `surplus.pileAt` 95 % for 30 s (raw goes only after F5 had a chance) | 20 items |
+| collection pile | ≥ `surplus.pileAt` 95 % for 30 s (raw goes only after F5 had a chance) — **CODE-1 tuned: 90 % for 20 s** | 20 items — **tuned: 16** |
 | v3 창고 | > 70 % full | 50 % |
+| (CODE-1) collection pile → 창고 | ≥ `surplus.pileToWh` 85 %: the 창고 porters carry raw in (the 창고 is the village's buffer; its own surplus above 70 % goes on to the dock) | — |
 | boathouse catch | ≥ 90 % | — |
 
 Carried by the existing **역 짐꾼** (2) and, once the 물류창고 stands, **역 짐꾼 3 / 4** (1,000 / 1,500, same pad
 spot) to the 짐 싣는 곳, which accepts surplus as a new sink `PRIO.SURPLUS` 12 (above `STORE` 10: the 창고 stays the
 local buffer, the dock takes what the village cannot use) — room = freight room of the next train + depot room.
+(CODE-1: a full pile's raw ranks `surplus.pilePrio` 30 for the 역 짐꾼 — under the shops 35 and the cards 38 — else
+the town's restocks always won and the piles never emptied; the 화물칸 크게 offer counts the waiting card crates too.)
 
 ### 4.4 서리 물류창고 (`src/systems/depot/*`, `src/entities/DepotBuilding.js`, `src/entities/CargoSleigh.js`)
 
@@ -284,17 +287,21 @@ XL two-stage scaffold of the station plot ×1.5). Cost 6,000 + 40 판자 + 20 �
 
 ### 4.5 Targets (census bot = `review_gameplay_census.mjs`, the 46-min and 45-min v4.1 saves, 15–35 min each)
 
-| Measure | v4.1 | v4.2 gate |
-|---|---|---|
-| Market shelf empty: 빵 / 훈제 고기 / 구운 생선 | 37 / 37–57 / 9 % | ≤ 10 % each |
-| 교역소 empty: 판자 / 주괴 | 96 / 90 % | ≤ 40 % |
-| Smelter / sawmill output ≥ 90 % | 74 / 64 % | ≤ 30 % |
-| Any raw pile ≥ 90 % (after F5, depot open) | 78–100 % | ≤ 50 % |
-| 창고 average stock | 1–6 | ≥ 40 |
-| Dock backlog | 1,540, +37/min | ≤ one train load |
-| Boathouse catch | 103 % of cap | ≤ 100 % |
-| Income | 1,889 /min | +15–30 %; if higher lower `freight.exportRate`, then `depot.sell.rate`, then F5 |
-| Pacing to 5 shops / 읍 | 37.8 / 47.7 min | ≤ +5 % |
+| Measure | v4.1 | v4.2 gate | CODE-1 measured: v4.1 → v4.2 (census, 20 min from the 46- / 45-min saves, same tool and bot) |
+|---|---|---|---|
+| Market shelf empty: 빵 / 훈제 고기 / 구운 생선 | 37 / 37–57 / 9 % | ≤ 10 % each | 24 / 61 / 8 → **0 / 31 / 0** (46) · 15 / 63 / 8 → **6 / 39 / 0** (45) — meat misses |
+| 교역소 empty: 판자 / 주괴 | 96 / 90 % | ≤ 40 % | 90 / 98 → 78 / 76 · 96 / 98 → 79 / 75 — **misses, but now "sold out", not stuck**: 87 % of the planks and 75 % of the ingots made reach the 교역소 (flow probe) and the merchant buys one every `trade.buyInterval` 0.28 s (214/min) against ≈ 85/min made; the outputs are no longer full (next row) |
+| Smelter / sawmill output ≥ 90 % | 74 / 64 % | ≤ 30 % | 68 / 44 → 38 / 8 · 68 / 69 → 36 / 8 |
+| Any raw pile ≥ 90 % (after F5, depot open) | 78–100 % | ≤ 50 % | 100 → 100 (**misses**); per pile fish / wheat / ore / meat 97 / 100 / 100 / 100 → 63 / 44 / 98 / 80 (46) and 93 / 100 / 100 / 100 → 68 / 57 / 96 / 91 (45): the ore and meat lines out-gather their stations even after 가공소 2단 |
+| 창고 average stock | 1–6 | ≥ 40 | 4 → **87** · 7 → **48** |
+| Dock backlog | 1,540, +37/min | ≤ one train load | 1,417 → max 113, end 67 · 745 → max 112, end 28 |
+| Boathouse catch | 103 % of cap | ≤ 100 % | 37 → 37 % · 100 → 100 % |
+| Income | 1,889 /min | +15–30 %; if higher lower `freight.exportRate`, then `depot.sell.rate`, then F5 | 1,838 → **2,170 (+18 %)** · 1,809 → **2,298 (+27 %)**; exports 54 / 69 items |
+| Pacing to 5 shops / 읍 | 37.8 / 47.7 min | ≤ +5 % | see §15 (bots) |
+
+(The final census bot keeps the 읍 money before buying v4.2 extras, like a sensible player; with the bot buying every
+offer at once (all 가공소 2단 + 짐꾼 2 in the first 4 minutes) the same saves read meat 23 / 29 %, smelter 33 / 39 %,
+창고 144 / 90, income +25 / +30 %.)
 
 ---
 
@@ -584,13 +591,17 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | 급한 일 | 100 | the tutorial's own `evaluate()` target (the logic the arrow-only bot reaches 읍 with) **minus every pay/hire/upgrade target**: unstaffed register with guests > 9 s, a ribbon, a station with ≥ 8 items and no operator, a site missing what he carries, empty food box | until done | runs, gold halo while working |
 | 점심 | 50 at 12:00–12:40 | big restaurant open | 40 s | sits at a free outdoor table, eats a 정식 (free) |
 | 업무 | 40 | bag has room and a v4 hint target exists | 20–60 s | carries, sells, fills the pantry, follows his own navigator |
-| 저녁 | 40 from 20:00 | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
-| 수금 | 35 | no courier and ≥ 300 coins on one pad | one pad | — |
+| 저녁 | 40 from 20:00 (**CODE-1 tuned: 30**, so the day's 업무 still beats it) | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
+| 수금 | 35 (**CODE-1 tuned: 45**) | no courier and ≥ 300 (**tuned: 200**) coins on one pad | one pad | — |
 | 기차 구경 | 30 | a train arrives at ours within 20 s and he is ≤ 1,500 px away | arrival + loop | walks to the platform, waves |
 | 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
 | 사무실 | 20 (+30 08–10 h with a new paper, +30 with ≥ 2 unread letters) | office built, **bag empty** | 30–60 s | walks in (shell fades), sits (`sit_idle`), reads the paper (`sit_read`), stamps a letter (`sit_write`) |
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
 | 콩이 | 15 | dog within 800 px | 15 s | `DogPlay` pet / throw |
+(CODE-1) Variety: an activity that ran to its maximum waits `AGAIN` s before it is chosen again (collect 10, train 45,
+chat 45, office 120, rest 60, dog 90; chores 0), and after `pilot.breakAfter` 150 s of chores (급한 일 / 업무) both wait
+`pilot.breakFor` 20 s — a 10-minute mock day with a chore always waiting changes activity 22 times over 5 kinds
+(`pilot.test.mjs`); 수금 picks the till worth the walk (coins / (1 + distance / 800 px)).
 Agenda weights by hour (`pilot.agenda`, editable): 07–09 office ×1.5, 09–12 chores ×1.3, 12–13 lunch, 13–17 chores +
 one train watch, 17–20 social ×1.5, 20–07 evening. Before the day clock starts (no station) the agenda cycles by game minutes.
 
@@ -749,14 +760,14 @@ templates (20), letters (10 templates × body + 2 buttons), 관망 captions per 
 ## 13. Budgets
 
 ### 13.1 Files (the first wall) — **P0 file diet before any new art**
-| Step | Files |
-|---|---|
-| today (`dist/artifact_files.json`) | 491 + page |
-| audio sprites: one-shot sfx of `audio` (42 files incl. loops), `audio2` (26), `audio3` (19) → one sprite mp3 + JSON per fragment (`tools/build/audio_sprite.py`, ffmpeg concat, 50 ms gaps; `Audio.js` plays `playAudioSprite`; loops and music stay files) | ≈ −65 |
-| portrait atlas (`tools/build/portrait_atlas.py`; measure the real count at P0) | ≈ −40…−52 |
-| ui4 (13 PNG + atlas) shipped as 1 page + JSON | −12 vs naive |
-| v4.2 new art (`CONTRACT_V42`: 33 shipped files after `chief_fx` + `ui5` pack into `v42_core`) + reused art (civic bank 3, logistics 15, cargo sleigh 3, ui4 page 3, audio6 subset 5) | ≈ +62 |
-| **result** | **≈ 430–445** (gate: build fails above 480; v5 keeps ≥ 60 headroom) |
+| Step | Files | CODE-1 measured (`build_artifact.mjs --webp`, 2026-10-16) |
+|---|---|---|
+| today (`dist/artifact_files.json`) | 491 + page | 491 |
+| audio sprites: one-shot sfx of `audio` (42 files incl. loops), `audio2` (26), `audio3` (19) → one sprite mp3 + JSON per fragment (`tools/build/audio_sprite.py`, ffmpeg concat, 50 ms gaps; `Audio.js` plays `playAudioSprite`; loops and music stay files) | ≈ −65 | −68: 36 + 24 + 11 one-shots → 3 sprites (`<frag>/sfx_sprite.mp3`, offsets in the copied manifest, 60 ms gaps); `Assets.sliceSprite` cuts one AudioBuffer per key into the audio cache, so `Audio.play(key)` is unchanged |
+| portrait atlas (`tools/build/portrait_atlas.py`; measure the real count at P0) | ≈ −40…−52 | −48: 53 portraits → 5 pages (characters, villagers, villagers2, villagers3, workers; frame lists embedded in the manifests) |
+| ui4 (13 PNG + atlas) shipped as 1 page + JSON | −12 vs naive | 0 (CODE-1 does not load ui4; CODE-2's `v42_core` page carries the panel icons) |
+| v4.2 new art (`CONTRACT_V42`: 33 shipped files after `chief_fx` + `ui5` pack into `v42_core`) + reused art (civic bank 3, logistics 15, cargo sleigh 3, ui4 page 3, audio6 subset 5) | ≈ +62 | +10 reused so far (`civic`, `logistics`, `vehicles` as late fragments with `USED_ONLY`: bank 2, centre + racks 6, sleigh 2); the new art is CODE-2's |
+| **result** | **≈ 430–445** (gate: build fails above 480; v5 keeps ≥ 60 headroom) | **386** before the new art (≈ 448 after CODE-2's +62) |
 
 ### 13.2 Textures (Phaser source-sum, the v4 probe; must ≤ 455 MiB everywhere)
 | View | v4.1 | v4.2 adds (estimate) | Gate |
@@ -769,6 +780,12 @@ templates (20), letters (10 templates × body + 2 buttons), 관망 captions per 
 `Residency.REGIONS` += `office`, `bank`, `depot` (+ `officeInside`, `depotInside` acquired only by a reveal), transient
 `ui4@office`.
 
+CODE-1 measured (noisy, relative only; `shots_v42.mjs` tour from the 46-min save, Residency source-sum including what
+the earlier views left resident): plaza 366, carrying + 길 안내 384, station / loops / consist 376, office + panel 376,
+bank revealed 381, **depot revealed 412 (peak)**, sleigh / 관망 407–410 MiB — every view under the 455 hard limit with
+placeholder art; the per-view gates (≤ 331 / 345 / 340) need the settled residency probe (`texbudget.mjs`) in CODE-2.
+Plaza display objects 1,014–1,237 (gate 1,700).
+
 ### 13.3 Logic, objects, draw calls
 | Item | Budget (fixed-step bench, average ms/tick) |
 |---|---|
@@ -778,7 +795,7 @@ templates (20), letters (10 templates × body + 2 buttons), 관망 captions per 
 | RailPath (table lookups) + Train view | ≤ +0.02 over v4.1 |
 | depot sim + sleigh + buyers (analytic when far) | ≤ 0.08 near, ≤ 0.01 far |
 | pilot (when on) | ≤ 0.05 (route requests reuse the navigator cache) |
-| **v4.2 total** | **≤ 0.25** |
+| **v4.2 total** | **≤ 0.25** (CODE-1, loaded machine: 0.11 on the 46-min save, 0.19 with office + bank + depot + staff, 0.17 + 관망; aura 0.03–0.04, nav 0.04 while carrying, office 0.05–0.08) |
 Display objects: the plaza already misses its 1,700 gate (1,950 day); **P0 bakes each pile's items into one image** (v3.5
 measured 849 pile item images) and v4.2 may add ≤ 60 in the plaza → gate ≤ 1,700 again. Draw calls ≤ 12 (no new blend
 modes; the depot interior adds ≤ 3 pages in one view).
@@ -874,6 +891,7 @@ modes; the depot interior adds ≤ 3 pages in one view).
 | first-20-min request log | — | identical up to the first sale, one extra page after |
 | village complete / 5 shops / 읍 | 20.2 / 37.8 / 47.7 (smart) | ±5 % / ±5 % / ≤ +5 % |
 | longest wait after tower_east | 3.0 | ≤ 3.0 |
+| **CODE-1 measured** (`review_gameplay_sim.mjs --v4`, fresh game, fixed step; v4.1 = the HEAD copy, same machine) | smart v4.1: complete 19.8, tower_east 20.1, station 22.1, 5 shops 38.7, 읍 48.2, longest gap 5.2 | smart v4.2 (final rules; the bot keeps the 읍 money before v4.2 extras): complete **20.2**, tower_east 20.2, station 22.7, 5 shops **39.5 (+2.1 %)**, 읍 **46.7 (−3.1 %)**, longest gap 1.9 (an earlier build whose bot bought the office before 읍: 읍 51.0); arrow v4.2: complete 21.0, tower_east 21.1, station 23.4, 5 shops **39.7**, 읍 **47.8**, gap 2.6 (v4.1 arrow, `v4_verify.md`: 21.1 / 40.8 / 50.3); 0 stuck, 0 errors in every run |
 | §4.5 stock targets | — | all |
 | visitors per game minute | v4.1 | ±10 % |
 | errors / stuck | 0 / 0 | 0 / 0 |

@@ -238,7 +238,7 @@ try {
   await sleep(1200);
   const after = await ev(() => { const c = window.__FV.civic(); return c && c.hall ? { settlers: c.settlers, tax: c.hall.tax, am: c.amenities.slice().sort(), cap: window.__FV.scene.popCap() } : null; });
   step('8 reload keeps settlers, the tax box, decor and the hall', after && after.settlers === before.settlers && after.tax >= before.tax && after.tax <= before.tax + 15 && JSON.stringify(after.am) === JSON.stringify(before.am) && after.cap === before.cap, { before, after });
-  step('8 saved as version 6', before.v === 6, before.v);
+  step('8 saved as version 6+ (v4.2 writes 7)', before.v >= 6, before.v);
   for (const f of ['v35_save_12min.json', 'v35_save_38min.json']) {
     const raw = fs.readFileSync(path.join(FIX, f), 'utf8');
     const j = JSON.parse(raw);
@@ -250,7 +250,7 @@ try {
     const posOk = !j.player || j.player.x === undefined || (Math.abs(s8.p.x - j.player.x) <= 2 && Math.abs(s8.p.y - j.player.y) <= 2);
     const sitesOk = Object.keys(j.sites || {}).every((k) => s8.sites[k] && s8.sites[k].b === j.sites[k].b);
     const again = await ev(() => { window.__FV.save(); return JSON.parse(localStorage.getItem('frostVillage.save.v1')); });
-    step('8 ' + f + ': the chief and every building stay where they were (v' + j.v + ' -> v6)', posOk && sitesOk && s8.west && again.v === 6 && s8.coins >= j.coins - 5, { player: s8.p, was: j.player && { x: j.player.x, y: j.player.y }, sites: Object.keys(j.sites || {}).length });
+    step('8 ' + f + ': the chief and every building stay where they were (v' + j.v + ' -> v6+)', posOk && sitesOk && s8.west && again.v >= 6 && s8.coins >= j.coins - 5, { player: s8.p, was: j.player && { x: j.player.x, y: j.player.y }, sites: Object.keys(j.sites || {}).length });
   }
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));

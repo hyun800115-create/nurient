@@ -53,10 +53,19 @@ export class Workshop extends Station {
       x: this.inPad.x + 26, y: this.inPad.y + 18,
       accepts: (ty) => this.inputTypes.indexOf(ty) >= 0,
       room: (ty) => this.roomFor(ty),
-      prio: () => PRIO.INPUT,
+      // ((v4.2 F2) after village complete an input is urgent only while nearly empty: a far workshop no longer
+      //  takes every goods load the shelves wait for)
+      prio: (ty) => this.inputPrio(ty),
       feed: (ch) => this.feedFrom(ch),
     };
     if (gs.logistics) gs.logistics.add(this.sink);
+  }
+
+  inputPrio(ty) {
+    const v42 = this.gs.v42, P = BALANCE.v42 && BALANCE.v42.porters;
+    if (!v42 || !v42.frules || !P) return PRIO.INPUT;
+    const max = Math.max(1, this.bal.inputMax), have = max - this.roomFor(ty);
+    return have < max * (Number(P.inputUrgentBelow) || 0.25) ? PRIO.INPUT : (Number(P.inputCalmPrio) || 42);
   }
 
   /** how many more of `type` the input pad takes (items flying in counted) */

@@ -65,7 +65,8 @@ export class Growth {
     this.happyList = [];
     const hp = s.happy && typeof s.happy === 'object' ? s.happy : null;
     if (hp && hp.n > 0) { const n = Math.min(200, Math.floor(hp.n)), mean = Math.max(0, Math.min(1, (Number(hp.sum) || 0) / Math.max(1, hp.n))); for (let i = 0; i < n; i++) this.happyList.push(mean); }
-    this.porterN = Math.max(0, Math.min(2, Math.floor(Number(s.porters) || 0)));
+    // ((v4.2) 역 짐꾼 3 / 4 once the 물류창고 stands)
+    this.porterN = Math.max(0, Math.min(4, Math.floor(Number(s.porters) || 0)));
     this.shops = {};                  // lotId -> Shop
     this.houses = {};                 // lotId -> HouseLot
     this.porters = [];
@@ -475,7 +476,9 @@ export class Growth {
     const mean = this.happyList.reduce((a, b) => a + b, 0) / this.happyList.length;
     // (v4-C) the town hall and the decor make the village happier (Civic.happyBonus, capped by civic.happyCap)
     const bonus = this.gs.civic ? this.gs.civic.happyBonus() : 0;
-    return Math.min(100, Math.round(base + (100 - base) * mean) + bonus);
+    // ((v4.2) answered letters, the snowman contest: + up to 5)
+    const b42 = this.gs.v42 && this.gs.v42.news ? this.gs.v42.news.happyBonus() : 0;
+    return Math.min(100, Math.round(base + (100 - base) * mean) + bonus + b42);
   }
 
   // ================================================================== station porters (§8.5)

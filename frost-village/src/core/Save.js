@@ -271,6 +271,7 @@ export function sanitizeV42(raw) {
     if (Array.isArray(lt.inbox)) o.letters.inbox = lt.inbox.filter((r) => Array.isArray(r) && r.length >= 4 && typeof r[1] === 'string' && TPL.test(r[1])).slice(-6).map((r) => [count(r[0], 1e9), r[1], Math.max(0, Math.min(3, Math.floor(num(r[2], 0)))), count(r[3], 1e6)]);
     if (Array.isArray(lt.once)) o.letters.once = Array.from(new Set(lt.once.filter((k) => typeof k === 'string' && TPL.test(k)))).slice(0, 16);
     if (lt.nextT !== undefined) o.letters.nextT = Math.max(0, Math.min(1e6, num(lt.nextT, 0)));
+    if (lt.happy !== undefined) o.letters.happy = count(lt.happy, 99);
     o.up = {};
     if (isObj(raw.up)) for (const k of LINES5) if (raw.up[k] === 1 || raw.up[k] === true) o.up[k] = 1;
     o.p2 = Array.isArray(raw.p2) ? Array.from(new Set(raw.p2.filter((k) => LINES5.indexOf(k) >= 0))).slice(0, 5) : [];
@@ -291,6 +292,8 @@ export function sanitizeV42(raw) {
     o.seen.cheer = count(sn.cheer, 99);
     for (const k of ['p2', 'up', 'big', 'p34', 'sl2']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
     if (isObj(raw.full)) { o.full = {}; for (const k of LINES5) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
+    // (partial payments on the offered upgrade pads: no coin is lost over a reload)
+    if (isObj(raw.offerPaid)) { o.offerPaid = {}; let n = 0; for (const k in raw.offerPaid) { if (n >= 8) break; if (/^[a-z0-9_]{1,24}$/.test(k)) { const c = count(raw.offerPaid[k], 1e6); if (c > 0) { o.offerPaid[k] = c; n++; } } } }
     return o;
   } catch (e) { return null; }
 }

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Office Sounds</title>
+<style>
+:root{--bg:#F4F7FB;--card:#FFF8EC;--ink:#2B2F3A;--accent:#2CB7A8;--muted:#6b7280}
+@media (prefers-color-scheme:dark){:root{--bg:#1b2130;--card:#262e40;--ink:#eef2f8;--accent:#43C9B8;--muted:#9aa3b2}}
+body{margin:0;padding:16px;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+h1{font-size:22px;margin:4px 0} p{color:var(--muted);margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px;margin-top:12px}
+.card{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:8px 10px}
+.card b{display:block;font-size:14px;overflow-wrap:anywhere} .card small{color:var(--muted)}
+button{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;flex:none}
+button.on{background:#F28C28}
+</style></head><body>
+<h1>촌장 사무실 · 고리 선로 소리 (audio7)</h1>
+<p>게임과 같은 기본 볼륨, 같은 방식(하나의 스프라이트에서 잘라 쓰기)으로 재생합니다. 반복음은 한 번 더 누르면 멈춰요.
+Open through the game's local web server (http://.../docs/previews/audio7_preview.html).</p>
+<div class="grid"><div class='card'><button data-key='sfx_typewriter' data-loop='0'>&#9654;</button><div><b>sfx_typewriter</b><small>0.60s &middot; vol 0.617</small></div></div>
+<div class='card'><button data-key='sfx_typewriter_2' data-loop='0'>&#9654;</button><div><b>sfx_typewriter_2</b><small>0.60s &middot; vol 0.944</small></div></div>
+<div class='card'><button data-key='sfx_typewriter_3' data-loop='0'>&#9654;</button><div><b>sfx_typewriter_3</b><small>0.60s &middot; vol 0.447</small></div></div>
+<div class='card'><button data-key='sfx_switch_clack' data-loop='0'>&#9654;</button><div><b>sfx_switch_clack</b><small>0.40s &middot; vol 1.0</small></div></div>
+<div class='card'><button data-key='sfx_wheel_squeal' data-loop='1'>&#9654;</button><div><b>sfx_wheel_squeal</b><small>1.20s &middot; vol 0.071 &middot; loop</small></div></div>
+<div class='card'><button data-key='sfx_mailbox_flag' data-loop='0'>&#9654;</button><div><b>sfx_mailbox_flag</b><small>0.30s &middot; vol 0.861</small></div></div>
+<div class='card'><button data-key='sfx_coin_sack' data-loop='0'>&#9654;</button><div><b>sfx_coin_sack</b><small>0.50s &middot; vol 0.495</small></div></div>
+<div class='card'><button data-key='sfx_coin_sack_2' data-loop='0'>&#9654;</button><div><b>sfx_coin_sack_2</b><small>0.50s &middot; vol 0.501</small></div></div>
+<div class='card'><button data-key='sfx_coin_sack_3' data-loop='0'>&#9654;</button><div><b>sfx_coin_sack_3</b><small>0.50s &middot; vol 0.473</small></div></div>
+<div class='card'><button data-key='amb_office' data-loop='1'>&#9654;</button><div><b>amb_office</b><small>24.00s &middot; vol 0.422 &middot; loop</small></div></div></div>
+<script>
+const BASE='../../assets/audio7/';let ctx,man,sprite,loopBuf;const playing={};
+function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}
+async function dec(u){const ab=await (await fetch(u)).arrayBuffer();return await new Promise((ok,no)=>ac().decodeAudioData(ab,ok,no))}
+async function init(){if(man)return;man=await (await fetch(BASE+'manifest.json')).json();sprite=await dec('../../assets/'+man.audioSprite.file)}
+function slice(k){const [st,du]=man.audioSprite.keys[k],sr=sprite.sampleRate,a=Math.floor(st*sr),n=Math.ceil((du+0.03)*sr);
+ const b=ac().createBuffer(1,n,sr);b.getChannelData(0).set(sprite.getChannelData(0).subarray(a,a+n));return b}
+async function play(k,btn){await init();const a=man.audio[k];let b;
+ if(a.inSprite)b=slice(k);else{if(!loopBuf)loopBuf=await dec('../../assets/'+a.files[0]);b=loopBuf}
+ const s=ac().createBufferSource(),g=ac().createGain();s.buffer=b;s.loop=!!(a.loop||a.loopable);g.gain.value=a.volume;
+ s.connect(g).connect(ac().destination);s.start();if(s.loop){playing[k]=s;btn.classList.add('on')}}
+document.querySelectorAll('button').forEach(b=>b.onclick=async()=>{const k=b.dataset.key;
+ if(playing[k]){playing[k].stop();delete playing[k];b.classList.remove('on');return}
+ try{await play(k,b)}catch(e){document.body.insertAdjacentHTML('afterbegin','<p>'+e+' (open via http://)</p>')}});
+</script></body></html>

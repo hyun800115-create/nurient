@@ -15,6 +15,7 @@ import { buildCost } from '../entities/Site.js';
 import { HudV4 } from './UIv4.js';
 // ---- (v4.2) 관망 / 줍기 buttons, the navigator chip and edge badge, the 업무 chip, 새로워진 것, the train card
 import { HudV42 } from './UIv42.js';
+import { OfficePanel } from './OfficePanel.js';
 // ---- (v4-C) the build menu's tabs
 import { CATALOG, TABS } from '../systems/Civic.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
@@ -111,6 +112,7 @@ export class UI extends Phaser.Scene {
     // ---- (v4-B) the neighbour-town chips and panels (hidden until the station opens)
     this.hud4 = new HudV4(this);
     this.hud42 = new HudV42(this);
+    this.officePanel = new OfficePanel(this);     // (v4.2) 촌장 사무실 화면
 
     this.layout();
     this.scale.on('resize', this.onResize, this);
@@ -929,7 +931,10 @@ export class UI extends Phaser.Scene {
       add(this.add.text(cx, cy - 452, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
       const row = (y, label, value, style, cb, icon) => {
         if (icon) { const ic = add(Assets.image(this, cx - 200, y, icon).setOrigin(0.5)); ic.setScale(54 / Math.max(ic.frame.realWidth, 1)); }
-        add(this.add.text(cx - 160, y, label, TXT(30, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
+        const lt = add(this.add.text(cx - 160, y, label, TXT(30, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
+        // ((v4.2) a long label — 관망 중 돈 쓰기, English — wraps to two smaller lines instead of running under the button)
+        const maxW = 180;
+        if (lt.width > maxW) { lt.setFontSize(24); lt.setWordWrapWidth(maxW, true); if (lt.height > 72) lt.setFontSize(20); }
         const b = add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
         if (this.settingsRows) this.settingsRows.push({ label, value, b });
         return b;
@@ -1108,6 +1113,7 @@ export class UI extends Phaser.Scene {
     this.updateChatButton(dt);
     if (this.hud4) this.hud4.update(dt);
     if (this.hud42) this.hud42.update(dt);
+    if (this.officePanel) this.officePanel.update(dt);
     this.updateBuildThumbs(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }

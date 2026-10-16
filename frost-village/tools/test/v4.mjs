@@ -296,7 +296,7 @@ try {
     let bytes = 0; try { bytes = (localStorage.getItem('frostVillage.save.v1') || '').length; } catch (e) { /* */ }
     return { bytes, KB: +(bytes / 1024).toFixed(2), ms: +ms.toFixed(2) };
   });
-  step('8 a full v4 save <= 6 KB and <= 2 ms (§16.4)', sv.bytes > 0 && sv.bytes <= 6144 && sv.ms <= 2, sv);
+  step('8 a full v4 save <= 10 KB and <= 2 ms (§16.4; v4.2 save v7 adds the v42 block: docs/v42_plan.md §10 gate 10 KB)', sv.bytes > 0 && sv.bytes <= 10240 && sv.ms <= 2, sv);
   // reload in the middle: save, reload, nothing lost
   const before =await ev(() => { window.__FV.save(); const g = window.__FV.v4.growth(); return { shops: Object.keys(g.shops).length, done: g.done.length, rank: window.__FV.v4.rank().level, coins: window.__FV.state().coins }; });
   titleFrom = log.warnings.length;     // (the title screen's own pictures are not this test's business)

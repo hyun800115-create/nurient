@@ -134,6 +134,7 @@ export class HudV42 {
   }
 
   update(dt) {
+    if (this.trainCard) { this.tcT -= dt; if (this.tcT <= 0) { this.tcT = 0.25; this.fillTrainCard(); } }
     const ui = this.ui, gs = this.gs, v = this.v42;
     this.t += dt;
     if (!v || !gs || !gs.player) return;
@@ -251,8 +252,62 @@ export class HudV42 {
     ui.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
   }
 
+  // ------------------------------------------------------------------ 열차 카드 (tap the train)
+  openTrainCard() {
+    const ui = this.ui, W = ui.W, H = ui.H, gs = this.gs, nb = gs && gs.v4;
+    if (!nb || !nb.rail || this.trainCard) return;
+    if (this.card || ui.panelOpen || ui.v4PanelOpen) return;
+    const c = ui.add.container(0, 0).setDepth(84);
+    const pw = 600, ph = 400, cx = W / 2, cy = H - 300 - View.safeBottom - ph / 2 + 60;
+    const bg = panel(ui, cx, cy, 'ui_panel', pw, ph).setOrigin(0.5).setInteractive();
+    c.add(bg);
+    c.add(ui.add.text(cx, cy - ph / 2 + 46, t('trainCard'), TXT(32, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
+    // the consist as little chips, engine first
+    const units = nb.rail.consist();
+    const names = { train_engine: 'car_engine', train_coach: 'car_coach0', train_boxcar: 'car_box0', train_flatcar: 'car_flat' };
+    const cw = Math.min(124, (pw - 60) / units.length - 8);
+    units.forEach((u, i) => {
+      const x = cx - ((units.length - 1) * (cw + 8)) / 2 + i * (cw + 8), y = cy - ph / 2 + 112;
+      const col = u.key === 'train_engine' ? 0xe0544a : u.key === 'train_coach' ? 0x7fb2ff : u.key === 'train_boxcar' ? 0x5f9a5a : 0xa98a62;
+      const g = ui.add.graphics();
+      g.fillStyle(col, 1); g.fillRoundedRect(x - cw / 2, y - 22, cw, 44, 10);
+      g.fillStyle(0x2b2f3a, 1); g.fillCircle(x - cw / 4, y + 24, 7); g.fillCircle(x + cw / 4, y + 24, 7);
+      c.add(g);
+      c.add(ui.add.text(x, y, t(names[u.key] || 'car_engine'), TXT(17, '#ffffff', '#2b2f3a', 4, '900')).setOrigin(0.5));
+    });
+    this.tcLines = [0, 1, 2].map((k) => { const tx = ui.add.text(cx - pw / 2 + 48, cy - ph / 2 + 190 + k * 52, '', TXT(25, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5); c.add(tx); return tx; });
+    c.add(ui.add.text(cx, cy + ph / 2 - 34, t('tapClose'), TXT(18, '#7a8494', '#ffffff', 0, '700')).setOrigin(0.5));
+    bg.on('pointerup', () => this.closeTrainCard());
+    this.trainCard = c;
+    this.tcT = 0;
+    this.fillTrainCard();
+    c.setAlpha(0);
+    ui.tweens.add({ targets: c, alpha: 1, duration: 160 });
+    Audio.play('sfx_click', { volume: 0.5 });
+  }
+  fillTrainCard() {
+    const gs = this.gs, nb = gs && gs.v4, r = nb && nb.rail;
+    if (!this.trainCard || !r) return;
+    const F = this.v42 && this.v42.freight;
+    const riders = r.phase === 'toOurs' || r.phase === 'atTown' ? nb.onBoard.length : 0;
+    const crates = F ? F.aboard() : 0, cap = F ? F.cap() : 56;
+    const stop = (k) => t(k === 'ours' ? 'stn_ours' : 'stn_town');
+    let l3;
+    if (r.phase === 'atOurs' || r.phase === 'atTown') l3 = t('trainCardDwell', { stop: stop(r.phase === 'atOurs' ? 'ours' : 'town'), s: Math.ceil(r.dur(r.phase) - r.t) });
+    else if (r.path && (r.path.wrap(r.m) < r.path.loopLen || r.path.wrap(r.m - r.path.sTownLoop) < r.path.loopLen)) l3 = t('trainCardLoop');
+    else l3 = t('trainCardNext', { stop: stop(r.phase === 'toOurs' ? 'ours' : 'town'), s: Math.ceil(r.untilArrival()) });
+    const L = [t('trainCardRiders', { n: riders }), t('trainCardCrates', { n: crates, cap }), l3];
+    this.tcLines.forEach((tx, i) => { if (tx.text !== L[i]) tx.setText(L[i]); });
+  }
+  closeTrainCard() {
+    const ui = this.ui, c = this.trainCard;
+    if (!c) return;
+    this.trainCard = null;
+    ui.tweens.add({ targets: c, alpha: 0, duration: 120, onComplete: () => c.destroy() });
+  }
+
   state() {
-    return { obs: this.obsBtn.visible, pick: this.pickBtn.visible, chip: this.navChip.visible ? this.navText.text : null, edge: this.edge.visible, caption: this.obsCap.visible ? this.obsText.text : null, count: this.countChip.visible ? this.countText.text : null, work: this.workChip.visible, card: !!this.card };
+    return { trainCard: !!this.trainCard, obs: this.obsBtn.visible, pick: this.pickBtn.visible, chip: this.navChip.visible ? this.navText.text : null, edge: this.edge.visible, caption: this.obsCap.visible ? this.obsText.text : null, count: this.countChip.visible ? this.countText.text : null, work: this.workChip.visible, card: !!this.card };
   }
 }
 

@@ -29,14 +29,16 @@ const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big|wave_crash|
 export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_village)$/;
 // (v4-C2) fragments of which the game uses only some keys yet; the rest is never loaded and the artifact build
 // leaves those files out (tools/build/build_artifact.mjs reads this line: keep it one JSON-like object)
-export const USED_ONLY = { "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
+export const USED_ONLY = { "civic": ["civ_bank"], "logistics": ["lgx_center_a", "lgx_center_b", "lgx_center_c", "lgx_center_d", "lgx_items"], "vehicles": ["veh_cargo_sleigh"], "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
 // (v2 read only the staff points of the buildings fragment; v3 loads all of it)
 export const MANIFEST_ONLY_FRAGMENTS = [];
 // (v4-A) fragments that are never loaded at boot: Assets.loadFragment() fetches them while the village
 // plays (docs/v4_plan.md §11.6). The artifact build packages them too (tools/build/build_artifact.mjs).
 // (v4-C2) + voice (눈꽃말: each voice type's sprite when its first resident speaks), audio4 (the title's ferry horn and
 // gull), title + title_bake (the living title: src/title/TitleAssets.js reads them itself; Assets.js never loads them)
-export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2', 'voice', 'audio4', 'title', 'title_bake'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
+// (v4.2) + civic (서리 은행: the bank cutaway only), logistics (서리 물류창고: the centre + rack items), vehicles (the cargo
+// sleigh only): USED_ONLY keeps the rest of those folders out of memory and out of the artifact
+export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2', 'voice', 'audio4', 'title', 'title_bake', 'civic', 'logistics', 'vehicles'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
 const BASE = 'assets/';
 // made for v4 (the spring ending): not used yet, never loaded
 const V3_ONLY = /^(bgm_spring)/;
@@ -137,6 +139,7 @@ export const Assets = {
       Object.assign(m.nineSlice, j.nineSlice || {});
       Object.assign(m.audio, j.audio || {});
       for (const k in j.audio || {}) this.audioFrag[k] = f;
+      if (j.audioSprite && j.audioSprite.file) this.sprites[f] = j.audioSprite;
       Object.assign(m.audioGroups, j.audioGroups || {});
       if (j.layouts && typeof j.layouts === 'object') Object.assign(this.layouts, j.layouts);
       // (v3.5) workers manifest: hire order of the looks of each profession (base first, then variants)
@@ -328,6 +331,7 @@ export const Assets = {
     for (const k in sp) if (!m.sprites[k]) { m.sprites[k] = sp[k]; this.cache.delete(k); }
     for (const k in j.nineSlice || {}) if (!m.nineSlice[k]) m.nineSlice[k] = j.nineSlice[k];
     for (const k in j.audio || {}) if (!m.audio[k]) { m.audio[k] = j.audio[k]; this.audioFrag[k] = f; }
+    if (j.audioSprite && j.audioSprite.file && !this.sprites[f]) this.sprites[f] = j.audioSprite;
     for (const k in j.audioGroups || {}) if (!m.audioGroups[k]) m.audioGroups[k] = j.audioGroups[k];
     this.lateManifest = this.lateManifest || {};
     this.lateManifest[f] = j;
@@ -343,6 +347,8 @@ export const Assets = {
     for (const k of this.lateAudio) {
       if (this.queued.has('audio:' + k) || this.failed.has(k) || !this.m.audio[k]) continue;
       if (this.game && this.game.cache.audio.exists(k)) continue;
+      const sp = this.m.audio[k].inSprite;
+      if (typeof sp === 'string' && this.sprites[sp]) { if (this.queueSprite(load, sp)) n++; continue; }
       this.queued.add('audio:' + k);
       const files = (this.m.audio[k].files || []).map((f) => BASE + f);
       if (files.length) { load.audio(k, files); n++; }
@@ -495,9 +501,45 @@ export const Assets = {
       const a = m.audio[k];
       if (filter && !filter(k, a)) continue;
       if (this.isUnused(k)) continue;
+      if (typeof a.inSprite === 'string' && this.sprites[a.inSprite]) { this.queueSprite(load, a.inSprite); continue; }
       const files = (a.files || []).map((f) => BASE + f);
       if (files.length) load.audio(k, files);
     }
+  },
+
+  // (v4.2, the file diet) the artifact ships each fragment's one-shot sounds as one sprite mp3
+  // (tools/build/build_artifact.mjs audioSprites): it loads once under '__sprite_<frag>' and is cut into one
+  // AudioBuffer per key in the audio cache, so Audio.play(key) / exists(key) are unchanged. Dev runs load the files.
+  sprites: {},          // fragment -> { file, keys: { key: [start, dur] } }
+  queueSprite(load, frag) {
+    const sp = this.sprites[frag], key = '__sprite_' + frag;
+    if (!sp || this.queued.has('audio:' + key) || this.failed.has(key)) return false;
+    if (this.game && this.game.cache.audio.exists(key)) { this.sliceSprite(frag); return false; }
+    this.queued.add('audio:' + key);
+    const onDone = (k) => { if (k !== key) return; load.off('filecomplete', onDone); this.sliceSprite(frag, load.systems && load.systems.game); };
+    load.on('filecomplete', onDone);
+    load.audio(key, [BASE + sp.file]);
+    return true;
+  },
+  sliceSprite(frag, game) {
+    const g = this.game || game, sp = this.sprites[frag], key = '__sprite_' + frag;
+    if (!g || !sp || sp.cut) return;
+    const buf = g.cache.audio.get(key), ctx = g.sound && g.sound.context;
+    // (not decoded yet: the loader adds to the cache right after the event in some versions; try again next frame)
+    if (!buf || typeof buf.getChannelData !== 'function' || !ctx) { if (!buf && (sp.tries = (sp.tries || 0) + 1) < 120) setTimeout(() => this.sliceSprite(frag, g), 50); return; }
+    sp.cut = true;
+    const sr = buf.sampleRate, nch = buf.numberOfChannels, tail = 0.03;
+    for (const k in sp.keys) {
+      if (g.cache.audio.exists(k)) continue;
+      const [st, dur] = sp.keys[k];
+      const a = Math.max(0, Math.floor(st * sr)), n = Math.max(1, Math.min(buf.length - a, Math.ceil((dur + tail) * sr)));
+      try {
+        const out = ctx.createBuffer(nch, n, sr);
+        for (let c = 0; c < nch; c++) out.getChannelData(c).set(buf.getChannelData(c).subarray(a, a + n));
+        g.cache.audio.add(k, out);
+      } catch (e) { this.failed.add(k); }
+    }
+    g.cache.audio.remove(key);
   },
 
   /** in-game music & ambience load after the title (in the Game scene) so the title appears sooner */
@@ -549,6 +591,7 @@ export const Assets = {
   /** after all files loaded: create animations */
   finalize(game) {
     this.game = game;
+    for (const f in this.sprites) if (game.cache.audio.exists('__sprite_' + f)) this.sliceSprite(f);
     const tex = game.textures;
     // spritesheet anims (key = sheet key)
     for (const k in this.m.spritesheets) this.sheetAnims(game, k);

@@ -1,5 +1,5 @@
 {
- "version": 1,
+ "version": 2,
  "generator": "tools/blender/tr2_render.py + tr2_pack.py (docs/CONTRACT_V42.md section AK)",
  "conventions": {
   "ppu": 64,
@@ -26,12 +26,16 @@
   {
    "key": "train_flatcar",
    "png": "train2/train_flatcar.png",
-   "json": "train2/train_flatcar.json"
+   "json": "train2/train_flatcar.json",
+   "notes": "the flat car + the live props of both loops (rail_fence_x / _end, rail_switch_stand, rail_water_tower): resident with the train"
   },
   {
    "key": "train2_rails",
    "png": "train2/train2_rails.png",
-   "json": "train2/train2_rails.json"
+   "json": "train2/train2_rails.json",
+   "bakeOnly": true,
+   "lossless": true,
+   "notes": "ground decals only (rail_loop_ours / rail_loop_town): bake them into the ground with the rail_x tiles, then release the page (RoadPaint BAKE_ONLY). Keep it lossless (no WebP / palette): the decal is an exact difference matte over the tiles."
   }
  ],
  "sprites": {
@@ -193,7 +197,7 @@
      -320,
      -160
     ],
-    "leftmost": [
+    "far": [
      -320,
      -272
     ]
@@ -486,31 +490,32 @@
     "rail_switch_stand": {
      "lattice": [
       -1.2,
-      -0.8
+      -0.75
      ],
      "worldPx": [
-      2992,
-      1302.2
+      2995.2,
+      1300.6
      ],
-     "notes": "beside the switch toe on the land side, at the end of the two tie bars"
+     "blockM": 0.3,
+     "notes": "beside the switch toe on the land side at the end of the two tie bars, on the fence line (j -0.75): walkers on the 역 가는 길 (j -1) pass it like the fence; keep a blockM radius free of walkers"
     },
     "rail_water_tower": {
      "lattice": [
-      -6.0,
-      1.75
+      -8.0,
+      4.3
      ],
      "worldPx": [
-      2848,
-      1067
+      2883.2,
+      921.4
      ],
-     "notes": "optional, centre of the semicircle infield (1.6 m footprint fits inside the inner ballast edge, radius 1.6 m)"
+     "notes": "optional; BEHIND the loop on the sea side (not in the infield: there it hid the cars rounding the loop). Every track point under its body is drawn in front of it; its footprint >= 60 px on land, >= 0.7 cell from the ballast (checked by tr2_check / train2_phaser)"
     }
    },
    "matte": {
     "maxErr": 43.7,
-    "p999Err": 0.33,
-    "meanErr": 0.1119,
-    "infeasiblePx": 317,
+    "p999Err": 0.32,
+    "meanErr": 0.112,
+    "infeasiblePx": 318,
     "infeasibleMaxErr": 254.0,
     "repaintFrac": 0.8766
    },
@@ -662,7 +667,7 @@
      320,
      160
     ],
-    "leftmost": [
+    "far": [
      544,
      160
     ]
@@ -955,30 +960,31 @@
     "rail_switch_stand": {
      "lattice": [
       37.2,
-      -0.8
+      -0.75
      ],
      "worldPx": [
-      5449.6,
-      2531
+      5452.8,
+      2529.4
      ],
-     "notes": "beside the switch toe on the land side, at the end of the two tie bars"
+     "blockM": 0.3,
+     "notes": "beside the switch toe on the land side at the end of the two tie bars, on the fence line (j -0.75): walkers on the 역 가는 길 (j -1) pass it like the fence; keep a blockM radius free of walkers"
     },
     "rail_water_tower": {
      "lattice": [
-      42.0,
-      1.75
+      38.5,
+      4.3
      ],
      "worldPx": [
-      5920,
-      2603
+      5859.2,
+      2409.4
      ],
-     "notes": "optional, centre of the semicircle infield (1.6 m footprint fits inside the inner ballast edge, radius 1.6 m)"
+     "notes": "optional; BEHIND the loop on the sea side (not in the infield: there it hid the cars rounding the loop). Every track point under its body is drawn in front of it; its footprint >= 60 px on land, >= 0.7 cell from the ballast (checked by tr2_check / train2_phaser)"
     }
    },
    "matte": {
-    "maxErr": 41.42,
-    "p999Err": 0.33,
-    "meanErr": 0.0587,
+    "maxErr": 40.75,
+    "p999Err": 0.35,
+    "meanErr": 0.0586,
     "infeasiblePx": 278,
     "infeasibleMaxErr": 254.0,
     "repaintFrac": 0.8824
@@ -986,19 +992,19 @@
    "notes": "Balloon loop at 솔방울역 (rail_loop_town): the spring turnout at [37, 0] (long switch ties, switch blades + two tie bars reaching to the land side, closure rails, frog and guard rails; the straight route through the turnout is repainted), curves D -> T and C -> D (R 1.75 cells), the straight B -> C and the semicircle A -> B joining the straight main line at A. Same ballast / sleepers / rails / snow / shadow as rail_x. Draw on the ground layer AFTER the rail_x tiles in tilesUnder (plain rail_x, drawn exactly as RoadPaint draws them); pathPx = the loop centre line T -> D -> C -> B -> A in px from the anchor (for RailPath cross-checks)."
   },
   "rail_fence_x": {
-   "atlas": "train2_rails",
+   "atlas": "train_flatcar",
    "frame": "rail_fence_x",
    "anchor": [
     0.41667,
-    0.6
+    0.54286
    ],
    "anchorPx": [
     55,
-    72
+    57
    ],
    "frameSize": [
     132,
-    120
+    105
    ],
    "kind": "decor",
    "topPx": 54,
@@ -1057,19 +1063,19 @@
    }
   },
   "rail_fence_x_end": {
-   "atlas": "train2_rails",
+   "atlas": "train_flatcar",
    "frame": "rail_fence_x_end",
    "anchor": [
-    0.32143,
-    0.58333
+    0.25,
+    0.68966
    ],
    "anchorPx": [
-    27,
-    56
+    11,
+    40
    ],
    "frameSize": [
-    84,
-    96
+    44,
+    58
    ],
    "kind": "decor",
    "topPx": 38,
@@ -1083,19 +1089,19 @@
    }
   },
   "rail_switch_stand": {
-   "atlas": "train2_rails",
+   "atlas": "train_flatcar",
    "frame": "rail_switch_stand_idle_0",
    "anchor": [
-    0.37931,
-    0.625
+    0.38889,
+    0.71084
    ],
    "anchorPx": [
-    44,
-    75
+    28,
+    59
    ],
    "frameSize": [
-    116,
-    120
+    72,
+    83
    ],
    "kind": "prop",
    "topPx": 56,
@@ -1127,23 +1133,23 @@
    ]
   },
   "rail_water_tower": {
-   "atlas": "train2_rails",
+   "atlas": "train_flatcar",
    "frame": "rail_water_tower_idle",
    "anchor": [
-    0.33803,
-    0.62667
+    0.36948,
+    0.67315
    ],
    "anchorPx": [
-    96,
-    188
+    92,
+    173
    ],
    "frameSize": [
-    284,
-    300
+    249,
+    257
    ],
    "kind": "prop",
    "topPx": 170,
-   "notes": "Small wooden water tower for the loop infield (footprint 1.6 m, ~3.2 m): four braced timber legs, a round stave tank with iron hoops, a cone roof with snow, a ladder and a swinging spout. idle = spout raised; anim pour (6 f loop) = spout lowered, a water stream with drips and a splash in the trough.",
+   "notes": "Small wooden water tower beside the loop (footprint 1.6 m, ~3.2 m): four braced timber legs, a round stave tank with iron hoops, a cone roof with snow, a ladder and a swinging spout. idle = spout raised; pour_base = spout lowered (no water); anim pour (6 f loop) = the water stream with drips and a splash in the trough, shipped as small OVERLAY frames drawn over pour_base (same origin).",
    "footprint": [
     145,
     72
@@ -1162,6 +1168,7 @@
      -166
     ]
    },
+   "pourBase": "rail_water_tower_pour_base",
    "anims": {
     "pour": {
      "frames": [
@@ -1173,9 +1180,71 @@
       "rail_water_tower_pour_5"
      ],
      "fps": 10,
-     "repeat": -1
+     "repeat": -1,
+     "overlay": true,
+     "base": "rail_water_tower_pour_base"
     }
    },
+   "pourOverlay": {
+    "thresholdLevels": 6,
+    "frames": {
+     "rail_water_tower_pour_0": {
+      "bboxPx": [
+       77,
+       139,
+       141,
+       196
+      ],
+      "maxErr": 51.41
+     },
+     "rail_water_tower_pour_1": {
+      "bboxPx": [
+       65,
+       140,
+       141,
+       198
+      ],
+      "maxErr": 44.71
+     },
+     "rail_water_tower_pour_2": {
+      "bboxPx": [
+       65,
+       139,
+       143,
+       195
+      ],
+      "maxErr": 43.93
+     },
+     "rail_water_tower_pour_3": {
+      "bboxPx": [
+       65,
+       139,
+       143,
+       195
+      ],
+      "maxErr": 51.41
+     },
+     "rail_water_tower_pour_4": {
+      "bboxPx": [
+       77,
+       140,
+       142,
+       196
+      ],
+      "maxErr": 46.47
+     },
+     "rail_water_tower_pour_5": {
+      "bboxPx": [
+       77,
+       139,
+       144,
+       196
+      ],
+      "maxErr": 43.14
+     }
+    }
+   },
+   "usage": "idle: show frame. Pouring: set the tower sprite to pourBase (spout lowered) and play anim pour on a second sprite at the same position, origin and depth (+0.001): the pour frames are small trimmed overlays (water stream, drips, splash) whose sourceSize = frameSize, so they land exactly. Back to idle: hide the overlay, show frame.",
    "spoutPoint": [
     40,
     -33
@@ -1186,16 +1255,16 @@
   "train_coach": {
    "atlas": "train_coach",
    "frameSize": [
-    204,
-    188
+    206,
+    196
    ],
    "anchor": [
-    0.4951,
-    0.78723
+    0.5,
+    0.7449
    ],
    "anchorPx": [
-    101,
-    148
+    103,
+    146
    ],
    "dirs": [
     "S",
@@ -1272,11 +1341,11 @@
     ],
     "anchor": [
      0.37338,
-     0.60075
+     0.59701
     ],
     "anchorPx": [
      115,
-     161
+     160
     ],
     "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
    },
@@ -1287,42 +1356,42 @@
      "L": [
       [
        55,
-       39
+       38
       ],
       [
        55,
-       -39
+       -38
       ]
      ],
      "R": [
       [
        -55,
-       39
+       38
       ],
       [
        -55,
-       -39
+       -38
       ]
      ]
     },
     "SE": {
      "L": [
       [
-       94,
+       93,
        8
       ],
       [
-       -16,
-       -47
+       -15,
+       -46
       ]
      ],
      "R": [
       [
-       16,
-       47
+       15,
+       46
       ],
       [
-       -94,
+       -93,
        -8
       ]
      ]
@@ -1330,21 +1399,21 @@
     "E": {
      "L": [
       [
-       78,
+       76,
        -28
       ],
       [
-       -78,
+       -76,
        -28
       ]
      ],
      "R": [
       [
-       78,
+       76,
        28
       ],
       [
-       -78,
+       -76,
        28
       ]
      ]
@@ -1352,22 +1421,22 @@
     "NE": {
      "L": [
       [
-       16,
-       -47
+       15,
+       -46
       ],
       [
-       -94,
+       -93,
        8
       ]
      ],
      "R": [
       [
-       94,
+       93,
        -8
       ],
       [
-       -16,
-       47
+       -15,
+       46
       ]
      ]
     },
@@ -1375,32 +1444,27 @@
      "L": [
       [
        -55,
-       -39
+       -38
       ],
       [
        -55,
-       39
+       38
       ]
      ],
      "R": [
       [
        55,
-       -39
+       -38
       ],
       [
        55,
-       39
+       38
       ]
      ]
     }
    },
    "windowPoints": {
-    "S": [
-     [
-      0,
-      -34
-     ]
-    ],
+    "S": [],
     "SE": [
      [
       7,
@@ -1417,10 +1481,6 @@
      [
       -63,
       -76
-     ],
-     [
-      50,
-      -45
      ]
     ],
     "E": [
@@ -1457,7 +1517,25 @@
      [
       -7,
       -41
-     ],
+     ]
+    ],
+    "N": []
+   },
+   "endWindowPoints": {
+    "S": [
+     [
+      0,
+      -34
+     ]
+    ],
+    "SE": [
+     [
+      50,
+      -45
+     ]
+    ],
+    "E": [],
+    "NE": [
      [
       -50,
       -45
@@ -1474,68 +1552,97 @@
     "S": [
      [
       -30,
-      -36
-     ],
-     [
-      -30,
-      -118
+      -38
      ]
     ],
     "SE": [
      [
-      36,
-      -38
-     ],
-     [
-      -79,
-      -95
+      34,
+      -39
      ]
     ],
     "E": [
      [
-      81,
+      79,
       -62
      ],
      [
-      -81,
+      -79,
       -62
      ]
     ],
     "NE": [
      [
-      79,
-      -95
-     ],
-     [
-      -36,
-      -38
+      -34,
+      -39
      ]
     ],
     "N": [
      [
       30,
-      -118
-     ],
-     [
-      30,
-      -36
+      -38
      ]
     ]
+   },
+   "nightGlow": {
+    "windowK": 0.35,
+    "lampK": 0.5,
+    "endWindowK": 0.0,
+    "notes": "one fv_glow per windowPoints entry at windowK and per lampPoints entry at lampK; endWindowPoints (the end-door window between two coupled coaches) stay dark (0) or at most 0.15 on the last coach - stacked with both lanterns they make a white blob at every coupling. Hidden lamps are not listed."
+   },
+   "boundsPx": {
+    "S": [
+     -47,
+     -143,
+     47,
+     33
+    ],
+    "SE": [
+     -92,
+     -137,
+     92,
+     36
+    ],
+    "E": [
+     -98,
+     -115,
+     98,
+     14
+    ],
+    "NE": [
+     -92,
+     -137,
+     92,
+     36
+    ],
+    "N": [
+     -47,
+     -143,
+     47,
+     33
+    ]
+   },
+   "labelTopDir": {
+    "S": -149,
+    "SE": -143,
+    "E": -121,
+    "NE": -143,
+    "N": -149
    }
   },
   "train_boxcar": {
    "atlas": "train_boxcar",
    "frameSize": [
-    180,
+    176,
     172
    ],
    "anchor": [
     0.5,
-    0.82558
+    0.80814
    ],
    "anchorPx": [
-    90,
-    142
+    88,
+    139
    ],
    "dirs": [
     "S",
@@ -1616,16 +1723,16 @@
      "SW": "shadow_SW"
     },
     "frameSize": [
-     284,
-     260
+     280,
+     256
     ],
     "anchor": [
-     0.36268,
-     0.59615
+     0.36429,
+     0.59766
     ],
     "anchorPx": [
-     103,
-     155
+     102,
+     153
     ],
     "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
    },
@@ -1770,6 +1877,45 @@
      false
     ]
    },
+   "boundsPx": {
+    "S": [
+     -48,
+     -136,
+     48,
+     25
+    ],
+    "SE": [
+     -83,
+     -130,
+     83,
+     26
+    ],
+    "E": [
+     -85,
+     -112,
+     85,
+     8
+    ],
+    "NE": [
+     -83,
+     -130,
+     83,
+     26
+    ],
+    "N": [
+     -48,
+     -136,
+     48,
+     25
+    ]
+   },
+   "labelTopDir": {
+    "S": -142,
+    "SE": -136,
+    "E": -118,
+    "NE": -136,
+    "N": -142
+   },
    "doorAnim": {
     "open": "door_open",
     "close": "door_open reversed",
@@ -1783,16 +1929,16 @@
   "train_flatcar": {
    "atlas": "train_flatcar",
    "frameSize": [
-    168,
-    112
+    166,
+    108
    ],
    "anchor": [
-    0.49405,
-    0.75
+    0.5,
+    0.75926
    ],
    "anchorPx": [
     83,
-    84
+    82
    ],
    "dirs": [
     "S",
@@ -1864,16 +2010,16 @@
      "SW": "shadow_SW"
     },
     "frameSize": [
-     228,
-     176
+     224,
+     168
     ],
     "anchor": [
-     0.42544,
-     0.55114
+     0.42411,
+     0.56548
     ],
     "anchorPx": [
-     97,
-     97
+     95,
+     95
     ],
     "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
    },
@@ -1883,51 +2029,35 @@
     "S": [
      [
       -32,
-      -5
-     ],
-     [
-      -32,
-      -74
+      -8
      ]
     ],
     "SE": [
      [
-      26,
-      -4
-     ],
-     [
-      -71,
-      -52
+      22,
+      -6
      ]
     ],
     "E": [
      [
-      68,
+      63,
       -23
      ],
      [
-      -68,
+      -63,
       -23
      ]
     ],
     "NE": [
      [
-      71,
-      -52
-     ],
-     [
-      -26,
-      -4
+      -22,
+      -6
      ]
     ],
     "N": [
      [
       32,
-      -74
-     ],
-     [
-      32,
-      -5
+      -8
      ]
     ]
    },
@@ -2093,10 +2223,72 @@
      ]
     ]
    },
+   "nightGlow": {
+    "lampK": 0.35,
+    "tint": "#FF6B5A",
+    "notes": "red tail lamps: fv_glow at lampK, tinted; hidden lamps are not listed."
+   },
+   "boundsPx": {
+    "S": [
+     -47,
+     -76,
+     47,
+     20
+    ],
+    "SE": [
+     -76,
+     -79,
+     76,
+     23
+    ],
+    "E": [
+     -78,
+     -67,
+     78,
+     8
+    ],
+    "NE": [
+     -76,
+     -78,
+     76,
+     23
+    ],
+    "N": [
+     -47,
+     -76,
+     47,
+     20
+    ]
+   },
+   "labelTopDir": {
+    "S": -82,
+    "SE": -85,
+    "E": -73,
+    "NE": -84,
+    "N": -82
+   },
    "stackStep": 14,
    "cargoScale": 0.737,
    "cargoIcons": "lgx_items crate / box icons (item_crate_*, cardboard_box_*), origin [0.5, 0.75], drawn at cargoScale, k-th icon of a stack at (dx, dy - k * stackStep)"
   }
+ },
+ "build": {
+  "pageRule": {
+   "atlases": [
+    "train_coach",
+    "train_boxcar",
+    "train_flatcar"
+   ],
+   "regex": "^train_(engine|car_a|car_b|coach|boxcar|flatcar)$",
+   "keep": "every shadow_* and every frame that is not {anim}_{dir}_{i} (the props); the stopped headings NE / SE in full (idle, move 0-7, door_open 0-3); the curve dirs S / E / N: move 0, 2, 4, 6 + idle_0 (an alias of move_0)",
+   "notes": "tools/build/pack_pages.py TRAIN rule (v42-dirs-1) extended to the train2 fragment; budget.*.pageMiB is that page, packed with pack_pages.pack"
+  },
+  "bakeOnly": [
+   "train2_rails"
+  ],
+  "lossless": [
+   "train2_rails"
+  ]
  },
  "trainConsist": {
   "village": {
@@ -2108,11 +2300,17 @@
     "train_flatcar"
    ],
    "spacingM": [
+    2.875,
+    2.8,
+    2.5
+   ],
+   "spacingPlanM": [
     2.72,
     2.8,
     2.5
    ],
-   "lengthM": 10.6
+   "lengthM": 10.755,
+   "lengthPlanM": 10.6
   },
   "eup": {
    "name": "읍",
@@ -2124,51 +2322,76 @@
     "train_flatcar"
    ],
    "spacingM": [
+    2.875,
+    3.0,
+    2.8,
+    2.5
+   ],
+   "spacingPlanM": [
     2.72,
     3.0,
     2.8,
     2.5
    ],
-   "lengthM": 13.6
+   "lengthM": 13.755,
+   "lengthPlanM": 13.6
   },
-  "notes": "train_engine lives in assets/town (couplerM -1.38 / 1.22). spacingM = anchor-to-anchor along the track; lengthM = nose (engine front coupler) to tail (last back coupler)."
+  "couplerOverride": {
+   "train_engine": {
+    "back": 1.375
+   }
+  },
+  "engineFlip": {
+   "origin": "1 - anchor[0] when flipX (SW / W / NW)",
+   "notes": "the town engine is not symmetric about its anchor (ax 0.434): Phaser mirrors a frame about its middle, so a flipped engine with origin ax sits 28 px off its track point. The train2 cars are packed symmetric (ax 0.5) and need nothing."
+  },
+  "curvePlacement": {
+   "anchor": "chord midpoint: draw each car at the midpoint of its bogie chord P(s - 0.4 L) .. P(s + 0.4 L) (not at the arc point P(s)); on the R 1.75-cell loop curves the arc point lies ~0.3 m outside the chord, which pushes neighbouring cars apart sideways (folded coaches, a coach beside the engine on the S-curve)",
+   "heading": "the chord angle -> nearest of 8 headings with ~8 deg hysteresis (keep the current heading until the chord is more than 22.5 + 8 deg away from it)",
+   "shadow": "the shadow of the chosen heading at the same (chord midpoint) position",
+   "notes": "validated in tools/test/train2_phaser.mjs (placement \"chord\", the loop GIFs and tr2_loop_curve_cmp.png compare it with the arc-point placement)"
+  },
+  "notes": "spacingM = anchor-to-anchor along the track (back coupler of the car in front - front coupler of the car behind); lengthM = nose (engine front coupler) to tail (last back coupler). train_engine lives in assets/town; its manifest says couplerM.back 1.22 but its sprite draws the rear coupler hook out to 1.375 m behind its anchor (cab rear at 1.28 m), so with the plan figure 2.72 m the engine and the first car overlap and no gap shows. Use couplerOverride (spacingM[0] = 2.875 m, +0.155 m, the train 0.155 m longer); spacingPlanM / lengthPlanM keep the plan section 5.2 figures. Between the new cars the visible gap is the two coupler stubs, >= 0.3 m."
  },
  "budget": {
   "train_coach": {
    "atlas": [
-    2008,
-    800
+    1984,
+    792
    ],
-   "rgbaMiB": 6.128,
-   "pageMiB": 4.875,
+   "rgbaMiB": 5.994,
+   "pageMiB": 4.43,
    "budgetMiB": 5.0
   },
   "train_boxcar": {
    "atlas": [
-    1980,
-    772
+    2020,
+    760
    ],
-   "rgbaMiB": 5.831,
-   "pageMiB": 4.906,
+   "rgbaMiB": 5.856,
+   "pageMiB": 4.75,
    "budgetMiB": 5.5
   },
   "train_flatcar": {
    "atlas": [
-    1964,
-    408
+    2040,
+    608
    ],
-   "rgbaMiB": 3.057,
-   "pageMiB": 2.484,
-   "budgetMiB": 3.5
+   "rgbaMiB": 4.731,
+   "pageMiB": 3.141,
+   "budgetMiB": 3.5,
+   "propsPageMiB": 1.0,
+   "carOnlyPageMiB": 2.328
   },
   "train2_rails": {
    "atlas": [
-    2008,
-    608
+    1260,
+    356
    ],
-   "rgbaMiB": 4.657,
+   "rgbaMiB": 1.711,
    "pageMiB": null,
-   "budgetMiB": null
+   "budgetMiB": null,
+   "bakeOnly": true
   }
  }
 }

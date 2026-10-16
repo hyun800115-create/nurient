@@ -1,0 +1,262 @@
+{
+ "version": 1,
+ "generator": "tools/blender/ch2_render.py + ch2_pack.py (docs/CONTRACT_V42.md section AH)",
+ "conventions": {
+  "ppu": 64,
+  "extends": "characters.player_b EXTENDS characters.player (assets/characters): merge its anims into the player definition (each anim names its own atlas `char_player_b`); every other field of the player (carryPoint, petPoint, shadow, portrait, the old anims) stays as it is.  Stand-alone it is also a complete character def (frameSize, anchor, dirs, mirror, frameName).",
+  "rig": "Rendered with the player rig itself (char_build.build(\"player\"): white fur parka, brown belt + satchel, boots, hair), bl_common camera / light / PPU 64, char_render scene settings and the char_pack 1 px ink outline: same scale, look and outline as char_player.  char_player is not touched.",
+  "frames": "128 x 128, anchor [0.5, 0.8125] = px (64, 104); names {anim}_{dir}_{i}; rendered dirs S, SE, E (anims[*].dirs), mirrors SW <- SE, W <- E with flipX (negate dx of every point).  NE / N do not exist: the game turns him to the nearest rendered dir.",
+  "standing": "talk, wave, warm_hands, cheer: anchor = the ground under his feet (as player); headTop -81.",
+  "seated": "sit_idle, sit_write, sit_read, sit_eat, doze (anims[*].seated): anchor = the SEAT POINT = the seat surface front-centre of a 0.45 m chair (townfolk2 sit / officefolk / office chiefDeskPoint / life2 seatPoints convention); place the sprite AT the seat point (it already includes the seat height).  No chair or desk is drawn.  The desk / table top is 0.72 m from the floor, its near edge 0.10 m in front of the seat front: mittens, quill, stamp, bowl and paper work at that height.  seat.floorBelowPx = the floor is that many px below the seat point (outside the frame on purpose: draw his shadow there), seat.deskEdgePoint = the desk-top near-edge centre per dir.  Chibi legs hang toward the floor (they cannot reach 0.45 m down, like every seated townsperson); a desk / table front drawn over him hides them.  headTopSit = the seated head top (speech bubbles, emote_zzz).",
+  "points": "every *Point value is a px offset [dx, dy] from the anchor (unscaled), per rendered dir.  anims.sit_write.impactPoint = the stamp face on the desk at impactFrame 4 (spawn the stamp puff + sfx_stamp there).",
+  "loopFrom": "anims.sit_read.loopFrom 2: frames 0-1 (folded paper lifted and shaken open) play ONCE, then 2-5 (reading) loop.  Never loop sit_read 0-5 plainly: the paper would snap shut every second.  Zero-code way: play `sit_read_in` (repeat 0) and on complete `sit_read_loop` (or just `sit_read_loop`) - two ALIAS anims (anims[*].aliasOf) whose frame names point at the same atlas rectangles as sit_read 0-1 / 2-5 (and their _desk overlays), so the stock Assets.buildCharacter builds them like any anim.",
+  "pacing": "optional hints (ms) for a calmer loop: anims.cheer.repeatDelay 600 = Phaser anim config repeatDelay (the pennant-up last frame holds between hops, one hop per 1.2 s instead of 100 a minute); anims.doze.frameHold {\"2\": 1600} = Phaser frame `duration` on frame 2 (the deepest nod lingers, a nod every ~2.9 s).  Without them the anims still play per contract.",
+  "headTop": "headTop -81 (= player) for every standing anim, except where anims[x].headTop says the head rises higher (talk nods, the wave lean, the cheer hop): use the anim value for bubbles / the star pin while it plays.  anims.cheer.propTop = the pennant top (it flies beside the head, out to his right / ahead).  headTopSit for every seated anim.",
+  "faces": "faces are part of the frames: blink (sit_idle 2, talk 4, sit_read 4, warm_hands 3), sleeping eyes (doze), happy squint (sit_eat 3, wave, cheer), open / half-open mouth (talk, cheer).",
+  "props": "props are part of the frames (no extra sprites): teal quill + wooden stamp with a red face (sit_write), newspaper cream with grey columns, masthead band and a photo box - no text (sit_read), red soup bowl + wooden spoon (sit_eat), a little teal 서리마을 pennant with a cream snowflake on a birch stick (cheer: held up in the right fist, the flag flies out above his shoulder line - beside the head in S / SE / SW, ahead of him in E / W).  Nothing is carried on the head.",
+  "office": "office routine: desk anims at chiefDeskPoint facing chiefDeskDir (SW), band behind, `_desk` overlay over chief_office_interior_front.  The 22:00 \"doze by the stove\": warm_hands standing at stovePoint (facing the stove), then doze on the desk chair (chiefDeskPoint) - stovePoint has no seat."
+ },
+ "atlases": [
+  {
+   "key": "char_player_b",
+   "png": "chief2/char_player_b.png",
+   "json": "chief2/char_player_b.json"
+  }
+ ],
+ "characters": {
+  "player_b": {
+   "extends": "player",
+   "atlas": "char_player_b",
+   "frameSize": [
+    128,
+    128
+   ],
+   "anchor": [
+    0.5,
+    0.8125
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "kind": "human",
+   "headTop": -81,
+   "headTopSit": -67,
+   "seat": {
+    "heightM": 0.45,
+    "deskTopM": 0.72,
+    "deskEdgeM": 0.1,
+    "hipBackM": 0.12,
+    "floorBelowPx": 25,
+    "deskEdgePoint": {
+     "S": [
+      0,
+      -12
+     ],
+     "SE": [
+      5,
+      -13
+     ],
+     "E": [
+      6,
+      -15
+     ]
+    }
+   },
+   "deskOverlay": {
+    "suffix": "_desk",
+    "anims": [
+     "sit_idle",
+     "sit_write",
+     "sit_read",
+     "sit_eat",
+     "sit_read_in",
+     "sit_read_loop"
+    ],
+    "zone": "surface points in front of the desk near edge (y < -0.10 m) and 0.002-0.31 m above the desk top: forearms, mittens, quill, stamp, paper, bowl, spoon",
+    "depthHint": "draw `{anim}_{dir}_{i}_desk` at the chief's position right ABOVE the desk / table art (office: depthOffset -0.095, just over chief_office_interior_front -0.10), same frame index, same flipX; the full frame stays in @behind."
+   },
+   "anims": {
+    "sit_idle": {
+     "frames": 4,
+     "fps": 4,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "deskOverlay": true
+    },
+    "sit_write": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "deskOverlay": true,
+     "impactFrame": 4,
+     "impactPoint": {
+      "S": [
+       7,
+       -7
+      ],
+      "SE": [
+       16,
+       -12
+      ],
+      "E": [
+       16,
+       -18
+      ]
+     }
+    },
+    "sit_read": {
+     "frames": 6,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "loopFrom": 2,
+     "deskOverlay": true,
+     "playAs": [
+      "sit_read_in",
+      "sit_read_loop"
+     ]
+    },
+    "sit_read_in": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": 0,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "aliasOf": {
+      "anim": "sit_read",
+      "from": 0
+     },
+     "deskOverlay": true,
+     "next": "sit_read_loop"
+    },
+    "sit_read_loop": {
+     "frames": 4,
+     "fps": 6,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "aliasOf": {
+      "anim": "sit_read",
+      "from": 2
+     },
+     "deskOverlay": true
+    },
+    "sit_eat": {
+     "frames": 6,
+     "fps": 8,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "deskOverlay": true
+    },
+    "doze": {
+     "frames": 4,
+     "fps": 3,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "seated": true,
+     "placeAt": "a SEAT point only (office chiefDeskPoint = the desk chair, bench / log seatPoints); never office stovePoint (a standing ground point with no seat: he would float)",
+     "frameHold": {
+      "2": 1600
+     }
+    },
+    "talk": {
+     "frames": 8,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "headTop": -82
+    },
+    "wave": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "headTop": -85
+    },
+    "warm_hands": {
+     "frames": 4,
+     "fps": 5,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b"
+    },
+    "cheer": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E"
+     ],
+     "atlas": "char_player_b",
+     "headTop": -93,
+     "propTop": -96,
+     "prop": "pennant",
+     "repeatDelay": 600
+    }
+   }
+  }
+ }
+}

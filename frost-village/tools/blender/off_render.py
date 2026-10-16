@@ -10,8 +10,9 @@ builds assets/office/ (atlases office_bld + office_items, manifest.json) and the
                        outside the plinth -> merged under _floor at pack time
         back           the two far walls from inside (no self shadow: bright dollhouse light)
         interior       furniture behind people (floor + back = holdout, desks = ghost)
-        ifront         desks + counting table (floor + back + interior + desk overlays at frame 0 = holdout)
-        shell_cut      wall stubs at 1.2 m + sills + door frame
+        ifront         desks 1 / 2 + the chief's desk (floor + back + interior + desk overlays at frame 0 = holdout)
+        shell_cut      wall stubs at 1.2 m + sills + door jambs + 'cutdesk' (the secretary desk + the counting table,
+                       whose sitters are in band 'front')
         shell          the closed building + the outdoor props (= the closed look in one frame)
         gshadow_closed ground shadow of the closed building + props -> merged under _shell at pack time
         props          steps + lantern post + snow tufts (always drawn)
@@ -70,6 +71,7 @@ def _setup_render_fixed(*a, **kw):
 bc.setup_render = _setup_render_fixed           # run-time wrap only (bl_common.py is not modified)
 
 ITEM_ANCHOR = (36, 61.92)                       # [0.5, 0.86] of 72 x 72 (CONTRACT_V42 AI.3)
+MAX_FRAME = (640, 576)                          # CONTRACT_V42 AI.1 frameSize maximum
 INNER = ['floor', 'back', 'interior', 'ifront']
 PLAIN_OVL = ['stove', 'safe']
 DESK_OVL = ['typewriter_a', 'lamp_a', 'lamp_b', 'typewriter_b', 'phone']      # far -> near (patch order)
@@ -260,7 +262,12 @@ def render_office(opts):
     W, H, anchor, tops = BR.fit_frames(fit, True)
     for ov in ovs.values():
         ov['set'](0)
-    print('[office] frame %dx%d anchor %s top %s' % (W, H, anchor, tops['all']), flush=True)
+    # contract frame <= [640, 576]: the fit is generous for the long soft ground shadow (it falls screen
+    # down-right), so clamp the right / bottom edges; off_pack fades the shadow tail before the edge
+    fit_wh = (W, H)
+    W, H = min(W, MAX_FRAME[0]), min(H, MAX_FRAME[1])
+    print('[office] frame %dx%d (fit %dx%d) anchor %s top %s' % (W, H, fit_wh[0], fit_wh[1], anchor, tops['all']),
+          flush=True)
     samples = opts.get('samples') or (16 if opts.get('look') else 48)
     sc = bc.setup_render(W, H, samples=samples)
     sc.cycles.max_bounces = 5
@@ -297,15 +304,19 @@ def render_office(opts):
 
     O = list(ovs)
     # ---------------------------------------------------------------- static layers
-    go('%s_floor' % KEY, lambda: apply_pass(vis=['floor'], ghost=['interior', 'ifront'] + O, ghost_ns=['back']))
-    go('%s_gshadow_open' % KEY, lambda: apply_pass(ghost=['floor', 'back', 'interior', 'ifront', 'props'] + O),
-       catch=True)
-    go('%s_back' % KEY, lambda: apply_pass(vis_ns=['back'], hold=['floor'], ghost=['interior', 'ifront'] + O))
+    # 'cutdesk' (polish): the secretary desk + the counting table - furniture like 'ifront' in every pass, but drawn
+    # with _shell_cut (the nearest inside layer) so the people seated at them can sit in band 'front'
+    go('%s_floor' % KEY, lambda: apply_pass(vis=['floor'], ghost=['interior', 'ifront', 'cutdesk'] + O,
+                                            ghost_ns=['back']))
+    go('%s_gshadow_open' % KEY, lambda: apply_pass(ghost=['floor', 'back', 'interior', 'ifront', 'cutdesk', 'props'] +
+                                                   O), catch=True)
+    go('%s_back' % KEY, lambda: apply_pass(vis_ns=['back'], hold=['floor'], ghost=['interior', 'ifront', 'cutdesk'] +
+                                           O))
     go('%s_interior' % KEY, lambda: apply_pass(vis=['interior'], hold=['floor'], hold_ns=['back'],
-                                               ghost=['ifront']))
+                                               ghost=['ifront', 'cutdesk']))
     go('%s_interior_front' % KEY, lambda: apply_pass(vis=['ifront'], hold=['floor', 'interior'] + DESK_OVL,
-                                                     hold_ns=['back']))
-    go('%s_shell_cut' % KEY, lambda: apply_pass(vis=['shell_cut'], hold=['floor', 'interior', 'ifront'] + O,
+                                                     hold_ns=['back'], ghost=['cutdesk']))
+    go('%s_shell_cut' % KEY, lambda: apply_pass(vis=['shell_cut', 'cutdesk'], hold=['floor', 'interior', 'ifront'] + O,
                                                 hold_ns=['back'], ghost=['props']))
     go('%s_shell' % KEY, lambda: apply_pass(vis=['shell', 'props'], ghost=['back']), spp=max(samples, 64) if not opts.get('look')
        else samples)
@@ -334,25 +345,30 @@ def render_office(opts):
                 ov['set'](i)
             if ov['extra'].get('mode') == 'patch':
                 def solo(i=i, name=name, others=others):
-                    apply_pass(vis=[name], hold=['floor', 'interior', 'ifront'] + others, hold_ns=['back'])
+                    apply_pass(vis=[name], hold=['floor', 'interior', 'ifront', 'cutdesk'] + others, hold_ns=['back'])
                     ov['set'](i)
 
                 def patch(i=i, name=name, others=others):
-                    apply_pass(vis=['floor', 'interior', 'ifront', name] + others, vis_ns=['back'])
+                    apply_pass(vis=['floor', 'interior', 'ifront', name] + others, vis_ns=['back'], hold=['cutdesk'])
                     ov['set'](i)
                 go('%s_%s_solo_%d' % (KEY, name, i), solo, border=bx, spp=24, denoise=False)
                 go('%s_%s_%d' % (KEY, name, i), patch, border=bx)
                 solos.append('%s_%s_solo_%d' % (KEY, name, i))
             else:
                 def plain(i=i, name=name):
-                    apply_pass(vis=[name], hold=['floor', 'interior'], hold_ns=['back'], ghost=['ifront'])
+                    apply_pass(vis=[name], hold=['floor', 'interior'], hold_ns=['back'], ghost=['ifront', 'cutdesk'])
                     ov['set'](i)
                 go('%s_%s_%d' % (KEY, name, i), plain, border=bx, spp=max(samples, 48) if not opts.get('look')
                    else samples)
             frames.append('%s_%s_%d' % (KEY, name, i))
         ov['set'](0)
+        bpy.context.view_layer.update()
+        wp = L.world_points([o for o in ov['objs'] if o.type in ('MESH', 'CURVE')])
+        gx = (min(q.x for q in wp) + max(q.x for q in wp)) / 2
+        gy = (min(q.y for q in wp) + max(q.y for q in wp)) / 2
         ov_meta[name] = dict({'frames': frames, 'solo': solos, 'fps': ov['fps'], 'repeat': ov['repeat'],
-                              'box': bx}, **ov['extra'])
+                              'box': bx, 'ground': px(Vector((gx, gy, OA.PL))),
+                              'groundM': [round(gx, 3), round(gy, 3)]}, **ov['extra'])
     set_border(sc, W, H, None)
     # ---------------------------------------------------------------- meta
     bpy.context.view_layer.update()
@@ -367,8 +383,59 @@ def render_office(opts):
             fx[k] = [p3(q) for q in v]
         else:
             fx[k] = p3(v)
+    # (polish) footprints of the inside furniture (building metres) for walk avoidance + the layout checks: every
+    # top-level piece of _interior / _interior_front taller than 0.3 m above the floor
+    def top_of(o):
+        # the top-most ancestor BELOW the building root (every object hangs under one root empty)
+        while o.parent is not None and o.parent.parent is not None:
+            o = o.parent
+        return o
+    fb = {}
+    for o in scene_objs():
+        g = group_of(o)
+        if g not in ('interior', 'ifront', 'cutdesk') or o.get('civ_bounds'):
+            continue
+        t = top_of(o)
+        wp_ = L.world_points([o])
+        if not wp_:
+            continue
+        b_ = fb.setdefault((t.name, g), [1e9, 1e9, -1e9, -1e9, -1e9])
+        for q in wp_:
+            b_[0], b_[1] = min(b_[0], q.x), min(b_[1], q.y)
+            b_[2], b_[3] = max(b_[2], q.x), max(b_[3], q.y)
+            b_[4] = max(b_[4], q.z)
+    # merge touching pieces (a bench = seat + back + sides, a desk + what stands on it) into one footprint each
+    pieces = [[nm.split('.')[0], g, list(b_)] for (nm, g), b_ in sorted(fb.items())
+              if (b_[2] - b_[0]) * (b_[3] - b_[1]) >= 0.004]
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(pieces)):
+            for j in range(i + 1, len(pieces)):
+                p_, q_ = pieces[i][2], pieces[j][2]
+                if pieces[i][0].startswith('pl_') or pieces[j][0].startswith('pl_'):
+                    continue                        # plants stay pieces of their own (their leaf boxes are loose)
+                if p_[0] < q_[2] - 0.01 and q_[0] < p_[2] - 0.01 and p_[1] < q_[3] - 0.01 and q_[1] < p_[3] - 0.01:
+                    ap = (p_[2] - p_[0]) * (p_[3] - p_[1])
+                    aq = (q_[2] - q_[0]) * (q_[3] - q_[1])
+                    gg = (pieces[i][1], pieces[j][1])
+                    pieces[i] = [pieces[i][0] if ap >= aq else pieces[j][0],
+                                 'cutdesk' if 'cutdesk' in gg else ('ifront' if 'ifront' in gg else 'interior'),
+                                 [min(p_[0], q_[0]), min(p_[1], q_[1]), max(p_[2], q_[2]), max(p_[3], q_[3]),
+                                  max(p_[4], q_[4])]]
+                    del pieces[j]
+                    merged = True
+                    break
+            if merged:
+                break
+    furniture = []
+    for nm, g, b_ in pieces:
+        if b_[4] - OA.PL < 0.3:
+            continue
+        furniture.append({'name': nm, 'layer': {'ifront': 'interior_front', 'cutdesk': 'shell_cut'}.get(g, g),
+                          'box': [round(v, 2) for v in b_[:4]], 'top': round(b_[4] - OA.PL, 2)})
     meta = {
-        'build': KEY, 'frameSize': [W, H], 'anchorPx': list(anchor),
+        'build': KEY, 'frameSize': [W, H], 'anchorPx': list(anchor), 'furniture': furniture,
         'anchor': [round(anchor[0] / W, 5), round(anchor[1] / H, 5)], 'topPx': tops['all'],
         'markers': mk_pts, 'markerDirs': mk_dirs, 'fxPoints': fx, 'overlays': ov_meta,
         'floorLiftPx': int(round(OA.PL * 55.4256)), 'footprintM': [OA.X1 - OA.X0, OA.Y1 - OA.Y0],

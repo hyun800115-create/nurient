@@ -10,6 +10,9 @@ export const Input = {
   joy: { active: false, id: -1, bx: 0, by: 0, kx: 0, ky: 0 },
   keys: null,
   override: null,             // test hook: { x, y }
+  pilot: null,                // (v4.2) 관망: fn() -> { x, y } while the pilot drives (null = off)
+  onHuman: null,              // (v4.2) called when a human moves the chief / taps the village (the pilot hands back)
+  lastTouch: 0,
   enabled: true,
   lastActivity: 0,
 
@@ -24,6 +27,9 @@ export const Input = {
 
   pointerDown(p) {
     if (this.joy.active || !this.enabled) return;
+    // ((v4.2) a tap on the village: 관망 hands control back in this frame; the idle clock restarts)
+    this.touchPending = true;
+    if (this.onHuman) { try { this.onHuman('touch'); } catch (e) { /* */ } }
     const x = View.toLogical(p.x), y = View.toLogical(p.y);
     this.joy.active = true;
     this.joy.id = p.id;
@@ -51,6 +57,7 @@ export const Input = {
 
   update(now) {
     let x = 0, y = 0;
+    if (this.touchPending) { this.touchPending = false; this.lastTouch = now; }
     if (this.override) { x = this.override.x; y = this.override.y; }
     else if (this.enabled) {
       if (this.joy.active) {
@@ -68,9 +75,11 @@ export const Input = {
         if (kx || ky) { const d = Math.hypot(kx, ky); x = kx / d; y = ky / d; }
       }
     }
-    const mag = Math.min(1, Math.hypot(x, y));
+    let mag = Math.min(1, Math.hypot(x, y));
+    // ((v4.2) 관망: override (tests) > a human (hands back now) > the pilot)
+    if (mag > 0.05) { this.lastActivity = now; if (!this.override && this.onHuman) { try { this.onHuman('move'); } catch (e) { /* */ } } }
+    else if (this.pilot && !this.override) { const v = this.pilot(); if (v) { x = v.x; y = v.y; mag = Math.min(1, Math.hypot(x, y)); } }
     this.vec.x = x; this.vec.y = y; this.vec.mag = mag;
-    if (mag > 0.05) this.lastActivity = now;
     return this.vec;
   },
 };

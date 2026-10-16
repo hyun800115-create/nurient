@@ -192,7 +192,9 @@ export class UnlockPad {
       if (this.sparkle === 'none') { this.spT = (this.spT || 0) - dt; if (this.spT <= 0) { this.spT = 0.35; gs.effects.burst('spark', this.x + (Math.random() - 0.5) * 120, this.y - 10 - Math.random() * 30, 1); } }
     } else if (this.wasAfford) this.pad.img.setScale(this.pad.bsx, this.pad.bsy);
     this.wasAfford = afford;
-    const on = this.pad.contains(p.x, p.y);
+    // ((v4.2) 관망: the piloted chief never pays (unless 관망 중 돈 쓰기 = 고용만 and this is a hire pad))
+    const PL = gs.v42 && gs.v42.pilot;
+    const on = this.pad.contains(p.x, p.y) && !(PL && PL.blocksPay(this.kind));
     // (review fix) a pad waiting for the chief to step off keeps its label readable (what comes next)
     const la = on && !(this.needsLeave && afford) ? 0.3 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));

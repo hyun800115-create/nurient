@@ -64,7 +64,7 @@ export class V42 {
     if (gs.store) shelf(gs.store, gs.store.goods || [], ':store');
     const W = gs.warehouse;
     if (W) {
-      L.register({ id: 'wh', kind: 'warehouse', cap: W.capacity || (BALANCE.warehouse && BALANCE.warehouse.capacity) || 300, get: () => W.total, place: { x: W.inPad.x, y: W.inPad.y } });
+      L.register({ id: 'wh', kind: 'warehouse', cap: W.cap || (BALANCE.warehouse && BALANCE.warehouse.capacity) || 300, get: () => W.total, place: { x: W.inPad.x, y: W.inPad.y } });
       for (const line of LINES) L.register({ id: 'wh:' + line.product, kind: 'wh', item: line.product, cap: 0, get: () => W.count(line.product) });
     }
     if (gs.boathouse) L.register({ id: 'boat', kind: 'boat', item: 'item_fish_raw', cap: gs.boathouse.outStack.max, get: () => gs.boathouse.outStack.count, place: { x: gs.boathouse.outPad.x, y: gs.boathouse.outPad.y } });
@@ -91,6 +91,9 @@ export class V42 {
 
   /** is the village complete (the v3.5 party, ≈ 20 min)? the gate of 촌장 응원 and 관망 */
   get complete() { const pr = this.gs.progress; return !!(pr && pr.celebrated); }
+  /** the overflow rules F1–F3 + Surplus (after village complete; the census bot's window.__FV_FRULES_EARLY measures
+   *  them from the start: the designer's 짐꾼 question) */
+  get frules() { return this.complete || (typeof window !== 'undefined' && window.__FV_FRULES_EARLY === true); }
 
   update(dt) {
     const t0 = performance.now();

@@ -8,9 +8,16 @@
 //   StackBaker.of(scene)                 the scene's baker (made on first use)
 //   baker.slotFor(stack, w, h, ox, oy)   reserve a w x h slot (shelf packing); null when the texture is full: the
 //                                        stack then simply keeps one sprite per item (the v4.1 way)
-//   baker.bake(stack)                    erase the slot and draw the stack's items into it (called by ItemStack.layout
-//                                        when the stack changed and is near the view)
-// Canvas and WebGL alike (DynamicTexture.erase + batchDraw). Items whose atlas arrives later are re-baked.
+//   baker.queue(stack)                   the stack changed (ItemStack.layout, near the view): redrawn in the next flush
+//   baker.flush(force)                   right before a frame is drawn (game 'prerender'), at most FLUSH_HZ times a
+//                                        second: ONE erase pass over every queued slot + ONE draw pass (a WebGL
+//                                        DynamicTexture blits its whole capture per pass, so passes are batched, never
+//                                        one per stack); headless steps (tests, bots) draw nothing and never bake
+//   baker.bake(stack)                    queue + flush now (tests)
+// Canvas and WebGL alike (DynamicTexture.erase + batchDraw). Items whose atlas arrives later are re-baked. An item that
+// lands keeps its flown-in sprite until the flush draws it (no gap); a popped item's picture goes at the next flush.
+
+const FLUSH_HZ = 15;
 
 import { Assets } from '../core/Assets.js';
 
@@ -41,6 +48,12 @@ export class StackBaker {
     this.eraser = scene.make.image({ x: 0, y: 0, key: '__WHITE', add: false }).setOrigin(0, 0);
     this.onArrive = () => { for (const s of this.stacks) s.bakeDirty = true; };
     Assets.arrivals.push(this.onArrive);
+    this.dirty = new Set();
+    this.erasers = [];
+    this.lastFlush = -1e9;
+    this.flushes = 0;
+    this.onPre = (renderer, time) => this.flush(false, time);
+    scene.game.events.on('prerender', this.onPre);
     scene.events.once('shutdown', () => this.destroy());
   }
 
@@ -65,30 +78,63 @@ export class StackBaker {
     return slot;
   }
 
-  /** draw the stack's items (their layout positions relative to the base point) into its slot */
-  bake(stack) {
-    const s = stack.slot, dt = this.dt;
-    if (!s) return;
-    this.bakes++;
-    const er = this.eraser;
-    er.setScale(s.w / Math.max(1, er.width), s.h / Math.max(1, er.height));
-    dt.erase(er, s.x, s.y);
-    const st = this.stamp, items = stack.items, bx = stack.bx, by = stack.by;
+  /** the stack changed: redraw it in the next flush */
+  queue(stack) { if (stack && stack.slot) this.dirty.add(stack); }
+
+  /** queue + draw now (tests, a cleared stack) */
+  bake(stack) { this.queue(stack); this.flush(true); }
+
+  /** one erase pass over the queued slots + one draw pass of their items (at most FLUSH_HZ a second unless forced) */
+  flush(force, time) {
+    if (!this.dirty.size) return;
+    const now = Number.isFinite(time) ? time : (this.scene.time ? this.scene.time.now : 0);
+    if (!force && now - this.lastFlush < 1000 / FLUSH_HZ && now >= this.lastFlush) return;
+    this.lastFlush = now;
+    this.flushes++;
+    const dt = this.dt, fx = this.scene.effects;
+    const list = Array.from(this.dirty);
+    this.dirty.clear();
+    // 1. erase every queued slot in one pass
+    const ers = [];
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i].slot;
+      if (!s) continue;
+      let er = this.erasers[i];
+      if (!er) { er = this.erasers[i] = this.scene.make.image({ x: 0, y: 0, key: '__WHITE', add: false }).setOrigin(0, 0); }
+      er.setPosition(s.x, s.y).setScale(s.w / Math.max(1, er.width), s.h / Math.max(1, er.height));
+      ers.push(er);
+    }
+    if (ers.length) dt.erase(ers, 0, 0);
+    // 2. draw their items in one pass (landed sprites go back to the pool: their picture is drawn now)
+    const st = this.stamp;
     let any = false;
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.spr) continue;                 // a live sprite (flying in) draws itself
-      if (!any) { dt.beginDraw(); any = true; }
-      const r = Assets.sprite(it.type);
-      if (!r || r.ph || r.pending) continue;
-      if (st.__k !== it.type) { st.setTexture(r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]); st.__k = it.type; }
-      st.setScale(it.sx || stack.scale, it.sy || stack.scale);
-      dt.batchDraw(st, s.x + s.ox + (it.x - bx), s.y + s.oy + (it.y - by));
+    for (const stack of list) {
+      const s = stack.slot;
+      if (!s) continue;
+      this.bakes++;
+      const items = stack.items, bx = stack.bx, by = stack.by;
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.spr && !it.pend) continue;            // a sprite flying away / in: it draws itself
+        const r = Assets.sprite(it.type);
+        if (!r || r.ph || r.pending) continue;        // (a landed item keeps its sprite until its picture can be drawn)
+        if (it.spr) { if (fx) fx.releaseItem(it.spr); it.spr = null; it.pend = false; }
+        if (!any) { dt.beginDraw(); any = true; }
+        if (st.__k !== it.type) { st.setTexture(r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]); st.__k = it.type; }
+        st.setScale(it.sx || stack.scale, it.sy || stack.scale);
+        dt.batchDraw(st, s.x + s.ox + (it.x - bx), s.y + s.oy + (it.y - by));
+      }
+      stack.bakeDirty = false;
+      stack.bakedOnce = true;
     }
     if (any) dt.endDraw();
   }
 
   destroy() {
+    if (this.scene.game && this.scene.game.events) this.scene.game.events.off('prerender', this.onPre);
+    for (const e of this.erasers) if (e) e.destroy();
+    this.erasers = [];
+    this.dirty.clear();
     const i = Assets.arrivals.indexOf(this.onArrive);
     if (i >= 0) Assets.arrivals.splice(i, 1);
     try { this.stamp.destroy(); this.eraser.destroy(); } catch (e) { /* */ }

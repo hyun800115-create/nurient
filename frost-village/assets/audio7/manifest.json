@@ -1,0 +1,206 @@
+{
+ "version": 1,
+ "generator": "tools/audio/build_audio7.py (procedural synthesis: sfx7.py; same toolkit + loudness conventions as assets/audio .. audio6)",
+ "conventions": {
+  "contract": "CONTRACT_V42 section AM. Paths relative to frost-village/assets/. Fragment name: audio7 (add it to FRAGMENTS in src/core/Assets.js).",
+  "sprite": "Every one-shot lives in ONE audio sprite: audioSprite.keys[key] = [start s, duration s] with 50 ms gaps; Assets.queueAudio loads it once ('__sprite_audio7') and Assets.sliceSprite cuts one AudioBuffer per key (dur + 30 ms) into the audio cache, so Audio.play(key) / exists(key) work unchanged. This manifest is the sprite's JSON (3 files in all).",
+  "groups": "Audio.play('sfx_typewriter') / Audio.play('sfx_coin_sack') pick a random variant (never the same twice in a row); the group names are also playable keys (variant 1).",
+  "levels": "volume = 10^((target + HEADROOM_DB - measured) / 20), measured on the decoded sprite slice (max momentary LUFS) / the decoded loop (integrated LUFS); HEADROOM_DB = -2 like audio .. audio6."
+ },
+ "audioSprite": {
+  "file": "audio7/audio7_sprite.mp3",
+  "keys": {
+   "sfx_typewriter": [
+    0.05,
+    0.6
+   ],
+   "sfx_typewriter_2": [
+    0.7,
+    0.6
+   ],
+   "sfx_typewriter_3": [
+    1.35,
+    0.6
+   ],
+   "sfx_switch_clack": [
+    2.0,
+    0.4
+   ],
+   "sfx_wheel_squeal": [
+    2.45,
+    1.2
+   ],
+   "sfx_mailbox_flag": [
+    3.7,
+    0.3
+   ],
+   "sfx_coin_sack": [
+    4.05,
+    0.5
+   ],
+   "sfx_coin_sack_2": [
+    4.6,
+    0.5
+   ],
+   "sfx_coin_sack_3": [
+    5.15,
+    0.5
+   ]
+  },
+  "dur": 5.7,
+  "gap": 0.05,
+  "ch": 1,
+  "kbps": 96
+ },
+ "audio": {
+  "sfx_typewriter": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.617,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.6,
+   "cues": {
+    "key1": 0.0,
+    "key2": 0.135,
+    "key3": 0.265,
+    "key4": 0.385
+   },
+   "notes": "a clerk types (desk_type + typewriter overlay): four soft key clacks. Play the group 'sfx_typewriter' (random variant, never the same twice) every 0.55-0.8 s while desk_type plays, volume by distance / reveal; sfx_typewriter_3 ends a line with the margin bell."
+  },
+  "sfx_typewriter_2": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.944,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.6,
+   "cues": {
+    "key1": 0.0,
+    "key2": 0.11,
+    "key3": 0.245,
+    "key4": 0.4
+   },
+   "notes": "variant (group sfx_typewriter)."
+  },
+  "sfx_typewriter_3": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.447,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.6,
+   "cues": {
+    "key1": 0.0,
+    "key2": 0.12,
+    "key3": 0.225,
+    "key4": 0.315,
+    "bell": 0.4
+   },
+   "notes": "variant ending on the tiny margin bell 'ting' (F6) - end of a line (group sfx_typewriter, or play it alone every 3-4 bursts)."
+  },
+  "sfx_switch_clack": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 1.0,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.4,
+   "cues": {
+    "grab": 0.0,
+    "cheol": 0.1,
+    "keok": 0.17
+   },
+   "notes": "the spring turnout lever ('철컥') when the loop switch is thrown for the train, by distance."
+  },
+  "sfx_wheel_squeal": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.071,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.2,
+   "loopable": true,
+   "notes": "gentle flange squeal while a car runs on a loop curve, very quiet. Silent at both ends: loop the sliced buffer (sm.add('sfx_wheel_squeal', {loop: true})) or retrigger every 1.2 s while the train is on the curve; volume x speed / max speed; rate 0.95-1.05 per car so two cars never line up."
+  },
+  "sfx_mailbox_flag": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.861,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.3,
+   "cues": {
+    "flick": 0.0,
+    "clack": 0.05,
+    "bell": 0.06
+   },
+   "notes": "office_mailbox: the flag flips up when a letter arrives (tin clack + tiny bell C7); also when a clerk empties it."
+  },
+  "sfx_coin_sack": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.495,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "cues": {
+    "shake1": 0.0,
+    "shake2": 0.22
+   },
+   "notes": "the courier 딸랑이 scoops the tills / swings the sack: play the group 'sfx_coin_sack' on each scoop and every ~1.5 s of carry_sack walking (soft, x0.6); muffled coins + her bell pin 'ttallang-ttallang'."
+  },
+  "sfx_coin_sack_2": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.501,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "cues": {
+    "shake1": 0.0,
+    "shake2": 0.19
+   },
+   "notes": "variant (group sfx_coin_sack)."
+  },
+  "sfx_coin_sack_3": {
+   "files": [],
+   "inSprite": "audio7",
+   "volume": 0.473,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "cues": {
+    "shake1": 0.0,
+    "shake2": 0.25
+   },
+   "notes": "variant: a fuller sack (group sfx_coin_sack) - use for the hand_over at the bank counter."
+  },
+  "amb_office": {
+   "files": [
+    "audio7/amb_office.mp3"
+   ],
+   "volume": 0.422,
+   "loop": true,
+   "kind": "ambience",
+   "duration": 24.0,
+   "loopSamples": 1058400,
+   "mp3StartPad": 1105,
+   "rotation": 545141,
+   "clockHz": 1.0,
+   "notes": "inside the 촌장 사무실 (24 s mono loop, texture only): soft typing from two desks, page turns, a pen, the kettle simmering on the stove, the wall clock ticking once a second. setAmbience('amb_office', reveal 0..1) while the office is revealed / the camera is near it (like amb_bank). The contract's -26 LUFS is its level at full reveal (6.5 dB above amb_bank: the office is a small, busy room); duck it to ~0.6 under the panel."
+  }
+ },
+ "audioGroups": {
+  "sfx_typewriter": [
+   "sfx_typewriter",
+   "sfx_typewriter_2",
+   "sfx_typewriter_3"
+  ],
+  "sfx_coin_sack": [
+   "sfx_coin_sack",
+   "sfx_coin_sack_2",
+   "sfx_coin_sack_3"
+  ]
+ }
+}

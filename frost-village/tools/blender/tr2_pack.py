@@ -2,10 +2,16 @@
 tr2_pack.py - turn the raw train2 renders (tr2_render.py cache) into assets/train2/ (docs/CONTRACT_V42.md section AK):
 
   train_coach.png/.json, train_boxcar.png/.json, train_flatcar.png/.json   one atlas per car (frames + 8 shadow
-        frames), palettised with libimagequant like the town train atlases; car frames get the characters' 1 px ink
-        outline (char_pack.ink_outline), shadow frames the building shadow post
-  train2_rails.png/.json   the loop decals (RGBA: exact difference matte), fence tiles, switch stand, water tower
+        frames), coach / box car palettised with libimagequant like the town train atlases, the flat car's page RGBA
+        (it also carries the live props); car frames get the characters' 1 px ink outline (char_pack.ink_outline),
+        shadow frames the building shadow post
+  train2_rails.png/.json   the two loop decals only (RGBA: exact difference matte) - a BAKE-ONLY page: RoadPaint bakes
+        the decals into the ground and can release the page (polish H1)
   manifest.json            sprites{} (decals / tiles / props) + characters{} (kind "train") + trainConsist{}
+
+(polish H1) The live props (fence tile + end post, switch stand, water tower) ride in the flat car's atlas, which is
+resident whenever the train is (9 files kept); the water tower's pour is a small overlay over one 'spout lowered'
+frame instead of 6 full frames.
 
 The loop decals: the render R (loop + turnout + the straight main line built from town_rails.segment()) is turned into
 the decal F that, drawn OVER the real rail_x tiles of assets/town (k = tiles listed in the sidecar, exactly where
@@ -48,7 +54,26 @@ LATTICE = (3120, 1315)              # L(i, j) = (3120 + 64 (i + j), 1315 + 32 (i
 PLACEHOLDER = {'train_coach': 'train_car_a x 1.33, light sky tint', 'train_boxcar': 'train_car_b x 1.15 + code crate '
                'stack', 'train_flatcar': 'train_car_b x 1.07'}
 BUDGET_MIB = {'train_coach': 5.0, 'train_boxcar': 5.5, 'train_flatcar': 3.5}
+WORLD_W = 6144                      # src/data/world.js WORLD.width
+PROP_ATLAS = 'train_flatcar'        # (polish H1) the live props share the flat car's page; train2_rails = decals only
+# (polish H2) water tower: behind each loop on the sea side (a lattice search with the game's RailPath / shoreY /
+# v4 objects, re-checked by tr2_check + train2_phaser.mjs): every footprint corner >= 60 px on land (the plan's rule
+# for buildings), clear of the ballast, and no track point that would draw a car BEHIND the tower body
+TOWER_HINT = {'rail_loop_ours': (-8.0, 4.3), 'rail_loop_town': (38.5, 4.3)}
+# (polish L5) the switch stand on the fence line (j -0.75, like the fence the plan puts beside the 역 가는 길),
+# 0.2 cell toward the loop from the switch toe, at the end of the tie bars; walkers keep blockM off it
+STAND_J = -0.75
+STAND_BLOCK_M = 0.3
+# (polish M2) night glow strengths (fv_glow ADD) that keep the passengers readable behind the self-lit windows
+NIGHT_GLOW = {'train_coach': {'windowK': 0.35, 'lampK': 0.5, 'endWindowK': 0.0,
+                              'notes': 'one fv_glow per windowPoints entry at windowK and per lampPoints entry at '
+                                       'lampK; endWindowPoints (the end-door window between two coupled coaches) '
+                                       'stay dark (0) or at most 0.15 on the last coach - stacked with both lanterns '
+                                       'they make a white blob at every coupling. Hidden lamps are not listed.'},
+              'train_flatcar': {'lampK': 0.35, 'tint': '#FF6B5A',
+                                'notes': 'red tail lamps: fv_glow at lampK, tinted; hidden lamps are not listed.'}}
 STACK_STEP = 14
+ENGINE_BACK_DRAWN = 1.375       # assets/town train_engine: rear coupler hook tip, measured on its E frame (88 px)
 CARGO_SCALE = round(STACK_STEP / 19.0, 3)          # lgx crate icons: stackStep 19 at scale 1
 
 
@@ -206,6 +231,11 @@ def loop_decal(cache, key):
     B = tiles_under(meta, (W, H))
     M = repaint_mask(meta, (W, H))[..., None]
     T = M * R + (1.0 - M) * B
+    # (polish M3) nothing of the decal beyond the world's east edge (WORLD.width 6144): the town loop's outer
+    # ballast ends ~10 px short of it, only its soft shadow / snow fringe reached x 6144
+    x_edge = int(WORLD_W - (L(*meta['T'])[0] - meta['anchorPx'][0]))
+    if x_edge < W:
+        T[:, max(0, x_edge):] = B[:, max(0, x_edge):]
     F = solve_over(T, B)
     img = unprem(F)
     a = np.asarray(img).copy()
@@ -243,6 +273,44 @@ def load_cars(cache):
                   if not n.startswith('idle_')]
         frames += [(n, shadow_post(Image.open(os.path.join(cache, c, n + '.png')).convert('RGBA'), width=6,
                                    floor=12)) for n in shadows]
+        # every point (doorPoints are ground points beside the car) must lie inside the frame: pad the (trimmed,
+        # so free) canvas where a point would fall outside, anchorPx follows
+        pts = []
+        for f in ('doorPoints', 'windowPoints', 'lampPoints', 'cargoPoint', 'cargoSlots'):
+            for d, v in (m.get(f) or {}).items():
+                if f == 'doorPoints':
+                    pts += [p for side in v.values() for p in side]
+                elif f == 'cargoPoint':
+                    pts.append(v)
+                else:
+                    pts += list(v)
+        W, H = m['frameSize']
+        ax, ay = m['anchorPx']
+        pl = max([0] + [2 - (ax + p[0]) for p in pts])
+        pt_ = max([0] + [2 - (ay + p[1]) for p in pts])
+        pr = max([0] + [ax + p[0] - (W - 3) for p in pts])
+        pb = max([0] + [ay + p[1] - (H - 3) for p in pts])
+        # horizontally symmetric about the anchor (ax = W / 2): Phaser's flipX mirrors a frame about its middle,
+        # so a mirrored heading (SW / W / NW) keeps its anchor exactly where it was
+        pl, pr = max(pl, 0), max(pr, 0)
+        left, right = ax + pl, (W - ax) + pr
+        if left < right:
+            pl += right - left
+        elif right < left:
+            pr += left - right
+        if pl or pt_ or pr or pb:
+            pt_, pb = [int(math.ceil(v / 2.0) * 2) for v in (pt_, pb)]
+            W2, H2 = W + pl + pr, H + pt_ + pb
+
+            def pad(im):
+                out = Image.new('RGBA', (W2, H2))
+                out.paste(im, (pl, pt_))
+                return out
+            frames = [(n, pad(im) if not n.startswith('shadow_') else im) for n, im in frames]
+            m['frameSize'] = [W2, H2]
+            m['anchorPx'] = [ax + pl, ay + pt_]
+            m['anchor'] = [round((ax + pl) / W2, 5), round((ay + pt_) / H2, 5)]
+            m['padPx'] = [pl, pt_, pr, pb]
         m['names'], m['shadowNames'] = names, shadows
         cars[c] = (m, frames)
     return cars
@@ -327,9 +395,29 @@ def car_entry(c, m, frames):
                           'notes': 'Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not '
                                    'flip). Draw it under the car at the same position (ground layer), then the car.'},
          'notes': m['notes'], 'replaces': PLACEHOLDER[c]}
-    for f in ('doorPoints', 'windowPoints', 'lampPoints', 'cargoPoint', 'cargoSlots'):
-        if f in m:
+    for f in ('doorPoints', 'windowPoints', 'endWindowPoints', 'lampPoints', 'cargoPoint', 'cargoSlots'):
+        if f in m and (f != 'endWindowPoints' or any(m[f].values())):
             e[f] = m[f]
+    if c in NIGHT_GLOW:
+        e['nightGlow'] = NIGHT_GLOW[c]
+    # opaque bounds of the drawn car per rendered dir (all its frames), px from the anchor: [x0, y0, x1, y1]
+    # (label avoidRect, tap area of the train card; mirrored dirs: x0' = -x1, x1' = -x0)
+    ax, ay = m['anchorPx']
+    bounds = {}
+    for n, im in frames:
+        if n.startswith('shadow_') or n.startswith('rail_'):
+            continue
+        d = n.split('_')[-2]
+        bb = im.getchannel('A').point(lambda v: 255 if v > 24 else 0).getbbox()
+        if not bb:
+            continue
+        b = bounds.get(d)
+        bb = [bb[0] - ax, bb[1] - ay, bb[2] - ax, bb[3] - ay]
+        bounds[d] = bb if b is None else [min(b[0], bb[0]), min(b[1], bb[1]), max(b[2], bb[2]), max(b[3], bb[3])]
+    e['boundsPx'] = {d: bounds[d] for d in DIRS if d in bounds}
+    # (polish L4) headTop / headTopDir = the roof top over the car centre (the town engine's convention); a label or
+    # bubble goes at labelTopDir = 6 px above the drawn silhouette of that dir (end and diagonal views are taller)
+    e['labelTopDir'] = {d: int(bounds[d][1]) - 6 for d in DIRS if d in bounds}
     if 'cargoSlots' in m:
         e['stackStep'] = STACK_STEP
         e['cargoScale'] = CARGO_SCALE
@@ -342,10 +430,28 @@ def car_entry(c, m, frames):
 
 
 def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
-    man = {'version': 1, 'generator': 'tools/blender/tr2_render.py + tr2_pack.py (docs/CONTRACT_V42.md section AK)',
+    man = {'version': 2, 'generator': 'tools/blender/tr2_render.py + tr2_pack.py (docs/CONTRACT_V42.md section AK)',
            'conventions': CONVENTIONS,
            'atlases': [{'key': k, 'png': 'train2/%s.png' % k, 'json': 'train2/%s.json' % k} for k in atlas_keys],
            'sprites': {}, 'characters': {}}
+    for a in man['atlases']:
+        if a['key'] == 'train2_rails':
+            a['bakeOnly'] = True
+            a['lossless'] = True
+            a['notes'] = ('ground decals only (rail_loop_ours / rail_loop_town): bake them into the ground with the '
+                          'rail_x tiles, then release the page (RoadPaint BAKE_ONLY). Keep it lossless (no WebP / '
+                          'palette): the decal is an exact difference matte over the tiles.')
+        elif a['key'] == PROP_ATLAS:
+            a['notes'] = ('the flat car + the live props of both loops (rail_fence_x / _end, rail_switch_stand, '
+                          'rail_water_tower): resident with the train')
+    man['build'] = {
+        'pageRule': {'atlases': CARS, 'regex': '^train_(engine|car_a|car_b|coach|boxcar|flatcar)$',
+                     'keep': 'every shadow_* and every frame that is not {anim}_{dir}_{i} (the props); the stopped '
+                             'headings NE / SE in full (idle, move 0-7, door_open 0-3); the curve dirs S / E / N: '
+                             'move 0, 2, 4, 6 + idle_0 (an alias of move_0)',
+                     'notes': 'tools/build/pack_pages.py TRAIN rule (v42-dirs-1) extended to the train2 fragment; '
+                              'budget.*.pageMiB is that page, packed with pack_pages.pack'},
+        'bakeOnly': ['train2_rails'], 'lossless': ['train2_rails']}
     for c in CARS:
         man['characters'][c] = car_entry(c, *cars[c])
     for key in LOOPS:
@@ -356,14 +462,15 @@ def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
         world = L(*m['T'])
         pts = {}
         for n, (x, y) in m['pointsM'].items():
-            pts[n] = [int(round((x + y) * PX_X)), int(round((x - y) * PX_Y))]
+            pts['far' if n == 'leftmost' else n] = [int(round((x + y) * PX_X)), int(round((x - y) * PX_Y))]
         path_px = [[round((x + y) * PX_X, 1), round((x - y) * PX_Y, 1)] for x, y in m['pathM']]
         tiles = [{'key': 'rail_x', 'k': k, 'at': [int(64 * (k + 0.5 - iT)), int(32 * (k + 0.5 - iT))],
                   'worldPx': list(L(k + 0.5, 0))} for k in m['tiles']]
         lat = {n: [round(m['T'][0] + mx * c[0], 3), round(c[1], 3)] for n, c in
                {'T': (0, 0), 'D': (-1.75, 1.75), 'C': (-3.5, 3.5), 'B': (-5, 3.5), 'A': (-5, 0),
                 'far': (-6.75, 1.75)}.items()}
-        stand = (m['T'][0] - mx * 0.2, -0.8)
+        stand = (m['T'][0] - mx * 0.2, STAND_J)
+        tower = TOWER_HINT[key]
         man['sprites'][key] = {
             'atlas': 'train2_rails', 'frame': key, 'anchor': [round(m['anchorPx'][0] / W, 6), round(m['anchorPx'][1] / H, 6)],
             'anchorPx': m['anchorPx'], 'frameSize': [W, H], 'kind': 'decal', 'layer': 'ground', 'drawAfter': 'rail_x',
@@ -373,12 +480,17 @@ def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
             'radiusCells': 1.75, 'railTopM': m['railTopM'], 'gaugeM': m['gaugeM'],
             'switchTiesU': m['tieU'], 'frogM': m['frogM'],
             'placeHint': {'rail_switch_stand': {'lattice': [stand[0], stand[1]], 'worldPx': list(L(*stand)),
-                                                'notes': 'beside the switch toe on the land side, at the end of the '
-                                                         'two tie bars'},
-                          'rail_water_tower': {'lattice': [round(m['T'][0] + mx * -5.0, 2), 1.75],
-                                               'worldPx': list(L(m['T'][0] + mx * -5.0, 1.75)),
-                                               'notes': 'optional, centre of the semicircle infield (1.6 m footprint '
-                                                        'fits inside the inner ballast edge, radius 1.6 m)'}},
+                                                'blockM': STAND_BLOCK_M,
+                                                'notes': 'beside the switch toe on the land side at the end of the '
+                                                         'two tie bars, on the fence line (j -0.75): walkers on the '
+                                                         '역 가는 길 (j -1) pass it like the fence; keep a blockM '
+                                                         'radius free of walkers'},
+                          'rail_water_tower': {'lattice': [tower[0], tower[1]], 'worldPx': list(L(*tower)),
+                                               'notes': 'optional; BEHIND the loop on the sea side (not in the '
+                                                        'infield: there it hid the cars rounding the loop). Every '
+                                                        'track point under its body is drawn in front of it; its '
+                                                        'footprint >= 60 px on land, >= 0.7 cell from the ballast '
+                                                        '(checked by tr2_check / train2_phaser)'}},
             'matte': loop_stats[key],
             'notes': ('Balloon loop at %s (%s): the spring turnout at %s (long switch ties, switch blades + two tie '
                       'bars reaching to the land side, closure rails, frog and guard rails; the straight route through '
@@ -390,7 +502,7 @@ def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
                      ('서리역' if mx > 0 else '솔방울역', key, m['T'])}
     for key in PROPS:
         m = rail_meta[key]
-        e = {'atlas': 'train2_rails', 'frame': m['frames'][0], 'anchor': m['anchor'], 'anchorPx': m['anchorPx'],
+        e = {'atlas': PROP_ATLAS, 'frame': m['frames'][0], 'anchor': m['anchor'], 'anchorPx': m['anchorPx'],
              'frameSize': m['frameSize'], 'kind': m['kind'] if m['kind'] != 'tile' else 'decor',
              'topPx': m['topPx'], 'notes': m['notes']}
         for f in ('footprint', 'footprintM', 'tileAxis', 'segM', 'stepPx', 'postEnd', 'tileLayer', 'heightM'):
@@ -403,7 +515,16 @@ def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
             e['states'] = {'green': m['frames'][0], 'yellow': m['frames'][1]}
             e['lampPoint'] = m['fxPoints'].get('lamp')
         if key == 'rail_water_tower':
-            e['anims'] = {'pour': {'frames': m['frames'][1:], 'fps': m.get('pourFps', 10), 'repeat': -1}}
+            base = 'rail_water_tower_pour_base'
+            e['pourBase'] = base
+            e['anims'] = {'pour': {'frames': [n for n in m['frames'] if n.startswith('rail_water_tower_pour_')
+                                              and n != base], 'fps': m.get('pourFps', 10), 'repeat': -1,
+                                   'overlay': True, 'base': base}}
+            e['pourOverlay'] = m.get('pourOverlay')
+            e['usage'] = ('idle: show frame. Pouring: set the tower sprite to pourBase (spout lowered) and play anim '
+                          'pour on a second sprite at the same position, origin and depth (+0.001): the pour frames '
+                          'are small trimmed overlays (water stream, drips, splash) whose sourceSize = frameSize, so '
+                          'they land exactly. Back to idle: hide the overlay, show frame.')
             e['spoutPoint'] = m['fxPoints'].get('spout')
         if key == 'rail_fence_x':
             e['run'] = {'ours': {'j': -0.75, 'tileCentresI': [-5.5, -4.5, -3.5, -2.5], 'endPostI': -2.0,
@@ -412,13 +533,36 @@ def build_manifest(cars, rail_meta, atlas_keys, loop_stats):
                                  'notes': 'plan 5.1: j -0.75, i -6 .. -1.5 (4 tiles + the closing post; a 5th tile '
                                           'at i -1.5 would reach the switch toe)'}}
         man['sprites'][key] = e
+    eb = ENGINE_BACK_DRAWN
     man['trainConsist'] = {
         'village': {'name': '마을', 'order': ['train_engine', 'train_coach', 'train_boxcar', 'train_flatcar'],
-                    'spacingM': [2.72, 2.8, 2.5], 'lengthM': 10.6},
+                    'spacingM': [round(eb + 1.5, 3), 2.8, 2.5], 'spacingPlanM': [2.72, 2.8, 2.5],
+                    'lengthM': round(10.6 + eb - 1.22, 3), 'lengthPlanM': 10.6},
         'eup': {'name': '읍', 'order': ['train_engine', 'train_coach', 'train_coach', 'train_boxcar', 'train_flatcar'],
-                'spacingM': [2.72, 3.0, 2.8, 2.5], 'lengthM': 13.6},
-        'notes': 'train_engine lives in assets/town (couplerM -1.38 / 1.22). spacingM = anchor-to-anchor along the '
-                 'track; lengthM = nose (engine front coupler) to tail (last back coupler).'}
+                'spacingM': [round(eb + 1.5, 3), 3.0, 2.8, 2.5], 'spacingPlanM': [2.72, 3.0, 2.8, 2.5],
+                'lengthM': round(13.6 + eb - 1.22, 3), 'lengthPlanM': 13.6},
+        'couplerOverride': {'train_engine': {'back': eb}},
+        'engineFlip': {'origin': '1 - anchor[0] when flipX (SW / W / NW)',
+                       'notes': 'the town engine is not symmetric about its anchor (ax 0.434): Phaser mirrors a frame '
+                                'about its middle, so a flipped engine with origin ax sits 28 px off its track point. '
+                                'The train2 cars are packed symmetric (ax 0.5) and need nothing.'},
+        'curvePlacement': {
+            'anchor': 'chord midpoint: draw each car at the midpoint of its bogie chord P(s - 0.4 L) .. P(s + 0.4 L) '
+                      '(not at the arc point P(s)); on the R 1.75-cell loop curves the arc point lies ~0.3 m outside '
+                      'the chord, which pushes neighbouring cars apart sideways (folded coaches, a coach beside the '
+                      'engine on the S-curve)',
+            'heading': 'the chord angle -> nearest of 8 headings with ~8 deg hysteresis (keep the current heading '
+                       'until the chord is more than 22.5 + 8 deg away from it)',
+            'shadow': 'the shadow of the chosen heading at the same (chord midpoint) position',
+            'notes': 'validated in tools/test/train2_phaser.mjs (placement "chord", the loop GIFs and '
+                     'tr2_loop_curve_cmp.png compare it with the arc-point placement)'},
+        'notes': 'spacingM = anchor-to-anchor along the track (back coupler of the car in front - front coupler of the '
+                 'car behind); lengthM = nose (engine front coupler) to tail (last back coupler). train_engine lives in '
+                 'assets/town; its manifest says couplerM.back 1.22 but its sprite draws the rear coupler hook out to '
+                 '%.3f m behind its anchor (cab rear at 1.28 m), so with the plan figure 2.72 m the engine and the '
+                 'first car overlap and no gap shows. Use couplerOverride (spacingM[0] = %.3f m, +0.155 m, the train '
+                 '0.155 m longer); spacingPlanM / lengthPlanM keep the plan section 5.2 figures. Between the new '
+                 'cars the visible gap is the two coupler stubs, >= 0.3 m.' % (eb, eb + 1.5)}
     return man
 
 
@@ -439,19 +583,26 @@ def main(argv):
     cars = load_cars(cache)
     sheets = []
     report = {}
+    rail_meta = {}
+    pframes = prop_frames(cache, rail_meta)
     for c in CARS:
         m, frames = cars[c]
-        sheet, atlas = pu.pack_atlas(frames, max_width=MAX_SHEET, trim=True, padding=2)
+        extra = pframes if c == PROP_ATLAS else []
+        sheet, atlas = pu.pack_atlas(frames + extra, max_width=MAX_SHEET, trim=True, padding=2)
         if sheet.width > MAX_SHEET or sheet.height > MAX_SHEET:
             raise SystemExit('tr2_pack: %s atlas %dx%d > %d' % (c, sheet.width, sheet.height, MAX_SHEET))
         for d in DIRS:
             atlas['frames']['idle_%s_0' % d] = json.loads(json.dumps(atlas['frames']['move_%s_0' % d]))
-        page, psize = page_estimate(m, frames)
+        page, psize = page_estimate(m, frames + extra)
         report[c] = {'sheet': list(sheet.size), 'mib': round(mib(*sheet.size), 3), 'pageMiB': round(page, 3),
-                     'pageSize': list(psize), 'frames': len(frames), 'budgetMiB': BUDGET_MIB[c]}
-        sheets.append((c, sheet, atlas, True))
-    # rails atlas: loop decals (matte), fence tiles, props
-    rail_meta = {}
+                     'pageSize': list(psize), 'frames': len(frames) + len(extra), 'budgetMiB': BUDGET_MIB[c]}
+        if extra:
+            report[c]['propsPageMiB'] = round(page_estimate(m, extra)[0], 3)
+            report[c]['carOnlyPageMiB'] = round(page_estimate(m, frames)[0], 3)
+        # (polish H1) the flat car page also carries the props: kept RGBA (lossless) - one shared 256-colour palette
+        # mangles the props' soft shadows and the water tower's semi-transparent pour overlays (p99 error 75-214 levels)
+        sheets.append((c, sheet, atlas, c != PROP_ATLAS))
+    # rails atlas: the loop decals only (bake-only page)
     rframes = []
     loop_stats = {}
     masks = {}
@@ -461,9 +612,52 @@ def main(argv):
         loop_stats[key] = stats
         masks[key] = M
         rframes.append((key, img))
+    rsheet, ratlas = pu.pack_atlas(rframes, max_width=MAX_SHEET, trim=True, padding=2)
+    if rsheet.width > MAX_SHEET or rsheet.height > MAX_SHEET:
+        raise SystemExit('tr2_pack: train2_rails atlas %dx%d too big' % rsheet.size)
+    report['train2_rails'] = {'sheet': list(rsheet.size), 'mib': round(mib(*rsheet.size), 3), 'frames': len(rframes)}
+    sheets.append(('train2_rails', rsheet, ratlas, False))
+    finish(out, cache, sheets, report, cars, rail_meta, loop_stats, masks)
+
+
+def pour_overlays(pims, base_name, thresh=6.0, grow=2):
+    """(polish H1) the water tower's pour frames as overlays over pour_base (spout lowered, no water): per frame
+    F with F over base == pour inside the changed area (|pour - base| > thresh levels, grown by `grow` px), alpha 0
+    elsewhere (the render noise between the frames is a level or two and stays the base's)."""
+    from PIL import ImageFilter
+    d = dict(pims)
+    B = prem(d[base_name])
+    out, stats = [], {}
+    for n, im in pims:
+        if not n.startswith('rail_water_tower_pour_') or n == base_name:
+            out.append((n, im))
+            continue
+        T = prem(im)
+        ch = (np.abs(T - B).max(-1) * 255.0 > thresh)
+        mk = Image.fromarray((ch * 255).astype(np.uint8), 'L').filter(ImageFilter.MaxFilter(2 * grow + 1))
+        M = (np.asarray(mk) > 0)[..., None].astype(np.float64)
+        F = solve_over(M * T + (1.0 - M) * B, B)
+        ov = unprem(F)
+        a = np.asarray(ov).copy()
+        a[a[..., 3] < 2] = 0
+        ov = Image.fromarray(a, 'RGBA')
+        got = over(prem(ov), B)
+        err = np.abs(got - T).max(-1) * 255.0
+        bb = ov.getbbox()
+        stats[n] = {'bbox': list(bb) if bb else None, 'maxErrInside': round(float(err[M[..., 0] > 0].max()), 2),
+                    'p99ErrOutside': round(float(np.percentile(err[M[..., 0] == 0], 99)), 2)}
+        out.append((n, ov))
+    return out, stats
+
+
+def prop_frames(cache, rail_meta):
+    """Fence tile + end post, switch stand, water tower (idle, pour_base, pour overlays), each canvas cropped to the
+    union of its frames' content."""
+    rframes = []
     for key in PROPS:
         m = json.load(open(os.path.join(cache, key + '.json')))
         rail_meta[key] = m
+        pims = []
         for n in m['frames']:
             im = Image.open(os.path.join(cache, n + '.png')).convert('RGBA')
             if m.get('tileAxis'):
@@ -471,12 +665,38 @@ def main(argv):
                                                     m['segM']))
             else:
                 im = shadow_post(im)
-            rframes.append((n, im))
-    rsheet, ratlas = pu.pack_atlas(rframes, max_width=MAX_SHEET, trim=True, padding=2)
-    if rsheet.width > MAX_SHEET or rsheet.height > MAX_SHEET:
-        raise SystemExit('tr2_pack: train2_rails atlas %dx%d too big' % rsheet.size)
-    report['train2_rails'] = {'sheet': list(rsheet.size), 'mib': round(mib(*rsheet.size), 3), 'frames': len(rframes)}
-    sheets.append(('train2_rails', rsheet, ratlas, False))
+            pims.append((n, im))
+        # crop the canvas to the union of the frames' content + 2 px (the render canvas is generous): frameSize
+        # and anchorPx follow, every point stays anchor-relative
+        ub = None
+        for _, im in pims:
+            bb = im.getbbox()
+            if bb:
+                ub = bb if ub is None else (min(ub[0], bb[0]), min(ub[1], bb[1]), max(ub[2], bb[2]), max(ub[3], bb[3]))
+        W0, H0 = pims[0][1].size
+        x0, y0 = max(0, ub[0] - 2), max(0, ub[1] - 2)
+        x1, y1 = min(W0, ub[2] + 2), min(H0, ub[3] + 2)
+        ax, ay = m['anchorPx'][0] - x0, m['anchorPx'][1] - y0
+        m['anchorPx'] = [ax, ay]
+        m['frameSize'] = [x1 - x0, y1 - y0]
+        m['anchor'] = [round(ax / (x1 - x0), 5), round(ay / (y1 - y0), 5)]
+        if key == 'rail_water_tower':
+            pims, st = pour_overlays(pims, 'rail_water_tower_pour_base')
+            m['pourOverlay'] = {'thresholdLevels': 6, 'frames': {n: {'bboxPx': v['bbox'],
+                                                                     'maxErr': v['maxErrInside']}
+                                                                 for n, v in st.items()}}
+        for n, im in pims:
+            rframes.append((n, im.crop((x0, y0, x1, y1))))
+        if key == 'rail_water_tower':
+            x0_, y0_ = x0, y0
+            for n, v in m['pourOverlay']['frames'].items():
+                if v['bboxPx']:
+                    b = v['bboxPx']
+                    v['bboxPx'] = [b[0] - x0_, b[1] - y0_, b[2] - x0_, b[3] - y0_]
+    return rframes
+
+
+def finish(out, cache, sheets, report, cars, rail_meta, loop_stats, masks):
     os.makedirs(out, exist_ok=True)
     for fn in os.listdir(out):
         if fn.endswith(('.png', '.json')):
@@ -490,6 +710,11 @@ def main(argv):
     man = build_manifest(cars, rail_meta, [k for k, _, _, _ in sheets], loop_stats)
     man['budget'] = {k: {'atlas': v['sheet'], 'rgbaMiB': v['mib'], 'pageMiB': v.get('pageMiB'),
                          'budgetMiB': v.get('budgetMiB')} for k, v in report.items()}
+    for k, v in report.items():
+        for f in ('propsPageMiB', 'carOnlyPageMiB'):
+            if f in v:
+                man['budget'][k][f] = v[f]
+    man['budget']['train2_rails']['bakeOnly'] = True
     with open(os.path.join(out, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(man, f, indent=1, ensure_ascii=False)
     # masks for the previews / check

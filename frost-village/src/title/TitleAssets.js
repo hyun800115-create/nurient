@@ -349,7 +349,7 @@ export const TitleAssets = {
     const game = load.scene.sys.game;
     for (const k of TITLE_CFG.lateCues[frag] || []) {
       const d = j.audio[k];
-      if (!d || !d.files || game.cache.audio.exists(k) || Assets.failed.has(k)) continue;
+      if (!d || !d.files || !d.files.length || game.cache.audio.exists(k) || Assets.failed.has(k)) continue;     // ((v4.2) no files: in an audio sprite)
       this.cueVol[k] = d.volume !== undefined ? d.volume : 0.7;
       load.audio(k, d.files.map((f) => 'assets/' + f));      // kept in the audio cache: the game uses them too
     }

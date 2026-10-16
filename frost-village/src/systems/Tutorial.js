@@ -103,6 +103,14 @@ export class Tutorial {
     const nx = prog.nextPad();
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
     if (prog.complete) goal = this.goalText();
+    // ---- (v4.2, docs/v42_plan.md §8.3) after the v4 goals (읍): office site → its hire pads → bank → depot → offers
+    if (prog.complete && !goal) {
+      const h = this.v42Goal();
+      if (h) {
+        goal = { key: h.key, text: h.text };
+        if (h.pay && gs.economy.coins >= h.cost && !(h.pad && h.pad.contains(p.x, p.y))) { set(h.x, h.y, h.h, h.key, h.text); return; }
+      }
+    }
     if (idle && this.nextAction(set, goal)) return;
     // gentle hint: lots of coins waiting on a cash pad (once shown it leads all the way there)
     for (const c of this.cashes()) {
@@ -260,6 +268,27 @@ export class Tutorial {
       }
     }
     return false;
+  }
+
+  /** (v4.2) the next v4.2 thing to pay for once the v4 goals are done: { x, y, h, key, text, cost, pay, pad } or null.
+   *  Order: the 촌장 사무실 plot, its hire pad, the 서리 은행 plot, the 서리 물류창고 plot, then the line offers on the map
+   *  (짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게). Nothing here gates 읍 (they come after it). */
+  v42Goal() {
+    const gs = this.gs, v = gs.v42;
+    if (!v) return null;
+    const plot = (id, bkey) => {
+      const st = gs.sites && gs.sites[id];
+      if (!st || !st.shown || st.state !== 'plot' || gs.isBuilt(bkey) || gs.isBuilding(bkey)) return null;
+      const cost = buildCost(bkey).coins || 0;
+      return { x: st.dropX, y: st.dropY, h: 70, cost, pay: true, pad: st.pad, key: 'obj_next_build:' + bkey, text: t('obj_next_build', { name: t('b_' + bkey), cost: fmt(cost) }) };
+    };
+    const padGoal = (u, name) => (u && u.active && !u.done && !u.maxed ? { x: u.x, y: u.y, h: 112, cost: u.remaining, pay: true, pad: u.pad, key: 'obj_next:' + u.id + ':' + u.remaining, text: t('obj_next', { name, cost: fmt(u.remaining) }) } : null);
+    const O = v.office;
+    const hp = O && O.hirePad;
+    const hire = hp ? padGoal(hp, t('staff_' + hp.role)) : null;
+    let c = plot('v42_office', 'chief_office') || hire || plot('v42_bank', 'bank42') || plot('v42_depot', 'depot42');
+    if (!c && v.lines) for (const id in v.lines.pads) { const u = v.lines.pads[id]; const lab = u.opts && u.opts.labelFn ? u.opts.labelFn() : id; c = padGoal(u, lab); if (c) break; }
+    return c;
   }
 
   // ---------------------------------------------------------------- (v3)
@@ -735,6 +764,10 @@ export class Tutorial {
     this.evalT -= dt;
     if (this.evalT <= 0) { this.evaluate(0.2 - this.evalT); this.evalT = 0.2; }
     const tg = this.target;
+    // ((v4.2 §7.1) while 관망 drives the chief the arrow and the objective text step aside for the caption; the target
+    //  is still worked out: the pilot's 급한 일 follows it)
+    const pl = this.gs.v42 && this.gs.v42.pilot;
+    if (pl && pl.on) { if (this.arrow.visible) this.arrow.setVisible(false); this.gs.ui.setObjective(null, null, null); return; }
     if (!tg) { this.arrow.setVisible(false); this.gs.ui.setObjective(this.textKey, null, this.text); return; }
     const bounce = Math.abs(Math.sin(this.t * 4.2)) * 16;
     this.arrow.setVisible(true).setPosition(tg.x, tg.y - tg.h - bounce);

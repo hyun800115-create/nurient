@@ -1,0 +1,564 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_ui5.py (procedural numpy + Pillow on fxlib; house style of ui / ui2 / ui3 / ui4)",
+ "conventions": {
+  "contract": "CONTRACT_V42 §AL. Paths relative to frost-village/assets/. Fragment name: ui5 (the build packs it with chief_fx into the v42_core page).",
+  "text": "No text is baked; the game renders every label.",
+  "iconSize": [
+   96,
+   96
+  ],
+  "style": "House soft-toy style (fxlib.toy): dark tinted outline, bevel lit from the upper left, gloss, one navy drop shadow. Icons read at 32 px on cream and on dark.",
+  "nineSlice": "Panel frames live in the atlas UNTRIMMED, so Phaser NineSlice can use them directly: this.add.nineslice(x, y, 'ui5_icons', 'ui_letter', w, h, left, right, top, bottom) with the margins of nineSlice[key]. contentInset = [left, top, right, bottom] px from the stretched edges where the game lays out content.",
+  "pageSize": [
+   492,
+   798
+  ],
+  "pageMiB": 1.498,
+  "renamed": {
+   "ui_icon_play": "ui_icon_play_tab"
+  },
+  "renamedWhy": "ui_icon_play is already a pets2 sprite (the dog play-fetch ball used by src/scenes/UI.js); a second ui_icon_play would replace it at merge (Object.assign) or be dropped (mergeLate). The settings-tab 놀이 icon is ui_icon_play_tab."
+ },
+ "atlases": [
+  {
+   "key": "ui5_icons",
+   "png": "ui5/ui5_icons.png",
+   "json": "ui5/ui5_icons.json"
+  }
+ ],
+ "sprites": {
+  "ui_icon_binoculars": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_binoculars",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "관망 모드 (observe-mode button, 56 round): chunky teal binoculars, a sparkle in one lens.",
+   "replaces": "fv_icon_binoculars / ui3 ui_icon_explore"
+  },
+  "ui_icon_hand": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_hand",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "줍기 button / 자동 줍기 setting: the chief's open white mitten with a gold sparkle above the palm.",
+   "replaces": "fv_icon_hand / ui_icon_backpack"
+  },
+  "ui_icon_route": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_route",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "길 안내 setting / nav chip: dotted footprints curving to a teal map pin.",
+   "replaces": "fv_nav_edge"
+  },
+  "ui_icon_office": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_office",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "촌장 사무실 / 업무 chip: cream office, teal roof, gable clock, a window lit by a desk lamp.",
+   "replaces": "fv_icon_office"
+  },
+  "ui_icon_letter": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_letter",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "편지 (letters tab / new letter): cream envelope with a red heart wax seal.",
+   "replaces": "ui4 ui_icon_story"
+  },
+  "ui_icon_inventory": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_inventory",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "재고 tab / 재고판: clipboard with four coloured stock bars (red, orange, blue, green).",
+   "replaces": "ui4 ui_icon_stock"
+  },
+  "ui_icon_news": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_news",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "소식 tab (서리 소식): the village paper folded in half, snowflake emblem on a blue masthead (ui4 ui_icon_newspaper is the town's pinecone paper).",
+   "replaces": "ui4 ui_icon_newspaper"
+  },
+  "ui_icon_bank": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_bank",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "서리 은행: small civic building (columns, steps, pediment) under a gold coin dome.",
+   "replaces": "ui4 ui_icon_passbook"
+  },
+  "ui_icon_staff": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_staff",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "직원 tab: two friendly heads, one in a suit with a tie, one with a pink bow.",
+   "replaces": "ui_icon_worker"
+  },
+  "ui_icon_halo": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_halo",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "촌장 후광 setting / new-features card: a little chief standing on an aurora ring.",
+   "replaces": "fv_halo"
+  },
+  "ui_icon_cheer": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_cheer",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "촌장 응원: a raised white mitten with two music notes.",
+   "replaces": "emotes fx_music_notes"
+  },
+  "ui_icon_depot": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_depot",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "물류창고: blue warehouse with an orange crate in its open door.",
+   "replaces": "ui4 ui_icon_box"
+  },
+  "ui_icon_sleigh": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_sleigh",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "화물 썰매: a pony head pulling a little sleigh with a crate.",
+   "replaces": "ui3 ui_icon_delivery"
+  },
+  "ui_icon_coach": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_coach",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "열차 카드 객차: sky-blue coach, teal roof, warm lit windows, on a rail.",
+   "replaces": "none (text)"
+  },
+  "ui_icon_boxcar": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_boxcar",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "열차 카드 화물칸: chestnut box car with an X-brace sliding door, on a rail.",
+   "replaces": "none (text)"
+  },
+  "ui_icon_flatcar": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_flatcar",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "열차 카드 무개화차: flat car carrying three crates, on a rail.",
+   "replaces": "none (text)"
+  },
+  "ui_icon_play_tab": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_play_tab",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "settings tab 놀이: a snowflake over a small joystick knob. CONTRACT_V42 calls it ui_icon_play, but pets2 already owns ui_icon_play (the dog's play-fetch ball in src/scenes/UI.js), so use this key.",
+   "replaces": "ui_icon_settings",
+   "contractKey": "ui_icon_play"
+  },
+  "ui_icon_new": {
+   "atlas": "ui5_icons",
+   "frame": "ui_icon_new",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "\"새로워진 것\" card: a red gift box with a gold ribbon and a sparkle.",
+   "replaces": "ui3 ui_icon_event"
+  },
+  "ui_letter": {
+   "atlas": "ui5_icons",
+   "frame": "ui_letter",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    320,
+    400
+   ],
+   "contentInset": [
+    36,
+    64,
+    36,
+    40
+   ],
+   "notes": "편지 page (OfficePanel letters, 720 x 1100 logical): cream letter paper, faint blue ruled lines (every 22 px in the source, they stretch with the panel), a pinecone stamp in the top-right corner, the envelope flap with its shadow across the top. Write the sender in the flap band (y 8-36), the letter text inside contentInset.",
+   "replaces": "ui_panel"
+  },
+  "ui_chalk_panel": {
+   "atlas": "ui5_icons",
+   "frame": "ui_chalk_panel",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    320,
+    240
+   ],
+   "contentInset": [
+    28,
+    28,
+    28,
+    36
+   ],
+   "notes": "재고 tab background: dark green chalkboard in a wooden frame with a chalk tray (chalk and eraser in the bottom corners). Light text / status dots read on it.",
+   "replaces": "ui4 ui_newspaper"
+  },
+  "ui_office_tab": {
+   "atlas": "ui5_icons",
+   "frame": "ui_office_tab",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    160,
+    72
+   ],
+   "contentInset": [
+    24,
+    20,
+    24,
+    12
+   ],
+   "notes": "Office panel tab (inactive): cream with a teal rim, open at the bottom - put it on the panel's top edge (bottom edge of the tab = panel edge).",
+   "replaces": "ui_button_gray"
+  },
+  "ui_office_tab_on": {
+   "atlas": "ui5_icons",
+   "frame": "ui_office_tab_on",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    160,
+    72
+   ],
+   "contentInset": [
+    24,
+    20,
+    24,
+    12
+   ],
+   "notes": "Office panel tab (active): raised 6 px, brighter, teal cap and a stronger shadow; same frame and margins as ui_office_tab so they swap in place.",
+   "replaces": "ui_button_green"
+  },
+  "ui_chip": {
+   "atlas": "ui5_icons",
+   "frame": "ui_chip",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    200,
+    64
+   ],
+   "contentInset": [
+    32,
+    16,
+    32,
+    16
+   ],
+   "notes": "HUD chips (navigation chip 240 x 44 CSS, 업무 chip, 관망 caption): rounded cream pill with a teal rim. Height can stay 64 (or scale the whole chip); stretch the width.",
+   "replaces": "ui_panel"
+  },
+  "ui_status": {
+   "atlas": "ui5_icons",
+   "frame": "ui_status_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "frames": 4,
+   "frameNames": [
+    "ui_status_0",
+    "ui_status_1",
+    "ui_status_2",
+    "ui_status_3"
+   ],
+   "states": {
+    "short": "ui_status_0",
+    "blocked": "ui_status_1",
+    "surplus": "ui_status_2",
+    "ok": "ui_status_3"
+   },
+   "notes": "Glossy status dots for the 재고 board rows: ui_status_0 red 부족, ui_status_1 orange 길 막힘, ui_status_2 blue 남음, ui_status_3 green 적당.",
+   "replaces": "generated circles"
+  },
+  "ui_status_0": {
+   "atlas": "ui5_icons",
+   "frame": "ui_status_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "red dot: 부족 (short)"
+  },
+  "ui_status_1": {
+   "atlas": "ui5_icons",
+   "frame": "ui_status_1",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "orange dot: 길 막힘 (blocked)"
+  },
+  "ui_status_2": {
+   "atlas": "ui5_icons",
+   "frame": "ui_status_2",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "blue dot: 남음 (surplus)"
+  },
+  "ui_status_3": {
+   "atlas": "ui5_icons",
+   "frame": "ui_status_3",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "green dot: 적당 (ok)"
+  }
+ },
+ "nineSlice": {
+  "ui_letter": {
+   "atlas": "ui5_icons",
+   "frame": "ui_letter",
+   "left": 36,
+   "right": 36,
+   "top": 64,
+   "bottom": 40,
+   "contentInset": [
+    36,
+    64,
+    36,
+    40
+   ]
+  },
+  "ui_chalk_panel": {
+   "atlas": "ui5_icons",
+   "frame": "ui_chalk_panel",
+   "left": 28,
+   "right": 28,
+   "top": 28,
+   "bottom": 36,
+   "contentInset": [
+    28,
+    28,
+    28,
+    36
+   ]
+  },
+  "ui_office_tab": {
+   "atlas": "ui5_icons",
+   "frame": "ui_office_tab",
+   "left": 24,
+   "right": 24,
+   "top": 20,
+   "bottom": 12,
+   "contentInset": [
+    24,
+    20,
+    24,
+    12
+   ]
+  },
+  "ui_office_tab_on": {
+   "atlas": "ui5_icons",
+   "frame": "ui_office_tab_on",
+   "left": 24,
+   "right": 24,
+   "top": 20,
+   "bottom": 12,
+   "contentInset": [
+    24,
+    20,
+    24,
+    12
+   ]
+  },
+  "ui_chip": {
+   "atlas": "ui5_icons",
+   "frame": "ui_chip",
+   "left": 32,
+   "right": 32,
+   "top": 16,
+   "bottom": 16,
+   "contentInset": [
+    32,
+    16,
+    32,
+    16
+   ]
+  }
+ }
+}

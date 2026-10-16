@@ -216,7 +216,7 @@ try {
     step('chat: closing resumes the village and gives the keyboard back', !st2.chat.open && !st2.paused && st2.kb === true, st2);
     const rec = await ev(() => { const r = JSON.parse(localStorage.getItem('frostVillage.save.v1.chat') || 'null'); window.__FV.save(); const s = JSON.parse(localStorage.getItem('frostVillage.save.v1') || 'null'); return { v: r && r.v, cid: r && r.cid, saveCid: s && s.cid, bytes: (localStorage.getItem('frostVillage.save.v1.chat') || '').length, chatV: r && r.chat && r.chat.v, gameBytes: (localStorage.getItem('frostVillage.save.v1') || '').length }; });
     step('chat: the chat village is saved with the game save (versioned record tied by cid)', rec.v === 1 && rec.cid && rec.cid === rec.saveCid && rec.chatV >= 2 && rec.bytes > 200, rec);
-    step('chat: the game save itself stays small (chat not in the 6 KB autosave)', rec.gameBytes <= 6144, rec.gameBytes);
+    step('chat: the game save itself stays small (chat not in the autosave; ≤ 10 KB since v4.2 save v7)', rec.gameBytes <= 10240, rec.gameBytes);
     const talks = st2.chat.talks;
     // reload: the memory is back
     await page.reload({ waitUntil: 'load' });

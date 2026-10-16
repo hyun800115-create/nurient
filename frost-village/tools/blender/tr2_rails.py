@@ -163,8 +163,9 @@ def ribbon(name, path, profile, mat, s0=None, s1=None):
     return L.finish(name, bm, [mat], smooth=True)
 
 
-def swept_box(name, path, off, w, z0, z1, mat, s0=None, s1=None):
-    """Rail-like bar of section w x (z1 - z0) swept along the path at normal offset `off`."""
+def swept_box(name, path, off, w, z0, z1, mat, s0=None, s1=None, bevel=0.0):
+    """Rail-like bar of section w x (z1 - z0) swept along the path at normal offset `off`.  bevel > 0: the same
+    angle-limited bevel as prop_lib.box (town_rails' rail heads: the bright rail-top highlight line)."""
     prof = [(off - w / 2, z0), (off - w / 2, z1), (off + w / 2, z1), (off + w / 2, z0)]
     bm = bmesh.new()
     rows = []
@@ -180,6 +181,8 @@ def swept_box(name, path, off, w, z0, z1, mat, s0=None, s1=None):
         bm.faces.new(list(reversed(rows[0])))
         bm.faces.new(rows[-1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if bevel > 0:
+        return L.finish(name, bm, [mat], bevel=bevel, segs=3)
     return L.finish(name, bm, [mat], smooth=False)
 
 
@@ -187,9 +190,11 @@ def rail_set(name, path, off, s0=None, s1=None, steel=None):
     """foot + web + head like town_rails.segment (rail head at RAIL_TOP)."""
     steel = steel or flat('#AEB8C4', 0.28, 0.75)
     dark = flat('#5A606B', 0.5, 0.5)
-    return [swept_box(name + '_f', path, off, 0.12, 0.095, 0.115, dark, s0, s1),
-            swept_box(name + '_w', path, off, 0.04, 0.11, 0.14, dark, s0, s1),
-            swept_box(name + '_h', path, off, 0.075, RAIL_TOP - 0.025, RAIL_TOP, steel, s0, s1)]
+    # (polish L1) bevelled like the straight rail_x rails (town_rails: foot / web 0.003, head 0.006), so the curved
+    # rails carry the same bright rail-top highlight and the tone does not change at A / T
+    return [swept_box(name + '_f', path, off, 0.12, 0.095, 0.115, dark, s0, s1, bevel=0.003),
+            swept_box(name + '_w', path, off, 0.04, 0.11, 0.14, dark, s0, s1, bevel=0.003),
+            swept_box(name + '_h', path, off, 0.075, RAIL_TOP - 0.025, RAIL_TOP, steel, s0, s1, bevel=0.006)]
 
 
 def sub_path(path, s0, s1):
@@ -231,7 +236,10 @@ def build_loop(key):
     path = loop_path(mx)
     s_end = path[-1][2]
     uA = mx * A_CELLS * SEG
-    ballast = TRL.ballast_mat()
+    # (polish L1) the swept loop bed is shaded with up-facing normals across its whole top, the straight extruded
+    # bed (town_rails) with corner normals averaged into its end caps: the same snowy() mix then reads ~10 levels
+    # lighter on the loop. Shift the snow threshold so the loop bed matches the straight tiles' tone at the joints.
+    lballast = L.snowy('#8C8784', lo=1.05, hi=1.29, noise_amt=0.7, noise_scale=6.0, rough=0.95)
     wood = tonal('#8A5A33', 0.12, 5.0, rough=0.85)
     dark = flat('#5A606B', 0.5, 0.5)
     iron = flat('#3D424C', 0.45, 0.5)
@@ -249,7 +257,7 @@ def build_loop(key):
     objs = []
     # ---- curved route ballast (2 mm under the straight's top so the turnout overlap stays clean)
     prof = [(-0.86, 0.0), (-0.7, 0.048), (0.7, 0.048), (0.86, 0.0)]
-    objs.append(ribbon('lballast', path, prof, ballast))
+    objs.append(ribbon('lballast', path, prof, lballast))
     # ---- rails along the whole loop (inner / outer), fishplates every SEG from A (phase of the straight)
     for side, off in (('o', GAUGE / 2), ('i', -GAUGE / 2)):
         objs += rail_set('lrail_' + side, path, off)
@@ -538,10 +546,11 @@ def b_switch_stand():
 
 
 @item('rail_water_tower', 'prop', fp=(1.6, 1.6), catcher=10.0, samples=48,
-      frames=['idle', 'pour_0', 'pour_1', 'pour_2', 'pour_3', 'pour_4', 'pour_5'],
-      notes='Small wooden water tower for the loop infield (footprint 1.6 m, ~3.2 m): four braced timber legs, a '
-            'round stave tank with iron hoops, a cone roof with snow, a ladder and a swinging spout. idle = spout '
-            'raised; anim pour (6 f loop) = spout lowered, a water stream with drips and a splash in the trough.')
+      frames=['idle', 'pour_0', 'pour_1', 'pour_2', 'pour_3', 'pour_4', 'pour_5', 'pour_base'],
+      notes='Small wooden water tower beside the loop (footprint 1.6 m, ~3.2 m): four braced timber legs, a round '
+            'stave tank with iron hoops, a cone roof with snow, a ladder and a swinging spout. idle = spout raised; '
+            'pour_base = spout lowered (no water); anim pour (6 f loop) = the water stream with drips and a splash '
+            'in the trough, shipped as small OVERLAY frames drawn over pour_base (same origin).')
 def b_water_tower():
     wood = tonal('#8A5A33', 0.12, 5.0, rough=0.85)
     dark = flat('#5E3B26', 0.7)
@@ -623,11 +632,12 @@ def b_water_tower():
         spl.append(o)
 
     def state(i):
-        pour = i > 0
+        pour = i > 0                      # pour_0 .. pour_5 and pour_base (7): spout lowered
+        water = 0 < i < 7                 # (polish H1) pour_base = the lowered spout without water
         piv.rotation_euler = (0.0, math.radians(58 if pour else -35), 0.0)
         for o in stream + spl + [col]:
-            o.hide_render = not pour
-        if not pour:
+            o.hide_render = not water
+        if not water:
             return
         f = (i - 1) / 6.0
         top, bot = tip_down.z - 0.06, 0.2

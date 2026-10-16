@@ -717,7 +717,8 @@ WORLD.v42 = {
   streets: [
     { id: 'ave_s',    axis: 'y', i: [30.0, 34.0], j: [-22.2, -18.0], paint: [30.0, 31.5], cls: 'dirt', v42: true, region: 'se', name: 'st_ave_s' },
     { id: 'bank_st',  axis: 'x', i: [23.1, 40.9], j: [-24.2, -22.2], paint: [-24.0, -22.6], paintI: [23.1, 37.0], cls: 'dirt', v42: true, region: 'se', name: 'st_bank' },
-    { id: 'lgx_dock', axis: 'y', i: [34.8, 36.8], j: [-27.6, -24.2], cls: 'dirt', apron: [32.3, 36.8, -27.6, -25.0], v42: true, region: 'se', name: 'st_lgx_dock' },
+    // (lgx_dock / 앞마당: i 끝 36.3 — 맨 아래 모서리가 y 3360 위에 있도록 (계획 36.8 은 3376 이라 숲 띠에 닿아요))
+    { id: 'lgx_dock', axis: 'y', i: [34.8, 36.3], j: [-27.6, -24.2], cls: 'dirt', apron: [32.3, 36.3, -27.6, -25.0], v42: true, region: 'se', name: 'st_lgx_dock' },
     { id: 'lgx_walk', axis: 'path', pts: [[23.8, -24.2], [23.8, -31.0], [27.3, -31.0]], cls: 'path', v42: true, region: 'se', name: 'st_lgx_walk' },
   ],
   // ── 썰매 길 (격자 점): 정류장 → 역앞 거리 (j −5) → 중앙로 (i 31) → ave_s → bank_st → lgx_dock → 2번 문
@@ -737,3 +738,14 @@ WORLD.v42 = {
   // ── 가장자리 숲에서 비워 두는 곳 [x0, y0, x1, y1] (숲의 무작위 순서는 그대로: 다른 나무가 움직이지 않아요)
   treeGaps: [[6000, 2450, 6150, 2850], [3300, 3300, 3700, 3460]],
 };
+
+// ── (v4.2) 새 부지: 촌장 사무실 터 (마을회관을 지은 뒤), 서리 은행 터 (읍 + 사무실). 보통 부지처럼 자재를 날라 지어요
+//    (only = 이 건물만, after / also = 나타나는 조건, 값은 balance.js v42.office.site / v42.bank.site)
+Object.assign(WORLD.plots, {
+  v42_office: { x: WORLD.v42.office.x, y: WORLD.v42.office.y, size: 'M', region: 'start', after: 'b:town_hall', only: 'chief_office', v42: true },
+  v42_bank: { x: WORLD.v42.bank.x, y: WORLD.v42.bank.y, size: 'M', region: 'west', after: 'f:rankEup', also: 'b:chief_office', only: 'bank42', v42: true },
+});
+// ── (v4.2) 물류창고 터 (읍 + 창고 + 남동쪽 땅) — 썰매 길은 아래 street 로 (흙길)
+WORLD.plots.v42_depot = { x: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[0], y: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[1], size: 'L', region: 'rail', after: 'f:rankEup', also: ['b:warehouse', 'r:se'], only: 'depot42', v42: true };
+// ── (v4.2) 물류창고 가는 흙길은 WORLD.v42.streets 에 그대로 두고 RoadPaint 가 흙길로 칠해요 (물류창고가 생기면).
+//    v4.streets 에 붙이면 RoadNet 의 차 길이 끊긴 조각이 돼요 (y 길끼리 끝과 끝이 닿으면 이어지지 않아요): v5 / v8 이 같은 id 로 이어받아요

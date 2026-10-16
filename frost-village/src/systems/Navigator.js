@@ -102,8 +102,11 @@ export class Navigator {
       const list = this.places();
       const prev = this.dest;
       let pick = list.length ? list[this.cycle % list.length] : null;
-      // (hysteresis: the place he is walking to stays unless another takes at least 2 more items)
-      if (pick && !this.cycle && prev && prev.pad && pick.pad !== prev.pad) { const keep = list.find((q) => q.pad === prev.pad); if (keep && pick.n < keep.n + 2) pick = keep; }
+      // (hysteresis: the place he is walking to stays unless another takes at least 2 more items — for the same load:
+      //  a bag with other kinds of goods is a new load and picks afresh)
+      const sig = Object.keys(list.counts || {}).sort().join(',');
+      if (pick && !this.cycle && prev && prev.pad && pick.pad !== prev.pad && sig === this.loadSig) { const keep = list.find((q) => q.pad === prev.pad); if (keep && pick.n < keep.n + 2) pick = keep; }
+      this.loadSig = sig;
       if (pick) {
         const ty = pick.types[0][0];
         this.dest = { type: ty, n: pick.types.reduce((s, q) => s + q[1], 0), pad: pick.pad, label: pick.label, lp: pick.lp, others: list.length - 1, surplus: pick.surplus };
@@ -117,7 +120,8 @@ export class Navigator {
     if (!d.pad) { this.hide(); this.pulseTrash(dt); this.aura(null); return; }
     // the route (replan when the place changed or he strayed)
     this.replanT -= dt;
-    if (this.replanT <= 0 && (this.routeFor !== d.pad || this.strayed())) {
+    const far = this.routeFor === d.pad && this.strayDist() > 3 * (N().strayPx || 80);     // (a jump: at once)
+    if ((this.replanT <= 0 || far) && (this.routeFor !== d.pad || far || this.strayed())) {
       this.replanT = Math.max(0.1, N().replanEvery || 1);
       this.plan(d.pad);
     }
@@ -136,6 +140,7 @@ export class Navigator {
   plan(pad) {
     const gs = this.gs, p = gs.player, c = N();
     this.routeFor = pad;
+    this.routeStart = { x: p.x, y: p.y };
     const dist = gdist(p.x, p.y, pad.x, pad.y);
     this.route.length = 0;
     if (dist < (c.straightUnder || 360) || !gs.roads) this.route.push({ x: pad.x, y: pad.y });
@@ -151,10 +156,11 @@ export class Navigator {
     this.routeLen = L;
   }
 
-  /** is he more than nav.strayPx away from the route polyline? */
-  strayed() {
+  /** is he more than nav.strayPx away from the route polyline (from where it was planned)? */
+  strayed() { return this.strayDist() > (N().strayPx || 80); }
+  strayDist() {
     const p = this.gs.player, R = this.route;
-    if (!R.length) return true;
+    if (!R.length) return Infinity;
     let best = Infinity, ax = this.routeStart ? this.routeStart.x : p.x, ay = this.routeStart ? this.routeStart.y : p.y;
     for (const q of R) {
       const vx = q.x - ax, vy = q.y - ay, l2 = vx * vx + vy * vy || 1;
@@ -162,14 +168,14 @@ export class Navigator {
       best = Math.min(best, Math.hypot(ax + vx * tt - p.x, ay + vy * tt - p.y));
       ax = q.x; ay = q.y;
     }
-    return best > (N().strayPx || 80);
+    return best;
   }
 
   draw(dt) {
     const gs = this.gs, p = gs.player, d = this.dest, c = N();
     // trim route points he has passed (the next one is the first more than 40 px away that lies ahead)
     const R = this.route;
-    while (R.length > 1 && gdist(p.x, p.y, R[0].x, R[0].y) < 40) R.shift();
+    while (R.length > 1 && gdist(p.x, p.y, R[0].x, R[0].y) < 40) this.routeStart = R.shift();
     this.measure();
     // the tutorial arrow on the same pad: only the arrow + the dots
     const T = gs.tutorial, tg = T && T.target;

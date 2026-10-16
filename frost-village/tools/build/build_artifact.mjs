@@ -359,7 +359,8 @@ function pruneUnusedKeys(frags, skipped) {
       const keep = (j.audioGroups[g] || []).filter((k) => j.audio && j.audio[k]);
       if (keep.length) j.audioGroups[g] = keep; else delete j.audioGroups[g];
     }
-    if (j.sprites && only) for (const k of Object.keys(j.sprites)) if (!only.has(k) && !(j.images || []).some((a) => a.key === k)) delete j.sprites[k];
+    // (a sprite stays when its own atlas / image is kept: (v4.2) the bank's and the depot's layer sprites)
+    if (j.sprites && only) for (const k of Object.keys(j.sprites)) { const sd = j.sprites[k]; const own = sd && typeof sd === 'object' ? (sd.atlas || sd.image) : null; if (!only.has(k) && !(own && only.has(own)) && !(j.images || []).some((a) => a.key === k)) delete j.sprites[k]; }
     for (const p of gone.filter(Boolean)) { const fp = path.join(OUT, 'assets', p); if (fs.existsSync(fp)) { fs.rmSync(fp); skipped.push('assets/' + p + ' (not used by the game yet)'); } }
     if (f === 'title') { const ic = path.join(OUT, 'assets', 'title', 'icon'); if (fs.existsSync(ic)) { fs.rmSync(ic, { recursive: true }); skipped.push('assets/title/icon/ (app icons: not used by the page)'); } }
     if (changed) fs.writeFileSync(mp, JSON.stringify(j));
@@ -427,6 +428,48 @@ function embedFrameLists(frags, late, skipped) {
     if (changed) fs.writeFileSync(tb, JSON.stringify(j));
   }
   return out;
+}
+
+/**
+ * (v4.2, docs/v42_plan.md §13.1, the file diet) the one-shot sounds of a fragment ship as ONE sprite mp3: the
+ * copied manifest gets `audioSprite: { file, keys: { key: [start, dur] } }` and each of those keys `inSprite: frag`
+ * with no files; Assets.sliceSprite cuts one AudioBuffer per key into the audio cache, so Audio.play(key) is
+ * unchanged. Loops, ambience and music stay files (they stream / loop on their own). assets/ is never touched.
+ */
+const SPRITE_FRAGS = ['audio', 'audio2', 'audio3'];
+/** the sounds the living title loads itself from a fragment manifest (src/title/config.js lateCues): they stay files */
+function titleCues() {
+  try {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'title', 'config.js'), 'utf8');
+    const m = src.match(/lateCues\s*:\s*\{([^}]*)\}/);
+    return new Set(m ? (m[1].match(/['"]([a-z0-9_]+)['"]/gi) || []).map((q) => q.slice(1, -1)) : []);
+  } catch (e) { return new Set(); }
+}
+function audioSprites(frags, skipped) {
+  let saved = 0;
+  const keep = titleCues();
+  for (const f of SPRITE_FRAGS) {
+    if (!frags.includes(f)) continue;
+    const mp = path.join(OUT, 'assets', f, 'manifest.json');
+    if (!fs.existsSync(mp)) continue;
+    const j = JSON.parse(fs.readFileSync(mp, 'utf8'));
+    const keys = Object.keys(j.audio || {}).filter((k) => { const a = j.audio[k]; return a && !keep.has(k) && !a.loop && a.kind !== 'music' && a.kind !== 'ambience' && (a.files || []).some((x) => /\.mp3$/i.test(x) && fs.existsSync(path.join(OUT, 'assets', x))); });
+    if (keys.length < 2) continue;
+    const file = f + '/sfx_sprite.mp3';
+    const args = [path.join(HERE, 'audio_sprite.py'), path.join(OUT, 'assets', file)].concat(keys.map((k) => k + '=' + path.join(OUT, 'assets', j.audio[k].files.find((x) => /\.mp3$/i.test(x)))));
+    let r;
+    try { r = JSON.parse(execFileSync(process.platform === 'win32' ? 'python' : 'python3', args, { encoding: 'utf8' }).trim().split('\n').pop()); }
+    catch (e) { console.log(`[build] audio sprite for ${f} skipped (needs python3 + numpy + ffmpeg): ` + String(e.message || e).split('\n')[0]); continue; }
+    for (const k of keys) {
+      for (const x of j.audio[k].files || []) { const fp = path.join(OUT, 'assets', x); if (fs.existsSync(fp)) { fs.rmSync(fp); saved++; } }
+      j.audio[k].files = [];
+      j.audio[k].inSprite = f;      // (not `sprite`: the voice manifest uses that for its own word sprites)
+    }
+    j.audioSprite = { file, keys: r.keys, dur: r.dur };
+    fs.writeFileSync(mp, JSON.stringify(j, null, 1));
+    skipped.push(`assets/${f}: ${keys.length} one-shot sounds as one sprite (${file}, ${r.dur.toFixed(1)} s)`);
+  }
+  return saved;
 }
 
 /** (v3.5) drop the atlas / image entries (and their files) of the copied manifests that the game never loads */
@@ -641,6 +684,12 @@ async function main() {
   // loaded by the game (Assets.mergeManifests: the later fragment wins key by key): leave them out
   pruneUnusedKeys(frags.concat(late), skipped);
   pruneOverridden(frags, skipped);
+  // (v4.2, the file diet) each fragment's 128 px portraits as one atlas page (tools/build/portrait_atlas.py)
+  try {
+    const pr = JSON.parse(execFileSync(process.platform === 'win32' ? 'python' : 'python3', [path.join(HERE, 'portrait_atlas.py'), path.join(OUT, 'assets')].concat(frags.concat(late)), { encoding: 'utf8' }).trim().split('\n').pop());
+    const n = Object.values(pr).reduce((a, r) => a + r.removed, 0);
+    if (n) { console.log(`[build] portraits: ${n} files -> ${Object.keys(pr).length} atlas pages (${Object.keys(pr).join(', ')})`); skipped.push(`portraits of ${Object.keys(pr).join(', ')} (one atlas page each)`); }
+  } catch (e) { console.log('[build] portrait atlases skipped (needs python3 with Pillow): ' + String(e.message || e).split('\n')[0]); }
   const packedN = shipPacked(frags.concat(late), skipped, copied);
   // (v4-C2, the 511-file limit) small frame lists that load with their manifest anyway ride inside it
   const emb = embedFrameLists(frags, late, skipped);
@@ -664,6 +713,10 @@ async function main() {
   // 3) the page (written in step 5 for --inline, once the packs exist)
   stampFragments(frags);
   if (!INLINE) fs.writeFileSync(path.join(OUT, 'index.html'), pageWithFragments(PAGE));
+
+  // 3b) (v4.2) the one-shot sounds as one sprite per fragment
+  const sprN = audioSprites(frags.concat(late), skipped);
+  if (sprN) console.log(`[build] audio sprites: ${sprN} sound files replaced by ${SPRITE_FRAGS.length} sprites`);
 
   // 4) file-count limit: drop .ogg and point the audio manifest at .mp3 only
   let files = walk(OUT);
@@ -694,6 +747,7 @@ async function main() {
     const paths = [];
     for (const kind of ['atlases', 'images', 'spritesheets']) for (const a of j[kind] || []) paths.push(a.png, a.json);
     for (const k in j.audio || {}) paths.push(...(j.audio[k].files || []));
+    if (j.audioSprite && j.audioSprite.file) paths.push(j.audioSprite.file);
     for (const p of paths.filter(Boolean)) {
       if (NEVER_LOADED.test('assets/' + p)) continue;     // listed, but never requested by the game
       if (/^(\/|[a-z]+:)/i.test(p)) problems.push(`absolute URL in ${frag}/manifest.json: ${p}`);

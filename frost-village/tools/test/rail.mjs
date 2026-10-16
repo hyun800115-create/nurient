@@ -120,6 +120,21 @@ try {
   let arr = null;
   for (let k = 0; k < 40; k++) { await adv(0.25); const s = await ev(() => window.__FV.state().v4); if (s.arrivals > 0) { arr = { t: await ev(() => window.__step.t), s }; break; } }
   step('the first train arrives ≤ 6 s after the repair', !!arr && arr.t - tRep <= 6.5, arr ? (arr.t - tRep).toFixed(1) + ' s' : 'no train');
+  // ((v4.2) the riders step off at the coach doors)
+  {
+    // (the riders appear a moment after the stop: watch for 4 s and keep where each one was first seen)
+    const dq = await ev(() => {
+      const nb = window.__FV.scene.v4, r = nb.rail;
+      if (!r.doorPoints) return null;
+      const doors = r.doorPoints(), first = new Map();
+      for (let f = 0; f < 240; f++) { window.__step.run(1 / 60); for (const v of nb.visitors) if (!first.has(v)) first.set(v, { x: Math.round(v.x), y: Math.round(v.y) }); }
+      return { doors, vis: [...first.values()] };
+    });
+    if (dq && dq.doors && dq.doors.length) {
+      const near = dq.vis.filter((v) => dq.doors.some((d) => Math.hypot(v.x - d.x, v.y - d.y) < 140)).length;
+      step('riders step off at the coach doors (' + near + ' / ' + dq.vis.length + ' within 140 px of a door)', dq.vis.length > 0 && near >= Math.ceil(dq.vis.length * 0.5), JSON.stringify(dq.doors));
+    }
+  }
   await adv(2.5);
   await ev(() => window.__FV.camera(3330, 1420, 1.1));
   await shot('03_first_train');
@@ -133,26 +148,44 @@ try {
     for (const q of r) { if (Math.abs(q.j) < 0.55 && !(q.i > 7.6 && q.i < 9.4)) onTrack.push(q.id + '@' + q.i.toFixed(1) + ',' + q.j.toFixed(2)); if (q.j < -0.6) crossed++; }
   }
   step('visitors cross the rails only at the level crossing', onTrack.length === 0 && crossed > 0, onTrack.slice(0, 4).join(' ') + ' crossed samples ' + crossed);
-  const cars = await ev(() => window.__FV.scene.v4.train.cars.map((c) => ({ key: c.key, flip: c.spr.flipX, anim: c.spr.anims.currentAnim && c.spr.anims.currentAnim.key, x: c.spr.x, y: c.spr.y })));
-  step('every car drawn heading NW (NE frames mirrored)', cars.every((c) => c.flip && /:NE$/.test(c.anim || '')), JSON.stringify(cars.map((c) => c.anim)));
-  const d01 = Math.hypot(cars[1].x - cars[0].x, (cars[1].y - cars[0].y) * 2) / 64 / 2 * 2, d12 = Math.hypot(cars[2].x - cars[1].x, (cars[2].y - cars[1].y) * 2);
-  step('car spacing on screen = 2.34 m / 2.24 m', Math.abs(Math.hypot(cars[1].x - cars[0].x, cars[1].y - cars[0].y) - 2.34 / S2 * Math.hypot(64, 32)) < 2 && Math.abs(Math.hypot(cars[2].x - cars[1].x, cars[2].y - cars[1].y) - 2.24 / S2 * Math.hypot(64, 32)) < 2, d01.toFixed(1) + ' ' + d12.toFixed(1));
+  // ((v4.2) the balloon loops: every car sits on the route at its consist offset behind the nose; the engine leads)
+  const cars = await ev(() => { const nb = window.__FV.scene.v4, r = nb.rail; return { route: !!r.path, m: r.m, cons: r.consist ? r.consist() : null, nose: r.point ? r.point(r.m) : null, cars: nb.train.cars.map((c) => ({ key: c.key, x: c.spr.x, y: c.spr.y, flip: c.spr.flipX, anim: c.spr.anims.currentAnim && c.spr.anims.currentAnim.key, on: r.point ? r.point(r.m - (c.off !== undefined ? c.off : 0)) : null })) }; });
+  if (cars.route) {
+    const engine = cars.cars.find((c) => /engine/.test(c.key));
+    const dn = (c) => Math.hypot(c.x - cars.nose.x, c.y - cars.nose.y);
+    step('the engine leads: it is the car nearest the nose', engine && cars.cars.every((c) => dn(engine) <= dn(c) + 1e-6), cars.cars.map((c) => c.key + ':' + dn(c).toFixed(0)).join(' '));
+    const far = await ev(() => { const nb = window.__FV.scene.v4, r = nb.rail, cons = r.consist(); return nb.train.cars.map((c, k) => { const u = cons[k]; const q = r.point(r.m - u.off); return Math.hypot(c.spr.x - q.x, c.spr.y - q.y); }); });
+    step('every car on the route at its consist offset (≤ 4 px)', far.every((d) => d <= 4), far.map((d) => d.toFixed(1)).join(' '));
+  } else {
+    step('every car drawn heading NW (NE frames mirrored)', cars.cars.every((c) => c.flip && /:NE$/.test(c.anim || '')), JSON.stringify(cars.cars.map((c) => c.anim)));
+    const C = cars.cars;
+    step('car spacing on screen = 2.34 m / 2.24 m', Math.abs(Math.hypot(C[1].x - C[0].x, C[1].y - C[0].y) - 2.34 / S2 * Math.hypot(64, 32)) < 2 && Math.abs(Math.hypot(C[2].x - C[1].x, C[2].y - C[1].y) - 2.24 / S2 * Math.hypot(64, 32)) < 2);
+  }
   const flags = await ev(() => window.__FV.state().flags);
   step('flag firstTrain, the day clock starts at 08:00', flags.firstTrain && vis.clock.on && vis.clock.hour >= 8 && vis.clock.hour < 8.3, JSON.stringify(vis.clock));
   // the crossing: closed while the train leaves through it
-  await ev(() => window.__FV.v4.train('atOurs', 13.8));
+  // ((v4.2) on the loops the train first rounds our loop, then runs the main line through k 8: a longer watch)
+  await ev(() => { const r = window.__FV.scene.v4.rail; window.__FV.v4.train('atOurs', r.dur ? Math.max(0, r.dur('atOurs') - 0.2) : 13.8); });
   let closed = false, reopened = false;
-  for (let k = 0; k < 40; k++) { await adv(0.25); const b = await ev(() => window.__FV.scene.v4.rail.blocking(8)); if (b) closed = true; if (closed && !b) { reopened = true; break; } }
+  for (let k = 0; k < 160; k++) { await adv(0.25); const b = await ev(() => window.__FV.scene.v4.rail.blocking(8)); if (b) closed = true; if (closed && !b) { reopened = true; break; } }
   step('the k 8 crossing closes as the train leaves and opens again', closed && reopened);
   // the chief on the track: the train stops short and whistles, never pushes him
-  await ev(() => { window.__FV.v4.train('toOurs', 6); const p = window.__FV.scene.player; const q = window.__FV.scene.v4.rail; const m = q.m - 2.34 - 1.3 - 4.5; const i = q.iAt(m); const x = 3120 + 64 * i, y = 1315 + 32 * i; window.__FV.teleport(x, y); });
+  const route = await ev(() => !!window.__FV.scene.v4.rail.path);
+  let chiefM;
+  if (route) {
+    // ((v4.2) on the route: 4.5 m ahead of the nose, wherever that is — main line or loop)
+    chiefM = await ev(() => { window.__FV.v4.train('toOurs', 6); const q = window.__FV.scene.v4.rail; const s = q.m + 4.5; const pt = q.point(s); window.__FV.teleport(pt.x, pt.y); return s; });
+  } else {
+    await ev(() => { window.__FV.v4.train('toOurs', 6); const q = window.__FV.scene.v4.rail; const m = q.m - 2.34 - 1.3 - 4.5; const i = q.iAt(m); const x = 3120 + 64 * i, y = 1315 + 32 * i; window.__FV.teleport(x, y); });
+  }
   const p0 = await ev(() => ({ x: window.__FV.scene.player.x, y: window.__FV.scene.player.y }));
   await adv(6);
-  const blk = await ev(() => { const r = window.__FV.scene.v4.rail; const sp = r.span(r.m); return { rate: r.rate, blockedT: r.blockedT, nose: sp[0], phase: r.phase, p: { x: window.__FV.scene.player.x, y: window.__FV.scene.player.y } }; });
-  const pm = await ev(() => { const r = window.__FV.scene.v4.rail; const p = window.__FV.scene.player; const a = (p.x - 3120) / 64, b = (p.y - 1315) / 32; return r.mAt((a + b) / 2); });
+  const blk = await ev(() => { const r = window.__FV.scene.v4.rail; const sp = r.span(r.m); return { rate: r.rate, blockedT: r.blockedT, nose: r.path ? r.m : sp[0], phase: r.phase, p: { x: window.__FV.scene.player.x, y: window.__FV.scene.player.y } }; });
+  const pm = route ? chiefM : await ev(() => { const r = window.__FV.scene.v4.rail; const p = window.__FV.scene.player; const a = (p.x - 3120) / 64, b = (p.y - 1315) / 32; return r.mAt((a + b) / 2); });
   await ev((q) => window.__FV.camera(q.x, q.y, 1.1), p0);
   await shot('04_chief_on_track');
-  step('chief on the track: the train waits ≥ 1.5 m before him', blk.rate < 0.05 && blk.blockedT > 1 && blk.nose - pm > 1.2 && Math.hypot(blk.p.x - p0.x, blk.p.y - p0.y) < 2, JSON.stringify(blk) + ' chief m ' + pm.toFixed(2));
+  const gap = route ? pm - blk.nose : blk.nose - pm;
+  step('chief on the track: the train waits ≥ 1.2 m before him', blk.rate < 0.05 && blk.blockedT > 1 && gap > 1.2 && Math.hypot(blk.p.x - p0.x, blk.p.y - p0.y) < 2, JSON.stringify(blk) + ' chief m ' + pm.toFixed(2));
   await ev(() => window.__FV.teleport(3300, 1560));
   await adv(4);
   step('chief off the track: the train goes on', await ev(() => window.__FV.scene.v4.rail.rate > 0.5));
@@ -183,6 +216,9 @@ try {
   await adv(1);
   await shot('06_town_open');
   step('invitation (fallback timer): the mayor comes by train as a paper doll, the town opens', opened && mayor && mayor.role === 'mayor' && mayor.doll, JSON.stringify(mayor));
+  // ((v4.2) 읍: the second coach joins the consist (stage 2: 13.6 m), the seats and the cycle follow)
+  const sw = await ev(() => { const nb = window.__FV.scene.v4, r = nb.rail; if (!r.setStage) return null; const a = { len: r.length, seats: r.seats(), cars: nb.train.cars.length }; nb.addCoach(); return { a, b: { len: r.length, seats: r.seats(), cars: nb.train.cars.length, keys: r.consist().map((u) => u.key) } }; });
+  if (sw) step('읍: the consist swaps to 2 coaches (longer, more seats, one more car drawn)', sw.b.len > sw.a.len && sw.b.seats > sw.a.seats && sw.b.cars === sw.a.cars + 1 && sw.b.keys.filter((k) => /coach/.test(k)).length === 2, JSON.stringify(sw));
   const pc = await ev(() => window.__FV.v4.census());
   step('people still conserved after the mayor\'s visit', pc.town + pc.train + pc.village === pc.total && pc.total === 100, JSON.stringify(pc));
 } catch (e) { fatal = e; console.log('FATAL', e && e.stack || e); }

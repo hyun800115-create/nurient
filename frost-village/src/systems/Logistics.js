@@ -9,6 +9,7 @@
 //                   feed(ch) (move one item from ch.stack in; true if one moved) }
 
 import { gdist } from '../core/Iso.js';
+import { BALANCE } from '../data/balance.js';
 
 export const PRIO = {
   SITE: 100,        // construction materials, a tool for a hire pad
@@ -16,6 +17,7 @@ export const PRIO = {
   INPUT: 70,        // a workshop (toolsmith / cannery) input
   GRILL: 60,        // boat fish for the grill
   FOOD: 50,         // topping the food box up
+  SHELF_EMPTY: 48,  // (v4.2 F1) a shop shelf has had none of an item for porters.shelfEmptyAfter s (after village complete)
   PANTRY_LOW: 46,   // (v4-C) the big restaurant's pantry is nearly empty (it pays more per dish than the market:
                     //   a porter whose food could go to either fills the pantry first, then the shelves again)
   SHELF_LOW: 45,    // a shop shelf is nearly empty
@@ -24,6 +26,8 @@ export const PRIO = {
                     //   founded shops' restocking, so an open café never keeps the next shop's order waiting
   SHOP: 35,         // (v4) a founded shop's shelf at the station district (remote)
   WHOLESALE: 30,    // (v4) the loading dock at the station square (remote)
+  SURPLUS: 12,      // (v4.2) the loading dock takes what the village cannot use (export by train, the 물류창고): above
+                    //   the warehouse (the local buffer), only the station porters carry there (remote)
   STORE: 10,        // the warehouse
 };
 
@@ -54,7 +58,11 @@ export class Logistics {
    * onlyRemote (v4: only those — the station porters)
    */
   best(type, x, y, opts = {}) {
-    let best = null, bp = -1, bd = Infinity, bn = 0;
+    let best = null, bp = -1, bd = Infinity, bn = 0, bs = -Infinity;
+    // ((v4.2 F2′) after village complete distance counts: score = prio − ground distance / porters.travelPxPerPoint,
+    //  so a near shelf beats a far workshop; before it the v4.1 rule (most urgent kind first, then the nearest))
+    const v42 = this.gs && this.gs.v42;
+    const per = v42 && v42.frules ? Number(BALANCE.v42 && BALANCE.v42.porters && BALANCE.v42.porters.travelPxPerPoint) || 0 : 0;
     for (const s of this.sinks) {
       if (s === opts.exclude || (opts.noStore && s.isWarehouse)) continue;
       if (s.remote ? !(opts.remote || opts.onlyRemote) : opts.onlyRemote) continue;
@@ -63,9 +71,12 @@ export class Logistics {
       const p = s.prio(type);
       if (p <= 0 || (opts.minPrio !== undefined && p < opts.minPrio) || (opts.maxPrio !== undefined && p >= opts.maxPrio)) continue;
       const d = gdist(x, y, s.x, s.y);
+      // (urgent needs — a site, the food box, an empty shelf, a nearly empty pantry, an input below 25 % — keep their
+      //  full rank: only the everyday sinks trade rank for distance, else a far restaurant pantry starved)
+      if (per > 0) { const sc = p >= PRIO.PANTRY_LOW ? p : p - d / per; if (sc > bs || (sc === bs && d < bd)) { best = s; bp = p; bd = d; bn = n; bs = sc; } continue; }
       if (p > bp || (p === bp && d < bd)) { best = s; bp = p; bd = d; bn = n; }
     }
-    return best ? { sink: best, n: bn, prio: bp } : null;
+    return best ? { sink: best, n: bn, prio: bp, score: per > 0 ? bs : bp } : null;
   }
 
   /** the most urgent sink that wants any of `types` (warehouse restocking): { sink, type, n } */
@@ -73,7 +84,7 @@ export class Logistics {
     let out = null;
     for (const ty of types) {
       const b = this.best(ty, x, y, opts);
-      if (b && (!out || b.prio > out.prio || (b.prio === out.prio && gdist(x, y, b.sink.x, b.sink.y) < gdist(x, y, out.sink.x, out.sink.y)))) out = { sink: b.sink, type: ty, n: b.n, prio: b.prio };
+      if (b && (!out || b.score > out.score || (b.score === out.score && gdist(x, y, b.sink.x, b.sink.y) < gdist(x, y, out.sink.x, out.sink.y)))) out = { sink: b.sink, type: ty, n: b.n, prio: b.prio, score: b.score };
     }
     return out;
   }

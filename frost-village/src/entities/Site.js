@@ -28,6 +28,11 @@ export function buildCost(bkey, siteId) {
   // (v4-A) repairing the old station (balance.js v4.station)
   if (bkey === 'station') return (BALANCE.v4 && BALANCE.v4.station) || { coins: 500, item_plank: 14, item_ingot: 4, time: 12 };
   if (bkey === 'watchtower') return (BALANCE.towers && BALANCE.towers[siteId]) || { coins: 300, item_plank: 10, item_ingot: 0, time: 8 };
+  // (v4.2) 촌장 사무실 · 서리 은행 · 서리 물류창고 (balance.js v42)
+  const V = BALANCE.v42;
+  if (V && bkey === 'chief_office' && V.office && V.office.site) return V.office.site;
+  if (V && bkey === 'bank42' && V.bank && V.bank.site) return V.bank.site;
+  if (V && bkey === 'depot42' && V.depot && V.depot.site) return V.depot.site;
   return (BALANCE.buildings && BALANCE.buildings[bkey]) || { coins: 100, item_plank: 6, item_ingot: 0, time: 8 };
 }
 
@@ -297,7 +302,8 @@ export class Site {
     if (this.state === 'plot') {
       if (!this.shown || !this.pad) return false;
       const p = gs.player;
-      const on = this.pad.contains(p.x, p.y);
+      const PL = gs.v42 && gs.v42.pilot;
+      const on = this.pad.contains(p.x, p.y) && !(PL && PL.blocksPay('site'));
       this.label.y = this.labelBaseY + Math.sin(gs.time.now / 450 + this.x * 0.01) * 4;
       const la = on ? 0.3 : 1;
       if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));

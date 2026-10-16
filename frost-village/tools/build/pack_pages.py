@@ -10,7 +10,9 @@ Reads the existing manifests + atlases (never edits a source folder) and writes 
   * townfolk sheets (tfatlas)              -> <key>@loco   idle + walk body frames, `loco` head poses
                                               <key>@soc    talk / wave / happy + the other head poses
                                               (carry_walk is dropped: v4 dolls carry on the head)
-  * train atlases                          -> <key>@ne     the NE frames only (the train is drawn NE / mirrored NW)
+  * train atlases                          -> <key>@dirs   (v4.2: the train runs round balloon loops) the straight
+                                              dirs NE / SE in full, the curve dirs S / E / N at 4 move frames
+                                              (0, 2, 4, 6) + idle_0, every ground shadow
   * town_shops / town_civic                -> <key>@b / @a and @station / @hall / @rest (the founded shops and our
                                               station are what the district needs; (v4-C) the town hall is a
                                               page of its own: our village builds one too)
@@ -58,6 +60,10 @@ TF_DROP_ANIMS = {'carry_walk'}
 TF_LOCO_POSES = {'loco'}
 TRAIN = re.compile(r'^train_(engine|car_a|car_b)$')
 TRAIN_DIR = 'NE'
+# (v4.2, docs/v42_plan.md §5.5) all five rendered dirs: NE / SE full, S / E / N at 4 move frames; the rule version is
+# part of the pages' source hash so a rule change re-packs only the train
+TRAIN_FULL = {'NE', 'SE'}
+TRAIN_RULES = 'v42-dirs-1'
 TOWN_SPLIT = {
     # atlas: [(page suffix, the frame groups on it), ..., (suffix of the rest, None)]
     'town_shops': [('b', {'cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'}), ('a', None)],
@@ -305,8 +311,8 @@ def main():
     problems = []
     report = []
 
-    def keep_or_build(key, srcs, build):
-        h = sha(srcs)
+    def keep_or_build(key, srcs, build, salt=''):
+        h = sha(srcs) + salt
         prev = (old.get('atlases') or {}).get(key)
         if prev and prev.get('src') == h and not force and all(os.path.exists(os.path.join(ASSETS, pg['png'])) for pg in prev['pages']):
             return prev, False
@@ -404,14 +410,22 @@ def main():
                 continue
             if TRAIN.match(key):
                 def classify(name):
-                    # the NE frames (drawn mirrored as NW) and the NW ground shadow (the light does not flip)
+                    # (v4.2) every ground shadow (8 headings, the light does not flip); NE / SE in full; the curve
+                    # dirs S / E / N: move frames 0, 2, 4, 6 and idle_0 (the train never stops on a curve)
                     if name.startswith('shadow_'):
-                        return 'ne' if name == 'shadow_NW' else None
+                        return 'dirs'
                     mm = ANIM_RE.match(name)
                     if not mm:
-                        return 'ne'
-                    return 'ne' if mm.group(2) == TRAIN_DIR else None
-                order = ['ne']
+                        return 'dirs'
+                    an, d, i = mm.group(1), mm.group(2), int(mm.group(3))
+                    if d in TRAIN_FULL:
+                        return 'dirs'
+                    if an == 'move' and i % 2 == 0:
+                        return 'dirs'
+                    if an == 'idle' and i == 0:
+                        return 'dirs'
+                    return None
+                order = ['dirs']
             elif key in TOWN_SPLIT:
                 groups = TOWN_SPLIT[key]
 
@@ -439,7 +453,7 @@ def main():
                         pg['frames'] = names
                     e['pages'].append(pg)
                 return e
-            e, built = keep_or_build(key, [png, js], build)
+            e, built = keep_or_build(key, [png, js], build, TRAIN_RULES if TRAIN.match(key) else '')
             if e:
                 index['atlases'][key] = e
                 # explicitly named sprite frames must survive (the train's other dirs are a documented drop)

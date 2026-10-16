@@ -420,7 +420,7 @@ export const V42_SPEC = {
   warehouse: { direct: 'bool:true', directMinPrio: R(1, 99, 40) },
   porter2: { fullAt: R(0.1, 1, 0.8), fullForS: R(1, 3600, 90), costs: costs5([500, 600, 700, 800, 900]) },
   station2: { timeMult: R(0.1, 1, 0.66), costs: costs5([900, 1000, 1100, 1400, 1600]) },
-  surplus: { outAt: R(0.1, 1, 0.7), outForS: R(0, 3600, 20), localPx: R(0, 1e5, 1500), pileAt: R(0.1, 1, 0.95), pileForS: R(0, 3600, 30), pileKeep: R(0, 500, 20, true), whAt: R(0.1, 1, 0.7), whKeep: R(0, 1, 0.5), boatAt: R(0.1, 1, 0.9) },
+  surplus: { outAt: R(0.1, 1, 0.7), outForS: R(0, 3600, 20), localPx: R(0, 1e5, 1500), pileAt: R(0.1, 1, 0.95), pileForS: R(0, 3600, 30), pileKeep: R(0, 500, 20, true), whAt: R(0.1, 1, 0.7), whKeep: R(0, 1, 0.5), boatAt: R(0.1, 1, 0.9), pileToWh: R(0.1, 1, 0.85), pilePrio: R(1, 99, 30) },
   stationPorter34: [R(1, 1e9, 1000, true), R(1, 1e9, 1500, true)],
   freight: { perTrain: R(0, 999, 56, true), big: R(0, 999, 88, true), bigCost: R(1, 1e9, 2000, true), bigOfferWait: R(1, 999, 60, true), bigOfferS: R(1, 3600, 120), exportRate: R(0, 2, 0.5), loadEvery: R(0.02, 5, 0.14) },
   depot: {
@@ -441,7 +441,7 @@ export const V42_SPEC = {
   news: { hour: R(0, 23, 6), keep: R(1, 10, 3, true) },
   letters: { minH: R(0.1, 48, 2), maxH: R(0.1, 96, 4), maxUnread: R(1, 20, 6, true), archiveDays: R(1, 30, 2, true) },
   pilot: { decideEvery: R(0.1, 10, 0.5), jitter: R(0, 1, 0.1), hysteresis: R(0, 2, 0.2), minZoom: R(0.3, 2, 0.7), camLerp: R(0.005, 1, 0.08),
-    cutEvery: [R(5, 3600, 45), R(5, 3600, 90)], cutHold: [R(1, 60, 6), R(1, 60, 8)], cutRange: R(100, 20000, 2500), stuckSide: R(0.5, 60, 3), stuckDrop: R(1, 600, 8), agenda: 'agenda' },
+    cutEvery: [R(5, 3600, 45), R(5, 3600, 90)], cutHold: [R(1, 60, 6), R(1, 60, 8)], cutRange: R(100, 20000, 2500), stuckSide: R(0.5, 60, 3), stuckDrop: R(1, 600, 8), breakAfter: R(5, 3600, 150), breakFor: R(1, 600, 20), agenda: 'agenda' },
   train: { speed: R(0.5, 20, 3.4), curve: R(0.3, 20, 2.2), accel: R(0.05, 10, 0.7), brake: R(0.05, 10, 0.8), dwellOurs: R(2, 600, 12), dwellTown: R(2, 600, 8), coachSeats: R(1, 99, 16, true), labels: R(0, 99, 3, true) },
 };
 const AGENDA_DEF = [[7, 9, 'office', 1.5], [9, 12, 'work', 1.3], [13, 17, 'work', 1.15], [17, 20, 'chat', 1.5], [17, 20, 'rest', 1.2]];

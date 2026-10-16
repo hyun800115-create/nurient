@@ -11,7 +11,7 @@ tr2_pack.py then makes assets/train2/ (atlases + manifest.json) and the previews
 
 Re-run (build machine, Blender as a Python module, one process at a time, `nice`):
     nice -n 10 /tmp/bvenv/bin/python tools/blender/tr2_render.py -- [keys ...] [--force] [--samples N]
-                                      [--cache DIR] [--dirs S,E] [--anims move] [--list]
+                                      [--cache DIR] [--dirs S,E] [--anims move] [--list] [--meta-only]
   * no keys -> everything not cached yet (resumable); keys: car / rail keys, `cars`, `rails`
   * --dirs / --anims render a subset of a car (look-dev; meta is still written)
 Default cache: /tmp/fv_cache/train2.  Deterministic: fixed seeds + sample counts.
@@ -40,7 +40,7 @@ CAM = Vector((0.612, -0.612, 0.0)).normalized()        # ground direction toward
 
 def parse(argv):
     opts = {'keys': [], 'force': False, 'samples': None, 'cache': '/tmp/fv_cache/train2', 'list': False,
-            'dirs': None, 'anims': None}
+            'dirs': None, 'anims': None, 'meta_only': False}
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -51,6 +51,8 @@ def parse(argv):
             opts[a[2:]] = int(argv[i]) if a == '--samples' else argv[i]
         elif a == '--list':
             opts['list'] = True
+        elif a == '--meta-only':
+            opts['meta_only'] = True
         else:
             opts['keys'].append(a)
         i += 1
@@ -118,27 +120,55 @@ def yawed(v, d):
     return Vector((v[0] * math.cos(a) - v[1] * math.sin(a), v[0] * math.sin(a) + v[1] * math.cos(a), 0.0))
 
 
+def seen(p, own=0.14, far=40.0):
+    """(polish M2) is world point p visible from the (orthographic) camera?  Cast from the camera side toward p:
+    visible when nothing is hit more than `own` m in front of p (a lamp / window surface itself counts as seen)."""
+    cam = bpy.context.scene.camera
+    d = (cam.matrix_world.to_quaternion() @ Vector((0.0, 0.0, -1.0))).normalized()
+    o = p - d * far
+    dg = bpy.context.evaluated_depsgraph_get()
+    hit, loc, _n, _i, _ob, _m = bpy.context.scene.ray_cast(dg, o, d, distance=2 * far)
+    return (not hit) or (loc - o).dot(d) >= far - own
+
+
 def car_points(B, spec):
-    """Points per rendered dir (rest pose = idle frame 0): px offsets from the anchor."""
+    """Points per rendered dir (rest pose = idle frame 0): px offsets from the anchor.
+    (polish M2) windowPoints = the lit SIDE windows that face the camera and are not hidden; the end-door windows
+    go to endWindowPoints (they sit between two coupled coaches: glow them weakly or not at all); lampPoints keep
+    only the lamps the camera really sees in that dir (ray cast), so no glow lands on a roof or a tarp."""
     P = B['points']
     out = {}
     head = {}
+    hidden = {}
     for d in TC.DIRS:
         B['group'].rotation_euler.z = bc.yaw_for_dir(d)
         B['pose'](B, 'idle', 0, 1)
         bpy.context.view_layer.update()
         mw = B['group'].matrix_world
         for name, val in P.items():
+            if name in ('lampR', 'lampN'):
+                continue
             if name == 'doorPoints':
                 out.setdefault(name, {})[d] = {side: [to_px(mw @ Vector(p)) for p in pts] for side, pts in val.items()}
             elif name == 'windowPoints':
-                vis = []
+                vis, end = [], []
                 for p, n in val:
-                    if yawed(n, d).dot(CAM) > 0.3:
-                        vis.append(to_px(mw @ Vector(p)))
+                    w = mw @ Vector(p)
+                    if yawed(n, d).dot(CAM) > 0.3 and seen(w, own=0.2):
+                        (end if abs(n[1]) > 0.5 else vis).append(to_px(w))
                 out.setdefault(name, {})[d] = vis
+                out.setdefault('endWindowPoints', {})[d] = end
             elif name == 'lampPoints':
-                out.setdefault(name, {})[d] = [to_px(mw @ Vector(p)) for p in val]
+                vis = []
+                for k_, p in enumerate(val):
+                    w = mw @ Vector(p)
+                    # a directional lamp (lens normal lampN) glows only toward the side its lens faces
+                    lens_ok = 'lampN' not in P or yawed(P['lampN'][k_], d).dot(CAM) > -0.3
+                    if lens_ok and seen(w, own=P.get('lampR', 0.1) + 0.03):     # its own surface counts as seen
+                        vis.append(to_px(w))
+                    else:
+                        hidden.setdefault(d, []).append(to_px(w))
+                out.setdefault(name, {})[d] = vis
             elif name == 'cargoPoint':
                 out.setdefault(name, {})[d] = to_px(mw @ Vector(val)) + [False]
             elif name == 'cargoSlots':
@@ -147,6 +177,8 @@ def car_points(B, spec):
             else:
                 out.setdefault(name, {})[d] = to_px(mw @ Vector(val))
         head[d] = to_px(mw @ B['head_ref'])[1]
+    if hidden:
+        out['lampHiddenPx'] = hidden
     return out, head
 
 
@@ -166,7 +198,9 @@ def render_car(key, opts):
     if dirs or anims:
         shadow_todo = []
     meta_path = os.path.join(out, 'meta.json')
-    if not todo and not shadow_todo and os.path.exists(meta_path):
+    if opts.get('meta_only'):                 # points / meta again from the model, no frame rendered
+        todo, shadow_todo = [], []
+    elif not todo and not shadow_todo and os.path.exists(meta_path):
         print('[%s] cached' % key)
         return
     bc.reset_scene()

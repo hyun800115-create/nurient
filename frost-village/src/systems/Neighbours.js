@@ -13,7 +13,7 @@ import { WORLD, L4, px2L4 } from '../data/world.js';
 import { t, line } from '../data/strings.js';
 import { gdist } from '../core/Iso.js';
 import { DEPTH } from './DepthSort.js';
-import { Rail } from './Rail.js';
+import { Rail, RouteRail } from './Rail.js';
 import { RoadNet } from './RoadNet.js';
 import { TownSim, F } from './TownSim.js';
 import { DayClock } from './DayClock.js';
@@ -125,7 +125,8 @@ export class Neighbours {
     this.growth = new Growth(this, s);
     this.rank = new Rank(this, s);
     this.clock = new DayClock(gs, s.clock);
-    this.rail = new Rail();
+    // ((v4.2) the main line with a balloon loop at each end: the engine always leads (docs/v42_plan.md §5))
+    this.rail = WORLD.v42 && WORLD.v42.rail ? new RouteRail() : new Rail();
     this.rail.on((ev, stop) => this.onRail(ev, stop));
     this.buildings = [];
     Neighbours.prefetch(gs);
@@ -195,7 +196,14 @@ export class Neighbours {
       gs.territory.add(L4(i, j)[0] >= WORLD.territory.town.rect[0] ? 'town' : 'rail', tb);
     }
     // the sign post at the far end of the track (to the harbour, v6)
-    const sg = V.rail.sign;
+    const sg = (WORLD.v42 && WORLD.v42.rail && WORLD.v42.rail.sign) || V.rail.sign;
+    // ((v4.2) a low snow fence keeps the 역 가는 길 walkers off the new straight of our loop)
+    if (WORLD.v42 && WORLD.v42.rail && Assets.has('fence_log_x')) {
+      for (const [i0, j, i1] of WORLD.v42.rail.fence || []) {
+        const n = Math.max(1, Math.round((i1 - i0) * Math.SQRT2));
+        for (let k = 0; k < n; k++) { const [x, y] = L4(i0 + ((k + 0.5) * (i1 - i0)) / n, j); gs.staticImage('fence_log_x', x, y, { r: 20, scale: 0.8, region: gs.territory.regionAt(x, y) }); }
+      }
+    }
     if (sg) { const [x, y] = L4(sg.i, sg.j); this.signpost = gs.staticImage('signpost', x, y, { region: 'town' }); this.signText = gs.add.text(x, y - 92, t('signHarbor'), { fontFamily: gs.font, fontSize: '16px', fontStyle: '800', color: '#ffffff', stroke: '#4a5a72', strokeThickness: 5, resolution: 2 }).setOrigin(0.5).setDepth(y + 1); gs.territory.add('town', this.signText); }
     // lamps for the night: town street lights (one by one from the station outward), the station clocks
     for (const b of this.buildings) {
@@ -379,9 +387,13 @@ export class Neighbours {
     const V = BALANCE.v4.visitors, T = BALANCE.v4.train;
     const shops = this.growth && this.growth.openShopCount ? this.growth.openShopCount() : 0;
     const rank = this.rank && this.rank.level ? this.rank.level : 1;
-    const seats = (T.seats || 12) + (this.rail.coaches > 1 ? (T.coachSeats || 8) : 0);
+    // ((v4.2) the coaches' seats; a longer cycle (the loops) brings proportionally more riders per train, so the
+    //  visitors per minute stay as in v4.1: ridersScale = cycle / 59.3 s)
+    const route = !!this.rail.path;
+    const seats = route ? this.rail.seats() : (T.seats || 12) + (this.rail.coaches > 1 ? (T.coachSeats || 8) : 0);
+    const scale = route ? Math.max(1, this.rail.cycle() / 59.3) : 1;
     const mult = V[this.clock.phase()] !== undefined ? V[this.clock.phase()] : 1;
-    const n = Math.max(1, Math.round(Math.min(V.base + shops * V.perShop + (rank - 1) * V.perRank, seats) * (this.clock.on ? mult : 1)));
+    const n = Math.max(1, Math.round(Math.min((V.base + shops * V.perShop + (rank - 1) * V.perRank) * scale, seats) * (this.clock.on ? mult : 1)));
     // ((v4 review M5) at most `maxInVillage` neighbours in our village at once: 30–50 visitors made the plaza heavy
     //  (display objects, logic time) without being more fun to watch)
     const room = Math.max(0, Math.floor(Number(V.maxInVillage) || 24) - this.visitors.length);
@@ -393,7 +405,9 @@ export class Neighbours {
     const T = this.clock.simT();
     // home again: off the train at the town station
     const st = this.townStation;
-    const pts = st && st.board && st.board.length ? st.board : [{ x: 4900, y: 2200 }];
+    // ((v4.2) people step down at the coach doors)
+    const doors = this.rail.doorPoints ? this.rail.doorPoints() : null;
+    const pts = doors && doors.length ? doors : st && st.board && st.board.length ? st.board : [{ x: 4900, y: 2200 }];
     let k = 0;
     for (const c of this.onBoard) if (this.town) this.town.alight(c, T, pts[k++ % pts.length]);
     this.onBoard = [];
@@ -425,12 +439,16 @@ export class Neighbours {
     this.firstPending = false;
     this.arrivals++;
     const st = this.ours;
-    const pts = st ? st.board : [{ x: 3300, y: 1360 }];
+    // ((v4.2) the coach doors, on the platform edge)
+    const doors = this.rail.doorPoints ? this.rail.doorPoints() : null;
+    const pts = doors && doors.length ? doors : st ? st.board : [{ x: 3300, y: 1360 }];
     riders.forEach((c, i) => gs.time.delayedCall(450 + i * 250, () => this.alightVisitor(c, pts[i % pts.length])));
     if (riders.length && gs.isOnScreen(st.x, st.y, 500)) for (let i = 0; i < Math.min(3, riders.length); i++) gs.time.delayedCall(400 + i * 300, () => Audio.play('sfx_door', { volume: 0.45, throttle: 300 }));
     if (this.arrivals <= 3 && riders.length) gs.ui.toast(t('trainArrive', { n: riders.length }));
+    if (gs.v42 && gs.v42.freight) gs.v42.freight.arrived(riders.length);
     if (first) {
-      gs.focusCamera(st.x - 60, st.y + 40, 2500);
+      // ((v4.2) the camera stays 2.5 s longer: the first departure round the loop is in shot)
+      gs.focusCamera(st.x - 60, st.y + 40, this.rail.path ? 5000 : 2500);
       gs.time.delayedCall(800, () => gs.ui.banner(t('firstTrain'), t('firstTrainSub')));
       gs.save(true);
     }
@@ -560,6 +578,19 @@ export class Neighbours {
   /** is something standing on the track ahead of the train? (the chief, the dog) */
   trackBlocked(nose, dir, dist) {
     const gs = this.gs;
+    // ((v4.2) the route (loops included): sample it from just behind the nose to dist metres ahead)
+    if (this.rail.path) {
+      const P = this.rail.path, D = dir, o = this._tb || (this._tb = {});
+      const pts = [[gs.player.x, gs.player.y]];
+      if (gs.dog && gs.dog.r) pts.push([gs.dog.r.x, gs.dog.r.y]);
+      const near = pts.map(([x, y]) => px2L4(x, y)).filter((q) => Math.abs(q.i - P.at(nose, o).i) < 30);
+      if (!near.length) return false;
+      for (let s = -0.3; s <= D; s += 0.35) {
+        P.at(nose + s, o);
+        for (const q of near) if (Math.abs(q.i - o.i) < 0.64 && Math.abs(q.j - o.j) < 0.64 && Math.hypot(q.i - o.i, q.j - o.j) < 0.64) return true;
+      }
+      return false;
+    }
     const test = (x, y) => {
       const q = px2L4(x, y);
       if (Math.abs(q.j) > 0.64) return false;
@@ -576,7 +607,8 @@ export class Neighbours {
     const gs = this.gs;
     if (!this.ready) return;
     const t0 = performance.now();
-    this.rail.update(dt, (nose, dir, dist) => this.trackBlocked(nose, dir, dist));
+    if (this.rail.path) this.rail.update(dt, (nose, dist) => this.trackBlocked(nose, dist));
+    else this.rail.update(dt, (nose, dir, dist) => this.trackBlocked(nose, dir, dist));
     if (this.rail.blockedT > 0) {
       this.whT = (this.whT || 0) - dt;
       if (this.whT <= 0) { this.whT = 3; Audio.play(Audio.exists('sfx_steam_whistle') ? 'sfx_steam_whistle' : 'sfx_boat_horn', { volume: 0.8 }); }
@@ -657,7 +689,8 @@ export class Neighbours {
       c.sent = true;
       if (this.town) this.town.leave(c);
       c.flags = (c.flags & ~F.ON_TRAIN) | F.IN_VILLAGE;
-      const p = this.ours.board[this.actors.length % this.ours.board.length];
+      const dp = this.rail.doorPoints ? this.rail.doorPoints() : null;
+      const p = dp && dp.length ? dp[this.actors.length % dp.length] : this.ours.board[this.actors.length % this.ours.board.length];
       this.gs.time.delayedCall(500, () => {
         const a = new Actor(this.gs, this, c, p.x, p.y);
         this.actors.push(a);
@@ -674,7 +707,12 @@ export class Neighbours {
     if (this.toTown.indexOf(c) < 0) this.toTown.push(c);
   }
   onNextArrival(stop, fn) { this.waitNext[stop === 'town' ? 'town' : 'ours'].push(fn); }
-  addCoach() { if (this.rail.coaches > 1) return; this.rail.coaches = 2; if (this.train) this.train.build(); }
+  addCoach() {
+    if (this.rail.coaches > 1) return;
+    // ((v4.2) the 읍 consist: E + 객차 + 객차 + 화물칸 + 무개화차)
+    if (this.rail.setStage) this.rail.setStage(2); else this.rail.coaches = 2;
+    if (this.train) this.train.build();
+  }
   get people() { return this.town ? this.town.population() : 0; }
   /** (B) the station district's people (founders' households, house residents) */
   districtPeople() { return this.town ? this.town.districtPeople() : 0; }
@@ -682,6 +720,9 @@ export class Neighbours {
   /** tap on a townsperson: a name card (이름 · 나이 · 하는 일, 좋아하는 것, 단골 ★) */
   tap(wx, wy) {
     const gs = this.gs;
+    // ((v4.2) tap the train: the 열차 카드)
+    const uiS = gs.scene && gs.scene.get ? gs.scene.get('UI') : null;
+    if (this.rail.path && this.train && this.train.hit && this.train.hit(wx, wy) && uiS && uiS.hud42) { uiS.hud42.openTrainCard(); return true; }
     let best = null, bd = 1e12;
     const test = (w, c) => {
       if (!w || !w.alive || !c || !w.sprite.visible) return;

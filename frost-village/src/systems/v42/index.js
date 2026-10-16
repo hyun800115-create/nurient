@@ -6,12 +6,26 @@ import { Settings } from '../../core/Save.js';
 import { PickupPolicy } from '../PickupPolicy.js';
 import { ChiefAura } from '../../entities/ChiefAura.js';
 import { Navigator } from '../Navigator.js';
+import { Freight } from '../Freight.js';
+import { Surplus } from '../Surplus.js';
+import { LineUpgrades } from '../LineUpgrades.js';
+import { Office } from '../office/Office.js';
+import { VillageNews } from '../VillageNews.js';
+import { ChiefPilot } from '../pilot/ChiefPilot.js';
+import { DepotSystem } from '../depot/DepotSystem.js';
 
 // [name, factory(gs, v42, savedV42, wholeSave)] — in construction order
 const SYSTEMS = [
   ['pickup', (gs, v) => new PickupPolicy(gs, v)],
   ['aura', (gs, v) => new ChiefAura(gs, v)],
   ['nav', (gs, v) => new Navigator(gs, v)],
+  ['freight', (gs, v, s) => new Freight(gs, v, s)],
+  ['surplus', (gs, v) => new Surplus(gs, v)],
+  ['lines', (gs, v, s) => new LineUpgrades(gs, v, s)],
+  ['office', (gs, v, s) => new Office(gs, v, s)],
+  ['news', (gs, v, s) => new VillageNews(gs, v, s)],
+  ['depot', (gs, v, s) => new DepotSystem(gs, v, s)],
+  ['pilot', (gs, v, s, sv) => new ChiefPilot(gs, v, sv)],
 ];
 
 export function buildV42(gs, sv) {

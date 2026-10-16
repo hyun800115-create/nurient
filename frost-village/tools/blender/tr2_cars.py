@@ -79,17 +79,38 @@ def parent_all(objs, parent):
             attach(o, parent)
 
 
+AXLE_PHASE = [0.0, 135.0, 270.0, 45.0]      # (polish M1) per-axle wheel phase (deg): the cars' axles are not in step
+
+
+def wheel_mark(name, r, w=0.08):
+    """(polish M1) a 1-fold mark on both faces of a town_train disc wheel: a cream spoke bar from the gold hub to the
+    tyre with a round bolt at its end, so 45 deg steps read as rolling (the 3 small holes alone look the same every
+    half turn, and the bogie side frame hides the wheel's upper half).  Wheel-local: axle = X, mark along +Z."""
+    cream = flat('#F4F1EA', 0.45)
+    out = []
+    for sx in (-1, 1):
+        x = sx * (w / 2 + 0.018)
+        out.append(box(name + '_mk', (0.012, r * 0.16, r * 0.5), (x, 0.0, r * 0.24), mat=cream, bevel=0.004))
+        out.append(cyl(name + '_mb', r * 0.15, 0.016, (x, 0.0, r * 0.72), rot=(0, 90, 0), mat=cream, segs=12,
+                       origin='center', bevel=0.004))
+    return out
+
+
 def bogie(name, yc, wr, spread, root, col=DARK):
     """Two-axle bogie centred at local y = yc: red disc wheels (town_train.wheel) on both rails, a dark side frame
-    with gold axle-box caps just above the hubs, a bolster under the body.  Returns [(wheel_empty, r)]."""
+    with gold axle-box caps just above the hubs, a bolster under the body.  Returns [(wheel_empty, r, phase)]:
+    (polish M1) every wheel carries a 1-fold cream mark, each axle its own phase."""
     wheels = []
     zc = RAIL_TOP + wr
     for k, dy in enumerate((-spread / 2, spread / 2)):
+        ph = math.radians(AXLE_PHASE[(2 * (name.endswith('1')) + k) % len(AXLE_PHASE)])
         for s in (-1, 1):
             w = TT.wheel('%s%d%s' % (name, k, 'LR'[s > 0]), wr)
+            for o in wheel_mark('%s%d%s' % (name, k, 'LR'[s > 0]), wr):
+                o.parent = w
             w.location = (s * GAUGE / 2, yc + dy, zc)
             w.parent = root
-            wheels.append((w, wr))
+            wheels.append((w, wr, ph))
     with L.Collect() as c:
         dm = flat(col, 0.5)
         for s in (-1, 1):
@@ -295,7 +316,7 @@ COACH_NOTE = ('객차 "솔방울호" passenger coach (3.0 m over the couplers, b
               'platform steps (L/R x front/rear) where passengers step on / off; windowPoints = lit window centres '
               '(night glow); lampPoints = the two end lanterns.')
 
-CO = dict(L=2.7, W=1.22, floor=0.48, belt=1.02, win0=1.07, win1=1.56, eave=1.62, wall_half=1.08, plat=0.27,
+CO = dict(L=2.62, W=1.22, floor=0.48, belt=1.02, win0=1.07, win1=1.56, eave=1.62, wall_half=1.08, plat=0.27,
           roof_rise=0.17, wr=0.19, bogie_y=0.78, spread=0.5)
 
 
@@ -365,10 +386,12 @@ def b_coach():
                 box('val', (0.03, ww - 0.02, 0.045), (s * (W / 2 - 0.06), wy, w1 - 0.06), mat=flat('#E8749A', 0.8),
                     bevel=0.012)
         # interior: warm floor (on the lower body), benches with red velvet backs along both walls
+        cabin = L.emissive('cabin', '#F4C987', '#FFC872', 1.5, rough=0.8)
         box('ifloor', (W - 0.1, 2 * wh - 0.1, 0.012), (0, 0, zb), mat=flat('#B5764A', 0.7), bevel=0.0)
         for s in (-1, 1):
             box('bench', (0.24, 2 * wh - 0.14, 0.05), (s * 0.42, 0, zb), mat=flat('#8A5A33', 0.7), bevel=0.012)
-            box('bback', (0.06, 2 * wh - 0.14, 0.34), (s * 0.24, 0, zb), mat=flat('#B23A48', 0.8), bevel=0.02)
+            # warm-lit seat backs: the glow behind the passengers' heads makes the windows read as lit
+            box('bback', (0.06, 2 * wh - 0.14, 0.34), (s * 0.24, 0, zb), mat=cabin, bevel=0.02)
             box('bbtop', (0.08, 2 * wh - 0.14, 0.03), (s * 0.24, 0, zb + 0.34), mat=flat('#8A5A33', 0.7),
                 bevel=0.01)
         box('aisle', (0.28, 2 * wh - 0.14, 0.014), (0, 0, zb + 0.004), mat=flat('#C8463D', 0.85), bevel=0.0)
@@ -462,15 +485,18 @@ def b_coach():
         windows.append(((0.0, e * (wh + 0.03), z0 + 0.78), (0.0, e)))
     lamps = [(-0.47, -(Lh - 0.08), z1 - 0.23), (-0.47, Lh - 0.08, z1 - 0.23)]
     return {'group': root, 'body': body, 'wheels': wheels, 'pose': pose_coach, 'wavers': wavers,
-            'points': {'doorPoints': door, 'windowPoints': windows, 'lampPoints': lamps},
+            'points': {'doorPoints': door, 'windowPoints': windows, 'lampPoints': lamps, 'lampR': 0.1},
             'head_ref': Vector((0, 0, z1 + CO['roof_rise'] + 0.06))}
 
 
 def sway(B, anim, i, n):
+    """(polish M1) a gentle rocking with the period of the whole 8-frame loop (bob and roll a quarter turn apart), so
+    no two move frames are alike and the 4 frames the packer keeps on the curves (0, 2, 4, 6) still rock smoothly;
+    frame 0 = the idle pose (idle_<dir>_0 is an alias of move_<dir>_0)."""
     body = B['body']
     if anim == 'move':
         t = i / float(n)
-        body.location.z = 0.45 + 0.006 * math.sin(2 * math.tau * t)
+        body.location.z = 0.45 - 0.005 * (1.0 - math.cos(math.tau * t))
         body.rotation_euler.y = math.radians(0.9 * math.sin(math.tau * t))
         return 0.4 + math.tau * t
     body.location.z = 0.45
@@ -479,8 +505,9 @@ def sway(B, anim, i, n):
 
 
 def set_wheels(B, ang):
-    for w, r in B['wheels']:
-        w.rotation_euler = Euler((ang, 0, 0), 'XYZ')
+    for wh in B['wheels']:
+        w, ph = wh[0], (wh[2] if len(wh) > 2 else 0.0)
+        w.rotation_euler = Euler((ang + ph, 0, 0), 'XYZ')
 
 
 def pose_coach(B, anim, i, n):
@@ -488,7 +515,7 @@ def pose_coach(B, anim, i, n):
     set_wheels(B, ang)
     for mit, rest, k in B['wavers']:
         f = i / float(n) if anim == 'move' else 0.0        # idle == move frame 0 (aliased in the atlas)
-        ph = math.tau * 2 * f + k
+        ph = math.tau * f + k                              # (polish M1) one wave per loop: 8 distinct frames
         mit.location = rest + Vector((0.0, 0.035 * math.sin(ph), 0.012 * math.cos(ph)))
 
 
@@ -502,7 +529,7 @@ BOX_NOTE = ('화물칸 box car (2.6 m over the couplers, body 2.3 m, 1.3 x 1.9 m
             'inside under a warm lamp. doorPoints = ground beside each door half (where crates fly in); cargoPoint = '
             'the floor just inside the open door.')
 
-BX = dict(L=2.3, W=1.26, floor=0.52, eave=1.6, wall_half=1.1, door_half=0.42, door_z1=1.48, roof_rise=0.13,
+BX = dict(L=2.3, W=1.26, floor=0.52, eave=1.6, wall_half=1.03, door_half=0.42, door_z1=1.48, roof_rise=0.13,
           wr=0.19, bogie_y=0.7, spread=0.5)
 
 
@@ -573,14 +600,14 @@ def b_boxcar():
             mb.seg(Vector((-0.5, ye, z)), Vector((-0.32, ye, z)), 0.01, im, segs=6)
         mb.done('ladder')
         # roof: dark green barrel, walkway on top, snow
-        drop_extra(TT.roof_curved('roof', W + 0.02, 2 * wh + 0.08, z1, rise=BX['roof_rise'], col='#2F5D46',
+        drop_extra(TT.roof_curved('roof', W + 0.02, 2 * wh + 0.04, z1, rise=BX['roof_rise'], col='#2F5D46',
                                   over=0.05, seed=9, long_snow=False))
         rz = z1 + BX['roof_rise'] + 0.06
         for y in (-0.8, -0.27, 0.27, 0.8):
             box('wsup', (0.3, 0.05, 0.08), (0, y, rz - 0.07), mat=flat('#5E3B26', 0.7), bevel=0.008)
         box('walk', (0.26, 2 * wh + 0.02, 0.03), (0, 0, rz + 0.01),
             mat=L.stripes('#A9784A', '#8F6239', 22.0, 'Y', soft=0.04), bevel=0.008)
-        roof_snow('roofsnow', W + 0.02, 2 * wh + 0.08, z1, BX['roof_rise'], 0.05, seed=9, cover=(0.66, 0.86), T=0.05,
+        roof_snow('roofsnow', W + 0.02, 2 * wh + 0.04, z1, BX['roof_rise'], 0.05, seed=9, cover=(0.66, 0.86), T=0.05,
                   patch=0.2)
         L.snow_slab('wsnow', 0.2, 0.55, 0.03, (0.02, 0.45, rz + 0.04), seed=12)
         L.snow_slab('wsnow2', 0.2, 0.3, 0.025, (-0.01, -0.62, rz + 0.04), seed=13)
@@ -590,14 +617,19 @@ def b_boxcar():
                 box('lining', (0.02, b - a, z1 - z0 - 0.04), (s * (W / 2 - 0.06), (a + b) / 2, z0),
                     mat=flat('#A0703F', 0.8), bevel=0.0)
         box('ifloor', (W - 0.12, 2 * wh - 0.1, 0.012), (0, 0, z0), mat=flat('#B9874F', 0.8), bevel=0.0)
-        PA.crate_model('icr1', 0.36, (0.3, -0.2, z0), rot=(0, 0, 6), snow=False, seed=41)
-        PA.crate_model('icr2', 0.32, (0.31, -0.2, z0 + 0.36), rot=(0, 0, -7), snow=False, seed=42)
+        # (polish L7) the crates fill the doorway (a stack of two right behind the opening, one more beside it);
+        # the barrel and the sacks stand back at the sides, so the open door reads as "crates inside"
+        # (the camera looks down ~30 deg through the 0.96 m door: what stands near the open side shows whole, the
+        #  far wall only from half its height down)
+        PA.crate_model('icr1', 0.36, (-0.08, -0.17, z0), rot=(0, 0, 5), snow=False, seed=41)
+        PA.crate_model('icr2', 0.3, (-0.07, -0.16, z0 + 0.36), rot=(0, 0, -9), snow=False, seed=42)
+        PA.crate_model('icr6', 0.32, (-0.04, 0.22, z0), rot=(0, 0, 12), snow=False, seed=49)
         PA.crate_model('icr3', 0.36, (0.3, 0.62, z0), rot=(0, 0, -8), snow=False, seed=43)
         PA.crate_model('icr4', 0.34, (0.3, -0.64, z0), rot=(0, 0, 10), snow=False, seed=44)
         PA.crate_model('icr5', 0.3, (0.3, 0.62, z0 + 0.36), rot=(0, 0, 9), snow=False, seed=45)
-        PA.barrel_model('ibar', loc=(0.32, 0.22, z0), scale=0.44, snow=False, seed=48)
-        BA.sack('isack1', (0.06, 0.3, z0), s=0.7, seed=46)
-        BA.sack('isack2', (0.08, -0.5, z0), s=0.65, seed=47, col='#CDB98E')
+        PA.barrel_model('ibar', loc=(0.36, 0.08, z0), scale=0.42, snow=False, seed=48)
+        BA.sack('isack1', (0.34, 0.76, z0), s=0.55, seed=46)
+        BA.sack('isack2', (0.34, -0.8, z0), s=0.55, seed=47, col='#CDB98E')
         PA.lantern('ilamp', (0.05, 0.0, z1 - 0.3), size=0.09, strength=5.0, light=False)
         cyl('ilhook', 0.008, 0.12, (0.05, 0.0, z1 - 0.13), mat=flat(DARK, 0.5), segs=6)
         L.point_light('ilight', (-0.15, 0.0, 1.3), 'window', 18.0, 0.25)
@@ -636,7 +668,7 @@ def b_boxcar():
             'head_ref': Vector((0, 0, z1 + BX['roof_rise'] + 0.1))}
 
 
-DOOR_OPEN = [0.16, 0.46, 0.8, 1.0]
+DOOR_OPEN = [0.08, 0.36, 0.72, 1.0]           # (polish L7) eased: frame 0 is only just ajar after idle
 
 
 def pose_boxcar(B, anim, i, n):
@@ -656,7 +688,7 @@ FLAT_NOTE = ('무개화차 flat car (2.4 m over the couplers, body 2.1 m, 1.3 x 
              'cargoScale, stackStep px apart) on cargoSlots (2 rows x 3, bottom-centre of each stack on the deck, '
              'sorted back to front). idle 1 f, move 8 f (wheel turn + gentle sway).')
 
-FL = dict(L=2.1, W=1.3, deck=0.55, wr=0.17, bogie_y=0.68, spread=0.44)
+FL = dict(L=1.94, W=1.3, deck=0.55, wr=0.17, bogie_y=0.58, spread=0.44)
 FL_SLOTS = [(x, y) for y in (-0.62, -0.12, 0.38) for x in (-0.3, 0.3)]
 
 
@@ -706,13 +738,18 @@ def b_flatcar():
             o = bpy.context.object
             o.name = 'lash'
             o.data.materials.append(flat('#D9C39A', 0.85))
-        for k in range(3):
-            bpy.ops.mesh.primitive_torus_add(major_radius=0.085 - 0.012 * k, minor_radius=0.016,
-                                             location=(0.34, Lh - 0.48, zd + 0.016 + 0.024 * k), major_segments=20,
-                                             minor_segments=6)
+        # (polish L7) a flat rope coil lying on the deck (concentric turns + a loose end), not a stacked basket
+        for k in range(4):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.1 - 0.022 * k, minor_radius=0.014,
+                                             location=(0.34, Lh - 0.5, zd + 0.014 + 0.004 * (k % 2)),
+                                             major_segments=22, minor_segments=6)
             o = bpy.context.object
             o.name = 'coil'
-            o.data.materials.append(flat('#D9C39A', 0.85))
+            o.data.materials.append(flat('#D9C39A' if k % 2 == 0 else '#C9B184', 0.85))
+        mb = L.MB()
+        mb.seg(Vector((0.44, Lh - 0.5, zd + 0.016)), Vector((0.47, Lh - 0.66, zd + 0.016)), 0.014,
+               flat('#D9C39A', 0.85), segs=6)
+        mb.done('coil_end')
         for k, (xx, rr) in enumerate(((-0.22, 0.09), (0.3, 0.07))):
             PA.snow_cap('tsnow%d' % k, rr, (xx, Lh - 0.2, zd + 0.225), 0.035, 61 + k, scale=(1.8, 0.8, 1.0))
         for k, (xx, yy, rr) in enumerate(((-0.5, -Lh + 0.12, 0.07), (0.45, -Lh + 0.1, 0.05), (-0.52, 0.2, 0.05))):
@@ -727,7 +764,8 @@ def b_flatcar():
     for e in (-1, 1):
         wheels += bogie('bg%d' % (e > 0), e * FL['bogie_y'], FL['wr'], FL['spread'], root)
     return {'group': root, 'body': body, 'wheels': wheels, 'pose': pose_flatcar,
-            'points': {'lampPoints': [(-0.5, -(Lh + 0.02), zd + 0.16), (-0.5, Lh + 0.02, zd + 0.16)],
+            'points': {'lampPoints': [(-0.5, -(Lh + 0.02), zd + 0.16), (-0.5, Lh + 0.02, zd + 0.16)], 'lampR': 0.04,
+                       'lampN': [(0.0, -1.0), (0.0, 1.0)],          # the lenses face out of each end
                        'cargoSlots': [(x, y, zd) for x, y in FL_SLOTS]},
             'head_ref': Vector((0, 0, zd + 0.3))}
 

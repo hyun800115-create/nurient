@@ -492,7 +492,9 @@ export const BALANCE = {
     //    outAt / outForS = 가공소 출구가 outAt 이상으로 outForS 초 → 남음 (가까운 localPx 안에 원하는 곳이 없을 때)
     //    pileAt / pileForS / pileKeep = 모아두는 곳이 pileAt 이상으로 pileForS 초 → 남음 (pileKeep 개는 남겨 둬요)
     //    whAt / whKeep = 창고가 whAt 넘게 차면 whKeep 까지 줄여요, boatAt = 배 창고 생선이 이만큼 차면 남음
-    surplus: { outAt: 0.7, outForS: 20, localPx: 1500, pileAt: 0.95, pileForS: 30, pileKeep: 20, whAt: 0.7, whKeep: 0.5, boatAt: 0.9 },
+    //    pileToWh = 마을 완성 뒤 모아두는 곳이 이만큼 차면 창고 짐꾼이 창고로 옮겨 둬요 (창고 = 마을의 버퍼)
+    //    pilePrio = 역 짐꾼이 가득 찬 모아두는 곳의 남는 원료를 나르는 급한 정도 (가게 채우기 35·주문 38보다 낮게)
+    surplus: { outAt: 0.7, outForS: 20, localPx: 1500, pileAt: 0.9, pileForS: 20, pileKeep: 16, whAt: 0.7, whKeep: 0.5, boatAt: 0.9, pileToWh: 0.85, pilePrio: 30 },
     // ── 역 짐꾼 3 / 4 (물류창고가 생긴 뒤): 값
     stationPorter34: [1000, 1500],
     // ── 기차 수출 (F7): perTrain = 기차 한 번에 싣는 상자 (화물칸 32 + 무개화차 24), big = '화물칸 크게' 뒤,
@@ -526,9 +528,10 @@ export const BALANCE = {
     // ── 관망 모드: decideEvery = 할 일을 고르는 간격(초), jitter = 고를 때 섞는 정도, hysteresis = 하던 일을 계속하려는 정도,
     //    minZoom = 관망 중 가장 멀리 보는 배율, camLerp = 카메라가 따라가는 부드러움, cutEvery = 볼거리로 카메라가 가는 간격(초, 최소~최대),
     //    cutHold = 볼거리를 보여 주는 시간(초), cutRange = 이만큼(px) 안의 볼거리만, stuckSide / stuckDrop = 막혔을 때 비키기 / 포기(초)
+    //    breakAfter = 급한 일·업무를 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 콩이)
     //    agenda = 시간대별 하고 싶은 일 배율 [시작 시, 끝 시, 일, 배율]
     pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, cutEvery: [45, 90], cutHold: [6, 8],
-             cutRange: 2500, stuckSide: 3, stuckDrop: 8,
+             cutRange: 2500, stuckSide: 3, stuckDrop: 8, breakAfter: 150, breakFor: 20,
              agenda: [[7, 9, 'office', 1.5], [9, 12, 'work', 1.3], [13, 17, 'work', 1.15], [17, 20, 'chat', 1.5], [17, 20, 'rest', 1.2]] },
     // ── 새 기차: speed = 곧은 길 속도(m/초), curve = 고리를 돌 때 속도, accel / brake = 출발·멈출 때, dwellOurs / dwellTown = 서 있는 시간(초)
     //    coachSeats = 객차 한 칸 자리, labels = 새 기차가 처음 몇 번 들어올 때 칸마다 이름표를 띄울지

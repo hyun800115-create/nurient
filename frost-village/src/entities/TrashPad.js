@@ -50,7 +50,8 @@ export class TrashPad {
     let lx = this.x;
     if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, this.x));
     if (this.label.x !== lx) this.label.x = lx;
-    const on = this.pad.contains(p.x, p.y);
+    const PL = gs.v42 && gs.v42.pilot;
+    const on = this.pad.contains(p.x, p.y) && !(PL && PL.on);
     const la = on ? 0.35 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
     if (!on) { this.standT = 0; return false; }

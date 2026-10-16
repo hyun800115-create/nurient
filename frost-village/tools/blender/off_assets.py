@@ -56,6 +56,19 @@ DOOR_X, DOOR_W, DOOR_H = -1.6, 0.98, 1.78
 DAIS = 0.04
 SEAT = 0.45
 DESK_TOP = 0.72
+# (polish, v42_office_critique M1 / M2) the visitor bench: 0.5 m further toward the front-right corner (+X / -Y) so
+# seated visitors no longer hide the chief's desk front and the chief's pad is clear of its backrest; 1.36 m long
+# (seats 0.72 m apart, the house bench spacing); no plant in front of it
+BENCH = (1.92, -1.12)
+BENCH_W, BENCH_D = 1.36, 0.44
+SEAT_DX = 0.36
+# (polish M5) the safe stands on a low oak plinth so its door and dial clear the 1.2 m wall stub in the cut view
+SAFE_LIFT = 0.32
+# (polish M3 / L1) the courier's counting table 0.33 m nearer the front: the courier now has room to stand in front of
+# the safe (safePoint) without standing in the table, and 셈이 at the board no longer stands behind 딸랑이
+COUNT_Y = 0.42
+# (polish H2 / L1) clerk desk 2 ends 0.28 m earlier on its +Y side, opening a gap in front of the filing cabinet
+DESK2_Y, DESK2_L = -0.86, 1.02
 
 # ------------------------------------------------------------------------------------------------ palette
 PLASTER = '#F6E4C4'
@@ -77,12 +90,14 @@ NOTE = ('촌장 사무실 (chief office, 5.6 x 4.4 m): a cosy one-storey timber-
         'with a pinecone finial and a brick chimney, tall white windows with little red curtains, a teal double door '
         'with brass knobs under a fan light, a blank cream sign board over the door (the game writes 촌장 사무실 into '
         'signRect), a lantern post by the steps.  CUTAWAY (bank / logistics layer contract): _floor (floorboards, '
-        'rugs, the chief\'s round dais, the open-building ground shadow), _back (wallpaper + wainscot, chalkboard, '
+        'rugs, the chief\'s round dais), _back (wallpaper + wainscot, chalkboard, '
         'village map with pins, cork notice board, pigeonhole mail shelf, window, clock, key board, town emblem), '
-        '_interior (chairs, pot-belly stove + kettle, filing cabinet, iron safe + coin sacks, coat rack, bench, '
-        'plants), _interior_front (the chief\'s desk, two clerk desks, the secretary desk, the counting table), '
-        '_shell_cut (wall stubs at 1.2 m + sills + door frame), _shell (the closed building incl. its ground shadow '
-        'and the outdoor props), _glow (night window light + lantern halo), _props (steps, lantern post).')
+        '_interior (chairs, pot-belly stove + kettle, filing cabinet, the hollow iron safe on its plinth + coin '
+        'sacks, coat rack, visitor bench, plants), _interior_front (the chief\'s desk, the two clerk desks), '
+        '_shell_cut (wall stubs at 1.2 m + sills + short door jambs, the secretary desk + the counting table - their '
+        'sitters sit in band front, see deskBands - the plinth fringe and the open-building ground shadow), _shell '
+        '(the closed building incl. its ground shadow and the outdoor props), _glow (night window light + lantern '
+        'halo, drawn only while closed at night), _props (steps, lantern post).')
 
 
 def tagged(objs, key, val=True):
@@ -139,7 +154,7 @@ def wallpaper(axis):
     return L.stripes('#F2E5C9', '#E8D5B0', 7.0, axis, rough=0.88, soft=0.12)
 
 
-def burlap(col='#D8BE8E'):
+def burlap(col='#C99E68'):
     key = ('off_burlap', col)
     if key in L._CUSTOM:
         return L._CUSTOM[key]
@@ -213,8 +228,8 @@ def coin_sack(name, loc, r=0.2, rot_z=0.0, seed=0, coins=True, emblem=True, tie=
             mb2.cube((r * 0.26, r * 0.04, r * 0.08), dk, loc=(0, -r * 0.045, s_ * r * 0.12))
         e.append(mb2.done(name + '_emk'))
         eg = L.group(e, name + '_emg', loc=(0, 0, 0))
-        eg.location = (r * 0.93 * math.cos(math.radians(-45)), r * 0.93 * math.sin(math.radians(-45)) * 0.92, r * 0.95)
-        eg.rotation_euler = Euler((math.radians(-8), 0, math.radians(45)), 'XYZ')
+        eg.location = (r * 0.9 * math.cos(math.radians(-45)), r * 0.9 * math.sin(math.radians(-45)) * 0.92, r * 1.12)
+        eg.rotation_euler = Euler((math.radians(-16), 0, math.radians(45)), 'XYZ')
         objs.append(eg)
     return L.group(objs, name + '_g', loc=(x, y, z), rot=(0, 0, rot_z))
 
@@ -509,9 +524,10 @@ def build_office():
             mb.sphere(0.045, flat('#E3A93B', 0.8), loc=(0.4 + 0.6 * math.cos(a), 1.2 + 0.6 * math.sin(a),
                                                         PL + DAIS + 0.012), scale=(1, 1, 0.25), segs=8, rings=4)
         mb.done('rugdots')
-        # small round rug in the visitor corner
-        cyl('rug_v', 0.55, 0.01, (1.6, -0.95, PL), mat=flat('#7FB5AB', 0.9), segs=36, bevel=0.0)
-        cyl('rug_v2', 0.45, 0.012, (1.6, -0.95, PL), mat=flat('#F3E3B5', 0.9), segs=36, bevel=0.0)
+        # small round rug in the visitor corner, where the seated visitors' feet go (polish: follows the bench)
+        bx_, by_ = BENCH
+        cyl('rug_v', 0.55, 0.01, (bx_, by_ - 0.42, PL), mat=flat('#7FB5AB', 0.9), segs=36, bevel=0.0)
+        cyl('rug_v2', 0.45, 0.012, (bx_, by_ - 0.42, PL), mat=flat('#F3E3B5', 0.9), segs=36, bevel=0.0)
 
     # -------------------------------------------------------------------------------------- back walls (inside)
     with layer('back'):
@@ -584,7 +600,7 @@ def back_wall_dressing():
     em.append(mbl.done('emb_laurel'))
     T.face_group(em, 'y-', (0.8, YI1, PL + 2.38), 'emblem')
     # ---- village map with pins: back wall X -2.15 .. -0.6
-    mx0, mx1, mz0, mz1 = -2.12, -0.62, PL + 1.2, PL + 2.08
+    mx0, mx1, mz0, mz1 = -1.92, -0.52, PL + 1.2, PL + 2.08
     mw, mh = mx1 - mx0, mz1 - mz0
     mp = [box('map_fr', (mw, 0.05, mh), (0, -0.025, 0), mat=flat('#7A4E2E', 0.6), bevel=0.02),
           box('map_land', (mw - 0.1, 0.02, mh - 0.1), (0, -0.055, 0.05), mat=tonal('#CFE5B5', 0.06, 5.0, rough=0.9),
@@ -629,9 +645,10 @@ def back_wall_dressing():
         mbk.cube((0.04, 0.008, 0.05), flat(['#F7E27A', '#F6B6C8', '#9FD3F0', '#FBF6EA'][k], 0.7),
                  loc=(kx + 0.02, -0.064, 0.06), rot=(0, 12, 0))
     kb.append(mbk.done('kb_keys'))
-    T.face_group(kb, 'y-', (2.24, YI1, PL + 1.06), 'keyboard')
+    # (polish) 0.42 m higher: the safe now stands on a plinth below it
+    T.face_group(kb, 'y-', (2.24, YI1, PL + 1.48), 'keyboard')
     # ---- sconces on the back wall
-    CA.wall_lamp_in('sc0', (-0.42, YI1, PL + 1.95), 'y-', strength=2.2)
+    CA.wall_lamp_in('sc0', (-0.36, YI1, PL + 1.95), 'y-', strength=2.2)
     # ---- left wall: cork notice board near the door, pigeonhole shelf, clock
     nb_ = [box('nb_fr', (0.8, 0.05, 0.62), (0, -0.025, 0), mat=flat(TIMBER, 0.6), bevel=0.02),
            box('nb_cork', (0.72, 0.03, 0.54), (0, -0.055, 0.04), mat=tonal('#C9925A', 0.14, 16.0, rough=0.95),
@@ -692,7 +709,8 @@ def back_wall_dressing():
 
 def interior_furniture(pts):
     # ---- pot-belly stove in the back-left corner, turned 45 deg toward the room
-    sx_, sy_ = -2.28, 1.72
+    # (nudged 0.26 m along the back wall from the corner so clerk desk 1 does not hide the fire window on screen)
+    sx_, sy_ = -2.02, 1.74
     im = flat('#3B3F48', 0.42, 0.35)
     st = []
     st.append(box('st_plate', (0.62, 0.62, 0.03), (0, 0, 0), mat=flat('#9A9086', 0.8), bevel=0.01))
@@ -702,15 +720,15 @@ def interior_furniture(pts):
                       bevel=0.015))
     st.append(cyl('st_base', 0.2, 0.08, (0, 0, 0.15), mat=im, segs=24, bevel=0.02))
     st.append(sphere('st_belly', 0.27, (0, 0, 0.45), im, scale=(1.0, 1.0, 1.0), segs=28, rings=16))
-    st.append(cyl('st_band', 0.275, 0.04, (0, 0, 0.5), mat=flat('#C9A045', 0.35, 0.6), segs=28, bevel=0.01))
+    st.append(cyl('st_band', 0.238, 0.035, (0, 0, 0.58), mat=flat('#C9A045', 0.35, 0.6), segs=28, bevel=0.01))
     st.append(cyl('st_top', 0.22, 0.1, (0, 0, 0.66), mat=im, segs=24, r_top=0.18, bevel=0.02))
     st.append(cyl('st_lid', 0.2, 0.03, (0, 0, 0.76), mat=flat('#2B2F3A', 0.4, 0.5), segs=24, bevel=0.01))
     # fire window recess (the flames are the 'stove' overlay): dark inside, brass frame, facing local -Y
-    st.append(cyl('st_win_rim', 0.11, 0.06, (0, -0.25, 0.4), rot=(90, 0, 0), mat=flat('#C9A045', 0.35, 0.6), segs=24,
+    st.append(cyl('st_win_rim', 0.15, 0.04, (0, -0.258, 0.37), rot=(90, 0, 0), mat=flat('#C9A045', 0.35, 0.6), segs=28,
                   origin='center', bevel=0.012))
-    st.append(cyl('st_win_in', 0.085, 0.07, (0, -0.255, 0.4), rot=(90, 0, 0), mat=flat('#2A1A14', 0.9), segs=24,
+    st.append(cyl('st_win_in', 0.12, 0.008, (0, -0.281, 0.37), rot=(90, 0, 0), mat=flat('#2A1A14', 0.9), segs=28,
                   origin='center', bevel=0.0))
-    st.append(sphere('st_knob', 0.025, (0.1, -0.26, 0.52), CL.brass(), segs=8, rings=5))
+    st.append(sphere('st_knob', 0.028, (0.14, -0.29, 0.37), CL.brass(), segs=8, rings=5))
     km = flat(RED, 0.3)
     st.append(sphere('st_ket', 0.11, (-0.03, 0.02, 0.86), km, scale=(1, 1, 0.78), segs=18, rings=10))
     st.append(sphere('st_ketlid', 0.04, (-0.03, 0.02, 0.95), flat('#F4F1EA', 0.4), scale=(1, 1, 0.6), segs=10,
@@ -723,26 +741,29 @@ def interior_furniture(pts):
     st.append(cyl('st_pipe', 0.065, H - PL - 0.8, (0.0, 0.08, 0.78), mat=im, segs=14, bevel=0.0))
     st.append(cyl('st_pipe_c', 0.075, 0.05, (0.0, 0.08, 1.5), mat=flat('#C9A045', 0.35, 0.6), segs=14, bevel=0.01))
     # a little log basket beside it
-    st.append(cyl('st_basket', 0.13, 0.2, (0.33, 0.12, 0.0), mat=L.stripes('#C98F55', '#A8743F', 30.0, 'Z',
+    st.append(cyl('st_basket', 0.13, 0.2, (0.36, -0.12, 0.0), mat=L.stripes('#C98F55', '#A8743F', 30.0, 'Z',
                                                                          rough=0.85), segs=16, bevel=0.02))
     for k in range(3):
-        st.append(L.log('st_log', 0.035, 0.3, (0.33 + 0.05 * (k - 1), 0.12, 0.22 + 0.02 * (k % 2)), rot=(90, 0, 20 * k),
+        st.append(L.log('st_log', 0.035, 0.3, (0.36 + 0.05 * (k - 1), -0.12, 0.22 + 0.02 * (k % 2)), rot=(90, 0, 20 * k),
                         segs=10))
     g = L.group(st, 'stove', loc=(sx_, sy_, PL), rot=(0, 0, 45))
     del g
     a = math.radians(45)
     fwd = Vector((math.sin(a), -math.cos(a), 0.0))                                # local -Y after the 45 deg turn
-    pts['stove_fire'] = (sx_ + fwd.x * 0.25, sy_ + fwd.y * 0.25, PL + 0.4)
+    pts['stove_fire'] = (sx_ + fwd.x * 0.3, sy_ + fwd.y * 0.3, PL + 0.37)
     spout = Vector((0.08 + 0.1 * math.cos(math.radians(30)), -0.03 - 0.06, 0.92))
     R = Euler((0, 0, a), 'XYZ').to_matrix()
     sp = R @ spout
     pts['kettle'] = (sx_ + sp.x, sy_ + sp.y, PL + sp.z + 0.05)
     pts['stove_xy'] = (sx_, sy_)
-    pts['stove_ground'] = (sx_ + fwd.x * 0.62, sy_ + fwd.y * 0.62, PL)
+    # (polish L1) the chief's warm-hands / doze spot: beside the stove along the back wall, out of the fire window's
+    # line of sight on screen and 0.85 m from the pigeonhole spot (was straight in front of the fire, 0.54 m from it)
+    pts['stove_ground'] = (-1.3, 1.55, PL)
     L.point_light('stove_l', (sx_ + fwd.x * 0.5, sy_ + fwd.y * 0.5, PL + 0.4), 'glow', 9.0, 0.15)
 
     # ---- filing cabinet (4 drawers) on the left wall between the clerk desks
-    fx_, fy_ = XI0 + 0.24, 0.04
+    # (polish L1) 0.1 m toward -Y, centred on the gap between the two clerk desks (cabinetPoint stands in front of it)
+    fx_, fy_ = XI0 + 0.24, -0.06
     fc = [box('fc_body', (0.46, 0.46, 1.28), (0, 0, 0), mat=flat('#7FA08A', 0.45, 0.15), bevel=0.03),
           box('fc_top', (0.5, 0.5, 0.04), (0, 0, 1.28), mat=flat('#6E8C78', 0.45, 0.15), bevel=0.012)]
     for k in range(4):
@@ -781,7 +802,7 @@ def interior_furniture(pts):
                   flat(WALNUT, 0.5))
 
     # ---- chairs (seat FRONT-CENTRE at the seat point; the person anim anchors there)
-    s1 = (-2.1, 0.5)
+    s1 = (-2.1, 0.36)
     s2 = (-2.1, -1.1)
     chair('ch_sem', s1, 90, col='#3D7CC9')
     chair('ch_bok', s2, 90, col='#E8749A')
@@ -789,7 +810,7 @@ def interior_furniture(pts):
     chair('ch_chong', sc, 0, col='#F2C14E', back_h=0.42)
     sch = (0.4, 1.36)
     chair('ch_chief', sch, 0, col='#B8433A', wood=TIMBER_D, wide=0.56, back_h=0.62, z0=PL + DAIS, wing=True)
-    st_ = (1.73, 0.75)
+    st_ = (1.73, COUNT_Y)
     chair('ch_ttal', st_, 90, col='#3FA58C', back_h=0.34)
     pts['seat_sem'] = (s1[0], s1[1], PL + SEAT)
     pts['seat_bok'] = (s2[0], s2[1], PL + SEAT)
@@ -798,54 +819,86 @@ def interior_furniture(pts):
     pts['seat_ttal'] = (st_[0], st_[1], PL + SEAT)
 
     # ---- iron safe in the back-right corner, door on the -Y face (the door is the 'safe' overlay)
-    kx_, ky_ = 2.3, 1.72
+    # (polish M5) on a low oak plinth (SAFE_LIFT) so the door + dial clear the right wall stub in the cut view, and
+    # HOLLOW: an open front with a dark lined cavity, a shelf of coin stacks, a gold bar and a little coin bag, so the
+    # open door (overlay frame 1) shows the treasure (the shut door, frame 0, covers the opening)
+    kx_, ky_ = 2.05, 1.72
     sw, sd, sh = 0.62, 0.56, 0.82
+    z0 = PL + SAFE_LIFT
     sm = flat('#2F5E4A', 0.4, 0.4)
-    box('sf_body', (sw, sd, sh), (kx_, ky_, PL + 0.08), mat=sm, bevel=0.04)
-    box('sf_top', (sw + 0.04, sd + 0.04, 0.04), (kx_, ky_, PL + 0.08 + sh), mat=flat('#244A3A', 0.4, 0.4),
-        bevel=0.012)
-    for sxx in (-1, 1):
-        for syy in (-1, 1):
-            cyl('sf_foot', 0.05, 0.08, (kx_ + sxx * (sw / 2 - 0.08), ky_ + syy * (sd / 2 - 0.08), PL), mat=CL.brass(),
-                segs=12, bevel=0.01)
-    box('sf_gold', (sw + 0.01, sd + 0.01, 0.03), (kx_, ky_, PL + 0.12), mat=CL.gold(), bevel=0.008)
-    box('sf_gold2', (sw + 0.01, sd + 0.01, 0.03), (kx_, ky_, PL + 0.82), mat=CL.gold(), bevel=0.008)
-    # the open cavity (seen when the door swings open): dark, with coin stacks and a gold bar
-    fy_ = ky_ - sd / 2
-    box('sf_cav', (sw - 0.12, 0.05, sh - 0.14), (kx_, fy_ + 0.015, PL + 0.15), mat=flat('#1E2E26', 0.8), bevel=0.0)
-    box('sf_shelf', (sw - 0.14, 0.3, 0.025), (kx_, fy_ + 0.17, PL + 0.5), mat=flat('#3E6E58', 0.5), bevel=0.0)
-    for k in range(4):
-        cyl('sf_coins', 0.045, 0.05 + 0.03 * (k % 3), (kx_ - 0.17 + 0.11 * k, fy_ + 0.12, PL + 0.525), mat=CL.gold(),
-            segs=14, bevel=0.006)
-    box('sf_bar', (0.2, 0.1, 0.06), (kx_ - 0.05, fy_ + 0.12, PL + 0.2), mat=CL.gold(), bevel=0.012, taper=(0.8, 0.8))
-    blob('sf_bag', 0.1, (kx_ + 0.14, fy_ + 0.15, PL + 0.27), burlap(), scale=(1, 1, 1.1), seed=31, amp=0.12,
-         subdiv=2, flat_bottom=0.5)
+    om = flat('#9A6A42', 0.55)
+    box('sf_plinth', (sw + 0.08, sd + 0.06, SAFE_LIFT - 0.02), (kx_, ky_ + 0.01, PL), mat=om, bevel=0.025)
+    box('sf_plinth_d', (sw - 0.12, 0.02, SAFE_LIFT - 0.09), (kx_, ky_ - sd / 2 - 0.02, PL + 0.035),
+        mat=flat('#7A4E2E', 0.55), bevel=0.01)
+    sphere('sf_plinth_k', 0.022, (kx_, ky_ - sd / 2 - 0.035, PL + SAFE_LIFT / 2 - 0.01), CL.brass(), segs=8, rings=5)
+    wt = 0.06                                               # wall thickness of the iron box
+    fy_ = ky_ - sd / 2                                      # the front face (y) of the box
+    box('sf_backp', (sw, wt, sh), (kx_, ky_ + sd / 2 - wt / 2, z0), mat=sm, bevel=0.03)
+    for s_ in (-1, 1):
+        box('sf_side', (wt, sd, sh), (kx_ + s_ * (sw / 2 - wt / 2), ky_, z0), mat=sm, bevel=0.03)
+    box('sf_floor', (sw, sd, wt + 0.02), (kx_, ky_, z0), mat=sm, bevel=0.03)
+    box('sf_roof', (sw, sd, wt), (kx_, ky_, z0 + sh - wt), mat=sm, bevel=0.03)
+    box('sf_top', (sw + 0.04, sd + 0.04, 0.04), (kx_, ky_, z0 + sh), mat=flat('#244A3A', 0.4, 0.4), bevel=0.012)
+    box('sf_gold', (sw + 0.01, sd + 0.01, 0.03), (kx_, ky_, z0 + 0.04), mat=CL.gold(), bevel=0.008)
+    box('sf_gold2', (sw + 0.01, sd + 0.01, 0.03), (kx_, ky_, z0 + sh - 0.08), mat=CL.gold(), bevel=0.008)
+    # the cavity lining (dark, a warm hint so it reads as an inside and not as a hole) + a brass lip round the opening
+    lin = flat('#22302A', 0.85)
+    box('sf_lin_b', (sw - 2 * wt, 0.01, sh - 2 * wt), (kx_, ky_ + sd / 2 - wt - 0.005, z0 + wt), mat=lin, bevel=0.0)
+    for s_ in (-1, 1):
+        box('sf_lin_s', (0.01, sd - wt, sh - 2 * wt), (kx_ + s_ * (sw / 2 - wt - 0.005), ky_ - wt / 2 + 0.005, z0 + wt),
+            mat=lin, bevel=0.0)
+    box('sf_lin_f', (sw - 2 * wt, sd - wt, 0.01), (kx_, ky_ - wt / 2 + 0.005, z0 + wt + 0.02), mat=flat('#2B3A33', 0.8),
+        bevel=0.0)
+    mbl = L.MB()
+    mbl.cube((sw - 2 * wt + 0.03, 0.02, 0.025), CL.brass(), loc=(kx_, fy_ + 0.008, z0 + wt + 0.005))
+    mbl.cube((sw - 2 * wt + 0.03, 0.02, 0.025), CL.brass(), loc=(kx_, fy_ + 0.008, z0 + sh - wt - 0.02))
+    for s_ in (-1, 1):
+        mbl.cube((0.025, 0.02, sh - 2 * wt), CL.brass(), loc=(kx_ + s_ * (sw / 2 - wt + 0.005), fy_ + 0.008,
+                                                              z0 + wt + (sh - 2 * wt) / 2 - 0.005))
+    mbl.done('sf_lip')
+    # a shelf at mid height with four coin stacks; a gold bar and a tied coin bag on the floor of the safe.  The coins
+    # and bars glint a little (a faint warm emission) so the treasure reads inside the shadowed cavity
+    glint = L.emissive('sf_glint', '#F6C64E', '#FFB938', strength=0.55, rough=0.3)
+    zs = z0 + 0.42
+    box('sf_shelf', (sw - 2 * wt, sd - wt - 0.04, 0.025), (kx_, ky_ - 0.01, zs), mat=flat('#3E6E58', 0.5), bevel=0.004)
+    for k, n in enumerate((4, 6, 3, 5)):
+        for j in range(n):
+            cyl('sf_coin', 0.045, 0.016, (kx_ - 0.16 + 0.105 * k + 0.004 * (j % 2), fy_ + 0.14, zs + 0.025 + 0.016 * j),
+                mat=glint, segs=16, bevel=0.005)
+    for k, dx in enumerate((-0.09, 0.04)):
+        box('sf_bar', (0.13, 0.22, 0.055), (kx_ + dx, fy_ + 0.17, z0 + wt + 0.03 + 0.055 * k), rot=(0, 0, 4 - 6 * k),
+            mat=glint, bevel=0.012, taper=(0.78, 0.84))
+    coin_sack('sf_bag', (kx_ + 0.16, fy_ + 0.2, z0 + wt + 0.03), r=0.075, rot_z=-20, seed=31, emblem=False)
     pts['safe_front'] = (kx_, fy_, PL)
-    pts['safe_door'] = (kx_, fy_ - 0.01, PL + 0.08 + sh / 2)
-    # coin sacks beside the safe (the courier's three sizes)
-    coin_sack('cs1', (1.86, 1.78, PL), r=0.17, rot_z=-15, seed=1)
-    coin_sack('cs2', (1.98, 1.42, PL), r=0.13, rot_z=10, seed=2)
-    coin_sack('cs3', (XI1 - 0.2, 1.22, PL), r=0.12, rot_z=-30, seed=3, emblem=False)
+    pts['safe_door'] = (kx_, fy_ - 0.01, z0 + sh / 2)
+    # coin sacks beside the safe (the courier's three sizes): two by the right wall, a small one on top of the safe
+    coin_sack('cs1', (XI1 - 0.14, 1.86, PL), r=0.12, rot_z=-15, seed=1)
+    coin_sack('cs2', (XI1 - 0.14, 1.27, PL), r=0.12, rot_z=-30, seed=3, emblem=False)
+    coin_sack('cs3', (kx_ + 0.17, ky_ + 0.1, z0 + sh + 0.04), r=0.085, rot_z=20, seed=2)
 
     # ---- visitor bench (seats face -Y = SW on screen) with two cushions
-    bx_, by_ = 1.6, -0.62
-    bw_, bd_ = 1.1, 0.44
+    # (polish M1 / M2) see BENCH: longer (seats 0.72 m apart), slid toward the front-right corner, a lower backrest
+    bx_, by_ = BENCH
+    bw_, bd_ = BENCH_W, BENCH_D
     wm = flat('#B9783F', 0.55)
     box('vb_seat', (bw_, bd_, 0.07), (bx_, by_, PL + SEAT - 0.07), mat=wm, bevel=0.02)
-    box('vb_back', (bw_, 0.07, 0.48), (bx_, by_ + bd_ / 2 - 0.035, PL + SEAT - 0.02), mat=wm, bevel=0.02)
-    box('vb_rail', (bw_ + 0.06, 0.09, 0.05), (bx_, by_ + bd_ / 2 - 0.035, PL + SEAT + 0.46), mat=flat(TIMBER, 0.55),
+    box('vb_back', (bw_, 0.07, 0.36), (bx_, by_ + bd_ / 2 - 0.035, PL + SEAT - 0.02), mat=wm, bevel=0.02)
+    box('vb_rail', (bw_ + 0.06, 0.09, 0.05), (bx_, by_ + bd_ / 2 - 0.035, PL + SEAT + 0.34), mat=flat(TIMBER, 0.55),
         bevel=0.015)
     for s_ in (-1, 1):
-        box('vb_side', (0.06, bd_, SEAT + 0.2), (bx_ + s_ * (bw_ / 2 - 0.03), by_, PL), mat=flat(TIMBER, 0.55),
+        box('vb_side', (0.06, bd_, SEAT + 0.16), (bx_ + s_ * (bw_ / 2 - 0.03), by_, PL), mat=flat(TIMBER, 0.55),
             bevel=0.015)
-    for k, (dx, col) in enumerate(((-0.25, '#F2C14E'), (0.25, '#7FB5AB'))):
-        box('vb_cush', (0.44, 0.36, 0.06), (bx_ + dx, by_ - 0.02, PL + SEAT - 0.01), mat=flat(col, 0.8), bevel=0.03)
-    pts['seats'] = [(bx_ - 0.25, by_ - bd_ / 2 + 0.02, PL + SEAT), (bx_ + 0.25, by_ - bd_ / 2 + 0.02, PL + SEAT)]
+    box('vb_mid', (0.05, bd_ - 0.06, SEAT - 0.07), (bx_, by_, PL), mat=flat(TIMBER, 0.55), bevel=0.012)
+    for k, (dx, col) in enumerate(((-SEAT_DX, '#F2C14E'), (SEAT_DX, '#7FB5AB'))):
+        box('vb_cush', (0.56, 0.36, 0.06), (bx_ + dx, by_ - 0.02, PL + SEAT - 0.01), mat=flat(col, 0.8), bevel=0.03)
+    pts['seats'] = [(bx_ - SEAT_DX, by_ - bd_ / 2 + 0.02, PL + SEAT), (bx_ + SEAT_DX, by_ - bd_ / 2 + 0.02, PL + SEAT)]
 
     # ---- plants
-    potted_fern('pl_fr', (XI1 - 0.25, YI0 + 0.25, PL), s=1.25, pot='#C2603F', seed=11)
+    # the front plants stand far enough from the cut walls that no leaf pokes out through a wall stub (a holdout
+    # leaf outside the wall would punch a hole in _shell_cut).  (polish M1) nothing stands in front of the bench any
+    # more: one fern between the secretary desk and the bench, one at the back wall
+    potted_fern('pl_fr', (0.84, YI0 + 0.44, PL), s=0.95, pot='#C2603F', seed=11)
     potted_fern('pl_bk', (-0.38, YI1 - 0.24, PL), s=1.0, pot=TEAL, seed=12)
-    potted_fern('pl_fm', (1.0, YI0 + 0.24, PL), s=0.9, pot='#F3E3B5', seed=13)
 
     # ---- warm interior fill (bright dollhouse light)
     L.point_light('in_l1', (0.2, 0.2, PL + 2.5), 'window', 34.0, 0.4)
@@ -905,11 +958,11 @@ def desks(pts):
     pts['chief_desk'] = (cx, cy)
 
     # ---- clerk desk 1 (셈이): faces +X, abacus + ledgers (+ overlays lamp_a / typewriter_a)
-    d1 = (-1.72, 0.66)
+    d1 = (-1.72, 0.52)
     top1 = PL + DESK_TOP
-    desk('desk1', d1[0], d1[1], 0.55, 0.92, 'x+', top1, wood=OAK, top_col='#D9A66A')
+    desk('desk1', d1[0], d1[1], 0.55, 0.8, 'x+', top1, wood=OAK, top_col='#D9A66A')
     # abacus: wooden frame with 5 rods of coloured beads (lies on the desk, toward the clerk's left = -Y side)
-    ax_, ay_ = d1[0] + 0.02, d1[1] - 0.3
+    ax_, ay_ = d1[0] + 0.02, d1[1] - 0.24
     ab = [box('ab_fr', (0.22, 0.3, 0.03), (0, 0, 0), mat=flat(WALNUT, 0.6), bevel=0.008)]
     mba = L.MB()
     for r_ in range(5):
@@ -921,80 +974,87 @@ def desks(pts):
                        rings=5)
     ab.append(mba.done('ab_beads'))
     L.group(ab, 'abacus', loc=(ax_, ay_, top1), rot=(0, 0, 8))
-    ledger_book('d1_l1', (d1[0] + 0.12, d1[1] - 0.02, top1), col='#3E7F55', rot_z=12)
-    ledger_book('d1_l2', (d1[0] + 0.13, d1[1] - 0.01, top1 + 0.07), col='#B8433A', rot_z=-6, ribbon=False)
+    ledger_book('d1_l1', (d1[0] + 0.15, d1[1] - 0.06, top1), col='#3E7F55', rot_z=12)
+    ledger_book('d1_l2', (d1[0] + 0.16, d1[1] - 0.05, top1 + 0.07), col='#B8433A', rot_z=-6, ribbon=False)
     # open ledger in front of the clerk
-    box('d1_open', (0.2, 0.3, 0.02), (d1[0] - 0.13, d1[1] - 0.14, top1), mat=flat(PAPER, 0.8), bevel=0.004)
-    box('d1_open_c', (0.22, 0.32, 0.01), (d1[0] - 0.13, d1[1] - 0.14, top1 - 0.004), mat=flat('#3E7F55', 0.6),
+    box('d1_open', (0.2, 0.3, 0.02), (d1[0] - 0.13, d1[1] - 0.18, top1), mat=flat(PAPER, 0.8), bevel=0.004)
+    box('d1_open_c', (0.22, 0.32, 0.01), (d1[0] - 0.13, d1[1] - 0.18, top1 - 0.004), mat=flat('#3E7F55', 0.6),
         bevel=0.003)
-    cyl('d1_pen', 0.008, 0.16, (d1[0] - 0.09, d1[1] - 0.06, top1 + 0.025), rot=(90, 0, 30), mat=flat(INK, 0.4),
+    cyl('d1_pen', 0.008, 0.16, (d1[0] - 0.09, d1[1] - 0.12, top1 + 0.025), rot=(90, 0, 30), mat=flat(INK, 0.4),
         segs=6)
     pts['desk1'] = d1
 
     # ---- clerk desk 2 (소복이): faces +X, letter tray (+ overlays typewriter_b / phone / lamp_b)
-    d2 = (-1.72, -0.72)
-    desk('desk2', d2[0], d2[1], 0.55, 1.3, 'x+', top1, wood=OAK, top_col='#D9A66A')
+    # (polish L1) 1.02 m long (was 1.3): the +Y end moved back so a clerk can stand at the filing cabinet
+    d2 = (-1.72, DESK2_Y)
+    desk('desk2', d2[0], d2[1], 0.55, DESK2_L, 'x+', top1, wood=OAK, top_col='#D9A66A')
     tray = [box('tr_b', (0.26, 0.2, 0.012), (0, 0, 0), mat=flat('#B9C2CE', 0.35, 0.5), bevel=0.003)]
     for s_ in (-1, 1):
         tray.append(box('tr_s', (0.26, 0.012, 0.06), (0, s_ * 0.1, 0), mat=flat('#B9C2CE', 0.35, 0.5), bevel=0.002))
     for k in range(3):
         tray.append(envelope('tr_e%d' % k, (0.0, 0.0, 0.014 + 0.014 * k), w=0.22, d=0.15,
                              col=[PAPER, '#F6D9E0', '#D6E9F5'][k], rot_z=6 * k - 6, seal=RED if k == 2 else None))
-    L.group(tray, 'tray', loc=(d2[0] + 0.1, d2[1] - 0.48, top1), rot=(0, 0, 90))
-    cyl('d2_mug', 0.04, 0.09, (d2[0] - 0.16, d2[1] - 0.5, top1), mat=flat('#F2C14E', 0.4), segs=14, bevel=0.01)
-    cyl('d2_cocoa', 0.034, 0.004, (d2[0] - 0.16, d2[1] - 0.5, top1 + 0.085), mat=flat('#7A4A2A', 0.4), segs=14,
+    L.group(tray, 'tray', loc=(d2[0] + 0.1, -1.2, top1), rot=(0, 0, 90))
+    cyl('d2_mug', 0.04, 0.09, (d2[0] - 0.16, -1.22, top1), mat=flat('#F2C14E', 0.4), segs=14, bevel=0.01)
+    cyl('d2_cocoa', 0.034, 0.004, (d2[0] - 0.16, -1.22, top1 + 0.085), mat=flat('#7A4A2A', 0.4), segs=14,
         bevel=0.0)
     pts['desk2'] = d2
 
-    # ---- secretary desk (총총이): faces -Y, appointment book, desk bell, flowers
-    d3 = (0.0, -1.5)
-    desk('desk3', d3[0], d3[1], 1.0, 0.52, 'y-', top1, wood='#B9783F', top_col='#E3B67E', panel_col='#F3E3B5')
-    box('d3_book', (0.3, 0.22, 0.03), (d3[0] - 0.08, d3[1] + 0.03, top1), rot=(0, 0, -6), mat=flat(RED, 0.6),
-        bevel=0.008)
-    box('d3_pages', (0.27, 0.2, 0.012), (d3[0] - 0.08, d3[1] + 0.03, top1 + 0.03), rot=(0, 0, -6),
-        mat=L.stripes(PAPER, '#DCE4EE', 30.0, 'Y', rough=0.8), bevel=0.003)
-    box('d3_spine', (0.02, 0.21, 0.014), (d3[0] - 0.08, d3[1] + 0.03, top1 + 0.04), rot=(0, 0, -6),
-        mat=flat('#B02A3C', 0.5), bevel=0.003)
-    sphere('d3_bell', 0.055, (d3[0] + 0.3, d3[1] - 0.06, top1 + 0.015), CL.gold(), scale=(1, 1, 0.7), segs=14, rings=8)
-    cyl('d3_bellb', 0.06, 0.015, (d3[0] + 0.3, d3[1] - 0.06, top1), mat=flat(INK, 0.4), segs=14, bevel=0.004)
-    sphere('d3_bellk', 0.014, (d3[0] + 0.3, d3[1] - 0.06, top1 + 0.06), CL.gold(), segs=8, rings=5)
-    cyl('d3_vase', 0.05, 0.16, (d3[0] - 0.36, d3[1] + 0.08, top1), mat=flat('#7FB5AB', 0.25), segs=16, r_top=0.035,
-        bevel=0.012)
-    mbf = L.MB()
-    for k, (fx, fy, fz, col) in enumerate(((0.0, 0.0, 0.3, '#F28DB2'), (-0.05, 0.02, 0.26, '#F2C14E'),
-                                           (0.05, -0.02, 0.27, RED), (0.02, 0.05, 0.24, '#F4F1EA'),
-                                           (-0.03, -0.04, 0.28, '#E8749A'))):
-        mbf.seg((d3[0] - 0.36, d3[1] + 0.08, top1 + 0.12), (d3[0] - 0.36 + fx, d3[1] + 0.08 + fy, top1 + fz - 0.03),
-                0.006, flat('#3E7F55', 0.6), segs=5)
-        mbf.sphere(0.034, flat(col, 0.5), loc=(d3[0] - 0.36 + fx, d3[1] + 0.08 + fy, top1 + fz), segs=10, rings=6)
-    mbf.done('d3_flowers')
-    pts['desk3'] = d3
+    # (polish) the secretary desk and the counting table are the two desks nearest the camera: a person seated at
+    # them has another desk BEHIND her head on screen (desk 1 behind 총총이, the chief's desk behind 딸랑이), so with
+    # one desk layer the band order drew those far desks over their heads.  They render with _shell_cut (the
+    # nearest inside layer) and 총총이 / 딸랑이 sit in band 'front' (chief_office.deskBands).
+    with layer('cutdesk'):
+        # ---- secretary desk (총총이): faces -Y, appointment book, desk bell, flowers
+        d3 = (0.0, -1.5)
+        desk('desk3', d3[0], d3[1], 1.0, 0.52, 'y-', top1, wood='#B9783F', top_col='#E3B67E', panel_col='#F3E3B5')
+        box('d3_book', (0.3, 0.22, 0.03), (d3[0] - 0.08, d3[1] + 0.03, top1), rot=(0, 0, -6), mat=flat(RED, 0.6),
+            bevel=0.008)
+        box('d3_pages', (0.27, 0.2, 0.012), (d3[0] - 0.08, d3[1] + 0.03, top1 + 0.03), rot=(0, 0, -6),
+            mat=L.stripes(PAPER, '#DCE4EE', 30.0, 'Y', rough=0.8), bevel=0.003)
+        box('d3_spine', (0.02, 0.21, 0.014), (d3[0] - 0.08, d3[1] + 0.03, top1 + 0.04), rot=(0, 0, -6),
+            mat=flat('#B02A3C', 0.5), bevel=0.003)
+        sphere('d3_bell', 0.055, (d3[0] + 0.3, d3[1] - 0.06, top1 + 0.015), CL.gold(), scale=(1, 1, 0.7), segs=14, rings=8)
+        cyl('d3_bellb', 0.06, 0.015, (d3[0] + 0.3, d3[1] - 0.06, top1), mat=flat(INK, 0.4), segs=14, bevel=0.004)
+        sphere('d3_bellk', 0.014, (d3[0] + 0.3, d3[1] - 0.06, top1 + 0.06), CL.gold(), segs=8, rings=5)
+        cyl('d3_vase', 0.05, 0.16, (d3[0] - 0.36, d3[1] + 0.08, top1), mat=flat('#7FB5AB', 0.25), segs=16, r_top=0.035,
+            bevel=0.012)
+        mbf = L.MB()
+        for k, (fx, fy, fz, col) in enumerate(((0.0, 0.0, 0.3, '#F28DB2'), (-0.05, 0.02, 0.26, '#F2C14E'),
+                                               (0.05, -0.02, 0.27, RED), (0.02, 0.05, 0.24, '#F4F1EA'),
+                                               (-0.03, -0.04, 0.28, '#E8749A'))):
+            mbf.seg((d3[0] - 0.36, d3[1] + 0.08, top1 + 0.12), (d3[0] - 0.36 + fx, d3[1] + 0.08 + fy, top1 + fz - 0.03),
+                    0.006, flat('#3E7F55', 0.6), segs=5)
+            mbf.sphere(0.034, flat(col, 0.5), loc=(d3[0] - 0.36 + fx, d3[1] + 0.08 + fy, top1 + fz), segs=10, rings=6)
+        mbf.done('d3_flowers')
+        pts['desk3'] = d3
 
-    # ---- courier's counting table (round-cornered square, coin stacks, a little brass scale)
-    d4 = (2.12, 0.75)
-    tw = flat('#C98F55', 0.55)
-    box('ct_top', (0.6, 0.62, 0.05), (d4[0], d4[1], top1 - 0.05), mat=flat('#D9A66A', 0.45), bevel=0.02)
-    box('ct_apron', (0.54, 0.56, 0.1), (d4[0], d4[1], top1 - 0.14), mat=tw, bevel=0.015)
-    for sxx in (-1, 1):
-        for syy in (-1, 1):
-            cyl('ct_leg', 0.03, top1 - PL - 0.05, (d4[0] + sxx * 0.24, d4[1] + syy * 0.25, PL), mat=tw, segs=10,
-                bevel=0.006, r_top=0.035)
-    box('ct_felt', (0.4, 0.42, 0.006), (d4[0] - 0.02, d4[1], top1), mat=flat('#3E7F55', 0.9), bevel=0.0)
-    for k, (dx, dy, n) in enumerate(((-0.1, -0.12, 5), (0.0, -0.13, 3), (0.08, -0.05, 6), (-0.08, 0.06, 2),
-                                     (0.12, 0.12, 4))):
-        for j in range(n):
-            cyl('ct_coin', 0.04, 0.014, (d4[0] + dx, d4[1] + dy, top1 + 0.006 + 0.014 * j), mat=CL.gold(), segs=16,
-                bevel=0.004)
-    # tiny brass balance scale at the back corner
-    sx2, sy2 = d4[0] + 0.18, d4[1] + 0.2
-    cyl('ct_sc_b', 0.05, 0.02, (sx2, sy2, top1), mat=CL.brass(), segs=14, bevel=0.005)
-    cyl('ct_sc_p', 0.008, 0.18, (sx2, sy2, top1 + 0.02), mat=CL.brass(), segs=8)
-    box('ct_sc_beam', (0.2, 0.012, 0.012), (sx2, sy2, top1 + 0.2), mat=CL.brass(), bevel=0.0)
-    for s_ in (-1, 1):
-        cyl('ct_sc_pan', 0.045, 0.012, (sx2 + s_ * 0.1, sy2, top1 + 0.12), mat=CL.brass(), segs=14, bevel=0.004)
-        L.smooth_tube('ct_sc_w', [(sx2 + s_ * 0.1, sy2, top1 + 0.2), (sx2 + s_ * 0.1, sy2, top1 + 0.13)], 0.003,
-                      CL.brass())
-    pts['desk4'] = d4
+    with layer('cutdesk'):
+        # ---- courier's counting table (round-cornered square, coin stacks, a little brass scale)
+        d4 = (2.12, COUNT_Y)
+        tw = flat('#C98F55', 0.55)
+        box('ct_top', (0.6, 0.62, 0.05), (d4[0], d4[1], top1 - 0.05), mat=flat('#D9A66A', 0.45), bevel=0.02)
+        box('ct_apron', (0.54, 0.56, 0.1), (d4[0], d4[1], top1 - 0.14), mat=tw, bevel=0.015)
+        for sxx in (-1, 1):
+            for syy in (-1, 1):
+                cyl('ct_leg', 0.03, top1 - PL - 0.05, (d4[0] + sxx * 0.24, d4[1] + syy * 0.25, PL), mat=tw, segs=10,
+                    bevel=0.006, r_top=0.035)
+        box('ct_felt', (0.4, 0.42, 0.006), (d4[0] - 0.02, d4[1], top1), mat=flat('#3E7F55', 0.9), bevel=0.0)
+        for k, (dx, dy, n) in enumerate(((-0.1, -0.12, 5), (0.0, -0.13, 3), (0.08, -0.05, 6), (-0.08, 0.06, 2),
+                                         (0.12, 0.12, 4))):
+            for j in range(n):
+                cyl('ct_coin', 0.04, 0.014, (d4[0] + dx, d4[1] + dy, top1 + 0.006 + 0.014 * j), mat=CL.gold(), segs=16,
+                    bevel=0.004)
+        # tiny brass balance scale at the back corner
+        sx2, sy2 = d4[0] + 0.18, d4[1] + 0.2
+        cyl('ct_sc_b', 0.05, 0.02, (sx2, sy2, top1), mat=CL.brass(), segs=14, bevel=0.005)
+        cyl('ct_sc_p', 0.008, 0.18, (sx2, sy2, top1 + 0.02), mat=CL.brass(), segs=8)
+        box('ct_sc_beam', (0.2, 0.012, 0.012), (sx2, sy2, top1 + 0.2), mat=CL.brass(), bevel=0.0)
+        for s_ in (-1, 1):
+            cyl('ct_sc_pan', 0.045, 0.012, (sx2 + s_ * 0.1, sy2, top1 + 0.12), mat=CL.brass(), segs=14, bevel=0.004)
+            L.smooth_tube('ct_sc_w', [(sx2 + s_ * 0.1, sy2, top1 + 0.2), (sx2 + s_ * 0.1, sy2, top1 + 0.13)], 0.003,
+                          CL.brass())
+        pts['desk4'] = d4
 
 
 # ------------------------------------------------------------------------------------------------ overlays
@@ -1005,19 +1065,19 @@ def overlays(pts):
     covers them; the stove fire and the safe door are plain overlays on _interior furniture."""
     top1 = PL + DESK_TOP
     with layer('typewriter_a'):
-        objs, set_a = typewriter('tw_a', (-1.82, 0.85, top1), -90, col='#3FA58C')
+        objs, set_a = typewriter('tw_a', (-1.84, 0.66, top1), -90, col='#3FA58C')
     CL.overlay('typewriter_a', objs, set_a, 4, fps=10, repeat=-1, extra={'mode': 'patch', 'desk': 'sem'})
     with layer('lamp_a'):
-        objs, set_la, sh_a = desk_lamp('lp_a', (-1.53, 1.0, top1), -45)
+        objs, set_la, sh_a = desk_lamp('lp_a', (-1.52, 0.86, top1), -45)
     CL.overlay('lamp_a', objs, set_la, 2, fps=2, repeat=-1, extra={'mode': 'patch', 'desk': 'sem'})
     with layer('typewriter_b'):
         objs, set_b = typewriter('tw_b', (-1.82, -0.78, top1), -90, col='#E8746A')
     CL.overlay('typewriter_b', objs, set_b, 4, fps=10, repeat=-1, extra={'mode': 'patch', 'desk': 'bok'})
     with layer('lamp_b'):
-        objs, set_lb, sh_b = desk_lamp('lp_b', (-1.9, -0.3, top1), -45)
+        objs, set_lb, sh_b = desk_lamp('lp_b', (-1.9, -0.5, top1), -45)
     CL.overlay('lamp_b', objs, set_lb, 2, fps=2, repeat=-1, extra={'mode': 'patch', 'desk': 'bok'})
     with layer('phone'):
-        objs, set_p = desk_phone('ph', (-1.55, -0.4, top1), 60)
+        objs, set_p = desk_phone('ph', (-1.55, -0.52, top1), 60)
     CL.overlay('phone', objs, set_p, 2, fps=8, repeat=-1, extra={'mode': 'patch', 'desk': 'bok'})
     bpy.context.view_layer.update()
     for nm, sh in (('lamp_a', sh_a), ('lamp_b', sh_b)):
@@ -1026,18 +1086,16 @@ def overlays(pts):
     # stove fire: three flame tongues + an ember bed inside the window recess (facing the room)
     sx_, sy_ = pts['stove_xy']
     with layer('stove'):
-        hot = L.emissive('fire_hot', '#FFE27A', '#FFD25A', 3.2)
-        mid = L.emissive('fire_mid', '#FF9A3A', '#FF8A2A', 2.6)
-        red = L.emissive('fire_red', '#E8463C', '#FF4A1E', 1.8)
+        # moderate strengths so the flames stay orange with a yellow heart (strong emission clips to pale yellow)
+        hot = L.emissive('fire_hot', '#FFE27A', '#FFD25A', 1.9)
+        mid = L.emissive('fire_mid', '#FF8A2A', '#FF7A1A', 1.4)
+        red = L.emissive('fire_red', '#E8463C', '#FF4A1E', 1.1)
         with L.Collect() as fc:
-            bed = sphere('fire_bed', 0.07, (0, -0.23, 0.33), red, scale=(1.2, 0.5, 0.45), segs=12, rings=6)
-            f1 = sphere('fire_f1', 0.04, (-0.03, -0.235, 0.39), mid, scale=(0.8, 0.4, 1.4), segs=10, rings=8)
-            f2 = sphere('fire_f2', 0.032, (0.035, -0.235, 0.38), mid, scale=(0.8, 0.4, 1.3), segs=10, rings=8)
-            f3 = sphere('fire_f3', 0.022, (0.0, -0.24, 0.37), hot, scale=(0.9, 0.4, 1.4), segs=10, rings=8)
-            gl = cyl('fire_glass', 0.086, 0.01, (0, -0.258, 0.4), rot=(90, 0, 0), mat=L.emissive('fire_gl', '#FFB45A',
-                                                                                              '#FF9A3A', 0.35),
-                     segs=24, origin='center', bevel=0.0)
-        del bed, gl
+            bed = sphere('fire_bed', 0.09, (0, -0.288, 0.312), red, scale=(0.95, 0.12, 0.4), segs=14, rings=6)
+            f1 = sphere('fire_f1', 0.055, (-0.035, -0.29, 0.372), mid, scale=(0.8, 0.12, 1.35), segs=12, rings=8)
+            f2 = sphere('fire_f2', 0.045, (0.04, -0.29, 0.36), mid, scale=(0.8, 0.12, 1.3), segs=12, rings=8)
+            f3 = sphere('fire_f3', 0.03, (0.0, -0.294, 0.345), hot, scale=(0.9, 0.12, 1.4), segs=10, rings=8)
+        del bed
         sg = L.group(BA.top_level(fc.objs), 'stovefire', loc=(sx_, sy_, PL), rot=(0, 0, 45))
     sobjs = [sg] + BA.descendants([sg])
     flick = [((1.0, 1.0), (1.0, 1.0), (1.0, 1.0)), ((1.25, 0.9), (0.8, 1.15), (1.2, 1.0)),
@@ -1049,42 +1107,45 @@ def overlays(pts):
             loc, sc = base[f]
             f.scale = (sc.x * ws, sc.y, sc.z * zs)
             f.location = (loc.x + 0.008 * (ws - 1.0) * 4, loc.y, loc.z + 0.03 * (zs - 1.0))
-        L.set_emission(mid, [2.6, 3.1, 2.3, 2.9][i])
+        L.set_emission(mid, [1.4, 1.75, 1.2, 1.6][i])
     CL.overlay('stove', sobjs, set_fire, 4, fps=6, repeat=-1, extra={'mode': 'plain'})
-    # safe door: hinge on the left (-X) edge of the -Y face, swings toward the camera
+    # safe door: hinge on the left (-X) edge of the -Y face, swings toward the camera.  (polish M5) it covers the
+    # whole opening of the now hollow safe (open: the coin shelf, gold bars and the coin bag show) and rides on the
+    # plinth (SAFE_LIFT); the group origin is the hinge line at the opening's mid height
     sf = pts['safe_front']
     with layer('safe'):
         dm = flat('#346B54', 0.38, 0.4)
         with L.Collect() as dc:
-            dw_, dh_ = 0.5, 0.64
+            dw_, dh_ = 0.56, 0.76
             box('sd_leaf', (dw_, 0.06, dh_), (dw_ / 2, -0.03, -dh_ / 2), mat=dm, bevel=0.025)
             box('sd_rim', (dw_ - 0.08, 0.02, dh_ - 0.08), (dw_ / 2, -0.065, -dh_ / 2 + 0.04), mat=flat('#2F5E4A', 0.4,
                                                                                                       0.4), bevel=0.01)
-            cyl('sd_dial', 0.075, 0.03, (dw_ / 2, -0.08, 0.1), rot=(90, 0, 0), mat=CL.gold(), segs=24, origin='center',
+            cyl('sd_dial', 0.08, 0.03, (dw_ / 2, -0.08, 0.13), rot=(90, 0, 0), mat=CL.gold(), segs=24, origin='center',
                 bevel=0.008)
-            cyl('sd_dialc', 0.04, 0.035, (dw_ / 2, -0.085, 0.1), rot=(90, 0, 0), mat=flat(INK, 0.4), segs=18,
+            cyl('sd_dialc', 0.042, 0.035, (dw_ / 2, -0.085, 0.13), rot=(90, 0, 0), mat=flat(INK, 0.4), segs=18,
                 origin='center', bevel=0.006)
             mbd = L.MB()
             for k in range(12):
                 aa = math.tau * k / 12
-                mbd.cube((0.008, 0.01, 0.018), flat(INK, 0.4), loc=(dw_ / 2 + 0.062 * math.cos(aa), -0.097,
-                                                                    0.1 + 0.062 * math.sin(aa)),
+                mbd.cube((0.008, 0.01, 0.018), flat(INK, 0.4), loc=(dw_ / 2 + 0.066 * math.cos(aa), -0.097,
+                                                                    0.13 + 0.066 * math.sin(aa)),
                          rot=(0, -math.degrees(aa) + 90, 0))
             mbd.done('sd_ticks')
-            box('sd_handle', (0.04, 0.05, 0.16), (dw_ - 0.08, -0.08, -0.12), mat=CL.gold(), bevel=0.012)
-            cyl('sd_hub', 0.03, 0.04, (dw_ / 2, -0.09, -0.14), rot=(90, 0, 0), mat=CL.gold(), segs=12,
+            box('sd_handle', (0.04, 0.05, 0.18), (dw_ - 0.08, -0.08, -0.15), mat=CL.gold(), bevel=0.012)
+            cyl('sd_hub', 0.03, 0.04, (dw_ / 2, -0.09, -0.1), rot=(90, 0, 0), mat=CL.gold(), segs=12,
                 origin='center', bevel=0.006)
             for k in range(3):
-                cyl('sd_hinge', 0.025, 0.1, (0.0, -0.03, -0.1 - 0.2 * k), mat=CL.brass(), segs=10, bevel=0.005)
+                cyl('sd_hinge', 0.025, 0.1, (0.0, -0.03, 0.2 - 0.25 * k - 0.05), mat=CL.brass(), segs=10, bevel=0.005)
             # a pinecone plate on the door
-            box('sd_plate', (0.18, 0.012, 0.07), (dw_ / 2, -0.08, -0.28), mat=CL.gold(), bevel=0.006)
-        door = L.group(BA.top_level(dc.objs), 'safedoor', loc=(sf[0] - 0.25, sf[1] - 0.005, PL + 0.08 + 0.41 + 0.32))
+            box('sd_plate', (0.18, 0.012, 0.07), (dw_ / 2, -0.08, -0.3), mat=CL.gold(), bevel=0.006)
+        door = L.group(BA.top_level(dc.objs), 'safedoor', loc=(sf[0] - dw_ / 2, sf[1] - 0.012,
+                                                                 PL + SAFE_LIFT + 0.41))
     dobjs = [door] + BA.descendants([door])
 
     def set_safe(i):
         door.rotation_euler = Euler((0, 0, math.radians(0 if i == 0 else -105)), 'XYZ')
     CL.overlay('safe', dobjs, set_safe, 2, fps=6, repeat=0, extra={'mode': 'plain'})
-    CL.bounds_marker('safe_bm', (sf[0] - 0.25, sf[1] - 0.55, PL + 0.6))
+    CL.bounds_marker('safe_bm', (sf[0] - 0.28, sf[1] - 0.6, PL + SAFE_LIFT + 0.6))
     for name, ov in CL.OVERLAYS.items():
         ov['set'](0)
 
@@ -1217,8 +1278,9 @@ def shell(pts):
         L.snow_slab('fbox_s%d' % k, 0.74, 0.14, 0.04, (x, Y0 - 0.2, STUB - 0.03), seed=70 + k)
     # the sign board over the door: cream board with a teal rim and gold corner studs, standing on the eave in
     # front of the roof edge (BLANK - the game writes 촌장 사무실 into signRect)
-    sbw, sbh = 2.0, 0.56
-    sx_ = DOOR_X + 0.15
+    # (polish L6) wider and taller (signRect ~105 x 28 px, was 83 x 25) so 촌장 사무실 reads at zoom 0.6
+    sbw, sbh = 2.5, 0.64
+    sx_ = DOOR_X + 0.35
     sy_ = Y0 - OVER - 0.08
     sz0 = H - 0.26
     sb = [box('sign_rim', (sbw + 0.2, 0.08, sbh + 0.2), (0, 0.0, -0.1), mat=flat(TEAL_D, 0.5), bevel=0.035),
@@ -1248,8 +1310,13 @@ def shell_cut():
                    holes=[(gap[0], gap[1], PL - 0.03, STUB + 0.1)])
     rt = CL.wall_y('stub_right', Y0 + WT, Y1, X1 - WT / 2, PL - 0.02, STUB, WT, pm)
     CA.cap_strip('stubcap', fr + rt, col=CL.CUT)
-    T.corner_trims('cpost', X1 - X0, Y1 - Y0, PL - 0.02, STUB - PL + 0.02, TIMBER, t=0.2, faces=('fl', 'fr', 'br'))
-    T.band('csill', X1 - X0, Y1 - Y0, PL - 0.02, TIMBER, h=0.14, out=0.03)
+    # posts stand 6 cm proud of the belt beams so their tops read as caps (not as a dark recess)
+    T.corner_trims('cpost', X1 - X0, Y1 - Y0, PL - 0.02, STUB - PL + 0.08, TIMBER, t=0.2, faces=('fl', 'fr', 'br'))
+    # sill beam on the two cut faces only (a full T.band slab would lie over the whole floor of the cut view),
+    # open across the doorway
+    for (a, b) in ((X0 - 0.03, gap[0]), (gap[1], X1 + 0.03)):
+        box('csill_f', (b - a, WT + 0.06, 0.14), ((a + b) / 2, Y0 + WT / 2 - 0.03, PL - 0.02), mat=tm, bevel=0.03)
+    box('csill_r', (WT + 0.06, Y1 - Y0 + 0.06, 0.14), (X1 - WT / 2 + 0.03, 0.0, PL - 0.02), mat=tm, bevel=0.03)
     # the belt beam on top of the cut (timber) - but not across the doorway
     for (a, b) in ((X0 - 0.03, gap[0]), (gap[1], X1 + 0.03)):
         box('cbelt_f', (b - a, WT + 0.05, 0.1), ((a + b) / 2, Y0 + WT / 2 - 0.0, STUB - 0.06), mat=tm, bevel=0.015)
@@ -1266,14 +1333,17 @@ def shell_cut():
             mbf.sphere(0.035, flat([RED, '#F2C14E', '#F28DB2'][j % 3], 0.5), loc=(x - 0.3 + 0.107 * j, Y0 - 0.3,
                                                                                  STUB + 0.02), segs=8, rings=5)
         mbf.done('cfb_f%d' % k)
-    for k, y in enumerate((-1.08, 1.0)):
+    # (polish M5) only the front window of the right wall gets a sill bump on the cut: the back one sat right in
+    # front of the courier's safe and hid its door in the open view
+    for k, y in enumerate((-1.08,)):
         box('csl_r%d' % k, (0.32, 0.96, 0.07), (X1 - 0.06, y, STUB + 0.04), mat=flat('#E6E0D6', 0.7), bevel=0.02)
         L.snow_slab('csn_r%d' % k, 0.14, 0.86, 0.04, (X1 + 0.02, y, STUB + 0.1), seed=120 + k)
-    # the door frame: two timber posts + the lintel (a portal that says 'door here') + the threshold
+    # the door frame at STUB height (polish, critique H2): two timber jamb posts cut off like the corner posts (6 cm
+    # proud of the belt), no lintel - the full-height frame and its lintel stay in _shell - + the threshold.  The full
+    # frame used to slice through 소복이's face at desk 2 and through whoever stood just inside the door.
     for s_ in (-1, 1):
-        box('cdoor_post', (0.12, 0.2, DOOR_H + 0.12), (DOOR_X + s_ * (DOOR_W / 2 + 0.1), Y0 + WT / 2, PL - 0.02),
+        box('cdoor_post', (0.14, 0.22, STUB - PL + 0.08), (DOOR_X + s_ * (DOOR_W / 2 + 0.1), Y0 + WT / 2, PL - 0.02),
             mat=tm, bevel=0.015)
-    box('cdoor_lintel', (DOOR_W + 0.34, 0.22, 0.14), (DOOR_X, Y0 + WT / 2, PL + DOOR_H + 0.08), mat=tm, bevel=0.02)
     box('cdoor_thr', (DOOR_W + 0.1, WT + 0.06, 0.03), (DOOR_X, Y0 + WT / 2, PL - 0.01), mat=flat('#E6E0D6', 0.7),
         bevel=0.008)
 
@@ -1325,15 +1395,22 @@ def markers(pts):
     mark('entry', (DOOR_X, YI0 + 0.36, PL), facing=(0, 1, 0))
     c = pts['seat_chief']
     mark('chiefdesk', c, facing=(0, -1, 0))
-    mark('chiefpad', (0.4, 0.15, PL), facing=(0, 1, 0))
+    # (polish M2) the chief's pad in front of the left half of his desk, clear of the (moved, lower) bench backrest
+    mark('chiefpad', (0.05, 0.22, PL), facing=(0, 1, 0))
     for k, (key, f) in enumerate((('seat_sem', (1, 0, 0)), ('seat_bok', (1, 0, 0)), ('seat_chong', (0, -1, 0)),
                                   ('seat_ttal', (1, 0, 0)))):
         mark('desk', pts[key], facing=f)
-    mark('board', (1.42, 1.62, PL), facing=(0, 1, 0))
-    mark('cabinet', (XI0 + 0.72, 0.06, PL), facing=(-1, 0, 0))
-    mark('shelf', (XI0 + 0.5, 1.3, PL), facing=(-1, 0, 0))
+    # (polish L1) the board spot at the board's right half: on screen clear of 딸랑이 at the counting table and of
+    # the chief at his desk, 0.8 m from the safe spot
+    mark('board', (1.45, 1.64, PL), facing=(0, 1, 0))
+    # (polish L1) in front of the filing cabinet, in the gap between the two clerk desks (desk 2 is shorter now)
+    mark('cabinet', (XI0 + 0.69, -0.1, PL), facing=(-1, 0, 0))
+    # (polish L1) at the pigeonhole shelf (Y 0.4 .. 1.6), 0.9 m from the stove spot and clear of the stove's hearth
+    mark('shelf', (XI0 + 0.5, 1.14, PL), facing=(-1, 0, 0))
     sf = pts['safe_front']
-    mark('safe', (sf[0], sf[1] - 0.42, PL), facing=(0, 1, 0))
+    # (polish M3 / L1) 0.3 m in front of the safe door, a little right of its centre (the door swings open to the
+    # left): >= 0.75 m from 딸랑이 at the counting table and clear of the wall circles
+    mark('safe', (sf[0] - 0.03, sf[1] - 0.3, PL), facing=(0, 1, 0))
     mark('stove', pts['stove_ground'], facing=None)
     for p in pts['seats']:
         mark('seat', p, facing=(0, -1, 0))
@@ -1342,9 +1419,10 @@ def markers(pts):
 # ================================================================================================ mailbox
 
 MAILBOX_NOTE = ('Red post mailbox (1.1 m, footprint 0.4 m) outside the office: a rounded red box with a pinecone '
-                'emblem on its +X side and a little red flag, a cream door with the letter slot on the front (-Y), '
-                'snow on top, on a timber post with a snowy foot.  anims.flag 2 f (0 down, 1 up), anims.pop 3 f @ '
-                '12 fps (the flag springs up and wobbles; ends on flag frame 1).  slotPoint = where letters fly in.')
+                'emblem on its +X side and a sunny yellow flag on a gold arm, a cream door with the letter slot on the '
+                'front (-Y), snow on top, on a timber post with a snowy foot.  anims.flag 2 f (0 down: the flag lies '
+                'along the box side below the snow cap; 1 up: it stands clear above the cap), anims.pop 3 f @ 12 fps '
+                '(the flag springs up past vertical, wobbles back and settles up).  slotPoint = where letters fly in.')
 
 
 def build_mailbox():
@@ -1372,34 +1450,41 @@ def build_mailbox():
     em.append(L.group(BA.top_level(pc.objs), 'mb_cone', loc=(0, -0.025, 0), rot=(90, 0, 0)))
     L.group(em, 'mb_emg', loc=(bw / 2 + 0.012, -0.06, bz + 0.16), rot=(0, 0, 90))
     PA.snow_cap('mb_snow', 0.17, (0.0, 0.02, bz + bh + bw / 2 - 0.02), 0.08, 4, scale=(1.0, 1.55, 1.0))
-    # the flag on the +X side, hinged near the back: a gold arm with a big red-and-gold flag plate
+    # the flag on the +X side, hinged near the back (polish, critique M4): a gold arm with a sunny yellow paddle at its
+    # end.  DOWN = the arm lies along the side of the box pointing to the front, the paddle flat on the side below the
+    # snow cap; UP = the arm stands vertical and the paddle rises well clear of the snow cap (>= 10 px), so "mail!"
+    # reads as a raised flag at phone zoom.  (The old 'down' pointed the arm backwards and up, out of the box.)
+    hz = bz + 0.2
     with L.Collect() as fc:
-        box('mb_flagarm', (0.025, 0.025, 0.3), (0, 0, 0), mat=flat('#E3A93B', 0.35, 0.5), bevel=0.006)
-        box('mb_flag', (0.025, 0.16, 0.12), (0, -0.08, 0.2), mat=flat('#F2C14E', 0.4), bevel=0.012)
-        box('mb_flagin', (0.03, 0.11, 0.07), (0, -0.08, 0.225), mat=flat(RED, 0.4), bevel=0.008)
-    flag = L.group(BA.top_level(fc.objs), 'mb_flaggrp', loc=(bw / 2 + 0.035, bl / 2 - 0.08, bz + 0.1))
-    cyl('mb_hinge', 0.03, 0.04, (bw / 2 + 0.03, bl / 2 - 0.08, bz + 0.1), rot=(0, 90, 0), mat=CL.brass(), segs=10,
+        box('mb_flagarm', (0.03, 0.03, 0.5), (0, 0, 0), mat=flat('#E3A93B', 0.35, 0.5), bevel=0.008)
+        box('mb_flag', (0.035, 0.16, 0.17), (0, 0.0, 0.33), mat=flat('#FFD24A', 0.4), bevel=0.016)
+        box('mb_flagr', (0.04, 0.1, 0.11), (0, 0.0, 0.36), mat=flat('#F2B634', 0.4), bevel=0.012)
+    flag = L.group(BA.top_level(fc.objs), 'mb_flaggrp', loc=(bw / 2 + 0.035, bl / 2 - 0.03, hz))
+    cyl('mb_hinge', 0.032, 0.045, (bw / 2 + 0.03, bl / 2 - 0.03, hz), rot=(0, 90, 0), mat=CL.brass(), segs=10,
         origin='center')
     LA.snow_drift('mb_drift', 0.16, (0.14, -0.12, 0.0), seed=7)
 
     def pose(deg):
         def f():
-            # 0 deg = up (vertical); -90 = down (lying along the box, pointing to the front)
+            # 0 deg = up (vertical); +90 = down (lying along the box side, pointing to the front, -Y)
             flag.rotation_euler = Euler((math.radians(deg), 0, 0), 'XYZ')
         return f
-    frames = [('office_mailbox', pose(-90)), ('office_mailbox_flag_1', pose(0)),
-              ('office_mailbox_pop_0', pose(24)), ('office_mailbox_pop_1', pose(-16))]
-    fx = {'slot': (0.0, -bl / 2 - 0.03, bz + bh - 0.01), 'flag': (bw / 2 + 0.04, bl / 2 - 0.16, bz + 0.38)}
+    frames = [('office_mailbox', pose(90)), ('office_mailbox_flag_1', pose(0)),
+              ('office_mailbox_pop_0', pose(-24)), ('office_mailbox_pop_1', pose(11))]
+    fx = {'slot': (0.0, -bl / 2 - 0.03, bz + bh - 0.01), 'flag': (bw / 2 + 0.05, bl / 2 - 0.03, hz + 0.42)}
     return {'frames': frames, 'fx': fx}
 
 
 # ================================================================================================ items
 
 ITEMS = {
+    # (polish L3) the three fills spread ~ +37 % per step (was +15 %) so the courier's haul reads by size at phone zoom;
+    # L also spills a few coins at its foot
     'item_coin_sack_s': dict(thickness=0.4, r=0.2, notes='Small coin sack: burlap tied with red string, a gold coin '
                                                           'emblem, coins peeking out.'),
-    'item_coin_sack_m': dict(thickness=0.48, r=0.24, notes='Medium coin sack (the same sack, fuller).'),
-    'item_coin_sack_l': dict(thickness=0.54, r=0.265, notes='Large coin sack, bulging with coins.'),
+    'item_coin_sack_m': dict(thickness=0.52, r=0.26, notes='Medium coin sack (the same sack, fuller).'),
+    'item_coin_sack_l': dict(thickness=0.7, r=0.355, notes='Large coin sack, bulging with coins, a few spilled coins at '
+                                                           'its foot.'),
     'item_letter_bundle': dict(thickness=0.13, notes='Bundle of 5 envelopes (cream, pink, blue) tied with a red '
                                                      'string bow, a red heart seal on top.'),
     'item_newspaper_bundle': dict(thickness=0.17, notes='Folded newspapers (grey column lines, no text) tied with '
@@ -1414,14 +1499,20 @@ def build_item(key):
         if key.startswith('item_coin_sack'):
             coin_sack(key, (0, 0, 0), r=spec['r'], rot_z=-45.0, seed={'s': 1, 'm': 2, 'l': 3}[key[-1]], coins=True,
                       emblem=True)
+            if key.endswith('_l'):
+                g = CL.gold()
+                for k, (dx, dy, tilt, rz) in enumerate(((-0.3, -0.2, 8, 0), (-0.17, -0.33, 4, 30), (-0.05, -0.36, 62, 10),
+                                                        (-0.34, -0.06, 0, 0))):
+                    cyl(key + '_spill%d' % k, 0.055, 0.018, (dx, dy, 0.0 if tilt < 30 else 0.04), rot=(tilt, 0, rz),
+                        mat=g, segs=18, bevel=0.005)
         elif key == 'item_letter_bundle':
             cols = [PAPER, '#F6D9E0', '#D6E9F5', PAPER, '#F7E7B0']
             for k in range(5):
-                envelope('lb%d' % k, (0.01 * (k % 2), 0.006 * k, 0.016 * k), w=0.46, d=0.3, col=cols[k],
+                envelope('lb%d' % k, (0.01 * (k % 2), 0.006 * k, 0.018 * k), w=0.56, d=0.36, col=cols[k],
                          rot_z=[0, 6, -4, 3, -2][k], seal='heart' if k == 4 else None)
             sm = flat(RED, 0.5)
-            box('lb_s1', (0.48, 0.022, 0.1), (0, 0.0, -0.004), mat=sm, bevel=0.005)
-            box('lb_s2', (0.022, 0.32, 0.1), (0.07, 0.0, -0.004), mat=sm, bevel=0.005)
+            box('lb_s1', (0.58, 0.026, 0.11), (0, 0.0, -0.004), mat=sm, bevel=0.005)
+            box('lb_s2', (0.026, 0.38, 0.11), (0.07, 0.0, -0.004), mat=sm, bevel=0.005)
             mb = L.MB()
             for s_ in (-1, 1):
                 mb.sphere(0.045, sm, loc=(0.07 + s_ * 0.048, -0.03, 0.104), scale=(1.3, 0.6, 0.8), segs=10, rings=6)
@@ -1431,15 +1522,18 @@ def build_item(key):
         elif key == 'item_newspaper_bundle':
             nm = newsprint()
             for k in range(4):
-                box('np%d' % k, (0.5, 0.34, 0.045), (0.006 * (k % 2), 0.004 * k, 0.046 * k),
-                    rot=(0, 0, [0, 4, -3, 2][k]), mat=nm, bevel=0.016)
-                box('np_m%d' % k, (0.11, 0.28, 0.005), (-0.17 + 0.006 * (k % 2), 0.004 * k, 0.046 * k + 0.044),
+                box('np%d' % k, (0.58, 0.4, 0.05), (0.006 * (k % 2), 0.004 * k, 0.051 * k),
+                    rot=(0, 0, [0, 4, -3, 2][k]), mat=nm, bevel=0.018)
+                box('np_m%d' % k, (0.13, 0.33, 0.005), (-0.2 + 0.006 * (k % 2), 0.004 * k, 0.051 * k + 0.049),
                     rot=(0, 0, [0, 4, -3, 2][k]), mat=flat('#C0473A', 0.7), bevel=0.0)
             tw = flat('#C9A06A', 0.85)
-            for x in (-0.1, 0.12):
-                box('np_t', (0.022, 0.37, 0.19), (x, 0.0, -0.004), mat=tw, bevel=0.006)
-            box('np_t2', (0.52, 0.022, 0.19), (0.0, 0.0, -0.004), mat=tw, bevel=0.006)
-            sphere('np_knot', 0.03, (0.12, 0.0, 0.19), tw, segs=8, rings=5)
+            for x in (-0.12, 0.14):
+                box('np_t', (0.026, 0.43, 0.215), (x, 0.0, -0.004), mat=tw, bevel=0.006)
+            box('np_t2', (0.6, 0.026, 0.215), (0.0, 0.0, -0.004), mat=tw, bevel=0.006)
+            sphere('np_knot', 0.036, (0.14, 0.0, 0.213), tw, segs=8, rings=5)
         elif key == 'item_ledger':
-            ledger_book('ld', (0, 0, 0), w=0.34, d=0.44, t=0.13, col='#3E7F55', ribbon=True)
-    BA._ground_item(c.objs, tilt=0.0, spin={'item_letter_bundle': -20.0, 'item_newspaper_bundle': -20.0}.get(key, 0.0))
+            ledger_book('ld', (0, 0, 0), w=0.4, d=0.52, t=0.15, col='#3E7F55', ribbon=True)
+    # flat items are tipped toward the viewer (life2 item_letter convention) so they read as icons at phone size
+    tilt = {'item_letter_bundle': 30.0, 'item_newspaper_bundle': 24.0, 'item_ledger': 28.0}.get(key, 0.0)
+    spin = {'item_letter_bundle': -14.0, 'item_newspaper_bundle': -14.0, 'item_ledger': -8.0}.get(key, 0.0)
+    BA._ground_item(c.objs, tilt=tilt, spin=spin)

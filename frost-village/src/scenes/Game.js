@@ -101,6 +101,13 @@ class UIProxy {
   openRank() { const s = this.s; if (s && s.openRank) s.openRank(); }
   rankBadgeFly(wx, wy) { const s = this.s; if (s && s.rankBadgeFly) s.rankBadgeFly(wx, wy); }
   hudBottomFrac() { const s = this.s; return s && s.hudBottomFrac ? s.hudBottomFrac() : 0.24; }
+  // ---- (v4.2) the panels' flags (관망 waits while one is open) and the v4.2 HUD / office panel
+  get panelOpen() { const s = this.s; return !!(s && s.panelOpen); }
+  get buildOpen() { const s = this.s; return !!(s && s.buildOpen); }
+  get v4PanelOpen() { const s = this.s; return !!(s && s.v4PanelOpen); }
+  get v42PanelOpen() { const s = this.s; return !!(s && s.v42PanelOpen); }
+  get officePanel() { const s = this.s; return s ? s.officePanel || null : null; }
+  get hud42() { const s = this.s; return s ? s.hud42 || null : null; }
 }
 
 export class Game extends Phaser.Scene {
@@ -662,6 +669,7 @@ export class Game extends Phaser.Scene {
     const r = rng(1234);
     const kinds = ['tree_pine_a', 'tree_pine_b', 'tree_pine_snow', 'tree_pine_snow'];
     const X0 = Math.min(0, Number(WORLD.left) || 0);
+    const gaps = (WORLD.v42 && WORLD.v42.treeGaps) || [];
     for (const [x0, y0, x1, y1, step, region, until] of WORLD.borderTrees) {
       // (v4-C) a band that makes room for land open from the start (the old west edge, beside the west strip) is
       // not made at all — its random numbers are still drawn, so every other pine stays exactly where it was
@@ -673,6 +681,8 @@ export class Game extends Phaser.Scene {
           const y2 = y + (r() - 0.5) * step * 0.3;
           const k = kinds[Math.floor(r() * kinds.length)], fl = r() < 0.5, sc = 0.9 + r() * 0.25;
           if (skip || y2 < shoreY(x2) + 40 || this.blockedForDecor(x2, y2) || x2 > this.W - 20 || x2 < X0 + 20 || y2 > this.H) continue;
+          // ((v4.2) gaps in the border forest: the town loop of the railway, the depot's dock apron)
+          if (gaps.some((g) => x2 >= g[0] && x2 <= g[2] && y2 >= g[1] && y2 <= g[3])) continue;
           this.staticImage(k, x2, y2, { r: 24, flip: fl, scale: sc, region: region || this.territory.regionAt(x2, y2), until });   // (v4-A) until: gone when that land opens
         }
       }
@@ -734,7 +744,10 @@ export class Game extends Phaser.Scene {
       }
     }
     // (v3) the new land's pines, ore rocks and second wheat field (appear when the fog clears)
+    // ((v4.2) the pines where our railway loop now runs are not planted: WORLD.v42.removeDecor 'regionTree')
+    const goneTrees = ((WORLD.v42 && WORLD.v42.removeDecor) || []).filter((d) => d[0] === 'regionTree');
     for (const [x, y, k, region] of WORLD.regionTrees || []) {
+      if (goneTrees.some((d) => Math.abs(d[1] - x) < 12 && Math.abs(d[2] - y) < 12)) continue;
       const tr = new Tree(this, x, y, k);
       tr.img.setScale(0.9); tr.img.__bs = 0.9; tr.scale = 0.9;
       this.addOccluder(tr.img);
@@ -913,7 +926,9 @@ export class Game extends Phaser.Scene {
     for (const id in this.sites) {
       const st = this.sites[id];
       if (st.kind !== 'plot') continue;
-      const want = this.territory.isOpen(st.region) && this.progress.met(st.cfg.after);
+      // ((v4.2) `also`: more conditions (a step / 'b:' / 'r:' / 'f:' or a list of them))
+      const also = st.cfg.also ? [].concat(st.cfg.also) : [];
+      const want = this.territory.isOpen(st.region) && this.progress.met(st.cfg.after) && also.every((c) => this.progress.met(c));
       if (want === st.shown) continue;
       st.setShown(want);
       if (want && st.state === 'plot' && this.isOnScreen(st.x, st.y, 200) && st.img) {
@@ -1105,6 +1120,12 @@ export class Game extends Phaser.Scene {
       b = new BigRestaurant(this, site, instant);
       this.civic.restaurant = b;
       this.restaurant = b;
+    } else if (this.v42 && this.v42.office && this.v42.office.handles(bkey)) {
+      // ---- (v4.2) 촌장 사무실 / 서리 은행
+      b = this.v42.office.makeBuilding(bkey, site, instant);
+    } else if (this.v42 && this.v42.depot && this.v42.depot.handles && this.v42.depot.handles(bkey)) {
+      // ---- (v4.2) 서리 물류창고
+      b = this.v42.depot.makeBuilding(bkey, site, instant);
     } else if (isDecor(bkey)) {
       b = new Amenity(this, bkey, site);
       this.civic.addAmenity(b);

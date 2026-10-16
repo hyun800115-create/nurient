@@ -44,6 +44,8 @@ export class StockLedger {
   }
   remove(id) { const o = this.byId.get(id); if (!o) return; this.byId.delete(id); const i = this.list.indexOf(o); if (i >= 0) this.list.splice(i, 1); }
   get(id) { return this.byId.get(id) || null; }
+  /** seconds stock `id` has been full without a break (the letters' rules) */
+  fullFor(id) { const o = this.byId.get(id); return o ? o.fullS : 0; }
 
   /** read a stock's count (a stock whose object went away reads 0) */
   read(o) { try { const v = Number(o.get()); return Number.isFinite(v) ? Math.max(0, v) : 0; } catch (e) { return 0; } }
