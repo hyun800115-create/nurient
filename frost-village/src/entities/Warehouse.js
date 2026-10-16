@@ -39,7 +39,7 @@ export class Warehouse {
     this.incoming = 0;
     this.cap = Math.max(10, Math.floor(BALANCE.warehouse.capacity) || 300);
     // a little pile on the pick-up pad shows what is inside (one sprite per few items)
-    this.pile = new ItemStack(gs, { scale: 0.8, cols: [[-24, -6], [0, 4], [24, -6], [-12, 14], [12, 14]], alternate: true, max: 25, hop: false });
+    this.pile = new ItemStack(gs, { scale: 0.8, cols: [[-24, -6], [0, 4], [24, -6], [-12, 14], [12, 14]], alternate: true, max: 25, hop: false, bake: true });
     this.pileKey = '';
     this.busyT = 0;
     // label: "창고 123/300"

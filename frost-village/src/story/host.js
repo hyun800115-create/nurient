@@ -868,7 +868,7 @@ export class StoryHost {
 
   /** the chief tapped 보러 가기 on a story card: the beat it announces is staged wherever it is (the camera may follow) */
   watch(card) {
-    const kind = card && ({ engaged: 'wedding', farewell: 'farewell', school: 'school', wish: 'wish' })[card.kind];
+    const kind = card && ({ engaged: 'wedding', weddingday: 'wedding', farewell: 'farewell', school: 'school', wish: 'wish' })[card.kind];
     if (!kind) return false;
     this.watching.add(kind);
     const venue = kind === 'wedding' ? this.placeOfKind('town_hall', true) : kind === 'farewell' ? this.placeOfKind('memorial', true) : kind === 'school' ? this.placeOfKind('school', true) : null;

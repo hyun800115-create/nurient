@@ -33,7 +33,7 @@ export class Boathouse {
     const op = d.outPoint || [-63, 59];
     // the catch pad: fish the boat brings in (a "station output" for porters and the chief)
     this.outPad = new Pad(gs, this.x + op[0], this.y + op[1] + 26, 'output', 1.45, { icon: 'item_fish_raw', iconSize: 44 });
-    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], alternate: true, max: 30 });
+    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], alternate: true, max: 30, bake: true });
     this.output = 'item_fish_raw';
     this.cfg = { porterHome: [-60, 44] };
     // mooring spot: the pier end (dockPoint), pushed out until it is clearly in the water

@@ -36,7 +36,7 @@ export function removeKey(key) {
   try { const st = getStore(); if (st) st.removeItem(key); } catch (e) { /* ignore */ }
 }
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
 
@@ -44,7 +44,9 @@ export const BAD_KEY = 'frostVillage.save.v1.bad';
 // (v4-A) + the repaired station (plot r_station) and the rail strip / neighbour town
 // (v4-C) + the town hall, the big restaurant, the decor; the west strip (open from the start) and its south end
 const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station',
-  'town_hall', 'big_restaurant', 'deco_snowman', 'deco_bench', 'deco_lamp', 'deco_flowers', 'deco_rink', 'deco_playground', 'deco_fountain'];
+  'town_hall', 'big_restaurant', 'deco_snowman', 'deco_bench', 'deco_lamp', 'deco_flowers', 'deco_rink', 'deco_playground', 'deco_fountain',
+  // ---- (v4.2) 촌장 사무실, 서리 은행, 서리 물류창고 (their sites: ids v42_office / v42_bank / v42_depot)
+  'chief_office', 'bank42', 'depot42'];
 const SITE_STATES = ['foundation', 'scaffold', 'done'];
 const REGIONS = ['east', 'south', 'se', 'rail', 'town', 'west', 'west_s'];
 
@@ -109,6 +111,23 @@ export const MIGRATE = {
   // they were. The strip is open from the start; its south end opens with the south fields (Territory openWith).
   // Settlers, the hall and the restaurant start fresh (the c1 block).
   5: (s) => Object.assign({}, s, { v: 6 }),
+  // v4.1 -> v4.2 (촌장의 하루): additive — every v4.2 system starts empty (the v42 block, the bank / logistics slices).
+  // The dock backlog (v4.growth.cargo: each crate was paid when it was accepted, it was only a picture) is capped to
+  // two train loads; the boathouse catch and the collection piles are clamped by sanitizeSave / the restores.
+  6: (s) => {
+    const o = Object.assign({}, s, { v: 7 });
+    if (isObj(s.v4) && isObj(s.v4.cargo)) {
+      const cap = 2 * Math.max(1, Math.floor(num(BALANCE.v42 && BALANCE.v42.freight && BALANCE.v42.freight.perTrain, 56)));
+      const cargo = {};
+      let left = cap;
+      for (const k of Object.keys(s.v4.cargo).sort((a, b) => num(s.v4.cargo[b], 0) - num(s.v4.cargo[a], 0))) {
+        const n = Math.min(left, count(s.v4.cargo[k], 999));
+        if (n > 0) { cargo[k] = n; left -= n; }
+      }
+      o.v4 = Object.assign({}, s.v4, { cargo });
+    }
+    return o;
+  },
 };
 const LINE_STATION = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
 const STATION_ZONE = { grill: null, sawmill: 'zone_forest', bakery: 'zone_farm', smelter: 'zone_mine', smokehouse: 'zone_hunt' };
@@ -207,7 +226,166 @@ export function sanitizeSave(raw) {
   if (c1) s.c1 = c1;
   // (v4-C) the south end of the west strip opens with the south fields
   if (s.territory.south) s.territory.west_s = true;
+  // ---- (v4.2) the v42 block, and the module slices v4.2 writes in the modules' own formats (v5 bank, v8 logistics),
+  // kept through LOCAL copies of the modules' keep-rules (no runtime import of module code; save_v42.mjs checks that
+  // both slices pass the modules' own sanitizers unchanged)
+  const v42 = sanitizeV42(raw.v42);
+  if (v42) s.v42 = v42;
+  const bank = keepBank(raw.bank);
+  if (bank) s.bank = bank;
+  const lgx = keepLogistics(raw.logistics);
+  if (lgx) s.logistics = lgx;
+  // the boathouse catch never comes back above its cap (v4.1 saves restored it to 103 %)
+  if (s.v3 && s.v3.dock && s.v3.dock.catch) {
+    let left = 30;
+    for (const k of FISH) if (k in s.v3.dock.catch) { s.v3.dock.catch[k] = Math.min(left, s.v3.dock.catch[k]); left -= s.v3.dock.catch[k]; }
+  }
   return s;
+}
+
+// ===================================================================== (v4.2) docs/v42_plan.md §10
+const LINES5 = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse'];
+const STAFF = ['sem', 'ttal', 'bok', 'chong'];
+const u32 = (v) => { const n = num(v, 0); return Number.isFinite(n) && n >= 0 ? Math.floor(n) >>> 0 : 0; };
+const itemCounts = (v, max = 999) => { const o = {}; if (isObj(v)) for (const k of ITEMS) if (k in v) { const n = count(v[k], max); if (n > 0) o[k] = n; } return o; };
+const siteOf = (v) => (isObj(v) ? { got: counts(v.got, MATERIALS), t: Math.max(0, Math.min(600, num(v.t, 0))) } : undefined);
+const st012 = (v) => Math.max(0, Math.min(2, Math.floor(num(v, 0))));
+const TPL = /^[a-z][a-z0-9_]{0,23}$/;
+/** the v42 block: ints clamped, unknown items / lines / templates dropped, seeds uint32, arrays capped; never throws */
+export function sanitizeV42(raw) {
+  try {
+    if (!isObj(raw)) return null;
+    const o = { v: 1 };
+    const of = isObj(raw.office) ? raw.office : {};
+    const staff = Array.isArray(of.staff) ? of.staff.slice(0, 4).map(u32) : [];
+    while (staff.length < 4) staff.push(0);
+    o.office = { st: st012(of.st), staff, bag: count(of.bag, 1e9), safe: count(of.safe, 1e9), log: [] };
+    if (of.site !== undefined) { const si = siteOf(of.site); if (si) o.office.site = si; }
+    if (of.bankSt !== undefined) o.office.bankSt = st012(of.bankSt);
+    if (Array.isArray(of.log)) o.office.log = of.log.filter((r) => Array.isArray(r) && r.length >= 3 && typeof r[1] === 'string' && /^[a-z0-9_]{1,16}$/.test(r[1])).slice(-8).map((r) => [count(r[0], 1e6), r[1], Math.max(-1e9, Math.min(1e9, Math.round(num(r[2], 0)))), Math.round(Math.max(0, Math.min(1439, num(r[3], 0))))]);
+    const nw = isObj(raw.news) ? raw.news : {};
+    o.news = { day: Math.max(-1, Math.min(1e6, Math.floor(num(nw.day, -1)))), papers: [] };
+    if (Array.isArray(nw.papers)) o.news.papers = nw.papers.filter((p) => Array.isArray(p) && p.length >= 2 && Array.isArray(p[1])).slice(-3).map((p) => [count(p[0], 1e6), p[1].filter((h) => Array.isArray(h) && typeof h[0] === 'string' && TPL.test(h[0])).slice(0, 5).map((h) => [h[0], Math.round(Math.max(-1e9, Math.min(1e9, num(h[1], 0)))), Math.round(Math.max(-1e9, Math.min(1e9, num(h[2], 0))))])]);
+    const lt = isObj(raw.letters) ? raw.letters : {};
+    o.letters = { seq: count(lt.seq, 1e9), inbox: [], once: [] };
+    if (Array.isArray(lt.inbox)) o.letters.inbox = lt.inbox.filter((r) => Array.isArray(r) && r.length >= 4 && typeof r[1] === 'string' && TPL.test(r[1])).slice(-6).map((r) => [count(r[0], 1e9), r[1], Math.max(0, Math.min(3, Math.floor(num(r[2], 0)))), count(r[3], 1e6)]);
+    if (Array.isArray(lt.once)) o.letters.once = Array.from(new Set(lt.once.filter((k) => typeof k === 'string' && TPL.test(k)))).slice(0, 16);
+    if (lt.nextT !== undefined) o.letters.nextT = Math.max(0, Math.min(1e6, num(lt.nextT, 0)));
+    o.up = {};
+    if (isObj(raw.up)) for (const k of LINES5) if (raw.up[k] === 1 || raw.up[k] === true) o.up[k] = 1;
+    o.p2 = Array.isArray(raw.p2) ? Array.from(new Set(raw.p2.filter((k) => LINES5.indexOf(k) >= 0))).slice(0, 5) : [];
+    const tr = isObj(raw.train) ? raw.train : {};
+    o.train = { stage: tr.stage === 2 ? 2 : 1, big: tr.big ? 1 : 0, labels: count(tr.labels, 99) };
+    const fr = isObj(raw.freight) ? raw.freight : {};
+    o.freight = { dock: itemCounts(fr.dock, 9999), cars: itemCounts(fr.cars, 999) };
+    const dp = isObj(raw.depot) ? raw.depot : {};
+    o.depot = { st: st012(dp.st), sleighs: dp.sleighs === 2 ? 2 : 1, load: itemCounts(dp.load, 999), porters34: Math.max(0, Math.min(2, Math.floor(num(dp.porters34, 0)))), sales: [0, 0, 0] };
+    if (dp.site !== undefined) { const si = siteOf(dp.site); if (si) o.depot.site = si; }
+    if (Array.isArray(dp.sales)) o.depot.sales = [count(dp.sales[0], 1e6), count(dp.sales[1], 1e9), count(dp.sales[2], 1e12)];
+    const lg = isObj(raw.ledger) ? raw.ledger : {};
+    o.ledger = { full: {} };
+    if (isObj(lg.full)) { let n = 0; for (const k in lg.full) { if (n >= 40) break; if (/^[a-z0-9_:]{1,32}$/.test(k)) { o.ledger.full[k] = Math.max(0, Math.min(1e6, Math.round(num(lg.full[k], 0)))); n++; } } }
+    const sn = isObj(raw.seen) ? raw.seen : {};
+    o.seen = {};
+    for (const k of ['whatsNew', 'pickupTip', 'trainNew', 'halo']) if (sn[k]) o.seen[k] = 1;
+    o.seen.cheer = count(sn.cheer, 99);
+    for (const k of ['p2', 'up', 'big', 'p34', 'sl2']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
+    if (isObj(raw.full)) { o.full = {}; for (const k of LINES5) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
+    return o;
+  } catch (e) { return null; }
+}
+
+/**
+ * (v4.2) a LOCAL copy of src/bank/save.js sanitizeBank's keep-rules (v5 format: { v, open, sv, ld, tk, ... }). v4.2 writes
+ * { v: 1, open: 1, sv: 0, ld: -1, tk: 1 }; a slice v5 wrote is kept as its own rules keep it (save_v42.mjs compares).
+ */
+const BANK_OPS = ['deposit', 'withdraw', 'interest', 'loan', 'repay', 'premium', 'claim', 'waive'];
+export function keepBank(raw) {
+  try {
+    if (!isObj(raw) || (raw.v !== undefined && raw.v !== 1 && raw.v !== 2)) return null;
+    const fin = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : undefined);
+    const int = (v, lo, hi, d) => { const n = fin(v, lo, hi); return n === undefined ? d : Math.floor(n); };
+    const s = { v: 1, open: raw.open ? 1 : 0, sv: int(raw.sv, 0, 1e9, 0), ld: int(raw.ld, -1, 1e7, -1), tk: int(raw.tk, 1, 999, 1) };
+    if (raw.v6) s.v6 = 1;
+    if (raw.so) s.so = 1;
+    const t5 = fin(raw.t5, -1e9, 1e10); if (t5 !== undefined) s.t5 = Math.round(t5);
+    if (isObj(raw.ln)) {
+      const l = raw.ln, left = int(l.l, 0, 1e9, 0);
+      if (left > 0) s.ln = { a: int(l.a, 0, 1e9, 0), l: left, f: Math.min(left, int(l.f, 0, 1e9, 0)), t0: Math.round(fin(l.t0, -1e9, 1e10) || 0), d0: int(l.d0, 0, 1e7, 0), rs: int(l.rs, 0, 9, 0), ps: l.ps ? 1 : 0, k: l.k === 'ceremony' ? 'ceremony' : 'build' };
+    }
+    if (Array.isArray(raw.rw)) {
+      const rw = raw.rw.filter((r) => Array.isArray(r) && r.length === 4 && BANK_OPS.indexOf(r[1]) >= 0 && fin(r[0], 0, 1e7) !== undefined && fin(r[2], -1e9, 1e9) !== undefined && fin(r[3], -1e10, 1e10) !== undefined)
+        .slice(-8).map((r) => [Math.floor(r[0]), r[1], Math.round(r[2]), Math.round(r[3])]);
+      if (rw.length) s.rw = rw;
+    }
+    if (Array.isArray(raw.ins)) {
+      const seen = new Set(), ins = [];
+      for (const r of raw.ins) {
+        if (!Array.isArray(r) || typeof r[0] !== 'string' || !r[0] || r[0].length > 10 || seen.has(r[0])) continue;
+        const c = int(r[1], -1e6, 1e6, 0);
+        if (!c) continue;
+        seen.add(r[0]);
+        ins.push([r[0], c, int(r[2], 0, 999983, 0)]);
+        if (ins.length >= 24) break;
+      }
+      if (ins.length) { s.ins = ins; s.v = 2; }
+    }
+    return s;
+  } catch (e) { return null; }
+}
+
+/**
+ * (v4.2) a LOCAL copy of src/city/logistics/save.js sanitizeLogistics's keep-rules (v8 format, cap 2 KB): item ids
+ * without the `item_` prefix, orders / chains / lv3 / days as v8 keeps them. save_v42.mjs checks the copy agrees.
+ */
+export function keepLogistics(raw) {
+  try {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const int = (x, lo, hi, d = 0) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : d; };
+    const obj = (q) => (q && typeof q === 'object' && !Array.isArray(q) ? q : {});
+    const KEY = /^[a-z][a-z0-9_]{0,23}$/, ID = /^[A-Za-z0-9_:.-]{1,40}$/, FL = /^[syh][vwc][pkrg][s]?[3m]?$/;
+    const items = (q, max, lim = 40) => { const out = {}; let n = 0; for (const k of Object.keys(obj(q)).sort()) { if (n >= lim) break; if (!KEY.test(k)) continue; const v = int(q[k], 0, max, 0); if (v > 0) { out[k] = v; n++; } } return out; };
+    const out = { v: 1, open: raw.open ? 1 : 0, gift: raw.gift ? 1 : 0, tut: raw.tut ? 1 : 0, day: int(raw.day, -1, 1e7, -1), seq: int(raw.seq, 0, 1e9, 0),
+      stock: items(raw.stock, 9999), orders: [], cash: int(raw.cash, 0, 1e8, 0), chains: [], lv3: [], days: [], made: [0, 0], tot: [0, 0, 0] };
+    const seen = new Set();
+    for (const r of Array.isArray(raw.orders) ? raw.orders : []) {
+      if (out.orders.length >= 12) break;
+      if (!Array.isArray(r) || r.length < 5) continue;
+      const [id, to, f] = r;
+      if (typeof id !== 'string' || !ID.test(id) || seen.has(id)) continue;
+      if (typeof to !== 'string' || !/^(shop|story|home):[A-Za-z0-9_.:+-]{1,40}$/.test(to)) continue;
+      if (typeof f !== 'string' || !FL.test(f)) continue;
+      const kind = { s: 'shop', y: 'story', h: 'home' }[f[0]];
+      if (!to.startsWith(kind + ':')) continue;
+      const got = items(r[3], 999, 12), miss = items(r[4], 999, 12);
+      if (!Object.keys(got).length && !Object.keys(miss).length) continue;
+      seen.add(id);
+      out.orders.push([id, to, f, got, miss]);
+    }
+    for (const c of Array.isArray(raw.chains) ? raw.chains : []) {
+      if (out.chains.length >= 6) break;
+      if (!c || typeof c !== 'object' || typeof c.id !== 'string' || !ID.test(c.id) || (c.k !== 'f' && c.k !== 'a')) continue;
+      if (out.chains.some((q) => q.id === c.id)) continue;
+      const okOut = c.k === 'f' ? /^(chair|table|sofa|bed|wardrobe)$/ : /^(radio|stove_iron|washer|fridge|tv_retro)$/;
+      out.chains.push({ id: c.id, k: c.k, in: int(c.in, 0, 99, 0), out: (Array.isArray(c.out) ? c.out : []).filter((x) => typeof x === 'string' && okOut.test(x)).slice(0, 8), m: int(c.m, 0, 1e7, 0), r: int(c.r, 0, 1e7, 0) });
+    }
+    for (const h of Array.isArray(raw.lv3) ? raw.lv3 : []) { if (out.lv3.length >= 32) break; const q = String(h); if (ID.test(q) && out.lv3.indexOf(q) < 0) out.lv3.push(q); }
+    for (const d of Array.isArray(raw.days) ? raw.days.slice(0, 10) : []) out.days.push(int(d, 0, 1e6, 0));
+    if (Array.isArray(raw.made)) out.made = [int(raw.made[0], 0, 1e7, 0), int(raw.made[1], 0, 1e7, 0)];
+    if (Array.isArray(raw.tot)) out.tot = [int(raw.tot[0], 0, 1e8, 0), int(raw.tot[1], 0, 1e10, 0), int(raw.tot[2], 0, 1e9, 0)];
+    // the 2 KB cap (v8 fitLogistics): unsettled orders go back to the racks, then the day history shortens
+    const len = () => JSON.stringify(out).length;
+    while (len() > 2048 && out.orders.length) {
+      let k = out.orders.findIndex((r) => r[2].indexOf('s', 3) < 0 && r[2][2] !== 'g');
+      if (k < 0) k = out.orders.findIndex((r) => r[2][2] !== 'g');
+      if (k < 0) break;
+      const r = out.orders.splice(k, 1)[0];
+      for (const [it, n] of Object.entries(r[3])) out.stock[it] = Math.min(9999, (out.stock[it] || 0) + n);
+    }
+    while (len() > 2048 && out.days.length > 1) out.days.pop();
+    while (len() > 2048 && out.lv3.length > 8) out.lv3.pop();
+    return out;
+  } catch (e) { return null; }
 }
 
 /** (v4-C) the civic block: counts clamped, unknown foods dropped (the restaurant's pantry holds cooked food only) */
@@ -386,7 +564,9 @@ export function newChatId() { return (Date.now().toString(36) + Math.random().to
 
 export const Settings = {
   // (v4-C2) water: '물결 품질' 'high' | 'low' | null (automatic); voice: '주민 목소리' volume 0..1 (0 = off)
-  data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1 },
+  data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1,
+    // (v4.2) 놀이 tab: 자동 줍기 / 길 안내 / 촌장 후광 / 관망 자동 (s) / 관망 볼거리 / 관망 중 돈 쓰기
+    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none' },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -399,6 +579,13 @@ export const Settings = {
       this.data.gfx = s.gfx === 'high' || s.gfx === 'low' ? s.gfx : 'auto';     // (v4-B) 그래픽: 자동 / 선명하게 / 가볍게
       this.data.water = s.water === 'low' || s.water === 'high' ? s.water : null;  // (v4-C2) 물결 품질
       this.data.voice = typeof s.voice === 'number' && s.voice >= 0 && s.voice <= 1 ? s.voice : 1;   // (v4-C2) 주민 목소리
+      // ---- (v4.2) 놀이
+      this.data.pickup = s.pickup === 'still' || s.pickup === 'off' ? s.pickup : 'auto';
+      this.data.nav = s.nav !== false;
+      this.data.halo = s.halo !== false;
+      this.data.observeAfter = [0, 30, 60, 120].indexOf(s.observeAfter) >= 0 ? s.observeAfter : 60;
+      this.data.observeEvents = s.observeEvents !== false;
+      this.data.observeSpend = s.observeSpend === 'hire' ? 'hire' : 'none';
     }
     return this.data;
   },

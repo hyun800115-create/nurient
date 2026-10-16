@@ -43,6 +43,9 @@ export class Effects {
   // ---------- item sprites (pooled) ----------
   takeItem(type) {
     const s = this.itemPool.pop() || this.scene.add.image(0, 0, '__WHITE');
+    // ((v4.2 P0) a pooled picture waits off the display list: back on it while it is used)
+    s.__pooled = false;
+    if (!s.displayList && s.addToDisplayList) s.addToDisplayList();
     Assets.apply(s, type);
     s.setVisible(true).setAlpha(1).setScale(1).setAngle(0).setFlipX(false);
     s.__type = type;
@@ -51,6 +54,8 @@ export class Effects {
   releaseItem(s) {
     if (!s) return;
     s.setVisible(false);
+    s.__pooled = true;
+    if (s.displayList && s.removeFromDisplayList && !s.parentContainer) s.removeFromDisplayList();
     this.itemPool.push(s);
   }
 

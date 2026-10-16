@@ -24,7 +24,7 @@ export class FoodBox {
     this.pad = new Pad(gs, this.x, this.y, 'input', 1.45, { icon: Assets.pick('ui_icon_food', 'item_bread'), iconSize: 46 });
     this.crate = Assets.image(gs, this.x - 64, this.y - 26, 'crate').setDepth(this.y - 26);
     this.crate.setScale(0.8);
-    this.stock = new ItemStack(gs, { scale: 0.9, cols: [[-15, -3], [15, 6]], typeCols: { item_bread: 0, item_meat_cooked: 1 }, max: this.max });
+    this.stock = new ItemStack(gs, { scale: 0.9, cols: [[-15, -3], [15, 6]], typeCols: { item_bread: 0, item_meat_cooked: 1 }, max: this.max, bake: true });
     const lab = gs.add.container(this.x, this.y - 58).setDepth(this.y + 2000);
     this.labelBg = panel(gs, 0, 0, 'ui_panel', 140, 46).setOrigin(0.5).setAlpha(0.95);
     this.labelIcon = Assets.image(gs, 0, 0, Assets.pick('ui_icon_food', 'item_bread')).setOrigin(0.5);

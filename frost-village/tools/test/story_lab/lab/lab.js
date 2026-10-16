@@ -151,6 +151,7 @@ async function setup(scene, art, tfMan) {
   try { voice = new VillageVoice({ manifest: art.man.voice, backend: vBackend }); } catch (e) { LAB.errors.push('voice: ' + e); }
   LAB.voice = voice; LAB.vBackend = vBackend;
   const bubbles = new LabBubbles(scene, art, { voice });
+  bubbles.zoomComp = () => Math.max(1, 0.9 / (LAB.zoom || 1));
   LAB.bubbles = bubbles;
 
   const names = (k) => { const d = art.def(k); return d && d.name ? d.name : { ko: k, en: k }; };

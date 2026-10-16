@@ -230,10 +230,12 @@ export class LaneGraph {
 
   /**
    * shortest path from pos `a` to pos `b` (Dijkstra over lanes; turns only through connectors, U-turns only at dead
-   * ends): [{ t, id, s0, s1 }] or null. opts.allow(lane) limits the lanes (default: road lanes), opts.len the length.
+   * ends): [{ t, id, s0, s1 }] or null. opts.allow(lane) limits the lanes (default: road lanes); opts.weight(lane) > 1
+   * makes a lane look longer (the chief's truck takes the village snow paths only where a stop needs them).
    */
   route(a, b, opts = {}) {
     const allow = opts.allow || ((l) => l.kind === 'road');
+    const weight = opts.weight || null;
     const LA = this.lanes[a.lane], LB = this.lanes[b.lane];
     if (!LA || !LB || !allow(LB)) return null;
     if (a.lane === b.lane && b.s >= a.s - 1e-6) return [{ t: 'L', id: a.lane, s0: a.s, s1: Math.max(a.s, b.s) }];
@@ -248,6 +250,7 @@ export class LaneGraph {
         const to = this.lanes[c.to];
         if (!allow(to)) continue;
         let cost = base + c.len + (c.turn === 'U' ? U_PENALTY : 0);
+        if (weight) { const w = weight(to); if (w > 1) cost += to.len * (w - 1); }
         if (to.stub && to.id !== b.lane) cost += STUB_PENALTY;
         if (cost < dist[to.id]) { dist[to.id] = cost; via[to.id] = cid; push(cost, to.id); }
       }

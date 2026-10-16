@@ -27,8 +27,8 @@ export class Station {
     this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.42, 'station');
     this.inPad = new Pad(gs, this.x + cfg.in[0], this.y + cfg.in[1], 'input', 1.45, { icon: cfg.input, iconSize: 44 });
     this.outPad = new Pad(gs, this.x + cfg.out[0], this.y + cfg.out[1], 'output', 1.45, { icon: cfg.output, iconSize: 44 });
-    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-13, -4], [13, 5]], alternate: true, max: this.bal.inputMax });
-    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], alternate: true, max: this.bal.outputMax });
+    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-13, -4], [13, 5]], alternate: true, max: this.bal.inputMax, bake: true, bakeTypes: [cfg.input] });
+    this.outStack = new ItemStack(gs, { scale: 1, cols: [[-15, -4], [15, 5]], alternate: true, max: this.bal.outputMax, bake: cfg.noSink ? true : 'eager', bakeTypes: [cfg.output] });
     this.timer = 0;
     this.working = false;
     this.idleT = 0;
@@ -95,8 +95,10 @@ export class Station {
       this.setWorking(true);
       // (v3.5) the chief works a little faster than an operator (balance.js labour.chiefSpeed)
       const k = this.op && this.op.chief && !this.op.operator ? Math.max(0.2, Number(BALANCE.labour && BALANCE.labour.chiefSpeed) || 1) : 1;
-      this.timer += dt * k;
-      if (this.timer >= this.bal.time) { this.timer = 0; this.process(); }
+      // ((v4.2) 촌장 응원 ×1.1 while the chief stands by; 가공소 2단 makes each item in timeMult of the time)
+      const v42 = this.gs.v42, cheer = v42 && v42.aura ? v42.aura.cheerK(this) : 1;
+      this.timer += dt * k * cheer;
+      if (this.timer >= this.bal.time * this.timeMult()) { this.timer = 0; this.process(); }
     } else {
       this.idleT += dt;
       if (this.idleT > 0.35) this.setWorking(false);
@@ -116,6 +118,9 @@ export class Station {
       }
     }
   }
+
+  /** (v4.2 F5) 가공소 2단: the time of one item × station2.timeMult once the upgrade is bought */
+  timeMult() { const L = this.gs.v42 && this.gs.v42.lines; return L ? L.timeMult(this.id) : 1; }
 
   /** inputs there and room for the product? */
   canWork() { return this.operated() && this.inStack.count > 0 && this.outStack.count + this.outStack.incoming < this.outStack.max; }

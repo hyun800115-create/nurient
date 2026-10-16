@@ -68,6 +68,7 @@ export class Culler {
     for (let i = 0; i < P.length; i++) {
       const o = P[i];
       if (!o.scene || o.parentContainer) { o.__park = 0; continue; }   // destroyed / put in a container while parked
+      if (o.__pooled && !o.displayList) { o.__park = 0; continue; }    // (v4.2) a pooled item picture stays off the list
       if (all || (o.x > x0 && o.x < x1 && o.y > y0 && o.y < y1) || o.displayList) {
         o.__park = 0;
         if (!o.displayList) {

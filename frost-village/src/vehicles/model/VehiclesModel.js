@@ -3,7 +3,9 @@
 // No Phaser, no DOM, no clock: the host calls update(dt, T) with game time and hands in a RoadNet and an env.
 //
 // env (all optional): live(x, y), walkers(), xingBlocked(k, line), board(stop, n, line, to[]), alight(stop, riders,
-// line), freight { take(n, role), deliver(to, items, kind), shopTargets() }, homes(), flag(name), day(T)
+// line), freight { take(n, role), deliver(to, items, kind), shopTargets(), reserve?(id, items), release?(id, items) },
+// homes(), flag(name), day(T), chiefAt(stopId) (is the chief at that stop now: a booked ride boards only then),
+// manifest() (the vehicles manifest when it arrives late)
 
 import { LaneGraph } from './lanes.js';
 import { VehicleSim } from './VehicleSim.js';
@@ -11,7 +13,7 @@ import { Transit } from './transit.js';
 import { Fleet, sumItems } from './fleet.js';
 import { ChiefDrive } from './chiefDrive.js';
 import { Rng } from './rng.js';
-import { roleKey, specOf, eraOf, CHIEF_KEYS } from './eras.js';
+import { roleKey, specOf, eraOf, CHIEF_KEYS, ANIMAL } from './eras.js';
 import { bezier, cumOf, DIR_VEC } from './geom.js';
 
 export const SLICE_VERSION = 1;
@@ -33,6 +35,10 @@ export class VehiclesModel {
     this.lines = { 1: 0, 2: 0, 3: 0, 4: 0 };
     this.riders = new Array(this.cfg.riders.days).fill(0);
     this.riderDay = 0;
+    // riders in the last 10 game minutes (the rank-3 bar is rolling): 11 one-minute buckets, the oldest weighted
+    this.rb = new Array(11).fill(0);
+    this.rbk = 0;
+    this.flags = 0;                // first-time moments already shown (1 = first bus, 2 = the 읍 vehicles era)
     this.rank = opts.rank || 2;
     this.era = eraOf(this.rank);
     this.best = {};
@@ -70,23 +76,34 @@ export class VehiclesModel {
       this.loading = false;
       return;
     }
-    // remap every vehicle onto the new graph
+    // remap every vehicle onto the new graph: where each one is, by lane geometry (lane ids change when a street joins)
     const old = this.sim.g;
+    for (const v of this.sim.list) {
+      v._mark = null;
+      if (!v.path || v.state === 'hidden') continue;
+      const h = this.herePos(v, old);
+      const l = h && old.lanes[h.lane];
+      if (l) v._mark = { gkey: l.gkey, s: h.s, x: v.x, y: v.y, dk: v.dk };
+    }
     this.sim.g = this.graph;
     this.sim.holders.clear(); this.sim.commit.clear();
     for (const v of this.sim.list) { v.held = []; v.commits = []; }
     this.applyLights();
     for (const v of this.sim.list.slice()) this.remap(v, old);
     this.refresh();
+    for (const v of this.sim.list) v._mark = null;
   }
 
   remap(v, old) {
     void old;
     if (v.chief) { this.chief.remap(v); return; }
     if (v.state === 'hidden' && v.pending) { v.pending = null; if (v.dest) this.go(v, v.dest); return; }
+    if (v.state === 'bay' && v.pending) { const d = v.dest; v.pending = null; if (d) this.go(v, d); return; }
     if (!v.path) return;
     if (v.role === 'bus') return;                // transit.rebuild() reroutes buses
+    if (v.afterRun) { this.chief.home(v.id); return; }
     if (v.dest) this.go(v, v.dest, true);
+    else { const h = this.herePos(v); if (h) this.sim.setPath(v, [{ t: 'L', id: h.lane, s0: h.s, s1: h.s }], [{ at: 0, dwell: Math.max(0.2, v.dwell || 0), tag: 'hold' }]); }
   }
 
   applyLights() {
@@ -102,12 +119,17 @@ export class VehiclesModel {
   // ------------------------------------------------------------------------------------------ positions
   vehicleSpec(key) {
     let s = this.specs.get(key);
-    if (!s) { s = specOf(this.man, key, this.cfg); this.specs.set(key, s); }
+    if (!s) {
+      // the manifest may arrive after the module starts: fallbacks are not kept, the real numbers are once it is here
+      if (!this.man && this.env.manifest) this.man = this.env.manifest() || null;
+      s = specOf(this.man, key, this.cfg);
+      if (this.man) this.specs.set(key, s);
+    }
     return s;
   }
   cfgFor(key) { const s = this.vehicleSpec(key); return this.cfg[s.tuning] || {}; }
   roleKey(role) { return roleKey(role, Math.max(2, this.era)); }
-  allowFor(key) { return CHIEF_KEYS.has(key) ? (l) => !l.stub || true : (l) => l.kind === 'road'; }
+  allowFor(key) { return CHIEF_KEYS.has(key) ? () => true : (l) => l.kind === 'road'; }
 
   /** a place of the layout (or the env) as a lane position for a vehicle of length len, with its bay if it has one */
   placePos(id, len) {
@@ -130,22 +152,34 @@ export class VehiclesModel {
     if (!sn) return null;
     return { lane: sn.lane, s: g.fit(sn.lane, sn.s, len) };
   }
-  /** where vehicles come out of / go into their depot (the stable in 읍, the bus depot in 도시) */
-  depotPos(len) {
-    const id = this.era >= 3 && this.built.busDepot ? 'p:busDepot' : 'p:stable';
+  /**
+   * where vehicles come out of / go into their depot: horses and dogs live in the stable (the sleigh buses roll into
+   * it at the 도시 ceremony too), motor vehicles in the bus depot once there is one
+   */
+  depotPos(len, v) {
+    const animal = v && ANIMAL.has(v.key);
+    const id = !animal && this.era >= 3 && this.built.busDepot ? 'p:busDepot' : 'p:stable';
     return this.placePos(id, len);
   }
-  /** the lane position a stopped vehicle is at */
-  herePos(v) {
+  /** the lane position a vehicle is at (graph = the graph its path was made on; after a rebuild: by lane geometry) */
+  herePos(v, graph) {
+    const g = graph || this.graph;
+    if (!graph && v._mark) {
+      const mk = v._mark, id = mk.gkey ? g.byG.get(mk.gkey) : undefined;
+      if (id !== undefined) return { lane: id, s: Math.max(0, Math.min(g.lanes[id].len, mk.s)) };
+      const allow = v.allow || this.allowFor(v.key);
+      const sn = g.snap(mk.x, mk.y, (l) => allow(l) && l.dk === mk.dk) || g.snap(mk.x, mk.y, allow);
+      return sn ? { lane: sn.lane, s: sn.s } : null;
+    }
     if (v.path && v.path.length) {
       const k = this.sim.pieceIndex(v, v.ps), p = v.path[k];
       if (p.t === 'L') return { lane: p.id, s: p.s0 + (v.ps - v.cum[k]) };
       // in a connector: its out-lane start
-      if (p.t === 'C') { const c = this.graph.conns[p.id]; if (c) return { lane: c.to, s: 0.05 }; }
+      if (p.t === 'C') { const c = g.conns[p.id]; if (c) return { lane: c.to, s: 0.05 }; }
       // on a private piece (a turn-round, a driveway out): the lane it leads to
       if (p.t === 'D') { const q = v.path[k + 1]; if (q && q.t === 'L') return { lane: q.id, s: q.s0 }; }
     }
-    const sn = this.graph.snap(v.x, v.y, (l) => l.kind === 'road' && l.dk === v.dk) || this.graph.snap(v.x, v.y);
+    const sn = g.snap(v.x, v.y, (l) => l.kind === 'road' && l.dk === v.dk) || g.snap(v.x, v.y);
     return sn ? { lane: sn.lane, s: sn.s } : null;
   }
 
@@ -177,7 +211,7 @@ export class VehiclesModel {
     } else if (v.path && v.state !== 'hidden') start = this.herePos(v);
     if (!start) { start = this.depotPos(v.len); merge = start; from = 'depot'; }
     if (!start || !dest.pos) return false;
-    const mid = g.route(start, dest.pos, { allow: v.allow || this.allowFor(v.key) });
+    const mid = g.route(start, dest.pos, { allow: v.allow || this.allowFor(v.key), weight: v.weight || null });
     if (!mid) return false;
     let post = [];
     if (dest.bay) { const inn = this.driveway(dest.bay, dest.pos, 'in', dest.bay.lot); if (inn) post = [inn.piece]; }
@@ -217,7 +251,7 @@ export class VehiclesModel {
     if (drop || v.state === 'hidden' || !v.path) { this.sim.remove(v.id); this.emit({ t: 'veh:depot', id: v.id, op: 'gone', key: v.key }); return; }
     v.role = 'retire';
     v.items = {};
-    const dp = this.depotPos(v.len);
+    const dp = this.depotPos(v.len, v);
     if (!dp || !this.go(v, { pos: dp, tag: 'retire', dwell: 0 })) { this.sim.remove(v.id); return; }
     v.ghost = 0;
   }
@@ -283,14 +317,35 @@ export class VehiclesModel {
     const d = this.dayOf(this.T);
     this.rollDays(d);
     this.riders[d % this.riders.length] += n;
+    this.rollBuckets();
+    this.rb[this.rbk % this.rb.length] += n;
     this.emit({ t: 'veh:ride', line, n, chief: false });
+  }
+  rollBuckets() {
+    const k = Math.floor(this.T / 60);
+    if (k <= this.rbk) return;
+    const N = this.rb.length;
+    for (let j = Math.max(this.rbk + 1, k - N + 1); j <= k; j++) this.rb[j % N] = 0;
+    this.rbk = k;
+  }
+  /** riders in the last 600 game seconds (the rank-3 "per game day (rolling)" bar): it never drops at midnight */
+  ridersRolling() {
+    this.rollBuckets();
+    const N = this.rb.length, k = this.rbk, frac = (this.T - k * 60) / 60;
+    let n = 0;
+    for (let j = 0; j < N - 1; j++) n += this.rb[(k - j + N * 4) % N];
+    n += this.rb[(k - (N - 1) + N * 4) % N] * Math.max(0, Math.min(1, 1 - frac));
+    return Math.round(n);
   }
   rollDays(d) {
     if (d === this.riderDay) return;
     if (d > this.riderDay) for (let k = Math.max(this.riderDay + 1, d - this.riders.length + 1); k <= d; k++) this.riders[k % this.riders.length] = 0;
     this.riderDay = d;
   }
-  ridersToday() { this.rollDays(this.dayOf(this.T)); return this.riders[this.riderDay % this.riders.length]; }
+  /** riders of the current calendar day (the 10-day history) */
+  ridersOfDay() { this.rollDays(this.dayOf(this.T)); return this.riders[this.riderDay % this.riders.length]; }
+  /** the bar: riders in the last game day, rolling */
+  ridersToday() { return this.ridersRolling(); }
 
   // ------------------------------------------------------------------------------------------ step
   emit(ev) { this.events.push(ev); }
@@ -306,10 +361,18 @@ export class VehiclesModel {
     this.transit.update(dt);
     this.fleet.update(dt);
     this.chief.update(dt);
-    // a terminal layover never holds anyone up: a bus with a queue behind it leaves
+    // a terminal layover never holds anyone up: a bus with a queue behind it leaves. And nothing else may stand in a
+    // lane for good: a non-bus vehicle that has stood > 20 s while someone waits behind it > 10 s moves on
     for (const v of this.sim.list) {
-      if (v.state === 'dwell' && v.role === 'bus' && v.dwell > 1.5) {
-        for (const w of this.sim.list) if (w !== v && w.blockedBy && w.blockedBy.t === 'veh' && w.blockedBy.id === v.id && w.waitT > 3) { v.dwell = Math.min(v.dwell, Math.max(0.5, this.cfgFor(v.key).dwell * 0.4)); break; }
+      if (v.state !== 'dwell') { v.dwellAge = 0; continue; }
+      v.dwellAge = (v.dwellAge || 0) + dt;
+      const bus = v.role === 'bus';
+      if (bus ? v.dwell <= 1.5 : (v.chief || v.dwellAge < 20)) continue;
+      for (const w of this.sim.list) {
+        if (w === v || !w.blockedBy || w.blockedBy.t !== 'veh' || w.blockedBy.id !== v.id || w.waitT <= (bus ? 3 : 10)) continue;
+        if (bus) v.dwell = Math.min(v.dwell, Math.max(0.5, this.cfgFor(v.key).dwell * 0.4));
+        else { v.holdOn = false; v.dwell = Math.min(v.dwell, 0.5); }
+        break;
       }
     }
   }
@@ -320,6 +383,7 @@ export class VehiclesModel {
     if (ev.t === 'arrive') {
       const tag = ev.tag || '';
       if (v.chief) return this.chief.arrive(v, tag);
+      if (v.afterRun) { if (tag === 'out') this.chief.out(v); return; }
       if (v.inBay) { v.bay = v.inBay; v.bayPos = v.dest && v.dest.pos; v.inBay = null; }
       if (v.role === 'bus' && tag.startsWith('stop:')) this.transit.arrive(v, tag.slice(5));
       else if ((v.role === 'freight' || v.role === 'porter') && (tag === 'yard' || tag === 'drop')) this.fleet.arriveFreight(v, tag);
@@ -328,6 +392,7 @@ export class VehiclesModel {
       else if (tag === 'retire') { this.sim.remove(v.id); this.emit({ t: 'veh:depot', id: v.id, op: 'in', key: v.key }); }
     } else if (ev.t === 'depart') {
       if (v.chief) return this.chief.depart(v);
+      if (v.afterRun) { this.chief.home(v.id); return; }
       if (v.bay) v.state = 'bay';
       if (v.role === 'bus') this.transit.depart(v);
       else if (v.role === 'freight' || v.role === 'porter') this.fleet.departFreight(v);
@@ -335,6 +400,7 @@ export class VehiclesModel {
       else if (v.role === 'car' && v.after) { const a = v.after; v.after = null; if (!this.go(v, a)) { this.fleet.arriveCar(v); } }
     } else if (ev.t === 'end') {
       if (v.chief) this.chief.ended(v);
+      else if (v.afterRun) { this.chief.out(v); this.chief.home(v.id); }
     } else if (ev.t === 'bell') {
       this.emit({ t: 'veh:bell', id: v.id, key: v.key, x: ev.x, y: ev.y, who: ev.who });
     }
@@ -342,16 +408,20 @@ export class VehiclesModel {
 
   // ------------------------------------------------------------------------------------------ save
   serialize() {
-    const cars = this.fleet.cars.slice(0, this.cfg.cars.maxParked).map((c) => [c.pid, c.key]);
+    const pal = this.fleet ? (this.fleet.palette || []).slice() : [];
+    // a car's colour as its palette index (a short slice: 24 cars with long ids stay under the cap)
+    const cars = this.fleet.cars.slice(0, this.cfg.cars.maxParked).map((c) => { const i = pal.indexOf(c.key); return [c.pid, i >= 0 ? i : c.key]; });
     const best = {};
-    for (const k of Object.keys(this.best).slice(0, 12)) best[k] = Math.round(this.best[k] * 10) / 10;
+    const bk = Object.keys(this.best);
+    for (const k of bk.slice(Math.max(0, bk.length - 12))) best[k] = Math.round(this.best[k] * 10) / 10;
+    this.rollBuckets();
     return {
       v: SLICE_VERSION, era: this.era,
       built: { depot: this.built.depot ? 1 : 0, road: this.built.road ? 1 : 0, stops: Array.from(this.built.stops).sort(), yard: this.built.yard ? 1 : 0, wagons: this.built.wagons | 0, busDepot: this.built.busDepot ? 1 : 0, lot: this.built.lot ? 1 : 0, porter: this.built.porter ? 1 : 0 },
       lines: { 1: this.lines[1] | 0, 2: this.lines[2] | 0, 3: this.lines[3] | 0, 4: this.lines[4] | 0 },
-      riders: this.riders.slice(), rd: this.riderDay,
-      cars, pal: this.fleet ? (this.fleet.palette || []).slice() : [],
-      chief: { best }, rs: this.rng.state(),
+      riders: this.riders.slice(), rd: this.riderDay, rb: this.rb.slice(), rbk: this.rbk,
+      cars, pal,
+      chief: { best }, rs: this.rng.state(), fl: this.flags | 0,
     };
   }
 
@@ -364,10 +434,14 @@ export class VehiclesModel {
     for (const k of [1, 2, 3, 4]) this.lines[k] = (s.lines && s.lines[k]) | 0;
     if (Array.isArray(s.riders)) for (let i = 0; i < this.riders.length; i++) this.riders[i] = s.riders[i] | 0;
     this.riderDay = s.rd | 0;
+    if (Array.isArray(s.rb)) for (let i = 0; i < this.rb.length; i++) this.rb[i] = s.rb[i] | 0;
+    this.rbk = s.rbk | 0;
+    this.flags = s.fl | 0;
     if (s.era) this.era = Math.max(this.era, s.era | 0);
     if (s.chief && s.chief.best) this.best = Object.assign({}, s.chief.best);
     if (s.rs) this.rng = new Rng(s.rs >>> 0);
-    this._savedCars = Array.isArray(s.cars) ? s.cars : [];
     this._savedPal = Array.isArray(s.pal) ? s.pal : null;
+    // cars: [pid, palette index | car key]
+    this._savedCars = (Array.isArray(s.cars) ? s.cars : []).map((c) => (Array.isArray(c) && typeof c[1] === 'number' && this._savedPal ? [c[0], this._savedPal[c[1]]] : c)).filter((c) => Array.isArray(c) && c[1]);
   }
 }

@@ -78,7 +78,8 @@ export class LabBubbles {
       const head = w.y + w.dy + w.headTop + (w.rest === 'sit' && !w.path ? 18 : 0);
       if (b.kind === 'chat') b.c.setPosition(w.x, head - 10 + Math.sin(now / 320 + w.x) * 1.5);
       else b.c.setPosition(w.x, head - 6 + Math.sin(now / 280 + w.y) * 2);
-      b.c.setScale(sc);
+      // zoomed out (< 0.9) the bubble keeps its phone size: counter-scaled, like the patch for v4 Bubbles (critique L11)
+      b.c.setScale(sc * (this.zoomComp ? this.zoomComp() : 1));
       b.c.setDepth((b.kind === 'chat' ? DEPTH + 20 : DEPTH + 10) + w.y * 0.001);
     }
   }

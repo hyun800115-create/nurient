@@ -19,7 +19,12 @@ async function until(cond, max = 60, step = 0.25) {
   for (let t = 0; t < max; t += step) { if (cond()) return true; await run(step); }
   return !!cond();
 }
-async function jump(day, hour, settleSec = 1.5) { L().setT(day * DAY + hour * HOUR); await run(settleSec); }
+/** wait until the story core (its worker) has caught up with the lab clock: a jumped day's events are in */
+async function caughtUp(max = 300) {
+  for (let i = 0; i < max; i++) { const c = await L().q('clock'); if (c && c.now >= L().clock.T - 2) return true; await run(0.1); }
+  return false;
+}
+async function jump(day, hour, settleSec = 1.5) { L().setT(day * DAY + hour * HOUR); await run(settleSec); await caughtUp(); }
 function lifeEvent(op) { return L().rec.events.filter((e) => e[0] === 'story:life' && e[1].op === op); }
 /** GIF frames of `secs` game seconds; stills: [{ when: () => bool, after: frames, name }] snapped once each */
 async function gif(name, secs, fps = 6, stills = []) {
@@ -143,7 +148,13 @@ export const shots = {
     // the banner and the naming card come with the baby event; the parents walk to the clinic at dusk
     await until(() => L().life.cardView && L().life.cardView.c && L().life.cardView.card.kind === 'naming', 30);
     await run(1.2); await snap('story_lab_naming_card');
-    await until(() => { const p = L().town.bodies.get(pa); return p && p.attached; }, 80);
+    // the night at the clinic (a warm window); at dawn (06:30) the parents come out pushing the stroller (critique L6)
+    await until(() => !L().life.active.has('birth'), 90);
+    await jump(dayNow() + 1, 6.3, 1);
+    L().look(C.x - 60, C.y - 40, 1.1);
+    const dawn = await until(() => L().life.active.has('birthdawn'), 40);
+    log('birth dawn started', dawn, L().clock.T);
+    await until(() => { const p = L().town.bodies.get(pa); return p && p.attached; }, 20);
     await run(2.0); await snap('story_lab_birth_stroller');
     return true;
   },
@@ -174,16 +185,18 @@ export const shots = {
 
   /** a person card (a regular of ours) */
   async person() {
+    // the afternoon square (people out and about); the card opens above the tapped person (StoryLife.screenOf, M10)
+    await jump(dayNow(), 15.0, 2);
     L().look(1290, 1250, 1.1);
-    const pid = L().near(1290, 1250, 1, 'adult', 600)[0] || L().folk(1, 'adult')[0];
+    await run(0.5);
+    const pid = L().near(1290, 1330, 1, 'adult', 500)[0] || L().folk(1, 'adult')[0];
     const R = L().host.registry; for (let i = 0; i < 4; i++) R.served(pid);
     L().host.refreshCard(pid);
+    L().ports.town.hold(pid);
     await run(1.5);
-    const b = L().town.bodies.get(pid);
-    const cam = L().world.cameras.main, k = L().VIEW.k;
-    const at = { x: (b.x - cam.worldView.x) * cam.zoom / k, y: (b.y - cam.worldView.y) * cam.zoom / k };
-    L().life.openPerson(pid, at); await run(1.2); await snap('story_lab_person_card');
+    L().life.openPerson(pid); await run(1.2); await snap('story_lab_person_card');
     if (L().life.person) L().life.person.close();
+    L().ports.town.release(pid);
     return true;
   },
 

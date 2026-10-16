@@ -143,6 +143,8 @@ export class OperatorSpot {
   /** the chief's work motion hit its impact frame: the station's cue at his hands */
   chiefImpact(ch) {
     if (!this.station.working) return;
+    // ((v4.2) the halo turns gold and pulses on each of the chief's strokes)
+    if (this.gs.v42 && this.gs.v42.aura) this.gs.v42.aura.pulse();
     const ip = ch.impactPoint();
     cue(this.gs, this.fx.impact, ip.x, ip.y);
     if (this.fx.beat && this.fx.beat.sfx) cue(this.gs, { sfx: this.fx.beat.sfx, vol: this.fx.beat.vol }, ip.x, ip.y);
@@ -234,7 +236,8 @@ export class Operator extends Character {
   /** one operate loop lasts one station cycle (the art and the products keep the same beat) */
   syncSpeed() {
     const st = this.spot.station;
-    const per = Math.max(0.2, Number(st.bal && st.bal.time) || 1);
+    const v42 = this.gs.v42, cheer = v42 && v42.aura ? v42.aura.cheerK(st) : 1;
+    const per = Math.max(0.2, (Number(st.bal && st.bal.time) || 1) * (st.timeMult ? st.timeMult() : 1) / cheer);
     const ad = this.def.anims[this.animRes];
     if (!ad) return;
     const loop = (ad.frames || 8) / Math.max(1, ad.fps || 10);
@@ -311,7 +314,7 @@ export class Pile {
     const max = Math.max(4, Math.floor(Number(BALANCE.labour && BALANCE.labour.pileMax)) || 40);
     this.pad = new Pad(gs, this.x, this.y, 'output', 1.45, { icon: cfg.item, iconSize: 44, tint: 0xf3e2c4 });
     // (v3.5 review) a wide, low heap: 7 little towers, never drawn higher than 6 items (a full pile is not a skyscraper)
-    this.stack = new ItemStack(gs, { scale: 0.9, cols: [[-30, -10], [0, -12], [30, -10], [-16, 2], [16, 2], [-30, 12], [30, 12]], alternate: true, max, drawMax: 42 });
+    this.stack = new ItemStack(gs, { scale: 0.9, cols: [[-30, -10], [0, -12], [30, -10], [-16, 2], [16, 2], [-30, 12], [30, 12]], alternate: true, max, drawMax: 42, bake: 'eager', bakeTypes: [cfg.item] });
     // the prop that marks the place (a fish crate / log pile / hay / ore crate / a meat rack)
     this.props = [];
     const pa = cfg.propAt || [0, -40];

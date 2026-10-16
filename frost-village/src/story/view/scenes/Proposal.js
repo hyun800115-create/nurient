@@ -1,7 +1,8 @@
 // 청혼 (docs/v5_v8_plan.md §6.1 "First proposal" / "Proposal (later)"): in the crowd still gathered after the 읍
 // ceremony (or at a pretty spot later) a young regular of ours steps up to their sweetheart with a bouquet — the art
 // has no kneel, so they offer the flowers with a little bow — "결혼해 줄래요?" → "네!", hearts, the crowd claps.
-// 8 s, skippable after 3 s (the director's camera grab only for the scripted first one).
+// About 8 s; the director grabs the camera (≤ 3 s) only for the scripted first one. (No skip button: the scene is
+// short and the chief can walk away; critique L11.)
 
 /** data: { a, b (pids), crowd [pids], at: { x, y } , fast } */
 export async function playProposal(sh, beat, ctx) {

@@ -123,6 +123,7 @@ export class LifeDirector {
         this.later(Math.max(at, T), { a: 'beat', kind: 'wedding', key: 'w:' + day + ':' + a, at, until: this.bookEnd(x), sids: [this.sid(a), this.sid(b)], venue: this.h.hall ? this.h.hall() : null,
           data: { hour: L.weddingHour, first: !this.s.seen.wedding, late: T > at }, book: ref, restored: true });
         out.push({ day, a, b });
+        if (!this.s.seen.wedding && T < this.weddingCardAt(day)) this.later(this.weddingCardAt(day), this.weddingDayCard(day, L.weddingHour, this.sid(a), this.sid(b)));
       } else if (k === 's') {
         const at = this.at(day, L.schoolHour);
         this.later(Math.max(at, T), { a: 'beat', kind: 'school', key: 's:' + day + ':' + a, at, until: this.bookEnd(x), sids: [this.sid(a)], venue: this.h.school ? this.h.school() : null, data: { first: !this.s.seen.school }, book: ref, restored: true });
@@ -178,9 +179,11 @@ export class LifeDirector {
         out.push({ a: 'emit', name: 'story:life', data: { op: 'engaged', a: ev.a, b: ev.b, day, hour, at: this.at(day, hour), prepAt: this.at(day, L.weddingPrepHour), venue, ours: this.ours(venue) } });
         if (ev.scripted) {
           out.push({ a: 'banner', kind: 'wedding', ko: '첫 결혼식이 열려요!', en: 'The first wedding is coming!', subKo: `${this.whenKo(day)} ${hour}시 · 마을회관`, subEn: `${this.whenEn(day)} at ${hour}:00 · the town hall` });
+          // on the morning of the first wedding a card with 보러 가기 (critique M9)
+          if (pa && pb) this.later(this.weddingCardAt(day), this.weddingDayCard(day, hour, ev.a, ev.b));
         } else {
           out.push({ a: 'beat', kind: 'proposal', at: null, sids: [ev.a, ev.b], venue: ev.place || null, data: { scripted: false } });
-          if (this.known(ev.a) || this.known(ev.b) || first) out.push(this.card('engaged', [ev.a, ev.b], `${this.name(ev.a, 'ko')} 씨가 ${this.name(ev.b, 'ko')} 씨에게 청혼했어요! 결혼식은 ${this.whenKo(day)} ${hour}시 · 마을회관`, `${this.name(ev.a, 'en')} proposed to ${this.name(ev.b, 'en')}! The wedding is ${this.whenEn(day)} at ${hour}:00 at the town hall`, { icon: 'ui_icon_story', mission: 'C1', watch: first }));
+          if (this.known(ev.a) || this.known(ev.b) || first) out.push(this.card('engaged', [ev.a, ev.b], `${this.name(ev.a, 'ko')} 씨가 ${this.name(ev.b, 'ko')} 씨에게 청혼했어요! 결혼식은 ${this.whenKo(day)} ${hour}시 · 마을회관`, `${this.name(ev.a, 'en')} proposed to ${this.name(ev.b, 'en')}! The wedding is ${this.whenEn(day)} at ${hour}:00 at the town hall`, { icon: 'ui_icon_story', mission: 'C1', watch: true }));
         }
         // the guests start getting ready at 10:30 (prep props appear as the C1 items land)
         const at = this.at(day, L.weddingPrepHour);
@@ -271,6 +274,14 @@ export class LifeDirector {
       out.push({ a: 'beat', kind: 'birthday', at: null, sids: [sid], venue: null, data: { age } });
       out.push(this.card('birthday', [sid], `오늘은 ${this.name(sid, 'ko')}의 ${age}번째 생일이에요!`, `It’s ${this.name(sid, 'en')}’s ${age}th birthday!`, { icon: 'ui_icon_story' }));
     }
+  }
+
+  /** the first wedding's morning card (10:00, with 보러 가기) */
+  weddingCardAt(day) { return this.at(day, Math.max(0, this.L.weddingPrepHour - 0.5)); }
+  weddingDayCard(day, hour, a, b) {
+    const c = this.card('weddingday', [a, b], `오늘 ${hour}시, 마을회관에서 첫 결혼식이 열려요!`, `The first wedding is today at ${hour}:00 at the town hall!`, { icon: 'ui_icon_story', watch: true });
+    c.key = 'wc:' + day;
+    return c;
   }
 
   farewellCard(nameKo, nameEn, cardAt, pid) {

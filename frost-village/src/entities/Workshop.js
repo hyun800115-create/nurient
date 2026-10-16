@@ -42,7 +42,7 @@ export class Workshop extends Station {
     this.inputTypes = Object.keys(R.cols);
     // one tower per ingredient on the input pad
     this.inStack.clear(gs.effects);
-    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-16, -4], [16, 6]], typeCols: R.cols, max: bal.inputMax * 3 });
+    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-16, -4], [16, 6]], typeCols: R.cols, max: bal.inputMax * 3, bake: true });
     if (kind === 'toolsmith') this.outStack.max = bal.outputMax;
     this.inPad.icon && this.inPad.icon.setAlpha(0.45);
     this.nextTool = 0;

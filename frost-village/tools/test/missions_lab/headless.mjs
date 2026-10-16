@@ -50,6 +50,7 @@ export function makeHeadless(opts = {}) {
       return new Promise((resolve) => { drives.push({ spec, at: fw.T + (opts.drivePar || 25), resolve }); });
     },
     chiefDriving: () => drives.length > 0,
+    abortDrive: () => { H.aborts = (H.aborts || 0) + 1; for (const d of drives.splice(0)) d.resolve({ stars: 0, aborted: true, reason: 'abort' }); },
   };
   const later = (id) => (id === 'missions' ? H.m && H.m.api : id === 'bank' ? H.b && H.b.api : id === 'vehicles' ? vehicles : (opts.later && opts.later[id]) || null);
   const ports = {

@@ -62,6 +62,8 @@ import { voiceFor } from '../voice/cast.js';
 // ---- (v4-C2) 주민과 수다 떨기 (docs/build_reports/chat.md)
 import { ResidentChat } from '../systems/ResidentChat.js';
 import { newChatId } from '../core/Save.js';
+// ---- (v4.2) 촌장의 하루 (docs/v42_plan.md): the orchestrator and its systems
+import { buildV42 } from '../systems/v42/index.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -201,6 +203,8 @@ export class Game extends Phaser.Scene {
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
     this.progress = new Progression(this, sv.progress);
     this.tutorial = new Tutorial(this);
+    // ---- (v4.2) made before the sites are restored (its own sites take their saved state)
+    buildV42(this, sv);
 
     // lock zones that are not open yet
     for (const id in this.zones) if (!this.zones[id].unlocked) this.setZoneEnabled(id, false);
@@ -212,6 +216,7 @@ export class Game extends Phaser.Scene {
     this.restore(sv);
     this.restoreV3Stock(sv);
     this.restoreLabour(sv);
+    if (this.v42) this.v42.afterRestore(sv);
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
@@ -837,14 +842,17 @@ export class Game extends Phaser.Scene {
     for (const s of this.stationList) if (s.op && s.op.update(dt)) on = true;
     for (const w of this.workshops) if (w.op && w.op.update(dt)) on = true;
     const p = this.player, ready = this.padT <= 0;
+    const PP = this.v42 && this.v42.pickup;
     for (const id in this.piles) {
       const pl = this.piles[id];
       if (pl.update(dt)) {
         on = true;
-        // the chief takes the catch from the pile (like an output pad)
-        if (ready) { if (pl.takeTo(p, p.capacity)) this.padT = BALANCE.player.padItemInterval; else if (pl.count > 0 && p.room <= 0) p.warnFull(); }
+        // the chief takes the catch from the pile (like an output pad) ((v4.2) when the PickupPolicy allows)
+        const can = !PP || PP.mayTake(pl, p, dt);
+        if (ready && can) { if (pl.takeTo(p, p.capacity)) { this.padT = BALANCE.player.padItemInterval; if (PP) PP.took(p); } else if (pl.count > 0 && p.room <= 0) p.warnFull(); }
       }
     }
+    if (PP) PP.endFrame();
     return on;
   }
 
@@ -1624,6 +1632,8 @@ export class Game extends Phaser.Scene {
     if (this.civic) this.civic.update(dt);
     // ---- (v4-A) the rail strip, the train, the town, day and night
     if (this.v4) this.v4.update(dt);
+    // ---- (v4.2) 촌장의 하루
+    if (this.v42) this.v42.update(dt);
     this.checkLazyGates(dt);
     this.v3T = (this.v3T || 0) - dt;
     if (this.v3T <= 0) {
@@ -1737,6 +1747,11 @@ export class Game extends Phaser.Scene {
     let on = false;
     const ready = this.padT <= 0;
     const cap = p.capacity;
+    // ---- (v4.2) 자동 줍기: every take path asks the one PickupPolicy (deliveries are never gated)
+    const PP = this.v42 && this.v42.pickup;
+    if (PP) PP.frame();
+    const may = (src) => !PP || PP.mayTake(src, p, dt);
+    const took = () => { this.padT = BALANCE.player.padItemInterval; if (PP) PP.took(p); };
     for (const s of this.stationList) {
       if (!s.enabled) continue;
       if (s.inPad.contains(p.x, p.y)) {
@@ -1747,8 +1762,9 @@ export class Game extends Phaser.Scene {
         }
       } else if (s.outPad.contains(p.x, p.y)) {
         on = true;
-        if (ready) {
-          if (s.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval;
+        const can = may(s);
+        if (ready && can) {
+          if (s.takeTo(p, cap)) took();
           else if (s.outStack.count > 0 && p.room <= 0) p.warnFull();
         }
       }
@@ -1776,7 +1792,7 @@ export class Game extends Phaser.Scene {
     for (const w of this.workshops) {
       if (!w.enabled) continue;
       if (w.inPad.contains(p.x, p.y)) { on = true; if (ready && w.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; w.inPad.pulse(); } }
-      else if (w.outPad.contains(p.x, p.y)) { on = true; if (ready) { if (w.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval; else if (w.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
+      else if (w.outPad.contains(p.x, p.y)) { on = true; const can = may(w); if (ready && can) { if (w.takeTo(p, cap)) took(); else if (w.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
     }
     const wh = this.warehouse;
     if (wh && wh.enabled) {
@@ -1790,7 +1806,7 @@ export class Game extends Phaser.Scene {
       if (sto.cash.pad.contains(p.x, p.y) || sto.register.chief) on = true;
     }
     const bh = this.boathouse;
-    if (bh && bh.enabled && bh.outPad.contains(p.x, p.y)) { on = true; if (ready) { if (bh.takeTo(p, cap)) this.padT = BALANCE.player.padItemInterval; else if (bh.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
+    if (bh && bh.enabled && bh.outPad.contains(p.x, p.y)) { on = true; const can = may(bh); if (ready && can) { if (bh.takeTo(p, cap)) took(); else if (bh.outStack.count > 0 && p.room <= 0) p.warnFull(); } }
     // (v3.5) the discard spot also comes early if the chief's full bag has nowhere to go (grill full both ways)
     if (!this._trashEarly && this.player.room <= 0 && this.tutorial && (this.trashCheckT = (this.trashCheckT || 0) - dt) <= 0) {
       this.trashCheckT = 0.5;
@@ -1907,6 +1923,8 @@ export class Game extends Phaser.Scene {
       // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry and cash
       c1: this.civic ? this.civic.serialize() : undefined,
       cid: this.cid,
+      // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
+      ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };
   }
 
@@ -1999,6 +2017,8 @@ export class Game extends Phaser.Scene {
           v4: gs.v4 ? gs.v4.state() : null,
           // ---- (v4-C)
           civic: gs.civic ? gs.civic.state() : null,
+          // ---- (v4.2)
+          v42: gs.v42 ? gs.v42.state() : null,
         };
       },
       give(c) { gs.economy.add(Math.floor(c || 0)); return gs.economy.coins; },

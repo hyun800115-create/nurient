@@ -462,7 +462,10 @@ export class StoryLife {
       birth: async (sh, beat) => { await playBirth(sh, beat, this.sceneCtx()); if (!sh.cancelled) await playBirthDawn(sh, beat, this.sceneCtx()); },
       stroller: (sh, beat) => playStroller(sh, beat, this.sceneCtx()),
       firststeps: (sh, beat) => playFirstSteps(sh, beat, this.sceneCtx()), school: (sh, beat) => playSchoolDay(sh, beat, this.sceneCtx()), outdoor: (sh, beat) => playOutdoorClass(sh, beat, this.sceneCtx()),
-      wish: (sh, beat) => playElderWish(sh, beat, this.sceneCtx()), lastday: (sh, beat) => playLastDay(sh, beat, this.sceneCtx()), birthday: (sh, beat) => playBirthday(sh, beat, this.sceneCtx()),
+      // (a preview borrows an elder from wherever they are: they start a few steps from the bench, not a street away)
+      wish: (sh, beat) => { this.nearStart(sh, beat.data.elder, beat.data.to); return playElderWish(sh, beat, this.sceneCtx()); },
+      lastday: (sh, beat) => { this.nearStart(sh, beat.data.elder, beat.data.bench); return playLastDay(sh, beat, this.sceneCtx()); },
+      birthday: (sh, beat) => playBirthday(sh, beat, this.sceneCtx()),
       date: (sh, beat) => playDate(sh, beat, this.sceneCtx()), gathering: (sh, beat) => playGathering(sh, beat, this.sceneCtx()),
     }[kind];
     if (!run) return Promise.resolve(false);
@@ -477,6 +480,13 @@ export class StoryLife {
     const beat = { kind, data: Object.assign({ fast: false }, cast, { preview: true }), sids: [] };
     if (cast.focus && this.ports.view && this.ports.view.focus) this.ports.view.focus(cast.focus.x, cast.focus.y, 900);
     return new Promise((resolve) => this.runScene(slot, beat, (sh) => run(sh, beat), () => { st.end(slot); resolve(true); }));
+  }
+
+  /** a preview only: put a borrowed body a few steps from where its scene happens (when it is far away) */
+  nearStart(sh, pid, to) {
+    const b = this.body(pid);
+    if (!b || !to || Math.hypot(b.x - to.x, (b.y - to.y) * 2) < 600 || !sh.hold(pid)) return;
+    sh.place(pid, to.x - 150, to.y + 110, 'NE');
   }
 
   /** a cast for a preview from the people near the camera (free bodies, by age group); null when nobody fits */
@@ -543,13 +553,19 @@ export class StoryLife {
       default: return null;
     }
   }
-  /** nearbyPids over a wide radius (the preview may borrow people from the next street) */
+  /** nearbyPids over a wide radius (the preview may borrow people from the next street, then from further away:
+   *  an elder is rarely out at the garden exactly when the designer taps the menu) */
   nearbyPidsWide(at, n, age, not = []) {
     const T = this.ports.town;
     if (!at || !T || !T.nearby) return [];
     const reg = this.host && this.host.registry;
-    return T.nearby(at.x, at.y, 1400, n * 4 + not.length + 12)
-      .filter((p) => not.indexOf(p) < 0 && !this.ctx.holders.has(p) && (!reg || !reg.has(p) || reg.owner(p) === 'town') && (!age || this.ageGroup(p) === age)).slice(0, n);
+    let out = [];
+    for (const r of [1400, 3200, 8000]) {
+      out = T.nearby(at.x, at.y, r, n * 4 + not.length + 40)
+        .filter((p) => not.indexOf(p) < 0 && !this.ctx.holders.has(p) && (!reg || !reg.has(p) || reg.owner(p) === 'town') && (!age || this.ageGroup(p) === age)).slice(0, n);
+      if (out.length >= n) break;
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- per frame

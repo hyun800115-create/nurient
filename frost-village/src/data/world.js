@@ -692,3 +692,48 @@ WORLD.v4.eup = {
   ave: { road: [30.0, 34.0], cls: 'cobble' },                             // 솔방울 중앙로
   sidewalks: ['shopalley', 'homes', 'apts', 'alley_t'],                   // 발자국 길 → 보도
 };
+
+// =====================================================================
+// ---- (v4.2) 촌장의 하루 (docs/v42_plan.md §9). 자리를 고친 뒤: node tools/test/v42_layout.mjs 가 'no problems' 여야 해요
+//   L(i, j) = 위 v4 의 도로 격자 (기찻길 j = 0, +j = 바다 쪽)
+// =====================================================================
+WORLD.v42 = {
+  // ── 새 기찻길: 서리역 끝(차막이 자리)과 솔방울역 끝에 '고리 선로' (기관차가 늘 앞으로 달려요)
+  //    from / to = 곧은 선로 타일 (k −6 … 41), loops.ours / town: t = 갈림목(스프링 전철기) i, a = 고리 곧은 길 끝 i,
+  //    r = 굽은 길 반지름(칸), bc = 고리 바다 쪽 곧은 길 길이(칸), side = 1 (바다 쪽)
+  //    fence = 역 가는 길 사람들이 새 곧은 선로에 들어가지 않게 낮은 눈 울타리 [i 시작, j, i 끝, j]
+  rail: { j: 0, from: -6, to: 41, crossings: [8, 33],
+          loops: { ours: { t: -1, a: -6, r: 1.75, bc: 1.5, side: 1 }, town: { t: 37, a: 42, r: 1.75, bc: 1.5, side: 1 } },
+          sign: { i: 44.6, j: -1.2 }, fence: [[-6, -0.75, -1.5, -0.75]] },
+  // ── 기차가 서는 자리 (맨 앞 기관차 코끝의 i): ours = 마을 열차(1) / 읍 열차(2), town = 솔방울역
+  stops: { ours: { 1: -0.8, 2: -2.9 }, town: 31.6 },
+  // ── 촌장 사무실 (광장 서쪽 바닷가 길): 건물 자리, 직원 뽑기 발판, 새 길 갈림 w_office
+  office: { x: 110, y: 810, key: 'chief_office', hire: [-150, 905], node: 'w_office', door: [-62, 824], desk: [150, 760] },
+  // ── 서리 은행 (사무실 서쪽 옆, 같은 길): 건물 자리, 문, 창구 발판
+  bank: { x: -340, y: 570, key: 'bank', door: [-458, 629] },
+  // ── 서리 물류창고 (서리역 남쪽 끝, 은행길 아래): 건물 중심 (격자), 썰매가 대는 문 번호, 물류 금고, 역의 썰매 정류장
+  depot: { i: 28.4, j: -27.4, key: 'logistics_center', bay: 2, bayPt: [34.1, -26.2], door: [27.3, -30.6], till: [30.0, -31.4], sleighStop: [5.0, -5.0] },
+  // ── 물류창고 가는 길 (v5 / v8 이 같은 id 로 이어받아요: 덧붙이지 말고 id 로 고치기)
+  streets: [
+    { id: 'ave_s',    axis: 'y', i: [30.0, 34.0], j: [-22.2, -18.0], paint: [30.0, 31.5], cls: 'dirt', v42: true, region: 'se', name: 'st_ave_s' },
+    { id: 'bank_st',  axis: 'x', i: [23.1, 40.9], j: [-24.2, -22.2], paint: [-24.0, -22.6], paintI: [23.1, 37.0], cls: 'dirt', v42: true, region: 'se', name: 'st_bank' },
+    { id: 'lgx_dock', axis: 'y', i: [34.8, 36.8], j: [-27.6, -24.2], cls: 'dirt', apron: [32.3, 36.8, -27.6, -25.0], v42: true, region: 'se', name: 'st_lgx_dock' },
+    { id: 'lgx_walk', axis: 'path', pts: [[23.8, -24.2], [23.8, -31.0], [27.3, -31.0]], cls: 'path', v42: true, region: 'se', name: 'st_lgx_walk' },
+  ],
+  // ── 썰매 길 (격자 점): 정류장 → 역앞 거리 (j −5) → 중앙로 (i 31) → ave_s → bank_st → lgx_dock → 2번 문
+  sleighRoute: [[5.0, -5.0], [31.0, -5.0], [31.0, -22.2], [31.0, -23.2], [35.8, -23.2], [35.8, -26.2], [34.1, -26.2]],
+  // ── 새 길 갈림 (v2 길 그래프): 사무실 앞 w_office, 은행 문 앞 샛길
+  roads: {
+    nodes: { w_office: [-120, 880], w_bank: [-458, 640] },
+    edges: [['plaza_w', 'w_office', { via: [[380, 930], [130, 985]] }], ['w_office', 'w_gate_n', { via: [[-170, 760]] }], ['w_bank', 'w_office', { via: [[-200, 760]] }]],
+  },
+  // ── 터를 닦을 때 치우는 장식·나무 [종류, x, y, 언제] (언제: office = 사무실 터, bank = 은행 터, rail = 고리 선로와 함께)
+  removeDecor: [
+    ['tree', 190, 860, 'office'], ['tree', 260, 720, 'office'], ['tree', 300, 930, 'office'], ['tree', -180, 560, 'bank'],
+    ['snow_pile_a', -140, 500, 'bank'], ['regionTree', 2950, 1150, 'rail'], ['regionTree', 2930, 1010, 'rail'],
+  ],
+  // ── 옮기는 장식 [종류, x, y → 새 x, 새 y, 언제]
+  moveDecor: [['lamp_post', -190, 690, -230, 720, 'bank'], ['signpost', -40, 720, -20, 600, 'office']],
+  // ── 가장자리 숲에서 비워 두는 곳 [x0, y0, x1, y1] (숲의 무작위 순서는 그대로: 다른 나무가 움직이지 않아요)
+  treeGaps: [[6000, 2450, 6150, 2850], [3300, 3300, 3700, 3460]],
+};

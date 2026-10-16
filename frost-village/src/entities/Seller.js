@@ -20,7 +20,7 @@ export class CashPad {
     this.gs = gs; this.x = x; this.y = y;
     this.pad = new Pad(gs, x, y, 'cash', 1.5);
     this.value = 0;
-    this.pile = new ItemStack(gs, { scale: 0.85, cols: [[0, -16], [-22, -5], [22, -5], [0, 6], [-44, 6], [44, 6], [-22, 17], [22, 17], [0, 28]], perCol: 5, max: BALANCE.cash.pileVisualMax });
+    this.pile = new ItemStack(gs, { scale: 0.85, cols: [[0, -16], [-22, -5], [22, -5], [0, 6], [-44, 6], [44, 6], [-22, 17], [22, 17], [0, 28]], perCol: 5, max: BALANCE.cash.pileVisualMax, bake: true });
     this.collectT = 0;
     this.enabled = true;
     this.spin = gs.effects.loop('fx_coin_spin', x, y - 70, 46, DEPTH.LABEL - 5);
@@ -113,7 +113,7 @@ export class Market {
     this.goods.forEach((g, i) => { tc[g] = i; });
     this.stock = new ItemStack(gs, {
       scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]],
-      typeCols: tc, max: this.maxPerType * this.goods.length,
+      typeCols: tc, max: this.maxPerType * this.goods.length, bake: cfg.id === 'store' ? true : 'eager',
     });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.queue = [];      // customers in line (index 0 = front)
@@ -540,7 +540,7 @@ export class TradePost {
     this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.42, 'trade');
     this.shelf = new Pad(gs, this.x + cfg.shelf[0], this.y + cfg.shelf[1], 'input', 1.6, { icon: 'item_plank', iconSize: 40 });
     this.maxPerType = Math.max(1, Math.floor(BALANCE.trade.shelfMax) || 40);
-    this.stock = new ItemStack(gs, { scale: 0.95, cols: [[-20, -4], [20, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: this.maxPerType * GOODS.length });
+    this.stock = new ItemStack(gs, { scale: 0.95, cols: [[-20, -4], [20, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: this.maxPerType * GOODS.length, bake: 'eager' });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     // (v3) the merchant is the customer: he stands in front of the stall (the clerk works behind it)
     this.merchant = new Character(gs, 'villager_c', this.x + cfg.merchant[0], this.y + cfg.merchant[1], { dir: 1 });

@@ -7,8 +7,8 @@
    "ui4_icons": 1.02,
    "life2_items": 0.03,
    "life2_decor": 0.3,
-   "life2_wedding": 1.63,
    "civ_bank": 5.02,
+   "life2_wedding": 1.63,
    "ui_mission_card": 0.08,
    "ui_mission_card_done": 0.08,
    "ui_mission_board": 0.14,
@@ -17,12 +17,12 @@
    "ui_passbook": 0.15,
    "ui_passbook_row": 0.02
   },
-  "msMissions": 0.0186,
-  "msBank": 0.0031,
+  "msMissions": 0.0181,
+  "msBank": 0.0051,
   "p95Missions": 0.1,
-  "worldObjects": 117,
-  "uiObjects": 56,
-  "moduleObjects": 29,
+  "worldObjects": 99,
+  "uiObjects": 66,
+  "moduleObjects": 23,
   "placeholders": [],
   "errors": []
  },
@@ -73,7 +73,7 @@
   "docs/previews/missions_lab_zoom06.png",
   "docs/previews/missions_lab_zoom12.png"
  ],
- "seconds": 77,
+ "seconds": 23,
  "bank": {
   "texMiB": 186.8,
   "moduleMiB": 9.65,
@@ -92,12 +92,12 @@
    "ui_passbook": 0.15,
    "ui_passbook_row": 0.02
   },
-  "msMissions": 0.1225,
-  "msBank": 0.0528,
-  "p95Missions": 0.2,
-  "worldObjects": 132,
+  "msMissions": 0.0476,
+  "msBank": 0.0756,
+  "p95Missions": 0.1,
+  "worldObjects": 115,
   "uiObjects": 69,
-  "moduleObjects": 29,
+  "moduleObjects": 26,
   "placeholders": [],
   "errors": [],
   "drawCalls": 5
@@ -120,8 +120,8 @@
  },
  "runs": {
   "bank": {
-   "seconds": 72,
-   "at": "2026-10-10T01:10:16.386Z"
+   "seconds": 118,
+   "at": "2026-10-10T13:30:42.774Z"
   },
   "zoom+desktop": {
    "seconds": 26,
@@ -176,8 +176,8 @@
    "at": "2026-10-10T08:41:23.050Z"
   },
   "bank+checks+desktop": {
-   "seconds": 251,
-   "at": "2026-10-10T08:45:38.086Z"
+   "seconds": 247,
+   "at": "2026-10-10T13:28:14.437Z"
   },
   "bank+panel+accept": {
    "seconds": 77,
@@ -186,6 +186,22 @@
   "bubbles+accept+bank": {
    "seconds": 77,
    "at": "2026-10-10T08:52:20.562Z"
+  },
+  "bubbles+accept+delivery+moving+chip": {
+   "seconds": 99,
+   "at": "2026-10-10T13:21:36.559Z"
+  },
+  "drive+lead+escort+flowers": {
+   "seconds": 73,
+   "at": "2026-10-10T13:22:55.674Z"
+  },
+  "title+zoom+panel": {
+   "seconds": 64,
+   "at": "2026-10-10T13:24:03.550Z"
+  },
+  "drive": {
+   "seconds": 23,
+   "at": "2026-10-10T13:39:51.075Z"
   }
  },
  "desktop": {
@@ -199,16 +215,16 @@
    "life2_wedding": 1.63,
    "civ_bank": 5.02,
    "ui_mission_card": 0.08,
+   "ui_progress_bg": 0.01,
    "ui_mission_card_done": 0.08,
    "ui_mission_board": 0.14,
-   "ui_progress_bg": 0.01,
    "ui_progress_fill": 0.01,
-   "ui_passbook": 0.15,
-   "ui_passbook_row": 0.02
+   "ui_passbook_row": 0.02,
+   "ui_passbook": 0.15
   },
-  "msMissions": 0.195,
-  "msBank": 0.1472,
-  "p95Missions": 0.3,
+  "msMissions": 0.173,
+  "msBank": 0.0642,
+  "p95Missions": 0.2,
   "worldObjects": 108,
   "uiObjects": 142,
   "moduleObjects": 29,
@@ -221,8 +237,8 @@
   "texMiB": 186.8,
   "moduleMiB": 9.65,
   "moduleTex": {
-   "ui3_icons": 1.17,
    "ui4_icons": 1.02,
+   "ui3_icons": 1.17,
    "life2_items": 0.03,
    "life2_decor": 0.3,
    "life2_wedding": 1.63,
@@ -235,9 +251,9 @@
    "ui_passbook": 0.15,
    "ui_passbook_row": 0.02
   },
-  "msMissions": 0.1353,
-  "msBank": 0.0455,
-  "p95Missions": 0.3,
+  "msMissions": 0.0974,
+  "msBank": 0.0286,
+  "p95Missions": 0.2,
   "worldObjects": 120,
   "uiObjects": 56,
   "moduleObjects": 41,
@@ -272,7 +288,7 @@
   "counter": {
    "frames": 300,
    "rebuilds": 0,
-   "msPerFrame": 3.01
+   "msPerFrame": 1.98
   },
   "panel": {
    "secs": 60,
@@ -289,6 +305,6 @@
   "bouquets": 5
  },
  "bankOpening": {
-  "c16": false
+  "c16": true
  }
 }

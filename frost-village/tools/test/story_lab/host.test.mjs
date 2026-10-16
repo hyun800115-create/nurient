@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { StoryHost, InlineTransport } from '../../../src/story/host.js';
 import { PersonRegistry } from '../../../src/story/model/registry.js';
 import { adoptRoster, lookSex, baseName } from '../../../src/story/model/adopt.js';
-import { sanitizeSlice, makeSlice, SLICE_CAP, StorySideStore } from '../../../src/story/save.js';
+import { sanitizeSlice, makeSlice, SLICE_CAP, SLICE_VERSION, StorySideStore } from '../../../src/story/save.js';
 import { MODULE } from '../../../src/story/index.js';
 import { makeFakePorts, run, MemStorage, DAY, HOUR } from './fakePorts.mjs';
 import { NodeWorkerTransport } from './nodeTransport.mjs';
@@ -232,18 +232,29 @@ test('saves: the side record round-trips (packed, ≤ 450 K); a lost record rege
   d.host.destroy();
 });
 
-test('slice sanitizer: 300 fuzzed slices never throw and stay under 1 KB; the module accepts its own output', () => {
+test('slice sanitizer: 300 fuzzed slices (v1 and v2) never throw, stay under 1 KB and are stable; the module accepts its own output', () => {
   let seed = 7;
   const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
   const junk = () => { const k = Math.floor(rnd() * 7); return [null, 'x'.repeat(Math.floor(rnd() * 3000)), -5, 1e12, [1, 'a', {}], { v: 1 }, true][k]; };
   for (let i = 0; i < 300; i++) {
-    const raw = { v: rnd() < 0.8 ? 1 : junk(), day: junk(), life: { seen: { wedding: rnd() < 0.5, x: junk() }, names: Array.from({ length: Math.floor(rnd() * 80) }, () => ['t:' + i, '우진'.repeat(1 + Math.floor(rnd() * 3)), 'Ujin']), garden: [junk(), { ko: '순자 할머니', en: 'Grandma', day: 3 }], gardenOld: ['a'.repeat(100)], wishes: { 3: 2, x: 9 } }, happen: junk() };
+    const pids = () => (rnd() < 0.7 ? 't:' + Math.floor(rnd() * 300) : junk());
+    const raw = { v: rnd() < 0.8 ? (rnd() < 0.5 ? 1 : 2) : junk(), day: junk(), T: junk(), t0: rnd() < 0.5 ? 1425 : junk(),
+      life: { seen: { wedding: rnd() < 0.5, x: junk() }, names: Array.from({ length: Math.floor(rnd() * 80) }, () => ['t:' + i, '우진'.repeat(1 + Math.floor(rnd() * 3)), 'Ujin']),
+        garden: [junk(), { ko: '순자 할머니', en: 'Grandma', day: 3, s: junk() }, { ko: '태민 할아버지', en: 'Grandpa', day: 4, s: 2 }], gardenOld: ['a'.repeat(100)], wishes: { 3: 2, x: 9, 't:4': 1 },
+        wishDone: { 't:4': ['park_bench', junk()] }, wishActive: pids(), wishId: junk(), wishLast: pids(), firstCouple: [pids(), pids()],
+        booked: Array.from({ length: Math.floor(rnd() * 12) }, () => [['w', 's', 'l', 'f', 'x'][Math.floor(rnd() * 5)], Math.floor(rnd() * 40), pids(), pids(), junk()]) }, happen: junk() };
     const s = sanitizeSlice(raw);
-    if (s) assert.ok(JSON.stringify(s).length <= SLICE_CAP);
+    if (s) {
+      assert.ok(JSON.stringify(s).length <= SLICE_CAP);
+      assert.ok(s.life.booked.length <= 8 && s.life.booked.every((b) => typeof b[2] === 'string'));
+      assert.equal(new Set(s.life.garden.map((g) => g.s)).size, s.life.garden.length, 'one stone per slot');
+      assert.deepEqual(sanitizeSlice(JSON.parse(JSON.stringify(s))), s, 'stable');
+    }
   }
-  const own = makeSlice({ day: 4, ok: true, chars: 1000, life: { seen: { wedding: true }, names: Array.from({ length: 40 }, (_, i) => ['t:' + i, '서아', 'Seoa']), garden: [], gardenOld: [], wishes: {} }, happen: { last: 5 } });
+  const own = makeSlice({ day: 4, T: 2450, t0: 1425, ok: true, chars: 1000, life: { seen: { wedding: true }, names: Array.from({ length: 40 }, (_, i) => ['t:' + i, '서아', 'Seoa']), garden: [], gardenOld: [], wishes: {}, booked: [['w', 5, 't:3', 't:9', 0]] }, happen: { last: 5 } });
   assert.deepEqual(sanitizeSlice(JSON.parse(JSON.stringify(own))), own);
-  assert.equal(MODULE.sanitize(own).v, 1);
+  assert.equal(MODULE.sanitize(own).v, SLICE_VERSION);
+  assert.equal(MODULE.sanitize(own).t0, 1425, 't0 travels with the slice (critique H2)');
   assert.equal(MODULE.saveKey, 'story');
 });
 

@@ -1,0 +1,2174 @@
+{
+ "version": 1,
+ "generator": "tools/blender/tr2_render.py + tr2_pack.py (docs/CONTRACT_V42.md section AK)",
+ "conventions": {
+  "ppu": 64,
+  "source": "docs/CONTRACT_V42.md section AK, design docs/v42_plan.md section 5 (balloon loops, consist, stops).",
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin. Train cars: the ground point under the car centre on the track centre line. Loop decals: the turnout point T1 = L(-1, 0) / T2 = L(37, 0) (anchorPx is exact; place the frame so anchorPx lands on anchorWorldPx). Fence tile: the segment middle on the fence line. Props: the ground under the post / tower centre.",
+  "train": "characters{} kind \"train\" (same as assets/town): rendered dirs S, SE, E, NE, N + flipX mirrors (SW <- SE, W <- E, NW <- NE); frame names {anim}_{dir}_{i}; anims idle (1 f), move (8 f, one wheel turn at 45 deg / frame + a gentle sway; the game sets the fps from the speed: fps = 12 * v / 2.6 like the engine, or per car 8 * v / trackPerLoopM for slip-free wheels), door_open (box car only, SE + NE only, 4 f once; play it reversed to close, then idle). anims[a].dirs lists the dirs an anim exists in. shadowFrames: a soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip) with its own frameSize / anchor; draw it on the ground layer under the car, then the car.",
+  "coupling": "couplerM = the coupler faces in metres along the heading (front negative). The cars touch at the couplers: anchor spacing = couplerM.back of the car in front - couplerM.front of the car behind (trainConsist.*.spacingM). The dark gap between two bodies = the two coupler stubs (0.15 m each).",
+  "points": "every *Point / *Points / cargoSlots value is a px offset [dx, dy] from the car anchor for the rendered dir; for a mirrored dir negate dx and swap L <-> R. doorPoints[dir] = {L: [front, rear], R: [front, rear]} = ground beside each door (coach: the platform steps; box car: the two door halves); L / R = left / right of the car facing its heading. windowPoints = lit window centres visible in that dir (night glow), lampPoints = lanterns / tail lamps, cargoPoint = [dx, dy, behind] inside the open box car door (where crates fly in), cargoSlots = 6 x [dx, dy, behind] bottom-centre of each crate stack on the flat car deck (sorted back to front: draw in this order), stackStep px per crate icon at cargoScale. headTop = top of the roof (min over dirs; headTopDir per dir).",
+  "decals": "rail_loop_ours / rail_loop_town are ground decals (bake them into the ground like the rail tiles, AFTER the straight rail_x tiles listed in tilesUnder, which must be drawn as plain rail_x - no buffer stop at k -6 / 41). They are a difference matte against exactly those tiles: decal over tiles = the loop, the turnout (repainted straight route) and a seamless joint at A / T. The straight main line between A and the turnout is NOT in the decal (the tiles show through).",
+  "tiles": "rail_fence_x: one tile = sqrt(2) m along world X, step (64, 32) px, owns the post at its -X end, shadows join seamlessly; close a run with rail_fence_x_end at the +X end. Depth-sort with the actors (tileLayer \"objects\").",
+  "shadows": "decals / fence / props have a baked soft cool shadow falling screen down-right; train cars none (use their shadowFrames)."
+ },
+ "atlases": [
+  {
+   "key": "train_coach",
+   "png": "train2/train_coach.png",
+   "json": "train2/train_coach.json"
+  },
+  {
+   "key": "train_boxcar",
+   "png": "train2/train_boxcar.png",
+   "json": "train2/train_boxcar.json"
+  },
+  {
+   "key": "train_flatcar",
+   "png": "train2/train_flatcar.png",
+   "json": "train2/train_flatcar.json"
+  },
+  {
+   "key": "train2_rails",
+   "png": "train2/train2_rails.png",
+   "json": "train2/train2_rails.json"
+  }
+ ],
+ "sprites": {
+  "rail_loop_ours": {
+   "atlas": "train2_rails",
+   "frame": "rail_loop_ours",
+   "anchor": [
+    0.758278,
+    0.864078
+   ],
+   "anchorPx": [
+    458,
+    356
+   ],
+   "frameSize": [
+    604,
+    412
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "drawAfter": "rail_x",
+   "anchorLattice": [
+    -1,
+    0
+   ],
+   "anchorWorldPx": [
+    3056,
+    1283
+   ],
+   "mirrorOfOurs": false,
+   "tilesUnder": [
+    {
+     "key": "rail_x",
+     "k": -6,
+     "at": [
+      -288,
+      -144
+     ],
+     "worldPx": [
+      2768,
+      1139
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": -5,
+     "at": [
+      -224,
+      -112
+     ],
+     "worldPx": [
+      2832,
+      1171
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": -4,
+     "at": [
+      -160,
+      -80
+     ],
+     "worldPx": [
+      2896,
+      1203
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": -3,
+     "at": [
+      -96,
+      -48
+     ],
+     "worldPx": [
+      2960,
+      1235
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": -2,
+     "at": [
+      -32,
+      -16
+     ],
+     "worldPx": [
+      3024,
+      1267
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": -1,
+     "at": [
+      32,
+      16
+     ],
+     "worldPx": [
+      3088,
+      1299
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 0,
+     "at": [
+      96,
+      48
+     ],
+     "worldPx": [
+      3152,
+      1331
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 1,
+     "at": [
+      160,
+      80
+     ],
+     "worldPx": [
+      3216,
+      1363
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 2,
+     "at": [
+      224,
+      112
+     ],
+     "worldPx": [
+      3280,
+      1395
+     ]
+    }
+   ],
+   "pointsPx": {
+    "T": [
+     0,
+     0
+    ],
+    "D": [
+     0,
+     -112
+    ],
+    "C": [
+     0,
+     -224
+    ],
+    "B": [
+     -96,
+     -272
+    ],
+    "A": [
+     -320,
+     -160
+    ],
+    "leftmost": [
+     -320,
+     -272
+    ]
+   },
+   "pointsLattice": {
+    "T": [
+     -1,
+     0
+    ],
+    "D": [
+     -2.75,
+     1.75
+    ],
+    "C": [
+     -4.5,
+     3.5
+    ],
+    "B": [
+     -6,
+     3.5
+    ],
+    "A": [
+     -6,
+     0
+    ],
+    "far": [
+     -7.75,
+     1.75
+    ]
+   },
+   "pathPx": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     -12.7,
+     -7.2
+    ],
+    [
+     -23.5,
+     -15.0
+    ],
+    [
+     -32.4,
+     -23.5
+    ],
+    [
+     -39.2,
+     -32.4
+    ],
+    [
+     -43.8,
+     -41.7
+    ],
+    [
+     -46.1,
+     -51.2
+    ],
+    [
+     -46.1,
+     -60.8
+    ],
+    [
+     -43.8,
+     -70.3
+    ],
+    [
+     -39.2,
+     -79.6
+    ],
+    [
+     -32.4,
+     -88.5
+    ],
+    [
+     -23.5,
+     -97.0
+    ],
+    [
+     -12.7,
+     -104.9
+    ],
+    [
+     0.0,
+     -112.0
+    ],
+    [
+     12.7,
+     -119.2
+    ],
+    [
+     23.5,
+     -127.0
+    ],
+    [
+     32.4,
+     -135.5
+    ],
+    [
+     39.2,
+     -144.4
+    ],
+    [
+     43.8,
+     -153.7
+    ],
+    [
+     46.1,
+     -163.2
+    ],
+    [
+     46.1,
+     -172.8
+    ],
+    [
+     43.8,
+     -182.3
+    ],
+    [
+     39.2,
+     -191.6
+    ],
+    [
+     32.4,
+     -200.5
+    ],
+    [
+     23.6,
+     -209.0
+    ],
+    [
+     12.7,
+     -216.8
+    ],
+    [
+     0.0,
+     -224.0
+    ],
+    [
+     -13.5,
+     -230.8
+    ],
+    [
+     -27.0,
+     -237.5
+    ],
+    [
+     -40.5,
+     -244.3
+    ],
+    [
+     -54.1,
+     -251.1
+    ],
+    [
+     -67.6,
+     -257.8
+    ],
+    [
+     -81.1,
+     -264.6
+    ],
+    [
+     -94.6,
+     -271.3
+    ],
+    [
+     -108.8,
+     -277.8
+    ],
+    [
+     -124.4,
+     -283.3
+    ],
+    [
+     -141.3,
+     -287.8
+    ],
+    [
+     -159.1,
+     -291.3
+    ],
+    [
+     -177.6,
+     -293.7
+    ],
+    [
+     -196.5,
+     -295.0
+    ],
+    [
+     -215.7,
+     -295.1
+    ],
+    [
+     -234.7,
+     -294.1
+    ],
+    [
+     -253.3,
+     -291.9
+    ],
+    [
+     -271.3,
+     -288.6
+    ],
+    [
+     -288.3,
+     -284.3
+    ],
+    [
+     -304.2,
+     -278.9
+    ],
+    [
+     -318.6,
+     -272.7
+    ],
+    [
+     -331.5,
+     -265.6
+    ],
+    [
+     -342.5,
+     -257.8
+    ],
+    [
+     -351.7,
+     -249.4
+    ],
+    [
+     -358.6,
+     -240.5
+    ],
+    [
+     -363.4,
+     -231.2
+    ],
+    [
+     -366.0,
+     -221.7
+    ],
+    [
+     -366.2,
+     -212.2
+    ],
+    [
+     -364.1,
+     -202.7
+    ],
+    [
+     -359.8,
+     -193.4
+    ],
+    [
+     -353.2,
+     -184.4
+    ],
+    [
+     -344.5,
+     -175.8
+    ],
+    [
+     -333.8,
+     -167.9
+    ],
+    [
+     -321.4,
+     -160.7
+    ]
+   ],
+   "pathLengthM": 17.6714,
+   "radiusM": 2.4749,
+   "radiusCells": 1.75,
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "switchTiesU": [
+    -0.2357,
+    -0.7071,
+    -1.1785,
+    -1.6499,
+    -2.1213
+   ],
+   "frogM": [
+    -2.1106,
+    0.45
+   ],
+   "placeHint": {
+    "rail_switch_stand": {
+     "lattice": [
+      -1.2,
+      -0.8
+     ],
+     "worldPx": [
+      2992,
+      1302.2
+     ],
+     "notes": "beside the switch toe on the land side, at the end of the two tie bars"
+    },
+    "rail_water_tower": {
+     "lattice": [
+      -6.0,
+      1.75
+     ],
+     "worldPx": [
+      2848,
+      1067
+     ],
+     "notes": "optional, centre of the semicircle infield (1.6 m footprint fits inside the inner ballast edge, radius 1.6 m)"
+    }
+   },
+   "matte": {
+    "maxErr": 43.7,
+    "p999Err": 0.33,
+    "meanErr": 0.1119,
+    "infeasiblePx": 317,
+    "infeasibleMaxErr": 254.0,
+    "repaintFrac": 0.8766
+   },
+   "notes": "Balloon loop at 서리역 (rail_loop_ours): the spring turnout at [-1, 0] (long switch ties, switch blades + two tie bars reaching to the land side, closure rails, frog and guard rails; the straight route through the turnout is repainted), curves D -> T and C -> D (R 1.75 cells), the straight B -> C and the semicircle A -> B joining the straight main line at A. Same ballast / sleepers / rails / snow / shadow as rail_x. Draw on the ground layer AFTER the rail_x tiles in tilesUnder (plain rail_x, drawn exactly as RoadPaint draws them); pathPx = the loop centre line T -> D -> C -> B -> A in px from the anchor (for RailPath cross-checks)."
+  },
+  "rail_loop_town": {
+   "atlas": "train2_rails",
+   "frame": "rail_loop_town",
+   "anchor": [
+    0.119898,
+    0.259259
+   ],
+   "anchorPx": [
+    94,
+    84
+   ],
+   "frameSize": [
+    784,
+    324
+   ],
+   "kind": "decal",
+   "layer": "ground",
+   "drawAfter": "rail_x",
+   "anchorLattice": [
+    37,
+    0
+   ],
+   "anchorWorldPx": [
+    5488,
+    2499
+   ],
+   "mirrorOfOurs": true,
+   "tilesUnder": [
+    {
+     "key": "rail_x",
+     "k": 34,
+     "at": [
+      -160,
+      -80
+     ],
+     "worldPx": [
+      5328,
+      2419
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 35,
+     "at": [
+      -96,
+      -48
+     ],
+     "worldPx": [
+      5392,
+      2451
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 36,
+     "at": [
+      -32,
+      -16
+     ],
+     "worldPx": [
+      5456,
+      2483
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 37,
+     "at": [
+      32,
+      16
+     ],
+     "worldPx": [
+      5520,
+      2515
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 38,
+     "at": [
+      96,
+      48
+     ],
+     "worldPx": [
+      5584,
+      2547
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 39,
+     "at": [
+      160,
+      80
+     ],
+     "worldPx": [
+      5648,
+      2579
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 40,
+     "at": [
+      224,
+      112
+     ],
+     "worldPx": [
+      5712,
+      2611
+     ]
+    },
+    {
+     "key": "rail_x",
+     "k": 41,
+     "at": [
+      288,
+      144
+     ],
+     "worldPx": [
+      5776,
+      2643
+     ]
+    }
+   ],
+   "pointsPx": {
+    "T": [
+     0,
+     0
+    ],
+    "D": [
+     224,
+     0
+    ],
+    "C": [
+     448,
+     0
+    ],
+    "B": [
+     544,
+     48
+    ],
+    "A": [
+     320,
+     160
+    ],
+    "leftmost": [
+     544,
+     160
+    ]
+   },
+   "pointsLattice": {
+    "T": [
+     37,
+     0
+    ],
+    "D": [
+     38.75,
+     1.75
+    ],
+    "C": [
+     40.5,
+     3.5
+    ],
+    "B": [
+     42,
+     3.5
+    ],
+    "A": [
+     42,
+     0
+    ],
+    "far": [
+     43.75,
+     1.75
+    ]
+   },
+   "pathPx": [
+    [
+     0.0,
+     -0.0
+    ],
+    [
+     14.3,
+     6.3
+    ],
+    [
+     30.0,
+     11.8
+    ],
+    [
+     47.0,
+     16.2
+    ],
+    [
+     64.9,
+     19.6
+    ],
+    [
+     83.4,
+     21.9
+    ],
+    [
+     102.4,
+     23.1
+    ],
+    [
+     121.6,
+     23.0
+    ],
+    [
+     140.6,
+     21.9
+    ],
+    [
+     159.1,
+     19.6
+    ],
+    [
+     177.0,
+     16.2
+    ],
+    [
+     194.0,
+     11.8
+    ],
+    [
+     209.7,
+     6.3
+    ],
+    [
+     224.0,
+     0.0
+    ],
+    [
+     238.3,
+     -6.3
+    ],
+    [
+     254.1,
+     -11.8
+    ],
+    [
+     271.0,
+     -16.2
+    ],
+    [
+     288.9,
+     -19.6
+    ],
+    [
+     307.5,
+     -21.9
+    ],
+    [
+     326.4,
+     -23.1
+    ],
+    [
+     345.6,
+     -23.0
+    ],
+    [
+     364.6,
+     -21.9
+    ],
+    [
+     383.1,
+     -19.6
+    ],
+    [
+     401.0,
+     -16.2
+    ],
+    [
+     417.9,
+     -11.8
+    ],
+    [
+     433.7,
+     -6.4
+    ],
+    [
+     448.0,
+     0.0
+    ],
+    [
+     461.6,
+     6.8
+    ],
+    [
+     475.0,
+     13.5
+    ],
+    [
+     488.6,
+     20.3
+    ],
+    [
+     502.1,
+     27.0
+    ],
+    [
+     515.6,
+     33.8
+    ],
+    [
+     529.1,
+     40.5
+    ],
+    [
+     542.7,
+     47.3
+    ],
+    [
+     555.5,
+     54.4
+    ],
+    [
+     566.5,
+     62.2
+    ],
+    [
+     575.6,
+     70.6
+    ],
+    [
+     582.7,
+     79.5
+    ],
+    [
+     587.4,
+     88.8
+    ],
+    [
+     590.0,
+     98.3
+    ],
+    [
+     590.2,
+     107.8
+    ],
+    [
+     588.1,
+     117.3
+    ],
+    [
+     583.7,
+     126.6
+    ],
+    [
+     577.2,
+     135.6
+    ],
+    [
+     568.5,
+     144.2
+    ],
+    [
+     557.9,
+     152.1
+    ],
+    [
+     545.4,
+     159.3
+    ],
+    [
+     531.2,
+     165.7
+    ],
+    [
+     515.6,
+     171.3
+    ],
+    [
+     498.8,
+     175.8
+    ],
+    [
+     480.9,
+     179.3
+    ],
+    [
+     462.5,
+     181.7
+    ],
+    [
+     443.5,
+     183.0
+    ],
+    [
+     424.3,
+     183.1
+    ],
+    [
+     405.3,
+     182.1
+    ],
+    [
+     386.7,
+     179.9
+    ],
+    [
+     368.8,
+     176.6
+    ],
+    [
+     351.7,
+     172.3
+    ],
+    [
+     335.8,
+     166.9
+    ],
+    [
+     321.4,
+     160.7
+    ]
+   ],
+   "pathLengthM": 17.6714,
+   "radiusM": 2.4749,
+   "radiusCells": 1.75,
+   "railTopM": 0.15,
+   "gaugeM": 0.9,
+   "switchTiesU": [
+    0.2357,
+    0.7071,
+    1.1785,
+    1.6499,
+    2.1213
+   ],
+   "frogM": [
+    2.1106,
+    0.45
+   ],
+   "placeHint": {
+    "rail_switch_stand": {
+     "lattice": [
+      37.2,
+      -0.8
+     ],
+     "worldPx": [
+      5449.6,
+      2531
+     ],
+     "notes": "beside the switch toe on the land side, at the end of the two tie bars"
+    },
+    "rail_water_tower": {
+     "lattice": [
+      42.0,
+      1.75
+     ],
+     "worldPx": [
+      5920,
+      2603
+     ],
+     "notes": "optional, centre of the semicircle infield (1.6 m footprint fits inside the inner ballast edge, radius 1.6 m)"
+    }
+   },
+   "matte": {
+    "maxErr": 41.42,
+    "p999Err": 0.33,
+    "meanErr": 0.0587,
+    "infeasiblePx": 278,
+    "infeasibleMaxErr": 254.0,
+    "repaintFrac": 0.8824
+   },
+   "notes": "Balloon loop at 솔방울역 (rail_loop_town): the spring turnout at [37, 0] (long switch ties, switch blades + two tie bars reaching to the land side, closure rails, frog and guard rails; the straight route through the turnout is repainted), curves D -> T and C -> D (R 1.75 cells), the straight B -> C and the semicircle A -> B joining the straight main line at A. Same ballast / sleepers / rails / snow / shadow as rail_x. Draw on the ground layer AFTER the rail_x tiles in tilesUnder (plain rail_x, drawn exactly as RoadPaint draws them); pathPx = the loop centre line T -> D -> C -> B -> A in px from the anchor (for RailPath cross-checks)."
+  },
+  "rail_fence_x": {
+   "atlas": "train2_rails",
+   "frame": "rail_fence_x",
+   "anchor": [
+    0.41667,
+    0.6
+   ],
+   "anchorPx": [
+    55,
+    72
+   ],
+   "frameSize": [
+    132,
+    120
+   ],
+   "kind": "decor",
+   "topPx": 54,
+   "notes": "Low snow fence tile along world X (one grid cell = sqrt(2) m, step (64, 32) px): weathered wooden posts with snow caps and two plank rails with snow on top, a little drift at the foot (~0.6 m). The tile owns the post at its -X end; chain tiles at stepPx and close the run with rail_fence_x_end (the post at the +X end of the last tile). Shadows join seamlessly (partition-of-unity cut like the rails). Depth-sort with the actors by anchor y (it hides the lower wheels of a train standing behind it).",
+   "footprint": [
+    73,
+    37
+   ],
+   "footprintM": [
+    1.4142135623730951,
+    0.2
+   ],
+   "tileAxis": "x",
+   "segM": 1.41421,
+   "stepPx": [
+    64,
+    32
+   ],
+   "postEnd": "-x",
+   "tileLayer": "objects",
+   "heightM": 0.66,
+   "run": {
+    "ours": {
+     "j": -0.75,
+     "tileCentresI": [
+      -5.5,
+      -4.5,
+      -3.5,
+      -2.5
+     ],
+     "endPostI": -2.0,
+     "worldPx": [
+      [
+       2720,
+       1163
+      ],
+      [
+       2784,
+       1195
+      ],
+      [
+       2848,
+       1227
+      ],
+      [
+       2912,
+       1259
+      ]
+     ],
+     "endWorldPx": [
+      2944,
+      1275
+     ],
+     "notes": "plan 5.1: j -0.75, i -6 .. -1.5 (4 tiles + the closing post; a 5th tile at i -1.5 would reach the switch toe)"
+    }
+   }
+  },
+  "rail_fence_x_end": {
+   "atlas": "train2_rails",
+   "frame": "rail_fence_x_end",
+   "anchor": [
+    0.32143,
+    0.58333
+   ],
+   "anchorPx": [
+    27,
+    56
+   ],
+   "frameSize": [
+    84,
+    96
+   ],
+   "kind": "decor",
+   "topPx": 38,
+   "notes": "Closing post of a rail_fence_x run (place it at the +X end of the last tile = last tile anchor + (32, 16) px).",
+   "footprint": [
+    10,
+    5
+   ],
+   "footprintM": {
+    "radius": 0.08
+   }
+  },
+  "rail_switch_stand": {
+   "atlas": "train2_rails",
+   "frame": "rail_switch_stand_idle_0",
+   "anchor": [
+    0.37931,
+    0.625
+   ],
+   "anchorPx": [
+    44,
+    75
+   ],
+   "frameSize": [
+    116,
+    120
+   ],
+   "kind": "prop",
+   "topPx": 56,
+   "notes": "Switch stand of the spring turnout (~0.9 m): two timber blocks, a black post with a red-and-white weighted throw lever at its foot and a lamp box on top. idle_0 = lamp green (set for the straight route, lever down to the left), idle_1 = lamp yellow (the train trails through, lever thrown). The game flips them with sfx_switch_clack; lampPoint = lens centre (night glow).",
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "fxPoints": {
+    "lamp": [
+     -4,
+     -44
+    ]
+   },
+   "frames": [
+    "rail_switch_stand_idle_0",
+    "rail_switch_stand_idle_1"
+   ],
+   "states": {
+    "green": "rail_switch_stand_idle_0",
+    "yellow": "rail_switch_stand_idle_1"
+   },
+   "lampPoint": [
+    -4,
+    -44
+   ]
+  },
+  "rail_water_tower": {
+   "atlas": "train2_rails",
+   "frame": "rail_water_tower_idle",
+   "anchor": [
+    0.33803,
+    0.62667
+   ],
+   "anchorPx": [
+    96,
+    188
+   ],
+   "frameSize": [
+    284,
+    300
+   ],
+   "kind": "prop",
+   "topPx": 170,
+   "notes": "Small wooden water tower for the loop infield (footprint 1.6 m, ~3.2 m): four braced timber legs, a round stave tank with iron hoops, a cone roof with snow, a ladder and a swinging spout. idle = spout raised; anim pour (6 f loop) = spout lowered, a water stream with drips and a splash in the trough.",
+   "footprint": [
+    145,
+    72
+   ],
+   "footprintM": [
+    1.6,
+    1.6
+   ],
+   "fxPoints": {
+    "spout": [
+     40,
+     -33
+    ],
+    "top": [
+     0,
+     -166
+    ]
+   },
+   "anims": {
+    "pour": {
+     "frames": [
+      "rail_water_tower_pour_0",
+      "rail_water_tower_pour_1",
+      "rail_water_tower_pour_2",
+      "rail_water_tower_pour_3",
+      "rail_water_tower_pour_4",
+      "rail_water_tower_pour_5"
+     ],
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "spoutPoint": [
+    40,
+    -33
+   ]
+  }
+ },
+ "characters": {
+  "train_coach": {
+   "atlas": "train_coach",
+   "frameSize": [
+    204,
+    188
+   ],
+   "anchor": [
+    0.4951,
+    0.78723
+   ],
+   "anchorPx": [
+    101,
+    148
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 2,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    }
+   },
+   "kind": "train",
+   "lengthM": 3.0,
+   "bodyM": 2.7,
+   "couplerM": {
+    "front": -1.5,
+    "back": 1.5
+   },
+   "wheelR": 0.19,
+   "trackPerLoopM": 1.194,
+   "headTop": -103,
+   "headTopDir": {
+    "S": -103,
+    "SE": -103,
+    "E": -103,
+    "NE": -103,
+    "N": -103
+   },
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_coach",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     308,
+     268
+    ],
+    "anchor": [
+     0.37338,
+     0.60075
+    ],
+    "anchorPx": [
+     115,
+     161
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "객차 \"솔방울호\" passenger coach (3.0 m over the couplers, body 2.7 m, 1.25 x 1.85 m): sky-blue lower body with a gold pinecone emblem and a blank gold name plate mid-side, cream window band with thin gold lines, a slate-teal barrel roof with a snow cap and little vents (never red: it must not continue the engine cab), 4 big warm-lit windows per side with 2-3 seated toy passengers each (bobble hats, earmuffs, scarves; two of them wave), open end platforms with gold railings, steps on both sides and a lantern at each end, dark bogies with red disc wheels. idle = standing (1 f); move = 8-frame loop: one wheel turn (45 deg / frame), a gentle body sway, the wavers wave. doorPoints = ground beside the platform steps (L/R x front/rear) where passengers step on / off; windowPoints = lit window centres (night glow); lampPoints = the two end lanterns.",
+   "replaces": "train_car_a x 1.33, light sky tint",
+   "doorPoints": {
+    "S": {
+     "L": [
+      [
+       55,
+       39
+      ],
+      [
+       55,
+       -39
+      ]
+     ],
+     "R": [
+      [
+       -55,
+       39
+      ],
+      [
+       -55,
+       -39
+      ]
+     ]
+    },
+    "SE": {
+     "L": [
+      [
+       94,
+       8
+      ],
+      [
+       -16,
+       -47
+      ]
+     ],
+     "R": [
+      [
+       16,
+       47
+      ],
+      [
+       -94,
+       -8
+      ]
+     ]
+    },
+    "E": {
+     "L": [
+      [
+       78,
+       -28
+      ],
+      [
+       -78,
+       -28
+      ]
+     ],
+     "R": [
+      [
+       78,
+       28
+      ],
+      [
+       -78,
+       28
+      ]
+     ]
+    },
+    "NE": {
+     "L": [
+      [
+       16,
+       -47
+      ],
+      [
+       -94,
+       8
+      ]
+     ],
+     "R": [
+      [
+       94,
+       -8
+      ],
+      [
+       -16,
+       47
+      ]
+     ]
+    },
+    "N": {
+     "L": [
+      [
+       -55,
+       -39
+      ],
+      [
+       -55,
+       39
+      ]
+     ],
+     "R": [
+      [
+       55,
+       -39
+      ],
+      [
+       55,
+       39
+      ]
+     ]
+    }
+   },
+   "windowPoints": {
+    "S": [
+     [
+      0,
+      -34
+     ]
+    ],
+    "SE": [
+     [
+      7,
+      -41
+     ],
+     [
+      -16,
+      -53
+     ],
+     [
+      -40,
+      -65
+     ],
+     [
+      -63,
+      -76
+     ],
+     [
+      50,
+      -45
+     ]
+    ],
+    "E": [
+     [
+      50,
+      -53
+     ],
+     [
+      17,
+      -53
+     ],
+     [
+      -17,
+      -53
+     ],
+     [
+      -50,
+      -53
+     ]
+    ],
+    "NE": [
+     [
+      63,
+      -76
+     ],
+     [
+      40,
+      -65
+     ],
+     [
+      16,
+      -53
+     ],
+     [
+      -7,
+      -41
+     ],
+     [
+      -50,
+      -45
+     ]
+    ],
+    "N": [
+     [
+      0,
+      -34
+     ]
+    ]
+   },
+   "lampPoints": {
+    "S": [
+     [
+      -30,
+      -36
+     ],
+     [
+      -30,
+      -118
+     ]
+    ],
+    "SE": [
+     [
+      36,
+      -38
+     ],
+     [
+      -79,
+      -95
+     ]
+    ],
+    "E": [
+     [
+      81,
+      -62
+     ],
+     [
+      -81,
+      -62
+     ]
+    ],
+    "NE": [
+     [
+      79,
+      -95
+     ],
+     [
+      -36,
+      -38
+     ]
+    ],
+    "N": [
+     [
+      30,
+      -118
+     ],
+     [
+      30,
+      -36
+     ]
+    ]
+   }
+  },
+  "train_boxcar": {
+   "atlas": "train_boxcar",
+   "frameSize": [
+    180,
+    172
+   ],
+   "anchor": [
+    0.5,
+    0.82558
+   ],
+   "anchorPx": [
+    90,
+    142
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 2,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "door_open": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "SE",
+      "NE"
+     ]
+    }
+   },
+   "kind": "train",
+   "lengthM": 2.6,
+   "bodyM": 2.3,
+   "couplerM": {
+    "front": -1.3,
+    "back": 1.3
+   },
+   "wheelR": 0.19,
+   "trackPerLoopM": 1.194,
+   "headTop": -101,
+   "headTopDir": {
+    "S": -101,
+    "SE": -101,
+    "E": -101,
+    "NE": -101,
+    "N": -101
+   },
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_boxcar",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     284,
+     260
+    ],
+    "anchor": [
+     0.36268,
+     0.59615
+    ],
+    "anchorPx": [
+     103,
+     155
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "화물칸 box car (2.6 m over the couplers, body 2.3 m, 1.3 x 1.9 m): warm chestnut planks, a cream X-brace on each half of the sliding door (two leaves) on both sides, a dark green barrel roof with a plank roof walkway and a snow cap, an end ladder, a cream pinecone-crate pictogram (no text) beside the door, red-brown underframe, dark bogies with red disc wheels. idle / move closed; door_open (SE, NE, 4 f once; the game plays it reversed to close) slides both leaves apart and shows the crates and sacks inside under a warm lamp. doorPoints = ground beside each door half (where crates fly in); cargoPoint = the floor just inside the open door.",
+   "replaces": "train_car_b x 1.15 + code crate stack",
+   "doorPoints": {
+    "S": {
+     "L": [
+      [
+       58,
+       7
+      ],
+      [
+       58,
+       -7
+      ]
+     ],
+     "R": [
+      [
+       -58,
+       7
+      ],
+      [
+       -58,
+       -7
+      ]
+     ]
+    },
+    "SE": {
+     "L": [
+      [
+       50,
+       -16
+      ],
+      [
+       31,
+       -25
+      ]
+     ],
+     "R": [
+      [
+       -31,
+       25
+      ],
+      [
+       -50,
+       16
+      ]
+     ]
+    },
+    "E": {
+     "L": [
+      [
+       13,
+       -29
+      ],
+      [
+       -13,
+       -29
+      ]
+     ],
+     "R": [
+      [
+       13,
+       29
+      ],
+      [
+       -13,
+       29
+      ]
+     ]
+    },
+    "NE": {
+     "L": [
+      [
+       -31,
+       -25
+      ],
+      [
+       -50,
+       -16
+      ]
+     ],
+     "R": [
+      [
+       50,
+       16
+      ],
+      [
+       31,
+       25
+      ]
+     ]
+    },
+    "N": {
+     "L": [
+      [
+       -58,
+       -7
+      ],
+      [
+       -58,
+       7
+      ]
+     ],
+     "R": [
+      [
+       58,
+       -7
+      ],
+      [
+       58,
+       7
+      ]
+     ]
+    }
+   },
+   "cargoPoint": {
+    "S": [
+     -19,
+     -30,
+     false
+    ],
+    "SE": [
+     -14,
+     -23,
+     false
+    ],
+    "E": [
+     0,
+     -20,
+     false
+    ],
+    "NE": [
+     14,
+     -23,
+     false
+    ],
+    "N": [
+     19,
+     -30,
+     false
+    ]
+   },
+   "doorAnim": {
+    "open": "door_open",
+    "close": "door_open reversed",
+    "dirs": [
+     "SE",
+     "NE"
+    ],
+    "notes": "stopped headings only (SE / NE, mirrored NW / SW); frame 3 = fully open"
+   }
+  },
+  "train_flatcar": {
+   "atlas": "train_flatcar",
+   "frameSize": [
+    168,
+    112
+   ],
+   "anchor": [
+    0.49405,
+    0.75
+   ],
+   "anchorPx": [
+    83,
+    84
+   ],
+   "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "W": "E",
+    "NW": "NE"
+   },
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 1,
+     "fps": 2,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    },
+    "move": {
+     "frames": 8,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "S",
+      "SE",
+      "E",
+      "NE",
+      "N"
+     ]
+    }
+   },
+   "kind": "train",
+   "lengthM": 2.4,
+   "bodyM": 2.1,
+   "couplerM": {
+    "front": -1.2,
+    "back": 1.2
+   },
+   "wheelR": 0.17,
+   "trackPerLoopM": 1.068,
+   "headTop": -47,
+   "headTopDir": {
+    "S": -47,
+    "SE": -47,
+    "E": -47,
+    "NE": -47,
+    "N": -47
+   },
+   "shadow": null,
+   "shadowFrames": {
+    "atlas": "train_flatcar",
+    "frames": {
+     "S": "shadow_S",
+     "SE": "shadow_SE",
+     "E": "shadow_E",
+     "NE": "shadow_NE",
+     "N": "shadow_N",
+     "NW": "shadow_NW",
+     "W": "shadow_W",
+     "SW": "shadow_SW"
+    },
+    "frameSize": [
+     228,
+     176
+    ],
+    "anchor": [
+     0.42544,
+     0.55114
+    ],
+    "anchorPx": [
+     97,
+     97
+    ],
+    "notes": "Soft ground shadow for each of the 8 headings (NOT mirrored: the light does not flip). Draw it under the car at the same position (ground layer), then the car."
+   },
+   "notes": "무개화차 flat car (2.4 m over the couplers, body 2.1 m, 1.3 x 0.75 m, deck 0.55 m): dark oiled-wood plank deck, red-brown side sills with stake pockets and 6 low stakes per side, iron corner plates, a rolled green tarp lashed with rope + a rope coil at the rear end, a small red tail lamp at each end, a little snow at the edges; the middle of the deck is EMPTY: the game stacks crate icons (lgx items at cargoScale, stackStep px apart) on cargoSlots (2 rows x 3, bottom-centre of each stack on the deck, sorted back to front). idle 1 f, move 8 f (wheel turn + gentle sway).",
+   "replaces": "train_car_b x 1.07",
+   "lampPoints": {
+    "S": [
+     [
+      -32,
+      -5
+     ],
+     [
+      -32,
+      -74
+     ]
+    ],
+    "SE": [
+     [
+      26,
+      -4
+     ],
+     [
+      -71,
+      -52
+     ]
+    ],
+    "E": [
+     [
+      68,
+      -23
+     ],
+     [
+      -68,
+      -23
+     ]
+    ],
+    "NE": [
+     [
+      71,
+      -52
+     ],
+     [
+      -26,
+      -4
+     ]
+    ],
+    "N": [
+     [
+      32,
+      -74
+     ],
+     [
+      32,
+      -5
+     ]
+    ]
+   },
+   "cargoSlots": {
+    "S": [
+     [
+      -19,
+      -43,
+      false
+     ],
+     [
+      19,
+      -43,
+      false
+     ],
+     [
+      -19,
+      -27,
+      false
+     ],
+     [
+      19,
+      -27,
+      false
+     ],
+     [
+      -19,
+      -11,
+      false
+     ],
+     [
+      19,
+      -11,
+      false
+     ]
+    ],
+    "SE": [
+     [
+      -4,
+      -46,
+      false
+     ],
+     [
+      19,
+      -35,
+      false
+     ],
+     [
+      -31,
+      -32,
+      false
+     ],
+     [
+      42,
+      -23,
+      false
+     ],
+     [
+      -8,
+      -21,
+      false
+     ],
+     [
+      14,
+      -10,
+      false
+     ]
+    ],
+    "E": [
+     [
+      -24,
+      -40,
+      false
+     ],
+     [
+      8,
+      -40,
+      false
+     ],
+     [
+      40,
+      -40,
+      false
+     ],
+     [
+      -24,
+      -21,
+      false
+     ],
+     [
+      8,
+      -21,
+      false
+     ],
+     [
+      40,
+      -21,
+      false
+     ]
+    ],
+    "NE": [
+     [
+      14,
+      -51,
+      false
+     ],
+     [
+      -8,
+      -40,
+      false
+     ],
+     [
+      42,
+      -38,
+      false
+     ],
+     [
+      -31,
+      -29,
+      false
+     ],
+     [
+      19,
+      -26,
+      false
+     ],
+     [
+      -4,
+      -15,
+      false
+     ]
+    ],
+    "N": [
+     [
+      -19,
+      -50,
+      false
+     ],
+     [
+      19,
+      -50,
+      false
+     ],
+     [
+      -19,
+      -34,
+      false
+     ],
+     [
+      19,
+      -34,
+      false
+     ],
+     [
+      -19,
+      -18,
+      false
+     ],
+     [
+      19,
+      -18,
+      false
+     ]
+    ]
+   },
+   "stackStep": 14,
+   "cargoScale": 0.737,
+   "cargoIcons": "lgx_items crate / box icons (item_crate_*, cardboard_box_*), origin [0.5, 0.75], drawn at cargoScale, k-th icon of a stack at (dx, dy - k * stackStep)"
+  }
+ },
+ "trainConsist": {
+  "village": {
+   "name": "마을",
+   "order": [
+    "train_engine",
+    "train_coach",
+    "train_boxcar",
+    "train_flatcar"
+   ],
+   "spacingM": [
+    2.72,
+    2.8,
+    2.5
+   ],
+   "lengthM": 10.6
+  },
+  "eup": {
+   "name": "읍",
+   "order": [
+    "train_engine",
+    "train_coach",
+    "train_coach",
+    "train_boxcar",
+    "train_flatcar"
+   ],
+   "spacingM": [
+    2.72,
+    3.0,
+    2.8,
+    2.5
+   ],
+   "lengthM": 13.6
+  },
+  "notes": "train_engine lives in assets/town (couplerM -1.38 / 1.22). spacingM = anchor-to-anchor along the track; lengthM = nose (engine front coupler) to tail (last back coupler)."
+ },
+ "budget": {
+  "train_coach": {
+   "atlas": [
+    2008,
+    800
+   ],
+   "rgbaMiB": 6.128,
+   "pageMiB": 4.875,
+   "budgetMiB": 5.0
+  },
+  "train_boxcar": {
+   "atlas": [
+    1980,
+    772
+   ],
+   "rgbaMiB": 5.831,
+   "pageMiB": 4.906,
+   "budgetMiB": 5.5
+  },
+  "train_flatcar": {
+   "atlas": [
+    1964,
+    408
+   ],
+   "rgbaMiB": 3.057,
+   "pageMiB": 2.484,
+   "budgetMiB": 3.5
+  },
+  "train2_rails": {
+   "atlas": [
+    2008,
+    608
+   ],
+   "rgbaMiB": 4.657,
+   "pageMiB": null,
+   "budgetMiB": null
+  }
+ }
+}

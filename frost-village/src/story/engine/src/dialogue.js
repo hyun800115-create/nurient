@@ -900,7 +900,8 @@ export class Dialogue {
     }
     for (const f of paper.wanted) out.sidebar.push(this.written('news.wanted', lang, { b: mk(f), sp }));
     if (!(paper.rate < 0)) { const b = mk(null); b.n = paper.rate; out.sidebar.push(this.written('news.rate', lang, { b, sp })); }
-    if (paper.quote) out.sidebar.push((lang === 'en' ? 'Overheard: “' : '오늘의 한마디: “') + paper.quote.text + '” — ' + this.refer(null, e.people[paper.quote.who], lang));
+    // (story_runtime) a quote is what someone said, in the language it was said in: the other edition leaves it out
+    if (paper.quote && /[가-힣]/.test(paper.quote.text) === (lang !== 'en')) out.sidebar.push((lang === 'en' ? 'Overheard: “' : '오늘의 한마디: “') + paper.quote.text + '” — ' + this.refer(null, e.people[paper.quote.who], lang));
     this.press = false; this.pressFact = null;
     if (reporter) out.byline = lang === 'en' ? 'Reporter ' + this.nameEn(reporter) : (reporter.sur || '') + reporter.given + ' 기자';
     return out;

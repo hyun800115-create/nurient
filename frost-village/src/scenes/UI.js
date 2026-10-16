@@ -13,6 +13,8 @@ import { VERSION, BUILD_DATE } from '../data/version.js';
 import { buildCost } from '../entities/Site.js';
 // ---- (v4-B) the neighbour-town HUD: rank chip, order chip, clock, train edge icon, order / rank panels
 import { HudV4 } from './UIv4.js';
+// ---- (v4.2) 관망 / 줍기 buttons, the navigator chip and edge badge, the 업무 chip, 새로워진 것, the train card
+import { HudV42 } from './UIv42.js';
 // ---- (v4-C) the build menu's tabs
 import { CATALOG, TABS } from '../systems/Civic.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
@@ -108,6 +110,7 @@ export class UI extends Phaser.Scene {
 
     // ---- (v4-B) the neighbour-town chips and panels (hidden until the station opens)
     this.hud4 = new HudV4(this);
+    this.hud42 = new HudV42(this);
 
     this.layout();
     this.scale.on('resize', this.onResize, this);
@@ -119,7 +122,7 @@ export class UI extends Phaser.Scene {
       // (v3.5 review) a finger landing on the dog bar may still be the start of a drag: the joystick starts
       // too, and the button only fires when the finger lifts without moving (dogBarRelease)
       const onBar = over && over.length && over.every((o) => o.isDogBtn);
-      if (this.panelOpen || this.buildOpen || this.v4PanelOpen || (over && over.length && !onBar)) return;
+      if (this.panelOpen || this.buildOpen || this.v4PanelOpen || this.v42PanelOpen || (over && over.length && !onBar)) return;
       if (!onBar) this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
       if (other && !this.pinch) {
@@ -210,6 +213,7 @@ export class UI extends Phaser.Scene {
     if (this.panel) this.layoutPanel();
     if (this.buildOpen) this.closeBuildMenu(true);
     if (this.hud4) this.hud4.layout();
+    if (this.hud42) this.hud42.layout();
   }
 
   // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
@@ -920,15 +924,30 @@ export class UI extends Phaser.Scene {
     const W = this.W, H = this.H, cx = W / 2, cy = H / 2;
     const add = (o) => { this.panel.add(o); this.panelItems.push(o); return o; };
     if (!confirm) {
-      // (v4-C2) seven rows on a 90 px pitch (76 px buttons never overlap): + 물결 품질, 주민 목소리
+      // (v4-C2) seven rows (76 px buttons never overlap): + 물결 품질, 주민 목소리
+      // ((v4.2) two tabs: 소리·화면 = the seven v4.1 rows, 놀이 = 자동 줍기 · 길 안내 · 촌장 후광 · 관망)
       add(this.add.text(cx, cy - 452, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
       const row = (y, label, value, style, cb, icon) => {
         if (icon) { const ic = add(Assets.image(this, cx - 200, y, icon).setOrigin(0.5)); ic.setScale(54 / Math.max(ic.frame.realWidth, 1)); }
-        add(this.add.text(cx - 160, y, label, TXT(32, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
-        add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
+        add(this.add.text(cx - 160, y, label, TXT(30, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
+        const b = add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
+        if (this.settingsRows) this.settingsRows.push({ label, value, b });
+        return b;
       };
+      this.settingsRows = [];
       const S = Settings.data;
-      const Y = (i) => cy - 330 + i * 90;
+      const tab = this.settingsTab === 'play' ? 'play' : 'av';
+      const tabBtn = (x, key, id) => {
+        const on = tab === id;
+        const b = add(this.makeButton(x, cy - 348, 236, 66, on ? 'blue' : 'gray', t(key), () => { if (this.settingsTab !== id) { this.settingsTab = id; this.buildPanelContent(false); } }, 26));
+        b.setAlpha(on ? 1 : 0.86);
+        b.tabId = id;
+        return b;
+      };
+      this.settingsTabs = [tabBtn(cx - 122, 'set_tab_av', 'av'), tabBtn(cx + 122, 'set_tab_play', 'play')];
+      if (window.__FV) window.__FV.settingsTab = tab;
+      const Y = (i) => cy - 262 + i * 84;
+      if (tab === 'play') { this.buildPlayTab(row, Y, add); this.panelFooter(add, cx, cy); return; }
       row(Y(0), t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
       row(Y(1), t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
       // globe icon for the language row (drawn, there is no icon sprite for it)
@@ -972,10 +991,7 @@ export class UI extends Phaser.Scene {
         if (this.gs.voice) this.gs.voice.setVolume(S.voice);
         this.buildPanelContent(false);
       }, Assets.pick('emote_music', 'ui_icon_people'));
-      add(this.makeButton(cx - 130, cy + 330, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
-      add(this.makeButton(cx + 130, cy + 330, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
-      add(this.add.text(cx, cy - 404, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
-      add(this.makeButton(cx, cy + 428, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+      this.panelFooter(add, cx, cy);
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
       add(this.makeButton(cx, cy + 60, 360, 84, 'gray', t('yes'), () => { this.closeSettings(true); this.gs.resetProgress(); }, 30));
@@ -983,6 +999,32 @@ export class UI extends Phaser.Scene {
     }
     const close = add(this.makeIconButton(cx + 250, cy - 478, 'ui_icon_close', 70, () => this.closeSettings()));
     void close;
+  }
+
+  /** the settings panel's bottom: reset / reload, the version, close (both tabs) */
+  panelFooter(add, cx, cy) {
+    add(this.makeButton(cx - 130, cy + 330, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
+    add(this.makeButton(cx + 130, cy + 330, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
+    add(this.add.text(cx, cy - 408, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
+    add(this.makeButton(cx, cy + 428, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+  }
+
+  /** (v4.2, docs/v42_plan.md §8.2) the 놀이 tab: 자동 줍기 · 길 안내 · 촌장 후광 · 관망 자동 · 관망 볼거리 · 관망 중 돈 쓰기 */
+  buildPlayTab(row, Y, add) {
+    const S = Settings.data, cx = this.W / 2, cy = this.H / 2;
+    const redo = () => { Settings.save(); this.buildPanelContent(false); if (this.gs.v42 && this.gs.v42.settingsChanged) this.gs.v42.settingsChanged(); };
+    const pk = S.pickup === 'still' || S.pickup === 'off' ? S.pickup : 'auto';
+    row(Y(0), t('set_pickup'), t('pickup_' + pk), pk === 'auto' ? 'green' : pk === 'still' ? 'blue' : 'gray', () => { S.pickup = pk === 'auto' ? 'still' : pk === 'still' ? 'off' : 'auto'; redo(); }, Assets.pick('ui_icon_hand', 'ui_icon_backpack', 'ui_icon_settings'));
+    row(Y(1), t('set_nav'), S.nav !== false ? t('on') : t('off'), S.nav !== false ? 'green' : 'gray', () => { S.nav = S.nav === false; redo(); }, Assets.pick('ui_icon_route', 'ui_icon_map', 'ui_icon_settings'));
+    row(Y(2), t('set_halo'), S.halo !== false ? t('on') : t('off'), S.halo !== false ? 'green' : 'gray', () => { S.halo = S.halo === false; redo(); }, Assets.pick('ui_icon_halo', 'ui_icon_fame', 'ui_icon_settings'));
+    const OB = [0, 30, 60, 120];
+    const ob = OB.indexOf(S.observeAfter) >= 0 ? S.observeAfter : 60;
+    row(Y(3), t('set_observe'), t('observe_' + ob), ob ? 'green' : 'gray', () => { S.observeAfter = OB[(OB.indexOf(ob) + 1) % OB.length]; redo(); }, Assets.pick('ui_icon_binoculars', 'ui_icon_explore', 'ui_icon_map', 'ui_icon_settings'));
+    row(Y(4), t('set_observeEvents'), S.observeEvents !== false ? t('on') : t('off'), S.observeEvents !== false ? 'green' : 'gray', () => { S.observeEvents = S.observeEvents === false; redo(); }, Assets.pick('ui_icon_camera', 'ui_icon_star', 'ui_icon_fame', 'ui_icon_settings'));
+    const sp = S.observeSpend === 'hire' ? 'hire' : 'none';
+    row(Y(5), t('set_observeSpend'), t('spend_' + sp), sp === 'none' ? 'gray' : 'blue', () => { S.observeSpend = sp === 'none' ? 'hire' : 'none'; redo(); }, 'ui_icon_coin');
+    add(this.add.text(cx, Y(6) + 6, t('set_playHint'), Object.assign(TXT(21, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 480 } })).setOrigin(0.5));
+    void cy;
   }
 
   /** save, then reload the page (phones can't pull-to-refresh inside the game) */
@@ -1065,6 +1107,7 @@ export class UI extends Phaser.Scene {
     this.updateDogBar(dt);
     this.updateChatButton(dt);
     if (this.hud4) this.hud4.update(dt);
+    if (this.hud42) this.hud42.update(dt);
     this.updateBuildThumbs(dt);
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }

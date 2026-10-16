@@ -5,25 +5,35 @@
 // before it calls.
 //
 // ports = {
-//   seed(), cid(), lang(), T()                              game seed, save id (side-record tie), 'ko' | 'en', DayClock.T
+//   seed(), cid(), lang(), T()                              game seed, save id (side-record tie), 'ko' | 'en', DayClock.T (25 s an hour)
 //   storage: { getItem, setItem, removeItem }               localStorage (the side record SAVE_KEY + '.story')
 //   sideKey                                                 'frostVillage.save.v1.story'
-//   settings: { get(k) }                                    lifeFarewell, incidents, missionToasts
-//   world: { buildings() -> [{ id, key, role, x, y, ours?, locked?, name? }], spots() -> [{ id, kind, x, y }],
-//            spot(placeId, kind) -> { x, y, dir } | null, has(key) -> bool, names(key) -> { ko, en } }
-//   people: { roster() -> roster rows (model/adopt.js), relations() -> chat RELATIONS, chronicle() -> { flags, rank, built, shops },
-//             prices() -> { item_bread: 7, … } }
-//   town: { whereabouts(out) -> rows [pid, buildingId | null, act, state, busy]   (every person with a body owner 'town' / 'gameplay')
+//   settings: { get(k) }                                    lifeFarewell (설정 '생애 이벤트'), lifeEvents (advanced), missionToasts
+//   world: { buildings() -> [{ id, key, role, x, y, ours?, locked?, name?, kind? }], spots() -> [{ id, kind, x, y }],
+//            spot(placeId, kind) -> { x, y, dir } | null, has(key) -> bool, names(key) -> { ko, en },
+//            stage(buildingId, on, by) — our 마을회관 clears its notice board / pads for a wedding (M4) }
+//   people: { roster() -> roster rows (model/adopt.js; rows may carry visits, sid, body), relations() -> chat RELATIONS,
+//             chronicle() -> { flags, rank, built, shops }, prices() -> { item_bread: 7, … } }
+//   town: { whereabouts(out) -> rows [pid, buildingId | null, act, state, busy]   (every body: TownSim 't:' / 'k:' and
+//             VillageLife 'v:' rows — named villagers too, at their village areas 'va:<area>', critique H9)
 //           visible(out, max) -> pids on screen with a body (≤ max)
-//           bodyOf(pid) -> body | null · pidOfBody(body) -> pid | null
-//           hold(pid, owner) -> bool · release(pid) · walk(pid, x, y, opts, cb) · face(pid, dirOrPoint) · anim(pid, name, opts)
-//           dress(pid, preset | null) · place(pid, x, y, dir) · addCitizen(spec) -> pid · leave(pid) · attach(pid, kind, opts) -> handle
-//           reserve(id, rect | null) — keep everyday walkers out of a stage rect { x, y, w, h } while a set piece runs
+//           bodyOf(pid) -> body | null · pidOfBody(body) -> pid | null · ageGroup(pid) -> 'child' | 'adult' | 'elder' | null
+//           hold(pid, owner) -> bool · release(pid) · walk(pid, x, y, opts, cb) (opts.speed: a multiplier) ·
+//           face(pid, dirOrPoint) · anim(pid, name, opts) · dress(pid, preset | null, { add, remove }) · place(pid, x, y, dir)
+//           addCitizen({ pid: 'k:<sid>', kind: 'child', townKind: 'toddler' | 'student', age, parents, home: { like }, sid })
+//             -> pid (the body is kept by the game across reloads, critique H7)
+//           leave(pid, why) — the body is gone for good ('moved' | 'farewell'; never the train), kept gone after a reload
+//           attach(pid, kind, opts) -> handle · reserve(id, rect | null) — keep everyday walkers out of a stage rect
 //           (view only:) hide(pid, on) · nearby(x, y, r, n) -> pids · spawn(spec) -> pid · despawn(pid)   extras for scenes }
-//   say(pid, text, emote, dur, opts) -> bool · emote(pid, key, dur) -> bool         (Bubbles -> VillageVoice; town caps 2 / 3)
-//   ui: { card(spec), banner(spec), toast(text, hold), openPanel(Panel, data), chip(id, spec) }
+//   say(pid, text, emote, dur, opts) -> bool · emote(pid, key, dur) -> bool         (Bubbles -> VillageVoice; false when the
+//     town's bubbles are at their cap: the story never evicts a village bubble, critique M6)
+//   ui: { card(spec), banner({ ko, en, subKo, subEn }), toast(text, holdSec), openPanel(Panel, data), chip(id, spec) }
 //   sound: { play(key, opts), at(key, x, y, opts), music(key | null), duck(level, hold) }
 //   view: { rect() -> { x, y, w, h }, onScreen(x, y, m), focus(x, y, ms), zoomPulse(factor, ms) }
+//   dressAges(kind) -> ['adult', …] | null   the age groups whose townfolk2 pages the kit could page in for a set piece
+//     (index.js beatPlan within the texture headroom); others play in their everyday look (critique H8). null = all.
+//   chat: { offer(pid) -> bool }             수다 떨기 on a named villager's person card opens the resident chat
+//   bank: { rate() -> daily interest (0.01 = 1 %) | null }   the paper's bank line (null: no bank yet, no line)
 //   open() -> { bus, wagon, … }                              what the town has (happenings that need a vehicle)
 //   happenSpots() -> { market: { x, y }, … } | null           where happenings may play (null: anywhere)
 //   events: { emit(name, payload) }                        module events out (story:life, story:news, story:wish …)
@@ -43,6 +53,7 @@ export function nullPorts(over = {}) {
     ui: { card: noop, banner: noop, toast: noop, openPanel: noop, chip: noop },
     sound: { play: noop, at: noop, music: noop, duck: noop },
     view: { rect: () => ({ x: 0, y: 0, w: 0, h: 0 }), onScreen: () => false, focus: noop },
+    bank: { rate: () => null },
     events: { emit: noop },
   };
   const plain = (o) => !!o && typeof o === 'object' && Object.getPrototypeOf(o) === Object.prototype;

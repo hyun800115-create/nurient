@@ -366,6 +366,15 @@ export class MissionsHost {
     for (const id of Array.from(this.finds.keys())) { const i = m.get(id); if (!i || i.s === 'p') { this.finds.delete(id); if (this.pads) this.pads.unsparkle(id, false); } }
     for (const id of Array.from(this.handT.keys())) if (!m.get(id)) this.handT.delete(id);
     for (const id of Array.from(this.leads.keys())) { const i = m.get(id); if (!i || i.s === 'p') { this.leads.delete(id); if (this.followers) this.followers.remove(id); } }
+    // a drive whose mission ended (late, swapped, parked) stops too (vehicles_runtime: abortDrive on a cancel)
+    if (this.driving) {
+      const i = m.get(this.driving);
+      if (!i || i.s === 'p') {
+        const v = this.later('vehicles');
+        this.driving = 0;
+        if (v && typeof v.abortDrive === 'function') { try { v.abortDrive(); } catch (e) { /* the drive already ended */ } }
+      }
+    }
   }
 
   /** escort: meet the person (they follow the chief), then reach the place together; without a known place, walk

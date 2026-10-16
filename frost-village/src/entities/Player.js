@@ -73,9 +73,12 @@ export class Player extends Character {
         if (this.room <= 0) this.warnFull();
         this.node = null;
       }
+      // ((v4.2) 자동 줍기: gathering asks the PickupPolicy — 'still' waits a little longer, 'off' only with 줍기)
+      const PP = gs.v42 && gs.v42.pickup;
+      if (this.node && PP && !PP.keepGathering(this)) this.node = null;
       if (!this.node && this.stillT > BALANCE.player.stillDelay && !gs.playerOnPad) {
         const n = gs.findGatherable(this.x, this.y, BALANCE.player.gatherRange);
-        if (n) {
+        if (n && (!PP || PP.mayGather(n, this))) {
           if (this.room <= 0) this.warnFull();
           else if (gs.stationBlocked(n.item)) gs.fullToast();   // its station is full both ways: don't fill the bag
           else this.node = n;

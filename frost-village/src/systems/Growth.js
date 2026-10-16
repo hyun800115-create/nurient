@@ -130,7 +130,7 @@ export class Growth {
     this.dockPad = new Pad(gs, Q.cargo.x, Q.cargo.y, 'input', 1.6, { tex: Assets.pick('ui_pad_porter', 'ui_pad_input'), icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack'), iconSize: 40 });
     this.dockLabel = floatLabel(gs, Q.cargo.x + LB.cargo[0], Q.cargo.y + LB.cargo[1], Assets.pick('ui_icon_delivery', 'ui_icon_backpack'));
     this.dockLabel.set(t('cargo_pad'));
-    this.crates = new ItemStack(gs, { scale: 0.7, cols: [[-24, -6], [0, 6], [24, -6], [-12, 18], [12, 18]], perCol: 3, max: 999 });
+    this.crates = new ItemStack(gs, { scale: 0.7, cols: [[-24, -6], [0, 6], [24, -6], [-12, 18], [12, 18]], perCol: 3, max: 999, bake: true });
     if (gs.logistics) gs.logistics.add(this.dock);
     // the station till (역 금고): wholesale, card bonuses and rent
     this.till = new CashPad(gs, Q.cash.x, Q.cash.y);
@@ -267,10 +267,11 @@ export class Growth {
   /** a crate on the dock (or straight into the goods wagon while the train stands at our station) */
   addCrate(ty, from) {
     const gs = this.gs;
-    const wagon = this.trainIn() ? this.nb.train.cargoPoint() : null;
-    if (wagon && from) {
+    // ((v4.2 P0a) the train takes the crate whether or not the camera is at the station: the fly-to-wagon effect
+    //  only when the wagon is drawn; the freight cars' room (F7) is respected)
+    if (from && this.trainIn() && this.carRoom() > 0) {
       const it = from.stack.pop(ty);
-      if (it) gs.effects.fly(it.spr, it.spr.x, it.spr.y, wagon, { dur: 420, height: 110, scaleTo: 0.45, onDone: (sp) => { gs.effects.releaseItem(sp); if (this.nb.train) this.nb.train.loadCargo(1); } });
+      if (it) this.toWagon(it, ty);
       return;
     }
     this.cargo++;
@@ -284,7 +285,19 @@ export class Growth {
     (this.cargoTypes = this.cargoTypes || []).push(ty);
   }
 
-  trainIn() { const r = this.nb.rail; return !!(r && r.running && r.phase === 'atOurs' && this.nb.train && this.nb.train.cargoPoint()); }
+  /** (v4.2 P0a) the train stands at our station (camera anywhere: v4.1 loaded only while the wagon was on screen) */
+  trainIn() { const r = this.nb.rail; return !!(r && r.running && r.phase === 'atOurs'); }
+  /** (v4.2 F7) crates the freight cars still take this dwell (card crates and surplus share the cars) */
+  carRoom() { const F = this.gs.v42 && this.gs.v42.freight; return F ? F.room() : 999; }
+  /** one crate (item `it` popped from a stack) into the freight cars: flies when the car is drawn, else at once */
+  toWagon(it, ty) {
+    const gs = this.gs, tr = this.nb.train;
+    const w = tr ? tr.cargoPoint() : null;
+    const F = gs.v42 && gs.v42.freight;
+    if (F) F.board(ty || it.type, 'card');
+    if (w && it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, w, { dur: 420, height: 110, scaleTo: 0.45, onDone: (sp) => { gs.effects.releaseItem(sp); if (this.nb.train) this.nb.train.loadCargo(1); } });
+    else { if (it.spr) gs.effects.releaseItem(it.spr); if (tr) tr.loadCargo(1); }
+  }
 
   /** wholesale for n items of `ty` into the till (fractions carried over) */
   payWholesale(ty, n, fx, fy) {
@@ -526,17 +539,16 @@ export class Growth {
     if (this.playerPads(dt)) on = true;
     this.crates.layout(this.dock.x, this.dock.y + 4, this.dock.y + 1, 0, dt);
     this.till.update(dt);
-    // crates into the goods wagon while the train stands at our station
-    if (this.cargo > 0 && this.trainIn()) {
+    // crates into the goods wagon while the train stands at our station ((v4.2 P0a) camera anywhere; F7 room)
+    if (this.cargo > 0 && this.trainIn() && this.carRoom() > 0) {
       this.loadT -= dt;
       if (this.loadT <= 0) {
-        this.loadT = LOAD_EVERY;
+        this.loadT = (BALANCE.v42 && BALANCE.v42.freight && BALANCE.v42.freight.loadEvery) || LOAD_EVERY;
         this.cargo--;
         const ty = (this.cargoTypes && this.cargoTypes.shift()) || null;
         const it = ty ? this.crates.pop(ty) : this.crates.pop();
-        const w = this.nb.train.cargoPoint();
-        if (it && w) gs.effects.fly(it.spr, it.spr.x, it.spr.y, w, { dur: 420, height: 110, scaleTo: 0.45, onDone: (sp) => { gs.effects.releaseItem(sp); if (this.nb.train) this.nb.train.loadCargo(1); } });
-        else if (it) gs.effects.releaseItem(it.spr);
+        if (it) this.toWagon(it, ty);
+        else { const F = gs.v42 && gs.v42.freight; if (F) F.board(ty, 'card'); if (this.nb.train) this.nb.train.loadCargo(1); }
         // a counted crate with no sprite: refill the visible stack from the count
         if (this.crates.count + this.crates.incoming < Math.min(CRATES_SHOWN, this.cargo) && this.cargoTypes && this.cargoTypes.length) this.crates.push(this.cargoTypes[Math.min(this.cargoTypes.length - 1, this.crates.count)], null, gs.effects);
       }

@@ -124,7 +124,11 @@ export function makePorts(world) {
     sites: { offer: (def) => LAB.log.push('site ' + def.id) },
     progress: { setFlag: (f) => LAB.log.push('flag ' + f) },
     story: { passbook: (pid) => (LAB.books && LAB.books[pid]) || null },
-    emit: (e) => { LAB.events.push(e); if (LAB.events.length > 600) LAB.events.splice(0, 300); },
+    // the GameFeed: module events reach the other modules (here the bank's, e.g. bank:open → 첫 저금, bank:deposit)
+    emit: (e) => {
+      LAB.events.push(e); if (LAB.events.length > 600) LAB.events.splice(0, 300);
+      if (e && typeof e.t === 'string' && e.t.startsWith('bank:') && world.missions) world.missions.onFeed(e);
+    },
   };
   return ports;
 }

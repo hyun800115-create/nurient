@@ -3,6 +3,7 @@
 // when items fly between stacks.
 
 import { Assets } from '../core/Assets.js';
+import { StackBaker } from '../systems/StackBaker.js';
 
 const STEP_CACHE = {};
 export function stackStep(type) {
@@ -33,6 +34,51 @@ export class ItemStack {
     this.visible = true;
     this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
     this.inTypes = [];      // their types (saved with the stack, so a reload mid-flight loses nothing)
+    // (v4.2 P0) baked: the items are drawn as one picture (systems/StackBaker.js); an item has a sprite only while it
+    // flies. The slot is reserved on the first bake (a stack that is replaced right away never takes one)
+    this.bakeOn = !!opts.bake && !(typeof window !== 'undefined' && window.__FV_NO_BAKE);
+    this.bakeImg = null; this.slot = null; this.bakeDirty = true; this.bakeFail = false;
+    this.bakeTypes = opts.bakeTypes || null;      // the item types it will hold (slot height)
+    // 'eager': the slot is reserved now (the busiest stacks — piles, outputs, the plaza shelves — come first)
+    if (this.bakeOn && opts.bake === 'eager') this.ensureBake();
+  }
+
+  /** (v4.2 P0) the baked picture: a slot of the shared texture, sized for this stack at its fullest */
+  ensureBake() {
+    if (this.slot || this.bakeFail) return !!this.slot;
+    const B = StackBaker.of(this.scene);
+    if (!B) { this.bakeFail = true; return false; }
+    // extents: the towers' spread, the tallest tower at its fullest (16 px a layer), the item picture above / below
+    let x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+    for (const c of this.cols) { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]); }
+    const nc = Math.max(1, this.cols.length);
+    let tall = this.typeCols ? Math.ceil(this.max / Math.max(1, Object.keys(this.typeCols).length)) : this.alternate ? Math.ceil(this.max / nc) : Math.min(this.max, this.perCol);
+    if (this.drawMax) tall = Math.min(tall, this.alternate ? Math.ceil(this.drawMax / nc) : this.drawMax);
+    tall = Math.min(tall, 60);
+    // the step of the tallest item this stack holds (its towers' layer height)
+    let st = 0;
+    for (const it of this.items) st = Math.max(st, stackStep(it.type));
+    if (this.typeCols) for (const k in this.typeCols) st = Math.max(st, stackStep(k));
+    if (this.bakeTypes) for (const k of this.bakeTypes) st = Math.max(st, stackStep(k));
+    const sc = this.scale, step = Math.min(16, Math.max(8, st || 14) + 1) * sc, half = 46 * sc;
+    const w = x1 - x0 + half * 2, h = (y1 - y0) + tall * step + 76 * sc + 26 * sc;
+    const ox = -x0 + half, oy = -y0 + tall * step + 76 * sc;
+    this.slot = B.slotFor(this, w, h, ox, oy);
+    if (!this.slot) { this.bakeFail = true; this.materialize(); return false; }
+    const img = this.scene.add.image(0, 0, B.key, this.slot.name).setOrigin(ox / this.slot.w, oy / this.slot.h);
+    img.setVisible(this.visible);
+    img.__baked = true;
+    this.bakeImg = img;
+    this.baker = B;
+    return true;
+  }
+
+  /** (v4.2 P0) baking failed / was turned off: every item gets its sprite back */
+  materialize() {
+    const fx = this.scene.effects;
+    for (const it of this.items) if (!it.spr && fx) { it.spr = fx.takeItem(it.type); it.spr.setScale(this.scale).setVisible(this.visible); }
+    this.bakeOn = false;
+    if (this.bakeImg) { this.bakeImg.destroy(); this.bakeImg = null; }
   }
 
   /** an item of `type` starts flying toward this stack */
@@ -61,6 +107,14 @@ export class ItemStack {
 
   /** add an item (optionally reusing a sprite that just flew in) */
   push(type, spr, fx) {
+    if (this.bakeOn) {
+      // (v4.2) baked: the item is data; a sprite that flew in goes back to the pool (it is drawn in the next bake)
+      const f = fx || this.scene.effects;
+      if (spr && f) f.releaseItem(spr);
+      this.items.push({ type, spr: null, hop: 0, x: this.bx, y: this.by });
+      this.bakeDirty = true;
+      return null;
+    }
     if (!spr) spr = fx.takeItem(type);
     spr.setScale(this.scale).setVisible(this.visible).setAngle(0);
     this.items.push({ type, spr, hop: this.hopOnPush ? 1 : 0 });
@@ -73,6 +127,13 @@ export class ItemStack {
       const it = this.items[i];
       if (!types || (Array.isArray(types) ? types.indexOf(it.type) >= 0 : it.type === types)) {
         this.items.splice(i, 1);
+        if (!it.spr) {
+          // (v4.2) a baked item: its sprite appears where it was drawn, to fly away
+          const fx = this.scene.effects;
+          it.spr = fx ? fx.takeItem(it.type) : null;
+          if (it.spr) it.spr.setScale(it.sx || this.scale, it.sy || this.scale).setPosition(it.x, it.y).setDepth(this.depth + 0.01).setVisible(this.visible);
+          this.bakeDirty = true;
+        }
         return it;
       }
     }
@@ -80,8 +141,10 @@ export class ItemStack {
   }
 
   clear(fx) {
-    for (const it of this.items) fx.releaseItem(it.spr);
+    for (const it of this.items) if (it.spr) fx.releaseItem(it.spr);
     this.items.length = 0;
+    this.bakeDirty = true;
+    if (this.bakeImg && this.slot && this.baker) this.baker.bake(this);
   }
 
   /** world position where the next item would land (for flights) */
@@ -113,7 +176,7 @@ export class ItemStack {
   topPos() {
     const it = this.items[this.items.length - 1];
     if (!it) { this._top.x = this.bx; this._top.y = this.by; return this._top; }
-    this._top.x = it.spr.x; this._top.y = it.spr.y;
+    this._top.x = it.spr ? it.spr.x : it.x; this._top.y = it.spr ? it.spr.y : it.y;
     return this._top;
   }
 
@@ -122,6 +185,7 @@ export class ItemStack {
    * vx = carrier velocity (for sway), dt = frame time.
    */
   layout(bx, by, depth, vx = 0, dt = 0.016, bob = 0) {
+    if (this.bakeOn) { this.layoutBaked(bx, by, depth); return; }
     this.bx = bx; this.by = by; this.depth = depth;
     if (this.sway) {
       // spring lean opposite to motion
@@ -184,8 +248,59 @@ export class ItemStack {
     }
   }
 
+  /**
+   * (v4.2 P0) the baked layout: the same towers as layout() (typeCols / alternate / perCol, drawMax), written into
+   * the items' x / y; the picture is re-baked when something changed (or the stack moved) and it is near the view
+   */
+  layoutBaked(bx, by, depth) {
+    const moved = bx !== this.bx || by !== this.by;
+    this.bx = bx; this.by = by; this.depth = depth;
+    const items = this.items, n = items.length;
+    if (this.bakeDirty || moved) {
+      if (this.typeCols) {
+        const hs = this._hs || (this._hs = []), cs = this._cs || (this._cs = []);
+        for (let k = 0; k < 8; k++) { hs[k] = 0; cs[k] = 0; }
+        const lim = this.drawMax || Infinity;
+        for (let i = 0; i < n; i++) {
+          const it = items[i], col = this.typeCols[it.type] || 0, c = this.cols[col] || this.cols[0];
+          it.x = bx + c[0]; it.y = by + c[1] - hs[col];
+          if (++cs[col] < lim) hs[col] += stackStep(it.type) * this.scale;
+        }
+      } else if (this.alternate) {
+        const nc = this.cols.length, hs = this._hs || (this._hs = []);
+        for (let k = 0; k < nc; k++) hs[k] = 0;
+        const lim = this.drawMax || Infinity;
+        for (let i = 0; i < n; i++) {
+          const it = items[i], col = i % nc, c = this.cols[col];
+          it.x = bx + c[0]; it.y = by + c[1] - hs[col];
+          if (i + nc < lim) hs[col] += stackStep(it.type) * this.scale;
+        }
+      } else {
+        let h = 0, col = 0, inCol = 0;
+        for (let i = 0; i < n; i++) {
+          if (inCol >= this.perCol && col < this.cols.length - 1) { col++; inCol = 0; h = 0; }
+          const it = items[i], c = this.cols[col];
+          it.x = bx + c[0]; it.y = by + c[1] - h;
+          h += stackStep(it.type) * this.scale; inCol++;
+        }
+      }
+    }
+    // live sprites (none normally: items flying in are released on arrival) keep their place
+    for (let i = 0; i < n; i++) { const it = items[i]; if (it.spr) { it.spr.setPosition(it.x, it.y); if (it.spr.depth !== depth + 0.001) it.spr.setDepth(depth + 0.001); } }
+    if (!this.bakeImg && (!n || !this.ensureBake())) return;
+    const img = this.bakeImg;
+    if (img.x !== bx || img.y !== by) img.setPosition(bx, by);
+    if (img.depth !== depth + 0.001) img.setDepth(depth + 0.001);
+    if (this.bakeDirty) {
+      const gs = this.scene;
+      // (off screen it waits: a stack far away is baked when it comes near)
+      if (!gs.isOnScreen || gs.isOnScreen(bx, by, 700) || !this.bakedOnce) { this.baker.bake(this); this.bakeDirty = false; this.bakedOnce = true; }
+    }
+  }
+
   setVisible(v) {
     this.visible = v;
-    for (const it of this.items) it.spr.setVisible(v);
+    for (const it of this.items) if (it.spr) it.spr.setVisible(v);
+    if (this.bakeImg) this.bakeImg.setVisible(v);
   }
 }

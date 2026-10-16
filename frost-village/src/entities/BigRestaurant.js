@@ -67,7 +67,7 @@ export class BigRestaurant {
     // serves), cash (the meals' coins)
     const pp = P('pantry');
     this.pantryPad = new Pad(gs, pp.x, pp.y, 'input', 1.5, { icon: 'item_fish_cooked', iconSize: 40 });
-    this.pantry = new ItemStack(gs, { scale: 0.85, cols: [[-26, -4], [0, 8], [26, -4]], typeCols: { item_fish_cooked: 0, item_bread: 1, item_meat_cooked: 2 }, max: this.pantryMax() * 3, drawMax: 8 });
+    this.pantry = new ItemStack(gs, { scale: 0.85, cols: [[-26, -4], [0, 8], [26, -4]], typeCols: { item_fish_cooked: 0, item_bread: 1, item_meat_cooked: 2 }, max: this.pantryMax() * 3, drawMax: 8, bake: true });
     // ((v4 review) above the tallest food tower (8 layers): the pile used to cover the label's text)
     this.pantryLabel = floatLabel(gs, pp.x + 10, pp.y - 178, null);
     this.pantryLabel.set(t('rest_pantry'));

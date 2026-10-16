@@ -488,35 +488,55 @@ export class Tutorial {
     return true;
   }
 
-  /** where carried item `type` can go right now: { pad, key } or null */
+  /**
+   * where carried item `type` can go right now: { pad, key, label, sink, room, text } or null.
+   * ((v4.2) the one resolver of the tutorial arrow, the 길 안내 navigator and the 관망 pilot — the porters use the same
+   *  Logistics.best — so the arrow, the navigator and the porters never disagree. label = a strings key of the place,
+   *  room = how many it takes now)
+   */
   destination(type) {
     const gs = this.gs;
+    const D = (pad, key, label, sink, room, text, lp) => (pad ? { pad, key: key || null, label, sink: sink || null, room: room === undefined ? 99 : room, text: text || undefined, lp: lp || null } : null);
     // (v3) a building site / hire pad / the food box / a workshop wanting it comes first
     const L = gs.logistics;
     if (L) {
       const b = L.best(type, gs.player.x, gs.player.y, { minPrio: 50, noStore: true });
       if (b) {
         const s = b.sink;
-        const pad = s.dropPad || (s.pad && s.pad.contains ? s.pad : null) || (s.inPad) || { x: s.x, y: s.y, contains: (x, y) => gdist(x, y, s.x, s.y) < 60 };
-        if (s.kind === 'plot' || s.kind === 'tower') return { pad: s.dropPad, key: type === 'item_plank' ? 'obj_site_plank' : 'obj_site_ingot' };
-        if (s === gs.foodBox) return { pad: s.pad, key: 'obj_food' };
-        if (s.items) return { pad: s.pad, key: 'obj_tool_give' };
+        if (s.kind === 'plot' || s.kind === 'tower') return D(s.dropPad, type === 'item_plank' ? 'obj_site_plank' : 'obj_site_ingot', s.kind === 'tower' ? 'place_tower' : 'place_site', s, b.n);
+        if (s === gs.foodBox) return D(s.pad, 'obj_food', 'place_food', s, b.n);
+        if (s.items) return D(s.pad, 'obj_tool_give', 'place_pad', s, b.n);
         const ws = gs.workshops.find((w) => w.sink === s);
-        if (ws) return { pad: ws.inPad, key: null };
-        if (s.station) return this.stationDest(s.station);
-        void pad;
+        if (ws) return D(ws.inPad, null, 'line_' + ws.kind, s, b.n);
+        if (s.station) { const d = this.stationDest(s.station); return d ? Object.assign(d, { sink: s, room: b.n }) : null; }
+        // ((v4.2) another urgent sink — a site of the office / bank / depot — with its own pad)
+        if (s.dropPad || s.pad) return D(s.dropPad || s.pad, null, s.label || 'place_site', s, b.n);
       }
     }
     // ---- (v4-B) a full shelf: an open order card takes it at the loading dock
     const dock = this.dockFor(type);
     const gw = this.growth();
-    if (dock && (!this.shelfRoom(type) || (gw && this.cardStuck(gw, type)))) return { pad: dock, key: 'obj_cargo:' + type, text: t('obj_cargo', { item: t(type) }) };
-    if (STORE_GOODS.indexOf(type) >= 0) return gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType ? { pad: gs.store.shelf, key: null } : (gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null);
-    if (type === 'item_fish_big') return gs.warehouse ? { pad: gs.warehouse.inPad, key: null } : null;
-    if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? { pad: gs.market.shelf, key: SELL_KEY[type] } : null;
-    if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? { pad: gs.trade.shelf, key: SELL_KEY[type] } : null;
+    if (dock && (!this.shelfRoom(type) || (gw && this.cardStuck(gw, type)))) return D(dock, 'obj_cargo:' + type, 'place_dock', gw && gw.dock, gw ? gw.needOf(type) : 99, t('obj_cargo', { item: t(type) }));
+    if (STORE_GOODS.indexOf(type) >= 0) {
+      const sto = gs.store;
+      if (sto && sto.enabled && sto.stock.countOf(type) < sto.maxPerType) return D(sto.shelf, null, 'place_store', sto.sink, sto.maxPerType - sto.stock.countWithIncoming(type));
+      if (gs.warehouse) return D(gs.warehouse.inPad, null, 'place_warehouse', gs.warehouse.sink, gs.warehouse.room);
+      return this.v42Dest(type);
+    }
+    if (type === 'item_fish_big') return gs.warehouse ? D(gs.warehouse.inPad, null, 'place_warehouse', gs.warehouse.sink, gs.warehouse.room) : this.v42Dest(type);
+    if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? D(gs.market.shelf, SELL_KEY[type], 'place_market', gs.market.sink, gs.market.maxPerType - gs.market.stock.countWithIncoming(type)) : this.v42Dest(type);
+    if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? D(gs.trade.shelf, SELL_KEY[type], 'place_trade', gs.trade.sink, gs.trade.maxPerType - gs.trade.stock.countWithIncoming(type)) : this.v42Dest(type);
     const st = gs.stationByInput[type];
-    return st && st.enabled && st.inStack.room > 0 ? this.stationDest(st) : null;
+    if (st && st.enabled && st.inStack.room > 0) { const d = this.stationDest(st); if (d) d.room = st.inStack.room; return d; }
+    return this.v42Dest(type);
+  }
+
+  /** (v4.2) nothing in the village takes it: the 짐 싣는 곳 as surplus (exported by train / sent to the depot, §4.3) */
+  v42Dest(type) {
+    const gs = this.gs, F = gs.v42 && gs.v42.freight;
+    const sk = F && F.surplusSink;
+    if (!sk || !gs.logistics || gs.logistics.want(sk, type) <= 0) return null;
+    return { pad: F.dockPad(), key: null, label: 'place_dock', sink: sk, room: gs.logistics.want(sk, type), surplus: true };
   }
 
   /** (v4-B) does the shelf that sells `type` have room? */
@@ -530,8 +550,8 @@ export class Tutorial {
 
   /** (v3.5) where to bring a station's raw items: its work spot while nobody works it, else the input pad */
   stationDest(st) {
-    if (st.op && !st.op.operator && st.op.enabled) return { pad: st.op.pad, key: 'obj_op_' + st.id };
-    return { pad: st.inPad, key: FEED_KEY[st.input] || null };
+    if (st.op && !st.op.operator && st.op.enabled) return { pad: st.op.pad, key: 'obj_op_' + st.id, label: 'place_op', lp: { st: t('line_' + st.id) }, sink: st.inSink || null, room: st.inStack.room };
+    return { pad: st.inPad, key: FEED_KEY[st.input] || null, label: 'place_in', lp: { st: t('line_' + st.id) }, sink: st.inSink || null, room: st.inStack.room };
   }
 
   /** (v3.5) a station with work waiting and nobody working it; a pile filling up with nobody carrying it */

@@ -56,6 +56,14 @@ test('C-2: drives start from the yard through the vehicles API; without a vehicl
   H.run(30);
   assert.ok(H.emitted.some((e) => e.t === 'mission:done' && e.code === 'B1' && e.stars === 3));
   assert.equal(H.m.driving, 0);
+  // a drive whose mission ends meanwhile (here: it runs late) is called off through vehicles.abortDrive()
+  const b2 = m.make(tpl('B2'), 'a', null); m.add(b2);
+  assert.ok(H.m.startDrive(b2.id));
+  m.expire(b2, 'late');
+  H.run(1);
+  assert.equal(H.aborts, 1, 'abortDrive called once');
+  assert.equal(H.m.driving, 0);
+  assert.equal(H.drives.length, 0);
   // no vehicles module: B1 / B2 never reach the board
   const N = makeHeadless({ world: { rank: 2, facts: FACTS }, vehicles: false });
   playFor(N, 3600);
