@@ -282,7 +282,8 @@ try {
     for (const k of ['rest_cashier', 'rest_cook', 'rest_server']) window.__FV.doneStep(k);
     const R = window.__FV.scene.civic.C.restaurant; window.__c1vc = R.visitorChance; R.visitorChance = 1;
   });
-  const tV = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.visitor && (g.state === 'seated' || g.state === 'eat')), 300, 2);
+  // ((v4.2) the train comes round the loops every ≈ 85 s instead of 59 s, with more riders: allow ×1.5 the v4.1 300 s)
+  const tV = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.visitor && (g.state === 'seated' || g.state === 'eat')), 450, 2);
   step('10 (v4-C) train visitors walk to the big restaurant and sit down to eat', tV >= 0, { t: tV, rest: await ev(() => window.__FV.civic().rest.visitors) });
   const tVd = await until(() => window.__FV.scene.civic.restaurant.served > 0, 60, 1);
   step('10 (v4-C) ... and pay for the meal', tVd >= 0, await ev(() => ({ served: window.__FV.civic().rest.served, cash: window.__FV.civic().rest.cash })));

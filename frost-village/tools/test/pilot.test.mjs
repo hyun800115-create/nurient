@@ -46,7 +46,7 @@ console.log('choose(): pure and deterministic');
   ok(a.every((x) => A.ACTS.indexOf(x.act) >= 0), 'always one of the ten activities');
   const kept = A.choose({ ...snaps[0], urgent: true, locked: { urgent: 1e9 }, now: 0 }, 1, 0, 0, { act: 'urgent', t: 1, min: 4, max: 25 });
   ok(kept.act !== 'urgent', 'the minimum time does not keep a locked activity (the chore break wins)');
-  ok(A.AGAIN && A.CHORES.length === 2 && A.AGAIN.office >= 60 && A.AGAIN.rest >= 30, 'AGAIN cool-downs for the leisure activities', A.AGAIN);
+  ok(A.AGAIN && A.CHORES.length === 3 && A.CHORES.indexOf('collect') >= 0 && A.AGAIN.office >= 60 && A.AGAIN.rest >= 30, 'AGAIN cool-downs for the leisure activities; 급한 일 · 업무 · 수금 share the chore break', A.AGAIN);
 }
 
 // ── a mock village ────────────────────────────────────────────────────────────────────────────────────────────────

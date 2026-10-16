@@ -14,6 +14,22 @@ import { Settings } from '../core/Save.js';
 import { StockLedger, LINES } from './StockLedger.js';
 import { FOODS, GOODS } from '../entities/Seller.js';
 
+/** the village tills: [{ name, till }] — every CashPad that takes coins (depot = the DepotSystem, optional) */
+export function villageTills(gs, depot) {
+  const out = [];
+  const add = (name, till) => { if (till && till.enabled !== false && typeof till.value === 'number') out.push({ name, till }); };
+  if (gs.market) add('market', gs.market.cash);
+  if (gs.trade && gs.trade.enabled) add('trade', gs.trade.cash);
+  if (gs.store && gs.store.enabled) add('store', gs.store.cash);
+  const C = gs.civic;
+  if (C && C.restaurant && C.restaurant.cash) add('rest', C.restaurant.cash);
+  if (C && C.hall && C.hall.tax) add('tax', C.hall.tax);
+  const G = gs.v4 && gs.v4.growth;
+  if (G && G.active && G.till) add('station', G.till);
+  if (depot && depot.till) add('depot', depot.till);
+  return out;
+}
+
 export class V42 {
   constructor(gs, sv) {
     this.gs = gs;
@@ -32,7 +48,12 @@ export class V42 {
     const pr = sv && sv.progress;
     this.fromOld = !!(sv && !sv.v42 && pr && pr.done && pr.done.hire_fisherman);
     gs.events.once('shutdown', () => this.destroy());
+    // gs.tills (docs/v42_plan.md §6.5, frozen interface): every village CashPad — 딸랑이's round, 관망's 수금
+    Object.defineProperty(gs, 'tills', { configurable: true, get: () => this.tillList().map((q) => q.till) });
   }
+
+  /** the village tills: [{ name, till }] (market, 교역소, 잡화점, 큰 식당, 세금 상자, 역 금고, 물류 금고) */
+  tillList() { return villageTills(this.gs, this.depot); }
 
   /** add a system (update(dt) / serialize() / state() / destroy() are all optional) */
   add(name, sys) { if (!sys) return null; this[name] = sys; this.systems.push({ name, sys }); return sys; }

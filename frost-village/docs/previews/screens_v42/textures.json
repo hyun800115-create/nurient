@@ -1,20 +1,32 @@
 [
  {
-  "f": "16_bank_vault_390x844_ko.jpg",
-  "mib": 381,
-  "peak": 381,
-  "objs": 934
+  "f": "05_loop_curve_390x844_ko.jpg",
+  "mib": 368,
+  "peak": 368,
+  "objs": 921
  },
  {
-  "f": "17_depot_revealed_390x844_ko.jpg",
-  "mib": 411.5,
-  "peak": 411.5,
-  "objs": 1157
+  "f": "19_observe_390x844_ko.jpg",
+  "mib": 369.7,
+  "peak": 369.7,
+  "objs": 1231
  },
  {
-  "f": "18_cargo_sleigh_390x844_ko.jpg",
-  "mib": 409.9,
-  "peak": 411.9,
-  "objs": 1441
+  "f": "19_observe_390x844_en.jpg",
+  "mib": 340.2,
+  "peak": 347.8,
+  "objs": 1184
+ },
+ {
+  "f": "19_observe_360x640_ko.jpg",
+  "mib": 337.9,
+  "peak": 362,
+  "objs": 1165
+ },
+ {
+  "f": "19_observe_360x640_en.jpg",
+  "mib": 337.5,
+  "peak": 354.4,
+  "objs": 1139
  }
 ]

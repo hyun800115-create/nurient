@@ -97,8 +97,9 @@ try {
     ok(!s.active, 'off while 관망 drives the chief');
   } else console.log('  (no 관망 pilot yet: skipped)');
   // per-frame cost
-  const cost = await page.evaluate(() => { const F = window.__FV; F.clearStack(); F.carry('item_plank', 6); const N = window.__FV.v42.v.nav; const a = performance.now(); for (let i = 0; i < 600; i++) N.update(1 / 60); return (performance.now() - a) / 600; });
-  ok(cost < 0.1, 'navigator update ' + cost.toFixed(3) + ' ms a frame (budget 0.02 on a quiet machine; noisy here)');
+  // (the best of 8 batches of 120 frames: a shared, loaded machine stretches single batches 10×)
+  const cost = await page.evaluate(() => { const F = window.__FV; F.clearStack(); F.carry('item_plank', 6); const N = window.__FV.v42.v.nav; N.update(1 / 60); let best = Infinity; for (let b = 0; b < 8; b++) { const a = performance.now(); for (let i = 0; i < 120; i++) N.update(1 / 60); best = Math.min(best, (performance.now() - a) / 120); } return best; });
+  ok(cost < 0.1, 'navigator update ' + cost.toFixed(3) + ' ms a frame, best of 8 batches (budget 0.02 on a quiet machine; noisy here)');
   ok(log.errors.length === 0, 'no errors (46-min save)', log.errors.slice(0, 3));
   await page.context().close();
   // the first loop: no guide

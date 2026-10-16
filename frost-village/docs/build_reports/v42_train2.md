@@ -160,7 +160,16 @@ All within the contract's maximum frame sizes ([240, 216], [216, 216], [208, 152
   water-tower hints are checked against `src/data/world.js` (`shoreY`, `WORLD.width`). Result JSON:
   `/tmp/fv_cache/train2/phaser/train2_phaser.json`.
 
-PHASER_RESULTS
+  After the polish (final run, 1,855 s on the shared box, exit 0): **0 page errors, 0 404s, 0 missing frames**;
+  49 textures loaded (every `assets/town` atlas + the 4 `train2` atlases), 33 anims registered, 182 anim frames
+  checked, 32 anims playing; flip probe: mirrored engine / coach / box car / flat car land on the track point
+  (error 0 px with `engineFlip` for the engine); the cars follow the game's `RailPath` within 0.63 px; water-tower
+  hints `towerBad` 0 (ours L(−8.0, 4.3): footprint 63 px on land, sprite x 2791–3040; town L(38.5, 4.3): 77 px,
+  x 5767–6016; world width 6144). 11 phone captures, the curve comparison and 3 loop GIFs (79 / 86 / 86 frames,
+  1.5 / 1.9 / 4.1 MB).
+- Looked at after the polish: `tr2_cars_8dir`, `tr2_loops`, `tr2_phone_day_z06` / `night_z10` / `stop_z06` /
+  `town_z06` and frame sheets of the three loop GIFs: the four cars read as separate units at 0.6, the tower stays
+  behind every car on both loops, night windows are warm with the passengers visible.
 
 ## Previews (`docs/previews/`)
 - `tr2_cars_8dir.png`, `tr2_anims.png` (move 8 f; box car door SE / NE), `tr2_consist.png`, `tr2_silhouette.png`.

@@ -599,8 +599,8 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
 | 콩이 | 15 | dog within 800 px | 15 s | `DogPlay` pet / throw |
 (CODE-1) Variety: an activity that ran to its maximum waits `AGAIN` s before it is chosen again (collect 10, train 45,
-chat 45, office 120, rest 60, dog 90; chores 0), and after `pilot.breakAfter` 150 s of chores (급한 일 / 업무) both wait
-`pilot.breakFor` 20 s — a 10-minute mock day with a chore always waiting changes activity 22 times over 5 kinds
+chat 45, office 120, rest 60, dog 90; chores 0), and after `pilot.breakAfter` 150 s of chores (급한 일 / 업무 / 수금) all three wait
+`pilot.breakFor` 20 s — a 10-minute mock day with a chore always waiting changes activity 23 times over 5 kinds
 (`pilot.test.mjs`); 수금 picks the till worth the walk (coins / (1 + distance / 800 px)).
 Agenda weights by hour (`pilot.agenda`, editable): 07–09 office ×1.5, 09–12 chores ×1.3, 12–13 lunch, 13–17 chores +
 one train watch, 17–20 social ×1.5, 20–07 evening. Before the day clock starts (no station) the agenda cycles by game minutes.
@@ -733,7 +733,7 @@ v42: {
   freight: { perTrain: 56, big: 88, bigCost: 2000, bigOfferWait: 60, bigOfferS: 120, exportRate: 0.5, loadEvery: 0.14 },
   depot:   { site: { coins: 6000, item_plank: 40, item_ingot: 20, time: 20 },
              caps: { materials: 160, food: 160, goods: 120, tools: 60 },
-             sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500 },
+             sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500, offerS: 120 },   // (CODE-1) offerS: a sleigh load waited at the dock this long (s, in total) with room in the racks -> 썰매 한 대 더
              sell: { every: 8, rate: 0.6, open: 7, close: 20, perMin: { materials: 20, food: 30, goods: 20, tools: 6 } },
              rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 } },   // 추정 — 봇으로 맞춰요
   office:  { site: { coins: 1800, item_plank: 20, item_ingot: 6, time: 10 },
@@ -883,6 +883,8 @@ modes; the depot interior adds ≤ 3 pages in one view).
 | `v42.mjs` | office build → hires in order → courier round deposits every till ≥ 100 within 180 s → bank → passbook rows; aide never > 4 m behind after 2 s; panel opens < 100 ms; reveal hysteresis (no flicker at 260 px); depot site → sleigh round trip → racks equal stock → buyers pay; freight: cards first, surplus next, capacity respected |
 | `pilot.mjs` | 30-min soak in 관망 from the 46-min save: 0 errors, 0 stuck > 20 s, **0 coins spent / 0 accidental payments**, ≥ 6 activities per 10 min, hand-back latency 1 frame, income ≥ 80 % of the arrow bot's |
 | `texbudget.mjs`, `review_robust_drawcalls.mjs` | §13 gates |
+| `reqlog42.mjs --base <v4.1 copy>` (CODE-1) | §1 guardrail 1: a fresh profile, seeded `Math.random`, the smart bot's first loop on the fixed step in both builds: the asset requests from boot to the village and up to the first sale are the same multiset (the random resident cast counts as one kind); after the first sale ≤ 1 new file, none missing |
+| `visitors42.mjs --base <v4.1 copy>` (CODE-1) | §5.3: neighbours stepping off per game minute on the 46-min save within ±10 % of v4.1 (minutes 3–20, chief idle) |
 | `shots_v42.mjs` | halo day/night/zoom 0.6 crowd; nav path + edge badge; settings 놀이 tab; both loops with the train mid-curve; consist at each platform; freight loading; office cutaway with staff; 5 panel tabs; bank vault; depot revealed + sleigh; 관망 caption — phone 390×844 and 360×640, ko + en |
 
 **Bots** (`review_gameplay_census.mjs` + `review_gameplay_bot.js`, smart / arrow / arrow-only, fresh and the v4.1 45/46-min saves)

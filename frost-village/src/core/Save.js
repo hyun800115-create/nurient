@@ -292,6 +292,7 @@ export function sanitizeV42(raw) {
     o.seen.cheer = count(sn.cheer, 99);
     for (const k of ['p2', 'up', 'big', 'p34', 'sl2']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
     if (isObj(raw.full)) { o.full = {}; for (const k of LINES5) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
+    if (raw.sleighWait !== undefined) { const w = Math.max(0, Math.min(3600, Math.round(num(raw.sleighWait, 0)))); if (w > 0) o.sleighWait = w; }
     // (partial payments on the offered upgrade pads: no coin is lost over a reload)
     if (isObj(raw.offerPaid)) { o.offerPaid = {}; let n = 0; for (const k in raw.offerPaid) { if (n >= 8) break; if (/^[a-z0-9_]{1,24}$/.test(k)) { const c = count(raw.offerPaid[k], 1e6); if (c > 0) { o.offerPaid[k] = c; n++; } } } }
     return o;

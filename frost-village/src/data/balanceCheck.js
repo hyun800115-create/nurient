@@ -426,7 +426,7 @@ export const V42_SPEC = {
   depot: {
     site: { coins: R(1, 1e9, 6000, true), item_plank: R(0, 999, 40, true), item_ingot: R(0, 999, 20, true), time: R(1, 600, 20) },
     caps: { materials: R(1, 9999, 160, true), food: R(1, 9999, 160, true), goods: R(1, 9999, 120, true), tools: R(1, 9999, 60, true) },
-    sleigh: { cap: R(1, 999, 60, true), speed: R(0.2, 20, 2.5), loadS: R(0, 120, 8), secondCost: R(1, 1e9, 2500, true) },
+    sleigh: { cap: R(1, 999, 60, true), speed: R(0.2, 20, 2.5), loadS: R(0, 120, 8), secondCost: R(1, 1e9, 2500, true), offerS: R(0, 3600, 120) },
     sell: { every: R(0.5, 600, 8), rate: R(0, 2, 0.6), open: R(0, 23, 7), close: R(1, 24, 20), perMin: { materials: R(0, 999, 20), food: R(0, 999, 30), goods: R(0, 999, 20), tools: R(0, 999, 6) } },
     rawPrice: { item_fish_raw: R(0, 999, 1), item_log: R(0, 999, 1), item_wheat: R(0, 999, 1), item_ore: R(0, 999, 2), item_meat_raw: R(0, 999, 3) },
   },

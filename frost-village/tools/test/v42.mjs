@@ -123,6 +123,26 @@ try {
   ok(after.total > before.total, 'the racks filled (' + before.total + ' → ' + after.total + ')');
   ok(after.dock + (after.total - before.total) >= Math.min(before.dock, 1) && after.total - before.total <= before.dock + 200, 'goods are moved, not made (dock ' + before.dock + ' → ' + after.dock + ')');
 
+  // 썰매 한 대 더: offered once a sleigh load waited long enough with room in the racks; bought -> two sleighs, one loads at a time
+  const s2 = await page.evaluate(() => {
+    const gs = window.__FV.scene, L = gs.v42.lines, F = gs.v42.freight, D = gs.v42.depot;
+    F.addSurplus('item_log', 90);
+    L.sleighWaitT = (window.__FV.scene.v42.lines.sleighWaitT || 0) + 200;
+    window.__step.run(1.5);
+    // (the offer is due; its pad shows when fewer than 3 other offers stand — the 46-min save has some)
+    const due = L.offers().find((o) => o.id === 'sleigh2');
+    const pad = L.pads.sleigh2;
+    const r = { offered: !!due, padShown: !!pad, n0: D.sleighs.length };
+    if (pad) L.done(pad.offer, pad); else if (due) L.done(due, { vanish() {}, paid: 0 });
+    r.n1 = D.sleighs.length;
+    let both = 0, twoLoading = 0;
+    for (let k = 0; k < 60 * 90; k++) { window.__step.run(1 / 60); if (D.sleighs.filter((s) => s.state === 'load').length > 1) twoLoading++; if (D.sleighs.every((s) => s.state !== 'wait')) both++; }
+    r.twoLoading = twoLoading; r.both = both; r.saved = window.__FV.scene.v42.serialize().v42.depot.sleighs;
+    return r;
+  });
+  ok(s2.offered && s2.n0 === 1 && s2.n1 === 2 && s2.saved === 2, '썰매 한 대 더: offered by need, bought -> 2 sleighs (saved)', s2);
+  ok(s2.twoLoading === 0, 'the two sleighs take turns at the stop (never two loading)', s2);
+
   console.log('freight: cards first, then surplus; camera anywhere');
   const fr = await page.evaluate(() => {
     const gs = window.__FV.scene, F = gs.v42.freight, G = gs.v4.growth, nb = gs.v4;

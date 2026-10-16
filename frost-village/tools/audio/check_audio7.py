@@ -168,7 +168,11 @@ for (const f of job.files) {
           const a = Math.max(0, Math.floor(st * sr)), m = Math.min(n - a, Math.ceil((du + 0.03) * sr));
           let e = 0, et = 0, pk = 0;
           for (let i = 0; i < m; i++) { const v = x[a + i] * x[a + i]; e += v; et += v * i; pk = Math.max(pk, Math.abs(x[a + i])); }
-          r.slices[k] = { centroid: et / Math.max(e, 1e-12) / sr, peak: pk, len: m };
+          const w = (i) => x[a + (((i % m) + m) % m)];
+          const dd = (i) => Math.abs(w(i) - 2 * w(i - 1) + w(i - 2));
+          let sm = 0; for (const i of [0, 1, 2]) sm = Math.max(sm, dd(i));
+          const ss = []; for (let i = 2; i < m; i += 2) ss.push(dd(i)); ss.sort((p, q) => p - q);
+          r.slices[k] = { centroid: et / Math.max(e, 1e-12) / sr, peak: pk, len: m, seam: sm / Math.max(ss[Math.floor(ss.length * 0.999)], 1e-9) };
         }
       }
       res[sr] = r;
@@ -252,8 +256,9 @@ def demo_mix(man, sprite_pcm, loop_pcm, path_mp3):
         a = man["audio"].get(key)
         if a and a.get("inSprite"):
             st, du = man["audioSprite"]["keys"][key]
-            i = int(round(st * SR))
-            cache[key] = (sprite_pcm[i:i + int(round(du * SR))], a["volume"])
+            i = int(np.floor(st * SR))
+            cache[key] = (sprite_pcm[i:i + int(np.ceil((du + 0.03) * SR))] if a.get("loopPeriod")
+                          else sprite_pcm[i:i + int(round(du * SR))], a["volume"])
         elif key == "amb_office":
             cache[key] = (loop_pcm, a["volume"])
         else:
@@ -298,7 +303,7 @@ def demo_mix(man, sprite_pcm, loop_pcm, path_mp3):
         if rate != 1.0:
             m = int(len(x) / rate)
             x = np.interp(np.arange(m) * rate, np.arange(len(x)), x)
-        x = np.concatenate([x, np.zeros(S.n_of(0.03))]) if key == "sfx_wheel_squeal" else x   # the sliceSprite tail
+        # (the squeal's cut is already the sliceSprite dur + 30 ms = one loop period)
         i0 = S.n_of(start)
         reps = int(np.ceil((n - i0) / len(x))) + 1
         y = np.zeros(n)
@@ -479,7 +484,7 @@ def main(argv=None):
             if k != "sfx_wheel_squeal" and len(lead) and lead[0] > S.n_of(0.004):
                 fail(f"{k}: {lead[0] / SR * 1000:.1f} ms of silence at the start")
             tail = np.sqrt(np.mean(x[-S.n_of(0.01):] ** 2)) / max(S.peak(x), 1e-9)
-            if tail > 0.05:
+            if tail > 0.05 and not a.get("loopPeriod"):
                 fail(f"{k}: tail not faded ({S.db(tail):.1f} dB re peak)")
         if not (0.05 <= a["volume"] <= 1.0):
             fail(f"{k}: volume {a['volume']}")
@@ -517,11 +522,22 @@ def main(argv=None):
         if k == "sfx_wheel_squeal":
             if hs > 3.0:
                 fail(f"{k}: {hs:.1f} % of its energy above 4 kHz (gentle squeal wanted)")
-            e0 = np.sqrt(np.mean(x[:S.n_of(0.02)] ** 2)) / S.peak(x)
-            e1 = np.sqrt(np.mean(x[-S.n_of(0.02):] ** 2)) / S.peak(x)
-            if max(e0, e1) > 0.01:
-                fail(f"{k}: ends not silent ({S.db(e0):.0f} / {S.db(e1):.0f} dB) - would click when looped")
-            rep.append(f"    ends {S.db(e0 + 1e-9):.0f} / {S.db(e1 + 1e-9):.0f} dB re peak; centroid {cen:.0f} Hz")
+            # polish (critic M5): a steady loop. Cut it exactly like Assets.sliceSprite (dur + 30 ms) and loop it.
+            per = a.get("loopPeriod")
+            if not per or abs(per - (du + 0.03)) > 1e-6:
+                fail(f"{k}: loopPeriod {per} must equal the sliceSprite cut (dur + 0.03 = {du + 0.03:.2f} s)")
+            cut = pcm[int(np.floor(st * SR)):int(np.floor(st * SR)) + int(np.ceil((du + 0.03) * SR))]
+            lm2 = loop_metrics(cut[None, :])
+            loops4 = np.tile(cut, 4)
+            env = np.sqrt(np.convolve(loops4 ** 2, np.ones(441) / 441, "same"))[441:-441]
+            deep = float(np.mean(20 * np.log10(env / env.max() + 1e-9) < -12))
+            swing = float(np.percentile(20 * np.log10(env + 1e-9), 95) - np.percentile(20 * np.log10(env + 1e-9), 5))
+            rep.append(f"    loop: cut {len(cut)} smp, seam hf {lm2['hf_ratio']:.3f} d2 {lm2['d2_ratio']:.3f}; looped "
+                       f"envelope {deep * 100:.1f} % > 12 dB under peak, 5-95 % swing {swing:.1f} dB; centroid {cen:.0f} Hz")
+            if lm2["hf_ratio"] >= 1 or lm2["d2_ratio"] >= 1:
+                fail(f"{k}: the sliced loop clicks at the wrap (hf {lm2['hf_ratio']:.2f}, d2 {lm2['d2_ratio']:.2f})")
+            if deep > 0.05:
+                fail(f"{k}: looped it throbs ({deep * 100:.0f} % of the time > 12 dB under the peak)")
         if loop:
             L = int(a.get("loopSamples", 0))
             if abs(LOOP[1] - L / SR) > 0.01:
@@ -542,7 +558,21 @@ def main(argv=None):
             env = env - env.mean()
             ac = np.fft.irfft(np.abs(np.fft.rfft(env, 2 * len(env))) ** 2)[:300]
             lag = int(np.argmax(ac[60:140])) + 60
-            rep.append(f"    clock: envelope autocorrelation peak at {lag * 10} ms")
+            # polish (critic L6): in how many of the 24 seconds is the tick the loudest high event?
+            e5 = np.convolve(np.abs(S.hp(x, 1500, order=2)), np.ones(221) / 221, "same")
+            sec = SR
+            fold = e5[:len(e5) // sec * sec].reshape(-1, sec).mean(axis=0)
+            ph = int(np.argmax(fold))
+            wins = 0
+            for s_ in range(len(e5) // sec):
+                seg = np.roll(e5, -(s_ * sec + ph - S.n_of(0.1)))[:sec]
+                tick = seg[S.n_of(0.085):S.n_of(0.125)].max()
+                other = np.concatenate([seg[:S.n_of(0.07)], seg[S.n_of(0.14):]]).max()
+                wins += int(tick >= other)
+            rep.append(f"    clock: envelope autocorrelation peak at {lag * 10} ms; the tick is the loudest high "
+                       f"event in {wins} of {len(e5) // sec} seconds")
+            if wins < 10:
+                fail(f"{k}: the wall clock is masked (loudest in only {wins} of 24 seconds)")
     # coin sack variants differ
     sk = [r for r in rows if r["key"].startswith("sfx_coin_sack")]
     for i in range(len(sk)):
@@ -593,6 +623,13 @@ def main(argv=None):
                             if abs(s_["centroid"] - ref_c) > 0.001:
                                 fail(f"Chromium {srk}: slice {k} energy centroid {s_['centroid']:.4f} s vs ffmpeg "
                                      f"{ref_c:.4f} s (> 1 ms) - sliceSprite would cut it off-time")
+                    for srk, rr in (("44100", r44), ("48000", r48)):
+                        for k, a_ in audio.items():
+                            if a_.get("loopPeriod") and k in rr["slices"]:
+                                s_ = rr["slices"][k]
+                                rep.append(f"    Chromium {srk}: {k} cut {s_['len']} smp, loop seam {s_['seam']:.2f}")
+                                if s_["seam"] >= 1:
+                                    fail(f"Chromium {srk}: {k} sliced loop jumps at the wrap (seam {s_['seam']:.2f})")
                     rep.append("    every slice cut like Assets.sliceSprite lines up with ffmpeg within 1 ms "
                                "(44.1 and 48 kHz)" if not any("energy centroid" in e_ for e_ in errors) else
                                "    slice alignment FAILED")

@@ -314,7 +314,7 @@ export const STRINGS = {
     // 넘치는 재고 (짐꾼 2 · 가공소 2단 · 역 짐꾼 3/4 · 화물칸 크게 · 썰매 한 대 더)
     p2_pad: '{item} 짐꾼 2', p2Banner: '{item|이/가} 쌓여요', p2Sub: '{item} 짐꾼 2를 부를 수 있어요',
     st2_pad: '{st} 2단', st2Banner: '{st} 2단을 놓을 수 있어요', st2Sub: '1.5배 빨리 만들어요', st2Badge: '×1.5',
-    sp34_pad: '역 짐꾼 {n}', bigCar_pad: '화물칸 크게', bigCarDone: '화물칸이 커졌어요! 한 번에 {n}개', sleigh2_pad: '썰매 한 대 더',
+    sp34_pad: '역 짐꾼 {n}', bigCar_pad: '화물칸 크게', bigCarDone: '화물칸이 커졌어요! 한 번에 {n}개', sleigh2_pad: '썰매 한 대 더', sleigh2Done: '썰매가 한 대 더 왔어요! 물류창고로 두 대가 오가요',
     dockSurplus: '수출 · 물류창고로 갈 것 {n}', surplusExport: '남는 물건 {n}개를 기차로 수출해요',
     // 서리 물류창고
     plotOnly_depot42: '서리 물류창고 터', b_depot42: '서리 물류창고', bsub_depot42: '남는 물건을 맡아 두고 솔방울 상인에게 팔아요',
@@ -691,7 +691,7 @@ export const STRINGS = {
     trainStage2: 'One more coach!', exportPaid: 'Export +{n}',
     p2_pad: '{item} porter 2', p2Banner: '{item} is piling up', p2Sub: 'You can hire a second {item} porter',
     st2_pad: '{st} level 2', st2Banner: '{st} can go up a level', st2Sub: 'Makes things 1.5× faster', st2Badge: '×1.5',
-    sp34_pad: 'Station porter {n}', bigCar_pad: 'Bigger box car', bigCarDone: 'Bigger box car! {n} crates a train', sleigh2_pad: 'Second sleigh',
+    sp34_pad: 'Station porter {n}', bigCar_pad: 'Bigger box car', bigCarDone: 'Bigger box car! {n} crates a train', sleigh2_pad: 'Second sleigh', sleigh2Done: 'A second sleigh! Two now run to the depot',
     dockSurplus: 'Export · for the depot {n}', surplusExport: '{n} surplus items go out by train',
     plotOnly_depot42: 'Frost Depot site', b_depot42: 'Frost Depot', bsub_depot42: 'Keeps the surplus and sells it to Pinecone traders',
     depotTitle: 'Frost Depot', depotToday: 'Sold today {n} · +{c} coins', depotIn: 'In today {n}', depotExp: 'Exported today {n}',

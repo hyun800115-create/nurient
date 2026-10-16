@@ -14,7 +14,9 @@ export const DUR = { urgent: [4, 25], lunch: [40, 40], work: [20, 60], evening: 
 /** after an activity ends it is not chosen again for this long (s): the day keeps changing; chores have no wait but
  *  pause for pilot.breakFor s after pilot.breakAfter s of them (ChiefPilot) */
 export const AGAIN = { urgent: 0, lunch: 0, work: 0, evening: 0, collect: 10, train: 45, chat: 45, office: 120, rest: 60, dog: 90 };
-export const CHORES = ['urgent', 'work'];
+// (수금 counts as a chore for the breaks: with no 딸랑이 the tills fill all day and 수금 45 would crowd out every
+//  chat, rest and dog walk — the measured 10-minute mix was urgent / collect / work only)
+export const CHORES = ['urgent', 'work', 'collect'];
 
 const PB = () => (BALANCE.v42 && BALANCE.v42.pilot) || {};
 

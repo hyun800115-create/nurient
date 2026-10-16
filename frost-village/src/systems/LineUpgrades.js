@@ -7,10 +7,12 @@
 //   역 짐꾼 3 / 4  more station porters once the 서리 물류창고 stands                              (Growth porters)
 //   화물칸 크게    the freight cars take freight.big instead of perTrain once surplus waited
 //                 ≥ bigOfferWait for bigOfferS s                                                  (v42.train.big)
+//   썰매 한 대 더  a second cargo sleigh once the 물류창고 stands and a sleigh load (depot.sleigh.cap) of surplus has
+//                 waited at the dock for sleigh2S s in total while the racks had room             (v42.depot.sleighs)
 // Every pad keeps the v4.1 pad rules (step-off, pay while standing); one banner per offer, once per save.
 
 import { BALANCE } from '../data/balance.js';
-import { WORLD } from '../data/world.js';
+import { WORLD, L4 } from '../data/world.js';
 import { UnlockPad } from '../entities/UnlockPad.js';
 import { Porter } from '../entities/Worker.js';
 import { Assets } from '../core/Assets.js';
@@ -38,6 +40,7 @@ export class LineUpgrades {
     this.porters2 = [];
     this.t = 0;
     this.paid = Object.assign({}, (s.offerPaid && typeof s.offerPaid === 'object') ? s.offerPaid : {});
+    this.sleighWaitT = Math.max(0, Number(s.sleighWait) || 0);
   }
 
   /** after the v3 sites / porters are back (V42.afterRestore) */
@@ -90,6 +93,12 @@ export class LineUpgrades {
       if (this.depotBuilt() && n >= 2 && n < 4) out.push({ id: 'sp' + (n + 1), kind: 'sp34', cost: Number(c34[n - 2]) || 1000, x: Q.porter.x, y: Q.porter.y, label: 'sp34_pad', n: n + 1, icon: Assets.pick('ui_icon_porter', 'ui_icon_backpack') });
       const FB = V().freight || {};
       if (F && !F.big && F.stats.waitT >= (Number(FB.bigOfferS) || 120)) out.push({ id: 'bigcar', kind: 'big', cost: Number(FB.bigCost) || 2000, x: G.dock.x + 96, y: G.dock.y + 84, label: 'bigCar_pad', icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack') });
+      const Dp = this.v42.depot, SL = (V().depot && V().depot.sleigh) || {};
+      if (Dp && Dp.built && Dp.sleighN < 2 && this.sleighWaitT >= (Number(SL.offerS) || 120)) {
+        const st = (WORLD.v42.depot && WORLD.v42.depot.sleighStop) || [5, -5];
+        const [sx, sy] = L4(st[0] - 1.2, st[1] - 1.1);
+        out.push({ id: 'sleigh2', kind: 'sleigh2', cost: Number(SL.secondCost) || 2500, x: sx, y: sy, label: 'sleigh2_pad', icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack') });
+      }
     }
     return out;
   }
@@ -107,6 +116,11 @@ export class LineUpgrades {
       if (!st || !st.outStack) continue;
       if (st.outStack.count >= st.outStack.max * (Number(P2.fullAt) || 0.8) && this.v42.complete) this.fullT[line] = (this.fullT[line] || 0) + step;
       if (this.f5Due(line)) this.offeredT[line] = (this.offeredT[line] || 0) + step;
+    }
+    // (썰매 한 대 더) a sleigh load of surplus waits at the dock while the racks have room
+    const Dp = this.v42.depot, F = this.v42.freight, SL = (V().depot && V().depot.sleigh) || {};
+    if (Dp && Dp.built && Dp.sleighN < 2 && F) {
+      if (F.dockCount() >= (Number(SL.cap) || 60) && Dp.room() > 0) this.sleighWaitT += step; else this.sleighWaitT = Math.max(0, this.sleighWaitT - step * 0.5);
     }
     // pads: show the due offers (a few at a time), drop the ones no longer due (unless being paid)
     const due = this.offers();
@@ -128,9 +142,9 @@ export class LineUpgrades {
   makePad(o) {
     const gs = this.gs;
     const item = o.line ? (LINES.find((q) => q.id === o.line) || {}).product : null;
-    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: t(item) }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : () => t('bigCar_pad');
+    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: t(item) }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : () => t('bigCar_pad');
     const pad = new UnlockPad(gs, o.id, o.x, o.y, {
-      kind: o.kind === 'st2' || o.kind === 'big' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
+      kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
       padTex: o.kind === 'p2' || o.kind === 'sp34' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : undefined,
       onComplete: (p) => this.done(o, p),
     });
@@ -139,12 +153,13 @@ export class LineUpgrades {
     this.pads[o.id] = pad;
     pad.offer = o;
     // one banner per offer, once per save
-    const sk = { p2: 'p2', st2: 'up', sp34: 'p34', big: 'big' }[o.kind] || 'p2', seen = this.v42.seen[sk] || (this.v42.seen[sk] = {});
+    const sk = { p2: 'p2', st2: 'up', sp34: 'p34', big: 'big', sleigh2: 'big' }[o.kind] || 'p2', seen = this.v42.seen[sk] || (this.v42.seen[sk] = {});
     if (!seen[o.line || o.id]) {
       seen[o.line || o.id] = 1;
       if (o.kind === 'p2') gs.ui.banner(t('p2Banner', { item: t(item) }), t('p2Sub', { item: t(item) }));
       else if (o.kind === 'st2') gs.ui.banner(t('st2Banner', { st: t('line_' + o.line) }), t('st2Sub'));
       else if (o.kind === 'big') gs.ui.banner(t('bigCar_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
+      else if (o.kind === 'sleigh2') gs.ui.banner(t('sleigh2_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
     }
   }
 
@@ -157,6 +172,7 @@ export class LineUpgrades {
     else if (o.kind === 'st2') { this.up[o.line] = 1; this.badge(o.line, true); const st = gs.stations[o.line]; if (st && st.op && st.op.operator && st.op.operator.syncSpeed) st.op.operator.syncSpeed(); }
     else if (o.kind === 'sp34') { const G = gs.v4 && gs.v4.growth; if (G) { G.hireStationPorter(false); G.porterN = Math.max(G.porterN, G.porters.length); } }
     else if (o.kind === 'big') { const F = this.v42.freight; if (F) { F.big = 1; gs.ui.banner(t('bigCarDone', { n: F.cap() }), ''); } }
+    else if (o.kind === 'sleigh2') { const Dp = this.v42.depot; if (Dp) { Dp.sleighN = 2; Dp.addSleighs(); this.sleighWaitT = 0; gs.ui.banner(t('sleigh2Done'), ''); } }
     gs.save(true);
   }
 
@@ -190,10 +206,11 @@ export class LineUpgrades {
     if (Object.keys(paid).length) o.offerPaid = paid;
     o.full = {};
     for (const k in this.fullT) o.full[k] = Math.round(Math.min(3600, this.fullT[k]));
+    if (this.sleighWaitT > 0) o.sleighWait = Math.round(Math.min(3600, this.sleighWaitT));
   }
 
   state() {
-    return { up: Object.assign({}, this.up), p2: this.p2.slice(), fullT: Object.assign({}, this.fullT), offeredT: Object.assign({}, this.offeredT), pads: Object.keys(this.pads), due: this.offers().map((o) => o.id) };
+    return { up: Object.assign({}, this.up), p2: this.p2.slice(), fullT: Object.assign({}, this.fullT), offeredT: Object.assign({}, this.offeredT), sleighWaitT: +this.sleighWaitT.toFixed(1), pads: Object.keys(this.pads), due: this.offers().map((o) => o.id) };
   }
 
   hooks(H) {
@@ -201,6 +218,7 @@ export class LineUpgrades {
       if (o && o.full) for (const k in o.full) this.fullT[k] = o.full[k];
       if (o && o.up) for (const k in o.up) { this.up[k] = 1; this.badge(k); }
       if (o && o.p2) for (const k of o.p2) { if (this.p2.indexOf(k) < 0) this.p2.push(k); this.hireP2(k, true); }
+      if (o && Number.isFinite(o.sleighWait)) this.sleighWaitT = o.sleighWait;
       return this.state();
     };
   }

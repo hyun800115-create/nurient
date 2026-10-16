@@ -505,7 +505,7 @@ export const BALANCE = {
     depot: {
       site: { coins: 6000, item_plank: 40, item_ingot: 20, time: 20 },              // 짓는 값 (코인 + 자재), 짓는 시간(초)
       caps: { materials: 160, food: 160, goods: 120, tools: 60 },                   // 선반 종류별 최대 개수
-      sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500 },                  // 화물 썰매: 한 번에 싣는 개수, 속도(m/초), 싣는 시간(초), 한 대 더 값
+      sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500, offerS: 120 },     // 화물 썰매: 한 번에 싣는 개수, 속도(m/초), 싣는 시간(초), 한 대 더 값, 한 대 더 제안까지(썰매 한 번 분량이 역에서 기다린 초)
       sell: { every: 8, rate: 0.6, open: 7, close: 20,                              // 상인이 오는 간격(초), 값 비율, 여는 시각 ~ 닫는 시각
               perMin: { materials: 20, food: 30, goods: 20, tools: 6 } },           // 종류별 1분에 팔 수 있는 최대 개수
       rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 },   // 날것을 팔 때 값 (추정 — 봇으로 맞춰요)
@@ -528,7 +528,7 @@ export const BALANCE = {
     // ── 관망 모드: decideEvery = 할 일을 고르는 간격(초), jitter = 고를 때 섞는 정도, hysteresis = 하던 일을 계속하려는 정도,
     //    minZoom = 관망 중 가장 멀리 보는 배율, camLerp = 카메라가 따라가는 부드러움, cutEvery = 볼거리로 카메라가 가는 간격(초, 최소~최대),
     //    cutHold = 볼거리를 보여 주는 시간(초), cutRange = 이만큼(px) 안의 볼거리만, stuckSide / stuckDrop = 막혔을 때 비키기 / 포기(초)
-    //    breakAfter = 급한 일·업무를 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 콩이)
+    //    breakAfter = 급한 일·업무·수금을 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 콩이)
     //    agenda = 시간대별 하고 싶은 일 배율 [시작 시, 끝 시, 일, 배율]
     pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, cutEvery: [45, 90], cutHold: [6, 8],
              cutRange: 2500, stuckSide: 3, stuckDrop: 8, breakAfter: 150, breakFor: 20,

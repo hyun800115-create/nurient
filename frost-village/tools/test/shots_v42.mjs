@@ -26,18 +26,35 @@ const LANGS = opt('--langs', 'ko,en').split(',');
 const SCENES = [
   { name: '01_whats_new', keepCard: true, secs: 4, setup: () => null, sub: true },
   { name: '02_halo_plaza', secs: 2, setup: () => { const gs = window.__FV.scene, m = gs.market; window.__FV.teleport(m.x + 160, m.y + 230); return { x: m.x + 160, y: m.y + 200, z: 1.1 }; }, sub: true },
+  { name: '02b_halo_night_z06', secs: 3, setup: () => {
+    // 21:00 at the station square, zoom 0.6, the train in and its riders about: the chief in a crowd at night
+    const gs = window.__FV.scene, nb = gs.v4;
+    if (nb && nb.clock && nb.clock.on) nb.clock.set(21);
+    if (nb && nb.rail) nb.rail.set('atOurs', 2);
+    const q = nb && nb.ours ? nb.ours : gs.market;
+    window.__FV.teleport(q.x - 60, q.y + 200);
+    return { x: q.x - 60, y: q.y + 140, z: 0.6 };
+  }, after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); }, sub: true },
   { name: '03_nav_carrying', secs: 2, setup: () => { const gs = window.__FV.scene, tr = gs.trade, p = gs.player; window.__FV.clearStack(); window.__FV.teleport(tr.x - 520, tr.y + 330); for (let i = 0; i < 6; i++) p.stack.push('item_plank', null, gs.effects); return { x: tr.x - 260, y: tr.y + 170, z: 0.8 }; } },
   { name: '04_settings_play', secs: 0.5, setup: () => { const ui = window.__FV.game.scene.getScene('UI'); window.__FV.clearStack(); ui.openSettings(true); ui.settingsTab = 'play'; ui.buildPanelContent(false); return null; }, after: () => { const ui = window.__FV.game.scene.getScene('UI'); if (ui.closePanel) ui.closePanel(true); else if (ui.closeSettings) ui.closeSettings(true); }, sub: true, en: true },
   { name: '05_loop_curve', secs: 0.2, warm: 4, setup: () => {
-    const nb = window.__FV.scene.v4, r = nb.rail;
-    // a moment of the toOurs leg with the train on our loop's curve
-    let best = 0;
-    const T = r.legOf('toOurs').T;
-    for (let t = 0; t < T; t += 0.25) { r.set('toOurs', t); const seg = r.path.at(r.m).seg; if (r.onCurve() && seg >= 1 && seg <= 3) { best = t; } }
-    r.set('toOurs', best || T * 0.8);
-    window.__loopT = best || T * 0.8;
+    // just after the dwell at ours: the train pulls forward round our loop by the sea (toTown), mid-curve at the far end
+    const r = window.__FV.scene.v4.rail, T = r.legOf('toTown').T;
+    let best = 0, bd = Infinity;
+    for (let t = 0; t < T; t += 0.25) { r.set('toTown', t); const q = r.point(r.m - r.length / 2); const d = Math.hypot(q.x - 2736, q.y - 1011); if (d < bd) { bd = d; best = t; } }
+    r.set('toTown', best);
+    window.__loopT = best;
     return null;
-  }, secs2: 0.1, then: () => { const r = window.__FV.scene.v4.rail; r.set('toOurs', window.__loopT); const q = r.point(r.m - r.length / 2); return { x: q.x, y: q.y, z: 0.85 }; } },
+  }, secs2: 0.1, then: () => { const r = window.__FV.scene.v4.rail; r.set('toTown', window.__loopT); return { x: 2880, y: 1090, z: 0.8 }; } },
+  { name: '05b_loop_town', secs: 0.2, warm: 4, setup: () => {
+    // the town end: after the dwell at 솔방울역 the train pulls round the town loop (toOurs), mid-curve at its far end
+    const r = window.__FV.scene.v4.rail, T = r.legOf('toOurs').T;
+    let best = 0, bd = Infinity;
+    for (let t = 0; t < T; t += 0.25) { r.set('toOurs', t); const q = r.point(r.m - r.length / 2); const d = Math.hypot(q.x - 6032, q.y - 2659); if (d < bd) { bd = d; best = t; } }
+    r.set('toOurs', best);
+    window.__loopT2 = best;
+    return null;
+  }, secs2: 0.1, then: () => { const r = window.__FV.scene.v4.rail; r.set('toOurs', window.__loopT2); return { x: 5880, y: 2600, z: 0.8 }; } },
   { name: '06_consist_ours', secs: 2, warm: 3, setup: () => { const nb = window.__FV.scene.v4; nb.rail.set('atOurs', 1); const F = window.__FV.scene.v42.freight; if (F) F.labels = 0; if (nb.train.showLabels) nb.train.showLabels(8, 20); return { x: nb.ours.x - 40, y: nb.ours.y + 30, z: 1.0 }; }, sub: true },
   { name: '07_freight_loading', secs: 5, setup: () => { const gs = window.__FV.scene, nb = gs.v4, G = nb.growth, F = gs.v42.freight; G.cargo = 6; F.addSurplus('item_plank', 24); F.addSurplus('item_ingot', 12); nb.rail.set('atOurs', 0.5); return { x: G.dock.x + 40, y: G.dock.y - 20, z: 1.1 }; } },
   { name: '08_consist_town_coach2', secs: 2, warm: 4, setup: () => { const nb = window.__FV.scene.v4; if (nb.rail.stage < 2) nb.addCoach(); nb.rail.set('atTown', 1); const ts = nb.townStation || null; const p = nb.rail.point(nb.rail.m - 6); return ts ? { x: ts.x, y: ts.y, z: 0.9 } : { x: p.x, y: p.y, z: 0.9 }; } },
@@ -85,11 +102,20 @@ for (const size of SIZES) for (const lang of LANGS) {
   for (const sc of scenes) {
     try {
       if (!sc.keepCard) await page.evaluate(() => { const v = window.__FV.v42 && window.__FV.v42.v; if (v && !v.seen.whatsNew) { v.seen.whatsNew = 1; const ui = window.__FV.game.scene.getScene('UI'); if (ui.hud42 && ui.hud42.card && ui.hud42.closeCard) ui.hud42.closeCard(); } });
+      // (a panel a scene opened — or the chief standing on the bank's 창구 pad — must not leak into the next shot)
+      await page.evaluate(() => {
+        const F = window.__FV, ui = F.game.scene.getScene('UI'), O = F.scene.v42 && F.scene.v42.office;
+        try { if (O && O.uiScene && O.uiScene().officePanel && O.uiScene().officePanel.c) O.uiScene().officePanel.close(); } catch (e) { /* */ }
+        try { if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); } catch (e) { /* */ }
+        try { if (ui.panelOpen && ui.closeSettings) ui.closeSettings(true); } catch (e) { /* */ }
+      });
       let cam = await page.evaluate(sc.setup);
       await run(sc.secs || 0);
       await warm(sc.warm || 0);
       if (sc.then) { cam = await page.evaluate(sc.then); await run(sc.secs2 || 0); }
       if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
+      // (an offer banner that popped up during the scene is not what the shot is about)
+      if (!sc.keepBanner) await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); if (ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); } });
       await page.evaluate(() => { for (let i = 0; i < 20; i++) window.__draw(); });
       const file = `${sc.name}_${W}x${H}_${lang}.jpg`;
       await page.screenshot({ path: path.join(OUT, file), type: 'jpeg', quality: 82 });

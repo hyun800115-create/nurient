@@ -11,12 +11,16 @@
    "chief_marker": "drawn 22 CSS px wide: setScale(22 / (zoom x 390 / 720) / 72), 14 px above the head or the top of the carried stack.",
    "nav": "nav_chevron / nav_dot / nav_ring at world scale 1 (0.8 next to the tutorial arrow); nav_badge scale 1 in the world; nav_edge in the UI scene at scale 0.75-1."
   },
-  "depth": "ring + rank band DEPTH.PAD + 2 (band - 0.01), glow chief - 0.5, sparkles chief +- 1, marker DEPTH.LABEL - 30; nav chevron / dots / ring DEPTH.PAD + 3, badge DEPTH.LABEL - 40.",
+  "depth": "ring + rank band DEPTH.PAD + 2 (band - 0.01), notch PAD + 2.02, glow chief - 0.5, sparkles chief +- 1, marker DEPTH.LABEL - 30; nav chevron / dots / ring DEPTH.PAD + 3, badge DEPTH.LABEL - 40.",
+  "codeUse": "sprites[key] is a SPRITE key, not a texture key: the texture is the atlas chief_fx. Resolve it with Assets.sprite(key) -> {tex, frame, anchor} (or Assets.image / Assets.apply), and for the animated keys add.sprite(x, y, tex, frame).play(Assets.spriteAnim(key, 'play')). scene.add.image(0, 0, 'chief_halo') would be Phaser's __MISSING box - so fxTex.art() alone is not enough once the fragment is merged (ChiefAura.make, UIv42 edge badge).",
+  "additions": {
+   "chief_halo_notch": "polish addition beyond CONTRACT_V42 §AG (the ring notch, critic M2); same atlas, no extra file"
+  },
   "pageSize": [
-   856,
-   858
+   728,
+   880
   ],
-  "pageMiB": 2.802
+  "pageMiB": 2.444
  },
  "atlases": [
   {
@@ -74,10 +78,28 @@
      ],
      "fps": 10,
      "repeat": -1
+    },
+    "calm": {
+     "frames": [
+      "chief_halo_0",
+      "chief_halo_1",
+      "chief_halo_2",
+      "chief_halo_3",
+      "chief_halo_4",
+      "chief_halo_5",
+      "chief_halo_6",
+      "chief_halo_7",
+      "chief_halo_8",
+      "chief_halo_9",
+      "chief_halo_10",
+      "chief_halo_11"
+     ],
+     "fps": 5,
+     "repeat": -1
     }
    },
    "replaces": "fv_halo",
-   "notes": "Aurora ring on the ground under the chief (DEPTH.PAD + 2: over pads and decals, under shadows and every character). Hollow 2:1 jelly tube, outer 184 x 92, ring 7 px; mint -> sky -> lilac gradient travels once round per loop; 1 px gold inner line, 1 px darker teal outer rim (snow), soft glow; 6 tiny stars twinkle on it. Centre fully transparent. World width = aura.ringPx 70 x min(2, 1.2 / zoom) for zoom < 1.2 (else 70) -> setScale(width / 192): ~45 CSS px on a 390 px phone at every zoom."
+   "notes": "Aurora ring on the ground under the chief (DEPTH.PAD + 2: over pads and decals, under shadows and every character). Hollow 2:1 jelly tube, outer 184 x 92, ring 7 px; mint -> sky -> lilac gradient travels once round per loop; 1 px gold inner line, 1 px darker teal outer rim (snow), soft glow; 6 tiny stars twinkle on it. Centre fully transparent. World width = aura.ringPx 70 x min(2, 1.2 / zoom) for zoom < 1.2 (else 70) -> setScale(width / 192): ~45 CSS px on a 390 px phone at every zoom. Anims: 'play' (contract, 10 fps = a turn per 1.2 s) and 'calm' (5 fps = a turn per 2.4 s, matching the ring's breathing - the recommended default; 관망: calm at timeScale 0.67)."
   },
   "chief_halo_gold": {
    "atlas": "chief_fx",
@@ -122,7 +144,7 @@
     }
    },
    "replaces": "fv_halo_gold",
-   "notes": "The working state (chief at a station work spot, labour.chiefSpeed x1.25 made visible): same ellipse in warm gold, brighter glow, a sunburst of 12 short rays inside the ring pointing out at it (frames 0-3 grow, 4-7 settle). Same scale / position as chief_halo; crossfade."
+   "notes": "The working state (chief at a station work spot, labour.chiefSpeed x1.25 made visible): same ellipse in warm gold, brighter glow, 12 soft outline-free light streaks lying across the tube (long / short alternate; frames 0-3 flare up, 4-7 settle) - light on gold, not ticks. Same scale / position as chief_halo; crossfade."
   },
   "chief_halo_rank2": {
    "atlas": "chief_fx",
@@ -188,8 +210,17 @@
      "repeat": -1
     }
    },
+   "use": {
+    "scale": 1.15,
+    "x": "chief.x",
+    "y": "chief.y (feet; the CODE-1 +4 is harmless)",
+    "depth": "chief.depth - 0.5",
+    "alphaDay": 0.35,
+    "alphaNight": 0.6,
+    "nightLight": "register the chief as a moving DayClock light ({x, y: chief.y - 40, k: 0.9} pushed in DayClock.drawGlows next to the train lamp) so he truly glows above the night overlay"
+   },
    "replaces": "fv_halo_glow",
-   "notes": "광채: soft vertical oval radiance behind the body (depth = chief - 0.5), anchor = his feet. Pale gold core #FFE7A3 55 % fading to mint (left) / lilac (right) at 0 %, slow shimmer, no hard edge. Drawn 1:1 it spans ~1.4 x the 128 px chief frame. Alpha aura.glowDay 0.35 by day, aura.glowNight 0.6 at night."
+   "notes": "광채: a warm golden radiance that HUGS the chief (polish, critic H1): its core #FFE7A3 55 % sits behind his head and torso, a soft gold rim shows round his outline and dies out ~15 world px past it (faint mint / lilac only in the outermost < 8 % fringe), fading out toward his boots - so villagers standing behind him are no longer veiled and his contact shadow stays dark. Anchor = his feet, depth chief - 0.5, x1.15, alpha aura.glowDay 0.35 / aura.glowNight 0.6, NORMAL blend, play spr:chief_glow_back:play. Under the night MULTIPLY overlay NORMAL art can only look warmer, never brighter: for the designer's \"등불처럼\" at night add the chief as a moving DayClock light (see use.nightLight)."
   },
   "chief_sparkle": {
    "atlas": "chief_fx",
@@ -267,7 +298,7 @@
     }
    },
    "replaces": "fv_halo_pin (ui3 ui_icon_fame stand-in)",
-   "notes": "Far-zoom / crowd / 관망 star pin over his head (or his carried tower), DEPTH.LABEL - 30 (above the night overlay). Anchor = pointer tip. Draw 22 CSS px wide: world scale = 22 / (zoom x 390 / 720) / 72. Star 32 px across in the frame (>= 30). 4-frame light sweep at 6 fps, no bob."
+   "notes": "Far-zoom / crowd / 관망 star pin over his head (or his carried tower), DEPTH.LABEL - 30 (above the night overlay). Anchor = pointer tip. Draw 22 CSS px wide: world scale = 22 / (zoom x 390 / 720) / 72. Star 32 px across in the frame (>= 30). 4-frame light loop at 6 fps: frame 0 = rest (a twinkle on the star), 1-3 = the sweep (all 4 frames differ). The art has no bob (contract); ChiefAura's +-2 px code bob may stay or go - pick one, not both."
   },
   "nav_chevron": {
    "atlas": "chief_fx",
@@ -406,7 +437,7 @@
     56
    ],
    "replaces": "Navigator badge container (ui_panel + item icon)",
-   "notes": "Badge 90 px above the destination ring (DEPTH.LABEL - 40). Anchor = pointer tip. Draw the item icon into iconRect [x, y, w, h] (a 56 px cream disc; icon ~44 px), the short name as text beside or under it."
+   "notes": "Badge 90 px above the destination ring (DEPTH.LABEL - 40). Anchor = pointer tip. Draw the item icon into iconRect [x, y, w, h] (a 56 px cream disc; icon ~44 px). The short name (광장 판매대) needs its own plate at a CONSTANT screen size (a 19 px world font is ~6 CSS px at zoom 0.6): ui5 ui_chip at 64 px tall, scaled 1 / (zoom x k), under the pointer tip."
   },
   "nav_edge": {
    "atlas": "chief_fx",
@@ -434,8 +465,54 @@
     44
    ],
    "pointsAtRad": 0.0,
+   "arrow": {
+    "baseX": 60.0,
+    "tipX": 76.4,
+    "halfWidth": 13.5,
+    "rotationNeutralLight": true
+   },
    "replaces": "fv_nav_edge (ui_arrow)",
-   "notes": "Screen-edge badge (UI scene): rotate it so its RIGHT-side notch points at the off-screen target (rotation = atan2(dy, dx)); keep the icon upright (draw the icon as a separate image at the badge centre, iconRect [x, y, w, h] = 44 px disc) and the route metres under it."
+   "notes": "Screen-edge badge (UI scene, scale 0.9): rotate the WHOLE frame so its gold arrowhead (right side, pointsAtRad 0, 16 px long x 27 px wide) points at the off-screen target (rotation = atan2(dy, dx)). Its light is rotation-neutral (radial shading, centred soft halo), so it looks right at any angle. Keep the icon upright as a separate image at the badge centre (iconRect [x, y, w, h] = 44 px disc, icon 34-40 px) and put the route metres on the side AWAY from the arrow (offset -(cos a, sin a) x 50), so the label never covers it."
+  },
+  "chief_halo_notch": {
+   "atlas": "chief_fx",
+   "frame": "chief_halo_notch_00",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "blend": "NORMAL",
+   "frameSize": [
+    40,
+    24
+   ],
+   "frames": 16,
+   "frameNames": [
+    "chief_halo_notch_00",
+    "chief_halo_notch_01",
+    "chief_halo_notch_02",
+    "chief_halo_notch_03",
+    "chief_halo_notch_04",
+    "chief_halo_notch_05",
+    "chief_halo_notch_06",
+    "chief_halo_notch_07",
+    "chief_halo_notch_08",
+    "chief_halo_notch_09",
+    "chief_halo_notch_10",
+    "chief_halo_notch_11",
+    "chief_halo_notch_12",
+    "chief_halo_notch_13",
+    "chief_halo_notch_14",
+    "chief_halo_notch_15"
+   ],
+   "fps": 0,
+   "repeat": 0,
+   "headings": 16,
+   "headingStepDeg": 22.5,
+   "contract": "polish addition (not in CONTRACT_V42 §AG): same atlas, no extra file",
+   "replaces": "the ChiefAura notch (fv_nav_chevron c0..c15 at sc x 1.6)",
+   "notes": "Polish addition (critic M2): the ring's own route mark while he carries with nav on - a small gold arrowhead gem lying on the ground. Frame chief_halo_notch_{k:02d} points along SCREEN angle k x 22.5 deg (0 = right, clockwise; same k rule as nav_chevron). Draw it at 1.3 x the RING scale (setScale(ringWidth / 192 x 1.3): the gem is ~8 CSS px long at every zoom), centred on the ring line at (x + cos a x rx, y + sin a x ry), rx = ringWidth x 0.46, ry = ringWidth x 0.23, depth PAD + 2.02. It is gold and single, so it no longer reads as a second teal chevron; the navigator chevron should still sit clear of the ring: ahead = max(56, rx + 36) (the chevron is ~52 px long, so its tail then clears the ring), and the route dots hidden within max(90, ahead + 30) px of him."
   }
  }
 }

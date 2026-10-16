@@ -61,7 +61,9 @@ export class CargoSleigh {
       case 'wait': {
         // the train takes first while it stands at our station; the rest rides the sleigh
         const trainIn = F && F.trainIn();
-        if (F && this.spare(F) > 0 && !trainIn && this.sys.room() > 0 && this.t > 3) { this.state = 'load'; this.t = 0; }
+        // (썰매 한 대 더: one sleigh loads at a time; the other waits its turn behind it)
+        const other = this.sys.sleighs.some((o) => o !== this && o.state === 'load');
+        if (F && this.spare(F) > 0 && !trainIn && !other && this.sys.room() > 0 && this.t > 3) { this.state = 'load'; this.t = 0; }
         break;
       }
       case 'load': {
@@ -97,7 +99,9 @@ export class CargoSleigh {
   draw() {
     const gs = this.gs;
     const p = this.at(this.s);
-    const [x, y] = L4(p.i, p.j);
+    // (two sleighs at the stop: the later one waits a sled length behind, toward the station)
+    const queued = this.s <= 0 && (this.state === 'wait' || this.state === 'load') && this.sys.sleighs.some((o) => o !== this && o.index < this.index && o.s <= 0 && (o.state === 'wait' || o.state === 'load'));
+    const [x, y] = L4(p.i - (queued ? 1.4 : 0), p.j);
     this.x = x; this.y = y;
     const onScreen = gs.isOnScreen(x, y, 300);
     if (!this.ready) { if (Assets.texOf('veh_cargo_sleigh')) { Assets.buildCharacter(gs.game, 'cargo_sleigh'); const d = Assets.charDef('cargo_sleigh'); this.spr.setOrigin(d.anchor[0], d.anchor[1]); this.ready = true; } }

@@ -7,8 +7,8 @@ Same toolkit, layering style and mastering as sfx.py ... sfx6.py (imported, neve
               amb_office (24 s loop: two typists far and near, page turns, a pen, the kettle simmering on the stove,
               the wall clock ticking - texture, no voices)
   railway     sfx_switch_clack (the spring turnout lever: grab, swing, '철' + '컥' latch, a soft spring settling),
-              sfx_wheel_squeal (1.2 s gentle flange squeal on the loop curves; silent at both ends so it can loop
-              back to back from the audio sprite)
+              sfx_wheel_squeal (gentle flange squeal on the loop curves: a steady 1.23 s periodic loop = the 1.2 s
+              slice + the 30 ms Assets.sliceSprite keeps, so the sliced buffer loops seamlessly)
 Musical bits are in F major like bgm_village (margin bell F6, mailbox bell C7, sack bell A6 / C7).
 
 Loops follow ambience.py / sfx6.py: periodic beds from synth.noise_fft, events rendered past the end and folded back
@@ -49,11 +49,15 @@ def key_clack(r, vel: float = 1.0, pitch: float = 1.0, soft: float = 1.0) -> np.
     place(y, 0, burst(r, 0.012, 2600 * pitch, 1.1, tau=0.0016), 0.55 * soft)              # typebar on platen
     place(y, 0, S.modal(1150 * pitch, n_of(0.07), [(1, 1, 0.035), (1.62, 0.5, 0.022), (2.71, 0.25, 0.014)], r,
                         attack=0.0004), 0.5)                                                  # hollow key-cap knock
-    place(y, 0, blip(210 * pitch, 120, 0.05, 0.01, 0.014, attack=0.0008), 0.22)              # soft thud in the desk
-    place(y, n_of(0.004), wood_knock(r, 760 * pitch, 0.6, 0.035), 0.25)
-    place(y, n_of(0.021 + r.uniform(0, 0.006)), burst(r, 0.006, 3400 * pitch, 1.3, tau=0.0009), 0.16)   # bar falls back
+    place(y, 0, blip(210 * pitch, 120, 0.05, 0.01, 0.014, attack=0.0008), 0.14)              # soft thud in the desk
+    place(y, n_of(0.004), wood_knock(r, 760 * pitch, 0.6, 0.035), 0.22)
+    # polish (critic L10): the metal type bar's own bright 'tick' (2.5-4 kHz), ~10 dB under the body, so it reads
+    # as a typewriter key, not a wooden knock
+    place(y, n_of(0.0005), burst(r, 0.005, 3200 * pitch, 1.6, tau=0.0007), 0.30)
+    place(y, n_of(0.0012), burst(r, 0.004, 4200 * pitch, 2.0, tau=0.0005), 0.14)
+    place(y, n_of(0.021 + r.uniform(0, 0.006)), burst(r, 0.006, 3400 * pitch, 1.3, tau=0.0009), 0.18)   # bar falls back
     place(y, n_of(0.032 + r.uniform(0, 0.006)), burst(r, 0.005, 2200, 1.4, tau=0.0008), 0.10)   # escapement step
-    y = S.lp(y, 6500, order=2)
+    y = S.lp(y, 7500, order=2)
     return y * vel
 
 
@@ -208,28 +212,48 @@ def sfx_switch_clack():
     return tail_fade(fit_len(y, 0.4), 0.12)
 
 
+SQUEAL_PERIOD = 1.23      # one loop = the 1.2 s slice + the 30 ms Assets.sliceSprite keeps after it
+
+
 def sfx_wheel_squeal():
-    """Gentle flange squeal on the loop curves: a sung steel tone near 1.9 kHz with a slow wobble, a softer upper
-    voice that comes and goes, a little rail rumble; it swells from silence and back to silence over 1.2 s, so
-    looping it back to back (or retriggering every 1.2 s) sounds like a wheel that squeals on and off. Low-passed
-    at 3.6 kHz: nothing shrill. 1.2 s, loopable."""
+    """Gentle flange squeal on the loop curves (polish, critic M5): a STEADY sung steel tone near 1.9 kHz with a slow
+    vibrato, a softer upper voice that comes and goes, a little rail rumble and hiss - a sustained level with slow,
+    shallow swells (+-2.5 dB), no silences.  Every component makes a whole number of cycles in SQUEAL_PERIOD (1.23 s
+    = the 1.2 s slice + the 30 ms sliceSprite tail; noise is circular, filters and reverb are circular), so the
+    sliced buffer loops seamlessly with sound.play({loop: true}).  Low-passed at 3.6 kHz: nothing shrill."""
     r = S.rng(13400)
-    T = 1.2
-    n = n_of(T)
-    t = tax(n)
-    env = np.sin(np.pi * t / T) ** 2
-    vib = 1 + 0.012 * np.sin(TAU * 2.5 * t / T * T + 0.7) + 0.004 * np.sin(TAU * 7.0 * t)
-    f1 = 1890 * vib * (1 - 0.01 * t / T)
-    sq = S.additive(f1, n, [(1, 1.0), (2, 0.12)], fmax=6000)
-    wob = 0.75 + 0.25 * np.sin(TAU * 5.0 * t + 1.1)
-    f2 = 2390 * (1 + 0.009 * np.sin(TAU * 3.33 * t))
-    sq2 = S.sine(f2, n) * np.clip(np.sin(np.pi * (t - 0.25) / 0.6), 0, None) ** 2 * 0.35
-    hiss = S.bp(r.standard_normal(n), 2000, 2.5) * 0.04
-    rumble = S.bp(r.standard_normal(n), 260, 0.8) * 0.18
-    y = (sq * wob + sq2 + hiss) * env + rumble * env ** 0.6
-    y = S.lp(y, 3600, order=2)
-    y = room(y, 0.5, 0.08, 0.0, 0.7)[:n]
-    return y * env ** 0.15 * np.sin(np.pi * t / T) ** 0.2          # exactly silent at both ends
+    n = int(round(SQUEAL_PERIOD * SR))
+    T = n / SR
+    t = np.arange(n) / SR
+
+    def whole(hz):                       # snap a frequency to a whole number of cycles per loop
+        return max(1, round(hz * T)) / T
+
+    f1, f2 = whole(1890.0), whole(2390.0)
+    v1, v2, sw = whole(2.5), whole(6.5), 1.0 / T
+    ph1 = TAU * f1 * t + (0.012 * f1 / v1) * np.sin(TAU * v1 * t + 0.7) + (0.004 * f1 / v2) * np.sin(TAU * v2 * t)
+    sq = np.sin(ph1) + 0.12 * np.sin(2 * ph1 + 0.4)
+    swell = (1 + 0.16 * np.sin(TAU * sw * t + 0.3) + 0.09 * np.sin(TAU * 2 * sw * t + 1.9)
+             + 0.05 * np.sin(TAU * 5 * sw * t + 4.0))
+    wob = 0.86 + 0.14 * np.sin(TAU * whole(5.0) * t + 1.1)
+    ph2 = TAU * f2 * t + (0.009 * f2 / whole(3.3)) * np.sin(TAU * whole(3.3) * t)
+    upper = np.sin(ph2) * 0.30 * (0.45 + 0.55 * (0.5 + 0.5 * np.sin(TAU * 2 * sw * t + 2.4))) ** 1.5
+    hiss = S.noise_fft(n, r, lambda f: np.exp(-0.5 * (np.log2(f / 2000.0) / 0.35) ** 2)) * 0.035
+    rumble = S.noise_fft(n, r, lambda f: np.exp(-0.5 * (np.log2(f / 260.0) / 0.6) ** 2)) * 0.16
+    y = sq * wob * swell + upper + hiss * swell + rumble * (0.9 + 0.1 * np.sin(TAU * 3 * sw * t))
+    y = S.filt_circ(y, "lp", 3600, order=2)
+    y = circ_verb(y, rt60=0.5, mix=0.22, predelay=0.008, size=0.5, hi_cut=5000)
+    y = S.filt_circ(y, "hp", 40, order=2)
+    y = y - np.mean(y)
+    # rotate the (periodic) loop so it starts in its quietest 10 ms, on the gentlest zero crossing there: the wrap is
+    # then the least exposed sample pair of the whole loop, also after the lossy encode
+    e = np.sqrt(np.convolve(np.concatenate((y[-441:], y, y[:441])) ** 2, np.ones(441) / 441, "same")[441:-441])
+    c0 = int(np.argmin(e))
+    w = np.arange(c0 - 220, c0 + 220) % n
+    zc = w[np.nonzero((np.sign(y[w]) != np.sign(y[(w + 1) % n])))[0]]
+    if len(zc):
+        c0 = int(zc[np.argmin(np.abs(y[(zc + 1) % n] - y[zc]))]) + 1
+    return np.roll(y, -c0)
 
 
 def fit_len(y, sec: float) -> np.ndarray:
@@ -263,9 +287,11 @@ def _office_events(seed: int, nominal: float):
     r = S.rng(seed + 1)
     buf = np.zeros(n_of(nominal + 4.0))
     # two clerks: 셈이 nearer (brighter), 소복이 at the far desk (duller); the bursts never coincide for long
-    for t0, dur, g, p, lp, bell in ((0.6, 3.6, 0.42, 1.0, 6500, True), (6.2, 2.4, 0.26, 0.93, 3800, False),
-                                    (10.4, 4.2, 0.40, 1.02, 6500, False), (15.8, 3.0, 0.24, 0.94, 3800, True),
-                                    (20.4, 1.8, 0.36, 0.99, 6500, False)):
+    # polish (critic M6 / L6): the typing is ducked ~3.5 dB (the game's one-shot sfx_typewriter is the foreground)
+    # and the bursts are shorter, leaving quiet stretches where the wall clock is the loudest thing in the room
+    for t0, dur, g, p, lp, bell in ((0.6, 3.0, 0.28, 1.0, 6500, True), (6.4, 2.0, 0.17, 0.93, 3800, False),
+                                    (10.6, 3.2, 0.27, 1.02, 6500, False), (16.0, 2.4, 0.16, 0.94, 3800, True),
+                                    (20.6, 1.4, 0.24, 0.99, 6500, False)):
         _typing_burst(r, buf, t0, dur, g, p, lp, bell)
     for t0, g in ((4.9, 0.16), (13.6, 0.13), (19.6, 0.15)):                         # page turns
         d = 0.42
@@ -314,7 +340,7 @@ def render_office(seed: int = 13500, loop_samples=None, nominal: float = 24.0):
         f = 2350 if s % 2 == 0 else 1950
         place(ck, round(s * L / secs), wood_knock(r, f, 1.0, 0.025), 1.0)
         place(ck, round(s * L / secs), burst(r, 0.004, 4200 if s % 2 == 0 else 3500, 1.4, tau=0.0006), 0.4)
-    y = y + fold1(S.lp(ck, 7000), L) * 0.032
+    y = y + fold1(S.lp(ck, 7000), L) * 0.052           # polish (critic L6): the clock ~+4 dB
     ev = _MEMO.setdefault(("ev", seed, nominal), _office_events(seed, nominal))
     y = y + fold1(ev, L) * 0.55
     y = circ_verb(y, rt60=0.55, mix=0.25, hf_rt60=0.35, predelay=0.008, size=0.5, hi_cut=6000)
@@ -336,16 +362,20 @@ SFX7 = {
 }
 LOOP_FUNCS = {"amb_office": "render_office"}
 # exact delivered lengths (the contract's numbers); finish keeps the length, no silence trim at the head
+LOOP_SLICES = {"sfx_wheel_squeal": 1.2}     # key -> manifest slice length; the wav is one loop period (+ 30 ms)
 LENGTH = {"sfx_typewriter": 0.6, "sfx_typewriter_2": 0.6, "sfx_typewriter_3": 0.6, "sfx_switch_clack": 0.4,
           "sfx_wheel_squeal": 1.2, "sfx_mailbox_flag": 0.3, "sfx_coin_sack": 0.5, "sfx_coin_sack_2": 0.5,
           "sfx_coin_sack_3": 0.5}
 
 
 def render(key: str) -> np.ndarray:
-    """Finished one-shot: high-pass 30 Hz, DC fix, exact length, short head fade (not for the squeal, which already
-    starts at silence), peak -1.5 dBFS (synth.finish_sfx without its silence trim: the contract lengths are exact
-    and every sound starts on its first sample)."""
+    """Finished one-shot: high-pass 30 Hz, DC fix, exact length, short head fade, peak -1.5 dBFS (synth.finish_sfx
+    without its silence trim: the contract lengths are exact and every sound starts on its first sample).
+    The squeal is a loop: one full period (1.23 s), only normalised - build_audio7 lays it into the sprite with its
+    1.2 s slice, the 30 ms continuation in the gap after it and a short pre / post-roll."""
     y = np.asarray(SFX7[key](), dtype=float)
+    if key in LOOP_SLICES:
+        return y / max(S.peak(y), 1e-12) * S.undb(-1.5)
     y = S.hp(y, 30, order=2)
     y = fit_len(y, LENGTH[key])
     y = y - np.mean(y) * S.fade(np.ones(len(y)), 0.004, 0.004)

@@ -46,7 +46,20 @@ export function floatLabel(gs, x, y, icon) {
       if (this.ic) this.ic.setPosition(-w / 2 + 14 + iw / 2, 0);
       tx.setPosition(-w / 2 + 16 + iw, 0);
     },
-    bob(now) { lab.y = this.baseY + Math.sin(now / 450 + x * 0.01) * 4; },
+    bob(now) {
+      let y = this.baseY + Math.sin(now / 450 + x * 0.01) * 4;
+      // (v4.2 §5.5) a label over the standing train steps up above it (the coach is not covered by "역앞 카페 0/30")
+      const rs = gs.labelAvoid;
+      if (rs) {
+        const hw = (bg.width || 120) / 2;
+        for (let k = 0; k < 4; k++) {
+          const r = rs.find((q) => lab.x + hw > q.x && lab.x - hw < q.x + q.w && y + 25 > q.y && y - 25 < q.y + q.h);
+          if (!r) break;
+          y = r.y - 30;
+        }
+      }
+      lab.y = y;
+    },
     destroy() { lab.destroy(); },
   };
   return o;

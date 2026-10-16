@@ -286,6 +286,8 @@ export class Train {
       if (c.look.crates) this.drawCrates(c, atStation);
     }
     this.shown = anyVis;
+    // (v4.2 §5.5) the station-square float labels step above the dwelling train's cars (gs.labelAvoid, floatLabel.bob)
+    gs.labelAvoid = anyVis && atStation ? this.rects() : null;
     // smoke from the chimney while moving (trails back: the engine leads)
     if (anyVis && moving) {
       this.smokeT -= dt;
@@ -351,6 +353,14 @@ export class Train {
 
   /** (v4.2) is world point (x, y) on a drawn car? */
   hit(x, y) { for (const c of this.cars) { if (!c.spr.visible) continue; const b = c.spr.getBounds(); if (x >= b.x + 10 && x <= b.right - 10 && y >= b.y + 14 && y <= b.bottom - 4) return true; } return false; }
+
+  /** (v4.2) each drawn car's world rect (station float labels avoid them while the train stands) */
+  rects() {
+    const out = this._rects || (this._rects = []);
+    out.length = 0;
+    for (const c of this.cars) { if (!c.spr.visible) continue; const b = c.spr.getBounds(); out.push({ x: b.x + 6, y: b.y + 8, w: b.width - 12, h: b.height - 12 }); }
+    return out.length ? out : null;
+  }
 
   /** (v4.2) the train's screen rect while it stands (station float labels avoid it) */
   rect() {

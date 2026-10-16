@@ -11,12 +11,48 @@
   "style": "House soft-toy style (fxlib.toy): dark tinted outline, bevel lit from the upper left, gloss, one navy drop shadow. Icons read at 32 px on cream and on dark.",
   "nineSlice": "Panel frames live in the atlas UNTRIMMED, so Phaser NineSlice can use them directly: this.add.nineslice(x, y, 'ui5_icons', 'ui_letter', w, h, left, right, top, bottom) with the margins of nineSlice[key]. contentInset = [left, top, right, bottom] px from the stretched edges where the game lays out content.",
   "pageSize": [
-   492,
+   490,
    798
   ],
-  "pageMiB": 1.498,
+  "pageMiB": 1.492,
   "renamed": {
    "ui_icon_play": "ui_icon_play_tab"
+  },
+  "pagePlan": {
+   "why": "polish (critic M4): the panels are ~0.9 MiB of this page and only the office panel uses them. When the build packs v42_core (chief_fx + ui5), keep the icons + status dots resident and put the panel frames on the transient office-panel page (plan §13.2 \"panel page 1.6 MiB\").",
+   "resident": [
+    "ui_icon_binoculars",
+    "ui_icon_hand",
+    "ui_icon_route",
+    "ui_icon_office",
+    "ui_icon_letter",
+    "ui_icon_inventory",
+    "ui_icon_news",
+    "ui_icon_bank",
+    "ui_icon_staff",
+    "ui_icon_halo",
+    "ui_icon_cheer",
+    "ui_icon_depot",
+    "ui_icon_sleigh",
+    "ui_icon_coach",
+    "ui_icon_boxcar",
+    "ui_icon_flatcar",
+    "ui_icon_play_tab",
+    "ui_icon_new",
+    "ui_status_0",
+    "ui_status_1",
+    "ui_status_2",
+    "ui_status_3"
+   ],
+   "transientOfficePanel": [
+    "ui_letter",
+    "ui_chalk_panel",
+    "ui_office_tab",
+    "ui_office_tab_on",
+    "ui_chip"
+   ],
+   "residentMiB": 0.505,
+   "transientMiB": 0.918
   },
   "renamedWhy": "ui_icon_play is already a pets2 sprite (the dog play-fetch ball used by src/scenes/UI.js); a second ui_icon_play would replace it at merge (Object.assign) or be dropped (mergeLate). The settings-tab 놀이 icon is ui_icon_play_tab."
  },
@@ -317,8 +353,14 @@
     36,
     40
    ],
-   "notes": "편지 page (OfficePanel letters, 720 x 1100 logical): cream letter paper, faint blue ruled lines (every 22 px in the source, they stretch with the panel), a pinecone stamp in the top-right corner, the envelope flap with its shadow across the top. Write the sender in the flap band (y 8-36), the letter text inside contentInset.",
-   "replaces": "ui_panel"
+   "notes": "편지 page (OfficePanel letters, 720 x 1100 logical): cream letter paper, faint blue ruled lines, a pinecone stamp in the top-right corner, the envelope flap with its shadow across the top. Write the sender in the flap band (y 8-36), the letter text inside contentInset. The ruling lives in the stretched centre: at the source height its lines are ruling.firstLineY + n x ruling.lineGap; on a panel of height h they sit at top + (y - top) x (h - top - bottom) / (400 - top - bottom) - set the text line height to lineGap x that factor to write on the lines, or draw your own lines.",
+   "replaces": "ui_panel",
+   "ruling": {
+    "firstLineY": 86,
+    "lineGap": 22,
+    "lastLineY": 350,
+    "stretchesWithHeight": true
+   }
   },
   "ui_chalk_panel": {
    "atlas": "ui5_icons",
@@ -401,8 +443,9 @@
     32,
     16
    ],
-   "notes": "HUD chips (navigation chip 240 x 44 CSS, 업무 chip, 관망 caption): rounded cream pill with a teal rim. Height can stay 64 (or scale the whole chip); stretch the width.",
-   "replaces": "ui_panel"
+   "notes": "HUD chips (navigation chip 240 x 44 CSS, 업무 chip, 관망 caption): rounded cream pill with a teal rim. Its round ends ARE the 32 px top / bottom slices: build the nineslice at 64 px tall and stretch only the width; for a smaller chip (CODE-1 chips are 50-56 logical) scale the whole object uniformly (setScale(h / 64), width w / that scale). Below 64 px tall the ends turn lemon-shaped (minHeight).",
+   "replaces": "ui_panel",
+   "minHeight": 64
   },
   "ui_status": {
    "atlas": "ui5_icons",
@@ -502,7 +545,13 @@
     64,
     36,
     40
-   ]
+   ],
+   "ruling": {
+    "firstLineY": 86,
+    "lineGap": 22,
+    "lastLineY": 350,
+    "stretchesWithHeight": true
+   }
   },
   "ui_chalk_panel": {
    "atlas": "ui5_icons",
@@ -558,7 +607,8 @@
     16,
     32,
     16
-   ]
+   ],
+   "minHeight": 64
   }
  }
 }

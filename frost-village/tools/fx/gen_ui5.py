@@ -55,6 +55,7 @@ ORANGE = ('#FFD08A', '#F28C28', '#7A3A0E')
 SKYB = ('#D6F0FF', '#7FB8F0', '#1F4F8E')
 CHESTNUT = ('#E09466', '#A4502C', '#4A1E0E')
 MITTEN = ('#FFFFFF', '#D7E2F0', '#4E6486')
+MITTEN_D = ('#FFFFFF', '#C9D8EE', '#2C4268')     # polish: darker outline so the white mitten reads on cream
 FUR = ('#FFF8EA', '#E8D6B8', '#7A6244')
 KRAFT = U4.KRAFT
 TINT = {'teal': '#0E5A54', 'snow': '#7E9CCC', 'orange': '#B8501A', 'chestnut': '#6A2A10', 'sky': '#2A5FA8'}
@@ -164,8 +165,8 @@ def icon_hand():
     thumb = F.sd_ellipse(*F.rot(X, Y, 23, 58, math.radians(-38)), 23, 58, 8.5, 14)
     hand = F.smin(palm, thumb, 3.0)
     cuff = F.sd_box(X, Y, 47, 82, 21, 7.5, 6)
-    shadow(c, U(hand, cuff))
-    part(c, hand, MITTEN, ow=3.0, bevel=9, gloss=0.35, tint=TINT['snow'])
+    shadow(c, U(hand, cuff), opacity=0.38)
+    part(c, hand, MITTEN_D, ow=3.4, bevel=9, gloss=0.35, tint='#5A78A8', lo=0.55)
     # the thumb's seam, a knitted band across the fingers and a soft palm pad
     c.fill(F.intersect(np.abs(F.sd_ellipse(*F.rot(X, Y, 23, 58, math.radians(-38)), 23, 58, 8.5, 14)) - 0.7,
                        F.sd_box(X, Y, 34, 62, 6, 14, 2)), hexc('#9FB2CE'), 0.9)
@@ -173,9 +174,9 @@ def icon_hand():
     for k in range(6):
         c.fill(F.intersect(F.sd_segment(X, Y, 31 + k * 6.5, 37.5, 34 + k * 6.5, 42.5, 0.6), palm + 3), hexc('#9FB2CE'), 0.8)
     c.fill(F.sd_ellipse(X, Y, 50, 61, 11, 9), hexc('#E9F0F9'), 0.85, feather=1.5)
-    part(c, cuff, FUR, ow=2.4, bevel=4, gloss=0.15, tint='paper')
-    for k in range(6):
-        c.fill(F.intersect(F.sd_circle(X, Y, 31 + k * 6.5, 82 + (k % 2) * 1.5, 2.3), cuff + 0.8), hexc('#D8C2A0'), 0.6)
+    part(c, cuff, TEAL, ow=2.8, bevel=4, gloss=0.2, tint=TINT['teal'])              # teal knitted cuff
+    for k in range(7):
+        c.fill(F.intersect(F.sd_segment(X, Y, 29 + k * 6, 77, 29 + k * 6, 87, 1.0), cuff + 1.2), hexc('#1A7C70'), 0.55)
     glint(c, 74, 15, 10.5)
     glint(c, 56, 10, 5.0)
     return c.image()
@@ -183,35 +184,35 @@ def icon_hand():
 
 def icon_route():
     """길 안내: a dotted trail of little boot prints curving up to a teal map pin."""
-    c = canvas(0.94)
-    pin_x, pin_y = 66, 36                                         # centre of the pin's round head
-    pin = F.sd_teardrop(c.X, -c.Y + 2 * pin_y, pin_x, pin_y, 18, 37, tip=2.0)    # point down
+    c = canvas(0.92)
+    pin_x, pin_y = 64, 34                                         # centre of the pin's round head
+    pin = F.sd_teardrop(c.X, -c.Y + 2 * pin_y, pin_x, pin_y, 21.5, 44, tip=2.5)  # point down (polish: bigger)
     # boot prints alternating left / right along a curve that ends at the pin's tip
-    path = [(15, 86), (25, 81), (35, 77.5), (45, 76), (55, 76.5), (63, 77)]
+    path = [(14, 81), (24, 77), (33, 74), (43.5, 73.2), (54, 74.2), (64, 75.5)]
     prints = []
     for k in range(len(path) - 1):
         x, y = path[k]
         nx_, ny_ = path[k + 1][0] - x, path[k + 1][1] - y
         a = math.atan2(ny_, nx_)
-        side = 2.6 if k % 2 == 0 else -2.6
+        side = 3.4 if k % 2 == 0 else -3.4
         px_, py_ = x - math.sin(a) * side, y + math.cos(a) * side
         Xr, Yr = F.rot(c.X, c.Y, px_, py_, a)
-        sole = F.sd_ellipse(Xr, Yr, px_ + 1.2, py_, 3.6, 2.3)
-        heel = F.sd_ellipse(Xr, Yr, px_ - 3.8, py_, 1.7, 1.9)
+        sole = F.sd_ellipse(Xr, Yr, px_ + 1.6, py_, 4.8, 3.2)
+        heel = F.sd_ellipse(Xr, Yr, px_ - 4.9, py_, 2.4, 2.6)
         prints.append(U(sole, heel))
     allp = U(*prints)
-    ground = F.sd_ellipse(c.X, c.Y, pin_x, 77.5, 9, 3.2)
+    ground = F.sd_ellipse(c.X, c.Y, pin_x, 76.5, 11, 3.8)
     shadow(c, U(pin, allp))
-    c.fill(ground, hexc('#0E4C47'), 0.25, feather=1.5)
-    part(c, allp, ('#6A86B8', '#33508A', '#14244A'), ow=1.3, bevel=1.4, gloss=0.0)
-    part(c, pin, TEAL, ow=3.0, bevel=7, gloss=0.3, tint=TINT['teal'], spec=0.15)
-    hole = F.sd_circle(c.X, c.Y, pin_x, pin_y - 1, 8)
-    c.fill(hole - 1.4, hexc('#0E4C47'))
+    c.fill(ground, hexc('#0E4C47'), 0.3, feather=1.5)
+    part(c, allp, ('#7A96CC', '#2E4A86', '#101E40'), ow=1.9, bevel=1.8, gloss=0.0)
+    part(c, pin, TEAL, ow=3.2, bevel=8, gloss=0.3, tint=TINT['teal'], spec=0.15)
+    hole = F.sd_circle(c.X, c.Y, pin_x, pin_y - 1, 9.5)
+    c.fill(hole - 1.6, hexc('#0E4C47'))
     part(c, hole, ('#FFFFFF', '#E9F4F2', '#0E4C47'), ow=0, bevel=2.5, gloss=0.0, hi=0.4)
-    part(c, F.sd_star(c.X, c.Y, pin_x, pin_y - 0.6, 5.2, 2.3, 5, rot=-math.pi / 2, round_=0.5),
-         ('#FFF6C8', '#F5B83A', '#8E520A'), ow=0.9, bevel=1.2, gloss=0.0, hi=0.6)
-    EA.glossy_spot(c, pin_x - 8.5, pin_y - 9.5, 5.0, 2.4, -40, 0.6, 0.8)
-    glint(c, 86, 14, 5.5, edge='#0E4C47', tip='#C8F5EE')
+    part(c, F.sd_star(c.X, c.Y, pin_x, pin_y - 0.6, 6.4, 2.8, 5, rot=-math.pi / 2, round_=0.6),
+         ('#FFF6C8', '#F5B83A', '#8E520A'), ow=1.0, bevel=1.4, gloss=0.0, hi=0.6)
+    EA.glossy_spot(c, pin_x - 10, pin_y - 11, 5.6, 2.6, -40, 0.6, 0.8)
+    glint(c, 85, 13, 5.2, edge='#0E4C47', tip='#C8F5EE')
     return c.image()
 
 
@@ -408,21 +409,21 @@ def icon_staff():
 
 def icon_halo():
     """촌장 후광 setting: a little chief (white parka, dark hair) standing in the middle of an aurora ring."""
-    c = canvas(0.93)
-    ring_y, rx, ry, t = 76, 38, 13, 3.3
+    c = canvas(0.92)
+    ring_y, rx, ry, t = 76, 37.5, 13.5, 4.6                       # polish: fatter ring, bigger chief (coverage)
     d_ring, nx, ny, u = CF.ellipse_param(c, 48, ring_y, rx, ry)
     band = np.abs(d_ring) - t
     lam, n = CF.tube_light(nx, ny, d_ring / t)
     base = CF.cyc_ramp([CF.MINT, CF.SKY, CF.LILAC], u + 0.15)
     col = np.clip(base + (1 - base) * np.clip(lam, 0, None)[..., None] * 0.55
                   - base * np.clip(-lam, 0, None)[..., None] * 0.35, 0, 1)
-    glow = np.exp(-0.5 * (np.maximum(band, 0) / 3.0) ** 2)
+    glow = np.exp(-0.5 * (np.maximum(band, 0) / 3.0) ** 2) * np.clip(1 - np.maximum(band, 0) / 8.0, 0, 1)
     c.paint(glow, hexc('#BFF5EC'), 0.35)
     back = (c.Y < ring_y)
     c.fill(np.where(back, band - 1.5, 9), CF.TEAL_RIM, 0.85)
     c.paint(c.cov(np.where(back, band, 9)), col)
-    # the chief (small, centred on the ring)
-    s, cx, fy = 0.82, 48, 76
+    # the chief (centred on the ring)
+    s, cx, fy = 1.03, 48, 77
     body = F.smin(F.sd_box(c.X, c.Y, cx, fy - 18 * s, 12 * s, 14 * s, 8 * s),
                   F.sd_ellipse(c.X, c.Y, cx, fy - 10 * s, 13.5 * s, 6 * s), 3)
     boots = U(F.sd_ellipse(c.X, c.Y, cx - 5 * s, fy - 2.5 * s, 4.6 * s, 3.2 * s),
@@ -446,27 +447,28 @@ def icon_halo():
     c.fill(np.where(front, band - 1.5, 9), CF.TEAL_RIM, 0.85)
     c.paint(c.cov(np.where(front, band, 9)), col)
     c.paint(c.cov(np.abs(d_ring + t + 0.5) - 0.5) * front, CF.GOLD_IN, 0.6)
-    for x, y, sz in ((12, 72, 4.6), (84, 80, 4.0), (78, 64, 3.0), (30, 88, 3.2)):
+    for x, y, sz in ((12, 68, 4.6), (85, 81, 4.0), (82, 61, 3.2), (28, 89, 3.2)):
         glint(c, x, y, sz, edge='#1F8F86', tip='#FFF3C4')
-    glint(c, 72, 22, 7.0)
+    glint(c, 76, 18, 7.5)
     return c.image()
 
 
 def icon_cheer():
     """촌장 응원: a raised white mitten (cheering) with two music notes."""
-    c = canvas(0.94)
-    hand, cuff, (X, Y) = mitten_sd(c, 38, 50, 1.0, ang=-12, thumb_side=1)
-    n1 = music_note(c, 72, 44, 1.0, GOLD, ang=8)
-    n2 = music_note(c, 63, 74, 0.8, TEAL, ang=-6)
-    lines = U(*[F.sd_segment(c.X, c.Y, 16 + 2 * k, 28 - 6 * k, 10 + 2 * k, 24 - 7 * k, 1.4) for k in range(2)])
-    shadow(c, U(hand, cuff, n1, n2))
-    part(c, hand, MITTEN, ow=3.0, bevel=7, gloss=0.3, tint=TINT['snow'])
-    c.fill(F.sd_ellipse(X, Y, 37, 56, 8.5, 7), hexc('#E7EEF8'), 0.9)
-    part(c, cuff, FUR, ow=2.4, bevel=3.5, gloss=0.15, tint='paper')
-    part(c, n1, ('#FFF0A0', '#F5A623', '#8E520A'), ow=2.2, bevel=2.5, gloss=0.3, hi=0.6, tint='gold')
-    part(c, n2, TEAL, ow=2.0, bevel=2.2, gloss=0.3, hi=0.6, tint=TINT['teal'])
-    c.fill(lines, hexc('#7FB8F0'), 0.9)
-    glint(c, 84, 18, 5.5)
+    c = canvas(0.91)
+    hand, cuff, (X, Y) = mitten_sd(c, 35, 47, 1.22, ang=-12, thumb_side=1)          # polish: bigger, bolder
+    n1 = music_note(c, 74, 42, 1.25, GOLD, ang=8)
+    n2 = music_note(c, 66, 78, 1.0, TEAL, ang=-6)
+    lines = U(*[F.sd_segment(c.X, c.Y, 15 + 2 * k, 27 - 6 * k, 10 + 2 * k, 23 - 7 * k, 1.9) for k in range(2)])
+    shadow(c, U(hand, cuff, n1, n2), opacity=0.36)
+    part(c, hand, MITTEN_D, ow=3.4, bevel=8, gloss=0.3, tint='#5A78A8', lo=0.55)
+    c.fill(F.sd_ellipse(X, Y, 34, 54, 10, 8.5), hexc('#E7EEF8'), 0.9)
+    part(c, cuff, TEAL, ow=2.8, bevel=3.5, gloss=0.2, tint=TINT['teal'])
+    part(c, n1, ('#FFF0A0', '#F5A623', '#8E520A'), ow=2.6, bevel=3, gloss=0.3, hi=0.6, tint='gold')
+    part(c, n2, TEAL, ow=2.4, bevel=2.6, gloss=0.3, hi=0.6, tint=TINT['teal'])
+    c.fill(lines - 0.8, hexc('#1F4F8E'), 0.9)
+    c.fill(lines, hexc('#7FB8F0'), 0.95)
+    glint(c, 84, 17, 5.6)
     return c.image()
 
 
@@ -507,9 +509,9 @@ def icon_sleigh():
     bed = F.sd_box(c.X, c.Y, 62, 69, 24, 4, 2)
     shaft = F.sd_segment(c.X, c.Y, 38, 66, 24, 60, 1.6)
     # pony head (facing left), neck down to the sleigh
-    neck = F.sd_polygon(c.X, c.Y, [(22, 38), (34, 36), (36, 62), (20, 62)]) - 3
-    muzzle = F.sd_ellipse(*rot(c, 14, 42, -20), 14, 42, 9.5, 7.5)
-    skull = F.sd_ellipse(c.X, c.Y, 24, 31, 10.5, 9.5)
+    neck = F.sd_polygon(c.X, c.Y, [(21, 38), (35, 35), (37, 62), (19, 62)]) - 3.5
+    muzzle = F.sd_ellipse(*rot(c, 13, 43, -20), 13, 43, 10.5, 8.5)                  # polish: fuller head
+    skull = F.sd_ellipse(c.X, c.Y, 24, 30, 12, 11)
     ear = F.sd_polygon(c.X, c.Y, [(25, 19), (29, 11), (32, 22)]) - 1.5
     pony = F.smin(F.smin(skull, muzzle, 4), neck, 4)
     allsh = U(runners, struts, bed, shaft, pony, ear, F.sd_box(c.X, c.Y, 62, 54, 14, 12, 2))
@@ -528,11 +530,19 @@ def icon_sleigh():
     part(c, pony, ('#D9A066', '#9A5E2A', '#4A2810'), ow=2.6, bevel=5, gloss=0.25, tint='wood')
     mane = U(*[F.sd_circle(c.X, c.Y, 32 + k * 0.6, 24 + k * 7, 4.2) for k in range(5)])
     part(c, F.intersect(mane, -(c.X - 39)), ('#5A3A22', '#2E1A0C', '#140A04'), ow=1.4, bevel=2, gloss=0.2)
-    c.fill(F.sd_ellipse(*rot(c, 13, 33, -20), 13, 33, 2.4, 6), WHITE, 0.95)                # white blaze
-    EA.eye_dot(c, 21, 29, 2.0, 2.6)
-    c.fill(F.sd_ellipse(c.X, c.Y, 9, 45, 1.4, 1.0), hexc('#3C2414'))
-    c.fill(F.sd_box(*rot(c, 26, 56, -10), 26, 56, 9.5, 2.2, 1), hexc('#C9362C'))           # collar
-    part(c, F.sd_circle(c.X, c.Y, 26, 60, 3.0), GOLD, ow=1.2, bevel=1.4, gloss=0.2, spec=0.4)  # sleigh bell
+    c.fill(F.sd_ellipse(*rot(c, 12, 34, -20), 12, 34, 2.6, 6.5), WHITE, 0.95)              # white blaze
+    # forelock tuft falling over the forehead
+    fl = U(*[F.sd_circle(c.X, c.Y, x, y, r) for x, y, r in ((22, 20, 4.2), (18, 23, 3.6), (25, 23, 3.4))])
+    part(c, F.intersect(fl, skull - 1.5), ('#5A3A22', '#2E1A0C', '#140A04'), ow=1.2, bevel=1.6, gloss=0.25)
+    EA.eye_dot(c, 21, 30, 2.2, 2.8)
+    c.fill(F.sd_ellipse(c.X, c.Y, 7, 46, 1.5, 1.1), hexc('#3C2414'))
+    # red harness: noseband + cheek strap with a gold ring, and the collar
+    strap = U(F.intersect(np.abs(F.sd_ellipse(*rot(c, 13, 43, -20), 13, 43, 10.5, 8.5) + 3.5) - 1.3, c.X - 3),
+              F.sd_segment(c.X, c.Y, 21, 39, 30, 27, 1.3))
+    c.fill(F.intersect(strap, pony + 0.5), hexc('#C9362C'))
+    part(c, F.sd_circle(c.X, c.Y, 21.5, 38.5, 2.2), GOLD, ow=1.0, bevel=1.0, gloss=0.2, spec=0.4)
+    c.fill(F.sd_box(*rot(c, 27, 56, -10), 27, 56, 10.5, 2.6, 1.2), hexc('#C9362C'))         # collar
+    part(c, F.sd_circle(c.X, c.Y, 27, 61, 3.4), GOLD, ow=1.2, bevel=1.4, gloss=0.2, spec=0.4)  # sleigh bell
     return c.image()
 
 
@@ -608,22 +618,22 @@ def car_icon(kind):
 
 def icon_play():
     """settings tab 놀이: a snowflake over a small joystick knob."""
-    c = canvas(0.93)
-    base = F.smin(F.sd_box(c.X, c.Y, 48, 78, 26, 7, 6), F.sd_ellipse(c.X, c.Y, 48, 72, 20, 7), 3)
-    stick = F.sd_box(c.X, c.Y, 48, 62, 3.2, 10, 1.5)
-    ball = F.sd_circle(c.X, c.Y, 48, 50, 10)
-    btn = F.sd_ellipse(c.X, c.Y, 67, 76, 4.5, 2.6)
-    sf = snowflake_sd(c, 48, 22, 15, w=2.4, rot_deg=8)
+    c = canvas(0.92)
+    base = F.smin(F.sd_box(c.X, c.Y, 48, 77, 28.5, 8, 7.5), F.sd_ellipse(c.X, c.Y, 48, 71, 23, 8.5), 3)   # polish: bigger
+    stick = F.sd_box(c.X, c.Y, 48, 62, 4.0, 10, 1.8)
+    ball = F.sd_circle(c.X, c.Y, 48, 50, 12.5)
+    btn = F.sd_ellipse(c.X, c.Y, 67, 74.5, 5.2, 3.0)
+    sf = snowflake_sd(c, 48, 22.5, 18.0, w=3.3, rot_deg=8)
     shadow(c, U(base, stick, ball, sf))
     part(c, base, ('#7A8AA8', '#3A4866', '#141C2E'), ow=2.6, bevel=4, gloss=0.25)
     part(c, btn, RED, ow=1.4, bevel=1.5, gloss=0.3, hi=0.6)
     part(c, stick, STEEL, ow=1.6, bevel=1.5, gloss=0.2, spec=0.3)
     part(c, ball, TEAL, ow=2.4, bevel=4, gloss=0.0, hi=0.6, tint=TINT['teal'], spec=0.4)
-    EA.glossy_spot(c, 44, 46, 3.6, 2.0, -35, 0.85, 0.5)
-    c.fill(sf - 2.0, hexc('#1F4F8E'))
+    EA.glossy_spot(c, 43, 45, 4.6, 2.4, -35, 0.85, 0.5)
+    c.fill(sf - 2.4, hexc('#1F4F8E'))
     c.fill(sf, WHITE)
-    c.paint(c.cov(sf) * np.clip((c.Y - 8) / 30, 0, 1), hexc('#BFE0FF'), 0.6)
-    glint(c, 80, 40, 5.0, edge='#1F4F8E', tip='#D6F0FF')
+    c.paint(c.cov(sf) * np.clip((c.Y - 4) / 34, 0, 1), hexc('#9FCCF5'), 0.7)
+    glint(c, 80, 42, 5.2, edge='#1F4F8E', tip='#D6F0FF')
     return c.image()
 
 
@@ -836,10 +846,13 @@ def status_dot(k):
 PANELS = {
     # key: (draw, nineSlice {left, top, right, bottom}, contentInset [l, t, r, b], notes, code fallback)
     'ui_letter': (letter_panel, dict(left=36, top=64, right=36, bottom=40), [36, 64, 36, 40],
-                  '편지 page (OfficePanel letters, 720 x 1100 logical): cream letter paper, faint blue ruled lines '
-                  '(every 22 px in the source, they stretch with the panel), a pinecone stamp in the top-right corner, '
-                  'the envelope flap with its shadow across the top. Write the sender in the flap band (y 8-36), the '
-                  'letter text inside contentInset.', 'ui_panel'),
+                  '편지 page (OfficePanel letters, 720 x 1100 logical): cream letter paper, faint blue ruled lines, a '
+                  'pinecone stamp in the top-right corner, the envelope flap with its shadow across the top. Write the '
+                  'sender in the flap band (y 8-36), the letter text inside contentInset. The ruling lives in the '
+                  'stretched centre: at the source height its lines are ruling.firstLineY + n x ruling.lineGap; on a '
+                  'panel of height h they sit at top + (y - top) x (h - top - bottom) / (400 - top - bottom) - set the '
+                  'text line height to lineGap x that factor to write on the lines, or draw your own lines.',
+                  'ui_panel'),
     'ui_chalk_panel': (chalk_panel, dict(left=28, top=28, right=28, bottom=36), [28, 28, 28, 36],
                        '재고 tab background: dark green chalkboard in a wooden frame with a chalk tray (chalk and '
                        'eraser in the bottom corners). Light text / status dots read on it.', 'ui4 ui_newspaper'),
@@ -851,41 +864,84 @@ PANELS = {
                          'and margins as ui_office_tab so they swap in place.', 'ui_button_green'),
     'ui_chip': (chip_panel, dict(left=32, top=16, right=32, bottom=16), [32, 16, 32, 16],
                 'HUD chips (navigation chip 240 x 44 CSS, 업무 chip, 관망 caption): rounded cream pill with a teal rim. '
-                'Height can stay 64 (or scale the whole chip); stretch the width.', 'ui_panel'),
+                'Its round ends ARE the 32 px top / bottom slices: build the nineslice at 64 px tall and stretch only '
+                'the width; for a smaller chip (CODE-1 chips are 50-56 logical) scale the whole object uniformly '
+                '(setScale(h / 64), width w / that scale). Below 64 px tall the ends turn lemon-shaped (minHeight).',
+                'ui_panel'),
 }
 STATUS = [('부족', 'short', 'red'), ('길 막힘', 'blocked', 'orange'), ('남음', 'surplus', 'blue'), ('적당', 'ok', 'green')]
 
 
 # =========================================================================== build
-def render_all():
+UI5_HELPERS = ('glint', 'snowflake_sd', 'music_note', 'rail', 'wheel', 'snow_cap', 'mitten_sd', 'head', 'paint_head',
+               'train_body', 'car_icon')
+
+
+def item_hash(fn):
+    """Per-item cache hash (polish: re-render only what changed): the item's draw function + this file's shared helpers
+    + the palettes + the imported style modules (fxlib, gen_ui3, gen_ui4, emote_art) + the gen_chief_fx helpers used."""
     import hashlib
-    src = b''.join(open(p, 'rb').read() for p in (__file__, F.__file__, U3.__file__, U4.__file__, EA.__file__, CF.__file__))
-    h = hashlib.sha1(src).hexdigest()[:12]
-    d = os.path.join(CACHE, 'frames_' + h)
-    names = [k for k, *_ in ICONS] + list(PANELS) + [f'ui_status_{i}' for i in range(4)]
+    import inspect
+    src = inspect.getsource(fn) + ''.join(inspect.getsource(globals()[n]) for n in UI5_HELPERS)
+    src += ''.join(inspect.getsource(f) for f in (CF.ellipse_param, CF.tube_light, CF.cyc_ramp))
+    src += repr((TEAL, TEAL_D, ORANGE, SKYB, CHESTNUT, MITTEN, MITTEN_D, FUR, TINT, INK))
+    mods = b''.join(open(p, 'rb').read() for p in (F.__file__, U3.__file__, U4.__file__, EA.__file__))
+    return hashlib.sha1(src.encode() + mods).hexdigest()[:12]
+
+
+def render_all():
+    jobs = [(k, fn) for k, fn, *_ in ICONS] + [(k, v[0]) for k, v in PANELS.items()]
+    jobs += [(f'ui_status_{i}', (lambda i=i: status_dot(i))) for i in range(4)]
     out = {}
-    if os.path.isdir(d) and all(os.path.exists(os.path.join(d, n + '.png')) for n in names):
-        for n in names:
-            out[n] = Image.open(os.path.join(d, n + '.png')).convert('RGBA')
-        return out
-    os.makedirs(d, exist_ok=True)
-    for k, fn, *_ in ICONS:
+    for k, fn in jobs:
+        h = item_hash(status_dot if k.startswith('ui_status_') else fn)
+        p = os.path.join(CACHE, 'items', f'{k}_{h}.png')
+        if os.path.exists(p):
+            out[k] = Image.open(p).convert('RGBA')
+            continue
+        print(f'  render {k}', flush=True)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
         out[k] = fn()
-    for k, (fn, *_r) in PANELS.items():
-        out[k] = fn()
-    for i in range(4):
-        out[f'ui_status_{i}'] = status_dot(i)
-    for n, im in out.items():
-        im.save(os.path.join(d, n + '.png'))
+        out[k].save(p)
     return out
+
+
+def search_order(fr, order, iters=700, seed=1):
+    """Deterministic random-restart MaxRects search (panels first, icons in random order) for the order that packs
+    the page smallest around 470-530 px wide - the page budget (<= 1.5 MiB) is tight (polish: the bolder icons)."""
+    sizes = []
+    for n in order:
+        if n in PANELS:
+            sizes.append((fr[n].width, fr[n].height))
+        else:
+            b = CF._trim(fr[n])
+            sizes.append((b[2] - b[0], b[3] - b[1]))
+    panels = sorted([i for i, n in enumerate(order) if n in PANELS], key=lambda i: -sizes[i][0] * sizes[i][1])
+    rest = [i for i, n in enumerate(order) if n not in PANELS]
+    rng = np.random.default_rng(seed)
+    best = None
+    for _ in range(iters):
+        o = panels + [rest[j] for j in rng.permutation(len(rest))]
+        for W in range(470, 530, 2):
+            pl = CF.maxrects(sizes, W, pad=1, order=o)
+            if pl is None:
+                continue
+            uw = max(x + w for (x, _), (w, _) in zip(pl, sizes))
+            uh = max(y + h for (_, y), (_, h) in zip(pl, sizes))
+            a = ((uw + 1) // 2 * 2) * ((uh + 1) // 2 * 2)
+            if uh <= 1024 and (best is None or a < best[0]):
+                best = (a, o)
+    return best[1]
 
 
 def write_assets(fr):
     order = [k for k, *_ in ICONS] + list(PANELS) + [f'ui_status_{i}' for i in range(4)]
     # pad 1: every trimmed frame keeps a 1 px transparent border of its own and the panels have transparent
     # margins, so 1 px gaps cannot bleed under linear filtering (no mipmaps) - and the page fits the 1.5 MiB budget
+    best_o = search_order(fr, order)
     sheet, atlas = CF.pack([(n, fr[n]) for n in order], max_side=1024, no_trim=set(PANELS), pad=1,
-                           widths=range(400, 1025, 4), app='frost-village/tools/fx/gen_ui5.py', shuffles=60)
+                           widths=sorted(set(range(400, 1025, 4)) | set(range(470, 530, 2))),
+                           app='frost-village/tools/fx/gen_ui5.py', shuffles=60, orders=[best_o])
     os.makedirs(OUT, exist_ok=True)
     atlas['meta']['image'] = ATLAS + '.png'
     sheet.save(os.path.join(OUT, ATLAS + '.png'), optimize=True)
@@ -903,6 +959,13 @@ def write_assets(fr):
                       'frameSize': [im.width, im.height], 'contentInset': inset, 'notes': notes, 'replaces': fb}
         nine[k] = {'atlas': ATLAS, 'frame': k, 'left': m['left'], 'right': m['right'], 'top': m['top'],
                    'bottom': m['bottom'], 'contentInset': inset}
+        if k == 'ui_chip':                       # polish (critic L3): the round ends must not be squashed
+            nine[k]['minHeight'] = 64
+            sprites[k]['minHeight'] = 64
+        if k == 'ui_letter':                     # polish (critic L9): where the ruled lines are at the source size
+            ruling = {'firstLineY': 86, 'lineGap': 22, 'lastLineY': 350, 'stretchesWithHeight': True}
+            nine[k]['ruling'] = ruling
+            sprites[k]['ruling'] = ruling
     sprites['ui_status'] = {'atlas': ATLAS, 'frame': 'ui_status_0', 'anchor': [0.5, 0.5], 'kind': 'icon',
                             'frameSize': [32, 32], 'frames': 4, 'frameNames': [f'ui_status_{i}' for i in range(4)],
                             'states': {en: f'ui_status_{i}' for i, (ko, en, col) in enumerate(STATUS)},
@@ -930,6 +993,18 @@ def write_assets(fr):
             'pageSize': [sheet.width, sheet.height],
             'pageMiB': round(page_mib, 3),
             'renamed': {c: v for c, v in RENAMED.items()},
+            'pagePlan': {
+                'why': 'polish (critic M4): the panels are ~0.9 MiB of this page and only the office panel uses them. '
+                       'When the build packs v42_core (chief_fx + ui5), keep the icons + status dots resident and put '
+                       'the panel frames on the transient office-panel page (plan §13.2 "panel page 1.6 MiB").',
+                'resident': [k for k, *_ in ICONS] + [f'ui_status_{i}' for i in range(4)],
+                'transientOfficePanel': list(PANELS),
+                'residentMiB': round(sum(atlas['frames'][k]['frame']['w'] * atlas['frames'][k]['frame']['h'] * 4
+                                         for k in [k for k, *_ in ICONS] + [f'ui_status_{i}' for i in range(4)])
+                                     / 2 ** 20, 3),
+                'transientMiB': round(sum(atlas['frames'][k]['frame']['w'] * atlas['frames'][k]['frame']['h'] * 4
+                                          for k in PANELS) / 2 ** 20, 3),
+            },
             'renamedWhy': 'ui_icon_play is already a pets2 sprite (the dog play-fetch ball used by src/scenes/UI.js); a '
                           'second ui_icon_play would replace it at merge (Object.assign) or be dropped (mergeLate). The '
                           'settings-tab 놀이 icon is ui_icon_play_tab.',
@@ -1232,6 +1307,12 @@ def check():
         errs.append('ui_status: manifest entry with 4 frames missing')
     # readability at 32 px: every icon keeps a visible silhouette (alpha coverage) and contrast on cream and on dark
     cream, dark = np.array([255, 248, 236], np.float32), np.array([43, 47, 58], np.float32)
+    readability = {}
+    nine_m = man.get('nineSlice', {})
+    if nine_m.get('ui_chip', {}).get('minHeight') != 64:
+        errs.append('ui_chip: nineSlice.minHeight 64 missing (its round ends are the 32 px top / bottom slices)')
+    if not nine_m.get('ui_letter', {}).get('ruling'):
+        errs.append('ui_letter: nineSlice.ruling (where the ruled lines are) missing')
     for k in icons:
         im = full.get(k)
         if im is None:
@@ -1241,15 +1322,25 @@ def check():
         cov = float((al > 0.5).mean())
         if cov < 0.18:
             errs.append(f'{k}: only {cov:.0%} of the 32 px icon is solid - too thin to read')
+        elif cov < 0.28:
+            warns.append(f'{k}: {cov:.0%} solid at 32 px - thinner than every house icon (>= 29 %)')
+        cons = {}
         for bgn, bg in (('cream', cream), ('dark', dark)):
             comp = sm[..., :3] * al + bg * (1 - al)
             lum = comp @ np.array([0.299, 0.587, 0.114], np.float32)
             inside = al[..., 0] > 0.5
-            if inside.sum() and np.percentile(np.abs(lum[inside] - (bg @ np.array([0.299, 0.587, 0.114]))), 90) < 40:
+            cons[bgn] = float(np.percentile(np.abs(lum[inside] - (bg @ np.array([0.299, 0.587, 0.114]))), 90)) if inside.sum() else 0
+            if inside.sum() and cons[bgn] < 40:
                 errs.append(f'{k}: weak contrast on {bgn} at 32 px')
+        readability[k] = (cov, cons.get('cream', 0), cons.get('dark', 0))
         a96 = np.asarray(im)[..., 3]
         if max(a96[0].max(), a96[-1].max(), a96[:, 0].max(), a96[:, -1].max()) > 40:
             errs.append(f'{k}: art touches the 96 px frame border')
+    thin = sorted(readability.items(), key=lambda kv: kv[1][0])[:5]
+    print('  thinnest at 32 px (solid, contrast cream / dark): ' + ', '.join(
+        f'{k.replace("ui_icon_", "")} {v[0]:.2f} {v[1]:.0f}/{v[2]:.0f}' for k, v in thin))
+    low = sorted(readability.items(), key=lambda kv: kv[1][1])[:3]
+    print('  lowest contrast on cream: ' + ', '.join(f'{k.replace("ui_icon_", "")} {v[1]:.0f}' for k, v in low))
     page_mib = sheet.width * sheet.height * 4 / 2 ** 20
     src_sum = sum(f['frame']['w'] * f['frame']['h'] * 4 for f in js['frames'].values()) / 2 ** 20
     print(f'ui5 check: {len(js["frames"])} frames, page {sheet.width}x{sheet.height} = {page_mib:.3f} MiB (RGBA), '

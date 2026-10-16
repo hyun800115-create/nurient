@@ -85,7 +85,7 @@ class S extends Phaser.Scene {
     L.audio('__sprite_audio7', ['assets/' + au.audioSprite.file]);
     L.audio('amb_office', ['assets/' + au.audio.amb_office.files[0]]);
   }
-  create() {
+  async create() {
     const tex = this.textures, anims = this.anims;
     // ---- frames + anims (Assets.spriteAnims)
     for (const m of [fx, ui5]) {
@@ -121,11 +121,11 @@ class S extends Phaser.Scene {
       this.add.text(X0 + c * CW + 8, 6, name, { fontFamily: 'sans-serif', fontSize: '18px', color: '#1d2b44', backgroundColor: '#ffffffcc', padding: { x: 4, y: 2 } }).setDepth(2000);
     });
     this.add.rectangle(X0 + 4 * CW + CW / 2, 500, CW, 1000, 0x5a6aa8, 0.45).setBlendMode(Phaser.BlendModes.MULTIPLY).setDepth(900);
-    const rows = [['chief_halo', 80], ['chief_halo_gold', 190], ['rank2 + halo', 300], ['glow + chief + motes', 480], ['nav_chevron 0/4/8/12', 600], ['nav_dot 0/1', 660], ['nav_ring', 750], ['nav_badge / nav_edge', 900]];
+    const rows = [['chief_halo (calm)', 80], ['chief_halo_gold', 190], ['rank2 + halo', 300], ['glow + chief + motes', 480], ['nav_chevron 0/4/8/12 + notch', 600], ['nav_dot 0/1', 660], ['nav_ring', 750], ['nav_badge / nav_edge', 900]];
     rows.forEach(([n, y]) => this.add.text(6, y - 10, n, { fontFamily: 'sans-serif', fontSize: '12px', color: '#1d2b44', wordWrap: { width: 90 } }));
     for (let c = 0; c < 5; c++) {
       const cx = X0 + c * CW + CW / 2, night = c === 4;
-      this.add.sprite(cx, 80, 'chief_fx', 'chief_halo_0').play('spr:chief_halo:play');
+      this.add.sprite(cx, 80, 'chief_fx', 'chief_halo_0').play('spr:chief_halo:calm');
       this.add.sprite(cx, 190, 'chief_fx', 'chief_halo_gold_0').play('spr:chief_halo_gold:play');
       this.add.image(cx, 300, 'chief_fx', 'chief_halo_rank2_0').setScale(0.95);
       this.add.sprite(cx, 300, 'chief_fx', 'chief_halo_0').setScale(0.95).play('spr:chief_halo:play');
@@ -142,6 +142,7 @@ class S extends Phaser.Scene {
       }
       this.add.sprite(cx, fy - 81 - 14, 'chief_fx', 'chief_marker_0').setOrigin(0.5, 1).setScale(0.6).setDepth(1000).play('spr:chief_marker:play');
       [0, 4, 8, 12].forEach((k, i) => this.add.image(cx - 105 + i * 70, 600, 'chief_fx', 'nav_chevron_' + String(k).padStart(2, '0')));
+      [2, 6, 10, 14].forEach((k, i) => this.add.image(cx - 105 + i * 70, 632, 'chief_fx', 'chief_halo_notch_' + String(k).padStart(2, '0')));
       for (let i = 0; i < 6; i++) this.add.image(cx - 110 + i * 44, 660, 'chief_fx', 'nav_dot_' + (i === 3 ? 1 : 0));
       this.add.sprite(cx, 750, 'chief_fx', 'nav_ring_0').play('spr:nav_ring:play');
       const bd = fx.sprites.nav_badge, ir = bd.iconRect;
@@ -171,7 +172,7 @@ class S extends Phaser.Scene {
     nine('ui_letter', 20, 1330, 320, 400); nine('ui_letter', 360, 1330, 420, 520);
     nine('ui_chalk_panel', 800, 1330, 320, 240); nine('ui_chalk_panel', 800, 1590, 560, 280);
     nine('ui_office_tab', 1140, 1330, 160, 72); nine('ui_office_tab_on', 1310, 1330, 160, 72); nine('ui_office_tab', 1140, 1410, 220, 72);
-    nine('ui_chip', 1140, 1500, 200, 64); nine('ui_chip', 1360, 1500, 230, 52);
+    nine('ui_chip', 1140, 1500, 200, 64); nine('ui_chip', 1360, 1500, 230 * 64 / 52, 64).setScale(52 / 64);   // minHeight 64, scaled
     // ---- audio7: cut like Assets.sliceSprite, check every slice / group / the loop
     const ctx = this.sound.context, buf = this.cache.audio.get('__sprite_audio7');
     if (!buf || typeof buf.getChannelData !== 'function') H.missing.push('audio: sprite not decoded');
@@ -188,11 +189,15 @@ class S extends Phaser.Scene {
         let pk = 0, tail = 0, head = 0;
         const t30 = Math.floor(0.03 * sr), h5 = Math.floor(0.005 * sr);
         for (let i = 0; i < n; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; if (i >= n - t30 && v > tail) tail = v; if (i < h5 && v > head) head = v; }
-        H.audio.keys[k] = { sec: +(n / sr).toFixed(4), peak: +pk.toFixed(3), tail30ms: +tail.toFixed(4), head5ms: +head.toFixed(4) };
+        // a loop slice (loopPeriod): the cut must loop seamlessly - wrap step vs the steps inside (d2, 99.9 %)
+        const w = (i) => d[((i % n) + n) % n], dd = (i) => Math.abs(w(i) - 2 * w(i - 1) + w(i - 2));
+        let sm = 0; for (const i of [0, 1, 2]) sm = Math.max(sm, dd(i));
+        const ss = []; for (let i = 2; i < n; i += 2) ss.push(dd(i)); ss.sort((p, q) => p - q);
+        H.audio.keys[k] = { sec: +(n / sr).toFixed(4), peak: +pk.toFixed(3), tail30ms: +tail.toFixed(4), head5ms: +head.toFixed(4), seam: +(sm / Math.max(ss[Math.floor(ss.length * 0.999)], 1e-9)).toFixed(3) };
       }
       this.cache.audio.remove('__sprite_audio7');
       for (const g in au.audioGroups) for (const k of au.audioGroups[g]) if (!this.cache.audio.exists(k)) H.missing.push('audio group ' + g + ': ' + k);
-      for (const k in au.audioSprite.keys) { try { this.sound.add(k, { volume: au.audio[k].volume }).play(); } catch (e) { H.missing.push('play ' + k + ': ' + e); } }
+      for (const k in au.audioSprite.keys) { try { this.sound.add(k, { volume: au.audio[k].volume, loop: !!au.audio[k].loopPeriod }).play(); } catch (e) { H.missing.push('play ' + k + ': ' + e); } }
       const amb = this.cache.audio.get('amb_office');
       if (!amb || typeof amb.getChannelData !== 'function') H.missing.push('audio: amb_office not decoded');
       else {
@@ -200,6 +205,22 @@ class S extends Phaser.Scene {
         try { this.sound.add('amb_office', { loop: true, volume: au.audio.amb_office.volume }).play(); } catch (e) { H.missing.push('play amb_office: ' + e); }
       }
     }
+    // ---- hand-over probe (critic M1): the game's own Assets.js with the chief_fx / ui5 fragments merged late
+    try {
+      const { Assets } = await import('./src/core/Assets.js');
+      Assets.game = this.game;
+      Assets.mergeLate('chief_fx', fx); Assets.mergeLate('ui5', ui5);
+      const P = H.probe = {};
+      const raw = this.add.image(-200, -200, 'chief_halo'); P.code1_addImage_chief_halo = raw.texture.key; raw.destroy();
+      const r = Assets.sprite('chief_halo'); P.code2_sprite_chief_halo = { tex: r.tex, frame: r.frame, anchor: r.anchor, placeholder: !!r.ph };
+      for (const k of ['chief_halo', 'chief_halo_gold', 'chief_glow_back', 'chief_marker', 'nav_ring', 'chief_sparkle']) Assets.spriteAnims(this.game, k);
+      P.anims = { play: Assets.spriteAnim('chief_halo', 'play'), calm: Assets.spriteAnim('chief_halo', 'calm'), glow: Assets.spriteAnim('chief_glow_back', 'play') };
+      const spr = this.add.sprite(-200, -200, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).play(P.anims.calm); P.calmPlaying = spr.anims.isPlaying; spr.destroy();
+      const e = Assets.image(this, -200, -200, 'nav_edge'); P.code2_image_nav_edge = e.texture.key + ':' + e.frame.name; e.destroy();
+      const nt = Assets.sprite('chief_halo_notch'); P.notch = nt.tex + ':' + nt.frame;
+      P.has = Object.fromEntries(['chief_halo', 'chief_halo_notch', 'nav_edge', 'nav_chevron', 'ui_icon_hand', 'ui_icon_play_tab', 'ui_letter', 'ui_chip'].map((k) => [k, Assets.has(k)]));
+      const nn = Assets.nine('ui_chip'); P.nine_ui_chip = { tex: nn.tex, frame: nn.frame, l: nn.l, r: nn.r, t: nn.t, b: nn.b };
+    } catch (err) { H.missing.push('probe: ' + err); }
     H.scene = this; H.ready = true;
   }
 }
@@ -283,7 +304,7 @@ class S extends Phaser.Scene {
         c.stackH = opts.stackN * it.stackStep * st;
       }
       c.band = this.add.image(x, y, 'chief_fx', 'chief_halo_rank2_0').setDepth(DEPTH.PAD + 1.99).setVisible(!!opts.rank2);
-      c.ring = this.add.sprite(x, y, 'chief_fx', 'chief_halo_0').setDepth(DEPTH.PAD + 2).play('spr:chief_halo:play');
+      c.ring = this.add.sprite(x, y, 'chief_fx', 'chief_halo_0').setDepth(DEPTH.PAD + 2).play('spr:chief_halo:calm');
       c.gold = this.add.sprite(x, y, 'chief_fx', 'chief_halo_gold_0').setDepth(DEPTH.PAD + 2.01).play('spr:chief_halo_gold:play').setAlpha(0);
       c.glow = this.add.sprite(x, y, 'chief_fx', 'chief_glow_back_0').setOrigin(0.5, 0.82).play('spr:chief_glow_back:play');
       c.motes = [];
@@ -293,7 +314,7 @@ class S extends Phaser.Scene {
         m.on('animationcomplete', again); again(); c.motes.push(m);
       }
       c.pin = this.add.sprite(x, y, 'chief_fx', 'chief_marker_0').setOrigin(0.5, 1).setDepth(DEPTH.LABEL - 30).play('spr:chief_marker:play').setAlpha(0);
-      c.notch = this.add.image(x, y, 'chief_fx', 'nav_chevron_00').setDepth(DEPTH.PAD + 2.02).setVisible(false);
+      c.notch = this.add.image(x, y, 'chief_fx', 'chief_halo_notch_00').setDepth(DEPTH.PAD + 2.02).setVisible(false);
       if (opts.working) {   // his work stroke: the gold ring pulses on the impact frame, a sparkle at the hit
         const ip = player.anims.chop.impactPoint[opts.dir || 'S'];
         s.on('animationupdate', (an, fr) => { if (fr.index === player.anims.chop.impactFrame + 1) { c.pulseK = 1; this.add.sprite(x + ip[0], y + ip[1] - 20, 'chief_fx', 'chief_sparkle_0').setDepth(y + 1).play('spr:chief_sparkle:play').once('animationcomplete', function () { this.destroy(); }); } });
@@ -321,7 +342,7 @@ class S extends Phaser.Scene {
       });
       if (c.o.notch !== undefined) {
         const kk = Math.round(((c.o.notch % (Math.PI * 2)) + Math.PI * 2) / (Math.PI / 8)) % 16;
-        c.notch.setVisible(true).setFrame('nav_chevron_' + String(kk).padStart(2, '0')).setPosition(x + Math.cos(c.o.notch) * rx * 1.05, y + Math.sin(c.o.notch) * ry * 1.05).setScale(sc * 1.6).setAlpha(0.9);
+        c.notch.setVisible(true).setFrame('chief_halo_notch_' + String(kk).padStart(2, '0')).setPosition(x + Math.cos(c.o.notch) * rx, y + Math.sin(c.o.notch) * ry).setScale(sc * 1.3);
       }
       let n = 0; for (const q of people) if (gdist(q.x, q.y, c.x, c.y) < A.crowdR) n++;
       c.crowd = n;
@@ -355,7 +376,9 @@ class S extends Phaser.Scene {
     const route = [mid, T];
     const ang = Math.atan2(mid.y - P0.y, mid.x - P0.x), kc = (Math.round(ang / (Math.PI / 8)) + 16) % 16;
     R.chevronFrame = kc;
-    const chev = this.add.image(P0.x + Math.cos(ang) * 56, P0.y + Math.sin(ang) * 56 * 0.5 + 4, 'chief_fx', 'nav_chevron_' + String(kc).padStart(2, '0')).setDepth(DEPTH.PAD + 3);
+    const AHEAD = Math.max(56, ringWidth() * 0.46 + 36), HIDE = Math.max(NAV.hideNear, AHEAD + 30);   // manifest notes (notch / chevron)
+    R.ahead = AHEAD;
+    const chev = this.add.image(P0.x + Math.cos(ang) * AHEAD, P0.y + Math.sin(ang) * AHEAD * 0.5 + 4, 'chief_fx', 'nav_chevron_' + String(kc).padStart(2, '0')).setDepth(DEPTH.PAD + 3);
     const dots = [];
     let s = NAV.dotEvery, px = P0.x, py = P0.y, along = 0;
     const total = route.reduce((acc, q, i) => acc + Math.hypot(q.x - (i ? route[i - 1].x : P0.x), q.y - (i ? route[i - 1].y : P0.y)), 0);
@@ -363,7 +386,7 @@ class S extends Phaser.Scene {
       const L = Math.hypot(q.x - px, q.y - py);
       while (s <= along + L && dots.length < NAV.maxDots) {
         const f = (s - along) / L, x = px + (q.x - px) * f, y = py + (q.y - py) * f;
-        if (gdist(x, y, P0.x, P0.y) > NAV.hideNear && gdist(x, y, T.x, T.y) > 40) dots.push({ s, img: this.add.image(x, y, 'chief_fx', 'nav_dot_0').setDepth(DEPTH.PAD + 3) });
+        if (gdist(x, y, P0.x, P0.y) > HIDE && gdist(x, y, T.x, T.y) > 40) dots.push({ s, img: this.add.image(x, y, 'chief_fx', 'nav_dot_0').setDepth(DEPTH.PAD + 3) });
         s += NAV.dotEvery;
       }
       along += L; px = q.x; py = q.y;
@@ -408,7 +431,8 @@ class U extends Phaser.Scene {
     t(16, 10, 'chief_fx · zoom ' + ZOOM.toFixed(1) + ' · ' + (NIGHT ? '밤 night' : '낮 day') + (UI ? ' · ui5' : ''), 26);
     t(16, 40, '390 x 844 CSS @3x · ring ' + R.ringCss + ' CSS px · pin ' + R.pinCss + ' CSS px', 17, '#4b5873');
     const chip = ui5.nineSlice.ui_chip;
-    this.add.nineslice(16, 84, chip.atlas, chip.frame, 286, 56, chip.left, chip.right, chip.top, chip.bottom).setOrigin(0, 0);
+    // ui_chip: built at its minHeight 64 and scaled uniformly to 56 (its round ends are the 32 px slices)
+    this.add.nineslice(16, 84, chip.atlas, chip.frame, 286 * 64 / 56, 64, chip.left, chip.right, chip.top, chip.bottom).setOrigin(0, 0).setScale(56 / 64);
     this.add.image(16 + 36, 84 + 28, 'ui5_icons', 'ui_status_0').setScale(0.9);
     this.add.image(16 + 72, 84 + 28, 'ui5_icons', 'ui_icon_route').setScale(34 / 96);
     t(16 + 94, 84 + 14, '생선구이 · 120 m', 19, '#1f5f66');
@@ -417,7 +441,12 @@ class U extends Phaser.Scene {
     const ex = 720 - 60, ey = R.H = Math.round(this.scale.height / k * 0.62);
     this.add.image(ex, ey, 'chief_fx', 'nav_edge_0').setRotation(rot).setScale(0.9);
     this.add.image(ex, ey, 'ui5_icons', 'ui_icon_office').setScale(0.9 * 34 / 96);
-    t(ex, ey + 44, '120 m', 18, '#1f5f66').setOrigin(0.5, 0);
+    t(ex - Math.cos(rot) * 50, ey - Math.sin(rot) * 50, '120 m', 18, '#1f5f66').setOrigin(0.5, 0.5);   // opposite the arrow
+    // a second one pointing up-left (the light must not turn with it)
+    const rot2 = -2.4, ey2 = Math.round(ey - 230);
+    this.add.image(60, ey2, 'chief_fx', 'nav_edge_0').setRotation(rot2).setScale(0.9);
+    this.add.image(60, ey2, 'ui5_icons', 'ui_icon_depot').setScale(0.9 * 34 / 96);
+    t(60 - Math.cos(rot2) * 50, ey2 - Math.sin(rot2) * 50, '64 m', 18, '#1f5f66').setOrigin(0.5, 0.5);
     if (UI) this.officeMock();
   }
   // a mock of the 사무실 panel (OfficePanel) built only from ui5 pieces + ui_panel: tabs, chalk board with status rows,
@@ -475,7 +504,7 @@ const out = { clashes, fragmentsChecked: frags.length };
   const res = await page.evaluate(() => {
     const H = window.__H, sc = H.scene;
     const playing = sc.children.list.filter((o) => o.anims && o.anims.isPlaying).length;
-    return { frames: H.frames, anims: H.anims, missing: H.missing, sizeBad: H.sizeBad, trimmedPanels: H.trimmed, nine: H.nine, audio: H.audio, notes: H.notes, playing,
+    return { frames: H.frames, anims: H.anims, missing: H.missing, sizeBad: H.sizeBad, trimmedPanels: H.trimmed, nine: H.nine, audio: H.audio, notes: H.notes, playing, probe: H.probe,
       textures: Object.keys(sc.textures.list).length };
   });
   await page.evaluate(() => window.__H.game.loop.sleep());
@@ -492,8 +521,20 @@ const out = { clashes, fragmentsChecked: frags.length };
     if (!a) { problems.push('audio slice missing: ' + k); continue; }
     if (Math.abs(a.sec - (dur + 0.03)) > 0.002) problems.push(`audio ${k}: slice ${a.sec} s != ${dur} + 0.03`);
     if (a.peak < 0.05) problems.push(`audio ${k}: slice is silent (peak ${a.peak})`);
-    if (a.tail30ms > 0.02) problems.push(`audio ${k}: the 30 ms tail after the slice is not silent (${a.tail30ms}) - wrong offset?`);
+    const loopP = au.audio[k].loopPeriod;
+    if (loopP) {
+      if (Math.abs(a.sec - loopP) > 0.001) problems.push(`audio ${k}: sliced loop ${a.sec} s != loopPeriod ${loopP}`);
+      if (!(a.seam < 1)) problems.push(`audio ${k}: the sliced loop jumps at the wrap (seam ${a.seam})`);
+    } else if (a.tail30ms > 0.02) problems.push(`audio ${k}: the 30 ms tail after the slice is not silent (${a.tail30ms}) - wrong offset?`);
   }
+  // the CODE-2 hand-over (critic M1): resolved through Assets.sprite / Assets.image, never as a texture key
+  const P = res.probe || {};
+  if (!P.code2_sprite_chief_halo || P.code2_sprite_chief_halo.tex !== 'chief_fx' || P.code2_sprite_chief_halo.frame !== 'chief_halo_0') problems.push('probe: Assets.sprite(chief_halo) ' + JSON.stringify(P.code2_sprite_chief_halo));
+  if (P.code2_image_nav_edge !== 'chief_fx:nav_edge_0') problems.push('probe: Assets.image(nav_edge) ' + P.code2_image_nav_edge);
+  if (P.notch !== 'chief_fx:chief_halo_notch_00') problems.push('probe: chief_halo_notch ' + P.notch);
+  if (!P.anims || P.anims.play !== 'spr:chief_halo:play' || P.anims.calm !== 'spr:chief_halo:calm' || !P.calmPlaying) problems.push('probe: anims ' + JSON.stringify(P.anims));
+  if (!P.has || Object.values(P.has).some((v) => !v)) problems.push('probe: Assets.has ' + JSON.stringify(P.has));
+  if (!P.nine_ui_chip || P.nine_ui_chip.tex !== 'ui5_icons' || P.nine_ui_chip.t !== 16) problems.push('probe: Assets.nine(ui_chip) ' + JSON.stringify(P.nine_ui_chip));
   if (!res.audio.amb || Math.abs(res.audio.amb.sec - au.audio.amb_office.duration) > 0.001) problems.push('amb_office decoded ' + JSON.stringify(res.audio.amb) + ' != ' + au.audio.amb_office.duration + ' s');
 }
 // 2) phone pages

@@ -56,7 +56,7 @@
   "sfx_typewriter": {
    "files": [],
    "inSprite": "audio7",
-   "volume": 0.617,
+   "volume": 0.653,
    "loop": false,
    "kind": "sfx",
    "duration": 0.6,
@@ -71,7 +71,7 @@
   "sfx_typewriter_2": {
    "files": [],
    "inSprite": "audio7",
-   "volume": 0.944,
+   "volume": 0.955,
    "loop": false,
    "kind": "sfx",
    "duration": 0.6,
@@ -86,7 +86,7 @@
   "sfx_typewriter_3": {
    "files": [],
    "inSprite": "audio7",
-   "volume": 0.447,
+   "volume": 0.49,
    "loop": false,
    "kind": "sfx",
    "duration": 0.6,
@@ -116,12 +116,13 @@
   "sfx_wheel_squeal": {
    "files": [],
    "inSprite": "audio7",
-   "volume": 0.071,
+   "volume": 0.072,
    "loop": false,
    "kind": "sfx",
    "duration": 1.2,
    "loopable": true,
-   "notes": "gentle flange squeal while a car runs on a loop curve, very quiet. Silent at both ends: loop the sliced buffer (sm.add('sfx_wheel_squeal', {loop: true})) or retrigger every 1.2 s while the train is on the curve; volume x speed / max speed; rate 0.95-1.05 per car so two cars never line up."
+   "loopPeriod": 1.23,
+   "notes": "gentle flange squeal while a car runs on a loop curve, very quiet. A STEADY loop (polish, critic M5): Assets.sliceSprite cuts dur + 30 ms = 1.23 s = exactly one period, so loop the sliced buffer as it is: sound.add('sfx_wheel_squeal', {loop: true}) - seamless (the sprite carries a pre / post-roll so a +-1 ms decoder offset stays seamless too). Fade in / out over ~0.25 s (volume tween) as the car enters / leaves the curve; volume x speed / max speed; rate 0.95-1.05 per car so two cars never line up."
   },
   "sfx_mailbox_flag": {
    "files": [],
@@ -180,15 +181,15 @@
    "files": [
     "audio7/amb_office.mp3"
    ],
-   "volume": 0.422,
+   "volume": 0.251,
    "loop": true,
    "kind": "ambience",
    "duration": 24.0,
    "loopSamples": 1058400,
    "mp3StartPad": 1105,
-   "rotation": 545141,
+   "rotation": 827196,
    "clockHz": 1.0,
-   "notes": "inside the 촌장 사무실 (24 s mono loop, texture only): soft typing from two desks, page turns, a pen, the kettle simmering on the stove, the wall clock ticking once a second. setAmbience('amb_office', reveal 0..1) while the office is revealed / the camera is near it (like amb_bank). The contract's -26 LUFS is its level at full reveal (6.5 dB above amb_bank: the office is a small, busy room); duck it to ~0.6 under the panel."
+   "notes": "inside the 촌장 사무실 (24 s mono loop, texture only): soft typing from two desks (ducked - the game's sfx_typewriter one-shots are the foreground), page turns, a pen, the kettle simmering on the stove, the wall clock ticking once a second (audible in the typing pauses). setAmbience('amb_office', reveal 0..1) while the office is revealed / the camera is near it (like amb_bank); duck it to ~0.6 under the panel. Level (polish, critic M6): target -30.5 LUFS = 2 dB above amb_bank (-32.5) and under amb_fire_big, as the audio1-6 indoor beds; CONTRACT_V42 wrote -26, which would make it the loudest bed in the game. Only `volume` encodes this choice: x1.68 restores the contract's -26 if the designer prefers."
   }
  },
  "audioGroups": {

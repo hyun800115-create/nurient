@@ -21,6 +21,7 @@ import { TF } from '../../core/Townfolk.js';
 import { STAFF_LOOKS } from '../../data/staffLooks.js';
 import { t, fmt } from '../../data/strings.js';
 import { gdist } from '../../core/Iso.js';
+import { villageTills } from '../V42.js';
 
 const ROLES = ['sem', 'ttal', 'bok', 'chong'];
 const OB = () => (BALANCE.v42 && BALANCE.v42.office) || {};
@@ -181,42 +182,22 @@ export class Office {
   onPaper() { const ch = this.staff.bok; if (ch) ch.say(t('bok_paper'), 2.4); const a = this.staff.chong; if (a && a.doing === 'follow') a.say(t('chong_news'), 2.4); }
 
   // ------------------------------------------------------------------ the coin loop
-  /** the village tills: [{ name, till }] */
+  /** the village tills the courier visits: [{ name, till }] (gs.tills without the 역 금고 / 물류 금고 from 읍 on: they
+   *  empty themselves every 15 s) */
   tills() {
-    const gs = this.gs, out = [];
-    const add = (name, till) => { if (till && till.enabled !== false && typeof till.value === 'number') out.push({ name, till }); };
-    if (gs.market) add('market', gs.market.cash);
-    if (gs.trade && gs.trade.enabled) add('trade', gs.trade.cash);
-    if (gs.store && gs.store.enabled) add('store', gs.store.cash);
-    const C = gs.civic;
-    if (C && C.restaurant && C.restaurant.cash) add('rest', C.restaurant.cash);
-    if (C && C.hall && C.hall.tax) add('tax', C.hall.tax);
-    // the 역 금고 and the 물류 금고 empty themselves from 읍 on (every 15 s): the courier only visits them before
-    const rk = gs.v4 && gs.v4.rank;
-    const G = gs.v4 && gs.v4.growth;
-    if (G && G.active && G.till && !(rk && rk.level >= 2)) add('station', G.till);
-    const D = this.v42.depot;
-    if (D && D.till && !(rk && rk.level >= 2)) add('depot', D.till);
-    return out;
+    const rk = this.gs.v4 && this.gs.v4.rank;
+    const late = !!(rk && rk.level >= 2);
+    return villageTills(this.gs, this.v42.depot).filter((q) => !(late && (q.name === 'station' || q.name === 'depot')));
   }
   tillName(name) { return t({ market: 'place_market', trade: 'place_trade', store: 'place_store', rest: 'inc_rest', tax: 'inc_tax', station: 'inc_station', depot: 'inc_depot' }[name] || 'place_market'); }
 
-  /** the courier empties a till into the sack (the coins hop in) */
+  /** the courier empties a till into the sack (the coins hop in: CashPad.takeAll) */
   takeTill(q, courier) {
-    const till = q.till, gs = this.gs;
-    const n = Math.max(0, Math.floor(till.value || 0));
-    if (n <= 0) return 0;
-    till.value = 0;
-    if (till.pile) {
-      for (let i = 0; i < 6 && till.pile.count > 0; i++) {
-        const it = till.pile.pop();
-        if (!it) break;
-        if (it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: courier.x + 12, y: courier.y - 110 }, { dur: 260 + i * 40, height: 50, scaleTo: 0.35, onDone: (s) => gs.effects.releaseItem(s) });
-      }
-      till.pile.clear(gs.effects);
-    }
-    if (till.pad && till.pad.pulse) till.pad.pulse();
-    this.income[q.name] = (this.income[q.name] || 0) + n;
+    const till = q.till;
+    let n;
+    if (typeof till.takeAll === 'function') n = till.takeAll(courier);
+    else { n = Math.max(0, Math.floor(till.value || 0)); till.value = 0; }       // (a plain till: tests)
+    if (n > 0) this.income[q.name] = (this.income[q.name] || 0) + n;
     return n;
   }
 

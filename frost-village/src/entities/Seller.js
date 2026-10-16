@@ -83,6 +83,22 @@ export class CashPad {
       }
     }
   }
+  /** (v4.2, docs/v42_plan.md §6.5) someone else empties the till (딸랑이's round): every coin, the top of the pile
+   *  hops toward `ch` (an object with x / y), the pad pulses; returns the coins taken */
+  takeAll(ch) {
+    const gs = this.gs;
+    const n = Math.max(0, Math.floor(this.value || 0));
+    if (n <= 0) return 0;
+    this.value = 0;
+    for (let i = 0; i < 6 && this.pile.count > 0; i++) {
+      const it = this.pile.pop();
+      if (!it) break;
+      if (it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: (ch ? ch.x : this.x) + 12, y: (ch ? ch.y : this.y) - 110 }, { dur: 260 + i * 40, height: 50, scaleTo: 0.35, onDone: (s) => gs.effects.releaseItem(s) });
+    }
+    this.pile.clear(gs.effects);
+    if (this.pad && this.pad.pulse) this.pad.pulse();
+    return n;
+  }
   serialize() { return this.value; }
   restore(v) {
     v = Math.max(0, Math.floor(v || 0));

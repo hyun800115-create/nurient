@@ -67,11 +67,14 @@ SOUNDS = {
     "sfx_switch_clack": ("sfx", False, -18.5, {"cues": {"grab": 0.0, "cheol": 0.1, "keok": 0.17},
                                               "notes": "the spring turnout lever ('철컥') when the loop switch is thrown "
                                                        "for the train, by distance."}),
-    "sfx_wheel_squeal": ("sfx", False, -26.0, {"loopable": True,
+    "sfx_wheel_squeal": ("sfx", False, -26.0, {"loopable": True, "loopPeriod": 1.23,
                                               "notes": "gentle flange squeal while a car runs on a loop curve, very quiet. "
-                                                       "Silent at both ends: loop the sliced buffer "
-                                                       "(sm.add('sfx_wheel_squeal', {loop: true})) or retrigger every 1.2 s "
-                                                       "while the train is on the curve; volume x speed / max speed; "
+                                                       "A STEADY loop (polish, critic M5): Assets.sliceSprite cuts dur + "
+                                                       "30 ms = 1.23 s = exactly one period, so loop the sliced buffer as "
+                                                       "it is: sound.add('sfx_wheel_squeal', {loop: true}) - seamless "
+                                                       "(the sprite carries a pre / post-roll so a +-1 ms decoder offset "
+                                                       "stays seamless too). Fade in / out over ~0.25 s (volume tween) as "
+                                                       "the car enters / leaves the curve; volume x speed / max speed; "
                                                        "rate 0.95-1.05 per car so two cars never line up."}),
     "sfx_mailbox_flag": ("sfx", False, -19.0, {"cues": {"flick": 0.0, "clack": 0.05, "bell": 0.06},
                                               "notes": "office_mailbox: the flag flips up when a letter arrives (tin clack "
@@ -85,14 +88,18 @@ SOUNDS = {
     "sfx_coin_sack_3":  ("sfx", False, -18.5, {"cues": {"shake1": 0.0, "shake2": 0.25},
                                               "notes": "variant: a fuller sack (group sfx_coin_sack) - use for the "
                                                        "hand_over at the bank counter."}),
-    "amb_office":       ("ambience", True, -26.0, {"notes": "inside the 촌장 사무실 (24 s mono loop, texture only): soft "
-                                                            "typing from two desks, page turns, a pen, the kettle "
-                                                            "simmering on the stove, the wall clock ticking once a "
-                                                            "second. setAmbience('amb_office', reveal 0..1) while the "
-                                                            "office is revealed / the camera is near it (like amb_bank). "
-                                                            "The contract's -26 LUFS is its level at full reveal "
-                                                            "(6.5 dB above amb_bank: the office is a small, busy room); "
-                                                            "duck it to ~0.6 under the panel."}),
+    "amb_office":       ("ambience", True, -30.5, {"notes": "inside the 촌장 사무실 (24 s mono loop, texture only): soft "
+                                                            "typing from two desks (ducked - the game's sfx_typewriter "
+                                                            "one-shots are the foreground), page turns, a pen, the kettle "
+                                                            "simmering on the stove, the wall clock ticking once a second "
+                                                            "(audible in the typing pauses). setAmbience('amb_office', "
+                                                            "reveal 0..1) while the office is revealed / the camera is "
+                                                            "near it (like amb_bank); duck it to ~0.6 under the panel. "
+                                                            "Level (polish, critic M6): target -30.5 LUFS = 2 dB above "
+                                                            "amb_bank (-32.5) and under amb_fire_big, as the audio1-6 "
+                                                            "indoor beds; CONTRACT_V42 wrote -26, which would make it the "
+                                                            "loudest bed in the game. Only `volume` encodes this choice: "
+                                                            "x1.68 restores the contract's -26 if the designer prefers."}),
 }
 GROUPS = {"sfx_typewriter": ["sfx_typewriter", "sfx_typewriter_2", "sfx_typewriter_3"],
           "sfx_coin_sack": ["sfx_coin_sack", "sfx_coin_sack_2", "sfx_coin_sack_3"]}
@@ -120,20 +127,44 @@ def read(k):
     return S.read_wav(os.path.join(CACHE, f"{k}.wav"))[0]
 
 
+ROLL_PRE, ROLL_POST, ROLL_FADE = 0.012, 0.008, 0.004     # loop slices: pre-roll / post-roll / their fades (s)
+
+
 def build_sprite(gains):
-    """Concatenate the one-shots (gap before each + a final gap), encode once, decode, and measure each slice."""
+    """Concatenate the one-shots (gap before each + a final gap), encode once, decode, and measure each slice.
+    A loop slice (sfx7.LOOP_SLICES: the squeal) keeps its manifest duration (1.2 s) but its wav is one whole period
+    (1.23 s): the 30 ms continuation goes into the gap after it (so sliceSprite's dur + 30 ms cut is exactly one
+    period), followed by an 8 ms post-roll, and the period's last 12 ms go into the gap before it as a pre-roll - all
+    with 4 ms fades into silence, leaving 8 ms of silence before the next key and 4 ms after the previous key's
+    30 ms read.  A decoder that shifts the slice by a millisecond still cuts one seamless period."""
+    import sfx7
     gap = np.zeros(int(round(GAP * SR)))
-    parts, keys, pos = [], {}, 0
+    parts, keys, pos, loops = [], {}, 0, {}
     for k in SPRITE_ORDER:
         x = read(k) * S.undb(gains.get(k, 0.0))
         parts.append(gap)
         pos += len(gap)
+        if k in sfx7.LOOP_SLICES:
+            du = int(round(sfx7.LOOP_SLICES[k] * SR))
+            keys[k] = [round(pos / SR, 5), round(du / SR, 5)]
+            loops[k] = (pos, du, x)
+            parts.append(x[:du])
+            pos += du
+            continue
         keys[k] = [round(pos / SR, 5), round(len(x) / SR, 5)]
         parts.append(x)
         pos += len(x)
     parts.append(gap)
     pos += len(gap)
     pcm = np.concatenate(parts)
+    for k, (p0, du, x) in loops.items():
+        n, pre, post, fd = len(x), S.n_of(ROLL_PRE), S.n_of(ROLL_POST), S.n_of(ROLL_FADE)
+        ramp = 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, fd))
+        pcm[p0 + du:p0 + n] = x[du:]                                       # the rest of the period (30 ms)
+        pcm[p0 + n:p0 + n + post] = x[:post]                               # post-roll: the loop goes on ...
+        pcm[p0 + n + post:p0 + n + post + fd] = x[post:post + fd] * ramp[::-1]   # ... and fades out
+        pcm[p0 - pre:p0] = x[n - pre:]                                     # pre-roll: the end of the period
+        pcm[p0 - pre - fd:p0 - pre] = x[n - pre - fd:n - pre] * ramp       # fading in from silence
     wav = os.path.join(CACHE, "audio7_sprite.wav")
     S.write_wav(wav, pcm)
     out = os.path.join(OUT, SPRITE)
@@ -172,12 +203,13 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--skip-render", action="store_true")
     ap.add_argument("--no-check", action="store_true")
+    ap.add_argument("--only", default="", help="comma list: re-render only these keys (the rest come from the cache)")
     a = ap.parse_args(argv)
     t0 = time.time()
     os.makedirs(OUT, exist_ok=True)
     if not a.skip_render:
         print("[1/4] rendering ...", flush=True)
-        render(list(SOUNDS))
+        render([k for k in SOUNDS if not a.only or k in a.only.split(",")])
     print("[2/4] sprite + loop encode ...", flush=True)
     gains = {}
     for it in range(5):                       # LAME can overshoot a slice's peak: trim that key and re-encode
