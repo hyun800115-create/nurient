@@ -65,6 +65,12 @@ export class ChiefAura {
     this.notchImg = gs.add.image(0, 0, 'fv_nav_chevron', 'c0').setOrigin(0.5).setDepth(DEPTH.PAD + 2.02).setAlpha(0);
     this.all = [this.band, this.ring, this.goldRing, this.glow, this.pin, this.notchImg].concat(this.motes);
     for (const o of this.all) o.noCull = true;
+    // ((v4.2 fix, gameplay M1) a train car standing in front of him: a soft silhouette of the chief drawn over the car
+    //  (+ the star pin), so the camera's centre is never an empty box car)
+    this.ghost = gs.add.sprite(0, 0, '__WHITE').setVisible(false).setAlpha(0.5);
+    this.ghost.noCull = true;
+    this.coverT = 0;
+    this.cover = null;          // the car sprite covering him, or null
     this.artOn = false;
     if (Assets.has('chief_halo')) this.reskin();
     // the v42_core page arrives after the first sale: the art takes over in place
@@ -101,11 +107,13 @@ export class ChiefAura {
     return true;
   }
 
-  /** (CODE-2) the chief as a moving night light (DayClock.drawGlows): warm pool of light around him */
+  /** (CODE-2) the chief as a moving night light (DayClock.drawGlows): a warm pool of light on the ground at his feet.
+   *  ((v4.2 fix, visual H1) the ADD lights are drawn above the whole world: centred on his chest (y − 40) it bleached
+   *  his face and coat white at night, indoors too; a flat pool around his boots lights the snow, not him) */
   lightPoints(pts) {
     const p = this.gs.player;
     if (!p || !this.on || p.sprite.visible === false) return;
-    pts.push({ x: p.x, y: p.y - 40 - (p.liftY || 0), k: 0.9 });
+    pts.push({ x: p.x, y: p.y + 8 - (p.liftY || 0), k: 0.95, sy: 0.42, a: 0.6 });
   }
 
   /** the halo setting / an observer or a test toggles it */
@@ -143,7 +151,7 @@ export class ChiefAura {
     this.t += dt;
     if (!p) return;
     const on = this.on && p.sprite.visible !== false;
-    if (!on) { for (const o of this.all) if (o.visible) o.setVisible(false); this.updateCheer(dt, false); return; }
+    if (!on) { for (const o of this.all) if (o.visible) o.setVisible(false); if (this.ghost.visible) this.ghost.setVisible(false); this.cover = null; this.updateCheer(dt, false); return; }
     for (const o of this.all) if (!o.visible && o !== this.band) o.setVisible(true);
     const a = A();
     const w = this.ringWidth(), sc = w / 192;
@@ -192,7 +200,10 @@ export class ChiefAura {
     // the star pin: zoomed out, in a crowd, or in 관망
     this.crowdT -= dt;
     if (this.crowdT <= 0) { this.crowdT = 0.5; this.crowd = this.countNear(p, a.crowdR || 160) >= (a.crowdN || 4); }
-    const wantPin = (gs.zoomCur || 1) < (a.pinZoom || 0.8) || this.crowd || this.observing;
+    this.coverT -= dt;
+    if (this.coverT <= 0) { this.coverT = 0.1; this.cover = this.coveredBy(p); }
+    this.drawGhost(p);
+    const wantPin = (gs.zoomCur || 1) < (a.pinZoom || 0.8) || this.crowd || this.observing || !!this.cover;
     this.pinA += ((wantPin ? 1 : 0) - this.pinA) * Math.min(1, dt / 0.2);
     if (this.pinA > 0.01) {
       let top = p.y - ly + p.headTop - 14;
@@ -204,6 +215,37 @@ export class ChiefAura {
       this.pin.setPosition(x, top + (this.artOn ? 0 : Math.sin(this.t * 3) * 2)).setScale(ps).setAlpha(this.pinA);
     } else if (this.pin.alpha) this.pin.setAlpha(0);
     this.updateCheer(dt, true);
+  }
+
+  /** ((v4.2 fix, gameplay M1) the train car drawn over the chief (it stands at 서리역 between him and the camera): its
+   *  sprite, else null. The car's own pixels decide (Occlusion's alpha mask), not just its box */
+  coveredBy(p) {
+    const tr = this.gs.v4 && this.gs.v4.train, occ = this.gs.occlusion;
+    if (!tr || !tr.cars || !p.sprite.visible) return null;
+    const d = p.inDepth !== undefined ? p.inDepth : p.y, ly = p.liftY || 0;
+    const h = p.headTop || -80;
+    for (const c of tr.cars) {
+      const s = c.spr;
+      if (!s || !s.visible || s.depth <= d || s.alpha < 0.5) continue;
+      if (Math.abs(s.x - p.x) > s.displayWidth || p.y > s.y + 4 || p.y < s.y - s.displayHeight) continue;
+      const pts = [[p.x, p.y - ly - 20], [p.x, p.y - ly + h * 0.55], [p.x, p.y - ly + h + 14]];
+      let n = 0;
+      for (const [x, y] of pts) if (occ ? occ.solid(s, x, y) : true) n++;
+      if (n >= 2) return s;
+    }
+    return null;
+  }
+
+  /** the silhouette over the covering car: his current frame, filled with a soft cream, at half alpha */
+  drawGhost(p) {
+    const g = this.ghost, c = this.cover;
+    if (!c || !c.active) { if (g.visible) g.setVisible(false); return; }
+    const s = p.sprite;
+    if (!s.frame || !s.texture || s.texture.key === '__MISSING') { g.setVisible(false); return; }
+    if (g.texture !== s.texture || g.frame.name !== s.frame.name) g.setTexture(s.texture.key, s.frame.name);
+    g.setOrigin(s.originX, s.originY).setFlipX(s.flipX).setPosition(s.x, s.y).setScale(s.scaleX, s.scaleY).setDepth(c.depth + 0.5).setVisible(true);
+    if (!g.__tf) { g.__tf = 1; g.setTintFill(0xfff4d6); }
+    g.setAlpha(0.42 + Math.sin(this.t * 3) * 0.06);
   }
 
   /** characters near the chief (the crowd rule of the pin) */
@@ -263,12 +305,14 @@ export class ChiefAura {
 
   state() {
     return { on: this.on, ringW: Math.round(this.ringWidth()), gold: +this.gold.toFixed(2), pin: +this.pinA.toFixed(2), crowd: this.crowd, cheering: this.cheering, cheered: this.cheered.size, observing: this.observing,
-      depth: this.ring.depth, key: this.ring.texture.key, frame: this.ring.frame ? this.ring.frame.name : null, art: this.artOn, objects: this.all.length };
+      depth: this.ring.depth, key: this.ring.texture.key, frame: this.ring.frame ? this.ring.frame.name : null, art: this.artOn, objects: this.all.length + 1,
+      covered: !!this.cover, ghost: this.ghost.visible };
   }
 
   destroy() {
     const i = Assets.arrivals.indexOf(this.onArrive);
     if (i >= 0) Assets.arrivals.splice(i, 1);
     for (const o of this.all) if (o && o.scene) o.destroy();
+    if (this.ghost && this.ghost.scene) this.ghost.destroy();
   }
 }

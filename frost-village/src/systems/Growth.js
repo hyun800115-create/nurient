@@ -304,15 +304,18 @@ export class Growth {
   /** (v4.2 P0a) the train stands at our station (camera anywhere: v4.1 loaded only while the wagon was on screen) */
   trainIn() { const r = this.nb.rail; return !!(r && r.running && r.phase === 'atOurs'); }
   /** (v4.2 F7) crates the freight cars still take this dwell (card crates and surplus share the cars) */
-  carRoom() { const F = this.gs.v42 && this.gs.v42.freight; return F ? F.room() : 999; }
+  carRoom() { const F = this.gs.v42 && this.gs.v42.freight; return F ? (F.cardRoom ? F.cardRoom() : F.room()) : 999; }
   /** one crate (item `it` popped from a stack) into the freight cars: flies when the car is drawn, else at once */
   toWagon(it, ty) {
     const gs = this.gs, tr = this.nb.train;
     const w = tr ? tr.cargoPoint() : null;
     const F = gs.v42 && gs.v42.freight;
     if (F) F.board(ty || it.type, 'card');
-    if (w && it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, w, { dur: 420, height: 110, scaleTo: 0.45, onDone: (sp) => { gs.effects.releaseItem(sp); if (this.nb.train) this.nb.train.loadCargo(1); } });
-    else { if (it.spr) gs.effects.releaseItem(it.spr); if (tr) tr.loadCargo(1); }
+    // ((v4.2 fix, gameplay L6) with the freight cars Freight.board already set the train's count: +1 on top showed 57
+    //  crates of 56)
+    const count = () => { const t2 = this.nb.train; if (!t2) return; if (F) t2.cargo = F.aboard(); else t2.loadCargo(1); };
+    if (w && it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, w, { dur: 420, height: 110, scaleTo: 0.45, onDone: (sp) => { gs.effects.releaseItem(sp); count(); } });
+    else { if (it.spr) gs.effects.releaseItem(it.spr); count(); }
   }
 
   /** wholesale for n items of `ty` into the till (fractions carried over) */
@@ -566,7 +569,7 @@ export class Growth {
         const ty = (this.cargoTypes && this.cargoTypes.shift()) || null;
         const it = ty ? this.crates.pop(ty) : this.crates.pop();
         if (it) this.toWagon(it, ty);
-        else { const F = gs.v42 && gs.v42.freight; if (F) F.board(ty, 'card'); if (this.nb.train) this.nb.train.loadCargo(1); }
+        else { const F = gs.v42 && gs.v42.freight; if (F) F.board(ty, 'card'); else if (this.nb.train) this.nb.train.loadCargo(1); }
         // a counted crate with no sprite: refill the visible stack from the count
         if (this.crates.count + this.crates.incoming < Math.min(CRATES_SHOWN, this.cargo) && this.cargoTypes && this.cargoTypes.length) this.crates.push(this.cargoTypes[Math.min(this.cargoTypes.length - 1, this.crates.count)], null, gs.effects);
       }

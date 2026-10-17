@@ -14,6 +14,7 @@ export class Tower {
     this.img = gs.add.sprite(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);
     gs.lazyImage(this.img, 'watchtower');
     gs.addOccluder(this.img);
+    this.occ = gs.occluders ? gs.occluders[gs.occluders.length - 1] : null;
     const d = Assets.def('watchtower');
     this.fx = d.fxPoints || { fire: [0, -248], smoke: [4, -335] };
     const fp = d.footprint || [181, 91];
@@ -30,6 +31,7 @@ export class Tower {
     const anim = Assets.spriteAnim('watchtower', 'work');
     if (anim) this.img.play(anim);
     this.fire = gs.effects.loop('fx_fire_big', this.x + this.fx.fire[0], this.y + this.fx.fire[1] + 8, 92, this.y + 1);
+    this.followFire();
     if (this.fire) this.fire.setVisible(this.enabled);
     if (instant) return;
     gs.focusCamera(this.x, this.y - 160, 2200);
@@ -45,8 +47,20 @@ export class Tower {
   refreshFire() {
     if (!this.lit || this.fire) return;
     this.fire = this.gs.effects.loop('fx_fire_big', this.x + this.fx.fire[0], this.y + this.fx.fire[1] + 8, 92, this.y + 1);
+    this.followFire();
     const anim = Assets.spriteAnim('watchtower', 'work');
     if (anim && !this.img.anims.isPlaying) this.img.play(anim);
+  }
+
+  /** ((v4.2 fix, visual H2) the beacon fades with the tower's x-ray (Occlusion): a train or the chief behind the tower
+   *  sees through both — the opaque flame over the passing box car read as the train on fire) */
+  followFire() {
+    const gs = this.gs, f = this.fire;
+    if (!f || !gs.occluders || !this.occ || this.fireOcc) return;
+    // (its own occluder: faded for its own pixels, and linked to the tower's)
+    this.fireOcc = { img: f, x: f.x, y: this.y + 1, hw: 60, top: (this.y + 1) - (f.y - 130), a: this.occ.a, big: false, link: this.occ };
+    gs.occluders.push(this.fireOcc);
+    f.setAlpha(this.occ.a);
   }
 
   update(dt) {

@@ -9,7 +9,7 @@
 
 import { BALANCE } from '../data/balance.js';
 import { ITEMS, priceOf } from '../data/items.js';
-import { t } from '../data/strings.js';
+import { t, fmt } from '../data/strings.js';
 
 const N = () => (BALANCE.v42 && BALANCE.v42.news) || { hour: 6, keep: 3 };
 const LT = () => (BALANCE.v42 && BALANCE.v42.letters) || { minH: 2, maxH: 4, maxUnread: 6, archiveDays: 2 };
@@ -112,7 +112,8 @@ export class VillageNews {
 
   buttons(tpl) {
     const V = BALANCE.v42 || {};
-    const c = (x) => ({ cost: x });
+    // ((v4.2 fix, gameplay L9) '· 2,000' like every other price)
+    const c = (x) => ({ cost: fmt(x) });
     switch (tpl) {
       case 'baker': return [{ k: 'lt_baker_b1', a: c((V.porter2 && V.porter2.costs && V.porter2.costs.bakery) || 700), act: 'p2:bakery' }, { k: 'lt_baker_b2', act: 'later' }];
       case 'miner': return [{ k: 'lt_miner_b1', a: c((V.station2 && V.station2.costs && V.station2.costs.smelter) || 1400), act: 'st2:smelter' }, { k: 'lt_miner_b2', act: 'later' }];

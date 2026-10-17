@@ -287,7 +287,7 @@ export class Train {
     const v = gs.cameras.main.worldView;
     const m = rail.m, speed = rail.speed, moving = speed > 0.02;
     const F = this._f || (this._f = {}), Bk = this._b || (this._b = {});
-    let anyVis = false, anyCurve = false;
+    let anyVis = false, anyCurve = false, prevHk = -1;
     const atStation = rail.phase === 'atOurs' || rail.phase === 'atTown';
     for (const c of this.cars) {
       const s = m - c.off;
@@ -299,7 +299,7 @@ export class Train {
       if (c.spr.visible !== near) c.spr.setVisible(near);
       if (c.sh && c.sh.__ok && c.sh.visible !== near) c.sh.setVisible(near);
       if (c.crates) for (const k of c.crates) if (!near && k.visible) k.setVisible(false);
-      if (!near) continue;
+      if (!near) { prevHk = -1; continue; }
       anyVis = true;
       if (F.curve || Bk.curve) anyCurve = true;
       // heading: the chord angle -> nearest of 8 headings, kept until it is more than 22.5 + 8 degrees away
@@ -307,7 +307,18 @@ export class Train {
       let hk = c.hk;
       if (hk < 0) hk = ((Math.round(ang / step) % 8) + 8) % 8;
       else { let dd = ang - hk * step; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); if (Math.abs(dd) > (22.5 + 8) * Math.PI / 180) hk = ((Math.round(ang / step) % 8) + 8) % 8; }
+      // ((v4.2 fix, visual L1) two coupled cars are never more than one heading (45°) apart: on the loop-exit S-curve
+      //  the coach's hysteresis kept its end view behind an engine already in side view for ~1 s)
+      if (prevHk >= 0) {
+        const diff = ((hk - prevHk + 12) % 8) - 4;
+        if (Math.abs(diff) >= 2) {
+          let best = prevHk, bd = Infinity;
+          for (const q of [prevHk - 1, prevHk, prevHk + 1]) { const k8 = (q + 8) % 8; let e = ang - k8 * step; e = Math.abs(Math.atan2(Math.sin(e), Math.cos(e))); if (e < bd) { bd = e; best = k8; } }
+          hk = best;
+        }
+      }
       c.hk = hk;
+      prevHk = hk;
       const hd = DIR8[hk], rd = renderDir(hd);
       c.hd = hd;
       if (rd.dir !== c.dir || rd.flip !== c.flip) {

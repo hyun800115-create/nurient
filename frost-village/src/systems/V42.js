@@ -76,12 +76,14 @@ export class V42 {
       L.register({ id: 'in:' + line.id, kind: 'in', item: line.raw, line: line.id, cap: st.inStack.max, get: () => st.inStack.count, place: { x: st.inPad.x, y: st.inPad.y } });
       L.register({ id: 'out:' + line.id, kind: 'out', item: line.product, line: line.id, cap: st.outStack.max, get: () => st.outStack.count, place: { x: st.outPad.x, y: st.outPad.y }, isOn: () => st.enabled });
     }
-    const shelf = (seller, types, tag) => {
+    const shelf = (seller, types, tag, emptyAt) => {
       if (!seller) return;
-      for (const ty of types) L.register({ id: 'shelf:' + ty + (tag || ''), kind: 'shelf', item: ty, cap: seller.maxPerType || 40, get: () => (seller.enabled === false ? 0 : seller.stock.countOf(ty)), place: { x: seller.shelf.x, y: seller.shelf.y } });
+      for (const ty of types) L.register({ id: 'shelf:' + ty + (tag || ''), kind: 'shelf', item: ty, cap: seller.maxPerType || 40, get: () => (seller.enabled === false ? 0 : seller.stock.countOf(ty)), place: { x: seller.shelf.x, y: seller.shelf.y }, emptyAt: emptyAt || 0 });
     };
     shelf(gs.market, FOODS);
-    shelf(gs.trade, GOODS);
+    // ((v4.2 fix, gameplay L3) the 교역소 keeps trade.displayKeep of each good on display after village complete: that
+    //  many reads as empty for the 재고 statuses)
+    shelf(gs.trade, GOODS, '', () => (this.complete ? Math.max(0, Number(BALANCE.v42 && BALANCE.v42.trade && BALANCE.v42.trade.displayKeep) || 0) : 0));
     if (gs.store) shelf(gs.store, gs.store.goods || [], ':store');
     const W = gs.warehouse;
     if (W) {

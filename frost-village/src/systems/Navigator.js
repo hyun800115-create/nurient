@@ -119,7 +119,9 @@ export class Navigator {
     for (const ty in counts) {
       const d = T ? T.destination(ty) : null;
       if (!d || !d.pad) { if (!firstNone) firstNone = ty; continue; }
-      const n = Math.min(counts[ty], Math.max(1, d.room || counts[ty]));
+      // ((v4.2 fix, gameplay L8) room 0 is 0 (an order card that takes 1 more): the chip said '통나무 8')
+      const room = Number.isFinite(Number(d.room)) ? Number(d.room) : counts[ty];
+      const n = Math.min(counts[ty], Math.max(1, room));
       let e = byPad.get(d.pad);
       if (!e) { e = { pad: d.pad, sink: d.sink || null, label: d.label || null, lp: d.lp || null, text: d.text, n: 0, types: [], d: gdist(p.x, p.y, d.pad.x, d.pad.y), surplus: !!d.surplus }; byPad.set(d.pad, e); }
       e.n += n; e.types.push([ty, counts[ty]]);
@@ -135,7 +137,7 @@ export class Navigator {
     const want = this.wanted();
     // an empty bag ends the load: "hide for this load" and the chip's cycling start over
     if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; this.loadSig = null; }
-    if (!want) { this.hide(); this.dest = null; return; }
+    if (!want) { this.hide(); this.dest = null; this.holdRoom(null); return; }
     this.active = true;
     this.pickT -= dt;
     if (this.pickT <= 0 || !this.dest) {
@@ -153,7 +155,10 @@ export class Navigator {
       if (pick && !this.cycle && same && prev && prev.pad && pick.pad !== prev.pad) {
         const keep = list.find((q) => q.pad === prev.pad) || this.stillTakes(prev, list.counts);
         if (keep) {
-          const better = pick.n >= keep.n + 2;
+          // ((v4.2 fix, gameplay M5) a better place must also lie about as near (≤ 1.25 × the way left + 200 px) and
+          //  must not be the export dock: the bread run went 식량 상자 → 판매대 → 식량 상자 → 짐 싣는 곳, 7,485 px)
+          const dP = gdist(p.x, p.y, pick.pad.x, pick.pad.y), dK = gdist(p.x, p.y, keep.pad.x, keep.pad.y);
+          const better = pick.n >= keep.n + 2 && !pick.surplus && dP <= dK * 1.25 + 200;
           this.challT = better && this.challPad === pick.pad ? (this.challT || 0) + 0.25 : better ? 0.25 : 0;
           this.challPad = better ? pick.pad : null;
           if (this.challT < SWITCH_S) pick = keep;
@@ -166,9 +171,11 @@ export class Navigator {
         this.dest = { type: ty, n: Math.max(1, pick.n), pad: pick.pad, sink: pick.sink || null, types: pick.types.map((q) => q[0]), label: pick.label, lp: pick.lp, others: list.filter((q) => q.pad !== pick.pad).length, surplus: pick.surplus };
       } else {
         const ty = list.none || (p.stack.items[0] && p.stack.items[0].type);
-        this.dest = { type: ty, n: p.stack.count, pad: null, none: true, label: this.fullPlace(ty) };
+        const fp = this.fullPlace(ty);
+        this.dest = { type: ty, n: p.stack.count, pad: null, none: true, label: fp && fp.label ? fp.label : fp, lp: fp && fp.lp ? fp.lp : null };
       }
       if (!prev || prev.pad !== this.dest.pad) this.replanT = 0;
+      this.holdRoom(this.dest, list.counts);
     }
     const d = this.dest;
     // ((gameplay review M2) nowhere takes the bag: the world guide goes, the chip stays and says so)
@@ -189,7 +196,27 @@ export class Navigator {
     if (/fish_cooked|bread|meat_cooked/.test(ty)) return 'place_market';
     if (/plank|ingot/.test(ty)) return 'place_trade';
     if (/can|axe|pickaxe|rod|sickle|bow/.test(ty)) return 'place_store';
+    // ((v4.2 fix) a raw item: its station's input ('제련소 입구 가득')
+    const st = this.gs.stationByInput && this.gs.stationByInput[ty];
+    if (st) return { label: 'place_in', lp: { st: t('line_' + st.id) } };
     return null;
+  }
+
+  /** ((v4.2 fix, gameplay M5) hold the room this load needs at the place the guide shows (Logistics.setChief): the
+   *  porters stop filling it while he walks there. Re-made every pick from what is still in the bag */
+  holdRoom(d, counts) {
+    const L = this.gs.logistics;
+    if (!L || !L.setChief) return;
+    if (!d || !d.pad || !d.sink) { if (this.held) { this.held = false; L.setChief(null); } return; }
+    let left = d.n;
+    const out = [];
+    for (const ty of d.types || []) {
+      if (left <= 0) break;
+      const n = Math.min((counts && counts[ty]) || 0, left);
+      if (n > 0) { out.push({ sink: d.sink, type: ty, n }); left -= n; }
+    }
+    L.setChief(out);
+    this.held = out.length > 0;
   }
 
   plan(pad) {
@@ -283,8 +310,14 @@ export class Navigator {
       if (this.badgeType !== d.type) { this.badgeType = d.type; Assets.apply(this.badgeIcon, d.type); this.badgeIcon.setOrigin(0.5).setScale(44 / Math.max(1, this.badgeIcon.frame.realWidth, this.badgeIcon.frame.realHeight)); }
       const z = Math.max(0.3, gs.zoomCur || 1), bs = small ? 0.8 : 1;
       // (26 px type on the plate = about 13 CSS px on a 390 px phone at every zoom: CSS per world px = zoom x 390/720)
-      this.plate.setScale(Math.min(1.8, Math.max(0.5, 0.92 / z)) / bs);
+      // ((v4.2 fix, visual L4) a little smaller when zoomed out (it covered the 버리기 label at 0.6), and slid back
+      //  inside the screen at its edge (at 0.8 the edge cut it: '교역소 판'); the pointer stays on the pad)
+      const ps = Math.min(1.6, Math.max(0.5, (z < 0.9 ? 0.8 : 0.92) / z));
+      this.plate.setScale(ps / bs);
       this.badge.setVisible(true).setPosition(d.pad.x, d.pad.y - 22 + Math.sin(gs.time.now / 300) * 3).setScale(bs);
+      const vw = gs.cameras.main.worldView, hw = (this.plateBg.width * ps) / 2;
+      const px = vw.width > hw * 2 + 16 ? Math.max(vw.x + hw + 8, Math.min(vw.right - hw - 8, d.pad.x)) : d.pad.x;
+      this.plate.x = (px - d.pad.x) / bs;
     } else if (show) {
       const name = this.placeName(d);
       if (this.badgeText.text !== name) {
@@ -311,7 +344,7 @@ export class Navigator {
     const d = this.dest;
     if (!this.active || !d) return null;
     const item = t(d.type || '');
-    if (!d.pad) return { icon: d.type, text: d.label ? t('navFull', { place: t(d.label) }) : t('navNone'), more: 0, none: true };
+    if (!d.pad) return { icon: d.type, text: d.label ? t('navFull', { place: t(d.label, d.lp || undefined) }) : t('navNone'), more: 0, none: true };
     const m = Math.max(1, Math.round(this.routeLen / 64));
     return { icon: d.type, text: t('navChip', { item, n: d.n, place: this.placeName(d), m }), more: d.others || 0 };
   }
@@ -328,6 +361,7 @@ export class Navigator {
   }
 
   hide() {
+    if (this.held) this.holdRoom(null);
     if (!this.active && !this.chev.visible) return;
     this.active = false;
     this.hideWorld();
@@ -366,6 +400,7 @@ export class Navigator {
   }
 
   destroy() {
+    if (this.held && this.gs.logistics && this.gs.logistics.setChief) this.gs.logistics.setChief(null);
     const i = Assets.arrivals.indexOf(this.onArrive);
     if (i >= 0) Assets.arrivals.splice(i, 1);
     for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) if (o && o.scene) o.destroy();

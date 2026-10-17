@@ -104,7 +104,8 @@ export class Staff extends Character {
       const vis = this.sprite.visible !== false && this.gs.isOnScreen(this.x, this.y, 260);
       a = TF.pick(p, anim, (g) => { if (vis && TF.ofAtlas && TF.ofAtlas[g]) Residency.want(TF.ofAtlas[g]); }).anim;
     } else a = OLD_FALLBACK[anim] || anim;
-    this.pickT = 0.5;
+    // ((v4.2 fix, robust M1) the act asked for plays: looked at again in 3 s (a page may go); a fallback: in 0.5 s
+    this.pickT = a === anim ? 3 : 0.5;
     // on a seat but the seated anim cannot play yet (a page on its way, an old look): stand on the floor below it
     // (the seat point is 0.45 m up) instead of floating at seat height
     if (this.seat) { const sd = this.seat.shadowDy !== undefined ? this.seat.shadowDy : 25; const sat = SEATED.has(a); this.seatDrop = sat ? 0 : sd; this.shadowDy = sat ? sd : 0; }
@@ -162,6 +163,15 @@ export class Staff extends Character {
   /** the routine of a desk clerk (셈이 / 소복이 / tellers / the manager): the desk, now and then an errand */
   update(dt) {
     if (!this.alive) return;
+    // ((v4.2 fix, robust M1) seated / at the counter inside a closed building (hidden): only the timers run — no
+    //  TF.pick, no rig sync — until the building opens again (it was ~0.1 ms a tick for 6 people nobody sees)
+    if (!this.target && this.sprite.visible === false && (this.seat || this.atPost)) {
+      this.taskT -= dt; this.sayT -= dt; this.deskT -= dt;
+      if (this.taskT <= 0 && this.errand) { this.taskT = 30 + (this.seed % 11); this.errand(); }
+      this.hiddenIdle = true;
+      return;
+    }
+    if (this.hiddenIdle) { this.hiddenIdle = false; this.pickT = 0; this.animKey = ''; }
     if (this.target) this.step(dt);
     else {
       this.vx = this.vy = 0;
@@ -248,7 +258,7 @@ export function redress(ch, make) {
 
 /** 총총이: follows the chief a little behind and to the side, never in his way */
 export class Aide extends Staff {
-  constructor(gs, office, seed, x, y, home) { super(gs, office, 'chong', seed, x, y, home); this.speed = 150; this.side = (seed & 1) ? 1 : -1; this.doing = 'follow'; }
+  constructor(gs, office, seed, x, y, home) { super(gs, office, 'chong', seed, x, y, home); this.speed = 150; this.side = (seed & 1) ? 1 : -1; this.doing = 'follow'; this.noSeparate = true; }
   update(dt) {
     if (!this.alive) return;
     const gs = this.gs, p = gs.player, O = this.office;
@@ -295,6 +305,7 @@ export class Aide extends Staff {
 export class Courier extends Staff {
   constructor(gs, office, seed, x, y, home, bag) {
     super(gs, office, 'ttal', seed, x, y, home);
+    this.noSeparate = true;
     this.speed = Number(BALANCE.v42 && BALANCE.v42.courier && BALANCE.v42.courier.speed) || 150;
     this.bag = Math.max(0, Math.floor(bag || 0));
     this.state = this.bag > 0 ? 'toBank' : 'desk';
@@ -315,11 +326,19 @@ export class Courier extends Staff {
   /** (CODE-2) walking with coins: the shoulder sack walk at a rate that keeps his boots planted */
   locomotion(moving) {
     if (moving && this.bag > 0) {
-      const a = this.act('carry_sack');
-      if (a === 'carry_sack' && TF.of && this.sprite.person) {
-        const gsp = TF.of.groundSpeed ? TF.of.groundSpeed(this.sprite.person, 'carry_sack', DIRS8[this.dir] || 'SE') : 0;
-        this.sprite.anims.timeScale = gsp > 1 ? Math.max(0.8, Math.min(1.8, this.speed / gsp)) : 1;
+      // ((v4.2 fix, robust M1) TF.pick + groundSpeed only when the act, his heading or half a second changed — every
+      //  frame it was 0.06 ms a tick, most of the office's logic time)
+      const now = this.gs.time.now;
+      if (this.want !== 'carry_sack' || this.sackDir !== this.dir || now - (this.sackT || 0) > 500) {
+        this.sackT = now; this.sackDir = this.dir;
+        const a = this.act('carry_sack');
+        this.sackTs = 1;
+        if (a === 'carry_sack' && TF.of && this.sprite.person) {
+          const gsp = TF.of.groundSpeed ? TF.of.groundSpeed(this.sprite.person, 'carry_sack', DIRS8[this.dir] || 'SE') : 0;
+          this.sackTs = gsp > 1 ? Math.max(0.8, Math.min(1.8, this.speed / gsp)) : 1;
+        }
       }
+      if (this.sprite.anims && this.sprite.anims.timeScale !== this.sackTs) this.sprite.anims.timeScale = this.sackTs;
       return;
     }
     if (this.sprite.anims) this.sprite.anims.timeScale = 1;
@@ -345,6 +364,9 @@ export class Courier extends Staff {
   /** is a round due? every C.every s, or at once when one till holds C.rushAt */
   due() {
     const O = this.office, C = this.C;
+    // ((v4.2 fix, gameplay L7) his working hours (courier.from ~ to, 07–21): no deposits at 02:32
+    const ck = this.gs.v4 && this.gs.v4.clock;
+    if (ck && ck.on) { const h = ck.hour(), a = Number(C.from), b = Number(C.to); if (Number.isFinite(a) && Number.isFinite(b) && !(h >= a && h < b)) return false; }
     const T = O.tills();
     if (T.some((q) => q.till.value >= (Number(C.rushAt) || 1000))) return true;
     return this.waitT <= 0 && T.some((q) => q.till.value >= (Number(C.minPad) || 100));
@@ -377,6 +399,9 @@ export class Courier extends Staff {
         if (!this.target && !this.seat && this.home.seat && O.building && O.building.cw) { this.state = 'home'; this.goHome(() => { this.state = 'desk'; }); break; }
         if (this.seat) this.deskRoutine(dt); else if (this.animName === 'walk') this.locomotion(false);
         this.waitT -= dt;
+        // ((v4.2 fix, robust M1) the tills are looked at twice a second, not every frame)
+        if ((this.dueT = (this.dueT || 0) - dt) > 0) break;
+        this.dueT = 0.5;
         if (this.due()) { this.plan = this.planRound(); this.rounds++; this.waitT = Number(this.C.every) || 60; if (this.plan.length) { this.want = null; this.nextStop(); } }
         break;
       }

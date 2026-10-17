@@ -32,6 +32,52 @@ export class Collision {
   }
 
   /**
+   * ((v4.2 fix, gameplay M2) a wall: a capsule of radius r around the segment (x0, y0) – (x1, y1). Pushed out along
+   * its normal, so a chain of segments has no gaps (a row of circles let the chief squeeze between two of them: each
+   * circle pushed him sideways along the wall line, never back out)
+   */
+  addSeg(x0, y0, x1, y1, r, tag) {
+    const o = { seg: true, x0, y0, x1, y1, x: (x0 + x1) / 2, y: (y0 + y1) / 2, r, active: true, tag: tag || null };
+    const m = 26;
+    const ax = Math.min(x0, x1) - r - m, bx = Math.max(x0, x1) + r + m, ay = Math.min(y0, y1) - (r + m) / 2, by = Math.max(y0, y1) + (r + m) / 2;
+    const cx0 = Math.max(0, Math.floor((ax - this.ox) / CELL)), cx1 = Math.min(this.cols - 1, Math.floor((bx - this.ox) / CELL));
+    const cy0 = Math.max(0, Math.floor(ay / CELL)), cy1 = Math.min(this.rows - 1, Math.floor(by / CELL));
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) this.grid[cy * this.cols + cx].push(o);
+    this.all.push(o);
+    return o;
+  }
+
+  /** a polyline of walls (closed: back to the first point); `gaps` = [{ x, y, w }] door openings (ground px, ±w/2
+   *  along the wall around the point's projection); returns the segment obstacles */
+  addWalls(pts, r, tag, gaps, closed) {
+    const out = [], n = pts.length, G = gaps || [];
+    for (let i = 0; i < (closed ? n : n - 1); i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      // pieces of a -> b outside every gap (in ground space: y doubled)
+      const vx = b.x - a.x, vy = (b.y - a.y) * 2, L = Math.hypot(vx, vy) || 1;
+      let cuts = [[0, 1]];
+      for (const g of G) {
+        const t = ((g.x - a.x) * vx + (g.y - a.y) * 2 * vy) / (L * L);
+        const off = Math.abs(((g.x - a.x) * vy - (g.y - a.y) * 2 * vx) / L);
+        if (t < -0.2 || t > 1.2 || off > (g.reach || 90)) continue;
+        const h = (g.w || 70) / 2 / L, lo = t - h, hi = t + h;
+        cuts = cuts.flatMap(([u, w]) => (hi <= u || lo >= w ? [[u, w]] : [[u, Math.max(u, lo)], [Math.min(w, hi), w]].filter(([p, q]) => q - p > 1e-3)));
+      }
+      for (const [u, w] of cuts) out.push(this.addSeg(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.x + (b.x - a.x) * w, a.y + (b.y - a.y) * w, r, tag));
+    }
+    return out;
+  }
+
+  /** ground-space push of a point out of a wall segment: { dx, dy, d, R } (dy in ground space) */
+  segNear(o, x, y, rad) {
+    const ax = o.x0, ay = o.y0 * 2, bx = o.x1, by = o.y1 * 2, qy = y * 2;
+    const vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * vx + (qy - ay) * vy) / l2));
+    const dx = x - (ax + vx * t), dy = qy - (ay + vy * t);
+    return { dx, dy, d2: dx * dx + dy * dy, R: o.r + rad };
+  }
+
+  /**
    * (v3) the land that is revealed (Territory). open: the open regions' rects; inner: walkable rects
    * (for pushing someone back out of the fog); edge: how far from the fog people stay (px)
    */
@@ -59,6 +105,7 @@ export class Collision {
     for (let i = 0; i < cell.length; i++) {
       const o = cell[i];
       if (!o.active || o === ignore) continue;
+      if (o.seg) { const q = this.segNear(o, x, y, rad); if (q.d2 < q.R * q.R) return true; continue; }
       const dx = x - o.x, dy = (y - o.y) * 2, R = o.r + rad;
       if (dx * dx + dy * dy < R * R) return true;
     }
@@ -75,7 +122,7 @@ export class Collision {
       const cell = this.grid[cy * this.cols + cx];
       for (let i = 0; i < cell.length; i++) {
         const o = cell[i];
-        if (!o.active || !o.tag || o.tag.indexOf('fence') !== 0) continue;
+        if (!o.active || o.seg || !o.tag || o.tag.indexOf('fence') !== 0) continue;
         const dx = x - o.x, dy = (y - o.y) * 2;
         if (dx * dx + dy * dy < o.r * o.r) return true;
       }
@@ -99,6 +146,14 @@ export class Collision {
       for (let i = 0; i < cell.length; i++) {
         const o = cell[i];
         if (!o.active) continue;
+        if (o.seg) {
+          const q = this.segNear(o, p.x, p.y, rad);
+          if (q.d2 >= q.R * q.R) continue;
+          const d = Math.sqrt(q.d2) || 0.001, push = (q.R - d) / d;
+          p.x += q.dx * push; p.y += (q.dy * push) / 2;
+          hit = true;
+          continue;
+        }
         const dx = p.x - o.x, dy = (p.y - o.y) * 2;
         const R = o.r + rad;
         const d2 = dx * dx + dy * dy;

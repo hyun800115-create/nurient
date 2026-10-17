@@ -56,14 +56,34 @@ export class PickupPolicy {
   mayTake(src, p, dt) {
     this.touched = src;
     const mode = this.mode;
-    if (mode === 'auto') return true;
     const sp = Math.hypot(p.vx || 0, p.vy || 0);
     if (src === this.src && sp < P().stillSpeed) this.dwell += dt || 0;
     else if (src !== this.src || sp >= P().stillSpeed) this.dwell = 0;
+    if (mode === 'auto') {
+      // ((v4.2 fix, gameplay M5) while the 길 안내 leads a load somewhere, crossing another kind's pad does not grab it
+      //  in passing (the ingot run picked up a plank on the way): stop on it to take some — the 멈추면 rule)
+      if (!this.guidedOther(src, p)) return true;
+      if (this.dwell >= P().stillS) return true;
+      this.blocked++;
+      return false;
+    }
     if (mode === 'still') return this.dwell >= P().stillS;
     // 'off': only the button
     if (this.oneLoad && p.room <= 0) this.oneLoad = false;
     return this.held || this.oneLoad;
+  }
+
+  /** the guide is leading his load and this pad holds a kind not in the bag */
+  guidedOther(src, p) {
+    const nav = this.v42 && this.v42.nav;
+    if (!nav || !nav.active || !nav.dest || !nav.dest.pad || !p.stack || !p.stack.count) return false;
+    if (this.gs.tutorial && this.gs.tutorial.inTutorial) return false;
+    if (this.v42.pilot && this.v42.pilot.on) return false;
+    const st = src && src.outStack, top = st && st.items && st.items[st.items.length - 1];
+    const ty = top ? top.type : src && src.item;
+    if (!ty) return false;
+    for (const it of p.stack.items) if (it.type === ty) return false;
+    return true;
   }
 
   /** may the chief gather `node` (he has stood still `p.stillT` s)? */

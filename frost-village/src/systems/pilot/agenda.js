@@ -4,7 +4,11 @@
 //   choose(ctx, seed, index, cur)   the next activity: highest score × agenda × (1 ± jitter) from a seeded RNG,
 //                    the current one keeps a hysteresis bonus and is locked for its minimum time
 // ctx = { hour, urgent, lunchOpen, bagRoom, bagCount, work, noCourier, cashMax, trainSoon, trainNear, chatMate,
-//         chatIdle, office, paperNew, unread, dog, evening, locked: { act: until } }
+//         chatIdle, office, paperNew, unread, dog, evening, locked: { act: until },
+//         (v4.2 fix) trainToday (a train watched today), dogIdle (s since he last played with 콩이) }
+// ((v4.2 fix, CODE-2 review) the night is his: from 21:00 to 06:00 the evening (office lamp, the stove, the campfire)
+//  beats the chores; one train watch a day and a game with 콩이 every ~10 minutes find their place; the leisure acts
+//  wait until his bag is delivered (no lunch with a tower of smoked meat on his head))
 
 import { BALANCE } from '../../data/balance.js';
 
@@ -20,20 +24,29 @@ export const CHORES = ['urgent', 'work', 'collect'];
 
 const PB = () => (BALANCE.v42 && BALANCE.v42.pilot) || {};
 
+/** the acts that wait for an empty bag (while his load has somewhere to go) */
+export const HANDS_FREE = new Set(['lunch', 'evening', 'train', 'chat', 'office', 'rest', 'dog']);
+
 export function score(act, c) {
+  // ((v4.2 fix, visual M1) carrying a load that has a place to go: deliver it first (업무), then the leisure act
+  if (HANDS_FREE.has(act) && c.bagCount > 0 && c.work) return null;
   switch (act) {
     case 'urgent': return c.urgent ? 100 : null;
-    case 'lunch': return c.hour >= 12 && c.hour < 12.67 && c.lunchOpen ? 50 : null;
+    case 'lunch': return c.hour >= 12 && c.hour < 13 && c.lunchOpen ? 50 : null;
     case 'work': return c.work ? 40 : null;
     // (CODE-1 tuned: the evening yields to the day's work (30 < 업무 40) and coins waiting on a pad are fetched before
     //  more hand-work (45): with 40 / 35 the evening third of every day earned nothing — 57 % of the arrow bot's income)
-    case 'evening': return c.hour >= 20 || c.hour < 6 ? 30 : null;
+    // ((v4.2 fix, gameplay M4) …but from 21:00 to 06:00 it is night: the evening (60) beats every chore but an urgent
+    //  one — he hauled ingots at 03:00 in 100 % of the samples)
+    case 'evening': return c.hour >= 21 || c.hour < 6 ? 60 : c.hour >= 20 ? 30 : null;
     case 'collect': return c.noCourier && c.cashMax >= 200 ? 45 : null;
-    case 'train': return c.trainSoon && c.trainNear ? 30 : null;
+    // (one train watch a day comes before the afternoon's chores)
+    case 'train': return c.trainSoon && c.trainNear ? 30 + (c.trainToday ? 0 : 25) : null;
     case 'chat': return c.chatMate ? 25 + (c.chatIdle >= 180 ? 15 : 0) : null;
     case 'office': return c.office && c.bagCount === 0 ? 20 + (c.hour >= 8 && c.hour < 10 && c.paperNew ? 30 : 0) + (c.unread >= 2 ? 30 : 0) : null;
     case 'rest': return 20;
-    case 'dog': return c.dog ? 15 : null;
+    // (콩이: after 10 minutes without a game the dog comes before a rest or a chat)
+    case 'dog': return c.dog ? 15 + ((c.dogIdle || 0) >= 600 ? 20 : 0) : null;
     default: return null;
   }
 }
@@ -64,7 +77,10 @@ export function choose(ctx, seed, day, index, cur) {
   const P = PB(), jit = Number(P.jitter) || 0.1, hyst = Number(P.hysteresis) || 0.2;
   const r = rng32(hash3(seed, day, index));
   const lockedNow = (a) => !!(ctx.locked && ctx.locked[a] && ctx.locked[a] > (ctx.now || 0));
-  if (cur && cur.act && cur.t < cur.min && score(cur.act, ctx) !== null && !lockedNow(cur.act)) return { act: cur.act, score: Infinity, kept: true };
+  // (the minimum time keeps the running act — except 업무 between two loads (bag empty): lunch, the night, the day's
+  //  train may take over there, with the usual hysteresis)
+  const between = cur && cur.act === 'work' && ctx.bagCount === 0;
+  if (cur && cur.act && cur.t < cur.min && !between && score(cur.act, ctx) !== null && !lockedNow(cur.act)) return { act: cur.act, score: Infinity, kept: true };
   let best = null;
   for (const a of ACTS) {
     const s0 = score(a, ctx);

@@ -4,6 +4,7 @@
 import { View } from './View.js';
 
 export const JOY_RADIUS = 78;   // px (UI space) knob travel
+const HAND_MS = 110;          // ((v4.2 fix) a finger on the village hands 관망 back after this long (a pinch's second finger cancels)
 
 export const Input = {
   vec: { x: 0, y: 0, mag: 0 },
@@ -27,9 +28,11 @@ export const Input = {
 
   pointerDown(p) {
     if (this.joy.active || !this.enabled) return;
-    // ((v4.2) a tap on the village: 관망 hands control back in this frame; the idle clock restarts)
+    // ((v4.2) a tap on the village: 관망 hands control back; the idle clock restarts)
+    // ((v4.2 fix, gameplay L1) …after HAND_MS, unless a second finger makes it a pinch (UI calls release()): the first
+    //  finger of a pinch-zoom ended 관망. Meanwhile the pilot's steering pauses; a drag hands back at once (update))
     this.touchPending = true;
-    if (this.onHuman) { try { this.onHuman('touch'); } catch (e) { /* */ } }
+    this.handReq = !!this.onHuman;
     const x = View.toLogical(p.x), y = View.toLogical(p.y);
     this.joy.active = true;
     this.joy.id = p.id;
@@ -53,7 +56,7 @@ export const Input = {
     if (!this.joy.active || (p && p.id !== this.joy.id)) return;
     this.joy.active = false; this.joy.id = -1;
   },
-  release() { this.joy.active = false; this.joy.id = -1; },
+  release() { this.joy.active = false; this.joy.id = -1; this.handAt = 0; this.handReq = false; },
 
   update(now) {
     let x = 0, y = 0;
@@ -77,8 +80,10 @@ export const Input = {
     }
     let mag = Math.min(1, Math.hypot(x, y));
     // ((v4.2) 관망: override (tests) > a human (hands back now) > the pilot)
+    if (this.handReq) { this.handReq = false; this.handAt = now || 1; }
+    if (this.handAt && (mag > 0.05 || (now || 0) - this.handAt >= HAND_MS)) { this.handAt = 0; if (this.onHuman) { try { this.onHuman('touch'); } catch (e) { /* */ } } }
     if (mag > 0.05) { this.lastActivity = now; if (!this.override && this.onHuman) { try { this.onHuman('move'); } catch (e) { /* */ } } }
-    else if (this.pilot && !this.override) { const v = this.pilot(); if (v) { x = v.x; y = v.y; mag = Math.min(1, Math.hypot(x, y)); } }
+    else if (this.pilot && !this.override && !this.handAt) { const v = this.pilot(); if (v) { x = v.x; y = v.y; mag = Math.min(1, Math.hypot(x, y)); } }
     this.vec.x = x; this.vec.y = y; this.vec.mag = mag;
     return this.vec;
   },

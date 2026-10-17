@@ -78,16 +78,26 @@ export class OfficeBuilding {
     this.ready = false;
     // walls: the manifest's circles with a gap at the door (the chief walks in onto the raised floor)
     for (const [dx, dy, r] of P.wallCircles) this.obstacles.push(gs.collision.add(x + dx, y + dy, r, 'office'));
+    // ((v4.2 fix, gameplay M2) + a thin wall along every footprint edge with the door's opening: between two circles
+    //  he squeezed through the back and the east walls straight onto the 책상 pad)
+    const fp = (def && def.footprintPoly) || [[-226, -14], [27, 113], [226, 14], [-27, -113]];
+    const door = this.spots.door;
+    if (gs.collision.addWalls) for (const o of gs.collision.addWalls(fp.map((q) => ({ x: x + q[0], y: y + q[1] })), 8, 'office', [{ x: door.x, y: door.y, w: 84 }], true)) this.obstacles.push(o);
     // the 책상 pad in front of his desk (stand 0.4 s: the office panel); drawn on the raised floor
     const dp = this.spots.deskPad;
     this.deskPad = new Pad(gs, dp.x, dp.y, 'cash', 1.0, { icon: Assets.pick('ui_icon_office', 'ui_icon_newspaper', 'ui_icon_story', 'ui_icon_lock'), iconSize: 34 });
-    this.deskLabel = gs.add.text(dp.x, dp.y - L - 52, t('officeChip'), { fontFamily: gs.font, fontSize: '18px', fontStyle: '900', color: '#2b2f3a', backgroundColor: '#fff8ecee', padding: { x: 8, y: 3 }, resolution: 2 }).setOrigin(0.5).setDepth(DEPTH.LABEL - 50).setAlpha(0);
+    // ((v4.2 fix, visual L6) the label under the pad (on the floor in front of the desk), not floating mid-office over a
+    //  seated clerk's head)
+    this.deskLabel = gs.add.text(dp.x, dp.y - L + 34, t('officeChip'), { fontFamily: gs.font, fontSize: '16px', fontStyle: '900', color: '#2b2f3a', backgroundColor: '#fff8ecee', padding: { x: 8, y: 3 }, resolution: 2 }).setOrigin(0.5).setDepth(DEPTH.LABEL - 50).setAlpha(0);
     // the art arrives with the office fragment (its closed page): the building is made then
     Assets.loadFragment(gs, 'office', { only: ['office_bld', 'office_items'] }, () => this.build());
   }
 
   build() {
-    if (this.ready || !this.gs.sys || !this.gs.sys.isActive()) return;
+    if (this.ready || this.dead || !this.gs.sys) return;
+    // ((v4.2 fix, robust L1) the fragment may already be merged while the scene is still being created (an in-session
+    //  restart with the building saved): build on the first update instead of never)
+    if (!this.gs.sys.isActive()) { if (!this.deferred) { this.deferred = true; this.gs.time.delayedCall(0, () => { this.deferred = false; this.build(); }); } return; }
     this.ready = true;
     const gs = this.gs, x = this.x, y = this.y, L = this.lift;
     this.cw = new Cutaway(gs, 'chief_office', x, y, {});
@@ -165,8 +175,11 @@ export class OfficeBuilding {
     const quad = (x0, y0, w, h, col, a) => {
       g.fillStyle(col, a);
       g.beginPath();
-      g.moveTo(ox + x0, oy + y0 + x0 * sh); g.lineTo(ox + x0 + w, oy + y0 + (x0 + w) * sh);
-      g.lineTo(ox + x0 + w, oy + y0 + h + (x0 + w) * sh); g.lineTo(ox + x0, oy + y0 + h + x0 * sh);
+      // ((v4.2 fix, visual M2) the manifest shears about the board's centre (y += shearY · x, x from the point): from
+      //  the left edge the bars sat 21 px low, half off the slate)
+      const c0 = x0 - B.widthPx / 2, c1 = x0 + w - B.widthPx / 2;
+      g.moveTo(ox + x0, oy + y0 + c0 * sh); g.lineTo(ox + x0 + w, oy + y0 + c1 * sh);
+      g.lineTo(ox + x0 + w, oy + y0 + h + c1 * sh); g.lineTo(ox + x0, oy + y0 + h + c0 * sh);
       g.closePath(); g.fillPath();
     };
     const rowH = (B.heightPx - 8) / 5;
@@ -202,7 +215,13 @@ export class OfficeBuilding {
     if (!this.ready) return;
     const gs = this.gs, cw = this.cw;
     this.revealHold = Math.max(0, this.revealHold - dt);
-    const want = this.wantReveal();
+    let want = this.wantReveal();
+    // ((v4.2 fix, visual M4) the shell fades only once the inside has its pictures (the inside page and the staff's
+    //  desk / head pages, asked for from 680 px out): no empty ghost house with a floating 업무 pad. 6 s at most)
+    if (want && !cw.revealed) {
+      this.waitIn = (this.waitIn || 0) + dt;
+      if (this.waitIn < 6 && !this.insideReady()) { want = false; this.pageT = Math.min(this.pageT || 0, 0); }
+    } else if (!want) this.waitIn = 0;
     if (want !== cw.revealed) cw.reveal(want);
     cw.update(dt);
     // the inside pages: asked for while he is near (they arrive before the shell has faded), released 30 s after
@@ -210,7 +229,8 @@ export class OfficeBuilding {
     if (this.pageT <= 0) {
       this.pageT = 0.5;
       this.inside = this.wantsInside();
-      if (this.inside) { Residency.want('office_bld@inside'); this.office.wantStaffPages && this.office.wantStaffPages(); }
+      // ((v4.2 fix, visual L5) + the office panel's page, so the 책상 pad opens it with its plates at once)
+      if (this.inside) { Residency.want('office_bld@inside'); this.office.wantStaffPages && this.office.wantStaffPages(); Residency.want('ui5_icons@panels'); }
     }
     const a = cw.alpha;
     // the sign fades with the shell (hidden over the open inside)
@@ -232,6 +252,15 @@ export class OfficeBuilding {
     if (Math.abs(amb - (this.ambV || 0)) > 0.04) { this.ambV = amb; Audio.setAmbience('amb_office', amb); }
   }
 
+  /** the inside layers have their frames, and the seated staff their desk and head pages */
+  insideReady() {
+    if (!this.cw.insideReady()) return false;
+    const O = this.office, tex = this.gs.textures;
+    if (!O || !O.staff || !Object.keys(O.staff).length) return true;
+    const TFo = O.staffPagesNeeded ? O.staffPagesNeeded() : [];
+    return TFo.every((k) => tex.exists(k));
+  }
+
   /** the panel or a big moment holds the inside open for `s` seconds */
   holdOpen(s) { this.revealHold = Math.max(this.revealHold, s); }
 
@@ -249,6 +278,7 @@ export class OfficeBuilding {
   revealObjects() { return this.cw ? this.cw.objects() : []; }
 
   destroy() {
+    this.dead = true;
     Audio.setAmbience('amb_office', 0);
     for (const o of [this.sign, this.mail, this.board, this.deskLabel, this.glow]) if (o && o.destroy) o.destroy();
     if (this.cw) this.cw.destroy();

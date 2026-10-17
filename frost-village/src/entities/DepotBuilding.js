@@ -34,7 +34,10 @@ export class DepotBuilding {
   }
 
   build() {
-    if (this.ready || !this.gs.sys || !this.gs.sys.isActive()) return;
+    if (this.ready || this.dead || !this.gs.sys) return;
+    // ((v4.2 fix, robust L1) the fragment may already be merged while the scene is still being created (an in-session
+    //  restart with the building saved): build on the first update instead of never)
+    if (!this.gs.sys.isActive()) { if (!this.deferred) { this.deferred = true; this.gs.time.delayedCall(0, () => { this.deferred = false; this.build(); }); } return; }
     this.ready = true;
     const gs = this.gs, x = this.x, y = this.y, sys = this.sys;
     this.def = Assets.def(KEY) || {};
@@ -61,7 +64,9 @@ export class DepotBuilding {
     const fp = (def.footprintPoly || [[-430, -34], [68, 215], [430, 34], [-68, -215]]).map((p) => ({ x: x + p[0], y: y + p[1] }));
     const door = { x: x + (def.doorPoint || [-278, 67])[0], y: y + (def.doorPoint || [-278, 67])[1] };
     this.door = door;
-    for (let a = 0; a < fp.length; a++) {
+    // ((v4.2 fix, gameplay M2) thin walls along the edges with the door's opening (the row of circles had gaps)
+    if (gs.collision.addWalls) for (const o of gs.collision.addWalls(fp, 12, 'depot', [{ x: door.x, y: door.y, w: 136 }], true)) this.obstacles.push(o);
+    else for (let a = 0; a < fp.length; a++) {
       const p = fp[a], q = fp[(a + 1) % fp.length];
       const n = Math.max(2, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / 40));
       for (let k = 0; k <= n; k++) { const cx = p.x + ((q.x - p.x) * k) / n, cy = p.y + ((q.y - p.y) * k) / n; if (gdist(cx, cy, door.x, door.y) < 70) continue; this.obstacles.push(gs.collision.add(cx, cy, 18, 'depot')); }
@@ -202,12 +207,13 @@ export class DepotBuilding {
   revealObjects() { return Object.values(this.imgs); }
 
   destroy() {
+    this.dead = true;
     const I = this.gs.interiors, ii = I ? I.indexOf(this) : -1;
     if (ii >= 0) I.splice(ii, 1);
     for (const k in this.imgs) this.imgs[k].destroy();
-    for (const im of this.rackImgs.concat(this.props || [])) im.destroy();
-    for (const ob of this.obstacles) ob.active = false;
-    for (const w of this.workers) w.destroy();
+    for (const im of (this.rackImgs || []).concat(this.props || [])) im.destroy();
+    for (const ob of this.obstacles || []) ob.active = false;
+    for (const w of this.workers || []) w.destroy();
     if (this.doorPad) this.doorPad.img.destroy();
   }
 }

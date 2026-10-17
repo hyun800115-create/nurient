@@ -21,6 +21,8 @@ import { gdist } from '../../core/Iso.js';
 import { choose, DUR, AGAIN, CHORES, rng32, hash3 } from './agenda.js';
 import { urgentTarget, workTarget, cashTarget, restSpot, chatMate, isPayTarget, hireTarget, isHirePad } from './work.js';
 import { CameraDirector } from './CameraDirector.js';
+import { Residency } from '../../core/Residency.js';
+import { Assets } from '../../core/Assets.js';
 
 const PB = () => (BALANCE.v42 && BALANCE.v42.pilot) || {};
 
@@ -55,6 +57,14 @@ export class ChiefPilot {
   }
 
   rand() { return this.r(); }
+  /** chief2's sheet: the atlas of the character that extends the chief (char_player_b) */
+  sheetKey() {
+    if (this._sheet !== undefined) return this._sheet;
+    let k = null;
+    for (const a in Assets.extAtlas || {}) if (Assets.extAtlas[a] === 'player') { k = a; break; }
+    if (k) this._sheet = k;
+    return k;
+  }
   /** how far he looks for someone to chat with: further during a chore break (the break is his to spend) */
   chatRange() { return (this.locked.urgent || 0) > this.t ? 1500 : 600; }
   get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial)); }
@@ -121,10 +131,13 @@ export class ChiefPilot {
       noCourier: !(O && O.hired('ttal')),
       cashMax: cashes.reduce((m, c) => Math.max(m, c.value || 0), 0),
       trainSoon: !!(rail && rail.running && rail.phase === 'toOurs' && rail.untilArrival() < 20),
-      trainNear: !!(nb && nb.ours && gdist(p.x, p.y, nb.ours.x, nb.ours.y) < 1500),
+      // (the day's one train watch: from further away)
+      trainNear: !!(nb && nb.ours && gdist(p.x, p.y, nb.ours.x, nb.ours.y) < (this.trainDay === (clock ? clock.day() : -1) ? 1500 : 2600)),
+      trainToday: this.trainDay === (clock ? clock.day() : -1),
+      dogIdle: this.t - (this.lastDog === undefined ? -600 : this.lastDog),
       chatMate: !!mate || !!(this.act && this.act.act === 'chat' && this.act.sub), chatIdle: this.t - this.lastChat,
       office: !!(O && O.built), paperNew: !!(N && N.list.length && N.day >= (clock ? clock.day() : 0)), unread: N ? N.unread() : 0,
-      dog: !!(gs.dog && gs.dog.r && gdist(p.x, p.y, gs.dog.r.x, gs.dog.r.y) < 800),
+      dog: !!(gs.dog && gs.dog.r && gdist(p.x, p.y, gs.dog.r.x, gs.dog.r.y) < ((this.t - (this.lastDog === undefined ? -600 : this.lastDog)) >= 600 ? 1400 : 800)),
       locked: this.locked,
     };
   }
@@ -160,10 +173,15 @@ export class ChiefPilot {
         else st.target = restSpot(gs, this.r);
         break;
       }
-      case 'train': { const nb = gs.v4; if (nb && nb.ours && nb.ours.wait && nb.ours.wait.length) { const w = nb.ours.wait[0]; st.target = { x: w.x + 40, y: w.y + 30 }; } break; }
+      case 'train': {
+        const nb = gs.v4;
+        if (nb && nb.ours && nb.ours.wait && nb.ours.wait.length) { const w = nb.ours.wait[0]; st.target = { x: w.x + 40, y: w.y + 30 }; }
+        this.trainDay = nb && nb.clock && nb.clock.on ? nb.clock.day() : -1;
+        break;
+      }
       case 'chat': { const m = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange()); if (m) { st.sub = m; st.target = { x: m.ch.x + 54, y: m.ch.y + 26 }; } break; }
       case 'rest': st.target = restSpot(gs, this.r); break;
-      case 'dog': { const d = gs.dog && gs.dog.r; if (d) st.target = { x: d.x + 50, y: d.y + 20 }; break; }
+      case 'dog': { const d = gs.dog && gs.dog.r; if (d) st.target = { x: d.x + 50, y: d.y + 20 }; this.lastDog = this.t; break; }
       default: break;
     }
     if (st.target && st.target.kind !== 'hire' && isPayTarget(gs, st.target.x, st.target.y)) st.target = null;
@@ -310,7 +328,8 @@ export class ChiefPilot {
       const ui = gs.ui;
       // (automated browsers — the test suites and bots — never auto-start 관망 unless a test asks: window.__FV_PILOT_AUTO)
       const robot = typeof navigator !== 'undefined' && navigator.webdriver && !(typeof window !== 'undefined' && window.__FV_PILOT_AUTO);
-      const busy = robot || !this.available || !after || (ui && (ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen)) || (gs.v4 && gs.v4.rank && gs.v4.rank.ceremonyOn) || Input.override;
+      // ((v4.2 fix, gameplay L4) the overview map open counts as busy: 관망 started under it with the chief a dot)
+      const busy = robot || !this.available || !after || gs.overview || (ui && (ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen)) || (gs.v4 && gs.v4.rank && gs.v4.rank.ceremonyOn) || Input.override;
       const idle = (gs.time.now - Math.max(Input.lastActivity || 0, Input.lastTouch || 0)) / 1000;
       if (busy || idle < after) this.countdown = 0;
       else if (!this.countdown) this.countdown = 3;
@@ -318,6 +337,13 @@ export class ChiefPilot {
       return;
     }
     if (!this.available) { this.stop('gone'); return; }
+    // ((v4.2 fix, visual H3) the chief's seated / social anims (chief2's on-demand sheet) stay in memory while 관망 is
+    //  on: asked for at once and pinned, so a desk, a lunch table or a chat never shows him standing in the furniture)
+    if ((this.sheetT = (this.sheetT || 0) - dt) <= 0) {
+      this.sheetT = 2;
+      const k = this.sheetKey();
+      if (k) { Residency.pin(k, 6); Residency.want(k); }
+    }
     // decide
     this.decT -= dt;
     if (this.act) { this.act.t += dt; if (CHORES.indexOf(this.act.act) >= 0) this.choreT += dt; }

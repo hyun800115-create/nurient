@@ -319,6 +319,19 @@ export class HudV42 {
         c.add(ui.add.text(x, y + 38, t(names[u.key]), TXT(16, '#2b2f3a', '#ffffff', 4, '900')).setOrigin(0.5));
         return;
       }
+      // ((v4.2 fix, visual L3) the engine: its own picture (the train's first idle frame, drawn mirrored like the
+      //  train) next to the ui5 car icons, not a red text chip
+      if (u.key === 'train_engine') {
+        const an = ui.anims.get('train_engine:idle:NE') || ui.anims.get('train_engine:move:NE');
+        const f = an && an.frames && an.frames[0] ? an.frames[0].frame : null;
+        if (f && f.texture && ui.textures.exists(f.texture.key)) {
+          const im = ui.add.image(x, y - 6, f.texture.key, f.name).setOrigin(0.5).setFlipX(true);
+          im.setScale(Math.min(76, cw) / Math.max(1, f.realWidth, f.realHeight));
+          c.add(im);
+          c.add(ui.add.text(x, y + 38, t('car_engine'), TXT(16, '#2b2f3a', '#ffffff', 4, '900')).setOrigin(0.5));
+          return;
+        }
+      }
       const col = u.key === 'train_engine' ? 0xe0544a : u.key === 'train_coach' ? 0x7fb2ff : u.key === 'train_boxcar' ? 0x5f9a5a : 0xa98a62;
       const g = ui.add.graphics();
       g.fillStyle(col, 1); g.fillRoundedRect(x - cw / 2, y - 22, cw, 44, 10);

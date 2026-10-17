@@ -34,7 +34,8 @@ export class Office {
     this.v42 = v42;
     const s = (saved && saved.office) || {};
     this.seeds = ROLES.map((r, i) => (Array.isArray(s.staff) ? (s.staff[i] >>> 0) : 0));
-    this.bagSaved = Math.max(0, Math.floor(Number(s.bag) || 0));
+    // ((v4.2 fix, robust info) a tampered save cannot mint coins through the courier's sack)
+    this.bagSaved = Math.min(2e6, Math.max(0, Math.floor(Number(s.bag) || 0)));
     this.safeTotal = Math.max(0, Math.floor(Number(s.safe) || 0));
     this.log = Array.isArray(s.log) ? s.log.slice(-8) : [];
     this.bankSt = s.bankSt || 0;
@@ -219,6 +220,15 @@ export class Office {
     //  them the clerks sat at their desks with no heads. (tfatlas pages: outside the social-page cap, budget-checked)
     if (!this.headPages || !this.headPages.length) this.headPages = Residency.tfSocPages ? [...new Set(['adult', 'elder'].flatMap((a) => Residency.tfSocPages(a)))].filter((p) => /^tf_head/.test(p)) : [];
     for (const p of this.headPages) Residency.want(p);
+  }
+
+  /** ((v4.2 fix) the pages the seated staff show: officefolk's desk page + the heads' @soc pages (the reveal waits) */
+  staffPagesNeeded() {
+    if (!TF.of || !TF.ofAtlas) return [];
+    const out = [];
+    for (const g in TF.ofAtlas) if (g !== TF.ofResident && /desk/.test(g)) out.push(TF.ofAtlas[g]);
+    for (const p of this.headPages || []) out.push(p);
+    return out;
   }
 
   /** (CODE-2) the officefolk fragment: merged into the townsfolk runtime once both are here; staff re-dress */
@@ -483,6 +493,11 @@ export class Office {
   destroy() {
     for (const r in this.staff) if (this.staff[r] && this.staff[r].destroy) this.staff[r].destroy();
     if (this.hirePad) this.hirePad.destroy();
+    // ((v4.2 fix, robust M2) the building and the bank go too: their arrival hooks, the office bed (amb_office kept
+    //  playing in the fresh game after 처음부터)
+    try { if (this.building) this.building.destroy(); } catch (e) { /* */ }
+    try { if (this.bank) this.bank.destroy(); } catch (e) { /* */ }
+    this.building = null; this.bank = null;
   }
 }
 

@@ -72,7 +72,21 @@ export class Player extends Character {
         this.vx = this.vy = 0;
         this.sprite.anims.timeScale = 1;
         if (this.animName !== this.seatAnim) this.play(this.seatAnim);
+        // ((v4.2 fix, visual H3) the seated anim's sheet (chief2) may still be on its way or was refused: ask again
+        //  every second, and meanwhile stand on the floor in front of the seat — never a standing pose inside the
+        //  desk or the table)
+        const sat = /^(sit|doze)/.test(this.animRes || '');
+        if (!sat && (this.seatAskT = (this.seatAskT || 0) - dt) <= 0) { this.seatAskT = 1; this.animKey = ''; this.play(this.seatAnim, true); }
         this.sync(dt);
+        if (!/^(sit|doze)/.test(this.animRes || '')) {
+          const s = this.seat, dy = s.standDy !== undefined ? s.standDy : 18;
+          this.sprite.y += dy;
+          this.shadow.y = this.sprite.y + 1;
+          if (s.slot === '@behind' && s.deskDepth !== undefined) this.sprite.setDepth(s.deskDepth + 0.0005);
+          else if (s.deskDepth !== undefined) this.sprite.setDepth(Math.max(this.sprite.depth, s.deskDepth + 0.001));
+          if (this.deskOv && this.deskOv.visible) this.deskOv.setVisible(false);
+          return;
+        }
         this.syncDesk();
         return;
       }

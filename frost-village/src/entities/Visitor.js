@@ -261,6 +261,7 @@ export class Visitor extends Customer {
     if (this.stage !== 'platform' && this.stage !== 'home') return false;
     this.stage = 'board';
     this.boardT = 0;
+    this.boardDoor = { x: p.x, y: p.y };
     // (over the level crossing if still on the other side of the rails)
     this.route = this.nb.route ? this.nb.route(this.x, this.y, p.x, p.y) : [{ x: p.x, y: p.y }]; this.ri = 0;
     return true;
@@ -271,7 +272,14 @@ export class Visitor extends Customer {
     this.stage = 'gone';
     const gs = this.gs;
     if (gs.isOnScreen(this.x, this.y, 200)) Audio.play('sfx_door', { volume: 0.4, throttle: 300 });
-    gs.tweens.add({ targets: [this.sprite, this.shadow], alpha: 0, duration: 250, onComplete: () => this.despawn() });
+    // ((v4.2 fix, gameplay L2) still short of the door when the 6 s run out: the last steps to it while fading (they
+    //  vanished 55–72 px before the coach)
+    const d = this.boardDoor;
+    if (d && Math.hypot(d.x - this.x, (d.y - this.y) * 2) > 12) {
+      this.faceTo(d.x, d.y);
+      gs.tweens.add({ targets: this, x: d.x, y: d.y, duration: 320, onUpdate: () => { if (this.alive) this.sync(0); } });
+    }
+    gs.tweens.add({ targets: [this.sprite, this.shadow], alpha: 0, duration: d ? 340 : 250, onComplete: () => this.despawn() });
     this.nb.visitorBoarded(this);
   }
 

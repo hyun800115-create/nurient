@@ -524,6 +524,14 @@ export class Tutorial {
    *  room = how many it takes now)
    */
   destination(type) {
+    // ((v4.2 fix, gameplay M5) the chief's own question: the room the 길 안내 holds for his load counts as free here
+    const L0 = this.gs.logistics;
+    if (!L0 || L0.selfView) return this.destination0(type);
+    L0.selfView = true;
+    try { return this.destination0(type); } finally { L0.selfView = false; }
+  }
+
+  destination0(type) {
     const gs = this.gs;
     const D = (pad, key, label, sink, room, text, lp) => (pad ? { pad, key: key || null, label, sink: sink || null, room: room === undefined ? 99 : room, text: text || undefined, lp: lp || null } : null);
     // (v3) a building site / hire pad / the food box / a workshop wanting it comes first
@@ -578,6 +586,11 @@ export class Tutorial {
     if (!sk || !G || !G.active || !G.dockPad || !gs.logistics) return null;
     const room = gs.logistics.want(sk, type);
     if (room <= 0) return null;
+    // ((v4.2 fix, gameplay M5) raw surplus pays 0.5–1.5 coins at the dock: no 35 m trip for it — beyond nav.rawDockPx
+    //  the guide says the station's input is full (wait a moment, or discard)
+    const RAW = gs.stationByInput && gs.stationByInput[type];
+    const far = Number(BALANCE.v42 && BALANCE.v42.nav && BALANCE.v42.nav.rawDockPx) || 0;
+    if (RAW && far > 0 && gs.player && gdist(gs.player.x, gs.player.y, G.dockPad.x, G.dockPad.y) > far) return null;
     return { pad: G.dockPad, key: null, label: 'place_dock', sink: sk, room, surplus: true };
   }
 

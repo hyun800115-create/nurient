@@ -295,7 +295,14 @@ export class UI extends Phaser.Scene {
 
   makeButton(x, y, w, h, style, label, onClick, size = 30) {
     const c = this.add.container(x, y);
-    const bg = panel(this, 0, 0, 'ui_button_' + style, w, h).setOrigin(0.5);
+    // ((v4.2 fix, visual L2) a button lower than its 9-slice's top + bottom caps grew square nubs at both ends: built
+    //  at the caps' height and scaled down to h)
+    let n = null;
+    try { n = Assets.nine('ui_button_' + style); } catch (e) { n = null; }
+    const minH = n && Number.isFinite(n.t + n.b) ? n.t + n.b + 2 : 0;
+    const kk = minH && h < minH ? minH / h : 1;
+    const bg = panel(this, 0, 0, 'ui_button_' + style, w * kk, h * kk).setOrigin(0.5);
+    if (kk > 1) bg.setScale(1 / kk);
     const tx = this.add.text(0, -3, label, style === 'gray' ? TXT(size, '#ffffff', '#4a5361', 6, '900') : TXT(size, '#ffffff', 'rgba(0,0,0,0.25)', 4, '900')).setOrigin(0.5);
     c.add([bg, tx]);
     c.bg = bg; c.text = tx;
@@ -952,7 +959,13 @@ export class UI extends Phaser.Scene {
         b.tabId = id;
         // ((v4.2 CODE-2) the tab's little picture: ui5's snowflake-over-a-joystick for 놀이, the speaker for 소리·화면)
         const ik = id === 'play' ? Assets.pick('ui_icon_play_tab', '') : Assets.pick('ui_icon_sound_on', '');
-        if (ik) { const im = add(Assets.image(this, x - 88, cy - 348, ik).setOrigin(0.5)); im.setScale(40 / Math.max(1, im.frame.realWidth, im.frame.realHeight)).setAlpha(on ? 1 : 0.8); }
+        if (ik) {
+          const im = add(Assets.image(this, x - 88, cy - 348, ik).setOrigin(0.5)); im.setScale(40 / Math.max(1, im.frame.realWidth, im.frame.realHeight)).setAlpha(on ? 1 : 0.8);
+          // ((v4.2 fix, visual M6) the label sits right of the icon and shrinks to fit ('Sound & screen' ran under it)
+          const tx = b.text, room = 236 / 2 - 14 - (-88 + 24);
+          tx.setOrigin(0.5).setX(-88 + 24 + room / 2);
+          if (tx.width > room) tx.setScale(room / tx.width);
+        }
         return b;
       };
       this.settingsTabs = [tabBtn(cx - 122, 'set_tab_av', 'av'), tabBtn(cx + 122, 'set_tab_play', 'play')];

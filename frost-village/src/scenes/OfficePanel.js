@@ -61,7 +61,10 @@ export class OfficePanel {
     ui.v42PanelOpen = true;
     if (Residency.gs) Residency.want(PANELS);
     c.setAlpha(0);
-    ui.tweens.add({ targets: c, alpha: 1, duration: 140 });
+    // ((v4.2 fix, visual L5) the panel's plates live on an on-demand page: while it is on its way (the first open of a
+    //  session) the panel waits up to 1.2 s invisible instead of showing the plain cream fallback and then jumping)
+    this.waitArt = Assets.has('ui_office_tab') ? 0 : 1.2;
+    if (!this.waitArt) ui.tweens.add({ targets: c, alpha: 1, duration: 140 });
     Audio.play('sfx_click', { volume: 0.5 });
     this.show(tab || 'stock');
     if (window.__FV) window.__FV.officePanel = this.tab;
@@ -107,8 +110,11 @@ export class OfficePanel {
       }
       const ic = TAB_ICON[id] && Assets.has(TAB_ICON[id]) ? fit(Assets.image(ui, x - tw / 2 + 26, y, TAB_ICON[id]).setOrigin(0.5), 34).setAlpha(lock ? 0.5 : 1) : null;
       const label = t(key) + (id === 'letters' && this.gs.v42.news && this.gs.v42.news.unread() ? ' ●' : '');
-      const tx = ui.add.text(ic ? x + 12 : x, y, label, TXT(ic ? 20 : 23, lock ? '#8a93a3' : on ? '#1f5f66' : '#2b2f3a', '900')).setOrigin(0.5);
-      if (tx.width > tw - (ic ? 50 : 14)) tx.setScale((tw - (ic ? 50 : 14)) / tx.width);
+      // ((v4.2 fix, visual M6) with an icon the label starts right of it and shrinks to the room left ('Letters' and
+      //  'Passbook' ran under their icons in English)
+      const room = ic ? tw - 26 - 17 - 6 - 8 : tw - 14;
+      const tx = ui.add.text(ic ? x - tw / 2 + 26 + 17 + 6 : x, y, label, TXT(ic ? 20 : 23, lock ? '#8a93a3' : on ? '#1f5f66' : '#2b2f3a', '900')).setOrigin(ic ? 0 : 0.5, 0.5);
+      if (tx.width > room) tx.setScale(room / tx.width);
       g.setInteractive({ useHandCursor: true });
       g.on('pointerup', () => { Audio.play('sfx_click', { volume: 0.4 }); this.show(id); });
       this.tabsC.add(ic ? [g, ic, tx] : [g, tx]);
@@ -290,6 +296,13 @@ export class OfficePanel {
 
   update(dt) {
     if (!this.c) return;
+    if (this.waitArt > 0) {
+      this.waitArt -= dt;
+      const here = Assets.has('ui_office_tab');
+      if (here || this.waitArt <= 0) { this.waitArt = 0; if (here) this.show(this.tab); this.ui.tweens.add({ targets: this.c, alpha: 1, duration: 140 }); }
+      else if ((this.t -= dt) <= 0) { this.t = 0.3; if (Residency.gs) Residency.want(PANELS); }
+      return;
+    }
     this.t -= dt;
     if (this.t <= 0) {
       this.t = 0.5;

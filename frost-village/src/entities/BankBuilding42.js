@@ -32,7 +32,10 @@ export class BankBuilding42 {
   }
 
   build() {
-    if (this.ready || !this.gs.sys || !this.gs.sys.isActive()) return;
+    if (this.ready || this.dead || !this.gs.sys) return;
+    // ((v4.2 fix, robust L1) the fragment may already be merged while the scene is still being created (an in-session
+    //  restart with the building saved): build on the first update instead of never)
+    if (!this.gs.sys.isActive()) { if (!this.deferred) { this.deferred = true; this.gs.time.delayedCall(0, () => { this.deferred = false; this.build(); }); } return; }
     this.ready = true;
     const gs = this.gs, office = this.office;
     this.cw = new Cutaway(gs, 'bank', this.x, this.y, {});
@@ -41,7 +44,10 @@ export class BankBuilding42 {
     const poly = (def.footprintPoly || [[-226, -9], [18, 113], [226, 9], [-18, -113]]).map((p) => ({ x: this.x + p[0], y: this.y + p[1] }));
     const door = this.cw.point('doorPoint') || this.door;
     this.door = door;
-    for (let a = 0; a < poly.length; a++) {
+    // ((v4.2 fix, gameplay M2) one thin wall per footprint edge, the door's opening cut out: the row of r16 circles
+    //  (35 px apart) let the chief walk through the front wall onto the 창구 pad)
+    if (gs.collision.addWalls) for (const o of gs.collision.addWalls(poly, 10, 'bank', [{ x: door.x, y: door.y, w: 112 }], true)) this.obstacles.push(o);
+    else for (let a = 0; a < poly.length; a++) {
       const p = poly[a], q = poly[(a + 1) % poly.length];
       const L = Math.hypot(q.x - p.x, q.y - p.y), n = Math.max(2, Math.round(L / 36));
       for (let k = 0; k <= n; k++) {
@@ -143,6 +149,9 @@ export class BankBuilding42 {
     for (const ch of this.staff) {
       if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); }
       ch.update(dt);          // (its depth: the Cutaway's slot, Character.sync -> cw.occupy)
+      // ((v4.2 fix, visual M3) a teller's head over the counter glass (bank_front): at the officefolk counter lift
+      //  their faces sat behind it and read as faceless domes; the body stays behind the counter)
+      if (ch.atPost && ch.sprite.isDoll) ch.sprite.headDepth = this.cw.slotDepth('@front', ch.y) - 0.0009;
     }
     // the chief on the 창구 pad: the 통장 tab
     if (this.windowPad.contains(p.x, p.y)) {
@@ -155,5 +164,5 @@ export class BankBuilding42 {
 
   revealObjects() { return this.cw ? this.cw.objects() : []; }
 
-  destroy() { if (this.cw) this.cw.destroy(); for (const ob of this.obstacles) ob.active = false; for (const s of this.staff) s.destroy(); if (this.windowPad) this.windowPad.img.destroy(); }
+  destroy() { this.dead = true; if (this.cw) this.cw.destroy(); for (const ob of this.obstacles) ob.active = false; for (const s of this.staff) s.destroy(); if (this.windowPad) this.windowPad.img.destroy(); }
 }

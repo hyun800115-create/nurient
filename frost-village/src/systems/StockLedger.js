@@ -74,7 +74,10 @@ export class StockLedger {
       o.prev = v;
       o.count = v;
       o.seen += dt;
-      const full = o.cap > 0 && v >= o.cap * 0.95, empty = v <= 0;
+      // ((v4.2 fix, gameplay L3) a shelf that keeps a few on display (the 교역소 keeps trade.displayKeep of each good)
+      //  counts as empty at that count: else 부족 / 길 막힘 could never show for planks and ingots)
+      const ea = typeof o.emptyAt === 'function' ? Number(o.emptyAt()) || 0 : Number(o.emptyAt) || 0;
+      const full = o.cap > 0 && v >= o.cap * 0.95, empty = v <= ea;
       o.fullS = full ? o.fullS + dt : 0;
       o.emptyS = empty ? o.emptyS + dt : 0;
       if (full) o.fullT += dt;

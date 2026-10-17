@@ -66,12 +66,15 @@ export const Residency = {
   budgetEvents: 0,
   use: {},          // page key -> last use (scene ms)
   tfAge: {},        // townsfolk age group -> last social use (ms)
+  pins: {},         // ((v4.2 fix) page key -> scene ms it is kept until (no TTL / LRU eviction meanwhile))
+  roomMade: 0,      // ((v4.2 fix) times a wanted page made room for itself instead of being refused)
 
   attach(gs) {
     this.gs = gs;
     this.checkT = 0;
     this.use = {};
     this.tfAge = {};
+    this.pins = {};
     Assets.tfSocial = (age, anim) => !TF_SOC_ANIMS.has(anim) || !Assets.packed || this.wantTf(age);
     const onArrive = (key) => this.arrived(key);
     Assets.arrivals.push(onArrive);
@@ -131,8 +134,12 @@ export const Residency = {
     if (Assets.demanded.has(page)) return false;          // on its way
     const B = this.budget(), T = this.cfg();
     // (the soft / hard budgets make unused pages go sooner; a new one is refused only near the must)
+    // ((v4.2 fix, robust H1 / visual H3) near the must a page someone on screen wants first makes room: the far areas'
+    //  pictures and the least recently used on-demand pages go (makeRoom). Before, it was refused while a far
+    //  district's pages waited out their 10 s: the office clerks sat without heads, the 관망 chief stood on his seat)
     const a = Assets.m.atlases[page];
-    if (this.total + (a && a.bytes ? a.bytes / 1048576 : 4) > B.must - 30) { this.refused++; return false; }
+    const need = a && a.bytes ? a.bytes / 1048576 : 4;
+    if (this.total + need > B.must - 30 && !this.makeRoom(need, [page])) { this.refused++; return false; }
     // at most `socialPages` resident or loading (the least recently used one makes room)
     const res = this.residentSocial();
     const cap = this.low() ? Math.min(2, T.socialPages) : T.socialPages;
@@ -170,8 +177,50 @@ export const Residency = {
     const T = gs.territory, px = gs.player ? gs.player.x : 0;
     if (T && T.areaOf && T.areaOf(px) !== 'town' && !(gs.v4 && gs.v4.inTown && gs.v4.inTown())) return false;
     const need = P.reduce((n, p) => n + ((Assets.m.atlases[p] && Assets.m.atlases[p].bytes) || 0), 0) / 1048576;
-    if (this.total + need > this.budget().must - 30) { this.refused++; return false; }
+    if (this.total + need > this.budget().must - 30 && !this.makeRoom(need, P)) { this.refused++; return false; }
     return this.demand(P);
+  },
+
+  // ---------------------------------------------------------------- (v4.2 fix) room for a wanted page
+  /** keep page `key` in memory for `sec` s more (no TTL / LRU eviction): 관망's chief2 sheet, a view's must-have */
+  pin(key, sec) { if (!key) return; const t = this.now() + (sec || 5) * 1000; if (!(this.pins[key] > t)) this.pins[key] = t; this.use[key] = this.now(); },
+  pinned(key) { return this.pins[key] > this.now(); },
+
+  /**
+   * ((v4.2 fix, robust H1) make `need` MiB of room under the refusal line (must − 30) for `keep` (the pages asked for):
+   * 1. the pictures of the areas the view is far from (beyond RELEASE: they would go after their TTL anyway), the
+   *    farthest area first — never a page a near area also lists, never while a camera cut is on its way back;
+   * 2. on-demand pages not on screen and unused for a second, least recently used first (never a pinned one).
+   * true when the room is there.
+   */
+  makeRoom(need, keep) {
+    const gs = this.gs;
+    if (!gs) return false;
+    const lim = this.budget().must - 30, tex = gs.game.textures;
+    const fits = () => this.total + need <= lim;
+    this.measure();
+    if (fits()) return true;
+    const K = new Set(keep || []);
+    if (this.areas && Assets.packed && !gs.camFocus) {
+      const near = new Set(), far = [];
+      for (const R of REGIONS) {
+        const st = this.areas[R.id];
+        if (!st) continue;
+        const pages = this.expand(R.extra ? R.pages.concat(R.extra(gs)) : R.pages);
+        if (!(st.gap > RELEASE)) { for (const k of pages) near.add(k); continue; }
+        far.push({ gap: st.gap, pages });
+      }
+      far.sort((x, y) => y.gap - x.gap);
+      for (const f of far) {
+        const go = f.pages.filter((k) => !near.has(k) && !K.has(k) && tex.exists(k));
+        if (go.length && this.evictArea(go)) { this.measure(); if (fits()) { this.roomMade++; return true; } }
+      }
+    }
+    const left = () => [...Assets.demanded].filter((k) => tex.exists(k) && !K.has(k) && !this.pinned(k));
+    let guard = left().length;
+    while (!fits() && guard-- > 0 && this.evictLRU(left(), 1000)) this.measure();
+    if (fits()) { this.roomMade++; return true; }
+    return false;
   },
 
   /** a page arrived: characters waiting in a social act play it now */
@@ -211,7 +260,7 @@ export const Residency = {
     const now = this.now();
     const c = list.slice().sort((a, b) => (this.use[a] || 0) - (this.use[b] || 0));
     for (const k of c) {
-      if (now - (this.use[k] || 0) < minAge) continue;
+      if (now - (this.use[k] || 0) < minAge || this.pinned(k)) continue;
       if (this.evict(k)) return true;
     }
     return false;
@@ -396,12 +445,12 @@ export const Residency = {
     for (const k of Assets.demanded) if (tex.exists(k)) pages.push(k);
     // keep townsfolk social pages of an age group as long as any doll of it used one
     for (const k of pages) {
-      if (now - (this.use[k] || 0) > ttl) this.evict(k);
+      if (now - (this.use[k] || 0) > ttl && !this.pinned(k)) this.evict(k);
     }
     // near the must: whatever is not on screen and unused for a second goes, oldest first (the cap and the TTL
     // keep the on-demand pages small otherwise: evicting them sooner only makes them load again)
     if (this.total > B.must - 30) {
-      const left = pages.filter((k) => tex.exists(k));
+      const left = pages.filter((k) => tex.exists(k) && !this.pinned(k));
       let guard = left.length;
       while (this.total > B.must - 30 && guard-- > 0 && this.evictLRU(left.filter((k) => tex.exists(k)), 1000)) this.measure();
     }
@@ -421,7 +470,7 @@ export const Residency = {
       overSoft: this.total > B.soft, overHard: this.total > B.hard,
       social: this.residentSocial().length, demanded: Assets.demanded.size, held: Assets.held.size,
       areas: this.areas ? Object.fromEntries(Object.entries(this.areas).map(([k, v]) => [k, (v.out ? 'out' : 'in') + ' gap ' + Math.round(v.gap || 0) + ' far ' + (v.farT || 0)])) : null,
-      loads: this.loads, evictions: this.evictions, refused: this.refused, budgetEvents: this.budgetEvents,
+      loads: this.loads, evictions: this.evictions, refused: this.refused, roomMade: this.roomMade, budgetEvents: this.budgetEvents,
       ground: this.gs && this.gs.ground ? { slots: this.gs.ground.slots.length, level: this.gs.ground.level, baked: this.gs.ground.baked, evictions: this.gs.ground.evictions } : null,
     };
   },

@@ -138,7 +138,10 @@ export class DayClock {
       let g = this.glows[i];
       if (!g) { g = gs.add.image(0, 0, 'fv_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.FX - 29); this.glows.push(g); }
       const p = pts[i];
-      g.setVisible(true).setPosition(p.x, p.y).setScale(1.25 * (p.k || 1)).setAlpha(alpha * (0.85 + Math.sin(this.T * 3 + p.x) * 0.05));
+      // ((v4.2 fix, visual H1) a light may be a flat pool on the ground (sy < 1, its own alpha a): the chief's lantern
+      //  light lies at his feet — an ADD glow over his chest bleached him white)
+      const k = 1.25 * (p.k || 1);
+      g.setVisible(true).setPosition(p.x, p.y).setScale(k, k * (p.sy || 1)).setAlpha(alpha * (p.a || 1) * (0.85 + Math.sin(this.T * 3 + p.x) * 0.05));
       // ((v4.2 CODE-2) a tinted light: the flat car's red tail lamps)
       if (p.tint) { if (g.__tn !== p.tint) { g.__tn = p.tint; g.setTint(p.tint); } } else if (g.__tn) { g.__tn = 0; g.clearTint(); }
     }

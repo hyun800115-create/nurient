@@ -473,8 +473,14 @@ export class Neighbours {
       gs.save(true);
     }
     // the visitors waiting on the platform board (during the dwell)
+    // ((v4.2 fix, gameplay L2) each boarder keeps its own door: the callback read the loop's final k, so 7 of 10 used
+    //  one door)
     let k = 0;
-    for (const v of this.visitors) if (v.stage === 'platform' || (v.stage === 'home' && st && gdist(v.x, v.y, st.x, st.y) < 380 && px2L4(v.x, v.y).j > 0.4)) gs.time.delayedCall(1500 + (k++) * 300, () => { if (v.alive && (v.stage === 'platform' || v.stage === 'home')) v.boardTrain(pts[k % pts.length]); });
+    for (const v of this.visitors) {
+      if (!(v.stage === 'platform' || (v.stage === 'home' && st && gdist(v.x, v.y, st.x, st.y) < 380 && px2L4(v.x, v.y).j > 0.4))) continue;
+      const door = pts[k % pts.length];
+      gs.time.delayedCall(1500 + (k++) * 300, () => { if (v.alive && (v.stage === 'platform' || v.stage === 'home')) v.boardTrain(door); });
+    }
   }
 
   /** a townsperson steps off the train at our station */
@@ -877,6 +883,8 @@ export class Neighbours {
   }
 
   destroy() {
+    // ((v4.2 fix, robust M2) the wheel squeal bed goes with the rail props)
+    if (this.railProps && this.railProps.destroy) this.railProps.destroy();
     if (this.paint) this.paint.destroy();
     if (this.clock) this.clock.destroy();
     if (this.town) this.town.destroy();

@@ -17,9 +17,12 @@ const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900'
 });
 const BAR = { people: 0x6bbf59, shops: 0xe8a33d, happy: 0xe35d8c };
 const has = (k) => { try { return Assets.has(k); } catch (e) { return false; } };
-const icon = (ui, x, y, keys, size) => { const k = Assets.pick(...keys); const im = Assets.image(ui, x, y, k).setOrigin(0.5); im.setScale(size / Math.max(1, im.frame.realWidth, im.frame.realHeight)); im.__k = k; im.__keys = keys; im.__size = size; return im; };
+// ((v4.2 fix, gameplay L10 / visual L7) while only the last-resort padlock is there (its atlas still loading after a
+//  reload) the icon stays invisible: a padlock on 마을 / 정기 납품 reads as "locked")
+const waiting = (k, keys) => k === 'ui_icon_lock' && keys.length > 1;
+const icon = (ui, x, y, keys, size) => { const k = Assets.pick(...keys); const im = Assets.image(ui, x, y, k).setOrigin(0.5); im.setScale(size / Math.max(1, im.frame.realWidth, im.frame.realHeight)); im.__k = k; im.__keys = keys; im.__size = size; im.__wait = waiting(k, keys); if (im.__wait) im.setAlpha(0); return im; };
 /** re-apply an icon whose atlas arrived late (the first key that now has art) */
-const reicon = (im) => { if (!im || !im.__keys) return; const k = Assets.pick(...im.__keys); if (k === im.__k) return; im.__k = k; Assets.apply(im, k); im.setOrigin(0.5).setScale(im.__size / Math.max(1, im.frame.realWidth, im.frame.realHeight)); };
+const reicon = (im) => { if (!im || !im.__keys) return; const k = Assets.pick(...im.__keys); if (k === im.__k) return; im.__k = k; Assets.apply(im, k); im.setOrigin(0.5).setScale(im.__size / Math.max(1, im.frame.realWidth, im.frame.realHeight)); const w = waiting(k, im.__keys); if (w !== !!im.__wait) im.setAlpha(w ? 0 : 1); im.__wait = w; };
 
 export class HudV4 {
   constructor(ui) {

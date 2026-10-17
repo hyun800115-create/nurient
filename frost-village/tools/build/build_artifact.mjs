@@ -538,18 +538,20 @@ function stampFragments(frags) {
  * point at pictures still missing, or old code with new manifests. An atlas .png and its .json (same
  * name) always travel together, so a picture never meets the frame list of another build.
  */
-function publishBatches(files, size) {
+function publishBatches(files, size, firstSize) {
   // ((v4 review L4) chat.js and the title's bake list load at boot too: they travel with game.js)
   const isBoot = (p) => p === 'game.js' || p === 'chat.js' || p.startsWith('lib/') || /(^|\/)manifest\.json$/.test(p) || p === 'assets/_packed/index.json' || p === 'assets/title_bake/title_bake.json';
   const boot = files.filter(isBoot);
   const groups = new Map();
   for (const p of files.filter((f) => !isBoot(f))) { const k = p.replace(/\.[^./]+$/, ''); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
   const batches = [[]];
+  // ((v4.2 fix, robust L6) the first publish also carries the stale paths as null: it holds firstSize files)
+  const cap = (i) => (i === 0 && firstSize ? firstSize : size);
   for (const g of groups.values()) {
-    if (batches[batches.length - 1].length + g.length > size) batches.push([]);
+    if (batches[batches.length - 1].length + g.length > cap(batches.length - 1)) batches.push([]);
     batches[batches.length - 1].push(...g);
   }
-  if (batches[batches.length - 1].length + boot.length > size) batches.push([]);
+  if (batches[batches.length - 1].length + boot.length > cap(batches.length - 1)) batches.push([]);
   batches[batches.length - 1].push(...boot);
   return batches.filter((b) => b.length);
 }
@@ -812,26 +814,31 @@ async function main() {
   if (total > LIMITS.version) problems.push(`total ${mb(total)} (> 256 MB a version)`);
 
   const supporting = sizes.map((x) => x.p).filter((p) => p !== 'index.html').sort();
+  // ((v4.2 robust review H1) what the live version has that this build no longer has: null in the first publish)
+  let stale = [], prevN = 0, prev = null;
+  if (!INLINE && fs.existsSync(PUBLISHED)) {
+    try {
+      prev = JSON.parse(fs.readFileSync(PUBLISHED, 'utf8')).files || [];
+      prevN = prev.length;
+      const now = new Set(supporting);
+      stale = prev.filter((p) => !now.has(p)).sort();
+    } catch (e) { problems.push('tools/build/published_files.json: ' + e.message); }
+  }
+  // ((v4.2 fix, robust L6) one publish's `files` map holds the batch AND the stale nulls: the first batch is smaller by
+  //  the stale count, so every publish names ≤ 250 paths (+ the page) whether or not the host counts a null)
+  const split = supporting.length + stale.length > LIMITS.files - 5;
+  const BS = split ? publishBatches(supporting, 250, stale.length ? Math.max(20, 250 - stale.length) : 250) : [supporting];
   // each publish (the page + one batch) within 64 MB
   {
     const sz = new Map(sizes.map((x) => [x.p, x.s]));
     const pageB = sz.get('index.html') || 0;
-    const bs = supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : [supporting];
-    bs.forEach((b, i) => { const n = b.reduce((a, p) => a + (sz.get(p) || 0), pageB); if (n > LIMITS.total) problems.push(`publish ${i + 1}: ${mb(n)} (> 64 MB one publish)`); });
+    BS.forEach((b, i) => { const n = b.reduce((a, p) => a + (sz.get(p) || 0), pageB); if (n > LIMITS.total) problems.push(`publish ${i + 1}: ${mb(n)} (> 64 MB one publish)`); if (b.length + (i === 0 ? stale.length : 0) + 1 > LIMITS.files) problems.push(`publish ${i + 1}: ${b.length + (i === 0 ? stale.length : 0) + 1} paths (> ${LIMITS.files})`); });
   }
-  // ((v4.2 robust review H1) what the live version has that this build no longer has: null in the first publish)
-  let stale = [], prevN = 0;
-  if (!INLINE && fs.existsSync(PUBLISHED)) {
-    try {
-      const prev = JSON.parse(fs.readFileSync(PUBLISHED, 'utf8')).files || [];
-      prevN = prev.length;
-      const now = new Set(supporting);
-      stale = prev.filter((p) => !now.has(p)).sort();
-      // the version during the update: first publish = the live files − stale + batch 1, then + each next batch
-      const bs = supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : [supporting];
-      const live = new Set(prev.filter((p) => now.has(p)));
-      bs.forEach((b, i) => { for (const p of b) live.add(p); if (live.size + 1 > LIMITS.maxFiles) problems.push(`publish ${i + 1}: the version would hold ${live.size + 1} files (> ${LIMITS.maxFiles})`); });
-    } catch (e) { problems.push('tools/build/published_files.json: ' + e.message); }
+  if (prev) {
+    // the version during the update: first publish = the live files − stale + batch 1, then + each next batch
+    const now = new Set(supporting);
+    const live = new Set(prev.filter((p) => now.has(p)));
+    BS.forEach((b, i) => { for (const p of b) live.add(p); if (live.size + 1 > LIMITS.maxFiles) problems.push(`publish ${i + 1}: the version would hold ${live.size + 1} files (> ${LIMITS.maxFiles})`); });
   }
   fs.writeFileSync(LIST_OUT, JSON.stringify({
     page: path.relative(path.dirname(ROOT), path.join(OUT, 'index.html')).split(path.sep).join('/'),
@@ -839,13 +846,13 @@ async function main() {
     files: supporting,
     // more than one publish's worth of files: send batch 1 with the page, then the next batches to the same url
     // (the boot files — game.js, lib/, the manifests — are in the last batch: see publishBatches)
-    batches: supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : undefined,
+    batches: split ? BS : undefined,
     // files of the live version (tools/build/published_files.json) this build no longer has: pass each as null in
     // the FIRST publish's `files` map ({ "<path>": null }) — an update keeps every file it does not name
     stale: stale.length ? stale : undefined,
     // (v4-C2) the resident chat asks the viewer's Claude through the `sample` capability: publish with this declaration
     capabilities: { sample: {} },
-    note: 'Publish: Artifact({ file_path: page, root, files, capabilities: { sample: {} } }) - the capabilities declaration lets residents chat with AI (offline village voice without it). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : '') + (stale.length ? ` Updating the live link: also send the ${stale.length} \`stale\` paths as null in the FIRST publish (files map { path: null }); then run node tools/build/build_artifact.mjs --record-published.` : ''),
+    note: 'Publish: Artifact({ file_path: page, root, files, capabilities: { sample: {} } }) - the capabilities declaration lets residents chat with AI (offline village voice without it). Supporting paths are relative to root.' + (split ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : '') + (stale.length ? ` Updating the live link: also send the ${stale.length} \`stale\` paths as null in the FIRST publish (files map { path: null }); then run node tools/build/build_artifact.mjs --record-published.` : ''),
   }, null, 1));
 
   const byExt = {};

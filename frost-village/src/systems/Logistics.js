@@ -36,12 +36,26 @@ export class Logistics {
     this.gs = gs;
     this.sinks = [];
     this.res = new Map();      // sink -> { type: n } reserved by porters on their way
+    // ((v4.2 fix, gameplay M5) the room the 길 안내 holds for the chief's load at the place it sends him: porters see it
+    //  as taken (they no longer fill the 제재소 입구 a second before he gets there); the chief's own resolver
+    //  (Tutorial.destination, selfView) does not)
+    this.chief = new Map();    // sink -> { type: n }
+    this.selfView = false;
+  }
+
+  /** the chief's reservations: [{ sink, type, n }] replaces the previous ones */
+  setChief(list) {
+    this.chief.clear();
+    for (const q of list || []) { if (!q || !q.sink || !(q.n > 0)) continue; let r = this.chief.get(q.sink); if (!r) this.chief.set(q.sink, r = {}); r[q.type] = (r[q.type] || 0) + q.n; }
   }
 
   add(sink) { if (this.sinks.indexOf(sink) < 0) this.sinks.push(sink); return sink; }
-  remove(sink) { const i = this.sinks.indexOf(sink); if (i >= 0) this.sinks.splice(i, 1); this.res.delete(sink); }
+  remove(sink) { const i = this.sinks.indexOf(sink); if (i >= 0) this.sinks.splice(i, 1); this.res.delete(sink); this.chief.delete(sink); }
 
-  reserved(sink, type) { const r = this.res.get(sink); return (r && r[type]) || 0; }
+  reserved(sink, type) {
+    const r = this.res.get(sink), c = this.selfView ? null : this.chief.get(sink);
+    return ((r && r[type]) || 0) + ((c && c[type]) || 0);
+  }
   reserve(sink, type, n) { if (!sink || n <= 0) return; let r = this.res.get(sink); if (!r) this.res.set(sink, r = {}); r[type] = (r[type] || 0) + n; }
   release(sink, type, n) { const r = sink && this.res.get(sink); if (!r || !r[type]) return; r[type] = Math.max(0, r[type] - n); }
 

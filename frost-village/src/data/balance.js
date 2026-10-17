@@ -477,7 +477,9 @@ export const BALANCE = {
     pickup: { stillS: 0.35, stillSpeed: 20, gatherStillS: 0.35, tipSpeed: 0.6 },
     // ── 길 안내: dotEvery = 점 사이 간격(px), maxDots = 점 최대 개수, hideNear = 촌장 가까이(px)의 점은 숨김,
     //    replanEvery = 길을 다시 찾는 최소 간격(초), strayPx = 길에서 이만큼 벗어나면 다시 찾기, straightUnder = 이보다 가까우면 곧장
-    nav: { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360 },
+    //    rawDockPx = (CODE-2 리뷰) 날것(생선·통나무·밀·광석·고기)이 갈 곳이 짐 싣는 곳(수출)뿐이고 이보다(px) 멀면 거기로 안내하지 않아요
+    //                (날것 수출은 한 개 0.5~1.5 코인: 35 m 걸어갈 값이 아니에요 → '○○ 입구 가득 · 잠시 기다리거나 버려요')
+    nav: { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360, rawDockPx: 1600 },
     // ── 짐꾼 규칙 (F1·F2): 판매대가 shelfEmptyAfter 초 넘게 비면 그곳이 먼저 (우선순위 shelfEmptyPrio),
     //    대장간·통조림 공장 재료는 inputUrgentBelow(0~1) 아래로 줄었을 때만 급하고 그 밖엔 inputCalmPrio,
     //    travelPxPerPoint = 이만큼(px) 멀 때마다 우선순위 1 깎기 (먼 곳보다 가까운 곳)
@@ -510,7 +512,8 @@ export const BALANCE = {
     // ── 기차 수출 (F7): perTrain = 기차 한 번에 싣는 상자 (화물칸 32 + 무개화차 24), big = '화물칸 크게' 뒤,
     //    bigCost = 화물칸 크게 값, bigOfferWait / bigOfferS = 수출 상자가 이만큼 bigOfferS 초 기다리면 '화물칸 크게' 제안,
     //    exportRate = 수출 값 (판매 가격 × exportRate, 역 금고로), loadEvery = 상자 하나 싣는 간격(초)
-    freight: { perTrain: 56, big: 88, bigCost: 2000, bigOfferWait: 60, bigOfferS: 120, exportRate: 0.5, loadEvery: 0.14 },
+    //    surplusShare = (CODE-2 리뷰) 주문 상자가 밀려 있어도 짐 싣는 곳의 남는 물건이 기차 한 번에 이만큼(0.25 = 4분의 1)은 타요
+    freight: { perTrain: 56, big: 88, bigCost: 2000, bigOfferWait: 60, bigOfferS: 120, exportRate: 0.5, loadEvery: 0.14, surplusShare: 0.25 },
     // ── 서리 물류창고 (F8)
     depot: {
       site: { coins: 6000, item_plank: 40, item_ingot: 20, time: 20 },              // 짓는 값 (코인 + 자재), 짓는 시간(초)
@@ -527,8 +530,9 @@ export const BALANCE = {
     office: { site: { coins: 1800, item_plank: 20, item_ingot: 6, time: 10 },
               hire: { sem: 500, ttal: 900, bok: 700, chong: 900 }, revealPx: 260, revealHyst: 60, deskPadS: 0.4 },
     // ── 수금원 딸랑이: every = 도는 간격(초), rushAt = 한 곳에 이만큼 쌓이면 바로 출발, minPad = 이만큼 넘게 쌓인 곳만 들러요,
-    //    speed = 걷는 속도(px/초), vaultAt = 이만큼 넘게 입금하면 금고 문이 빙글
-    courier: { every: 60, rushAt: 1000, minPad: 100, speed: 150, vaultAt: 5000 },
+    //    speed = 걷는 속도(px/초), vaultAt = 이만큼 넘게 입금하면 금고 문이 빙글,
+    //    from ~ to = 일하는 시각 (7시 ~ 21시, 밤에는 책상에서 쉬어요 — 그동안 쌓인 코인은 아침 첫 바퀴에 가져가요)
+    courier: { every: 60, rushAt: 1000, minPad: 100, speed: 150, vaultAt: 5000, from: 7, to: 21 },
     // ── 서리 은행: 짓는 값
     bank: { site: { coins: 3000, item_plank: 24, item_ingot: 12, time: 12 } },
     // ── 재고판(셈이): window = 흐름을 재는 시간(초), emptyS / fullS = 이만큼(초) 비어 / 차 있으면 '부족·길 막힘' / '남음'

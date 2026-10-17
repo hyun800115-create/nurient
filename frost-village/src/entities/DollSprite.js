@@ -185,8 +185,9 @@ export class DollSprite {
     const sx = this.scaleX, sy = this.scaleY;
     const y0 = this.y - this.lift;
     // standing still with the same picture: nothing to do (most of the town at any moment)
-    if (!rig.moved && rig.px === this.x && rig.py === y0 && rig.pa === a && rig.pd === this._depth && rig.ps === sx && rig.pv === vis) return;
-    rig.moved = false; rig.px = this.x; rig.py = y0; rig.pa = a; rig.pd = this._depth; rig.ps = sx; rig.pv = vis;
+    const hd = this.headDepth;
+    if (!rig.moved && rig.px === this.x && rig.py === y0 && rig.pa === a && rig.pd === this._depth && rig.ps === sx && rig.pv === vis && rig.ph === hd) return;
+    rig.moved = false; rig.px = this.x; rig.py = y0; rig.pa = a; rig.pd = this._depth; rig.ps = sx; rig.pv = vis; rig.ph = hd;
     if (rig.tier === 2) {
       const d = rig.dot;
       d.setVisible(vis);
@@ -200,7 +201,9 @@ export class DollSprite {
       img.x = this.x + img.__dx * sx; img.y = y0 + img.__dy * sy;
       img.scaleX = img.__sx * sx; img.scaleY = sy;
       img.alpha = a;
-      const dd = this._depth + img.__z * 1e-4;
+      // ((v4.2 fix, visual M3) headDepth: the head-anchored layers drawn at their own depth — the bank's tellers keep
+      //  their bodies behind the counter glass and their faces in front of it)
+      const dd = (hd !== undefined && hd !== null && img.__hd ? hd : this._depth) + img.__z * 1e-4;
       if (img.depth !== dd) img.setDepth(dd);
     }
   }

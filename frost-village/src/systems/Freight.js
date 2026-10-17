@@ -62,6 +62,14 @@ export class Freight {
   trainIn() { const r = this.nb && this.nb.rail; return !!(r && r.running && r.phase === 'atOurs'); }
   /** crates the cars still take this dwell */
   room() { return Math.max(0, this.cap() - this.aboard()); }
+  /** ((v4.2 fix, gameplay L5) the order-card crates' share of this dwell: surplus waiting at the dock keeps
+   *  freight.surplusShare of the cars (a quarter) — with a backlog of card crates nothing was exported for 30 minutes
+   *  while the dock read '수출 · 기차에 실을 것 N') */
+  cardRoom() {
+    const share = Math.max(0, Math.min(1, Number(B().surplusShare) || 0));
+    const hold = Math.max(0, Math.min(this.dockCount(), Math.floor(this.cap() * share) - sum(this.unpaid)));
+    return Math.max(0, this.room() - hold);
+  }
 
   /** one crate boards the cars ('card' = an order-card crate from Growth, 'surplus' = an export) */
   board(ty, kind) {
@@ -203,7 +211,7 @@ export class Freight {
     if (this.view) { this.view.stack.layout(this.view.x, this.view.y, this.view.y - 2, 0, dt); this.view.label.bob(this.gs.time.now); }
     else if (this.dockCount() > 0) this.ensureView();
     // surplus into the cars after the card crates (camera anywhere)
-    if (this.trainIn() && this.dockCount() > 0 && !(G.cargo > 0) && this.room() > 0) {
+    if (this.trainIn() && this.dockCount() > 0 && (!(G.cargo > 0) || this.cardRoom() <= 0) && this.room() > 0) {
       this.loadT -= dt;
       if (this.loadT <= 0) {
         this.loadT = Number(B().loadEvery) || 0.14;

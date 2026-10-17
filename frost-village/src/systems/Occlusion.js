@@ -124,6 +124,9 @@ export class Occlusion {
           if (n >= (o.big ? 2 : 1)) { o.want = FADED; break; }
         }
       }
+      // ((v4.2 fix, visual H2) a linked occluder (a watchtower's bonfire) fades with its building as well as for its own
+      //  pixels: the opaque flame over the train behind the see-through tower read as the train on fire)
+      for (let i = 0; i < list.length; i++) { const o = list[i]; if (o.link) o.want = Math.min(o.want === undefined ? 1 : o.want, o.link.want === undefined ? 1 : o.link.want); }
     }
     const k = Math.min(1, dt * 10);
     for (let i = 0; i < list.length; i++) {

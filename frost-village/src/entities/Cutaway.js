@@ -76,13 +76,33 @@ export class Cutaway {
     for (const name in this.layers) {
       const img = this.layers[name];
       const k = img.texture && img.texture.key;
-      if ((k === '__WHITE' || k === 'fv_blank' || k === '__MISSING') && Assets.has(name)) {
-        const playing = img.__loop;
-        Assets.apply(img, name);
-        if (playing && img.play) { const ak = Assets.spriteAnim(name, playing); if (ak) img.play(ak); }
-      }
+      if ((k === '__WHITE' || k === 'fv_blank' || k === '__MISSING') && Assets.has(name)) Assets.apply(img, name);
     }
+    this.replayLoops();
     this.apply();
+  }
+
+  /** ((v4.2 fix, robust L2) a loop asked for while its page was away (the stove 'fire', a typewriter 'type') starts once
+   *  its anim exists — the lazy-image reskin can put the frame back before refresh() sees a stand-in */
+  replayLoops() {
+    for (const name in this.layers) {
+      const img = this.layers[name];
+      if (!img.__loop || !img.play || (img.anims && img.anims.isPlaying)) continue;
+      const k = img.texture && img.texture.key;
+      if (k === '__WHITE' || k === 'fv_blank' || k === '__MISSING') continue;
+      const ak = Assets.spriteAnim(name, img.__loop);
+      if (ak) img.play(ak);
+    }
+  }
+
+  /** ((v4.2 fix, visual M4) every inside layer shows its own picture (no stand-in while its on-demand page is away) */
+  insideReady() {
+    for (const name in this.layers) {
+      if (!this.inside.has(name) && name !== this.cut) continue;
+      const k = this.layers[name].texture && this.layers[name].texture.key;
+      if (!k || k === '__WHITE' || k === 'fv_blank' || k === '__MISSING' || k === '__DEFAULT') return false;
+    }
+    return true;
   }
 
   /** (CODE-2) loop an overlay's anim (typewriter 'type', stove 'fire', phone 'ring'); null stops it on frame 0 */
@@ -187,6 +207,7 @@ export class Cutaway {
   }
 
   update(dt) {
+    if (this.alpha > 0 && (this.loopT = (this.loopT || 0) - dt) <= 0) { this.loopT = 1; this.replayLoops(); }
     const want = this.revealed ? 1 : 0;
     if (this.alpha === want) return;
     const step = dt * 1000 / Math.max(60, this.fade.ms || 260);

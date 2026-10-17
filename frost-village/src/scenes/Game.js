@@ -110,6 +110,8 @@ class UIProxy {
   get hud42() { const s = this.s; return s ? s.hud42 || null : null; }
 }
 
+const NO_AGENTS = [];
+
 export class Game extends Phaser.Scene {
   constructor() { super('Game'); }
 
@@ -130,6 +132,9 @@ export class Game extends Phaser.Scene {
   }
 
   build() {
+    // ((v4.2 fix, robust M2) a new game (처음부터, a quarantine restart) starts in silence: every ambience bed the last
+    //  scene asked for (the office, the wheel squeal, …) is set again by whoever plays it now
+    for (const k in Audio.ambTarget) Audio.ambTarget[k] = 0;
     const W = WORLD.width, H = WORLD.height;
     this.W = W; this.H = H;
     this.font = FONT;
@@ -1575,8 +1580,9 @@ export class Game extends Phaser.Scene {
     let vx = (dx / d) * speed, vy = (dy / d) * speed;
     // unstick: slide sideways for a moment when blocked
     if (a.sideT > 0) { a.sideT -= dt; const s = a.sideDir || 1; const ox = -vy * s, oy = vx * s; vx = vx * 0.3 + ox * 0.9; vy = vy * 0.3 + oy * 0.9; }
-    // separation from other agents
-    const list = this.agents;
+    // separation from other agents ((v4.2 fix, robust M1) not for the office's courier and aide, who cross the whole
+    //  village all day: the O(agents) loop per step was most of the office's logic time)
+    const list = a.noSeparate ? NO_AGENTS : this.agents;
     for (let i = 0; i < list.length; i++) {
       const o = list[i];
       if (o === a || !o.alive) continue;
