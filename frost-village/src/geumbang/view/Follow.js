@@ -81,10 +81,11 @@ export class Follow {
         const a = m.book.get(o.aid);
         const bt = v.tl.beats[Math.max(0, v.beat)];
         const ring = bt && (bt.k === 'ring' || bt.k === 'open' || bt.k === 'hand' || bt.k === 'joy') && bt.aid === o.aid;
-        // (the doorstep beats frame the door itself; the walk there, the van and the door together)
-        const k = ring ? 0.85 : 0.5;
-        const tx = a ? v.x + (a.door.x - v.x) * k : v.x, ty = a ? v.y + (a.door.y - v.y) * k : v.y;
-        return { x: tx, y: ty - 40, cap: ring ? 6 : 5 };
+        // (the doorstep beats frame the courier and the door; the walk there, the van and the courier together)
+        const vd = view.vans && view.vans.get(v.id), cr = vd && vd.courier && vd.courier.px !== undefined ? { x: vd.courier.px, y: vd.courier.py } : null;
+        const d = a ? a.door : { x: v.x, y: v.y };
+        const p = ring ? (cr ? { x: (cr.x + d.x) / 2, y: (cr.y + d.y) / 2 } : d) : cr ? { x: (v.x + cr.x) / 2, y: (v.y + cr.y) / 2 } : { x: (v.x + d.x) / 2, y: (v.y + d.y) / 2 };
+        return { x: p.x, y: p.y - 40, cap: ring ? 6 : 5 };
       }
       return { x: v.x, y: v.y - 40, cap: v.st === 'load' ? 4 : 5 };
     }

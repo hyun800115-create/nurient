@@ -13,7 +13,7 @@
  "steps": [
   "depot ready true",
   "module added {\"ok\":true,\"gate\":true}",
-  "host {\"host\":true,\"entries\":24,\"zones\":{\"van\":22,\"sled\":3}}",
+  "host {\"host\":true,\"entries\":24,\"zones\":{\"van\":22,\"sled\":3},\"first\":\"정 할머니\"}",
   "pad {\"x\":2723.2,\"y\":3177.4}",
   "shot geumbang_lab_ingame_pad.jpg",
   "st 1",
@@ -21,28 +21,29 @@
   "shot geumbang_lab_ingame_first_pick.jpg",
   "shot geumbang_lab_ingame_first_drive.jpg",
   "shot geumbang_lab_ingame_first_ring.jpg",
+  "ring frame {\"cam\":[4491,2992,1.7],\"van\":[4240,2867],\"door\":[4519,3082],\"aid\":\"t_apt2\",\"camRect\":[-1400,0,7544,3450]}",
   "shot geumbang_lab_ingame_first_joy.jpg",
   "shot geumbang_lab_ingame_hub.jpg",
   "shot geumbang_lab_ingame_app.jpg",
-  "numbers {\"msHost\":0.119,\"msModel\":0.018,\"objects\":137,\"sceneObjects\":1569,\"texMiB\":431.6,\"moduleMiB\":16.03,\"slice\":617,\"today\":{\"orders\":10,\"delivered\":1,\"coins\":20,\"units\":6,\"overnight\":0},\"vans\":[\"home\"],\"view\":true,\"tfGb\":false,\"zones\":{\"van\":22,\"sled\":3}}"
+  "numbers {\"msHost\":0.189,\"msModel\":0.0393,\"objects\":133,\"sceneObjects\":1504,\"texMiB\":429.6,\"moduleMiB\":16.03,\"slice\":543,\"today\":{\"orders\":9,\"delivered\":1,\"coins\":20,\"units\":6,\"overnight\":0},\"vans\":[\"wait\"],\"view\":true,\"tfGb\":false,\"zones\":{\"van\":22,\"sled\":3}}"
  ],
  "numbers": {
-  "msHost": 0.119,
-  "msModel": 0.018,
-  "objects": 137,
-  "sceneObjects": 1569,
-  "texMiB": 431.6,
+  "msHost": 0.189,
+  "msModel": 0.0393,
+  "objects": 133,
+  "sceneObjects": 1504,
+  "texMiB": 429.6,
   "moduleMiB": 16.03,
-  "slice": 617,
+  "slice": 543,
   "today": {
-   "orders": 10,
+   "orders": 9,
    "delivered": 1,
    "coins": 20,
    "units": 6,
    "overnight": 0
   },
   "vans": [
-   "home"
+   "wait"
   ],
   "view": true,
   "tfGb": false,

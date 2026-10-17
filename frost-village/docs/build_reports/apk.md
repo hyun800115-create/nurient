@@ -8,13 +8,21 @@ the reusable APK pipeline (`tools/apk/`) and the first test APK, built from the 
 | | |
 |---|---|
 | File | `frost-village/dist/apk/snowbloom-v4.1-test.apk` |
-| SHA-256 | `5eb8d983f0000bab810d3ff91dd1471c73139d07417d980b3457c60c8fef925f` |
-| Size | 58,109,140 bytes (55.4 MB) |
+| SHA-256 | `8c2869b7f7094ff630828d2d8d67751f3a7ef39c95396742d195981c7ac38e25` (the INTERNET build sent to the designer; see below) |
+| Size | 58,109,168 bytes (55.4 MB) |
 | App | 행복한 눈꽃마을 이야기 · package `com.snowbloom.village` · version 4.1 (versionCode 4010) |
 | Android | 7.0 or newer (minSdk 24), targetSdk 34 |
 | Signature | v1 (JAR) + v2 (APK Signature Scheme v2), **test key** `dist/apk/snowbloom-test.p12` |
-| Permissions | `VIBRATE` only (the game's haptics). No `INTERNET`: the game never fetches anything remote |
+| Permissions | `VIBRATE` (the game's haptics) + `INTERNET`. The game fetches nothing remote; INTERNET is there only so the WebView never runs in its "block network loads" mode (see §5) |
 | Game files | the 492 files of the artifact build (`--webp --mp3-only`), unchanged except `index.html` wrapped in a full page |
+
+**Which file was sent.** The first build (no INTERNET, SHA-256 `5eb8d983…`, kept as `dist/apk/snowbloom-v4.1-test-nonet.apk`)
+is the one the independent verification below checked. Its only unproven point was WebView's behaviour without the INTERNET
+permission, so the file sent to the designer is the same build with `--internet` (one manifest line; same key, same
+versionCode 4010), rebuilt from commit `65c39f3` with `APK_EXTRA=--internet apk_from_commit.sh 65c39f3 4.1 4010 --check`:
+`validate_apk.py --internet` 38/38 (all 492 game files identical to the artifact build) and the boot test 16/16 (title,
+new game, shop loop with touch, coins 4, offline resident chat by real taps, exit save, reload with the same coins).
+A normal permission: Android grants it at install, without a prompt.
 
 The Korean install guide for the designer is at the end ([설치 안내](#설치-안내-디자이너용)).
 
@@ -220,7 +228,7 @@ the load for the old waits). Both were fixed in the test; neither was an APK pro
   Java compiled against the real Android 14 framework (Robolectric `android-all` 14) with matching override signatures,
   the asset router run on the JVM against the APK itself, and the packed game run end-to-end in Chromium through that
   router. What remains unproven until the first install: the WebView itself on the designer's phone.
-- **No INTERNET permission.** The game fetches nothing remote (the build lists every http(s) host the code mentions; for
+- **No INTERNET permission (the first build only; the build sent has it).** The game fetches nothing remote (the build lists every http(s) host the code mentions; for
   v4.1 only two strings inside `phaser.min.js`), and the boot test blocks every request that leaves the virtual origin.
   Without the permission WebView turns on "block network loads", which in the Chromium WebView code only makes real
   network requests cache-only; requests answered by `shouldInterceptRequest` are served before that. This is the one

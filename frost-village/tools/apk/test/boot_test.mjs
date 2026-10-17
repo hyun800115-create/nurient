@@ -82,7 +82,7 @@ await ctx.route('**/*', async (route) => {
     return route.fulfill({ status: r.status, headers, body: Buffer.from(await r.arrayBuffer()) });
   }
   blocked.push(url.slice(0, 160));
-  return route.abort('internetdisconnected');       // the app has no INTERNET permission
+  return route.abort('internetdisconnected');       // the game must not need the network (the app serves everything itself)
 });
 const page = await ctx.newPage();
 const log = { pageErrors: [], consoleErrors: [], warnings: [], failed: [], http: [] };
@@ -311,7 +311,7 @@ try {
 const errs = log.pageErrors.concat(log.consoleErrors);
 step('0 page errors, 0 console errors', errs.length === 0, errs.slice(0, 6).join(' | '));
 step('no 404 and no failed request', !notFound.length && !log.http.length && !log.failed.length, notFound.concat(log.http, log.failed).slice(0, 6).join(' | '));
-step('no request left the virtual origin (the app has no INTERNET permission)', blocked.length === 0, blocked.slice(0, 6).join(' | '));
+step('no request left the virtual origin (the game needs no network)', blocked.length === 0, blocked.slice(0, 6).join(' | '));
 step('AssetRouter self-test (every packed file routes with a known type)', selftest.failures.length === 0 && selftest.files > 0, { files: selftest.files, types: selftest.types, failures: selftest.failures.slice(0, 4) });
 const summary = {
   apk: path.basename(APK), ok: !fatal && results.every((r) => r.ok), seconds: Math.round((Date.now() - t0) / 1000),

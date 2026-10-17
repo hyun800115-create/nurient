@@ -41,8 +41,6 @@ const sum = (o) => { let n = 0; for (const k in o || {}) n += Number(o[k]) || 0;
 const hashStr = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const ROLE_KIND = { home: 'apt', shop: 'shop', hall: 'hall', fire: 'fire' };
 const PERSON_KIND = { student: 'child', teen: 'child', elder: 'elder', shopkeeper: 'keeper', keeper: 'keeper' };
-/** geumbangfolk presets of the crew roles (TF.person falls back to the townfolk generator without G-P7) */
-const AGE_PRESET = { elder: '__elder', child: '__child' };
 
 // ====================================================================================================== the world
 /**
@@ -71,9 +69,10 @@ export function townEntries(gs) {
         i += n;
       }
     } else if (list.length) hh.push({ hid: id + ':' + list[0].id, people: list.map(person), name: list[0].name });
+    // 정 할머니 (the letter's sender, the first order): a story household of 솔방울 아파트 2동, always at home
     if (id === 't_apt2' && !jeong) {
-      const h = hh.find((q) => q.people.some((p) => p.kind === 'elder'));
-      if (h) { jeong = true; h.first = true; h.name = gt('gb_jeong', null, getLang()); }
+      jeong = true;
+      hh.unshift({ hid: 't_apt2:jeong', people: [{ pid: 'jeong', name: gt('gb_jeong', null, getLang()), kind: 'elder', fav: 'item_bread' }], name: gt('gb_jeong', null, getLang()), first: true });
     }
     return hh;
   };
@@ -169,7 +168,7 @@ class V4Rig {
   constructor(gs, person) {
     this.gs = gs; this.person = person;
     this.d = new GbDoll(gs, 'tf:' + person.base, person, -9999, -9999);
-    this.d.noFade = false;
+    this.d.noFade = true;                 // (a courier / crew member never fades in mid-scene when the pool hands it a rig)
     this.req = ''; this.anim = 'idle'; this.dir = 'S'; this.alphaV = 1; this.shown = false;
     this.d.setVisible(false);
   }
@@ -219,14 +218,21 @@ class V4Rig {
 }
 
 function dollsPort(gs, sys) {
-  const person = (preset, seed) => {
+  /** a seeded look: a generator preset (the crew's gb_* presets after G-P7), or an age ('elder' / 'child' / 'adult':
+   *  rerolled like TownSim does until the base has that age) */
+  const person = (preset, seed, age) => {
     if (!TF.ok) return null;
     const rng = mulberry32(seed >>> 0 || 7);
-    try { return TF.person(rng, preset && TF.T && TF.T.generator && TF.T.generator.presets && TF.T.generator.presets[preset] ? preset : null); } catch (e) { return null; }
+    const P = TF.T && TF.T.generator && TF.T.generator.presets;
+    try {
+      let p = TF.person(rng, preset && P && P[preset] ? preset : null);
+      for (let k = 0; age && k < 12 && TF.age(p.base) !== age; k++) p = TF.person(rng, null);
+      return p;
+    } catch (e) { return null; }
   };
   return {
     make(look) {
-      const p = look && look.base && look.parts ? look : person(look && look.preset, (look && look.seed) || 7);
+      const p = look && look.base && look.parts ? look : person(look && look.preset, (look && look.seed) || 7, 'adult');
       return p ? new V4Rig(gs, p) : null;
     },
     /** the household member who opens the door: the citizen's own look (TownSim), else a seeded one by age */
@@ -236,7 +242,8 @@ function dollsPort(gs, sys) {
       const who = hh && hh.people ? hh.people[0] : null;
       const c = who && Number.isFinite(who.cid) && T ? T.get(who.cid) : null;
       if (c && c.person) return new V4Rig(gs, c.person);
-      const p = person(AGE_PRESET[who && who.kind] || null, hashStr(String(hid || aid)));
+      const kind = who && who.kind;
+      const p = person(null, hashStr(String(hid || aid)), kind === 'elder' ? 'elder' : kind === 'child' ? 'child' : 'adult');
       return p ? new V4Rig(gs, p) : null;
     },
     hub() { return (TF.T && TF.T.hub) || {}; },
@@ -438,6 +445,7 @@ export class GeumbangSystem {
 
   /** who is home (rebuilt once a second): address -> Set of household ids with someone in */
   homeNow(aid, hid) {
+    if (hid === 't_apt2:jeong') return true;   // 정 할머니 is always in
     const set = this.homes.get(aid);
     if (!set) return true;                   // a village house / unknown: someone answers
     return hid ? set.has(hid) : set.size > 0;

@@ -154,6 +154,7 @@ export class Courier {
       R.visible(true);
       R.play(anim, dir, { noItems: carry <= 0 });
       R.place(x, y, y, alpha);
+      this.px = x; this.py = y;                 // (Follow frames the courier and the door)
     } else R.visible(false);
     this.stack(show ? carry : 0, x, y, b.size, alpha);
     this.lastBeat = bi;
