@@ -245,7 +245,7 @@ export class ChiefAura {
     if (g.texture !== s.texture || g.frame.name !== s.frame.name) g.setTexture(s.texture.key, s.frame.name);
     g.setOrigin(s.originX, s.originY).setFlipX(s.flipX).setPosition(s.x, s.y).setScale(s.scaleX, s.scaleY).setDepth(c.depth + 0.5).setVisible(true);
     if (!g.__tf) { g.__tf = 1; g.setTintFill(0xfff4d6); }
-    g.setAlpha(0.42 + Math.sin(this.t * 3) * 0.06);
+    g.setAlpha(0.52 + Math.sin(this.t * 3) * 0.06);
   }
 
   /** characters near the chief (the crowd rule of the pin) */
