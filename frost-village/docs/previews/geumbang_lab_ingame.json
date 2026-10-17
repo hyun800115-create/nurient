@@ -1,0 +1,56 @@
+{
+ "shots": [
+  "geumbang_lab_ingame_pad.jpg",
+  "geumbang_lab_ingame_ceremony.jpg",
+  "geumbang_lab_ingame_first_pick.jpg",
+  "geumbang_lab_ingame_first_drive.jpg",
+  "geumbang_lab_ingame_first_ring.jpg",
+  "geumbang_lab_ingame_first_joy.jpg",
+  "geumbang_lab_ingame_hub.jpg",
+  "geumbang_lab_ingame_app.jpg"
+ ],
+ "errors": [],
+ "steps": [
+  "depot ready true",
+  "module added {\"ok\":true,\"gate\":true}",
+  "host {\"host\":true,\"entries\":24,\"zones\":{\"van\":22,\"sled\":3}}",
+  "pad {\"x\":2723.2,\"y\":3177.4}",
+  "shot geumbang_lab_ingame_pad.jpg",
+  "st 1",
+  "shot geumbang_lab_ingame_ceremony.jpg",
+  "shot geumbang_lab_ingame_first_pick.jpg",
+  "shot geumbang_lab_ingame_first_drive.jpg",
+  "shot geumbang_lab_ingame_first_ring.jpg",
+  "shot geumbang_lab_ingame_first_joy.jpg",
+  "shot geumbang_lab_ingame_hub.jpg",
+  "shot geumbang_lab_ingame_app.jpg",
+  "numbers {\"msHost\":0.119,\"msModel\":0.018,\"objects\":137,\"sceneObjects\":1569,\"texMiB\":431.6,\"moduleMiB\":16.03,\"slice\":617,\"today\":{\"orders\":10,\"delivered\":1,\"coins\":20,\"units\":6,\"overnight\":0},\"vans\":[\"home\"],\"view\":true,\"tfGb\":false,\"zones\":{\"van\":22,\"sled\":3}}"
+ ],
+ "numbers": {
+  "msHost": 0.119,
+  "msModel": 0.018,
+  "objects": 137,
+  "sceneObjects": 1569,
+  "texMiB": 431.6,
+  "moduleMiB": 16.03,
+  "slice": 617,
+  "today": {
+   "orders": 10,
+   "delivered": 1,
+   "coins": 20,
+   "units": 6,
+   "overnight": 0
+  },
+  "vans": [
+   "home"
+  ],
+  "view": true,
+  "tfGb": false,
+  "zones": {
+   "van": 22,
+   "sled": 3
+  }
+ },
+ "missing404": [],
+ "warnings": []
+}

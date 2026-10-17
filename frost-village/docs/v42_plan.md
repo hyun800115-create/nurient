@@ -644,11 +644,11 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | 업무 | 40 | bag has room and a v4 hint target exists | 20–60 s | carries, sells, fills the pantry, follows his own navigator |
 | 저녁 | 40 from 20:00 (**CODE-1 tuned: 30**, so the day's 업무 still beats it; **CODE-2 fix: 60 from 21:00 to 06:00** — the night is his: he hauled ingots at 03:00) | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
 | 수금 | 35 (**CODE-1 tuned: 45**) | no courier and ≥ 300 (**tuned: 200**) coins on one pad | one pad | — |
-| 기차 구경 | 30 (**CODE-2 fix: +25 for the day's first watch**, then from ≤ 2,600 px) | a train arrives at ours within 20 s and he is ≤ 1,500 px away | arrival + loop | walks to the platform, waves |
+| 기차 구경 | 30 (**CODE-2 fix: +25 for the day's first watch**, then from ≤ 2,600 px) | a train arrives at ours within 20 s and he is ≤ 1,500 px away (**CODE-2 fix:** a watch that began goes on while the train stands at the platform; the day's watch counts once it is over — before, starting it took its own bonus and range away and it ended in the same second) | arrival + loop | walks to the platform, waves |
 | 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min (**CODE-1**: a resident staying at a spot — VillageLife's `stay` job, not walking or moving in — counts as idle; during a chore break he looks 1,500 px far; residents only, the town dolls are CODE-2) | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
 | 사무실 | 20 (+30 08–10 h with a new paper, +30 with ≥ 2 unread letters) | office built, **bag empty** | 30–60 s | walks in (shell fades), sits (`sit_idle`), reads the paper (`sit_read`), stamps a letter (`sit_write`) |
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
-| 콩이 | 15 (**CODE-2 fix: +20 after 10 min without a game**, dog within 1,400 px then) | dog within 800 px | 15 s | `DogPlay` pet / throw |
+| 콩이 | 15 (**CODE-2 fix: +20 after 10 min without a game**, dog within 1,400 px then; the idle time resets once the game is over) | dog within 800 px | 15 s | `DogPlay` pet / throw |
 (CODE-2 review fixes, gameplay M4 / visual M1) The leisure acts (점심, 저녁, 기차 구경, 수다, 사무실, 쉬기, 콩이) wait while
 his bag holds a load that has somewhere to go (업무 delivers it first: he sat at lunch with five smoked meats on his
 head); 업무 between two loads (bag empty) is not held by its minimum time, so lunch, the night or the day's train can

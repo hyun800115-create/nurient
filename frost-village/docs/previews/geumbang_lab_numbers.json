@@ -1,0 +1,174 @@
+{
+ "smoke": {
+  "split": {
+   "hub": 0.0353,
+   "door": 0.0013,
+   "bubbles": 0.0003,
+   "followV": 0.0027,
+   "chip": 0.007,
+   "vans": 0.031,
+   "dollsCompositor": 0.0277
+  },
+  "T": 2095.0500000005736,
+  "hour": 11.802000000022943,
+  "st": 2,
+  "msHost": 0.143,
+  "msHostP95": 0.4,
+  "msModel": 0.0193,
+  "msModelP95": 0.1,
+  "objects": 63,
+  "sceneObjects": 253,
+  "dollsMs": 11.2,
+  "texMiB": 217.7,
+  "moduleMiB": 16.03,
+  "moduleTex": {
+   "gb_bld_0": 2.03,
+   "ui6_gb": 2.43,
+   "gb_van_0": 6.42,
+   "gbf_road_0": 3.3,
+   "gbf_hub_0": 1.85
+  },
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 4
+ },
+ "phoneErrors": [],
+ "updated": "2026-10-17T20:26:48.917Z",
+ "first": {
+  "orderT": 2025.0333333333242,
+  "deliveredT": 2064.650000000182,
+  "secs": 39.6,
+  "toasts": [
+   "띵동! 새 주문 · 솔방울 아파트 2동 정 할머니네 · 장작 4 · 빵 2",
+   "띵동! 새 주문 · 솔방울 아파트 1동 한지호네 · 빵 2 · 생선구이 2 외 1",
+   "첫 배달 완료! 왼쪽 위 금방 앱에서 주문을 볼 수 있어요"
+  ],
+  "banners": [
+   "금방 물류센터가 문을 열었어요! / 방금 시키면 금방 와요"
+  ],
+  "sounds": [
+   "sfx_gb_jingle",
+   "sfx_gb_chime",
+   "sfx_gb_tape",
+   "sfx_gb_thump",
+   "sfx_gb_scan",
+   "sfx_gb_doorbell"
+  ],
+  "coins": 20
+ },
+ "gifPageErrors": [],
+ "hub": {
+  "split": {
+   "hub": 0.0313,
+   "door": 0.0017,
+   "bubbles": 0.0013,
+   "followV": 0,
+   "chip": 0.0023,
+   "vans": 0.027,
+   "dollsCompositor": 0.0967
+  },
+  "T": 2867.0500000001534,
+  "hour": 18.68200000000614,
+  "st": 2,
+  "msHost": 0.175,
+  "msHostP95": 0.5,
+  "msModel": 0.0053,
+  "msModelP95": 0.1,
+  "objects": 157,
+  "sceneObjects": 363,
+  "dollsMs": 29.1,
+  "texMiB": 217.7,
+  "moduleMiB": 16.03,
+  "moduleTex": {
+   "gb_bld_0": 2.03,
+   "gb_van_0": 6.42,
+   "ui6_gb": 2.43,
+   "gbf_road_0": 3.3,
+   "gbf_hub_0": 1.85
+  },
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 7
+ },
+ "door": {
+  "boxes": 5,
+  "snowy": 1,
+  "photos": 1,
+  "quietRings": 0
+ },
+ "sled": {
+  "st": "door",
+  "runs": 0,
+  "zones": {
+   "van": 26,
+   "sled": 4
+  }
+ },
+ "night": {
+  "split": {
+   "hub": 0.0307,
+   "door": 0.0003,
+   "bubbles": 0.0023,
+   "followV": 0.0003,
+   "chip": 0.0043,
+   "vans": 0.115,
+   "dollsCompositor": 0.032
+  },
+  "T": 4810.04999999949,
+  "hour": 0.40199999997960845,
+  "st": 2,
+  "msHost": 0.215,
+  "msHostP95": 0.5,
+  "msModel": 0.015,
+  "msModelP95": 0.1,
+  "objects": 102,
+  "sceneObjects": 310,
+  "dollsMs": 9.9,
+  "texMiB": 217.7,
+  "moduleMiB": 16.03,
+  "moduleTex": {
+   "gb_bld_0": 2.03,
+   "gb_van_0": 6.42,
+   "ui6_gb": 2.43,
+   "gbf_road_0": 3.3,
+   "gbf_hub_0": 1.85
+  },
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 13
+ },
+ "desktop": {
+  "split": {
+   "hub": 0.0347,
+   "door": 0.0027,
+   "bubbles": 0,
+   "followV": 0.0003,
+   "chip": 0.0057,
+   "vans": 0.1793,
+   "dollsCompositor": 0.0497
+  },
+  "T": 2772.550000001083,
+  "hour": 14.902000000043316,
+  "st": 2,
+  "msHost": 0.331,
+  "msHostP95": 0.8,
+  "msModel": 0.0133,
+  "msModelP95": 0.1,
+  "objects": 111,
+  "sceneObjects": 323,
+  "dollsMs": 15.1,
+  "texMiB": 217.7,
+  "moduleMiB": 16.03,
+  "moduleTex": {
+   "gb_bld_0": 2.03,
+   "gb_van_0": 6.42,
+   "ui6_gb": 2.43,
+   "gbf_road_0": 3.3,
+   "gbf_hub_0": 1.85
+  },
+  "placeholders": [],
+  "errors": [],
+  "drawCalls": 6
+ },
+ "desktopErrors": []
+}

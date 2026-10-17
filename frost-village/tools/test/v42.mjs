@@ -61,6 +61,9 @@ try {
     O.takeTill = (q, c) => { const n = tk(q, c); w.taken += n; if (q.till.value < 0) w.neg++; return n; };
     O.deposit = (n, c) => { w.dep += n > 0 ? n : 0; return dp(n, c); };
     w.earned0 = window.__FV.scene.economy.earned;
+    // (v4.2 CODE-2 fix, gameplay L7: the courier works 07–21 only) a morning hour when the clock runs
+    const ck = window.__FV.scene.v4 && window.__FV.scene.v4.clock;
+    if (ck && ck.on) ck.set(8);
     // fill two tills so a round is due
     for (const q of O.tills().slice(0, 3)) q.till.value += 400;
   });
@@ -76,7 +79,7 @@ try {
   await page.evaluate(() => window.__FV.v42.office({ build: 'all' }));
   const bankReady = await until(page, () => { const O = window.__FV.scene.v42.office; return !!(O.bank && O.bank.ready); }, 60);
   ok(bankReady, 'the bank cutaway is built once the civic manifest is in');
-  const dep0 = await page.evaluate(() => { const O = window.__FV.scene.v42.office; for (const q of O.tills().slice(0, 3)) q.till.value += 600; window.__bankDep = 0; const b = O.bank, d = b.deposit.bind(b); b.deposit = (n) => { window.__bankDep += n; return d(n); }; return O.depositedTotal; });
+  const dep0 = await page.evaluate(() => { const O = window.__FV.scene.v42.office; const ck = window.__FV.scene.v4 && window.__FV.scene.v4.clock; if (ck && ck.on) ck.set(8); for (const q of O.tills().slice(0, 3)) q.till.value += 600; window.__bankDep = 0; const b = O.bank, d = b.deposit.bind(b); b.deposit = (n) => { window.__bankDep += n; return d(n); }; return O.depositedTotal; });
   await advance(page, 240);
   const bd = await page.evaluate(() => ({ bank: window.__bankDep, dep: window.__FV.scene.v42.office.depositedTotal }));
   ok(bd.bank > 0 && bd.dep > dep0, 'the courier deposits at the bank counter (' + bd.bank + ')');
@@ -177,7 +180,7 @@ try {
     window.__FV.teleport(-200, 700);
     for (const s of gs.v42.depot.sleighs) s.update = () => {};      // keep the sleigh out of it (it would take the surplus first)
     G.cargo = 12; F.addSurplus('item_ingot', 30);
-    const log = { firstSurplusCargo: null, cardMax: 0, surplusMax: 0, sawTrainIn: false };
+    const log = { firstSurplusCargo: null, firstSurplusCards: null, cap: F.cap(), keep: Math.floor(F.cap() * 0.25) /* balance v42.freight.surplusShare */, cardMax: 0, surplusMax: 0, sawTrainIn: false };
     let n = 0;
     while (n++ < 60 * 200) {
       window.__step.run(1 / 60);
@@ -185,7 +188,7 @@ try {
       if (inn) log.sawTrainIn = true;
       const ab = F.aboard(), card = F.cardAboard || 0, sur = ab - card;
       log.cardMax = Math.max(log.cardMax, card);
-      if (sur > 0 && log.firstSurplusCargo === null) log.firstSurplusCargo = G.cargo;
+      if (sur > 0 && log.firstSurplusCargo === null) { log.firstSurplusCargo = G.cargo; log.firstSurplusCards = card; }
       log.surplusMax = Math.max(log.surplusMax, sur);
       if (log.sawTrainIn && !inn && log.surplusMax > 0) break;
     }
@@ -195,7 +198,27 @@ try {
   });
   ok(fr.sawTrainIn && fr.onScreen === false, 'a train stood at our station while the camera was far away', fr);
   ok(fr.cardMax > 0 && fr.cargoEnd < 12, 'order-card crates boarded with the camera anywhere (P0a)', fr);
-  ok(fr.surplusMax > 0 && fr.firstSurplusCargo === 0, 'surplus boarded only once no card crate waited (F7)', fr);
+  // (F7; since the CODE-2 fix L5 the card crates have the cars but freight.surplusShare: surplus boards while card crates
+  //  wait only once they filled their part)
+  ok(fr.surplusMax > 0 && (fr.firstSurplusCargo === 0 || fr.firstSurplusCards >= fr.cap - fr.keep), 'surplus boarded only once no card crate waited, or the card crates had filled their part (F7, L5)', fr);
+  // ((v4.2 CODE-2 review fix, gameplay L5) more card crates than a load: the surplus still gets freight.surplusShare)
+  const fr2 = await page.evaluate(() => {
+    const gs = window.__FV.scene, F = gs.v42.freight, G = gs.v4.growth;
+    G.cargo = 90; F.addSurplus('item_ingot', 30);
+    const log = { cardMax: 0, surplusMax: 0, sawTrainIn: false, cap: F.cap() };
+    let n = 0;
+    while (n++ < 60 * 240) {
+      window.__step.run(1 / 60);
+      const inn = F.trainIn();
+      if (inn) log.sawTrainIn = true;
+      const ab = F.aboard(), card = F.cardAboard || 0;
+      log.cardMax = Math.max(log.cardMax, card); log.surplusMax = Math.max(log.surplusMax, ab - card);
+      if (log.sawTrainIn && !inn) break;
+    }
+    log.cargoLeft = G.cargo; G.cargo = 0;
+    return log;
+  });
+  ok(fr2.sawTrainIn && fr2.surplusMax >= 10 && fr2.cardMax >= fr2.cap - 14 - 1 && fr2.cardMax + fr2.surplusMax <= fr2.cap, 'with a card backlog a quarter of the cars still takes surplus (L5)', fr2);
 
   ok(log.errors.length === 0, '0 page errors', log.errors.slice(0, 5));
 } catch (e) { fail++; console.log('FATAL', (e && e.stack) || e); }

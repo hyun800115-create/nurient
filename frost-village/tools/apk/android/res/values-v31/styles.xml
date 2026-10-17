@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: the system splash screen (app icon on the night colour) -->
+<resources>
+    <style name="AppTheme" parent="AppTheme.Base">
+        <item name="android:windowSplashScreenBackground">@color/night</item>
+    </style>
+</resources>

@@ -343,3 +343,78 @@ version runs without its 125 stale files.
 **What the art folders would need** (read-only here): `train2` — the town loop decal for a loop 1 cell west (or a
 smaller radius), if the designer prefers that to widening the world; optional 4-frame curve dirs for the engine.
 `office` / `officefolk` / `chief2` / `chief_fx` / `ui5` / `audio7` — nothing blocking.
+
+## 8. Review fixes (the CODE-2 fix pass)
+
+The three CODE-2 reviews (gameplay, look and feel, robustness) were reproduced first, then fixed in `src/` and checked
+again with the reviewers' own scripts. Scratch: `/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/v42code2_fix/`
+(`base/` = the reviewed CODE-2 source for before / after runs; `gp/` the gameplay reviewer's experiments re-run; `vis/`
+the look reviewer's driver with new commands; `suites/` the suite logs; `census/` the economy census).
+
+### 8.1 Findings → outcome
+
+**Gameplay review**
+
+| Finding | Outcome | What changed / evidence |
+|---|---|---|
+| M1 the chief hidden behind the train at 서리역 | **fixed** | `ChiefAura.coveredBy`: a train car drawn over him (its own alpha mask decides, 3 body points) shows the star pin and a soft cream silhouette of his current frame over the car (`drawGhost`, ½ alpha). Re-run of the reviewer's spot (box car at `atOurs` 3, zoom 1.0): `covered: true, ghost: true, pin 0.88–0.99` (`vis/out/k1/004.json`, `vis/shots/crop_004.png`); shot `20_chief_behind_train` |
+| M2 office / bank walls with gaps | **fixed** | `Collision.addSeg` / `addWalls`: capsule walls along every footprint edge (office, bank, depot), the door's opening cut out, pushed out along the wall's normal (a row of circles pushed him along the wall line, never back out). Office: the manifest circles stay (furniture). New `tools/test/walls42.test.mjs` 6/6 (fails 3/8 and 6/6 without the walls); the reviewer's `probe_walls`: from behind and from the east he stops 177 / 219 px short of the 책상 pad, the bank's front wall holds (152 px short), through the door he reaches the pad. Re-test when the office polish (task 307) changes the circles |
+| M3 economy gates (piles, income, smoked meat) | **partly / designer** | see §8.2: the pile gate and the income band stay the designer's choice (기획서 §2.3); the fixes below that touch the economy (surplus share on the train, raw guide rule) were measured in a new 60-min census |
+| M4 관망 hauls through the night, never watches the train or plays with 콩이 | **fixed** | `agenda.js`: evening 60 from 21:00 to 06:00 (beats every chore but an urgent one; 20:00–21:00 stays 30 so the day's work still wins), the day's first train watch +25 (from ≤ 2,600 px), 콩이 +20 after 10 min without a game (dog within 1,400 px then); an urgent chore that runs out twice on the same target rests 60 s. `pilot.test.mjs` +10 checks (37/37). Re-run of `exp_pilot 30 7`: see §8.2 |
+| M5 길 안내: long low-value trips, mind changes | **fixed** | the guide holds the room for his load at its place (`Logistics.setChief`; porters see it as taken, his own resolver does not; released after 8 s standing still); a better place must lie ≤ 1.25 × the way left + 200 px and is never the export dock; a place left because it filled up is banned for 15 s for this load; raw items whose only place is the dock beyond `nav.rawDockPx` 1,600 px get `○○ 입구 가득 · 잠시 기다리거나 버려요`; crossing another kind's pad while guided does not grab it (멈추면 rule, 켬 only). Re-run of `exp_nav`: logs 1,018 px walked (was ≈ 3,000 to the dock), ore → 제련소 입구, bread 5,621 px (was 7,485; the bread places are all nearly full); see §8.2 for the run after the ban rule |
+| L1 pinch-zoom ends 관망 | **fixed** | `Input`: a finger on the village hands back after 110 ms (game time) unless a second finger lands (UI's pinch calls `release()`); a drag still hands back in the same frame; the pilot's steering pauses meanwhile |
+| L2 all boarders at one coach door, vanishing short of it | **fixed** | `Neighbours`: each boarder keeps its door (the closure read the loop's last `k`); `Visitor.board` walks the last steps to the door while fading. `exp_doors`: 10 boarders over the 4 doors 3 · 4 · 1 · 2 (was 7 at one) |
+| L3 재고 tab "적당" with pile and output full | **fixed** | the 교역소 shelf registers `emptyAt` = `trade.displayKeep` after village complete: its 2 display goods count as empty, so 부족 / 길 막힘 can show for planks and ingots |
+| L4 관망 starts under the overview map | **fixed** | `gs.overview` counts as busy |
+| L5 surplus never rides while card crates exceed a load | **fixed** | `freight.surplusShare` 0.25: surplus waiting at the dock keeps 14 of 56 places on each train (`Freight.cardRoom`) |
+| L6 crate count 57 of 56 | **fixed** | no `loadCargo(1)` on top of `Freight.board` |
+| L7 courier deposits at 02:32 | **fixed** | `courier.from` 7 / `courier.to` 21 (balance.js, balanceCheck) |
+| L8 chip "통나무 8" for an order card taking 1 | **fixed** | the chip's count uses `room` 0 as 0, not as "the whole bag" |
+| L9 "· 2000" | **fixed** | letter buttons format with `fmt` ("· 2,000"); English senders read "A letter from the old miner" |
+| L10 padlocks on HUD chips while their atlas loads | **fixed** | `UIv4` icons stay invisible while only the padlock fallback is there |
+
+**Look-and-feel review**
+
+| Finding | Outcome | What changed / evidence |
+|---|---|---|
+| H1 the chief bleached white at night | **fixed** | his DayClock light is a flat pool at his boots (`sy` 0.42, alpha 0.6) instead of an ADD glow on his chest; `vis/shots/cmp_002.png` (22:00, halo on / off: the face keeps its colours); shot `21_night_chief_close` |
+| H2 tower_se's bonfire over the train | **fixed** | the bonfire is its own occluder linked to the tower's (`Occlusion` `link`): it fades for its own pixels and with the tower; `vis/shots/cmp_003.png` (t 7.5 / 8.0: tower and flame both see-through) |
+| H3 관망 seated poses fall back to standing | **fixed** | `Residency.makeRoom` (robust H1 below) + 관망 pins chief2's sheet (`Residency.pin`, asked every 2 s); a seat whose anim is not loaded shows him standing on the floor in front of it and asks again every second (`Player.update`). Night desk: seated, `doze` (`vis/shots/crop_night_desk.png`) |
+| M1 lunch / evening with a load on his head | **fixed** | the leisure acts wait while his bag holds a load that has somewhere to go (업무 delivers first); 업무 between two loads is not held by its minimum time; lunch 12:00–13:00. `10c_chief_desk` clears the bag first |
+| M2 재고판 bars 21 px low | **fixed** | shear about the board's centre (`(x − w/2) · shearY`); bars sit on the slate (`crop_night_desk.png`) |
+| M3 tellers faceless behind the glass | **fixed** | `DollSprite.headDepth`: the tellers' head layers draw just under the `@front` slot (over `bank_front`), bodies stay behind the counter; `vis/shots/crop_k2bank.png` |
+| M4 the office shell fades before its inside arrives | **fixed** | the reveal waits (≤ 6 s) until every inside layer has its picture and the seated staff's desk / head pages are in (`OfficeBuilding.insideReady`); staff show as soon as the shell starts to fade. Evicted-pages run: held 0.25 s, then opened with the pages in (`vis/out/k2/003.json`) |
+| M5 the town loop behind a row of shops | **won't fix (layout)** | moving the loop is a `world.js` + decal change (`rail_loop_town`, `assets/train2`, read-only); same family as the 32 px loop tip (§7) |
+| M6 English tab labels under their icons | **fixed** | settings and office-panel tab labels start right of the icon and shrink to the room left (`crop_k3set.png`, `crop_k3letters.png`) |
+| L1 coach 90° to the engine on the S-curve | **fixed** | two coupled cars are never more than one heading apart (`Train.updateRoute`); headings over `toTown` 12.5–14.5: `SE,S,S,SE,SE` … `SE,SE,S,SW,S` |
+| L2 nubs on 56 px buttons | **fixed** | `makeButton` builds a button lower than its 9-slice caps at the caps' height and scales it down |
+| L3 engine as a red text chip | **fixed** | the train card shows the engine's own first frame next to the ui5 car icons (`crop_k3train.png`) |
+| L4 navigator plate too big at 0.6, clipped at 0.8 | **fixed** | smaller below zoom 0.9; slid back inside the screen at its edge (`cmp_nav.png`) |
+| L5 office panel jumps from the cream fallback | **fixed** | the panel waits ≤ 1.2 s invisible for its page; the page is also asked for while the chief is near the office |
+| L6 업무 label over a clerk's head | **fixed** | the label sits under the 책상 pad |
+| L7 (older) padlocks / grey chunks after a jump / mild night / depot under the zoom buttons | padlocks fixed (gameplay L10); the rest unchanged (pre-v4.2) | |
+
+**Robustness review**
+
+| Finding | Outcome | What changed / evidence |
+|---|---|---|
+| H1 late-village textures on the refusal line, headless clerks | **fixed** | `Residency.makeRoom`: a wanted page over the refusal line first evicts the pages of areas the view is beyond RELEASE from (farthest first, never a page a near area lists, not during a camera cut), then on-demand pages LRU (not on screen, unused ≥ 1 s, not pinned). `headcheck tour`: `tf_head_0@soc` in by +5 s (2 refusals, then room made) — before: refused 122 times, never in 30 s; seated clerks with heads (`headcheck_tour_5s.png`). Per-view totals: §8.2 |
+| M1 v4.2 logic over budget (office 0.18–0.20 ms) | **improved, still over** | the courier's `carry_sack` pick (TF.pick + groundSpeed every frame) only on a change; seated staff inside a closed building run only their timers; acts re-picked every 3 s when playing (0.5 s on a fallback); the courier and the aide skip the O(agents) separation; the courier reads the tills twice a second. Office update 0.160 → 0.089–0.105 ms (same machine, plaza); see §8.2 |
+| M2 office ambience after 처음부터 | **fixed** | `Office.destroy` destroys the building and the bank; `Neighbours.destroy` the rail props; `Game.build` zeroes every ambience target. `stale_amb office`: after reset `amb_office` target 0, volume 0.03 at +10 s, 0 at +60 s (was 0.25) |
+| L1 cutaways never built on an in-session restart | **fixed** | `build()` during create defers to the first update (`delayedCall(0)`) instead of returning; destroyed buildings never build |
+| L2 stove loop missing on the first reveal | **fixed** | `Cutaway.replayLoops` (on arrival and once a second while open) starts a loop whose anim exists again |
+| L3 courier stays the stand-in after a reload while carrying | **won't fix** | re-dressing a courier mid-round would move his sack to a new object; he is re-dressed when he settles (seconds later). Cosmetic |
+| L4 draw calls / display objects | unchanged | still +1–4 draw calls a frame (§3.5); the new silhouette is one sprite, only behind a car |
+| L5 duplicate `vil_npc_*@social` keys after restarts | **won't fix** | console noise from CODE-1's family, harmless |
+| L6 first publish 250 files + 125 nulls | **fixed** | `build_artifact.mjs`: the first batch holds 250 − stale files, so every publish names ≤ 250 paths + the page; the build fails when one would not |
+| L7 tour peak 432.7 vs 439.2 | **fixed** | one number in both docs, from the re-shot tour (§8.2) |
+| info `office.bag` unclamped | **fixed** | clamped to 2,000,000 on load |
+
+
+### 8.2 Numbers after the fixes
+
+<!-- FIX-NUMBERS -->
+
+### 8.3 Tests
+
+<!-- FIX-TESTS -->

@@ -122,6 +122,13 @@ export class ChiefPilot {
     const rail = nb && nb.rail;
     const cashes = (gs.tills || []).filter((c) => c && c.enabled !== false);
     const mate = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange());
+    // (the running train watch / game with 콩이 is judged as it was when it began: the day's watch and the dog's idle
+    //  time count once it is over — else the begin itself took away the bonus and the range, and the act ended at once)
+    const doing = this.act ? this.act.act : null;
+    const today = clock ? clock.day() : -1;
+    const trainToday = this.trainDay === today && doing !== 'train';
+    const lastDog = doing === 'dog' ? this.dogPrev : this.lastDog;
+    const dogIdle = this.t - (lastDog === undefined ? -600 : lastDog);
     return {
       now: this.t, hour,
       urgent: !!(hireTarget(gs) || urgentTarget(gs)),
@@ -130,14 +137,15 @@ export class ChiefPilot {
       work: !!workTarget(gs),
       noCourier: !(O && O.hired('ttal')),
       cashMax: cashes.reduce((m, c) => Math.max(m, c.value || 0), 0),
-      trainSoon: !!(rail && rail.running && rail.phase === 'toOurs' && rail.untilArrival() < 20),
+      // (a watch that began goes on while the train stands at the platform)
+      trainSoon: !!(rail && rail.running && ((rail.phase === 'toOurs' && rail.untilArrival() < 20) || (doing === 'train' && rail.phase === 'atOurs'))),
       // (the day's one train watch: from further away)
-      trainNear: !!(nb && nb.ours && gdist(p.x, p.y, nb.ours.x, nb.ours.y) < (this.trainDay === (clock ? clock.day() : -1) ? 1500 : 2600)),
-      trainToday: this.trainDay === (clock ? clock.day() : -1),
-      dogIdle: this.t - (this.lastDog === undefined ? -600 : this.lastDog),
+      trainNear: !!(nb && nb.ours && gdist(p.x, p.y, nb.ours.x, nb.ours.y) < (trainToday ? 1500 : 2600)),
+      trainToday,
+      dogIdle,
       chatMate: !!mate || !!(this.act && this.act.act === 'chat' && this.act.sub), chatIdle: this.t - this.lastChat,
       office: !!(O && O.built), paperNew: !!(N && N.list.length && N.day >= (clock ? clock.day() : 0)), unread: N ? N.unread() : 0,
-      dog: !!(gs.dog && gs.dog.r && gdist(p.x, p.y, gs.dog.r.x, gs.dog.r.y) < ((this.t - (this.lastDog === undefined ? -600 : this.lastDog)) >= 600 ? 1400 : 800)),
+      dog: !!(gs.dog && gs.dog.r && gdist(p.x, p.y, gs.dog.r.x, gs.dog.r.y) < (dogIdle >= 600 ? 1400 : 800)),
       locked: this.locked,
     };
   }
@@ -181,7 +189,7 @@ export class ChiefPilot {
       }
       case 'chat': { const m = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange()); if (m) { st.sub = m; st.target = { x: m.ch.x + 54, y: m.ch.y + 26 }; } break; }
       case 'rest': st.target = restSpot(gs, this.r); break;
-      case 'dog': { const d = gs.dog && gs.dog.r; if (d) st.target = { x: d.x + 50, y: d.y + 20 }; this.lastDog = this.t; break; }
+      case 'dog': { const d = gs.dog && gs.dog.r; if (d) st.target = { x: d.x + 50, y: d.y + 20 }; this.dogPrev = this.lastDog; this.lastDog = this.t; break; }
       default: break;
     }
     if (st.target && st.target.kind !== 'hire' && isPayTarget(gs, st.target.x, st.target.y)) st.target = null;

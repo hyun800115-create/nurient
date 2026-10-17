@@ -184,6 +184,39 @@ console.log('the day: night rest, one train a day, 콩이, the bag first');
   ok(A.choose(c2, 9, 1, 0, { act: 'work', t: 3, min: 20, max: 60 }).kept === true, 'a load in the bag keeps 업무 for its minimum time');
 }
 
+// (the running watch / game is judged as it began: starting it must not take its own bonus and range away)
+console.log('a train watch and a game with 콩이 last once begun');
+{
+  const { gs } = village();
+  const rail = { running: true, phase: 'toOurs', untilArrival: () => 12 };
+  gs.v4 = { ours: { x: 2000, y: 0, wait: [{ x: 1960, y: 10 }] }, rail, clock: { on: true, day: () => 2, hour: () => 15 } };
+  gs.dog.r = { x: 1100, y: 0 };                       // 콩이 1,100 px away: in range only after 10 minutes without a game
+  const P = new ChiefPilot(gs, gs.v42, { cid: 4242 });
+  P.start('test');
+  let c0 = P.context();
+  ok(c0.trainSoon && c0.trainNear && !c0.trainToday && A.score('train', c0) >= 55, 'the day\'s first train, 2,000 px away: a watch (' + A.score('train', c0) + ')');
+  P.begin('train');
+  let c1 = P.context();
+  ok(c1.trainNear && !c1.trainToday && A.score('train', c1) >= 55, 'once begun the watch keeps its range and bonus (' + A.score('train', c1) + ')');
+  rail.phase = 'atOurs';
+  ok(A.score('train', P.context()) !== null, 'it goes on while the train stands at the platform');
+  rail.phase = 'fromOurs';
+  ok(A.score('train', P.context()) === null, 'and ends when the train leaves');
+  P.begin('rest');
+  rail.phase = 'toOurs';
+  const c2 = P.context();
+  ok(c2.trainToday && !c2.trainNear, 'after the watch: the day\'s watch is done (range back to 1,500 px)');
+  const d0 = P.context();
+  ok(d0.dog && d0.dogIdle >= 600 && A.score('dog', d0) >= 35, '콩이 after a long while, 1,100 px away: a game (' + A.score('dog', d0) + ')');
+  P.begin('dog');
+  const d1 = P.context();
+  ok(d1.dog && A.score('dog', d1) >= 35, 'once begun the game keeps its range and bonus (' + A.score('dog', d1) + ')');
+  P.begin('rest');
+  const d2 = P.context();
+  ok(!d2.dog && d2.dogIdle < 600, 'after the game: 콩이 1,100 px away is out of range again');
+  P.destroy();
+}
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

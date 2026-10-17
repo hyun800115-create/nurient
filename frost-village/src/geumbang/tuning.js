@@ -5,7 +5,7 @@
 
 export const GB_TUNING = {
   gate:   { dayS: 600, fullAt: 0.6, fullForS: 120 },                 // 물류창고 후 하루, 또는 선반 60 % 이상 120초 → 편지
-  open:   { coins: 4000, item_plank: 20, item_ingot: 10, time: 15 },  // 금방 개업 값 (코인 + 판자 + 주괴, 짓는 시간 초)
+  open:   { coins: 4000, item_plank: 20, item_ingot: 10, time: 15, firstDelayS: 3.5 },  // 금방 개업 값 (코인 + 판자 + 주괴, 짓는 시간 초) · 문 연 뒤 첫 주문까지 초
   hours:  { open: 7, close: 21 },                                     // 금방이 일하는 시각 (밤에는 새벽배송이 있어야 해요)
   orders: { everyDays: 1.2, itemsMin: 2, itemsMax: 6, linesMax: 3, maxOpen: 24, perAddressOpen: 2, keepFloor: 4,
             hot: 0.6, hotMult: 1.5, low: 0.25, lowMult: 0.5, snowMult: 1.3, dealMult: 2, favW: 2,
@@ -38,9 +38,20 @@ export const GB_TUNING = {
   toast:  { minGapS: 30 },
   deal:   { durS: 600 },                                              // 오늘의 특가 버튼: 하루(600초) 동안 주문 2배
   // 기사님 문 앞 장면 (초): 차 세우기 · 뒷문 · 걷기 속도(m/초) · 띵동 · 문 열림 · 건네기 · 기쁨 · 차에 타기
-  courier:{ parkS: 0.8, takeS: 0.8, carryMps: 1.15, walkMps: 1.4, nightMps: 1.0, ringS: 1.2, doorOpenS: 0.8, handS: 0.8,
+  courier:{ parkS: 0.8, takeS: 0.8, carryMps: 1.3, walkMps: 1.6, nightMps: 1.0, ringS: 1.2, doorOpenS: 0.8, handS: 0.8,
             joyS: 1.6, dropS: 0.8, photoS: 0.5, insideS: 2.5, getInS: 0.6, perTrip: 3, aptMeet: 0.35 },
   review: { chance: 0.25, max: 12 },
+  // 집마다 입맛 (할머니네 · 아이 있는 집 · 신혼집 · 광부네 · 가게 집 · 어부네): 물건 가중치에 곱해요 (없는 물건은 1)
+  taste: {
+    grandma:  { item_bread: 1.6, item_fish_cooked: 1.4, item_log: 1.5, item_can: 0.7, item_meat_raw: 0.6, item_plank: 0.4 },
+    kids:     { item_bread: 1.5, item_can: 1.3, item_meat_cooked: 1.3, item_fish_cooked: 1.1, item_plank: 0.6 },
+    newlywed: { item_meat_raw: 1.4, item_fish_raw: 1.3, item_wheat: 1.3, item_can: 1.0, item_plank: 1.2 },
+    miner:    { item_meat_cooked: 1.7, item_can: 1.5, item_bread: 1.2, item_log: 1.2, item_pickaxe: 2 },
+    shop:     { item_plank: 1.6, item_wheat: 1.4, item_log: 1.2, item_can: 1.1, item_axe: 1.5 },
+    fisher:   { item_bread: 1.4, item_log: 1.3, item_wheat: 1.2, item_meat_raw: 1.2, item_rod: 2 },
+  },
+  tasteMix: { grandma: 1, kids: 1, newlywed: 1, miner: 0.6, shop: 0.6, fisher: 0.6 },   // 이유 없는 집은 이 비율로 정해요
+  aptHousehold: [1, 3],                                                                    // 아파트 한 집에 사는 사람 수 (최소, 최대)
   happy:  { promiseS: 150 },
 };
 

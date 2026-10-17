@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the game's night sky (the colour named "night" in the dist/artifact page) behind everything until the first frame -->
+<resources>
+    <color name="night">#FF0F1A2C</color>
+    <style name="AppTheme.Base" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:colorBackground">@color/night</item>
+        <item name="android:colorPrimaryDark">@color/night</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+    <style name="AppTheme" parent="AppTheme.Base" />
+</resources>
