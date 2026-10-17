@@ -1,0 +1,1214 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_ui6.py (procedural numpy + Pillow on fxlib; house style of ui .. ui5)",
+ "conventions": {
+  "contract": "CONTRACT_GEUMBANG §AQ (plan docs/geumbang_plan.md §6, §7, §10). Paths relative to frost-village/assets/. Fragment name: ui6 (late fragment, plan §12 G-P6).",
+  "brand": {
+   "gold": "#F2B33D",
+   "goldDark": "#D9962A",
+   "cream": "#F4EDE0",
+   "charcoal": "#3B3F52",
+   "navy": "#2B4F7E"
+  },
+  "mark": "금방이: gold disc, goldDark rim, cream sticker border, a face-on cream parcel with navy dot eyes, pink cheeks and an \"o\" mouth, a cream 4-point sparkle above. Same design as assets/geumbang (gb_lib.mark, variant A).",
+  "text": "Text is baked ONLY into ui_gb_logo_ko (\"금방\") and ui_gb_logo_en (\"Geumbang\"); the game writes every other label (Pretendard). Body text >= 15 CSS px (28 logical), tap targets >= 44 CSS px, statuses always icon + word.",
+  "bakedText": [
+   "ui_gb_logo_en",
+   "ui_gb_logo_ko"
+  ],
+  "style": "House soft-toy style (fxlib.toy): dark tinted outline, bevel lit from the upper left, gloss, one navy drop shadow; the mark is lit from straight above so it stays its own mirror image.",
+  "nineSlice": "Panel frames live in the atlas UNTRIMMED: this.add.nineslice(x, y, 'ui6_gb', key, w, h, left, right, top, bottom) with nineSlice[key]. contentInset = [left, top, right, bottom] px from the stretched edges where content goes. Chip and ribbon: build them at their source height and scale uniformly (minHeight).",
+  "iconSize": [
+   96,
+   96
+  ],
+  "pageSize": [
+   916,
+   710
+  ],
+  "pageMiB": 2.481,
+  "pagePlan": {
+   "why": "plan §10.4: the build packs the resident part with gb_bld_0 into gb_core; the app frames, tracker, logos and mascot ship as a transient page acquired only while the app is open.",
+   "resident": [
+    "ui_icon_gb",
+    "ui_icon_gb_order",
+    "ui_icon_gb_van",
+    "ui_icon_gb_sled",
+    "ui_icon_gb_locker",
+    "ui_icon_gb_deal",
+    "ui_icon_gb_review",
+    "ui_icon_gb_today",
+    "ui_icon_gb_catalog",
+    "ui_icon_gb_crew",
+    "ui_icon_gb_dawn",
+    "ui_icon_gb_doorstep",
+    "ui_icon_gb_cart",
+    "ui_icon_gb_follow",
+    "ui_gb_chip",
+    "ui_gb_toast",
+    "fx_gb_bell_0",
+    "fx_gb_bell_1",
+    "fx_gb_bell_2",
+    "fx_gb_bell_3"
+   ],
+   "residentMiB": 0.485,
+   "transientApp": [
+    "ui_gb_step_order_on",
+    "ui_gb_step_order_off",
+    "ui_gb_step_pick_on",
+    "ui_gb_step_pick_off",
+    "ui_gb_step_pack_on",
+    "ui_gb_step_pack_off",
+    "ui_gb_step_go_on",
+    "ui_gb_step_go_off",
+    "ui_gb_step_done_on",
+    "ui_gb_step_done_off",
+    "ui_gb_dot_off",
+    "ui_gb_dot_on",
+    "ui_gb_dot_now",
+    "ui_gb_line_off",
+    "ui_gb_line_on",
+    "ui_gb_star_full",
+    "ui_gb_star_empty",
+    "ui_gb_logo_ko",
+    "ui_gb_logo_en",
+    "ui_gb_mark",
+    "ui_gb_mascot_idle_0",
+    "ui_gb_mascot_idle_1",
+    "ui_gb_mascot_run_0",
+    "ui_gb_mascot_run_1",
+    "ui_gb_mascot_run_2",
+    "ui_gb_mascot_run_3",
+    "ui_gb_mascot_bow_0",
+    "ui_gb_mascot_bow_1",
+    "ui_gb_phone",
+    "ui_gb_header",
+    "ui_gb_tab",
+    "ui_gb_tab_on",
+    "ui_gb_card",
+    "ui_gb_ribbon",
+    "ui_gb_photo"
+   ],
+   "transientMiB": 1.89
+  },
+  "appLayout": {
+   "panel": [
+    720,
+    1100
+   ],
+   "screen": [
+    21,
+    30,
+    678,
+    1040
+   ],
+   "designCss": [
+    360,
+    390
+   ],
+   "header": {
+    "rect": [
+     21,
+     30,
+     678,
+     150
+    ],
+    "logo": [
+     44,
+     46,
+     1.0
+    ],
+    "tagline": [
+     52,
+     136,
+     28
+    ],
+    "close": [
+     642,
+     92,
+     44
+    ],
+    "mascot": [
+     540,
+     174,
+     1.0
+    ]
+   },
+   "tabs": {
+    "y": 190,
+    "h": 88,
+    "w": 128,
+    "gap": 4,
+    "icon": 34,
+    "iconGap": 5,
+    "font": 28,
+    "fontEn": 24,
+    "scale": 1.375
+   },
+   "content": [
+    37,
+    290,
+    646,
+    780
+   ],
+   "card": {
+    "w": 646,
+    "h": 256,
+    "gap": 16,
+    "font": 30,
+    "small": 28
+   },
+   "orderCard": {
+    "h": 348,
+    "trackerY": 152,
+    "button": [
+     272,
+     240,
+     250
+    ],
+    "etaY": 284
+   },
+   "tracker": {
+    "y": 128,
+    "x0": 52,
+    "x1": 594,
+    "badge": 54,
+    "labelGap": 6,
+    "labelFont": 28,
+    "labelFontEn": 24
+   },
+   "button": {
+    "h": 88,
+    "scale": 1.375
+   },
+   "toggle": {
+    "w": 112,
+    "h": 44,
+    "hitH": 88
+   },
+   "tapMinCss": 44,
+   "bodyMinCss": 15,
+   "textMinCss": 12
+  },
+  "appLayoutNotes": "Suggested layout of the 720 x 1100 logical app panel (plan §6): the phone 9-slice fills the panel; header / tabs / content rects are in panel px; tracker y and x0..x1 are card px. The panel fills the viewport width, so every tap target is >= 88 logical (44 CSS on a 360 CSS phone, 47.7 on 390), body text 30 (15 / 16.3 CSS) and no text under 24 (12 / 13 CSS). Tabs / the follow button are the 64-tall 9-slices scaled uniformly by tabs.scale / button.scale; the catalog sell toggle is drawn 44 tall but its hit area is the 88-tall right half of the row (toggle.hitH). English tab words are the short set Today / Order / Shop / Crew / Stars. docs/previews/ui6_app.png and ui6_phaser_*.png show it.",
+  "codeFallback": {
+   "icons": "ui5 ui_icon_depot / ui4 ui_icon_box / ui3 ui_icon_delivery (plan §10.3); see each sprite's replaces",
+   "tracker": "text tracker \"주문 → 고르기 → 포장 → 배달 중 → 도착\" (plan §10.3)",
+   "panels": "ui5 ui_chip / ui_letter frames (plan §10.3)",
+   "logos": "runtime text \"금방 마켓\" in Pretendard on the header",
+   "mascot": "ui_icon_gb (no animation)",
+   "fx_gb_bell": "emotes fx_music_notes or nothing"
+  }
+ },
+ "atlases": [
+  {
+   "key": "ui6_gb",
+   "png": "ui6/ui6_gb.png",
+   "json": "ui6/ui6_gb.json"
+  }
+ ],
+ "sprites": {
+  "ui_icon_gb": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "금방 (HUD chip, office 재고 row, letters, settings): the mark 금방이.",
+   "replaces": "ui_icon_depot (ui5)"
+  },
+  "ui_icon_gb_order": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_order",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "주문 tab / new-order toast: an order slip with a gold band and a check seal.",
+   "replaces": "ui_icon_box (ui4)"
+  },
+  "ui_icon_gb_van": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_van",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "금방 밴 (기사님 tab rows, van tap, upgrade cards): the gold van in profile with the mark on its side.",
+   "replaces": "ui_icon_delivery (ui3)"
+  },
+  "ui_icon_gb_sled": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_sled",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "금방 개썰매 (G1b, 기사님 tab, \"곧 개썰매로\" line): a husky pulling a sled with a parcel and the gold pennant.",
+   "replaces": "ui_icon_sleigh (ui5)"
+  },
+  "ui_icon_gb_locker": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_locker",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "금방 보관함 (G1b upgrade card, locker tap): a gold locker, blue doors, one open with a parcel.",
+   "replaces": "ui_icon_box (ui4)"
+  },
+  "ui_icon_gb_deal": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_deal",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "특가 (상품 tab button, 특가 chip, 지금 특가 row): a gold price tag with a cream star.",
+   "replaces": "ui_icon_coin (ui)"
+  },
+  "ui_icon_gb_review": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_review",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "후기 tab / new review: a speech bubble with a gold star and a pink heart.",
+   "replaces": "ui_icon_fame (ui3)"
+  },
+  "ui_icon_gb_today": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_today",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "오늘 tab: a desk calendar with a smiling sun.",
+   "replaces": "ui_icon_day (ui3)"
+  },
+  "ui_icon_gb_catalog": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_catalog",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "상품 tab: a 2 x 2 grid of products (bread, fish, jam, yarn).",
+   "replaces": "ui_icon_inventory (ui5)"
+  },
+  "ui_icon_gb_crew": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_crew",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "기사님 tab / crew list: a courier in the navy 금방 cap and gold jacket.",
+   "replaces": "ui_icon_staff (ui5)"
+  },
+  "ui_icon_gb_dawn": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_dawn",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "새벽배송 (upgrade card, first dawn toast, 관망 cut): moon, stars and the sun rising behind snowy hills, a parcel waiting.",
+   "replaces": "ui_icon_night (ui3)"
+  },
+  "ui_icon_gb_doorstep": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_doorstep",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "문 앞 배송 (done card without a photo, \"문 앞에 두고 갈게요\" toast, setting 금방 문 앞 장면): a blue door with a parcel on the snowy step.",
+   "replaces": "ui_icon_box (ui4)"
+  },
+  "ui_icon_gb_cart": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_cart",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "order bubble over the orderer (with the item icon) and 주문 counts: a shopping cart carrying a 금방 parcel.",
+   "replaces": "ui_icon_box (ui4)"
+  },
+  "ui_icon_gb_follow": {
+   "atlas": "ui6_gb",
+   "frame": "ui_icon_gb_follow",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "icon",
+   "frameSize": [
+    96,
+    96
+   ],
+   "notes": "따라가기 button and the follow caption chip: gold viewfinder corners around a parcel.",
+   "replaces": "ui_icon_binoculars (ui5)"
+  },
+  "ui_gb_step_order_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_order_on",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "order",
+   "state": "on",
+   "word": {
+    "ko": "주문",
+    "en": "Ordered"
+   },
+   "notes": "tracker step order (주문 / Ordered), done or current: the gold badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_order_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_order_off",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "order",
+   "state": "off",
+   "word": {
+    "ko": "주문",
+    "en": "Ordered"
+   },
+   "notes": "tracker step order (주문 / Ordered), not reached yet: the pale grey badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_pick_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_pick_on",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "pick",
+   "state": "on",
+   "word": {
+    "ko": "고르기",
+    "en": "Picking"
+   },
+   "notes": "tracker step pick (고르기 / Picking), done or current: the gold badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_pick_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_pick_off",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "pick",
+   "state": "off",
+   "word": {
+    "ko": "고르기",
+    "en": "Picking"
+   },
+   "notes": "tracker step pick (고르기 / Picking), not reached yet: the pale grey badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_pack_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_pack_on",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "pack",
+   "state": "on",
+   "word": {
+    "ko": "포장",
+    "en": "Packing"
+   },
+   "notes": "tracker step pack (포장 / Packing), done or current: the gold badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_pack_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_pack_off",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "pack",
+   "state": "off",
+   "word": {
+    "ko": "포장",
+    "en": "Packing"
+   },
+   "notes": "tracker step pack (포장 / Packing), not reached yet: the pale grey badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_go_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_go_on",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "go",
+   "state": "on",
+   "word": {
+    "ko": "배달 중",
+    "en": "On the way"
+   },
+   "notes": "tracker step go (배달 중 / On the way), done or current: the gold badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_go_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_go_off",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "go",
+   "state": "off",
+   "word": {
+    "ko": "배달 중",
+    "en": "On the way"
+   },
+   "notes": "tracker step go (배달 중 / On the way), not reached yet: the pale grey badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_done_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_done_on",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "done",
+   "state": "on",
+   "word": {
+    "ko": "도착",
+    "en": "Arrived"
+   },
+   "notes": "tracker step done (도착 / Arrived), done or current: the gold badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_step_done_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_step_done_off",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    64,
+    64
+   ],
+   "step": "done",
+   "state": "off",
+   "word": {
+    "ko": "도착",
+    "en": "Arrived"
+   },
+   "notes": "tracker step done (도착 / Arrived), not reached yet: the pale grey badge. Always write the step word under it (never colour alone). The badge disc is centred at (32, 31) = anchor.",
+   "replaces": "text tracker"
+  },
+  "ui_gb_dot_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_dot_off",
+   "anchor": [
+    0.5,
+    0.486
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    28,
+    28
+   ],
+   "notes": "compact tracker dot: not reached.",
+   "replaces": "generated circles"
+  },
+  "ui_gb_dot_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_dot_on",
+   "anchor": [
+    0.5,
+    0.486
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    28,
+    28
+   ],
+   "notes": "compact tracker dot: done.",
+   "replaces": "generated circles"
+  },
+  "ui_gb_dot_now": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_dot_now",
+   "anchor": [
+    0.5,
+    0.486
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    28,
+    28
+   ],
+   "notes": "compact tracker dot: the current step (put it on the current badge's upper-right, or use it alone in a compact tracker).",
+   "replaces": "generated circles"
+  },
+  "ui_gb_line_off": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_line_off",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    32,
+    8
+   ],
+   "stretchX": true,
+   "notes": "tracker connector (to come): uniform along x and untrimmed - image.setDisplaySize(gapWidth, 8) between two badges / dots.",
+   "replaces": "generated rectangle"
+  },
+  "ui_gb_line_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_line_on",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "tracker",
+   "frameSize": [
+    32,
+    8
+   ],
+   "stretchX": true,
+   "notes": "tracker connector (done): uniform along x and untrimmed - image.setDisplaySize(gapWidth, 8) between two badges / dots.",
+   "replaces": "generated rectangle"
+  },
+  "ui_gb_star_full": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_star_full",
+   "anchor": [
+    0.5,
+    0.52
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "review star (full); reviews are always 4-5 stars.",
+   "replaces": "ui3 ui_icon_fame"
+  },
+  "ui_gb_star_empty": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_star_empty",
+   "anchor": [
+    0.5,
+    0.52
+   ],
+   "kind": "icon",
+   "frameSize": [
+    32,
+    32
+   ],
+   "notes": "review star (empty); reviews are always 4-5 stars.",
+   "replaces": "ui3 ui_icon_fame"
+  },
+  "ui_gb_logo_ko": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_logo_ko",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "logo",
+   "frameSize": [
+    192,
+    72
+   ],
+   "bakedText": "금방",
+   "font": "Jua",
+   "markCentre": [
+    36,
+    36
+   ],
+   "markRadius": 30.5,
+   "notes": "app header logo (ko): the mark + \"금방\" in navy with a cream rim (reads on the gold header, cream and dark). Header placement: x 44, y 42, scale 0.8 (appLayout.header.logo).",
+   "replaces": "runtime text 금방 마켓"
+  },
+  "ui_gb_logo_en": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_logo_en",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "logo",
+   "frameSize": [
+    250,
+    72
+   ],
+   "bakedText": "Geumbang",
+   "font": "Fredoka Bold",
+   "markCentre": [
+    36,
+    36
+   ],
+   "markRadius": 30.5,
+   "notes": "app header logo (en): the mark + \"Geumbang\".",
+   "replaces": "runtime text Geumbang"
+  },
+  "ui_gb_mark": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_mark",
+   "anchor": [
+    0.5,
+    0.484
+   ],
+   "kind": "logo",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "the mark 금방이 alone (app splash, the 금방 letter, newspaper ad, office row). Symmetric, no letters.",
+   "replaces": "ui_icon_gb"
+  },
+  "ui_gb_mascot": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_mascot_idle_0",
+   "anchor": [
+    0.5,
+    0.9
+   ],
+   "kind": "mascot",
+   "frameSize": [
+    128,
+    128
+   ],
+   "frames": 8,
+   "frameNames": [
+    "ui_gb_mascot_idle_0",
+    "ui_gb_mascot_idle_1",
+    "ui_gb_mascot_run_0",
+    "ui_gb_mascot_run_1",
+    "ui_gb_mascot_run_2",
+    "ui_gb_mascot_run_3",
+    "ui_gb_mascot_bow_0",
+    "ui_gb_mascot_bow_1"
+   ],
+   "anims": {
+    "idle": {
+     "frames": [
+      "ui_gb_mascot_idle_0",
+      "ui_gb_mascot_idle_1"
+     ],
+     "fps": 3,
+     "repeat": -1
+    },
+    "run": {
+     "frames": [
+      "ui_gb_mascot_run_0",
+      "ui_gb_mascot_run_1",
+      "ui_gb_mascot_run_2",
+      "ui_gb_mascot_run_3"
+     ],
+     "fps": 8,
+     "repeat": -1
+    },
+    "bow": {
+     "frames": [
+      "ui_gb_mascot_bow_0",
+      "ui_gb_mascot_bow_1"
+     ],
+     "fps": 3,
+     "repeat": 0
+    }
+   },
+   "neverMirror": true,
+   "notes": "금방이 the mascot: the mark's parcel on stubby legs with a navy scarf (UI only, never mirrored - it runs to the right). idle = stands and waves (3 fps loop), run = runs in (8 fps loop; tween it in from the right edge of the header to appLayout.header.mascot when the app opens, then idle), bow = a polite bow (3 fps once; on the first delivery / a new review). Feet at the anchor.",
+   "replaces": "ui_icon_gb"
+  },
+  "ui_gb_phone": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_phone",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    360,
+    640
+   ],
+   "contentInset": [
+    21,
+    30,
+    21,
+    30
+   ],
+   "notes": "the 금방 앱 panel (720 x 1100 logical, non-pausing) drawn as the chief's phone: charcoal bezel, speaker slot + camera, cream screen. screenRect [21, 30, 318, 580] at the source size; the screen corners are r 30, so the header (r 30) sits flush in it. Build it at 720 x 1100 (the top-centre speaker slot widens with the width - fine for 1.6-2.2x).",
+   "replaces": "ui5 ui_letter",
+   "screenRect": [
+    21,
+    30,
+    318,
+    580
+   ],
+   "screenRadius": 30
+  },
+  "ui_gb_header": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_header",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    320,
+    128
+   ],
+   "contentInset": [
+    24,
+    14,
+    24,
+    22
+   ],
+   "notes": "the app header (gold): rounded top corners r 30 = the phone screen's, a goldDark lip, a soft shadow onto the screen below (the last 12 px). Logo left, tagline under it (navy, 26 px), close button right, the mascot runs in between (appLayout.header).",
+   "replaces": "ui5 ui_chip",
+   "cornerRadius": 30
+  },
+  "ui_gb_tab": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_tab",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    144,
+    64
+   ],
+   "contentInset": [
+    18,
+    12,
+    18,
+    12
+   ],
+   "notes": "app tab (not selected): pale cream; write the word in warm grey #8A7A62 next to the tab icon.",
+   "replaces": "ui5 ui_office_tab",
+   "minHeight": 64
+  },
+  "ui_gb_tab_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_tab_on",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    144,
+    64
+   ],
+   "contentInset": [
+    18,
+    12,
+    18,
+    12
+   ],
+   "notes": "app tab (selected): gold with gloss and a small shadow; word in navy. Same size and margins as ui_gb_tab so they swap in place. A new-content dot is code (a 14 px gold circle, white rim).",
+   "replaces": "ui5 ui_office_tab_on",
+   "minHeight": 64
+  },
+  "ui_gb_card": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_card",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    320,
+    160
+   ],
+   "contentInset": [
+    28,
+    16,
+    18,
+    20
+   ],
+   "notes": "order / product / stat card: warm white, hairline border, soft shadow, a gold strip down the left edge (inside the left margin). Done cards may setTint(0xF4F1EA).",
+   "replaces": "ui5 ui_letter"
+  },
+  "ui_gb_chip": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_chip",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    200,
+    64
+   ],
+   "contentInset": [
+    32,
+    16,
+    32,
+    16
+   ],
+   "notes": "HUD 금방 chip (plan §6: 120 x 44 CSS under the 업무 chip) and in-app buttons (따라가기): cream pill with a gold rim; ui_chip rules - build at 64 tall, setScale(h / 64) for smaller chips (minHeight 64).",
+   "replaces": "ui5 ui_chip",
+   "minHeight": 64
+  },
+  "ui_gb_toast": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_toast",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    300,
+    64
+   ],
+   "contentInset": [
+    26,
+    10,
+    16,
+    12
+   ],
+   "notes": "toast (top centre under the clock row, <= 300 x 48 CSS): cream with a gold left edge; icon at contentInset left, one line of text.",
+   "replaces": "ui5 ui_chip"
+  },
+  "ui_gb_ribbon": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_ribbon",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "panel",
+   "frameSize": [
+    160,
+    48
+   ],
+   "contentInset": [
+    22,
+    8,
+    22,
+    10
+   ],
+   "notes": "blank gold ribbon with swallowtail ends for 특가 / 배달 중 / NEW labels (navy text, centred). Build it 48 tall and stretch only the width (minHeight 48).",
+   "replaces": "ui5 ui_chip",
+   "minHeight": 48
+  },
+  "ui_gb_photo": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_photo",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "frame",
+   "frameSize": [
+    176,
+    136
+   ],
+   "photoRect": [
+    24,
+    16,
+    128,
+    80
+   ],
+   "notes": "doorstep photo print (fixed size, not a 9-slice): draw the 128 x 80 render texture at photoRect (x 24, y 16 from the frame's top-left) UNDER the frame - the window is transparent and its edge carries a soft inner shade; the gold tape and the mark sticker sit on top. Scale the whole thing for thumbnails.",
+   "replaces": "ui_icon_gb_doorstep"
+  },
+  "fx_gb_bell": {
+   "atlas": "ui6_gb",
+   "frame": "fx_gb_bell_0",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "frameSize": [
+    64,
+    64
+   ],
+   "frames": 4,
+   "frameNames": [
+    "fx_gb_bell_0",
+    "fx_gb_bell_1",
+    "fx_gb_bell_2",
+    "fx_gb_bell_3"
+   ],
+   "anims": {
+    "play": {
+     "frames": [
+      "fx_gb_bell_0",
+      "fx_gb_bell_1",
+      "fx_gb_bell_2",
+      "fx_gb_bell_3"
+     ],
+     "fps": 12,
+     "repeat": 0
+    }
+   },
+   "notes": "띵동 at the door (world space, with sfx_gb_doorbell on ring_doorbell's impact frame): the bell pops in, swings with ringing arcs and sparkles, settles. Draw it centred ~40 world px above the door bell (geumbangfolk bellPoint) at a constant screen size (about 40 CSS px: setScale(40 / (64 x zoom x 390 / 720))), depth over the courier; destroy on animationcomplete.",
+   "replaces": "emotes fx_music_notes"
+  }
+ },
+ "nineSlice": {
+  "ui_gb_phone": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_phone",
+   "left": 56,
+   "right": 56,
+   "top": 64,
+   "bottom": 64,
+   "contentInset": [
+    21,
+    30,
+    21,
+    30
+   ],
+   "screenRect": [
+    21,
+    30,
+    318,
+    580
+   ],
+   "screenRadius": 30
+  },
+  "ui_gb_header": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_header",
+   "left": 40,
+   "right": 40,
+   "top": 36,
+   "bottom": 28,
+   "contentInset": [
+    24,
+    14,
+    24,
+    22
+   ],
+   "cornerRadius": 30
+  },
+  "ui_gb_tab": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_tab",
+   "left": 26,
+   "right": 26,
+   "top": 22,
+   "bottom": 22,
+   "contentInset": [
+    18,
+    12,
+    18,
+    12
+   ],
+   "minHeight": 64
+  },
+  "ui_gb_tab_on": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_tab_on",
+   "left": 26,
+   "right": 26,
+   "top": 22,
+   "bottom": 22,
+   "contentInset": [
+    18,
+    12,
+    18,
+    12
+   ],
+   "minHeight": 64
+  },
+  "ui_gb_card": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_card",
+   "left": 28,
+   "right": 24,
+   "top": 24,
+   "bottom": 28,
+   "contentInset": [
+    28,
+    16,
+    18,
+    20
+   ]
+  },
+  "ui_gb_chip": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_chip",
+   "left": 32,
+   "right": 32,
+   "top": 16,
+   "bottom": 16,
+   "contentInset": [
+    32,
+    16,
+    32,
+    16
+   ],
+   "minHeight": 64
+  },
+  "ui_gb_toast": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_toast",
+   "left": 32,
+   "right": 22,
+   "top": 22,
+   "bottom": 26,
+   "contentInset": [
+    26,
+    10,
+    16,
+    12
+   ]
+  },
+  "ui_gb_ribbon": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_ribbon",
+   "left": 24,
+   "right": 24,
+   "top": 14,
+   "bottom": 14,
+   "contentInset": [
+    22,
+    8,
+    22,
+    10
+   ],
+   "minHeight": 48
+  }
+ }
+}

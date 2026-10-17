@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Geumbang Sounds</title>
+<style>
+:root{--bg:#FBF6EC;--card:#FFFFFF;--ink:#3B3F52;--accent:#F2B33D;--accent2:#D9962A;--muted:#7A6A55}
+@media (prefers-color-scheme:dark){:root{--bg:#22252f;--card:#2c303c;--ink:#F4EDE0;--accent:#F2B33D;--accent2:#D9962A;--muted:#b7aa94}}
+body{margin:0;padding:16px;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+h1{font-size:22px;margin:4px 0} p{color:var(--muted);margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:8px;margin-top:12px}
+.card{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:8px 10px;border-left:6px solid var(--accent)}
+.card b{display:block;font-size:14px;overflow-wrap:anywhere} .card small{display:block;color:var(--muted)}
+button{width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:#3B3F52;font-size:16px;cursor:pointer;flex:none}
+button:active{background:var(--accent2)}
+</style></head><body>
+<h1>금방 소리 (audio8)</h1>
+<p>게임과 같은 기본 볼륨, 같은 방식(하나의 스프라이트에서 잘라 쓰기)으로 재생합니다. 띵동 · 빵빵 · 앱 알림 · 문 앞 상자 · 금-방! ·
+테이프 찌익 · 삑 · 보관함. Open through the game's local web server (http://.../docs/previews/audio8_preview.html).</p>
+<div class="grid"><div class='card'><button data-key='sfx_gb_doorbell'>&#9654;</button><div><b>sfx_gb_doorbell</b><small>0.90s &middot; vol 0.226</small><small class='n'>'띵동' (G5 -> E5): the courier rings at a front door (ring_doorbell impact frame, with fx_gb_bell)</small></div></div>
+<div class='card'><button data-key='sfx_gb_doorbell_2'>&#9654;</button><div><b>sfx_gb_doorbell_2</b><small>0.90s &middot; vol 0.275</small><small class='n'>variant A5 -> F#5 (group sfx_gb_doorbell)</small></div></div>
+<div class='card'><button data-key='sfx_gb_horn'>&#9654;</button><div><b>sfx_gb_horn</b><small>0.50s &middot; vol 0.292</small><small class='n'>friendly double toy beep of the 금방 van (a van blocked > 6 s, at most once per 6 s; never at night); positional, x0</small></div></div>
+<div class='card'><button data-key='sfx_gb_chime'>&#9654;</button><div><b>sfx_gb_chime</b><small>0.45s &middot; vol 0.209</small><small class='n'>the 금방 app ping: a new order (only when revealed / the app or toast shows it), a tracker step done while the app is open, the 금방 chip's new dot</small></div></div>
+<div class='card'><button data-key='sfx_gb_thump'>&#9654;</button><div><b>sfx_gb_thump</b><small>0.35s &middot; vol 1.0</small><small class='n'>a parcel set down on a snowy doorstep (nobody home: gb_parcel_doorstep), staged by dock 1 (출고 대기), a courier's box landing</small></div></div>
+<div class='card'><button data-key='sfx_gb_thump_2'>&#9654;</button><div><b>sfx_gb_thump_2</b><small>0.35s &middot; vol 0.989</small><small class='n'>variant: a heavier box that settles with a small scrape (group sfx_gb_thump)</small></div></div>
+<div class='card'><button data-key='sfx_gb_jingle'>&#9654;</button><div><b>sfx_gb_jingle</b><small>1.20s &middot; vol 0.331</small><small class='n'>the 금방 sound logo '금-방!' (F5 G5 C6, original): the opening ribbon cut, the first delivery of the day, the app's first open / splash</small></div></div>
+<div class='card'><button data-key='sfx_gb_tape'>&#9654;</button><div><b>sfx_gb_tape</b><small>0.50s &middot; vol 0.275</small><small class='n'>packing tape '찌익' (tape_box impact frame at the 포장대)</small></div></div>
+<div class='card'><button data-key='sfx_gb_tape_2'>&#9654;</button><div><b>sfx_gb_tape_2</b><small>0.50s &middot; vol 0.302</small><small class='n'>variant: a shorter, quicker pull (group sfx_gb_tape)</small></div></div>
+<div class='card'><button data-key='sfx_gb_scan'>&#9654;</button><div><b>sfx_gb_scan</b><small>0.15s &middot; vol 0.168</small><small class='n'>soft '삑' per parcel scanned (scan impact frame) and per box loaded into the van; positional, rate 0</small></div></div>
+<div class='card'><button data-key='sfx_gb_locker'>&#9654;</button><div><b>sfx_gb_locker</b><small>0.40s &middot; vol 0.355</small><small class='n'>금방 보관함 opens (gb_locker open anim, frame 0): latch click, door pop, the two-note chime A5 -> D6; positional</small></div></div></div>
+<script>
+const BASE='../../assets/audio8/';let ctx,man,sprite;
+function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}
+async function dec(u){const ab=await (await fetch(u)).arrayBuffer();return await new Promise((ok,no)=>ac().decodeAudioData(ab,ok,no))}
+async function init(){if(man)return;man=await (await fetch(BASE+'manifest.json')).json();sprite=await dec('../../assets/'+man.audioSprite.file)}
+function slice(k){const [st,du]=man.audioSprite.keys[k],sr=sprite.sampleRate,a=Math.floor(st*sr),n=Math.ceil((du+0.03)*sr);
+ const b=ac().createBuffer(1,n,sr);b.getChannelData(0).set(sprite.getChannelData(0).subarray(a,a+n));return b}
+async function play(k){await init();const a=man.audio[k];const s=ac().createBufferSource(),g=ac().createGain();
+ s.buffer=slice(k);g.gain.value=a.volume;s.connect(g).connect(ac().destination);s.start()}
+document.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+ try{await play(b.dataset.key)}catch(e){document.body.insertAdjacentHTML('afterbegin','<p>'+e+' (open via http://)</p>')}});
+</script></body></html>

@@ -309,8 +309,16 @@ export class HudV42 {
     const units = nb.rail.consist();
     const names = { train_engine: 'car_engine', train_coach: 'car_coach0', train_boxcar: 'car_box0', train_flatcar: 'car_flat' };
     const cw = Math.min(124, (pw - 60) / units.length - 8);
+    // ((CODE-2) the cars as their ui5 pictures (객차 · 화물칸 · 무개화차) with the name under each; the engine a chip)
+    const ICON = { train_coach: 'ui_icon_coach', train_boxcar: 'ui_icon_boxcar', train_flatcar: 'ui_icon_flatcar' };
     units.forEach((u, i) => {
       const x = cx - ((units.length - 1) * (cw + 8)) / 2 + i * (cw + 8), y = cy - ph / 2 + 112;
+      const ik = ICON[u.key];
+      if (ik && Assets.has(ik)) {
+        c.add(fit(Assets.image(ui, x, y - 6, ik).setOrigin(0.5), Math.min(76, cw)));
+        c.add(ui.add.text(x, y + 38, t(names[u.key]), TXT(16, '#2b2f3a', '#ffffff', 4, '900')).setOrigin(0.5));
+        return;
+      }
       const col = u.key === 'train_engine' ? 0xe0544a : u.key === 'train_coach' ? 0x7fb2ff : u.key === 'train_boxcar' ? 0x5f9a5a : 0xa98a62;
       const g = ui.add.graphics();
       g.fillStyle(col, 1); g.fillRoundedRect(x - cw / 2, y - 22, cw, 44, 10);

@@ -1,0 +1,2732 @@
+{
+ "version": 1,
+ "fragment": "geumbang",
+ "generator": "tools/blender/gb_render.py + gb_pack.py (docs/CONTRACT_GEUMBANG.md section AO)",
+ "brand": {
+  "gold": "#F2B33D",
+  "goldDark": "#D9962A",
+  "cream": "#F4EDE0",
+  "charcoal": "#3B3F52",
+  "navy": "#2B4F7E"
+ },
+ "conventions": {
+  "ppu": 64,
+  "vehicles": "characters{} kind \"vehicle\" in the assets/vehicles conventions (dirs SE, NE; SW <- SE and NW <- NE with flipX; frame names {anim}_{dir}_{i}; no baked shadow: draw shadow[dir]; seats + over_* overlays; px points per dir, negate dx when mirrored). gb_van = the delivery_van_red rig exactly; gb_van_turn = its S / E / N corner frames (W <- E).",
+  "patches": "A patch frame is drawn over its base frame at the same position with its own anchor / frameSize (the trimmed frame holds only the changed pixels). gb_van door / unload: over idle_<dir>_0 at body depth + patchDepth (0.0005), i.e. UNDER the seated / standing riders, and the van overlay switches to anims.<anim>.overlay (over_door_* / over_unload_*, same anchor / frameSize as the patch) - never draw a van patch above the riders or above over_*; door empties seat 0. gb_locker_* open over <key>_0; gb_banner_* (0.0012), gb_emblem_* / gb_roofparcel (0.0004) over logistics_center_shell, fading with the shell.",
+  "mirror": "Phaser flips a frame about its CENTRE, not its anchor: a point (dx, dy) of a flipped sprite lands at (-dx + mirrorShiftPx, dy), mirrorShiftPx = frameW - 2 * anchorX * frameW (gb_van -2, gb_van_turn -4.0, gb_pennant -20.0, dog_sled 30.0). The red-van tables keep the plain negation (2 px); sledPennant ships explicit SW / NW tables because the sled and the pennant shift by 50 px between them.",
+  "layers": "gb_nameplate_<lang> / seori_nameplate_<lang> share logistics_center frameSize + anchor: draw one of them INSTEAD of logistics_center_nameplate_<lang> (replaces), depth = building + 0.0005, alpha = shell alpha.",
+  "states": "props / items with states{}: show the named frame (day / lit at night) - not an animation. litPatch: true -> the lit frame is a PATCH: draw it over the day frame at night.",
+  "items": "72 x 72, anchor (36, 54); stackStep, carryScale, topPx, sizeClass from the matching cardboard_box_* (boxOf). Also usable as icons.",
+  "text": "Letters only on: gb_roofsign_ko_0, gb_roofsign_ko_1, gb_roofsign_en_0, gb_roofsign_en_1, gb_nameplate_ko, gb_nameplate_en, seori_nameplate_ko, seori_nameplate_en, gb_banner_ko. No letters on any mirrored sprite (gb_van, gb_van_turn, gb_pennant).",
+  "night": "Lit frames (_1 / roof sign _1) are drawn under the game's MULTIPLY night tint; add the usual ADD glow at the VISIBLE lightPoints (lightsVisible) / roofSignPoint / the sign disc for the lantern feel, and a soft ADD glow at logistics_center fxPoints.board so the 금방 nameplate and banner do not sink below the lit windows at night."
+ },
+ "atlases": [
+  {
+   "key": "gb_van_0",
+   "png": "geumbang/gb_van_0.png",
+   "json": "geumbang/gb_van_0.json"
+  },
+  {
+   "key": "gb_bld_0",
+   "png": "geumbang/gb_bld_0.png",
+   "json": "geumbang/gb_bld_0.json"
+  }
+ ],
+ "pages": {
+  "gb_van_0": {
+   "size": [
+    1784,
+    944
+   ],
+   "MiB": 6.42,
+   "bytes": 360142,
+   "residency": "class gbVan (a van within 1,200 px of the view)"
+  },
+  "gb_bld_0": {
+   "size": [
+    968,
+    556
+   ],
+   "MiB": 2.05,
+   "bytes": 112850,
+   "residency": "gb_core (built with ui6 resident icons): area gb + doorstep / locker / sled in view"
+  }
+ },
+ "characters": {
+  "gb_van": {
+   "cargoPoint": {
+    "SE": [
+     -68,
+     -61,
+     false
+    ],
+    "NE": [
+     -68,
+     7,
+     false
+    ]
+   },
+   "doorPoints": {
+    "SE": [
+     [
+      -7,
+      58
+     ],
+     [
+      115,
+      -3
+     ]
+    ],
+    "NE": [
+     [
+      115,
+      3
+     ],
+     [
+      -7,
+      -58
+     ]
+    ]
+   },
+   "exhaustPoint": {
+    "SE": [
+     -129,
+     -57
+    ],
+    "NE": [
+     -79,
+     47
+    ]
+   },
+   "lightPoints": {
+    "SE": [
+     [
+      72,
+      14
+     ],
+     [
+      124,
+      -12
+     ]
+    ],
+    "NE": [
+     [
+      124,
+      -83
+     ],
+     [
+      72,
+      -110
+     ]
+    ]
+   },
+   "tailPoints": {
+    "SE": [
+     [
+      -136,
+      -81
+     ],
+     [
+      -62,
+      -118
+     ]
+    ],
+    "NE": [
+     [
+      -62,
+      18
+     ],
+     [
+      -136,
+      -19
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "SE": [
+     -124,
+     -62
+    ],
+    "NE": [
+     -124,
+     62
+    ]
+   },
+   "seats": {
+    "SE": [
+     [
+      38,
+      -10
+     ],
+     [
+      76,
+      -29
+     ]
+    ],
+    "NE": [
+     [
+      76,
+      -66
+     ],
+     [
+      38,
+      -85
+     ]
+    ]
+   },
+   "seatDirs": {
+    "SE": [
+     "SE",
+     "SE"
+    ],
+    "NE": [
+     "NE",
+     "NE"
+    ]
+   },
+   "seatsStand": {
+    "SE": [
+     [
+      32,
+      3
+     ],
+     [
+      70,
+      -16
+     ]
+    ],
+    "NE": [
+     [
+      70,
+      -49
+     ],
+     [
+      32,
+      -68
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "SE": [
+     1,
+     0
+    ],
+    "NE": [
+     1,
+     0
+    ]
+   },
+   "seatNames": [
+    "dv_seat0",
+    "dv_seat1"
+   ],
+   "driverSeat": 0,
+   "footprintPoly": {
+    "SE": [
+     [
+      57,
+      71
+     ],
+     [
+      143,
+      28
+     ],
+     [
+      -57,
+      -71
+     ],
+     [
+      -143,
+      -28
+     ]
+    ],
+    "NE": [
+     [
+      143,
+      -28
+     ],
+     [
+      57,
+      -71
+     ],
+     [
+      -143,
+      28
+     ],
+     [
+      -57,
+      71
+     ]
+    ]
+   },
+   "shadow": {
+    "SE": [
+     218,
+     81,
+     26.57
+    ],
+    "NE": [
+     218,
+     81,
+     -26.57
+    ]
+   },
+   "wheels": {
+    "radiusM": 0.38,
+    "turnsPerLoopDeg": 120.0
+   },
+   "lengthM": 4.4,
+   "widthM": 1.9,
+   "heightM": 2.36,
+   "topPx": 185,
+   "headTop": -185,
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "axisDirs": {
+    "X+": "SE",
+    "Y+": "NE",
+    "Y-": "SW",
+    "X-": "NW"
+   },
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "frameSize": [
+    284,
+    252
+   ],
+   "anchor": [
+    0.50352,
+    0.75
+   ],
+   "atlas": "gb_van_0",
+   "frameName": "{anim}_{dir}_{i}",
+   "anims": {
+    "idle": {
+     "frames": 2,
+     "fps": 6,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1
+     ]
+    },
+    "move": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1,
+     "bobPx": [
+      0,
+      -1,
+      -1,
+      0
+     ],
+     "wheels": true
+    },
+    "door": {
+     "frames": 3,
+     "fps": 10,
+     "repeat": 0,
+     "patch": true,
+     "over": "idle_{dir}_0",
+     "frameSize": [
+      396,
+      364
+     ],
+     "anchor": [
+      0.50253,
+      0.67308
+     ],
+     "rects": {
+      "SE": [
+       [
+        -34,
+        -66,
+        134,
+        74
+       ],
+       [
+        -22,
+        -66,
+        127,
+        94
+       ],
+       [
+        -17,
+        -66,
+        123,
+        94
+       ]
+      ],
+      "NE": [
+       [
+        39,
+        -122,
+        82,
+        83
+       ],
+       [
+        40,
+        -122,
+        88,
+        82
+       ],
+       [
+        40,
+        -122,
+        107,
+        82
+       ]
+      ]
+     },
+     "patchDepth": 0.0005,
+     "overlay": "over_door_{dir}_{i}",
+     "emptySeats": [
+      0
+     ],
+     "drawOrder": [
+      "shadow",
+      "body (idle_<dir>_0)",
+      "patch (+patchDepth)",
+      "riders (+0.001..)",
+      "overlay (+0.004)",
+      "roof sign (+0.02)"
+     ]
+    },
+    "unload": {
+     "frames": 4,
+     "fps": 8,
+     "repeat": 0,
+     "patch": true,
+     "over": "idle_{dir}_0",
+     "frameSize": [
+      396,
+      364
+     ],
+     "anchor": [
+      0.50253,
+      0.67308
+     ],
+     "rects": {
+      "SE": [
+       [
+        -125,
+        -67,
+        253,
+        82
+       ],
+       [
+        -141,
+        -176,
+        269,
+        191
+       ],
+       [
+        -152,
+        -182,
+        280,
+        197
+       ],
+       [
+        -156,
+        -184,
+        284,
+        199
+       ]
+      ],
+      "NE": [
+       [
+        -135,
+        -100,
+        236,
+        151
+       ],
+       [
+        -139,
+        -100,
+        240,
+        151
+       ],
+       [
+        -152,
+        -100,
+        253,
+        151
+       ],
+       [
+        -156,
+        -100,
+        257,
+        151
+       ]
+      ]
+     },
+     "patchDepth": 0.0005,
+     "overlay": "over_unload_{dir}_{i}",
+     "emptySeats": [],
+     "drawOrder": [
+      "shadow",
+      "body (idle_<dir>_0)",
+      "patch (+patchDepth)",
+      "riders (+0.001..)",
+      "overlay (+0.004)",
+      "roof sign (+0.02)"
+     ]
+    }
+   },
+   "kind": "vehicle",
+   "era": 3,
+   "family": "delivery_van",
+   "variant": "gb",
+   "role": "gb",
+   "rig": "delivery_van_red",
+   "overlay": {
+    "atlas": "gb_van_0",
+    "frameName": "over_{anim}_{dir}_{i}"
+   },
+   "roofSignPoint": {
+    "SE": [
+     16,
+     -123
+    ],
+    "NE": [
+     16,
+     -139
+    ]
+   },
+   "parcelPoints": {
+    "SE": [
+     [
+      -95,
+      -82
+     ],
+     [
+      -72,
+      -92
+     ],
+     [
+      -94,
+      -98
+     ]
+    ],
+    "NE": [
+     [
+      -73,
+      2
+     ],
+     [
+      -100,
+      -6
+     ],
+     [
+      -74,
+      -13
+     ]
+    ]
+   },
+   "parcelGround": {
+    "SE": [
+     [
+      -95,
+      -36
+     ],
+     [
+      -72,
+      -50
+     ],
+     [
+      -94,
+      -37
+     ]
+    ],
+    "NE": [
+     [
+      -73,
+      48
+     ],
+     [
+      -100,
+      36
+     ],
+     [
+      -74,
+      47
+     ]
+    ]
+   },
+   "parcelPointsVisible": {
+    "SE": [
+     false,
+     false,
+     false
+    ],
+    "NE": [
+     false,
+     true,
+     false
+    ]
+   },
+   "lightsVisible": {
+    "SE": [
+     true,
+     true
+    ],
+    "NE": [
+     true,
+     false
+    ]
+   },
+   "tailsVisible": {
+    "SE": [
+     true,
+     false
+    ],
+    "NE": [
+     true,
+     true
+    ]
+   },
+   "mirrorShiftPx": -2,
+   "doorstepDirs": [
+    "NE",
+    "NW"
+   ],
+   "roofSign": {
+    "ko": [
+     "gb_roofsign_ko_0",
+     "gb_roofsign_ko_1"
+    ],
+    "en": [
+     "gb_roofsign_en_0",
+     "gb_roofsign_en_1"
+    ],
+    "anchor": [
+     0.5,
+     1.0
+    ],
+    "note": "draw at roofSignPoint[dir] (+ the current bobPx; negate dx for a mirrored dir) ABOVE the van and its overlay, never flipped; _0 by day, _1 when lit (night)."
+   },
+   "turn": "gb_van_turn",
+   "notes": "금방 van: the delivery_van_red rig (same frame, anchor, dirs, sizes and every point) in the 금방 livery - honey-gold body, navy belt line, cream roof band + snow, the symmetric 금방이 mark on both flanks, NO letters (SW / NW are flipX mirrors). The word 금방 rides on the camera-facing roof sign (roofSign / roofSignPoint). door (3 f, once): the driver door swings open; unload (4 f, once): the rear doors open, f3 shows the parcels at parcelPoints (parcelGround = the floor under them) - only where parcelPointsVisible says so: in SE / SW the rear faces away and the parcels are hidden by the body, so stage doorstep kerb stops facing NE / NW (doorstepDirs) or show the parcel only once it is in the courier's hands. door / unload are PATCHES: hold the body on idle_<dir>_0 and draw the patch frame at the SAME position with anims.<anim>.anchor / frameSize (the grown canvas; rects = [x, y, w, h] px from the van anchor) at body depth + patchDepth (0.0005: UNDER the riders), then the riders, then anims.<anim>.overlay (over_door_<dir>_<i> / over_unload_<dir>_<i>, same anchor / frameSize as the patch) INSTEAD of over_idle_<dir>_0. door: seat 0 (the driver) is empty while it plays - he steps out at doorPoints[0]; a seat-1 passenger stays and is drawn after the patch. Play backward to close. lightsVisible / tailsVisible: add night glows only at the visible lamps."
+  },
+  "gb_van_turn": {
+   "atlas": "gb_van_0",
+   "frameSize": [
+    296,
+    256
+   ],
+   "anchor": [
+    0.50676,
+    0.75
+   ],
+   "dirs": [
+    "S",
+    "E",
+    "N"
+   ],
+   "mirror": {
+    "W": "E"
+   },
+   "frameName": "turn_{dir}_0",
+   "kind": "vehicle",
+   "era": 3,
+   "family": "delivery_van",
+   "variant": "gb",
+   "role": "gb",
+   "of": "gb_van",
+   "anims": {
+    "turn": {
+     "frames": 1,
+     "fps": 1,
+     "repeat": 0
+    }
+   },
+   "overlay": {
+    "atlas": "gb_van_0",
+    "frameName": "over_turn_{dir}_0"
+   },
+   "shadow": {
+    "S": [
+     128,
+     138,
+     0.0
+    ],
+    "N": [
+     128,
+     138,
+     0.0
+    ],
+    "E": [
+     276,
+     64,
+     0.0
+    ]
+   },
+   "headingDeg": {
+    "S": 90,
+    "E": 0,
+    "N": 270,
+    "W": 180
+   },
+   "notes": "The 45-degree corner frames of gb_van (anchor = the ground under the van centre): shown for van.turnS (0.3 s) mid-corner. S (front to the camera), E (pure side), N (rear to the camera); W = E flipped (negate dx). Draw the shadow ellipse, the frame, seated people at seats, over_turn_<dir>_0, then the roof sign at roofSignPoint.",
+   "seats": {
+    "S": [
+     [
+      -27,
+      -8
+     ],
+     [
+      27,
+      -8
+     ]
+    ],
+    "E": [
+     [
+      80,
+      -34
+     ],
+     [
+      80,
+      -61
+     ]
+    ],
+    "N": [
+     [
+      27,
+      -88
+     ],
+     [
+      -27,
+      -88
+     ]
+    ]
+   },
+   "seatDirs": {
+    "S": [
+     "S",
+     "S"
+    ],
+    "E": [
+     "E",
+     "E"
+    ],
+    "N": [
+     "N",
+     "N"
+    ]
+   },
+   "seatsStand": {
+    "S": [
+     [
+      -27,
+      4
+     ],
+     [
+      27,
+      4
+     ]
+    ],
+    "E": [
+     [
+      72,
+      -19
+     ],
+     [
+      72,
+      -46
+     ]
+    ],
+    "N": [
+     [
+      27,
+      -69
+     ],
+     [
+      -27,
+      -69
+     ]
+    ]
+   },
+   "seatDrawOrder": {
+    "S": [
+     0,
+     1
+    ],
+    "E": [
+     1,
+     0
+    ],
+    "N": [
+     0,
+     1
+    ]
+   },
+   "lightPoints": {
+    "S": [
+     [
+      -37,
+      21
+     ],
+     [
+      37,
+      21
+     ]
+    ],
+    "E": [
+     [
+      138,
+      -29
+     ],
+     [
+      138,
+      -66
+     ]
+    ],
+    "N": [
+     [
+      37,
+      -117
+     ],
+     [
+      -37,
+      -117
+     ]
+    ]
+   },
+   "tailPoints": {
+    "S": [
+     [
+      -52,
+      -120
+     ],
+     [
+      52,
+      -120
+     ]
+    ],
+    "E": [
+     [
+      -140,
+      -24
+     ],
+     [
+      -140,
+      -76
+     ]
+    ],
+    "N": [
+     [
+      52,
+      20
+     ],
+     [
+      -52,
+      20
+     ]
+    ]
+   },
+   "roofSignPoint": {
+    "S": [
+     0,
+     -120
+    ],
+    "E": [
+     22,
+     -131
+    ],
+    "N": [
+     0,
+     -142
+    ]
+   },
+   "footprintPoly": {
+    "S": [
+     [
+      -61,
+      70
+     ],
+     [
+      61,
+      70
+     ],
+     [
+      61,
+      -70
+     ],
+     [
+      -61,
+      -70
+     ]
+    ],
+    "E": [
+     [
+      141,
+      30
+     ],
+     [
+      141,
+      -30
+     ],
+     [
+      -141,
+      -30
+     ],
+     [
+      -141,
+      30
+     ]
+    ],
+    "N": [
+     [
+      61,
+      -70
+     ],
+     [
+      -61,
+      -70
+     ],
+     [
+      -61,
+      70
+     ],
+     [
+      61,
+      70
+     ]
+    ]
+   },
+   "doorPoints": {
+    "S": [
+     [
+      -86,
+      38
+     ],
+     [
+      86,
+      38
+     ]
+    ],
+    "E": [
+     [
+      77,
+      43
+     ],
+     [
+      77,
+      -43
+     ]
+    ],
+    "N": [
+     [
+      86,
+      -38
+     ],
+     [
+      -86,
+      -38
+     ]
+    ]
+   },
+   "rearDoorPoint": {
+    "S": [
+     0,
+     -88
+    ],
+    "E": [
+     -176,
+     0
+    ],
+    "N": [
+     0,
+     88
+    ]
+   },
+   "cargoPoint": {
+    "S": [
+     0,
+     -75,
+     false
+    ],
+    "E": [
+     -96,
+     -27,
+     false
+    ],
+    "N": [
+     0,
+     21,
+     false
+    ]
+   },
+   "exhaustPoint": {
+    "S": [
+     -35,
+     -91
+    ],
+    "E": [
+     -147,
+     0
+    ],
+    "N": [
+     35,
+     56
+    ]
+   },
+   "seatNames": [
+    "dv_seat0",
+    "dv_seat1"
+   ],
+   "driverSeat": 0,
+   "lightsVisible": {
+    "S": [
+     true,
+     true
+    ],
+    "E": [
+     true,
+     true
+    ],
+    "N": [
+     false,
+     false
+    ]
+   },
+   "tailsVisible": {
+    "S": [
+     false,
+     false
+    ],
+    "E": [
+     true,
+     true
+    ],
+    "N": [
+     true,
+     true
+    ]
+   },
+   "mirrorShiftPx": -4
+  }
+ },
+ "vehicleFamilies": {
+  "delivery_van": [
+   "gb_van"
+  ]
+ },
+ "sprites": {
+  "gb_roofsign_ko_0": {
+   "atlas": "gb_van_0",
+   "frame": "gb_roofsign_ko_0",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "frameSize": [
+    96,
+    56
+   ],
+   "kind": "overlay",
+   "of": "gb_van",
+   "point": "roofSignPoint",
+   "lang": "ko",
+   "lit": false,
+   "mirror": false,
+   "hasText": true,
+   "notes": "Camera-facing roof A-board (cream face, gold rim, the mark + navy \"금방\") on a charcoal roof bar; day. Never flipped; on a mirrored van draw it at x - p[0] + mirrorShiftPx."
+  },
+  "gb_roofsign_ko_1": {
+   "atlas": "gb_van_0",
+   "frame": "gb_roofsign_ko_1",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "frameSize": [
+    96,
+    56
+   ],
+   "kind": "overlay",
+   "of": "gb_van",
+   "point": "roofSignPoint",
+   "lang": "ko",
+   "lit": true,
+   "mirror": false,
+   "hasText": true,
+   "notes": "Camera-facing roof A-board (cream face, gold rim, the mark + navy \"금방\") on a charcoal roof bar; lit (night). Never flipped; on a mirrored van draw it at x - p[0] + mirrorShiftPx."
+  },
+  "gb_roofsign_en_0": {
+   "atlas": "gb_van_0",
+   "frame": "gb_roofsign_en_0",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "frameSize": [
+    96,
+    56
+   ],
+   "kind": "overlay",
+   "of": "gb_van",
+   "point": "roofSignPoint",
+   "lang": "en",
+   "lit": false,
+   "mirror": false,
+   "hasText": true,
+   "notes": "Camera-facing roof A-board (cream face, gold rim, a stacked lockup: the mark + navy GEUM / BANG on two lines) on a charcoal roof bar; day. Never flipped; on a mirrored van draw it at x - p[0] + mirrorShiftPx."
+  },
+  "gb_roofsign_en_1": {
+   "atlas": "gb_van_0",
+   "frame": "gb_roofsign_en_1",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "frameSize": [
+    96,
+    56
+   ],
+   "kind": "overlay",
+   "of": "gb_van",
+   "point": "roofSignPoint",
+   "lang": "en",
+   "lit": true,
+   "mirror": false,
+   "hasText": true,
+   "notes": "Camera-facing roof A-board (cream face, gold rim, a stacked lockup: the mark + navy GEUM / BANG on two lines) on a charcoal roof bar; lit (night). Never flipped; on a mirrored van draw it at x - p[0] + mirrorShiftPx."
+  },
+  "gb_nameplate_ko": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_nameplate_ko",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "nameplate_ko",
+   "replaces": "nameplate_ko",
+   "depthOffset": 0.0005,
+   "lang": "ko",
+   "withShell": true,
+   "hasText": true,
+   "notes": "Raised navy letters (mark + 금방 + 물류센터) lit like the shell, inside nameBoard: draw INSTEAD of logistics_center_nameplate_ko, right above _shell, with the shell's alpha. (after 금방 opens.)"
+  },
+  "gb_nameplate_en": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_nameplate_en",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "nameplate_en",
+   "replaces": "nameplate_en",
+   "depthOffset": 0.0005,
+   "lang": "en",
+   "withShell": true,
+   "hasText": true,
+   "notes": "Raised navy letters (mark + GEUMBANG / CENTRE) lit like the shell, inside nameBoard: draw INSTEAD of logistics_center_nameplate_en, right above _shell, with the shell's alpha. (after 금방 opens.)"
+  },
+  "seori_nameplate_ko": {
+   "atlas": "gb_bld_0",
+   "frame": "seori_nameplate_ko",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "nameplate_ko",
+   "replaces": "nameplate_ko",
+   "depthOffset": 0.0005,
+   "lang": "ko",
+   "withShell": true,
+   "hasText": true,
+   "notes": "Raised navy letters (서리 물류창고) lit like the shell, inside nameBoard: draw INSTEAD of logistics_center_nameplate_ko, right above _shell, with the shell's alpha. (서리 물류창고: before 금방 opens.)"
+  },
+  "seori_nameplate_en": {
+   "atlas": "gb_bld_0",
+   "frame": "seori_nameplate_en",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "layer",
+   "of": "logistics_center",
+   "layer": "nameplate_en",
+   "replaces": "nameplate_en",
+   "depthOffset": 0.0005,
+   "lang": "en",
+   "withShell": true,
+   "hasText": true,
+   "notes": "Raised navy letters (Frost Depot) lit like the shell, inside nameBoard: draw INSTEAD of logistics_center_nameplate_en, right above _shell, with the shell's alpha. (서리 물류창고: before 금방 opens.)"
+  },
+  "gb_banner_ko": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_banner_ko_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "banner",
+   "depthOffset": 0.0012,
+   "lang": "ko",
+   "withShell": true,
+   "hasText": true,
+   "anims": {
+    "sway": {
+     "frames": [
+      "gb_banner_ko_0",
+      "gb_banner_ko_1",
+      "gb_banner_ko_2",
+      "gb_banner_ko_3"
+     ],
+     "fps": 5,
+     "repeat": -1
+    }
+   },
+   "notes": "0.7 x 1.8 m 금방 cloth banner on the front wall left of dock 1 (the mark + 금 / 방 stacked upright), with its own soft wall shadow; sway loop. Fades with the shell. The print is de-sheared for the wall, so the mark and the syllables stand upright on screen."
+  },
+  "gb_banner_en": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_banner_en_0",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "banner",
+   "depthOffset": 0.0012,
+   "lang": "en",
+   "withShell": true,
+   "hasText": false,
+   "anims": {
+    "sway": {
+     "frames": [
+      "gb_banner_en_0",
+      "gb_banner_en_1",
+      "gb_banner_en_2",
+      "gb_banner_en_3"
+     ],
+     "fps": 5,
+     "repeat": -1
+    }
+   },
+   "notes": "0.7 x 1.8 m 금방 cloth banner on the front wall left of dock 1 (the mark + sparkles, no letters), with its own soft wall shadow; sway loop. Fades with the shell. The print is de-sheared for the wall, so the mark and the syllables stand upright on screen."
+  },
+  "gb_emblem_gable": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_emblem_gable",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "shell",
+   "depthOffset": 0.0004,
+   "withShell": true,
+   "hasText": false,
+   "brand": "gb",
+   "notes": "Re-render patch over logistics_center_shell (the big gable disc above dock 2: the 금방이 mark instead of the winged parcel; only the changed pixels + a collar). Draw it with the 금방 hub (gb_nameplate_<lang>) right above _shell, depth = building + 0.0004, alpha = shell alpha; not with the 서리 depot (seori_nameplate_*), which keeps the centre's own mark."
+  },
+  "gb_emblem_blade": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_emblem_blade",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "shell",
+   "depthOffset": 0.0004,
+   "withShell": true,
+   "hasText": false,
+   "brand": "gb",
+   "notes": "Re-render patch over logistics_center_shell (the corner blade sign: a 금방이 disc instead of the blue winged-parcel disc; only the changed pixels + a collar). Draw it with the 금방 hub (gb_nameplate_<lang>) right above _shell, depth = building + 0.0004, alpha = shell alpha; not with the 서리 depot (seori_nameplate_*), which keeps the centre's own mark."
+  },
+  "gb_roofparcel": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_roofparcel",
+   "anchor": [
+    0.41493,
+    0.58912
+   ],
+   "frameSize": [
+    1152,
+    864
+   ],
+   "kind": "patch",
+   "of": "logistics_center",
+   "layer": "shell",
+   "depthOffset": 0.0004,
+   "withShell": true,
+   "hasText": false,
+   "brand": "gb",
+   "notes": "Re-render patch over logistics_center_shell (the giant parcel on the ridge: gold ribbons + bow instead of red; only the changed pixels + a collar). Draw it with the 금방 hub (gb_nameplate_<lang>) right above _shell, depth = building + 0.0004, alpha = shell alpha; not with the 서리 depot (seori_nameplate_*), which keeps the centre's own mark."
+  },
+  "gb_flag": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_flag_wave_0",
+   "anchor": [
+    0.10938,
+    0.66071
+   ],
+   "frameSize": [
+    128,
+    224
+   ],
+   "kind": "prop",
+   "notes": "금방 flag (2.4 m pole, gold ball finial): a 1.0 x 0.65 m gold flag printed with the 금방이 mark and two cream sparkles (no letters), waving. anims.wave = 6 frames at 8 fps, loop.",
+   "topPx": 144,
+   "shadow": "baked",
+   "footprintM": {
+    "radius": 0.3
+   },
+   "footprintPoly": [
+    [
+     14,
+     7
+    ],
+    [
+     19,
+     0
+    ],
+    [
+     14,
+     -7
+    ],
+    [
+     0,
+     -10
+    ],
+    [
+     -14,
+     -7
+    ],
+    [
+     -19,
+     0
+    ],
+    [
+     -14,
+     7
+    ],
+    [
+     0,
+     10
+    ]
+   ],
+   "heightM": 2.4,
+   "anims": {
+    "wave": {
+     "frames": [
+      "gb_flag_wave_0",
+      "gb_flag_wave_1",
+      "gb_flag_wave_2",
+      "gb_flag_wave_3",
+      "gb_flag_wave_4",
+      "gb_flag_wave_5"
+     ],
+     "fps": 8,
+     "repeat": -1
+    }
+   }
+  },
+  "gb_locker_a": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_locker_a_0",
+   "anchor": [
+    0.29327,
+    0.64732
+   ],
+   "frameSize": [
+    208,
+    224
+   ],
+   "kind": "prop",
+   "notes": "금방 보관함 parcel locker (1.8 x 0.6 x 2 m): a gold cabinet on a charcoal plinth, 12 navy doors (4 rows x 3) on a gold grid with cream knobs, a cream header with the glowing 금방이 screen and gold dots, a snow cap.  _0 day, _1 lit (screen + dots glow).  open = 4 frames at 12 fps, once: door openSlot swings open (patches over _0; play backward to close).  slotPoints[12] = door centres (index = row * 3 + col, row 0 = top), standPoint/standDir = where a resident opens a door, fillPoint/fillDir = where the courier fills it. Faces SW.",
+   "topPx": 141,
+   "shadow": "baked",
+   "footprintM": [
+    1.8,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -54,
+     -14
+    ],
+    [
+     27,
+     27
+    ],
+    [
+     54,
+     14
+    ],
+    [
+     -27,
+     -27
+    ]
+   ],
+   "heightM": 2.0,
+   "states": {
+    "day": "gb_locker_a_0",
+    "lit": "gb_locker_a_1"
+   },
+   "anims": {
+    "idle": {
+     "frames": [
+      "gb_locker_a_0",
+      "gb_locker_a_1"
+     ],
+     "fps": 1,
+     "repeat": 0
+    },
+    "open": {
+     "frames": [
+      "gb_locker_a_open_0",
+      "gb_locker_a_open_1",
+      "gb_locker_a_open_2",
+      "gb_locker_a_open_3"
+     ],
+     "fps": 12,
+     "repeat": 0,
+     "patch": true,
+     "over": "gb_locker_a_0"
+    }
+   },
+   "faces": "SW",
+   "slotPoints": [
+    [
+     -40,
+     -78
+    ],
+    [
+     -15,
+     -66
+    ],
+    [
+     9,
+     -53
+    ],
+    [
+     -40,
+     -60
+    ],
+    [
+     -15,
+     -47
+    ],
+    [
+     9,
+     -35
+    ],
+    [
+     -40,
+     -42
+    ],
+    [
+     -15,
+     -29
+    ],
+    [
+     9,
+     -17
+    ],
+    [
+     -40,
+     -23
+    ],
+    [
+     -15,
+     -11
+    ],
+    [
+     9,
+     1
+    ]
+   ],
+   "openSlot": 7,
+   "openPoint": [
+    -15,
+    -29
+   ],
+   "standPoint": [
+    -45,
+    29
+   ],
+   "standDir": "NE",
+   "fillPoint": [
+    -72,
+    11
+   ],
+   "fillDir": "NE",
+   "litPatch": true
+  },
+  "gb_locker_b": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_locker_b_0",
+   "anchor": [
+    0.29327,
+    0.64732
+   ],
+   "frameSize": [
+    208,
+    224
+   ],
+   "kind": "prop",
+   "notes": "금방 보관함 parcel locker (1.8 x 0.6 x 2 m): a gold cabinet on a charcoal plinth, 12 navy doors (4 rows x 3) on a gold grid with cream knobs, a cream header with the glowing 금방이 screen and gold dots, a snow cap.  _0 day, _1 lit (screen + dots glow).  open = 4 frames at 12 fps, once: door openSlot swings open (patches over _0; play backward to close).  slotPoints[12] = door centres (index = row * 3 + col, row 0 = top), standPoint/standDir = where a resident opens a door, fillPoint/fillDir = where the courier fills it. Faces SE.",
+   "topPx": 142,
+   "shadow": "baked",
+   "footprintM": [
+    1.8,
+    0.6
+   ],
+   "footprintPoly": [
+    [
+     -27,
+     27
+    ],
+    [
+     54,
+     -14
+    ],
+    [
+     27,
+     -27
+    ],
+    [
+     -54,
+     14
+    ]
+   ],
+   "heightM": 2.0,
+   "states": {
+    "day": "gb_locker_b_0",
+    "lit": "gb_locker_b_1"
+   },
+   "anims": {
+    "idle": {
+     "frames": [
+      "gb_locker_b_0",
+      "gb_locker_b_1"
+     ],
+     "fps": 1,
+     "repeat": 0
+    },
+    "open": {
+     "frames": [
+      "gb_locker_b_open_0",
+      "gb_locker_b_open_1",
+      "gb_locker_b_open_2",
+      "gb_locker_b_open_3"
+     ],
+     "fps": 12,
+     "repeat": 0,
+     "patch": true,
+     "over": "gb_locker_b_0"
+    }
+   },
+   "faces": "SE",
+   "slotPoints": [
+    [
+     -9,
+     -53
+    ],
+    [
+     15,
+     -66
+    ],
+    [
+     40,
+     -78
+    ],
+    [
+     -9,
+     -35
+    ],
+    [
+     15,
+     -47
+    ],
+    [
+     40,
+     -60
+    ],
+    [
+     -9,
+     -17
+    ],
+    [
+     15,
+     -29
+    ],
+    [
+     40,
+     -42
+    ],
+    [
+     -9,
+     1
+    ],
+    [
+     15,
+     -11
+    ],
+    [
+     40,
+     -23
+    ]
+   ],
+   "openSlot": 7,
+   "openPoint": [
+    15,
+    -29
+   ],
+   "standPoint": [
+    59,
+    23
+   ],
+   "standDir": "NW",
+   "fillPoint": [
+    23,
+    36
+   ],
+   "fillDir": "NW",
+   "litPatch": true
+  },
+  "gb_parcel_cat": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_cat_0",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "나비 (pet_cat) peeking out of an opened 금방 parcel (\"고양이는 상자가 더 좋대요\"). _0 eyes open, _1 blink.",
+   "topPx": 45,
+   "icon": true,
+   "stackStep": 24,
+   "thicknessM": 0.44,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_l",
+   "sizeClass": "big",
+   "anims": {
+    "blink": {
+     "frames": [
+      "gb_parcel_cat_0",
+      "gb_parcel_cat_1"
+     ],
+     "fps": 4,
+     "repeat": -1,
+     "repeatDelay": 1600
+    }
+   }
+  },
+  "gb_parcel_doorstep": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_doorstep_0",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "A 금방 parcel waiting on a doormat. _0 = just delivered, _1 = after 4 game hours outside (a snow cap on the box and the mat edge).",
+   "topPx": 28,
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_m",
+   "sizeClass": "small",
+   "states": {
+    "fresh": "gb_parcel_doorstep_0",
+    "snowy": "gb_parcel_doorstep_1"
+   },
+   "anims": {
+    "idle": {
+     "frames": [
+      "gb_parcel_doorstep_0",
+      "gb_parcel_doorstep_1"
+     ],
+     "fps": 1,
+     "repeat": 0
+    }
+   }
+  },
+  "gb_parcel_l": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_l",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "금방 parcel (l): a kraft box with a gold tape cross and the 금방이 sticker.",
+   "topPx": 34,
+   "icon": true,
+   "stackStep": 24,
+   "thicknessM": 0.44,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_l",
+   "sizeClass": "big"
+  },
+  "gb_parcel_m": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_m",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "금방 parcel (m): a kraft box with a gold tape cross and the 금방이 sticker.",
+   "topPx": 26,
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_m",
+   "sizeClass": "small"
+  },
+  "gb_parcel_open": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_open",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "An opened 금방 parcel: flaps folded out, empty inside (the unboxing aftermath).",
+   "topPx": 40,
+   "icon": true,
+   "stackStep": 19,
+   "thicknessM": 0.34,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_m",
+   "sizeClass": "small"
+  },
+  "gb_parcel_s": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_parcel_s",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "frameSize": [
+    72,
+    72
+   ],
+   "kind": "item",
+   "notes": "금방 parcel (s): a kraft box with a gold tape cross and the 금방이 sticker.",
+   "topPx": 20,
+   "icon": true,
+   "stackStep": 14,
+   "thicknessM": 0.26,
+   "carryScale": 0.65,
+   "category": "goods",
+   "boxOf": "cardboard_box_s",
+   "sizeClass": "small"
+  },
+  "gb_sign": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_sign_0",
+   "anchor": [
+    0.28906,
+    0.65157
+   ],
+   "frameSize": [
+    128,
+    287
+   ],
+   "kind": "prop",
+   "notes": "금방 pole sign (3.2 m): a 1 m 금방이 disc on a charcoal pole with a snowy foot, facing the camera (mark only, no letters - language-neutral). Frame _0 = day, _1 = lit (night: the disc face glows).",
+   "topPx": 184,
+   "shadow": "baked",
+   "footprintM": {
+    "radius": 0.3
+   },
+   "footprintPoly": [
+    [
+     14,
+     7
+    ],
+    [
+     19,
+     0
+    ],
+    [
+     14,
+     -7
+    ],
+    [
+     0,
+     -10
+    ],
+    [
+     -14,
+     -7
+    ],
+    [
+     -19,
+     0
+    ],
+    [
+     -14,
+     7
+    ],
+    [
+     0,
+     10
+    ]
+   ],
+   "heightM": 3.2,
+   "states": {
+    "day": "gb_sign_0",
+    "lit": "gb_sign_1"
+   },
+   "anims": {
+    "idle": {
+     "frames": [
+      "gb_sign_0",
+      "gb_sign_1"
+     ],
+     "fps": 1,
+     "repeat": 0
+    }
+   },
+   "litPatch": true
+  },
+  "gb_pennant": {
+   "atlas": "gb_bld_0",
+   "frame": "gb_pennant_SE_0",
+   "frameSize": [
+    48,
+    56
+   ],
+   "anchor": [
+    0.70833,
+    0.89286
+   ],
+   "kind": "overlay",
+   "of": "dog_sled",
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "mirror": {
+    "SW": "SE",
+    "NW": "NE"
+   },
+   "frameName": "gb_pennant_{dir}_{i}",
+   "anims": {
+    "flutter": {
+     "frames": 4,
+     "fps": 10,
+     "repeat": -1
+    }
+   },
+   "sledPennant": {
+    "SE": {
+     "idle": [
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -83
+      ]
+     ],
+     "move": [
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -84
+      ],
+      [
+       -76,
+       -84
+      ],
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -83
+      ],
+      [
+       -76,
+       -84
+      ],
+      [
+       -76,
+       -84
+      ]
+     ]
+    },
+    "NE": {
+     "idle": [
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -20
+      ]
+     ],
+     "move": [
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -21
+      ],
+      [
+       -49,
+       -21
+      ],
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -20
+      ],
+      [
+       -49,
+       -21
+      ],
+      [
+       -49,
+       -21
+      ]
+     ]
+    },
+    "SW": {
+     "idle": [
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -83
+      ]
+     ],
+     "move": [
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -84
+      ],
+      [
+       126,
+       -84
+      ],
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -83
+      ],
+      [
+       126,
+       -84
+      ],
+      [
+       126,
+       -84
+      ]
+     ]
+    },
+    "NW": {
+     "idle": [
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -20
+      ]
+     ],
+     "move": [
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -21
+      ],
+      [
+       99,
+       -21
+      ],
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -20
+      ],
+      [
+       99,
+       -21
+      ],
+      [
+       99,
+       -21
+      ]
+     ]
+    }
+   },
+   "hasText": false,
+   "mirrorShiftPx": -20,
+   "notes": "A gold 금방이 pennant on a little stick for the dog sled (금방 개썰매): put its anchor (the stick foot) at dog_sled anchor + sledPennant[dir][anim][i] for the sled frame being shown (idle 4 / move 8; includes the sled bob) and draw it right after the sled + its overlay. sledPennant has all four dirs: SW / NW are explicit tables for the flipped sled + flipped pennant (Phaser flips a frame about its centre, not its anchor: x = -x(SE / NE) + dog_sled shift - pennant shift) - use them as they are, do not negate."
+  }
+ },
+ "geumbang": {
+  "sledPennant": {
+   "SE": {
+    "idle": [
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -83
+     ]
+    ],
+    "move": [
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -84
+     ],
+     [
+      -76,
+      -84
+     ],
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -83
+     ],
+     [
+      -76,
+      -84
+     ],
+     [
+      -76,
+      -84
+     ]
+    ]
+   },
+   "NE": {
+    "idle": [
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -20
+     ]
+    ],
+    "move": [
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -21
+     ],
+     [
+      -49,
+      -21
+     ],
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -20
+     ],
+     [
+      -49,
+      -21
+     ],
+     [
+      -49,
+      -21
+     ]
+    ]
+   },
+   "SW": {
+    "idle": [
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -83
+     ]
+    ],
+    "move": [
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -84
+     ],
+     [
+      126,
+      -84
+     ],
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -83
+     ],
+     [
+      126,
+      -84
+     ],
+     [
+      126,
+      -84
+     ]
+    ]
+   },
+   "NW": {
+    "idle": [
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -20
+     ]
+    ],
+    "move": [
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -21
+     ],
+     [
+      99,
+      -21
+     ],
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -20
+     ],
+     [
+      99,
+      -21
+     ],
+     [
+      99,
+      -21
+     ]
+    ]
+   }
+  },
+  "roofSignPoint": {
+   "SE": [
+    16,
+    -123
+   ],
+   "NE": [
+    16,
+    -139
+   ]
+  },
+  "hub": {
+   "banner": {
+    "x0": 3.9,
+    "w": 0.7,
+    "z0": 2.1,
+    "h": 1.8
+   },
+   "nameplates": {
+    "gb_nameplate_ko": {
+     "widthM": 2.68
+    },
+    "seori_nameplate_ko": {
+     "textWidthM": 2.036,
+     "textHeightM": 0.339
+    },
+    "gb_nameplate_en": {
+     "widthM": 2.808
+    },
+    "seori_nameplate_en": {
+     "textWidthM": 2.022,
+     "textHeightM": 0.347
+    }
+   }
+  },
+  "report": {
+   "warnings": [],
+   "patches": {
+    "door_SE_0": {
+     "rect": [
+      -34,
+      -66,
+      134,
+      74
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 4587,
+     "zonePx": 3169,
+     "zoneWeakPx": 1794
+    },
+    "door_SE_1": {
+     "rect": [
+      -22,
+      -66,
+      127,
+      94
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.009,
+     "touchesCanvasEdge": false,
+     "px": 5386,
+     "zonePx": 4067,
+     "zoneWeakPx": 2203
+    },
+    "door_SE_2": {
+     "rect": [
+      -17,
+      -66,
+      123,
+      94
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 5557,
+     "zonePx": 4435,
+     "zoneWeakPx": 2483
+    },
+    "door_NE_0": {
+     "rect": [
+      39,
+      -122,
+      82,
+      83
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.005,
+     "touchesCanvasEdge": false,
+     "px": 4969,
+     "zonePx": 3968,
+     "zoneWeakPx": 2029
+    },
+    "door_NE_1": {
+     "rect": [
+      40,
+      -122,
+      88,
+      82
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.0,
+     "touchesCanvasEdge": false,
+     "px": 5189,
+     "zonePx": 3581,
+     "zoneWeakPx": 2369
+    },
+    "door_NE_2": {
+     "rect": [
+      40,
+      -122,
+      107,
+      82
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.0,
+     "touchesCanvasEdge": false,
+     "px": 5969,
+     "zonePx": 3335,
+     "zoneWeakPx": 2212
+    },
+    "unload_SE_0": {
+     "rect": [
+      -125,
+      -67,
+      253,
+      82
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.037,
+     "touchesCanvasEdge": false,
+     "px": 44,
+     "zonePx": 1,
+     "zoneWeakPx": 0
+    },
+    "unload_SE_1": {
+     "rect": [
+      -141,
+      -176,
+      269,
+      191
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.0,
+     "touchesCanvasEdge": false,
+     "px": 664,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "unload_SE_2": {
+     "rect": [
+      -152,
+      -182,
+      280,
+      197
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.0,
+     "touchesCanvasEdge": false,
+     "px": 1528,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "unload_SE_3": {
+     "rect": [
+      -156,
+      -184,
+      284,
+      199
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.0,
+     "touchesCanvasEdge": false,
+     "px": 1853,
+     "zonePx": 1,
+     "zoneWeakPx": 0
+    },
+    "unload_NE_0": {
+     "rect": [
+      -135,
+      -100,
+      236,
+      151
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 4669,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "unload_NE_1": {
+     "rect": [
+      -139,
+      -100,
+      240,
+      151
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 5919,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "unload_NE_2": {
+     "rect": [
+      -152,
+      -100,
+      253,
+      151
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 7123,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "unload_NE_3": {
+     "rect": [
+      -156,
+      -100,
+      257,
+      151
+     ],
+     "erasePx": 0,
+     "diffOutsidePct": 0.012,
+     "touchesCanvasEdge": false,
+     "px": 7499,
+     "zonePx": 2,
+     "zoneWeakPx": 0
+    },
+    "gb_locker_a_open_0": {
+     "rect": [
+      -28,
+      -43,
+      48,
+      75
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_a_0"
+    },
+    "gb_locker_a_open_1": {
+     "rect": [
+      -33,
+      -46,
+      43,
+      79
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_a_0"
+    },
+    "gb_locker_a_open_2": {
+     "rect": [
+      -44,
+      -48,
+      52,
+      79
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_a_0"
+    },
+    "gb_locker_a_open_3": {
+     "rect": [
+      -51,
+      -53,
+      59,
+      79
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_a_0"
+    },
+    "gb_locker_a_1": {
+     "rect": [
+      -52,
+      -121,
+      76,
+      112
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_a_0"
+    },
+    "gb_locker_b_open_0": {
+     "rect": [
+      3,
+      -47,
+      37,
+      31
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_b_0"
+    },
+    "gb_locker_b_open_1": {
+     "rect": [
+      -20,
+      -52,
+      61,
+      39
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_b_0"
+    },
+    "gb_locker_b_open_2": {
+     "rect": [
+      -21,
+      -48,
+      62,
+      40
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_b_0"
+    },
+    "gb_locker_b_open_3": {
+     "rect": [
+      -22,
+      -44,
+      49,
+      36
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_b_0"
+    },
+    "gb_locker_b_1": {
+     "rect": [
+      -24,
+      -120,
+      73,
+      108
+     ],
+     "erasePx": 0,
+     "over": "gb_locker_b_0"
+    },
+    "gb_sign_1": {
+     "rect": [
+      -35,
+      -181,
+      71,
+      186
+     ],
+     "erasePx": 0,
+     "over": "gb_sign_0"
+    }
+   },
+   "hubPatches": {
+    "gb_emblem_gable": {
+     "px": 3784,
+     "rect": [
+      682,
+      302,
+      104,
+      105
+     ]
+    },
+    "gb_emblem_blade": {
+     "px": 2681,
+     "rect": [
+      512,
+      564,
+      66,
+      55
+     ]
+    },
+    "gb_roofparcel": {
+     "px": 1494,
+     "rect": [
+      343,
+      75,
+      58,
+      75
+     ]
+    }
+   },
+   "rigDelta": {
+    "cargoPoint.SE": 0.0,
+    "cargoPoint.NE": 0.0,
+    "doorPoints.SE": 0.0,
+    "doorPoints.NE": 0.0,
+    "exhaustPoint.SE": 0.0,
+    "exhaustPoint.NE": 0.0,
+    "lightPoints.SE": 0.0,
+    "lightPoints.NE": 0.0,
+    "tailPoints.SE": 0.0,
+    "tailPoints.NE": 0.0,
+    "rearDoorPoint.SE": 0.0,
+    "rearDoorPoint.NE": 0.0,
+    "seats.SE": 0.0,
+    "seats.NE": 0.0,
+    "seatsStand.SE": 0.0,
+    "seatsStand.NE": 0.0,
+    "footprintPoly.SE": 0.0,
+    "footprintPoly.NE": 0.0
+   }
+  }
+ }
+}

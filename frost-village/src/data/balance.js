@@ -497,8 +497,14 @@ export const BALANCE = {
     //    pileAt / pileForS / pileKeep = 모아두는 곳이 pileAt 이상으로 pileForS 초 → 남음 (pileKeep 개는 남겨 둬요)
     //    whAt / whKeep = 창고가 whAt 넘게 차면 whKeep 까지 줄여요, boatAt = 배 창고 생선이 이만큼 차면 남음
     //    pileToWh = 마을 완성 뒤 모아두는 곳이 이만큼 차면 창고 짐꾼이 창고로 옮겨 둬요 (창고 = 마을의 버퍼)
-    //    pilePrio = 역 짐꾼이 가득 찬 모아두는 곳의 남는 원료를 나르는 급한 정도 (가게 채우기 35·주문 38보다 낮게)
-    surplus: { outAt: 0.7, outForS: 20, localPx: 1500, pileAt: 0.9, pileForS: 20, pileKeep: 16, whAt: 0.7, whKeep: 0.5, boatAt: 0.9, pileToWh: 0.85, pilePrio: 30 },
+    //    pilePrio = 역 짐꾼이 가득 찬 모아두는 곳의 남는 원료를 나르는 급한 정도 (CODE-2: 33 — 정기 납품 30보다 먼저,
+    //               가게 채우기 35·주문 38보다는 나중)
+    //    (CODE-2, 마을 완성 뒤 원료 남음) whRaw = 창고 짐꾼도 가득 찬 모아두는 곳의 남는 원료를 짐 싣는 곳으로 날라요
+    //    (pileForS 의 두 배 넘게 가득 차 있으면 창고로 넘치는 물건보다 먼저), rawMinLoad = 한 번에 이만큼은 남아야 나서요.
+    //    짐 싣는 곳의 원료는 기차 화물칸(날것 값 rawPrice × exportRate)과 물류창고 선반(아래 depot.rawRack 만큼)으로 가요.
+    //    일꾼(채집)은 느려지지 않아요 — 모아두는 곳이 비면 계속 가져와요
+    surplus: { outAt: 0.7, outForS: 20, localPx: 1500, pileAt: 0.9, pileForS: 10, pileKeep: 8, whAt: 0.7, whKeep: 0.5, boatAt: 0.9, pileToWh: 0.85, pilePrio: 33,
+               whRaw: true, rawMinLoad: 6 },
     // ── 역 짐꾼 3 / 4 (물류창고가 생긴 뒤): 값
     stationPorter34: [1000, 1500],
     // ── 기차 수출 (F7): perTrain = 기차 한 번에 싣는 상자 (화물칸 32 + 무개화차 24), big = '화물칸 크게' 뒤,
@@ -511,8 +517,10 @@ export const BALANCE = {
       caps: { materials: 160, food: 160, goods: 120, tools: 60 },                   // 선반 종류별 최대 개수
       sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500, offerS: 120 },     // 화물 썰매: 한 번에 싣는 개수, 속도(m/초), 싣는 시간(초), 한 대 더 값, 한 대 더 제안까지(썰매 한 번 분량이 역에서 기다린 초)
       sell: { every: 8, rate: 0.6, open: 7, close: 20,                              // 상인이 오는 간격(초), 값 비율, 여는 시각 ~ 닫는 시각
-              perMin: { materials: 20, food: 30, goods: 20, tools: 6 } },           // 종류별 1분에 팔 수 있는 최대 개수
-      rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 },   // 날것을 팔 때 값 (추정 — 봇으로 맞춰요)
+              perMin: { materials: 20, food: 30, goods: 20, tools: 6 },             // 종류별 1분에 팔 수 있는 최대 개수 (완성품 먼저)
+              rawPerMin: 40 },                                                      // (CODE-2) 날것 손님: 1분에 사 가는 날것 최대 개수 (종류 합)
+      rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 },   // 날것을 팔 때 값 (기차 수출도 이 값 × exportRate)
+      rawRack: 0.5,                                                                 // (CODE-2) 날것이 차지할 수 있는 선반 비율 (0~1, 나머지는 완성품 자리)
     },
     // ── 촌장 사무실: site = 짓는 값, hire = 직원 값 (셈이 / 딸랑이 / 소복이 / 총총이),
     //    revealPx / revealHyst = 촌장이 문에서 이만큼(px) 안에 오면 지붕이 투명해져요 (떨림 방지 여유), deskPadS = 책상 발판에 서 있는 시간(초)

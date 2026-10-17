@@ -12,6 +12,7 @@ import { Staff } from './staff/Staff.js';
 import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
+import { TF } from '../core/Townfolk.js';
 
 export class BankBuilding42 {
   constructor(gs, site, office, instant) {
@@ -55,16 +56,34 @@ export class BankBuilding42 {
     this.windowPad = new Pad(gs, cp.x, cp.y + 10, 'cash', 0.9, { icon: Assets.pick('ui_icon_passbook', 'ui_icon_coin'), iconSize: 30 });
     this.windowPad.img.setDepth(this.cw.slotDepth('@front', cp.y) - 0.001);
     // tellers + the manager (behind the counter: drawn in the @behind slot, only while revealed)
-    const sp = def.staffPoints || [[50, -37], [86, -19]];
+    // ((CODE-2, officefolk counter / seat places) the tellers stand at staffPoints[0..1] facing SW, drawn
+    //  counter.places.bank.liftPx higher so their stamp and hands land over the counter top; the 은행장 sits at his
+    //  desk behind staffPoints[3] facing SE, his seat deskSeat.groundOffsetPx above that floor point)
+    const sp = def.staffPoints || [[50, -37], [86, -19], [122, -1], [-96, -54]];
     const seeds = office.bankSeeds();
-    [['teller0', sp[0]], ['teller1', sp[1]], ['manager', def.deskPoint || [-48, -31]]].forEach(([role, p], i) => {
+    [['teller0', sp[0]], ['teller1', sp[1]], ['manager', sp[3] || def.deskPoint || [-48, -31]]].forEach(([role, p], i) => {
       const ch = new Staff(gs, office, role, seeds[i], this.x + p[0], this.y + p[1], { x: this.x + p[0], y: this.y + p[1] });
-      ch.inside = true;
-      // (the manifest's pointSlots: tellers behind the counter, the manager's desk in front of it)
-      ch.slot = role === 'manager' ? '@front' : '@behind';
-      ch.faceTo(ch.x - 40, ch.y + 30);
+      this.place(ch, role, p);
       this.staff.push(ch);
     });
+  }
+
+  /** (CODE-2) a teller at the counter (lifted) or the manager in his seat */
+  place(ch, role, p) {
+    ch.inside = true;
+    ch.slot = '@behind';
+    if (role === 'manager') {
+      const base = ch.sprite.person && ch.sprite.person.base;
+      const B = base && TF.T && TF.T.bases && TF.T.bases[base];
+      const g = B && B.deskSeat ? Number(B.deskSeat.groundOffsetPx) || 25 : 25;
+      ch.sitDown({ x: this.x + p[0], y: this.y + p[1] - g, dir: 'SE', band: 'behind', shadowDy: g });
+    } else {
+      const C = TF.T && TF.T.counter && TF.T.counter.places && TF.T.counter.places.bank;
+      const base = ch.sprite.person && ch.sprite.person.base;
+      ch.liftPx = C && base && C.liftPx && C.liftPx[base] ? Number(C.liftPx[base].SE) || 0 : 0;
+      ch.atPost = true;
+      ch.faceTo(ch.x - 40, ch.y + 30);
+    }
   }
 
   /** ((robust review M3) tellers + manager made before the townsfolk manifest arrived: dressed in place */
@@ -73,9 +92,9 @@ export class BankBuilding42 {
     for (let i = 0; i < this.staff.length; i++) {
       const ch = this.staff[i];
       if (!ch.alive || !ch.wantsDress()) continue;
-      const n = new Staff(gs, office, ch.role, ch.seed, ch.x, ch.y, ch.home);
-      n.inside = true; n.slot = ch.slot; n.dir = ch.dir;
-      n.faceTo(n.x - 40, n.y + 30);
+      const n = new Staff(gs, office, ch.role, ch.seed, ch.home.x, ch.home.y, ch.home);
+      n.dir = ch.dir;
+      this.place(n, ch.role, [ch.home.x - this.x, ch.home.y - this.y]);
       if (ch.sprite.visible === false) { n.sprite.setVisible(false); if (n.shadow) n.shadow.setVisible(false); }
       ch.destroy();
       this.staff[i] = n;
@@ -92,8 +111,9 @@ export class BankBuilding42 {
     if (near) {
       if (Audio.exists('sfx_coin_count')) Audio.play('sfx_coin_count', { volume: 0.6 }); else Audio.play('sfx_coins_many', { volume: 0.6 });
       gs.time.delayedCall(1200, () => { if (Audio.exists('sfx_stamp')) Audio.play('sfx_stamp', { volume: 0.7 }); });
+      // (CODE-2) the teller counts and stamps the passbook (stamp_stand, lifted at the counter), then hands it back
       const t0 = this.staff[0];
-      if (t0 && t0.play) { t0.play('talk', true); gs.time.delayedCall(1600, () => { if (t0.alive) t0.play('idle', true); }); }
+      if (t0 && t0.act) { t0.act('stamp_stand', true); t0.deskT = 2.2; gs.time.delayedCall(2200, () => { if (t0.alive) { t0.act('hand_over', true); t0.deskT = 1.5; } }); }
     }
     if (n >= (Number(C.vaultAt) || 5000) && this.cw) {
       this.cw.overlay('bank_vault', 8, 10, false);
@@ -118,6 +138,8 @@ export class BankBuilding42 {
     this.cw.update(dt);
     if (this.vaultT > 0) { this.vaultT -= dt; if (this.vaultT <= 0) this.cw.overlay('bank_vault', 8, 10, true); }
     const vis = this.cw.alpha > 0.3;
+    // (CODE-2) the officefolk pages the tellers / manager act on, while the bank is open or the chief near it
+    if ((this.pageT = (this.pageT || 0) - dt) <= 0) { this.pageT = 0.5; if (this.cw.alpha > 0 || d < r + 420) this.office.wantStaffPages(); }
     for (const ch of this.staff) {
       if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); }
       ch.update(dt);          // (its depth: the Cutaway's slot, Character.sync -> cw.occupy)

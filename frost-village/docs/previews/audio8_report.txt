@@ -1,0 +1,53 @@
+audio8 QA - sprite 6.800 s (11 slices), payload 88771 bytes
+key                   dur      I   Mmax   peak    tpk    vol    eff   want  phone  >4k%  centr
+sfx_gb_doorbell     0.900  -10.9   -7.6   -1.9   -1.9  0.226  -20.5  -20.5    0.3   0.0    739
+    onsets [np.float64(0.0), np.float64(0.332)]
+    ding G5: 784.4 Hz (+0.9 cents)
+    dong E5: 659.2 Hz (-0.2 cents)
+sfx_gb_doorbell_2   0.900  -11.8   -9.3   -1.9   -1.9  0.275  -20.5  -20.5    0.1   0.0    815
+    onsets [np.float64(0.0), np.float64(0.332)]
+    ding A5: 880.3 Hz (+0.7 cents)
+    dong F#5: 740.0 Hz (-0.0 cents)
+sfx_gb_horn         0.500  -12.6  -10.3   -1.9   -1.9  0.292  -21.0  -21.0    1.2   0.0    648
+    onsets [np.float64(0.0), np.float64(0.188)]
+sfx_gb_chime        0.450  -10.2   -8.4   -1.9   -1.9  0.209  -22.0  -22.0    0.0   0.2   1330
+    onsets [np.float64(0.0), np.float64(0.108)]
+    C6: 1047.0 Hz (+0.9 cents)
+    F6: 1396.5 Hz (-0.5 cents)
+sfx_gb_thump        0.350  -22.0  -22.0   -1.9   -1.9  1.000  -22.0  -22.0    4.0   5.3    806
+    body < 250 Hz: 28 % of the energy
+sfx_gb_thump_2      0.350  -21.9  -21.9   -2.0   -2.0  0.989  -22.0  -22.0    4.8   7.8    905
+    body < 250 Hz: 38 % of the energy
+sfx_gb_jingle       1.200  -12.6   -9.9   -2.0   -2.0  0.331  -19.5  -19.5    0.1   1.1   1054
+    onsets [np.float64(0.0), np.float64(0.128), np.float64(0.28)]
+    F5: 698.7 Hz (+0.7 cents)
+    G5: 784.4 Hz (+1.0 cents)
+    C6: 1046.4 Hz (-0.2 cents)
+sfx_gb_tape         0.500  -13.6  -11.3   -1.9   -1.8  0.275  -22.5  -22.5    0.2  25.8   3185
+    spectral flatness 1-8 kHz 0.363 (noisy stick-slip, not a tone: > 0.08)
+sfx_gb_tape_2       0.500  -15.1  -12.1   -2.0   -1.7  0.302  -22.5  -22.5    0.2  29.0   3302
+    spectral flatness 1-8 kHz 0.361 (noisy stick-slip, not a tone: > 0.08)
+sfx_gb_scan         0.150   -9.5   -9.5   -1.9   -1.9  0.168  -25.0  -25.0    0.0   0.3   1795
+    A6: 1760.0 Hz (-0.0 cents)
+sfx_gb_locker       0.400  -13.4  -12.5   -1.9   -1.9  0.355  -21.5  -21.5    0.2   0.9   1124
+    A5: 881.2 Hz (+2.4 cents)
+    D6: 1174.8 Hz (+0.3 cents)
+    xcorr sfx_gb_doorbell / sfx_gb_doorbell_2: 0.02
+    xcorr sfx_gb_thump / sfx_gb_thump_2: 0.31
+    xcorr sfx_gb_tape / sfx_gb_tape_2: 0.08
+Chromium 141.0.7390.37: decodeAudioData at 44.1 / 48 kHz
+    sprite: 44.1k 299880 smp, 48k 326400 smp
+    every slice cut like Assets.sliceSprite lines up with ffmpeg within 1 ms (44.1 and 48 kHz)
+demo: bed -34.5 LUFS | sfx layer -24.7 LUFS | mix -28.3 LUFS, peak -3.4 dBFS; keys ['sfx_box_drop', 'sfx_brakes', 'sfx_door', 'sfx_gb_chime', 'sfx_gb_doorbell', 'sfx_gb_doorbell_2', 'sfx_gb_horn', 'sfx_gb_jingle', 'sfx_gb_locker', 'sfx_gb_scan', 'sfx_gb_tape', 'sfx_gb_tape_2', 'sfx_gb_thump', 'sfx_gb_thump_2']
+demo timeline (4 s windows, max momentary LUFS)  bed | sfx
+   0s   -33.5 |  -19.5
+   4s   -32.8 |  -21.9
+   8s   -31.7 |  -23.4
+  12s   -33.0 |  -24.1
+  16s   -32.7 |  -22.9
+  20s   -33.0 |  -20.5
+  24s   -31.0 |  -23.9
+  28s   -32.6 |  -21.4
+  32s   -32.5 |  -99.0
+
+RESULT: OK (0 errors, 0 warnings)

@@ -40,6 +40,16 @@ console.log('racks');
   ok(back.length === 1 && back[0].ty === 'item_ingot' && back[0].n === 10, 'materials full: the ingots ride back, the bread is shelved', back);
 }
 
+console.log('raw share (CODE-2)');
+{
+  const M = new Depot();
+  const capM = M.stock.cap.materials, share = Number(D.rawRack);
+  const okShare = Number.isFinite(share) ? share : 0.5;
+  ok(M.room('item_ore') === Math.floor(capM * okShare), 'raw may fill depot.rawRack of a category', { room: M.room('item_ore'), capM, okShare });
+  M.take([{ ty: 'item_ore', n: 999 }]);
+  ok(M.stock.count('item_ore') === Math.floor(capM * okShare) && M.room('item_log') === 0 && M.room('item_plank') === capM - Math.floor(capM * okShare), 'raw stops at its share; the goods keep the rest', { ore: M.stock.count('item_ore'), plank: M.room('item_plank') });
+}
+
 console.log('buyers');
 {
   const M = new Depot();
@@ -50,7 +60,10 @@ console.log('buyers');
   const byCat = {};
   for (const q of sold) byCat[catOf(q.ty)] = (byCat[catOf(q.ty)] || 0) + q.n;
   const per = D.sell.perMin;
-  ok(Math.abs((byCat.food || 0) - per.food) <= 1 && Math.abs((byCat.materials || 0) - per.materials) <= 1 && Math.abs((byCat.tools || 0) - per.tools) <= 1, 'one open minute sells perMin per category', { byCat, per });
+  // ((v4.2 CODE-2) + the raw buyers: up to sell.rawPerMin raw a minute on top (the 40 logs are materials))
+  const rawN = sold.filter((q) => q.ty === 'item_log').length, rawWant = Math.min(40, Number(D.sell.rawPerMin) || 0);
+  ok(Math.abs((byCat.food || 0) - per.food) <= 1 && Math.abs((byCat.materials || 0) - per.materials - rawWant) <= 2 && Math.abs((byCat.tools || 0) - per.tools) <= 1, 'one open minute sells perMin per category (+ rawPerMin raw)', { byCat, per, rawN });
+  ok(Math.abs(rawN - rawWant) <= 1, 'the raw buyers take rawPerMin raw; the category buyers take the planks first', { rawN, rawWant });
   ok(!byCat.goods, 'no goods in stock: none sold');
   const coins = sold.reduce((a, q) => a + q.coins, 0);
   ok(coins === M.today.coins && sold.length === M.today.sales, 'today: sales and coins are the sum of the sales');

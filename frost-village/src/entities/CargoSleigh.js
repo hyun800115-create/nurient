@@ -69,7 +69,8 @@ export class CargoSleigh {
       case 'load': {
         if (this.t >= (Number(B.loadS) || 8)) {
           const n = Math.min(Number(B.cap) || 60, this.sys.room(), F ? this.spare(F) : 0);
-          this.load = F && n > 0 ? F.takeSurplus(n) : [];
+          // ((v4.2 CODE-2) only what the racks take (raw keeps to its share of them))
+          this.load = F && n > 0 ? F.takeSurplus(n, (ty) => this.sys.model.room(ty)) : [];
           this.state = this.count() > 0 ? 'go' : 'wait';
           this.t = 0;
           if (this.count() > 0 && gs.isOnScreen(this.x, this.y, 300) && Audio.exists('sfx_sleigh_bells')) Audio.play('sfx_sleigh_bells', { volume: 0.6 });

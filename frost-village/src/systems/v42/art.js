@@ -26,8 +26,11 @@ export class V42Art {
     const gs = this.gs, v = this.v42;
     // after the first sale (the economy's earned counter: the same mark the request-log guardrail test uses), or at
     // once in a save past the first loop (earned counts this session only)
+    // ((CODE-2) 3 s after that sale: the coins fly first, and the one new file never races the sale's own frames)
     const pr = gs.progress;
-    if (!this.core && gs.economy && ((gs.economy.earned || 0) > 0 || (pr && pr.isDone && pr.isDone('hire_fisherman')))) {
+    if (!this.core && gs.economy && this.saleT === undefined && (pr && pr.isDone && pr.isDone('hire_fisherman'))) this.saleT = 0;
+    if (!this.core && gs.economy && this.saleT === undefined && (gs.economy.earned || 0) > 0) this.saleT = 3;
+    if (!this.core && this.saleT !== undefined && (this.saleT -= 0.5) < 0) {
       this.core = true;
       Assets.loadFragment(gs, 'chief_fx', { only: ['chief_fx'] });
       Assets.loadFragment(gs, 'ui5', { only: ['ui5_icons'] });

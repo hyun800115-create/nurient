@@ -18,6 +18,13 @@ import { t } from '../data/strings.js';
 import { PRIO } from './Logistics.js';
 
 const B = () => (BALANCE.v42 && BALANCE.v42.freight) || {};
+// ((v4.2 CODE-2, late-village balance) raw goods ride at the depot's low raw price (depot.rawPrice), goods at their price
+const RAW = ['item_fish_raw', 'item_fish_big', 'item_log', 'item_wheat', 'item_ore', 'item_meat_raw'];
+export function exportPrice(ty) {
+  const R = (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.rawPrice) || {};
+  if (RAW.indexOf(ty) >= 0) return Math.max(0, Number(R[ty === 'item_fish_big' ? 'item_fish_raw' : ty]) || 1);
+  return priceOf(ty);
+}
 const SHOWN = 12;
 
 function cleanMap(o, max) {
@@ -66,9 +73,10 @@ export class Freight {
 
   // ------------------------------------------------------------------ the dock's surplus (a logistics sink, P3)
   /** room for surplus at the dock: the next train's room + the depot's (F8) */
-  surplusRoom() {
+  surplusRoom(ty) {
     const dep = this.v42.depot;
-    const depRoom = dep && dep.built ? dep.room() : 0;
+    // ((v4.2 CODE-2) by item: raw counts only the racks' raw share (depot.rawRack), so raw never fills the dock for goods)
+    const depRoom = dep && dep.built ? (ty && dep.model ? dep.model.room(ty) : dep.room()) : 0;
     return Math.max(0, this.cap() + depRoom - this.dockCount());
   }
   /** put n surplus items of ty on the dock (from a porter or a test) */
@@ -88,12 +96,13 @@ export class Freight {
     this.refreshLabel();
     return n;
   }
-  /** take up to n surplus items off the dock (the depot's sleigh, a train): [{ ty, n }] */
-  takeSurplus(n) {
+  /** take up to n surplus items off the dock (the depot's sleigh, a train): [{ ty, n }]; roomOf(ty) (the sleigh: what
+   *  the racks still take of ty) limits each item */
+  takeSurplus(n, roomOf) {
     const out = [];
     for (const ty of Object.keys(this.dock)) {
       if (n <= 0) break;
-      const k = Math.min(n, this.dock[ty]);
+      const k = Math.min(n, this.dock[ty], roomOf ? Math.max(0, Math.floor(roomOf(ty)) || 0) : Infinity);
       if (k <= 0) continue;
       this.dock[ty] -= k; n -= k;
       if (this.dock[ty] <= 0) delete this.dock[ty];
@@ -119,7 +128,7 @@ export class Freight {
     this.sink = {
       id: 'dock_surplus', remote: true, surplus: true, isWarehouse: false, enabled: true, x, y, ux: x + 30, uy: y + 26,
       accepts: (ty) => ITEMS.indexOf(ty) >= 0 && !!this.v42.complete,
-      room: () => this.surplusRoom(),
+      room: (ty) => this.surplusRoom(ty),
       prio: () => PRIO.SURPLUS,
       feed: (ch) => { const it = ch.stack.items[ch.stack.items.length - 1]; return !!it && this.addSurplus(it.type, 1, ch) > 0; },
     };
@@ -162,7 +171,7 @@ export class Freight {
   payExports(fx) {
     const G = this.growth;
     let coins = 0, n = 0;
-    for (const ty in this.unpaid) { const k = this.unpaid[ty]; n += k; coins += k * priceOf(ty) * (Number(B().exportRate) || 0.5); }
+    for (const ty in this.unpaid) { const k = this.unpaid[ty]; n += k; coins += k * exportPrice(ty) * (Number(B().exportRate) || 0.5); }
     coins = Math.floor(coins);
     if (n <= 0) return 0;
     // (the cars stay loaded until the town: unpaid becomes paid cargo)

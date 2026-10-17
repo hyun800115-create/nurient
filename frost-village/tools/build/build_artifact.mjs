@@ -591,6 +591,8 @@ function shipPacked(frags, skipped, copied) {
       for (const p of [pg.png, pg.json]) {
         if (!p) continue;
         const dst = path.join(OUT, 'assets', p);
+        // ((v4.2 CODE-2) a page shared by two atlases (v42_core = chief_fx + ui5_icons) is copied once)
+        if (copied.includes(dst)) continue;
         fs.mkdirSync(path.dirname(dst), { recursive: true });
         fs.copyFileSync(path.join(ROOT, 'assets', p), dst);
         copied.push(dst);
@@ -600,6 +602,18 @@ function shipPacked(frags, skipped, copied) {
     n++;
   }
   for (const f in mans) fs.writeFileSync(path.join(OUT, 'assets', f, 'manifest.json'), JSON.stringify(mans[f]));
+  // ((v4.2 CODE-2, docs/v42_plan.md §1 guardrail 1) the manifests pack_pages.py embedded in index.json (chief_fx, ui5):
+  //  Assets.loadFragment takes them from there, so their own manifest.json is not shipped (after the first sale the
+  //  game fetches exactly one file, _packed/v42_core.png). Their atlas entries keep only the key (packed: true).
+  for (const f in idx.manifests || {}) {
+    if (!frags.includes(f)) continue;
+    const j = JSON.parse(JSON.stringify(idx.manifests[f]));
+    for (const a of j.atlases || []) if (a && out.atlases[a.key]) { delete a.png; delete a.json; a.packed = true; }
+    (out.manifests || (out.manifests = {}))[f] = j;
+    const mp = path.join(OUT, 'assets', f, 'manifest.json');
+    if (fs.existsSync(mp)) { fs.rmSync(mp); skipped.push('assets/' + f + '/manifest.json (embedded in _packed/index.json)'); }
+    try { if (!fs.readdirSync(path.join(OUT, 'assets', f)).length) fs.rmdirSync(path.join(OUT, 'assets', f)); } catch (e) { /* */ }
+  }
   if (n) { fs.writeFileSync(path.join(OUT, 'assets', '_packed', 'index.json'), JSON.stringify(out)); copied.push(path.join(OUT, 'assets', '_packed', 'index.json')); }
   if (embedded.n) console.log(`[build] packed pages: ${embedded.n} small frame lists embedded in _packed/index.json (${(embedded.bytes / 1024).toFixed(0)} KB)`);
   return n;
@@ -742,11 +756,14 @@ async function main() {
   // 5) checks: every manifest path exists, nothing absolute, no leftovers
   const problems = [];
   const referenced = new Set();
+  const pidx0 = path.join(OUT, 'assets', '_packed', 'index.json');
+  const embMans = fs.existsSync(pidx0) ? (JSON.parse(fs.readFileSync(pidx0, 'utf8')).manifests || {}) : {};
   for (const frag of gameFragments().concat(lateFragments())) {
     const mp = path.join(OUT, 'assets', frag, 'manifest.json');
-    if (!fs.existsSync(mp)) { problems.push('missing assets/' + frag + '/manifest.json'); continue; }
-    referenced.add('assets/' + frag + '/manifest.json');
-    const j = JSON.parse(fs.readFileSync(mp, 'utf8'));
+    // ((v4.2 CODE-2) a manifest embedded in _packed/index.json stands for the file)
+    if (!fs.existsSync(mp) && !embMans[frag]) { problems.push('missing assets/' + frag + '/manifest.json'); continue; }
+    if (fs.existsSync(mp)) referenced.add('assets/' + frag + '/manifest.json');
+    const j = fs.existsSync(mp) ? JSON.parse(fs.readFileSync(mp, 'utf8')) : embMans[frag];
     const paths = [];
     for (const kind of ['atlases', 'images', 'spritesheets']) for (const a of j[kind] || []) paths.push(a.png, a.json);
     for (const k in j.audio || {}) paths.push(...(j.audio[k].files || []));

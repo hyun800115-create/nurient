@@ -950,6 +950,9 @@ export class UI extends Phaser.Scene {
         const b = add(this.makeButton(x, cy - 348, 236, 66, on ? 'blue' : 'gray', t(key), () => { if (this.settingsTab !== id) { this.settingsTab = id; this.buildPanelContent(false); } }, 26));
         b.setAlpha(on ? 1 : 0.86);
         b.tabId = id;
+        // ((v4.2 CODE-2) the tab's little picture: ui5's snowflake-over-a-joystick for 놀이, the speaker for 소리·화면)
+        const ik = id === 'play' ? Assets.pick('ui_icon_play_tab', '') : Assets.pick('ui_icon_sound_on', '');
+        if (ik) { const im = add(Assets.image(this, x - 88, cy - 348, ik).setOrigin(0.5)); im.setScale(40 / Math.max(1, im.frame.realWidth, im.frame.realHeight)).setAlpha(on ? 1 : 0.8); }
         return b;
       };
       this.settingsTabs = [tabBtn(cx - 122, 'set_tab_av', 'av'), tabBtn(cx + 122, 'set_tab_play', 'play')];

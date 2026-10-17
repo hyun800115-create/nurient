@@ -146,7 +146,8 @@ export class Character {
     const ly = this.liftY = lt === (this.liftY || 0) || !(dt > 0) ? lt : (this.liftY || 0) + (lt - (this.liftY || 0)) * Math.min(1, dt * 14);
     s.setPosition(this.x, this.y - ly);
     if (s.depth !== d) s.setDepth(d);
-    this.shadow.setPosition(this.x, this.y + 1 - ly);
+    // ((v4.2 CODE-2) a seated character: the shadow on the floor below the seat (shadowDy))
+    this.shadow.setPosition(this.x, this.y + 1 - ly + (this.shadowDy || 0));
     if (this.stack.count) {
       const moving = this.vx * this.vx + this.vy * this.vy > 100;
       if (moving) this.walkT += dt * 12;

@@ -154,8 +154,10 @@ try {
     const engine = cars.cars.find((c) => /engine/.test(c.key));
     const dn = (c) => Math.hypot(c.x - cars.nose.x, c.y - cars.nose.y);
     step('the engine leads: it is the car nearest the nose', engine && cars.cars.every((c) => dn(engine) <= dn(c) + 1e-6), cars.cars.map((c) => c.key + ':' + dn(c).toFixed(0)).join(' '));
-    const far = await ev(() => { const nb = window.__FV.scene.v4, r = nb.rail, cons = r.consist(); return nb.train.cars.map((c, k) => { const u = cons[k]; const q = r.point(r.m - u.off); return Math.hypot(c.spr.x - q.x, c.spr.y - q.y); }); });
-    step('every car on the route at its consist offset (≤ 4 px)', far.every((d) => d <= 4), far.map((d) => d.toFixed(1)).join(' '));
+    // ((CODE-2, train2 curvePlacement) a car sits at the midpoint of its bogie chord (offset ± 0.4 × its length): the
+    //  arc point itself on a curve, the chord midpoint ~10 px inside it)
+    const far = await ev(() => { const nb = window.__FV.scene.v4, r = nb.rail, P = r.path, cons = r.consist(); return nb.train.cars.map((c, k) => { const u = cons[k], s = r.m - u.off, len = c.len || u.len || 0; const F = {}, B = {}; P.at(s + 0.4 * len, F); P.at(s - 0.4 * len, B); return Math.hypot(c.spr.x - (F.x + B.x) / 2, c.spr.y - (F.y + B.y) / 2); }); });
+    step('every car on the route at its consist offset (bogie-chord midpoint, ≤ 4 px)', far.every((d) => d <= 4), far.map((d) => d.toFixed(1)).join(' '));
   } else {
     step('every car drawn heading NW (NE frames mirrored)', cars.cars.every((c) => c.flip && /:NE$/.test(c.anim || '')), JSON.stringify(cars.cars.map((c) => c.anim)));
     const C = cars.cars;

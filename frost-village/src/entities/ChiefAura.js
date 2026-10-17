@@ -244,6 +244,10 @@ export class ChiefAura {
     this.cheered = now;
     this.cheering = now.size > 0;
     if (this.cheering && !was && this.v42 && (this.v42.seen.cheer || 0) < 2) { this.v42.seen.cheer = (this.v42.seen.cheer || 0) + 1; gs.ui.toast(t('cheerOn')); }
+    // (v4.2 CODE-2) the 응원 pose (chief2 cheer: the little 서리마을 pennant up, a hop) while his hands are free
+    if (this.cheering && on && p.stack.count === 0 && !p.seat && !p.node && !p.opSpot && (!p.action || p.action.anim === 'cheer') && !(this.v42.pilot && this.v42.pilot.on)) {
+      if (!p.action) p.doAction('cheer', 3.6);
+    } else if (!this.cheering && p.action && p.action.anim === 'cheer') p.action.until = 0;
     if (this.cheering) {
       this.noteT -= dt;
       if (this.noteT <= 0) {

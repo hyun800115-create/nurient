@@ -32,7 +32,17 @@ export class Depot {
   }
 
   wants(ty) { const c = catOf(ty); return V42_CATS.indexOf(c) >= 0; }
-  room(ty) { return this.wants(ty) ? this.stock.room(ty) : 0; }
+  /** ((v4.2 CODE-2, late-village balance) raw goods may fill at most depot.rawRack of a category's racks, so the
+   *  goods surplus always finds room */
+  room(ty) {
+    if (!this.wants(ty)) return 0;
+    const r = this.stock.room(ty);
+    if (RAW.indexOf(ty) < 0) return r;
+    const c = catOf(ty), share = Math.max(0, Math.min(1, Number(D().rawRack) >= 0 ? Number(D().rawRack) : 0.5));
+    return Math.max(0, Math.min(r, Math.floor((Number(this.stock.cap[c]) || 0) * share) - this.rawIn(c)));
+  }
+  /** raw items on the racks of category c */
+  rawIn(c) { let n = 0; for (const ty of RAW) if (catOf(ty) === c) n += this.stock.count(ty); return n; }
   total() { return this.stock.all(); }
   capTotal() { let n = 0; for (const c of V42_CATS) n += Number(this.stock.cap[c]) || 0; return n; }
   level(cat) { return this.stock.level(cat); }
@@ -59,6 +69,17 @@ export class Depot {
     const open = Number(S.open) || 7, close = Number(S.close) || 20;
     if (!(hour >= open && hour < close)) return [];
     const out = [];
+    const sale = (ty) => {
+      this.stock.take(ty, 1);
+      const c = this.priceOf(ty);
+      out.push({ ty, n: 1, coins: c });
+      this.today.sales++;
+      this.today.coins += c;
+      this.tot[1] += c;
+      this.tot[2]++;
+    };
+    // ((v4.2 CODE-2) the category buyers take the goods first (raw only when a category has nothing else); the raw
+    //  buyers (sell.rawPerMin a minute, all raw together) take the raw at rawPrice
     for (const cat of V42_CATS) {
       const per = Number(S.perMin && S.perMin[cat]) || 0;
       if (per <= 0) continue;
@@ -66,15 +87,20 @@ export class Depot {
       while (this.acc[cat] >= 1) {
         const items = this.stock.of(cat);
         if (!items.length) { this.acc[cat] = 0; break; }
-        const ty = items[0];
+        const ty = items.find((k) => RAW.indexOf(k) < 0) || items[0];
         this.acc[cat] -= 1;
-        this.stock.take(ty, 1);
-        const c = this.priceOf(ty);
-        out.push({ ty, n: 1, coins: c });
-        this.today.sales++;
-        this.today.coins += c;
-        this.tot[1] += c;
-        this.tot[2]++;
+        sale(ty);
+      }
+    }
+    const rp = Number(S.rawPerMin) || 0;
+    if (rp > 0) {
+      this.acc.raw = (this.acc.raw || 0) + (rp / 60) * dt;
+      while (this.acc.raw >= 1) {
+        let best = null;
+        for (const ty of RAW) { const n = this.stock.count(ty); if (n > 0 && (!best || n > this.stock.count(best))) best = ty; }
+        if (!best) { this.acc.raw = 0; break; }
+        this.acc.raw -= 1;
+        sale(best);
       }
     }
     return out;

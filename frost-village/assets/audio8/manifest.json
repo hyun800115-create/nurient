@@ -1,0 +1,236 @@
+{
+ "version": 1,
+ "generator": "tools/audio/build_audio8.py (procedural synthesis: sfx8.py; same toolkit + loudness conventions as assets/audio .. audio7)",
+ "conventions": {
+  "contract": "CONTRACT_GEUMBANG section AR. Paths relative to frost-village/assets/. Fragment name: audio8 (a late fragment, plan §12 G-P6).",
+  "sprite": "Every sound lives in ONE audio sprite: audioSprite.keys[key] = [start s, duration s] with 50 ms gaps; Assets.queueAudio loads it once ('__sprite_audio8') and Assets.sliceSprite cuts one AudioBuffer per key (dur + 30 ms) into the audio cache, so Audio.play(key) / exists(key) work unchanged. This manifest is the sprite's JSON (2 files in all).",
+  "groups": "Audio.play('sfx_gb_doorbell' | 'sfx_gb_thump' | 'sfx_gb_tape') picks a random variant (never the same twice in a row); the group names are also playable keys (variant 1).",
+  "levels": "volume = 10^((target + HEADROOM_DB - measured) / 20), measured on the decoded sprite slice (max momentary LUFS); HEADROOM_DB = -2 like audio .. audio7.",
+  "brand": "Original sounds: no voice, no real company's jingle or chime; the 금-방 logo is F5 G5 C6.",
+  "standIn": "plan §10.3: until audio8 lands, play standIn (sfx_ticket_chime / sfx_coin / sfx_car_honk_1 / sfx_box_drop) instead."
+ },
+ "audioSprite": {
+  "file": "audio8/audio8_sprite.mp3",
+  "keys": {
+   "sfx_gb_doorbell": [
+    0.05,
+    0.9
+   ],
+   "sfx_gb_doorbell_2": [
+    1.0,
+    0.9
+   ],
+   "sfx_gb_horn": [
+    1.95,
+    0.5
+   ],
+   "sfx_gb_chime": [
+    2.5,
+    0.45
+   ],
+   "sfx_gb_thump": [
+    3.0,
+    0.35
+   ],
+   "sfx_gb_thump_2": [
+    3.4,
+    0.35
+   ],
+   "sfx_gb_jingle": [
+    3.8,
+    1.2
+   ],
+   "sfx_gb_tape": [
+    5.05,
+    0.5
+   ],
+   "sfx_gb_tape_2": [
+    5.6,
+    0.5
+   ],
+   "sfx_gb_scan": [
+    6.15,
+    0.15
+   ],
+   "sfx_gb_locker": [
+    6.35,
+    0.4
+   ]
+  },
+  "dur": 6.8,
+  "gap": 0.05,
+  "ch": 1,
+  "kbps": 96
+ },
+ "audio": {
+  "sfx_gb_doorbell": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.226,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.9,
+   "standIn": "sfx_ticket_chime",
+   "cues": {
+    "ding": 0.0,
+    "dong": 0.33
+   },
+   "notes": "'띵동' (G5 -> E5): the courier rings at a front door (ring_doorbell impact frame, with fx_gb_bell). Play the group 'sfx_gb_doorbell' (the two houses sound different), positional by distance; once per stop."
+  },
+  "sfx_gb_doorbell_2": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.275,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.9,
+   "standIn": "sfx_ticket_chime",
+   "cues": {
+    "ding": 0.0,
+    "dong": 0.33
+   },
+   "notes": "variant A5 -> F#5 (group sfx_gb_doorbell)."
+  },
+  "sfx_gb_horn": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.292,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "standIn": "sfx_car_honk_1",
+   "cues": {
+    "beep1": 0.0,
+    "beep2": 0.19
+   },
+   "notes": "friendly double toy beep of the 금방 van (a van blocked > 6 s, at most once per 6 s; never at night); positional, x0.7 in 관망."
+  },
+  "sfx_gb_chime": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.209,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.45,
+   "standIn": "sfx_ticket_chime",
+   "cues": {
+    "note1": 0.0,
+    "note2": 0.11
+   },
+   "notes": "the 금방 app ping: a new order (only when revealed / the app or toast shows it), a tracker step done while the app is open, the 금방 chip's new dot. UI sound (not positional); at most 1 per 2 s."
+  },
+  "sfx_gb_thump": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 1.0,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.35,
+   "standIn": "sfx_box_drop",
+   "cues": {
+    "land": 0.0
+   },
+   "notes": "a parcel set down on a snowy doorstep (nobody home: gb_parcel_doorstep), staged by dock 1 (출고 대기), a courier's box landing. Group 'sfx_gb_thump'; positional."
+  },
+  "sfx_gb_thump_2": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.989,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.35,
+   "standIn": "sfx_box_drop",
+   "cues": {
+    "land": 0.0,
+    "scrape": 0.07
+   },
+   "notes": "variant: a heavier box that settles with a small scrape (group sfx_gb_thump)."
+  },
+  "sfx_gb_jingle": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.331,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 1.2,
+   "standIn": "sfx_coin",
+   "cues": {
+    "n1": 0.0,
+    "n2": 0.13,
+    "n3": 0.28
+   },
+   "notes": "the 금방 sound logo '금-방!' (F5 G5 C6, original): the opening ribbon cut, the first delivery of the day, the app's first open / splash. Duck the bgm to 0.5 for 1.2 s; never more than once per game hour except the ceremony."
+  },
+  "sfx_gb_tape": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.275,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "standIn": "sfx_box_drop",
+   "cues": {
+    "pull": 0.0,
+    "snip": 0.37
+   },
+   "notes": "packing tape '찌익' (tape_box impact frame at the 포장대). Group 'sfx_gb_tape'; positional / by reveal, x0.8 when two packers work."
+  },
+  "sfx_gb_tape_2": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.302,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.5,
+   "standIn": "sfx_box_drop",
+   "cues": {
+    "pull": 0.0,
+    "snip": 0.3
+   },
+   "notes": "variant: a shorter, quicker pull (group sfx_gb_tape)."
+  },
+  "sfx_gb_scan": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.168,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.15,
+   "standIn": "sfx_ticket_chime",
+   "cues": {
+    "beep": 0.0
+   },
+   "notes": "soft '삑' per parcel scanned (scan impact frame) and per box loaded into the van; positional, rate 0.98-1.03 so a row of boxes is not a buzzer."
+  },
+  "sfx_gb_locker": {
+   "files": [],
+   "inSprite": "audio8",
+   "volume": 0.355,
+   "loop": false,
+   "kind": "sfx",
+   "duration": 0.4,
+   "standIn": "sfx_ticket_chime",
+   "cues": {
+    "click": 0.0,
+    "pop": 0.03,
+    "chime1": 0.1,
+    "chime2": 0.19
+   },
+   "notes": "금방 보관함 opens (gb_locker open anim, frame 0): latch click, door pop, the two-note chime A5 -> D6; positional."
+  }
+ },
+ "audioGroups": {
+  "sfx_gb_doorbell": [
+   "sfx_gb_doorbell",
+   "sfx_gb_doorbell_2"
+  ],
+  "sfx_gb_thump": [
+   "sfx_gb_thump",
+   "sfx_gb_thump_2"
+  ],
+  "sfx_gb_tape": [
+   "sfx_gb_tape",
+   "sfx_gb_tape_2"
+  ]
+ }
+}

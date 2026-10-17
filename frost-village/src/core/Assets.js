@@ -68,6 +68,10 @@ const ANIM_FALLBACK = {
   throw: ['idle'], hit: ['surprised', 'idle'], dance: ['happy', 'idle'], sit: ['idle'], perform: ['talk', 'idle'],
   shiver: ['idle'], serve: ['talk', 'idle'], bow: ['wave', 'happy', 'idle'], salute: ['wave', 'idle'],
   fall: ['sit', 'hit', 'idle'], loaf: ['sit', 'idle'],
+  // (v4.2 CODE-2) chief2's anims while its sheet is not in memory (it loads on demand)
+  sit_idle: ['sit', 'idle'], sit_write: ['sit_idle', 'sit', 'idle'], sit_read: ['sit_idle', 'sit', 'idle'], sit_read_in: ['sit_read', 'sit_idle', 'idle'],
+  sit_read_loop: ['sit_read', 'sit_idle', 'idle'], sit_eat: ['sit_idle', 'sit', 'idle'], doze: ['sit_idle', 'sit', 'idle'],
+  warm_hands: ['idle'], cheer: ['wave', 'happy', 'idle'],
   // (v3.5) station operators: a worker look (no `operate`) swings its work tool instead; dog play
   operate: ['work', 'idle'], pet: ['idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
   beg: ['sit', 'happy', 'idle'], run_ball: ['run', 'walk'], catch: ['happy', 'idle'], trick: ['happy', 'idle'],

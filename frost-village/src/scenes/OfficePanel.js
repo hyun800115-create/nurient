@@ -6,18 +6,25 @@
 //   편지   the inbox with the letters' buttons
 //   직원   one line per person and what they do now; locked roles show cost and the hire pad
 //   통장   the passbook (last 8 rows) and today's income by source as bars
-// Art: the ui panels (ui4 newspaper / passbook frames when packed, CODE-2 ui5), existing icons.
+// Art: (CODE-2) the ui5 set: tab plates ui_office_tab(_on) with the tab icons (ui_icon_inventory / news / letter /
+// staff / bank), the 재고 rows on the ui_chalk_panel chalkboard with the glossy ui_status dots, each letter on its own
+// ui_letter paper (the plates and papers live on the on-demand page ui5_icons@panels: asked for while the panel is
+// open, the cream stand-ins until it is here; the icons are on the resident v42_core page).
 
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { View } from '../core/View.js';
 import { Input } from '../core/Input.js';
 import { panel } from '../core/Panel.js';
+import { Residency } from '../core/Residency.js';
 import { FONT, t, fmt } from '../data/strings.js';
 
 const TXT = (size, color = '#2b2f3a', weight = '800', extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, resolution: 2 }, extra || {});
 const STAT = { short: [0xd9534f, 'stat_short'], jam: [0xf0a030, 'stat_jam'], surplus: [0x5b8fd9, 'stat_surplus'], ok: [0x5cb85c, 'stat_ok'] };
 const TABS = [['stock', 'tab_stock', 'sem'], ['news', 'tab_news', 'bok'], ['letters', 'tab_letters', 'bok'], ['staff', 'tab_staff', null], ['bank', 'tab_bank', 'bank']];
+const TAB_ICON = { stock: 'ui_icon_inventory', news: 'ui_icon_news', letters: 'ui_icon_letter', staff: 'ui_icon_staff', bank: 'ui_icon_bank' };
+const STAT_DOT = { short: 'ui_status_0', jam: 'ui_status_1', surplus: 'ui_status_2', ok: 'ui_status_3' };
+const PANELS = 'ui5_icons@panels';
 const fit = (im, s) => { im.setScale(s / Math.max(1, im.frame.realWidth, im.frame.realHeight)); return im; };
 
 export class OfficePanel {
@@ -52,6 +59,7 @@ export class OfficePanel {
     c.add([this.tabsC, this.body]);
     this.c = c;
     ui.v42PanelOpen = true;
+    if (Residency.gs) Residency.want(PANELS);
     c.setAlpha(0);
     ui.tweens.add({ targets: c, alpha: 1, duration: 140 });
     Audio.play('sfx_click', { volume: 0.5 });
@@ -83,15 +91,27 @@ export class OfficePanel {
     if (window.__FV) window.__FV.officePanel = tab;
     this.tabsC.removeAll(true);
     const tw = (B.pw - 40) / TABS.length;
+    const art = Assets.has('ui_office_tab');
+    this.panelArt = art;
     TABS.forEach(([id, key], i) => {
       const x = B.x0 + 20 + tw * i + tw / 2, y = B.top + 112;
       const on = id === tab, lock = this.locked(id);
-      const g = panel(ui, x, y, 'ui_panel', tw - 8, 60).setOrigin(0.5);
-      g.setTint(on ? 0xffe7a8 : lock ? 0xd6dbe3 : 0xffffff);
-      const tx = ui.add.text(x, y, t(key) + (id === 'letters' && this.gs.v42.news && this.gs.v42.news.unread() ? ' ●' : ''), TXT(23, lock ? '#8a93a3' : '#2b2f3a', '900')).setOrigin(0.5);
+      let g;
+      if (art) {
+        // (ui5 plates: built 72 tall, scaled to the row; the raised one for the open tab)
+        g = panel(ui, x, y + (on ? -3 : 2), on ? 'ui_office_tab_on' : 'ui_office_tab', (tw - 6) * 72 / 64, 72).setOrigin(0.5).setScale(64 / 72);
+        if (lock) g.setAlpha(0.6);
+      } else {
+        g = panel(ui, x, y, 'ui_panel', tw - 8, 60).setOrigin(0.5);
+        g.setTint(on ? 0xffe7a8 : lock ? 0xd6dbe3 : 0xffffff);
+      }
+      const ic = TAB_ICON[id] && Assets.has(TAB_ICON[id]) ? fit(Assets.image(ui, x - tw / 2 + 26, y, TAB_ICON[id]).setOrigin(0.5), 34).setAlpha(lock ? 0.5 : 1) : null;
+      const label = t(key) + (id === 'letters' && this.gs.v42.news && this.gs.v42.news.unread() ? ' ●' : '');
+      const tx = ui.add.text(ic ? x + 12 : x, y, label, TXT(ic ? 20 : 23, lock ? '#8a93a3' : on ? '#1f5f66' : '#2b2f3a', '900')).setOrigin(0.5);
+      if (tx.width > tw - (ic ? 50 : 14)) tx.setScale((tw - (ic ? 50 : 14)) / tx.width);
       g.setInteractive({ useHandCursor: true });
       g.on('pointerup', () => { Audio.play('sfx_click', { volume: 0.4 }); this.show(id); });
-      this.tabsC.add([g, tx]);
+      this.tabsC.add(ic ? [g, ic, tx] : [g, tx]);
     });
     this.key = '';
     this.fill();
@@ -137,17 +157,22 @@ export class OfficePanel {
     let top = t('stockTop', { n: fmt(L ? L.total() : 0), w: W ? W.total : 0, wc: W ? W.cap : 0 });
     if (v.depot && v.depot.built) top += t('stockTopDepot', { d: v.depot.total(), dc: v.depot.capTotal() });
     this.text(B.x0 + 36, B.top + 176, top, 21, '#2b2f3a');
+    // (CODE-2) the rows on 셈이's chalkboard (ui5 ui_chalk_panel): chalk-white writing, glossy status dots
+    const chalk = Assets.has('ui_chalk_panel');
+    const ink = chalk ? ['#fdfbf2', '#d9e8dc', '#b9d3c2'] : ['#2b2f3a', '#5b6676', '#7a8494'];
+    // (the board's wooden frame is ~28 px: the first row starts below it, the last ends above it)
+    const y0 = chalk ? 262 : 240;
+    if (chalk && rows.length) { const bh = rows.length * 128 + 56; this.body.add(panel(this.ui, B.x0 + B.pw / 2, B.top + 206 + bh / 2, 'ui_chalk_panel', B.pw - 36, bh).setOrigin(0.5)); }
     rows.forEach((r, i) => {
-      const y = B.top + 240 + i * 128;
+      const y = B.top + y0 + i * 128;
       const [col, sk] = STAT[r.status] || STAT.ok;
-      const g = this.ui.add.graphics();
-      g.fillStyle(col, 1); g.fillCircle(B.x0 + 46, y, 13);
-      this.body.add(g);
+      if (Assets.has(STAT_DOT[r.status] || 'ui_status_3')) this.body.add(fit(Assets.image(this.ui, B.x0 + 46, y, STAT_DOT[r.status] || 'ui_status_3').setOrigin(0.5), 30));
+      else { const g = this.ui.add.graphics(); g.fillStyle(col, 1); g.fillCircle(B.x0 + 46, y, 13); this.body.add(g); }
       this.icon(B.x0 + 90, y, r.product, 44);
-      this.text(B.x0 + 122, y - 20, t('line_' + r.line) + ' · ' + t(sk), 22, '#2b2f3a');
+      this.text(B.x0 + 122, y - 20, t('line_' + r.line) + ' · ' + t(sk), 22, ink[0]);
       const pile = r.pile === null ? '-' : Math.min(r.pile, r.pileCap || r.pile) + (r.pileCap && r.pile >= r.pileCap ? ' ' + t('pileFull') : '');
-      this.text(B.x0 + 122, y + 12, t('stockRow', { pile, in: r.in, out: r.out, shelf: r.shelf }), 18, '#5b6676');
-      this.text(B.x0 + 122, y + 40, t('stockFlow', { a: r.flow[0], b: r.flow[1], c: r.flow[2] }), 16, '#7a8494');
+      this.text(B.x0 + 122, y + 12, t('stockRow', { pile, in: r.in, out: r.out, shelf: r.shelf }), 18, ink[1]);
+      this.text(B.x0 + 122, y + 40, t('stockFlow', { a: r.flow[0], b: r.flow[1], c: r.flow[2] }), 16, ink[2]);
       const st = gs.stations[r.line];
       if (r.status === 'short' && st) this.button(B.x0 + B.pw - 110, y, 170, t('fix_station2'), () => this.hop(st.x, st.y + 60), 'blue');
       else if (r.status === 'jam' && st) this.button(B.x0 + B.pw - 110, y, 170, t('fix_p2'), () => this.hop(st.outPad.x, st.outPad.y), 'blue');
@@ -177,18 +202,24 @@ export class OfficePanel {
     const L = N ? N.letters().slice().reverse() : [];
     if (!L.length) { this.text(B.x0 + B.pw / 2, B.top + 280, t('lettersNone'), 24, '#5b6676', 0.5); return; }
     let y = B.top + 180;
+    // (CODE-2) each letter on its own ui5 letter paper (ruled, a pinecone stamp in the corner)
+    const paper = Assets.has('ui_letter');
     for (const lt of L.slice(0, 4)) {
       if (N && lt.state === 0) N.markRead(lt.id);
       const done = lt.state >= 2;
-      this.text(B.x0 + 40, y, t('letterFrom', { from: lt.from }) + (done ? ' · ' + t('letterArchived') : ''), 22, done ? '#8a93a3' : '#2b2f3a');
-      const body = this.text(B.x0 + 40, y + 34, lt.body, 18, done ? '#9aa2b0' : '#4a5361', 0, { wordWrap: { width: B.pw - 80 } });
+      const sheet = paper ? panel(this.ui, B.x0 + B.pw / 2, y - 26, 'ui_letter', B.pw - 40, 120).setOrigin(0.5, 0) : null;
+      if (sheet) { this.body.add(sheet); if (done) sheet.setAlpha(0.6); }
+      const px = paper ? 60 : 40, py = paper ? 44 : 0;
+      this.text(B.x0 + px, y + py, t('letterFrom', { from: lt.from }) + (done ? ' · ' + t('letterArchived') : ''), 22, done ? '#8a93a3' : '#2b2f3a');
+      const body = this.text(B.x0 + px, y + py + 34, lt.body, 18, done ? '#9aa2b0' : '#4a5361', 0, { wordWrap: { width: B.pw - px * 2 - 20 } });
       body.setOrigin(0, 0);
-      let by = y + 40 + body.height + 30;
+      let by = y + py + 40 + body.height + 30;
       if (!done) {
         lt.buttons.forEach((b, i) => this.button(B.x0 + 40 + 150 + i * 310, by, 290, t(b.k, b.a || {}), () => { N.answer(lt.id, i); this.key = ''; this.fill(); }, i === 0 ? 'green' : 'gray'));
         by += 50;
       }
-      y = by + 26;
+      if (sheet) sheet.setSize(B.pw - 40, Math.max(150, by - (y - 26) + 12));
+      y = by + (paper ? 46 : 26);
       if (y > B.top + B.ph - 120) break;
     }
   }
@@ -199,7 +230,7 @@ export class OfficePanel {
     this.text(B.x0 + 36, B.top + 180, t('staffTitle'), 26, '#2b2f3a');
     O.staffRows().forEach((r, i) => {
       const y = B.top + 250 + i * 90;
-      this.icon(B.x0 + 64, y, r.hired ? 'ui_icon_worker' : 'ui_icon_lock', 46);
+      this.icon(B.x0 + 64, y, r.hired ? (Assets.has('ui_icon_staff') ? 'ui_icon_staff' : 'ui_icon_worker') : 'ui_icon_lock', 46);
       this.text(B.x0 + 104, y, r.text, 21, r.hired ? '#2b2f3a' : '#8a93a3', 0, { wordWrap: { width: B.pw - 140 } });
     });
   }
@@ -260,6 +291,12 @@ export class OfficePanel {
   update(dt) {
     if (!this.c) return;
     this.t -= dt;
-    if (this.t <= 0) { this.t = 0.5; this.fill(); }
+    if (this.t <= 0) {
+      this.t = 0.5;
+      // (CODE-2) the panel page: kept in memory while the panel is open; drawn with it the moment it arrives
+      if (Residency.gs) Residency.want(PANELS);
+      if (!this.panelArt && Assets.has('ui_office_tab')) { this.show(this.tab); return; }
+      this.fill();
+    }
   }
 }

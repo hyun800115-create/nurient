@@ -84,6 +84,9 @@ export class ChiefPilot {
     if (!this.on) return;
     this.on = false;
     this.act = null;
+    this.freeSeat();
+    const p = this.gs.player;
+    if (p && p.seat && p.standUp) p.standUp();
     this.vec.x = this.vec.y = 0;
     this.route.length = 0;
     this.cam.stop();
@@ -126,17 +129,37 @@ export class ChiefPilot {
     };
   }
 
+  /** (CODE-2) the terrace seat he ate at is free again */
+  freeSeat() { if (this.lunchSeat && this.lunchSeat.by === 'chief') this.lunchSeat.by = null; this.lunchSeat = null; }
+
   /** begin activity `a`: its target and timers */
   begin(a) {
     const gs = this.gs, p = gs.player, O = this.v42.office;
+    this.freeSeat();
+    if (p.seat && p.standUp) p.standUp();
+    if (p.action && /^(talk|wave|warm_hands|cheer)$/.test(p.action.anim)) p.action = null;
     const [mn, mx] = DUR[a] || [20, 40];
     const st = { act: a, t: 0, min: mn, max: mn + this.rand() * Math.max(0, mx - mn), target: null, sub: null };
     switch (a) {
       case 'urgent': st.target = hireTarget(gs) || urgentTarget(gs); break;
       case 'work': st.target = workTarget(gs); break;
       case 'collect': { const c = cashTarget(gs, 200); st.target = c; break; }
-      case 'lunch': { const R = gs.civic && gs.civic.restaurant; if (R) st.target = { x: R.x + 160, y: R.y + 120 }; break; }
-      case 'evening': case 'office': { if (O && O.building) { const d = O.building.spots.deskPad; st.target = { x: d.x + 46, y: d.y + 30 }; } else st.target = restSpot(gs, this.r); break; }
+      case 'lunch': {
+        // (CODE-2) a free terrace seat: he sits and eats (chief2 sit_eat); else in front of the restaurant
+        const R = gs.civic && gs.civic.restaurant;
+        if (!R) break;
+        const seat = (R.seats || []).find((q) => !q.by);
+        if (seat && R.seatSide) { const sd = R.seatSide(seat); st.target = { x: sd.x, y: sd.y, seat }; }
+        else st.target = { x: R.x + 160, y: R.y + 120 };
+        break;
+      }
+      case 'evening': case 'office': {
+        // (CODE-2) into the office (through its door) to the 책상 pad; he then sits at his desk
+        if (O && O.building && O.building.cw) { const d = O.building.spots.deskPad; st.target = { x: d.x, y: d.y, kind: 'desk' }; }
+        else if (O && O.building) { const d = O.building.spots.deskPad; st.target = { x: d.x + 46, y: d.y + 30 }; }
+        else st.target = restSpot(gs, this.r);
+        break;
+      }
       case 'train': { const nb = gs.v4; if (nb && nb.ours && nb.ours.wait && nb.ours.wait.length) { const w = nb.ours.wait[0]; st.target = { x: w.x + 40, y: w.y + 30 }; } break; }
       case 'chat': { const m = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange()); if (m) { st.sub = m; st.target = { x: m.ch.x + 54, y: m.ch.y + 26 }; } break; }
       case 'rest': st.target = restSpot(gs, this.r); break;
@@ -154,9 +177,54 @@ export class ChiefPilot {
 
   planTo(x, y) {
     const gs = this.gs, p = gs.player;
+    if (p.seat && p.standUp) p.standUp();
     if (gdist(p.x, p.y, x, y) < 220) { this.route.length = 0; this.route.push({ x, y }); }
     else gs.roads.route(p.x, p.y, x, y, this.route);
+    // (CODE-2) a place inside the office: through its door (the walls have one gap)
+    const B = this.v42.office && this.v42.office.building;
+    if (B && B.cw && B.cw.onFloor(x, y - B.lift) && !B.cw.onFloor(p.x, p.y - B.lift)) {
+      const d = B.spots.door, e = B.spots.entry;
+      while (this.route.length && B.cw.onFloor(this.route[this.route.length - 1].x, this.route[this.route.length - 1].y - B.lift)) this.route.pop();
+      this.route.push({ x: d.x, y: d.y + 6 }, { x: e.x, y: e.y }, { x, y });
+    }
     this.ri = 0;
+  }
+
+  /** (CODE-2) arrived: the activity's pose (chief2: sit at his desk, eat at a terrace table, talk, wave, warm hands) */
+  pose(a) {
+    const gs = this.gs, p = gs.player, O = this.v42.office;
+    // (a stand-in chief — the Node test's — has no seated / social poses)
+    if (!p || typeof p.sitDown !== 'function' || typeof p.doAction !== 'function') return;
+    const nb = gs.v4, hour = nb && nb.clock && nb.clock.on ? nb.clock.hour() : 12;
+    if ((a.act === 'office' || a.act === 'evening') && a.target && a.target.kind === 'desk' && O && O.building && O.building.cw) {
+      const B = O.building, cw = B.cw, s = B.spots.chiefSeat;
+      const ord = cw.order, fi = Math.max(0, ord.indexOf('chief_office_interior_front'));
+      p.sitDown({ x: s.x, y: s.y, lift: B.lift, slot: '@behind', deskOverlay: true, deskDepth: cw.base + 0.01 * fi + 0.002, dir: 3, shadowDy: 25, standDy: 34 }, this.deskAnim(hour));
+      B.holdOpen(2);
+      a.deskT = 0;
+      return;
+    }
+    if (a.act === 'lunch' && a.target && a.target.seat && !a.target.seat.by) {
+      const seat = a.target.seat;
+      seat.by = 'chief';
+      this.lunchSeat = seat;
+      p.sitDown({ x: seat.x, y: seat.y, lift: 0, slot: null, deskOverlay: true, deskDepth: seat.table.y + 0.01, dir: 2, shadowDy: 20, standDy: 40 }, 'sit_eat');
+      return;
+    }
+    if (a.act === 'chat' && a.sub && a.sub.ch) { p.doAction('talk', 26, a.sub.ch.x, a.sub.ch.y); return; }
+    if (a.act === 'train') { const nb2 = gs.v4; const tx = nb2 && nb2.ours ? nb2.ours.x : p.x, ty = nb2 && nb2.ours ? nb2.ours.y + 60 : p.y + 60; p.doAction('wave', 7, tx, ty); return; }
+    if ((a.act === 'rest' || a.act === 'evening') && a.target && a.target.kind === 'fire') {
+      const f = (gs.campfires || []).reduce((b, c) => (!b || gdist(p.x, p.y, c.x, c.y) < gdist(p.x, p.y, b.x, b.y) ? c : b), null);
+      p.doAction('warm_hands', 40, f ? f.x : p.x - 40, f ? f.y : p.y - 20);
+    }
+  }
+
+  /** what he does at his desk: dozes after 22:00, reads the morning paper, else writes and stamps */
+  deskAnim(hour) {
+    if (hour >= 22 || hour < 6) return 'doze';
+    const N = this.v42.news;
+    if (hour >= 8 && hour < 10 && N && N.list && N.list.length) return 'sit_read_loop';
+    return (this.index & 1) ? 'sit_write' : 'sit_read_loop';
   }
 
   /** the joystick vector toward the next waypoint (0 when arrived) */
@@ -283,10 +351,17 @@ export class ChiefPilot {
       const done = this.steer(dt);
       if (done && !this.arrived) {
         this.arrived = true;
-        const p = gs.player;
         if (a.act === 'chat' && a.sub && a.sub.ch) this.chat(a.sub);
-        if (a.act === 'train' && p.play) p.play('wave', true);
         if (a.act === 'dog' && gs.dog && gs.dog.command) gs.dog.command('pet');
+        this.pose(a);
+      }
+      // (CODE-2) at his desk: write, read, doze — a change every 12 s
+      const p = gs.player;
+      if (this.arrived && p.seat && (a.act === 'office' || a.act === 'evening') && (a.deskT = (a.deskT || 0) + dt) > 12) {
+        a.deskT = 0;
+        const nb = gs.v4, hour = nb && nb.clock && nb.clock.on ? nb.clock.hour() : 12;
+        this.index++;
+        if (p.seatPlay) p.seatPlay(this.deskAnim(hour));
       }
     } else this.vec.x = this.vec.y = 0;
     this.cam.update(dt);

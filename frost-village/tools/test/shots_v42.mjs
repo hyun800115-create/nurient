@@ -54,12 +54,20 @@ const SCENES = [
     r.set('toOurs', best);
     window.__loopT2 = best;
     return null;
-  }, secs2: 0.1, then: () => { const r = window.__FV.scene.v4.rail; r.set('toOurs', window.__loopT2); return { x: 5880, y: 2600, z: 0.8 }; } },
+  }, secs2: 0.1, then: () => {
+    // (CODE-2) the camera as a player sees it: bounded at WORLD.width (6144), so the loop tip meets the screen edge
+    const gs = window.__FV.scene, r = gs.v4.rail; r.set('toOurs', window.__loopT2);
+    const z = 0.8, half = gs.cameras.main.width / 2 / z;
+    return { x: Math.min(5880, 6144 - half), y: 2600, z };
+  } },
   { name: '06_consist_ours', secs: 2, warm: 3, setup: () => { const nb = window.__FV.scene.v4; nb.rail.set('atOurs', 1); const F = window.__FV.scene.v42.freight; if (F) F.labels = 0; if (nb.train.showLabels) nb.train.showLabels(8, 20); return { x: nb.ours.x - 40, y: nb.ours.y + 30, z: 1.0 }; }, sub: true },
   { name: '07_freight_loading', secs: 5, setup: () => { const gs = window.__FV.scene, nb = gs.v4, G = nb.growth, F = gs.v42.freight; G.cargo = 6; F.addSurplus('item_plank', 24); F.addSurplus('item_ingot', 12); nb.rail.set('atOurs', 0.5); return { x: G.dock.x + 40, y: G.dock.y - 20, z: 1.1 }; } },
   { name: '08_consist_town_coach2', secs: 2, warm: 4, setup: () => { const nb = window.__FV.scene.v4; if (nb.rail.stage < 2) nb.addCoach(); nb.rail.set('atTown', 1); const ts = nb.townStation || null; const p = nb.rail.point(nb.rail.m - 6); return ts ? { x: ts.x, y: ts.y, z: 0.9 } : { x: p.x, y: p.y, z: 0.9 }; } },
   { name: '09_train_card', secs: 0.5, setup: () => { const ui = window.__FV.game.scene.getScene('UI'), nb = window.__FV.scene.v4; nb.rail.set('atOurs', 2); if (ui.hud42 && ui.hud42.openTrainCard) ui.hud42.openTrainCard(); return { x: nb.ours.x - 40, y: nb.ours.y - 60, z: 0.9 }; }, after: () => { const ui = window.__FV.game.scene.getScene('UI'); if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); }, en: true },
   { name: '10_office', secs: 3, warm: 3, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = F.scene.v42.office, d = O.building.spots.door; F.teleport(d.x + 60, d.y + 120); return { x: O.x, y: O.y + 40, z: 0.95 }; }, sub: true },
+  // (CODE-2) the cutaway revealed with the officefolk staff at work, and the chief at his own desk (chief2 sit_write)
+  { name: '10b_office_inside', secs: 8, warm: 6, until: () => { const O = window.__FV.scene.v42.office; return Object.values(O.staff).every((c) => !c.seat || (c.animName === c.want && /^(desk_|sit_)/.test(c.animName))); }, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = F.scene.v42.office, e = O.building.spots.entry || O.building.spots.door; F.teleport(e.x, e.y); return null; }, then: () => { const O = window.__FV.scene.v42.office; return { x: O.x, y: O.y - 20, z: 1.2 }; }, secs2: 2, sub: true },
+  { name: '10c_chief_desk', secs: 1, warm: 4, until: () => { const gs = window.__FV.scene, p = gs.player, O = gs.v42.office; if (!p.seat && O.building.cw) { const d = O.building.spots.deskPad; gs.v42.pilot.pose({ act: 'office', target: { x: d.x, y: d.y, kind: 'desk' } }); } const k = p.sprite.anims.currentAnim ? p.sprite.anims.currentAnim.key : ''; return !!p.seat && /sit_|doze/.test(k) && Object.values(O.staff).every((c) => !c.seat || (c.animName === c.want && /^(desk_|sit_)/.test(c.animName))); }, setup: () => { const F = window.__FV, gs = F.scene; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = gs.v42.office, d = O.building.spots.deskPad; F.teleport(d.x, d.y); gs.v42.pilot.pose({ act: 'office', target: { x: d.x, y: d.y, kind: 'desk' } }); return null; }, then: () => { const s = window.__FV.scene.v42.office.building.spots.chiefSeat; return { x: s.x, y: s.y - 60, z: 1.6 }; }, secs2: 3, after: () => { const p = window.__FV.scene.player; if (p.standUp) p.standUp(); } },
   { name: '11_panel_stock', secs: 0.5, setup: () => { window.__FV.v42.office({ panel: 'stock' }); return null; }, sub: true },
   { name: '12_panel_news', secs: 0.5, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); F.v42.news({ print: 1 }); F.scene.v42.office.uiScene().officePanel.show('news'); return null; }, en: true },
   { name: '13_panel_letters', secs: 0.5, setup: () => { const F = window.__FV; F.v42.news({ letter: 'grandma' }); F.v42.news({ letter: 'miner' }); F.scene.v42.office.uiScene().officePanel.show('letters'); return null; } },
@@ -112,13 +120,21 @@ for (const size of SIZES) for (const lang of LANGS) {
       let cam = await page.evaluate(sc.setup);
       await run(sc.secs || 0);
       await warm(sc.warm || 0);
+      // (a scene that waits for on-demand art — the staff's desk pages, the chief's chief2 anims — keeps the loop awake
+      //  until its `until` holds, at most untilS real seconds)
+      if (sc.until) {
+        await page.evaluate(() => window.__FV.game.loop.wake());
+        const t0 = Date.now();
+        while (Date.now() - t0 < (sc.untilS || 25) * 1000) { if (await page.evaluate(sc.until)) break; await sleep(400); }
+        await page.evaluate(() => window.__FV.game.loop.sleep());
+      }
       if (sc.then) { cam = await page.evaluate(sc.then); await run(sc.secs2 || 0); }
       if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
       // (an offer banner that popped up during the scene is not what the shot is about)
       if (!sc.keepBanner) await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); if (ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); } });
       await page.evaluate(() => { for (let i = 0; i < 20; i++) window.__draw(); });
       const file = `${sc.name}_${W}x${H}_${lang}.jpg`;
-      await page.screenshot({ path: path.join(OUT, file), type: 'jpeg', quality: 82 });
+      await page.screenshot({ path: path.join(OUT, file), type: 'jpeg', quality: 82, timeout: 120000 });
       made.push(file);
       // the texture source-sum in this view (Residency, the v4 probe) and the display objects
       const tx = await page.evaluate(() => { const s = window.__FV.texStats(); return { mib: s.totalMiB, peak: s.peakMiB, objs: window.__FV.scene.children.length }; });

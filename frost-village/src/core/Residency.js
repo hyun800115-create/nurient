@@ -19,6 +19,10 @@ function dropAnim(g, key) {
   if (!a) return;
   if (typeof a.destroy === 'function') a.destroy(); else g.anims.remove(key);
 }
+/** ((v4.2 CODE-2) every display object of the scene, also those inside containers (cutaway layers, rigs, labels) */
+function eachObj(list, fn) {
+  for (const o of list) { fn(o); if (o.list && o.type === 'Container') eachObj(o.list, fn); }
+}
 // (v4-B) building pictures that belong to one area: out of memory while the camera is far from it (§11.3b
 // `regionBld`), back when it comes near. Rects in world px [x0, y0, x1, y1].
 // (the district by our station uses the street props and the townhouses too: those belong to rail strip + town)
@@ -41,6 +45,9 @@ const REGIONS = [
   //  은행길 -> the depot). Only listed once their fragment is merged (late), so a village without them costs nothing.
   //  CODE-2 adds `office` (+ `officeInside`) for the office cutaway art)
   { id: 'bank42', rect: [-620, 240, -60, 760], pages: ['civ_bank'] },
+  // ((v4.2 CODE-2) the office's closed look (its inside page and the staff's desk / work / errand pages load on demand
+  //  while the chief is near it: Office / OfficeBuilding ask Residency.want for them))
+  { id: 'office', rect: [-140, 480, 360, 960], pages: ['office_bld@closed'] },
   { id: 'depot', rect: [2700, 2850, 3700, 3420], pages: ['lgx_center_a', 'lgx_center_b', 'lgx_center_c', 'lgx_center_d', 'lgx_items'] },
   { id: 'sleigh', rect: [2950, 1500, 4900, 3420], pages: ['veh_cargo_sleigh'] },
 ];
@@ -185,8 +192,9 @@ export const Residency = {
   // ---------------------------------------------------------------- eviction
   /** is something visible on screen showing page `key`? */
   displayed(key) {
-    for (const o of this.gs.children.list) if (o.visible && o.texture && o.texture.key === key) return true;
-    return false;
+    let on = false;
+    eachObj(this.gs.children.list, (o) => { if (!on && o.visible && o.texture && o.texture.key === key) on = true; });
+    return on;
   },
 
   /** evict the least recently used page of `list` not on screen and unused for `minAge` ms; true if one went */
@@ -207,6 +215,12 @@ export const Residency = {
     if (!a || !a.onDemand || !g.textures.exists(key)) return false;
     if (this.displayed(key)) { this.use[key] = this.now(); return false; }
     const own = Assets.pageOwner[key];
+    // ((v4.2 CODE-2) every anim made from this page goes (character anims below, and the sprite anims: the office's
+    //  inside props, a late page's loops); whatever plays one stops first — a sprite starting one after the page went
+    //  read a destroyed frame (census crash at 15 min). Assets.onLazyFile makes them again when the page is back
+    const dead = new Set();
+    g.anims.anims.each((k, an) => { if (an.frames.some((f) => f.textureKey === key)) dead.add(k); });
+    if (dead.size) eachObj(gs.children.list, (o) => { const cur = o.anims && o.anims.currentAnim ? o.anims.currentAnim.key : null; if (cur && dead.has(cur)) o.anims.stop(); });
     if (a.format === 'tfatlas') {
       // dolls in a social anim go back to idle (their rig images then point at loco frames)
       const pool = gs.dollPool;
@@ -239,14 +253,17 @@ export const Residency = {
         if (mine && mine.has(ch.animRes)) { ch.animKey = ''; ch.play(ch.animName || 'idle', true); }
       }
     }
-    // hidden pictures still pointing at it (a spare rig image, a sprite out of view)
-    for (const o of gs.children.list) {
+    // hidden pictures still pointing at it (a spare rig image, a sprite out of view), and anything still on a dead anim
+    eachObj(gs.children.list, (o) => {
+      const cur = o.anims && o.anims.currentAnim ? o.anims.currentAnim.key : null;
+      if (cur && dead.has(cur)) { o.anims.stop(); o.anims.currentAnim = null; }
       if (o.texture && o.texture.key === key) {
         if (o.anims && o.anims.isPlaying) o.anims.stop();
         if (o.setTexture) o.setTexture('__WHITE');
         o.setVisible(false);
       }
-    }
+    });
+    for (const k of dead) if (g.anims.exists(k)) dropAnim(g, k);
     g.textures.remove(key);
     Assets.demanded.delete(key);
     Assets.queued.delete(key);
@@ -334,7 +351,11 @@ export const Residency = {
     // loop anims made from these pictures go (Assets.onLazyFile makes them again)
     const drop = [];
     g.anims.anims.each((key, a) => { if (a.frames.some((f) => set.has(f.textureKey))) drop.push(key); });
-    for (const o of gs.children.list.slice()) {
+    const objs = [];
+    eachObj(gs.children.list, (o) => objs.push(o));
+    for (const o of objs) {
+      // ((v4.2 CODE-2) a sprite on another page playing one of the dropped anims stops too)
+      if (o.anims && o.anims.currentAnim && drop.indexOf(o.anims.currentAnim.key) >= 0 && !(o.texture && set.has(o.texture.key))) { o.anims.stop(); o.anims.currentAnim = null; }
       if (!o.texture || !set.has(o.texture.key)) continue;
       const loop = o.anims && o.anims.isPlaying && o.anims.currentAnim ? o.anims.currentAnim.key : null;
       if (o.anims) o.anims.stop();

@@ -381,7 +381,7 @@ asked for the train to leave forwards; the loop costs one curved-rail art job an
 
 | Unit | lengthM (over couplers) | couplerM front / back | Art | Placeholder (CODE-1) |
 |---|---|---|---|---|
-| 기관차 `train_engine` | 2.6 | −1.38 / 1.22 | existing, **all 5 rendered dirs now packed** | — |
+| 기관차 `train_engine` | 2.6 | −1.38 / **1.375** (CODE-2: the train2 manifest's `couplerOverride.train_engine.back` — the real tender's coupler sits 0.155 m further back than v4.1's 1.22; every car behind the engine moves 0.155 m, `rail42.test.mjs` updated) | existing, **all 5 rendered dirs now packed** | — |
 | 객차 `train_coach` 솔방울호 | 3.0 | −1.5 / 1.5 | new (`CONTRACT_V42` AK) | `train_car_a` × 1.33, light sky tint |
 | 화물칸 `train_boxcar` | 2.6 | −1.3 / 1.3 | new, `door_open` 4 f | `train_car_b` × 1.15 + code crate stack |
 | 무개화차 `train_flatcar` | 2.4 | −1.2 / 1.2 | new, game draws crates at `cargoSlots` | `train_car_b` × 1.07 |
@@ -813,7 +813,7 @@ templates (20), letters (10 templates × body + 2 buttons), 관망 captions per 
 | portrait atlas (`tools/build/portrait_atlas.py`; measure the real count at P0) | ≈ −40…−52 | −48: 53 portraits → 5 pages (characters, villagers, villagers2, villagers3, workers; frame lists embedded in the manifests) |
 | ui4 (13 PNG + atlas) shipped as 1 page + JSON | −12 vs naive | 0 (CODE-1 does not load ui4; CODE-2's `v42_core` page carries the panel icons) |
 | v4.2 new art (`CONTRACT_V42`: 33 shipped files after `chief_fx` + `ui5` pack into `v42_core`) + reused art (civic bank 3, logistics 15, cargo sleigh 3, ui4 page 3, audio6 subset 5) | ≈ +62 | +10 reused so far (`civic`, `logistics`, `vehicles` as late fragments with `USED_ONLY`: bank 2, centre + racks 6, sleigh 2); the new art is CODE-2's |
-| **result** | **≈ 430–445** (gate: build fails above 480; v5 keeps ≥ 60 headroom) | **386** before the new art (≈ 448 after CODE-2's +62) |
+| **result** | **≈ 430–445** (gate: build fails above 480; v5 keeps ≥ 60 headroom) | **386** before the new art (≈ 448 after CODE-2's +62) · **CODE-2 measured: 413** (412 + the page; 65.7 MB; 2 publish batches; 125 stale paths of the live 491-file version sent as null) — `chief_fx` + `ui5` are one page whose manifests ride in `_packed/index.json`, the office art is 2 pages + items, `audio7` one sprite |
 
 ### 13.2 Textures (Phaser source-sum, the v4 probe; must ≤ 455 MiB everywhere)
 | View | v4.1 | v4.2 adds (estimate) | Gate |
@@ -833,6 +833,14 @@ the earlier views left resident): plaza 366, carrying + 길 안내 384, station 
 bank revealed 381, **depot revealed 412 (peak)**, sleigh / 관망 407–410 MiB — every view under the 455 hard limit with
 placeholder art; the per-view gates (≤ 331 / 345 / 340) need the settled residency probe (`texbudget.mjs`) in CODE-2.
 Plaza display objects 1,014–1,237 (gate 1,700).
+
+**CODE-2 measured** (`texview.mjs`: a fresh boot of the 46-min save per view, 45 s settled with the loop awake; v4.1 =
+the v4.1 copy on the same save and view): plaza **355.6 → 368.7 MiB (+13.1)**; station, train in **369.6 → 384.4
+(+14.8)**; office revealed 392.2; depot revealed 414.9; screenshot tour peak 432.7 (every view < 455). What the +13 at the
+plaza is: the train pages are resident in every view in v4.1 too and the cars grew (+5.2: coach 4.35 + box car 4.68 +
+flat car 3.05 − car_a 3.78 − car_b 3.11), CODE-1's pile-bake canvas `fv_stackbake` (+4.0), `v42_core` (+3.1) and the
+generated stand-in rings kept for the fallback (+0.5). The station adds `train2_rails` (1.7, bake-only). Train pages
+alone: 17.59 MiB = the plan's 17.6.
 
 ### 13.3 Logic, objects, draw calls
 | Item | Budget (fixed-step bench, average ms/tick) |

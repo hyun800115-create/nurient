@@ -22,6 +22,7 @@ import { STAFF_LOOKS } from '../../data/staffLooks.js';
 import { t, fmt } from '../../data/strings.js';
 import { gdist } from '../../core/Iso.js';
 import { villageTills } from '../V42.js';
+import { Residency } from '../../core/Residency.js';
 
 const ROLES = ['sem', 'ttal', 'bok', 'chong'];
 const OB = () => (BALANCE.v42 && BALANCE.v42.office) || {};
@@ -69,6 +70,9 @@ export class Office {
     if (bkey === 'chief_office') {
       this.clearDecor('office');
       this.building = new OfficeBuilding(gs, site, this);
+      // (CODE-2) the office's sounds (typewriters, the mailbox flag, the coin sack, the office bed) and its staff anims
+      Assets.loadFragment(gs, 'audio7', { audio: ['sfx_typewriter', 'sfx_typewriter_2', 'sfx_typewriter_3', 'sfx_mailbox_flag', 'sfx_coin_sack', 'sfx_coin_sack_2', 'sfx_coin_sack_3', 'amb_office'] });
+      this.ensureOfficefolk();
       if (!instant) gs.time.delayedCall(1200, () => this.showHire());
       return this.building;
     }
@@ -144,16 +148,31 @@ export class Office {
     gs.save(true);
   }
 
+  /** (CODE-2) the seat of a role's desk: { x, y, seat: { x, y, dir, band } } (the manifest's deskPoints / deskDirs /
+   *  deskBands: 셈이 · 소복이 · 총총이 · 딸랑이) */
+  homeOf(role) {
+    const B = this.building, k = { sem: 0, bok: 1, chong: 2, ttal: 3 }[role] || 0;
+    const p = B.spots.desk[k], dir = (B.spots.deskDirs || [])[k] || 'SE', band = (B.spots.deskBands || [])[k] || 'behind';
+    return { x: p.x, y: p.y, seat: { x: p.x, y: p.y, dir, band } };
+  }
+
   spawn(role, instant) {
     const gs = this.gs, B = this.building;
     if (!B || this.staff[role]) return;
     this.ensurePresets();
     const i = ROLES.indexOf(role), seed = this.seeds[i];
-    const home = role === 'sem' ? B.spots.desk[0] : role === 'bok' ? B.spots.desk[1] : role === 'chong' ? B.spots.desk[2] : B.spots.desk[3];
-    // new staff walk in from the plaza; a reload puts them at their spots
+    const home = this.homeOf(role);
+    // new staff walk in from the plaza (and bow); a reload puts them at their desks
     const from = instant ? home : { x: this.x + 520, y: this.y + 160 };
     const ch = this.make(role, seed, from.x, from.y, home, instant ? this.bagSaved : 0);
-    if (!instant && role !== 'chong') ch.goHome(() => ch.say(t('staffArrive', { role: t('role_' + role), name: t('staff_' + role) }), 2.4));
+    if (instant && role !== 'chong' && !(role === 'ttal' && ch.bag > 0)) ch.sitDown(home.seat);
+    if (!instant && role !== 'chong') {
+      ch.walkTo(B.spots.door.x + 30, B.spots.door.y + 50, () => {
+        ch.act('bow', true);
+        ch.say(t('staffArrive', { role: t('role_' + role), name: t('staff_' + role) }), 2.4);
+        gs.time.delayedCall(1400, () => { if (ch.alive) ch.goHome(); });
+      });
+    }
     this.staff[role] = ch;
   }
 
@@ -164,9 +183,47 @@ export class Office {
     if (role === 'ttal') ch = new Courier(gs, this, seed, x, y, home, bag || 0);
     else if (role === 'chong') ch = new Aide(gs, this, seed, x, y, home);
     else ch = new Staff(gs, this, role, seed, x, y, home);
-    if (role === 'sem') ch.errand = () => { ch.doing = 'board'; ch.walkTo(B.spots.board.x + 20, B.spots.board.y + 14, () => { ch.play('talk', true); this.semSays(ch); this.gs.time.delayedCall(2600, () => { if (ch.alive) ch.goHome(); }); }); };
-    if (role === 'bok') ch.errand = () => { if (this.v42.news && this.v42.news.unread() > 0) this.fetchMail(ch); };
+    // 셈이: to the 재고판 (point_board), then back to her desk
+    if (role === 'sem') ch.errand = () => {
+      if (!B.cw) return;
+      ch.doing = 'board';
+      const g = B.ground(B.spots.board);
+      ch.walkIn(g.x, g.y, () => { ch.faceTo(g.x + 40, g.y - 40); ch.act('point_board', true); this.semSays(ch); this.gs.time.delayedCall(3200, () => { if (ch.alive) ch.goHome(); }); });
+    };
+    // 소복이: letters waiting -> the mailbox; else now and then the phone rings
+    if (role === 'bok') ch.errand = () => {
+      if (this.v42.news && this.v42.news.unread() > 0) { this.fetchMail(ch); return; }
+      if (ch.seat && B.cw && (ch.phoneN = (ch.phoneN || 0) + 1) % 2 === 0) this.ringPhone(ch);
+    };
     return ch;
+  }
+
+  /** (CODE-2) the phone on 소복이's desk rings (overlay), she picks it up (desk_phone) */
+  ringPhone(ch) {
+    const B = this.building;
+    if (!B || !B.cw) return;
+    B.cw.loop('chief_office_phone', 'ring');
+    this.gs.time.delayedCall(1800, () => {
+      if (B.cw) B.cw.loop('chief_office_phone', null);
+      if (ch.alive && ch.seat) { ch.act('desk_phone', true); ch.deskT = 6; }
+    });
+  }
+
+  /** (CODE-2) the officefolk pages the office / bank staff act on (desk, work, errand): asked for while the chief is
+   *  near the office or the bank (the resident one, sack, is always there) */
+  wantStaffPages() {
+    if (!TF.of || !TF.ofAtlas) return;
+    for (const g in TF.ofAtlas) if (g !== TF.ofResident) Residency.want(TF.ofAtlas[g]);
+  }
+
+  /** (CODE-2) the officefolk fragment: merged into the townsfolk runtime once both are here; staff re-dress */
+  ensureOfficefolk() {
+    if (this.ofAsked || !TF.ok) return;
+    this.ofAsked = true;
+    Assets.loadFragment(this.gs, 'officefolk', { only: ['of_sack_0'] }, () => {
+      const m = Assets.lateManifest && Assets.lateManifest.officefolk;
+      if (m && TF.mergeOfficefolk(m)) { this.dressT = 0; this.ofMerged = true; }
+    });
   }
 
   /** ((robust review M3) staff made before the townsfolk manifest arrived (a reload) wear the village stand-in: once
@@ -178,8 +235,10 @@ export class Office {
       const ch = this.staff[r];
       if (!ch || !ch.alive || !ch.wantsDress()) continue;
       if (r === 'ttal' ? !(ch.state === 'desk' && ch.bag === 0) : r === 'chong' ? !!ch.target : !ch.settled()) continue;
+      const seat = ch.seat;
       const n = this.make(r, ch.seed, ch.x, ch.y, ch.home, 0);
       n.dir = ch.dir;
+      if (seat) n.sitDown(seat);
       if (r === 'ttal') { n.rounds = ch.rounds; n.deposited = ch.deposited; n.waitT = ch.waitT; }
       if (r === 'chong') n.doing = ch.doing;
       ch.destroy();
@@ -195,19 +254,30 @@ export class Office {
     for (const sl of S.sellers()) for (const ty of sl.goods || []) if (S.emptyFor(sl, ty) > 30) { ch.say(t('sem_short', { item: t(ty) }), 2.6); return; }
   }
 
-  /** 소복이 fetches the letters from the mailbox */
+  /** 소복이 fetches the letters from the mailbox, then sorts them into the pigeonholes (file) */
   fetchMail(ch) {
     const B = this.building;
     if (!B || ch.target) return;
     ch.doing = 'letter';
-    ch.walkTo(B.spots.mailbox.x + 26, B.spots.mailbox.y + 18, () => { ch.say(t('bok_mail'), 2.4); this.gs.time.delayedCall(1200, () => { if (ch.alive) ch.goHome(); }); });
+    ch.walkTo(B.spots.mailbox.x + 26, B.spots.mailbox.y + 18, () => {
+      ch.say(t('bok_mail'), 2.4);
+      this.gs.time.delayedCall(1200, () => {
+        if (!ch.alive) return;
+        if (!B.cw) { ch.goHome(); return; }
+        const g = B.ground(B.spots.shelf);
+        ch.walkIn(g.x, g.y + 8, () => { ch.faceTo(g.x - 40, g.y - 40); ch.act('file', true); this.gs.time.delayedCall(3000, () => { if (ch.alive) ch.goHome(); }); });
+      });
+    });
   }
 
   onLetter() {
     this.gs.events.emit('office:letter');
     const ch = this.staff.bok;
     if (ch) this.gs.time.delayedCall(1500, () => this.fetchMail(ch));
-    if (this.building && this.gs.isOnScreen(this.building.spots.mailbox.x, this.building.spots.mailbox.y, 200)) Audio.play(Audio.exists('sfx_mailbox') ? 'sfx_mailbox' : 'sfx_click', { volume: 0.5 });
+    // (audio7) the flag's 탁 + bell: OfficeBuilding.setMail plays it when the flag springs up; a letter that comes
+    //  while the flag is already up gets it here
+    const B = this.building;
+    if (B && B.mailN > 0 && this.gs.isOnScreen(B.spots.mailbox.x, B.spots.mailbox.y, 200)) Audio.play(Audio.exists('sfx_mailbox_flag') ? 'sfx_mailbox_flag' : 'sfx_click', { volume: 0.5 });
   }
   onPaper() { const ch = this.staff.bok; if (ch) ch.say(t('bok_paper'), 2.4); const a = this.staff.chong; if (a && a.doing === 'follow') a.say(t('chong_news'), 2.4); }
 
@@ -232,8 +302,15 @@ export class Office {
     return n;
   }
 
-  /** where the courier hands the sack over */
-  depositPoint() { if (this.bank) return this.bank.depositPoint(); const B = this.building; const s = B ? B.spots.safe : { x: this.x, y: this.y + 120 }; return { x: s.x + 20, y: s.y + 20, fx: s.x, fy: s.y }; }
+  /** where the courier hands the sack over: the bank counter, or (before the bank) the office safe — he walks in
+   *  and stands on the raised floor in front of it */
+  depositPoint() {
+    if (this.bank) return this.bank.depositPoint();
+    const B = this.building;
+    if (B && B.cw) { const g = B.ground(B.spots.safe); return { x: g.x - 10, y: g.y + 12, fx: B.spots.safe.x + 20, fy: B.spots.safe.y - 20 }; }
+    const s = B ? B.spots.safe : { x: this.x, y: this.y + 120 };
+    return { x: s.x + 20, y: s.y + 20, fx: s.x, fy: s.y };
+  }
   depositName() { return t(this.bank ? 'ttal_bank' : 'ttal_safe'); }
 
   /** coins reach the wallet: the HUD counter + a passbook row */
@@ -300,9 +377,35 @@ export class Office {
     if (hp) { hp.update(dt); if (this.hirePad === hp) this.hirePaid = hp.paid || 0; }
     else if ((this.chkT = (this.chkT || 0) - dt) <= 0) { this.chkT = 2; this.showHire(); }
     for (const r in this.staff) { const ch = this.staff[r]; if (ch && ch.alive) ch.update(dt); }
+    this.ensureOfficefolk();
     this.dressT = (this.dressT || 0) - dt;
     if (this.dressT <= 0) { this.dressT = 2; this.redressStaff(); }
+    // (CODE-2) the staff on the office floor show only while it is open (the closed shell covers them); the typewriters
+    // clack while their clerk types; 셈이's lamp turns red while a shelf has been empty a while
+    if (B.cw) {
+      const vis = B.cw.alpha > 0.3;
+      for (const r in this.staff) {
+        const ch = this.staff[r];
+        if (!ch || !ch.alive) continue;
+        const onFloor = !!ch.seat || B.cw.onFloor(ch.x, ch.y);
+        const v = !onFloor || vis;
+        if (ch.sprite.visible !== v) { ch.sprite.setVisible(v); if (ch.shadow) ch.shadow.setVisible(v); }
+      }
+      const typing = (r) => { const ch = this.staff[r]; return !!(ch && ch.seat && ch.animName === 'desk_type' && vis); };
+      B.cw.loop('chief_office_typewriter_a', typing('sem') ? 'type' : null);
+      B.cw.loop('chief_office_typewriter_b', typing('bok') ? 'type' : null);
+      this.lampT = (this.lampT || 0) - dt;
+      if (this.lampT <= 0) {
+        this.lampT = 1;
+        const S = this.v42.surplus;
+        let short = false;
+        if (S && this.hired('sem')) for (const sl of S.sellers()) for (const ty of sl.goods || []) if (S.emptyFor(sl, ty) > 30) short = true;
+        B.cw.state('chief_office_lamp_a', short ? 'alert' : 'warm');
+      }
+    }
     if (this.bank) this.bank.update(dt);
+    // (CODE-2) the cutaway: reveal, its pages, the sign, the night glow, the office bed
+    if (B.update) B.update(dt);
     // the 책상 pad
     const p = gs.player;
     if (B.deskPad.contains(p.x, p.y)) {
