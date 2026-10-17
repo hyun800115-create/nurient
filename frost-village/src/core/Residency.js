@@ -106,7 +106,9 @@ export const Residency = {
   /** on-demand character pages resident or on their way (`loadedOnly`: resident only) */
   residentSocial(loadedOnly) {
     const tex = this.gs.game.textures, out = [];
-    for (const k of Assets.demanded) { const a = Assets.m.atlases[k]; if (a && a.onDemand && a.format !== 'tfatlas' && (!loadedOnly || tex.exists(k))) out.push(k); }
+    // ((v4.2 CODE-2) building / HUD pages that load on demand (the office inside, the ui5 panels, chief2's sheet: noCap)
+    //  are not residents' social pages: they do not count against the cap)
+    for (const k of Assets.demanded) { const a = Assets.m.atlases[k]; if (a && a.onDemand && !a.noCap && a.format !== 'tfatlas' && (!loadedOnly || tex.exists(k))) out.push(k); }
     return out;
   },
 
@@ -127,7 +129,7 @@ export const Residency = {
     // at most `socialPages` resident or loading (the least recently used one makes room)
     const res = this.residentSocial();
     const cap = this.low() ? Math.min(2, T.socialPages) : T.socialPages;
-    if (res.length >= cap && !this.evictLRU(res.filter((k) => this.gs.game.textures.exists(k)), 2000)) { this.refused++; return false; }
+    if (!(a && a.noCap) && res.length >= cap && !this.evictLRU(res.filter((k) => this.gs.game.textures.exists(k)), 2000)) { this.refused++; return false; }
     return this.demand([page]);
   },
 

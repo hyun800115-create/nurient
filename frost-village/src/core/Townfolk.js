@@ -243,6 +243,8 @@ export function forEachTfFrame(data, fn) {
 
 // ---------------------------------------------------------------- end of the copy
 
+import { mergeOfficefolk, installOfficefolkRuntime } from './folk/officefolk_compose.js';
+
 export const TOWNFOLK2 = false;        // (v5) merge the townfolk2 head override frames; until then:
 const NO_HATS = TOWNFOLK2 ? [] : ['hat_cap', 'hat_headband'];
 const AGE_SHEETS = { child: /^tf_child/, adult: /^tf_adult/, elder: /^tf_elder/ };
@@ -268,6 +270,54 @@ export const TF = {
 
   get ok() { return !!this.T; },
 
+  /**
+   * (v4.2 CODE-2, CONTRACT_V42 AJ, docs/build_reports/v42_officefolk.md "Game recipe" step 0) the officefolk fragment
+   * (the office / bank staff's acting anims: desk_write, carry_sack, stamp_stand …) joins the running townsfolk
+   * runtime: the same merge the art's own tools use (src/core/folk/*_compose.js are byte-identical copies of
+   * tools/*_compose.js), then installOfficefolkRuntime() teaches TF.layersInto / TF.person the fragment's rules
+   * (TF.of = its Officefolk: pickAnim, pageNeeded, handPoint, sackPoint …). Only new keys are added, so every doll
+   * already walking draws exactly as before. The code presets (addPresets) give way to the manifest's own.
+   */
+  mergeOfficefolk(fm) {
+    if (!this.T || !fm || !fm.officefolk || this.of) return !!this.of;
+    const G = this.T.generator;
+    if (G && G.presets && this._codePresets) for (const k of this._codePresets) if (fm.officefolk.generator && fm.officefolk.generator.presets && fm.officefolk.generator.presets[k]) delete G.presets[k];
+    try {
+      const merged = mergeOfficefolk({ atlases: this.sheets.map((k) => ({ key: k })), townfolk: this.T }, fm);
+      this.T = merged.townfolk;
+      this.tf = new Townfolk(this.T);
+      this._defs = {};
+      this._frames.clear();
+      if (this.assets) for (const k in this.assets.charCache) if (k.startsWith('tf:')) delete this.assets.charCache[k];
+      installOfficefolkRuntime(this);
+      this.ofAtlas = {};
+      const groups = (this.T.ofPages && this.T.ofPages.groups) || {};
+      for (const g in groups) for (const a of groups[g].atlases || []) this.ofAtlas[g] = a;
+      this.ofResident = (this.T.ofPages && this.T.ofPages.resident) || 'sack';
+      return true;
+    } catch (e) { console.error('[TF] officefolk merge', e); return false; }
+  },
+
+  /** (v4.2 CODE-2) is officefolk page group `g` (desk / work / errand / sack) installed? */
+  ofReady(g) { const a = this.ofAtlas && this.ofAtlas[g]; return !a || (this.assets ? this.assets.tfReady.has(a) : true); },
+
+  /**
+   * (v4.2 CODE-2) the anim a person really plays for `anim` right now: officefolk's pickAnim with `has` = the page it
+   * needs is installed (else its contract fallback: desk_write -> sit_idle -> sit -> idle, carry_sack -> walk, …);
+   * want(g) is told which page group was missing (the caller asks Residency for it).
+   */
+  pick(person, anim, want) {
+    const of = this.of;
+    if (!of || !person || !this.T.anims[anim]) return { anim: this.T && this.T.anims[anim] ? anim : 'idle', face: null };
+    const has = (a, p) => {
+      const g = of.pageNeeded(p, a);
+      if (!g || this.ofReady(g)) return true;
+      if (want && a === anim) want(g);
+      return false;
+    };
+    try { return of.pickAnim(person, anim, { has }); } catch (e) { return { anim: 'idle', face: null }; }
+  },
+
   /** (v4.2) code presets (src/data/staffLooks.js), merged into the generator's presets — never replacing one the
    *  manifest has (officefolk's own presets win in CODE-2). Parts the manifest does not know are dropped. */
   addPresets(obj) {
@@ -280,11 +330,13 @@ export const TF = {
       if (v && typeof v === 'object') { const o = {}; for (const k in v) if (!/^(top|bot|shoe|hat|acc|det|hair)_/.test(k) || parts[k]) o[k] = v[k]; return o; }
       return v;
     };
+    this._codePresets = this._codePresets || new Set();
     for (const k in obj) {
       if (G.presets[k]) continue;
       const P = {};
       for (const f in obj[k]) P[f] = f === 'colors' || f === 'label' || f === 'bases' ? obj[k][f] : keep(obj[k][f]);
       G.presets[k] = P;
+      this._codePresets.add(k);
       n++;
     }
     return n;

@@ -199,7 +199,7 @@ export const Assets = {
           continue;
         }
         // (the artifact build embeds a small page's frame list as `data` instead of shipping its .json file)
-        m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, data: pg.data || null, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0 };
+        m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, data: pg.data || null, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0, noCap: onDemand && (e.kind === 'bld' || e.kind === 'core') };
         this.fragOf[pg.key] = e.frag;
         this.pageOwner[pg.key] = key;
         keys.push(pg.key);
@@ -376,7 +376,7 @@ export const Assets = {
     // ((v4.2 CODE-2) atlases that load only while something asks for them (Residency.want) and go again 30 s after
     //  their last use: chief2's sheet (the chief's seated / social anims) and the officefolk pages other than the
     //  resident one (desk / work / errand: only in the office and the bank))
-    const od = (k, mib) => { const a = m.atlases[k]; if (a && !a.onDemand) { a.onDemand = true; a.bytes = a.bytes || Math.round((Number(mib) || 4) * 1048576); } };
+    const od = (k, mib) => { const a = m.atlases[k]; if (a && !a.onDemand) { a.onDemand = true; a.noCap = true; a.bytes = a.bytes || Math.round((Number(mib) || 4) * 1048576); } };
     for (const k in this.extAtlas) if (this.fragOf[k] === f) od(k, 3.2);
     const ofp = j.officefolk && j.officefolk.ofPages;
     if (ofp && ofp.groups) {

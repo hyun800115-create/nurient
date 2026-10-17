@@ -1,98 +1,260 @@
-// (v4.2, docs/v42_plan.md §6.3) 촌장 사무실 — CODE-1 STAND-IN: a village house picture (house_a ×1.75, tinted cream;
-// the plan's town `post_office` page is held out of the village by Residency) at WORLD.v42.office, the staff at desk spots in front of it with code props, a code mailbox with a flag,
-// a small wall-board of 5 coloured bars (the 재고 statuses), the 책상 pad that opens the office panel. Every system works
-// on it; CODE-2 replaces it by the `chief_office` cutaway (CONTRACT_V42 AI) under the same API:
-//   b.spots   { desk: [sem, bok, chong, ttal], board, mailbox, deskPad, hire, door }
-//   b.setMail(n)   the mailbox flag (unread letters)
-//   b.drawBoard(rows)   the 5 bars (1 Hz while near the view)
-//   b.revealObjects()
-// Never shipped to the designer as is.
+// (v4.2, docs/v42_plan.md §6.3; CODE-2: CONTRACT_V42 AI) 촌장 사무실 — the `chief_office` cutaway (assets/office) at
+// WORLD.v42.office: cream plaster, a teal roof, a pinecone finial, a red mailbox. Closed it is the shell + props (+ the
+// warm window glow at night); revealed (the chief within office.revealPx of the door, an office panel open, the 관망
+// camera on it, or a tap on it) the shell fades to 12 % and the inside shows: four desks, the chalkboard 재고판 with the
+// five line bars, the map, the pigeonholes, the stove, the safe in the courier's corner. Staff sit at their desks
+// (officefolk anims, Office / staff/Staff.js); the chief can walk in (wall circles with a gap at the door, a raised
+// floor) and stand on the 책상 pad in front of his desk (0.4 s: the office panel).
+// Pages: the closed look (office_bld@closed) loads with the building; the inside (office_bld@inside) and the staff's
+// desk / work / errand pages are asked for while the chief is near or it is revealed (Residency, on demand) and go
+// 30 s after: the plaza keeps only the closed look.
+// The same API as the CODE-1 stand-in (Office, staff, 관망 use it):
+//   b.spots   { desk: [sem, bok, chong, ttal] seat points, board, mailbox, deskPad, hire, door, entry, safe, chiefSeat,
+//               stove, bench } — inside points are lifted (floorLiftPx: staff sit there); `ground` gives the chief's
+//               ground point of one (point + lift)
+//   b.setMail(n)  the mailbox flag (unread letters)        b.drawBoard(rows)  the 5 bars (1 Hz while revealed)
+//   b.revealObjects()                                     b.cw  the Cutaway (after the art arrived)
 
 import { Assets } from '../core/Assets.js';
+import { Audio } from '../core/Audio.js';
+import { Residency } from '../core/Residency.js';
 import { Pad } from './Pad.js';
+import { Cutaway } from './Cutaway.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { WORLD } from '../data/world.js';
+import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
+import { gdist } from '../core/Iso.js';
 
 const STATUS_COL = { short: 0xd9534f, jam: 0xf0a030, surplus: 0x5b8fd9, ok: 0x5cb85c };
+// the manifest's points (px from the anchor; inside ones include floorLiftPx 17) — used until the manifest is merged,
+// so the staff's spots never move when the art arrives (assets/office/manifest.json chief_office)
+const PTS = {
+  floorLiftPx: 17,
+  doorPoint: [-214, 34], entryPoint: [-148, -15], chiefDeskPoint: [80, -66], chiefDeskPad: [12, -20],
+  deskPoints: [[-79, -97], [-145, -64], [-48, -18], [97, -12]], deskDirs: ['SE', 'SE', 'SW', 'SE'], deskBands: ['behind', 'behind', 'front', 'front'],
+  boardPoint: [140, -21], cabinetPoint: [-93, -58], mailShelfPoint: [-45, -91], safePoint: [143, 3], stovePoint: [11, -81],
+  seatPoints: [[11, 24], [43, 40]], mailboxPoint: [-181, 69], outdoorProps: [{ sprite: 'office_mailbox', point: [-143, 56] }],
+  boardRect: { point: [125, -123], widthPx: 85, heightPx: 43, shearY: 0.5 },
+  signRect: { point: [-177, -140], widthPx: 104, heightPx: 28, shearY: 0.5, color: '#2E6F6B', hideBelowShellAlpha: 0.5 },
+  wallCircles: [[-122, -84, 61], [-213, -34, 61], [0, -104, 54], [86, -61, 48], [-109, 45, 61], [122, -57, 61], [167, -29, 29], [-32, 97, 61], [213, 2, 54], [72, 100, 35], [163, 63, 61]],
+};
+const OB = () => (BALANCE.v42 && BALANCE.v42.office) || {};
+const DIR_OF = { S: 2, SE: 1, E: 0, NE: 7, N: 6, NW: 5, W: 4, SW: 3 };
 
 export class OfficeBuilding {
   constructor(gs, site, office) {
     this.gs = gs; this.site = site; this.office = office;
     const O = WORLD.v42.office;
     this.x = O.x; this.y = O.y;
-    const x = this.x, y = this.y;
-    // the picture: a village house scaled up and tinted cream (the town post office's page lives with the far town
-    // and Residency keeps it out of the village; the stand-in only has to be there until the office art lands)
-    const KEY = Assets.m.sprites.house_a ? 'house_a' : 'post_office';
-    this.img = Assets.image(gs, x, y + 20, KEY).setDepth(y + 20).setScale(1.75).setTint(0xfff1d6);
-    if (gs.lazyImage) gs.lazyImage(this.img, KEY, (im) => im.setScale(1.75).setTint(0xfff1d6));
-    if (gs.addOccluder) gs.addOccluder(this.img);
-    this.sign = gs.add.text(x + 10, y - 215, t('officeTitle'), { fontFamily: gs.font, fontSize: '24px', fontStyle: '900', color: '#ffffff', stroke: '#2f5e66', strokeThickness: 7, resolution: 2 }).setOrigin(0.5).setDepth(y + 21);
-    // walls: circles over the footprint (the stand-in has no inside)
-    this.obstacles = [];
-    for (const [dx, dy, r] of [[0, 0, 110], [110, -20, 70], [-90, -10, 60], [60, 60, 50]]) this.obstacles.push(gs.collision.add(x + dx, y + dy, r, 'office'));
-    // spots in front of the building (the SW / SE faces)
-    const P = (dx, dy) => ({ x: x + dx, y: y + dy });
+    const def = Assets.def('chief_office');
+    this.P = Object.assign({}, PTS, def && def.deskPoints ? def : {});
+    this.lift = Number(this.P.floorLiftPx) || 17;
+    const P = this.P, x = this.x, y = this.y, L = this.lift;
+    const at = (p) => ({ x: x + p[0], y: y + p[1] });
+    const ground = (p) => ({ x: x + p[0], y: y + p[1] + L });
+    this.ground = (p) => ({ x: p.x, y: p.y + L });
     this.spots = {
-      door: P(O.door[0] - x, O.door[1] - y + 40),
-      deskPad: P(-140, 66),
+      door: at(P.doorPoint),
+      entry: ground(P.entryPoint),
+      deskPad: ground(P.chiefDeskPad),
+      chiefSeat: at(P.chiefDeskPoint),
       hire: { x: O.hire[0], y: O.hire[1] },
-      desk: [P(-40, 120), P(40, 150), P(130, 170), P(-250, 40)],
-      board: P(-10, 96),
-      mailbox: P(-215, 2),
-      safe: P(-200, 70),
+      desk: P.deskPoints.map(at),
+      deskDirs: P.deskDirs.slice(), deskBands: (P.deskBands || PTS.deskBands).slice(),
+      board: at(P.boardPoint),
+      cabinet: at(P.cabinetPoint),
+      shelf: at(P.mailShelfPoint),
+      mailbox: at(P.mailboxPoint),
+      safe: at(P.safePoint),
+      stove: at(P.stovePoint),
+      bench: (P.seatPoints || []).map(at),
     };
-    // the 책상 pad (stand 0.4 s: the office panel)
-    this.deskPad = new Pad(gs, this.spots.deskPad.x, this.spots.deskPad.y, 'cash', 1.3, { icon: Assets.pick('ui_icon_newspaper', 'ui_icon_story', 'ui_icon_mission', 'ui_icon_lock'), iconSize: 40 });
-    this.deskLabel = gs.add.text(this.spots.deskPad.x, this.spots.deskPad.y - 58, t('officeChip'), { fontFamily: gs.font, fontSize: '20px', fontStyle: '900', color: '#2b2f3a', backgroundColor: '#fff8ecee', padding: { x: 10, y: 4 }, resolution: 2 }).setOrigin(0.5).setDepth(DEPTH.LABEL - 50);
-    // code props: little desks (crates) at the desk spots, the mailbox, the wall board
-    this.props = [];
-    for (const d of this.spots.desk.slice(0, 3)) { const c = Assets.image(gs, d.x + 18, d.y - 30, 'crate').setScale(0.42).setDepth(d.y - 31); this.props.push(c); }
-    const mb = this.spots.mailbox;
-    this.mail = gs.add.graphics().setDepth(mb.y);
-    this.board = gs.add.graphics().setDepth(this.spots.board.y - 40);
-    this.mailN = 0;
-    this.drawMail();
-    this.drawBoard(null);
+    this.revealHold = 0;
+    this.tapOpen = false;
+    this.mailN = -1;
+    this.boardRows = null;
+    this.obstacles = [];
+    this.ready = false;
+    // walls: the manifest's circles with a gap at the door (the chief walks in onto the raised floor)
+    for (const [dx, dy, r] of P.wallCircles) this.obstacles.push(gs.collision.add(x + dx, y + dy, r, 'office'));
+    // the 책상 pad in front of his desk (stand 0.4 s: the office panel); drawn on the raised floor
+    const dp = this.spots.deskPad;
+    this.deskPad = new Pad(gs, dp.x, dp.y, 'cash', 1.0, { icon: Assets.pick('ui_icon_office', 'ui_icon_newspaper', 'ui_icon_story', 'ui_icon_lock'), iconSize: 34 });
+    this.deskLabel = gs.add.text(dp.x, dp.y - L - 52, t('officeChip'), { fontFamily: gs.font, fontSize: '18px', fontStyle: '900', color: '#2b2f3a', backgroundColor: '#fff8ecee', padding: { x: 8, y: 3 }, resolution: 2 }).setOrigin(0.5).setDepth(DEPTH.LABEL - 50).setAlpha(0);
+    // the art arrives with the office fragment (its closed page): the building is made then
+    Assets.loadFragment(gs, 'office', { only: ['office_bld', 'office_items'] }, () => this.build());
   }
 
-  drawMail() {
-    const g = this.mail, mb = this.spots.mailbox, n = this.mailN;
-    g.clear();
-    g.fillStyle(0x5a3a28, 1); g.fillRect(mb.x - 3, mb.y - 52, 6, 52);
-    g.fillStyle(0xc8352e, 1); g.fillRoundedRect(mb.x - 18, mb.y - 80, 36, 30, 8);
-    g.fillStyle(0x8a1f1a, 1); g.fillRect(mb.x - 12, mb.y - 70, 24, 4);
-    // the flag pops up when mail arrives
-    g.fillStyle(0xffd23a, 1);
-    if (n > 0) { g.fillRect(mb.x + 18, mb.y - 98, 4, 26); g.fillRect(mb.x + 22, mb.y - 98, 14, 10); }
-    else g.fillRect(mb.x + 18, mb.y - 70, 16, 4);
+  build() {
+    if (this.ready || !this.gs.sys || !this.gs.sys.isActive()) return;
+    this.ready = true;
+    const gs = this.gs, x = this.x, y = this.y, L = this.lift;
+    this.cw = new Cutaway(gs, 'chief_office', x, y, {});
+    const order = this.cw.order;
+    const idx = (n) => Math.max(0, order.indexOf(n));
+    // the pad and its icon lie on the raised floor, under every person
+    const padD = this.cw.base + 0.01 * idx('chief_office_floor') + 0.005;
+    this.deskPad.img.setY(this.deskPad.img.y - L).setDepth(padD);
+    if (this.deskPad.icon) this.deskPad.icon.setY(this.deskPad.icon.y - L).setDepth(padD + 1e-4);
+    // the night glow over the closed shell (NORMAL art; only while closed)
+    this.glow = Assets.image(gs, x, y, 'chief_office_glow').setDepth(this.cw.base + 0.01 * idx('chief_office_shell') + 0.005).setVisible(false);
+    if (gs.lazyImage) gs.lazyImage(this.glow, 'chief_office_glow');
+    // the sign board over the door: the name, sheared onto it (nothing is baked into the art)
+    this.sign = this.makeSign();
+    // the mailbox (an outdoor prop: y-sorted like everything in front of the building)
+    const mp = (this.P.outdoorProps || PTS.outdoorProps).find((q) => q.sprite === 'office_mailbox') || PTS.outdoorProps[0];
+    const mx = x + mp.point[0], my = y + mp.point[1];
+    const r = Assets.sprite('office_mailbox');
+    this.mail = gs.add.sprite(mx, my, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(my);
+    if (gs.lazyImage) gs.lazyImage(this.mail, 'office_mailbox');
+    this.obstacles.push(gs.collision.add(mx, my, 14, 'mailbox'));
+    // the 재고판 bars (back wall, while revealed)
+    this.board = gs.add.graphics().setDepth(this.cw.base + 0.01 * idx('chief_office_back') + 0.004).setVisible(false);
+    this.drawBoard(this.boardRows);
+    this.setMail(Math.max(0, this.mailN), true);
+    this.cw.loop('chief_office_stove', 'fire');
   }
-  setMail(n) { if (n === this.mailN) return; this.mailN = n; this.drawMail(); }
 
-  /** the wall board: one bar per goods line, coloured by its 재고 status */
+  /** the office's name on the blank sign board (a sheared canvas text, alpha with the shell) */
+  makeSign() {
+    const gs = this.gs, S = this.P.signRect || PTS.signRect;
+    const key = 'fv_office_sign_' + (t('officeTitle') || '').length;
+    const W = Math.round(S.widthPx * 2), H = Math.round((S.heightPx + S.widthPx * S.shearY) * 2);
+    if (!gs.textures.exists(key)) {
+      const c = gs.textures.createCanvas(key, W, H);
+      if (c) {
+        const ctx = c.context;
+        ctx.setTransform(2, 2 * S.shearY, 0, 2, 0, 0);
+        ctx.font = '900 ' + Math.round(S.heightPx * 0.72) + 'px ' + (gs.font || 'sans-serif');
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        let fs = Math.round(S.heightPx * 0.72);
+        while (fs > 8 && ctx.measureText(t('officeTitle')).width > S.widthPx - 10) { fs--; ctx.font = '900 ' + fs + 'px ' + (gs.font || 'sans-serif'); }
+        ctx.fillStyle = S.color || '#2E6F6B';
+        ctx.fillText(t('officeTitle'), S.widthPx / 2, S.heightPx / 2 + 1);
+        c.refresh();
+      }
+    }
+    const p = S.point;
+    return gs.add.image(this.x + p[0] - S.widthPx / 2, this.y + p[1] - S.heightPx / 2 - (S.widthPx / 2) * S.shearY, key).setOrigin(0, 0).setScale(0.5).setDepth(this.y + 0.2);
+  }
+
+  /** the mailbox flag: up (it springs up with a little pop) while letters wait, down when they are read */
+  setMail(n, quiet) {
+    if (n === this.mailN && !quiet) return;
+    const was = this.mailN;
+    this.mailN = n;
+    if (!this.mail || !Assets.has('office_mailbox')) return;
+    if (n > 0 && (was <= 0 || quiet)) {
+      const ak = !quiet && Assets.spriteAnim('office_mailbox', 'pop');
+      if (ak) this.mail.play(ak);
+      else { const d = Assets.def('office_mailbox'), fr = (d.states && d.states.up) || 'office_mailbox_flag_1'; const tk = Assets.texOf(d.atlas, fr); if (tk) this.mail.setTexture(tk, fr); }
+      if (!quiet && this.gs.isOnScreen(this.mail.x, this.mail.y, 200)) Audio.play(Audio.exists('sfx_mailbox_flag') ? 'sfx_mailbox_flag' : 'sfx_click', { volume: 0.6 });
+    } else if (n <= 0) { if (this.mail.anims) this.mail.anims.stop(); Assets.apply(this.mail, 'office_mailbox'); }
+  }
+
+  /** the wall board: one bar per goods line, coloured by its 재고 status, drawn on the slate (sheared like the wall) */
   drawBoard(rows) {
-    const g = this.board, b = this.spots.board;
+    this.boardRows = rows;
+    const g = this.board;
+    if (!g) return;
     g.clear();
-    g.fillStyle(0x6b4a2e, 1); g.fillRect(b.x - 4, b.y - 60, 8, 60);
-    g.fillStyle(0x2f3a33, 1); g.fillRoundedRect(b.x - 46, b.y - 128, 92, 70, 6);
-    g.lineStyle(3, 0x8a6a48, 1); g.strokeRoundedRect(b.x - 46, b.y - 128, 92, 70, 6);
+    const B = this.P.boardRect || PTS.boardRect, sh = B.shearY || 0.5;
+    const ox = this.x + B.point[0] - B.widthPx / 2, oy = this.y + B.point[1] - B.heightPx / 2;
     const R = rows || [];
+    const quad = (x0, y0, w, h, col, a) => {
+      g.fillStyle(col, a);
+      g.beginPath();
+      g.moveTo(ox + x0, oy + y0 + x0 * sh); g.lineTo(ox + x0 + w, oy + y0 + (x0 + w) * sh);
+      g.lineTo(ox + x0 + w, oy + y0 + h + (x0 + w) * sh); g.lineTo(ox + x0, oy + y0 + h + x0 * sh);
+      g.closePath(); g.fillPath();
+    };
+    const rowH = (B.heightPx - 8) / 5;
     for (let i = 0; i < 5; i++) {
       const r = R[i];
       const col = r ? STATUS_COL[r.status] || STATUS_COL.ok : 0x50605a;
       const fill = r ? Math.max(0.12, Math.min(1, (r.shelf || 0) / Math.max(1, r.shelfCap || 40))) : 0.3;
-      g.fillStyle(col, 1); g.fillRect(b.x - 36, b.y - 120 + i * 12, 72 * fill, 8);
+      quad(6, 4 + i * rowH, (B.widthPx - 12), rowH * 0.62, 0xffffff, 0.12);
+      quad(6, 4 + i * rowH, (B.widthPx - 12) * fill, rowH * 0.62, col, 0.95);
     }
   }
 
-  update(dt) { void dt; }
+  /** should the inside show? (the chief at the door / inside, a tap, the panel, the 관망 camera, a held reveal) */
+  wantReveal() {
+    const gs = this.gs, p = gs.player, V = OB();
+    const r = Number(V.revealPx) || 260, h = Number(V.revealHyst) || 60;
+    const d = gdist(p.x, p.y, this.spots.door.x, this.spots.door.y);
+    let want = this.cw.revealed ? d < r + h : d < r;
+    if (this.cw.inPoly(p.x, p.y) || this.cw.onFloor(p.x, p.y)) want = true;
+    if (this.tapOpen || this.revealHold > 0) want = true;
+    const tab = this.office.panelTab && this.office.panelTab();
+    if ((tab && tab !== 'bank') || this.office.camReveal === 'office') want = true;
+    return want;
+  }
 
-  revealObjects() { return [this.img, this.sign].concat(this.props); }
+  /** the chief is near enough that the inside pages should be in memory (before the reveal fades the shell) */
+  wantsInside() {
+    const p = this.gs.player;
+    return (this.cw && (this.cw.revealed || this.cw.alpha > 0)) || gdist(p.x, p.y, this.spots.door.x, this.spots.door.y) < (Number(OB().revealPx) || 260) + 420;
+  }
+
+  update(dt) {
+    if (!this.ready) return;
+    const gs = this.gs, cw = this.cw;
+    this.revealHold = Math.max(0, this.revealHold - dt);
+    const want = this.wantReveal();
+    if (want !== cw.revealed) cw.reveal(want);
+    cw.update(dt);
+    // the inside pages: asked for while he is near (they arrive before the shell has faded), released 30 s after
+    this.pageT = (this.pageT || 0) - dt;
+    if (this.pageT <= 0) {
+      this.pageT = 0.5;
+      this.inside = this.wantsInside();
+      if (this.inside) { Residency.want('office_bld@inside'); this.office.wantStaffPages && this.office.wantStaffPages(); }
+    }
+    const a = cw.alpha;
+    // the sign fades with the shell (hidden over the open inside)
+    const S = this.P.signRect || PTS.signRect, shellA = 1 + (cw.fade.openAlpha - 1) * a;
+    if (this.sign) { const v = shellA >= (S.hideBelowShellAlpha || 0.5); this.sign.setVisible(v).setAlpha(shellA); }
+    // the desk pad + its label only while open; the board while open
+    const open = a > 0.3;
+    if (this.deskPad.img.visible !== open) { this.deskPad.img.setVisible(open); if (this.deskPad.icon) this.deskPad.icon.setVisible(open); }
+    this.deskLabel.setAlpha(open && gdist(gs.player.x, gs.player.y, this.spots.deskPad.x, this.spots.deskPad.y) < 260 ? 1 : 0);
+    if (this.board.visible !== open) this.board.setVisible(open);
+    // night: the warm windows over the closed shell
+    const ck = gs.v4 && gs.v4.clock;
+    const night = !!(ck && ck.lightsOn && ck.cur && ck.cur.a > 0.05);
+    const gv = night && a < 0.02;
+    if (this.glow.visible !== gv) this.glow.setVisible(gv);
+    // the office bed: soft typing, the clock, the kettle — inside / at the door, faint nearby
+    const p = gs.player, d = gdist(p.x, p.y, this.spots.door.x, this.spots.door.y);
+    const amb = a > 0.3 ? 1 : d < 700 ? 0.35 * (1 - d / 700) : 0;
+    if (Math.abs(amb - (this.ambV || 0)) > 0.04) { this.ambV = amb; Audio.setAmbience('amb_office', amb); }
+  }
+
+  /** the panel or a big moment holds the inside open for `s` seconds */
+  holdOpen(s) { this.revealHold = Math.max(this.revealHold, s); }
+
+  /** night lights (DayClock): the windows while closed, the desk lamps, stove and door lantern while open */
+  lightPoints(pts) {
+    if (!this.ready) return;
+    const N = this.P.night || Assets.def('chief_office').night;
+    if (!N) return;
+    const L = this.cw && this.cw.alpha > 0.3 ? N.lightPointsOpen : N.lightPoints;
+    for (const q of L || []) pts.push({ x: this.x + q[0], y: this.y + q[1], k: 0.6 });
+  }
+
+  tap(x, y) { if (!this.cw || !this.cw.inPoly(x, y)) return false; this.tapOpen = !this.tapOpen; return true; }
+
+  revealObjects() { return this.cw ? this.cw.objects() : []; }
 
   destroy() {
-    for (const o of [this.img, this.sign, this.mail, this.board, this.deskLabel].concat(this.props)) if (o && o.destroy) o.destroy();
+    Audio.setAmbience('amb_office', 0);
+    for (const o of [this.sign, this.mail, this.board, this.deskLabel, this.glow]) if (o && o.destroy) o.destroy();
+    if (this.cw) this.cw.destroy();
     this.deskPad.img.destroy(); if (this.deskPad.icon) this.deskPad.icon.destroy();
     for (const ob of this.obstacles) ob.active = false;
   }
 }
+
+export { DIR_OF };

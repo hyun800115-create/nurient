@@ -28,7 +28,8 @@ export class Cutaway {
     this.fade = Object.assign({ layer: key + '_shell', closedAlpha: 1, openAlpha: 0.12, ms: 260 }, cw.fade || {});
     this.cut = (cw.cut && cw.cut.layer) || key + '_shell_cut';
     this.poly = (cw.revealPoly || this.def.revealPoly || []).map((p) => ({ x: x + p[0], y: y + p[1] }));
-    this.lift = Number(cw.floorLiftPx) || 0;
+    // ((v4.2 CODE-2) the office manifest keeps floorLiftPx on the building sprite, not in its cutaway block)
+    this.lift = Number(cw.floorLiftPx) || Number(this.def.floorLiftPx) || 0;
     // the floor (footprintPoly) and its bounding box: the occupancy test of Character.sync
     this.floor = (this.def.footprintPoly || []).map((p) => ({ x: x + p[0], y: y + p[1] }));
     const fx = this.floor.map((p) => p.x), fy = this.floor.map((p) => p.y);
@@ -40,10 +41,15 @@ export class Cutaway {
     this.layers = {};
     this.base = y;
     // the always-drawn layers (closed look): the shell, its floor (the ground shadow) and the overlays outside
-    this.inside = new Set(['interior', 'back', 'front'].map((n) => cw.layers && cw.layers[n]).filter(Boolean));
+    // ((v4.2 CODE-2) a manifest that lists its inside layers (the office: floor, walls, furniture, the desk-top
+    //  overlays) hides exactly those while closed)
+    this.inside = Array.isArray(cw.inside) ? new Set(cw.inside) : new Set(['interior', 'back', 'front'].map((n) => cw.layers && cw.layers[n]).filter(Boolean));
     this.order.forEach((name, i) => {
       if (name[0] === '@') return;
-      const img = Assets.image(gs, x, y, name).setDepth(this.base + 0.01 * i);
+      // ((CODE-2) an animated overlay (the office's typewriters, stove, phone, safe) is a sprite: it can play its loop)
+      const d = Assets.def(name);
+      const img = d && d.anims ? Assets.sprite(name) && this.spriteLayer(gs, x, y, name) : Assets.image(gs, x, y, name);
+      img.setDepth(this.base + 0.01 * i);
       img.__layerIndex = i;
       img.noCull = true;
       if (opts.region && gs.territory) gs.territory.add(opts.region, img);
@@ -52,6 +58,51 @@ export class Cutaway {
     });
     this.apply();
     (gs.interiors || (gs.interiors = [])).push(this);
+    // ((CODE-2) a layer whose page was taken out of memory (an on-demand inside page) gets its frame back when the
+    //  page returns)
+    this.onArrive = () => this.refresh();
+    Assets.arrivals.push(this.onArrive);
+  }
+
+  spriteLayer(gs, x, y, name) {
+    const r = Assets.sprite(name);
+    const s = gs.add.sprite(x, y, r.tex, r.frame);
+    s.setOrigin(r.anchor[0], r.anchor[1]);
+    return s;
+  }
+
+  /** re-apply the frame of every layer that lost its page (Residency took an on-demand page out) */
+  refresh() {
+    for (const name in this.layers) {
+      const img = this.layers[name];
+      const k = img.texture && img.texture.key;
+      if ((k === '__WHITE' || k === 'fv_blank' || k === '__MISSING') && Assets.has(name)) {
+        const playing = img.__loop;
+        Assets.apply(img, name);
+        if (playing && img.play) { const ak = Assets.spriteAnim(name, playing); if (ak) img.play(ak); }
+      }
+    }
+    this.apply();
+  }
+
+  /** (CODE-2) loop an overlay's anim (typewriter 'type', stove 'fire', phone 'ring'); null stops it on frame 0 */
+  loop(name, anim) {
+    const img = this.layers[name];
+    if (!img || !img.play) return;
+    if ((img.__loop || null) === (anim || null)) return;
+    img.__loop = anim || null;
+    const ak = anim && Assets.spriteAnim(name, anim);
+    if (ak) img.play(ak);
+    else { if (img.anims) img.anims.stop(); if (Assets.has(name)) Assets.apply(img, name); }
+  }
+
+  /** (CODE-2) show a state frame of an overlay (lamp 'warm' / 'alert', safe 'shut' / 'open') */
+  state(name, st) {
+    const img = this.layers[name], d = Assets.def(name);
+    if (!img || !d || !d.states || !d.states[st] || img.__st === st) return;
+    img.__st = st;
+    const tk = d.atlas ? Assets.texOf(d.atlas, d.states[st]) : null;
+    if (tk) img.setTexture(tk, d.states[st]);
   }
 
   /** depth of slot '@behind' / '@front' for a character at world y (sorted among themselves by y; the y term stays
@@ -142,6 +193,8 @@ export class Cutaway {
   objects() { return Object.values(this.layers); }
 
   destroy() {
+    const ai = Assets.arrivals.indexOf(this.onArrive);
+    if (ai >= 0) Assets.arrivals.splice(ai, 1);
     for (const k in this.layers) this.layers[k].destroy();
     this.layers = {};
     const I = this.gs.interiors, i = I ? I.indexOf(this) : -1;
