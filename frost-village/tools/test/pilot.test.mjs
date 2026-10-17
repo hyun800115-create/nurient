@@ -158,6 +158,32 @@ console.log('a 10-minute day with a chore always waiting');
   P.destroy(); Q.destroy();
 }
 
+// ((v4.2 CODE-2 review fixes) the night, the day's train, 콩이, a load first
+console.log('the day: night rest, one train a day, 콩이, the bag first');
+{
+  const base = { now: 0, urgent: false, lunchOpen: true, bagCount: 0, bagRoom: 8, work: true, noCourier: false, cashMax: 0, trainSoon: false, trainNear: false, chatMate: false, chatIdle: 0, office: true, paperNew: false, unread: 0, dog: false, dogIdle: 0, locked: {} };
+  const pickAt = (over, n = 40) => { const c = Object.assign({}, base, over); const out = {}; for (let k = 0; k < n; k++) { const a = A.choose(c, 9, 1, k, null).act; out[a] = (out[a] || 0) + 1; } return out; };
+  const at3 = pickAt({ hour: 3 });
+  ok((at3.evening || 0) === 40, 'at 03:00 the evening (the office lamp, the stove) beats hauling (' + JSON.stringify(at3) + ')');
+  const at20 = pickAt({ hour: 20.5 });
+  ok((at20.work || 0) === 40, 'at 20:30 the day\'s 업무 still beats the evening (' + JSON.stringify(at20) + ')');
+  ok(pickAt({ hour: 3, urgent: true }).urgent === 40, 'an urgent chore still wakes him at night');
+  const tr = pickAt({ hour: 14, trainSoon: true, trainNear: true, trainToday: false });
+  ok((tr.train || 0) === 40, 'the day\'s first train watch beats the afternoon chores (' + JSON.stringify(tr) + ')');
+  ok(!pickAt({ hour: 14, trainSoon: true, trainNear: true, trainToday: true }).train, 'a second watch the same day does not');
+  const dg = pickAt({ hour: 15, work: false, dog: true, dogIdle: 700 });
+  ok((dg.dog || 0) === 40, '콩이 after 10 minutes without a game comes before a rest (' + JSON.stringify(dg) + ')');
+  const lunchBag = pickAt({ hour: 12.2, bagCount: 5 });
+  ok(!lunchBag.lunch && (lunchBag.work || 0) === 40, 'with a load to deliver, lunch waits: 업무 first (' + JSON.stringify(lunchBag) + ')');
+  ok((pickAt({ hour: 12.2, bagCount: 5, work: false }).lunch || 0) === 40, 'a load nobody takes does not block lunch');
+  // between two loads (bag empty) the 업무 minimum time does not hold off lunch
+  const c = Object.assign({}, base, { hour: 12.1 });
+  let lunches = 0; for (let k = 0; k < 40; k++) if (A.choose(c, 9, 1, k, { act: 'work', t: 3, min: 20, max: 60 }).act === 'lunch') lunches++;
+  ok(lunches >= 30, 'lunch takes over 업무 between two loads (' + lunches + '/40)');
+  const c2 = Object.assign({}, base, { hour: 12.1, bagCount: 3 });
+  ok(A.choose(c2, 9, 1, 0, { act: 'work', t: 3, min: 20, max: 60 }).kept === true, 'a load in the bag keeps 업무 for its minimum time');
+}
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

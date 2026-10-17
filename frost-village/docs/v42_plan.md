@@ -159,6 +159,13 @@ v4.2 sinks (empty shelf F1, depot dock F8). It already orders sites / hire pads 
   wins; ties → shorter route. Chip shows `+1곳` when another type goes elsewhere; tap the chip = next destination.
 - **Nothing takes it**: no path; chip `판매대가 가득 · 잠시 기다리거나 버려요` (trash pad gets a soft pulse).
 - **Raw items** go to their station's work spot when nobody works it (the chief cooks), else the input pad (existing rule).
+- **(CODE-2 review fixes, gameplay M5)** *Held room*: the place the guide shows keeps room for his load
+  (`Logistics.setChief`): porters see it as taken (they had filled the 제재소 입구 a second before he arrived), his own
+  resolver (`Tutorial.destination`) does not. *Steadier*: a better place must also lie about as near (≤ 1.25 × the way
+  left + 200 px) and is never the export dock (the bread run went 식량 상자 → 판매대 → 식량 상자 → 짐 싣는 곳, 7,485 px).
+  *No long trips for raw surplus*: raw items whose only place is the export dock beyond `nav.rawDockPx` 1,600 px show
+  `○○ 입구 가득 · 잠시 기다리거나 버려요` (raw exports pay 0.5–1.5 coins). *No grabs in passing*: while the guide leads
+  a load, crossing a pad of another kind takes nothing unless he stops on it (the 멈추면 rule; 켬 only).
 
 **Route.** `gs.roads.route(p.x, p.y, pad.x, pad.y)` (v2/v4 walk graph + RoadNet, cached A*); straight line under
 `nav.straightUnder` 360 px. Replan when the destination changes, when he strays > `nav.strayPx` 80 px, at most once per
@@ -461,6 +468,9 @@ k 8 → town. Town: arrives heading SE, 8 s dwell, pulls forward round the town 
   during the dwell, camera-independent (P0a).
 - Order-card crates first (wholesale paid at acceptance, as v4.1), then surplus (paid 0.5 × price into the 역 금고 on
   departure). Crates aboard ride to the town and vanish into the town station (no town-side logistics in v4.2).
+  (CODE-2 review fix, gameplay L5) Surplus waiting at the dock keeps `freight.surplusShare` 0.25 of the cars (14 of 56)
+  even when card crates wait for more than a train: with a card backlog nothing was exported for 30 minutes while the
+  dock said `수출 · 기차에 실을 것 N`. The train's crate count is Freight's own (no extra +1 per crate: 57 of 56).
 - Saved: `v42.freight.dock` (surplus waiting) and `v42.freight.cars` (aboard); card cargo stays in `v4.growth.cargo`.
 
 ### 5.7 v6 notes (cannot be edited from v4.2; §17)
@@ -536,6 +546,8 @@ Lunch 12:00 (walk to the big restaurant if built), home 18:00, back 08:00 (clerk
 ### 6.5 Courier and the coin loop (`src/entities/staff/Courier.js`, `CashPad.takeAll`)
 
 - `CashPad` instances register in `gs.tills` (market, 교역소, 잡화점, 큰 식당, 마을회관 세금 상자, 역 금고, 물류 금고).
+- **(CODE-2 review fix, gameplay L7) Hours**: rounds only from `courier.from` 07:00 to `courier.to` 21:00 (he deposited
+  at 02:32); what the tills hold overnight goes on the first morning round.
 - **Round**: every `courier.every` 60 s, or sooner when ≥ `courier.rushAt` 1,000 coins wait; visits every till with
   ≥ `courier.minPad` 100 by nearest neighbour along `Roads` routes; before 읍 also the 역 금고 (after 읍 it flies in
   every 15 s). (CODE-1 review) The 물류 금고 is always on the round (the depot exists only after 읍); before 딸랑이 is
@@ -628,15 +640,22 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | Activity | Score | Conditions | Duration | Seen |
 |---|---|---|---|---|
 | 급한 일 | 100 | the tutorial's own `evaluate()` target (the logic the arrow-only bot reaches 읍 with) **minus every pay/hire/upgrade target**: unstaffed register with guests > 9 s, a ribbon, a station with ≥ 8 items and no operator, a site missing what he carries, empty food box | until done | runs, gold halo while working |
-| 점심 | 50 at 12:00–12:40 | big restaurant open | 40 s | sits at a free outdoor table, eats a 정식 (free) |
+| 점심 | 50 at 12:00–12:40 (**CODE-2 fix: 12:00–13:00**) | big restaurant open | 40 s | sits at a free outdoor table, eats a 정식 (free) |
 | 업무 | 40 | bag has room and a v4 hint target exists | 20–60 s | carries, sells, fills the pantry, follows his own navigator |
-| 저녁 | 40 from 20:00 (**CODE-1 tuned: 30**, so the day's 업무 still beats it) | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
+| 저녁 | 40 from 20:00 (**CODE-1 tuned: 30**, so the day's 업무 still beats it; **CODE-2 fix: 60 from 21:00 to 06:00** — the night is his: he hauled ingots at 03:00) | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
 | 수금 | 35 (**CODE-1 tuned: 45**) | no courier and ≥ 300 (**tuned: 200**) coins on one pad | one pad | — |
-| 기차 구경 | 30 | a train arrives at ours within 20 s and he is ≤ 1,500 px away | arrival + loop | walks to the platform, waves |
+| 기차 구경 | 30 (**CODE-2 fix: +25 for the day's first watch**, then from ≤ 2,600 px) | a train arrives at ours within 20 s and he is ≤ 1,500 px away | arrival + loop | walks to the platform, waves |
 | 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min (**CODE-1**: a resident staying at a spot — VillageLife's `stay` job, not walking or moving in — counts as idle; during a chore break he looks 1,500 px far; residents only, the town dolls are CODE-2) | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
 | 사무실 | 20 (+30 08–10 h with a new paper, +30 with ≥ 2 unread letters) | office built, **bag empty** | 30–60 s | walks in (shell fades), sits (`sit_idle`), reads the paper (`sit_read`), stamps a letter (`sit_write`) |
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
-| 콩이 | 15 | dog within 800 px | 15 s | `DogPlay` pet / throw |
+| 콩이 | 15 (**CODE-2 fix: +20 after 10 min without a game**, dog within 1,400 px then) | dog within 800 px | 15 s | `DogPlay` pet / throw |
+(CODE-2 review fixes, gameplay M4 / visual M1) The leisure acts (점심, 저녁, 기차 구경, 수다, 사무실, 쉬기, 콩이) wait while
+his bag holds a load that has somewhere to go (업무 delivers it first: he sat at lunch with five smoked meats on his
+head); 업무 between two loads (bag empty) is not held by its minimum time, so lunch, the night or the day's train can
+take over. His seated / social anims (chief2's on-demand sheet) are pinned in memory while 관망 is on; a seat whose
+sheet is not there yet shows him standing on the floor in front of it (never inside the desk) and asks again every second.
+A pinch-zoom no longer ends 관망 (a finger on the village hands back after 110 ms unless a second finger lands), and
+관망 never starts by itself under the overview map.
 (CODE-1) Variety: an activity that ran to its maximum waits `AGAIN` s before it is chosen again (collect 10, train 45,
 chat 45, office 120, rest 60, dog 90; chores 0), and after `pilot.breakAfter` 150 s of chores (급한 일 / 업무 / 수금) all three wait
 `pilot.breakFor` 20 s — a 10-minute mock day with a chore always waiting changes activity 23 times over 5 kinds

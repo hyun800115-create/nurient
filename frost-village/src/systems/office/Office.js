@@ -398,7 +398,8 @@ export class Office {
     // (CODE-2) the staff on the office floor show only while it is open (the closed shell covers them); the typewriters
     // clack while their clerk types; 셈이's lamp turns red while a shelf has been empty a while
     if (B.cw) {
-      const vis = B.cw.alpha > 0.3;
+      // (visible as soon as the shell starts to fade: their rigs come in while it fades, not after)
+      const vis = B.cw.revealed || B.cw.alpha > 0.3;
       for (const r in this.staff) {
         const ch = this.staff[r];
         if (!ch || !ch.alive) continue;

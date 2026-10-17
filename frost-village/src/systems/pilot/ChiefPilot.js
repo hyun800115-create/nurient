@@ -359,6 +359,13 @@ export class ChiefPilot {
         this.choreT = 0;
       }
       if (over) this.locked[cur.act] = Math.max(this.locked[cur.act] || 0, this.t + (AGAIN[cur.act] || 0));
+      // ((v4.2 fix) an urgent chore that ran out twice on the same target cannot be done by him (a full shelf the
+      //  tutorial still points at): it rests 60 s — he walked to it and back for a game hour and a half)
+      if (over && cur.act === 'urgent') {
+        const tg = cur.target, k = tg ? Math.round(tg.x) + ',' + Math.round(tg.y) + ',' + (tg.key || '') : '';
+        if (k && k === this.lastUrgent) { this.locked.urgent = Math.max(this.locked.urgent || 0, this.t + 60); this.lastUrgent = null; }
+        else this.lastUrgent = k;
+      }
       const ctx = this.context();
       const pick = choose(ctx, this.seed, day, this.index++, cur);
       if (!cur || over || (pick.act !== cur.act && !pick.kept)) {

@@ -143,7 +143,7 @@ export class BankBuilding42 {
     if (want !== this.cw.revealed) this.cw.reveal(want);
     this.cw.update(dt);
     if (this.vaultT > 0) { this.vaultT -= dt; if (this.vaultT <= 0) this.cw.overlay('bank_vault', 8, 10, true); }
-    const vis = this.cw.alpha > 0.3;
+    const vis = this.cw.revealed || this.cw.alpha > 0.3;
     // (CODE-2) the officefolk pages the tellers / manager act on, while the bank is open or the chief near it
     if ((this.pageT = (this.pageT || 0) - dt) <= 0) { this.pageT = 0.5; if (this.cw.alpha > 0 || d < r + 420) this.office.wantStaffPages(); }
     for (const ch of this.staff) {

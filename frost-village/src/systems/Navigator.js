@@ -142,8 +142,13 @@ export class Navigator {
     this.pickT -= dt;
     if (this.pickT <= 0 || !this.dest) {
       this.pickT = 0.25;
-      const list = this.places();
+      const list0 = this.places();
       const prev = this.dest;
+      // ((v4.2 fix, gameplay M5) a place the guide left because it filled up is not chosen again for this load for 15 s
+      //  (unless nothing else takes it): 식량 상자 → 판매대 → 식량 상자 → … flip-flops)
+      const now = this.gs.time.now, ban = this.banned || (this.banned = new Map());
+      for (const [pad, until] of ban) if (until <= now) ban.delete(pad);
+      const list = ban.size && list0.some((q) => !ban.has(q.pad)) ? Object.assign(list0.filter((q) => !ban.has(q.pad)), { none: list0.none, counts: list0.counts }) : list0;
       let pick = list.length ? list[this.cycle % list.length] : null;
       // ((gameplay review H2) the place he is walking to stays while it still takes something of this load, even when
       //  the resolver's answer moves on (the food box / a workshop input cross their priority line as porters top them
@@ -152,6 +157,7 @@ export class Navigator {
       const sig = Object.keys(list.counts || {}).sort().join(',');
       const same = sig === this.loadSig;
       this.loadSig = sig;
+      if (!same) ban.clear();
       if (pick && !this.cycle && same && prev && prev.pad && pick.pad !== prev.pad) {
         const keep = list.find((q) => q.pad === prev.pad) || this.stillTakes(prev, list.counts);
         if (keep) {
@@ -165,6 +171,8 @@ export class Navigator {
         }
       } else { this.challT = 0; this.challPad = null; }
       if (!pick && same && prev && prev.pad && !this.cycle) pick = this.stillTakes(prev, list.counts);
+      // (the place he was walking to takes nothing of this load any more: banned for a while)
+      if (pick && same && prev && prev.pad && pick.pad !== prev.pad && !this.cycle && !list0.find((q) => q.pad === prev.pad) && !this.stillTakes(prev, list.counts)) ban.set(prev.pad, now + 15000);
       if (pick) {
         const ty = pick.types[0][0];
         // (the chip's count: what this place takes now, not the whole bag)
@@ -205,9 +213,12 @@ export class Navigator {
   /** ((v4.2 fix, gameplay M5) hold the room this load needs at the place the guide shows (Logistics.setChief): the
    *  porters stop filling it while he walks there. Re-made every pick from what is still in the bag */
   holdRoom(d, counts) {
-    const L = this.gs.logistics;
+    const L = this.gs.logistics, p = this.gs.player;
     if (!L || !L.setChief) return;
-    if (!d || !d.pad || !d.sink) { if (this.held) { this.held = false; L.setChief(null); } return; }
+    // (only while he is on his way: standing still with the load for 8 s gives the room back to the porters)
+    const now = this.gs.time.now;
+    if (!p || Math.hypot(p.vx || 0, p.vy || 0) > 20 || this.movedAt === undefined) this.movedAt = now;
+    if (!d || !d.pad || !d.sink || now - this.movedAt > 8000) { if (this.held) { this.held = false; L.setChief(null); } return; }
     let left = d.n;
     const out = [];
     for (const ty of d.types || []) {
