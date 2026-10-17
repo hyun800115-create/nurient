@@ -41,14 +41,18 @@ async function run(root, label) {
     const w = window.__vz = { n: 0, byMin: [], trains: 0 };
     const al = nb.alightVisitor.bind(nb);
     nb.alightVisitor = (...a) => { w.n++; const m = Math.floor(window.__sim.simT / 60); w.byMin[m] = (w.byMin[m] || 0) + 1; return al(...a); };
-    if (nb.rail && nb.rail.on) nb.rail.on('arrive', (where) => { if (where === 'ours' || where === undefined) w.trains++; });
+    if (nb.rail && nb.rail.on) nb.rail.on((ev) => { if (ev === 'arrive') w.trains++; });
+    const rw = nb.ridersWanted.bind(nb);
+    w.wants = []; w.inV = [];
+    nb.ridersWanted = () => { const n = rw(); w.wants.push(n); return n; };
     window.__sim = { simT: 0, run(sec) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { T += DT; D += DT; this.simT += DT / 1000; game.headlessStep(T, DT); } } };
   });
-  for (let s = 0; s < MIN * 60; s += 10) await page.evaluate(() => window.__sim.run(10));
-  const r = await page.evaluate(() => ({ n: window.__vz.n, byMin: window.__vz.byMin, trains: window.__vz.trains, cycle: window.__FV.scene.v4.rail.cycle ? +window.__FV.scene.v4.rail.cycle().toFixed(1) : null, inVillage: window.__FV.scene.v4.visitors.length }));
+  for (let s = 0; s < MIN * 60; s += 10) await page.evaluate(() => { window.__sim.run(10); window.__vz.inV.push(window.__FV.scene.v4.visitors.length); });
+  const r = await page.evaluate(() => ({ n: window.__vz.n, byMin: window.__vz.byMin, trains: window.__vz.trains, wants: window.__vz.wants, inV: window.__vz.inV, cycle: window.__FV.scene.v4.rail.cycle ? +window.__FV.scene.v4.rail.cycle().toFixed(1) : null, inVillage: window.__FV.scene.v4.visitors.length }));
   await browser.close();
   await srv.close();
-  console.log(`  ${label}: ${r.n} neighbours stepped off in ${MIN} min (${(r.n / MIN).toFixed(2)}/min) · cycle ${r.cycle} s · in the village now ${r.inVillage} · errors ${log.errors.length}`);
+  const avg = (l) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  console.log(`  ${label}: ${r.n} neighbours stepped off in ${MIN} min (${(r.n / MIN).toFixed(2)}/min) · cycle ${r.cycle} s · ${r.wants.length} trains asked for ${avg(r.wants).toFixed(1)} riders on average · in the village ${avg(r.inV).toFixed(1)} on average (now ${r.inVillage}) · errors ${log.errors.length}`);
   return Object.assign(r, { errors: log.errors });
 }
 
@@ -61,6 +65,9 @@ const rate = (r) => { const m = r.byMin.slice(3, MIN); let s = 0; for (let i = 0
 const ra = rate(a), rb = rate(b), k = rb / Math.max(0.01, ra);
 console.log(`  minutes 3–${MIN}: v4.1 ${ra.toFixed(2)}/min · v4.2 ${rb.toFixed(2)}/min (${Math.round(k * 100)} %)`);
 ok(Math.abs(k - 1) <= 0.1, 'visitors per game minute within ±10 % of v4.1 (' + Math.round(k * 100) + ' %)', { a: ra, b: rb });
-ok(a.errors.length === 0 && b.errors.length === 0, 'no page errors', a.errors.concat(b.errors).slice(0, 4));
+// (the v4.1 copy runs against today's assets: its train pages were re-packed in v4.2 (train_*.dirs), so it logs
+//  texture errors for the old .ne pages — reported, not gated; the train's logic does not draw)
+if (a.errors.length) console.log('  (v4.1 copy: ' + a.errors.length + ' page errors, e.g. ' + String(a.errors[0]).slice(0, 160) + ')');
+ok(b.errors.length === 0, 'no page errors in this build', b.errors.slice(0, 4));
 console.log(`\n${pass} passed, ${fail} failed  (wall ${((Date.now() - t0) / 1000) | 0}s)`);
 process.exit(fail ? 1 : 0);

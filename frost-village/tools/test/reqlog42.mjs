@@ -39,6 +39,10 @@ async function run(root, label) {
   const norm = (q) => q.replace(/^(assets\/_packed\/vil_npc_)[a-z0-9_]+(\.social\.(png|json))$/, '$1*$2').replace(/^(assets\/voice\/voice_)[a-z0-9_]+(\.(ogg|mp3|m4a))$/, '$1*$2');
   page.on('request', (r) => { const u = r.url(); const i = u.indexOf('/rq/'); if (i < 0) return; const q = u.slice(i + 4).split('?')[0]; if (!/^(assets|lib)\//.test(q)) return; reqs.push([phase, norm(q)]); });
   await page.goto(srv.url + 'index.html', { waitUntil: 'load', timeout: 300000 });
+  // (let the first page finish booting before the log starts: on a loaded machine its manifest fetches were still in
+  //  flight after the reset and counted as the logged boot's, 21 extra requests in one build only)
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 300000);
+  await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) { /* */ } });
   reqs.length = 0;
   await page.reload({ waitUntil: 'load' });
@@ -48,8 +52,6 @@ async function run(root, label) {
   await sleep(500);
   await tapStart(page);
   await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player, 300000);
-  await sleep(3000);
-  phase = 'loop';
   await page.evaluate(() => {
     const game = window.__FV.game;
     game.loop.sleep();
@@ -58,6 +60,12 @@ async function run(root, label) {
     const DT = 1000 / 60;
     window.__sim = { simT: 0, run(sec, tick) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (tick) tick(DT / 1000); T += DT; D += DT; this.simT += DT / 1000; if (i % 30 === 29) game.step(T, DT); else game.headlessStep(T, DT); } } };
   });
+  // (the village's first 3 s on the same fixed clock in both builds, then whatever they asked for has arrived: on a
+  //  loaded machine 3 real seconds drew fewer frames in one build than in the other and moved lazy loads across phases)
+  for (let i = 0; i < 6; i++) { await page.evaluate(() => window.__sim.run(0.5)); await sleep(250); }
+  await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
+  await sleep(500);
+  phase = 'loop';
   await page.addScriptTag({ path: path.join(root, 'tools/test/review_gameplay_bot.js') });
   await page.evaluate(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
   let saleAt = null;

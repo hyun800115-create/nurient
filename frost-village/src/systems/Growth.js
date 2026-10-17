@@ -246,6 +246,21 @@ export class Growth {
 
   // ================================================================== the loading dock
   /** one carried item that an open card needs goes onto the dock (paid now) */
+  /** ((v4.2, gameplay review M1) the chief drops SURPLUS on the dock: only what nothing in the village takes now
+   *  (Tutorial.destination says the dock), so crossing the pad never exports bread the plaza wants) */
+  feedSurplus(ch) {
+    const gs = this.gs, F = gs.v42 && gs.v42.freight, sk = F && F.sink, T = gs.tutorial;
+    if (!sk || !T || F.surplusRoom() <= 0) return false;
+    for (let i = ch.stack.items.length - 1; i >= 0; i--) {
+      const ty = ch.stack.items[i].type;
+      if (!sk.accepts(ty)) continue;
+      const d = T.destination(ty);
+      if (!d || !d.surplus) continue;
+      return F.addSurplus(ty, 1, ch) > 0;
+    }
+    return false;
+  }
+
   feedDock(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const ty = ch.stack.items[i].type;
@@ -524,7 +539,7 @@ export class Growth {
     if (this.active && this.till.pad.contains(p.x, p.y)) on = true;
     if (this.active && this.dockPad.contains(p.x, p.y)) {
       on = true;
-      if (gs.padT <= 0 && p.stack.count > 0 && this.feedDock(p)) { gs.padT = BALANCE.player.padItemInterval; this.dockPad.pulse(); }
+      if (gs.padT <= 0 && p.stack.count > 0 && (this.feedDock(p) || this.feedSurplus(p))) { gs.padT = BALANCE.player.padItemInterval; this.dockPad.pulse(); }
     }
     return on;
   }

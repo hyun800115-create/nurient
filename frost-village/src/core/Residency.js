@@ -36,6 +36,13 @@ const REGIONS = [
       if (cv.amenities.some((a) => a.key === 'deco_playground' || a.key === 'deco_fountain')) out.push('town_park');
       return out;
     } },
+  // ((v4.2, robust review H3, docs/v42_plan.md §13.2) the v4.2 buildings' pictures: the civic bank next to the office,
+  //  the logistics centre in the se corner, the cargo sleigh along its lanes (station stop -> 역앞 거리 -> 중앙로 ->
+  //  은행길 -> the depot). Only listed once their fragment is merged (late), so a village without them costs nothing.
+  //  CODE-2 adds `office` (+ `officeInside`) for the office cutaway art)
+  { id: 'bank42', rect: [-620, 240, -60, 760], pages: ['civ_bank'] },
+  { id: 'depot', rect: [2700, 2850, 3700, 3420], pages: ['lgx_center_a', 'lgx_center_b', 'lgx_center_c', 'lgx_center_d', 'lgx_items'] },
+  { id: 'sleigh', rect: [2950, 1500, 4900, 3420], pages: ['veh_cargo_sleigh'] },
 ];
 const ACQUIRE = 800, RELEASE = 1200;      // px between the view and the area
 

@@ -14,6 +14,7 @@ import { WORLD, L4 } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
 import { rackFill } from '../systems/depot/rack.js';
+import { polyHas } from './Cutaway.js';
 
 const KEY = 'logistics_center';
 
@@ -77,6 +78,29 @@ export class DepotBuilding {
       ch.inside = true;
       this.workers.push(ch);
     }
+    // ((robust review H2) characters on the floor take the depth of the manifest's actor bands: staff `<actors mid>`
+    //  (behind interior_front + the conveyor), everyone else `<actors front + floor stock>`; both under the shell)
+    this.fp = fp;
+    const bx = fp.map((p) => p.x), by = fp.map((p) => p.y);
+    this.box = [Math.min(...bx), Math.min(...by), Math.max(...bx), Math.max(...by)];
+    this.midIndex = Math.max(0, this.order.indexOf('<actors mid>'));
+    this.frontIndex = Math.max(0, this.order.indexOf('<actors front + floor stock>'));
+    this.frontTest = def.frontTest || null;
+    (gs.interiors || (gs.interiors = [])).push(this);
+  }
+
+  /** where a character is drawn (Character.sync): { depth, lift } on the floor / in front of the front walls, else null */
+  occupy(ch) {
+    const x = ch.x, y = ch.y, b = this.box;
+    if (!b || x < b[0] - 4 || x > b[2] + 4 || y < b[1] - 4 || y > b[3] + 40) return null;
+    if (polyHas(this.fp, x, y)) {
+      const i = ch.inside ? this.midIndex : this.frontIndex;
+      return { depth: this.y + 0.01 * i + Math.max(-0.004, Math.min(0.004, (y - this.y) * 1e-5)), lift: 0 };
+    }
+    // the manifest's frontTest: in front of the front walls (y − x/2 > a or y + x/2 > b) yet above the anchor's depth
+    const ft = this.frontTest, rx = x - this.x, ry = y - this.y, top = this.y + 0.01 * this.order.length;
+    if (ft && y < top && (ry - rx / 2 > ft.a || ry + rx / 2 > ft.b)) return { depth: top + 0.001 + (ry + 400) * 1e-6, lift: 0 };
+    return null;
   }
 
   inPoly(px, py) {
@@ -111,7 +135,22 @@ export class DepotBuilding {
     if (this.alpha > 0.05 && this.rackT <= 0) { this.rackT = 0.5; if (this.sys.model.stock.ver !== this.rackVer) this.drawRacks(); }
     for (const im of this.rackImgs) if (im.visible !== this.alpha > 0.05 && im.__on) im.setVisible(this.alpha > 0.05);
     const vis = this.alpha > 0.3;
-    for (const ch of this.workers) { if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); } ch.update(dt); ch.sprite.setDepth(this.y + 0.01 * (this.stockIndex + 1) + (ch.y - this.y) * 1e-4); }
+    for (const ch of this.workers) { if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); } ch.update(dt); }
+    // ((robust review M3) workers made before the townsfolk manifest arrived get their paper-doll look in place)
+    this.dressT = (this.dressT || 0) - dt;
+    if (this.dressT <= 0) {
+      this.dressT = 2;
+      const O = gs.v42 && gs.v42.office;
+      if (O && O.ensurePresets) O.ensurePresets();
+      for (let i = 0; i < this.workers.length; i++) {
+        const ch = this.workers[i];
+        if (!ch.alive || !ch.wantsDress()) continue;
+        const n = new Staff(gs, this.sys, ch.role, ch.seed, ch.x, ch.y, ch.home);
+        n.inside = true; n.dir = ch.dir;
+        ch.destroy();
+        this.workers[i] = n;
+      }
+    }
     // the door pad: the depot view
     if (this.doorPad.contains(p.x, p.y)) { this.padT = (this.padT || 0) + dt; if (this.padT > 0.4 && !this.padOpen) { this.padOpen = true; const O = gs.v42 && gs.v42.office; if (O && O.openPanel) O.openPanel('depot', 'depot'); } }
     else { this.padT = 0; this.padOpen = false; }
@@ -163,6 +202,8 @@ export class DepotBuilding {
   revealObjects() { return Object.values(this.imgs); }
 
   destroy() {
+    const I = this.gs.interiors, ii = I ? I.indexOf(this) : -1;
+    if (ii >= 0) I.splice(ii, 1);
     for (const k in this.imgs) this.imgs[k].destroy();
     for (const im of this.rackImgs.concat(this.props || [])) im.destroy();
     for (const ob of this.obstacles) ob.active = false;

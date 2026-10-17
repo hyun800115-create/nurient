@@ -45,7 +45,8 @@ try {
     const kinds = 1 + Math.floor(rnd() * 3), bagT = [];
     for (let q = 0; q < kinds; q++) bagT.push([TYPES[Math.floor(rnd() * TYPES.length)], 1 + Math.floor(rnd() * 6)]);
     const at = spots[k % spots.length];
-    await page.evaluate(({ bag, at }) => { const F = window.__FV; F.clearStack(); F.setInput(0, 0); F.teleport(at[0], at[1]); for (const [ty, c] of bag) F.carry(ty, c); }, { bag: bagT, at });
+    // (each bag is a new load: the navigator keeps a place only for the load it chose it for)
+    await page.evaluate(({ bag, at }) => { const F = window.__FV; F.clearStack(); F.v42.v.nav.loadSig = null; F.setInput(0, 0); F.teleport(at[0], at[1]); for (const [ty, c] of bag) F.carry(ty, c); }, { bag: bagT, at });
     await advance(page, 0.6);
     const r = await page.evaluate(() => {
       const gs = window.__FV.scene, V = window.__FV.v42.v, p = gs.player, T = gs.tutorial;
@@ -64,7 +65,10 @@ try {
       if (st.dest && st.dest.x !== null) { const R = gs.roads.route(p.x, p.y, st.dest.x, st.dest.y, []); let L = 0, a = { x: p.x, y: p.y }; for (const q of R) { L += Math.hypot(q.x - a.x, q.y - a.y); a = q; } ref = L; }
       // (its hysteresis: the place it walks to stays unless another takes ≥ 2 more items of the same load)
       const gotE = st.dest && list.find((e) => Math.round(e.pad.x) === st.dest.x && Math.round(e.pad.y) === st.dest.y);
-      const tie = (list.length > 1 && list[1].n === list[0].n) || !!(gotE && gotE.n + 2 > list[0].n);
+      // ((CODE-1 review H2) the place chosen for this load stays while it still takes some of it, even when the resolver
+      //  has moved on — porters' reservations change the answer from one moment to the next)
+      const sticky = !!(V.nav.dest && V.nav.dest.pad && V.nav.stillTakes(V.nav.dest, counts));
+      const tie = (list.length > 1 && list[1].n === list[0].n) || !!(gotE && gotE.n + 2 > list[0].n) || sticky;
       const dg = st.dest && st.dest.x !== null ? Math.hypot(st.dest.x - p.x, (st.dest.y - p.y) * 2) : 0;
       return { want, got: st.dest, routeLen: st.routeLen, ref, dg, objects: st.objects, chip: st.chip, tie, active: st.active, counts };
     });
@@ -80,6 +84,43 @@ try {
   ok(routeOk === n, 'route length within 10 % of the A* walk route (' + routeOk + ' / ' + n + ')', badRoute.slice(0, 3));
   ok(objOk === n, '≤ 20 display objects while carrying (' + objOk + ' / ' + n + ')');
   ok(chipOk === n, 'the chip names the place while carrying (' + chipOk + ' / ' + n + ')');
+  // (CODE-1 review H2) standing still with a mixed bag the place does not flip while porters top the food box up
+  {
+    const flips = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, N = F.v42.v.nav;
+      F.clearStack(); N.loadSig = null; F.setInput(0, 0); F.teleport(gs.market.x + 220, gs.market.y + 300);
+      F.carry('item_bread', 6); F.carry('item_meat_cooked', 6);
+      const seq = []; let last = null;
+      for (let s = 0; s < 90 * 4; s++) {
+        window.__step.run(0.25);
+        F.teleport(gs.market.x + 220, gs.market.y + 300);
+        const d = N.state().dest, k = d ? d.x + ',' + d.y : 'none';
+        if (k !== last) { seq.push([+(s / 4).toFixed(1), d && d.label]); last = k; }
+      }
+      return seq;
+    });
+    ok(flips.length <= 3, 'standing 90 s with 6 bread + 6 smoked meat: the place changes ≤ 2 times (' + (flips.length - 1) + ')', flips);
+  }
+  // (CODE-1 review M2) nothing takes the bag: the chip says so (the guide does not just vanish)
+  {
+    const nc = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, N = F.v42.v.nav, M = gs.market, Fr = gs.v42.freight;
+      while (M.stock.countOf('item_fish_cooked') < M.maxPerType) M.stock.push('item_fish_cooked', null, gs.effects);
+      const R = gs.civic && gs.civic.restaurant, keepRoom = Fr.surplusRoom, keepPantry = R && R.sink.room;
+      Fr.surplusRoom = () => 0;
+      if (R) R.sink.room = () => 0;
+      // (no open order card wants grilled fish either: the loading dock would take it)
+      const G = gs.v4 && gs.v4.growth, keepNeed = G && G.needOf;
+      if (G) G.needOf = () => 0;
+      F.clearStack(); N.loadSig = null; F.carry('item_fish_cooked', 8);
+      N.pickT = 0; N.update(1 / 60);
+      const st = N.state();
+      Fr.surplusRoom = keepRoom; if (R) R.sink.room = keepPantry; if (G) G.needOf = keepNeed;
+      F.clearStack();
+      return { none: st.dest && st.dest.none, chip: st.chip && st.chip.text, active: st.active, objects: st.objects };
+    });
+    ok(nc.none && nc.active && /가득|없어요|full|Nowhere/.test(nc.chip || '') && nc.objects === 0, 'nothing takes it: the chip says "가득 · 잠시 기다리거나 버려요", no path drawn', nc);
+  }
   // off: setting, empty bag
   await page.evaluate(() => { const F = window.__FV; F.clearStack(); F.carry('item_bread', 4); F.v42.settings({ nav: false }); });
   await advance(page, 0.5);

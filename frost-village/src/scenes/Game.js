@@ -143,6 +143,7 @@ export class Game extends Phaser.Scene {
     this.agents = [];          // moving characters (workers, customers) for separation
     this.workers = [];
     this.porters = [];
+    this.interiors = [];        // (v4.2) cutaway buildings: Character.sync asks them for the depth of whoever stands inside
     this.zones = {};
     this.zoneObjs = {};
     this.statics = [];
@@ -1862,44 +1863,89 @@ export class Game extends Phaser.Scene {
     const piles = {};
     for (const id in this.piles) piles[id] = this.piles[id].serialize();
     const toStation = (sid, n) => { if (st[sid]) st[sid].i = (st[sid].i || 0) + n; };
-    // (v3.5 review) what a gatherer carries is saved on his pile (it used to be lost on a reload)
-    for (const w of this.workers) {
-      const n = w.stack.count + w.stack.incoming;
-      if (n && w.pile && w.pile.id in piles) piles[w.pile.id] += n;
-    }
-    for (const r of this.rawPorters) {
-      const n = r.stack.count + r.stack.incoming;
-      if (!n) continue;
-      if (r.dest && r.dest.station) toStation(r.dest.station.id, n);
-      else piles[r.pile.id] = (piles[r.pile.id] || 0) + n;
-    }
     // items in mid-air are saved where they are going; food a waiting customer got but has not paid for
     // yet (the queue is not saved) goes back on the shelf, and so do goods on their way to the merchant
-    const shelf = (stock, types, extra) => { const o = {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) + ((extra && extra[ty]) || 0); return o; };
+    const shelf = (stock, types, extra) => { const o = {}, tm = (trim && trim.get(stock)) || {}; for (const ty of types) o[ty] = stock.countWithIncoming(ty) - (tm[ty] || 0) + ((extra && extra[ty]) || 0); return o; };
     const unpaid = {};
-    for (const c of this.market.queue) for (const ty of c.bought.concat(c.flying || [])) unpaid[ty] = (unpaid[ty] || 0) + 1;
     // goods a porter is carrying are saved where they are going (v3: the place it is heading for;
     // sites and hire pads count them themselves)
     const tradeExtra = Object.assign({}, this.trade.flying);
-    const storeExtra = {}, whExtra = {}, foodExtra = {}, wsExtra = {}, dockExtra = {};
+    const storeExtra = {}, whExtra = {}, foodExtra = {}, wsExtra = {}, dockExtra = {}, pantryExtra = {}, exportExtra = {};
     const add = (o, ty) => { o[ty] = (o[ty] || 0) + 1; };
+    const sumOf = (o) => { let n = 0; for (const k in o) n += o[k]; return n; };
+    // ((v4.2 robust review M2) every restore clamps to its place's cap, and the 창고 refuses raw goods: a load is
+    //  saved at its destination only while that place still has room at the restore, else at the next place that
+    //  takes it — its shelf, the restaurant pantry, the miners' food box, the 창고, its station (input / output) or
+    //  pile, the boathouse, last the export dock — so a reload never loses what porters carry)
+    const R = this.civic && this.civic.restaurant, F = this.v42 && this.v42.freight, W = this.warehouse, fb = this.foodBox;
+    const pantry0 = R && R.enabled !== false ? R.serialize().pantry : null;
+    const boat0 = this.boathouse ? this.boathouse.serialize() : null;
+    const outOf = (ty) => this.stationList.find((q) => q.output === ty);
+    const pileOf = (ty) => { for (const id in this.piles) if (this.piles[id].item === ty) return this.piles[id]; return null; };
+    const BIN = {
+      market: (ty) => FOODS.indexOf(ty) >= 0 && this.market.stock.countWithIncoming(ty) + (unpaid[ty] || 0) < this.market.maxPerType && (add(unpaid, ty), true),
+      trade: (ty) => GOODS.indexOf(ty) >= 0 && this.trade.stock.countWithIncoming(ty) + (tradeExtra[ty] || 0) < this.trade.maxPerType && (add(tradeExtra, ty), true),
+      store: (ty) => !!this.store && STORE_GOODS.indexOf(ty) >= 0 && this.store.stock.countWithIncoming(ty) + (storeExtra[ty] || 0) < this.store.maxPerType && (add(storeExtra, ty), true),
+      pantry: (ty) => !!pantry0 && FOODS.indexOf(ty) >= 0 && (pantry0[ty] || 0) + (pantryExtra[ty] || 0) < R.pantryMax() && (add(pantryExtra, ty), true),
+      food: (ty) => !!(fb && fb.active && fb.accepts(ty)) && Math.min(fb.max, fb.stock.count + fb.stock.incoming) + sumOf(foodExtra) < fb.max && (add(foodExtra, ty), true),
+      wh: (ty) => !!(W && W.accepts(ty)) && W.total + (W.incoming || 0) + sumOf(whExtra) < W.cap && (add(whExtra, ty), true),
+      input: (ty) => { const s = this.stationByInput[ty]; if (!s || !st[s.id] || (st[s.id].i || 0) >= s.inStack.max) return false; toStation(s.id, 1); return true; },
+      out: (ty) => { const s = outOf(ty); if (!s || !st[s.id] || (st[s.id].o || 0) >= s.outStack.max) return false; st[s.id].o = (st[s.id].o || 0) + 1; return true; },
+      pile: (ty) => { const pl = pileOf(ty); if (!pl || (piles[pl.id] || 0) >= Math.max(pl.stack.max + 8, pl.stack.max * 2)) return false; piles[pl.id] = (piles[pl.id] || 0) + 1; return true; },
+      boat: (ty) => !!(boat0 && this.boathouse) && (ty === 'item_fish_raw' || ty === 'item_fish_big') && sumOf(boat0.catch || {}) + sumOf(dockExtra) < this.boathouse.outStack.max && (add(dockExtra, ty), true),
+      dock: (ty) => !!F && (F.dock[ty] || 0) + (exportExtra[ty] || 0) < 999 && (add(exportExtra, ty), true),
+    };
+    const chainOf = (ty) => (FOODS.indexOf(ty) >= 0 ? ['market', 'pantry', 'food', 'wh', 'out', 'dock']
+      : GOODS.indexOf(ty) >= 0 ? ['trade', 'wh', 'out', 'dock']
+        : STORE_GOODS.indexOf(ty) >= 0 ? ['store', 'wh', 'dock']
+          : this.stationByInput[ty] ? ['input', 'pile', 'boat', 'wh', 'dock'] : ['wh', 'boat', 'dock']);
+    this.saveLost = 0;
+    const place = (ty, first) => {
+      if (first && BIN[first] && BIN[first](ty)) return;
+      for (const k of chainOf(ty)) if (k !== first && BIN[k](ty)) return;
+      this.saveLost++;
+    };
     for (const pr of this.porters) {
       const d = pr.dest;
       if (d && (d.kind === 'plot' || d.kind === 'tower' || d.items)) continue;
       for (const ty of pr.stack.items.map((i) => i.type).concat(pr.stack.inTypes)) {
-        if (d && d.station && this.stations[d.station.id] === d.station) toStation(d.station.id, 1);
-        else if (d && this.store && d === this.store.sink) add(storeExtra, ty);
-        else if (d && this.warehouse && d === this.warehouse.sink) add(whExtra, ty);
-        else if (d && d === this.foodBox) add(foodExtra, ty);
-        else if (d && d.id && /_in$/.test(d.id) && d.id !== 'grill_in') { const k = d.id.replace(/_in$/, ''); (wsExtra[k] = wsExtra[k] || {})[ty] = ((wsExtra[k] || {})[ty] || 0) + 1; }
-        else if (FOODS.indexOf(ty) >= 0) add(unpaid, ty);
-        else if (GOODS.indexOf(ty) >= 0) add(tradeExtra, ty);
-        else if (STORE_GOODS.indexOf(ty) >= 0) add(storeExtra, ty);
-        else if (ty === 'item_fish_raw' || ty === 'item_fish_big') add(dockExtra, ty);
-        else add(whExtra, ty);
+        if (d && d.station && this.stations[d.station.id] === d.station) place(ty, 'input');
+        else if (d && d.id && /_in$/.test(d.id) && d.id !== 'grill_in') {
+          const k = d.id.replace(/_in$/, ''), w = this.workshops.find((q) => q.kind === k);
+          const have = (w ? w.inStack.countWithIncoming(ty) : 0) + ((wsExtra[k] || {})[ty] || 0);
+          if (w && w.inputTypes.indexOf(ty) >= 0 && have < w.bal.inputMax) (wsExtra[k] = wsExtra[k] || {})[ty] = ((wsExtra[k] || {})[ty] || 0) + 1;
+          else place(ty, null);
+        }
+        else if (d && this.store && d === this.store.sink) place(ty, 'store');
+        else if (d && W && d === W.sink) place(ty, 'wh');
+        else if (d && d === fb) place(ty, 'food');
+        else if (d && R && d === R.sink) place(ty, 'pantry');
+        else if (d && F && d === F.sink) place(ty, 'dock');
+        else place(ty, null);
       }
     }
-    for (const c of this.store ? this.store.queue : []) for (const ty of c.bought.concat(c.flying || [])) add(storeExtra, ty);
+    // (a shelf can hold more than its max for a moment — a porter's load lands on a nearly full shelf, items fly in:
+    //  the restore keeps maxPerType, the rest is saved elsewhere)
+    const trim = new Map();
+    for (const [seller, types] of [[this.market, FOODS], [this.trade, GOODS], [this.store, STORE_GOODS]]) {
+      if (!seller || !seller.stock) continue;
+      const tm = {};
+      for (const ty of types) { const over = seller.stock.countWithIncoming(ty) - seller.maxPerType; if (over > 0) { tm[ty] = over; for (let k = 0; k < over; k++) place(ty, null); } }
+      trim.set(seller.stock, tm);
+    }
+    // (the miners' food box itself can hold more than its max for a moment — items flying in: the rest goes elsewhere)
+    const food0 = fb ? fb.serialize() : null;
+    if (food0 && food0.food) {
+      let over = sumOf(food0.food) - fb.max;
+      for (const ty of ['item_meat_cooked', 'item_bread']) while (over > 0 && food0.food[ty] > 0) { food0.food[ty]--; over--; place(ty, null); }
+    }
+    for (const c of this.market.queue) for (const ty of c.bought.concat(c.flying || [])) place(ty, 'market');
+    // (v3.5 review) what a gatherer carries is saved on his pile (it used to be lost on a reload); what raw porters
+    // carry goes on into the input they are heading for, else back to the pile
+    const typesOf = (ch) => ch.stack.items.map((i) => i.type).concat(ch.stack.inTypes);
+    for (const w of this.workers) if (w.pile && w.pile.id in piles) for (const ty of typesOf(w)) place(ty, 'pile');
+    for (const r of this.rawPorters) for (const ty of typesOf(r)) place(ty, r.dest && r.dest.station ? 'input' : 'pile');
+    for (const c of this.store ? this.store.queue : []) for (const ty of c.bought.concat(c.flying || [])) place(ty, 'store');
     // (v3.5 review) raw items on their way into a station that is already full go back onto its pile
     // (the input is restored up to its maximum: nothing may vanish on a reload)
     for (const s of this.stationList) {
@@ -1916,9 +1962,9 @@ export class Game extends Phaser.Scene {
     for (const id in this.sites) { const d = this.sites[id].serialize(); if (d) sites[id] = d; }
     const wss = {};
     for (const w of this.workshops) { const d = w.serialize(); if (wsExtra[w.kind]) d.ins = merge(d.ins, wsExtra[w.kind]); wss[w.kind] = d; }
-    const food = this.foodBox ? this.foodBox.serialize() : null;
+    const food = food0;
     if (food) food.food = merge(food.food, foodExtra);
-    const dock = this.boathouse ? this.boathouse.serialize() : null;
+    const dock = boat0;
     if (dock) dock.catch = merge(dock.catch, dockExtra);
     const v3 = {
       warehouse: this.warehouse ? merge(this.warehouse.serialize(), whExtra) : undefined,
@@ -1926,7 +1972,7 @@ export class Game extends Phaser.Scene {
       store: this.store ? { stock: shelf(this.store.stock, STORE_GOODS, storeExtra), cash: this.store.cash.serialize() } : undefined,
     };
     const pl = this.player.stack;
-    return {
+    const out = {
       territory: this.territory.serialize(),
       sites,
       v3,
@@ -1947,6 +1993,10 @@ export class Game extends Phaser.Scene {
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };
+    // (robust review M2) loads saved into the restaurant pantry / onto the export dock
+    if (out.c1 && out.c1.rest && out.c1.rest.pantry && Object.keys(pantryExtra).length) out.c1.rest.pantry = merge(out.c1.rest.pantry, pantryExtra);
+    if (out.v42 && out.v42.freight && Object.keys(exportExtra).length) out.v42.freight.dock = merge(out.v42.freight.dock, exportExtra);
+    return out;
   }
 
   save(force) {

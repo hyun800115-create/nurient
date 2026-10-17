@@ -121,6 +121,9 @@ export class UI extends Phaser.Scene {
     // ---- input (joystick anywhere that is not a button; a second finger turns it into a pinch zoom)
     this.input.on('pointerdown', (p, over) => {
       Audio.resume();    // iOS: bring sound back after a call / app switch (needs a user gesture)
+      // ((v4.2 gameplay review L7) any touch — a HUD button, a panel, a pinch — restarts 관망's idle clock; only a touch
+      //  on the village (Input.pointerDown) hands control back)
+      Input.touchPending = true;
       // (v3.5 review) a finger landing on the dog bar may still be the start of a drag: the joystick starts
       // too, and the button only fires when the finger lifts without moving (dogBarRelease)
       const onBar = over && over.length && over.every((o) => o.isDogBtn);

@@ -17,6 +17,8 @@ import { t } from '../data/strings.js';
 
 const P = () => (BALANCE.v42 && BALANCE.v42.pickup) || { stillS: 0.35, stillSpeed: 20, gatherStillS: 0.35, tipSpeed: 0.6 };
 
+const TAP_MS = 300;            // a press shorter than this is a tap (one load); longer is a hold (stream)
+
 export class PickupPolicy {
   constructor(gs, v42) {
     this.gs = gs;
@@ -85,8 +87,13 @@ export class PickupPolicy {
   }
 
   /** the 줍기 button */
-  press() { this.held = true; this.oneLoad = true; }
-  release() { this.held = false; }
+  // ((gameplay review L2) tap = one load up to the bag's room; hold = stream while held, and letting go stops)
+  press() { this.held = true; this.oneLoad = false; this.pressAt = this.gs.time.now; }
+  release() {
+    if (!this.held) return;
+    this.held = false;
+    this.oneLoad = this.gs.time.now - (this.pressAt || 0) < TAP_MS;
+  }
 
   /** what the 줍기 button offers now: a take pad under the chief, or a node to gather within reach */
   offer() {

@@ -203,7 +203,9 @@ export class HudV42 {
       if (p.x < -10 || p.x > ui.W + 10 || p.y < 120 || p.y > ui.H + 10) {
         const M = 60, cx = ui.W / 2, cy = ui.H / 2;
         const a = Math.atan2(p.y - cy, p.x - cx);
-        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M), ey = Phaser.Math.Clamp(p.y, 200, ui.H - 240 - View.safeBottom);
+        // ((robust review L1) the left column holds the HUD chips (rank, 32/32, order card, 업무) down to ≈ 450 logical
+        //  px: on that side the badge stays below them; on the right only the settings / day buttons are up there)
+        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M), ey = Phaser.Math.Clamp(p.y, ex < ui.W * 0.45 ? 480 : 220, ui.H - 240 - View.safeBottom);
         this.edge.setPosition(ex, ey);
         this.edgeRing.setRotation(a);
         if (this.edgeKey !== d.type) { this.edgeKey = d.type; Assets.apply(this.edgeIcon, d.type); fit(this.edgeIcon.setOrigin(0.5), 34); }

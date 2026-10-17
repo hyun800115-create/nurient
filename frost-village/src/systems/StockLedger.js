@@ -125,7 +125,9 @@ export class StockLedger {
   }
 
   /** all the village's goods (the top line of the 재고 tab) */
-  total() { let n = 0; for (const o of this.list) if (o.kind !== 'cash' && o.kind !== 'depot') n += o.count || 0; return n; }
+  // ((gameplay review L5) the 창고's per-product rows ('wh:<product>', kind 'wh') are a breakdown of its 'wh' row: not
+  //  counted twice)
+  total() { let n = 0; for (const o of this.list) if (o.kind !== 'cash' && o.kind !== 'depot' && o.kind !== 'wh') n += o.count || 0; return n; }
 
   /** the saved part: how long the full stocks have been full (≤ 40) */
   serialize() {

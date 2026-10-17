@@ -98,7 +98,15 @@ export class ChiefAura {
     for (const o of this.all) if (!o.visible && o !== this.band) o.setVisible(true);
     const a = A();
     const w = this.ringWidth(), sc = w / 192;
-    const x = p.x, y = p.y + 2;
+    // ((robust review H2) inside a cutaway the ring lies on its raised floor, just under him (else the floor layer
+    //  would cover it))
+    const ly = p.liftY || 0, inside = p.inDepth !== undefined && p.inDepth !== p.y;
+    const x = p.x, y = p.y + 2 - ly;
+    if (inside !== this.wasInside) {
+      this.wasInside = inside;
+      if (!inside) { this.ring.setDepth(DEPTH.PAD + 2); this.goldRing.setDepth(DEPTH.PAD + 2.01); this.band.setDepth(DEPTH.PAD + 1.99); this.notchImg.setDepth(DEPTH.PAD + 2.02); }
+    }
+    if (inside) { const d0 = p.inDepth - 8e-6; this.ring.setDepth(d0); this.goldRing.setDepth(d0); this.band.setDepth(d0 - 1e-6); this.notchImg.setDepth(d0 + 5e-7); }
     // working a station's spot: gold, pulsing on each stroke
     const working = !!(p.opSpot && p.opSpot.station && p.opSpot.station.working);
     this.gold += ((working ? 1 : 0) - this.gold) * Math.min(1, dt * 6);
@@ -113,7 +121,7 @@ export class ChiefAura {
     if (rank2) this.band.setPosition(x, y).setScale(sc * 1.12 * 192 / 216);
     // 광채
     const ga = (a.glowDay || 0.35) + ((a.glowNight || 0.6) - (a.glowDay || 0.35)) * this.night();
-    this.glow.setPosition(x, p.y + 4).setScale(1.15).setDepth(p.y - 0.5).setAlpha(ga * (0.85 + Math.sin(this.t * 1.7) * 0.15));
+    this.glow.setPosition(x, p.y + 4 - ly).setScale(1.15).setDepth(inside ? p.inDepth - 9e-6 : p.y - 0.5).setAlpha(ga * (0.85 + Math.sin(this.t * 1.7) * 0.15));
     // motes riding the ring (one turn every 6 s; slower in 관망)
     const spin = (this.t / (this.observing ? 9 : 6)) * Math.PI * 2;
     const rx = w * 0.46, ry = w * 0.23;
@@ -121,7 +129,7 @@ export class ChiefAura {
       const m = this.motes[i], ang = spin + (i / MOTES) * Math.PI * 2;
       const tw = 0.5 + 0.5 * Math.sin(this.t * 3.1 + i * 1.7);
       const mx = x + Math.cos(ang) * rx, my = y + Math.sin(ang) * ry - 2;
-      m.setPosition(mx, my - tw * 4).setDepth(Math.sin(ang) > 0 ? p.y + 1 : p.y - 1).setAlpha(0.35 + tw * 0.55).setScale(sc * (0.55 + tw * 0.4));
+      m.setPosition(mx, my - tw * 4).setDepth(inside ? p.inDepth + (Math.sin(ang) > 0 ? 1e-6 : -7e-6) : Math.sin(ang) > 0 ? p.y + 1 : p.y - 1).setAlpha(0.35 + tw * 0.55).setScale(sc * (0.55 + tw * 0.4));
     }
     // the navigator's notch: a small chevron on the ring pointing along the route
     if (this.notch !== null && this.notch !== undefined) {
@@ -134,7 +142,7 @@ export class ChiefAura {
     const wantPin = (gs.zoomCur || 1) < (a.pinZoom || 0.8) || this.crowd || this.observing;
     this.pinA += ((wantPin ? 1 : 0) - this.pinA) * Math.min(1, dt / 0.2);
     if (this.pinA > 0.01) {
-      let top = p.y + p.headTop - 14;
+      let top = p.y - ly + p.headTop - 14;
       if (p.stack.count) { let h = 0; for (const it of p.stack.items) h += stackStep(it.type) * p.stack.scale; top -= h + 26; }
       const pz = Math.max(0.05, gs.zoomCur || 1);
       // 22 CSS px on a 390 px phone: world px = 22 / (zoom x 390/720)

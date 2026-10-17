@@ -23,6 +23,7 @@ import { makeAll } from './v42/fxTex.js';
 
 const N = () => (BALANCE.v42 && BALANCE.v42.nav) || { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1, strayPx: 80, straightUnder: 360 };
 const AHEAD = 56;
+const SWITCH_S = 4;            // s a clearly better place must stay better before the guide changes its mind
 
 export class Navigator {
   constructor(gs, v42) {
@@ -80,7 +81,7 @@ export class Navigator {
       if (!d || !d.pad) { if (!firstNone) firstNone = ty; continue; }
       const n = Math.min(counts[ty], Math.max(1, d.room || counts[ty]));
       let e = byPad.get(d.pad);
-      if (!e) { e = { pad: d.pad, label: d.label || null, lp: d.lp || null, text: d.text, n: 0, types: [], d: gdist(p.x, p.y, d.pad.x, d.pad.y), surplus: !!d.surplus }; byPad.set(d.pad, e); }
+      if (!e) { e = { pad: d.pad, sink: d.sink || null, label: d.label || null, lp: d.lp || null, text: d.text, n: 0, types: [], d: gdist(p.x, p.y, d.pad.x, d.pad.y), surplus: !!d.surplus }; byPad.set(d.pad, e); }
       e.n += n; e.types.push([ty, counts[ty]]);
     }
     const out = Array.from(byPad.values()).sort((a, b) => b.n - a.n || a.d - b.d);
@@ -93,7 +94,7 @@ export class Navigator {
     const gs = this.gs, p = gs.player;
     const want = this.wanted();
     // an empty bag ends the load: "hide for this load" and the chip's cycling start over
-    if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; }
+    if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; this.loadSig = null; }
     if (!want) { this.hide(); this.dest = null; return; }
     this.active = true;
     this.pickT -= dt;
@@ -102,14 +103,27 @@ export class Navigator {
       const list = this.places();
       const prev = this.dest;
       let pick = list.length ? list[this.cycle % list.length] : null;
-      // (hysteresis: the place he is walking to stays unless another takes at least 2 more items — for the same load:
-      //  a bag with other kinds of goods is a new load and picks afresh)
+      // ((gameplay review H2) the place he is walking to stays while it still takes something of this load, even when
+      //  the resolver's answer moves on (the food box / a workshop input cross their priority line as porters top them
+      //  up): only a new load (other kinds of goods), a tap on the chip, or a place that has taken nothing better for
+      //  `SWITCH_S` s with at least 2 more items changes it)
       const sig = Object.keys(list.counts || {}).sort().join(',');
-      if (pick && !this.cycle && prev && prev.pad && pick.pad !== prev.pad && sig === this.loadSig) { const keep = list.find((q) => q.pad === prev.pad); if (keep && pick.n < keep.n + 2) pick = keep; }
+      const same = sig === this.loadSig;
       this.loadSig = sig;
+      if (pick && !this.cycle && same && prev && prev.pad && pick.pad !== prev.pad) {
+        const keep = list.find((q) => q.pad === prev.pad) || this.stillTakes(prev, list.counts);
+        if (keep) {
+          const better = pick.n >= keep.n + 2;
+          this.challT = better && this.challPad === pick.pad ? (this.challT || 0) + 0.25 : better ? 0.25 : 0;
+          this.challPad = better ? pick.pad : null;
+          if (this.challT < SWITCH_S) pick = keep;
+        }
+      } else { this.challT = 0; this.challPad = null; }
+      if (!pick && same && prev && prev.pad && !this.cycle) pick = this.stillTakes(prev, list.counts);
       if (pick) {
         const ty = pick.types[0][0];
-        this.dest = { type: ty, n: pick.types.reduce((s, q) => s + q[1], 0), pad: pick.pad, label: pick.label, lp: pick.lp, others: list.length - 1, surplus: pick.surplus };
+        // (the chip's count: what this place takes now, not the whole bag)
+        this.dest = { type: ty, n: Math.max(1, pick.n), pad: pick.pad, sink: pick.sink || null, types: pick.types.map((q) => q[0]), label: pick.label, lp: pick.lp, others: list.filter((q) => q.pad !== pick.pad).length, surplus: pick.surplus };
       } else {
         const ty = list.none || (p.stack.items[0] && p.stack.items[0].type);
         this.dest = { type: ty, n: p.stack.count, pad: null, none: true, label: this.fullPlace(ty) };
@@ -117,7 +131,8 @@ export class Navigator {
       if (!prev || prev.pad !== this.dest.pad) this.replanT = 0;
     }
     const d = this.dest;
-    if (!d.pad) { this.hide(); this.pulseTrash(dt); this.aura(null); return; }
+    // ((gameplay review M2) nowhere takes the bag: the world guide goes, the chip stays and says so)
+    if (!d.pad) { this.hideWorld(); this.pulseTrash(dt); this.aura(null); return; }
     // the route (replan when the place changed or he strayed)
     this.replanT -= dt;
     const far = this.routeFor === d.pad && this.strayDist() > 3 * (N().strayPx || 80);     // (a jump: at once)
@@ -258,10 +273,33 @@ export class Navigator {
   hide() {
     if (!this.active && !this.chev.visible) return;
     this.active = false;
-    this.chev.setVisible(false); this.ring.setVisible(false); this.badge.setVisible(false);
+    this.hideWorld();
+  }
+  /** the world pieces (chevron, dots, ring, badge) go; the chip state stays */
+  hideWorld() {
+    if (this.chev.visible) this.chev.setVisible(false);
+    if (this.ring.visible) this.ring.setVisible(false);
+    if (this.badge.visible) this.badge.setVisible(false);
     for (const d of this.dots) if (d.visible) d.setVisible(false);
     this.aura(null);
     this.objs = 0;
+  }
+
+  /** the previous place still takes items of this bag (its own sink says so): a pseudo list entry, else null */
+  stillTakes(prev, counts) {
+    const sk = prev && prev.sink;
+    if (!sk || sk.enabled === false || !counts) return null;
+    let n = 0;
+    const types = [];
+    try {
+      for (const ty in counts) {
+        if (!sk.accepts || !sk.accepts(ty)) continue;
+        const room = typeof sk.room === 'function' ? sk.room(ty) : 99;
+        if (room > 0) { n += Math.min(counts[ty], room); types.push([ty, counts[ty]]); }
+      }
+    } catch (e) { return null; }
+    if (!n) return null;
+    return { pad: prev.pad, sink: sk, label: prev.label, lp: prev.lp, n, types, surplus: prev.surplus };
   }
 
   state() {

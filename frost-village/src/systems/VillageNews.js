@@ -32,10 +32,18 @@ export class VillageNews {
     this.happy = Math.max(0, Math.min(99, Math.floor(Number(lt.happy) || 0)));
     // the day's counters (from cumulative values, so nothing new is wired into the economy)
     this.mark = null;
-    this.today = { visitors: 0, sold: 0, built: [], movein: 0 };
+    this.today = { visitors: 0, sold: 0, built: [], movein: 0, items: {} };
     this.trig = { jamBakery: 0, pantryEmpty: 0, rides: 0 };
+    // ((robust review L3) the letters' trigger timers and the bank's first day survive a reload)
+    if (Array.isArray(lt.tg)) { this.trig.jamBakery = Math.max(0, Math.min(3600, Number(lt.tg[0]) || 0)); this.trig.pantryEmpty = Math.max(0, Math.min(86400, Number(lt.tg[1]) || 0)); this.trig.rides = Math.max(0, Math.min(99, Math.floor(Number(lt.tg[2]) || 0))); }
+    if (Number.isFinite(lt.bk) && lt.bk >= 0) this.bankDay = Math.floor(lt.bk);
     this.onVisitor = () => { this.today.visitors++; };
-    this.onSold = () => { this.today.sold++; };
+    // ((gameplay review M6) the paper names one item: count what each customer bought, by item)
+    this.onSold = (value, c) => {
+      this.today.sold++;
+      const w = c && c.want;
+      if (w && w.type) this.today.items[w.type] = (this.today.items[w.type] || 0) + Math.max(1, Math.floor(Number(w.count) || 1));
+    };
     this.onBuilt = (k) => { if (BLD.indexOf(k) >= 0) this.today.built.push(k); };
     this.onTrain = (ev, stop) => { if (ev === 'arrive' && stop === 'ours') this.trainArrived(); };
     gs.events.on('v4:visitorDone', this.onVisitor);
@@ -69,11 +77,10 @@ export class VillageNews {
     for (const k of T.built.slice(0, 2)) H.push(['news_building', 0, BLD.indexOf(k)]);
     if (S.exported > M.exported) H.push(['news_exports', S.exported - M.exported, 0]);
     if (T.visitors > 0) H.push(['news_visitors', T.visitors, 0]);
-    // the line that sold most (the ledger's shelf outflow)
-    const rows = this.v42.ledger ? this.v42.ledger.rows() : [];
+    // ((gameplay review M6) the item the plaza sold most of yesterday, with ITS count — not every food sold)
     let best = null;
-    for (const r of rows) { const f = r.flow ? r.flow[2] || 0 : 0; if (!best || f > best.f) best = { f, item: r.product }; }
-    if (T.sold > 0 && best) H.push(['news_sales', T.sold, Math.max(0, ITEMS.indexOf(best.item))]);
+    for (const ty in T.items || {}) { const n = T.items[ty]; if (n > 0 && ITEMS.indexOf(ty) >= 0 && (!best || n > best.n)) best = { n, item: ty }; }
+    if (best) H.push(['news_sales', best.n, ITEMS.indexOf(best.item)]);
     if (S.moved > M.moved) H.push(['news_movein', S.moved - M.moved, 0]);
     if (S.deposited > M.deposited) H.push(['news_courier', S.deposited - M.deposited, 0]);
     if (coins > 0) H.push(['news_coins', coins, 0]);
@@ -82,7 +89,7 @@ export class VillageNews {
     this.list.push([day, H.slice(0, 5)]);
     while (this.list.length > (Number(N().keep) || 3)) this.list.shift();
     this.mark = S;
-    this.today = { visitors: 0, sold: 0, built: [], movein: 0 };
+    this.today = { visitors: 0, sold: 0, built: [], movein: 0, items: {} };
     this.day = day;
     const O = this.office;
     if (O && O.onPaper) O.onPaper(day);
@@ -199,6 +206,9 @@ export class VillageNews {
   serializeInto(o) {
     o.news = { day: this.day, papers: this.list.slice(-3).map(([d, H]) => [d, H.slice(0, 5)]) };
     o.letters = { seq: this.seq, inbox: this.inbox.slice(-6).map((r) => [r.id, r.tpl, r.state, r.day]), once: Array.from(this.once).slice(0, 16), nextT: Math.round(Math.max(0, this.nextT)), happy: this.happy };
+    const tg = this.trig;
+    if (tg.jamBakery > 0 || tg.pantryEmpty > 0 || tg.rides > 0) o.letters.tg = [Math.round(tg.jamBakery), Math.round(tg.pantryEmpty), tg.rides];
+    if (this.bankDay !== undefined) o.letters.bk = this.bankDay;
   }
 
   state() { return { day: this.day, papers: this.list.length, inbox: this.inbox.map((r) => r.tpl + ':' + r.state), unread: this.unread(), next: Math.round(this.nextT), trig: Object.assign({}, this.trig), happy: this.happy }; }

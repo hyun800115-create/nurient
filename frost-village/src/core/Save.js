@@ -262,6 +262,9 @@ export function sanitizeV42(raw) {
     o.office = { st: st012(of.st), staff, bag: count(of.bag, 1e9), safe: count(of.safe, 1e9), log: [] };
     if (of.site !== undefined) { const si = siteOf(of.site); if (si) o.office.site = si; }
     if (of.bankSt !== undefined) o.office.bankSt = st012(of.bankSt);
+    // (CODE-1 review fixes) a partial payment toward the next hire pad; today's income bars [day, { source: coins }]
+    if (of.hirePaid !== undefined) { const hp = count(of.hirePaid, 1e6); if (hp > 0) o.office.hirePaid = hp; }
+    if (Array.isArray(of.inc) && isObj(of.inc[1])) { const inc = {}; let n = 0; for (const k in of.inc[1]) { if (n >= 12) break; if (/^[a-z0-9_]{1,12}$/.test(k)) { const c = count(of.inc[1][k], 1e9); if (c > 0) { inc[k] = c; n++; } } } if (n) o.office.inc = [count(of.inc[0], 1e6), inc]; }
     if (Array.isArray(of.log)) o.office.log = of.log.filter((r) => Array.isArray(r) && r.length >= 3 && typeof r[1] === 'string' && /^[a-z0-9_]{1,16}$/.test(r[1])).slice(-8).map((r) => [count(r[0], 1e6), r[1], Math.max(-1e9, Math.min(1e9, Math.round(num(r[2], 0)))), Math.round(Math.max(0, Math.min(1439, num(r[3], 0))))]);
     const nw = isObj(raw.news) ? raw.news : {};
     o.news = { day: Math.max(-1, Math.min(1e6, Math.floor(num(nw.day, -1)))), papers: [] };
@@ -272,6 +275,8 @@ export function sanitizeV42(raw) {
     if (Array.isArray(lt.once)) o.letters.once = Array.from(new Set(lt.once.filter((k) => typeof k === 'string' && TPL.test(k)))).slice(0, 16);
     if (lt.nextT !== undefined) o.letters.nextT = Math.max(0, Math.min(1e6, num(lt.nextT, 0)));
     if (lt.happy !== undefined) o.letters.happy = count(lt.happy, 99);
+    if (Array.isArray(lt.tg)) o.letters.tg = [Math.round(Math.max(0, Math.min(3600, num(lt.tg[0], 0)))), Math.round(Math.max(0, Math.min(86400, num(lt.tg[1], 0)))), count(lt.tg[2], 99)];
+    if (lt.bk !== undefined && num(lt.bk, -1) >= 0) o.letters.bk = count(lt.bk, 1e6);
     o.up = {};
     if (isObj(raw.up)) for (const k of LINES5) if (raw.up[k] === 1 || raw.up[k] === true) o.up[k] = 1;
     o.p2 = Array.isArray(raw.p2) ? Array.from(new Set(raw.p2.filter((k) => LINES5.indexOf(k) >= 0))).slice(0, 5) : [];

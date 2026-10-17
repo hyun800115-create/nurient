@@ -66,12 +66,13 @@ console.log('courier conservation');
   ok(names.includes('station') && names.includes('depot'), 'before 읍 the round includes the 역 금고 and the 물류 금고');
 }
 
-console.log('읍: the station and depot tills empty themselves');
+console.log('읍: the station till empties itself; the 물류 금고 stays on the round (review H1)');
 {
   const { gs, v42 } = village(2);
   const O = new Office(gs, v42, null);
   const names = O.tills().map((q) => q.name);
-  ok(!names.includes('station') && !names.includes('depot') && names.includes('market') && names.includes('tax'), 'from 읍 on they leave the round', names);
+  ok(!names.includes('station') && names.includes('market') && names.includes('tax'), 'from 읍 on the 역 금고 leaves the round', names);
+  ok(names.includes('depot'), 'the 물류 금고 stays on the round after 읍 (딸랑이 collects it)', names);
 }
 
 console.log('a save in the middle of a round');

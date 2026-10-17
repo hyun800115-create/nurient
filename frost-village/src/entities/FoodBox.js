@@ -75,7 +75,14 @@ export class FoodBox {
   // logistics sink
   accepts(type) { return this.active && MINER_FOOD.indexOf(type) >= 0; }
   room() { return this.active ? Math.max(0, this.max - this.stock.count - this.stock.incoming) : 0; }
-  prio() { return this.stock.count + this.stock.incoming < this.max * 0.5 ? PRIO.FOOD_LOW : PRIO.FOOD; }
+  prio(ty) {
+    if (this.stock.count + this.stock.incoming < this.max * 0.5) return PRIO.FOOD_LOW;
+    // ((v4.2, gameplay review M5) after village complete topping the box up takes bread first: smoked meat only ranks
+    //  as a low shelf would, so an empty meat shelf (F1, 48) is filled before a half-full box — the bakery makes more
+    //  bread than the village eats; the plaza's meat shelf was empty a third of the late game)
+    if (ty === 'item_meat_cooked' && this.gs.v42 && this.gs.v42.frules) return PRIO.SHELF_LOW;
+    return PRIO.FOOD;
+  }
   feed(ch) {
     if (this.room() <= 0) return false;
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
@@ -111,7 +118,9 @@ export class FoodBox {
   restore(s) {
     if (!s || !s.on) return;
     this.activate(true, 0);
-    if (s.food) for (const ty of MINER_FOOD) for (let i = 0; i < Math.min(this.max - this.stock.count, s.food[ty] || 0); i++) this.stock.push(ty, null, this.gs.effects);
+    // ((v4.2 robust review M2) the room is counted once per type: the bound used to shrink while the box filled, so a
+    //  box of 16 bread + 8 meat came back as 10 + 5)
+    if (s.food) for (const ty of MINER_FOOD) { const n = Math.min(this.max - this.stock.count, Math.max(0, Math.floor(Number(s.food[ty]) || 0))); for (let i = 0; i < n; i++) this.stock.push(ty, null, this.gs.effects); }
     this.refresh();
   }
 }

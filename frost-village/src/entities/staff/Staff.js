@@ -35,6 +35,7 @@ export class Staff extends Character {
     this.office = office;
     this.role = role;
     this.seed = seed;
+    this.dressed = !!look.person;     // false: the village stand-in (the townsfolk art was not merged yet)
     this.noXray = true;
     this.home = home || { x, y };
     this.route = [];
@@ -87,6 +88,36 @@ export class Staff extends Character {
   goHome(cb) { this.doing = 'desk'; this.walkTo(this.home.x, this.home.y, () => { this.faceTo(this.home.x - 40, this.home.y + 30); if (cb) cb(); }); }
 
   serialize() { return this.seed >>> 0; }
+
+  /** ((robust review M3) made before the townsfolk manifest arrived: the paper-doll look can be made now */
+  wantsDress() {
+    if (this.dressed || !TF.ok || !TF.readyFor(Assets, 'adult')) return false;
+    // (only when the doll look really can be made now: no churn while a preset is still missing)
+    const now = this.gs.time.now;
+    if (this.dressTryT && now - this.dressTryT < 10000) return false;
+    this.dressTryT = now;
+    return !!staffLook(this.role, this.seed).person;
+  }
+  /** standing still at home (a re-dress then goes unnoticed) */
+  settled() { return !this.target && (this.doing === 'desk' || this.doing === 'home' || this.inside); }
+
+  destroy() {
+    const A = this.gs.agents, i = A ? A.indexOf(this) : -1;
+    if (i >= 0) A.splice(i, 1);
+    super.destroy();
+  }
+}
+
+/** ((robust review M3) swap a stand-in staff member for a paper doll of the same role and seed, in place; make(seed, x, y)
+ *  builds the new one (the caller keeps its own bookkeeping) */
+export function redress(ch, make) {
+  const n = make(ch.seed, ch.x, ch.y);
+  if (!n) return ch;
+  n.dir = ch.dir;
+  n.inside = ch.inside; n.slot = ch.slot; n.errand = ch.errand;
+  if (ch.sprite && ch.sprite.visible === false) { n.sprite.setVisible(false); if (n.shadow) n.shadow.setVisible(false); }
+  ch.destroy();
+  return n;
 }
 
 /** 총총이: follows the chief a little behind and to the side, never in his way */
@@ -224,10 +255,12 @@ export class Courier extends Staff {
     this.sack.setVisible(show); this.sackN.setVisible(show);
     if (show) {
       const k = this.bag >= 3000 ? 1.25 : this.bag >= 1000 ? 1.0 : 0.8;
-      this.sack.setScale(0.55 * k).setPosition(this.x + 14, this.y - 112).setDepth(this.y + 1);
+      // ((robust review H2) inside the bank the sack and its number sit in his slot: a closed shell covers them too)
+      const d = this.inDepth !== undefined ? this.inDepth : this.y, ins = d !== this.y, ly = this.liftY || 0;
+      this.sack.setScale(0.55 * k).setPosition(this.x + 14, this.y - 112 - ly).setDepth(ins ? d + 3e-6 : this.y + 1);
       const s = this.bag >= 10000 ? Math.round(this.bag / 1000) + 'k' : String(this.bag);
       if (this.sackN.text !== s) this.sackN.setText(s);
-      this.sackN.setPosition(this.x + 14, this.y - 142).setDepth(this.y + 2);
+      this.sackN.setPosition(this.x + 14, this.y - 142 - ly).setDepth(ins ? d + 4e-6 : this.y + 2);
     }
     this.sync(dt);
   }

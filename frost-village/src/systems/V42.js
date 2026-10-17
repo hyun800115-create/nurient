@@ -119,9 +119,17 @@ export class V42 {
   update(dt) {
     const t0 = performance.now();
     this.t += dt;
-    this.ledger.update(dt);
-    for (const { sys } of this.systems) if (sys.update) sys.update(dt);
+    // ((robust review L5) one failing v4.2 system must not stop the whole game frame (the crash card): it is reported
+    //  (console.error — the test suites count those) and the others go on)
+    try { this.ledger.update(dt); } catch (e) { this.fail('ledger', e); }
+    for (const q of this.systems) if (q.sys.update) { try { q.sys.update(dt); } catch (e) { this.fail(q.name, e); } }
     this.ms = this.ms * 0.95 + (performance.now() - t0) * 0.05;
+  }
+
+  fail(name, e) {
+    this.errors = (this.errors || 0) + 1;
+    const seen = this.failed || (this.failed = {});
+    if ((seen[name] = (seen[name] || 0) + 1) <= 3) console.error('[v42] ' + name + '.update', e);
   }
 
   /** the v42 block + the module-format slices */

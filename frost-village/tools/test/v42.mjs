@@ -43,6 +43,13 @@ try {
   let st = await page.evaluate(() => window.__FV.v42.office({ build: true }));
   ok(st.built && !st.bank, 'the office stands (the bank waits)', st);
   ok(st.hire === 'sem', 'the hire pad offers 셈이 first (' + st.hire + ')');
+  // (CODE-1 review) paying the hire pad for real — standing on it — hires 셈이 without an error (the pad used to be read
+  //  back after it had hired and gone: a crash card on the first staff hire)
+  const e0 = log.errors.length;
+  await page.evaluate(() => { const gs = window.__FV.scene, O = gs.v42.office, hp = O.hirePad; gs.economy.coins = Math.max(gs.economy.coins, 5000); window.__FV.teleport(hp.x, hp.y); });
+  await advance(page, 4);
+  const hp1 = await page.evaluate(() => { const O = window.__FV.scene.v42.office; window.__FV.teleport(O.x + 400, O.y + 300); return { sem: O.hired('sem'), next: O.hirePad ? O.hirePad.role : null }; });
+  ok(hp1.sem && log.errors.length === e0, 'standing on the hire pad pays it: 셈이 hired, no error', { hp1, errors: log.errors.slice(e0, e0 + 2) });
   st = await page.evaluate(() => window.__FV.v42.office({ hire: ['sem', 'ttal', 'bok', 'chong'] }));
   ok(['sem', 'ttal', 'bok', 'chong'].every((r) => st.staff.includes(r)) && st.courier, 'four staff, the courier at work', st.staff);
 
@@ -78,6 +85,21 @@ try {
   ok(pt.open && pt.tab === 'stock', 'the panel opens (통장, then 재고)', pt);
   ok(Math.max(pt.ms, pt.ms2) < 100, 'office panel opens in < 100 ms (통장 ' + pt.ms.toFixed(1) + ' ms, 재고 ' + pt.ms2.toFixed(1) + ' ms; the next drawn frame ' + pt.frame.toFixed(0) + ' ms)');
   await page.evaluate(() => { const P = window.__FV.scene.v42.office.uiScene().officePanel; P.close(); });
+  await advance(page, 1);
+
+  // (CODE-1 review H2) people inside a cutaway: the chief in the back half of the bank stands on its floor (its @front
+  //  slot, between the counter and the wall stubs), not under the floor; a teller is behind the counter
+  const cut = await page.evaluate(() => {
+    const gs = window.__FV.scene, B = gs.v42.office.bank, cw = B.cw, p = gs.player;
+    window.__FV.teleport(B.x - 40, B.y - 45);
+    window.__step.run(0.5);
+    const lay = (n) => cw.layers[n] ? cw.layers[n].depth : null;
+    const t0 = B.staff[0];
+    return { chief: p.sprite.depth, floor: lay('bank_floor'), front: lay('bank_front'), cut: lay('bank_shell_cut'), shell: lay('bank_shell'), teller: t0 ? t0.sprite.depth : null, lift: p.liftY || 0 };
+  });
+  ok(cut.chief > cut.front && cut.chief < cut.cut && cut.lift > 0, 'inside the bank the chief stands on its floor: over the counter layer, under the wall stubs and the shell, lifted onto the raised floor', cut);
+  ok(cut.teller > cut.floor && cut.teller < cut.front, 'a teller stands behind the counter (the @behind slot)', cut);
+  await page.evaluate(() => { const O = window.__FV.scene.v42.office; window.__FV.teleport(O.x + 400, O.y + 300); });
   await advance(page, 1);
 
   console.log('reveal (hysteresis)');
@@ -122,6 +144,11 @@ try {
   ok(trip, 'the cargo sleigh made a round trip (stop → bay 2 → stop)', after.st.sleighs);
   ok(after.total > before.total, 'the racks filled (' + before.total + ' → ' + after.total + ')');
   ok(after.dock + (after.total - before.total) >= Math.min(before.dock, 1) && after.total - before.total <= before.dock + 200, 'goods are moved, not made (dock ' + before.dock + ' → ' + after.dock + ')');
+  // (CODE-1 review H1) the 물류 금고: saved in the logistics slice's cash, and 딸랑이 collects it (also after 읍)
+  const dt0 = await page.evaluate(() => { const gs = window.__FV.scene, D = gs.v42.depot; D.till.value += 640; const sv = gs.serialize(); return { till: D.till.value, cash: sv.logistics && sv.logistics.cash, onRound: gs.v42.office.tills().some((q) => q.name === 'depot') }; });
+  ok(dt0.cash === dt0.till && dt0.onRound, 'the 물류 금고 is saved (logistics.cash) and on 딸랑이\'s round', dt0);
+  const dtGot = await until(page, () => { const gs = window.__FV.scene; return gs.v42.depot.till.value < 100 && (gs.v42.office.income.depot || 0) > 0; }, 240);
+  ok(dtGot, '딸랑이 empties the 물류 금고 on a round');
 
   // 썰매 한 대 더: offered once a sleigh load waited long enough with room in the racks; bought -> two sleighs, one loads at a time
   const s2 = await page.evaluate(() => {

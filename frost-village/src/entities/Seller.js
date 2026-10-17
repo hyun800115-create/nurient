@@ -371,7 +371,7 @@ export class Market {
     gs.effects.burst('heart', c.x, c.y + c.headTop - 4, 3);
     Audio.play('sfx_customer_happy', { volume: 0.7 });
     gs.time.delayedCall(200, () => { this.cash.add(value, c.x, c.y - 50); if (gs.isNear(c.x, c.y, 650)) Audio.play('sfx_cash', { volume: 0.55, throttle: 250 }); });
-    gs.events.emit(this.cfg.soldEvent || 'sold', value);
+    gs.events.emit(this.cfg.soldEvent || 'sold', value, c);
   }
 
   restoreQueue(n) {
@@ -597,7 +597,15 @@ export class TradePost {
 
   payTarget() { return this.merchant; }
   /** goods on the shelf but nobody at the register */
-  get waitingPay() { return this.enabled && this.stock.count > 0 && !this.register.staffed; }
+  get waitingPay() { return this.enabled && this.stock.count > this.kept() && !this.register.staffed; }
+  /** ((v4.2) the display the merchant leaves on the shelf after village complete: not waiting to be sold) */
+  kept() {
+    const gs = this.gs, keep = gs.v42 && gs.v42.frules ? Math.max(0, Math.floor(Number(BALANCE.v42.trade && BALANCE.v42.trade.displayKeep) || 0)) : 0;
+    if (!keep) return 0;
+    let n = 0;
+    for (const ty of GOODS) n += Math.min(keep, this.stock.countOf(ty));
+    return n;
+  }
 
   feedFrom(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
@@ -624,6 +632,14 @@ export class TradePost {
     if (look) this.swapMerchant(look);
   }
 
+  /** the kinds on the shelf with more than `keep` items (what the merchant may buy) */
+  buyable(keep) {
+    const out = this._buyable || (this._buyable = []);
+    out.length = 0;
+    for (const ty of GOODS) if (this.stock.countOf(ty) > keep) out.push(ty);
+    return out;
+  }
+
   swapMerchant(look) {
     const gs = this.gs, old = this.merchant;
     const m = new Character(gs, look.key, old.x, old.y, { dir: 1, person: look.person });
@@ -648,9 +664,10 @@ export class TradePost {
     const gs = this.gs;
     this.buyT -= dt;
     const staffed = this.register.staffed;
-    if (this.stock.count > 0 && !staffed) this.waitT += dt; else this.waitT = 0;
+    const selling = this.stock.count > this.kept();
+    if (selling && !staffed) this.waitT += dt; else this.waitT = 0;
     // waiting for a cashier: a pulsing coin over the merchant
-    const showWait = this.stock.count > 0 && !staffed;
+    const showWait = selling && !staffed;
     if (showWait && !this.waitIcon) {
       this.waitIcon = Assets.image(gs, m.x, m.y + m.headTop - 30, Assets.pick('ui_icon_coin', 'ui_icon_check')).setDepth(DEPTH.BUBBLE);
       this.waitIcon.setScale(40 / Math.max(1, this.waitIcon.frame.realWidth));
@@ -660,9 +677,13 @@ export class TradePost {
       this.waitIcon.setVisible(showWait);
       if (showWait) { this.waitIcon.setScale(this.waitIcon.__bs * (1 + Math.max(0, Math.sin(gs.time.now / 140)) * 0.15)); this.waitIcon.y = m.y + m.headTop - 30 + Math.sin(gs.time.now / 300) * 3; }
     }
-    if (this.buyT <= 0 && this.stock.count > 0 && staffed) {
+    // ((v4.2, gameplay review M5) after village complete the merchant leaves `displayKeep` of each kind on the shelf:
+    //  goods stand on display instead of the shelf looking empty between deliveries; nothing is lost)
+    const keep = gs.v42 && gs.v42.frules ? Math.max(0, Math.floor(Number(BALANCE.v42.trade && BALANCE.v42.trade.displayKeep) || 0)) : 0;
+    const buyable = keep > 0 ? this.buyable(keep) : null;
+    if (this.buyT <= 0 && this.stock.count > 0 && staffed && (!keep || buyable.length)) {
       this.buyT = this.register.clerk ? BALANCE.trade.buyInterval * BALANCE.register.clerkTradeSlow : BALANCE.trade.buyInterval;
-      const it = this.stock.pop();
+      const it = keep ? this.stock.pop(buyable) : this.stock.pop();
       this.flying[it.type] = (this.flying[it.type] || 0) + 1;
       gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: m.x, y: m.y - 40 }, {
         dur: 260, height: 50, scaleTo: 0.5,

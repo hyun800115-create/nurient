@@ -151,6 +151,10 @@ PickupPolicy.offer()                      // { icon, n, label } while a takeable
 **Destination.** `Tutorial.destination(type)` is extended to return `{ pad, key, label, sink, room }` and to know the
 v4.2 sinks (empty shelf F1, depot dock F8). It already orders sites / hire pads / food box / workshop inputs
 (`Logistics.best` with `minPrio: 50`), then the loading dock for open cards, then shelves, store, warehouse, station input.
+- **(CODE-1 review) Steady guide**: the place chosen for a load stays while it still takes some of that load (its own
+  sink says so), even when the resolver's answer moves on (the food box and workshop inputs cross their priority line as
+  porters top them up); another place must take ≥ 2 more items for 4 s in a row to replace it; a new load, or a tap on
+  the chip, chooses afresh. The chip counts what the place takes, not the whole bag.
 - **Mixed bag**: evaluate every item type in the bag; the destination that takes the **most items** (capped by its room)
   wins; ties → shorter route. Chip shows `+1곳` when another type goes elsewhere; tap the chip = next destination.
 - **Nothing takes it**: no path; chip `판매대가 가득 · 잠시 기다리거나 버려요` (trash pad gets a soft pulse).
@@ -233,6 +237,15 @@ local buffer, the dock takes what the village cannot use) — room = freight roo
 (CODE-1: a full pile's raw ranks `surplus.pilePrio` 30 for the 역 짐꾼 — under the shops 35 and the cards 38 — else
 the town's restocks always won and the piles never emptied; the 화물칸 크게 offer counts the waiting card crates too.)
 
+**CODE-1 review additions (the late village, 60+ min; all after village complete, so the first 20 minutes are unchanged)**
+| Rule | Code | Numbers |
+|---|---|---|
+| A goods porter at an output ≥ `porters.fullLoadAt` 70 % full loads what **all** the village's places want of it now (shelf, pantry, food box, workshops; not the 창고, not the station district) and drops it place after place: a load sized for the first place's 2–3 free spots kept the smokehouse / grill outputs full and stopped their stations | `Worker.js` Porter, `Logistics.totalWant` | 0.7 |
+| An output ≥ `surplus.outAt` that nothing local wants (or only the 창고 and it is past `surplus.whAt`) goes with its own goods porter to the export dock (`PRIO.SURPLUS`); a raw porter whose input is full and pile ≥ `pileToWh` takes a load to the 창고 only if the 창고 stores it (raw fish) and is under `whAt`, else to the export dock | `Worker.js` Porter / RawPorter | — |
+| The 창고 porters take overflow in only while the 창고 is under `surplus.whAt` 70 % (above it only straight to a place that wants it, F3); log / wheat / ore / raw meat piles only when the station input wants about a load (the 창고 refuses them) | `Worker.js` WarehousePorter | 0.7 |
+| After village complete the merchant leaves `trade.displayKeep` 2 of each good on the 교역소 shelf (goods on display instead of an empty shelf between deliveries; nothing is lost; the cashier is not called for them) | `Seller.js` TradePost | 2 |
+| Topping up the miners' food box (not low) takes bread first: smoked meat ranks as `SHELF_LOW` 45 there, under an empty meat shelf (F1, 48) | `FoodBox.js` | — |
+
 ### 4.4 서리 물류창고 (`src/systems/depot/*`, `src/entities/DepotBuilding.js`, `src/entities/CargoSleigh.js`)
 
 **Place** (player's occupancy search on a 46-min save; `v42_layout.mjs` must print `no problems`):
@@ -302,6 +315,25 @@ XL two-stage scaffold of the station plot ×1.5). Cost 6,000 + 40 판자 + 20 �
 (The final census bot keeps the 읍 money before buying v4.2 extras, like a sensible player; with the bot buying every
 offer at once (all 가공소 2단 + 짐꾼 2 in the first 4 minutes) the same saves read meat 23 / 29 %, smelter 33 / 39 %,
 창고 144 / 90, income +25 / +30 %.)
+
+**After the CODE-1 review fixes** (`docs/build_reports/v42_code1.md` §3.3). The 46-min save, 60 game minutes, the
+same census tool and bot; v4.1 is measured over the same 60 minutes. The table compares CODE-1 as reviewed with the
+final code.
+
+| Measure | v4.1 (60 min) | As reviewed | Final | Gate |
+|---|---|---|---|---|
+| Market shelf empty: 빵 / 훈제 고기 / 구운 생선 | 21 / 55 / 5 % | 8 / 27 / 1 % | **0 / 10 / 0 %** | ✓ (meat: 27 % in a second run's first 25 min; 33 % on a fresh game, min 40–60) |
+| 교역소 empty: 판자 / 주괴 | 92 / 97 % | 71 / 76 % | **0 / 0 %** (`trade.displayKeep` 2; down to those 2: 75 / 74 %) | ✓ |
+| Smelter / sawmill output ≥ 90 % | 65 / 59 % | 26 / 3 % | **15 / 2 %** | ✓ |
+| Any raw pile ≥ 90 % | 100 % | 97 % | 97 % (fish 57 · wheat 16 · ore 73 · meat 86) | ✗ |
+| 창고 average | 4 | 174 | 168 | ✓ |
+| Dock: card crates + surplus | 3,385 at the end, growing +50 per min | max 138 | max 268 (card crates up to 180 in the first 18 min), end 88 | bounded |
+| Income | 1,851 /min | 2,380 (+29 %) | 2,530 (+37 %); second run 0–25 min: +32 % | ✗ (+30 % cap) |
+
+Income levers measured: train exports pay 20–30 coins a minute (about 1 % of income), and the 물류창고's sales pay
+34 a minute (1.4 %). Lowering `freight.exportRate` and `depot.sell.rate` would therefore move income by only 1–2
+points. The rise comes from the shops selling what used to sit in full outputs. F5 is the only lever large enough, and
+it works against the output gates, so the levers are unchanged: a designer decision.
 
 ---
 
@@ -472,6 +504,12 @@ sack, mail bag, notepad), bow (`bow`, CODE-2) and take their place; banner `새 
   red mailbox whose flag pops up when mail arrives, door lamp, small flag (art: `CONTRACT_V42` AI).
 - **Cutaway**: the logistics/civic layer contract (`floor`, `back`, `interior`, `interior_front`, `shell_cut`, `shell`,
   `props`, `glow` + animated overlays) with `drawOrder` slots `@behind` (people at desks) and `@front` (visitors).
+  (CODE-1 review) `Cutaway.occupy(ch)` — asked by `Character.sync` every frame through `gs.interiors` — puts whoever
+  stands on the floor (`footprintPoly`) into its slot (staff `@behind` or their `slot`, everyone else `@front`, the y
+  term kept inside the slot's band) and lifts walkers by `floorLiftPx`; a closed shell therefore covers them, and
+  someone outside in front of the front walls is drawn over the building. The depot uses the logistics manifest's own
+  bands (`<actors mid>` staff, `<actors front + floor stock>` visitors) and `frontTest`. The office art in CODE-2 gets
+  this for free by being a `Cutaway`.
 - **Reveal** (shell → `openAlpha`, `shell_cut` on): the chief within `office.revealPx` 260 px of the door (60 px
   hysteresis), an office panel open, the 관망 camera framing it, or a tap inside `revealPoly` (toggle). Inside layers and
   inside staff exist only while revealed (fill rate); the closed look is shell + props only.
@@ -499,8 +537,9 @@ Lunch 12:00 (walk to the big restaurant if built), home 18:00, back 08:00 (clerk
 
 - `CashPad` instances register in `gs.tills` (market, 교역소, 잡화점, 큰 식당, 마을회관 세금 상자, 역 금고, 물류 금고).
 - **Round**: every `courier.every` 60 s, or sooner when ≥ `courier.rushAt` 1,000 coins wait; visits every till with
-  ≥ `courier.minPad` 100 by nearest neighbour along `Roads` routes; before 읍 also the 역 금고 and 물류 금고 (after 읍
-  they already fly in every 15 s). At each pad `CashPad.takeAll(courier)`: coins hop into the sack over ≈ 1 s, the sack
+  ≥ `courier.minPad` 100 by nearest neighbour along `Roads` routes; before 읍 also the 역 금고 (after 읍 it flies in
+  every 15 s). (CODE-1 review) The 물류 금고 is always on the round (the depot exists only after 읍); before 딸랑이 is
+  hired it flies in every 15 s like the 역 금고; its coins are saved as the `logistics` slice's `cash`. At each pad `CashPad.takeAll(courier)`: coins hop into the sack over ≈ 1 s, the sack
   sprite grows (3 sizes), `딸랑딸랑`.
 - **Deposit**: at the bank (or the office safe before the bank): the courier walks to `counterPoints[0]`, the teller
   counts (`sfx_coin_count` 1.2 s) and stamps (`sfx_stamp`); a deposit ≥ `courier.vaultAt` 5,000 spins the vault
@@ -594,7 +633,7 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | 저녁 | 40 from 20:00 (**CODE-1 tuned: 30**, so the day's 업무 still beats it) | — | until 06:00 or higher score | office with the lamp on, or the campfire; dozes by the office stove from 22:00 |
 | 수금 | 35 (**CODE-1 tuned: 45**) | no courier and ≥ 300 (**tuned: 200**) coins on one pad | one pad | — |
 | 기차 구경 | 30 | a train arrives at ours within 20 s and he is ≤ 1,500 px away | arrival + loop | walks to the platform, waves |
-| 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
+| 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min (**CODE-1**: a resident staying at a spot — VillageLife's `stay` job, not walking or moving in — counts as idle; during a chore break he looks 1,500 px far; residents only, the town dolls are CODE-2) | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
 | 사무실 | 20 (+30 08–10 h with a new paper, +30 with ≥ 2 unread letters) | office built, **bag empty** | 30–60 s | walks in (shell fades), sits (`sit_idle`), reads the paper (`sit_read`), stamps a letter (`sit_write`) |
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
 | 콩이 | 15 | dog within 800 px | 15 s | `DogPlay` pet / throw |
@@ -611,7 +650,8 @@ one train watch, 17–20 social ×1.5, 20–07 evening. Before the day clock sta
   speed, collisions and pad rules are the player's.
 - **Never spends by default**: while the pilot drives, `UnlockPad`, `Site` pay pads, hire pads and the trash pad
   **ignore the chief** (and the route treats them as high-cost cells). Setting `관망 중 돈 쓰기: 안 써요 / 고용만` —
-  `고용만` lets him hire staff and porters he can afford, never buildings or upgrades.
+  `고용만` lets him hire staff and porters he can afford, never buildings or upgrades. (CODE-1 review) He walks to them:
+  an affordable staff / porter hire pad (not a boat or a tool pad) is an urgent chore, paid in full on arrival.
 - Stuck: no progress 3 s → side-step; 8 s → drop the task, mark the target unreachable for 60 s.
 - Determinism: decisions are a pure function of (state snapshot, seed, decision index); RNG
   `mulberry32(hash(saveSeed, day, index))`, never `Math.random`.
@@ -702,6 +742,11 @@ s.logistics = { v: 1, open: 1, gift: 1, tut: 1, day, seq: 0, stock: { bread: 12,
                 orders: [], cash, chains: [], lv3: [], days: [≤ 10], made: [0, 0], tot: [0, coins, deliveries] }   // v8 format
 ```
 
+- (CODE-1 review) also saved: `office.hirePaid` (coins already paid toward the next hire pad), `office.inc` ([day,
+  { source: coins }] the 통장 income bars), `letters.tg` (the letters' trigger timers) and `letters.bk` (the bank's first
+  day); `logistics.cash` = the 물류 금고 not yet collected. Porters' loads are saved where they were going while that
+  place has room at the restore, else at the next place that takes them (shelf, pantry, food box, 창고 for what it stores,
+  the station's input / output / pile, the boathouse, last the export dock): nothing a porter carries is lost on a reload.
 - `sanitizeV42` in `Save.js`: ints clamped, unknown item ids dropped (items.js + the v8 catalogue keys), seeds uint32,
   arrays capped, never throws. `sanitizeSave` keeps `bank` / `logistics` through **local copies** of the module keep-rules
   (no runtime import); `save_v42.mjs` runs both slices through the modules' `sanitizeBank` / `sanitizeLogistics` and
@@ -724,7 +769,8 @@ v42: {
   cheer:   { mult: 1.1, still: 2, radius: 200 },
   pickup:  { stillS: 0.35, stillSpeed: 20, gatherStillS: 0.35, tipSpeed: 0.6 },
   nav:     { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360 },
-  porters: { shelfEmptyPrio: 48, shelfEmptyAfter: 10, inputUrgentBelow: 0.25, inputCalmPrio: 42, travelPxPerPoint: 300 },
+  porters: { shelfEmptyPrio: 48, shelfEmptyAfter: 10, inputUrgentBelow: 0.25, inputCalmPrio: 42, travelPxPerPoint: 300, fullLoadAt: 0.7 },   // fullLoadAt: CODE-1 review
+  trade:   { displayKeep: 2 },                                                                                                          // CODE-1 review
   warehouse: { direct: true, directMinPrio: 40 },
   porter2: { fullAt: 0.8, fullForS: 90, costs: { grill: 500, sawmill: 600, bakery: 700, smelter: 800, smokehouse: 900 } },
   station2: { timeMult: 0.66, costs: { grill: 900, sawmill: 1000, bakery: 1100, smelter: 1400, smokehouse: 1600 } },
@@ -777,6 +823,8 @@ templates (20), letters (10 templates × body + 2 buttons), 관망 captions per 
 | station square, train in | v4.1 + 3.7 (train) | train pages ≈ 17.6 (engine 5 dirs 4.6, coach 4.8, box car 5.1, flat car 3.1) − old cars 3.7 | ≤ v4.1 + 14 |
 | depot revealed | new | lgx closed 18.5 + inside 4.9 + forklift 7.6 + items 0.3 + sleigh ≈ 3; village pages out by hysteresis | ≤ 340 |
 | full tour peak | 381 | never all at once (area classes 800/1200 px) | ≤ 400 |
+(CODE-1 review) Areas in `Residency.REGIONS` now: `bank42` (civ_bank), `depot` (lgx_center_a–d, lgx_items), `sleigh`
+(veh_cargo_sleigh along its lanes); CODE-2 adds `office` (+ inside pages) with the office art.
 `Residency.REGIONS` += `office`, `bank`, `depot` (+ `officeInside`, `depotInside` acquired only by a reveal), transient
 `ui4@office`.
 
@@ -881,7 +929,7 @@ modes; the depot interior adds ≤ 3 pages in one view).
 | `nav.mjs` | destination = `Tutorial.destination` for 40 bag states (mixed-bag rule); route length within 10 % of A*; ≤ 20 objects; one arrow when the tutorial targets the same pad; off in 관망 and the first loop |
 | `rail.mjs` (rewritten) | consist swap at 읍; visitors board at coach doors; crossings open as §5.2; chief on the loop stops the train; dock crates load with the camera at the plaza |
 | `v42.mjs` | office build → hires in order → courier round deposits every till ≥ 100 within 180 s → bank → passbook rows; aide never > 4 m behind after 2 s; panel opens < 100 ms; reveal hysteresis (no flicker at 260 px); depot site → sleigh round trip → racks equal stock → buyers pay; freight: cards first, surplus next, capacity respected |
-| `pilot.mjs` | 30-min soak in 관망 from the 46-min save: 0 errors, 0 stuck > 20 s, **0 coins spent / 0 accidental payments**, ≥ 6 activities per 10 min, hand-back latency 1 frame, income ≥ 80 % of the arrow bot's |
+| `pilot.mjs` | 30-min soak in 관망 from the 46-min save: 0 errors, 0 stuck > 20 s, **0 coins spent / 0 accidental payments**, ≥ 6 activities per 10 min, hand-back latency 1 frame, income ≥ 80 % of the arrow bot's (**CODE-1 measured**, 30 game min: 0 errors, 0 stuck, longest no-progress 10.9 s, 0 coins spent / 0 payments, 25–32 starts per 10 min over 8 kinds — 급한 일 8 · 업무 37 · 수금 29 · 수다 5 · 점심 3 · 쉬기 3 · 저녁 2 · 기차 1 —, hand-back the same frame, income **87 %** of the arrow-only bot in the same 10 min; before CODE-1's `gs.tills` fix 수금 never ran: 41–57 %; **after the review fixes**: 0 errors, longest no-progress 12.6 s, 0 coins spent / 0 payments, 32 / 35 / 28 starts per 10 min over 8 kinds, income 87 %) |
 | `texbudget.mjs`, `review_robust_drawcalls.mjs` | §13 gates |
 | `reqlog42.mjs --base <v4.1 copy>` (CODE-1) | §1 guardrail 1: a fresh profile, seeded `Math.random`, the smart bot's first loop on the fixed step in both builds: the asset requests from boot to the village and up to the first sale are the same multiset (the random resident cast counts as one kind); after the first sale ≤ 1 new file, none missing |
 | `visitors42.mjs --base <v4.1 copy>` (CODE-1) | §5.3: neighbours stepping off per game minute on the 46-min save within ±10 % of v4.1 (minutes 3–20, chief idle) |
@@ -890,12 +938,12 @@ modes; the depot interior adds ≤ 3 pages in one view).
 **Bots** (`review_gameplay_census.mjs` + `review_gameplay_bot.js`, smart / arrow / arrow-only, fresh and the v4.1 45/46-min saves)
 | Target | v4.1 | v4.2 gate |
 |---|---|---|
-| first-20-min request log | — | identical up to the first sale, one extra page after |
+| first-20-min request log | — | identical up to the first sale, one extra page after (**CODE-1 measured**, `reqlog42.mjs`, smart bot 4 game min: boot 345 + first loop 8 asset requests the same multiset as v4.1, first sale at 32 s in both; after it 0 new files, none missing; **after the review fixes**, on a loaded machine: boot the same (once the test let the first page finish booting before logging), after the first sale 0 new / 0 missing; up to the first sale one resident look or voice differs, in either direction, and the git HEAD snapshot (3c326a2) differs from the final code the same way: an async-load timing effect, rerun on a quiet machine) |
 | village complete / 5 shops / 읍 | 20.2 / 37.8 / 47.7 (smart) | ±5 % / ±5 % / ≤ +5 % |
 | longest wait after tower_east | 3.0 | ≤ 3.0 |
-| **CODE-1 measured** (`review_gameplay_sim.mjs --v4`, fresh game, fixed step; v4.1 = the HEAD copy, same machine) | smart v4.1: complete 19.8, tower_east 20.1, station 22.1, 5 shops 38.7, 읍 48.2, longest gap 5.2 | smart v4.2 (final rules; the bot keeps the 읍 money before v4.2 extras): complete **20.2**, tower_east 20.2, station 22.7, 5 shops **39.5 (+2.1 %)**, 읍 **46.7 (−3.1 %)**, longest gap 1.9 (an earlier build whose bot bought the office before 읍: 읍 51.0); arrow v4.2: complete 21.0, tower_east 21.1, station 23.4, 5 shops **39.7**, 읍 **47.8**, gap 2.6 (v4.1 arrow, `v4_verify.md`: 21.1 / 40.8 / 50.3); 0 stuck, 0 errors in every run |
+| **CODE-1 measured** (`review_gameplay_sim.mjs --v4`, fresh game, fixed step; v4.1 = the HEAD copy, same machine) | smart v4.1: complete 19.8, tower_east 20.1, station 22.1, 5 shops 38.7, 읍 48.2, longest gap 5.2 | smart v4.2 (final CODE-1 build; the bot keeps the 읍 money before v4.2 extras): complete **19.7**, tower_east 19.8, station 21.6, 5 shops **39.5 (+2.1 %)**, 읍 **47.0 (−2.5 %)**, longest gap 1.4, 0 stuck, 0 accidental payments (the run before the last fixes: 20.2 / 22.7 / 39.5 / 46.7, gap 1.9; an earlier build whose bot bought the office before 읍: 읍 51.0); arrow v4.2: complete 21.0, tower_east 21.1, station 23.4, 5 shops **39.7**, 읍 **47.8**, gap 2.6 (v4.1 arrow, `v4_verify.md`: 21.1 / 40.8 / 50.3); 0 stuck, 0 errors in every run. **After the review fixes** (smart, final): complete 19.3, tower_east 19.7, station 22.1, 5 shops **37.0 (−4.3 %)**, 읍 **44.8 (−6.9 %)**, longest gap 3.0, 0 stuck, 0 accidental payments, 0 errors |
 | §4.5 stock targets | — | all |
-| visitors per game minute | v4.1 | ±10 % |
+| visitors per game minute | v4.1 | ±10 % (**CODE-1 measured**, `visitors42.mjs`, 46-min save, minutes 3–20, chief idle: v4.1 3.59/min (20 trains × 3.8) → v4.2 3.41/min (14 trains × 4.9) = **95 %**; riders = v4.1's per-train count × ridersScale, rounded at random so a 1-rider night train brings 1.44 on average; after the review fixes: 3.47 → 3.29/min = **95 %**) |
 | errors / stuck | 0 / 0 | 0 / 0 |
 | 10-min soak (heap, textures) | 36–38 MB, 383 MiB | no growth, ≤ 400 |
 

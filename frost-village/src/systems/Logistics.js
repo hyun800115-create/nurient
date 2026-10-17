@@ -79,6 +79,20 @@ export class Logistics {
     return best ? { sink: best, n: bn, prio: bp, score: per > 0 ? bs : bp } : null;
   }
 
+  /** ((v4.2, gameplay review M5) how many of `type` the village's own places (not the 창고, not the remote station
+   *  district) want now at prio ≥ minPrio: a goods porter loads that much and drops it place after place */
+  totalWant(type, minPrio) {
+    let n = 0;
+    for (const s of this.sinks) {
+      if (s.remote || s.isWarehouse) continue;
+      const w = this.want(s, type);
+      if (w <= 0) continue;
+      const p = s.prio(type);
+      if (p > 0 && p >= minPrio) n += w;
+    }
+    return n;
+  }
+
   /** the most urgent sink that wants any of `types` (warehouse restocking): { sink, type, n } */
   bestAny(types, x, y, opts = {}) {
     let out = null;

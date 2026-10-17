@@ -8,6 +8,12 @@
 //   cw.slotDepth('@behind', y)  the depth of a character standing inside (sorted among the others by its own y)
 //   cw.inPoly(x, y)           a point inside the building's revealPoly (tap / walk-in tests)
 //   cw.overlay(name, anim)    play an overlay's frames (e.g. the bank vault: 'bank_vault' 8 frames)
+//   cw.occupy(ch)             ((v4.2 robust review H2) Character.sync asks every frame: a character standing on the
+//                             floor (footprintPoly) gets the depth of its slot — staff (`ch.inside`) '@behind' (or
+//                             `ch.slot`), everyone else '@front' — and walkers are lifted floorLiftPx onto the raised
+//                             floor (the manifest's inside points already include it). A closed building's shell is
+//                             drawn over its slots, so whoever is inside is hidden until it opens. Someone outside in
+//                             front of the front walls is drawn over the whole building.
 // Pictures may still be on their way (late fragments): every layer is (re)applied when its frame arrives.
 
 import { Assets } from '../core/Assets.js';
@@ -23,6 +29,12 @@ export class Cutaway {
     this.cut = (cw.cut && cw.cut.layer) || key + '_shell_cut';
     this.poly = (cw.revealPoly || this.def.revealPoly || []).map((p) => ({ x: x + p[0], y: y + p[1] }));
     this.lift = Number(cw.floorLiftPx) || 0;
+    // the floor (footprintPoly) and its bounding box: the occupancy test of Character.sync
+    this.floor = (this.def.footprintPoly || []).map((p) => ({ x: x + p[0], y: y + p[1] }));
+    const fx = this.floor.map((p) => p.x), fy = this.floor.map((p) => p.y);
+    this.box = this.floor.length >= 3 ? [Math.min(...fx), Math.min(...fy), Math.max(...fx), Math.max(...fy)] : null;
+    // the front corner (lowest point): left of it the front-left wall, right of it the front-right wall
+    this.frontPt = this.floor.length >= 3 ? this.floor.reduce((a, p) => (p.y > a.y ? p : a), this.floor[0]) : null;
     this.revealed = false;
     this.alpha = 0;           // 0 closed .. 1 open
     this.layers = {};
@@ -39,21 +51,50 @@ export class Cutaway {
       this.layers[name] = img;
     });
     this.apply();
+    (gs.interiors || (gs.interiors = [])).push(this);
   }
 
-  /** depth of slot '@behind' / '@front' for a character at world y (sorted among themselves by y) */
+  /** depth of slot '@behind' / '@front' for a character at world y (sorted among themselves by y; the y term stays
+   *  inside the slot's 0.01 band: ±300 px -> ±0.003) */
   slotDepth(slot, y) {
     const i = this.order.indexOf(slot);
-    return this.base + 0.01 * (i < 0 ? this.order.length : i) + (y - this.base) * 1e-4;
+    return this.base + 0.01 * (i < 0 ? this.order.length : i) + Math.max(-0.004, Math.min(0.004, (y - this.base) * 1e-5));
   }
 
-  inPoly(x, y) {
-    const P = this.poly;
-    if (P.length < 3) return false;
-    let c = false;
-    for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a].y > y) !== (P[b].y > y) && x < ((P[b].x - P[a].x) * (y - P[a].y)) / (P[b].y - P[a].y) + P[a].x) c = !c;
-    return c;
+  /** the floor polygon contains (x, y) */
+  onFloor(x, y) {
+    const b = this.box;
+    if (!b || x < b[0] || x > b[2] || y < b[1] || y > b[3]) return false;
+    return polyHas(this.floor, x, y);
   }
+
+  /** where a character is drawn: { depth, lift } while on the floor or in front of the walls, else null */
+  occupy(ch) {
+    const x = ch.x, y = ch.y, b = this.box;
+    if (!b || x < b[0] - 4 || x > b[2] + 4 || y < b[1] - 4 || y > b[3] + 40) return null;
+    if (polyHas(this.floor, x, y)) {
+      const slot = ch.slot || (ch.inside ? '@behind' : '@front');
+      return { depth: this.slotDepth(slot, y), lift: ch.inside ? 0 : this.lift };
+    }
+    // outside, in front of a front wall but above the building's own base depth: over every layer of the building
+    const top = this.base + 0.01 * this.order.length;
+    if (y < top && this.inFront(x, y)) return { depth: top + 0.001 + (y - this.base + 400) * 1e-6, lift: 0 };
+    return null;
+  }
+
+  /** (x, y) lies in front of (below) the two front walls of the floor */
+  inFront(x, y) {
+    const F = this.floor, fp = this.frontPt;
+    if (!fp) return false;
+    // the two neighbours of the front corner span the front walls
+    const i = F.indexOf(fp), a = F[(i + F.length - 1) % F.length], c = F[(i + 1) % F.length];
+    const L = a.x < c.x ? a : c, R = a.x < c.x ? c : a;
+    if (x < L.x || x > R.x) return false;
+    const edgeY = x <= fp.x ? L.y + ((fp.y - L.y) * (x - L.x)) / Math.max(1e-6, fp.x - L.x) : fp.y + ((R.y - fp.y) * (x - fp.x)) / Math.max(1e-6, R.x - fp.x);
+    return y > edgeY;
+  }
+
+  inPoly(x, y) { return polyHas(this.poly, x, y); }
 
   reveal(on) { this.revealed = !!on; }
 
@@ -100,5 +141,18 @@ export class Cutaway {
 
   objects() { return Object.values(this.layers); }
 
-  destroy() { for (const k in this.layers) this.layers[k].destroy(); this.layers = {}; }
+  destroy() {
+    for (const k in this.layers) this.layers[k].destroy();
+    this.layers = {};
+    const I = this.gs.interiors, i = I ? I.indexOf(this) : -1;
+    if (i >= 0) I.splice(i, 1);
+  }
+}
+
+/** even-odd point-in-polygon ([{ x, y }]) */
+export function polyHas(P, x, y) {
+  if (!P || P.length < 3) return false;
+  let c = false;
+  for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a].y > y) !== (P[b].y > y) && x < ((P[b].x - P[a].x) * (y - P[a].y)) / (P[b].y - P[a].y) + P[a].x) c = !c;
+  return c;
 }

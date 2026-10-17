@@ -136,7 +136,10 @@ try {
       wh: gs.warehouse && gs.warehouse.enabled ? [gs.warehouse.total] : null,
       boat: gs.boathouse && gs.boathouse.enabled ? [gs.boathouse.outStack.count, gs.boathouse.outStack.max] : null,
       v4: g ? { cargo: g.cargo } : null,
-      v42: F ? { dock: F.dockCount(), aboard: F.aboard(), exported: F.stats.exported, exportCoins: F.stats.coins, lines: gs.v42.lines ? gs.v42.lines.state() : null } : null,
+      v42: F ? { dock: F.dockCount(), aboard: F.aboard(), exported: F.stats.exported, exportCoins: F.stats.coins, lines: gs.v42.lines ? gs.v42.lines.state() : null,
+        // (CODE-1 review) the 서리 물류창고's sales today [day, items, coins] and the tills' coins not yet collected
+        dep: gs.v42.depot && gs.v42.depot.built ? [gs.v42.depot.model.day, gs.v42.depot.model.today.sales, gs.v42.depot.model.today.coins] : null,
+        tills: gs.v42.office && gs.v42.office.tills ? gs.v42.office.tills().reduce((a, q) => a + (q.till.value || 0), 0) : null } : null,
       bag: gs.player.stack.count, task: window.__bot.task ? window.__bot.task.kind : null,
       nPorters: gs.porters.length, nRaw: gs.rawPorters.length,
       done: Object.keys(gs.progress.done).filter((k) => gs.progress.done[k]).length,

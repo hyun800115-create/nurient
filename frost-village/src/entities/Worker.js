@@ -508,6 +508,18 @@ export class Porter extends Hauler {
       if (b && out.countOf(it.type) <= this.keepFor(it.type, b.prio)) continue;
       if (b && (!best || b.prio > best.prio || (b.prio === best.prio && out.countOf(it.type) > out.countOf(best.type)))) best = { sink: b.sink, type: it.type, n: b.n, prio: b.prio };
     }
+    // ((v4.2, gameplay review M5) after village complete: an output backing up (≥ surplus.outAt) that nothing in the
+    //  village wants — or only the 창고, and it is past surplus.whAt — goes to the export dock (the 짐 싣는 곳: the
+    //  train, then the 물류창고) with its own porter: idle porters by a full output were the late village's overflow)
+    const gs = this.gs, v42 = gs.v42, SP = v42 && v42.frules && BALANCE.v42 ? BALANCE.v42.surplus : null;
+    if (SP && out.count >= out.max * (Number(SP.outAt) || 0.7)) {
+      const W = gs.warehouse, whFull = !W || W.total + (W.incoming || 0) >= W.cap * (Number(SP.whAt) || 0.7);
+      if (!best || (best.sink.isWarehouse && whFull)) {
+        const FS = v42.freight && v42.freight.sink, top = out.items[out.items.length - 1];
+        const n = FS && top ? L.want(FS, top.type) : 0;
+        if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: top.type, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS };
+      }
+    }
     return best;
   }
 
@@ -537,7 +549,16 @@ export class Porter extends Hauler {
           this.planT = 0.5;
         }
         const pl = this.plan;
-        const want = pl ? Math.min(this.stack.max, Math.max(1, pl.n)) : 0;
+        let want = pl ? Math.min(this.stack.max, Math.max(1, pl.n)) : 0;
+        // ((v4.2, gameplay review M5) after village complete a backing-up output (≥ porters.fullLoadAt) goes out as one
+        //  bigger load: what ALL the village's places want of it now (shelf, pantry, food box, workshops — not the 창고),
+        //  dropped place after place (Hauler.unload) — a load sized for the first place's few free spots kept the
+        //  smokehouse / grill outputs full and their stations stopped)
+        const FL = this.gs.v42 && this.gs.v42.frules ? Number(BALANCE.v42.porters && BALANCE.v42.porters.fullLoadAt) || 0 : 0;
+        if (pl && FL > 0 && FL <= 1 && out.count >= out.max * FL && want < this.stack.max) {
+          if (this.wantT === undefined || this.gs.time.now - this.wantT > 400) { this.wantT = this.gs.time.now; this.wantAll = gs.logistics.totalWant(pl.type, 40); }
+          want = Math.min(this.stack.max, Math.max(want, this.wantAll || 0));
+        }
         if (this.room <= 0 || (pl && this.stack.count + this.stack.incoming >= want)) { this.finishLoad(); break; }
         if (pl && out.countOf(pl.type) > (pl.keep !== undefined ? pl.keep : (pl.keep = this.keepFor(pl.type, pl.prio)))) {
           this.waitT = 0;
@@ -560,10 +581,16 @@ export class Porter extends Hauler {
 
   finishLoad() {
     if (this.stack.incoming > 0) return;
-    const sink = (this.plan && this.plan.sink && this.gs.logistics.want(this.plan.sink, this.carriedType()) > 0) ? this.plan.sink : this.planDest();
+    const L = this.gs.logistics, ty = this.carriedType();
+    const sink = (this.plan && this.plan.sink && L.want(this.plan.sink, ty) > 0) ? this.plan.sink : this.planDest();
     this.plan = null;
-    if (sink) this.startHaul(sink);
-    else this.waitT = 0;      // nowhere wants it yet: keep it and wait by the pad
+    if (sink) {
+      // (a full load bigger than the place wants: reserve only what it wants, the rest is free for the next place)
+      const w = L.want(sink, ty);
+      this.startHaul(sink);
+      const over = this.resv - Math.max(1, w);
+      if (over > 0) { L.release(sink, ty, over); this.resv -= over; }
+    } else this.waitT = 0;      // nowhere wants it yet: keep it and wait by the pad
   }
 }
 
@@ -627,14 +654,20 @@ export class RawPorter extends Hauler {
         const want = sink ? Math.min(this.stack.max, L.want(sink, pile.item)) : 0;
         const have = this.stack.count + this.stack.incoming;
         // ((v4.2) after village complete: the station's input has been full a while and the pile is nearly full ->
-        //  this load goes to the 창고 (the village's buffer) instead of waiting; surplus.pileToWh)
-        const W = gs.warehouse, v42 = gs.v42;
-        const whLoad = want <= 0 && this.waitT > 4 && v42 && v42.frules && W && W.enabled && W.sink && W.room >= this.stack.max && pile.stack && pile.stack.max > 0 &&
-          (pile.count / pile.stack.max) >= (Number(BALANCE.v42.surplus && BALANCE.v42.surplus.pileToWh) || 0.85);
-        if (whLoad || this.toWh) {
-          if (!this.toWh) this.toWh = true;
+        //  this load goes to the 창고 (the village's buffer) instead of waiting; surplus.pileToWh. (CODE-1 review) only
+        //  what the 창고 stores (raw fish; not log / wheat / ore / raw meat) and while it is under surplus.whAt; else
+        //  the export dock (the 짐 싣는 곳: train, then the 물류창고) — a porter used to stand at the 창고 with ore)
+        const W = gs.warehouse, v42 = gs.v42, SP = (BALANCE.v42 && BALANCE.v42.surplus) || {};
+        let spill = null;
+        if (!this.toWh && want <= 0 && this.waitT > 4 && v42 && v42.frules && pile.stack && pile.stack.max > 0 && (pile.count / pile.stack.max) >= (Number(SP.pileToWh) || 0.85)) {
+          const FS = v42.freight && v42.freight.sink;
+          if (W && W.enabled && W.sink && W.accepts(pile.item) && W.room >= this.stack.max && W.total + (W.incoming || 0) < W.cap * (Number(SP.whAt) || 0.7)) spill = W.sink;
+          else if (FS && L.want(FS, pile.item) >= this.stack.max) spill = FS;
+        }
+        if (spill || this.toWh) {
+          if (!this.toWh) this.toWh = spill;
           if (have < this.stack.max && pile.count > 0 && this.waitT < 9) { if (this.dropT <= 0 && pile.takeTo(this, this.stack.max)) this.dropT = 0.14; this.waitT += dt; }
-          else if (have > 0 && this.stack.incoming === 0) { this.toWh = false; this.waitT = 0; this.startHaul(W.sink); }
+          else if (have > 0 && this.stack.incoming === 0) { const to = this.toWh; this.toWh = false; this.waitT = 0; this.startHaul(to); }
           else if (have === 0) { this.toWh = false; this.waitT = 0; }
         } else if (want > 0 && have < want && pile.count > 0) {
           this.waitT = 0;
@@ -697,19 +730,25 @@ export class WarehousePorter extends Hauler {
       }
     }
     // 2. an output pad filling up (no porter of its own keeping up)
+    // ((v4.2, gameplay review M5) after village complete the 창고 is a buffer up to surplus.whAt (70 %): above it an
+    //  output is only taken when a place wants it straight away (F3 direct); the rest waits at the station door and
+    //  goes out as export (the 역 짐꾼 carry the 창고's own surplus to the dock) — it used to fill to 293 / 300)
+    const v42w = gs.v42, S42 = v42w && v42w.frules && BALANCE.v42 ? BALANCE.v42.surplus : null;
+    const whFull = !!S42 && W.total + (W.incoming || 0) >= W.cap * (Number(S42.whAt) || 0.7);
     if (W.room > 5) {
       let best = null, bf = BALANCE.warehouse.overflowAt || 0.6;
       for (const s of gs.sources()) {
         if (!s.enabled || !s.outStack || s.outStack.max <= 0) continue;
         const f = s.outStack.count / s.outStack.max;
         if (f < bf) continue;
+        if (whFull) { const top = s.outStack.items[s.outStack.items.length - 1]; if (!top || !L.best(top.type, s.outPad.x, s.outPad.y, { minPrio: Number(BALANCE.v42.warehouse && BALANCE.v42.warehouse.directMinPrio) || 40, noStore: true })) continue; }
         if (gs.porters.some((p) => p !== this && p.job && p.job.kind === 'in' && p.job.src === s)) continue;
         bf = f; best = s;
       }
       // ((v4.2) after village complete the 창고 is the village's buffer: a collection pile ≥ surplus.pileToWh 90 % full
       //  is carried in too (raw the station cannot take yet); above 70 % the 창고's own surplus goes to the dock)
       const v42 = gs.v42, S = v42 && v42.surplus;
-      if (!best && S && v42.frules && W.room > this.stack.max) {
+      if (!best && S && v42.frules && W.room > this.stack.max && !whFull) {
         const at = Number(BALANCE.v42.surplus && BALANCE.v42.surplus.pileToWh) || 0.9;
         for (const k in gs.piles || {}) {
           const p = gs.piles[k];
@@ -717,6 +756,9 @@ export class WarehousePorter extends Hauler {
           const f = p.stack.count / p.stack.max;
           if (f < Math.max(at, bf)) continue;
           const sh = S.pileSource(p);
+          // ((robust review M2) the 창고 does not store log / wheat / ore / raw meat: such a pile is only carried when
+          //  its station's input wants about a load now — a porter must never stand at the 창고 with goods it refuses)
+          if (!W.accepts(p.item)) { const stn = gs.stations[p.station]; const w = stn && stn.inSink && stn.enabled ? L.want(stn.inSink, p.item) : 0; if (w < Math.ceil(this.stack.max / 2)) continue; }
           if (gs.porters.some((q) => q !== this && q.job && q.job.kind === 'in' && q.job.src === sh)) continue;
           bf = f; best = sh;
         }
@@ -781,8 +823,11 @@ export class WarehousePorter extends Hauler {
           const ty = this.carriedType() || (out.items.length ? out.items[out.items.length - 1].type : null);
           if (this.room > 0 && ty && out.countOf(ty) > 0) gs.moveItem(out, this.stack, ty, { dur: 230, height: 55 });
           else if (this.stack.incoming === 0) {
-            if (this.stack.count > 0) { const n = this.planDest(); this.startHaul(n || W.sink); }
-            else { this.job = null; this.state = 'idle'; }
+            if (this.stack.count > 0) {
+              // (raw the 창고 refuses goes to its station's input and waits there for room)
+              const n = this.planDest(), ty2 = this.carriedType(), stn = !n && !W.accepts(ty2) ? gs.stationByInput[ty2] : null;
+              this.startHaul(n || (stn && stn.inSink) || W.sink);
+            } else { this.job = null; this.state = 'idle'; }
           }
         }
         this.locomotion(false);

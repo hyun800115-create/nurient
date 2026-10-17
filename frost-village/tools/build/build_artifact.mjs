@@ -46,6 +46,9 @@ const WEBP = args.includes('--webp');
 const FORCE_MP3_ONLY = args.includes('--mp3-only') || INLINE;   // mp3 plays everywhere; one format is enough
 
 const OUT = path.join(ROOT, 'dist', INLINE ? 'artifact_inline' : 'artifact');
+// ((v4.2 robust review H1) the files live at the designer's link (the last publish): an update keeps every file it does
+//  not name, so the ones this build no longer has must be sent as null, or old + new files pass 511 a version)
+const PUBLISHED = path.join(HERE, 'published_files.json');
 const LIST_OUT = path.join(ROOT, 'dist', INLINE ? 'artifact_inline_files.json' : 'artifact_files.json');
 const PACK_MAX = 4 * 1024 * 1024;          // bytes of source data per packs/assets_N.js
 
@@ -799,6 +802,20 @@ async function main() {
     const bs = supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : [supporting];
     bs.forEach((b, i) => { const n = b.reduce((a, p) => a + (sz.get(p) || 0), pageB); if (n > LIMITS.total) problems.push(`publish ${i + 1}: ${mb(n)} (> 64 MB one publish)`); });
   }
+  // ((v4.2 robust review H1) what the live version has that this build no longer has: null in the first publish)
+  let stale = [], prevN = 0;
+  if (!INLINE && fs.existsSync(PUBLISHED)) {
+    try {
+      const prev = JSON.parse(fs.readFileSync(PUBLISHED, 'utf8')).files || [];
+      prevN = prev.length;
+      const now = new Set(supporting);
+      stale = prev.filter((p) => !now.has(p)).sort();
+      // the version during the update: first publish = the live files − stale + batch 1, then + each next batch
+      const bs = supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : [supporting];
+      const live = new Set(prev.filter((p) => now.has(p)));
+      bs.forEach((b, i) => { for (const p of b) live.add(p); if (live.size + 1 > LIMITS.maxFiles) problems.push(`publish ${i + 1}: the version would hold ${live.size + 1} files (> ${LIMITS.maxFiles})`); });
+    } catch (e) { problems.push('tools/build/published_files.json: ' + e.message); }
+  }
   fs.writeFileSync(LIST_OUT, JSON.stringify({
     page: path.relative(path.dirname(ROOT), path.join(OUT, 'index.html')).split(path.sep).join('/'),
     root: path.relative(path.dirname(ROOT), OUT).split(path.sep).join('/'),
@@ -806,9 +823,12 @@ async function main() {
     // more than one publish's worth of files: send batch 1 with the page, then the next batches to the same url
     // (the boot files — game.js, lib/, the manifests — are in the last batch: see publishBatches)
     batches: supporting.length > LIMITS.files - 5 ? publishBatches(supporting, 250) : undefined,
+    // files of the live version (tools/build/published_files.json) this build no longer has: pass each as null in
+    // the FIRST publish's `files` map ({ "<path>": null }) — an update keeps every file it does not name
+    stale: stale.length ? stale : undefined,
     // (v4-C2) the resident chat asks the viewer's Claude through the `sample` capability: publish with this declaration
     capabilities: { sample: {} },
-    note: 'Publish: Artifact({ file_path: page, root, files, capabilities: { sample: {} } }) - the capabilities declaration lets residents chat with AI (offline village voice without it). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : ''),
+    note: 'Publish: Artifact({ file_path: page, root, files, capabilities: { sample: {} } }) - the capabilities declaration lets residents chat with AI (offline village voice without it). Supporting paths are relative to root.' + (supporting.length > LIMITS.files - 5 ? ' Too many files for one publish: publish batches[0] with the page, then each next batch with url = the returned link, in order. The LAST batch holds game.js, lib/ and every manifest.json: until it is published the link keeps running the previous version (an update), or shows the loading error (a brand-new link) — never a mix of old code and new manifests.' : '') + (stale.length ? ` Updating the live link: also send the ${stale.length} \`stale\` paths as null in the FIRST publish (files map { path: null }); then run node tools/build/build_artifact.mjs --record-published.` : ''),
   }, null, 1));
 
   const byExt = {};
@@ -828,6 +848,7 @@ async function main() {
   console.log(`\n  FILES: ${sizes.length} (limit ${LIMITS.files} a publish, ${LIMITS.maxFiles} a version)   TOTAL: ${mb(total)} (limit 64 MB a publish, 256 MB a version)   largest: ${mb(sizes[0].s)} (limit 16 MB)`);
   console.log(`  every game file once (one audio format): ${mb(downloaded)} — a first visit loads only part of it before the title; the rest arrives while playing, as the village needs it`);
   console.log(`  file list for the Artifact tool: ${path.relative(process.cwd(), LIST_OUT)}`);
+  if (prevN) console.log(`  live version (tools/build/published_files.json): ${prevN} files; ${stale.length} of them are gone from this build -> \`stale\` (send as null in the first publish)`);
   if (problems.length) {
     console.log('\n[build] PROBLEMS:\n  - ' + problems.join('\n  - '));
     process.exit(2);
@@ -835,4 +856,12 @@ async function main() {
   console.log(`[build] OK in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 }
 
+if (args.includes('--record-published')) {
+  // after a successful publish: the live version is now this build's file list
+  const j = JSON.parse(fs.readFileSync(LIST_OUT, 'utf8'));
+  const old = fs.existsSync(PUBLISHED) ? JSON.parse(fs.readFileSync(PUBLISHED, 'utf8')) : {};
+  fs.writeFileSync(PUBLISHED, JSON.stringify({ note: old.note || '', version: new Date().toISOString().slice(0, 10), files: j.files.slice().sort() }, null, 0));
+  console.log(`[build] recorded ${j.files.length} published files in ${path.relative(process.cwd(), PUBLISHED)}`);
+  process.exit(0);
+}
 main().catch((e) => { console.error('[build] FAILED:', e && e.stack || e); process.exit(1); });

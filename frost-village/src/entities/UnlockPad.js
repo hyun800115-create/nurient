@@ -194,7 +194,7 @@ export class UnlockPad {
     this.wasAfford = afford;
     // ((v4.2) 관망: the piloted chief never pays (unless 관망 중 돈 쓰기 = 고용만 and this is a hire pad))
     const PL = gs.v42 && gs.v42.pilot;
-    const on = this.pad.contains(p.x, p.y) && !(PL && PL.blocksPay(this.kind));
+    const on = this.pad.contains(p.x, p.y) && !(PL && PL.blocksPay(this.kind, this));
     // (review fix) a pad waiting for the chief to step off keeps its label readable (what comes next)
     const la = on && !(this.needsLeave && afford) ? 0.3 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));

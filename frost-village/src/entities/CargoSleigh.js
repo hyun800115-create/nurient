@@ -104,7 +104,10 @@ export class CargoSleigh {
     const [x, y] = L4(p.i - (queued ? 1.4 : 0), p.j);
     this.x = x; this.y = y;
     const onScreen = gs.isOnScreen(x, y, 300);
-    if (!this.ready) { if (Assets.texOf('veh_cargo_sleigh')) { Assets.buildCharacter(gs.game, 'cargo_sleigh'); const d = Assets.charDef('cargo_sleigh'); this.spr.setOrigin(d.anchor[0], d.anchor[1]); this.ready = true; } }
+    // ((robust review H3) Residency takes the sleigh's page out of memory while the camera is far from its lanes:
+    //  build its anims again when the page is back)
+    if (this.ready && !Assets.texOf('veh_cargo_sleigh')) { this.ready = false; this.anim = null; }
+    if (!this.ready) { if (Assets.texOf('veh_cargo_sleigh')) { Assets.buildCharacter(gs.game, 'cargo_sleigh'); const d = Assets.charDef('cargo_sleigh'); this.spr.setOrigin(d.anchor[0], d.anchor[1]); this.ready = true; this.anim = null; } }
     const show = onScreen && this.ready;
     if (this.spr.visible !== show) this.spr.setVisible(show);
     for (const c of this.crates) if (!show && c.visible) c.setVisible(false);

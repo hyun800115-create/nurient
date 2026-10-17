@@ -28,7 +28,7 @@ export class OfficeBuilding {
     this.img = Assets.image(gs, x, y + 20, KEY).setDepth(y + 20).setScale(1.75).setTint(0xfff1d6);
     if (gs.lazyImage) gs.lazyImage(this.img, KEY, (im) => im.setScale(1.75).setTint(0xfff1d6));
     if (gs.addOccluder) gs.addOccluder(this.img);
-    this.sign = gs.add.text(x + 10, y - 360, t('officeTitle'), { fontFamily: gs.font, fontSize: '24px', fontStyle: '900', color: '#ffffff', stroke: '#2f5e66', strokeThickness: 7, resolution: 2 }).setOrigin(0.5).setDepth(y + 21);
+    this.sign = gs.add.text(x + 10, y - 215, t('officeTitle'), { fontFamily: gs.font, fontSize: '24px', fontStyle: '900', color: '#ffffff', stroke: '#2f5e66', strokeThickness: 7, resolution: 2 }).setOrigin(0.5).setDepth(y + 21);
     // walls: circles over the footprint (the stand-in has no inside)
     this.obstacles = [];
     for (const [dx, dy, r] of [[0, 0, 110], [110, -20, 70], [-90, -10, 60], [60, 60, 50]]) this.obstacles.push(gs.collision.add(x + dx, y + dy, r, 'office'));

@@ -223,7 +223,8 @@ try {
     await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 180000);
     const idle = await waitFor(page, () => window.__FV.title && window.__FV.title.screen && window.__FV.title.screen.state().mode, 60000).then(() => ev(() => window.__FV.title.screen.state())).catch(() => null);
     // (the idle title opens on the stage this player saw last time and grows to the save's stage once its pack is in)
-    const grown = idle ? await waitFor(page, () => { const s = window.__FV.title.screen.state(); return s.stage >= s.saveStage; }, 60000).then(() => ev(() => window.__FV.title.screen.state())).catch(() => null) : null;
+    // (150 s: on a loaded, shared machine the stage pack alone has taken over 60 s)
+    const grown = idle ? await waitFor(page, () => { const s = window.__FV.title.screen.state(); return s.stage >= s.saveStage; }, 150000).then(() => ev(() => window.__FV.title.screen.state())).catch(() => null) : null;
     if (want('title')) step('title: a returning player gets the idle title of their stage (no intro; grows from the last one seen)', !!idle && idle.mode !== 'intro' && idle.saveStage >= 2 && !!grown && grown.stage >= 2, { first: idle && idle.stage, grown: grown && grown.stage, saveStage: idle && idle.saveStage });
     await sleep(1500);
     await page.screenshot({ path: path.join(OUT, 'c2_title_idle.jpg'), type: 'jpeg', quality: 82 });

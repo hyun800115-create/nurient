@@ -19,7 +19,7 @@ import { Input } from '../../core/Input.js';
 import { t } from '../../data/strings.js';
 import { gdist } from '../../core/Iso.js';
 import { choose, DUR, AGAIN, CHORES, rng32, hash3 } from './agenda.js';
-import { urgentTarget, workTarget, cashTarget, restSpot, chatMate, isPayTarget } from './work.js';
+import { urgentTarget, workTarget, cashTarget, restSpot, chatMate, isPayTarget, hireTarget, isHirePad } from './work.js';
 import { CameraDirector } from './CameraDirector.js';
 
 const PB = () => (BALANCE.v42 && BALANCE.v42.pilot) || {};
@@ -55,8 +55,11 @@ export class ChiefPilot {
   }
 
   rand() { return this.r(); }
+  /** how far he looks for someone to chat with: further during a chore break (the break is his to spend) */
+  chatRange() { return (this.locked.urgent || 0) > this.t ? 1500 : 600; }
   get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial)); }
-  blocksPay(kind) { if (!this.on) return false; if (kind === 'hire' && Settings.data.observeSpend === 'hire') return false; return true; }
+  /** may the piloted chief pay at this pad? never — except 관망 중 돈 쓰기 '고용만' on a staff / porter hire pad */
+  blocksPay(kind, pad) { if (!this.on) return false; if (kind === 'hire' && Settings.data.observeSpend === 'hire' && (!pad || isHirePad(pad))) return false; return true; }
 
   toggle() { if (this.on) this.stop('button'); else this.start('button'); }
 
@@ -71,6 +74,8 @@ export class ChiefPilot {
     this.stats.started++;
     this.stats.coins0 = gs.economy.coins;
     this.cam.start();
+    // ((gameplay review M3) the halo's 관망 look: the star pin always, a softer ring, slower motes)
+    if (this.v42.aura) this.v42.aura.observing = true;
     if (gs.ui && gs.ui.banner && reason === 'auto') gs.ui.toast(t('obs_caption', { act: t('act_walk') }));
     return true;
   }
@@ -82,6 +87,7 @@ export class ChiefPilot {
     this.vec.x = this.vec.y = 0;
     this.route.length = 0;
     this.cam.stop();
+    if (this.v42.aura) this.v42.aura.observing = false;
     void reason;
   }
 
@@ -102,10 +108,10 @@ export class ChiefPilot {
     const R = gs.civic && gs.civic.restaurant;
     const rail = nb && nb.rail;
     const cashes = (gs.tills || []).filter((c) => c && c.enabled !== false);
-    const mate = chatMate(gs, p.x, p.y, this.chatted, this.t);
+    const mate = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange());
     return {
       now: this.t, hour,
-      urgent: !!urgentTarget(gs),
+      urgent: !!(hireTarget(gs) || urgentTarget(gs)),
       lunchOpen: !!(R && R.enabled),
       bagCount: p.stack.count, bagRoom: p.room,
       work: !!workTarget(gs),
@@ -126,18 +132,18 @@ export class ChiefPilot {
     const [mn, mx] = DUR[a] || [20, 40];
     const st = { act: a, t: 0, min: mn, max: mn + this.rand() * Math.max(0, mx - mn), target: null, sub: null };
     switch (a) {
-      case 'urgent': st.target = urgentTarget(gs); break;
+      case 'urgent': st.target = hireTarget(gs) || urgentTarget(gs); break;
       case 'work': st.target = workTarget(gs); break;
       case 'collect': { const c = cashTarget(gs, 200); st.target = c; break; }
       case 'lunch': { const R = gs.civic && gs.civic.restaurant; if (R) st.target = { x: R.x + 160, y: R.y + 120 }; break; }
       case 'evening': case 'office': { if (O && O.building) { const d = O.building.spots.deskPad; st.target = { x: d.x + 46, y: d.y + 30 }; } else st.target = restSpot(gs, this.r); break; }
       case 'train': { const nb = gs.v4; if (nb && nb.ours && nb.ours.wait && nb.ours.wait.length) { const w = nb.ours.wait[0]; st.target = { x: w.x + 40, y: w.y + 30 }; } break; }
-      case 'chat': { const m = chatMate(gs, p.x, p.y, this.chatted, this.t); if (m) { st.sub = m; st.target = { x: m.ch.x + 54, y: m.ch.y + 26 }; } break; }
+      case 'chat': { const m = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange()); if (m) { st.sub = m; st.target = { x: m.ch.x + 54, y: m.ch.y + 26 }; } break; }
       case 'rest': st.target = restSpot(gs, this.r); break;
       case 'dog': { const d = gs.dog && gs.dog.r; if (d) st.target = { x: d.x + 50, y: d.y + 20 }; break; }
       default: break;
     }
-    if (st.target && isPayTarget(gs, st.target.x, st.target.y)) st.target = null;
+    if (st.target && st.target.kind !== 'hire' && isPayTarget(gs, st.target.x, st.target.y)) st.target = null;
     if (st.target) this.planTo(st.target.x, st.target.y);
     else this.route.length = 0;
     this.act = st;
@@ -191,10 +197,11 @@ export class ChiefPilot {
     const a = this.act, gs = this.gs;
     if (!a) return t('act_walk');
     switch (a.act) {
-      case 'urgent': return t('act_urgent', { what: '' }).trim();
+      case 'urgent': return this.urgentCaption(a.target);
       case 'work': {
         const tg = a.target;
-        if (tg && tg.kind === 'carry') return t('actw_carry', { item: t(tg.item), place: tg.place ? t(tg.place) : t('place_market') });
+        // ((gameplay review L1) a place name with a {st} slot gets its station)
+        if (tg && tg.kind === 'carry') return t('actw_carry', { item: t(tg.item), place: tg.place ? t(tg.place, tg.lp || undefined) : t('place_market') });
         if (tg && tg.kind === 'take') return t('actw_take', { item: t(tg.item), place: tg.st ? t('line_' + tg.st.id) : t('pile_' + ((tg.pile && tg.pile.id) || 'fish')) });
         return t('pact_work', { what: t('act_walk') });
       }
@@ -208,6 +215,22 @@ export class ChiefPilot {
       case 'dog': return t('act_dog');
       default: return t('act_walk');
     }
+  }
+
+  /** ((gameplay review L6) what the urgent job is: the tutorial objective it follows, in a few words */
+  urgentCaption(tg) {
+    const k = (tg && tg.key) || '';
+    let what = null;
+    if (tg && tg.kind === 'hire') what = 'urg_hire';
+    else if (/^obj_(register|store_register|rest_register)/.test(k)) what = 'urg_register';
+    else if (/ribbon/.test(k)) what = 'urg_ribbon';
+    else if (/^obj_op|^obj_operating|^obj_grill|^obj_rest_kitchen/.test(k)) what = 'urg_station';
+    else if (/^obj_site|^obj_feed_carpenter/.test(k)) what = 'urg_site';
+    else if (/^obj_food|^obj_take_bread|^obj_rest_pantry/.test(k)) what = 'urg_food';
+    else if (/^obj_cargo|^obj_order/.test(k)) what = 'urg_cargo';
+    else if (/^obj_pile|^obj_take|^obj_fish/.test(k)) what = 'urg_fetch';
+    else if (/^obj_(sell|cash|hall_tax)/.test(k)) what = 'urg_deliver';
+    return what ? t(what) : t('act_urgent', { what: '' }).trim();
   }
 
   update(dt) {
@@ -276,6 +299,9 @@ export class ChiefPilot {
     this.lastChat = this.t;
     if (ch.faceTo) ch.faceTo(p.x, p.y);
     if (p.faceTo) p.faceTo(ch.x, ch.y);
+    // (the resident stays for the chat: their stay job waits)
+    const j = ch.job;
+    if (j && j.kind === 'stay') { j.next = Math.max(Number(j.next) || 0, 12); j.left = Math.max(Number(j.left) || 0, 14); }
     const B = gs.life && gs.life.bubbles;
     if (!B) return;
     const lines = ['💬', '♪', '❤'];

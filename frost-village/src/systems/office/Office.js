@@ -46,6 +46,11 @@ export class Office {
     this.depositedTotal = 0;
     this.income = {};
     this.incomeDay = -1;
+    // ((robust review L3) today's income bars, saved as [day, { source: coins }])
+    if (Array.isArray(s.inc) && s.inc[1] && typeof s.inc[1] === 'object') {
+      this.incomeDay = Math.floor(Number(s.inc[0]) || 0);
+      for (const k in s.inc[1]) { const n = Math.floor(Number(s.inc[1][k]) || 0); if (n > 0) this.income[k] = n; }
+    }
     this.deskT = 0;
     this.camReveal = null;
     this.cleared = {};
@@ -147,15 +152,40 @@ export class Office {
     const home = role === 'sem' ? B.spots.desk[0] : role === 'bok' ? B.spots.desk[1] : role === 'chong' ? B.spots.desk[2] : B.spots.desk[3];
     // new staff walk in from the plaza; a reload puts them at their spots
     const from = instant ? home : { x: this.x + 520, y: this.y + 160 };
-    let ch;
-    if (role === 'ttal') ch = new Courier(gs, this, seed, from.x, from.y, home, instant ? this.bagSaved : 0);
-    else if (role === 'chong') ch = new Aide(gs, this, seed, from.x, from.y, home);
-    else ch = new Staff(gs, this, role, seed, from.x, from.y, home);
+    const ch = this.make(role, seed, from.x, from.y, home, instant ? this.bagSaved : 0);
     if (!instant && role !== 'chong') ch.goHome(() => ch.say(t('staffArrive', { role: t('role_' + role), name: t('staff_' + role) }), 2.4));
-    // the clerks' errands: 셈이 to the board, 소복이 to the mailbox
+    this.staff[role] = ch;
+  }
+
+  /** one staff member of `role` at (x, y) with its routine (the clerks' errands: 셈이 to the board, 소복이 to the mailbox) */
+  make(role, seed, x, y, home, bag) {
+    const gs = this.gs, B = this.building;
+    let ch;
+    if (role === 'ttal') ch = new Courier(gs, this, seed, x, y, home, bag || 0);
+    else if (role === 'chong') ch = new Aide(gs, this, seed, x, y, home);
+    else ch = new Staff(gs, this, role, seed, x, y, home);
     if (role === 'sem') ch.errand = () => { ch.doing = 'board'; ch.walkTo(B.spots.board.x + 20, B.spots.board.y + 14, () => { ch.play('talk', true); this.semSays(ch); this.gs.time.delayedCall(2600, () => { if (ch.alive) ch.goHome(); }); }); };
     if (role === 'bok') ch.errand = () => { if (this.v42.news && this.v42.news.unread() > 0) this.fetchMail(ch); };
-    this.staff[role] = ch;
+    return ch;
+  }
+
+  /** ((robust review M3) staff made before the townsfolk manifest arrived (a reload) wear the village stand-in: once
+   *  the paper dolls can be made, each is dressed in its own look (seeded) the next time it stands still */
+  redressStaff() {
+    if (!(TF.ok && TF.readyFor(Assets, 'adult'))) return;
+    this.ensurePresets();
+    for (const r of ROLES) {
+      const ch = this.staff[r];
+      if (!ch || !ch.alive || !ch.wantsDress()) continue;
+      if (r === 'ttal' ? !(ch.state === 'desk' && ch.bag === 0) : r === 'chong' ? !!ch.target : !ch.settled()) continue;
+      const n = this.make(r, ch.seed, ch.x, ch.y, ch.home, 0);
+      n.dir = ch.dir;
+      if (r === 'ttal') { n.rounds = ch.rounds; n.deposited = ch.deposited; n.waitT = ch.waitT; }
+      if (r === 'chong') n.doing = ch.doing;
+      ch.destroy();
+      this.staff[r] = n;
+    }
+    if (this.bank && this.bank.redress) this.bank.redress();
   }
 
   /** 셈이 calls out an empty shelf */
@@ -182,12 +212,13 @@ export class Office {
   onPaper() { const ch = this.staff.bok; if (ch) ch.say(t('bok_paper'), 2.4); const a = this.staff.chong; if (a && a.doing === 'follow') a.say(t('chong_news'), 2.4); }
 
   // ------------------------------------------------------------------ the coin loop
-  /** the village tills the courier visits: [{ name, till }] (gs.tills without the 역 금고 / 물류 금고 from 읍 on: they
-   *  empty themselves every 15 s) */
+  /** the village tills the courier visits: [{ name, till }] (gs.tills without the 역 금고 from 읍 on: it empties itself
+   *  every 15 s. (review H1) the 물류 금고 stays on the round: the depot only exists after 읍 and never empties
+   *  itself while 딸랑이 works — the designer doc: 코인은 물류 금고로 → 딸랑이가 가져가요) */
   tills() {
     const rk = this.gs.v4 && this.gs.v4.rank;
     const late = !!(rk && rk.level >= 2);
-    return villageTills(this.gs, this.v42.depot).filter((q) => !(late && (q.name === 'station' || q.name === 'depot')));
+    return villageTills(this.gs, this.v42.depot).filter((q) => !(late && q.name === 'station'));
   }
   tillName(name) { return t({ market: 'place_market', trade: 'place_trade', store: 'place_store', rest: 'inc_rest', tax: 'inc_tax', station: 'inc_station', depot: 'inc_depot' }[name] || 'place_market'); }
 
@@ -264,9 +295,13 @@ export class Office {
     if (so && so.shown && !this.cleared.office) this.clearDecor('office');
     if (sb && sb.shown && !this.cleared.bank) this.clearDecor('bank');
     if (!B) return;
-    if (this.hirePad) { this.hirePad.update(dt); this.hirePaid = this.hirePad.paid || 0; }
+    // (a pad paid in full hires inside its update and is gone afterwards: never read it back then)
+    const hp = this.hirePad;
+    if (hp) { hp.update(dt); if (this.hirePad === hp) this.hirePaid = hp.paid || 0; }
     else if ((this.chkT = (this.chkT || 0) - dt) <= 0) { this.chkT = 2; this.showHire(); }
     for (const r in this.staff) { const ch = this.staff[r]; if (ch && ch.alive) ch.update(dt); }
+    this.dressT = (this.dressT || 0) - dt;
+    if (this.dressT <= 0) { this.dressT = 2; this.redressStaff(); }
     if (this.bank) this.bank.update(dt);
     // the 책상 pad
     const p = gs.player;
@@ -298,6 +333,11 @@ export class Office {
   serializeInto(o) {
     const C = this.staff.ttal;
     o.office = { st: this.building ? 2 : (this.gs.sites && this.gs.sites.v42_office && this.gs.sites.v42_office.state !== 'plot' ? 1 : 0), staff: this.seeds.slice(), bag: C ? C.bag : this.bagSaved, safe: this.safeTotal, log: this.log.slice(-8), bankSt: this.bank ? 2 : this.bankSt };
+    // ((robust review M1) coins already paid toward the next hire pad come back after a reload)
+    const paid = this.hirePad ? Math.floor(this.hirePad.paid || 0) : this.hirePaid;
+    if (paid > 0) o.office.hirePaid = paid;
+    // ((robust review L3) today's income bars survive a reload)
+    if (this.incomeDay >= 0 && Object.keys(this.income).length) o.office.inc = [this.incomeDay, this.income];
   }
 
   /** the bank slice in v5's format: v5 opens with the bank built and skips its own site */

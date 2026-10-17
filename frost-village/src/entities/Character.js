@@ -135,9 +135,16 @@ export class Character {
 
   sync(dt) {
     const s = this.sprite;
-    s.setPosition(this.x, this.y);
-    if (s.depth !== this.y) s.setDepth(this.y);
-    this.shadow.setPosition(this.x, this.y + 1);
+    // ((v4.2 robust review H2) inside a cutaway building (gs.interiors: the bank, the depot, CODE-2's office) the
+    //  character takes the depth of its slot among the building's layers and stands on the raised floor)
+    let d = this.y, lt = 0;
+    const I = this.scene.interiors;
+    if (I && I.length) for (let k = 0; k < I.length; k++) { const q = I[k].occupy(this); if (q) { d = q.depth; lt = q.lift; break; } }
+    this.inDepth = d;
+    const ly = this.liftY = lt === (this.liftY || 0) || !(dt > 0) ? lt : (this.liftY || 0) + (lt - (this.liftY || 0)) * Math.min(1, dt * 14);
+    s.setPosition(this.x, this.y - ly);
+    if (s.depth !== d) s.setDepth(d);
+    this.shadow.setPosition(this.x, this.y + 1 - ly);
     if (this.stack.count) {
       const moving = this.vx * this.vx + this.vy * this.vy > 100;
       if (moving) this.walkT += dt * 12;
@@ -151,7 +158,8 @@ export class Character {
       // glide to the new spot when turning instead of jumping
       if (this._cdx === undefined || dt <= 0) { this._cdx = dx; this._cdy = dy; }
       else { const k = Math.min(1, dt * 16); this._cdx += (dx - this._cdx) * k; this._cdy += (dy - this._cdy) * k; }
-      this.stack.layout(this.x + this._cdx, this.y + this._cdy + bob, this.y + (behind ? -0.5 : 0.5), this.vx, dt, this.walkT);
+      const sd = d !== this.y ? d + (behind ? -2e-6 : 2e-6) : this.y + (behind ? -0.5 : 0.5);
+      this.stack.layout(this.x + this._cdx, this.y + this._cdy + bob - ly, sd, this.vx, dt, this.walkT);
     }
   }
 

@@ -556,16 +556,29 @@ export class Tutorial {
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? D(gs.market.shelf, SELL_KEY[type], 'place_market', gs.market.sink, gs.market.maxPerType - gs.market.stock.countWithIncoming(type)) : this.v42Dest(type);
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? D(gs.trade.shelf, SELL_KEY[type], 'place_trade', gs.trade.sink, gs.trade.maxPerType - gs.trade.stock.countWithIncoming(type)) : this.v42Dest(type);
     const st = gs.stationByInput[type];
-    if (st && st.enabled && st.inStack.room > 0) { const d = this.stationDest(st); if (d) d.room = st.inStack.room; return d; }
+    // ((gameplay review L3) the input's room after what porters already carry there: when they will fill it, the
+    //  export dock (after village complete) is the better answer; before that the input as in v4.1)
+    if (st && st.enabled && st.inStack.room > 0) {
+      const want = st.inSink && L ? L.want(st.inSink, type) : st.inStack.room;
+      const alt = want > 0 ? null : this.v42Dest(type);
+      if (alt) return alt;
+      const d = this.stationDest(st);
+      if (d) d.room = Math.max(1, want);
+      return d;
+    }
     return this.v42Dest(type);
   }
 
   /** (v4.2) nothing in the village takes it: the 짐 싣는 곳 as surplus (exported by train / sent to the depot, §4.3) */
   v42Dest(type) {
-    const gs = this.gs, F = gs.v42 && gs.v42.freight;
-    const sk = F && F.surplusSink;
-    if (!sk || !gs.logistics || gs.logistics.want(sk, type) <= 0) return null;
-    return { pad: F.dockPad(), key: null, label: 'place_dock', sink: sk, room: gs.logistics.want(sk, type), surplus: true };
+    // ((gameplay review M1) the surplus sink is Freight.sink; the chief drops surplus on the 짐 싣는 곳 pad of the
+    //  station square (Growth.dockPad), the same pad the order-card crates go to)
+    const gs = this.gs, F = gs.v42 && gs.v42.freight, G = this.growth();
+    const sk = F && F.sink;
+    if (!sk || !G || !G.active || !G.dockPad || !gs.logistics) return null;
+    const room = gs.logistics.want(sk, type);
+    if (room <= 0) return null;
+    return { pad: G.dockPad, key: null, label: 'place_dock', sink: sk, room, surplus: true };
   }
 
   /** (v4-B) does the shelf that sells `type` have room? */

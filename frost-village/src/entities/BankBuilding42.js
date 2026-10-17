@@ -60,9 +60,26 @@ export class BankBuilding42 {
     [['teller0', sp[0]], ['teller1', sp[1]], ['manager', def.deskPoint || [-48, -31]]].forEach(([role, p], i) => {
       const ch = new Staff(gs, office, role, seeds[i], this.x + p[0], this.y + p[1], { x: this.x + p[0], y: this.y + p[1] });
       ch.inside = true;
+      // (the manifest's pointSlots: tellers behind the counter, the manager's desk in front of it)
+      ch.slot = role === 'manager' ? '@front' : '@behind';
       ch.faceTo(ch.x - 40, ch.y + 30);
       this.staff.push(ch);
     });
+  }
+
+  /** ((robust review M3) tellers + manager made before the townsfolk manifest arrived: dressed in place */
+  redress() {
+    const gs = this.gs, office = this.office;
+    for (let i = 0; i < this.staff.length; i++) {
+      const ch = this.staff[i];
+      if (!ch.alive || !ch.wantsDress()) continue;
+      const n = new Staff(gs, office, ch.role, ch.seed, ch.x, ch.y, ch.home);
+      n.inside = true; n.slot = ch.slot; n.dir = ch.dir;
+      n.faceTo(n.x - 40, n.y + 30);
+      if (ch.sprite.visible === false) { n.sprite.setVisible(false); if (n.shadow) n.shadow.setVisible(false); }
+      ch.destroy();
+      this.staff[i] = n;
+    }
   }
 
   /** where the courier stands to hand the sack over (in front of the counter) */
@@ -103,8 +120,7 @@ export class BankBuilding42 {
     const vis = this.cw.alpha > 0.3;
     for (const ch of this.staff) {
       if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); }
-      ch.update(dt);
-      if (ch.sprite.setDepth) ch.sprite.setDepth(this.cw.slotDepth('@behind', ch.y));
+      ch.update(dt);          // (its depth: the Cutaway's slot, Character.sync -> cw.occupy)
     }
     // the chief on the 창구 pad: the 통장 tab
     if (this.windowPad.contains(p.x, p.y)) {

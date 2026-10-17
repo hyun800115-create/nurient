@@ -94,6 +94,12 @@ try {
     const f = await bag();
     await page.evaluate(() => window.__FV.v42.v.pickup.release());
     ok(f > 0, src + ': holding 줍기 streams', { f });
+    // (review L2) letting go of a hold stops the stream (a tap is the one-load gesture)
+    await advance(page, 0.4);
+    const f2 = await bag();
+    await advance(page, 1.2);
+    const f3 = await bag();
+    ok(f3 === f2, src + ': letting go of 줍기 stops taking', { f, f2, f3 });
   }
 
   console.log('gathering');

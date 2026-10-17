@@ -393,7 +393,16 @@ export class Neighbours {
     const seats = route ? this.rail.seats() : (T.seats || 12) + (this.rail.coaches > 1 ? (T.coachSeats || 8) : 0);
     const scale = route ? Math.max(1, this.rail.cycle() / 59.3) : 1;
     const mult = V[this.clock.phase()] !== undefined ? V[this.clock.phase()] : 1;
-    const n = Math.max(1, Math.round(Math.min((V.base + shops * V.perShop + (rank - 1) * V.perRank) * scale, seats) * (this.clock.on ? mult : 1)));
+    const want = V.base + shops * V.perShop + (rank - 1) * V.perRank;
+    let n;
+    if (route) {
+      // what the v4.1 train would bring (its 12 / 20 seats, at least 1, rounded) × ridersScale, rounded at random so
+      // a night train (v4.1: 1 rider) brings 1.44 on average and the visitors per minute match v4.1 (visitors42.mjs)
+      const seats41 = (T.seats || 12) + (this.rail.stage > 1 ? (T.coachSeats || 8) : 0);
+      const per41 = Math.max(1, Math.round(Math.min(want, seats41) * (this.clock.on ? mult : 1)));
+      const x = Math.min(per41 * scale, seats);
+      n = Math.max(1, Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0));
+    } else n = Math.max(1, Math.round(Math.min(want, seats) * (this.clock.on ? mult : 1)));
     // ((v4 review M5) at most `maxInVillage` neighbours in our village at once: 30–50 visitors made the plaza heavy
     //  (display objects, logic time) without being more fun to watch)
     const room = Math.max(0, Math.floor(Number(V.maxInVillage) || 24) - this.visitors.length);

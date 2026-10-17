@@ -273,7 +273,7 @@
       const m = gs.market, tr = gs.trade;
       const sellFood = Object.keys(b).some((t) => FOODS.includes(t) && canSell(t));
       if (m.waitingPay && !m.register.clerk && !sellFood) { setTask('register', m.register, { seller: m, label: 'market', tol: 5 }); return; }
-      if (tr.enabled && tr.stock.count > 0 && !tr.register.clerk && !Object.keys(b).some((t) => GOODS.includes(t))) { setTask('register', tr.register, { seller: tr, label: 'trade', tol: 5 }); return; }
+      if (tr.enabled && tr.stock.count > (tr.kept ? tr.kept() : 0) && !tr.register.clerk && !Object.keys(b).some((t) => GOODS.includes(t))) { setTask('register', tr.register, { seller: tr, label: 'trade', tol: 5 }); return; }
     }
     // 0b. (v3) the general store's line waits at its register
     {
@@ -493,7 +493,7 @@
           tk.idleT = 0;
           return el > 40;
         }
-        return gs.trade.stock.count === 0 || el > 40;
+        return gs.trade.stock.count <= (gs.trade.kept ? gs.trade.kept() : 0) || el > 40;
       }
       case 'gather': {
         if (p.room <= 0) return true;

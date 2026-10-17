@@ -27,6 +27,10 @@ export class DepotSystem {
     this.sleighN = s.sleighs === 2 ? 2 : 1;
     this.loadSaved = s.load && typeof s.load === 'object' ? s.load : {};
     this.salesSaved = Array.isArray(s.sales) ? s.sales : [0, 0, 0];
+    // ((robust review L3) today's sales come back after a reload of the same day)
+    const sv = this.salesSaved;
+    if (Number(sv[0]) === this.model.day && this.model.day >= 0) { this.model.today.sales = Math.max(0, Math.floor(Number(sv[1]) || 0)); this.model.today.coins = Math.max(0, Math.floor(Number(sv[2]) || 0)); }
+    this.flushT = 15;
     this.building = null;
     this.sleighs = [];
     this.buyers = [];
@@ -47,6 +51,9 @@ export class DepotSystem {
   makeBuilding(bkey, site, instant) {
     const gs = this.gs;
     this.building = new DepotBuilding(gs, site, this);
+    // ((gameplay review H1) the 물류 금고's coins are saved in the logistics slice's `cash` (v8: the till not yet
+    //  collected) and come back on a reload)
+    if (this.model.cash > 0) { this.building.till.restore(this.model.cash); this.model.cash = 0; }
     this.addSleighs();
     // goods that were on the sleigh at the save go back to the dock pile
     const F = this.v42.freight;
@@ -85,6 +92,21 @@ export class DepotSystem {
       else till.value += coins;
       const O = this.v42.office;
       if (O) O.income.depot = (O.income.depot || 0) + coins;
+    }
+    // ((gameplay review H1) 딸랑이 collects the 물류 금고 on his rounds; before he is hired it empties itself into the
+    //  coin counter every 15 s, like the 역 금고 after 읍 — the depot is far from everything, coins must never wait there)
+    this.flushT -= dt;
+    if (this.flushT <= 0) {
+      this.flushT = 15;
+      const O = this.v42.office, till = this.building.till;
+      if (!(O && O.hired && O.hired('ttal')) && till.value > 0) {
+        const v = Math.floor(till.value);
+        till.value = 0;
+        if (till.pile) till.pile.clear(gs.effects);
+        const near = gs.isOnScreen(till.x, till.y, 100);
+        gs.economy.add(v, till.x, till.y - 50, near);
+        if (near) gs.effects.floatText(till.x, till.y - 90, '+' + v, '#ffd84a', 30);
+      }
     }
     this.buyT -= dt;
     if (this.buyT <= 0) { this.buyT = Number(D().sell && D().sell.every) || 8; if (sold.length || this.model.today.sales > 0) this.spawnBuyer(); }
@@ -130,7 +152,12 @@ export class DepotSystem {
   }
 
   /** the v8 logistics slice (only once the depot stands) */
-  slices() { return this.building ? { logistics: this.model.slice() } : {}; }
+  slices() {
+    if (!this.building) return {};
+    const sl = this.model.slice();
+    sl.cash = Math.max(0, Math.floor(this.building.till.value || 0));      // (the 물류 금고 not yet collected)
+    return { logistics: sl };
+  }
 
   state() {
     return { built: this.built, total: this.total(), cap: this.capTotal(), stock: this.model.stock.snapshot(), today: Object.assign({}, this.model.today), sleighs: this.sleighs.map((s) => ({ state: s.state, s: +s.s.toFixed(1), load: s.count(), trips: s.trips })), till: this.building ? this.building.till.value : 0, buyers: this.buyers.length, revealed: this.building ? this.building.revealed : false };

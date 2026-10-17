@@ -139,7 +139,9 @@ export class Freight {
     if (!v) return;
     const n = this.dockCount();
     v.label.c.setVisible(n > 0);
-    if (n > 0) v.label.set(t('dockSurplus', { n }));
+    // ((gameplay review L4) the depot is only named once it stands)
+    const dep = this.v42.depot;
+    if (n > 0) v.label.set(t(dep && dep.built ? 'dockSurplus' : 'dockSurplusTrain', { n }));
   }
 
   // ------------------------------------------------------------------ the train

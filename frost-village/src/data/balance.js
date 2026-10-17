@@ -481,7 +481,11 @@ export const BALANCE = {
     // ── 짐꾼 규칙 (F1·F2): 판매대가 shelfEmptyAfter 초 넘게 비면 그곳이 먼저 (우선순위 shelfEmptyPrio),
     //    대장간·통조림 공장 재료는 inputUrgentBelow(0~1) 아래로 줄었을 때만 급하고 그 밖엔 inputCalmPrio,
     //    travelPxPerPoint = 이만큼(px) 멀 때마다 우선순위 1 깎기 (먼 곳보다 가까운 곳)
-    porters: { shelfEmptyPrio: 48, shelfEmptyAfter: 10, inputUrgentBelow: 0.25, inputCalmPrio: 42, travelPxPerPoint: 300 },
+    //    fullLoadAt = (CODE-1 리뷰) 가공소 출구가 이만큼(0~1) 차 있으면 짐꾼이 가방을 가득 채워 나가요 — 첫 곳에 원하는 만큼
+    //    내려놓고 나머지는 다음 곳으로 (빈자리가 몇 개뿐인 곳에 3개씩 나르느라 출구가 막히던 것)
+    porters: { shelfEmptyPrio: 48, shelfEmptyAfter: 10, inputUrgentBelow: 0.25, inputCalmPrio: 42, travelPxPerPoint: 300, fullLoadAt: 0.7 },
+    // ── (CODE-1 리뷰) 교역소 상인: 마을 완성 뒤에는 종류마다 displayKeep 개는 진열용으로 남겨 둬요 (판매대가 늘 비어 보이던 것)
+    trade: { displayKeep: 2 },
     // ── 창고 짐꾼 (F3): direct = 가득 찬 출구의 물건을 원하는 판매대가 있으면 창고를 거치지 않고 바로 (directMinPrio 이상인 곳)
     warehouse: { direct: true, directMinPrio: 40 },
     // ── 짐꾼 2 (F4): 그 줄의 출구가 fullAt(0~1) 이상 찬 시간이 모두 fullForS 초가 되고 창고가 있으면 발판이 생겨요. costs = 줄마다 값
