@@ -4,19 +4,27 @@
 // centre + delivery_van_red; assets/vehicles: dog_sled + a town car; ground / road textures), checks that every
 // frame, anim, dir, overlay and patch the manifest names exists, registers the anims, and builds a phone-sized scene
 // the documented way:
-//   * the logistics centre with gb_nameplate_ko INSTEAD of the baked nameplate, the swaying gb_banner, dock 1 rolling
-//     up and a gb_van backed into bay 1 playing `unload` as a PATCH over idle_SE_0 (+ the red van for comparison);
-//   * a gb_van driving a loop through all 8 headings: SE / NE / NW / SW legs (SW, NW = flipX) with the S / E / N / W
-//     corner frames for 0.3 s at each corner, the roof sign riding roofSignPoint + bobPx (never flipped);
-//   * a gb_van at a kerb playing `door` (patch) in NE, gb_sign, gb_flag (wave), both lockers (open patch),
-//     doorstep parcels (fresh / snowy), the open parcel, the cat, s / m / l parcels, the dog sled with its pennant
-//     at sledPennant[dir][anim][frame] - on snow, cobble and dirt;
-//   * night = the game's MULTIPLY tint (DayClock: 0x5a6aa8 at darkness 0.45) + ADD glows, lit roof signs, the sign and
-//     locker lit PATCHES.
+//   * the logistics centre with gb_nameplate_ko INSTEAD of the baked nameplate, the 금방 emblem / roof-parcel patches
+//     over the shell, the swaying gb_banner, dock 1 rolling up and a gb_van backed into bay 1 playing `unload` with a
+//     seated driver + passenger: the patch at body + patchDepth (UNDER the riders), the riders, then
+//     over_unload_<dir>_<i> instead of over_idle (polish H2: the order VehicleSprite draws in);
+//   * real crew / resident dolls composed with tools/geumbangfolk_compose.py (gb_driver, a resident) - sitting at
+//     seats in front views, standing at seatsStand in back views, the driver stepping out at doorPoints[0] while
+//     `door` plays (seat 0 empty, seat 1 stays);
+//   * a gb_van driving a loop through all 8 headings with the S / E / N / W corner frames, the roof sign riding
+//     roofSignPoint + bobPx (never flipped; mirrored dirs at -x + mirrorShiftPx);
+//   * a "patch order" row (door f2 / unload f3, SE and NE, with riders) for the close-up captures;
+//   * the dog sled with its pennant at sledPennant[dir] for all four dirs (explicit SW / NW tables: Phaser flips a
+//     frame about its centre) + a mirror probe: SE vs SW and NE vs NW sled+pennant pairs on a flat backdrop must be
+//     exact mirrors of each other (measured on the screenshot);
+//   * gb_sign, gb_flag (wave), both lockers (open patch), doorstep parcels, items - on snow, cobble and dirt;
+//   * night = the game's MULTIPLY tint (DayClock: 0x5a6aa8 at darkness 0.45) + ADD glows at the VISIBLE lamps only
+//     (lightsVisible), lit roof signs, the sign and locker lit PATCHES, a glow at the nameplate (fxPoints.board).
 // Phone 390 x 844 CSS at DPR 3 (canvas = 720 logical px x View.k, camera zoom = z x View.k, as src/main.js) at
-// zoom 0.6 / 1.0 / 1.2 / 1.6, day + night, and 360 x 640 at DPR 2 (zoom 1.0, day).  Measures the van mark and the
-// roof sign in CSS px at zoom 0.6.  Writes docs/previews/gb_phaser_390_day_night.png, gb_phaser_360.png and
-// $GB_OUT/geumbang_phaser.json.  Exit 1 on missing frames, page errors or 404s.
+// zoom 0.6 / 1.0 / 1.2 / 1.6, day + night, and 360 x 640 at DPR 2 (zoom 1.0, day).  Measures the van mark (from the
+// manifest's measured mark box) and the roof sign in CSS px at zoom 0.6.  Writes docs/previews/gb_phaser_390_day_night.png,
+// gb_phaser_360.png, gb_phaser_order.png and $GB_OUT/geumbang_phaser.json.  Exit 1 on missing frames, page errors,
+// 404s or a mirror probe residual over the limit.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -26,7 +34,36 @@ import { launch } from './pw.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = process.env.GB_OUT || '/tmp/fv_cache/geumbang';
+const MIRROR_MAX = 1.0;          // % of the sled + pennant window that may differ from its mirror (filtering seams)
 fs.mkdirSync(OUT, { recursive: true });
+
+// ---- real crew / resident dolls (tools/geumbangfolk_compose.py), served at __dolls/<name>.png
+const DOLL_PY = `
+import json, os, sys
+sys.path.insert(0, sys.argv[2])
+from geumbangfolk_compose import Geumbangfolk
+out = sys.argv[1]
+os.makedirs(out, exist_ok=True)
+gb = Geumbangfolk.from_assets(fragments=['officefolk', 'geumbangfolk'])
+made = []
+def save(p, anim, d, name):
+    a, face = gb.pick_anim(p, anim)
+    gb.compose(p, a, d, 0).save(os.path.join(out, name + '.png'))
+    made.append(name)
+drv = gb.preset('gb_driver', seed=3)
+for anim, d in (('sit', 'SE'), ('idle', 'NE'), ('idle', 'SE'), ('idle', 'SW')):
+    save(drv, anim, d, 'driver_%s_%s' % (anim, d))
+res = gb.random_person(7)
+for anim, d in (('sit', 'SE'), ('idle', 'NE')):
+    save(res, anim, d, 'resident_%s_%s' % (anim, d))
+print(json.dumps(made))
+`;
+let DOLLS = [];
+const DOLL_DIR = path.join(OUT, 'dolls');
+try {
+  fs.writeFileSync(path.join(OUT, 'gb_dolls.py'), DOLL_PY);
+  DOLLS = JSON.parse(execFileSync('python3', [path.join(OUT, 'gb_dolls.py'), DOLL_DIR, path.join(ROOT, 'tools')], { encoding: 'utf8' }).trim().split('\n').pop());
+} catch (e) { console.log('dolls unavailable (riders skipped):', String(e).slice(0, 200)); }
 
 const HTML = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
@@ -36,6 +73,7 @@ const GB = await (await fetch('assets/geumbang/manifest.json')).json();
 const LG = await (await fetch('assets/logistics/manifest.json')).json();
 const VH = await (await fetch('assets/vehicles/manifest.json')).json();
 const G = window.__G = { ready: false, missing: [], anims: 0, frames: 0, errors: [] };
+const DOLLS = ${JSON.stringify(DOLLS)};
 const W = 720;
 const iw = window.innerWidth, ih = window.innerHeight, dpr = window.devicePixelRatio || 1;
 const H = Math.max(1280, Math.min(1600, Math.round(W * ih / iw)));
@@ -52,6 +90,7 @@ class S extends Phaser.Scene {
     for (const k of ['veh_dog_sled', 'veh_car_a_red']) {
       const a = VH.atlases.find((x) => x.key === k); this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
     }
+    for (const d of DOLLS) this.load.image('doll_' + d, '__dolls/' + d + '.png');
     this.load.image('g_snow', 'assets/ground/ground_snow.png');
     this.load.image('g_cobble', 'assets/roads/road_cobble_wide.png');
     this.load.image('g_dirt', 'assets/roads/road_dirt.png');
@@ -64,7 +103,7 @@ class S extends Phaser.Scene {
     const van = gc.gb_van, turn = gc.gb_van_turn;
     for (const [an, a] of Object.entries(van.anims)) for (const d of van.dirs) {
       const names = []; for (let i = 0; i < a.frames; i++) names.push(an + '_' + d + '_' + i);
-      for (const n of names) { need('gb_van_0', n, 'gb_van'); if (!a.patch) need('gb_van_0', 'over_' + n, 'gb_van'); }
+      for (const n of names) { need('gb_van_0', n, 'gb_van'); need('gb_van_0', 'over_' + n, 'gb_van'); }
       this.anims.create({ key: 'gbv:' + an + ':' + d, frames: names.filter((n) => has('gb_van_0', n)).map((n) => ({ key: 'gb_van_0', frame: n })), frameRate: a.fps, repeat: a.repeat });
       G.anims++;
     }
@@ -114,24 +153,35 @@ class S extends Phaser.Scene {
     this.anims.create({ key: 'dock1', frames: d1anim.frames.map((f) => ({ key: 'lgx_center_a', frame: f })), frameRate: d1anim.fps, repeat: 0 });
     d1.play('dock1');
     lay(C.patches.dock2, 0.001); lay(C.layers.props, 0.01);
+    // (polish M2) the 금방 hub repaints the old logistics mark: emblem / roof-parcel patches right above the shell
+    for (const k of ['gb_emblem_gable', 'gb_emblem_blade', 'gb_roofparcel']) { const e = gs[k]; this.add.image(ox, oy, 'gb_bld_0', e.frame).setOrigin(C.anchor[0], C.anchor[1]).setDepth(oy - 600 + e.depthOffset); need('gb_bld_0', e.frame, k); }
     const banner = this.add.sprite(ox, oy, 'gb_bld_0', gs.gb_banner_ko.frame).setOrigin(C.anchor[0], C.anchor[1]).setDepth(oy - 600 + gs.gb_banner_ko.depthOffset).play('spr:gb_banner_ko:sway');
     G.hub = { plate: plate.frame.name, banner: banner.anims.isPlaying };
     for (const op of C.outdoorProps) { const s = LG.sprites[op.sprite]; this.add.image(ox + op.point[0], oy + op.point[1], s.atlas, s.frame).setOrigin(s.anchor[0], s.anchor[1]).setDepth(oy + op.point[1]); }
     // ---------------------------------------------------------------- vans
-    const makeVan = (lang) => {
-      const o = {};
+    const vans = [];
+    const makeVan = (lang, people) => {
+      const o = {}; vans.push(o);
       o.sh = this.add.image(0, 0, 'fv_shadow').setAlpha(0.32);
       o.body = this.add.sprite(0, 0, 'gb_van_0', 'idle_SE_0').setOrigin(van.anchor[0], van.anchor[1]);
       o.over = this.add.image(0, 0, 'gb_van_0', 'over_idle_SE_0').setOrigin(van.anchor[0], van.anchor[1]);
       o.patch = this.add.sprite(0, 0, 'gb_van_0', 'door_SE_0').setVisible(false);
       o.sign = this.add.image(0, 0, 'gb_van_0', 'gb_roofsign_' + lang + '_0').setOrigin(0.5, 1);
-      o.lang = lang; o.dir = 'SE'; o.anim = 'idle'; o.turn = null;
+      o.lang = lang; o.dir = 'SE'; o.anim = 'idle'; o.turn = null; o.patchOn = null; o.empty = [];
+      // riders: [{ seat, who }] - front views sit at seats, back views stand at seatsStand (VehicleSprite rules)
+      o.people = (people || []).filter((p) => DOLLS.length).map((p) => ({ ...p, im: this.add.image(0, 0, 'doll_' + p.who + '_sit_SE').setOrigin(0.5, 0.8125) }));
+      o.out = DOLLS.length ? this.add.image(0, 0, 'doll_driver_idle_SE').setOrigin(0.5, 0.8125).setVisible(false) : null;
       o.place = (x, y) => {
         o.x = x; o.y = y;
         const tdir = o.turn, d = tdir || o.dir, rd = tdir ? (tdir === 'W' ? 'E' : tdir) : base(d), fl = flipOf(d);
         const ent = tdir ? turn : van;
         if (tdir) { o.body.anims.stop(); o.body.setFrame('turn_' + rd + '_0'); o.body.setOrigin(turn.anchor[0], turn.anchor[1]); o.over.setFrame('over_turn_' + rd + '_0').setOrigin(turn.anchor[0], turn.anchor[1]); }
-        else {
+        else if (o.patchOn) {
+          // patch showing: body held on idle_<dir>_0, overlay = the patch's own over_<anim>_<dir>_<i> (patch canvas)
+          o.body.setOrigin(van.anchor[0], van.anchor[1]);
+          const a = van.anims[o.patchOn.anim];
+          o.over.setFrame('over_' + o.patch.frame.name).setOrigin(a.anchor[0], a.anchor[1]);
+        } else {
           o.body.setOrigin(van.anchor[0], van.anchor[1]); o.over.setOrigin(van.anchor[0], van.anchor[1]);
           const key = 'gbv:' + o.anim + ':' + rd; if (!o.body.anims.currentAnim || o.body.anims.currentAnim.key !== key) o.body.play(key);
           o.over.setFrame('over_' + o.body.frame.name);
@@ -140,27 +190,53 @@ class S extends Phaser.Scene {
         const sh = ent.shadow[rd];
         o.sh.setPosition(x, y + 2).setDisplaySize(sh[0], sh[1] * 1.15).setAngle(fl ? -sh[2] : sh[2]);
         let bob = 0;
-        if (!tdir && van.anims[o.anim].bobPx) { const i = o.body.anims.currentFrame ? o.body.anims.currentFrame.index - 1 : 0; bob = van.anims[o.anim].bobPx[i] || 0; }
+        if (!tdir && !o.patchOn && van.anims[o.anim].bobPx) { const i = o.body.anims.currentFrame ? o.body.anims.currentFrame.index - 1 : 0; bob = van.anims[o.anim].bobPx[i] || 0; }
         const p = ent.roofSignPoint[rd];
-        o.sign.setPosition(x + (fl ? -p[0] : p[0]), y + p[1] + bob).setFrame('gb_roofsign_' + o.lang + '_' + (G.lit ? 1 : 0));
+        o.sign.setPosition(x + (fl ? -p[0] + ent.mirrorShiftPx : p[0]), y + p[1] + bob).setFrame('gb_roofsign_' + o.lang + '_' + (G.lit ? 1 : 0));
         for (const im of [o.body, o.over, o.sh]) im.setPosition(x, y);
-        o.body.setDepth(y); o.over.setDepth(y + 0.01); o.sh.setDepth(y - 0.5); o.sign.setDepth(y + 0.02); o.patch.setDepth(y + 0.015);
-        o.lights = (ent.lightPoints[rd] || []).map((q) => [x + (fl ? -q[0] : q[0]), y + q[1]]);
+        o.body.setDepth(y); o.sh.setDepth(y - 0.5); o.sign.setDepth(y + 0.02); o.patch.setDepth(y + van.anims.door.patchDepth);
+        // riders (seatDrawOrder) between the patch (+0.0005) and the overlay (+0.004)
+        const back = rd === 'NE' || rd === 'N';
+        const seatsT = (back ? (ent.seatsStand || ent.seats) : ent.seats)[rd];
+        const order = (ent.seatDrawOrder && ent.seatDrawOrder[rd]) || [0, 1];
+        let drawn = 0;
+        for (const si of order) {
+          const r = o.people.find((q) => q.seat === si); if (!r) continue;
+          if (tdir || o.empty.includes(si)) { r.im.setVisible(false); continue; }
+          const pt = seatsT[si], pdir = fl ? (back ? 'NW' : 'SW') : (back ? 'NE' : 'SE');
+          const fr = 'doll_' + r.who + (back ? '_idle_NE' : '_sit_SE');
+          r.im.setTexture(fr).setVisible(true).setFlipX(pdir === 'SW' || pdir === 'NW').setPosition(x + (fl ? -pt[0] : pt[0]), y + pt[1] + bob).setDepth(y + 0.001 + drawn * 0.0004);
+          drawn++;
+        }
+        o.over.setDepth(y + 0.004).setVisible(!tdir || true);
+        o.lights = (ent.lightPoints[rd] || []).filter((q, k) => !ent.lightsVisible || ent.lightsVisible[rd][k]).map((q) => [x + (fl ? -q[0] : q[0]), y + q[1]]);
       };
-      o.playPatch = (anim, d) => {
-        const a = van.anims[anim]; o.body.anims.stop(); o.body.setFrame('idle_' + base(d) + '_0'); o.over.setFrame('over_idle_' + base(d) + '_0');
-        o.patch.setVisible(true).setOrigin(a.anchor[0], a.anchor[1]).setPosition(o.x, o.y).setFlipX(flipOf(d));
+      o.playPatch = (anim, d, hold = 1400) => {
+        const a = van.anims[anim]; o.body.anims.stop(); o.body.setFrame('idle_' + base(d) + '_0');
+        o.patchOn = { anim };
+        o.patch.setVisible(true).setOrigin(a.anchor[0], a.anchor[1]).setPosition(o.x, o.y).setFlipX(flipOf(d)).setFrame(anim + '_' + base(d) + '_0');
+        o.empty = a.emptySeats || [];
+        if (o.out && anim === 'door') { const q = van.doorPoints[base(d)][0]; o.out.setVisible(true).setTexture('doll_driver_idle_' + (flipOf(d) ? 'SW' : 'SE')).setPosition(o.x + (flipOf(d) ? -q[0] : q[0]), o.y + q[1]).setDepth(o.y + q[1]); }
+        o.place(o.x, o.y);
         const frames = Array.from({ length: a.frames }, (_, i) => anim + '_' + base(d) + '_' + i);
-        const fwd = () => { let i = 0; const t = this.time.addEvent({ delay: 1000 / a.fps, repeat: a.frames - 1, callback: () => { o.patch.setFrame(frames[Math.min(i, frames.length - 1)]); i++; } }); return t; };
-        fwd();
-        this.time.delayedCall(1000 / a.fps * a.frames + 1400, () => { let i = a.frames - 1; this.time.addEvent({ delay: 1000 / a.fps, repeat: a.frames - 1, callback: () => { o.patch.setFrame(frames[Math.max(0, i)]); i--; if (i < 0) o.patch.setVisible(false); } }); });
+        let i = 0;
+        this.time.addEvent({ delay: 1000 / a.fps, repeat: a.frames - 1, callback: () => { o.patch.setFrame(frames[Math.min(i, frames.length - 1)]); i++; o.place(o.x, o.y); } });
+        this.time.delayedCall(1000 / a.fps * a.frames + hold, () => { let j = a.frames - 1; this.time.addEvent({ delay: 1000 / a.fps, repeat: a.frames - 1, callback: () => { o.patch.setFrame(frames[Math.max(0, j)]); j--; if (j < 0) { o.patch.setVisible(false); o.patchOn = null; o.empty = []; if (o.out) o.out.setVisible(false); } o.place(o.x, o.y); } }); });
+      };
+      o.holdPatch = (anim, d, i) => {          // a still patch frame (close-ups)
+        const a = van.anims[anim]; o.body.anims.stop(); o.body.setFrame('idle_' + base(d) + '_0'); o.patchOn = { anim };
+        o.patch.setVisible(true).setOrigin(a.anchor[0], a.anchor[1]).setPosition(o.x, o.y).setFlipX(flipOf(d)).setFrame(anim + '_' + base(d) + '_' + i);
+        o.empty = a.emptySeats || [];
+        if (o.out && anim === 'door') { const q = van.doorPoints[base(d)][0]; o.out.setVisible(true).setTexture('doll_driver_idle_' + (flipOf(d) ? 'SW' : 'SE')).setPosition(o.x + (flipOf(d) ? -q[0] : q[0]), o.y + q[1]).setDepth(o.y + q[1]); }
+        o.place(o.x, o.y);
       };
       glowAt(() => G.lit && o.sign.visible ? [o.sign.x, o.sign.y - 22] : null, 0.75);
       for (let k = 0; k < 2; k++) glowAt(() => G.lit && o.lights ? o.lights[k] : null, 0.35);
       return o;
     };
     const dock = C.dockVehiclePoints.delivery_van[0];
-    const vDock = makeVan('ko'); vDock.dir = 'SE'; vDock.place(ox + dock[0], oy + dock[1]);
+    const crew = [{ seat: 0, who: 'driver' }, { seat: 1, who: 'resident' }];
+    const vDock = makeVan('ko', crew); vDock.dir = 'SE'; vDock.place(ox + dock[0], oy + dock[1]);
     const unloadLoop = () => { vDock.playPatch('unload', 'SE'); this.time.delayedCall(5200, unloadLoop); };
     this.time.delayedCall(400, unloadLoop);
     G.dockVan = [vDock.x, vDock.y];
@@ -169,12 +245,16 @@ class S extends Phaser.Scene {
     this.add.image(1000, 2012, 'fv_shadow').setAlpha(0.32).setDisplaySize(red.shadow.SE[0], red.shadow.SE[1] * 1.15).setAngle(red.shadow.SE[2]).setDepth(2009);
     const car = VH.characters.car_a_red; this.add.sprite(640, 2120, car.atlas, 'idle_SE_0').setOrigin(car.anchor[0], car.anchor[1]).setDepth(2120);
     // a van at a kerb opening its door (NE) and one in SW (mirror) on the cobble
-    const vKerb = makeVan('en'); vKerb.dir = 'NE'; vKerb.place(1360, 2050);
+    const vKerb = makeVan('en', crew); vKerb.dir = 'NE'; vKerb.place(1360, 2050);
     const doorLoop = () => { vKerb.playPatch('door', 'NE'); this.time.delayedCall(3200, doorLoop); };
     this.time.delayedCall(800, doorLoop);
-    const vSW = makeVan('ko'); vSW.dir = 'SW'; vSW.anim = 'move'; vSW.place(1700, 2160);
+    const vSW = makeVan('ko', crew.slice(0, 1)); vSW.dir = 'SW'; vSW.anim = 'move'; vSW.place(1700, 2160);
     // the loop van: SE -> E -> NE -> N -> NW -> W -> SW -> S -> SE
-    const loopVan = makeVan('ko'); loopVan.anim = 'move';
+    const loopVan = makeVan('ko', crew.slice(0, 1)); loopVan.anim = 'move';
+    // (polish H2) the patch-order row: door f2 / unload f3 held still, with riders, in SE / NE / SW / NW
+    const ORDER = [['SE', 'door', 2], ['SE', 'unload', 3], ['NE', 'door', 2], ['NE', 'unload', 3], ['SW', 'door', 2], ['NW', 'unload', 3]];
+    this.add.rectangle(3000, 200, 760, 1100, 0xe4ebf3).setOrigin(0, 0).setDepth(-1e6 + 2);
+    ORDER.forEach(([d, an, i], k) => { const v = makeVan(k % 2 ? 'en' : 'ko', crew); v.dir = d; v.place(3200 + (k % 2) * 360, 470 + Math.floor(k / 2) * 330); v.holdPatch(an, d, i); });
     const L0 = [2300, 1640], legs = [['SE', 2, 1, 'E'], ['NE', 2, -1, 'N'], ['NW', -2, -1, 'W'], ['SW', -2, 1, 'S']];
     const LEN = 300, SPEED = 140, TURN = 0.3;
     let t = 0; G.headings = new Set();
@@ -194,14 +274,25 @@ class S extends Phaser.Scene {
       const key = 'sled:move:' + sb; if (!sled.anims.currentAnim || sled.anims.currentAnim.key !== key) sled.play(key);
       sled.setFlipX(sfl).setPosition(sled.x, 2560 + (sd === 'SE' ? 0 : 0)).setDepth(2560);
       const fi = sled.anims.currentFrame ? sled.anims.currentFrame.index - 1 : 0;
-      const q = gs.gb_pennant.sledPennant[sb].move[fi];
-      pen.setPosition(sled.x + (sfl ? -q[0] : q[0]), 2560 + q[1]).setFlipX(sfl).setDepth(2560.5);
+      const q = gs.gb_pennant.sledPennant[sd].move[fi];      // all four dirs are explicit tables: no negation
+      pen.setPosition(sled.x + q[0], 2560 + q[1]).setFlipX(sfl).setDepth(2560.5);
       const pk = 'spr:gb_pennant:' + sb; if (!pen.anims.currentAnim || pen.anims.currentAnim.key !== pk) pen.play(pk);
       for (const gl of glows) { const p = gl.fn(); gl.im.setVisible(!!p); if (p) gl.im.setPosition(p[0], p[1]); }
       if (overlay) { const v = this.cameras.main.worldView; overlay.setPosition(v.x - 80, v.y - 80).setDisplaySize(v.width + 160, v.height + 160); }
     });
     const sled = this.add.sprite(900, 2560, ds.atlas, 'move_SE_0').setOrigin(ds.anchor[0], ds.anchor[1]);
     const pen = this.add.sprite(0, 0, 'gb_bld_0', 'gb_pennant_SE_0').setOrigin(gs.gb_pennant.anchor[0], gs.gb_pennant.anchor[1]);
+    // (polish M4) mirror probe: still sled + pennant in SE / SW / NE / NW on a flat backdrop
+    this.add.rectangle(3000, 1500, 800, 700, 0xe4ebf3).setOrigin(0, 0).setDepth(-1e6 + 2);
+    G.sleds = {};
+    ['SE', 'SW', 'NE', 'NW'].forEach((d, k) => {
+      const x = 3200 + (k % 2) * 400, y = 1750 + Math.floor(k / 2) * 320, sb = base(d), fl = flipOf(d);
+      this.add.image(x, y, ds.atlas, 'idle_' + sb + '_0').setOrigin(ds.anchor[0], ds.anchor[1]).setFlipX(fl).setDepth(y);
+      const q = gs.gb_pennant.sledPennant[d].idle[0];
+      this.add.image(x + q[0], y + q[1], 'gb_bld_0', 'gb_pennant_' + sb + '_0').setOrigin(gs.gb_pennant.anchor[0], gs.gb_pennant.anchor[1]).setFlipX(fl).setDepth(y + 0.5);
+      // the sled frame centre line (Phaser mirrors about it) in world px
+      G.sleds[d] = { cx: x + ds.frameSize[0] * (0.5 - ds.anchor[0]), y: y };
+    });
     // ---------------------------------------------------------------- props + items
     const prop = (k, x, y, frame) => { const s = gs[k]; return this.add.sprite(x, y, 'gb_bld_0', frame || s.frame).setOrigin(s.anchor[0], s.anchor[1]).setDepth(y); };
     const sign = prop('gb_sign', ox - 430, oy + 330);
@@ -230,12 +321,16 @@ class S extends Phaser.Scene {
       if (on && !overlay) { overlay = this.add.image(0, 0, '__WHITE').setOrigin(0, 0).setDepth(1e6).setBlendMode(Phaser.BlendModes.MULTIPLY); const mix = (ch) => Math.round(255 * (1 - DUSK.a) + ch * DUSK.a); overlay.setTint((mix((DUSK.color >> 16) & 255) << 16) | (mix((DUSK.color >> 8) & 255) << 8) | mix(DUSK.color & 255)); }
       if (overlay) overlay.setVisible(on);
       for (const l of lit) l.setVisible(on);
+      for (const v of vans) if (v.x !== undefined) v.place(v.x, v.y);
     };
     G.look = (x, y, z) => { const cam = this.cameras.main; cam.setZoom(z * K); cam.centerOn(x, y); };
-    G.focus = { hub: [ox + 120, oy + 260], street: [1700, 1900], items: [720, 1700], all: [1450, 1900] };
+    G.focus = { hub: [ox + 120, oy + 260], street: [1700, 1900], items: [720, 1700], all: [1450, 1900], order: [3380, 760], sleds: [3415, 1880], dock: [ox + dock[0] - 40, oy + dock[1] - 110] };
+    glowAt(() => G.lit ? [ox + C.fxPoints.board[0], oy + C.fxPoints.board[1]] : null, 1.3);
+    // world -> device px of the screenshot (canvas scaled by Scale.FIT, then DPR)
+    G.toDevice = (wx, wy) => { const cam = this.cameras.main, cv = this.game.canvas, r = cv.getBoundingClientRect(); const k = r.width / cv.width; return [(r.left + (wx - cam.worldView.x) * cam.zoom * k) * dpr, (r.top + (wy - cam.worldView.y) * cam.zoom * k) * dpr, cam.zoom * k * dpr]; };
     G.measure = () => {
       // CSS px of a game px at zoom z: z * K * cssW / (W * K) = z * cssW / W
-      const R = 0.5, markPx = 2 * R * 64 * Math.SQRT1_2;
+      const mb = GB.geumbang.report.vanVisible.SE.markBoxPx, markPx = Math.min(mb[2] - mb[0], mb[3] - mb[1]);
       const signFrame = this.textures.getFrame('gb_van_0', 'gb_roofsign_ko_0');
       return { cssPerGamePxAtZ06: 0.6 * cssW / W, markCss: markPx * 0.6 * cssW / W, roofSignCss: signFrame.cutWidth * 0.6 * cssW / W };
     };
@@ -260,6 +355,7 @@ async function run(vw, vh, dpr, plans) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('response', (r) => { if (r.status() >= 400) notFound.push(r.url()); });
   await page.route('**/fv/__gb.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML }));
+  await page.route('**/fv/__dolls/*', (r) => { const f = path.join(DOLL_DIR, path.basename(new URL(r.request().url()).pathname)); return fs.existsSync(f) ? r.fulfill({ status: 200, contentType: 'image/png', body: fs.readFileSync(f) }) : r.fulfill({ status: 404 }); });
   await page.goto(srv.url + '__gb.html', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__G && window.__G.ready, null, { timeout: 240000 });
   await page.waitForTimeout(2500);
@@ -271,13 +367,16 @@ async function run(vw, vh, dpr, plans) {
     await page.evaluate(() => window.__G.game.loop.sleep());
     const file = path.join(OUT, `gb_phaser_${key}_z${zoom}_${night ? 'night' : 'day'}_${focus}.png`);
     await page.screenshot({ path: file, timeout: 240000 });
+    let probe = null;
+    if (focus === 'sleds') probe = await page.evaluate(() => Object.fromEntries(Object.entries(window.__G.sleds).map(([d, v]) => [d, window.__G.toDevice(v.cx, v.y)])));
     await page.evaluate(() => window.__G.game.loop.wake());
-    shots.push({ key, zoom, night, focus, file });
+    shots.push({ key, zoom, night, focus, file, probe });
   }
   results[key].headings = await page.evaluate(() => [...window.__G.headings].sort());
   await ctx.close();
 }
-await run(390, 844, 3, [[0.6, false, 'all'], [0.6, true, 'all'], [1.0, false, 'hub'], [1.0, true, 'hub'], [1.2, false, 'street'], [1.2, true, 'street'], [1.6, false, 'items'], [1.6, true, 'items']]);
+await run(390, 844, 3, [[0.6, false, 'all'], [0.6, true, 'all'], [1.0, false, 'hub'], [1.0, true, 'hub'], [1.2, false, 'street'], [1.2, true, 'street'], [1.6, false, 'items'], [1.6, true, 'items'],
+  [1.0, false, 'order'], [1.0, true, 'order'], [1.6, false, 'dock'], [1.6, true, 'dock'], [1.0, false, 'sleds']]);
 await run(360, 640, 2, [[1.0, false, 'street']]);
 await browser.close();
 await srv.close();
@@ -288,8 +387,9 @@ from PIL import Image, ImageDraw, ImageFont
 shots = json.loads(sys.argv[1]); out = sys.argv[2]
 f = ImageFont.truetype(sys.argv[3], 26)
 rows = {}
+main = {('all', 0.6), ('hub', 1.0), ('street', 1.2), ('items', 1.6)}
 for s in shots:
-    if s['key'] == '390x844':
+    if s['key'] == '390x844' and (s['focus'], s['zoom']) in main:
         rows.setdefault(s['zoom'], {})['night' if s['night'] else 'day'] = s['file']
 W = 468; H = 1013
 sheet = Image.new('RGB', (W * 2 + 30, (H + 50) * len(rows) + 10), (40, 44, 60))
@@ -303,16 +403,58 @@ sheet.save(out + '/gb_phaser_390_day_night.png', optimize=True)
 for s in shots:
     if s['key'] == '360x640':
         Image.open(s['file']).convert('RGB').save(out + '/gb_phaser_360.png', optimize=True)
+# patch order (zoom 1.0 + hub 1.6, day | night): the row of door / unload vans with riders
+od = {(s['focus'], s['zoom'], s['night']): s['file'] for s in shots if s['key'] == '390x844'}
+tiles = [('order', 1.0, False), ('order', 1.0, True), ('dock', 1.6, False), ('dock', 1.6, True)]
+sh2 = Image.new('RGB', (W * 4 + 50, H + 50), (40, 44, 60))
+d2 = ImageDraw.Draw(sh2)
+for c, t in enumerate(tiles):
+    if t in od:
+        sh2.paste(Image.open(od[t]).convert('RGB').resize((W, H), Image.LANCZOS), (10 + c * (W + 10), 40))
+        d2.text((14 + c * (W + 10), 6), '%s  zoom %s  %s' % (t[0], t[1], 'night' if t[2] else 'day'), font=f, fill=(255, 255, 255))
+sh2.save(out + '/gb_phaser_order.png', optimize=True)
+# mirror probe: SW must be the mirror image of SE (and NW of NE) about the sled frame centre line
+import numpy as np
+res = {}
+for s in shots:
+    if not s.get('probe'):
+        continue
+    PAD = 600
+    im = np.pad(np.asarray(Image.open(s['file']).convert('RGB')).astype(np.int16), ((PAD, PAD), (PAD, PAD), (0, 0)),
+                mode='edge')
+    pr = {k: [v[0] + PAD, v[1] + PAD, v[2]] for k, v in s['probe'].items()}
+    crops = []
+    for a, b in (('SE', 'SW'), ('NE', 'NW')):
+        sc = pr[a][2]
+        hw, top, bot = int(185 * sc), int(210 * sc), int(60 * sc)
+        def crop(d):
+            x, y = int(round(pr[d][0])), int(round(pr[d][1]))
+            return im[y - top:y + bot, x - hw:x + hw]
+        A, B = crop(a), crop(b)[:, ::-1]
+        best = None
+        for dy in range(-3, 4):
+            for dx in range(-6, 7):
+                Bs = np.roll(np.roll(B, dy, 0), dx, 1)
+                mis = float((np.abs(A - Bs).max(-1) > 48)[8:-8, 8:-8].mean())
+                if best is None or mis < best[0]:
+                    best = (mis, dx, dy)
+        res[a + '/' + b] = {'mismatchPct': round(100 * best[0], 2), 'shift': best[1:]}
+        crops.append(np.concatenate([A, np.zeros((A.shape[0], 6, 3), np.int16) + 255, crop(b)], 1))
+    Image.fromarray(np.concatenate(crops, 0).astype(np.uint8)).save(out + '/gb_sled_mirror_probe.png', optimize=True)
+print(json.dumps(res))
 `;
 fs.writeFileSync(path.join(OUT, 'gb_sheet.py'), py);
+fs.writeFileSync(path.join(OUT, 'gb_shots.json'), JSON.stringify(shots));
 const prev = path.join(ROOT, 'docs', 'previews');
-execFileSync('python3', [path.join(OUT, 'gb_sheet.py'), JSON.stringify(shots), prev, path.join(ROOT, 'tools', 'fonts', 'Jua-Regular.ttf')]);
+const probeOut = execFileSync('python3', [path.join(OUT, 'gb_sheet.py'), JSON.stringify(shots), prev, path.join(ROOT, 'tools', 'fonts', 'Jua-Regular.ttf')], { encoding: 'utf8' }).trim().split('\n').pop();
+let mirror = {}; try { mirror = JSON.parse(probeOut); } catch (e) { mirror = { error: probeOut }; }
 const missing = Object.values(results).flatMap((r) => r.missing);
-const res = { results, shots: shots.map((s) => path.basename(s.file)), errors, notFound, missing };
+const res = { results, shots: shots.map((s) => path.basename(s.file)), errors, notFound, missing, mirror };
 fs.writeFileSync(path.join(OUT, 'geumbang_phaser.json'), JSON.stringify(res, null, 1));
 console.log(JSON.stringify({ frames: results['390x844'].frames, anims: results['390x844'].anims, missing: missing.length, headings: results['390x844'].headings,
-  measure: results['390x844'].measure, view390: results['390x844'].view, view360: results['360x640'].view, errors: errors.slice(0, 5), notFound: notFound.slice(0, 5) }));
+  measure: results['390x844'].measure, view390: results['390x844'].view, view360: results['360x640'].view, mirror, dolls: DOLLS.length, errors: errors.slice(0, 5), notFound: notFound.slice(0, 5) }));
 const ok = !missing.length && !errors.length && !notFound.length && results['390x844'].headings.length === 8 &&
-  results['390x844'].measure.markCss >= 12 && results['390x844'].measure.roofSignCss >= 30;
+  results['390x844'].measure.markCss >= 12 && results['390x844'].measure.roofSignCss >= 30 &&
+  Object.keys(mirror).length === 2 && Object.values(mirror).every((m) => m.mismatchPct !== undefined && m.mismatchPct <= MIRROR_MAX);
 console.log(ok ? 'geumbang_phaser: OK' : 'geumbang_phaser: FAIL');
 process.exit(ok ? 0 : 1);

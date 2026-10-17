@@ -1,291 +1,365 @@
 # gb_vehicles_bld build report (금방 van, hub layers, props, items)
 
-Job `gb_vehicles_bld` of docs/CONTRACT_GEUMBANG.md section AO is finished. `assets/geumbang/` holds the 금방 delivery
-van (8 headings: 2 rendered + mirrors, 4 corner frames, door and unload patches), the 금방 roof signs, the logistics-centre
-layers (금방 and 서리 nameplates, a swaying 금방 banner), 4 props, 6 items and the sled pennant, in **2 atlases**:
+Job `gb_vehicles_bld` of docs/CONTRACT_GEUMBANG.md section AO, **polished after the critique**
+(`docs/build_reports/gb_vehicles_bld_critique.md`, verdict "polish": 2 high, 5 medium, 8 low). `assets/geumbang/`
+holds the 금방 delivery van (8 headings: 2 rendered + mirrors, 4 corner frames, door and unload patches with their own
+overlays), the 금방 roof signs, the logistics-centre layers (금방 and 서리 nameplates, a swaying 금방 banner, three
+patches that repaint the old logistics mark for the 금방 hub), 4 props, 6 items and the sled pennant, in **2 atlases**:
 
 | Page | Size | Decoded | Budget |
 |---|---|---|---|
-| `gb_van_0` | 2032 x 916 | 7.10 MiB | ≤ 2048 x 1024, ≤ 8 MiB |
-| `gb_bld_0` | 980 x 660 | 2.47 MiB | ≤ 1024 x 1024, ≤ 2.5 MiB |
-| total | | **9.57 MiB** | ≤ 10.5 MiB |
+| `gb_van_0` | 1784 x 944 | 6.42 MiB | ≤ 2048 x 1024, ≤ 8 MiB |
+| `gb_bld_0` | 616 x 864 | 2.03 MiB | ≤ 1024 x 1024, ≤ 2.5 MiB |
+| total | | **8.45 MiB** (was 9.57) | ≤ 10.5 MiB |
+
+The pages got smaller although they hold more (14 patch overlays, 3 hub patches): `gb_pack.py` now packs with its own
+MaxRects packer (`pack_tight`, the smallest page over a sweep of widths) instead of the shelf packer.
 
 The files are 5 sources and 3 shipped, matching the AS budget of 5 / 3:
-- the 5 sources are 2 palette-quantized PNG pages, 2 atlas JSON files and `manifest.json`, **357,546 bytes
-  (0.34 MiB)** in all;
+- the 5 sources are 2 palette-quantized PNG pages, 2 atlas JSON files and `manifest.json`, **513,433 bytes
+  (0.49 MiB)** in all;
 - the 3 shipped files are the 2 pages and the manifest, because the atlas JSON is embedded at build time.
 
-`gb_check.py` reports **0 errors and 0 warnings**.
+`gb_check.py` reports **0 errors and 0 warnings** with the new rules. Run against a copy of the pre-polish set
+(`GB_DIR=<copy> python3 tools/blender/gb_check.py`) the same script reports 54 errors, among them every finding below.
 
-`tools/test/geumbang_phaser.mjs` loads the set in headless Phaser 3.90 next to `assets/logistics` and
-`assets/vehicles`, on a 390 x 844 phone at DPR 3 and a 360 x 640 phone at DPR 2. It reports `geumbang_phaser: OK`:
-- all 104 frames found and 20 anims registered;
-- no page errors and no 404s;
+`tools/test/geumbang_phaser.mjs` reports `geumbang_phaser: OK` (390 x 844 at DPR 3 and 360 x 640 at DPR 2, zoom 0.6 /
+1.0 / 1.2 / 1.6, day and night):
+- 124 frames found, 20 anims registered, 0 missing, no page errors, no 404s;
 - the loop van showed all 8 headings;
-- at zoom 0.6, the van mark measures 14.7 CSS px (needs ≥ 12) and the roof sign 31.2 CSS px (needs ≥ 30).
+- 6 real crew / resident dolls rode the vans;
+- at zoom 0.6 the van mark is 14.75 CSS px (needs ≥ 12) and the roof sign 31.2 CSS px (needs ≥ 30);
+- the sled-pennant mirror probe matched with 0.00 % mismatch at a 0 px shift for both SE / SW and NE / NW.
 
-The brand is original. The mark is a little parcel with a face and a sparkle (금방이), and it is its own mirror image
-(0 % px difference), so a flipped van is still on-brand. No sprite has its two largest colour areas within ΔE2000 15
-of a real courier's colour pair (UPS, DHL, Coupang, Baemin, Kurly, Korea Post, Yamato, IKEA-like). The closest is
-ΔE 21.2. There is no rocket, no "fast" lettering and no red/blue scheme.
+## Polish: finding → status
 
-The house style matches `assets/logistics` and `assets/vehicles`:
-- the `bl_common` camera and light, PPU 64, 2:1 iso;
-- toy materials with snow on the roof;
-- the 1 px ink outline on vehicles.
+| # | Sev | Finding | Status |
+|---|---|---|---|
+| H1 | High | Rear-door porthole + handle float in `unload` (NE / NW mid-air, SE / SW "ears") | **fixed** |
+| H2 | High | Patch draw order shreds a seated driver / ghosts the door | **fixed** |
+| M1 | Medium | Banner "금방" lies on its side | **fixed** (cause differs: see below) |
+| M2 | Medium | The 금방 hub still wears two winged-parcel emblems | **fixed** (+ the red-ribboned roof parcel) |
+| M3 | Medium | English roof sign letters 6 px, never legible | **fixed** (11 px) |
+| M4 | Medium | Pennant mirrors land ~50 px off the sled in SW / NW | **fixed** |
+| M5 | Medium | `parcelPoints` SE / SW sit on the flank, no visibility flag | **fixed** |
+| L1 | Low | Van gold duller than the brand gold | **fixed in part** (ΔE 11.3 → 8.9) |
+| L2 | Low | Lockers at the navy cap, read blue + yellow | **fixed in part** (navy doors kept, contract) |
+| L3 | Low | `gb_check.py` blind spots | **fixed** |
+| L4 | Low | Glows on hidden headlights | **fixed** |
+| L5 | Low | `gb_parcel_cat` stacking fields | **fixed** |
+| L6 | Low | Report accuracy | **fixed** (this report) |
+| L7 | Low | Wordmark set in Jua | **won't fix** here |
+| L8 | Low | Night facade: 금방 name darkest on the lit facade | **fixed** (glow rule; no new frames) |
 
-The van is built by `lgx_vehicles.py`'s own `b_van` with a livery override. The logistics centre is
-`lgx_center.build()` imported unchanged. Props and items go through `bld_render.render_build()` unchanged. None of
-those files was modified.
+Before / after of every visual fix: `docs/previews/gb_polish_before_after.png`.
+
+### H1 · rear-door parts (fixed)
+- **Cause.** `gb_van.py` picked the leaf for each rear window and handle by reading `o.location.x` inside the loop over
+  the two leaves. The R pass re-parented the R parts to the R hinge first, so in the L pass their x (now relative to
+  that hinge) was positive and they were re-parented again, to the L hinge. All six parts rode the L leaf: the R leaf's
+  porthole and handle swung about the wrong hinge.
+- **Fix.** The side of every part is decided once, in body space, before any re-parenting (`side_of`). The van was
+  re-rendered (all frames, see L1).
+- **Checks.**
+  - `gb_render.py` measures every rear part against its own leaf in every unload pose (`rearParts.maxOffLeafM` 0.01 m,
+    no problems; stored in the manifest report).
+  - `gb_check.py` composites every door / unload patch over `idle_<dir>_0` and fails on any detached island of 6 px
+    or more. The new set has none; the old set fails with islands of 186 + 45 px (NE f2) and 208 + 48 px (NE f3).
+
+### H2 · patch draw order (fixed)
+The game draws a van as shadow, body, riders (+0.001, +0.0004 each), then `over_*` (+0.004). The patches now fit
+that order:
+1. **Each door / unload frame ships its own overlay**, `over_door_<dir>_<i>` / `over_unload_<dir>_<i>`, on the patch
+   canvas. It is cut from occlusion masks rendered in that pose (the open driver door and its pillar in front of seat
+   1; a rear leaf in front of a standing rider). It replaces `over_idle_<dir>_0` while the patch shows, so the closed
+   door is never drawn over the open one.
+2. **The patch goes under the riders.** `anims.door / unload` carry `patchDepth` 0.0005, `overlay`,
+   `emptySeats` (`door`: [0], the driver steps out at `doorPoints[0]`; a seat-1 passenger stays) and `drawOrder`.
+   `conventions.patches` says it in words.
+3. **The unload patches are re-cut.** A pixel is kept only within 4 px of a real change (> 24) and never in the cab /
+   rider zone (seat and seatsStand boxes + the rider-proxy silhouette), not even as collar. Unchanged cab pixels in
+   the rider zone: 0 (was 747–757 in SE, 234–239 in NE). Door patches keep the whole changed area (they sit under
+   the riders and their own overlay).
+4. **The Phaser test draws real riders** (gb_driver and a resident composed with `tools/geumbangfolk_compose.py`) the
+   VehicleSprite way, with the patch under them and the overlay switch. `docs/previews/gb_phaser_order.png` shows door
+   f2 / unload f3 in SE, NE, SW and NW with driver and passenger, plus the dock van at zoom 1.6: the driver is whole,
+   the passenger is never cut, there is no doubled door.
+5. **`gb_check.py`** fails on a patch depth at or above the riders, a missing / misshaped overlay, `door` without
+   seat 0 in `emptySeats`, or more than 3 unchanged cab pixels of an unload patch in the rider zone.
+
+### M1 · banner (fixed; the cause is the wall, not a rotated print)
+- **Reproduced in part.** The print was upright and stacked (금 above 방): the rendered navy text correlates 0.75 with
+  the projected upright print against 0.45 / 0.47 for the rotated ones. What the critic saw is real on screen,
+  though. The banner hangs on the -Y facade, a 0.7 m cloth is only ~32 px wide there, and the iso view drops every
+  horizontal stroke 1 px per 2 px, so upright syllables read as a word turned on its side.
+- **Fix.** `gb_tex.banner` draws the mark and the syllables on their own layer and de-shears it for the wall
+  (`iso_wall_shear`, k = 0.408). On screen 금 and 방 now stand upright and level, and they are bigger (0.74 of the
+  cloth width, the mark 0.66). The en banner (sparkles) is de-sheared the same way. The 8 sway frames were
+  re-rendered.
+
+### M2 · hub emblems (fixed)
+Three re-render patches over `logistics_center_shell`, drawn with the 금방 hub only (the 서리 depot keeps the centre's
+own mark):
+
+| Key | What |
+|---|---|
+| `gb_emblem_gable` | the big gable disc above dock 2: the 금방이 mark (R 0.56 m) instead of the winged parcel |
+| `gb_emblem_blade` | the corner blade sign: a 금방이 disc (R 0.45 m) covering the blue winged-parcel disc |
+| `gb_roofparcel` | the giant parcel on the ridge: gold ribbons and bow instead of red |
+
+- `gb_hub.py` renders each region twice in the shell pass, as shipped (`base_*`) and in 금방 dress, and `gb_pack.py`
+  keeps only the changed pixels plus a 2 px collar. The wall where the old wings were is re-rendered too, so the
+  patch lands pixel-exactly on the shell.
+- `kind: patch`, `of: logistics_center`, `depthOffset` 0.0004, alpha = shell alpha.
+- `gb_check.py` fails if any of them is missing or misplaced.
+
+### M3 · English roof sign (fixed)
+- The en board is now a stacked lockup: a smaller mark (0.40 m) and **GEUM / BANG** on two lines in Fredoka SemiBold
+  (cap 0.192 m). The letter lines measure **11 / 11 px** (lit frame 10 / 11) against 6 px before: 6.0 CSS px at
+  zoom 1.0 and 7.1 at 1.2. The ko sign is unchanged (19 px).
+- SemiBold keeps the board's navy share at 12.3 %.
+- `gb_check.py` measures every text line of every roof sign and fails under 10 px.
+
+### M4 · pennant mirrors (fixed)
+- Phaser 3 flips a frame about its **centre**, not its origin. A point (dx, dy) of a flipped sprite lands at
+  (-dx + mirrorShiftPx, dy), with mirrorShiftPx = frameW - 2 · anchorX · frameW.
+  - `dog_sled` +30, `gb_pennant` -20: 50 px between them.
+  - `gb_van` -2 and `gb_van_turn` -4 (these are now manifest fields).
+- **Fix.** `sledPennant` now ships explicit **SW and NW** tables (x = -x + 30 + 20; SE idle [-76, -83] → SW
+  [126, -83]). The note says to use them as they are, without negating. `conventions.mirror` states the general
+  rule; the roof-sign note gives `x - p[0] + mirrorShiftPx` for mirrored vans.
+- **Why no re-pad.** The pennant art is 29–32 px wide with the stick at its right edge, so it cannot sit with the
+  foot at x = 24 in the contract's 48 px frame.
+- **Checks.**
+  - `gb_check.py` recomputes the SW / NW tables from both frames.
+  - The Phaser test has a mirror probe: still sleds and pennants in SE / SW and NE / NW on a flat backdrop, the SW
+    (NW) window flipped and compared with SE (NE) on the screenshot. Result: 0.00 % mismatch at 0 px shift for both pairs
+    (limit 1 %; `docs/previews/gb_sled_mirror_probe.png`).
+  - `gb_preview.py` now flips the way Phaser does (same box), so the previews show what the game draws.
+
+### M5 · parcel visibility (fixed)
+- `gb_render.py` ray-tests every point toward the camera in Blender. The manifest gets one boolean per point:
+  - `parcelPointsVisible`: SE [F, F, F], NE [F, T, F]. In NE the right leaf hides two of the three parcels at f3.
+  - `doorstepDirs` ['NE', 'NW'].
+- The van note says to stage doorstep kerb stops facing NE / NW, or to show the parcel only once the courier holds it.
+- `gb_check.py` requires the flags (one per point) and at least one dir that shows the parcels.
+
+### Lows
+- **L1 (in part).**
+  - The glossy, clear-coated vehicle paint renders ~10 ΔE duller than the flat-shaded props. The van livery now uses
+    `VAN_GOLD` #FFC640 for the paint (the mark, the props and the UI keep #F2B33D).
+  - The gold-family mean ΔE2000 to brand gold drops from 11.3 to **8.9** (turn frame 8.6). With the same measure the
+    locker is 7.7, the sign 8.0 and the flag 4.7.
+  - The critic's ≤ 6 was not reached. Going further needs a flatter paint than the red van's, which would break the
+    vehicle family. Coat 0.25 vs 0.5 moved it by only 0.1.
+  - The whole van was re-rendered (29 frames + masks, 4 min).
+- **L2 (in part).**
+  - Contract AO.5 asks for navy doors, so they stay navy. Each door gets a cream label plate (0.2 x 0.075 m), and the
+    12-door grid reads gold + cream + navy.
+  - Navy counted the critic's way (lit and shaded, x 0.5–1.2, chroma ≥ 12) falls from 14.5 / 14.9 % to **11.5 / 11.9 %**.
+  - The lockers were re-rendered.
+- **L3.** New `gb_check.py` rules:
+  - the pair test merges k-means clusters by hue family, so lit and shaded gold are one area;
+  - hub layers and patches are included (nameplates, which are letters only, are not given a navy share);
+  - the van mark is **measured**: the projected box of the mark mesh the camera sees, 45.4 x 59.9 px = 14.75 CSS px at
+    zoom 0.6, checked on the frame's pixels (cream face + navy eyes);
+  - navy is counted wide;
+  - plus the island, rider-zone, draw-order, overlay, cap-height, mirror-table, visibility and hub-patch rules above.
+- **L4.**
+  - `lightsVisible` / `tailsVisible` (one boolean per point; ray-tested) on `gb_van` (SE lights [T, T], NE [T, F]) and
+    `gb_van_turn` (N lights [F, F]).
+  - `conventions.night` says to glow only the visible lamps. The Phaser test and `gb_night.png` do so.
+- **L5.** Items with `boxOf` take `stackStep` / `thicknessM` from that box: `gb_parcel_cat` is now 24 / 0.44.
+- **L6.** This report is corrected:
+  - the frame counts below are the real ones;
+  - the turn points are the gold van's own measurement (the red van has no turn frames);
+  - the en-sign claim is replaced by the measured letter heights;
+  - the tool paths are listed as they are.
+- **L7 (won't fix here).**
+  - Jua is the game's house Korean face (OFL), used on every Korean sign in the village, so this is not imitation.
+  - A hand-drawn 금방 wordmark would have to be shared with ui6 `ui_gb_logo_ko`, which belongs to the gb_ui_audio job.
+    It is noted for the brand pass.
+- **L8.**
+  - `conventions.night` asks for a soft ADD glow at `logistics_center.fxPoints.board`, so the nameplate and banner do
+    not sink below the lit windows. The Phaser night shots draw it.
+  - No lit nameplate frames were added.
 
 ## Brand
 
 | Token | Hex | Used for |
 |---|---|---|
-| gold | `#F2B33D` | van body, the mark disc, roof-sign rim, banner, flag, locker cabinet, parcel tape |
+| gold | `#F2B33D` | the mark disc, roof-sign rim, banner, flag, locker cabinet, parcel tape (van paint: `VAN_GOLD` #FFC640, L1) |
 | goldDark | `#D9962A` | trims, rods, shadows of gold |
-| cream | `#F4EDE0` | roof band, sign faces, the mark's border / parcel / sparkle |
+| cream | `#F4EDE0` | roof band, sign faces, locker label plates, the mark's border / parcel / sparkle |
 | charcoal | `#3B3F52` | tyres, bumpers, hardware |
-| navy | `#2B4F7E` | belt line, letters, mark face (≤ 15 % of any sprite; max 12.9 %) |
+| navy | `#2B4F7E` | belt line, letters, mark face, locker doors (≤ 15 % of any sprite, counted wide; max 12.3 %) |
 
-The **mark**, 금방이, is built by `gb_lib.mark`. It follows variant A of the 2D study in
-`docs/previews/gb_mark_thumbs.png`, the contract default. It is a gold disc with a goldDark rim and a cream sticker
-border. Inside is a face-on cream parcel with navy dot eyes, pink cheeks and an "o" mouth, with a cream four-point
-sparkle above it.
+- **The mark, 금방이**, is built by `gb_lib.mark`:
+  - a gold disc with a goldDark rim and a cream sticker border;
+  - inside, a face-on cream parcel with navy dot eyes, pink cheeks and an "o" mouth;
+  - a cream four-point sparkle above.
+- **It is its own mirror image** (0 % px difference at 96 and 24 px).
+- **No sprite is a real courier's colour pair.** No sprite's two largest colour families sit within ΔE2000 15 of a
+  listed pair (min 20.6).
+- **Letters** appear only on:
+  - `gb_roofsign_*`;
+  - `gb_nameplate_*` and `seori_nameplate_*`;
+  - `gb_banner_ko`.
 
-**Letters** appear only on these keys:
-- `gb_roofsign_*`;
-- `gb_nameplate_*` and `seori_nameplate_*`;
-- `gb_banner_ko`.
-
-`gb_banner_en` carries a column of sparkles instead. No mirrored sprite (`gb_van`, `gb_van_turn`, `gb_pennant`) has
-any letters.
+  No mirrored sprite (`gb_van`, `gb_van_turn`, `gb_pennant`) carries letters.
 
 ## Keys
 
 ### `gb_van` (character, kind `vehicle`, family `delivery_van`, variant `gb`, rig `delivery_van_red`)
-- **The red van's rig, exactly.** Every field and point equals the red van's (0 px delta, re-measured on the gold
-  render):
-  - frame 284 x 252, anchor [0.50352, 0.75];
-  - dirs SE / NE, with SW ← SE and NW ← NE by flipX;
-  - `seats`, `seatsStand`, `seatDrawOrder`, `doorPoints`, `rearDoorPoint`, `cargoPoint`, `lightPoints`, `tailPoints`,
-    `exhaustPoint`, `footprintPoly`, `shadow`, `wheels`, `topPx`.
-
-  Any code that can drive `delivery_van_red` can drive `gb_van` by swapping the key.
-- **Look.** A honey-gold body with a navy belt line, a cream roof band under snow, and the 금방이 mark (R 0.5 m) on
-  both flanks. There are no letters on the body: the word 금방 rides on the roof sign.
-- **Anims.** Frame names are `{anim}_{dir}_{i}`; overlays are `over_{anim}_{dir}_{i}`. As with the red van, there is
-  no baked shadow: draw `shadow[dir]`.
+- **The red van's rig, exactly**: frame 284 x 252, anchor [0.50352, 0.75], dirs SE / NE (SW ← SE, NW ← NE by flipX) and
+  every point field (0 px delta, re-measured on the gold render).
+- **Anims** (`{anim}_{dir}_{i}`, overlays `over_{anim}_{dir}_{i}`; no baked shadow, draw `shadow[dir]`):
 
   | Anim | Frames | fps | Repeat | Notes |
   |---|---|---|---|---|
   | `idle` | 2 | 6 | loop | |
   | `move` | 4 | 10 | loop | the red van's `bobPx` |
-  | `door` | 3 | 10 | once | **patch** over `idle_<dir>_0` |
-  | `unload` | 4 | 8 | once | **patch** over `idle_<dir>_0` |
+  | `door` | 3 | 10 | once | patch over `idle_<dir>_0` + `over_door_*`; seat 0 empty |
+  | `unload` | 4 | 8 | once | patch over `idle_<dir>_0` + `over_unload_*`; parcels at f3 where visible |
 
-  - **`door`:** the driver door swings open. Hide the seated driver while it plays; he steps out at `doorPoints[0]`.
-    Play it backward to close.
-  - **`unload`:** the rear doors open. The last frame shows 3 parcels at `parcelPoints`.
-- **New points (per dir, px from the anchor; negate dx when mirrored):**
-  - `roofSignPoint` SE [16, -123], NE [16, -139];
-  - `parcelPoints[3]`: the parcels on the cargo floor by the rear doors;
-  - `parcelGround[3]`: the ground under each of those parcels, where the courier's hand-off lands.
-- **Turn frames, `gb_van_turn`** (S / E / N, W ← E):
-  - frame 296 x 256, anchor [0.50676, 0.75], own `shadow`;
-  - the same seat, light, tail, door, cargo, exhaust and roof-sign points as the red van's turn frames, plus
-    `headingDeg`.
-
-  Use them for about 0.3 s at each road corner, as in `assets/logistics`.
+- **New points and flags** (per dir, px from the anchor):
+  - `roofSignPoint`;
+  - `parcelPoints[3]` / `parcelGround[3]`, with `parcelPointsVisible`;
+  - `lightsVisible`, `tailsVisible`;
+  - `mirrorShiftPx` -2;
+  - `doorstepDirs`.
+- **`gb_van_turn`** (S / E / N, W ← E): frame 296 x 256, anchor [0.50676, 0.75], its own `shadow`, seats, lights,
+  tails, roof sign, door, cargo and exhaust points (measured on the gold van), `lightsVisible` / `tailsVisible`,
+  `mirrorShiftPx` -4, `headingDeg`.
 
 ### Roof signs: `gb_roofsign_{ko|en}_{0|1}` (in `gb_van_0`)
-- A 96 x 56 camera-facing A-board on a charcoal roof bar, anchor [0.5, 1]: a cream face with a gold rim, the mark,
-  and navy "금방" or "GEUMBANG".
-- `_1` is the lit night face (emissive).
-- Draw it at `roofSignPoint[dir]` + the current `bobPx`, at depth van + 0.02. **Never flip it**; only negate the x
-  offset in SW / NW.
-- Use it for both `gb_van` and `gb_van_turn` (whose `roofSignPoint` is per turn dir).
+- A 96 x 56 camera-facing A-board on a charcoal roof bar, anchor [0.5, 1]: a cream face with a gold rim.
+  - **ko**: the mark + "금방" (19 px glyphs);
+  - **en**: the mark + GEUM / BANG (11 px letters).
+- `_1` is the lit night face. Draw at `roofSignPoint[dir]` + `bobPx`, depth van + 0.02, never flipped (mirrored van:
+  `x - p[0] + mirrorShiftPx`).
 
-### Hub layers (in `gb_bld_0`)
-All hub layers share `logistics_center`'s frameSize [1152, 864] and anchor [0.41493, 0.58912], so they land on the
-building pixel-exactly.
+### Hub layers and patches (in `gb_bld_0`, all on `logistics_center`'s frame [1152, 864], anchor [0.41493, 0.58912])
 
 | Key | Kind | depthOffset | What |
 |---|---|---|---|
-| `gb_nameplate_ko` | layer, replaces `nameplate_ko` | 0.0005 | mark + big **금방** + small **물류센터**, raised navy letters (Jua), the mark in relief |
-| `gb_nameplate_en` | layer, replaces `nameplate_en` | 0.0005 | mark + **GEUMBANG** over **CENTRE** (Fredoka Bold) |
-| `seori_nameplate_ko` | layer, replaces `nameplate_ko` | 0.0005 | **서리 물류창고**, the depot's name before 금방 opens (same fit rule as the shipped 솔방울 plate) |
-| `seori_nameplate_en` | layer, replaces `nameplate_en` | 0.0005 | **Frost Depot** |
-| `gb_banner_ko` / `_en` | patch, anim `sway` (4 f, 5 fps, loop) | 0.0012 | a 0.7 x 1.8 m printed cloth on a gold rod |
+| `gb_nameplate_ko` / `_en` | layer, replaces `nameplate_<lang>` | 0.0005 | mark + 금방 / 물류센터, GEUMBANG / CENTRE (raised navy letters) |
+| `seori_nameplate_ko` / `_en` | layer, replaces `nameplate_<lang>` | 0.0005 | 서리 물류창고 / Frost Depot (before 금방 opens) |
+| `gb_emblem_gable`, `gb_emblem_blade`, `gb_roofparcel` | patch over the shell (금방 hub only) | 0.0004 | M2 above |
+| `gb_banner_ko` / `_en` | patch, `sway` 4 f · 5 fps loop | 0.0012 | 0.7 x 1.8 m cloth left of dock 1, print de-sheared for the wall |
 
-- **Nameplates.** Draw one of them **instead of** `logistics_center_nameplate_<lang>`, with alpha = shell alpha. They
-  are rendered with the shell as holdout, so the letters are lit like the shell. Every letter pixel sits inside the
-  name board (0 px outside).
-- **Banner.** It hangs on the front wall left of dock 1 (x 3.9–4.6 m, z 2.1–3.9 m), with its own soft shadow on the
-  wall. It overlaps 0 opaque px of dock 1, the dock lamps, the loading sign and the name board. The ko banner reads
-  금방 vertically under the mark; the en banner has sparkles instead of letters.
+- Every nameplate letter pixel is inside the name board.
+- The banner overlaps 0 opaque px of dock 1, the dock lamps, the loading sign and the board.
 
-### Props (in `gb_bld_0`; baked village shadow, cropped to the contract maxima)
-
-| Key | Frame | States / anims | Points |
-|---|---|---|---|
-| `gb_sign` | 128 x 287 | `day` `gb_sign_0`, `lit` `gb_sign_1` (**litPatch**) | footprint r 0.3 m, 3.2 m tall |
-| `gb_flag` | 128 x 224 | `wave` 6 f, 8 fps, loop | footprint r 0.3 m, 2.4 m tall |
-| `gb_locker_a` (faces SW) | 208 x 224 | `day` / `lit` (litPatch); `open` 4 f, 12 fps, once, patch over `_0` | `slotPoints` 12, `openSlot` 7, `openPoint`, `standPoint` / `standDir`, `fillPoint` / `fillDir` |
-| `gb_locker_b` (faces SE) | 208 x 224 | as `gb_locker_a` | as `gb_locker_a` |
-
-- **`gb_sign`** is a 1 m 금방이 disc on a charcoal pole with a snowy foot, facing the camera. It shows the mark only,
-  with no letters, so it is language-neutral. At night (`_1`) the disc face glows.
-- **`gb_flag`** is a 1.0 x 0.65 m gold flag printed with the mark and two cream sparkles, on a 2.4 m pole with a gold
-  ball finial.
-- **The lockers (금방 보관함)** are a 1.8 x 0.6 x 2 m gold cabinet on a charcoal plinth:
-  - 12 navy doors (4 rows x 3) on a gold grid, with cream knobs;
-  - a cream header with the glowing 금방이 screen and gold dots;
-  - a snow cap.
-
-  `_1` lights the screen and dots. `slotPoints` are the door centres (index = row x 3 + col, row 0 at the top).
-  `standPoint` is where a resident opens a door; `fillPoint` is where the courier fills it. Play `open` backward to
-  close.
-
-**litPatch** means the lit frame is a patch: at night, draw it over the day frame at the same position.
-
-### Items (72 x 72, anchor (36, 54), with `stackStep` / `carryScale` / `topPx` / `sizeClass` / `boxOf` from `cardboard_box_*`)
-- **`gb_parcel_s` / `_m` / `_l`:** kraft boxes with a gold tape cross and the 금방이 sticker.
-- **`gb_parcel_doorstep`:** a parcel waiting on a doormat, with states `fresh` (just delivered) and `snowy` (after 4
-  game hours outside: a snow cap on the box and the mat edge).
-- **`gb_parcel_open`:** flaps folded out, empty inside.
-- **`gb_parcel_cat`** (optional): 나비 (`pet_cat`) peeking out of an opened 금방 parcel ("고양이는 상자가 더 좋대요").
-  Anim `blink`, 2 f, `repeatDelay` 1600.
-
-All items work as icons too.
-
-### `gb_pennant` (overlay on `dog_sled`)
-- **Frames:** 48 x 56, anchor = the stick foot; SE / NE (SW / NW by flipX); `flutter` 4 f at 10 fps.
-- **Placement:** `geumbang.sledPennant[dir][anim][frame]` gives the px offset for every `dog_sled` idle and move frame,
-  including its bob.
-- **Look:** a gold triangle with a goldDark hem and the mark at the hoist; no letters. Draw it right after the sled
-  and its overlay.
+### Props, items, pennant (in `gb_bld_0`)
+- **Props:**
+  - `gb_sign` (mark disc on a pole, lit patch);
+  - `gb_flag` (`wave` 6 f · 8 fps);
+  - `gb_locker_a` (faces SW) / `gb_locker_b` (faces SE): 12 navy doors with cream label plates, the lit screen as a
+    patch, `open` 4 f · 12 fps as patches. Points: `slotPoints` 12, `openSlot`, `standPoint/Dir`, `fillPoint/Dir`.
+- **Items** (72 x 72, anchor [0.5, 0.75], fields from `boxOf`): `gb_parcel_s/m/l`, `gb_parcel_doorstep` (fresh /
+  snowy), `gb_parcel_open`, `gb_parcel_cat` (blink).
+- **`gb_pennant`:** 48 x 56, anchor = the stick foot, `flutter` 4 f · 10 fps. `sledPennant[dir][anim][i]` for SE / NE /
+  SW / NW (idle 4, move 8), with `mirrorShiftPx` -20.
 
 ## How the game uses it (summary)
-1. **Loading.** Load `assets/geumbang/manifest.json` (fragment `geumbang`) and its two atlases. The conventions block
-   in the manifest restates each rule below.
-2. **Driving.** Drive `gb_van` exactly like `delivery_van_red`:
-   - SE / NE frames, flipX for SW / NW;
-   - the `over_*` overlay above seated riders;
-   - `shadow[dir]`;
-   - `gb_van_turn` at corners.
-3. **Roof sign.** Add the roof sign as a child sprite at `roofSignPoint` (+ `bobPx`). Swap `_0` → `_1` at night and add
-   the usual ADD glow there.
-4. **Patches.** For `door` / `unload`:
-   - stop the body on `idle_<dir>_0`;
-   - draw `door_<dir>_i` / `unload_<dir>_i` on top at the same x / y, with `anims.<anim>.anchor` and `frameSize`;
+1. **Load** `assets/geumbang/manifest.json` (fragment `geumbang`) and its two atlases.
+2. **Drive** `gb_van` exactly like `delivery_van_red`; use `gb_van_turn` for ~0.3 s at corners.
+3. **Roof sign:** a child sprite at `roofSignPoint` + `bobPx` (mirrored: `-x + mirrorShiftPx`); `_1` at night.
+4. **door / unload:**
+   - hold the body on `idle_<dir>_0`;
+   - draw the patch at body depth + 0.0005;
+   - the riders (seat 0 empty during `door`);
+   - then `over_<anim>_<dir>_<i>` with the patch anchor / frameSize instead of `over_idle`;
    - play backward to close.
-5. **Hub.** Pick one nameplate key (금방 or 서리, per language) in place of the baked one. Optionally add `gb_banner_<lang>`
-   as a patch.
-6. **Night.** Night is the game's MULTIPLY tint plus ADD glows at:
-   - `lightPoints`;
-   - `roofSignPoint`;
-   - the sign disc and the locker screens.
-
-   Lit frames are drawn under the tint.
+5. **Hub:**
+   - before 금방 opens: `seori_nameplate_<lang>`;
+   - after: `gb_nameplate_<lang>` + `gb_emblem_gable` + `gb_emblem_blade` + `gb_roofparcel` + optionally
+     `gb_banner_<lang>`.
+6. **Night:** MULTIPLY tint, then ADD glows at the visible lamps, `roofSignPoint`, the sign disc, the locker screens
+   and `fxPoints.board`.
+7. **Sled pennant:** `sledPennant[dir]` for all four dirs, flipX in SW / NW, no negation.
 
 ## Pipeline and rebuild
-All tools are new, under the job's own paths. Run each under `nice -n 10`, one Blender at a time.
+Run each step under `nice -n 10`, one Blender at a time. All tools are under the job's own paths.
 ```
 cd frost-village
-/tmp/bvenv/bin/python tools/blender/gb_render.py -- all      # or van|turn|roofsign|hub|builds|pennant; --force --only k,k --cache DIR (GB_CACHE)
+/tmp/bvenv/bin/python tools/blender/gb_render.py -- all      # or van|roofsign|hub|builds|pennant; --force --only k,k; GB_CACHE=DIR
 python3 tools/blender/gb_pack.py [--cache DIR]               # -> assets/geumbang/{gb_van_0,gb_bld_0}.{png,json}, manifest.json
-python3 tools/blender/gb_check.py [--json OUT]               # contract + brand check, exit 1 on any error
-python3 tools/blender/gb_preview.py                          # docs/previews/gb_*.png / .gif
-python3 tools/blender/gb_mark_thumbs.py                      # docs/previews/gb_mark_thumbs.png (2D mark study)
-node tools/test/geumbang_phaser.mjs                          # GB_OUT=<dir> for shots + geumbang_phaser.json
+python3 tools/blender/gb_check.py [--json OUT]               # contract + brand + polish rules, exit 1 on any error (GB_DIR=<copy> to check another copy)
+python3 tools/blender/gb_preview.py                          # docs/previews/gb_*.png / .gif (GB_BEFORE=<old set> adds the before/after sheet)
+node tools/test/geumbang_phaser.mjs                          # GB_OUT=<dir> for shots, dolls, geumbang_phaser.json
 ```
+The polish re-rendered only what changed:
+- the van (all frames: the rear-door fix and the paint), plus masks for door / unload;
+- the en roof signs;
+- the 8 banner frames;
+- 6 hub patch renders (base + 금방 for 3 regions);
+- the two lockers.
 
-| File | Role |
+Everything else came from the existing render cache.
+
+| File | Role (polish changes in **bold**) |
 |---|---|
-| `gb_lib.py` | brand palette; the 3D mark; text meshes (Jua / Fredoka); the parcel builder (closed / open / doorstep snow); cloth grids with printed textures |
-| `gb_van.py` | livery override of `lgx_vehicles.b_van`: band / emblem monkeypatched during the call; exact boolean split of the baked shell for the hinged door leaves; cargo parcels; extra points |
-| `gb_render.py` | dispatcher and van renders on a canvas grown by 56 px. idle, move and the patches share one sampling grid, so a patch lands on `idle_0` without seams. Turn frames on their own frame. Seat masks. |
-| `gb_signs.py` | roof signs and pennant |
-| `gb_tex.py` | banner / flag / pennant textures |
-| `gb_hub.py` | nameplates and banner on the centre's own frame, via `lgx_render` passes and border renders; a small wall shadow catcher |
-| `gb_assets.py` | props / items registry for `bld_render` |
-| `gb_pack.py` | crop back to the red van frame; `patch_pixels` keeps only changed pixels plus a 1 px opaque collar; lit frames become patches; ink outline; prop shadow post; quantize; manifest |
-| `gb_check.py` | contract and brand checks |
-| `gb_preview.py` | previews |
-
-Packing is deterministic.
+| `gb_van.py` | livery override of `lgx_vehicles.b_van`; **rear parts' leaf decided in body space (H1); `VAN_GOLD` (L1)** |
+| `gb_render.py` | renders; **masks for door / unload; ray-tested visibility flags; rear-part check; measured mark box** |
+| `gb_signs.py` | roof signs and pennant; **en stacked lockup (M3)** |
+| `gb_tex.py` | banner / flag / pennant prints; **`iso_wall_shear` + de-sheared banner print (M1)** |
+| `gb_hub.py` | nameplates and banner; **emblem / roof-parcel re-render patches (M2)** |
+| `gb_assets.py` | props / items; **locker label plates (L2)** |
+| `gb_pack.py` | **MaxRects packer; unload re-cut; per-pose overlays; hub patch cut; draw-order fields; visibility; mirror tables; L5** |
+| `gb_check.py` | **islands, rear parts, draw order, rider zone, overlays, cap height, mirror tables, hub patches, measured mark, hue-family pairs, wide navy** |
+| `gb_preview.py` | **Phaser's centre flip; patch + overlay order; emblems; visibility; before/after sheet** |
+| `tools/test/geumbang_phaser.mjs` | **real rider dolls, VehicleSprite order, order grid, mirror probe, visible-lamp glows, board glow** |
 
 ## Check results (`gb_check.py`: 0 errors, 0 warnings)
-- **Frames and anims:** every frame named by a key, anim, dir, overlay or patch exists.
+- **Frames and anims:** every frame named by a key, anim, dir, overlay or patch exists. Atlases: `gb_van_0` 62 entries
+  (49 unique rectangles, 13 aliased identical overlays), `gb_bld_0` 51.
 - **Rig delta:** 0.0 px on every point field of every dir.
 - **Van patches:**
-  - pixels changed outside the patch ≤ 0.012 % (limit 0.5 %);
-  - 0 px the patch would have to erase;
-  - no patch touches the canvas edge.
-- **Mark:** the mirror difference is 0 % at 96 px and at 24 px.
-- **Phone readability at zoom 0.6, 390 CSS:** van mark 14.7 CSS px (≥ 12); roof sign 31.2 CSS px (≥ 30).
-- **Navy share:** at most 12.9 % of opaque px (limit 15 %). Baked shadows and charcoal hardware are not counted as
-  navy.
-- **Brand distance:** the minimum ΔE2000 to any real-brand pair is 21.2 (limit 15).
-- **Letters:** none outside the listed keys, none on mirrored sprites.
-- **Hub:** nameplate px outside the board: 0; banner overlap with dock 1 / lamps / load sign / name board: 0 px.
-- **Keys:** no key collides with another fragment.
+  - pixels changed outside the patch ≤ 0.037 % (limit 0.5 %);
+  - 0 px to erase;
+  - no patch touches the canvas edge;
+  - 0 islands;
+  - unchanged rider-zone px ≤ 1 (limit 3);
+  - every patch has its overlay.
+- **Rear parts:** at most 0.01 m off their leaf in every unload pose.
+- **Mark:**
+  - measured 45.4 x 59.9 px (SE) and 45.5 x 60.0 px (NE), which is 14.75 CSS px at zoom 0.6 (≥ 12);
+  - mirror difference 0 %.
+- **Roof signs:** 31.2 CSS px wide at zoom 0.6 (≥ 30). Letter lines: ko 19, en 11 / 11, en lit 10 / 11 px (≥ 10).
+- **Navy share:** max 12.3 % (lockers 11.5 / 11.9 %).
+- **Brand pairs:** min ΔE2000 20.6 (limit 15).
+- **Hub:**
+  - nameplates 0 px outside the board;
+  - banner overlaps 0 px;
+  - emblem patches 3784 / 2681 / 1494 px.
+- **sledPennant:** SW / NW equal the centre-flip mirrors (sled +30, pennant -20).
+- **Keys:** no collision with another fragment.
 
 ## Previews (`docs/previews/`)
 
 | File | What |
 |---|---|
-| `gb_mark_thumbs.png` | 2D mark study: variants A (default) / B (tape strip) / C (rosy cheeks) at 96 and 24 px on light, snow and dark grounds |
-| `gb_all.png` | the whole set on snow |
-| `gb_van_8dirs.png` | 8 headings + S / E / N / W corner frames, each with its roof sign |
-| `gb_van_compare.png` | the red reference van next to the gold van on a 390-CSS phone width: zoom 1.0 (SE) and zoom 0.6 (SE / NE / SW mirror with the en sign), with the measured mark and sign sizes |
-| `gb_van_move.gif` | move SE / NE / SW / NW |
-| `gb_van_door.gif` | the door patch over `idle_<dir>_0`, SE / NE / SW / NW, opening and closing |
-| `gb_van_unload.gif` | the unload patch, SE / NE / SW / NW, with `parcelPoints` circled on the last frame |
-| `gb_hub.png` | the centre four ways: 금방 ko (nameplate, banner, a van at dock 1, sign / flag / locker); 금방 en (mark-only banner); 서리 물류창고 (before 금방 opens); Frost Depot |
-| `gb_banner.gif` | banner sway |
-| `gb_props.png` / `gb_props.gif` | sign, flag wave (6 f), lockers a (SW) / b (SE) with the open patches, the sign lit patch |
-| `gb_items.png` | every `gb_parcel_*` at 2x, with `cardboard_box_s/m/l` at 1x for scale |
-| `gb_sled.png` / `gb_sled.gif` | the dog sled with the pennant at `sledPennant` |
-| `gb_night.png` | the night tint with lit roof sign, sign and lockers |
-| `gb_phaser_390_day_night.png` | Phaser phone shots, 390 x 844 DPR 3: zoom 0.6 / 1.0 / 1.2 / 1.6, day and night. The contact sheet is at 0.4x; the full-resolution shots go to `$GB_OUT`. |
-| `gb_phaser_360.png` | Phaser phone shot, 360 x 640 DPR 2, zoom 1.0 |
-
-## Phaser test (`tools/test/geumbang_phaser.mjs`)
-The test builds one scene the documented way, with no game code:
-- **The centre:**
-  - `gb_nameplate_ko` in place of the baked plate;
-  - `gb_banner_ko` swaying;
-  - dock 1 rolling up;
-  - a `gb_van` backed into bay 1 and looping the unload patch.
-- **The street:**
-  - the red van and a town car for scale;
-  - a `gb_van` at a kerb looping the door patch (NE);
-  - a mirrored SW van on cobble.
-- **The loop van:** it drives through SE / NE / NW / SW legs with the S / E / N / W corner frames, and the roof sign
-  rides `roofSignPoint` + `bobPx`.
-- **Props and items:** sign, flag, both lockers (open patch cycling), every item.
-- **The dog sled:** it carries the pennant at `sledPennant` and crosses dirt and then snow.
-- **Ground:** the scene covers snow, cobble and dirt.
-- **Night:** the DayClock MULTIPLY tint (0x5a6aa8 @ 0.45), ADD glows, lit roof signs and the lit patches.
-
-Shots are taken at 390 x 844 DPR 3 (zoom 0.6 / 1.0 / 1.2 / 1.6, day and night) and at 360 x 640 DPR 2 (zoom 1.0).
+| `gb_polish_before_after.png` | **new:** H1 (NE f3, SE f2), M1 banner, M2 hub emblems + roof parcel, M3 en sign, L1 van gold, L2 locker |
+| `gb_phaser_order.png` | **new:** Phaser, phone 390 x 844: the door / unload grid with real riders (zoom 1.0 day / night) and the dock van at 1.6 |
+| `gb_sled_mirror_probe.png` | **new:** the mirror probe windows (SE \| SW, NE \| NW) as captured in Phaser |
+| `gb_phaser_390_day_night.png` | Phaser phone shots, zoom 0.6 / 1.0 / 1.2 / 1.6, day and night |
+| `gb_phaser_360.png` | Phaser 360 x 640 DPR 2, zoom 1.0 |
+| `gb_van_8dirs.png`, `gb_van_compare.png`, `gb_van_move.gif` | the van in 8 headings, next to the red van, driving |
+| `gb_van_door.gif`, `gb_van_unload.gif` | patches + their overlays, SE / NE / SW / NW; parcelPoints green = seen, red = hidden |
+| `gb_hub.png`, `gb_banner.gif` | the centre four ways (금방 ko / en with the emblem patches, 서리 / Frost Depot without) |
+| `gb_props.png` / `.gif`, `gb_items.png`, `gb_sled.png` / `.gif`, `gb_night.png`, `gb_all.png`, `gb_mark_thumbs.png` | as before, regenerated |
 
 ## Self-critique / known issues
-- **Lit frames are lit in daylight.** The roof sign `_1` and the lit patches of the sign and lockers are rendered in
-  daylight with emissive faces, then tinted by the game's night MULTIPLY. They read as glowing at night, especially
-  with the ADD glow, but they are not true night renders.
-- **The locker `open` patch is lit only in daylight.** At night the open door has no interior glow of its own.
-- **The en roof sign is small.** "GEUMBANG" is 8 letters on a 96 px board. It reads from zoom 1.0 up; at 0.6 the
-  gold board and the mark carry it. The ko sign (2 big syllables) reads at 0.6.
-- **The pennant is small (48 x 56).** At zoom 0.6 it is a gold flicker on the sled; the mark reads from 1.0 up.
-- **The NE unload patch is large.** The rear doors swing wide, so the patch is up to 302 x 144 px. It costs atlas area
-  but keeps the doors honest.
-- **`gb_bld_0` has little headroom.** It sits at 2.47 MiB of 2.5. Making the lit frames into patches is what got it
-  under. Adding more hub art needs a third page.
-- **The turn frames are single frames.** The wheels do not spin during the 0.3 s corner, the same as the red van's
-  turn frames.
+- **Van gold.** It is ΔE 8.9 from the brand gold, not ≤ 6 (L1).
+- **Lit frames.** They are lit in daylight and tinted by the game's MULTIPLY. The locker `open` patch has no lit
+  variant.
+- **The banner print is de-sheared for the fixed camera.** It reads upright on screen, but in world terms the print
+  is slanted on the cloth. Only this game camera ever sees it.
+- **No lit nameplate frame.** The night readability of the name relies on the `fxPoints.board` glow rule.
+- **The en roof sign splits the brand name over two lines (GEUM / BANG).** It was the only way to reach 11 px letters
+  on the 96 px board with the mark kept.
+- **The turn frames are single frames** (no wheel spin during the 0.3 s corner), as with the red van.
 - **Paths differ from AS.** AS names `tools/<job>/<job>_check.py` and `tools/test/gb_<job>_phaser.mjs`. Under this job's
   path assignment they are `tools/blender/gb_check.py` and `tools/test/geumbang_phaser.mjs`.
-- **No critique yet.** The critique AS asks for is a separate job and has not run.

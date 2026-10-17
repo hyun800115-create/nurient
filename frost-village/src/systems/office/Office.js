@@ -214,6 +214,11 @@ export class Office {
   wantStaffPages() {
     if (!TF.of || !TF.ofAtlas) return;
     for (const g in TF.ofAtlas) if (g !== TF.ofResident) Residency.want(TF.ofAtlas[g]);
+    // (CODE-2) seated, desk and errand acts turn the head to officefolk's 'soc' / 'nod' poses. Those head frames live
+    //  on the townsfolk heads' @soc pages, which the town's social rule fetches only in the town district: without
+    //  them the clerks sat at their desks with no heads. (tfatlas pages: outside the social-page cap, budget-checked)
+    if (!this.headPages || !this.headPages.length) this.headPages = Residency.tfSocPages ? [...new Set(['adult', 'elder'].flatMap((a) => Residency.tfSocPages(a)))].filter((p) => /^tf_head/.test(p)) : [];
+    for (const p of this.headPages) Residency.want(p);
   }
 
   /** (CODE-2) the officefolk fragment: merged into the townsfolk runtime once both are here; staff re-dress */

@@ -23,10 +23,10 @@
    96
   ],
   "pageSize": [
-   916,
-   710
+   828,
+   768
   ],
-  "pageMiB": 2.481,
+  "pageMiB": 2.426,
   "pagePlan": {
    "why": "plan §10.4: the build packs the resident part with gb_bld_0 into gb_core; the app frames, tracker, logos and mascot ship as a transient page acquired only while the app is open.",
    "resident": [
@@ -51,7 +51,7 @@
     "fx_gb_bell_2",
     "fx_gb_bell_3"
    ],
-   "residentMiB": 0.485,
+   "residentMiB": 0.475,
    "transientApp": [
     "ui_gb_step_order_on",
     "ui_gb_step_order_off",
@@ -82,6 +82,7 @@
     "ui_gb_mascot_bow_0",
     "ui_gb_mascot_bow_1",
     "ui_gb_phone",
+    "ui_gb_phone_notch",
     "ui_gb_header",
     "ui_gb_tab",
     "ui_gb_tab_on",
@@ -89,7 +90,7 @@
     "ui_gb_ribbon",
     "ui_gb_photo"
    ],
-   "transientMiB": 1.89
+   "transientMiB": 1.857
   },
   "appLayout": {
    "panel": [
@@ -105,6 +106,10 @@
    "designCss": [
     360,
     390
+   ],
+   "notch": [
+    360,
+    15.5
    ],
    "header": {
     "rect": [
@@ -132,7 +137,23 @@
      540,
      174,
      1.0
-    ]
+    ],
+    "mascotRunIn": {
+     "from": [
+      763,
+      174
+     ],
+     "to": [
+      540,
+      174
+     ],
+     "ms": 600,
+     "ease": "Linear",
+     "anim": "run",
+     "then": "idle",
+     "mask": "screen",
+     "depth": "under the close button"
+    }
    },
    "tabs": {
     "y": 190,
@@ -142,8 +163,10 @@
     "icon": 34,
     "iconGap": 5,
     "font": 28,
-    "fontEn": 24,
-    "scale": 1.375
+    "fontEn": 26,
+    "scale": 1.375,
+    "colorOn": "#2B4F7E",
+    "colorOff": "#6B5D48"
    },
    "content": [
     37,
@@ -156,7 +179,8 @@
     "h": 256,
     "gap": 16,
     "font": 30,
-    "small": 28
+    "small": 28,
+    "colorSecondary": "#6B5D48"
    },
    "orderCard": {
     "h": 348,
@@ -175,7 +199,10 @@
     "badge": 54,
     "labelGap": 6,
     "labelFont": 28,
-    "labelFontEn": 24
+    "labelFontEn": 26,
+    "colorNow": "#2B4F7E",
+    "colorDone": "#3B3F52",
+    "colorOff": "#6B5D48"
    },
    "button": {
     "h": 88,
@@ -188,15 +215,102 @@
    },
    "tapMinCss": 44,
    "bodyMinCss": 15,
-   "textMinCss": 12
+   "textMinCss": 13,
+   "hud": {
+    "chip": {
+     "x": 28,
+     "y": 445,
+     "w": 172,
+     "h": 50,
+     "scale": 0.78125,
+     "icon": [
+      27,
+      36
+     ],
+     "text": [
+      52,
+      20
+     ],
+     "color": "#2B4F7E",
+     "dot": [
+      160,
+      10,
+      8
+     ],
+     "hit": [
+      28,
+      440,
+      172,
+      88
+     ],
+     "under": "업무 chip (UIv42 workChip: x 28, centre y 410, 132 x 50)"
+    },
+    "toast": {
+     "centre": [
+      361,
+      148
+     ],
+     "h": 64,
+     "wMax": 554,
+     "icon": [
+      44,
+      40
+     ],
+     "text": [
+      74,
+      28
+     ],
+     "color": "#3B3F52",
+     "hides": "the v4.2 hint pill (UI.js, centre (361, 148), 362 x 52) while it shows",
+     "ms": 3000
+    },
+    "v42": {
+     "coinBar": [
+      33,
+      33,
+      222,
+      59
+     ],
+     "hintPill": [
+      180,
+      122,
+      362,
+      52
+     ],
+     "chip3232": [
+      30,
+      194,
+      120,
+      44
+     ],
+     "deliveryChip": [
+      30,
+      258,
+      270,
+      44
+     ],
+     "workChip": [
+      28,
+      385,
+      132,
+      50
+     ],
+     "settings": [
+      660,
+      62,
+      33
+     ]
+    },
+    "edgeBadge": "UIv42.updateEdge clamps the left-side nav edge badge to y >= 480; while the 금방 chip shows, the left column ends at y 528 (its hit rect), so that clamp should become 540"
+   }
   },
   "appLayoutNotes": "Suggested layout of the 720 x 1100 logical app panel (plan §6): the phone 9-slice fills the panel; header / tabs / content rects are in panel px; tracker y and x0..x1 are card px. The panel fills the viewport width, so every tap target is >= 88 logical (44 CSS on a 360 CSS phone, 47.7 on 390), body text 30 (15 / 16.3 CSS) and no text under 24 (12 / 13 CSS). Tabs / the follow button are the 64-tall 9-slices scaled uniformly by tabs.scale / button.scale; the catalog sell toggle is drawn 44 tall but its hit area is the 88-tall right half of the row (toggle.hitH). English tab words are the short set Today / Order / Shop / Crew / Stars. docs/previews/ui6_app.png and ui6_phaser_*.png show it.",
   "codeFallback": {
-   "icons": "ui5 ui_icon_depot / ui4 ui_icon_box / ui3 ui_icon_delivery (plan §10.3); see each sprite's replaces",
+   "icons": "loaded house icons only (ui5 ui_icon_depot / ui_icon_sleigh / ..., ui3 ui_icon_delivery / ui_icon_request / ...; polish L3: ui4 ui_icon_box is in fx_city, which v4.3 does not load); see each sprite's replaces",
    "tracker": "text tracker \"주문 → 고르기 → 포장 → 배달 중 → 도착\" (plan §10.3)",
    "panels": "ui5 ui_chip / ui_letter frames (plan §10.3)",
    "logos": "runtime text \"금방 마켓\" in Pretendard on the header",
-   "mascot": "ui_icon_gb (no animation)",
+   "mascot": "nothing (or ui5 ui_icon_depot, no animation) - the mascot only appears with the ui6 page",
    "fx_gb_bell": "emotes fx_music_notes or nothing"
   }
  },
@@ -235,8 +349,8 @@
     96,
     96
    ],
-   "notes": "주문 tab / new-order toast: an order slip with a gold band and a check seal.",
-   "replaces": "ui_icon_box (ui4)"
+   "notes": "주문 tab / new-order toast: an order slip with a goldDark band and a check seal.",
+   "replaces": "ui_icon_request (ui3)"
   },
   "ui_icon_gb_van": {
    "atlas": "ui6_gb",
@@ -280,8 +394,8 @@
     96,
     96
    ],
-   "notes": "금방 보관함 (G1b upgrade card, locker tap): a gold locker, blue doors, one open with a parcel.",
-   "replaces": "ui_icon_box (ui4)"
+   "notes": "금방 보관함 (G1b upgrade card, locker tap): the gb_locker_a look - a gold locker with 3 x 4 small slate-navy doors, one open with a parcel.",
+   "replaces": "ui_icon_depot (ui5)"
   },
   "ui_icon_gb_deal": {
    "atlas": "ui6_gb",
@@ -370,7 +484,7 @@
     96,
     96
    ],
-   "notes": "새벽배송 (upgrade card, first dawn toast, 관망 cut): moon, stars and the sun rising behind snowy hills, a parcel waiting.",
+   "notes": "새벽배송 (upgrade card, first dawn toast, 관망 cut): a blue-to-peach dawn sky, a moon and a gold sparkle, the sun rising behind snowy hills, a parcel waiting (no violet).",
    "replaces": "ui_icon_night (ui3)"
   },
   "ui_icon_gb_doorstep": {
@@ -386,7 +500,7 @@
     96
    ],
    "notes": "문 앞 배송 (done card without a photo, \"문 앞에 두고 갈게요\" toast, setting 금방 문 앞 장면): a blue door with a parcel on the snowy step.",
-   "replaces": "ui_icon_box (ui4)"
+   "replaces": "ui_icon_delivery (ui3)"
   },
   "ui_icon_gb_cart": {
    "atlas": "ui6_gb",
@@ -401,7 +515,7 @@
     96
    ],
    "notes": "order bubble over the orderer (with the item icon) and 주문 counts: a shopping cart carrying a 금방 parcel.",
-   "replaces": "ui_icon_box (ui4)"
+   "replaces": "ui_icon_request (ui3)"
   },
   "ui_icon_gb_follow": {
    "atlas": "ui6_gb",
@@ -415,7 +529,7 @@
     96,
     96
    ],
-   "notes": "따라가기 button and the follow caption chip: gold viewfinder corners around a parcel.",
+   "notes": "따라가기 button and the follow caption chip: charcoal viewfinder corners around a parcel.",
    "replaces": "ui_icon_binoculars (ui5)"
   },
   "ui_gb_step_order_on": {
@@ -754,7 +868,7 @@
     36
    ],
    "markRadius": 30.5,
-   "notes": "app header logo (ko): the mark + \"금방\" in navy with a cream rim (reads on the gold header, cream and dark). Header placement: x 44, y 42, scale 0.8 (appLayout.header.logo).",
+   "notes": "app header logo (ko): the mark + \"금방\" in navy with a cream rim (reads on the gold header, cream and dark). Header placement: top-left at x 44, y 46, scale 1.0 (appLayout.header.logo).",
    "replaces": "runtime text 금방 마켓"
   },
   "ui_gb_logo_en": {
@@ -845,8 +959,25 @@
      "repeat": 0
     }
    },
-   "neverMirror": true,
-   "notes": "금방이 the mascot: the mark's parcel on stubby legs with a navy scarf (UI only, never mirrored - it runs to the right). idle = stands and waves (3 fps loop), run = runs in (8 fps loop; tween it in from the right edge of the header to appLayout.header.mascot when the app opens, then idle), bow = a polite bow (3 fps once; on the first delivery / a new review). Feet at the anchor.",
+   "runFacing": "left",
+   "mirrorSafe": true,
+   "runIn": {
+    "from": [
+     763,
+     174
+    ],
+    "to": [
+     540,
+     174
+    ],
+    "ms": 600,
+    "ease": "Linear",
+    "anim": "run",
+    "then": "idle",
+    "mask": "screen",
+    "depth": "under the close button"
+   },
+   "notes": "금방이 the mascot: the mark's parcel on stubby legs with a navy scarf under its \"o\" mouth (UI only). idle = stands, waves and calls (3 fps loop); run = runs to the LEFT (8 fps loop) - when the app opens it enters from behind the right edge of the phone screen: start at appLayout.header.mascotRunIn.from (masked to appLayout.screen, depth under the close button), tween x to appLayout.header.mascot in 600 ms with LINEAR easing (a braking ease makes the feet slide while the legs still cycle), then play idle at once (bow on the first open of the day). To run right, setFlipX(true) (mirror-safe: no letters, a symmetric face; the light then comes from the upper right, which is fine for a moment of motion). bow = a polite bow (3 fps once; the first delivery / a new review). Feet at the anchor in every frame.",
    "replaces": "ui_icon_gb"
   },
   "ui_gb_phone": {
@@ -867,7 +998,7 @@
     21,
     30
    ],
-   "notes": "the 금방 앱 panel (720 x 1100 logical, non-pausing) drawn as the chief's phone: charcoal bezel, speaker slot + camera, cream screen. screenRect [21, 30, 318, 580] at the source size; the screen corners are r 30, so the header (r 30) sits flush in it. Build it at 720 x 1100 (the top-centre speaker slot widens with the width - fine for 1.6-2.2x).",
+   "notes": "the 금방 앱 panel (720 x 1100 logical, non-pausing) drawn as the chief's phone: charcoal bezel, cream screen. screenRect [21, 30, 318, 580] at the source size; the screen corners are r 30, so the header (r 30) sits flush in it. Build it at any size (the edge strips are plain: polish L1), then draw ui_gb_phone_notch (speaker slot + camera) centred at appLayout.notch.",
    "replaces": "ui5 ui_letter",
    "screenRect": [
     21,
@@ -917,7 +1048,7 @@
     18,
     12
    ],
-   "notes": "app tab (not selected): pale cream; write the word in warm grey #8A7A62 next to the tab icon.",
+   "notes": "app tab (not selected): pale cream; write the word in warm grey #6B5D48 (>= 4.5:1) next to the tab icon.",
    "replaces": "ui5 ui_office_tab",
    "minHeight": 64
   },
@@ -982,7 +1113,7 @@
     32,
     16
    ],
-   "notes": "HUD 금방 chip (plan §6: 120 x 44 CSS under the 업무 chip) and in-app buttons (따라가기): cream pill with a gold rim; ui_chip rules - build at 64 tall, setScale(h / 64) for smaller chips (minHeight 64).",
+   "notes": "HUD 금방 chip and in-app buttons (따라가기): cream pill with a gold rim; ui_chip rules - build at 64 tall, setScale(h / 64) for smaller chips (minHeight 64). In the HUD it matches the v4.2 업무 chip (polish M2): 172 x 50 logical right under it, 20 px text, 36 px icon, with an invisible 88-tall hit rect (appLayout.hud.chip).",
    "replaces": "ui5 ui_chip",
    "minHeight": 64
   },
@@ -1004,7 +1135,7 @@
     16,
     12
    ],
-   "notes": "toast (top centre under the clock row, <= 300 x 48 CSS): cream with a gold left edge; icon at contentInset left, one line of text.",
+   "notes": "toast (<= 300 x 48 CSS): cream with a gold left edge; icon at contentInset left, one line of text. Built 64 tall at the v4.2 hint pill's centre (361, 148), hiding the hint pill while it shows (polish M2: appLayout.hud.toast) - never over the coin bar or the left chips.",
    "replaces": "ui5 ui_chip"
   },
   "ui_gb_ribbon": {
@@ -1050,6 +1181,25 @@
    "notes": "doorstep photo print (fixed size, not a 9-slice): draw the 128 x 80 render texture at photoRect (x 24, y 16 from the frame's top-left) UNDER the frame - the window is transparent and its edge carries a soft inner shade; the gold tape and the mark sticker sit on top. Scale the whole thing for thumbnails.",
    "replaces": "ui_icon_gb_doorstep"
   },
+  "ui_gb_phone_notch": {
+   "atlas": "ui6_gb",
+   "frame": "ui_gb_phone_notch",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "frame",
+   "frameSize": [
+    80,
+    14
+   ],
+   "at": [
+    360,
+    15.5
+   ],
+   "notes": "the phone's speaker slot (centred) + front camera (polish L1: no longer in the stretched 9-slice). Fixed size, never scaled with the panel: draw it centred at appLayout.notch (panel x 360, y 15.5) over the built ui_gb_phone.",
+   "replaces": "nothing (a plain bezel)"
+  },
   "fx_gb_bell": {
    "atlas": "ui6_gb",
    "frame": "fx_gb_bell_0",
@@ -1081,7 +1231,29 @@
      "repeat": 0
     }
    },
-   "notes": "띵동 at the door (world space, with sfx_gb_doorbell on ring_doorbell's impact frame): the bell pops in, swings with ringing arcs and sparkles, settles. Draw it centred ~40 world px above the door bell (geumbangfolk bellPoint) at a constant screen size (about 40 CSS px: setScale(40 / (64 x zoom x 390 / 720))), depth over the courier; destroy on animationcomplete.",
+   "placement": {
+    "cssMax": 24,
+    "worldMax": 56,
+    "courierWorldH": 80,
+    "maxCourierFrac": 0.7,
+    "xFromBell": 10,
+    "headTopY": -86,
+    "gap": 4,
+    "visibleH": 0.8,
+    "dong": {
+     "atS": 0.33,
+     "replayFrames": [
+      1,
+      2,
+      3
+     ],
+     "fps": 12,
+     "holdFrame": 3,
+     "fadeS": 0.32,
+     "totalS": 0.9
+    }
+   },
+   "notes": "띵동 at the door (world space, with sfx_gb_doorbell on ring_doorbell's impact frame 2): the bell pops in, swings with ringing arcs and sparkles, settles. SIZE (polish H2): S = min(24 CSS px, 0.7 x the courier on screen) = min(24 / cssPerWorld, 56) world px, cssPerWorld = camera zoom x viewport CSS width / 720; setScale(S / 64). PLACE: above the courier's head, a little toward the door - centre x = feet.x + bellPoint.x + 10 x sign(bellPoint.x), its bottom edge 4 world px above the head top (feet.y + placement.headTopY - 4; centre y = bottom - 0.4 S, the bell + arcs are 0.8 S tall) - never over a face; depth over the courier. The resident steps out after the bell has gone (plan 8.1: ring 4.5 s, door 5.5 s). DONG (L6): on sfx_gb_doorbell's dong cue (0.33 s) play frames 1-3 again, then hold frame 3 and fade it out over 0.32 s, so the bell lasts the whole 0.9 s chime; destroy after.",
    "replaces": "emotes fx_music_notes"
   }
  },

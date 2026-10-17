@@ -150,6 +150,10 @@ export class Geumbangfolk extends Officefolk {
   beamPoint(person, dir, i) { return this._gpt(person, 'beamPoint', 'scan', dir, i); }
   /** [x, y] the tape gun roller on the box top (tape_box; impactFrame 3) */
   tapePoint(person, dir, i) { return this._gpt(person, 'tapePoint', 'tape_box', dir, i); }
+  /** depth offset over the doll for the game-drawn parcel of `anim` facing `dir` (parcelDepth: carry_parcel /
+   *  ring_doorbell {noItems} at parcelPoint, hand_parcel at handPointOf): +0.0045 = z 45 in the doll (over the coat,
+   *  under the head / the arms in front), -0.0001 = behind the doll; mirrored dirs use their source dir */
+  parcelDepth(anim, dir) { const t = ((this.T.parcelDepth || {})[anim]) || {}; const v = t[MIRROR[dir] || dir]; return v == null ? null : v; }
 }
 
 /** OfficefolkSprite on a Geumbangfolk (pickAnim + nearest dir + once anims hold the last frame and call onDone). */
@@ -163,11 +167,19 @@ export class GeumbangfolkSprite extends OfficefolkSprite {}
  * - TF.layersInto -> officefolk's layersIntoOF (generic fragment draw list; DollSprite unchanged);
  * - TF.person applies preset 'force' (officefolk's rule; no geumbangfolk preset forces anything);
  * - TF.gb = the Geumbangfolk on the same block; TF.of = TF.gb when officefolk is merged (TF.pick then knows the crew
- *   anims too).  Call it again after a later TF.mergeOfficefolk (that call replaces TF.of with a plain Officefolk).
+ *   anims too).  Call it again after a later TF.mergeOfficefolk (that call replaces TF.of with a plain Officefolk and
+ *   rebuilds TF.ofAtlas without the 금방 pages).
+ * - residency: TF.ofAtlas also maps the 금방 page groups (road -> gbf_road_0, hub -> gbf_hub_0), so TF.ofReady('hub')
+ *   is false until gbf_hub_0 is installed, and TF.pick asks TF.of || TF.gb: a crew anim whose page is not loaded falls
+ *   back (scan / sort_parcel / tape_box -> idle, a depot crew's doorstep anim -> talk / idle) and want('hub') is told
+ *   which page to load - also without officefolk (TF.of stays null then, so a later TF.mergeOfficefolk still runs).
  */
 export function installGeumbangfolkRuntime(TF) {
   if (!TF || !TF.T) throw new Error('installGeumbangfolkRuntime: merge the block into TF.T first');
-  if (TF.gb && TF.gb.T === TF.T && (!TF.of || TF.of === TF.gb)) return TF.gb;
+  const gbAtlas = {};
+  for (const [g, inf] of Object.entries(((TF.T.gbPages || {}).groups) || {})) if ((inf.atlases || [])[0]) gbAtlas[g] = inf.atlases[0];
+  const atlasOk = () => Object.entries(gbAtlas).every(([g, a]) => TF.ofAtlas && TF.ofAtlas[g] === a);
+  if (TF.gb && TF.gb.T === TF.T && (!TF.of || TF.of === TF.gb) && atlasOk() && TF.pick === TF._pickGB) return TF.gb;
   const gb = new Geumbangfolk(TF.T);
   const person0 = TF._personV4 || TF.person;
   TF._personV4 = person0;
@@ -175,5 +187,22 @@ export function installGeumbangfolkRuntime(TF) {
   TF.layersInto = function (person, anim, dir, i, out, opts) { return layersIntoOF(this, person, anim, dir, i, out, opts); };
   TF.gb = gb;
   if (TF.of) TF.of = gb;
+  TF.ofAtlas = Object.assign({}, TF.ofAtlas || {}, gbAtlas);
+  if (typeof TF.ofReady !== 'function') {
+    TF.ofReady = function (g) { const a = this.ofAtlas && this.ofAtlas[g]; return !a || (this.assets ? this.assets.tfReady.has(a) : true); };
+  }
+  // TF.pick (src/core/Townfolk.js) with TF.of || TF.gb: the same residency rule, crew anims and pages included
+  TF._pickGB = function (person, anim, want) {
+    const of = this.of || this.gb;
+    if (!of || !person || !this.T.anims[anim]) return { anim: this.T && this.T.anims[anim] ? anim : 'idle', face: null };
+    const has = (a, p) => {
+      const g = of.pageNeeded(p, a);
+      if (!g || this.ofReady(g)) return true;
+      if (want && a === anim) want(g);
+      return false;
+    };
+    try { return of.pickAnim(person, anim, { has }); } catch (e) { return { anim: 'idle', face: null }; }
+  };
+  TF.pick = TF._pickGB;
   return gb;
 }

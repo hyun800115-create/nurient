@@ -78,10 +78,26 @@ SNOW = ('#FFFFFF', '#DCE6F2', '#7E93B5')
 SKIN = U3.SKIN
 GREYP = ('#F2EEE6', '#DCD5C8', '#A39985')       # tracker "off" pieces
 INK_GOLD = '#8A5510'                            # dark amber line on gold
-DAWN_RIM = '#5B67A6'                            # periwinkle window rim (not the brand navy)
-BRACKET = ('#9DBDE6', '#4E78B2', '#22426E')     # follow-icon viewfinder (mid blue, navy outline)
+# (polish M1) the icon weight of the house sets (ui3 / ui5): cream paper gets a dark warm ink edge, the gold parts a
+# deeper goldDark body, the line work a mid navy - so every icon keeps >= 20 % of its 32 px pixels at >= 3:1 against
+# the cream chip / tab fill (gen_ui6 --check: icon weight)
+CRI = ('#FFFFFF', '#F4EDE0', '#5E4728')          # cream with the house ink edge
+GDI = ('#F2B54A', '#C98A22', '#6E4510')          # deep goldDark (bands, seals, trays)
+LINE_INK = '#47618F'                            # ruled lines / small line work on cream
+DAWN_RIM = '#5E4728'                            # dawn window rim (the warm house ink: a wooden window frame)
+BRACKET = ('#9DBDE6', '#4E78B2', '#22426E')     # (unused since polish M1: the viewfinder is charcoal)
 TINT = {'gold': '#C0701A', 'cream': '#B89C70', 'navy': '#18305A', 'char': '#20222E', 'sky': '#2A5FA8',
         'snow': '#7E9CCC', 'grey': '#9A8E78', 'pink': '#B0204E'}
+
+
+def clear_border(im):
+    """(polish L2) zero the outermost 1 px ring of a frame whose only border pixels are a faint shadow fringe, so the
+    packer can place it edge to edge without a gutter (nothing of it can bleed into a neighbour)."""
+    a = np.asarray(im).copy()
+    a[[0, -1], :, 3] = 0
+    a[:, [0, -1], 3] = 0
+    a[a[..., 3] == 0] = 0
+    return Image.fromarray(a, 'RGBA')
 
 
 def part(c, d, pal, ow=3.0, bevel=6.0, gloss=0.3, hi=0.5, lo=0.45, tint=None, **kw):
@@ -100,16 +116,23 @@ def sparkle_sd(c, x, y, r, waist=0.3, X=None, Y=None):
 
 
 # --------------------------------------------------------------------------- the mark 금방이
-def mark(c, cx, cy, R, border=True, drop=True, face_scale=1.0, X=None, Y=None):
+def mark(c, cx, cy, R, border=True, drop=True, face_scale=1.0, X=None, Y=None, ink=False):
     """금방이 on canvas c, centred (cx, cy), outer radius R (output px).  Left-right symmetric shapes; the light
-    comes from straight above (not the house upper-left sun) so the mark stays its own mirror image."""
+    comes from straight above (not the house upper-left sun) so the mark stays its own mirror image.
+    ink=True is the ICON weight (polish M1): the same mark with the house icon ink - a dark amber outline round the
+    sticker, a thinner sticker ring and a deeper, wider goldDark rim - so it holds its edge on cream chips and tabs."""
     X = c.X if X is None else X
     Y = c.Y if Y is None else Y
     ow = max(1.0, R * 0.042)
     d_out = F.sd_circle(X, Y, cx, cy, R)
     if drop:
         c.shadow(c.cov(d_out), dy=max(1.2, R * 0.05), sigma=max(1.0, R * 0.05), opacity=0.30)
-    if border:                                          # cream sticker border
+    if border and ink:                                  # icon weight: ink outline, thin sticker ring
+        ow_i = max(1.2, R * 0.08)
+        c.fill(d_out, hexc('#6E4510'))
+        c.fill(d_out + ow_i, hexc('#FFFBF3'))
+        r_rim = R - ow_i - max(0.9, R * 0.045)
+    elif border:                                        # cream sticker border
         c.fill(d_out, hexc('#9A6A1E'))
         c.fill(d_out + ow, hexc('#FFFBF3'))
         t = np.clip((Y - (cy - R)) / (2 * R), 0, 1)
@@ -119,10 +142,18 @@ def mark(c, cx, cy, R, border=True, drop=True, face_scale=1.0, X=None, Y=None):
         c.fill(d_out, hexc('#9A6A1E'))
         r_rim = R - ow
     # goldDark rim + gold disc (a shallow dome: lighter top, warmer bottom, a soft symmetric top gloss)
-    c.fill(F.sd_circle(X, Y, cx, cy, r_rim), hexc(BRAND['goldDark']))
-    t = np.clip((Y - (cy - r_rim)) / (2 * r_rim), 0, 1)
-    c.paint(c.cov(F.sd_circle(X, Y, cx, cy, r_rim)) * (t ** 2), hexc('#B97A1C'), 0.55)
-    r_disc = r_rim - R * 0.11
+    if ink:
+        c.fill(F.sd_circle(X, Y, cx, cy, r_rim), hexc('#6E4510'))
+        r_rim -= max(0.6, R * 0.025)
+        t = np.clip((Y - (cy - r_rim)) / (2 * r_rim), 0, 1)
+        c.paint(c.cov(F.sd_circle(X, Y, cx, cy, r_rim)), F.mix(hexc('#C98A22'), hexc('#94600F'), t))
+    else:
+        c.fill(F.sd_circle(X, Y, cx, cy, r_rim), hexc(BRAND['goldDark']))
+        t = np.clip((Y - (cy - r_rim)) / (2 * r_rim), 0, 1)
+        c.paint(c.cov(F.sd_circle(X, Y, cx, cy, r_rim)) * (t ** 2), hexc('#B97A1C'), 0.55)
+    r_disc = r_rim - R * (0.13 if ink else 0.11)
+    if ink:
+        c.fill(F.sd_circle(X, Y, cx, cy, r_disc + max(0.5, R * 0.02)), hexc('#7A4C0E'), 0.9)
     dd = F.sd_circle(X, Y, cx, cy, r_disc)
     t = np.clip((Y - (cy - r_disc)) / (2 * r_disc), 0, 1)
     c.paint(c.cov(dd), F.mix(hexc('#FFCB5E'), hexc('#EEA93A'), t))
@@ -134,7 +165,10 @@ def mark(c, cx, cy, R, border=True, drop=True, face_scale=1.0, X=None, Y=None):
     pcy = cy + R * 0.16 * k
     py0 = pcy - ph / 2
     box = F.sd_box(X, Y, cx, pcy, pw / 2, ph / 2, R * 0.12 * k)
-    c.fill(box - max(0.7, R * 0.03), hexc('#9A6A1E'), 0.9)
+    if ink:
+        c.fill(box - max(1.0, R * 0.05), hexc('#6E4510'))
+    else:
+        c.fill(box - max(0.7, R * 0.03), hexc('#9A6A1E'), 0.9)
     tb = np.clip((Y - py0) / ph, 0, 1)
     c.paint(c.cov(box), F.mix(hexc('#FFFDF8'), hexc('#F1E8D6'), tb))
     lid = F.intersect(box, Y - (py0 + ph * 0.24))
@@ -158,7 +192,7 @@ def mark(c, cx, cy, R, border=True, drop=True, face_scale=1.0, X=None, Y=None):
     sy = py0 - R * 0.21 * k
     sr = R * 0.25 * k
     sd = sparkle_sd(c, cx, sy, sr, 0.3, X, Y)
-    c.fill(sd - max(0.6, R * 0.025), hexc('#B97A1C'), 0.9)
+    c.fill(sd - max(0.6, R * (0.04 if ink else 0.025)), hexc('#8A5510' if ink else '#B97A1C'), 0.9)
     c.fill(sd, hexc('#FFF8EA'))
     return d_out
 
@@ -236,13 +270,20 @@ MASCOT_SCALE = 0.78
 
 
 def mascot(pose, f):
-    """The mark's parcel on stubby legs with a navy scarf under its chin (UI only, never mirrored).
-    pose 'idle' (2 f: stands and waves), 'run' (4 f: runs to the right, scarf flying), 'bow' (2 f: a polite bow)."""
+    """The mark's parcel on stubby legs with a navy scarf under its "o" mouth (UI only).
+    pose 'idle' (2 f: stands and waves, calling 금방!), 'run' (4 f: runs to the LEFT - polish H1: the app-open run-in
+    comes from the right edge of the header; mirror it with setFlipX(true) to run right: no letters, the face is
+    symmetric), 'bow' (2 f: a polite bow).  The run is drawn mirrored on the sample grid, so the light stays the house
+    upper-left sun in every frame (bevels, gloss and eye highlights are placed in canvas space)."""
     c = F.Canvas(128, 128)
     fy = MASCOT_FOOT_Y
     k_ = MASCOT_SCALE                         # draw a little inside the frame (page budget); feet stay on the anchor
     c.X = 64 + (c.X - 64) / k_
     c.Y = fy + (c.Y - fy) / k_
+    mir = pose == 'run'                        # drawn "running right" on a mirrored grid = running left on screen
+    if mir:
+        c.X = 128.0 - c.X
+    sxl = -1.0 if mir else 1.0                 # canvas-space left in drawing coordinates (for highlights)
     bw, bh = 56.0, 54.0                       # parcel body (front face)
     lean, bob, hipx = 0.0, 0.0, 64.0
     legs = [(-1, 0.0, 0.0), (1, 0.0, 0.0)]    # (side, forward offset px, lift px)
@@ -253,7 +294,6 @@ def mascot(pose, f):
     if pose == 'idle':
         bob = (0.0, 1.2)[f]
         arm = {'l': 6.0, 'r': (150.0, 126.0)[f]}
-        mouth = 'smile'
         scarf_ph = f * 0.5
     elif pose == 'run':
         ph = f / 4.0
@@ -271,13 +311,16 @@ def mascot(pose, f):
         eyes, mouth = 'happy', 'smile'
         scarf_ph, fly = 0.25 + f * 0.25, 0.3
     hipy = fy - 12.0 + bob
-    # body frame: rotate the sample grid about the hip so the parcel leans forward (to the right)
-    X, Y = F.rot(c.X, c.Y, hipx, hipy, math.radians(lean))      # + = the top leans forward (to the right)
+    # body frame: rotate the sample grid about the hip so the parcel leans forward
+    X, Y = F.rot(c.X, c.Y, hipx, hipy, math.radians(lean))
     bh = bh * (1 - 0.12 * tip)                # tipping toward us foreshortens the front
     bcx, bcy = hipx, hipy - bh / 2 - 1.0
     top = bcy - bh / 2
     body = F.sd_box(X, Y, bcx, bcy, bw / 2, bh / 2, 9.0)
-    scarf_y = bcy + bh * 0.25 + 2.5 * tip     # under the chin
+    # (polish L5) the scarf sits under the mouth: a draped band (a little sag in the middle), a knot on the trailing
+    # side and two fringed tails - a scarf, not a belt
+    scarf_y = bcy + bh * 0.28 + 2.0 * tip
+    sag = 3.6
     # --- legs (charcoal trousers, gold boots), drawn first
     leg_d, boot_d = None, None
     for side, fwd, lift in legs:
@@ -287,20 +330,27 @@ def mascot(pose, f):
         boot = F.sd_box(c.X, c.Y, lx + 3.0, footy, 8.0, 4.6, 4.2)
         leg_d = seg if leg_d is None else np.minimum(leg_d, seg)
         boot_d = boot if boot_d is None else np.minimum(boot_d, boot)
-    # --- scarf tails (behind the body, flying out to the left from the knot)
-    tails = None
-    kx, ky = bcx - bw / 2 + 5.0, scarf_y + 1.0
-    for k, (len_, w_) in enumerate(((27.0, 5.6), (21.0, 4.8))):
+    # --- scarf tails (behind the body, flying out from the knot on the trailing side)
+    tails, fringe = None, None
+    kx, ky = bcx - bw / 2 + 9.0, scarf_y + 2.4
+    for k, (len_, w_) in enumerate(((26.0, 6.0), (20.0, 5.2))):
         pts = []
         for i in range(8):
             u = i / 7.0
             wave = math.sin((u * 1.5 - scarf_ph + k * 0.35) * 2 * math.pi) * (1.0 + 3.5 * u) * (0.5 + 0.5 * fly)
-            droop = (1.0 - fly) * u * u * 18.0
+            droop = (1.0 - fly) * u * u * 12.0
             pts.append((kx - u * len_ * (0.55 + 0.45 * fly), ky + k * 4.5 + wave + droop + u * (2.0 + k * 3.0)))
         seg = F.sd_polyline(X, Y, pts, w_ * 0.5)
         tails = seg if tails is None else np.minimum(tails, seg)
+        ex, ey_ = pts[-1]
+        px_, py_ = pts[-2]
+        L_ = max(1e-3, math.hypot(ex - px_, ey_ - py_))
+        bx_, by_ = ex - (ex - px_) / L_ * 3.2, ey_ - (ey_ - py_) / L_ * 3.2
+        stripe = F.intersect(seg, F.sd_circle(X, Y, bx_, by_, 2.2))
+        fringe = stripe if fringe is None else np.minimum(fringe, stripe)
+
     def arm_sd(side, ang):
-        """A stubby arm from the shoulder on `side`: ang 0 = hanging down, + = swung forward (to the right) / up."""
+        """A stubby arm from the shoulder on `side`: ang 0 = hanging down, + = swung forward / up."""
         sx = bcx + side * (bw / 2 - 1.5)
         sy = bcy + 2.0
         th = math.radians(ang)
@@ -312,6 +362,7 @@ def mascot(pose, f):
     c.fill(F.sd_ellipse(c.X, c.Y, 64, fy + 1.5, 26, 4.5), hexc('#1B2840'), 0.22, feather=3.0)
     c.shadow(c.cov(shadow_d - 2.0), dy=2.0, sigma=1.8, opacity=0.25)
     part(c, tails, NV, ow=2.0, bevel=2.0, gloss=0.15, tint='navy')
+    c.fill(fringe, hexc('#F4EDE0'), 0.95)                   # cream end stripes on the tails
     part(c, leg_d, CH, ow=2.0, bevel=3.0, gloss=0.15, tint='char')
     part(c, boot_d, G, ow=2.0, bevel=3.0, gloss=0.35, tint='gold')
     if pose != 'bow':
@@ -328,30 +379,43 @@ def mascot(pose, f):
     c.fill(F.intersect(np.abs(Y - lid_y) - 0.6, body + 0.5), hexc('#BFA982'), 0.9)
     tape = F.intersect(F.sd_box(X, Y, bcx, (top + lid_y) / 2, 5.0, (lid_y - top) / 2 + 1.0, 0.5), body + 0.2)
     part(c, tape, G, ow=0, bevel=1.2, gloss=0.3, tint='gold')
-    EA.glossy_spot(c, bcx - bw * 0.30, top + bh * 0.36, 4.5, 2.0, -30, 0.45, 1.2)
-    # face
-    ey = bcy - 2.0 + 7.0 * tip
+    EA.glossy_spot(c, bcx - sxl * bw * 0.30, top + bh * 0.36, 4.5, 2.0, -30 * sxl, 0.45, 1.2)
+    # face (higher on the box than before polish L5, so the scarf never covers the mouth)
+    ey = bcy - 5.0 + 7.0 * tip
     for sx in (-1, 1):
         ex = bcx + sx * 11.0
         if eyes == 'dot':
             c.fill(F.sd_ellipse(X, Y, ex, ey, 3.6, 4.3), hexc(BRAND['navy']))
-            c.fill(F.sd_circle(X, Y, ex - 1.1, ey - 1.6, 1.3), WHITE)
+            c.fill(F.sd_circle(X, Y, ex - 1.1 * sxl, ey - 1.6, 1.3), WHITE)
         else:
             c.fill(F.sd_arc(X, Y, ex, ey + 2.4, 4.0, math.radians(200), math.radians(340), 1.3), hexc(BRAND['navy']))
         c.fill(F.sd_ellipse(X, Y, bcx + sx * 18.5, ey + 6.0, 4.6, 2.9), hexc(PINK_CHEEK), 0.95, feather=0.8)
     my = ey + 8.0
     if mouth == 'o':
-        c.fill(F.sd_ellipse(X, Y, bcx, my, 3.2, 3.6), hexc(BRAND['navy']))
-        c.fill(F.sd_ellipse(X, Y, bcx, my + 0.6, 1.6, 1.9), hexc('#F28C9A'))
+        c.fill(F.sd_ellipse(X, Y, bcx, my, 3.3, 3.8), hexc(BRAND['navy']))
+        c.fill(F.sd_ellipse(X, Y, bcx, my + 0.7, 1.7, 2.0), hexc('#F28C9A'))
     else:
         c.fill(F.sd_arc(X, Y, bcx, my - 2.8, 4.2, math.radians(25), math.radians(155), 1.25), hexc(BRAND['navy']))
-    # the scarf: a soft navy band round the box under the chin, knot on its left (the side it runs away from)
-    band = F.intersect(F.sd_box(X, Y, bcx, scarf_y, bw / 2 + 1.5, 4.2, 2.0), body - 2.2)
+    # the scarf band: a draped curve across the front, wrapping round the box edges
+    pts = []
+    for i in range(13):
+        u = i / 12.0 * 2 - 1
+        pts.append((bcx + u * (bw / 2 + 2.0), scarf_y + sag * (1 - u * u)))
+    band = F.intersect(F.sd_polyline(X, Y, pts, 3.3), body - 2.2)
     knot = F.sd_ellipse(X, Y, kx, ky, 5.0, 4.6)
+    # the front tail hangs from the knot down over the box's lower edge (breaks the belt line), fringed at its end
+    sw = math.sin((0.35 - scarf_ph) * 2 * math.pi) * (1.0 + 1.5 * fly)
+    hang = [(kx + 1.0, ky + 2.0), (kx + 2.2 + sw * 0.4, ky + 8.0), (kx + 3.0 + sw, ky + 14.0 - 2.0 * fly)]
+    front = F.sd_polyline(X, Y, hang, 2.8)
     part(c, U(band, knot), NV, ow=1.6, bevel=2.0, gloss=0.3, tint='navy')
-    for k in range(3):                                      # knitted ribs
-        c.fill(F.intersect(F.sd_segment(X, Y, bcx - 14 + k * 14, scarf_y - 3.2, bcx - 14 + k * 14, scarf_y + 3.2, 0.5),
-                           band + 0.8), hexc('#5F86BD'), 0.6)
+    part(c, front, NV, ow=1.6, bevel=1.6, gloss=0.25, tint='navy')
+    hx_, hy_ = hang[-1]
+    c.fill(F.intersect(front, F.sd_circle(X, Y, hx_, hy_ - 1.0, 2.6)), hexc('#F4EDE0'), 0.95)
+    for k in range(2):                                      # two soft folds by the knot
+        x0 = kx + 7.0 + k * 5.0
+        c.fill(F.intersect(F.sd_segment(X, Y, x0, scarf_y - 1.0 + k * 0.8, x0 + 3.5, scarf_y + 3.6 + k * 0.6, 0.45),
+                           band + 0.6), hexc('#5F86BD'), 0.7)
+    c.fill(F.intersect(F.sd_circle(X, Y, kx - 1.2, ky - 1.4, 1.6), knot), hexc('#7FA3D6'), 0.6)   # knot highlight
     if pose == 'bow':
         part(c, arm_l, CR, ow=2.0, bevel=2.5, gloss=0.2, tint='cream')
     part(c, arm_r, CR, ow=2.0, bevel=2.5, gloss=0.2, tint='cream')
@@ -361,7 +425,7 @@ def mascot(pose, f):
             c.fill(F.sd_circle(c.X, c.Y, x_, fy + dy, r), hexc('#FFFFFF'), 0.95)
             c.fill(np.abs(F.sd_circle(c.X, c.Y, x_, fy + dy, r)) - 0.5, hexc('#9FB2CE'), 0.8)
     if pose == 'idle' and f == 1:
-        glint(c, 101, 30, 6.0)
+        glint(c, 97, 46, 5.5)                    # kept low and close: the frame trims small (page budget)
     return c.image()
 
 
@@ -404,28 +468,29 @@ def mini_sparkle(c, x, y, r, col='#FFF8EA', edge='#B97A1C'):
 def icon_gb():
     """ui_icon_gb: the mark 금방이 (HUD chip, office row, letters)."""
     c = icanvas(1.0)
-    mark(c, 48, 47, 43)
+    mark(c, 48, 47, 43, ink=True)
     return c.image()
 
 
 def icon_order():
-    """주문: an order slip with a gold header band, three lines and a round gold check seal."""
+    """주문: an order slip (cream paper, house ink edge) with a goldDark header band, three navy lines and a round
+    goldDark check seal."""
     c = icanvas(0.92)
     X, Y = rot(c, 48, 48, -6)
     p = 7.0
     tri = np.abs(((X - 21) / p) % 1.0 * 2 - 1)
     slip = F.intersect(F.sd_box(X, Y, 46, 44, 25, 36, 4.5), Y - (73 + 4.5 * tri))
-    seal = F.sd_circle(c.X, c.Y, 66, 66, 13)
+    seal = F.sd_circle(c.X, c.Y, 66, 66, 14)
     shadow(c, U(slip, seal), ow=2.4)
-    part(c, slip, CR, ow=2.6, bevel=4, gloss=0.2, tint='cream')
-    band = F.intersect(slip + 0.2, Y - 25)
-    part(c, band, G, ow=0, bevel=2.5, gloss=0.35, tint='gold')
-    c.fill(F.intersect(np.abs(Y - 25) - 0.6, slip), hexc(INK_GOLD), 0.7)
-    mini_sparkle(c, 34, 16.5, 5.5)
-    for i, (yy, ln) in enumerate(((36, 30), (46, 26), (56, 16))):
-        c.fill(F.sd_segment(X, Y, 30, yy, 30 + ln, yy, 2.2), hexc('#8796B0'))
-    part(c, seal, G, ow=2.4, bevel=4, gloss=0.35, tint='gold')
-    c.fill(F.sd_polyline(c.X, c.Y, [(59.5, 66.5), (64.5, 71.5), (73, 61)], 2.4), hexc('#FFF8EA'))
+    part(c, slip, CRI, ow=3.4, bevel=4, gloss=0.2, tint='cream')
+    band = F.intersect(slip + 0.2, Y - 27)
+    part(c, band, GDI, ow=0, bevel=2.5, gloss=0.3, tint='gold')
+    c.fill(F.intersect(np.abs(Y - 27) - 0.9, slip), hexc(INK_GOLD), 0.9)
+    mini_sparkle(c, 34, 17.5, 5.5, edge=INK_GOLD)
+    for i, (yy, ln) in enumerate(((38, 30), (48, 26), (58, 15))):
+        c.fill(F.sd_segment(X, Y, 29, yy, 29 + ln, yy, 2.7), hexc(LINE_INK))
+    part(c, seal, GDI, ow=3.0, bevel=4, gloss=0.35, tint='gold')
+    c.fill(F.sd_polyline(c.X, c.Y, [(58.5, 66.5), (64.0, 72.0), (73.5, 60.5)], 2.8), hexc('#FFF8EA'))
     return c.image()
 
 
@@ -534,90 +599,91 @@ def icon_sled():
 
 
 def icon_locker():
-    """금방 보관함: a gold locker with blue doors under a snow cap, a little mark screen on top, one door open
-    with a parcel inside."""
+    """금방 보관함 (polish L4: the prop's look): a gold locker with 3 x 4 small slate-navy doors under a snow cap, the
+    cream top panel with the mark, one door open with a parcel inside."""
     c = icanvas(0.92)
-    cab = F.sd_box(c.X, c.Y, 46, 53, 30, 34, 5)
-    door_open = F.sd_polygon(c.X, c.Y, [(74, 55), (86, 51), (86, 66), (74, 70)]) - 0.8
+    cab = F.sd_box(c.X, c.Y, 45, 54, 30, 34, 5)
+    door_open = F.sd_polygon(c.X, c.Y, [(79, 63), (88, 59.5), (88, 73), (79, 76.5)]) - 0.8
     shadow(c, U(cab, door_open), ow=2.4)
-    part(c, cab, G, ow=2.6, bevel=5, gloss=0.3, tint='gold')
-    scr = F.sd_box(c.X, c.Y, 46, 28, 16, 6, 2.5)
-    part(c, scr, CR, ow=1.6, bevel=1.5, gloss=0.4, tint='cream')
-    mark(c, 46, 28, 5.2, border=False, drop=False)
-    DOOR = ('#A9C6EC', '#5F86BD', '#203E66')
-    for r_, yy in enumerate((44, 59, 74)):
-        for cc, xx in enumerate((33, 59)):
-            d = F.sd_box(c.X, c.Y, xx, yy, 11, 6.2, 1.8)
-            if (r_, cc) == (1, 1):
-                c.fill(d, hexc('#5A4A36'))
+    part(c, cab, G, ow=3.0, bevel=5, gloss=0.3, tint='gold')
+    scr = F.sd_box(c.X, c.Y, 45, 30, 22, 7, 2.5)
+    part(c, scr, CRI, ow=2.0, bevel=1.5, gloss=0.4, tint='cream')
+    mark(c, 45, 30, 5.6, border=False, drop=False)
+    DOOR = ('#8A9DB6', '#4E6178', '#1E2A3A')
+    for r_, yy in enumerate((46, 57, 68, 79)):
+        for cc, xx in enumerate((28, 45, 62)):
+            d = F.sd_box(c.X, c.Y, xx, yy, 7.2, 4.6, 1.4)
+            if (r_, cc) == (2, 2):
+                c.fill(d, hexc('#3A2A1A'))
                 c.fill(d + 1.0, hexc('#F3E9D6'))
-                parcel(c, xx, yy + 1.2, 13, 9, ow=1.2)
+                parcel(c, xx, yy + 0.8, 10, 7, ow=1.0, pal=CRI)
                 continue
-            part(c, d, DOOR, ow=1.6, bevel=1.8, gloss=0.25, tint='navy')
-            c.fill(F.sd_circle(c.X, c.Y, xx + 7, yy, 1.4), hexc(BRAND['gold']))
-    part(c, door_open, DOOR, ow=1.6, bevel=1.4, gloss=0.2, tint='navy')
-    U5.snow_cap(c, 16, 76, 20, 3.4, lumps=((28, 17.5, 4.2), (50, 17.0, 4.8), (68, 18.0, 3.8)))
+            part(c, d, DOOR, ow=1.4, bevel=1.4, gloss=0.25, tint='#2A3A50')
+            c.fill(F.sd_circle(c.X, c.Y, xx + 4.4, yy, 1.1), hexc(BRAND['gold']))
+    part(c, door_open, DOOR, ow=1.4, bevel=1.2, gloss=0.2, tint='#2A3A50')
+    U5.snow_cap(c, 16, 74, 20.5, 3.4, lumps=((28, 18.0, 4.2), (49, 17.5, 4.8), (66, 18.5, 3.8)))
     return c.image()
 
 
 def icon_deal():
-    """특가: a gold price tag with a big cream star, on its string, with sparkles."""
+    """특가: a goldDark price tag (house ink edge) with a big cream star, on its navy string, with sparkles."""
     c = icanvas(0.92)
     X, Y = rot(c, 50, 50, -32)
     tag = F.sd_polygon(X, Y, [(14, 50), (30, 31), (84, 31), (84, 69), (30, 69)]) - 3.0
     hole = F.sd_circle(X, Y, 28, 50, 4.2)
     tag = F.subtract(tag, hole)
-    string = F.sd_polyline(c.X, c.Y, [(25, 62), (16, 70), (10, 66), (12, 58)], 1.3)
+    string = F.sd_polyline(c.X, c.Y, [(25, 62), (16, 70), (10, 66), (12, 58)], 1.6)
     shadow(c, U(tag, string), ow=2.4)
     part(c, string, NV, ow=0, bevel=0.8, gloss=0.1, tint='navy')
-    part(c, tag, G, ow=2.6, bevel=5, gloss=0.35, tint='gold')
-    c.fill(np.abs(F.sd_circle(X, Y, 28, 50, 4.2)) - 1.0, hexc(INK_GOLD), 0.9)
+    part(c, tag, ('#FFD27A', '#D99A2E', INK_GOLD), ow=3.4, bevel=5, gloss=0.35, tint='gold')
+    c.fill(np.abs(F.sd_circle(X, Y, 28, 50, 4.2)) - 1.4, hexc(INK_GOLD), 0.95)
     st = F.sd_star(X, Y, 58, 50, 15, 6.6, 5, rot=-math.pi / 2, round_=1.6)
-    part(c, st, CR, ow=1.8, bevel=3, gloss=0.4, tint='cream')
-    glint(c, 80, 18, 9.0)
-    glint(c, 84, 76, 5.0)
+    part(c, st, CRI, ow=2.4, bevel=3, gloss=0.4, tint='cream')
+    glint(c, 80, 18, 9.0, edge=INK_GOLD)
+    glint(c, 84, 76, 5.0, edge=INK_GOLD)
     return c.image()
 
 
 def icon_review():
-    """후기: a cream speech bubble holding a big gold star, a little pink heart."""
+    """후기: a cream speech bubble (house ink edge) holding a big gold star, a little pink heart."""
     c = icanvas(0.92)
     bub = F.smin(F.sd_box(c.X, c.Y, 46, 44, 34, 26, 15),
                  F.sd_polygon(c.X, c.Y, [(22, 62), (36, 66), (18, 82)]) - 1.5, 3.0)
-    heart = F.sd_heart(c.X, c.Y, 78, 22, 8.5)
+    heart = F.sd_heart(c.X, c.Y, 78, 22, 9.0)
     shadow(c, U(bub, heart), ow=2.4)
-    part(c, bub, CR, ow=2.6, bevel=5, gloss=0.3, tint='cream')
-    st = F.sd_star(c.X, c.Y, 46, 45, 19, 8.4, 5, rot=-math.pi / 2, round_=2.0)
-    part(c, st, G, ow=2.2, bevel=4, gloss=0.4, tint='gold')
-    part(c, heart, ('#FFC2CE', '#F07A92', '#8E2450'), ow=2.0, bevel=3, gloss=0.35, tint='pink')
+    part(c, bub, CRI, ow=3.6, bevel=5, gloss=0.3, tint='cream')
+    st = F.sd_star(c.X, c.Y, 46, 45, 20, 8.8, 5, rot=-math.pi / 2, round_=2.0)
+    part(c, st, ('#FFD887', '#E89A22', INK_GOLD), ow=3.0, bevel=4, gloss=0.4, tint='gold')
+    part(c, heart, ('#FFB0C2', '#E0457A', '#7E1A40'), ow=2.4, bevel=3, gloss=0.35, tint='pink')
     return c.image()
 
 
 def icon_today():
-    """오늘: a little desk calendar (gold binding, navy rings) with a smiling sun on its page."""
+    """오늘: a little desk calendar (cream page with the house ink edge, a goldDark binding band, charcoal rings)
+    with a smiling full-gold sun on its page."""
     c = icanvas(0.92)
     page = F.sd_box(c.X, c.Y, 48, 54, 32, 30, 7)
     shadow(c, page, ow=2.4)
-    part(c, page, CR, ow=2.6, bevel=4, gloss=0.2, tint='cream')
-    band = F.intersect(page + 0.2, Y_lt(c, 38))
-    part(c, band, G, ow=0, bevel=3, gloss=0.35, tint='gold')
-    c.fill(F.intersect(np.abs(c.Y - 38) - 0.6, page), hexc(INK_GOLD), 0.7)
+    part(c, page, CRI, ow=3.4, bevel=4, gloss=0.2, tint='cream')
+    band = F.intersect(page + 0.2, Y_lt(c, 39))
+    part(c, band, GDI, ow=0, bevel=3, gloss=0.3, tint='gold')
+    c.fill(F.intersect(np.abs(c.Y - 39) - 0.9, page), hexc(INK_GOLD), 0.9)
     for rx in (34, 62):
-        ring = F.sd_box(c.X, c.Y, rx, 25, 3.2, 7, 3)
-        part(c, ring, NV, ow=1.4, bevel=1.5, gloss=0.4, tint='navy')
+        ring = F.sd_box(c.X, c.Y, rx, 25, 3.6, 7.5, 3.2)
+        part(c, ring, CH, ow=1.6, bevel=1.5, gloss=0.4, tint='char')
     rays = None
     for k in range(8):
         a = k * math.pi / 4
-        seg = F.sd_segment(c.X, c.Y, 48 + math.cos(a) * 14, 62 + math.sin(a) * 14,
-                           48 + math.cos(a) * 19, 62 + math.sin(a) * 19, 2.2)
+        seg = F.sd_segment(c.X, c.Y, 48 + math.cos(a) * 14, 63 + math.sin(a) * 14,
+                           48 + math.cos(a) * 19.5, 63 + math.sin(a) * 19.5, 2.4)
         rays = seg if rays is None else np.minimum(rays, seg)
-    part(c, rays, G, ow=1.4, bevel=1.2, gloss=0.2, tint='gold')
-    sun = F.sd_circle(c.X, c.Y, 48, 62, 11.5)
-    part(c, sun, ('#FFE9A8', '#F7B733', '#94600F'), ow=1.8, bevel=4, gloss=0.4, tint='gold')
+    part(c, rays, ('#FFD27A', '#E8961C', INK_GOLD), ow=1.6, bevel=1.2, gloss=0.2, tint='gold')
+    sun = F.sd_circle(c.X, c.Y, 48, 63, 11.5)
+    part(c, sun, ('#FFE9A8', '#F2A52C', INK_GOLD), ow=2.2, bevel=4, gloss=0.4, tint='gold')
     for s in (-1, 1):
-        c.fill(F.sd_circle(c.X, c.Y, 48 + s * 4.2, 60.5, 1.5), hexc(BRAND['navy']))
-        c.fill(F.sd_ellipse(c.X, c.Y, 48 + s * 7, 64.5, 2.2, 1.4), hexc(PINK_CHEEK), 0.9)
-    c.fill(F.sd_arc(c.X, c.Y, 48, 62.5, 3.2, math.radians(25), math.radians(155), 0.8), hexc(BRAND['navy']))
+        c.fill(F.sd_circle(c.X, c.Y, 48 + s * 4.2, 61.5, 1.6), hexc(BRAND['navy']))
+        c.fill(F.sd_ellipse(c.X, c.Y, 48 + s * 7, 65.5, 2.2, 1.4), hexc(PINK_CHEEK), 0.9)
+    c.fill(F.sd_arc(c.X, c.Y, 48, 63.5, 3.2, math.radians(25), math.radians(155), 0.9), hexc(BRAND['navy']))
     return c.image()
 
 
@@ -627,41 +693,45 @@ def Y_lt(c, y):
 
 
 def icon_catalog():
-    """상품: a 2 x 2 grid of product tiles - bread, a fish, a jam jar and a ball of yarn."""
+    """상품: a 2 x 2 grid of product tiles on a goldDark tray - bread, a fish, a jam jar and a ball of yarn."""
     c = icanvas(0.93)
+    tray = F.sd_box(c.X, c.Y, 48, 48, 40, 40, 11)
     tiles = [(30, 30), (66, 30), (30, 66), (66, 66)]
-    ds = [F.sd_box(c.X, c.Y, x, y, 16, 16, 6) for x, y in tiles]
-    shadow(c, U(*ds), ow=2.2)
+    ds = [F.sd_box(c.X, c.Y, x, y, 15, 15, 5.5) for x, y in tiles]
+    shadow(c, tray, ow=2.4)
+    part(c, tray, GDI, ow=3.0, bevel=4, gloss=0.25, tint='gold')
     for d in ds:
-        part(c, d, CR, ow=2.2, bevel=3, gloss=0.25, tint='cream')
+        c.shadow(c.cov(d), dy=1.2, sigma=0.9, opacity=0.35)
+        part(c, d, CRI, ow=2.0, bevel=3, gloss=0.25, tint='cream')
     for (x, y) in tiles:
-        c.fill(F.intersect(F.sd_box(c.X, c.Y, x, y, 16, 16, 6) + 1.6, c.Y - (y + 9)), hexc('#F2E3C4'), 0.8)
+        c.fill(F.intersect(F.sd_box(c.X, c.Y, x, y, 15, 15, 5.5) + 1.8, c.Y - (y + 8)), hexc('#F2E3C4'), 0.8)
     # bread loaf
     bx, by = tiles[0]
-    loaf = F.smin(F.sd_ellipse(c.X, c.Y, bx, by + 1, 11, 7.5), F.sd_box(c.X, c.Y, bx, by + 4, 11, 4, 2), 2)
-    part(c, loaf, ('#FFE0A0', '#E8A85A', '#8A5A2A'), ow=1.6, bevel=3, gloss=0.35, tint='#A85A1A')
+    loaf = F.smin(F.sd_ellipse(c.X, c.Y, bx, by + 1, 10.5, 7.2), F.sd_box(c.X, c.Y, bx, by + 4, 10.5, 4, 2), 2)
+    part(c, loaf, ('#F7C47A', '#C8782A', '#5E3410'), ow=1.8, bevel=3, gloss=0.35, tint='#A85A1A')
     for k in (-5, 0, 5):
         c.fill(F.sd_segment(c.X, c.Y, bx + k - 1.5, by - 3, bx + k + 1.5, by + 1, 0.9), hexc('#FFF4D8'), 0.9)
     # fish
     fx, fy = tiles[1]
-    fish = F.smin(F.sd_ellipse(c.X, c.Y, fx - 2, fy, 9.5, 5.5),
-                  F.sd_polygon(c.X, c.Y, [(fx + 5, fy), (fx + 12, fy - 6), (fx + 12, fy + 6)]) - 0.8, 1.5)
-    part(c, fish, ('#D8F0FF', '#7FB8F0', '#1F4F8E'), ow=1.6, bevel=2.5, gloss=0.4, tint='sky')
-    c.fill(F.sd_circle(c.X, c.Y, fx - 7, fy - 1.5, 1.3), hexc(BRAND['navy']))
+    fish = F.smin(F.sd_ellipse(c.X, c.Y, fx - 2, fy, 9.0, 5.4),
+                  F.sd_polygon(c.X, c.Y, [(fx + 5, fy), (fx + 11.5, fy - 6), (fx + 11.5, fy + 6)]) - 0.8, 1.5)
+    part(c, fish, ('#BFE2FF', '#4F86C6', '#173E70'), ow=1.8, bevel=2.5, gloss=0.4, tint='sky')
+    c.fill(F.sd_circle(c.X, c.Y, fx - 7, fy - 1.5, 1.4), hexc('#FFFFFF'))
+    c.fill(F.sd_circle(c.X, c.Y, fx - 7, fy - 1.5, 0.8), hexc('#14243C'))
     # jam jar (pink lid)
     jx, jy = tiles[2]
-    jar = F.sd_box(c.X, c.Y, jx, jy + 2, 8, 8.5, 3)
-    lid = F.sd_box(c.X, c.Y, jx, jy - 7.5, 8.5, 2.6, 1.2)
-    part(c, jar, ('#FFD6E2', '#F07A9A', '#8E2450'), ow=1.6, bevel=2.5, gloss=0.45, tint='pink')
-    c.fill(F.sd_box(c.X, c.Y, jx, jy + 3, 5.5, 3.5, 1.2), hexc('#FFF8EA'), 0.95)
-    part(c, lid, ('#FFE8EE', '#F2A0B8', '#8E2450'), ow=1.4, bevel=1.2, gloss=0.3, tint='pink')
-    # yarn ball (lavender)
+    jar = F.sd_box(c.X, c.Y, jx, jy + 2, 7.6, 8.2, 3)
+    lid = F.sd_box(c.X, c.Y, jx, jy - 7.2, 8.2, 2.6, 1.2)
+    part(c, jar, ('#FFC2D4', '#D0466E', '#6E1636'), ow=1.8, bevel=2.5, gloss=0.45, tint='pink')
+    c.fill(F.sd_box(c.X, c.Y, jx, jy + 3, 5.0, 3.3, 1.2), hexc('#FFF8EA'), 0.95)
+    part(c, lid, ('#FFE0EA', '#E87C9E', '#6E1636'), ow=1.4, bevel=1.2, gloss=0.3, tint='pink')
+    # yarn ball (a muted green: no purple anywhere near the 금방 icons - polish M3)
     yx, yy = tiles[3]
-    ball = F.sd_circle(c.X, c.Y, yx, yy, 9.5)
-    part(c, ball, ('#EADDFF', '#A68AE0', '#4A2E7E'), ow=1.6, bevel=3.5, gloss=0.3, tint='#5A30B0')
+    ball = F.sd_circle(c.X, c.Y, yx, yy, 9.2)
+    part(c, ball, ('#BFE6C2', '#4E9A5C', '#1F4E2A'), ow=1.8, bevel=3.5, gloss=0.3, tint='#2E7A3A')
     for k in range(3):
         c.fill(F.intersect(F.sd_arc(c.X, c.Y, yx - 9 + k * 6, yy + 10, 12, math.radians(220), math.radians(320), 0.7),
-                           ball + 1.0), hexc('#6A4EB0'), 0.7)
+                           ball + 1.0), hexc('#2F6A3A'), 0.75)
     return c.image()
 
 
@@ -694,53 +764,56 @@ def icon_crew():
 
 
 def icon_dawn():
-    """새벽배송: a dawn window - lilac sky going peach, a crescent moon and a star, the gold sun rising behind snowy
-    hills, a parcel waiting on the hill."""
+    """새벽배송 (polish M3): a dawn window - a blue night sky (NOT the brand navy, no violet) warming through clear
+    blue to peach and gold at the horizon, a crescent moon, the gold sun rising behind snowy hills, a parcel waiting;
+    a slate window frame with the house ink.  A small gold 금방 sparkle instead of a star."""
     c = icanvas(0.92)
     win = F.sd_box(c.X, c.Y, 48, 48, 36, 36, 16)
     shadow(c, win, ow=2.4)
-    c.fill(win - 2.6, hexc(DAWN_RIM))
+    c.fill(win - 3.4, hexc(DAWN_RIM))
     t = np.clip((c.Y - 14) / 70, 0, 1)
-    sky = F.ramp([(0.0, hexc('#8C9AD8')), (0.45, hexc('#C9B5E0')), (0.75, hexc('#F7C6B0')), (1.0, hexc('#FFE1A0'))], t)
+    sky = F.ramp([(0.0, hexc('#4F7CC0')), (0.30, hexc('#6E95CC')), (0.55, hexc('#A9C3E2')), (0.78, hexc('#F6C9A2')),
+                  (1.0, hexc('#FFDB8E'))], t)
     c.paint(c.cov(win), sky)
     sun = F.intersect(F.sd_circle(c.X, c.Y, 56, 66, 15), c.Y - 66)
     c.glow(c.cov(F.sd_circle(c.X, c.Y, 56, 64, 15)), 5, hexc('#FFE9A8'), 0.6)
-    part(c, F.intersect(sun, win + 2), ('#FFF1B8', '#F7B733', '#B07010'), ow=0, bevel=4, gloss=0.3, tint='gold')
-    moon = F.subtract(F.sd_circle(c.X, c.Y, 30, 32, 10), F.sd_circle(c.X, c.Y, 35, 28, 8.5))
-    part(c, moon, ('#FFFFFF', '#FFF2C8', '#8A7A5A'), ow=1.4, bevel=2, gloss=0.3, tint='cream')
-    for sx, sy, r in ((62, 26, 4.0), (74, 38, 2.6), (44, 22, 2.2)):
-        mini_sparkle(c, sx, sy, r, col='#FFFFFF', edge='#6A76B0')
+    part(c, F.intersect(sun, win + 2), ('#FFF1B8', '#F2A52C', '#B07010'), ow=0, bevel=4, gloss=0.3, tint='gold')
+    moon = F.subtract(F.sd_circle(c.X, c.Y, 30, 32, 10.5), F.sd_circle(c.X, c.Y, 35.5, 28, 8.8))
+    part(c, moon, ('#FFFFFF', '#FFF2C8', '#6E5A2A'), ow=1.8, bevel=2, gloss=0.3, tint='cream')
+    mini_sparkle(c, 64, 27, 5.0, col='#FFE7A8', edge=INK_GOLD)
     hills = F.intersect(U(F.sd_circle(c.X, c.Y, 28, 98, 34), F.sd_circle(c.X, c.Y, 76, 104, 36)), win + 0.5)
     part(c, hills, SNOW, ow=0, bevel=4, gloss=0.2, tint='snow')
-    c.fill(F.intersect(np.abs(U(F.sd_circle(c.X, c.Y, 28, 98, 34), F.sd_circle(c.X, c.Y, 76, 104, 36))) - 0.8,
-                       win + 1), hexc('#8EA2C6'), 0.9)
-    parcel(c, 30, 64.5, 15, 12, ow=1.4)
-    c.fill(np.abs(win) - 1.4, hexc(DAWN_RIM))
+    c.fill(F.intersect(np.abs(U(F.sd_circle(c.X, c.Y, 28, 98, 34), F.sd_circle(c.X, c.Y, 76, 104, 36))) - 0.9,
+                       win + 1), hexc('#7E93B5'), 0.9)
+    parcel(c, 30, 64.5, 15, 12, ow=1.6, pal=CRI)
+    c.fill(np.abs(win) - 1.8, hexc(DAWN_RIM))
     return c.image()
 
 
 def icon_doorstep():
-    """문 앞 배송: a blue front door in a cream frame, a 금방 parcel waiting on the snowy step."""
+    """문 앞 배송: a blue front door in a cream frame (house ink edge), a 금방 parcel waiting on the snowy step."""
     c = icanvas(0.92)
     frame = F.sd_box(c.X, c.Y, 42, 46, 24, 34, 5)
     frame = F.smin(frame, F.sd_circle(c.X, c.Y, 42, 30, 24), 0.1)
     frame = F.intersect(frame, F.sd_box(c.X, c.Y, 42, 46, 24, 40, 0))
     step = F.sd_box(c.X, c.Y, 48, 84, 38, 5, 3)
     shadow(c, U(frame, step), ow=2.4)
-    part(c, frame, CR, ow=2.6, bevel=4, gloss=0.25, tint='cream')
+    part(c, frame, CRI, ow=3.4, bevel=4, gloss=0.25, tint='cream')
     door = F.intersect(F.smin(F.sd_box(c.X, c.Y, 42, 52, 16, 26, 2), F.sd_circle(c.X, c.Y, 42, 32, 16), 0.1),
                        c.Y - 78)
-    part(c, door, ('#B4CDEE', '#6F93C8', '#244272'), ow=2.0, bevel=3, gloss=0.3, tint='navy')
+    part(c, door, ('#9FBCE4', '#5A80BC', '#1C3866'), ow=2.4, bevel=3, gloss=0.3, tint='navy')
+    for yy in (52, 66):                                        # two panels on the door
+        c.fill(np.abs(F.sd_box(c.X, c.Y, 42, yy, 9, 5, 1.5)) - 0.7, hexc('#2C4E84'), 0.8)
     win = F.sd_circle(c.X, c.Y, 42, 34, 6.5)
-    c.fill(win - 1.2, hexc('#244272'))
+    c.fill(win - 1.4, hexc('#1C3866'))
     c.fill(win, hexc('#FFE9A0'))
     c.fill(F.intersect(np.abs(c.X - 42) - 0.7, win), hexc('#C9A040'), 0.8)
-    c.fill(F.sd_circle(c.X, c.Y, 52, 56, 2.3), hexc(BRAND['gold']))
-    c.fill(np.abs(F.sd_circle(c.X, c.Y, 52, 56, 2.3)) - 0.5, hexc(INK_GOLD), 0.8)
-    part(c, step, SNOW, ow=2.0, bevel=2.5, gloss=0.3, tint='snow')
+    c.fill(F.sd_circle(c.X, c.Y, 52, 58, 2.4), hexc(BRAND['gold']))
+    c.fill(np.abs(F.sd_circle(c.X, c.Y, 52, 58, 2.4)) - 0.6, hexc(INK_GOLD), 0.9)
+    part(c, step, SNOW, ow=2.2, bevel=2.5, gloss=0.3, tint='snow')
     mat = F.sd_box(c.X, c.Y, 42, 79.5, 15, 2.2, 1.2)
-    c.fill(mat, hexc('#86B48E'))
-    parcel(c, 72, 70, 24, 19, ow=2.0, face=True)
+    c.fill(mat, hexc('#5E9A6A'))
+    parcel(c, 72, 70, 24, 19, ow=2.4, face=True, pal=CRI)
     U5.snow_cap(c, 62, 82, 60.8, 2.2, lumps=((68, 59.5, 2.8), (76, 59.8, 2.6)))
     return c.image()
 
@@ -765,9 +838,9 @@ def icon_cart():
 
 
 def icon_follow():
-    """따라가기: a gold camera viewfinder framing a 금방 parcel with a little face, motion puffs behind it."""
+    """따라가기: charcoal camera-viewfinder corners framing a 금방 parcel with a little face, motion puffs behind it."""
     c = icanvas(0.94)
-    k, L, w = 31, 14, 3.4
+    k, L, w = 31, 14, 4.2
     corners = None
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -777,24 +850,24 @@ def icon_follow():
     puffs = U(F.sd_circle(c.X, c.Y, 22, 60, 4.8), F.sd_circle(c.X, c.Y, 15, 53, 3.2))
     box = F.sd_box(c.X, c.Y, 52, 49, 20, 17, 4)
     shadow(c, U(corners, box, puffs), ow=2.0)
-    part(c, corners, GD, ow=1.8, bevel=1.8, gloss=0.45, tint='gold')
-    part(c, puffs, SNOW, ow=1.4, bevel=1.5, gloss=0.2, tint='snow')
-    parcel(c, 52, 49, 40, 34, ow=2.3, face=True)
-    glint(c, 74, 26, 7.0)
+    part(c, corners, ('#9AA2B8', '#4E5570', '#1D2030'), ow=1.8, bevel=1.8, gloss=0.45, tint='char')
+    part(c, puffs, SNOW, ow=1.6, bevel=1.5, gloss=0.2, tint='snow')
+    parcel(c, 52, 49, 40, 34, ow=3.0, face=True, pal=CRI)
+    glint(c, 76, 24, 7.0, edge=INK_GOLD)
     return c.image()
 
 
 ICONS = [
     ('ui_icon_gb', icon_gb, '금방 (HUD chip, office 재고 row, letters, settings): the mark 금방이.',
      'ui_icon_depot (ui5)'),
-    ('ui_icon_gb_order', icon_order, '주문 tab / new-order toast: an order slip with a gold band and a check seal.',
-     'ui_icon_box (ui4)'),
+    ('ui_icon_gb_order', icon_order, '주문 tab / new-order toast: an order slip with a goldDark band and a check seal.',
+     'ui_icon_request (ui3)'),
     ('ui_icon_gb_van', icon_van, '금방 밴 (기사님 tab rows, van tap, upgrade cards): the gold van in profile with the '
      'mark on its side.', 'ui_icon_delivery (ui3)'),
     ('ui_icon_gb_sled', icon_sled, '금방 개썰매 (G1b, 기사님 tab, "곧 개썰매로" line): a husky pulling a sled with a '
      'parcel and the gold pennant.', 'ui_icon_sleigh (ui5)'),
-    ('ui_icon_gb_locker', icon_locker, '금방 보관함 (G1b upgrade card, locker tap): a gold locker, blue doors, one '
-     'open with a parcel.', 'ui_icon_box (ui4)'),
+    ('ui_icon_gb_locker', icon_locker, '금방 보관함 (G1b upgrade card, locker tap): the gb_locker_a look - a gold locker '
+     'with 3 x 4 small slate-navy doors, one open with a parcel.', 'ui_icon_depot (ui5)'),
     ('ui_icon_gb_deal', icon_deal, '특가 (상품 tab button, 특가 chip, 지금 특가 row): a gold price tag with a cream star.',
      'ui_icon_coin (ui)'),
     ('ui_icon_gb_review', icon_review, '후기 tab / new review: a speech bubble with a gold star and a pink heart.',
@@ -804,13 +877,13 @@ ICONS = [
      'ui_icon_inventory (ui5)'),
     ('ui_icon_gb_crew', icon_crew, '기사님 tab / crew list: a courier in the navy 금방 cap and gold jacket.',
      'ui_icon_staff (ui5)'),
-    ('ui_icon_gb_dawn', icon_dawn, '새벽배송 (upgrade card, first dawn toast, 관망 cut): moon, stars and the sun rising '
-     'behind snowy hills, a parcel waiting.', 'ui_icon_night (ui3)'),
+    ('ui_icon_gb_dawn', icon_dawn, '새벽배송 (upgrade card, first dawn toast, 관망 cut): a blue-to-peach dawn sky, a '
+     'moon and a gold sparkle, the sun rising behind snowy hills, a parcel waiting (no violet).', 'ui_icon_night (ui3)'),
     ('ui_icon_gb_doorstep', icon_doorstep, '문 앞 배송 (done card without a photo, "문 앞에 두고 갈게요" toast, '
-     'setting 금방 문 앞 장면): a blue door with a parcel on the snowy step.', 'ui_icon_box (ui4)'),
+     'setting 금방 문 앞 장면): a blue door with a parcel on the snowy step.', 'ui_icon_delivery (ui3)'),
     ('ui_icon_gb_cart', icon_cart, 'order bubble over the orderer (with the item icon) and 주문 counts: a shopping '
-     'cart carrying a 금방 parcel.', 'ui_icon_box (ui4)'),
-    ('ui_icon_gb_follow', icon_follow, '따라가기 button and the follow caption chip: gold viewfinder corners around a '
+     'cart carrying a 금방 parcel.', 'ui_icon_request (ui3)'),
+    ('ui_icon_gb_follow', icon_follow, '따라가기 button and the follow caption chip: charcoal viewfinder corners around a '
      'parcel.', 'ui_icon_binoculars (ui5)'),
 ]
 
@@ -994,13 +1067,27 @@ def phone_frame():
     c.paint(c.cov(screen), F.mix(hexc('#FCF8F0'), hexc('#F6EFE2'), ts))
     sh = np.clip(1 - (c.Y - 30) / 10, 0, 1) ** 2                       # the bezel's soft shade on the top of the screen
     c.paint(c.cov(screen) * sh, hexc('#B9AD96'), 0.35)
-    # speaker slot + front camera in the top bezel
-    spk = F.sd_box(c.X, c.Y, W / 2, 15.5, 26, 2.6, 2.6)
+    # (polish L1) the speaker slot + camera are NOT in the 9-slice any more (the top-centre slice stretches 1.6-2.5x):
+    # they are the fixed frame ui_gb_phone_notch, drawn at appLayout.notch over the built panel
+    return clear_border(c.image())
+
+
+NOTCH_CENTRE_Y = 15.5                     # px from the phone frame's top edge (the top margin is never scaled)
+
+
+def phone_notch():
+    """ui_gb_phone_notch 80 x 14 (fixed, never stretched): the phone's speaker slot (centred in the frame) and the front
+    camera to its right; anchor [0.5, 0.5] at (panel width / 2, NOTCH_CENTRE_Y) over the built ui_gb_phone
+    (appLayout.notch)."""
+    W, H = 80, 14
+    c = F.Canvas(W, H, ss=6)
+    cx, cy = 40.0, 7.0
+    spk = F.sd_box(c.X, c.Y, cx, cy, 26, 2.6, 2.6)
     c.fill(spk, hexc('#15171F'))
-    c.fill(F.intersect(spk + 1.0, c.Y - 14.5), hexc('#4A4F66'), 0.6)
-    cam = F.sd_circle(c.X, c.Y, W / 2 + 40, 15.5, 3.4)
+    c.fill(F.intersect(spk + 1.0, c.Y - (cy - 1.0)), hexc('#4A4F66'), 0.6)
+    cam = F.sd_circle(c.X, c.Y, cx + 34, cy, 3.4)
     c.fill(cam, hexc('#15171F'))
-    c.fill(F.sd_circle(c.X, c.Y, W / 2 + 39, 14.5, 1.1), hexc('#6A7AA8'), 0.9)
+    c.fill(F.sd_circle(c.X, c.Y, cx + 33, cy - 1.0, 1.1), hexc('#6A7AA8'), 0.9)
     return c.image()
 
 
@@ -1112,7 +1199,7 @@ def ribbon_frame():
            hexc('#FFF1C8'), 0.75)
     c.fill(F.intersect(np.abs(c.Y - 36) - 0.7, F.intersect(shape, F.intersect(c.X - 25, 135 - c.X))),
            hexc('#B07A1C'), 0.6)
-    return c.image()
+    return clear_border(c.image())
 
 
 PHOTO_RECT = [24, 16, 128, 80]
@@ -1201,22 +1288,45 @@ APP = {
     # logical units: the panel is 720 wide and fills the viewport width, so 1 CSS px = 2 logical on a 360 CSS
     # phone and 1.85 on a 390 one.  Every tap / text minimum below holds on BOTH (designCss).
     'panel': [720, 1100], 'screen': [21, 30, 678, 1040], 'designCss': [360, 390],
+    # (polish L1) the speaker slot + camera: ui_gb_phone_notch centred here, over the built phone panel
+    'notch': [360, NOTCH_CENTRE_Y],
     'header': {'rect': [21, 30, 678, 150], 'logo': [44, 46, 1.0], 'tagline': [52, 136, 28],
-               'close': [642, 92, 44], 'mascot': [540, 174, 1.0]},
-    'tabs': {'y': 190, 'h': 88, 'w': 128, 'gap': 4, 'icon': 34, 'iconGap': 5, 'font': 28, 'fontEn': 24,
-             'scale': 1.375},
+               'close': [642, 92, 44], 'mascot': [540, 174, 1.0],
+               # (polish H1) the run frames face LEFT: 금방이 enters from behind the right edge of the phone screen
+               # (masked to `screen`), runs at a constant speed (Linear - an easing that brakes makes the feet slide)
+               # and switches to idle the moment it arrives (bow instead on the first open of the day)
+               'mascotRunIn': {'from': [763, 174], 'to': [540, 174], 'ms': 600, 'ease': 'Linear', 'anim': 'run',
+                               'then': 'idle', 'mask': 'screen', 'depth': 'under the close button'}},
+    'tabs': {'y': 190, 'h': 88, 'w': 128, 'gap': 4, 'icon': 34, 'iconGap': 5, 'font': 28, 'fontEn': 26,
+             'scale': 1.375, 'colorOn': '#2B4F7E', 'colorOff': '#6B5D48'},
     'content': [37, 290, 646, 780],
-    'card': {'w': 646, 'h': 256, 'gap': 16, 'font': 30, 'small': 28},
+    'card': {'w': 646, 'h': 256, 'gap': 16, 'font': 30, 'small': 28, 'colorSecondary': '#6B5D48'},
     'orderCard': {'h': 348, 'trackerY': 152, 'button': [272, 240, 250], 'etaY': 284},
-    'tracker': {'y': 128, 'x0': 52, 'x1': 594, 'badge': 54, 'labelGap': 6, 'labelFont': 28, 'labelFontEn': 24},
+    'tracker': {'y': 128, 'x0': 52, 'x1': 594, 'badge': 54, 'labelGap': 6, 'labelFont': 28, 'labelFontEn': 26,
+                'colorNow': '#2B4F7E', 'colorDone': '#3B3F52', 'colorOff': '#6B5D48'},
     'button': {'h': 88, 'scale': 1.375},
     'toggle': {'w': 112, 'h': 44, 'hitH': 88},
-    'tapMinCss': 44, 'bodyMinCss': 15, 'textMinCss': 12,
+    'tapMinCss': 44, 'bodyMinCss': 15, 'textMinCss': 13,
+    # (polish M2) the HUD pieces in the v4.2 UI scene (logical px of the 720-wide UI camera, like UIv42.js):
+    # the chip has the 업무 chip's size and type (50 tall, 20 px text, 36 px icon) right under it, with an invisible
+    # 88-tall hit rect (44 CSS on a 360 phone); the toast takes the hint pill's place while it shows
+    'hud': {
+        'chip': {'x': 28, 'y': 445, 'w': 172, 'h': 50, 'scale': 50 / 64, 'icon': [27, 36], 'text': [52, 20],
+                 'color': '#2B4F7E', 'dot': [160, 10, 8], 'hit': [28, 440, 172, 88],
+                 'under': '업무 chip (UIv42 workChip: x 28, centre y 410, 132 x 50)'},
+        'toast': {'centre': [361, 148], 'h': 64, 'wMax': 554, 'icon': [44, 40], 'text': [74, 28], 'color': '#3B3F52',
+                  'hides': 'the v4.2 hint pill (UI.js, centre (361, 148), 362 x 52) while it shows',
+                  'ms': 3000},
+        'v42': {'coinBar': [33, 33, 222, 59], 'hintPill': [180, 122, 362, 52], 'chip3232': [30, 194, 120, 44],
+                'deliveryChip': [30, 258, 270, 44], 'workChip': [28, 385, 132, 50], 'settings': [660, 62, 33]},
+        'edgeBadge': 'UIv42.updateEdge clamps the left-side nav edge badge to y >= 480; while the 금방 chip shows, '
+                     'the left column ends at y 528 (its hit rect), so that clamp should become 540',
+    },
 }
 TABS = [('today', 'ui_icon_gb_today', '오늘', 'Today'), ('order', 'ui_icon_gb_order', '주문', 'Order'),
         ('catalog', 'ui_icon_gb_catalog', '상품', 'Shop'), ('crew', 'ui_icon_gb_crew', '기사님', 'Crew'),
         ('review', 'ui_icon_gb_review', '후기', 'Stars')]
-NAVY_T, INK_T, GREY_T = (43, 79, 126, 255), (59, 63, 82, 255), (128, 116, 98, 255)
+NAVY_T, INK_T, GREY_T = (43, 79, 126, 255), (59, 63, 82, 255), (107, 93, 72, 255)    # GREY_T = #6B5D48 (L9)
 
 
 def _scaled(im, s):
@@ -1280,6 +1390,8 @@ def app_mock(fr, tab='order', en=False):
     W, H = APP['panel']
     out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     out.alpha_composite(_nine(fr, 'ui_gb_phone', W, H))
+    nt = fr['ui_gb_phone_notch']
+    out.alpha_composite(nt, (int(round(APP['notch'][0] - nt.width / 2)), int(round(APP['notch'][1] - nt.height / 2))))
     hx, hy, hw, hh = APP['header']['rect']
     out.alpha_composite(_nine(fr, 'ui_gb_header', hw, hh), (hx, hy))
     d = ImageDraw.Draw(out)
@@ -1293,7 +1405,7 @@ def app_mock(fr, tab='order', en=False):
     for s in (-1, 1):
         d.line((cx_ - 13, cy_ - 13 * s, cx_ + 13, cy_ + 13 * s), fill=NAVY_T, width=6)
     mx, my, msc = APP['header']['mascot']
-    ms = _scaled(fr['ui_gb_mascot_run_1'], msc)
+    ms = _scaled(fr['ui_gb_mascot_idle_0'], msc)        # after its run-in from the right edge it idles here
     out.alpha_composite(ms, (int(mx - ms.width * 0.5), int(my - ms.height * 0.9)))
     # tabs
     T = APP['tabs']
@@ -1309,7 +1421,7 @@ def app_mock(fr, tab='order', en=False):
         sx = x + (T['w'] - total) / 2
         _icon(out, fr, ik, sx + T['icon'] / 2, T['y'] + T['h'] / 2 - 1, T['icon'])
         d.text((sx + T['icon'] + T['iconGap'], T['y'] + T['h'] / 2 - 1), word, font=f,
-               fill=NAVY_T if on else (138, 122, 98, 255), anchor='lm')
+               fill=NAVY_T if on else GREY_T, anchor='lm')
         if key == 'review':
             d.ellipse((x + T['w'] - 24, T['y'] + 6, x + T['w'] - 8, T['y'] + 22), fill=(242, 179, 61, 255),
                       outline=(255, 255, 255, 255), width=2)
@@ -1432,7 +1544,7 @@ def app_mock(fr, tab='order', en=False):
             else:
                 ch_ = _scaled(_nine(fr, 'ui_gb_chip', 220 * 64 / 50, 64), 50 / 64)
                 out.alpha_composite(ch_, (cx0 + cw - 244, y + 19))
-                col = {'pause': (138, 122, 98, 255), 'sale': NAVY_T, 'out': (150, 140, 128, 255)}[st]
+                col = {'pause': GREY_T, 'sale': NAVY_T, 'out': GREY_T}[st]
                 d.text((cx0 + cw - 134, y + 44), st_en if en else st_ko, font=small, fill=col, anchor='mm')
             TG = APP['toggle']
             tg = (cx0 + cw - 30 - TG['w'], y + 82, cx0 + cw - 30, y + 82 + TG['h'])
@@ -1550,6 +1662,7 @@ def registry():
         for i in range(n):
             R[f'ui_gb_mascot_{anim}_{i}'] = (mascot, (anim, i))
     R['ui_gb_phone'] = (phone_frame, ())
+    R['ui_gb_phone_notch'] = (phone_notch, ())
     R['ui_gb_header'] = (header_frame, ())
     R['ui_gb_tab'], R['ui_gb_tab_on'] = (tab_frame, (False,)), (tab_frame, (True,))
     R['ui_gb_card'] = (card_frame, ())
@@ -1564,13 +1677,14 @@ def registry():
 
 REG = registry()
 ALL_DRAW = {k: (lambda fn=fn, args=args: fn(*args)) for k, (fn, args) in REG.items()}
-HELPERS = ('icanvas', 'part', 'glint', 'sparkle_sd', 'mark', 'text_cov', 'lettering', 'parcel', 'mini_sparkle', 'van_body',
+HELPERS = ('clear_border', 'icanvas', 'part', 'glint', 'sparkle_sd', 'mark', 'text_cov', 'lettering', 'parcel', 'mini_sparkle', 'van_body',
            'husky_head', 'Y_lt', 'bell_sd')
 
 
 def item_hash(fn):
     """Per-item cache hash: the draw function + the shared helpers + palettes + the imported style modules."""
     src = inspect.getsource(fn) + ''.join(inspect.getsource(globals()[n]) for n in HELPERS)
+    src += repr((CRI, GDI, LINE_INK, NOTCH_CENTRE_Y))
     src += repr((BRAND, G, GD, CR, LIDP, NV, CH, SKY, SNOW, GREYP, TINT, PINK_CHEEK, LID, INK_GOLD, PHOTO_RECT,
                  OFF_FILL, OFF_LINE, OFF_INK, MASCOT_SCALE, MASCOT_FOOT_Y, ICON_K, DAWN_RIM, BRACKET))
     mods = b''.join(open(p, 'rb').read() for p in (F.__file__, U3.__file__, U4.__file__, U5.__file__, EA.__file__))
@@ -1620,7 +1734,7 @@ def contract_sizes():
             S[f'ui_gb_mascot_{anim}_{i}'] = (128, 128)
     S.update({'ui_gb_phone': (360, 640), 'ui_gb_header': (320, 128), 'ui_gb_tab': (144, 64), 'ui_gb_tab_on': (144, 64),
               'ui_gb_card': (320, 160), 'ui_gb_chip': (200, 64), 'ui_gb_toast': (300, 64), 'ui_gb_ribbon': (160, 48),
-              'ui_gb_photo': (176, 136)})
+              'ui_gb_photo': (176, 136), 'ui_gb_phone_notch': (80, 14)})
     for i in range(4):
         S[f'fx_gb_bell_{i}'] = (64, 64)
     return S
@@ -1629,38 +1743,54 @@ def contract_sizes():
 LOGO_MAX = {'ui_gb_logo_ko': (256, 96), 'ui_gb_logo_en': (320, 96)}
 RESIDENT = ([k for k, *_ in ICONS] + ['ui_gb_chip', 'ui_gb_toast'] + [f'fx_gb_bell_{i}' for i in range(4)])
 CODE_FALLBACK = {
-    'icons': 'ui5 ui_icon_depot / ui4 ui_icon_box / ui3 ui_icon_delivery (plan §10.3); see each sprite\'s replaces',
+    'icons': 'loaded house icons only (ui5 ui_icon_depot / ui_icon_sleigh / ..., ui3 ui_icon_delivery / ui_icon_request '
+             '/ ...; polish L3: ui4 ui_icon_box is in fx_city, which v4.3 does not load); see each sprite\'s replaces',
     'tracker': 'text tracker "주문 → 고르기 → 포장 → 배달 중 → 도착" (plan §10.3)',
     'panels': 'ui5 ui_chip / ui_letter frames (plan §10.3)',
     'logos': 'runtime text "금방 마켓" in Pretendard on the header',
-    'mascot': 'ui_icon_gb (no animation)',
+    'mascot': 'nothing (or ui5 ui_icon_depot, no animation) - the mascot only appears with the ui6 page',
     'fx_gb_bell': 'emotes fx_music_notes or nothing',
 }
 
 
-EDGE_PAD = {'ui_gb_header', 'ui_gb_line_off', 'ui_gb_line_on'}     # frames whose outer pixels are opaque
+# (polish H2 + L6) fx_gb_bell placement + timing (manifest sprites.fx_gb_bell.placement; tools/test/ui6_phaser.mjs
+# places it exactly like this over a real ring_doorbell courier and checks it never overlaps a head)
+BELL_PLACE = {'cssMax': 24, 'worldMax': 56, 'courierWorldH': 80, 'maxCourierFrac': 0.7, 'xFromBell': 10,
+              'headTopY': -86, 'gap': 4, 'visibleH': 0.8,
+              'dong': {'atS': 0.33, 'replayFrames': [1, 2, 3], 'fps': 12, 'holdFrame': 3, 'fadeS': 0.32, 'totalS': 0.9}}
+EXTRUDE_ALPHA = 128  # (polish L2) frames with a border texel this opaque are full-bleed (header, tracker lines)
+
+
+def edge_alpha(crop):
+    """Max alpha on the outermost rows / columns of a (trimmed or untrimmed) frame crop."""
+    a = np.asarray(crop)[..., 3]
+    return int(max(a[0].max(), a[-1].max(), a[:, 0].max(), a[:, -1].max()))
 
 
 def pack_atlas(fr, iters=240, seed=3, max_px=int(2.5 * 2 ** 20 / 4)):
-    """Atlas packer for the tight AQ page budget (<= 2.5 MiB = 655,360 px): trimmed frames keep a 1 px transparent
-    border of their own (CF._trim pad 1) and the panels have transparent margins, so they pack edge to edge without
-    bleeding under linear filtering (no mipmaps); only frames with opaque outer pixels (EDGE_PAD) get a 1 px gap.
+    """Atlas packer for the tight AQ page budget (<= 2.5 MiB = 655,360 px).  Bleed rule (polish L2): under linear
+    filtering an outer device pixel of a sprite samples the texel just across its frame edge, so every frame rect is
+    surrounded by at least 1 px of TRANSPARENT texels (MaxRects pad 1, shared by two neighbours) - nothing of one frame
+    can reach another.  Trimmed frames are cut tight (their faint AA rim fades into that clear gap); full-bleed frames
+    (a border texel with alpha >= EXTRUDE_ALPHA: the header, the tracker lines) also get a 1 px EXTRUDE ring - a copy of
+    their own edge - so their stretched edges do not fade.  gen_ui6 --check verifies the rule on the written page.
     Deterministic random-restart MaxRects (big untrimmed panels first, the rest shuffled), smallest page wins."""
     names = list(REG)
-    items, sizes = [], []
+    items, sizes, ext = [], [], []
     for n in names:
         im = fr[n]
         if n in UNTRIMMED:
             box = (0, 0, im.width, im.height)
             crop = im
         else:
-            box = CF._trim(im)
+            box = CF._trim(im, pad=0)
             a = np.asarray(im).copy()
             a[a[..., 3] <= 2] = 0
             crop = Image.fromarray(a, 'RGBA').crop(box)
+        e = 1 if edge_alpha(crop) >= EXTRUDE_ALPHA else 0
         items.append((n, im, box, crop))
-        p_ = 1 if n in EDGE_PAD else 0
-        sizes.append((crop.width + p_, crop.height + p_))
+        ext.append(e)
+        sizes.append((crop.width + 2 * e, crop.height + 2 * e))
     big = sorted([i for i, n in enumerate(names) if n in UNTRIMMED and sizes[i][0] * sizes[i][1] > 9000],
                  key=lambda i: -sizes[i][0] * sizes[i][1])
     rest = [i for i in range(len(names)) if i not in big]
@@ -1670,7 +1800,7 @@ def pack_atlas(fr, iters=240, seed=3, max_px=int(2.5 * 2 ** 20 / 4)):
     orders = [big + rest_sorted] + [big + [rest[j] for j in rng.permutation(len(rest))] for _ in range(iters)]
     for o in orders:
         for W in range(640, 1025, 4):
-            pl = CF.maxrects(sizes, W, pad=0, order=o)
+            pl = CF.maxrects(sizes, W, pad=1, order=o)
             if pl is None:
                 continue
             uw = max(x + w for (x, _), (w, _) in zip(pl, sizes))
@@ -1683,9 +1813,13 @@ def pack_atlas(fr, iters=240, seed=3, max_px=int(2.5 * 2 ** 20 / 4)):
     _, sw, sh, pl = best
     sheet = Image.new('RGBA', (sw, sh), (0, 0, 0, 0))
     frames = {}
-    for (n, im, box, crop), (x, y) in zip(items, pl):
-        sheet.paste(crop, (x, y))
-        frames[n] = {'frame': {'x': x, 'y': y, 'w': crop.width, 'h': crop.height}, 'rotated': False,
+    for (n, im, box, crop), (x, y), e in zip(items, pl, ext):
+        fx, fy = x + e, y + e
+        if e:                                              # 1 px extrude ring
+            ca = np.asarray(crop)
+            sheet.paste(Image.fromarray(np.pad(ca, ((1, 1), (1, 1), (0, 0)), mode='edge'), 'RGBA'), (fx - 1, fy - 1))
+        sheet.paste(crop, (fx, fy))
+        frames[n] = {'frame': {'x': fx, 'y': fy, 'w': crop.width, 'h': crop.height}, 'rotated': False,
                      'trimmed': (crop.width, crop.height) != im.size,
                      'spriteSourceSize': {'x': box[0], 'y': box[1], 'w': crop.width, 'h': crop.height},
                      'sourceSize': {'w': im.width, 'h': im.height}}
@@ -1736,7 +1870,7 @@ def write_assets(fr):
                                 'frameSize': list(fr['ui_gb_logo_ko'].size), 'bakedText': '금방', 'font': 'Jua',
                                 'markCentre': [36, 36], 'markRadius': 30.5,
                                 'notes': 'app header logo (ko): the mark + "금방" in navy with a cream rim (reads on the '
-                                         'gold header, cream and dark). Header placement: x 44, y 42, scale 0.8 '
+                                         'gold header, cream and dark). Header placement: top-left at x 44, y 46, scale 1.0 '
                                          '(appLayout.header.logo).', 'replaces': 'runtime text 금방 마켓'}
     sprites['ui_gb_logo_en'] = {'atlas': ATLAS, 'frame': 'ui_gb_logo_en', 'anchor': [0.5, 0.5], 'kind': 'logo',
                                 'frameSize': list(fr['ui_gb_logo_en'].size), 'bakedText': 'Geumbang', 'font': 'Fredoka Bold',
@@ -1754,11 +1888,17 @@ def write_assets(fr):
         anims[anim] = {'frames': fl, 'fps': fps, 'repeat': rep}
     sprites['ui_gb_mascot'] = {
         'atlas': ATLAS, 'frame': 'ui_gb_mascot_idle_0', 'anchor': [0.5, 0.9], 'kind': 'mascot', 'frameSize': [128, 128],
-        'frames': len(names), 'frameNames': names, 'anims': anims, 'neverMirror': True,
-        'notes': '금방이 the mascot: the mark\'s parcel on stubby legs with a navy scarf (UI only, never mirrored - '
-                 'it runs to the right). idle = stands and waves (3 fps loop), run = runs in (8 fps loop; tween it in '
-                 'from the right edge of the header to appLayout.header.mascot when the app opens, then idle), bow = a '
-                 'polite bow (3 fps once; on the first delivery / a new review). Feet at the anchor.',
+        'frames': len(names), 'frameNames': names, 'anims': anims, 'runFacing': 'left', 'mirrorSafe': True,
+        'runIn': APP['header']['mascotRunIn'],
+        'notes': '금방이 the mascot: the mark\'s parcel on stubby legs with a navy scarf under its "o" mouth (UI only). '
+                 'idle = stands, waves and calls (3 fps loop); run = runs to the LEFT (8 fps loop) - when the app '
+                 'opens it enters from behind the right edge of the phone screen: start at appLayout.header.'
+                 'mascotRunIn.from (masked to appLayout.screen, depth under the close button), tween x to '
+                 'appLayout.header.mascot in 600 ms with LINEAR easing (a braking ease makes the feet slide while the '
+                 'legs still cycle), then play idle at once (bow on the first open of the day). To run right, '
+                 'setFlipX(true) (mirror-safe: no letters, a symmetric face; the light then comes from the upper '
+                 'right, which is fine for a moment of motion). bow = a polite bow (3 fps once; the first delivery / '
+                 'a new review). Feet at the anchor in every frame.',
         'replaces': 'ui_icon_gb'}
     for k, (m, inset, extra) in NINE.items():
         im = fr[k]
@@ -1775,15 +1915,28 @@ def write_assets(fr):
                                        'is transparent and its edge carries a soft inner shade; the gold tape and the '
                                        'mark sticker sit on top. Scale the whole thing for thumbnails.',
                               'replaces': 'ui_icon_gb_doorstep'}
+    sprites['ui_gb_phone_notch'] = {'atlas': ATLAS, 'frame': 'ui_gb_phone_notch', 'anchor': [0.5, 0.5], 'kind': 'frame',
+                                    'frameSize': [80, 14], 'at': APP['notch'],
+                                    'notes': 'the phone\'s speaker slot (centred) + front camera (polish L1: no longer in '
+                                             'the stretched 9-slice). Fixed size, never scaled with the panel: draw it '
+                                             'centred at appLayout.notch (panel x 360, y 15.5) over the built '
+                                             'ui_gb_phone.', 'replaces': 'nothing (a plain bezel)'}
     fxn = [f'fx_gb_bell_{i}' for i in range(4)]
     sprites['fx_gb_bell'] = {'atlas': ATLAS, 'frame': 'fx_gb_bell_0', 'anchor': [0.5, 0.5], 'kind': 'fx',
                              'frameSize': [64, 64], 'frames': 4, 'frameNames': fxn,
                              'anims': {'play': {'frames': fxn, 'fps': 12, 'repeat': 0}},
-                             'notes': '띵동 at the door (world space, with sfx_gb_doorbell on ring_doorbell\'s impact frame): '
-                                      'the bell pops in, swings with ringing arcs and sparkles, settles. Draw it centred '
-                                      '~40 world px above the door bell (geumbangfolk bellPoint) at a constant screen size '
-                                      '(about 40 CSS px: setScale(40 / (64 x zoom x 390 / 720))), depth over the courier; '
-                                      'destroy on animationcomplete.',
+                             'placement': BELL_PLACE,
+                             'notes': '띵동 at the door (world space, with sfx_gb_doorbell on ring_doorbell\'s impact frame '
+                                      '2): the bell pops in, swings with ringing arcs and sparkles, settles. SIZE (polish '
+                                      'H2): S = min(24 CSS px, 0.7 x the courier on screen) = min(24 / cssPerWorld, 56) '
+                                      'world px, cssPerWorld = camera zoom x viewport CSS width / 720; setScale(S / 64). '
+                                      'PLACE: above the courier\'s head, a little toward the door - centre x = feet.x + '
+                                      'bellPoint.x + 10 x sign(bellPoint.x), its bottom edge 4 world px above the head top '
+                                      '(feet.y + placement.headTopY - 4; centre y = bottom - 0.4 S, the bell + arcs are '
+                                      '0.8 S tall) - never over a face; depth over the courier. The resident steps out '
+                                      'after the bell has gone (plan 8.1: ring 4.5 s, door 5.5 s). DONG (L6): on '
+                                      'sfx_gb_doorbell\'s dong cue (0.33 s) play frames 1-3 again, then hold frame 3 and '
+                                      'fade it out over 0.32 s, so the bell lasts the whole 0.9 s chime; destroy after.',
                              'replaces': 'emotes fx_music_notes'}
     page_mib = sheet.width * sheet.height * 4 / 2 ** 20
     fsum = lambda ks: round(sum(atlas['frames'][k]['frame']['w'] * atlas['frames'][k]['frame']['h'] * 4
@@ -1842,21 +1995,25 @@ def write_assets(fr):
 
 PANEL_NOTES = {
     'ui_gb_phone': 'the 금방 앱 panel (720 x 1100 logical, non-pausing) drawn as the chief\'s phone: charcoal bezel, '
-                   'speaker slot + camera, cream screen. screenRect [21, 30, 318, 580] at the source size; the screen '
-                   'corners are r 30, so the header (r 30) sits flush in it. Build it at 720 x 1100 (the top-centre '
-                   'speaker slot widens with the width - fine for 1.6-2.2x).',
+                   'cream screen. screenRect [21, 30, 318, 580] at the source size; the screen corners are r 30, so the '
+                   'header (r 30) sits flush in it. Build it at any size (the edge strips are plain: polish L1), then '
+                   'draw ui_gb_phone_notch (speaker slot + camera) centred at appLayout.notch.',
     'ui_gb_header': 'the app header (gold): rounded top corners r 30 = the phone screen\'s, a goldDark lip, a soft '
                     'shadow onto the screen below (the last 12 px). Logo left, tagline under it (navy, 26 px), close '
                     'button right, the mascot runs in between (appLayout.header).',
-    'ui_gb_tab': 'app tab (not selected): pale cream; write the word in warm grey #8A7A62 next to the tab icon.',
+    'ui_gb_tab': 'app tab (not selected): pale cream; write the word in warm grey #6B5D48 (>= 4.5:1) next to the tab '
+                 'icon.',
     'ui_gb_tab_on': 'app tab (selected): gold with gloss and a small shadow; word in navy. Same size and margins as '
                     'ui_gb_tab so they swap in place. A new-content dot is code (a 14 px gold circle, white rim).',
     'ui_gb_card': 'order / product / stat card: warm white, hairline border, soft shadow, a gold strip down the left '
                   'edge (inside the left margin). Done cards may setTint(0xF4F1EA).',
-    'ui_gb_chip': 'HUD 금방 chip (plan §6: 120 x 44 CSS under the 업무 chip) and in-app buttons (따라가기): cream pill with '
-                  'a gold rim; ui_chip rules - build at 64 tall, setScale(h / 64) for smaller chips (minHeight 64).',
-    'ui_gb_toast': 'toast (top centre under the clock row, <= 300 x 48 CSS): cream with a gold left edge; icon at '
-                   'contentInset left, one line of text.',
+    'ui_gb_chip': 'HUD 금방 chip and in-app buttons (따라가기): cream pill with a gold rim; ui_chip rules - build at 64 '
+                  'tall, setScale(h / 64) for smaller chips (minHeight 64). In the HUD it matches the v4.2 업무 chip '
+                  '(polish M2): 172 x 50 logical right under it, 20 px text, 36 px icon, with an invisible 88-tall hit '
+                  'rect (appLayout.hud.chip).',
+    'ui_gb_toast': 'toast (<= 300 x 48 CSS): cream with a gold left edge; icon at contentInset left, one line of '
+                   'text. Built 64 tall at the v4.2 hint pill\'s centre (361, 148), hiding the hint pill while it shows '
+                   '(polish M2: appLayout.hud.toast) - never over the coin bar or the left chips.',
     'ui_gb_ribbon': 'blank gold ribbon with swallowtail ends for 특가 / 배달 중 / NEW labels (navy text, centred). Build it '
                     '48 tall and stretch only the width (minHeight 48).',
 }
@@ -1969,6 +2126,53 @@ def mirror_diff(im):
     return float((np.abs(a - b).max(axis=2) > 24).mean())
 
 
+ICON_WEIGHT_MIN = 0.20
+CREAM_FILL = np.array([247, 240, 227], np.float32)        # the cream chip / tab fill (critique M1 probe)
+
+
+def _lin(c):
+    c = c / 255.0
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def ink_share(im, px=32):
+    """Share of the opaque px (alpha > 0.5 at `px`) whose WCAG contrast against the cream fill is >= 3:1."""
+    sm = np.asarray(im.resize((px, px), Image.LANCZOS)).astype(np.float32)
+    a = sm[..., 3:] / 255.0
+    comp = sm[..., :3] * a + CREAM_FILL * (1 - a)
+    lw709 = np.array([0.2126, 0.7152, 0.0722], np.float32)
+    L = _lin(comp) @ lw709
+    Lc = float(_lin(CREAM_FILL) @ lw709)
+    op = a[..., 0] > 0.5
+    if not op.any():
+        return 0.0
+    return float((((Lc + 0.05) / (L + 0.05))[op] >= 3).mean())
+
+
+def violet_share(im):
+    """Share of the opaque px with hue 255-300 deg and HSL lightness 0.5-0.85 (lilac / lavender / violet)."""
+    a = np.asarray(im).astype(np.float32) / 255.0
+    op = a[..., 3] > 0.5
+    if not op.any():
+        return 0.0
+    rgb = a[op][:, :3]
+    mx, mn = rgb.max(axis=1), rgb.min(axis=1)
+    lig = (mx + mn) / 2
+    d = mx - mn
+    r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
+    h = np.zeros_like(mx)
+    m = d > 1e-4
+    hr = m & (mx == r)
+    hg = m & (mx == g) & ~hr
+    hb = m & ~hr & ~hg
+    h[hr] = (60 * ((g[hr] - b[hr]) / d[hr])) % 360
+    h[hg] = 60 * ((b[hg] - r[hg]) / d[hg]) + 120
+    h[hb] = 60 * ((r[hb] - g[hb]) / d[hb]) + 240
+    sat = np.where(m, d / (1 - np.abs(2 * lig - 1) + 1e-6), 0)
+    v = m & (sat > 0.12) & (h >= 255) & (h <= 300) & (lig >= 0.5) & (lig <= 0.85)
+    return float(v.mean())
+
+
 # =========================================================================== previews
 PBG = {'cream': (255, 248, 236, 255), 'gold': (242, 179, 61, 255), 'dark': (43, 47, 58, 255),
        'snow': (226, 233, 242, 255)}
@@ -2016,7 +2220,7 @@ def preview_icons(fr, path):
 
 def preview_tracker(fr, path):
     """Steps on / off, dots, lines, stars, and the tracker at every stage at app size."""
-    W, H = 1180, 760
+    W, H = 1180, 880
     out = Image.new('RGBA', (W, H), PBG['cream'])
     d = ImageDraw.Draw(out)
     _label(d, (12, 10), 'ui6 tracker: ui_gb_step_* (on / off), ui_gb_dot_*, ui_gb_line_*, ui_gb_star_* - icon AND word', 22)
@@ -2040,11 +2244,10 @@ def preview_tracker(fr, path):
         out.alpha_composite(card, (20, y))
         dd = ImageDraw.Draw(out)
         tracker(out, fr, dd, 70, 530, y + 44, stage, font=CF.font(20))
-        if stage < 4:
-            card2 = _nine(fr, 'ui_gb_card', 560, 110)
-            out.alpha_composite(card2, (600, y))
-            tracker(out, fr, dd, 650, 1110, y + 44, stage, en=True, font=CF.font(18))
-        y += 120 if stage < 4 else 0
+        card2 = _nine(fr, 'ui_gb_card', 560, 110)
+        out.alpha_composite(card2, (600, y))
+        tracker(out, fr, dd, 650, 1110, y + 44, stage, en=True, font=CF.font(18))
+        y += 120
     out.save(path)
     return path
 
@@ -2076,8 +2279,8 @@ def preview_mascot(fr, path_png, path_gif):
     W, H = 3 * 300 + 20, 330
     out = Image.new('RGBA', (W, H), (236, 241, 247, 255))
     d = ImageDraw.Draw(out)
-    _label(d, (12, 8), 'ui_gb_mascot 금방이 (128², anchor 0.5, 0.9): idle 2 f · run 4 f 8 fps · bow 2 f - UI only, never '
-                       'mirrored', 18)
+    _label(d, (12, 8), 'ui_gb_mascot 금방이 (128², anchor 0.5, 0.9): idle 2 f · run 4 f 8 fps (runs LEFT: in from the right '
+                       'edge) · bow 2 f', 18)
     x = 10
     for a, fl in frames.items():
         for i, im in enumerate(fl):
@@ -2105,7 +2308,7 @@ def preview_bell(fr, path):
 
 def preview_panels(fr, man, path):
     """The 9-slice frames at source size with margins (red) and contentInset (green), and the photo frame."""
-    keys = NINE_KEYS + ['ui_gb_photo']
+    keys = NINE_KEYS + ['ui_gb_photo', 'ui_gb_phone_notch']
     W, H = 1240, 760
     out = Image.new('RGBA', (W, H), (96, 106, 136, 255))
     d = ImageDraw.Draw(out)
@@ -2154,40 +2357,93 @@ def preview_app(fr, path):
 
 
 def preview_hud(fr, path):
-    """HUD pieces at phone scale on snow: the 금방 chip, a toast, an order bubble icon, the doorbell FX."""
-    W, H = 1170, 680
+    """HUD pieces on a 390 x 844 phone at 3x (polish M2): the 금방 chip at the v4.2 업무 chip's size right under it
+    (ui5 ui_chip + ui_icon_office), the toast in the hint pill's place, the order bubble, the bell at its in-world size
+    beside a courier-sized bar at zoom 0.6 / 1.0 / 1.2, the notch."""
+    W, H = 1170, 1640
     out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     snow = Image.open(os.path.join(ASSETS, 'ground/ground_snow.png')).convert('RGBA')
     for yy in range(0, H, snow.height):
         for xx in range(0, W, snow.width):
             out.paste(snow, (xx, yy))
     d = ImageDraw.Draw(out)
-    k = 3.0                                        # device px per CSS px
-    chip = _nine(fr, 'ui_gb_chip', 120 / 44 * 64, 64)
-    chip = chip.resize((int(120 * k), int(44 * k)), Image.LANCZOS)
-    out.alpha_composite(chip, (int(16 * k), int(20 * k)))
-    _icon(out, fr, 'ui_icon_gb', int(16 * k + 22 * k), int(20 * k + 22 * k), int(30 * k))
-    d.text((int(16 * k + 42 * k), int(20 * k + 22 * k)), '배달 중 3', font=CF.font(int(15 * k)), fill=NAVY_T, anchor='lm')
-    d.ellipse((int(16 * k + 110 * k), int(18 * k), int(16 * k + 122 * k), int(30 * k)), fill=(242, 179, 61, 255),
-              outline=(255, 255, 255, 255), width=4)
-    toast = _nine(fr, 'ui_gb_toast', 300 / 48 * 64, 64).resize((int(300 * k), int(48 * k)), Image.LANCZOS)
-    out.alpha_composite(toast, (int(45 * k), int(80 * k)))
-    _icon(out, fr, 'ui_icon_gb_order', int(45 * k + 34 * k), int(80 * k + 23 * k), int(32 * k))
-    d.text((int(45 * k + 56 * k), int(80 * k + 23 * k)), '띵동! 새 주문 · 민지네 · 빵 3', font=CF.font(int(15 * k)),
-           fill=INK_T, anchor='lm')
-    # order bubble (ui_emote_bubble stand-in: a white round bubble) with the cart + bread
-    bx, by = int(30 * k), int(150 * k)
-    d.rounded_rectangle((bx, by, bx + int(84 * k), by + int(48 * k)), radius=int(20 * k), fill=(255, 255, 255, 255),
+    k = 1170 / 720.0                               # device px per logical px (390 CSS @3x)
+    hud = APP['hud']
+    ui5 = CF.Atlas.get('ui5/ui5_icons')
+    u5chip = ui5.frame('ui_chip')
+    m5 = (32, 16, 32, 16)
+
+    def chip5(x, y, w, h):
+        im = U3.nine_stretch(u5chip, dict(left=32, top=16, right=32, bottom=16), int(round(w * 64 / h)), 64)
+        out.alpha_composite(im.resize((int(w * k), int(h * k)), Image.LANCZOS), (int(x * k), int(y * k)))
+    v = hud['v42']
+    chip5(*v['coinBar'])
+    coin = CF.Atlas.get('ui/ui_icons').frame('ui_icon_coin')
+    out.alpha_composite(_scaled(coin, 46 * k / max(coin.size)), (int(43 * k), int(39 * k)))
+    d.text((int(96 * k), int(62 * k)), '10,398', font=CF.font(int(34 * k)), fill=(43, 47, 58, 255), anchor='lm')
+    chip5(*v['chip3232'])
+    d.text((int(90 * k), int(216 * k)), '32/32', font=CF.font(int(20 * k)), fill=(43, 47, 58, 255), anchor='mm')
+    chip5(*v['deliveryChip'])
+    d.text((int(165 * k), int(280 * k)), '23/30 정기 납품', font=CF.font(int(20 * k)), fill=(43, 47, 58, 255), anchor='mm')
+    chip5(*v['workChip'])
+    off = ui5.frame('ui_icon_office')
+    out.alpha_composite(_scaled(off, 36 * k / 96), (int((28 + 26 - 18) * k), int((410 - 18) * k)))
+    d.text((int(78 * k), int(410 * k)), '업무', font=CF.font(int(20 * k)), fill=(43, 47, 58, 255), anchor='lm')
+    # the 금방 chip (visible 172 x 50 at (28, 445), hit rect dashed)
+    C = hud['chip']
+    ch = _nine(fr, 'ui_gb_chip', C['w'] * 64 / C['h'], 64).resize((int(C['w'] * k), int(C['h'] * k)), Image.LANCZOS)
+    out.alpha_composite(ch, (int(C['x'] * k), int(C['y'] * k)))
+    _icon(out, fr, 'ui_icon_gb', int((C['x'] + C['icon'][0]) * k), int((C['y'] + C['h'] / 2) * k), int(C['icon'][1] * k))
+    d.text((int((C['x'] + C['text'][0]) * k), int((C['y'] + C['h'] / 2) * k)), '배달 중 3',
+           font=CF.font(int(C['text'][1] * k)), fill=NAVY_T, anchor='lm')
+    dx, dy, dr = C['dot']
+    d.ellipse((int((C['x'] + dx - dr) * k), int((C['y'] + dy - dr) * k), int((C['x'] + dx + dr) * k),
+               int((C['y'] + dy + dr) * k)), fill=(242, 179, 61, 255), outline=(255, 255, 255, 255), width=4)
+    hx, hy, hw, hh = C['hit']
+    for i in range(0, int(hw * k), 18):
+        for yy_ in (hy, hy + hh):
+            d.line((int(hx * k) + i, int(yy_ * k), int(hx * k) + i + 9, int(yy_ * k)), fill=(200, 60, 90, 200), width=2)
+    _label(d, (int((C['x'] + C['w'] + 12) * k), int((C['y'] + 8) * k)), '금방 chip = 업무 chip size; dashed = 44 CSS tap rect',
+           int(9 * k), (60, 70, 90, 255))
+    # the toast in the hint pill's place
+    T_ = hud['toast']
+    word = '띵동! 새 주문 · 민지네 · 빵 3'
+    f28 = CF.font(int(T_['text'][1] * k))
+    tw = min(T_['wMax'], T_['text'][0] + d.textlength(word, font=f28) / k + 26)
+    tx, ty = T_['centre'][0] - tw / 2, T_['centre'][1] - T_['h'] / 2
+    toast = _nine(fr, 'ui_gb_toast', tw, T_['h']).resize((int(tw * k), int(T_['h'] * k)), Image.LANCZOS)
+    out.alpha_composite(toast, (int(tx * k), int(ty * k)))
+    _icon(out, fr, 'ui_icon_gb_order', int((tx + T_['icon'][0]) * k), int((ty + T_['h'] / 2) * k), int(T_['icon'][1] * k))
+    d.text((int((tx + T_['text'][0]) * k), int((ty + T_['h'] / 2) * k)), word, font=f28, fill=INK_T, anchor='lm')
+    _label(d, (int(tx * k), int((ty + T_['h'] + 4) * k)), 'toast: in the hint pill\'s place (hint hidden while it shows)',
+           int(9 * k), (60, 70, 90, 255))
+    # order bubble (ui_emote_bubble stand-in) with the cart + bread
+    bx, by = int(30 * k), int(600 * k)
+    d.rounded_rectangle((bx, by, bx + int(150 * k), by + int(86 * k)), radius=int(36 * k), fill=(255, 255, 255, 255),
                         outline=(160, 172, 196, 255), width=4)
-    _icon(out, fr, 'ui_icon_gb_cart', bx + int(24 * k), by + int(24 * k), int(34 * k))
-    _paste_item(out, 'item_bread', bx + int(60 * k), by + int(24 * k), int(26 * k))
-    _label(d, (bx, by + int(52 * k)), 'order bubble: cart + item', int(9 * k), (60, 70, 90, 255))
-    for i in range(4):
-        b = fr[f'fx_gb_bell_{i}'].resize((int(40 * k), int(40 * k)), Image.LANCZOS)
-        out.alpha_composite(b, (int((170 + i * 50) * k), int(150 * k)))
-    _label(d, (int(170 * k), int(202 * k)), 'fx_gb_bell 0-3 at 40 CSS px', int(9 * k), (60, 70, 90, 255))
-    ms = fr['ui_gb_mascot_idle_1'].resize((int(64 * k), int(64 * k)), Image.LANCZOS)
-    out.alpha_composite(ms, (int(300 * k), int(16 * k)))
+    _icon(out, fr, 'ui_icon_gb_cart', bx + int(44 * k), by + int(43 * k), int(60 * k))
+    _paste_item(out, 'item_bread', bx + int(108 * k), by + int(43 * k), int(46 * k))
+    _label(d, (bx, by + int(92 * k)), 'order bubble: cart + item', int(9 * k), (60, 70, 90, 255))
+    # the bell beside an 80-world-px courier bar at zoom 0.6 / 1.0 / 1.2 (S = min(24 CSS, 56 world px))
+    P = BELL_PLACE
+    for i, z in enumerate((0.6, 1.0, 1.2)):
+        cpw = z * 390 / 720                       # CSS px per world px on a 390 phone
+        S = min(P['cssMax'] / cpw, P['worldMax'])
+        ox, oy = int((120 + i * 220) * k), int(940 * k)
+        hcss = P['courierWorldH'] * cpw * 3
+        d.rounded_rectangle((ox - int(12 * cpw * 3), oy - int(hcss), ox + int(12 * cpw * 3), oy), radius=int(10 * cpw * 3),
+                            fill=(242, 179, 61, 140), outline=(140, 90, 20, 200), width=2)
+        head_top = oy + P['headTopY'] * cpw * 3
+        bs = int(S * cpw * 3)
+        b = fr['fx_gb_bell_2'].resize((bs, bs), Image.LANCZOS)
+        cy_ = head_top - P['gap'] * cpw * 3 - P['visibleH'] * S * cpw * 3 / 2
+        out.alpha_composite(b, (int(ox + 10 * cpw * 3 + 10 * cpw * 3 - bs / 2), int(cy_ - bs / 2)))
+        _label(d, (ox - int(40 * k), oy + int(8 * k)), f'zoom {z}: bell {S * cpw:.0f} CSS', int(9 * k), (60, 70, 90, 255))
+    nt = fr['ui_gb_phone_notch']
+    out.alpha_composite(nt.resize((nt.width * 3, nt.height * 3), Image.LANCZOS), (int(400 * k), int(620 * k)))
+    _label(d, (int(400 * k), int(650 * k)), 'ui_gb_phone_notch (x3)', int(9 * k), (60, 70, 90, 255))
+    _label(d, (int(20 * k), int(975 * k)), 'fx_gb_bell over an 80-world-px courier (gold bar) at zoom 0.6 / 1.0 / 1.2: '
+           'min(24 CSS, 0.7 x courier), bottom 4 px above the head top', int(9 * k), (60, 70, 90, 255))
     out.save(path)
     return path
 
@@ -2312,6 +2568,13 @@ def check():
         # uniform along y too (vertical gradient steps are tiny)
         if not n.get('minHeight') and band.size and np.abs(np.diff(band[:, :L], axis=0)).max() > 24:
             errs.append(f'{k}: left column not uniform along y (would smear when stretched vertically)')
+        if not n.get('minHeight') and band.size and np.abs(np.diff(band[:, im.width - R:], axis=0)).max() > 24:
+            errs.append(f'{k}: right column not uniform along y (would smear when stretched vertically)')
+        # (polish L1) the top / bottom edge strips stretch along x: no details in them (the phone's speaker slot and
+        # camera used to sit in its top-centre strip and became a long slot and an oval when the panel was built)
+        for nm, strip in (('top', arr[:T, L:im.width - R]), ('bottom', arr[im.height - B:, L:im.width - R])):
+            if strip.size and np.abs(np.diff(strip, axis=1)).max() > 24:
+                errs.append(f'{k}: {nm}-centre strip not uniform along x (details would stretch)')
     if nine.get('ui_gb_chip', {}).get('minHeight') != 64:
         errs.append('ui_gb_chip: minHeight 64 (ui_chip rules)')
     ph = sp.get('ui_gb_photo', {})
@@ -2378,6 +2641,66 @@ def check():
         a_ = np.asarray(full[k])[..., 3]
         if max(a_[0].max(), a_[-1].max(), a_[:, 0].max(), a_[:, -1].max()) > 40:
             errs.append(f'{k}: art touches the frame border')
+    # (polish M1) icon weight like the house sets: >= 20 % of the opaque px at 32 px reach 3:1 against the cream
+    # chip / tab fill #F7F0E3 (the ui3 low end; ui5 median 0.39, ui3 0.28)
+    weights = {}
+    for k, *_ in ICONS:
+        if k in full:
+            weights[k] = ink_share(full[k])
+            if weights[k] < ICON_WEIGHT_MIN:
+                errs.append(f'{k}: icon weight {weights[k]:.2f} < {ICON_WEIGHT_MIN} (share of 32 px pixels at >= 3:1 '
+                            f'against the cream fill) - it washes out on cream tabs / chips')
+    lw_ = sorted(weights.items(), key=lambda kv: kv[1])
+    print('  icon weight (>= 3:1 vs cream at 32 px): lightest ' + ', '.join(f'{k.replace("ui_icon_", "")} {v:.2f}'
+                                                                           for k, v in lw_[:4])
+          + f'; median {float(np.median(list(weights.values()))):.2f}')
+    # (polish M3) brand hue guard: no lilac / violet field (plan 7.4 bans purple-and-white and the 샛별 look)
+    for k, im in full.items():
+        vs = violet_share(im)
+        if vs >= 0.20:
+            errs.append(f'{k}: {vs:.0%} of the opaque px are lilac / violet (hue 255-300, lightness 0.5-0.85)')
+    # (polish L2) no frame may sample another frame's texels: every texel just outside a frame rect is transparent
+    # or that frame's own 1 px extrude
+    sa = np.asarray(sheet.convert('RGBA')).astype(np.int16)
+    SH, SW = sa.shape[:2]
+    bleed = []
+    for k, f in js['frames'].items():
+        r = f['frame']
+        x0, y0, x1, y1 = r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h']
+        sides = []
+        if y0 > 0:
+            sides.append((sa[y0 - 1, x0:x1], sa[y0, x0:x1]))
+        if y1 < SH:
+            sides.append((sa[y1, x0:x1], sa[y1 - 1, x0:x1]))
+        if x0 > 0:
+            sides.append((sa[y0:y1, x0 - 1], sa[y0:y1, x0]))
+        if x1 < SW:
+            sides.append((sa[y0:y1, x1], sa[y0:y1, x1 - 1]))
+        for outside, edge in sides:
+            bad = (outside[:, 3] > 2) & (np.abs(outside - edge).max(axis=1) > 0)
+            if bad.any():
+                bleed.append(k)
+                break
+    if bleed:
+        errs.append(f'atlas bleed: {len(bleed)} frames have a foreign opaque texel right outside their rect: '
+                    f'{", ".join(sorted(bleed)[:8])}')
+    # (polish H1 / H2 / M2) the hand-over data the critique asked for
+    msc = sp.get('ui_gb_mascot', {})
+    if msc.get('runFacing') != 'left' or not msc.get('runIn') or msc.get('runIn', {}).get('ease') != 'Linear':
+        errs.append('ui_gb_mascot: runFacing left + runIn (Linear) missing')
+    bp = sp.get('fx_gb_bell', {}).get('placement', {})
+    if bp.get('cssMax', 99) > 26 or not bp.get('dong'):
+        errs.append(f'fx_gb_bell: placement (cssMax <= 26, dong replay) missing: {bp}')
+    hud = man['conventions'].get('appLayout', {}).get('hud', {})
+    try:
+        if hud['chip']['h'] != hud['v42']['workChip'][3]:
+            errs.append('appLayout.hud.chip: not the 업무 chip height')
+        if min(L['designCss']) / L['panel'][0] * hud['chip']['hit'][3] < L['tapMinCss'] - 0.05:
+            errs.append('appLayout.hud.chip: hit rect < 44 CSS px')
+        if max(L['designCss']) / L['panel'][0] * hud['toast']['h'] > 48.05:
+            errs.append('appLayout.hud.toast: taller than 48 CSS px')
+    except (KeyError, TypeError) as e:
+        errs.append(f'appLayout.hud incomplete: {e!r}')
     # brand: mark symmetry, navy share, colour pairs
     for k in ('ui_icon_gb', 'ui_gb_mark'):
         if k in full:

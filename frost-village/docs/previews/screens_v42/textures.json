@@ -1,134 +1,98 @@
 [
  {
-  "f": "01_whats_new_390x844_ko.jpg",
-  "mib": 368.7,
-  "peak": 368.7,
-  "objs": 1008
- },
- {
-  "f": "02_halo_plaza_390x844_ko.jpg",
-  "mib": 373.1,
-  "peak": 373.1,
-  "objs": 1091
- },
- {
   "f": "02b_halo_night_z06_390x844_ko.jpg",
-  "mib": 388.8,
-  "peak": 388.8,
-  "objs": 1000
- },
- {
-  "f": "03_nav_carrying_390x844_ko.jpg",
-  "mib": 394.5,
-  "peak": 394.5,
-  "objs": 1234
- },
- {
-  "f": "04_settings_play_390x844_ko.jpg",
-  "mib": 394.5,
-  "peak": 394.5,
-  "objs": 1237
- },
- {
-  "f": "05b_loop_town_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.5,
-  "objs": 857
- },
- {
-  "f": "06_consist_ours_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.5,
-  "objs": 985
- },
- {
-  "f": "07_freight_loading_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.5,
-  "objs": 989
- },
- {
-  "f": "08_consist_town_coach2_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.5,
-  "objs": 916
- },
- {
-  "f": "09_train_card_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.5,
-  "objs": 1011
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 922
  },
  {
   "f": "10_office_390x844_ko.jpg",
-  "mib": 402.7,
-  "peak": 403.7,
-  "objs": 1214
+  "mib": 415.5,
+  "peak": 415.5,
+  "objs": 1136
  },
  {
   "f": "10b_office_inside_390x844_ko.jpg",
-  "mib": 403.7,
-  "peak": 403.7,
-  "objs": 1179
+  "mib": 415.8,
+  "peak": 415.8,
+  "objs": 1189
  },
  {
   "f": "10c_chief_desk_390x844_ko.jpg",
-  "mib": 399.8,
-  "peak": 404.8,
-  "objs": 1132
+  "mib": 414.7,
+  "peak": 415.8,
+  "objs": 1150
  },
  {
   "f": "11_panel_stock_390x844_ko.jpg",
-  "mib": 400.8,
-  "peak": 404.8,
-  "objs": 1142
+  "mib": 411.9,
+  "peak": 415.8,
+  "objs": 1168
  },
  {
   "f": "12_panel_news_390x844_ko.jpg",
-  "mib": 400.8,
-  "peak": 404.8,
-  "objs": 1154
+  "mib": 408.8,
+  "peak": 415.8,
+  "objs": 1179
  },
  {
   "f": "13_panel_letters_390x844_ko.jpg",
-  "mib": 400.8,
-  "peak": 404.8,
-  "objs": 1151
+  "mib": 408.8,
+  "peak": 415.8,
+  "objs": 1186
  },
  {
   "f": "14_panel_staff_390x844_ko.jpg",
-  "mib": 400.8,
-  "peak": 404.8,
-  "objs": 1164
- },
- {
-  "f": "15_panel_bank_390x844_ko.jpg",
-  "mib": 406.9,
-  "peak": 406.9,
+  "mib": 408.8,
+  "peak": 415.8,
   "objs": 1162
  },
  {
+  "f": "15_panel_bank_390x844_ko.jpg",
+  "mib": 413.9,
+  "peak": 415.8,
+  "objs": 1152
+ },
+ {
   "f": "16_bank_vault_390x844_ko.jpg",
-  "mib": 412.7,
-  "peak": 412.7,
-  "objs": 1217
+  "mib": 412.1,
+  "peak": 415.8,
+  "objs": 1159
  },
  {
-  "f": "17_depot_revealed_390x844_ko.jpg",
-  "mib": 429.7,
-  "peak": 430.5,
-  "objs": 1137
+  "f": "12_panel_news_390x844_en.jpg",
+  "mib": 399.4,
+  "peak": 399.4,
+  "objs": 1046
  },
  {
-  "f": "18_cargo_sleigh_390x844_ko.jpg",
-  "mib": 417.7,
-  "peak": 432.7,
-  "objs": 1081
+  "f": "02b_halo_night_z06_360x640_ko.jpg",
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1033
  },
  {
-  "f": "19_observe_390x844_ko.jpg",
-  "mib": 425.7,
-  "peak": 432.7,
-  "objs": 1257
+  "f": "10_office_360x640_ko.jpg",
+  "mib": 415.5,
+  "peak": 415.5,
+  "objs": 1162
+ },
+ {
+  "f": "10b_office_inside_360x640_ko.jpg",
+  "mib": 420.3,
+  "peak": 420.3,
+  "objs": 1199
+ },
+ {
+  "f": "11_panel_stock_360x640_ko.jpg",
+  "mib": 414.3,
+  "peak": 420.3,
+  "objs": 1200
+ },
+ {
+  "f": "12_panel_news_360x640_en.jpg",
+  "mib": 399.4,
+  "peak": 399.4,
+  "objs": 1011
  }
 ]

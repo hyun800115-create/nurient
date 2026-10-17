@@ -61,10 +61,11 @@ def veh_atlas(key):
 
 
 def put(canvas, im, x, y, anchor, flip=False, scale=1.0):
-    """Draw im with its anchor (fraction) at (x, y)."""
+    """Draw im with its anchor (fraction) at (x, y).  flip = Phaser's setFlipX: the frame is mirrored about its CENTRE
+    and keeps its box (so a flipped sprite shifts by frameW - 2 * anchorX * frameW against a mirror about the anchor) -
+    the previews show exactly what the game draws."""
     if flip:
         im = im.transpose(Image.FLIP_LEFT_RIGHT)
-        anchor = (1.0 - anchor[0], anchor[1])
     if scale != 1.0:
         im = im.resize((max(1, int(round(im.width * scale))), max(1, int(round(im.height * scale)))), Image.LANCZOS)
     canvas.alpha_composite(im, (int(round(x - anchor[0] * im.width)), int(round(y - anchor[1] * im.height))))
@@ -127,16 +128,20 @@ def draw_van(canvas, x, y, d, anim='idle', i=0, lang='ko', lit=0, scale=1.0, sig
         bob = 0
         if d not in ('S', 'E', 'N', 'W') and anim in VAN['anims'] and 'bobPx' in VAN['anims'][anim]:
             bob = VAN['anims'][anim]['bobPx'][i]
-        px = -p[0] if flip else p[0]
+        px = -p[0] + ent['mirrorShiftPx'] if flip else p[0]
         put(canvas, frame(GBV, 'gb_roofsign_%s_%d' % (lang, lit)), x + px * scale, y + (p[1] + bob) * scale, (0.5, 1.0),
             False, scale)
 
 
-def van_patch(canvas, x, y, anim, d, i, scale=1.0):
+def van_patch(canvas, x, y, anim, d, i, scale=1.0, overlay=True):
+    """The documented order: (body idle_<dir>_0 already drawn) patch at body + patchDepth, [riders], then the patch's
+    own over_<anim>_<dir>_<i> instead of over_idle."""
     a = VAN['anims'][anim]
     rd = {'SW': 'SE', 'NW': 'NE'}.get(d, d)
     flip = d in ('SW', 'NW')
     put(canvas, frame(GBV, '%s_%s_%d' % (anim, rd, i)), x, y, a['anchor'], flip, scale)
+    if overlay:
+        put(canvas, frame(GBV, 'over_%s_%s_%d' % (anim, rd, i)), x, y, a['anchor'], flip, scale)
 
 
 def prev_van():
@@ -180,9 +185,10 @@ def prev_van_compare():
             draw_van(c, x, 800, dd, 'move', 0, lang, 0, k6)
     label(d, (14, 8), 'phone 390 x 844 CSS @ DPR 3 (this image = 1170 device px = the phone width)', 22)
     label(d, (14, 40), 'zoom 1.0: delivery_van_red (reference) | gb_van SE', 20)
-    label(d, (14, 530), 'zoom 0.6: red | gb_van SE | NE | SW (mirror, en sign).  mark = %.1f CSS px, roof sign = %.1f CSS px'
-          % (45.3 * 0.6 * 390 / 720, frame(GBV, 'gb_roofsign_ko_0').getbbox()[2] * 0 +
-             (lambda b: (b[2] - b[0]))(frame(GBV, 'gb_roofsign_ko_0').getbbox()) * 0.6 * 390 / 720), 20,
+    mb = M['geumbang']['report']['vanVisible']['SE']['markBoxPx']
+    label(d, (14, 530), 'zoom 0.6: red | gb_van SE | NE | SW (mirror, en sign).  mark = %.1f CSS px (measured), roof sign = '
+          '%.1f CSS px' % (min(mb[2] - mb[0], mb[3] - mb[1]) * 0.6 * 390 / 720,
+                           (lambda b: (b[2] - b[0]))(frame(GBV, 'gb_roofsign_ko_0').getbbox()) * 0.6 * 390 / 720), 20,
           (255, 255, 255, 255))
     c.convert('RGB').save(os.path.join(PREV, 'gb_van_compare.png'))
 
@@ -212,15 +218,17 @@ def prev_van_gifs():
                 x = 160 + k * 305
                 draw_van(c, x, 250, dd, 'idle', 0, sign=False)
                 van_patch(c, x, 250, anim, dd, i)
-                draw_van(c, x, 250, dd, 'idle', 0, sh=False) if False else None
-                p = VAN['roofSignPoint']['SE' if dd in ('SE', 'SW') else 'NE']
-                px = -p[0] if dd in ('SW', 'NW') else p[0]
+                rd = 'SE' if dd in ('SE', 'SW') else 'NE'
+                p = VAN['roofSignPoint'][rd]
+                px = -p[0] + VAN['mirrorShiftPx'] if dd in ('SW', 'NW') else p[0]
                 put(c, frame(GBV, 'gb_roofsign_ko_0'), x + px, 250 + p[1], (0.5, 1.0))
                 if anim == 'unload' and i == n - 1:
-                    for q in VAN['parcelPoints']['SE' if dd in ('SE', 'SW') else 'NE']:
+                    for q, seen in zip(VAN['parcelPoints'][rd], VAN['parcelPointsVisible'][rd]):
                         qx = -q[0] if dd in ('SW', 'NW') else q[0]
-                        d.ellipse([x + qx - 3, 250 + q[1] - 3, x + qx + 3, 250 + q[1] + 3], outline=(217, 72, 59))
-            label(d, (10, 6), 'gb_van %s (%d f, %d fps, patch over idle_<dir>_0)  frame %d' % (anim, n, fps, i), 18)
+                        col = (40, 160, 70) if seen else (217, 72, 59)
+                        d.ellipse([x + qx - 3, 250 + q[1] - 3, x + qx + 3, 250 + q[1] + 3], outline=col)
+            label(d, (10, 6), 'gb_van %s (%d f, %d fps): patch under the riders + over_%s_<dir>_<i>  frame %d%s' % (
+                anim, n, fps, anim, i, '  (parcelPoints: green seen, red hidden)' if anim == 'unload' else ''), 18)
             out.append(c.convert('RGB'))
         gif(out, os.path.join(PREV, 'gb_van_%s.gif' % anim), int(1000 / fps))
 
@@ -239,6 +247,9 @@ def centre(lang='ko', plate='gb', banner=True, f=0, van=True, props=True, extra=
     if plate:
         k = '%s_nameplate_%s' % (plate, lang)
         put(c, frame(GBB, k), ox, oy, an)
+        if plate == 'gb':                      # the 금방 hub repaints the old logistics mark (emblem patches)
+            for k in ('gb_emblem_gable', 'gb_emblem_blade', 'gb_roofparcel'):
+                put(c, frame(GBB, k), ox, oy, an)
     else:
         k = 'logistics_center_nameplate_' + lang
         put(c, frame(lgx_atlas(k), k), ox, oy, an)
@@ -359,9 +370,8 @@ def prev_sled():
             put(c, frame(sa, 'move_%s_%d' % (rd, i)), x, y, ds['anchor'], flip)
             put(c, frame(sa, 'over_move_%s_%d' % (rd, i)) if 'over_move_%s_%d' % (rd, i) in
                 json.load(open(sa))['frames'] else Image.new('RGBA', (1, 1)), x, y, ds['anchor'], flip)
-            q = P['sledPennant'][rd]['move'][i]
-            qx = -q[0] if flip else q[0]
-            put(c, frame(GBB, 'gb_pennant_%s_%d' % (rd, i % 4)), x + qx, y + q[1], P['anchor'], flip)
+            q = P['sledPennant'][dd]['move'][i]        # explicit table per dir (SW / NW: centre-flip mirrors)
+            put(c, frame(GBB, 'gb_pennant_%s_%d' % (rd, i % 4)), x + q[0], y + q[1], P['anchor'], flip)
         out.append(c.convert('RGB'))
     gif(out, os.path.join(PREV, 'gb_sled.gif'), 100)
     out[0].save(os.path.join(PREV, 'gb_sled.png'))
@@ -394,8 +404,9 @@ def prev_night():
     for x0, dd in ((200, 'SE'), (520, 'NE')):
         p = VAN['roofSignPoint'][dd]
         g(x0 + p[0], 300 + p[1] - 20, 40)
-        for q in VAN['lightPoints'][dd]:
-            g(x0 + q[0], 300 + q[1], 22)
+        for q, seen in zip(VAN['lightPoints'][dd], VAN['lightsVisible'][dd]):
+            if seen:                                   # (polish L4) no glow on a lamp the camera cannot see
+                g(x0 + q[0], 300 + q[1], 22)
     g(760, 330 - 170, 50)
     g(980 - 5, 330 - 105, 30)
     from PIL import ImageFilter
@@ -476,8 +487,83 @@ def prev_all():
     c.convert('RGB').save(os.path.join(PREV, 'gb_all.png'))
 
 
+def prev_fixes(before):
+    """(polish) before / after of the critique findings, from a copy of the pre-polish assets (GB_BEFORE)."""
+    def fr(root, atlas, name):
+        return frame(os.path.join(root, atlas + '.json'), name)
+    now = os.path.join(A, 'geumbang')
+    MB = json.load(open(os.path.join(before, 'manifest.json'), encoding='utf-8'))
+
+    def van_unload(root, man, d, i, k):
+        v = man['characters']['gb_van']
+        a = v['anims']['unload']
+        W_, H_ = a['frameSize']
+        c = Image.new('RGBA', (W_, H_), BG)
+        e = (W_ - v['frameSize'][0]) // 2
+        c.alpha_composite(fr(root, 'gb_van_0', 'idle_%s_0' % d), (e, e))
+        c.alpha_composite(fr(root, 'gb_van_0', 'unload_%s_%d' % (d, i)))
+        return c.resize((W_ * k, H_ * k), Image.LANCZOS)
+
+    def hub_crop(with_patches, box, k):
+        C = LG['sprites']['logistics_center']
+        c = Image.new('RGBA', tuple(C['frameSize']), BG)
+        sh = C['layers']['shell']
+        c.alpha_composite(frame(lgx_atlas(sh), sh))
+        if with_patches:
+            for n in ('gb_emblem_gable', 'gb_emblem_blade', 'gb_roofparcel'):
+                c.alpha_composite(frame(GBB, n))
+        c = c.crop(box)
+        return c.resize((c.width * k, c.height * k), Image.LANCZOS)
+
+    def banner(root, k):
+        im = fr(root, 'gb_bld_0', 'gb_banner_ko_0')
+        im = im.crop(im.getbbox())
+        c = Image.new('RGBA', im.size, (196, 210, 228, 255))
+        c.alpha_composite(im)
+        return c.resize((c.width * k, c.height * k), Image.LANCZOS)
+
+    def sign(root, n, k):
+        im = fr(root, 'gb_van_0', n)
+        c = Image.new('RGBA', im.size, (196, 210, 228, 255))
+        c.alpha_composite(im)
+        return c.resize((c.width * k, c.height * k), Image.LANCZOS)
+
+    def single(root, atlas, n, k=1):
+        im = fr(root, atlas, n)
+        c = Image.new('RGBA', im.size, BG)
+        c.alpha_composite(im)
+        return c.resize((c.width * k, c.height * k), Image.LANCZOS)
+    rows = [
+        ('H1  unload NE f3: porthole + handle ride their leaves (no floating parts)',
+         van_unload(before, MB, 'NE', 3, 2), van_unload(now, M, 'NE', 3, 2)),
+        ('H1  unload SE f2: no "ears" over the roof', van_unload(before, MB, 'SE', 2, 2), van_unload(now, M, 'SE', 2, 2)),
+        ('M1  banner: 금 / 방 de-sheared, upright on screen', banner(before, 4), banner(now, 4)),
+        ('M2  hub: 금방이 instead of the winged parcels, gold ribbons on the roof parcel',
+         hub_crop(False, (300, 40, 800, 640), 1), hub_crop(True, (300, 40, 800, 640), 1)),
+        ('M3  en roof sign: GEUM / BANG lockup, 11 px letters (was 6)', sign(before, 'gb_roofsign_en_0', 5),
+         sign(now, 'gb_roofsign_en_0', 5)),
+        ('L1  van gold a touch warmer (next to the lockers / flag)   L2  locker label plates',
+         single(before, 'gb_van_0', 'idle_SE_0'), single(now, 'gb_van_0', 'idle_SE_0')),
+        ('', single(before, 'gb_bld_0', 'gb_locker_b_0'), single(now, 'gb_bld_0', 'gb_locker_b_0')),
+    ]
+    W_ = max(a.width + b.width for _, a, b in rows) + 60
+    H_ = sum(max(a.height, b.height) + 40 for _, a, b in rows) + 50
+    c = Image.new('RGBA', (W_, H_), (250, 250, 252, 255))
+    d = ImageDraw.Draw(c)
+    label(d, (14, 10), 'gb_vehicles_bld polish - before (left) | after (right)', 26)
+    y = 50
+    for cap, a, b in rows:
+        label(d, (14, y), cap, 20)
+        c.alpha_composite(a, (14, y + 30))
+        c.alpha_composite(b, (40 + a.width, y + 30))
+        y += max(a.height, b.height) + 40
+    c.convert('RGB').save(os.path.join(PREV, 'gb_polish_before_after.png'))
+
+
 def main():
     os.makedirs(PREV, exist_ok=True)
+    if os.environ.get('GB_BEFORE'):
+        prev_fixes(os.environ['GB_BEFORE'])
     prev_all()
     prev_van()
     prev_van_compare()

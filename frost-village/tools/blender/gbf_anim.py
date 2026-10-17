@@ -5,8 +5,10 @@ Extends tf_anim / tf2_anim (imported, never edited) with six 금방 crew anims f
 
     carry_parcel   8 f 12 fps loop  S/SE/E/NE/N  brisk walk hugging a 금방 parcel at the belly (held_parcel_gb,
                                                  boxPoint [cx, cy, bx, by], groundSpeed)            page road
-    ring_doorbell  6 f  8 fps once  NE/N/E       the parcel tucked under the LEFT arm, the right mitten rises and
-                                                 presses the bell (impactFrame 2 = 띵, 3 = 동), back down; holds the
+    ring_doorbell  6 f  8 fps once  NE/N/E       E: the parcel tucked under the LEFT arm, the right mitten presses;
+                                                 NE / N (the door faces the camera): the parcel under the RIGHT arm on
+                                                 the camera side, the left mitten presses the bell (impactFrame 2 =
+                                                 띵, 3 = 동), back down; holds the
                                                  last frame (waiting at the door).  boxPoint, bellPoint   page road
     hand_parcel    6 f  9 fps once  NE/E/SE      offers the parcel with both mittens (no item: the game flies the
                                                  real gb_parcel from handPoint), f5 = a little bow (꾸벅)  page road
@@ -23,8 +25,9 @@ the held item, posed per body key).  Garments / legs / shoes / scarves / the ves
 once per (torso key, dir) WITHOUT limb holdouts; arms, mittens, cuffs and items are rendered per body key and drawn on
 top in the front views (timeline zfront = all four limbs in S / SE / E, none in NE / N), cut by a torso proxy shell
 and the head wherever those hide them.  carry_parcel (texture memory, the road page budget): a careful parcel walk whose
-upper body takes only two heights ('cw_hi' / 'cw_lo', no torso twist), so the garments, arms and parcel are rendered
-twice per dir and shared by the 8 frames; only the trousers and boots are rendered per frame (the LOWER pass).
+upper body takes three keys ('cw_hi_L' / 'cw_lo' / 'cw_hi_R': high + a side sway over the stance foot, low at the step;
+polish M1), so the garments, arms and parcel are rendered three times per dir and shared by the 8 frames; only the
+trousers and boots are rendered per frame (the LOWER pass, at the walk's own hip height so the planted foot stays put).
 
 Work heights (root-local metres, ground = 0): the counter the clerk scans on (COUNTER_TOP 0.56 m, a parcel on it), the
 packing table box top (BOX_TOP 0.58 m), the rack shelf (SHELF 0.84 m), the doorbell (about 0.82 m).  The logistics
@@ -55,7 +58,7 @@ FRONT = {'S', 'SE', 'E'}
 # (look-dev) the chibi head covers everything above ~0.74 m in the front views, so the hands work at belly / chest
 # height and the game lifts the sprite to the real counter / table (manifest 'hub' block, like officefolk's tellers)
 COUNTER_TOP = 0.30            # the counter top the clerk scans on (m above the feet, chibi scale)
-PARCEL_ON_COUNTER = 0.14      # height of the parcel lying there (gb_parcel_s/m)
+PARCEL_ON_COUNTER = 0.20      # height of the parcel lying there (gb_parcel_m: critique L8, 0.14 m was a speck at zoom 0.6)
 BOX_TOP = 0.42                # packing table + the box being taped
 SHELF = {'NE': 0.86, 'SE': 0.62, 'E': 0.64}    # the rack shelf: reaching up from behind, chest high from the front
 TOTE = 0.34                   # the tote / cart rim at the picker's right side
@@ -76,7 +79,7 @@ PAGE_OF5 = {a: g for g, lst in PAGES5.items() for a in lst}
 
 # frame i -> body key (unique pose per dir); repeated keys share their images
 KEYS5 = {
-    'carry_parcel':  [0, 0, 1, 1, 0, 0, 1, 1],    # upper body: hi, hi, lo, lo ... (the legs are per frame)
+    'carry_parcel':  [0, 0, 1, 1, 2, 2, 1, 1],    # upper body: hi + sway left, lo, hi + sway right, lo (legs per frame)
     'ring_doorbell': [0, 1, 2, 2, 1, 0],        # stand, reach, PRESS held 2 frames (띵 - 동), retract, stand (held)
     'hand_parcel':   [0, 1, 2, 2, 1, 3],        # hold, offer, out (taken), out (empty), back, bow (held)
     'scan':          [0, 1, 2, 3],              # aim, aim, BEEP, glance at the screen
@@ -85,7 +88,7 @@ KEYS5 = {
 }
 # torso key per (anim, body key)
 TORSO5 = {
-    'carry_parcel':  ['cw_hi', 'cw_lo'],
+    'carry_parcel':  ['cw_hi_L', 'cw_lo', 'cw_hi_R'],
     'ring_doorbell': ['stand', 'stand', 'press'],
     'hand_parcel':   ['stand', 'stand_lean', 'stand_lean', 'bend'],
     'scan':          ['stand_lean', 'stand_lean', 'stand_dip', 'stand'],
@@ -137,7 +140,10 @@ def expr_brow(face):
 
 def zfront5(anim, key, d):
     """Limbs drawn above the head stack: every limb in the front views (the acting renders are cut wherever the body /
-    head hides them), none in the back views."""
+    head hides them), none in the back views - except ring_doorbell NE / N, where the parcel rides under the RIGHT
+    (camera-side) arm: that arm + mitten and the parcel (zfrontFollow hand_R) are drawn over the jacket."""
+    if anim == 'ring_doorbell' and d in RING_TUCK:
+        return ('arm_R', 'hand_R')
     return ALL_LIMBS if d in FRONT else ()
 
 
@@ -146,7 +152,11 @@ def acting(anim):
 
 
 LOWER5 = {'carry_parcel'}           # anims whose trousers / boots are rendered per frame (the walking legs)
-CARRY_Z = {'cw_hi': 0.008, 'cw_lo': -0.010}       # the two upper-body heights of the parcel walk (hips@ z)
+# the parcel walk's upper body (critique M1): three keys - high over the stance foot with a side sway toward it
+# (frames 0-1: left foot planted, 4-5: right), low at the step (2-3, 6-7).  hips@ z (m) and the spine side lean (deg,
+# + = the character's left): ~2 px bob and ~2 px head sway at phone scale, like cityfolk carry_box / townfolk walk.
+CARRY_Z = {'cw_hi_L': 0.016, 'cw_lo': -0.018, 'cw_hi_R': 0.016}
+CARRY_SWAY = {'cw_hi_L': 5.0, 'cw_lo': 0.0, 'cw_hi_R': -5.0}
 
 
 # --------------------------------------------------------------------------- helpers
@@ -176,7 +186,7 @@ def torso_pose(tk, ch, d):
     elif tk == 'stoop':                       # dropping the parcel into the tote, knees giving a little
         p = va.add(squat(14, L), lean(18, 0, -18))
     elif tk in CARRY_Z:                       # the parcel walk's upper body (legs per frame in the LOWER pass)
-        p = {**legs_stand(4, 2), 'hips@': (0, 0, CARRY_Z[tk]), **lean(2)}
+        p = {**legs_stand(4, 2), 'hips@': (0, 0, CARRY_Z[tk]), **lean(2, CARRY_SWAY[tk])}
     elif tk == 'bend':                        # a little bow (꾸벅)
         p = {**legs_stand(4, 4), 'hips@': (0, 0.012, -0.005), **lean(21)}
     else:
@@ -221,33 +231,57 @@ def wik(side, x, y, z, pole=None):
 # the medium parcel (held_parcel_gb 'main'): w x d x h metres (gb_parcel_m-ish, chibi scale)
 PARCEL_M = (0.30, 0.24, 0.22)
 PARCEL_S = (0.20, 0.16, 0.14)
-# where the parcel rides under the left arm in ring_doorbell (chest-local centre): in front of the belly (E: the door
+# where the parcel rides in ring_doorbell facing E (chest-local centre): under the left arm in front of the belly (the door
 # side, drawn above the doll), shifted to the left side in the back views so it peeks out beside the body
-RING_BOX = {'E': (0.06, -0.25, -0.17), 'NE': (0.15, -0.20, -0.16), 'N': (0.15, -0.20, -0.16)}
+RING_BOX = {'E': (0.06, -0.25, -0.17)}
 RING_BOX_DEFAULT = (0.10, -0.23, -0.16)
+# (critique H3) doors face the camera, so the bell is always rung facing NE / NW (or N): there the parcel rides under
+# the RIGHT arm on the camera side (turned 90 deg: its short side against the body), the LEFT mitten presses the bell.
+RING_TUCK = {'NE', 'N'}
+TUCK_BOX = (-0.235, -0.07, -0.13)          # chest-local centre of the tucked parcel (x < 0 = the character's right)
+TUCK_YAW = 90.0
+BELL_R = {1: (-0.19, -0.17, -0.06), 2: (-0.13, -0.27, 0.035), 3: (-0.12, -0.29, 0.020)}
+BELL_HAND = {1: (-30, 0, 20), 2: (-70, 0, 10), 3: (-80, 0, 10)}
 
 
 def ring_box(d):
+    if d in RING_TUCK:
+        return TUCK_BOX
     return RING_BOX.get(d, RING_BOX_DEFAULT)
+
+
+def bell_side(d):
+    """the hand that presses the bell"""
+    return 'L' if d in RING_TUCK else 'R'
 
 
 def a_ring_doorbell(k, ch, d):
     cx, cy, cz = ring_box(d)
-    w = PARCEL_M[0]
-    # left mitten on the parcel's outer side, a little forward: it hugs the parcel to the belly
-    p = {'ik_L': (cx + w / 2 + 0.03, cy - 0.02, cz + 0.02, 1.0, 0.35, -0.5), 'hand_L': (0, 0, -70)}
-    R = {0: None,
-         1: (-0.19, -0.17, -0.06),
-         2: (-0.13, -0.27, 0.035),
-         3: (-0.12, -0.29, 0.020)}[k]
-    if R is None:
-        p.update(arm('R', 6, 10 + ch.get('arm_out', 0), 0, 14))
+    w, dd, h = PARCEL_M
+    if d in RING_TUCK:
+        # right arm round the tucked parcel: the mitten under its outer bottom edge, the elbow out and back
+        p = {'ik_R': (cx - dd / 2 - 0.01, cy - 0.03, cz - h / 2 + 0.05, -1.0, 0.6, -0.2), 'hand_R': (0, 0, 75)}
+        if k == 0:
+            p.update(arm('L', 6, 10 + ch.get('arm_out', 0), 0, 14))
+        else:
+            x, y, z = BELL_R[k]
+            p['ik_L'] = (-x, y, z, 1.0, 0.1, -0.5)
+            a, b, c = BELL_HAND[k]
+            p['hand_L'] = (a, b, -c)
     else:
-        p['ik_R'] = R + (-1.0, 0.1, -0.5)
-        p['hand_R'] = {1: (-30, 0, 20), 2: (-70, 0, 10), 3: (-80, 0, 10)}[k]
+        # left mitten on the parcel's outer side, a little forward: it hugs the parcel to the belly
+        p = {'ik_L': (cx + w / 2 + 0.03, cy - 0.02, cz + 0.02, 1.0, 0.35, -0.5), 'hand_L': (0, 0, -70)}
+        if k == 0:
+            p.update(arm('R', 6, 10 + ch.get('arm_out', 0), 0, 14))
+        else:
+            p['ik_R'] = BELL_R[k] + (-1.0, 0.1, -0.5)
+            p['hand_R'] = BELL_HAND[k]
     p['_parcel'] = 'ring'
     p['_bell'] = k in (2, 3)
     return p
+
+
+HAND_SIDE = {'NE': 0.10}         # hand_parcel handPoint facing away: metres out to the camera side of the right mitten
 
 
 def a_hand_parcel(k, ch, d):
@@ -334,11 +368,14 @@ ACT5 = {'carry_parcel': None, 'ring_doorbell': a_ring_doorbell, 'hand_parcel': a
 CARRY_BOX = (0.0, -0.25, -0.14)       # parcel centre, chest-local (lower than cityfolk's box: clear of the chin)
 
 
-def carry_legs(i, ch):
-    """walking legs of frame i with the hips held at the frame's upper-body height (2 levels)"""
+def carry_legs(i, ch, lower=False):
+    """walking legs of frame i.  lower=True (the LOWER pass + the feet / groundSpeed measurement): the walk's own hip
+    height, so the planted foot stays on the ground; otherwise the hips sit at the frame's upper-body key height (the
+    torso, arms, parcel and head offset follow that key).  The difference (<= 2 cm) hides under the coat hem."""
     a = TAU * i / 8
     p = legs_walk(a, 30.0, 50.0, ch.get('leg_len', 0.34), 0.020)
-    p['hips@'] = (0, 0, CARRY_Z[TORSO5['carry_parcel'][KEYS5['carry_parcel'][i]]])
+    if not lower:
+        p['hips@'] = (0, 0, CARRY_Z[TORSO5['carry_parcel'][KEYS5['carry_parcel'][i]]])
     p['root'] = (0, 0, 0)
     return p
 
@@ -359,13 +396,13 @@ ACT5['carry_parcel'] = a_carry_parcel
 
 # --------------------------------------------------------------------------- full body pose
 
-def body_pose5(anim, key, ch, d, frame=None):
+def body_pose5(anim, key, ch, d, frame=None, lower=False):
     """Rig.apply dict (+ '_' item flags and 'wik_' root-local IK) of body key `key`; carry_parcel with `frame` also
-    walks the legs of that frame (the LOWER pass, meta and full renders)."""
+    walks the legs of that frame (the LOWER pass, meta and full renders; lower=True: the legs' own hip height)."""
     tk = TORSO5[anim][key]
     p = torso_pose(tk, ch, d)
     if anim == 'carry_parcel' and frame is not None:
-        p.update(carry_legs(frame, ch))
+        p.update(carry_legs(frame, ch, lower))
         extra = ta.posture(ch, 'walk')
         if extra:
             p = va.add(p, extra)

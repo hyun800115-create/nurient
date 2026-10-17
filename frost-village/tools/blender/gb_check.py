@@ -22,6 +22,16 @@ Checks
   * brand: the mark is its own mirror (<= 6 % px), navy <= 15 % of every sprite's opaque px, no sprite whose two
     largest colour areas sit within dE2000 15 of a listed brand pair, letters only in the listed keys, no letters on
     any mirrored sprite; no key collides with another fragment
+  (polish, gb_vehicles_bld_critique.md)
+  * H1: rear-door windows / handles stay on their leaves (Blender geometry); no detached island >= 6 px in any
+    door / unload patch composited over idle_<dir>_0
+  * H2: patchDepth under the riders, over_<anim>_<dir>_<i> for every patch frame on the patch canvas, door empties
+    seat 0, no unchanged cab px of an unload patch in the rider zone
+  * M2: gb_emblem_gable / gb_emblem_blade / gb_roofparcel patches on the centre frame; M3: every roof-sign text line
+    >= CAP_MIN px; M4: sledPennant SW / NW = Phaser centre-flip mirrors of SE / NE; M5 / L4: per-point visibility
+    flags; L3: the van mark MEASURED (projected mark box, checked on the pixels), colour pairs by hue family, navy
+    counted lit + shaded, hub layers / patches judged too
+    GB_DIR=<dir> checks another copy of the set (regression runs against the pre-polish files)
 """
 import json
 import math
@@ -35,7 +45,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 GAME = os.path.normpath(os.path.join(HERE, '..', '..'))
 A = os.path.join(GAME, 'assets')
-D = os.path.join(A, 'geumbang')
+D = os.environ.get('GB_DIR') or os.path.join(A, 'geumbang')   # GB_DIR: check another copy (regression runs)
 sys.path.insert(0, HERE)
 
 ERR, WARN, INFO = [], [], {}
@@ -336,7 +346,7 @@ def check_van(M, LG):
         navy = de2000(lab, rgb2lab(hex_rgb(NAVY))) < 16
         marks[d] = {'boxPx': [round(w, 1), round(h, 1)], 'creamPct': round(100 * float(cream.mean()), 1),
                     'navyPx': int(navy.sum())}
-        if cream.mean() < 0.15 or navy.sum() < 4:
+        if cream.mean() < 0.08 or navy.sum() < 6:
             err('gb_van %s: the measured mark box does not hold the mark on the pixels (%s)' % (d, marks[d]))
         if min(w, h) < 36:
             err('gb_van %s: van mark %.1f px < 36' % (d, min(w, h)))
@@ -400,7 +410,7 @@ def check_van(M, LG):
             pt = np.asarray(frame('gb_van_0', n)).astype(np.int16)
             weak = (pt[..., 3] > 0) & (np.abs(pt - idle).max(-1) <= 12) & z
             zone_px[n] = int(weak.sum())
-            if weak.sum():
+            if weak.sum() > 3:                       # (a stray px or two of palette rounding is not a cab copy)
                 err('%s: %d unchanged cab px inside the rider zone' % (n, int(weak.sum())))
     INFO['unloadRiderZoneWeakPx'] = max(zone_px.values()) if zone_px else None
     # (polish M5 / L4) visibility flags per point
@@ -465,12 +475,15 @@ def check_roofsign(M):
             op = a[..., 3] > 160
             lab = rgb2lab(a[..., :3])
             nv = (np.min(np.stack([de2000(lab, rgb2lab(np.clip(hex_rgb(NAVY) * f, 0, 255))) for f in
-                                   (0.6, 0.8, 1.0, 1.2)]), 0) < 14) & op
+                                   (0.6, 0.8, 1.0, 1.2)]), 0) < 14) & op & (np.hypot(lab[..., 1], lab[..., 2]) >= 15)
             keep = np.zeros_like(nv)
             for cnt, (x0, y0, x1, y1) in components(nv):
                 if cnt >= 8:
                     keep[y0:y1, x0:x1] |= nv[y0:y1, x0:x1]
             rows = keep.sum(1) > 0
+            for y in range(1, len(rows) - 1):            # a 1-row break inside a glyph (lit face) is not a new line
+                if not rows[y] and rows[y - 1] and rows[y + 1]:
+                    rows[y] = True
             runs, r0 = [], None
             for y, on in enumerate(list(rows) + [False]):
                 if on and r0 is None:

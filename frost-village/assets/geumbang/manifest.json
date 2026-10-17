@@ -39,16 +39,16 @@
     944
    ],
    "MiB": 6.42,
-   "bytes": 360142,
+   "bytes": 351859,
    "residency": "class gbVan (a van within 1,200 px of the view)"
   },
   "gb_bld_0": {
    "size": [
-    968,
-    556
+    616,
+    864
    ],
-   "MiB": 2.05,
-   "bytes": 112850,
+   "MiB": 2.03,
+   "bytes": 115595,
    "residency": "gb_core (built with ui6 resident icons): area gb + doorstep / locker / sled in view"
   }
  },
@@ -2590,9 +2590,9 @@
     "gb_locker_a_open_2": {
      "rect": [
       -44,
-      -48,
+      -53,
       52,
-      79
+      84
      ],
      "erasePx": 0,
      "over": "gb_locker_a_0"
@@ -2609,10 +2609,10 @@
     },
     "gb_locker_a_1": {
      "rect": [
-      -52,
+      -47,
       -121,
-      76,
-      112
+      71,
+      84
      ],
      "erasePx": 0,
      "over": "gb_locker_a_0"
@@ -2621,7 +2621,7 @@
      "rect": [
       3,
       -47,
-      37,
+      36,
       31
      ],
      "erasePx": 0,
@@ -2629,10 +2629,10 @@
     },
     "gb_locker_b_open_1": {
      "rect": [
-      -20,
-      -52,
-      61,
-      39
+      -19,
+      -48,
+      57,
+      35
      ],
      "erasePx": 0,
      "over": "gb_locker_b_0"
@@ -2640,9 +2640,9 @@
     "gb_locker_b_open_2": {
      "rect": [
       -21,
-      -48,
-      62,
-      40
+      -47,
+      49,
+      39
      ],
      "erasePx": 0,
      "over": "gb_locker_b_0"
@@ -2650,9 +2650,9 @@
     "gb_locker_b_open_3": {
      "rect": [
       -22,
-      -44,
+      -47,
       49,
-      36
+      40
      ],
      "erasePx": 0,
      "over": "gb_locker_b_0"
@@ -2660,9 +2660,9 @@
     "gb_locker_b_1": {
      "rect": [
       -24,
-      -120,
+      -121,
       73,
-      108
+      109
      ],
      "erasePx": 0,
      "over": "gb_locker_b_0"
@@ -2726,7 +2726,100 @@
     "seatsStand.NE": 0.0,
     "footprintPoly.SE": 0.0,
     "footprintPoly.NE": 0.0
-   }
+   },
+   "vanVisible": {
+    "SE": {
+     "lightPoints": [
+      true,
+      true
+     ],
+     "tailPoints": [
+      true,
+      false
+     ],
+     "markBoxPx": [
+      -88.5,
+      -85.1,
+      -43.1,
+      -25.2
+     ],
+     "markObject": "dv_em",
+     "parcelPoints": [
+      false,
+      false,
+      false
+     ]
+    },
+    "NE": {
+     "lightPoints": [
+      true,
+      false
+     ],
+     "tailPoints": [
+      true,
+      true
+     ],
+     "markBoxPx": [
+      -2.2,
+      -62.5,
+      43.3,
+      -2.5
+     ],
+     "markObject": "dv_em",
+     "parcelPoints": [
+      false,
+      true,
+      false
+     ]
+    },
+    "S": {
+     "lightPoints": [
+      true,
+      true
+     ],
+     "tailPoints": [
+      false,
+      false
+     ]
+    },
+    "E": {
+     "lightPoints": [
+      true,
+      true
+     ],
+     "tailPoints": [
+      true,
+      true
+     ]
+    },
+    "N": {
+     "lightPoints": [
+      false,
+      false
+     ],
+     "tailPoints": [
+      true,
+      true
+     ]
+    }
+   },
+   "rearParts": {
+    "maxOffLeafM": 0.01,
+    "parts": {
+     "R": [
+      "dv_rwin",
+      "dv_rwing",
+      "dv_rh"
+     ],
+     "L": [
+      "dv_rwin.001",
+      "dv_rwing.001",
+      "dv_rh.001"
+     ]
+    },
+    "problems": []
+   },
+   "vanGold": "#FFC640"
   }
  }
 }

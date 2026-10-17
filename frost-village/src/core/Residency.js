@@ -193,8 +193,17 @@ export const Residency = {
   /** is something visible on screen showing page `key`? */
   displayed(key) {
     let on = false;
-    eachObj(this.gs.children.list, (o) => { if (!on && o.visible && o.texture && o.texture.key === key) on = true; });
+    for (const L of this.lists()) eachObj(L, (o) => { if (!on && o.visible && o.texture && o.texture.key === key) on = true; });
     return on;
+  },
+
+  /** ((CODE-2) the display lists of every running scene: the village and the UI on top of it (the office panel's
+   *  plates live on an on-demand page too) — a page shown only by the UI must not count as off screen) */
+  lists() {
+    const out = [this.gs.children.list];
+    const sm = this.gs.game && this.gs.game.scene;
+    if (sm && sm.getScenes) for (const sc of sm.getScenes(true)) if (sc !== this.gs && sc.children) out.push(sc.children.list);
+    return out;
   },
 
   /** evict the least recently used page of `list` not on screen and unused for `minAge` ms; true if one went */
@@ -254,7 +263,8 @@ export const Residency = {
       }
     }
     // hidden pictures still pointing at it (a spare rig image, a sprite out of view), and anything still on a dead anim
-    eachObj(gs.children.list, (o) => {
+    // ((CODE-2) in every running scene: a closing UI panel too)
+    for (const L of this.lists()) eachObj(L, (o) => {
       const cur = o.anims && o.anims.currentAnim ? o.anims.currentAnim.key : null;
       if (cur && dead.has(cur)) { o.anims.stop(); o.anims.currentAnim = null; }
       if (o.texture && o.texture.key === key) {

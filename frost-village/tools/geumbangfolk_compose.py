@@ -236,6 +236,14 @@ class Geumbangfolk(ofc.Officefolk):
     def tape_point(self, person, d, i):
         return self._gpt(person, 'tapePoint', 'tape_box', d, i)
 
+    def parcel_depth(self, anim, d):
+        """depth offset (over the doll's depth) for the game-drawn parcel of `anim` facing `d` ({noItems}: carry_parcel /
+        ring_doorbell at boxPoint, hand_parcel at handPoint): +0.0045 = in the doll's z stack at 45 (over the coat,
+        under the head and the arms in front), -0.0001 = behind the doll.  Mirrored dirs use their source dir."""
+        t = (self.T.get('parcelDepth') or {}).get(anim) or {}
+        v = t.get(MIRROR.get(d, d))
+        return v
+
 
 def main():
     import argparse

@@ -12,7 +12,9 @@ pieces are added on top with their own pass tags, and every new layer is a borde
   gb_banner_{ko|en}_{0..3}   a 0.7 x 1.8 m printed cloth on the -Y wall left of dock 1 (x 3.9..4.6 m, z 2.1..3.9 m),
         clear of dock 1, the dock lamps, the loading sign and the name board; sway 4 frames; its soft shadow on the wall
         is caught by a small wall-plane shadow catcher right behind it (the shell is hidden in that pass, so only
-        the banner's own shadow / contact darkening is caught)
+        the banner's own shadow / contact darkening is caught); (polish M1) the print is de-sheared for the wall
+  gb_emblem_gable / gb_emblem_blade / gb_roofparcel   (polish M2) re-render patches over the shell: the 금방이 mark
+        instead of the winged-parcel emblems, gold ribbons on the ridge parcel (base_* = the region as shipped)
 Not run directly - see gb_render.py.
 """
 import json

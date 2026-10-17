@@ -122,8 +122,12 @@ export class Cutaway {
   /** where a character is drawn: { depth, lift } while on the floor or in front of the walls, else null */
   occupy(ch) {
     const x = ch.x, y = ch.y, b = this.box;
-    if (!b || x < b[0] - 4 || x > b[2] + 4 || y < b[1] - 4 || y > b[3] + 40) return null;
-    if (polyHas(this.floor, x, y)) {
+    // ((CODE-2) staff seated inside (ch.inside + ch.seat): their point is the seat, 0.45 m up on the raised floor; the
+    //  floor under the chair (seat + shadowDy + floorLift) is what lies in the footprint. Without this the back desks'
+    //  clerks fell outside it and were drawn under the building.)
+    const fy = ch.inside && ch.seat ? y + (ch.seat.shadowDy !== undefined ? ch.seat.shadowDy : 25) + this.lift : y;
+    if (!b || x < b[0] - 4 || x > b[2] + 4 || fy < b[1] - 4 || y > b[3] + 40) return null;
+    if (polyHas(this.floor, x, fy)) {
       const slot = ch.slot || (ch.inside ? '@behind' : '@front');
       return { depth: this.slotDepth(slot, y), lift: ch.inside ? 0 : this.lift };
     }

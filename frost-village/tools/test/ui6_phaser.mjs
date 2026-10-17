@@ -9,16 +9,24 @@
 //    spriteAnim resolve every key (the CODE hand-over); audio8 loads under '__sprite_audio8' and is cut by the game's
 //    own Assets.sliceSprite: every slice is dur + 30 ms, not silent, its 30 ms tail silent; groups resolve; all play.
 //    -> docs/previews/ui6_phaser_sheet.png
-// 2) PHONE (390 x 844 CSS @3x, logical 720 wide like main.js) at camera zoom 0.6 / 1.0 / 1.2 / 1.6, day and night
-//    (MULTIPLY #5A6AA8 x 0.45): a snowy street with a real townhouse, the 금방 van (assets/geumbang), a locker, a sign,
-//    a doorstep parcel, the doorbell FX at the door at 40 CSS px, an order bubble (ui_emote_bubble + cart + bread),
-//    and the HUD: the 금방 chip (120 x 44 CSS) and a toast (<= 300 x 48 CSS).
-//    -> docs/previews/ui6_phaser_z06_day.png ... + ui6_phaser_phone.png (montage)
-// 3) THE APP (zoom 1.0): the 720 x 1100 logical panel built from the manifest's appLayout with real NineSlices - tabs
-//    오늘 / 주문 / 상품 (ko, day), 주문 (en, night), and 주문 on a 360 x 640 phone; the doorstep photo is a real
-//    128 x 80 RenderTexture under ui_gb_photo. Measures tap targets (>= 44 CSS px) and text (>= 15 CSS px body).
-//    -> docs/previews/ui6_phaser_app_*.png + ui6_phaser_app.png (montage)
-// Exit 1 on missing frames / wrong sizes / trimmed panels / clashes / audio slices / page errors / 404s / size gates.
+// 2) PHONE HUD (390 x 844 CSS @3x, logical 720 wide like main.js) at camera zoom 0.6 / 1.0 / 1.2 / 1.6, day and night
+//    (the DayClock overlay: an Image, MULTIPLY, tint = darkness 0.45 - polish L8): a snowy street with a real townhouse,
+//    a REAL 금방 courier (assets/geumbangfolk gb_driver, ring_doorbell NE, impact frame 2) and two real residents, the
+//    doorbell FX placed by sprites.fx_gb_bell.placement (polish H2: min(24 CSS, 0.7 x courier), above the heads) -
+//    every head box is measured from the doll's own layers and must stay clear of the bell; the 금방 van, a sign, an
+//    order bubble; and the v4.2 HUD neighbours (UIv42 / UI.js geometry: coin bar, hint pill, 32/32, 정기 납품, 업무 chip)
+//    with the 금방 chip at appLayout.hud.chip (the 업무 chip's size, 44 CSS hit rect) and the toast in the hint pill's
+//    place (polish M2) - their rects must not overlap any neighbour.
+//    -> docs/previews/ui6_phaser_z06_day.png ... + ui6_phaser_phone.png (montage) + ui6_phaser_bell_door.gif (the bell's
+//       ding + dong timeline over the real courier, polish L6)
+// 3) THE APP (zoom 1.0): the 720 x 1100 logical panel built from the manifest's appLayout with real NineSlices + the
+//    ui_gb_phone_notch (polish L1) - tabs 오늘 / 주문 / 상품 (ko, day), 주문 (en, night), and 주문 on a 360 x 640 phone; the
+//    doorstep photo is a real 128 x 80 RenderTexture under ui_gb_photo. Measures tap targets (>= 44 CSS px) and text
+//    (>= 15 CSS px body, >= 13 smallest). 금방이 runs in exactly as header.mascotRunIn says (polish H1: from behind the
+//    right edge, masked to the screen, Linear, faces left, then idle).
+//    -> docs/previews/ui6_phaser_app_*.png + ui6_phaser_app.png (montage) + ui6_mascot_runin.gif
+// Exit 1 on missing frames / wrong sizes / trimmed panels / clashes / audio slices / page errors / 404s / size gates /
+// overlaps.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -173,6 +181,7 @@ class S extends Phaser.Scene {
       return o;
     };
     nine('ui_gb_phone', 20, 760, 360, 640);
+    this.add.image(20 + 180, 760 + ui6.conventions.appLayout.notch[1], 'ui6_gb', 'ui_gb_phone_notch');   // polish L1
     nine('ui_gb_header', 400, 760, 678 * 0.6, 150 * 0.6);
     nine('ui_gb_tab', 400, 870, 100, 64); nine('ui_gb_tab_on', 510, 870, 100, 64);
     nine('ui_gb_tab_on', 620, 870, 100, 64, 1.28);
@@ -192,87 +201,145 @@ window.__H.game = new Phaser.Game({ type: Phaser.WEBGL, width: 1500, height: 145
 const PHONE = (o) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>${FONT_CSS}html,body{margin:0;background:#dbe6f2;height:100%;overflow:hidden}#game{width:100%;height:100%}</style>
 <script src="lib/phaser.min.js"></script></head><body><div id="game"></div><script type="module">
+import { townfolkPreload, townfolkInstall, mulberry32 } from './tools/townfolk_compose.js';
+import { mergeGeumbangfolk, Geumbangfolk, GeumbangfolkSprite } from './tools/geumbangfolk_compose.js';
 const O = ${JSON.stringify(o)};
 const j = async (p) => (await fetch(p)).json();
-const ui6 = await j('assets/ui6/manifest.json'), gb = await j('assets/geumbang/manifest.json'), town = await j('assets/town/manifest.json');
-const emo = await j('assets/emotes/manifest.json'), props = await j('assets/props/manifest.json'), ui = await j('assets/ui/manifest.json');
+const [ui6, gb, town, emo, props, ui, ui5] = await Promise.all(['ui6', 'geumbang', 'town', 'emotes', 'props', 'ui', 'ui5'].map((f) => j('assets/' + f + '/manifest.json')));
+const folk = O.mode === 'hud' ? mergeGeumbangfolk(await j('assets/townfolk/manifest.json'), await j('assets/officefolk/manifest.json'), await j('assets/geumbangfolk/manifest.json')) : null;
 await document.fonts.load('800 28px Pretendard');
 const W = 720, H = Math.round(720 * innerHeight / innerWidth);
 const k = Math.round(Math.max(1, Math.min(3, innerWidth * devicePixelRatio / 720)) * 100) / 100;
-const R = window.__R = { ready: false, k, H, m: {} };
+const R = window.__R = { ready: false, k, H, m: {}, notes: [] };
 const cssOf = (logical) => +(logical * innerWidth / 720).toFixed(1);      // UI logical px -> CSS px
-const DEPTH = { GROUND: -15000, SHADOW: -11000, FX: 31000, LABEL: 41000 };
+const DEPTH = { GROUND: -15000, SHADOW: -11000, FX: 31000, BUBBLE: 40000, LABEL: 41000 };
 const FONT = 'Pretendard, sans-serif';
 const txt = (sc, x, y, s, size, col, extra = {}) => sc.add.text(x, y, s, Object.assign({ fontFamily: FONT, fontSize: size + 'px', fontStyle: '800', color: col, resolution: 3 }, extra));
+const rectHit = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
+/** visible (trimmed) world rect of one Image / Sprite: frame trim, origin, |scale|, flipX mirrored about the origin */
+const visRect = (s) => {
+  const f = s.frame, ss = (f.data && f.data.spriteSourceSize) || { x: 0, y: 0, w: f.realWidth, h: f.realHeight };
+  const sx = Math.abs(s.scaleX), sy = Math.abs(s.scaleY), ox = s.originX * f.realWidth, oy = s.originY * f.realHeight;
+  let l = (ss.x - ox) * sx, r = (ss.x + ss.w - ox) * sx;
+  if (s.flipX) { l = (f.realWidth - ox - ss.x - ss.w) * sx; r = (f.realWidth - ox - ss.x) * sx; }   // Phaser's batchSprite flip
+  return [s.x + l, s.y + (ss.y - oy) * sy, r - l, ss.h * sy];
+};
+const union = (rs) => { if (!rs.length) return null; const x0 = Math.min(...rs.map((r) => r[0])), y0 = Math.min(...rs.map((r) => r[1])); return [x0, y0, Math.max(...rs.map((r) => r[0] + r[2])) - x0, Math.max(...rs.map((r) => r[1] + r[3])) - y0]; };
 class S extends Phaser.Scene {
   constructor() { super('S'); }
   preload() {
     const L = this.load;
-    for (const a of ui6.atlases) L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
-    for (const a of gb.atlases) L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
+    for (const m of [ui6, gb, emo, ui, ui5]) for (const a of m.atlases || []) L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
     for (const a of town.atlases) if (a.key === 'town_homes') L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
-    for (const a of emo.atlases || []) L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
     for (const a of props.atlases) if (a.key === 'props_items') L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
-    for (const a of ui.atlases || []) L.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
-    for (const k2 of ['ground_snow']) L.image(k2, 'assets/ground/' + k2 + '.png');
+    if (folk) townfolkPreload(this, folk, 'assets/');
+    L.image('ground_snow', 'assets/ground/ground_snow.png');
     L.image('road_cobble_wide', 'assets/roads/road_cobble_wide.png'); L.image('road_dirt', 'assets/roads/road_dirt.png');
   }
   create() {
     const anims = this.anims;
     for (const key of ['ui_gb_mascot', 'fx_gb_bell']) { const s = ui6.sprites[key]; for (const an in s.anims) { const a = s.anims[an]; anims.create({ key: 'spr:' + key + ':' + an, frames: a.frames.map((f) => ({ key: s.atlas, frame: f })), frameRate: a.fps, repeat: a.repeat }); } }
-    const van = gb.characters.gb_van;
-    anims.create({ key: 'gbvan:idle:SE', frames: [0, 1].map((i) => ({ key: van.atlas, frame: 'idle_SE_' + i })), frameRate: 6, repeat: -1 });
     const cam = this.cameras.main;
+    cam.setZoom(O.zoom * k); cam.centerOn(O.cx || 40, O.cy || 90);
+    if (O.mode === 'hud') this.world(); else this.add.tileSprite(0, 0, 4200, 5200, 'ground_snow').setDepth(DEPTH.GROUND);
+    if (O.night) {   // the DayClock overlay (src: an Image - a Shape ignores MULTIPLY in WebGL), darkness 0.45 of #5A6AA8
+      const a = 0.45, C0 = 0x5a6aa8, mix = (ch) => Math.round(255 * (1 - a) + ch * a);
+      this.add.image(-4000, -4000, '__WHITE').setOrigin(0, 0).setDisplaySize(9000, 9000).setDepth(DEPTH.FX - 30).setBlendMode(Phaser.BlendModes.MULTIPLY)
+        .setTint((mix((C0 >> 16) & 255) << 16) | (mix((C0 >> 8) & 255) << 8) | mix(C0 & 255));
+    }
+    this.scene.launch('U');
+    R.worldReady = true;
+  }
+  world() {
+    const van = gb.characters.gb_van;
+    this.anims.create({ key: 'gbvan:idle:SE', frames: [0, 1].map((i) => ({ key: van.atlas, frame: 'idle_SE_' + i })), frameRate: 6, repeat: -1 });
     this.add.tileSprite(0, 0, 4200, 5200, 'ground_snow').setDepth(DEPTH.GROUND);
     const g = this.make.graphics({ x: 0, y: 0, add: false }); g.fillStyle(0xffffff, 1);
     g.fillPoints([[-2100, -900], [2100, 1200], [2100, 1380], [-2100, -720]].map(([x, y]) => new Phaser.Geom.Point(x, y)), true);
     this.add.tileSprite(0, 0, 4200, 5200, 'road_cobble_wide').setDepth(DEPTH.GROUND + 1).setMask(g.createGeometryMask());
-    // a townhouse with a 금방 parcel on its doorstep and the doorbell ringing over its door
-    const th = town.sprites.townhouse_a, hx = 60, hy = -120;   // door clear of the HUD chip at every zoom
+    // a townhouse; a dirt path from its door down to the cobble road (snow / dirt / cobble grounds)
+    const th = town.sprites.townhouse_a, hx = 60, hy = -120;
     this.add.image(hx, hy, th.atlas, th.frame).setOrigin(th.anchor[0], th.anchor[1]).setDepth(hy);
-    const dp = th.doorPoint, dx = hx + dp[0], dy = hy + dp[1];
-    // a trodden dirt path from the door down to the cobble road (snow / dirt / cobble grounds)
+    const dx = hx + th.doorPoint[0], dy = hy + th.doorPoint[1];
     const pg = this.make.graphics({ x: 0, y: 0, add: false }); pg.fillStyle(0xffffff, 1);
     const p0x = dx + 20, p0y = dy + 20, p1x = p0x - 300, p1y = p0y + 150;
     pg.fillPoints([[p0x + 30, p0y + 15], [p1x + 30, p1y + 15], [p1x - 30, p1y - 15], [p0x - 30, p0y - 15]].map(([x, y]) => new Phaser.Geom.Point(x, y)), true);
     this.add.tileSprite(0, 0, 4200, 5200, 'road_dirt').setDepth(DEPTH.GROUND + 0.5).setMask(pg.createGeometryMask());
     const pd = gb.sprites.gb_parcel_doorstep;
-    this.add.image(dx + 26, dy + 14, pd.atlas, O.night ? 'gb_parcel_doorstep_1' : 'gb_parcel_doorstep_0').setOrigin(pd.anchor[0], pd.anchor[1]).setDepth(dy + 14);
-    const bellScale = 40 / (64 * O.zoom * k) * devicePixelRatio;                       // 40 CSS px at any zoom
-    const bell = this.add.sprite(dx + 22, dy - 96, 'ui6_gb', 'fx_gb_bell_0').setDepth(DEPTH.LABEL - 50).setScale(bellScale);
-    bell.play({ key: 'spr:fx_gb_bell:play', repeat: -1, repeatDelay: 700 });
-    bell.anims.setProgress(0.6);
-    R.m.bellCss = +(64 * bellScale * O.zoom * k / devicePixelRatio).toFixed(1);
-    // the van on the road, its roof sign, a locker and the round sign
+    this.add.image(dx + 30, dy + 4, pd.atlas, O.night ? 'gb_parcel_doorstep_1' : 'gb_parcel_doorstep_0').setOrigin(pd.anchor[0], pd.anchor[1]).setDepth(dy + 4);
+    // the 금방 courier rings (real geumbangfolk doll, ring_doorbell NE, impact frame 2) + two residents (one beside the
+    // door, the critique's spot; one further down the path)
+    townfolkInstall(this, folk);
+    const gbf = new Geumbangfolk(folk.townfolk), T = folk.townfolk;
+    const dolls = [];
+    const add = (person, anim, dir, x, y, frame) => {
+      const s = new GeumbangfolkSprite(this, gbf, person, x, y); s.play(anim, dir);
+      s.frame = Math.min(frame || 0, T.anims[s.anim].frames - 1); s.refresh(true); s.place(); dolls.push(s); return s;
+    };
+    const drv = add(gbf.preset('gb_driver', mulberry32(11)), 'ring_doorbell', 'NE', dx - 8, dy + 26, 2);
+    const res = add(gbf.randomPerson(mulberry32(5)), 'idle', 'SW', dx + 60, dy + 10, 0);
+    const res2 = add(gbf.randomPerson(mulberry32(9)), 'idle', 'SW', dx + 190, dy + 70, 0);
+    R.m.anim = [drv.anim, drv.dir, drv.frame];
+    // head boxes from the dolls' own head layers (origin = the head anchor) - the bell must never cover one
+    const ha = T.headAnchor[1];
+    const heads = dolls.map((d) => union(d.sprites.slice(0, d.visibleCount).filter((sp) => Math.abs(sp.originY - ha) < 1e-6).map(visRect)));
+    R.m.headTops = dolls.map((d, i) => heads[i] ? +(heads[i][1] - d.y).toFixed(1) : null);
+    // ---- the bell, placed exactly by sprites.fx_gb_bell.placement (polish H2)
+    const P = ui6.sprites.fx_gb_bell.placement;
+    const cssPerWorld = O.zoom * innerWidth / 720;
+    const Sz = Math.min(P.cssMax / cssPerWorld, P.worldMax);
+    const bp = gbf.bellPoint(drv.person, 'NE', 2) || [10, -50];
+    const bxc = drv.x + bp[0] + P.xFromBell * Math.sign(bp[0] || 1);
+    // its bottom sits P.gap above the highest head top among the dolls under its x-span (the courier's at least)
+    let bottom = drv.y + P.headTopY;
+    for (const d of dolls) { if (Math.abs(d.x - bxc) < Sz / 2 + 22) bottom = Math.min(bottom, d.y + P.headTopY); }
+    bottom -= P.gap;
+    const byc = bottom - P.visibleH * Sz / 2;
+    const bell = this.bell = this.add.sprite(bxc, byc, 'ui6_gb', 'fx_gb_bell_2').setScale(Sz / 64).setDepth(DEPTH.BUBBLE + 5);
+    // dong replay anim (frames 1-3) for the L6 timeline
+    const bf = ui6.sprites.fx_gb_bell.frameNames;
+    this.anims.create({ key: 'fx_gb_bell_dong', frames: P.dong.replayFrames.map((i) => ({ key: 'ui6_gb', frame: bf[i] })), frameRate: P.dong.fps, repeat: 0 });
+    // visible bell box (union of the trimmed bell frames 1-3) vs every head box
+    const tex = this.textures.get('ui6_gb');
+    const bb = union([1, 2, 3].map((i) => { bell.setFrame(bf[i]); return visRect(bell); }));
+    bell.setFrame(bf[2]);
+    R.m.bellCss = +(Sz * cssPerWorld).toFixed(1);
+    R.m.courierCss = +(80 * cssPerWorld).toFixed(1);
+    R.m.bellBox = bb.map((v) => +v.toFixed(1));
+    R.m.headBoxes = heads.map((h) => h && h.map((v) => +v.toFixed(1)));
+    R.m.bellOverHead = heads.map((h, i) => (h && rectHit(bb, h)) ? ['courier', 'resident', 'resident2'][i] : null).filter(Boolean);
+    R.m.bellPoint = bp;
+    // the L6 timeline: ding (frames 0-3 at 12 fps), at the dong cue frames 1-3 again, hold frame 3 and fade out
+    R.bellAt = (t) => {
+      const D = P.dong; let f = 0, a = 1;
+      if (t < D.atS) f = Math.min(3, Math.floor(t * D.fps));
+      else { const t2 = t - D.atS, n = D.replayFrames.length; if (t2 < n / D.fps) f = D.replayFrames[Math.min(n - 1, Math.floor(t2 * D.fps))]; else { f = D.holdFrame; a = Math.max(0, 1 - (t2 - n / D.fps) / D.fadeS); } }
+      bell.setFrame(bf[f]).setAlpha(a); return [f, +a.toFixed(2)];
+    };
+    // the 금방 van on the road, its roof sign, the round sign
     const vx = 250, vy = 330;
     this.add.ellipse(vx, vy, 218 * 0.9, 81 * 0.9, 0x1d2b44, 0.22).setDepth(DEPTH.SHADOW);
     this.add.sprite(vx, vy, van.atlas, 'idle_SE_0').setOrigin(van.anchor[0], van.anchor[1]).setDepth(vy).play('gbvan:idle:SE');
     const rs = van.roofSignPoint.SE;
     this.add.image(vx + rs[0], vy + rs[1], van.atlas, 'gb_roofsign_ko_' + (O.night ? 1 : 0)).setOrigin(0.5, 1).setDepth(vy + 0.02);
-    const lk = gb.sprites.gb_locker_a, sg = gb.sprites.gb_sign;
-    this.add.image(-330, 260, lk.atlas, O.night ? 'gb_locker_a_1' : 'gb_locker_a_0').setOrigin(lk.anchor[0], lk.anchor[1]).setDepth(260);
+    const sg = gb.sprites.gb_sign;
     this.add.image(-170, 330, sg.atlas, O.night ? 'gb_sign_1' : 'gb_sign_0').setOrigin(sg.anchor[0], sg.anchor[1]).setDepth(330);
-    // an order bubble over a resident's window (constant screen size): ui_emote_bubble + the cart + the item
-    const eb = emo.sprites.ui_emote_bubble, bs = 0.75 / (O.zoom * k) * devicePixelRatio * (720 / innerWidth) * (innerWidth / 390);
-    const bx = hx + 120, by = hy - 150;
-    const bub = this.add.container(bx, by).setDepth(DEPTH.LABEL - 40).setScale(Math.min(2.4, Math.max(0.7, 1 / O.zoom)));
-    bub.add(this.add.image(0, 0, eb.atlas, eb.frame).setOrigin(eb.anchor[0], eb.anchor[1]).setScale(1.25, 1));
-    const cc = eb.contentCenter;
-    bub.add(this.add.image(cc[0] - 22, cc[1], 'ui6_gb', 'ui_icon_gb_cart').setScale(40 / 96));
-    const it = props.sprites.item_bread;
-    bub.add(this.add.image(cc[0] + 24, cc[1] + 4, it.atlas, it.frame).setScale(36 / 72));
-    if (O.night) this.add.rectangle(0, 0, 6000, 7000, 0x5a6aa8, 0.45).setBlendMode(Phaser.BlendModes.MULTIPLY).setDepth(DEPTH.FX - 30);
-    cam.setZoom(O.zoom * k); cam.centerOn(40, 90);
-    this.scene.launch('U');
-    R.worldReady = true;
+    // the order bubble over the far resident (world space at 0.75 like Bubbles.js): ui_emote_bubble + cart + bread
+    const eb = emo.sprites.ui_emote_bubble, cc = eb.contentCenter;
+    const ob = this.add.container(res2.x, res2.y - 92).setDepth(DEPTH.BUBBLE + 10);
+    ob.add(this.add.image(0, 0, eb.atlas, eb.frame).setOrigin(eb.anchor[0], eb.anchor[1]).setScale(0.75 * 1.25, 0.75));
+    ob.add(this.add.image(cc[0] * 0.75 - 17, cc[1] * 0.75, 'ui6_gb', 'ui_icon_gb_cart').setScale(30 / 96));
+    const it = props.sprites.item_bread; ob.add(this.add.image(cc[0] * 0.75 + 18, cc[1] * 0.75 + 3, it.atlas, it.frame).setScale(28 / 72));
+    R.door = [dx, dy];
   }
 }
 // ---- UI scene: logical 720 x H at k, like the game's UI scene
 class U extends Phaser.Scene {
   constructor() { super('U'); }
-  nine(key, x, y, w, h, sc = 1) {
-    const n = ui6.nineSlice[key];
-    return this.add.nineslice(x, y, n.atlas, n.frame, w / sc, h / sc, n.left, n.right, n.top, n.bottom).setOrigin(0, 0).setScale(sc);
+  nine(m, key, x, y, w, h, sc = 1, parent) {
+    const n = m.nineSlice[key];
+    const o = this.add.nineslice(x, y, n.atlas, n.frame, w / sc, h / sc, n.left, n.right, n.top, n.bottom).setOrigin(0, 0).setScale(sc);
+    if (parent) parent.add(o); return o;
   }
   create() {
     const cam = this.cameras.main; cam.setOrigin(0, 0).setZoom(k);
@@ -280,54 +347,96 @@ class U extends Phaser.Scene {
     R.ready = true;
   }
   hud() {
+    const L = ui6.conventions.appLayout, HU = L.hud, V = HU.v42, en = O.lang === 'en';
+    const ic = (atlas, f, x, y, s) => { const o = this.add.image(x, y, atlas, f); o.setScale(s / Math.max(o.frame.realWidth, o.frame.realHeight)); return o; };
+    // the v4.2 neighbours (UI.js / UIv42.js geometry), ui5 ui_chip plates
+    const chip5 = (r) => this.nine(ui5, 'ui_chip', r[0], r[1], r[2], r[3], r[3] / 64);
+    chip5(V.coinBar); ic('ui_icons', 'ui_icon_coin', 66, 62, 46); txt(this, 96, 62, '10,398', 34, '#2b2f3a').setOrigin(0, 0.5);
+    const showToast = !O.noToast;
+    if (!showToast) { chip5(V.hintPill); txt(this, 361, 148, en ? 'Pick up the coins customers paid' : '손님이 낸 코인을 주우세요', 22, '#2b2f3a').setOrigin(0.5); }
+    chip5(V.chip3232); txt(this, 90, 216, '32/32', 20, '#2b2f3a').setOrigin(0.5);
+    chip5(V.deliveryChip); txt(this, 165, 280, en ? '23/30 deliveries' : '23/30 정기 납품', 20, '#2b2f3a').setOrigin(0.5);
+    chip5(V.workChip); ic('ui5_icons', 'ui_icon_office', 54, 410, 36); txt(this, 78, 410, en ? 'Office' : '업무', 20, '#2b2f3a').setOrigin(0, 0.5);
+    this.add.circle(V.settings[0], V.settings[1], V.settings[2], 0xfffbf3).setStrokeStyle(3, 0x9fb7c2); ic('ui_icons', 'ui_icon_settings', V.settings[0], V.settings[1], 40);
+    // the 금방 chip (polish M2): the 업무 chip's size and type, an invisible 88-tall hit rect
+    const C = HU.chip;
+    this.nine(ui6, 'ui_gb_chip', C.x, C.y, C.w, C.h, C.scale);
+    ic('ui6_gb', 'ui_icon_gb', C.x + C.icon[0], C.y + C.h / 2, C.icon[1]);
+    txt(this, C.x + C.text[0], C.y + C.h / 2, en ? 'On way 3' : '배달 중 3', C.text[1], C.color).setOrigin(0, 0.5);
+    this.add.circle(C.x + C.dot[0], C.y + C.dot[1], C.dot[2], 0xf2b33d).setStrokeStyle(3, 0xffffff);
+    const hit = this.add.rectangle(C.hit[0], C.hit[1], C.hit[2], C.hit[3], 0xffffff, 0).setOrigin(0, 0).setInteractive();
+    R.m.chipCss = [cssOf(C.w), cssOf(C.h)]; R.m.chipHitCss = cssOf(C.hit[3]); R.m.workChipCss = [cssOf(V.workChip[2]), cssOf(V.workChip[3])];
+    // the toast in the hint pill's place
+    const TT = HU.toast, word = en ? 'Ding-dong! New order · Minji · Bread 3' : '띵동! 새 주문 · 민지네 · 빵 3';
+    let toastRect = null;
+    if (showToast) {
+      const t0 = txt(this, 0, 0, word, TT.text[1], TT.color).setOrigin(0, 0.5);
+      const tw = Math.min(TT.wMax, TT.text[0] + t0.width + 26), tx = TT.centre[0] - tw / 2, ty = TT.centre[1] - TT.h / 2;
+      this.nine(ui6, 'ui_gb_toast', tx, ty, tw, TT.h);
+      ic('ui6_gb', 'ui_icon_gb_order', tx + TT.icon[0], ty + TT.h / 2, TT.icon[1]);
+      t0.setPosition(tx + TT.text[0], ty + TT.h / 2); this.children.bringToTop(t0);
+      toastRect = [tx, ty, tw, TT.h];
+      R.m.toastCss = [cssOf(tw), cssOf(TT.h)];
+    }
+    // overlaps with the v4.2 neighbours (the hint pill is hidden while the toast shows)
+    const nb = { coinBar: V.coinBar, chip3232: V.chip3232, deliveryChip: V.deliveryChip, workChip: V.workChip, settings: [V.settings[0] - V.settings[2], V.settings[1] - V.settings[2], 2 * V.settings[2], 2 * V.settings[2]] };
+    R.m.overlaps = [];
+    for (const [nm, r] of Object.entries(nb)) {
+      if (rectHit([C.x, C.y, C.w, C.h], r)) R.m.overlaps.push('chip/' + nm);
+      if (rectHit(C.hit, r)) R.m.overlaps.push('chipHit/' + nm);
+      if (toastRect && rectHit(toastRect, r)) R.m.overlaps.push('toast/' + nm);
+    }
     // caption
-    this.add.rectangle(0, 0, 720, 64, 0xffffff, 0.85).setOrigin(0, 0);
-    txt(this, 16, 10, '금방 HUD · zoom ' + O.zoom.toFixed(1) + ' · ' + (O.night ? '밤 night' : '낮 day'), 26, '#1d2b44');
-    // the 금방 chip (plan §6: CSS (60, 270) -> logical (111, 499), 120 x 44 CSS): built 64 tall, scaled uniformly
-    const ch = 44 * 720 / innerWidth, cw = 120 * 720 / innerWidth, cx = 111 - cw / 2, cy = 499 - ch / 2, sc = ch / 64;
-    const chip = this.nine('ui_gb_chip', cx, cy, cw, ch, sc);
-    this.add.image(cx + ch / 2 + 4, cy + ch / 2, 'ui6_gb', 'ui_icon_gb').setScale(ch * 0.74 / 96);
-    txt(this, cx + ch + 4, cy + ch / 2, '배달 중 3', 28, '#2b4f7e').setOrigin(0, 0.5);
-    this.add.circle(cx + cw - 8, cy + 6, 9, 0xf2b33d).setStrokeStyle(3, 0xffffff);
-    R.m.chipCss = [cssOf(cw), cssOf(ch)];
-    // the toast: top centre under the clock row, <= 300 x 48 CSS
-    const tw = 300 * 720 / innerWidth, tht = 48 * 720 / innerWidth, tx = (720 - tw) / 2, ty = 82;
-    this.nine('ui_gb_toast', tx, ty, tw, tht);
-    this.add.image(tx + 52, ty + tht / 2, 'ui6_gb', 'ui_icon_gb_order').setScale(tht * 0.66 / 96);
-    txt(this, tx + 84, ty + tht / 2, '띵동! 새 주문 · 민지네 · 빵 3', 28, '#3b3f52').setOrigin(0, 0.5);
-    R.m.toastCss = [cssOf(tw), cssOf(tht)];
-    // the mascot peeking (it runs in on the first order of the day)
-    this.add.sprite(640, 499 + 40, 'ui6_gb', 'ui_gb_mascot_idle_0').setOrigin(0.5, 0.9).play('spr:ui_gb_mascot:idle').setScale(0.9);
+    txt(this, 16, H - 54, '금방 HUD · zoom ' + O.zoom.toFixed(1) + ' · ' + (O.night ? '밤 night' : '낮 day') + ' · bell ' + R.m.bellCss + ' CSS', 24, '#1d2b44', { backgroundColor: '#ffffffcc', padding: { x: 8, y: 4 } });
   }
   app() {
     const L = ui6.conventions.appLayout, en = O.lang === 'en';
     const [PW, PH] = L.panel, px = 0, py = Math.round((H - PH) / 2);
     this.add.rectangle(0, 0, 720, H, 0x1d2436, 0.28).setOrigin(0, 0);
     const root = this.add.container(px, py);
-    const n = (key, x, y, w, h, sc = 1) => { const o = this.nine(key, x, y, w, h, sc); root.add(o); return o; };
+    const n = (key, x, y, w, h, sc = 1) => this.nine(ui6, key, x, y, w, h, sc, root);
     const im = (key, x, y, size, ox = 0.5, oy = 0.5) => { const o = this.add.image(x, y, 'ui6_gb', key).setOrigin(ox, oy); if (size) o.setScale(size / Math.max(o.frame.realWidth, o.frame.realHeight)); root.add(o); return o; };
     const t = (x, y, s, size, col, ox = 0, oy = 0) => { const o = txt(this, x, y, s, size, col).setOrigin(ox, oy); root.add(o); R.m.minFont = Math.min(R.m.minFont || 99, size); return o; };
     n('ui_gb_phone', 0, 0, PW, PH);
-    const hd = L.header, [hx, hy, hw, hh] = hd.rect;
+    im('ui_gb_phone_notch', L.notch[0], L.notch[1], 0);
+    const hd = L.header, [hx, hy, hw, hh] = hd.rect, sr = L.screen;
     n('ui_gb_header', hx, hy, hw, hh);
     im(en ? 'ui_gb_logo_en' : 'ui_gb_logo_ko', hd.logo[0], hd.logo[1], 0, 0, 0);
     t(hd.tagline[0], hd.tagline[1], en ? 'Order now, here in a moment' : '방금 시키면 금방 와요', hd.tagline[2], '#2b4f7e', 0, 0.5);
+    // 금방이 runs in (polish H1): faces left, from behind the screen's right edge, masked to the screen, Linear, then idle
+    const RI = hd.mascotRunIn;
+    const ms = this.add.sprite(RI.from[0], RI.from[1], 'ui6_gb', 'ui_gb_mascot_run_0').setOrigin(0.5, 0.9);
+    root.add(ms);
+    const mm = this.make.graphics({ x: 0, y: 0, add: false }); mm.fillStyle(0xffffff, 1).fillRoundedRect(px + sr[0], py + sr[1], sr[2], sr[3], 30);
+    ms.setMask(mm.createGeometryMask());
     const [clx, cly, clr] = hd.close;
     const cg = this.add.graphics(); cg.fillStyle(0xfffbf3, 1).fillCircle(clx, cly, clr).lineStyle(3, 0xb07a1c, 1).strokeCircle(clx, cly, clr);
     cg.lineStyle(6, 0x2b4f7e, 1).lineBetween(clx - 13, cly - 13, clx + 13, cly + 13).lineBetween(clx - 13, cly + 13, clx + 13, cly - 13);
-    root.add(cg);
+    root.add(cg);       // drawn after the mascot: it runs in under the close button
     R.m.closeCss = cssOf(clr * 2);
-    const ms = this.add.sprite(hd.mascot[0] + 220, hd.mascot[1], 'ui6_gb', 'ui_gb_mascot_run_0').setOrigin(0.5, 0.9).play('spr:ui_gb_mascot:run');
-    root.add(ms);
-    this.tweens.add({ targets: ms, x: hd.mascot[0], duration: 700, ease: 'Quad.out', onComplete: () => ms.play('spr:ui_gb_mascot:idle') });
-    // tabs (built at 64 tall, scaled uniformly to 82 = 44 CSS: tap targets)
+    const runA = ui6.sprites.ui_gb_mascot.anims;
+    // deterministic run-in at time t (ms) - the GIF capture and the gates use it; the live page plays the same tween
+    R.runinAt = (tm) => {
+      this.tweens.killTweensOf(ms); ms.anims.stop();
+      const u = Math.min(1, tm / RI.ms);
+      ms.x = RI.from[0] + (RI.to[0] - RI.from[0]) * u; ms.y = RI.from[1];
+      if (tm < RI.ms) ms.setFrame(runA.run.frames[Math.floor(tm / 1000 * runA.run.fps) % runA.run.frames.length]);
+      else ms.setFrame(runA.idle.frames[Math.floor((tm - RI.ms) / 1000 * runA.idle.fps) % runA.idle.frames.length]);
+      const vr = visRect(ms);
+      return { x: +ms.x.toFixed(1), frame: ms.frame.name, visibleRight: +(vr[0] + vr[2]).toFixed(1), visibleLeft: +vr[0].toFixed(1) };
+    };
+    R.m.runStart = R.runinAt(0); R.m.runEnd = R.runinAt(RI.ms + 10);
+    R.m.screenRight = sr[0] + sr[2];
+    ms.setPosition(RI.from[0], RI.from[1]).play('spr:ui_gb_mascot:run');
+    this.tweens.add({ targets: ms, x: RI.to[0], duration: RI.ms, ease: RI.ease, onComplete: () => ms.play('spr:ui_gb_mascot:' + RI.then) });
+    // tabs (built at 64 tall, scaled uniformly to 88 = 44 CSS on a 360 phone: tap targets)
     const TB = L.tabs, tabs = [['today', 'ui_icon_gb_today', '오늘', 'Today'], ['order', 'ui_icon_gb_order', '주문', 'Order'], ['catalog', 'ui_icon_gb_catalog', '상품', 'Shop'], ['crew', 'ui_icon_gb_crew', '기사님', 'Crew'], ['review', 'ui_icon_gb_review', '후기', 'Stars']];
     let x = hx + (hw - (5 * TB.w + 4 * TB.gap)) / 2;
     for (const [key, ic, ko, en_] of tabs) {
       const on = key === O.tab;
       n(on ? 'ui_gb_tab_on' : 'ui_gb_tab', x, TB.y, TB.w, TB.h, TB.scale);
       const word = en ? en_ : ko, fs_ = en ? TB.fontEn : TB.font;
-      const tt = txt(this, 0, 0, word, fs_, on ? '#2b4f7e' : '#8a7a62');
+      const tt = txt(this, 0, 0, word, fs_, on ? TB.colorOn : TB.colorOff);
       const total = TB.icon + TB.iconGap + tt.width, sx = x + (TB.w - total) / 2;
       tt.setPosition(sx + TB.icon + TB.iconGap, TB.y + TB.h / 2).setOrigin(0, 0.5); root.add(tt); R.m.minFont = Math.min(R.m.minFont || 99, fs_);
       if (tt.width + TB.icon + TB.iconGap > TB.w - 12) R.m.tabOverflow = (R.m.tabOverflow || []).concat(word);
@@ -337,27 +446,29 @@ class U extends Phaser.Scene {
     }
     R.m.tabCss = [cssOf(TB.w), cssOf(TB.h)];
     // content (masked to the screen under the tabs)
-    const [cx0, cy0, cw, chh] = L.content, C = L.card, sr = L.screen;
+    const [cx0, cy0, cw] = L.content, C = L.card;
     const content = this.add.container(0, 0); root.add(content);
     const mg = this.make.graphics({ x: 0, y: 0, add: false }); mg.fillStyle(0xffffff, 1).fillRoundedRect(px + sr[0], py + cy0 - 8, sr[2], sr[1] + sr[3] - cy0 + 8, { tl: 0, tr: 0, bl: 30, br: 30 });
     content.setMask(mg.createGeometryMask());
-    const cn = (key, x, y, w, h, sc = 1) => { const o = this.nine(key, x, y, w, h, sc); content.add(o); return o; };
+    const cn = (key, x, y, w, h, sc = 1) => { const o = this.nine(ui6, key, x, y, w, h, sc); content.add(o); return o; };
     const ci = (atlas, frame, x, y, size, ox = 0.5, oy = 0.5) => { const o = this.add.image(x, y, atlas, frame).setOrigin(ox, oy); if (size) o.setScale(size / Math.max(o.frame.realWidth, o.frame.realHeight)); content.add(o); return o; };
     const ct = (x, y, s, size, col, ox = 0, oy = 0) => { const o = txt(this, x, y, s, size, col).setOrigin(ox, oy); content.add(o); R.m.minFont = Math.min(R.m.minFont || 99, size); return o; };
-    const item = (name, x, y, size) => { const s = props.sprites[name]; if (!s) return; const o = ci(s.atlas, s.frame, x, y, 0); const f = o.frame, cxo = f.realWidth / 2 - (f.x + f.width / 2), cyo = f.realHeight / 2 - (f.y + f.height / 2), sc = size / Math.max(f.width, f.height); o.setScale(sc).setPosition(x + cxo * sc, y + cyo * sc); };   // sized + centred on the trimmed content
+    const item = (name, x, y, size) => { const s = props.sprites[name]; if (!s) return; const o = ci(s.atlas, s.frame, x, y, 0); const f = o.frame, cxo = f.realWidth / 2 - (f.x + f.width / 2), cyo = f.realHeight / 2 - (f.y + f.height / 2), sc = size / Math.max(f.width, f.height); o.setScale(sc).setPosition(x + cxo * sc, y + cyo * sc); };
+    const T2 = L.tracker;
     const tracker = (x0, x1, y, step) => {
-      const T = L.tracker, keys = ['order', 'pick', 'pack', 'go', 'done'], words = en ? ['Ordered', 'Picking', 'Packing', 'On the way', 'Arrived'] : ['주문', '고르기', '포장', '배달 중', '도착'];
-      const xs = keys.map((_, i) => x0 + (x1 - x0) * i / 4), b = T.badge;
+      const keys = ['order', 'pick', 'pack', 'go', 'done'], words = en ? ['Ordered', 'Picking', 'Packing', 'On the way', 'Arrived'] : ['주문', '고르기', '포장', '배달 중', '도착'];
+      const xs = keys.map((_, i) => x0 + (x1 - x0) * i / 4), b = T2.badge;
       for (let i = 0; i < 4; i++) { const ln = ci('ui6_gb', i < step ? 'ui_gb_line_on' : 'ui_gb_line_off', (xs[i] + xs[i + 1]) / 2, y); ln.setDisplaySize(xs[i + 1] - xs[i] - b - 6, 8); }
       keys.forEach((kk, i) => {
         ci('ui6_gb', 'ui_gb_step_' + kk + (i <= step ? '_on' : '_off'), xs[i], y, b);
         if (i === step) ci('ui6_gb', 'ui_gb_dot_now', xs[i] + b / 2 - 4, y - b / 2 + 6, 0);
-        ct(xs[i], y + b / 2 + T.labelGap, words[i], en ? T.labelFontEn : T.labelFont, i === step ? '#2b4f7e' : (i < step ? '#3b3f52' : '#807462'), 0.5, 0);
+        ct(xs[i], y + b / 2 + T2.labelGap, words[i], en ? T2.labelFontEn : T2.labelFont, i === step ? T2.colorNow : (i < step ? T2.colorDone : T2.colorOff), 0.5, 0);
       });
     };
     const coin = (x, y, size) => ci('ui_icons', 'ui_icon_coin', x, y, size);
+    const sec = C.colorSecondary;
     if (O.tab === 'order') {
-      ct(cx0 + 6, cy0 + 4, en ? 'On the way 3 · New 5' : '배달 중 3 · 새 주문 5', C.small, '#807462');
+      ct(cx0 + 6, cy0 + 4, en ? 'On the way 3 · New 5' : '배달 중 3 · 새 주문 5', C.small, sec);
       let y = cy0 + 40; const OC = L.orderCard;
       cn('ui_gb_card', cx0, y, cw, OC.h);
       ct(cx0 + 30, y + 22, en ? 'Pine Apts 2 · Grandma Jeong' : '솔방울 아파트 2동 · 정 할머니', C.font, '#3b3f52');
@@ -376,10 +487,9 @@ class U extends Phaser.Scene {
       y += OC.h + C.gap;
       cn('ui_gb_card', cx0, y, cw, 236);
       ct(cx0 + 30, y + 20, en ? "Station St · Minji's" : '역앞 집 · 민지네', C.font, '#3b3f52');
-      // the doorstep photo: a real 128 x 80 render texture under the frame
       const pr = ui6.sprites.ui_gb_photo.photoRect, phx = cx0 + 26, phy = y + 52;
       const rt = this.add.renderTexture(phx + pr[0], phy + pr[1], pr[2], pr[3]).setOrigin(0, 0);
-      rt.fill(0xe6edf6);
+      rt.fill(O.night ? 0x46598a : 0xe6edf6);
       const th = town.sprites.townhouse_a;
       rt.draw(this.make.image({ key: th.atlas, frame: th.frame, add: false }).setScale(0.42).setOrigin(0.5, 0.75), 36, 92);
       rt.draw(this.make.image({ key: 'gb_bld_0', frame: 'gb_parcel_doorstep_1', add: false }).setOrigin(0.5, 0.75), 92, 70);
@@ -400,7 +510,7 @@ class U extends Phaser.Scene {
         const bx = cx0 + (i % 2) * (cw / 2 + 4), by = cy0 + 6 + Math.floor(i / 2) * 128;
         cn('ui_gb_card', bx, by, cw / 2 - 4, 120);
         if (ic) ci('ui6_gb', ic, bx + 66, by + 58, 64); else coin(bx + 66, by + 58, 56);
-        ct(bx + 112, by + 42, num, 40, '#3b3f52', 0, 0.5); ct(bx + 112, by + 84, lab, C.small, '#807462', 0, 0.5);
+        ct(bx + 112, by + 42, num, 40, '#3b3f52', 0, 0.5); ct(bx + 112, by + 84, lab, C.small, sec, 0, 0.5);
       });
       let y = cy0 + 270;
       cn('ui_gb_card', cx0, y, cw, 280);
@@ -410,7 +520,7 @@ class U extends Phaser.Scene {
         const ry = y + 84 + i * 46, x0 = cx0 + 84, x1 = cx0 + cw - 40;
         item(ik, cx0 + 54, ry + 8, 34);
         g2.fillStyle(0xece4d6, 1).fillRoundedRect(x0, ry, x1 - x0, 16, 8).fillStyle(0xf2b33d, 1).fillRoundedRect(x0, ry, (x1 - x0) * now, 16, 8);
-        g2.lineStyle(3, 0x807462, 0.8).lineBetween(x0 + (x1 - x0) * yest, ry - 4, x0 + (x1 - x0) * yest, ry + 20);
+        g2.lineStyle(3, 0x6b5d48, 0.8).lineBetween(x0 + (x1 - x0) * yest, ry - 4, x0 + (x1 - x0) * yest, ry + 20);
       });
       y += 296;
       cn('ui_gb_card', cx0, y, cw, 140);
@@ -428,17 +538,18 @@ class U extends Phaser.Scene {
         ct(cx0 + 116, y + 44, en ? en_ : ko, C.font, '#3b3f52', 0, 0.5);
         coin(cx0 + 130, y + 96, 28); ct(cx0 + 150, y + 96, String(price), C.small, '#b07a1c', 0, 0.5);
         if (st === 'deal') { cn('ui_gb_ribbon', cx0 + cw - 186, y + 20, 160, 48); ci('ui6_gb', 'ui_icon_gb_deal', cx0 + cw - 160, y + 44, 30); ct(cx0 + cw - 98, y + 44, en ? se : sk, C.small, '#2b4f7e', 0.5, 0.5); }
-        else { cn('ui_gb_chip', cx0 + cw - 244, y + 19, 220, 50, 50 / 64); ct(cx0 + cw - 134, y + 44, en ? se : sk, C.small, st === 'sale' ? '#2b4f7e' : '#8a7a62', 0.5, 0.5); }
+        else { cn('ui_gb_chip', cx0 + cw - 244, y + 19, 220, 50, 50 / 64); ct(cx0 + cw - 134, y + 44, en ? se : sk, C.small, st === 'sale' ? '#2b4f7e' : sec, 0.5, 0.5); }
         const TG = L.toggle, on = st !== 'out', tx0 = cx0 + cw - 30 - TG.w, ty0 = y + 82, kr = TG.h / 2 - 3, kx = on ? tx0 + TG.w - TG.h / 2 : tx0 + TG.h / 2;
         g3.fillStyle(on ? 0xf2b33d : 0xe2dbce, 1).fillRoundedRect(tx0, ty0, TG.w, TG.h, TG.h / 2);
         g3.fillStyle(0xfffdf8, 1).fillCircle(kx, ty0 + TG.h / 2, kr).lineStyle(2, on ? 0xb07a1c : 0xbdb3a0, 1).strokeCircle(kx, ty0 + TG.h / 2, kr);
         R.m.toggleHitCss = cssOf(TG.hitH);
         ct(tx0 - 12, ty0 + TG.h / 2, on ? (en ? 'Sell' : '팔기') : (en ? 'Rest' : '쉬기'), C.small, '#3b3f52', 1, 0.5);
       });
-      content.bringToTop(g3);   // the toggles sit on the cards
+      content.bringToTop(g3);
     }
     R.m.panelCss = [cssOf(PW), cssOf(PH)];
     R.m.bodyCss = cssOf(C.font); R.m.smallCss = cssOf(C.small); R.m.minFontCss = cssOf(R.m.minFont || 0);
+    R.panelY = py;
   }
 }
 window.__R.game = new Phaser.Game({ type: Phaser.WEBGL, parent: 'game', width: Math.round(W * k), height: Math.round(H * k), backgroundColor: '#dbe6f2',
@@ -501,7 +612,7 @@ const out = { clashes, fragmentsChecked: frags.length };
   for (const [g, ok] of Object.entries(P.groups || {})) if (!ok) problems.push('audio group ' + g + ' has a missing key');
 }
 // 2) + 3) phone pages
-const phone = async (o, name, vw = 390, vh = 844, dpr = 3) => {
+const phone = async (o, name, vw = 390, vh = 844, dpr = 3, extra) => {
   const pctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: dpr, isMobile: true, hasTouch: true });
   const pp = await pctx.newPage();
   watch(pp);
@@ -512,48 +623,125 @@ const phone = async (o, name, vw = 390, vh = 844, dpr = 3) => {
   await sleep(o.mode === 'app' ? 1400 : 900);
   const r = await pp.evaluate(() => Object.assign({ k: window.__R.k, H: window.__R.H }, window.__R.m));
   const file = path.join(PREV, name + '.png');
+  // the stills show the end of the run-in (Phaser's smoothed time step runs slow at DPR 3 in swiftshader): idle at
+  // appLayout.header.mascot; the GIF below steps the run-in frame by frame
+  if (o.mode === 'app') { await pp.evaluate(() => { window.__R.runinAt(10000); window.__R.game.loop.wake(); }); await sleep(200); }
   await pp.evaluate(() => window.__R.game.loop.sleep());
   await pp.screenshot({ path: file, timeout: 180000 });
+  if (extra) await extra(pp, r);
   await pctx.close();
   return { r, file };
 };
+// a GIF from page frames: fn(t) sets the frame, clip in CSS px, then python assembles + labels
+const gifFrames = async (pp, times, setFn, clip, dir) => {
+  fs.mkdirSync(dir, { recursive: true });
+  const files = [], info = [];
+  for (let i = 0; i < times.length; i++) {
+    const res = await pp.evaluate(([fnName, tm]) => { const R = window.__R; const v = R[fnName](tm); R.game.loop.wake(); return v; }, [setFn, times[i]]);
+    await sleep(120);
+    await pp.evaluate(() => window.__R.game.loop.sleep());
+    const f = path.join(dir, `f${String(i).padStart(3, '0')}.png`);
+    await pp.screenshot({ path: f, clip, timeout: 60000 });
+    files.push(f); info.push(res);
+  }
+  return { files, info };
+};
+const makeGif = (dst, files, labels, ms) => {
+  const py = `
+import sys, json
+from PIL import Image, ImageDraw, ImageFont
+dst, ms, labels = sys.argv[1], int(sys.argv[2]), json.loads(sys.argv[3])
+fs_ = sys.argv[4:]
+try:
+    f = ImageFont.truetype('${path.join(ROOT, 'tools', 'fonts', 'Pretendard-ExtraBold.ttf')}', 22)
+except Exception:
+    f = ImageFont.load_default()
+ims = []
+for p, lab in zip(fs_, labels):
+    im = Image.open(p).convert('RGB')
+    w = 520
+    im = im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
+    out = Image.new('RGB', (w, im.height + 34), (236, 241, 247))
+    out.paste(im, (0, 34))
+    ImageDraw.Draw(out).text((8, 6), lab, font=f, fill=(30, 40, 60))
+    ims.append(out.convert('P', palette=Image.ADAPTIVE, colors=128))
+ims[0].save(dst, save_all=True, append_images=ims[1:], duration=ms, loop=0, disposal=2)
+`;
+  execFileSync('python3', ['-c', py, dst, String(ms), JSON.stringify(labels), ...files], { stdio: 'inherit' });
+};
 out.phone = {};
 const hudShots = [];
+const HUDGATE = (name, r) => {
+  const P = UI6.sprites.fx_gb_bell.placement;
+  const want = Math.min(P.cssMax, P.maxCourierFrac * r.courierCss);
+  if (Math.abs(r.bellCss - want) > 0.6) problems.push(`${name}: doorbell FX ${r.bellCss} CSS px (want min(${P.cssMax}, ${P.maxCourierFrac} x courier ${r.courierCss}) = ${want.toFixed(1)})`);
+  if (r.bellOverHead && r.bellOverHead.length) problems.push(`${name}: the bell covers a head: ${r.bellOverHead.join(', ')} (bell ${r.bellBox}, heads ${JSON.stringify(r.headBoxes)})`);
+  if (r.headTops && r.headTops[0] !== null && r.headTops[0] < P.headTopY - 0.5) problems.push(`${name}: the courier's head top ${r.headTops[0]} is above placement.headTopY ${P.headTopY}`);
+  const L = UI6.conventions.appLayout;
+  if (Math.abs(r.chipCss[1] - r.workChipCss[1]) > 0.11) problems.push(`${name}: 금방 chip ${r.chipCss} CSS is not the 업무 chip height ${r.workChipCss[1]}`);
+  if (r.chipHitCss < L.tapMinCss - 0.05) problems.push(`${name}: 금방 chip hit rect ${r.chipHitCss} CSS < ${L.tapMinCss}`);
+  if (r.toastCss && (r.toastCss[0] > 300.5 || r.toastCss[1] > 48.5)) problems.push(`${name}: toast ${r.toastCss} CSS px (<= 300 x 48)`);
+  if (r.overlaps && r.overlaps.length) problems.push(`${name}: HUD overlaps ${r.overlaps.join(', ')}`);
+};
 for (const z of [0.6, 1.0, 1.2, 1.6]) {
   for (const night of (z > 1.2 ? [false] : [false, true])) {
     const name = 'ui6_phaser_z' + String(z.toFixed(1)).replace('.', '') + (night ? '_night' : '_day');
-    const { r, file } = await phone({ zoom: z, night, mode: 'hud' }, name);
+    let extra = null;
+    if (z === 1.0 && !night) {
+      // the bell's ding + dong timeline (polish L6) over the real courier, cropped round the door
+      extra = async (pp, r) => {
+        const bp = await pp.evaluate(() => { const S = window.__R.game.scene.getScene('S'); const cam = S.cameras.main, b = S.bell; return [(b.x - cam.worldView.x) * cam.zoom / devicePixelRatio, (b.y - cam.worldView.y) * cam.zoom / devicePixelRatio]; });
+        const clip = { x: Math.max(0, bp[0] - 80), y: Math.max(0, bp[1] - 40), width: 160, height: 120 };
+        const times = []; for (let t = 0; t <= 0.96; t += 1 / 24) times.push(+t.toFixed(3));
+        const { files, info } = await gifFrames(pp, times, 'bellAt', clip, path.join(CACHE, 'bellgif'));
+        makeGif(path.join(PREV, 'ui6_phaser_bell_door.gif'), files, times.map((t, i) => `띵동 t ${t.toFixed(2)} s · frame ${info[i][0]} · alpha ${info[i][1]}${t >= 0.33 && t < 0.58 ? ' (dong)' : ''}`), 42);
+        out.bellTimeline = times.map((t, i) => [t, ...info[i]]);
+      };
+    }
+    const { r, file } = await phone({ zoom: z, night, mode: 'hud' }, name, 390, 844, 3, extra);
     out.phone[name] = r;
     hudShots.push(file);
-    if (Math.abs(r.bellCss - 40) > 1) problems.push(`${name}: doorbell FX ${r.bellCss} CSS px (want 40)`);
-    if (Math.abs(r.chipCss[1] - 44) > 0.5 || Math.abs(r.chipCss[0] - 120) > 0.5) problems.push(`${name}: chip ${r.chipCss} CSS px (want 120 x 44)`);
-    if (r.toastCss[0] > 300.5 || r.toastCss[1] > 48.5) problems.push(`${name}: toast ${r.toastCss} CSS px (<= 300 x 48)`);
+    HUDGATE(name, r);
   }
 }
-{ // the small phone (360 x 640 CSS, DPR 2) at zoom 1.0, night
+{ // the small phone (360 x 640 CSS, DPR 2) at zoom 1.0, night, English, the hint pill instead of the toast
   const name = 'ui6_phaser_z10_night_360';
-  const { r, file } = await phone({ zoom: 1.0, night: true, mode: 'hud' }, name, 360, 640, 2);
+  const { r, file } = await phone({ zoom: 1.0, night: true, mode: 'hud', lang: 'en', noToast: true }, name, 360, 640, 2);
   out.phone[name] = r;
   hudShots.push(file);
-  if (Math.abs(r.bellCss - 40) > 1) problems.push(`${name}: doorbell FX ${r.bellCss} CSS px (want 40)`);
-  if (Math.abs(r.chipCss[1] - 44) > 0.5 || Math.abs(r.chipCss[0] - 120) > 0.5) problems.push(`${name}: chip ${r.chipCss} CSS px (want 120 x 44)`);
-  if (r.toastCss[0] > 300.5 || r.toastCss[1] > 48.5) problems.push(`${name}: toast ${r.toastCss} CSS px (<= 300 x 48)`);
+  HUDGATE(name, r);
 }
 const appShots = [];
 for (const [tab, lang, night, vw, vh, dpr] of [['today', 'ko', false, 390, 844, 3], ['order', 'ko', false, 390, 844, 3], ['catalog', 'ko', false, 390, 844, 3], ['order', 'en', true, 390, 844, 3], ['order', 'ko', false, 360, 640, 2]]) {
   const name = `ui6_phaser_app_${tab}_${lang}${night ? '_night' : ''}${vw === 360 ? '_360' : ''}`;
-  const { r, file } = await phone({ zoom: 1.0, night, mode: 'app', tab, lang }, name, vw, vh, dpr);
+  let extra = null;
+  if (tab === 'order' && lang === 'ko' && vw === 390) {
+    // 금방이's run-in as header.mascotRunIn says (polish H1): 0 .. 900 ms at 24 fps, cropped to the header
+    extra = async (pp, r) => {
+      const py = await pp.evaluate(() => window.__R.panelY);
+      const s = 390 / 720, clip = { x: 0, y: Math.max(0, py * s), width: 390, height: 200 * s };
+      const times = []; for (let t = 0; t <= 900; t += 1000 / 24) times.push(Math.round(t));
+      const { files, info } = await gifFrames(pp, times, 'runinAt', clip, path.join(CACHE, 'runingif'));
+      makeGif(path.join(PREV, 'ui6_mascot_runin.gif'), files, times.map((t, i) => `t ${t} ms · x ${info[i].x} · ${info[i].frame.replace('ui_gb_mascot_', '')}`), 42);
+      out.runIn = times.map((t, i) => [t, info[i].x, info[i].frame]);
+    };
+  }
+  const { r, file } = await phone({ zoom: 1.0, night, mode: 'app', tab, lang }, name, vw, vh, dpr, extra);
   out.phone[name] = r;
   appShots.push(file);
   if (r.tabCss[1] < 44 - 0.05) problems.push(`${name}: tab height ${r.tabCss[1]} CSS px < 44 (tap target)`);
   if (r.closeCss < 44 - 0.05) problems.push(`${name}: close button ${r.closeCss} CSS px < 44`);
   if (r.buttonCss !== undefined && r.buttonCss < 44 - 0.05) problems.push(`${name}: 따라가기 button ${r.buttonCss} CSS px < 44`);
   if (r.bodyCss < 15 - 0.05) problems.push(`${name}: body text ${r.bodyCss} CSS px < 15`);
-  if (r.minFontCss < 12 - 0.05) problems.push(`${name}: smallest text ${r.minFontCss} CSS px < 12`);
+  if (r.minFontCss < UI6.conventions.appLayout.textMinCss - 0.05) problems.push(`${name}: smallest text ${r.minFontCss} CSS px < ${UI6.conventions.appLayout.textMinCss}`);
   if (r.toggleHitCss !== undefined && r.toggleHitCss < 44 - 0.05) problems.push(`${name}: toggle hit row ${r.toggleHitCss} CSS px < 44`);
   if (r.tabOverflow) problems.push(`${name}: tab words overflow the 128 tab: ${r.tabOverflow}`);
   if (r.H < 1100) problems.push(`${name}: the 1100 logical app panel does not fit (${r.H})`);
+  // the run-in: starts fully hidden behind the screen's right edge (masked), ends at the target, run frames face left
+  if (r.runStart.visibleLeft < r.screenRight - 0.5) problems.push(`${name}: 금방이 starts visible (${r.runStart.visibleLeft} < screen right ${r.screenRight})`);
+  if (Math.abs(r.runEnd.x - UI6.conventions.appLayout.header.mascot[0]) > 0.5 || !/idle/.test(r.runEnd.frame)) problems.push(`${name}: run-in ends at ${JSON.stringify(r.runEnd)}`);
 }
+if (UI6.sprites.ui_gb_mascot.runFacing !== 'left') problems.push('ui_gb_mascot: runFacing is not left');
 // labelled montages (CSS size)
 const montage = (dst, files, cols, title, labels) => {
   const py = `
@@ -588,7 +776,7 @@ out.save(dst)
   execFileSync('python3', ['-c', py, dst, String(cols), title, JSON.stringify(labels), ...files], { stdio: 'inherit' });
 };
 try {
-  montage(path.join(PREV, 'ui6_phaser_phone.png'), hudShots, 4, '금방 HUD + world (snow / dirt path / cobble) in Phaser 3.90 on a 390 x 844 phone: zoom 0.6 / 1.0 / 1.2 / 1.6, day and night; last: 360 x 640 at night',
+  montage(path.join(PREV, 'ui6_phaser_phone.png'), hudShots, 4, '금방 HUD (v4.2 neighbours + the 금방 chip at the 업무 size + the toast in the hint place) + a real courier ringing (bell = min(24 CSS, 0.7 x courier), above the heads), zoom 0.6 / 1.0 / 1.2 / 1.6, day / night; last: 360 x 640 en',
     hudShots.map((f) => path.basename(f, '.png').replace('ui6_phaser_', '')));
   montage(path.join(PREV, 'ui6_phaser_app.png'), appShots, 5, '금방 마켓 app in Phaser 3.90 (real NineSlices + appLayout): 오늘 / 주문 / 상품, 주문 en at night, 주문 on a 360 x 640 phone',
     appShots.map((f) => path.basename(f, '.png').replace('ui6_phaser_app_', '')));
@@ -601,7 +789,8 @@ out.problems = problems;
 fs.writeFileSync(path.join(CACHE, 'ui6_phaser.json'), JSON.stringify(out, null, 1));
 const brief = { fragmentsChecked: out.fragmentsChecked, clashes: clashes.length, frames: out.load.frames, anims: out.load.anims, playing: out.load.playing,
   nine: out.load.nine.length, audio: { ctxRate: out.load.audio.ctxRate, slices: Object.keys(out.load.audio.keys).length },
-  phone: Object.fromEntries(Object.entries(out.phone).map(([k2, r]) => [k2, r.tabCss ? { tab: r.tabCss, close: r.closeCss, button: r.buttonCss, body: r.bodyCss, small: r.smallCss, minFont: r.minFontCss, toggleHit: r.toggleHitCss, panel: r.panelCss } : { bell: r.bellCss, chip: r.chipCss, toast: r.toastCss }])) };
+  phone: Object.fromEntries(Object.entries(out.phone).map(([k2, r]) => [k2, r.tabCss ? { tab: r.tabCss, close: r.closeCss, button: r.buttonCss, body: r.bodyCss, small: r.smallCss, minFont: r.minFontCss, toggleHit: r.toggleHitCss, panel: r.panelCss, runStart: r.runStart, runEnd: r.runEnd } : { bell: r.bellCss, courier: r.courierCss, bellOverHead: r.bellOverHead, headTops: r.headTops, chip: r.chipCss, chipHit: r.chipHitCss, work: r.workChipCss, toast: r.toastCss, overlaps: r.overlaps }])),
+  bellTimeline: out.bellTimeline, runIn: out.runIn };
 console.log(JSON.stringify(brief, null, 1));
 console.log(problems.length ? 'PROBLEMS\n  ' + problems.join('\n  ') : 'OK - 0 problems');
 process.exit(problems.length ? 1 : 0);

@@ -53,6 +53,12 @@ CHARCOAL = '#3B3F52'
 NAVY = '#2B4F7E'
 KRAFT = '#C99A62'          # = lgx_lib.KRAFT (the logistics / gb_parcel cardboard)
 KRAFT_D = '#A98250'
+# (critique H2) the parcel the crew HOLDS sits on the gold jacket: a lighter kraft melted into it (dE2000 1.6 - 6.3), so
+# the held 금방 parcel is a deeper, cooler brown kraft (sides about L* 50) with a pale lid (L* ~ 78) and a cream
+# address label: the box reads as a box against gold, still the same 금방 parcel (gold tape cross, the mark sticker)
+KRAFT_P = '#704E30'
+KRAFT_PD = '#523A25'
+KRAFT_LID = '#9A7A52'
 MARK_PNG = os.environ.get('GBF_MARK', '/tmp/fv_cache/geumbangfolk/mark/gb_mark_512.png')
 
 # z keys of the new subs (manifest 'z' as gbf_<key>)
@@ -316,12 +322,21 @@ def _parcel(j, size, prefix):
     """A kraft 금방 parcel centred on joint j: gold tape cross over the top and down every face, the mark sticker on
     the front (-Y) and on both sides (+-X) - every face the camera can see while it is carried."""
     w, d, h = size
-    kraft = M('gbp_kraft', KRAFT, 0.85)
+    kraft = M('gbp_kraft', KRAFT_P, 0.85)
     tape = M('gbp_tape', GOLD, 0.45)
-    edge = M('gbp_edge', KRAFT_D, 0.85)
+    edge = M('gbp_edge', KRAFT_PD, 0.85)
+    lid = M('gbp_lid', KRAFT_LID, 0.85)
+    label = M('gbp_label', CREAM, 0.7)
     g.mesh_obj(prefix + 'box', g.bm_box(w, d, h, bevel=0.012), kraft, j)
+    # the pale lid: a thin slab on top (the flaps), under the tape cross
+    g.mesh_obj(prefix + 'lid', g.bm_box(w - 0.006, d - 0.006, 0.006, bevel=0.002), lid, j, loc=(0, 0, h / 2 - 0.001))
     tw = 0.050 * min(1.0, w / 0.26)
     t = 0.004
+    # the cream address label on the lid (front-right quadrant, the camera side in the front views) and on the front
+    g.mesh_obj(prefix + 'label_top', g.bm_box(w * 0.30, d * 0.30, 0.004, bevel=0.0015), label, j,
+               loc=(-w * 0.25, -d * 0.24, h / 2 + 0.004))
+    g.mesh_obj(prefix + 'label_f', g.bm_box(w * 0.20, 0.004, h * 0.24, bevel=0.0015), label, j,
+               loc=(w * 0.33, -d / 2 - 0.003, h * 0.10))
     # tape cross: one strip along X over the top and down both side faces, one along Y over the top, front and back
     g.mesh_obj(prefix + 'tape_x', g.bm_box(w + 2 * t, tw, t, bevel=0.0015), tape, j, loc=(0, 0, h / 2 + t / 2))
     g.mesh_obj(prefix + 'tape_y', g.bm_box(tw, d + 2 * t, t, bevel=0.0015), tape, j, loc=(0, 0, h / 2 + t / 2 + 0.0005))
@@ -346,7 +361,7 @@ def _parcel(j, size, prefix):
 
 
 @part('held_parcel_gb', 'held', 'body',
-      {'main': held(z=Z5['parcel'], hand='hand_L', onlyAnims=['carry_parcel', 'ring_doorbell']),
+      {'main': held(z=Z5['parcel'], hand='hand_R', onlyAnims=['carry_parcel', 'ring_doorbell']),
        'small': held(z=Z5['small'], hand='hand_R', onlyAnims=['sort_parcel'])},
       tags=['anim_item', 'geumbang'], label={'ko': '금방 택배 상자', 'en': 'Geumbang parcel'})
 def b_held_parcel_gb(rig, ctx, put):
@@ -484,17 +499,21 @@ def place_items5(rig, d, flags, anim=None):
     tx, ty, tz = rig.meta.get('torso_scale', (1, 1, 1))
     chest = rig.j['chest'].matrix_world
     cq = chest.to_quaternion()
-    # the medium parcel: hugged (carry) / tucked under the left arm (ring) - chest-local centre, turns with the chest
+    # the medium parcel: hugged (carry) / tucked under an arm (ring: left facing E, right on the camera side facing
+    # NE / N) - chest-local centre, turns with the chest
     if 'pclm_J' in rig.j:
         mode = flags.get('_parcel')
+        q = cq
         if mode == 'carry':
             c = ga.CARRY_BOX
         elif mode == 'ring':
             c = ga.ring_box(d)
+            if d in ga.RING_TUCK:                     # tucked under the right arm: short side against the body
+                q = cq @ Quaternion((0, 0, 1), math.radians(ga.TUCK_YAW))
         else:
             c = (0, -0.25, -0.14)
         w = chest @ Vector((c[0] * tx, c[1] * ty, c[2] * tz))
-        _set(rig, 'pclm_J', w, rqi @ cq, mode is not None, s)
+        _set(rig, 'pclm_J', w, rqi @ q, mode is not None, s)
         if mode is not None:
             h = ga.PARCEL_M[2] * s
             out['box'] = (w, w - (cq @ Vector((0, 0, 1))) * (h / 2))
@@ -507,6 +526,10 @@ def place_items5(rig, d, flags, anim=None):
         _set(rig, 'pcls_J', mid, Quaternion((0, 0, 1), yaw), on, s)
     if anim in ('sort_parcel', 'hand_parcel'):
         out['hand'] = (hr + hl) * 0.5 + up * 0.012
+        if anim == 'hand_parcel' and d in ga.HAND_SIDE:
+            # (critique L1) facing away (NE / NW) both palms are behind the body: the game's parcel is drawn on the
+            # camera side, at the right mitten pushed out to the side (depth rule parcelDepth.hand_parcel: in front)
+            out['hand'] = hr + (rq @ Vector((-ga.HAND_SIDE[d], 0.0, 0.0))) + up * 0.012
     # scanner: in the right fist, pointing at the parcel on the counter (key 3: tipped up toward the face)
     if 'scan_J' in rig.j:
         k = flags.get('_scanner')
@@ -539,6 +562,6 @@ def place_items5(rig, d, flags, anim=None):
     # the doorbell finger: the front of the right mitten
     if anim == 'ring_doorbell':
         bpy.context.view_layer.update()
-        out['bell'] = rig.world('hand_R') + fwd * 0.045 + up * 0.01
+        out['bell'] = rig.world('hand_' + ga.bell_side(d)) + fwd * 0.045 + up * 0.01
     bpy.context.view_layer.update()
     return out

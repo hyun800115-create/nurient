@@ -30,6 +30,10 @@ Checks
              areas of every preset sprite are not BOTH within dE2000 15 of a real brand's primary pair (plan 7.4); the
              mark is mirror-safe (texture vs own mirror <= 6 %, the back / front mark frames in S / N vs their own
              mirror <= 6 %); no letters (none drawn); crew distinct from depot_worker at 0.3 scale.
+  polish     (critique H1-H3 / L5) no enclosed see-through patch >= 4 px under the neck in any preset frame; the held
+             parcel's mean colour >= dE2000 9 from the coat ring around it (jacket presets; the table is printed); the
+             parcel shows >= 120 px in every dir ring_doorbell / carry_parcel S-E are played in; parcelDepth covers
+             every dir of carry_parcel / ring_doorbell / hand_parcel.
   budgets    road <= 3.5 MiB, hub <= 2.5 MiB (RGBA W x H x 4), payload.
   hub        logistics clerk / packer lift (hub.places) puts the scanner beam target / tape roller on the real
              counter / table top.
@@ -742,11 +746,13 @@ def main():
         tables = [('box', a, B['boxPoint'][a], ['held_parcel_gb.main']) for a in ('carry_parcel', 'ring_doorbell')]
         tables += [('hand', 'hand_parcel', B['handPoint']['hand_parcel'], ['hand_R', 'hand_L']),
                    ('hand', 'sort_parcel', B['handPoint']['sort_parcel'], ['hand_R', 'hand_L', 'held_parcel_gb.small']),
-                   ('bell', 'ring_doorbell', B['bellPoint']['ring_doorbell'], ['hand_R']),
+                   ('bell', 'ring_doorbell', B['bellPoint']['ring_doorbell'], None),
                    ('beam', 'scan', B['beamPoint']['scan'], ['held_scanner.main']),
                    ('tape', 'tape_box', B['tapePoint']['tape_box'], ['held_tapegun.main'])]
-        for kind, a, tab, layers in tables:
+        for kind, a, tab, layers0 in tables:
             for d, row in tab.items():
+                # the bell: the pressing mitten (NE / N: the left one, the parcel rides under the right arm)
+                layers = layers0 or (['hand_L'] if d in ('NE', 'N') else ['hand_R'])
                 for i, pt in enumerate(row):
                     acc = np.zeros((128, 128), np.float32)
                     for L in layers:
@@ -763,13 +769,13 @@ def main():
                     dist = float(np.min(np.hypot(xs + 0.5 - x, ys + 0.5 - y)))
                     # NE / N: the parcel rides in front of the body, mostly hidden by it - the nearest visible px of
                     # it may be up to half a parcel (~9 px) from its centre / bottom point
-                    tol = TOL[kind] + ((9.0 if kind == 'box' else 5.0) if d in ('NE', 'N') else 0.0)
+                    tol = TOL[kind] + ((9.0 * sxb + 4.0 if kind == 'box' else 5.0) if d in ('NE', 'N') else 0.0)
                     if dist > tol:
                         far.append(f'{b} {kind} {a} {d} {i}: {dist:.1f} px from {layers[0]}')
     for x in far[:12]:
         err.append(f'point off its item: {x}')
-    info.append(f'points on their items: {npts - len(far)}/{npts} within tolerance {TOL} (NE / N: +9 px box, +5 px '
-                f'others)')
+    info.append(f'points on their items: {npts - len(far)}/{npts} within tolerance {TOL} (NE / N: + half a parcel '
+                f'(9 px x base width) + 4 px box, +5 px others; hidden frames skipped)')
 
     # ------------------------------------------------------------------ brand (AS / plan 7.4)
     mk = '/tmp/fv_cache/geumbangfolk/mark/gb_mark_512.png'
@@ -872,12 +878,13 @@ def main():
         anim = pl.get('anim') or ('scan' if pl['role'] == 'clerk' else 'tape_box')
         rd = MD.get(pl['dir'], pl['dir'])
         if anim == 'sort_parcel':
-            # open front (conveyor): no lift; the mittens reach the belt top on frame 1 (taking a parcel)
-            reach = -a_s['handPoint']['sort_parcel'][rd][1][1]
-            info.append(f'hub {k} {pl["role"]} (sort_parcel {pl["dir"]}, open front gap {pl.get("gapUnderPx")} px): '
-                        f'no lift, the mittens reach {reach:.0f} px, the belt top is {pl["frontTopPx"]} px')
-            if pl['liftPx'] != 0 or abs(reach - pl['frontTopPx']) > 8:
-                err.append(f'hub {k}: sort_parcel reach {reach:.0f} px vs belt {pl["frontTopPx"]} px (lift {pl["liftPx"]})')
+            # at the conveyor (critique M3): the mittens (frame 1, taking a parcel) reach over the belt top, while the
+            # boots (~10 px) stay hidden behind the belt front
+            reach = -a_s['handPoint']['sort_parcel'][rd][1][1] + pl['liftPx']
+            info.append(f'hub {k} {pl["role"]} (sort_parcel {pl["dir"]}, offset {pl.get("offsetPx")}): lift '
+                        f'{pl["liftPx"]}, the mittens reach {reach:.0f} px, the belt front top is {pl["frontTopPx"]} px')
+            if not 0 <= reach - pl['frontTopPx'] <= 30 or pl['liftPx'] + 10 > pl['frontTopPx']:
+                err.append(f'hub {k}: sort_parcel reach {reach:.0f} px / lift {pl["liftPx"]} vs belt {pl["frontTopPx"]} px')
             continue
         bp = a_s['boxPoint'].get(anim, {}).get(rd)
         if not bp:
@@ -897,6 +904,111 @@ def main():
             rol = [(-v[1]) for v in a_s['tapePoint']['tape_box'][rd][1:4]]
             if any(abs(r - (-bp[0][1])) > 5 for r in rol):
                 err.append(f'hub {k}: tape roller {rol} px not on the box top {-bp[0][1]:.1f} px')
+
+    # ------------------------------------------------------------------ polish rules (critique H1 / H2 / H3 / L5)
+    # holes: no enclosed see-through px (composite alpha < 0.5, not connected to the frame border) below the neck in
+    # any crew anim / v4 anim of any preset (the cuff holdout punched one into the jacket hip: H1)
+    def enclosed(alpha):
+        hole = alpha < 0.5
+        out = np.zeros_like(hole)
+        out[0, :], out[-1, :], out[:, 0], out[:, -1] = hole[0, :], hole[-1, :], hole[:, 0], hole[:, -1]
+        while True:
+            g_ = out.copy()
+            g_[1:] |= out[:-1]
+            g_[:-1] |= out[1:]
+            g_[:, 1:] |= out[:, :-1]
+            g_[:, :-1] |= out[:, 1:]
+            g_ &= hole
+            if (g_ == out).all():
+                break
+            out = g_
+        return hole & ~out
+    def body_only(p, a, d, i):
+        # the body-space layers only: the hair (a ponytail hanging past the collar) closes real background gaps
+        orig = tfx.layers
+        tfx.layers = lambda *x, **k: [L for L in orig(*x, **k) if L[3] == 'body']
+        try:
+            return tfx.compose(p, a, d, i)
+        finally:
+            del tfx.layers
+    nfr, holes_ = 0, []
+    for pr in PRESETS:
+        for seed in range(2):
+            p = tfx.preset(pr, seed=seed)
+            for a in GB_ANIMS + V4:
+                pick, _ = tfx.pick_anim(p, a)
+                if pick != a:
+                    continue
+                inf = src.T['anims'][a]
+                for d in inf['dirs']:
+                    for i in range(inf['frames']):
+                        al = np.asarray(body_only(p, a, d, i))[..., 3].astype(np.float32) / 255.0
+                        h = enclosed(al)
+                        h[:62] = False                       # the head / hair (own gaps between strands)
+                        h[94:] = False                       # the legs: the gap between the boots is background
+                        nfr += 1
+                        if int(h.sum()) >= 4:
+                            holes_.append(f'{pr} s{seed} {a} {d} {i}: {int(h.sum())} px')
+    for x in holes_[:10]:
+        err.append(f'see-through hole under the neck: {x}')
+    info.append(f'holes: {nfr - len(holes_)}/{nfr} preset frames (7 presets x 2 seeds, crew + v4 anims, every dir / '
+                f'frame) without an enclosed see-through patch >= 4 px in the body layers\' torso band (rows 62-93)')
+
+    # parcel contrast (H2) + visibility (H3): the visible parcel = what the item adds to the composite; its mean colour
+    # against the 3 px ring of the doll around it (dE2000); visible px in every dir the anim is played in
+    def parcel_masks(p, a, d, i):
+        full = np.asarray(tfx.compose(p, a, d, i)).astype(np.float32) / 255.0
+        bare = np.asarray(tfx.compose(p, a, d, i, no_items=True)).astype(np.float32) / 255.0
+        diff = np.abs(full - bare).max(-1) > 0.08
+        pm = diff & (full[..., 3] > 0.5)
+        ring = pm.copy()
+        for _ in range(3):
+            g_ = ring.copy()
+            g_[1:] |= ring[:-1]
+            g_[:-1] |= ring[1:]
+            g_[:, 1:] |= ring[:, :-1]
+            g_[:, :-1] |= ring[:, 1:]
+            ring = g_
+        ring &= ~pm & (full[..., 3] > 0.5)
+        return full, pm, ring
+    JACKET = ('gb_driver', 'gb_dispatcher', 'gb_rider', 'gb_night')
+    crow, low, vis_bad = [], [], []
+    for pr in JACKET + ('gb_picker', 'gb_packer'):
+        p = tfx.preset(pr, seed=0)
+        vals = []
+        for a, d, i in (('carry_parcel', 'S', 0), ('carry_parcel', 'SE', 2), ('carry_parcel', 'E', 2),
+                        ('ring_doorbell', 'E', 2), ('ring_doorbell', 'NE', 2), ('ring_doorbell', 'N', 2)):
+            full, pm, ring = parcel_masks(p, a, d, i)
+            if pm.sum() < 20 or ring.sum() < 10:
+                vis_bad.append(f'{pr} {a} {d} {i}: parcel {int(pm.sum())} px')
+                continue
+            dE = float(de2000(srgb_to_lab(full[..., :3][pm].mean(0))[None], srgb_to_lab(full[..., :3][ring].mean(0))[None])[0])
+            vals.append(dE)
+            if pr in JACKET and dE < 9.0:
+                low.append(f'{pr} {a} {d}: dE {dE:.1f}')
+        crow.append(f'{pr} {min(vals):.1f}-{max(vals):.1f}' if vals else f'{pr} -')
+    for x in low:
+        err.append(f'parcel melts into the coat (dE2000 < 9): {x}')
+    info.append('parcel vs the coat around it (dE2000 of the mean colours, 3 px ring; carry S / SE / E, ring E / NE '
+                '/ N): ' + ', '.join(crow))
+    # visibility in every dir the parcel anims are played in (ring_doorbell: the doors face the camera -> NE / NW)
+    p = tfx.preset('gb_driver', seed=0)
+    vrow = []
+    for a, dirs in (('ring_doorbell', ('NE', 'N', 'E')), ('carry_parcel', ('S', 'SE', 'E'))):
+        for d in dirs:
+            n_ = min(int(parcel_masks(p, a, d, i)[1].sum()) for i in range(src.T['anims'][a]['frames']))
+            vrow.append(f'{a} {d} >= {n_} px')
+            if n_ < 120:
+                vis_bad.append(f'{a} {d}: only {n_} px of the parcel show')
+    for x in vis_bad[:8]:
+        err.append(f'parcel hidden where it is used: {x}')
+    info.append('parcel visible (driver, min over frames): ' + ', '.join(vrow))
+    # the game-drawn parcel ({noItems}) has a depth rule for every dir it is drawn in
+    pdp = F.get('parcelDepth', {})
+    for a in ('carry_parcel', 'ring_doorbell', 'hand_parcel'):
+        miss = [d for d in F['anims'][a]['dirs'] if d not in pdp.get(a, {})]
+        if miss:
+            err.append(f'parcelDepth.{a} misses {miss}')
 
     # ------------------------------------------------------------------ budgets + payload
     tot_mib = 0

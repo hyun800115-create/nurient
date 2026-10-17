@@ -7,7 +7,14 @@
   "groups": "Audio.play('sfx_gb_doorbell' | 'sfx_gb_thump' | 'sfx_gb_tape') picks a random variant (never the same twice in a row); the group names are also playable keys (variant 1).",
   "levels": "volume = 10^((target + HEADROOM_DB - measured) / 20), measured on the decoded sprite slice (max momentary LUFS); HEADROOM_DB = -2 like audio .. audio7.",
   "brand": "Original sounds: no voice, no real company's jingle or chime; the 금-방 logo is F5 G5 C6.",
-  "standIn": "plan §10.3: until audio8 lands, play standIn (sfx_ticket_chime / sfx_coin / sfx_car_honk_1 / sfx_box_drop) instead."
+  "standIn": "plan §10.3: until audio8 lands, play standIn instead - only keys v4.3 loads (polish L3): sfx_pickup / sfx_drop / sfx_coin (audio), sfx_car_honk_1 (audio3), sfx_mailbox_flag (audio7); standInPlay = [key, at s, rate] notes for a two-note stand-in (the 띵동 is sfx_pickup at rate 1.0 then 0.794); standInIfShipped = the plan's audio6 pick (sfx_ticket_chime / sfx_box_drop), only if audio6 is ever loaded.",
+  "standInFragments": {
+   "sfx_pickup": "audio",
+   "sfx_drop": "audio",
+   "sfx_coin": "audio",
+   "sfx_mailbox_flag": "audio7",
+   "sfx_car_honk_1": "audio3"
+  }
  },
  "audioSprite": {
   "file": "audio8/audio8_sprite.mp3",
@@ -70,7 +77,20 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.9,
-   "standIn": "sfx_ticket_chime",
+   "standIn": "sfx_pickup",
+   "standInPlay": [
+    [
+     "sfx_pickup",
+     0.0,
+     1.0
+    ],
+    [
+     "sfx_pickup",
+     0.33,
+     0.794
+    ]
+   ],
+   "standInIfShipped": "sfx_ticket_chime",
    "cues": {
     "ding": 0.0,
     "dong": 0.33
@@ -84,7 +104,20 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.9,
-   "standIn": "sfx_ticket_chime",
+   "standIn": "sfx_pickup",
+   "standInPlay": [
+    [
+     "sfx_pickup",
+     0.0,
+     1.122
+    ],
+    [
+     "sfx_pickup",
+     0.33,
+     0.891
+    ]
+   ],
+   "standInIfShipped": "sfx_ticket_chime",
    "cues": {
     "ding": 0.0,
     "dong": 0.33
@@ -112,7 +145,20 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.45,
-   "standIn": "sfx_ticket_chime",
+   "standIn": "sfx_pickup",
+   "standInPlay": [
+    [
+     "sfx_pickup",
+     0.0,
+     2.0
+    ],
+    [
+     "sfx_pickup",
+     0.11,
+     2.67
+    ]
+   ],
+   "standInIfShipped": "sfx_ticket_chime",
    "cues": {
     "note1": 0.0,
     "note2": 0.11
@@ -122,11 +168,12 @@
   "sfx_gb_thump": {
    "files": [],
    "inSprite": "audio8",
-   "volume": 1.0,
+   "volume": 0.804,
    "loop": false,
    "kind": "sfx",
    "duration": 0.35,
-   "standIn": "sfx_box_drop",
+   "standIn": "sfx_drop",
+   "standInIfShipped": "sfx_box_drop",
    "cues": {
     "land": 0.0
    },
@@ -135,11 +182,12 @@
   "sfx_gb_thump_2": {
    "files": [],
    "inSprite": "audio8",
-   "volume": 0.989,
+   "volume": 0.684,
    "loop": false,
    "kind": "sfx",
    "duration": 0.35,
-   "standIn": "sfx_box_drop",
+   "standIn": "sfx_drop",
+   "standInIfShipped": "sfx_box_drop",
    "cues": {
     "land": 0.0,
     "scrape": 0.07
@@ -168,7 +216,8 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.5,
-   "standIn": "sfx_box_drop",
+   "standIn": "sfx_drop",
+   "standInIfShipped": "sfx_box_drop",
    "cues": {
     "pull": 0.0,
     "snip": 0.37
@@ -182,7 +231,8 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.5,
-   "standIn": "sfx_box_drop",
+   "standIn": "sfx_drop",
+   "standInIfShipped": "sfx_box_drop",
    "cues": {
     "pull": 0.0,
     "snip": 0.3
@@ -196,7 +246,15 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.15,
-   "standIn": "sfx_ticket_chime",
+   "standIn": "sfx_pickup",
+   "standInPlay": [
+    [
+     "sfx_pickup",
+     0.0,
+     2.38
+    ]
+   ],
+   "standInIfShipped": "sfx_ticket_chime",
    "cues": {
     "beep": 0.0
    },
@@ -209,7 +267,8 @@
    "loop": false,
    "kind": "sfx",
    "duration": 0.4,
-   "standIn": "sfx_ticket_chime",
+   "standIn": "sfx_mailbox_flag",
+   "standInIfShipped": "sfx_ticket_chime",
    "cues": {
     "click": 0.0,
     "pop": 0.03,

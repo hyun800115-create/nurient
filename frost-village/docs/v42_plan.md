@@ -984,6 +984,15 @@ only when its art exists).
 | C2-D | AM audio (typewriter, switch clack, wheel squeal, mailbox flag, coin sack jingle, `amb_office`) into the audio sprite | fallbacks `sfx_stamp`, `amb_bank`, none |
 | C2-E | — | full suites, bots, 20-min soak, texbudget, `shots_v42.mjs`, `docs/build_reports/v42_build.md`, update `기획서_v4_2_촌장.md` with real screenshots, artifact build + `test_deploy`, publish order unchanged |
 
+**Status (CODE-2 done, 2026-10-17; report `docs/build_reports/v42_code2.md`):** C2-A–C2-E wired as above. C2-A is one
+shared page, `v42_core`, plus the on-demand `ui5_icons@panels`. C2-B: the town-loop tip past x 6144 is documented, not
+moved (layout change). C2-C adds two fixes found in the screenshots: seated staff depth and the staff's `@soc` head
+pages. C2-D also carries the designer's late-village default: raw surplus is routed like goods surplus (§4.5,
+`surplus.whRaw`, `pileForS` 10, `pileKeep` 8, `pilePrio` 33, `depot.rawRack`, `sell.rawPerMin`). C2-E: all suites green
+(`reqlog42` 4/5 with the known lazy-load flake), the 60-min census, `fresh25`, the pacing bot, the 20-min soak,
+`perf_cmp`, `shots_v42` (40 shots), artifact 413 files (2 batches + 125 stale nulls), `test_deploy` PASS. Gates still
+missed: raw piles 95 % full (≤ 50 %), income +33 % (+15–30 %), texture estimates at the plaza and station.
+
 ### 16.3 Interfaces frozen at the end of C1-P0
 `PickupPolicy`, `Tutorial.destination()` return shape, `StockLedger.register/rows/status`, `Rail` public surface +
 `RailPath.at`, `gs.tills` + `CashPad.takeAll`, `Office` events (`office:hire`, `office:letter`, `office:paper`,

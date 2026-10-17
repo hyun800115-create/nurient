@@ -29,7 +29,8 @@ const SCENES = [
   { name: '02b_halo_night_z06', secs: 3, setup: () => {
     // 21:00 at the station square, zoom 0.6, the train in and its riders about: the chief in a crowd at night
     const gs = window.__FV.scene, nb = gs.v4;
-    if (nb && nb.clock && nb.clock.on) nb.clock.set(21);
+    // (the 46-min save is before the day clock starts: start it for this shot, `after` puts it back to 10:00)
+    if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(21); }
     if (nb && nb.rail) nb.rail.set('atOurs', 2);
     const q = nb && nb.ours ? nb.ours : gs.market;
     window.__FV.teleport(q.x - 60, q.y + 200);
@@ -68,10 +69,10 @@ const SCENES = [
   // (CODE-2) the cutaway revealed with the officefolk staff at work, and the chief at his own desk (chief2 sit_write)
   { name: '10b_office_inside', secs: 8, warm: 6, until: () => { const O = window.__FV.scene.v42.office; return Object.values(O.staff).every((c) => !c.seat || (c.animName === c.want && /^(desk_|sit_)/.test(c.animName))); }, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = F.scene.v42.office, e = O.building.spots.entry || O.building.spots.door; F.teleport(e.x, e.y); return null; }, then: () => { const O = window.__FV.scene.v42.office; return { x: O.x, y: O.y - 20, z: 1.2 }; }, secs2: 2, sub: true },
   { name: '10c_chief_desk', secs: 1, warm: 4, until: () => { const gs = window.__FV.scene, p = gs.player, O = gs.v42.office; if (!p.seat && O.building.cw) { const d = O.building.spots.deskPad; gs.v42.pilot.pose({ act: 'office', target: { x: d.x, y: d.y, kind: 'desk' } }); } const k = p.sprite.anims.currentAnim ? p.sprite.anims.currentAnim.key : ''; return !!p.seat && /sit_|doze/.test(k) && Object.values(O.staff).every((c) => !c.seat || (c.animName === c.want && /^(desk_|sit_)/.test(c.animName))); }, setup: () => { const F = window.__FV, gs = F.scene; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = gs.v42.office, d = O.building.spots.deskPad; F.teleport(d.x, d.y); gs.v42.pilot.pose({ act: 'office', target: { x: d.x, y: d.y, kind: 'desk' } }); return null; }, then: () => { const s = window.__FV.scene.v42.office.building.spots.chiefSeat; return { x: s.x, y: s.y - 60, z: 1.6 }; }, secs2: 3, after: () => { const p = window.__FV.scene.player; if (p.standUp) p.standUp(); } },
-  { name: '11_panel_stock', secs: 0.5, setup: () => { window.__FV.v42.office({ panel: 'stock' }); return null; }, sub: true },
-  { name: '12_panel_news', secs: 0.5, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); F.v42.news({ print: 1 }); F.scene.v42.office.uiScene().officePanel.show('news'); return null; }, en: true },
-  { name: '13_panel_letters', secs: 0.5, setup: () => { const F = window.__FV; F.v42.news({ letter: 'grandma' }); F.v42.news({ letter: 'miner' }); F.scene.v42.office.uiScene().officePanel.show('letters'); return null; } },
-  { name: '14_panel_staff', secs: 0.5, setup: () => { window.__FV.scene.v42.office.uiScene().officePanel.show('staff'); return null; } },
+  { name: '11_panel_stock', secs: 0.5, until: () => { const P = window.__FV.scene.v42.office.uiScene().officePanel; return !!(P && P.c && P.panelArt); }, setup: () => { window.__FV.v42.office({ panel: 'stock' }); return null; }, sub: true },
+  { name: '12_panel_news', secs: 0.5, until: () => { const P = window.__FV.scene.v42.office.uiScene().officePanel; return !!(P && P.c && P.panelArt); }, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); F.v42.news({ print: 1 }); F.scene.v42.office.uiScene().officePanel.show('news'); return null; }, en: true },
+  { name: '13_panel_letters', secs: 0.5, until: () => { const P = window.__FV.scene.v42.office.uiScene().officePanel; return !!(P && P.c && P.panelArt); }, setup: () => { const F = window.__FV; F.v42.news({ letter: 'grandma' }); F.v42.news({ letter: 'miner' }); F.scene.v42.office.uiScene().officePanel.show('letters'); return null; } },
+  { name: '14_panel_staff', secs: 0.5, until: () => { const P = window.__FV.scene.v42.office.uiScene().officePanel; return !!(P && P.c && P.panelArt); }, setup: () => { window.__FV.scene.v42.office.uiScene().officePanel.show('staff'); return null; } },
   { name: '15_panel_bank', secs: 0.5, warm: 4, setup: () => { const F = window.__FV; F.v42.office({ build: 'all' }); return null; }, then: () => { const O = window.__FV.scene.v42.office; O.deposit(1240, null); O.deposit(860, null); O.uiScene().officePanel.show('bank'); return null; }, secs2: 0.5, after: () => { window.__FV.scene.v42.office.uiScene().officePanel.close(); } },
   { name: '16_bank_vault', secs: 1, warm: 5, setup: () => { const F = window.__FV; F.v42.office({ build: 'all' }); return null; }, then: () => { const F = window.__FV, O = F.scene.v42.office, B = O.bank; if (!B || !B.ready) return { x: -340, y: 570, z: 1 }; F.teleport(B.door.x + 30, B.door.y + 60); B.deposit(6000); return { x: B.x, y: B.y - 20, z: 1.15 }; }, secs2: 1.2 },
   { name: '17_depot_revealed', secs: 1, warm: 5, setup: () => { const F = window.__FV; F.v42.depot({ build: true }); F.v42.depot({ stock: { item_plank: 60, item_ingot: 40, item_fish_cooked: 70, item_bread: 50, item_axe: 12, item_log: 40 } }); return null; }, then: () => { const D = window.__FV.scene.v42.depot.building; window.__FV.teleport(D.door.x + 120, D.door.y - 40); return { x: D.x - 40, y: D.y - 10, z: 0.85 }; }, secs2: 2 },
@@ -117,6 +118,7 @@ for (const size of SIZES) for (const lang of LANGS) {
         try { if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); } catch (e) { /* */ }
         try { if (ui.panelOpen && ui.closeSettings) ui.closeSettings(true); } catch (e) { /* */ }
       });
+      if (process.env.SHOTS_DIAG) page.__diag = async (tag) => console.log('DIAG', sc.name, tag, JSON.stringify(await page.evaluate(() => { const out = []; const tm = window.__FV.game.textures; const walk = (list, sn) => { for (const o of list) { if (o.list && (o.type === 'Container' || o.type === 'Layer')) walk(o.list, sn); const f = o.frame; if (f && f.source && (!f.source.glTexture || !tm.exists(f.texture.key))) out.push([sn, o.type, f.texture.key, f.name, o.visible]); } }; for (const s of window.__FV.game.scene.scenes) if (s.children) walk(s.children.list, s.sys.settings.key); return out.slice(0, 20); })));
       let cam = await page.evaluate(sc.setup);
       await run(sc.secs || 0);
       await warm(sc.warm || 0);
@@ -132,6 +134,7 @@ for (const size of SIZES) for (const lang of LANGS) {
       if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
       // (an offer banner that popped up during the scene is not what the shot is about)
       if (!sc.keepBanner) await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); if (ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); } });
+      if (page.__diag) await page.__diag('before-draw');
       await page.evaluate(() => { for (let i = 0; i < 20; i++) window.__draw(); });
       const file = `${sc.name}_${W}x${H}_${lang}.jpg`;
       await page.screenshot({ path: path.join(OUT, file), type: 'jpeg', quality: 82, timeout: 120000 });

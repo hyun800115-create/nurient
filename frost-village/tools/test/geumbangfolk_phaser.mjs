@@ -127,15 +127,43 @@ async function parity(casesPath) {
   }
   const unpatched = personV4.call(TF, mulberry32(7), 'gb_driver');
   const wired = TF.gb === gbRT && (!TF.of || TF.of === gbRT) && installGeumbangfolkRuntime(TF) === gbRT;
+  // (c) residency (critique H4): every sheet installed EXCEPT gbf_hub_0 -> the patched TF.pick must equal pickAnim with
+  // an honest has() (the page this person needs is loaded), a picked crew anim draws nothing from the missing page, and
+  // want('hub') is told; then with every sheet installed TF.pick must give the requested anim whenever pickAnim does.
+  const sheets = M.atlases.map((a) => a.key);
+  const hubGroups = new Set(Object.entries(TF.ofAtlas || {}).filter(([, a]) => a === 'gbf_hub_0').map(([g]) => g));
+  let rCases = 0, rBad = 0, rFell = 0, rWant = 0, rDraw = 0, rFull = 0;
+  const honest = (miss) => (a, pp) => { const g = gb.pageNeeded(pp, a); return !g || !miss.has(g); };
+  for (const [ready, miss] of [[sheets.filter((k) => k !== 'gbf_hub_0'), hubGroups], [sheets, new Set()]]) {
+    TF.assets = { tfReady: new Set(ready), charCache: {} };
+    for (const c of data.cases) {
+      const p = data.persons[c.p], w = [];
+      const r = TF.pick(p, c.anim, (g) => w.push(g));
+      const h = gb.pickAnim(p, c.anim, { has: honest(miss) });
+      rCases++;
+      if (r.anim !== h.anim || (r.face || null) !== (h.face || null)) { rBad++; if (rBad < 4) console.log('RESIDENCY', c.anim, r, h); }
+      if (miss.size) {
+        if (r.anim !== c.anim) rFell++;
+        if (w.length) rWant++;
+        if (CREW.includes(r.anim)) {
+          const cnt = TF.layersInto(JSON.parse(JSON.stringify(p)), r.anim, TF.T.anims[r.anim].dirs[0], 0, buf);
+          if (buf.slice(0, cnt).some((l) => l.atlas === 'gbf_hub_0')) { rDraw++; rBad++; }
+        }
+      } else if (r.anim !== c.pick) { rFull++; rBad++; }
+    }
+  }
+  TF.assets = undefined;
   const res = { fragments: data.fragments, cases: n, crewAnimCases: crewCases, noItemsCases: noItemCases, identical: n - bad,
     pickCanPlayMismatches: badPick, pointMismatches: badPts, pageMismatches: badPage,
     gameUnpatched: { oldAnimLists: game, listMismatches: gameBad, atlasDiffers: gameAtlas },
     gamePatched: { cases: pCases, crewAnimCases: pCrew, identical: pCases - pBad, mismatches: pBad,
-      personParity: `${gen - genBad}/${gen}`, runtimeWired: wired, unpatchedDriverWearsJacket: unpatched.parts.includes('top_gb_jacket') } };
+      personParity: `${gen - genBad}/${gen}`, runtimeWired: wired, unpatchedDriverWearsJacket: unpatched.parts.includes('top_gb_jacket') },
+    residency: { cases: rCases, mismatches: rBad, hubMissingFellBack: rFell, wantCalls: rWant, crewDrawsFromMissingPage: rDraw,
+      allLoadedNotRequested: rFull } };
   console.log(JSON.stringify(res));
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, `gbf_parity_${frags.length > 1 ? 'all' : (frags.length ? 'v43' : 'bare')}.json`), JSON.stringify(res, null, 1));
-  process.exit(bad || badPick || badPts || badPage || gameBad || pBad || genBad || !wired ? 1 : 0);
+  fs.writeFileSync(path.join(OUT, `gbf_parity_${frags.length > 2 ? 'all' : (frags.length > 1 ? 'v43' : 'bare')}.json`), JSON.stringify(res, null, 1));
+  process.exit(bad || badPick || badPts || badPage || gameBad || pBad || genBad || rBad || !wired ? 1 : 0);
 }
 
 async function jsgen() {
@@ -195,7 +223,7 @@ async function jsgen() {
   process.exit(fail ? 1 : 0);
 }
 
-const HTML = (frags, zoom, mode, night) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+const HTML = (frags, zoom, mode, night, center) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body{margin:0;background:#dbe6f2;height:100%;overflow:hidden}#game{width:100%;height:100%}</style>
 <script src="lib/phaser.min.js"></script></head><body><div id="game"></div><script type="module">
 import { townfolkPreload, townfolkInstall, mulberry32 } from './tools/townfolk_compose.js';
@@ -207,7 +235,7 @@ for (const P of [WebGLRenderingContext.prototype, window.WebGL2RenderingContext 
   const ob = P.bindTexture; P.bindTexture = function (...a) { GL.binds++; return ob.apply(this, a); };
 }
 const rd = async (f) => (await fetch('assets/' + f + '/manifest.json')).json();
-const MODE = ${JSON.stringify(mode)}, ZOOM = ${zoom}, NIGHT = ${!!night};
+const MODE = ${JSON.stringify(mode)}, ZOOM = ${zoom}, NIGHT = ${!!night}, CENTER = ${JSON.stringify(center || null)};
 const man = mergeGeumbangfolk(await rd('townfolk'), ...(await Promise.all(${JSON.stringify(frags)}.map(rd))));
 const lgx = await rd('logistics'), gbm = await rd('geumbang'), bld = await rd('buildings');
 const T = man.townfolk, GBP = T.gbPages, OFP = T.ofPages || { groups: {} };
@@ -224,16 +252,21 @@ class S extends Phaser.Scene {
     for (const a of lgx.atlases) if (LGX_ATLASES.includes(a.key)) this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
     for (const a of gbm.atlases) this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
     for (const a of bld.atlases) if (a.key === 'bld_buildings_2') this.load.atlas(a.key, 'assets/' + a.png, 'assets/' + a.json);
+    // (critique L5) real ground: snow everywhere, the cobble delivery road, dirt and plaza under the crew row
+    for (const g of ['ground/ground_snow', 'ground/ground_plaza', 'roads/road_cobble_wide', 'roads/road_dirt']) this.load.image(g.split('/')[1], 'assets/' + g + '.png');
   }
   create() {
     townfolkInstall(this, man);
     const R = window.__R, cam = this.cameras.main;
     const gb = this.gb = new Geumbangfolk(T);
     cam.setBackgroundColor('#eef3f9');
+    const ground = (key, x, y, w, h) => this.add.tileSprite(x, y, w, h, key).setOrigin(0, 0).setDepth(-1e5 - 1);
+    ground('ground_snow', -1600, -900, 3200, 3600);
+    // under the crew row: snow | cobble | dirt | plaza panels (the uniform must read on every ground)
+    ground('road_cobble_wide', -180, 880, 180, 330); ground('road_dirt', 0, 880, 180, 330); ground('ground_plaza', 180, 880, 200, 330);
     const g = this.add.graphics().setDepth(-1e5);
-    g.fillStyle(0xf4f7fb, 1); g.fillRect(-1600, -900, 3200, 3600);
     // a snowy road strip (the delivery route) between the centre and the houses
-    g.fillStyle(0xd6cbbd, 1); g.fillPoints([{ x: -1300, y: 1010 }, { x: 900, y: -90 }, { x: 1010, y: -35 }, { x: -1190, y: 1065 }], true);
+    { const road = this.add.tileSprite(-160, 470, 2600, 64, 'road_cobble_wide').setDepth(-1e5 - 0.5).setRotation(-Math.atan2(1, 2)); road.setOrigin(0.5, 0.5); }
     // ---- the logistics centre, revealed ('cut' state), layers at depth Y0 + depthOffset, the 금방 nameplate replacing
     // the centre's (it fades with the shell: hidden in 'cut'), patches on their first frame
     const sp = lgx.sprites, C = sp.logistics_center, X0 = 0, Y0 = 0;
@@ -292,12 +325,13 @@ class S extends Phaser.Scene {
         const s = add(p, a, d, X0 + q[0], Y0 + q[1], { noItems: true });
         parcelOf(s); return;
       }
-      const s = add(p, a, d, X0 + q[0], Y0 + q[1] - lift(n, p), { depthBase: mid(q[1]) });
+      const off = (places['staff' + n] && places['staff' + n].offsetPx) || [0, 0];       // hub.places: where to stand
+      const s = add(p, a, d, X0 + q[0] + off[0], Y0 + q[1] + off[1] - lift(n, p), { depthBase: mid(q[1] + off[1]) });
       if (a === 'tape_box' || a === 'scan') {
         // the game's parcel under the hub anim (bases.boxPoint.tape_box / .scan = [cx, cy, bx, by]): the 0.20 m box on
-        // the packing table (gb_parcel_m) / the parcel on the counter (gb_parcel_s, 0.14 m); depth = worker + 0.005
+        // the packing table (gb_parcel_m) / the parcel on the counter (gb_parcel_m, 0.20 m); depth = worker + 0.005
         // (over the body, under the head / arms / tape gun / scanner), still under _interior_front (band mid)
-        const it = gbm.sprites[a === 'scan' ? 'gb_parcel_s' : 'gb_parcel_m'], sc = (a === 'scan' ? 0.14 : 0.20) * 55.43 / it.topPx;
+        const it = gbm.sprites.gb_parcel_m, sc = 0.20 * 55.43 / it.topPx;
         s.box = this.add.image(0, 0, it.atlas, it.frame).setOrigin(it.anchor[0], it.anchor[1]).setScale(sc);
         s.boxed = true;
       }
@@ -317,6 +351,11 @@ class S extends Phaser.Scene {
     hp.give = true;
     add(gb.randomPerson(rng), 'talk', 'W', HX + 150, HY + 120);
     const ds = gbm.sprites.gb_parcel_doorstep; put(ds, door[0] - 24, door[1] - 6, door[1] - 6).setScale(0.6);
+    // (critique H3) a second house: ring_doorbell NE {noItems} + the game's gb_parcel_m at boxPoint / parcelDepth
+    const H2X = HX + 330, H2Y = HY + 150; put(hs, H2X, H2Y, H2Y);
+    const door2 = [H2X + hs.doorPoint[0], H2Y + hs.doorPoint[1]];
+    const rb2 = add(gb.preset('gb_driver', rng), 'ring_doorbell', 'NE', door2[0], door2[1], { sync: true, noItems: true, label: 'gb_driver noItems\\nring_doorbell' });
+    rb2.bell = true; parcelOf(rb2);
     // ---- the 7 presets in a labelled row (signature anims) + officefolk's depot_worker + random v4 townsfolk
     const row = [['gb_driver', 'carry_parcel', 'S'], ['gb_picker', 'sort_parcel', 'SE'], ['gb_packer', 'tape_box', 'SE'], ['gb_sorter', 'scan', 'SE'],
       ['gb_dispatcher', 'hand_parcel', 'SE'], ['gb_rider', 'wave', 'S'], ['gb_night', 'idle', 'SE']];
@@ -357,7 +396,8 @@ class S extends Phaser.Scene {
     let gbB = 0; for (const a of man.atlases) if (a.key.startsWith('gbf_') && tex.exists(a.key)) { const src = tex.get(a.key).source[0]; gbB += src.width * src.height * 4; }
     R.gbfMiB = +(gbB / 1048576).toFixed(2);
     const cy = MODE === 'road' ? 820 : NIGHT ? 600 : ZOOM < 0.9 ? 480 : ZOOM < 1.1 ? 330 : 10;
-    cam.setZoom(ZOOM * k); cam.centerOn(ZOOM >= 1.1 && !NIGHT && MODE !== 'road' ? -60 : 0, cy);
+    cam.setZoom(ZOOM * k);
+    if (CENTER) cam.centerOn(CENTER[0], CENTER[1]); else cam.centerOn(ZOOM >= 1.1 && !NIGHT && MODE !== 'road' ? -60 : 0, cy);
     R.scene = this; R.ready = true;
   }
   update(t, dt) {
@@ -385,7 +425,7 @@ class S extends Phaser.Scene {
         s.parcel.im.setVisible(!!q);
         if (q) {
           const d = s.dir.replace('W', 'E');
-          s.parcel.im.setPosition(s.x + q[2], s.y + q[3]).setDepth(s.depthBase + (d === 'NE' || d === 'N' || d === 'NW' ? -0.0001 : 0.0045));
+          s.parcel.im.setPosition(s.x + q[2], s.y + q[3]).setDepth(s.depthBase + (gb.parcelDepth(s.anim, s.dir) ?? 0.0045));
           R.parcels++;
         }
       }
@@ -404,7 +444,10 @@ class S extends Phaser.Scene {
       }
       if (s.bell && s.anim === 'ring_doorbell') {
         const imp = gb.T.anims.ring_doorbell.impactFrame ?? 2;
-        if (!s.fx) s.fx = this.add.graphics().setDepth(1e5 - 1);
+        if (!s.fx) s.fx = this.add.graphics();
+        // facing away (NE / NW / N) the pressing mitten is behind the head: the flash goes behind the doll (manifest
+        // items.ring_doorbell): the head hides most of it (the sound carries the beat) instead of it landing on the face
+        s.fx.setDepth(['NE', 'NW', 'N'].includes(s.dir) ? s.depthBase - 0.0001 : 1e5 - 1);
         s.fx.clear();
         const q = gb.bellPoint(s.person, s.dir, s.frame);
         if (q && (s.frame === imp || s.frame === imp + 1)) { s.fx.fillStyle(0xfff1a8, 0.9); s.fx.fillCircle(s.x + q[0], s.y + q[1], 4); s.fx.lineStyle(1, 0xf2b33d, 1); s.fx.strokeCircle(s.x + q[0], s.y + q[1], 7); R.flashes++; }
@@ -413,7 +456,7 @@ class S extends Phaser.Scene {
         if (!s.gp) { const it = gbm.sprites.gb_parcel_s; s.gp = this.add.image(0, 0, it.atlas, it.frame).setOrigin(0.5, 0.5).setScale(0.55); }
         const q = gb.handPointOf(s.person, 'hand_parcel', s.dir, s.frame);
         s.gp.setVisible(!!q && s.frame <= 2);
-        if (q) s.gp.setPosition(s.x + q[0], s.y + q[1]).setDepth(s.depthBase + 0.0045);
+        if (q) s.gp.setPosition(s.x + q[0], s.y + q[1]).setDepth(s.depthBase + (gb.parcelDepth('hand_parcel', s.dir) ?? 0.0045));
       }
     }
   }
@@ -429,23 +472,32 @@ async function phaser() {
   const browser = await launch();
   const errors = [], notFound = [];
   const v43 = [...V43, 'geumbangfolk'];
+  // [name, fragments, zoom, pages, night, {vw, vh, dpr, center}] - (critique L5) + zoom 1.6 at the doorsteps, a
+  // 360 x 640 @ DPR 2 phone (zoom 1.0 and 0.6), every run on real ground (snow / cobble / dirt / plaza)
   const runs = [['z06', v43, 0.6, 'hub', false], ['z10', v43, 1.0, 'hub', false], ['z12', v43, 1.2, 'hub', false],
-    ['night', v43, 1.0, 'hub', true], ['road', v43, 1.0, 'road', false], ['all', [...ALL, 'geumbangfolk'], 1.0, 'hub', false]];
+    ['z16', v43, 1.6, 'hub', false, { center: [-105, 760] }],
+    ['night', v43, 1.0, 'hub', true], ['road', v43, 1.0, 'road', false], ['all', [...ALL, 'geumbangfolk'], 1.0, 'hub', false],
+    ['p360', v43, 1.0, 'hub', false, { vw: 360, vh: 640, dpr: 2, center: [-40, 780] }],
+    ['p360_z06', v43, 0.6, 'hub', false, { vw: 360, vh: 640, dpr: 2, center: [0, 600] }]];
   const only = process.env.GBF_RUNS ? process.env.GBF_RUNS.split(',') : null;
   const results = [];
   const PREV = path.join(ROOT, 'docs', 'previews');
   fs.mkdirSync(PREV, { recursive: true });
-  for (const [name, frags, zoom, mode, night] of runs) {
+  for (const [name, frags, zoom, mode, night, vp = {}] of runs) {
     if (only && !only.includes(name)) continue;
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const ctx = await browser.newContext({ viewport: { width: vp.vw || 390, height: vp.vh || 844 }, deviceScaleFactor: vp.dpr || 3, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     const err0 = errors.length;
     page.on('pageerror', (e) => errors.push(name + ': ' + String(e)));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(name + ': ' + m.text()); });
     page.on('response', (r) => { if (r.status() >= 400) notFound.push(r.url()); });
-    await page.route(`**/fv/__gbf_${name}.html`, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML(frags, zoom, mode, night) }));
+    if (process.env.GBF_DEBUG) fs.writeFileSync('/tmp/fv_cache/geumbangfolk/review/dbg_page.html', HTML(frags, zoom, mode, night, vp.center));
+    await page.route(`**/fv/__gbf_${name}.html`, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML(frags, zoom, mode, night, vp.center) }));
     await page.goto(srv.url + `__gbf_${name}.html`, { waitUntil: 'load' });
+    let dbgT = null;
+    if (process.env.GBF_DEBUG) dbgT = setInterval(async () => { try { console.log('STATE', JSON.stringify(await page.evaluate(() => ({ r: !!window.__R, ready: window.__R && window.__R.ready, st: document.readyState, scenes: window.__R && window.__R.game && window.__R.game.scene ? window.__R.game.scene.scenes.map((x) => x.sys.settings.status) : null })))); } catch (e) { console.log('STATE err', String(e).slice(0, 100)); } }, 15000);
     await page.waitForFunction(() => window.__R && (window.__R.ready || window.__R.failed), null, { timeout: 300000 });
+    if (dbgT) clearInterval(dbgT);
     await sleep(1800);
     const res = await page.evaluate(async () => {
       const R = window.__R, g = R.game, C = window.__GLC, sc = R.scene;
@@ -457,7 +509,7 @@ async function phaser() {
         bindsPerFrame: +((C.binds - b0) / n).toFixed(1), msPerFrame: +((performance.now() - t0) / n).toFixed(1),
         layersChecked: R.checked, missing: R.missing.length, missingSample: R.missing.slice(0, 5), fallbacks: R.fallbacks,
         emptyLayers: [...R.emptyLayers].slice(0, 8), gbfTextureMiB: R.gbfMiB, k: R.k, zoom: sc.cameras.main.zoom,
-        cssPerWorldPx: +(sc.cameras.main.zoom * 390 / (720 * R.k)).toFixed(3), parcelDraws: R.parcels, fxFlashes: R.flashes, staged: R.staged };
+        cssPerWorldPx: +(sc.cameras.main.zoom * innerWidth / (720 * R.k)).toFixed(3), parcelDraws: R.parcels, fxFlashes: R.flashes, staged: R.staged };
     });
     await page.evaluate(() => window.__R.game.loop.sleep());
     const file = path.join(PREV, `gbf_phone_${name}.png`);

@@ -300,6 +300,28 @@ document.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
 
 
 # ----------------------------------------------------------------------------- main
+def loaded_audio_keys():
+    """Audio keys of the fragments src/core/Assets.js loads (FRAGMENTS + LATE_FRAGMENTS), USED_ONLY applied."""
+    import re
+    src = open(os.path.join(ROOT, "src", "core", "Assets.js"), encoding="utf-8").read()
+
+    def arr(name):
+        m = re.search(r"export const " + name + r"\s*=\s*\[([^\]]*)\]", src)
+        return re.findall(r"'([^']+)'", m.group(1)) if m else []
+    m = re.search(r"export const USED_ONLY\s*=\s*(\{.*?\});", src)
+    used_only = json.loads(m.group(1)) if m else {}
+    out = set()
+    for frag in arr("FRAGMENTS") + arr("LATE_FRAGMENTS"):
+        p = os.path.join(ASSETS, frag, "manifest.json")
+        if not os.path.exists(p):
+            continue
+        for k in (json.load(open(p)).get("audio") or {}):
+            if frag in used_only and k not in used_only[frag]:
+                continue
+            out.add(k)
+    return out
+
+
 def main(argv=None):
     argv = list(argv or [])
     errors, warns, rep = [], [], []
@@ -336,6 +358,14 @@ def main(argv=None):
             fail(f"name clash with {frag}: {sorted(clash)}")
     if sp.get("file") != "audio8/audio8_sprite.mp3":
         fail(f"audioSprite.file {sp.get('file')}")
+    # (polish L3) every stand-in must be a key the game really loads (src/core/Assets.js FRAGMENTS + LATE_FRAGMENTS,
+    # minus USED_ONLY), read-only
+    loaded = loaded_audio_keys()
+    for k, a in audio.items():
+        ks = [a.get("standIn")] + [p[0] for p in a.get("standInPlay", [])]
+        for s_ in ks:
+            if not s_ or s_ not in loaded:
+                fail(f"{k}: stand-in {s_} is not loaded by v4.3 (Assets.js FRAGMENTS / LATE_FRAGMENTS / USED_ONLY)")
     keys = sp.get("keys", {})
     spr_path = os.path.join(ASSETS, sp.get("file", "x"))
     pr = F.probe(spr_path) if os.path.exists(spr_path) else {}

@@ -44,11 +44,14 @@ PALETTES5 = {
 # =========================================================================== presets (townfolk preset format)
 _DRIVER_HAIR = {'hair_short': 3, 'hair_sidepart': 2, 'hair_bob': 2, 'hair_curly': 2, 'hair_buzz': 1, 'hair_lowbun': 1,
                 'hair_ponytail': 1}
+# (critique L9) under hat_gb_cap a ponytail / low bun rises behind the crown (SE / E) and covers the back mark (N): the
+# cap wearers (driver, night driver; the dockhand never had them) take the short styles only - the beanie hides them
+_CAP_HAIR = {k: v for k, v in _DRIVER_HAIR.items() if k not in ('hair_ponytail', 'hair_lowbun')}
 PRESETS5 = {
     'gb_driver': {'label': {'ko': '금방 기사님 (쌩쌩이 · 부릉이 · 씽씽이)', 'en': 'Geumbang driver'},
                   'bases': {'adult_slim': 3, 'adult_round': 2},
                   'tops': ['top_gb_jacket'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'],
-                  'hats': ['hat_gb_cap'], 'hatChance': 1.0, 'hair': dict(_DRIVER_HAIR),
+                  'hats': ['hat_gb_cap'], 'hatChance': 1.0, 'hair': dict(_CAP_HAIR),
                   'neck': None, 'bag': None, 'headAcc': None, 'glasses': ['acc_glasses'], 'glassesChance': 0.12,
                   'facialHair': ['fh_moustache'], 'facialHairChance': 0.1,
                   'colors': {'top': 'gb_gold', 'hat': 'gb_charcoal', 'hat2': 'gb_gold', 'bottom': 'gb_charcoal',
@@ -106,7 +109,7 @@ PRESETS5 = {
     'gb_night': {'label': {'ko': '금방 밤 기사님 (반짝이 · 살금이)', 'en': 'Geumbang night driver'},
                  'bases': {'adult_slim': 3, 'adult_round': 2},
                  'tops': ['top_gb_jacket'], 'bottoms': ['bot_pants'], 'shoes': ['shoe_boots'],
-                 'hats': ['hat_gb_cap'], 'hatChance': 1.0, 'hair': dict(_DRIVER_HAIR),
+                 'hats': ['hat_gb_cap'], 'hatChance': 1.0, 'hair': dict(_CAP_HAIR),
                  'neck': None, 'bag': None, 'headAcc': None, 'glasses': ['acc_glasses'], 'glassesChance': 0.12,
                  'facialHair': ['fh_moustache'], 'facialHairChance': 0.1,
                  'colors': {'top': 'gb_gold_dark', 'hat': 'gb_charcoal', 'hat2': 'gb_gold', 'bottom': 'gb_charcoal',

@@ -2,7 +2,7 @@
 gbf_preview.py - human previews of the geumbangfolk fragment (assets/townfolk + assets/officefolk + assets/geumbangfolk,
 the v4.3 merge) via the reference compositor tools/geumbangfolk_compose.py.  Plain python3 (numpy + Pillow).
 
-    python3 tools/blender/gbf_preview.py [lineup anims gifs dirs points carry v4 before phone]   # -> docs/previews/
+    python3 tools/blender/gbf_preview.py [lineup anims gifs dirs points carry v4 before phone doorstep polish]
 
   gbf_lineup.png          the 7 crew presets (labels ko / en): idle S, walk SE, the signature anim, idle N, + idle SE at
                           phone zoom 0.6 (0.975 device px per world px) and 1.0 (1.625)
@@ -20,6 +20,11 @@ the v4.3 merge) via the reference compositor tools/geumbangfolk_compose.py.  Pla
                           acc_mailbag, det_hivis) and officefolk's depot_worker; AFTER: the 금방 crew - at 1x and at
                           0.3 scale (the far zoom), with the brand metrics
   gbf_phone_details.png   crops of the Phaser phone captures (tools/test/geumbangfolk_phaser.mjs) at device pixels
+  gbf_doorstep.gif        the delivery beat at house_a's door: carry_parcel NE -> ring_doorbell NE (bell flash) ->
+                          hand_parcel NE (the game's parcel at handPoint, parcelDepth) -> wave; 2x and phone zoom 0.6
+  gbf_polish.png          BEFORE (GBF_BEFORE_ASSETS = an assets dir with the critique's geumbangfolk) / AFTER crops of
+                          the polish fixes (hip hole, parcel on the coat, doorstep parcel, cap grain, the carry bob)
+  gbf_hub_places.png      the clerk / packers inside the logistics centre by hub.places, BEFORE / AFTER
 """
 import json
 import os
@@ -136,12 +141,12 @@ def game_items(tf, G, p, anim, d, i, frame):
     under the head / arms / held item), the real parcel between the palms in hand_parcel frames 0-2."""
     if anim in ('scan', 'tape_box'):
         q = tf.parcel_point(p, anim, d, i)
-        key = 'gb_parcel_s' if anim == 'scan' else 'gb_parcel_m'
+        key = 'gb_parcel_m'                     # scan: the parcel on the counter is gb_parcel_m at 0.20 m too (L8)
         g = G.get(key, 1.0)
         if not (q and g):
             return frame
         sp = g[1]
-        im = G.get(key, parcel_scale(sp, 0.14 if anim == 'scan' else 0.20))[0]
+        im = G.get(key, parcel_scale(sp, 0.20))[0]
         ax, ay = sp['anchor'][0] * im.width, sp['anchor'][1] * im.height
         out = compose_z(tf, p, anim, d, i, -1e9, 50)
         out.alpha_composite(im, (int(round(AX + q[2] - ax)), int(round(AY + q[3] - ay))))
@@ -150,12 +155,36 @@ def game_items(tf, G, p, anim, d, i, frame):
     if anim == 'hand_parcel' and i <= 2:
         q = tf.hand_point_of(p, anim, d, i)
         g = G.get('gb_parcel_s', 0.55)
-        out = frame.copy()
-        if q and g:
-            im = g[0]
-            out.alpha_composite(im, (int(round(AX + q[0] - im.width / 2)), int(round(AY + q[1] - im.height / 2))))
-        return out
+        if not (q and g):
+            return frame
+        im = g[0]
+        dep = tf.parcel_depth(anim, d)
+        par = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
+        par.alpha_composite(im, (int(round(AX + q[0] - im.width / 2)), int(round(AY + q[1] - im.height / 2))))
+        return slip(tf, p, anim, d, i, par, dep)
     return frame
+
+
+def slip(tf, p, anim, d, i, prop, depth, no_items=False):
+    """the frame with a game-drawn prop slipped into the doll's z stack the way parcelDepth says (+0.0045 = z 45:
+    over the coat, under the head / the arms in front; -0.0001 = behind the doll)"""
+    orig = tf.layers
+    try:
+        if depth is None or depth < 0:
+            out = prop.copy()
+            out.alpha_composite(tf.compose(p, anim, d, i, no_items=no_items))
+            return out
+        z = depth * 1e4
+        tf.layers = lambda *a_, **k_: [L for L in orig(*a_, **k_) if L[0] < z]
+        out = tf.compose(p, anim, d, i, no_items=no_items)
+        tf.layers = lambda *a_, **k_: [L for L in orig(*a_, **k_) if L[0] >= z]
+        hi = tf.compose(p, anim, d, i, no_items=no_items)
+    finally:
+        if 'layers' in tf.__dict__:
+            del tf.layers
+    out.alpha_composite(prop)
+    out.alpha_composite(hi)
+    return out
 
 
 def put(canvas, fr, x, y, scale=1.0):
@@ -395,22 +424,9 @@ def carry_noitems(tf, C, G, P):
             par = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
             if q:
                 par.alpha_composite(im, (int(round(AX + q[2] - ax)), int(round(AY + q[3] - ay))))
-            # depth rule: + 0.0045 (z 45: over the body, under the arms / mittens) in S / SE / E, - 0.0001 (under
-            # everything) in NE / N
-            if rd in ('NE', 'N'):
-                lay = par
-                lay.alpha_composite(C.img(p, 'carry_parcel', rd, i, 'drv', no_items=True))
-            else:
-                orig = tf.layers
-                tf.layers = lambda *a_, **k_: [L for L in orig(*a_, **k_) if L[0] < 45]
-                try:
-                    lay = tf.compose(p, 'carry_parcel', rd, i, no_items=True)
-                    tf.layers = lambda *a_, **k_: [L for L in orig(*a_, **k_) if L[0] >= 45]
-                    hi = tf.compose(p, 'carry_parcel', rd, i, no_items=True)
-                finally:
-                    del tf.layers
-                lay.alpha_composite(par)
-                lay.alpha_composite(hi)
+            # depth rule (manifest parcelDepth): + 0.0045 (z 45: over the body, under the arms / mittens) in S / SE /
+            # E, - 0.0001 (under everything) in NE / N
+            lay = slip(tf, p, 'carry_parcel', rd, i, par, tf.parcel_depth('carry_parcel', rd), no_items=True)
             if rd != d:
                 lay = lay.transpose(Image.FLIP_LEFT_RIGHT)
             shadow(can, x, y, 24, 7)
@@ -418,6 +434,214 @@ def carry_noitems(tf, C, G, P):
             text(dr, (x, y + 8), d, 11, SUB, anchor='ma')
         frames.append(can)
     save_gif(frames, os.path.join(PREV, 'gbf_carry_noitems.gif'), tf.T['anims']['carry_parcel']['fps'])
+
+
+def _bld_sprite(name):
+    """a buildings-manifest sprite (assets/buildings, read only) as a full-frame RGBA + its manifest entry"""
+    mp = os.path.join(ASSETS, 'buildings', 'manifest.json')
+    m = json.load(open(mp, encoding='utf-8'))
+    sp = m['sprites'][name]
+    at = next(a for a in m['atlases'] if a['key'] == sp['atlas'])
+    js = json.load(open(os.path.join(ASSETS, at['json'])))
+    fr = js['frames']
+    f = fr[sp['frame']] if isinstance(fr, dict) else next(x for x in fr if x['filename'] == sp['frame'])
+    sheet = Image.open(os.path.join(ASSETS, at['png'])).convert('RGBA')
+    r, ss, src = f['frame'], f['spriteSourceSize'], f['sourceSize']
+    im = Image.new('RGBA', (src['w'], src['h']), (0, 0, 0, 0))
+    im.paste(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), (ss['x'], ss['y']))
+    return im, sp
+
+
+def doorstep(tf, C, G, P):
+    """the delivery beat at a real door (house_a: front faces screen down-left, so the bell is rung facing NE):
+    carry_parcel NE up to the door -> ring_doorbell NE (bell flash at bellPoint on 띵 / 동) -> hand_parcel NE (the
+    game's parcel at handPoint, parcelDepth) -> wave.  Two scales: 2x (look) and 0.975x (phone zoom 0.6)."""
+    try:
+        house, hs = _bld_sprite('house_a')
+    except Exception as e:                                    # noqa: BLE001
+        print('  (doorstep skipped:', e, ')')
+        return
+    p = P['gb_driver']
+    door = hs['doorPoint']
+    seq = [('carry_parcel', 'NE', i % 8, 1.0 - i / 15.0) for i in range(16)]
+    seq += [('ring_doorbell', 'NE', i, 0.0) for i in range(6)] + [('ring_doorbell', 'NE', 5, 0.0)] * 5
+    seq += [('hand_parcel', 'NE', i, 0.0) for i in range(6)] + [('hand_parcel', 'NE', 5, 0.0)] * 4
+    seq += [('idle', 'NE', i % tf.T['anims']['idle']['frames'], 0.0) for i in range(8)]
+    hw, hh = house.size
+    hax, hay = hs['anchor'][0] * hw, hs['anchor'][1] * hh
+    frames = []
+    for anim, d, i, t in seq:
+        scene = Image.new('RGBA', (300, 260), SNOW)
+        ox, oy = 150 - door[0] + 40, 200 - door[1] - 10
+        scene.alpha_composite(house, (int(round(ox - hax)), int(round(oy - hay))))
+        # the courier stands SW of the door (facing NE); walking in from 60 px down-left
+        x = ox + door[0] - 26 - 60 * t
+        y = oy + door[1] + 14 + 30 * t
+        pick, _ = tf.pick_anim(p, anim)
+        fr = full_frame(tf, C, G, p, 'drv', pick, d, i)
+        shadow(scene, x, y, 22, 7)
+        # facing away (NE / NW / N) the pressing mitten is behind the head: the flash goes behind the doll (manifest
+        # items.ring_doorbell; the head hides most of it, never on the face); facing E / W it is drawn over the doll
+        away = d in ('NE', 'NW', 'N')
+        if not away:
+            put(scene, fr, x, y)
+        dr = ImageDraw.Draw(scene)
+        if anim == 'ring_doorbell' and i in (2, 3):
+            q = tf.bell_point(p, d, i)
+            if q:
+                bx, by = x + q[0], y + q[1]
+                dr.ellipse([bx - 4, by - 4, bx + 4, by + 4], fill=(255, 241, 168, 230))
+                dr.ellipse([bx - 7, by - 7, bx + 7, by + 7], outline=(242, 179, 61, 255), width=1)
+        if away:
+            put(scene, fr, x, y)
+        crop = scene.crop((40, 40, 260, 230))
+        big = crop.resize((crop.width * 2, crop.height * 2), Image.NEAREST)
+        small = crop.resize((round(crop.width * 0.975), round(crop.height * 0.975)), Image.LANCZOS)
+        can = Image.new('RGBA', (big.width + small.width + 30, big.height + 34), SNOW)
+        can.alpha_composite(big, (10, 28))
+        can.alpha_composite(small, (big.width + 20, 28))
+        d2 = ImageDraw.Draw(can)
+        text(d2, (10, 6), f'{anim} {d} f{i}  (2x | phone zoom 0.6)', 13)
+        frames.append(can)
+    save_gif(frames, os.path.join(PREV, 'gbf_doorstep.gif'), 9)
+
+
+def _lgx():
+    mp = os.path.join(ASSETS, 'logistics', 'manifest.json')
+    m = json.load(open(mp, encoding='utf-8'))
+    return m, m['sprites']['logistics_center']
+
+
+def _lgx_sprite(m, key):
+    sp = m['sprites'][key]
+    at = next(a for a in m['atlases'] if a['key'] == sp['atlas'])
+    js = json.load(open(os.path.join(ASSETS, at['json'])))
+    fr = js['frames']
+    f = fr[sp['frame']] if isinstance(fr, dict) else next(x for x in fr if x['filename'] == sp['frame'])
+    sheet = Image.open(os.path.join(ASSETS, at['png'])).convert('RGBA')
+    r, ss, src = f['frame'], f['spriteSourceSize'], f['sourceSize']
+    im = Image.new('RGBA', (src['w'], src['h']), (0, 0, 0, 0))
+    im.paste(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), (ss['x'], ss['y']))
+    return im
+
+
+def hub_scene(tf, G, places, frame=2):
+    """the logistics centre interior (cut state, assets/logistics read only) with the 금방 clerk / packers on staffPoints
+    0-2 placed by hub.places (offsetPx, liftPx, anim) and the game's parcels (boxPoint.scan / .tape_box at the
+    worker's depth + 0.005).  Returns (scene, [(k, x, y)])."""
+    m, Cc = _lgx()
+    W, H = Cc['frameSize']
+    ax, ay = Cc['anchor'][0] * W, Cc['anchor'][1] * H
+    st = Cc['reveal']['states']['cut']
+    can = Image.new('RGBA', (W, H), SNOW)
+    for n in ('apron', 'shadow_open', 'back', 'floor', 'interior', 'interior_racks'):
+        if st.get(n, 1.0) > 0:
+            can.alpha_composite(_lgx_sprite(m, Cc['layers'][n]))
+    role = {'clerk': 'gb_dispatcher', 'packer': 'gb_packer'}
+    spots = []
+    for k, (q, rl, d) in enumerate(zip(Cc['staffPoints'], Cc['staffRoles'], Cc['staffDirs'])):
+        if rl not in role:
+            continue
+        pl = places.get(f'staff{k}', {})
+        anim = pl.get('anim', 'scan' if rl == 'clerk' else 'tape_box')
+        p = tf.preset(role[rl], seed=31 + k)
+        pick, _ = tf.pick_anim(p, anim)
+        i = frame % tf.T['anims'][pick]['frames']
+        rd = {'SW': 'SE', 'W': 'E', 'NW': 'NE'}.get(d, d)
+        prop = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
+        dep = None
+        if pick in ('scan', 'tape_box'):
+            bq = tf.parcel_point(p, pick, rd, i)
+            g = G.get('gb_parcel_m', 1.0)
+            if bq and g:
+                im = G.get('gb_parcel_m', parcel_scale(g[1], 0.20))[0]
+                pax, pay = g[1]['anchor'][0] * im.width, g[1]['anchor'][1] * im.height
+                prop.alpha_composite(im, (int(round(AX + bq[2] - pax)), int(round(AY + bq[3] - pay))))
+                dep = 0.005
+        fr = slip(tf, p, pick, rd, i, prop, dep)
+        if rd != d:
+            fr = fr.transpose(Image.FLIP_LEFT_RIGHT)
+        off = pl.get('offsetPx', [0, 0])
+        x, y = ax + q[0] + off[0], ay + q[1] + off[1] - pl.get('liftPx', 0)
+        can.alpha_composite(fr, (int(round(x - AX)), int(round(y - AY))))
+        spots.append((k, x, y + pl.get('liftPx', 0), f'staff{k} {rl}: {pick}' +
+                      (f' +{off}' if off != [0, 0] else '') + f' lift {pl.get("liftPx", 0)}'))
+    for n in ('interior_front', 'stub', 'shell_cut'):
+        if st.get(n, 1.0) > 0:
+            can.alpha_composite(_lgx_sprite(m, Cc['layers'][n]))
+    return can, spots
+
+
+def polish_sheet(tf, C, G, P):
+    """docs/previews/gbf_polish.png: BEFORE (the critique's set, GBF_BEFORE_ASSETS = an assets dir holding the old
+    geumbangfolk) / AFTER: the hip hole (H1), the parcel on the coat (H2), the doorstep parcel (H3), the carry bob (M1),
+    the hub placements (M2 / M3), the cap grain (L3)."""
+    before_dir = os.environ.get('GBF_BEFORE_ASSETS')
+    sets = [('AFTER', tf)]
+    if before_dir and os.path.isdir(before_dir):
+        sets.insert(0, ('BEFORE', gbc.Geumbangfolk.from_assets(before_dir, fragments=['officefolk', 'geumbangfolk'])))
+    cases = [('H1 hole', 'gb_driver', 'carry_parcel', 'E', 2, (150, 140, 128)),
+             ('H1 hole', 'gb_rider', 'ring_doorbell', 'E', 2, (236, 240, 246)),
+             ('H2 parcel', 'gb_driver', 'carry_parcel', 'S', 0, (236, 240, 246)),
+             ('H2 parcel', 'gb_night', 'carry_parcel', 'SE', 2, (236, 240, 246)),
+             ('H3 door', 'gb_driver', 'ring_doorbell', 'NE', 2, (236, 240, 246)),
+             ('H3 door', 'gb_rider', 'ring_doorbell', 'N', 2, (236, 240, 246)),
+             ('L3 cap', 'gb_driver', 'idle', 'S', 0, (236, 240, 246))]
+    sc = 3
+    cw, ch = 80 * sc, 100 * sc
+    can = Image.new('RGBA', (140 + len(cases) * (cw + 8), 40 + len(sets) * (ch + 30) + 30), SNOW)
+    dr = ImageDraw.Draw(can)
+    text(dr, (10, 8), 'gb_people polish: BEFORE (critique) / AFTER, 3x nearest', 15)
+    for r, (lab, t) in enumerate(sets):
+        y0 = 40 + r * (ch + 30)
+        text(dr, (10, y0 + ch // 2), lab, 16, RED if lab == 'BEFORE' else GREEN)
+        for c, (what, pr, a, d, i, bg) in enumerate(cases):
+            p = t.preset(pr, seed=21 + PRESETS.index(pr))
+            fr = t.compose(p, a, d, i).crop((24, 16, 104, 116))
+            b = Image.new('RGBA', fr.size, bg + (255,))
+            b.alpha_composite(fr)
+            x0 = 140 + c * (cw + 8)
+            can.alpha_composite(b.resize((cw, ch), Image.NEAREST), (x0, y0))
+            if r == 0:
+                text(dr, (x0, y0 - 14), f'{what}: {pr[3:]} {a} {d} f{i}', 11)
+    # the carry bob: head offsets of carry_parcel S (px), before / after
+    y0 = 40 + len(sets) * (ch + 30)
+    for k, (lab, t) in enumerate(sets):
+        ho = t.T['bases']['adult_slim']['headOffset']['carry_parcel']['S']
+        text(dr, (140 + k * 600, y0), f'M1 {lab} carry_parcel S head offset: ' + ' '.join(f'{x:+d},{y}' for x, y in ho), 11)
+    can.save(os.path.join(PREV, 'gbf_polish.png'))
+    print('  docs/previews/gbf_polish.png')
+    # hub placements: before (the critique's places) / after (hub.places)
+    rows = []
+    old_places = None
+    if len(sets) == 2:
+        old_places = sets[0][1].T.get('hub', {}).get('places', {})
+    for lab, pl in ([('BEFORE', old_places)] if old_places else []) + [('AFTER', tf.T.get('hub', {}).get('places', {}))]:
+        scene, spots = hub_scene(tf, G, pl)
+        tiles = []
+        for k, x, y, s_ in spots:
+            tl = scene.crop((int(x - 64), int(y - 110), int(x + 64), int(y + 30)))
+            tl = tl.resize((tl.width * 3, tl.height * 3), Image.NEAREST)
+            dd = ImageDraw.Draw(tl)
+            text(dd, (6, 4), s_, 13, RED)
+            tiles.append(tl)
+        rows.append((lab, tiles))
+    if rows:
+        W = 120 + sum(t.width + 8 for t in rows[0][1])
+        Hh = sum(r[1][0].height + 10 for r in rows) + 40
+        hub = Image.new('RGBA', (W, Hh), SNOW)
+        dh = ImageDraw.Draw(hub)
+        text(dh, (10, 8), 'hub.places (M2 clerk, M3 packers): the logistics centre cut open, zoom 1 x 3', 15)
+        y = 36
+        for lab, tiles in rows:
+            text(dh, (10, y + 100), lab, 16, RED if lab == 'BEFORE' else GREEN)
+            x = 120
+            for tl in tiles:
+                hub.alpha_composite(tl, (x, y))
+                x += tl.width + 8
+            y += tiles[0].height + 10
+        hub.save(os.path.join(PREV, 'gbf_hub_places.png'))
+        print('  docs/previews/gbf_hub_places.png')
 
 
 def v4_sheet(tf, C, G, P):
@@ -482,20 +706,28 @@ def before_after(tf, C, G, P):
     print('  docs/previews/gbf_before_after.png')
 
 
+Z16_BOX = (0, 700, 1170, 1700)
+
+
 def phone_details():
     """crops of the Phaser phone captures at device pixels (1170 x 2532 = 390 x 844 @ DPR 3)"""
-    shots = [('gbf_phone_z12.png', (0, 850, 620, 1250), 'z 1.2: the clerk (scan, lifted onto the counter step)'),
-             ('gbf_phone_z12.png', (560, 850, 1170, 1450), 'z 1.2: packers (tape_box) + pickers (sort_parcel)'),
-             ('gbf_phone_z10.png', (0, 1500, 1170, 2150), 'z 1.0: the doorstep (ring_doorbell NE at the door, hand_parcel)'),
-             ('gbf_phone_z06.png', (150, 1580, 1000, 2080), 'z 0.6: the crew row + officefolk depot_worker + townsfolk'),
-             ('gbf_phone_night.png', (0, 1300, 1170, 2150), 'night (MULTIPLY tint + ADD glows): doorstep + crew'),
-             ('gbf_phone_road.png', (0, 1300, 1170, 1800), 'road page only: hub anims fall back to idle, couriers work')]
+    shots = [('gbf_phone_z12.png', (0, 850, 620, 1250), 'z 1.2: 방금순 at the counter (scan, beside the display board)'),
+             ('gbf_phone_z12.png', (560, 850, 1170, 1450),
+              'z 1.2: belt packer (sort_parcel, 12 px step) + table packer (tape_box, left of the roll) + pickers'),
+             ('gbf_phone_z16.png', Z16_BOX, 'z 1.6: both doorsteps (ring_doorbell NE with the item / {noItems} + game parcel)'),
+             ('gbf_phone_z10.png', (0, 1520, 1170, 2200), 'z 1.0: the doorsteps, hand_parcel to a resident, the crew row'),
+             ('gbf_phone_z06.png', (150, 1380, 1000, 2060), 'z 0.6: doorsteps + crew row + officefolk depot_worker + townsfolk'),
+             ('gbf_phone_night.png', (0, 1300, 1170, 2150), 'night (MULTIPLY tint + ADD glows): doorsteps + crew'),
+             ('gbf_phone_road.png', (0, 950, 1170, 1800), 'road page only: hub anims fall back to idle (dockhand carry -> walk), couriers work'),
+             ('gbf_phone_p360.png', None, '360 x 640 @ DPR 2, zoom 1.0 (whole screen)')]
     tiles = []
     for f, box, lab in shots:
         p = os.path.join(PREV, f)
         if not os.path.exists(p):
             continue
-        im = Image.open(p).convert('RGBA').crop(box)
+        im = Image.open(p).convert('RGBA')
+        if box:
+            im = im.crop(box)
         im.thumbnail((900, 700))
         tiles.append((im, lab))
     if not tiles:
@@ -515,7 +747,8 @@ def phone_details():
 
 
 def main():
-    what = set(sys.argv[1:]) or {'lineup', 'anims', 'gifs', 'dirs', 'points', 'carry', 'v4', 'before', 'phone'}
+    what = set(sys.argv[1:]) or {'lineup', 'anims', 'gifs', 'dirs', 'points', 'carry', 'v4', 'before', 'phone',
+                                 'doorstep', 'polish'}
     os.makedirs(PREV, exist_ok=True)
     tf = gbc.Geumbangfolk.from_assets(fragments=['officefolk', 'geumbangfolk'])
     C = Cache(tf)
@@ -539,6 +772,10 @@ def main():
         dirs_sheet(tf, C, G, P)
     if 'gifs' in what:
         anim_gifs(tf, C, G, P)
+    if 'doorstep' in what:
+        doorstep(tf, C, G, P)
+    if 'polish' in what:
+        polish_sheet(tf, C, G, P)
     if 'phone' in what:
         phone_details()
 

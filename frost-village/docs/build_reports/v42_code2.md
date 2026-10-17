@@ -22,11 +22,11 @@ and ms numbers are relative only.
   (1.03 MiB, loaded only while the 촌장 사무실 panel is open). The lean `chief_fx` and `ui5` manifests ride inside
   `_packed/index.json` (`manifests`), so **after the first sale the game fetches exactly one new file**
   (`v42_core.png`; `reqlog42` checks it). The page's frame list is embedded too.
-- `src/systems/v42/art.js` (new) asks for the page after the first sale (or at once in a save past the first hire), and
+- `src/systems/v42/art.js` (new) asks for the page 3 s after the first sale (or at once in a save past the first hire), and
   for `chief2`'s manifest once the village is complete or the office stands.
 - `ChiefAura` builds on the generated rings of minute 0 and re-skins to the art when it arrives: the calm ring, the
-  gold ring while he works, the back glow (ADD, `fv_glow`), sparkles, the 별 pin and the 읍 notch; DayClock lights it
-  at night. `Navigator`: chevron, dots, destination ring, badge and the edge arrow on the ui5 chip plate. HUD chips
+  gold ring while he works, the back glow, sparkles, the 별 pin and the 읍 notch (all NORMAL blend, one page); at night
+  DayClock adds an ADD `fv_glow` lamp behind him so the glow reads through the night tint. `Navigator`: chevron, dots, destination ring, badge and the edge arrow on the ui5 chip plate. HUD chips
   (`UIv42`), the settings tab icons, the train card's car icons and the office panel (tabs, icons, the 재고 rows on the
   chalkboard with glossy status dots, the letter paper) use ui5.
 - Canvas mode (review L4): with the art in, the tab and chip tints are no longer needed (the plates carry the colour);
@@ -63,6 +63,9 @@ and ms numbers are relative only.
 - Fix found by the census (§3): when the office's inside page left memory, its stove-fire anim stayed registered and a
   hidden stove sprite started it → a null frame crashed the game about 15 minutes into a 46-min save.
   `Residency.evict` now drops every anim made from the page and stops whatever plays one (also inside containers).
+- Seated clerks: drawn in the office's `@behind` slot (`Cutaway.occupy` tests the floor under the chair) and with
+  their heads (`Office.wantStaffPages` asks for the townsfolk heads' `@soc` pages, where officefolk's `soc` / `nod`
+  head poses live). Both were found in the screenshots (§7).
 
 ### D. audio7
 - One sprite (`audio7_sprite.mp3`) cut per key on arrival: typewriter (3 variants), switch clack, wheel squeal (a
@@ -107,7 +110,7 @@ Same census tool, save and smart bot as CODE-1's §3.3. v4.1 and CODE-1 columns 
 | … minutes 20–60 (depot and raw routes running) | — | — | 93 % (60 · 0 · 0 · 51 · 69) | |
 | Income per minute | 1,851 | 2,530 (+37 %) | **2,459 (+33 %)** | +15–30 % ✗ (3 points over) |
 | Items exported by train | 0 | 625 | 733 (1,380 coins) | — |
-| Market shelf empty: 빵 / 훈제 고기 / 구운 생선 | 21 / 55 / 5 % | 0 / 10 / 0 % | 8 / 12 / 0 % | ≤ 10 % each: meat and bread just over |
+| Market shelf empty: 빵 / 훈제 고기 / 구운 생선 | 21 / 55 / 5 % | 0 / 10 / 0 % | 8 / 12 / 0 % | ≤ 10 % each: meat just over |
 | 교역소 empty: 판자 / 주괴 | 92 / 97 % | 0 / 0 % | 0 / 0 % | ≤ 40 % ✓ |
 | Smelter / sawmill output ≥ 90 % | 65 / 59 % | 15 / 2 % | 18 / 2 % | ≤ 30 % ✓ |
 | Grill / bakery / smokehouse output ≥ 90 % | 10 / 28 / 51 % | 40 / 21 / 24 % | 43 / 14 / 29 % | — |
@@ -149,7 +152,20 @@ first sale (`reqlog42`).
 
 ### 3.3 Pacing bot (fresh game until 읍)
 
-{{PACING}}
+`review_gameplay_sim.mjs --policy smart --upg greedy --v4` (fresh game, fixed 60 fps clock), game minutes:
+
+| Milestone | v4.1 | CODE-1 final | **CODE-2** |
+|---|---|---|---|
+| Village complete | 19.8 | 19.3 | 20.7 |
+| Station repaired / first train | 22.1 | 22.1 | 23.5 / 23.6 |
+| 5 shops | 38.7 | 37.0 | 37.4 |
+| **읍** | 48.2 | 44.8 | **46.5** |
+| Longest wait for the next hire | 5.2 | 3.0 | 3.8 (before 2nd fisherman) |
+| Stuck / money spent by mistake / errors | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+
+The bot's own run-to-run spread is about ±1 minute (the census bot's fresh run above completed the village at 19.5).
+Nothing that CODE-2 changed acts before village complete; 읍 comes 1.7 min later than CODE-1's final run and 1.7 min
+earlier than v4.1.
 
 ### 3.4 Textures
 
@@ -162,7 +178,7 @@ Residency source-sum; v4.1 is the v4.1 copy on the same save and view.
 | Station, train in | 369.6 | **384.4 (+14.8)** | ≤ +14 |
 | Office revealed | — | 392.2 | |
 | Depot revealed | — | 414.9 | |
-| `shots_v42` tour peak (everything the tour left resident) | — | {{TOURPEAK}} | ≤ 455 hard limit ✓ |
+| `shots_v42` tour peak (everything the tour left resident) | — | 439.2 MiB | ≤ 455 hard limit ✓ |
 
 - The plaza's +13.1: the train pages are resident in every view in v4.1 as well, and the new cars are bigger (+5.2:
   coach 4.35 + box car 4.68 + flat car 3.05 against car_a 3.78 + car_b 3.11); CODE-1's pile bake canvas `fv_stackbake`
@@ -175,28 +191,155 @@ Residency source-sum; v4.1 is the v4.1 copy on the same save and view.
 
 ### 3.5 Draw calls, display objects, logic time (`perf_cmp.mjs`, v4.1 and CODE-2 pages alternately in one browser)
 
-{{PERF}}
+Draw calls per drawn frame / display objects (all, inside containers too), the 46-min save; "late" = office + bank +
+4 staff + depot + 읍 + surplus on, against v4.1 at 읍 (scratch `v42code2_perf/perf_cmp.json`):
+
+| View | v4.1 | CODE-2 | v4.1 at 읍 | CODE-2 late | CODE-1 review (v4.1 → v4.2) |
+|---|---|---|---|---|---|
+| Plaza | 14.8 / 1,680 | 18.8 / 1,247 | 17.9 / 2,011 | 19.8 / 1,661 | 15.8 → 18.6 |
+| Plaza, zoom 0.6 | 19.0 / 1,876 | 22.0 / 1,422 | 20.8 / 2,151 | 24.6 / 1,820 | 21 → 25.8 (late) |
+| Station, train in | 13.0 / 1,130 | 14.8 / 1,255 | 13.0 / 1,209 | 16.0 / 1,432 | 13 → 15.6 |
+| Our loop, train on it | 12.0 | 14.0 | 11.0 | 15.0 | |
+| West (office / bank) | 13.6 | 15.8 | 14.0 | 16.8 | |
+| Depot corner | 9.0 | 12.0 | 9.0 | 13.0 | |
+| Town | 12.0 | 13.0 | 11.0 | 13.0 | |
+
+- **Draw calls (CODE-1 M4)**: with the real art in, v4.2 still draws 1–4 more batches a frame than v4.1 (the same as
+  CODE-1's placeholders). `v42_core` replaced the generated `fv_*` halo / navigator canvases with one page, but the new
+  pages that are on screen together (cars, office, staff, ui5) each start a batch when the depth order interleaves
+  them. The aura is NORMAL blend; the only new ADD image is the chief's night lamp (DayClock, at night only). Not
+  changed.
+- **Display objects**: fewer than v4.1 everywhere in the village (the pile bake); the late village at zoom 0.6 is 1,820
+  (top level 1,637), over the 1,700 plan gate by the same margin as CODE-1.
+- **Logic** (fixed-step bench, 4 interleaved batches, median ms per tick on the loaded machine): v4.1 1.5–2.6, CODE-2
+  plain 1.7–3.1, v4.1 at 읍 1.5–1.9, CODE-2 late 2.6–3.8. The late village costs about 1–1.5 ms a tick more than v4.1 at
+  읍 (CODE-1 review: 2.0–2.3 against 1.4–1.7). The plan's 0.25 ms is for the v4.2 systems alone; the whole-tick bench
+  also counts the extra agents (4 staff, tellers, depot crew, sleigh, raw runs). Noisy: load average 9–20 on 4 cores.
+- Texture source-sum in this run (perf probe, after the scripted tour): v4.1 357–388, CODE-2 390–427 MiB; every view
+  under 455.
 
 ### 3.6 Soak (20 game minutes, the 46-min save)
 
-{{SOAK}}
+`soak.mjs 1200` (everything unlocked, 20 real minutes with the workers running): 0 errors; display objects
+695 → 834, oscillating between 780 and 836 over the last five minutes (the item pool), tweens 2 → 7. Bounded.
 
 ### 3.7 Files
 
-{{FILES}}
+`build_artifact.mjs --webp` (`build3`, after every fix): **413 files** (412 + the page), **65.68 MB**, largest 1.23 MB (`game.js`, 136
+modules). By type: .webp 171 (34.8 MB), .png 110 (16.5 MB), .mp3 34 (6.6 MB), .json 93 (5.2 MB), .js 3, .html 1, .md 1.
+Plan §13.1 estimated 430–445; the CODE-1 gate is 480. CODE-2 added the art as pages: `v42_core` (chief_fx + ui5 icons,
+one page, manifests embedded in `_packed/index.json`), `ui5_icons@panels`, `office_bld@closed` / `@inside` + office
+items, officefolk's 4 pages, chief2's sheet, the train2 car pages and `train2_rails`, one `audio7` sprite.
 
 ## 4. Tests
 
-{{TESTS}}
+All on the loaded machine (scratch `v42code2_suites/summary.txt`, `summary3.txt`):
+
+| Suite | Result |
+|---|---|
+| `v42.mjs` | 34/34, before and after the §7 fixes. One rerun in between failed one check: "총총이 follows the chief" at 335 px against a 300 px limit. Across three runs her distance after 6 s was 74, 335 and 175 px, depending on the road route she picks. |
+| `v4.mjs` | 46/46 |
+| `rail.mjs` | 35/35 (the first run failed "every car on the route at its consist offset": the test now checks the bogie-chord midpoint the cars really use) |
+| `town` 17/17 · `v3` 18/18 · `labour` 28/28 · `dog` 15/15 · `life` 14/14 · `zoom` PASS · `plots` 34/34 · `restaurant` 30/30 · `c2` 39/39 · `nav` 12/12 · `pickup` 31/31 · `townfolk_runtime` 8/8 · `voice_runtime` 29/29 | all pass |
+| saves: `save_v2` · `save_v3` · `save_v35` · `save_v4` · `save_v42` (v4.1 and v3.5 saves → v7, 300 fuzzed blocks, ≤ 10 KB) | all pass |
+| `smoke.mjs` | 53/53, 0 errors |
+| `v42_layout.mjs` | no problems |
+| `visitors42.mjs --base` (visitors per minute, v4.1 copy vs this build) | 2/2 |
+| `reqlog42.mjs --base` | 4/5 — see below |
+| chat (9 node test files) | 78 passed, 0 failed |
+| node unit tests: `bank42` 18 · `depot` 26 · `depot_parity` 10 · `ledger` 20 · `letters` 23 · `pilot` 27 · `rail42` 58 · `roadnet` 32 | all pass |
+| `test_deploy.mjs standalone --quick` (the built artifact) | PASS with `build2` and again with `build3`: WebGL, title 4.2 s, no placeholder art, no failed requests, 0 errors |
+
+`reqlog42`: the first run counted `_packed/v42_core.png` before the first sale. The art loader asked for it in the same
+frame as the sale, and the test's phase switch comes 1.5 s later. `v42/art.js` now asks 3 s after the first sale (at once
+in a save past the first hire). In the next two runs the page is the one new file after the sale ("at most one new file
+(1)", nothing missing, 0 errors). Both runs still differ up to the sale by one resident look (`vil_npc_*.social`) and a
+voice file, on the v4.1 side. That is the lazy-load flake CODE-1 documented: the first sale lands at 32 s in v4.1 and 34
+s here, and the v4.1 copy itself asked for 7, 11 and 10 first-loop files in three runs. Rerun it on a quiet machine.
 
 ## 5. Screenshots
 
-{{SHOTS}}
+`docs/previews/screens_v42/`: **40 shots**: 23 at 390×844 Korean (every scene), 13 at 360×640, 8 in English. All are
+from today's runs on the v4.1 46-min save (`shots_v42.mjs`; the office, panel and bank scenes were re-shot after the
+fixes in §7). Every one was looked at on a phone-size view.
+
+| Shot | What it shows |
+|---|---|
+| `01_whats_new` | the 새로워진 것 card (ui5 icons) |
+| `02_halo_plaza`, `02b_halo_night_z06` | the aura (ring, back glow, sparkles), the 별 pin at zoom 0.6 |
+| `03_nav_carrying` | 길 안내: chevron, dotted path, destination ring, chip `판자 6 → 교역소 판매대 · 12m` |
+| `04_settings_play` | 설정 › 놀이 (ko / en, 360×640 too) |
+| `05_loop_curve`, `05b_loop_town` | the engine leading round our loop past the water tower, the town loop with the bounded camera |
+| `06_consist_ours`, `07_freight_loading`, `08_consist_town_coach2`, `09_train_card` | coach 솔방울호, box car with crates, flat car, the 읍 two-coach train, the train card with the car icons |
+| `10_office`, `10b_office_inside`, `10c_chief_desk` | the office closed / revealed with the clerks at their desks, the chief seated at his desk (chief2) |
+| `11`–`15` panels | 재고 (chalkboard, status dots), 소식, 편지 (letter paper), 직원, 통장 |
+| `16_bank_vault`, `17_depot_revealed`, `18_cargo_sleigh` | 서리 은행 cutaway, 서리 물류창고 cutaway, the sleigh on its lane |
+| `19_observe` | 관망 with its caption (ko / en) |
+
+Iterated on: the stock rows under the chalkboard frame, the empty office desks (depth fix), the headless clerks (head
+pages), the panel shot taken before its page arrived, the town-loop overview past the world edge. `02b` shows the moon
+icon, but the night tint is still faint 3 s after the clock is set to 21:00.
 
 ## 6. Publish
 
-{{PUBLISH}}
+`dist/artifact_files.json` (from `build3`): the page + 412 files in **2 batches** — batch 1: 250 files, 52.2 MB;
+batch 2: 162 files, 16.7 MB, holding `game.js`, `lib/` and every manifest, so the link keeps running the previous
+version until the last batch is in. The live version (`tools/build/published_files.json`, the v4.1 list) holds 491
+files, and **125 of them are gone from this build**. They are listed under `stale` and go as `null` in the **first**
+publish. Version size after publish 1: 398 files + page; after publish 2: 412 + page. Both stay under the 511 limit,
+and each publish is under 255 files and 64 MB. After publishing, run `node tools/build/build_artifact.mjs
+--record-published`. One caveat carried over from CODE-1's design: while the two publishes are in flight, the old
+version runs without its 125 stale files.
 
 ## 7. Known issues and what the art would need
 
-{{KNOWN}}
+**Gates missed (numbers in §3):**
+1. **Raw piles full ≤ 50 %**: 95 % over 60 minutes (93 % once the routes run), with ore 51–66 %, meat 69–79 % and fish
+   about 60 %. The surplus is about 110 raw a minute, and the porter routes move about 30. The designer has three options
+   (`기획서_v4_2_촌장.md` §2.3): one fewer ore and meat gatherer, a raw-cart upgrade, or accepting a full pile.
+2. **Income +15–30 %**: +33 % (2,459 / min). CODE-1 was +37 %. Changing the export and depot prices would move it by at
+   most 2 points.
+3. **Market shelf empty ≤ 10 %**: 훈제 고기 12 % over 60 minutes (빵 8 %; CODE-1 final: 10 / 0). Raw meat now leaves
+   full piles for export, so the smokehouse input is less often full. Watch it in the next balance pass.
+4. **Per-view texture estimates**: plaza +13.1 MiB (estimate +8), station +14.8 (gate +14). Every view stays under the
+   455 MiB limit (tour peak 439.2 MiB). The cheapest cut is to give the train pages an area (Residency region along
+   the line). They are resident in every view, as in v4.1, which costs 17.6 MiB away from the rail. A second option is to
+   halve `fv_stackbake` (4 MiB, CODE-1) if its slots allow.
+5. **Draw calls**: still +1 to +4 per frame against v4.1 (CODE-1 M4: unchanged by the real art). Display objects at zoom
+   0.6 in the late village: 1,820 (gate 1,700).
+
+**Fixed during CODE-2's own review of its screenshots** (all in `src/`; in `build3`):
+- Seated office clerks were drawn under the building. A seat point is 0.45 m up on the raised floor, so the back desks'
+  seats fell outside the cutaway's footprint and got their y as depth (713) instead of the slot's (810.05).
+  `Cutaway.occupy` now tests the floor under the chair for seated staff inside.
+- Seated clerks had no heads. Officefolk's desk acts turn the head to the `soc` / `nod` poses, whose frames are on the
+  townsfolk heads' `@soc` pages, and the town's social rule fetches those pages only in the town district.
+  `Office.wantStaffPages` (near the office or bank, or while revealed) now also asks for `tf_head_*@soc`: about 12 MiB,
+  tfatlas pages outside the social cap and budget-checked.
+- `Residency.displayed` / `evict` looked only at the village scene. A page shown only by the UI (the office panel's
+  `ui5_icons@panels`) counted as off screen. One screenshot run hit a `glTexture` null render error while the stock
+  panel was open; it did not reproduce. Both now walk every running scene.
+- `v42/art.js` asks for `v42_core` 3 s after the first sale (the `reqlog42` race above).
+- `shots_v42.mjs`: the office scenes wait (`until`, ≤ 25 s real time) for the staff's desk pages and the chief's chief2
+  sheet; the panel scenes wait for the panel page. 02b starts the day clock (the 46-min save is before it starts).
+  Screenshot timeout 120 s (the machine was loaded).
+
+**Kept / not done:**
+- **Town loop tip (art M3)**: a car on the town loop reaches x 6176, 32 px past `WORLD.width` 6144. The camera stops at
+  6144, so in play the screen edge cuts the tip off. The fix is a layout change, not a code tweak: shift the town loop
+  ≥ 1 cell west (`world.js` loop centre, turnout T2, stops, crossing 33) and re-render `rail_loop_town` for the new centre
+  (`assets/train2`, read-only here), or widen the world by 64 px.
+- Engine page: 5.51 MiB (plan 4.6). It is the v4 engine's 5-direction page at the fine widths. Art could trim the curve
+  directions to 4 frames like the new cars.
+- CODE-1's generated rings (0.5 MiB) stay as the halo's fallback until `v42_core` arrives.
+- Canvas mode: the HUD count chip keeps a light tint that Canvas drops. Everything else now uses the ui5 plates.
+- Townsfolk outside the town district whose pose needs the `@soc` head pages (seated or social anims) still depend on
+  the town's social rule. Near the office the new head request covers them, but the rest is v4.1 behaviour and was not
+  audited.
+- The office art polish (another agent's tasks 306–308) is still in progress. When it lands, re-run
+  `tools/build/pack_pages.py` (office pages), check `deskPoints` / `chiefDeskPoint` against `OfficeBuilding.PTS`, and
+  rebuild.
+
+**What the art folders would need** (read-only here): `train2` — the town loop decal for a loop 1 cell west (or a
+smaller radius), if the designer prefers that to widening the world; optional 4-frame curve dirs for the engine.
+`office` / `officefolk` / `chief2` / `chief_fx` / `ui5` / `audio7` — nothing blocking.

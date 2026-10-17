@@ -12,7 +12,7 @@ Cache (default /tmp/fv_cache/geumbangfolk; other caches are never touched):
       A_<anim>_<n> ACTING pass: (dir, body key) tiles of one anim - limbs, limb-following subs (cuffs) and the anim
                    items, with core + other limbs + the torso proxy shell + the head as holdouts
       W_<dir>      LOWER pass (carry_parcel): the 8 frames of one dir, only the trousers / boots (walking legs), the
-                   usual townfolk holdouts; the upper body of the parcel walk is a torso key ('cw_hi' / 'cw_lo')
+                   usual townfolk holdouts; the upper body of the parcel walk is a torso key (cw_hi_L / cw_lo / cw_hi_R)
       O_<anim>_<dir> OLD pass: top_gb_jacket + det_gb_vest in the v4 anims (idle / walk / talk / wave / happy)
   body/<base>/meta5.json          head offsets per geumbangfolk frame, box / hand / bell / beam / tape points, walk
                                   feet (groundSpeed), IK reach gaps
@@ -158,16 +158,16 @@ def head_pose_of_key(anim, k, d):
     return 'loco'
 
 
-def pose5(rig, anim, d, k, place=True, by_frame=False, hp=None):
+def pose5(rig, anim, d, k, place=True, by_frame=False, hp=None, lower=False):
     """Pose body key k of a geumbangfolk anim (by_frame: k is a frame index), or frame k of a v4 / v5 anim.
-    Returns (head pose, item points)."""
+    lower: the walking legs at their own hip height (carry_parcel LOWER pass / feet).  Returns (head pose, points)."""
     ch = rig.meta['ch']
     if anim in ga.ANIMS5:
         if by_frame:
             i = k
             k = ga.KEYS5[anim][i]
             hp = ga.hp_for(anim, d, i)
-        p = ga.body_pose5(anim, k, ch, d, frame=(i if by_frame else None))
+        p = ga.body_pose5(anim, k, ch, d, frame=(i if by_frame else None), lower=lower)
         hp = hp or head_pose_of_key(anim, k, d)
     else:
         p = ta2.pose2(anim, k, ch, d)
@@ -287,6 +287,11 @@ def layer_specs(L, ctx, layers, ps):
     """View layers of one pass."""
     def sibs(pn, cname):
         cols = tr.part_sub_cols(ctx, pn)
+        if ps == 'torso':
+            # (critique H1) the limb-following subs (cuff_R / cuff_L) stand at the REST arm pose in the torso pass; as
+            # holdouts they punched a see-through hole into the jacket / parka at the hip (the acting arms are posed
+            # elsewhere).  They are drawn by the acting pass, so the torso garments never hold them out.
+            return [c for s, c in cols.items() if c != cname and not tp.PARTS[pn].subs[s].get('follow')]
         return [c for c in cols.values() if c != cname]
     for name in layers:
         if name == 'mask':
@@ -361,7 +366,7 @@ def render_jobs(opt, base, jobs, t0):
                 elif ps == 'act':
                     pose5(r_, t[0], t[1], t[2])
                 else:                                  # walk / old: frame index
-                    pose5(r_, t[0], t[1], t[2], by_frame=(t[0] in ga.ANIMS5))
+                    pose5(r_, t[0], t[1], t[2], by_frame=(t[0] in ga.ANIMS5), lower=(ps == 'walk'))
             L.render(outdir, {n for n in todo if n in names})
             print(f'[{base}] {j["id"]}: {len(todo)} layers  {time.time() - t0:.0f}s', flush=True)
 
@@ -489,6 +494,7 @@ def body_meta5(opt, base):
                 gap = max(gap, (rig.world('hand_' + s) - want).length)
         meta['gaps'][key] = round(gap, 3)
         if anim in ga.WALKERS5:
+            pose5(rig, anim, d, i, by_frame=True, place=False, lower=True)       # the rendered (LOWER pass) legs
             fr = []
             for n in ('R', 'L'):
                 w = rig.world('knee_' + n, (0, -0.02, -0.15))

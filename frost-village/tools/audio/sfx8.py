@@ -143,25 +143,30 @@ def sfx_gb_chime():
     return tail_fade(fit_len(y, 0.45), 0.15)
 
 
-THUMP = {1: dict(f=330.0, thud=(150, 92), crunch=34, seed=18300, slide=False),
-         2: dict(f=255.0, thud=(118, 72), crunch=46, seed=18310, slide=True)}
+THUMP = {1: dict(f=330.0, tock=560.0, thud=(150, 92), crunch=34, seed=18300, slide=False),
+         2: dict(f=255.0, tock=470.0, thud=(118, 72), crunch=46, seed=18310, slide=True)}
 
 
 def sfx_gb_thump_v(v: int):
-    """A 금방 parcel set down on a snowy doorstep: a hollow cardboard knock and a soft body thud, the snow giving under
-    it; variant 2 is a heavier box that settles with a little scrape. 0.35 s. cues: land 0."""
+    """A 금방 parcel set down on a snowy doorstep: a hollow cardboard knock with a bright cardboard 'tock' (polish L7:
+    400-900 Hz, the part a phone speaker can play, so the sound keeps its level on a phone and its manifest volume has
+    headroom below 1.0), a lighter body thud, the snow giving under it; variant 2 is a heavier box that settles with a
+    little scrape. 0.35 s. cues: land 0."""
     P = THUMP[v]
     r = S.rng(P["seed"])
     m = Mono(0.5)
-    m.add(0.0, cardboard_knock(r, P["f"], 1.0), 0.55)
-    m.add(0.0, cardboard_knock(r, P["f"] * 2.6, 0.7), 0.30)                   # the lid panel (phone-audible)
-    m.add(0.0, blip(P["thud"][0], P["thud"][1], 0.16, 0.025, 0.04, attack=0.0015), 0.22)
-    m.add(0.0, burst(r, 0.03, 1300, 0.9, tau=0.006), 0.22)                   # papery slap of the flaps
-    m.add(0.004, snow_crunch(r, 0.11, P["crunch"], gain=0.6), 1.0)
+    m.add(0.0, cardboard_knock(r, P["f"], 1.0), 0.45)
+    m.add(0.0, cardboard_knock(r, P["tock"], 1.0), 0.62)                    # the cardboard 'tock' (phone-audible)
+    m.add(0.0, cardboard_knock(r, P["f"] * 2.6, 0.7), 0.30)                   # the lid panel
+    m.add(0.0, blip(P["thud"][0], P["thud"][1], 0.12, 0.02, 0.035, attack=0.0015), 0.15)
+    m.add(0.0, burst(r, 0.03, 1300, 0.9, tau=0.006), 0.28)                   # papery slap of the flaps
+    m.add(0.004, snow_crunch(r, 0.11, P["crunch"], gain=0.75), 1.0)
     if P["slide"]:
-        m.add(0.07, nsweep(r, 0.12, 2400, 1400, 1.4, [(0, 0), (0.02, 1), (0.12, 0)]), 0.06)
-        m.add(0.15, wood_knock(r, 520, 0.5, 0.03), 0.08)
+        m.add(0.07, nsweep(r, 0.12, 2400, 1400, 1.4, [(0, 0), (0.02, 1), (0.12, 0)]), 0.08)
+        m.add(0.15, wood_knock(r, 520, 0.5, 0.03), 0.10)
     y = room(m.x, 0.3, 0.06, 0.08, 0.4)                                    # outdoors-ish, a porch
+    y = y / max(S.peak(y), 1e-12)
+    y = np.tanh(2.4 * y) / np.tanh(2.4)        # round off the knock's 1 ms spike: a denser, louder thump at the same peak
     return tail_fade(fit_len(y, 0.35), 0.1)
 
 

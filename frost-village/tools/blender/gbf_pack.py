@@ -2,7 +2,7 @@
 gbf_pack.py - geumbangfolk layers -> assets/geumbangfolk (2 atlases + manifest fragment; CONTRACT_GEUMBANG AP).
 
 Run AFTER gbf_render.py (plain python3 + numpy + Pillow + imagequant, no Blender):
-    python3 tools/blender/gbf_pack.py [--colors 64] [--cache /tmp/fv_cache/geumbangfolk] [--out assets/geumbangfolk]
+    python3 tools/blender/gbf_pack.py [--colors 128] [--dither 0.25] [--cache /tmp/fv_cache/geumbangfolk] [--out assets/geumbangfolk]
 
 Same layer processing (ink ring minus the mannequin silhouette), frame naming and compact 'tfatlas' JSON as
 tools/blender/tf_pack.py / of_pack.py (imported, never edited).  ONE atlas per page:
@@ -213,12 +213,12 @@ def collect_head(cache, log):
 
 
 # (texture memory, road page <= 3.5 MiB) road-anim frames of the depot crew's own (v4) garments that live on the hub
-# page.  Everything a courier wears (top_gb_jacket, the cap, scarf, trousers, boots) and the dockhand's carry_parcel
-# outside at the docks (parka + vest + cap) stay on 'road'.  The packer's sweater: the packer works at the packing
-# table and never delivers; the parka at the door (ring_doorbell / hand_parcel): parka wearers are the depot crew
-# (picker, dockhand), who deliver nothing.  pageNeeded(person, anim) is per person: their doorstep anims ask for 'hub'
-# (and fall back to talk / idle without it), a courier never needs it.
-ROUTE_HUB = {'top_sweater': None, 'top_parka': ('ring_doorbell', 'hand_parcel')}
+# page.  Everything a courier wears (top_gb_jacket, the cap, scarf, trousers, boots) stays on 'road'.  The packer's
+# sweater and the parka of the picker / dockhand (polish: also in carry_parcel - the 3-key parcel walk of the critique
+# M1 did not fit the road page otherwise): the depot crew works at the depot (scenes.depot loads 'hub'), they deliver
+# nothing.  pageNeeded(person, anim) is per person: their road anims ask for 'hub' (and fall back - carry_parcel ->
+# walk, ring_doorbell / hand_parcel -> talk / idle - without it), a courier never needs it.
+ROUTE_HUB = {'top_sweater': None, 'top_parka': None}
 
 
 def route_page(layer, anim, pg):
@@ -395,6 +395,19 @@ def _sprite_rgba(man_path, sprite):
 
 
 MIRROR_D = {'SW': 'SE', 'W': 'E', 'NW': 'NE'}
+# (critique M2 / M3) where each hub worker really stands: px offset from the centre's staffPoint (screen x, y; moves
+# along the counter / table / belt, depth = the shifted point) and what to play there.  The counter / table front is
+# re-measured at the shifted point (frontTopPx -> liftPx).
+STAFF_PLACE = {
+    0: {'offsetPx': [24, 12], 'why': '방금순 slides 27 px along the counter: the counter\'s yellow display board no '
+                                     'longer covers her face and glasses (critique M2)'},
+    1: {'anim': 'sort_parcel', 'lift': 12,
+        'why': 'at the conveyor the packer picks parcels off the belt (sort_parcel on a 12 px step): the belt hides his '
+               'boots, the mittens and the parcel show over it; tape_box needed a 30 px step that put his boots on the '
+               'far rail (critique M3)'},
+    2: {'offsetPx': [-20, -10], 'why': 'the middle of the packing table, left of the bubble-wrap roll: the roll no '
+                                       'longer covers his mittens, the tape gun and the box (critique M3)'},
+}
 
 
 def hub_block(metas):
@@ -405,13 +418,15 @@ def hub_block(metas):
     mp = os.path.join(GAME, 'assets', 'logistics', 'manifest.json')
     out = {'workHeightsM': {'counterTop': ga.COUNTER_TOP, 'parcelOnCounter': ga.PARCEL_ON_COUNTER,
                             'boxTop': ga.BOX_TOP, 'shelf': ga.SHELF, 'tote': ga.TOTE},
-           'rule': 'liftPx = frontTopPx - parcelBottomPx + 2 (rounded up): draw the clerk / packer liftPx higher '
-                   '(sprite y - liftPx, depth unchanged), standing on a hidden step behind the counter / table, so the '
+           'rule': 'Stand the worker at staffPoint + offsetPx (screen px; depth = that point).  liftPx = frontTopPx - '
+                   'parcelBottomPx + 2 (rounded up; 0 where places[].liftPx says so): draw the clerk / packer liftPx '
+                   'higher (sprite y - liftPx, depth unchanged), standing on a hidden step behind the counter / table, so the '
                    'parcel the game draws at bases.boxPoint.scan / .tape_box (bottom = [bx, by]) stands 2 px behind '
                    'the front edge of the real counter / table top, under the scanner beam / the tape roller.  Keep '
                    'the lift for every anim played there (scan, talk, idle, tape_box ...).  Pickers (racks) and the '
-                   'dockhand need no lift.  The box is gb_parcel_m at 0.20 m (scale it so topPx = 0.20 x 55.4 px).  '
-                   'places[staffN].anim = what to play there.',
+                   'dockhand need no lift.  The box (tape_box) and the parcel on the counter (scan) are gb_parcel_m at '
+                   '0.20 m (scale it so topPx = 0.20 x 55.4 px).  places[staffN].anim = what to play there (staff1 at '
+                   'the conveyor: sort_parcel, no lift).',
            'places': {}}
     if not os.path.exists(mp):
         return out
@@ -435,7 +450,9 @@ def hub_block(metas):
     for k, (p, role, d) in enumerate(zip(B['staffPoints'], B['staffRoles'], B['staffDirs'])):
         if role not in ('clerk', 'packer'):
             continue
-        x, y = int(round(ax + p[0])), int(round(ay + p[1]))
+        sp = STAFF_PLACE.get(k, {})
+        off = sp.get('offsetPx', [0, 0])
+        x, y = int(round(ax + p[0] + off[0])), int(round(ay + p[1] + off[1]))
         tops = []
         for dx in range(-12, 1, 2):                       # in front of the worker (SW = screen left)
             col = full[:y + 1, x + dx, 3]
@@ -447,11 +464,24 @@ def hub_block(metas):
             tops.append(h)
         top = int(np.median(tops))
         pb = bottom_px(role, d)
-        pl = {'role': role, 'point': p, 'dir': d, 'anim': 'scan' if role == 'clerk' else 'tape_box',
+        anim = sp.get('anim', 'scan' if role == 'clerk' else 'tape_box')
+        pb = bottom_px(role if anim in ('scan', 'tape_box') else role, d)
+        pl = {'role': role, 'point': p, 'dir': d, 'anim': anim, 'offsetPx': list(off),
               'frontTopPx': top, 'frontTopRangePx': [int(min(tops)), int(max(tops))], 'parcelBottomPx': round(pb, 1),
-              'liftPx': max(0, int(math.ceil(top - pb + 2)))}
+              'liftPx': (max(0, int(math.ceil(top - pb + 2))) if sp.get('lift', True) is True
+                         else int(sp.get('lift') or 0))}
+        if sp.get('why'):
+            pl['why'] = sp['why']
         out['places'][f'staff{k}'] = pl
     return out
+
+
+# depth offset (over the doll's own depth) of the parcel the GAME draws ({noItems} carry_parcel / ring_doorbell at
+# boxPoint, hand_parcel at handPoint): +0.0045 = z 45 in the doll's stack (over the coat, under the head / the arms in
+# front), -0.0001 = behind the doll (the belly side facing away).  Mirrored dirs use their source dir.
+PARCEL_DEPTH = {'carry_parcel': {'S': 0.0045, 'SE': 0.0045, 'E': 0.0045, 'NE': -0.0001, 'N': -0.0001},
+                'ring_doorbell': {'E': 0.0045, 'NE': 0.0045, 'N': 0.0045},
+                'hand_parcel': {'SE': 0.0045, 'E': 0.0045, 'NE': 0.0045}}
 
 
 def build_manifest(metas, where, atlases, page_info, v4parts, anims_of, mark_src):
@@ -559,38 +589,52 @@ def build_manifest(metas, where, atlases, page_info, v4parts, anims_of, mark_src
                              'frame and the jacket / vest in idle / walk / talk / wave / happy.  "hub" holds scan, '
                              'sort_parcel and tape_box: load it while the depot (금방 물류센터) is revealed and drop it '
                              'afterwards.  It also holds the road-anim frames of the depot crew\'s own v4 garments '
-                             '(texture memory): top_sweater in carry_parcel / ring_doorbell / hand_parcel (the packer) '
-                             'and top_parka in ring_doorbell / hand_parcel (picker, dockhand at the door); a courier '
-                             '(jacket, cap, scarf) and the dockhand\'s carry_parcel at the docks (parka + vest + cap) '
-                             'never need it.  Ask pageNeeded(person, anim) (per person) inside the sprite\'s has() '
-                             'predicate: a depot-crew doorstep anim without "hub" falls back (talk / idle).'},
+                             '(texture memory): top_sweater (the packer) and top_parka (picker, dockhand) in '
+                             'carry_parcel / ring_doorbell / hand_parcel; a courier (jacket, cap, scarf) never needs '
+                             'it.  Ask pageNeeded(person, anim) (per person) inside the sprite\'s has() predicate: a '
+                             'depot-crew road anim without "hub" falls back (carry_parcel -> walk, ring_doorbell / '
+                             'hand_parcel -> talk / idle); the docks are part of the depot scene, so the dockhand\'s '
+                             'carry_parcel there has it.'},
         'crew': {k: {'label': gpr.PRESETS5[k]['label'], 'names': gpr.CREW_NAMES[k], 'signature': gpr.SIGNATURE[k]}
                  for k in gpr.PRESET_ORDER},
         'brand': dict(gpr.BRAND, mark='금방이 (gold disc + goldDark rim + cream sticker border, a face-on cream parcel '
                                       'with navy dot eyes, pink cheeks, an "o" mouth and a cream sparkle above; '
                                       'symmetric, no letters)', markSource=mark_src,
-                      notes='Untinted (fixed) layers: the jacket trim / cuffs / marks, the vest stripes / mark, the '
-                            'cap mark and every held item.  Tinted: jacket body (top: gold / goldDark), vest (acc: '
-                            'gold), cap crown (hat: navy), cap band + brim + button (hat2: gold).'),
+                      notes='Tinted: only the jacket body (top: gold, goldDark for the night crew).  Fixed colour '
+                            '(untinted, one layer each - preset colours for these slots do nothing): the jacket trim / '
+                            'cuffs / marks (cream + the mark), the whole vest (gold, goldDark hem, cream stripes, the '
+                            'mark), the whole cap (charcoal crown, navy ear flaps, gold band / brim / button, the mark) '
+                            'and every held item (the parcel: deep kraft with a pale lid, gold tape cross, cream label, '
+                            'the mark sticker).'),
         'hub': hub_block(metas),
+        'parcelDepth': PARCEL_DEPTH,
         'items': {
             'carry_parcel': 'held_parcel_gb (main): the medium 금방 parcel hugged at the belly.  With {noItems:true} '
                             'the game draws its own gb_parcel_s/m/l (assets/geumbang) at bases[b].boxPoint.carry_parcel'
                             '[dir][i] = [cx, cy, bx, by] (centre and bottom-centre, px from the anchor; mirrored dirs '
-                            'negate x) at depth +0.0045 in S / SE / E and -0.0001 in NE / N.  Move at bases[b]'
+                            'negate x) at parcelDepth.carry_parcel (+0.0045 in S / SE / E, -0.0001 in NE / N).  Move at bases[b]'
                             '.groundSpeed.carry_parcel[dir] px/s, or play at timeScale = clamp(speed / groundSpeed, '
                             '0.8, 1.8) so the feet do not skate.',
-            'ring_doorbell': 'held_parcel_gb (main) tucked under the LEFT arm (boxPoint.ring_doorbell, same depth rule); '
-                             'the right mitten presses the bell on impactFrame 2 (띵) and 3 (동): bellPoint.ring_doorbell'
-                             '[dir][i] = the mitten tip -> sfx_gb_doorbell + fx_gb_bell there.  Plays once and holds '
-                             'the last frame (waiting at the door), then onDone.',
+            'ring_doorbell': 'held_parcel_gb (main).  Doors face the camera, so the bell is rung facing NE / NW (or N): '
+                             'there the parcel rides under the RIGHT arm on the camera side (turned, short side against '
+                             'the body; that arm, mitten and the parcel are drawn over the coat: timeline zfront) and the '
+                             'LEFT mitten presses the bell; facing E / W it is tucked under the left arm in front of the '
+                             'belly and the right mitten presses.  {noItems}: gb_parcel_m at boxPoint.ring_doorbell at '
+                             'parcelDepth.ring_doorbell (+0.0045 in every dir: over the coat).  bellPoint.ring_doorbell'
+                             '[dir][i] = the pressing mitten tip (impactFrame 2 = 띵, 3 = 동) -> sfx_gb_doorbell + '
+                             'fx_gb_bell there.  Facing away (NE / NW / N) that mitten and the bell are behind the head: '
+                             'draw the flash behind the doll (depth -0.0001; the head hides most of it, the 띵-동 sound '
+                             'carries the beat), never over the face.  Plays once and holds the last frame (waiting at '
+                             'the door), then onDone.',
             'hand_parcel': 'no item is drawn: fly the real gb_parcel_* from handPoint.hand_parcel[dir][i] (between the '
-                           'palms; draw it there on frames 0-2, it leaves on frame 3), frame 5 = the little bow; '
-                           'plays once, holds the bow, then onDone (-> wave).',
+                           'palms; facing away (NE / NW) at the camera-side mitten pushed out to the side, where the '
+                           'parcel stays visible) at parcelDepth.hand_parcel (+0.0045: over the coat); draw it there on '
+                           'frames 0-2, it leaves on frame 3, frame 5 = the little bow; plays once, holds the bow, then '
+                           'onDone (-> wave).',
             'scan': 'held_scanner (right fist); beamPoint.scan[dir][i] = [wx, wy, tx, ty]: the scanner window and the '
                     'beam target (the parcel top on the counter).  impactFrame 2 = 삑 (sfx_gb_scan + a short beam / '
-                    'glint from window to target).  The game draws the parcel lying on the counter (gb_parcel_s, '
-                    '0.14 m: scale = 0.14 x 55.4 / topPx) with its bottom-centre at bases.boxPoint.scan[dir][i] = '
+                    'glint from window to target).  The game draws the parcel lying on the counter (gb_parcel_m, '
+                    '0.20 m: scale = 0.20 x 55.4 / topPx) with its bottom-centre at bases.boxPoint.scan[dir][i] = '
                     '[cx, cy, bx, by] (top = the beam target) at the clerk\'s depth + 0.005 (over the body, under '
                     'the head / arms / scanner).  The clerk works behind the counter: lift per hub.places.',
             'sort_parcel': 'held_parcel_gb (small) between the mittens on frames 1-4 (taken from the shelf on 1, dropped '
@@ -626,7 +670,9 @@ def build_manifest(metas, where, atlases, page_info, v4parts, anims_of, mark_src
 
 def main():
     args = sys.argv[1:]
-    cache, colors, dither, out = DEFAULT_CACHE, 64, 0.5, OUT
+    # (critique L3) 128 colours, dither 0.25: the 64-colour / 0.5 palette dithered the fixed-colour layers (light specks
+    # on the charcoal cap crown, the vest, the parcel) and folded the cap's navy ear flaps into charcoal
+    cache, colors, dither, out = DEFAULT_CACHE, 128, 0.25, OUT
     i = 0
     while i < len(args):
         a = args[i]

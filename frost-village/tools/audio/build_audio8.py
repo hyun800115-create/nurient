@@ -92,10 +92,23 @@ GROUPS = {"sfx_gb_doorbell": ["sfx_gb_doorbell", "sfx_gb_doorbell_2"],
           "sfx_gb_tape": ["sfx_gb_tape", "sfx_gb_tape_2"]}
 SPRITE_ORDER = ["sfx_gb_doorbell", "sfx_gb_doorbell_2", "sfx_gb_horn", "sfx_gb_chime", "sfx_gb_thump",
                 "sfx_gb_thump_2", "sfx_gb_jingle", "sfx_gb_tape", "sfx_gb_tape_2", "sfx_gb_scan", "sfx_gb_locker"]
-STAND_IN = {"sfx_gb_doorbell": "sfx_ticket_chime", "sfx_gb_doorbell_2": "sfx_ticket_chime",
-            "sfx_gb_chime": "sfx_ticket_chime", "sfx_gb_locker": "sfx_ticket_chime", "sfx_gb_jingle": "sfx_coin",
-            "sfx_gb_horn": "sfx_car_honk_1", "sfx_gb_thump": "sfx_box_drop", "sfx_gb_thump_2": "sfx_box_drop",
-            "sfx_gb_tape": "sfx_box_drop", "sfx_gb_tape_2": "sfx_box_drop", "sfx_gb_scan": "sfx_ticket_chime"}
+# (polish L3) code stand-ins that v4.3 really loads (FRAGMENTS / LATE_FRAGMENTS of src/core/Assets.js): audio6
+# (sfx_ticket_chime, sfx_box_drop) and audio5's beach keys are not loaded, so they are only the plan's "if shipped" picks
+STAND_IN = {"sfx_gb_doorbell": "sfx_pickup", "sfx_gb_doorbell_2": "sfx_pickup", "sfx_gb_chime": "sfx_pickup",
+            "sfx_gb_scan": "sfx_pickup", "sfx_gb_locker": "sfx_mailbox_flag", "sfx_gb_jingle": "sfx_coin",
+            "sfx_gb_horn": "sfx_car_honk_1", "sfx_gb_thump": "sfx_drop", "sfx_gb_thump_2": "sfx_drop",
+            "sfx_gb_tape": "sfx_drop", "sfx_gb_tape_2": "sfx_drop"}
+# a two-note stand-in where one key is too plain: [key, at s, rate] (Audio.play(key, {rate}) at each time)
+STAND_IN_PLAY = {"sfx_gb_doorbell": [["sfx_pickup", 0.0, 1.0], ["sfx_pickup", 0.33, 0.794]],      # ding-dong (a third down)
+                 "sfx_gb_doorbell_2": [["sfx_pickup", 0.0, 1.122], ["sfx_pickup", 0.33, 0.891]],
+                 "sfx_gb_chime": [["sfx_pickup", 0.0, 2.0], ["sfx_pickup", 0.11, 2.67]],          # two rising pings
+                 "sfx_gb_scan": [["sfx_pickup", 0.0, 2.38]]}
+STAND_IN_IF_SHIPPED = {"sfx_gb_doorbell": "sfx_ticket_chime", "sfx_gb_doorbell_2": "sfx_ticket_chime",
+                       "sfx_gb_chime": "sfx_ticket_chime", "sfx_gb_locker": "sfx_ticket_chime",
+                       "sfx_gb_scan": "sfx_ticket_chime", "sfx_gb_thump": "sfx_box_drop", "sfx_gb_thump_2": "sfx_box_drop",
+                       "sfx_gb_tape": "sfx_box_drop", "sfx_gb_tape_2": "sfx_box_drop"}
+STAND_IN_FRAGMENT = {"sfx_pickup": "audio", "sfx_drop": "audio", "sfx_coin": "audio", "sfx_mailbox_flag": "audio7",
+                     "sfx_car_honk_1": "audio3"}
 
 
 def render(keys):
@@ -172,6 +185,10 @@ def main(argv=None):
     for k, (target, extra) in SOUNDS.items():
         e = {"files": [], "inSprite": REL, "volume": volume(k, meas[k]["mp3"]["M"]), "loop": False, "kind": "sfx",
              "duration": keys[k][1], "standIn": STAND_IN[k]}
+        if k in STAND_IN_PLAY:
+            e["standInPlay"] = STAND_IN_PLAY[k]
+        if k in STAND_IN_IF_SHIPPED:
+            e["standInIfShipped"] = STAND_IN_IF_SHIPPED[k]
         e.update(extra)
         audio[k] = e
     man = {
@@ -190,8 +207,12 @@ def main(argv=None):
             "levels": "volume = 10^((target + HEADROOM_DB - measured) / 20), measured on the decoded sprite slice "
                       "(max momentary LUFS); HEADROOM_DB = -2 like audio .. audio7.",
             "brand": "Original sounds: no voice, no real company's jingle or chime; the 금-방 logo is F5 G5 C6.",
-            "standIn": "plan §10.3: until audio8 lands, play standIn (sfx_ticket_chime / sfx_coin / sfx_car_honk_1 / "
-                       "sfx_box_drop) instead.",
+            "standIn": "plan §10.3: until audio8 lands, play standIn instead - only keys v4.3 loads (polish L3): "
+                       "sfx_pickup / sfx_drop / sfx_coin (audio), sfx_car_honk_1 (audio3), sfx_mailbox_flag (audio7); "
+                       "standInPlay = [key, at s, rate] notes for a two-note stand-in (the 띵동 is sfx_pickup at rate "
+                       "1.0 then 0.794); standInIfShipped = the plan's audio6 pick (sfx_ticket_chime / sfx_box_drop), "
+                       "only if audio6 is ever loaded.",
+            "standInFragments": STAND_IN_FRAGMENT,
         },
         "audioSprite": {"file": f"{REL}/{SPRITE}", "keys": keys, "dur": dur, "gap": GAP, "ch": 1, "kbps": KBPS},
         "audio": audio,
