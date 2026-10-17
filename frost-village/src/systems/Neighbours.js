@@ -20,6 +20,7 @@ import { DayClock } from './DayClock.js';
 // ---- (v4-B) the streets and the rails baked into the ground (replaces A's stub painter)
 import { RoadPaint, PAINT_FILES } from './RoadPaint.js';
 import { Train } from '../entities/Train.js';
+import { RailProps } from '../entities/RailProps.js';
 import { RailStation, stationSign } from '../entities/RailStation.js';
 import { TownBuilding } from '../entities/TownBuilding.js';
 import { Visitor } from '../entities/Visitor.js';
@@ -30,7 +31,11 @@ import { Rank } from './Rank.js';
 
 const TOWN_FIRST = ['town_rails', 'town_civic', 'town_street'];
 const TOWN_REST = ['town_shops', 'town_homes', 'town_park'];
-const TRAIN_FILES = ['train_engine', 'train_car_a', 'train_car_b'];
+// ((v4.2 CODE-2) the train2 cars replace v4.1's car_a / car_b (those stay in the town atlas for v6's coast line and
+//  load only when train2 could not be had: Train.look)
+const TRAIN_FILES = ['train_engine'];
+const TRAIN2_FILES = ['train_coach', 'train_boxcar', 'train_flatcar'];
+const AUDIO7_TRAIN = ['sfx_switch_clack', 'sfx_wheel_squeal'];
 const UI3_FILES = ['ui3_icons', 'ui_mission_card', 'ui_mission_card_done', 'ui_mission_board', 'ui_progress_bg', 'ui_progress_fill'];
 const AUDIO3 = ['sfx_steam_whistle', 'sfx_brakes', 'sfx_door', 'sfx_school_bell', 'sfx_bell_hall', 'sfx_mission_done', 'sfx_fame_up', 'sfx_sleigh_bells', 'amb_town', 'amb_night'];
 
@@ -149,6 +154,8 @@ export class Neighbours {
     const gs = this.gs;
     Assets.loadFragment(gs, 'audio3', { audio: AUDIO3 });
     Assets.loadFragment(gs, 'town', { only: TOWN_FIRST.concat(TRAIN_FILES) });
+    Assets.loadFragment(gs, 'train2', { only: TRAIN2_FILES });
+    Assets.loadFragment(gs, 'audio7', { audio: AUDIO7_TRAIN });
     Assets.loadFragment(gs, 'townfolk', {}, () => {
       TF.init(Assets.lateManifest.townfolk, gs.game);
       const want = TF.sheetsFor('adult').concat(TF.sheetsFor('elder'));
@@ -198,10 +205,12 @@ export class Neighbours {
     // the sign post at the far end of the track (to the harbour, v6)
     const sg = (WORLD.v42 && WORLD.v42.rail && WORLD.v42.rail.sign) || V.rail.sign;
     // ((v4.2) a low snow fence keeps the 역 가는 길 walkers off the new straight of our loop)
-    if (WORLD.v42 && WORLD.v42.rail && Assets.has('fence_log_x')) {
+    // ((CODE-2) a stand-in until the train2 fence arrives (RailProps takes it away))
+    if (WORLD.v42 && WORLD.v42.rail && Assets.has('fence_log_x') && !Assets.has('rail_fence_x')) {
+      this.logFence = [];
       for (const [i0, j, i1] of WORLD.v42.rail.fence || []) {
         const n = Math.max(1, Math.round((i1 - i0) * Math.SQRT2));
-        for (let k = 0; k < n; k++) { const [x, y] = L4(i0 + ((k + 0.5) * (i1 - i0)) / n, j); gs.staticImage('fence_log_x', x, y, { r: 20, scale: 0.8, region: gs.territory.regionAt(x, y) }); }
+        for (let k = 0; k < n; k++) { const [x, y] = L4(i0 + ((k + 0.5) * (i1 - i0)) / n, j); this.logFence.push(gs.staticImage('fence_log_x', x, y, { r: 20, scale: 0.8, region: gs.territory.regionAt(x, y) })); }
       }
     }
     if (sg) { const [x, y] = L4(sg.i, sg.j); this.signpost = gs.staticImage('signpost', x, y, { region: 'town' }); this.signText = gs.add.text(x, y - 92, t('signHarbor'), { fontFamily: gs.font, fontSize: '16px', fontStyle: '800', color: '#ffffff', stroke: '#4a5a72', strokeThickness: 5, resolution: 2 }).setOrigin(0.5).setDepth(y + 1); gs.territory.add('town', this.signText); }
@@ -216,6 +225,8 @@ export class Neighbours {
     for (const c of gs.campfires || []) this.clock.addLight(c.x, c.y - 20, 1.3, 9500 + c.x);
     // the train (runs once the station is repaired)
     this.train = new Train(gs, this.rail);
+    // ((v4.2 CODE-2) the loops' fence, switch stands, water towers and sounds (assets/train2))
+    if (this.rail.path) { Assets.loadFragment(gs, 'train2', { only: TRAIN2_FILES }); this.railProps = new RailProps(gs, this); }
     // (a repair that finished while the manifest was still on its way plays its first train now)
     if (open) this.stationOpen(!this._stationLive);
     this._stationLive = false;
@@ -625,6 +636,7 @@ export class Neighbours {
     } else this._offT = false;
     const tr0 = performance.now();
     if (this.train) this.train.update(dt);
+    if (this.railProps) this.railProps.update(dt);
     this.clock.update(dt);
     const ts0 = performance.now();
     if (this.town) this.town.update(dt, this.clock.simT());

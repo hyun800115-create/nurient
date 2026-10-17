@@ -38,7 +38,11 @@ export const MANIFEST_ONLY_FRAGMENTS = [];
 // gull), title + title_bake (the living title: src/title/TitleAssets.js reads them itself; Assets.js never loads them)
 // (v4.2) + civic (서리 은행: the bank cutaway only), logistics (서리 물류창고: the centre + rack items), vehicles (the cargo
 // sleigh only): USED_ONLY keeps the rest of those folders out of memory and out of the artifact
-export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2', 'voice', 'audio4', 'title', 'title_bake', 'civic', 'logistics', 'vehicles'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
+// (v4.2 CODE-2) + chief_fx and ui5 (the halo / navigator art and the v4.2 HUD icons: ONE packed page `v42_core`, their
+// manifests ride inside _packed/index.json — no request), train2 (the new cars and loop rails), office (the 촌장 사무실
+// cutaway), officefolk (the office / bank staff anims, merged into the townsfolk runtime), chief2 (the chief's seated /
+// social anims, merged into the player), audio7 (the office and loop sounds)
+export const LATE_FRAGMENTS = ['town', 'townfolk', 'roads', 'audio3', 'ui3', 'life2', 'voice', 'audio4', 'title', 'title_bake', 'civic', 'logistics', 'vehicles', 'chief_fx', 'ui5', 'train2', 'office', 'officefolk', 'chief2', 'audio7'];   // (v4-B) + ui3 (rank badges, order cards), life2 (the ribbon's flower stands)
 const BASE = 'assets/';
 // made for v4 (the spring ending): not used yet, never loaded
 const V3_ONLY = /^(bgm_spring)/;
@@ -164,6 +168,7 @@ export const Assets = {
   packed: null,
   pages: {},          // atlas key -> page keys (core first)
   pageOwner: {},      // page key -> atlas key
+  pageOwners: {},     // (v4.2 CODE-2) page key -> every atlas key of a shared page (v42_core: chief_fx + ui5_icons)
   animPage: {},       // 'atlas:anim' -> page key (character pages)
   framePage: {},      // 'atlas|frame' -> page key (split building atlases)
   demanded: new Set(),// on-demand pages asked for (social)
@@ -183,6 +188,16 @@ export const Assets = {
       const keys = [];
       for (const pg of e.pages) {
         const onDemand = pg.cls === 'social' || pg.cls === 'soc';
+        // ((v4.2 CODE-2) a page shared by two atlases (v42_core = chief_fx + ui5_icons): the first entry stays (it
+        //  carries the frame list), the other atlas only joins its owners)
+        const prev = m.atlases[pg.key];
+        if (prev && prev.owner && prev.owner !== key) {
+          (this.pageOwners[pg.key] || (this.pageOwners[pg.key] = [prev.owner])).push(key);
+          keys.push(pg.key);
+          for (const an of pg.anims || []) this.animPage[key + ':' + an] = pg.key;
+          for (const fr of pg.frames || []) this.framePage[key + '|' + fr] = pg.key;
+          continue;
+        }
         // (the artifact build embeds a small page's frame list as `data` instead of shipping its .json file)
         m.atlases[pg.key] = { key: pg.key, png: pg.png, json: pg.json, data: pg.data || null, format: e.format || src.format, owner: key, cls: pg.cls, onDemand, bytes: pg.bytes || 0 };
         this.fragOf[pg.key] = e.frag;
@@ -260,6 +275,7 @@ export const Assets = {
   // the other after-title pictures (stand-ins, then Assets.arrivals); townfolk sheets use the compact
   // 'tfatlas' JSON (frames installed when both the image and its JSON are there).
   lateFrag: new Set(),     // fragments merged late
+  extAtlas: {},            // (v4.2 CODE-2) atlas of an `extends` character -> the base character (char_player_b -> player)
   lateWant: new Set(),     // late files a system asked for (the Game's lazy gate lets only these through)
   lateAudio: new Set(),    // late sounds asked for
   lateWaiting: {},         // fragment -> [{ only, audio }] asked before its manifest arrived
@@ -283,6 +299,9 @@ export const Assets = {
       if (scene.queueLate) scene.queueLate();
     };
     if (this.fragments[name]) { want(); return true; }
+    // ((v4.2 CODE-2) a fragment whose manifest rides inside _packed/index.json (chief_fx, ui5): merged now, no request)
+    const emb = this.packed && this.packed.manifests && this.packed.manifests[name];
+    if (emb && typeof emb === 'object') { this.mergeLate(name, emb); want(); return true; }
     (this.lateWaiting[name] = this.lateWaiting[name] || []).push(want);
     if (this.lateWaiting[name].length > 1) return true;     // manifest already on its way
     const key = 'manifest_' + name;
@@ -327,6 +346,24 @@ export const Assets = {
     for (const a of j.spritesheets || []) if (a && a.key) { m.spritesheets[a.key] = a; tag(a); }
     const ch = j.characters && typeof j.characters === 'object' ? j.characters : {};
     for (const k in ch) if (ch[k] && typeof ch[k] === 'object' && !m.characters[k]) { m.characters[k] = ch[k]; this.fragOf['char:' + k] = f; delete this.charCache[k]; }
+    // ((v4.2 CODE-2) a character that `extends` another (chief2's player_b): its anims join the base character, each
+    //  naming its own atlas (buildCharacter reads a.atlas || def.atlas); the base keeps every field it had)
+    for (const k in ch) {
+      const c = ch[k];
+      if (!c || typeof c !== 'object' || !c.extends) continue;
+      const base = c.extends, bd = m.characters[base] || (m.characters[base] = {});
+      bd.anims = Object.assign({}, bd.anims || {});
+      for (const an in c.anims || {}) {
+        if (bd.anims[an] && !bd.anims[an].atlas) continue;          // never replace an anim the base has
+        bd.anims[an] = Object.assign({ atlas: c.atlas }, c.anims[an]);
+      }
+      if (c.headTopSit !== undefined) bd.headTopSit = c.headTopSit;
+      if (c.seat) bd.seat = c.seat;
+      // the def object the game already holds (the player) gets the anims in place
+      const cd = this.charCache[base];
+      if (cd) { cd.anims = Object.assign({}, cd.anims, bd.anims); if (bd.headTopSit !== undefined) cd.headTopSit = bd.headTopSit; if (bd.seat) cd.seat = bd.seat; }
+      for (const a of j.atlases || []) if (a && a.key === c.atlas) this.extAtlas[a.key] = base;
+    }
     const sp = j.sprites && typeof j.sprites === 'object' ? j.sprites : {};
     for (const k in sp) if (!m.sprites[k]) { m.sprites[k] = sp[k]; this.cache.delete(k); }
     for (const k in j.nineSlice || {}) if (!m.nineSlice[k]) m.nineSlice[k] = j.nineSlice[k];
@@ -336,6 +373,18 @@ export const Assets = {
     this.lateManifest = this.lateManifest || {};
     this.lateManifest[f] = j;
     this.applyPages(f);
+    // ((v4.2 CODE-2) atlases that load only while something asks for them (Residency.want) and go again 30 s after
+    //  their last use: chief2's sheet (the chief's seated / social anims) and the officefolk pages other than the
+    //  resident one (desk / work / errand: only in the office and the bank))
+    const od = (k, mib) => { const a = m.atlases[k]; if (a && !a.onDemand) { a.onDemand = true; a.bytes = a.bytes || Math.round((Number(mib) || 4) * 1048576); } };
+    for (const k in this.extAtlas) if (this.fragOf[k] === f) od(k, 3.2);
+    const ofp = j.officefolk && j.officefolk.ofPages;
+    if (ofp && ofp.groups) {
+      for (const g in ofp.groups) {
+        if (g === ofp.resident) continue;
+        for (const k of ofp.groups[g].atlases || []) { const a = (j.atlases || []).find((x) => x && x.key === k); od(k, a && a.mib); }
+      }
+    }
   },
 
   /** the Game's lazy gate for late files: only what a system asked for */
@@ -452,9 +501,18 @@ export const Assets = {
     if (this.m.spritesheets[key]) this.sheetAnims(g, key);
     if (this.m.atlases[key]) {
       // (v4-B) a page: the atlas it belongs to (a social page adds anims to a character already built)
-      const own = this.pageOwner[key] || key, page = own !== key;
-      for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.atlas === own) { this.cache.delete(sk); this.spriteAnims(g, sk); } }
-      for (const c in this.m.characters) { const d = this.m.characters[c]; if (d && d.atlas === own && (!this.built[c] || page)) this.buildCharacter(g, c); }
+      // ((v4.2 CODE-2) a shared page belongs to every atlas on it; a character anim may name its own atlas (chief2))
+      const owners = this.pageOwners[key] || [this.pageOwner[key] || key];
+      for (const own of owners) {
+        const page = own !== key;
+        for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.atlas === own) { this.cache.delete(sk); this.spriteAnims(g, sk); } }
+        for (const c in this.m.characters) {
+          const d = this.m.characters[c];
+          if (!d || d.extends) continue;
+          if (d.atlas === own && (!this.built[c] || page)) this.buildCharacter(g, c);
+          else if (this.animAtlasOf(c, own)) this.buildCharacter(g, c);
+        }
+      }
     }
     for (const sk in this.m.sprites) { const s = this.m.sprites[sk]; if (s && s.image === key) this.cache.delete(sk); }
     for (const fn of this.arrivals) { try { fn(key); } catch (e) { /* keep loading */ } }
@@ -646,7 +704,7 @@ export const Assets = {
     const tex = game.textures, anims = game.anims;
     const def = this.charDef(key);
     // (v4-B) a packed atlas: frames come from whichever of its pages are loaded (core now, social later)
-    const atlasOk = !!(def.atlas && this.texOf(def.atlas));
+    const atlasOk0 = !!(def.atlas && this.texOf(def.atlas));
     const fname = typeof def.frameName === 'string' ? def.frameName : '{anim}_{dir}_{i}';
     const baseDirs = Array.isArray(def.dirs) && def.dirs.length ? def.dirs : COMMON_CHAR.dirs;
     def._dirs = def._dirs || {};
@@ -654,6 +712,11 @@ export const Assets = {
     for (const an in def.anims) {
       const a = def.anims[an];
       if (!a || typeof a !== 'object') continue;
+      // ((v4.2 CODE-2) an anim of an `extends` fragment names its own atlas (chief2): built only once that atlas is
+      //  here, never as a placeholder (the base's fallback chain plays meanwhile))
+      const own = a.atlas && a.atlas !== def.atlas ? a.atlas : null;
+      if (own && !this.texOf(own)) { if (!def._dirs[an]) def._dirs[an] = []; continue; }
+      const atlas = own || def.atlas, atlasOk = own ? true : atlasOk0;
       const dirs = atlasOk && Array.isArray(a.dirs) && a.dirs.length ? a.dirs : baseDirs;
       const have = [];
       for (const dir of dirs) {
@@ -664,8 +727,8 @@ export const Assets = {
           const list = [];
           for (let i = 0; i < (a.frames || 1); i++) {
             const fn = fname.replace('{anim}', an).replace('{dir}', dir).replace('{i}', i);
-            const tk = this.texOf(def.atlas, fn);
-            if (tk) list.push({ key: tk, frame: fn });
+            const tk = this.texOf(atlas, fn);
+            if (tk) list.push(Object.assign({ key: tk, frame: fn }, a.frameHold && a.frameHold[i] ? { duration: a.frameHold[i] } : null));
           }
           if (list.length) frames = list;
           else continue;      // this dir is not rendered: play() turns to one that is
@@ -676,13 +739,21 @@ export const Assets = {
           def._placeholder = true;
         }
         const fps = def._placeholder ? 4 : (a.fps || 10);
-        anims.create({ key: akey, frames, frameRate: fps, repeat: a.repeat !== undefined ? a.repeat : -1 });
+        anims.create(Object.assign({ key: akey, frames, frameRate: fps, repeat: a.repeat !== undefined ? a.repeat : -1 }, a.repeatDelay ? { repeatDelay: a.repeatDelay } : null));
         have.push(dir);
       }
       def._dirs[an] = have;
     }
     this.built[key] = true;
     return true;
+  },
+
+  /** (v4.2 CODE-2) does character `c` have an anim that names atlas `atlas` (an `extends` fragment)? */
+  animAtlasOf(c, atlas) {
+    const d = this.m.characters[c];
+    if (!d || !d.anims) return false;
+    for (const an in d.anims) if (d.anims[an] && d.anims[an].atlas === atlas) return true;
+    return false;
   },
 
   /** the anim that will really play for `anim` (fallback chain when the character does not have it) */

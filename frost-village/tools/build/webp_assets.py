@@ -29,6 +29,21 @@ def main():
     mapping, before, after = {}, 0, 0
     # (v4-C2) data textures must stay exact: the living water's normal / foam / LUT textures and its baked shoreline field
     skip_dirs = {os.path.join(assets, 'water')}
+    # (v4.2 CODE-2) atlases a manifest marks `lossless` (train2_rails: the loop decals are an exact difference matte over
+    # the rail tiles; a lossy colour step would show a seam at the joints)
+    lossless = set()
+    for frag in os.listdir(assets):
+        mp = os.path.join(assets, frag, 'manifest.json')
+        if not os.path.isfile(mp):
+            continue
+        try:
+            with open(mp, encoding='utf-8') as f:
+                j = json.load(f)
+        except Exception:
+            continue
+        for a in j.get('atlases') or []:
+            if isinstance(a, dict) and a.get('lossless') and a.get('png'):
+                lossless.add(os.path.join(assets, a['png']))
     for root, _dirs, files in os.walk(assets):
         if any(root == d or root.startswith(d + os.sep) for d in skip_dirs):
             continue
@@ -36,6 +51,8 @@ def main():
             if not name.lower().endswith('.png'):
                 continue
             src = os.path.join(root, name)
+            if src in lossless:
+                continue
             size = os.path.getsize(src)
             im = Image.open(src)
             im.load()

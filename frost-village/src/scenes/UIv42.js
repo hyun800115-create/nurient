@@ -7,7 +7,9 @@
 //   업무 chip        under the order chip (after 총총이: the office panel anywhere)
 //   새로워진 것      a card once per save that came from v4.1
 //   열차 카드        tap the train: consist, riders, crates, next stop
-// Icons: the ui5 art when it is there (CODE-2), else generated stand-ins (fxTex) or existing icons.
+// Icons: the ui5 art when it is there (CODE-2), else generated stand-ins (fxTex) or existing icons. (CODE-2) The ui5
+// icons and the ui_chip plate live on the v42_core page that arrives after the first sale: reskin() swaps them in
+// place (the chips are built 64 px tall and scaled uniformly, ui5 notes: below 64 the pill turns into a lemon).
 
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
@@ -94,7 +96,43 @@ export class HudV42 {
     wc.on('pointerup', () => { const O = this.v42 && this.v42.office; if (O && O.openPanel) O.openPanel('chip'); });
     this.card = null;
     this.layout();
+    this.artOn = false;
+    this.reskin();
+    this.onArrive = () => { if (!this.artOn) this.reskin(); };
+    Assets.arrivals.push(this.onArrive);
+    ui.events.once('shutdown', () => { const i = Assets.arrivals.indexOf(this.onArrive); if (i >= 0) Assets.arrivals.splice(i, 1); });
   }
+
+  /** (CODE-2) the ui5 icons + the ui_chip plates, once the v42_core page is here */
+  reskin() {
+    if (this.artOn || !Assets.has('ui_icon_binoculars')) return false;
+    const ui = this.ui;
+    Assets.apply(this.obsBtn.icon, 'ui_icon_binoculars'); fit(this.obsBtn.icon.setOrigin(0.5), 64 * 0.7);
+    Assets.apply(this.pickHand, 'ui_icon_hand'); fit(this.pickHand.setOrigin(0.5), 50);
+    Assets.apply(this.workIcon, 'ui_icon_office'); fit(this.workIcon.setOrigin(0.5), 38);
+    if (Assets.has('nav_edge')) { Assets.apply(this.edgeRing, 'nav_edge'); this.edgeRing.setOrigin(0.5).setScale(0.9); this.edgeArt = true; }
+    // the chips: a ui_chip pill 64 tall, scaled to the chip's height
+    if (Assets.has('ui_chip')) {
+      const chip = (old, h, ox) => {
+        const c = old.parentContainer, i = c ? c.getIndex(old) : 0, w = old.width || 200;
+        const n = panel(ui, old.x, old.y, 'ui_chip', Math.max(64, w * 64 / h), 64).setOrigin(ox, 0.5).setScale(h / 64).setAlpha(old.alpha);
+        n.__h = h;
+        if (c) { c.addAt(n, i); c.remove(old, true); } else old.destroy();
+        return n;
+      };
+      this.navBg = chip(this.navBg, 54, 0.5);
+      this.obsBg = chip(this.obsBg, 76, 0.5);
+      this.countBg = chip(this.countBg, 56, 0.5);
+      this.workBg = chip(this.workBg, 50, 0);
+      this.navKey = null;
+      this.chipArt = true;
+    }
+    this.artOn = true;
+    return true;
+  }
+
+  /** a chip plate's size in chip units (the ui_chip art is built 64 tall and scaled) */
+  chipSize(bg, w, h) { if (bg.__h) bg.setSize(Math.max(64, w * 64 / bg.__h), 64); else bg.setSize(w, h); }
 
   get gs() { return this.ui.gs; }
   get v42() { return this.ui.gs && this.ui.gs.v42; }
@@ -167,11 +205,12 @@ export class HudV42 {
         this.navText.setText(chip.text);
         this.navMore.setText(chip.more ? t('navMore', { n: chip.more }) : '');
         const w = Math.min(ui.W - 40, this.navText.width + (chip.more ? this.navMore.width + 14 : 0) + 78);
-        this.navBg.setSize(w, 54);
+        this.chipSize(this.navBg, w, 54);
         this.navIcon.setX(-w / 2 + 28);
         this.navText.setX(-w / 2 + 52);
         this.navMore.setX(-w / 2 + 52 + this.navText.width + 10);
-        this.navBg.setTint(chip.none ? 0xffe4d6 : 0xffffff);
+        if (!this.chipArt) this.navBg.setTint(chip.none ? 0xffe4d6 : 0xffffff);
+        this.navText.setColor(chip.none ? '#b2462a' : '#1f5f66');
       }
     }
     this.updateEdge(N, busy);
@@ -180,11 +219,11 @@ export class HudV42 {
     if (this.obsCap.visible !== capOn) this.obsCap.setVisible(capOn);
     if (capOn) {
       const s = t('obs_caption', { act: P.caption() });
-      if (this.obsText.text !== s) { this.obsText.setText(s); this.obsBg.setSize(Math.min(ui.W - 30, Math.max(this.obsText.width, this.obsHint.width) + 44), 76); }
+      if (this.obsText.text !== s) { this.obsText.setText(s); this.chipSize(this.obsBg, Math.min(ui.W - 30, Math.max(this.obsText.width, this.obsHint.width) + 56), 76); }
     }
     const cd = P && P.countdown > 0 && !P.on ? Math.ceil(P.countdown) : 0;
     if (this.countChip.visible !== !!cd) this.countChip.setVisible(!!cd);
-    if (cd) { const s = t('obs_count', { n: cd }); if (this.countText.text !== s) { this.countText.setText(s); this.countBg.setSize(this.countText.width + 44, 56); } }
+    if (cd) { const s = t('obs_count', { n: cd }); if (this.countText.text !== s) { this.countText.setText(s); this.chipSize(this.countBg, this.countText.width + 56, 56); } }
     // 업무 chip
     const O = v.office;
     const showWork = !!(O && O.chipOn && O.chipOn()) && !busy;
@@ -208,6 +247,8 @@ export class HudV42 {
         const ex = Phaser.Math.Clamp(p.x, M, ui.W - M), ey = Phaser.Math.Clamp(p.y, ex < ui.W * 0.45 ? 480 : 220, ui.H - 240 - View.safeBottom);
         this.edge.setPosition(ex, ey);
         this.edgeRing.setRotation(a);
+        // (art: the metres sit on the side away from the arrow)
+        if (this.edgeArt) this.edgeText.setPosition(-Math.cos(a) * 50, -Math.sin(a) * 50);
         if (this.edgeKey !== d.type) { this.edgeKey = d.type; Assets.apply(this.edgeIcon, d.type); fit(this.edgeIcon.setOrigin(0.5), 34); }
         const m = Math.max(1, Math.round((N.routeLen || 0) / 64)) + 'm';
         if (this.edgeText.text !== m) this.edgeText.setText(m);

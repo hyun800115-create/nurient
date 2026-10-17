@@ -58,12 +58,28 @@ SPLIT_CHAR = re.compile(r'^vil_npc_')
 TF_LOCO_ANIMS = {'idle', 'walk'}
 TF_DROP_ANIMS = {'carry_walk'}
 TF_LOCO_POSES = {'loco'}
-TRAIN = re.compile(r'^train_(engine|car_a|car_b)$')
+TRAIN = re.compile(r'^train_(engine|car_a|car_b|coach|boxcar|flatcar)$')
 TRAIN_DIR = 'NE'
 # (v4.2, docs/v42_plan.md §5.5) all five rendered dirs: NE / SE full, S / E / N at 4 move frames; the rule version is
 # part of the pages' source hash so a rule change re-packs only the train
+# (v4.2 CODE-2) + the train2 cars (assets/train2 manifest build.pageRule: the same rule; frames that are not
+# {anim}_{dir}_{i} are the loop props on the flat car's page and are kept), the stopped headings also keep door_open;
+# the engine keeps idle_0 only (its idle 1-3 = steam wisps while it stands: 0.7 MiB the station view cannot afford,
+# docs/v42_plan.md §13.2 "≤ v4.1 + 14"), every train page is packed on the fine widths too (tighter pages)
 TRAIN_FULL = {'NE', 'SE'}
-TRAIN_RULES = 'v42-dirs-1'
+TRAIN_RULES = 'v42-dirs-2'
+TRAIN_FRAGS = ['town', 'train2']
+# (v4.2 CODE-2) the chief's halo / navigator (assets/chief_fx) and the v4.2 HUD icons (assets/ui5) on ONE resident page
+# `v42_core` (CONTRACT_V42: "the build packs chief_fx + ui5_icons into one page"; docs/v42_plan.md §1: after the first
+# sale exactly one extra file). The ui5 panel frames (the office panel's letter paper, chalkboard, tabs) go on the
+# on-demand page ui5_icons@panels. The two manifests ride inside index.json (`manifests`): no manifest request.
+V42_CORE = 'v42_core'
+V42_CORE_FRAGS = [('chief_fx', 'chief_fx'), ('ui5', 'ui5_icons')]
+UI5_PANELS = {'ui_letter', 'ui_chalk_panel', 'ui_office_tab', 'ui_office_tab_on'}
+# (v4.2 CODE-2) the office cutaway (assets/office manifest chief_office.pageSplit): the closed look (shell, props, glow,
+# mailbox) resident with the building, the inside (floor, walls, furniture, overlays) on an on-demand page the office
+# asks for when the chief comes near or it is revealed
+OFFICE_SPLIT = {'office_bld': 'chief_office'}
 TOWN_SPLIT = {
     # atlas: [(page suffix, the frame groups on it), ..., (suffix of the rest, None)]
     'town_shops': [('b', {'cafe', 'restaurant', 'carpenter_workshop', 'hardware_store', 'supermarket'}), ('a', None)],
@@ -123,11 +139,12 @@ def pack(sizes, widths=(1024, 1280, 1536, 1792, 2048)):
     return W, H, pos
 
 
-def build_page(src_img, rects):
-    """rects: list of unique source rects (x, y, w, h). Returns (sheet, {rect: (nx, ny)})."""
+def build_page(src_img, rects, fine=False):
+    """rects: list of unique source rects (x, y, w, h). Returns (sheet, {rect: (nx, ny)}).
+    fine: (v4.2 CODE-2) also try the fine widths (a tighter page for the big train pages)"""
     sizes = [(r[2], r[3]) for r in rects]
     W, H, pos = pack(sizes)
-    if ((W + 3) // 4 * 4) * max(4, H) * 4 > PAGE_CAP:
+    if fine or ((W + 3) // 4 * 4) * max(4, H) * 4 > PAGE_CAP:
         W2, H2, pos2 = pack(sizes, FINE_WIDTHS)
         if W2 * H2 < W * H:
             W, H, pos = W2, H2, pos2
@@ -174,9 +191,9 @@ def cap_groups(g):
     return [pt[1] for pt in parts]
 
 
-def split_hash(atlas_key, src_png, src_json, classify, pages_order, cap_split=False):
+def split_hash(atlas_key, src_png, src_json, classify, pages_order, cap_split=False, fine=False):
     """classify(frame_name) -> page suffix or None (drop). Returns {suffix: (sheet, atlas_json, frames)}.
-    cap_split: a page over PAGE_CAP is split by building into suffix, suffix2, ..."""
+    cap_split: a page over PAGE_CAP is split by building into suffix, suffix2, ...  fine: try the fine widths too"""
     j = json.load(open(src_json))
     fr = j['frames']
     if isinstance(fr, list):
@@ -194,7 +211,7 @@ def split_hash(atlas_key, src_png, src_json, classify, pages_order, cap_split=Fa
 
     def make(suf, g):
         rects = sorted({(f['frame']['x'], f['frame']['y'], f['frame']['w'], f['frame']['h']) for f in g.values()})
-        sheet, where = build_page(img, rects)
+        sheet, where = build_page(img, rects, fine)
         frames = {}
         for name, f in g.items():
             r = (f['frame']['x'], f['frame']['y'], f['frame']['w'], f['frame']['h'])
@@ -400,18 +417,21 @@ def main():
                 index['atlases'][key] = e
                 report.append((key, sum(pg['bytes'] for pg in e['pages'] if pg['cls'] == 'loco'), sum(pg['bytes'] for pg in e['pages']), built))
 
-    # --- town: train (NE only) and the shops / civic split
-    for frag, m in manifests(TOWN_FRAGS):
+    # --- town: train (NE only) and the shops / civic split; (v4.2 CODE-2) + the train2 cars
+    for frag, m in manifests(TOWN_FRAGS + [f for f in TRAIN_FRAGS if f not in TOWN_FRAGS]):
         need = needed_char_frames(m)
         for a in m.get('atlases', []):
             key = a['key']
             png, js = os.path.join(ASSETS, a['png']), os.path.join(ASSETS, a['json'])
             if not (os.path.exists(png) and os.path.exists(js)):
                 continue
+            if frag not in TOWN_FRAGS and not TRAIN.match(key):
+                continue
             if TRAIN.match(key):
-                def classify(name):
+                def classify(name, key=key):
                     # (v4.2) every ground shadow (8 headings, the light does not flip); NE / SE in full; the curve
                     # dirs S / E / N: move frames 0, 2, 4, 6 and idle_0 (the train never stops on a curve)
+                    # (CODE-2) the engine's idle 1-3 are left out (idle_0 stands for it); props (no dir) stay
                     if name.startswith('shadow_'):
                         return 'dirs'
                     mm = ANIM_RE.match(name)
@@ -419,6 +439,8 @@ def main():
                         return 'dirs'
                     an, d, i = mm.group(1), mm.group(2), int(mm.group(3))
                     if d in TRAIN_FULL:
+                        if key == 'train_engine' and an == 'idle' and i > 0:
+                            return None
                         return 'dirs'
                     if an == 'move' and i % 2 == 0:
                         return 'dirs'
@@ -440,7 +462,7 @@ def main():
                 continue
 
             def build(key=key, png=png, js=js, frag=frag, classify=classify, order=order):
-                pages, dropped, allf = split_hash(key, png, js, classify, order, cap_split=key in TOWN_SPLIT)
+                pages, dropped, allf = split_hash(key, png, js, classify, order, cap_split=key in TOWN_SPLIT, fine=bool(TRAIN.match(key)))
                 e = {'frag': frag, 'kind': 'town', 'pages': [], 'dropped': len(dropped)}
                 for suf, (sheet, atlas, names) in pages.items():
                     pk = key + '@' + suf
@@ -466,6 +488,178 @@ def main():
                     if isinstance(d, dict) and d.get('atlas') == key and d.get('frame') and d['frame'] not in have:
                         problems.append('%s: sprite %s frame %s dropped' % (key, sk, d['frame']))
                 report.append((key, 0, sum(pg['bytes'] for pg in e['pages']), built))
+
+    # --- (v4.2 CODE-2) v42_core: chief_fx + the ui5 icons on one page (+ the ui5 panels on an on-demand page)
+    core_src = []
+    core_mans = {}
+    for frag, akey in V42_CORE_FRAGS:
+        mp = os.path.join(ASSETS, frag, 'manifest.json')
+        if not os.path.exists(mp):
+            continue
+        m = json.load(open(mp))
+        a = next((x for x in m.get('atlases', []) if x.get('key') == akey), None)
+        if not a:
+            continue
+        png, js = os.path.join(ASSETS, a['png']), os.path.join(ASSETS, a['json'])
+        if os.path.exists(png) and os.path.exists(js):
+            core_src.append((frag, akey, png, js, mp))
+            core_mans[frag] = m
+    if len(core_src) == len(V42_CORE_FRAGS):
+        srcs = []
+        for frag, akey, png, js, mp in core_src:
+            srcs += [png, js, mp]
+
+        def build_core():
+            # every source frame, keyed (atlas, frame): the page holds the resident ones of both atlases
+            parts = []      # (atlas key, frame name, frame entry, image)
+            panel = []
+            for frag, akey, png, js, mp in core_src:
+                img = Image.open(png).convert('RGBA')
+                fr = json.load(open(js))['frames']
+                if isinstance(fr, list):
+                    fr = {f['filename']: f for f in fr}
+                for name, f in fr.items():
+                    (panel if (akey == 'ui5_icons' and name in UI5_PANELS) else parts).append((akey, name, f, img))
+            out = {}
+            for suf, items in (('core', parts), ('panels', panel)):
+                if not items:
+                    continue
+                # unique source rects per (image, rect)
+                uniq = {}
+                for akey, name, f, img in items:
+                    r = (akey, f['frame']['x'], f['frame']['y'], f['frame']['w'], f['frame']['h'])
+                    uniq.setdefault(r, img)
+                rects = sorted(uniq.keys())
+                sizes = [(r[3], r[4]) for r in rects]
+                W, H, pos = pack(sizes, FINE_WIDTHS)
+                W = (W + 3) // 4 * 4
+                sheet = Image.new('RGBA', (W, max(4, H)), (0, 0, 0, 0))
+                where = {}
+                for r, p in zip(rects, pos):
+                    img = uniq[r]
+                    sheet.paste(img.crop((r[1], r[2], r[1] + r[3], r[2] + r[4])), p)
+                    where[r] = p
+                frames = {}
+                names = {}
+                for akey, name, f, img in items:
+                    r = (akey, f['frame']['x'], f['frame']['y'], f['frame']['w'], f['frame']['h'])
+                    nx, ny = where[r]
+                    nf = dict(f)
+                    nf['frame'] = {'x': nx, 'y': ny, 'w': r[3], 'h': r[4]}
+                    if name in frames:
+                        raise ValueError('v42_core: frame %s in two atlases' % name)
+                    frames[name] = nf
+                    names.setdefault(akey, []).append(name)
+                pk = V42_CORE if suf == 'core' else 'ui5_icons@panels'
+                atlas = {'frames': frames, 'meta': {'app': 'frost-village/tools/build/pack_pages.py', 'version': '1.0',
+                                                    'image': file_of(pk) + '.png', 'format': 'RGBA8888',
+                                                    'size': {'w': sheet.width, 'h': sheet.height}, 'scale': '1'}}
+                save_png(sheet, os.path.join(OUT, file_of(pk) + '.png'))
+                with open(os.path.join(OUT, file_of(pk) + '.json'), 'w') as f:
+                    json.dump(atlas, f, separators=(',', ':'))
+                out[suf] = {'key': pk, 'png': '_packed/' + file_of(pk) + '.png', 'json': '_packed/' + file_of(pk) + '.json',
+                            'bytes': sheet.width * sheet.height * 4, 'names': names}
+            ents = {}
+            for frag, akey, png, js, mp in core_src:
+                e = {'frag': frag, 'kind': 'core', 'pages': []}
+                c = out['core']
+                # the frame list rides inside index.json (no request for it): only the page picture is fetched
+                cdata = json.load(open(os.path.join(ASSETS, c['json'])))
+                pg = {'key': c['key'], 'cls': 'core', 'png': c['png'], 'json': c['json'], 'bytes': c['bytes'],
+                      'shared': [x[1] for x in core_src], 'frames': sorted(c['names'].get(akey, []))}
+                # (one copy of the shared page's frame list: Assets keeps the first entry of a shared page)
+                if akey == core_src[0][1]:
+                    pg['data'] = cdata
+                e['pages'].append(pg)
+                if akey == 'ui5_icons' and 'panels' in out:
+                    pnl = out['panels']
+                    e['pages'].append({'key': pnl['key'], 'cls': 'soc', 'png': pnl['png'], 'json': pnl['json'], 'bytes': pnl['bytes'],
+                                       'frames': sorted(pnl['names'].get(akey, []))})
+                ents[akey] = e
+            return ents
+
+        h = sha(srcs)
+        prevs = [(old.get('atlases') or {}).get(x[1]) for x in core_src]
+        fresh = all(pv and pv.get('src') == h and all(os.path.exists(os.path.join(ASSETS, pg['png'])) for pg in pv['pages']) for pv in prevs)
+        if fresh and not force:
+            for x, pv in zip(core_src, prevs):
+                index['atlases'][x[1]] = pv
+            built = False
+        elif check:
+            problems.append('v42_core: packed pages are stale (run pack_pages.py)')
+            built = False
+        else:
+            ents = build_core()
+            for akey, e in ents.items():
+                e['src'] = h
+                index['atlases'][akey] = e
+            built = True
+        # the manifests of the page's fragments: Assets.loadFragment merges them without a request (the prose the
+        # game never reads is left out: conventions, notes, replaces)
+        def lean(o):
+            if isinstance(o, dict):
+                return {k: lean(v) for k, v in o.items() if k not in ('notes', 'replaces', 'conventions', 'generator', 'why', 'contractKey')}
+            if isinstance(o, list):
+                return [lean(v) for v in o]
+            return o
+        index['manifests'] = {frag: lean(core_mans[frag]) for frag in core_mans}
+        cb = index['atlases'].get('chief_fx', {}).get('pages', [{}])[0].get('bytes', 0)
+        pb = sum(pg.get('bytes', 0) for pg in index['atlases'].get('ui5_icons', {}).get('pages', [])[1:])
+        report.append(('v42_core (+ui5 panels)', cb, cb + pb, built))
+        # every frame of both sources is on exactly one page
+        for frag, akey, png, js, mp in core_src:
+            src = set(json.load(open(js))['frames'].keys())
+            have = set()
+            for pg in index['atlases'][akey]['pages']:
+                have |= set(pg.get('frames') or [])
+            if src - have:
+                problems.append('%s: %d frames on no v42 page (e.g. %s)' % (akey, len(src - have), sorted(src - have)[:3]))
+
+    # --- (v4.2 CODE-2) the office cutaway: closed look (resident) + inside (on demand), manifest pageSplit
+    for frag in ['office']:
+        mp = os.path.join(ASSETS, frag, 'manifest.json')
+        if not os.path.exists(mp):
+            continue
+        m = json.load(open(mp))
+        for a in m.get('atlases', []):
+            key = a['key']
+            if key not in OFFICE_SPLIT:
+                continue
+            spr = (m.get('sprites') or {}).get(OFFICE_SPLIT[key]) or {}
+            closed = set((spr.get('pageSplit') or {}).get('closed') or [])
+            if not closed:
+                continue
+            png, js = os.path.join(ASSETS, a['png']), os.path.join(ASSETS, a['json'])
+            if not (os.path.exists(png) and os.path.exists(js)):
+                continue
+
+            def classify(name, closed=closed):
+                # a frame belongs to the closed look when its sprite (name minus the frame index) is listed
+                base = re.sub(r'_\d+$', '', name)
+                return 'closed' if (name in closed or base in closed) else 'inside'
+
+            def build(key=key, png=png, js=js, frag=frag, classify=classify):
+                pages, dropped, allf = split_hash(key, png, js, classify, ['closed', 'inside'], fine=True)
+                e = {'frag': frag, 'kind': 'bld', 'pages': [], 'dropped': len(dropped)}
+                for suf, (sheet, atlas, names) in pages.items():
+                    pk = key + '@' + suf
+                    save_png(sheet, os.path.join(OUT, file_of(pk) + '.png'))
+                    with open(os.path.join(OUT, file_of(pk) + '.json'), 'w') as f:
+                        json.dump(atlas, f, separators=(',', ':'))
+                    # the inside page loads on demand (cls 'soc': Assets marks it onDemand, Residency evicts it)
+                    e['pages'].append({'key': pk, 'cls': 'closed' if suf == 'closed' else 'soc', 'png': '_packed/' + file_of(pk) + '.png',
+                                       'json': '_packed/' + file_of(pk) + '.json', 'bytes': sheet.width * sheet.height * 4, 'frames': names})
+                return e
+            e, built = keep_or_build(key, [png, js, mp], build, 'office-split-1')
+            if e:
+                index['atlases'][key] = e
+                have = set()
+                for pg in e['pages']:
+                    have |= set(pg.get('frames') or [])
+                src = set(json.load(open(js))['frames'].keys())
+                if src - have:
+                    problems.append('%s: %d frames on no page' % (key, len(src - have)))
+                report.append((key, e['pages'][0]['bytes'], sum(pg['bytes'] for pg in e['pages']), built))
 
     # stale pages of atlases that no longer exist
     if not check:

@@ -20,7 +20,9 @@ import { CELL } from './RoadNet.js';
 const RAIL_KEYS = ['rail_x', 'rail_x_crossing', 'rail_x_end_n', 'rail_x_end_p'];
 export const PAINT_FILES = ['road_dirt', 'road_dirt_y', 'road_dirt_cross', 'sidewalk', 'roads_decals'];
 const EUP_FILES = ['road_cobble_wide'];
-const BAKE_ONLY = ['road_dirt', 'road_dirt_y', 'road_dirt_cross', 'sidewalk', 'road_cobble_wide', 'roads_decals', 'town_rails'];
+// ((v4.2 CODE-2) + train2_rails: the two loop decals (assets/train2, a bake-only page: released with the others))
+const BAKE_ONLY = ['road_dirt', 'road_dirt_y', 'road_dirt_cross', 'sidewalk', 'road_cobble_wide', 'roads_decals', 'town_rails', 'train2_rails'];
+const LOOP_DECALS = ['rail_loop_ours', 'rail_loop_town'];
 const RELEASE_AFTER = 10;      // s with the view far from the streets before their pictures leave the memory
 const FAR = 800;               // px from the street area that counts as far (the ground bakes ~710 px around the view)
 const NEAR = 1300;             // px: coming back closer than this fetches them again before a tile needs them
@@ -79,7 +81,7 @@ export class RoadPaint {
     this.released = false;
     // the pictures arrive after the hooks (or come back after a release): re-bake what was baked without them
     this.onArrive = (key) => {
-      if (key === 'town_rails' || key === 'roads_decals') gs.ground.invalidate(this.railRect);
+      if (key === 'town_rails' || key === 'roads_decals' || key === 'train2_rails') gs.ground.invalidate(this.railRect);
       if (PAINT_FILES.indexOf(key) >= 0 || EUP_FILES.indexOf(key) >= 0) gs.ground.invalidate(this.streetRect);
     };
     Assets.arrivals.push(this.onArrive);
@@ -175,7 +177,13 @@ export class RoadPaint {
       Assets.lateWant.add(k);
       n++;
     }
-    if (n) { this.released = false; Assets.loadFragment(this.gs, 'roads', { only: keys.filter((k) => k !== 'town_rails') }); if (keys.indexOf('town_rails') >= 0) Assets.loadFragment(this.gs, 'town', { only: ['town_rails'] }); }
+    if (n) {
+      this.released = false;
+      const roads = keys.filter((k) => k !== 'town_rails' && k !== 'train2_rails');
+      if (roads.length) Assets.loadFragment(this.gs, 'roads', { only: roads });
+      if (keys.indexOf('town_rails') >= 0) Assets.loadFragment(this.gs, 'town', { only: ['town_rails'] });
+      if (keys.indexOf('train2_rails') >= 0) Assets.loadFragment(this.gs, 'train2', { only: ['train2_rails'] });
+    }
   }
   ready(keys) { for (const k of keys) if (!Assets.has(k) && !this.gs.textures.exists(k)) return false; return true; }
 
@@ -194,7 +202,7 @@ export class RoadPaint {
   }
 
   /** a bake-only picture this painter uses now (the 읍 cobble only after the upgrade) */
-  needs(k) { return EUP_FILES.indexOf(k) < 0 || this.rank >= 2; }
+  needs(k) { if (k === 'train2_rails') return !!this.path; return EUP_FILES.indexOf(k) < 0 || this.rank >= 2; }
 
   release() {
     const gs = this.gs;
@@ -213,13 +221,25 @@ export class RoadPaint {
     if (!RAIL_KEYS.every((k) => Assets.has(k))) { this.want(['town_rails']); return; }
     const R = this.R;
     const cross = new Set(R.crossings || []);
-    // ((v4.2) the loops' curves first: the straight tiles draw over the turnouts)
-    if (this.path) this.paintLoops(ctx, x0, y0, w, h);
+    // ((v4.2) the loops: (CODE-2) the train2 decals over the plain straight tiles — a difference matte over exactly
+    //  the rail_x tiles under them, so the joints at A and T have no seam; (CODE-1 fallback) the curves painted first
+    //  and the straight tiles over the turnouts)
+    const decals = !!this.path && LOOP_DECALS.every((k) => Assets.has(k));
+    if (this.path && !decals) { this.want(['train2_rails']); this.paintLoops(ctx, x0, y0, w, h); }
     for (let k = R.from; k <= R.to; k++) {
       const [x, y] = L4(k + 0.5, 0);
       if (x < x0 - 180 || x > x0 + w + 180 || y < y0 - 140 || y > y0 + h + 140) continue;
       const key = this.path ? (cross.has(k) ? 'rail_x_crossing' : 'rail_x') : k === R.from ? 'rail_x_end_n' : k === R.to ? 'rail_x_end_p' : cross.has(k) ? 'rail_x_crossing' : 'rail_x';
       drawAt(ctx, key, x, y);
+    }
+    if (decals) {
+      for (const k of LOOP_DECALS) {
+        const d = Assets.def(k), at = d.anchorWorldPx;
+        if (!at) continue;
+        const fs = d.frameSize || [600, 420];
+        if (at[0] + fs[0] < x0 - 40 || at[0] - fs[0] > x0 + w + 40 || at[1] + fs[1] < y0 - 40 || at[1] - fs[1] > y0 + h + 40) continue;
+        drawAt(ctx, k, at[0], at[1]);
+      }
     }
     if (this.drifts && Assets.has('decal_snow_drift_a')) {
       const r = rng(4242);

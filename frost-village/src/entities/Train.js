@@ -11,7 +11,7 @@
 import { Assets } from '../core/Assets.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { L4 } from '../data/world.js';
-import { dirOf, renderDir } from '../systems/RailPath.js';
+import { dirOf, renderDir, DIR8 } from '../systems/RailPath.js';
 import { t } from '../data/strings.js';
 
 const S2 = Math.SQRT2;
@@ -39,10 +39,12 @@ export class Train {
     this.build();
   }
 
-  /** (v4.2) the art of a consist key: the real train2 car when merged, else its CODE-1 stand-in */
+  /** (v4.2) the art of a consist key: the real train2 car when merged, else its CODE-1 stand-in ((CODE-2) only when the
+   *  train2 manifest could not be had: the stand-ins' pages are then asked for — Neighbours loads train2, not them) */
   look(key) {
     const real = Assets.m && Assets.m.characters && Assets.m.characters[key];
-    if (real || !STAND_IN[key]) return { base: key, scale: 1, tint: null, crates: key === 'train_boxcar' ? 8 : key === 'train_flatcar' ? 6 : 0, real: !!real };
+    if (real || !STAND_IN[key]) return { base: key, scale: 1, tint: null, crates: real ? 0 : key === 'train_boxcar' ? 8 : key === 'train_flatcar' ? 6 : 0, real: !!real };
+    if (Assets.fragments.train2 === false && !this.standInAsked) { this.standInAsked = true; Assets.loadFragment(this.gs, 'town', { only: ['train_car_a', 'train_car_b'] }); }
     return Object.assign({ real: false }, STAND_IN[key]);
   }
 
@@ -101,7 +103,16 @@ export class Train {
   /** windows of the coaches (night glow) */
   coachPoints(out) {
     if (this.route) {
-      for (const c of this.cars) if (c.key === 'train_coach') { const p = this.routePoint(c, c.look.real ? 'windowPoints' : 'lampPoint'); if (p) out.push({ x: p.x, y: p.y, k: 0.7 }); }
+      for (const c of this.cars) {
+        if (!c.spr.visible) continue;
+        // ((CODE-2) train2 nightGlow: every lit side window, the lanterns the camera sees, the flat car's red tail lamps)
+        const G = c.look.real && c.def.nightGlow;
+        if (G) {
+          const tint = G.tint ? parseInt(String(G.tint).slice(1), 16) : null;
+          if (G.windowK) this.routePoints(c, 'windowPoints', (x, y) => out.push({ x, y, k: G.windowK }));
+          if (G.lampK) this.routePoints(c, 'lampPoints', (x, y) => out.push({ x, y, k: G.lampK, tint }));
+        } else if (c.key === 'train_coach') { const p = this.routePoint(c, 'lampPoint'); if (p) out.push({ x: p.x, y: p.y, k: 0.7 }); }
+      }
       return out;
     }
     for (const c of this.cars) {
@@ -168,10 +179,14 @@ export class Train {
    *  manifest's cargoPoint for the drawn dir (NE, mirrored to NW) */
   cargoPoint() {
     if (this.route) {
-      // the box car while it has room on its picture, then the flat car
+      // the box car while it has room (its open door: cargoPoint), then the flat car's deck
       const box = this.cars.find((q) => q.key === 'train_boxcar'), flat = this.cars.find((q) => q.key === 'train_flatcar');
-      const c = box && this.cargo < (box.look.crates || 8) * 4 ? box : (flat || box);
+      const c = box && this.cargo < this.capOf('train_boxcar') ? box : (flat || box);
       if (!c || !c.spr.visible) return null;
+      if (c.def.cargoSlots && c.def.cargoSlots[c.dir]) {
+        const sl = c.def.cargoSlots[c.dir], q = sl[Math.max(0, this.cargo - this.capOf('train_boxcar')) % sl.length];
+        return { x: c.spr.x + (c.flip ? -q[0] : q[0]), y: c.spr.y + q[1] - 10, depth: c.spr.depth + 1 };
+      }
       const p = this.routePoint(c, 'cargoPoint', [19, -46]);
       return p ? { x: p.x, y: p.y, depth: c.spr.depth + 1 } : null;
     }
@@ -201,8 +216,9 @@ export class Train {
       const sf = def.shadowFrames;
       let sh = null;
       if (sf && sf.atlas) { sh = gs.add.image(-9999, -9999, '__WHITE').setVisible(false).setDepth(DEPTH.SHADOW + 1).setScale(look.scale); sh.__sf = sf; }
-      this.cars.push({ key: q.key, off: q.off, len: q.len, idx: q.idx, spr, sh, def, look, anim: '', dir: 'NE', flip: true, hd: 'NW', crates: null });
+      this.cars.push({ key: q.key, off: q.off, len: q.len, idx: q.idx, spr, sh, def, look, anim: '', dir: 'NE', flip: true, hd: 'NW', hk: -1, crates: null, door: 0 });
     }
+    this.realLooks = this.cars.map((c) => c.look.real).join();
     this.applyRouteTextures();
   }
 
@@ -221,10 +237,18 @@ export class Train {
   routePoint(c, field, dflt) {
     if (!c || !c.spr.visible) return null;
     const tb = c.def[field];
-    const p = (tb && tb[c.dir]) || dflt;
+    let p = (tb && tb[c.dir]) || dflt;
+    // ((CODE-2) train2 lists several points per dir (lamps, windows): the first one)
+    if (p && Array.isArray(p[0])) p = p[0];
     if (!p) return null;
     const k = c.look.scale || 1;
     return { x: c.spr.x + (c.flip ? -p[0] : p[0]) * k, y: c.spr.y + p[1] * k };
+  }
+  /** (CODE-2) every point of a list table (train2 windowPoints / lampPoints) of car c in world px */
+  routePoints(c, field, fn) {
+    const tb = c.def[field], L = tb && tb[c.dir];
+    if (!L || !c.spr.visible) return;
+    for (const p of L) if (p) fn(c.spr.x + (c.flip ? -p[0] : p[0]), c.spr.y + p[1]);
   }
 
   /** the anim key that exists for (anim, dir) of a base atlas (dir falls back to the nearest rendered one) */
@@ -237,43 +261,87 @@ export class Train {
     return anims.exists(base + ':idle:NE') ? base + ':idle:NE' : null;
   }
 
+  /** (CODE-2) the box car's door: door_open forwards at a station, the same frames reversed to close it */
+  doorAnim(c, open) {
+    const gs = this.gs, k = this.animKey(c.look.base, 'door_open', c.dir);
+    if (!k || k.indexOf(':door_open:') < 0) return null;
+    if (open) return k;
+    const rk = k.replace(':door_open:', ':door_close:');
+    if (!gs.anims.exists(rk)) {
+      const a = gs.anims.get(k);
+      gs.anims.create({ key: rk, frames: a.frames.map((f) => ({ key: f.textureKey, frame: f.textureFrame })).reverse(), frameRate: a.frameRate, repeat: 0 });
+    }
+    return rk;
+  }
+
   updateRoute(dt) {
     const gs = this.gs, rail = this.rail, P = rail.path;
     this.t += dt;
-    if (!this.ready) { if ((this.readyT = (this.readyT || 0) - dt) <= 0) { this.readyT = 1; this.applyRouteTextures(); } }
+    if ((this.readyT = (this.readyT || 0) - dt) <= 0) {
+      this.readyT = 1;
+      // ((CODE-2) the train2 cars arrived (or a stand-in look became real): the cars are made again)
+      if (this.cars.map((c) => this.look(c.key).real).join() !== this.realLooks) this.buildRoute();
+      else if (!this.ready) this.applyRouteTextures();
+    }
     const show = rail.running && this.ready;
     const v = gs.cameras.main.worldView;
     const m = rail.m, speed = rail.speed, moving = speed > 0.02;
-    const A = this._a || (this._a = {}), F = this._f || (this._f = {}), Bk = this._b || (this._b = {});
-    let anyVis = false;
+    const F = this._f || (this._f = {}), Bk = this._b || (this._b = {});
+    let anyVis = false, anyCurve = false;
     const atStation = rail.phase === 'atOurs' || rail.phase === 'atTown';
     for (const c of this.cars) {
       const s = m - c.off;
-      P.at(s, A);
-      const x = A.x, y = A.y;
+      // ((CODE-2, train2 trainConsist.curvePlacement) each car at the MIDPOINT of its bogie chord (± 0.4 × length): on
+      //  the R 1.75-cell curves the arc point lies ~0.3 m outside the chord and pushed neighbouring cars apart)
+      P.at(s + 0.4 * c.len, F); P.at(s - 0.4 * c.len, Bk);
+      const x = (F.x + Bk.x) / 2, y = (F.y + Bk.y) / 2;
       const near = show && x > v.x - FAR && x < v.right + FAR && y > v.y - FAR && y < v.bottom + FAR;
       if (c.spr.visible !== near) c.spr.setVisible(near);
       if (c.sh && c.sh.__ok && c.sh.visible !== near) c.sh.setVisible(near);
       if (c.crates) for (const k of c.crates) if (!near && k.visible) k.setVisible(false);
       if (!near) continue;
       anyVis = true;
-      // heading: the chord between the two bogies (± 0.4 × length)
-      P.at(s + 0.4 * c.len, F); P.at(s - 0.4 * c.len, Bk);
-      const hd = dirOf(F.i - Bk.i, F.j - Bk.j), rd = renderDir(hd);
+      if (F.curve || Bk.curve) anyCurve = true;
+      // heading: the chord angle -> nearest of 8 headings, kept until it is more than 22.5 + 8 degrees away
+      const ang = Math.atan2(F.j - Bk.j, F.i - Bk.i), step = Math.PI / 4;
+      let hk = c.hk;
+      if (hk < 0) hk = ((Math.round(ang / step) % 8) + 8) % 8;
+      else { let dd = ang - hk * step; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); if (Math.abs(dd) > (22.5 + 8) * Math.PI / 180) hk = ((Math.round(ang / step) % 8) + 8) % 8; }
+      c.hk = hk;
+      const hd = DIR8[hk], rd = renderDir(hd);
       c.hd = hd;
-      if (rd.dir !== c.dir || rd.flip !== c.flip) { c.dir = rd.dir; c.flip = rd.flip; c.anim = ''; }
+      if (rd.dir !== c.dir || rd.flip !== c.flip) {
+        c.dir = rd.dir; c.flip = rd.flip; c.anim = '';
+        // ((CODE-2, train2 engineFlip) the town engine is not symmetric about its anchor: mirrored, its origin is 1 − ax)
+        const ax = c.def.anchor ? c.def.anchor[0] : 0.5, ay = c.def.anchor ? c.def.anchor[1] : 0.8;
+        c.spr.setOrigin(c.flip ? 1 - ax : ax, ay);
+      }
       c.spr.setFlipX(c.flip);
       c.spr.setPosition(x, y);
       if (c.spr.depth !== y) c.spr.setDepth(y);
-      const want = this.animKey(c.look.base, moving ? 'move' : 'idle', c.dir);
-      if (want && want !== c.anim) {
-        c.anim = want; c.spr.anims.play(want);
-        // (a curve dir is packed at 4 of its 8 move frames: the loop plays at half the frame rate)
-        const a = gs.anims.get(want), full = (c.def.anims && c.def.anims.move && c.def.anims.move.frames) || 8;
-        c.frK = moving && a ? Math.min(1, a.frames.length / full) : 1;
+      // the box car's door: open while it stands at a station (SE / NE, mirrored), closed before it pulls away
+      const doorCar = c.key === 'train_boxcar' && c.look.real;
+      const wantDoor = doorCar && atStation && !moving && rail.t > 0.6 && rail.t < rail.dur(rail.phase) - 1.2;
+      let want;
+      if (doorCar && (wantDoor || c.door === 1)) {
+        if (wantDoor && c.door !== 1) { want = this.doorAnim(c, true); c.door = 1; }
+        else if (!wantDoor && c.door === 1) { want = this.doorAnim(c, false); c.door = 2; }
+        else want = c.anim;
+        if (want && want !== c.anim) { c.anim = want; c.spr.anims.play(want); }
+      } else {
+        if (c.door === 2 && c.spr.anims.isPlaying && c.anim && c.anim.indexOf(':door_close:') > 0) want = c.anim;
+        else { c.door = 0; want = this.animKey(c.look.base, moving ? 'move' : 'idle', c.dir); }
+        if (want && want !== c.anim) {
+          c.anim = want; c.spr.anims.play(want);
+          // (a curve dir is packed at 4 of its 8 move frames: the loop plays at half the frame rate)
+          const a = gs.anims.get(want), full = (c.def.anims && c.def.anims.move && c.def.anims.move.frames) || 8;
+          c.frK = moving && a ? Math.min(1, a.frames.length / full) : 1;
+        }
+        // wheels: frame rate follows the speed (train2: slip-free at 8 frames per trackPerLoopM; the engine 12 fps at
+        // 2.6 m/s on its art)
+        const per = c.def.trackPerLoopM ? (8 / c.def.trackPerLoopM) / 12 : 1 / 2.6;
+        c.spr.anims.timeScale = moving ? Math.max(0.15, speed * per) * (c.frK || 1) : 1;
       }
-      // wheels: frame rate follows the speed (12 fps at 2.6 m/s on the art)
-      c.spr.anims.timeScale = moving ? Math.max(0.15, speed / 2.6) * (c.frK || 1) : 1;
       // the ground shadow of this heading (not mirrored: the light does not flip)
       if (c.sh && c.sh.__sf) {
         const fr = c.sh.__sf.frames && c.sh.__sf.frames[hd];
@@ -283,9 +351,10 @@ export class Train {
         }
         c.sh.setPosition(x, y);
       }
-      if (c.look.crates) this.drawCrates(c, atStation);
+      if (c.look.crates || c.def.cargoSlots) this.drawCrates(c, atStation);
     }
     this.shown = anyVis;
+    this.onCurve = anyVis && moving && anyCurve;
     // (v4.2 §5.5) the station-square float labels step above the dwelling train's cars (gs.labelAvoid, floatLabel.bob)
     gs.labelAvoid = anyVis && atStation ? this.rects() : null;
     // smoke from the chimney while moving (trails back: the engine leads)
@@ -296,26 +365,64 @@ export class Train {
         const e = this.cars[0], sp = this.routePoint(e, 'smokePoint');
         if (sp && gs.isOnScreen(e.spr.x, e.spr.y, 200)) gs.effects.sheet('fx_smoke_puff', sp.x, sp.y - 6, { size: 70, depth: e.spr.y + 2 });
       }
+    } else if (anyVis && atStation) {
+      // ((CODE-2) the engine's idle wisps are not packed: a slow puff of steam while it stands instead)
+      this.smokeT -= dt;
+      if (this.smokeT <= 0) {
+        this.smokeT = 1.6;
+        const e = this.cars[0], sp = this.routePoint(e, 'smokePoint');
+        if (sp && gs.isOnScreen(e.spr.x, e.spr.y, 200)) gs.effects.sheet('fx_smoke_puff', sp.x, sp.y - 4, { size: 46, depth: e.spr.y + 2 });
+      }
     }
     if (this.lbls && this.lbls.length) this.updateLabels(dt);
   }
 
-  /** (v4.2 CODE-1) code crates on the freight cars: the box car fills first (8 per row of 4), then the flat car */
+  /** the freight cars' crates: (CODE-1 stand-ins) code crates; (train2) the box car shows its own load through the open
+   *  door (door_open art), the flat car stacks crate icons on its cargoSlots (stackStep px per crate, the deck fills
+   *  slot by slot from the back) */
   drawCrates(c, open) {
     const gs = this.gs;
+    if (!c.crates) c.crates = [];
+    const real = c.look.real && c.def.cargoSlots;
+    if (c.look.real && c.key === 'train_boxcar') { for (const k of c.crates) if (k.visible) k.setVisible(false); return; }
+    const tex = Assets.has('crate') ? Assets.texOf(Assets.def('crate').atlas, 'crate') : null;
+    const k = c.look.scale || 1;
+    const hx = c.flip ? -1 : 1;
+    if (real) {
+      const slots = c.def.cargoSlots[c.dir] || [];
+      const step = Number(c.def.stackStep) || 14;
+      const load = Math.max(0, this.cargo - this.capOf('train_boxcar'));
+      const per = Math.max(1, Math.ceil(this.capOf('train_flatcar') / Math.max(1, slots.length)));
+      const H = Math.min(4, per), want = slots.length * H;
+      while (c.crates.length < want) c.crates.push(gs.add.image(-9999, -9999, '__WHITE').setVisible(false));
+      // the load spread over the deck: one crate icon stands for cap / (slots × H) items, layer by layer, ≤ 4 high
+      const n = Math.min(want, Math.ceil((load * want) / Math.max(1, this.capOf('train_flatcar'))));
+      let q = 0;
+      for (let si = 0; si < slots.length; si++) {
+        const sl = slots[si];
+        for (let h = 0; h < H; h++, q++) {
+          const im = c.crates[q];
+          const idx = h * slots.length + si;      // fill the deck layer by layer
+          const on = idx < n && !!tex;
+          if (im.visible !== on) im.setVisible(on);
+          if (!on) continue;
+          if (im.texture.key !== tex) im.setTexture(tex, 'crate').setOrigin(0.375, 0.58).setDisplaySize(40, 38);
+          im.setPosition(c.spr.x + sl[0] * hx, c.spr.y + sl[1] - h * step);
+          im.setDepth(c.spr.depth + (sl[2] ? -0.001 : 0.001) + idx * 1e-4);
+        }
+      }
+      for (let r = q; r < c.crates.length; r++) if (c.crates[r].visible) c.crates[r].setVisible(false);
+      return;
+    }
     const box = c.key === 'train_boxcar';
     const cap = (c.look.crates || 6) * 4;
     const before = box ? 0 : this.capOf('train_boxcar');
     const load = Math.max(0, Math.min(cap, this.cargo - before));
     const n = Math.min(c.look.crates || 6, Math.ceil(load / 4));
-    if (!c.crates) c.crates = [];
     while (c.crates.length < (c.look.crates || 6)) c.crates.push(gs.add.image(-9999, -9999, '__WHITE').setVisible(false));
-    const tex = Assets.has('crate') ? Assets.texOf(Assets.def('crate').atlas, 'crate') : null;
-    const k = c.look.scale || 1;
     const cp = (c.def.cargoPoint && c.def.cargoPoint[c.dir]) || [19, -46];
     const bx = c.spr.x + (c.flip ? -cp[0] : cp[0]) * k, by = c.spr.y + cp[1] * k;
     // the stack spreads along the car's heading on screen
-    const hx = c.flip ? -1 : 1;
     for (let q = 0; q < c.crates.length; q++) {
       const im = c.crates[q];
       const on = q < n && !!tex && (!box || open || q < 4);
@@ -327,7 +434,13 @@ export class Train {
       im.setDepth(c.spr.depth + 1 + q * 0.01);
     }
   }
-  capOf(key) { const c = this.cars.find((q) => q.key === key); return c ? (c.look.crates || 0) * 4 : 0; }
+  /** crates a freight car holds (Freight: box car 32, flat car 24; 화물칸 크게 adds to both) */
+  capOf(key) {
+    const c = this.cars.find((q) => q.key === key);
+    if (!c) return 0;
+    if (c.look.real) { const F = this.gs.v42 && this.gs.v42.freight, tot = F ? F.cap() : 56; return key === 'train_boxcar' ? Math.round(tot * 32 / 56) : tot - Math.round(tot * 32 / 56); }
+    return (c.look.crates || 0) * 4;
+  }
 
   /** (v4.2) the first arrivals after the update: a label over each car for 4 s (객차 · 손님 14명 ...) */
   showLabels(riders, crates) {
@@ -340,14 +453,16 @@ export class Train {
       if (!key || !c.spr.visible) continue;
       const n = c.key === 'train_coach' ? riders : c.key === 'train_boxcar' ? Math.min(crates, this.capOf('train_boxcar')) : Math.max(0, crates - this.capOf('train_boxcar'));
       const tx = c.key === 'train_flatcar' && n <= 0 ? t('car_flat') : t(key, { n });
-      const l = gs.add.text(c.spr.x, c.spr.y - 110, tx, { fontFamily: gs.font, fontSize: '17px', fontStyle: '800', color: '#ffffff', stroke: '#35506e', strokeThickness: 5, resolution: 2 }).setOrigin(0.5).setDepth(9000);
+      const l = gs.add.text(c.spr.x, c.spr.y - 110, tx, { fontFamily: gs.font, fontSize: '17px', fontStyle: '800', color: '#ffffff', stroke: '#35506e', strokeThickness: 5, resolution: 2 }).setOrigin(0.5, 1).setDepth(9000);
       l.__car = c;
       this.lbls.push(l);
     }
   }
+  /** (CODE-2) where a car's label sits: 6 px over its drawn roof (train2 labelTopDir), else 110 px up */
+  labelY(c) { const L = c.def.labelTopDir; return c.spr.y + (L && L[c.dir] !== undefined ? L[c.dir] : -110 * (c.look.scale || 1)); }
   updateLabels(dt) {
     this.lblT -= dt;
-    for (const l of this.lbls) { const c = l.__car; l.setPosition(c.spr.x, c.spr.y - 110 * (c.look.scale || 1)); l.setAlpha(Math.min(1, Math.max(0, this.lblT / 0.6))); }
+    for (const l of this.lbls) { const c = l.__car; l.setPosition(c.spr.x, this.labelY(c)); l.setAlpha(Math.min(1, Math.max(0, this.lblT / 0.6))); }
     if (this.lblT <= 0) { for (const l of this.lbls) l.destroy(); this.lbls = []; }
   }
 

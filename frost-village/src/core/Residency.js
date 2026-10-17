@@ -172,7 +172,10 @@ export const Residency = {
     const own = Assets.pageOwner[key];
     for (const o of this.gs.children.list) {
       const ch = o.__ch;
-      if (!ch || !ch.alive || !ch.def || ch.def.atlas !== own || !ch.animName) continue;
+      if (!ch || !ch.alive || !ch.def || !ch.animName) continue;
+      // ((v4.2 CODE-2) an unpacked on-demand atlas: whoever asked for one of its anims (the chief's chief2 anims))
+      if (!own) { const ad = ch.def.anims && ch.def.anims[ch.animName]; if (ad && ad.atlas === key) { ch.animKey = ''; ch.play(ch.animName, true); } continue; }
+      if (ch.def.atlas !== own) continue;
       if (Assets.socialPage(own, ch.animName) === key) { ch.animKey = ''; ch.play(ch.animName, true); }
     }
   },
@@ -210,20 +213,28 @@ export const Residency = {
       Assets.tfReady.delete(key);
     } else {
       // the character anims made from this page go; characters that play one turn to their fallback
-      const anims = new Set();
-      for (const an in Assets.animPage) if (Assets.animPage[an] === key) anims.add(an.slice(own.length + 1));
+      // ((v4.2 CODE-2) an unpacked on-demand atlas (chief2's char_player_b): the anims of any character that name it)
+      const anims = new Set(), byChar = {};
+      const ownK = own || key;
+      for (const an in Assets.animPage) if (Assets.animPage[an] === key) anims.add(an.slice(ownK.length + 1));
       for (const c in Assets.m.characters) {
         const d = Assets.m.characters[c];
-        if (!d || d.atlas !== own) continue;
+        if (!d || d.extends) continue;
+        const mine = new Set();
+        if (d.atlas === ownK) for (const an of anims) mine.add(an);
+        for (const an in d.anims || {}) if (d.anims[an] && d.anims[an].atlas === key) mine.add(an);
+        if (!mine.size) continue;
+        byChar[c] = mine;
         const def = Assets.charDef(c);
-        for (const an of anims) {
+        for (const an of mine) {
           for (const dir of ['S', 'SE', 'E', 'NE', 'N']) dropAnim(g, c + ':' + an + ':' + dir);
           if (def._dirs) def._dirs[an] = [];
         }
       }
       for (const o of gs.children.list) {
         const ch = o.__ch;
-        if (ch && ch.alive && ch.def && ch.def.atlas === own && anims.has(ch.animRes)) { ch.animKey = ''; ch.play(ch.animName || 'idle', true); }
+        const mine = ch && ch.alive && ch.def ? byChar[ch.key] : null;
+        if (mine && mine.has(ch.animRes)) { ch.animKey = ''; ch.play(ch.animName || 'idle', true); }
       }
     }
     // hidden pictures still pointing at it (a spare rig image, a sprite out of view)

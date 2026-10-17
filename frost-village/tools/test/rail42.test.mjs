@@ -62,22 +62,25 @@ for (const stage of [1, 2]) {
   r.setStage(stage);
   const units = r.consist();
   ok(units[0].key === 'train_engine' && units[0].off === Math.min(...units.map((u) => u.off)), 'stage ' + stage + ': the engine is the leading unit');
-  ok(near(r.length, stage === 1 ? 10.6 : 13.6, 1e-9), 'stage ' + stage + ': nose → tail ' + r.length.toFixed(2) + ' m');
+  // ((v4.2 CODE-2) the engine's rear coupler at 1.375 m (train2 couplerOverride): plan length + 0.155 m; every car
+  //  behind the engine 0.155 m (0.11 cell) further back than the plan's §5.2 table)
+  ok(near(r.length, (stage === 1 ? 10.6 : 13.6) + 0.155, 1e-9), 'stage ' + stage + ': nose → tail ' + r.length.toFixed(2) + ' m');
   ok(r.seats() === (stage === 1 ? 16 : 32) && r.freightCap() === 56, 'stage ' + stage + ': seats ' + r.seats() + ', freight ' + r.freightCap());
   r.running = true;
   r.set('atOurs', 1);
   const span = (key, k = 0) => { const u = units.filter((q) => q.key === key)[k]; const a = r.path.at(r.m - u.off - u.len / 2), b = r.path.at(r.m - u.off + u.len / 2); return [Math.min(a.i, b.i), Math.max(a.i, b.i)]; };
   const nose = r.path.at(r.m), tail = r.path.at(r.m - r.length);
   ok(near(nose.i, stage === 1 ? -0.8 : -2.9, 1e-6) && near(nose.j, 0, 1e-9), 'stage ' + stage + ': nose at i ' + nose.i.toFixed(2));
-  ok(near(tail.i, stage === 1 ? 6.70 : 6.72, 0.011), 'stage ' + stage + ': tail at i ' + tail.i.toFixed(2));
+  ok(near(tail.i, (stage === 1 ? 6.70 : 6.72) + 0.155 / Math.SQRT2, 0.011), 'stage ' + stage + ': tail at i ' + tail.i.toFixed(2));
   const coach = span('train_coach', stage === 1 ? 0 : 1);
-  ok(near(coach[0], stage === 1 ? 1.04 : 1.06, 0.011) && near(coach[1], stage === 1 ? 3.16 : 3.18, 0.011) && coach[0] >= -0.05 && coach[1] <= 5.05, 'stage ' + stage + ': 객차 at the platform [' + coach.map((v) => v.toFixed(2)) + ']');
+  const D = 0.155 / Math.SQRT2;
+  ok(near(coach[0], (stage === 1 ? 1.04 : 1.06) + D, 0.011) && near(coach[1], (stage === 1 ? 3.16 : 3.18) + D, 0.011) && coach[0] >= -0.05 && coach[1] <= 5.05, 'stage ' + stage + ': 객차 at the platform [' + coach.map((v) => v.toFixed(2)) + ']');
   const box = span('train_boxcar');
   ok(box[0] <= 4.1 && box[1] >= 4.1, 'stage ' + stage + ': 화물칸 [' + box.map((v) => v.toFixed(2)) + '] opposite the 짐 싣는 곳 (i 4.1)');
   ok(!r.blocking(8) && !r.blocking(33), 'stage ' + stage + ': crossings 8 and 33 open while it dwells at ours');
   r.set('atTown', 1);
   const tn = r.path.at(r.m), tc = span('train_coach', 0);
-  ok(near(tn.i, 31.6, 1e-6) && near(tc[0], 27.64, 0.011) && near(tc[1], 29.76, 0.011), 'stage ' + stage + ': at the town nose 31.6, 객차 [' + tc.map((v) => v.toFixed(2)) + ']');
+  ok(near(tn.i, 31.6, 1e-6) && near(tc[0], 27.64 - D, 0.011) && near(tc[1], 29.76 - D, 0.011) && tc[0] >= 25.45 && tc[1] <= 30.55, 'stage ' + stage + ': at the town nose 31.6, 객차 [' + tc.map((v) => v.toFixed(2)) + ']');
   ok(!r.blocking(33) && !r.blocking(8), 'stage ' + stage + ': crossings open while it dwells at the town');
   ok(near(r.cycle(), 85, 3), 'stage ' + stage + ': cycle ' + r.cycle().toFixed(1) + ' s (85 ± 3)');
 }

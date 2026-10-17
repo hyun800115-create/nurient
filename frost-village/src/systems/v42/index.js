@@ -13,9 +13,11 @@ import { Office } from '../office/Office.js';
 import { VillageNews } from '../VillageNews.js';
 import { ChiefPilot } from '../pilot/ChiefPilot.js';
 import { DepotSystem } from '../depot/DepotSystem.js';
+import { V42Art } from './art.js';
 
 // [name, factory(gs, v42, savedV42, wholeSave)] — in construction order
 const SYSTEMS = [
+  ['art', (gs, v) => new V42Art(gs, v)],            // (CODE-2) when the v4.2 art comes in
   ['pickup', (gs, v) => new PickupPolicy(gs, v)],
   ['aura', (gs, v) => new ChiefAura(gs, v)],
   ['nav', (gs, v) => new Navigator(gs, v)],

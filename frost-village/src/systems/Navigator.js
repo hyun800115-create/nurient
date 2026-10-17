@@ -9,7 +9,11 @@
 //              px (≤ nav.maxDots, hidden near him) with a light wave running to the target, a pulsing ring + a badge
 //              (item icon + short name) on the place; the UI scene draws the off-screen edge badge and the chip
 //   with the tutorial arrow on the same pad: only the arrow + the dots; on another pad: both, the navigator smaller
-// CODE-1: generated fv_nav_* textures (fxTex.js); CODE-2 swaps in chief_fx's nav_* frames by key.
+// CODE-1: generated fv_nav_* textures (fxTex.js); (CODE-2) chief_fx's nav_* frames (v42_core page) take over in place
+// when the page arrives (reskin): nav_chevron_00..15, nav_dot_0/1, the nav_ring loop (no code pulse), the nav_badge
+// with the item icon in its iconRect and the place's name on a ui_chip plate at a constant screen size. Placement rules
+// of the art: the chevron max(56, ring rx + 36) ahead of his boots (it clears the halo at zoom 0.6), the dots hidden
+// within max(90, chevron + 30).
 // ≤ 20 display objects while carrying (pooled), ≤ 0.02 ms a frame averaged.
 
 import { BALANCE } from '../data/balance.js';
@@ -51,6 +55,42 @@ export class Navigator {
     this.badgeText = gs.add.text(-24, 0, '', { fontFamily: gs.font, fontSize: '19px', fontStyle: '800', color: '#1f5f66', resolution: 2 }).setOrigin(0, 0.5);
     b.add([this.badgeBg, this.badgeIcon, this.badgeText]);
     for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) o.noCull = true;
+    this.artOn = false;
+    if (Assets.has('nav_chevron')) this.reskin();
+    this.onArrive = () => { if (!this.artOn && Assets.has('nav_chevron')) this.reskin(); };
+    Assets.arrivals.push(this.onArrive);
+  }
+
+  /** (CODE-2) the chief_fx art on the pooled pieces */
+  reskin() {
+    if (this.artOn || !Assets.has('nav_chevron')) return false;
+    const gs = this.gs;
+    const r = Assets.sprite('nav_chevron');
+    this.chevTex = r.tex;
+    this.chev.setTexture(r.tex, 'nav_chevron_00');
+    for (const d of this.dots) d.setTexture(r.tex, 'nav_dot_0');
+    // the target ring: a sprite playing its own outward pulse
+    const vis = this.ring.visible, rx = this.ring.x, ry = this.ring.y;
+    this.ring.destroy();
+    this.ring = gs.add.sprite(rx, ry, r.tex, 'nav_ring_0').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(vis);
+    this.ring.noCull = true;
+    const ra = Assets.spriteAnim('nav_ring', 'play');
+    if (ra) this.ring.play(ra);
+    // the badge: nav_badge (pointer tip at the origin) + the item icon in its disc + a name plate (ui_chip)
+    const b = this.badge;
+    b.removeAll(true);
+    const bd = Assets.def('nav_badge') || {};
+    const ir = bd.iconRect || [16, 14, 56, 56], fs = bd.frameSize || [88, 100];
+    this.badgeBg = Assets.image(gs, 0, 0, 'nav_badge');
+    this.badgeIcon = Assets.image(gs, ir[0] + ir[2] / 2 - fs[0] / 2, ir[1] + ir[3] / 2 - fs[1], 'item_fish_cooked').setOrigin(0.5);
+    this.plate = gs.add.container(0, -fs[1] - 4);
+    this.plateBg = panel(gs, 0, 0, Assets.has('ui_chip') ? 'ui_chip' : 'ui_panel', 160, 64).setOrigin(0.5, 1).setAlpha(0.96);
+    this.badgeText = gs.add.text(0, -32, '', { fontFamily: gs.font, fontSize: '26px', fontStyle: '800', color: '#1f5f66', resolution: 2 }).setOrigin(0.5);
+    this.plate.add([this.plateBg, this.badgeText]);
+    b.add([this.badgeBg, this.badgeIcon, this.plate]);
+    this.badgeType = null;
+    this.artOn = true;
+    return true;
   }
 
   /** is the guide on now (the UI asks too: chip, edge badge) */
@@ -201,12 +241,15 @@ export class Navigator {
     const ang = Math.atan2(ny - p.y, nx - p.x);
     const k = (Math.round(ang / (Math.PI / 8)) + 16) % 16;
     const near = gdist(p.x, p.y, d.pad.x, d.pad.y) < 70;
-    this.chev.setVisible(!near).setFrame('c' + k).setPosition(p.x + Math.cos(ang) * AHEAD, p.y + Math.sin(ang) * AHEAD * 0.5 + 4).setScale(small ? 0.8 : 1);
+    // (art: the chevron clears the halo ring at every zoom; the dots start past it)
+    const au = this.v42 && this.v42.aura, rx = au && au.on ? au.ringWidth() * 0.46 : 0;
+    const ahead = this.artOn ? Math.max(AHEAD, rx + 36) : AHEAD;
+    this.chev.setVisible(!near).setFrame(this.artOn ? 'nav_chevron_' + (k < 10 ? '0' : '') + k : 'c' + k).setPosition(p.x + Math.cos(ang) * ahead, p.y + Math.sin(ang) * ahead * 0.5 + 4).setScale(small ? 0.8 : 1);
     this.chev.setAlpha(0.85 + Math.sin(gs.time.now / 180) * 0.15);
     this.aura(near ? null : ang);
     // dots along the route, from AHEAD on, every dotEvery px, up to maxDots (none within hideNear of him)
     this.wave = (this.wave + dt / 1.2) % 1;
-    const every = c.dotEvery || 48, maxD = Math.min(16, c.maxDots || 16), hide = c.hideNear || 90;
+    const every = c.dotEvery || 48, maxD = Math.min(16, c.maxDots || 16), hide = this.artOn ? Math.max(c.hideNear || 90, ahead + 30) : c.hideNear || 90;
     let used = 0, s = every, px = p.x, py = p.y, along = 0;
     const total = Math.max(1, this.routeLen);
     for (let i = 0; i < R.length && used < maxD; i++) {
@@ -217,7 +260,7 @@ export class Navigator {
           const dot = this.dots[used++];
           const w = Math.abs(((s / total) - this.wave + 1) % 1);
           const lit = w < 0.12;
-          dot.setVisible(true).setFrame(lit ? 'd1' : 'd0').setPosition(x, y).setAlpha(lit ? 1 : 0.8).setScale(small ? 0.8 : 1);
+          dot.setVisible(true).setFrame(this.artOn ? (lit ? 'nav_dot_1' : 'nav_dot_0') : lit ? 'd1' : 'd0').setPosition(x, y).setAlpha(lit ? 1 : 0.8).setScale(small ? 0.8 : 1);
         }
         s += every;
       }
@@ -227,8 +270,22 @@ export class Navigator {
     // the place: a pulsing ring + the badge (not when the tutorial arrow already points at it)
     const show = !samePad;
     const ph = (gs.time.now % 1000) / 1000;
-    this.ring.setVisible(show).setPosition(d.pad.x, d.pad.y).setScale((small ? 0.75 : 0.95) + ph * 0.25).setAlpha(1 - ph * 0.6);
-    if (show) {
+    // (art: the ring plays its own outward pulse at scale 1)
+    if (this.artOn) this.ring.setVisible(show).setPosition(d.pad.x, d.pad.y).setScale(small ? 0.8 : 1).setAlpha(1);
+    else this.ring.setVisible(show).setPosition(d.pad.x, d.pad.y).setScale((small ? 0.75 : 0.95) + ph * 0.25).setAlpha(1 - ph * 0.6);
+    if (show && this.artOn) {
+      // nav_badge with the item in its disc; the name on a ui_chip plate above it, the same size on screen at any zoom
+      const name = this.placeName(d);
+      if (this.badgeText.text !== name) {
+        this.badgeText.setText(name);
+        this.plateBg.setSize(Math.max(120, this.badgeText.width + 48), 64);
+      }
+      if (this.badgeType !== d.type) { this.badgeType = d.type; Assets.apply(this.badgeIcon, d.type); this.badgeIcon.setOrigin(0.5).setScale(44 / Math.max(1, this.badgeIcon.frame.realWidth, this.badgeIcon.frame.realHeight)); }
+      const z = Math.max(0.3, gs.zoomCur || 1), bs = small ? 0.8 : 1;
+      // (26 px type on the plate = about 13 CSS px on a 390 px phone at every zoom: CSS per world px = zoom x 390/720)
+      this.plate.setScale(Math.min(1.8, Math.max(0.5, 0.92 / z)) / bs);
+      this.badge.setVisible(true).setPosition(d.pad.x, d.pad.y - 22 + Math.sin(gs.time.now / 300) * 3).setScale(bs);
+    } else if (show) {
       const name = this.placeName(d);
       if (this.badgeText.text !== name) {
         this.badgeText.setText(name);
@@ -308,5 +365,9 @@ export class Navigator {
       route: this.route.map((q) => [Math.round(q.x), Math.round(q.y)]), routeLen: Math.round(this.routeLen), objects: this.objs, plans: this.plans || 0, chip: this.chip() };
   }
 
-  destroy() { for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) if (o && o.scene) o.destroy(); }
+  destroy() {
+    const i = Assets.arrivals.indexOf(this.onArrive);
+    if (i >= 0) Assets.arrivals.splice(i, 1);
+    for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) if (o && o.scene) o.destroy();
+  }
 }

@@ -13,6 +13,12 @@ const FLAT = {
   ui_coin_bar: { fill: 0x26364f, line: 0x16213a, alpha: 0.85 },
   ui_bubble_body: { fill: 0xffffff, line: 0xd7e3f2 },
   ui_chat_bubble: { fill: 0xffffff, line: 0xd7e3f2 },
+  // (v4.2 CODE-2) the ui5 panels (Canvas stand-ins with the art's colours)
+  ui_chip: { fill: 0xfff8ec, line: 0x2cb7a8 },
+  ui_letter: { fill: 0xfffaf0, line: 0xd9c7a3 },
+  ui_chalk_panel: { fill: 0x2f4a3c, line: 0x8a6a48 },
+  ui_office_tab: { fill: 0xf4ead6, line: 0x2cb7a8 },
+  ui_office_tab_on: { fill: 0xfffbf2, line: 0x1f8f86 },
 };
 
 class FlatPanel extends Phaser.GameObjects.Graphics {

@@ -177,8 +177,11 @@ export class Rail {
 import { RailPath } from './RailPath.js';
 
 /** the units over couplers (m): lengthM, couplerM front (−) / back (+) from the anchor (docs/v42_plan.md §5.2) */
+// ((v4.2 CODE-2, assets/train2 manifest trainConsist.couplerOverride) the engine's sprite draws its rear coupler hook
+//  1.375 m behind its anchor (the town manifest says 1.22): with 1.22 the engine and the first coach overlapped and no
+//  coupler gap showed; the train is 0.155 m longer)
 export const UNITS = {
-  train_engine: { len: 2.6, front: -1.38, back: 1.22 },
+  train_engine: { len: 2.6, front: -1.38, back: 1.375 },
   train_coach: { len: 3.0, front: -1.5, back: 1.5, seats: true },
   train_boxcar: { len: 2.6, front: -1.3, back: 1.3, freight: 32 },
   train_flatcar: { len: 2.4, front: -1.2, back: 1.2, freight: 24 },
@@ -349,7 +352,8 @@ export class RouteRail {
     const P = this.path, m = this.m;
     for (const u of this.units) {
       if (!UNITS[u.key].seats) continue;
-      for (const f of [-0.33, 0.33]) {
+      // ((CODE-2) the train2 coach's doors are its end platforms' steps: ± 0.4 of its length (manifest doorPoints))
+      for (const f of [-0.4, 0.4]) {
         const o = P.at(m - u.off + f * u.len);
         out.push({ x: P.G[0] + 64 * (o.i + 1.0), y: P.G[1] + 32 * (o.i - 1.0), i: o.i });
       }

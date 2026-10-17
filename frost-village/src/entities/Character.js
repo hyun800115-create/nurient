@@ -66,7 +66,9 @@ export class Character {
     // ((v4 review M1) only for someone on or near the screen: residents chatting out of sight made a social page load
     //  and go again about 40 times a minute; one that comes into view plays its anim again and asks then)
     if (!LOCO.has(name) && Assets.packed && !this.sprite.isDoll && this.def && this.def.atlas && this.sprite.visible && (!this.gs.isOnScreen || this.gs.isOnScreen(this.x, this.y, 220))) {
-      const sp = Assets.socialPage(this.def.atlas, name);
+      // ((v4.2 CODE-2) an anim that names its own on-demand atlas: chief2's sit / talk / wave / warm_hands / cheer)
+      const ad = this.def.anims && this.def.anims[name], own = ad && ad.atlas;
+      const sp = own && Assets.m.atlases[own] && Assets.m.atlases[own].onDemand ? own : Assets.socialPage(this.def.atlas, name);
       if (sp) Residency.want(sp);
     }
     const res = Assets.resolveAnim(this.key, name);

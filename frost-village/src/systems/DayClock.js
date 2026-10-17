@@ -126,6 +126,10 @@ export class DayClock {
     // moving lights: the train's lamp + coach windows
     const nb = gs.v4;
     if (nb && nb.train) { const lp = nb.train.lampPoint(); if (lp) pts.push({ x: lp.x, y: lp.y, k: 1.2 }); nb.train.coachPoints(pts); }
+    // ((v4.2 CODE-2) the chief: his 광채 reads like a lantern at night — NORMAL art under the overlay cannot)
+    const au = gs.v42 && gs.v42.aura;
+    if (au && au.lightPoints) au.lightPoints(pts);
+    if (nb && nb.railProps) nb.railProps.lightPoints(pts);
     pts.sort((a, b) => (Math.abs(a.x - cx) + Math.abs(a.y - cy)) - (Math.abs(b.x - cx) + Math.abs(b.y - cy)));
     const n = Math.min(maxG, pts.length);
     if (!gs.textures.exists('fv_glow')) makeGlow(gs);
@@ -135,6 +139,8 @@ export class DayClock {
       if (!g) { g = gs.add.image(0, 0, 'fv_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.FX - 29); this.glows.push(g); }
       const p = pts[i];
       g.setVisible(true).setPosition(p.x, p.y).setScale(1.25 * (p.k || 1)).setAlpha(alpha * (0.85 + Math.sin(this.T * 3 + p.x) * 0.05));
+      // ((v4.2 CODE-2) a tinted light: the flat car's red tail lamps)
+      if (p.tint) { if (g.__tn !== p.tint) { g.__tn = p.tint; g.setTint(p.tint); } } else if (g.__tn) { g.__tn = 0; g.clearTint(); }
     }
     for (let i = n; i < this.glows.length; i++) if (this.glows[i].visible) this.glows[i].setVisible(false);
   }

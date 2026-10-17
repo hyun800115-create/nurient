@@ -8,16 +8,21 @@
 //   band   a thin gold outer band from 읍 on
 // 촌장 응원: once the village is complete, standing still ≥ cheer.still s near working gatherers / operators makes
 // them work ×cheer.mult (♪ notes rise from the ring).
-// CODE-1 uses the generated fv_halo* textures; CODE-2's chief_fx art replaces them by key (fxTex.art()).
-// Cost: ≤ 10 display objects, NORMAL blend only (same batch), ≤ 0.01 ms a frame.
+// CODE-1 uses the generated fv_halo* textures; (CODE-2) the chief_fx art (CONTRACT_V42 AG, on the v42_core page)
+// replaces them in place the moment the page arrives (reskin(); sprite keys resolved through Assets.sprite, anims
+// through Assets.spriteAnim: the ring 'calm', the gold ring / glow / pin 'play', the motes one-shot sparkles, the
+// notch chief_halo_notch_00..15). At night the chief is also a moving DayClock light (lightPoints): NORMAL art under the
+// night overlay can only get darker, the light makes him read like a lantern.
+// Cost: ≤ 10 display objects, NORMAL blend only (same batch: one page), ≤ 0.01 ms a frame.
 
 import { BALANCE } from '../data/balance.js';
 import { Settings } from '../core/Save.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { t } from '../data/strings.js';
 import { gdist } from '../core/Iso.js';
-import { art } from '../systems/v42/fxTex.js';
+import { makeAll } from '../systems/v42/fxTex.js';
 import { stackStep } from './ItemStack.js';
+import { Assets } from '../core/Assets.js';
 
 const A = () => (BALANCE.v42 && BALANCE.v42.aura) || {};
 const C = () => (BALANCE.v42 && BALANCE.v42.cheer) || { mult: 1.1, still: 2, radius: 200 };
@@ -44,19 +49,63 @@ export class ChiefAura {
 
   make() {
     const gs = this.gs;
-    const R = art(gs, 'chief_halo', 'fv_halo'), G = art(gs, 'chief_halo_gold', 'fv_halo_gold'), B = art(gs, 'chief_halo_rank2', 'fv_halo_rank2');
-    const GL = art(gs, 'chief_glow_back', 'fv_halo_glow'), M = art(gs, 'chief_sparkle', 'fv_halo_mote'), P = art(gs, 'chief_marker', 'fv_halo_pin');
+    // (made with the generated stand-ins; reskin() puts the art on them: a sprite key is not a texture key)
+    makeAll(gs);
+    const R = { key: 'fv_halo' }, G = { key: 'fv_halo_gold' }, B = { key: 'fv_halo_rank2' };
+    const GL = { key: 'fv_halo_glow' }, M = { key: 'fv_halo_mote' }, P = { key: 'fv_halo_pin' };
     this.keys = { ring: R.key, gold: G.key };
-    this.band = gs.add.image(0, 0, B.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 1.99).setVisible(false);
-    this.ring = gs.add.image(0, 0, R.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 2);
-    this.goldRing = gs.add.image(0, 0, G.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 2.01).setAlpha(0);
-    this.glow = gs.add.image(0, 0, GL.key).setOrigin(0.5, 0.82).setAlpha(0);
+    // (sprites, so the art's loops can play; until the art is here they show the generated stand-ins)
+    this.band = gs.add.sprite(0, 0, B.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 1.99).setVisible(false);
+    this.ring = gs.add.sprite(0, 0, R.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 2);
+    this.goldRing = gs.add.sprite(0, 0, G.key).setOrigin(0.5, 0.5).setDepth(DEPTH.PAD + 2.01).setAlpha(0);
+    this.glow = gs.add.sprite(0, 0, GL.key).setOrigin(0.5, 0.82).setAlpha(0);
     this.motes = [];
-    for (let i = 0; i < MOTES; i++) this.motes.push(gs.add.image(0, 0, M.key).setOrigin(0.5).setScale(0.8).setAlpha(0));
-    this.pin = gs.add.image(0, 0, P.key).setOrigin(0.5, 1).setDepth(DEPTH.LABEL - 30).setAlpha(0);
+    for (let i = 0; i < MOTES; i++) this.motes.push(gs.add.sprite(0, 0, M.key).setOrigin(0.5).setScale(0.8).setAlpha(0));
+    this.pin = gs.add.sprite(0, 0, P.key).setOrigin(0.5, 1).setDepth(DEPTH.LABEL - 30).setAlpha(0);
     this.notchImg = gs.add.image(0, 0, 'fv_nav_chevron', 'c0').setOrigin(0.5).setDepth(DEPTH.PAD + 2.02).setAlpha(0);
     this.all = [this.band, this.ring, this.goldRing, this.glow, this.pin, this.notchImg].concat(this.motes);
     for (const o of this.all) o.noCull = true;
+    this.artOn = false;
+    if (Assets.has('chief_halo')) this.reskin();
+    // the v42_core page arrives after the first sale: the art takes over in place
+    this.onArrive = (k) => { if (!this.artOn && Assets.has('chief_halo')) this.reskin(); void k; };
+    Assets.arrivals.push(this.onArrive);
+  }
+
+  /** (CODE-2) the chief_fx art: every piece gets its frame and its loop */
+  reskin() {
+    if (this.artOn || !Assets.has('chief_halo')) return false;
+    const set = (o, key, anim, ts) => {
+      Assets.apply(o, key);
+      const ak = anim && Assets.spriteAnim(key, anim);
+      if (ak && o.play) { o.play(ak); if (ts) o.anims.timeScale = ts; }
+    };
+    set(this.ring, 'chief_halo', 'calm');
+    set(this.goldRing, 'chief_halo_gold', 'play');
+    set(this.band, 'chief_halo_rank2');
+    set(this.glow, 'chief_glow_back', 'play');
+    set(this.pin, 'chief_marker', 'play');
+    const sp = Assets.spriteAnim('chief_sparkle', 'play');
+    this.motes.forEach((m, i) => {
+      Assets.apply(m, 'chief_sparkle');
+      // one-shot twinkles, restarted at their own pace (a mote never twinkles in step with its neighbours)
+      if (sp) {
+        m.on('animationcomplete', () => { if (m.active) this.gs.time.delayedCall(150 + ((i * 397) % 600), () => { if (m.active && this.artOn) m.play(sp); }); });
+        this.gs.time.delayedCall(i * 230, () => { if (m.active) m.play(sp); });
+      }
+    });
+    const nr = Assets.sprite('chief_halo_notch');
+    if (nr && !nr.ph && !nr.pending) { this.notchImg.setTexture(nr.tex, 'chief_halo_notch_00'); this.notchArt = nr.tex; }
+    this.artOn = true;
+    this.keys = { ring: 'chief_halo', gold: 'chief_halo_gold' };
+    return true;
+  }
+
+  /** (CODE-2) the chief as a moving night light (DayClock.drawGlows): warm pool of light around him */
+  lightPoints(pts) {
+    const p = this.gs.player;
+    if (!p || !this.on || p.sprite.visible === false) return;
+    pts.push({ x: p.x, y: p.y - 40 - (p.liftY || 0), k: 0.9 });
   }
 
   /** the halo setting / an observer or a test toggles it */
@@ -125,16 +174,20 @@ export class ChiefAura {
     // motes riding the ring (one turn every 6 s; slower in 관망)
     const spin = (this.t / (this.observing ? 9 : 6)) * Math.PI * 2;
     const rx = w * 0.46, ry = w * 0.23;
+    // (the art's sparkles are 32 px one-shot twinkles: half the stand-in's scale, their own fade)
+    const mk = this.artOn ? 0.5 : 1;
     for (let i = 0; i < MOTES; i++) {
       const m = this.motes[i], ang = spin + (i / MOTES) * Math.PI * 2;
       const tw = 0.5 + 0.5 * Math.sin(this.t * 3.1 + i * 1.7);
       const mx = x + Math.cos(ang) * rx, my = y + Math.sin(ang) * ry - 2;
-      m.setPosition(mx, my - tw * 4).setDepth(inside ? p.inDepth + (Math.sin(ang) > 0 ? 1e-6 : -7e-6) : Math.sin(ang) > 0 ? p.y + 1 : p.y - 1).setAlpha(0.35 + tw * 0.55).setScale(sc * (0.55 + tw * 0.4));
+      m.setPosition(mx, my - tw * 4).setDepth(inside ? p.inDepth + (Math.sin(ang) > 0 ? 1e-6 : -7e-6) : Math.sin(ang) > 0 ? p.y + 1 : p.y - 1).setAlpha(this.artOn ? 0.95 : 0.35 + tw * 0.55).setScale(sc * mk * (this.artOn ? 1.1 : 0.55 + tw * 0.4));
     }
-    // the navigator's notch: a small chevron on the ring pointing along the route
+    // the navigator's notch: a small gem on the ring where the route leaves it (art: chief_halo_notch, the same
+    // 16 headings as the chevron, at 1.3 x the ring scale; the stand-in: a small chevron)
     if (this.notch !== null && this.notch !== undefined) {
       const k = Math.round(((this.notch % (Math.PI * 2)) + Math.PI * 2) / (Math.PI * 2 / 16)) % 16;
-      this.notchImg.setFrame('c' + k).setPosition(x + Math.cos(this.notch) * rx * 1.05, y + Math.sin(this.notch) * ry * 1.05).setScale(sc * 1.6).setAlpha(0.9);
+      if (this.notchArt) this.notchImg.setFrame('chief_halo_notch_' + (k < 10 ? '0' : '') + k).setPosition(x + Math.cos(this.notch) * w * 0.46, y + Math.sin(this.notch) * w * 0.23).setScale(sc * 1.3).setAlpha(0.95);
+      else this.notchImg.setFrame('c' + k).setPosition(x + Math.cos(this.notch) * rx * 1.05, y + Math.sin(this.notch) * ry * 1.05).setScale(sc * 1.6).setAlpha(0.9);
     } else if (this.notchImg.alpha) this.notchImg.setAlpha(0);
     // the star pin: zoomed out, in a crowd, or in 관망
     this.crowdT -= dt;
@@ -147,7 +200,8 @@ export class ChiefAura {
       const pz = Math.max(0.05, gs.zoomCur || 1);
       // 22 CSS px on a 390 px phone: world px = 22 / (zoom x 390/720)
       const ps = (22 / (pz * 390 / 720)) / 72;
-      this.pin.setPosition(x, top + Math.sin(this.t * 3) * 2).setScale(ps).setAlpha(this.pinA);
+      // (the art sweeps its own light: no code bob then)
+      this.pin.setPosition(x, top + (this.artOn ? 0 : Math.sin(this.t * 3) * 2)).setScale(ps).setAlpha(this.pinA);
     } else if (this.pin.alpha) this.pin.setAlpha(0);
     this.updateCheer(dt, true);
   }
@@ -205,8 +259,12 @@ export class ChiefAura {
 
   state() {
     return { on: this.on, ringW: Math.round(this.ringWidth()), gold: +this.gold.toFixed(2), pin: +this.pinA.toFixed(2), crowd: this.crowd, cheering: this.cheering, cheered: this.cheered.size, observing: this.observing,
-      depth: this.ring.depth, key: this.ring.texture.key, objects: this.all.length };
+      depth: this.ring.depth, key: this.ring.texture.key, frame: this.ring.frame ? this.ring.frame.name : null, art: this.artOn, objects: this.all.length };
   }
 
-  destroy() { for (const o of this.all) if (o && o.scene) o.destroy(); }
+  destroy() {
+    const i = Assets.arrivals.indexOf(this.onArrive);
+    if (i >= 0) Assets.arrivals.splice(i, 1);
+    for (const o of this.all) if (o && o.scene) o.destroy();
+  }
 }
