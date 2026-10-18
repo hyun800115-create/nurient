@@ -1067,6 +1067,68 @@ dock, and the freight cars still carry surplus. Nothing else depends on the depo
 
 ---
 
+## 19. v4.2 touch — 큰 식당 tables, the server fix, 짐꾼 2 on more lines, a growing 창고 crew (2026-10-18)
+
+Designer request (relayed): materials pile up because nobody carries them fast enough; more porters, the 창고 early, its
+crew in proportion to what the village makes. This touch does the **carry side** and the **restaurant** only; the demand
+side (more workshops / shops / building sites / a 자재창고) is a separate later version (`docs/logistics_plan.md`).
+Numbers and evidence: `docs/build_reports/v42_touch.md`. Designer text: `docs/기획서_v4_2_촌장.md` §13.
+
+### 19.1 Restaurant (`src/entities/BigRestaurant.js`)
+
+- **Measured first** (46-min save, chief away, 5 game min per state): all three staff served 3.8 guests a minute with
+  2.0 walk-outs a minute; the cook was 17 % busy, the server 100 %. Cause: the 서빙 직원's destination beside an inner seat lay inside the
+  neighbour table's collision circle (r 44) and the four tables left no gap, so 3 of 5 trips ended on the 12 s timeout.
+- **Server**: walks to a free *serve point* beside the seat (ring search r 64/80/96 px, 16 directions, not blocked at
+  r 15, nearest to the approach; cached per seat), goes round the terrace by `backPath` for back-yard seats, carries up
+  to `serverCarry` (2) tickets for seats on the same side, legs capped at 7 s (stalled 1.2 s near the seat = arrived).
+- **Kitchen hold**: with nobody in the kitchen (no cook or no server, and the chief not on the kitchen pad) the register
+  stops taking orders once `holdTickets` (3) tickets wait; guests wait in the queue instead of at a table. Kitchen pad
+  label `rest_kitchen_wait` ("주문 {n}개 · 여기 서세요").
+- **테이블 늘리기**: `busyT` = seconds the head of the line waited for a seat while the kitchen worked (saved). At
+  `tables.offerS` (60) a LineUpgrades pad `tables{level+1}` (kind `upgrade`, label `tables_pad`) appears where the
+  next two tables go; costs `tables.costs` [1,200, 2,000]; 2 levels (layout `more`: level 1 at metres (−5.5, 1.1/3.1) →
+  world (−799, 731), (−709, 685); level 2 (−7.2, …) → (−876, 692), (−786, 647)); lamp 1 moves to (−686, 638); a
+  lantern string per level; existing art only (`picnic_table`, lanterns, lamp). Seats keep `path` (via (−620, 880),
+  (−590, 790), (−640, 715)); guests walk it with collision (teleport fallback after 50 s), leave by its reverse.
+  Spawn interval × (8 / seats)^`seatsPull` (0.5).
+- **서빙 직원 2**: offered (kind `hire`, label `rest_server2`, `server2.cost` 1,000) once tables ≥ 1, a server exists
+  and `serveWaitT` (≥ 2 ready plates while the server is out) reaches `server2.offerS` (60). Post beside the pass, look
+  seed 7331; restored after the first server on load (`wantServer2`).
+- Pads are paid through `LineUpgrades` (`offerPaid` keeps part payments); restaurant pads always get a slot.
+
+### 19.2 Porters (`src/systems/LineUpgrades.js`, `src/systems/WarehouseCrew.js`)
+
+- **짐꾼 2** lines: `P2_LINES` = the 5 stations + `toolsmith`, `cannery`, `dock` (costs 700 / 700 / 500).
+  `porter2.fullForS` 90 → **45**; the full-time counter pauses while the line's porter stands at the pad with ≥ 4 goods
+  nobody wants (> 4 s); 짐꾼 2 pads have their own 2 slots (`MAX_P2`), so 가공소 2단 pads no longer hide them.
+- **창고 직원** (new system `crew` in `src/systems/v42/index.js`): `Game.noteMade(n)` counts raw on the piles
+  (`Labour`), station / workshop products and the boat's catch; `WarehouseCrew` samples it every 5 s into a per-minute
+  EWMA over `warehouse.crew.window` (180 s; cumulative average for the first minute after a load).
+  `target = clamp(base + floor(max(0, rate − from) / perMin), base, cap)` with base = `warehouse.porters` (2),
+  from 300, perMin 70, cap 6. One arrives at a time (`every` 60 s), free, from the nearest way in (`w_gate_n`,
+  `w_gate_m`, `gate`, `v_link_w`) that is off screen, walks the roads (`state 'arrive'`, snapped home after 180 s if
+  stuck), banner `crewCame` / `crewSub`, news `news_crew`, event `crewArrived`. Never removed; restored instantly.
+  Homes beyond the v3 spots: `WarehousePorter.homeFor` (two rows beside the door).
+
+### 19.3 Save v7 (additive)
+
+`c1.rest`: `tables` (0–2), `busyT` (≤ 3600), `server2` (1), `serveWaitT` (≤ 3600). `v42`: `crew { n ≤ 12, rate,
+since ≤ 600 }`, `p2` and `full` accept the 8 lines, `seen.tb`. `sanitizeC1` / `sanitizeV42` keep these fields (they
+dropped them at first: found by `restaurant.mjs` 11/12 and fixed). Old saves: no fields → level 0, crew = base; a save
+with `crew.n` keeps that many and grows from its own making.
+
+### 19.4 Balance, strings, tests
+
+`balance.js`: `civic.restaurant.serverCarry`, `holdTickets`, `tables { offerS, costs }`, `seatsPull`,
+`server2 { offerS, cost }`, `warehouse.crew { from, perMin, cap, window, every }`, `v42.porter2.fullForS` 45 and three new
+costs (ranges in `balanceCheck.js`). Strings ko + en: `rest_kitchen_wait`, `tables_pad`, `tablesBanner/Sub`,
+`tablesDone/Sub`, `rest_server2`, `srv2Banner/Sub`, `crewCame`, `crewSub`, `news_crew`, `news_tables`. Tests:
+`restaurant.mjs` steps 6b, 10–12; new `porters42.mjs`; `shots_v42_touch.mjs` (screens 30–36); census and bot samples
+count made / crew / 짐꾼 2 / restaurant.
+
+---
+
 ## Appendix A. What each proposal contributed
 
 - **Player proposal**: the measured shelf/output picture and the coin-walking share (33 %); F1–F5 and the 짐꾼 2 /

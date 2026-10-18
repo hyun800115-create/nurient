@@ -1,0 +1,1829 @@
+{
+ "args": [
+  "--repo",
+  "/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/econ/fv",
+  "--warm",
+  "120",
+  "--minutes",
+  "10",
+  "--mode",
+  "auto",
+  "--out",
+  "/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/econ/auto10.json"
+ ],
+ "res": {
+  "s0": {
+   "t": 119.99999999999447,
+   "earned": 748,
+   "exported": 13,
+   "exCoins": 10,
+   "served": 188,
+   "restEarned": 203,
+   "depSales": 0,
+   "depCoins": 0,
+   "hour": 22.807997866662305
+  },
+  "end": {
+   "t": 719.9999999996738,
+   "earned": 5895,
+   "exported": 153,
+   "exCoins": 179,
+   "served": 228,
+   "restEarned": 1147,
+   "depSales": 208,
+   "depCoins": 630,
+   "hour": 22.807997866816294
+  },
+  "flow": {
+   "make>ch:g:lumberjack": {
+    "item_log": 505
+   },
+   "ch:raw:smokehouse>in:smokehouse": {
+    "item_meat_raw": 574
+   },
+   "in:smokehouse>use": {
+    "item_meat_raw": 575
+   },
+   "make>ch:g:farmer": {
+    "item_wheat": 521
+   },
+   "make>ch:g:hunter": {
+    "item_meat_raw": 744
+   },
+   "shelf:market>use": {
+    "item_bread": 288,
+    "item_meat_cooked": 441,
+    "item_fish_cooked": 293
+   },
+   "in:grill>use": {
+    "item_fish_raw": 465
+   },
+   "out:bakery>ch:p1:bakery": {
+    "item_bread": 195
+   },
+   "make>out:sawmill": {
+    "item_plank": 503
+   },
+   "make>out:grill": {
+    "item_fish_cooked": 466
+   },
+   "in:sawmill>use": {
+    "item_log": 502
+   },
+   "other>use": {
+    "item_fish_cooked": 83,
+    "item_bread": 133,
+    "item_meat_cooked": 51,
+    "item_ore": 79,
+    "item_meat_raw": 78,
+    "item_wheat": 30,
+    "item_can": 31,
+    "item_ingot": 25,
+    "item_bow": 1,
+    "item_fish_raw": 25
+   },
+   "ch:p2:sawmill>shelf:trade": {
+    "item_plank": 219
+   },
+   "make>other": {
+    "item_coin": 1144,
+    "item_fish_cooked": 1313,
+    "item_bread": 747,
+    "item_meat_cooked": 494,
+    "item_meat_raw": 86,
+    "item_fish_raw": 140,
+    "item_wheat": 30,
+    "item_pickaxe": 28,
+    "item_can": 166,
+    "item_axe": 12,
+    "item_rod": 7,
+    "item_ore": 71,
+    "item_ingot": 1,
+    "item_bow": 1,
+    "item_fish_big": 42,
+    "item_sickle": 3
+   },
+   "in:toolsmith>use": {
+    "item_plank": 77,
+    "item_ingot": 77
+   },
+   "ch:raw:sawmill>in:sawmill": {
+    "item_log": 502
+   },
+   "make>out:smokehouse": {
+    "item_meat_cooked": 575
+   },
+   "shelf:trade>use": {
+    "item_plank": 458,
+    "item_ingot": 358
+   },
+   "in:bakery>use": {
+    "item_wheat": 455
+   },
+   "pile:wheat>ch:raw:bakery": {
+    "item_wheat": 495
+   },
+   "pile:meat>ch:raw:smokehouse": {
+    "item_meat_raw": 639
+   },
+   "out:smelter>ch:p2:smelter": {
+    "item_ingot": 242
+   },
+   "boatcargo>out:boat": {
+    "item_fish_raw": 40,
+    "item_fish_big": 53
+   },
+   "make>out:toolsmith": {
+    "item_pickaxe": 31,
+    "item_sickle": 9,
+    "item_axe": 24,
+    "item_bow": 4,
+    "item_rod": 9
+   },
+   "ch:g:hunter>pile:meat": {
+    "item_meat_raw": 739
+   },
+   "foodbox>use": {
+    "item_meat_cooked": 59,
+    "item_bread": 69
+   },
+   "make>out:bakery": {
+    "item_bread": 455
+   },
+   "out:boat>ch:p1:dock": {
+    "item_fish_raw": 40,
+    "item_fish_big": 47
+   },
+   "make>ch:g:miner": {
+    "item_ore": 633
+   },
+   "in:smelter>use": {
+    "item_ore": 536
+   },
+   "pile:ore>ch:raw:smelter": {
+    "item_ore": 548
+   },
+   "ch:raw:bakery>in:bakery": {
+    "item_wheat": 455
+   },
+   "ch:p2:smokehouse>foodbox": {
+    "item_meat_cooked": 39
+   },
+   "make>out:smelter": {
+    "item_ingot": 535
+   },
+   "ch:raw:smelter>in:smelter": {
+    "item_ore": 508
+   },
+   "ch:g:lumberjack>pile:log": {
+    "item_log": 504
+   },
+   "pile:log>ch:raw:sawmill": {
+    "item_log": 498
+   },
+   "ch:g:farmer>pile:wheat": {
+    "item_wheat": 510
+   },
+   "pass>use": {
+    "item_meat_cooked": 47,
+    "item_fish_cooked": 44,
+    "item_bread": 42
+   },
+   "ch:p1:sawmill>shelf:trade": {
+    "item_plank": 239
+   },
+   "out:bakery>ch:wh": {
+    "item_bread": 30
+   },
+   "out:smokehouse>ch:p1:smokehouse": {
+    "item_meat_cooked": 257
+   },
+   "out:smelter>ch:p1:smelter": {
+    "item_ingot": 259
+   },
+   "out:cannery>ch:p1:cannery": {
+    "item_can": 140
+   },
+   "ch:g:miner>pile:ore": {
+    "item_ore": 631
+   },
+   "pantry>use": {
+    "item_fish_cooked": 45,
+    "item_bread": 43,
+    "item_meat_cooked": 47
+   },
+   "ch:p2:grill>pantry": {
+    "item_fish_cooked": 21
+   },
+   "out:sawmill>ch:p2:sawmill": {
+    "item_plank": 240
+   },
+   "make>pass": {
+    "item_fish_cooked": 45,
+    "item_bread": 43,
+    "item_meat_cooked": 47
+   },
+   "ch:p1:dock>in:cannery": {
+    "item_fish_raw": 29,
+    "item_fish_big": 45
+   },
+   "ch:stn>sink:dock_surplus": {
+    "item_pickaxe": 1,
+    "item_fish_raw": 72,
+    "item_ore": 62,
+    "item_meat_raw": 94,
+    "item_axe": 9,
+    "item_wheat": 12,
+    "item_can": 20,
+    "item_bow": 2
+   },
+   "ch:wh>shelf:market": {
+    "item_bread": 26,
+    "item_fish_cooked": 34,
+    "item_meat_cooked": 27
+   },
+   "pile:fish>ch:raw:grill": {
+    "item_fish_raw": 537
+   },
+   "ch:g:fisherman>pile:fish": {
+    "item_fish_raw": 601
+   },
+   "out:sawmill>ch:p1:sawmill": {
+    "item_plank": 266
+   },
+   "out:bakery>ch:p2:bakery": {
+    "item_bread": 170
+   },
+   "ch:p2:smokehouse>shelf:market": {
+    "item_meat_cooked": 197
+   },
+   "in:cannery>use": {
+    "item_fish_raw": 90,
+    "item_ingot": 75,
+    "item_fish_big": 45
+   },
+   "ch:raw:grill>in:grill": {
+    "item_fish_raw": 457
+   },
+   "make>ch:g:fisherman": {
+    "item_fish_raw": 593
+   },
+   "make>out:cannery": {
+    "item_can": 225
+   },
+   "make>boatcargo": {
+    "item_fish_big": 54,
+    "item_fish_raw": 39
+   },
+   "wholesale>paid": {
+    "item_bread": 77,
+    "item_plank": 12,
+    "item_fish_cooked": 61,
+    "item_sickle": 6,
+    "item_meat_cooked": 37,
+    "item_bow": 2,
+    "item_can": 49,
+    "item_ingot": 25,
+    "item_axe": 6,
+    "item_rod": 2,
+    "item_pickaxe": 3
+   },
+   "ch:stn>sink:cargo": {
+    "item_bread": 48,
+    "item_fish_cooked": 46,
+    "item_can": 25,
+    "item_ingot": 1,
+    "item_meat_cooked": 13
+   },
+   "ch:p1:grill>sink:warehouse": {
+    "item_fish_cooked": 69
+   },
+   "ch:p2:smelter>shelf:trade": {
+    "item_ingot": 162
+   },
+   "dock>train": {
+    "item_ore": 59,
+    "item_meat_raw": 51,
+    "item_wheat": 16,
+    "item_bow": 1,
+    "item_fish_raw": 13
+   },
+   "ch:p2:sawmill>in:toolsmith": {
+    "item_plank": 32
+   },
+   "ch:p2:bakery>foodbox": {
+    "item_bread": 27
+   },
+   "ch:p1:smokehouse>shelf:market": {
+    "item_meat_cooked": 220
+   },
+   "out:grill>ch:p2:grill": {
+    "item_fish_cooked": 229
+   },
+   "ch:p1:smelter>shelf:trade": {
+    "item_ingot": 201
+   },
+   "ch:wh>in:cannery": {
+    "item_fish_raw": 59,
+    "item_ingot": 2
+   },
+   "ch:p1:bakery>pantry": {
+    "item_bread": 12
+   },
+   "out:smokehouse>ch:p2:smokehouse": {
+    "item_meat_cooked": 248
+   },
+   "ch:p2:grill>shelf:market": {
+    "item_fish_cooked": 145
+   },
+   "ch:p1:toolsmith>shelf:store": {
+    "item_pickaxe": 20,
+    "item_axe": 7,
+    "item_rod": 6,
+    "item_sickle": 2
+   },
+   "shelf:store>use": {
+    "item_pickaxe": 27,
+    "item_can": 147,
+    "item_axe": 10,
+    "item_rod": 6,
+    "item_sickle": 2
+   },
+   "wh>ch:wh": {
+    "item_fish_raw": 83,
+    "item_bread": 11
+   },
+   "out:toolsmith>ch:stn": {
+    "item_sickle": 6,
+    "item_bow": 4,
+    "item_axe": 15,
+    "item_rod": 2,
+    "item_pickaxe": 3
+   },
+   "ch:stn>other": {
+    "item_plank": 1,
+    "item_fish_cooked": 3,
+    "item_ingot": 24,
+    "item_can": 12,
+    "item_meat_cooked": 12
+   },
+   "out:smokehouse>ch:stn": {
+    "item_meat_cooked": 37
+   },
+   "ch:stn>sink:lotH4": {
+    "item_plank": 11
+   },
+   "dock>sleigh": {
+    "item_meat_raw": 87,
+    "item_wheat": 44,
+    "item_pickaxe": 1,
+    "item_ore": 49,
+    "item_fish_raw": 36,
+    "item_axe": 6,
+    "item_can": 8,
+    "item_bow": 1
+   },
+   "ch:raw:smokehouse>sink:dock_surplus": {
+    "item_meat_raw": 64
+   },
+   "out:grill>ch:p1:grill": {
+    "item_fish_cooked": 186
+   },
+   "ch:p1:cannery>shelf:store": {
+    "item_can": 140
+   },
+   "ch:p1:bakery>foodbox": {
+    "item_bread": 35
+   },
+   "ch:stn>sink:lotA2": {
+    "item_fish_cooked": 12,
+    "item_meat_cooked": 12
+   },
+   "ch:stn>sink:lotB1": {
+    "item_sickle": 6,
+    "item_bow": 2,
+    "item_axe": 6,
+    "item_rod": 2,
+    "item_pickaxe": 3
+   },
+   "shop:lotB5>use": {
+    "item_can": 3,
+    "item_bread": 2
+   },
+   "ch:wh>in:grill": {
+    "item_fish_raw": 9
+   },
+   "ch:p2:bakery>shelf:market": {
+    "item_bread": 119
+   },
+   "pile:meat>ch:wh": {
+    "item_meat_raw": 10
+   },
+   "ch:p1:grill>pantry": {
+    "item_fish_cooked": 20
+   },
+   "ch:p2:smelter>in:cannery": {
+    "item_ingot": 56
+   },
+   "ch:p2:grill>sink:warehouse": {
+    "item_fish_cooked": 64
+   },
+   "ch:p1:smelter>in:cannery": {
+    "item_ingot": 19
+   },
+   "ch:wh>sink:dock_surplus": {
+    "item_meat_raw": 10,
+    "item_ore": 6
+   },
+   "out:toolsmith>ch:p1:toolsmith": {
+    "item_axe": 7,
+    "item_pickaxe": 17,
+    "item_rod": 6,
+    "item_sickle": 2
+   },
+   "ch:raw:grill>sink:warehouse": {
+    "item_fish_raw": 72
+   },
+   "out:smelter>ch:wh": {
+    "item_ingot": 10
+   },
+   "sleigh>depot": {
+    "item_meat_raw": 87,
+    "item_wheat": 44,
+    "item_pickaxe": 1,
+    "item_ore": 49,
+    "item_fish_raw": 36,
+    "item_axe": 6,
+    "item_can": 8,
+    "item_bow": 1
+   },
+   "ch:p1:bakery>shelf:market": {
+    "item_bread": 142
+   },
+   "ch:p1:grill>shelf:market": {
+    "item_fish_cooked": 107
+   },
+   "pile:fish>ch:stn": {
+    "item_fish_raw": 76
+   },
+   "ch:p2:bakery>pantry": {
+    "item_bread": 23
+   },
+   "wh>ch:stn": {
+    "item_bread": 12,
+    "item_fish_cooked": 61
+   },
+   "ch:wh>pantry": {
+    "item_bread": 4,
+    "item_meat_cooked": 1,
+    "item_fish_cooked": 4
+   },
+   "ch:wh>in:toolsmith": {
+    "item_ingot": 8
+   },
+   "ch:raw:smelter>sink:dock_surplus": {
+    "item_ore": 34
+   },
+   "out:toolsmith>ch:wh": {
+    "item_axe": 3,
+    "item_pickaxe": 9
+   },
+   "pile:ore>ch:stn": {
+    "item_ore": 62
+   },
+   "ch:p1:bakery>sink:warehouse": {
+    "item_bread": 6
+   },
+   "out:bakery>ch:stn": {
+    "item_bread": 60
+   },
+   "ch:p1:sawmill>in:toolsmith": {
+    "item_plank": 39
+   },
+   "ch:raw:bakery>sink:dock_surplus": {
+    "item_wheat": 40
+   },
+   "ch:wh>shelf:store": {
+    "item_axe": 3,
+    "item_pickaxe": 7,
+    "item_can": 10
+   },
+   "ch:p1:smokehouse>foodbox": {
+    "item_meat_cooked": 16
+   },
+   "out:cannery>ch:stn": {
+    "item_can": 69
+   },
+   "ch:p2:smelter>in:toolsmith": {
+    "item_ingot": 24
+   },
+   "ch:stn>sink:lotA1": {
+    "item_bread": 17
+   },
+   "ch:p1:dock>in:grill": {
+    "item_fish_raw": 7
+   },
+   "out:grill>ch:wh": {
+    "item_fish_cooked": 40
+   },
+   "pile:meat>ch:stn": {
+    "item_meat_raw": 94
+   },
+   "ch:stn>shop:lotB5": {
+    "item_can": 4,
+    "item_bread": 2
+   },
+   "ch:stn>sink:lotB5": {
+    "item_can": 8,
+    "item_bread": 10
+   },
+   "pile:wheat>ch:stn": {
+    "item_wheat": 12
+   },
+   "ch:wh>foodbox": {
+    "item_bread": 11,
+    "item_meat_cooked": 2
+   },
+   "ch:p2:smokehouse>pantry": {
+    "item_meat_cooked": 14
+   },
+   "ch:p1:smelter>in:toolsmith": {
+    "item_ingot": 39
+   },
+   "ch:p1:smokehouse>pantry": {
+    "item_meat_cooked": 21
+   },
+   "depot>sold": {
+    "item_meat_raw": 78,
+    "item_wheat": 44,
+    "item_pickaxe": 1,
+    "item_ore": 34,
+    "item_fish_raw": 36,
+    "item_can": 8,
+    "item_axe": 6,
+    "item_bow": 1
+   },
+   "ch:wh>sink:warehouse": {
+    "item_fish_cooked": 2,
+    "item_fish_raw": 12
+   },
+   "out:smelter>ch:stn": {
+    "item_ingot": 25
+   },
+   "out:smokehouse>ch:wh": {
+    "item_meat_cooked": 30
+   },
+   "out:cannery>ch:wh": {
+    "item_can": 10
+   },
+   "ch:p1:dock>sink:warehouse": {
+    "item_fish_raw": 1,
+    "item_fish_big": 2
+   },
+   "pile:ore>ch:wh": {
+    "item_ore": 6
+   },
+   "ch:p2:bakery>sink:warehouse": {
+    "item_bread": 1
+   }
+  },
+  "trips": {
+   "p1:bakery": {
+    "trips": 45,
+    "items": 242,
+    "px": 46134.53305370522,
+    "to": {
+     "foodbox": 14,
+     "rest_pantry": 6,
+     "market_shelf": 23,
+     "warehouse": 2
+    }
+   },
+   "raw:bakery": {
+    "trips": 169,
+    "items": 495,
+    "px": 25376.598161420065,
+    "to": {
+     "bakery_in": 164,
+     "dock_surplus": 5
+    }
+   },
+   "raw:smokehouse": {
+    "trips": 158,
+    "items": 639,
+    "px": 33018.25430362082,
+    "to": {
+     "smokehouse_in": 150,
+     "dock_surplus": 8
+    }
+   },
+   "raw:smelter": {
+    "trips": 220,
+    "items": 548,
+    "px": 30061.329808969134,
+    "to": {
+     "smelter_in": 215,
+     "dock_surplus": 5
+    }
+   },
+   "p2:smokehouse": {
+    "trips": 34,
+    "items": 339,
+    "px": 43182.49384251727,
+    "to": {
+     "market_shelf": 22,
+     "foodbox": 11,
+     "rest_pantry": 1
+    }
+   },
+   "p2:smelter": {
+    "trips": 22,
+    "items": 246,
+    "px": 39165.84136596404,
+    "to": {
+     "trade_shelf": 12,
+     "cannery_in": 6,
+     "toolsmith_in": 4
+    }
+   },
+   "raw:sawmill": {
+    "trips": 87,
+    "items": 498,
+    "px": 19062.93017017397,
+    "to": {
+     "sawmill_in": 87
+    }
+   },
+   "p1:dock": {
+    "trips": 37,
+    "items": 88,
+    "px": 35238.04901142719,
+    "to": {
+     "cannery_in": 30,
+     "grill_in": 4,
+     "warehouse": 3
+    }
+   },
+   "wh": {
+    "trips": 52,
+    "items": 297,
+    "px": 111188.4726742702,
+    "to": {
+     "market_shelf": 12,
+     "grill_in": 2,
+     "dock_surplus": 2,
+     "rest_pantry": 6,
+     "toolsmith_in": 1,
+     "cannery_in": 10,
+     "store_shelf": 6,
+     "foodbox": 10,
+     "warehouse": 3
+    }
+   },
+   "p1:smokehouse": {
+    "trips": 27,
+    "items": 306,
+    "px": 38500.3129213863,
+    "to": {
+     "market_shelf": 18,
+     "foodbox": 7,
+     "rest_pantry": 2
+    }
+   },
+   "p1:smelter": {
+    "trips": 24,
+    "items": 267,
+    "px": 40345.120517225376,
+    "to": {
+     "trade_shelf": 16,
+     "cannery_in": 3,
+     "toolsmith_in": 5
+    }
+   },
+   "p2:sawmill": {
+    "trips": 42,
+    "items": 242,
+    "px": 32592.053086439275,
+    "to": {
+     "toolsmith_in": 9,
+     "trade_shelf": 33
+    }
+   },
+   "p1:cannery": {
+    "trips": 10,
+    "items": 140,
+    "px": 41645.76429350344,
+    "to": {
+     "store_shelf": 10
+    }
+   },
+   "raw:grill": {
+    "trips": 93,
+    "items": 537,
+    "px": 27473.712579119663,
+    "to": {
+     "grill_in": 84,
+     "warehouse": 9
+    }
+   },
+   "p2:bakery": {
+    "trips": 43,
+    "items": 236,
+    "px": 52125.48431739165,
+    "to": {
+     "foodbox": 14,
+     "market_shelf": 20,
+     "rest_pantry": 8,
+     "warehouse": 1
+    }
+   },
+   "p1:sawmill": {
+    "trips": 40,
+    "items": 265,
+    "px": 30535.73977894963,
+    "to": {
+     "trade_shelf": 31,
+     "toolsmith_in": 9
+    }
+   },
+   "p2:grill": {
+    "trips": 36,
+    "items": 260,
+    "px": 42903.63753651486,
+    "to": {
+     "market_shelf": 21,
+     "warehouse": 7,
+     "rest_pantry": 8
+    }
+   },
+   "stn": {
+    "trips": 64,
+    "items": 538,
+    "px": 164388.94162084258,
+    "to": {
+     "lotB1": 8,
+     "lotA2": 1,
+     "dock_surplus": 32,
+     "cargo": 19,
+     "lotA1": 2,
+     "lotB5": 2
+    }
+   },
+   "p1:grill": {
+    "trips": 31,
+    "items": 201,
+    "px": 39302.649941966825,
+    "to": {
+     "rest_pantry": 9,
+     "market_shelf": 16,
+     "warehouse": 6
+    }
+   },
+   "p1:toolsmith": {
+    "trips": 10,
+    "items": 32,
+    "px": 39553.26615054498,
+    "to": {
+     "store_shelf": 10
+    }
+   }
+  },
+  "st": {
+   "g:fisherman": {
+    "blocked_pile_full": 696,
+    "walk_to_node": 225,
+    "work": 652,
+    "drop": 106,
+    "walk_to_pile": 116,
+    "idle_no_node": 5
+   },
+   "g:all": {
+    "blocked_pile_full": 1494,
+    "walk_to_node": 2306,
+    "work": 1825,
+    "walk_to_pile": 1725,
+    "idle_no_node": 499,
+    "drop": 551
+   },
+   "g:lumberjack": {
+    "walk_to_node": 882,
+    "work": 234,
+    "drop": 94,
+    "walk_to_pile": 588,
+    "idle_no_node": 2
+   },
+   "g:farmer": {
+    "work": 204,
+    "walk_to_node": 868,
+    "walk_to_pile": 592,
+    "drop": 95,
+    "blocked_pile_full": 41
+   },
+   "g:miner": {
+    "walk_to_node": 190,
+    "walk_to_pile": 181,
+    "drop": 115,
+    "work": 297,
+    "blocked_pile_full": 415,
+    "idle_no_node": 2
+   },
+   "g:hunter": {
+    "blocked_pile_full": 342,
+    "work": 438,
+    "idle_no_node": 490,
+    "walk_to_pile": 248,
+    "walk_to_node": 141,
+    "drop": 141
+   },
+   "stn:grill": {
+    "busy": 246,
+    "starved": 33,
+    "blocked": 321
+   },
+   "op:all": {
+    "busy": 2223,
+    "blocked": 1128,
+    "starved": 849
+   },
+   "stn:sawmill": {
+    "busy": 333,
+    "starved": 267
+   },
+   "stn:bakery": {
+    "busy": 328,
+    "blocked": 272
+   },
+   "stn:smelter": {
+    "blocked": 85,
+    "busy": 426,
+    "starved": 89
+   },
+   "stn:smokehouse": {
+    "busy": 461,
+    "blocked": 139
+   },
+   "stn:toolsmith": {
+    "busy": 229,
+    "blocked": 142,
+    "starved": 229
+   },
+   "stn:cannery": {
+    "starved": 231,
+    "busy": 200,
+    "blocked": 169
+   },
+   "raw:grill": {
+    "walk_back": 194,
+    "loading": 88,
+    "carry_to_station": 57,
+    "unload": 85,
+    "idle_station_full": 54,
+    "carry_elsewhere": 122
+   },
+   "raw:all": {
+    "walk_back": 738,
+    "unload": 479,
+    "loading": 516,
+    "idle_station_full": 316,
+    "carry_to_station": 484,
+    "idle_pile_empty": 161,
+    "carry_elsewhere": 306
+   },
+   "raw:sawmill": {
+    "unload": 84,
+    "walk_back": 127,
+    "idle_pile_empty": 157,
+    "loading": 95,
+    "carry_to_station": 137
+   },
+   "raw:bakery": {
+    "loading": 100,
+    "unload": 97,
+    "carry_to_station": 100,
+    "walk_back": 106,
+    "idle_station_full": 176,
+    "carry_elsewhere": 17,
+    "idle_pile_empty": 4
+   },
+   "raw:smelter": {
+    "idle_station_full": 31,
+    "loading": 110,
+    "walk_back": 162,
+    "unload": 109,
+    "carry_to_station": 63,
+    "carry_elsewhere": 125
+   },
+   "raw:smokehouse": {
+    "walk_back": 149,
+    "carry_to_station": 127,
+    "loading": 123,
+    "unload": 104,
+    "idle_station_full": 55,
+    "carry_elsewhere": 42
+   },
+   "wh:job": {
+    "in": 544,
+    "out": 574,
+    "raw": 74
+   },
+   "wh": {
+    "walk_to_src": 381,
+    "carry": 721,
+    "loading": 45,
+    "unload": 37,
+    "idle": 8,
+    "wait_dest_full": 8
+   },
+   "p1:all": {
+    "carry": 2162,
+    "loading": 354,
+    "walk_back": 1900,
+    "idle_no_stock": 121,
+    "unload": 233,
+    "wait_dest_full": 17,
+    "idle_no_dest": 13
+   },
+   "p1:grill": {
+    "carry": 292,
+    "unload": 34,
+    "walk_back": 241,
+    "loading": 28,
+    "idle_no_dest": 3,
+    "wait_dest_full": 2
+   },
+   "p1:sawmill": {
+    "carry": 218,
+    "unload": 44,
+    "walk_back": 205,
+    "loading": 64,
+    "idle_no_stock": 65,
+    "wait_dest_full": 1,
+    "idle_no_dest": 3
+   },
+   "p1:bakery": {
+    "loading": 33,
+    "carry": 319,
+    "wait_dest_full": 10,
+    "unload": 29,
+    "walk_back": 206,
+    "idle_no_dest": 3
+   },
+   "p1:smelter": {
+    "walk_back": 248,
+    "loading": 44,
+    "carry": 266,
+    "unload": 40,
+    "idle_no_dest": 1,
+    "wait_dest_full": 1
+   },
+   "p1:smokehouse": {
+    "walk_back": 243,
+    "loading": 42,
+    "carry": 268,
+    "unload": 44,
+    "idle_no_dest": 1,
+    "wait_dest_full": 2
+   },
+   "p1:toolsmith": {
+    "carry": 287,
+    "walk_back": 274,
+    "loading": 32,
+    "unload": 7
+   },
+   "p1:dock": {
+    "idle_no_stock": 56,
+    "loading": 90,
+    "carry": 226,
+    "unload": 12,
+    "walk_back": 213,
+    "idle_no_dest": 2,
+    "wait_dest_full": 1
+   },
+   "p1:cannery": {
+    "walk_back": 270,
+    "loading": 21,
+    "carry": 286,
+    "unload": 23
+   },
+   "stn:job": {
+    "cargo": 705,
+    "lotH4": 27,
+    "dock_surplus": 1203,
+    "lotA2": 82,
+    "lotB1": 163,
+    "lotA1": 89,
+    "lotB5": 91
+   },
+   "stn": {
+    "carry": 1075,
+    "unload": 93,
+    "walk_to_src": 1095,
+    "loading": 97,
+    "idle": 40
+   },
+   "p2:all": {
+    "carry": 1407,
+    "unload": 191,
+    "walk_back": 1127,
+    "loading": 210,
+    "wait_dest_full": 23,
+    "idle_no_dest": 7,
+    "idle_no_stock": 35
+   },
+   "p2:grill": {
+    "carry": 294,
+    "unload": 39,
+    "walk_back": 225,
+    "loading": 37,
+    "wait_dest_full": 3,
+    "idle_no_dest": 2
+   },
+   "p2:sawmill": {
+    "unload": 43,
+    "walk_back": 215,
+    "loading": 69,
+    "carry": 234,
+    "idle_no_stock": 35,
+    "idle_no_dest": 3,
+    "wait_dest_full": 1
+   },
+   "p2:bakery": {
+    "walk_back": 186,
+    "loading": 28,
+    "carry": 347,
+    "unload": 30,
+    "wait_dest_full": 9
+   },
+   "p2:smelter": {
+    "walk_back": 258,
+    "loading": 38,
+    "carry": 262,
+    "unload": 40,
+    "idle_no_dest": 1,
+    "wait_dest_full": 1
+   },
+   "p2:smokehouse": {
+    "carry": 270,
+    "unload": 39,
+    "wait_dest_full": 9,
+    "walk_back": 243,
+    "idle_no_dest": 1,
+    "loading": 38
+   }
+  },
+  "stn": {
+   "grill": {
+    "inSum": 9215,
+    "outSum": 19239,
+    "inMax": 30,
+    "outMax": 36,
+    "n": 600
+   },
+   "sawmill": {
+    "inSum": 1026,
+    "outSum": 1862,
+    "inMax": 30,
+    "outMax": 36,
+    "n": 600
+   },
+   "bakery": {
+    "inSum": 16817,
+    "outSum": 19387,
+    "inMax": 30,
+    "outMax": 36,
+    "n": 600
+   },
+   "smelter": {
+    "inSum": 11904,
+    "outSum": 13395,
+    "inMax": 30,
+    "outMax": 36,
+    "n": 600
+   },
+   "smokehouse": {
+    "inSum": 15694,
+    "outSum": 17602,
+    "inMax": 30,
+    "outMax": 36,
+    "n": 600
+   },
+   "toolsmith": {
+    "inSum": 3935,
+    "outSum": 5950,
+    "inMax": 24,
+    "outMax": 12,
+    "n": 600
+   },
+   "cannery": {
+    "inSum": 8526,
+    "outSum": 13606,
+    "inMax": 54,
+    "outMax": 30,
+    "n": 600
+   }
+  },
+  "piles": {
+   "fish": {
+    "sum": 22119,
+    "full": 433,
+    "n": 600
+   },
+   "log": {
+    "sum": 870,
+    "full": 0,
+    "n": 600
+   },
+   "wheat": {
+    "sum": 12124,
+    "full": 68,
+    "n": 600
+   },
+   "ore": {
+    "sum": 20781,
+    "full": 376,
+    "n": 600
+   },
+   "meat": {
+    "sum": 21938,
+    "full": 420,
+    "n": 600
+   }
+  },
+  "misc": {
+   "whSum": 28014,
+   "whBy": {
+    "item_ingot": 0,
+    "item_meat_cooked": 0,
+    "item_fish_raw": 1383,
+    "item_bread": 6800,
+    "item_fish_cooked": 19634,
+    "item_fish_big": 197
+   },
+   "dockSum": 42261,
+   "depSum": 8593,
+   "depCap": 500,
+   "mk": {
+    "item_fish_cooked": 20304,
+    "item_bread": 20295,
+    "item_meat_cooked": 8316,
+    "item_meat_cooked_empty": 45
+   },
+   "pantry": {
+    "item_fish_cooked": 16811,
+    "item_bread": 16701,
+    "item_meat_cooked": 10509
+   },
+   "foodSum": 11088
+  },
+  "samples": 600,
+  "agents": {
+   "gatherers": [
+    "fisherman",
+    "lumberjack",
+    "farmer",
+    "miner",
+    "hunter",
+    "lumberjack",
+    "miner",
+    "fisherman",
+    "farmer",
+    "hunter",
+    "fisherman",
+    "lumberjack",
+    "farmer",
+    "hunter"
+   ],
+   "raw": [
+    "grill",
+    "sawmill",
+    "bakery",
+    "smelter",
+    "smokehouse"
+   ],
+   "porters": [
+    "wh",
+    "wh",
+    "p1:grill",
+    "p1:sawmill",
+    "p1:bakery",
+    "p1:smelter",
+    "p1:smokehouse",
+    "p1:toolsmith",
+    "p1:dock",
+    "p1:cannery",
+    "stn",
+    "stn",
+    "p2:grill",
+    "p2:sawmill",
+    "p2:bakery",
+    "p2:smelter",
+    "p2:smokehouse",
+    "stn",
+    "stn"
+   ],
+   "operators": [
+    "grill",
+    "sawmill",
+    "bakery",
+    "smelter",
+    "smokehouse",
+    "toolsmith",
+    "cannery"
+   ],
+   "clerks": [
+    "market",
+    "trade",
+    "store"
+   ],
+   "rest": {
+    "cashier": true,
+    "cook": true,
+    "server": true
+   },
+   "shops": [
+    "lotA1",
+    "lotB1",
+    "lotA2",
+    "lotA3",
+    "lotB5"
+   ],
+   "houses": 3,
+   "cards": [
+    {
+     "shop": null,
+     "need": {
+      "item_plank": 40
+     },
+     "got": {
+      "item_plank": 0
+     }
+    },
+    {
+     "shop": null,
+     "need": {
+      "item_bread": 40
+     },
+     "got": {
+      "item_bread": 24
+     }
+    },
+    {
+     "shop": null,
+     "need": {
+      "item_fish_cooked": 50
+     },
+     "got": {
+      "item_fish_cooked": 0
+     }
+    }
+   ],
+   "boat": 2,
+   "lines": {
+    "up": {
+     "grill": 1,
+     "sawmill": 1,
+     "bakery": 1,
+     "smelter": 1,
+     "smokehouse": 1
+    },
+    "p2": [
+     "grill",
+     "sawmill",
+     "bakery",
+     "smelter",
+     "smokehouse"
+    ],
+    "fullT": {
+     "smelter": 228.00000000000003,
+     "grill": 528.0000000000001,
+     "bakery": 531.0000000000001,
+     "smokehouse": 399.00000000000006,
+     "sawmill": 4.000000000000005
+    },
+    "offeredT": {},
+    "sleighWaitT": 334.5,
+    "pads": [
+     "bigcar",
+     "sleigh2"
+    ],
+    "due": [
+     "bigcar",
+     "sleigh2"
+    ]
+   },
+   "sleighs": 1,
+   "sites": []
+  },
+  "ledger": [
+   {
+    "id": "pile:fish",
+    "kind": "pile",
+    "item": "item_fish_raw",
+    "n": 23,
+    "cap": 40,
+    "inPm": 27.29,
+    "outPm": 30.22,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 57,
+    "emptyPct": 0
+   },
+   {
+    "id": "in:grill",
+    "kind": "in",
+    "item": "item_fish_raw",
+    "n": 14,
+    "cap": 30,
+    "inPm": 32.05,
+    "outPm": 32.31,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 7
+   },
+   {
+    "id": "out:grill",
+    "kind": "out",
+    "item": "item_fish_cooked",
+    "n": 36,
+    "cap": 36,
+    "inPm": 33.48,
+    "outPm": 32.4,
+    "fullS": 5,
+    "emptyS": 0,
+    "fullPct": 49,
+    "emptyPct": 0
+   },
+   {
+    "id": "pile:log",
+    "kind": "pile",
+    "item": "item_log",
+    "n": 2,
+    "cap": 40,
+    "inPm": 22.16,
+    "outPm": 23.15,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 2,
+    "emptyPct": 54
+   },
+   {
+    "id": "in:sawmill",
+    "kind": "in",
+    "item": "item_log",
+    "n": 3,
+    "cap": 30,
+    "inPm": 34.46,
+    "outPm": 34.83,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 36
+   },
+   {
+    "id": "out:sawmill",
+    "kind": "out",
+    "item": "item_plank",
+    "n": 0,
+    "cap": 36,
+    "inPm": 29.21,
+    "outPm": 30.35,
+    "fullS": 0,
+    "emptyS": 4,
+    "fullPct": 0,
+    "emptyPct": 29
+   },
+   {
+    "id": "pile:wheat",
+    "kind": "pile",
+    "item": "item_wheat",
+    "n": 21,
+    "cap": 40,
+    "inPm": 38.27,
+    "outPm": 38.53,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 10,
+    "emptyPct": 2
+   },
+   {
+    "id": "in:bakery",
+    "kind": "in",
+    "item": "item_wheat",
+    "n": 30,
+    "cap": 30,
+    "inPm": 25.5,
+    "outPm": 25.1,
+    "fullS": 12,
+    "emptyS": 0,
+    "fullPct": 40,
+    "emptyPct": 0
+   },
+   {
+    "id": "out:bakery",
+    "kind": "out",
+    "item": "item_bread",
+    "n": 36,
+    "cap": 36,
+    "inPm": 36.19,
+    "outPm": 35.22,
+    "fullS": 14,
+    "emptyS": 0,
+    "fullPct": 44,
+    "emptyPct": 0
+   },
+   {
+    "id": "pile:ore",
+    "kind": "pile",
+    "item": "item_ore",
+    "n": 40,
+    "cap": 40,
+    "inPm": 32.66,
+    "outPm": 31.79,
+    "fullS": 23,
+    "emptyS": 0,
+    "fullPct": 58,
+    "emptyPct": 0
+   },
+   {
+    "id": "in:smelter",
+    "kind": "in",
+    "item": "item_ore",
+    "n": 2,
+    "cap": 30,
+    "inPm": 20.9,
+    "outPm": 24.63,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 27,
+    "emptyPct": 15
+   },
+   {
+    "id": "out:smelter",
+    "kind": "out",
+    "item": "item_ingot",
+    "n": 35,
+    "cap": 36,
+    "inPm": 40.2,
+    "outPm": 38.09,
+    "fullS": 1,
+    "emptyS": 0,
+    "fullPct": 15,
+    "emptyPct": 1
+   },
+   {
+    "id": "pile:meat",
+    "kind": "pile",
+    "item": "item_meat_raw",
+    "n": 36,
+    "cap": 40,
+    "inPm": 38.09,
+    "outPm": 38.41,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 54,
+    "emptyPct": 0
+   },
+   {
+    "id": "in:smokehouse",
+    "kind": "in",
+    "item": "item_meat_raw",
+    "n": 25,
+    "cap": 30,
+    "inPm": 31.73,
+    "outPm": 32.01,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 19,
+    "emptyPct": 0
+   },
+   {
+    "id": "out:smokehouse",
+    "kind": "out",
+    "item": "item_meat_cooked",
+    "n": 31,
+    "cap": 36,
+    "inPm": 41.87,
+    "outPm": 41.63,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 24,
+    "emptyPct": 0
+   },
+   {
+    "id": "shelf:item_fish_cooked",
+    "kind": "shelf",
+    "item": "item_fish_cooked",
+    "n": 28,
+    "cap": 40,
+    "inPm": 23.59,
+    "outPm": 24.38,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 31,
+    "emptyPct": 0
+   },
+   {
+    "id": "shelf:item_bread",
+    "kind": "shelf",
+    "item": "item_bread",
+    "n": 39,
+    "cap": 40,
+    "inPm": 23.5,
+    "outPm": 22.62,
+    "fullS": 16,
+    "emptyS": 0,
+    "fullPct": 28,
+    "emptyPct": 0
+   },
+   {
+    "id": "shelf:item_meat_cooked",
+    "kind": "shelf",
+    "item": "item_meat_cooked",
+    "n": 21,
+    "cap": 40,
+    "inPm": 35.1,
+    "outPm": 33.51,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 13
+   },
+   {
+    "id": "shelf:item_plank",
+    "kind": "shelf",
+    "item": "item_plank",
+    "n": 2,
+    "cap": 40,
+    "inPm": 18.78,
+    "outPm": 18.93,
+    "fullS": 0,
+    "emptyS": 21,
+    "fullPct": 0,
+    "emptyPct": 68
+   },
+   {
+    "id": "shelf:item_ingot",
+    "kind": "shelf",
+    "item": "item_ingot",
+    "n": 8,
+    "cap": 40,
+    "inPm": 18.49,
+    "outPm": 17.61,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 71
+   },
+   {
+    "id": "shelf:item_can:store",
+    "kind": "shelf",
+    "item": "item_can",
+    "n": 3,
+    "cap": 24,
+    "inPm": 9.9,
+    "outPm": 9.71,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 73
+   },
+   {
+    "id": "shelf:item_axe:store",
+    "kind": "shelf",
+    "item": "item_axe",
+    "n": 0,
+    "cap": 24,
+    "inPm": 0.4,
+    "outPm": 0.47,
+    "fullS": 0,
+    "emptyS": 10,
+    "fullPct": 0,
+    "emptyPct": 92
+   },
+   {
+    "id": "shelf:item_pickaxe:store",
+    "kind": "shelf",
+    "item": "item_pickaxe",
+    "n": 0,
+    "cap": 24,
+    "inPm": 1.51,
+    "outPm": 1.53,
+    "fullS": 0,
+    "emptyS": 61,
+    "fullPct": 0,
+    "emptyPct": 93
+   },
+   {
+    "id": "shelf:item_rod:store",
+    "kind": "shelf",
+    "item": "item_rod",
+    "n": 0,
+    "cap": 24,
+    "inPm": 0.23,
+    "outPm": 0.24,
+    "fullS": 0,
+    "emptyS": 234,
+    "fullPct": 0,
+    "emptyPct": 99
+   },
+   {
+    "id": "shelf:item_sickle:store",
+    "kind": "shelf",
+    "item": "item_sickle",
+    "n": 0,
+    "cap": 24,
+    "inPm": 0,
+    "outPm": 0,
+    "fullS": 0,
+    "emptyS": 721,
+    "fullPct": 0,
+    "emptyPct": 100
+   },
+   {
+    "id": "shelf:item_bow:store",
+    "kind": "shelf",
+    "item": "item_bow",
+    "n": 0,
+    "cap": 24,
+    "inPm": 0,
+    "outPm": 0,
+    "fullS": 0,
+    "emptyS": 721,
+    "fullPct": 0,
+    "emptyPct": 100
+   },
+   {
+    "id": "wh",
+    "kind": "warehouse",
+    "item": null,
+    "n": 89,
+    "cap": 300,
+    "inPm": 22.56,
+    "outPm": 14.63,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 4
+   },
+   {
+    "id": "wh:item_fish_cooked",
+    "kind": "wh",
+    "item": "item_fish_cooked",
+    "n": 76,
+    "cap": 0,
+    "inPm": 13.11,
+    "outPm": 5.08,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 14
+   },
+   {
+    "id": "wh:item_plank",
+    "kind": "wh",
+    "item": "item_plank",
+    "n": 0,
+    "cap": 0,
+    "inPm": 0,
+    "outPm": 0,
+    "fullS": 0,
+    "emptyS": 721,
+    "fullPct": 0,
+    "emptyPct": 100
+   },
+   {
+    "id": "wh:item_bread",
+    "kind": "wh",
+    "item": "item_bread",
+    "n": 8,
+    "cap": 0,
+    "inPm": 1.37,
+    "outPm": 1.54,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 9
+   },
+   {
+    "id": "wh:item_ingot",
+    "kind": "wh",
+    "item": "item_ingot",
+    "n": 0,
+    "cap": 0,
+    "inPm": 0,
+    "outPm": 0.17,
+    "fullS": 0,
+    "emptyS": 702,
+    "fullPct": 0,
+    "emptyPct": 97
+   },
+   {
+    "id": "wh:item_meat_cooked",
+    "kind": "wh",
+    "item": "item_meat_cooked",
+    "n": 0,
+    "cap": 0,
+    "inPm": 0,
+    "outPm": 0.18,
+    "fullS": 0,
+    "emptyS": 718,
+    "fullPct": 0,
+    "emptyPct": 100
+   },
+   {
+    "id": "boat",
+    "kind": "boat",
+    "item": "item_fish_raw",
+    "n": 6,
+    "cap": 30,
+    "inPm": 6.58,
+    "outPm": 5.88,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 43
+   },
+   {
+    "id": "food",
+    "kind": "food",
+    "item": null,
+    "n": 20,
+    "cap": 20,
+    "inPm": 9.8,
+    "outPm": 9.55,
+    "fullS": 19,
+    "emptyS": 0,
+    "fullPct": 58,
+    "emptyPct": 0
+   },
+   {
+    "id": "wsin:toolsmith",
+    "kind": "in",
+    "item": null,
+    "n": 2,
+    "cap": 24,
+    "inPm": 13.11,
+    "outPm": 14.11,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 0
+   },
+   {
+    "id": "wsout:toolsmith",
+    "kind": "out",
+    "item": null,
+    "n": 12,
+    "cap": 12,
+    "inPm": 6.7,
+    "outPm": 6.29,
+    "fullS": 7,
+    "emptyS": 0,
+    "fullPct": 26,
+    "emptyPct": 0
+   },
+   {
+    "id": "wsin:cannery",
+    "kind": "in",
+    "item": null,
+    "n": 10,
+    "cap": 54,
+    "inPm": 15.35,
+    "outPm": 16.15,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 0,
+    "emptyPct": 0
+   },
+   {
+    "id": "wsout:cannery",
+    "kind": "out",
+    "item": null,
+    "n": 25,
+    "cap": 30,
+    "inPm": 19.27,
+    "outPm": 18.35,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 25,
+    "emptyPct": 2
+   },
+   {
+    "id": "pantry",
+    "kind": "pantry",
+    "item": null,
+    "n": 63,
+    "cap": 90,
+    "inPm": 9.98,
+    "outPm": 11.32,
+    "fullS": 0,
+    "emptyS": 0,
+    "fullPct": 4,
+    "emptyPct": 0
+   }
+  ]
+ },
+ "errors": [],
+ "wall": 2145
+}

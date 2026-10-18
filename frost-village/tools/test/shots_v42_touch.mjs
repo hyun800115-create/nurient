@@ -1,8 +1,9 @@
 // (v4.2 touch) the designer's screenshots of the 큰 식당 테이블 늘리기 / 서빙 fix and the porters -> docs/previews/screens_v42/
 //   node tools/test/shots_v42_touch.mjs [--only 31,32] [--repo DIR] [--size 390x844] [--dpr 3] [--lang ko] [--suffix _x]
 // From the v4.1 46-min save (all three restaurant staff hired), fixed-step clock. --repo runs another checkout (the
-// "before" shot 30 on the v4.2 base copy). Guests come every 1.5 s in 31–33 (staged: a busy lunch so the back yard
-// fills) — the numbers are measured elsewhere (docs/build_reports/v42_touch.md).
+// "before" shot 30 on the v4.2 base copy). 31–33 stage a lunch rush (guests every 2.2–2.6 s) so the back yard fills, then
+// 12–14 s at the normal pace before the picture (32–33 with the 서빙 직원 2) — the numbers are measured elsewhere
+// (docs/build_reports/v42_touch.md).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,13 +28,18 @@ const BUSY = (every) => { const gs = window.__FV.scene, R = gs.civic.restaurant;
 const SCENES = [
   // (base copy) the designer's phone: all three staff, the chief away: the terrace full of guests waiting for food
   { name: '30_restaurant_busy_before', secs: 150, feed: true, setup: () => { const R = window.__busy(5); return { x: R.x - 230, y: R.y - 120, z: 1.0 }; } },
-  { name: '31_restaurant_tables_lv1', secs: 120, feed: true, setup: () => { const R = window.__busy(1.6); R.setTables(1, true); return { x: R.x - 270, y: R.y - 150, z: 1.0 }; } },
-  { name: '32_restaurant_tables_lv2', secs: 150, feed: true, setup: () => { const R = window.__busy(1.3); R.setTables(2, true); return { x: R.x - 290, y: R.y - 170, z: 0.95 }; } },
-  { name: '33_restaurant_tables_night', secs: 120, feed: true, setup: () => {
-    const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(1.5); R.setTables(2, true);
+  // a staged lunch rush (guests every 2.2–2.6 s, about twice what the staff can serve) fills the back yard, then the
+  // guests come at the normal pace for a short while (`calm`) so the servers catch up: full tables, plates on them
+  { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); R.setTables(1, true); return { x: R.x - 225, y: R.y - 170, z: 1.35 }; },
+    then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 225, y: R.y - 170, z: 1.35 }; }, secs2: 14 },
+  { name: '32_restaurant_tables_lv2', secs: 100, feed: true, setup: () => { const R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true); return { x: R.x - 250, y: R.y - 190, z: 1.3 }; },
+    then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 250, y: R.y - 190, z: 1.3 }; }, secs2: 12 },
+  { name: '33_restaurant_tables_night', secs: 100, feed: true, setup: () => {
+    const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true);
     if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(20.6); }
-    return { x: R.x - 290, y: R.y - 170, z: 0.95 };
-  }, after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); } },
+    return { x: R.x - 250, y: R.y - 190, z: 1.3 };
+  }, then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 250, y: R.y - 190, z: 1.3 }; }, secs2: 12,
+    after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); } },
   // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept)
   { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, R = window.__busy(5); R.busyT = 61; const p = R.tablesPadPos(); window.__FV.teleport(p.x + 150, p.y + 160); return { x: p.x + 40, y: p.y + 40, z: 1.0 }; } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
@@ -48,11 +54,11 @@ const browser = await launch();
 const made = [], errors = [];
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: W, height: H }, dpr: DPR, locale: LANG === 'en' ? 'en-US' : 'ko-KR' });
 await page.evaluate((sv) => { try { localStorage.clear(); localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, SAVE);
-await page.reload({ waitUntil: 'load' });
-await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
+await page.reload({ waitUntil: 'load', timeout: 300000 });
+await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 300000);
 await sleep(300);
 await tapStart(page);
-await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player && window.__FV.scene.civic.restaurant, 120000);
+await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player && window.__FV.scene.civic.restaurant, 300000);
 await sleep(1500);
 await page.evaluate((BUSYsrc) => {
   const game = window.__FV.game; game.loop.sleep();

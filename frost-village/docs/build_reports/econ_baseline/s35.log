@@ -1,0 +1,6 @@
+setup {}
+park {"park":{"x":107,"y":1582},"minDistToHot":380}
+t 120 417s
+t 240 673s
+t 360 838s
+DONE /tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/econ/s35.json errors 0 wall 838

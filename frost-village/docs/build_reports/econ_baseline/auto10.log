@@ -1,0 +1,8 @@
+setup {"rank":2,"lines":"ok","depot":true,"stn":4}
+park {"park":{"x":1907,"y":482},"minDistToHot":438}
+t 120 770s
+t 240 1114s
+t 360 1534s
+t 480 1865s
+t 600 2145s
+DONE /tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/econ/auto10.json errors 0 wall 2145

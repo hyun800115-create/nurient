@@ -28,8 +28,9 @@ const ev = (fn, arg) => page.evaluate(fn, arg);
 const adv = (s) => advance(page, s);
 const until = async (fn, max, chunk = 0.5, arg) => { for (let t = 0; t <= max; t += chunk) { if (await ev(fn, arg)) return t; await adv(chunk); } return -1; };
 const boot = async (sv) => {
-  if (sv !== undefined) await ev((s) => { localStorage.clear(); if (s) localStorage.setItem('frostVillage.save.v1', s); }, sv);
-  await page.reload({ waitUntil: 'load' });
+  // (a running game saves itself on pagehide: switch that off first, or the reload would bring back this game, not `sv`)
+  if (sv !== undefined) await ev((s) => { const gs = window.__FV && window.__FV.scene; if (gs) gs.save = () => {}; localStorage.clear(); if (s) localStorage.setItem('frostVillage.save.v1', s); }, sv);
+  await page.reload({ waitUntil: 'load', timeout: 180000 });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(300);
   await tapStart(page);
@@ -84,30 +85,35 @@ try {
 
   // ---- 3. the crew grows by the rule
   const per = await ev(async () => { const m = await import(new URL('src/data/balance.js', location.href).href); return m.BALANCE.warehouse.crew; });
-  await ev(() => window.__FV.v42.crew({ rate: 450, now: true }));
+  const t450 = await ev(() => window.__FV.v42.crew({ rate: 450 }).target);
+  const want = Math.min(per.cap, 2 + Math.floor(Math.max(0, 450 - per.from) / per.perMin));
+  step('3 rate 450 a minute: the target is 2 + (450 − from) ÷ perMin = ' + want, t450 === want && want > 2, { t450, per });
+  // (the save's own village makes ~600 a minute, so one may already have walked in during steps 1–2: count from here)
+  const n0 = (await crew()).crew;
+  await ev(() => window.__FV.v42.crew({ rate: 1000, now: true }));
   await adv(1);
   const a1 = await ev(() => {
     const gs = window.__FV.scene, W = gs.warehouse, wp = W.porters[W.porters.length - 1];
-    return { crew: W.porters.length, state: wp.state, d: Math.round(Math.hypot(wp.x - W.outPad.x, wp.y - W.outPad.y)), onScreen: gs.isOnScreen(wp.x, wp.y, 0), target: window.__FV.v42.crew().target, banner: gs.ui && gs.ui.bannerText ? gs.ui.bannerText : null };
+    const f = wp.cameFrom || wp;
+    return { crew: W.porters.length, state: wp.state, from: f, d: Math.round(Math.hypot(f.x - W.outPad.x, (f.y - W.outPad.y) * 2)), fromOnScreen: gs.isOnScreen(f.x, f.y, 0), target: window.__FV.v42.crew().target };
   });
-  const want = Math.min(per.cap, 2 + Math.floor(Math.max(0, 450 - per.from) / per.perMin));
-  step('3 rate 450 a minute: the target is 2 + (450 − from) ÷ perMin = ' + want, a1.target === want && want > 2, { a1, per });
-  step('3 one more walks in from the edge of the village (not at the 창고)', a1.crew === 3 && a1.state === 'arrive' && a1.d > 300, a1);
+  step('3 one more walks in from a village gate off screen (not at the 창고)', a1.crew === n0 + 1 && a1.state === 'arrive' && a1.d > 300 && !a1.fromOnScreen, { n0, ...a1 });
   await adv(20);
   const a2 = await crew();
-  step('3 one at a time (crew.every)', a2.crew === 3, a2);
-  const tHome = await until(() => { const W = window.__FV.scene.warehouse, wp = W.porters[2]; return wp.state !== 'arrive'; }, 90, 1);
-  const home = await ev(() => { const W = window.__FV.scene.warehouse, wp = W.porters[2]; return { state: wp.state, d: Math.round(Math.hypot(wp.x - wp.homePt.x, wp.y - wp.homePt.y)), job: wp.job ? wp.job.kind : null }; });
+  step('3 one at a time (crew.every)', a2.crew === n0 + 1, a2);
+  const tHome = await until((k) => { const W = window.__FV.scene.warehouse, wp = W.porters[k]; return wp.state !== 'arrive'; }, 90, 1, n0);
+  const home = await ev((k) => { const W = window.__FV.scene.warehouse, wp = W.porters[k]; return { state: wp.state, d: Math.round(Math.hypot(wp.x - wp.homePt.x, wp.y - wp.homePt.y)), job: wp.job ? wp.job.kind : null }; }, n0);
   step('3 he reaches the 창고 and starts work', tHome >= 0 && (home.d < 80 || home.job), { t: tHome, ...home });
+  await ev(() => window.__FV.v42.crew({ rate: 1000 }));
   await adv(per.every + 2);
   const a3 = await crew();
-  step('3 the next one comes after crew.every s', a3.crew === 4, a3);
+  step('3 the next one comes after crew.every s', a3.crew === Math.min(per.cap, n0 + 2), a3);
 
   // ---- 4. no flapping, the cap
   await ev(() => window.__FV.v42.crew({ rate: 0 }));
   await adv(per.every * 2 + 5);
   const f1 = await crew();
-  step('4 the making slows down: nobody leaves (no flapping)', f1.crew === 4 && f1.target === 2, f1);
+  step('4 the making slows down: nobody leaves (no flapping)', f1.crew === a3.crew && f1.target === 2, f1);
   await ev(() => { window.__FV.v42.crew({ rate: 1e6 }); });
   for (let i = 0; i < 6; i++) { await ev(() => window.__FV.v42.crew({ now: true })); await adv(2); }
   const f2 = await crew();

@@ -103,6 +103,7 @@ export class WarehouseCrew {
     W.porters.push(wp);
     if (gs.life) gs.life.release(wp.key);
     if (!instant) {
+      wp.cameFrom = { x: Math.round(from.x), y: Math.round(from.y) };
       wp.state = 'arrive';
       wp.arriveT = 0;
       wp.go(home.x, home.y);

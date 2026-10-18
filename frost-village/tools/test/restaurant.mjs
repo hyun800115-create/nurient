@@ -200,7 +200,16 @@ try {
   step('8 the restaurant takes visitors (serve contract)', sv.has && sv.pts === 1, sv);
 
   // ---- 9. save + reload
-  const before = await ev(() => { window.__FV.save(); const r = window.__FV.scene.civic.restaurant.serialize(); return { pantry: r.pantry, cash: r.cash, served: r.served }; });
+  // (the save also puts food that is on its way somewhere into the pantry when it has room — porters' loads, a full
+  //  market's overflow: "nothing vanishes on a reload", Game.serialize — so the reload is compared with what the save
+  //  wrote, and the save must hold at least the pantry with its ordered food)
+  const before = await ev(() => {
+    window.__FV.save();
+    const r = window.__FV.scene.civic.restaurant.serialize();
+    const blob = JSON.parse(localStorage.getItem('frostVillage.save.v1'));
+    const saved = (blob.c1 && blob.c1.rest && blob.c1.rest.pantry) || {};
+    return { pantry: saved, own: r.pantry, kept: Object.keys(r.pantry).every((f) => (saved[f] || 0) >= r.pantry[f]), cash: r.cash, served: r.served };
+  });
   titleFrom = log.warnings.length;     // (the title screen's own pictures are not this test's business)
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
@@ -210,7 +219,7 @@ try {
   titleTo = log.warnings.length;
   await sleep(1500);
   const after = await ev(() => { const c = window.__FV.civic(); return c && c.rest ? { pantry: c.rest.pantry, cash: c.rest.cash, served: c.rest.served, staffed: c.rest.staffed, cook: c.rest.cook, server: c.rest.server } : null; });
-  const same = after && ['item_fish_cooked', 'item_bread', 'item_meat_cooked'].every((f) => after.pantry[f] === before.pantry[f]) && after.cash === before.cash && after.served === before.served;
+  const same = after && before.kept && ['item_fish_cooked', 'item_bread', 'item_meat_cooked'].every((f) => after.pantry[f] === (before.pantry[f] || 0)) && after.cash === before.cash && after.served === before.served;
   step('9 reload: pantry (with ordered food), cash and meals served kept', same, { before, after });
   step('9 reload: the staff are back', after && after.staffed && after.cook && after.server, after);
   void served7b;
@@ -251,7 +260,7 @@ try {
   const part = await ev(() => { const gs = window.__FV.scene; window.__FV.teleport(-700, 1500); return { paid: gs.v42.lines.pads.tables1.paid, coins: gs.economy.coins }; });
   step('11 standing on it with 300 coins pays part of it', part.paid > 0 && part.paid <= 300, part);
   await ev(() => window.__FV.save());
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 180000 });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(300);
   await tapStart(page);
@@ -291,17 +300,17 @@ try {
   // guests reach the back-yard seats (the front ones taken) and are served there
   await ev(() => { const r = window.__FV.scene.civic.restaurant; window.__dummy = { dummy: true }; for (const q of r.seats) if (!q.back && !q.by) q.by = window.__dummy; window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }); window.__sat = []; const o = r.sitDown.bind(r); r.sitDown = (g) => { if (g.seat && g.seat.back) window.__sat.push({ t: +g.t.toFixed(1), d: Math.round(Math.hypot(g.ch.x - g.seat.x, g.ch.y - g.seat.y)) }); return o(g); }; });
   const tB = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && (g.state === 'seated' || g.state === 'eat')), 60, 1);
-  const tE = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && g.state === 'eat'), 40, 1);
+  const tEb = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && g.state === 'eat'), 40, 1);
   const B = await ev(() => { const r = window.__FV.scene.civic.restaurant; const g = r.guests.find((q) => q.seat && q.seat.back && (q.state === 'seated' || q.state === 'eat')); return { sat: window.__sat.slice(0, 4), depthOk: g ? g.ch.sprite.depth < g.seat.table.y : null, d: g ? Math.round(Math.hypot(g.ch.x - g.seat.x, g.ch.y - g.seat.y - (g.sits ? 0 : 14))) : null }; });
   step('11 guests walk round the terrace to the back-yard seats and sit (not dropped there)', tB >= 0 && B.sat.length > 0 && B.sat.every((q) => q.t < 45) && B.d <= 2 && B.depthOk, { t: tB, ...B });
-  step('11 ... and the 서빙 직원 serves them there', tE >= 0, tE);
+  step('11 ... and the 서빙 직원 serves them there', tEb >= 0, tEb);
   const ok11 = await ev(() => { const r = window.__FV.scene.civic.restaurant; const badG = r.guests.filter((g) => g.seat && r.seats.indexOf(g.seat) < 0).length; const badS = r.seats.filter((q) => q.by && q.by !== 'chief' && q.by !== window.__dummy && r.guests.indexOf(q.by) < 0).length; for (const q of r.seats) if (q.by === window.__dummy) q.by = null; return { badG, badS }; });
   step('11 no guest on a seat that is not one, no seat held by a guest who is gone', !ok11.badG && !ok11.badS, ok11);
   await adv(30);
 
   // ---- 12. reload keeps the tables
   await ev(() => window.__FV.save());
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 180000 });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   await sleep(300);
   await tapStart(page);

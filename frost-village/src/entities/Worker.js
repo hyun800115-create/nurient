@@ -813,7 +813,10 @@ export class WarehousePorter extends Hauler {
       case 'arrive': {
         // ((v4.2 touch) a new 창고 직원 walks in along the roads from the edge of the village)
         this.arriveT = (this.arriveT || 0) + dt;
-        if (gs.followRoute(this, this.speed, dt, 14) || this.arriveT > 90) { this.state = 'idle'; this.thinkT = 0.3; this.vx = this.vy = 0; }
+        const there = gs.followRoute(this, this.speed, dt, 14);
+        // (lost on the way for 3 minutes: he turns up at the 창고 — never a walk straight across the map)
+        if (!there && this.arriveT > 180 && Math.hypot(this.x - this.homePt.x, this.y - this.homePt.y) > 400) { this.x = this.homePt.x; this.y = this.homePt.y; }
+        if (there || this.arriveT > 180) { this.state = 'idle'; this.thinkT = 0.3; this.vx = this.vy = 0; }
         break;
       }
       case 'idle': {

@@ -245,6 +245,8 @@ export function sanitizeSave(raw) {
 
 // ===================================================================== (v4.2) docs/v42_plan.md §10
 const LINES5 = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse'];
+// ((v4.2 touch §13) 짐꾼 2 also for the 대장간 / 통조림 공장 / 배 창고 lines)
+const LINES8 = LINES5.concat(['toolsmith', 'cannery', 'dock']);
 const STAFF = ['sem', 'ttal', 'bok', 'chong'];
 const u32 = (v) => { const n = num(v, 0); return Number.isFinite(n) && n >= 0 ? Math.floor(n) >>> 0 : 0; };
 const itemCounts = (v, max = 999) => { const o = {}; if (isObj(v)) for (const k of ITEMS) if (k in v) { const n = count(v[k], max); if (n > 0) o[k] = n; } return o; };
@@ -279,7 +281,7 @@ export function sanitizeV42(raw) {
     if (lt.bk !== undefined && num(lt.bk, -1) >= 0) o.letters.bk = count(lt.bk, 1e6);
     o.up = {};
     if (isObj(raw.up)) for (const k of LINES5) if (raw.up[k] === 1 || raw.up[k] === true) o.up[k] = 1;
-    o.p2 = Array.isArray(raw.p2) ? Array.from(new Set(raw.p2.filter((k) => LINES5.indexOf(k) >= 0))).slice(0, 5) : [];
+    o.p2 = Array.isArray(raw.p2) ? Array.from(new Set(raw.p2.filter((k) => LINES8.indexOf(k) >= 0))).slice(0, 8) : [];
     const tr = isObj(raw.train) ? raw.train : {};
     o.train = { stage: tr.stage === 2 ? 2 : 1, big: tr.big ? 1 : 0, labels: count(tr.labels, 99) };
     const fr = isObj(raw.freight) ? raw.freight : {};
@@ -295,11 +297,20 @@ export function sanitizeV42(raw) {
     o.seen = {};
     for (const k of ['whatsNew', 'pickupTip', 'trainNew', 'halo']) if (sn[k]) o.seen[k] = 1;
     o.seen.cheer = count(sn.cheer, 99);
-    for (const k of ['p2', 'up', 'big', 'p34', 'sl2']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
-    if (isObj(raw.full)) { o.full = {}; for (const k of LINES5) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
+    for (const k of ['p2', 'up', 'big', 'p34', 'sl2', 'tb']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
+    if (isObj(raw.full)) { o.full = {}; for (const k of LINES8) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
     if (raw.sleighWait !== undefined) { const w = Math.max(0, Math.min(3600, Math.round(num(raw.sleighWait, 0)))); if (w > 0) o.sleighWait = w; }
     // (partial payments on the offered upgrade pads: no coin is lost over a reload)
     if (isObj(raw.offerPaid)) { o.offerPaid = {}; let n = 0; for (const k in raw.offerPaid) { if (n >= 8) break; if (/^[a-z0-9_]{1,24}$/.test(k)) { const c = count(raw.offerPaid[k], 1e6); if (c > 0) { o.offerPaid[k] = c; n++; } } } }
+    // ((v4.2 touch §13, additive) the 창고 직원 who came beyond the base, the village's making a minute, seconds since the last)
+    if (isObj(raw.crew)) {
+      const cw = { n: count(raw.crew.n, 12) };
+      const rt = count(raw.crew.rate, 1e5);
+      if (rt > 0) cw.rate = rt;
+      const si = Math.round(Math.max(0, Math.min(600, num(raw.crew.since, 0))));
+      if (si > 0) cw.since = si;
+      o.crew = cw;
+    }
     return o;
   } catch (e) { return null; }
 }
@@ -409,6 +420,15 @@ export function sanitizeC1(raw) {
     const pantry = {};
     if (isObj(raw.rest.pantry)) for (const f of FOODS) if (f in raw.rest.pantry) pantry[f] = count(raw.rest.pantry[f], max);
     o.rest = { pantry, cash: count(raw.rest.cash, 1e9), served: count(raw.rest.served, 1e9) };
+    // ((v4.2 touch §13, additive) the 테이블 늘리기 level, how long the line waited for a seat, the 서빙 직원 2)
+    const levels = Array.isArray((R.tables || {}).costs) ? R.tables.costs.length : 2;
+    const tb = count(raw.rest.tables, levels);
+    if (tb > 0) o.rest.tables = tb;
+    const bt = Math.round(Math.max(0, Math.min(3600, num(raw.rest.busyT, 0))));
+    if (bt > 0) o.rest.busyT = bt;
+    if (raw.rest.server2 === 1 || raw.rest.server2 === true) o.rest.server2 = 1;
+    const sw = Math.round(Math.max(0, Math.min(3600, num(raw.rest.serveWaitT, 0))));
+    if (sw > 0) o.rest.serveWaitT = sw;
   }
   return o;
 }
