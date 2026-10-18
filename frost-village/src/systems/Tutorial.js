@@ -108,7 +108,14 @@ export class Tutorial {
       const h = this.v42Goal();
       if (h) {
         goal = { key: h.key, text: h.text };
-        if (h.pay && gs.economy.coins >= h.cost && !(h.pad && h.pad.contains(p.x, p.y))) { set(h.x, h.y, h.h, h.key, h.text); return; }
+        if (h.pay && gs.economy.coins >= h.cost) {
+          if (!(h.pad && h.pad.contains(p.x, p.y))) { set(h.x, h.y, h.h, h.key, h.text); return; }
+          // ((v4.2 verify) standing on it: no arrow anywhere else, like the v3 plots (v3Hint) and an affordable pad — the
+          //  plot's build menu opens after he stands still 0.5 s, and the cash lead below sent an arrow-only player back to
+          //  the coins first: he went plot → coins → plot for 14+ minutes and never opened it. Not when the plot / pad
+          //  wants him to step off once (its menu was closed, the pad appeared under him))
+          if (h.hold) { this.textKey = h.key; this.text = h.text; return; }
+        }
       }
     }
     if (idle && this.nextAction(set, goal)) return;
@@ -284,9 +291,9 @@ export class Tutorial {
       const st = gs.sites && gs.sites[id];
       if (!st || !st.shown || st.state !== 'plot' || gs.isBuilt(bkey) || gs.isBuilding(bkey)) return null;
       const cost = buildCost(bkey).coins || 0;
-      return { x: st.dropX, y: st.dropY, h: 70, cost, pay: true, pad: st.pad, key: 'obj_next_build:' + bkey, text: t('obj_next_build', { name: t('b_' + bkey), cost: fmt(cost) }) };
+      return { x: st.dropX, y: st.dropY, h: 70, cost, pay: true, pad: st.pad, hold: !st.leaveNeeded, key: 'obj_next_build:' + bkey, text: t('obj_next_build', { name: t('b_' + bkey), cost: fmt(cost) }) };
     };
-    const padGoal = (u, name) => (u && u.active && !u.done && !u.maxed ? { x: u.x, y: u.y, h: 112, cost: u.remaining, pay: true, pad: u.pad, key: 'obj_next:' + u.id + ':' + u.remaining, text: t('obj_next', { name, cost: fmt(u.remaining) }) } : null);
+    const padGoal = (u, name) => (u && u.active && !u.done && !u.maxed ? { x: u.x, y: u.y, h: 112, cost: u.remaining, pay: true, pad: u.pad, hold: !u.needsLeave, key: 'obj_next:' + u.id + ':' + u.remaining, text: t('obj_next', { name, cost: fmt(u.remaining) }) } : null);
     const O = v.office;
     const hp = O && O.hirePad;
     const hire = hp ? padGoal(hp, t('staff_' + hp.role)) : null;

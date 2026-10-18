@@ -61,9 +61,9 @@
  },
  {
   "f": "09_train_card_390x844_ko.jpg",
-  "mib": 386.1,
-  "peak": 394.4,
-  "objs": 1009
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1006
  },
  {
   "f": "10_office_390x844_ko.jpg",
@@ -133,9 +133,9 @@
  },
  {
   "f": "20_chief_behind_train_390x844_ko.jpg",
-  "mib": 425.7,
-  "peak": 451.4,
-  "objs": 1081
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1051
  },
  {
   "f": "21_night_chief_close_390x844_ko.jpg",
@@ -157,9 +157,9 @@
  },
  {
   "f": "09_train_card_390x844_en.jpg",
-  "mib": 360.4,
-  "peak": 360.4,
-  "objs": 811
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1006
  },
  {
   "f": "12_panel_news_390x844_en.jpg",
@@ -223,9 +223,9 @@
  },
  {
   "f": "20_chief_behind_train_360x640_ko.jpg",
-  "mib": 396.7,
-  "peak": 419.2,
-  "objs": 1035
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1001
  },
  {
   "f": "19_observe_360x640_ko.jpg",
@@ -241,9 +241,9 @@
  },
  {
   "f": "09_train_card_360x640_en.jpg",
-  "mib": 374.4,
-  "peak": 374.4,
-  "objs": 1012
+  "mib": 384.4,
+  "peak": 384.4,
+  "objs": 1016
  },
  {
   "f": "12_panel_news_360x640_en.jpg",
