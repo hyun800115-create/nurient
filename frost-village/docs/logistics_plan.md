@@ -15,7 +15,7 @@ the M plots already open at village complete). `짐꾼 2` is tracked per slot, g
 prices, the crew gate counts only real-use jobs and raw runs come last. The hub keeps one window and no new HUD button but
 always opens on 현황, reads event counters instead of ledger deltas, shows anchors as `대기 · 줄 지킴`, fits 360×640 and
 leaves `LedgerRows` / `guideTo` in their own versions. A new zero-art lever (솔방울 손님 늘리기, D2b) answers the
-designer's "상가 … 고객을 늘리면" literally. Income gates are per step; Q9 has no default.
+designer's "상가 … 고객을 늘리면" literally. Income gates are per step (Q9 answered: ① per-step bands).
 
 §1 lists every decision. Build contracts are at the end (§B0–§B4). Designer document (Korean, easy words):
 `docs/기획서_물류수요개편.md`.
@@ -98,7 +98,7 @@ Everything new switches on only **after village complete (≈ 20 min)**, so the 
 
 Expected after the whole track (model, §9; the independence model sits ≈ 4 points above the census): any raw pile ≥ 90 %
 from 93 % to **≈ 52–63 %** (gate ≤ 65 %), **≈ 20–48 %** once 용광로 3단 is bought (gate ≤ 50 %); smoked-meat shelf empty
-≤ 10 %; income per step inside its band (§10.3; Q9 has no default and is answered before B3).
+≤ 10 %; income per step inside its band (§10.3; Q9 answered: ① per-step bands).
 
 ---
 
@@ -127,7 +127,7 @@ decision changed by the critique (finding numbers in brackets).
 | LD16 | **D3 마을 저녁 잔치** (18:00, the 창고's unsellable food, 0 coins, happiness, the table pile baked to one image), **D4 대장간 2단 · 무쇠 난로** (주괴 2 + 판자 1, 30 coins; **made to order** for homes without a stove and the 철물점 shelf, never for the dock (r2 [23])), **D5 용광로 3단** (smelter ×0.5 time, only when processing-limited after 읍) | D3 drains the 창고's cooked fish; D4 answers "공구·집기류" as content (≈ 0 coins once every home has one); D5 is the lever that drains ore once carrying is fixed |
 | LD17 | **No 가전 공장 / 가구 공방 in v4.x.** 가구 공방 → v5 (D6, once 이직 adds wood); 가전 공장 stays v8 (D12). Both reuse `src/city/logistics/model/chains.js` and `lgx_producers` | Planks are short until 이직 and ingots already sell without limit; +5.4 MiB and +2 files. The stove (D4) is the v4.x 집기류 |
 | LD18 | **Late smoked meat is demand-capped at the 판매대 (≈ 51 a minute) (r2 [2]).** A guest wants meat with probability ½ (`Seller.makeWant`: a random food, then 25 % "newest"), and a guest whose food is out takes another (`Seller.js` serve loop), so each extra meat sale replaces a fish or bread sale (net ≈ 12 − 5.5 coins). **The meat lever is 이직 (one hunter to the forest), the 솔방울 restaurant's town buyers (D2b) and the touch's restaurant; 훈제장 3단 is not offered**; 정육점 / 소시지 (D8) is re-checked after L1b | r1's "+16 smoked meat to the 판매대" and "+50 to +194 coins from 훈제장 3단" do not hold late. Mid-game (25–40 min) the meat gap is real carrying and is fixed by LD3, with the side effect measured (G4) |
-| LD19 | **Income gates per step with a tolerance (r2 [33])**: before 읍 the pacing guards (village complete ±5 %, 읍 ±5 %); after 읍, each step's census income must land in its band (§10.3: v4.2.1 +38–53 % over v4.1; L1a Δ +3–10 points over the measured v4.3.1; L1b Δ +1–6; 용광로 3단 Δ +5–12). **Q9 has no default; the designer answers before B3** | A 35-point band could not catch a regression, and its ceiling leaned on the v5 ladder that re-bases on this track |
+| LD19 | **Income gates per step with a tolerance (r2 [33])**: before 읍 the pacing guards (village complete ±5 %, 읍 ±5 %); after 읍, each step's census income must land in its band (§10.3: v4.2.1 +38–53 % over v4.1; L1a Δ +3–10 points over the measured v4.3.1; L1b Δ +1–6; 용광로 3단 Δ +5–12). **Q9 answered 2026-10-18: ① per-step bands** | A 35-point band could not catch a regression, and its ceiling leaned on the v5 ladder that re-bases on this track |
 | LD20 | **Balance** in one block `BALANCE.logistics` with Korean comments; the crew's need gate joins the touch's `warehouse.crew` (one place per system, r2 [35]); D2b's knob joins `v4.founding` | One place for the designer (the v4.4 D24 rule) |
 | LD21 | **Saves**: two additive slices, `haul` (≤ 768 B, v4.3.2 L1a) and `demand` (≤ 1 KB, L1b), each kept by a local keep rule in `Save.js` (the G-P5 pattern), no `SAVE_VERSION` bump; v4.4's slice registry and `MIGRATE[7]` carry them. v4.2.1 adds no save field **(r2 [30])** | Older saves load unchanged; `sanitizeSave` drops unknown keys |
 | LD22 | **Art**: carrying + hub = 0 new files, 0 MiB resident. D1 = the stall body on one paged page (+1 file, ≈ +1 MiB near the plaza) and `item_eomuk` merged into the resident items page `props_items` (0 files) **(r2 [29])**. Optional on request only: 10 more worker looks | File gate 480 (≈ 457 after 금방); tour peak ≈ 452 of 455 MiB after 금방. The skewer icon also shows in the 금방 app at the depot, where the tour peaks, so it must not page in a 1 MiB sheet there |
@@ -914,7 +914,7 @@ The band was set while the surplus *waited*. Every raw that now sells instead of
 already at +33 % (3 points over), and the carry fixes alone add ≈ +8–13. The pile gate and the band pull in opposite
 directions once the surplus moves. The v4.2 levers (`freight.exportRate`, `depot.sell.rate`) move income by 1–2 points.
 
-### 10.3 Per-step bands (Q9 — **no default**, answered before B3; r2 [33])
+### 10.3 Per-step bands (Q9 — **answered 2026-10-18: ① per-step bands**, the designer chose "단계마다 조금씩 더 벌게"; r2 [33])
 
 1. **Before 읍**: keep the pacing guards (G7, G8, G10). The earlier 창고 and the mid-game smoked meat act there; 읍 may
    come ≈ 0.5–2 min sooner, inside ±5 % (±2.4 min). If it comes sooner than −5 %: raise the smelter / smokehouse 짐꾼 2

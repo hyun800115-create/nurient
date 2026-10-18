@@ -1,9 +1,8 @@
 // (v4.2 touch) the designer's screenshots of the 큰 식당 테이블 늘리기 / 서빙 fix and the porters -> docs/previews/screens_v42/
 //   node tools/test/shots_v42_touch.mjs [--only 31,32] [--repo DIR] [--size 390x844] [--dpr 3] [--lang ko] [--suffix _x]
 // From the v4.1 46-min save (all three restaurant staff hired), fixed-step clock. --repo runs another checkout (the
-// "before" shot 30 on the v4.2 base copy). 31–33 stage a lunch rush (guests every 2.2–2.6 s) so the back yard fills, then
-// 12–14 s at the normal pace before the picture (32–33 with the 서빙 직원 2) — the numbers are measured elsewhere
-// (docs/build_reports/v42_touch.md).
+// "before" shot 30 on the v4.2 base copy). 31–33 stage a lunch rush (guests every 2.2–2.6 s) so the back yard fills
+// (32–33 with the 서빙 직원 2) — the numbers are measured elsewhere (docs/build_reports/v42_touch.md).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,25 +28,30 @@ const SCENES = [
   // (base copy) the designer's phone: all three staff, the chief away: the terrace full of guests waiting for food
   { name: '30_restaurant_busy_before', secs: 150, feed: true, setup: () => { const R = window.__busy(5); return { x: R.x - 230, y: R.y - 120, z: 1.0 }; } },
   // a staged lunch rush (guests every 2.2–2.6 s, about twice what the staff can serve) fills the back yard. 31: one
-  // server, a short calm — he cannot keep up and the 서빙 직원 2 pad appears (as in the game); 32–33: with the 서빙
-  // 직원 2, guests come at the normal pace again until most tables eat (`calm`: ≥ 6 eating, ≤ 3 waiting, ≤ 45 s)
+  // server, then the normal pace for 14 s — he cannot keep up and the 서빙 직원 2 pad appears (as in the game); 32–33:
+  // with the 서빙 직원 2, the picture is taken when ≥ 9 seats are taken and ≥ 3 guests eat (`full`, ≤ 40 s more)
   { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); R.setTables(1, true); return { x: R.x - 190, y: R.y - 150, z: 1.25 }; },
     then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 190, y: R.y - 150, z: 1.25 }; }, secs2: 14 },
   { name: '32_restaurant_tables_lv2', secs: 100, feed: true, setup: () => { const R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true); return { x: R.x - 250, y: R.y - 190, z: 1.3 }; },
-    then: () => window.__calm({ x: -250, y: -190, z: 1.3 }) },
+    then: () => window.__full({ x: -250, y: -190, z: 1.3 }) },
   { name: '33_restaurant_tables_night', secs: 100, feed: true, setup: () => {
     const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true);
     if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(20.6); }
     return { x: R.x - 250, y: R.y - 190, z: 1.3 };
-  }, then: () => window.__calm({ x: -250, y: -190, z: 1.3 }),
+  }, then: () => window.__full({ x: -250, y: -190, z: 1.3 }),
     after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); } },
-  // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept)
-  { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, R = window.__busy(5); R.busyT = 61; const p = R.tablesPadPos(); window.__FV.teleport(p.x + 150, p.y + 160); return { x: p.x + 40, y: p.y + 40, z: 1.0 }; } },
+  // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept; the other upgrade pads that
+  // are due in this save are marked seen so their banners do not cover it)
+  { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => {
+    const R = window.__busy(5), S = window.__FV.v42.v.seen;
+    for (const k of ['up', 'p2', 'p34', 'big']) S[k] = new Proxy(Object.assign({}, S[k] || {}), { get: (o, q) => (typeof q === 'string' ? 1 : o[q]) });
+    R.busyT = 61; const p = R.tablesPadPos(); return { x: p.x + 110, y: p.y + 120, z: 1.0 };
+  } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
-  { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
-  // a new 창고 직원 walks in (the banner), the camera on him
-  { name: '36_warehouse_crew_arrives', secs: 0.3, keepBanner: true, setup: () => { const gs = window.__FV.scene, W = gs.warehouse; window.__FV.clearStack(); window.__FV.teleport(W.outPad.x + 120, W.outPad.y + 160); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
-    then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(4); return { x: wp.x, y: wp.y - 40, z: 1.1 }; }, secs2: 0.1 },
+  { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
+  // a new 창고 직원 walks in from a way into the village (the banner), the camera between him and the 창고
+  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, setup: () => { const gs = window.__FV.scene, W = gs.warehouse; window.__FV.clearStack(); window.__FV.teleport(W.outPad.x + 120, W.outPad.y + 160); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
+    then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(1.6); return { x: wp.x + (W.outPad.x - wp.x) * 0.35, y: wp.y + (W.outPad.y - wp.y) * 0.35 - 30, z: 1.0 }; }, secs2: 0 },
 ];
 
 const srv = await start(0, { prefix: '/fv/', root: REPO });
@@ -67,10 +71,11 @@ await page.evaluate((BUSYsrc) => {
   window.__run = (sec) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { T += DT; D += DT; game.headlessStep(T, DT); } };
   window.__draw = () => { T += DT; D += DT; game.step(T, DT); };
   window.__busy = eval('(' + BUSYsrc + ')');
-  // (after a rush: guests at the normal pace until most tables eat — ≥ 6 eating and ≤ 3 waiting, at most 45 s)
-  window.__calm = (c) => {
-    const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5;
-    for (let i = 0; i < 45; i++) { window.__run(1); const g = R.guests; if (g.filter((q) => q.state === 'eat').length >= 6 && g.filter((q) => q.state === 'seated').length <= 3) break; }
+  // (the rush goes on until the picture shows a busy house being served: ≥ 9 of 16 seats taken and ≥ 3 guests
+  //  eating — at most 40 s more; with two servers the 계산대 (about 14 orders a minute) is the limit, so 16 full seats are rare)
+  window.__full = (c) => {
+    const R = window.__FV.scene.civic.restaurant;
+    for (let i = 0; i < 40; i++) { window.__run(1); const g = R.guests, eat = g.filter((q) => q.state === 'eat').length, sit = eat + g.filter((q) => q.state === 'seated').length; if (eat >= 3 && sit >= 9) break; }
     return { x: R.x + c.x, y: R.y + c.y, z: c.z };
   };
   try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ }
