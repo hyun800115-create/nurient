@@ -43,15 +43,14 @@ const SCENES = [
   // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept; the other upgrade pads that
   // are due in this save are marked seen so their banners do not cover it)
   { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => {
-    const R = window.__busy(5), S = window.__FV.v42.v.seen;
-    for (const k of ['up', 'p2', 'p34', 'big']) S[k] = new Proxy(Object.assign({}, S[k] || {}), { get: (o, q) => (typeof q === 'string' ? 1 : o[q]) });
+    const R = window.__busy(5); window.__quiet();
     R.busyT = 61; const p = R.tablesPadPos(); return { x: p.x + 110, y: p.y + 120, z: 1.0 };
   } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
   { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
   // a new 창고 직원 walks in from the nearest way into the village (the west gate, off screen while the chief is away)
   // to the 창고: the banner, the camera on the gate road and the 창고 (he is held mid-walk while the view settles)
-  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, warm: 6, setup: () => { window.__FV.clearStack(); window.__FV.teleport(-200, 700); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
+  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, warm: 6, setup: () => { window.__quiet(); window.__FV.clearStack(); window.__FV.teleport(-200, 700); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
     then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(0.5); wp._spd = wp.speed; wp.speed = 0; return { x: (wp.x + W.outPad.x) / 2, y: (wp.y + W.outPad.y) / 2 - 40, z: 1.05 }; }, secs2: 0,
     after: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; if (wp._spd) wp.speed = wp._spd; } },
 ];
@@ -73,6 +72,8 @@ await page.evaluate((BUSYsrc) => {
   window.__run = (sec) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { T += DT; D += DT; game.headlessStep(T, DT); } };
   window.__draw = () => { T += DT; D += DT; game.step(T, DT); };
   window.__busy = eval('(' + BUSYsrc + ')');
+  // (the upgrade pads already due in this save are marked seen, so their banners do not cover the one in the picture)
+  window.__quiet = () => { const S = window.__FV.v42.v.seen; for (const k of ['up', 'p2', 'p34', 'big']) S[k] = new Proxy(Object.assign({}, S[k] || {}), { get: (o, q) => (typeof q === 'string' ? 1 : o[q]) }); };
   // (the rush goes on until the picture shows a busy house being served: ≥ 9 of 16 seats taken and ≥ 3 guests
   //  eating — at most 40 s more; with two servers the 계산대 (about 14 orders a minute) is the limit, so 16 full seats are rare)
   window.__full = (c) => {
