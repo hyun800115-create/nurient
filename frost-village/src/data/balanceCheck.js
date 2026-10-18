@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -198,6 +198,26 @@ function checkC1(B) {
   const S = R.staff = (R.staff && typeof R.staff === 'object') ? R.staff : {};
   const SD = { cashier: 450, cook: 700, server: 900 };
   for (const k in SD) fixNum(S, k, 'civic.restaurant.staff.' + k, 1, 1e9, SD[k], true);
+  // ((v4.2 touch) the 서빙 직원's trays a trip, the register's hold while the kitchen is empty, 테이블 늘리기)
+  fixNum(R, 'serverCarry', 'civic.restaurant.serverCarry', 1, 6, 2, true);
+  fixNum(R, 'holdTickets', 'civic.restaurant.holdTickets', 1, 20, 3, true);
+  const TB = R.tables = (R.tables && typeof R.tables === 'object' && !Array.isArray(R.tables)) ? R.tables : {};
+  fixNum(TB, 'offerS', 'civic.restaurant.tables.offerS', 1, 3600, 60);
+  if (!Array.isArray(TB.costs) || TB.costs.length !== 2) { if (TB.costs !== undefined) warn('civic.restaurant.tables.costs', TB.costs, [1200, 2000]); TB.costs = [1200, 2000]; }
+  fixNum(TB.costs, 0, 'civic.restaurant.tables.costs[0]', 1, 1e9, 1200, true);
+  fixNum(TB.costs, 1, 'civic.restaurant.tables.costs[1]', 1, 1e9, 2000, true);
+  fixNum(R, 'seatsPull', 'civic.restaurant.seatsPull', 0, 2, 0.5);
+  const S2 = R.server2 = (R.server2 && typeof R.server2 === 'object') ? R.server2 : {};
+  fixNum(S2, 'offerS', 'civic.restaurant.server2.offerS', 1, 3600, 60);
+  fixNum(S2, 'cost', 'civic.restaurant.server2.cost', 1, 1e9, 1000, true);
+  // ((v4.2 touch) 창고 직원 grow with what the village makes: crew = base + made per minute ÷ perMin, up to cap)
+  const WH = B.warehouse = (B.warehouse && typeof B.warehouse === 'object') ? B.warehouse : {};
+  const CR = WH.crew = (WH.crew && typeof WH.crew === 'object') ? WH.crew : {};
+  fixNum(CR, 'from', 'warehouse.crew.from', 0, 1e5, 300);
+  fixNum(CR, 'perMin', 'warehouse.crew.perMin', 1, 1e5, 70);
+  fixNum(CR, 'cap', 'warehouse.crew.cap', 0, 12, 6, true);
+  fixNum(CR, 'window', 'warehouse.crew.window', 30, 3600, 180);
+  fixNum(CR, 'every', 'warehouse.crew.every', 5, 3600, 60);
   fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 12, true);
   const ST = C.settlers = (C.settlers && typeof C.settlers === 'object') ? C.settlers : {};
   fixNum(ST, 'every', 'civic.settlers.every', 5, 3600, 45);
@@ -411,6 +431,9 @@ function checkV4A(B) {
 const R = (min, max, d, int) => ({ min, max, d, int: !!int });
 const LINES5 = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse'];
 const costs5 = (d) => Object.fromEntries(LINES5.map((k, i) => [k, R(1, 1e9, d[i], true)]));
+// ((v4.2 touch) 짐꾼 2 also for the 대장간, the 통조림 공장 and the 배 창고)
+const LINES8 = LINES5.concat(['toolsmith', 'cannery', 'dock']);
+const costs8 = (d) => Object.fromEntries(LINES8.map((k, i) => [k, R(1, 1e9, d[i], true)]));
 export const V42_SPEC = {
   aura: { ringPx: R(10, 400, 70), fullZoom: R(0.2, 4, 1.2), maxScale: R(1, 6, 2), pinZoom: R(0.1, 4, 0.8), crowdN: R(1, 50, 4, true), crowdR: R(20, 2000, 160), glowDay: R(0, 1, 0.35), glowNight: R(0, 1, 0.6) },
   cheer: { mult: R(1, 3, 1.1), still: R(0.1, 60, 2), radius: R(10, 2000, 200) },
@@ -419,7 +442,7 @@ export const V42_SPEC = {
   porters: { shelfEmptyPrio: R(1, 99, 48), shelfEmptyAfter: R(0, 600, 10), inputUrgentBelow: R(0, 1, 0.25), inputCalmPrio: R(1, 99, 42), travelPxPerPoint: R(10, 1e6, 300), fullLoadAt: R(0.1, 1.01, 0.7) },
   trade: { displayKeep: R(0, 40, 2, true) },
   warehouse: { direct: 'bool:true', directMinPrio: R(1, 99, 40) },
-  porter2: { fullAt: R(0.1, 1, 0.8), fullForS: R(1, 3600, 90), costs: costs5([500, 600, 700, 800, 900]) },
+  porter2: { fullAt: R(0.1, 1, 0.8), fullForS: R(1, 3600, 45), costs: costs8([500, 600, 700, 800, 900, 700, 700, 500]) },
   station2: { timeMult: R(0.1, 1, 0.66), costs: costs5([900, 1000, 1100, 1400, 1600]) },
   surplus: { outAt: R(0.1, 1, 0.7), outForS: R(0, 3600, 20), localPx: R(0, 1e5, 1500), pileAt: R(0.1, 1, 0.95), pileForS: R(0, 3600, 30), pileKeep: R(0, 500, 20, true), whAt: R(0.1, 1, 0.7), whKeep: R(0, 1, 0.5), boatAt: R(0.1, 1, 0.9), pileToWh: R(0.1, 1, 0.85), pilePrio: R(1, 99, 30),
     whRaw: 'bool:true', rawMinLoad: R(1, 99, 6, true) },

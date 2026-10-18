@@ -280,6 +280,14 @@ export const STRINGS = {
     board_settlers: '이주해 온 주민 {n}명', board_rest_special: '오늘의 정식 {coins}코인', board_happy: '행복 {n}', board_decor: '꾸미기 행복 +{n}', board_tax: '세금 +{n}/분',
     // 큰 식당
     rest_pantry: '식재료 칸', rest_kitchen_cook: '서서 요리하기', rest_kitchen_serve: '서서 서빙하기', rest_combo: '정식!',
+    // (v4.2 손질) 큰 식당 테이블 늘리기 · 주방에서 기다리는 주문
+    rest_kitchen_wait: '주문 {n}개 · 여기 서세요', tables_pad: '테이블 늘리기',
+    tablesBanner: '큰 식당에 자리가 모자라요!', tablesSub: '식당 뒤뜰에 테이블을 늘릴 수 있어요',
+    tablesDone: '테이블이 늘었어요! 자리 {n}개', tablesDoneSub: '식당 뒤뜰에도 손님이 앉아요',
+    rest_server2: '서빙 직원 2 고용', srv2Banner: '서빙 직원이 바빠요', srv2Sub: '서빙 직원을 한 명 더 부를 수 있어요',
+    // (v4.2 손질) 창고 직원이 저절로 늘어요
+    crewCame: '창고 직원이 한 명 더 왔어요', crewSub: '마을이 바빠져서 창고 직원이 {n}명이 되었어요',
+    news_crew: '창고 직원 {a}명이 새로 왔어요', news_tables: '큰 식당 테이블이 늘었어요 (자리 {a}개)',
     rest_cashier: '계산 점원 고용', rest_cook: '요리사 고용', rest_server: '서빙 직원 고용',
     restStaffSub_cashier: '이제 점원이 계산대를 지켜요', restStaffSub_cook: '이제 요리사가 주문을 요리해요', restStaffSub_server: '이제 서빙 직원이 음식을 날라요',
     obj_rest_register: '큰 식당 계산대에 서서 주문을 받아요', obj_rest_kitchen: '큰 식당 주방 발판에 서서 요리해요',
@@ -665,6 +673,12 @@ export const STRINGS = {
     board_miners: 'The miners are hungry · fill the food box', board_people: '{n} residents / {cap} beds', board_vacant: '{n} empty beds · waiting for settlers',
     board_settlers: '{n} settlers live here', board_rest_special: 'Today\'s set meal {coins} coins', board_happy: 'Happiness {n}', board_decor: 'Decor happiness +{n}', board_tax: 'Tax +{n}/min',
     rest_pantry: 'Pantry', rest_kitchen_cook: 'Stand to cook', rest_kitchen_serve: 'Stand to serve', rest_combo: 'Set meal!',
+    rest_kitchen_wait: '{n} orders · stand here', tables_pad: 'More tables',
+    tablesBanner: 'The big restaurant needs more seats!', tablesSub: 'More tables can go in the back yard',
+    tablesDone: 'More tables! {n} seats now', tablesDoneSub: 'Guests sit in the back yard too',
+    rest_server2: 'Hire server 2', srv2Banner: 'The server is busy', srv2Sub: 'You can hire a second server',
+    crewCame: 'One more warehouse hand came', crewSub: 'The village is busy: {n} warehouse hands now',
+    news_crew: '{a} new warehouse hands came', news_tables: 'More tables at the big restaurant ({a} seats)',
     rest_cashier: 'Hire a cashier', rest_cook: 'Hire a cook', rest_server: 'Hire a server',
     restStaffSub_cashier: 'The cashier minds the register now', restStaffSub_cook: 'The cook cooks the orders now', restStaffSub_server: 'The server carries the plates now',
     obj_rest_register: 'Stand at the big restaurant register to take orders', obj_rest_kitchen: 'Stand on the kitchen pad to cook',

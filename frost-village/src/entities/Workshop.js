@@ -179,6 +179,7 @@ export class Workshop extends Station {
       gs.effects.pop(this.img, 0.04, 90);
     });
     gs.events.emit('crafted', this.kind, outType);
+    if (gs.noteMade) gs.noteMade(R.outN);                    // ((v4.2 touch) products made)
   }
 
   /** a little extra life while working (sparks at the anvil, steam) */

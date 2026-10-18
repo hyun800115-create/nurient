@@ -692,6 +692,16 @@ export class RawPorter extends Hauler {
  * stored things out to whoever needs them (sites, hire pads, the food box, workshops, nearly empty shelves).
  */
 export class WarehousePorter extends Hauler {
+  /** ((v4.2 touch) the waiting spot of the k-th 창고 직원: two rows beside the 창고 door, on open ground) */
+  static homeFor(gs, warehouse, k) {
+    const op = warehouse.outPad;
+    const row = [[40, 48], [-40, 52], [74, 48], [-74, 54], [40, 82], [-40, 86], [74, 82], [-74, 88], [108, 50], [-108, 56], [108, 84], [-108, 90]];
+    const tries = row.slice(Math.min(k, row.length - 1)).concat(row, [[60 + k * 30, -30]]);
+    for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16)) return q; }
+    const h = { x: op.x + 40, y: op.y + 48 }; gs.collision.resolve(h, 16);
+    return h;
+  }
+
   constructor(gs, warehouse, x, y, index = 0) {
     const pk = Porter.pickKey(gs, index);
     super(gs, pk.key, x, y, Math.max(1, Math.floor(BALANCE.build.porterCapacity) || 10));
@@ -708,10 +718,13 @@ export class WarehousePorter extends Hauler {
     // waiting spot by the warehouse door: beside the output pad, on open ground (a plot near the edge
     // of the land or a tree must not leave the porter standing where nobody can walk)
     const op = warehouse.outPad, k = gs.porters.filter((p) => p.wh === warehouse).length;
-    const tries = [[40 + k * 34, 48], [-40 - k * 34, 52], [k * 30, 78], [60 + k * 30, -30]];
     let h = null;
-    for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16)) { h = q; break; } }
-    if (!h) { h = { x: op.x + 40, y: op.y + 48 }; gs.collision.resolve(h, 16); }
+    if (k < 2) {
+      // (the two who come with the 창고: the v3 spots, unchanged)
+      const tries = [[40 + k * 34, 48], [-40 - k * 34, 52], [k * 30, 78], [60 + k * 30, -30]];
+      for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16)) { h = q; break; } }
+      if (!h) { h = { x: op.x + 40, y: op.y + 48 }; gs.collision.resolve(h, 16); }
+    } else h = WarehousePorter.homeFor(gs, warehouse, k);
     this.homePt = h;
     gs.keysInUse.add(pk.key);
   }
@@ -797,6 +810,12 @@ export class WarehousePorter extends Hauler {
     const gs = this.gs, W = this.wh;
     this.checkSkin(dt);
     switch (this.state) {
+      case 'arrive': {
+        // ((v4.2 touch) a new 창고 직원 walks in along the roads from the edge of the village)
+        this.arriveT = (this.arriveT || 0) + dt;
+        if (gs.followRoute(this, this.speed, dt, 14) || this.arriveT > 90) { this.state = 'idle'; this.thinkT = 0.3; this.vx = this.vy = 0; }
+        break;
+      }
       case 'idle': {
         this.thinkT -= dt;
         if (this.thinkT <= 0) {

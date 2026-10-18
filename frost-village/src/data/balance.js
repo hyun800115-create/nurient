@@ -305,7 +305,12 @@ export const BALANCE = {
   // ── 창고
   warehouse: {
     capacity: 300,            // 창고에 넣을 수 있는 물건 개수 (모든 종류 합)
-    porters: 2,               // 창고에 딸린 짐꾼 수
+    porters: 2,               // 창고에 딸린 짐꾼 수 (처음 창고를 지을 때)
+    // (v4.2 손질) 창고 직원이 마을이 만드는 양에 맞춰 저절로 늘어요 (공짜, 한 번 온 직원은 안 떠나요):
+    //   1분에 만드는 원료·물건이 from 개까지는 처음 2명, 그 위로 perMin 개 늘 때마다 1명 더, 최대 cap 명
+    //   (잰 값: 창고를 지은 35분 무렵 1분에 약 480개 → 4명, 46분 뒤 바쁜 마을 약 570개 → 5명, 더 바빠지면 6명)
+    //   window = 몇 초 동안의 평균으로 볼지, every = 새 직원이 오는 최소 간격(초)
+    crew: { from: 300, perMin: 70, cap: 6, window: 180, every: 60 },
     overflowAt: 0.6,          // 가공소 출구가 이만큼(0~1) 차면 창고 짐꾼이 창고로 옮김
     restockBelow: 0.25,       // 판매대가 이만큼(0~1)보다 비면 창고에서 꺼내 채움
   },
@@ -446,6 +451,19 @@ export const BALANCE = {
       eatTime: 9,             // 앉아서 먹는 시간(초)
       eatTimeCombo: 13,       // 정식을 먹는 시간(초)
       patience: 70,           // 자리에서 음식을 기다리는 최대 시간(초) — 넘으면 돈을 안 내고 그냥 가요
+      // (v4.2 손질) 서빙 직원이 한 번에 나르는 주문 수 (식탁 두 곳까지 한 번에) — 1 로 하면 예전처럼 하나씩
+      serverCarry: 2,
+      // (v4.2 손질) 주방에 아무도 없을 때 (요리사·서빙 직원이 없고 촌장도 주방 발판에 없음) 주문이 이만큼 밀려 있으면
+      //   계산대가 새 주문을 잠깐 받지 않아요: 손님은 식탁 대신 줄에서 기다려요 (식탁에서 기다리다 돈 안 내고 가는 일이 줄어요)
+      holdTickets: 3,
+      // (v4.2 손질) 테이블 늘리기: 주방은 잘 돌아가는데 빈자리가 없어 줄이 기다린 시간이 모두 offerS 초가 되면
+      //   식당 뒤뜰에 발판이 생겨요. costs = 단계마다 값 (2단계까지, 한 단계에 식탁 2개 = 자리 4개 더)
+      tables: { offerS: 60, costs: [1200, 2000] },
+      // (v4.2 손질) 자리가 늘면 손님도 조금 더 와요: 손님 오는 간격 × (8 ÷ 자리 수) ^ seatsPull  (0 = 자리와 상관없이 같은 간격)
+      seatsPull: 0.5,
+      // (v4.2 손질) 서빙 직원 2: 뒤뜰 테이블이 생긴 뒤, 서빙 직원이 나가 있는 동안 음식이 2접시 넘게 기다린 시간이 모두 offerS 초가 되면
+      //   식당 직원 발판에 고용 발판이 생겨요. cost = 고용비
+      server2: { offerS: 60, cost: 1000 },
       visitorChance: 0.3,     // 기차 타고 온 이웃이 큰 식당에 들를 확률
       // 직원 고용비 (처음엔 촌장이 직접: 계산대에 서고, 주방 발판에 서서 요리·서빙)
       staff: { cashier: 450, cook: 700, server: 900 },   // 계산 점원 / 요리사 / 서빙 직원
@@ -491,7 +509,9 @@ export const BALANCE = {
     // ── 창고 짐꾼 (F3): direct = 가득 찬 출구의 물건을 원하는 판매대가 있으면 창고를 거치지 않고 바로 (directMinPrio 이상인 곳)
     warehouse: { direct: true, directMinPrio: 40 },
     // ── 짐꾼 2 (F4): 그 줄의 출구가 fullAt(0~1) 이상 찬 시간이 모두 fullForS 초가 되고 창고가 있으면 발판이 생겨요. costs = 줄마다 값
-    porter2: { fullAt: 0.8, fullForS: 90, costs: { grill: 500, sawmill: 600, bakery: 700, smelter: 800, smokehouse: 900 } },
+    //    (v4.2 손질) 대장간(도구)·통조림 공장·배 창고(생선)에도 짐꾼 2 가 생겨요. 짐꾼이 갈 곳 없는 짐을 들고 발판에 서 있는 동안은
+    //    시간을 세지 않아요 (그땐 짐꾼을 더 불러도 소용없어요). fullForS: 90 → 45 (더 빨리 발판이 생겨요)
+    porter2: { fullAt: 0.8, fullForS: 45, costs: { grill: 500, sawmill: 600, bakery: 700, smelter: 800, smokehouse: 900, toolsmith: 700, cannery: 700, dock: 500 } },
     // ── 가공소 2단 (F5): timeMult = 한 개 만드는 시간 배율 (0.66 = 1.5배 빨리), 그 줄 일꾼이 3명이 되면 발판이 생겨요
     station2: { timeMult: 0.66, costs: { grill: 900, sawmill: 1000, bakery: 1100, smelter: 1400, smokehouse: 1600 } },
     // ── 남는 물건 (기차 수출 · 물류창고로 보낼 것)

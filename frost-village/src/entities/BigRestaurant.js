@@ -13,6 +13,12 @@
 // pantry if it was not cooked yet. The v3.5 rules hold: nobody pays without the register being staffed, partial
 // stock never stalls the line (the order is made from what is there), nothing is lost on a reload (the pantry is
 // saved with the food guests had ordered).
+// (v4.2 touch, docs/기획서_v4_2_촌장.md §13) the 서빙 직원 walks round the terrace to a free spot beside the table (the
+// four tables' collision circles leave no gap between them: he used to try to walk through and gave up after 12 s,
+// so a fully staffed restaurant served 4 guests a minute and the terrace filled with waiting guests) and carries up
+// to two tickets a trip; the register holds new orders while the kitchen is empty (no full terrace of guests walking
+// out unpaid); 테이블 늘리기 (LineUpgrades, 2 levels) adds tables in the back yard behind the terrace once the line has
+// waited for a seat long enough (busyT, saved).
 // Numbers: balance.js civic.restaurant (+ buildings.big_restaurant for the cost); texts: strings.js.
 
 import { Assets } from '../core/Assets.js';
@@ -46,6 +52,13 @@ const L = {
   // the terrace (−X): four picnic tables under a string of lanterns
   tables: [[-3.8, 1.1], [-2.1, 1.1], [-3.8, -0.9], [-2.1, -0.9]],
   lanterns: [-2.95, 0.1], lamps: [[-5.0, -1.9], [-5.0, 2.2], [-1.0, 2.8]],
+  // ((v4.2 touch) 테이블 늘리기: the back yard behind the terrace (up the screen on the phone; the building's own back
+  //  is under its roof), the terrace's grid carried on: level 1 = the two tables just behind it, level 2 = two more
+  //  behind those, one more lantern string over them; the terrace's back lamp steps aside to make room)
+  more: [[[-5.5, 1.1], [-5.5, 3.1]], [[-7.2, 1.1], [-7.2, 3.1]]],
+  moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.3, 4.4],
+  // the way into the back yard: round the terrace on its building side (with collision; the four tables are a block)
+  backPath: [[-0.22, -0.22], [-1.88, 2.1], [-4.09, 3.2]],
 };
 const YOFF = (m) => [45.25 * m, -22.63 * m];       // along +Y
 const SEAT_DROP = 14;                              // a guest without a sit pose stands this much lower (behind the table)
@@ -86,19 +99,15 @@ export class BigRestaurant {
     this.tables = [];
     this.seats = [];
     this.props = [];
-    for (const [mx, my] of L.tables) {
-      const tp = M(this.ox, this.oy, mx, my);
-      const img = this.prop('picnic_table', tp.x, tp.y, {});
-      const ob = gs.collision.add(tp.x, tp.y, 44, 'table');
-      const d = Assets.def('picnic_table');
-      const pts = d.seatPoints || [[-27, -41], [27, -41]];
-      const table = { x: tp.x, y: tp.y, img, ob };
-      this.tables.push(table);
-      for (const q of pts) this.seats.push({ table, x: tp.x + q[0], y: tp.y + q[1], by: null, dir: 2 });
-    }
+    for (const [mx, my] of L.tables) this.addTable(mx, my, null);
     const lt = M(this.ox, this.oy, L.lanterns[0], L.lanterns[1]);
     this.prop('lantern_string', lt.x, lt.y, { depthOff: 120 });
-    for (const [mx, my] of L.lamps) { const lp = M(this.ox, this.oy, mx, my); const im = this.prop('lamp_post', lp.x, lp.y, {}); gs.collision.add(lp.x, lp.y, 12, 'lamp'); (gs.lamps || (gs.lamps = [])).push(im); }
+    this.lampObs = [];
+    for (const [mx, my] of L.lamps) { const lp = M(this.ox, this.oy, mx, my); const im = this.prop('lamp_post', lp.x, lp.y, {}); this.lampObs.push({ im, ob: gs.collision.add(lp.x, lp.y, 12, 'lamp') }); (gs.lamps || (gs.lamps = [])).push(im); }
+    // ((v4.2 touch) 테이블 늘리기 level (0–2): the back-yard tables; busyT = seconds the line waited for a seat)
+    this.tableLevel = 0;
+    this.busyT = 0;
+    this.backPath = L.backPath.map(([mx, my]) => M(this.ox, this.oy, mx, my));
     // the building (town art: a stand-in until its page arrives)
     this.bld = null;
     this.obs = [];
@@ -118,6 +127,8 @@ export class BigRestaurant {
     // staff (Progression steps rest_cashier / rest_cook / rest_server)
     this.cook = null;
     this.server = null;
+    this.server2 = null;               // ((v4.2 touch) 서빙 직원 2, a LineUpgrades offer once the back yard has tables)
+    this.serveWaitT = 0;               // ((v4.2 touch) seconds plates waited on the pass (2+) with the server out
     this.chiefKitchen = false;
     this.staffSpot = P('staffPad');
     // logistics: the pantry is a sink like a shop shelf (goods porters and the warehouse restock it)
@@ -145,6 +156,81 @@ export class BigRestaurant {
     this.props.push(img);
     if (key === 'lamp_post') gs.addOccluder(img);
     return img;
+  }
+
+  /** a picnic table at (mx, my) m with its two seats; `path` = the way there with collision (the back yard) */
+  addTable(mx, my, path, pop) {
+    const gs = this.gs, tp = M(this.ox, this.oy, mx, my);
+    const img = this.prop('picnic_table', tp.x, tp.y, {});
+    const ob = gs.collision.add(tp.x, tp.y, 44, 'table');
+    const d = Assets.def('picnic_table');
+    const pts = (d && d.seatPoints) || [[-27, -41], [27, -41]];
+    const table = { x: tp.x, y: tp.y, img, ob, back: !!path };
+    this.tables.push(table);
+    for (const q of pts) this.seats.push({ table, x: tp.x + q[0], y: tp.y + q[1], by: null, dir: 2, path: path || null, back: !!path });
+    this.servePts = null;              // (beside-the-table spots are measured again with the new obstacles)
+    if (pop) { img.setScale(0.1); gs.tweens.add({ targets: img, scale: 1, duration: 450, ease: 'Back.easeOut' }); }
+    return table;
+  }
+
+  /**
+   * ((v4.2 touch) 테이블 늘리기) the back-yard tables up to `level` (0–2): two tables a level, a lantern string over
+   * them from level 1 (the terrace's back lamp moves aside). instant: a restore (no pop, no banner)
+   */
+  setTables(level, instant) {
+    const gs = this.gs;
+    const want = Math.max(0, Math.min(L.more.length, Math.floor(Number(level) || 0)));
+    while (this.tableLevel < want) {
+      const set = L.more[this.tableLevel];
+      if (this.tableLevel === 0) {
+        // the lamp at the terrace's back corner steps aside; the back yard's lantern string
+        const [li, lx, ly] = L.lampMoved, lm = this.lampObs[li];
+        if (lm) { const p = M(this.ox, this.oy, lx, ly); lm.im.setPosition(p.x, p.y).setDepth(p.y); lm.ob.x = p.x; lm.ob.y = p.y; gs.collision.all.splice(gs.collision.all.indexOf(lm.ob), 1); lm.ob.active = false; lm.ob = gs.collision.add(p.x, p.y, 12, 'lamp'); }
+        const lt = M(this.ox, this.oy, L.moreLanterns[0], L.moreLanterns[1]);
+        const ls = this.prop('lantern_string', lt.x, lt.y, { depthOff: 120 });
+        if (!this.enabled) ls.setVisible(false);
+        if (!instant) { ls.setScale(0.1); gs.tweens.add({ targets: ls, scale: 1, duration: 500, ease: 'Back.easeOut' }); }
+      }
+      for (const [mx, my] of set) { const tb = this.addTable(mx, my, this.backPath, !instant); if (!this.enabled) tb.img.setVisible(false); }
+      this.tableLevel++;
+    }
+    if (!instant && want > 0) {
+      const c = M(this.ox, this.oy, L.moreLanterns[0], L.moreLanterns[1]);
+      gs.effects.sheet('fx_poof', c.x, c.y - 30, { size: 220 }); gs.effects.burst('star', c.x, c.y - 40, 16);
+      gs.ui.banner(t('tablesDone', { n: this.seats.length }), t('tablesDoneSub'));
+      if (gs.life) gs.life.cheer();
+    }
+    return this.tableLevel;
+  }
+
+  /** where the 테이블 늘리기 pad of the next level stands (where its first table will be) */
+  tablesPadPos() {
+    const set = L.more[Math.min(L.more.length - 1, this.tableLevel)];
+    const a = M(this.ox, this.oy, set[0][0], set[0][1]);
+    return { x: a.x, y: a.y };
+  }
+  get maxTableLevel() { return L.more.length; }
+
+  /** ((v4.2 touch) the 서빙 직원) a free spot beside seat `q`'s table that he can walk to (the tables are a block) */
+  servePoint(q) {
+    if (!this.servePts) this.servePts = new Map();
+    let p = this.servePts.get(q);
+    if (p) return p;
+    const C = this.gs.collision, post = this.server ? this.server.post : this.passPos;
+    const from = q.path && q.path.length ? q.path[q.path.length - 1] : post;
+    let best = null, bd = Infinity;
+    for (const r of [64, 80, 96]) {
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2, x = q.x + Math.cos(a) * r, y = q.table.y + 10 + Math.sin(a) * r * 0.5;
+        if (C.blocked(x, y, 15)) continue;
+        const d = gdist(x, y, from.x, from.y) + r * 2;
+        if (d < bd) { bd = d; best = { x: Math.round(x), y: Math.round(y) }; }
+      }
+      if (best) break;
+    }
+    p = best || { x: q.x + 34, y: q.table.y + 40 };
+    this.servePts.set(q, p);
+    return p;
   }
 
   /** collision circles along the scaled footprint (like TownBuilding) */
@@ -272,7 +358,8 @@ export class BigRestaurant {
   hire(role, instant, x, y) {
     const gs = this.gs;
     if (role === 'cashier') { this.register.hireClerk(instant, x, y); return; }
-    const post = role === 'cook' ? M(this.ox, this.oy, L.cook[0], L.cook[1]) : { x: this.passPos.x + 30, y: this.passPos.y + 44 };
+    if (role === 'server2' && (this.server2 || !this.server)) return;
+    const post = role === 'cook' ? M(this.ox, this.oy, L.cook[0], L.cook[1]) : role === 'server2' ? this.server2Post() : { x: this.passPos.x + 30, y: this.passPos.y + 44 };
     const look = this.staffLook(role);
     const sx = instant || x === undefined ? post.x : x, sy = instant || y === undefined ? post.y : y;
     const ch = new Character(gs, look.key, sx, sy, look.person ? { person: look.person, radius: 12 } : { radius: 12 });
@@ -280,19 +367,26 @@ export class BigRestaurant {
     ch.role = role; ch.post = post; ch.state = instant ? 'post' : 'go'; ch.carry = null;
     gs.agents.push(ch);
     if (!instant) { gs.effects.sheet('fx_poof', ch.x, ch.y - 30, { size: 170 }); gs.effects.burst('star', ch.x, ch.y - 40, 12); }
-    if (role === 'cook') this.cook = ch; else this.server = ch;
-    if (!instant) gs.ui.banner(t('hired', { name: t('rest_' + role) }), t('restStaffSub_' + role));
+    if (role === 'cook') this.cook = ch; else if (role === 'server2') { this.server2 = ch; ch.role = 'server'; } else this.server = ch;
+    if (!instant) gs.ui.banner(t('hired', { name: t('rest_' + role) }), t('restStaffSub_' + (role === 'server2' ? 'server' : role)));
     this.refreshKitchenLabel();
+  }
+
+  /** ((v4.2 touch) where the 서빙 직원 2 waits: beside the first, on open ground */
+  server2Post() {
+    const C = this.gs.collision, p = this.passPos;
+    for (const [dx, dy] of [[-12, 70], [62, 66], [-40, 56], [70, 30]]) { const q = { x: p.x + dx, y: p.y + dy }; if (!C.blocked(q.x, q.y, 14)) return q; }
+    return { x: p.x + 30, y: p.y + 74 };
   }
 
   /** the staff look: a townsperson in an apron (once the neighbours' art is here), else a village look */
   staffLook(role) {
     if (TF.ok && TF.readyFor(Assets, 'adult')) {
-      let s = role === 'cook' ? 911 : 4242;
+      let s = role === 'cook' ? 911 : role === 'server2' ? 7331 : 4242;
       const rng = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
       try { const p = TF.person(rng, 'barista'); if (p && TF.age(p.base) === 'adult') return { key: 'tf:' + p.base, person: p }; } catch (e) { /* village look */ }
     }
-    const k = role === 'cook' ? 'npc_chef' : 'npc_clerk_a';
+    const k = role === 'cook' ? 'npc_chef' : role === 'server2' ? 'npc_clerk_b' : 'npc_clerk_a';
     return { key: Assets.m.characters[k] && (Assets.charReady(k) || Assets.charPending(k)) ? k : 'villager_b' };
   }
 
@@ -301,6 +395,7 @@ export class BigRestaurant {
     this.kitchenPad.setVisible(show && this.enabled);
     this.kitchenLabel.c.setVisible(show && this.enabled);
     if (show) this.kitchenLabel.set(this.cook ? t('rest_kitchen_serve') : t('rest_kitchen_cook'));
+    this.kitchenWaitN = -1;
   }
 
   // ================================================================ frame
@@ -326,13 +421,22 @@ export class BigRestaurant {
     this.pass.layout(this.passPos.x, this.passPos.y, this.passPos.y + 2, 0, dt);
     this.cash.update(dt);
     if (!this.enabled) return;
+    if (this.wantServer2 && this.server) { this.wantServer2 = false; this.hire('server2', true); }
     this.register.update(dt);
     const now = gs.time.now;
     this.pantryLabel.bob(now); this.kitchenLabel.bob(now + 400);
+    // ((v4.2 touch) the kitchen pad says how many orders wait for it (no 요리사 / 서빙 직원 yet))
+    if (this.kitchenLabel.c.visible) {
+      let n = 0;
+      for (const q of this.tickets) if ((q.state === 'cook' && !this.cook) || (q.state === 'ready' && !this.server)) n++;
+      if (n !== this.kitchenWaitN) { this.kitchenWaitN = n; this.kitchenLabel.set(n > 0 ? t('rest_kitchen_wait', { n }) : this.cook ? t('rest_kitchen_serve') : t('rest_kitchen_cook')); }
+    }
     // anonymous guests come while there is food (the line never waits for an empty pantry)
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
-      this.spawnT = Math.max(0.5, Number(this.R.spawnEvery) || 5) * (0.8 + Math.random() * 0.4);
+      // ((v4.2 touch) more seats draw a few more guests: the interval × (8 / seats) ^ seatsPull)
+      const pull = Math.pow(8 / Math.max(8, this.seats.length), Math.max(0, Number(this.R.seatsPull) || 0));
+      this.spawnT = Math.max(0.5, Number(this.R.spawnEvery) || 5) * pull * (0.8 + Math.random() * 0.4);
       if (this.queue.length < this.maxQueue && this.hasFood() && (gs.progress.complete || gs.isBuilt('big_restaurant'))) this.spawnGuest();
     }
     this.updateQueue(dt);
@@ -347,14 +451,29 @@ export class BigRestaurant {
     // the front guest orders when someone takes the order, a seat is free and the pantry has food
     if (!front.bubble) this.showBubble(front, front.order ? front.order.items : null);
     if (!this.register.staffed) { this.payT = Math.min(this.payT, 0.3); front.waitPay = (front.waitPay || 0) + dt; return; }
+    // ((v4.2 touch) nobody in the kitchen: no new order while a few already wait there (the guests wait in line, not
+    //  at a table they would leave unpaid))
+    if (this.kitchenHeld()) { this.payT = Math.min(this.payT, 0.3); return; }
+    if (!this.hasFood()) return;
     const seat = this.freeSeat();
-    if (!seat || !this.hasFood()) return;
+    // ((v4.2 touch) the line waits for a seat while the kitchen keeps up: 테이블 늘리기 is offered after a while)
+    if (!seat) { this.busyT = Math.min(3600, this.busyT + dt); return; }
     this.payT -= dt;
     if (this.payT > 0) return;
     this.payT = this.register.clerk ? BALANCE.register.clerkPayTime : BALANCE.register.chiefPayTime;
     const order = this.makeOrder(front.ch);
     if (!order) return;
     this.takeOrder(front, order, seat);
+  }
+
+  /** ((v4.2 touch) no 요리사 / 서빙 직원 and the chief off the kitchen pad, and civic.restaurant.holdTickets orders
+   *  already wait in the kitchen: the register takes no new order) */
+  kitchenHeld() {
+    if ((this.cook || this.chiefKitchen) && (this.server || this.chiefKitchen)) return false;
+    const hold = Math.max(1, Math.floor(Number(this.R.holdTickets) || 3));
+    let n = 0;
+    for (const q of this.tickets) if (q.state === 'cook' || q.state === 'ready') n++;
+    return n >= hold;
   }
 
   takeOrder(g, order, seat) {
@@ -373,8 +492,10 @@ export class BigRestaurant {
     this.tickets.push({ g, items: order.items.slice(), combo: order.combo, state: 'cook', t: 0 });
     this.register.onPay(g.ch);
     this.updateBubble(g);
-    g.ch.route = [this.seatSide(seat), { x: seat.x, y: seat.y + 2 }];
+    // ((v4.2 touch) a back-yard seat: round the terrace first, with collision)
+    g.ch.route = (seat.path || []).map((q) => ({ x: q.x, y: q.y, solid: true })).concat([this.seatSide(seat), { x: seat.x, y: seat.y + 2 }]);
     g.ch.ri = 0;
+    g.legT = 0;
     gs.events.emit('restOrder', order);
   }
 
@@ -428,7 +549,9 @@ export class BigRestaurant {
 
   updateStaff(dt) {
     const gs = this.gs;
-    for (const ch of [this.cook, this.server]) {
+    // ((v4.2 touch) plates waiting on the pass while every server is out: the 서빙 직원 2 offer's measure)
+    if (this.server && !this.server2) { let n = 0; for (const q of this.tickets) if (q.state === 'ready') n++; if (n >= 2 && this.server.state !== 'post') this.serveWaitT = Math.min(3600, this.serveWaitT + dt); }
+    for (const ch of [this.cook, this.server, this.server2]) {
       if (!ch) continue;
       if (ch.state === 'go') { if (gs.moveAgent(ch, ch.post.x, ch.post.y, BALANCE.workers.speed, dt, 10)) { ch.state = 'post'; ch.faceTo(ch.post.x - 40, ch.post.y + 30); ch.play('idle'); } }
       else if (ch === this.cook) {
@@ -442,40 +565,91 @@ export class BigRestaurant {
     }
   }
 
-  /** the server: pass -> table -> back, one ticket at a time */
+  /**
+   * the server: pass -> beside the table -> back. ((v4.2 touch) up to civic.restaurant.serverCarry tickets a trip; he
+   * walks (with collision) to a free spot beside each table — round the terrace for the back yard — and hands the
+   * plates over from there; a guest or a porter in his way never keeps him for long)
+   */
   updateServer(ch, dt) {
     const gs = this.gs;
     if (ch.state === 'post') {
       ch.vx = ch.vy = 0;
-      const tk = this.tickets.find((q) => q.state === 'ready');
-      if (tk) {
-        tk.state = 'carry';
-        ch.carry = tk;
-        for (const ty of tk.items) { const it = this.pass.pop(ty); if (it) gs.effects.releaseItem(it.spr); ch.stack.push(ty, null, gs.effects); }
+      const ready = this.tickets.filter((q) => q.state === 'ready');
+      if (ready.length) {
+        const n = Math.max(1, Math.floor(Number(this.R.serverCarry) || 2));
+        const first = ready[0], load = [first];
+        for (let i = 1; i < ready.length && load.length < n; i++) if (!!ready[i].g.seat.back === !!first.g.seat.back) load.push(ready[i]);
+        const legs = [];
+        if (first.g.seat.back) for (const q of this.backPath) legs.push({ x: q.x, y: q.y });
+        for (const tk of load) {
+          tk.state = 'carry';
+          for (const ty of tk.items) { const it = this.pass.pop(ty); if (it) gs.effects.releaseItem(it.spr); ch.stack.push(ty, null, gs.effects); }
+          const sp = this.servePoint(tk.g.seat);
+          legs.push({ x: sp.x, y: sp.y, tk });
+        }
+        ch.carry = first; ch.load = load; ch.legs = legs; ch.li = 0; this.newLeg(ch);
+        ch.back = !!first.g.seat.back;
         ch.state = 'deliver';
-        ch.dest = { x: tk.g.seat.x + 34, y: tk.g.seat.table.y + 40 };
       } else if (ch.animName !== 'idle') ch.play('idle');
     } else if (ch.state === 'deliver') {
-      const tk = ch.carry;
-      if (!tk || !this.guests.includes(tk.g) || tk.g.state === 'leave' || tk.g.state === 'gone') { ch.stack.clear(gs.effects); ch.carry = null; ch.state = 'back'; return; }
-      if (gs.moveAgent(ch, ch.dest.x, ch.dest.y, BALANCE.workers.speed * 0.9, dt, 14) || (ch.dt2 = (ch.dt2 || 0) + dt) > 12) {
-        ch.dt2 = 0;
-        const g = tk.g;
-        tk.state = 'served';
-        tk.items.forEach((ty, i) => {
-          const it = ch.stack.pop(ty);
-          const spr = it ? it.spr : gs.effects.takeItem(ty);
-          gs.effects.fly(spr, spr.x, spr.y, { x: g.seat.x - 14 + i * 14, y: g.seat.table.y - 12 - i * 2 }, { dur: 240, height: 30, scaleTo: 0.55, onDone: (s) => this.plateDown(g, s) });
-        });
-        ch.play(Assets.hasAnim(ch.key, 'serve') ? 'serve' : 'happy', true);
-        ch.carry = null;
-        ch.state = 'back';
-        ch.pause = 0.5;
+      const leg = ch.legs[ch.li];
+      if (!leg) { this.serverBack(ch); return; }
+      if (leg.tk && !this.ticketLive(leg.tk)) { this.dropLoad(ch, leg.tk); ch.li++; this.newLeg(ch); return; }
+      if (this.legStep(ch, leg, dt, leg.tk ? leg.tk.g.seat : null)) {
+        if (leg.tk) this.handPlates(ch, leg.tk);
+        ch.li++; this.newLeg(ch);
+        if (ch.li >= ch.legs.length) this.serverBack(ch);
       }
     } else if (ch.state === 'back') {
       if ((ch.pause = (ch.pause || 0) - dt) > 0) return;
-      if (gs.moveAgent(ch, ch.post.x, ch.post.y, BALANCE.workers.speed, dt, 10)) { ch.state = 'post'; ch.faceTo(this.passPos.x, this.passPos.y); ch.play('idle'); }
+      const leg = ch.legs[ch.li];
+      if (leg) { if (this.legStep(ch, leg, dt, null)) { ch.li++; this.newLeg(ch); } return; }
+      const there = gs.moveAgent(ch, ch.post.x, ch.post.y, BALANCE.workers.speed, dt, 10);
+      if (!there && (ch.legT += dt) > 10) { ch.x = ch.post.x; ch.y = ch.post.y; }
+      if (there || ch.legT > 10) { ch.state = 'post'; ch.legs = null; ch.faceTo(this.passPos.x, this.passPos.y); ch.play('idle'); }
     }
+  }
+
+  newLeg(ch) { ch.legT = 0; ch.legBest = Infinity; ch.legStall = 0; }
+
+  /** one leg of the server's way; true when he is there (or close enough to the table and something blocks him, or
+   *  the leg took too long) */
+  legStep(ch, leg, dt, seat) {
+    const gs = this.gs;
+    ch.legT += dt;
+    if (gs.moveAgent(ch, leg.x, leg.y, BALANCE.workers.speed * 0.9, dt, 14)) return true;
+    const d = gdist(ch.x, ch.y, leg.x, leg.y);
+    if (d < ch.legBest - 4) { ch.legBest = d; ch.legStall = 0; } else ch.legStall += dt;
+    if (ch.legT > 7) return true;
+    if (ch.legStall > 1.2) return !seat || gdist(ch.x, ch.y, seat.x, seat.y) < 150 || d < 60;
+    return false;
+  }
+
+  ticketLive(tk) { return this.tickets.includes(tk) && this.guests.includes(tk.g) && tk.g.state !== 'leave' && tk.g.state !== 'gone'; }
+
+  /** the plates of ticket `tk` fly from the server's tray to the guest's table */
+  handPlates(ch, tk) {
+    const gs = this.gs, g = tk.g;
+    tk.state = 'served';
+    tk.items.forEach((ty, i) => {
+      const it = ch.stack.pop(ty);
+      const spr = it ? it.spr : gs.effects.takeItem(ty);
+      gs.effects.fly(spr, spr.x || ch.x, spr.y || ch.y - 40, { x: g.seat.x - 14 + i * 14, y: g.seat.table.y - 12 - i * 2 }, { dur: 260, height: 40, scaleTo: 0.55, onDone: (s) => this.plateDown(g, s) });
+    });
+    ch.faceTo(g.seat.x, g.seat.y);
+    ch.play(Assets.hasAnim(ch.key, 'serve') ? 'serve' : 'happy', true);
+  }
+
+  /** a ticket whose guest left while it was carried: its plates go */
+  dropLoad(ch, tk) { for (const ty of tk.items) { const it = ch.stack.pop(ty); if (it) this.gs.effects.releaseItem(it.spr); } }
+
+  serverBack(ch) {
+    if (ch.stack.count) ch.stack.clear(this.gs.effects);
+    ch.carry = null; ch.load = null;
+    ch.legs = ch.back ? this.backPath.slice().reverse().map((q) => ({ x: q.x, y: q.y })) : [];
+    ch.li = 0; this.newLeg(ch);
+    ch.state = 'back';
+    ch.pause = 0.5;
   }
 
   updateGuest(g, dt) {
@@ -504,13 +678,20 @@ export class BigRestaurant {
         // the last steps onto the seat without collision (the table stands right in front of it)
         const w = ch.route && ch.route[ch.ri || 0];
         if (!w) { this.sitDown(g); break; }
-        const near = gdist(ch.x, ch.y, w.x, w.y) < 70 || (ch.ri || 0) > 0;
-        if (near) {
-          const dx = w.x - ch.x, dy = w.y - ch.y, d = Math.hypot(dx, dy), st = 100 * dt;
-          if (d <= st + 1) { ch.x = w.x; ch.y = w.y; ch.ri = (ch.ri || 0) + 1; if (ch.ri >= ch.route.length) this.sitDown(g); }
-          else { ch.x += dx / d * st; ch.y += dy / d * st; ch.face(dx, dy); ch.locomotion(true); }
-        } else if (gs.moveAgent(ch, w.x, w.y, 100, dt, 20) || g.t > 25) ch.ri = (ch.ri || 0) + 1;
-        if (g.t > 30) { ch.x = g.seat.x; ch.y = g.seat.y; this.sitDown(g); }
+        const lim = g.seat && g.seat.path ? 50 : 30;
+        if (w.solid) {
+          // ((v4.2 touch) the way round the terrace to the back yard: with collision; a leg that takes too long is skipped)
+          g.legT = (g.legT || 0) + dt;
+          if (gs.moveAgent(ch, w.x, w.y, 100, dt, 22) || g.legT > 9) { ch.ri = (ch.ri || 0) + 1; g.legT = 0; }
+        } else {
+          const near = gdist(ch.x, ch.y, w.x, w.y) < 70 || (ch.ri || 0) > 0;
+          if (near) {
+            const dx = w.x - ch.x, dy = w.y - ch.y, d = Math.hypot(dx, dy), st = 100 * dt;
+            if (d <= st + 1) { ch.x = w.x; ch.y = w.y; ch.ri = (ch.ri || 0) + 1; if (ch.ri >= ch.route.length) this.sitDown(g); }
+            else { ch.x += dx / d * st; ch.y += dy / d * st; ch.face(dx, dy); ch.locomotion(true); }
+          } else if (gs.moveAgent(ch, w.x, w.y, 100, dt, 20) || g.t > lim - 5) ch.ri = (ch.ri || 0) + 1;
+        }
+        if (g.t > lim && g.state === 'toSeat') { ch.x = g.seat.x; ch.y = g.seat.y; this.sitDown(g); }
         break;
       }
       case 'seated':
@@ -530,7 +711,7 @@ export class BigRestaurant {
         if (g.visitor) { this.drop(g); break; }
         if (g.getUp) {
           const dx = g.getUp.x - ch.x, dy = g.getUp.y - ch.y, d = Math.hypot(dx, dy), st = 110 * dt;
-          if (d <= st + 1) { ch.x = g.getUp.x; ch.y = g.getUp.y; g.getUp = null; const h = g.home || this.spawnPoint(); ch.route = gs.roads.route(ch.x, ch.y, h.x, h.y, []); ch.ri = 0; }
+          if (d <= st + 1) { ch.x = g.getUp.x; ch.y = g.getUp.y; g.getUp = null; this.routeHome(g); }
           else { ch.x += dx / d * st; ch.y += dy / d * st; ch.face(dx, dy); ch.locomotion(true); }
           break;
         }
@@ -614,6 +795,7 @@ export class BigRestaurant {
       if (g.seat.by === g) g.seat.by = null;
       const sd = this.seatSide(g.seat);
       g.getUp = { x: sd.x, y: sd.y };                  // first a step out beside the table (no collision)
+      g.exitPath = g.seat.path || null;
       g.seat = null;
     }
     for (const s of g.plates || []) gs.effects.releaseItem(s);
@@ -622,10 +804,21 @@ export class BigRestaurant {
     g.state = 'leave';
     g.t = 0;
     if (g.visitor) {
-      if (g.getUp) { ch.x = g.getUp.x; ch.y = g.getUp.y; g.getUp = null; }
+      if (g.getUp) { const e = g.exitPath && g.exitPath.length ? g.exitPath[g.exitPath.length - 1] : g.getUp; ch.x = e.x; ch.y = e.y; g.getUp = null; g.exitPath = null; }
       const cb = g.cb; g.cb = null; this.drop(g); try { if (cb) cb(frac); } catch (e) { console.error(e); } return;
     }
-    if (!g.getUp) { const h = g.home || this.spawnPoint(); ch.route = gs.roads.route(ch.x, ch.y, h.x, h.y, []); ch.ri = 0; }
+    if (!g.getUp) this.routeHome(g);
+  }
+
+  /** the way home along the roads ((v4.2 touch) from a back-yard seat: round the terrace first) */
+  routeHome(g) {
+    const gs = this.gs, ch = g.ch, h = g.home || this.spawnPoint();
+    const back = g.exitPath && g.exitPath.length ? g.exitPath.slice().reverse() : null;
+    const from = back ? back[back.length - 1] : ch;
+    const r = gs.roads.route(from.x, from.y, h.x, h.y, []);
+    ch.route = back ? back.map((q) => ({ x: q.x, y: q.y })).concat(r) : r;
+    ch.ri = 0;
+    g.exitPath = null;
   }
 
   fadeOut(g) {
@@ -723,7 +916,9 @@ export class BigRestaurant {
     for (const f of FOODS) st[f] = this.pantry.countWithIncoming(f);
     for (const tk of this.tickets) if (tk.state === 'cook' || tk.state === 'ready' || tk.state === 'carry') for (const ty of tk.items) st[ty] = (st[ty] || 0) + 1;
     for (const f of FOODS) st[f] = Math.min(this.pantryMax(), st[f] || 0);
-    return { pantry: st, cash: this.cash.serialize(), served: this.served };
+    // ((v4.2 touch) the 테이블 늘리기 level and how long the line has waited for a seat (additive fields))
+    return { pantry: st, cash: this.cash.serialize(), served: this.served, tables: this.tableLevel || undefined, busyT: this.busyT > 0 ? Math.round(this.busyT) : undefined,
+      server2: this.server2 ? 1 : undefined, serveWaitT: this.serveWaitT > 0 ? Math.round(this.serveWaitT) : undefined };
   }
   restore(d) {
     if (!d || typeof d !== 'object') return;
@@ -731,6 +926,11 @@ export class BigRestaurant {
     if (d.pantry && typeof d.pantry === 'object') for (const f of FOODS) for (let i = 0; i < Math.min(this.pantryMax(), Math.max(0, Math.floor(Number(d.pantry[f]) || 0))); i++) this.pantry.push(f, null, gs.effects);
     this.cash.restore(Math.max(0, Math.floor(Number(d.cash) || 0)));
     this.served = Math.max(0, Math.floor(Number(d.served) || 0));
+    if (d.tables) this.setTables(d.tables, true);
+    this.busyT = Math.max(0, Math.min(3600, Number(d.busyT) || 0));
+    this.serveWaitT = Math.max(0, Math.min(3600, Number(d.serveWaitT) || 0));
+    // (the 서빙 직원 2 comes back once the first server is back: the Progression steps are restored after the sites)
+    if (d.server2) this.wantServer2 = true;
   }
   state() {
     const P = {};
@@ -744,9 +944,11 @@ export class BigRestaurant {
       chiefKitchen: this.chiefKitchen, visitors: this.guests.filter((g) => g.visitor).length,
       sits: this.guests.filter((g) => (g.state === 'seated' || g.state === 'eat') && g.sits).length,
       art: !!(this.bld && Assets.has('restaurant')),
+      tables: this.tableLevel, seats: this.seats.length, busyT: Math.round(this.busyT), held: this.kitchenHeld(),
+      serverState: this.server ? this.server.state : null, server2: !!this.server2, serveWaitT: Math.round(this.serveWaitT),
     };
   }
   where() {
-    return { pantry: this.pantryPad, kitchen: this.kitchenPad, register: this.register.pad, cash: this.cash.pad, staff: this.staffSpot, queue: this.slotPos(0) };
+    return { pantry: this.pantryPad, kitchen: this.kitchenPad, register: this.register.pad, cash: this.cash.pad, staff: this.staffSpot, queue: this.slotPos(0), tablesPad: this.tablesPadPos() };
   }
 }

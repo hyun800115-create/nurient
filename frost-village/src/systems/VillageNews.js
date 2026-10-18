@@ -83,6 +83,9 @@ export class VillageNews {
     if (best) H.push(['news_sales', best.n, ITEMS.indexOf(best.item)]);
     if (S.moved > M.moved) H.push(['news_movein', S.moved - M.moved, 0]);
     if (S.deposited > M.deposited) H.push(['news_courier', S.deposited - M.deposited, 0]);
+    // ((v4.2 touch) the 창고 직원 who came yesterday, the big restaurant's new tables)
+    if (T.crew > 0) H.push(['news_crew', T.crew, 0]);
+    if (T.tables > 0) H.push(['news_tables', T.tables, 0]);
     if (coins > 0) H.push(['news_coins', coins, 0]);
     if (!H.length) H.push(['news_quiet', 0, 0]);
     if (H.length < 3) H.push([(day % 3) === 0 ? 'news_snow' : (day % 3) === 1 ? 'news_dog' : 'news_bread', 0, 0]);

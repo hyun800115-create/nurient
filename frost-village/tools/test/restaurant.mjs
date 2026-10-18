@@ -8,6 +8,11 @@
 // 6 a guest who waits too long at the table leaves without paying and the uncooked food goes back to the pantry;
 // 7 the staff (계산 점원, 요리사, 서빙 직원) run it with the chief away, 정식 combos are ordered; 8 train visitors
 // plan a meal here; 9 save + reload keeps the pantry (incl. ordered food) and the cash; 0 page errors / placeholders.
+// (v4.2 touch) 6b nobody in the kitchen: the register holds new orders (≤ holdTickets wait); 10 the 서빙 직원 walks to a
+// free spot beside the table and carries up to two orders (meals a minute, no 12-s give-ups); 11 테이블 늘리기: the pad
+// appears after the line waited for a seat, a part-paid pad keeps its coins over a reload, level 1 / 2 add two tables
+// each behind the terrace (open ground, off the roads, up the screen), guests reach and sit at the back-yard seats and
+// are served there, no guest on a seat that is not one; 12 reload keeps the level (16 seats).
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -143,6 +148,18 @@ try {
   step('6 too long at the table: the guest leaves without paying', tO2 >= 0 && tG >= 0, { t: tG, lost: after6.lost });
   step('6 ... and the uncooked food goes back to the pantry', back, { items: before6.items, before: before6.P, after: after6.P });
 
+  // ---- 6b. (v4.2 touch) nobody in the kitchen: the chief at the register takes no more than holdTickets orders
+  await ev(() => window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }));
+  await goTo('restRegister');
+  let maxWait = 0;
+  for (let i = 0; i < 40; i++) { await adv(1); const n = await ev(() => window.__FV.scene.civic.restaurant.tickets.filter((q) => q.state === 'cook' || q.state === 'ready').length); maxWait = Math.max(maxWait, n); }
+  const r6b = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { held: r.kitchenHeld(), q: r.queue.length, hold: r.R.holdTickets, label: r.kitchenLabel.tx.text }; });
+  step('6b nobody in the kitchen: the register holds new orders (≤ holdTickets wait, the line waits)', maxWait <= r6b.hold && r6b.held && r6b.q > 0, { maxWait, ...r6b });
+  step('6b the kitchen pad says how many orders wait', /3/.test(r6b.label), r6b.label);
+  await goTo('restKitchen');
+  await adv(25);
+  await away();
+
   // ---- 7. the staff run it with the chief away; 정식
   await ev(() => { window.__restMeals = []; window.__FV.scene.events.on('restMeal', (p, c) => window.__restMeals.push([p, c])); });
   await ev(() => { window.__FV.doneStep('rest_cashier'); });
@@ -197,6 +214,101 @@ try {
   step('9 reload: pantry (with ordered food), cash and meals served kept', same, { before, after });
   step('9 reload: the staff are back', after && after.staffed && after.cook && after.server, after);
   void served7b;
+
+  // ---- 10. (v4.2 touch) the 서빙 직원: to a free spot beside the table, up to two orders a trip
+  await installStepper(page);
+  await ev(() => { window.__FV.v42 && (window.__FV.v42.v.seen.whatsNew = 1); window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }); });
+  await away();
+  await adv(20);
+  const s10 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { served: r.served, lost: r.lost }; });
+  let longest = 0, seatedW = 0, n10 = 0;
+  for (let i = 0; i < 24; i++) {
+    await ev(() => window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }));
+    for (let k = 0; k < 5; k++) {
+      await adv(1);
+      const o = await ev(() => { const r = window.__FV.scene.civic.restaurant, sv = r.server; return { leg: sv && sv.state === 'deliver' ? sv.legT : 0, w: r.guests.filter((g) => g.state === 'seated').length }; });
+      longest = Math.max(longest, o.leg); seatedW += o.w; n10++;
+    }
+  }
+  const e10 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { served: r.served, lost: r.lost }; });
+  const perMin10 = (e10.served - s10.served) / 2;
+  step('10 the 서빙 직원 keeps up: ≥ 8 meals a minute with the chief away (it was 4)', perMin10 >= 8, { perMin: perMin10, lost: e10.lost - s10.lost });
+  step('10 ... no delivery leg over 7 s, few guests waiting at the tables', longest <= 7.2 && seatedW / n10 < 3, { longest: +longest.toFixed(1), seatedWaitingAvg: +(seatedW / n10).toFixed(2) });
+
+  // ---- 11. 테이블 늘리기
+  const L0 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { tables: r.tableLevel, seats: r.seats.length, due: window.__FV.scene.v42.lines.state().due.filter((d) => /^tables/.test(d)) }; });
+  step('11 level 0: 4 tables, 8 seats, no pad while the line never waited for a seat', L0.tables === 0 && L0.seats === 8 && !L0.due.length, L0);
+  await ev(() => { const r = window.__FV.scene.civic.restaurant; r.busyT = (r.R.tables.offerS || 60) + 1; });
+  await adv(2);
+  const P1 = await ev(() => {
+    const gs = window.__FV.scene, L = gs.v42.lines, pad = L.pads.tables1, r = gs.civic.restaurant;
+    return pad ? { x: pad.x, y: pad.y, cost: pad.cost, open: !gs.collision.blocked(pad.x, pad.y, 20), label: pad.opts.labelFn(), pilotSkips: true } : null;
+  });
+  step('11 the line waited for a seat: the 테이블 늘리기 pad appears in the back yard, on open ground', !!P1 && P1.open && P1.label === '테이블 늘리기', P1);
+  // a part-paid pad keeps its coins over a reload
+  await ev(([x, y]) => { const gs = window.__FV.scene; gs.economy.coins = 300; window.__FV.teleport(x, y); window.__FV.setInput(0, 0); }, [P1.x, P1.y]);
+  await adv(3);
+  const part = await ev(() => { const gs = window.__FV.scene; window.__FV.teleport(-700, 1500); return { paid: gs.v42.lines.pads.tables1.paid, coins: gs.economy.coins }; });
+  step('11 standing on it with 300 coins pays part of it', part.paid > 0 && part.paid <= 300, part);
+  await ev(() => window.__FV.save());
+  await page.reload({ waitUntil: 'load' });
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
+  await sleep(300);
+  await tapStart(page);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI') && window.__FV.scene.civic.restaurant, 180000);
+  await sleep(1000);
+  await installStepper(page);
+  await ev(() => { window.__FV.v42 && (window.__FV.v42.v.seen.whatsNew = 1); });
+  await adv(3);
+  const part2 = await ev(() => { const gs = window.__FV.scene, p = gs.v42.lines.pads.tables1, r = gs.civic.restaurant; return { paid: p ? p.paid : null, busyT: r.busyT }; });
+  step('11 reload: the part-paid pad is back with its coins (and the wait is kept)', part2.paid === part.paid && part2.busyT >= 60, { before: part.paid, after: part2 });
+  const pay = async (id) => {
+    const p = await ev((id) => { const pad = window.__FV.scene.v42.lines.pads[id]; return pad ? { x: pad.x, y: pad.y } : null; }, id);
+    if (!p) return false;
+    await ev(([x, y]) => { const gs = window.__FV.scene; gs.economy.coins = Math.max(gs.economy.coins, 6000); window.__FV.teleport(x, y); window.__FV.setInput(0, 0); }, [p.x, p.y]);
+    const t = await until((id) => !window.__FV.scene.v42.lines.pads[id], 15, 0.5, id);
+    await away();
+    return t >= 0;
+  };
+  const paid1 = await pay('tables1');
+  await adv(2);
+  const T1 = await ev(() => {
+    const gs = window.__FV.scene, r = gs.civic.restaurant, C = gs.collision;
+    const front = r.tables.filter((q) => !q.back), back = r.tables.filter((q) => q.back);
+    const topFront = Math.min(...front.map((q) => q.y));
+    const roadD = (x, y) => { let best = Infinity; for (const e of gs.roads.edges) { const a = gs.roads.nodes[e.a], b = gs.roads.nodes[e.b]; const pts = [[a.x, a.y]].concat(e.via, [[b.x, b.y]]); for (let k = 1; k < pts.length; k++) { const [x0, y0] = pts[k - 1], [x1, y1] = pts[k]; const vx = x1 - x0, vy = (y1 - y0) * 2, l2 = vx * vx + vy * vy || 1; const t = Math.max(0, Math.min(1, ((x - x0) * vx + (y - y0) * 2 * vy) / l2)); best = Math.min(best, Math.hypot(x - x0 - vx * t, (y - y0) * 2 - vy * t)); } } return best; };
+    const clear = back.map((q) => { q.ob.active = false; const b = C.blocked(q.x, q.y, 30); q.ob.active = true; return !b; });
+    return { level: r.tableLevel, seats: r.seats.length, back: back.map((q) => [q.x, q.y]), behind: back.every((q) => q.y < topFront), clear, roadMin: Math.round(Math.min(...back.map((q) => roadD(q.x, q.y)))) };
+  });
+  step('11 level 1: two more tables, 12 seats', paid1 && T1.level === 1 && T1.seats === 12, T1);
+  step('11 ... behind the terrace (up the screen), on open ground, off the roads', T1.behind && T1.clear.every(Boolean) && T1.roadMin > 90, T1);
+  await ev(() => { const r = window.__FV.scene.civic.restaurant; r.busyT = (r.R.tables.offerS || 60) + 1; });
+  await adv(2);
+  const paid2 = await pay('tables2');
+  await adv(2);
+  const T2 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { level: r.tableLevel, seats: r.seats.length, back: r.tables.filter((q) => q.back).length, due: window.__FV.scene.v42.lines.state().due.filter((d) => /^tables/.test(d)) }; });
+  step('11 level 2: 16 seats, and no third level is offered', paid2 && T2.level === 2 && T2.seats === 16 && T2.back === 4 && !T2.due.length, T2);
+  // guests reach the back-yard seats (the front ones taken) and are served there
+  await ev(() => { const r = window.__FV.scene.civic.restaurant; window.__dummy = { dummy: true }; for (const q of r.seats) if (!q.back && !q.by) q.by = window.__dummy; window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }); window.__sat = []; const o = r.sitDown.bind(r); r.sitDown = (g) => { if (g.seat && g.seat.back) window.__sat.push({ t: +g.t.toFixed(1), d: Math.round(Math.hypot(g.ch.x - g.seat.x, g.ch.y - g.seat.y)) }); return o(g); }; });
+  const tB = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && (g.state === 'seated' || g.state === 'eat')), 60, 1);
+  const tE = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && g.state === 'eat'), 40, 1);
+  const B = await ev(() => { const r = window.__FV.scene.civic.restaurant; const g = r.guests.find((q) => q.seat && q.seat.back && (q.state === 'seated' || q.state === 'eat')); return { sat: window.__sat.slice(0, 4), depthOk: g ? g.ch.sprite.depth < g.seat.table.y : null, d: g ? Math.round(Math.hypot(g.ch.x - g.seat.x, g.ch.y - g.seat.y - (g.sits ? 0 : 14))) : null }; });
+  step('11 guests walk round the terrace to the back-yard seats and sit (not dropped there)', tB >= 0 && B.sat.length > 0 && B.sat.every((q) => q.t < 45) && B.d <= 2 && B.depthOk, { t: tB, ...B });
+  step('11 ... and the 서빙 직원 serves them there', tE >= 0, tE);
+  const ok11 = await ev(() => { const r = window.__FV.scene.civic.restaurant; const badG = r.guests.filter((g) => g.seat && r.seats.indexOf(g.seat) < 0).length; const badS = r.seats.filter((q) => q.by && q.by !== 'chief' && q.by !== window.__dummy && r.guests.indexOf(q.by) < 0).length; for (const q of r.seats) if (q.by === window.__dummy) q.by = null; return { badG, badS }; });
+  step('11 no guest on a seat that is not one, no seat held by a guest who is gone', !ok11.badG && !ok11.badS, ok11);
+  await adv(30);
+
+  // ---- 12. reload keeps the tables
+  await ev(() => window.__FV.save());
+  await page.reload({ waitUntil: 'load' });
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
+  await sleep(300);
+  await tapStart(page);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI') && window.__FV.scene.civic.restaurant, 180000);
+  await sleep(1000);
+  const R12 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { level: r.tableLevel, seats: r.seats.length, tables: r.tables.length, sv: r.serialize().tables }; });
+  step('12 reload: level 2, 16 seats, 8 tables', R12.level === 2 && R12.seats === 16 && R12.tables === 8 && R12.sv === 2, R12);
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));
 step('0 no page errors', !errs.length && !fatal, errs.slice(0, 5));

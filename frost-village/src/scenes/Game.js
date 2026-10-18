@@ -1429,6 +1429,10 @@ export class Game extends Phaser.Scene {
     return w;
   }
 
+  /** ((v4.2 touch) what the village makes, raw + goods, counted where it is made (a gatherer's drop on a collection
+   *  pile, a station's or workshop's product, a boat's catch): the 창고 직원 grow with it (WarehouseCrew) */
+  noteMade(n = 1) { this.madeN = (this.madeN || 0) + n; }
+
   /** (v2) a porter for station `id`'s products */
   hirePorter(id, instant, x, y) {
     const st = this.sourceById(id);
@@ -2161,7 +2165,7 @@ export class Game extends Phaser.Scene {
         // (v4-C) the town hall (tax box, notice board pad, venue) and the big restaurant (pantry, kitchen, register, cash, staff pad)
         const cv = gs.civic;
         if (cv && cv.hall) { m.hallTax = cv.hall.tax.pad; m.hallBoard = cv.hall.boardPad; m.hallVenue = cv.hall.venue('rank'); m.hall = cv.hall; }
-        if (cv && cv.restaurant) { const w = cv.restaurant.where(); m.restPantry = w.pantry; m.restKitchen = w.kitchen; m.restRegister = w.register; m.restCash = w.cash; m.restStaff = w.staff; m.restQueue = w.queue; }
+        if (cv && cv.restaurant) { const w = cv.restaurant.where(); m.restPantry = w.pantry; m.restKitchen = w.kitchen; m.restRegister = w.register; m.restCash = w.cash; m.restStaff = w.staff; m.restQueue = w.queue; m.restTablesPad = w.tablesPad; }
         if (name === 'tree') { const tr = gs.trees.find((n) => n.ready()); return tr && tr.standPoint(tr.x + 60, tr.y + 30); }
         if (name === 'rock') { const n = gs.rocks.find((r) => r.ready()); return n && n.standPoint(n.x + 80, n.y + 60); }
         if (name === 'wheat') { const n = gs.wheat.find((r) => r.ready()); return n && n.standPoint(n.x - 60, n.y + 30); }

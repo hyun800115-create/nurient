@@ -9,6 +9,7 @@ import { Navigator } from '../Navigator.js';
 import { Freight } from '../Freight.js';
 import { Surplus } from '../Surplus.js';
 import { LineUpgrades } from '../LineUpgrades.js';
+import { WarehouseCrew } from '../WarehouseCrew.js';
 import { Office } from '../office/Office.js';
 import { VillageNews } from '../VillageNews.js';
 import { ChiefPilot } from '../pilot/ChiefPilot.js';
@@ -24,6 +25,7 @@ const SYSTEMS = [
   ['freight', (gs, v, s) => new Freight(gs, v, s)],
   ['surplus', (gs, v) => new Surplus(gs, v)],
   ['lines', (gs, v, s) => new LineUpgrades(gs, v, s)],
+  ['crew', (gs, v, s) => new WarehouseCrew(gs, v, s)],          // (v4.2 touch) 창고 직원 grow with what the village makes
   ['office', (gs, v, s) => new Office(gs, v, s)],
   ['news', (gs, v, s) => new VillageNews(gs, v, s)],
   ['depot', (gs, v, s) => new DepotSystem(gs, v, s)],

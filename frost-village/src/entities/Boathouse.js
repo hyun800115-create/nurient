@@ -287,6 +287,7 @@ export class Boat {
       gs.sfxAt('sfx_splash', this.x, this.y, { volume: 0.3, throttle: 300 });
     }
     gs.spawnItemTo(type, sx, sy, { stack: this.cargo, alive: true, x: this.x, y: this.y }, false);
+    if (gs.noteMade) gs.noteMade(1);                         // ((v4.2 touch) a fish caught)
   }
 
   destroy() {

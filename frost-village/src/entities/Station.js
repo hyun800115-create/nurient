@@ -129,6 +129,7 @@ export class Station {
     const gs = this.gs;
     const it = this.inStack.pop(this.input);
     if (!it) return;
+    if (gs.noteMade) gs.noteMade(1);                         // ((v4.2 touch) one product made)
     // raw item hops into the machine
     gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: this.x, y: this.y - 40 }, {
       dur: 240, height: 50, scaleTo: 0.4,

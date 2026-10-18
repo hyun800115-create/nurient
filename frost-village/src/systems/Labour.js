@@ -419,7 +419,9 @@ export class Pile {
   /** a gatherer drops one item (true if one moved) */
   feedFrom(ch) {
     if (this.stack.room <= 0) return false;
-    return this.gs.moveItem(ch.stack, this.stack, this.item, { dur: 240, height: 60, sfx: 'drop' });
+    const ok = this.gs.moveItem(ch.stack, this.stack, this.item, { dur: 240, height: 60, sfx: 'drop' });
+    if (ok && this.gs.noteMade) this.gs.noteMade(1);      // ((v4.2 touch) raw made: the 창고 직원 follow it)
+    return ok;
   }
 
   /** the chief / a porter takes one item */

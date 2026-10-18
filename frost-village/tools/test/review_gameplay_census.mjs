@@ -9,6 +9,9 @@
 // Measures (shares of 10-s samples): market shelf empty per food, 교역소 empty per good, station outputs ≥ 90 %,
 // any raw pile ≥ 90 % (and per pile), 창고 average stock, dock backlog (card crates + surplus), boathouse catch vs
 // its cap, income per minute, and the early-pile share (the first `early` minutes of a fresh run).
+// (v4.2 touch) also: raw + goods made per minute (counted by wrappers on the pile / station / workshop / boat, so a
+// checkout without the game's own counter measures the same), the 창고 직원 (how many, share idle / out / in / raw),
+// construction sites waiting for materials, and the big restaurant (served, walk-outs, queue, seats, table level).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +35,14 @@ export function summarize(rows, opts = {}) {
     const rs = late.filter((r) => r.st && r.st[st]);
     o.out90[st] = share(rs, (r) => r.st[st][1] >= r.st[st][3] * 0.9);
   }
+  // ((v4.2 touch) every goods line's output ≥ 80 % (the 짐꾼 2 rule's fullAt): stations, workshops, the boathouse's catch)
+  o.out80 = {};
+  for (const st of ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse']) { const rs = late.filter((r) => r.st && r.st[st]); if (rs.length) o.out80[st] = share(rs, (r) => r.st[st][1] >= r.st[st][3] * 0.8); }
+  for (const w of ['toolsmith', 'cannery']) {
+    const rs = late.filter((r) => r.ws && r.ws[w]);
+    if (rs.length) { o.out90[w] = share(rs, (r) => r.ws[w][1] >= r.ws[w][3] * 0.9); o.out80[w] = share(rs, (r) => r.ws[w][1] >= r.ws[w][3] * 0.8); }
+  }
+  { const rs = late.filter((r) => r.boat); if (rs.length) o.out80.dock = share(rs, (r) => r.boat[0] >= r.boat[1] * 0.8); }
   const pileFull = (r, k) => r.piles && r.piles[k] !== undefined && r.piles[k] >= (r.pileMax || 40) * 0.9;
   o.pile90 = {};
   for (const k of ['fish', 'log', 'wheat', 'ore', 'meat']) o.pile90[k] = share(late.filter((r) => r.piles && r.piles[k] !== undefined), (r) => pileFull(r, k));
@@ -50,6 +61,30 @@ export function summarize(rows, opts = {}) {
   if (late.length > 1) { const a = late[0], b = late[late.length - 1]; o.incomePerMin = Math.round((b.earned - a.earned) / Math.max(1, (b.t - a.t) / 60)); }
   const ex = late.length ? late[late.length - 1].v42 : null;
   if (ex) o.exported = ex.exported || 0;
+  // ((v4.2 touch) production, the 창고 직원, sites, the restaurant — rows of older runs have none of these)
+  const mk = late.filter((r) => r.made);
+  if (mk.length > 1) {
+    const a = mk[0], b = mk[mk.length - 1], m = Math.max(1, (b.t - a.t) / 60);
+    o.madePerMin = { raw: Math.round((b.made.raw - a.made.raw) / m), goods: Math.round((b.made.goods - a.made.goods) / m) };
+    // per 10-minute block (the crew follows the village's pace)
+    o.madeBlocks = [];
+    for (let i = 0; i + 1 < mk.length; i += 60) { const c = mk[i], d = mk[Math.min(mk.length - 1, i + 60)]; o.madeBlocks.push(Math.round((d.made.raw + d.made.goods - c.made.raw - c.made.goods) / Math.max(1, (d.t - c.t) / 60))); }
+  }
+  const wp = late.filter((r) => r.whp && r.whp.n);
+  if (wp.length) {
+    const tot = wp.reduce((a, r) => a + r.whp.n, 0), sum = (k) => wp.reduce((a, r) => a + (r.whp[k] || 0), 0);
+    o.whCrew = { first: wp[0].whp.n, last: wp[wp.length - 1].whp.n, max: Math.max(...wp.map((r) => r.whp.n)), idlePct: Math.round((sum('idle') / tot) * 100),
+      outPct: Math.round((sum('out') / tot) * 100), inPct: Math.round((sum('in') / tot) * 100), rawPct: Math.round((sum('raw') / tot) * 100) };
+  }
+  const sw = late.filter((r) => r.sites);
+  if (sw.length) o.sitesWaiting = { avg: +(sw.reduce((a, r) => a + r.sites.wait, 0) / sw.length).toFixed(2), sharePct: share(sw, (r) => r.sites.wait > 0), padsWaitPct: share(sw, (r) => r.sites.pads > 0) };
+  const rr = late.filter((r) => r.rest);
+  if (rr.length > 1) {
+    const a = rr[0], b = rr[rr.length - 1], m = Math.max(1, (b.t - a.t) / 60);
+    o.rest = { servedPerMin: +((b.rest.served - a.rest.served) / m).toFixed(2), coinsPerMin: Math.round((b.rest.earned - a.rest.earned) / m), lostPerMin: +((b.rest.lost - a.rest.lost) / m).toFixed(2),
+      queueFullPct: share(rr, (r) => r.rest.q >= r.rest.qMax), seatsFullPct: share(rr, (r) => r.rest.busy >= r.rest.seats), seatedWaitAvg: +(rr.reduce((x, r) => x + r.rest.wait, 0) / rr.length).toFixed(2),
+      tables: b.rest.tables, seats: b.rest.seats };
+  }
   return o;
 }
 
@@ -113,6 +148,22 @@ try {
   });
   await page.addScriptTag({ path: path.join(REPO, 'tools/test/review_gameplay_bot.js') });
   await page.evaluate((o) => Object.assign(window.__bot.opts, o), { policy: opt('--policy', 'smart'), upg: 'greedy', minBatch: 3, think: 0, mag: 1 });
+  // ((v4.2 touch) what the village makes: wrappers on the prototypes, so any checkout counts the same way)
+  await page.evaluate(async () => {
+    const gs = window.__FV.scene, M = window.__made = { raw: 0, goods: 0 };
+    const mod = async (f) => { try { return await import(new URL('src/' + f, location.href).href); } catch (e) { return {}; } };
+    const wrap = (P, name, pre, after) => {
+      if (!P || typeof P[name] !== 'function' || P['__cw_' + name]) return;
+      const o = P[name];
+      P[name] = function (...a) { const b = pre(this); const r = o.apply(this, a); try { after.call(this, r, b); } catch (e) { /* */ } return r; };
+      P['__cw_' + name] = 1;
+    };
+    const { Pile } = await mod('systems/Labour.js'), { Station } = await mod('entities/Station.js'), { Boat } = await mod('entities/Boathouse.js');
+    if (Pile) wrap(Pile.prototype, 'feedFrom', () => 0, (r) => { if (r) M.raw++; });
+    if (Station) wrap(Station.prototype, 'process', (q) => q.inStack.count, function (r, b) { if (this.inStack.count < b) M.goods++; });
+    if (Boat) wrap(Boat.prototype, 'catchOne', (q) => q.cargo.count + q.cargo.incoming, function (r, b) { if (this.cargo.count + this.cargo.incoming > b) M.raw++; });
+    gs.events.on('crafted', (kind) => { const w = (gs.workshops || []).find((q) => q.kind === kind); M.goods += (w && w.recipe && w.recipe.outN) || 1; });
+  });
   const census = () => page.evaluate(() => {
     const gs = window.__FV.scene;
     // (porters made by a save restore before --carry applied: their bags follow the patched capacity)
@@ -131,6 +182,7 @@ try {
     return {
       t: Math.round(window.__sim.simT), coins: gs.economy.coins, earned: gs.economy.earned, pileMax,
       st: Object.fromEntries(gs.stationList.filter((s) => s.enabled).map((s) => [s.id, [s.inStack.count, s.outStack.count, s.inStack.max, s.outStack.max]])),
+      ws: Object.fromEntries((gs.workshops || []).filter((w) => w.enabled !== false).map((w) => [w.kind, [w.inStack.count, w.outStack.count, w.inStack.max, w.outStack.max]])),
       piles: Object.fromEntries(Object.keys(gs.piles).filter((k) => gs.piles[k].shown).map((k) => [k, gs.piles[k].count])),
       market: cnt(gs.market.stock), trade: gs.trade.enabled ? cnt(gs.trade.stock) : null,
       wh: gs.warehouse && gs.warehouse.enabled ? [gs.warehouse.total] : null,
@@ -141,6 +193,14 @@ try {
         dep: gs.v42.depot && gs.v42.depot.built ? [gs.v42.depot.model.day, gs.v42.depot.model.today.sales, gs.v42.depot.model.today.coins] : null,
         tills: gs.v42.office && gs.v42.office.tills ? gs.v42.office.tills().reduce((a, q) => a + (q.till.value || 0), 0) : null } : null,
       bag: gs.player.stack.count, task: window.__bot.task ? window.__bot.task.kind : null,
+      // ((v4.2 touch) production, the 창고 직원, sites waiting for materials, the restaurant)
+      made: window.__made ? { raw: window.__made.raw, goods: window.__made.goods } : null,
+      whp: (() => { const W = gs.warehouse; if (!W || !W.porters) return null; const o = { n: 0, idle: 0, out: 0, in: 0, raw: 0, arrive: 0 };
+        for (const p of gs.porters) { if (p.wh !== W) continue; o.n++; if (p.state === 'arrive') o.arrive++; else if (p.state === 'idle' && !p.job) o.idle++; else if (p.job) o[p.job.kind] = (o[p.job.kind] || 0) + 1; } return o; })(),
+      sites: (() => { let wait = 0, pads = 0; for (const id in gs.sites || {}) { const st = gs.sites[id]; if (st.state === 'foundation' && !st.complete()) wait++; }
+        for (const id in gs.progress.pads || {}) { const p = gs.progress.pads[id]; if (p.items && p.active && !p.done) pads++; } return { wait, pads }; })(),
+      rest: (() => { const R = gs.civic && gs.civic.restaurant; if (!R) return null; return { served: R.served, earned: R.earned, lost: R.lost, q: R.queue.length, qMax: R.maxQueue,
+        busy: R.seats.filter((q) => q.by).length, seats: R.seats.length, wait: R.guests.filter((g) => g.state === 'seated').length, tables: R.tableLevel || 0 }; })(),
       nPorters: gs.porters.length, nRaw: gs.rawPorters.length,
       done: Object.keys(gs.progress.done).filter((k) => gs.progress.done[k]).length,
       celebrated: !!gs.progress.celebrated, rank: gs.v4 && gs.v4.rank ? gs.v4.rank.level : 0,

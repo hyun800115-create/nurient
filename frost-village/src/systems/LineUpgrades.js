@@ -9,6 +9,14 @@
 //                 ≥ bigOfferWait for bigOfferS s                                                  (v42.train.big)
 //   썰매 한 대 더  a second cargo sleigh once the 물류창고 stands and a sleigh load (depot.sleigh.cap) of surplus has
 //                 waited at the dock for sleigh2S s in total while the racks had room             (v42.depot.sleighs)
+//   테이블 늘리기 (v4.2 touch) the big restaurant's line has waited for a free seat for civic.restaurant.tables.offerS s
+//                 in total (BigRestaurant.busyT): two more tables in the back yard, 2 levels; pad where they will
+//                 stand (a restaurant pad: not counted in the 3 offers at a time)                (rest.tables)
+//   서빙 직원 2   (v4.2 touch) once the back yard has tables and plates waited on the pass (2+) while the server was
+//                 out for civic.restaurant.server2.offerS s in total: pad on the restaurant's staff spot  (rest.server2)
+// (v4.2 touch) 짐꾼 2 for every line with a goods porter of its own: also the 대장간 (tools), the 통조림 공장 (cans) and the
+// 배 창고 (the boats' catch). The full time counts only while the line's porter is not standing at the pad with goods
+// nobody wants (then the goods have nowhere to go and a second porter would not help).
 // Every pad keeps the v4.1 pad rules (step-off, pay while standing); one banner per offer, once per save.
 
 import { BALANCE } from '../data/balance.js';
@@ -23,6 +31,12 @@ const V = () => BALANCE.v42 || {};
 const WORKER = { grill: 'fisherman', sawmill: 'lumberjack', bakery: 'farmer', smelter: 'miner', smokehouse: 'hunter' };
 const PILE = { grill: 'fish', sawmill: 'log', bakery: 'wheat', smelter: 'ore', smokehouse: 'meat' };
 const MAX_OFFERS = 3;
+const MAX_P2 = 2;            // ((v4.2 touch) 짐꾼 2 pads at a time, besides the MAX_OFFERS other line offers
+// ((v4.2 touch) the lines a 짐꾼 2 can join, and what the pad calls the goods of the three without a LINES row)
+const P2_LINES = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse', 'toolsmith', 'cannery', 'dock'];
+const P2_ITEM = { toolsmith: 'cat_tools', cannery: 'item_can', dock: 'item_fish_raw' };
+const REST_KINDS = new Set(['tables', 'srv2']);
+const RT = () => (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.tables) || {};
 
 export class LineUpgrades {
   constructor(gs, v42, saved) {
@@ -31,9 +45,10 @@ export class LineUpgrades {
     const s = saved || {};
     this.up = {};
     for (const k in s.up || {}) if (WORKER[k] && s.up[k]) this.up[k] = 1;
-    this.p2 = Array.isArray(s.p2) ? s.p2.filter((k) => WORKER[k]).slice(0, 5) : [];
+    this.p2 = Array.isArray(s.p2) ? s.p2.filter((k, i, a) => P2_LINES.indexOf(k) >= 0 && a.indexOf(k) === i).slice(0, P2_LINES.length) : [];
     this.fullT = {};
-    for (const k in (s.full && typeof s.full === 'object') ? s.full : {}) if (WORKER[k]) this.fullT[k] = Math.max(0, Number(s.full[k]) || 0);
+    for (const k in (s.full && typeof s.full === 'object') ? s.full : {}) if (P2_LINES.indexOf(k) >= 0) this.fullT[k] = Math.max(0, Number(s.full[k]) || 0);
+    this.waitT = {};         // line -> seconds its porter has stood at the pad with goods nobody wants
     this.offeredT = {};      // line -> seconds its 가공소 2단 pad has been offered (Surplus: raw only after F5 had a chance)
     this.pads = {};          // offer id -> UnlockPad
     this.badges = {};
@@ -61,11 +76,19 @@ export class LineUpgrades {
   }
   /** (F5) the line can have its 가공소 2단 (ignoreBought: the line qualifies whether or not it was bought) */
   f5Due(line, ignoreBought) { return this.v42.complete && (ignoreBought || !this.up[line]) && !!this.gs.stations[line] && this.gatherers3(line); }
-  hasPorter(line) { return (this.gs.porters || []).some((p) => p.station && p.station.id === line && p.role === 'porter'); }
+  /** ((v4.2 touch) the line's goods source: a station, a workshop (toolsmith / cannery) or the boathouse (dock)) */
+  src(line) { const gs = this.gs; return gs.sourceById ? gs.sourceById(line) : gs.stations[line] || null; }
+  hasPorter(line) { const st = this.src(line); return !!st && (this.gs.porters || []).some((p) => p.station === st && p.role === 'porter'); }
+  /** ((v4.2 touch) a porter of the line stands at its pad with a load nobody wants (seconds, updated each step) */
+  porterWaits(line, st, step) {
+    const w = (this.gs.porters || []).some((p) => p.station === st && p.role === 'porter' && p.state === 'load' && p.stack && p.stack.count >= Math.min(4, p.stack.max));
+    this.waitT[line] = w ? (this.waitT[line] || 0) + step : 0;
+    return this.waitT[line] > 4;
+  }
   /** (F4) the line's output has been full long enough, it has its porter, and the 창고 stands */
   f4Due(line) {
     const P2 = V().porter2 || {};
-    return this.v42.complete && this.p2.indexOf(line) < 0 && !!this.gs.warehouse && this.hasPorter(line) && (this.fullT[line] || 0) >= (Number(P2.fullForS) || 90);
+    return this.v42.complete && this.p2.indexOf(line) < 0 && !!this.gs.warehouse && !!this.src(line) && this.hasPorter(line) && (this.fullT[line] || 0) >= (Number(P2.fullForS) || 45);
   }
   depotBuilt() { const d = this.v42.depot; return !!(d && d.built); }
   stationPorters() { const G = this.gs.v4 && this.gs.v4.growth; return G && G.porters ? G.porters.length : 0; }
@@ -75,14 +98,28 @@ export class LineUpgrades {
     const gs = this.gs, out = [];
     if (!this.v42.complete) return out;
     const P2 = V().porter2 || {}, S2 = V().station2 || {};
-    for (const line of Object.keys(WORKER)) {
-      const st = gs.stations[line];
+    // ((v4.2 touch) 테이블 늘리기 first: it stands at the restaurant, apart from the 3 line offers at a time)
+    const R = gs.civic && gs.civic.restaurant;
+    if (R && R.enabled && R.setTables && R.tableLevel < R.maxTableLevel) {
+      const id = 'tables' + (R.tableLevel + 1), TB = RT();
+      if (R.busyT >= (Number(TB.offerS) || 60) || this.paid[id] > 0 || this.pads[id]) {
+        const p = R.tablesPadPos();
+        out.push({ id, kind: 'tables', cost: Number((TB.costs || [])[R.tableLevel]) || 1500, x: p.x, y: p.y, label: 'tables_pad', icon: Assets.pick('ui_icon_upgrade', 'ui_icon_lock_open', 'ui_icon_lock') });
+      }
+    }
+    // ((v4.2 touch) 서빙 직원 2: the back yard has tables and plates waited on the pass while the server was out)
+    const S2R = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.server2) || {};
+    if (R && R.enabled && R.server && !R.server2 && R.tableLevel >= 1 && (R.serveWaitT >= (Number(S2R.offerS) || 60) || this.paid.srv2 > 0 || this.pads.srv2)) {
+      out.push({ id: 'srv2', kind: 'srv2', cost: Number(S2R.cost) || 1000, x: R.staffSpot.x, y: R.staffSpot.y, label: 'rest_server2', icon: Assets.pick('ui_icon_porter', 'ui_icon_worker') });
+    }
+    for (const line of P2_LINES) {
+      const st = this.src(line);
       if (!st) continue;
       if (this.f4Due(line)) {
         const h = Porter.homeFor(gs, st);
         out.push({ id: 'p2_' + line, kind: 'p2', line, cost: Number(P2.costs && P2.costs[line]) || 600, x: h[0] + 34, y: h[1] + 30, label: 'p2_pad', icon: Assets.pick('ui_icon_porter', 'ui_icon_backpack') });
       }
-      if (this.f5Due(line)) {
+      if (WORKER[line] && this.f5Due(line)) {
         out.push({ id: 'st2_' + line, kind: 'st2', line, cost: Number(S2.costs && S2.costs[line]) || 1000, x: st.x + (st.cfg.in[0] < 0 ? -1 : 1) * 30, y: st.y + 118, label: 'st2_pad', icon: Assets.pick('ui_icon_upgrade', 'ui_icon_lock_open', 'ui_icon_lock') });
       }
     }
@@ -111,11 +148,13 @@ export class LineUpgrades {
     const step = this.t;
     this.t = 0;
     const P2 = V().porter2 || {};
-    for (const line of Object.keys(WORKER)) {
-      const st = gs.stations[line];
+    for (const line of P2_LINES) {
+      const st = this.src(line);
       if (!st || !st.outStack) continue;
-      if (st.outStack.count >= st.outStack.max * (Number(P2.fullAt) || 0.8) && this.v42.complete) this.fullT[line] = (this.fullT[line] || 0) + step;
-      if (this.f5Due(line)) this.offeredT[line] = (this.offeredT[line] || 0) + step;
+      // ((v4.2 touch) not while its porter stands at the pad with goods nobody wants: no 짐꾼 2 would help then)
+      const stuck = this.porterWaits(line, st, step);
+      if (!stuck && st.outStack.count >= st.outStack.max * (Number(P2.fullAt) || 0.8) && this.v42.complete) this.fullT[line] = (this.fullT[line] || 0) + step;
+      if (WORKER[line] && this.f5Due(line)) this.offeredT[line] = (this.offeredT[line] || 0) + step;
     }
     // (썰매 한 대 더) a sleigh load of surplus waits at the dock while the racks have room
     const Dp = this.v42.depot, F = this.v42.freight, SL = (V().depot && V().depot.sleigh) || {};
@@ -131,9 +170,16 @@ export class LineUpgrades {
     }
     // (a v4.1 save: the "새로워진 것" card first, the offers and their banners after it)
     if (this.v42.fromOld && !(this.v42.seen && this.v42.seen.whatsNew)) return;
-    let n = Object.keys(this.pads).length;
+    // ((v4.2 touch) the restaurant's pads stand apart, and the 짐꾼 2 pads have their own MAX_P2 slots: they used to wait
+    //  behind three unbought 가공소 2단 pads for the whole game — the designer's "짐이 밀려요")
+    const kindOf = (id) => (this.pads[id].offer && this.pads[id].offer.kind) || '';
+    let n = Object.keys(this.pads).filter((id) => !REST_KINDS.has(kindOf(id)) && kindOf(id) !== 'p2').length;
+    let n2 = Object.keys(this.pads).filter((id) => kindOf(id) === 'p2').length;
     for (const o of due) {
-      if (this.pads[o.id] || n >= MAX_OFFERS) continue;
+      if (this.pads[o.id]) continue;
+      if (REST_KINDS.has(o.kind)) { this.makePad(o); continue; }
+      if (o.kind === 'p2') { if (n2 < MAX_P2) { this.makePad(o); n2++; } continue; }
+      if (n >= MAX_OFFERS) continue;
       this.makePad(o);
       n++;
     }
@@ -141,11 +187,11 @@ export class LineUpgrades {
 
   makePad(o) {
     const gs = this.gs;
-    const item = o.line ? (LINES.find((q) => q.id === o.line) || {}).product : null;
-    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: t(item) }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : () => t('bigCar_pad');
+    const item = o.line ? (P2_ITEM[o.line] || (LINES.find((q) => q.id === o.line) || {}).product) : null;
+    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: t(item) }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : o.kind === 'tables' ? () => t('tables_pad') : o.kind === 'srv2' ? () => t('rest_server2') : () => t('bigCar_pad');
     const pad = new UnlockPad(gs, o.id, o.x, o.y, {
-      kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
-      padTex: o.kind === 'p2' || o.kind === 'sp34' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : undefined,
+      kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' || o.kind === 'tables' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
+      padTex: o.kind === 'p2' || o.kind === 'sp34' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : o.kind === 'srv2' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : undefined,
       onComplete: (p) => this.done(o, p),
     });
     if (gs.player && pad.pad.contains(gs.player.x, gs.player.y)) pad.needsLeave = true;
@@ -153,13 +199,15 @@ export class LineUpgrades {
     this.pads[o.id] = pad;
     pad.offer = o;
     // one banner per offer, once per save
-    const sk = { p2: 'p2', st2: 'up', sp34: 'p34', big: 'big', sleigh2: 'big' }[o.kind] || 'p2', seen = this.v42.seen[sk] || (this.v42.seen[sk] = {});
+    const sk = { p2: 'p2', st2: 'up', sp34: 'p34', big: 'big', sleigh2: 'big', tables: 'tb', srv2: 'tb' }[o.kind] || 'p2', seen = this.v42.seen[sk] || (this.v42.seen[sk] = {});
     if (!seen[o.line || o.id]) {
       seen[o.line || o.id] = 1;
       if (o.kind === 'p2') gs.ui.banner(t('p2Banner', { item: t(item) }), t('p2Sub', { item: t(item) }));
       else if (o.kind === 'st2') gs.ui.banner(t('st2Banner', { st: t('line_' + o.line) }), t('st2Sub'));
       else if (o.kind === 'big') gs.ui.banner(t('bigCar_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
       else if (o.kind === 'sleigh2') gs.ui.banner(t('sleigh2_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
+      else if (o.kind === 'tables') gs.ui.banner(t('tablesBanner'), t('tablesSub'));
+      else if (o.kind === 'srv2') gs.ui.banner(t('srv2Banner'), t('srv2Sub'));
     }
   }
 
@@ -173,6 +221,11 @@ export class LineUpgrades {
     else if (o.kind === 'sp34') { const G = gs.v4 && gs.v4.growth; if (G) { G.hireStationPorter(false); G.porterN = Math.max(G.porterN, G.porters.length); } }
     else if (o.kind === 'big') { const F = this.v42.freight; if (F) { F.big = 1; gs.ui.banner(t('bigCarDone', { n: F.cap() }), ''); } }
     else if (o.kind === 'sleigh2') { const Dp = this.v42.depot; if (Dp) { Dp.sleighN = 2; Dp.addSleighs(); this.sleighWaitT = 0; gs.ui.banner(t('sleigh2Done'), ''); } }
+    else if (o.kind === 'tables') {
+      // ((v4.2 touch) the next two tables in the back yard; the line's waiting time starts again for the next level)
+      const R = gs.civic && gs.civic.restaurant;
+      if (R) { R.setTables(R.tableLevel + 1, false); R.busyT = 0; const N = this.v42.news; if (N && N.today) N.today.tables = R.seats.length; }
+    } else if (o.kind === 'srv2') { const R = gs.civic && gs.civic.restaurant; if (R) { R.hire('server2', false); R.serveWaitT = 0; } }
     gs.save(true);
   }
 
@@ -182,7 +235,9 @@ export class LineUpgrades {
     if (this.porters2.some((p) => p.station && p.station.id === line)) return;
     const pr = gs.hirePorter(line, instant);
     if (!pr) return;
-    pr.home = [pr.home[0] + 40, pr.home[1] + 22];
+    const h = { x: pr.home[0] + 40, y: pr.home[1] + 22 };
+    gs.collision.resolve(h, 14);                // ((v4.2 touch) a workshop's / the boathouse's spot may be close to its wall)
+    pr.home = [h.x, h.y];
     if (instant) { pr.x = pr.home[0]; pr.y = pr.home[1]; }
     pr.p2 = true;
     this.porters2.push(pr);
