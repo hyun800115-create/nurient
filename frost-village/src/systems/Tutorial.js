@@ -165,7 +165,11 @@ export class Tutorial {
     // for the next building on the main path: late in v3 the cash pads refill faster than he walks to a
     // far plot, and an arrow-only player bounced between the coins and the plot for minutes (5000+ in hand)
     const g = prog.nextGoal();
-    const canBuild = !!(g && g.kind === 'build' && !gs.isBuilding(g.id) && !gs.isBuilt(g.id) && coins >= (buildCost(g.id).coins || 0));
+    let canBuild = !!(g && g.kind === 'build' && !gs.isBuilding(g.id) && !gs.isBuilt(g.id) && coins >= (buildCost(g.id).coins || 0));
+    // ((v4.2 verify) after 읍 the same holds for the next v4.2 thing on the arrow's list (사무실 plot, its hire pads,
+    //  은행, 물류창고, the line offers) once he can pay for it: the arrow-only bot bounced between the cash pads and the
+    //  물류창고 plot for 14 minutes with 30,000 coins in hand)
+    if (!canBuild && prog.complete && !this.inTutorial && !this.goalText()) { const h = this.v42Goal(); canBuild = !!(h && h.pay && coins >= h.cost); }
     const buys = coins < next && coins + totalAll >= next, lots = !!best && total >= 300 && !canBuild;
     if (!buys && !lots) return false;
     const c = buys && !(best && coins + total >= next) ? bestAll : best;

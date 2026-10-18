@@ -925,17 +925,22 @@ export class Game extends Phaser.Scene {
     if (grill) this.grillSink = grill.inSink;
     this.events.on('region', () => this.refreshSites());
     this.events.on('step', () => this.time.delayedCall(800, () => this.refreshSites()));
+    // ((v4.2 verify) a plot whose condition is a finished building ('b:' — the 서리 은행 needs the 촌장 사무실) appears
+    //  when that building is done: before, plots refreshed only on a step / region, and after 읍 no step comes — an
+    //  office built after 읍 never showed the bank plot until the game was reloaded)
+    //  (show only: a building finishing never hides a plot or a site the tests / hooks put up)
+    this.events.on('built', () => this.time.delayedCall(800, () => this.refreshSites(true)));
   }
 
-  /** plots appear when their land is open and their step is done */
-  refreshSites() {
+  /** plots appear when their land is open and their step is done ((v4.2 verify) onlyShow: never hide one) */
+  refreshSites(onlyShow) {
     for (const id in this.sites) {
       const st = this.sites[id];
       if (st.kind !== 'plot') continue;
       // ((v4.2) `also`: more conditions (a step / 'b:' / 'r:' / 'f:' or a list of them))
       const also = st.cfg.also ? [].concat(st.cfg.also) : [];
       const want = this.territory.isOpen(st.region) && this.progress.met(st.cfg.after) && also.every((c) => this.progress.met(c));
-      if (want === st.shown) continue;
+      if (want === st.shown || (onlyShow && !want)) continue;
       st.setShown(want);
       if (want && st.state === 'plot' && this.isOnScreen(st.x, st.y, 200) && st.img) {
         const o = st.img; o.setScale(0.01);

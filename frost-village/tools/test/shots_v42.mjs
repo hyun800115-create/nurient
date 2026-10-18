@@ -64,7 +64,9 @@ const SCENES = [
   { name: '06_consist_ours', secs: 2, warm: 3, setup: () => { const nb = window.__FV.scene.v4; nb.rail.set('atOurs', 1); const F = window.__FV.scene.v42.freight; if (F) F.labels = 0; if (nb.train.showLabels) nb.train.showLabels(8, 20); return { x: nb.ours.x - 40, y: nb.ours.y + 30, z: 1.0 }; }, sub: true },
   { name: '07_freight_loading', secs: 5, setup: () => { const gs = window.__FV.scene, nb = gs.v4, G = nb.growth, F = gs.v42.freight; G.cargo = 6; F.addSurplus('item_plank', 24); F.addSurplus('item_ingot', 12); nb.rail.set('atOurs', 0.5); return { x: G.dock.x + 40, y: G.dock.y - 20, z: 1.1 }; } },
   { name: '08_consist_town_coach2', secs: 2, warm: 4, setup: () => { const nb = window.__FV.scene.v4; if (nb.rail.stage < 2) nb.addCoach(); nb.rail.set('atTown', 1); const ts = nb.townStation || null; const p = nb.rail.point(nb.rail.m - 6); return ts ? { x: ts.x, y: ts.y, z: 0.9 } : { x: p.x, y: p.y, z: 0.9 }; } },
-  { name: '09_train_card', secs: 0.5, setup: () => { const ui = window.__FV.game.scene.getScene('UI'), nb = window.__FV.scene.v4; nb.rail.set('atOurs', 2); if (ui.hud42 && ui.hud42.openTrainCard) ui.hud42.openTrainCard(); return { x: nb.ours.x - 40, y: nb.ours.y - 60, z: 0.9 }; }, after: () => { const ui = window.__FV.game.scene.getScene('UI'); if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); }, en: true },
+  // ((v4.2 verify) on a loaded machine the first pass after a boot opened the card before the train2 cars and the ui5
+  //  icons were in: no train at the platform, the cars as colour chips. The card opens once both are here)
+  { name: '09_train_card', secs: 0.5, until: () => { const F = window.__FV, ui = F.game.scene.getScene('UI'), nb = F.scene.v4; return !!(nb.train && nb.train.ready && ui.hud42 && ui.hud42.artOn); }, untilS: 40, setup: () => { const F = window.__FV, nb = F.scene.v4; nb.rail.set('atOurs', 2); F.camera(nb.ours.x - 40, nb.ours.y - 60, 0.9); return null; }, then: () => { const ui = window.__FV.game.scene.getScene('UI'), nb = window.__FV.scene.v4; nb.rail.set('atOurs', 2); if (ui.hud42 && ui.hud42.openTrainCard) ui.hud42.openTrainCard(); return { x: nb.ours.x - 40, y: nb.ours.y - 60, z: 0.9 }; }, secs2: 0.3, after: () => { const ui = window.__FV.game.scene.getScene('UI'); if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); }, en: true },
   { name: '10_office', secs: 3, warm: 3, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = F.scene.v42.office, d = O.building.spots.door; F.teleport(d.x + 60, d.y + 120); return { x: O.x, y: O.y + 40, z: 0.95 }; }, sub: true },
   // (CODE-2) the cutaway revealed with the officefolk staff at work, and the chief at his own desk (chief2 sit_write)
   { name: '10b_office_inside', secs: 8, warm: 6, until: () => { const O = window.__FV.scene.v42.office; return Object.values(O.staff).every((c) => !c.seat || (c.animName === c.want && /^(desk_|sit_)/.test(c.animName))); }, setup: () => { const F = window.__FV; F.v42.office({ build: true, hire: ['sem', 'ttal', 'bok', 'chong'] }); const O = F.scene.v42.office, e = O.building.spots.entry || O.building.spots.door; F.teleport(e.x, e.y); return null; }, then: () => { const O = window.__FV.scene.v42.office; return { x: O.x, y: O.y - 20, z: 1.2 }; }, secs2: 2, sub: true },
@@ -79,12 +81,19 @@ const SCENES = [
   { name: '18_cargo_sleigh', secs: 26, warm: 4, setup: () => { const gs = window.__FV.scene, D = gs.v42.depot; gs.v42.freight.addSurplus('item_plank', 80); gs.v42.freight.addSurplus('item_bread', 40); window.__FV.teleport(gs.market.x, gs.market.y + 200); const s = D.sleighs[0]; s.state = 'wait'; s.t = 10; return null; }, then: () => { const s = window.__FV.scene.v42.depot.sleighs[0]; return { x: s.x || 3400, y: (s.y || 2400) - 20, z: 1.1 }; }, secs2: 0.3 },
   // ((v4.2 CODE-2 review fixes) the chief behind the box car at 서리역 (silhouette + star pin); the chief at night, close
   //  (his light lies at his feet: no white wash over him)
-  { name: '20_chief_behind_train', secs: 1, warm: 2, setup: () => {
+  // ((v4.2 verify) the cars are laid out only near the camera: reading the box car's sprite right after rail.set()
+  //  gave its last drawn place (the town loop, from the scenes before) — the chief went there and the shot had no
+  //  train. The camera goes to 서리역 first, the train art is waited for, then the box car is read)
+  { name: '20_chief_behind_train', secs: 1, warm: 2, until: () => { const nb = window.__FV.scene.v4; return !!(nb.train && nb.train.ready); }, untilS: 40, setup: () => {
     const F = window.__FV, gs = F.scene, nb = gs.v4; F.clearStack(); nb.rail.set('atOurs', 3);
+    F.camera(nb.ours.x, nb.ours.y - 40, 1.0);
+    return null;
+  }, then: () => {
+    const F = window.__FV, nb = F.scene.v4; nb.rail.set('atOurs', 3); window.__run(0.2);
     const c = nb.train.cars.find((q) => q.key === 'train_boxcar') || nb.train.cars[1];
     F.teleport(c.spr.x, c.spr.y - 14);
     return { x: c.spr.x, y: c.spr.y - 70, z: 1.0 };
-  }, sub: true },
+  }, secs2: 1, sub: true },
   { name: '21_night_chief_close', secs: 8, warm: 2, setup: () => {
     const gs = window.__FV.scene, nb = gs.v4, m = gs.market; window.__FV.clearStack();
     if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(22); }
