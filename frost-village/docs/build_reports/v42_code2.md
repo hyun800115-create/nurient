@@ -552,3 +552,86 @@ the bank plot shows ≤ 3 s after the office finishes · a `built` event never h
 `shots_v42.mjs`: `09_train_card` and `20_chief_behind_train` now wait (`until`, ≤ 40 s real) for the train2 cars and
 the ui5 icons, and 20 reads the box car only after the camera is at 서리역 (the cars are laid out near the camera only:
 the first refresh, on the loaded machine, shot 20 at the town loop with no train and 09 en with the colour chips).
+
+### 9.2 Results on the final source
+
+**Bots** (fresh game, fixed step, `review_gameplay_sim.mjs --v4 --upg greedy --after 20`; minutes):
+
+| Run | 5 shops | 읍 (v4.1 47.7, gate ≤ +5 % for smart) | longest wait after tower_east | 사무실 · 은행 · 물류창고 | stuck · errors |
+|---|---|---|---|---|---|
+| smart (V1 + V2; smart does not follow the arrow) | 38.6 | **47.3 (−0.8 %)** | 3.35 at 47.3 (the 읍 savings; gate 3.0, v4.1 5.2) | 57.2 · **62.4** · 59.1 | 0 · 0 |
+| arrow (final) | 40.2 | 49.8 (+4.5 %) | 5.32 at 49.8 | 57.0 · 58.6 · 62.9 | 0 · 0 |
+| arrow-only (final) | 40.9 | 51.5 (+8 %) | 6.52 at 59.8 | **53.2 · 56.1 · 59.8** | 0 · 0 |
+| smart, fix-pass source | 38.8 | 45.8 | 3.56 at 49.0 | 53.2 · never · 57.7 | 0 · 0 |
+| arrow-only, fix-pass source | 38.9 | 50.0 | 11.48 at 55.8 | 54.2 · never · never | 0 · 0 |
+| arrow-only, V1 + V2 only | 39.0 | 50.2 | 8.88 at 52.4 | never · never · never | 0 · 0 |
+
+**Suites** (final source unless noted): `v4` 46/46 · `smoke` 53/53 · `v3` 18/18 · `pickup` 31/31 · `nav` 12/12 · `rail` 35/35 ·
+`town` 17/17 · `labour` 28/28 · `dog` 15/15 · `life` 14/14 · `zoom` PASS · `plots` 34/34 · `restaurant` 30/30 · `c2` 39/39 ·
+`townfolk_runtime` 8/8 · `voice_runtime` 29/29 · saves `save_v2/v3/v35/v4 --browser` PASS, `save_v42` all passed · node
+`bank42` 18 · `depot` 26 · `depot_parity` 10 · `ledger` 20 · `letters` 23 · `pilot` 45 · `rail42` 58 · `roadnet` 32 · `walls42` 6 ·
+chat (9 files) all pass · layouts OK · `pilot.mjs` 10/10 (fix-pass source) · **`v42_guide.mjs` 6/6 (new)**.
+`v42.mjs`: **34/35** — the miss is "총총이 ≤ 300 px from the chief after 6 s": 302 px (292 / 302 / 302 / 318 over four runs,
+318 with V1's listener removed: a threshold flake). The other misses seen on the loaded machine passed on a rerun
+(the 통장 / 재고 panel < 100 ms: 304 / 3,858 ms under load, 30 / 27 ms and the probe's 6–66 ms unloaded; 딸랑이 empties
+the 물류 금고). `reqlog42 --base` 4/5 (before the first sale one `vil_npc_*.social` look and voice files more than the v4.1
+copy: the lazy-load timing of §4). **`visitors42 --base` 0/1 twice: 89 % and 86 %** (v4.2 3.35 / 3.29 visitors a
+game minute over minutes 3–20, v4.1 3.76 / 3.82; the fix pass read 85 % and 95 %): v4.2 sits at 86–95 %, at or below
+the −10 % line.
+
+**Repros of the CODE-2 review findings** (the reviewers' own scripts): the chief behind each car is covered + ghost +
+pin by day and at 21:30, not in front, and stays covered while the train pulls out (M1) · walk tracks reach the office
+and the bank's south and west doors (M2) · the night light pins at zoom 0.6 (look H1) · 길 안내: ore 24 px, logs 733 px
+walked with the "입구 가득" chip, a mixed bag 2,910 px · riders alight at the doors · `tf_head_0/1@soc` resident at the
+office by +5 s (robust H1) · the office ambience fades to 0 after a reset (robust M2) · 관망 30 min: all 69 night
+samples "evening", a train watch, two games with 콩이, 0 stuck, 0 coins spent, 56,606 coins · save fuzz (40 edits ×
+restart): 39 clean, one console "Texture key already in use: vil_npc_young_man@social" on a scene restart (the
+CODE-1 robust low) · real fixtures (`mig_real`: five v4.1 saves + the v3.5 38-min save): migrate, reload, v4.2 slices
+stable, 0 warnings, 0 errors.
+
+**Soak:** `soak.mjs 600` (fresh, unlockAll): 0 errors, display objects 693 → 801 (761–810 over the last 6 minutes),
+tweens 2 → 3. Late village (new `soak42.mjs`: the 46-min save after 읍 with office, bank, four staff and the depot, the
+chief touring plaza → station → office → depot, 600 s, twice): 0 errors; display objects 1,290–1,920 by place; at the
+plaza 1,593 → 1,719 → 1,822 / 1,629 → 1,916, the growth being townsfolk dolls (+33 heads), goods on the piles (+35) and
+the evening lamps (+13) — the save's village keeps growing; tweens ≤ 27, timers ≤ 9; Residency peak 430 MiB.
+
+**Textures** (source-sum, must ≤ 455): `texbudget` 9/12 — every must passes (any view 408.8, GL total 445.9, back to the
+start, GL vs source-sum 0.9 %); the soft targets miss as before (plaza 337.5 / 300, tour 408.8 / 300, title).
+`texview2` late village: settled 358.9–403.1, peaks 391.3–428.8; GL texture bytes incl. render targets peak 429.9–465.8
+while a view settles. Screenshot tour peak **451.4** at `17_depot_revealed` (3.6 under the must).
+
+**Draw calls / display objects** (`drawcalls`, `perf_cmp` v4.1 vs v4.2 at 읍 vs late v4.2): fresh plaza 8.2, everything
+unlocked 10.8, paying a pad 12, overview 15; plaza 15–17.3 / 17 / 19.8, plaza z0.6 19.1–20 / 20.8 / 24.4, station 13 / 14.8 /
+15.2, depot corner 9–10 / 12 / 13 — +1 to +4 a frame as before. Plaza display objects v4.1 1,678–1,997 · v4.2 1,219 ·
+late 1,653; z0.6 late 1,810 (gate 1,700; v4.1 2,116).
+
+**Logic** (`sysprof`, final source, ms per tick): v4.2 sum plaza 0.226 · office revealed 0.365 · depot 0.232 · 관망 0.204
+(budget 0.25; the office view's sample also had v4's own share at 0.64 against 0.25–0.34 elsewhere: machine noise);
+office alone 0.061 / 0.154 / 0.085 / 0.101 (budget 0.05, as §8.2).
+
+**Build:** `build_artifact.mjs --webp --mp3-only` on the final source: **413 files** (412 + the page), 65.70 MB, largest
+1.25 MB (`game.js`, 136 modules). `dist/artifact_files.json`: batch 1 = 125 files (32.1 MB) + the 125 `stale` paths as
+null (250 paths + the page); batch 2 = 245 files (30.7 MB); batch 3 = 42 files (6.0 MB: `game.js`, `chat.js`, `lib/`,
+every manifest, `_packed/index.json`, `title_bake.json`). From the live v4.1 version (491 files) the version holds
+376 → 404 → 412 files + the page during the update. `test_deploy.mjs standalone --quick`: PASS 14/14, WebGL, title
+3.2 s, no placeholder art, no failed requests, 0 errors.
+
+**Screenshots** (`screens_v42/`, 43): looked at each; 09 and 20 re-shot after the tool fix. Small things seen: the 길
+안내 edge label (`교역소 판매대`) can sit over the 마을 chip at 390 px (09 ko / en); the consist labels at 서리역 run over
+the station sign (06); a coin flying to the counter passes over the 관망 banner (19 en 360).
+
+### 9.3 Still open (none blocks the update)
+
+1. Economy gates (designer, §7): raw piles 93 %, income +33 %, 훈제 고기 shelf 11 %.
+2. `visitors42`: v4.2 86–95 % of v4.1's visitors a minute over minutes 3–20 (four runs), at or below the −10 % line.
+3. Draw calls +1–4 a frame; display objects over 1,700 in the late village (as v4.1).
+4. Logic: the office 1–3× its 0.05 ms; the v4.2 sum over 0.25 in the office view under load.
+5. Textures: GL bytes up to ~466 MiB while a late-village view settles (the source-sum must holds); soft targets missed.
+6. The arrow-only player reaches 읍 at 51.5 (+8 %) and the smart bot's longest wait is 3.35 min (gate 3.0) — both at the
+   읍 savings; v4.1 was 5.2.
+7. On a fresh boot the train stays hidden (and the train card shows colour chips) until the train2 pages and `v42_core`
+   are in — seconds on a phone, longer on the loaded test machine.
+8. Flaky checks: 총총이's 300 px, the panel timing under load, `reqlog42`, `fuzz42`'s texture-key console line, `life`'s
+   "tag among kids".
+9. The update window: between the first and the last publish the live v4.1 code runs with the 125 stale files gone and
+   115 packed pages / sound files already replaced — publish the three batches back to back.
