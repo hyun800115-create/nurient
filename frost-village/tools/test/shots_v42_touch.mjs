@@ -49,9 +49,11 @@ const SCENES = [
   } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
   { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
-  // a new 창고 직원 walks in from a way into the village (the banner), the camera between him and the 창고
-  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, setup: () => { const gs = window.__FV.scene, W = gs.warehouse; window.__FV.clearStack(); window.__FV.teleport(W.outPad.x + 120, W.outPad.y + 160); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
-    then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(1.6); return { x: wp.x + (W.outPad.x - wp.x) * 0.35, y: wp.y + (W.outPad.y - wp.y) * 0.35 - 30, z: 1.0 }; }, secs2: 0 },
+  // a new 창고 직원 walks in from the nearest way into the village (the west gate, off screen while the chief is away)
+  // to the 창고: the banner, the camera on the gate road and the 창고 (he is held mid-walk while the view settles)
+  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, warm: 6, setup: () => { window.__FV.clearStack(); window.__FV.teleport(-200, 700); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
+    then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(0.5); wp._spd = wp.speed; wp.speed = 0; return { x: (wp.x + W.outPad.x) / 2, y: (wp.y + W.outPad.y) / 2 - 40, z: 1.05 }; }, secs2: 0,
+    after: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; if (wp._spd) wp.speed = wp._spd; } },
 ];
 
 const srv = await start(0, { prefix: '/fv/', root: REPO });
@@ -90,7 +92,7 @@ for (const sc of SCENES.filter((s) => !ONLY || ONLY.some((o) => s.name.startsWit
     await run(sc.secs || 0, sc.feed);
     if (sc.then) { cam = await page.evaluate(sc.then); await run(sc.secs2 || 0); }
     if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
-    await warm(3);                       // (late pictures: the loop awake a moment)
+    await warm(sc.warm || 3);            // (late pictures: the loop awake a moment)
     if (!sc.keepBanner) await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); if (ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); } });
     if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
     await page.evaluate(() => { for (let i = 0; i < 12; i++) window.__draw(); });
