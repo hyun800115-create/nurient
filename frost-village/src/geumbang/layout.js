@@ -31,6 +31,8 @@ export const GB_LAYOUT = {
   sledStand: [6.0, -6.5],                            // 역앞 금방 정류장 (G1b): gb_flag + a parked dog sled
   standCurb: { street: 'main', dir: -1, i: 9.4 },     // the van stops at main's west end (−i lane) for the hand-over
   lockers: { apt: [40.6, -18.75], plaza: [7.2, -7.7] },
+  // ground paint (G-P9): the bay-1 apron (lgx_dock grows j −27.6 → −29.6) and the spur's S-jog onto 중앙로
+  paint: [{ i: [32.3, 36.3], j: [-29.6, -27.6] }, { i: [30.0, 34.0], j: [-19.8, -18.0] }],
   openPad: [26.0, -32.2],                             // the 금방 개업 pad: south of the lgx_walk end, west of the door pad
   // the 20 m around bay 1 a reversing van keeps clear of walkers (they wait)
   apronRect: [32.3, 36.3, -29.6, -25.0],

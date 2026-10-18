@@ -19,6 +19,8 @@ import { GbChip } from './GbChip.js';
 import { GbApp } from './GbApp.js';
 import { Follow } from './Follow.js';
 import { glowTex, shadowTex } from './art.js';
+import { SpeechBubble } from './Courier.js';
+import { gt } from '../strings.js';
 
 /** the rigs the module made (their animation clocks are advanced here, once per frame) */
 class Dolls {
@@ -46,6 +48,7 @@ export class GbView {
     this.t = 0;
     this.tickers = [];
     this.coins = new Map();                // order id -> coins (gb:delivered), shown at the joy beat
+    this.late = new Map(); this.hows = new Map();   // order id -> late? / how it was handed over (the door lines)
     this.recent = [];                      // the last 6 deliveries (the app's done cards; not saved)
     this.photos = [];                      // the last 3 doorstep photos { key, aid, T } (not saved)
     this.dolls = new Dolls(ports.dolls);
@@ -53,6 +56,7 @@ export class GbView {
     this.hub = new GbHub(this);
     this.vans = new Map();
     this.sled = null;
+    this.sledViews = new Map();            // dog sled index -> SledView (개썰매 2 adds the second)
     this.door = new Doorstep(this);
     this.bubbles = new OrderBubbles(this);
     this.chip = this.uiScene ? new GbChip(this) : null;
@@ -96,7 +100,7 @@ export class GbView {
   /** the doorstep photo: a white flash + a 128 × 80 snapshot of the door for the app (last 3, not saved) */
   flash(x, y, aid) {
     const sc = this.scene;
-    const f = sc.add.image(x, y, glowTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.FX + 5).setScale(2.4).setAlpha(0.95);
+    const f = sc.add.image(x, y, glowTex(sc)).setDepth(DEPTH.FX + 5).setScale(2.4).setAlpha(0.95);
     this.addTicker((dt) => { f.setAlpha(Math.max(0, f.alpha - dt * 4)).setScale(f.scaleX + dt * 3); if (f.alpha <= 0) { f.destroy(); return true; } return false; });
     this.sound('sfx_gb_chime', x, y);
     this.snapshot(x, y + 20, aid);
@@ -134,7 +138,8 @@ export class GbView {
     const m = this.m;
     this.hub.update(dt);
     if (m.disp) for (const v of m.disp.vans) { let d = this.vans.get(v.id); if (!d) this.vans.set(v.id, (d = new VanDriver(this, v.id))); d.sync(v, dt); }
-    if (m.sled) { if (!this.sled) this.sled = new SledView(this); this.sled.sync(m.sled, dt); }
+    for (const q of m.sleds || []) { let v = this.sledViews.get(q.idx); if (!v) this.sledViews.set(q.idx, (v = new SledView(this, q.idx))); v.sync(q, dt); }
+    this.sled = this.sledViews.get(1) || null;
     this.door.update(dt);
     this.bubbles.update(dt);
     this.followV.update(dt);
@@ -153,17 +158,44 @@ export class GbView {
       case 'gb:open': this.hub.opened(); break;
       case 'gb:delivered':
         this.coins.set(e.id, e.coins); if (this.coins.size > 64) this.coins.delete(this.coins.keys().next().value);
+        // (M7) late parcels and parcels left with a neighbour change what is said at the door
+        this.late.set(e.id, !e.onTime); this.hows.set(e.id, e.how);
+        if (this.late.size > 64) { this.late.delete(this.late.keys().next().value); this.hows.delete(this.hows.keys().next().value); }
         this.recent.unshift({ id: e.id, aid: e.aid, hid: e.hid, how: e.how, T: e.T, coins: e.coins });
         if (this.recent.length > 6) this.recent.pop();
         if (this.app) this.app.dirty = true;
         break;
       case 'gb:pickup': this.door.pickup(e); break;
+      case 'gb:lockerPickup': this.lockerLine(e); break;
       case 'gb:horn': this.sound('sfx_gb_horn', e.x, e.y); break;
-      case 'gb:sled': if (e.op === 'go' && this.m.sled) this.sound('sfx_sleigh_bells', this.m.sled.x, this.m.sled.y); break;
+      case 'gb:sled': {
+        const q = (this.m.sleds || []).find((z) => z.idx === (e.sled || 1));
+        if (e.op === 'go' && q) {
+          this.sound('sfx_sleigh_bells', q.x, q.y);
+          // "눈길도 금방!" as 뽀득이 sets off (on screen, ≤ 1 a minute)
+          if (this.near(q.x, q.y, 0) && this.t - (this.sledSaidT || -99) > 60) { this.sledSaidT = this.t; if (!this.sledBubble) this.sledBubble = new SpeechBubble(this); const b = this.sledBubble; b.show(gt('gb_sled_line', null, this.lang()), q.x, q.y - 90, 1.8); this.addTicker((dt) => { b.tick(dt); return b.left <= 0; }); }
+        }
+        break;
+      }
+      case 'gb:collect': { const q = (this.m.sleds || []).find((z) => z.idx === (e.sled || 1)); if (q && (e.op === 'go' || e.op === 'drop')) this.sound(e.op === 'go' ? 'sfx_sleigh_bells' : 'sfx_gb_thump', q.x, q.y); if (this.app) this.app.dirty = true; break; }
       default: break;
     }
     if (e.t === 'gb:dispatch') { const d = this.vans.get(e.id); if (d) d.dispatched(e); }
     this.followV.onEvent(e);
+  }
+
+  /** (M7) "딸깍! 금방 왔네." at the locker when a resident takes a parcel out (on screen, ≤ 1 per 20 s) */
+  lockerLine(e) {
+    const p = this.host.lay.lockers && this.host.lay.lockers[e.kind === 'P' ? 'plaza' : 'apt'];
+    if (!p) return;
+    const x = 3120 + 64 * (p[0] + p[1]), y = 1315 + 32 * (p[0] - p[1]);
+    if (!this.near(x, y, 0) || this.t - (this.lockSaidT || -99) < 20) return;
+    this.lockSaidT = this.t;
+    if (!this.lockBubble) this.lockBubble = new SpeechBubble(this);
+    this.lockBubble.show(gt('gb_locker_open', null, this.lang()), x, y - 70, 2.0);
+    const b = this.lockBubble;
+    this.addTicker((dt) => { b.tick(dt); return b.left <= 0; });
+    this.sound('sfx_gb_locker', x, y);
   }
 
   // ------------------------------------------------------------------------------------------ api
@@ -184,7 +216,7 @@ export class GbView {
   objects() {
     let n = this.hub.objects() + this.door.objects() + this.bubbles.objects() + this.dolls.count();
     for (const d of this.vans.values()) n += d.objects();
-    if (this.sled) n += this.sled.objects();
+    for (const v of this.sledViews.values()) n += v.objects();
     if (this.chip) n += this.chip.objects();
     if (this.app) n += this.app.objects();
     return n;
@@ -193,7 +225,7 @@ export class GbView {
   destroy() {
     this.hub.destroy();
     for (const d of this.vans.values()) d.destroy();
-    if (this.sled) this.sled.destroy();
+    for (const v of this.sledViews.values()) v.destroy();
     this.door.destroy(); this.bubbles.destroy(); this.followV.destroy();
     if (this.chip) this.chip.destroy();
     if (this.app) this.app.destroy();

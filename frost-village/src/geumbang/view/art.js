@@ -63,7 +63,7 @@ export function shadowTex(scene) {
   return key;
 }
 
-/** a warm round glow (ADD blend): lamps, the lit roof sign, the name board at night */
+/** a warm round glow (NORMAL blend, plan §11: no batch breaks): lamps, the lit roof sign, the name board at night */
 export function glowTex(scene) {
   const key = 'gb_glow';
   if (scene.textures.exists(key)) return key;

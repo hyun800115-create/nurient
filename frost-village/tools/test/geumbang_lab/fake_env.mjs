@@ -8,7 +8,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GbModel } from '../../../src/geumbang/model/GbModel.js';
 import { GB_TUNING } from '../../../src/geumbang/tuning.js';
-import { GB_LAYOUT } from '../../../src/geumbang/layout.js';
+import { GB_LAYOUT, L } from '../../../src/geumbang/layout.js';
+import { WORLD } from '../../../src/data/world.js';
+import { villageGraphOf } from '../../../src/geumbang/townRead.js';
 import { Stock, catOf } from '../../../src/systems/depot/rack.js';
 import { makeRoads, makeEntries, villageGraph } from './lab_world.js';
 import { mulberry32Lab } from './lab_rng.js';
@@ -75,13 +77,25 @@ export function makeEnv(o = {}) {
     dockSurplus: () => out.dock,
     takeSurplus: (n) => { const q = Math.min(n, out.dock); out.dock -= q; out.took += q; return q ? { item_log: Math.ceil(q / 2), item_fish_raw: Math.floor(q / 2) } : null; },
     firstHousehold: (book) => book.households().find((h) => h.hid === 't_apt2:jeong') || null,
+    // the station dock (any item) and the village piles (critique C1 / H2): o.dockItems { item: n }, o.piles [{ id, item, x, y, n, max, rate }]
+    dockTake: (item, n) => { const have = out.dockItems[item] || 0, q = Math.max(0, Math.min(n, have)); if (q) { out.dockItems[item] = have - q; out.dockTook += q; } return q; },
+    piles: () => out.piles.map((p) => ({ id: p.id, item: p.item, x: p.x, y: p.y, n: Math.floor(p.n), max: p.max })),
+    takePile: (id, n) => { const p = out.piles.find((q) => q.id === id); if (!p) return 0; const q = Math.max(0, Math.min(Math.floor(n), Math.floor(p.n))); p.n -= q; out.pileTook += q; return q; },
+    pileTake: (item, n) => { const p = out.piles.find((q) => q.item === item); if (!p) return 0; const q = Math.max(0, Math.min(Math.floor(n), Math.floor(p.n))); p.n -= q; out.pileTook += q; return q; },
+    dockRoom: () => (o.dockRoom === undefined ? 200 : o.dockRoom) - out.dropped,
+    dockDrop: (items) => { for (const k in items) { out.dropped += items[k]; out.dropItems[k] = (out.dropItems[k] || 0) + items[k]; } },
   };
+  out.dockItems = Object.assign({}, o.dockItems || {}); out.dockTook = 0;
+  out.piles = (o.piles || []).map((p) => Object.assign({ rate: 0 }, p)); out.pileTook = 0; out.dropped = 0; out.dropItems = {};
   const T0 = o.T === undefined ? 600 * 3 + 25 * 9 : o.T;
   const model = new GbModel({ tuning: tune, seed: o.seed || 7, saved: o.saved || null, env, layout: GB_LAYOUT, T: T0 });
+  // the cargo sleigh's route (the real WORLD.v42 data): curbs keep off it (M4); o.avoid === false turns it off
+  model.avoid = o.avoid === false ? null : (o.avoid || ((WORLD.v42 && WORLD.v42.sleighRoute) || []).map(([i, j]) => L(i, j)));
   const roads = o.roads || ROADS;
   model.setRoads(roads.rn, roads.lg);
   const entries = o.entries || makeEntries(roads.doors, { seed: o.worldSeed || 4343, lots: o.lots, village: o.village });
-  model.setWorld(entries, o.village === false ? null : villageGraph());
+  // (o.village 'real': the game's own old-village roads, WORLD.roads — the sleds reach the real collection piles)
+  model.setWorld(entries, o.village === false ? null : o.village === 'real' ? villageGraphOf(WORLD.roads, L(GB_LAYOUT.sledStand[0], GB_LAYOUT.sledStand[1])) : villageGraph());
   const E = {
     model, env, depot, out, entries, T: T0, events: [], inflow: o.inflowPerMin === undefined ? 30 : o.inflowPerMin, inAcc: 0,
     ms: [],
@@ -91,6 +105,10 @@ export function makeEnv(o = {}) {
         this.T += dt;
         this.inAcc += (this.inflow / 60) * dt;
         if (this.inAcc >= 1) { const k = Math.floor(this.inAcc); this.inAcc -= k; depot.bring(k); }
+        // the gatherers fill the piles (rate a second, up to max)
+        for (const p of out.piles) if (p.rate) p.n = Math.min(p.max, p.n + p.rate * dt);
+        // the walk-in 솔방울 상인 (o.buyers: the real Depot.js sell() on a depot made by realDepot)
+        if (o.buyers && depot.model && depot.model.sell) { for (const q of depot.model.sell(dt, hourOf(this.T))) { depot.sold = (depot.sold || 0) + q.n; depot.soldCoins = (depot.soldCoins || 0) + q.coins; } }
         const a = performance.now();
         model.tick(dt, this.T, hourOf(this.T));
         this.ms.push(performance.now() - a);
@@ -100,13 +118,25 @@ export function makeEnv(o = {}) {
         if (hook) hook(this, i);
       }
     },
-    /** items everywhere: racks + open orders (+ the sled queue) + delivered + restocked back */
+    /** items everywhere: racks + 금방's share + open orders (+ the sled queue) + delivered + restocked back */
     count(ev) {
       const m = this.model;
       let orders = 0;
       for (const q of m.orders.list) orders += q.n;
       const delivered = this.events.filter((e) => e.t === 'gb:delivered').reduce((s, e) => s + e.n, 0);
-      return { racks: depot.stock.all(), orders, delivered, picked: depot.picked, restocked: depot.restocked, inflow: depot.inflow, initial: depot.initial, refused: depot.refused };
+      let res = 0; for (const k in m.res) res += m.res[k];
+      return { racks: depot.stock.all(), res, orders, delivered, picked: depot.picked, restocked: depot.restocked, inflow: depot.inflow, initial: depot.initial, refused: depot.refused, dockTook: out.dockTook, pileTook: out.pileTook };
+    },
+    /** the whole item balance (racks, share, orders, delivered, refused, crates on sleds / vans, dropped at the dock)
+     *  against what came in (start, inflow, dock and pile takes, backhaul): { in, now, ok } */
+    balance() {
+      const c = this.count(), m = this.model;
+      let ride = 0;
+      for (const q of m.sleds || []) for (const k in q.cload || {}) ride += q.cload[k];
+      if (m.disp) for (const v of m.disp.vans) for (const k in v.backload || {}) ride += v.backload[k];
+      const inAll = c.initial + c.inflow + out.took + out.dockTook + out.pileTook;
+      const now = c.racks + c.res + c.orders + c.delivered + out.surplus + ride + out.dropped + (depot.sold || 0);
+      return { in: inAll, now, ok: inAll === now, c };
     },
   };
   return E;

@@ -46,6 +46,7 @@ export class AddressBook {
   build(w) {
     const { entries = [], rn = null, lg = null, kit = null, village = null } = w || {};
     const T = this.tune;
+    this.avoid = w && Array.isArray(w.avoid) && w.avoid.length > 1 ? w.avoid : null;
     const prev = this.byId;
     this.byId = new Map(); this.all = []; this.hh = []; this.clusters = new Map();
     const lanes = lg ? lg.lanes.filter((l) => l.kind === 'road' && !l.stub) : [];
@@ -146,6 +147,9 @@ export class AddressBook {
         // a curb right at the door (no detour) walks straight
         if (p.d < 2.2 && walk > p.d + 3) walk = Math.min(walk, p.d + 0.5);
       }
+      // (critique M4) a curb on the cargo sleigh's lane costs van.avoidWalkM more walk: a parked van there is in the
+      // sleigh's way (a curb a few metres further is taken instead; one much further is not worth it)
+      if (this.avoid && this.nearAvoid(pt.x, pt.y) < 1.0) walk += Number.isFinite(this.tune.van.avoidWalkM) ? this.tune.van.avoidWalkM : 8;
       if (!best || walk < best.walk - 1e-6) best = { lane: l.id, s, x: pt.x, y: pt.y, walk, near, d: p.d, street: l.street, dir: l.dir };
     }
     a.cands = null;
@@ -165,6 +169,21 @@ export class AddressBook {
     a.curb = { lane: best.lane, s: best.s, x: best.x, y: best.y, street: best.street, dir: best.dir, d: best.d };
     a.walk = { pts: clean, len };
     a.zone = 'van';
+  }
+
+  /** metres from (x, y) to the avoid polyline (the cargo sleigh's route) */
+  nearAvoid(x, y) {
+    const A = this.avoid;
+    let best = Infinity;
+    for (let k = 1; k < A.length; k++) {
+      const a = A[k - 1], b = A[k];
+      const ax = a.x, ay = a.y * 2, bx = b.x, by = b.y * 2, px = x, py = y * 2;
+      const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1;
+      const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L2));
+      const d = Math.hypot(px - (ax + vx * t), py - (ay + vy * t)) / 64;
+      if (d < best) best = d;
+    }
+    return best;
   }
 
   /** stops: addresses whose curbs share a lane within 2.5 m (one round of the courier) */

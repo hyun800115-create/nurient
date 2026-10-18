@@ -1,0 +1,263 @@
+{
+ "checks": {
+  "G-P1 gs.v42.gb is a system": true,
+  "G-P1 hooks: __FV.v42.gb()": true,
+  "G-P1 host started at the gate": true,
+  "G-P11 letter geumbang delivered": {
+   "ok": true,
+   "info": [
+    "geumbang"
+   ]
+  },
+  "G-P11 letter text + buttons": {
+   "ok": true,
+   "info": {
+    "from": "솔방울 아파트 2동 정 할머니",
+    "b": [
+     "lt_geumbang_b1:gb:open",
+     "lt_geumbang_b2:later"
+    ]
+   }
+  },
+  "G-P7 TF.gb (crew anims merged)": {
+   "ok": true,
+   "info": {
+    "road": "gbf_road_0",
+    "hub": "gbf_hub_0"
+   }
+  },
+  "G-P6 veh_dog_sled loaded": true,
+  "G-P9 RoadPaint paints the apron + jog (module hook off)": {
+   "ok": true,
+   "info": {
+    "painted": true,
+    "ownHook": false
+   }
+  },
+  "G-P13 Settings gbAlerts / gbScenes": {
+   "ok": true,
+   "info": {
+    "a": "on",
+    "s": true
+   }
+  },
+  "G-P12 CameraDirector listens to gb": {
+   "ok": true,
+   "info": 1
+  },
+  "pad shown": {
+   "ok": true,
+   "info": {
+    "x": 2723.2,
+    "y": 3177.4
+   }
+  },
+  "G-P11 gb:open hops the camera to the pad": {
+   "ok": true,
+   "info": {
+    "x": 2723,
+    "y": 3177
+   }
+  },
+  "G-P3 depot workers hidden, racks from setShown": {
+   "ok": true,
+   "info": {
+    "off": true,
+    "shown": true,
+    "workersVisible": 0,
+    "alpha": 1
+   }
+  },
+  "first order delivered": true,
+  "G-P2b sleigh holds at gbHoldS while the spur is busy, then goes on": {
+   "ok": true,
+   "info": {
+    "hold": 35.8,
+    "busy0": true,
+    "held": 35.8,
+    "after": 39.34
+   }
+  },
+  "G-P2c sleigh waits behind a 금방 van (go and back)": {
+   "ok": true,
+   "info": {
+    "waitGo": 12,
+    "waitBack": 30,
+    "offGo": {
+     "i": 0,
+     "j": -0.5,
+     "at": [
+      19.7,
+      -5
+     ]
+    },
+    "offBack": {
+     "i": 1.98,
+     "j": 0,
+     "at": [
+      31,
+      -9.3
+     ]
+    }
+   }
+  },
+  "G-P2c sleigh keeps right (역앞 거리 going, 중앙로 back)": {
+   "ok": true,
+   "info": {
+    "go": {
+     "i": 0,
+     "j": -0.5,
+     "at": [
+      19.7,
+      -5
+     ]
+    },
+    "back": {
+     "i": 1.98,
+     "j": 0,
+     "at": [
+      31,
+      -9.3
+     ]
+    }
+   }
+  },
+  "G-P16 금방 income in its own 통장 bar": {
+   "ok": true,
+   "info": {
+    "depot": 805,
+    "gb": 20
+   }
+  },
+  "G-P16 the 물류창고 tab row": {
+   "ok": true,
+   "info": "금방 마켓 · 오늘 주문 5 · 배달 1 · 선반 −6"
+  },
+  "G-P16 the paper prints 금방 lines": {
+   "ok": true,
+   "info": [
+    "금방, 어제 4집에 배달했어요",
+    "물류창고 선반이 어제보다 29% 가벼워졌어요",
+    "어제 구운 생선 58개가 팔렸어요"
+   ]
+  },
+  "G-P16 the till is not counted twice": {
+   "ok": true,
+   "info": {
+    "gb": 30,
+    "depot": 0,
+    "taken": 69
+   }
+  },
+  "the 금방 chip steps aside while the office panel is open": {
+   "ok": true,
+   "info": {
+    "open": true,
+    "alpha": 1,
+    "waitArt": 0,
+    "tab": "depot",
+    "chip": false
+   }
+  },
+  "G-P16 the 물류창고 tab shows the 금방 row": {
+   "ok": true,
+   "info": [
+    "금방 물류센터가 문을 열었어요!",
+    "방금 시키면 금방 와요",
+    "서리 물류창고",
+    "🛷 물류창고로 가는 중 · 36",
+    "금방 마켓 · 오늘 주문 5 · 배달 1 · 선반 −6",
+    "첫 배달 완료! 왼쪽 위 금방 앱에서 주문을 볼 수 있어요"
+   ]
+  },
+  "G-P16 the 통장 tab has a 금방 bar (n/a before the bank)": {
+   "ok": true,
+   "info": "서리 은행을 지으면 열려요"
+  },
+  "G-P17 관망 activity 금방 구경 wired": {
+   "ok": true,
+   "info": {
+    "acts": true,
+    "ctxHas": true,
+    "score": 42
+   }
+  },
+  "C1 금방 집하: a dog sled loads at a full pile": {
+   "ok": true,
+   "info": {
+    "x": 561,
+    "y": 1700,
+    "pile": {
+     "id": "ore",
+     "item": "item_ore",
+     "x": 403,
+     "y": 1850
+    },
+    "load": 0
+   }
+  },
+  "save has the geumbang slice": {
+   "ok": true,
+   "info": {
+    "has": true,
+    "st": 2,
+    "tot": [
+     12,
+     4,
+     45,
+     14
+    ]
+   }
+  },
+  "G-P5 the slice survives the load (sanitizeSave keeps it)": {
+   "ok": true,
+   "info": {
+    "saved": {
+     "st": 2,
+     "tot": [
+      12,
+      4,
+      45,
+      14
+     ]
+    }
+   }
+  },
+  "reloaded 금방 is open (st 2), totals kept": {
+   "ok": true,
+   "info": {
+    "st": 2,
+    "delivered": 4
+   }
+  },
+  "G-P1 serialize after reload carries the slice": true,
+  "G-P13 settings row 금방 알림 (켬)": {
+   "ok": true,
+   "info": [
+    "켬",
+    "금방 알림",
+    "켬"
+   ]
+  },
+  "G-P13 quiet shows 조용히": {
+   "ok": true,
+   "info": [
+    "켬",
+    "금방 알림",
+    "조용히"
+   ]
+  },
+  "no page errors": {
+   "ok": true,
+   "info": []
+  }
+ },
+ "errors": [],
+ "shots": [
+  "/home/user/nurient/frost-village/docs/previews/geumbang_lab_patched_hub.jpg",
+  "/home/user/nurient/frost-village/docs/previews/geumbang_lab_patched_office_depot.jpg",
+  "/home/user/nurient/frost-village/docs/previews/geumbang_lab_patched_sled.jpg",
+  "/home/user/nurient/frost-village/docs/previews/geumbang_lab_patched_sled_collect.jpg",
+  "/home/user/nurient/frost-village/docs/previews/geumbang_lab_patched_settings.jpg"
+ ]
+}

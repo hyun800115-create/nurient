@@ -28,7 +28,7 @@ export const GB_STRINGS = {
     gb_shift_end: '수고하셨어요!', gb_shift_go: '다녀오겠습니다!', gb_driver_safe: '안전하게, 그래도 금방!',
     gb_driver_name: '이름만 쌩쌩, 운전은 천천히', gb_sled_line: '눈길도 금방!', gb_sled_soon: '서리마을은 곧 개썰매로 갈게요',
     gb_up_pack: '포장대 2단', gb_up_van2: '금방 밴 2', gb_up_van3: '금방 밴 3', gb_up_sled2: '개썰매 2', gb_up_dawn: '새벽배송',
-    gb_up_lockP: '광장 보관함', gb_up_lockA: '아파트 보관함', gb_up_back: '돌아오는 길 짐 싣기', gb_up_buy: '들이기 · {cost}',
+    gb_up_lockP: '광장 보관함', gb_up_lockA: '아파트 보관함', gb_up_back: '돌아오는 길 짐 싣기', gb_up_buy: '들이기 · {cost}', gb_up_short: '모자란 재료는 코인 {n}으로 대신해요',
     gb_up_why_pack: '포장을 기다리는 주문이 {n}개예요', gb_up_why_van: '실을 상자가 {n}개 기다려요',
     gb_up_why_sled: '옛 동네 상자가 {n}개 기다려요', gb_up_why_dawn: '밤에 주문이 {n}개씩 쌓여요',
     gb_up_why_lock: '한 번에 몰아서 넣고, 주민이 찾아가요', gb_up_why_back: '역에 남는 상자가 {n}개예요',
@@ -62,6 +62,11 @@ export const GB_STRINGS = {
     gb_crew_dispatcher: '방금순 팀장', gb_crew_picker: '쏙쏙이', gb_crew_packer: '척척이', gb_crew_sorter: '영차',
     gb_crew_d1: '쌩쌩이', gb_crew_d2: '부릉이', gb_crew_d3: '씽씽이', gb_crew_rider: '뽀득이', gb_crew_n1: '반짝이', gb_crew_n2: '살금이',
     gb_tag_s: '{n}개', gb_items_more: '{a} 외 {n}',
+    // 금방 집하 (critique C1): the sleds bring the full village piles' crates to the station dock
+    gb_collect: '금방 집하', gb_toast_collect: '금방 집하 · {pile} 더미에서 {n}개 실었어요', gb_today_collect: '집하',
+    gb_sled_collect: '{pile} 더미에서 짐 싣는 중', gb_sled_drop: '짐 싣는 곳에 내리는 중', gb_up_why_collect: '가득 찬 더미가 썰매를 기다려요',
+    gb_pile_fish_raw: '생선', gb_pile_meat_raw: '고기', gb_pile_log: '장작', gb_pile_wheat: '밀', gb_pile_ore: '광석',
+    gb_share: '금방 몫 {n}', gb_locker_n: '보관함 {n}',
   },
   en: {
     gb_name: 'Geumbang', gb_app: 'Geumbang Market', gb_centre: 'Geumbang Centre', gb_depot: 'Frost Depot', gb_arm: 'Geumbang Delivery',
@@ -87,7 +92,7 @@ export const GB_STRINGS = {
     gb_shift_end: 'Good work today!', gb_shift_go: 'Off we go!', gb_driver_safe: 'Safely, and still quick!',
     gb_driver_name: 'Fast names, careful driving', gb_sled_line: 'Quick through the snow, too!', gb_sled_soon: 'The dog sled will reach Frost Village soon',
     gb_up_pack: 'Packing level 2', gb_up_van2: 'Geumbang van 2', gb_up_van3: 'Geumbang van 3', gb_up_sled2: 'Dog sled 2', gb_up_dawn: 'Dawn delivery',
-    gb_up_lockP: 'Plaza locker', gb_up_lockA: 'Apartment locker', gb_up_back: 'Load on the way back', gb_up_buy: 'Get it · {cost}',
+    gb_up_lockP: 'Plaza locker', gb_up_lockA: 'Apartment locker', gb_up_back: 'Load on the way back', gb_up_buy: 'Get it · {cost}', gb_up_short: 'Missing materials: +{n} coins instead',
     gb_up_why_pack: '{n} orders wait for packing', gb_up_why_van: '{n} parcels wait to be loaded',
     gb_up_why_sled: '{n} village parcels are waiting', gb_up_why_dawn: '{n} orders pile up every night',
     gb_up_why_lock: 'Fill it in one stop; residents pick up', gb_up_why_back: '{n} spare crates wait at the station',
@@ -121,6 +126,10 @@ export const GB_STRINGS = {
     gb_crew_dispatcher: 'Team lead Bang', gb_crew_picker: 'Ssokssok', gb_crew_packer: 'Cheokcheok', gb_crew_sorter: 'Yeongcha',
     gb_crew_d1: 'Ssaengssaeng', gb_crew_d2: 'Bureung', gb_crew_d3: 'Ssingssing', gb_crew_rider: 'Ppodeuk', gb_crew_n1: 'Banjjak', gb_crew_n2: 'Salgeum',
     gb_tag_s: '{n}', gb_items_more: '{a} +{n}',
+    gb_collect: 'Geumbang pick-up', gb_toast_collect: 'Geumbang pick-up · {n} from the {pile} pile', gb_today_collect: 'Picked up',
+    gb_sled_collect: 'Loading at the {pile} pile', gb_sled_drop: 'Unloading at the station dock', gb_up_why_collect: 'Full piles are waiting for a sled',
+    gb_pile_fish_raw: 'fish', gb_pile_meat_raw: 'meat', gb_pile_log: 'log', gb_pile_wheat: 'wheat', gb_pile_ore: 'ore',
+    gb_share: 'Geumbang stock {n}', gb_locker_n: 'Locker {n}',
   },
 };
 

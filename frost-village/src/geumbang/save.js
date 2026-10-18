@@ -7,7 +7,12 @@
 //     door: [[aid, size, ageH] ≤ 16], staff: [uint32 ≤ 12], days: [[orders, delivered, coins] ≤ 7],
 //     tot: [orders, delivered, coins, units], rev: [[tpl, aid, stars] ≤ 12], seen: n,
 //     g?: gate seconds (only before the letter), up?: [needs met 'pack,van2', nights, sledDays],
-//     back?: 'bread5,log3' (items of orders that did not fit the cap: they go back on the racks at load) }
+//     back?: 'bread5,log3' (items of orders that did not fit the cap: they go back on the racks at load),
+//     res?: 'bread6,log4' (금방's own share of the depot stock, critique C1: off the racks, drawn on them),
+//     dock?: 'ore12,fish_raw8' (crates on the way to the station dock — 금방 집하 on a sled, backhaul on a van:
+//            they go to the dock surplus at load, critique M2), lk?: [nPlaza, nApt] (parcels in the lockers, paid),
+//     pp?: coins paid into the 금방 개업 pad, pi?: 'plank12,ingot3' (its items) — only while st 0 (critique H4),
+//     nx?: seconds to the next order arrival, cl?: [today, all] crates of 금방 집하 }
 // sanitizeGeumbang(raw): ints clamped, unknown items dropped, arrays capped, JSON ≤ 1,400 B (oldest days, then
 // reviews, doorstep boxes and staff looks go first; then the youngest orders fold into `back` — their items are
 // restocked at load, so nothing is lost or doubled), never throws.
@@ -16,6 +21,9 @@
 export const GEUMBANG_SLICE = { key: 'geumbang', version: 1, cap: 1400 };
 
 const ITEM_KEYS = new Set(['bread', 'meat_cooked', 'fish_cooked', 'can', 'plank', 'axe', 'rod', 'sickle', 'bow', 'pickaxe', 'fish_raw', 'meat_raw', 'log', 'wheat']);
+/** every game item (the station dock takes any surplus: 집하 ore, backhaul ingots …) */
+const DOCK_KEYS = new Set(['bread', 'meat_cooked', 'fish_cooked', 'can', 'plank', 'axe', 'rod', 'sickle', 'bow', 'pickaxe', 'fish_raw', 'meat_raw', 'log', 'wheat', 'ore', 'ingot', 'fish_big']);
+const PAD_KEYS = new Set(['plank', 'ingot']);
 const int = (x, lo, hi, d = 0) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : d; };
 const bit = (x) => (x === true || x === 1 || x === '1' ? 1 : 0);
 const ID = /^g\d{1,7}$/;
@@ -24,13 +32,13 @@ const FLAGS = /^[pkr][cs]f?t?$/;
 const SIZE = /^[sml]$/;
 
 /** 'bread3,can2' with only known items, each 1..99, ≤ 6 lines */
-function cleanGot(s, max = 99, lines = 6) {
+function cleanGot(s, max = 99, lines = 6, keys = ITEM_KEYS) {
   if (typeof s !== 'string') return '';
   const out = [];
   const seen = new Set();
   for (const part of s.split(',')) {
     const m = /^([a-z][a-z_]{0,23}?)(\d{1,4})$/.exec(part);
-    if (!m || !ITEM_KEYS.has(m[1]) || seen.has(m[1])) continue;
+    if (!m || !keys.has(m[1]) || seen.has(m[1])) continue;
     const n = int(m[2], 0, max, 0);
     if (n <= 0) continue;
     seen.add(m[1]);
@@ -81,6 +89,13 @@ export function sanitizeGeumbang(raw) {
       out.rev.push([int(r[0], 1, 12, 1), r[1], int(r[2], 4, 5, 5)]);
     }
     if (typeof raw.back === 'string') { const b = cleanGot(raw.back, 9999, 14); if (b) out.back = b; }
+    if (typeof raw.res === 'string') { const b = cleanGot(raw.res, 99, 14); if (b) out.res = b; }
+    if (typeof raw.dock === 'string') { const b = cleanGot(raw.dock, 999, 17, DOCK_KEYS); if (b) out.dock = b; }
+    if (Array.isArray(raw.lk) && raw.lk.length === 2) { const lk = [int(raw.lk[0], 0, 12, 0), int(raw.lk[1], 0, 12, 0)]; if (lk[0] || lk[1]) out.lk = lk; }
+    if (out.st === 0 && raw.pp !== undefined) { const pp = int(raw.pp, 0, 100000, 0); if (pp) out.pp = pp; }
+    if (out.st === 0 && typeof raw.pi === 'string') { const b = cleanGot(raw.pi, 99, 2, PAD_KEYS); if (b) out.pi = b; }
+    if (raw.nx !== undefined) { const nx = Number(raw.nx); if (Number.isFinite(nx)) out.nx = Math.round(Math.max(0, Math.min(600, nx)) * 10) / 10; }
+    if (Array.isArray(raw.cl) && raw.cl.length === 2) out.cl = [int(raw.cl[0], 0, 1e6, 0), int(raw.cl[1], 0, 1e9, 0)];
     if (Array.isArray(raw.up) && raw.up.length === 3 && typeof raw.up[0] === 'string') {
       const ks = raw.up[0].split(',').filter((k) => /^(pack|van2|van3|sled2|lockA|lockP|dawn|back)$/.test(k)).slice(0, 8);
       out.up = [ks.join(','), int(raw.up[1], 0, 999, 0), int(raw.up[2], 0, 999, 0)];

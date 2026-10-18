@@ -98,6 +98,7 @@ export const Residency = {
     const list = g.textures.list;
     let tot = 0;
     const by = this.byCls = {};
+    const sizes = this.sizes || (this.sizes = {});      // ((v4.2 fix) last known bytes of every page, for one coming back)
     for (const k in list) {
       if (k === '__DEFAULT' || k === '__MISSING' || k === '__NORMAL' || k === '__WHITE') continue;
       const t = list[k];
@@ -105,6 +106,7 @@ export const Residency = {
       for (const s of t.source) b += s.width * s.height * 4;
       tot += b;
       const a = Assets.m.atlases[k];
+      if (a || Assets.m.images[k]) sizes[k] = b;
       const cls = a && a.cls ? (a.onDemand ? 'social' : 'page') : /^fv_(gslot|layer)/.test(k) ? 'ground' : t.source[0] && t.source[0].isCanvas ? 'canvas' : 'atlas';
       by[cls] = (by[cls] || 0) + b / 1048576;
     }
@@ -381,6 +383,11 @@ export const Residency = {
     const back = [];
     for (const [k, n] of near) if (n && Assets.held.has(k)) back.push(k);
     if (back.length) {
+      // ((v4.2 fix) an area coming back over the refusal line first takes the room of the areas the view left (their
+      //  TTL would take them a few seconds later): bank → depot in one jump peaked at 456 MiB, over the 455 must)
+      const sz = this.sizes || {};
+      const need = back.reduce((n, k) => n + (sz[k] || (Assets.m.atlases[k] && Assets.m.atlases[k].bytes) || 0), 0) / 1048576;
+      if (this.total + need > this.budget().must - 30) this.makeRoom(need, back);
       for (const k of back) { Assets.held.delete(k); Assets.queued.delete(k); }
       this.loads += back.length;
       if (gs.queueLateFiles) gs.queueLateFiles();
@@ -450,6 +457,9 @@ export const Residency = {
     // near the must: whatever is not on screen and unused for a second goes, oldest first (the cap and the TTL
     // keep the on-demand pages small otherwise: evicting them sooner only makes them load again)
     if (this.total > B.must - 30) {
+      // ((v4.2 fix) over the refusal line the pictures of the areas the view left go now, not after their TTL: a jump
+      //  across the map (the overview, a camera cut ending, a reload far away) piled two districts up to the must)
+      this.makeRoom(0);
       const left = pages.filter((k) => tex.exists(k) && !this.pinned(k));
       let guard = left.length;
       while (this.total > B.must - 30 && guard-- > 0 && this.evictLRU(left.filter((k) => tex.exists(k)), 1000)) this.measure();

@@ -11,6 +11,9 @@ import { hourMult } from '../tuning.js';
 export const sum = (o) => { let n = 0; for (const k in o) n += o[k] || 0; return n; };
 export const copy = (o) => { const r = {}; for (const k in o) if (o[k] > 0) r[k] = o[k]; return r; };
 export const RAW = ['item_fish_raw', 'item_meat_raw', 'item_log', 'item_wheat'];
+/** how many of an item an order may take now: ctx.avail (the model: 금방's own share + the racks above the floor), else
+ *  the racks above keepFloor */
+const availOf = (ctx, item, O) => (ctx.avail ? ctx.avail(item) : ctx.source.count(item) - O.keepFloor);
 export const TOOLS = ['item_axe', 'item_rod', 'item_sickle', 'item_bow', 'item_pickaxe'];
 /** depot rack category of a catalogue item (rack.js catOf for these) */
 export function catOf(item) {
@@ -72,6 +75,8 @@ export class OrderBook {
   }
 
   open() { return this.list; }
+  /** orders not yet on a van (pick · pack · ready) */
+  waiting() { let n = 0; for (const o of this.list) if (o.st !== 'gone') n++; return n; }
   get(id) { return this.byId.get(id) || null; }
   openAt(aid) { let n = 0; for (const o of this.list) if (o.aid === aid) n++; return n; }
 
@@ -89,13 +94,14 @@ export class OrderBook {
     const base = this.tune.catalog[item] || 0;
     if (base <= 0 || this.selling[item] === false) return 0;
     if (ctx.guard && ctx.guard.paused(item)) return 0;
-    if (ctx.source.count(item) < 1 + O.keepFloor) return 0;
+    if (availOf(ctx, item, O) < 1) return 0;
     let w = base;
     const taste = this.tune.taste && hh && this.tune.taste[hh.taste];
     if (taste && taste[item] !== undefined) w *= taste[item];
     if (hh && hh.people.some((p) => p.fav === item)) w *= O.favW;
     const lv = ctx.level ? ctx.level(catOf(item)) : 0.5;
-    if (lv >= O.hot) w *= O.hotMult; else if (lv < O.low) w *= O.lowMult;
+    // (racks low but 금방 keeps its own share of the item: sold as usual)
+    if (lv >= O.hot) w *= O.hotMult; else if (lv < O.low && !(ctx.reserved && ctx.reserved(item) > 0)) w *= O.lowMult;
     if ((this.deals[item] || 0) > T) w *= O.dealMult;
     return w;
   }
@@ -124,7 +130,11 @@ export class OrderBook {
     let guard = 4;
     while (T >= this.nextT && guard-- > 0) {
       const r = this.rate(T, hour, ctx);
-      if (r > 0 && this.list.length < O.maxOpen) {
+      // (parcels already on a van do not count: the book keeps taking orders while the vans are out)
+      // (critique M3) and no more waiting than the crew can take out in queueRounds rounds (vans × cap + sleds × cap):
+      // with one van the book stays short and an order goes out on the next tour, instead of a 24-parcel queue
+      const lim = Math.min(O.maxOpen, ctx.capacity && O.queueRounds > 0 ? Math.ceil(O.queueRounds * ctx.capacity) : O.maxOpen);
+      if (r > 0 && this.waiting() < lim) {
         const hh = this.pickHousehold(ctx);
         if (hh) { const o = this.place(T, hour, hh, ctx); if (o) out.push(o); }
       }
@@ -161,7 +171,7 @@ export class OrderBook {
     if (!keys.length) return {};
     // spread the item count over the lines (tools stay 1), capped by what the racks can spare
     let total = r.between(O.itemsMin, O.itemsMax);
-    const room = (k) => Math.max(0, ctx.source.count(k) - O.keepFloor);
+    const room = (k) => Math.max(0, availOf(ctx, k, O));
     let left = total - keys.length;
     for (let pass = 0; pass < 8 && left > 0; pass++) {
       for (const k of keys) {

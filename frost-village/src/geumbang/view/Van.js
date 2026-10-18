@@ -20,7 +20,7 @@ export class Van {
     this.patch = sc.add.image(0, 0, '__WHITE').setVisible(false);
     this.over = sc.add.image(0, 0, '__WHITE').setVisible(false);
     this.roof = sc.add.image(0, 0, '__WHITE').setVisible(false);
-    this.roofGlow = sc.add.image(0, 0, glowTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this.roofGlow = sc.add.image(0, 0, glowTex(sc)).setVisible(false);
     this.glows = [];
     this.key = Assets.m.characters.gb_van ? 'gb_van' : (Assets.m.characters.delivery_van_blue ? 'delivery_van_blue' : null);
     if (this.key && !Assets.built[this.key]) Assets.buildCharacter(sc.game, this.key);
@@ -119,7 +119,7 @@ export class Van {
     }
     // hazards at the curb (plan §5.6 park): the visible tail lamps blink amber, day and night
     if (o.hazard && ((o.t || 0) % 0.8) < 0.42) TL.forEach((p, k) => { if (TV[k] !== false) pts.push({ p, kind: 2 }); });
-    while (this.glows.length < pts.length) this.glows.push(this.scene.add.image(0, 0, glowTex(this.scene)).setBlendMode(Phaser.BlendModes.ADD).setVisible(false));
+    while (this.glows.length < pts.length) this.glows.push(this.scene.add.image(0, 0, glowTex(this.scene)).setVisible(false));
     const TINT = [0xfff0c8, 0xff6a5a, 0xffb43a], SC = [0.9, 0.5, 0.62];
     for (let i = 0; i < this.glows.length; i++) {
       const g = this.glows[i], q = pts[i];

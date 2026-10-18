@@ -855,7 +855,7 @@ Plaza display objects 1,014–1,237 (gate 1,700).
 
 **CODE-2 measured** (`texview.mjs`: a fresh boot of the 46-min save per view, 45 s settled with the loop awake; v4.1 =
 the v4.1 copy on the same save and view): plaza **355.6 → 368.7 MiB (+13.1)**; station, train in **369.6 → 384.4
-(+14.8)**; office revealed 392.2; depot revealed 414.9; screenshot tour peak 432.7 (every view < 455). What the +13 at the
+(+14.8)**; office revealed 392.2; depot revealed 414.9; screenshot tour peak 439.2 (every view < 455; **CODE-2 fix pass: 452.4** — the office heads and panel pages that used to be refused now load; `Residency` makes room for an area coming back and drops far areas at once over the refusal line, per-view peaks in `texview2` ≤ 428.4). What the +13 at the
 plaza is: the train pages are resident in every view in v4.1 too and the cars grew (+5.2: coach 4.35 + box car 4.68 +
 flat car 3.05 − car_a 3.78 − car_b 3.11), CODE-1's pile-bake canvas `fv_stackbake` (+4.0), `v42_core` (+3.1) and the
 generated stand-in rings kept for the fallback (+0.5). The station adds `train2_rails` (1.7, bake-only). Train pages

@@ -111,7 +111,13 @@ export class Courier {
         else if (b.k === 'open') { anim = 'idle'; }
         else if (b.k === 'hand') { anim = 'hand_parcel'; }
         else if (b.k === 'joy') { anim = 'wave'; carry = b.carry || 0; }
-        else if (b.k === 'drop') { anim = 'idle'; if (this.lastBeat !== bi) this.say(this.rig, gt('gb_doorstep', null, ctx.lang), x, y, 1.6, bi); if (u > 0.4) this.cue(bi, 'thump', () => this.view.sound('sfx_gb_thump', door.x, door.y)); }
+        else if (b.k === 'drop') {
+          anim = 'idle';
+          // (the 16 doorstep boxes are taken: "옆집에 맡겼어요" — the parcel went to a neighbour)
+          const nb = b.ids && this.view.hows && b.ids.some((id) => this.view.hows.get(id) === 'neighbour');
+          if (this.lastBeat !== bi) this.say(this.rig, gt(nb ? 'gb_neighbour' : 'gb_doorstep', null, ctx.lang), x, y, 1.6, bi);
+          if (u > 0.4) this.cue(bi, 'thump', () => this.view.sound('sfx_gb_thump', door.x, door.y));
+        }
         else if (b.k === 'photo') { anim = 'idle'; if (u > 0.3) this.cue(bi, 'flash', () => this.view.flash(door.x, door.y - 20, b.aid)); }
         else if (b.k === 'inside') { anim = 'carry_parcel'; alpha = u < 0.3 ? 1 - u / 0.3 : u > 0.75 ? (u - 0.75) / 0.25 : 0; if (u > 0.75) { anim = 'walk'; carry = Math.max(0, (b.carry || 0) - (b.ids ? b.ids.length : 0)); } }
         else if (b.k === 'fill') { anim = 'idle'; if (u > 0.3) this.cue(bi, 'click', () => this.view.sound('sfx_gb_locker', door.x, door.y)); }
@@ -123,7 +129,16 @@ export class Courier {
           res.visible(true);
           res.play(b.k === 'joy' ? 'happy' : 'idle', dollDir(x - door.x, y - door.y));
           res.place(door.x, door.y - 2, door.y - 2, ra);
-          if (b.k === 'joy') this.cue(bi, 'joy', () => { this.view.hearts(door.x, door.y - 95); ctx.joy(door.x, door.y, b); this.say(res, ctx.line(b.aid, ctx.hidOf(b.aid), b), door.x, door.y, 2.4, bi + 0.5); });
+          if (b.k === 'joy') this.cue(bi, 'joy', () => {
+            this.view.hearts(door.x, door.y - 95); ctx.joy(door.x, door.y, b);
+            const ln = ctx.line(b.aid, ctx.hidOf(b.aid), b);
+            if (Array.isArray(ln)) {
+              // two bubbles: the child asks at the door, the parent (or the driver) answers a moment later
+              this.say(res, ln[0], door.x, door.y, 1.6, bi + 0.5);
+              const ax = ln[2] === 'driver' ? x : door.x + 34, ay = ln[2] === 'driver' ? y : door.y + 8;
+              this.later(1.15, () => this.say2(ln[1], ax, ay, 2.0));
+            } else this.say(res, ln, door.x, door.y, 2.4, bi + 0.5);
+          });
         } else if (this.res) this.res.visible(false);
         // the handed parcel flies from the courier's hands to the resident
         if (b.k === 'hand') {
@@ -231,12 +246,23 @@ export class Courier {
     this.bubble.show(text, x, y - 96, secs);
   }
 
-  objects() { return this.boxes.length + (this.fly ? 1 : 0) + (this.bell ? 1 : 0) + (this.bubble ? 2 : 0); }
+  /** fn after s seconds (view time) */
+  later(s, fn) { let t = 0; this.view.addTicker((dt) => { t += dt; if (t >= s) { fn(); return true; } return false; }); }
+  /** the answer bubble (a second speaker at the same door) */
+  say2(text, x, y, secs) {
+    if (!text) return;
+    if (!this.bubble2) this.bubble2 = new SpeechBubble(this.view);
+    this.bubble2.show(text, x, y - 96, secs);
+    const b = this.bubble2;
+    this.view.addTicker((dt) => { b.tick(dt); return b.left <= 0; });
+  }
+
+  objects() { return this.boxes.length + (this.fly ? 1 : 0) + (this.bell ? 1 : 0) + (this.bubble ? 2 : 0) + (this.bubble2 ? 2 : 0); }
 
   destroy() {
     this.rig.destroy(); if (this.res) this.res.destroy();
     for (const b of this.boxes) b.destroy();
-    if (this.fly) this.fly.destroy(); if (this.bell) this.bell.destroy(); if (this.bubble) this.bubble.destroy();
+    if (this.fly) this.fly.destroy(); if (this.bell) this.bell.destroy(); if (this.bubble) this.bubble.destroy(); if (this.bubble2) this.bubble2.destroy();
   }
 }
 

@@ -10,7 +10,7 @@ import { gt } from '../strings.js';
 import { hashStr } from '../model/rng.js';
 
 const BETWEEN = { 'SE>NE': 'E', 'NE>SE': 'E', 'SW>NW': 'W', 'NW>SW': 'W', 'SE>SW': 'S', 'SW>SE': 'S', 'NE>NW': 'N', 'NW>NE': 'N' };
-const THANKS = ['gb_thanks_1', 'gb_thanks_chief', 'gb_thanks_1', 'gb_kid_q'];
+const THANKS = ['gb_thanks_1', 'gb_thanks_1', 'gb_thanks_snow'];
 
 export class VanDriver {
   constructor(view, id) {
@@ -106,16 +106,36 @@ export class VanDriver {
     return c;
   }
 
-  /** the resident's line at the door (plan §7.1): the first order, grandmas, snow, the chief, the kids */
+  /**
+   * the resident's line at the door (plan §7.1, critique M7): the first order; a late parcel at a house with children
+   * ("오늘은 금방이 아니라 조금방이네~" — the driver answers); the designer's joke at houses with children, two bubbles:
+   * "엄마, 금방 뭐가 왔어?" → "금방이 왔지~!"; grandmas; the chief standing by; snow. A [line, answer] pair is two bubbles.
+   */
   line(aid, hid, b) {
     const L = this.view.lang(), m = this.view.m;
     if (this.firsts.has(aid)) return gt('gb_first_thanks', null, L);
     const a = m.book.get(aid), hh = a && a.hh ? a.hh.find((h) => h.hid === hid) || a.hh[0] : null;
-    const elder = hh && hh.people && hh.people.some((p) => p.kind === 'elder');
+    const people = (hh && hh.people) || [];
+    const kid = people.some((p) => p.kind === 'child'), elder = people.some((p) => p.kind === 'elder');
+    const ids = this.handIds(b) || [];
+    const late = ids.some((id) => this.view.late && this.view.late.get(id));
     const snow = this.view.P.weather && this.view.P.weather.snow && this.view.P.weather.snow();
+    const h = hashStr(String(aid) + (b && b.t0) + (ids[0] || ''));
+    if (late && kid) return [gt('gb_late_kid', null, L), gt('gb_late_driver', null, L), 'driver'];
+    if (kid && h % 3 !== 2) return [gt('gb_kid_q', null, L), gt('gb_kid_a', null, L)];
     if (elder) return gt('gb_thanks_elder', null, L);
-    if (snow) return gt('gb_thanks_snow', null, L);
-    return gt(THANKS[hashStr(String(aid) + (b && b.t0)) % THANKS.length], null, L);
+    const ch = this.view.P.view && this.view.P.view.chief ? this.view.P.view.chief() : null, d = a ? a.door : null;
+    if (ch && d && Math.hypot(ch.x - d.x, (ch.y - d.y) * 2) < 520) return gt('gb_thanks_chief', null, L);
+    if (late) return gt('gb_late_driver', null, L);
+    return gt(snow ? 'gb_thanks_snow' : THANKS[h % 2], null, L);
+  }
+
+  /** the parcel ids handed over just before a joy beat */
+  handIds(b) {
+    const tl = this.tl;
+    if (!tl || !b) return null;
+    for (let k = tl.beats.indexOf(b) - 1; k >= 0; k--) if (tl.beats[k].k === 'hand') return tl.beats[k].ids;
+    return null;
   }
 
   /** the coins of the parcels just handed over pop at the door (+ the resident's hearts are the Courier's) */

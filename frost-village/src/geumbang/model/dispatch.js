@@ -162,7 +162,9 @@ export class Dispatcher {
     const chosen = [gl[0]];
     let n = Math.min(gl[0].n, V.cap);
     const firstOnly = gl[0].first;
-    while (!firstOnly && chosen.length < V.maxStops) {
+    // (the last tours of the day are short: nobody drives on long after closing — the rest leaves at 07:00)
+    const maxStops = ctx.lateTour ? Math.max(1, V.lastStops || 2) : V.maxStops;
+    while (!firstOnly && chosen.length < maxStops) {
       let best = null, bd = Infinity;
       for (const g of gl) {
         if (chosen.includes(g)) continue;
@@ -194,6 +196,18 @@ export class Dispatcher {
         const cand = order.slice(0, i).concat(order.slice(i, j + 1).reverse(), order.slice(j + 1));
         const L = tourLen(cand);
         if (L + 0.01 < best) { best = L; order.splice(0, order.length, ...cand); improved = true; }
+      }
+    }
+    // (near closing: only the stops that fit before hours.close + van.lastTourH — the tour estimate is the lane cost at
+    //  4.5 m/s + each stop's walk there and back + the doorstep beats; the first stop always goes)
+    if (Number.isFinite(ctx.leftS)) {
+      let est = 0, at = join;
+      for (let k = 0; k < order.length; k++) {
+        const g = order[k];
+        est += kit.cost(at, pos(g)) / 4.5;
+        for (const vs of g.visits.values()) { const a = A.get(vs[0].aid); const w = a && a.walk ? a.walk.len : 10; est += 2 * w / 1.4 + 6; }
+        at = pos(g);
+        if (k > 0 && est + kit.cost(at, back) / 4.5 > ctx.leftS) { order.length = k; break; }
       }
     }
     // cap: whole addresses only (the oldest first) within van.cap
@@ -249,7 +263,11 @@ export class Dispatcher {
     if (!ready.length) return;
     const oldest = ready.reduce((m, o) => Math.min(m, o.tReady >= 0 ? o.tReady : o.t0), Infinity);
     const first = ready.some((o) => o.first);
-    if (!(first || ready.length >= V.cap || ctx.T - oldest >= V.waitS)) return;
+    // (critique M3: "금방" is quick) with every other van home, a parcel waits only van.idleWaitS for company; while
+    // another van is out the bay batches up to van.waitS
+    const others = this.vans.some((q) => q !== van && q.st !== 'bay' && q.st !== 'break');
+    const wait = others || !Number.isFinite(V.idleWaitS) ? V.waitS : V.idleWaitS;
+    if (!(first || ready.length >= V.cap || ctx.T - oldest >= wait)) return;
     const tour = this.plan(ready, ctx);
     if (!tour) return;
     van.tour = tour; van.stopI = 0;
@@ -329,8 +347,9 @@ export class Dispatcher {
     for (const w of ws) {
       const dx = (w.x - van.x) / 64, dy = ((w.y - van.y) * 2) / 64;
       const a = dx * ux + dy * uy, l = Math.abs(-dx * uy + dy * ux);
-      const reach = back ? 2.4 : V.yieldAheadM + 2.2;          // from the anchor (the van centre) to beyond its nose
-      if (a > (back ? 0.4 : V.yieldNearM) && a < reach && l < V.corridorM / 2 + 0.95) return true;
+      // (critique M4) the cargo sleigh is a vehicle: the van keeps a body length back from it (its points carry .sleigh)
+      const reach = back ? 2.4 : V.yieldAheadM + 2.2 + (w.sleigh ? 1.6 : 0);   // from the anchor (the van centre) to beyond its nose
+      if (a > (back ? 0.4 : w.sleigh ? 0 : V.yieldNearM) && a < reach && l < V.corridorM / 2 + 0.95) return true;
     }
     return false;
   }
@@ -528,23 +547,52 @@ export class Dispatcher {
   }
 
   serializeVans() { return this.vans.length; }
+
+  /**
+   * (critique M1) the road net changed under the vans (a street upgraded, a lot paved): every parcel on a van or being
+   * loaded goes back on the pile (st 'ready', no van) and the vans of the new dispatcher start in bay 1 — nothing stays
+   * 'gone' on a van that no longer exists. Returns the orders put back.
+   */
+  release(ctx) {
+    const back = [];
+    for (const van of this.vans) {
+      for (const o of van.load) if (o.st === 'gone' || o.st === 'ready') { o.st = 'ready'; o.van = null; back.push(o); }
+      van.load = []; van.tour = []; van.tl = null;
+    }
+    this.token = null;
+    if (ctx && ctx.book) for (const o of ctx.book.list) if ((o.st === 'gone' || o.st === 'ready') && typeof o.van === 'number') { o.st = 'ready'; o.van = null; if (back.indexOf(o) < 0) back.push(o); }
+    return back;
+  }
 }
 
 // ------------------------------------------------------------------------------------------------ the dog sled (G1b)
+/**
+ * 금방 개썰매 (1, or 2 with 개썰매 2): the village parcels the vans leave at the 역앞 금방 정류장 go round the old
+ * village (stops nearest first, the rider walks the last bit); between deliveries the team does 금방 집하 — to the full
+ * village piles (fish · meat · log · wheat · ore), loads what the pile can spare (the gatherers work on), and brings it
+ * to the stand next to the 짐 싣는 곳, where it joins the station dock's surplus (the cargo sleigh and the train take it
+ * on). That is how 금방 makes the village's overflowing piles lighter (critique C1).
+ * ctx (the model's sled context): { T, working, quiet, quietAt, queue (the shared stand queue), addresses, ev, home,
+ *   settle, restock, piles() -> [{ id, item, x, y, n, max }], takePile(id, n, to) -> n, dockRoom(item) -> n,
+ *   dockDrop(items), claimed(id, sled) -> bool, collect: bool }
+ */
 export class Sled {
-  constructor(tune, village, stand) {
+  constructor(tune, village, stand, idx = 1) {
     this.tune = tune;
+    this.idx = idx;                 // 1, 2 (개썰매 2)
     this.g = village;               // { nodes: { id: [x, y] }, edges: [[a, b]] , stand: id }
     this.home = stand;              // node id of the stand
     this.st = 'stand';
-    this.queue = [];                // orders at the stand (handed over by the vans)
+    this.queue = [];                // (kept for old callers: the shared stand queue lives in the model)
     this.load = [];
     this.path = null; this.s = 0; this.v = 0;
     const p = village && village.nodes[stand];
     this.x = p ? p[0] : 0; this.y = p ? p[1] : 0; this.hx = 0.8944; this.hy = 0.4472; this.dk = 'SE';
     this.stops = []; this.stopI = 0; this.tl = null; this.tlT = 0; this.beat = -1;
     this.waitT = 0; this.runs = 0; this.stT = 0;
+    this.cplan = null; this.cstop = 0; this.cload = {}; this.colT = 1 + idx; this.cT = 0; this.cDur = 0; this.cn = 0; this.cpile = null;
     this.adj = new Map();
+    this.pileNodes = new Map();
     if (village) for (const [a, b] of village.edges || []) {
       const pa = village.nodes[a], pb = village.nodes[b];
       if (!pa || !pb) continue;
@@ -573,48 +621,81 @@ export class Sled {
     return ids.map((id) => ({ x: this.g.nodes[id][0], y: this.g.nodes[id][1] }));
   }
 
-  state() { return { st: this.st, x: this.x, y: this.y, hx: this.hx, hy: this.hy, dk: this.dk, v: this.v, queue: this.queue.length, load: this.load.map((o) => o.id), tl: this.tl, tlT: this.tlT, beat: this.beat, runs: this.runs }; }
+  /** the village-road node nearest a pile (≤ collect.reachM, reachable from the stand), cached per pile */
+  pileNode(p) {
+    const k = p.id + ':' + Math.round(p.x) + ':' + Math.round(p.y);
+    if (this.pileNodes.has(k)) return this.pileNodes.get(k);
+    let best = null;
+    for (const id in this.g.nodes) {
+      if (id === this.home) continue;
+      const q = this.g.nodes[id], d = metres(q[0], q[1], p.x, p.y);
+      if (!best || d < best.d) best = { node: id, d };
+    }
+    const out = best && best.d <= this.tune.collect.reachM && this.route(this.home, best.node) ? best : null;
+    this.pileNodes.set(k, out);
+    return out;
+  }
+
+  state() {
+    const c = this.cplan && this.cplan[this.cstop];
+    return { idx: this.idx, st: this.st, x: this.x, y: this.y, hx: this.hx, hy: this.hy, dk: this.dk, v: this.v, queue: this.queueN || 0, load: this.load.map((o) => o.id), tl: this.tl, tlT: this.tlT, beat: this.beat, runs: this.runs,
+      cload: Object.assign({}, this.cload), cn: sumC(this.cload), cT: this.cT, cDur: this.cDur, pile: c ? { id: c.id, item: c.item, x: c.x, y: c.y } : null };
+  }
+
+  /** busy with anything (a delivery run or 집하) */
+  busy() { return this.st !== 'stand'; }
 
   update(dt, ctx) {
     const S = this.tune.sled;
     this.stT += dt;
+    const queue = ctx.queue || this.queue;
+    this.queueN = queue.length;
     if (this.st === 'stand') {
       this.v = 0;
-      if (!this.queue.length || !ctx.working) return;
-      const oldest = Math.min(...this.queue.map((o) => o.tStand || ctx.T));
-      if (this.queue.length < S.cap && ctx.T - oldest < 20) return;
-      this.load = this.queue.splice(0, S.cap);
-      // stops: one per village address, nearest first from the stand
-      const by = new Map();
-      for (const o of this.load) { const a = ctx.addresses.get(o.aid); if (!a || !a.vnode) { ctx.restock(o, 'gone'); continue; } if (!by.has(a.aid)) by.set(a.aid, { a, orders: [] }); by.get(a.aid).orders.push(o); }
-      this.load = this.load.filter((o) => o.st === 'gone');
-      const stops = Array.from(by.values());
-      const ordered = [];
-      let at = this.home;
-      while (stops.length) {
-        let bi = 0, bd = Infinity;
-        for (let i = 0; i < stops.length; i++) { const r = this.route(at, stops[i].a.vnode); const d = r ? polyLen(r) : Infinity; if (d < bd) { bd = d; bi = i; } }
-        const s = stops.splice(bi, 1)[0]; ordered.push(s); at = s.a.vnode;
+      // crates still on board (a reload, a dock that was full): to the dock first
+      if (sumC(this.cload) > 0) { this.startDrop(ctx); return; }
+      if (queue.length && ctx.working) {
+        const oldest = Math.min(...queue.map((o) => o.tStand || ctx.T));
+        if (queue.length < S.cap && ctx.T - oldest < 20) return;
+        this.load = queue.splice(0, S.cap);
+        // stops: one per village address, nearest first from the stand
+        const by = new Map();
+        for (const o of this.load) { const a = ctx.addresses.get(o.aid); if (!a || !a.vnode) { ctx.restock(o, 'gone'); continue; } if (!by.has(a.aid)) by.set(a.aid, { a, orders: [] }); by.get(a.aid).orders.push(o); }
+        this.load = this.load.filter((o) => o.st === 'gone');
+        const stops = Array.from(by.values());
+        const ordered = [];
+        let at = this.home;
+        while (stops.length) {
+          let bi = 0, bd = Infinity;
+          for (let i = 0; i < stops.length; i++) { const r = this.route(at, stops[i].a.vnode); const d = r ? polyLen(r) : Infinity; if (d < bd) { bd = d; bi = i; } }
+          const s = stops.splice(bi, 1)[0]; ordered.push(s); at = s.a.vnode;
+        }
+        this.stops = ordered; this.stopI = 0;
+        if (!ordered.length) return;
+        ctx.ev.push({ t: 'sled', op: 'go', sled: this.idx, ids: this.load.map((o) => o.id) });
+        this.legTo(ordered[0].a.vnode, this.home, ctx);
+        return;
       }
-      this.stops = ordered; this.stopI = 0;
-      if (!ordered.length) return;
-      ctx.ev.push({ t: 'sled', op: 'go', ids: this.load.map((o) => o.id) });
-      this.legTo(ordered[0].a.vnode, this.home, ctx);
+      // 금방 집하 (between deliveries, by day)
+      this.colT -= dt;
+      if (this.colT <= 0) { this.colT = this.tune.collect.everyS; if (ctx.working && ctx.collect) this.planCollect(ctx); }
       return;
     }
-    if (this.st === 'run' || this.st === 'back') {
+    if (this.st === 'run' || this.st === 'back' || this.st === 'cgo' || this.st === 'cback') {
       const P = this.path, lim = P.limit(this.s, 2.0);
       this.v = this.v < lim ? Math.min(lim, this.v + 1.2 * dt) : Math.max(lim, this.v - 3 * dt);
       this.s = Math.min(P.len, this.s + this.v * dt);
       const p = P.at(this.s, {}); this.x = p.x; this.y = p.y; this.hx = p.hx; this.hy = p.hy; this.dk = axisDir(p.hx, p.hy);
       if (this.s >= P.len - EPS && this.v < 0.3) {
         this.v = 0;
-        if (this.st === 'back') { this.st = 'stand'; this.stT = 0; this.runs++; ctx.ev.push({ t: 'sled', op: 'home' }); return; }
+        if (this.st === 'back') { this.st = 'stand'; this.stT = 0; this.runs++; ctx.ev.push({ t: 'sled', op: 'home', sled: this.idx }); return; }
+        if (this.st === 'cgo') { this.startLoad(ctx); return; }
+        if (this.st === 'cback') { this.startDrop(ctx); return; }
         const st = this.stops[this.stopI];
         const C = this.tune.courier;
         const visits = [{ aid: st.a.aid, kind: 'house', walk: st.a.vwalk, orders: st.orders, home: ctx.quiet ? false : ctx.home(st.a.aid, st.orders[0].hid), quiet: ctx.quiet, meet: false }];
         this.tl = courierBeats(visits, C, ctx.quiet, { quietAt: (t) => ctx.quietAt(t) }); this.tlT = 0; this.beat = -1; this.st = 'door'; this.stT = 0;
-        ctx.ev.push({ t: 'sled', op: 'door', aid: st.a.aid });
+        ctx.ev.push({ t: 'sled', op: 'door', sled: this.idx, aid: st.a.aid });
       }
       return;
     }
@@ -624,7 +705,7 @@ export class Sled {
       while (this.beat + 1 < tl.beats.length && tl.beats[this.beat + 1].t0 <= this.tlT) {
         this.beat++;
         const b = tl.beats[this.beat];
-        ctx.ev.push({ t: 'beat', id: 'sled', k: b.k, aid: b.aid || null, ids: b.ids || null, how: b.how || null, x: this.x, y: this.y });
+        ctx.ev.push({ t: 'beat', id: 'sled', sled: this.idx, k: b.k, aid: b.aid || null, ids: b.ids || null, how: b.how || null, x: this.x, y: this.y });
         if (b.ids) for (const id of b.ids) { const o = this.load.find((q) => q.id === id); if (o && o.st === 'gone') { this.load.splice(this.load.indexOf(o), 1); ctx.settle(o, b.how, 'sled'); } }
       }
       if (this.tlT >= tl.T) {
@@ -634,14 +715,111 @@ export class Sled {
         if (this.stopI < this.stops.length) this.legTo(this.stops[this.stopI].a.vnode, from, ctx);
         else { this.legTo(this.home, from, ctx, true); }
       }
+      return;
+    }
+    if (this.st === 'cload') {
+      this.cT += dt;
+      // the crates leave the pile when the rider reaches it (a third of the way in), all at once (one take)
+      if (!this.cTook && this.cT >= this.cDur * 0.3) this.takeNow(ctx);
+      if (this.cT >= this.cDur) this.nextPile(ctx);
+      return;
+    }
+    if (this.st === 'cdrop') {
+      this.cT += dt;
+      if (this.cT >= this.cDur) {
+        const items = this.cload, n = sumC(items);
+        this.cload = {};
+        if (n > 0 && ctx.dockDrop) ctx.dockDrop(items);
+        ctx.ev.push({ t: 'collect', op: 'drop', sled: this.idx, items, n });
+        this.st = 'stand'; this.stT = 0; this.cplan = null;
+      }
     }
   }
 
-  legTo(to, from, ctx, back) {
+  // ---------------------------------------------------------------------------------------- 금방 집하
+  planCollect(ctx) {
+    const C = this.tune.collect;
+    if (!C.on || !ctx.piles) return false;
+    const list = [];
+    for (const p of ctx.piles() || []) {
+      if (!p || !(p.max > 0) || p.n / p.max < C.pileAt) continue;
+      const spare = p.n - Math.ceil(p.max * C.keep);
+      if (spare < C.minLoad || (ctx.claimed && ctx.claimed(p.id, this))) continue;
+      const room = ctx.dockRoom ? ctx.dockRoom(p.item) : 0;
+      if (room < C.minLoad) continue;
+      const pn = this.pileNode(p);
+      if (!pn) continue;
+      list.push({ id: p.id, item: p.item, x: p.x, y: p.y, node: pn.node, walkM: pn.d, fill: p.n / p.max, spare: Math.min(spare, room) });
+    }
+    if (!list.length) return false;
+    list.sort((a, b) => (b.fill - a.fill) || (a.id < b.id ? -1 : 1));
+    const plan = [list[0]];
+    let room = list[0].spare;
+    for (let k = 1; k < list.length && plan.length < C.piles && room < C.cap; k++) { plan.push(list[k]); room += list[k].spare; }
+    this.cplan = plan; this.cstop = 0; this.cload = {}; this.capLeft = C.cap;
+    ctx.ev.push({ t: 'collect', op: 'go', sled: this.idx, piles: plan.map((q) => q.id) });
+    this.legTo(plan[0].node, this.home, ctx, false, 'cgo');
+    return true;
+  }
+
+  /** at the pile's road point: the rider walks over, loads, walks back (cDur) */
+  startLoad(ctx) {
+    const C = this.tune.collect, cr = this.tune.courier, p = this.cplan[this.cstop];
+    this.cpile = p; this.cTook = false; this.cT = 0; this.cn = 0;
+    const est = Math.min(this.capLeft, p.spare);
+    this.cDur = 2 * Math.max(0.6, p.walkM / cr.walkMps) + Math.max(1, est * C.loadEachS);
+    this.st = 'cload'; this.stT = 0;
+  }
+
+  takeNow(ctx) {
+    this.cTook = true;
+    const C = this.tune.collect, p = this.cpile;
+    let n = 0;
+    const cur = (ctx.piles ? ctx.piles() : []).find((q) => q.id === p.id);
+    if (cur && cur.max > 0) {
+      const room = ctx.dockRoom ? ctx.dockRoom(p.item) - (this.cload[p.item] || 0) : 0;
+      const want = Math.max(0, Math.min(this.capLeft, cur.n - Math.ceil(cur.max * C.keep), room));
+      if (want > 0) n = Math.max(0, Math.floor(ctx.takePile(p.id, want, { x: this.x, y: this.y - 30 }) || 0));
+    }
+    if (n > 0) { this.cload[p.item] = (this.cload[p.item] || 0) + n; this.capLeft -= n; }
+    this.cn = n;
+    ctx.ev.push({ t: 'collect', op: 'load', sled: this.idx, pile: p.id, item: p.item, n, x: p.x, y: p.y });
+  }
+
+  nextPile(ctx) {
+    const from = this.cplan[this.cstop].node;
+    this.cstop++;
+    while (this.cstop < this.cplan.length && this.capLeft >= this.tune.collect.minLoad) {
+      const q = this.cplan[this.cstop];
+      if (this.route(from, q.node)) { this.legTo(q.node, from, ctx, false, 'cgo'); return; }
+      this.cstop++;
+    }
+    this.legTo(this.home, from, ctx, false, 'cback');
+  }
+
+  /** back at the stand: the crates go across to the 짐 싣는 곳 (dropEachS a crate) */
+  startDrop(ctx) {
+    const n = sumC(this.cload);
+    this.cT = 0; this.cDur = Math.max(1, n * this.tune.collect.dropEachS);
+    this.st = 'cdrop'; this.stT = 0;
+    const p = this.g.nodes[this.home];
+    if (p) { this.x = p[0]; this.y = p[1]; }
+  }
+
+  legTo(to, from, ctx, back, st) {
     const pts = this.route(from, to);
-    if (!pts) { for (const o of this.load) ctx.restock(o, 'noRoute'); this.load = []; this.st = 'stand'; return; }
+    if (!pts) {
+      for (const o of this.load) ctx.restock(o, 'noRoute');
+      this.load = [];
+      if (sumC(this.cload) > 0) { this.startDrop(ctx); return; }    // (집하: what is on board still goes to the dock)
+      this.st = 'stand'; this.cplan = null;
+      const p = this.g.nodes[this.home]; if (p) { this.x = p[0]; this.y = p[1]; }
+      return;
+    }
     const v = this.tune.sled.speed;
-    this.path = new VanPath(pts, pts.slice(1).map(() => v), { tag: back ? 'sledBack' : 'sled' });
-    this.s = 0; this.st = back ? 'back' : 'run'; this.stT = 0;
+    this.path = new VanPath(pts, pts.slice(1).map(() => v), { tag: back ? 'sledBack' : st || 'sled' });
+    this.s = 0; this.st = st || (back ? 'back' : 'run'); this.stT = 0;
   }
 }
+
+const sumC = (o) => { let n = 0; for (const k in o || {}) n += o[k] || 0; return n; };

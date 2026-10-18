@@ -85,7 +85,10 @@ try {
     await run(0.5);
     await shot('pad', { x: pad.x + 120, y: pad.y - 60, z: 0.9 });
     await page.evaluate((p) => window.__FV.teleport(p.x, p.y), pad);
-    await until(() => window.__gb.host.model.st >= 1, 40, 1, 'pad paid');
+    // (the pad takes coins from the chief standing on it, and 판자 20 · 주괴 10 that the porters bring: UnlockPad items)
+    const t0 = await page.evaluate(() => window.__FV.scene.time.now);
+    await until(() => window.__gb.host.model.st >= 1, 300, 2, 'pad paid');
+    step('pad paid after ' + Math.round((await page.evaluate(() => window.__FV.scene.time.now) - t0) / 1000) + ' s');
   }
   step('st ' + await page.evaluate(() => window.__gb.host.model.st));
   await run(2.2);
@@ -111,6 +114,9 @@ try {
   await run(1);
   await shot('hub', { x: D.x - 20, y: D.y - 40, z: 0.85 });
   await page.evaluate(() => window.__gb.host.api.reveal(false));
+  await until(() => { const m = window.__gb.host.model, v = m.disp && m.disp.vans[0]; return v && (v.st === 'load' || v.st === 'bay'); }, 120, 1, 'van at bay');
+  await run(1.5);
+  await shot('bay', { x: 3400, y: 3215, z: 1.0 });
   await page.evaluate(() => { const v = window.__gb.host.view; if (v && v.openApp) v.openApp('orders'); });
   await run(0.6);
   await shot('app', null);

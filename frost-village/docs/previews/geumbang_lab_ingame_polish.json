@@ -1,0 +1,378 @@
+{
+ "checks": {
+  "H2 first order placed with the racks as v4.2 leaves them": {
+   "ok": true,
+   "info": {
+    "racks": 0,
+    "res": {},
+    "hour": 11.69
+   }
+  },
+  "H6 first delivered and the follow caption hidden afterwards": {
+   "ok": true,
+   "info": {
+    "active": false,
+    "cap": false,
+    "doneT": 3.21666666666666
+   }
+  },
+  "H1 home sets non-empty": {
+   "ok": true,
+   "info": {
+    "sets": 21,
+    "nonEmpty": 17,
+    "citizensIn": 53
+   }
+  },
+  "C1 금방 takes orders and delivers by day (10 game hours, racks as v4.2 leaves them)": {
+   "ok": true,
+   "info": {
+    "from": 14.3,
+    "to": 14.3,
+    "tot": [
+     20,
+     9,
+     77,
+     28
+    ],
+    "days": [
+     [
+      14,
+      3,
+      39
+     ]
+    ]
+   }
+  },
+  "C1 금방 집하 brought full-pile crates to the dock": {
+   "ok": true,
+   "info": {
+    "col": 12
+   }
+  },
+  "M6 unpatched: 금방 coins in the 물류창고 income bar": {
+   "ok": true,
+   "info": {
+    "depot": 214
+   }
+  },
+  "L2 missing ingots are paid in coins (2 × price each)": {
+   "ok": true,
+   "info": {
+    "have": 0,
+    "price": 1120,
+    "okSpend": true,
+    "paid": 1120,
+    "left": 0
+   }
+  },
+  "L6 the app shows 금방 알림 / 문 앞 장면 and sets them": {
+   "ok": true,
+   "info": {
+    "rows": [
+     "금방 알림",
+     "켬",
+     "금방 문 앞 장면",
+     "켬"
+    ],
+    "after": {
+     "scenes": false,
+     "alerts": "quiet",
+     "port": "off/quiet"
+    }
+   }
+  },
+  "L7 the chip steps right of the 길 안내 badge and back": {
+   "ok": true,
+   "info": {
+    "x0": 28,
+    "x1": 170,
+    "hit1": 170,
+    "x2": 28,
+    "shown": true
+   }
+  },
+  "no page errors": {
+   "ok": true,
+   "info": []
+  }
+ },
+ "samples": [
+  {
+   "h": 15.5,
+   "racks": 0,
+   "sold": 8,
+   "gbOrders": 2,
+   "gbDel": 1,
+   "col": 0,
+   "share": 0,
+   "full": "3/5",
+   "sled": {
+    "st": "cload",
+    "x": 420,
+    "y": 700
+   }
+  },
+  {
+   "h": 16.7,
+   "racks": 0,
+   "sold": 8,
+   "gbOrders": 2,
+   "gbDel": 1,
+   "col": 0,
+   "share": 0,
+   "full": "3/5",
+   "sled": {
+    "st": "cback",
+    "x": 950,
+    "y": 1700
+   }
+  },
+  {
+   "h": 17.9,
+   "racks": 0,
+   "sold": 28,
+   "gbOrders": 3,
+   "gbDel": 2,
+   "col": 0,
+   "share": 8,
+   "full": "5/5",
+   "sled": {
+    "st": "cback",
+    "x": 2568,
+    "y": 1176
+   }
+  },
+  {
+   "h": 19.1,
+   "racks": 0,
+   "sold": 28,
+   "gbOrders": 5,
+   "gbDel": 2,
+   "col": 12,
+   "share": 4,
+   "full": "5/5",
+   "sled": null
+  },
+  {
+   "h": 20.3,
+   "racks": 0,
+   "sold": 28,
+   "gbOrders": 7,
+   "gbDel": 3,
+   "col": 12,
+   "share": 0,
+   "full": "3/5",
+   "sled": {
+    "st": "cgo",
+    "x": 1853,
+    "y": 2396
+   }
+  },
+  {
+   "h": 21.5,
+   "racks": 28,
+   "sold": 28,
+   "gbOrders": 9,
+   "gbDel": 3,
+   "col": 12,
+   "share": 10,
+   "full": "4/5",
+   "sled": {
+    "st": "cgo",
+    "x": -358,
+    "y": 958
+   }
+  },
+  {
+   "h": 22.7,
+   "racks": 22,
+   "sold": 28,
+   "gbOrders": 11,
+   "gbDel": 3,
+   "col": 12,
+   "share": 10,
+   "full": "4/5",
+   "sled": {
+    "st": "cback",
+    "x": 76,
+    "y": 631
+   }
+  },
+  {
+   "h": 23.9,
+   "racks": 19,
+   "sold": 28,
+   "gbOrders": 12,
+   "gbDel": 3,
+   "col": 12,
+   "share": 10,
+   "full": "3/5",
+   "sled": {
+    "st": "cback",
+    "x": 1079,
+    "y": 2282
+   }
+  },
+  {
+   "h": 1.1,
+   "racks": 32,
+   "sold": 0,
+   "gbOrders": 0,
+   "gbDel": 0,
+   "col": 0,
+   "share": 10,
+   "full": "3/5",
+   "sled": {
+    "st": "cback",
+    "x": 3126,
+    "y": 1594
+   }
+  },
+  {
+   "h": 2.3,
+   "racks": 30,
+   "sold": 0,
+   "gbOrders": 1,
+   "gbDel": 0,
+   "col": 0,
+   "share": 9,
+   "full": "4/5",
+   "sled": null
+  },
+  {
+   "h": 3.5,
+   "racks": 30,
+   "sold": 0,
+   "gbOrders": 1,
+   "gbDel": 0,
+   "col": 0,
+   "share": 9,
+   "full": "5/5",
+   "sled": null
+  },
+  {
+   "h": 4.7,
+   "racks": 30,
+   "sold": 0,
+   "gbOrders": 1,
+   "gbDel": 0,
+   "col": 0,
+   "share": 12,
+   "full": "5/5",
+   "sled": null
+  },
+  {
+   "h": 5.9,
+   "racks": 30,
+   "sold": 0,
+   "gbOrders": 1,
+   "gbDel": 0,
+   "col": 0,
+   "share": 12,
+   "full": "3/5",
+   "sled": null
+  },
+  {
+   "h": 7.1,
+   "racks": 46,
+   "sold": 5,
+   "gbOrders": 1,
+   "gbDel": 0,
+   "col": 0,
+   "share": 12,
+   "full": "4/5",
+   "sled": null
+  },
+  {
+   "h": 8.3,
+   "racks": 16,
+   "sold": 35,
+   "gbOrders": 1,
+   "gbDel": 1,
+   "col": 0,
+   "share": 12,
+   "full": "5/5",
+   "sled": null
+  },
+  {
+   "h": 9.5,
+   "racks": 0,
+   "sold": 51,
+   "gbOrders": 3,
+   "gbDel": 3,
+   "col": 0,
+   "share": 3,
+   "full": "4/5",
+   "sled": {
+    "st": "cgo",
+    "x": 2330,
+    "y": 1477
+   }
+  },
+  {
+   "h": 10.7,
+   "racks": 0,
+   "sold": 62,
+   "gbOrders": 4,
+   "gbDel": 4,
+   "col": 0,
+   "share": 4,
+   "full": "4/5",
+   "sled": {
+    "st": "cgo",
+    "x": 258,
+    "y": 1657
+   }
+  },
+  {
+   "h": 11.9,
+   "racks": 0,
+   "sold": 62,
+   "gbOrders": 5,
+   "gbDel": 5,
+   "col": 0,
+   "share": 1,
+   "full": "3/5",
+   "sled": {
+    "st": "cload",
+    "x": 420,
+    "y": 700
+   }
+  },
+  {
+   "h": 13.1,
+   "racks": 0,
+   "sold": 62,
+   "gbOrders": 5,
+   "gbDel": 6,
+   "col": 0,
+   "share": 1,
+   "full": "4/5",
+   "sled": {
+    "st": "cgo",
+    "x": 573,
+    "y": 1700
+   }
+  },
+  {
+   "h": 14.3,
+   "racks": 0,
+   "sold": 62,
+   "gbOrders": 6,
+   "gbDel": 6,
+   "col": 0,
+   "share": 0,
+   "full": "3/5",
+   "sled": {
+    "st": "cback",
+    "x": 1871,
+    "y": 2393
+   }
+  }
+ ],
+ "shots": [
+  "geumbang_lab_ingame_polish_app_crew.jpg"
+ ],
+ "errors": []
+}

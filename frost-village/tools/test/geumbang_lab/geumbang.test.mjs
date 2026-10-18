@@ -42,14 +42,12 @@ function soak(o = {}) {
   E.run((o.days || 2) * DAY, 1 / 30, (E, i) => {
     ticks++;
     if (i % 30 !== 0) return;
-    const c = E.count();
-    // items: what entered = what is somewhere now
-    const inAll = c.initial + c.inflow;
-    const nowAll = c.racks + c.orders + c.delivered + c.refused;
-    if (inAll !== nowAll && bad.length < 5) bad.push('items ' + JSON.stringify(c) + ' T ' + E.T.toFixed(1));
+    // items: what entered = what is somewhere now (racks, 금방's share, orders, delivered, the dock …)
+    const b = E.balance();
+    if (!b.ok && bad.length < 5) bad.push('items ' + JSON.stringify(b) + ' T ' + E.T.toFixed(1));
     // coins: paid == delivered value
     if (E.out.coins !== m.settle.tot[2] && bad.length < 5) bad.push('coins ' + E.out.coins + ' vs ' + m.settle.tot[2]);
-    maxOpen = Math.max(maxOpen, m.orders.list.length);
+    maxOpen = Math.max(maxOpen, m.orders.waiting());
     const per = {};
     for (const q of m.orders.list) { per[q.aid] = (per[q.aid] || 0) + 1; const a = m.book.get(q.aid); if (!a || a.zone === 'none') bad.push('order to ' + q.aid); if (!(q.n > 0)) bad.push('empty order ' + q.id); }
     for (const k in per) maxPerAddr = Math.max(maxPerAddr, per[k]);
@@ -104,9 +102,8 @@ test('soak with all upgrades: 3 vans, packing 2, dawn, lockers, backhaul — sti
   let spurBoth = 0;
   E.run(DAY * 3, 1 / 30, (E, i) => {
     if (i % 30) return;
-    const c = E.count();
-    const backIn = E.out.took;     // backhaul crates restocked into the racks (counted as inflow here)
-    if (c.initial + c.inflow + backIn !== c.racks + c.orders + c.delivered + c.refused + (m.disp.vans.reduce((s, v) => s + (v.backload ? sumO(v.backload) : 0), 0)) && bad.length < 3) bad.push(JSON.stringify(c) + ' took ' + backIn);
+    const b = E.balance();         // (backhaul crates and the share counted in)
+    if (!b.ok && bad.length < 3) bad.push(JSON.stringify(b));
     if (E.out.coins !== m.settle.tot[2]) bad.push('coins');
     const onSpur = m.disp.vans.filter((v) => ['spurA', 'spurB', 'pivot', 'reverse'].includes(v.st) || (v.st === 'out' && v.s < v.spurEnd)).length;
     if (onSpur > 1) spurBoth++;
@@ -116,7 +113,10 @@ test('soak with all upgrades: 3 vans, packing 2, dawn, lockers, backhaul — sti
   assert.equal(E.events.filter((e) => e.t === 'gb:watchdog').length, 0);
   assert.ok(E.events.some((e) => e.t === 'gb:delivered' && e.how === 'locker'), 'the apartment locker was used');
   assert.ok(E.events.some((e) => e.t === 'gb:backhaul'), 'a van brought crates back');
-  assert.ok(E.events.some((e) => e.t === 'gb:sled' && e.op === 'go'), 'the sled ran');
+  // (광장 보관함 bought: the village parcels go into the plaza locker, the sleds are free for 금방 집하)
+  assert.ok(E.events.some((e) => e.t === 'gb:locker' && e.kind === 'P'), 'the plaza locker took village parcels');
+  assert.ok(E.events.some((e) => e.t === 'gb:lockerPickup'), 'residents emptied a locker');
+  assert.ok(m.orders.list.length <= GB_TUNING.orders.maxOpen + 3 * GB_TUNING.van.cap);
   // dawn delivery: deliveries at night are doorstep-only (no bell)
   const night = E.events.filter((e) => e.t === 'gb:beat' && e.k === 'ring' && (hourOf(e.T) >= 21 || hourOf(e.T) < 8));
   assert.equal(night.length, 0, 'a bell rang at night');
@@ -179,7 +179,8 @@ test('shops first: a short shelf pauses its item (resumes after 60 s); smoked me
 });
 
 test('racks floor and unfillable orders: low stock never orders below keepFloor; an empty depot orders nothing', () => {
-  const E = makeEnv({ seed: 4, fill: 0.04, inflowPerMin: 0 });
+  // (the floor rule on its own: 금방's share off — with it, the share is drawn on the racks and sells to the last)
+  const E = makeEnv({ seed: 4, fill: 0.04, inflowPerMin: 0, tune: Object.assign({}, GB_TUNING, { share: { per: 0, max: 0 } }) });
   const m = E.model;
   m.open({ ceremonyS: 1 });
   const floor = GB_TUNING.orders.keepFloor;
@@ -255,8 +256,8 @@ test('failure: walkers blocking the lane stop the van; after 20 s it skips, then
   for (let k = 1; k < horns.length; k++) assert.ok(horns[k].T - horns[k - 1].T >= GB_TUNING.van.honkAfterS - 1e-6, 'horns too close');
   assert.ok(E.events.some((e) => e.t === 'gb:restock' && e.why === 'blocked') || skips.some((e) => e.n === 1), 'restocked after the second skip');
   // conservation still holds
-  const c = E.count();
-  assert.equal(c.initial + c.inflow, c.racks + c.orders + c.delivered + c.refused);
+  const b = E.balance();
+  assert.equal(b.in, b.now, JSON.stringify(b));
 });
 
 test('failure: the sleigh on the shared spur holds vans at the bay and before the jog; the watchdog brings a stuck van home', () => {
@@ -288,8 +289,8 @@ test('failure: the sleigh on the shared spur holds vans at the bay and before th
   assert.ok(E.events.some((e) => e.t === 'gb:watchdog' || e.t === 'gb:skip'), 'stuck van handled');
   E.model.env.walkers = null; E.model._dctx = null;
   E.run(DAY * 0.5);
-  const c = E.count();
-  assert.equal(c.initial + c.inflow, c.racks + c.orders + c.delivered + c.refused);
+  const b = E.balance();
+  assert.equal(b.in, b.now, JSON.stringify(b));
 });
 
 test('failure: racks over their cap after a restock keep what fits; the rest goes to the dock surplus', () => {
@@ -342,7 +343,8 @@ test('save: 300 fuzzed slices never throw and stay ≤ 1,400 B; round trip; old 
   const junk = () => { const k = r(); return k < 0.1 ? null : k < 0.2 ? 'x'.repeat(Math.floor(r() * 40)) : k < 0.3 ? -1e9 : k < 0.4 ? [r(), 'a'] : k < 0.5 ? { a: 1 } : k < 0.6 ? 1e12 : k < 0.7 ? NaN : Math.floor(r() * 30); };
   const items = ['bread', 'can', 'log', 'meat_cooked', 'fish_cooked', 'zzz', 'ore', 'pickaxe'];
   for (let n = 0; n < 300; n++) {
-    const raw = { v: junk(), st: junk(), lv: r() < 0.5 ? { van: junk(), pack: junk(), sled: junk() } : junk(), seq: junk(), seed: junk(), day: junk(), ord: [], door: [], staff: [], days: [], tot: junk(), rev: [], seen: junk(), back: r() < 0.3 ? 'bread5,zzz3,log9999' : junk() };
+    const raw = { v: junk(), st: junk(), lv: r() < 0.5 ? { van: junk(), pack: junk(), sled: junk() } : junk(), seq: junk(), seed: junk(), day: junk(), ord: [], door: [], staff: [], days: [], tot: junk(), rev: [], seen: junk(), back: r() < 0.3 ? 'bread5,zzz3,log9999' : junk(),
+      res: r() < 0.3 ? 'bread9,can99,fish_raw7,ore3' : junk(), dock: r() < 0.3 ? 'ore999,ingot40,fish_big3,zzz9' : junk(), lk: r() < 0.3 ? [junk(), junk()] : junk(), pp: junk(), pi: r() < 0.3 ? 'plank19,ingot9' : junk(), nx: junk(), cl: r() < 0.3 ? [junk(), junk()] : junk() };
     for (let k = 0; k < 40 * r(); k++) raw.ord.push(r() < 0.8 ? ['g' + Math.floor(r() * 1e6), r() < 0.8 ? 'a:t_apt' + Math.floor(r() * 5) : junk(), ['rc', 'pc', 'kc', 'rs', 'rcf', 'zz'][Math.floor(r() * 6)], items.slice(0, 1 + Math.floor(r() * 4)).map((i) => i + Math.floor(r() * 9)).join(','), Math.floor(r() * 9999)] : junk());
     for (let k = 0; k < 30 * r(); k++) raw.door.push(r() < 0.8 ? ['l:lotH' + Math.floor(r() * 6), ['s', 'm', 'l', 'x'][Math.floor(r() * 4)], r() * 30] : junk());
     for (let k = 0; k < 20 * r(); k++) { raw.days.push([junk(), junk(), junk()]); raw.rev.push([junk(), 't_apt2', junk()]); raw.staff.push(junk()); }
@@ -368,7 +370,11 @@ test('save: 300 fuzzed slices never throw and stay ≤ 1,400 B; round trip; old 
   const a = E.model.serialize();
   const E2 = makeEnv({ seed: 19, saved: sanitizeGeumbang(JSON.parse(JSON.stringify(a))), depot: makeDepot(0.6, 7), T: E.T });
   const b = E2.model.serialize();
-  assert.deepEqual({ ...b, ord: b.ord.map((r) => r.slice(0, 4)) }, { ...a, ord: a.ord.map((r) => r.slice(0, 4)) });
+  // (`back` — rows beyond the slice's 24 — is a one-shot fold: its items are on the racks after the load)
+  // (a slice at its cap drops days / reviews first: compare the state that must survive — orders, 금방's share, totals)
+  const strip = (x) => { const y = { ...x, ord: x.ord.map((r) => r.slice(0, 4)) }; delete y.back; delete y.days; delete y.rev; delete y.door; delete y.staff; return y; };
+  assert.deepEqual(strip(b), strip(a));
+  assert.equal(b.back, undefined);
   // a v4.2 save has no slice: the module starts at the letter gate
   const E3 = makeEnv({ seed: 19, saved: null });
   assert.equal(E3.model.st, 0);
@@ -592,4 +598,23 @@ test('host headless: api, toasts by the rules, events out, serialize', () => {
   assert.equal(GEUMBANG_MODULE.saveKey, 'geumbang');
   assert.equal(GEUMBANG_MODULE.gate({ v42: { depot: { built: false } } }), false);
   assert.equal(GEUMBANG_MODULE.gate({ v42: { depot: { built: true } } }), true);
+});
+
+// ---- G-P5: the game's LOCAL copy of the keep-rules (src/core/Save.js keepGeumbang) must keep exactly what
+// sanitizeGeumbang keeps (the same check save_v42.mjs makes for keepBank / keepLogistics). Skipped until the patch lands.
+test('G-P5 parity: Save.js keepGeumbang agrees with sanitizeGeumbang (skipped until the patch)', async (t) => {
+  const S = await import('../../../src/core/Save.js');
+  if (typeof S.keepGeumbang !== 'function') { t.skip('src/core/Save.js has no keepGeumbang yet (patch G-P5)'); return; }
+  let s = 7;
+  const r = () => { s = (s * 1103515245 + 12345) >>> 0; return s / 4294967296; };
+  const junk = () => { const k = r(); return k < 0.15 ? null : k < 0.3 ? 'x' : k < 0.45 ? -5 : k < 0.6 ? 1e12 : Math.floor(r() * 30); };
+  for (let n = 0; n < 200; n++) {
+    const raw = { v: 1, st: junk(), lv: { van: junk(), pack: junk(), sled: junk(), dawn: junk() }, seq: junk(), seed: junk(), day: junk(), ord: [], door: [], staff: [], days: [], tot: [junk(), junk(), junk(), junk()], rev: [], seen: junk(), g: junk(), up: r() < 0.3 ? ['pack,van2,zzz', junk(), junk()] : undefined, back: r() < 0.3 ? 'bread5,zzz3' : undefined,
+      res: r() < 0.4 ? 'bread' + Math.floor(r() * 9) + ',fish_raw3,ore2' : junk(), dock: r() < 0.4 ? 'ore' + Math.floor(r() * 900) + ',ingot4,zzz1' : junk(), lk: r() < 0.4 ? [junk(), junk()] : undefined,
+      pp: r() < 0.4 ? junk() : undefined, pi: r() < 0.4 ? 'plank' + Math.floor(r() * 30) + ',ingot2,bread1' : undefined, nx: r() < 0.4 ? junk() : undefined, cl: r() < 0.4 ? [junk(), junk()] : undefined };
+    for (let k = 0; k < 30 * r(); k++) raw.ord.push(['g' + Math.floor(r() * 1e6), 'a:t_apt' + Math.floor(r() * 5), ['rc', 'pc', 'kcf', 'rst'][Math.floor(r() * 4)], 'bread' + Math.floor(r() * 9) + ',log2', Math.floor(r() * 999)]);
+    for (let k = 0; k < 20 * r(); k++) raw.door.push(['l:lotH' + Math.floor(r() * 6), ['s', 'm', 'l'][Math.floor(r() * 3)], r() * 30]);
+    assert.deepEqual(S.keepGeumbang(JSON.parse(JSON.stringify(raw))), sanitizeGeumbang(JSON.parse(JSON.stringify(raw))));
+  }
+  for (const bad of [null, 3, 'x', [], {}]) assert.deepEqual(S.keepGeumbang(bad), sanitizeGeumbang(bad));
 });

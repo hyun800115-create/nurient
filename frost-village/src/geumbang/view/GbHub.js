@@ -1,7 +1,7 @@
 // GbHub (view, plan §3.2, §5.4): the 금방 dress of the v4.2 depot and the hub loop inside its cutaway.
 // Outside (always): gb_nameplate_<lang> instead of the centre's nameplate (same frame size + anchor, fades with the
 // shell), the gable / blade emblems and the gold-ribboned roof parcel over the shell (+0.0004), the swaying banner by
-// dock 1 (+0.0012), the 금방 flag on the apron, the pole sign (lit at night), the lockers once bought, a soft ADD glow
+// dock 1 (+0.0012), the 금방 flag on the apron, the pole sign (lit at night), the lockers once bought, a soft glow (NORMAL blend)
 // at fxPoints.board at night, the outbound pile at dock 1 (≤ 8 parcels) with "출고 대기 n", dock 1 rolling up while a
 // van loads, the offered upgrade floating by the door.
 // Inside (only while revealed, plan §5.4 table): 방금순 팀장 at the counter (scan, "네~ 금방입니다!"), pickers at the racks
@@ -72,8 +72,8 @@ export class GbHub {
     // night glows: the name board, the sign disc
     const fx = (b.def.fxPoints && b.def.fxPoints.board) || [-254, -115];
     // (glows at their object's depth, under the night tint: whatever stands in front hides them)
-    this.boardGlow = sc.add.image(b.x + fx[0], b.y + fx[1], glowTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setDepth(shell + 0.0006).setScale(3.4, 1.6).setVisible(false);
-    this.signGlow = this.sign ? sc.add.image(sp.x + 6, sp.y - (ss.def.topPx || 184) + 30, glowTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setDepth(sp.y + 0.002).setScale(1.8).setVisible(false) : null;
+    this.boardGlow = sc.add.image(b.x + fx[0], b.y + fx[1], glowTex(sc)).setDepth(shell + 0.0006).setScale(3.4, 1.6).setVisible(false);
+    this.signGlow = this.sign ? sc.add.image(sp.x + 6, sp.y - (ss.def.topPx || 184) + 30, glowTex(sc)).setDepth(sp.y + 0.002).setScale(1.8).setVisible(false) : null;
     this.objs.push(this.boardGlow); if (this.signGlow) this.objs.push(this.signGlow);
     // the label over the outbound pile
     this.pileLabel = sc.add.text(0, 0, '', textStyle(40, '#2b4f7e', '#fff7e6', 9, '900')).setOrigin(0.5, 1).setDepth(DEPTH.LABEL - 5).setVisible(false);
@@ -347,6 +347,10 @@ export class GbHub {
     if (!this.dressed) { this.dressWait = (this.dressWait || 0) + dt; if (spriteOf('gb_sign') || this.dressWait > 20) this.dress(b); else return; }
     if (!this.crewN || this.crewN !== this.wantCrew()) this.crewUp(b);
     if (b.setShown && !this.shownSet) { this.shownSet = true; b.setShown(() => this.shownStock()); }
+    // (critique M9) the depot off screen: the crew, belt and dock are redrawn 4 times a second (with the time that
+    // passed), not every frame — nothing of it can be seen meanwhile
+    if (this.cer < 0 && !this.view.near(b.x, b.y, 600)) { this.farT = (this.farT || 0) + dt; if (this.farT < 0.25) return; dt = this.farT; }
+    this.farT = 0;
     const sa = this.shellAlpha(b), night = this.view.night();
     // the ceremony: the lettering cross-fades, the banner appears, the crew sparkles in
     if (this.cer >= 0) {

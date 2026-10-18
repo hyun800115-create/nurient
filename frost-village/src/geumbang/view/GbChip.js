@@ -85,9 +85,21 @@ export class GbChip {
   update(dt) {
     const m = this.view.m, F = this.view.followV;
     // (after 정 할머니's parcel: the chip bounces in with the first-delivery toast, plan §3.3)
-    const show = m.st === 2 && !!(m.seen & 2) && !this.view.host.firstToast && !(F.active && F.first) && !this.view.appOpen();
+    // (the chip sits above the HUD depth: it steps aside while a game panel is open — the 촌장 사무실 panel drew under it)
+    const ui = this.ui, panel = !!(ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen);
+    const show = m.st === 2 && !!(m.seen & 2) && !this.view.host.firstToast && !(F.active && F.first) && !this.view.appOpen() && !panel;
     this.c.setVisible(show);
     if (this.hit.input) this.hit.input.enabled = show;
+    // (critique L7) the 길 안내 edge badge (v4.2 HudV42.edge) parks on the left column at y ≥ 480, right on the chip:
+    // the chip steps right of the badge and its metres while it shows (and back when it goes)
+    const C = this.H.chip, E = this.ui.hud42 && this.ui.hud42.edge;
+    let want = 0;
+    if (show && E && E.visible && E.x < C.x + C.w + 60 && Math.abs(E.y - (C.y + this.st + C.h / 2)) < 110) want = Math.max(0, E.x + 110 - C.x);
+    if (Math.abs(want - (this.dx || 0)) > 0.5) {
+      this.dx = (this.dx || 0) + (want - (this.dx || 0)) * Math.min(1, dt * 10);
+      this.c.x = C.x + this.dx;
+      this.hit.x = C.hit[0] + this.dx;
+    }
     if (show) {
       const gone = m.orders.list.filter((o) => o.st === 'gone').length, open = m.orders.list.length;
       const L = this.view.lang();

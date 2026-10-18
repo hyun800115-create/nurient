@@ -19,7 +19,7 @@
 import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { priceOf } from '../data/items.js';
-import { getLang } from '../data/strings.js';
+import { getLang, t } from '../data/strings.js';
 import { Settings } from '../core/Save.js';
 import { Audio } from '../core/Audio.js';
 import { Assets } from '../core/Assets.js';
@@ -35,6 +35,7 @@ import { gbTuning } from './tuning.js';
 import { gbLayout, L } from './layout.js';
 import { gt } from './strings.js';
 import { FRAGMENTS } from './index.js';
+import { homeSets, townSignature, villageGraphOf, keepRight } from './townRead.js';
 
 const HOUR = 25;
 const sum = (o) => { let n = 0; for (const k in o || {}) n += Number(o[k]) || 0; return n; };
@@ -110,38 +111,9 @@ export function townEntries(gs) {
  * the sled zone when a node is ≤ sled.doorMaxM from its door), plus the 역앞 금방 정류장 joined to the nearest node.
  */
 export function villageGraph(gs, lay) {
-  const R = WORLD.roads;
-  if (!R || !R.nodes) return null;
   const zoneOpen = (z) => !z || !!(gs.zones && gs.zones[z] && gs.zones[z].unlocked);
   const regionOpen = (r) => !r || !gs.territory || gs.territory.isOpen(r);
-  const nodes = {}, edges = [];
-  let n = 0;
-  for (const e of R.edges || []) {
-    const o = e[2] || {};
-    if (o.draw === false || !zoneOpen(o.zone) || !regionOpen(o.region)) continue;
-    const a = R.nodes[e[0]], b = R.nodes[e[1]];
-    if (!a || !b) continue;
-    const pts = [a].concat(o.via || [], [b]);
-    nodes[e[0]] = [a[0], a[1]]; nodes[e[1]] = [b[0], b[1]];
-    let prev = e[0];
-    for (let k = 1; k < pts.length; k++) {
-      const p = pts[k - 1], q = pts[k], steps = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 150));
-      for (let s = 1; s <= steps; s++) {
-        const last = k === pts.length - 1 && s === steps;
-        const id = last ? e[1] : 'r' + (n++);
-        if (!last) nodes[id] = [Math.round(p[0] + ((q[0] - p[0]) * s) / steps), Math.round(p[1] + ((q[1] - p[1]) * s) / steps)];
-        edges.push([prev, id]);
-        prev = id;
-      }
-    }
-  }
-  if (!edges.length) return null;
-  const st = L(lay.sledStand[0], lay.sledStand[1]);
-  let best = null, bd = Infinity;
-  for (const id in nodes) { const p = nodes[id], d = Math.hypot(p[0] - st.x, (p[1] - st.y) * 2); if (d < bd) { bd = d; best = id; } }
-  nodes.st = [Math.round(st.x), Math.round(st.y)];
-  if (best) edges.push(['st', best]);
-  return { nodes, edges, stand: 'st' };
+  return villageGraphOf(WORLD.roads, L(lay.sledStand[0], lay.sledStand[1]), (z, r) => zoneOpen(z) && regionOpen(r));
 }
 
 // ====================================================================================================== the dolls
@@ -250,6 +222,36 @@ function dollsPort(gs, sys) {
   };
 }
 
+// ====================================================================================================== helpers
+/** the cargo sleigh as three ground points (centre and ±1.1 m along its heading) for the vans' yield test (M4) */
+function sleighPoints(sl) {
+  if (!sl || !Number.isFinite(sl.x) || sl.state === 'wait' || sl.state === 'load') return [];
+  const p = sl.at ? sl.at(sl.s) : null;
+  if (!p) return [{ x: sl.x, y: sl.y }];
+  const di = p.di || 0, dj = p.dj || 0, k = 0.78;          // 1.1 m = 0.78 cells
+  const dx = 64 * (di + dj) * k, dy = 32 * (di - dj) * k;
+  return [{ x: sl.x, y: sl.y, sleigh: true }, { x: sl.x + dx, y: sl.y + dy, sleigh: true }, { x: sl.x - dx, y: sl.y - dy, sleigh: true }];
+}
+
+/** n items off a v3.5 collection pile; on screen they hop towards `to` (the sled's basket) and are released there */
+function takeFromPile(gs, p, n, to) {
+  if (!p || !p.stack || !(n > 0)) return 0;
+  const fx = gs.effects, show = !!(to && gs.isOnScreen && gs.isOnScreen(p.x, p.y, 200));
+  let got = 0;
+  for (let k = 0; k < Math.floor(n); k++) {
+    const it = p.stack.pop(p.item);
+    if (!it) break;
+    got++;
+    const spr = it.spr;
+    if (!spr) continue;
+    if (show && k < 8 && gs.tweens) {
+      spr.setVisible(true).setDepth(Math.max(p.y, to.y) + 1);
+      gs.tweens.add({ targets: spr, x: to.x + (k % 3) * 8 - 8, y: to.y - 6 - Math.floor(k / 3) * 6, duration: 420 + k * 70, delay: k * 70, ease: 'Quad.easeInOut', onComplete: () => { if (fx && fx.releaseItem) fx.releaseItem(spr); } });
+    } else if (fx && fx.releaseItem) fx.releaseItem(spr);
+  }
+  return got;
+}
+
 // ====================================================================================================== the ports
 export function makeV4Ports(gs, sys) {
   const V = () => gs.v42 || {};
@@ -271,6 +273,7 @@ export function makeV4Ports(gs, sys) {
     sys._sj = at === null ? s * 0.75 : at;
     return sys._sj;
   };
+  const sleighHold = () => sleighJoin() - 3.2;
   const ports = {
     clock: {
       T: () => { const c = clock(); return c ? c.T : sys.t; },
@@ -279,17 +282,27 @@ export function makeV4Ports(gs, sys) {
       dark: () => { const c = clock(); return c && c.cur ? Number(c.cur.a) || 0 : 0; },
     },
     lang: () => getLang(),
-    roads: { net: () => (nb() ? nb().roadNet : null), village: () => villageGraph(gs, lay) },
+    roads: { net: () => (nb() ? nb().roadNet : null), village: () => villageGraph(gs, lay), avoid: () => (sys.p2c ? null : ((WORLD.v42 && WORLD.v42.sleighRoute) || []).map(([i, j]) => L(i, j))) },
     town: {
       homes: () => { sys.entries = townEntries(gs); sys.entryById = null; return sys.entries; },
       /** someone of that household is at home now (TownSim state; the analytic LOD keeps `place` current) */
       home: (aid, hid) => sys.homeNow(aid, hid),
       /** a household member came home and passes the box on the step */
       passer: (aid, box) => !!box && box.age > HOUR * 0.5 && sys.homeNow(aid, null),
+      /** who a van yields to near (x, y): the chief, TownSim bodies, (L8) porters / workers / customers (gs.agents),
+       *  visitors, the dog, and (critique M4) the cargo sleigh — its body as three points along its heading */
       walkers: (x, y, r) => {
         const out = [], T = nb() && nb().town, p = gs.player;
-        if (p && Math.abs(p.x - x) < r && Math.abs(p.y - y) < r) out.push(p);
-        if (T) for (const b of T.bodies) if (b && b.c && b.sprite && b.sprite.visible && Math.abs(b.x - x) < r && Math.abs(b.y - y) < r) out.push(b);
+        const near = (q) => q && Math.abs(q.x - x) < r && Math.abs(q.y - y) < r;
+        if (near(p)) out.push(p);
+        if (T) for (const b of T.bodies) if (b && b.c && b.sprite && b.sprite.visible && near(b)) out.push(b);
+        for (const a of gs.agents || []) if (a && a.alive !== false && a.visible !== false && near(a)) out.push(a);
+        const vis = nb() && nb().visitors;
+        if (vis) for (const v of vis) if (v && v.alive !== false && near(v)) out.push(v);
+        const dog = gs.dog && gs.dog.r;            // 콩이 (DogPlay.r: the VillageLife pet_dog)
+        if (dog && near(dog)) out.push(dog);
+        const d = D();
+        if (d && d.sleighs) for (const sl of d.sleighs) for (const q of sleighPoints(sl)) if (near(q)) out.push(q);
         return out.length ? out : null;
       },
     },
@@ -310,7 +323,11 @@ export function makeV4Ports(gs, sys) {
       },
       level: (c) => { const s = S(); return s ? s.level(c) : 0; },
       fill: () => { const d = D(); return d && d.built ? d.total() / Math.max(1, d.capTotal()) : 0; },
-      sleighBusy: () => { const d = D(); if (!d) return false; const j = sleighJoin(); return d.sleighs.some((s) => (s.state === 'go' && s.s >= j - 0.5) || s.state === 'unload' || (s.state === 'back' && s.s > j - 0.5)); },
+      /** the sleigh is on (or about to enter) the stretch it shares with the van spur: from holdS() on (M4: a held
+       *  sleigh waits ≥ 4.5 m back from a van entering the jog, so the stretch starts there) */
+      sleighBusy: () => { const d = D(); if (!d) return false; const h = sleighHold() + 0.1; return d.sleighs.some((s) => (s.state === 'go' && s.s >= h) || s.state === 'unload' || (s.state === 'back' && s.s > h)); },
+      /** (M8) where a sleigh holds while a van has the spur (G-P2b reads it): 3.2 cells before the join */
+      holdS: () => sleighHold(),
       surplus: (items) => { const F = V().freight; if (F) for (const k in items || {}) F.addSurplus(k, items[k]); },
       dockSurplus: () => { const F = V().freight; return F ? F.dockCount() : 0; },
       takeSurplus: (n) => {
@@ -321,6 +338,35 @@ export function makeV4Ports(gs, sys) {
         for (const q of got) o[q.ty] = (o[q.ty] || 0) + q.n;
         return sum(o) ? o : null;
       },
+      /** (H2) n of one item off the station dock's surplus (정 할머니's opening stock) */
+      dockTake: (item, n) => {
+        const F = V().freight;
+        if (!F || !(n > 0)) return 0;
+        let got = 0;
+        for (const q of F.takeSurplus(n, (ty) => (ty === item ? n : 0)) || []) got += q.n;
+        return got;
+      },
+      /** (C1, 금방 집하) the village collection piles the sleds may load from */
+      piles: () => {
+        const out = [];
+        for (const id in gs.piles || {}) {
+          const p = gs.piles[id];
+          if (!p || !p.shown || !p.enabled || !p.stack) continue;
+          out.push({ id, item: p.item, x: p.x, y: p.y, n: p.stack.count, max: p.stack.max });
+        }
+        return out;
+      },
+      /** n crates off a pile (they hop towards the sled when the pile is on screen) -> how many */
+      takePile: (id, n, to) => takeFromPile(gs, gs.piles && gs.piles[id], n, to),
+      pileTake: (item, n) => { for (const id in gs.piles || {}) { const p = gs.piles[id]; if (p && p.item === item && p.stack && p.stack.count > 0) return takeFromPile(gs, p, n, null); } return 0; },
+      /** room at the 짐 싣는 곳 for 금방 집하 crates of an item (the train's + the depot's room, ≤ collect.dockMax waiting) */
+      dockRoom: (item) => {
+        const F = V().freight;
+        if (!F) return 0;
+        const C = sys.tune.collect || {};
+        return Math.max(0, Math.min(F.surplusRoom(item), (Number(C.dockMax) || 60) - F.dockCount()));
+      },
+      dockDrop: (items) => { const F = V().freight; if (F) for (const k in items || {}) if (items[k] > 0) F.addSurplus(k, items[k]); },
       building: () => { const d = D(); return d && d.building && d.building.ready ? d.building : null; },
       reveal: (on) => { const d = D(); if (d) d.camReveal = !!on; },
       stock: () => S(),
@@ -328,24 +374,53 @@ export function makeV4Ports(gs, sys) {
       staff: (on) => { const d = D(); if (d && d.building) d.building.gbStaffOff = !on; },
     },
     coins: {
-      /** order money: into the 물류 금고 (딸랑이's round or the 15 s flush takes it on), counted as depot income */
+      /** order money: into the 물류 금고 (딸랑이's round or the 15 s flush takes it on). (critique M6) the 통장's
+       *  income bars: its own '금방' bar once G-P16 is in (the inc_gb string tells), else inside 물류창고 */
       till: (n) => {
         const d = D(), b = d && d.building;
         n = Math.max(0, Math.floor(n) || 0);
         if (!n) return;
         if (b && b.till) b.till.value += n; else if (gs.economy) gs.economy.add(n);
         const O = V().office;
-        if (O && O.income) O.income.depot = (O.income.depot || 0) + n;
+        const key = t('inc_gb') !== 'inc_gb' ? 'gb' : 'depot';
+        if (O && O.income) O.income[key] = (O.income[key] || 0) + n;
       },
-      /** an upgrade: coins + ingots from the depot racks (never more than there is) */
+      /** an upgrade: coins + items. (critique L2) the items come from the depot racks, then the station dock's
+       *  surplus (ingots rarely sit on the racks in v4.2), and what is still missing is paid in coins at
+       *  2 × the item's price — never more than there is, all or nothing */
       spend: (cost) => {
-        const c = typeof cost === 'number' ? { coins: cost } : cost || {}, E = gs.economy, s = S();
-        const coins = Math.max(0, Math.floor(Number(c.coins) || 0));
-        if (!E || E.coins < coins) return false;
-        for (const k in c) if (k !== 'coins' && (!s || s.count(k) < c[k])) return false;
+        const c = typeof cost === 'number' ? { coins: cost } : cost || {}, E = gs.economy, s = S(), F = V().freight;
+        let coins = Math.max(0, Math.floor(Number(c.coins) || 0));
+        if (!E) return false;
+        const plan = [];
+        for (const k in c) {
+          if (k === 'coins') continue;
+          const need = Math.max(0, Math.floor(Number(c[k]) || 0));
+          const rack = s ? Math.min(need, s.count(k)) : 0;
+          const dock = F && F.dock ? Math.min(need - rack, Math.max(0, F.dock[k] || 0)) : 0;
+          const short = need - rack - dock;
+          coins += short * 2 * (priceOf(k) || 10);
+          plan.push([k, rack, dock]);
+        }
+        if (E.coins < coins) return false;
         if (coins) E.spend(coins);
-        for (const k in c) if (k !== 'coins' && s) s.take(k, c[k]);
+        for (const [k, rack, dock] of plan) {
+          if (rack && s) s.take(k, rack);
+          if (dock && F) F.takeSurplus(dock, (ty) => (ty === k ? dock : 0));
+        }
         return true;
+      },
+      /** what spend(cost) would charge in coins now (the app's button shows it when items are short) */
+      price: (cost) => {
+        const c = typeof cost === 'number' ? { coins: cost } : cost || {}, s = S(), F = V().freight;
+        let coins = Math.max(0, Math.floor(Number(c.coins) || 0));
+        for (const k in c) {
+          if (k === 'coins') continue;
+          const need = Math.max(0, Math.floor(Number(c[k]) || 0));
+          const have = (s ? s.count(k) : 0) + (F && F.dock ? Math.max(0, F.dock[k] || 0) : 0);
+          coins += Math.max(0, need - have) * 2 * (priceOf(k) || 10);
+        }
+        return coins;
       },
     },
     growth: { happy: (f) => { const G = nb() && nb().growth; if (G && G.addSatisfaction) G.addSatisfaction(f); } },
@@ -366,6 +441,10 @@ export function makeV4Ports(gs, sys) {
     settings: {
       alerts: () => (Settings.data.gbAlerts === 'quiet' || Settings.data.gbAlerts === 'off' ? Settings.data.gbAlerts : 'on'),
       scenes: () => (Settings.data.gbScenes === false ? 'off' : 'on'),
+      // (critique L6) the app's 기사님 tab sets them too (Settings keeps them once G-P13 is in; before that they last
+      //  until the page reloads)
+      setAlerts: (v) => { Settings.data.gbAlerts = v === 'quiet' || v === 'off' ? v : 'on'; try { Settings.save(); } catch (e) { /* storage off */ } },
+      setScenes: (on) => { Settings.data.gbScenes = !!on; try { Settings.save(); } catch (e) { /* storage off */ } },
     },
     world: { scene: gs },
     ui: {
@@ -375,6 +454,8 @@ export function makeV4Ports(gs, sys) {
       busy: () => { const u = gs.ui, R = nb() && nb().rank; return !!(u && (u.panelOpen || u.buildOpen || u.v4PanelOpen || u.v42PanelOpen)) || !!(R && R.ceremonyOn); },
       toasted: () => {},
       hidePill: () => {},
+      // the game's big banner (금방 개업 …) is up: the 따라가기 caption waits under it (same band of the screen)
+      bannerOn: () => { const u = gs.ui, s = u && (u.s || u); return !!(s && s.bannerBox && s.bannerBox.visible); },
     },
     view: {
       onScreen: (x, y, m) => gs.isOnScreen(x, y, m),
@@ -391,11 +472,13 @@ export function makeV4Ports(gs, sys) {
           if (ry > 0) want = Math.max(want, cam.height / (2 * k * Math.max(60, ry - 40)));
           if (rx > 0) want = Math.max(want, cam.width / (2 * k * Math.max(60, rx - 40)));
         }
-        const zmax = (BALANCE.camera && BALANCE.camera.zoomMax) || 1.7;
+        const zmax = Math.min(1.5, (BALANCE.camera && BALANCE.camera.zoomMax) || 1.7);   // (closer, but the street stays in view)
         want = Math.min(zmax, want);
         if (want && gs.zoomTarget !== undefined && gs.zoomTarget < want) gs.zoomTarget = want;
       },
       release: () => { gs.camFocus = null; if (sys.zoom0 !== null && sys.zoom0 !== undefined) gs.zoomTarget = sys.zoom0; sys.zoom0 = null; },
+      /** where the chief stands (the door line "촌장님 덕분에…" when he is near) */
+      chief: () => (gs.player ? { x: gs.player.x, y: gs.player.y } : null),
     },
     dolls: dollsPort(gs, sys),
     fx: {
@@ -450,16 +533,20 @@ export class GeumbangSystem {
     if (!set) return true;                   // a village house / unknown: someone answers
     return hid ? set.has(hid) : set.size > 0;
   }
+  /** (critique H1) TownSim keeps where a citizen is in `placeObj` ('t_apt2:in'), never in `place`: townRead.js */
   refreshHomes() {
     const T = this.gs.v4 && this.gs.v4.town;
-    this.homes.clear();
-    if (!T) return;
-    for (const e of this.entries) {
-      if (e.kind === 'village') continue;
-      const s = new Set();
-      for (const h of e.households) for (const p of h.people) { const c = Number.isFinite(p.cid) ? T.get(p.cid) : null; if (c && c.state === 'in' && c.place && c.place.indexOf(e.aid + ':') === 0) { s.add(h.hid); break; } }
-      this.homes.set(e.aid, s);
-    }
+    this.homes = T ? homeSets(this.entries, (cid) => T.get(cid)) : new Map();
+  }
+
+  /** (critique H3) who lives where changed (a district home founded, newcomers, a village house finished): the
+   *  AddressBook rebuilds (≤ once per 2 s, host.touch) */
+  townSig() {
+    const T = this.gs.v4 && this.gs.v4.town, V = WORLD.v4 || {};
+    let lots = 0;
+    for (const id in V.lots || {}) lots++;
+    const houses = (this.gs.houses || []).filter((h) => h && h.enabled !== false && h.door && h.site).length;
+    return townSignature(T ? T.citizens : [], lots + ':' + houses + ':' + ((this.gs.zones && Object.values(this.gs.zones).filter((z) => z && z.unlocked).length) || 0));
   }
 
   start() {
@@ -467,12 +554,55 @@ export class GeumbangSystem {
     this.ports = makeV4Ports(gs, this);
     this.host = new GeumbangHost(this.ports, this.saved, { tuning: this.tune, layout: this.lay, seed: 20261017 });
     gs.v43.gb = this.host.api;
+    // the cargo sleigh holds before ave_s while a van holds the spur (CargoSleigh reads it: G-P2b)
+    const d = this.v42.depot;
+    if (d) {
+      d.gbSpurBusy = () => !!(this.host && this.host.model.spurBusy());
+      // (critique M8) the sleigh's hold point comes from the same rule the vans use (G-P2b reads it)
+      d.gbHoldS = () => this.ports.depot.holdS();
+      // (critique M4, G-P2c) a 금방 van stopped or driving ahead of the sleigh in its lane: the sleigh waits behind it
+      d.gbVanAhead = (sl) => {
+        // (G-P2c is in: the sleigh waits behind a van in its lane, so the curbs need not keep off its lane — the
+        //  AddressBook rebuilds without the module-only rule, which cost the vans 25–45 % in delivery time)
+        if (!this.p2c) { this.p2c = true; if (this.host) { this.host.model.avoid = null; this.host.touch(); } }
+        return this.vanAhead(sl);
+      };
+      // (critique M4, G-P2c) keep right: the sleigh is drawn in the right-hand lane of the street it drives on
+      d.gbLaneOffset = (sl, p, dt) => this.laneOffset(sl, p, dt);
+    }
+    // (critique H3) a finished building / house: the AddressBook rebuilds
+    this.onBuilt = () => { if (this.host) this.host.touch(); };
+    if (gs.events) gs.events.on('built', this.onBuilt);
+    this.sigT = 2; this.sig = this.townSig();
     // the late art (plan §10.4): the core page + the resident ui6 icons + the sounds now, the van page with the first van
     Assets.loadFragment(gs, 'geumbang', { only: FRAGMENTS.geumbang.core.concat(FRAGMENTS.geumbang.van) });
     Assets.loadFragment(gs, 'ui6', { only: FRAGMENTS.ui6.resident });
-    Assets.loadFragment(gs, 'geumbangfolk', { only: FRAGMENTS.geumbangfolk.road.concat(FRAGMENTS.geumbangfolk.hub) }, () => { if (TF.mergeGeumbangfolk && Assets.lateManifest && Assets.lateManifest.geumbangfolk) TF.mergeGeumbangfolk(Assets.lateManifest.geumbangfolk); });
+    // the crew's anims (G-P7): the manifest merged into the doll runtime; its two pages then load on demand through
+    // TF.pick -> Residency.want (TF.ofAtlas 'road' / 'hub'). Without G-P7 nothing is fetched: plain townsfolk looks.
+    if (TF.mergeGeumbangfolk) Assets.loadFragment(gs, 'geumbangfolk', {}, () => { if (Assets.lateManifest && Assets.lateManifest.geumbangfolk) TF.mergeGeumbangfolk(Assets.lateManifest.geumbangfolk); });
     Assets.loadFragment(gs, 'audio8', { audio: ['sfx_gb_doorbell', 'sfx_gb_doorbell_2', 'sfx_gb_horn', 'sfx_gb_chime', 'sfx_gb_thump', 'sfx_gb_thump_2', 'sfx_gb_jingle', 'sfx_gb_tape', 'sfx_gb_tape_2', 'sfx_gb_scan', 'sfx_gb_locker'] });
     Assets.loadFragment(gs, 'vehicles', { only: ['veh_dog_sled'] });
+    this.paintGround();
+  }
+
+  /** the bay-1 apron and the S-jog in the street dirt (a ground bake hook, like RoadPaint.addV42Streets; G-P9 moves
+   *  these two rects into WORLD.v43.gb.paint + addV42Streets and this goes) */
+  paintGround() {
+    const gs = this.gs, P = gs.v4 && gs.v4.paint, G = gs.ground, rects = this.lay.paint || [];
+    if (!P || !P.pattern || !G || !G.addBakeHook || !rects.length || this.paintHook || P.gbPainted) return;   // (G-P9 in: RoadPaint paints them)
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const quad = (r) => [L(r.i[0], r.j[0]), L(r.i[1], r.j[0]), L(r.i[1], r.j[1]), L(r.i[0], r.j[1])];
+    for (const r of rects) for (const q of quad(r)) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+    const rect = { x: x0 - 40, y: y0 - 40, w: x1 - x0 + 80, h: y1 - y0 + 80 };
+    this.paintHook = G.addBakeHook((ctx) => {
+      const pat = P.pattern(ctx, 'road_dirt');
+      for (const r of rects) {
+        const c = quad(r);
+        ctx.save(); ctx.beginPath(); ctx.moveTo(c[0].x, c[0].y); for (const q of c) ctx.lineTo(q.x, q.y); ctx.closePath();
+        ctx.fillStyle = pat || '#b9a68c'; ctx.globalAlpha = pat ? 1 : 0.7; ctx.fill(); ctx.restore();
+      }
+    }, rect);
+    G.invalidate(rect);
   }
 
   /** the view once its pages are in (or after 20 s with the code stand-ins) and the UI scene is up */
@@ -487,26 +617,69 @@ export class GeumbangSystem {
     }
   }
 
-  /** the 금방 개업 pad by the depot door once the letter came (4,000 coins; the planks / ingots from the racks) */
+  /** (M4, G-P2c) a 금방 van in the sleigh's lane within 2.6 m ahead of it (not one waiting for the sleigh) */
+  vanAhead(sl) {
+    const m = this.host && this.host.model;
+    if (!m || !m.disp || !sl || !sl.at) return false;
+    const p = sl.at(sl.s), back = sl.state === 'back';
+    const di = (p.di || 0) * (back ? -1 : 1), dj = (p.dj || 0) * (back ? -1 : 1);
+    // ground direction of travel (metres frame: x = (dx), y = 2·dy over 64 px)
+    const hx = 64 * (di + dj), hy = 64 * (di - dj), hl = Math.hypot(hx, hy) || 1, ux = hx / hl, uy = hy / hl;
+    for (const v of m.disp.vans) {
+      // (a van waiting at the apron gate waits FOR the sleigh: never hold behind it — no deadlock)
+      if (v.st === 'bay' || v.st === 'load' || v.st === 'break' || (v.st === 'wait' && v.waitFor === 'apron') || v.st === 'pivot' || v.st === 'reverse') continue;
+      const dx = (v.x - sl.x) / 64, dy = ((v.y - sl.y) * 2) / 64;
+      const a = dx * ux + dy * uy, lat = Math.abs(-dx * uy + dy * ux);
+      if (a > 0.3 && a < 5.5 && lat < 1.1) return true;
+    }
+    return false;
+  }
+
+  /**
+   * (M4, G-P2c) keep right: the cargo sleigh's route (WORLD.v42.sleighRoute) runs on 역앞 거리's centre line (j −5)
+   * and on 중앙로's −j lane (i 31) both ways — so it met the vans head-on in their lane. Moving on a RoadNet drive
+   * edge, it is drawn in that edge's right-hand lane (RoadNet.laneLattice's rule: +i at J − off, −i at J + off, +j at
+   * I + off, −j at I − off); off the streets (the depot apron, the spur) it keeps its route. Eased (≈ 0.4 s) so it
+   * changes lanes instead of jumping. Returns the lattice offset { i, j } (cells) to add to the route point.
+   */
+  laneOffset(sl, p, dt) {
+    const o = sl.gbOff || (sl.gbOff = { i: 0, j: 0 });
+    const back = sl.state === 'back', moving = sl.state === 'go' || back;
+    const rn = this.gs.v4 && this.gs.v4.roadNet;
+    const tg = moving && rn ? keepRight(rn.driveEdges, p, back) : { i: 0, j: 0 }, ti = tg.i, tj = tg.j;
+    const k = Math.min(1, (Number.isFinite(dt) && dt > 0 ? dt : 1 / 60) * 3);
+    o.i += (ti - o.i) * k; o.j += (tj - o.j) * k;
+    if (Math.abs(o.i) < 0.005) o.i = 0;
+    if (Math.abs(o.j) < 0.005) o.j = 0;
+    return o;
+  }
+
+  /** the 금방 개업 pad by the depot door once the letter came: 4,000 coins + 판자 20 · 주괴 10 brought by the porters or
+   *  the chief (UnlockPad items, the v4 site flow; critique L1). Partly paid coins and items are kept in the slice (H4). */
   updatePad(dt) {
     const gs = this.gs, m = this.host.model;
     const due = m.st === 0 && m.letterDue();
     if (due && !this.pad) {
       const p = L(this.lay.openPad[0], this.lay.openPad[1]), O = this.tune.open || {};
+      const saved = m.pad || { paid: this.padPaid || 0, got: this.padGot || {} };
+      const items = {};
+      for (const k of ['item_plank', 'item_ingot']) if (O[k] > 0) items[k] = O[k];
       this.pad = new UnlockPad(gs, 'gb_open', p.x, p.y, {
-        kind: 'unlock', cost: O.coins || 4000, paid: this.padPaid || 0, labelFn: () => gt('gb_open_pad', null, getLang()), icon: Assets.pick('ui_icon_gb', 'ui_icon_box', 'ui_icon_delivery'), iconSize: 48,
+        kind: 'unlock', cost: O.coins || 4000, paid: saved.paid || 0, items: Object.keys(items).length ? items : null, got: saved.got || {},
+        labelFn: () => gt('gb_open_pad', null, getLang()), icon: Assets.pick('ui_icon_gb', 'ui_icon_box', 'ui_icon_delivery'), iconSize: 48,
         onComplete: (pad) => {
-          const s = this.ports.depot.stock();
-          if (s) for (const k of ['item_plank', 'item_ingot']) if (O[k]) s.take(k, O[k]);
           pad.vanish();
-          this.pad = null; this.padPaid = 0;
+          this.pad = null; this.padPaid = 0; this.padGot = null; m.pad = null;
           this.host.api.open({});
         },
       });
       if (gs.player && this.pad.pad && this.pad.pad.contains(gs.player.x, gs.player.y)) this.pad.needsLeave = true;
       if (gs.popIn) gs.popIn(this.pad);
     }
-    if (this.pad) { if (!due) { this.padPaid = this.pad.paid; this.pad.vanish(); this.pad = null; } else this.pad.update(dt); }
+    if (this.pad) {
+      if (!due) { this.padPaid = this.pad.paid; this.padGot = Object.assign({}, this.pad.got); this.pad.vanish(); this.pad = null; }
+      else { this.pad.update(dt); if (this.pad) m.pad = { paid: this.pad.paid, got: Object.assign({}, this.pad.got) }; }
+    }
   }
 
   update(dt) {
@@ -514,6 +687,8 @@ export class GeumbangSystem {
     if (!this.host) { if (!this.gateOpen()) return; this.start(); }
     this.homeT -= dt;
     if (this.homeT <= 0) { this.homeT = 1; this.refreshHomes(); }
+    this.sigT -= dt;
+    if (this.sigT <= 0) { this.sigT = 2; const sg = this.townSig(); if (sg !== this.sig) { this.sig = sg; this.host.touch(); } }
     this.maybeView(dt);
     this.updatePad(dt);
     this.host.update(dt);
@@ -537,5 +712,5 @@ export class GeumbangSystem {
       return this.state();
     };
   }
-  destroy() { if (this.pad) this.pad.destroy(); if (this.host) this.host.destroy(); this.host = null; if (this.gs.v43) this.gs.v43.gb = null; }
+  destroy() { if (this.onBuilt && this.gs.events) this.gs.events.off('built', this.onBuilt); this.onBuilt = null; if (this.pad) this.pad.destroy(); if (this.paintHook && this.gs.ground && this.gs.ground.removeBakeHook) this.gs.ground.removeBakeHook(this.paintHook); this.paintHook = null; if (this.host) this.host.destroy(); this.host = null; if (this.gs.v43) this.gs.v43.gb = null; }
 }

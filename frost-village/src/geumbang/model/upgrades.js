@@ -22,7 +22,7 @@ export class Upgrades {
   name(kind) { return NAME[kind] || kind; }
   bought(kind) {
     const L = this.lv;
-    return { pack: L.pack >= 1, van2: L.van >= 2, van3: L.van >= 3, sled2: L.sled >= 2, lockA: L.lockA >= 1, lockP: L.lockP >= 1, dawn: L.dawn >= 1, back: L.back >= 1 }[kind];
+    return { pack: L.pack >= 1, van2: L.van >= 2, van3: L.van >= 3, sled2: L.sled >= 2, sled2c: L.sled >= 2, lockA: L.lockA >= 1, lockP: L.lockP >= 1, dawn: L.dawn >= 1, back: L.back >= 1 }[kind];
   }
   cost(kind) {
     const U = this.tune.up;
@@ -42,7 +42,8 @@ export class Upgrades {
     this.hold('pack', m.pickPack >= U.packQueue, U.packS, dt);
     if (L.van < 2) this.hold('van2', m.day && m.ready >= U.vanWait, U.vanS, dt);
     else this.hold('van3', m.day && m.ready >= U.vanWait, U.vanS, dt);
-    if (L.sled >= 1) this.hold('sled2', m.sledQ >= U.sledWait, U.sledS, dt);
+    // 개썰매 2: village parcels pile up at the stand, or full piles wait for 금방 집하 while every sled is busy
+    if (L.sled >= 1) { this.hold('sled2', m.sledQ >= U.sledWait, U.sledS, dt); this.hold('sled2c', !!m.collectNeed, U.collectS || 120, dt); if (this.ok.has('sled2c')) this.ok.add('sled2'); }
     if (L.van >= 2 && !this.bought('lockA')) this.ok.add('lockA');
     if (m.dayChanged && L.sled >= 1) this.sledDays++;
     if (L.sled >= 1 && this.sledDays >= U.lockerDays) this.ok.add('lockP');

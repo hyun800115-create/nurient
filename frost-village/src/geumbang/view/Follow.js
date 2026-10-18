@@ -74,7 +74,7 @@ export class Follow {
       return { x: b.x + hub.lay.pile[0], y: b.y + hub.lay.pile[1] - 30, cap: 3, reveal: true };
     }
     if (o.st === 'gone') {
-      if (o.van === 'sled' && m.sled) return { x: m.sled.x, y: m.sled.y - 30, cap: 5 };
+      if (o.van === 'sled' && m.sled) { const q = (m.sleds || [m.sled]).find((z) => z.load && z.load.includes(o)) || m.sled; return { x: q.x, y: q.y - 30, cap: 5 }; }
       const v = m.disp ? m.disp.vans.find((q) => q.id === o.van) : null;
       if (!v) return this.last;
       if (v.st === 'curb' && v.tl) {
@@ -103,16 +103,23 @@ export class Follow {
       if (w.reveal !== undefined) view.hub.reveal(!!w.reveal);
       if (w.cap !== this.cap) { this.cap = w.cap; this.caption(); }
     }
-    if (this.doneT >= 0) { this.doneT += dt; if (this.doneT > HOLD) this.stop(); }
-    if (this.t > 240) this.stop();                      // never longer than 4 minutes
-    if (this.c) { const a = Math.min(1, this.capT += dt * 5); this.c.setScale(0.85 + 0.15 * a); }
+    // (critique H6) stop() hides the caption: return at once, or the banner check below shows it again for good
+    if (this.doneT >= 0) { this.doneT += dt; if (this.doneT > HOLD) { this.stop(); return; } }
+    if (this.t > 240) { this.stop(); return; }          // never longer than 4 minutes
+    if (this.c && this.active) {
+      const a = Math.min(1, this.capT += dt * 5); this.c.setScale(0.85 + 0.15 * a);
+      // (in the game: the 금방 개업 banner sits in the caption's band for its 3.6 s — the caption waits under it)
+      const U = view.P.ui, under = !!(U && U.bannerOn && U.bannerOn());
+      if (this.c.visible === under) this.c.setVisible(!under);
+    }
   }
 
   capUI() {
     const ui = this.view.uiScene;
     if (!ui || this.c) { if (this.c) this.c.setVisible(true); return; }
-    // (below the HUD's left column — the v4.2 rank / 32/32 / order chips end at ≈ 528 — and above the subject)
-    this.c = ui.add.container(360, 590 + (View.safeTop || 0)).setDepth(DEPTH.TOP - 12);
+    // (right of the HUD's left column — the v4.2 rank / 32/32 / 정기 납품 chips end at x ≈ 300, y ≈ 300 — and well above
+    //  the subject at the screen's centre: a van's roof sign never meets it)
+    this.c = ui.add.container(360, 400 + (View.safeTop || 0)).setDepth(DEPTH.TOP - 12);
     this.bg = null;
     this.tx = ui.add.text(0, -6, '', textStyle(34, '#2B4F7E', '#ffffff', 0, '900')).setOrigin(0.5, 0.5);
     this.sub = ui.add.text(0, 44, gt('gb_follow_skip', null, this.view.lang()), textStyle(24, '#ffffff', '#2b2f3a', 6, '800')).setOrigin(0.5, 0.5);

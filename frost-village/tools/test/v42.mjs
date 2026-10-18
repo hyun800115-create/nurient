@@ -148,7 +148,8 @@ try {
   ok(after.total > before.total, 'the racks filled (' + before.total + ' → ' + after.total + ')');
   ok(after.dock + (after.total - before.total) >= Math.min(before.dock, 1) && after.total - before.total <= before.dock + 200, 'goods are moved, not made (dock ' + before.dock + ' → ' + after.dock + ')');
   // (CODE-1 review H1) the 물류 금고: saved in the logistics slice's cash, and 딸랑이 collects it (also after 읍)
-  const dt0 = await page.evaluate(() => { const gs = window.__FV.scene, D = gs.v42.depot; D.till.value += 640; const sv = gs.serialize(); return { till: D.till.value, cash: sv.logistics && sv.logistics.cash, onRound: gs.v42.office.tills().some((q) => q.name === 'depot') }; });
+  // (the courier works 07–21: a morning hour when the clock runs)
+  const dt0 = await page.evaluate(() => { const gs = window.__FV.scene, D = gs.v42.depot, ck = gs.v4 && gs.v4.clock; if (ck && ck.on) ck.set(8); D.till.value += 640; const sv = gs.serialize(); return { till: D.till.value, cash: sv.logistics && sv.logistics.cash, onRound: gs.v42.office.tills().some((q) => q.name === 'depot') }; });
   ok(dt0.cash === dt0.till && dt0.onRound, 'the 물류 금고 is saved (logistics.cash) and on 딸랑이\'s round', dt0);
   const dtGot = await until(page, () => { const gs = window.__FV.scene; return gs.v42.depot.till.value < 100 && (gs.v42.office.income.depot || 0) > 0; }, 240);
   ok(dtGot, '딸랑이 empties the 물류 금고 on a round');
@@ -179,6 +180,8 @@ try {
     // the chief far away in the west: the station is off screen
     window.__FV.teleport(-200, 700);
     for (const s of gs.v42.depot.sleighs) s.update = () => {};      // keep the sleigh out of it (it would take the surplus first)
+    // (a fresh dwell: a train already standing at the platform may be full from the sections before)
+    for (let k = 0; k < 60 * 200 && F.trainIn(); k++) window.__step.run(1 / 60);
     G.cargo = 12; F.addSurplus('item_ingot', 30);
     const log = { firstSurplusCargo: null, firstSurplusCards: null, cap: F.cap(), keep: Math.floor(F.cap() * 0.25) /* balance v42.freight.surplusShare */, cardMax: 0, surplusMax: 0, sawTrainIn: false };
     let n = 0;
@@ -211,8 +214,8 @@ try {
       window.__step.run(1 / 60);
       const inn = F.trainIn();
       if (inn) log.sawTrainIn = true;
-      const ab = F.aboard(), card = F.cardAboard || 0;
-      log.cardMax = Math.max(log.cardMax, card); log.surplusMax = Math.max(log.surplusMax, ab - card);
+      // (while the train stands at the platform: at departure the surplus aboard is paid and counted with the cards)
+      if (inn) { const ab = F.aboard(), card = F.cardAboard || 0; log.cardMax = Math.max(log.cardMax, card); log.surplusMax = Math.max(log.surplusMax, ab - card); }
       if (log.sawTrainIn && !inn) break;
     }
     log.cargoLeft = G.cargo; G.cargo = 0;

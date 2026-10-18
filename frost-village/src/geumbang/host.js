@@ -23,13 +23,17 @@ export class GeumbangHost {
     const P = ports;
     const clean = sanitizeGeumbang(saved);
     this.toastT = -99; this.lastToastDay = -1;
+    this.fills = []; this.fillDay = -1;
     this.rebuildT = 0; this.dirty = false;
     this.env = this.makeEnv();
     this.model = new GbModel({ tuning: this.tune, layout: this.lay, seed: opts.seed || 20261017, saved: clean, env: this.env, T: P.clock ? P.clock.T() : 0 });
     this.model.capBytes = GEUMBANG_SLICE.cap;
+    // the cargo sleigh's route (px): curbs keep off it (critique M4)
+    this.model.avoid = P.roads && P.roads.avoid ? P.roads.avoid() : null;
     this.roads();
     this.world();
-    if (P.roads && P.roads.net && P.roads.net() && P.roads.net().onChange) P.roads.net().onChange(() => { this.dirtyRoads = true; this.dirty = true; });
+    // (RoadNet has no off(): a destroyed host ignores the call — critique L9)
+    if (P.roads && P.roads.net && P.roads.net() && P.roads.net().onChange) P.roads.net().onChange(() => { if (this.destroyed) return; this.dirtyRoads = true; this.dirty = true; });
     this.view = opts.View && P.world && P.world.scene ? new opts.View(this, P) : null;
     this.api = this.makeApi();
     this.followId = null;
@@ -88,6 +92,13 @@ export class GeumbangHost {
       dockSurplus: () => (D().dockSurplus ? D().dockSurplus() : 0),
       takeSurplus: (n) => (D().takeSurplus ? D().takeSurplus(n) : null),
       firstHousehold: (book) => book.households().find((h) => h.first) || null,
+      // (critique C1 / H2) the station dock's surplus and the village piles: 정 할머니's opening stock, 금방 집하
+      dockTake: (item, n) => (D().dockTake ? D().dockTake(item, n) : 0),
+      piles: () => (D().piles ? D().piles() : []),
+      takePile: (id, n, to) => (D().takePile ? D().takePile(id, n, to) : 0),
+      pileTake: (item, n) => (D().pileTake ? D().pileTake(item, n) : 0),
+      dockRoom: (item) => (D().dockRoom ? D().dockRoom(item) : 0),
+      dockDrop: (items) => { if (D().dockDrop) D().dockDrop(items); else if (D().surplus) D().surplus(items); },
     };
   }
 
@@ -105,6 +116,8 @@ export class GeumbangHost {
     const m0 = typeof performance !== 'undefined' ? performance.now() : 0;
     this.model.tick(dt, this.T(), this.hour());
     this.msModel = (typeof performance !== 'undefined' ? performance.now() : 0) - m0;
+    // (critique M6) the racks' fill at each day's start: the 서리 소식 line "선반이 어제보다 p% 가벼워졌어요"
+    if (this.model.day !== this.fillDay) { this.fillDay = this.model.day; this.fills.unshift(this.env.rackFill ? this.env.rackFill() : 0); this.fills.length = Math.min(this.fills.length, 2); }
     const evs = this.model.events.splice(0);
     for (const e of evs) this.onEvent(e);
     if (this.view) this.view.update(dt, evs);
@@ -127,7 +140,14 @@ export class GeumbangHost {
         else this.toast(gt('gb_toast_order', { who: this.who(e.aid, e.hid), items: itemsLine(e.items, L) }, L), false);
         break;
       }
-      case 'gb:offer': this.toast(gt(this.model.up.name(e.kind), null, L) + ' · ' + gt('gb_why_wait', { n: this.model.orders.list.length }, L), true); break;
+      case 'gb:offer': this.toast(gt(this.model.up.name(e.kind), null, L) + ' · ' + gt(e.kind === 'sled2' ? 'gb_up_why_collect' : 'gb_why_wait', { n: this.model.orders.list.length }, L), true); break;
+      case 'gb:collect': {
+        // the first 금방 집하 of a day says what got lighter (later ones: the app's 오늘 tab)
+        if (e.op !== 'load' || !(e.n > 0)) break;
+        const day = Math.floor(e.T / 600);
+        if (this.colToastDay !== day) { this.colToastDay = day; this.toast(gt('gb_toast_collect', { pile: gt('gb_pile_' + String(e.item || '').replace(/^item_/, ''), null, L), n: e.n }, L), false); }
+        break;
+      }
       case 'gb:firstDone': this.firstToast = true; break;     // shown when the camera is back (update)
       case 'gb:open': if (P.ui && P.ui.banner) P.ui.banner(gt('gb_open_banner', null, L), gt('gb_tagline', null, L)); break;
       default: break;
@@ -184,7 +204,43 @@ export class GeumbangHost {
       touch: () => this.touch(),
       offer: () => m.up.offer,
       spurBusy: () => m.spurBusy(),
+      following: () => !!(this.view && this.view.following && this.view.following()),   // (관망 skips its cuts meanwhile: G-P12)
+      // (critique M6) what the office, the paper and 관망 show of 금방 (Integration G-P16 / G-P17 call these)
+      officeRow: () => { const T = m.settle.today; return gt('gb_row_office', { o: T.orders, d: T.delivered, s: T.units }, this.lang()); },
+      news: () => this.newsLines(),
+      watchSpot: (x, y, r) => this.watchSpot(x, y, r),
     };
+  }
+
+  /**
+   * yesterday in the 서리 소식 as VillageNews headlines [key, a, 0] (strings news_gb_day / news_gb_racks, G-P16):
+   * the homes 금방 delivered to, and how much lighter the racks are than the day before (only after a day 금방 worked,
+   * ≥ 5 %). Empty before the opening.
+   */
+  newsLines() {
+    const m = this.model, d = m.settle.days[0], out = [];
+    if (m.st !== 2 || !d || !(d[1] > 0)) return out;
+    out.push(['news_gb_day', d[1], 0]);
+    const [now, prev] = this.fills;
+    if (prev > 0 && now >= 0) { const p = Math.round((100 * (prev - now)) / prev); if (p >= 5) out.push(['news_gb_racks', Math.min(95, p), 0]); }
+    return out;
+  }
+
+  /**
+   * (G-P17 관망 "금방 구경") where something 금방 can be watched within r px of (x, y): a van at a curb (the courier
+   * walks to a door), else a van loading in bay 1, else a sled loading at a pile — { x, y, fx, fy, what } or null
+   */
+  watchSpot(x, y, r = 1500) {
+    const m = this.model;
+    if (m.st !== 2) return null;
+    let best = null, bd = r;
+    const consider = (px, py, fx, fy, what, bonus) => { const d = Math.hypot(px - x, (py - y) * 2) - bonus; if (d < bd) { bd = d; best = { x: px, y: py, fx, fy, what }; } };
+    for (const v of m.disp ? m.disp.vans : []) {
+      if (v.st === 'curb') consider(v.x + 70, v.y + 40, v.x, v.y, 'curb', 300);
+      else if (v.st === 'load' || (v.st === 'bay' && v.load.length)) consider(v.x + 90, v.y + 60, v.x, v.y, 'bay', 0);
+    }
+    for (const q of m.sleds || []) if (q.st === 'cload') consider(q.x + 60, q.y + 40, q.x, q.y, 'pile', 0);
+    return best;
   }
 
   /** the art arrived after the model started (late fragments, ports_v4): make the view now */
@@ -195,5 +251,5 @@ export class GeumbangHost {
     return true;
   }
 
-  destroy() { if (this.view) this.view.destroy(); this.view = null; }
+  destroy() { this.destroyed = true; if (this.view) this.view.destroy(); this.view = null; }
 }

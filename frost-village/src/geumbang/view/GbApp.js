@@ -59,7 +59,8 @@ export class GbApp {
     const logo = spriteOf('ui_gb_logo_' + (view.lang() === 'en' ? 'en' : 'ko'));
     if (logo) this.root.add(ui.add.image(Hd.logo[0], Hd.logo[1], logo.tex, logo.frame).setOrigin(0, 0).setScale(Hd.logo[2]));
     else this.root.add(ui.add.text(Hd.logo[0], Hd.logo[1] + 6, gt('gb_app', null, view.lang()), textStyle(48, NAVY, '#fff7e6', 8, '900')).setOrigin(0, 0));
-    this.tagline = ui.add.text(Hd.tagline[0], Hd.tagline[1], gt('gb_tagline', null, view.lang()), textStyle(Hd.tagline[2], NAVY, '#fff7e6', 0, '800')).setOrigin(0, 0.5);
+    // (critique M7) the slogan "금방 왔지?" with the tagline: "방금 시키면 금방 와요 · 금방 왔지?"
+    this.tagline = ui.add.text(Hd.tagline[0], Hd.tagline[1], gt('gb_tagline', null, view.lang()) + ' · ' + gt('gb_slogan', null, view.lang()), textStyle(Hd.tagline[2], NAVY, '#fff7e6', 0, '800')).setOrigin(0, 0.5);
     this.root.add(this.tagline);
     // the mascot runs in under the close button (masked by the screen)
     const ms = spriteOf('ui_gb_mascot');
@@ -182,16 +183,17 @@ export class GbApp {
   signature() {
     const m = this.m, t = m.settle.today;
     switch (this.tab) {
-      case 'today': return [t.orders, t.delivered, t.coins, t.units, CATS.map((c) => Math.round(this.level(c) * 50)).join(','), Object.keys(m.orders.deals).join(','), m.settle.rev.length && m.settle.rev[0].join('')].join('|');
+      case 'today': return [t.orders, t.delivered, t.coins, t.units, t.col, CATS.map((c) => Math.round(this.level(c) * 50)).join(','), Object.keys(m.orders.deals).join(','), m.settle.rev.length && m.settle.rev[0].join('')].join('|');
       case 'orders': return m.orders.list.map((o) => o.id + o.st + (o.van || '')).join(',') + '|' + (this.view.recent || []).map((r) => r.id).join(',') + '|' + Math.floor(m.T / 10);
       case 'goods': return Object.keys(m.tune.catalog).map((k) => this.count(k) + (m.orders.dealOn(k, m.T) ? 'd' : '') + (m.orders.selling[k] === false ? 'x' : '') + (m.guard.paused(k) ? 'p' : '')).join(',');
-      case 'crew': return (m.disp ? m.disp.vans.map((v) => v.st + v.stopI).join(',') : '') + '|' + (m.sled ? m.sled.st + m.sled.queue.length : '') + '|' + (m.up.offer || '') + JSON.stringify(m.up.lv);
+      case 'crew': { const S = this.view.host.ports.settings; return (m.disp ? m.disp.vans.map((v) => v.st + v.stopI).join(',') : '') + '|' + (m.sleds || []).map((q) => q.st + (q.queueN || 0) + (q.cpile ? q.cpile.id : '')).join(',') + '|' + (m.up.offer || '') + JSON.stringify(m.up.lv) + '|' + (S && S.alerts ? S.alerts() : '') + (S && S.scenes ? S.scenes() : ''); }
       case 'reviews': return m.settle.rev.map((r) => r.join(':')).join(',');
       default: return '';
     }
   }
 
-  count(k) { const s = this.view.host.env.source; return s && s.count ? s.count(k) : 0; }
+  /** what 금방 can sell of an item now (its own share + the racks above the floor) */
+  count(k) { const m = this.m; if (m.avail) return m.avail(k); const s = this.view.host.env.source; return s && s.count ? s.count(k) : 0; }
   level(c) { const s = this.view.host.env.source; return s && s.level ? s.level(c) : 0; }
 
   refresh(force) {
@@ -228,6 +230,12 @@ export class GbApp {
       this.txt(cx + 68, cy + 38, (i === 2 ? '−' : '') + Number(v).toLocaleString(), 40, NAVY, { w: '900' });
     });
     y += 232 + C.gap;
+    // 금방 집하: crates the dog sleds brought from the village's full piles to the station dock today
+    this.card(y, 110);
+    this.icon('ui_icon_gb_sled', 58, y + 55, 60);
+    this.txt(110, y + 18, gt('gb_collect', null, L), C.small, BROWN);
+    this.txt(110, y + 50, Number(t.col || 0).toLocaleString(), 40, NAVY, { w: '900' });
+    y += 110 + C.gap;
     // the racks (now, and a game day ago)
     this.card(y, 300);
     this.txt(28, y + 20, gt('gb_today_racks', null, L), C.font, INK, { w: '900' });
@@ -403,9 +411,13 @@ export class GbApp {
       this.card(y, C.h);
       this.icon(UP_ICON[off] || 'ui_icon_gb', 70, y + 70, 76);
       this.txt(124, y + 26, gt(m.up.name(off), null, L), 34, NAVY, { w: '900' });
-      const n = off === 'pack' ? m.orders.list.filter((o) => o.st === 'pick' || o.st === 'pack').length : off === 'dawn' ? m.settle.today.overnight : off === 'sled2' ? (m.sled ? m.sled.queue.length : 0) : m.orders.list.filter((o) => o.st === 'ready').length;
-      this.txt(124, y + 76, gt(UP_WHY[off], { n }, L), C.small, BROWN, { wrap: 490 });
-      this.button(C.w - 330, y + C.h - 112, 300, gt('gb_up_buy', { cost: costLine(m.up.cost(off), L) }, L), () => { if (host.api.upgrade(off)) { this.dirty = true; this.refresh(true); } });
+      const n = off === 'pack' ? m.orders.list.filter((o) => o.st === 'pick' || o.st === 'pack').length : off === 'dawn' ? m.settle.today.overnight : off === 'sled2' ? (m.sledQ ? m.sledQ.length : 0) : m.orders.list.filter((o) => o.st === 'ready').length;
+      // (critique L2) items the racks and the dock do not have are paid in coins: the card says how many more
+      const cost = m.up.cost(off), base = (cost && cost.coins) || 0, PC = host.ports.coins;
+      const pay = PC && PC.price ? PC.price(cost) : base;
+      const short = pay > base ? '\n' + gt('gb_up_short', { n: (pay - base).toLocaleString() }, L) : '';
+      this.txt(124, y + 76, gt(UP_WHY[off], { n }, L) + short, C.small, BROWN, { wrap: 490 });
+      this.button(C.w - 330, y + C.h - 112, 300, gt('gb_up_buy', { cost: costLine(cost, L) }, L), () => { if (host.api.upgrade(off)) { this.dirty = true; this.refresh(true); } });
       y += C.h + C.gap;
     }
     const vans = m.disp ? m.disp.vans : [];
@@ -417,17 +429,33 @@ export class GbApp {
       this.txt(124, y + 74, gt(VAN_LINE[v.st] || 'gb_van_idle', { who }, L) + (v.load.length ? ' · ' + gt('gb_tag_s', { n: v.load.length }, L) : ''), C.small, BROWN, { wrap: 490 });
       y += 150 + C.gap;
     }
-    if (m.sled) {
-      this.card(y, 150);
-      this.icon('ui_icon_gb_sled', 66, y + 75, 80);
-      this.txt(124, y + 26, gt('gb_crew_rider', null, L), C.font, INK, { w: '900' });
-      this.txt(124, y + 74, gt(m.sled.st === 'stand' ? 'gb_sled_idle' : 'gb_sled_run', null, L) + (m.sled.queue.length ? ' · ' + gt('gb_tag_s', { n: m.sled.queue.length }, L) : ''), C.small, BROWN, { wrap: 490 });
-      y += 150 + C.gap;
+    if (m.sleds && m.sleds.length) {
+      for (const q of m.sleds) {
+        this.card(y, 150);
+        this.icon('ui_icon_gb_sled', 66, y + 75, 80);
+        this.txt(124, y + 26, gt('gb_crew_rider', null, L) + (q.idx > 1 ? ' ' + q.idx : ''), C.font, INK, { w: '900' });
+        const pile = q.cpile ? gt('gb_pile_' + String(q.cpile.item).replace(/^item_/, ''), null, L) : '';
+        const line = q.st === 'stand' ? 'gb_sled_idle' : q.st === 'cgo' || q.st === 'cload' ? 'gb_sled_collect' : q.st === 'cback' || q.st === 'cdrop' ? 'gb_sled_drop' : 'gb_sled_run';
+        const qn = m.sledQ ? m.sledQ.length : 0;
+        this.txt(124, y + 74, gt(line, { pile }, L) + (q.idx === 1 && qn ? ' · ' + gt('gb_tag_s', { n: qn }, L) : ''), C.small, BROWN, { wrap: 490 });
+        y += 150 + C.gap;
+      }
     } else if (m.village) {
       this.card(y, 130);
       this.icon('ui_icon_gb_sled', 66, y + 65, 72, 0.5);
       this.txt(124, y + 44, gt('gb_sled_soon', null, L), C.small, BROWN, { wrap: 490 });
       y += 130 + C.gap;
+    }
+    // (critique L6) the two 금방 settings here as well: 알림 켬 / 조용히 / 끔 and 문 앞 장면 (첫 주문 따라가기, 띵동)
+    const S = host.ports.settings;
+    if (S && S.setAlerts && S.setScenes) {
+      const al = S.alerts ? S.alerts() : 'on', sc = S.scenes ? S.scenes() : 'on';
+      this.card(y, 220);
+      this.txt(28, y + 58, gt('gb_set_alerts', null, L), C.small, INK, { w: '900', oy: 0.5 });
+      this.button(C.w - 250, y + 14, 220, gt('gb_set_' + al, null, L), () => { S.setAlerts(al === 'on' ? 'quiet' : al === 'quiet' ? 'off' : 'on'); this.dirty = true; this.refresh(true); });
+      this.txt(28, y + 162, gt('gb_set_scenes', null, L), C.small, INK, { w: '900', oy: 0.5 });
+      this.button(C.w - 250, y + 118, 220, gt(sc === 'off' ? 'gb_set_off' : 'gb_set_on', null, L), () => { S.setScenes(sc === 'off'); this.dirty = true; this.refresh(true); });
+      y += 220 + C.gap;
     }
     // the hub crew (names)
     this.card(y, 150);

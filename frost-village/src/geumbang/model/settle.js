@@ -12,7 +12,9 @@ import { REVIEW_TPLS } from '../strings.js';
 export class Settle {
   constructor(tune, seed) {
     this.tune = tune; this.seed = seed >>> 0;
-    this.today = { orders: 0, delivered: 0, coins: 0, units: 0, overnight: 0 };
+    this.today = { orders: 0, delivered: 0, coins: 0, units: 0, overnight: 0, col: 0 };
+    this.col = 0;                  // 금방 집하: crates the sleds brought to the dock (all time)
+    this.lockers = { A: [], P: [] };   // the apartment / plaza locker: [{ id, aid, age (s) }] (paid at the fill)
     this.days = [];                // [[orders, delivered, coins], …] newest first, ≤ 7
     this.tot = [0, 0, 0, 0];       // orders, delivered, coins, units
     this.rev = [];                 // [[tpl, aid, stars]] newest first, ≤ 12
@@ -28,7 +30,7 @@ export class Settle {
     if (this.day >= 0 && day !== this.day) {
       this.days.unshift([this.today.orders, this.today.delivered, this.today.coins]);
       while (this.days.length > 7) this.days.pop();
-      this.today = { orders: 0, delivered: 0, coins: 0, units: 0, overnight: 0 };
+      this.today = { orders: 0, delivered: 0, coins: 0, units: 0, overnight: 0, col: 0 };
       this.r = stream(this.seed, 'settle', day);
     }
     this.day = day;
@@ -67,6 +69,25 @@ export class Settle {
       while (this.rev.length > this.tune.review.max) this.rev.pop();
     }
     return { t: 'delivered', id: o.id, aid: o.aid, n: o.n, coins, onTime: o.onTime, how, box: !!box, review };
+  }
+
+  /**
+   * (critique H5) the lockers empty: a parcel is fetched when someone of its household passes home (apartments), at
+   * door.pickupHour, or after locker.pickS — the locker has room again. Returns { t: 'lockerPickup', kind, aid, id }.
+   */
+  updateLockers(dt, hour, env) {
+    const out = [], D = this.tune.door, pickS = (this.tune.locker && this.tune.locker.pickS) || 50;
+    for (const kind of ['A', 'P']) {
+      const L = this.lockers[kind];
+      for (let i = L.length - 1; i >= 0; i--) {
+        const b = L[i];
+        b.age += dt;
+        const morning = hour >= D.pickupHour && hour < D.pickupHour + 0.5 && b.age > 5;
+        const passer = kind === 'A' && b.age > 5 && env.passer ? env.passer(b.aid, { age: b.age, locker: true }) : false;
+        if (morning || passer || b.age >= pickS) { L.splice(i, 1); out.push({ t: 'lockerPickup', kind, aid: b.aid, id: b.id }); }
+      }
+    }
+    return out;
   }
 
   /** the boxes on the steps: snow caps, taken in. Returns pickup events. */
