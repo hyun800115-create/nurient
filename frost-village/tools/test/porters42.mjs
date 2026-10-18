@@ -91,7 +91,7 @@ try {
   // (the save's own village makes ~600 a minute, so one may already have walked in during steps 1–2: count from here)
   const n0 = (await crew()).crew;
   await ev(() => window.__FV.v42.crew({ rate: 1000, now: true }));
-  await adv(1);
+  await adv(0.3);     // (the west gate is close to the 창고: the walk in can take only ~1 s)
   const a1 = await ev(() => {
     const gs = window.__FV.scene, W = gs.warehouse, wp = W.porters[W.porters.length - 1];
     const f = wp.cameFrom || wp;

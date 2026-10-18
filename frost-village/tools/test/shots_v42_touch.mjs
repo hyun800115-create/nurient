@@ -28,17 +28,18 @@ const BUSY = (every) => { const gs = window.__FV.scene, R = gs.civic.restaurant;
 const SCENES = [
   // (base copy) the designer's phone: all three staff, the chief away: the terrace full of guests waiting for food
   { name: '30_restaurant_busy_before', secs: 150, feed: true, setup: () => { const R = window.__busy(5); return { x: R.x - 230, y: R.y - 120, z: 1.0 }; } },
-  // a staged lunch rush (guests every 2.2–2.6 s, about twice what the staff can serve) fills the back yard, then the
-  // guests come at the normal pace for a short while (`calm`) so the servers catch up: full tables, plates on them
-  { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); R.setTables(1, true); return { x: R.x - 225, y: R.y - 170, z: 1.35 }; },
-    then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 225, y: R.y - 170, z: 1.35 }; }, secs2: 14 },
+  // a staged lunch rush (guests every 2.2–2.6 s, about twice what the staff can serve) fills the back yard. 31: one
+  // server, a short calm — he cannot keep up and the 서빙 직원 2 pad appears (as in the game); 32–33: with the 서빙
+  // 직원 2, guests come at the normal pace again until most tables eat (`calm`: ≥ 6 eating, ≤ 3 waiting, ≤ 45 s)
+  { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); R.setTables(1, true); return { x: R.x - 190, y: R.y - 150, z: 1.25 }; },
+    then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 190, y: R.y - 150, z: 1.25 }; }, secs2: 14 },
   { name: '32_restaurant_tables_lv2', secs: 100, feed: true, setup: () => { const R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true); return { x: R.x - 250, y: R.y - 190, z: 1.3 }; },
-    then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 250, y: R.y - 190, z: 1.3 }; }, secs2: 12 },
+    then: () => window.__calm({ x: -250, y: -190, z: 1.3 }) },
   { name: '33_restaurant_tables_night', secs: 100, feed: true, setup: () => {
     const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true);
     if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(20.6); }
     return { x: R.x - 250, y: R.y - 190, z: 1.3 };
-  }, then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 250, y: R.y - 190, z: 1.3 }; }, secs2: 12,
+  }, then: () => window.__calm({ x: -250, y: -190, z: 1.3 }),
     after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); } },
   // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept)
   { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, R = window.__busy(5); R.busyT = 61; const p = R.tablesPadPos(); window.__FV.teleport(p.x + 150, p.y + 160); return { x: p.x + 40, y: p.y + 40, z: 1.0 }; } },
@@ -66,6 +67,12 @@ await page.evaluate((BUSYsrc) => {
   window.__run = (sec) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { T += DT; D += DT; game.headlessStep(T, DT); } };
   window.__draw = () => { T += DT; D += DT; game.step(T, DT); };
   window.__busy = eval('(' + BUSYsrc + ')');
+  // (after a rush: guests at the normal pace until most tables eat — ≥ 6 eating and ≤ 3 waiting, at most 45 s)
+  window.__calm = (c) => {
+    const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5;
+    for (let i = 0; i < 45; i++) { window.__run(1); const g = R.guests; if (g.filter((q) => q.state === 'eat').length >= 6 && g.filter((q) => q.state === 'seated').length <= 3) break; }
+    return { x: R.x + c.x, y: R.y + c.y, z: c.z };
+  };
   try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ }
 }, BUSY.toString());
 const run = async (sec, feed) => { for (let s = 0; s < sec; s += 5) { if (feed) await page.evaluate(() => window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 })); await page.evaluate((d) => window.__run(d), Math.min(5, sec - s)); } };
