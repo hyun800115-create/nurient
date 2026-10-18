@@ -531,3 +531,24 @@ again, both runs are listed.
 | `build_artifact.mjs --webp` + `test_deploy.mjs standalone --quick` | build OK (412 files + page, 3 batches 125 / 245 / 42, 125 stale); deploy PASS: WebGL, title 1.8 s, no placeholder art, no failed requests, 0 errors |
 | `balanceCheck` | 0 warnings |
 
+
+## 9. Final verification (v4.2 verify)
+
+An independent re-run of everything on the fix-pass source (`1d6fc8f`) on the same loaded 4-core machine (load 8–19),
+plus three small fixes found on the way. Scratch `v42code2_verify/` (`suites/`, `repro/`, `bots/`, `perf/`, `build/`).
+
+### 9.1 Found and fixed
+
+| # | Found | Fix | Proof |
+|---|---|---|---|
+| V1 | **The 서리 은행 plot never appeared in a session where the office was finished after 읍** (the bots' and the designer's order). `v42_bank` is `after: f:rankEup, also: b:chief_office`; plots were refreshed on a `step` / `region` only, and after 읍 no step comes — the plot showed only after a reload. | `Game.js`: a finished building (`built`) refreshes the plots 0.8 s later, **show-only** (it never hides a plot or a site a test / hook put up). | `bank_plot.mjs` (46-min save, 읍, office finished): bank plot shown after 5 / 30 / 120 s **false → true**. Fresh smart bot: office 57.2 → bank built 62.4 min (the first smart run: office 53.2, bank never). |
+| V2 | **Arrow-only: cash pads ↔ 물류창고 plot for 14 minutes with 30,000 coins** (the arrow-only bot, first run). After 읍 the cash hint (`lots`: ≥ 300 on the pads) won over the next v4.2 thing even when it was paid for. | `Tutorial.cashHint`: after 읍 (no v4 goal text) the next v4.2 thing on the arrow's list counts like `canBuild` once he can pay for it. | `v42_guide.mjs` "cash lead". |
+| V3 | **Arrow-only: the office plot ↔ the coins for 20 minutes, never built** (found by the second arrow-only run, after V2). On the plot the v4.2 arrow is off and the gentle cash lead sent him away within 0.25 s — the plot's build menu needs 0.5 s standing still. The v3 plots hold the arrow on the plot (`v3Hint`); the v4.2 list did not. | `Tutorial`: standing on the v4.2 plot / pad he can pay for, no arrow elsewhere (the goal text stays) — unless the plot / pad wants him to step off once (its menu was closed, the pad appeared under him). | `plot_hold.mjs`: 60 s arrow-only, coins 2,500: without the hold 0 menus, not built (plot ↔ 4 cash pads every 0.25 s); with it **built at 1.75 s**. `v42_guide.mjs` "plot hold". |
+
+New regression test **`tools/test/v42_guide.mjs`** (46-min save, 읍, fixed step): 읍 shows the office plot and holds the
+bank's · coins in hand lead to the plot, not the cash pads · an arrow-only chief on the plot opens the menu and builds ·
+the bank plot shows ≤ 3 s after the office finishes · a `built` event never hides a plot · 0 errors — **6/6**.
+
+`shots_v42.mjs`: `09_train_card` and `20_chief_behind_train` now wait (`until`, ≤ 40 s real) for the train2 cars and
+the ui5 icons, and 20 reads the box car only after the camera is at 서리역 (the cars are laid out near the camera only:
+the first refresh, on the loaded machine, shot 20 at the town loop with no train and 09 en with the colour chips).
