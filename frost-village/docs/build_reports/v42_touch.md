@@ -213,7 +213,26 @@ machine: the whole-step averages swing 9–64 ms between batches, so only the co
 
 ## 8. Screenshots (`docs/previews/screens_v42/`, 390 × 844, DPR 3, Korean)
 
-{{SHOTS}}
+`node tools/test/shots_v42_touch.mjs` (30 with `--repo` on the base copy). Looked at each; what was fixed is noted.
+
+| File | What it shows |
+|---|---|
+| `30_restaurant_busy_before.jpg` | **Before** (base copy): the designer's picture — 8 terrace seats full of guests waiting with 정식 bubbles, a queue, the server stuck at the tables |
+| `31_restaurant_tables_lv1.jpg` | Level 1: two back-yard tables behind the terrace and a second lantern string; a staged lunch rush (guests every 2.6 s) with one server, so the 「서빙 직원 2 고용」 pad (1,000) has appeared by the staff spot |
+| `32_restaurant_tables_lv2.jpg` | Level 2 + 서빙 직원 2: 8 tables / 16 seats; with two servers plates arrive in seconds, seats free up and the line now waits at the register |
+| `33_restaurant_tables_night.jpg` | The same at 22:00: the back yard under its lantern strings, 10 guests seated (4 eating) |
+| `34_tables_pad.jpg` | The 테이블 늘리기 pad (1,200) where the first new tables go, with its banner (`큰 식당에 자리가 모자라요!` / `식당 뒤뜰에 테이블을 늘릴 수 있어요`) |
+| `35_porter2_cannery_pad.jpg` | The 통조림 짐꾼 2 pad (700) by the cannery door, banner `통조림이 쌓여요` / `통조림 짐꾼 2를 부를 수 있어요` |
+| `36_warehouse_crew_arrives.jpg` | A new 창고 직원 coming up the west road to the 창고 (red barn), banner `창고 직원이 한 명 더 왔어요` / `마을이 바빠져서 창고 직원이 3명이 되었어요` |
+
+Fixed after looking: 31 first framed the 서빙 직원 2 label under the HUD buttons (camera moved); 34 first had the chief
+standing in the restaurant so the building was cut away, and another pad's banner (빵 오븐 2단) on top (the chief moved,
+other pads' banners marked seen for the picture); 36 first showed the porter after his walk with the banner gone and
+half-loaded ground (now 0.5 s into the walk, held while the view settles); 32–33 were first shot after a calm when the
+restaurant had emptied (now during the rush); 33 at 20:36 looked like day (now 22:00 — the game's night is a light blue
+tint, as in the v4.2 night shots). Labels at 360 × 640 (scratch `shots360/`): both banners fit on two lines; the pad
+labels fit; the 서빙 직원 2 pad label can sit under the zoom buttons when the restaurant is at the right edge (camera
+framing only).
 
 ## 9. Files
 
