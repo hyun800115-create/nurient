@@ -128,7 +128,30 @@ Prices are unchanged; the one knob if it is too much is `civic.restaurant.dishMu
 
 ### 3.3 Census: does it carry more? (late village, 60 game min)
 
-{{CENSUS_TABLE}}
+Census bot (`review_gameplay_census.mjs --load v41_save_smart_46min.json`), the same 46-min save on the base copy
+(`base60`) and on the touched source (`after60`), compared over the **same first 30 game minutes** (both runs were
+started for 60 minutes; on the loaded machine `after60` had reached 30 minutes when this report was written, so the
+window is cut there — `census/cmp.mjs` re-summarizes any window from the saved rows):
+
+| First 30 game minutes | base (v4.2) | touched | |
+|---|---|---|---|
+| income a minute (coins) | 2,388 | **2,655** | +11 % (≈ 62 % of it the restaurant) |
+| exported (train + depot) | 230 | **300** | +30 % |
+| made a minute (raw + goods) | 596 | 632 | +6 % (the village makes more when it is carried faster) |
+| 창고 crew | 2 | 2 → **6** (3 · 4 · 5 at game minutes 1 · 2 · 3, the 6th at 6) | idle 1 % → 9 % |
+| warehouse stock (avg) | 124 | 145 | of 300 |
+| outputs ≥ 80 % full — grill · sawmill · bakery · smelter · smokehouse | 60 · 7 · 52 · 28 · 48 % | **49 · 6 · 8 · 18 · 42 %** | |
+| outputs ≥ 80 % full — toolsmith · cannery | 40 · 8 % | **12 · 4 %** | |
+| raw piles ≥ 90 % full (any / fish · log · wheat · ore · meat) | 99 % / 62 · 9 · 19 · 67 · 92 | 97 % / 59 · 9 · 14 · 71 · 76 | the raw side barely moves |
+| dock queue max | 448 | 285 | |
+| shelf empty — bread · smoked meat · grilled fish | 0 · 22 · 1 % | 3 · 13 · 0 % | |
+| building sites waiting for materials (avg) | 0.19 | 0.10 | |
+| 큰 식당 served · coins · walk-outs a minute | 3.99 · 86 · 2.04 | **11.03 · 251 · 0** | tables stay at level 0 (the bot does not buy them) |
+
+What it shows: carrying faster empties the station and workshop outputs (bakery 52 → 8 %, toolsmith 40 → 12 %) and
+the goods reach shelves, the train and the warehouse; the raw piles stay full almost all the time (97–99 %), because the
+raw side is a **demand** problem (the stations cannot use more), which this touch does not address — the designer's
+"사갈 곳을 늘리기" is the next version.
 
 ## 4. Save v7 (additive)
 
@@ -152,11 +175,41 @@ unchanged (`save_v42`, `save_v2/v3/v35/v4 --browser`, `porters42` 5, `restaurant
 
 ## 6. Pacing bots (fresh game until 읍)
 
-{{BOTS}}
+Fresh game, fixed step (`review_gameplay_sim.mjs --v4 --upg greedy --after 20`), touched source; the bots were
+stopped once they were a 읍 (the machine was needed for the rest), so the later columns of §9.2 of the v4.2 report are
+not repeated here. One run each.
+
+| Run | v3 complete | **읍** | v4.2 verify (§9.2) | gate (≤ +3 %) | errors |
+|---|---|---|---|---|---|
+| smart | 40.6 | **44.8** | 47.3 | −5 % — pass | 0 |
+| arrow-only | 40.8 | **48.0** | 51.5 | −7 % — pass | 0 |
+
+The first 20 minutes do not change (no 창고, no restaurant yet). After the 창고 (≈ 35 min) the crew follows the making
+(≈ 480 a minute then, i.e. 4 by the rule — measured in `base35_10`, not logged by these bot runs) and the restaurant
+earns more, so the 읍 savings come sooner; single runs on a loaded machine, so read −5 / −7 % as "not slower".
 
 ## 7. Performance
 
-{{PERF}}
+`probe/probe_perf.mjs`: the 46-min save in one browser, 3 batches of 400 logic-only steps per view, first with the
+crew of 2 and 8 seats, then (same page, 3 game minutes later) crew 6, level 2 tables and the 서빙 직원 2. Loaded
+machine: the whole-step averages swing 9–64 ms between batches, so only the component times are worth reading.
+
+| View | crew · seats | 창고 직원 update, ms a step (3 batches) | 큰 식당 update, ms a step | display objects |
+|---|---|---|---|---|
+| 창고 | 2 · 8 | 0.16 · 0.34 · 0.20 | (0.44 · 0.94 · 0.81) | 1,211–1,468 |
+| 큰 식당 | 2 · 8 | (0.33 · 0.49 · 0.17) | 1.00 · 0.72 · 0.39 | 1,558–1,578 |
+| 창고 | 6 · 16 | 0.61 · 0.26 · 0.48 | (0.78 · 0.67 · 0.43) | 1,657–1,690 |
+| 큰 식당 | 6 · 16 + server 2 | (0.28 · 0.62 · 0.42) | 0.54 · 0.67 · 0.59 | 1,770–1,800 |
+| 창고 again | 6 · 16 | 0.70 · 0.88 · 0.65 | (1.23 · 0.92 · 0.60) | 1,652–1,672 |
+
+- 창고 crew: ≈ 0.1 ms a porter a step on this machine (2 → 6: +0.3 to +0.5 ms); on an unloaded machine the v4.2
+  report's logic numbers run 5–10× lower. The cap stays at 6 (the census crew is 91 % busy at 6, so more would idle).
+- 큰 식당: no measurable change with 16 seats and two servers (serve points are cached per seat).
+- Display objects: the new things are ≈ 35 (4 porters with shadow and stack, 4 tables, 2 lantern strings, a server);
+  the rest of the +150–250 is the save's village growing over the probe's minutes (as in the v4.2 soak).
+- Textures: none new. The back-yard tables, lanterns and lamp are the terrace's own props; the new 창고 직원 use the
+  porter looks already resident; the 서빙 직원 2 uses `npc_clerk_b`, a clerk look the village loads at the start
+  (`Game.js` first-batch characters). No new pack page, no new file, so the artifact file count is unchanged.
 
 ## 8. Screenshots (`docs/previews/screens_v42/`, 390 × 844, DPR 3, Korean)
 

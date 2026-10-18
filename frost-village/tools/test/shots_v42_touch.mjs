@@ -36,7 +36,7 @@ const SCENES = [
     then: () => window.__full({ x: -250, y: -190, z: 1.3 }) },
   { name: '33_restaurant_tables_night', secs: 100, feed: true, setup: () => {
     const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true);
-    if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(20.6); }
+    if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(22); }
     return { x: R.x - 250, y: R.y - 190, z: 1.3 };
   }, then: () => window.__full({ x: -250, y: -190, z: 1.3 }),
     after: () => { const nb = window.__FV.scene.v4; if (nb && nb.clock && nb.clock.on) nb.clock.set(10); } },
