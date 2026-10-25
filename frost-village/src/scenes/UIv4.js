@@ -362,6 +362,7 @@ export class HudV4 {
   /**
    * (v4-C) the town hall's notice board (마을 게시판): today's requests and village news, read from the systems
    * that already run (TownHall.boardLines); the place v5's missions will go
+   * (v4.2 fix) a request row says where its things go ('→ 서리역 짐 싣는 곳') and a tap on it starts the 길 안내 there
    */
   openBoard() {
     const gs = this.ui.gs, hall = gs && gs.civic && gs.civic.hall;
@@ -390,15 +391,35 @@ export class HudV4 {
         let y = top + 116;
         const head = (txt) => { content.add(ui.add.text(x0, y, txt, TXT(24, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0, 0.5)); y += 42; };
         const row = (r) => {
-          const card = panel(ui, W / 2, y, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', cw, 56).setOrigin(0.5);
+          // (v4.2 fix) a request with a place: two lines (what · → where) and a '길 안내' tag; the whole card is the button
+          const w = r.where, rh = w ? 74 : 56;
+          y += (rh - 56) / 2;
+          const card = panel(ui, W / 2, y, has('ui_mission_card') ? 'ui_mission_card' : 'ui_panel', cw, rh).setOrigin(0.5);
           content.add(card);
           content.add(icon(ui, x0 + 26, y, [r.icon, 'ui_icon_goal', 'ui_icon_coin'], 34));
-          const tx = ui.add.text(x0 + 56, y, r.text, Object.assign(TXT(19, '#2b2f3a', '#ffffff', 0, '800'), { wordWrap: { width: cw - 80, useAdvancedWrap: true } })).setOrigin(0, 0.5);
-          if (tx.height > 52) tx.setScale(52 / tx.height);
+          const tagW = w ? 104 : 0;
+          const tx = ui.add.text(x0 + 56, w ? y - 15 : y, r.text, Object.assign(TXT(19, '#2b2f3a', '#ffffff', 0, '800'), { wordWrap: { width: cw - 80 - tagW, useAdvancedWrap: true } })).setOrigin(0, 0.5);
+          if (tx.height > (w ? 30 : 52)) tx.setScale((w ? 30 : 52) / tx.height);
           content.add(tx);
-          y += 62;
+          if (w) {
+            const wt = ui.add.text(x0 + 56, y + 17, t('board_where', { place: t(w.label, w.lp || undefined) }), TXT(18, '#1f6f68', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+            if (wt.width > cw - 90 - tagW) wt.setScale((cw - 90 - tagW) / wt.width);
+            content.add(wt);
+            const tag = panel(ui, x0 + cw - 30 - tagW / 2, y, has('ui_chip') ? 'ui_chip' : 'ui_panel', tagW, 44).setOrigin(0.5).setTint(0xdff7f3);
+            const tg = ui.add.text(x0 + cw - 30 - tagW / 2, y, t('board_go'), TXT(18, '#1f6f68', '#ffffff', 0, '900')).setOrigin(0.5);
+            if (tg.width > tagW - 14) tg.setScale((tagW - 14) / tg.width);
+            content.add([tag, tg]);
+            card.setInteractive({ useHandCursor: true });
+            card.on('pointerup', () => {
+              if (!hall.guideTo(w)) { ui.toast(t('board_noway')); return; }
+              this.closePanel();
+              ui.toast(t('board_guide', { place: t(w.label, w.lp || undefined) }));
+            });
+          }
+          y += rh / 2 + 34;
         };
         head(t('board_requests'));
+        if (L.requests.some((r) => r.where)) content.add(ui.add.text(x0 + cw - 4, y - 42, t('board_tap'), TXT(16, '#6b7686', '#ffffff', 0, '800')).setOrigin(1, 0.5));
         if (!L.requests.length) { content.add(ui.add.text(W / 2, y, t('board_empty'), TXT(20, '#6b7686', '#ffffff', 0, '800')).setOrigin(0.5)); y += 50; }
         for (const r of L.requests.slice(0, 4)) row(r);
         y += 10;

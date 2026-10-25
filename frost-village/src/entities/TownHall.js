@@ -6,6 +6,10 @@
 //   - more room (civic.hall.people beds) and a happier village (civic.hall.happy, Civic.happyBonus)
 //   - the venue: the 승격식 (rank ceremony) pad stands in front of the hall once it is built, and `venue(kind)` is
 //     the hook a v5 wedding will use
+//   - (v4.2 fix, the designer's "통조림 내가 가져다 줘도 안 들어가지네") every request on the board says where its things go
+//     ('→ 서리역 짐 싣는 곳') and a tap on it starts the 길 안내 there (Navigator.pin). The hall itself takes nothing: the
+//     order's goods count only on the station's 짐 싣는 곳, the pantry's food only in the restaurant (one place per
+//     thing, no second store to keep in the save, nothing left lying at the hall when no porter comes)
 // The hall's picture is town art (page town_civic@hall, a late fragment): a stand-in until it arrives.
 
 import { Assets } from '../core/Assets.js';
@@ -128,21 +132,61 @@ export class TownHall {
     Audio.play('sfx_click', { volume: 0.5 });
   }
 
-  /** what the board shows: [{ icon, text }] requests, then news */
+  /**
+   * (v4.2 fix) where a request's things go: { label, lp, icon, spot() -> {x, y} | null, valid() } — the place's name for
+   * the board row and the spot the 길 안내 leads to (both looked up when the row is tapped)
+   */
+  whereOf(kind, item) {
+    const gs = this.gs, g = gs.v4 && gs.v4.growth, R = gs.civic && gs.civic.restaurant;
+    const at = (o) => (o && Number.isFinite(o.x) && Number.isFinite(o.y) ? { x: o.x, y: o.y } : null);
+    if (kind === 'order' && g) return { label: 'place_dock_stn', icon: item, spot: () => (g.active ? at(g.dockPad) : null), valid: () => !!g.active && g.needOf(item) > 0 };
+    if (kind === 'rest' && R) return { label: 'place_rest', icon: item, spot: () => at(R.pantryPad), valid: () => !!R.enabled };
+    if (kind === 'food' && gs.foodBox) return { label: 'place_food', icon: 'item_bread', spot: () => at(gs.foodBox.pad), valid: () => !!gs.foodBox.active };
+    if (kind === 'homes') return { label: 'place_plot_house', icon: 'ui_icon_house', spot: () => { const st = this.housePlot(); return st ? { x: st.dropX, y: st.dropY } : null; }, valid: () => !!(gs.life && gs.life.waiting.length) && !!this.housePlot() };
+    return null;
+  }
+
+  /** the nearest open plot a house can be built on (null when none) */
+  housePlot() {
+    const gs = this.gs, p = gs.player;
+    let best = null, bd = Infinity;
+    for (const id in gs.sites || {}) {
+      const st = gs.sites[id];
+      if (!st || st.state !== 'plot' || !st.pad || st.kind !== 'plot' || st.shown === false) continue;
+      if (gs.territory && st.cfg && st.cfg.region && !gs.territory.isOpen(st.cfg.region)) continue;
+      let ok = false;
+      try { ok = (gs.buildChoices(st) || []).some((c) => /^house_/.test(c.key) && !c.locked); } catch (e) { ok = false; }
+      if (!ok) continue;
+      const d = p ? Math.hypot(st.dropX - p.x, (st.dropY - p.y) * 2) : 0;
+      if (d < bd) { bd = d; best = st; }
+    }
+    return best;
+  }
+
+  /** (v4.2 fix) a tap on a request row: the 길 안내 leads to its place (false: no spot right now) */
+  guideTo(where) {
+    const gs = this.gs, N = gs.v42 && gs.v42.nav;
+    if (!where || !N || !N.pin) return false;
+    const sp = where.spot ? where.spot() : null;
+    if (!sp) return false;
+    return N.pin({ x: sp.x, y: sp.y, label: where.label, lp: where.lp, icon: where.icon, valid: where.valid });
+  }
+
+  /** what the board shows: [{ icon, text, where }] requests, then news */
   boardLines() {
     const gs = this.gs, out = { requests: [], news: [] };
-    const req = (icon, text) => out.requests.push({ icon, text });
+    const req = (icon, text, where) => out.requests.push({ icon, text, where: where || null });
     const news = (icon, text) => out.news.push({ icon, text });
     // requests: the neighbours' focus order, an empty pantry at the restaurant, people waiting for a home, hungry miners
     const g = gs.v4 && gs.v4.growth;
     if (g && g.active && g.focusCard) {
       const c = g.focusCard();
-      if (c) for (const k in c.need) if ((c.got[k] || 0) < c.need[k]) { req(k, t('board_order', { item: t(k), got: c.got[k] || 0, need: c.need[k], shop: c.shop ? t('shop_' + c.shop) : t('order_standing') })); break; }
+      if (c) for (const k in c.need) if ((c.got[k] || 0) < c.need[k]) { req(k, t('board_order', { item: t(k), got: c.got[k] || 0, need: c.need[k], shop: c.shop ? t('shop_' + c.shop) : t('order_standing') }), this.whereOf('order', k)); break; }
     }
     const R = gs.civic && gs.civic.restaurant;
-    if (R) { const low = R.lowFood(); if (low) req(low, t('board_rest_low', { item: t(low) })); }
-    if (gs.life && gs.life.waiting.length) req('ui_icon_house', t('board_homes', { n: gs.life.waiting.length }));
-    if (gs.foodBox && gs.foodBox.active && gs.foodBox.count === 0 && gs.workers.some((w) => w.hungry)) req('item_bread', t('board_miners'));
+    if (R) { const low = R.lowFood(); if (low) req(low, t('board_rest_low', { item: t(low) }), this.whereOf('rest', low)); }
+    if (gs.life && gs.life.waiting.length) req('ui_icon_house', t('board_homes', { n: gs.life.waiting.length }), this.housePlot() ? this.whereOf('homes') : null);
+    if (gs.foodBox && gs.foodBox.active && gs.foodBox.count === 0 && gs.workers.some((w) => w.hungry)) req('item_bread', t('board_miners'), this.whereOf('food'));
     // news: the village in numbers
     const cv = gs.civic;
     if (gs.life) news('ui_icon_house', t('board_people', { n: gs.life.people(), cap: gs.popCap() }));

@@ -149,6 +149,7 @@ export const BALANCE = {
     wantMax: 3,               // 원하는 개수 최대 (처음)
     wantMaxLate: 5,           // 원하는 개수 최대 (마을이 커진 뒤)
     takeInterval: 0.2,        // 판매대에서 하나씩 가져가는 간격(초)
+    emptyCueS: 4,             // (v4.2 고침) 잡화점 판매대가 이만큼(초) 비어 있고 손님이 기다리면 '판매대가 비었어요' 표시
     speed: 120,               // 걷는 속도
     shelfMax: 40,             // 판매대에 음식 종류별로 올려 둘 수 있는 최대 개수
   },
@@ -261,7 +262,7 @@ export const BALANCE = {
     op_cannery: 600,          // 통조림 기술자 통통
     porter_toolsmith: 600,    // 도구 짐꾼 (도구를 발판·잡화점으로)
     porter_cannery: 800,      // 통조림 짐꾼 (통조림을 잡화점으로)
-    porter_dock: 600,         // 생선 짐꾼 (배가 잡아 온 생선을 통조림 공장·화덕으로)
+    porter_dock: 600,         // 생선 짐꾼 (배가 잡아 온 생선을 통조림 공장·화덕으로) — (v4.2) 나룻배를 사면 함께 와요: 이 값은 받지 않아요
     hire_clerk_store: 400,    // 잡화점 점원
   },
   // ── (v3.5) 분업
@@ -310,7 +311,8 @@ export const BALANCE = {
     //   1분에 만드는 원료·물건이 from 개까지는 처음 2명, 그 위로 perMin 개 늘 때마다 1명 더, 최대 cap 명
     //   (잰 값: 창고를 지은 35분 무렵 1분에 약 480개 → 4명, 46분 뒤 바쁜 마을 약 590개 → 6명 — 직원이 늘면 마을이 더 만들어요: 610~650개)
     //   window = 몇 초 동안의 평균으로 볼지, every = 새 직원이 오는 최소 간격(초)
-    crew: { from: 300, perMin: 70, cap: 6, window: 180, every: 60 },
+    //   bannerGap = 큰 배너를 다시 띄우기까지의 시간(초) — 그 사이에 또 오면 작은 알림만 (예전 저장을 열면 몇 명이 연달아 와요)
+    crew: { from: 300, perMin: 70, cap: 6, window: 180, every: 60, bannerGap: 300 },
     overflowAt: 0.6,          // 가공소 출구가 이만큼(0~1) 차면 창고 짐꾼이 창고로 옮김
     restockBelow: 0.25,       // 판매대가 이만큼(0~1)보다 비면 창고에서 꺼내 채움
   },
@@ -456,9 +458,10 @@ export const BALANCE = {
       // (v4.2 손질) 주방에 아무도 없을 때 (요리사·서빙 직원이 없고 촌장도 주방 발판에 없음) 주문이 이만큼 밀려 있으면
       //   계산대가 새 주문을 잠깐 받지 않아요: 손님은 식탁 대신 줄에서 기다려요 (식탁에서 기다리다 돈 안 내고 가는 일이 줄어요)
       holdTickets: 3,
-      // (v4.2 손질) 테이블 늘리기: 주방은 잘 돌아가는데 빈자리가 없어 줄이 기다린 시간이 모두 offerS 초가 되면
-      //   식당 뒤뜰에 발판이 생겨요. costs = 단계마다 값 (2단계까지, 한 단계에 식탁 2개 = 자리 4개 더)
-      tables: { offerS: 60, costs: [1200, 2000] },
+      // (v4.2 손질) 테이블 늘리기: 주방은 잘 돌아가는데 빈자리가 없어 줄이 기다린 시간이 모두 offerS 초가 되거나,
+      //   식당이 손님을 모두 meals 명(단계마다: 1단계 150명, 2단계 450명 — 처음부터 센 수) 받으면 식당 뒤뜰에 발판이 생겨요.
+      //   costs = 단계마다 값 (2단계까지, 한 단계에 식탁 2개 = 자리 4개 더)
+      tables: { offerS: 60, meals: [150, 450], costs: [1200, 2000] },
       // (v4.2 손질) 자리가 늘면 손님도 조금 더 와요: 손님 오는 간격 × (8 ÷ 자리 수) ^ seatsPull  (0 = 자리와 상관없이 같은 간격)
       seatsPull: 0.5,
       // (v4.2 손질) 서빙 직원 2: 뒤뜰 테이블이 생긴 뒤, 서빙 직원이 나가 있는 동안 음식이 2접시 넘게 기다린 시간이 모두 offerS 초가 되면
@@ -497,7 +500,9 @@ export const BALANCE = {
     //    replanEvery = 길을 다시 찾는 최소 간격(초), strayPx = 길에서 이만큼 벗어나면 다시 찾기, straightUnder = 이보다 가까우면 곧장
     //    rawDockPx = (CODE-2 리뷰) 날것(생선·통나무·밀·광석·고기)이 갈 곳이 짐 싣는 곳(수출)뿐이고 이보다(px) 멀면 거기로 안내하지 않아요
     //                (날것 수출은 한 개 0.5~1.5 코인: 35 m 걸어갈 값이 아니에요 → '○○ 입구 가득 · 잠시 기다리거나 버려요')
-    nav: { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360, rawDockPx: 1600 },
+    //    pinMaxS / pinArrivePx = (v4.2 고침) 마을 게시판에서 부탁을 눌러 시작한 길 안내: 이 시간(초)이 지나거나
+    //                            그곳에 이만큼(px) 가까이 가면 끝나요 (빈손이어도 안내해요)
+    nav: { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1.0, strayPx: 80, straightUnder: 360, rawDockPx: 1600, pinMaxS: 240, pinArrivePx: 90 },
     // ── 짐꾼 규칙 (F1·F2): 판매대가 shelfEmptyAfter 초 넘게 비면 그곳이 먼저 (우선순위 shelfEmptyPrio),
     //    대장간·통조림 공장 재료는 inputUrgentBelow(0~1) 아래로 줄었을 때만 급하고 그 밖엔 inputCalmPrio,
     //    travelPxPerPoint = 이만큼(px) 멀 때마다 우선순위 1 깎기 (먼 곳보다 가까운 곳)

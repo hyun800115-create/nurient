@@ -864,7 +864,10 @@ export class WarehousePorter extends Hauler {
       case 'grab': {
         this.vx = this.vy = 0;
         this.dropT -= dt;
-        const j = this.job, out = j.src.outStack;
+        const j = this.job, out = j && j.src && j.src.outStack;
+        // ((v4.2 touch) a job whose source has no output stack (seen once in a 60-min census with the bigger crew):
+        //  drop it instead of throwing — a throw here skipped the rest of that frame's village update)
+        if (!out) { this.dropRaw(); if (this.stack.count > 0) this.startHaul(this.planDest() || W.sink); else { this.job = null; this.state = 'idle'; } break; }
         if (this.dropT <= 0) {
           this.dropT = 0.14;
           const ty = this.carriedType() || (j.type || (out.items.length ? out.items[out.items.length - 1].type : null));

@@ -5,7 +5,8 @@
 // 2 짐꾼 2 for the 대장간 / 통조림 공장 / 배 창고: due after porter2.fullForS (45 s) of a full output, its pad by the
 //   line's door, paying hires a second porter of that line; not due 1 s before; the 5 station lines unchanged;
 // 3 the crew grows by the rule (target = base + made a minute ÷ perMin, up to cap): one walks in from the edge of the
-//   village (not at the 창고), a banner, he reaches the 창고 and works; one at a time (crew.every);
+//   village (not at the 창고), a banner, he reaches the 창고 and works; one at a time (crew.every); one big banner,
+//   the next arrivals within crew.bannerGap s are small toasts;
 // 4 no flapping: the rate falls to 0 and nobody leaves; the cap holds with a huge rate;
 // 5 save + reload: the crew is back at once (no walk), the 짐꾼 2 too; an old save's crew follows its own making;
 // 6 the crew works (some carry), 0 page errors.
@@ -38,6 +39,13 @@ const boot = async (sv) => {
   await sleep(1000);
   await installStepper(page);
   await ev(() => { try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ } window.__FV.teleport(-200, 700); window.__FV.setInput(0, 0); });
+  // (the crew's banners and toasts, with the game time they came at)
+  await ev(() => {
+    const gs = window.__FV.scene, ui = gs.ui, log = window.__msgs = [];
+    const ob = ui.banner.bind(ui), ot = ui.toast.bind(ui);
+    ui.banner = (m, sub) => { log.push({ k: 'banner', m, t: gs.time.now / 1000 }); return ob(m, sub); };
+    ui.toast = (m, h) => { log.push({ k: 'toast', m, t: gs.time.now / 1000 }); return ot(m, h); };
+  });
 };
 const crew = () => ev(() => window.__FV.v42.crew());
 let fatal = null;
@@ -108,6 +116,12 @@ try {
   await adv(per.every + 2);
   const a3 = await crew();
   step('3 the next one comes after crew.every s', a3.crew === Math.min(per.cap, n0 + 2), a3);
+
+  // (one big banner, then small toasts for the next ones within crew.bannerGap s)
+  const M3 = await ev(() => { const L = window.__msgs || []; return { banners: L.filter((q) => q.k === 'banner' && /창고 직원이 한 명 더/.test(q.m)).map((q) => +q.t.toFixed(1)), toasts: L.filter((q) => q.k === 'toast' && /창고 직원이 \d+명/.test(q.m)).map((q) => +q.t.toFixed(1)), arrivals: window.__FV.v42.crew().arrivals }; });
+  const gap = Number(per.bannerGap) || 300;
+  const spaced = M3.banners.every((t, i) => i === 0 || t - M3.banners[i - 1] >= gap);
+  step('3 one big banner, the next ones within ' + gap + ' s are small toasts', M3.banners.length >= 1 && M3.toasts.length >= 1 && spaced && M3.banners.length + M3.toasts.length === M3.arrivals, M3);
 
   // ---- 4. no flapping, the cap
   await ev(() => window.__FV.v42.crew({ rate: 0 }));

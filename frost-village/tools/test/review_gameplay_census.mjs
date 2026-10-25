@@ -85,6 +85,15 @@ export function summarize(rows, opts = {}) {
       queueFullPct: share(rr, (r) => r.rest.q >= r.rest.qMax), seatsFullPct: share(rr, (r) => r.rest.busy >= r.rest.seats), seatedWaitAvg: +(rr.reduce((x, r) => x + r.rest.wait, 0) / rr.length).toFixed(2),
       tables: b.rest.tables, seats: b.rest.seats };
   }
+  // ((v4.2 integrated fixes) the 잡화점 and the pier's catch pad)
+  const sr = late.filter((r) => r.store);
+  if (sr.length > 1) {
+    const a = sr[0], b = sr[sr.length - 1], m = Math.max(1, (b.t - a.t) / 60);
+    o.store = { salesPerMin: +((b.store.sales - a.store.sales) / m).toFixed(2), coinsPerMin: Math.round((b.store.coins - a.store.coins) / m), shelfEmptyPct: share(sr, (r) => r.store.shelf === 0),
+      stallPct: share(sr, (r) => r.store.stall), toolsEmptyPct: share(sr, (r) => r.store.tools === 0), cansEmptyPct: share(sr, (r) => r.store.cans === 0), shelfAvg: +(sr.reduce((x, r) => x + r.store.shelf, 0) / sr.length).toFixed(1) };
+  }
+  const br = late.filter((r) => r.boat);
+  if (br.length) o.pier = { avg: +(br.reduce((x, r) => x + r.boat[0], 0) / br.length).toFixed(1), full90Pct: share(br, (r) => r.boat[0] >= r.boat[1] * 0.9) };
   return o;
 }
 
@@ -163,6 +172,9 @@ try {
     if (Station) wrap(Station.prototype, 'process', (q) => q.inStack.count, function (r, b) { if (this.inStack.count < b) M.goods++; });
     if (Boat) wrap(Boat.prototype, 'catchOne', (q) => q.cargo.count + q.cargo.incoming, function (r, b) { if (this.cargo.count + this.cargo.incoming > b) M.raw++; });
     gs.events.on('crafted', (kind) => { const w = (gs.workshops || []).find((q) => q.kind === kind); M.goods += (w && w.recipe && w.recipe.outN) || 1; });
+    // ((v4.2 integrated fixes) the 잡화점's sales and coins)
+    M.storeSales = 0; M.storeCoins = 0;
+    gs.events.on('storeSold', (v) => { M.storeSales++; M.storeCoins += Number(v) || 0; });
   });
   const census = () => page.evaluate(() => {
     const gs = window.__FV.scene;
@@ -201,6 +213,11 @@ try {
         for (const id in gs.progress.pads || {}) { const p = gs.progress.pads[id]; if (p.items && p.active && !p.done) pads++; } return { wait, pads }; })(),
       rest: (() => { const R = gs.civic && gs.civic.restaurant; if (!R) return null; return { served: R.served, earned: R.earned, lost: R.lost, q: R.queue.length, qMax: R.maxQueue,
         busy: R.seats.filter((q) => q.by).length, seats: R.seats.length, wait: R.guests.filter((g) => g.state === 'seated').length, tables: R.tableLevel || 0 }; })(),
+      // ((v4.2 integrated fixes) the 잡화점: shelf, line, front customer waiting at an empty shelf, sales so far)
+      store: (() => { const S = gs.store; if (!S || !S.enabled) return null; const f = S.queue[0];
+        return { shelf: S.stock.count, q: S.queue.length, stall: f && f.arrived && f.state === 'wait' && f.need > 0 && S.stock.count === 0 ? 1 : 0,
+          tools: S.goods.filter((g) => g !== 'item_can').reduce((a, g) => a + S.stock.countOf(g), 0), cans: S.stock.countOf('item_can'),
+          sales: window.__made ? window.__made.storeSales : 0, coins: window.__made ? window.__made.storeCoins : 0 }; })(),
       nPorters: gs.porters.length, nRaw: gs.rawPorters.length,
       done: Object.keys(gs.progress.done).filter((k) => gs.progress.done[k]).length,
       celebrated: !!gs.progress.celebrated, rank: gs.v4 && gs.v4.rank ? gs.v4.rank.level : 0,

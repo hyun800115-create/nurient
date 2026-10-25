@@ -56,7 +56,7 @@ const L = {
   //  is under its roof), the terrace's grid carried on: level 1 = the two tables just behind it, level 2 = two more
   //  behind those, one more lantern string over them; the terrace's back lamp steps aside to make room)
   more: [[[-5.5, 1.1], [-5.5, 3.1]], [[-7.2, 1.1], [-7.2, 3.1]]],
-  moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.3, 4.4],
+  moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.3, 4.4], padOff: [-0.9, 0.5],
   // the way into the back yard: round the terrace on its building side (with collision; the four tables are a block)
   backPath: [[-0.22, -0.22], [-1.88, 2.1], [-4.09, 3.2]],
 };
@@ -203,10 +203,11 @@ export class BigRestaurant {
     return this.tableLevel;
   }
 
-  /** where the 테이블 늘리기 pad of the next level stands (where its first table will be) */
+  /** where the 테이블 늘리기 pad of the next level stands: just beyond where its first table will be (on the table's spot
+   *  the terrace's back lamp stood over the price; L.padOff steps it back into the open yard) */
   tablesPadPos() {
     const set = L.more[Math.min(L.more.length - 1, this.tableLevel)];
-    const a = M(this.ox, this.oy, set[0][0], set[0][1]);
+    const a = M(this.ox, this.oy, set[0][0] + L.padOff[0], set[0][1] + L.padOff[1]);
     return { x: a.x, y: a.y };
   }
   get maxTableLevel() { return L.more.length; }
@@ -662,7 +663,15 @@ export class BigRestaurant {
         // along the roads to the end of the line, then into the slot
         const slot = this.queue.indexOf(g);
         if (slot < 0) { g.state = 'leave'; break; }
-        if (gs.followRoute(ch, 110, dt, 30) || g.t > 40) { g.state = 'queue'; g.t = 0; }
+        if (gs.followRoute(ch, 110, dt, 30) || g.t > 40) {
+          g.state = 'queue'; g.t = 0;
+          // ((v4.2 touch) guests come from different road ends: one who arrives steps in front of those still on their
+          //  way, so the register never waits for someone who is not there while the line stands behind him)
+          const i = this.queue.indexOf(g);
+          let j = 0;
+          while (j < i && this.queue[j].state !== 'walk') j++;
+          if (j < i) { this.queue.splice(i, 1); this.queue.splice(j, 0, g); }
+        }
         break;
       }
       case 'queue': {

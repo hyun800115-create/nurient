@@ -15,6 +15,9 @@
 // of the art: the chevron max(56, ring rx + 36) ahead of his boots (it clears the halo at zoom 0.6), the dots hidden
 // within max(90, chevron + 30).
 // ≤ 20 display objects while carrying (pooled), ≤ 0.02 ms a frame averaged.
+// (v4.2 fix, 마을 게시판 — the designer's "통조림 내가 가져다 줘도 안 들어가지네") pin(): a place the player picked on the
+//   notice board ('→ 서리역 짐 싣는 곳'). The guide leads there with an empty bag too, before the bag's own places, until he
+//   arrives (nav.pinArrivePx), the request is done (its valid()), nav.pinMaxS s pass, or a long press on the chip.
 
 import { BALANCE } from '../data/balance.js';
 import { Settings } from '../core/Save.js';
@@ -25,7 +28,7 @@ import { DEPTH } from './DepthSort.js';
 import { panel } from '../core/Panel.js';
 import { makeAll } from './v42/fxTex.js';
 
-const N = () => (BALANCE.v42 && BALANCE.v42.nav) || { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1, strayPx: 80, straightUnder: 360 };
+const N = () => (BALANCE.v42 && BALANCE.v42.nav) || { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1, strayPx: 80, straightUnder: 360, pinMaxS: 240, pinArrivePx: 90 };
 const AHEAD = 56;
 const SWITCH_S = 4;            // s a clearly better place must stay better before the guide changes its mind
 
@@ -43,6 +46,7 @@ export class Navigator {
     this.hiddenLoad = false;    // the player hid the guide for this load (hold on the chip)
     this.active = false;
     this.objs = 0;
+    this.pinned = null;         // (v4.2 fix) a place picked on the notice board: { pad, label, lp, type, valid, t }
     makeAll(gs);
     this.chev = gs.add.image(0, 0, 'fv_nav_chevron', 'c0').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(false);
     this.dots = [];
@@ -96,15 +100,46 @@ export class Navigator {
   /** is the guide on now (the UI asks too: chip, edge badge) */
   wanted() {
     const gs = this.gs, p = gs.player;
-    if (!p || p.stack.count + p.stack.incoming <= 0) return false;
-    if (Settings.data.nav === false) return false;
+    if (!p) return false;
+    // (a place picked on the notice board: asked for, so it shows with an empty bag and with the guide switched off)
+    const pin = !!this.pinned;
+    if (!pin && p.stack.count + p.stack.incoming <= 0) return false;
+    if (!pin && Settings.data.nav === false) return false;
     if (gs.tutorial && gs.tutorial.inTutorial) return false;
     if (this.v42 && this.v42.pilot && this.v42.pilot.on) return false;
     const ui = gs.scene.get('UI');
     if (ui && (ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen)) return false;
     const rk = gs.v4 && gs.v4.rank;
     if (rk && rk.ceremonyOn) return false;
-    if (this.hiddenLoad) return false;
+    if (this.hiddenLoad && !pin) return false;
+    return true;
+  }
+
+  /**
+   * (v4.2 fix, 마을 게시판) lead the chief to a place picked on the notice board: { x, y, label, lp, icon, valid }
+   * (valid(): the request still stands; checked twice a second). Replaces an earlier pin. false if there is no spot.
+   */
+  pin(o) {
+    if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return false;
+    this.pinned = { pad: { x: o.x, y: o.y }, label: o.label || null, lp: o.lp || null, type: o.icon || 'ui_icon_goal', valid: typeof o.valid === 'function' ? o.valid : null, t: 0, vt: 0.5 };
+    this.hiddenLoad = false;
+    this.dest = null; this.pickT = 0; this.replanT = 0; this.routeFor = null;
+    return true;
+  }
+  unpin() { if (!this.pinned) return; this.pinned = null; this.dest = null; this.pickT = 0; this.routeFor = null; }
+
+  /** the pin ends: arrived, its request is done, or it is too old (true = it ended now) */
+  pinCheck(dt) {
+    const P = this.pinned, p = this.gs.player;
+    if (!P || !p) return false;
+    const c = N();
+    P.t += dt; P.vt -= dt;
+    let end = P.t > (Number(c.pinMaxS) || 240), arrived = false;
+    if (!end && P.vt <= 0) { P.vt = 0.5; try { if (P.valid && !P.valid()) end = true; } catch (e) { end = true; } }
+    if (!end && gdist(p.x, p.y, P.pad.x, P.pad.y) < (Number(c.pinArrivePx) || 90)) end = arrived = true;
+    if (!end) return false;
+    this.unpin();
+    if (arrived && this.gs.ui) this.gs.ui.toast(t('navArrive', { place: this.placeName(P) }));
     return true;
   }
 
@@ -134,13 +169,22 @@ export class Navigator {
 
   update(dt) {
     const gs = this.gs, p = gs.player;
+    if (this.pinned) this.pinCheck(dt);
     const want = this.wanted();
     // an empty bag ends the load: "hide for this load" and the chip's cycling start over
     if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; this.loadSig = null; }
     if (!want) { this.hide(); this.dest = null; this.holdRoom(null); return; }
     this.active = true;
     this.pickT -= dt;
-    if (this.pickT <= 0 || !this.dest) {
+    // (v4.2 fix) a place picked on the notice board comes before the bag's places
+    const P = this.pinned;
+    if (P) {
+      if (!this.dest || !this.dest.pinned || this.dest.pad !== P.pad) {
+        this.dest = { type: P.type, n: 0, pad: P.pad, sink: null, types: [], label: P.label, lp: P.lp, others: 0, pinned: true };
+        this.replanT = 0;
+        this.holdRoom(null);
+      }
+    } else if (this.pickT <= 0 || !this.dest || this.dest.pinned) {
       this.pickT = 0.25;
       const list0 = this.places();
       const prev = this.dest;
@@ -357,12 +401,13 @@ export class Navigator {
     const item = t(d.type || '');
     if (!d.pad) return { icon: d.type, text: d.label ? t('navFull', { place: t(d.label, d.lp || undefined) }) : t('navNone'), more: 0, none: true };
     const m = Math.max(1, Math.round(this.routeLen / 64));
+    if (d.pinned) return { icon: d.type, text: t('navPin', { place: this.placeName(d), m }), more: 0, pinned: true };
     return { icon: d.type, text: t('navChip', { item, n: d.n, place: this.placeName(d), m }), more: d.others || 0 };
   }
   /** a tap on the chip: the next place of a mixed bag */
-  next() { this.cycle++; this.pickT = 0; }
+  next() { if (this.pinned) return; this.cycle++; this.pickT = 0; }
   /** a long press on the chip: hide the guide for this load */
-  hideLoad() { this.hiddenLoad = true; this.hide(); }
+  hideLoad() { if (this.pinned) { this.unpin(); this.hide(); return; } this.hiddenLoad = true; this.hide(); }
 
   /** nowhere takes the bag: the discard pad pulses softly */
   pulseTrash(dt) {
@@ -406,7 +451,8 @@ export class Navigator {
 
   state() {
     const d = this.dest;
-    return { active: this.active, dest: d ? { type: d.type, n: d.n, x: d.pad ? Math.round(d.pad.x) : null, y: d.pad ? Math.round(d.pad.y) : null, label: d.label, others: d.others || 0, none: !!d.none } : null,
+    return { active: this.active, pinned: this.pinned ? { x: Math.round(this.pinned.pad.x), y: Math.round(this.pinned.pad.y), label: this.pinned.label, t: Math.round(this.pinned.t) } : null,
+      dest: d ? { type: d.type, n: d.n, x: d.pad ? Math.round(d.pad.x) : null, y: d.pad ? Math.round(d.pad.y) : null, label: d.label, others: d.others || 0, none: !!d.none, pinned: !!d.pinned } : null,
       route: this.route.map((q) => [Math.round(q.x), Math.round(q.y)]), routeLen: Math.round(this.routeLen), objects: this.objs, plans: this.plans || 0, chip: this.chip() };
   }
 

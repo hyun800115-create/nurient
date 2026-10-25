@@ -10,9 +10,11 @@
 // plan a meal here; 9 save + reload keeps the pantry (incl. ordered food) and the cash; 0 page errors / placeholders.
 // (v4.2 touch) 6b nobody in the kitchen: the register holds new orders (≤ holdTickets wait); 10 the 서빙 직원 walks to a
 // free spot beside the table and carries up to two orders (meals a minute, no 12-s give-ups); 11 테이블 늘리기: the pad
-// appears after the line waited for a seat, a part-paid pad keeps its coins over a reload, level 1 / 2 add two tables
+// appears after the line waited for a seat (or tables.meals[0] meals), a part-paid pad keeps its coins over a reload, level 1 / 2 add two tables
 // each behind the terrace (open ground, off the roads, up the screen), guests reach and sit at the back-yard seats and
-// are served there, no guest on a seat that is not one; 12 reload keeps the level (16 seats).
+// are served there, no guest on a seat that is not one; 12 reload keeps the level (16 seats); 13 서빙 직원 2: no pad
+// before plates waited on the pass, then the pad at the staff spot, paying hires a second server who carries plates
+// too, a reload brings him back once (two servers, no third, no pad).
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -245,8 +247,13 @@ try {
   step('10 ... no delivery leg over 7 s, few guests waiting at the tables', longest <= 7.2 && seatedW / n10 < 3, { longest: +longest.toFixed(1), seatedWaitingAvg: +(seatedW / n10).toFixed(2) });
 
   // ---- 11. 테이블 늘리기
-  const L0 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { tables: r.tableLevel, seats: r.seats.length, due: window.__FV.scene.v42.lines.state().due.filter((d) => /^tables/.test(d)) }; });
-  step('11 level 0: 4 tables, 8 seats, no pad while the line never waited for a seat', L0.tables === 0 && L0.seats === 8 && !L0.due.length, L0);
+  const L0 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { tables: r.tableLevel, seats: r.seats.length, served: r.served, meals: r.R.tables.meals, due: window.__FV.scene.v42.lines.state().due.filter((d) => /^tables/.test(d)) }; });
+  step('11 level 0: 4 tables, 8 seats, no pad while the line never waited for a seat (and fewer meals than tables.meals[0])', L0.tables === 0 && L0.seats === 8 && !L0.due.length && L0.served < L0.meals[0], L0);
+  // (a popular house: tables.meals[0] meals served in all bring the pad too, without any wait for a seat)
+  await ev(() => { const r = window.__FV.scene.civic.restaurant; r.busyT = 0; r.served = r.R.tables.meals[0]; });
+  await adv(2);
+  const PM = await ev(() => { const gs = window.__FV.scene; return { pad: !!gs.v42.lines.pads.tables1, served: gs.civic.restaurant.served, busyT: gs.civic.restaurant.busyT }; });
+  step('11 ... or after tables.meals[0] meals in all: the pad appears too', PM.pad && PM.busyT < 1, PM);
   await ev(() => { const r = window.__FV.scene.civic.restaurant; r.busyT = (r.R.tables.offerS || 60) + 1; });
   await adv(2);
   const P1 = await ev(() => {
@@ -318,6 +325,38 @@ try {
   await sleep(1000);
   const R12 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { level: r.tableLevel, seats: r.seats.length, tables: r.tables.length, sv: r.serialize().tables }; });
   step('12 reload: level 2, 16 seats, 8 tables', R12.level === 2 && R12.seats === 16 && R12.tables === 8 && R12.sv === 2, R12);
+
+  // ---- 13. 서빙 직원 2 (measured: 16 seats need a second server)
+  await installStepper(page);
+  await ev(() => { window.__FV.v42 && (window.__FV.v42.v.seen.whatsNew = 1); });
+  await away();
+  await adv(2);
+  const servers = () => ev(() => { const gs = window.__FV.scene, r = gs.civic.restaurant; return { server: !!r.server, server2: !!r.server2, n: gs.agents.filter((a) => a.alive !== false && a.role === 'server').length, pad: !!gs.v42.lines.pads.srv2, due: gs.v42.lines.state().due.filter((d) => d === 'srv2'), wait: Math.round(r.serveWaitT) }; });
+  const S13a = await servers();
+  step('13 one server and no plates waiting yet: no 서빙 직원 2 pad', S13a.server && !S13a.server2 && !S13a.pad && S13a.n === 1, S13a);
+  await ev(() => { const r = window.__FV.scene.civic.restaurant; r.serveWaitT = (r.R.server2.offerS || 60) + 1; });
+  await adv(2);
+  const P13 = await ev(() => { const gs = window.__FV.scene, pad = gs.v42.lines.pads.srv2, r = gs.civic.restaurant; return pad ? { x: pad.x, y: pad.y, cost: pad.cost, label: pad.opts.labelFn(), dStaff: Math.round(Math.hypot(pad.x - r.staffSpot.x, pad.y - r.staffSpot.y)) } : null; });
+  step('13 plates waited on the pass: the 서빙 직원 2 pad (1,000) at the staff spot', !!P13 && /서빙 직원 2/.test(P13.label) && P13.cost === 1000 && P13.dStaff < 20, P13);
+  const paid13 = await pay('srv2');
+  await adv(3);
+  const S13b = await servers();
+  step('13 paying hires a second server (two servers)', paid13 && S13b.server2 && S13b.n === 2 && !S13b.pad, S13b);
+  await ev(() => window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }));
+  const t13 = await until(() => { const r = window.__FV.scene.civic.restaurant; window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }); return !!r.server2 && r.server2.state === 'deliver'; }, 120, 1);
+  step('13 ... and he carries plates too', t13 >= 0, t13);
+  await ev(() => window.__FV.save());
+  await page.reload({ waitUntil: 'load', timeout: 180000 });
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
+  await sleep(300);
+  await tapStart(page);
+  await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI') && window.__FV.scene.civic.restaurant, 180000);
+  await sleep(1000);
+  await installStepper(page);
+  await ev(() => { window.__FV.v42 && (window.__FV.v42.v.seen.whatsNew = 1); });
+  await adv(3);
+  const S13c = await servers();
+  step('13 reload: the 서빙 직원 2 is back once (two servers, no pad)', S13c.server && S13c.server2 && S13c.n === 2 && !S13c.pad, S13c);
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));
 step('0 no page errors', !errs.length && !fatal, errs.slice(0, 5));

@@ -177,7 +177,10 @@ export class Site {
     if (this.dropPad) this.dropPad.setVisible(v);
     if (this.label) this.label.setVisible(v && (this.state === 'plot' || this.state === 'foundation'));
     this.stock.setVisible(v);
-    if (this.obstacle) this.obstacle.active = v && this.state !== 'plot';
+    // ((v4.2 touch) not once the building stands either: a loaded save shows its finished sites again (refreshSites),
+    //  and the foundation's big circle (footprint × 0.36: r 189 on an XL plot) came back over the finished building's
+    //  yard — on the 큰 식당 it covered half the terrace, so the 서빙 직원 and guests walked into it and stalled)
+    if (this.obstacle) this.obstacle.active = v && this.state !== 'plot' && this.state !== 'done';
     if (this.built && this.built.setEnabled) this.built.setEnabled(v);
   }
   setEnabled(v) { this.setShown(v); }

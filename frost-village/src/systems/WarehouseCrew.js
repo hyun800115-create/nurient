@@ -30,6 +30,7 @@ export class WarehouseCrew {
     this.sampleT = 0;
     this.sinceT = Math.max(0, num(s.since, 0));             // seconds since the last arrival
     this.arrivals = 0;                                      // (this session)
+    this.bannerT = Infinity;                                // seconds since the last big banner (this session)
   }
 
   get base() { return Math.max(0, Math.min(6, Math.floor(BALANCE.warehouse.porters) || 2)); }
@@ -70,6 +71,7 @@ export class WarehouseCrew {
       this.lastN = n;
     }
     this.sinceT += dt;
+    this.bannerT += dt;
     const W = gs.warehouse;
     if (!W || !W.enabled || !this.seen) return;
     // one more walks in when the village makes more than the crew can follow (one at a time, every crew.every s)
@@ -84,7 +86,10 @@ export class WarehouseCrew {
     this.extra = Math.max(this.extra, this.crew() - this.base);
     this.sinceT = 0;
     this.arrivals++;
-    gs.ui.banner(t('crewCame'), t('crewSub', { n: this.crew() }));
+    // (one big banner, then a small toast for the next ones within crew.bannerGap s: an older save's busy village calls
+    //  for several at once after the load — four banners in six minutes was too many)
+    if (this.bannerT >= Math.max(0, num(C().bannerGap, 300))) { gs.ui.banner(t('crewCame'), t('crewSub', { n: this.crew() })); this.bannerT = 0; }
+    else if (gs.ui.toast) gs.ui.toast(t('crewToast', { n: this.crew() }), 2200);
     const N = this.v42.news;
     if (N && N.today) N.today.crew = (N.today.crew || 0) + 1;
     gs.events.emit('crewArrived', this.crew());

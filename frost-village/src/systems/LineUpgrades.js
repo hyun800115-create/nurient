@@ -10,8 +10,10 @@
 //   썰매 한 대 더  a second cargo sleigh once the 물류창고 stands and a sleigh load (depot.sleigh.cap) of surplus has
 //                 waited at the dock for sleigh2S s in total while the racks had room             (v42.depot.sleighs)
 //   테이블 늘리기 (v4.2 touch) the big restaurant's line has waited for a free seat for civic.restaurant.tables.offerS s
-//                 in total (BigRestaurant.busyT): two more tables in the back yard, 2 levels; pad where they will
-//                 stand (a restaurant pad: not counted in the 3 offers at a time)                (rest.tables)
+//                 in total (BigRestaurant.busyT), or it has served civic.restaurant.tables.meals[level] meals in all
+//                 (a popular house: once the 서빙 직원 can reach every seat the line seldom waits for one): two more
+//                 tables in the back yard, 2 levels; pad just beyond where they will stand (a restaurant pad: not
+//                 counted in the 3 offers at a time)                                               (rest.tables)
 //   서빙 직원 2   (v4.2 touch) once the back yard has tables and plates waited on the pass (2+) while the server was
 //                 out for civic.restaurant.server2.offerS s in total: pad on the restaurant's staff spot  (rest.server2)
 // (v4.2 touch) 짐꾼 2 for every line with a goods porter of its own: also the 대장간 (tools), the 통조림 공장 (cans) and the
@@ -102,7 +104,8 @@ export class LineUpgrades {
     const R = gs.civic && gs.civic.restaurant;
     if (R && R.enabled && R.setTables && R.tableLevel < R.maxTableLevel) {
       const id = 'tables' + (R.tableLevel + 1), TB = RT();
-      if (R.busyT >= (Number(TB.offerS) || 60) || this.paid[id] > 0 || this.pads[id]) {
+      const meals = Number((TB.meals || [])[R.tableLevel]) || Infinity;
+      if (R.busyT >= (Number(TB.offerS) || 60) || (R.served || 0) >= meals || this.paid[id] > 0 || this.pads[id]) {
         const p = R.tablesPadPos();
         out.push({ id, kind: 'tables', cost: Number((TB.costs || [])[R.tableLevel]) || 1500, x: p.x, y: p.y, label: 'tables_pad', icon: Assets.pick('ui_icon_upgrade', 'ui_icon_lock_open', 'ui_icon_lock') });
       }

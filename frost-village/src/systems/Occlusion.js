@@ -79,6 +79,9 @@ export class Occlusion {
     for (const w of gs.rawPorters || []) add(w);     // (v3.5) pile -> station porters
     for (const a of gs.animals || []) if (a.enabled && !a.dead) add(a);
     if (gs.market) { for (const c of gs.market.queue) add(c); for (const c of gs.market.leaving) add(c); }
+    // ((v4.2 fix) the general store's line too: on a plot by the border pines — w_m2, e_m1, se_m1, s_l1, se_l1 — its
+    //  customers stood unseen behind them: the store looked empty while its line was full)
+    if (gs.store && gs.store.enabled) { for (const c of gs.store.queue) add(c); for (const c of gs.store.leaving) add(c); }
     if (gs.trade && gs.trade.enabled) add(gs.trade.merchant);
     if (gs.life) for (const r of gs.life.residents) if (!r.lod) add(r);
     // ---- (v4-A) train visitors, townsfolk, the train's cars

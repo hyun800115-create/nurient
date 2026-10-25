@@ -1,5 +1,6 @@
 // (v4.2 touch) the designer's screenshots of the 큰 식당 테이블 늘리기 / 서빙 fix and the porters -> docs/previews/screens_v42/
 //   node tools/test/shots_v42_touch.mjs [--only 31,32] [--repo DIR] [--size 390x844] [--dpr 3] [--lang ko] [--suffix _x]
+//   (31–33 change the tables / crew for the rest of the run: shoot 34–36 in a run of their own: --only 34,35,36)
 // From the v4.1 46-min save (all three restaurant staff hired), fixed-step clock. --repo runs another checkout (the
 // "before" shot 30 on the v4.2 base copy). 31–33 stage a lunch rush (guests every 2.2–2.6 s) so the back yard fills
 // (32–33 with the 서빙 직원 2) — the numbers are measured elsewhere (docs/build_reports/v42_touch.md).
@@ -28,11 +29,12 @@ const SCENES = [
   // (base copy) the designer's phone: all three staff, the chief away: the terrace full of guests waiting for food
   { name: '30_restaurant_busy_before', secs: 150, feed: true, setup: () => { const R = window.__busy(5); return { x: R.x - 230, y: R.y - 120, z: 1.0 }; } },
   // a staged lunch rush (guests every 2.2–2.6 s, about twice what the staff can serve) fills the back yard. 31: one
-  // server, then the normal pace for 14 s — he cannot keep up and the 서빙 직원 2 pad appears (as in the game); 32–33:
+  // server, then the normal pace for 14 s (since the touch finish he keeps up: no 서빙 직원 2 pad at this pace); 32–33:
   // with the 서빙 직원 2, the picture is taken when ≥ 9 seats are taken and ≥ 3 guests eat (`full`, ≤ 40 s more)
-  { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); R.setTables(1, true); return { x: R.x - 190, y: R.y - 150, z: 1.25 }; },
+  // ((touch finish) 31–32 by day: the 46-min save loads in the evening, so without this 31–33 were all night shots)
+  { name: '31_restaurant_tables_lv1', secs: 90, feed: true, setup: () => { const R = window.__busy(2.6); window.__day(); R.setTables(1, true); return { x: R.x - 190, y: R.y - 150, z: 1.25 }; },
     then: () => { const R = window.__FV.scene.civic.restaurant; R.R.spawnEvery = 5; return { x: R.x - 190, y: R.y - 150, z: 1.25 }; }, secs2: 14 },
-  { name: '32_restaurant_tables_lv2', secs: 100, feed: true, setup: () => { const R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true); return { x: R.x - 250, y: R.y - 190, z: 1.3 }; },
+  { name: '32_restaurant_tables_lv2', secs: 100, feed: true, setup: () => { const R = window.__busy(2.2); window.__day(); R.setTables(2, true); R.hire('server2', true); return { x: R.x - 250, y: R.y - 190, z: 1.3 }; },
     then: () => window.__full({ x: -250, y: -190, z: 1.3 }) },
   { name: '33_restaurant_tables_night', secs: 100, feed: true, setup: () => {
     const gs = window.__FV.scene, nb = gs.v4, R = window.__busy(2.2); R.setTables(2, true); R.hire('server2', true);
@@ -44,7 +46,9 @@ const SCENES = [
   // are due in this save are marked seen so their banners do not cover it)
   { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => {
     const R = window.__busy(5); window.__quiet();
-    R.busyT = 61; const p = R.tablesPadPos(); return { x: p.x + 110, y: p.y + 120, z: 1.0 };
+    // ((touch finish) the 46-min save has served 150+ meals, so its pad (and banner) came at the load: put it up again)
+    const L = window.__FV.scene.v42.lines; if (L.pads.tables1) { L.pads.tables1.vanish(); delete L.pads.tables1; } window.__FV.v42.v.seen.tb = {};
+    R.busyT = 61; const p = R.tablesPadPos(); return { x: p.x + 110, y: p.y + 70, z: 1.0 }; // (y + 70: at 360 × 640 the banner's second line covered the pad label at + 120)
   } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
   { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
@@ -72,6 +76,8 @@ await page.evaluate((BUSYsrc) => {
   window.__run = (sec) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { T += DT; D += DT; game.headlessStep(T, DT); } };
   window.__draw = () => { T += DT; D += DT; game.step(T, DT); };
   window.__busy = eval('(' + BUSYsrc + ')');
+  // the day clock to 10:00 (and on, as the game runs it); the tint follows over `day.fade` s
+  window.__day = (h = 10) => { const nb = window.__FV.scene.v4; if (nb && nb.clock) { if (!nb.clock.on && nb.clock.start) nb.clock.start(); nb.clock.set(h); } };
   // (the upgrade pads already due in this save are marked seen, so their banners do not cover the one in the picture)
   window.__quiet = () => { const S = window.__FV.v42.v.seen; for (const k of ['up', 'p2', 'p34', 'big']) S[k] = new Proxy(Object.assign({}, S[k] || {}), { get: (o, q) => (typeof q === 'string' ? 1 : o[q]) }); };
   // (the rush goes on until the picture shows a busy house being served: ≥ 9 of 16 seats taken and ≥ 3 guests

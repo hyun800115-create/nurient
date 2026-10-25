@@ -11,6 +11,8 @@ import { Register } from './Register.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { FOODS, GOODS, priceOf } from '../data/items.js';
 import { PRIO } from '../systems/Logistics.js';
+import { t } from '../data/strings.js';
+import { floatLabel } from './Shop.js';
 
 export { FOODS, GOODS };
 
@@ -162,6 +164,7 @@ export class Market {
     this.img.setVisible(v); this.shelf.setVisible(v); this.cash.setEnabled(v); this.stock.setVisible(v);
     this.obstacle.active = v;
     this.register.setEnabled(v);
+    if (this.emptyLab && !v) this.emptyLab.c.setVisible(false);
     for (const c of this.queue) { c.sprite.setVisible(v); c.shadow.setVisible(v); if (c.bubble) c.bubble.setVisible(v); }
   }
   revealObjects() { return [this.img, this.shelf.img, this.cash.pad.img].concat(this.register.revealObjects()); }
@@ -184,6 +187,8 @@ export class Market {
   /** queue slot i: straight back from the counter, then turning (queueTurn / queueStep2) so a long line stays on the plaza */
   slotPos(i) {
     const c = this.cfg;
+    // ((v4.2 fix) the general store's places moved around a pine / the edge of the land: Game.storeLine)
+    if (c.slots && c.slots[i]) return { x: c.slots[i].x, y: c.slots[i].y };
     const turn = c.queueTurn || 1e9;
     const a = Math.min(i, turn - 1), b = Math.max(0, i - (turn - 1));
     const s2 = c.queueStep2 || c.queueStep;
@@ -295,6 +300,7 @@ export class Market {
     if (!this.enabled) return;
     this.cash.update(dt);
     this.register.update(dt);
+    if (this.cfg.emptyLabel) this.emptyCue(dt);
     // spawn
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
@@ -355,6 +361,25 @@ export class Market {
       if (c.alive) c.update(dt, -1);
       if (!c.alive) this.leaving.splice(i, 1);
     }
+  }
+
+  /**
+   * ((v4.2 fix, the designer's "잡화점 판매원있는데 판매를 안해") the general store's shelf has been empty for
+   * customers.emptyCueS s while a customer waits at the counter: a label over the shelf says so ('판매대가 비었어요'),
+   * so a clerk standing by a still line reads as "the goods are on their way", not "the shop does not sell"
+   */
+  emptyCue(dt) {
+    const gs = this.gs, f = this.queue[0];
+    const waiting = this.stock.count === 0 && !!(f && f.arrived && f.state === 'wait' && f.need > 0);
+    this.emptyT = waiting ? (this.emptyT || 0) + dt : 0;
+    const show = this.emptyT >= (Number(BALANCE.customers.emptyCueS) || 4);
+    if (show && !this.emptyLab) {
+      this.emptyLab = floatLabel(gs, this.shelf.x, this.shelf.y - 92, this.goods[0]);
+      this.emptyLab.set(t('storeShelfEmpty'));
+    }
+    if (!this.emptyLab) return;
+    if (this.emptyLab.c.visible !== show) this.emptyLab.c.setVisible(show);
+    if (show) this.emptyLab.bob(gs.time.now);
   }
 
   complete(c) {

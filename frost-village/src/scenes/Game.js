@@ -1191,14 +1191,49 @@ export class Game extends Phaser.Scene {
       queueStep: YO(-0.9), queueTurn: 4, queueStep2: XO(-0.9), register: [cp[0] + 120, cp[1] + 74],
       stockCols: [[-36, -6], [-12, 6], [12, -6], [36, 6], [-24, 18], [24, 18]],
       clerk: ['npc_clerk_a', 'npc_clerk_b', 'npc_aunt'], collider: [22, -12, 0.3], faceTo: [30, -40],
-      maxQueue: 6, spawnEvery: 3.2, wantMax: 3, soldEvent: 'storeSold', shelfMax: 24,
+      maxQueue: 6, spawnEvery: 3.2, wantMax: 3, soldEvent: 'storeSold', shelfMax: 24, emptyLabel: true,
       available: () => STORE_GOODS.filter((g) => (g === 'item_can' ? this.isBuilt('cannery') : this.isBuilt('toolsmith'))),
     };
     const m = new Market(this, cfg);
     m.front = [-60, 30];
     if (this.padSpots) { this.padSpots.push({ x: m.shelf.x, y: m.shelf.y, r: 70 }, { x: m.cash.x, y: m.cash.y, r: 70 }, { x: m.register.x, y: m.register.y, r: 64 }); }
+    this.storeLine(m, cfg);
     m.restoreQueue(1);
     return m;
+  }
+
+  /**
+   * ((v4.2 fix, the designer's "잡화점 … 사람들도 거기로 못가는건지") a line place nobody can stand on — a border pine, the
+   * edge of the open land (plots w_m2: places 4–6, e_m1: 5–6, e_m2: 6) — moves to the nearest free spot that goes on
+   * from the place before it (the line bends around the pine). A customer sent there never arrived and walked on the
+   * spot against the pine / the fog at the back of a line that looked stuck. The line keeps its 6 places (customers
+   * walking in hold one: a shorter line let fewer come); where no spot is free the line ends there (at least 2).
+   */
+  storeLine(m, cfg) {
+    const C = this.collision, n = m.maxQueue, pos = [];
+    const keep = [m.cash, m.register, m.shelf].filter((o) => o && Number.isFinite(o.x));
+    const ok = (x, y) => C.inWalk(x, y) && !C.blocked(x, y, 13) && !keep.some((o) => Math.hypot(o.x - x, (o.y - y) * 2) < 66) && !pos.some((q) => Math.hypot(q.x - x, (q.y - y) * 2) < 40);
+    let moved = 0;
+    for (let i = 0; i < n; i++) {
+      const q = m.slotPos(i);
+      if (ok(q.x, q.y)) { pos.push({ x: q.x, y: q.y }); continue; }
+      const prev = pos[pos.length - 1] || q;
+      let best = null, bd = Infinity;
+      for (let r = 42; r <= 96 && !best; r += 18) {
+        for (let a = 0; a < 16; a++) {
+          const x = prev.x + Math.cos((a * Math.PI) / 8) * r, y = prev.y + Math.sin((a * Math.PI) / 8) * r * 0.5;
+          if (!ok(x, y)) continue;
+          const d = Math.hypot(x - q.x, (y - q.y) * 2);
+          if (d < bd) { bd = d; best = { x, y }; }
+        }
+      }
+      if (!best) break;
+      pos.push(best);
+      moved++;
+    }
+    if (!moved && pos.length === n) return;
+    cfg.slots = pos;
+    cfg.maxQueue = Math.max(2, pos.length);
   }
 
   /** objects with an output pad porters can empty (v1 stations, v3 workshops, the boat's catch pad) */

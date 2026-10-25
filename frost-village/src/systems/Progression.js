@@ -108,6 +108,11 @@ export const STEPS = [
   { id: 'rest_cook', type: 'restStaff', role: 'cook', after: 'rest_cashier', c1: true, side: true },
   { id: 'rest_server', type: 'restStaff', role: 'server', after: 'rest_cook', c1: true, side: true },
 ];
+// (v4.2 dock fix, the designer's "선착장 생선이 그대로야") steps that come with another one. Nobody else carries the boat's
+// catch (the chief by hand; a 창고 / station porter's rare spill run): without the 생선 짐꾼 the catch pad fills, the boat
+// waits at the pier with a full hold and the fish stay. He was a 600-coin side pad nobody pointed at, beside the pile,
+// with the name of the 생선 통's porter the player already has — now he comes with the rowboat (older saves: on load)
+export const COMES_WITH = { boat_rowboat: ['porter_dock'] };
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
 // (v3) the main goals after the village is complete, in order (the v3 finale: "개척 완료")
@@ -262,6 +267,17 @@ export class Progression {
   /** apply saved state instantly (no animations) and create the visible pads */
   init() {
     const gs = this.gs;
+    // (v4.2 dock fix) a save with the boat but not its 생선 짐꾼: he comes now (a partial payment on his pad comes back)
+    for (const k in COMES_WITH) {
+      if (!this.done[k]) continue;
+      for (const id of COMES_WITH[k]) {
+        if (this.done[id]) continue;
+        this.done[id] = true;
+        const back = Math.max(0, Math.floor(Number(this.paid[id]) || 0));
+        delete this.paid[id]; delete this.got[id];
+        if (back > 0 && gs.economy) gs.economy.add(back);
+      }
+    }
     for (const s of STEPS) {
       if (!this.done[s.id]) continue;
       this.applyStep(s, true);
@@ -326,6 +342,19 @@ export class Progression {
     delete this.pads[s.id];
     pad.vanish();
     this.applyStep(s, false, pad.x, pad.y);
+    // (v4.2 dock fix) what comes with this step (the rowboat's 생선 짐꾼) arrives at its own place
+    const withIt = [];
+    for (const id of COMES_WITH[s.id] || []) {
+      const w = STEPS.find((q) => q.id === id);
+      if (!w || this.done[id]) continue;
+      this.done[id] = true;
+      const back = Math.max(0, Math.floor(Number(this.paid[id]) || 0));
+      delete this.paid[id]; delete this.got[id];
+      if (back > 0 && gs.economy) gs.economy.add(back);
+      if (this.pads[id]) { this.pads[id].destroy(); delete this.pads[id]; }
+      this.applyStep(w, false);
+      withIt.push(id);
+    }
     delete this.got[s.id];
     if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
     else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
@@ -336,9 +365,10 @@ export class Progression {
     else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }));
     else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
     else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'));
-    else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'));
+    else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'), withIt.indexOf('porter_dock') >= 0 ? t('boatPorterSub') : undefined);
     else if (s.type === 'stationPorter') gs.ui.banner(t('hired', { name: t('stn_porter') }), t('stnPorterSub'));      // (v4-B)
     gs.events.emit('step', s.id);
+    for (const id of withIt) gs.events.emit('step', id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
     if (s.id === COMPLETE_AFTER && !this.celebrated) {

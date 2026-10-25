@@ -1067,7 +1067,7 @@ dock, and the freight cars still carry surplus. Nothing else depends on the depo
 
 ---
 
-## 19. v4.2 touch — 큰 식당 tables, the server fix, 짐꾼 2 on more lines, a growing 창고 crew (2026-10-18)
+## 19. v4.2 touch — 큰 식당 tables, the server fix, 짐꾼 2 on more lines, a growing 창고 crew (2026-10-18, finished 2026-10-25)
 
 Designer request (relayed): materials pile up because nobody carries them fast enough; more porters, the 창고 early, its
 crew in proportion to what the village makes. This touch does the **carry side** and the **restaurant** only; the demand
@@ -1077,8 +1077,9 @@ Numbers and evidence: `docs/build_reports/v42_touch.md`. Designer text: `docs/�
 ### 19.1 Restaurant (`src/entities/BigRestaurant.js`)
 
 - **Measured first** (46-min save, chief away, 5 game min per state): all three staff served 3.8 guests a minute with
-  2.0 walk-outs a minute; the cook was 17 % busy, the server 100 %. Cause: the 서빙 직원's destination beside an inner seat lay inside the
+  2.0 walk-outs a minute; the cook was 17 % busy, the server 100 %. Cause (first build): the 서빙 직원's destination beside an inner seat lay inside the
   neighbour table's collision circle (r 44) and the four tables left no gap, so 3 of 5 trips ended on the 12 s timeout.
+  The finish found the larger blocker underneath: the plot's foundation circle, active again after every load (§19.5).
 - **Server**: walks to a free *serve point* beside the seat (ring search r 64/80/96 px, 16 directions, not blocked at
   r 15, nearest to the approach; cached per seat), goes round the terrace by `backPath` for back-yard seats, carries up
   to `serverCarry` (2) tickets for seats on the same side, legs capped at 7 s (stalled 1.2 s near the seat = arrived).
@@ -1126,6 +1127,26 @@ costs (ranges in `balanceCheck.js`). Strings ko + en: `rest_kitchen_wait`, `tabl
 `tablesDone/Sub`, `rest_server2`, `srv2Banner/Sub`, `crewCame`, `crewSub`, `news_crew`, `news_tables`. Tests:
 `restaurant.mjs` steps 6b, 10–12; new `porters42.mjs`; `shots_v42_touch.mjs` (screens 30–36); census and bot samples
 count made / crew / 짐꾼 2 / restaurant.
+
+### 19.5 Finish (2026-10-25)
+
+The first build was cut off before its last runs; the finish re-measured on the final source and changed:
+
+- **Site circle after a load** (`src/entities/Site.js` `setShown`): a `done` site's foundation circle (footprint × 0.36)
+  was re-activated by `refreshSites` on every load; on the 큰 식당's XL plot it is r 189 over half the terrace — the real
+  cause of the server's timeouts and the slow back-yard walks. Now never re-activated once `done` (every building keeps
+  its own collision; fresh play already worked so). Probe: 0 timeouts / stalls on all 16 seats, legs ≤ 2.1 s.
+- **Tables trigger**: with the server fixed the line never waits for a seat (`frontNoSeat` 0 %), so `LineUpgrades`
+  also offers `tables{n}` once `served` ≥ `civic.restaurant.tables.meals[level]` (150, 450). Banner reworded
+  (`tablesBanner`: 큰 식당에 손님이 많아요!).
+- **Pad place**: `L.padOff` (−0.9, +0.5 m) beyond the level's first table spot (the lamp hid the price).
+- **Queue order**: a guest who reaches the line steps in front of guests still walking to it (`walk` → `queue`), so the
+  register never waits for an absent head while others stand behind.
+- **Crew banner**: one banner per `warehouse.crew.bannerGap` (300 s), a toast (`crewToast`) for arrivals in between.
+- **WarehousePorter `grab` guard** (`src/entities/Worker.js`): a job whose source has no `outStack` is dropped (raw
+  reservation released) instead of throwing (seen once in a 60-min census).
+- **서빙 직원 2**: re-measured as not needed at the natural pace (one server: 16 seats, 86 % busy, 3.4 s wait); kept as
+  the self-limiting offer; covered by `restaurant.mjs` 13.
 
 ---
 

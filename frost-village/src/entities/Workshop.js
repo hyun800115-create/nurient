@@ -132,8 +132,18 @@ export class Workshop extends Station {
     if (best) return best;
     const store = gs.store;
     if (store && store.enabled) {
+      // ((v4.2 fix, the designer's "잡화점 판매원있는데 판매를 안해") for the shop: keep forging the kind already waiting on
+      // the output pad while the shop has room for it. A porter carries one kind per trip: five kinds mixed on the pad
+      // went 3 tools a trip (46-min save: 3.0 a trip, a 57 s round trip of 3,079 px), the forge stood full 26 % of the
+      // time and the shop's tool shelves were empty 85 % of the time while 8–12 tools waited here
+      let run = null, rn = 0;
+      for (const tl of TOOLS) { const o = this.outStack.countWithIncoming(tl); if (o > rn && store.stock.countOf(tl) + o < store.maxPerType) { rn = o; run = tl; } }
+      if (run) return run;
+      // a new run: the kind the shop has least of; on a tie the kind after the last one forged (process() keeps it): the
+      // shelf gets every kind in turn, not only axes
       let low = null, lc = Infinity;
-      for (const tl of TOOLS) { const c = store.stock.countOf(tl) + this.outStack.countWithIncoming(tl); if (c < lc) { lc = c; low = tl; } }
+      const k0 = (TOOLS.indexOf(this.lastRun) + 1) % TOOLS.length;
+      for (let j = 0; j < TOOLS.length; j++) { const tl = TOOLS[(k0 + j) % TOOLS.length]; const c = store.stock.countOf(tl) + this.outStack.countWithIncoming(tl); if (c < lc) { lc = c; low = tl; } }
       if (low) return low;
     }
     return null;     // nobody needs a tool and there is no shop to sell them: the forge rests
@@ -158,6 +168,7 @@ export class Workshop extends Station {
       gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: mx, y: my }, { dur: 240 + i * 40, height: 50, scaleTo: 0.4, onDone: (spr) => gs.effects.releaseItem(spr) });
     });
     const outType = R.out === 'tool' ? (this.planned || this.pickTool() || TOOLS[0]) : R.out;
+    if (R.out === 'tool') this.lastRun = outType;
     for (let i = 0; i < R.outN; i++) this.outStack.reserve(outType);
     const ox = this.x + (fx.output ? fx.output[0] : 0), oy = this.y + (fx.output ? fx.output[1] : -50);
     for (let i = 0; i < R.outN; i++) {

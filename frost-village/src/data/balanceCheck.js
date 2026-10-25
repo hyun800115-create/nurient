@@ -23,7 +23,7 @@ function fixNum(obj, key, path, min, max, def, int) {
 }
 
 // settings that older balance.js files may not have yet (filled in silently)
-const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.spawnEveryLate', 'trade.shelfMax', 'workers.porterCapacity',
+const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.emptyCueS', 'customers.spawnEveryLate', 'trade.shelfMax', 'workers.porterCapacity',
   'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
@@ -100,6 +100,7 @@ export function checkBalance() {
   const C = B.customers;
   fixNum(C, 'spawnEvery', 'customers.spawnEvery', 0.3, 600, 2.6);
   fixNum(C, 'spawnEveryLate', 'customers.spawnEveryLate', 0.3, 600, C.spawnEvery);
+  fixNum(C, 'emptyCueS', 'customers.emptyCueS', 0, 600, 4);
   fixNum(C, 'maxQueue', 'customers.maxQueue', 1, 30, 6, true);
   fixNum(C, 'wantMin', 'customers.wantMin', 1, 50, 1, true);
   fixNum(C, 'wantMax', 'customers.wantMax', C.wantMin, 50, 3, true);
@@ -206,6 +207,9 @@ function checkC1(B) {
   if (!Array.isArray(TB.costs) || TB.costs.length !== 2) { if (TB.costs !== undefined) warn('civic.restaurant.tables.costs', TB.costs, [1200, 2000]); TB.costs = [1200, 2000]; }
   fixNum(TB.costs, 0, 'civic.restaurant.tables.costs[0]', 1, 1e9, 1200, true);
   fixNum(TB.costs, 1, 'civic.restaurant.tables.costs[1]', 1, 1e9, 2000, true);
+  if (!Array.isArray(TB.meals) || TB.meals.length !== 2) { if (TB.meals !== undefined) warn('civic.restaurant.tables.meals', TB.meals, [150, 450]); TB.meals = [150, 450]; }
+  fixNum(TB.meals, 0, 'civic.restaurant.tables.meals[0]', 1, 1e7, 150, true);
+  fixNum(TB.meals, 1, 'civic.restaurant.tables.meals[1]', 1, 1e7, 450, true);
   fixNum(R, 'seatsPull', 'civic.restaurant.seatsPull', 0, 2, 0.5);
   const S2 = R.server2 = (R.server2 && typeof R.server2 === 'object') ? R.server2 : {};
   fixNum(S2, 'offerS', 'civic.restaurant.server2.offerS', 1, 3600, 60);
@@ -218,6 +222,7 @@ function checkC1(B) {
   fixNum(CR, 'cap', 'warehouse.crew.cap', 0, 12, 6, true);
   fixNum(CR, 'window', 'warehouse.crew.window', 30, 3600, 180);
   fixNum(CR, 'every', 'warehouse.crew.every', 5, 3600, 60);
+  fixNum(CR, 'bannerGap', 'warehouse.crew.bannerGap', 0, 7200, 300);
   fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 12, true);
   const ST = C.settlers = (C.settlers && typeof C.settlers === 'object') ? C.settlers : {};
   fixNum(ST, 'every', 'civic.settlers.every', 5, 3600, 45);
@@ -438,7 +443,7 @@ export const V42_SPEC = {
   aura: { ringPx: R(10, 400, 70), fullZoom: R(0.2, 4, 1.2), maxScale: R(1, 6, 2), pinZoom: R(0.1, 4, 0.8), crowdN: R(1, 50, 4, true), crowdR: R(20, 2000, 160), glowDay: R(0, 1, 0.35), glowNight: R(0, 1, 0.6) },
   cheer: { mult: R(1, 3, 1.1), still: R(0.1, 60, 2), radius: R(10, 2000, 200) },
   pickup: { stillS: R(0, 5, 0.35), stillSpeed: R(1, 500, 20), gatherStillS: R(0, 5, 0.35), tipSpeed: R(0.05, 1, 0.6) },
-  nav: { dotEvery: R(8, 400, 48), maxDots: R(0, 64, 16, true), hideNear: R(0, 1000, 90), replanEvery: R(0.1, 30, 1.0), strayPx: R(10, 2000, 80), straightUnder: R(0, 5000, 360), rawDockPx: R(0, 1e5, 1600) },
+  nav: { dotEvery: R(8, 400, 48), maxDots: R(0, 64, 16, true), hideNear: R(0, 1000, 90), replanEvery: R(0.1, 30, 1.0), strayPx: R(10, 2000, 80), straightUnder: R(0, 5000, 360), rawDockPx: R(0, 1e5, 1600), pinMaxS: R(5, 3600, 240), pinArrivePx: R(20, 1000, 90) },
   porters: { shelfEmptyPrio: R(1, 99, 48), shelfEmptyAfter: R(0, 600, 10), inputUrgentBelow: R(0, 1, 0.25), inputCalmPrio: R(1, 99, 42), travelPxPerPoint: R(10, 1e6, 300), fullLoadAt: R(0.1, 1.01, 0.7) },
   trade: { displayKeep: R(0, 40, 2, true) },
   warehouse: { direct: 'bool:true', directMinPrio: R(1, 99, 40) },
