@@ -16,6 +16,9 @@ everything on the final source. Numbers are from the final source unless marked 
 창고 crew emptying the forge's runs) was found by measurement and resolved (`WarehousePorter.leaveToOwnPorter`). The
 full suite list, both save fixture sets, a new 60-min census and both pacing bots ran on the merged tree.
 
+**Verify (2026-10-26, §13): ship with known issues.** All final-review repros pass on the final source; the exact
+three-publish procedure (with the 125 stale paths as null in the first, capabilities `{ sample: {} }`) is in §13.9.
+
 Evidence (scratch):
 - first build: `/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/v42touch/` — `before/`
   (restaurant on the base copy), `census/base60` + `base35_10` (base copy), `base/frost-village` (HEAD 3236722), `probe/`;
@@ -718,3 +721,199 @@ re-run where it touches the suite.
 6. Previews 37 and 41–44 are 390 × 844 at DPR 2; 31–36 DPR 3 (as before).
 7. Nothing is committed by this pass (the session's WIP snapshot `7a7be4b`, made by the runner at 09:28, holds most of
    it; the rest is in the working tree) and the artifact is not rebuilt.
+
+## 13. Verify (2026-10-26)
+
+**Verdict: ship with known issues.** Every critical, high and medium repro from the two final reviews passes on the
+final source; all suites pass or fail only on known timing flakes that passed on a rerun (or match the copy without
+these fixes); saves from real v3.5 / v4.1 / v4.2 games migrate with nothing lost; both bots reach 읍 inside the gate
+with 0 stuck and 0 errors; the soaks are clean; the texture tour peaks at 442.4 MiB (must ≤ 455); the artifact build
+and `test_deploy standalone --quick` pass. The known issues (§13.8) are balance / timing items carried from earlier
+passes, plus one small new look item. None is a crash, a save loss or a soft-lock.
+
+Method: the source was fingerprinted at the start (`git diff 7a7be4b -- src` sha1 `429be4ee…`, src tree sha1
+`da92ee44…`) and is unchanged at the end. Nothing in `src/`, `assets/`, `tools/` or the save format was changed by this
+pass: save stays v7, no new art. The machine had 4 cores and a load of 11–16 the whole time, with 2–4 browsers at once
+and the test-only preload `slowshot.cjs` (it only raises Playwright's default timeout to 180 s). Game-time numbers are
+on the fixed-step clock; wall-clock checks are noisy. Evidence (logs and JSON, big files deleted):
+`/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/v42verify/` — `suites/`, `repro/`,
+`node/`, `bots/`, `rtools/` (harnesses + `out/*.json`), `build/`.
+
+### 13.1 Final-review repros (all on the final source)
+
+| # | Repro | Result |
+|---|---|---|
+| G1 (High) | `efence`: 잡화점 on e_m1, reload | line places 5–6 at (1788, 1289), (1804, 1270): free ground; a full line of 6 all arrive; the re-plan after the load equals the loaded line. `reloadplots`: all 9 plots give the same line after a reload, 0 blocked places |
+| G1b | `vrepro` (new): a solid object dropped on line place 3, then the `built` event | the line bends round it at once (every place standable); back when it is gone |
+| G2 / G8 (Med / Low) | `rest.mjs` (reviewer's probe), 6 game min a level | level 0 / 1 / 2: served 11.62 / 15.87 / 16.25 a min, coins 281 / 371 / 383, 0 walk-outs, plates on the pass 0.29 / 1.7 / 1.97, hand-over p50 92 / 97 / 158 px. Back-yard deliveries 31 (level 1) and 38 (level 2); the reviewer saw 1 and 0. Part-pay + reload of 테이블 늘리기 2: coins kept, 2,000 total |
+| G3 (Med) | `hallboard` 5b + `vshots` (new, 360 × 640 ko / en, 390 × 844 en) | the order card's '길 안내' tag pins 서리역 짐 싣는 곳; after picking the order the bag chip reads `통조림 4 → 서리역 짐 싣는 곳 · 37m +1곳` (dock first); the English "Show me" tag fits. (The reviewer's `hall.mjs` step ran after the pilot had already finished the cans order, so `→ 잡화점` was right there.) |
+| G4 / G5 (Med) | `store.mjs`, 6 plots × 5 min (review: 5 plots × 4 min) | sales a min (review → now): w_m2 7.75 → 8.8, e_m1 11.5 → 12.2, e_m2 8.5 → 8.8, se_m1 11 → 10, s_l1 10 → 10.4, se_l1 – → 12. Shelf empty: 69 → 43, 60 → 50, 68 → 71, 47 → 51, 46 → 46, – → 55 %. Tool kinds still empty 75–100 % of the time: supply, left to v4.4 (as §12.5) |
+| G6 / G9 (Low) | `pilot.mjs` (reviewer's harness) | the pin's age stays at 63 s while 관망 drives; a pin met under 관망 ends at 359 s; '부탁을 다 채웠어요 · 서리역 짐 싣는 곳 길 안내 끝' shows at 376 s, after '다시 조종해요' at 374 s; the pin is kept after the hand-back in run B; 0 coins paid while piloted; no pickup tip or "full" toast during 관망 |
+| G7 (Low) | `store42` + screenshot 37 | the empty-shelf label shows the waiting customer's item (bow) |
+| R1 (Med) | `firstload`, 6 real v4.2 saves | offer banners now come one after another (e.g. 130.1 / 131.8 / 133.7 s real time) instead of 2–3 in one frame; 0 errors |
+| R2 (Med) | `looks3` + `vrepro` R2b (new) | the moved lamp at (−634, 614): 57 screen px / 77 ground px from the nearest seat (was 7). Buying 테이블 늘리기 in the session moves the lamp, its night light (light at new spot 1, at old spot 0, light count unchanged) and its x-ray box together |
+| R3 (Med) | `vxray` (new; camera on the restaurant, zoom 1.2, level 2 with both servers, 150 s) | hidden while walking the back yard: guests **0.2 %**, servers **0.1 %**; with the x-ray switched off (reference) 26.8 % / 35 %. The reviewer's `looks2` keeps the camera on the chief 500 px away, so the yard is off screen and the x-ray (which works only on screen) never runs; it reproduces 28.7 / 35.9 % there, a harness artefact |
+| R4 (Low) | `padprobe`, `labels` | 테이블 늘리기 pad 146 px from the nearest seat; 서빙 직원 2 pad clear of the lamp |
+| R5 (Low) | `crew_r` | 창고 crew homes all distinct; a reload in the middle of a walk-in keeps the counts; 0 problems |
+| R6 (Low) | `labels` (44 shots) + string parity | 'Porter 2 · Fish', 'Fish piling up', 'Arrived: …'; every banner and chip fits at 360 px; 861 = 861 keys |
+| R7 (Low) | `save_v42` | passes (server 2 kept while `wantServer2` waits) |
+| R8 (Low) | `vrepro` R8 / R8b (new) | with three 짐꾼 2 lines due, the part-paid `p2_dock` (last in line order, 150 paid) takes a slot before two unpaid ones, and is still up with its 150 after a save + reload |
+| — | `fuzz` (reload in the middle of a purchase) | 14 trials (테이블 1 / 2, 서빙 직원 2, 짐꾼 2 at cannery / toolsmith / dock, 나룻배): 0 problems |
+| — | `looks` | tables never overlap, serve points free, depth right; 잡화점 line x-ray 18 / 18 views with 0 covered-and-opaque customers |
+
+### 13.2 Suites
+
+| Suite | Result |
+|---|---|
+| `restaurant` · `hallboard` · `store42` · `porters42` · `dockporter` · `nav` | 55/55 · 24/24 · 16/16 · 21/21 · 11/11 · 12/12 |
+| `v4` · `smoke` · `plots` · `v3` · `labour` · `pickup` · `rail` · `town` · `dog` | 46/46 · 53/53 · 34/34 · 18/18 · 28/28 · 31/31 · 35/35 · 17/17 · 15/15 |
+| `c2` · `townfolk_runtime` · `voice_runtime` · `v42_guide` | 39/39 · 8/8 · 29/29 · 6/6 |
+| `life` | 13/14 (campfire concert gathered 2 members, needs ≥ 3: random, not touched here), rerun **14/14** |
+| `zoom` | first run: `page.goto` 120 s timeout under load (harness); rerun **PASS** |
+| `pilot.mjs --minutes 10 --ref-minutes 10` | 9/10 (관망 income 79 % of arrow-only; long evening acts in the first 5 min), rerun **10/10 at 101 %** (21,322 vs 21,112); earlier passes 89–90 %: noise |
+| `v42` | **32/35**. The 3 misses are timing: "office panel < 100 ms" (263 ms while 4 browsers ran; known), "총총이 follows ≤ 300 px" (318 px; known, 281–335 across runs), and "딸랑이 empties the 물류 금고 within 240 s" (new in the list, see below). All 32 other checks pass, 0 page errors |
+| `visitors42` | 1/2: v4.2 85 % of the v4.1 copy's visitors a minute over minutes 3–20 (3.29 vs 3.88), the known pre-existing gap (86–95 % in the v4.2 verify); 0 page errors |
+| `reqlog42 --base` | 4/5 (the first run missed the base copy's test files; rerun with them): boot asked for one resident look (`vil_npc_*.social`) more than v4.1, the documented lazy-load timing flake; up to the first sale the same; after it 1 new file, nothing missing; 0 errors |
+| saves: `save_v42` · `save_v2` · `save_v3` · `save_v35 --browser` · `save_v4 --browser` | all passed · PASS · PASS · PASS · PASS |
+| `test_deploy standalone --quick` | **PASS** 14/14: WebGL, title 5.0 s, 363 requests, no placeholder art, no failed requests, 0 errors |
+| Node: `bank42` 18 · `depot` 26 · `depot_parity` 10 · `ledger` 20 · `letters` 23 · `pilot` 45 · `rail42` 58 · `roadnet` 32 · `walls42` 6; chat 9 files (bridge 2, ko 7, memory 12, offline 9, prompt 5, safety 11, sample 23, sanitize 7, size 2); `v4_layout`, `v42_layout` | all pass |
+| `balanceCheck` · string parity · eslint (`no-undef`, `no-dupe-keys`, `no-redeclare`) · `sanfuzz` | 0 warnings · 861 = 861 · 0 errors · 3,000 mutated saves 0 problems, 15 fixtures idempotent, largest 7,372 B |
+
+**The 딸랑이 check** (`rtools/vcourier.mjs`, the same steps as `v42.mjs`, then the courier logged every 0.5 s): a
+round visits the tills nearest-first and takes about 130 game s (trade → market → rest → store → tax → station →
+depot), then the bank. When the 640 coins land just after a round has started, the 물류 금고 waits for the next round
+and is emptied at ~180 s in the trial, but can pass 240 s. The copy without the touch (`frv/base42`, 3236722) behaves
+the same (182 s vs 179.5 s here). The 240-s window in the test is tight; the game is not wrong. Not changed here (no
+test edits in a verify pass); widen it to ~400 s when the test is next touched.
+
+### 13.3 Saves (`rtools/mig.mjs`: load → census A, play 60 s and save → B, reload → C, save at once and reload → D)
+
+15 saves: 1 v3.5, 8 v4.1 (including the three 나룻배-without-생선-짐꾼 cases), 6 real v4.2 saves made by playing 3236722.
+
+- Every save: saved version 7; coins B = C = D (e.g. 8298, 9647, 8608); 0 page errors at A, C and D; `saveLost` 0;
+  each station's porter exactly once; no `porter_dock` pad left; restaurant at level 0 with ≤ 3 staff.
+- Refunds once, exactly as expected: `v41_smart35_nodock_paid250` 250, `v41_pure45_nodock_paid599` 599,
+  `v42_smart35_nodock_paid250` 250, `v42_smart46_nodock_paid310` 310; all others 0.
+- `v42_smart46_rich`: part-payments `st2_sawmill` 77 and `p2_smelter` 123 survive both reloads.
+- 창고 crew B / C / D: 3/3/3 in 11 saves, 0/0/0 in the three 25-min saves (no 창고 yet), 2/2/2 in
+  `v42_smart35_nodock_paid250`. `v42_smart46_late` reads 2/3/3: the save had no measured rate yet, so in the first
+  60 s the crew only measures (by design: `seen` after a minute); the save at B carries the rate (519 a min, target 5),
+  and the reload trusts it and lets the due third member walk in. Growth, not a duplicate (crew 3 = base 2 + 1 extra).
+- "dup looks" 5–13 in every census: by design (robust review Info #11, two looks a role).
+
+### 13.4 Bots (fresh game until 읍, fixed step, final source)
+
+| | 5 shops | 읍 | longest wait after tower_east | 사무실 · 은행 · 물류창고 | stuck · errors |
+|---|---|---|---|---|---|
+| smart | 36.5 | **43.8** (v4.2 verify 47.3; gate ≤ 48.7) | 2.26 at 44.3 | 51.8 · 54.2 · 57.0 | 0 · 0 |
+| arrow-only | 38.8 | **49.0** (v4.2 verify 51.5; gate ≤ 53.0) | 4.16 at 44.7 | 50.4 · 52.7 · 54.7 | 0 · 0 |
+
+### 13.5 Soaks and budgets
+
+- **Late village, 10 min** (`rtools/soak.mjs 10 merged`: the 46-min save with tables level 2, 서빙 직원 2, crew 6; a
+  tour every 30 s, 관망 one minute in five): 0 errors, `saveLost` 0; crew 6, porters 16, seats 16 constant; 354 meals
+  (reviewer 356); Residency 370–434 MiB (must ≤ 455), 0 refusals until minute 6, 14 after (the residency cap working);
+  display objects 1,320–1,661; JS heap 64.8 → 104 MB at minute 7, then flat (the browser's coarse heap steps; the
+  reviewer saw 104 flat from minute 3); 54 DOM listeners, 1 interval, 3–10 Phaser timers, 6–22 tweens throughout;
+  save 6.1–8.5 KB. GL texture bytes touched 471.7 MiB in one sample (minute 8) while a view settled — the known
+  "GL bytes while a late view settles" item (CODE-2 §9.3 #5: up to ~466; the reviewer's soak 455.5); the source-sum
+  must holds.
+- **Fresh game, 10 min** (`tools/test/soak.mjs 600`): 0 errors; display children 693 → 820 and bounded (CODE-2: 695 →
+  834); tweens 5–23.
+- **Texture tour** (`rtools/tour.mjs`, the 43 designer shots): **peak 442.4 MiB** at
+  `17_depot_revealed_390x844_ko` (must ≤ 455; reviewer 450.6, v4.2 verify 451.4); most display objects in a view 1,342.
+- **`texbudget`** 9/12: every must passes (any view 411.1, GL total 448.1, GL vs source-sum 1 %, render targets 33.7,
+  back to the start within 5 MiB, 0 page errors). The three misses are the long-standing soft targets: plaza 348.4 /
+  300, tour 411.1 / 300, title 146.5 / 90 (123.8 in the review run: the title sample sums whatever has loaded, and on
+  the loaded machine the title sat longer; no title code or art changed).
+- **Draw calls, objects, logic** (`rtools/perf.mjs`, base 3236722 vs this tree, alternately in one browser): draws
+  −1.2 to +1.0 a frame per view; display objects +15 to +95 (the tables, their props, the extra helpers); Residency
+  +0 to +13 MiB; GL peak 409.9 + 33.7 render targets. Logic per fixed step, p50 of 4 interleaved rounds: plaza 2.4 →
+  2.7 ms, restaurant 2.2 → 2.7 ms (load 11; the review run had the opposite sign); the V42 systems' own time 0.099 →
+  0.126 ms. No budget is crossed.
+
+### 13.6 Build, publish list, deploy test
+
+`node tools/build/build_artifact.mjs --webp --mp3-only` on the final source (the source has not changed since):
+**413 files** (412 + the page), 65.73 MB, largest `game.js` 1.28 MB (137 modules); OK in 106 s. Checked
+`dist/artifact_files.json` against `tools/build/published_files.json` (the live v4.1 version, 491 files):
+
+- `stale` = live − this build exactly: 125 paths (audio 36, audio2 24, audio3 9, villagers 17, villagers2 11,
+  villagers3 6, workers 10, characters 9, `_packed` 3), all in the live list, none in the new build.
+- 46 paths are new; the three batches cover the 412 files exactly once; every file exists under `dist/artifact/`.
+- No asset change since the build the reviewers checked (`git diff 3236722 HEAD -- assets lib index.html` is empty).
+
+| Publish | Files | Nulls | Paths named | Size | Version after (live 491) |
+|---|---|---|---|---|---|
+| 1 (`batches[0]`) | 125 | 125 (`stale`) | 250 + the page | 32.15 MB | 376 + page |
+| 2 (`batches[1]`) | 245 | 0 | 245 + the page | 30.72 MB | 404 + page |
+| 3 (`batches[2]`) | 42 | 0 | 42 + the page | 6.05 MB | 412 + page |
+
+Every publish names ≤ 250 paths + the page and is < 64 MB; the version never holds more than 412 files + the page
+(never > 511). Publish 3 holds `game.js`, `chat.js`, `lib/phaser.min.js`, `lib/PHASER_LICENSE.md`, all 36 manifests,
+`_packed/index.json` and `title_bake.json`, so the link keeps running v4.1 code until the last publish.
+`test_deploy standalone --quick`: PASS (§13.2).
+
+### 13.7 Screenshots (looked at)
+
+`screens_v42` 31–37 and 41–44 (§12.4), the 44 `labels` shots (360 × 640 / 390 × 844, ko / en), the 9 `vshots`
+order-card and bag-chip shots, the `looks` / `looks3` restaurant and 잡화점 shots, the repro shots (`efence`, `hall`,
+`rest`, `store`, `pilot`) and the 43 tour shots. All read correctly. Small
+things: shot 41 was taken while the board panel was still fading in (the `vshots` English shot of the same panel is
+opaque and clean); the afford sparkle sits over a price digit (by design); a back-yard lantern-string end post stands
+about 46 px in front of the level-1 seat at (−682, 644) and hides that seated guest from the default camera (new, cosmetic
+Low); the English bag chip writes the item lower-case ("can 4 → …", the chip's existing format). In the tour's
+`01_whats_new_390x844_ko` the 새로워진 것 card shows its drawn stand-in icons (ring, circle, binoculars, house) instead of
+the ui5 icons: the card opened before the `v42_core` page had arrived on the loaded machine (`UIv42.openCard` picks the
+stand-ins then; not touched by this pass, and the committed shot and the reviewer's run show the real icons). The
+banners in the `labels` shots sometimes belong to another pad (e.g. "The server is busy" over the 창고): R1's queue
+shows them one at a time, wherever the camera is.
+
+### 13.8 Known issues (shipping with them)
+
+1. **Supply, not delivery (G4, G5):** tool kinds on the 잡화점 shelf empty 75–100 % of the time, raw piles look full —
+   the v4.4 demand plan (§12.5 #1).
+2. **`visitors42`: 85 %** of the v4.1 copy's visitors a minute (pre-existing, 86–95 % before; not touched here).
+3. **Restaurant levels 1–2 with one server:** about 2 plates wait on the pass, so the server often hands across the
+   table (hand-over p50 158 px at level 2 here) and the 서빙 직원 2 offer comes often (§12.5 #2–3).
+4. **Lantern post in front of a level-1 back-yard seat** (§13.7): cosmetic; move the post or the seat in a later pass.
+5. **Timing flakes on this loaded machine:** `v42` panel time / 총총이 distance / 딸랑이's 240-s window (§13.2),
+   `life` concert, `pilot` 10-min income, `zoom` page load, `reqlog42` boot order. Each passed on a rerun or matches the
+   copy without these fixes.
+6. **새로워진 것 card on a slow first load** can show the drawn stand-in icons until `v42_core` is in (pre-existing,
+   cosmetic, once per save; CODE-2 §9.3 #7 is the same late page for the train).
+7. **Texture soft targets** (title, plaza, tour) and GL bytes up to ~472 MiB while a late view settles; the musts hold.
+8. **The update window:** between publish 1 and publish 3 the live v4.1 code runs with the 125 stale files gone —
+   publish the three back to back (CODE-2 §9.3 #9).
+
+### 13.9 Publish procedure (exact)
+
+From `/home/user/nurient` (the Artifact tool's working directory), with the build above (rebuild with
+`node tools/build/build_artifact.mjs --webp --mp3-only` from `frost-village/` if anything changes first, then use the
+new `dist/artifact_files.json`):
+
+0. Find the designer's live link (the v4.1 artifact: `Artifact` `action: "list"`, or ask) and read it once
+   (`Artifact` `action: "read"`, `url`), so the update is allowed.
+1. **Publish 1:** `Artifact` publish with `url` = the live link, `file_path` = `frost-village/dist/artifact/index.html`,
+   `root` = `frost-village/dist/artifact`, `capabilities` = `{ "sample": {} }`, and `files` = a map of the 125 paths in
+   `batches[0]` to themselves plus the 125 `stale` paths to `null` (250 entries). The map, from `frost-village/`:
+   `node -e 'const a=require("./dist/artifact_files.json"),i=+process.argv[1],m={};for(const p of a.batches[i])m[p]=p;if(i===0)for(const s of a.stale)m[s]=null;console.log(JSON.stringify(m))' 0`
+2. **Publish 2:** same `url`, `file_path`, `root`; `files` = the 245 paths of `batches[1]` (same one-liner with `1`);
+   `capabilities` left out (kept).
+3. **Publish 3:** same; `files` = the 42 paths of `batches[2]` (one-liner with `2`). This one carries `game.js`,
+   `chat.js`, `lib/` and every manifest.
+4. Publish 1–3 back to back, nothing in between. If a publish is refused, fix and re-send that batch only; never
+   re-send the nulls after publish 1 succeeded.
+5. Open the link once: title, tap to start, the village runs (WebGL, no error card).
+6. Record it: `cd frost-village && node tools/build/build_artifact.mjs --record-published`, then commit
+   `tools/build/published_files.json` with the release commit.
+
+### 13.10 State left for the commit
+
+- Source unchanged by this pass (fingerprints above). The only repo file this pass edits is this report (§13).
+- The runner's WIP snapshot `afb0880` (16:53, mid-run) captured preview images the test suites had just re-rendered
+  (`smoke`, `life`, `v3`, `v35`, `v4`, `screens_v42`). The working tree puts those 133 files back to their bytes from
+  before this pass (sha1-checked against the snapshot taken at the start), so `git status` shows them as modified
+  against `afb0880` — that is intended; commit them as they are.
+- `dist/` (gitignored) holds the verified build. No extra worktree (`git worktree list` shows only the main one), no
+  background process left, big scratch files deleted.
