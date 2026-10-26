@@ -1,25 +1,49 @@
-// Economy flow-map probe (logistics_flow_map.md): load a save, set the late-village configuration, run fixed-step and
-// record EVERY item transfer (stack -> stack via gs.moveItem, sink feeds, warehouse, dock, sleigh, depot, train) plus a
-// 1 Hz state sample of every gatherer, operator, raw / goods / 2nd goods / warehouse / station porter.
-//   node probe.mjs --repo DIR --load save.json --warm 120 --minutes 10 --mode auto|bot --out out.json [--setup final|none]
+// Economy flow probe (docs/logistics_flow_map.md, docs/logistics_plan.md §2.2 / §15.3): load a save, optionally set the
+// late-village configuration, run the game on the fixed 60 fps clock and record EVERY item transfer (stack -> stack via
+// gs.moveItem, sink feeds, 창고 in / out, dock -> train / sleigh, sleigh -> 물류창고, wholesale) plus a 1 Hz state sample
+// of every gatherer, operator, raw / goods / 2nd goods / 창고 / station porter. Writes the raw record and a JSON summary
+// of the logistics gates (econ/summary.mjs), and prints `SUMMARY {...}`.
+//
+//   node tools/test/econ/probe.mjs [--repo DIR] [--load save.json] [--late] [--warm 120] [--minutes 10]
+//        [--mode auto|bot] [--out out.json] [--prefill-yard] [--seed N]
+//
+//   --repo DIR       the checkout to serve (default: the one this file lives in)
+//   --load FILE      a save (path, or a file name in tools/test/fixtures; default v41_save_smart_46min.json)
+//   --late           run L's late-village setup (= the old `--setup final`): 읍, 가공소 2단 + 짐꾼 2 on the 5 lines,
+//                    the 물류창고 built, 4 station porters. Without it the save plays as it is (runs S25 / S35)
+//   --mode auto      the chief is parked away from every pad (automation alone); `bot` = the census bot plays
+//   --prefill-yard   (v4.3.2 L1a) fill the 자재창고 to its raw share before the run (steady state); a build without the
+//                    자재창고 ignores it and says so
+//   --seed N         Math.random seeded (mulberry32) for repeatable runs
+// Runs of docs/logistics_plan.md: L = --late --warm 120 --minutes 10 (one game day); S25 / S35 = --load
+// v41_save_smart_25min.json / _35min.json --warm 60 --minutes 6.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { summarize } from './summary.mjs';
 
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const REPO = path.resolve(opt('--repo', '/home/user/nurient/frost-village'));
-const LOAD = path.resolve(opt('--load', path.join(REPO, 'tools/test/fixtures/v41_save_smart_46min.json')));
+const has = (k) => args.includes(k);
+const INIT_CWD = process.cwd();
+const REPO = path.resolve(INIT_CWD, opt('--repo', path.resolve(HERE, '..', '..', '..')));
+const loadArg = opt('--load', 'v41_save_smart_46min.json');
+const LOAD = fs.existsSync(path.resolve(INIT_CWD, loadArg)) ? path.resolve(INIT_CWD, loadArg) : path.join(REPO, 'tools/test/fixtures', loadArg);
 const WARM = Number(opt('--warm', '120'));
 const MIN = Number(opt('--minutes', '10'));
 const MODE = opt('--mode', 'auto');
-const SETUP = opt('--setup', 'final');
-const OUT = path.resolve(opt('--out', 'probe.json'));
+const LATE = has('--late') || opt('--setup', '') === 'final';
+const PREFILL = has('--prefill-yard');
+const SEED = opt('--seed', '');
+const OUT = path.resolve(INIT_CWD, opt('--out', 'probe.json'));
 process.chdir(REPO);
 const { start } = await import(path.join(REPO, 'tools/test/serve.mjs'));
 const { launch, openPage, tapStart, sleep, waitFor } = await import(path.join(REPO, 'tools/test/pw.mjs'));
 const srv = await start(0, { prefix: '/fv/', root: REPO });
 const browser = await launch();
-const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, dpr: 1 });
+const INIT = SEED !== '' ? `(() => { let a = ${Number(SEED) >>> 0}; Math.random = () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();` : undefined;
+const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, dpr: 1, init: INIT });
 const t0 = Date.now();
 let res = null;
 try {
@@ -45,20 +69,26 @@ try {
     await page.addScriptTag({ path: path.join(REPO, 'tools/test/review_gameplay_bot.js') });
     await page.evaluate(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
   }
-  // ---------------------------------------------------------------- late-village configuration (g60 from minute 13)
-  const setupInfo = await page.evaluate((SETUP) => {
-    const gs = window.__FV.scene, H = window.__FV.v42, out = {};
-    if (SETUP !== 'final') return out;
-    try {
-      const pr = gs.progress;
-      if (gs.v4 && gs.v4.rank && gs.v4.rank.level < 2) { pr.flags.rankEup = true; pr.done.rank_eup = true; const pad = pr.pads.rank_eup; if (pad) { pad.destroy(); delete pr.pads.rank_eup; } gs.v4.rank.ceremony(true); }
-      out.rank = gs.v4 && gs.v4.rank ? gs.v4.rank.level : null;
-    } catch (e) { out.rankErr = String(e); }
-    try { const L = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse']; H.lines({ up: Object.fromEntries(L.map((k) => [k, 1])), p2: L }); out.lines = 'ok'; } catch (e) { out.linesErr = String(e); }
-    try { H.depot({ build: true }); out.depot = !!(gs.v42.depot && gs.v42.depot.built); } catch (e) { out.depotErr = String(e); }
-    try { const G = gs.v4.growth; while (G.porters.length < 4) G.hireStationPorter(true); G.porterN = Math.max(G.porterN || 0, G.porters.length); out.stn = G.porters.length; } catch (e) { out.stnErr = String(e); }
+  // ---------------------------------------------------------------- run L's late-village configuration (g60 from minute 13)
+  const setupInfo = await page.evaluate(([late, prefill]) => {
+    const gs = window.__FV.scene, H = window.__FV.v42, out = { late };
+    if (late) {
+      try {
+        const pr = gs.progress;
+        if (gs.v4 && gs.v4.rank && gs.v4.rank.level < 2) { pr.flags.rankEup = true; pr.done.rank_eup = true; const pad = pr.pads.rank_eup; if (pad) { pad.destroy(); delete pr.pads.rank_eup; } gs.v4.rank.ceremony(true); }
+        out.rank = gs.v4 && gs.v4.rank ? gs.v4.rank.level : null;
+      } catch (e) { out.rankErr = String(e); }
+      try { const L = ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse']; H.lines({ up: Object.fromEntries(L.map((k) => [k, 1])), p2: L }); out.lines = 'ok'; } catch (e) { out.linesErr = String(e); }
+      try { H.depot({ build: true }); out.depot = !!(gs.v42.depot && gs.v42.depot.built); } catch (e) { out.depotErr = String(e); }
+      try { const G = gs.v4.growth; while (G.porters.length < 4) G.hireStationPorter(true); G.porterN = Math.max(G.porterN || 0, G.porters.length); out.stn = G.porters.length; } catch (e) { out.stnErr = String(e); }
+    }
+    // ((v4.3.2 L1a) the 자재창고 at steady state: its raw share filled before the run)
+    if (prefill) {
+      const Y = gs.material || (gs.v42 && gs.v42.material) || null;
+      if (Y && typeof Y.prefill === 'function') { try { out.yard = Y.prefill(); } catch (e) { out.yardErr = String(e); } } else out.yard = 'no 자재창고 in this build (ignored)';
+    }
     return out;
-  }, SETUP);
+  }, [LATE, PREFILL]);
   console.log('setup', JSON.stringify(setupInfo));
   // ---------------------------------------------------------------- instruments
   await page.evaluate(async () => {
@@ -68,7 +98,10 @@ try {
     const { Hauler } = await mod('entities/Worker.js');
     const { Warehouse } = await mod('entities/Warehouse.js');
     const { Depot } = await mod('systems/depot/Depot.js');
-    const M = window.__M = { on: false, flow: {}, trips: {}, st: {}, stn: {}, piles: {}, samples: 0, misc: {} };
+    const { BALANCE } = await mod('data/balance.js');
+    const M = window.__M = { on: false, flow: {}, trips: {}, st: {}, stn: {}, piles: {}, samples: 0, misc: {}, anyFull: 0, crew: { n: [], use: 0, busy: 0, samples: 0 } };
+    // prices for the coins-created count (shop prices; raw at the depot's raw prices)
+    M.prices = Object.assign({}, BALANCE.prices || {}, BALANCE.prices3 || {}, (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.rawPrice) || {});
     const lab = new WeakMap();
     const roleOf = (p) => (p.role === 'stationPorter' ? 'stn' : p.wh ? 'wh' : p.role === 'raw' ? 'raw:' + (p.target ? p.target.id : '?') : p.station ? (p.p2 ? 'p2:' : 'p1:') + (p.station === gs.boathouse ? 'dock' : p.station.id) : '?');
     const relabel = () => {
@@ -110,10 +143,11 @@ try {
     };
     wrapSinks();
     M.wrapSinks = wrapSinks;
-    // trips
+    // trips (and where a raw porter goes: its own station's input, a local job, or away — the dock / the 창고)
     const oStart = Hauler.prototype.startHaul;
     Hauler.prototype.startHaul = function (sink) {
       const r = oStart.call(this, sink);
+      if (this.role === 'raw') this.__away = !sink ? false : sink === this.target.inSink ? false : (sink.isWarehouse || sink.remote || sink.surplus) ? 'away' : 'local';
       if (M.on) {
         const role = roleOf(this), q = M.trips[role] || (M.trips[role] = { trips: 0, items: 0, px: 0, to: {} });
         q.trips++; q.items += this.stack.count + this.stack.incoming;
@@ -146,6 +180,18 @@ try {
       if (s.outStack.count + s.outStack.incoming >= s.outStack.max) return 'blocked';
       return 'other';
     };
+    // a 창고 crew member's job is "use" when it goes to a place that uses the thing (sink prio ≥ 40: not the 창고 STORE 10
+    // or the dock SURPLUS 12) — docs/logistics_plan.md LD4
+    const useOf = (p) => {
+      const j = p.job;
+      if (!j) return null;
+      if (j.kind === 'raw') return 'raw';
+      // (an overflow run on its way to the output pad: where it will go was decided with the job, WarehousePorter.think)
+      if (j.kind === 'in' && !p.dest) return j.use ? 'use' : 'store';
+      const s = p.dest || j.sink, ty = p.carriedType ? p.carriedType() : null;
+      const pr = s && (ty || j.type) && s.prio ? s.prio(ty || j.type) : (j.kind === 'out' || j.kind === 'link' ? 50 : 10);
+      return pr >= 40 ? 'use' : 'store';
+    };
     M.sample = () => {
       if (!M.on) return;
       M.samples++;
@@ -167,18 +213,25 @@ try {
         const o = M.stn[s.id] || (M.stn[s.id] = { inSum: 0, outSum: 0, inMax: s.inStack.max, outMax: s.outStack.max, n: 0 });
         o.inSum += s.inStack.count; o.outSum += s.outStack.count; o.n++;
       }
-      for (const k in gs.piles) { const p = gs.piles[k]; if (!p.shown) continue; const o = M.piles[k] || (M.piles[k] = { sum: 0, full: 0, n: 0 }); o.sum += p.count; o.n++; if (p.count >= p.stack.max * 0.9) o.full++; }
+      let any = false;
+      for (const k in gs.piles) { const p = gs.piles[k]; if (!p.shown) continue; const o = M.piles[k] || (M.piles[k] = { sum: 0, full: 0, n: 0 }); o.sum += p.count; o.n++; if (p.count >= p.stack.max * 0.9) { o.full++; any = true; } }
+      if (any) M.anyFull++;
       for (const r of gs.rawPorters) {
         const have = r.stack.count + r.stack.incoming; let k;
         if (r.state === 'load') {
-          if (have > 0 || r.toWh) k = 'loading';
+          r.__away = false;
+          if (r.toWh) k = (r.toWh.isWarehouse || r.toWh.remote || r.toWh.surplus) ? 'away' : 'local';
+          else if (have > 0) k = 'loading';
           else { const w = want(r.sink, r.pile.item); k = w <= 0 ? 'idle_station_full' : r.pile.count <= 0 ? 'idle_pile_empty' : 'loading'; }
-        } else if (r.state === 'haul') k = r.dest && r.dest.station ? 'carry_to_station' : 'carry_elsewhere';
+        } else if (r.__away === 'away') k = 'away';
+        else if (r.__away === 'local') k = 'local';
+        else if (r.state === 'haul') k = 'carry_to_station';
         else if (r.state === 'unload') k = (r.waitT || 0) > 0 ? 'wait_dest_full' : 'unload';
         else if (r.state === 'seek') k = 'walk_back';
         else k = r.state;
         inc('raw:' + r.target.id, k); inc('raw:all', k);
       }
+      let crewN = 0;
       for (const p of gs.porters) {
         const role = roleOf(p); let k;
         if (p.role === 'porter' && p.station) {
@@ -191,15 +244,26 @@ try {
           inc((p.p2 ? 'p2' : 'p1') + ':all', k);
         } else {
           if (p.state === 'idle') k = p.stack.count > 0 ? 'stranded_load' : 'idle';
+          else if (p.state === 'arrive') k = 'arrive';
           else if (p.state === 'toSrc' || p.state === 'toWh') k = 'walk_to_src';
           else if (p.state === 'grab' || p.state === 'take') k = 'loading';
           else if (p.state === 'haul') k = 'carry';
           else if (p.state === 'unload') k = (p.waitT || 0) > 0 ? 'wait_dest_full' : 'unload';
           else k = p.state;
           if (p.job && k !== 'idle') inc(role + ':job', p.job.kind || (p.job.sink && (p.job.sink.id || p.job.sink.kind)) || '?');
+          if (p.wh) {
+            crewN++;
+            if (p.state !== 'arrive') {
+              M.crew.samples++;
+              const u = p.state === 'idle' && !p.job ? null : useOf(p);
+              if (u) M.crew.busy++;
+              if (u === 'use') M.crew.use++;
+            }
+          }
         }
         inc(role, k);
       }
+      M.crew.n.push(crewN);
       // stocks
       const W = gs.warehouse; if (W) { M.misc.whSum = (M.misc.whSum || 0) + W.total; const c = M.misc.whBy || (M.misc.whBy = {}); for (const t in W.counts) c[t] = (c[t] || 0) + W.counts[t]; }
       if (F) { M.misc.dockSum = (M.misc.dockSum || 0) + F.dockCount(); }
@@ -212,7 +276,7 @@ try {
     let cT = 0;
     M.park = (dt) => { cT -= dt; if (cT > 0) return; cT = 0.5; const p = gs.player; const to = window.__park || (window.__park = { x: p.x, y: p.y }); if (Math.hypot(p.x - to.x, p.y - to.y) > 4) window.__FV.teleport(to.x, to.y); window.__FV.setInput(0, 0); };
   });
-  // a parking spot far from pads: the west strip edge (checked: not on a pad)
+  // a parking spot far from pads (checked: not on a pad)
   if (MODE === 'auto') console.log('park', JSON.stringify(await page.evaluate(() => {
     const gs = window.__FV.scene, hot = [];
     for (const s of gs.logistics.sinks) hot.push([s.x, s.y]);
@@ -234,11 +298,12 @@ try {
   const tick = MODE === 'bot' ? 'window.__bot.tick' : 'window.__M.park';
   // warm-up
   for (let s = 0; s < WARM; s += 10) await page.evaluate((tk) => window.__sim.run(10, eval(tk)), tick);
-  const snap0 = await page.evaluate(() => {
+  const snap = () => {
     const gs = window.__FV.scene, F = gs.v42.freight, R = gs.civic && gs.civic.restaurant, dep = gs.v42.depot;
-    window.__M.on = true;
-    return { t: window.__sim.simT, earned: gs.economy.earned, exported: F ? F.stats.exported : 0, exCoins: F ? F.stats.coins : 0, served: R ? R.served : 0, restEarned: R ? R.earned : 0, depSales: dep && dep.model ? dep.model.tot[2] : 0, depCoins: dep && dep.model ? dep.model.tot[1] : 0, hour: gs.v4 && gs.v4.clock ? gs.v4.clock.hour() : null };
-  });
+    return { t: window.__sim.simT, earned: gs.economy.earned, made: gs.madeN || 0, exported: F ? F.stats.exported : 0, exCoins: F ? F.stats.coins : 0, served: R ? R.served : 0, restEarned: R ? R.earned : 0, depSales: dep && dep.model ? dep.model.tot[2] : 0, depCoins: dep && dep.model ? dep.model.tot[1] : 0, hour: gs.v4 && gs.v4.clock ? gs.v4.clock.hour() : null, crew: gs.warehouse && gs.warehouse.porters ? gs.warehouse.porters.length : 0 };
+  };
+  const snap0 = await page.evaluate(`(${snap.toString()})()`);
+  await page.evaluate(() => { window.__M.on = true; });
   let sec = 0;
   const N = MIN * 60;
   while (sec < N) {
@@ -246,9 +311,9 @@ try {
     sec += 10;
     if (sec % 120 === 0) console.log('t', sec, Math.round((Date.now() - t0) / 1000) + 's');
   }
-  res = await page.evaluate((s0) => {
-    const gs = window.__FV.scene, M = window.__M, F = gs.v42.freight, R = gs.civic && gs.civic.restaurant, dep = gs.v42.depot;
-    const end = { t: window.__sim.simT, earned: gs.economy.earned, exported: F ? F.stats.exported : 0, exCoins: F ? F.stats.coins : 0, served: R ? R.served : 0, restEarned: R ? R.earned : 0, depSales: dep && dep.model ? dep.model.tot[2] : 0, depCoins: dep && dep.model ? dep.model.tot[1] : 0, hour: gs.v4 && gs.v4.clock ? gs.v4.clock.hour() : null };
+  const end = await page.evaluate(`(${snap.toString()})()`);
+  res = await page.evaluate(([s0, e]) => {
+    const gs = window.__FV.scene, M = window.__M, R = gs.civic && gs.civic.restaurant, dep = gs.v42.depot;
     const agents = {
       gatherers: gs.workers.map((w) => w.type), raw: gs.rawPorters.map((r) => r.target.id),
       porters: gs.porters.map((p) => (p.role === 'stationPorter' ? 'stn' : p.wh ? 'wh' : (p.p2 ? 'p2:' : 'p1:') + (p.station === gs.boathouse ? 'dock' : p.station && p.station.id))),
@@ -259,11 +324,14 @@ try {
       cards: gs.v4 && gs.v4.growth ? gs.v4.growth.cards.map((c) => ({ shop: c.shop || null, need: c.need, got: c.got })) : [],
       boat: gs.boathouse && gs.boathouse.boat ? gs.boathouse.level : 0, lines: gs.v42.lines ? gs.v42.lines.state() : null, sleighs: dep ? dep.sleighN : 0,
       sites: Object.keys(gs.sites || {}).filter((k) => gs.sites[k].state && gs.sites[k].state !== 'plot' && gs.sites[k].state !== 'done'),
+      crew: gs.v42.crew && gs.v42.crew.state ? gs.v42.crew.state() : null,
     };
-    return { s0, end, flow: M.flow, trips: M.trips, st: M.st, stn: M.stn, piles: M.piles, misc: M.misc, samples: M.samples, agents, ledger: gs.v42.ledger ? gs.v42.ledger.stocks() : null };
-  }, snap0);
+    return { s0, end: e, flow: M.flow, trips: M.trips, st: M.st, stn: M.stn, piles: M.piles, misc: M.misc, anyFull: M.anyFull, crew: M.crew, prices: M.prices, samples: M.samples, agents, ledger: gs.v42.ledger ? gs.v42.ledger.stocks() : null };
+  }, [snap0, end]);
 } catch (e) { console.log('FATAL', e && e.stack || e); }
-const out = { args, res, errors: log.errors.slice(0, 20), wall: Math.round((Date.now() - t0) / 1000) };
+const out = { args, repo: REPO, load: path.basename(LOAD), late: LATE, res, errors: log.errors.slice(0, 20), wall: Math.round((Date.now() - t0) / 1000) };
+if (res) { try { out.summary = summarize(out); } catch (e) { out.summaryErr = String(e && e.stack || e); } }
 fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
+if (out.summary) console.log('SUMMARY ' + JSON.stringify(out.summary));
 console.log('DONE', OUT, 'errors', log.errors.length, 'wall', out.wall);
 await browser.close(); await srv.close(); process.exit(0);

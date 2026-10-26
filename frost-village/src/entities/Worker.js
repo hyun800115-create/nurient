@@ -625,10 +625,47 @@ export class RawPorter extends Hauler {
 
   get sink() { return this.target.inSink; }
 
-  /** only its station's input (when it is full the porter waits there with the load) */
-  planDest() { const s = this.sink, ty = this.carriedType(); return s && ty && this.gs.logistics.want(s, ty) > 0 ? s : null; }
+  /** only its station's input (when it is full the porter waits there with the load); on a local job (v4.2.1) that
+   *  place while it still wants the load */
+  planDest(exclude) {
+    const L = this.gs.logistics, s = this.sink, ty = this.carriedType();
+    if (!L || !ty) return null;
+    if (s && s !== exclude && L.want(s, ty) > 0) return s;
+    const loc = this.localTo;
+    return loc && loc !== exclude && loc.enabled && L.want(loc, ty) > 0 ? loc : null;
+  }
 
-  afterUnload() { this.state = 'seek'; }
+  afterUnload() { this.state = 'seek'; this.localTo = null; }
+
+  /** ((v4.2.1, docs/logistics_plan.md LD2) seconds of work its station's input holds (items × time an item) */
+  workSeconds() {
+    const st = this.target;
+    if (!st || !st.inStack) return 0;
+    const per = Math.max(0.1, Number(st.bal && st.bal.time) || 1) * (st.timeMult ? st.timeMult() : 1);
+    return st.inStack.count * per;
+  }
+
+  /**
+   * ((v4.2.1, LD2) a local job for a raw porter whose station is full: the nearest place within logistics.raw.localPx
+   * (straight) that uses this raw — a workshop input such as the cannery's fish (later the 포장마차 / 자재창고) — never
+   * the 창고, the dock or a far shop. null when there is none
+   */
+  localSink() {
+    const gs = this.gs, L = gs.logistics, pile = this.pile, LR = (BALANCE.logistics && BALANCE.logistics.raw) || {};
+    if (!L || !pile) return null;
+    const far = Number(LR.localPx) || 900, ty = pile.item;
+    let best = null, bp = -1, bd = Infinity;
+    for (const s of L.sinks) {
+      if (s === this.sink || s.isWarehouse || s.remote || s.surplus || !s.enabled) continue;
+      if (L.want(s, ty) <= 0) continue;
+      const pr = s.prio(ty);
+      if (!(pr >= 40)) continue;
+      const d = Math.hypot(s.x - pile.x, s.y - pile.y);
+      if (d > far) continue;
+      if (pr > bp || (pr === bp && d < bd)) { best = s; bp = pr; bd = d; }
+    }
+    return best;
+  }
 
   update(dt) {
     const gs = this.gs, pile = this.pile, L = gs.logistics;
@@ -653,22 +690,33 @@ export class RawPorter extends Hauler {
         const sink = this.sink;
         const want = sink ? Math.min(this.stack.max, L.want(sink, pile.item)) : 0;
         const have = this.stack.count + this.stack.incoming;
-        // ((v4.2) after village complete: the station's input has been full a while and the pile is nearly full ->
-        //  this load goes to the 창고 (the village's buffer) instead of waiting; surplus.pileToWh. (CODE-1 review) only
-        //  what the 창고 stores (raw fish; not log / wheat / ore / raw meat) and while it is under surplus.whAt; else
-        //  the export dock (the 짐 싣는 곳: train, then the 물류창고) — a porter used to stand at the 창고 with ore)
-        const W = gs.warehouse, v42 = gs.v42, SP = (BALANCE.v42 && BALANCE.v42.surplus) || {};
-        let spill = null;
-        if (!this.toWh && want <= 0 && this.waitT > 4 && v42 && v42.frules && pile.stack && pile.stack.max > 0 && (pile.count / pile.stack.max) >= (Number(SP.pileToWh) || 0.85)) {
-          const FS = v42.freight && v42.freight.sink;
-          if (W && W.enabled && W.sink && W.accepts(pile.item) && W.room >= this.stack.max && W.total + (W.incoming || 0) < W.cap * (Number(SP.whAt) || 0.7)) spill = W.sink;
-          else if (FS && L.want(FS, pile.item) >= this.stack.max) spill = FS;
+        const W = gs.warehouse, v42 = gs.v42, SP = (BALANCE.v42 && BALANCE.v42.surplus) || {}, LR = (BALANCE.logistics && BALANCE.logistics.raw) || {};
+        let spill = null, cap = this.stack.max;
+        if (!this.toWh && want <= 0 && v42 && v42.frules && pile.stack && pile.stack.max > 0) {
+          const full = pile.count / pile.stack.max;
+          if (LR.stayOnLine !== false) {
+            // ((v4.2.1, docs/logistics_plan.md LD2) a raw porter never leaves its line for export: with its station full
+            //  he waits by the pile. After logistics.raw.waitS s, with the pile ≥ raw.pileAt and the input holding
+            //  ≥ raw.workS s of work (the station does not starve while he is away), he may take one local job ≤
+            //  raw.localPx: a place that uses this raw (a workshop input such as the cannery's fish). The pile's surplus
+            //  for export is the 창고 crew's (its raw runs come last) and the station porters' job)
+            if (this.waitT > (Number(LR.waitS) || 4) && full >= (Number(LR.pileAt) || 0.85) && this.workSeconds() >= (Number(LR.workS) || 15)) {
+              const loc = this.localSink();
+              if (loc) { spill = loc; cap = Math.max(1, Math.min(this.stack.max, L.want(loc, pile.item))); }
+            }
+          } else if (this.waitT > 4 && full >= (Number(SP.pileToWh) || 0.85)) {
+            // ((v4.2) the old rule, logistics.raw.stayOnLine false: this load goes to the 창고 (raw fish, while it is under
+            //  surplus.whAt), else the export dock (the 짐 싣는 곳: train, then the 물류창고)
+            const FS = v42.freight && v42.freight.sink;
+            if (W && W.enabled && W.sink && W.accepts(pile.item) && W.room >= this.stack.max && W.total + (W.incoming || 0) < W.cap * (Number(SP.whAt) || 0.7)) spill = W.sink;
+            else if (FS && L.want(FS, pile.item) >= this.stack.max) spill = FS;
+          }
         }
         if (spill || this.toWh) {
-          if (!this.toWh) this.toWh = spill;
-          if (have < this.stack.max && pile.count > 0 && this.waitT < 9) { if (this.dropT <= 0 && pile.takeTo(this, this.stack.max)) this.dropT = 0.14; this.waitT += dt; }
+          if (!this.toWh) { this.toWh = spill; this.toWhN = cap; if (!spill.isWarehouse && !spill.remote && !spill.surplus) this.localTo = spill; }
+          if (have < (this.toWhN || this.stack.max) && pile.count > 0 && this.waitT < 9) { if (this.dropT <= 0 && pile.takeTo(this, this.toWhN || this.stack.max)) this.dropT = 0.14; this.waitT += dt; }
           else if (have > 0 && this.stack.incoming === 0) { const to = this.toWh; this.toWh = false; this.waitT = 0; this.startHaul(to); }
-          else if (have === 0) { this.toWh = false; this.waitT = 0; }
+          else if (have === 0) { this.toWh = false; this.localTo = null; this.waitT = 0; }
         } else if (want > 0 && have < want && pile.count > 0) {
           this.waitT = 0;
           if (this.dropT <= 0 && pile.takeTo(this, this.stack.max)) this.dropT = 0.14;
@@ -746,11 +794,16 @@ export class WarehousePorter extends Hauler {
         if (!others) return { kind: 'out', sink: b.sink, type: b.type, n: Math.min(this.stack.max, b.n, W.count(b.type)) };
       }
     }
-    // ((v4.2 CODE-2, late-village balance) 1b. a collection pile full for a while: its surplus raw goes out like the
-    //  outputs' surplus does — to the 짐 싣는 곳 (dock), from where the freight cars and the 물류창고's sleigh take it.
-    //  A pile full for twice surplus.pileForS comes before the overflow runs below; a fresher one after them.
-    const raw = this.rawJob();
-    if (raw && raw.long) return raw;
+    // ((v4.2.1, docs/logistics_plan.md §5.4 r2 [10]) the order: 1 out (prio ≥ 45) → 2 overflow / direct → 3 the fish
+    //  pile → cannery link → 4 raw runs to the dock, only when 1–3 found nothing. (v4.2 CODE-2 put a raw run of a pile
+    //  full for twice surplus.pileForS before the overflow runs; logistics.raw.stayOnLine false brings that back)
+    //  The link counts as step 1 while the cannery's fish input is urgent (its sink asks at prio ≥ 45, like an 'out' job):
+    //  the probe saw it never run behind the overflow runs of a busy village (cannery starved 74 %)
+    const urgentLink = this.linkJob(true);
+    if (urgentLink) return urgentLink;
+    const oldOrder = !!(BALANCE.logistics && BALANCE.logistics.raw && BALANCE.logistics.raw.stayOnLine === false);
+    const raw0 = oldOrder ? this.rawJob() : null;
+    if (raw0 && raw0.long) return raw0;
     // 2. an output pad filling up (no porter of its own keeping up)
     // ((v4.2, gameplay review M5) after village complete the 창고 is a buffer up to surplus.whAt (70 %): above it an
     //  output is only taken when a place wants it straight away (F3 direct); the rest waits at the station door and
@@ -758,16 +811,20 @@ export class WarehousePorter extends Hauler {
     const v42w = gs.v42, S42 = v42w && v42w.frules && BALANCE.v42 ? BALANCE.v42.surplus : null;
     const whFull = !!S42 && W.total + (W.incoming || 0) >= W.cap * (Number(S42.whAt) || 0.7);
     if (W.room > 5) {
-      let best = null, bf = BALANCE.warehouse.overflowAt || 0.6;
+      const at = BALANCE.warehouse.overflowAt || 0.6;
+      let best = null, bf = at;
       for (const s of gs.sources()) {
         if (!s.enabled || !s.outStack || s.outStack.max <= 0) continue;
         const f = s.outStack.count / s.outStack.max;
-        if (f < bf) continue;
+        if (f < at) continue;
         if (this.leaveToOwnPorter(s)) continue;
         if (whFull) { const top = s.outStack.items[s.outStack.items.length - 1]; if (!top || !L.best(top.type, s.outPad.x, s.outPad.y, { minPrio: Number(BALANCE.v42.warehouse && BALANCE.v42.warehouse.directMinPrio) || 40, noStore: true })) continue; }
         if (gs.porters.some((p) => p !== this && p.job && p.job.kind === 'in' && p.job.src === s)) continue;
-        bf = f; best = s;
+        // (the fullest output first, as in the touch: a station kept running takes raw off its pile. A rule taking
+        //  outputs with a direct use first was tried for v4.2.1 and left the grill blocked 54 % with its pile full)
+        if (f > bf || !best) { bf = f; best = s; }
       }
+      if (best) return { kind: 'in', src: best, use: this.directUse(best) };
       // ((v4.2) after village complete the 창고 is the village's buffer: a collection pile ≥ surplus.pileToWh 90 % full
       //  is carried in too (raw the station cannot take yet); above 70 % the 창고's own surplus goes to the dock)
       const v42 = gs.v42, S = v42 && v42.surplus;
@@ -786,9 +843,54 @@ export class WarehousePorter extends Hauler {
           bf = f; best = sh;
         }
       }
-      if (best) return { kind: 'in', src: best };
+      if (best) return { kind: 'in', src: best, use: this.directUse(best) };
     }
-    return raw;
+    // 3. ((v4.2.1, LD5) the fish pile → the cannery's input, when the cannery runs low and the pile has plenty
+    const link = this.linkJob();
+    if (link) return link;
+    // 4. raw runs to the dock, last
+    return oldOrder ? raw0 : this.rawJob();
+  }
+
+  /** ((v4.2.1, LD4) will an overflow run from `src` go straight to a place that uses it (prio ≥ warehouse.crew.useFrom)? */
+  directUse(src) {
+    const L = this.gs.logistics, out = src && src.outStack;
+    const top = out && out.items[out.items.length - 1];
+    if (!L || !top) return false;
+    const v42 = this.gs.v42, WD = BALANCE.v42 && BALANCE.v42.warehouse;
+    if (!(v42 && v42.frules && WD && WD.direct)) return false;
+    const from = Number(BALANCE.warehouse.crew && BALANCE.warehouse.crew.useFrom) || 40;
+    return !!L.best(top.type, src.outPad.x, src.outPad.y, { minPrio: Math.max(from, Number(WD.directMinPrio) || 40), noStore: true });
+  }
+
+  /**
+   * ((v4.2.1, docs/logistics_plan.md LD5) the fish pile → the cannery link: when the cannery's fish input is under
+   * logistics.link.canneryBelow full and the fish pile is over link.fishPileAt, a 창고 직원 carries a load of fish from
+   * the pile to the cannery's input (one of them at a time). Nobody else linked the two: the cannery starved beside a
+   * full pile. { kind: 'link', src: the pile shim, type, sink: the cannery's input, n } or null
+   */
+  linkJob(urgentOnly) {
+    const gs = this.gs, L = gs.logistics, LK = (BALANCE.logistics && BALANCE.logistics.link) || {};
+    const v42 = gs.v42, S = v42 && v42.surplus;
+    if (!L || !S || !v42.frules || LK.fishToCannery === false) return null;
+    const pile = gs.piles && gs.piles.fish;
+    if (!pile || !pile.shown || !pile.stack || pile.stack.max <= 0) return null;
+    if (pile.count < pile.stack.max * (Number(LK.fishPileAt) || 0.6)) return null;
+    const C = (gs.workshops || []).find((w) => w.kind === 'cannery' && w.enabled && w.sink);
+    if (!C) return null;
+    const max = Math.max(1, Number(C.bal && C.bal.inputMax) || 18);
+    if (C.fishUnits(true) >= max * (Number(LK.canneryBelow) || 0.5)) return null;
+    // (not while its cans have nowhere to go: fish carried to a cannery standing full of cans only waits there)
+    if (C.outStack && C.outStack.max > 0 && C.outStack.count >= C.outStack.max) return null;
+    const ty = pile.item, pr = C.sink.prio(ty), urgent = pr >= PRIO.SHELF_LOW;
+    if (urgentOnly && !urgent) return null;
+    // (one of them at a time; two while the cannery is about to stop)
+    const on = gs.porters.filter((p) => p !== this && p.job && p.job.kind === 'link').length;
+    if (on >= (urgent ? 2 : 1)) return null;
+    const keep = Math.ceil(pile.stack.max * 0.25);
+    const n = Math.min(this.stack.max, L.want(C.sink, ty), pile.count - keep);
+    if (n < Math.min(4, this.stack.max)) return null;
+    return { kind: 'link', src: S.pileSource(pile), type: ty, sink: C.sink, n, use: true };
   }
 
   /**
@@ -840,13 +942,15 @@ export class WarehousePorter extends Hauler {
       }
       case 'idle': {
         this.thinkT -= dt;
+        // ((v4.2.1) how long he has stood without a job: WarehouseCrew's need gate counts a member free only after a moment)
+        this.idleT = this.job ? 0 : (this.idleT || 0) + dt;
         if (this.thinkT <= 0) {
           this.thinkT = 0.6;
           const j = this.think();
           if (j) {
-            this.job = j;
+            this.job = j; this.idleT = 0;
             if (j.kind === 'out') { this.state = 'toWh'; this.go(W.outPad.x + 20, W.outPad.y + 22); L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; }
-            else { if (j.kind === 'raw') { L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; } this.state = 'toSrc'; this.go(j.src.outPad.x + 24, j.src.outPad.y + 20); }
+            else { if (j.kind === 'raw' || j.kind === 'link') { L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; } this.state = 'toSrc'; this.go(j.src.outPad.x + 24, j.src.outPad.y + 20); }
             break;
           }
         }
@@ -893,8 +997,10 @@ export class WarehousePorter extends Hauler {
           // ((v4.2 CODE-2) a raw run takes only what the Surplus rules let go (the pile keeps surplus.pileKeep))
           let lim = this.stack.max;
           if (j.kind === 'raw') { const S = gs.v42 && gs.v42.surplus, have = this.stack.count + this.stack.incoming; lim = Math.min(lim, have + (S ? S.amount(j.src, ty) : 0)); }
+          // ((v4.2.1) the link takes what the cannery asked for, and leaves a quarter of the pile for its own line)
+          else if (j.kind === 'link') { const keep = Math.ceil(out.max * 0.25); lim = Math.min(lim, j.n, this.stack.count + this.stack.incoming + Math.max(0, out.count - keep)); }
           if (this.room > 0 && ty && out.countOf(ty) > 0 && this.stack.count + this.stack.incoming < lim) gs.moveItem(out, this.stack, ty, { dur: 230, height: 55 });
-          else if (this.stack.incoming === 0 && j.kind === 'raw') {
+          else if (this.stack.incoming === 0 && (j.kind === 'raw' || j.kind === 'link')) {
             this.dropRaw();
             if (this.stack.count > 0) { const n = gs.logistics.want(j.sink, this.carriedType()) > 0 ? j.sink : this.planDest(); this.startHaul(n || j.sink); }
             else { this.job = null; this.state = 'idle'; }
@@ -920,6 +1026,15 @@ export class WarehousePorter extends Hauler {
    *  a workshop, the food box, a nearly empty shelf); the warehouse hands it out again when shelves run low */
   planDest(exclude) {
     const L = this.gs.logistics, W = this.wh, ty = this.carriedType();
+    // ((v4.2.1) the fish link: the cannery while it wants fish, else any place that uses it, else the 창고)
+    if (this.job && this.job.kind === 'link' && L && ty) {
+      const C = this.job.sink;
+      if (C && C !== exclude && C.enabled && L.want(C, ty) > 0) return C;
+      const b = L.best(ty, this.x, this.y, { exclude, minPrio: 40, noStore: true });
+      if (b) return b.sink;
+      if (W.sink !== exclude && L.want(W.sink, ty) > 0) return W.sink;
+      return super.planDest(exclude);
+    }
     // ((v4.2 CODE-2) a raw run: the dock; while it is full, any local place that wants it, else the line's station input)
     if (this.job && this.job.kind === 'raw' && L && ty) {
       const FS = this.job.sink;
@@ -943,7 +1058,18 @@ export class WarehousePorter extends Hauler {
   afterUnload() { this.job = null; this.state = 'idle'; this.thinkT = 0.2; }
 
   /** a raw run's reservation at the dock ends when the load leaves the pile (startHaul reserves what it carries) */
-  dropRaw() { if (this.job && this.job.kind === 'raw' && this.jobResv) { L_release(this.gs, this.job.sink, this.job.type, this.jobResv); this.jobResv = 0; } }
+  dropRaw() { if (this.job && (this.job.kind === 'raw' || this.job.kind === 'link') && this.jobResv) { L_release(this.gs, this.job.sink, this.job.type, this.jobResv); this.jobResv = 0; } }
+
+  /** ((v4.2.1, LD4) is this crew member on a real-use job now (the place it carries to has prio ≥ warehouse.crew.useFrom)? */
+  onUseJob() {
+    const j = this.job;
+    if (!j || this.state === 'arrive') return false;
+    if (j.kind === 'raw') return false;
+    if (j.kind === 'out' || j.kind === 'link') return true;
+    const d = this.dest, ty = this.carriedType();
+    if (d && ty && d.prio) return d.prio(ty) >= (Number(BALANCE.warehouse.crew && BALANCE.warehouse.crew.useFrom) || 40);
+    return !!j.use;
+  }
 }
 
 function L_reserve(gs, sink, type, n) { if (gs.logistics) gs.logistics.reserve(sink, type, n); }

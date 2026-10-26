@@ -37,7 +37,7 @@ BUILDINGS = ['warehouse', 'station_cannery', 'shop_general', 'station_toolsmith'
 ANIMATED = ['warehouse', 'station_cannery', 'station_toolsmith', 'watchtower', 'boathouse']
 SITES = ['site_%s_%s' % (st, sz) for sz in 'SML' for st in ('plot', 'foundation', 'scaffold')]
 ITEMS = ['item_can', 'item_fish_big', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow',
-         'item_toolbox']
+         'item_toolbox', 'item_can_meat']      # (v4.2.1) item_can_meat: merged in by bld_item_merge.py
 STAFF = ['market_counter_staff', 'trade_post_staff']
 OVERLAYS = ['shop_general_front']
 REQUIRED = BUILDINGS + OVERLAYS + SITES + ITEMS + STAFF

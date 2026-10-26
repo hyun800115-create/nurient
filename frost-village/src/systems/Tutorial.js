@@ -327,6 +327,8 @@ export class Tutorial {
     }
     if (g.kind === 'build') {
       if (gs.isBuilding(g.id)) return { key: 'obj_site_wait', text: null };
+      // ((v4.2.1) the 창고 opens at village complete; with no free plot for it yet the line says so)
+      if (g.waitPlot && prog.freePlotFor && !prog.freePlotFor(g.id)) return { key: 'obj_wait_plot:' + g.id, text: t('obj_wait_plot', { name: t('b_' + g.id) }) };
       const cost = buildCost(g.id).coins || 0;
       return { key: 'obj_next_build:' + g.id, text: t('obj_next_build', { name: t('b_' + g.id), cost: fmt(cost) }) };
     }

@@ -8,6 +8,11 @@
 //   away (no flapping): the count only grows, and it is saved (v42.crew). An older save starts from what it had and
 //   grows again as its village makes things (never below what was there).
 // Needs: the 창고 (v3). The first 20 minutes never change (no 창고 then).
+// ((v4.2.1 물류 손질, docs/logistics_plan.md LD4 / §5.4) the seats still grow with production, but one more walks in only
+//   when the crew is busy on REAL-USE jobs — carrying to a place that uses the thing (sink prio ≥ crew.useFrom 40: a
+//   shelf, a workshop, the restaurant; not the 창고 STORE 10 or the dock SURPLUS 12) — at least crew.busyAt (0.8) of the
+//   time (an average over crew.window s), and such a job has waited crew.backlogS s with nobody free. Overflow carried
+//   into the 창고 and raw runs to the dock are true almost all the time late and no longer call more people.
 
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
@@ -31,6 +36,10 @@ export class WarehouseCrew {
     this.sinceT = Math.max(0, num(s.since, 0));             // seconds since the last arrival
     this.arrivals = 0;                                      // (this session)
     this.bannerT = Infinity;                                // seconds since the last big banner (this session)
+    // ((v4.2.1) the need gate: share of crew time on real-use jobs (moving average), seconds a use job has waited)
+    this.useBusy = 0;
+    this.backlogT = 0;
+    this.needT = 0;
   }
 
   get base() { return Math.max(0, Math.min(6, Math.floor(BALANCE.warehouse.porters) || 2)); }
@@ -73,9 +82,63 @@ export class WarehouseCrew {
     this.sinceT += dt;
     this.bannerT += dt;
     const W = gs.warehouse;
-    if (!W || !W.enabled || !this.seen) return;
-    // one more walks in when the village makes more than the crew can follow (one at a time, every crew.every s)
-    if (this.crew() < this.target() && this.sinceT >= Math.max(5, num(C().every, 60))) this.arrive();
+    if (!W || !W.enabled) return;
+    // ((v4.2.1) once a second: how busy the crew is on real-use jobs, and whether such a job waits for a free member
+    this.needT -= dt;
+    if (this.needT <= 0) { const step = 1 - this.needT; this.needT = 1; this.sampleNeed(W, Math.min(5, step)); }
+    if (!this.seen) return;
+    // one more walks in when the village makes more than the crew can follow (one at a time, every crew.every s) and
+    // the crew is busy on real-use jobs with one waiting (v4.2.1)
+    if (this.crew() < this.target() && this.sinceT >= Math.max(5, num(C().every, 60)) && this.needMet()) this.arrive();
+  }
+
+  /** ((v4.2.1) the need gate is met: use-busy ≥ crew.busyAt and a use job waited ≥ crew.backlogS */
+  needMet() {
+    if (this.forceOnce || this.needForced) return true;
+    return this.useBusy >= num(C().busyAt, 0.8) && this.backlogT >= num(C().backlogS, 60);
+  }
+
+  /** ((v4.2.1) one sample of the crew: the use-busy share (moving average over crew.window) and the use-job wait */
+  sampleNeed(W, step) {
+    let n = 0, use = 0, idle = 0;
+    for (const p of W.porters) {
+      if (p.state === 'arrive') continue;
+      n++;
+      if (p.onUseJob && p.onUseJob()) use++;
+      // (free = standing without a job for a moment; between two jobs a member is idle for a fraction of a second)
+      if (p.state === 'idle' && !p.job && (p.idleT || 0) >= 2) idle++;
+    }
+    if (!n) { this.backlogT = 0; return; }
+    const win = Math.max(30, num(C().window, 180)), k = 1 - Math.exp(-step / win);
+    this.useBusy += (use / n - this.useBusy) * k;
+    // a use job waits only while nobody is free to take it (an idle member would take it on his next look)
+    if (idle === 0 && this.useJobWaiting(W)) this.backlogT += step; else this.backlogT = 0;
+  }
+
+  /** ((v4.2.1) is there a real-use job for the crew that nobody has taken: something the 창고 holds that a place wants
+   *  (prio ≥ 45), an output past warehouse.overflowAt that a using place wants straight away, or the fish link */
+  useJobWaiting(W) {
+    const gs = this.gs, L = gs.logistics;
+    if (!L) return false;
+    const taken = (pred) => gs.porters.some((p) => p.wh && p.job && pred(p.job));
+    const types = W.types();
+    if (types.length) {
+      const b = L.bestAny(types, W.outPad.x, W.outPad.y, { minPrio: 45, noStore: true });
+      if (b && !taken((j) => j.kind === 'out' && j.sink === b.sink && j.type === b.type)) return true;
+    }
+    const from = Math.max(num(C().useFrom, 40), 1);
+    const at = num(BALANCE.warehouse.overflowAt, 0.6);
+    for (const s of gs.sources ? gs.sources() : []) {
+      if (!s.enabled || !s.outStack || s.outStack.max <= 0 || s.outStack.count < s.outStack.max * at) continue;
+      if (taken((j) => j.kind === 'in' && j.src === s)) continue;
+      if (s.recipe && s.recipe.out === 'tool') continue;       // (the forge's runs are its own porter's: Worker leaveToOwnPorter)
+      const top = s.outStack.items[s.outStack.items.length - 1];
+      if (!top) continue;
+      if (L.best(top.type, s.outPad.x, s.outPad.y, { minPrio: from, noStore: true })) return true;
+    }
+    const probe = W.porters.find((p) => p.linkJob);
+    if (probe && probe.linkJob()) return true;
+    return false;
   }
 
   /** one more 창고 직원 walks in from the edge of the village */
@@ -85,6 +148,8 @@ export class WarehouseCrew {
     if (!wp) return;
     this.extra = Math.max(this.extra, this.crew() - this.base);
     this.sinceT = 0;
+    this.forceOnce = false;
+    this.backlogT = 0;
     this.arrivals++;
     // (one big banner, then a small toast for the next ones within crew.bannerGap s: an older save's busy village calls
     //  for several at once after the load — four banners in six minutes was too many)
@@ -138,14 +203,21 @@ export class WarehouseCrew {
   }
 
   state() {
-    return { crew: this.crew(), base: this.base, extra: this.extra, target: this.target(), cap: this.cap, rate: Math.round(this.rate), seen: this.seen, made: this.gs.madeN || 0, arrivals: this.arrivals, since: Math.round(this.sinceT) };
+    return { crew: this.crew(), base: this.base, extra: this.extra, target: this.target(), cap: this.cap, rate: Math.round(this.rate), seen: this.seen, made: this.gs.madeN || 0, arrivals: this.arrivals, since: Math.round(this.sinceT),
+      useBusy: +this.useBusy.toFixed(3), backlogT: Math.round(this.backlogT), need: this.needMet() };
   }
 
   hooks(H) {
     // (tests) set the rate / let one walk in now
     H.crew = (o) => {
       if (o && Number.isFinite(o.rate)) { this.rate = o.rate; this.seen = true; }
-      if (o && o.now) this.sinceT = 1e6;
+      // (now: the next one walks in at once — the time gap and (v4.2.1) the need gate skipped once)
+      if (o && o.now) { this.sinceT = 1e6; this.forceOnce = true; }
+      // ((v4.2.1) tests: need = the need gate counts as met (true) / measured again (false); useBusy 0–1 and backlog
+      //  seconds set its measures)
+      if (o && typeof o.need === 'boolean') this.needForced = o.need;
+      if (o && Number.isFinite(o.useBusy)) this.useBusy = Math.max(0, Math.min(1, o.useBusy));
+      if (o && Number.isFinite(o.backlog)) this.backlogT = Math.max(0, o.backlog);
       return this.state();
     };
   }

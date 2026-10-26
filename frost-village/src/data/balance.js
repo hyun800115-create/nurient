@@ -312,7 +312,11 @@ export const BALANCE = {
     //   (잰 값: 창고를 지은 35분 무렵 1분에 약 480개 → 4명, 46분 뒤 바쁜 마을 약 590개 → 6명 — 직원이 늘면 마을이 더 만들어요: 610~650개)
     //   window = 몇 초 동안의 평균으로 볼지, every = 새 직원이 오는 최소 간격(초)
     //   bannerGap = 큰 배너를 다시 띄우기까지의 시간(초) — 그 사이에 또 오면 작은 알림만 (예전 저장을 열면 몇 명이 연달아 와요)
-    crew: { from: 300, perMin: 70, cap: 6, window: 180, every: 60, bannerGap: 300 },
+    crew: { from: 300, perMin: 70, cap: 6, window: 180, every: 60, bannerGap: 300,
+    //   (물류 손질 v4.2.1) 자리가 있어도 일이 정말 많을 때만 한 명 더 와요:
+    //   busyAt = 직원들이 '정말 쓰는 곳'(급한 정도 useFrom 이상: 판매대·공방·식당 등)으로 나르는 일에 이만큼(0~1) 넘게 바쁘고,
+    //   그런 일이 backlogS 초 넘게 쉬는 직원 없이 기다릴 때만 (창고에 쌓아 두기·역으로 내보내기는 바쁜 것으로 안 쳐요)
+            busyAt: 0.8, useFrom: 40, backlogS: 60 },
     overflowAt: 0.6,          // 가공소 출구가 이만큼(0~1) 차면 창고 짐꾼이 창고로 옮김
                               //   (v4.2 합침) 단, 대장간 출구는 도구 짐꾼이 있으면 꽉 차서 멈출 때만 가져가요
                               //   (대장간이 잡화점에 줄 도구를 한 종류씩 몰아 만들어서, 도구 짐꾼이 한 번에 가득 날라요)
@@ -402,7 +406,9 @@ export const BALANCE = {
                   hardware_store:     { need: { item_ingot: 25, item_axe: 1, item_pickaxe: 1 }, rent: 30, sells: ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'], after: 'b:toolsmith' },
                   supermarket:        { need: { item_can: 10, item_bread: 20 },                 rent: 40, sells: ['item_can', 'item_bread'],                       after: 'b:cannery' },
                 },
-                shopShelf: 20, inlandEvery: 40, restockBelow: 0.4 },
+                shopShelf: 20, inlandEvery: 40, restockBelow: 0.4,
+                //  inlandEveryRank2 = (물류 손질 v4.2.1) 읍이 된 뒤에는 솔방울 마을 손님이 이만큼(초)마다 하나씩 사 가요 (손님이 두 배)
+                inlandEveryRank2: 20 },
     // ── 역 짐꾼 (역 광장에서 고용): 첫째 / 둘째 값 (둘째는 가게가 3곳 열린 뒤), 한 번에 나르는 개수
     stationPorter: [600, 1100], stationPorterCapacity: 12,
     // 역 짐꾼은 남는 물건만 나르지만, 새 가게 주문(창업 주문)에 필요한 물건은 공장 앞에 이만큼만 쌓여도 가져가요
@@ -491,6 +497,25 @@ export const BALANCE = {
   //  (v4.2) 촌장의 하루 — 후광 · 자동 줍기 · 길 안내 · 넘치는 재고 · 새 기차 · 촌장 사무실 · 은행 · 물류창고 · 관망 모드
   //  (docs/v42_plan.md, 대표님용: docs/기획서_v4_2_촌장.md)
   // =====================================================================
+  // =====================================================================
+  //  (물류 손질 v4.2.1) 남는 원료가 쓰이게: 나르기 · 창고 · 주문판 (docs/logistics_plan.md §B1, docs/기획서_물류수요개편.md)
+  //  모두 '마을 완성' 뒤에만 켜져요 (처음 20분은 그대로예요)
+  // =====================================================================
+  logistics: {
+    // ── 재료 짐꾼: 자기 줄을 떠나지 않아요 (stayOnLine). 가공소 입구가 가득하고 더미가 pileAt 넘게 차 있으면
+    //    waitS 초 기다린 다음, 가공소 입구에 workS 초 넘게 일할 재료가 있을 때만 localPx(px) 안의 가까운 일 하나
+    //    (공방 입구처럼 그 원료를 쓰는 곳)를 해요. 역(짐 싣는 곳)이나 창고로는 안 가요 (역으로 나르는 건 창고 직원·역 짐꾼)
+    //    stayOnLine 을 false 로 하면 예전처럼 가득 찬 더미의 원료를 역·창고로 날라요
+    raw: { stayOnLine: true, localPx: 900, pileAt: 0.85, waitS: 4, workS: 15 },
+    // ── 생선 통 → 통조림 공장: 통조림 공장 입구의 생선이 canneryBelow(0~1) 보다 적고 생선 통이 fishPileAt 넘게 찼으면
+    //    창고 직원이 생선 통의 생선을 통조림 공장으로 날라요 (fishToCannery 를 false 로 하면 꺼져요).
+    //    통조림 공장 출구가 통조림으로 가득하면 안 날라요 (팔 데가 없는 동안 생선만 쌓이니까)
+    link: { fishToCannery: true, canneryBelow: 0.5, fishPileAt: 0.6 },
+    // ── 주문판: 정기 납품 주문을 고를 때 남는 물건을 먼저 (surplusFirst 를 false 로 하면 예전처럼 차례대로)
+    //    outAt / outForS = 가공소 출구가 outAt(0~1) 넘게 outForS 초 넘게 차 있으면 '남는 물건' (창고에 쌓인 것도 더해서 봐요)
+    //    판자·주괴는 교역소가 늘 사 가니까, 다른 남는 물건이 없을 때만 골라요
+    cards: { surplusFirst: true, outAt: 0.8, outForS: 60 },
+  },
   v42: {
     // ── 촌장 후광: ringPx = 고리 너비(px, 화면 배율 1일 때), fullZoom 보다 작게 보면 고리를 키워서 폰에서 늘 같은 크기로 보여요
     //    (maxScale = 최대 몇 배까지 키울지), pinZoom = 이보다 멀리 보면 머리 위에 별 표시,

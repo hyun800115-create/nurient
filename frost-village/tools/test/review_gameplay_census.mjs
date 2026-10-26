@@ -5,6 +5,7 @@
 //        [--repo DIR]                             (run another checkout, e.g. the v4.1 baseline copy)
 //        [--frules-early]                         (F1–F3 + Surplus from minute 0: window.__FV_FRULES_EARLY)
 //        [--out DIR] [--early 40]                 (early = the first N game minutes counted apart: early piles)
+//        [--seed N] [--botopts JSON]              (seeded Math.random; extra bot options, e.g. {"p2Early":true})
 //   node tools/test/review_gameplay_census.mjs --summarize file.census.json [more.json]   (measures of saved runs)
 // Measures (shares of 10-s samples): market shelf empty per food, 교역소 empty per good, station outputs ≥ 90 %,
 // any raw pile ≥ 90 % (and per pile), 창고 average stock, dock backlog (card crates + surplus), boathouse catch vs
@@ -121,7 +122,10 @@ const browser = await launch();
 // (--nobake: the v4.1 way of drawing piles, one sprite per item; a perf comparison)
 // (--frules-early: the v4.2 overflow rules F1–F3 + Surplus from the first minute, not only after village complete —
 //  the designer's question whether a bigger porter bag alone or with F1–F5 empties the early piles)
-const INIT = (args.includes('--nobake') ? 'window.__FV_NO_BAKE = true;' : '') + (args.includes('--frules-early') ? 'window.__FV_FRULES_EARLY = true;' : '');
+// (--seed N: Math.random seeded (mulberry32) — the median-of-5-seeds runs of docs/logistics_plan.md §2.2)
+const SEED = opt('--seed', '');
+const SEEDJS = SEED !== '' ? `(() => { let a = ${Number(SEED) >>> 0}; Math.random = () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();` : '';
+const INIT = (args.includes('--nobake') ? 'window.__FV_NO_BAKE = true;' : '') + (args.includes('--frules-early') ? 'window.__FV_FRULES_EARLY = true;' : '') + SEEDJS;
 const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 360, height: 720 }, dpr: 1, init: INIT || undefined });
 const t0 = Date.now();
 const rows = [];
@@ -156,7 +160,8 @@ try {
     window.__sim = { simT: 0, run(sec, botTick) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (botTick) botTick(DT / 1000); T += DT; D += DT; this.simT += DT / 1000; game.headlessStep(T, DT); } } };
   });
   await page.addScriptTag({ path: path.join(REPO, 'tools/test/review_gameplay_bot.js') });
-  await page.evaluate((o) => Object.assign(window.__bot.opts, o), { policy: opt('--policy', 'smart'), upg: 'greedy', minBatch: 3, think: 0, mag: 1 });
+  // (--botopts '{"p2Early":true}': extra bot options, e.g. the fresh40 bot that buys 짐꾼 2 pads before 읍)
+  await page.evaluate((o) => Object.assign(window.__bot.opts, o), Object.assign({ policy: opt('--policy', 'smart'), upg: 'greedy', minBatch: 3, think: 0, mag: 1 }, JSON.parse(opt('--botopts', '{}'))));
   // ((v4.2 touch) what the village makes: wrappers on the prototypes, so any checkout counts the same way)
   await page.evaluate(async () => {
     const gs = window.__FV.scene, M = window.__made = { raw: 0, goods: 0 };

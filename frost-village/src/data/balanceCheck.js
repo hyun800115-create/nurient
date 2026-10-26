@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -224,6 +224,26 @@ function checkC1(B) {
   fixNum(CR, 'window', 'warehouse.crew.window', 30, 3600, 180);
   fixNum(CR, 'every', 'warehouse.crew.every', 5, 3600, 60);
   fixNum(CR, 'bannerGap', 'warehouse.crew.bannerGap', 0, 7200, 300);
+  // ((물류 손질 v4.2.1) one more walks in only when the crew is busy on real-use jobs and such a job waited)
+  fixNum(CR, 'busyAt', 'warehouse.crew.busyAt', 0, 1, 0.8);
+  fixNum(CR, 'useFrom', 'warehouse.crew.useFrom', 1, 99, 40, true);
+  fixNum(CR, 'backlogS', 'warehouse.crew.backlogS', 0, 3600, 60);
+  // ((물류 손질 v4.2.1) logistics: raw porters stay on their line, fish pile → cannery, standing cards ask for the surplus)
+  const LG = B.logistics = (B.logistics && typeof B.logistics === 'object' && !Array.isArray(B.logistics)) ? B.logistics : {};
+  const LR = LG.raw = (LG.raw && typeof LG.raw === 'object') ? LG.raw : {};
+  if (typeof LR.stayOnLine !== 'boolean') { if (LR.stayOnLine !== undefined) warn('logistics.raw.stayOnLine', LR.stayOnLine, true); LR.stayOnLine = true; }
+  fixNum(LR, 'localPx', 'logistics.raw.localPx', 300, 1500, 900);
+  fixNum(LR, 'pileAt', 'logistics.raw.pileAt', 0, 1, 0.85);
+  fixNum(LR, 'waitS', 'logistics.raw.waitS', 0, 60, 4);
+  fixNum(LR, 'workS', 'logistics.raw.workS', 0, 60, 15);
+  const LK = LG.link = (LG.link && typeof LG.link === 'object') ? LG.link : {};
+  if (typeof LK.fishToCannery !== 'boolean') { if (LK.fishToCannery !== undefined) warn('logistics.link.fishToCannery', LK.fishToCannery, true); LK.fishToCannery = true; }
+  fixNum(LK, 'canneryBelow', 'logistics.link.canneryBelow', 0, 1, 0.5);
+  fixNum(LK, 'fishPileAt', 'logistics.link.fishPileAt', 0, 1, 0.6);
+  const LC = LG.cards = (LG.cards && typeof LG.cards === 'object') ? LG.cards : {};
+  if (typeof LC.surplusFirst !== 'boolean') { if (LC.surplusFirst !== undefined) warn('logistics.cards.surplusFirst', LC.surplusFirst, true); LC.surplusFirst = true; }
+  fixNum(LC, 'outAt', 'logistics.cards.outAt', 0, 1, 0.8);
+  fixNum(LC, 'outForS', 'logistics.cards.outForS', 0, 3600, 60);
   fixNum(C, 'happyCap', 'civic.happyCap', 0, 100, 12, true);
   const ST = C.settlers = (C.settlers && typeof C.settlers === 'object') ? C.settlers : {};
   fixNum(ST, 'every', 'civic.settlers.every', 5, 3600, 45);
@@ -280,6 +300,8 @@ function checkV4B(B) {
   fixNum(F, 'household', 'v4.founding.household', 1, 6, 2, true);
   fixNum(F, 'shopShelf', 'v4.founding.shopShelf', 1, 200, 20, true);
   fixNum(F, 'inlandEvery', 'v4.founding.inlandEvery', 1, 3600, 40);
+  // ((물류 손질 v4.2.1, D2b) after 읍 the town buyers come more often: 5 s up to the plain inlandEvery)
+  fixNum(F, 'inlandEveryRank2', 'v4.founding.inlandEveryRank2', Math.min(5, F.inlandEvery), F.inlandEvery, Math.min(20, F.inlandEvery));
   fixNum(F, 'restockBelow', 'v4.founding.restockBelow', 0.05, 1, 0.4);
   const S = F.shops = (F.shops && typeof F.shops === 'object' && !Array.isArray(F.shops)) ? F.shops : {};
   for (const k in V4B_SHOPS) {

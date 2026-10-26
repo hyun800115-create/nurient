@@ -2,7 +2,7 @@
 // at a fixed 60 fps simulated clock (headlessStep + fake Date.now), much faster than real time.
 //   node tools/test/review_gameplay_sim.mjs --name smart --policy smart --upg greedy --minutes 40 [--bal '{"prices":{"item_fish_cooked":5}}'] [--shots]
 //   (v4 review) --policy arrowonly (only goes where the arrow points, stands still otherwise), --load <save.json>,
-//   --saveAt 20,30 (save snapshots), --v4 (play on until 읍)
+//   --saveAt 20,30 (save snapshots), --v4 (play on until 읍), --seed N (seeded Math.random)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
-const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 360, height: 720 }, dpr: 1 });
+// (--seed N: Math.random seeded (mulberry32) — the median-of-5-seeds pacing runs, docs/logistics_plan.md §2.2 G8)
+const SEED = opt('--seed', '');
+const SEEDJS = SEED !== '' ? `(() => { let a = ${Number(SEED) >>> 0}; Math.random = () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();` : undefined;
+const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 360, height: 720 }, dpr: 1, init: SEEDJS });
 const t0 = Date.now();
 try {
   const LOAD = opt('--load', '');

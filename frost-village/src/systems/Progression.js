@@ -140,6 +140,10 @@ export const GOALS = [
   { id: 'station', kind: 'build', v4: true },
   { id: 'firstTrain', kind: 'flag', passive: true, v4: true },
   { id: 'toolsmith', kind: 'build' },
+  // ((v4.2.1 물류 손질, docs/logistics_plan.md LD3) the 창고 right after the 대장간: its card opens at village complete, so
+  //  짐꾼 2 (which needs the 창고) and the 창고 crew come ≈ 10 minutes sooner. waitPlot: with no free plot for it the goal
+  //  waits (the next goal shows; the line says '빈 땅이 생기면 …') instead of holding up every goal after it)
+  { id: 'warehouse', kind: 'build', waitPlot: true },
   { id: 'fedMiners', kind: 'flag' },
   { id: 'shops:1', kind: 'shops', n: 1, passive: true, v4: true },
   // ---- (v4-C) the big restaurant on the west strip (its staff are side pads)
@@ -150,7 +154,6 @@ export const GOALS = [
   { id: 'boat_rowboat', kind: 'step' },
   { id: 'shops:3', kind: 'shops', n: 3, passive: true, v4: true },
   { id: 'south', kind: 'region', step: 'tower_south' },
-  { id: 'warehouse', kind: 'build' },
   { id: 'cannery', kind: 'build' },
   { id: 'store', kind: 'build' },
   { id: 'se', kind: 'region', step: 'tower_se' },
@@ -164,7 +167,8 @@ export const GOALS = [
 ];
 // (v3) which building each card of the build menu needs first (shown on the locked card)
 export const BUILD_UNLOCK = {
-  toolsmith: 'r:east', boathouse: 'b:toolsmith', warehouse: 'r:south', cannery: 'boat_rowboat', store: 'b:cannery',
+  // ((v4.2.1 물류 손질, LD3) the 창고 opens at village complete (it was 'r:south', ≈ 32 min): "창고는 초반에"
+  toolsmith: 'r:east', boathouse: 'b:toolsmith', warehouse: 'hire_hunter', cannery: 'boat_rowboat', store: 'b:cannery',
   house_a: 'hire_miner', house_b: 'b:toolsmith', house_c: 'hire_miner',
   // ---- (v4-C) the town hall and the big restaurant come when the east watchtower's site starts (the neighbours'
   // art comes then too); early decor uses the village's own props, the park / street / flower ones the town's
@@ -243,9 +247,21 @@ export class Progression {
       if (this.goalDone(g)) continue;
       if (g.when && !this.met(g.when)) { if (!passive) passive = g; continue; }
       if (g.passive) { if (!passive) passive = g; continue; }
+      // ((v4.2.1) a building goal with no free plot for it waits like a passive goal)
+      if (g.waitPlot && !this.gs.isBuilding(g.id) && !this.freePlotFor(g.id)) { if (!passive) passive = g; continue; }
       return g;
     }
     return passive;
+  }
+  /** ((v4.2.1) is there a free, shown plot whose build menu offers `bkey`? (Civic MENU by size; reserved plots by `only`) */
+  freePlotFor(bkey) {
+    const gs = this.gs;
+    for (const id in gs.sites || {}) {
+      const st = gs.sites[id];
+      if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
+      if (st.only ? st.only === bkey : (st.size === 'M' || st.size === 'L')) return true;
+    }
+    return false;
   }
   get v3Complete() { return this.complete && GOALS_V3.every((g) => this.goalDone(g)); }
   anyDone(re) { for (const k in this.done) if (this.done[k] && re.test(k)) return true; return false; }

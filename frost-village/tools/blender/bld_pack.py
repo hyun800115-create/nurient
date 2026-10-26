@@ -51,7 +51,8 @@ DIRS = ['S', 'SE', 'E', 'NE', 'N']
 MIRROR = {'SW': 'SE', 'W': 'E', 'NW': 'NE'}
 ORDER = ['warehouse', 'station_cannery', 'shop_general', 'station_toolsmith', 'house_a', 'house_b', 'house_c',
          'watchtower', 'boathouse', 'site_S', 'site_M', 'site_L', 'item_can', 'item_fish_big', 'item_axe',
-         'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow', 'item_toolbox']
+         'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow', 'item_toolbox',
+         'item_can_meat']     # (v4.2.1) normally merged in by bld_item_merge.py (old frames kept); a full repack packs it too
 POINT_SINGLE = {'in': 'inPoint', 'out': 'outPoint', 'cash': 'cashPoint', 'dock': 'dockPoint', 'door': 'doorPoint',
                 'drop': 'dropPoint'}
 POINT_LIST = {'staff': 'staffPoints', 'work': 'workPoints', 'customer': 'customerPoints'}

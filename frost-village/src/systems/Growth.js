@@ -186,7 +186,8 @@ export class Growth {
       if (!allFounded) break;
       const st = O.standing || [];
       if (!st.length) break;
-      let pick = null;
+      // ((v4.2.1 물류 손질, D2) the item the village has most of to spare first (logistics.cards)
+      let pick = this.surplusCard(st);
       for (let n = 0; n < st.length && !pick; n++) {
         const cand = st[(this.standing + n) % st.length];
         const ty = Object.keys(cand)[0];
@@ -199,6 +200,49 @@ export class Growth {
     }
     if (added && !quiet) { this.refreshLabels(true); this.gs.events.emit('v4:cards'); }
     return added;
+  }
+
+  /**
+   * ((v4.2.1 물류 손질, docs/logistics_plan.md D2) "주문판이 남는 물건을 먼저": the standing card whose item is most in
+   * surplus — its line's output ≥ logistics.cards.outAt for outForS s, plus what the 창고 holds of it. Planks and ingots
+   * (the 교역소 buys them without limit) only when nothing else is in surplus; null when nothing is (the plain rotation)
+   */
+  surplusCard(st) {
+    const LC = (BALANCE.logistics && BALANCE.logistics.cards) || {};
+    if (LC.surplusFirst === false || !this.outFullT) return null;
+    const forS = Math.max(0, Number(LC.outForS) || 60), W = this.gs.warehouse;
+    let best = null, bs = 0, bestUnl = null, bsu = 0;
+    for (const cand of st) {
+      const ty = Object.keys(cand)[0];
+      if (!ty || this.cards.some((c) => c.need[ty])) continue;
+      const full = this.outFullT[ty] || 0, kept = W && W.enabled ? W.count(ty) : 0;
+      // (surplus: the output stood full outForS s, or the 창고 holds half a card's worth)
+      if (full < forS && kept < Math.max(1, Math.floor(cand[ty] / 2))) continue;
+      const sc = Math.min(full, 600) / 6 + kept;
+      if (ty === 'item_plank' || ty === 'item_ingot') { if (sc > bsu) { bsu = sc; bestUnl = cand; } continue; }
+      if (sc > bs) { bs = sc; best = cand; }
+    }
+    const pick = best || bestUnl;
+    if (pick) { const i = st.indexOf(pick); if (i >= 0) this.standing = i; }
+    return pick;
+  }
+
+  /** ((v4.2.1, D2) seconds each product's output has stood ≥ logistics.cards.outAt (1 Hz, after the 5 shops) */
+  trackSurplus(dt) {
+    this.surT = (this.surT || 0) + dt;
+    if (this.surT < 1) return;
+    const step = this.surT; this.surT = 0;
+    const LC = (BALANCE.logistics && BALANCE.logistics.cards) || {}, at = Number(LC.outAt) || 0.8;
+    const o = this.outFullT || (this.outFullT = {});
+    const seen = {};
+    for (const s of this.gs.sources ? this.gs.sources() : []) {
+      if (!s.enabled || !s.outStack || s.outStack.max <= 0 || s === this.gs.boathouse) continue;
+      const ty = s.output || (s.recipe && s.recipe.out);
+      if (!ty || ty === 'tool') continue;
+      const full = s.outStack.count >= s.outStack.max * at;
+      o[ty] = full ? (seen[ty] ? o[ty] : (o[ty] || 0) + step) : (seen[ty] ? o[ty] : 0);
+      seen[ty] = true;
+    }
   }
 
   /** what open cards still need of `type` (focus card first) */
@@ -576,6 +620,8 @@ export class Growth {
     }
     // the board: idle timers (no progress), refill when a producer appeared (a building / zone)
     for (const c of this.cards) if (!this.cardDone(c)) { c.idle = Math.min(3600, c.idle + dt); c.porterIdle = Math.min(3600, (c.porterIdle || 0) + dt); }
+    // ((v4.2.1, D2) the standing cards' surplus clock: only once the 5 shops are open (the standing cards' time)
+    if (this.done.length >= FND().order.length) this.trackSurplus(dt);
     // ((v4 review M4) a card that is full but was never completed — saved in the 350 ms before its completion,
     //  then reloaded — completes now instead of staying at 30/30 for ever)
     for (const c of this.cards.slice()) if (this.cardDone(c)) { c.doneT = (c.doneT || 0) + dt; if (c.doneT > 1) this.completeCard(c); }

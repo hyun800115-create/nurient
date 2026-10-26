@@ -112,7 +112,9 @@ try {
   const tHome = await until((k) => { const W = window.__FV.scene.warehouse, wp = W.porters[k]; return wp.state !== 'arrive'; }, 90, 1, n0);
   const home = await ev((k) => { const W = window.__FV.scene.warehouse, wp = W.porters[k]; return { state: wp.state, d: Math.round(Math.hypot(wp.x - wp.homePt.x, wp.y - wp.homePt.y)), job: wp.job ? wp.job.kind : null }; }, n0);
   step('3 he reaches the 창고 and starts work', tHome >= 0 && (home.d < 80 || home.job), { t: tHome, ...home });
-  await ev(() => window.__FV.v42.crew({ rate: 1000 }));
+  // ((v4.2.1) the next one also needs the crew busy on real-use jobs with one waiting (the need gate, lgx_l0.mjs):
+  //  `need: true` counts it as met here — this step checks the time gap)
+  await ev(() => window.__FV.v42.crew({ rate: 1000, need: true }));
   await adv(per.every + 2);
   const a3 = await crew();
   step('3 the next one comes after crew.every s', a3.crew === Math.min(per.cap, n0 + 2), a3);
@@ -134,7 +136,7 @@ try {
   step('4 a huge rate: never more than the cap (' + per.cap + ')', f2.crew === per.cap, f2);
 
   // ---- 6 (before the reload) the crew works
-  await ev(() => window.__FV.v42.crew({ rate: 420 }));
+  await ev(() => window.__FV.v42.crew({ rate: 420, need: false }));
   let busy = 0, all = 0;
   for (let i = 0; i < 12; i++) { await adv(5); const b = await ev(() => { const W = window.__FV.scene.warehouse; return W.porters.map((p) => (p.job || p.state === 'haul' || p.state === 'unload' ? 1 : 0)); }); busy += b.reduce((s, x) => s + x, 0); all += b.length; }
   step('6 the bigger crew carries (share of 창고 직원 on a job)', busy / all > 0.3, { busyShare: +(busy / all).toFixed(2) });
@@ -153,9 +155,15 @@ try {
   await boot(JSON.stringify(old));
   const o1 = await crew();
   await adv(130);
+  const o2a = await crew();
+  // ((v4.2.1) the seats grow from the village's making; a member walks in once the crew's need gate is met — busy on
+  //  real-use jobs with one waiting, docs/logistics_plan.md LD4 — forced here, the gate has its own checks in lgx_l0)
+  await ev(() => window.__FV.v42.crew({ need: true }));
+  await adv(70);
   const o2 = await crew();
+  await ev(() => window.__FV.v42.crew({ need: false }));
   step('5 a save with a crew of 4: never below what was there', o1.crew === 4, o1);
-  step('5 ... and it grows again from the village\'s own making (late village ≈ 400 a minute)', o2.crew > 4 && o2.rate > 200, o2);
+  step('5 ... and it grows again from the village\'s own making (late village ≈ 400 a minute)', o2a.target > 4 && o2a.rate > 200 && o2.crew > 4, { seats: o2a, after: o2 });
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));
 step('0 no page errors', !errs.length && !fatal, errs.slice(0, 5));

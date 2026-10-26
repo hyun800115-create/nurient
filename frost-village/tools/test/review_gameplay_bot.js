@@ -145,7 +145,9 @@
       // ((v4.2) the line offers: 짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게 — pads like any upgrade)
       //  a sensible player keeps the 읍 money: before 읍 they are bought only with the rank's price left over)
       const LU = gs.v42 && gs.v42.lines;
-      if (LU && bot.opts.v42 !== false) for (const id in LU.pads) { const u = LU.pads[id]; if (u && u.active && !u.done && v42Spare(u.remaining)) cands.push(u); }
+      //  ((v4.2.1, docs/logistics_plan.md §2.2 fresh40) opts.p2Early: a player who buys every 짐꾼 2 pad as soon as he can
+      //  pay for it, without keeping the 읍 money)
+      if (LU && bot.opts.v42 !== false) for (const id in LU.pads) { const u = LU.pads[id]; if (u && u.active && !u.done && (v42Spare(u.remaining) || (bot.opts.p2Early && /^p2_/.test(id)))) cands.push(u); }
     }
     const un = bot.unreach || {};
     for (let i = cands.length - 1; i >= 0; i--) if (un[cands[i].id] && bot.t - un[cands[i].id] < 120) cands.splice(i, 1);

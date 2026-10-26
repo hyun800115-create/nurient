@@ -1987,3 +1987,139 @@ def b_item_toolbox():
             bevel=0.015)
         box('saw', (0.04, 0.03, 0.16), (-0.22, 0.06, 0.2), rot=(0, -20, 0), mat=flat('#E8C25A', 0.5), bevel=0.01)
     _ground_item(c.objs, 0.0)
+
+
+# ---------------------------------------------------------------- (v4.2.1 B1-M) item_can_meat: 고기 통조림 (meat can)
+# One new item for the cannery's second recipe (생고기 3 + 주괴 1 -> 고기 통조림 3).  Same camera, light, PPU, item frame
+# (72 x 72, anchor (36, 54)), sample count and post (bld_pack: clean_alpha(3), no outline) as item_can; a squat
+# rounded luncheon-meat tin instead of the round fish can so the two read apart at 28 px: deep pine-green paper label
+# with ONE cream band, a bone-in ham picture toward the viewer, silver rolled seams + lid, and a rolled key on the
+# right end (a silhouette the round can does not have).  It is merged into the resident bld_items page by
+# tools/blender/bld_item_merge.py (old frames byte-identical) - a full bld_pack repack also picks it up.
+# Look-dev knobs (docs/build_reports/v421_meatcan_art.md); the values below are the shipped ones.
+MEAT_TIN = dict(
+    L=0.40, W=0.22, H=0.24, r=0.05,           # body (m): length (screen-right), depth, height, corner radius;
+                                              # H = the item thickness -> stackStep 13 (item_can 14; <= 14 required)
+    spin=-20.0,                               # deg: the long face toward the camera, the key end just turning in
+    label='#3E7D4F', band='#F4F1EA',          # deep pine-green paper label, one cream band
+    band_z=(0.74, 0.84),                      # the band's place on the tin (0 = bottom, 1 = top): just under the lid
+    # the ham print is lifted a little over the spec swatches (#C2564A / #F2E6D0) so the RENDERED face lands on them
+    # (the label face is lit like item_can's label, which also renders ~15 % darker than its palette)
+    meat='#DA6457', meat_rim='#9A3E36', bone='#FFF4DE', shine='#F29A88',
+    ham_at=(0.0, 0.44), ham_k=1.27, ham_tilt=8.0,   # ham picture: centre (x m along the face, z 0..1 of the height),
+                                                    # scale, lean (deg, meat up to the right)
+)
+
+
+def tin_mat(label='#3E7D4F', band='#F4F1EA', band_z=(0.70, 0.80)):
+    """Luncheon-meat tin body: the can_mat recipe (paper label, metallic outside it; object Z 0..1 = Generated) with
+    ONE cream band at band_z instead of the fish can's two thin stripes."""
+    key = ('tin', label, band, tuple(band_z))
+    if key in L._CUSTOM:
+        return L._CUSTOM[key]
+    nb = L.NB('tin_%s' % label.lstrip('#'), rough=0.45, metal=0.0)
+    tc = nb.n('ShaderNodeTexCoord')
+    sep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Generated'], sep.inputs[0])
+    z = sep.outputs['Z']
+    lab = nb.math('MULTIPLY', nb.map_range(z, 0.11, 0.14), nb.map_range(z, 0.89, 0.86))
+    b0, b1 = band_z
+    st = nb.math('MULTIPLY', nb.map_range(z, b0, b0 + 0.025), nb.map_range(z, b1, b1 - 0.025))
+    col = nb.mix_rgb(lab, C('#C3CCD8'), C(label))
+    col = nb.mix_rgb(st, col, C(band))
+    nb.base(col)
+    met = nb.math('SUBTRACT', 1.0, lab)
+    nb.link(nb.math('MULTIPLY', met, 0.55), nb.p.inputs['Metallic'])
+    L._CUSTOM[key] = nb.m
+    return nb.m
+
+
+def rrect(lx, wy, r, n=6):
+    """Counter-clockwise rounded rectangle (lx along X, wy along Y, corner radius r) centred on the origin."""
+    r = min(r, lx / 2 - 1e-4, wy / 2 - 1e-4)
+    pts = []
+    for cx, cy, a0 in ((lx / 2 - r, -wy / 2 + r, -90.0), (lx / 2 - r, wy / 2 - r, 0.0),
+                       (-lx / 2 + r, wy / 2 - r, 90.0), (-lx / 2 + r, -wy / 2 + r, 180.0)):
+        for k in range(n + 1):
+            a = math.radians(a0 + 90.0 * k / n)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
+
+
+def _oval(cx, cy, a, b, n=24, rot=0.0):
+    c, s = math.cos(math.radians(rot)), math.sin(math.radians(rot))
+    out = []
+    for i in range(n):
+        t = math.tau * i / n
+        x, y = a * math.cos(t), b * math.sin(t)
+        out.append((cx + x * c - y * s, cy + x * s + y * c))
+    return out
+
+
+def ham_decal(name, k=1.0, tilt=12.0, meat='#C2564A', rim='#8E3A33', bone='#F2E6D0', shine='#E58373'):
+    """Flat bone-in ham picture (the item_meat_raw drumstick as a label print) in the decal plane (u right, v up),
+    thickness along +Z: the rosy meat with a thin dark rim and a soft shine, and a cream bone with a two-knob end
+    sticking out to the lower left (tilt = degrees the drumstick leans up to the right)."""
+    c, s = math.cos(math.radians(tilt)), math.sin(math.radians(tilt))
+
+    def R(pts):
+        return [(k * (x * c - y * s), k * (x * s + y * c)) for x, y in pts]
+    objs = []
+    rm, mm, bm, hm = flat(rim, 0.55), flat(meat, 0.5), flat(bone, 0.5), flat(shine, 0.45)
+    objs.append(extrude(name + '_rim', R(_oval(0.05, 0.0, 0.083, 0.062)), 0.003, top=rm, side=rm, bevel=0.0))
+    objs.append(extrude(name + '_meat', R(_oval(0.051, 0.0, 0.076, 0.055)), 0.006, top=mm, side=mm, bevel=0.0))
+    objs.append(extrude(name + '_shine', R(_oval(0.03, 0.022, 0.03, 0.014, n=14, rot=-10)), 0.008, top=hm, side=hm,
+                        bevel=0.0))
+    objs.append(extrude(name + '_bone', R([(-0.088, -0.017), (-0.02, -0.017), (-0.02, 0.017), (-0.088, 0.017)]),
+                        0.007, top=bm, side=bm, bevel=0.0))
+    for v in (-0.021, 0.021):
+        objs.append(extrude(name + '_knob', R(_oval(-0.095, v, 0.023, 0.023, n=16)), 0.007, top=bm, side=bm,
+                            bevel=0.0))
+    return objs
+
+
+def meat_tin_model(name, p=None, loc=(0, 0, 0)):
+    """Squat rounded luncheon-meat tin along local X (length), the label face toward -Y; bottom at z = 0."""
+    p = dict(MEAT_TIN, **(p or {}))
+    lx, wy, h, r = p['L'], p['W'], p['H'], p['r']
+    seam = flat('#E3E9F0', 0.25, 0.7)
+    lid = flat('#C3CCD8', 0.3, 0.6)
+    cap = flat('#D5DCE6', 0.3, 0.6)
+    objs = [extrude(name + '_body', rrect(lx, wy, r), h, top=cap, side=tin_mat(p['label'], p['band'], p['band_z']),
+                    bottom=cap, bevel=0.01, segs=2)]
+    sh = 0.024                                       # rolled seams, a little proud of the body
+    objs.append(extrude(name + '_seam_b', rrect(lx + 0.016, wy + 0.016, r + 0.008), sh, loc=(0, 0, 0.0), top=seam,
+                        side=seam, bevel=0.008, segs=2))
+    objs.append(extrude(name + '_seam_t', rrect(lx + 0.016, wy + 0.016, r + 0.008), sh, loc=(0, 0, h - sh + 0.004),
+                        top=seam, side=seam, bevel=0.008, segs=2))
+    objs.append(extrude(name + '_lid', rrect(lx - 0.075, wy - 0.075, r - 0.03), 0.008, loc=(0, 0, h + 0.004),
+                        top=lid, side=lid, bevel=0.003, segs=1))
+    # rolled key on the right end (+X): the wound strip (a short roll along Y) and the key's flat loop sticking out
+    kz = h * 0.80
+    objs.append(cyl(name + '_roll', 0.024, 0.11, (lx / 2 + 0.014, 0.0, kz), rot=(90, 0, 0), mat=seam, segs=16,
+                    origin='center', bevel=0.006))
+    ring = L.MB()
+    km = flat('#F2F5F9', 0.25, 0.7)
+    pts = [Vector((lx / 2 + 0.075 + 0.04 * math.cos(t), 0.0, kz + 0.03 * math.sin(t))) for t in
+           [math.tau * j / 14 for j in range(15)]]
+    for a, b in zip(pts, pts[1:]):
+        ring.seg(a, b, 0.011, km, segs=6)
+    objs.append(ring.done(name + '_key'))
+    objs.append(L.tube(name + '_shaft', [(lx / 2 + 0.014, 0.0, kz), (lx / 2 + 0.04, 0.0, kz)], 0.009, km))
+    hx, hz = p['ham_at']
+    g = L.group(ham_decal(name + '_ham', p['ham_k'], p['ham_tilt'], p['meat'], p['meat_rim'], p['bone'], p['shine']),
+                name + '_decal')
+    g.location = (hx, -wy / 2 - 0.0015, h * hz)
+    g.rotation_euler = Euler((math.radians(90), 0, 0), 'XYZ')
+    objs.append(g)
+    return L.group(objs, name, loc=loc)
+
+
+@bld('item_can_meat', 'item', 'bld_items', item={'thickness': MEAT_TIN['H']}, samples=64,
+     notes='(v4.2.1) Meat can (고기 통조림): squat rounded luncheon-meat tin, deep pine-green label with one cream '
+           'band, a bone-in ham picture toward the viewer, silver rolled seams + lid, rolled key on the right end. '
+           'Same frame / anchor / light as item_can; merged into bld_items by bld_item_merge.py.')
+def b_item_can_meat():
+    with L.Collect() as c:
+        meat_tin_model('mcan')
+    _ground_item(c.objs, 0.0, MEAT_TIN['spin'])

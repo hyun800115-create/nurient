@@ -423,9 +423,11 @@ export class Shop {
       if (this.st === 'ribbon' && this.t >= (Number(BALANCE.v4.founding.ribbonAuto) || 90)) this.open(false, true);
     } else if (this.st === 'open') {
       this.updateQueue(dt);
-      // the town's own customers: one item every `inlandEvery` s while stocked
+      // the town's own customers: one item every `inlandEvery` s while stocked ((v4.2.1 물류 손질, D2b) after 읍 every
+      // `inlandEveryRank2` s: the 솔방울 shops' town buyers come twice as often — "상가 … 고객을 늘리면")
       this.inlandT += dt;
-      if (this.inlandT >= (Number(BALANCE.v4.founding.inlandEvery) || 40)) {
+      const FD = BALANCE.v4.founding, rk = this.g && this.g.nb && this.g.nb.rank, every = Number(FD.inlandEvery) || 40;
+      if (this.inlandT >= (rk && rk.level >= 2 ? Math.min(every, Number(FD.inlandEveryRank2) || every) : every)) {
         this.inlandT = 0;
         const types = this.sells.filter((ty) => (this.stock[ty] || 0) > 0);
         if (types.length) this.takeOut(types[Math.floor(Math.random() * types.length)]);

@@ -42,7 +42,9 @@
   {
    "key": "bld_items",
    "png": "buildings/bld_items.png",
-   "json": "buildings/bld_items.json"
+   "json": "buildings/bld_items.json",
+   "lossless": true,
+   "notes": "always loaded (Assets EAGER_KEYS). v4.2.1: item_can_meat merged in by tools/blender/bld_item_merge.py; the older frames are byte-identical to v4.2. Kept lossless (RGBA PNG, no WebP / palette) so they stay so in the build."
   },
   {
    "key": "boat_rowboat",
@@ -1184,6 +1186,25 @@
    "carryScale": 0.65,
    "thicknessM": 0.25,
    "notes": "Toolbox (generic tool crate): red metal box with a steel carry handle, latches and a hammer + saw handle poking out."
+  },
+  "item_can_meat": {
+   "atlas": "bld_items",
+   "frame": "item_can_meat",
+   "anchor": [
+    0.5,
+    0.75
+   ],
+   "kind": "item",
+   "frameSize": [
+    72,
+    72
+   ],
+   "topPx": 19,
+   "stackStep": 13,
+   "icon": true,
+   "carryScale": 0.65,
+   "thicknessM": 0.24,
+   "notes": "(v4.2.1) Meat can (고기 통조림): squat rounded luncheon-meat tin, deep pine-green label with one cream band, a bone-in ham picture toward the viewer, silver rolled seams + lid, rolled key on the right end. Same frame / anchor / light as item_can; merged into bld_items by bld_item_merge.py."
   },
   "market_counter_staff": {
    "of": "market_counter",
