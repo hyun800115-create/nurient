@@ -559,13 +559,13 @@ layout points in `BigRestaurant` (`L`). Nothing is committed. Evidence: `/tmp/cl
 | G2 (Med) | 테이블 늘리기's back-yard tables stayed empty (`freeSeat` took the first free seat; the terrace never filled) | `BigRestaurant.freeSeat()` picks a free seat at random; while more plates wait on the pass than `civic.restaurant.backYardWait` (1) a server, a new guest takes the terrace when it has room (the back yard is the server's long round: at random alone, level 2 with one server piled 6.2 plates on the pass) | `restaurant` (new checks: 400 picks in an empty house, back yard 120–280; with 5 plates waiting, 0 of 200); restaurant probe §12.2 |
 | G3 (Med) | The bag guide sent cans to the 잡화점 while the board asked for them at 서리역 짐 싣는 곳; the 정기 납품 chip's panel had no 길 안내 | `Navigator.places()`: an open order that wants a bag item adds its place (서리역 짐 싣는 곳) — **first** after the player picked that order (board row or order card: `orderPick`) or when the arrow sends it there (`Tutorial.orderFirst`, the arrow's own rule 3, now shared), else as the chip's '+1곳' · each unfinished card on the 솔방울 주문판 has a '길 안내' tag (`HudV4.guideOrder`, the board row's pin) | `hallboard` 24/24 (3 new checks); screenshots 41, 42 |
 | G4 (Med) | Piles look jammed but the crew is busy (2 % idle): a demand problem | No code (v4.4 demand plan). Told in easy words in `기획서_v4_2_촌장.md` §15 | — |
-| G5 (Med) | 잡화점 shelf still empty 46–69 %, tool kinds 73–100 % | A new customer of the 잡화점 asks for a kind that is on the shelf, on its way or waiting at its workshop's door (`Market.makeWant`); bubbles for bows while only cans stood there read as a shop that cannot sell. Supply itself was measured (§12.2) and is left to the v4.4 demand plan | store probe §12.2 |
-| R1 (Med) | After a load 2–3 offer banners fired in one frame; only the last was seen (테이블 늘리기's never) | `V42.queueBanner` / `pumpBanners`: offer banners (and the 창고 직원's) show one at a time, after the banner on screen and a gap; each is marked seen when it really shows, dropped if its pad is gone | `porters42`, `restaurant`, `v42` |
+| G5 (Med) | 잡화점 shelf still empty 46–69 %, tool kinds 73–100 % | A new customer of the 잡화점 asks for a kind that is on the shelf, on its way or waiting at its workshop's door (`Market.makeWant`); bubbles for bows while only cans stood there read as a shop that cannot sell. Supply itself was measured (§12.2) and is left to the v4.4 demand plan | store probe §12.2; `store42`'s empty-shelf check now seats a customer who wants bows (with G5 a new customer asked for the can on its way and was served) |
+| R1 (Med) | After a load 2–3 offer banners fired in one frame; only the last was seen (테이블 늘리기's never) | `V42.queueBanner` / `pumpBanners`: offer banners (and the 창고 직원's) show one at a time, after the banner on screen and a gap; each is marked seen when it really shows, dropped if its pad is gone | `porters42`, `restaurant`, `v42`; shots 34–36 (their banners came one picture late until `shots_v42_touch.mjs` cleared the queue before each picture) |
 | R2 (Med) | Buying 테이블 늘리기 put the terrace's back lamp 7 px from a seat; its x-ray box and night light stayed at the old spot | `L.lampMoved` (−6.3, 4.4) → (−6.25, 5.5): 77 px from the nearest seat (geometry probe `runs/geo.json`); `setTables` moves the lamp's occluder box and its `DayClock` light with it | `restaurant` (new check: lamp ≥ 40 px from every seat, box moved) |
-| R3 (Med) | Back-yard guests / the server were hidden behind the building (28.5 % / 47.2 % of their walk) | `BigRestaurant.occlusionSubjects()` (called from `Occlusion.collect`): back-yard guests and servers on their back-yard round fade the restaurant building (stand-ins with `xrayMain`; the staff keep `noXray` elsewhere) | restaurant probe §12.2 (hidden share) |
+| R3 (Med) | Back-yard guests / the server were hidden behind the building (28.5 % / 47.2 % of their walk) | `BigRestaurant.occlusionSubjects()` (called from `Occlusion.collect`): back-yard guests and servers on their back-yard round fade the restaurant building (stand-ins with `xrayMain`; the staff keep `noXray` elsewhere) | x-ray probe §12.2 (hidden 45 / 40 % → 0 / 0 %); shots 32, 43 |
 | G6 (Low) | The pin's 240 s clock ran during 관망 and a pin could end there silently | `Navigator.pinCheck`: the clock waits while 관망 drives and 관망's walking is not arriving; a pin whose request was met under 관망 says so 1.8 s after the hand-back ('부탁을 다 채웠어요 · … 길 안내 끝') | `hallboard`, `pilot` |
 | G7 (Low) | '판매대가 비었어요' always showed the can | `Market.emptyCue`: the icon is the waiting customer's wanted item | `store42` |
-| G8 (Low) | The server handed plates over from ~180 px (across the table, from the spot beside the table block) | `BigRestaurant.nearSeatSpot`: a breadth-first search on a 10-px grid round the tables finds the nearest free spot 36–80 px from the seat (≥ 36 px from the other seats, ≤ 200 px walk) and the straightened way there; the server walks in, hands over, and walks back out the same way (`updateServer` legs; the way in is skipped if the guest left). Measured once per seat and table level. While plates back up on the pass (`passBusy`: more than `backYardWait` a server, the rule of G2) he hands over from beside the table block as before — walking in every time cost level 2 with one server 2 served a minute (17.8 → 15.7) and doubled the plates waiting (2.4 → 5.2) | `restaurant` (new check: a spot ≤ 80 px for most seats, on free ground); restaurant probe §12.2 |
+| G8 (Low) | The server handed plates over from ~180 px (across the table, from the spot beside the table block) | `BigRestaurant.nearSeatSpot`: a breadth-first search on a 10-px grid round the tables finds the nearest free spot 36–80 px from the seat (≥ 36 px from the other seats, ≤ 200 px walk) and the straightened way there; the server walks in, hands over, and walks back out the same way (`updateServer` legs; the way in is skipped if the guest left). Measured once per seat and table level. While plates back up on the pass (`passBusy`: more than `backYardWait` a server, the rule of G2) he hands over from beside the table block as before — walking in every time more than doubled the plates waiting at level 2 with one server (2.1 → 5.2) | `restaurant` (new check: a spot ≤ 80 px for most seats, on free ground); restaurant probe §12.2 |
 | G9 (Low) | One-time tips / "full" toasts used up during 관망 | `PickupPolicy.took`, `Player.warnFull`, `Game.fullToast` skip while 관망 drives (the tip is not marked seen) | `pilot` |
 | G10 (Low) | 기획서 said "승격식 준비 11,000" always shows on the board | reworded: only while the 승격식 is the current goal | — |
 | R4 (Low) | Pad prices covered on phones (테이블 늘리기 under a seated guest's bubble and the back lamp; a lamp on the 서빙 직원 2 price) | `L.padOff` (−0.9, 0.5) → (−1.7, 0): 146 px from the nearest seat; the 서빙 직원 2 pad at `server2PadPos()` (staff spot + (−0.3, −0.7) m): 98 px from the nearest lamp (`runs/geo2.json`) | `restaurant` (check 13 now asserts the lamp distance) |
@@ -575,6 +575,7 @@ layout points in `BigRestaurant` (`L`). Nothing is committed. Evidence: `/tmp/cl
 | R8 (Low) | A part-paid 짐꾼 2 pad could stay hidden behind unpaid ones | `LineUpgrades.update` places part-paid offers first | `porters42` |
 | R9–R11 (Info) | Day counters not saved; `offerPaid` cap 8; duplicate porter looks | no change (harmless / a note for later / by design) | — |
 | T1 (found by `nav`) | With G3 the 서리역 짐 싣는 곳 became a bag place; the guide kept a route planned from where the player stood earlier when he stood on it further along (not 80 px off it), so its length and chevron counted the way back to its start (`nav`: 3 of 40 bags, 2,971 vs 2,279 px) | `Navigator.update`: a new load, or the guide coming back (after 관망, an empty bag), plans the way again from where he stands | `nav` (re-run) |
+| T2 (found by `store42`) | An item flying to a 잡화점 customer whose bubble had just gone (the test cleared the line mid-sale; in play a train visitor called away or a despawn) landed into the destroyed text: Phaser threw from `setText`. G5 made it likely in the test (customers now want what is on the shelf, so a sale is often under way) | `Customer.hideBubble` forgets the bubble's text and icon; `updateBubble` returns when there is no bubble | `store42` (re-run) |
 
 ### 12.2 Numbers
 
@@ -594,7 +595,7 @@ samples with every tool kind at 0 on the shelf; tills = every coin the village t
 Reading: the shop sells what lands (sales ≈ deliveries); more tools need the forge fed, and feeding it first takes
 planks / ingots from the 교역소 (277–389 a minute instead of 411) — the village's tills do not rise (2,213–2,372 vs
 2,356). So no balance change here; the wants now follow what is on the shelf or on its way (tool kinds empty 67 → 50 %),
-and the supply is the v4.4 demand plan's (§12.4). Sales 10.9 vs 11.8 is within this probe's run-to-run noise (the
+and the supply is the v4.4 demand plan's (§12.5). Sales 10.9 vs 11.8 is within this probe's run-to-run noise (the
 merged tree's own runs: 10.7–11.3, §11.3).
 
 **큰 식당 (G2, G8)** (`v42final/tools/restprobe.mjs`, all three staff, the pantry fed as the porters do, 6 game minutes
@@ -609,17 +610,24 @@ pass = ready orders waiting, sampled):
 | random, back seats weighted ½ (not kept) | 2 | 14.5 | 335 | 43 of 91 | 4.39 | 149 |
 | `backYardWait` 0 | 1 / 2 | 13.5 / 18.33 | 272 / 438 | 18 of 83 / 25 of 110 | 0.65 / 2.98 | 168 / 155 |
 | `backYardWait` 1 (kept) | 0 / 1 / 2 | 11.33 / 15.5 / 17.83 | 257 / 346 / 375 | 0 / 24 of 95 / 35 of 106 | 0.17 / 1.49 / 2.41 | 180 / 155 / 170 |
-| **final (`backYardWait` 1 + hand-over beside the seat)** | 0 / 1 / 2 | 11.17 / ⟨L1s⟩ / ⟨L2s⟩ | 256 / ⟨L1c⟩ / ⟨L2c⟩ | 0 / ⟨L1b⟩ / ⟨L2b⟩ | 0.31 / ⟨L1p⟩ / ⟨L2p⟩ | **94** / ⟨L1h⟩ / ⟨L2h⟩ (p90 188 / ⟨L1h9⟩ / ⟨L2h9⟩) |
+| try: walk in to every hand-over (not kept) | 0 / 1 / 2 | 11.17 / 15.33 / 15.67 | 256 / 344 / 366 | 0 / 16 of 92 / 30 of 95 | 0.31 / 1.45 / **5.15** | 94 / 95 / 92 |
+| **final (`backYardWait` 1; walks in unless plates back up)** | 0 / 1 / 2 | **11.17 / 16.0 / 15.5** | 264 / 376 / 328 | 0 / 23 of 95 / 21 of 96 | 0.35 / 1.57 / 2.14 | **93** / 150 / 154 (p90 187 / 182 / 186) |
+| level 2, 12 min, final | 2 | 16.5 | 363 | 51 of 199 | 2.13 | 171 / 182 |
+| level 2, 12 min, final without the walk-in (same run length) | 2 | 16.42 | 370 | 72 of 200 | 1.65 | 176 / 185 |
 
-The back yard is used now (a quarter to a third of the deliveries at levels 1–2, none before) and level 2 serves more
-than before (17.8 vs 16.1 a minute) without a second server; with plain random seats one server let 6 plates wait.
-Hand-over spots (`v42final/runs/geo3c.json`): ⟨near⟩ of 8 / 12 / 16 seats get a spot 50–78 px from the seat (walk in
-42–209 px); the others keep the spot beside the table block (~164 px), where the tables leave no way round.
+Reading: the back yard is used now (a quarter of the deliveries at levels 1–2, none before) and the house serves as
+before or a little more (level 2 in 6-min windows varies 15.5–18.3 a minute between runs; the 12-min runs 16.4–16.5 vs
+the reviewer's 16.1). Plain random seats let one server pile 6 plates on the pass at level 2; `backYardWait` keeps it
+at about 2. The hand-over beside the seat (G8) shows when the server has time — level 0 hands over from 93 px instead
+of ~180; when plates back up (often at levels 1–2 with one server) he hands across the table as before, which keeps the
+throughput (walking in every time: 5.2 plates waiting at level 2). Hand-over spots (`v42final/runs/geo3c.json`): 5 of 8
+/ 8 of 12 / 12 of 16 seats get one 50–78 px from the seat (walk in 42–209 px); the rest have no way round within 200 px.
 
 **X-ray of the back yard (R3)** (`v42final/tools/xray.mjs`: level 2 with both servers, camera on the restaurant at
 zoom 1.2, 150 s, 0.25-s samples; hidden = at least 2 of 3 body points behind the building's solid pixels while it is
-opaque): back-yard guests walking hidden **48 % → 0 %**, servers on their back-yard round **39 % → 0 %** (reviewer:
-28.5 % / 47.2 %).
+opaque; the same run with this x-ray switched off as the reference): back-yard guests walking hidden **45 % → 0 %**
+(1 of 1,045 samples), servers on their back-yard round **40 % → 0 %** (3 of 650) on the final source (an earlier run:
+48 / 39 % → 0 / 0 %; reviewer: 28.5 % / 47.2 %).
 
 **Layout (R2, R4)** (`v42final/tools/geo.mjs`, `geo2.mjs`; ground px): the moved lamp 7 → **77** from the nearest seat
 (161 from the nearest table, 202 from the back path); 테이블 늘리기 pad 89 → **146** from the nearest seat (157 / 259
@@ -631,12 +639,82 @@ on every load).
 
 **Late village and pacing bots** (same tools and settings as §11.3, on the final source):
 
-⟨LONG⟩
+| 46-min save, 60 game min (`review_gameplay_census.mjs`, smart bot) | merged (§11.3) | **final** |
+|---|---|---|
+| income a minute | 2,878 | **2,947 (+2 %)** |
+| 큰 식당 (the bot buys both table levels) served · coins · walk-outs a minute · seat wait | 16.8 · 363 · 0 · 0.36 s | 16.9 · 380 · 0 · 0.70 s |
+| 잡화점 sales · coins a minute · shelf empty · tool kinds empty | 10.7 · 567 · 49 % · 68 % | 11.2 · 607 · 49 % · 69 % |
+| pier catch pad avg · ≥ 90 % | 1.6 · 0 % | 1.5 · 0 % |
+| outputs ≥ 80 %: bakery · toolsmith · smelter · grill | 8 · 2 · 15 · 48 % | 21 · 1 · 14 · 46 % |
+| any raw pile ≥ 90 % | 93 % | 91 % |
+| made a minute (raw + goods) | 327 + 323 | 334 + 330 |
+| 창고 crew first → last · idle | 2 → 6 · 21 % | 2 → 6 · 17 % |
+| train surplus exported | 828 | 992 |
+| page errors | 0 | **0** |
+
+| Pacing bots (fresh game, as §11.3) | 5 shops | 읍 | longest wait after tower_east | 사무실 · 은행 · 물류창고 | stuck · errors |
+|---|---|---|---|---|---|
+| smart, v4.2 verify | 38.6 | 47.3 | 3.35 at 47.3 | 57.2 · 62.4 · 59.1 | 0 · 0 |
+| smart, merged (§11.3) | 39.2 | 44.7 | 4.46 at 44.8 | 50.5 · 52.1 · 56.1 | 0 · 0 |
+| **smart, final** | **37.6** | **43.7 (−7.7 % vs verify)** | 2.07 at 44.4 | **51.2 · 52.8 · 57.0** | 0 · 0 |
+| arrow-only, v4.2 verify | 40.9 | 51.5 | 6.52 at 59.8 | 53.2 · 56.1 · 59.8 | 0 · 0 |
+| arrow-only, merged (§11.3) | 38.5 | 47.7 | 2.90 at 44.7 | 49.7 · 52.4 · 54.4 | 0 · 0 |
+| **arrow-only, final** | **38.9** | **48.0 (−6.8 % vs verify)** | 3.68 at 44.2 | **49.9 · 53.0 · 54.7** | 0 · 0 |
+
+The gate (읍 ≤ +3 % of the v4.2 verify) holds for both bots; one run each. The census and the bots ran on the final
+source except the T2 guard (the customer-bubble check, added while they ran; it changes nothing unless an item lands
+on a customer whose bubble is gone).
 
 ### 12.3 Tests
 
-TBD
+Logs in `v42final/suites/` (browser) and `v42final/node/` (Node). As in §11.4 the machine ran 3–8 browsers at once
+(4 cores, load 16–25) with the test-only preload `integ/slowshot.cjs`. "Final" = the final source; "before T1/T2/G8" =
+the same tree before the last three changes (the guide's replan, the bubble guard, the walk-in hand-over), each
+re-run where it touches the suite.
 
-### 12.4 Open issues
+| Suite | Result | Source |
+|---|---|---|
+| `store42.mjs` (+ check 6: e_m1 after a load; + the empty label's icon) | **16/16** (15/15 before T2; 9/10 + a page exception in the run that found T2; 14/16 when G5 served the test's waiting customer the can on its way — the check now seats one who wants bows) | final |
+| `hallboard.mjs` (+ 3 checks: the order's place in the bag guide, the card's 길 안내, the order first after picking it) | **24/24** | final |
+| `restaurant.mjs` (+ checks: lamp ≥ 40 px from the seats and its box moved; random seats, terrace while plates wait; hand-over spots; 서빙 직원 2 pad off the lamp) | **55/55** | final |
+| `nav.mjs` | **12/12** (11/12 twice before T1: the route-length check, 3 of 40 bags) | final |
+| `porters42.mjs` · `v42.mjs` · `v4.mjs` · `plots.mjs` | **21/21** · **35/35** (three earlier runs at load 16–25 missed one or two wall-clock/threshold checks: "office panel < 100 ms" twice (1 s and 9 s while 7 browsers ran) and "총총이 follows the chief ≤ 300 px" twice at 317 px — the pre-existing flake, 281–321 across runs; the office and the dog are not touched here; both pass on the quieter machine) · **46/46** · **34/34** | final |
+| `dockporter` · `smoke` · `save_v42` | 11/11 · 53/53 · all passed | before T1/T2/G8 (T1 and G8 do not touch them; T2 only guards the customer bubble) |
+| `v3` · `labour` · `pickup` · `rail` · `town` · `dog` · `zoom` · `c2` · `townfolk_runtime` · `voice_runtime` | 18/18 · 28/28 · 31/31 · 35/35 · 17/17 · 15/15 · PASS · 39/39 · 8/8 · 29/29 | before T1/T2/G8 |
+| `life.mjs` | **14/14** (13/14 once before: "tag among kids" found no two kids near enough — random positions; not touched here) | final |
+| `v42_guide.mjs` | 6/6 | final |
+| saves: `save_v2` · `save_v3` · `save_v35 --browser`, `save_v4 --browser` | PASS · PASS · PASS, PASS | final |
+| `pilot.mjs --minutes 10 --ref-minutes 10` | **10/10**, 관망 income 89 % of arrow-only, 0 coins spent | final |
+| Node: `bank42` 18 · `depot` 26 · `depot_parity` 10 · `ledger` 20 · `letters` 23 · `pilot` 45 · `rail42` 58 · `roadnet` 32 · `walls42` 6 · chat 11 files · `v4_layout` · `v42_layout` | all pass | final |
+| `balanceCheck` · string parity · eslint (`no-undef`, `no-dupe-keys`, `no-redeclare`) | 0 warnings · 861 = 861 keys · 0 errors | final |
 
-TBD
+### 12.4 Screenshots (`docs/previews/screens_v42/`, 390 × 844, Korean; looked at)
+
+| File | What it shows |
+|---|---|
+| `31`–`33` (re-taken, DPR 3) | 테이블 늘리기 levels 1 / 2 / night: back-yard guests seated and eating; the moved lamp in the yard's corner; in 32 the building turned see-through over the back-yard guests (R3) |
+| `34` (re-taken) | the 테이블 늘리기 pad one table further out (1,200, clear of seats) with its banner |
+| `35`, `36` (re-taken) | 통조림 짐꾼 2 pad + banner; a 창고 직원 walking in + banner (banners now one at a time) |
+| `37` (re-taken, DPR 2) | 잡화점 with an empty shelf: the front customer wants bows x3 and the label shows the bow (G7) |
+| `41` (new, DPR 2) | 솔방울 주문판: each unfinished card has its '길 안내' tag (G3) |
+| `42` (new, DPR 2) | cans in the bag after picking the order: chip `통조림 6 → 서리역 짐 싣는 곳 · 10m +1곳` (G3) |
+| `43` (new, DPR 2) | level 2: 4 guests in the back yard, 7 on the terrace (G2) |
+| `44` (new, DPR 2) | 잡화점 on e_m1 after a load: the line bends round the farm fence, all six in place (G1) |
+
+### 12.5 Open issues
+
+1. **Supply, not delivery (G4, G5):** the 잡화점's tool kinds are still empty about half the time (50 %) and the raw
+   piles look full; both need more made and more places that buy — the v4.4 demand plan (`docs/logistics_plan.md`).
+   Feeding the forge first was measured and not kept (it takes planks / ingots from the 교역소; the village's tills do
+   not rise, §12.2).
+2. **Hand-over beside the seat only when the server has time (G8):** at levels 1–2 with one server plates often back
+   up, and he then hands across the table as before (p50 150–171 vs 93 at level 0); 3 / 4 / 4 seats (levels 0 / 1 / 2) have no
+   way round the tables within 200 px. 서빙 직원 2 makes the walk-in the usual case there.
+3. **Level 2 with one server keeps about 2 plates waiting** (was 0.45 while the back yard stood empty); the 서빙 직원 2
+   offer (more than 2 plates waiting for 60 s) still comes from that.
+4. **§11.7 #3 is fixed by G1** (a building finished next to the 잡화점 re-plans its line).
+5. `visitors42` / `reqlog42 --base` were not re-run (they need a v4.1 base copy; no change here loads or asks for an
+   asset). `pilot.mjs`'s 30-min reference was not re-run (> 2.5 h on this machine); the 10-min form was.
+6. Previews 37 and 41–44 are 390 × 844 at DPR 2; 31–36 DPR 3 (as before).
+7. Nothing is committed by this pass (the session's WIP snapshot `7a7be4b`, made by the runner at 09:28, holds most of
+   it; the rest is in the working tree) and the artifact is not rebuilt.

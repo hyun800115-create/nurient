@@ -168,7 +168,11 @@ try {
       // one customer already waiting at the counter (the line as it was may still be walking in)
       for (const c of S.queue.slice()) { if (c.despawn) c.despawn(); }
       S.queue.length = 0;
+      // ((v4.2 final) a new customer now asks for what is on the shelf or on its way (gameplay review #5): this one
+      //  wants what is not there — bows — so he waits at the empty shelf, as the cue is for)
+      const mw = S.makeWant; S.makeWant = () => ({ type: 'item_bow', count: 3 });
       S.spawnCustomer(0); S.spawnT = 1e9;
+      S.makeWant = mw;
       return { shelf: S.stock.count };
     });
     // the shelf kept empty for 7 s (whatever was already on its way is taken off again): the label comes after 4 s

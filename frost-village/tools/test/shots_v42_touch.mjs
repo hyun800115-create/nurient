@@ -45,16 +45,16 @@ const SCENES = [
   // the 테이블 늘리기 pad in the back yard after the line waited for a seat (its banner kept; the other upgrade pads that
   // are due in this save are marked seen so their banners do not cover it)
   { name: '34_tables_pad', secs: 2, keepBanner: true, setup: () => {
-    const R = window.__busy(5); window.__quiet();
+    window.__flushBanners(); const R = window.__busy(5); window.__quiet();
     // ((touch finish) the 46-min save has served 150+ meals, so its pad (and banner) came at the load: put it up again)
     const L = window.__FV.scene.v42.lines; if (L.pads.tables1) { L.pads.tables1.vanish(); delete L.pads.tables1; } window.__FV.v42.v.seen.tb = {};
     R.busyT = 61; const p = R.tablesPadPos(); return { x: p.x + 110, y: p.y + 70, z: 1.0 }; // (y + 70: at 360 × 640 the banner's second line covered the pad label at + 120)
   } },
   // 짐꾼 2 for the 통조림 공장 (its pad by the cannery door, the banner)
-  { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
+  { name: '35_porter2_cannery_pad', secs: 2, keepBanner: true, setup: () => { window.__flushBanners(); const gs = window.__FV.scene, L = gs.v42.lines, w = gs.sourceById('cannery'); window.__FV.v42.v.seen.p2 = {}; window.__FV.clearStack(); L.fullT.cannery = 50; L.waitT.cannery = 0; window.__FV.teleport(w.outPad.x + 160, w.outPad.y + 170); return { x: w.outPad.x + 40, y: w.outPad.y + 10, z: 1.0 }; } },
   // a new 창고 직원 walks in from the nearest way into the village (the west gate, off screen while the chief is away)
   // to the 창고: the banner, the camera on the gate road and the 창고 (he is held mid-walk while the view settles)
-  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, warm: 6, setup: () => { window.__quiet(); window.__FV.clearStack(); window.__FV.teleport(-200, 700); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
+  { name: '36_warehouse_crew_arrives', secs: 0.2, keepBanner: true, warm: 6, setup: () => { window.__quiet(); window.__flushBanners(); window.__FV.clearStack(); window.__FV.teleport(-200, 700); window.__FV.v42.crew({ rate: 450, now: true }); return null; },
     then: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; window.__run(0.5); wp._spd = wp.speed; wp.speed = 0; return { x: (wp.x + W.outPad.x) / 2, y: (wp.y + W.outPad.y) / 2 - 40, z: 1.05 }; }, secs2: 0,
     after: () => { const W = window.__FV.scene.warehouse, wp = W.porters[W.porters.length - 1]; if (wp._spd) wp.speed = wp._spd; } },
 ];
@@ -87,6 +87,9 @@ await page.evaluate((BUSYsrc) => {
     for (let i = 0; i < 40; i++) { window.__run(1); const g = R.guests, eat = g.filter((q) => q.state === 'eat').length, sit = eat + g.filter((q) => q.state === 'seated').length; if (eat >= 3 && sit >= 9) break; }
     return { x: R.x + c.x, y: R.y + c.y, z: c.z };
   };
+  // ((v4.2 final) offer banners now show one at a time after a gap (V42.queueBanner): a picture that keeps its banner
+  //  starts with the queue and the banner on screen cleared, so its own banner shows at once)
+  window.__flushBanners = () => { const v = window.__FV.v42 && window.__FV.v42.v; if (v) { v.bannerQ = []; v.bannerGapT = 0; } const ui = window.__FV.game.scene.getScene('UI'); if (ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); } };
   try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ }
 }, BUSY.toString());
 const run = async (sec, feed) => { for (let s = 0; s < sec; s += 5) { if (feed) await page.evaluate(() => window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 })); await page.evaluate((d) => window.__run(d), Math.min(5, sec - s)); } };

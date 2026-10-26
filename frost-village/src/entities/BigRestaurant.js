@@ -361,7 +361,8 @@ export class BigRestaurant {
    * terrace, which never filled up, so the back-yard tables the player paid for (테이블 늘리기) stayed empty. The back
    * yard is a long round for the 서빙 직원: while plates already wait on the pass (more than the servers can take at
    * once, civic.restaurant.backYardWait a server) a new guest is seated on the terrace when it has room — measured on
-   * the 46-min save at level 2 with one server: plain random 6.2 plates waiting on average, this rule ≈ 1 (§12.2)
+   * the 46-min save at level 2 with one server: plain random 6.2 plates waiting on average, this rule about 2 (v42_touch.md
+   * §12.2)
    */
   freeSeat() {
     const backOk = !this.passBusy();
@@ -681,8 +682,8 @@ export class BigRestaurant {
         const first = ready[0], load = [first];
         for (let i = 1; i < ready.length && load.length < n; i++) if (!!ready[i].g.seat.back === !!first.g.seat.back) load.push(ready[i]);
         const legs = [];
-        // (a backlog on the pass: no last steps round the tables this round — measured at level 2 with one server they
-        //  cost 2 served a minute and doubled the plates waiting, §12.2)
+        // (a backlog on the pass: no last steps round the tables this round — at level 2 with one server walking in
+        //  every time left 5.2 plates waiting on average instead of 2.1, v42_touch.md §12.2)
         const busy = this.passBusy(ready.length - load.length);
         if (first.g.seat.back) for (const q of this.backPath) legs.push({ x: q.x, y: q.y });
         for (const tk of load) {

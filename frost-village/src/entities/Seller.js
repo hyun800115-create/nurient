@@ -470,7 +470,9 @@ export class Customer extends Character {
     this.updateBubble();
   }
   updateBubble() {
-    if (!this.bubbleText) return;
+    // ((v4.2 final) an item still flying to a customer whose bubble went (he left, a train visitor called away, a
+    //  despawn): its landing must not write into the destroyed text — Phaser threw from setText)
+    if (!this.bubbleText || !this.bubble) return;
     const left = Math.max(0, this.want.count - this.got);
     if (left > 0) { this.bubbleText.setText('x' + left); return; }
     // order complete: a coin (= "I'd like to pay") instead of "x0"; the register decides when
@@ -492,7 +494,7 @@ export class Customer extends Character {
   hideBubble() {
     if (!this.bubble) return;
     const b = this.bubble;
-    this.bubble = null;
+    this.bubble = null; this.bubbleText = null; this.bubbleIcon = null;
     this.gs.tweens.add({ targets: b, scale: 0, alpha: 0, duration: 180, onComplete: () => b.destroy() });
   }
   bubblePos() { return { x: this.x - 12, y: this.y + this.headTop - 40 }; }
