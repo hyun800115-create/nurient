@@ -11,6 +11,11 @@ The first build (2026-10-18) was cut off by a usage limit before its last runs. 
 work, found the real cause of the restaurant stalls (§0 F1), changed what the evidence asked for, and re-measured
 everything on the final source. Numbers are from the final source unless marked "first build".
 
+**Integrated fixes (2026-10-26, §11):** the three designer bug fixes built in parallel (잡화점 store line / supply,
+선착장 생선 짐꾼, 마을회관 board where-to-bring + 길 안내) are merged into this tree; one overlap with the touch (the growing
+창고 crew emptying the forge's runs) was found by measurement and resolved (`WarehousePorter.leaveToOwnPorter`). The
+full suite list, both save fixture sets, a new 60-min census and both pacing bots ran on the merged tree.
+
 Evidence (scratch):
 - first build: `/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/v42touch/` — `before/`
   (restaurant on the base copy), `census/base60` + `base35_10` (base copy), `base/frost-village` (HEAD 3236722), `probe/`;
@@ -335,14 +340,13 @@ clear of the HUD.
    no longer the limit for goods (outputs ≥ 80 % full fell by a third to two thirds); raw needs demand — the next
    version (`docs/logistics_plan.md`), not this touch.
 2. **F1 touches every building, not only the 큰 식당.** Every finished site re-activated its foundation circle after a
-   load; shop lines, porter paths and pads near any building were a little tighter after every reload. The parallel
-   fixes (잡화점 store, 선착장 dock porter, `wt42fix` / `dock_investigation/wtfix` / `v42fixes/wthall`) measured on
-   trees without F1 may see different numbers once merged.
+   load; shop lines, porter paths and pads near any building were a little tighter after every reload. (Merged: the
+   parallel fixes were re-measured on the merged tree — §11.3.)
 3. **「테이블 늘리기」 sells guests, not seats** (§2.2): with the server fixed, 8 seats are rarely full (3.3 busy on
    average); the level gains come from `seatsPull`. Designer decision: keep it as "a bigger restaurant draws more
    guests", or give the tables another effect.
-4. **배 창고 짐꾼 2 needs the dock's goods porter** (`porter_dock`), which the parallel dock fix adds; without it the
-   dock line never offers its 짐꾼 2.
+4. **배 창고 짐꾼 2 needs the dock's goods porter** (`porter_dock`). (Merged: the 생선 짐꾼 now comes with the rowboat —
+   §11.2 I3.)
 5. **서빙 직원 2 is rarely offered** at the natural pace (0.45 plates on the pass on average); it appears in a rush
    (shot 31). It costs nothing to keep.
 6. **Train exports fell 14 % in the 41-min census window** (466 → 400): the 큰 식당 now serves ≈ 11 more dishes a minute
@@ -357,4 +361,282 @@ clear of the HUD.
 10. Not re-run in the finish: the `pilot` reference (arrow-only income on the 46-min save: its renderer closed at the
     start; the 9 관망 checks passed), the artifact build, texture tour and `test_deploy` (no new texture or file; the
     lead rebuilds). The census ran before F7 / F8 (restaurant line order, porter guard).
-11. 마을회관 explanation, 잡화점, 선착장 짐꾼 and the board are other agents' work in their worktrees (not here).
+11. 마을회관 explanation, 잡화점, 선착장 짐꾼 and the board: merged — §11.
+
+## 11. Integrated fixes (2026-10-26)
+
+The three designer bug fixes built in parallel against `3236722` (scratch `v42fixes/`: `store.diff`, `dock.diff`,
+`hallboard.diff`) are merged into this tree on top of the finished touch. Nothing is committed. Designer text:
+`docs/기획서_v4_2_촌장.md` §14 (+ `docs/기획서_v4_2_마을회관.md` from the board fix). Evidence:
+`/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/integ/` (`suites/`, `node/`,
+`probes/`, `census/`, `bots/`, `shots/`, `tools/`).
+
+### 11.1 What was merged
+
+| Patch | Designer report | Change (files) |
+|---|---|---|
+| `store.diff` | "잡화점 판매원있는데 판매를 안해 사람들도 거기로 못가는건지" | `Game.storeLine`: a line place on a pine / the fog edge moves to the nearest free spot after the place before it (6 places kept; w_m2 3, e_m1 2, e_m2 1 places were unreachable) · `Seller.slotPos` reads `cfg.slots` · store customers (line + leaving) are x-ray subjects (`Occlusion`) · `Workshop.pickTool`: for the shop the forge keeps forging the kind already on its pad while the shop has room, a new run starts at the kind after the last one (`lastRun`) · '판매대가 비었어요' over the shelf after `customers.emptyCueS` (4 s) of a customer waiting at an empty shelf (`Seller.emptyCue`, one lazily created label) · test `store42.mjs` |
+| `dock.diff` | "위에 어선은 있는 선착장은 짐꾼이 없는건가 여기 생선이 그대로야" | `Progression.COMES_WITH = { boat_rowboat: ['porter_dock'] }`: buying the rowboat hires the 생선 짐꾼 (his 600-coin side pad, which no arrow pointed at, is gone; a part-payment is refunded); a save with the boat but not him gets him on load (one refund, none on reload) · banner sub / build-menu line · test `dockporter.mjs` |
+| `hallboard.diff` | "마을회관 오늘의 부탁 … 통조림 내가 가져다 줘도 안 들어가지네" | `TownHall.whereOf` / `housePlot` / `guideTo`: every request row says where its goods go (`→ 서리역 짐 싣는 곳`, pantry, food box, empty house plot) and a tap starts the 길 안내 there (`Navigator.pin`: empty bag allowed; ends on arrival, when the request is met, on a long press, or after `v42.nav.pinMaxS` 240 s) · board rows in `UIv4.openBoard` · the hall itself accepts nothing (one receiving place per thing, no new save slot, nothing left lying at the hall) · `docs/기획서_v4_2_마을회관.md` (also answers "does the hall level up": no — the village rank rises at the 승격식: people 45, shops 5, happy 80, 11,000 coins) · test `hallboard.mjs` |
+
+**Textual overlaps.** All three applied with plain `git apply` on the touched tree (offsets only, no rejects). The files
+both sides edit — `Game.js` (touch: `noteMade`, `restTablesPad`; store: `storeLine`), `Workshop.js` (touch: `noteMade`
+in `process`; store: `pickTool` runs, `lastRun`), `strings.js`, `balance.js`, `balanceCheck.js` — are touched in
+different places. `balanceCheck` 0 warnings; ko / en string keys identical (no key only in one language, each new key
+defined once per language); eslint (`no-undef`, `no-dupe-keys`, `no-redeclare`) 0 errors.
+
+### 11.2 Semantic overlaps and how they were resolved
+
+| # | Overlap | Finding | Resolution |
+|---|---|---|---|
+| I1 | **Store fix's forge runs × touch's growing 창고 crew** | Measured, not guessed: on the merged tree the 46-min save's tool porter carried **4.8 tools a trip** (store fix alone: 9.0) and the shop made **463 coins a minute** (store fix alone: 557). The crew's overflow rule (`WarehousePorter.think` rule 2: any output ≥ `warehouse.overflowAt` 60 % goes to the 창고) took half of each run into the 창고 before the porter came back (55 s round trip, 3,079 px); with the touch the crew grows to 5–6 and is free to do it. A runtime experiment that kept the crew off the forge's pad while the next tool still fits brought it back (9.1 a trip, 593 coins). | `WarehousePorter.leaveToOwnPorter(s)` (`src/entities/Worker.js`): the crew skips the forge's pad (`recipe.out === 'tool'`) while it has a porter of its own and the next tool still fits; a full forge (about to stop) or one without a porter is taken as before. Other outputs keep the touch's 60 % rule. Korean note on `warehouse.overflowAt` in `balance.js`. New `store42.mjs` check ("the 창고 crew leaves the forge's run to the 도구 짐꾼 unless the forge is full"; also wraps the crew's planner for 5 game minutes: 0 forge jobs while the pad had room). |
+| I2 | Store fix's can supply × touch's 짐꾼 2 on the cannery / forge lines | Complementary: the store fix added no can porter on purpose and relied on the touch's 짐꾼 2. On the merged tree the crew also delivers cans straight to the shelf when it empties (40 cans in 8 min), so buying both 짐꾼 2 changes little on the 46-min save (591 vs 619 coins a minute — one 8-minute run each, ±5 % is noise). With two tool porters each takes ~4 a trip (they split the runs). | None needed. |
+| I3 | Dock fix × touch's dock 짐꾼 2 | Touch open issue 4 ("the dock's 짐꾼 2 needs `porter_dock`") is closed by the merge: once the rowboat is bought the dock line always has its goods porter, so `LineUpgrades` can offer `p2_dock`. With the 생선 짐꾼 the pier rarely fills, so the offer stays rare. Bots: the 생선 짐꾼 arrives with the rowboat at 29.2 / 29.9 min (touch finish: bought at 29.4 / 30.0). | None needed. |
+| I4 | Touch F1 (site circle after a load) × store fix's line places | `storeLine` runs inside `Site.finish → makeStore`, after `finish` turns the site circle off, in fresh play and on a load alike, so the places are computed against the real collision. Before F1 a load re-activated the circle afterwards and could cover line places in play; F1 removes that. | None needed; `store42` reload check (w_m2 keeps its 6 bent places) passes. |
+| I5 | Board fix × touch's restaurant | The board's pantry row leads to `pantryPad`, which the tables upgrade does not move. No shared code. | None. |
+| I6 | Saves | Neither fix adds a save field. The dock fix writes `progress.done.porter_dock` and clears `progress.paid/got.porter_dock` (existing fields). v7 unchanged. | — |
+
+### 11.3 Numbers on the merged tree
+
+**잡화점** (`storeprobe.mjs`, 46-min smart save s46, store on w_m2, 8 game minutes, chief parked; tools per trip =
+tools carried ÷ trips over all 도구 짐꾼 trips; tools / cans a minute = delivered to the shelf by anyone):
+
+| Run | sales/min | coins/min | shelf empty | front stalled | tool shelves empty | tools/min | tools a trip | cans/min |
+|---|---|---|---|---|---|---|---|---|
+| v4.2 (`3236722`) | 8.63 | 402 | 56 % | 77 % | 85 % | 4.8 | 3.0 | 15.3 |
+| store fix alone (on `3236722`) | 9.63 | 557 | 50 % | 71 % | 55 % | 9.4 | 9.0 | 13.8 |
+| merged, before I1 | 9.25 | 463 | 63 % | 76 % | 87 % | 6.4 | 4.8 | 15.8 |
+| **merged, final** | **11.25** | **619** | **45 %** | **65 %** | 84 % | **9.1** | **8.3** | **19.4** |
+| merged, final + 짐꾼 2 (cannery, forge) | 11.13 | 591 | 44 % | 66 % | 67 % | 9.0 | 4.1 | 16.4 |
+| s46 without 생선 짐꾼: v4.2 | 4.00 | 249 | 89 % | 93 % | 93 % | 4.5 | 3.1 | 4.9 |
+| s46 without 생선 짐꾼: store + dock fixes alone | 8.75 | 495 | 66 % | 78 % | 81 % | 7.9 | 7.8 | 12.3 |
+| **s46 without 생선 짐꾼: merged, final** | **10.25** | **525** | 48 % | 69 % | 76 % | 7.5 | 6.8 | 16.4 |
+
+The tool shelves still read empty most of the time at this sampling (5 s) because tools sell as they land (≈ 9 a
+minute delivered, ≈ 9 sold); more tools need more ingots / planks — the demand plan's job.
+
+**선착장** (`dockprobe.mjs`, s46 with `porter_dock` removed from the save, 6 game min, the pier's catch pad of 30):
+
+| Run | pile avg / max | ≥ 90 % full | fish taken from the pier | fish reaching the cannery | boat waiting to unload |
+|---|---|---|---|---|---|
+| v4.2 | 20.5 / 30 | 32 % | 29 (창고 crew) | 0 | 11 % |
+| dock fix alone | 1.1 / 4 | 0 % | 57 (생선 짐꾼) | 50 | 4 % |
+| **merged** | **0.8 / 5** | **0 %** | **52** (생선 짐꾼) | **51** | **4 %** |
+
+**Late village** (`review_gameplay_census.mjs`, the 46-min save, smart bot, fixed step, the final merged source;
+compared with the touch finish's census `touch2/census/after60`; the store and pier columns are new in this census tool —
+the touch's run has no store column). The first merged census was stopped at 44 min when I1 was found
+(`integ/census/integ_pre40`: income 2,846 a minute, store 548 coins a minute) and re-run on the final source:
+
+| 46-min save | touch finish, 41 min | **merged, 41 min** | touch finish, 60 min | **merged, 60 min** |
+|---|---|---|---|---|
+| income a minute | 2,754 | **2,864 (+4 %)** | 2,661 | **2,878 (+8 %)** |
+| 큰 식당 served · coins · walk-outs a minute | 15.3 · 351 · 0 | 16.4 · 360 · 0 | 15.6 · 357 · 0 | 16.8 · 363 · 0 |
+| 잡화점 sales · coins a minute | – | 10.8 · 554 | – | 10.7 · 567 |
+| 잡화점 shelf empty · front stalled | – | 47 % · 42 % | – | 49 % · 44 % |
+| pier catch pad avg · ≥ 90 % (the save has its 생선 짐꾼) | 1.8 · 0 % | 1.9 · 0 % | 1.9 · 0 % | 1.6 · 0 % |
+| outputs ≥ 80 %: bakery · toolsmith · smelter · grill | 19 · 20 · 20 · 43 % | 9 · **3** · 16 · 48 % | 14 · 19 · 21 · 45 % | 8 · **2** · 15 · 48 % |
+| any raw pile ≥ 90 % | 95 % | 92 % | 94 % | 93 % |
+| made a minute (raw + goods) | 315 + 314 | 325 + 324 | 317 + 313 | 327 + 323 |
+| 창고 crew first → last · idle | 2 → 6 · 6 % | 2 → 6 · 17 % | 2 → 6 · 5 % | 2 → 6 · 21 % |
+| train surplus exported | 400 | 310 | 659 | 828 |
+| page errors | – | – | 1 (before F8) | **0** |
+
+The forge no longer stands full (toolsmith output ≥ 80 %: 19–20 → 2–3 %): its runs leave with the tool porter, and
+the crew, kept off the forge's pad, idles more (5–6 → 17–21 %). Raw piles stay full as before (the demand plan).
+
+**Pacing bots** (fresh game, fixed step, `review_gameplay_sim.mjs --v4 --upg greedy --after 20`; game minutes; the
+gate is 읍 ≤ +3 % of the v4.2 verify). Both ran on the merged tree before I1 (it changes only who empties the forge's
+pad after the 창고, 33 min in; the bots do not wait on the forge).
+
+| Run | 5 shops | 읍 | longest wait after tower_east | 사무실 · 은행 · 물류창고 | stuck · errors |
+|---|---|---|---|---|---|
+| smart, v4.2 verify | 38.6 | 47.3 | 3.35 at 47.3 | 57.2 · 62.4 · 59.1 | 0 · 0 |
+| smart, touch finish | 38.0 | 45.0 | 3.33 at 47.8 | 51.9 · 53.2 · 57.6 | 0 · 0 |
+| **smart, merged** | **39.2** | **44.7 (−5.6 %)** | 4.46 at 44.8 | **50.5 · 52.1 · 56.1** | 0 · 0 |
+| arrow-only, v4.2 verify | 40.9 | 51.5 | 6.52 at 59.8 | 53.2 · 56.1 · 59.8 | 0 · 0 |
+| arrow-only, touch finish | 38.7 | 48.3 | 2.87 at 58.8 | 49.8 · 53.8 · 55.4 | 0 · 0 |
+| **arrow-only, merged** | **38.5** | **47.7 (−7.4 %)** | 2.90 at 44.7 | **49.7 · 52.4 · 54.4** | 0 · 0 |
+
+The smart bot's longest wait (4.46 min at 44.8) is the saving for the office right after 읍 (v4.1: 5.2); one run each.
+
+### 11.4 Tests on the merged tree
+
+Logs in `integ/suites/` (browser) and `integ/node/` (Node). The machine ran 3–6 browsers at once (load 8–23); the
+suites ran with a test-only preload (`integ/slowshot.cjs`, Playwright's default timeout 30 → 180 s; no test or game
+code changed). "Final" = the merged tree with I1; the rest ran on the merged tree before I1 (I1 changes only who
+empties the forge's pad once the 창고 crew exists).
+
+| Suite | Result | Source |
+|---|---|---|
+| `store42.mjs` (new) | **13/13** (12/12 before the I1 check was added, twice) | final |
+| `dockporter.mjs` (new) | **11/11** (also 11/11 before I1) | final |
+| `hallboard.mjs` (new, with screenshots) | **21/21** (also 21/21 before I1) | final |
+| `porters42.mjs` | **21/21** (also 21/21 before I1) | final |
+| `restaurant.mjs` | **51/51** (also 51/51 before I1) | final |
+| `v4.mjs` · `smoke.mjs` · `plots.mjs` | **46/46 · 53/53 · 34/34** (same before I1) | final |
+| `v3` · `labour` · `pickup` · `nav` · `rail` · `town` | 18/18 · 28/28 · 31/31 · 12/12 · 35/35 · 17/17 | final |
+| `dog` · `life` · `zoom` · `c2` · `townfolk_runtime` · `voice_runtime` | 15/15 · 14/14 · PASS · 39/39 · 8/8 · 29/29 | final |
+| `v42_guide.mjs` | 6/6 | final |
+| `v42.mjs` | **35/35** on the final source; 34/35 before I1 — the miss was "총총이 follows the chief ≤ 300 px" at 321 px (the threshold flake of §9.2 of `v42_code2.md`: 292–318 there) | final |
+| saves: `save_v2` · `save_v3` · `save_v35 --browser`, `save_v42` | PASS · PASS · PASS, all passed | final |
+| `save_v4.mjs --browser` (v3.5 fixtures, 20 corrupted v4 blocks, reloads mid-founding / -train / -ceremony) | PASS, 52 checks | before I1 |
+| v4.1 / v4.2 fixtures through the new code | v4.1 35-min and 46-min saves load, save as v7, reload with no second refund (`dockporter`); the 46-min save reloads with its bent store line and stock (`store42`) and the board (`hallboard`) | final |
+| `pilot.mjs` | 30-min 관망 soak: 9/9 (income 66,820, 0 coins spent, 0 stuck); its 30-min arrow-only reference ran past my 2.5 h limit (killed by the runner, not a game error); `--minutes 10 --ref-minutes 10`: **10/10, 관망 income 90 % of arrow-only** | soak before I1, 10-min run final |
+| `visitors42 --base` (v4.1 copy `git archive 56a97d1`) | 2/2 (93 %) | final |
+| `reqlog42 --base` | 3/5 twice: boot and "up to the first sale" differ by timing, in opposite directions between the two runs (run 1: this build asked for the six water textures at boot and the v4.1 copy for more resident looks / voices before the first sale; run 2: the v4.1 copy asked for the water textures at boot and more voices); after the first sale ≤ 1 new file and nothing missing (both). No merged change asks for an asset | final |
+| Node: `bank42` 18 · `depot` 26 · `depot_parity` 10 · `ledger` 20 · `letters` 23 · `pilot` 45 · `rail42` 58 · `roadnet` 32 · `walls42` 6 · chat 9 files · `v4_layout` · `v42_layout` | all pass | merged |
+| `balanceCheck` · string parity · eslint (`no-undef`, `no-dupe-keys`, `no-redeclare`) | 0 warnings · ko = en keys · 0 errors | final |
+
+Logic time (`v42fixes/tools/bench.mjs`: the 46-min save, store on w_m2, chief parked, 4 × 600 fixed steps a run, three
+runs each, merged and a pre-merge source copy alternating, load 8–15): **merged 4.39 ms a step on average (p50 3.18),
+pre-merge 4.15 (p50 3.20)** — no measurable difference.
+
+### 11.5 Budgets
+
+- **Textures / files:** no new art, no new asset file, no new pack page — the texture tour (peak 451.4 MiB < 455) and the
+  artifact file count (413) are as in the v4.2 verify. The artifact was not rebuilt (the lead builds).
+- **Display objects:** one lazily created label per store ('판매대가 비었어요', `floatLabel`), the board rows' tag and
+  where-line while the board is open, the guide's existing pooled dots / chevron (no new pool).
+- **Logic:** `storeLine` runs once per store creation; `emptyCue` is a few comparisons a frame; `leaveToOwnPorter` is
+  one `some()` over the porters only for a forge pad already ≥ 60 % full when a crew member plans; the pin check
+  runs twice a second while a pin is set. The store fix's own bench (600 fixed steps on s46): no measurable change.
+
+### 11.6 Files changed by the merge (on top of §9)
+
+| File | Change |
+|---|---|
+| `src/scenes/Game.js` | `storeLine` (store) |
+| `src/entities/Seller.js` | `slotPos` reads `cfg.slots`; `emptyCue` label (store) |
+| `src/entities/Workshop.js` | `pickTool` runs, `lastRun` (store) |
+| `src/systems/Occlusion.js` | store customers x-ray (store) |
+| `src/systems/Progression.js` | `COMES_WITH`, init / complete hooks (dock) |
+| `src/entities/TownHall.js`, `src/scenes/UIv4.js`, `src/systems/Navigator.js` | where-to-bring rows, tap → `Navigator.pin` (board) |
+| `src/entities/Worker.js` | **(merge, I1)** `WarehousePorter.leaveToOwnPorter` |
+| `src/data/balance.js`, `balanceCheck.js`, `strings.js` | `customers.emptyCueS`, `v42.nav.pinMaxS` / `pinArrivePx` (ranged), 11 new string keys ko + en (+ `bsub_boathouse` reworded), `porter_dock` / `overflowAt` comments |
+| `tools/test/store42.mjs` (new, + I1 check), `dockporter.mjs` (new), `hallboard.mjs` (new) | tests |
+| `tools/test/review_gameplay_census.mjs` | store and pier columns (`store`, `pier` in the summary) |
+| `docs/기획서_v4_2_마을회관.md` (new), `docs/기획서_v4_2_촌장.md` §14, `docs/v42_plan.md` §19.6, this section | docs |
+| `docs/previews/screens_v42/37–40` (new, 390 × 844 at DPR 2) | store line + label, rowboat banner with the 생선 짐꾼, board rows, board guide |
+
+### 11.7 Open issues after the merge
+
+1. **잡화점 shelf still empty about half the time** (45–49 %): delivery now keeps up with what is made and the shop
+   sells ~10–11 a minute as fast as goods land. More sales need more cans and tools made (fish, ingots, planks) — the
+   demand plan. Young villages (38–45 min) are fish-limited (the cannery waits for fish 79–87 % of the time).
+2. **I1 is narrow on purpose:** only the forge's pad is left to its own porter. Other outputs keep the touch's 60 % crew
+   rule. A future producer that makes runs for one-kind-a-trip porters needs the same treatment.
+3. **Store line places are computed when the store is created** (built or loaded); a building finished later right
+   next to the store could block a place until the next load. `store42` audits every store plot with all land open, not
+   with every neighbour built.
+4. **The hall accepts nothing** (designer decision available; it would need a hall → station porter and a save slot).
+5. The board's guide is hidden in the tutorial and in 관망, like the bag guide.
+6. The rowboat now includes the 생선 짐꾼; `costs.porter_dock` (600) is unused (the rowboat costs 700). Raise
+   `boats.rowboat.coins` if the designer wants the porter paid for.
+7. `reqlog42 --base` stays timing-sensitive on a loaded machine (two runs, opposite differences); `pilot.mjs`'s 30-min
+   reference needs > 2.5 h here — run it on a quiet machine.
+8. The pacing bots ran before I1; the census, the store / dock probes and the suites marked "final" after it.
+9. Previews 37–40 are 390 × 844 at DPR 2 (31–36 are DPR 3).
+10. Nothing is committed and the artifact is not rebuilt: the phone APK (v4.2 = `3236722`) and the claude.ai artifact
+    (v4.1) have none of §§0–11 yet.
+11. Still open from §10: the tables upgrade sells guests, not seats (designer call); raw piles stay full (demand).
+
+## 12. Final review fixes (2026-10-26)
+
+The two final reviews of the merged tree (`docs/build_reports/v42_final_review_gameplay.md`: Critical 0, High 1,
+Medium 4, Low 5; `docs/build_reports/v42_final_review_robust.md`: High 0, Medium 3, Low 5, Info 3) are worked through
+here. Every High and Medium is fixed or answered with a measured reason; the Lows are fixed too (they were cheap); the
+three Infos need no change (#9 harmless, #10 a note for later, #11 by design). Save stays v7 with no new field; no new
+art; one new balance key, `civic.restaurant.backYardWait` (1, ranged 0–20 in `balanceCheck.js`), plus the restaurant
+layout points in `BigRestaurant` (`L`). Nothing is committed. Evidence: `/tmp/claude-0/-home-user-nurient/8cadcbb8-7304-572f-9d68-572175fda0e7/scratchpad/v42final/`
+(`tools/`, `runs/`, `suites/`, `node/`, `census/`, `bots/`).
+
+### 12.1 What was fixed
+
+| # | Finding | Fix (files) | Check |
+|---|---|---|---|
+| G1 (High) | 잡화점 on plot **e_m1**: after any reload line places 5–6 lay inside the farm fence (the line was worked out while the zones were still off on a load) | `Game.refreshStoreLine()`: the store's line is worked out again when a zone opens (`revealZone`), once more after the whole load, and when another building is finished next to it; customers in line walk to their new places (`Customer.update` reads `slotPos`) | `store42` check 6 (new): the 46-min save with the 잡화점 on e_m1 loads with 6 bent, standable places and a full line all arrives; screenshot 44 |
+| G2 (Med) | 테이블 늘리기's back-yard tables stayed empty (`freeSeat` took the first free seat; the terrace never filled) | `BigRestaurant.freeSeat()` picks a free seat at random; while more plates wait on the pass than `civic.restaurant.backYardWait` (1) a server, a new guest takes the terrace when it has room (the back yard is the server's long round: at random alone, level 2 with one server piled 6.2 plates on the pass) | `restaurant` (new checks: 400 picks in an empty house, back yard 120–280; with 5 plates waiting, 0 of 200); restaurant probe §12.2 |
+| G3 (Med) | The bag guide sent cans to the 잡화점 while the board asked for them at 서리역 짐 싣는 곳; the 정기 납품 chip's panel had no 길 안내 | `Navigator.places()`: an open order that wants a bag item adds its place (서리역 짐 싣는 곳) — **first** after the player picked that order (board row or order card: `orderPick`) or when the arrow sends it there (`Tutorial.orderFirst`, the arrow's own rule 3, now shared), else as the chip's '+1곳' · each unfinished card on the 솔방울 주문판 has a '길 안내' tag (`HudV4.guideOrder`, the board row's pin) | `hallboard` 24/24 (3 new checks); screenshots 41, 42 |
+| G4 (Med) | Piles look jammed but the crew is busy (2 % idle): a demand problem | No code (v4.4 demand plan). Told in easy words in `기획서_v4_2_촌장.md` §15 | — |
+| G5 (Med) | 잡화점 shelf still empty 46–69 %, tool kinds 73–100 % | A new customer of the 잡화점 asks for a kind that is on the shelf, on its way or waiting at its workshop's door (`Market.makeWant`); bubbles for bows while only cans stood there read as a shop that cannot sell. Supply itself was measured (§12.2) and is left to the v4.4 demand plan | store probe §12.2 |
+| R1 (Med) | After a load 2–3 offer banners fired in one frame; only the last was seen (테이블 늘리기's never) | `V42.queueBanner` / `pumpBanners`: offer banners (and the 창고 직원's) show one at a time, after the banner on screen and a gap; each is marked seen when it really shows, dropped if its pad is gone | `porters42`, `restaurant`, `v42` |
+| R2 (Med) | Buying 테이블 늘리기 put the terrace's back lamp 7 px from a seat; its x-ray box and night light stayed at the old spot | `L.lampMoved` (−6.3, 4.4) → (−6.25, 5.5): 77 px from the nearest seat (geometry probe `runs/geo.json`); `setTables` moves the lamp's occluder box and its `DayClock` light with it | `restaurant` (new check: lamp ≥ 40 px from every seat, box moved) |
+| R3 (Med) | Back-yard guests / the server were hidden behind the building (28.5 % / 47.2 % of their walk) | `BigRestaurant.occlusionSubjects()` (called from `Occlusion.collect`): back-yard guests and servers on their back-yard round fade the restaurant building (stand-ins with `xrayMain`; the staff keep `noXray` elsewhere) | restaurant probe §12.2 (hidden share) |
+| G6 (Low) | The pin's 240 s clock ran during 관망 and a pin could end there silently | `Navigator.pinCheck`: the clock waits while 관망 drives and 관망's walking is not arriving; a pin whose request was met under 관망 says so 1.8 s after the hand-back ('부탁을 다 채웠어요 · … 길 안내 끝') | `hallboard`, `pilot` |
+| G7 (Low) | '판매대가 비었어요' always showed the can | `Market.emptyCue`: the icon is the waiting customer's wanted item | `store42` |
+| G8 (Low) | The server handed plates over from ~180 px (across the table, from the spot beside the table block) | `BigRestaurant.nearSeatSpot`: a breadth-first search on a 10-px grid round the tables finds the nearest free spot 36–80 px from the seat (≥ 36 px from the other seats, ≤ 200 px walk) and the straightened way there; the server walks in, hands over, and walks back out the same way (`updateServer` legs; the way in is skipped if the guest left). Measured once per seat and table level. While plates back up on the pass (`passBusy`: more than `backYardWait` a server, the rule of G2) he hands over from beside the table block as before — walking in every time cost level 2 with one server 2 served a minute (17.8 → 15.7) and doubled the plates waiting (2.4 → 5.2) | `restaurant` (new check: a spot ≤ 80 px for most seats, on free ground); restaurant probe §12.2 |
+| G9 (Low) | One-time tips / "full" toasts used up during 관망 | `PickupPolicy.took`, `Player.warnFull`, `Game.fullToast` skip while 관망 drives (the tip is not marked seen) | `pilot` |
+| G10 (Low) | 기획서 said "승격식 준비 11,000" always shows on the board | reworded: only while the 승격식 is the current goal | — |
+| R4 (Low) | Pad prices covered on phones (테이블 늘리기 under a seated guest's bubble and the back lamp; a lamp on the 서빙 직원 2 price) | `L.padOff` (−0.9, 0.5) → (−1.7, 0): 146 px from the nearest seat; the 서빙 직원 2 pad at `server2PadPos()` (staff spot + (−0.3, −0.7) m): 98 px from the nearest lamp (`runs/geo2.json`) | `restaurant` (check 13 now asserts the lamp distance) |
+| R5 (Low) | Two 창고 직원 shared one waiting spot | `WarehousePorter.homeFor` skips spots within 20 px of another crew member's home | `porters42` |
+| R6 (Low) | English wording (짐꾼 2 banners/pads, news, `crewCame`, `navArrive`) | per-line names `p2Name_*` (ko unchanged: '생선 짐꾼 2'; en 'Porter 2 · Fish', 'Fish piling up'); `news_crew1` for one arrival; 'Another warehouse hand has arrived'; `navArrive` 'Arrived: {place}' / '도착했어요 · {place}' | string parity (861 = 861 keys) |
+| R7 (Low) | A damaged save with 서빙 직원 2 but no first server lost him | `serialize` keeps `server2` while `wantServer2` waits | `save_v42` |
+| R8 (Low) | A part-paid 짐꾼 2 pad could stay hidden behind unpaid ones | `LineUpgrades.update` places part-paid offers first | `porters42` |
+| R9–R11 (Info) | Day counters not saved; `offerPaid` cap 8; duplicate porter looks | no change (harmless / a note for later / by design) | — |
+| T1 (found by `nav`) | With G3 the 서리역 짐 싣는 곳 became a bag place; the guide kept a route planned from where the player stood earlier when he stood on it further along (not 80 px off it), so its length and chevron counted the way back to its start (`nav`: 3 of 40 bags, 2,971 vs 2,279 px) | `Navigator.update`: a new load, or the guide coming back (after 관망, an empty bag), plans the way again from where he stands | `nav` (re-run) |
+
+### 12.2 Numbers
+
+All on the 46-min smart save (s46), fixed step, chief parked away from what is measured; one run each unless said.
+
+**잡화점 (G5)** (`v42final/tools/storeprobe.mjs`, store on w_m2, 8 game minutes; "tool kinds empty" = share of 5-s
+samples with every tool kind at 0 on the shelf; tills = every coin the village takes a minute):
+
+| Run | sales/min | coins/min | shelf empty | cans empty | tool kinds empty | front stalled | tools / cans delivered a min | all tills/min | 교역소/min | forge: work · no ingot · no plank · out full |
+|---|---|---|---|---|---|---|---|---|---|---|
+| before (merged tree) | 11.75 | 626 | 36 % | 53 % | 67 % | 61 % | 10.0 / 17.8 | 2,356 | 411 | 48 · 25 · 23 · 4 % |
+| try: forge inputs urgent below 16 (not kept) | 11.13 | 580 | 42 % | 64 % | 58 % | 65 % | 9.4 / 14.9 | 2,372 | 389 | 77 · – · – · 9 % |
+| try: tool porter first below 75 % (not kept) | 11.13 | 601 | 42 % | 59 % | 75 % | 65 % | 10.1 / 15.5 | 2,213 | 285 | 67 · – · – · 16 % |
+| try: both (not kept) | 11.88 | 682 | 31 % | 56 % | 58 % | 51 % | 11.8 / 17.1 | 2,262 | 277 | 81 · – · – · 19 % |
+| **final (wants follow the shelf)** | 10.88 | 573 | 35 % | 49 % | **50 %** | 60 % | 9.6 / 16.0 | 2,308 | 422 | 54 · 21 · 23 · 2 % |
+
+Reading: the shop sells what lands (sales ≈ deliveries); more tools need the forge fed, and feeding it first takes
+planks / ingots from the 교역소 (277–389 a minute instead of 411) — the village's tills do not rise (2,213–2,372 vs
+2,356). So no balance change here; the wants now follow what is on the shelf or on its way (tool kinds empty 67 → 50 %),
+and the supply is the v4.4 demand plan's (§12.4). Sales 10.9 vs 11.8 is within this probe's run-to-run noise (the
+merged tree's own runs: 10.7–11.3, §11.3).
+
+**큰 식당 (G2, G8)** (`v42final/tools/restprobe.mjs`, all three staff, the pantry fed as the porters do, 6 game minutes
+a level; hand-over = ground distance from the server to the guest's seat when the plates leave his tray; plates on the
+pass = ready orders waiting, sampled):
+
+| Run | level · seats | served/min | coins/min | back-yard deliveries | plates on the pass | hand-over p50 / p90 |
+|---|---|---|---|---|---|---|
+| reviewer (first free seat) | 0 · 8 / 1 · 12 / 2 · 16 | 11.75 / 15.37 / 16.12 | – | 0 / 1 / 0 | 0.17 / 0.28 / 0.45 | 181 / 190 |
+| random seat alone | 0 / 1 / 2 | 11.0 / 14.5 / 16.0 | 274 / 348 / 381 | 0 / 27 of 86 / 48 of 95 | 0.2 / 1.06 / **6.15** | 179 / 161 / 143 |
+| random seat alone + 서빙 직원 2 | 2 | 16.5 | 396 | 45 of 100 | 0.3 | 168 |
+| random, back seats weighted ½ (not kept) | 2 | 14.5 | 335 | 43 of 91 | 4.39 | 149 |
+| `backYardWait` 0 | 1 / 2 | 13.5 / 18.33 | 272 / 438 | 18 of 83 / 25 of 110 | 0.65 / 2.98 | 168 / 155 |
+| `backYardWait` 1 (kept) | 0 / 1 / 2 | 11.33 / 15.5 / 17.83 | 257 / 346 / 375 | 0 / 24 of 95 / 35 of 106 | 0.17 / 1.49 / 2.41 | 180 / 155 / 170 |
+| **final (`backYardWait` 1 + hand-over beside the seat)** | 0 / 1 / 2 | 11.17 / ⟨L1s⟩ / ⟨L2s⟩ | 256 / ⟨L1c⟩ / ⟨L2c⟩ | 0 / ⟨L1b⟩ / ⟨L2b⟩ | 0.31 / ⟨L1p⟩ / ⟨L2p⟩ | **94** / ⟨L1h⟩ / ⟨L2h⟩ (p90 188 / ⟨L1h9⟩ / ⟨L2h9⟩) |
+
+The back yard is used now (a quarter to a third of the deliveries at levels 1–2, none before) and level 2 serves more
+than before (17.8 vs 16.1 a minute) without a second server; with plain random seats one server let 6 plates wait.
+Hand-over spots (`v42final/runs/geo3c.json`): ⟨near⟩ of 8 / 12 / 16 seats get a spot 50–78 px from the seat (walk in
+42–209 px); the others keep the spot beside the table block (~164 px), where the tables leave no way round.
+
+**X-ray of the back yard (R3)** (`v42final/tools/xray.mjs`: level 2 with both servers, camera on the restaurant at
+zoom 1.2, 150 s, 0.25-s samples; hidden = at least 2 of 3 body points behind the building's solid pixels while it is
+opaque): back-yard guests walking hidden **48 % → 0 %**, servers on their back-yard round **39 % → 0 %** (reviewer:
+28.5 % / 47.2 %).
+
+**Layout (R2, R4)** (`v42final/tools/geo.mjs`, `geo2.mjs`; ground px): the moved lamp 7 → **77** from the nearest seat
+(161 from the nearest table, 202 from the back path); 테이블 늘리기 pad 89 → **146** from the nearest seat (157 / 259
+from the moved lamp at level 0 / 1); 서빙 직원 2 pad 55 → **98** from the nearest lamp, 141 from the other pads.
+
+**잡화점 on e_m1 (G1)** (`store42` check 6: the 46-min save with the 잡화점 moved to e_m1): after the load 6 places,
+bent round the farm fence, all standable; a full line of 6 all reach their places (before: places 5–6 inside the fence
+on every load).
+
+**Late village and pacing bots** (same tools and settings as §11.3, on the final source):
+
+⟨LONG⟩
+
+### 12.3 Tests
+
+TBD
+
+### 12.4 Open issues
+
+TBD

@@ -211,6 +211,7 @@ function checkC1(B) {
   fixNum(TB.meals, 0, 'civic.restaurant.tables.meals[0]', 1, 1e7, 150, true);
   fixNum(TB.meals, 1, 'civic.restaurant.tables.meals[1]', 1, 1e7, 450, true);
   fixNum(R, 'seatsPull', 'civic.restaurant.seatsPull', 0, 2, 0.5);
+  fixNum(R, 'backYardWait', 'civic.restaurant.backYardWait', 0, 20, 1);
   const S2 = R.server2 = (R.server2 && typeof R.server2 === 'object') ? R.server2 : {};
   fixNum(S2, 'offerS', 'civic.restaurant.server2.offerS', 1, 3600, 60);
   fixNum(S2, 'cost', 'civic.restaurant.server2.cost', 1, 1e9, 1000, true);

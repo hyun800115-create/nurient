@@ -230,6 +230,9 @@ export class Game extends Phaser.Scene {
     this.restoreV3Stock(sv);
     this.restoreLabour(sv);
     if (this.v42) this.v42.afterRestore(sv);
+    // ((v4.2 final) everything that stands is solid now: the store's line once more (plot e_m1 / the farm fence))
+    if (this.store) this.refreshStoreLine();
+    this.events.on('built', (k) => { if (k !== 'store' && this.store) this.refreshStoreLine(); });
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
@@ -1194,6 +1197,7 @@ export class Game extends Phaser.Scene {
       maxQueue: 6, spawnEvery: 3.2, wantMax: 3, soldEvent: 'storeSold', shelfMax: 24, emptyLabel: true,
       available: () => STORE_GOODS.filter((g) => (g === 'item_can' ? this.isBuilt('cannery') : this.isBuilt('toolsmith'))),
     };
+    cfg.maxQueue0 = cfg.maxQueue;
     const m = new Market(this, cfg);
     m.front = [-60, 30];
     if (this.padSpots) { this.padSpots.push({ x: m.shelf.x, y: m.shelf.y, r: 70 }, { x: m.cash.x, y: m.cash.y, r: 70 }, { x: m.register.x, y: m.register.y, r: 64 }); }
@@ -1234,6 +1238,24 @@ export class Game extends Phaser.Scene {
     if (!moved && pos.length === n) return;
     cfg.slots = pos;
     cfg.maxQueue = Math.max(2, pos.length);
+  }
+
+  /**
+   * ((v4.2 final, gameplay review #1) the store's line worked out again. On a load the store is made while the zones
+   * are still switched off (Game.create: restoreV3 before Progression.init reveals them), so on plot e_m1 the farm
+   * fence was not solid yet and places 5–6 landed inside it — customers 5 and 6 walked on the spot in every session
+   * after the first. Called when a zone opens, after a load, and when a building is finished (one next to the store
+   * could cover a place). Customers in line walk to their new places by themselves (Customer.update reads slotPos).
+   */
+  refreshStoreLine() {
+    const m = this.store;
+    if (!m || !m.cfg) return false;
+    const cfg = m.cfg, sig = () => JSON.stringify(cfg.slots || null) + '/' + cfg.maxQueue;
+    const before = sig();
+    delete cfg.slots;
+    cfg.maxQueue = cfg.maxQueue0 || 6;
+    this.storeLine(m, cfg);
+    return sig() !== before;
   }
 
   /** objects with an output pad porters can empty (v1 stations, v3 workshops, the boat's catch pad) */
@@ -1352,6 +1374,8 @@ export class Game extends Phaser.Scene {
     if (!z || z.unlocked) return;
     z.unlocked = true;
     this.setZoneEnabled(id, true);
+    // ((v4.2 final) the zone's fence is solid now: the store's line goes round it)
+    if (this.store) this.refreshStoreLine();
     if (this.roads) this.roads.invalidate();
     if (z.roads) { if (instant) z.roads.setAlpha(1); else this.tweens.add({ targets: z.roads, alpha: 1, duration: 900, delay: 500 }); }
     if (!instant && this.life) this.time.delayedCall(900, () => this.life.cheer());
@@ -1901,6 +1925,8 @@ export class Game extends Phaser.Scene {
   }
 
   fullToast() {
+    // ((v4.2 final, gameplay review #9) not while 관망 drives the chief)
+    if (this.v42 && this.v42.pilot && this.v42.pilot.on) return;
     this._fullT = this._fullT || 0;
     if (this.time.now - this._fullT > 2500) { this._fullT = this.time.now; this.ui.toast(t('stationFull')); }
   }

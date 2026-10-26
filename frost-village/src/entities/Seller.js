@@ -218,7 +218,16 @@ export class Market {
   }
 
   makeWant() {
-    const foods = this.availableFoods();
+    let foods = this.availableFoods();
+    // ((v4.2 final, gameplay review #5) the 잡화점: a new customer asks for a kind that is on the shelf, on its way to it
+    //  or waiting at its workshop's door (the forge makes runs of one kind) — bubbles for bows while only cans stood on
+    //  the shelf read as a shop that cannot sell. Nothing anywhere: any kind it sells, as before
+    if (this.cfg.id === 'store' && foods.length > 1) {
+      const gs = this.gs;
+      const atDoor = (g) => (gs.workshops || []).some((w) => w.outStack && w.outStack.countOf(g) > 0);
+      const have = foods.filter((g) => this.stock.countWithIncoming(g) > 0 || (gs.carriedTo && gs.carriedTo(this.sink, g) > 0) || atDoor(g));
+      if (have.length) foods = have;
+    }
     if (!foods.length) foods.push(this.goods[0]);
     // newest food is a bit more likely
     let type = foods[Math.floor(Math.random() * foods.length)];
@@ -373,11 +382,10 @@ export class Market {
     const waiting = this.stock.count === 0 && !!(f && f.arrived && f.state === 'wait' && f.need > 0);
     this.emptyT = waiting ? (this.emptyT || 0) + dt : 0;
     const show = this.emptyT >= (Number(BALANCE.customers.emptyCueS) || 4);
-    if (show && !this.emptyLab) {
-      this.emptyLab = floatLabel(gs, this.shelf.x, this.shelf.y - 92, this.goods[0]);
-      this.emptyLab.set(t('storeShelfEmpty'));
-    }
+    if (show && !this.emptyLab) this.emptyLab = floatLabel(gs, this.shelf.x, this.shelf.y - 92, this.goods[0]);
     if (!this.emptyLab) return;
+    // ((v4.2 final, gameplay review #7) the icon is what the waiting customer wants, not always the can)
+    if (show) this.emptyLab.set(t('storeShelfEmpty'), (f && f.want && f.want.type) || this.goods[0]);
     if (this.emptyLab.c.visible !== show) this.emptyLab.c.setVisible(show);
     if (show) this.emptyLab.bob(gs.time.now);
   }

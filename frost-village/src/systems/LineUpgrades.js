@@ -113,7 +113,8 @@ export class LineUpgrades {
     // ((v4.2 touch) 서빙 직원 2: the back yard has tables and plates waited on the pass while the server was out)
     const S2R = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.server2) || {};
     if (R && R.enabled && R.server && !R.server2 && R.tableLevel >= 1 && (R.serveWaitT >= (Number(S2R.offerS) || 60) || this.paid.srv2 > 0 || this.pads.srv2)) {
-      out.push({ id: 'srv2', kind: 'srv2', cost: Number(S2R.cost) || 1000, x: R.staffSpot.x, y: R.staffSpot.y, label: 'rest_server2', icon: Assets.pick('ui_icon_porter', 'ui_icon_worker') });
+      const sp = R.server2PadPos ? R.server2PadPos() : R.staffSpot;
+      out.push({ id: 'srv2', kind: 'srv2', cost: Number(S2R.cost) || 1000, x: sp.x, y: sp.y, label: 'rest_server2', icon: Assets.pick('ui_icon_porter', 'ui_icon_worker') });
     }
     for (const line of P2_LINES) {
       const st = this.src(line);
@@ -178,6 +179,8 @@ export class LineUpgrades {
     const kindOf = (id) => (this.pads[id].offer && this.pads[id].offer.kind) || '';
     let n = Object.keys(this.pads).filter((id) => !REST_KINDS.has(kindOf(id)) && kindOf(id) !== 'p2').length;
     let n2 = Object.keys(this.pads).filter((id) => kindOf(id) === 'p2').length;
+    // ((v4.2 final, robust review #8) a part-paid offer takes its slot first (it could stay hidden behind unpaid ones)
+    due.sort((a, b) => ((this.paid[b.id] > 0) ? 1 : 0) - ((this.paid[a.id] > 0) ? 1 : 0));
     for (const o of due) {
       if (this.pads[o.id]) continue;
       if (REST_KINDS.has(o.kind)) { this.makePad(o); continue; }
@@ -191,7 +194,9 @@ export class LineUpgrades {
   makePad(o) {
     const gs = this.gs;
     const item = o.line ? (P2_ITEM[o.line] || (LINES.find((q) => q.id === o.line) || {}).product) : null;
-    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: t(item) }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : o.kind === 'tables' ? () => t('tables_pad') : o.kind === 'srv2' ? () => t('rest_server2') : () => t('bigCar_pad');
+    // ((v4.2 final, robust review #6) the line's own goods name ('Fish porter 2' / '생선 짐꾼 2'), not the lower-case item
+    const nm = () => (o.line ? t('p2Name_' + o.line) : t(item));
+    const lab = o.kind === 'p2' ? () => t('p2_pad', { item: nm() }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : o.kind === 'tables' ? () => t('tables_pad') : o.kind === 'srv2' ? () => t('rest_server2') : () => t('bigCar_pad');
     const pad = new UnlockPad(gs, o.id, o.x, o.y, {
       kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' || o.kind === 'tables' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
       padTex: o.kind === 'p2' || o.kind === 'sp34' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : o.kind === 'srv2' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : undefined,
@@ -202,15 +207,21 @@ export class LineUpgrades {
     this.pads[o.id] = pad;
     pad.offer = o;
     // one banner per offer, once per save
+    // ((v4.2 final, robust review #1) in turn, through V42.queueBanner: after a load 2–3 offers were due in the same
+    //  frame and only the last banner was seen (테이블 늘리기's, every time). Marked seen when it is shown; dropped
+    //  (not seen) when the pad is gone by then
     const sk = { p2: 'p2', st2: 'up', sp34: 'p34', big: 'big', sleigh2: 'big', tables: 'tb', srv2: 'tb' }[o.kind] || 'p2', seen = this.v42.seen[sk] || (this.v42.seen[sk] = {});
-    if (!seen[o.line || o.id]) {
-      seen[o.line || o.id] = 1;
-      if (o.kind === 'p2') gs.ui.banner(t('p2Banner', { item: t(item) }), t('p2Sub', { item: t(item) }));
-      else if (o.kind === 'st2') gs.ui.banner(t('st2Banner', { st: t('line_' + o.line) }), t('st2Sub'));
-      else if (o.kind === 'big') gs.ui.banner(t('bigCar_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
-      else if (o.kind === 'sleigh2') gs.ui.banner(t('sleigh2_pad'), t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 }));
-      else if (o.kind === 'tables') gs.ui.banner(t('tablesBanner'), t('tablesSub'));
-      else if (o.kind === 'srv2') gs.ui.banner(t('srv2Banner'), t('srv2Sub'));
+    const key = o.line || o.id;
+    if (!seen[key]) {
+      const dock = () => t('dockSurplus', { n: this.v42.freight ? this.v42.freight.dockCount() : 0 });
+      const txt = o.kind === 'p2' ? [() => t('p2Banner', { item: nm() }), () => t('p2Sub', { item: nm() })]
+        : o.kind === 'st2' ? [() => t('st2Banner', { st: t('line_' + o.line) }), () => t('st2Sub')]
+          : o.kind === 'big' ? [() => t('bigCar_pad'), dock]
+            : o.kind === 'sleigh2' ? [() => t('sleigh2_pad'), dock]
+              : o.kind === 'tables' ? [() => t('tablesBanner'), () => t('tablesSub')]
+                : o.kind === 'srv2' ? [() => t('srv2Banner'), () => t('srv2Sub')] : null;
+      if (txt) this.v42.queueBanner('offer:' + o.id, txt[0], txt[1], { valid: () => this.pads[o.id] === pad, onShow: () => { seen[key] = 1; } });
+      else seen[key] = 1;
     }
   }
 

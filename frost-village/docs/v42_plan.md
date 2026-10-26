@@ -1148,6 +1148,45 @@ The first build was cut off before its last runs; the finish re-measured on the 
 - **서빙 직원 2**: re-measured as not needed at the natural pace (one server: 16 seats, 86 % busy, 3.4 s wait); kept as
   the self-limiting offer; covered by `restaurant.mjs` 13.
 
+### 19.6 Merged designer fixes (2026-10-26)
+
+The three fixes for the designer's phone reports (built against `3236722`) are merged on top of the touch; details and
+numbers in `docs/build_reports/v42_touch.md` §11, designer text in `docs/기획서_v4_2_촌장.md` §14.
+
+- **잡화점** (`Game.storeLine`, `Seller.slotPos/emptyCue`, `Occlusion`, `Workshop.pickTool`): line places that a pine or
+  the fog edge blocked move to the nearest free spot (6 places kept), the pines in front of the store's customers turn
+  see-through, the forge makes runs of one tool kind for the shop so its porter leaves full, and '판매대가 비었어요' shows
+  after `customers.emptyCueS` (4 s) of a customer waiting at an empty shelf.
+- **선착장** (`Progression.COMES_WITH`): the 생선 짐꾼 comes with the rowboat; a save with the boat but not him gets him on
+  load (a part-payment on his old pad is refunded once).
+- **마을 게시판** (`TownHall.whereOf/guideTo`, `UIv4.openBoard`, `Navigator.pin`): each request says where its goods go and
+  a tap starts the 길 안내 there (empty bag allowed; `v42.nav.pinMaxS`, `pinArrivePx`). The hall accepts nothing.
+- **Merge rule** (`WarehousePorter.leaveToOwnPorter`, `src/entities/Worker.js`): the touch's growing 창고 crew took the
+  forge's runs at `warehouse.overflowAt` (60 %) and halved the tool porter's loads; the crew now leaves the forge's pad to
+  its own porter while the next tool still fits. Other outputs keep the 60 % rule.
+- Save v7 unchanged (no new field).
+
+### 19.7 Final review fixes (2026-10-26)
+
+The two final reviews (`docs/build_reports/v42_final_review_gameplay.md`, `v42_final_review_robust.md`) are worked
+through in `docs/build_reports/v42_touch.md` §12 (designer text `docs/기획서_v4_2_촌장.md` §15):
+
+- **Store line after a load** (`Game.refreshStoreLine`): worked out again when a zone opens, after the load and when a
+  building is finished — on plot e_m1 the farm fence was not solid yet when the line was made on a load.
+- **Restaurant**: a free seat at random, kept to the terrace while plates wait on the pass beyond
+  `civic.restaurant.backYardWait` a server (new key); the moved lamp clear of the seats (with its x-ray box and night
+  light); back-yard guests and servers fade the building (`BigRestaurant.occlusionSubjects`); the server walks round
+  the tables to hand plates over beside the seat (a grid search per seat, `nearSeatSpot`), except while plates back up
+  on the pass (`passBusy`, the same `backYardWait` rule); 테이블 늘리기 / 서빙 직원 2 pads off the seats and lamps;
+  `server2` kept while it waits.
+- **Guide route**: a new load plans the way again at once from where the chief stands (`Navigator.update`).
+- **Guide**: an open order's place (서리역 짐 싣는 곳) among the bag's places — first after the player picked that
+  order or when the arrow sends it there (`Tutorial.orderFirst`); a 길 안내 tag on each order card; the board pin's clock
+  waits during 관망, and a pin met there is explained after the hand-back.
+- **Banners in turn** (`V42.queueBanner`), crew waiting spots apart, part-paid pads first, English wording, tips and
+  'full' toasts not used up during 관망, the empty-shelf label's icon, 잡화점 wants that follow the shelf.
+- Save v7 unchanged (no new field); one new balance key, `civic.restaurant.backYardWait` (1).
+
 ---
 
 ## Appendix A. What each proposal contributed

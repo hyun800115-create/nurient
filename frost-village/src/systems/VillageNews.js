@@ -105,6 +105,8 @@ export class VillageNews {
     if (k === 'news_building') return t(k, { name: t('b_' + (BLD[b] || 'station')) });
     if (k === 'news_sales') return t(k, { a, item: t(ITEMS[b] || 'item_bread') });
     if (k === 'news_rank') return t(k, { rank: t('rank_' + a) });
+    // ((v4.2 final, robust review #6) one arrival reads as one ("1 new warehouse hands came")
+    if (k === 'news_crew' && a === 1) return t('news_crew1');
     return t(k, { a });
   }
 

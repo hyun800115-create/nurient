@@ -139,7 +139,7 @@ export class TownHall {
   whereOf(kind, item) {
     const gs = this.gs, g = gs.v4 && gs.v4.growth, R = gs.civic && gs.civic.restaurant;
     const at = (o) => (o && Number.isFinite(o.x) && Number.isFinite(o.y) ? { x: o.x, y: o.y } : null);
-    if (kind === 'order' && g) return { label: 'place_dock_stn', icon: item, spot: () => (g.active ? at(g.dockPad) : null), valid: () => !!g.active && g.needOf(item) > 0 };
+    if (kind === 'order' && g) return { label: 'place_dock_stn', icon: item, order: item, spot: () => (g.active ? at(g.dockPad) : null), valid: () => !!g.active && g.needOf(item) > 0 };
     if (kind === 'rest' && R) return { label: 'place_rest', icon: item, spot: () => at(R.pantryPad), valid: () => !!R.enabled };
     if (kind === 'food' && gs.foodBox) return { label: 'place_food', icon: 'item_bread', spot: () => at(gs.foodBox.pad), valid: () => !!gs.foodBox.active };
     if (kind === 'homes') return { label: 'place_plot_house', icon: 'ui_icon_house', spot: () => { const st = this.housePlot(); return st ? { x: st.dropX, y: st.dropY } : null; }, valid: () => !!(gs.life && gs.life.waiting.length) && !!this.housePlot() };
@@ -169,7 +169,7 @@ export class TownHall {
     if (!where || !N || !N.pin) return false;
     const sp = where.spot ? where.spot() : null;
     if (!sp) return false;
-    return N.pin({ x: sp.x, y: sp.y, label: where.label, lp: where.lp, icon: where.icon, valid: where.valid });
+    return N.pin({ x: sp.x, y: sp.y, label: where.label, lp: where.lp, icon: where.icon, valid: where.valid, order: where.order || null });
   }
 
   /** what the board shows: [{ icon, text, where }] requests, then news */

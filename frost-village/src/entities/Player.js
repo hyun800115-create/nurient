@@ -183,6 +183,9 @@ export class Player extends Character {
 
   warnFull() {
     if (this.fullWarnT > 0) return;
+    // ((v4.2 final, gameplay review #9) 관망 drives: no "가방이 가득 찼어요!" for a bag the player is not filling)
+    const v42 = this.gs.v42;
+    if (v42 && v42.pilot && v42.pilot.on) return;
     this.fullWarnT = 2.5;
     this.gs.ui.toast(t('bagFull'));
     Audio.play('sfx_error', { volume: 0.4 });

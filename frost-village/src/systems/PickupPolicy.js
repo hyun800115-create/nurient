@@ -101,7 +101,8 @@ export class PickupPolicy {
   took(p) {
     this.taken++;
     const v = this.v42;
-    if (this.mode !== 'auto' || !v || v.seen.pickupTip || (this.gs.tutorial && this.gs.tutorial.inTutorial)) return;
+    // ((v4.2 final, gameplay review #9) not while 관망 drives: the one-time tip would be used up unseen)
+    if (this.mode !== 'auto' || !v || v.seen.pickupTip || (this.gs.tutorial && this.gs.tutorial.inTutorial) || (v.pilot && v.pilot.on)) return;
     const sp = Math.hypot(p.vx || 0, p.vy || 0), max = (BALANCE.player.speed || 255) * (this.gs.progress ? this.gs.progress.speedMult() : 1);
     if (sp > max * P().tipSpeed) { v.seen.pickupTip = 1; this.gs.ui.toast(t('pickupTip')); }
   }

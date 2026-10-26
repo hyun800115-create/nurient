@@ -304,6 +304,35 @@ try {
   await adv(2);
   const T2 = await ev(() => { const r = window.__FV.scene.civic.restaurant; return { level: r.tableLevel, seats: r.seats.length, back: r.tables.filter((q) => q.back).length, due: window.__FV.scene.v42.lines.state().due.filter((d) => /^tables/.test(d)) }; });
   step('11 level 2: 16 seats, and no third level is offered', paid2 && T2.level === 2 && T2.seats === 16 && T2.back === 4 && !T2.due.length, T2);
+  // ((v4.2 final) robust review #2: the moved lamp clear of every seat, its x-ray box with it; gameplay review #2: a
+  //  free seat is picked at random, so the back yard is used while the terrace has room too)
+  const T2b = await ev(() => {
+    const gs = window.__FV.scene, r = gs.civic.restaurant, lm = r.lampObs[1].im;
+    const dSeat = Math.round(Math.min(...r.seats.map((q) => Math.hypot(q.x - lm.x, (q.y - lm.y) * 2))));
+    const oc = (gs.occluders || []).find((o) => o.img === lm);
+    const busy = r.seats.map((q) => q.by); for (const q of r.seats) q.by = null;
+    const tk = r.tickets; r.tickets = [];
+    let back = 0; for (let i = 0; i < 400; i++) { const q = r.freeSeat(); if (q && q.back) back++; }
+    // (plates waiting on the pass beyond civic.restaurant.backYardWait a server: new guests take the terrace)
+    r.tickets = [1, 2, 3, 4, 5].map(() => ({ state: 'ready' }));
+    let backBusy = 0; for (let i = 0; i < 200; i++) { const q = r.freeSeat(); if (q && q.back) backBusy++; }
+    r.tickets = tk;
+    r.seats.forEach((q, i) => { q.by = busy[i]; });
+    return { lamp: [lm.x, lm.y], dSeat, ocAt: oc ? [Math.round(oc.x - (0.5 - lm.originX) * lm.displayWidth), oc.y] : null, backPick: back, backPickBusy: backBusy };
+  });
+  step('11 the moved lamp stands ≥ 40 px from every seat and its x-ray box moved with it', T2b.dSeat >= 40 && !!T2b.ocAt && Math.abs(T2b.ocAt[0] - T2b.lamp[0]) <= 1 && T2b.ocAt[1] === T2b.lamp[1], T2b);
+  step('11 an empty restaurant seats guests in the back yard too (random free seat: 400 picks, half the seats are back there)', T2b.backPick > 120 && T2b.backPick < 280, T2b.backPick);
+  step('11 ... but while plates wait on the pass, new guests take the terrace (the back yard is the server\'s long round)', T2b.backPickBusy === 0, T2b.backPickBusy);
+  // ((v4.2 final, gameplay review #8) the server walks round the tables to hand plates over beside the guest
+  //  (from ~164 px across the table before)
+  const G8 = await ev(() => {
+    const gs = window.__FV.scene, r = gs.civic.restaurant, C = gs.collision;
+    r.servePts = null;
+    const out = r.seats.map((q) => { const n = r.servePoint(q).near; return n ? { d: Math.round(Math.hypot(n.x - q.x, (n.y - q.y) * 2)), free: [n].concat(n.via).every((v) => !C.blocked(v.x, v.y, 12)) } : null; });
+    const ok = out.filter(Boolean);
+    return { near: ok.length, seats: out.length, maxD: Math.max(0, ...ok.map((o) => o.d)), free: ok.every((o) => o.free) };
+  });
+  step('11 the server hands plates over beside the guest: a spot ≤ 80 px from most seats, on free ground', G8.near >= 10 && G8.maxD <= 80 && G8.free, G8);
   // guests reach the back-yard seats (the front ones taken) and are served there
   await ev(() => { const r = window.__FV.scene.civic.restaurant; window.__dummy = { dummy: true }; for (const q of r.seats) if (!q.back && !q.by) q.by = window.__dummy; window.__FV.restFood({ item_fish_cooked: 30, item_bread: 30, item_meat_cooked: 30 }); window.__sat = []; const o = r.sitDown.bind(r); r.sitDown = (g) => { if (g.seat && g.seat.back) window.__sat.push({ t: +g.t.toFixed(1), d: Math.round(Math.hypot(g.ch.x - g.seat.x, g.ch.y - g.seat.y)) }); return o(g); }; });
   const tB = await until(() => window.__FV.scene.civic.restaurant.guests.some((g) => g.seat && g.seat.back && (g.state === 'seated' || g.state === 'eat')), 60, 1);
@@ -336,8 +365,9 @@ try {
   step('13 one server and no plates waiting yet: no 서빙 직원 2 pad', S13a.server && !S13a.server2 && !S13a.pad && S13a.n === 1, S13a);
   await ev(() => { const r = window.__FV.scene.civic.restaurant; r.serveWaitT = (r.R.server2.offerS || 60) + 1; });
   await adv(2);
-  const P13 = await ev(() => { const gs = window.__FV.scene, pad = gs.v42.lines.pads.srv2, r = gs.civic.restaurant; return pad ? { x: pad.x, y: pad.y, cost: pad.cost, label: pad.opts.labelFn(), dStaff: Math.round(Math.hypot(pad.x - r.staffSpot.x, pad.y - r.staffSpot.y)) } : null; });
-  step('13 plates waited on the pass: the 서빙 직원 2 pad (1,000) at the staff spot', !!P13 && /서빙 직원 2/.test(P13.label) && P13.cost === 1000 && P13.dStaff < 20, P13);
+  const P13 = await ev(() => { const gs = window.__FV.scene, pad = gs.v42.lines.pads.srv2, r = gs.civic.restaurant; return pad ? { x: pad.x, y: pad.y, cost: pad.cost, label: pad.opts.labelFn(), dStaff: Math.round(Math.hypot(pad.x - r.staffSpot.x, pad.y - r.staffSpot.y)), dSpot: r.server2PadPos ? Math.round(Math.hypot(pad.x - r.server2PadPos().x, pad.y - r.server2PadPos().y)) : null, lamp: Math.round(Math.min(...(gs.lamps || []).map((l) => Math.hypot(l.x - pad.x, (l.y - pad.y) * 2)))) } : null; });
+  // ((v4.2 final, robust review #4) beside the staff spot, off the lamp post that stood on its price)
+  step('13 plates waited on the pass: the 서빙 직원 2 pad (1,000) by the staff spot, clear of the lamps', !!P13 && /서빙 직원 2/.test(P13.label) && P13.cost === 1000 && P13.dStaff < 80 && P13.dSpot < 2 && P13.lamp >= 90, P13);
   const paid13 = await pay('srv2');
   await adv(3);
   const S13b = await servers();

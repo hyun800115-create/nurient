@@ -159,6 +159,34 @@ try {
   });
   ok(!!OT.food && OT.food.label === 'place_food' && OT.food.box && Math.round(OT.food.spot.x) === OT.food.box[0], 'the hungry-miners row leads to the 광부 식량 상자', OT.food);
   ok(!OT.plot || (OT.homes && Math.round(OT.homes.spot.x) === Math.round(OT.plot.x) && OT.homes.label === 'place_plot_house'), 'the homes row leads to the nearest plot that takes a house (' + (OT.plot ? OT.plot.id : 'none open') + ')', OT);
+  // ---- 5b. (v4.2 final, gameplay review #3) cans in the bag while an order wants cans: the bag guide offers the order's
+  //  place (서리역 짐 싣는 곳) — first once the player picked that order, else as '+1곳' — and an order card on the
+  //  솔방울 주문판 has its own '길 안내'
+  const OG = await page.evaluate(() => {
+    const F = window.__FV, gs = F.scene, g = gs.v4.growth, N = F.v42.v.nav, ui = F.game.scene.getScene('UI');
+    N.unpin(); N.orderPick = null; F.clearStack();
+    // (the 정기 납품 above is filled by now: a card that still wants 5 cans)
+    const c = g.cards.find((q) => q.need.item_can && q.got.item_can < q.need.item_can) || g.cards.find((q) => !g.cardDone(q)) || g.cards[0];
+    if (c) { if (!c.need.item_can) { c.need.item_can = 5; c.got.item_can = 0; } else c.got.item_can = Math.max(0, c.need.item_can - 5); }
+    F.teleport(gs.store.shelf.x + 200, gs.store.shelf.y + 120); F.setInput(0, 0);
+    F.carry('item_can', 3);
+    N.pickT = 0; N.update(0.1);
+    const list = N.places().map((q) => q.label);
+    const a = { need: g.needOf('item_can'), list, dest: N.state().dest };
+    // the order card's 길 안내 (UIv4.guideOrder): the pin, then the order's place first for cans
+    ui.hud4.openOrders();
+    const tags = ui.hud4.panel ? ui.hud4.panel.c.list.length : 0;
+    const pinned = ui.hud4.guideOrder(g, 'item_can');
+    N.update(0.1);
+    const b = { pinned, pin: N.state().pinned, open: !!ui.hud4.panel, tags };
+    N.unpin(); N.pickT = 0; N.update(0.1);
+    const c2 = { first: N.places()[0] ? N.places()[0].label : null, dest: N.state().dest, orderPick: N.orderPick };
+    N.orderPick = null; F.clearStack();
+    return { a, b, c: c2 };
+  });
+  ok(OG.a.need > 0 && OG.a.list.indexOf('place_dock_stn') >= 0 && OG.a.list.length >= 2, 'cans in the bag: the bag guide offers the order\'s place too (' + OG.a.list.join(' · ') + ')', OG.a);
+  ok(OG.b.pinned && OG.b.pin && OG.b.pin.label === 'place_dock_stn' && !OG.b.open, 'an order card\'s 길 안내 pins 서리역 짐 싣는 곳 and closes the board', OG.b);
+  ok(OG.c.first === 'place_dock_stn' && OG.c.dest && OG.c.dest.label === 'place_dock_stn', 'after picking the order, its cans go to the order\'s place first', OG.c);
   // ---- 6. the hall takes nothing: cans on the board pad stay in the bag
   const HT = await page.evaluate(() => { const F = window.__FV, gs = F.scene, H = gs.civic.hall; F.clearStack(); F.carry('item_can', 3); F.teleport(H.boardPad.x, H.boardPad.y); F.setInput(0, 0); return null; });
   await advance(page, 2);

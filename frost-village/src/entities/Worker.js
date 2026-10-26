@@ -697,7 +697,11 @@ export class WarehousePorter extends Hauler {
     const op = warehouse.outPad;
     const row = [[40, 48], [-40, 52], [74, 48], [-74, 54], [40, 82], [-40, 86], [74, 82], [-74, 88], [108, 50], [-108, 56], [108, 84], [-108, 90]];
     const tries = row.slice(Math.min(k, row.length - 1)).concat(row, [[60 + k * 30, -30]]);
-    for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16)) return q; }
+    // ((v4.2 final, robust review #5) not a spot another 창고 직원 already waits on: the 2nd's v3 spot (+74, +48) is
+    //  row[2], so the 3rd stood inside him)
+    const taken = (gs.porters || []).filter((p) => p.wh === warehouse && p.homePt).map((p) => p.homePt);
+    const free = (q) => !taken.some((h) => Math.hypot(h.x - q.x, h.y - q.y) < 20);
+    for (const [dx, dy] of tries) { const q = { x: op.x + dx, y: op.y + dy }; if (!gs.collision.blocked(q.x, q.y, 16) && free(q)) return q; }
     const h = { x: op.x + 40, y: op.y + 48 }; gs.collision.resolve(h, 16);
     return h;
   }
@@ -759,6 +763,7 @@ export class WarehousePorter extends Hauler {
         if (!s.enabled || !s.outStack || s.outStack.max <= 0) continue;
         const f = s.outStack.count / s.outStack.max;
         if (f < bf) continue;
+        if (this.leaveToOwnPorter(s)) continue;
         if (whFull) { const top = s.outStack.items[s.outStack.items.length - 1]; if (!top || !L.best(top.type, s.outPad.x, s.outPad.y, { minPrio: Number(BALANCE.v42.warehouse && BALANCE.v42.warehouse.directMinPrio) || 40, noStore: true })) continue; }
         if (gs.porters.some((p) => p !== this && p.job && p.job.kind === 'in' && p.job.src === s)) continue;
         bf = f; best = s;
@@ -784,6 +789,20 @@ export class WarehousePorter extends Hauler {
       if (best) return { kind: 'in', src: best };
     }
     return raw;
+  }
+
+  /**
+   * ((v4.2 integration: the 잡화점 fix's forge runs × the touch's growing 창고 crew) the forge's pad is left to its own
+   * 도구 짐꾼 while the next tool still fits. For the 잡화점 the forge makes runs of one kind (Workshop.pickTool) so that
+   * its porter — one kind a trip — leaves with a full load; a 창고 직원 taking part of the run at overflowAt (60 %) halved
+   * those loads (46-min save, 8 game min: 9.0 → 4.8 tools a trip, the shop 557 → 463 coins a minute; with this rule
+   * 9.1 a trip, 593 a minute). A forge about to stop for room, or one without a porter of its own, is taken as before.
+   */
+  leaveToOwnPorter(s) {
+    const R = s.recipe;
+    if (!R || R.out !== 'tool') return false;
+    if (s.outStack.count + (s.outStack.incoming || 0) + (R.outN || 1) > s.outStack.max) return false;
+    return (this.gs.porters || []).some((p) => p.station === s && p.role === 'porter');
   }
 
   /** ((v4.2 CODE-2) a raw export run: { kind: 'raw', src: pile shim, type, sink: the dock, n, long } or null */

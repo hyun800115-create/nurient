@@ -56,7 +56,12 @@ const L = {
   //  is under its roof), the terrace's grid carried on: level 1 = the two tables just behind it, level 2 = two more
   //  behind those, one more lantern string over them; the terrace's back lamp steps aside to make room)
   more: [[[-5.5, 1.1], [-5.5, 3.1]], [[-7.2, 1.1], [-7.2, 3.1]]],
-  moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.3, 4.4], padOff: [-0.9, 0.5],
+  // ((v4.2 final, robust review #2) the moved lamp stands in the yard's far corner, ≥ 77 px from every seat (at
+  //  (−6.3, 4.4) it stood 7 px from a level-1 seat, through the guest sitting there)
+  // ((v4.2 final, robust review #4) the 테이블 늘리기 pad one table further out (−0.9, 0.5 → −1.7, 0): 146 px from the
+  //  nearest seat (was 89: under a seated guest's food bubble and the terrace's back lamp on a phone); the 서빙 직원 2
+  //  pad half a metre off the staff spot (a village lamp post stood on its price, '1,000' read '1,00')
+  moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.25, 5.5], padOff: [-1.7, 0], srv2PadOff: [-0.3, -0.7],
   // the way into the back yard: round the terrace on its building side (with collision; the four tables are a block)
   backPath: [[-0.22, -0.22], [-1.88, 2.1], [-4.09, 3.2]],
 };
@@ -185,7 +190,15 @@ export class BigRestaurant {
       if (this.tableLevel === 0) {
         // the lamp at the terrace's back corner steps aside; the back yard's lantern string
         const [li, lx, ly] = L.lampMoved, lm = this.lampObs[li];
-        if (lm) { const p = M(this.ox, this.oy, lx, ly); lm.im.setPosition(p.x, p.y).setDepth(p.y); lm.ob.x = p.x; lm.ob.y = p.y; gs.collision.all.splice(gs.collision.all.indexOf(lm.ob), 1); lm.ob.active = false; lm.ob = gs.collision.add(p.x, p.y, 12, 'lamp'); }
+        if (lm) {
+          const p = M(this.ox, this.oy, lx, ly), ox = lm.im.x, oy = lm.im.y;
+          lm.im.setPosition(p.x, p.y).setDepth(p.y); lm.ob.x = p.x; lm.ob.y = p.y; gs.collision.all.splice(gs.collision.all.indexOf(lm.ob), 1); lm.ob.active = false; lm.ob = gs.collision.add(p.x, p.y, 12, 'lamp');
+          // ((v4.2 final, robust review #2) its x-ray box and its night light move with it (both stayed at the old spot)
+          const oc = (gs.occluders || []).find((o) => o.img === lm.im);
+          if (oc) { oc.x += p.x - ox; oc.y = p.y; }
+          const clk = gs.v4 && gs.v4.clock;
+          if (clk && clk.lights) for (const q of clk.lights) if (Math.abs(q.x - ox) < 1 && Math.abs(q.y - (oy - 92)) < 1) { q.x = p.x; q.y = p.y - 92; }
+        }
         const lt = M(this.ox, this.oy, L.moreLanterns[0], L.moreLanterns[1]);
         const ls = this.prop('lantern_string', lt.x, lt.y, { depthOff: 120 });
         if (!this.enabled) ls.setVisible(false);
@@ -211,6 +224,8 @@ export class BigRestaurant {
     return { x: a.x, y: a.y };
   }
   get maxTableLevel() { return L.more.length; }
+  /** ((v4.2 final) where the 서빙 직원 2 pad stands (by the staff spot, off the lamp) */
+  server2PadPos() { return M(this.ox, this.oy, L.staffPad[0] + L.srv2PadOff[0], L.staffPad[1] + L.srv2PadOff[1]); }
 
   /** ((v4.2 touch) the 서빙 직원) a free spot beside seat `q`'s table that he can walk to (the tables are a block) */
   servePoint(q) {
@@ -230,8 +245,67 @@ export class BigRestaurant {
       if (best) break;
     }
     p = best || { x: q.x + 34, y: q.table.y + 40 };
+    // ((v4.2 final, gameplay review #8) the hand-over spot: as near the seat as the tables allow, reached in a straight
+    //  line from the spot above (which he can always walk to). He handed plates across the table from ~180 px (2.8 m
+    //  on the ground) — on a phone it read as serving from a distance
+    const near = this.nearSeatSpot(q, p);
+    if (near) p = { x: p.x, y: p.y, near };
     this.servePts.set(q, p);
     return p;
+  }
+
+  /**
+   * ((v4.2 final, G8) the hand-over spot near seat `q` and the way to it from the spot beside the table block
+   * (`outer`): a breadth-first search on a 10-px grid round the tables (free = no obstacle within 14 px); the first
+   * cell it reaches (the shortest walk) that is 36–80 px from the seat on the ground and ≥ 36 px from every other
+   * seat; the way straightened where nothing stands between. Measured once per seat and table level (servePts).
+   * null: none within a 200 px walk (he hands over from `outer`, as before).
+   */
+  nearSeatSpot(q, outer) {
+    const C = this.gs.collision, S = 10, RAD = 14;
+    const x0 = Math.min(outer.x, q.x) - 130, y0 = Math.min(outer.y, q.y) - 80;
+    const W = Math.ceil((Math.max(outer.x, q.x) + 130 - x0) / S) + 1, H = Math.ceil((Math.max(outer.y, q.y) + 80 - y0) / S) + 1;
+    const cx = (i) => x0 + (i % W) * S, cy = (i) => y0 + Math.floor(i / W) * S;
+    const free = new Int8Array(W * H);                 // 0 not looked at, 1 free, 2 blocked
+    const isFree = (i) => { if (!free[i]) free[i] = C.blocked(cx(i), cy(i), RAD) ? 2 : 1; return free[i] === 1; };
+    const clearLine = (a, b) => { const n = Math.ceil(gdist(a.x, a.y, b.x, b.y) / 6); for (let i = 1; i < n; i++) { const f = i / n; if (C.blocked(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, RAD - 1)) return false; } return true; };
+    const s0 = Math.round((outer.y - y0) / S) * W + Math.round((outer.x - x0) / S);
+    const from = new Int32Array(W * H).fill(-1), len = new Float32Array(W * H);
+    from[s0] = s0;
+    const queue = [s0];
+    const d0 = gdist(outer.x, outer.y, q.x, q.y);
+    let best = -1;
+    const bd = Math.min(80.5, d0 - 40);
+    for (let h = 0; h < queue.length; h++) {
+      const i = queue[h], x = cx(i), y = cy(i);
+      const ds = gdist(x, y, q.x, q.y);
+      if (i !== s0 && ds >= 36 && ds <= 80 && ds < bd && !this.seats.some((o) => o !== q && gdist(x, y, o.x, o.y) < 36)) { best = i; break; }
+      if (len[i] > 200) continue;
+      const ix = i % W, iy = (i - ix) / W;
+      for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const jx = ix + ddx, jy = iy + ddy;
+        if (jx < 0 || jy < 0 || jx >= W || jy >= H) continue;
+        const j = jy * W + jx;
+        if (from[j] >= 0 || !isFree(j)) continue;
+        from[j] = i; len[j] = len[i] + gdist(0, 0, ddx * S, ddy * S);
+        queue.push(j);
+      }
+    }
+    if (best < 0) return null;
+    const cells = [];
+    for (let i = best; i !== s0; i = from[i]) cells.push({ x: cx(i), y: cy(i) });
+    cells.reverse();
+    // straighten: from where he stands, on to the farthest cell he can see
+    const via = [];
+    let at = outer, k = 0;
+    while (k < cells.length - 1) {
+      let far = k;
+      for (let m = cells.length - 1; m > k; m--) if (clearLine(at, cells[m])) { far = m; break; }
+      if (far === cells.length - 1) break;
+      via.push(cells[far]); at = cells[far]; k = far + 1;
+    }
+    const end = cells[cells.length - 1];
+    return { x: Math.round(end.x), y: Math.round(end.y), via };
   }
 
   /** collision circles along the scaled footprint (like TownBuilding) */
@@ -282,7 +356,32 @@ export class BigRestaurant {
   // ================================================================ guests
   /** beside a seat's table (on the seat's side): where a guest steps in and out */
   seatSide(seat) { const sg = seat.x >= seat.table.x ? 1 : -1; return { x: seat.table.x + sg * 96, y: seat.y + 12 }; }
-  freeSeat() { return this.seats.find((s) => !s.by) || null; }
+  /**
+   * ((v4.2 final, gameplay review #2) a free seat at random (reservoir pick): the first free one was always on the
+   * terrace, which never filled up, so the back-yard tables the player paid for (테이블 늘리기) stayed empty. The back
+   * yard is a long round for the 서빙 직원: while plates already wait on the pass (more than the servers can take at
+   * once, civic.restaurant.backYardWait a server) a new guest is seated on the terrace when it has room — measured on
+   * the 46-min save at level 2 with one server: plain random 6.2 plates waiting on average, this rule ≈ 1 (§12.2)
+   */
+  freeSeat() {
+    const backOk = !this.passBusy();
+    let n = 0, pick = null, nAll = 0, any = null;
+    for (const q of this.seats) {
+      if (q.by) continue;
+      if (Math.random() * ++nAll < 1) any = q;
+      if ((backOk || !q.back) && Math.random() * ++n < 1) pick = q;
+    }
+    return pick || any;
+  }
+  /** ((v4.2 final) the servers have a backlog: more plates wait on the pass (`ready`, else counted) than
+   *  civic.restaurant.backYardWait a server. New guests then take the terrace, and plates are handed over from beside
+   *  the table block, without the last steps round the tables (servePoint's `near`) */
+  passBusy(ready) {
+    const per = Math.max(0, Number(this.R.backYardWait));
+    if (!Number.isFinite(per)) return false;
+    if (ready === undefined) { ready = 0; for (const q of this.tickets) if (q.state === 'ready') ready++; }
+    return ready > per * Math.max(1, (this.server ? 1 : 0) + (this.server2 ? 1 : 0));
+  }
   slotPos(i) { const q = M(this.ox, this.oy, L.queue[0], L.queue[1]); const s = YOFF(L.queueStep); return { x: q.x + s[0] * i, y: q.y + s[1] * i }; }
   payTarget() { const f = this.queue[0]; return f && f.at ? f.ch : null; }
   get maxQueue() { return Math.max(1, Math.floor(Number(this.R.maxQueue) || 6)); }
@@ -482,6 +581,7 @@ export class BigRestaurant {
     this.queue.shift();
     g.order = order;
     g.seat = seat; seat.by = g;
+    g.back = !!seat.back;              // ((v4.2 final) an x-ray subject behind the building (occlusionSubjects)
     g.state = 'toSeat';
     g.t = 0;
     // the food leaves the pantry for the kitchen (reserved for this guest's ticket)
@@ -581,12 +681,23 @@ export class BigRestaurant {
         const first = ready[0], load = [first];
         for (let i = 1; i < ready.length && load.length < n; i++) if (!!ready[i].g.seat.back === !!first.g.seat.back) load.push(ready[i]);
         const legs = [];
+        // (a backlog on the pass: no last steps round the tables this round — measured at level 2 with one server they
+        //  cost 2 served a minute and doubled the plates waiting, §12.2)
+        const busy = this.passBusy(ready.length - load.length);
         if (first.g.seat.back) for (const q of this.backPath) legs.push({ x: q.x, y: q.y });
         for (const tk of load) {
           tk.state = 'carry';
           for (const ty of tk.items) { const it = this.pass.pop(ty); if (it) gs.effects.releaseItem(it.spr); ch.stack.push(ty, null, gs.effects); }
           const sp = this.servePoint(tk.g.seat);
-          legs.push({ x: sp.x, y: sp.y, tk });
+          // ((v4.2 final) the spot beside the table block, then the last steps to the seat's side)
+          //  round the tables (via) and back out the same way, so the next leg starts outside the table block again
+          if (sp.near && !busy) {
+            legs.push({ x: sp.x, y: sp.y, of: tk });
+            for (const v of sp.near.via) legs.push({ x: v.x, y: v.y, of: tk });
+            legs.push({ x: sp.near.x, y: sp.near.y, tk });
+            for (let i = sp.near.via.length - 1; i >= 0; i--) legs.push({ x: sp.near.via[i].x, y: sp.near.via[i].y });
+            legs.push({ x: sp.x, y: sp.y });
+          } else legs.push({ x: sp.x, y: sp.y, tk });
         }
         ch.carry = first; ch.load = load; ch.legs = legs; ch.li = 0; this.newLeg(ch);
         ch.back = !!first.g.seat.back;
@@ -596,6 +707,7 @@ export class BigRestaurant {
       const leg = ch.legs[ch.li];
       if (!leg) { this.serverBack(ch); return; }
       if (leg.tk && !this.ticketLive(leg.tk)) { this.dropLoad(ch, leg.tk); ch.li++; this.newLeg(ch); return; }
+      if (leg.of && !this.ticketLive(leg.of)) { ch.li++; this.newLeg(ch); return; }   // (the way in to a guest who left)
       if (this.legStep(ch, leg, dt, leg.tk ? leg.tk.g.seat : null)) {
         if (leg.tk) this.handPlates(ch, leg.tk);
         ch.li++; this.newLeg(ch);
@@ -612,6 +724,26 @@ export class BigRestaurant {
   }
 
   newLeg(ch) { ch.legT = 0; ch.legBest = Infinity; ch.legStall = 0; }
+
+  /**
+   * ((v4.2 final, robust review #3) the back yard's guests and the servers on their back-yard round fade the building
+   * (its occluder is mainOnly: before, only the chief did — guests were hidden behind it for 28 % of their way, the
+   * server for 47 %). Stand-ins (the staff keep noXray for the rest of the village's x-ray).
+   */
+  occlusionSubjects(add) {
+    if (!this.enabled) return;
+    const pool = this._xs || (this._xs = []);
+    let k = 0;
+    const sub = (ch) => {
+      if (!ch || !ch.alive || !ch.sprite || !ch.sprite.visible) return;
+      const o = pool[k] || (pool[k] = { alive: true, noXray: false, xrayMain: true });
+      k++;
+      o.sprite = ch.sprite; o.x = ch.x; o.y = ch.y; o.headTop = ch.headTop || -80;
+      add(o);
+    };
+    for (const g of this.guests) if (g.back && !g.visitor && g.state !== 'gone') sub(g.ch);
+    for (const ch of [this.server, this.server2]) if (ch && ch.back && (ch.state === 'deliver' || ch.state === 'back')) sub(ch);
+  }
 
   /** one leg of the server's way; true when he is there (or close enough to the table and something blocks him, or
    *  the leg took too long) */
@@ -927,7 +1059,7 @@ export class BigRestaurant {
     for (const f of FOODS) st[f] = Math.min(this.pantryMax(), st[f] || 0);
     // ((v4.2 touch) the 테이블 늘리기 level and how long the line has waited for a seat (additive fields))
     return { pantry: st, cash: this.cash.serialize(), served: this.served, tables: this.tableLevel || undefined, busyT: this.busyT > 0 ? Math.round(this.busyT) : undefined,
-      server2: this.server2 ? 1 : undefined, serveWaitT: this.serveWaitT > 0 ? Math.round(this.serveWaitT) : undefined };
+      server2: (this.server2 || this.wantServer2) ? 1 : undefined, serveWaitT: this.serveWaitT > 0 ? Math.round(this.serveWaitT) : undefined };
   }
   restore(d) {
     if (!d || typeof d !== 'object') return;

@@ -83,6 +83,9 @@ export class Occlusion {
     //  customers stood unseen behind them: the store looked empty while its line was full)
     if (gs.store && gs.store.enabled) { for (const c of gs.store.queue) add(c); for (const c of gs.store.leaving) add(c); }
     if (gs.trade && gs.trade.enabled) add(gs.trade.merchant);
+    // ((v4.2 final) the big restaurant's back yard: its guests and servers fade the building (BigRestaurant)
+    const R = gs.civic && gs.civic.restaurant;
+    if (R && R.occlusionSubjects) R.occlusionSubjects(add);
     if (gs.life) for (const r of gs.life.residents) if (!r.lod) add(r);
     // ---- (v4-A) train visitors, townsfolk, the train's cars
     if (gs.v4) gs.v4.occlusionSubjects(add);

@@ -88,7 +88,8 @@ export class WarehouseCrew {
     this.arrivals++;
     // (one big banner, then a small toast for the next ones within crew.bannerGap s: an older save's busy village calls
     //  for several at once after the load — four banners in six minutes was too many)
-    if (this.bannerT >= Math.max(0, num(C().bannerGap, 300))) { gs.ui.banner(t('crewCame'), t('crewSub', { n: this.crew() })); this.bannerT = 0; }
+    // ((v4.2 final) through the banner queue: not over an offer's banner shown the same second)
+    if (this.bannerT >= Math.max(0, num(C().bannerGap, 300))) { const n = this.crew(); if (this.v42.queueBanner) this.v42.queueBanner('crew', () => t('crewCame'), () => t('crewSub', { n })); else gs.ui.banner(t('crewCame'), t('crewSub', { n })); this.bannerT = 0; }
     else if (gs.ui.toast) gs.ui.toast(t('crewToast', { n: this.crew() }), 2200);
     const N = this.v42.news;
     if (N && N.today) N.today.crew = (N.today.crew || 0) + 1;

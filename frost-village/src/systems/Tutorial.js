@@ -220,6 +220,19 @@ export class Tutorial {
     return g.cards.some((c) => c.shop && c.need[ty] && c.got[ty] < c.need[ty] && (g.porters.length === 0 || (c.porterIdle || 0) >= after));
   }
 
+  /**
+   * ((v4.2 final) carrying `ty` an open card needs: does it go to the loading dock first? Its shelf is half full or more
+   * (or there is no shelf), or a founding card waits for it with nothing from the station porters (rule 3 below; the
+   * 길 안내 asks too, so the arrow and the guide agree)
+   */
+  orderFirst(ty) {
+    const gs = this.gs, g = this.growth();
+    if (!g || !g.active || g.needOf(ty) <= 0) return false;
+    const shelf = FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
+    const full = !shelf || !shelf.enabled || shelf.stock.countOf(ty) >= shelf.maxPerType * 0.5;
+    return full || this.cardStuck(g, ty);
+  }
+
   /** the loading dock as a target (the chief carries `ty`, an open card needs it) */
   dockFor(ty) { const g = this.growth(); return g && g.needOf(ty) > 0 ? g.dockPad : null; }
 
@@ -232,12 +245,9 @@ export class Tutorial {
     if (g) {
       for (let i = p.stack.items.length - 1; i >= 0; i--) {
         const ty = p.stack.items[i].type;
-        if (g.needOf(ty) <= 0) continue;
-        const shelf = FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
-        const full = !shelf || !shelf.enabled || shelf.stock.countOf(ty) >= shelf.maxPerType * 0.5;
         // ((v4 review) a founding card the station porters do not fill (nothing from them for a while): its goods go
         //  to the dock even while their shelf is low — else an arrow-only player sold the cans the 슈퍼마켓 waited for)
-        if (!full && !this.cardStuck(g, ty)) continue;
+        if (!this.orderFirst(ty)) continue;
         const key = 'obj_cargo:' + ty, text = t('obj_cargo', { item: t(ty) });
         if (g.dockPad.contains(p.x, p.y)) { this.textKey = key; this.text = text; }
         else set(g.dockPad.x, g.dockPad.y, 60, key, text);

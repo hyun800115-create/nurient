@@ -18,6 +18,12 @@
 // (v4.2 fix, 마을 게시판 — the designer's "통조림 내가 가져다 줘도 안 들어가지네") pin(): a place the player picked on the
 //   notice board ('→ 서리역 짐 싣는 곳'). The guide leads there with an empty bag too, before the bag's own places, until he
 //   arrives (nav.pinArrivePx), the request is done (its valid()), nav.pinMaxS s pass, or a long press on the chip.
+// ((v4.2 final, gameplay review #3) an open order (솔방울 주문판, the board's 정기 납품) that wants a bag item adds its
+//   place, 서리역 짐 싣는 곳, to the bag's places: first when the player picked that order (board row / order card) or the
+//   arrow sends it there (Tutorial.orderFirst), else as the chip's '+1곳'. Before, the cans the board asked for were
+//   guided to the 잡화점 only.
+// ((v4.2 final, gameplay review #6) the pin's clock waits while 관망 drives, 관망's walking does not count as arriving,
+//   and a pin whose request was met under 관망 says so when the player takes over ('부탁을 다 채웠어요 · 길 안내 끝').
 
 import { BALANCE } from '../data/balance.js';
 import { Settings } from '../core/Save.js';
@@ -122,6 +128,9 @@ export class Navigator {
   pin(o) {
     if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return false;
     this.pinned = { pad: { x: o.x, y: o.y }, label: o.label || null, lp: o.lp || null, type: o.icon || 'ui_icon_goal', valid: typeof o.valid === 'function' ? o.valid : null, t: 0, vt: 0.5 };
+    // ((v4.2 final) an order picked by the player: its goods in the bag go to the order's place first afterwards too)
+    if (o.order) this.orderPick = o.order;
+    this.pinNote = null;
     this.hiddenLoad = false;
     this.dest = null; this.pickT = 0; this.replanT = 0; this.routeFor = null;
     return true;
@@ -133,13 +142,18 @@ export class Navigator {
     const P = this.pinned, p = this.gs.player;
     if (!P || !p) return false;
     const c = N();
-    P.t += dt; P.vt -= dt;
-    let end = P.t > (Number(c.pinMaxS) || 240), arrived = false;
-    if (!end && P.vt <= 0) { P.vt = 0.5; try { if (P.valid && !P.valid()) end = true; } catch (e) { end = true; } }
-    if (!end && gdist(p.x, p.y, P.pad.x, P.pad.y) < (Number(c.pinArrivePx) || 90)) end = arrived = true;
+    // ((v4.2 final, gameplay review #6) 관망 drives: the pin's clock waits and his walking is not the player arriving)
+    const pil = this.pilotOn();
+    if (!pil) P.t += dt;
+    P.vt -= dt;
+    let end = P.t > (Number(c.pinMaxS) || 240), arrived = false, met = false;
+    if (!end && P.vt <= 0) { P.vt = 0.5; try { if (P.valid && !P.valid()) end = met = true; } catch (e) { end = true; } }
+    if (!end && !pil && gdist(p.x, p.y, P.pad.x, P.pad.y) < (Number(c.pinArrivePx) || 90)) end = arrived = true;
     if (!end) return false;
     this.unpin();
-    if (arrived && this.gs.ui) this.gs.ui.toast(t('navArrive', { place: this.placeName(P) }));
+    const ui = this.gs.ui;
+    if (arrived && ui) ui.toast(t('navArrive', { place: this.placeName(P) }));
+    else if (met && ui) { const msg = t('navPinMet', { place: this.placeName(P) }); if (pil) this.pinNote = msg; else ui.toast(msg); }
     return true;
   }
 
@@ -161,15 +175,38 @@ export class Navigator {
       if (!e) { e = { pad: d.pad, sink: d.sink || null, label: d.label || null, lp: d.lp || null, text: d.text, n: 0, types: [], d: gdist(p.x, p.y, d.pad.x, d.pad.y), surplus: !!d.surplus }; byPad.set(d.pad, e); }
       e.n += n; e.types.push([ty, counts[ty]]);
     }
-    const out = Array.from(byPad.values()).sort((a, b) => b.n - a.n || a.d - b.d);
+    // ((v4.2 final, gameplay review #3) an open order that wants a bag item: its place too (first when the player
+    //  picked that order or the arrow sends it there, else '+1곳')
+    const G = gs.v4 && gs.v4.growth;
+    if (G && G.active && G.dockPad && G.needOf) {
+      for (const ty in counts) {
+        const need = G.needOf(ty);
+        if (need <= 0) continue;
+        let e = byPad.get(G.dockPad);
+        if (!e) { e = { pad: G.dockPad, sink: G.dock || null, label: 'place_dock_stn', lp: null, text: undefined, n: 0, types: [], d: gdist(p.x, p.y, G.dockPad.x, G.dockPad.y), surplus: false }; byPad.set(G.dockPad, e); }
+        if (!e.types.some((q) => q[0] === ty)) { e.n += Math.min(counts[ty], need); e.types.push([ty, counts[ty]]); }
+        e.order = true; e.surplus = false;
+        if (this.orderPick === ty || (T && T.orderFirst && T.orderFirst(ty))) e.first = true;
+      }
+    }
+    const out = Array.from(byPad.values()).sort((a, b) => (b.first ? 1 : 0) - (a.first ? 1 : 0) || b.n - a.n || a.d - b.d);
     out.none = firstNone;
     out.counts = counts;
     return out;
   }
 
+  pilotOn() { return !!(this.v42 && this.v42.pilot && this.v42.pilot.on); }
+
   update(dt) {
     const gs = this.gs, p = gs.player;
     if (this.pinned) this.pinCheck(dt);
+    // ((v4.2 final) a pin that ended under 관망: why, once the player has taken over)
+    const pil = this.pilotOn();
+    //  (1.8 s after the hand-back, so the '다시 조종해요' toast is read first)
+    if (this.wasPilot && !pil) this.noteT = 1.8;
+    this.wasPilot = pil;
+    if (this.pinNote && !pil && (this.noteT = (this.noteT || 0) - dt) <= 0) { if (gs.ui) gs.ui.toast(this.pinNote, 2400); this.pinNote = null; }
+    if (this.orderPick) { const G = gs.v4 && gs.v4.growth; if (!G || !G.active || G.needOf(this.orderPick) <= 0) this.orderPick = null; }
     const want = this.wanted();
     // an empty bag ends the load: "hide for this load" and the chip's cycling start over
     if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; this.loadSig = null; }
@@ -227,6 +264,10 @@ export class Navigator {
         this.dest = { type: ty, n: p.stack.count, pad: null, none: true, label: fp && fp.label ? fp.label : fp, lp: fp && fp.lp ? fp.lp : null };
       }
       if (!prev || prev.pad !== this.dest.pad) this.replanT = 0;
+      // ((v4.2 final) a new load, or the guide coming back (after 관망, an empty bag): the way is planned again at once,
+      //  from where he stands — for the same place as the last load it waited for the 1-s replan clock and was kept unless
+      //  he strayed 80 px from it, so standing on it further along, its length and chevron counted the way back to its start)
+      if (!same || !prev) { this.routeFor = null; this.replanT = 0; }
       this.holdRoom(this.dest, list.counts);
     }
     const d = this.dest;

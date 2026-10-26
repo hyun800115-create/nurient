@@ -298,6 +298,17 @@ export class HudV4 {
           const coin = icon(ui, x0 + cw - 150, y - 44, ['ui_icon_coin'], 30);
           const rt = ui.add.text(x0 + cw - 130, y - 44, '+' + fmt(rw), TXT(22, '#b07a10', '#ffffff', 0, '900')).setOrigin(0, 0.5);
           content.add([coin, rt]);
+          // ((v4.2 final, gameplay review #3) '길 안내' on a card that still needs something: the guide leads to 서리역
+          //  짐 싣는 곳, where the order's goods go (the HUD chip's panel had no way to be shown there)
+          const k0 = done ? null : Object.keys(c.need).find((k) => (c.got[k] || 0) < c.need[k]);
+          if (k0) {
+            const gx = x0 + cw - 252, tw = 116;
+            const tag = panel(ui, gx, y - 44, has('ui_chip') ? 'ui_chip' : 'ui_panel', tw, 44).setOrigin(0.5).setTint(0xdff7f3).setInteractive({ useHandCursor: true });
+            const tg = ui.add.text(gx, y - 44, t('board_go'), TXT(18, '#1f6f68', '#ffffff', 0, '900')).setOrigin(0.5);
+            if (tg.width > tw - 14) tg.setScale((tw - 14) / tg.width);
+            tag.on('pointerup', () => this.guideOrder(g, k0));
+            content.add([tag, tg]);
+          }
           if (g.canSwap(c)) {
             const b = ui.makeButton(x0 + cw - 110, y + 34, 170, 62, 'blue', t('order_swap'), () => { g.swap(c.id); lastKey = ''; p.refresh(); }, 22);
             content.add(b);
@@ -306,6 +317,18 @@ export class HudV4 {
       };
       p.refresh();
     });
+  }
+
+  /** ((v4.2 final) an order card's '길 안내': the guide to 서리역 짐 싣는 곳 for item `k` (the board row's pin) */
+  guideOrder(g, k) {
+    const ui = this.ui, gs = ui.gs, N = gs && gs.v42 && gs.v42.nav, hall = gs && gs.civic && gs.civic.hall;
+    const w = hall && hall.whereOf ? hall.whereOf('order', k) : null;
+    const sp = w && w.spot ? w.spot() : (g.active && g.dockPad ? { x: g.dockPad.x, y: g.dockPad.y } : null);
+    const ok = !!(N && N.pin && sp && N.pin({ x: sp.x, y: sp.y, label: 'place_dock_stn', icon: k, order: k, valid: () => !!g.active && g.needOf(k) > 0 }));
+    if (!ok) { ui.toast(t('board_noway')); return false; }
+    this.closePanel();
+    ui.toast(t('board_guide', { place: t('place_dock_stn') }));
+    return true;
   }
 
   /** the rank: the badge, three bars with ✓, the rewards of 읍 */

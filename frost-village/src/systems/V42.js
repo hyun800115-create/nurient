@@ -118,9 +118,42 @@ export class V42 {
    *  them from the start: the designer's 짐꾼 question) */
   get frules() { return this.complete || (typeof window !== 'undefined' && window.__FV_FRULES_EARLY === true); }
 
+  /**
+   * ((v4.2 final, robust review #1) banners in turn: the v4.2 offers and the 창고 직원 used to call UI.banner() directly,
+   * and after a load 2–3 became due in the same frame — UI.banner() shows at once and only the last one was seen
+   * (each is shown once per save). A queued banner shows when no banner is on screen and bannerGap s have passed;
+   * opts.valid() false at that moment drops it, opts.onShow() runs when it shows (mark it seen then).
+   */
+  queueBanner(key, msg, sub, opts) {
+    const q = this.bannerQ || (this.bannerQ = []);
+    if (q.some((b) => b.key === key)) return false;
+    q.push({ key, msg, sub, valid: opts && opts.valid, onShow: opts && opts.onShow });
+    if (q.length > 8) q.shift();
+    return true;
+  }
+
+  pumpBanners(dt) {
+    this.bannerGapT = Math.max(0, (this.bannerGapT || 0) - dt);
+    const q = this.bannerQ, ui = this.gs.ui;
+    if (!q || !q.length || this.bannerGapT > 0 || !ui || !ui.banner) return;
+    if (ui.bannerBox && ui.bannerBox.visible) return;           // another banner is on screen: after it
+    while (q.length) {
+      const b = q.shift();
+      let ok = true;
+      try { ok = !b.valid || !!b.valid(); } catch (e) { ok = false; }
+      if (!ok) continue;
+      const sub = typeof b.sub === 'function' ? b.sub() : b.sub;
+      ui.banner(typeof b.msg === 'function' ? b.msg() : b.msg, sub);
+      if (b.onShow) b.onShow();
+      this.bannerGapT = sub ? 4.2 : 2.6;
+      return;
+    }
+  }
+
   update(dt) {
     const t0 = performance.now();
     this.t += dt;
+    try { this.pumpBanners(dt); } catch (e) { this.fail('banners', e); }
     // ((robust review L5) one failing v4.2 system must not stop the whole game frame (the crash card): it is reported
     //  (console.error — the test suites count those) and the others go on)
     try { this.ledger.update(dt); } catch (e) { this.fail('ledger', e); }
