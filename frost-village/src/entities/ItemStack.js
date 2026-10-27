@@ -196,9 +196,11 @@ export class ItemStack {
     const items = this.items;
     const n = items.length;
     if (this.typeCols) {
-      const hs = [0, 0, 0, 0, 0, 0];
+      // ((v4.2.1) one height per tower: the 잡화점 has 7 since meat cans (a fixed 6 left the 7th tower at NaN, unseen)
+      const hs = this._hsT || (this._hsT = []), cs = this._csT || (this._csT = []);
+      for (let k = 0, nk = Math.max(8, this.cols.length); k < nk; k++) { hs[k] = 0; cs[k] = 0; }
       // ((v4-C) drawMax: a tower shows at most this many layers, the rest stay on its top)
-      const lim = this.drawMax || Infinity, cs = [0, 0, 0, 0, 0, 0];
+      const lim = this.drawMax || Infinity;
       for (let i = 0; i < n; i++) {
         const it = items[i];
         const col = this.typeCols[it.type] || 0;
@@ -259,7 +261,7 @@ export class ItemStack {
     if (this.bakeDirty || moved) {
       if (this.typeCols) {
         const hs = this._hs || (this._hs = []), cs = this._cs || (this._cs = []);
-        for (let k = 0; k < 8; k++) { hs[k] = 0; cs[k] = 0; }
+        for (let k = 0, nk = Math.max(8, this.cols.length); k < nk; k++) { hs[k] = 0; cs[k] = 0; }
         const lim = this.drawMax || Infinity;
         for (let i = 0; i < n; i++) {
           const it = items[i], col = this.typeCols[it.type] || 0, c = this.cols[col] || this.cols[0];

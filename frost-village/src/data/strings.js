@@ -428,7 +428,6 @@ export const STRINGS = {
     item_can_meat: '고기 통조림', mcan_pad: '고기 통조림 기계',
     mcanBanner: '남는 고기로 통조림을 만들 수 있어요!', mcanSub: '통조림 공장 옆 발판에서 기계를 들여요. 짐꾼 두 명이 함께 와요',
     mcanDone: '이제 통조림 공장이 고기 통조림도 만들어요', mcanDoneSub: '고기 걸이에 남는 고기를 날라 와요',
-    job_mcan_raw: '고기 짐꾼 (통조림)', job_mcan_goods: '고기 통조림 짐꾼',
   },
 
   en: {
@@ -817,7 +816,6 @@ export const STRINGS = {
     cut_train: 'the train comes in', cut_ribbon: 'a ribbon cutting', cut_movein: 'new neighbours', cut_vault: 'the vault spins', cut_mail: 'a letter in the mailbox', cut_sleigh: 'the sleigh is loaded',    item_can_meat: 'meat can', mcan_pad: 'Meat-can machine',
     mcanBanner: 'Leftover meat can go into cans!', mcanSub: 'Buy the machine on the pad by the cannery. Two porters come with it',
     mcanDone: 'The cannery makes meat cans now', mcanDoneSub: 'A porter brings the leftover meat from the meat rack',
-    job_mcan_raw: 'Meat porter (cannery)', job_mcan_goods: 'Meat-can porter',
   },
 };
 

@@ -159,7 +159,11 @@ try {
       if (S.inStack.count === 0) { window.__smokeEmpty++; if (MP.state === 'haul' && MP.stack.count > 0) window.__smokeEmptyAway++; }
       const k = C.canKind();
       window.__padMeat = Math.max(window.__padMeat, C.outStack.countOf('item_can_meat'));
-      if (k && C.operated() && !C.working && C.outStack.count + C.outStack.incoming + 3 <= C.outStack.max && C.idleT > 1.5) window.__never[k]++;
+      // (ready at two samples in a row: an input that lands after the cannery's own update in the same frame is not
+      //  a stall)
+      const ready = k && C.operated() && !C.working && C.outStack.count + C.outStack.incoming + 3 <= C.outStack.max && C.idleT > 1.5 ? k : null;
+      if (ready && window.__readyPrev === ready) window.__never[k]++;
+      window.__readyPrev = ready;
     };
     gs.events.on('postupdate', () => window.__mon(1 / 60));
   });
@@ -177,6 +181,19 @@ try {
   step('4 nobody brought raw meat to the cannery before the line was bought', c4.meatBefore === 0, c4.meatBefore);
   step('4 raw meat reaches the cannery\'s 3rd tower; it makes fish cans and meat cans (' + c4.M.cannery.made.fish + ' · ' + c4.M.cannery.made.meat + ' batches)', saw.meatIn && saw.both && c4.crafted.item_can_meat > 0 && c4.crafted.item_can > 0, { saw, crafted: c4.crafted });
   step('4 meat cans reach the 잡화점 and a customer buys one (' + c4.sold + ')', saw.store && c4.sold > 0, { saw, sold: c4.sold });
+  // (the 7th tower is drawn: every meat can on the 잡화점 shelf has a real place, baked or as a sprite — a 6-tower
+  //  layout left it at NaN, unseen)
+  const c4b = await ev(() => {
+    const gs = window.__FV.scene, st = gs.store.stock, fx = gs.effects;
+    while (st.countOf('item_can_meat') < 3) st.push('item_can_meat', null, fx);
+    const lay = () => { st.layout(st.bx || gs.store.shelf.x, st.by || gs.store.shelf.y, 1000); const bad = []; for (const it of st.items) { if (it.type !== 'item_can_meat') continue; const x = it.spr ? it.spr.x : it.x, y = it.spr ? it.spr.y : it.y; if (!Number.isFinite(x) || !Number.isFinite(y)) bad.push([x, y]); } return bad; };
+    const bad = lay();
+    // the sprite path too (what a stack falls back to when the shared bake texture has no room; it stays so)
+    if (st.materialize) st.materialize(); else st.bakeOn = false;
+    const bad2 = lay();
+    return { n: st.countOf('item_can_meat'), bad, bad2, col: st.typeCols.item_can_meat, cols: st.cols.length };
+  });
+  step('4 the 잡화점\'s 7th tower (meat cans) stands at a real place, baked and as sprites', c4b.n > 0 && !c4b.bad.length && !c4b.bad2.length, c4b);
   step('4 the cannery never stood idle with a batch ready (1 Hz, operated, room on the pad)', c4.never.fish === 0 && c4.never.meat === 0, c4.never);
   step('4 meat cans on the pad stay under meatcan.padMax + one batch (' + c4.padMeat + ' ≤ ' + (c4.padMax + c4.out - 1) + '): the rest of the pad is for fish cans', !(c4.padMax > 0) || c4.padMeat <= c4.padMax + c4.out - 1, { padMeat: c4.padMeat, padMax: c4.padMax });
   const g = await ev(() => {
