@@ -37,6 +37,12 @@
       <artifactId>robolectric</artifactId>
       <version>4.17</version>
       <scope>test</scope>
+      <!-- these two are .aar files on Google's Maven repository (dl.google.com), which this build does not reach;
+           the tests here do not use the androidx.test APIs they provide -->
+      <exclusions>
+        <exclusion><groupId>androidx.test</groupId><artifactId>monitor</artifactId></exclusion>
+        <exclusion><groupId>androidx.test.espresso</groupId><artifactId>espresso-idling-resource</artifactId></exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -62,6 +68,8 @@
         <configuration>
           <redirectTestOutputToFile>true</redirectTestOutputToFile>
           <trimStackTrace>false</trimStackTrace>
+          <!-- Robolectric on JDK 17+ (what the Android Gradle plugin adds for it) -->
+          <argLine>--add-opens=java.base/jdk.internal.access=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED</argLine>
         </configuration>
       </plugin>
     </plugins>

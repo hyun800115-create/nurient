@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.LooperMode;
 import org.robolectric.shadow.api.Shadow;
@@ -49,6 +50,11 @@ public class MainActivityTest {
     static final String PAGEHIDE = "javascript:try{window.dispatchEvent(new Event('pagehide'))}catch(e){}void 0";
 
     private static MainActivity start() {
+        // what the manifest's android:enableOnBackInvokedCallback="true" sets (Config.NONE has no manifest; the built
+        // APK's attribute is checked by validate_apk.py)
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            RuntimeEnvironment.getApplication().getApplicationInfo().setEnableOnBackInvokedCallback(true);
+        }
         MainActivity a = Robolectric.buildActivity(MainActivity.class).setup().get();
         shadowOf(Looper.getMainLooper()).idle();
         return a;
@@ -81,7 +87,9 @@ public class MainActivityTest {
         Window w = a.getWindow();
         assertEquals("cutout mode ALWAYS (what Android 15+ forces for targetSdk 35+)",
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS, w.getAttributes().layoutInDisplayCutoutMode);
-        assertFalse("decor does not fit system windows (edge-to-edge)", w.getDecorFitsSystemWindows());
+        assertFalse("decor does not fit system windows (edge-to-edge)", w.decorFitsSystemWindows());
+        // (whether the platform itself would also enforce it depends on Android 16's feature flags, which Robolectric
+        // leaves off; the app does not rely on it: it asks for the edge-to-edge window itself on Android 11+)
         assertTrue("keep screen on", (w.getAttributes().flags & WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0);
         assertEquals("adjustResize", WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
                 w.getAttributes().softInputMode & WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
@@ -150,7 +158,7 @@ public class MainActivityTest {
         assertTrue("the top callback is the game's (" + top.getClass().getName() + ")", top instanceof Api33.BackCallback);
         Boolean enabled = (Boolean) Class.forName("android.window.WindowOnBackInvokedDispatcher")
                 .getMethod("isOnBackInvokedCallbackEnabled", android.content.Context.class).invoke(null, a);
-        assertTrue("targetSdk 36 on Android 16: back goes through OnBackInvokedCallback (onBackPressed is not called)", enabled);
+        assertTrue("with enableOnBackInvokedCallback the back key/gesture goes through OnBackInvokedCallback, not onBackPressed", enabled);
 
         ((OnBackInvokedCallback) top).onBackInvoked();
         shadowOf(Looper.getMainLooper()).idle();
