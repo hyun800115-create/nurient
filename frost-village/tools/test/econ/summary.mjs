@@ -125,6 +125,8 @@ export function summarize(d) {
     meatCansByCrew: pm(F('out:cannery', 'ch:wh', 'item_can_meat')),
     meatCansByCanneryPorters: pm(F('out:cannery', /^ch:p[12]:cannery$/, 'item_can_meat')),
   };
+  const co = r.misc && r.misc.cannOut;
+  if (co && co.n) mc.canneryOut = { fullPct: Math.round((100 * co.full) / co.n), meatAvg: +(co.meatAvg / co.n).toFixed(1), fishAvg: +(co.fishAvg / co.n).toFixed(1), meatAtFull: co.full ? +(co.meatAtFull / co.full).toFixed(1) : null, fishAtFull: co.full ? +(co.fishAtFull / co.full).toFixed(1) : null };
   const made = mc.meatCansMade;
   mc.soldOrExportedShare = made > 0 ? Math.round((100 * (mc.meatCansSold + mc.meatCansExported + mc.meatCansToCards)) / made) : null;
   o.meatcan = mc;

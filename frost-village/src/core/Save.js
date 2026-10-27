@@ -522,24 +522,34 @@ function keepCopy(st, raw) {
   else if (b !== raw) st.setItem(BACKUP_KEY + '.2', raw);
 }
 
+/** a save object as read from storage -> migrated to SAVE_VERSION and sanitized, or null (an unknown / future version).
+ *  (마을 옮기기) Save.load and the dry run of a village code (src/core/Transfer.js) both go through here, so a v4.1 / v4.2
+ *  save inside a code loads and migrates exactly like a stored one. */
+export function migrateSave(s) {
+  if (!s || typeof s !== 'object') return null;
+  let v = typeof s.v === 'number' ? s.v : -1;
+  while (v !== SAVE_VERSION && MIGRATE[v]) { try { s = MIGRATE[v](s); v = s.v; } catch (e) { break; } }
+  if (v !== SAVE_VERSION) return null;
+  return sanitizeSave(s);
+}
+
 export const Save = {
   /** the saved game (sanitized), or null for a fresh start. Other versions are migrated or backed up first. */
   load() {
-    let s = readJSON(SAVE_KEY);
+    const s = readJSON(SAVE_KEY);
     if (!s || typeof s !== 'object') {
       // (v3.5 review) a save that is there but cannot be read (cut off, not JSON): keep a copy before the
       // next autosave overwrites it
       try { const st = getStore(); const raw = st && st.getItem(SAVE_KEY); if (raw) keepCopy(st, raw); } catch (e) { /* ignore */ }
       return null;
     }
-    let v = typeof s.v === 'number' ? s.v : -1;
-    while (v !== SAVE_VERSION && MIGRATE[v]) { try { s = MIGRATE[v](s); v = s.v; } catch (e) { break; } }
-    if (v !== SAVE_VERSION) {
+    const out = migrateSave(s);
+    if (!out) {
       // unknown / future version: keep a copy before the next autosave overwrites it
       try { const st = getStore(); if (st) keepCopy(st, st.getItem(SAVE_KEY)); } catch (e) { /* ignore */ }
       return null;
     }
-    return sanitizeSave(s);
+    return out;
   },
   write(state) {
     // "Start over" on the crash card: the page is reloading and the crashed game's autosave
@@ -619,5 +629,7 @@ export const Settings = {
     }
     return this.data;
   },
-  save() { writeJSON(SETTINGS_KEY, this.data); },
+  // ((v4.2.1) blocked like Save.write / ChatSave.write while the page reloads after "Start over" or 마을 옮기기:
+  //  a late zoom / water-quality save must not put the old settings back over the moved village's)
+  save() { if (typeof window !== 'undefined' && window.__FV_NO_SAVE) return; writeJSON(SETTINGS_KEY, this.data); },
 };

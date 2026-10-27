@@ -16,6 +16,9 @@ import { HudV4 } from './UIv4.js';
 // ---- (v4.2) 관망 / 줍기 buttons, the navigator chip and edge badge, the 업무 chip, 새로워진 것, the train card
 import { HudV42 } from './UIv42.js';
 import { OfficePanel } from './OfficePanel.js';
+// ---- (v4.2.1) 마을 옮기기 (the export / import sheet, DOM)
+import { openMovePanel } from './MovePanel.js';
+const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
 // ---- (v4-C) the build menu's tabs
 import { CATALOG, TABS } from '../systems/Civic.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
@@ -1030,7 +1033,11 @@ export class UI extends Phaser.Scene {
     add(this.makeButton(cx - 130, cy + 330, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
     add(this.makeButton(cx + 130, cy + 330, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
     add(this.add.text(cx, cy - 408, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
-    add(this.makeButton(cx, cy + 428, 260, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+    // ((v4.2.1) 마을 옮기기: the whole village as a text code — export here, import in another app / phone; MovePanel.js)
+    const mv = add(this.makeButton(cx - 130, cy + 428, 240, 80, 'blue', MOVE_LABEL[getLang() === 'en' ? 'en' : 'ko'], () => openMovePanel(this), 26));
+    if (mv.text.width > 200) mv.text.setScale(200 / mv.text.width);
+    mv.moveBtn = true;
+    add(this.makeButton(cx + 130, cy + 428, 240, 80, 'blue', t('close'), () => this.closeSettings(), 30));
   }
 
   /** (v4.2, docs/v42_plan.md §8.2) the 놀이 tab: 자동 줍기 · 길 안내 · 촌장 후광 · 관망 자동 · 관망 볼거리 · 관망 중 돈 쓰기 */

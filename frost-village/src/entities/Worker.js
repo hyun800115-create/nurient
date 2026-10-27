@@ -595,7 +595,11 @@ export class Porter extends Hauler {
           // the planned item ran out: plan again (another product may be waiting)
           if (pl && this.stack.count === 0 && this.stack.incoming === 0 && this.waitT > 0.5) this.plan = null;
           // carry what we have once the output runs dry for a moment (or right away with a decent load)
-          if (this.stack.count > 0 && this.stack.incoming === 0 && (this.stack.count >= 4 || this.waitT > 3)) this.finishLoad();
+          // ((v4.2.1) the 고기 통조림 짐꾼 waits for a fuller bag (meatcan.loadMin, at most meatcan.loadWaitS s): his walks
+          //  are long, and a bag of 4 meat cans a trip left the shared output full — the fish cans stopped behind them)
+          const MCB = this.only ? BALANCE.meatcan || {} : null;
+          const goAt = MCB ? Math.max(1, Math.min(want || this.stack.max, Number(MCB.loadMin) || 10)) : 4, waitMax = MCB ? Number(MCB.loadWaitS) || 10 : 3;
+          if (this.stack.count > 0 && this.stack.incoming === 0 && (this.stack.count >= goAt || this.waitT > waitMax)) this.finishLoad();
         }
         this.locomotion(false);
         break;

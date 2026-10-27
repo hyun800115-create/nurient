@@ -546,6 +546,8 @@ function checkMeatCan(B) {
   fixNum(M, 'pileKeep', 'meatcan.pileKeep', 0, Math.max(0, M.pileFrom - 0.05), 0.3);
   fixNum(M, 'smokeHas', 'meatcan.smokeHas', 0, 1, 0.5);
   fixNum(M, 'shareAt', 'meatcan.shareAt', 1, 30, 12, true);
+  fixNum(M, 'loadMin', 'meatcan.loadMin', 1, 20, 10, true);
+  fixNum(M, 'loadWaitS', 'meatcan.loadWaitS', 0, 60, 10);
   if (typeof M.jamExport !== 'boolean') { if (M.jamExport !== undefined) warn('meatcan.jamExport', M.jamExport, true); M.jamExport = true; }
   fixNum(M, 'farAt', 'meatcan.farAt', 0.3, 1, 0.8);
   fixNum(M, 'farPx', 'meatcan.farPx', 300, 4000, 1500);

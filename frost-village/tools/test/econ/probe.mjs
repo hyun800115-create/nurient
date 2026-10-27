@@ -281,6 +281,8 @@ try {
       const sto = gs.store && gs.store.enabled ? gs.store.stock : null;
       if (sto) { const c = M.misc.store || (M.misc.store = { n: 0, bothEmpty: 0, canEmpty: 0, meatEmpty: 0 }); c.n++; const a = sto.countOf('item_can') === 0, b = sto.countOf('item_can_meat') === 0; if (a) c.canEmpty++; if (b) c.meatEmpty++; if (a && b) c.bothEmpty++; }
       if (W) M.misc.whMeatEnd = W.count('item_can_meat');
+      const CN = gs.workshops.find((w) => w.kind === 'cannery');
+      if (CN) { const c = M.misc.cannOut || (M.misc.cannOut = { n: 0, full: 0, meatAtFull: 0, fishAtFull: 0, meatAvg: 0, fishAvg: 0 }); const o = CN.outStack, mt = o.countOf('item_can_meat'), fs = o.countOf('item_can'); c.n++; c.meatAvg += mt; c.fishAvg += fs; if (o.count + o.incoming + 3 > o.max) { c.full++; c.meatAtFull += mt; c.fishAtFull += fs; } }
       const sm = gs.stations.smokehouse; if (sm) { const c = M.misc.smokeIn || (M.misc.smokeIn = { n: 0, empty: 0, half: 0 }); c.n++; if (sm.inStack.count === 0) c.empty++; if (sm.inStack.count < sm.inStack.max * 0.5) c.half++; }
     };
     // the chief stays away from every pad (auto mode)
