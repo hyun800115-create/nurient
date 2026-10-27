@@ -224,7 +224,7 @@ Off screen the same steps run on timers. Shift change at 21:00 at dock 1 ("수�
 - **Nobody home** (resident out, or 21:00–08:00): the box goes on the step (`gb_parcel_doorstep` f0, `sfx_gb_thump`), the
   courier says "문 앞에 두고 갈게요~"; the app keeps a 128 × 80 render-texture **photo** (last 3 only, not saved). After 4
   game hours outside → f1 (snow cap). Picked up when a household member passes ≤ 200 px, at their evening return or at
-  07:00 (never longer than one game day). Cap 16 doorstep boxes, then "옆집에 맡겼어요". 콩이 may sniff a box within 300 px.
+  07:00 (never longer than one game day). Cap 16 doorstep boxes, then "옆집에 맡겼어요". 누리 may sniff a box within 300 px.
 - **Apartments**: ring at the entrance, the courier goes in (fade) 4 s and comes out empty-handed; 2–3 boxes per block in one walk.
 - **Off screen**: dwell = `2 × walkM / 1.4 + doorS 3`; coins, reviews and doorstep boxes appear as if watched.
 
@@ -233,7 +233,7 @@ Off screen the same steps run on timers. Shift change at 21:00 at dock 1 ("수�
 - **Handover**: vans whose tour passes `main`'s west end r0 (8, −5) drop the village parcels at the sled stand (boxes hop
   into the basket, huskies wag). If village parcels wait 180 s and no van passes, one van makes a short trip just for them.
 - **Run**: ≤ 4 parcels, village roads (`Roads.route`, nearest drawn heading), stop at the road point nearest each door,
-  the rider walks `carry_parcel` the last bit. `sfx_sleigh_bells`, sometimes `sfx_dog_bark`; 콩이 may run alongside.
+  the rider walks `carry_parcel` the last bit. `sfx_sleigh_bells`, sometimes `sfx_dog_bark`; 누리 may run alongside.
 - If G1b slips: village houses are zone `none` and the app says `서리마을은 곧 개썰매로 갈게요`.
 
 ### 5.8 Money

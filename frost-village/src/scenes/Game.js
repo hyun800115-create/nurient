@@ -255,7 +255,7 @@ export class Game extends Phaser.Scene {
     this.events.on('fedMiners', () => this.progress.setFlag('fedMiners'));
     // the people of the village (v2)
     this.life = new VillageLife(this, sv.life);
-    // (v3.5) Kongi the dog: whistle, treats, fetch, petting (affection is saved)
+    // (v3.5) Nuri the dog: whistle, treats, fetch, petting (affection is saved)
     this.dog = new DogPlay(this, sv.dog);
     // (v4-C2) the residents' voices: lazy per voice type (each type's sprite when its first resident speaks; the
     // residents already living here are fetched after the title files). null without Web Audio: the old chatter stays

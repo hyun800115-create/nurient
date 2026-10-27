@@ -271,9 +271,9 @@ export const BALANCE = {
     pileMax: 40,              // 모아두는 곳(생선 통·통나무 더미·밀 더미·광석 더미·고기 걸이)에 쌓이는 최대 개수
     rawCapacity: 8,           // 재료 짐꾼이 한 번에 나르는 개수
   },
-  // ── (v3.5) 강아지 콩이와 놀기 (기획서_v4 §5)
+  // ── (v3.5) 강아지 누리와 놀기 (기획서_v4 §5)
   dog: {
-    callRange: 140,           // 콩이가 촌장 곁 이만큼(px) 안에 오면 놀기 메뉴가 떠요
+    callRange: 140,           // 누리가 촌장 곁 이만큼(px) 안에 오면 놀기 메뉴가 떠요
     stayTime: 12,             // 아무것도 안 하면 이만큼(초) 뒤 다시 놀러 가요
     treatCooldown: 25,        // 간식 주기 다시 쓰기까지(초)
     playCooldown: 10,         // 공 던지기 다시 쓰기까지(초)
@@ -575,7 +575,7 @@ export const BALANCE = {
     // ── 관망 모드: decideEvery = 할 일을 고르는 간격(초), jitter = 고를 때 섞는 정도, hysteresis = 하던 일을 계속하려는 정도,
     //    minZoom = 관망 중 가장 멀리 보는 배율, camLerp = 카메라가 따라가는 부드러움, cutEvery = 볼거리로 카메라가 가는 간격(초, 최소~최대),
     //    cutHold = 볼거리를 보여 주는 시간(초), cutRange = 이만큼(px) 안의 볼거리만, stuckSide / stuckDrop = 막혔을 때 비키기 / 포기(초)
-    //    breakAfter = 급한 일·업무·수금을 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 콩이)
+    //    breakAfter = 급한 일·업무·수금을 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 누리)
     //    agenda = 시간대별 하고 싶은 일 배율 [시작 시, 끝 시, 일, 배율]
     pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, cutEvery: [45, 90], cutHold: [6, 8],
              cutRange: 2500, stuckSide: 3, stuckDrop: 8, breakAfter: 150, breakFor: 20,

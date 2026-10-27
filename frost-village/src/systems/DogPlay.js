@@ -1,4 +1,4 @@
-// Playing with Kongi the dog (v3.5, docs/기획서_v4_이웃마을.md §5).
+// Playing with Nuri the dog (v3.5, docs/기획서_v4_이웃마을.md §5).
 // The dog no longer follows the chief: it roams the village (VillageLife: the dog house, the kids, the
 // campfires). The whistle button calls it — it runs to the chief and a small bar of three buttons shows
 // above it: a treat (the chief `give`s a bone biscuit, the dog `eat`s it), fetch (the chief `throw`s a

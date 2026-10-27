@@ -185,7 +185,7 @@ export const ACTORS = [
   // the chief with a tower of grilled fish: pier -> grill -> counter and back (stage 1+)
   { id: 'chief', char: 'player', s: 1, anim: 'carry_walk', speed: 1.5, stack: 'item_fish_cooked', stackN: 9,
     path: [[1.8, 13.6], [1.5, 10.2], [4.8, 9.3], [1.5, 10.2]], loop: true },
-  // 콩이 trots in circles around the camp fire
+  // 누리 trots in circles around the camp fire
   { id: 'kongi', char: 'pet_dog', s: 1, anim: 'run', speed: 2.2, path: [[-1.2, 8.1], [0.1, 9.4], [-1.2, 10.7], [-2.5, 9.4]], loop: true },
   // villagers on the dirt lane (stage 2+)
   { id: 'v1', char: 'villager_a', s: 2, anim: 'walk', speed: 1.1, path: [[-1.0, 6.4], [11.0, 6.4]] },

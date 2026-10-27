@@ -85,5 +85,5 @@ export const FIRE_CAUSES = [
 
 // pets of the village (the game's pets) for small talk and pet facts
 export const PETS = [
-  ['콩이', 'Kongi', '강아지'], ['나비', 'Nabi', '고양이'], ['뽀삐', 'Ppoppi', '펭귄'],
+  ['누리', 'Nuri', '강아지'], ['나비', 'Nabi', '고양이'], ['뽀삐', 'Ppoppi', '펭귄'],
 ];

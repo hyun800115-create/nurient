@@ -507,7 +507,7 @@ venue, atT }`, `story:move { op, household, members, home }`, `story:news { day 
 | Teen, first job | 13–18; at 16 | café/bookstore after school; "첫 아르바이트!" — stands beside a shop owner one afternoon | — |
 | Elders | 65+ | benches, café, clinic visits, walks with grandchildren, memory talks from the chronicle, naps after 14:00 (`emote_zzz`) | — |
 | **Three wishes** | from 82, ≤ 1 elder at a time | an escort: the elder follows the chief slowly onto a bus/train to the place and sits there 20 s with `emote_heart`. Wishes from likes: sleigh bus to the fountain, the sea from the dock, cake at the café (v6 sugar), the lighthouse beam (v6), feet in the warm sea (v7), the grandchild's school | C7 (+15 fame each); granted wishes are remembered by the whole family |
-| **Farewell** ("하늘나라 여행"; only when 생애 이벤트 is on) | engine: age ≥ 86, daily chance 0.004 × (age − 85); game gates below | last day: favourite places, gentle lines ("촌장님, 그동안 고마웠어요. 마을이 참 따뜻해졌어요."), sunset on the garden bench; that night one warm window; 09:00 card with a white flower: **"○○ 할머니가 하늘나라로 여행을 떠났어요."** / "가족과 이웃들이 기억의 정원에서 배웅해요 · 10시"; 10:00 family in `mourner_family`, friends `mourner` with white `held_bouquet`, a new `memorial_stone` + `flower_wreath` at the next `stonePoints` slot with the name; one by one they lay flowers (`sad`, bouquet becomes `item_bouquet` at the stone); 콩이 sits beside the chief; light snow drifting **upward**; garden tree glow; `bgm_farewell`; faces `sad` until evening; the next 3 days family visit the stone and remember the wishes | C8 lay a bouquet (+10 fame) |
+| **Farewell** ("하늘나라 여행"; only when 생애 이벤트 is on) | engine: age ≥ 86, daily chance 0.004 × (age − 85); game gates below | last day: favourite places, gentle lines ("촌장님, 그동안 고마웠어요. 마을이 참 따뜻해졌어요."), sunset on the garden bench; that night one warm window; 09:00 card with a white flower: **"○○ 할머니가 하늘나라로 여행을 떠났어요."** / "가족과 이웃들이 기억의 정원에서 배웅해요 · 10시"; 10:00 family in `mourner_family`, friends `mourner` with white `held_bouquet`, a new `memorial_stone` + `flower_wreath` at the next `stonePoints` slot with the name; one by one they lay flowers (`sad`, bouquet becomes `item_bouquet` at the stone); 누리 sits beside the chief; light snow drifting **upward**; garden tree glow; `bgm_farewell`; faces `sad` until evening; the next 3 days family visit the stone and remember the wishes | C8 lay a bouquet (+10 fame) |
 
 **Gentleness rules.** No illness, hospital or death words anywhere — only "하늘나라 여행", "배웅", "기억". Farewell
 gates: the garden exists; ≥ v5 + 180 min; ≥ 15 game days since the last; not within 5 game days of a birth in the same
@@ -549,7 +549,7 @@ with 보러 가기.
 
 | # | Name | What happens | Chief's part |
 |---|---|---|---|
-| P1 | 콩이의 빵 도둑질 | 콩이 snatches a loaf from the market shelf, kids chase laughing, the shopkeeper `emote_anger` then laughs | whistle: 콩이 comes back head low (`emote_sweat`), +2 fame |
+| P1 | 누리의 빵 도둑질 | 누리 snatches a loaf from the market shelf, kids chase laughing, the shopkeeper `emote_anger` then laughs | whistle: 누리 comes back head low (`emote_sweat`), +2 fame |
 | P2 | 날아간 눈사람 모자 | wind blows a snowman's hat off, a kid runs after it | watch (+2 fame watched) |
 | P3 | 지붕 위 고양이 | 나비 stuck by a chimney (`emote_question`), kids gather | stand 3 s: it jumps into the chief's arms, +3 fame |
 | P4 | 배고픈 말 | sleigh-bus horses nuzzle a passenger's bag at a stop | wheat 2 (A13 shortcut) |
@@ -1328,7 +1328,7 @@ Par = route length ÷ (0.6 × vmax) + 8 s per stop. ★★★ ≤ par, ★★ �
 | F1 | `day_customers` | 손님 60명 맞이하기 | Serve 60 customers | any seller | 읍 |
 | F2 | `day_bread` | 빵 40개 팔기 | Sell 40 loaves | market / shops | 읍 |
 | F3 | `day_ride` | 버스나 기차 한 번 타기 | Take one ride | transit | b:depot |
-| F4 | `day_dog` | 콩이와 놀아 주기 (간식·공·쓰다듬기) | Play with Kongi | all three dog actions | 읍 |
+| F4 | `day_dog` | 누리와 놀아 주기 (간식·공·쓰다듬기) | Play with Nuri | all three dog actions | 읍 |
 | F5 | `day_chat` | 주민 3명과 수다 떨기 | Chat with 3 residents | chat or tap-talk | 읍 |
 | F6 | `day_tax` | 세금 상자 비우기 | Empty the tax box | hall tax pad | b:town_hall |
 | F7 | `day_flowers` | 꽃밭에서 꽃 5송이 꺾기 | Pick 5 flowers | 꽃밭 | b:deco_flowers |
@@ -1564,7 +1564,7 @@ report's "Integration" section, or tries it on a private copy (`cp -r src "$S/ga
 | Workers blocked in the published artifact | `test_deploy` checks the mode; inline fallback is the same protocol and tested for parity |
 | Story and TownSim both move a body | E1 external plans + leases; one-owner assertion test |
 | Side save outgrows storage | pack15, `compact()` levels, hard cap keeps the last good record; the main save never depends on it |
-| The farewell upsets players | very old only, gates, no death words, hopeful music, 콩이 beside the chief, wishes first, the switch; **the designer reviews it in the preview menu before v5 ships** |
+| The farewell upsets players | very old only, gates, no death words, hopeful music, 누리 beside the chief, wishes first, the switch; **the designer reviews it in the preview menu before v5 ships** |
 | Texture memory (vehicles + townfolk2 + ships + beachfolk + cityfolk) | pages per class, event-only loading, key caps, district page caps; v4 re-measure first |
 | File limit | P0 reclaims 93 files before any v5 art; hard gate ≤ 495 |
 | Map: south sea and rect regions | checker for every coordinate; horizontal bands; module-created content; palette seam hidden behind the breakwater and rocky point (fallback: one `tropical` region) |

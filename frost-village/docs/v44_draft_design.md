@@ -232,7 +232,7 @@ Only the chief's own actions give XP. In 관망 (autopilot) mode all XP is **×0
 | 성장 | 승격식 (rank ceremony) | 500 + **2 SP** | — | `v4:rankUp` |
 | 사람 | talk to a resident (chat message) | 10 | each resident once per day key, ≤ 10 a day | `chat` (E7) |
 | 사람 | greet a resident (tap) | 5 | ≤ 10 a day | `tap` (P11) |
-| 사람 | play with 콩이 (treat / ball / pet) | 5 | ≤ 10 a day | `dogAct` (E6) |
+| 사람 | play with 누리 (treat / ball / pet) | 5 | ≤ 10 a day | `dogAct` (E6) |
 | 사람 | answer a letter | 15 | — | letters |
 | 사람 | read the morning paper | 10 | once a day | `paperRead` |
 | 사람 | ride the train | 10 | ≤ 3 a day | `train ride` |
@@ -351,7 +351,7 @@ The ceremony (승격식) and the 금방 upgrades are never discounted. Pads and 
 | # | Skill | Icon | Ranks | Effect per rank | Code path | SP | Lv gate | Unlock |
 |---|---|---|---|---|---|---|---|---|
 | D1 | **관찰력** | `ui_icon_binoculars` | 3 | the 지역 자원 panel (§9). Without the skill it shows status dots + counts. r1: flows per minute and *why* (`빵 부족 ← 빵 짐꾼이 없어요`). r2: forecasts (`약 6분 뒤 바닥나요`) and the **해결하러 가기** button (Navigator to the fix pad / plot). r3: shortage toasts (≤ 1 per 3 min, setting-controlled) and the panel's "곧 부족" row | `RegionPanel` reading `StockLedger` | 1,1,1 (3) | 5, 10, 15 | `zone_forest` |
-| D2 | **행운** | `ui_icon_heart_full` | 3 | each item the **chief** gathers has a 3r % chance (**9 %**) of +1 (a twinkle); 콩이 gift chance ×(1 + 0.25r) (`dog.giftEvery` ÷); r3: the first daily mission done each day pays +50 % (`행운의 아침`) | `Player` gather, `DogPlay`, calendar host | 1,1,2 (4) | 7, 13, 20 | start |
+| D2 | **행운** | `ui_icon_heart_full` | 3 | each item the **chief** gathers has a 3r % chance (**9 %**) of +1 (a twinkle); 누리 gift chance ×(1 + 0.25r) (`dog.giftEvery` ÷); r3: the first daily mission done each day pays +50 % (`행운의 아침`) | `Player` gather, `DogPlay`, calendar host | 1,1,2 (4) | 7, 13, 20 | start |
 | D3 | **든든한 금고** | `ui_icon_bank` | 2 | offline earnings cap 3 h → 4 / **5** h; rate 4 % → 5 % at r2 (§7.3); till caps ×(1 + 0.25r): `v4.rent.cap` 2,000 → 3,000, `civic.hall.taxCap` 1,500 → 2,250 | offline host, `Growth` rent, `TownHall` tax | 1,2 (3) | 15, 25 | village complete |
 
 **Totals:**
@@ -534,7 +534,7 @@ Format: `id · 제목 — 할 일 (signal) · 몇 개 · XP · extra`. Coins fol
 - `q304 · 광산의 일꾼` — 광부 고용하기 (`step hire_miner`) · 1 · 70 XP
 - `q305 · 우리 동네 첫 집` — 집 한 채 짓기 (`built house_*`) · 1 · 80 XP
 - `q306 · 예쁜 마을` — 꾸미기 하나 짓기, 쿠폰도 돼요 (`built deco_*`) · 1 · 60 XP
-- `q307 · 콩이랑 놀기` — 콩이에게 간식·공·쓰다듬기 (`dogAct`) · 1 · 50 XP
+- `q307 · 누리랑 놀기` — 누리에게 간식·공·쓰다듬기 (`dogAct`) · 1 · 50 XP
 - `q308 · 사냥터` — 사냥터 열기 (`step zone_hunt`) · 1 · 70 XP
 - `q309 · 훈제 향기` — 훈제 고기 만들기 (`made item_meat_cooked`) · 10 · 70 XP
 - `q310 · 마을 완성!` — 사냥꾼 고용하기 (`step hire_hunter`, the existing celebration plays) · 1 · 150 XP · **chapter: +1 SP, 꾸미기 쿠폰 '가로등 한 쌍'**
@@ -598,7 +598,7 @@ Format: `id · 제목 — 할 일 (signal) · 몇 개 · XP · extra`. Coins fol
 | s01 | 관망 구경 | watch 관망 for a game hour |
 | s02 | 기차 여행 | ride the train once |
 | s03 | 첫 저금 | deposit 500 at the bank |
-| s04 | 콩이 단짝 | 콩이 affection 75 |
+| s04 | 누리 단짝 | 누리 affection 75 |
 | s05 | 단골손님 | 3 regulars ★ |
 | s06 | 사진 한 장 | photo mode, v4.6 |
 | s07 | 오늘의 미션 | finish a daily, v4.5 (it becomes main `q311` when v4.5 ships) |
@@ -699,7 +699,7 @@ One reroll a day (`다른 미션`) per daily slot that has had no progress for 2
 **Existing daily templates (F1–F12, missions_bank)** now take tiered `n`:
 - F1 손님 [30, 60, 60, 120];
 - F8 기차 손님 [—, 15, 30, 50] (unlock `f:firstTrain` instead of `rank:2`);
-- F5 수다 3 and F4 콩이 open at the calendar gate;
+- F5 수다 3 and F4 누리 open at the calendar gate;
 - the rest unchanged (F3, F6, F7, F9–F12).
 
 **New weekly templates (G7–G11):**
@@ -751,7 +751,7 @@ New signals needed (the GameFeed map in `signals.js` gets one line each):
   | Day | Gift | XP |
   |---|---|---|
   | 1 | coins `0.5 × I` (floor 30 × eraMult) | 30 |
-  | 2 | 콩이 간식 ×3 (`dog.treats`, cap 3) | 30 |
+  | 2 | 누리 간식 ×3 (`dog.treats`, cap 3) | 30 |
   | 3 | coins `1 × I` | 40 |
   | 4 | 작은 꾸미기 쿠폰 (snowman / bench / lamp, rotating) | 40 |
   | 5 | coins `1 × I` | 50 |
@@ -784,7 +784,7 @@ New signals needed (the GameFeed map in `signals.js` gets one line each):
   | Minute | Coins | XP |
   |---|---|---|
   | 5 | `0.25 × I` | 20 |
-  | 15 | `0.5 × I` + a small surprise (콩이 간식 or 꽃 1송이 for F7) | 30 |
+  | 15 | `0.5 × I` + a small surprise (누리 간식 or 꽃 1송이 for F7) | 30 |
   | 30 | `0.75 × I` | 50 |
 
   Floors: 10 / 20 / 30 × eraMult.
@@ -833,7 +833,7 @@ New signals needed (the GameFeed map in `signals.js` gets one line each):
 | 일·배움 work / school | 15 | adult with a job (worker, clerk, staff, shop); kid with 놀이터 or school; elder with a bench / fountain within 700 px | 60 | roles, Civic amenities |
 | 가게 shops | 10 | `40 + 12 × kinds open` (잡화점, 5 founded shops, big restaurant); +20 if 금방 delivered to their door today | 40 | `Growth.openShopCount`, `gb` |
 | 꾸미기 decor | 10 | `40 + 10 × Σ happy of decor within 700 px of their home` | 40 | `Civic.amenities` (+ house position) |
-| 즐길 거리 fun | 10 | `50 + 15 × events they took part in today` (concert, snowball fight, snowman, rink, festivals, weddings, 콩이 tricks) | 50 | `VillageLife` events |
+| 즐길 거리 fun | 10 | `50 + 15 × events they took part in today` (concert, snowball fight, snowman, rink, festivals, weddings, 누리 tricks) | 50 | `VillageLife` events |
 | 촌장 the chief | 15 | `50 + 25` if the chief talked to / helped them in the last 2 game days, `+5 × 인기도 rank` | 50 | `chat` / `tap` / missions |
 
 - The floors keep a neglected village around **45**, never 0.

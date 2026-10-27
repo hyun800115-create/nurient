@@ -467,7 +467,7 @@ try {
   await shot('22_reset_confirm');
   await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 160) * sx);      // "no"
   await sleep(400);
-  await page.touchscreen.tap(b.x + 360 * sx, b.y + (b.height / sx / 2 + 428) * sx);      // close ((v4-C2) +428)
+  await page.touchscreen.tap(b.x + (360 + 130) * sx, b.y + (b.height / sx / 2 + 428) * sx);      // close ((v4-C2) +428; (v4.2.1) right of 마을 옮기기)
   await sleep(500);
   step('settings closed', !(await page.evaluate(() => window.__FV.game.scene.isPaused('Game'))));
 

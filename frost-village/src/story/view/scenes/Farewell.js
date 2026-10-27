@@ -1,7 +1,7 @@
 // 하늘나라 여행 배웅 (docs/v5_v8_plan.md §6.1 "Farewell", life2 layouts.farewell_garden). Gentle and warm, never
 // sad-scary: a new memorial_stone appears at the next stone slot with a flower_wreath, the family in mourner_family
 // clothes stand at the stone, friends in mourner clothes hold white bouquets at the gather points; one by one they
-// step to the stone and lay their flowers; light snow drifts upward, the blossom tree glows, 콩이 sits beside the
+// step to the stone and lay their flowers; light snow drifts upward, the blossom tree glows, 누리 sits beside the
 // chief, bgm_farewell plays. No camera grab, ever. The words are only 하늘나라 여행, 배웅, 기억.
 
 /** depth of a stone in the garden: above the garden picture, the front row above the back row (small offsets only:
@@ -43,7 +43,7 @@ export async function playFarewell(sh, beat, ctx) {
   if (T && T.fxPoints && T.fxPoints.tree) glow(sh, g.x + T.fxPoints.tree[0], g.y + T.fxPoints.tree[1], gdepth + 3);
   if (T && T.fxPoints && T.fxPoints.lantern) glow(sh, g.x + T.fxPoints.lantern[0], g.y + T.fxPoints.lantern[1], gdepth + 3, 0.5, 0xffe2a8);
   upSnow(sh, g.x, g.y, 34 * k);
-  // the chief at the garden gate, 콩이 sitting beside
+  // the chief at the garden gate, 누리 sitting beside
   const gate = sh.point('memorial_garden', g.x, g.y, 'doorPoint') || { x: g.x, y: g.y + 62 };
   if (d.chief) { sh.place(d.chief, gate.x + 26, gate.y + 30, 'N'); sh.anim(d.chief, 'idle', { dir: 'N' }); }
   if (d.dog) { sh.place(d.dog, gate.x + 64, gate.y + 40, 'NW'); sh.anim(d.dog, 'sit', { dir: 'NW' }); }

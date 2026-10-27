@@ -19,7 +19,7 @@ const CASES = [
   ['서아', '서아가', '서아는', '서아를', '서아와', '서아로', '서아야', '서아예요'],
   ['준', '준이', '준은', '준을', '준과', '준으로', '준아', '준이에요'],
   ['미소', '미소가', '미소는', '미소를', '미소와', '미소로', '미소야', '미소예요'],
-  ['콩이', '콩이가', '콩이는', '콩이를', '콩이와', '콩이로', '콩이야', '콩이예요'],
+  ['누리', '누리가', '누리는', '누리를', '누리와', '누리로', '누리야', '누리예요'],
   ['촌장님', '촌장님이', '촌장님은', '촌장님을', '촌장님과', '촌장님으로', '촌장님아', '촌장님이에요'],
   ['할머니', '할머니가', '할머니는', '할머니를', '할머니와', '할머니로', '할머니야', '할머니예요'],
   ['빵', '빵이', '빵은', '빵을', '빵과', '빵으로', '빵아', '빵이에요'],
@@ -62,7 +62,7 @@ test('parity with the story engine josa (tools/story/lang/josa.js) when it is pr
   const p = path.resolve(here, '../../story/lang/josa.js');
   if (!fs.existsSync(p)) { t.skip('story engine not present'); return; }
   const story = await import(pathToFileURL(p).href);
-  const words = CASES.map((c) => c[0]).concat(['아이', '눈사람', '오리', '곡괭이', '주괴', '장갑', '편지', '연못', '시바견 콩이', '분수', '100', '1000', 'L', 'M']);
+  const words = CASES.map((c) => c[0]).concat(['아이', '눈사람', '오리', '곡괭이', '주괴', '장갑', '편지', '연못', '말티푸 누리', '분수', '100', '1000', 'L', 'M']);
   const forms = FORMS.concat(['이랑', '이야', '이라고', '이었']);
   for (const w of words) for (const f of forms) assert.equal(josa(w, f), story.josa(w, f), w + ' + ' + f);
 });

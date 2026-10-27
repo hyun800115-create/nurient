@@ -31,7 +31,7 @@ const TRAITS = TRAIT_FLAGS.map(([flag, ax, op, v]) => [C[flag], AX[ax], op === '
 
 const WEATHER_KO = { clear: '맑은 하늘', sunny: '햇살', cloudy: '구름', light: '눈발', snow: '눈', heavy: '함박눈', blizzard: '눈보라', fog: '안개', mild: '포근한 날씨' };
 const WEATHER_EN = { clear: 'clear skies', sunny: 'sunshine', cloudy: 'clouds', light: 'flurries', snow: 'snow', heavy: 'heavy snow', blizzard: 'the blizzard', fog: 'fog', mild: 'mild weather' };
-// what each of the town's pets gets up to (PETS: 0 콩이 the dog, 1 나비 the cat, 2 뽀삐 the penguin); fact pet: n = pet, i = antic
+// what each of the town's pets gets up to (PETS: 0 누리 the dog, 1 나비 the cat, 2 뽀삐 the penguin); fact pet: n = pet, i = antic
 const PET_ANTICS = [
   [['장갑 한 짝을 물고 도망갔', 'ran off with a mitten'], ['눈 위를 데굴데굴 뒹굴었', 'rolled around in the snow'],
     ['눈사람 당근 코를 먹어 버렸', 'ate the snowman’s carrot nose'], ['썰매를 끌고 신나게 달렸', 'pulled a sled at full speed'],

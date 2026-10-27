@@ -132,7 +132,8 @@ def dog_entry(meta, frames, has_portrait):
         'shadow': meta.get('shadow', [54, 23]),
         'mouthPoint': meta['mouthPoint'], 'treatPoint': meta['treatPoint'], 'bellyPoint': meta['bellyPoint'],
         'animNotes': {a: ANIM_NOTES[a] for a in pa.ORDER},
-        'overrides': 'villagers/pet_dog (same look, batch-1 anims re-rendered identically + 6 play anims)',
+        'overrides': 'villagers/pet_dog (누리 the maltipoo replaces the batch-1 shiba: same frame names, sizes, anchors, '
+                     'points and timing for the batch-1 anims + 6 play anims)',
     }
     if has_portrait:
         ent['portrait'] = 'portrait_pet_dog'
@@ -166,8 +167,9 @@ def write_manifest(entry, item_entries, has_portrait):
     gens[DOG_ATLAS] = gens[ITEM_ATLAS] = 'tools/blender/pet2_render.py + pet2_pack.py'
     out = {
         'version': 1,
-        'notes': 'Dog play (CONTRACT_V4 I). characters.pet_dog OVERRIDES the villagers fragment entry (same key, '
-                 'same look; load this fragment after villagers). Frames {anim}_{dir}_{i}, 128x128, anchor '
+        'notes': 'Dog play (CONTRACT_V4 I). characters.pet_dog OVERRIDES the villagers fragment entry (same key; '
+                 'the dog is 누리, a light-brown maltipoo with a white chest patch and white front socks; load this '
+                 'fragment after villagers). Frames {anim}_{dir}_{i}, 128x128, anchor '
                  '(64,104); each anim lists its dirs (social/play anims S/SE/E, mirror SW/W). Extra points are px '
                  'offsets from the anchor per render dir (negate dx for mirrored dirs): mouthPoint (ball/treat in '
                  'the mouth, idle), treatPoint (biscuit in eat), bellyPoint (belly centre in roll, where the '
@@ -222,7 +224,7 @@ def sheet(meta, frames, items, path):
     H = 40 + len(rows) * ch + 170
     img = Image.new('RGBA', (lab + cols * cw + 8, H), BG)
     d = ImageDraw.Draw(img)
-    d.text((8, 10), 'pets2 / pet_dog - batch-1 shiba re-rendered + play anims (1:1 game scale, 1px ink '
+    d.text((8, 10), 'pets2 / pet_dog - Nuri the maltipoo (batch-1 anims + play anims, 1:1 game scale, 1px ink '
                     'outline). Red box = catch impactFrame, yellow cross = impactPoint.', fill=LABEL)
     for r, (name, dd, ims, info) in enumerate(rows):
         y = 40 + r * ch
@@ -353,6 +355,84 @@ def scene(frames, items, icons_png, path):
     img.convert('RGB').save(path, optimize=True)
 
 
+# --------------------------------------------------------------------------- tight packing
+
+def pack_skyline(frames, max_width=2048, padding=2):
+    """Same output as pack_utils.pack_atlas (trimmed Phaser JSON-hash frames, padding between frames), but a
+    bottom-left skyline packer (tallest first): each frame goes where its top ends lowest.  The fluffy 누리
+    frames are ~5 % bigger than the shiba's; the plain shelf packer then needed 4 px more sheet height."""
+    items = []
+    for name, im in frames:
+        im = im.convert('RGBA')
+        box = pu._trim_box(im)
+        items.append((name, im.size, box, im.crop(box)))
+    order = sorted(range(len(items)), key=lambda i: (-items[i][3].height, -items[i][3].width, items[i][0]))
+    sky = [[0, 0, max_width]]                      # segments [x, y, w]: the lowest free y over [x, x + w)
+    place = {}
+    for i in order:
+        w, h = items[i][3].size
+        best = None
+        for k in range(len(sky)):
+            x = sky[k][0]
+            if x + w > max_width:
+                break
+            y, need, j = 0, min(w + padding, max_width - x), k   # the padding gap on its right is kept free too
+            while need > 0:                        # the frame rests on the highest segment it spans
+                y = max(y, sky[j][1])
+                need -= sky[j][2]
+                j += 1
+            if best is None or y < best[1]:         # segments run left to right: ties keep the leftmost
+                best = (x, y)
+        x, y = best
+        place[i] = (x, y)
+        # raise the skyline over [x, x + w + padding) to y + h + padding
+        top, x1 = y + h + padding, min(max_width, x + w + padding)
+        new = []
+        for sx, sy, sw in sky:
+            ex = sx + sw
+            if ex <= x or sx >= x1:
+                new.append([sx, sy, sw])
+                continue
+            if sx < x:
+                new.append([sx, sy, x - sx])
+            if ex > x1:
+                new.append([x1, sy, ex - x1])
+        new.append([x, top, x1 - x])
+        new.sort()
+        merged = []
+        for seg in new:
+            if merged and merged[-1][1] == seg[1] and merged[-1][0] + merged[-1][2] == seg[0]:
+                merged[-1][2] += seg[2]
+            else:
+                merged.append(seg)
+        sky = merged
+    used_w = max(place[i][0] + items[i][3].width for i in place)
+    total_h = max(place[i][1] + items[i][3].height for i in place)
+    sheet_w = min(pu._pow2ish(used_w), max(max_width, used_w))
+    sheet_h = pu._pow2ish(total_h)
+    sheet = Image.new('RGBA', (sheet_w, sheet_h), (0, 0, 0, 0))
+    out = {}
+    for i, (name, (sw, sh), box, crop) in enumerate(items):
+        px, py = place[i]
+        sheet.paste(crop, (px, py))
+        out[name] = {'frame': {'x': px, 'y': py, 'w': crop.width, 'h': crop.height}, 'rotated': False,
+                     'trimmed': (crop.width, crop.height) != (sw, sh),
+                     'spriteSourceSize': {'x': box[0], 'y': box[1], 'w': crop.width, 'h': crop.height},
+                     'sourceSize': {'w': sw, 'h': sh}}
+    atlas = {'frames': out, 'meta': {'app': 'frost-village/tools/blender/pet2_pack.py (skyline)', 'version': '1.0',
+                                     'image': '', 'format': 'RGBA8888', 'size': {'w': sheet_w, 'h': sheet_h},
+                                     'scale': '1'}}
+    return sheet, atlas
+
+
+def pack_tight(frames, max_width=2048, padding=2):
+    """The smaller (by sheet area = texture memory) of the shelf packer and the skyline packer."""
+    a = pu.pack_atlas(frames, max_width=max_width, trim=True, padding=padding)
+    b = pack_skyline(frames, max_width=max_width, padding=padding)
+    area = lambda r: r[0].size[0] * r[0].size[1]            # noqa: E731
+    return b if area(b) < area(a) else a
+
+
 # --------------------------------------------------------------------------- main
 
 def main():
@@ -374,7 +454,7 @@ def main():
     # 1. dog atlas
     order = [n for a in pa.ORDER for d in meta['anims'][a]['dirs'] for n in
              (f'{a}_{d}_{k}' for k in range(meta['anims'][a]['frames']))]
-    sheet_img, atlas = pu.pack_atlas([(n, frames[n]) for n in order], max_width=2048, trim=True, padding=2)
+    sheet_img, atlas = pack_tight([(n, frames[n]) for n in order], max_width=2048, padding=2)
     png = os.path.join(OUT, DOG_ATLAS + '.png')
     pu.save_atlas(sheet_img, atlas, png, os.path.join(OUT, DOG_ATLAS + '.json'), quantize=False)
     vp.quantize_save(sheet_img, png, colors)

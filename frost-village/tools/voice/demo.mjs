@@ -32,7 +32,7 @@ const P = {
 // [time s, speaker, bubble text, opts]
 const SCRIPT = [
   // ---- part 1: every voice says hello and something in character
-  [0.6, 'boy', '안녕! 콩이랑 같이 놀자!'],
+  [0.6, 'boy', '안녕! 누리랑 같이 놀자!'],
   [2.9, 'girl', '안녕~ 내 눈사람 귀엽지?'],
   [5.2, 'man', '안녕하세요! 오늘 생선 많이 잡았어요.'],
   [7.6, 'young', '안녕하세요~ 오늘 기차 타고 왔어요!'],
@@ -53,8 +53,8 @@ const SCRIPT = [
   [39.4, 'chief', '저녁에요! 다 같이 와요!', { priority: 2, emotion: 'excited' }],
   [41.4, 'aunt', '촌장님, 빵 하나 드세요~'],
   [43.0, 'chief', '와, 고마워요! 정말 맛있어요!', { priority: 2, emotion: 'thanks' }],
-  [45.3, 'boy', '우와! 콩이다!', { emotion: 'surprise' }],
-  [45.6, 'girl', '야호! 콩이야 이리 와!', { emotion: 'excited' }],
+  [45.3, 'boy', '우와! 누리다!', { emotion: 'surprise' }],
+  [45.6, 'girl', '야호! 누리야 이리 와!', { emotion: 'excited' }],
   [46.0, 'baby', '꺄아! 귀여워!', { emotion: 'excited' }],
   [49.0, 'grandpa', '흥, 요즘 애들은 너무 시끄러워…', { emotion: 'grumpy' }],
   [51.4, 'grandpa', '허허허, 그래도 귀엽구먼.', { emotion: 'laugh' }],

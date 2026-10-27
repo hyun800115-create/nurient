@@ -1,6 +1,7 @@
 """
-pet2_build.py - the batch-1 shiba (vil_pets.build('pet_dog'), unchanged: red scarf, curly tail,
-same materials and PET_SCALE) + the dog-play props for CONTRACT_V4 section I:
+pet2_build.py - the village dog 누리 (pet2_maltipoo.build(): the designer's light-brown Maltipoo with a white
+chest patch and white front socks; same skeleton, toggles and PET_SCALE as the batch-1 shiba it replaced, so
+every pose and manifest point is unchanged) + the dog-play props for CONTRACT_V4 section I:
 
     toggle 'ball'   red rubber ball with a white band, held in the mouth (joint 'ball_j' on the head)
     toggle 'treat'  bone biscuit held across the jaws (joint 'treat_j' on the head)
@@ -31,10 +32,10 @@ CRUMB_R = 0.013
 def build():
     import bl_common as bc
     import char_geo as g
-    import vil_pets
+    import pet2_maltipoo
     import pet2_props as pp
     bc.reset_scene()
-    rig = vil_pets.build(KEY)
+    rig = pet2_maltipoo.build()
     rig.meta['key'] = KEY
     rig.meta['ch'] = {'role': 'pet'}
     # open mouth without the tongue (vil_pets: p_m_open = [m_open, tongue])
@@ -53,8 +54,8 @@ def build():
     for (x, y, z) in pp.bone_dots(TREAT_LEN, thick=0.78)[::2]:
         dots.append(g.mesh_obj('treat_dot', g.bm_ellipsoid(0.008, 0.008, 0.004, 8, 4), dot, treat, loc=(x, y, z)))
     rig.toggle('treat', [treat] + dots)
-    # the scarf tail hangs straight down from the neck; on its back (roll) it would poke through the
-    # snow, so it becomes a toggle that every anim except roll shows
+    # (shiba only) the scarf tail hung straight down from the neck and was hidden in roll; 누리 wears no
+    # scarf, the toggle stays (empty) so pet2_anim.HIDE_SCARF_TAIL keeps working for any dog that has one
     tail = [o for o in rig.j['neck'].children if o.name.startswith('scarf_tail')]
     rig.toggle('scarf_tail', tail)
     crumb = bc.mat('crumb', pp.BISCUIT, rough=0.85)

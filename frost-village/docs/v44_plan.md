@@ -774,7 +774,7 @@ v44: {
 | 성장 | line upgrade / shop opens / 승격식 | 30 / 50 / 500 + 2 SP | — | `lineUp`, `shopOpen`, `rank` |
 | 사람 | talk to a resident (chat) | 10 | each resident once a day, ≤ 10 a day | `chat` |
 | 사람 | greet a resident (tap) | 5 | ≤ 10 a day | `tap` |
-| 사람 | play with 콩이 | 5 | ≤ 10 a day | `dogAct` |
+| 사람 | play with 누리 | 5 | ≤ 10 a day | `dogAct` |
 | 사람 | answer a letter / read the morning paper | 15 / 10 | paper once a day | `letterReply`, `paperRead` |
 | 이야기 | quests | per quest (§11.3) | — | `quest:done` |
 | 미션 (v4.5) | daily / all three / weekly stage / monthly milestone | 40 / +60 / 100–250 / 300–1,000 | — | calendar |
@@ -886,7 +886,7 @@ v44: {
 | C3 | **리더십** | 사람 | `ui7_sk_lead` | 3 | worker / porter walk speed ×(1 + 0.03r) → **+9 %**; cheer mult 1.1 → **1.19**, radius 200 → **320**, still 2 → **1.5 s** (r2+) | 1,1,3 (5) | — | 9, 14, 20 | `step:hire_farmer` | v4.4 |
 | C4 | **협상** | 사람 | `ui7_sk_trade` | 3 | wholesale 0.7 → **0.79**; export 0.5 → **0.65**; depot sell 0.6 → **0.72**; 금방 parcel price ×(1 + 0.03r); 교역소 clerk slowness 1.25 → **1.1** | 1,1,3 (5) | — | 12, 16, 22 | `f:firstTrain` | v4.4 |
 | D1 | **관찰력** | 지혜 | `ui7_sk_insight` | 3 | 지역 자원 panel detail: r0 status dots + counts · r1 flows per minute + *why* · r2 forecasts `약 6분 뒤 바닥나요` + **해결하러 가기** · r3 shortage toasts (≤ 1 per 3 min) + the 곧 부족 row | 1,1,2 (4) | — | 5, 10, 15 | `step:hire_miner` | **v4.6** |
-| D2 | **행운** | 지혜 | `ui7_sk_luck` | 3 | each item the **chief** gathers: 3r % chance of +1 → **9 %** (a twinkle); 콩이 gift interval ÷(1 + 0.25r) | 1,1,3 (5) | — | 7, 13, 20 | start | v4.4 |
+| D2 | **행운** | 지혜 | `ui7_sk_luck` | 3 | each item the **chief** gathers: 3r % chance of +1 → **9 %** (a twinkle); 누리 gift interval ÷(1 + 0.25r) | 1,1,3 (5) | — | 7, 13, 20 | start | v4.4 |
 | D3 | **든든한 금고** | 지혜 | `ui7_sk_vault` | 2 | the **daily** offline credit 3 → 4 / **5 h**, rate 4 % → **5 %** at r2 (D30); till caps ×(1 + 0.25r): rent cap 2,000 → **3,000**, hall tax cap 1,500 → **2,250** | 1,3 (4) | — | 15, 25 | `complete` | **v4.5** |
 
 Talent totals: 36 ranks, **58 SP** (v4.4's ten talents: 50 SP).
@@ -1016,7 +1016,7 @@ Format: `id · 제목 — 할 일 (objective) · 몇 · XP`. The chapter-end rew
 - `q304 · 광산의 일꾼` — 광부 고용 (`step hire_miner`) · 1 · 70
 - `q305 · 우리 동네 첫 집` — 집 한 채 짓기 (`built house_*`) · 1 · 80
 - `q306 · 예쁜 마을` — 꾸미기 하나 짓기, 쿠폰도 돼요 (`built deco_*`) · 1 · 60
-- `q307 · 콩이랑 놀기` — 콩이에게 간식·공·쓰다듬기 (`dogAct`) · 1 · 50
+- `q307 · 누리랑 놀기` — 누리에게 간식·공·쓰다듬기 (`dogAct`) · 1 · 50
 - `q308 · 사냥터` — 사냥터 열기 (`step zone_hunt`) · 1 · 70
 - `q309 · 훈제 향기` — 훈제 고기 만들기 (`made item_meat_cooked`) · 10 · 70
 - `q310 · 마을 완성!` — 사냥꾼 고용 (`step hire_hunter`; the existing celebration plays) · 1 · 150 · **chapter: +1 SP, 꾸미기 쿠폰 가로등**
@@ -1080,7 +1080,7 @@ Format: `id · 제목 — 할 일 (objective) · 몇 · XP`. The chapter-end rew
 | s01 | 관망 구경 | watch 관망 for a game hour | v4.4.1 |
 | s02 | 기차 구경 | be within 300 px of the station when a train arrives (D26) | v4.4.1 |
 | s03 | 첫 저금 | deposit 500 at the bank (state: the bank balance ≥ 500, so an earlier deposit counts) | v4.4.1 (bank42) |
-| s04 | 콩이 단짝 | 콩이 affection ≥ 75 (state) | v4.4.1 |
+| s04 | 누리 단짝 | 누리 affection ≥ 75 (state) | v4.4.1 |
 | s05 | 단골손님 | 3 regulars ★ | v4.4.1 |
 | s06 | 오늘의 미션 | finish a daily | v4.5 |
 | s07 | 출석 체크 | check in once | v4.5 |
@@ -1211,7 +1211,7 @@ At Lv 17 the talent level gates leave exactly 29 SP of ranks open, so the 읍 pl
 
 **Existing F1–F12** (`src/missions/data/catalog.js`):
 - F1 손님 → `[30, 60, 60, 120]`, unlock calendar gate.
-- F4 콩이 and F5 수다 → unlock calendar gate.
+- F4 누리 and F5 수다 → unlock calendar gate.
 - F6 세금 → unlock `b:town_hall`.
 - F8 기차 손님 → `[—, 15, 30, 50]`, unlock `f:firstTrain`.
 - F11 신문 → unlock `v42:office` (v4.2 morning paper, signal `paper_read` from `paperRead`).
@@ -1264,7 +1264,7 @@ G1 (`req_done`, requests) and G2 (`riders`, the v5 bus) move from `rank:2` to `v
   | Day | Gift | XP |
   |---|---|---|
   | 1 | coins `0.5 × I` (floor 30 × eraMult) | 30 |
-  | 2 | 콩이 간식 refilled to 3 (already full: +30 XP instead) | 30 |
+  | 2 | 누리 간식 refilled to 3 (already full: +30 XP instead) | 30 |
   | 3 | coins `1 × I` | 40 |
   | 4 | 작은 꾸미기 쿠폰 (snowman / bench / lamp, rotating) | 40 |
   | 5 | coins `1 × I` | 50 |
@@ -1297,7 +1297,7 @@ G1 (`req_done`, requests) and G2 (`riders`, the v5 bus) move from `rank:2` to `v
   | Minute | Coins (floor × eraMult) | XP |
   |---|---|---|
   | 5 | `0.25 × I` (10) | 20 |
-  | 15 | `0.5 × I` (20) + a small surprise (콩이 간식 or a flower for F7) | 30 |
+  | 15 | `0.5 × I` (20) + a small surprise (누리 간식 or a flower for F7) | 30 |
   | 30 | `0.75 × I` (30) | 50 |
 
 - **HUD box**: ⌀64 at (524, top), hit ⌀88, with a ring timer (§19.1). When ready it wiggles; a tap opens it.

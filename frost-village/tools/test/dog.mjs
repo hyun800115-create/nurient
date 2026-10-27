@@ -1,4 +1,4 @@
-// Frost Village v3.5 dog play checks (기획서_v4 §5: 강아지 콩이와 놀기).
+// Frost Village v3.5 dog play checks (기획서_v4 §5: 강아지 누리와 놀기).
 //   node tools/test/dog.mjs            (screenshots -> docs/previews/screens_v35/test_dog_*.jpg)
 // Runs on the fixed-step clock (fv_step.mjs): every wait is GAME time. Buttons are tapped like a finger.
 //   the dog roams (no longer follows the chief), the HUD whistle calls it (it runs in, barks), the 3-button
@@ -54,7 +54,7 @@ try {
   await realWaitFor(page, () => !!(window.__FV.scene.dog && window.__FV.scene.dog.r), 90000).catch(() => {});
   await adv(2);
   let d = await dogState();
-  step('Kongi lives in the village (pets2 art)', !!d.dog && d.mode === 'roam', JSON.stringify(d));
+  step('Nuri lives in the village (pets2 art)', !!d.dog && d.mode === 'roam', JSON.stringify(d));
   // 1. it no longer follows the chief: walk around for a while, it stays where it plays
   {
     const path0 = [{ x: 1000, y: 1500 }, { x: 760, y: 1650 }, { x: 1250, y: 1650 }, { x: 990, y: 1250 }];

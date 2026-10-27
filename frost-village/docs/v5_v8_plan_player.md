@@ -528,7 +528,7 @@ Each daily mission pays 0.5 and 5 fame. Finishing all three adds 1.0 and +15 fam
 | F1 | `day_customers` | 손님 60명 맞이하기 | Serve 60 customers | any seller | 읍 |
 | F2 | `day_bread` | 빵 40개 팔기 | Sell 40 loaves | market / shops | 읍 |
 | F3 | `day_ride` | 버스나 기차 한 번 타기 | Take one ride | transit | b:depot |
-| F4 | `day_dog` | 콩이와 놀아 주기 (간식·공·쓰다듬기) | Play with Kongi | all three dog actions | 읍 |
+| F4 | `day_dog` | 누리와 놀아 주기 (간식·공·쓰다듬기) | Play with Nuri | all three dog actions | 읍 |
 | F5 | `day_chat` | 주민 3명과 수다 떨기 | Chat with 3 residents | C2 chat or tap-talk | 읍 |
 | F6 | `day_tax` | 세금 상자 비우기 | Empty the tax box | hall tax pad | b:town_hall |
 | F7 | `day_flowers` | 꽃밭에서 꽃 5송이 꺾기 | Pick 5 flowers | 꽃밭 | b:deco_flowers |
@@ -703,7 +703,7 @@ Granted wishes are remembered by the whole family. That memory is the emotional 
 | that night | One warm window glows in their house | DayClock light |
 | 09:00 | Card with a white flower icon: **"{name} 할머니가 하늘나라로 여행을 떠났어요."** / "가족과 이웃들이 기억의 정원에서 배웅해요 · 10시". The music softens | `ui_icon_flower`; `bgm_farewell` queued |
 | 10:00 | **배웅** at the garden: family in `mourner_family` (`mourning_coat`, `black_hat`, white flower pin) and friends in `mourner`, each with a white `held_bouquet`. A new `memorial_stone` with a `flower_wreath` appears at the next free `stonePoints` slot, with the name on its plaque (game text). One by one they lay flowers (`layPoint`, `sad` with bowed head; the bouquet drops as an `item_bouquet` at the stone base) | life2 `memorial_*`, townfolk2 `sad`, `bgm_farewell` |
-| 10:01 | The chief may lay a bouquet (C8, +10 fame). **콩이 comes and sits beside the chief.** Light snow; the garden tree glows softly (`fx_glow` at `fxPoints.tree`), the lantern too, and a few snowflakes drift **upward** ("하늘로") | `fx_snowflake` with negative gravity |
+| 10:01 | The chief may lay a bouquet (C8, +10 fame). **누리 comes and sits beside the chief.** Light snow; the garden tree glows softly (`fx_glow` at `fxPoints.tree`), the lantern too, and a few snowflakes drift **upward** ("하늘로") | `fx_snowflake` with negative gravity |
 | 10:02 | People drift home with sad faces (`setFace('sad')`), normal again by evening | — |
 | next 3 game days | Family members visit the stone (`gatherPoints`) and talk about the granted wishes: "할머니가 등대 불빛을 보시고 참 좋아하셨어." Buying bread: "할머니가 제일 좋아하시던 빵이에요." | story memory lines |
 
@@ -916,7 +916,7 @@ After ★2, three free extras appear with the hotel: `beach_bar` (코코넛 바,
 
 | # | Name | Version | What happens | Chief's part |
 |---|---|---|---|---|
-| P1 | 콩이의 빵 도둑질 | v5 | 콩이 snatches a loaf from the market shelf and trots off; kids chase, laughing (`emote_laugh`); the shopkeeper gives `emote_anger` and then laughs | whistle: 콩이 comes back with its head low (`emote_sweat`). +2 fame |
+| P1 | 누리의 빵 도둑질 | v5 | 누리 snatches a loaf from the market shelf and trots off; kids chase, laughing (`emote_laugh`); the shopkeeper gives `emote_anger` and then laughs | whistle: 누리 comes back with its head low (`emote_sweat`). +2 fame |
 | P2 | 날아간 눈사람 모자 | v5 | wind blows a snowman's hat off; a kid runs after it | — (watch) |
 | P3 | 지붕 위 고양이 | v5 | 나비 is stuck by a chimney (`emote_question`); kids gather | stand there 3 s: it jumps into the chief's arms (`emote_heart`). +3 fame |
 | P4 | 배고픈 말 | v5 | the sleigh bus horses stop at a stop and nuzzle a passenger's bag | wheat 2 (A13 shortcut) |
@@ -1100,7 +1100,7 @@ v8: {   // ── 살아 있는 도시
 | First school day | The backpack appears; the child looks back once at the gate |
 | Outdoor class | Tiny desks in the snowy yard, kids seated, teacher at the front |
 | Grandma's wish | She walks slowly behind the chief onto the bus and sits by the window |
-| Farewell | 콩이 sits beside the chief; snowflakes drift *up*; family later say "할머니가 좋아하던 빵" |
+| Farewell | 누리 sits beside the chief; snowflakes drift *up*; family later say "할머니가 좋아하던 빵" |
 | City wipe | Asphalt and white lane lines sweep outward; traffic lights blink on; the first car honks "빵빵" |
 | Ferry | The deep horn, gulls following the wake, the deck crowded with waving tourists, the ship rocking on real waves |
 | Crane | A crate swings across the screen; the stack grows on the quay |
@@ -1411,7 +1411,7 @@ v5: { v: 1, era: 2 | 3,
 
 | Risk | Likelihood / impact | Mitigation |
 |---|---|---|
-| The farewell upsets some players | medium / high | Very old residents only; ≥ 15 game days apart; no illness or death words; the hopeful `bgm_farewell`; 콩이 beside the chief; the wishes come first; the 생애 이벤트 switch. **The designer reviews it in the preview menu before it ships** |
+| The farewell upsets some players | medium / high | Very old residents only; ≥ 15 game days apart; no illness or death words; the hopeful `bgm_farewell`; 누리 beside the chief; the wishes come first; the 생애 이벤트 switch. **The designer reviews it in the preview menu before it ships** |
 | Story save size and phone storage | medium / medium | Separate key, written per game day; a quota fallback (`memCap` 30); regenerate gracefully |
 | Story-engine spikes on old phones | medium / medium | ≤ 4 ms per step gate; the Web Worker fallback is designed in |
 | Texture memory with vehicles + townfolk2 + ships | medium / high | Pages per type and anim group, event-only loading, caps on colourways; the v4 big-atlas split first |
