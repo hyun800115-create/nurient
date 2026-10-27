@@ -537,12 +537,15 @@ export class Porter extends Hauler {
         if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: top, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS };
       }
     }
-    // ((v4.2.1 고기 통조림, meatcan.jamExport) the meat-can porter: with the cannery's output ≥ meatcan.farAt full and the
-    //  nearest place in the village that wants meat cans farther than meatcan.farPx, this load is exported (the 짐 싣는 곳)
+    // ((v4.2.1 고기 통조림, meatcan.jamExport) the meat-can porter: with the cannery's output ≥ meatcan.farAt full, a bag
+    //  of meat cans waiting (meatcan.loadMin) and the nearest place in the village that wants them farther than
+    //  meatcan.farPx, this load is exported (the 짐 싣는 곳) — unless that place is running out (a shelf ≥ SHELF_LOW: the
+    //  잡화점's meat tower nearly empty sells them at full price, it goes there first)
     const MC = BALANCE.meatcan || {};
-    if (this.only && MC.jamExport !== false && v42 && v42.frules && out.count >= out.max * (Number(MC.farAt) || 0.8) && out.countOf(this.only) > 0) {
+    if (this.only && MC.jamExport !== false && v42 && v42.frules && out.count >= out.max * (Number(MC.farAt) || 0.8) && out.countOf(this.only) >= Math.min(this.stack.max, Number(MC.loadMin) || 10)) {
       const FS = v42.freight && v42.freight.sink, pad = this.station.outPad;
-      if (FS && (!best || best.sink === FS || Math.hypot(best.sink.x - pad.x, best.sink.y - pad.y) > (Number(MC.farPx) || 1500))) {
+      const far = !best || best.sink === FS || Math.hypot(best.sink.x - pad.x, best.sink.y - pad.y) > (Number(MC.farPx) || 1500);
+      if (FS && far && !(best && best.sink !== FS && best.prio >= PRIO.SHELF_LOW)) {
         const n = L.want(FS, this.only);
         if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: this.only, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS, jam: true };
       }
