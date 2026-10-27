@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics)\./.test(path) || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -163,6 +163,7 @@ export function checkBalance() {
   checkC1(B);
   // ---- (v4.2) 촌장의 하루
   checkV42(B);
+  checkMeatCan(B);
 }
 
 // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)
@@ -524,6 +525,32 @@ function fixSpec(obj, spec, path) {
     }
     fixNum(obj, k, p, sp.min, sp.max, sp.d, sp.int);
   }
+}
+
+// ---- (v4.2.1) 고기 통조림 (docs/build_reports/v421_l0.md §10)
+function checkMeatCan(B) {
+  const P3 = B.prices3 = (B.prices3 && typeof B.prices3 === 'object') ? B.prices3 : {};
+  fixNum(P3, 'item_can_meat', 'prices3.item_can_meat', 1, 1e6, 12, true);
+  const M = B.meatcan = (B.meatcan && typeof B.meatcan === 'object' && !Array.isArray(B.meatcan)) ? B.meatcan : {};
+  fixNum(M, 'cost', 'meatcan.cost', 1, 1e6, 1500, true);
+  fixNum(M, 'offerFullAt', 'meatcan.offerFullAt', 0.5, 1, 0.9);
+  fixNum(M, 'offerFullS', 'meatcan.offerFullS', 10, 600, 90);
+  fixNum(M, 'meatIn', 'meatcan.meatIn', 1, 9, 3, true);
+  fixNum(M, 'out', 'meatcan.out', 1, 9, 3, true);
+  fixNum(M, 'timeMult', 'meatcan.timeMult', 0.3, 1, 0.7);
+  // (below the 훈제장's input, PRIO.GRILL 60: the smokehouse always comes first; ≥ 40: a real-use job for the 창고 crew)
+  fixNum(M, 'inPrio', 'meatcan.inPrio', 40, 59, 41, true);
+  fixNum(M, 'ingotUrgentBelow', 'meatcan.ingotUrgentBelow', 0, 1, 0.5);
+  fixNum(M, 'porterBag', 'meatcan.porterBag', 4, 20, 12, true);
+  fixNum(M, 'pileFrom', 'meatcan.pileFrom', 0.05, 1, 0.5);
+  fixNum(M, 'pileKeep', 'meatcan.pileKeep', 0, Math.max(0, M.pileFrom - 0.05), 0.3);
+  fixNum(M, 'smokeHas', 'meatcan.smokeHas', 0, 1, 0.5);
+  fixNum(M, 'shareAt', 'meatcan.shareAt', 1, 30, 12, true);
+  if (typeof M.jamExport !== 'boolean') { if (M.jamExport !== undefined) warn('meatcan.jamExport', M.jamExport, true); M.jamExport = true; }
+  fixNum(M, 'farAt', 'meatcan.farAt', 0.3, 1, 0.8);
+  fixNum(M, 'farPx', 'meatcan.farPx', 300, 4000, 1500);
+  fixNum(M, 'storeGuestK', 'meatcan.storeGuestK', 0.4, 1, 0.75);
+  fixNum(M, 'standing', 'meatcan.standing', 0, 60, 30, true);
 }
 
 function checkV42(B) {

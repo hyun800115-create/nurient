@@ -121,7 +121,7 @@ SPECS = {
     'npc_blue': dict(
         name=('파란 파카 주민', 'Blue Parka'), role='adult', traits=['ordinary', 'customer'], body='adult',
         base='villager_c', face=dict(brow='#7A5030'), shadow=[46, 18]),
-    'pet_dog': dict(name=('시바견 콩이', 'Kongi'), role='pet', traits=['energetic', 'chases_kids', 'tail_wag']),
+    'pet_dog': dict(name=('말티푸 누리', 'Nuri'), role='pet', traits=['energetic', 'chases_kids', 'tail_wag']),
     'pet_cat': dict(name=('고양이 나비', 'Nabi'), role='pet', traits=['aloof', 'loafs_on_benches']),
     'pet_penguin': dict(name=('펭귄 뽀삐', 'Ppoppi'), role='pet', traits=['quirky', 'waddles', 'kids_chase']),
 }

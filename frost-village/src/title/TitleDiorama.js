@@ -4,7 +4,7 @@
 // chief, villagers, fx) and the title bake (src/title/bake, 4 groups = 4 growth stages) for everything else.
 // Layout + timing of every object: src/title/layout.js. Light: setLight(t) with t 0 day .. 1 dusk .. 2 night
 // (tint on every picture + additive window / lamp / fire glows). Life: the chief carrying a tower of grilled
-// fish, 콩이, villagers, the snow train, buses and cars, ferry / sailboat / rowboat, gulls, chimney smoke.
+// fish, 누리, villagers, the snow train, buses and cars, ferry / sailboat / rowboat, gulls, chimney smoke.
 //
 // Per frame: no allocations (records and pools are made up front; pops run on their own little clock).
 import * as L from './layout.js';

@@ -42,7 +42,7 @@ export const LIKES = [
   ['cocoa', '코코아', '코코아 마시러', 'hot cocoa', 'have hot cocoa'],
   ['sweetpotato', '군고구마', '군고구마 먹으러', 'roasted sweet potatoes', 'eat roasted sweet potatoes'],
   ['bungeoppang', '붕어빵', '붕어빵 먹으러', 'fish-shaped buns', 'grab some bungeoppang'],
-  ['dogs', '강아지', '콩이 보러', 'dogs', 'see Kongi the dog'],
+  ['dogs', '강아지', '누리 보러', 'dogs', 'see Nuri the dog'],
   ['cats', '고양이', '고양이 보러', 'cats', 'see the cats'],
   ['penguins', '펭귄', '펭귄 보러', 'penguins', 'see the penguins'],
   ['sea', '바다', '바다 보러', 'the sea', 'look at the sea'],

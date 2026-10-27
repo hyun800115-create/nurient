@@ -184,7 +184,7 @@ export class Growth {
       // once all the founding shops are open
       const allFounded = order.every((x) => this.done.indexOf(x) >= 0);
       if (!allFounded) break;
-      const st = O.standing || [];
+      const st = this.standingList();
       if (!st.length) break;
       // ((v4.2.1 물류 손질, D2) the item the village has most of to spare first (logistics.cards)
       let pick = this.surplusCard(st);
@@ -200,6 +200,13 @@ export class Growth {
     }
     if (added && !quiet) { this.refreshLabels(true); this.gs.events.emit('v4:cards'); }
     return added;
+  }
+
+  /** the standing cards (balance.js v4.orders.standing); ((v4.2.1) + '고기 통조림 meatcan.standing' once meat cans exist) */
+  standingList() {
+    const st = (BALANCE.v4.orders.standing || []).slice(), MC = this.gs.v42 && this.gs.v42.meatcan, n = Math.floor(Number(BALANCE.meatcan && BALANCE.meatcan.standing) || 0);
+    if (MC && MC.on && n > 0) st.push({ item_can_meat: n });
+    return st;
   }
 
   /**
@@ -237,9 +244,15 @@ export class Growth {
     const seen = {};
     for (const s of this.gs.sources ? this.gs.sources() : []) {
       if (!s.enabled || !s.outStack || s.outStack.max <= 0 || s === this.gs.boathouse) continue;
-      const ty = s.output || (s.recipe && s.recipe.out);
+      let ty = s.output || (s.recipe && s.recipe.out);
       if (!ty || ty === 'tool') continue;
       const full = s.outStack.count >= s.outStack.max * at;
+      // ((v4.2.1) the cannery's pad holds both cans: a full pad counts for the kind it holds most of, the other resets)
+      if (s.kind === 'cannery' && s.meatOn && s.meatOn()) {
+        const other = s.outStack.countOf('item_can_meat') > s.outStack.countOf('item_can') ? 'item_can' : 'item_can_meat';
+        if (other === 'item_can') ty = 'item_can_meat';
+        if (!seen[other]) { o[other] = 0; seen[other] = true; }
+      }
       o[ty] = full ? (seen[ty] ? o[ty] : (o[ty] || 0) + step) : (seen[ty] ? o[ty] : 0);
       seen[ty] = true;
     }

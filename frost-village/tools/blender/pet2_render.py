@@ -124,8 +124,27 @@ def render_dog(opt):
 
 
 def render_portrait(opt):
+    """128x128 head-and-shoulders portrait, the same UI camera / framing / face as vil_render.render_portrait,
+    but of THIS dog (pet2_build: 누리) - vil_render would rebuild the batch-1 shiba from vil_build."""
     import vil_render
-    vil_render.render_portrait(KEY, {'cache': opt['cache'], 'force': opt['force'], 'samples': opt['samples']})
+    out = os.path.join(opt['cache'], KEY, 'portrait.png')
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    if os.path.exists(out) and not opt['force']:
+        return out
+    rig = pb.build()
+    sc = bc.setup_render(128, 128, samples=max(48, int(opt['samples'])), denoise=True)
+    sc.cycles.max_bounces = 4
+    bc.setup_lighting()
+    pose = pb.pose_for(rig, 'idle', 0, 'S')
+    pose['_show'] = {'p_eye_dot', 'p_m_open'}           # 누리's dark button eyes + a happy open mouth
+    rig.apply(pose, yaw_deg=bc.DIR_YAW['S'] - 12)
+    rig.update_strings()
+    bpy.context.view_layer.update()
+    tz = rig.j['head'].matrix_world.translation.z - 0.05
+    vil_render.ui_camera(128, 128, vil_render.PORTRAIT_PPU.get(KEY, 128), (0, 0, tz), anchor_px=(64, 70))
+    bc.render_to(out)
+    print(f'[{KEY}] portrait -> {out}', flush=True)
+    return out
 
 
 def render_items(opt):

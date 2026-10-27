@@ -1,7 +1,7 @@
 // LabTown: the body layer of the story lab (the game's TownSim + DollPool stand-in). Every person of the stand-in town
 // (tools/test/story_lab/standin.mjs) has a body that follows the TownSim-like day: walks to the building of its
 // schedule segment, goes inside ('in') or stands / sits around it ('out'). Townsfolk are the real paper dolls
-// (tools/townfolk2_compose.js: assets/townfolk + assets/townfolk2), the named villagers / the chief / 콩이 / 나비 are
+// (tools/townfolk2_compose.js: assets/townfolk + assets/townfolk2), the named villagers / the chief / 누리 / 나비 are
 // their character atlases. Rigs exist only near the view (like v4's DollPool). Implements ports.town (ports.js).
 
 import { Townfolk2, TownfolkSprite2 } from '../../../townfolk2_compose.js';

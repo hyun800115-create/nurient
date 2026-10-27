@@ -646,7 +646,7 @@ A small "what next" chooser runs twice a second. The current activity is locked 
 | **기차 구경** | 30 | a train arrives within 20 s and he is within 1,500 px of our station | arrival + departure loop | He walks to the platform and waves at the windows (`wave` anim). |
 | **수다** (chat) | 25 (+15 if not done for 3 min) | a resident or townsperson idle or sitting within 600 px; not one he chatted with in the last 5 min | 20–30 s | Both face each other, 2–4 alternating bubbles from `ResidentChat` / `VillageLife` lines (no AI calls), 눈꽃말 voices, hearts at the end; 총총이 takes notes. |
 | **사무실** | 20 (+30 from 08:00–10:00 when a new paper is out; +30 when 2+ letters are unread) | office built | 30–60 s | He walks in (the shell fades), sits at his desk (`sit`), reads the paper (`read`), stamps a letter; staff work around him; the camera frames the cutaway. |
-| **쉬기** | 20 | — | 20–40 s | Sits on a bench, warms his hands at the campfire (`warm_hands`), throws a ball for 콩이 (`DogPlay` throw / pet), snowball fight with kids (`VillageLife`), looks at the sea. |
+| **쉬기** | 20 | — | 20–40 s | Sits on a bench, warms his hands at the campfire (`warm_hands`), throws a ball for 누리 (`DogPlay` throw / pet), snowball fight with kids (`VillageLife`), looks at the sea. |
 | **점심** | 50 at 12:00–12:40 | big restaurant open | 40 s | Sits at a free outdoor table and eats a 정식 (free; the kitchen plates it). |
 | **저녁** | 40 from 20:00 | — | until 06:00 or a higher score | Office with the lamp on, or the campfire; from 22:00 dozes by the office stove (`emote_zzz`). |
 

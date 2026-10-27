@@ -2,7 +2,7 @@
 // (take products -> sell -> collect cash -> upgrades). Samples object counts, tweens, timers,
 // sounds, listeners, JS heap (after forced GC), per-frame logic/render cost every 30 s.
 //   node tools/test/review_robust_soak.mjs [seconds=720] [--v3] [--dog] [--norender]
-// (v3.5) --v3 also hires the third workers; --dog: the chief whistles for Kongi and plays with it
+// (v3.5) --v3 also hires the third workers; --dog: the chief whistles for Nuri and plays with it
 // (treat / ball / pet) every ~20 s while the bot works. Samples include operators, piles, raw porters, dog.
 import { newPage, bootToGame, launch, start, sleep, writeJSON, OUT } from './review_robust_lib.mjs';
 

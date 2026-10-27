@@ -130,6 +130,10 @@ def main():
         check('Activity.%s implemented' % m, ('Lcom/snowbloom/village/MainActivity;', m) in meths)
     check('OnBackInvokedCallback.onBackInvoked implemented (Android 13+ back)', ('Lcom/snowbloom/village/Api33$BackCallback;', 'onBackInvoked') in meths)
     check('View.onApplyWindowInsets implemented (edge-to-edge padding)', ('Lcom/snowbloom/village/MainActivity$GameFrame;', 'onApplyWindowInsets') in meths)
+    # (마을 옮기기) window.SnowbloomAndroid and the page-start hook that limits it to the game's own origin
+    for m in ('copy', 'share', 'paste', 'trusted'):
+        check('WebBridge.%s present (마을 옮기기 bridge)' % m, ('Lcom/snowbloom/village/WebBridge;', m) in meths)
+    check('WebViewClient.onPageStarted implemented (the bridge learns which page is showing)', (client, 'onPageStarted') in meths)
 
     # signatures
     if a.no_v1:

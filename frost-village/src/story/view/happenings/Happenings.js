@@ -1,4 +1,4 @@
-// 귀여운 일 (docs/v5_v8_plan.md §6.1.6): the v5 happenings on stage. P1 (콩이's bread heist) and P3 (the cat on the
+// 귀여운 일 (docs/v5_v8_plan.md §6.1.6): the v5 happenings on stage. P1 (누리's bread heist) and P3 (the cat on the
 // roof) are fully staged with the village pets; P2, P4–P6 need the snowman hat / the sleigh bus and wagon
 // (vehicles_runtime) — until those run they come as a small toast with 보러 가기. One at a time, ≥ 150 s apart.
 
@@ -21,7 +21,7 @@ export async function playHappening(h, sh, ctx) {
     await dogRun;
     sh.anim(dog, 'happy');
     await sh.wait(2.4);
-    // the chief whistles: 콩이 comes back, head low
+    // the chief whistles: 누리 comes back, head low
     if (ctx.spots.chief) { sh.emote(dog, 'emote_sweat', 2); await sh.walk(dog, ctx.spots.chief.x + 40, ctx.spots.chief.y + 20, { speed: 0.6 }); sh.anim(dog, 'sit'); }
     if (ctx.keeper) { sh.anim(ctx.keeper, 'happy'); sh.emote(ctx.keeper, 'emote_laugh', 2); }
     await sh.wait(2.4);

@@ -91,6 +91,43 @@ export function summarize(d) {
   const rest = r.end.restEarned - r.s0.restEarned, exp = r.end.exCoins - r.s0.exCoins, dep = r.end.depCoins - r.s0.depCoins;
   o.coins = { createdPerMin: Math.round((shop + rest + exp + dep) / mins), shopsPerMin: Math.round(shop / mins), restaurantPerMin: Math.round(rest / mins), exportPerMin: Math.round(exp / mins), depotPerMin: Math.round(dep / mins), collectedPerMin: Math.round((r.end.earned - r.s0.earned) / mins) };
   o.madePerMin = Math.round((r.end.made - r.s0.made) / mins);
+  // ---- (v4.2.1 고기 통조림, docs/build_reports/v421_l0.md §10: gates MG1–MG10)
+  const sc = r.misc && r.misc.store, smk = r.misc && r.misc.smokeIn;
+  const mc = {
+    rack90: o.pile90.meat !== undefined ? o.pile90.meat : null,
+    rawMeatLeaving: pm(F(null, /^sink:(dock_surplus|warehouse)$/, 'item_meat_raw')),
+    huntersBlocked: o.gatherersIdle.hunter !== undefined ? o.gatherersIdle.hunter : null,
+    huntersCaught: pm(F('make', 'pile:meat', 'item_meat_raw') + F('ch:g:hunter', 'pile:meat', 'item_meat_raw')),
+    meatCansMade: pm(F('make', 'out:cannery', 'item_can_meat')),
+    fishCansMade: pm(F('make', 'out:cannery', 'item_can')),
+    ingotIntoCannery: pm(F(null, 'in:cannery', 'item_ingot')),
+    meatIntoCannery: pm(F(null, 'in:cannery', 'item_meat_raw')),
+    meatIntoCanneryBy: { meatPorter: pm(F('ch:raw:cannery', 'in:cannery', 'item_meat_raw')), crew: pm(F('ch:wh', 'in:cannery', 'item_meat_raw')), rawPorters: pm(F(/^ch:raw:(?!cannery)/, 'in:cannery', 'item_meat_raw')) },
+    tradeIngots: pm(F(null, 'shelf:trade', 'item_ingot')),
+    smokehouseProcessed: o.stations.smokehouse ? o.stations.smokehouse.processed : null,
+    smokehouseInEmpty: smk && smk.n ? Math.round((100 * smk.empty) / smk.n) : null,
+    smokehouseInUnderHalf: smk && smk.n ? Math.round((100 * smk.half) / smk.n) : null,
+    canneryBlocked: o.stations.cannery ? o.stations.cannery.blocked : null,
+    canneryStarved: o.stations.cannery ? o.stations.cannery.starved : null,
+    meatCansSold: pm(F('shelf:store', 'use', 'item_can_meat')),
+    meatCansExported: pm(F(null, 'sink:dock_surplus', 'item_can_meat')),
+    meatCansToCards: pm(F(null, 'sink:cargo', 'item_can_meat')),
+    meatCansToWarehouse: pm(F(null, 'sink:warehouse', 'item_can_meat')),
+    meatCansWarehouseEnd: r.misc && r.misc.whMeatEnd !== undefined ? r.misc.whMeatEnd : null,
+    storeSold: pm(F('shelf:store', 'use', null)),
+    storeBothCansEmpty: sc && sc.n ? Math.round((100 * sc.bothEmpty) / sc.n) : null,
+    storeCansEmpty: sc && sc.n ? Math.round((100 * sc.canEmpty) / sc.n) : null,
+    storeMeatEmpty: sc && sc.n ? Math.round((100 * sc.meatEmpty) / sc.n) : null,
+    meatPorter: r.st['raw:cannery'] || null,
+    meatPorterTrips: r.trips['raw:cannery'] || null,
+    meatCanPorterTrips: r.trips['mc:cannery'] || null,
+    meatCansByStationPorters: pm(F('out:cannery', 'ch:stn', 'item_can_meat')),
+    meatCansByCrew: pm(F('out:cannery', 'ch:wh', 'item_can_meat')),
+    meatCansByCanneryPorters: pm(F('out:cannery', /^ch:p[12]:cannery$/, 'item_can_meat')),
+  };
+  const made = mc.meatCansMade;
+  mc.soldOrExportedShare = made > 0 ? Math.round((100 * (mc.meatCansSold + mc.meatCansExported + mc.meatCansToCards)) / made) : null;
+  o.meatcan = mc;
   o.whAvg = r.misc && r.misc.whSum !== undefined ? Math.round(r.misc.whSum / r.samples) : null;
   return o;
 }

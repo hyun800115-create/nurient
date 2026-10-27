@@ -64,7 +64,7 @@ export class UI extends Phaser.Scene {
     this.zoomInBtn = this.makeZoomButton('in', () => this.gs.zoomBy(BALANCE.camera.zoomStep));
     this.zoomOutBtn = this.makeZoomButton('out', () => this.gs.zoomBy(1 / BALANCE.camera.zoomStep));
     this.mapBtn = this.makeZoomButton('map', () => this.gs.toggleOverview());
-    // ---- (v3.5) the whistle (call Kongi) + the dog's play bar (treat / fetch / pet + affection hearts)
+    // ---- (v3.5) the whistle (call Nuri) + the dog's play bar (treat / fetch / pet + affection hearts)
     this.whistleBtn = this.makeIconButton(0, 0, Assets.pick('ui_icon_whistle', 'ui_icon_worker'), 80, () => { if (this.gs.dog) this.gs.dog.command('whistle'); });
     this.whistleBtn.icon.setScale(this.whistleBtn.icon.scaleX * 1.12);
     this.whistleBtn.setVisible(false);
@@ -435,7 +435,7 @@ export class UI extends Phaser.Scene {
 
   updateDogBar(dt) {
     const d = this.gs.dog;
-    // the whistle shows once Kongi lives in the village
+    // the whistle shows once Nuri lives in the village
     const has = !!(d && d.r);
     if (this.whistleBtn.visible !== has) { this.whistleBtn.setVisible(has); this.whistleBadge.setVisible(has); }
     if (has) {

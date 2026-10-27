@@ -135,7 +135,7 @@ async function setup(scene, art, tfMan) {
   const viewRect = () => cam.worldView;
   const labTown = new LabTown(scene, art, town, { buildings: LAB_BUILDINGS, benches: LAB_BENCHES }, tfMan, { T: () => clock.T, view: viewRect, villagerChars: ['npc_grandma', 'npc_grandpa', 'npc_aunt', 'npc_uncle', 'npc_kid_girl'] });
   const tp = labTown.ports();
-  // the chief, 콩이 and 나비 (lab bodies; in the game: the player and the pets)
+  // the chief, 누리 and 나비 (lab bodies; in the game: the player and the pets)
   const hall = pointOf(art, 'v_hall', 'doorPoint');
   LAB.chief = tp.spawn({ key: 'player', x: hall.x + 120, y: hall.y + 150, held: true, voice: 'chief' });
   LAB.dog = tp.spawn({ key: 'pet_dog', x: hall.x + 170, y: hall.y + 170, held: true, pet: true });

@@ -315,7 +315,9 @@ export class Market {
     if (this.spawnT <= 0) {
       // (v3.5 review) once the village is complete customers come a little more often (balance.js customers.spawnEveryLate)
       const late = !this.cfg.spawnEvery && gs.progress && gs.progress.complete && Number(BALANCE.customers.spawnEveryLate);
-      this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || late || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4);
+      // ((v4.2.1) cfg.spawnK(): a factor on that time — the 잡화점's guests come more often once meat cans exist)
+      const k = this.cfg.spawnK ? Math.max(0.1, Number(this.cfg.spawnK()) || 1) : 1;
+      this.spawnT = Math.max(0.3, Number(this.cfg.spawnEvery || late || BALANCE.customers.spawnEvery) || 2.6) * (0.8 + Math.random() * 0.4) * k;
       // (v4-A) while train visitors wait to join the line, the anonymous customers let them in first
       const vw = gs.v4 && gs.v4.visitorsWaiting ? gs.v4.visitorsWaiting(this) : 0;
       if (this.queue.length < this.maxQueue && vw < 2 && (!this.cfg.available || this.availableFoods().length)) this.spawnCustomer();

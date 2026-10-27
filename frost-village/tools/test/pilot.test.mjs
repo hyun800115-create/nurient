@@ -158,8 +158,8 @@ console.log('a 10-minute day with a chore always waiting');
   P.destroy(); Q.destroy();
 }
 
-// ((v4.2 CODE-2 review fixes) the night, the day's train, 콩이, a load first
-console.log('the day: night rest, one train a day, 콩이, the bag first');
+// ((v4.2 CODE-2 review fixes) the night, the day's train, 누리, a load first
+console.log('the day: night rest, one train a day, 누리, the bag first');
 {
   const base = { now: 0, urgent: false, lunchOpen: true, bagCount: 0, bagRoom: 8, work: true, noCourier: false, cashMax: 0, trainSoon: false, trainNear: false, chatMate: false, chatIdle: 0, office: true, paperNew: false, unread: 0, dog: false, dogIdle: 0, locked: {} };
   const pickAt = (over, n = 40) => { const c = Object.assign({}, base, over); const out = {}; for (let k = 0; k < n; k++) { const a = A.choose(c, 9, 1, k, null).act; out[a] = (out[a] || 0) + 1; } return out; };
@@ -172,7 +172,7 @@ console.log('the day: night rest, one train a day, 콩이, the bag first');
   ok((tr.train || 0) === 40, 'the day\'s first train watch beats the afternoon chores (' + JSON.stringify(tr) + ')');
   ok(!pickAt({ hour: 14, trainSoon: true, trainNear: true, trainToday: true }).train, 'a second watch the same day does not');
   const dg = pickAt({ hour: 15, work: false, dog: true, dogIdle: 700 });
-  ok((dg.dog || 0) === 40, '콩이 after 10 minutes without a game comes before a rest (' + JSON.stringify(dg) + ')');
+  ok((dg.dog || 0) === 40, '누리 after 10 minutes without a game comes before a rest (' + JSON.stringify(dg) + ')');
   const lunchBag = pickAt({ hour: 12.2, bagCount: 5 });
   ok(!lunchBag.lunch && (lunchBag.work || 0) === 40, 'with a load to deliver, lunch waits: 업무 first (' + JSON.stringify(lunchBag) + ')');
   ok((pickAt({ hour: 12.2, bagCount: 5, work: false }).lunch || 0) === 40, 'a load nobody takes does not block lunch');
@@ -185,12 +185,12 @@ console.log('the day: night rest, one train a day, 콩이, the bag first');
 }
 
 // (the running watch / game is judged as it began: starting it must not take its own bonus and range away)
-console.log('a train watch and a game with 콩이 last once begun');
+console.log('a train watch and a game with 누리 last once begun');
 {
   const { gs } = village();
   const rail = { running: true, phase: 'toOurs', untilArrival: () => 12 };
   gs.v4 = { ours: { x: 2000, y: 0, wait: [{ x: 1960, y: 10 }] }, rail, clock: { on: true, day: () => 2, hour: () => 15 } };
-  gs.dog.r = { x: 1100, y: 0 };                       // 콩이 1,100 px away: in range only after 10 minutes without a game
+  gs.dog.r = { x: 1100, y: 0 };                       // 누리 1,100 px away: in range only after 10 minutes without a game
   const P = new ChiefPilot(gs, gs.v42, { cid: 4242 });
   P.start('test');
   let c0 = P.context();
@@ -207,13 +207,13 @@ console.log('a train watch and a game with 콩이 last once begun');
   const c2 = P.context();
   ok(c2.trainToday && !c2.trainNear, 'after the watch: the day\'s watch is done (range back to 1,500 px)');
   const d0 = P.context();
-  ok(d0.dog && d0.dogIdle >= 600 && A.score('dog', d0) >= 35, '콩이 after a long while, 1,100 px away: a game (' + A.score('dog', d0) + ')');
+  ok(d0.dog && d0.dogIdle >= 600 && A.score('dog', d0) >= 35, '누리 after a long while, 1,100 px away: a game (' + A.score('dog', d0) + ')');
   P.begin('dog');
   const d1 = P.context();
   ok(d1.dog && A.score('dog', d1) >= 35, 'once begun the game keeps its range and bonus (' + A.score('dog', d1) + ')');
   P.begin('rest');
   const d2 = P.context();
-  ok(!d2.dog && d2.dogIdle < 600, 'after the game: 콩이 1,100 px away is out of range again');
+  ok(!d2.dog && d2.dogIdle < 600, 'after the game: 누리 1,100 px away is out of range again');
   P.destroy();
 }
 

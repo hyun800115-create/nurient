@@ -190,11 +190,11 @@ export const STRINGS = {
     obj_pile_ore: '광석 더미에서 광석을 가져가세요', obj_pile_meat: '고기 걸이에서 고기를 가져가세요',
     obj_operator: '기술자를 고용하면 가공을 대신 해 줘요', obj_raw: '재료 짐꾼을 고용하면 모아둔 재료를 날라 줘요',
 
-    // ---------------- (v3.5) 강아지 콩이
+    // ---------------- (v3.5) 강아지 누리
     dogTreat: '간식', dogPlay: '공놀이', dogPet: '쓰다듬기',
-    dogComing: '콩이가 달려와요!', dogGift: '콩이가 선물을 물어 왔어요! +{n}', dogTrick: '콩이의 재주!', dogLove: '친밀도',
-    dogWait: '조금 이따가 해요', dogFar: '콩이가 너무 멀리 있어요', dogFull: '콩이는 배불러요',
-    dogWhistleHint: '휘파람을 누르면 콩이가 달려와요!',
+    dogComing: '누리가 달려와요!', dogGift: '누리가 선물을 물어 왔어요! +{n}', dogTrick: '누리의 재주!', dogLove: '친밀도',
+    dogWait: '조금 이따가 해요', dogFar: '누리가 너무 멀리 있어요', dogFull: '누리는 배불러요',
+    dogWhistleHint: '휘파람을 누르면 누리가 달려와요!',
 
     // ---------------- (v4-A) 이웃 마을 솔방울 마을 · 눈썰매 기차 · 낮과 밤
     villageCompleteRumor: '동쪽 안개 너머에서 기적 소리가…',
@@ -377,7 +377,7 @@ export const STRINGS = {
     news_rank: '서리마을이 {rank}이 되었어요!', news_loop: '기차가 빙글! 서리역에 \'도는 선로\' 생겨', news_record: '최고 기록! 하루 판매 {a}개',
     news_train: '솔방울호가 어제 {a}번 다녀갔어요', news_shop: '솔방울 마을에 {shop}이(가) 생겼어요', news_courier: '딸랑이가 어제 {a}코인을 은행에 넣었어요',
     news_depot: '물류창고가 어제 {a}개를 팔았어요', news_quiet: '조용하고 포근한 하루였어요', news_snow: '함박눈 소식! 눈사람을 만들기 좋은 날',
-    news_dog: '콩이가 촌장님 곁을 지켰어요', news_fish: '바다가 넉넉해요: 어제 생선 {a}마리', news_bread: '빵 굽는 냄새가 광장을 채웠어요',
+    news_dog: '누리가 촌장님 곁을 지켰어요', news_fish: '바다가 넉넉해요: 어제 생선 {a}마리', news_bread: '빵 굽는 냄새가 광장을 채웠어요',
     news_happy: '마을 행복 {a}점', news_people: '서리마을 주민 {a}명',
     ad_0: '광고 · 역앞 카페 따뜻한 코코아 한 잔!', ad_1: '광고 · 목공소 의자 주문 받아요', ad_2: '광고 · 철물점 새 도끼 들어왔어요', ad_3: '광고 · 큰 식당 오늘의 정식',
     // 편지
@@ -418,12 +418,17 @@ export const STRINGS = {
     urg_station: '가공소에서 일하는 중', urg_site: '공사장에 재료를 나르는 중', urg_food: '식량을 채우러 가는 중',
     urg_cargo: '주문 상자를 짐 싣는 곳으로 나르는 중', urg_fetch: '재료를 가지러 가는 중', urg_deliver: '판매대 일을 돕는 중', pact_lunch: '큰 식당에서 점심 먹는 중', pact_work: '{what}', act_evening: '사무실 등불 아래에서 쉬는 중',
     pact_doze: '난롯가에서 꾸벅꾸벅', act_collect: '코인을 모으는 중', pact_train: '기차를 구경하는 중', act_chat: '{name}와(과) 수다 떠는 중',
-    act_office: '사무실에서 {what}', act_rest: '{what}', act_dog: '콩이와 노는 중',
+    act_office: '사무실에서 {what}', act_rest: '{what}', act_dog: '누리와 노는 중',
     actw_carry: '{item}을(를) {place}(으)로 나르는 중', actw_take: '{place}에서 {item} 가져오는 중', actw_cook: '{st}에서 일하는 중',
     actw_register: '계산대를 봐 주는 중', actw_ribbon: '개업 테이프를 자르러 가는 중', actw_food: '광부 식량 상자를 채우는 중',
     acto_paper: '신문 읽는 중', acto_letter: '편지에 도장 쾅', acto_sit: '책상에 앉아 있는 중',
     actr_bench: '벤치에서 쉬는 중', actr_fire: '모닥불에 손 녹이는 중', actr_sea: '바다를 바라보는 중',
     cut_train: '기차가 들어와요', cut_ribbon: '개업 테이프', cut_movein: '새 이웃 이사', cut_vault: '금고가 빙글', cut_mail: '우체통에 편지', cut_sleigh: '썰매에 짐 싣기',
+    // (v4.2.1) 고기 통조림
+    item_can_meat: '고기 통조림', mcan_pad: '고기 통조림 기계',
+    mcanBanner: '남는 고기로 통조림을 만들 수 있어요!', mcanSub: '통조림 공장 옆 발판에서 기계를 들여요. 짐꾼 두 명이 함께 와요',
+    mcanDone: '이제 통조림 공장이 고기 통조림도 만들어요', mcanDoneSub: '고기 걸이에 남는 고기를 날라 와요',
+    job_mcan_raw: '고기 짐꾼 (통조림)', job_mcan_goods: '고기 통조림 짐꾼',
   },
 
   en: {
@@ -606,11 +611,11 @@ export const STRINGS = {
     obj_pile_ore: 'Take ore from the ore pile', obj_pile_meat: 'Take meat from the meat rack',
     obj_operator: 'Hire a worker to run the station for you', obj_raw: 'Hire a porter to carry the collected goods',
 
-    // ---------------- (v3.5) Kongi the dog
+    // ---------------- (v3.5) Nuri the dog
     dogTreat: 'Treat', dogPlay: 'Fetch', dogPet: 'Pet',
-    dogComing: 'Kongi is coming!', dogGift: 'Kongi brought you a gift! +{n}', dogTrick: 'Kongi does a trick!', dogLove: 'Affection',
-    dogWait: 'In a moment', dogFar: 'Kongi is too far away', dogFull: 'Kongi is full',
-    dogWhistleHint: 'Tap the whistle to call Kongi!',
+    dogComing: 'Nuri is coming!', dogGift: 'Nuri brought you a gift! +{n}', dogTrick: 'Nuri does a trick!', dogLove: 'Affection',
+    dogWait: 'In a moment', dogFar: 'Nuri is too far away', dogFull: 'Nuri is full',
+    dogWhistleHint: 'Tap the whistle to call Nuri!',
 
     // ---------------- (v4-A) the neighbour town Pinecone Village · the snow train · day and night
     villageCompleteRumor: 'A train whistle beyond the eastern fog…',
@@ -767,7 +772,7 @@ export const STRINGS = {
     news_rank: 'Frost Village became a {rank}!', news_loop: "The train turns! A loop at Frost Station", news_record: 'Record! {a} sold in a day',
     news_train: 'The Pinecone Express came {a} times', news_shop: 'A new {shop} in Pinecone Village', news_courier: 'The courier banked {a} coins yesterday',
     news_depot: 'The depot sold {a} items yesterday', news_quiet: 'A quiet, cosy day', news_snow: 'Big snow! A good day for snowmen',
-    news_dog: 'Kongi kept the chief company', news_fish: 'The sea is generous: {a} fish yesterday', news_bread: 'The smell of bread filled the plaza',
+    news_dog: 'Nuri kept the chief company', news_fish: 'The sea is generous: {a} fish yesterday', news_bread: 'The smell of bread filled the plaza',
     news_happy: 'Village happiness {a}', news_people: '{a} people live in Frost Village',
     ad_0: 'Ad · a hot cocoa at the station café!', ad_1: 'Ad · the carpenter takes chair orders', ad_2: 'Ad · new axes at the hardware store', ad_3: "Ad · today's set at the big restaurant",
     lettersNone: 'No letters yet', letterFrom: 'A letter from {from}', letterArchived: 'Older letters',
@@ -804,12 +809,15 @@ export const STRINGS = {
     urg_station: 'working at a workshop', urg_site: 'carrying materials to a building site', urg_food: 'going to fill up the food',
     urg_cargo: 'carrying order crates to the loading dock', urg_fetch: 'fetching materials', urg_deliver: 'helping at the counters', pact_lunch: 'having lunch at the big restaurant', pact_work: '{what}', act_evening: 'resting under the office lamp',
     pact_doze: 'dozing by the stove', act_collect: 'collecting coins', pact_train: 'watching the train', act_chat: 'chatting with {name}',
-    act_office: '{what} in the office', act_rest: '{what}', act_dog: 'playing with Kongi',
+    act_office: '{what} in the office', act_rest: '{what}', act_dog: 'playing with Nuri',
     actw_carry: 'carrying {item} to the {place}', actw_take: 'fetching {item} from the {place}', actw_cook: 'working the {st}',
     actw_register: 'minding the register', actw_ribbon: 'off to cut a ribbon', actw_food: "filling the miners' food box",
     acto_paper: 'reading the paper', acto_letter: 'stamping a letter', acto_sit: 'sitting at the desk',
     actr_bench: 'resting on a bench', actr_fire: 'warming his hands by the fire', actr_sea: 'looking at the sea',
-    cut_train: 'the train comes in', cut_ribbon: 'a ribbon cutting', cut_movein: 'new neighbours', cut_vault: 'the vault spins', cut_mail: 'a letter in the mailbox', cut_sleigh: 'the sleigh is loaded',
+    cut_train: 'the train comes in', cut_ribbon: 'a ribbon cutting', cut_movein: 'new neighbours', cut_vault: 'the vault spins', cut_mail: 'a letter in the mailbox', cut_sleigh: 'the sleigh is loaded',    item_can_meat: 'meat can', mcan_pad: 'Meat-can machine',
+    mcanBanner: 'Leftover meat can go into cans!', mcanSub: 'Buy the machine on the pad by the cannery. Two porters come with it',
+    mcanDone: 'The cannery makes meat cans now', mcanDoneSub: 'A porter brings the leftover meat from the meat rack',
+    job_mcan_raw: 'Meat porter (cannery)', job_mcan_goods: 'Meat-can porter',
   },
 };
 
@@ -863,7 +871,7 @@ export function josa(word, pair) {
 // =====================================================================
 export const LINES = {
   ko: {
-    kid: ['눈사람 만들자!', '강아지 콩이 귀여워!', '눈 오는 날이 제일 좋아!', '내가 제일 빨라!', '손이 꽁꽁 얼었어!', '오늘 생선 최고!', '썰매 타고 싶다~', '촌장님 멋져~'],
+    kid: ['눈사람 만들자!', '강아지 누리 귀여워!', '눈 오는 날이 제일 좋아!', '내가 제일 빨라!', '손이 꽁꽁 얼었어!', '오늘 생선 최고!', '썰매 타고 싶다~', '촌장님 멋져~'],
     prankster: ['히히, 비밀이야~', '눈덩이 백 개 만들 거야!', '아저씨 모자 맞히기 내기!', '들키면 안 돼…!', '누가 내 눈덩이 가져갔어?'],
     teen: ['그거 들었어? 촌장님 또 해냈대!', '이 목도리 새로 떴어~', '오늘 하늘 진짜 예쁘다', '빵집에 새 빵 나왔대!', '음악 소리 들려? 춤추고 싶다~'],
     showoff: ['나 눈싸움 무패야!', '봐, 이 팔뚝!', '촌장님, 저도 일 잘해요!', '썰매 타러 갈 사람~?'],
@@ -917,7 +925,7 @@ export const LINES = {
     station: ['기차가 들어옵니다~!', '안전선 밖으로 물러나 주세요!', '솔방울행 기차 출발합니다!'],
   },
   en: {
-    kid: ['Let\'s build a snowman!', 'Kongi is so cute!', 'Snow days are the best!', 'I\'m the fastest!', 'My hands are frozen!', 'Today\'s fish is the best!', 'I want to go sledding~', 'The chief is cool~'],
+    kid: ['Let\'s build a snowman!', 'Nuri is so cute!', 'Snow days are the best!', 'I\'m the fastest!', 'My hands are frozen!', 'Today\'s fish is the best!', 'I want to go sledding~', 'The chief is cool~'],
     prankster: ['Hehe, it\'s a secret~', 'I\'ll make a hundred snowballs!', 'Bet I can hit Uncle\'s hat!', 'Don\'t get caught…!', 'Who took my snowball?'],
     teen: ['Did you hear? The chief did it again!', 'I knitted a new scarf~', 'The sky is so pretty today', 'The bakery has new bread!', 'Hear the music? I want to dance~'],
     showoff: ['I never lose a snowball fight!', 'Look at these arms!', 'Chief, I work hard too!', 'Who\'s up for sledding?'],
@@ -979,13 +987,13 @@ export const TOWN_NAMES = {
     '은서', '선우', '소율', '현우', '예린', '유준', '지유', '정우', '수빈', '승우', '가은', '지훈', '서윤', '민준', '하윤', '태윤', '나은', '은우', '유나', '시윤',
     '채은', '이준', '아린', '민재', '서아', '준서', '연우', '지환', '예은', '승민', '다인', '하준', '소윤', '준혁', '지민', '태민', '수연', '재윤', '혜원', '동하',
     '미숙', '영호', '순자', '정수', '옥순', '광수', '말순', '덕배', '영자', '춘식', '복순', '만석', '금순', '봉구', '정희', '용수', '명자', '철수', '영희', '길동',
-    '보람', '한결', '초롱', '가람', '나래', '다솜', '새봄', '온유', '바다', '하늘', '누리', '단비', '여름', '가을', '겨울', '이슬', '별이', '솔이', '봄이', '산들',
+    '보람', '한결', '초롱', '가람', '나래', '다솜', '새봄', '온유', '바다', '하늘', '도담', '단비', '여름', '가을', '겨울', '이슬', '별이', '솔이', '봄이', '산들',
     '은비', '태호', '경민', '수진', '상우', '혜진', '동건', '미영', '재석', '은희', '성민', '지혜', '현수', '보영', '창민', '유진', '기태', '선희', '동욱', '미란'],
   en: ['Minji', 'Seojun', 'Haeun', 'Doyun', 'Jiwoo', 'Yejun', 'Sua', 'Siwoo', 'Seoyeon', 'Juwon', 'Harin', 'Jiho', 'Jia', 'Junwoo', 'Chaewon', 'Dohyun', 'Yunseo', 'Gunwoo', 'Daeun', 'Woojin',
     'Eunseo', 'Sunwoo', 'Soyul', 'Hyunwoo', 'Yerin', 'Yujun', 'Jiyu', 'Jungwoo', 'Subin', 'Seungwoo', 'Gaeun', 'Jihoon', 'Seoyun', 'Minjun', 'Hayun', 'Taeyun', 'Naeun', 'Eunwoo', 'Yuna', 'Siyun',
     'Chaeeun', 'Ijun', 'Arin', 'Minjae', 'Seoa', 'Junseo', 'Yeonwoo', 'Jihwan', 'Yeeun', 'Seungmin', 'Dain', 'Hajun', 'Soyun', 'Junhyuk', 'Jimin', 'Taemin', 'Suyeon', 'Jaeyun', 'Hyewon', 'Dongha',
     'Misook', 'Youngho', 'Soonja', 'Jungsoo', 'Oksoon', 'Kwangsoo', 'Malsoon', 'Deokbae', 'Youngja', 'Chunsik', 'Boksoon', 'Manseok', 'Geumsoon', 'Bonggu', 'Junghee', 'Yongsoo', 'Myungja', 'Cheolsoo', 'Younghee', 'Gildong',
-    'Boram', 'Hangyeol', 'Chorong', 'Garam', 'Narae', 'Dasom', 'Saebom', 'Onyu', 'Bada', 'Haneul', 'Nuri', 'Danbi', 'Yeoreum', 'Gaeul', 'Gyeoul', 'Iseul', 'Byeoli', 'Soli', 'Bomi', 'Sandeul',
+    'Boram', 'Hangyeol', 'Chorong', 'Garam', 'Narae', 'Dasom', 'Saebom', 'Onyu', 'Bada', 'Haneul', 'Dodam', 'Danbi', 'Yeoreum', 'Gaeul', 'Gyeoul', 'Iseul', 'Byeoli', 'Soli', 'Bomi', 'Sandeul',
     'Eunbi', 'Taeho', 'Kyungmin', 'Sujin', 'Sangwoo', 'Hyejin', 'Donggun', 'Miyoung', 'Jaeseok', 'Eunhee', 'Sungmin', 'Jihye', 'Hyunsoo', 'Boyoung', 'Changmin', 'Yujin', 'Kitae', 'Sunhee', 'Donguk', 'Miran'],
 };
 

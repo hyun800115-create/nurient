@@ -122,7 +122,7 @@ export class ChiefPilot {
     const rail = nb && nb.rail;
     const cashes = (gs.tills || []).filter((c) => c && c.enabled !== false);
     const mate = chatMate(gs, p.x, p.y, this.chatted, this.t, this.chatRange());
-    // (the running train watch / game with 콩이 is judged as it was when it began: the day's watch and the dog's idle
+    // (the running train watch / game with 누리 is judged as it was when it began: the day's watch and the dog's idle
     //  time count once it is over — else the begin itself took away the bonus and the range, and the act ended at once)
     const doing = this.act ? this.act.act : null;
     const today = clock ? clock.day() : -1;

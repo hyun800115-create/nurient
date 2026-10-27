@@ -1,6 +1,6 @@
 {
  "version": 1,
- "notes": "Dog play (CONTRACT_V4 I). characters.pet_dog OVERRIDES the villagers fragment entry (same key, same look; load this fragment after villagers). Frames {anim}_{dir}_{i}, 128x128, anchor (64,104); each anim lists its dirs (social/play anims S/SE/E, mirror SW/W). Extra points are px offsets from the anchor per render dir (negate dx for mirrored dirs): mouthPoint (ball/treat in the mouth, idle), treatPoint (biscuit in eat), bellyPoint (belly centre in roll, where the petting hand goes), anims.catch.impactPoint (ball centre at the catch frame). Items are 72x72 like every item (anchor = bottom centre). Icons are 96x96 (anchor centre).",
+ "notes": "Dog play (CONTRACT_V4 I). characters.pet_dog OVERRIDES the villagers fragment entry (same key; the dog is 누리, a light-brown maltipoo with a white chest patch and white front socks; load this fragment after villagers). Frames {anim}_{dir}_{i}, 128x128, anchor (64,104); each anim lists its dirs (social/play anims S/SE/E, mirror SW/W). Extra points are px offsets from the anchor per render dir (negate dx for mirrored dirs): mouthPoint (ball/treat in the mouth, idle), treatPoint (biscuit in eat), bellyPoint (belly centre in roll, where the petting hand goes), anims.catch.impactPoint (ball centre at the catch frame). Items are 72x72 like every item (anchor = bottom centre). Icons are 96x96 (anchor centre).",
  "generators": {
   "pets2_icons": "tools/fx/gen_pets2_ui.py",
   "pets2_pet_dog": "tools/blender/pet2_render.py + pet2_pack.py",
@@ -84,7 +84,7 @@
     96,
     96
    ],
-   "notes": "Happy shiba face (^^) with a patting hand + small heart: pet the dog (쓰다듬기)."
+   "notes": "Happy face of 누리 the maltipoo (^^, floppy ears, curly light-brown coat) with a patting hand + small heart: pet the dog (쓰다듬기)."
   },
   "ui_icon_heart_full": {
    "atlas": "pets2_icons",
@@ -189,8 +189,8 @@
    "kind": "pet",
    "role": "pet",
    "name": {
-    "ko": "시바견 콩이",
-    "en": "Kongi"
+    "ko": "말티푸 누리",
+    "en": "Nuri"
    },
    "traits": [
     "energetic",
@@ -336,8 +336,8 @@
      ]
     }
    },
-   "headTop": -39,
-   "headTopBeg": -55,
+   "headTop": -40,
+   "headTopBeg": -54,
    "headTopRoll": -30,
    "shadow": [
     54,
@@ -406,7 +406,7 @@
     "catch": "once: crouch, leap, snaps the ball on impactFrame 3 at impactPoint (hide the flying ball then), lands holding it - continue with run_ball.",
     "trick": "once: play-bow, hop-spin 360 deg, lands facing you with a raised paw (ta-da). Holdable last frame."
    },
-   "overrides": "villagers/pet_dog (same look, batch-1 anims re-rendered identically + 6 play anims)",
+   "overrides": "villagers/pet_dog (누리 the maltipoo replaces the batch-1 shiba: same frame names, sizes, anchors, points and timing for the batch-1 anims + 6 play anims)",
    "portrait": "portrait_pet_dog"
   }
  }

@@ -6,6 +6,11 @@
 // 04 the 창고 crew carrying fish from the fish pile to the 통조림 공장 (the link)
 // 05 a 창고 직원 walking in with the arrival banner
 // 06 a 솔방울 shop selling after 읍 (its town buyers come every 20 s)
+// (v4.2.1 고기 통조림)
+// 07 the 고기 통조림 기계 pad beside the cannery, with its banner
+// 08 the cannery making meat cans: three input towers (fish · ingot · raw meat), both cans on the output
+// 09 the 잡화점 shelf with its 7th tower (meat cans, front centre) and a customer asking for a meat can
+// 10 the 고기 짐꾼 carrying a bag of raw meat from the meat rack to the cannery
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,6 +90,57 @@ const SCENES = [
     window.__FV.teleport(shop.x + 250, shop.y + 260);
     return { x: shop.x, y: shop.y + 40, z: 1.1 };
   } },
+  // ---- (v4.2.1) 고기 통조림
+  { name: '07_meatcan_pad', save: 'v41_save_smart_46min.json', secs: 2, keepBanner: true, warm: 2, setup: () => {
+    const gs = window.__FV.scene, C = gs.workshops.find((w) => w.kind === 'cannery');
+    window.__FV.v42.v.seen.up = {};                // (its banner shows: the others stay quiet)
+    window.__FV.v42.meatcan({ offer: true });
+    window.__run(1.2);
+    const pad = gs.v42.lines.pads.mcan;
+    window.__FV.teleport(C.x - 520, C.y + 380);
+    return pad ? { x: (pad.x + C.x) / 2, y: (pad.y + C.y) / 2 - 10, z: 1.05 } : { x: C.x, y: C.y, z: 1 };
+  } },
+  { name: '08_cannery_meat_cans', save: 'v41_save_smart_46min.json', secs: 0, setup: () => {
+    const gs = window.__FV.scene, fx = gs.effects, C = gs.workshops.find((w) => w.kind === 'cannery');
+    window.__FV.v42.meatcan({ buy: 'instant' });
+    const fill = (st, ty, n) => { while (st.countOf(ty) < n && st.count < st.max) st.push(ty, null, fx); };
+    fill(C.inStack, 'item_fish_raw', 9); fill(C.inStack, 'item_ingot', 8); fill(C.inStack, 'item_meat_raw', 12);
+    window.__run(6);
+    fill(C.inStack, 'item_fish_raw', 6); fill(C.inStack, 'item_ingot', 6); fill(C.inStack, 'item_meat_raw', 9);
+    // (its porters wait at home for the shot: the pad keeps what it made)
+    for (const p of gs.porters) if (p.station === C) { p._spd = p.speed; p.speed = 0; p.plan = null; p.pickPlan = () => null; }
+    while (C.outStack.countOf('item_can_meat') < 6) C.outStack.push('item_can_meat', null, fx);
+    while (C.outStack.countOf('item_can') < 6) C.outStack.push('item_can', null, fx);
+    window.__FV.teleport(C.x - 560, C.y + 420);
+    return { x: C.x - 40, y: C.y + 30, z: 1.25 };
+  } },
+  { name: '09_store_meat_cans', save: 'v41_save_smart_46min.json', secs: 0, setup: () => {
+    const gs = window.__FV.scene, fx = gs.effects, S = gs.store;
+    window.__FV.v42.meatcan({ buy: 'instant' });
+    window.__day(11);
+    const fill = (ty, n) => { while (S.stock.countOf(ty) < n) S.stock.push(ty, null, fx); };
+    fill('item_can_meat', 12); fill('item_can', 9); for (const t of ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow']) fill(t, 4);
+    window.__run(4);
+    fill('item_can_meat', 12);
+    const f = S.queue.find((c) => c.arrived) || S.queue[0];
+    if (f) { if (!f.bubble) f.showBubble(); f.setWant('item_can_meat'); f.want.count = Math.max(f.got + 2, f.want.count); f.updateBubble(); }
+    S.serveT = 99;      // (the clerk waits a moment: the bubble shows what the customer wants)
+    window.__FV.teleport(S.x + 420, S.y + 380);
+    return { x: S.shelf.x - 30, y: S.shelf.y - 20, z: 1.3 };
+  } },
+  { name: '10_meat_porter_carry', save: 'v41_save_smart_46min.json', secs: 0, setup: () => {
+    const gs = window.__FV.scene, fx = gs.effects, p = gs.piles.meat, sm = gs.stations.smokehouse;
+    window.__FV.v42.meatcan({ buy: 'instant' });
+    while (p.stack.count < p.stack.max) p.stack.push('item_meat_raw', null, fx);
+    while (sm.inStack.count < sm.inStack.max) sm.inStack.push('item_meat_raw', null, fx);
+    const R = gs.v42.meatcan.rawPorter;
+    for (let i = 0; i < 240 && !(R.state === 'haul' && R.stack.count >= 10); i++) window.__run(0.5);
+    // (a little way along the road, then held still for the shot)
+    for (let i = 0; i < 20 && R.state === 'haul' && Math.hypot(R.x - p.x, R.y - p.y) < 260; i++) window.__run(0.25);
+    window.__who = R; R._spd = R.speed; R.speed = 0;
+    window.__FV.teleport(R.x - 600, R.y + 420);
+    return { x: R.x, y: R.y - 40, z: 1.3 };
+  }, after: () => { const R = window.__who; if (R && R._spd) R.speed = R._spd; } },
 ];
 
 const srv = await start(0, { prefix: '/fv/', root: REPO });

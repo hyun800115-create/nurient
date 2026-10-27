@@ -99,7 +99,7 @@ export function isDynamic(cap) { return /^(shops|towers):\d+$/.test(cap) || /^(p
 // CLOSURE: what an unlock fact guarantees in the game as it is designed (v4 rules + docs/v5_v8_plan.md §2–§4).
 // 읍 (rank 2) needs all five founded shops (cafe after zone_farm, restaurant after zone_hunt, carpenter after
 // zone_forest, hardware after b:toolsmith, supermarket after b:cannery), so every v4 line runs; the town (with its
-// 꽃집, 학교, 병원) is open; 콩이 is there; the plaza has its snowman, notice board and picnic space.
+// 꽃집, 학교, 병원) is open; 누리 is there; the plaza has its snowman, notice board and picnic space.
 const RANK2 = ['rank:2', 'dog', 'p:snowman', 'p:plaza', 'p:board', 'p:farm', 'p:picnic', 'p:feast', 'p:officiant', 'p:statue', 'p:festival', 'p:carpenter',
   'p:school_gate', 'p:towers', 'craft:bouquet', 'craft:cake', 'site:memorial', 'b:station', 'b:toolsmith', 'b:cannery']
   .concat(V4_ITEMS.filter((k) => k !== 'item_fish_big').map((k) => 'item:' + k));

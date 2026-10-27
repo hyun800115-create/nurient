@@ -203,7 +203,8 @@ export function sanitizeSave(raw) {
   const v3 = isObj(raw.v3) ? raw.v3 : {};
   const ws = isObj(v3.workshops) ? v3.workshops : {};
   const wso = {};
-  for (const k of ['toolsmith', 'cannery']) if (isObj(ws[k])) wso[k] = { ins: counts(ws[k].ins, ['item_plank', 'item_ingot', 'item_fish_raw', 'item_fish_big']), outs: counts(ws[k].outs, STORE_GOODS) };
+  // ((v4.2.1) the cannery's raw meat (the meat-can recipe) is kept; meat cans are in STORE_GOODS)
+  for (const k of ['toolsmith', 'cannery']) if (isObj(ws[k])) wso[k] = { ins: counts(ws[k].ins, ['item_plank', 'item_ingot', 'item_fish_raw', 'item_fish_big', 'item_meat_raw']), outs: counts(ws[k].outs, STORE_GOODS) };
   s.v3 = {
     warehouse: isObj(v3.warehouse) ? counts(v3.warehouse, ITEMS) : undefined,
     food: isObj(v3.food) ? { on: v3.food.on === true, food: counts(v3.food.food, MINER_FOOD) } : undefined,

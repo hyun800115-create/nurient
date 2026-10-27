@@ -6,7 +6,7 @@ rounded bevel from the shared upper-left sun, glossy top, one soft navy drop sha
     ui_icon_whistle      silver pea whistle on a red lanyard + white sound waves   (call the dog)
     ui_icon_treat        bone biscuit + twinkle                                    (give a treat)
     ui_icon_play         red ball with a white band + speed streaks                (play fetch)
-    ui_icon_pet          happy shiba face (^^ eyes) with a patting hand on its head (pet / belly rub)
+    ui_icon_pet          누리's happy maltipoo face (^^ eyes, floppy ears) with a patting hand (pet / belly rub)
     ui_icon_heart_full   glossy pink heart                                         (affection gauge)
     ui_icon_heart_empty  the same heart as an empty, sunken grey socket            (affection gauge)
 All 96x96, anchor [0.5, 0.5].  The two hearts share exactly the same silhouette and position, so a
@@ -54,6 +54,9 @@ RED = ('#FF8E7E', '#DE3B2F', '#7E1A16')
 BISCUIT = ('#F7C47A', '#C2732F', '#5E2E0E')
 ORANGE = ('#FFC27A', '#E8893A', '#7A3A0E')
 CREAM = ('#FFFFFF', '#F2E2C6', '#7A5A3A')
+CARAMEL = ('#FCE0BE', '#E3A974', '#74482A')       # 누리's light-brown coat
+EAR = ('#F2C99C', '#CF955F', '#6A4224')
+MUZZLE = ('#FFF3E4', '#F0D3B0', '#7A5A3A')
 SKIN = ('#FFE6CF', '#F2B48C', '#8E4A2A')
 HEART = ('#FFA0BC', '#E8336A', '#8E1238')
 EMPTY = ('#F4F6FA', '#C3CBD8', '#6E7A90')
@@ -152,16 +155,23 @@ def icon_play():
 
 
 def icon_pet():
+    """누리 (the village maltipoo): a round, curly light-brown face with long floppy ears, ^^ eyes (being petted),
+    a small black nose and a pale muzzle, tongue out; the patting hand + small heart are unchanged."""
     c = F.Canvas(96, 96)
     cx, cy = 46.0, 60.0
-    head = F.sd_ellipse(c.X, c.Y, cx, cy, 30.0, 25.0)
+    head = F.sd_ellipse(c.X, c.Y, cx, cy, 28.0, 24.5)
+    # curly topknot / cheeks: scallops round the upper rim
+    curls = [F.sd_circle(c.X, c.Y, cx + 25.5 * math.cos(a), cy - 1.5 + 22.0 * math.sin(a), 7.2)
+             for a in [math.radians(d) for d in range(196, 350, 22)]]
+    headall = F.smin(head, U(*curls), 2.5)
+    # long floppy ears hanging over the sides of the face (drops, a little splayed)
     ears = []
     for s in (-1, 1):
-        ex = cx + s * 19.0
-        tri = F.sd_polygon(c.X, c.Y, [(ex - 11.0, cy - 15.0), (ex + 11.0, cy - 15.0),
-                                       (ex + s * 3.0, cy - 39.0)]) - 3.0
-        ears.append(tri)
-    headall = F.smin(head, U(*ears), 3.0)
+        ex = cx + s * 29.5
+        Xe, Ye = F.rot(c.X, c.Y, ex, cy + 3.0, math.radians(-s * 20))
+        lobe = F.sd_ellipse(Xe, Ye, ex, cy + 3.0, 7.5, 15.0)
+        tuft = F.sd_circle(Xe, Ye, ex, cy + 14.5, 6.8)
+        ears.append(F.smin(lobe, tuft, 3.0))
     # the patting hand (back of the hand, fingers to the left) resting on top of the head
     hx, hy = 52.0, 33.5
     Xh, Yh = F.rot(c.X, c.Y, hx, hy, math.radians(8))
@@ -174,27 +184,27 @@ def icon_pet():
     marks = U(F.sd_arc(c.X, c.Y, 56.0, 26.0, 21.0, -2.50, -2.00, 2.0),
               F.sd_arc(c.X, c.Y, 56.0, 26.0, 21.0, -1.15, -0.65, 2.0))
     hs = EA.heart_sdf(c.X, c.Y, 16.0, 26.0, 17.0)
-    shadow(c, U(headall, hand, cuff, hs))
-    part(c, headall, ORANGE, ow=3.2, bevel=8.0, gloss=0.25, hi=0.5, lo=0.45, tint_lo=hexc('#C0541A'))
-    for s in (-1, 1):
-        ex = cx + s * 19.0
-        inner = F.sd_polygon(c.X, c.Y, [(ex - 5.5, cy - 17.0), (ex + 5.5, cy - 17.0), (ex + s * 2.0, cy - 31.0)]) - 1.5
-        c.fill(inner, hexc('#FBE6CC'), 0.95)
-    # cream lower face + eyebrow dots (shiba "maro")
-    low = F.intersect(F.sd_ellipse(c.X, c.Y, cx, cy + 10.0, 22.0, 15.0), head + 0.5)
-    part(c, low, CREAM, ow=0, bevel=5.0, gloss=0.0, hi=0.4, lo=0.3)
-    for s in (-1, 1):
-        c.fill(F.sd_ellipse(c.X, c.Y, cx + s * 11.0, cy - 13.0, 3.6, 2.4), hexc('#FBE6CC'))
+    shadow(c, U(headall, U(*ears), hand, cuff, hs))
+    part(c, headall, CARAMEL, ow=3.2, bevel=8.0, gloss=0.25, hi=0.5, lo=0.35, tint_lo=hexc('#C07C44'))
+    for k, a in enumerate(range(200, 340, 28)):              # a few curl marks on the crown
+        ax, ay = cx + 15.0 * math.cos(math.radians(a)), cy - 3.0 + 13.0 * math.sin(math.radians(a))
+        stroke(c, F.sd_arc(c.X, c.Y, ax, ay, 3.2, 0.6 + k * 0.5, 2.6 + k * 0.5, 0), 1.3, '#B98556', 0.55)
+    # pale muzzle
+    low = F.intersect(F.sd_ellipse(c.X, c.Y, cx, cy + 9.0, 14.5, 10.5), head + 0.5)
+    part(c, low, MUZZLE, ow=0, bevel=5.0, gloss=0.0, hi=0.4, lo=0.3)
+    for e in ears:
+        part(c, e, EAR, ow=2.8, bevel=6.0, gloss=0.15, hi=0.45, lo=0.35, tint_lo=hexc('#A86A38'))
     # ^^ eyes, nose, w-mouth with tongue, blush
     for s in (-1, 1):
-        stroke(c, F.sd_arc(c.X, c.Y, cx + s * 11.0, cy - 1.0, 5.0, -2.75, -0.39, 0), 2.8, '#3A2418')
-    c.fill(F.sd_ellipse(c.X, c.Y, cx, cy + 5.5, 3.6, 2.6), hexc('#2A2026'))
+        stroke(c, F.sd_arc(c.X, c.Y, cx + s * 10.5, cy - 1.0, 5.0, -2.75, -0.39, 0), 2.8, '#3A2418')
+    c.fill(F.sd_ellipse(c.X, c.Y, cx, cy + 5.0, 4.0, 3.0), hexc('#231C1E'))
+    c.fill(F.sd_circle(c.X, c.Y, cx - 1.3, cy + 4.0, 1.0), WHITE, 0.7)
     tongue = F.sd_ellipse(c.X, c.Y, cx, cy + 13.5, 3.8, 4.4)
     c.fill(tongue - 0.9, hexc('#8E2C1E'))
     c.fill(tongue, hexc('#FF7F8E'))
     for s in (-1, 1):
         stroke(c, F.sd_arc(c.X, c.Y, cx + s * 3.6, cy + 8.0, 3.6, 0.3, 2.84, 0), 1.8, '#5A2A2A')
-        c.fill(F.sd_ellipse(c.X, c.Y, cx + s * 19.0, cy + 5.0, 5.0, 3.0), hexc('#FF7A8A'), 0.6)
+        c.fill(F.sd_ellipse(c.X, c.Y, cx + s * 16.5, cy + 6.0, 4.6, 2.8), hexc('#FF7A8A'), 0.55)
     part(c, hand, SKIN, ow=2.6, bevel=4.5, gloss=0.25, hi=0.5, lo=0.45, tint_lo=hexc('#C86A50'))
     for k in range(3):                                   # finger creases
         c.fill(F.sd_segment(Xh, Yh, hx - 16.0, hy - 4.2 + k * 4.6, hx - 6.0, hy - 4.2 + k * 4.6, 0.55),
@@ -236,7 +246,8 @@ ICONS = [
     ('ui_icon_whistle', icon_whistle, 'Silver pea whistle on a red lanyard with sound waves: call the dog (부르기).'),
     ('ui_icon_treat', lambda: icon_treat(), 'Bone biscuit with twinkles: give a treat (간식 주기).'),
     ('ui_icon_play', icon_play, 'Red ball with a white band + speed streaks: play fetch (놀아주기).'),
-    ('ui_icon_pet', icon_pet, 'Happy shiba face (^^) with a patting hand + small heart: pet the dog (쓰다듬기).'),
+    ('ui_icon_pet', icon_pet, 'Happy face of 누리 the maltipoo (^^, floppy ears, curly light-brown coat) with a patting '
+                               'hand + small heart: pet the dog (쓰다듬기).'),
     ('ui_icon_heart_full', lambda: icon_heart(True), 'Glossy pink heart: one affection point (친밀도).'),
     ('ui_icon_heart_empty', lambda: icon_heart(False),
      'Empty sunken grey heart socket, same silhouette/position as ui_icon_heart_full (crop the full heart over it '

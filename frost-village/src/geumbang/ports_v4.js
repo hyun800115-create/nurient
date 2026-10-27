@@ -299,7 +299,7 @@ export function makeV4Ports(gs, sys) {
         for (const a of gs.agents || []) if (a && a.alive !== false && a.visible !== false && near(a)) out.push(a);
         const vis = nb() && nb().visitors;
         if (vis) for (const v of vis) if (v && v.alive !== false && near(v)) out.push(v);
-        const dog = gs.dog && gs.dog.r;            // 콩이 (DogPlay.r: the VillageLife pet_dog)
+        const dog = gs.dog && gs.dog.r;            // 누리 (DogPlay.r: the VillageLife pet_dog)
         if (dog && near(dog)) out.push(dog);
         const d = D();
         if (d && d.sleighs) for (const sl of d.sleighs) for (const q of sleighPoints(sl)) if (near(q)) out.push(q);

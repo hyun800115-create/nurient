@@ -15,6 +15,8 @@
 //   --prefill-yard   (v4.3.2 L1a) fill the 자재창고 to its raw share before the run (steady state); a build without the
 //                    자재창고 ignores it and says so
 //   --seed N         Math.random seeded (mulberry32) for repeatable runs
+//   --meatcan        (v4.2.1 고기 통조림) buy the meat-can line before the warm-up (the hook; the pad's own rule is
+//                    tests/meatcan.mjs's). Its porters are labelled raw:cannery (고기 짐꾼) and mc:cannery (고기 통조림 짐꾼)
 // Runs of docs/logistics_plan.md: L = --late --warm 120 --minutes 10 (one game day); S25 / S35 = --load
 // v41_save_smart_25min.json / _35min.json --warm 60 --minutes 6.
 import fs from 'node:fs';
@@ -35,6 +37,7 @@ const MIN = Number(opt('--minutes', '10'));
 const MODE = opt('--mode', 'auto');
 const LATE = has('--late') || opt('--setup', '') === 'final';
 const PREFILL = has('--prefill-yard');
+const MEATCAN = has('--meatcan');
 const SEED = opt('--seed', '');
 const OUT = path.resolve(INIT_CWD, opt('--out', 'probe.json'));
 process.chdir(REPO);
@@ -70,7 +73,7 @@ try {
     await page.evaluate(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
   }
   // ---------------------------------------------------------------- run L's late-village configuration (g60 from minute 13)
-  const setupInfo = await page.evaluate(([late, prefill]) => {
+  const setupInfo = await page.evaluate(([late, prefill, meatcan]) => {
     const gs = window.__FV.scene, H = window.__FV.v42, out = { late };
     if (late) {
       try {
@@ -87,8 +90,10 @@ try {
       const Y = gs.material || (gs.v42 && gs.v42.material) || null;
       if (Y && typeof Y.prefill === 'function') { try { out.yard = Y.prefill(); } catch (e) { out.yardErr = String(e); } } else out.yard = 'no 자재창고 in this build (ignored)';
     }
+    // ((v4.2.1) the meat-can line bought (instant: its two porters at home)
+    if (meatcan) { try { out.meatcan = H.meatcan ? H.meatcan({ buy: 'instant' }).on : 'no meat cans in this build'; } catch (e) { out.meatcanErr = String(e); } }
     return out;
-  }, [LATE, PREFILL]);
+  }, [LATE, PREFILL, MEATCAN]);
   console.log('setup', JSON.stringify(setupInfo));
   // ---------------------------------------------------------------- instruments
   await page.evaluate(async () => {
@@ -103,7 +108,7 @@ try {
     // prices for the coins-created count (shop prices; raw at the depot's raw prices)
     M.prices = Object.assign({}, BALANCE.prices || {}, BALANCE.prices3 || {}, (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.rawPrice) || {});
     const lab = new WeakMap();
-    const roleOf = (p) => (p.role === 'stationPorter' ? 'stn' : p.wh ? 'wh' : p.role === 'raw' ? 'raw:' + (p.target ? p.target.id : '?') : p.station ? (p.p2 ? 'p2:' : 'p1:') + (p.station === gs.boathouse ? 'dock' : p.station.id) : '?');
+    const roleOf = (p) => (p.role === 'stationPorter' ? 'stn' : p.wh ? 'wh' : p.role === 'raw' ? 'raw:' + (p.target ? p.target.id : '?') : p.station ? (p.only ? 'mc:' : p.p2 ? 'p2:' : 'p1:') + (p.station === gs.boathouse ? 'dock' : p.station.id) : '?');
     const relabel = () => {
       for (const k in gs.piles) lab.set(gs.piles[k].stack, 'pile:' + k);
       for (const s of gs.sources()) { if (s.inStack) lab.set(s.inStack, 'in:' + (s === gs.boathouse ? 'boat' : s.id)); if (s.outStack) lab.set(s.outStack, 'out:' + (s === gs.boathouse ? 'boat' : s.id)); }
@@ -147,7 +152,7 @@ try {
     const oStart = Hauler.prototype.startHaul;
     Hauler.prototype.startHaul = function (sink) {
       const r = oStart.call(this, sink);
-      if (this.role === 'raw') this.__away = !sink ? false : sink === this.target.inSink ? false : (sink.isWarehouse || sink.remote || sink.surplus) ? 'away' : 'local';
+      if (this.role === 'raw') this.__away = !sink ? false : sink === (this.sink || this.target.inSink) ? false : (sink.isWarehouse || sink.remote || sink.surplus) ? 'away' : 'local';
       if (M.on) {
         const role = roleOf(this), q = M.trips[role] || (M.trips[role] = { trips: 0, items: 0, px: 0, to: {} });
         q.trips++; q.items += this.stack.count + this.stack.incoming;
@@ -229,7 +234,8 @@ try {
         else if (r.state === 'unload') k = (r.waitT || 0) > 0 ? 'wait_dest_full' : 'unload';
         else if (r.state === 'seek') k = 'walk_back';
         else k = r.state;
-        inc('raw:' + r.target.id, k); inc('raw:all', k);
+        // ((v4.2.1) the meat-can line's 고기 짐꾼 is counted apart (raw:cannery), not in the line raw porters' G6 share)
+        inc('raw:' + r.target.id, k); if (!r.mcan) inc('raw:all', k);
       }
       let crewN = 0;
       for (const p of gs.porters) {
@@ -271,6 +277,11 @@ try {
       const mk = gs.market && gs.market.stock; if (mk) { const c = M.misc.mk || (M.misc.mk = {}); for (const t of ['item_fish_cooked', 'item_bread', 'item_meat_cooked']) { c[t] = (c[t] || 0) + mk.countOf(t); if (mk.countOf(t) === 0) c[t + '_empty'] = (c[t + '_empty'] || 0) + 1; } }
       const R = gs.civic && gs.civic.restaurant; if (R && R.pantry) { const c = M.misc.pantry || (M.misc.pantry = {}); for (const t of ['item_fish_cooked', 'item_bread', 'item_meat_cooked']) { c[t] = (c[t] || 0) + R.pantry.countOf(t); if (R.pantry.countOf(t) === 0) c[t + '_empty'] = (c[t + '_empty'] || 0) + 1; } }
       const fb = gs.foodBox; if (fb) M.misc.foodSum = (M.misc.foodSum || 0) + (fb.count || 0);
+      // ((v4.2.1) the 잡화점's can towers, the 창고's meat cans, the smokehouse input)
+      const sto = gs.store && gs.store.enabled ? gs.store.stock : null;
+      if (sto) { const c = M.misc.store || (M.misc.store = { n: 0, bothEmpty: 0, canEmpty: 0, meatEmpty: 0 }); c.n++; const a = sto.countOf('item_can') === 0, b = sto.countOf('item_can_meat') === 0; if (a) c.canEmpty++; if (b) c.meatEmpty++; if (a && b) c.bothEmpty++; }
+      if (W) M.misc.whMeatEnd = W.count('item_can_meat');
+      const sm = gs.stations.smokehouse; if (sm) { const c = M.misc.smokeIn || (M.misc.smokeIn = { n: 0, empty: 0, half: 0 }); c.n++; if (sm.inStack.count === 0) c.empty++; if (sm.inStack.count < sm.inStack.max * 0.5) c.half++; }
     };
     // the chief stays away from every pad (auto mode)
     let cT = 0;

@@ -4,8 +4,8 @@
 // the scheduler; view/happenings/Happenings.js stages them.
 
 export const HAPPENINGS = [
-  { id: 'P1', key: 'bread_thief', ko: '콩이의 빵 도둑질', en: 'Kongi steals a loaf', where: 'market', pet: 'dog',
-    toastKo: '콩이가 시장에서 빵을 물고 달아났어요!', toastEn: 'Kongi ran off with a loaf from the market!', chief: 'whistle', fame: 2, secs: 18 },
+  { id: 'P1', key: 'bread_thief', ko: '누리의 빵 도둑질', en: 'Nuri steals a loaf', where: 'market', pet: 'dog',
+    toastKo: '누리가 시장에서 빵을 물고 달아났어요!', toastEn: 'Nuri ran off with a loaf from the market!', chief: 'whistle', fame: 2, secs: 18 },
   { id: 'P2', key: 'snowman_hat', ko: '날아간 눈사람 모자', en: 'The snowman’s flying hat', where: 'snowman',
     toastKo: '바람에 눈사람 모자가 날아갔어요!', toastEn: 'The wind blew the snowman’s hat away!', chief: 'watch', fame: 2, secs: 14 },
   { id: 'P3', key: 'roof_cat', ko: '지붕 위 고양이', en: 'Cat on the roof', where: 'house', pet: 'cat',

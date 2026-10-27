@@ -9,6 +9,10 @@ import { Fact, Mem } from './memory.js';
 import { Rel, pairKey } from './relations.js';
 import { Loan } from './bank.js';
 
+// (누리) the dog's name, taken out of every person name pool; loading renames a person who still has it
+const NAME_NOW_DOG = '누리';
+const NAME_INSTEAD = '도담';
+
 const MAGIC = 0x46565331; // 'FVS1'
 const VERSION = 3;          // 2: + pending day-change pieces, sub-step clock, shop credit, loan reschedules, ack waits
                             // 3 (story_runtime): + game ids, roles, household keys, wedding / farewell spacing, expecting
@@ -282,6 +286,9 @@ export function deserialize(e, str) {
     const p = new Resident(id);
     e.people[id] = p;
     p.flags = r.u(); p.key = r.s(); p.persona = r.s(); p.given = r.s() || ''; p.sur = r.s() || ''; p.title = r.s(); p.titleEn = r.s(); p.male = r.b(); p.birth = r.i(); p.goneDay = r.i();
+    // (누리) 누리 is the village dog's name now: a resident who was given it in an older save (the name pools had it)
+    // is 도담 from here on - the pools' replacement, so a TownSim citizen and its story person keep matching names
+    if (p.given === NAME_NOW_DOG) p.given = NAME_INSTEAD;
     p.parents = r.ints(); p.kids = r.ints(); p.spouse = r.i(); p.job = r.s();
     if (tag === 1) { p.alive = false; p.state = 6; continue; }
     p.tr.set(r.ints()); p.likes = r.ints(); p.dislike = r.u();
@@ -360,7 +367,7 @@ export function deserialize(e, str) {
     for (const [id, gid, role, enName, wedDay, expecting, farewellDay] of x.px || []) {
       const p = e.people[id];
       if (!p) continue;
-      p.gid = gid; p.role = role; p.enName = enName;
+      p.gid = gid; p.role = role; p.enName = enName === 'Nuri' ? 'Dodam' : enName;
       if (wedDay !== null && wedDay !== undefined) p.wedDay = wedDay;
       if (expecting) p.expecting = 1;
       if (farewellDay >= 0) p.farewellDay = farewellDay;

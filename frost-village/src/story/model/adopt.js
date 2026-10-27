@@ -21,7 +21,7 @@ import { SURNAMES } from '../engine/lang/names.js';
 
 // TownSim names (src/data/strings.js TOWN_NAMES) that are boys' / men's names; the others are girls' / women's
 const MALE_NAMES = new Set(('서준 도윤 예준 시우 주원 지호 준우 도현 건우 우진 선우 현우 유준 정우 승우 지훈 민준 태윤 은우 시윤 이준 민재 준서 연우 지환 승민 '
-  + '하준 준혁 태민 재윤 동하 영호 정수 광수 덕배 춘식 만석 봉구 용수 철수 길동 한결 가람 온유 바다 누리 겨울 산들 태호 경민 상우 동건 재석 성민 '
+  + '하준 준혁 태민 재윤 동하 영호 정수 광수 덕배 춘식 만석 봉구 용수 철수 길동 한결 가람 온유 바다 도담 겨울 산들 태호 경민 상우 동건 재석 성민 '
   + '현수 창민 기태 동욱').split(' '));
 
 /** civic role -> engine job */

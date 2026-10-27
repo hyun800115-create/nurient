@@ -163,7 +163,7 @@ export function play(H, rng) {
       continue;
     }
     if (u.t === 'count') {
-      // the player does the counted thing at a fair pace (sells, rides, plays with 콩이, picks flowers …)
+      // the player does the counted thing at a fair pace (sells, rides, plays with 누리, picks flowers …)
       const sig = u.sig;
       if (sig === 'flower') { const b = BEDS[0]; if (Math.hypot(b.x - ch.x, b.y - ch.y) > 40) { H.walkTo(b.x, b.y); return 'to-bed'; } m.pick(1); return 'pick'; }
       if (sig === 'chat') { const p = P.people.nearby(ch.x, ch.y, 6)[rng.int(6)]; if (p) H.feed({ t: 'tap', pid: p, talk: true }); return 'chat'; }

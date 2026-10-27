@@ -14,6 +14,9 @@
 // enforces it, Android 16 removes the opt-out), so GameFrame pads the game by the visible bars, the camera cutout and
 // the keyboard on Android 11+; and back arrives through an OnBackInvokedCallback on Android 13+ (Android 16 no longer
 // calls onBackPressed for targetSdk 36), which opens the same exit dialog.
+//
+// 「마을 옮기기」 (Move village): the game's own pages get window.SnowbloomAndroid (WebBridge: copy / share / paste of the
+// village code), refused to any other page; every page start tells it which page is showing.
 package com.snowbloom.village;
 
 import android.app.Activity;
@@ -25,6 +28,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -65,6 +69,7 @@ public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView web;
+    private WebBridge bridge;                          // window.SnowbloomAndroid (마을 옮기기)
     private AlertDialog exitDialog;
     private Object backCallback;                       // Api33.BackCallback (Android 13+)
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -183,6 +188,9 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        // 마을 옮기기: copy / share / paste of the village code; each call is refused unless the page is our own origin
+        bridge = new WebBridge(this);
+        web.addJavascriptInterface(bridge, WebBridge.NAME);
         root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         web.loadUrl(AssetRouter.START_URL);
     }
@@ -320,6 +328,12 @@ public class MainActivity extends Activity {
                 Log.w(TAG, "could not open " + url, e);
             }
             return true;
+        }
+
+        @Override
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            // (main frame only) the bridge serves only the game's own origin: it learns each page before its scripts run
+            if (view == web && bridge != null) bridge.setPage(url);
         }
 
         @Override

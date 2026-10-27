@@ -421,7 +421,7 @@ The old village has no drive streets, only the free-form village roads, and v5 a
   If no van passes for 3 min while village parcels wait, a van makes a short trip just for them.
 - **Run:** up to 4 parcels stacked on the red blanket, along the village roads (`Roads.route`, nearest drawn heading), to
   the road point nearest each house door. 뽀득이 hops off with `carry_box`.
-- **Sound:** `sfx_sleigh_bells` + an occasional `sfx_dog_bark`; 콩이 sometimes runs alongside for a few seconds (if near).
+- **Sound:** `sfx_sleigh_bells` + an occasional `sfx_dog_bark`; 누리 sometimes runs alongside for a few seconds (if near).
 - **Without the sled** (cut list, §17): the old village is served by the 광장 보관함 only.
 
 ### 7.3 돌아오는 길 짐 싣기 (backhaul upgrade)
@@ -473,7 +473,7 @@ zoom 0.6 on a 390-px phone.
 - **Pick-up:** when a member of the household next passes within 200 px of the door, at their evening return, or at 07:00
   — whichever comes first. The resident stops, picks the box up and carries it in (`carry_walk` for village residents; a
   "쏙" hop for town dolls). Never longer than one game day.
-- **콩이:** if the dog roams within 300 px of a doorstep box, he may trot over and sniff it (one `DogPlay` sniff beat).
+- **누리:** if the dog roams within 300 px of a doorstep box, he may trot over and sniff it (one `DogPlay` sniff beat).
 - Cap: ≤ 16 doorstep boxes in the world; above that, the next ones are handed to a neighbour ("옆집에 맡겼어요").
 
 ### 8.3 Reactions and unboxing

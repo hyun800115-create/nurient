@@ -62,7 +62,7 @@ export default {
     '?=joke? [What’s a snowman’s favourite drink? Iced tea!|What’s a snowman’s favourite drink? Iced tea!|A snowman’s drink? Iced tea.]',
     '?=joke? [Why are fish buns so calm? They never get battered! …wait.|Why are fish buns so calm? They’re used to being battered!|Fish buns are calm; they’re used to batter.]',
     '?=joke? [What did one snowflake say to the other? You’re one of a kind!|What did one snowflake say to another? You’re one of a kind!|One snowflake to another: you are unique.]',
-    '?=joke? [Why did Kongi sit in the shade? He didn’t want to be a hot dog!|Why did Kongi sit in the shade? No hot dogs!|Kongi avoids the sun — no hot dogs.]',
+    '?=joke? [Why did Nuri sit in the shade? Nuri didn’t want to be a hot dog!|Why did Nuri sit in the shade? No hot dogs!|Nuri avoids the sun — no hot dogs.]',
     '?=joke? [What do you call an old snowman? Water!|What do you call an old snowman? Water!|An old snowman? Water.]',
     '?=joke? [What’s an ice rink’s favourite song? Freeze a jolly good fellow!|An ice rink’s favourite song? Freeze a jolly good fellow!|“Freeze a jolly good fellow.”]',
     '?=joke? [Where do penguins keep their money? In a snow bank!|Where do penguins keep money? In a snow bank!|Penguins bank at the snow bank.]',

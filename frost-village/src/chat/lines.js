@@ -194,7 +194,7 @@ export const GENERIC = {
     kid: ['우와! {deed}니, 대박!', '진짜? {deed}니! 나도 해 보고 싶다~'],
     old: ['허허, {deed}니. 제법이구먼.', '껄껄, {deed}니! 대단하네.'],
   },
-  // a nice experience ("오로라 봤어!", "콩이랑 산책했어"): glad for them, no "대단해요"
+  // a nice experience ("오로라 봤어!", "누리랑 산책했어"): glad for them, no "대단해요"
   newsNice: {
     def: ['[우와|어머], {deed}니! [좋았겠다|좋았겠어요]~', '{deed}니, [재밌었겠다|재밌었겠어요]! 어땠어{요}?'],
     kid: ['우와, {deed}니! 좋았겠다~ 나도 해 보고 싶다!'],

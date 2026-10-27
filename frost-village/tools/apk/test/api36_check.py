@@ -16,7 +16,9 @@ AOSP Android 16 framework classes Robolectric runs on; pinned by SHA-256, the Ma
      the named class with those parameter types, plus the constant the code inlines for it
      (Api30.CUTOUT_MODE_ALWAYS = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS);
   4. the methods the app overrides without javac seeing the framework method (API 16 jar): View.onApplyWindowInsets,
-     WebViewClient.onRenderProcessGone.
+     WebViewClient.onRenderProcessGone;
+  5. 마을 옮기기: WebBridge's copy / share / paste carry the framework's runtime-visible @JavascriptInterface (the build
+     compiles them against a compile-only stub of it).
 Limit: the jar is the framework implementation, so it also has @hide members; the names checked here are all public
 SDK API (the ones Android Studio would offer), but this check alone cannot tell an @hide member from an SDK one.
 Exit 1 on any failure.
@@ -192,6 +194,15 @@ def main():
                             ('com.snowbloom.village.MainActivity$GameClient', 'onRenderProcessGone', '(Landroid/webkit/WebView;Landroid/webkit/RenderProcessGoneDetail;)Z')):
         mine = javap(out, cls) or {}
         check('the app declares %s.%s with exactly that descriptor' % (cls.split('.')[-1], name), (name, desc) in mine)
+
+    # 5. 마을 옮기기: the methods the game's page calls on window.SnowbloomAndroid carry the framework's runtime-visible
+    #    @JavascriptInterface (API 17+ WebView exposes nothing else to the page; the build compiles it against a stub)
+    check('android.webkit.JavascriptInterface exists in Android 16', javap(jar, 'android.webkit.JavascriptInterface') is not None)
+    jv = subprocess.run(['javap', '-v', '-p', '-cp', str(out), 'com.snowbloom.village.WebBridge'], capture_output=True, text=True).stdout
+    for name, desc in (('copy', '(Ljava/lang/String;)Z'), ('share', '(Ljava/lang/String;)Z'), ('paste', '()Ljava/lang/String;')):
+        m = re.search(r'\n  public \S+ ' + name + r'\([^)]*\);\n\s+descriptor: ' + re.escape(desc) + r'\n(.*?)(?:\n\n|\n}|\Z)', jv, re.S)
+        check('WebBridge.%s%s is public and @JavascriptInterface (runtime-visible)' % (name, desc),
+              bool(m) and 'RuntimeVisibleAnnotations' in m.group(1) and 'android.webkit.JavascriptInterface' in m.group(1))
 
     fails = [x for x in results if not x['ok']]
     print('api36_check: %d checks, %d failed (framework: %s)' % (len(results), len(fails), jar.name))

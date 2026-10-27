@@ -255,7 +255,7 @@ export class Game extends Phaser.Scene {
     this.events.on('fedMiners', () => this.progress.setFlag('fedMiners'));
     // the people of the village (v2)
     this.life = new VillageLife(this, sv.life);
-    // (v3.5) Kongi the dog: whistle, treats, fetch, petting (affection is saved)
+    // (v3.5) Nuri the dog: whistle, treats, fetch, petting (affection is saved)
     this.dog = new DogPlay(this, sv.dog);
     // (v4-C2) the residents' voices: lazy per voice type (each type's sprite when its first resident speaks; the
     // residents already living here are fetched after the title files). null without Web Audio: the old chatter stays
@@ -1183,6 +1183,9 @@ export class Game extends Phaser.Scene {
     }
   }
 
+  /** ((v4.2.1) the cannery makes meat cans (the 고기 통조림 machine was bought: systems/MeatCan.js) */
+  meatCansOn() { return !!(this.v42 && this.v42.meatcan && this.v42.meatcan.on); }
+
   /** the general store: a Market selling cans and tools (customers come along the roads) */
   makeStore(site) {
     const d = Assets.def('shop_general');
@@ -1192,10 +1195,13 @@ export class Game extends Phaser.Scene {
       id: 'store', sprite: 'shop_general', x: site.x, y: site.y, goods: STORE_GOODS,
       shelf: [ip[0] + 18, ip[1] + 30], cash: [cp[0] - 20, cp[1] + 46], queueStart: [cu[0] - 30, cu[1] + 16],
       queueStep: YO(-0.9), queueTurn: 4, queueStep2: XO(-0.9), register: [cp[0] + 120, cp[1] + 74],
-      stockCols: [[-36, -6], [-12, 6], [12, -6], [36, 6], [-24, 18], [24, 18]],
+      // ((v4.2.1) the 7th tower, front centre: meat cans — inside the six towers' extents (the baked slot keeps its size)
+      stockCols: [[-36, -6], [-12, 6], [12, -6], [36, 6], [-24, 18], [24, 18], [0, 18]],
       clerk: ['npc_clerk_a', 'npc_clerk_b', 'npc_aunt'], collider: [22, -12, 0.3], faceTo: [30, -40],
       maxQueue: 6, spawnEvery: 3.2, wantMax: 3, soldEvent: 'storeSold', shelfMax: 24, emptyLabel: true,
-      available: () => STORE_GOODS.filter((g) => (g === 'item_can' ? this.isBuilt('cannery') : this.isBuilt('toolsmith'))),
+      available: () => STORE_GOODS.filter((g) => (g === 'item_can' ? this.isBuilt('cannery') : g === 'item_can_meat' ? this.meatCansOn() : this.isBuilt('toolsmith'))),
+      // ((v4.2.1) once meat cans exist the guests come every meatcan.storeGuestK × the spawn time: new buyers for them)
+      spawnK: () => (this.meatCansOn() ? Math.max(0.4, Math.min(1, Number(BALANCE.meatcan && BALANCE.meatcan.storeGuestK) || 0.75)) : 1),
     };
     cfg.maxQueue0 = cfg.maxQueue;
     const m = new Market(this, cfg);

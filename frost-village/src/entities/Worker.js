@@ -479,9 +479,25 @@ export class Porter extends Hauler {
     this.state = 'seek';
     this.home = Porter.homeFor(gs, station);
     this.plan = null;
+    this.only = null;          // ((v4.2.1) a porter bound to one product: the 고기 통조림 짐꾼 (systems/MeatCan.js)
     gs.keysInUse.add(pk.key);
     if (pk.later) gs.keysInUse.add(pk.later);
   }
+
+  /**
+   * ((v4.2.1 고기 통조림) types this porter leaves on its pad: a porter bound to one product (`only`) looks at nothing
+   * else; while the meat-can porter works, the cannery's own porters leave the meat cans to him unless meatcan.shareAt
+   * or more wait there (then they help)
+   */
+  skips(ty) {
+    if (this.only) return ty !== this.only;
+    if (ty !== 'item_can_meat' || !this.station || this.station.kind !== 'cannery') return false;
+    const M = this.gs.v42 && this.gs.v42.meatcan;
+    if (!M || !M.goodsPorter) return false;
+    return this.station.outStack.countOf(ty) < Math.max(1, Number(BALANCE.meatcan && BALANCE.meatcan.shareAt) || 12);
+  }
+  /** the topmost item of the pad this porter may take (null: none) */
+  topType() { const out = this.station.outStack; for (let i = out.items.length - 1; i >= 0; i--) if (!this.skips(out.items[i].type)) return out.items[i].type; return null; }
 
   /** the best (type, sink) for what lies on the output pad right now */
   /**
@@ -504,6 +520,7 @@ export class Porter extends Hauler {
     for (const it of out.items) {
       if (seen[it.type]) continue;
       seen[it.type] = true;
+      if (this.skips(it.type)) continue;
       const b = L.best(it.type, this.x, this.y);
       if (b && out.countOf(it.type) <= this.keepFor(it.type, b.prio)) continue;
       if (b && (!best || b.prio > best.prio || (b.prio === best.prio && out.countOf(it.type) > out.countOf(best.type)))) best = { sink: b.sink, type: it.type, n: b.n, prio: b.prio };
@@ -515,9 +532,19 @@ export class Porter extends Hauler {
     if (SP && out.count >= out.max * (Number(SP.outAt) || 0.7)) {
       const W = gs.warehouse, whFull = !W || W.total + (W.incoming || 0) >= W.cap * (Number(SP.whAt) || 0.7);
       if (!best || (best.sink.isWarehouse && whFull)) {
-        const FS = v42.freight && v42.freight.sink, top = out.items[out.items.length - 1];
-        const n = FS && top ? L.want(FS, top.type) : 0;
-        if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: top.type, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS };
+        const FS = v42.freight && v42.freight.sink, top = this.topType();
+        const n = FS && top ? L.want(FS, top) : 0;
+        if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: top, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS };
+      }
+    }
+    // ((v4.2.1 고기 통조림, meatcan.jamExport) the meat-can porter: with the cannery's output ≥ meatcan.farAt full and the
+    //  nearest place in the village that wants meat cans farther than meatcan.farPx, this load is exported (the 짐 싣는 곳)
+    const MC = BALANCE.meatcan || {};
+    if (this.only && MC.jamExport !== false && v42 && v42.frules && out.count >= out.max * (Number(MC.farAt) || 0.8) && out.countOf(this.only) > 0) {
+      const FS = v42.freight && v42.freight.sink, pad = this.station.outPad;
+      if (FS && (!best || best.sink === FS || Math.hypot(best.sink.x - pad.x, best.sink.y - pad.y) > (Number(MC.farPx) || 1500))) {
+        const n = L.want(FS, this.only);
+        if (n >= Math.min(this.stack.max, 6)) best = { sink: FS, type: this.only, n: Math.min(this.stack.max, n), prio: PRIO.SURPLUS, jam: true };
       }
     }
     return best;
@@ -625,6 +652,9 @@ export class RawPorter extends Hauler {
 
   get sink() { return this.target.inSink; }
 
+  /** ((v4.2.1) how many to have in the bag before setting off (the hook MeatCanPorter overrides): what the input takes */
+  loadWant(L) { const s = this.sink; return s ? Math.min(this.stack.max, L.want(s, this.pile.item)) : 0; }
+
   /** only its station's input (when it is full the porter waits there with the load); on a local job (v4.2.1) that
    *  place while it still wants the load */
   planDest(exclude) {
@@ -687,12 +717,11 @@ export class RawPorter extends Hauler {
         this.vx = this.vy = 0;
         this.dropT -= dt;
         if (!pile.enabled || !this.target.enabled) { this.locomotion(false); break; }
-        const sink = this.sink;
-        const want = sink ? Math.min(this.stack.max, L.want(sink, pile.item)) : 0;
+        const want = this.loadWant(L);
         const have = this.stack.count + this.stack.incoming;
         const W = gs.warehouse, v42 = gs.v42, SP = (BALANCE.v42 && BALANCE.v42.surplus) || {}, LR = (BALANCE.logistics && BALANCE.logistics.raw) || {};
         let spill = null, cap = this.stack.max;
-        if (!this.toWh && want <= 0 && v42 && v42.frules && pile.stack && pile.stack.max > 0) {
+        if (!this.noSpill && !this.toWh && want <= 0 && v42 && v42.frules && pile.stack && pile.stack.max > 0) {
           const full = pile.count / pile.stack.max;
           if (LR.stayOnLine !== false) {
             // ((v4.2.1, docs/logistics_plan.md LD2) a raw porter never leaves its line for export: with its station full
@@ -732,6 +761,48 @@ export class RawPorter extends Hauler {
       case 'unload': this.unload(dt); break;
     }
     this.sync(dt);
+  }
+}
+
+/**
+ * ((v4.2.1 고기 통조림, systems/MeatCan.js) 고기 짐꾼 (통조림): carries ONLY the meat rack's surplus to the cannery's meat
+ * input. A load starts with the rack ≥ meatcan.pileFrom and, once started, goes on down to meatcan.pileKeep (the
+ * 훈제장's share stays); never while the 훈제장's input holds less than meatcan.smokeHas of its max (the 훈제장 always
+ * comes first); a bag of meatcan.porterBag; never to the dock or the 창고 (noSpill). Waits beside the rack otherwise.
+ * Lives in gs.rawPorters like the line's raw porters (a reload puts his load back on the rack).
+ */
+export class MeatCanPorter extends RawPorter {
+  /** his spot beside the meat rack (apart from the 훈제장's raw porter) */
+  static homeFor(gs, pile) {
+    const p = { x: pile.x - 52, y: pile.y + 40 };
+    gs.collision.resolve(p, 14);
+    return [p.x, p.y];
+  }
+
+  constructor(gs, pile, cannery, x, y, index = 0) {
+    super(gs, pile, cannery, x, y, index);
+    this.mcan = true;
+    this.noSpill = true;
+    this.stack.max = Math.max(1, Math.floor(Number(BALANCE.meatcan && BALANCE.meatcan.porterBag) || 12));
+    this.home = MeatCanPorter.homeFor(gs, pile);
+  }
+
+  /** the cannery's input (a workshop's sink) */
+  get sink() { return this.target.sink; }
+
+  loadWant(L) {
+    const gs = this.gs, C = this.target, pile = this.pile, M = BALANCE.meatcan || {};
+    if (!C || !C.meatOn || !C.meatOn() || !pile.stack || pile.stack.max <= 0) return 0;
+    const have = this.stack.count + this.stack.incoming, max = pile.stack.max;
+    const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    // the 훈제장 first: only while its input holds meatcan.smokeHas of its max (what is in the bag goes on)
+    const S = gs.stations && gs.stations.smokehouse;
+    const smokeOk = !S || !S.enabled || S.inStack.count + S.inStack.incoming >= S.inStack.max * num(M.smokeHas, 0.5);
+    if (!smokeOk) return have;
+    const w = L.want(C.sink, pile.item);
+    // a new load: the rack ≥ pileFrom, and the cannery takes at least half a bag (no trips with a handful)
+    if (have === 0 && (pile.count < max * num(M.pileFrom, 0.5) || w < Math.ceil(this.stack.max / 2))) return 0;
+    return Math.max(have, Math.min(this.stack.max, w, have + Math.max(0, pile.count - Math.ceil(max * num(M.pileKeep, 0.3)))));
   }
 }
 

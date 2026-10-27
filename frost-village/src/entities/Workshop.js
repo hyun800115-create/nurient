@@ -1,6 +1,8 @@
 // Workshops (v3): stations with a recipe of several inputs.
 //   toolsmith (대장간): 1 plank + 1 ingot -> 1 tool (the tool a hire pad is waiting for, else what the shop lacks)
 //   cannery (통조림 공장): 3 fish (a big tuna counts as 3) + 1 ingot -> 3 cans
+//            ((v4.2.1) once the 고기 통조림 machine is bought (systems/MeatCan.js): also 3 raw meat + 1 ingot -> 3 meat cans;
+//            the next batch is picked by systems/cans.js pickCanKind, and one batch takes meatcan.timeMult of the time)
 // Built on a construction plot; the input pad takes every ingredient (porters and the chief).
 
 import { Assets } from '../core/Assets.js';
@@ -10,6 +12,7 @@ import { TOOLS } from '../data/items.js';
 import { PRIO } from '../systems/Logistics.js';
 import { Station } from './Station.js';
 import { ItemStack } from './ItemStack.js';
+import { pickCanKind } from '../systems/cans.js';
 
 export const RECIPES = {
   toolsmith: {
@@ -18,9 +21,12 @@ export const RECIPES = {
   },
   cannery: {
     sprite: 'station_cannery', inputs: { fish: 3, item_ingot: 1 }, out: 'item_can', outN: 3, sfx: 'sfx_smelt',
-    cols: { item_fish_raw: 0, item_fish_big: 0, item_ingot: 1 },
+    // ((v4.2.1) item_meat_raw: the meat-can recipe's input, a third tower in front (Workshop.meatRecipe)
+    cols: { item_fish_raw: 0, item_fish_big: 0, item_ingot: 1, item_meat_raw: 2 },
   },
 };
+const MC = () => BALANCE.meatcan || {};
+const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const FISH_UNITS = { item_fish_raw: 1, item_fish_big: 3 };
 
 export class Workshop extends Station {
@@ -40,10 +46,16 @@ export class Workshop extends Station {
     this.isWorkshop = true;
     this.isWarehouse = false;
     this.inputTypes = Object.keys(R.cols);
-    // one tower per ingredient on the input pad
+    // one tower per ingredient on the input pad ((v4.2.1) the cannery's third, front tower: raw meat)
     this.inStack.clear(gs.effects);
-    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-16, -4], [16, 6]], typeCols: R.cols, max: bal.inputMax * 3, bake: true });
+    // (each type keeps its inputMax: max ÷ types = the tower height the baked slot is sized for, 18 as before)
+    const nCols = Math.max(...Object.values(R.cols)) + 1;
+    this.inStack = new ItemStack(gs, { scale: 0.92, cols: [[-16, -4], [16, 6], [-2, 18]].slice(0, nCols), typeCols: R.cols, max: bal.inputMax * Math.max(3, Object.keys(R.cols).length), bake: true });
     if (kind === 'toolsmith') this.outStack.max = bal.outputMax;
+    // ((v4.2.1) the output holds both cans: its baked slot is sized for both before the first bake)
+    if (kind === 'cannery') this.outStack.bakeTypes = ['item_can', 'item_can_meat'];
+    this.lastKind = null;            // ((v4.2.1) the can kind made last: a tie alternates)
+    this.madeKinds = { fish: 0, meat: 0 };
     this.inPad.icon && this.inPad.icon.setAlpha(0.45);
     this.nextTool = 0;
     this.enabled = true;
@@ -51,7 +63,7 @@ export class Workshop extends Station {
     this.sink = {
       id: kind + '_in', isWarehouse: false, enabled: true,
       x: this.inPad.x + 26, y: this.inPad.y + 18,
-      accepts: (ty) => this.inputTypes.indexOf(ty) >= 0,
+      accepts: (ty) => this.inputTypes.indexOf(ty) >= 0 && (ty !== 'item_meat_raw' || this.meatOn()),
       room: (ty) => this.roomFor(ty),
       // ((v4.2 F2) after village complete an input is urgent only while nearly empty: a far workshop no longer
       //  takes every goods load the shelves wait for)
@@ -62,15 +74,41 @@ export class Workshop extends Station {
   }
 
   inputPrio(ty) {
+    // ((v4.2.1) raw meat for meat cans: always below the 훈제장's input (PRIO.GRILL 60) — any carrier with raw meat feeds
+    //  the smokehouse first — and ≥ 40, a real-use job for the 창고 crew (balance.js meatcan.inPrio)
+    if (ty === 'item_meat_raw') return Math.max(1, Math.min(PRIO.GRILL - 1, Number(MC().inPrio) || 41));
     const v42 = this.gs.v42, P = BALANCE.v42 && BALANCE.v42.porters;
     if (!v42 || !v42.frules || !P) return PRIO.INPUT;
     const max = Math.max(1, this.bal.inputMax), have = max - this.roomFor(ty);
-    return have < max * (Number(P.inputUrgentBelow) || 0.25) ? PRIO.INPUT : (Number(P.inputCalmPrio) || 42);
+    // ((v4.2.1) with both recipes the ingots go about twice as fast: urgent below meatcan.ingotUrgentBelow)
+    const below = ty === 'item_ingot' && this.meatOn() ? Number(MC().ingotUrgentBelow) || 0.5 : Number(P.inputUrgentBelow) || 0.25;
+    return have < max * below ? PRIO.INPUT : (Number(P.inputCalmPrio) || 42);
+  }
+
+  /** ((v4.2.1) the cannery's meat-can line is bought (gs.v42.meatcan.on) */
+  meatOn() { const v42 = this.gs.v42; return this.kind === 'cannery' && !!(v42 && v42.meatcan && v42.meatcan.on); }
+
+  /** ((v4.2.1) the machine makes each batch in meatcan.timeMult of the time (both recipes) */
+  timeMult() { return this.meatOn() ? Math.max(0.3, Math.min(1, Number(MC().timeMult) || 0.7)) : super.timeMult(); }
+
+  /** ((v4.2.1) the meat-can recipe: meatcan.meatIn raw meat + 1 ingot → meatcan.out meat cans (read at use) */
+  meatRecipe() { const M = MC(); return { inputs: { item_meat_raw: int(M.meatIn, 3, 1, 9), item_ingot: 1 }, out: 'item_can_meat', outN: int(M.out, 3, 1, 9) }; }
+
+  /** ((v4.2.1) the cannery's next batch: 'fish' | 'meat' | null (systems/cans.js) */
+  canKind() {
+    return pickCanKind({ fishUnits: this.fishUnits(false), meat: this.inStack.countOf('item_meat_raw'), ingot: this.inStack.countOf('item_ingot'), meatOn: this.meatOn(), last: this.lastKind, fishIn: this.recipe.inputs.fish, meatIn: this.meatRecipe().inputs.item_meat_raw });
+  }
+
+  /** ((v4.2.1) the size of the next batch (the cannery's two cans may differ); 0 = no batch on the pad */
+  nextOutN() {
+    if (this.kind === 'cannery') { const k = this.canKind(); return !k ? 0 : k === 'meat' ? this.meatRecipe().outN : this.recipe.outN; }
+    return this.hasBatch() ? this.recipe.outN : 0;
   }
 
   /** how many more of `type` the input pad takes (items flying in counted) */
   roomFor(type) {
     if (this.inputTypes.indexOf(type) < 0 || !this.enabled) return 0;
+    if (type === 'item_meat_raw' && !this.meatOn()) return 0;      // ((v4.2.1) closed until the line is bought
     const max = this.bal.inputMax;
     if (type === 'item_fish_raw' || type === 'item_fish_big') {
       const units = this.fishUnits(true);
@@ -87,6 +125,7 @@ export class Workshop extends Station {
 
   /** every ingredient of one batch is on the pad */
   hasBatch() {
+    if (this.kind === 'cannery') return this.canKind() !== null;
     for (const k in this.recipe.inputs) {
       const n = this.recipe.inputs[k];
       if (k === 'fish') { if (this.inStack.countOf('item_fish_big') < 1 && this.inStack.countOf('item_fish_raw') < n) return false; }
@@ -98,14 +137,16 @@ export class Workshop extends Station {
   canWork() {
     // (v3.5) somebody has to work the forge / the press (the chief on its work spot, or its operator)
     if (!this.operated()) return false;
-    if (!this.hasBatch() || this.outStack.count + this.outStack.incoming + this.recipe.outN > this.outStack.max) return false;
+    const n = this.nextOutN();
+    if (!n || this.outStack.count + this.outStack.incoming + n > this.outStack.max) return false;
     // the toolsmith only forges what someone needs (a hire pad) or the shop can sell
     if (this.recipe.out === 'tool') { this.planned = this.pickTool(); return !!this.planned; }
     return true;
   }
 
   hasWork() {
-    if (!this.hasBatch() || this.outStack.count + this.outStack.incoming + this.recipe.outN > this.outStack.max) return false;
+    const n = this.nextOutN();
+    if (!n || this.outStack.count + this.outStack.incoming + n > this.outStack.max) return false;
     return this.recipe.out === 'tool' ? !!this.pickTool() : true;
   }
   acceptsFromChief(p) { for (const it of p.stack.items) if (this.roomFor(it.type) > 0) return true; return false; }
@@ -151,8 +192,11 @@ export class Workshop extends Station {
 
   process() {
     const gs = this.gs;
-    const R = this.recipe;
+    let R = this.recipe;
     if (!this.hasBatch()) return;
+    // ((v4.2.1) the cannery: fish cans or meat cans, by systems/cans.js)
+    const can = this.kind === 'cannery' ? this.canKind() : null;
+    if (can) { if (can === 'meat') R = Object.assign({}, R, this.meatRecipe()); this.lastKind = can; this.madeKinds[can]++; }
     // ingredients hop into the machine
     const used = [];
     for (const k in R.inputs) {
@@ -161,7 +205,7 @@ export class Workshop extends Station {
         else for (let i = 0; i < R.inputs[k]; i++) used.push(this.inStack.pop('item_fish_raw'));
       } else for (let i = 0; i < R.inputs[k]; i++) used.push(this.inStack.pop(k));
     }
-    const fx = (this.site && Assets.def(R.sprite).fxPoints) || {};
+    const fx = (this.site && Assets.def(this.recipe.sprite).fxPoints) || {};
     const mx = this.x + (fx.input ? fx.input[0] : 0), my = this.y + (fx.input ? fx.input[1] : -40);
     used.forEach((it, i) => {
       if (!it) return;
@@ -186,7 +230,8 @@ export class Workshop extends Station {
       });
     }
     gs.time.delayedCall(260, () => {
-      if (gs.isNear(this.x, this.y, 520)) gs.sfxAt(Assets.audioGroup(R.sfx) || Assets.audioDef(R.sfx) ? R.sfx : 'sfx_smelt', this.x, this.y, { volume: 0.4, throttle: 300 });
+      const sfx = this.recipe.sfx;
+      if (gs.isNear(this.x, this.y, 520)) gs.sfxAt(Assets.audioGroup(sfx) || Assets.audioDef(sfx) ? sfx : 'sfx_smelt', this.x, this.y, { volume: 0.4, throttle: 300 });
       gs.effects.pop(this.img, 0.04, 90);
     });
     gs.events.emit('crafted', this.kind, outType);

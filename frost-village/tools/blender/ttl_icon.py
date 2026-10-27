@@ -2,7 +2,8 @@
 ttl_icon.py - the app icon scene (Blender, Cycles): a close, bold portrait of the chief (the game's
 player model, char_build) with a big happy smile and a TALL, leaning tower of salmon steaks on his
 wooden A-frame carrier (지게) rising to the top-right corner, a red pennant with the 눈꽃 emblem on
-top; 콩이 the shiba (pet2_build) pops in at the bottom left with her ^^ eyes; behind them only a
+top; the village dog (pet2_build: 누리 the maltipoo since 2026-10, before that the shiba 콩이 - the shipped
+icon still shows the shiba until it is re-rendered) pops in at the bottom left; behind them only a
 saturated ice-blue sky, the red roof corner of the game's log cabin (bld_assets house_a) and a
 snowy bank - so the face and the stack read at 48 px.
 
@@ -34,7 +35,7 @@ from mathutils import Vector, Euler   # noqa: E402
 import bl_common as bc           # noqa: E402
 
 CAM_YAW = 45.0                   # camera sits at world (+x, -y): the side the game's sprites are seen from
-CHAR_YAW = bc.DIR_YAW['S'] - 4   # chief faces the camera, turned a little toward 콩이
+CHAR_YAW = bc.DIR_YAW['S'] - 4   # chief faces the camera, turned a little toward the dog
 STACK_N = 9                      # salmon steaks in the tower
 STEAK_TILT = (38.0, 66.0)        # each steak tips its orange cut face toward the camera, more toward the top
                                  # (they sit above eye level; a casual-game 'fanned' stack)
@@ -201,7 +202,7 @@ def _coin():
     PA.b_item_coin()
 
 
-# ------------------------------------------------------------------ 콩이 the shiba
+# ------------------------------------------------------------------ the village dog (pet2_build: 누리)
 def build_dog(loc, yaw):
     import pet2_build as pb
     orig = bc.reset_scene

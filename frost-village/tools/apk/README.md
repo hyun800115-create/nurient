@@ -31,6 +31,9 @@ python3 frost-village/tools/apk/build_apk.py frost-village/dist/artifact frost-v
     `bash frost-village/tools/apk/export_signing_key.sh --pepk <pepk.jar> --encryption-key <encryption_public_key.pem>`
     (both files come from Play Console's "use an existing app signing key" page; `--dry-run` checks everything up to
     PEPK). The universal APK made from each bundle is signed with this key, i.e. it is the APK Play would deliver.
+- **마을 옮기기 (Move village)**: the game's own pages get `window.SnowbloomAndroid` (`android/java/.../WebBridge.java`:
+  `copy(text)`, `share(text)` = the phone's share sheet with the village code, `paste()`), refused on any other page; no
+  new permission. The game side is `src/core/Transfer.js` + `src/scenes/MovePanel.js` (settings → 마을 옮기기).
 - The INTERNET permission is in every build sent so far (and in Play bundles by default; `AAB_EXTRA=--no-internet`).
   WebView remote debugging (`chrome://inspect`) is on in test APKs and off in Play bundles.
 - `--check` needs androguard (`APK_PY=<venv>/bin/python`; keep that venv off PATH: the artifact build needs the system
@@ -41,7 +44,7 @@ back-callback flag, classes, signatures, alignment, every game file byte-identic
 against the real Android 16 framework: compile, every stub member, every reflective lookup), `test/boot_test.mjs`
 (headless Chromium through the app's own `AssetRouter`: title, new game, 60 s of touch play, offline resident chat,
 exit save, reload), `test/AssetServer.java --selftest`, and `test/robolectric/` (MainActivity on Android 16, 14 and 10
-under Robolectric: edge-to-edge insets, back callback, exit dialog; `mvn -q -f frost-village/tools/apk/test/robolectric/pom.xml test`).
+under Robolectric: edge-to-edge insets, back callback, exit dialog, the 마을 옮기기 bridge; `mvn -q -f frost-village/tools/apk/test/robolectric/pom.xml test`).
 
 Reports: `frost-village/docs/build_reports/play.md` (the Play pipeline, keys, limits, Korean summary) and
 `frost-village/docs/build_reports/apk.md` (the APK pipeline and the designer's Korean install guide).

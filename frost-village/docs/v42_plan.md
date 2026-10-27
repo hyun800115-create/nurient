@@ -648,8 +648,8 @@ Highest score wins (± `pilot.jitter` 10 % from a seeded RNG), the current activ
 | 수다 | 25 (+15 if none for 3 min) | an idle or seated resident/townsperson within 600 px, not chatted with in 5 min (**CODE-1**: a resident staying at a spot — VillageLife's `stay` job, not walking or moving in — counts as idle; during a chore break he looks 1,500 px far; residents only, the town dolls are CODE-2) | 20–30 s | both face each other, 2–4 bubbles from `ResidentChat`/`VillageLife` lines (no AI calls), 눈꽃말 voices, hearts; 총총이 takes notes |
 | 사무실 | 20 (+30 08–10 h with a new paper, +30 with ≥ 2 unread letters) | office built, **bag empty** | 30–60 s | walks in (shell fades), sits (`sit_idle`), reads the paper (`sit_read`), stamps a letter (`sit_write`) |
 | 쉬기 | 20 | — | 20–40 s | bench, campfire (`warm_hands`), looks at the sea |
-| 콩이 | 15 (**CODE-2 fix: +20 after 10 min without a game**, dog within 1,400 px then; the idle time resets once the game is over) | dog within 800 px | 15 s | `DogPlay` pet / throw |
-(CODE-2 review fixes, gameplay M4 / visual M1) The leisure acts (점심, 저녁, 기차 구경, 수다, 사무실, 쉬기, 콩이) wait while
+| 누리 | 15 (**CODE-2 fix: +20 after 10 min without a game**, dog within 1,400 px then; the idle time resets once the game is over) | dog within 800 px | 15 s | `DogPlay` pet / throw |
+(CODE-2 review fixes, gameplay M4 / visual M1) The leisure acts (점심, 저녁, 기차 구경, 수다, 사무실, 쉬기, 누리) wait while
 his bag holds a load that has somewhere to go (업무 delivers it first: he sat at lunch with five smoked meats on his
 head); 업무 between two loads (bag empty) is not held by its minimum time, so lunch, the night or the day's train can
 take over. His seated / social anims (chief2's on-demand sheet) are pinned in memory while 관망 is on; a seat whose

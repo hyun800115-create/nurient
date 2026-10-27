@@ -7,6 +7,9 @@
 //   bars are hidden with transient-by-swipe behaviour; the back callback is the window's top OnBackInvokedCallback and
 //   opens 「게임을 끝낼까요?」 once; 끝내기 fires pagehide and closes the app.
 //   Android 10 (API 29): the old path is unchanged (system-UI flags, the window fits the bars itself, onBackPressed).
+//   마을 옮기기 (Android 10 and 16): window.SnowbloomAndroid is on the WebView; on the game's own page copy() puts the
+//   code on the clipboard, share() opens the share sheet (a chooser around ACTION_SEND text/plain with the code),
+//   paste() reads the clipboard; on any other page all three refuse and nothing is started or copied.
 // Run: mvn -q -f frost-village/tools/apk/test/robolectric/pom.xml test   (see the pom)
 package com.snowbloom.village;
 
@@ -18,6 +21,10 @@ import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.os.Looper;
@@ -219,5 +226,74 @@ public class MainActivityTest {
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("게임을 끝낼까요?", latestDialogTitle());
         assertEquals(START, shadowOf(web(a)).getLastLoadedUrl());
+    }
+
+    // ------------------------------------------------------------------ 마을 옮기기: window.SnowbloomAndroid
+    static final String CODE = "[행복한 눈꽃마을 이야기] 마을 옮기기 코드\nSNOWBLOOM1.z.12.abcdefghijkl.0a1b2c3d";
+
+    private static WebBridge bridge(MainActivity a) {
+        Object o = shadowOf(web(a)).getJavascriptInterface(WebBridge.NAME);
+        assertTrue("window.SnowbloomAndroid is a WebBridge", o instanceof WebBridge);
+        return (WebBridge) o;
+    }
+
+    private static ClipboardManager clip(MainActivity a) {
+        return (ClipboardManager) a.getSystemService(Context.CLIPBOARD_SERVICE);
+    }
+
+    @Test
+    @Config(sdk = {29, 36})
+    public void moveVillage_bridgeCopiesSharesAndPastesOnTheGamesOwnPage() {
+        MainActivity a = start();
+        WebBridge b = bridge(a);
+        // the page start the WebView reports before the game's scripts run
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        assertTrue("the game's own page is trusted", b.trusted());
+
+        assertTrue("copy() succeeds", b.copy(CODE));
+        ClipData c = clip(a).getPrimaryClip();
+        assertNotNull("something is on the clipboard", c);
+        assertEquals("the clipboard holds exactly the code", CODE, String.valueOf(c.getItemAt(0).getText()));
+
+        clip(a).setPrimaryClip(ClipData.newPlainText("memo", "SNOWBLOOM1.j.3.abc.00000000"));
+        assertEquals("paste() reads the clipboard", "SNOWBLOOM1.j.3.abc.00000000", b.paste());
+
+        assertTrue("share() succeeds", b.share(CODE));
+        shadowOf(Looper.getMainLooper()).idle();
+        Intent chooser = shadowOf(a).getNextStartedActivity();
+        assertNotNull("an activity was started", chooser);
+        assertEquals("the phone's share sheet (chooser)", Intent.ACTION_CHOOSER, chooser.getAction());
+        Intent send = chooser.getParcelableExtra(Intent.EXTRA_INTENT);
+        assertNotNull("the chooser wraps the send intent", send);
+        assertEquals(Intent.ACTION_SEND, send.getAction());
+        assertEquals("text/plain", send.getType());
+        assertEquals("the shared text is exactly the code", CODE, send.getStringExtra(Intent.EXTRA_TEXT));
+        assertFalse("the app keeps running behind the share sheet", a.isFinishing());
+    }
+
+    @Test
+    @Config(sdk = 36)
+    public void moveVillage_bridgeRefusesAnyOtherPage() {
+        MainActivity a = start();
+        WebBridge b = bridge(a);
+        clip(a).setPrimaryClip(ClipData.newPlainText("memo", "secret"));
+        for (String other : new String[] { "https://example.com/", "https://appassets.androidplatform.net.evil.com/index.html",
+                "data:text/html,<p>hi</p>", "about:blank" }) {
+            shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), other, null);
+            assertFalse("untrusted: " + other, b.trusted());
+            assertFalse("copy refused on " + other, b.copy(CODE));
+            assertFalse("share refused on " + other, b.share(CODE));
+            assertEquals("paste refused on " + other, "", b.paste());
+        }
+        shadowOf(Looper.getMainLooper()).idle();
+        assertTrue("no share sheet was opened", shadowOf(a).getNextStartedActivity() == null);
+        assertEquals("the clipboard is untouched", "secret", String.valueOf(clip(a).getPrimaryClip().getItemAt(0).getText()));
+        // back on the game's page: allowed again; too long a text is refused (the page falls back to its own copy)
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        assertTrue(b.copy(CODE));
+        StringBuilder big = new StringBuilder();
+        while (big.length() <= WebBridge.MAX_CHARS) big.append("SNOWBLOOM1");
+        assertFalse("a text over MAX_CHARS is refused", b.copy(big.toString()));
+        assertFalse(b.share(big.toString()));
     }
 }

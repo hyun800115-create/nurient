@@ -222,7 +222,7 @@ export const CATALOG = [
   { code: 'F1', id: 'day_customers', kind: 'daily', src: 'daily', title: T('손님 60명 맞이하기', 'Serve 60 customers'), obj: [{ t: 'count', sig: 'cust', n: 60 }], unlock: ['rank:2'], icon: 'ui_icon_people' },
   { code: 'F2', id: 'day_bread', kind: 'daily', src: 'daily', title: T('빵 40개 팔기', 'Sell 40 loaves'), obj: [{ t: 'count', sig: 'sold:item_bread', n: 40 }], unlock: ['rank:2'], icon: 'item_bread' },
   { code: 'F3', id: 'day_ride', kind: 'daily', src: 'daily', title: T('버스나 기차 한 번 타기', 'Take one ride'), obj: [{ t: 'count', sig: 'chief_ride', n: 1 }], unlock: ['rank:2', 'b:depot'], icon: 'ui_icon_delivery' },
-  { code: 'F4', id: 'day_dog', kind: 'daily', src: 'daily', title: T('콩이와 놀아 주기 (간식·공·쓰다듬기)', 'Play with Kongi'),
+  { code: 'F4', id: 'day_dog', kind: 'daily', src: 'daily', title: T('누리와 놀아 주기 (간식·공·쓰다듬기)', 'Play with Nuri'),
     obj: [{ t: 'count', sig: 'dog:treat', n: 1 }, { t: 'count', sig: 'dog:play', n: 1 }, { t: 'count', sig: 'dog:pet', n: 1 }], unlock: ['rank:2'], icon: 'ui_icon_heart_pair' },
   { code: 'F5', id: 'day_chat', kind: 'daily', src: 'daily', title: T('주민 3명과 수다 떨기', 'Chat with 3 residents'), obj: [{ t: 'count', sig: 'chat', n: 3 }], unlock: ['rank:2'], icon: 'ui_icon_request' },
   { code: 'F6', id: 'day_tax', kind: 'daily', src: 'daily', title: T('세금 상자 비우기', 'Empty the tax box'), obj: [{ t: 'count', sig: 'tax', n: 1 }], unlock: ['rank:2', 'b:town_hall'], icon: 'ui_icon_coin' },

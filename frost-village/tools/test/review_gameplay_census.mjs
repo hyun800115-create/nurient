@@ -93,6 +93,17 @@ export function summarize(rows, opts = {}) {
     o.store = { salesPerMin: +((b.store.sales - a.store.sales) / m).toFixed(2), coinsPerMin: Math.round((b.store.coins - a.store.coins) / m), shelfEmptyPct: share(sr, (r) => r.store.shelf === 0),
       stallPct: share(sr, (r) => r.store.stall), toolsEmptyPct: share(sr, (r) => r.store.tools === 0), cansEmptyPct: share(sr, (r) => r.store.cans === 0), shelfAvg: +(sr.reduce((x, r) => x + r.store.shelf, 0) / sr.length).toFixed(1) };
   }
+  // ((v4.2.1) 고기 통조림: when the line came on, cans made a minute after it, the 잡화점's can towers
+  const mr = late.filter((r) => r.mc);
+  if (mr.length) {
+    const on = mr.filter((r) => r.mc.on), off = mr.find((r) => r.mc.offered);
+    o.meatcan = { offeredAt: off ? +(off.t / 60).toFixed(1) : null, onAt: on.length ? +(on[0].t / 60).toFixed(1) : null };
+    if (on.length > 1) {
+      const a = on[0], b = on[on.length - 1], m = Math.max(1, (b.t - a.t) / 60), so = on.filter((r) => r.store);
+      Object.assign(o.meatcan, { meatCansPerMin: +(((b.mc.meat - a.mc.meat) * 3) / m).toFixed(1), fishCansPerMin: +(((b.mc.fish - a.mc.fish) * 3) / m).toFixed(1),
+        storeMeatEmptyPct: share(so, (r) => !r.store.meat), storeBothEmptyPct: share(so, (r) => !r.store.meat && r.store.cans === 0) });
+    }
+  }
   const br = late.filter((r) => r.boat);
   if (br.length) o.pier = { avg: +(br.reduce((x, r) => x + r.boat[0], 0) / br.length).toFixed(1), full90Pct: share(br, (r) => r.boat[0] >= r.boat[1] * 0.9) };
   return o;
@@ -221,8 +232,10 @@ try {
       // ((v4.2 integrated fixes) the 잡화점: shelf, line, front customer waiting at an empty shelf, sales so far)
       store: (() => { const S = gs.store; if (!S || !S.enabled) return null; const f = S.queue[0];
         return { shelf: S.stock.count, q: S.queue.length, stall: f && f.arrived && f.state === 'wait' && f.need > 0 && S.stock.count === 0 ? 1 : 0,
-          tools: S.goods.filter((g) => g !== 'item_can').reduce((a, g) => a + S.stock.countOf(g), 0), cans: S.stock.countOf('item_can'),
+          tools: S.goods.filter((g) => g !== 'item_can' && g !== 'item_can_meat').reduce((a, g) => a + S.stock.countOf(g), 0), cans: S.stock.countOf('item_can'), meat: S.stock.countOf('item_can_meat'),
           sales: window.__made ? window.__made.storeSales : 0, coins: window.__made ? window.__made.storeCoins : 0 }; })(),
+      // ((v4.2.1) 고기 통조림: the line on, batches made of each can
+      mc: (() => { const M = gs.v42 && gs.v42.meatcan, C = (gs.workshops || []).find((w) => w.kind === 'cannery'); if (!M || !C) return null; return { on: M.on ? 1 : 0, offered: M.offered() ? 1 : 0, fish: C.madeKinds.fish, meat: C.madeKinds.meat }; })(),
       nPorters: gs.porters.length, nRaw: gs.rawPorters.length,
       done: Object.keys(gs.progress.done).filter((k) => gs.progress.done[k]).length,
       celebrated: !!gs.progress.celebrated, rank: gs.v4 && gs.v4.rank ? gs.v4.rank.level : 0,

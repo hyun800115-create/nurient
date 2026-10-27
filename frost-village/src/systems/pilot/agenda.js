@@ -5,9 +5,9 @@
 //                    the current one keeps a hysteresis bonus and is locked for its minimum time
 // ctx = { hour, urgent, lunchOpen, bagRoom, bagCount, work, noCourier, cashMax, trainSoon, trainNear, chatMate,
 //         chatIdle, office, paperNew, unread, dog, evening, locked: { act: until },
-//         (v4.2 fix) trainToday (a train watched today), dogIdle (s since he last played with 콩이) }
+//         (v4.2 fix) trainToday (a train watched today), dogIdle (s since he last played with 누리) }
 // ((v4.2 fix, CODE-2 review) the night is his: from 21:00 to 06:00 the evening (office lamp, the stove, the campfire)
-//  beats the chores; one train watch a day and a game with 콩이 every ~10 minutes find their place; the leisure acts
+//  beats the chores; one train watch a day and a game with 누리 every ~10 minutes find their place; the leisure acts
 //  wait until his bag is delivered (no lunch with a tower of smoked meat on his head))
 
 import { BALANCE } from '../../data/balance.js';
@@ -45,7 +45,7 @@ export function score(act, c) {
     case 'chat': return c.chatMate ? 25 + (c.chatIdle >= 180 ? 15 : 0) : null;
     case 'office': return c.office && c.bagCount === 0 ? 20 + (c.hour >= 8 && c.hour < 10 && c.paperNew ? 30 : 0) + (c.unread >= 2 ? 30 : 0) : null;
     case 'rest': return 20;
-    // (콩이: after 10 minutes without a game the dog comes before a rest or a chat)
+    // (누리: after 10 minutes without a game the dog comes before a rest or a chat)
     case 'dog': return c.dog ? 15 + ((c.dogIdle || 0) >= 600 ? 20 : 0) : null;
     default: return null;
   }
