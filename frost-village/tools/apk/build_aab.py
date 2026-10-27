@@ -201,9 +201,9 @@ def check_bundle_manifest(t, aab, want):
     problems = ['bundle manifest %s=%r, expected %r' % (k, got[k], v) for k, v in want.items() if got[k] != v]
     if re.search(r'android:debuggable="true"', xml):
         problems.append('bundle manifest: android:debuggable="true"')
-    for a, v in (('appCategory', 'game'), ('enableOnBackInvokedCallback', 'true')):
-        if attr(a) != v:
-            problems.append('bundle manifest android:%s=%r, expected %r' % (a, attr(a), v))
+    for a, ok in (('appCategory', ('game', '0')), ('enableOnBackInvokedCallback', ('true',))):   # appCategory game = enum 0
+        if attr(a) not in ok:
+            problems.append('bundle manifest android:%s=%r, expected %r' % (a, attr(a), ok[0]))
     return got, problems, xml
 
 
@@ -322,7 +322,8 @@ def main():
             tmp_uni = uni_out.with_suffix('.apk.part')
             tmp_uni.write_bytes(z.read('universal.apk'))
 
-        ver, jar_ok = B.verify(t, work, tmp_uni)
+        B.signer_classes(t, work)                     # apksig's verifier (signer/SignApk.java)
+        ver, jar_ok = B.verify(t, work, tmp_uni, apksig_jar=t['bundletool'])   # bundletool's apksig knows v3
         post = B.check_zip(tmp_uni)
         b = B.badging(t, tmp_uni)
         if not ver['verified'] or not ver['v2'] or ver['errors']:
@@ -372,12 +373,12 @@ def main():
         'minSdk': B.MIN_SDK, 'targetSdk': B.TARGET_SDK, 'permissions': b['permissions'], 'webViewDebugging': a.web_debug,
         'appCategory': 'game', 'enableOnBackInvokedCallback': True, 'wwwFiles': n, 'artifact': str(artifact),
         'bundle': {'entries': aab_entries, 'bundletool': BUNDLETOOL[0].rsplit('/', 1)[1], 'config': cfg,
-                   'validate': validate.strip().splitlines()[-12:], 'manifest': man},
+                   'validate': [l for l in validate.strip().splitlines() if not l.strip().startswith('File:')][:12], 'manifest': man},
         'uploadKey': {'keystore': str(UPLOAD_KS), 'alias': UPLOAD_ALIAS, 'certificateSha256': upload_fp,
                       'certificatePem': str(upload_pem), 'madeThisRun': new_upload_key, 'aabSignerSha256': aab_signer},
         'universalApk': {'file': uni_out.name, 'sha256': sums[uni_out.name], 'bytes': uni_out.stat().st_size,
                          'MB': round(uni_out.stat().st_size / 1048576, 2), 'signedWith': a.universal_key,
-                         'signerSha256': signer_fp, 'signature': {k: ver[k] for k in ('verified', 'v1', 'v2', 'checkedSdk', 'warnings')},
+                         'signerSha256': signer_fp, 'signature': {k: ver.get(k) for k in ('verified', 'v1', 'v2', 'v3', 'checkedSdk', 'warnings')},
                          'zip': post, 'label': b['label'], 'icon': b['icon']},
         'playDownload': {'splitApks': split_names, 'minBytes': dl_min, 'maxBytes': dl_max,
                          'note': 'bundletool get-size total: compressed download size over all device configurations'},

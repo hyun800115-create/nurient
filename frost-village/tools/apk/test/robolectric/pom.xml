@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Snowbloom Village Android app (tools/apk): MainActivity on the real Android framework code under Robolectric (JVM, no
+  device). Compiles the app's own sources (tools/apk/android/java) against the Android 16 framework jar and runs
+  MainActivityTest on Android 16 (API 36: edge-to-edge insets, predictive-back callback) and Android 10 (API 29: the
+  old full-screen flags and onBackPressed).
+
+    mvn -q -f frost-village/tools/apk/test/robolectric/pom.xml test        (needs Maven + JDK 17+; downloads Robolectric
+                                                                             and the framework jars from Maven Central once)
+  Build output goes to ${robo.out} (default: the system temp folder), never into this checkout.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.snowbloom.village</groupId>
+  <artifactId>snowbloom-robolectric</artifactId>
+  <version>1</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <app.src>${project.basedir}/../../android/java</app.src>
+    <robo.out>${java.io.tmpdir}/snowbloom-robolectric</robo.out>
+  </properties>
+
+  <dependencies>
+    <!-- the Android 16 (API 36) framework classes, to compile the app against (the same jar api36_check.py uses) -->
+    <dependency>
+      <groupId>org.robolectric</groupId>
+      <artifactId>android-all</artifactId>
+      <version>16-robolectric-13921718</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.robolectric</groupId>
+      <artifactId>robolectric</artifactId>
+      <version>4.17</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${robo.out}</directory>
+    <sourceDirectory>${app.src}</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

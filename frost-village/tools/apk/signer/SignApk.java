@@ -9,7 +9,8 @@
 //   java <exports> -cp apksig.jar:<classes> SignApk v2     <in.apk> <out.apk> <keystore.p12> <storepass> <alias> <minSdk>
 //   java <exports> -cp apksig.jar:<classes> SignApk verify <apk> <minSdk> <maxSdk>
 // <exports> = --add-exports=java.base/sun.security.{x509,pkcs,util}=ALL-UNNAMED (apksig 2.3.0 touches them).
-// verify prints one JSON object and exits 1 unless the APK verifies for every platform in [minSdk, maxSdk].
+// verify prints one JSON object and exits 1 unless the APK verifies for every platform in [minSdk, maxSdk]. It also runs
+// on the newer apksig inside bundletool (tools/apk/build_aab.py), which knows the v3 scheme bundletool signs with.
 import com.android.apksig.ApkSignerEngine;
 import com.android.apksig.ApkVerifier;
 import com.android.apksig.DefaultApkSignerEngine;
@@ -116,6 +117,7 @@ public class SignApk {
         j.append("\"verified\":").append(r.isVerified());
         j.append(",\"v1\":").append(r.isVerifiedUsingV1Scheme());
         j.append(",\"v2\":").append(r.isVerifiedUsingV2Scheme());
+        j.append(",\"v3\":").append(flag(r, "isVerifiedUsingV3Scheme"));     // newer apksig only (bundletool's)
         j.append(",\"checkedSdk\":[").append(minSdk).append(',').append(maxSdk).append(']');
         j.append(",\"signers\":[");
         boolean first = true;
@@ -132,6 +134,15 @@ public class SignApk {
         j.append("],\"errors\":").append(list(errors)).append(",\"warnings\":").append(list(warnings)).append('}');
         System.out.println(j);
         return r.isVerified() && errors.isEmpty();
+    }
+
+    /** a boolean getter that only newer apksig versions have (null when this apksig does not know it) */
+    static Boolean flag(Object o, String getter) {
+        try {
+            return (Boolean) o.getClass().getMethod(getter).invoke(o);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     static String list(List<String> l) {

@@ -41,12 +41,12 @@ const SCENES = [
   } },
   // 2 the train in at our station with the town coach (daytime)
   { name: '02_train', save: LATE, secs: 2, warm: 4, coins: 12840, setup: () => {
-    const nb = window.__FV.scene.v4; window.__day(10);
+    const nb = window.__FV.scene.v4; window.__day(10); window.__FV.clearStack();
     window.__FV.teleport(nb.ours.x + 140, nb.ours.y + 220);
     return null;
   }, then: () => { const nb = window.__FV.scene.v4; nb.rail.set('atOurs', 1); return { x: nb.ours.x + 10, y: nb.ours.y + 60, z: 0.95 }; }, secs2: 1.5 },
   // 3 the big restaurant at lunch: tables full, the staff serving, coins on the tables
-  { name: '03_restaurant', save: LATE, secs: 100, feed: true, setup: () => {
+  { name: '03_restaurant', save: LATE, coins: 12840, secs: 100, feed: true, setup: () => {
     const R = window.__busy(2.2); window.__day(12); R.setTables(2, true); R.hire('server2', true);
     return { x: R.x - 250, y: R.y - 190, z: 1.25 };
   }, then: () => window.__full({ x: -250, y: -190, z: 1.25 }) },
@@ -57,17 +57,17 @@ const SCENES = [
   }, then: () => { const O = window.__FV.scene.v42.office; return { x: O.x, y: O.y - 20, z: 1.2 }; }, secs2: 2 },
   // 6 night: the station square and the street lamps, the chief in the crowd
   { name: '06_night', save: LATE, secs: 25, warm: 2, coins: 12840, setup: () => {
-    const gs = window.__FV.scene, nb = gs.v4; window.__day(22); nb.rail.set('atOurs', 2);
+    const gs = window.__FV.scene, nb = gs.v4; window.__day(22); nb.rail.set('atOurs', 2); window.__FV.clearStack();
     const q = nb.ours; window.__FV.teleport(q.x - 60, q.y + 200);
     return { x: q.x - 60, y: q.y + 150, z: 0.75 };
   }, after: () => window.__day(10) },
   // 7 the living sea: the fishing boats on the water by the dock
   { name: '07_sea', save: LATE, secs: 6, warm: 3, setup: () => {
-    const gs = window.__FV.scene, H = gs.boathouse, b = H && H.boat; window.__day(15);
+    const gs = window.__FV.scene, H = gs.boathouse, b = H && H.boat; window.__day(15); window.__FV.clearStack();
     if (b && H.route && H.route.length) { const w = H.route[H.route.length - 1]; b.x = w.x; b.y = w.y; b.state = 'fish'; b.fishT = 40; if (b.pickSpot) b.pickSpot(); }
     window.__FV.teleport(H.x - 60, H.y + 140);
     return null;
-  }, then: () => { const gs = window.__FV.scene, H = gs.boathouse, b = H.boat || H; return { x: (b.x * 0.7 + H.x * 0.3), y: (b.y * 0.7 + H.y * 0.3) + 20, z: 0.85 }; }, secs2: 1, coins: 12840 },
+  }, then: () => { const gs = window.__FV.scene, H = gs.boathouse, b = H.boat || H; return { x: b.x - 80, y: b.y + 320, z: 0.85 }; }, secs2: 1, coins: 12840 },
   // 8 관망: the chief works on his own, the camera follows, the caption says what he does
   { name: '08_observe', save: LATE, coins: 12840, secs: 12, setup: () => { window.__day(10); window.__FV.v42.pilot(true); return null; },
     then: () => { const p = window.__FV.scene.player; return { x: p.x, y: p.y, z: 0.9 }; }, after: () => { window.__FV.v42.pilot(false); } },
@@ -126,7 +126,6 @@ for (const g of groups) {
         try { if (ui.hud42 && ui.hud42.closeTrainCard) ui.hud42.closeTrainCard(); } catch (e) { /* */ }
         try { if (ui.panelOpen && ui.closeSettings) ui.closeSettings(true); } catch (e) { /* */ }
       });
-      if (sc.coins) await page.evaluate((n) => { const e = window.__FV.scene.economy; window.__FV.give(n - e.coins); }, sc.coins);
       let cam = await page.evaluate(sc.setup);
       await run(sc.secs || 0);
       await warm(sc.warm || 0);
@@ -137,7 +136,12 @@ for (const g of groups) {
         await page.evaluate(() => window.__FV.game.loop.sleep());
       }
       if (sc.then) { cam = await page.evaluate(sc.then); await run(sc.secs2 || 0); }
+      // a tidy coin count in the HUD (the late save's own number moves with what each staged scene spends)
+      if (sc.coins) await page.evaluate((n) => { const e = window.__FV.scene.economy; window.__FV.give(n - e.coins); }, sc.coins);
       if (cam) await page.evaluate((c) => window.__FV.camera(c.x, c.y, c.z), cam);
+      // the ground under the final view at full detail (chunks that just came into view are baked over a few
+      // frames otherwise and show as lighter rectangles)
+      await page.evaluate(() => { for (let i = 0; i < 6; i++) window.__draw(); const gs = window.__FV.scene, c = gs.cameras.main, z = Math.max(0.05, c.zoom || 1), w = c.width / z, h = c.height / z, x = c.midPoint.x, y = c.midPoint.y; try { if (gs.ground && gs.ground.ensure) gs.ground.ensure({ x: x - w / 2 - 200, y: y - h / 2 - 200, right: x + w / 2 + 200, bottom: y + h / 2 + 200 }, Infinity, 400); } catch (e) { /* */ } for (let i = 0; i < 60; i++) window.__draw(); });
       await page.evaluate((keep) => {
         const ui = window.__FV.game.scene.getScene('UI');
         if (!keep && ui && ui.bannerBox && ui.bannerBox.visible) { ui.tweens.killTweensOf(ui.bannerBox); ui.bannerBox.setVisible(false); }

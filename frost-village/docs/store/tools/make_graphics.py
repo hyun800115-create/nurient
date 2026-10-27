@@ -7,10 +7,10 @@ Writes into frost-village/docs/store/assets/:
   icon_512.png               512 x 512, 32-bit PNG (RGBA, opaque), from assets/title/icon/icon_1024.png
   feature_graphic.png        1024 x 500, 24-bit PNG (no alpha), title backdrop + logo + the chief and 콩이
   feature_graphic_en.png     the same with the English logo (for an English store listing)
-  screenshots/NN_*.png       with --shots: the raw game screenshots (1080 x 2160) copied in listing order
-  screenshots_caption/NN_*.png   the same pictures with a short Korean caption band (1080 x 2160)
+  screenshots/NN_*.jpg       with --shots: the raw game screenshots (1080 x 2160, JPEG q92) in listing order
+  screenshots_caption/NN_*.jpg   the same pictures with a short Korean caption band (1080 x 2160)
   screenshots_caption_en/...     the same with English captions
-  preview_*.png              contact sheets to check everything by eye (not for upload)
+  preview_*.jpg              contact sheets to check everything by eye (not for upload)
 and checks every file against Play's limits (sizes, ratio, bit depth, file size).
 """
 import argparse
@@ -129,7 +129,7 @@ def make_icon():
 def make_feature(lang='ko'):
     S = 2                                   # draw at 2x, scale down at the end
     W, H = 1024 * S, 500 * S
-    horizon = int(H * 0.72)                 # where the forest meets the snow
+    horizon = int(H * 0.79)                 # where the forest meets the snow
     cv = Image.new('RGBA', (W, H), (0, 0, 0, 255))
     # sky: the title's dusk gradient, its warm band just above the mountains
     sky = Image.open(os.path.join(T, 'ttl_sky_dusk.png')).convert('RGB')
@@ -164,10 +164,14 @@ def make_feature(lang='ko'):
     # snow field in front, a soft bank rising under the characters on the right
     snow = gradient(W, H - horizon + 4, [(0, (238, 230, 242)), (0.4, (247, 243, 249)), (1, (222, 232, 247))]).convert('RGBA')
     cv.alpha_composite(snow, (0, horizon - 4))
-    bank = Image.new('RGBA', (W, H), (252, 250, 253, 0))      # (transparent white: no dark fringe when blurred)
-    ImageDraw.Draw(bank).ellipse((int(W * 0.44), int(H * 0.80), int(W * 1.12), int(H * 1.35)), fill=(252, 250, 253, 255))
-    bank = bank.filter(ImageFilter.GaussianBlur(10 * S))
-    cv.alpha_composite(bank)
+    # soft drifts: a blue shade line under each, a white top (transparent-white fills: no dark fringe when blurred)
+    for (x0, y0, x1, y1) in ((-0.10, 0.84, 0.42, 1.20), (0.30, 0.90, 0.70, 1.25), (0.46, 0.83, 1.12, 1.35)):
+        sh = Image.new('RGBA', (W, H), (196, 210, 236, 0))
+        ImageDraw.Draw(sh).ellipse((int(W * x0), int(H * (y0 - 0.012)), int(W * x1), int(H * y1)), fill=(196, 210, 236, 150))
+        cv.alpha_composite(sh.filter(ImageFilter.GaussianBlur(7 * S)))
+        top = Image.new('RGBA', (W, H), (252, 250, 253, 0))
+        ImageDraw.Draw(top).ellipse((int(W * x0), int(H * y0), int(W * x1), int(H * y1)), fill=(252, 250, 253, 255))
+        cv.alpha_composite(top.filter(ImageFilter.GaussianBlur(5 * S)))
     # the chief and 콩이 (the app icon's adaptive foreground: the same characters as the icon), on the snow bank
     ch = rgba(os.path.join('icon', 'ic_launcher_foreground.png'))
     ch = ch.crop(ch.getchannel('A').getbbox())
@@ -212,7 +216,7 @@ def caption_shot(src, text, lang):
     band = 300
     im = Image.open(src).convert('RGB')
     cv = Image.new('RGB', (W, H), (15, 26, 44))
-    bg = gradient(W, H, [(0, (40, 52, 120)), (0.14, (64, 73, 149)), (0.15, (24, 36, 78)), (1, (15, 26, 44))])
+    bg = gradient(W, H, [(0, (72, 84, 164)), (0.16, (44, 56, 116)), (0.5, (22, 34, 70)), (1, (15, 26, 44))])
     cv.paste(bg, (0, 0))
     # the screenshot, rounded corners, a soft shadow
     sh_h = H - band - 40
@@ -268,15 +272,15 @@ def make_shots(shots_dir, lang_list=('ko', 'en')):
             print('missing', src)
             continue
         im = Image.open(src).convert('RGB')
-        dst = os.path.join(raw_dir, '%02d_%s.png' % (n, stem[3:]))
-        im.save(dst, optimize=True)
+        dst = os.path.join(raw_dir, '%02d_%s.jpg' % (n, stem[3:]))
+        im.save(dst, quality=92, subsampling=0, optimize=True)       # JPEG (Play takes JPEG or 24-bit PNG): ~1/4 of the PNG
         made.append(dst)
         for lang in lang_list:
             cdir = os.path.join(OUT, 'screenshots_caption' + ('' if lang == 'ko' else '_en'))
             os.makedirs(cdir, exist_ok=True)
             c = caption_shot(src, ko if lang == 'ko' else en, lang)
-            p = os.path.join(cdir, '%02d_%s.png' % (n, stem[3:]))
-            c.save(p, optimize=True)
+            p = os.path.join(cdir, '%02d_%s.jpg' % (n, stem[3:]))
+            c.save(p, quality=92, subsampling=0, optimize=True)
             made.append(p)
     return made
 
@@ -290,7 +294,7 @@ def contact(paths, out, cols=4, w=270):
     for i, im in enumerate(ims):
         r, c = divmod(i, cols)
         sheet.paste(im.resize((w, hs[i]), Image.LANCZOS), (12 + c * (w + 12), 12 + r * (hmax + 12)))
-    sheet.save(out, optimize=True)
+    sheet.save(out, quality=85, optimize=True)
 
 
 # ------------------------------------------------------------------ checks
@@ -345,9 +349,9 @@ def main():
         raw = [p for p in shots if os.sep + 'screenshots' + os.sep in p]
         cap = [p for p in shots if os.sep + 'screenshots_caption' + os.sep in p]
         if raw:
-            contact(raw, os.path.join(OUT, 'preview_screenshots.png'))
+            contact(raw, os.path.join(OUT, 'preview_screenshots.jpg'))
         if cap:
-            contact(cap, os.path.join(OUT, 'preview_screenshots_caption.png'))
+            contact(cap, os.path.join(OUT, 'preview_screenshots_caption.jpg'))
     for r in res:
         print(('OK  ' if r['ok'] else 'BAD ') + r['file'], r['size'], r['mode'], str(r['kb']) + ' KB', '; '.join(r['errors']))
     json.dump(res, open(os.path.join(OUT, 'checks.json'), 'w'), ensure_ascii=False, indent=1)

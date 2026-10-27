@@ -447,11 +447,12 @@ def sign(t, work, unsigned, out, ks):
     run(['java'] + JAVA_EXPORTS + ['-cp', cp, 'SignApk', 'v2', v1a, out, ks, KEY_PASS, KEY_ALIAS, MIN_SDK])
 
 
-def verify(t, work, apk):
+def verify(t, work, apk, apksig_jar=None):
     """apksig's ApkVerifier and the JDK's jarsigner -verify. apksig checks v2 for the platforms the app installs on
     (MIN_SDK..MAX_CHECK_SDK: Android 7+ only reads v2 when it is there); a second pass from API 18 makes it check
-    the v1 signature too (that is what an Android older than 7 would read)."""
-    cp = os.pathsep.join([str(t['apksig_jar']), str(work / 'signer')])
+    the v1 signature too (that is what an Android older than 7 would read). apksig_jar: another apksig build to verify
+    with (build_aab.py passes bundletool's, which knows the v3 scheme bundletool signs with)."""
+    cp = os.pathsep.join([str(apksig_jar or t['apksig_jar']), str(work / 'signer')])
 
     def one(lo):
         r = subprocess.run(['java'] + JAVA_EXPORTS + ['-cp', cp, 'SignApk', 'verify', str(apk), str(lo), str(MAX_CHECK_SDK)],
