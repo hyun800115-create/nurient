@@ -63,11 +63,14 @@ const SCENES = [
     // wait until a 창고 직원 walks with fish to the cannery, then until he is on the last stretch (the cannery in view)
     for (let i = 0; i < 240; i++) { window.__run(0.5); const p = gs.warehouse.porters.find((q) => q.job && q.job.kind === 'link' && q.state === 'haul' && q.stack.count >= 4); if (p) { window.__who = p; break; } }
     const p = window.__who || gs.warehouse.porters[0], ip = C.inPad || C;
-    for (let i = 0; i < 200 && window.__who && p.state === 'haul' && Math.hypot(p.x - ip.x, p.y - ip.y) > 420; i++) window.__run(0.25);
+    for (let i = 0; i < 200 && window.__who && p.state === 'haul' && Math.hypot(p.x - ip.x, p.y - ip.y) > 260; i++) window.__run(0.25);
     window.__FV.teleport(p.x - 700, p.y + 500);
     window.__linkShot = { found: !!window.__who, state: p.state, carried: p.stack.count, type: p.carriedType && p.carriedType(), d: Math.round(Math.hypot(p.x - ip.x, p.y - ip.y)) };
-    return { x: (p.x + ip.x) / 2, y: (p.y + ip.y) / 2 - 40, z: 0.72 };
-  } },
+    // (he stands still for the shot — the live warm-up would walk him behind a tree — and the camera is close enough
+    //  for the fish on his back frame to read on a phone, with the cannery's fish bubble in the same view)
+    p._spd = p.speed; p.speed = 0;
+    return { x: p.x * 0.6 + ip.x * 0.4, y: p.y * 0.6 + ip.y * 0.4 - 30, z: 1.0 };
+  }, after: () => { const p = window.__who; if (p && p._spd) p.speed = p._spd; } },
   { name: '05_crew_arrives', save: 'v41_save_smart_46min.json', secs: 0.2, keepBanner: true, warm: 6, setup: () => {
     window.__quiet(); window.__flushBanners(); window.__FV.clearStack(); window.__FV.teleport(-200, 700);
     window.__FV.v42.crew({ rate: 1e6, now: true }); return null;
@@ -129,7 +132,7 @@ for (const sc of SCENES.filter((s) => !ONLY || ONLY.some((o) => s.name.startsWit
     await page.evaluate(() => { for (let i = 0; i < 12; i++) window.__draw(); });
     const file = sc.name + SUFFIX + '.jpg';
     await page.screenshot({ path: path.join(OUT, file), type: 'jpeg', quality: 84, timeout: 120000 });
-    const st = await page.evaluate(() => { const gs = window.__FV.scene, c = window.__FV.v42.crew ? window.__FV.v42.crew() : null; return { link: window.__linkShot || undefined, crew: c && c.crew, objective: gs.tutorial && gs.tutorial.text, goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null }; });
+    const st = await page.evaluate(() => { const gs = window.__FV.scene, c = window.__FV.v42.crew ? window.__FV.v42.crew() : null; const w = window.__who, v = gs.cameras.main.worldView; return { link: window.__linkShot || undefined, who: w ? { x: Math.round(w.x), y: Math.round(w.y), vis: w.sprite.visible, a: w.sprite.alpha, st: w.state, n: w.stack.count } : undefined, view: [Math.round(v.x), Math.round(v.y), Math.round(v.width), Math.round(v.height)], crew: c && c.crew, objective: gs.tutorial && gs.tutorial.text, goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null }; });
     made.push([file, st]);
     if (sc.after) await page.evaluate(sc.after);
     await page.evaluate(() => { window.__hold = null; });
