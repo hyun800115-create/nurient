@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 행복한 눈꽃마을 이야기 · Snowbloom Village — Android test app. Template: build_apk.py fills in the package, SDK levels and extra permissions, then aapt2 links it. -->
+<!-- 행복한 눈꽃마을 이야기 · Snowbloom Village — Android app (sideloaded test APKs: build_apk.py; Google Play bundles: build_aab.py).
+     Template: the build fills in the package, SDK levels, extra permissions and the WebView-debugging flag, then aapt2 links it. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="@@PACKAGE@@"
     android:installLocation="auto">
@@ -21,11 +22,19 @@
         android:hardwareAccelerated="true"
         android:allowBackup="true"
         android:usesCleartextTraffic="false"
-        android:supportsRtl="false">
+        android:supportsRtl="false"
+        android:appCategory="game"
+        android:enableOnBackInvokedCallback="true">
+        <!-- appCategory="game": Android 16 ignores screenOrientation="portrait" on large screens (smallest width >= 600 dp)
+             for targetSdk 36 apps, except games. enableOnBackInvokedCallback="true": back reaches the app through
+             MainActivity's OnBackInvokedCallback (Api33) on Android 13+; targetSdk 36 makes that the only route on
+             Android 16 anyway (onBackPressed is no longer called there). -->
 
         <!-- no Safe Browsing lookups and no usage metrics for a game that only shows its own packed files -->
         <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false" />
         <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />
+        <!-- WebView remote debugging (chrome://inspect over USB): true in the sideloaded test APKs, false in Play builds -->
+        <meta-data android:name="com.snowbloom.village.WEB_DEBUG" android:value="@@WEB_DEBUG@@" />
 
         <activity
             android:name="com.snowbloom.village.MainActivity"

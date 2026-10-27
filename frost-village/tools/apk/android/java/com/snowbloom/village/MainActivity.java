@@ -4,18 +4,29 @@
 // APK under assets/www/ and served from a virtual https origin (AssetRouter): no file:// access, no network, no
 // server. localStorage of that origin holds the save, like the browser does.
 //
-// Compiled with javac --release 8 against the API 16 stub android.jar from Maven Central, so everything newer than
-// API 16 is reached through reflection (minSdk is 24, so it is always there at run time), and
-// onRenderProcessGone (API 26) compiles against a compile-only stub (tools/apk/android/stubs, never packed).
+// Compiled with javac --release 8 against the API 16 stub android.jar from Maven Central, so methods newer than API 16
+// on older classes are reached through reflection (minSdk is 24, so the API 17-24 ones are always there at run time),
+// and newer types (onRenderProcessGone's RenderProcessGoneDetail, API 26; WindowInsets & co., API 29/30; the back
+// callback, API 33) compile against compile-only stubs (tools/apk/android/stubs, never packed). The API 30 and API 33
+// code lives in Api30 / Api33, loaded only on those versions.
+//
+// targetSdk 36 (Google Play's rule for new apps and updates from 31 Aug 2026): the window is edge-to-edge (Android 15+
+// enforces it, Android 16 removes the opt-out), so GameFrame pads the game by the visible bars, the camera cutout and
+// the keyboard on Android 11+; and back arrives through an OnBackInvokedCallback on Android 13+ (Android 16 no longer
+// calls onBackPressed for targetSdk 36), which opens the same exit dialog.
 package com.snowbloom.village;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,6 +35,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.RenderProcessGoneDetail;
@@ -48,10 +60,13 @@ public class MainActivity extends Activity {
     static final int NIGHT = 0xFF0F1A2C;
     /** View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY (API 19; the stub android.jar is API 16) */
     static final int IMMERSIVE_STICKY = 0x00001000;
+    /** manifest meta-data: WebView remote debugging (chrome://inspect) on in the sideloaded test APKs, off in Play builds */
+    static final String META_WEB_DEBUG = "com.snowbloom.village.WEB_DEBUG";
 
     private FrameLayout root;
     private WebView web;
     private AlertDialog exitDialog;
+    private Object backCallback;                       // Api33.BackCallback (Android 13+)
     private final Handler ui = new Handler(Looper.getMainLooper());
     private int crashes;
     private long firstCrashAt;
@@ -68,25 +83,64 @@ public class MainActivity extends Activity {
         w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);        // keep the screen on while playing
         w.addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(NIGHT));
-        // the chat's text box: the window shrinks above the keyboard (FLAG_FULLSCREEN would break this, so the bars
-        // are hidden with the system-UI flags instead)
+        // the chat's text box must stay above the keyboard. Android 7-10: the window shrinks above it (adjustResize;
+        // FLAG_FULLSCREEN would break this, so the bars are hidden with the system-UI flags instead). Android 11+:
+        // edge-to-edge, GameFrame pads the game by the keyboard's inset (adjustResize only reports it there).
         w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        callStatic(WebView.class, "setWebContentsDebuggingEnabled", new Class<?>[] { boolean.class }, true);   // API 19: chrome://inspect
+        if (Build.VERSION.SDK_INT >= 30) Api30.edgeToEdge(w);
+        if (metaFlag(META_WEB_DEBUG)) {
+            callStatic(WebView.class, "setWebContentsDebuggingEnabled", new Class<?>[] { boolean.class }, true);   // API 19: chrome://inspect
+        }
 
-        root = new FrameLayout(this);
+        root = new GameFrame(this);
         root.setBackgroundColor(NIGHT);
         setContentView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
-            @Override public void onSystemUiVisibilityChange(int visibility) {
-                // the bars came back (keyboard, a swipe on an older phone): hide them again after a moment
-                if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
-                    ui.removeCallbacks(hideBars);
-                    ui.postDelayed(hideBars, 2500);
+        if (Build.VERSION.SDK_INT < 30) {
+            getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+                @Override public void onSystemUiVisibilityChange(int visibility) {
+                    // the bars came back (keyboard, a swipe on an older phone): hide them again after a moment
+                    if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) rehideBarsLater();
                 }
-            }
-        });
+            });
+        }
+        if (Build.VERSION.SDK_INT >= 33) backCallback = Api33.registerBack(this);
         createWebView();
         hideSystemUi();
+    }
+
+    /**
+     * The root view. Android 11+: the window is edge-to-edge, so this view pads itself by the visible system bars, the
+     * camera cutout and the keyboard, and hands the WebView the insets with those parts zeroed (see Api30.apply): the
+     * game is never under a bar, the notch or the keyboard, and nothing is padded twice. Android 7-10: the window
+     * itself still fits the bars and shrinks for the keyboard, as before, so the insets pass through untouched.
+     */
+    final class GameFrame extends FrameLayout {
+        GameFrame(Context c) {
+            super(c);
+        }
+
+        /** overrides View.onApplyWindowInsets(WindowInsets) (API 20; the API 16 stub jar does not declare it) */
+        public WindowInsets onApplyWindowInsets(WindowInsets insets) {
+            if (Build.VERSION.SDK_INT < 30) return insets;
+            if (Api30.barsShowing(insets)) rehideBarsLater();
+            return Api30.apply(this, insets);
+        }
+    }
+
+    /** the bars came back for good (keyboard on some phones, a dialog): hide them again after a moment */
+    void rehideBarsLater() {
+        ui.removeCallbacks(hideBars);
+        ui.postDelayed(hideBars, 2500);
+    }
+
+    /** a boolean <meta-data> of the manifest's <application> (false when missing) */
+    private boolean metaFlag(String name) {
+        try {
+            ApplicationInfo ai = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+            return ai.metaData != null && ai.metaData.getBoolean(name, false);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** a new WebView showing the game (also after the renderer was lost) */
@@ -143,8 +197,12 @@ public class MainActivity extends Activity {
 
     /** full screen: status and navigation bars hidden; a swipe from the edge shows them for a moment (sticky) */
     private void hideSystemUi() {
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | IMMERSIVE_STICKY);
+        if (Build.VERSION.SDK_INT >= 30) {
+            Api30.hideBars(getWindow());                // WindowInsetsController, transient bars by swipe
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | IMMERSIVE_STICKY);
+        }
     }
 
     @Override
@@ -176,6 +234,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
+        if (backCallback != null) {
+            Api33.unregisterBack(this, backCallback);
+            backCallback = null;
+        }
         if (exitDialog != null) exitDialog.dismiss();
         if (web != null) {
             root.removeView(web);
@@ -185,9 +247,18 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    /** Back never closes the game by accident: it asks first (the save is kept either way). */
+    /**
+     * Back on Android 7-12. (Android 13+: Api33.BackCallback, because the manifest sets
+     * android:enableOnBackInvokedCallback="true" and targetSdk 36 makes it the only route on Android 16.)
+     */
     @Override
     public void onBackPressed() {
+        askToExit();
+    }
+
+    /** Back never closes the game by accident: it asks first (the save is kept either way). */
+    void askToExit() {
+        if (isFinishing()) return;
         if (exitDialog != null && exitDialog.isShowing()) return;
         exitDialog = new AlertDialog.Builder(this)
                 .setTitle("게임을 끝낼까요?")

@@ -1,0 +1,24 @@
+[
+ {
+  "file": "docs/store/assets/feature_graphic.png",
+  "size": [
+   1024,
+   500
+  ],
+  "mode": "RGB",
+  "kb": 502,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/feature_graphic_en.png",
+  "size": [
+   1024,
+   500
+  ],
+  "mode": "RGB",
+  "kb": 431,
+  "ok": true,
+  "errors": []
+ }
+]

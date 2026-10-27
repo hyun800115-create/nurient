@@ -9,9 +9,11 @@
     or, from any commit without touching the working tree:  bash tools/apk/apk_from_commit.sh <commit> 4.2 4020 --check
 
 What it makes: one Activity with a full-screen WebView (tools/apk/android) that serves the packed game from
-https://appassets.androidplatform.net/ (APK assets/www/), package com.snowbloom.village, minSdk 24, targetSdk 34,
-signed v1 (JDK jarsigner) + v2 (apksig) with the test key in dist/apk/ (made on the first run; keep it: an update
-must be signed with the same key, or Android refuses to install it over the old one).
+https://appassets.androidplatform.net/ (APK assets/www/), package com.snowbloom.village, minSdk 24, targetSdk 36
+(Google Play's rule from 31 Aug 2026; the same app as the Play bundle that tools/apk/build_aab.py makes), signed v1
+(JDK jarsigner) + v2 (apksig) with the test key in dist/apk/ (made on the first run; keep it: an update must be signed
+with the same key, or Android refuses to install it over the old one). WebView remote debugging is on in these test
+APKs (--no-web-debug turns it off; the Play bundle has it off).
 
 No Android SDK is needed (Google's download host is not reachable here). The tools come from Maven Central and are
 pinned by SHA-256 (downloaded once into --tools-dir, default ~/.cache/snowbloom-apk-tools or $SNOWBLOOM_APK_TOOLS):
@@ -49,7 +51,8 @@ ANDROID = HERE / 'android'
 
 PACKAGE = 'com.snowbloom.village'
 MIN_SDK = 24
-TARGET_SDK = 34       # >= 30 needs a v2 signature + resources.arsc stored and aligned: both done here
+TARGET_SDK = 36       # Play: new apps + updates from 31 Aug 2026. >= 30 needs a v2 signature + resources.arsc stored
+                      # and aligned (both done here); >= 35 is edge-to-edge and 36 has predictive back (MainActivity)
 MAX_CHECK_SDK = 36    # apksig verifies the signature for every platform version MIN_SDK..this
 ORIGIN = 'https://appassets.androidplatform.net/'
 
@@ -252,24 +255,32 @@ def make_icons(icon_dir, res):
 
 
 # ---------------------------------------------------------------- resources + manifest (aapt2)
-def build_resources(t, work, icon_dir, version_name, version_code, internet):
+def manifest_text(internet, web_debug):
+    perms = '<uses-permission android:name="android.permission.INTERNET" />' if internet else ''
+    man = (ANDROID / 'AndroidManifest.xml').read_text(encoding='utf-8')
+    man = (man.replace('@@PACKAGE@@', PACKAGE).replace('@@MIN_SDK@@', str(MIN_SDK))
+              .replace('@@TARGET_SDK@@', str(TARGET_SDK)).replace('@@EXTRA_PERMISSIONS@@', perms)
+              .replace('@@WEB_DEBUG@@', 'true' if web_debug else 'false'))
+    assert '@@' not in man, 'unfilled manifest placeholder'
+    return man
+
+
+def build_resources(t, work, icon_dir, version_name, version_code, internet, web_debug=True, proto=False):
+    """aapt2 compile + link. proto=False: binary manifest + resources.arsc (an APK); proto=True: the protobuf manifest +
+    resources.pb that an Android App Bundle module holds (bundletool turns them into binary ones per APK)."""
     res = work / 'res'
     if res.exists():
         shutil.rmtree(res)
     shutil.copytree(ANDROID / 'res', res)
     icons = make_icons(icon_dir, res)
-    perms = '<uses-permission android:name="android.permission.INTERNET" />' if internet else ''
-    man = (ANDROID / 'AndroidManifest.xml').read_text(encoding='utf-8')
-    man = (man.replace('@@PACKAGE@@', PACKAGE).replace('@@MIN_SDK@@', str(MIN_SDK))
-              .replace('@@TARGET_SDK@@', str(TARGET_SDK)).replace('@@EXTRA_PERMISSIONS@@', perms))
-    assert '@@' not in man, 'unfilled manifest placeholder'
-    (work / 'AndroidManifest.xml').write_text(man, encoding='utf-8')
+    (work / 'AndroidManifest.xml').write_text(manifest_text(internet, web_debug), encoding='utf-8')
     compiled = work / 'compiled.zip'
     run([t['aapt2'], 'compile', '--dir', res, '-o', compiled])
-    res_apk = work / 'res.apk'
+    res_apk = work / ('res_proto.zip' if proto else 'res.apk')
     run([t['aapt2'], 'link', '-o', res_apk, '-I', t['framework_jar'], '--manifest', work / 'AndroidManifest.xml',
          '--min-sdk-version', MIN_SDK, '--target-sdk-version', TARGET_SDK,
-         '--version-code', version_code, '--version-name', version_name, compiled])
+         '--version-code', version_code, '--version-name', version_name]
+        + (['--proto-format'] if proto else []) + [compiled])
     return res_apk, icons
 
 
@@ -490,6 +501,7 @@ def main():
     ap.add_argument('--keystore', type=Path, default=FV / 'dist' / 'apk' / 'snowbloom-test.p12')
     ap.add_argument('--work-dir', type=Path, default=None, help='scratch folder (default: a new temp folder, removed after)')
     ap.add_argument('--internet', action='store_true', help='add the INTERNET permission (only if the game ever fetches remote files)')
+    ap.add_argument('--no-web-debug', action='store_true', help='turn WebView remote debugging off (it is on in test APKs)')
     a = ap.parse_args()
 
     t0 = time.time()
@@ -512,7 +524,7 @@ def main():
     files, skipped = stage_www(artifact, www)
     hosts = remote_refs(www)
     log('www: %d files from %s%s' % (len(files), artifact, (' (skipped %s)' % ', '.join(skipped)) if skipped else ''))
-    res_apk, icons = build_resources(t, work, icon_dir, a.version_name, a.version_code, a.internet)
+    res_apk, icons = build_resources(t, work, icon_dir, a.version_name, a.version_code, a.internet, web_debug=not a.no_web_debug)
     log('resources: aapt2 link ok, %d icon files from %s' % (len(icons), icon_dir))
     dex, classes = build_dex(t, work)
     log('code: %d classes -> classes.dex (%d bytes)' % (len(classes), dex.stat().st_size))
@@ -554,7 +566,7 @@ def main():
         'apk': out.name, 'sha256': sha, 'bytes': size, 'MB': round(size / 1048576, 2),
         'package': PACKAGE, 'versionName': a.version_name, 'versionCode': a.version_code,
         'minSdk': MIN_SDK, 'targetSdk': TARGET_SDK, 'label': b['label'], 'icon': b['icon'], 'activity': b['launchable'],
-        'permissions': b['permissions'], 'origin': ORIGIN, 'wwwFiles': n, 'artifact': str(artifact),
+        'permissions': b['permissions'], 'webViewDebugging': not a.no_web_debug, 'origin': ORIGIN, 'wwwFiles': n, 'artifact': str(artifact),
         'signature': dict({k: ver[k] for k in ('verified', 'v1', 'v2', 'checkedSdk', 'signers', 'warnings', 'v1Pass')},
                           v1Tool='JDK jarsigner (SHA-256/RSA)', v2Tool='apksig 2.3.0 DefaultApkSignerEngine', jarsignerVerify=jar_ok),
         'zip': post, 'remoteHostsMentioned': hosts, 'classes': classes, 'newKeyMade': new_key,

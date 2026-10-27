@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy · Snowbloom Village</title>
+<!--
+  Developer note (not shown on the page)
+  - Replace every {{ }} before publishing: business name, contact person, contact email, address, effective date.
+  - Based on a code audit of the v4.2 Android app (package com.snowbloom.village): save in the WebView's localStorage
+    (on the phone), no account, no network requests, no ads / analytics / SDKs, permissions VIBRATE + INTERNET.
+    Evidence: docs/store/console_answers_ko.md, "근거" table.
+  - Before Google sign-in, cloud saves, online AI chat, ads, analytics or purchases ship, update this policy and the
+    Play Console Data safety answers first (console_answers_ko.md, last section).
+-->
+<style>
+  :root { --bg: #f6f8fc; --card: #ffffff; --ink: #1d2f5e; --text: #2b3445; --muted: #5d6b85; --line: #dfe6f2; --accent: #2f6fd6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1a2c; --card: #16233a; --ink: #e8eefc; --text: #d7deec; --muted: #9fb0cc; --line: #26364f; --accent: #8bb8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px 24px; }
+  h1 { color: var(--ink); font-size: 1.6rem; line-height: 1.3; margin: 0 0 6px; }
+  h2 { color: var(--ink); font-size: 1.12rem; margin: 30px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+  p, li { margin: 6px 0; }
+  ul { padding-left: 1.2em; }
+  .meta { color: var(--muted); font-size: .93rem; }
+  .lang { float: right; font-size: .9rem; }
+  a { color: var(--accent); }
+  .box { background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<a class="lang" href="privacy_ko.html">한국어</a>
+<h1>Snowbloom Village<br>Privacy Policy</h1>
+<p class="meta">{{Business name}} ("we") makes and publishes the mobile game "Snowbloom Village" (행복한 눈꽃마을 이야기; Android app, package name com.snowbloom.village; "the game").<br>Effective date: {{effective date, e.g. 1 November 2026}}</p>
+
+<div class="box">
+<strong>In short</strong>
+<ul>
+  <li>We <strong>do not collect any personal information.</strong> There is no account and no sign-in.</li>
+  <li>Your progress is saved <strong>only on your phone</strong> and is never sent to us or to anyone else.</li>
+  <li>There are no ads, no analytics and no purchases.</li>
+</ul>
+</div>
+
+<h2>1. Information we collect</h2>
+<p>None. The game does not collect your name, email address, phone number, address, location, contacts, photos or files, or any device identifier (including the advertising ID). There is no way to create an account or sign in.</p>
+
+<h2>2. What is stored on your phone only</h2>
+<p>So that you can continue where you left off, the game keeps the following in <strong>the app's own storage on your phone</strong>. It never leaves the phone and we cannot see it.</p>
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr><td>Your game progress (coins, buildings, residents, progress steps) and a backup copy of it</td><td>To continue the game next time</td></tr>
+  <tr><td>Settings (sound, music, language, graphics, play options)</td><td>To remember your choices</td></tr>
+  <tr><td>Title screen state (whether you saw the intro)</td><td>Not to show the intro every time</td></tr>
+  <tr><td>"Chat with residents": the last few lines shown in the chat window, what the residents remember and how close they feel to you</td><td>So residents remember earlier talks</td></tr>
+</table>
+<p>Uninstalling the app, or <em>Settings → Apps → Snowbloom Village (행복한 눈꽃마을 이야기) → Storage → Clear data</em>, deletes all of it permanently.</p>
+
+<h2>3. What you type in "Chat with residents"</h2>
+<p>When you type to a resident, the text is read <strong>on your phone only</strong> to pick a reply in the village's own voice from lines built into the game. It is not sent over the internet or to any outside service (including AI services). The last few lines of the chat are stored with your progress (section 2). Real-life details such as school, family or age are left out of what residents remember for longer, but please do not type personal information such as your name, phone number or address in the first place.</p>
+
+<h2>4. Internet and permissions</h2>
+<p>All pictures, sounds and code of the game are inside the app, so it plays without an internet connection. The game does not send or receive any information over the internet. The app asks for two permissions only, both normal permissions granted at install:</p>
+<table>
+  <tr><th>Permission</th><th>Used for</th></tr>
+  <tr><td>Vibrate (VIBRATE)</td><td>Short vibration effects when you gather goods, collect coins or unlock a building or a worker. Turning the sound off in the game's settings also turns vibration off.</td></tr>
+  <tr><td>Internet (INTERNET)</td><td>A technical requirement of the Android system component that draws the game (WebView). The game does not communicate through it, and it has no links that open web pages.</td></tr>
+</table>
+<p>The app does not ask for location, camera, microphone, contacts or photo/file access. The app also turns off WebView's Safe Browsing lookups and usage statistics.</p>
+
+<h2>5. Android backup on your phone</h2>
+<p>If Android backup (Google backup) is turned on on your phone, Android may copy this game's saved data, like other apps' data, to the backup in your own Google account. That backup is managed by Google under your device settings and Google's policies; we cannot see it. You can turn backup off in your phone's settings.</p>
+
+<h2>6. Ads, analytics and third parties</h2>
+<p>The game has no ads and contains no analytics, crash-reporting or other third-party SDKs. There are no in-app purchases. We therefore do not share personal information with, or have it processed by, any third party.</p>
+
+<h2>7. Children</h2>
+<p>The game does not collect personal information from anyone, including children.</p>
+
+<h2>8. Your rights</h2>
+<p>We hold no information about you, so there is nothing for us to show, correct or delete. You can delete the data on your phone at any time as described in section 2. If you have questions, contact us below.</p>
+
+<h2>9. Contact</h2>
+<ul>
+  <li>Business: {{Business name}}</li>
+  <li>Privacy contact: {{Name of the representative or contact person}}</li>
+  <li>Email: {{contact email}}</li>
+  <li>Address: {{business address}}</li>
+</ul>
+
+<h2>10. Changes</h2>
+<p>If the game ever adds features that handle information differently, such as sign-in, cloud saves or online features, we will update this policy before releasing them and announce the change and its effective date on this page and in the store listing.</p>
+<p class="meta">Previous versions: none (first version)</p>
+</div>
+</main>
+</body>
+</html>

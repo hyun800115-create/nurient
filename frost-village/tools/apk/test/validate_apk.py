@@ -3,13 +3,17 @@
 tools that built it (aapt2, dx, jarsigner, apksig).
 
     pip install androguard            (into a virtualenv of its own)
-    python3 tools/apk/test/validate_apk.py dist/apk/snowbloom-v4.1-test.apk [--artifact dist/artifact] [--json out.json]
+    python3 tools/apk/test/validate_apk.py dist/apk/snowbloom-v4.2-test.apk [--artifact dist/artifact] [--json out.json]
+    python3 tools/apk/test/validate_apk.py dist/play/snowbloom-4.2.1-universal.apk --artifact … --internet \
+            --version-code 4022 --no-v1 --web-debug false        (the APK bundletool makes from a Play bundle)
 
-Checks: package / version / SDK levels, the launcher activity and its MAIN+LAUNCHER filter, exported, portrait,
-config changes, label and launcher icon resolved through resources.arsc for every density (and the adaptive icon
-layers), permissions (no INTERNET), the classes in classes.dex (app classes only, no framework stubs), v1 + v2
-signature blocks with the same certificate, zip alignment of stored entries, the packed www/ (full HTML page, every
-artifact file present byte for byte). Exit 1 on any failure.
+Checks: package / version / SDK levels (targetSdk 36 by default), the launcher activity and its MAIN+LAUNCHER filter,
+exported, portrait, config changes, not debuggable, appCategory=game (Android 16 keeps portrait on large screens for
+games) and enableOnBackInvokedCallback=true, the WebView-debugging meta-data, label and launcher icon resolved through
+resources.arsc for every density (and the adaptive icon layers), permissions, the classes in classes.dex (app classes
+only, no framework stubs; the back callback and the insets handler present), v1 + v2 signature blocks with the same
+certificate (--no-v1: v2 only is fine, as bundletool signs minSdk 24 APKs), zip alignment of stored entries, the packed
+www/ (full HTML page, every artifact file present byte for byte). Exit 1 on any failure.
 """
 import argparse
 import hashlib
@@ -40,8 +44,11 @@ def main():
     ap.add_argument('apk', type=Path)
     ap.add_argument('--artifact', type=Path, help='the artifact folder the APK was built from: every file must be in assets/www')
     ap.add_argument('--json', type=Path)
-    ap.add_argument('--target-sdk', default='34')
-    ap.add_argument('--internet', action='store_true', help='the APK was built with build_apk.py --internet')
+    ap.add_argument('--target-sdk', default='36')
+    ap.add_argument('--internet', action='store_true', help='the APK was built with build_apk.py --internet (Play bundles have it by default)')
+    ap.add_argument('--version-code', help='expected versionCode')
+    ap.add_argument('--no-v1', action='store_true', help='v1 (JAR) signature not required (bundletool output, minSdk 24)')
+    ap.add_argument('--web-debug', choices=('true', 'false'), help='expected WebView-debugging meta-data (test APKs true, Play false)')
     a = ap.parse_args()
 
     results = []
@@ -53,8 +60,10 @@ def main():
     apk = APK(str(a.apk))
     check('valid APK (androguard)', apk.is_valid_APK())
     check('package', apk.get_package() == PKG, apk.get_package())
-    check('version', bool(apk.get_androidversion_name()) and str(apk.get_androidversion_code()).isdigit(),
-          '%s (%s)' % (apk.get_androidversion_name(), apk.get_androidversion_code()))
+    check('version', bool(apk.get_androidversion_name()) and str(apk.get_androidversion_code()).isdigit() and
+          (a.version_code is None or str(apk.get_androidversion_code()) == a.version_code),
+          '%s (%s)%s' % (apk.get_androidversion_name(), apk.get_androidversion_code(),
+                         '' if a.version_code is None else ', expected versionCode ' + a.version_code))
     check('minSdk 24', str(apk.get_min_sdk_version()) == '24', apk.get_min_sdk_version())
     check('targetSdk ' + a.target_sdk, str(apk.get_target_sdk_version()) == a.target_sdk, apk.get_target_sdk_version())
     check('launcher activity', apk.get_main_activity() == ACT and apk.get_activities() == [ACT], apk.get_main_activity())
@@ -74,6 +83,16 @@ def main():
     check('single task (the launcher icon returns to the running game)', act.get(NS + 'launchMode') in ('2', 'singleTask'), act.get(NS + 'launchMode'))
     check('hardware accelerated', app.get(NS + 'hardwareAccelerated') == 'true' and act.get(NS + 'hardwareAccelerated') == 'true')
     check('no cleartext traffic', app.get(NS + 'usesCleartextTraffic') == 'false')
+    check('not debuggable', app.get(NS + 'debuggable') in (None, 'false') and act.get(NS + 'debuggable') in (None, 'false'),
+          app.get(NS + 'debuggable'))
+    check('appCategory = game (targetSdk 36 keeps portrait on large screens for games)', app.get(NS + 'appCategory') in ('0', 'game'),
+          app.get(NS + 'appCategory'))
+    check('enableOnBackInvokedCallback = true (back through OnBackInvokedCallback on Android 13+)',
+          app.get(NS + 'enableOnBackInvokedCallback') == 'true', app.get(NS + 'enableOnBackInvokedCallback'))
+    meta = {m.get(NS + 'name'): m.get(NS + 'value') for m in app.findall('meta-data')}
+    wd = meta.get('com.snowbloom.village.WEB_DEBUG')
+    check('WebView debugging meta-data' + ('' if a.web_debug is None else ' = ' + a.web_debug),
+          wd in ('true', 'false') and (a.web_debug is None or wd == a.web_debug), wd)
     perms = sorted(apk.get_permissions())
     want = sorted(['android.permission.VIBRATE'] + (['android.permission.INTERNET'] if a.internet else []))
     check('permissions: VIBRATE' + (' + INTERNET' if a.internet else ' only (no INTERNET)'), perms == want, perms)
@@ -109,14 +128,22 @@ def main():
         check('WebViewClient.%s implemented' % m, (client, m) in meths)
     for m in ('onBackPressed', 'onPause', 'onResume', 'onWindowFocusChanged'):
         check('Activity.%s implemented' % m, ('Lcom/snowbloom/village/MainActivity;', m) in meths)
+    check('OnBackInvokedCallback.onBackInvoked implemented (Android 13+ back)', ('Lcom/snowbloom/village/Api33$BackCallback;', 'onBackInvoked') in meths)
+    check('View.onApplyWindowInsets implemented (edge-to-edge padding)', ('Lcom/snowbloom/village/MainActivity$GameFrame;', 'onApplyWindowInsets') in meths)
 
     # signatures
-    check('signed v1 (JAR)', apk.is_signed_v1())
+    if a.no_v1:
+        check('signed v1 (JAR) — not required', True, 'v1 present' if apk.is_signed_v1() else 'v2 only (fine for minSdk 24)')
+    else:
+        check('signed v1 (JAR)', apk.is_signed_v1())
     check('signed v2 (APK Signature Scheme v2)', apk.is_signed_v2())
     try:
         c1 = [hashlib.sha256(c).hexdigest() for c in apk.get_certificates_der_v2()]
-        v1c = [hashlib.sha256(c.dump()).hexdigest() for c in apk.get_certificates_v1()]
-        check('v1 and v2 use the same certificate', c1 and v1c and set(c1) == set(v1c), c1[:1])
+        if apk.is_signed_v1():
+            v1c = [hashlib.sha256(c.dump()).hexdigest() for c in apk.get_certificates_v1()]
+            check('v1 and v2 use the same certificate', c1 and v1c and set(c1) == set(v1c), c1[:1])
+        else:
+            check('v2 certificate', bool(c1), c1[:1])
     except Exception as e:          # noqa: BLE001
         check('v1 and v2 use the same certificate', False, repr(e))
 
