@@ -1,5 +1,16 @@
 [
  {
+  "file": "docs/store/assets/icon_512.png",
+  "size": [
+   512,
+   512
+  ],
+  "mode": "RGBA",
+  "kb": 324,
+  "ok": true,
+  "errors": []
+ },
+ {
   "file": "docs/store/assets/feature_graphic.png",
   "size": [
    1024,
@@ -18,6 +29,270 @@
   ],
   "mode": "RGB",
   "kb": 459,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/01_village.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 562,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/01_village.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 526,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/01_village.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 519,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/02_restaurant.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 476,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/02_restaurant.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 445,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/02_restaurant.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 448,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/03_train.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 510,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/03_train.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 478,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/03_train.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 475,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/04_ceremony.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 557,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/04_ceremony.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 521,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/04_ceremony.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 514,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/05_office.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 461,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/05_office.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 437,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/05_office.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 434,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/06_sea.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 526,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/06_sea.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 489,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/06_sea.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 488,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/07_night.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 488,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/07_night.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 458,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/07_night.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 453,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots/08_observe.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 652,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption/08_observe.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 598,
+  "ok": true,
+  "errors": []
+ },
+ {
+  "file": "docs/store/assets/screenshots_caption_en/08_observe.jpg",
+  "size": [
+   1080,
+   2160
+  ],
+  "mode": "RGB",
+  "kb": 591,
   "ok": true,
   "errors": []
  }

@@ -35,7 +35,7 @@ WT="$RELEASE_WORK/wt-$(date +%s)"
 OUT="${RELEASE_OUT:-$FV/dist/play/snowbloom-$NAME.aab}"
 UNI="${OUT%.aab}-universal.apk"
 
-git -C "$REPO" worktree add --detach "$WT" "$COMMIT" >/dev/null
+git -C "$REPO" worktree add --quiet --detach "$WT" "$COMMIT" >/dev/null
 # (an `if`, not `[ … ] && rm`: a false test as the trap's last command would turn a successful run into exit status 1)
 cleanup() { git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true; if [ "$OWN_WORK" = 1 ]; then rm -rf "$RELEASE_WORK"; fi; }
 trap cleanup EXIT

@@ -30,7 +30,7 @@ Play Console 화면의 질문 문구는 가끔 바뀌어요. 문구가 조금 �
 
 | 질문 | 답 | 이유 |
 |---|---|---|
-| 앱에 광고가 포함되어 있나요? | **아니요** | 광고 SDK도, 광고 화면도 없어요 (앱 안의 코드는 게임 파일과 안드로이드 클래스 11개뿐 — 근거 ⑥). |
+| 앱에 광고가 포함되어 있나요? | **아니요** | 광고 SDK도, 광고 화면도 없어요 (앱 안의 코드는 게임 파일과 이 앱이 직접 만든 안드로이드 클래스뿐 — 테스트 APK 11개, Play용 AAB 15개 — 근거 ⑥). |
 
 ## 4. 광고 ID (Advertising ID)
 
@@ -130,18 +130,18 @@ Play Console 화면의 질문 문구는 가끔 바뀌어요. 문구가 조금 �
 
 | # | 사실 | 확인한 곳 |
 |---|---|---|
-| ① | 게임 진행·설정·백업·타이틀 기록은 WebView의 `localStorage`(휴대폰 안 앱 저장소)에 저장 | `src/core/Save.js` 9–10행(`frostVillage.save.v1`, `frostVillage.settings.v1`), 13행(`window.localStorage`), 40–41행(`.backup`, `.bad`), 566행(`.chat`); `src/title/config.js` 68행 + `src/title/prefs.js` 6행(`frostVillage.title.v1`); `index.html` 83행(부팅 실패 시 저장을 `.bad`로 옮겨 두기). 앱 쪽: `tools/apk/android/java/.../MainActivity.java` 103행 `setDomStorageEnabled(true)` |
-| ② | 게임은 네트워크 요청을 하지 않음 | `src/`·`index.html` 전체에서 `fetch(` / `XMLHttpRequest` / `WebSocket` / `sendBeacon` / `EventSource`를 찾으면 `src/chat/brains.js` 134행(ServerBrain) 하나뿐이고, 이 클래스는 게임에서 만들어지지 않음(③). 실제 APK의 `assets/www/game.js`에 있는 `fetch(` 6곳은 모두 `prefetch(`(이미지 미리 읽기 함수 이름)이고, `game.js`·`chat.js`·`index.html`에 `http://`·`https://` 주소가 하나도 없음. `lib/phaser.min.js`의 `phaser.io`·`w3.org` 문자열은 쓰이지 않음(빌드 기록 `remoteHostsMentioned`). 게임 파일은 모두 APK 안에서 `https://appassets.androidplatform.net/`(Android가 앱 안 파일에 쓰라고 정해 둔 가상 주소)로 열림 — `tools/apk/android/java/.../AssetRouter.java` 18–20행 |
+| ① | 게임 진행·설정·백업·타이틀 기록은 WebView의 `localStorage`(휴대폰 안 앱 저장소)에 저장 | `src/core/Save.js` 9–10행(`frostVillage.save.v1`, `frostVillage.settings.v1`), 13행(`window.localStorage`), 40–41행(`.backup`, `.bad`), 566행(`.chat`); `src/title/config.js` 68행 + `src/title/prefs.js` 6행(`frostVillage.title.v1`); `index.html` 83행(부팅 실패 시 저장을 `.bad`로 옮겨 두기). 앱 쪽: `tools/apk/android/java/.../MainActivity.java` 103행 `setDomStorageEnabled(true)` (aa169bd 기준; Play용으로 바뀐 지금 파일에서는 157행) |
+| ② | 게임은 네트워크 요청을 하지 않음 | `src/`·`index.html` 전체에서 `fetch(` / `XMLHttpRequest` / `WebSocket` / `sendBeacon` / `EventSource`를 찾으면 `src/chat/brains.js` 134행(ServerBrain) 하나뿐이고, 이 클래스는 게임에서 만들어지지 않음(③). 실제 APK의 `assets/www/game.js`에 있는 `fetch(` 6곳은 모두 `prefetch(`(이미지 미리 읽기 함수 이름)이고, `assets/www/chat.js`에 있는 `this.fetch(this.endpoint, …)` 1곳은 위 ServerBrain이 함께 묶여 들어간 것(만들어지지 않으니 실행되지 않음)이고, `lib/phaser.min.js`의 `XMLHttpRequest`는 Phaser가 앱 안 파일을 읽는 데만 써요(모두 가상 주소 안 — Play용 빌드 부팅 시험에서 바깥으로 나간 요청 0건). `game.js`·`chat.js`·`index.html`에 `http://`·`https://` 주소가 하나도 없음. `lib/phaser.min.js`의 `phaser.io`·`w3.org` 문자열은 쓰이지 않음(빌드 기록 `remoteHostsMentioned`). 게임 파일은 모두 APK 안에서 `https://appassets.androidplatform.net/`(Android가 앱 안 파일에 쓰라고 정해 둔 가상 주소)로 열림 — `tools/apk/android/java/.../AssetRouter.java` 18–20행 |
 | ③ | 「주민과 수다 떨기」는 앱에서 오프라인으로만 동작 | `src/systems/ResidentChat.js` 127행 `new M.ChatEngine({ village: v })`(서버 없이 생성), 128행 `setSample(null)`(오프라인으로 시작), 136–142행: claude.ai 페이지의 `window.claude`가 있을 때만 AI를 씀 — 앱에는 없음(`docs/build_reports/apk.md` §2). `src/chat/brains.js` 119–128행: ServerBrain은 주소(endpoint)가 있어야만 켜지는데 아무도 만들지 않음. 대화 기록은 주민마다 최근 12줄(`src/chat/memory.js` 20행 `LOG_CAP`, 197–199행, 한 줄 최대 160자)이 저장 기록과 함께 휴대폰에만 저장 |
 | ④ | 진동은 게임 효과에만, 소리를 끄면 진동도 꺼짐 | `src/core/Audio.js` 186행; 부르는 곳: `src/entities/Player.js` 208행(재료 모을 때), `src/entities/Seller.js` 74행(코인), `src/entities/UnlockPad.js` 279행(새로 열기), `src/scenes/Game.js` 1554행(새 땅) |
-| ⑤ | 권한은 VIBRATE + INTERNET, 그 밖의 설정 | `tools/apk/android/AndroidManifest.xml`(aa169bd) 10행 VIBRATE, 11행 추가 권한 자리 ← `tools/apk/build_apk.py` 261행이 INTERNET을 넣음(설치된 빌드의 `dist/apk/snowbloom-v4.2-final.json` permissions = VIBRATE, INTERNET); 22행 `allowBackup="true"`, 23행 `usesCleartextTraffic="false"`, 27–28행 세이프 브라우징 끔·WebView 사용 통계 끔. `MainActivity.java` 105–109행 파일 접근·위치 끔, 118행 캐시 안 씀, 245행 게임 밖 주소는 휴대폰 브라우저로 넘김(게임에는 그런 링크가 없음) |
-| ⑥ | 광고·분석·외부 SDK 없음 | APK의 코드(`classes.dex`)는 앱 클래스 11개뿐(`dist/apk/snowbloom-v4.2-final.json` "classes"), 게임 쪽 라이브러리는 Phaser(`lib/phaser.min.js`) 하나 |
+| ⑤ | 권한은 VIBRATE + INTERNET, 그 밖의 설정 | `tools/apk/android/AndroidManifest.xml`(aa169bd) 10행 VIBRATE, 11행 추가 권한 자리 ← `tools/apk/build_apk.py` 261행이 INTERNET을 넣음(설치된 빌드의 `dist/apk/snowbloom-v4.2-final.json` permissions = VIBRATE, INTERNET); 22행 `allowBackup="true"`, 23행 `usesCleartextTraffic="false"`, 27–28행 세이프 브라우징 끔·WebView 사용 통계 끔. `MainActivity.java` 105–109행 파일 접근·위치 끔, 118행 캐시 안 씀, 245행 게임 밖 주소는 휴대폰 브라우저로 넘김(게임에는 그런 링크가 없음) — 줄 번호는 aa169bd 기준이고, Play용으로 바뀐 지금 파일에서는 159–163행, 172행, 316행 |
+| ⑥ | 광고·분석·외부 SDK 없음 | APK의 코드(`classes.dex`)는 앱 클래스 11개뿐(`dist/apk/snowbloom-v4.2-final.json` "classes"; Play용 AAB는 화면·뒤로 가기 처리 클래스가 더해져 15개, 모두 `com.snowbloom.village` — `dist/play/snowbloom-4.2-play-dryrun.json`), 게임 쪽 라이브러리는 Phaser(`lib/phaser.min.js`) 하나 |
 | ⑦ | 게임 언어 선택은 휴대폰 언어를 휴대폰 안에서만 읽음 | `src/data/strings.js` 818행 `navigator.language` |
 | ⑧ | 저장소에 있지만 v4.2 게임에 들어 있지 않은 모듈(금방마켓, 항구, 해변, 도시 사건, 미션·은행 모듈, 마을 이야기 엔진)은 등급 판단에서 뺐음 | `src/scenes`·`src/systems`·`src/main.js`에서 이 모듈들을 불러오지 않음; 실제 APK `game.js`에 `burglar`, `incident`, `auction`, `geumbang` 문자열 0개. **이 모듈들이 게임에 들어오는 업데이트 때는 등급 설문을 다시 봐야 해요** (도둑·화재·경찰 같은 사건, 해변 바 등) |
 
 INTERNET 권한을 넣은 이유: 이 권한이 없으면 WebView가 "네트워크 차단" 모드로 동작하는데, 실제 휴대폰에서 시험해 보지 않은 유일한 동작이라 안전하게 넣었어요(`docs/build_reports/apk.md` §5). 게임은 이 권한으로 통신하지 않아요.
 
-Play용 빌드(AAB)가 나오면 그 빌드의 권한 목록이 위와 같은지(VIBRATE, INTERNET뿐) 한 번 더 확인해요. 권한이 늘면 이 문서와 방침을 같이 고쳐요.
+Play용 빌드(AAB)의 권한 목록도 위와 같아요: 2026-10-27 시험 빌드(`snowbloom-4.2-play-dryrun.aab`, `bundletool dump manifest`)에서 VIBRATE, INTERNET뿐인 것을 확인했어요. 빌드 도구가 매번 이 두 가지가 아니면 실패하게 되어 있어요. 권한이 늘면 이 문서와 방침을 같이 고쳐요.
 
 ---
 

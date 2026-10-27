@@ -6,7 +6,8 @@
 #
 # 1. git worktree of <commit> in a temp folder (the working tree, where others edit, is never read or changed)
 # 2. node tools/build/build_artifact.mjs --webp --mp3-only inside it (esbuild: this checkout's tools/build/node_modules)
-# 3. tools/apk/build_apk.py (from THIS checkout) -> frost-village/dist/apk/snowbloom-v<versionName>-test.apk
+# 3. tools/apk/build_apk.py (from THIS checkout) -> frost-village/dist/apk/snowbloom-v<versionName>-test.apk (targetSdk 36,
+#    test key: the same app as the Google Play bundle of tools/apk/release_from_commit.sh)
 # 4. with --check: tools/apk/test/boot_test.mjs (headless Chromium, 60 s of play) and, when androguard can be
 #    imported (python3 -c 'import androguard'), tools/apk/test/validate_apk.py
 # APK_WORK=<dir> keeps the temp files there (default: a new mktemp folder, removed at the end); APK_OUT=<file.apk> sets the output;

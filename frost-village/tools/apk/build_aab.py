@@ -104,6 +104,13 @@ def ensure_upload_key(work):
         pw = read_txt_field(info, 'password')
         if not pw:
             die('%s exists but its password is not in %s ("password: ..." line): restore that file' % (UPLOAD_KS, info))
+        if not pem.exists():                                   # the certificate is public: export it again
+            pwf = secret_file(work, 'upload_pw', pw)
+            try:
+                run(['keytool', '-exportcert', '-rfc', '-keystore', UPLOAD_KS, '-storetype', 'PKCS12', '-storepass:file', pwf,
+                     '-alias', UPLOAD_ALIAS, '-file', pem])
+            finally:
+                pwf.unlink(missing_ok=True)
         return pw, False
     if info.exists() or pem.exists():
         die('%s is missing but %s / %s exist: restore the keystore from your backup (never make a second upload key '
@@ -117,21 +124,24 @@ def ensure_upload_key(work):
              '-keypass:file', pwf, '-alias', UPLOAD_ALIAS, '-keyalg', 'RSA', '-keysize', '4096', '-sigalg', 'SHA256withRSA',
              '-validity', str(UPLOAD_DAYS), '-dname', UPLOAD_DNAME])
         os.chmod(UPLOAD_KS, 0o600)
+        listing = run(['keytool', '-list', '-v', '-keystore', UPLOAD_KS, '-storetype', 'PKCS12', '-storepass:file', pwf, '-alias', UPLOAD_ALIAS])
+        m = re.search(r'SHA256:\s*([0-9A-F:]{95})', listing)
+        fp = m.group(1).replace(':', '').lower() if m else '?'
+        # the password file first (a keystore without it would be lost), then the public certificate
+        fd = os.open(str(info), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(
+                'GOOGLE PLAY UPLOAD KEY of 행복한 눈꽃마을 이야기 (com.snowbloom.village). tools/apk/build_aab.py signs every .aab with it.\n'
+                'keystore: %s (PKCS12)\nalias: %s\npassword: %s\n(the store and the key password are the same)\n'
+                'certificate: %s (Play Console > Test and release > App integrity asks for it when it wants the upload key certificate)\n'
+                'certificate SHA-256: %s\n\n'
+                'PRIVATE. Never commit, mail or paste this file or the .p12. Keep a copy of both somewhere safe (not in the repository).\n'
+                'Lost or leaked: with Play App Signing the upload key can be reset through Play Console (account owner request);\n'
+                'the app signing key is not affected.\n' % (UPLOAD_KS.name, UPLOAD_ALIAS, pw, pem.name, fp))
         run(['keytool', '-exportcert', '-rfc', '-keystore', UPLOAD_KS, '-storetype', 'PKCS12', '-storepass:file', pwf,
              '-alias', UPLOAD_ALIAS, '-file', pem])
     finally:
         pwf.unlink(missing_ok=True)
-    fp = cert_sha256(pem)
-    fd = os.open(str(info), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, 'w', encoding='utf-8') as f:
-        f.write(
-            'GOOGLE PLAY UPLOAD KEY of 행복한 눈꽃마을 이야기 (com.snowbloom.village). tools/apk/build_aab.py signs every .aab with it.\n'
-            'keystore: %s (PKCS12)\nalias: %s\npassword: %s\n(the store and the key password are the same)\n'
-            'certificate: %s (Play Console > Test and release > App integrity asks for it when it wants the upload key certificate)\n'
-            'certificate SHA-256: %s\n\n'
-            'PRIVATE. Never commit, mail or paste this file or the .p12. Keep a copy of both somewhere safe (not in the repository).\n'
-            'Lost or leaked: with Play App Signing the upload key can be reset through Play Console (account owner request);\n'
-            'the app signing key is not affected.\n' % (UPLOAD_KS.name, UPLOAD_ALIAS, pw, pem.name, fp))
     return pw, True
 
 

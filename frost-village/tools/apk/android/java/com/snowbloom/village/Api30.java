@@ -56,7 +56,8 @@ final class Api30 {
      * Pads the view by the guarded insets and returns the insets for its children with exactly those types set to
      * zero (the pattern of developer.android.com "Understand window insets in WebView"): the WebView inside is never
      * under a bar, the cutout or the keyboard, and it is told so, so it adds no safe-area inset or keyboard resize of
-     * its own on top (the page's env(safe-area-inset-*) stays 0, as in the targetSdk 34 app).
+     * its own on top (the page's env(safe-area-inset-*) stays 0, as in the targetSdk 34 app). The cutout shape itself is
+     * removed too (older WebViews read the safe-area insets from WindowInsets.getDisplayCutout()).
      */
     static WindowInsets apply(View v, WindowInsets in) {
         int types = guardedTypes();
@@ -64,7 +65,7 @@ final class Api30 {
         if (v.getPaddingLeft() != i.left || v.getPaddingTop() != i.top || v.getPaddingRight() != i.right || v.getPaddingBottom() != i.bottom) {
             v.setPadding(i.left, i.top, i.right, i.bottom);
         }
-        return new WindowInsets.Builder(in).setInsets(types, Insets.NONE).build();
+        return new WindowInsets.Builder(in).setInsets(types, Insets.NONE).setDisplayCutout(null).build();
     }
 
     /** a status or navigation bar is showing for good (not just the transient swipe, which never changes the insets) */

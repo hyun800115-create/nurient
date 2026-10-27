@@ -1,5 +1,10 @@
 # Android test APK — 행복한 눈꽃마을 이야기 (Snowbloom Village)
 
+> **Update (Google Play pipeline):** the app now targets **API 36** (edge-to-edge insets, the Android 13+ back callback,
+> `appCategory="game"`), and the same app ships to Google Play as a signed `.aab` (`tools/apk/release_from_commit.sh`).
+> Test APKs keep the test key, so they stay installable over the designer's app. What changed and why:
+> [`play.md`](play.md). The sections below describe the targetSdk 34 test builds of v4.1/v4.2 as they were made.
+
 The designer wanted to try the game on an Android phone as an installed app while development goes on. This report covers
 the reusable APK pipeline (`tools/apk/`) and the first test APK, built from the **published v4.1** code (commit `65c39f3`,
 "v4.1 published"). The working tree (v4.2 in progress) was not read or changed: v4.1 was checked out into a separate

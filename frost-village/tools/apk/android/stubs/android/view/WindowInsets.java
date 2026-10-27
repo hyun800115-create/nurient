@@ -40,6 +40,9 @@ public final class WindowInsets {
 
         public Builder setInsets(int typeMask, Insets insets) { return this; }
 
+        /** API 29: null = no cutout */
+        public Builder setDisplayCutout(DisplayCutout displayCutout) { return this; }
+
         public WindowInsets build() { return null; }
     }
 }

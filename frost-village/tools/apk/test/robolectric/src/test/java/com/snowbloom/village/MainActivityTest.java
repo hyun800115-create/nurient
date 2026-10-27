@@ -1,7 +1,8 @@
 // Snowbloom Village Android app (tools/apk) — MainActivity under Robolectric (the real Android framework code on a JVM).
 //
 // What a phone would do and the off-device checks cannot show otherwise:
-//   Android 16 (API 36, the app's targetSdk): the window is edge-to-edge with the cutout mode ALWAYS; the root view pads
+//   Android 16 (API 36, the app's targetSdk) and Android 14 (API 34, where the platform does not force edge-to-edge
+//   yet and the app asks for it itself): the window is edge-to-edge with the cutout mode ALWAYS; the root view pads
 //   itself by the camera cutout / visible bars / keyboard and hands the WebView zeroed insets (no double padding); the
 //   bars are hidden with transient-by-swipe behaviour; the back callback is the window's top OnBackInvokedCallback and
 //   opens 「게임을 끝낼까요?」 once; 끝내기 fires pagehide and closes the app.
@@ -18,7 +19,9 @@ import static org.robolectric.Shadows.shadowOf;
 
 import android.app.AlertDialog;
 import android.graphics.Insets;
+import android.graphics.Rect;
 import android.os.Looper;
+import android.view.DisplayCutout;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -79,15 +82,17 @@ public class MainActivityTest {
         return String.valueOf(((ShadowAlertDialog) Shadow.extract(d)).getTitle());
     }
 
-    // ------------------------------------------------------------------ Android 16 (targetSdk 36)
+    // ------------------------------------------------------------------ Android 14 and 16 (targetSdk 36)
     @Test
-    @Config(sdk = 36)
-    public void api36_windowIsEdgeToEdgeAndKeepsTheOldBasics() {
+    @Config(sdk = {34, 36})
+    public void api34and36_windowIsEdgeToEdgeAndKeepsTheOldBasics() throws Exception {
         MainActivity a = start();
         Window w = a.getWindow();
         assertEquals("cutout mode ALWAYS (what Android 15+ forces for targetSdk 35+)",
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS, w.getAttributes().layoutInDisplayCutoutMode);
-        assertFalse("decor does not fit system windows (edge-to-edge)", w.decorFitsSystemWindows());
+        java.lang.reflect.Field fits = w.getClass().getDeclaredField("mDecorFitsSystemWindows");   // PhoneWindow (API 30+)
+        fits.setAccessible(true);
+        assertFalse("decor does not fit system windows (edge-to-edge)", fits.getBoolean(w));
         // (whether the platform itself would also enforce it depends on Android 16's feature flags, which Robolectric
         // leaves off; the app does not rely on it: it asks for the edge-to-edge window itself on Android 11+)
         assertTrue("keep screen on", (w.getAttributes().flags & WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0);
@@ -101,8 +106,8 @@ public class MainActivityTest {
     }
 
     @Test
-    @Config(sdk = 36)
-    public void api36_rootPadsByCutoutAndKeyboard_webViewGetsZeroedInsets() {
+    @Config(sdk = {34, 36})
+    public void api34and36_rootPadsByCutoutAndKeyboard_webViewGetsZeroedInsets() {
         MainActivity a = start();
         FrameLayout root = root(a);
         final WindowInsets[] seen = new WindowInsets[1];
@@ -113,12 +118,14 @@ public class MainActivityTest {
         int guarded = WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime();
 
         // full screen (bars hidden) on a phone with a punch-hole camera: only the cutout
-        root.dispatchApplyWindowInsets(new WindowInsets.Builder()
+        DisplayCutout hole = new DisplayCutout(Insets.of(0, 96, 0, 0), null, new Rect(500, 0, 580, 96), null, null);
+        root.dispatchApplyWindowInsets(new WindowInsets.Builder().setDisplayCutout(hole)
                 .setInsets(WindowInsets.Type.displayCutout(), Insets.of(0, 96, 0, 0)).build());
         assertEquals(96, root.getPaddingTop());
         assertEquals(0, root.getPaddingBottom());
         assertNotNull("the WebView got insets", seen[0]);
         assertEquals("the WebView sees no cutout (no double padding)", Insets.NONE, seen[0].getInsets(guarded));
+        assertTrue("nor the cutout shape (older WebViews read it)", seen[0].getDisplayCutout() == null);
 
         // the chat's keyboard opens (900 px): the game shrinks above it, the WebView sees no keyboard inset
         seen[0] = null;
@@ -146,10 +153,11 @@ public class MainActivityTest {
     }
 
     @Test
-    @Config(sdk = 36)
-    public void api36_backGestureOpensTheExitDialogOnce_andExitSavesFirst() throws Exception {
+    @Config(sdk = {34, 36})
+    public void api34and36_backGestureOpensTheExitDialogOnce_andExitSavesFirst() throws Exception {
         MainActivity a = start();
-        // what Android 16 calls for a back gesture / back button: the top OnBackInvokedCallback of the window
+        // what Android 13+ calls for a back gesture / back button when the app enables OnBackInvokedCallback (always
+        // for targetSdk 36 on Android 16): the top OnBackInvokedCallback of the window
         Object vri = View.class.getMethod("getViewRootImpl").invoke(a.getWindow().getDecorView());
         assertNotNull("the window is attached (ViewRootImpl)", vri);
         Object dispatcher = vri.getClass().getMethod("getOnBackInvokedDispatcher").invoke(vri);
