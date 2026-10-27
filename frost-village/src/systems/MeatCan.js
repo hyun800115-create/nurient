@@ -90,7 +90,9 @@ export class MeatCan {
   apply(instant) {
     this.on = true;
     this.ensurePorters(instant);
-    // (the 잡화점's shelf takes meat cans now: Game.makeStore's available() reads `on`)
+    // (the 잡화점's shelf takes meat cans now: Game.makeStore's available() reads `on`; its line has
+    //  meatcan.storeQueueAdd more places for the new buyers)
+    if (this.gs.store && this.gs.refreshStoreLine) this.gs.refreshStoreLine();
   }
 
   /** the two porters (again after a reload; later if the cannery was not standing yet) */

@@ -118,6 +118,8 @@ export function summarize(d) {
     storeBothCansEmpty: sc && sc.n ? Math.round((100 * sc.bothEmpty) / sc.n) : null,
     storeCansEmpty: sc && sc.n ? Math.round((100 * sc.canEmpty) / sc.n) : null,
     storeMeatEmpty: sc && sc.n ? Math.round((100 * sc.meatEmpty) / sc.n) : null,
+    storeQueueAvg: sc && sc.n && sc.q !== undefined ? +(sc.q / sc.n).toFixed(1) : null,
+    storeQueueFull: sc && sc.n && sc.qFull !== undefined ? Math.round((100 * sc.qFull) / sc.n) : null,
     meatPorter: r.st['raw:cannery'] || null,
     meatPorterTrips: r.trips['raw:cannery'] || null,
     meatCanPorterTrips: r.trips['mc:cannery'] || null,

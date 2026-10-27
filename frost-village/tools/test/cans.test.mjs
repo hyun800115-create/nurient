@@ -3,7 +3,8 @@
 // 1 pickCanKind (src/systems/cans.js): only one kind ready → that one; none → null; meat ignored while the line is off;
 //   both ready → more whole batches first, a tie alternates (1,000 calls 49–51 %); one ingot with both ready → the
 //   fuller one; a tuna (3 units) is one fish batch; 10,000 random pads never pick a kind whose batch is incomplete
-// 2 balanceCheck: 0 warnings with the shipped balance.js; meatcan.inPrio is kept below the 훈제장's input (60) and ≥ 40
+// 2 balanceCheck: 0 warnings with the shipped balance.js; meatcan.inPrio is kept below the 훈제장's input (60) and ≥ 40;
+//   pileKeep < pileFrom; padMax (the pad's meat-can cap) at least one batch
 // 3 items.js: the old ITEMS / STORE_GOODS are prefixes of the new lists (old item indices stay), meat cans last
 // 4 Save: sanitizeSave keeps the cannery's raw meat and meat cans everywhere (store / outs / 창고 / player / cards),
 //   progress.flags.meatCan, progress.seen.mcanOffer; sanitizeV42 keeps seen.up.mcan and offerPaid.mcan; 300 fuzzed
@@ -70,6 +71,9 @@ console.log('2 balanceCheck');
   const k2 = BALANCE.meatcan.pileKeep; BALANCE.meatcan.pileKeep = 0.9; checkBalance();
   ok(BALANCE.meatcan.pileKeep < BALANCE.meatcan.pileFrom, 'pileKeep stays below pileFrom', BALANCE.meatcan);
   BALANCE.meatcan.pileKeep = k2;
+  const k3 = BALANCE.meatcan.padMax; BALANCE.meatcan.padMax = 2; checkBalance();
+  ok(BALANCE.meatcan.padMax === BALANCE.meatcan.out, 'padMax below one batch is raised to one batch (' + BALANCE.meatcan.out + ')', BALANCE.meatcan.padMax);
+  BALANCE.meatcan.padMax = k3;
   console.warn = ow;
   ok(BALANCE.prices3.item_can_meat === 12, 'prices3.item_can_meat 12');
 }

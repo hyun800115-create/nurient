@@ -552,6 +552,10 @@ function checkMeatCan(B) {
   fixNum(M, 'farAt', 'meatcan.farAt', 0.3, 1, 0.8);
   fixNum(M, 'farPx', 'meatcan.farPx', 300, 4000, 1500);
   fixNum(M, 'storeGuestK', 'meatcan.storeGuestK', 0.4, 1, 0.75);
+  fixNum(M, 'storeQueueAdd', 'meatcan.storeQueueAdd', 0, 4, 2, true);
+  // (0 = no cap; else at least one batch fits under it)
+  fixNum(M, 'padMax', 'meatcan.padMax', 0, 30, 12, true);
+  if (M.padMax > 0 && M.padMax < M.out) M.padMax = M.out;
   fixNum(M, 'standing', 'meatcan.standing', 0, 60, 30, true);
 }
 

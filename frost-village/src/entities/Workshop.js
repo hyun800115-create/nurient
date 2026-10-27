@@ -96,8 +96,11 @@ export class Workshop extends Station {
 
   /** ((v4.2.1) the cannery's next batch: 'fish' | 'meat' | null (systems/cans.js) */
   canKind() {
-    return pickCanKind({ fishUnits: this.fishUnits(false), meat: this.inStack.countOf('item_meat_raw'), ingot: this.inStack.countOf('item_ingot'), meatOn: this.meatOn(), last: this.lastKind, fishIn: this.recipe.inputs.fish, meatIn: this.meatRecipe().inputs.item_meat_raw });
+    return pickCanKind({ fishUnits: this.fishUnits(false), meat: this.inStack.countOf('item_meat_raw'), ingot: this.inStack.countOf('item_ingot'), meatOn: this.meatOn() && this.meatRoom(), last: this.lastKind, fishIn: this.recipe.inputs.fish, meatIn: this.meatRecipe().inputs.item_meat_raw });
   }
+  /** ((v4.2.1) a meat batch only while fewer than meatcan.padMax meat cans wait on the pad (0: no limit): the rest of
+   *  the pad stays for fish cans, and the meat cans are what the 고기 통조림 짐꾼 can carry away) */
+  meatRoom() { const n = Math.floor(Number(MC().padMax) || 0); return n <= 0 || this.outStack.countOf('item_can_meat') < n; }
 
   /** ((v4.2.1) the size of the next batch (the cannery's two cans may differ); 0 = no batch on the pad */
   nextOutN() {

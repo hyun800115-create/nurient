@@ -331,6 +331,17 @@ const PORTER_KEYS = ['npc_porter_a', 'npc_porter_b'];
 const PORTER_FALLBACK = ['npc_yellow', 'npc_red', 'npc_blue', 'npc_young_man', 'villager_a', 'villager_b', 'villager_c'];
 
 /**
+ * ((v4.2.1 고기 통조림, systems/MeatCan.js) while the 고기 통조림 짐꾼 works, the cannery's meat cans are left to him by
+ * everyone else (its own porters, the 창고 crew) unless meatcan.shareAt or more wait on the pad (then they help)
+ */
+export function meatCansLeft(gs, station, ty) {
+  if (ty !== 'item_can_meat' || !station || station.kind !== 'cannery' || !station.outStack) return false;
+  const M = gs.v42 && gs.v42.meatcan;
+  if (!M || !M.goodsPorter) return false;
+  return station.outStack.countOf(ty) < Math.max(1, Number(BALANCE.meatcan && BALANCE.meatcan.shareAt) || 12);
+}
+
+/**
  * Something that carries stacks between places along the roads (v3 base of both porters):
  * haul -> unload into a logistics sink (site, food box, workshop, shelf, warehouse), re-planning
  * when a place fills up before the stack is empty.
@@ -491,10 +502,7 @@ export class Porter extends Hauler {
    */
   skips(ty) {
     if (this.only) return ty !== this.only;
-    if (ty !== 'item_can_meat' || !this.station || this.station.kind !== 'cannery') return false;
-    const M = this.gs.v42 && this.gs.v42.meatcan;
-    if (!M || !M.goodsPorter) return false;
-    return this.station.outStack.countOf(ty) < Math.max(1, Number(BALANCE.meatcan && BALANCE.meatcan.shareAt) || 12);
+    return meatCansLeft(this.gs, this.station, ty);
   }
   /** the topmost item of the pad this porter may take (null: none) */
   topType() { const out = this.station.outStack; for (let i = out.items.length - 1; i >= 0; i--) if (!this.skips(out.items[i].type)) return out.items[i].type; return null; }
@@ -1071,7 +1079,9 @@ export class WarehousePorter extends Hauler {
         if (!out) { this.dropRaw(); if (this.stack.count > 0) this.startHaul(this.planDest() || W.sink); else { this.job = null; this.state = 'idle'; } break; }
         if (this.dropT <= 0) {
           this.dropT = 0.14;
-          const ty = this.carriedType() || (j.type || (out.items.length ? out.items[out.items.length - 1].type : null));
+          // ((v4.2.1 고기 통조림) the cannery's meat cans are left to the 고기 통조림 짐꾼, as by its own porters)
+          let ty = this.carriedType() || j.type || null;
+          for (let i = out.items.length - 1; !ty && i >= 0; i--) if (!meatCansLeft(gs, j.src, out.items[i].type)) ty = out.items[i].type;
           // ((v4.2 CODE-2) a raw run takes only what the Surplus rules let go (the pile keeps surplus.pileKeep))
           let lim = this.stack.max;
           if (j.kind === 'raw') { const S = gs.v42 && gs.v42.surplus, have = this.stack.count + this.stack.incoming; lim = Math.min(lim, have + (S ? S.amount(j.src, ty) : 0)); }

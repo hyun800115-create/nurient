@@ -15,6 +15,7 @@
 //   --prefill-yard   (v4.3.2 L1a) fill the 자재창고 to its raw share before the run (steady state); a build without the
 //                    자재창고 ignores it and says so
 //   --seed N         Math.random seeded (mulberry32) for repeatable runs
+//   --p2-cannery     also the cannery's 짐꾼 2 (a real game offers it once the cannery's output stood full 45 s)
 //   --meatcan        (v4.2.1 고기 통조림) buy the meat-can line before the warm-up (the hook; the pad's own rule is
 //                    tests/meatcan.mjs's). Its porters are labelled raw:cannery (고기 짐꾼) and mc:cannery (고기 통조림 짐꾼)
 // Runs of docs/logistics_plan.md: L = --late --warm 120 --minutes 10 (one game day); S25 / S35 = --load
@@ -38,6 +39,7 @@ const MODE = opt('--mode', 'auto');
 const LATE = has('--late') || opt('--setup', '') === 'final';
 const PREFILL = has('--prefill-yard');
 const MEATCAN = has('--meatcan');
+const P2C = has('--p2-cannery');
 const SEED = opt('--seed', '');
 const OUT = path.resolve(INIT_CWD, opt('--out', 'probe.json'));
 process.chdir(REPO);
@@ -73,7 +75,7 @@ try {
     await page.evaluate(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
   }
   // ---------------------------------------------------------------- run L's late-village configuration (g60 from minute 13)
-  const setupInfo = await page.evaluate(([late, prefill, meatcan]) => {
+  const setupInfo = await page.evaluate(([late, prefill, meatcan, p2c]) => {
     const gs = window.__FV.scene, H = window.__FV.v42, out = { late };
     if (late) {
       try {
@@ -91,9 +93,10 @@ try {
       if (Y && typeof Y.prefill === 'function') { try { out.yard = Y.prefill(); } catch (e) { out.yardErr = String(e); } } else out.yard = 'no 자재창고 in this build (ignored)';
     }
     // ((v4.2.1) the meat-can line bought (instant: its two porters at home)
+    if (p2c) { try { H.lines({ p2: ['cannery'] }); out.p2c = gs.porters.filter((p) => p.station && p.station.kind === 'cannery' && !p.only).length; } catch (e) { out.p2cErr = String(e); } }
     if (meatcan) { try { out.meatcan = H.meatcan ? H.meatcan({ buy: 'instant' }).on : 'no meat cans in this build'; } catch (e) { out.meatcanErr = String(e); } }
     return out;
-  }, [LATE, PREFILL, MEATCAN]);
+  }, [LATE, PREFILL, MEATCAN, P2C]);
   console.log('setup', JSON.stringify(setupInfo));
   // ---------------------------------------------------------------- instruments
   await page.evaluate(async () => {
@@ -279,7 +282,7 @@ try {
       const fb = gs.foodBox; if (fb) M.misc.foodSum = (M.misc.foodSum || 0) + (fb.count || 0);
       // ((v4.2.1) the 잡화점's can towers, the 창고's meat cans, the smokehouse input)
       const sto = gs.store && gs.store.enabled ? gs.store.stock : null;
-      if (sto) { const c = M.misc.store || (M.misc.store = { n: 0, bothEmpty: 0, canEmpty: 0, meatEmpty: 0 }); c.n++; const a = sto.countOf('item_can') === 0, b = sto.countOf('item_can_meat') === 0; if (a) c.canEmpty++; if (b) c.meatEmpty++; if (a && b) c.bothEmpty++; }
+      if (sto) { const c = M.misc.store || (M.misc.store = { n: 0, bothEmpty: 0, canEmpty: 0, meatEmpty: 0, q: 0, qFull: 0 }); c.n++; const a = sto.countOf('item_can') === 0, b = sto.countOf('item_can_meat') === 0; if (a) c.canEmpty++; if (b) c.meatEmpty++; if (a && b) c.bothEmpty++; c.q += gs.store.queue.length; if (gs.store.queue.length >= gs.store.maxQueue) c.qFull++; }
       if (W) M.misc.whMeatEnd = W.count('item_can_meat');
       const CN = gs.workshops.find((w) => w.kind === 'cannery');
       if (CN) { const c = M.misc.cannOut || (M.misc.cannOut = { n: 0, full: 0, meatAtFull: 0, fishAtFull: 0, meatAvg: 0, fishAvg: 0 }); const o = CN.outStack, mt = o.countOf('item_can_meat'), fs = o.countOf('item_can'); c.n++; c.meatAvg += mt; c.fishAvg += fs; if (o.count + o.incoming + 3 > o.max) { c.full++; c.meatAtFull += mt; c.fishAtFull += fs; } }

@@ -1185,6 +1185,8 @@ export class Game extends Phaser.Scene {
 
   /** ((v4.2.1) the cannery makes meat cans (the 고기 통조림 machine was bought: systems/MeatCan.js) */
   meatCansOn() { return !!(this.v42 && this.v42.meatcan && this.v42.meatcan.on); }
+  /** ((v4.2.1) places the 잡화점's line gets once meat cans exist (the new buyers need room to queue) */
+  storeQueueAdd() { return this.meatCansOn() ? Math.max(0, Math.min(4, Math.floor(Number(BALANCE.meatcan && BALANCE.meatcan.storeQueueAdd) || 0))) : 0; }
 
   /** the general store: a Market selling cans and tools (customers come along the roads) */
   makeStore(site) {
@@ -1204,6 +1206,7 @@ export class Game extends Phaser.Scene {
       spawnK: () => (this.meatCansOn() ? Math.max(0.4, Math.min(1, Number(BALANCE.meatcan && BALANCE.meatcan.storeGuestK) || 0.75)) : 1),
     };
     cfg.maxQueue0 = cfg.maxQueue;
+    cfg.maxQueue += this.storeQueueAdd();
     const m = new Market(this, cfg);
     m.front = [-60, 30];
     if (this.padSpots) { this.padSpots.push({ x: m.shelf.x, y: m.shelf.y, r: 70 }, { x: m.cash.x, y: m.cash.y, r: 70 }, { x: m.register.x, y: m.register.y, r: 64 }); }
@@ -1259,7 +1262,7 @@ export class Game extends Phaser.Scene {
     const cfg = m.cfg, sig = () => JSON.stringify(cfg.slots || null) + '/' + cfg.maxQueue;
     const before = sig();
     delete cfg.slots;
-    cfg.maxQueue = cfg.maxQueue0 || 6;
+    cfg.maxQueue = (cfg.maxQueue0 || 6) + this.storeQueueAdd();
     this.storeLine(m, cfg);
     return sig() !== before;
   }

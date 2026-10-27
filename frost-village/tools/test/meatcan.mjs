@@ -149,7 +149,7 @@ try {
   // ======================================================================= 4–5. the line at work; the guards
   await ev(() => {
     const gs = window.__FV.scene, p = gs.piles.meat, S = gs.stations.smokehouse, MP = gs.v42.meatcan.rawPorter;
-    window.__takes = []; window.__smokeEmpty = 0; window.__smokeEmptyAway = 0; window.__never = { fish: 0, meat: 0 };
+    window.__takes = []; window.__smokeEmpty = 0; window.__smokeEmptyAway = 0; window.__never = { fish: 0, meat: 0 }; window.__padMeat = 0;
     const f = p.takeTo.bind(p);
     p.takeTo = (ch, cap) => { if (ch === MP) window.__takes.push({ rack: p.count, smoke: S.inStack.count + S.inStack.incoming, have: ch.stack.count + ch.stack.incoming, t: +window.__step.t.toFixed(1) }); return f(ch, cap); };
     // (1 Hz) the 훈제장 input empty; a batch ready while the cannery stood idle with room (it never waits on one input)
@@ -158,6 +158,7 @@ try {
       const C = gs.workshops.find((w) => w.kind === 'cannery');
       if (S.inStack.count === 0) { window.__smokeEmpty++; if (MP.state === 'haul' && MP.stack.count > 0) window.__smokeEmptyAway++; }
       const k = C.canKind();
+      window.__padMeat = Math.max(window.__padMeat, C.outStack.countOf('item_can_meat'));
       if (k && C.operated() && !C.working && C.outStack.count + C.outStack.incoming + 3 <= C.outStack.max && C.idleT > 1.5) window.__never[k]++;
     };
     gs.events.on('postupdate', () => window.__mon(1 / 60));
@@ -172,11 +173,12 @@ try {
     if (s.sold > 0) saw.sold = true;
     if (saw.both && saw.sold && t >= 120) break;
   }
-  const c4 = await ev(() => { const gs = window.__FV.scene; return { M: window.__FV.v42.meatcan(), crafted: window.__crafted, sold: window.__storeMeat, meatBefore: window.__meatIn, never: window.__never, t: +window.__step.t.toFixed(0) }; });
+  const c4 = await ev(() => { const gs = window.__FV.scene; return { M: window.__FV.v42.meatcan(), crafted: window.__crafted, sold: window.__storeMeat, meatBefore: window.__meatIn, never: window.__never, padMeat: window.__padMeat, padMax: window.__BAL.meatcan.padMax, out: window.__BAL.meatcan.out, t: +window.__step.t.toFixed(0) }; });
   step('4 nobody brought raw meat to the cannery before the line was bought', c4.meatBefore === 0, c4.meatBefore);
   step('4 raw meat reaches the cannery\'s 3rd tower; it makes fish cans and meat cans (' + c4.M.cannery.made.fish + ' · ' + c4.M.cannery.made.meat + ' batches)', saw.meatIn && saw.both && c4.crafted.item_can_meat > 0 && c4.crafted.item_can > 0, { saw, crafted: c4.crafted });
   step('4 meat cans reach the 잡화점 and a customer buys one (' + c4.sold + ')', saw.store && c4.sold > 0, { saw, sold: c4.sold });
   step('4 the cannery never stood idle with a batch ready (1 Hz, operated, room on the pad)', c4.never.fish === 0 && c4.never.meat === 0, c4.never);
+  step('4 meat cans on the pad stay under meatcan.padMax + one batch (' + c4.padMeat + ' ≤ ' + (c4.padMax + c4.out - 1) + '): the rest of the pad is for fish cans', !(c4.padMax > 0) || c4.padMeat <= c4.padMax + c4.out - 1, { padMeat: c4.padMeat, padMax: c4.padMax });
   const g = await ev(() => {
     const B = window.__BAL.meatcan, p = window.__FV.scene.piles.meat, S = window.__FV.scene.stations.smokehouse, T = window.__takes;
     const keep = Math.ceil(p.stack.max * B.pileKeep), from = p.stack.max * B.pileFrom, sm = S.inStack.max * B.smokeHas;
@@ -192,6 +194,8 @@ try {
     const p1 = gs.porters.find((q) => q.station === C && q.role === 'porter' && !q.only);
     const out = C.outStack;
     out.clear(gs.effects);
+    // (the 잡화점's meat tower well stocked: not 'running out', so a jam may be exported)
+    while (gs.store.stock.countOf('item_can_meat') < 20) gs.store.stock.push('item_can_meat', null, gs.effects);
     for (let i = 0; i < B.shareAt - 1; i++) out.push('item_can_meat', null, gs.effects);
     const below = p1 ? p1.skips('item_can_meat') : null;
     out.push('item_can_meat', null, gs.effects);
@@ -200,11 +204,15 @@ try {
     const dStore = Math.round(Math.hypot(gs.store.sink.x - C.outPad.x, gs.store.sink.y - C.outPad.y));
     const keepX = P.x, keepY = P.y; P.x = P.home[0]; P.y = P.home[1];
     const plan = P.pickPlan();
+    // (the 잡화점's meat tower nearly empty (a shelf ≥ SHELF_LOW): the same jam goes to the 잡화점 first)
+    while (gs.store.stock.countOf('item_can_meat') > 0) { const it = gs.store.stock.pop('item_can_meat'); if (it && it.spr) gs.effects.releaseItem(it.spr); }
+    const planLow = P.pickPlan();
     P.x = keepX; P.y = keepY;
-    return { p1: !!p1, below, at, fish: p1 ? p1.skips('item_can') : null, dStore, farPx: B.farPx, plan: plan ? { sink: plan.sink.id, type: plan.type, n: plan.n, jam: !!plan.jam } : null, onlySkipsFish: P.skips('item_can') };
+    return { p1: !!p1, below, at, fish: p1 ? p1.skips('item_can') : null, dStore, farPx: B.farPx, plan: plan ? { sink: plan.sink.id, type: plan.type, n: plan.n, jam: !!plan.jam } : null, planLow: planLow ? { sink: planLow.sink.id, type: planLow.type, jam: !!planLow.jam } : null, onlySkipsFish: P.skips('item_can') };
   });
   step('5 the cannery\'s porter leaves meat cans below shareAt (12), helps at 12, never skips fish cans', c5.p1 && c5.below === true && c5.at === false && c5.fish === false, c5);
   step('5 the 고기 통조림 짐꾼 carries meat cans only; output ≥ farAt full and the 잡화점 ' + c5.dStore + ' px away (> ' + c5.farPx + '): the load goes to the 짐 싣는 곳', c5.onlySkipsFish && (c5.dStore <= c5.farPx || (c5.plan && c5.plan.sink === 'dock_surplus' && c5.plan.jam && c5.plan.type === 'item_can_meat')), c5);
+  step('5 … unless the 잡화점\'s meat tower is nearly empty: then the 잡화점 first', c5.dStore <= c5.farPx || (c5.planLow && c5.planLow.sink === 'store_shelf' && !c5.planLow.jam), c5.planLow);
   await ev(() => { const gs = window.__FV.scene, C = gs.workshops.find((w) => w.kind === 'cannery'); while (C.outStack.count > 6) C.outStack.pop('item_can_meat'); });
 
   // ======================================================================= 6. save mid-trip + reload
@@ -225,10 +233,13 @@ try {
   await park();
   const r6 = await ev(() => {
     const gs = window.__FV.scene, C = gs.workshops.find((w) => w.kind === 'cannery'), M = window.__FV.v42.meatcan();
-    return { on: M.on, raw: !!M.rawPorter, goods: !!M.goodsPorter, rawInList: gs.rawPorters.filter((r) => r.mcan).length, goodsInList: gs.porters.filter((q) => q.only === 'item_can_meat').length, meat: C.inStack.countOf('item_meat_raw'), outs: { can: C.outStack.countOf('item_can'), meat: C.outStack.countOf('item_can_meat') }, rack: gs.piles.meat.count, store: gs.store.stock.countOf('item_can_meat'), timeMult: C.timeMult() };
+    // (the 고기 통조림 짐꾼 is back at the pad and may already have the restored cans in his bag: the store is far, so
+    //  in the boot's first second they can only be on the pad or with him)
+    const P = gs.v42.meatcan.goodsPorter, inBag = P ? P.stack.countOf('item_can_meat') + P.stack.inTypes.filter((q) => q === 'item_can_meat').length : 0;
+    return { on: M.on, raw: !!M.rawPorter, goods: !!M.goodsPorter, rawInList: gs.rawPorters.filter((r) => r.mcan).length, goodsInList: gs.porters.filter((q) => q.only === 'item_can_meat').length, meat: C.inStack.countOf('item_meat_raw'), outs: { can: C.outStack.countOf('item_can'), meat: C.outStack.countOf('item_can_meat'), withPorter: C.outStack.countOf('item_can_meat') + inBag }, rack: gs.piles.meat.count, store: gs.store.stock.countOf('item_can_meat'), timeMult: C.timeMult() };
   });
   const wsIn = (s6.ws && s6.ws.ins && s6.ws.ins.item_meat_raw) || 0, wsOut = (s6.ws && s6.ws.outs && s6.ws.outs.item_can_meat) || 0;
-  step('6 reload: the line on, both porters back once each, the cannery\'s raw meat (' + wsIn + ') and meat cans (' + wsOut + ') kept', r6.on && r6.raw && r6.goods && r6.rawInList === 1 && r6.goodsInList === 1 && r6.meat === Math.min(wsIn, 18) && r6.outs.meat === Math.min(wsOut, 30) && Math.abs(r6.timeMult - 0.7) < 1e-9, { r6, wsIn, wsOut });
+  step('6 reload: the line on, both porters back once each, the cannery\'s raw meat (' + wsIn + ') and meat cans (' + wsOut + ') kept', r6.on && r6.raw && r6.goods && r6.rawInList === 1 && r6.goodsInList === 1 && r6.meat === Math.min(wsIn, 18) && r6.outs.withPorter === Math.min(wsOut, 30) && Math.abs(r6.timeMult - 0.7) < 1e-9, { r6, wsIn, wsOut });
   await adv(30);
   const r6b = await ev(() => { const M = window.__FV.v42.meatcan(); return { raw: M.rawPorter, made: M.cannery.made }; });
   step('6 after the reload the line works on', !!r6b.raw, r6b);
