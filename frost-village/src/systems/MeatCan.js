@@ -5,8 +5,11 @@
 //           a pad '고기 통조림 기계' beside the cannery's input (LineUpgrades, kind 'mcan': apart from the 3 line offers)
 //   buy     progress.flags.meatCan; the cannery takes raw meat (Workshop.meatOn) and works meatcan.timeMult faster;
 //           two porters come: 고기 짐꾼 (통조림) — the rack's surplus to the cannery (Worker.MeatCanPorter) — and
-//           고기 통조림 짐꾼 — a goods porter bound to the meat cans (Porter.only); the 잡화점 sells them (its 7th tower,
-//           guests every meatcan.storeGuestK × its spawn time), a standing card '고기 통조림 30' (Growth), exports
+//           고기 통조림 짐꾼 — a goods porter bound to the meat cans (Porter.only; the cannery's porters and the 창고 crew
+//           leave meat cans to him below meatcan.shareAt: Worker.meatCansLeft); the 잡화점 sells them (its 7th tower,
+//           guests every meatcan.storeGuestK × its spawn time, its line + storeQueueAdd), a standing card '고기 통조림 30'
+//           (Growth), exports. The cannery makes a meat batch only while fewer than meatcan.padMax meat cans wait on its
+//           pad (Workshop.meatRoom): on a far 잡화점 the out-flow is the limit, and fish cans keep their room
 //   save    nothing new: progress.flags.meatCan, progress.seen.mcanOffer, v42.seen.up.mcan (banner), v42.offerPaid.mcan;
 //           the porters are made again by afterRestore (a load in a bag goes back to the rack: Game.serialize)
 // Nothing exists before village complete: the first 20 minutes never change.
