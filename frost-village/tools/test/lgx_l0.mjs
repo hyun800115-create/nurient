@@ -203,13 +203,17 @@ try {
     while (pile.stack.count < pile.stack.max) pile.stack.push('item_fish_raw', null, fx);
     for (const k in gs.piles) if (k !== 'fish') { const p = gs.piles[k]; while (p.stack.count > p.stack.max * 0.5) { const it = p.stack.pop(); if (it && it.spr) fx.releaseItem(it.spr); else if (!it) break; } }
     window.__can.byCrew = 0; window.__linked = 0;
+    // (links already under way — after --minutes 10 the bigger crew may hold two — do not count: a NEW one must start;
+    //  with two already linking a third is not offered (≤ 2 at once while the cannery is about to stop))
+    const old = W.porters.filter((p) => p.job && p.job.kind === 'link');
+    window.__oldLinks = new Set(old.map((p) => p.job));
     const wp = W.porters.find((p) => !(p.job && p.job.kind === 'link')) || W.porters[0];
     const j = wp.linkJob();
-    return { link: j ? { kind: j.kind, n: j.n } : null };
+    return { link: j ? { kind: j.kind, n: j.n } : null, already: old.length, outFull: !!(C.outStack && C.outStack.count >= C.outStack.max) };
   });
-  const t5 = await until(() => { if (window.__FV.scene.warehouse.porters.some((p) => p.job && p.job.kind === 'link')) window.__linked = 1; return window.__linked && window.__can.byCrew > 0; }, 150, 1);
+  const t5 = await until(() => { if (window.__FV.scene.warehouse.porters.some((p) => p.job && p.job.kind === 'link' && !window.__oldLinks.has(p.job))) window.__linked = 1; return window.__linked && window.__can.byCrew > 0; }, 150, 1);
   const s5 = await ev(() => ({ byCrew: window.__can.byCrew, jobs: window.__FV.scene.warehouse.porters.map((p) => (p.job ? p.job.kind : p.state)) }));
-  step('5 the crew carries fish from the pile to the cannery (the link) when the cannery runs low', L5.link && L5.link.kind === 'link' && t5 >= 0, { ...L5, t: t5, ...s5 });
+  step('5 the crew carries fish from the pile to the cannery (the link) when the cannery runs low', ((L5.link && L5.link.kind === 'link') || L5.already >= 2) && t5 >= 0, { ...L5, t: t5, ...s5 });
 
   // ---- 6. the crew's need gate
   const C6 = await ev(() => { const gs = window.__FV.scene, K = gs.v42.crew; window.__FV.v42.crew({ rate: 1e6, need: false, useBusy: 0, backlog: 0 }); K.sinceT = 1e6; return { crew: K.crew(), target: K.target() }; });
