@@ -104,7 +104,10 @@ export class StackBaker {
       er.setPosition(s.x, s.y).setScale(s.w / Math.max(1, er.width), s.h / Math.max(1, er.height));
       ers.push(er);
     }
-    if (ers.length) dt.erase(ers, 0, 0);
+    // ((v4.2.1 fix, ghost coins) no x / y: DynamicTexture.erase(list, x, y) draws every Game Object of the list AT x, y
+    //  — all the erasers landed on the texture's corner and no queued slot was erased: an emptied till kept showing its
+    //  coins, a shrinking pile its old height, and the slots near the corner were wiped by other stacks' erasers)
+    if (ers.length) dt.erase(ers);
     // 2. draw their items in one pass (landed sprites go back to the pool: their picture is drawn now)
     const st = this.stamp;
     let any = false;

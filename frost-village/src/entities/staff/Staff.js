@@ -256,9 +256,51 @@ export function redress(ch, make) {
   return n;
 }
 
-/** 총총이: follows the chief a little behind and to the side, never in his way */
+// ((check) the office's walls between her and her spot: segment (x0, y0)–(x1, y1) crosses an edge of polygon P
+function segX(ax, ay, bx, by, cx, cy, dx, dy) {
+  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+  if (Math.abs(d) < 1e-9) return false;
+  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d, u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+  return t > 0 && t < 1 && u >= 0 && u <= 1;
+}
+function crossesPoly(x0, y0, x1, y1, P) {
+  for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; if (segX(x0, y0, x1, y1, a.x, a.y, b.x, b.y)) return true; }
+  return false;
+}
+/** ((check) the way round a convex footprint P from (x0, y0) to (x1, y1): one or two of its corners, 80 px out (clear of
+ *  the wall circles), the shortest whose legs cross no wall; null when there is none */
+function roundPoly(x0, y0, x1, y1, P) {
+  let cx = 0, cy = 0;
+  for (const q of P) { cx += q.x; cy += q.y; }
+  cx /= P.length; cy /= P.length;
+  const C = P.map((q) => { const dx = q.x - cx, dy = q.y - cy, l = Math.hypot(dx, dy) || 1; return { x: q.x + (dx / l) * 80, y: q.y + (dy / l) * 80 }; });
+  const n = C.length;
+  let best = null, bestL = Infinity;
+  for (let i = 0; i < n; i++) {
+    for (const k of [0, 1, -1]) {
+      const pts = k ? [C[i], C[(i + k + n) % n]] : [C[i]];
+      let px = x0, py = y0, len = 0, ok = true;
+      for (const q of pts.concat([{ x: x1, y: y1 }])) {
+        if (crossesPoly(px, py, q.x, q.y, P)) { ok = false; break; }
+        len += gdist(px, py, q.x, q.y); px = q.x; py = q.y;
+      }
+      if (ok && len < bestL) { bestL = len; best = pts; }
+    }
+  }
+  return best ? best.map((q) => ({ x: q.x, y: q.y })) : null;
+}
+
+// ((aide fix, designer "내비서 날 빨리 안따라와 나와 속도 동일하게") BALANCE.v42.aide when balance.js has none
+const AIDE = { catchUp: 0.35, catchFrom: 16, catchFull: 256, pull: 3, back: 120, side: 60, backStill: 40, sideStill: 80, arrive: 14,
+  routeFrom: 320, replan: 0.6, teleport: 900, minSpeed: 120, walkPx: 120, animMin: 0.6, animMax: 2.2 };
+
+/** 총총이: follows the chief a little behind and to the side, never in his way. ((aide fix) She walks at HIS speed —
+ *  base × shoes (Player.speed) — a little faster while she has fallen behind (catch-up), steering at his velocity plus a
+ *  pull toward her spot, so she never stops and starts while he walks; beside him when he stands. Far behind (a
+ *  building in the way): the roads, re-planned. Her walk anim plays at her speed (timeScale, like the courier's sack walk) */
 export class Aide extends Staff {
-  constructor(gs, office, seed, x, y, home) { super(gs, office, 'chong', seed, x, y, home); this.speed = 150; this.side = (seed & 1) ? 1 : -1; this.doing = 'follow'; this.noSeparate = true; }
+  constructor(gs, office, seed, x, y, home) { super(gs, office, 'chong', seed, x, y, home); this.speed = 150; this.side = (seed & 1) ? 1 : -1; this.doing = 'follow'; this.noSeparate = true; this.walking = false; }
+  get A() { return (BALANCE.v42 && BALANCE.v42.aide) || AIDE; }
   update(dt) {
     if (!this.alive) return;
     const gs = this.gs, p = gs.player, O = this.office;
@@ -267,27 +309,104 @@ export class Aide extends Staff {
     const chiefIn = !!(B && B.cw && B.cw.onFloor(p.x, p.y));
     if (far || chiefIn || (O.pilotOffice && O.pilotOffice())) {
       // stays home (sits at her desk) when the chief is far from the office, or in it
-      if (this.doing !== 'home') { this.doing = 'home'; this.goHome(() => { this.doing = 'home'; }); }
+      // ((aide fix) goHome() sets doing = 'desk': mark 'home' after it, else her way home was planned again every frame)
+      if (this.doing !== 'home') { this.goHome(() => { this.doing = 'home'; }); this.doing = 'home'; }
+      this.walking = false; this.leaving = false; this.round = false;
+      // ((check) her way home at her follow pace (his top speed): this.speed kept the pace of her last settling step
+      //  beside him (26–43 px/s measured), so she crawled to her desk; her walk anim at that pace
+      if (this.target) this.speed = Math.max(this.A.minSpeed, Number(p.speed) || 0);
+      this.animRate(this.target ? this.speed : 0);
       if (this.target) this.step(dt);
       else if (this.seat) this.deskRoutine(dt);
     } else {
       if (this.seat) this.standUp();
       this.doing = 'follow';
-      // a point 1.6–2.4 m behind him (64 px per m), to the side
-      const vx = p.vx || 0, vy = p.vy || 0, sp = Math.hypot(vx, vy);
-      const hx = sp > 10 ? vx / sp : (this.lastHx || 0), hy = sp > 10 ? vy / sp : (this.lastHy || 1);
+      const A = this.A;
+      // her spot: 1.9 m behind him and to the side while he walks (64 px per m), beside him when he stands
+      const vx = p.vx || 0, vy = p.vy || 0, sp = Math.hypot(vx, vy), moving = sp > 10;
+      // ((aide fix) his last heading as it was: `lastHy || 1` turned a heading due east (hy 0) into (1, 1) when he stopped)
+      const hx = moving ? vx / sp : (this.lastHx !== undefined ? this.lastHx : 0), hy = moving ? vy / sp : (this.lastHy !== undefined ? this.lastHy : 1);
       this.lastHx = hx; this.lastHy = hy;
-      const back = 120, side = 60 * this.side;
-      const tx = p.x - hx * back - hy * side, ty = p.y - hy * back * 0.5 + hx * side * 0.5;
+      const back = moving ? A.back : A.backStill, sideD = moving ? A.side : A.sideStill;
+      const spotX = (sd) => p.x - hx * back - hy * sideD * sd, spotY = (sd) => p.y - hy * back * 0.5 + hx * sideD * sd * 0.5;
+      // her own side, or his other side when hers is in a wall / a fence / a building (looked at twice a second)
+      if ((this.spotT = (this.spotT || 0) - dt) <= 0 || !this.curSide) {
+        this.spotT = 0.5;
+        const C = gs.collision, sd = this.side;
+        // ((check) a spot inside the office (he stands by its wall) counts as blocked too)
+        const bad = (x, y) => (C && C.blocked(x, y, 12)) || !!(B && B.cw && B.cw.onFloor(x, y));
+        this.curSide = bad(spotX(sd), spotY(sd)) && !bad(spotX(-sd), spotY(-sd)) ? -sd : sd;
+      }
+      const tx = spotX(this.curSide), ty = spotY(this.curSide);
       const d = gdist(this.x, this.y, tx, ty);
+      // her pace: the chief's top speed (base × shoes), up to catchUp faster the further she is behind her spot
+      const top = Math.max(A.minSpeed, Number(p.speed) || 0);
+      const lag = Math.max(0, Math.min(1, (d - A.catchFrom) / Math.max(1, A.catchFull - A.catchFrom)));
+      const vmax = top * (1 + A.catchUp * lag);
+      if (moving) { this.parked = null; this.bestD = Infinity; this.noGainT = 0; }      // (her spot jumps when he stops)
+      // while he stands: walk to his side; stop there (or where her spot cannot be reached: parked) until it moves
+      const goStill = !moving && (this.walking ? d > A.arrive && !this.stuckStill(d, dt, tx, ty)
+        : d > A.arrive * 2.5 && !(this.parked && gdist(this.parked.x, this.parked.y, tx, ty) < 40));
       // far and off screen: she appears at his last door (teleport), never runs a marathon across the map
-      if (d > 900 && !gs.isOnScreen(this.x, this.y, 100) && !gs.isOnScreen(tx, ty, 0)) { this.x = tx; this.y = ty; this.route.length = 0; this.target = null; }
-      else if (d > 40) {
-        if (!this.target || gdist(this.target.x, this.target.y, tx, ty) > 80 || this.replT <= 0) { this.walkTo(tx, ty); this.replT = 0.6; }
-        this.replT = (this.replT || 0) - dt;
-        this.speed = d > 260 ? 230 : d > 120 ? 170 : 120;
+      // ((check) on the office floor (up from her desk) while he is outside: out through the door first, all the way
+      //  past it. Steered straight at him she pressed against the office wall and stayed there, 3–4 m away and hidden
+      //  by the closed shell; along the roads she bounced off the walls for seconds. (Before the office art is in, the
+      //  walls already stand: the floor is then the circle of 140 px around the building's anchor, inside the walls;
+      //  he in there too: she stays with him)
+      const inside = !!(B && (B.cw ? B.cw.onFloor(this.x, this.y) : gdist(this.x, this.y, B.x, B.y) < 140) && !(!B.cw && gdist(p.x, p.y, B.x, B.y) < 140));
+      if (this.leaving && !this.target && !inside) this.leaving = false;
+      // ((check) outside, but the office stands between her and her spot (out of its door with him behind it, or he walks
+      //  round it): round its corners, never back in through the door (she went in and out of it for good) nor into a wall
+      const fp = !inside && !this.leaving && B && B.cw && B.cw.floor;
+      const crossing = !!(fp && fp.length >= 3 && !B.cw.onFloor(tx, ty) && crossesPoly(this.x, this.y, tx, ty, fp));
+      if (this.round && !crossing) { this.round = false; this.route.length = 0; this.target = null; }
+      if (crossing && (!this.round || !this.target || (this.roundT -= dt) <= 0)) {
+        const via = roundPoly(this.x, this.y, tx, ty, fp);
+        this.roundT = A.replan;
+        this.round = !!via;
+        if (via) { this.route.length = 0; for (const q of via) this.route.push(q); this.route.push({ x: tx, y: ty }); this.ri = 0; this.target = this.route[this.route.length - 1]; this.cb = null; this.want = null; }
+      }
+      if (d > A.teleport && !gs.isOnScreen(this.x, this.y, 100) && !gs.isOnScreen(tx, ty, 0)) { this.x = tx; this.y = ty; this.route.length = 0; this.target = null; this.walking = false; this.leaving = false; this.round = false; }
+      else if ((inside || this.leaving) && B.spots) {
+        if (!this.leaving || !this.target) {
+          const dr = B.spots.door, en = B.spots.entry, ox = dr.x - en.x, oy = dr.y - en.y, ol = Math.hypot(ox, oy) || 1;
+          this.route.length = 0;
+          // (from the doorway straight out, from further in by the entry point first)
+          if (gdist(this.x, this.y, dr.x, dr.y) > gdist(en.x, en.y, dr.x, dr.y)) this.route.push({ x: en.x, y: en.y });
+          this.route.push({ x: dr.x, y: dr.y }, { x: dr.x + (ox / ol) * 48, y: dr.y + (oy / ol) * 48 });
+          this.ri = 0; this.target = this.route[this.route.length - 1]; this.cb = null; this.want = null; this.leaving = true;
+        }
+        this.speed = vmax;
+        this.walking = true;
+        this.parked = null; this.bestD = Infinity;
         this.step(dt);
+      } else if (this.round) {
+        this.speed = vmax;
+        this.walking = true;
+        this.parked = null; this.bestD = Infinity;
+        this.step(dt);
+      } else if (d > A.routeFrom) {
+        // far behind (a building between them): along the roads, the way planned again every `replan` s
+        if (!this.target || gdist(this.target.x, this.target.y, tx, ty) > 80 || this.replT <= 0) { this.walkTo(tx, ty); this.replT = A.replan; }
+        this.replT = (this.replT || 0) - dt;
+        this.speed = vmax;
+        this.walking = true;
+        this.parked = null; this.bestD = Infinity;
+        this.step(dt);
+      } else if (moving || goStill) {
+        // near: his velocity + a pull toward her spot (no route to re-plan, no stop-and-go while he walks); while he
+        // stands, a calm walk to his side (faster only when she is far)
+        if (!this.walking) { this.bestD = d; this.noGainT = 0; }
+        this.route.length = 0; this.target = null; this.want = null;
+        let cx = vx + (tx - this.x) * A.pull, cy = vy + (ty - this.y) * A.pull;
+        const cap = moving ? vmax : A.minSpeed + (vmax - A.minSpeed) * lag;
+        const c0 = Math.hypot(cx, cy), c = Math.min(c0, cap);
+        if (c0 > c) { cx *= c / c0; cy *= c / c0; }
+        this.speed = c;
+        this.walking = true;
+        gs.moveAgent(this, this.x + cx, this.y + cy, c, dt, 0.5);
       } else {
+        this.walking = false;
         this.target = null; this.vx = this.vy = 0;
         this.faceTo(p.x, p.y);
         // (CODE-2) she takes notes while he chats or stands still (note; her note frames live on the resident page)
@@ -295,9 +414,34 @@ export class Aide extends Staff {
         if (chatting || Math.hypot(p.vx || 0, p.vy || 0) < 5) { if (this.want !== 'note') this.act('note'); }
         else if (this.animName !== 'idle') { this.want = null; this.play('idle'); }
       }
+      this.animRate(this.walking ? this.speed : 0);
     }
     this.refreshAct(dt);
     this.sync(dt);
+  }
+
+  /** while he stands: her spot cannot be reached (a wall, a crowd) — no closer for 0.75 s: she stops where she is
+   *  (parked) until he moves or her spot does */
+  stuckStill(d, dt, tx, ty) {
+    if (!(d >= this.bestD - 4)) { this.bestD = d; this.noGainT = 0; return false; }
+    if ((this.noGainT = (this.noGainT || 0) + dt) <= 0.75) return false;
+    this.parked = { x: tx, y: ty };
+    return true;
+  }
+
+  /** her walk plays at her speed (groundSpeed of the walk when the art publishes it, else A.walkPx); 1 when not walking */
+  animRate(v) {
+    const an = this.sprite && this.sprite.anims;
+    if (!an) return;
+    let k = 1;
+    if (v > 0 && /walk$/.test(this.animName || '')) {
+      const A = this.A;
+      let g = 0;
+      const per = this.sprite.person;
+      if (per && TF.of && TF.of.groundSpeed) { try { g = Number(TF.of.groundSpeed(per, 'walk', DIRS8[this.dir] || 'SE')) || 0; } catch (e) { g = 0; } }
+      k = Math.max(A.animMin, Math.min(A.animMax, v / (g > 1 ? g : A.walkPx)));
+    }
+    if (Math.abs((an.timeScale || 1) - k) > 0.01) an.timeScale = k;
   }
 }
 
