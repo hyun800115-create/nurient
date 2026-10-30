@@ -165,9 +165,11 @@ try {
     while (C.inStack.countOf('item_fish_raw') > 0) { const it = C.inStack.pop('item_fish_raw'); if (it && it.spr) fx.releaseItem(it.spr); }
     while (grill.inStack.count < grill.inStack.max) grill.inStack.push('item_fish_raw', null, fx);
     while (pile.stack.count < pile.stack.max) pile.stack.push('item_fish_raw', null, fx);
-    window.__raw.hauls.length = 0;
     return true;
   });
+  // (a load the 생선 짐꾼 had already decided before the switch may still start a moment later: count from 3 s on)
+  await adv(3);
+  await ev(() => { window.__raw.hauls.length = 0; });
   await adv(30);
   const h3b = await ev(() => { const B = window.__BAL; Object.assign(B.logistics.raw, window.__keepLR); B.logistics.link.fishToCannery = window.__keepLink; return window.__raw.hauls.filter((h) => h.line === 'grill'); });
   step('3 no local job while the input holds less than workS s of work', L3b && h3b.length === 0, { hauls: h3b.slice(0, 3) });
