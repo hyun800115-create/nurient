@@ -155,6 +155,11 @@ export class Game extends Phaser.Scene {
     this.keysInUse = new Set();   // character looks taken by clerks / porters (residents and customers avoid them)
     this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked), undefined, (r) => !this.territory || this.territory.isOpen(r));
     this.roads.blocked = (x, y) => !!(this.collision && this.collision.blocked(x, y, 12));
+    // ((v4.2.0.1) the same with room to spare: a way round something keeps off the walls (Paths.gridPath)
+    this.roads.wide = (x, y) => !!(this.collision && this.collision.blocked(x, y, 22));
+    // ((v4.2.0.1 final, review #3) the safety net's way round is planned for the walker's own radius (Roads.detour)
+    this.roads.blockedR = (x, y, r) => !!(this.collision && this.collision.blocked(x, y, r));
+    this.roads.offLand = (x, y) => !!(this.collision && this.collision.offLand(x, y));
     // (v3) who needs what (porters ask), the pictures that arrive after the title
     this.logistics = new Logistics(this);
     this.lazyImgs = [];
@@ -1474,7 +1479,34 @@ export class Game extends Phaser.Scene {
 
   workerHome(type, index) {
     const h = WORLD.workerHome[type];
-    return [h[0] + index * 40, h[1] + index * 20];
+    // ((v4.2.0.1) a home on open ground: the row (+40, +20 a worker) ran into the smelter, the sawmill, the hay bale
+    //  and a fence, and an idle worker walked on the spot there for good. Looked up once per (type, index))
+    const key = type + ':' + index, C = this._homes || (this._homes = {});
+    if (C[key]) return C[key].slice();
+    const q = this.freeSpot(h[0] + index * 40, h[1] + index * 20, 16, 140);
+    const out = [Math.round(q.x), Math.round(q.y)];
+    if (this.collision.walk) C[key] = out;          // (cached once the land is known: the fog moves homes otherwise)
+    return out.slice();
+  }
+
+  /** ((v4.2.0.1) the free spot nearest (x, y) for a walker of radius `rad` (rings out to `maxR` ground px), or (x, y)
+   *  itself when it is free or nothing near is. `ok(x, y)`: a further test a spot must pass (reached from the pad) */
+  freeSpot(x, y, rad = 14, maxR = 120, ok) {
+    const C = this.collision;
+    if (!C || (!C.blocked(x, y, rad) && (!ok || ok(x, y)))) return { x, y };
+    for (let r = 12; r <= maxR; r += 12) {
+      let best = null, bd = Infinity;
+      const n = Math.max(8, Math.round(r / 6));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2, qx = x + Math.cos(a) * r, qy = y + (Math.sin(a) * r) / 2;
+        if (C.blocked(qx, qy, rad) || (ok && !ok(qx, qy))) continue;
+        // (all as near: the one most in front — south, away from the shore, seen by the camera)
+        const d = -Math.sin(a);
+        if (d < bd) { bd = d; best = { x: qx, y: qy }; }
+      }
+      if (best) return best;
+    }
+    return { x, y };
   }
 
   hireWorker(type, index, instant, x, y, role) {
@@ -1517,6 +1549,12 @@ export class Game extends Phaser.Scene {
   followRoute(a, speed, dt, tol = 10) {
     const r = a.route;
     if (!r || !r.length) return true;
+    // ((v4.2.0.1 final, soak R5) a new walk (nobody walked this one for a moment: it stood, worked, unloaded) starts
+    //  its 'no closer' bookkeeping afresh: the last trip's best distance to the same drop spot made the next trip 'give
+    //  up' 3 s in — the hunters stopped 40–250 px short of the smokehouse rack and threw the meat from there
+    const now = this.walkClock || 0;
+    if (!(now - a._frT <= 0.6)) { a._wpX = undefined; a._rpX = undefined; a._rpN = 0; }
+    a._frT = now;
     a.ri = a.ri || 0;
     while (a.ri < r.length - 1 && gdist(a.x, a.y, r[a.ri].x, r[a.ri].y) < 34) a.ri++;
     const w = r[a.ri];
@@ -1529,11 +1567,20 @@ export class Game extends Phaser.Scene {
     else if ((a._wpT += dt) > 3) {
       a._wpT = 0; a._wpBest = Infinity;
       if (!last) { a.ri++; return false; }
+      // ((v4.2.0.1) the end of the route but still far from it (a fence corner, a wall, the fog's edge): a new way
+      //  from here round what stood in the way, twice, before it counts as arrived — that 'arrival' let porters
+      //  unload, the courier scoop a till and bank his sack through fences and walls)
+      if (a._rpX !== w.x || a._rpY !== w.y) { a._rpX = w.x; a._rpY = w.y; a._rpN = 0; }
+      if (dd > 60 && a._rpN < 2) {
+        a._rpN++;
+        const way = this.roads.detour(a.x, a.y, w.x, w.y, [], a.radius);
+        if (way && way.length > 1) { r.length = 0; for (const q of way) r.push(q); a.ri = 0; a._wpX = undefined; return false; }
+      }
       a.vx = a.vy = 0;
       return true;
     }
     if (this.moveAgent(a, w.x, w.y, speed, dt, last ? tol : 28)) {
-      if (last) return true;
+      if (last) { a._rpN = 0; return true; }
       a.ri++;
     }
     return false;
@@ -1574,6 +1621,9 @@ export class Game extends Phaser.Scene {
     return Math.abs(x - (cam.scrollX + cam.width / 2)) < hw && Math.abs(y - (cam.scrollY + cam.height / 2)) < hh;
   }
   isNear(x, y, d) { const p = this.player; return Math.abs(p.x - x) < d && Math.abs(p.y - y) < d; }
+  /** ((v4.2.0.1 final, review #4) a walker standing at (x, y) cannot be seen at all: neither its feet nor the top of
+   *  the tallest carry stack (~220 px above them) is near the view (a placement there is never seen to pop) */
+  unseen(x, y) { return !this.isOnScreen(x, y, 120) && !this.isOnScreen(x, y - 220, 120); }
 
   /** positional sfx: only when (x, y) is on or near the screen, softer just outside it. `force` = always (the chief's own actions) */
   sfxAt(key, x, y, opts, force) {
@@ -1657,9 +1707,45 @@ export class Game extends Phaser.Scene {
 
   /** steer an agent toward (tx, ty); returns true when within `arrive` px */
   moveAgent(a, tx, ty, speed, dt, arrive = 8) {
-    const dx = tx - a.x, dy = ty - a.y;
-    const d = Math.hypot(dx, dy);
-    if (d <= arrive) { a.vx = a.vy = 0; a.stuckT = 0; return true; }
+    let dx = tx - a.x, dy = ty - a.y;
+    let d = Math.hypot(dx, dy);
+    if (d <= arrive) { a.vx = a.vy = 0; a.stuckT = 0; if (a._mv) { a._mv.way = null; a._mv.retry = false; a._mv.settled = false; } return true; }
+    // ((v4.2.0.1) the safety net for every walker: no closer to where it steers for 3.5 s (pressed into a fence, a
+    //  wall, a pile) -> a way round it (Roads.detour: grid A*, the doors of walled buildings), twice; stuck close to
+    //  the spot (a crowd on it, a prop over it) -> it stands there instead of walking on the spot; still stuck far
+    //  away while off screen -> it is placed by the spot (never seen to pop). Nothing it carries changes.
+    //  ((v4.2.0.1 final, review #1) standing there lasts 2 s, then one more short try (1.5 s): the crowd or the porter
+    //  on the spot may have gone — it stood 28 px off a freed spot for good, and a shop's head of the line with it)
+    //  ((v4.2.0.1 final, soak R5) and a new walk to the same spot (none for 0.6 s) starts afresh, like followRoute's
+    const m = a._mv || (a._mv = { tx: NaN, ty: NaN, sx: NaN, sy: NaN, best: 0, t: 0, way: null, wi: 0, n: 0, st: 0, retry: false, lt: NaN });
+    const now = this.walkClock || 0, fresh = !(now - m.lt <= 0.6);
+    m.lt = now;
+    if (fresh || !(Math.abs(m.tx - tx) <= 24 && Math.abs(m.ty - ty) <= 24)) { m.tx = tx; m.ty = ty; m.way = null; m.n = 0; m.sx = NaN; m.settled = false; m.retry = false; }
+    if (m.settled) {
+      if (gdist(a.x, a.y, tx, ty) < 48 && (m.st += dt) < 2) { a.vx = a.vy = 0; return true; }
+      m.settled = false; m.retry = true; m.sx = NaN;
+    }
+    let sx = tx, sy = ty;
+    if (m.way) {
+      while (m.wi < m.way.length - 1 && gdist(a.x, a.y, m.way[m.wi].x, m.way[m.wi].y) < 24) m.wi++;
+      if (m.wi < m.way.length - 1) { sx = m.way[m.wi].x; sy = m.way[m.wi].y; } else m.way = null;
+    }
+    const sd = gdist(a.x, a.y, sx, sy);
+    if (m.sx !== sx || m.sy !== sy) { m.sx = sx; m.sy = sy; m.best = sd; m.t = 0; }
+    else if (sd < m.best - 6) { m.best = sd; m.t = 0; m.retry = false; }
+    else if ((m.t += dt) > (m.retry ? 1.5 : 3.5)) {
+      m.t = 0; m.best = sd;
+      const td = gdist(a.x, a.y, tx, ty);
+      if (m.way) m.wi++;                                     // (a corner it cannot reach: the next one)
+      else if (td < 40) { a.vx = a.vy = 0; a.stuckT = 0; m.settled = true; m.st = 0; a.locomotion(false); return true; }
+      else if (m.n < 2 && this.roads) { m.n++; const w = this.roads.detour(a.x, a.y, tx, ty, [], a.radius); m.way = w && w.length > 1 ? w : null; m.wi = 0; }
+      else if (this.unseen(a.x, a.y) && this.unseen(tx, ty)) {
+        const q = this.freeSpot(tx, ty, a.radius || 12, 90);
+        a.x = q.x; a.y = q.y; a.vx = a.vy = 0; a.stuckT = 0; m.n = 0;
+        return gdist(a.x, a.y, tx, ty) <= Math.max(arrive, 40);
+      }
+    }
+    if (sx !== tx || sy !== ty) { dx = sx - a.x; dy = sy - a.y; d = Math.hypot(dx, dy) || 1; }
     let vx = (dx / d) * speed, vy = (dy / d) * speed;
     // unstick: slide sideways for a moment when blocked
     if (a.sideT > 0) { a.sideT -= dt; const s = a.sideDir || 1; const ox = -vy * s, oy = vx * s; vx = vx * 0.3 + ox * 0.9; vy = vy * 0.3 + oy * 0.9; }
@@ -1699,6 +1785,8 @@ export class Game extends Phaser.Scene {
     const inp = Input.update(time);
     const p = this.player;
     this.ground.update(dt);
+    if (this.roads && this.roads.newFrame) this.roads.newFrame(dt);
+    this.walkClock = (this.walkClock || 0) + dt;          // ((v4.2.0.1 final) followRoute / moveAgent: a new walk
     this.updateWater(dt, delta);
     // (v4-C2) the village voices follow the sound toggle (and the context: a suspended one would pile clips up)
     if (this.voice) {

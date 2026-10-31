@@ -25,6 +25,7 @@ import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
 import { gdist } from '../core/Iso.js';
+import { makeRoom } from '../systems/Paths.js';
 
 const STATUS_COL = { short: 0xd9534f, jam: 0xf0a030, surplus: 0x5b8fd9, ok: 0x5cb85c };
 // the manifest's points (px from the anchor; inside ones include floorLiftPx 17) — used until the manifest is merged,
@@ -83,6 +84,8 @@ export class OfficeBuilding {
     const fp = (def && def.footprintPoly) || [[-226, -14], [27, 113], [226, 14], [-27, -113]];
     const door = this.spots.door;
     if (gs.collision.addWalls) for (const o of gs.collision.addWalls(fp.map((q) => ({ x: x + q[0], y: y + q[1] })), 8, 'office', [{ x: door.x, y: door.y, w: 84 }], true)) this.obstacles.push(o);
+    // ((v4.2.0.1) the routes know the walls' one door: out of and into the office only through it (Roads.route)
+    if (gs.roads && gs.roads.addRoom) this.room = gs.roads.addRoom(makeRoom(fp.map((q) => ({ x: x + q[0], y: y + q[1] })), door, this.spots.entry, 'office'));
     // the 책상 pad in front of his desk (stand 0.4 s: the office panel); drawn on the raised floor
     const dp = this.spots.deskPad;
     this.deskPad = new Pad(gs, dp.x, dp.y, 'cash', 1.0, { icon: Assets.pick('ui_icon_office', 'ui_icon_newspaper', 'ui_icon_story', 'ui_icon_lock'), iconSize: 34 });
@@ -284,6 +287,7 @@ export class OfficeBuilding {
     if (this.cw) this.cw.destroy();
     this.deskPad.img.destroy(); if (this.deskPad.icon) this.deskPad.icon.destroy();
     for (const ob of this.obstacles) ob.active = false;
+    if (this.room && this.gs.roads) this.gs.roads.removeRoom(this.room);
   }
 }
 

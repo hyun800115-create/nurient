@@ -15,6 +15,7 @@ import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
 import { rackFill } from '../systems/depot/rack.js';
 import { polyHas } from './Cutaway.js';
+import { makeRoom } from '../systems/Paths.js';
 
 const KEY = 'logistics_center';
 
@@ -74,6 +75,8 @@ export class DepotBuilding {
       const n = Math.max(2, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / 40));
       for (let k = 0; k <= n; k++) { const cx = p.x + ((q.x - p.x) * k) / n, cy = p.y + ((q.y - p.y) * k) / n; if (gdist(cx, cy, door.x, door.y) < 70) continue; this.obstacles.push(gs.collision.add(cx, cy, 18, 'depot')); }
     }
+    // ((v4.2.0.1) the routes go in and out by the door
+    if (gs.roads && gs.roads.addRoom) this.room = gs.roads.addRoom(makeRoom(fp, door, def.entryPoint ? { x: x + def.entryPoint[0], y: y + def.entryPoint[1] } : null, 'depot'));
     // the door pad
     this.doorPad = new Pad(gs, door.x - 30, door.y + 40, 'cash', 1.2, { icon: Assets.pick('ui_icon_stock', 'ui_icon_box', 'ui_icon_delivery', 'ui_icon_lock'), iconSize: 36 });
     // the rack stock pictures (pooled, only while revealed) and the workers
@@ -222,6 +225,7 @@ export class DepotBuilding {
     for (const ob of this.obstacles || []) ob.active = false;
     const ai = this.onArrive ? Assets.arrivals.indexOf(this.onArrive) : -1;
     if (ai >= 0) Assets.arrivals.splice(ai, 1);
+    if (this.room && this.gs.roads) this.gs.roads.removeRoom(this.room);
     for (const w of this.workers || []) w.destroy();
     if (this.doorPad) this.doorPad.img.destroy();
   }

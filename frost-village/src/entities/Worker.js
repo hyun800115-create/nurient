@@ -14,6 +14,10 @@ import { DEPTH } from '../systems/DepthSort.js';
 import { shoreY } from '../systems/Collision.js';
 import { PRIO } from '../systems/Logistics.js';
 
+// ((v4.2.0.1) how near a carrier must stand to hand things over / take them (ground px): a walk that ended further off
+//  (a fence corner, a wall, the fog's edge) walks again first — see Hauler.reached)
+const REACH = 80;
+
 const STATION_OF = { fisherman: 'grill', lumberjack: 'sawmill', farmer: 'bakery', miner: 'smelter', hunter: 'smokehouse' };
 const PILE_OF_WORKER = { fisherman: 'fish', lumberjack: 'log', farmer: 'wheat', miner: 'ore', hunter: 'meat' };
 
@@ -83,8 +87,8 @@ export class Worker extends Character {
     if (this._rtx !== x || this._rty !== y) {
       this._rtx = x; this._rty = y;
       this.route = this.route || [];
-      if (gdist(this.x, this.y, x, y) > 360) this.gs.roads.route(this.x, this.y, x, y, this.route);
-      else { this.route.length = 0; this.route.push({ x, y }); }
+      // ((v4.2.0.1) straight only while nothing stands on the line (Roads.route's `near`): else round it)
+      this.gs.roads.route(this.x, this.y, x, y, this.route, 360);
       this.ri = 0;
     }
     return this.gs.followRoute(this, this.speed, dt, tol);
@@ -105,8 +109,8 @@ export class Worker extends Character {
     const gs = this.gs;
     if (this.type === 'fisherman') {
       const n = gs.net;
-      const off = this.index * 78;
-      this.stand.x = n.fisherSpot.x - off; this.stand.y = n.fisherSpot.y + off * 0.12;
+      const q = this.rodSpot(n);
+      this.stand.x = q.x; this.stand.y = q.y;
       return n;
     }
     let list;
@@ -126,6 +130,22 @@ export class Worker extends Character {
     if (this.type === 'hunter') best.targetedBy = this; else best.reservedBy = this;
     best.standPoint(this.x, this.y, this.stand);
     return best;
+  }
+
+  /** ((v4.2.0.1) the fisherman's rod spot on the shore: the k-th one 78 px west of the net's spot — the 3rd fell inside
+   *  the fisherman hut (he pushed the hut 3 s a trip and fished from its edge): the next free one along the shore,
+   *  west then east, else the nearest free ground. Kept once the land is known */
+  rodSpot(n) {
+    if (this._rod && this._rodNet === n) return this._rod;
+    const C = this.gs.collision, f = n.fisherSpot;
+    const at = (k) => ({ x: f.x - k * 78, y: f.y + k * 78 * 0.12 });
+    let q = at(this.index);
+    if (C.blocked(q.x, q.y, 18)) {
+      const tries = [this.index + 1, this.index + 2, -1, -2, this.index + 3].map(at).filter((p) => !C.blocked(p.x, p.y, 18));
+      q = tries.length ? tries[0] : this.gs.freeSpot(q.x, q.y, 18, 120);
+    }
+    if (C.walk) { this._rod = q; this._rodNet = n; }
+    return q;
   }
 
   update(dt) {
@@ -159,7 +179,13 @@ export class Worker extends Character {
         else {
           // nothing to do: wait at home
           this.waitT -= dt;
-          if (gs.moveAgent(this, this.home[0], this.home[1], this.speed * 0.7, dt, 10)) {
+          // ((v4.2.0.1) near home, or no nearer to it for a second (a prop on the spot): stand — he walked on the spot there)
+          const hd = gdist(this.x, this.y, this.home[0], this.home[1]), now = gs.time.now;
+          if (!(now - (this.idleAt || -1e9) < 250)) { this.homeBest = Infinity; this.homeT = 0; }      // (just came back idle)
+          this.idleAt = now;
+          if (hd < this.homeBest - 4) { this.homeBest = hd; this.homeT = 0; } else this.homeT += dt;
+          if (this.homeT > 1 && hd < 60) { this.vx = this.vy = 0; this.locomotion(false); }
+          else if (gs.moveAgent(this, this.home[0], this.home[1], this.speed * 0.7, dt, 10)) {
             this.vx = this.vy = 0;
             if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
             this.locomotion(false);
@@ -211,6 +237,9 @@ export class Worker extends Character {
         if (this.deliverT > 14) { this.deliverT = 0; this.vx = this.vy = 0; this.state = 'drop'; this.dropT = 0.15; this.locomotion(false); break; }
         const ds = this.dropSpot(pad);
         if (this.walkTo(ds.x, ds.y, dt, 10)) {
+          // ((v4.2.0.1) the catch is dropped from the drop spot only: a walk that ended at a fence walks again)
+          if (gdist(this.x, this.y, ds.x, ds.y) > REACH && (this.dsFar = (this.dsFar || 0) + 1) <= 2) { this._rtx = undefined; this._ds = null; break; }
+          this.dsFar = 0;
           this.vx = this.vy = 0;
           this.state = 'drop'; this.dropT = 0.15; this.deliverT = 0;
           this.locomotion(false);
@@ -243,14 +272,29 @@ export class Worker extends Character {
 
   /** (v3.5 review) where this worker stands to unload: the 1st / 2nd / 3rd of a profession each have their own spot */
   dropSpot(pad) {
-    if (this._dsPad === pad && this._ds) return this._ds;
+    const C = this.gs.collision;
+    // ((v4.2.0.1) a kept spot is looked at again (a prop or a fence may have come since); never one that is blocked
+    if (this._dsPad === pad && this._ds && !C.blocked(this._ds.x, this._ds.y, 14)) return this._ds;
     // (v4-B, v3.5 known issue) the meat rack stands left of its pad: the hunters unload on the open right side,
     // each at his own spot (the rack's collision used to push the 2nd / 3rd onto the 1st one's spot)
     const rack = this.pile && this.pile.cfg && this.pile.cfg.prop === 'rack';
     const D = rack ? [[18, 40], [62, 18], [58, 64]] : [[10, 38], [-48, 20], [-40, 58]];
-    const o = D[this.index % 3] || D[0];
-    const q = { x: pad.x + o[0], y: pad.y + o[1] };
-    if (this.gs.collision.blocked(q.x, q.y, 14)) this.gs.collision.resolve(q, 14);
+    // ((v4.2.0.1) his own spot when it is free with room to spare (r + 4) and the pad is reached from it; else the other
+    //  spots of the ring; else the nearest free ground (one resolve() only pushed out of the spot's own grid cell: the
+    //  farmer's and the 3rd hunter's spots stayed in a fence, miner #1's against the ore rock)
+    const k0 = this.index % 3;
+    let q = null;
+    for (let i = 0; i < 3 && !q; i++) {
+      const o = D[(k0 + i) % 3];
+      const c = { x: pad.x + o[0], y: pad.y + o[1] };
+      if (!C.blocked(c.x, c.y, 18) && this.gs.roads.clear(c.x, c.y, pad.x, pad.y + 6)) q = c;
+    }
+    if (!q) {
+      // (the nearest free ground on the pad's side of a fence: the 3rd hunter's ended across the pen fence)
+      const o = D[k0] || D[0];
+      q = this.gs.freeSpot(pad.x + o[0], pad.y + o[1], 18, 100, (x, y) => this.gs.roads.clear(x, y, pad.x, pad.y + 6));
+      if (C.blocked(q.x, q.y, 14)) q = this.gs.freeSpot(pad.x + o[0], pad.y + o[1], 18, 100);
+    }
     this._dsPad = pad; this._ds = q;
     return q;
   }
@@ -354,7 +398,19 @@ export class Hauler extends Character {
   get room() { return this.stack.max - this.stack.count - this.stack.incoming; }
 
   /** walk along the roads to (x, y) */
-  go(x, y) { this.gs.roads.route(this.x, this.y, x, y, this.route); this.ri = 0; this.tripT = 0; }
+  go(x, y) { this.goal = { x, y }; this.farN = 0; this.gs.roads.route(this.x, this.y, x, y, this.route); this.ri = 0; this.tripT = 0; }
+
+  /** ((v4.2.0.1) the walk to the goal (go()) ended: near enough to hand over / take things? Else a new walk from here
+   *  (twice); then, off screen, he is set by the spot. Unload, grab and load ran wherever a 3 s stall at a fence corner
+   *  or the fog's edge ended the walk, the goods flying 1500 px; nothing he carries changes here */
+  reached() {
+    const g = this.goal;
+    if (!g || gdist(this.x, this.y, g.x, g.y) <= REACH) { this.farN = 0; return true; }
+    if ((this.farN = (this.farN || 0) + 1) <= 2) { this.gs.roads.route(this.x, this.y, g.x, g.y, this.route); this.ri = 0; return false; }
+    this.farN = 0;
+    if (this.gs.unseen(this.x, this.y) && this.gs.unseen(g.x, g.y)) { const q = this.gs.freeSpot(g.x, g.y, 14, 90); this.x = q.x; this.y = q.y; }
+    return true;
+  }
 
   /** the art arrived after the title: swap the stand-in look for the real porter */
   checkSkin(dt) {
@@ -417,7 +473,8 @@ export class Hauler extends Character {
     this.tripT += dt;
     if (gs.followRoute(this, this.speed, dt, 12) || this.tripT > 90) {
       const u = Hauler.unloadAt(d);
-      if (this.tripT > 90) { this.x = u.x; this.y = u.y; }
+      if (this.tripT <= 90 && !this.reached()) return;
+      if (this.tripT > 90) { const q = gs.freeSpot(u.x, u.y, 14, 90); this.x = q.x; this.y = q.y; }
       this.vx = this.vy = 0;
       this.state = 'unload'; this.dropT = 0.1; this.waitT = 0;
       this.faceTo(u.x - 20, u.y - 20);
@@ -531,7 +588,7 @@ export class Porter extends Hauler {
       default: {
         if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
         if (!this.route.length || this.routeTo !== 'home') { this.go(this.home[0], this.home[1]); this.routeTo = 'home'; }
-        if (gs.followRoute(this, this.speed, dt, 10)) {
+        if (gs.followRoute(this, this.speed, dt, 10) && this.reached()) {
           this.vx = this.vy = 0;
           this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null; this.plan = null;
           if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
@@ -638,7 +695,7 @@ export class RawPorter extends Hauler {
       default: {
         if (this.stack.count > 0 && this.stack.incoming === 0) { const n = this.planDest(); if (n) { this.startHaul(n); break; } }
         if (!this.route.length || this.routeTo !== 'home') { this.go(this.home[0], this.home[1]); this.routeTo = 'home'; }
-        if (gs.followRoute(this, this.speed, dt, 10)) {
+        if (gs.followRoute(this, this.speed, dt, 10) && this.reached()) {
           this.vx = this.vy = 0;
           this.state = 'load'; this.dropT = 0; this.waitT = 0; this.routeTo = null;
           this.faceTo(pile.x, pile.y);
@@ -845,8 +902,9 @@ export class WarehousePorter extends Hauler {
           const j = this.think();
           if (j) {
             this.job = j;
-            if (j.kind === 'out') { this.state = 'toWh'; this.go(W.outPad.x + 20, W.outPad.y + 22); L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; }
-            else { if (j.kind === 'raw') { L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; } this.state = 'toSrc'; this.go(j.src.outPad.x + 24, j.src.outPad.y + 20); }
+            // ((v4.2.0.1) the take spot on free ground: the ore pile's (+24, +20) lay inside the ore rock)
+            if (j.kind === 'out') { this.state = 'toWh'; const q = gs.freeSpot(W.outPad.x + 20, W.outPad.y + 22, 14, 70); this.go(q.x, q.y); L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; }
+            else { if (j.kind === 'raw') { L_reserve(gs, j.sink, j.type, j.n); this.jobResv = j.n; } this.state = 'toSrc'; const q = gs.freeSpot(j.src.outPad.x + 24, j.src.outPad.y + 20, 14, 70); this.go(q.x, q.y); }
             break;
           }
         }
@@ -854,7 +912,7 @@ export class WarehousePorter extends Hauler {
         break;
       }
       case 'toWh': {
-        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'take'; this.dropT = 0.1; this.locomotion(false); }
+        if (gs.followRoute(this, this.speed, dt, 12) && this.reached()) { this.vx = this.vy = 0; this.state = 'take'; this.dropT = 0.1; this.locomotion(false); }
         break;
       }
       case 'take': {
@@ -877,7 +935,7 @@ export class WarehousePorter extends Hauler {
       case 'toSrc': {
         const src = this.job.src;
         if (!src.enabled) { this.dropRaw(); this.job = null; this.state = 'idle'; break; }
-        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
+        if (gs.followRoute(this, this.speed, dt, 12) && this.reached()) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
         break;
       }
       case 'grab': {
@@ -1078,7 +1136,8 @@ export class StationPorter extends Hauler {
             gs.logistics.reserve(j.sink, j.type, j.n); this.jobResv = j.n;
             const op = j.src.outPad;
             this.state = 'toSrc';
-            this.go(op.x + 22, op.y + 20);
+            const q = gs.freeSpot(op.x + 22, op.y + 20, 14, 70);
+            this.go(q.x, q.y);
             break;
           }
         }
@@ -1089,7 +1148,7 @@ export class StationPorter extends Hauler {
         const src = this.job.src;
         this.tripT += dt;
         if (!src.enabled || this.tripT > 120) { this.dropJob(); break; }
-        if (gs.followRoute(this, this.speed, dt, 12)) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
+        if (gs.followRoute(this, this.speed, dt, 12) && this.reached()) { this.vx = this.vy = 0; this.state = 'grab'; this.dropT = 0.1; this.waitT = 0; this.locomotion(false); }
         break;
       }
       case 'grab': {

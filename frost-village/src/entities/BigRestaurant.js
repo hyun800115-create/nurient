@@ -174,6 +174,7 @@ export class BigRestaurant {
     this.tables.push(table);
     for (const q of pts) this.seats.push({ table, x: tp.x + q[0], y: tp.y + q[1], by: null, dir: 2, path: path || null, back: !!path });
     this.servePts = null;              // (beside-the-table spots are measured again with the new obstacles)
+    for (const s of this.seats) s._side = null;   // ((v4.2.0.1 final) and the step-out points (seatSide)
     if (pop) { img.setScale(0.1); gs.tweens.add({ targets: img, scale: 1, duration: 450, ease: 'Back.easeOut' }); }
     return table;
   }
@@ -355,7 +356,18 @@ export class BigRestaurant {
 
   // ================================================================ guests
   /** beside a seat's table (on the seat's side): where a guest steps in and out */
-  seatSide(seat) { const sg = seat.x >= seat.table.x ? 1 : -1; return { x: seat.table.x + sg * 96, y: seat.y + 12 }; }
+  seatSide(seat) {
+    const sg = seat.x >= seat.table.x ? 1 : -1, q = { x: seat.table.x + sg * 96, y: seat.y + 12 };
+    // ((v4.2.0.1) on free ground: 4 of the 8 terrace step-out points lay inside the next picnic table (guests got up
+    //  into it and were wedged 8–13 s). Kept per seat
+    //  ((v4.2.0.1 final, review #6 / soak R2) a kept point is looked at again: a table added later (테이블 늘리기) stood on
+    //  seat 0's, the chief's lunch spot — he circled it 12.5 s and dropped the lunch)
+    const C = this.gs.collision;
+    if (seat._side && seat._side.rx === q.x && seat._side.ry === q.y && !(C && C.blocked(seat._side.x, seat._side.y, 13))) return { x: seat._side.x, y: seat._side.y };
+    const f = this.gs.freeSpot ? this.gs.freeSpot(q.x, q.y, 13, 70) : q;
+    seat._side = { x: f.x, y: f.y, rx: q.x, ry: q.y };
+    return { x: f.x, y: f.y };
+  }
   /**
    * ((v4.2 final, gameplay review #2) a free seat at random (reservoir pick): the first free one was always on the
    * terrace, which never filled up, so the back-yard tables the player paid for (테이블 늘리기) stayed empty. The back

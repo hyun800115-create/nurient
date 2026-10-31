@@ -29,7 +29,17 @@ export class Animal extends Character {
     this.callT = 3 + Math.random() * 8;
     this._p = { x: 0, y: 0 };
     this.dir = Math.floor(Math.random() * 8);
+    // ((v4.2.0.1) not born inside the smokehouse, a pile or a bush (only a walking animal was ever pushed out)
+    if (gs.collision && gs.collision.blocked(this.x, this.y, this.radius)) { const q = this.freePoint(1.2); this.x = q.x; this.y = q.y; this.target.x = q.x; this.target.y = q.y; }
     this.play('idle', true);
+  }
+
+  /** ((v4.2.0.1) a random point of the hunting ground on open ground (a few tries; the last one as it is) */
+  freePoint(margin) {
+    const C = this.gs.collision;
+    let p = Animal.randomPoint(this.zone, margin);
+    for (let i = 0; i < 12 && C && C.blocked(p.x, p.y, this.radius); i++) p = Animal.randomPoint(this.zone, margin);
+    return p;
   }
 
   static randomPoint(zone, margin) {
@@ -93,7 +103,7 @@ export class Animal extends Character {
 
   respawn() {
     const gs = this.gs;
-    const p = Animal.randomPoint(this.zone, 1.0);
+    const p = this.freePoint(1.0);
     this.x = p.x; this.y = p.y;
     this.dead = false; this.hp = this.hpMax; this.state = 'idle'; this.t = 1;
     this.sprite.setVisible(this.enabled); this.shadow.setVisible(this.enabled);
@@ -121,7 +131,7 @@ export class Animal extends Character {
     let speed = 0;
     if (this.state === 'idle') {
       if (this.t <= 0) {
-        const q = Animal.randomPoint(this.zone, 1.0);
+        const q = this.freePoint(1.0);
         this.target.x = q.x; this.target.y = q.y;
         this.state = 'walk'; this.t = 6;
       }

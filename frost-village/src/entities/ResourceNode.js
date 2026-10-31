@@ -6,17 +6,22 @@ import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { shoreY } from '../data/world.js';
 
-export function freeStandPoint(node, fx, fy, out) {
+export function freeStandPoint(node, fx, fy, out, bad) {
   const base = Math.atan2((fy - node.y) * 2, fx - node.x);
   const col = node.gs.collision;
   out = out || {};
-  const r = node.standDist;
-  for (let k = 0; k < 12; k++) {
-    const a = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 6);
-    const x = node.x + Math.cos(a) * r, y = node.y + (Math.sin(a) * r) / 2;
-    if (!col.blocked(x, y, 15, node.obstacle)) { out.x = x; out.y = y; return out; }
+  // ((v4.2.0.1 final, soak R3) a ring a little further out when the first is all taken (rocks packed together), and
+  //  `bad`: a further test (a mined-out rock beside it grows back to its full size); never a spot inside something
+  for (const r of [node.standDist, node.standDist + 16, node.standDist + 32]) {
+    for (let k = 0; k < 12; k++) {
+      const a = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 6);
+      const x = node.x + Math.cos(a) * r, y = node.y + (Math.sin(a) * r) / 2;
+      if (!col.blocked(x, y, 15, node.obstacle) && !(bad && bad(x, y))) { out.x = x; out.y = y; return out; }
+    }
   }
+  const r = node.standDist;
   out.x = node.x + Math.cos(base) * r; out.y = node.y + (Math.sin(base) * r) / 2;
+  if (node.gs.freeSpot && col.blocked(out.x, out.y, 15, node.obstacle)) { const q = node.gs.freeSpot(out.x, out.y, 15, 120); out.x = q.x; out.y = q.y; }
   return out;
 }
 
@@ -105,9 +110,24 @@ export class Rock extends Node {
     this.img = Assets.image(gs, x, y, key).setDepth(y);
     const fp = (Assets.def(key).footprint || [136, 68]);
     this.standDist = fp[0] * 0.5 + 6;
-    this.obstacle = gs.collision.add(x, y, fp[0] * 0.38, 'rock');
+    this.fullR = fp[0] * 0.38;
+    this.obstacle = gs.collision.add(x, y, this.fullR, 'rock');
   }
   ready() { return this.enabled && this.hp > 0; }
+  /** ((v4.2.0.1 final, soak R3) a spot by this rock that is not on a mined-out neighbour's rubble: it grows back to its
+   *  full size (a miner sent between three rocks was left inside one, wedged 11–19 s) */
+  standPoint(fx, fy, out) {
+    const rocks = this.gs.rocks || [];
+    return freeStandPoint(this, fx, fy, out, (x, y) => rocks.some((n) => n !== this && n.hp <= 0 && n.enabled && Math.hypot(x - n.x, (y - n.y) * 2) < n.fullR + 15));
+  }
+  /** ((v4.2.0.1 final) someone stands where this rock grows back */
+  someoneOn() {
+    const gs = this.gs, R = this.fullR + 14;
+    const on = (a) => a && a.alive !== false && Math.hypot(a.x - this.x, (a.y - this.y) * 2) < R;
+    if (on(gs.player)) return true;
+    for (const a of gs.agents || []) if (on(a)) return true;
+    return false;
+  }
   hit(by) {
     if (!this.ready()) return null;
     this.hp--;
@@ -137,6 +157,8 @@ export class Rock extends Node {
     if (this.hp > 0) return;
     this.timer -= dt;
     if (this.timer <= 0) {
+      // ((v4.2.0.1 final, soak R3) never grown back over someone on its rubble: he would stand inside the rock
+      if (this.someoneOn()) { this.timer = 0.5; return; }
       this.hp = this.hpMax;
       this.obstacle.r /= 0.6;
       Assets.apply(this.img, this.rockKey);

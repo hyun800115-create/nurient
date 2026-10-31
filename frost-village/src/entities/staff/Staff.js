@@ -74,22 +74,33 @@ export class Staff extends Character {
     gs.agents.push(this);
   }
 
-  /** walk along the roads to (x, y), then cb() */
+  /** walk along the roads to (x, y), then cb(). ((v4.2.0.1) Roads.route knows the doors: out of the office / bank / depot
+   *  and into them through the door, from wherever he stands — the courier pressed the office's east wall ~12 s a till) */
   walkTo(x, y, cb) {
     const gs = this.gs;
     if (this.seat) this.standUp();
-    if (gdist(this.x, this.y, x, y) < 220) { this.route.length = 0; this.route.push({ x, y }); }
-    else gs.roads.route(this.x, this.y, x, y, this.route);
+    gs.roads.route(this.x, this.y, x, y, this.route, 220);
     this.ri = 0; this.target = { x, y }; this.cb = cb || null;
     this.want = null;
   }
 
-  /** walk to a point inside the office (ground coordinates): through its door when coming from outside */
-  walkIn(x, y, cb) {
-    const B = this.office && this.office.building;
-    if (!B || !B.cw || B.cw.onFloor(this.x, this.y) || gdist(this.x, this.y, x, y) < 90) { this.walkTo(x, y, cb); return; }
-    const d = B.spots.door, e = B.spots.entry;
-    this.walkTo(d.x, d.y, () => { this.route.length = 0; this.route.push({ x: e.x, y: e.y }, { x, y }); this.ri = 0; this.target = { x, y }; this.cb = cb || null; });
+  /** walk to a point inside the office (ground coordinates): through its door when coming from outside
+   *  ((v4.2.0.1) walkTo does that now, for every walled building and both ways) */
+  walkIn(x, y, cb) { this.walkTo(x, y, cb); }
+
+  /** ((v4.2.0.1) walk to (x, y) and do cb() THERE: a walk that ended short of it (Game.followRoute gives up at a wall or
+   *  a crowd) walks again from where he stands, twice; then, off screen, he is set on the spot. A till, the coin sack
+   *  or a seat never changes hands through a wall (he scooped the trade till 539 px away from inside the office) */
+  walkReach(x, y, cb, reach = 64) {
+    let tries = 0;
+    const go = () => this.walkTo(x, y, () => {
+      if (gdist(this.x, this.y, x, y) > reach) {
+        if (++tries <= 2) { go(); return; }
+        if (this.gs.unseen(this.x, this.y) && this.gs.unseen(x, y)) { this.x = x; this.y = y; }
+      }
+      if (cb) cb(this);
+    });
+    go();
   }
 
   say(text, sec) { const B = this.gs.life && this.gs.life.bubbles; if (B && this.gs.isOnScreen(this.x, this.y, 200)) B.chat(this, text, null, sec || 2.6); }
@@ -210,7 +221,7 @@ export class Staff extends Character {
     const h = this.home, B = this.office && this.office.building;
     if (h.seat && B) {
       // walk to the ground below the seat (inside: through the door), then sit on it
-      this.walkIn(h.x, h.y + (B.lift || 17) + 6, () => { this.sitDown(h.seat, (DESK[this.role] || DESK.sem)[0]); if (cb) cb(); });
+      this.walkReach(h.x, h.y + (B.lift || 17) + 6, () => { this.sitDown(h.seat, (DESK[this.role] || DESK.sem)[0]); if (cb) cb(); });
       return;
     }
     this.walkTo(h.x, h.y, () => { this.faceTo(h.x - 40, h.y + 30); this.atPost = true; if (cb) cb(); });
@@ -521,7 +532,7 @@ export class Courier extends Staff {
     if (!q) { this.toBank(); return; }
     this.cur = q;
     this.state = 'walk';
-    this.walkTo(q.till.x + 30, q.till.y + 26, () => { this.state = 'scoop'; this.scoopT = 1.2; this.faceTo(q.till.x, q.till.y); this.act('scoop'); });
+    this.walkReach(q.till.x + 30, q.till.y + 26, () => { this.state = 'scoop'; this.scoopT = 1.2; this.faceTo(q.till.x, q.till.y); this.act('scoop'); });
   }
 
   toBank() {
@@ -530,8 +541,8 @@ export class Courier extends Staff {
     this.state = 'toBank';
     this.cur = null;
     const arrive = () => { this.state = 'deposit'; this.depT = 1.4; this.faceTo(at.fx || at.x - 30, at.fy || at.y - 20); this.act('hand_over'); this.handed = false; };
-    if (!O.bank && O.building && O.building.cw) this.walkIn(at.x, at.y, arrive);
-    else this.walkTo(at.x, at.y, arrive);
+    // ((v4.2.0.1) into the bank through its door too, and the sack is handed over at the counter only)
+    this.walkReach(at.x, at.y, arrive);
   }
 
   update(dt) {
