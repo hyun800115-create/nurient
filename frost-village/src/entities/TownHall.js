@@ -22,7 +22,8 @@ import { TownBuilding } from './TownBuilding.js';
 import { floatLabel } from './Shop.js';
 
 // places in front of the hall (px from the plot centre; the hall faces −Y: its front is lower left)
-const SPOT = { tax: [-20, 168], board: [-268, 64], boardPad: [-200, 128], venue: [-150, 196], wedding: [-110, 150] };
+// ((v4.2.0.1) rankPad: the 승격식 pay pad, a little left of the venue: off the tax box's coin pile (they overlapped))
+const SPOT = { tax: [-20, 168], board: [-268, 64], boardPad: [-200, 128], venue: [-150, 196], wedding: [-110, 150], rankPad: [-186, 208] };
 
 export class TownHall {
   constructor(gs, site, instant) {
@@ -72,6 +73,8 @@ export class TownHall {
 
   /** a place for an event in front of the hall: 'rank' (승격식), 'wedding' (v5) */
   venue(kind) { const s = SPOT[kind === 'wedding' ? 'wedding' : 'venue']; return { x: this.x + s[0], y: this.y + s[1] }; }
+  /** (v4.2.0.1) where the 승격식 pay pad stands (the ceremony itself is held at venue('rank')) */
+  rankPadPos() { return { x: this.x + SPOT.rankPad[0], y: this.y + SPOT.rankPad[1] }; }
 
   taxPerMin() {
     const gs = this.gs, H = (BALANCE.civic && BALANCE.civic.hall) || {};

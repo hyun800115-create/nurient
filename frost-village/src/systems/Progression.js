@@ -286,12 +286,63 @@ export class Progression {
     this.syncPads();
   }
 
+  /** where a step's pad stands ({ x, y } or null while its place does not exist yet) */
+  spotOf(s) {
+    const gs = this.gs;
+    return WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (WORLD.pads35 && WORLD.pads35[s.id]) || (gs.padSpot && gs.padSpot(s)) || null;
+  }
+
+  /** where a step's pad label floats ([dx, dy] from the pad, or undefined = above it) */
+  labelAtOf(s) {
+    const gs = this.gs, Q = WORLD.v4 && WORLD.v4.square;
+    if (s.type === 'stationPorter') return (Q && Q.labels && Q.labels.porter) || [0, 64];
+    // ((v4.2.0.1) the 승격식 pad on the station square: its label clear of the 동남쪽 fog wall)
+    if (s.type === 'rank' && !(gs.civic && gs.civic.hall)) return (Q && Q.labels && Q.labels.rank) || undefined;
+    // ((v4.2.0.1) world.js pads / pads2 / pads35 .labelAt: a label below the pad where the one above lay on a neighbour's price)
+    const c = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (WORLD.pads35 && WORLD.pads35[s.id]);
+    if (c && Array.isArray(c.labelAt)) return c.labelAt;
+    return undefined;
+  }
+
+  /** ((v4.2.0.1) a step already part-paid (or with its tool delivered) takes a shared spot first) */
+  partPaid(s) { return (this.paid[s.id] || 0) > 0 || !!(this.got[s.id] && Object.keys(this.got[s.id]).some((k) => this.got[s.id][k] > 0)); }
+
+  /** ((v4.2.0.1, final review F1) a side hire that needs a tool (어부 2 / 3: coins + a fishing rod) with nothing paid or
+   *  brought yet gives a shared spot to a 짐꾼 2 / 가공소 2단 offer due there (coins only): it could wait for a tool the
+   *  whole game, and the offer behind it with it. step: its STEPS row; pad: its pad standing now (or none yet) */
+  yields(s, pad) {
+    if (!s || !s.side || (s.type !== 'hire2' && s.type !== 'hire3') || this.partPaid(s)) return false;
+    if (!pad) return true;
+    const gs = this.gs, p = gs.player, L = gs.logistics;
+    if ((pad.paid || 0) > 0 || (pad.itemStack && pad.itemStack.count > 0) || (p && pad.pad.contains(p.x, p.y))) return false;
+    if (pad.items && L && L.reserved) for (const k in pad.items) if (L.reserved(pad, k) > 0) return false;
+    return true;
+  }
+
+  /** ((v4.2.0.1) LineUpgrades takes the spot of a yielding side-hire pad (yields): the pad goes, its step waits there) */
+  yieldPad(id) {
+    const pad = this.pads[id];
+    if (!pad) return;
+    delete this.pads[id];
+    pad.vanish();
+    this.waiting = true;
+  }
+
   syncPads() {
     const gs = this.gs;
-    for (const s of this.visibleSteps()) {
+    this.waiting = false;
+    const part = (s) => (this.partPaid(s) ? 1 : 0);
+    const steps = this.visibleSteps().sort((a, b) => part(b) - part(a));
+    const LU = gs.v42 && gs.v42.lines;
+    for (const s of steps) {
       if (this.pads[s.id]) continue;
-      const cfg = WORLD.pads[s.id] || (WORLD.pads2 && WORLD.pads2[s.id]) || (WORLD.pads35 && WORLD.pads35[s.id]) || (gs.padSpot && gs.padSpot(s));
+      const cfg = this.spotOf(s);
       if (!cfg) continue;
+      // ((v4.2.0.1, final review F1) a tool-gated side hire waits while a line offer is due on its spot (LineUpgrades.wantsSpot)
+      if (LU && LU.wantsSpot && this.yields(s, null) && LU.wantsSpot(cfg.x, cfg.y)) { this.waiting = true; continue; }
+      // ((v4.2.0.1) one live paid pad per spot: a pad whose spot is taken (another step, a 가공소 2단 / 짐꾼 2 offer)
+      //  waits there until that one is bought, then appears (its saved part payment kept). The bench pads step aside)
+      if (gs.paidPadNear && gs.paidPadNear(cfg.x, cfg.y, 45.25 * (s.type === 'rank' ? 2.1 : 1.9), s.id, true)) { this.waiting = true; continue; }
       const cost = stepCost(s);
       // (v3.5 review) a partial payment above the (new, lower) price is given back, never swallowed
       // (v3 -> v3.5 lowered some prices; the designer may lower one in balance.js too)
@@ -319,7 +370,8 @@ export class Progression {
       const padTex = s.type === 'clerk' || s.type === 'operator' || s.type === 'restStaff' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
-        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: s.type === 'stationPorter' ? ((WORLD.v4 && WORLD.v4.square && WORLD.v4.square.labels && WORLD.v4.square.labels.porter) || [0, 64]) : s.type === 'restStaff' ? [150, 6] : undefined, iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
+        // ((v4.2.0.1) the restaurant staff pad stands in the open now: its label above it like every other pad's)
+        kind, cost, paid: this.paid[s.id] || 0, label: s.id, icon, labelAt: this.labelAtOf(s), iconSize: s.type === 'zone' || s.type === 'tower' ? 40 : s.type === 'rank' ? 50 : 54, sizeM: s.type === 'rank' ? 2.1 : undefined,
         padTex, items, got: this.got[s.id],
         onComplete: (p) => this.completeStep(s, p),
       });
@@ -333,6 +385,7 @@ export class Progression {
       if (gs.player && pad.pad.contains(gs.player.x, gs.player.y)) pad.needsLeave = true;
       gs.popIn(pad);
     }
+    this.benchAside();
   }
 
   completeStep(s, pad) {
@@ -341,6 +394,7 @@ export class Progression {
     delete this.paid[s.id];
     delete this.pads[s.id];
     pad.vanish();
+    this.benchAside();
     this.applyStep(s, false, pad.x, pad.y);
     // (v4.2 dock fix) what comes with this step (the rowboat's 생선 짐꾼) arrives at its own place
     const withIt = [];
@@ -413,8 +467,10 @@ export class Progression {
       const maxed = lvl >= U.values.length - 1;
       // (v3.5 review) a saved partial payment above a lowered price comes back as coins
       if (!maxed && (this.paid['up_' + kind] || 0) > sanePrice(U.costs[lvl])) { if (gs.economy) gs.economy.add(this.paid['up_' + kind] - sanePrice(U.costs[lvl])); this.paid['up_' + kind] = sanePrice(U.costs[lvl]); }
-      const pad = new UnlockPad(gs, 'up_' + kind, b.x + b.pads[kind][0], b.y + b.pads[kind][1], {
+      const sp = this.benchSpot(kind);
+      const pad = new UnlockPad(gs, 'up_' + kind, sp.x, sp.y, {
         kind: 'upgrade', cost: maxed ? 1 : U.costs[lvl], paid: maxed ? 0 : (this.paid['up_' + kind] || 0), sizeM: 1.6,
+        labelAt: b.labels && b.labels[kind] ? b.labels[kind] : undefined,      // ((v4.2.0.1) 신발: below the pad)
         icon: kind === 'capacity' ? 'ui_icon_backpack' : 'ui_icon_speed', iconSize: 40,
         labelFn: () => t('up_' + kind) + ' ' + t('level', { n: this.up[kind] + 1 }),
         onComplete: (p) => this.upgrade(kind, p),
@@ -423,6 +479,25 @@ export class Progression {
       pad.refresh();
       this.upPads[kind] = pad;
       if (!instant) gs.popIn(pad);
+    }
+    this.benchAside();
+  }
+
+  /** (v4.2.0.1) where a bench pad stands */
+  benchSpot(kind) { const b = WORLD.bench; return { x: b.x + b.pads[kind][0], y: b.y + b.pads[kind][1] }; }
+
+  /** ((v4.2.0.1) a bench pad steps aside while a step's pad stands on its spot (가방 under the 교역소 점원 pad):
+   *  never the other way round, so nothing waits for a pad that stays for good) */
+  benchAside() {
+    const gs = this.gs, p = gs.player;
+    for (const k in this.upPads) {
+      const u = this.upPads[k], hw = u.pad.w / 2;
+      let under = false;
+      for (const id in this.pads) { const q = this.pads[id]; if (Math.abs(q.x - u.x) + 2 * Math.abs(q.y - u.y) < hw + q.pad.w / 2 + 16) { under = true; break; } }
+      if (under === !u.active) continue;
+      u.setActive(!under);
+      // back under the chief (who just paid the pad above it): he steps off first, no coins drain by accident
+      if (!under && p && u.pad.contains(p.x, p.y)) { u.needsLeave = true; u.standT = 0; }
     }
   }
 
@@ -464,6 +539,8 @@ export class Progression {
 
   update(dt) {
     let on = false;
+    // ((v4.2.0.1) a step waiting for its spot looks again every second; the bench pads step aside / come back)
+    if ((this.waitT = (this.waitT || 0) - dt) <= 0) { this.waitT = 1; if (this.waiting) this.syncPads(); this.benchAside(); }
     for (const id in this.pads) if (this.pads[id].update(dt)) on = true;
     for (const k in this.upPads) if (this.upPads[k].update(dt)) on = true;
     return on;

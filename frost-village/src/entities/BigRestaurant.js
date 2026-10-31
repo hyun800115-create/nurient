@@ -62,6 +62,10 @@ const L = {
   //  nearest seat (was 89: under a seated guest's food bubble and the terrace's back lamp on a phone); the 서빙 직원 2
   //  pad half a metre off the staff spot (a village lamp post stood on its price, '1,000' read '1,00')
   moreLanterns: [-6.35, 2.1], lampMoved: [1, -6.25, 5.5], padOff: [-1.7, 0], srv2PadOff: [-0.3, -0.7],
+  // ((v4.2.0.1) the staff hire pads (계산 점원 → 요리사 → 서빙 직원, then 서빙 직원 2) a metre further out from the staff
+  //  spot: off the lamp and clear of the pantry pad (it overlapped it); 테이블 늘리기 (both levels) in the back yard's open
+  //  corner, clear of the pines, the lamp, the lantern string and the cash pile)
+  hirePadOff: [0.98, -1.8], tablesPad: [-8.9, 2.55],
   // the way into the back yard: round the terrace on its building side (with collision; the four tables are a block)
   backPath: [[-0.22, -0.22], [-1.88, 2.1], [-4.09, 3.2]],
 };
@@ -220,13 +224,16 @@ export class BigRestaurant {
   /** where the 테이블 늘리기 pad of the next level stands: just beyond where its first table will be (on the table's spot
    *  the terrace's back lamp stood over the price; L.padOff steps it back into the open yard) */
   tablesPadPos() {
+    if (L.tablesPad) return M(this.ox, this.oy, L.tablesPad[0], L.tablesPad[1]);      // (v4.2.0.1) one spot for both levels
     const set = L.more[Math.min(L.more.length - 1, this.tableLevel)];
     const a = M(this.ox, this.oy, set[0][0] + L.padOff[0], set[0][1] + L.padOff[1]);
     return { x: a.x, y: a.y };
   }
   get maxTableLevel() { return L.more.length; }
   /** ((v4.2 final) where the 서빙 직원 2 pad stands (by the staff spot, off the lamp) */
-  server2PadPos() { return M(this.ox, this.oy, L.staffPad[0] + L.srv2PadOff[0], L.staffPad[1] + L.srv2PadOff[1]); }
+  server2PadPos() { return L.hirePadOff ? this.hirePadPos() : M(this.ox, this.oy, L.staffPad[0] + L.srv2PadOff[0], L.staffPad[1] + L.srv2PadOff[1]); }
+  /** ((v4.2.0.1) where the staff hire pads stand (계산 점원 → 요리사 → 서빙 직원 → 서빙 직원 2, one at a time) */
+  hirePadPos() { return M(this.ox, this.oy, L.staffPad[0] + L.hirePadOff[0], L.staffPad[1] + L.hirePadOff[1]); }
 
   /** ((v4.2 touch) the 서빙 직원) a free spot beside seat `q`'s table that he can walk to (the tables are a block) */
   servePoint(q) {

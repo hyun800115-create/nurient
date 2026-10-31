@@ -262,6 +262,9 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.pads2 || {}) spot(WORLD.pads2[id], 90);
     for (const id in WORLD.towers || {}) spot(WORLD.towers[id], 120);
     if (this.foodBox) spot(this.foodBox, 80);
+    // ((v4.2.0.1) every paid pad's spot: the ones standing now; a pad made later adds its own (UnlockPad))
+    for (const id in WORLD.pads35 || {}) spot(WORLD.pads35[id], 80);
+    for (const p of this.paidPads()) this.addPadSpot(p.x, p.y);
     this.events.on('built', (k, site) => { const b = site.built; if (b && b.inPad) spot(b.inPad, 70); if (b && b.outPad) spot(b.outPad, 70); if (b && b.op) { spot(b.op, 64); spot(b.op.post, 40); } });
     this.events.on('storeSold', () => this.progress.setFlag('firstStoreSale'));
     this.events.on('built', (k) => { if (k === 'toolsmith') this.time.delayedCall(3500, () => this.introduceFood()); });
@@ -1320,30 +1323,108 @@ export class Game extends Phaser.Scene {
     return n;
   }
 
+  /** ((v4.2.0.1) every paid pad standing now: Progression steps, the bench upgrades, the LineUpgrades offers, the office hire pad */
+  paidPads() {
+    const out = [], pr = this.progress, V = this.v42;
+    if (pr) { for (const id in pr.pads) out.push(pr.pads[id]); for (const k in pr.upPads) out.push(pr.upPads[k]); }
+    if (V && V.lines) for (const id in V.lines.pads) out.push(V.lines.pads[id]);
+    if (V && V.office && V.office.hirePad) out.push(V.office.hirePad);
+    return out;
+  }
+
+  /** ((v4.2.0.1) one live paid pad per spot: the shown pad (other than `exceptId`) whose floor diamond comes closer than
+   *  16 px to a pad of half-width `hw` at (x, y) — |dx| + 2|dy| < hw + its hw + 16 — or null. skipBench: the bench
+   *  upgrades step aside for a Progression pad (Progression.benchAside) */
+  paidPadNear(x, y, hw, exceptId, skipBench) {
+    const pr = this.progress;
+    for (const p of this.paidPads()) {
+      if (!p || !p.active || p.id === exceptId || !p.pad) continue;
+      if (skipBench && pr && pr.upPads && (pr.upPads.capacity === p || pr.upPads.speed === p)) continue;
+      if (Math.abs(p.x - x) + 2 * Math.abs(p.y - y) < hw + p.pad.w / 2 + 16) return p;
+    }
+    return null;
+  }
+
+  /** ((v4.2.0.1) a workshop's hire / 짐꾼 2 pad on a plot that names its own spot (world.js plots.<id>.pads.line /
+   *  .p2, px from the plot centre: the default spot by its output pad was behind something there), or null */
+  plotPad(src, which) {
+    const c = src && src.isWorkshop && src.site && src.site.cfg, o = c && c.pads && c.pads[which];
+    return Array.isArray(o) ? { x: src.site.x + o[0], y: src.site.y + o[1] } : null;
+  }
+
+  /** ((v4.2.0.1) the 잡화점 점원 pad: right of the register, a little in front of it. The store can stand on any M
+   *  plot: where that spot is not walkable or a pine / prop / fence stands over the pad or its price (the border forest
+   *  by se_m1, the rail fence and the 동남쪽 망루 by e_m2), the first clear spot of a few around the register — up
+   *  and right of it last (on e_m2 the only open ground) — else the least covered one */
+  storeClerkSpot() {
+    const r = this.store.register, C = this.collision, occ = this.occlusion;
+    const hw = 45.25 * 1.9, hh = hw / 2, pts = [];
+    for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) if (Math.abs(i) + Math.abs(j) <= 3.8) pts.push([(i / 4) * hw, (j / 4) * hh]);
+    for (const dx of [-36, -12, 12, 36]) pts.push([dx, 2]);           // the price (coin + number)
+    const covered = (x, y) => {
+      // (a picture covers the floor above its foot: only the ones standing below the pad's top edge, close by)
+      // (the props, the trees — the forest's choppable ones too — and the buildings standing by: a 망루 next to the plot;
+      //  not the goods in piles or in hands, which come and go)
+      const near = this.statics.concat(this.children.list.filter((o) => o && o.texture && /^(bld_|props_(?!items))/.test(o.texture.key)))
+        .filter((o) => o && o.active && o.visible && o.frame && o.y > y - hh - 8 && o.y < y + 700 && Math.abs(o.x - x) < hw + 260);
+      let n = 0;
+      for (const [px, py] of pts) {
+        const qx = x + px, qy = y + py;
+        for (const o of near) {
+          const b = o.getBounds();
+          if (qx < b.x || qx > b.right || qy < b.y || qy > b.bottom) continue;
+          let s = true;
+          try { if (occ && occ.solid) s = occ.solid(o, qx, qy); } catch (e) { s = true; }
+          if (s) { n++; break; }
+        }
+      }
+      return n;
+    };
+    let best = null;
+    for (const o of [[150, 58], [150, 20], [190, 40], [150, 96], [110, 112], [230, 76], [190, -50]]) {
+      const x = r.x + o[0], y = r.y + o[1];
+      if (C.blocked(x, y, 16)) continue;
+      const n = covered(x, y);
+      if (n <= 2) return { x, y };
+      if (!best || n < best.n) best = { x, y, n };
+    }
+    return best ? { x: best.x, y: best.y } : { x: r.x + 150, y: r.y + 58 };
+  }
+
+  /** ((v4.2.0.1) a paid pad's spot joins the places residents never stand on (once per spot) */
+  addPadSpot(x, y) {
+    const S = this.padSpots;
+    if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    for (const q of S) if (Math.abs(q.x - x) < 4 && Math.abs(q.y - y) < 4) return;
+    S.push({ x, y, r: 80 });
+  }
+
   /** where the pad of a v3 step goes (towers: in front of the site; boat: by the boathouse; new porters / clerk: by their building) */
   padSpot(s) {
-    if (s.type === 'tower') { const w = WORLD.towers && WORLD.towers[s.id]; if (!w || (w.in && !this.territory.isOpen(w.in))) return null; const d = Assets.def('site_plot_S').dropPoint || [2, 64]; return { x: w.x + d[0], y: w.y + d[1] }; }
+    // ((v4.2.0.1) towers.<id>.pad: the 남쪽 / 동남쪽 pads stood inside the closed land's fog bank)
+    if (s.type === 'tower') { const w = WORLD.towers && WORLD.towers[s.id]; if (!w || (w.in && !this.territory.isOpen(w.in))) return null; const d = Array.isArray(w.pad) ? w.pad : (Assets.def('site_plot_S').dropPoint || [2, 64]); return { x: w.x + d[0], y: w.y + d[1] }; }
     if (s.type === 'boat') return this.boathouse ? this.boathouse.boatPad : null;
     if (s.type === 'porter') {
       const src = this.sourceById(s.station);
       if (!src || !src.outPad) return null;
-      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+      return this.plotPad(src, 'line') || { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
-    if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
+    // ((v4.2.0.1) +58: the snow fort behind it now, not over its top; on another plot the first clear spot by the register)
+    if (s.type === 'clerk' && s.seller === 'store' && this.store) return this.storeClerkSpot();
     // ---- (v4-B) the station porters' pad and the 승격식 pad on the station square
     if (s.type === 'stationPorter') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.porter.x, y: q.porter.y } : null; }
     if (s.type === 'rank') {
       // ---- (v4-C) the 승격식 is held in front of the town hall once it stands
-      if (this.civic && this.civic.hall) return this.civic.hall.venue('rank');
+      if (this.civic && this.civic.hall) return this.civic.hall.rankPadPos ? this.civic.hall.rankPadPos() : this.civic.hall.venue('rank');     // ((v4.2.0.1) off the tax box)
       const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.rank.x, y: q.rank.y } : null;
     }
     // ---- (v4-C) the big restaurant's staff (계산 점원 → 요리사 → 서빙 직원) on one spot beside it
-    if (s.type === 'restStaff') { const r = this.civic && this.civic.restaurant; return r ? { x: r.staffSpot.x, y: r.staffSpot.y } : null; }
+    if (s.type === 'restStaff') { const r = this.civic && this.civic.restaurant; return r ? (r.hirePadPos ? r.hirePadPos() : { x: r.staffSpot.x, y: r.staffSpot.y }) : null; }     // ((v4.2.0.1) a metre out)
     // (v3.5) the operator of a v3 workshop: on the porter pad's spot (the porter pad follows it)
     if (s.type === 'operator') {
       const src = this.sourceById(s.station);
       if (!src || !src.outPad) return null;
-      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+      return this.plotPad(src, 'line') || { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
     return null;
   }
@@ -1865,6 +1946,10 @@ export class Game extends Phaser.Scene {
       const v = this.cameras.main.worldView, hw = v.width / 2, hh = v.height / 2;
       fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, tv[0]));
       fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, tv[1]));
+      // ((v4.2.0.1) the 점원 고용 pad right of the till stays in the frame, price and all, while the chief works near it
+      //  (with the chief at the till the view's right edge stood 120 px past him: the pad's price was cut off there)
+      const cp = this.progress && this.progress.pads && this.progress.pads.hire_clerk_market;
+      if (cp && cp.active && Math.abs(cp.x - p.x) < 360) fx = Math.min(p.x + hw - 120, Math.max(fx, cp.x + cp.pad.w / 2 + 24 - hw));
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }

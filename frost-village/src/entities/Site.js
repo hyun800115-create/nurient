@@ -57,7 +57,8 @@ export class Site {
     this.built = null;            // the finished building object
     this.xl = this.size === 'XL';
     const d = Object.assign({}, SIZE_FALLBACK[this.size] || SIZE_FALLBACK.M, this.xl ? {} : Assets.def('site_plot_' + this.size));
-    if (this.xl && Array.isArray(cfg.drop)) d.dropPoint = [cfg.drop[0] - cfg.x, cfg.drop[1] - cfg.y];
+    // ((v4.2.0.1) any plot may name its drop spot (world.js plots.<id>.drop): where another building's picture hid it)
+    if (Array.isArray(cfg.drop)) d.dropPoint = [cfg.drop[0] - cfg.x, cfg.drop[1] - cfg.y];
     this.def = d;
     const dp = d.dropPoint || [2, 80];
     this.dropX = this.x + dp[0]; this.dropY = this.y + dp[1];
@@ -110,7 +111,8 @@ export class Site {
   makeLabel() {
     const gs = this.gs;
     if (this.label) return;
-    const lab = gs.add.container(this.dropX, this.dropY - 60).setDepth(this.dropY + 2000);
+    // ((v4.2.0.1) like the paid pads' labels: above every world object (people, piles, buildings in front of the plot)
+    const lab = gs.add.container(this.dropX, this.dropY - 60).setDepth(DEPTH.PAD_LABEL + this.dropY * 0.1);
     const bg = panel(gs, 0, 0, 'ui_panel', 120, 52).setOrigin(0.5, 0.5);
     const icon = Assets.image(gs, 0, 0, Assets.pick('ui_icon_hammer', 'ui_icon_lock')).setOrigin(0.5, 0.5);
     icon.setScale(36 / Math.max(icon.frame.realWidth, 1));

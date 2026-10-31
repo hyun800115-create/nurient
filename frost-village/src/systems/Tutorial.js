@@ -729,7 +729,8 @@ export class Tutorial {
     if (!prog.benchOpen || prog.seen.upgradeHint) return false;
     if (prog.up.capacity > 0 || prog.up.speed > 0) { prog.seen.upgradeHint = true; return false; }
     const pad = prog.upPads.capacity;
-    if (!pad || pad.maxed || pad.remaining > gs.economy.coins) return false;
+    // ((v4.2.0.1) not while it steps aside for the 교역소 점원 pad: the hint waits for it to come back)
+    if (!pad || !pad.active || pad.maxed || pad.remaining > gs.economy.coins) return false;
     this.upT = (this.upT || 0) + dt;
     if (this.upT > UPGRADE_HINT_MAX) { prog.seen.upgradeHint = true; return false; }
     if (pad.pad.contains(p.x, p.y)) { this.textKey = 'obj_upgrade'; return true; }

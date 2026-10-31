@@ -146,6 +146,8 @@ export class Office {
     this.spawn(role, false);
     gs.ui.banner(t('staffArrive', { role: t('role_' + role), name: t('staff_' + role) }), '');
     gs.time.delayedCall(2500, () => this.showHire());
+    // ((v4.2.0.1) a pad waiting for this spot (one live paid pad per spot) appears now
+    if (gs.progress) gs.time.delayedCall(600, () => gs.progress.syncPads());
     gs.save(true);
   }
 
@@ -358,14 +360,16 @@ export class Office {
   letterAction(act) {
     const gs = this.gs, v = this.v42;
     const hop = (x, y) => { gs.focusCamera(x, y, 2200); const ui = this.uiScene(); if (ui) ui.officePanel.close(); };
+    // ((v4.2.0.1, final review F4) the jumps go to where the pad stands now: the live pad, else its spot (LineUpgrades.spotOf))
+    const at = (id, kind, line) => { const L = v.lines, p = L && L.pads[id]; if (p) return p; const q = L && L.spotOf ? L.spotOf(kind, line) : null; return q && Number.isFinite(q.x) ? q : null; };
     if (act.startsWith('p2:')) {
       const line = act.slice(3), L = v.lines;
       if (L) L.fullT[line] = Math.max(L.fullT[line] || 0, Number(BALANCE.v42.porter2.fullForS) || 90);
-      const st = gs.stations[line]; if (st) gs.time.delayedCall(1200, () => hop(st.outPad.x, st.outPad.y));
-    } else if (act.startsWith('st2:')) { const st = gs.stations[act.slice(4)]; if (st) hop(st.x, st.y + 60); }
+      const st = gs.stations[line]; if (st) gs.time.delayedCall(1200, () => { const q = at('p2_' + line, 'p2', line) || st.outPad; hop(q.x, q.y); });
+    } else if (act.startsWith('st2:')) { const line = act.slice(4), st = gs.stations[line]; if (st) { const q = at('st2_' + line, 'st2', line) || { x: st.x, y: st.y + 60 }; hop(q.x, q.y); } }
     else if (act.startsWith('stock:')) this.openPanel('letter', 'stock');
     else if (act === 'plot') { const s = Object.values(gs.sites || {}).find((q) => q.kind === 'plot' && q.shown && q.state === 'plot' && q.size === 'S'); if (s) hop(s.x, s.y); }
-    else if (act === 'bigcar') { if (v.freight) v.freight.stats.waitT = Math.max(v.freight.stats.waitT, 130); const G = gs.v4 && gs.v4.growth; if (G && G.dock) gs.time.delayedCall(1300, () => hop(G.dock.x + 96, G.dock.y + 84)); }
+    else if (act === 'bigcar') { if (v.freight) v.freight.stats.waitT = Math.max(v.freight.stats.waitT, 130); const G = gs.v4 && gs.v4.growth; if (G && G.dock) gs.time.delayedCall(1300, () => { const q = at('bigcar', 'big') || { x: G.dock.x + 96, y: G.dock.y + 84 }; hop(q.x, q.y); }); }
     else if (act === 'depot') { const s = gs.sites && gs.sites.v42_depot; if (s) hop(s.x, s.y); }
     else if (act === 'snowman') {
       if (gs.economy.coins >= 120) { gs.economy.spend(120); if (v.news) v.news.happy = Math.min(99, v.news.happy + 2); gs.ui.banner(t('snowmanContest'), ''); if (gs.life && gs.life.cheer) gs.life.cheer(); }

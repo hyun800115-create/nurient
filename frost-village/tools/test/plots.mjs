@@ -194,8 +194,10 @@ try {
   await shot('04_notice_board');
   await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); ui.hud4.closePanel(true); window.__FV.teleport(-600, 1500); });
   await adv(1);
-  const v6 = await ev(() => { const gs = window.__FV.scene, a = gs.padSpot({ type: 'rank', id: 'rank_eup' }), b = gs.civic.hall.venue('rank'); return { a, b }; });
-  step('6 the rank ceremony is held in front of the hall', v6.a && Math.abs(v6.a.x - v6.b.x) < 1 && Math.abs(v6.a.y - v6.b.y) < 1, v6);
+  // ((v4.2.0.1) the 승격식 pay pad stands a little left of the venue (TownHall SPOT.rankPad: off the tax box's coin pile);
+  //  the ceremony itself is still held at venue('rank'))
+  const v6 = await ev(() => { const gs = window.__FV.scene, H = gs.civic.hall, a = gs.padSpot({ type: 'rank', id: 'rank_eup' }), b = H.venue('rank'), c = H.rankPadPos ? H.rankPadPos() : b; return { a, b, c }; });
+  step('6 the rank ceremony is held in front of the hall', v6.a && Math.abs(v6.a.x - v6.c.x) < 1 && Math.abs(v6.a.y - v6.c.y) < 1 && Math.hypot(v6.a.x - v6.b.x, 2 * (v6.a.y - v6.b.y)) < 80, v6);
   const w6 = await ev(() => window.__FV.scene.civic.hall.venue('wedding'));
   step('6 a wedding venue hook is there (v5)', w6 && Number.isFinite(w6.x) && Number.isFinite(w6.y), w6);
 
