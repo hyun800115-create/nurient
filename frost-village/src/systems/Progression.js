@@ -356,17 +356,20 @@ export class Progression {
       withIt.push(id);
     }
     delete this.got[s.id];
-    if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }));
-    else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }));
-    else if (s.type === 'hire2') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 2' }));
-    else if (s.type === 'hire3') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 3' }));
-    else if (s.type === 'operator') gs.ui.banner(t('hired', { name: t('opName_' + s.station) }), t('opSub_' + s.station));
-    else if (s.type === 'raw') gs.ui.banner(t('hired', { name: t('raw_' + s.station) }), t('rawSub'));
-    else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }));
-    else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }));
-    else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'));
-    else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'), withIt.indexOf('porter_dock') >= 0 ? t('boatPorterSub') : undefined);
-    else if (s.type === 'stationPorter') gs.ui.banner(t('hired', { name: t('stn_porter') }), t('stnPorterSub'));      // (v4-B)
+    // ((v4.2.0.1) a step's banner always plays, also while the first-run tutorial holds the others back (UI.banner);
+    //  the first clerk says what a clerk does)
+    const ST = { step: true };
+    if (s.type === 'zone') gs.ui.banner(t('unlocked', { name: t('z_' + s.zone) }), undefined, ST);
+    else if (s.type === 'hire') gs.ui.banner(t('hired', { name: t('w_' + s.worker) }), undefined, ST);
+    else if (s.type === 'hire2') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 2' }), undefined, ST);
+    else if (s.type === 'hire3') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 3' }), undefined, ST);
+    else if (s.type === 'operator') gs.ui.banner(t('hired', { name: t('opName_' + s.station) }), t('opSub_' + s.station), ST);
+    else if (s.type === 'raw') gs.ui.banner(t('hired', { name: t('raw_' + s.station) }), t('rawSub'), ST);
+    else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }), s.id === 'hire_clerk_market' ? t('clerkSub') : undefined, ST);
+    else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }), undefined, ST);
+    else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'), ST);
+    else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'), withIt.indexOf('porter_dock') >= 0 ? t('boatPorterSub') : undefined, ST);
+    else if (s.type === 'stationPorter') gs.ui.banner(t('hired', { name: t('stn_porter') }), t('stnPorterSub'), ST);      // (v4-B)
     gs.events.emit('step', s.id);
     for (const id of withIt) gs.events.emit('step', id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));

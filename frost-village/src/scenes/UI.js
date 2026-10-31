@@ -16,6 +16,8 @@ import { HudV4 } from './UIv4.js';
 // ---- (v4.2) 관망 / 줍기 buttons, the navigator chip and edge badge, the 업무 chip, 새로워진 것, the train card
 import { HudV42 } from './UIv42.js';
 import { OfficePanel } from './OfficePanel.js';
+// ---- (v4.2.0.1) the first-run tutorial's finger, coach card, skip chip, tips and spotlight
+import { OnboardOverlay } from './OnboardOverlay.js';
 // ---- (v4.2.1) 마을 옮기기 (the export / import sheet, DOM)
 import { openMovePanel } from './MovePanel.js';
 const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
@@ -116,6 +118,9 @@ export class UI extends Phaser.Scene {
     this.hud4 = new HudV4(this);
     this.hud42 = new HudV42(this);
     this.officePanel = new OfficePanel(this);     // (v4.2) 촌장 사무실 화면
+    this.bannerQ = [];                            // ((v4.2.0.1) banners in turn: one at a time, 0.4 s apart)
+    this.bannerUntil = 0;
+    this.onboardOv = new OnboardOverlay(this);    // (v4.2.0.1) 첫 실행 튜토리얼
 
     this.layout();
     this.scale.on('resize', this.onResize, this);
@@ -129,7 +134,8 @@ export class UI extends Phaser.Scene {
       Input.touchPending = true;
       // (v3.5 review) a finger landing on the dog bar may still be the start of a drag: the joystick starts
       // too, and the button only fires when the finger lifts without moving (dogBarRelease)
-      const onBar = over && over.length && over.every((o) => o.isDogBtn);
+      // ((v4.2.0.1) + the tutorial's 「건너뛰기」 chip: it skips on a tap only, a drag from it walks the chief)
+      const onBar = over && over.length && over.every((o) => o.isDogBtn || o.isOnbSkip);
       if (this.panelOpen || this.buildOpen || this.v4PanelOpen || this.v42PanelOpen || (over && over.length && !onBar)) return;
       if (!onBar) this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
@@ -222,6 +228,7 @@ export class UI extends Phaser.Scene {
     if (this.buildOpen) this.closeBuildMenu(true);
     if (this.hud4) this.hud4.layout();
     if (this.hud42) this.hud42.layout();
+    if (this.onboardOv) this.onboardOv.layout();
   }
 
   // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
@@ -455,7 +462,7 @@ export class UI extends Phaser.Scene {
         this.whistleHintT = (this.whistleHintT || 0) + dt;
         const k = 1 + Math.max(0, Math.sin(this.time.now / 220)) * 0.12;
         this.whistleBtn.setScale(k);
-        if (!this.whistleTipShown && this.whistleHintT > 4 && !this.panelOpen) { this.whistleTipShown = true; this.toast(t('dogWhistleHint'), 4000); }
+        if (!this.whistleTipShown && this.whistleHintT > 4 && !this.panelOpen) { this.whistleTipShown = true; if (!(this.gs.onboard && this.gs.onboard.hasTips)) this.toast(t('dogWhistleHint'), 4000); }      // ((v4.2.0.1) the tutorial's whistle tip says it instead)
       } else if (this.whistleBtn.scale !== 1) this.whistleBtn.setScale(1);
     }
     // (v4-B, v3.5 known issue) the whistle steps up when a pad / plot label would sit under it (glides)
@@ -584,16 +591,67 @@ export class UI extends Phaser.Scene {
 
   // ---------------------------------------------------------------- messages
   toast(msg, hold) {
-    this.toastText.setText(msg);
-    this.toastBg.setSize(Math.max(260, this.toastText.width + 70), 64);
+    // ((v4.2.0.1) during the first-run tutorial's Act 1 its coach card already says it: no "bag full" / "customers
+    //  waiting" toasts on top)
+    const ob = this.gs.onboard;
+    if (ob && ob.owns() && (msg === t('bagFull') || msg === t('customersWaiting'))) return;
+    // ((v4.2.0.1) never wider than the screen: shrinks to 0.85, then wraps to two lines — the 자동 줍기 tip was cut off)
+    const tx = this.toastText, maxW = this.W - 80 - 70;
+    tx.setScale(1).setWordWrapWidth(null).setText(msg);
+    if (tx.width > maxW) {
+      if (tx.width * 0.85 <= maxW) tx.setScale(maxW / tx.width);
+      else tx.setScale(0.85).setWordWrapWidth(maxW / 0.85, true).setAlign('center');
+    }
+    this.toastBg.setSize(Math.max(260, tx.displayWidth + 70), Math.max(64, tx.displayHeight + 26));
     const b = this.toastBox;
+    // (above the tutorial's coach card while it sits in the bottom slot — only then: a card in the top slot leaves the
+    //  toast where it always is, never over the coin counter / ⚙ / the goal panel; a card just cleared (skip) neither)
+    const ov = this.onboardOv, cb = ov && ov.cardBox;
+    const low = !!(cb && ov.slot === 'bottom' && ob && ob.card && cb[1] < this.H - 230 - View.safeBottom + 40);
+    b.y = low ? cb[1] - 50 : this.H - 230 - View.safeBottom;
     this.tweens.killTweensOf(b);
     b.setVisible(true).setAlpha(1).setScale(0.7);
     this.tweens.add({ targets: b, scale: 1, duration: 200, ease: 'Back.easeOut' });
     this.tweens.add({ targets: b, alpha: 0, delay: hold || 1500, duration: 350, onComplete: () => b.setVisible(false) });
   }
 
-  banner(msg, sub) {
+  /**
+   * ((v4.2.0.1) banners in turn: one that arrives while another is up waits until it is gone + 0.4 s (before, the
+   *  new one replaced it at once and a pile-up showed only the last). During the first-run tutorial's Act 1 the ones that
+   *  are not a hire / unlock (opts.step) wait for its end; they then play 4 s apart (bannerLater)
+   */
+  banner(msg, sub, opts) {
+    const ob = this.gs.onboard;
+    if (ob && ob.holdsBanners && !(opts && opts.step)) { if (ob.held.length < 6) ob.held.push({ msg, sub }); return; }
+    if (this.bannerBox.visible && this.time.now < this.bannerUntil) {
+      if (this.bannerQ.length >= 6) this.bannerQ.shift();
+      // (L5: one that waited 8 s is old news — it is dropped, never shown long after what it was about)
+      this.bannerQ.push({ msg, sub, gap: 400, exp: this.time.now + 8000 });
+      return;
+    }
+    this.showBanner(msg, sub);
+  }
+
+  /** (v4.2.0.1) a banner after the others, at least `gap` ms after the one before (the tutorial's held ones: kept 60 s) */
+  bannerLater(msg, sub, gap) {
+    if (this.bannerQ.length >= 6) this.bannerQ.shift();
+    this.bannerQ.push({ msg, sub, gap: gap || 400, exp: this.time.now + 60000 });
+  }
+
+  pumpBanners() {
+    const q = this.bannerQ;
+    if (!q || !q.length) return;
+    const now = this.time.now;
+    while (q.length && q[0].exp && now > q[0].exp) q.shift();
+    if (!q.length) return;
+    const next = q[0];
+    if (this.bannerBox.visible && now < this.bannerUntil) return;
+    if (now < (this.bannerFree || 0) + (next.gap || 400)) return;
+    q.shift();
+    this.showBanner(next.msg, next.sub);
+  }
+
+  showBanner(msg, sub) {
     const b = this.bannerBox;
     this.bannerText.setText(msg).setScale(1);
     this.bannerSub.setText(sub || '').setScale(1);
@@ -611,7 +669,8 @@ export class UI extends Phaser.Scene {
     this.tweens.killTweensOf(b);
     b.setVisible(true).setAlpha(1).setScale(0.3);
     this.tweens.add({ targets: b, scale: 1, duration: 420, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: b, alpha: 0, y: { from: this.H * 0.27, to: this.H * 0.25 }, delay: sub ? 3200 : 1700, duration: 400, onComplete: () => { b.setVisible(false); b.y = this.H * 0.27; } });
+    this.tweens.add({ targets: b, alpha: 0, y: { from: this.H * 0.27, to: this.H * 0.25 }, delay: sub ? 3200 : 1700, duration: 400, onComplete: () => { b.setVisible(false); b.y = this.H * 0.27; this.bannerFree = this.time.now; } });
+    this.bannerUntil = this.time.now + (sub ? 3200 : 1700) + 400;
   }
 
   celebrate(v3) {
@@ -1054,7 +1113,16 @@ export class UI extends Phaser.Scene {
     row(Y(4), t('set_observeEvents'), S.observeEvents !== false ? t('on') : t('off'), S.observeEvents !== false ? 'green' : 'gray', () => { S.observeEvents = S.observeEvents === false; redo(); }, Assets.pick('ui_icon_camera', 'ui_icon_star', 'ui_icon_fame', 'ui_icon_settings'));
     const sp = S.observeSpend === 'hire' ? 'hire' : 'none';
     row(Y(5), t('set_observeSpend'), t('spend_' + sp), sp === 'none' ? 'gray' : 'blue', () => { S.observeSpend = sp === 'none' ? 'hire' : 'none'; redo(); }, 'ui_icon_coin');
-    add(this.add.text(cx, Y(6) + 6, t('set_playHint'), Object.assign(TXT(21, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 480 } })).setOrigin(0.5));
+    // ((v4.2.0.1) 튜토리얼 다시 보기 — whenever the tutorial is not running: after the first loop, and for a village that began
+    //  with the tutorial also right after 「건너뛰기」 (its toast says it is here; the replay is then the live Act 1). While
+    //  the tutorial runs, and in an old village still learning the first loop, the 자동 줍기 hint stays instead)
+    const tu = this.gs.tutorial, onb = this.gs.onboard;
+    const running = !!(onb && (onb.mode === 'act1' || onb.mode === 'act2' || onb.mode === 'tour'));
+    if (onb && tu && !running && (!tu.inTutorial || (onb.bits & 1))) {
+      const b = row(Y(6), t('set_tutorial'), t('set_replay'), 'blue', () => { this.closeSettings(); if (onb.replay()) Input.release(); }, Assets.pick('ui_icon_hand', 'ui_icon_goal', 'ui_icon_explore', 'ui_icon_settings'));
+      b.replayBtn = true;
+      if (b.text.width > 176) b.text.setScale(176 / b.text.width);
+    } else add(this.add.text(cx, Y(6) + 6, t('set_playHint'), Object.assign(TXT(21, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 480 } })).setOrigin(0.5));
     void cy;
   }
 
@@ -1094,6 +1162,7 @@ export class UI extends Phaser.Scene {
     for (const id in gs.piles) gs.piles[id].refresh();
     for (const q of this.dogBtns || []) q.lab.setText(t(q.kind === 'treat' ? 'dogTreat' : q.kind === 'play' ? 'dogPlay' : 'dogPet'));
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
+    if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
   }
 
   // ---------------------------------------------------------------- frame
@@ -1124,7 +1193,10 @@ export class UI extends Phaser.Scene {
     } else { this.joyBase.setVisible(false); this.joyKnob.setVisible(false); }
     // objective edge indicator
     const tg = this.objTarget;
-    if (tg && this.gs.tutorial && this.gs.tutorial.target) {
+    // ((v4.2.0.1) + the first-run tutorial's place: its steps may set only a text in the old tutorial)
+    // ((L7) not during the replay tour: the camera shows the tour's places, an arrow at the live goal would contradict it)
+    const obT = this.gs.onboard && this.gs.onboard.mode === 'tour';
+    if (tg && !obT && ((this.gs.tutorial && this.gs.tutorial.target) || (this.gs.onboard && this.gs.onboard.owns() && this.gs.onboard.target))) {
       const p = this.worldToScreen(tg.x, tg.y - (tg.h || 0) * 0.5);
       const M = 64;
       if (p.x < -10 || p.x > this.W + 10 || p.y < 120 || p.y > this.H + 10) {
@@ -1141,6 +1213,8 @@ export class UI extends Phaser.Scene {
     if (this.hud42) this.hud42.update(dt);
     if (this.officePanel) this.officePanel.update(dt);
     this.updateBuildThumbs(dt);
+    this.pumpBanners();
+    if (this.onboardOv) { try { this.onboardOv.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding overlay:', e); } } }
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }
 }

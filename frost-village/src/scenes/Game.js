@@ -16,6 +16,8 @@ import { Ground } from '../systems/Ground.js';
 import { Economy } from '../systems/Economy.js';
 import { Progression, STEPS } from '../systems/Progression.js';
 import { Tutorial, PRODUCT_ZONE } from '../systems/Tutorial.js';
+// ---- (v4.2.0.1) the first-run tutorial (a finger shows what to do)
+import { Onboarding } from '../systems/Onboarding.js';
 import { Player } from '../entities/Player.js';
 import { Worker, Porter } from '../entities/Worker.js';
 import { Roads } from '../systems/Roads.js';
@@ -90,7 +92,7 @@ class UIProxy {
   setCoins(v, ms) { const s = this.s; if (s) s.setCoins(v, ms); }
   coinFly(wx, wy, n) { const s = this.s; if (s) s.coinFly(wx, wy, n); }
   toast(msg) { const s = this.s; if (s) s.toast(msg); }
-  banner(msg, sub) { const s = this.s; if (s) s.banner(msg, sub); }
+  banner(msg, sub, opts) { const s = this.s; if (s) s.banner(msg, sub, opts); }
   setObjective(key, tg, text) { const s = this.s; if (s) s.setObjective(key, tg, text); }
   celebrate(v3) { const s = this.s; if (s) s.celebrate(v3); }
   openBuildMenu(site) { const s = this.s; if (s && s.openBuildMenu) s.openBuildMenu(site); }
@@ -115,7 +117,8 @@ const NO_AGENTS = [];
 export class Game extends Phaser.Scene {
   constructor() { super('Game'); }
 
-  init(data) { this.fresh = !!(data && data.fresh); }
+  // ((v4.2.0.1) broken: a quarantine restart — an existing player whose save broke, not a new player: no first-run tutorial)
+  init(data) { this.fresh = !!(data && data.fresh); this.brokenRestart = !!(data && data.broken); }
 
   create() {
     this._broken = false;
@@ -127,7 +130,7 @@ export class Game extends Phaser.Scene {
       console.error('[FrostVillage] could not restore the saved game, starting fresh:', e);
       if (this.fresh) throw e;
       Save.quarantine();
-      this.time.delayedCall(0, () => this.scene.restart({ fresh: true }));
+      this.time.delayedCall(0, () => this.scene.restart({ fresh: true, broken: true }));
     }
   }
 
@@ -221,6 +224,11 @@ export class Game extends Phaser.Scene {
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
     this.progress = new Progression(this, sv.progress);
     this.tutorial = new Tutorial(this);
+    // ---- (v4.2.0.1) the first-run tutorial: a new village (no save, not a quarantine restart, not a save that is there but
+    //  could not be read — cut off / from a newer build) gets it; a save carries its bits only when it began with it (an old
+    //  save never sees it)
+    this.onboard = new Onboarding(this, sv.onb, this.saved === null && !this.brokenRestart && !(!this.fresh && Save.lastUnreadable));
+    this.events.once('shutdown', () => { if (this.onboard) this.onboard.destroy(); });
     // ---- (v4.2) made before the sites are restored (its own sites take their saved state)
     buildV42(this, sv);
 
@@ -1843,6 +1851,7 @@ export class Game extends Phaser.Scene {
       if (!this.progress.celebrated3 && this.progress.v3Complete) this.time.delayedCall(2500, () => this.celebrate3());
     }
     this.tutorial.update(dt);
+    if (this.onboard) { try { this.onboard.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding:', e); } } }
     if (this.occlusion) this.occlusion.update(dt);
     this.updateZoom(dt, delta);
 
@@ -1851,9 +1860,11 @@ export class Game extends Phaser.Scene {
     let fx = p.x, fy = p.y - 30;
     if (this.tutorial.inTutorial && WORLD.tutorialView) {
       // first loop: frame net, grill, counter and queue together; follow the chief only near the edges
+      // ((v4.2.0.1) the first-run tutorial moves the framing to the register / the clerk's pad for its steps there)
+      const tv = (this.onboard && this.onboard.view) || WORLD.tutorialView;
       const v = this.cameras.main.worldView, hw = v.width / 2, hh = v.height / 2;
-      fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, WORLD.tutorialView[0]));
-      fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
+      fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, tv[0]));
+      fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, tv[1]));
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
@@ -2172,6 +2183,8 @@ export class Game extends Phaser.Scene {
       // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry and cash
       c1: this.civic ? this.civic.serialize() : undefined,
       cid: this.cid,
+      // ---- (v4.2.0.1) the first-run tutorial's bits (only villages that began with it)
+      onb: this.onboard ? this.onboard.serialize() : (this.saved && this.saved.onb) || undefined,
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };
@@ -2421,6 +2434,12 @@ export class Game extends Phaser.Scene {
       /** the build menu's tabs and cards as shown (UI scene) */
       menu() { const ui = gs.scene.get('UI'); return ui && ui.buildOpen ? { tab: ui.buildTab, tabs: ui.buildTabs, cards: (ui.buildCards || []).map((c) => ({ key: c.ch.key, locked: c.ch.locked, text: c.ch.text })), all: (ui.buildChoicesList || []).map((c) => ({ key: c.key, cat: c.cat, locked: c.locked, text: c.text })) } : null; },
       reset() { gs.resetProgress(); },
+      // ---------------- (v4.2.0.1) the first-run tutorial
+      /** { mode, act, step, bits, card, hand, target, tip, rects (screen boxes, logical px) } */
+      onboard() { const o = gs.onboard; if (!o) return null; const ui = gs.scene.get('UI'); const st = o.state(); st.rects = ui && ui.onboardOv ? ui.onboardOv.rects() : null; return st; },
+      onboardSkip() { if (gs.onboard) gs.onboard.skip(); return gs.onboard ? gs.onboard.state() : null; },
+      onboardReplay() { return gs.onboard ? gs.onboard.replay() : false; },
+      onboardNext() { if (gs.onboard) gs.onboard.next(); return gs.onboard ? gs.onboard.state() : null; },
       warnings() { return Array.from(Assets.warned); },
     });
     window.__FV = hooks;

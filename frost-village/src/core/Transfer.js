@@ -225,6 +225,9 @@ export function summarize(s, keys, made, raw) {
 export async function applyVillage(keys, opts = {}) {
   const st = opts.storage || getStore();
   if (!st) return fail('noStorage');
+  // ((v4.2.0.1) a village from elsewhere has played its tutorial; 「예비 사본으로 되돌리기」 (opts.undo) is the player's own
+  //  village coming back — left as it was)
+  if (!opts.undo) markImported(keys);
   const W = typeof window !== 'undefined' ? window : {};
   const guard0 = W.__FV_NO_SAVE;
   W.__FV_NO_SAVE = true;
@@ -254,6 +257,23 @@ export async function applyVillage(keys, opts = {}) {
   }
   for (const k of Object.keys(before)) if (!(k in keys)) { try { st.removeItem(k); } catch (e) { /* */ } }
   return { ok: true, backup };
+}
+
+/**
+ * ((v4.2.0.1) the first-run tutorial) a village moved in from another phone / app has been played already: when its save
+ * carries the tutorial's bits (Onboarding.js ONB) they are set to "done and skipped" (ACT1 | ACT2 | SKIP = 14), so it never
+ * shows the guided part or the button tips again. A save without them is left byte for byte as it was.
+ */
+export function markImported(keys) {
+  try {
+    const s = keys && keys[SAVE_KEY];
+    if (typeof s !== 'string' || s.indexOf('"onb"') < 0) return keys;
+    const o = JSON.parse(s);
+    if (!o || typeof o !== 'object' || typeof o.onb !== 'number' || !(o.onb > 0)) return keys;
+    o.onb = (Math.floor(o.onb) | 14) & 1023;
+    keys[SAVE_KEY] = JSON.stringify(o);
+  } catch (e) { /* left as it was */ }
+  return keys;
 }
 
 /** the spare village kept by the last 불러오기 (its code), or null */

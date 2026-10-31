@@ -144,6 +144,8 @@ export function sanitizeSave(raw) {
   s.coins = count(raw.coins, 1e12);
   // (v4-C2) the chat record's id (ChatSave)
   if (typeof raw.cid === 'string' && /^[a-z0-9]{4,16}$/.test(raw.cid)) s.cid = raw.cid;
+  // ((v4.2.0.1) the first-run tutorial's bit flags (Onboarding.js ONB): only villages that began with it carry one)
+  if (raw.onb !== undefined) { const n = Math.floor(num(raw.onb, 0)); if (n > 0 && n < 1024) s.onb = n; }
   const pr = isObj(raw.progress) ? raw.progress : {};
   const up = isObj(pr.up) ? pr.up : {};
   s.progress = {
@@ -535,16 +537,20 @@ export function migrateSave(s) {
 export const Save = {
   /** the saved game (sanitized), or null for a fresh start. Other versions are migrated or backed up first. */
   load() {
+    // ((v4.2.0.1) lastUnreadable: a save WAS there but could not be used (cut off, a newer build) — an existing player, not a
+    //  new one: the first-run tutorial does not start for them)
+    this.lastUnreadable = false;
     const s = readJSON(SAVE_KEY);
     if (!s || typeof s !== 'object') {
       // (v3.5 review) a save that is there but cannot be read (cut off, not JSON): keep a copy before the
       // next autosave overwrites it
-      try { const st = getStore(); const raw = st && st.getItem(SAVE_KEY); if (raw) keepCopy(st, raw); } catch (e) { /* ignore */ }
+      try { const st = getStore(); const raw = st && st.getItem(SAVE_KEY); if (raw) { keepCopy(st, raw); this.lastUnreadable = true; } } catch (e) { /* ignore */ }
       return null;
     }
     const out = migrateSave(s);
     if (!out) {
       // unknown / future version: keep a copy before the next autosave overwrites it
+      this.lastUnreadable = true;
       try { const st = getStore(); if (st) keepCopy(st, st.getItem(SAVE_KEY)); } catch (e) { /* ignore */ }
       return null;
     }

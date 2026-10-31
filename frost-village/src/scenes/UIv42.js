@@ -179,7 +179,8 @@ export class HudV42 {
     const busy = ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen || gs.overview;
     // 관망 button
     const P = this.pilot;
-    const showObs = !!(P && v.complete && !busy && !(gs.tutorial && gs.tutorial.inTutorial));
+    // ((v4.2.0.1) not during the first-run tutorial's replay tour either)
+    const showObs = !!(P && v.complete && !busy && !(gs.tutorial && gs.tutorial.inTutorial) && !(gs.onboard && gs.onboard.blocksPilot));
     if (this.obsBtn.visible !== showObs) this.obsBtn.setVisible(showObs);
     if (showObs && this.obsLit !== P.on) { this.obsLit = P.on; this.obsBtn.drawBg(P.on); }
     // 줍기 button

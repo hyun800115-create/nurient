@@ -67,7 +67,8 @@ export class ChiefPilot {
   }
   /** how far he looks for someone to chat with: further during a chore break (the break is his to spend) */
   chatRange() { return (this.locked.urgent || 0) > this.t ? 1500 : 600; }
-  get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial)); }
+  // ((v4.2.0.1) + not while the first-run tutorial's replay tour shows the village)
+  get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial) && !(gs.onboard && gs.onboard.blocksPilot)); }
   /** may the piloted chief pay at this pad? never — except 관망 중 돈 쓰기 '고용만' on a staff / porter hire pad */
   blocksPay(kind, pad) { if (!this.on) return false; if (kind === 'hire' && Settings.data.observeSpend === 'hire' && (!pad || isHirePad(pad))) return false; return true; }
 
