@@ -432,7 +432,9 @@ export const Residency = {
       let sk = this.spriteOf(o.texture.key, o.frame ? o.frame.name : '__BASE');
       if (!sk && cur && cur.startsWith('spr:')) { const k = cur.slice(4, cur.lastIndexOf(':')); if (Assets.m.sprites[k]) sk = k; }
       o.setTexture('fv_blank');
-      if (sk && gs.lazyImgs) gs.lazyImgs.push({ img: o, key: sk, after: loop ? (img) => { if (img.anims && g.anims.exists(loop)) img.anims.play(loop); } : null });
+      // ((v4.2.0.1, LAZY-1) a pooled item picture carries its life (__gen): released to the pool and handed to another item
+      //  before the page came back, it was re-skinned with the OLD item — a cooked fish in the chief's arms drawn as a parcel)
+      if (sk && gs.lazyImgs) gs.lazyImgs.push({ img: o, key: sk, gen: o.__gen, after: loop ? (img) => { if (img.anims && g.anims.exists(loop)) img.anims.play(loop); } : null });
     }
     for (const k of drop) dropAnim(g, k);
     for (const k of set) { tex.remove(k); Assets.held.add(k); Assets.queued.delete(k); }

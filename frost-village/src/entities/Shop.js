@@ -324,7 +324,9 @@ export class Shop {
     const gs = this.gs;
     this.stock[ty] = (this.stock[ty] || 0) + 1;
     this.g.payWholesale(ty, 1, this.inPt.x, this.inPt.y - 20);
-    if (this.shelf.countOf(ty) + this.shelf.inTypes.filter((q) => q === ty).length < SHOW_PER_TYPE) return gs.moveItem(ch.stack, this.shelf, ty, { dur: 260, height: 70, sfx: 'drop' });
+    // ((v4.2.0.1) accept: sold while it flew (a visitor, the town's customer) -> it does not land as an extra picture
+    //  of an item the shop no longer has — those stayed until the game was reloaded)
+    if (this.shelf.countOf(ty) + this.shelf.inTypes.filter((q) => q === ty).length < SHOW_PER_TYPE) return gs.moveItem(ch.stack, this.shelf, ty, { dur: 260, height: 70, sfx: 'drop', accept: (q) => this.shelf.countOf(q) < Math.min(SHOW_PER_TYPE, this.stock[q] || 0) });
     // (the shelf shows a few of each; the rest is counted) the item flies in and is put away
     const it = ch.stack.pop(ty);
     if (!it) return false;

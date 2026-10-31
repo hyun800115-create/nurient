@@ -46,15 +46,21 @@ export class Effects {
     // ((v4.2 P0) a pooled picture waits off the display list: back on it while it is used)
     s.__pooled = false;
     if (!s.displayList && s.addToDisplayList) s.addToDisplayList();
+    // ((v4.2.0.1, LAZY-1) a new life for the picture: a re-skin Residency queued for its last item is not for this one)
+    s.__gen = (s.__gen || 0) + 1;
     Assets.apply(s, type);
     s.setVisible(true).setAlpha(1).setScale(1).setAngle(0).setFlipX(false);
     s.__type = type;
+    // ((v4.2.0.1) its page is out (lgx_items paged out while the depot is far): the stand-in is re-skinned when it comes)
+    const gs = this.scene;
+    if (gs.lazyImgs && s.texture && s.texture.key === 'fv_blank' && Assets.pending(type)) gs.lazyImgs.push({ img: s, key: type, gen: s.__gen });
     return s;
   }
   releaseItem(s) {
     if (!s) return;
     s.setVisible(false);
     s.__pooled = true;
+    s.__gen = (s.__gen || 0) + 1;
     if (s.displayList && s.removeFromDisplayList && !s.parentContainer) s.removeFromDisplayList();
     this.itemPool.push(s);
   }

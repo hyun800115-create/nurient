@@ -92,7 +92,7 @@ export class TownHall {
         this.taxAcc -= n;
         const door = this.bld && this.bld.door ? this.bld.door : { x: this.x - 127, y: this.y + 63 };
         if (gs.isOnScreen(this.tax.x, this.tax.y, 200)) this.tax.add(n, door.x, door.y - 40);
-        else this.tax.value += n;
+        else this.tax.addQuiet(n);             // ((v4.2.0.1) the coins also on the pile while the camera is away)
       }
       if (this.tax.value >= cap) this.taxAcc = 0;
     }

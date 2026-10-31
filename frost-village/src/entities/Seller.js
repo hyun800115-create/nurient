@@ -64,6 +64,14 @@ export class CashPad {
     }
   }
 
+  /** ((v4.2.0.1) add `amount` coins without the flight (the till is off screen): value AND pile, by add()'s rule — the
+   *  tax box and the 물류 금고 used to raise only the value while the camera was away: real coins, no picture) */
+  addQuiet(amount) {
+    this.value += amount;
+    const n = Math.min(6, Math.max(1, Math.round(amount / 3)));
+    for (let i = 0; i < n && this.pile.count + this.pile.incoming < this.pile.max; i++) this.pile.push('item_coin', null, this.gs.effects);
+  }
+
   update(dt) {
     this.pile.layout(this.x, this.y + 4, this.y, 0, dt);
     if (!this.enabled) return;

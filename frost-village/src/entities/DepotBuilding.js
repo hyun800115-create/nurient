@@ -29,6 +29,9 @@ export class DepotBuilding {
     this.ready = false;
     const [tx, ty] = L4(D.till[0], D.till[1]);
     this.till = new CashPad(gs, tx, ty);
+    // ((v4.2.0.1) a page arrived (lgx_items back after a trip): the racks are drawn again once, with the real art)
+    this.onArrive = () => { this.rackVer = -1; };
+    Assets.arrivals.push(this.onArrive);
     // the logistics manifest + atlases arrive late: the building is made when the manifest is merged
     Assets.loadFragment(gs, 'logistics', { only: ['lgx_center_a', 'lgx_center_b', 'lgx_center_c', 'lgx_center_d', 'lgx_items'] }, () => this.build());
   }
@@ -194,7 +197,11 @@ export class DepotBuilding {
         for (let c = 0; c < q.n && c * step <= (s.maxStackPx || 40); c++) {
           let im = this.rackImgs[n];
           if (!im) { im = Assets.image(gs, 0, 0, f.key); this.rackImgs[n] = im; }
-          if (im.__k !== f.key) { Assets.apply(im, f.key); im.__k = f.key; }
+          // ((v4.2.0.1) not only the cached key: a rack picture re-keyed while lgx_items was paged out got the blank
+          //  stand-in, and the page's return re-skinned it with the key it had when it was parked — racks stayed blank
+          //  or showed another item's crate until the stock changed. A pending picture is retried at the next redraw)
+          const r = Assets.sprite(f.key);
+          if (im.__k !== f.key || r.pending || im.texture.key !== r.tex || String(im.frame.name) !== String(r.frame === undefined ? '__BASE' : r.frame)) { Assets.apply(im, f.key); im.__k = r.pending ? null : f.key; }
           im.setScale(sc).setPosition(px, py - c * step).setDepth(base + (s.drawOrder || 0) * 1e-4 + c * 1e-6).setVisible(this.alpha > 0.05);
           im.__on = true;
           n++;
@@ -213,6 +220,8 @@ export class DepotBuilding {
     for (const k in this.imgs) this.imgs[k].destroy();
     for (const im of (this.rackImgs || []).concat(this.props || [])) im.destroy();
     for (const ob of this.obstacles || []) ob.active = false;
+    const ai = this.onArrive ? Assets.arrivals.indexOf(this.onArrive) : -1;
+    if (ai >= 0) Assets.arrivals.splice(ai, 1);
     for (const w of this.workers || []) w.destroy();
     if (this.doorPad) this.doorPad.img.destroy();
   }

@@ -92,6 +92,8 @@ export class Boathouse {
       this.busyT -= dt;
       if (!this.working) { const a = Assets.spriteAnim('boathouse', 'work'); if (a) { this.working = true; this.img.play(a); } }
     } else if (this.working) { this.working = false; this.img.stop(); Assets.apply(this.img, 'boathouse'); }
+    // ((v4.2.0.1) idle but its loop plays: the page came back and replayed the loop it had when it was parked)
+    else if (this.img.anims && this.img.anims.isPlaying && !Assets.pending('boathouse')) { this.img.stop(); Assets.apply(this.img, 'boathouse'); }
   }
 
   serialize() {

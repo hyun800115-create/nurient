@@ -1061,9 +1061,13 @@ export class Game extends Phaser.Scene {
     for (let i = this.lazyImgs.length - 1; i >= 0; i--) {
       const q = this.lazyImgs[i];
       if (!q.img || !q.img.active) { this.lazyImgs.splice(i, 1); continue; }
+      // ((v4.2.0.1, LAZY-1) a pooled item picture released / handed to another item since it was queued: not for it)
+      if (q.gen !== undefined && q.img.__gen !== q.gen) { this.lazyImgs.splice(i, 1); continue; }
       if (Assets.pending(q.key)) continue;
       const anim = q.img.anims && q.img.anims.isPlaying ? q.img.anims.currentAnim && q.img.anims.currentAnim.key : null;
-      if (!anim) Assets.apply(q.img, q.key);
+      // ((v4.2.0.1, LAZY-1) only a picture still on the stand-in takes the queued key: one its owner re-skinned meanwhile
+      //  keeps what it shows now)
+      if (!anim && (!q.img.texture || q.img.texture.key === 'fv_blank')) Assets.apply(q.img, q.key);
       if (q.after) { try { q.after(q.img); } catch (e) { /* keep going */ } }
       this.lazyImgs.splice(i, 1);
     }
@@ -1561,6 +1565,14 @@ export class Game extends Phaser.Scene {
     const v = this.cameras.main.worldView;
     return x > v.x - margin && x < v.right + margin && y > v.y - margin && y < v.bottom + margin;
   }
+  /** ((v4.2.0.1) on screen or within `margin` of it, with the camera where it is NOW: worldView is only updated when a
+   *  frame is drawn, so a camera cut (centerOn) is seen one frame late by isOnScreen) */
+  isNearView(x, y, margin = 0) {
+    if (this.isOnScreen(x, y, margin)) return true;
+    const cam = this.cameras.main, z = Math.max(0.05, cam.zoom || 1);
+    const hw = cam.width / z / 2 + margin, hh = cam.height / z / 2 + margin;
+    return Math.abs(x - (cam.scrollX + cam.width / 2)) < hw && Math.abs(y - (cam.scrollY + cam.height / 2)) < hh;
+  }
   isNear(x, y, d) { const p = this.player; return Math.abs(p.x - x) < d && Math.abs(p.y - y) < d; }
 
   /** positional sfx: only when (x, y) is on or near the screen, softer just outside it. `force` = always (the chief's own actions) */
@@ -1605,6 +1617,9 @@ export class Game extends Phaser.Scene {
       dur: opts.dur || 240, height: opts.height || 60, scaleTo: to.scale,
       onDone: (s) => {
         to.arrive(it.type);
+        // ((v4.2.0.1) opts.accept(type): is the item still wanted there when it lands? (a shop sold it, the train took
+        //  the dock crate while it flew): no -> its picture goes, it never lands as an extra one that stays for good)
+        if (opts.accept && !opts.accept(it.type)) { this.effects.releaseItem(s); return; }
         to.push(it.type, s);
         if (from === this.player.stack && PRODUCT_ZONE[it.type] && (to === this.market.stock || to === this.trade.stock)) this.progress.hints[PRODUCT_ZONE[it.type]] = true;
         if (opts.sfx === 'pickup' || isPlayerDest) {
@@ -1715,6 +1730,9 @@ export class Game extends Phaser.Scene {
     if (this.warehouse) this.warehouse.update(dt);
     if (this.store) this.store.update(dt);
     if (this.boathouse) this.boathouse.update(dt);
+    // ((v4.2.0.1) the miners' food box was never updated: its food was never laid out nor drawn, deliveries flew to the
+    //  world's corner and its label kept the count it had at load. The pad itself is handled in handlePlayerPads)
+    if (this.foodBox) this.foodBox.update(dt);
     for (const h of this.houses) h.update(dt);
     for (const k in this.towers) this.towers[k].update(dt);
     this.territory.update(dt);

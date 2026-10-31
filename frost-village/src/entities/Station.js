@@ -101,7 +101,11 @@ export class Station {
       if (this.timer >= this.bal.time * this.timeMult()) { this.timer = 0; this.process(); }
     } else {
       this.idleT += dt;
-      if (this.idleT > 0.35) this.setWorking(false);
+      if (this.idleT > 0.35) {
+        this.setWorking(false);
+        // ((v4.2.0.1) idle but its work loop plays: the page came back and replayed the loop it had when it was parked)
+        if (this.img.anims && this.img.anims.isPlaying && !Assets.pending(this.cfg.sprite)) { this.working = true; this.setWorking(false); }
+      }
     }
     if (this.working) {
       this.fxT -= dt;

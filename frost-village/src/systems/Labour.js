@@ -337,19 +337,29 @@ export class Pile {
     this.setShown(false);
   }
 
-  /** a meat drying rack drawn from existing pieces: two posts, a log beam, hanging meat */
+  /** a meat drying rack: two posts and a turned wooden pole with empty hooks.
+   *  ((v4.2.0.1, RACK-1) it hung 3 item_meat_raw pictures on an item_log beam: with 1 meat in the pile the player saw 2
+   *  (1 hanging + the pile's own), with 7 meat 10 — goods that do not exist. The pile draws every meat it holds; the
+   *  rack is plain wood now (the pole is drawn, not an item picture: a log there looked like a log you could take)) */
   buildRack(x, y) {
     const gs = this.gs;
     const a = Assets.image(gs, x - 40, y - 2, 'fence_post').setDepth(y - 2);
     const b = Assets.image(gs, x + 40, y + 2, 'fence_post').setDepth(y + 2);
-    const beam = Assets.image(gs, x, y - 52, 'item_log').setDepth(y + 1);
-    beam.setScale(2.0, 1.2).setAngle(-6);
-    this.props.push(a, b, beam);
-    this.hang = [];
-    for (let i = 0; i < 3; i++) {
-      const m = Assets.image(gs, x - 22 + i * 22, y - 36 + i * 0.6, 'item_meat_raw').setDepth(y + 1.5).setAngle(78).setScale(0.75);
-      this.props.push(m); this.hang.push(m);
+    const beam = gs.add.graphics({ x, y: y - 60 }).setDepth(y + 1).setAngle(-6);
+    // hooks (behind the pole's lower edge): a cord and an S-hook each
+    beam.lineStyle(2, 0x6e5a48, 1);
+    for (const hx of [-24, 0, 24]) {
+      beam.lineBetween(hx, 4, hx, 19);
+      beam.beginPath(); beam.arc(hx + 3, 19, 3, 0, Math.PI, false); beam.strokePath();
     }
+    // the pole: body, shade, light, the cut end, a little snow (the posts' palette)
+    beam.fillStyle(0xa36c47, 1).fillRoundedRect(-52, -7, 104, 14, 7);
+    beam.fillStyle(0x7d4f33, 1).fillRoundedRect(-50, 1, 100, 6, 3);
+    beam.fillStyle(0xc79268, 1).fillRoundedRect(-48, -6, 96, 4, 2);
+    beam.fillStyle(0xe2c59a, 1).fillEllipse(51, 0, 7, 14);
+    beam.lineStyle(1, 0x8a5a3a, 1).strokeEllipse(51, 0, 7, 14);
+    beam.fillStyle(0xf4f7fb, 1).fillRoundedRect(-30, -10, 56, 5, 2.5);
+    this.props.push(a, b, beam);
     this.obstacle = gs.collision.add(x, y, 40, 'pile');
   }
 
@@ -387,7 +397,6 @@ export class Pile {
     if (!this.shown || !this.enabled) return false;
     const gs = this.gs;
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 470 + this.x * 0.02) * 3;
-    if (this.hang) { const n = this.stack.count; for (let i = 0; i < this.hang.length; i++) this.hang[i].setVisible(n > i * 3); }
     const p = gs.player;
     const on = this.pad.contains(p.x, p.y);
     const la = on ? 0.3 : 0.92;
