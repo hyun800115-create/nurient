@@ -18,7 +18,8 @@ AOSP Android 16 framework classes Robolectric runs on; pinned by SHA-256, the Ma
   4. the methods the app overrides without javac seeing the framework method (API 16 jar): View.onApplyWindowInsets,
      WebViewClient.onRenderProcessGone;
   5. 마을 옮기기: WebBridge's copy / share / paste carry the framework's runtime-visible @JavascriptInterface (the build
-     compiles them against a compile-only stub of it).
+     compiles them against a compile-only stub of it); (4.2.0.1) so do the game-sound methods audioAllowed / gameMusic,
+     and MainActivity.FOCUS_REQUEST_DELAYED = AudioManager.AUDIOFOCUS_REQUEST_DELAYED.
 Limit: the jar is the framework implementation, so it also has @hide members; the names checked here are all public
 SDK API (the ones Android Studio would offer), but this check alone cannot tell an @hide member from an SDK one.
 Exit 1 on any failure.
@@ -121,7 +122,9 @@ def main():
     # 2. every stub member exists in the real class
     stubs_out = work / 'stubs'
     stubs_out.mkdir(exist_ok=True)
-    r = subprocess.run(['javac', '-encoding', 'UTF-8', '-nowarn', '-d', str(stubs_out)] + [str(s) for s in stub_srcs], capture_output=True, text=True)
+    # (the framework jar on the class path for the types the stubs name but do not stub, e.g. android.os.Handler; the
+    #  stub sources themselves take precedence over the jar's classes of the same name)
+    r = subprocess.run(['javac', '-encoding', 'UTF-8', '-nowarn', '-cp', str(jar), '-d', str(stubs_out)] + [str(s) for s in stub_srcs], capture_output=True, text=True)
     if r.returncode != 0:
         check('stubs compile', False, r.stderr[-800:])
     for cf in sorted(stubs_out.rglob('*.class')):
@@ -183,6 +186,11 @@ def main():
     view = javap(jar, 'android.view.View') or {}
     vimm = [v['const'] for k, v in view.items() if k[0] == 'SYSTEM_UI_FLAG_IMMERSIVE_STICKY']
     check('MainActivity.IMMERSIVE_STICKY = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY', imm and vimm and int(imm.group(1), 16) == int(vimm[0]), '%s vs %s' % (imm and imm.group(1), vimm))
+    # (4.2.0.1) the audio-focus answer the app compares with (AudioManager's constant is API 26, the stub jar API 16)
+    dly = re.search(r'FOCUS_REQUEST_DELAYED\s*=\s*(\d+)', (APK / 'android/java/com/snowbloom/village/MainActivity.java').read_text(encoding='utf-8'))
+    am = javap(jar, 'android.media.AudioManager') or {}
+    adly = [v['const'] for k, v in am.items() if k[0] == 'AUDIOFOCUS_REQUEST_DELAYED']
+    check('MainActivity.FOCUS_REQUEST_DELAYED = AudioManager.AUDIOFOCUS_REQUEST_DELAYED', dly and adly and dly.group(1) == adly[0], '%s vs %s' % (dly and dly.group(1), adly))
 
     # 4. overrides javac cannot see with the API 16 jar
     for cls, name, desc in (('android.view.View', 'onApplyWindowInsets', '(Landroid/view/WindowInsets;)Landroid/view/WindowInsets;'),
@@ -199,7 +207,8 @@ def main():
     #    @JavascriptInterface (API 17+ WebView exposes nothing else to the page; the build compiles it against a stub)
     check('android.webkit.JavascriptInterface exists in Android 16', javap(jar, 'android.webkit.JavascriptInterface') is not None)
     jv = subprocess.run(['javap', '-v', '-p', '-cp', str(out), 'com.snowbloom.village.WebBridge'], capture_output=True, text=True).stdout
-    for name, desc in (('copy', '(Ljava/lang/String;)Z'), ('share', '(Ljava/lang/String;)Z'), ('paste', '()Ljava/lang/String;')):
+    for name, desc in (('copy', '(Ljava/lang/String;)Z'), ('share', '(Ljava/lang/String;)Z'), ('paste', '()Ljava/lang/String;'),
+                       ('audioAllowed', '()Z'), ('gameMusic', '(Z)V')):
         m = re.search(r'\n  public \S+ ' + name + r'\([^)]*\);\n\s+descriptor: ' + re.escape(desc) + r'\n(.*?)(?:\n\n|\n}|\Z)', jv, re.S)
         check('WebBridge.%s%s is public and @JavascriptInterface (runtime-visible)' % (name, desc),
               bool(m) and 'RuntimeVisibleAnnotations' in m.group(1) and 'android.webkit.JavascriptInterface' in m.group(1))

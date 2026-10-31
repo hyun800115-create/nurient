@@ -13,7 +13,8 @@ games) and enableOnBackInvokedCallback=true, the WebView-debugging meta-data, la
 resources.arsc for every density (and the adaptive icon layers), permissions, the classes in classes.dex (app classes
 only, no framework stubs; the back callback and the insets handler present), v1 + v2 signature blocks with the same
 certificate (--no-v1: v2 only is fine, as bundletool signs minSdk 24 APKs), zip alignment of stored entries, the packed
-www/ (full HTML page, every artifact file present byte for byte). Exit 1 on any failure.
+www/ (full HTML page, every artifact file present byte for byte; game.js carries the 4.2.0.1 background-sound hooks).
+Exit 1 on any failure.
 """
 import argparse
 import hashlib
@@ -37,6 +38,15 @@ except ImportError:
 NS = '{http://schemas.android.com/apk/res/android}'
 PKG = 'com.snowbloom.village'
 ACT = PKG + '.MainActivity'
+# (4.2.0.1) what the app's sound handling needs from the packed game (src/core/Audio.js): window.__fvApp (pause / resume /
+# state, run by MainActivity) and the bridge calls it makes (SnowbloomAndroid.audioAllowed / gameMusic). A game commit
+# from before the fix builds and passes every other check, and the music then plays on behind Home as in 4.2.0.
+SOUND_HOOKS = ('__fvApp', 'audioAllowed', 'gameMusic')
+
+
+def sound_hooks_missing(js):
+    """the SOUND_HOOKS names not found in the packed game.js (its text)"""
+    return [h for h in SOUND_HOOKS if h not in js]
 
 
 def main():
@@ -126,7 +136,7 @@ def main():
     client = 'Lcom/snowbloom/village/MainActivity$GameClient;'
     for m in ('shouldInterceptRequest', 'shouldOverrideUrlLoading', 'onRenderProcessGone'):
         check('WebViewClient.%s implemented' % m, (client, m) in meths)
-    for m in ('onBackPressed', 'onPause', 'onResume', 'onWindowFocusChanged'):
+    for m in ('onBackPressed', 'onPause', 'onResume', 'onWindowFocusChanged', 'onUserInteraction'):
         check('Activity.%s implemented' % m, ('Lcom/snowbloom/village/MainActivity;', m) in meths)
     check('OnBackInvokedCallback.onBackInvoked implemented (Android 13+ back)', ('Lcom/snowbloom/village/Api33$BackCallback;', 'onBackInvoked') in meths)
     check('View.onApplyWindowInsets implemented (edge-to-edge padding)', ('Lcom/snowbloom/village/MainActivity$GameFrame;', 'onApplyWindowInsets') in meths)
@@ -134,6 +144,11 @@ def main():
     for m in ('copy', 'share', 'paste', 'trusted'):
         check('WebBridge.%s present (마을 옮기기 bridge)' % m, ('Lcom/snowbloom/village/WebBridge;', m) in meths)
     check('WebViewClient.onPageStarted implemented (the bridge learns which page is showing)', (client, 'onPageStarted') in meths)
+    # (4.2.0.1) the game's sound: the bridge's state / music setting, the page-load re-send, audio focus on Android 8+
+    for m in ('audioAllowed', 'gameMusic'):
+        check('WebBridge.%s present (the game\'s sound)' % m, ('Lcom/snowbloom/village/WebBridge;', m) in meths)
+    check('WebViewClient.onPageFinished implemented (the sound state after each page load)', (client, 'onPageFinished') in meths)
+    check('Api26.focusRequest present (audio focus, Android 8+)', ('Lcom/snowbloom/village/Api26;', 'focusRequest') in meths)
 
     # signatures
     if a.no_v1:
@@ -169,6 +184,10 @@ def main():
         check('www/index.html is a full standards-mode page', page.lower().startswith('<!doctype html>') and '<head>' in page and
               'lib/phaser.min.js' in page and 'game.js' in page)
         www = {i.filename[len('assets/www/'):]: i for i in infos if i.filename.startswith('assets/www/')}
+        game = z.read(www['game.js']).decode('utf-8', 'replace') if 'game.js' in www else ''
+        miss = sound_hooks_missing(game)
+        check('the packed game.js has the background-sound hooks (%s): built from a game with the 4.2.0.1 fix' % ', '.join(SOUND_HOOKS),
+              bool(game) and not miss, ('missing: ' + ', '.join(miss)) if game else 'no game.js')
         info = '%d files' % len(www)
         ok = len(www) > 100
         if a.artifact:

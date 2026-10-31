@@ -1,12 +1,22 @@
 // Audio: music / sfx / ambience with persisted mute toggles. Every call is a safe no-op
 // when the audio file is missing, failed to decode or the context is still locked.
+//
+// (v4.2.0.1) Silent while the game is not on screen. Every reason to be silent is a "hold": the page is hidden
+// (visibilitychange; Android's WebView sends only this, never a window blur), pagehide, a frozen page, a window blur
+// (browsers, the claude.ai frame: Phaser's own pause-on-blur) and the Android app (tools/apk MainActivity: in the
+// background, under its exit dialog, on the lock screen, audio focus lost: window.__fvApp.pause / resume). While any
+// hold is on, the one AudioContext every game sound plays through (music, ambience loops, sfx, the 눈꽃말 voices) is
+// suspended and nothing resumes it: not Phaser's per-frame resume, not a tap (Audio.resume), not Phaser's unlock. When
+// the last hold goes it resumes exactly where it stopped (a music or sound switched off in the settings stays off).
+// (v4.2.0.1) Where the context may run without a tap (the Android app: WebView's autoplay setting) the sound is on from
+// boot, so the title's intro plays its music and sounds untouched; a browser that wants a tap keeps the tap-to-start.
 
 import { Assets } from './Assets.js';
 import { Settings } from './Save.js';
 
 export const Audio = {
   game: null,
-  started: false,         // set after the first user tap
+  started: false,         // set after the first user tap (v4.2.0.1: or at boot where no tap is needed, autoStart)
   musicKey: null,
   music: null,
   amb: {},                // key -> sound
@@ -15,8 +25,10 @@ export const Audio = {
   lastVariant: {},
   ambSeek: {},            // (v4-C2) key -> fn() seconds: where a loop starts (amb_sea_waves: in step with the water's crests)
   onImportant: null,      // (v4-C2) fn(): a milestone sound plays (the village voices duck under it)
+  holds: new Set(),       // (v4.2.0.1) reasons to be silent now ('hidden', 'blur', 'app:android', ...)
+  htmlHeld: false,        // (v4.2.0.1) HTML5-audio fallback: the playing sounds were paused for the holds
 
-  init(game) { this.game = game; },
+  init(game) { this.game = game; this.autoStart(false); this.installHolds(); },
 
   exists(key) {
     const g = this.game;
@@ -33,13 +45,14 @@ export const Audio = {
 
   /** resume a suspended / interrupted context (iOS after a call or app switch); call from any user tap */
   resume() {
-    try { const c = this.sm && this.sm.context; if (c && c.state !== 'running' && c.state !== 'closed') c.resume(); } catch (e) { /* ignore */ }
+    if (this.holds.size) return;    // (v4.2.0.1) not while the game is held silent (a tap under the exit dialog, a late chat close)
+    try { const c = this.sm && this.sm.context; if (c && c.state !== 'running' && c.state !== 'closed') quiet(c.resume()); } catch (e) { /* ignore */ }
   },
 
-  /** false while WebAudio is suspended (window blurred, iOS interruption): sounds started then would pile up */
+  /** false while WebAudio is suspended (window blurred, iOS interruption) or held silent: sounds started then would pile up */
   get live() {
     const sm = this.sm;
-    if (!sm) return false;
+    if (!sm || this.holds.size) return false;
     const c = sm.context;
     if (c && c.state !== 'running') return false;
     return !sm.locked;
@@ -90,6 +103,7 @@ export const Audio = {
     if (!key) return;
     if (!on) { if (this.music) { try { this.music.pause(); } catch (e) { /* */ } } return; }
     if (!this.exists(key)) return;
+    if (this.htmlHeld) return;      // (v4.2.0.1) HTML5 audio plays even while held: it starts when the holds go
     try {
       if (!this.music) {
         this.music = this.sm.add(key, { loop: true, volume: 0 });
@@ -153,6 +167,12 @@ export const Audio = {
   setMusicEnabled(on) {
     Settings.data.music = !!on; Settings.save();
     this.applyMusic();
+    this.tellApp();
+  },
+
+  /** (v4.2.0.1) the Android app holds audio focus only while the game's music is on (else the player's own music plays on) */
+  tellApp() {
+    try { const b = typeof window !== 'undefined' && window.SnowbloomAndroid; if (b && typeof b.gameMusic === 'function') b.gameMusic(!!Settings.data.music); } catch (e) { /* */ }
   },
 
   /**
@@ -185,4 +205,102 @@ export const Audio = {
   vibrate(ms) {
     try { if (Settings.data.sound && navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* */ }
   },
+
+  /**
+   * (v4.2.0.1) Sound from boot where the context may run without a tap (the Android app's WebView lets it): Phaser made
+   * it running (not locked), or (late) it began to run with no tap ever made on the page (a context that starts running
+   * a moment after it is made; a hold released). Otherwise the first tap starts the sound (Title, audioUnlock).
+   */
+  autoStart(late) {
+    const sm = this.sm, c = sm && sm.context;
+    if (this.started || !c || c.state !== 'running') return;
+    if (late || sm.locked) {
+      const ua = typeof navigator !== 'undefined' && navigator.userActivation;
+      if (!ua || ua.hasBeenActive) return;                 // a tap did it: that tap's own code starts the sound
+      if (sm.locked) sm.unlocked = true;                    // Phaser's next update(): locked = false + 'unlocked'
+    }
+    this.started = true;
+    this.applyMusic();
+  },
+
+  // ------------------------------------------------------------------ (v4.2.0.1) silent while not on screen
+  /** true while any hold keeps the game silent */
+  get held() { return this.holds.size > 0; },
+
+  /** one reason to be silent on / off (idempotent; any number of reasons may be on at once) */
+  hold(reason, on) {
+    if (on) this.holds.add(reason); else this.holds.delete(reason);
+    this.applyHolds();
+  },
+
+  /** held: the context suspended and Phaser's per-frame resume off; free: resumed where it stopped */
+  applyHolds() {
+    const sm = this.sm;
+    if (!sm) return;
+    const c = sm.context;
+    try {
+      if (this.holds.size) {
+        sm.gameLostFocus = true;                           // Phaser's update() resumes a suspended context every frame unless this is set
+        if (c) { if (c.state !== 'closed') quiet(c.suspend()); }   // (also over a resume still on its way)
+        else if (!this.htmlHeld) { this.htmlHeld = true; sm.onBlur(); }    // HTML5 audio: pauses what plays
+      } else {
+        sm.gameLostFocus = false;
+        if (c) { if (!sm.locked && c.state !== 'running' && c.state !== 'closed') quiet(c.resume()); }   // (still locked: the first tap unlocks it)
+        else if (this.htmlHeld) { this.htmlHeld = false; sm.onFocus(); this.applyMusic(); }
+      }
+    } catch (e) { /* */ }
+  },
+
+  /** Boot: the holds replace Phaser's own pause-on-blur; the page lifecycle and the Android app drive them */
+  installHolds() {
+    const g = this.game, sm = this.sm;
+    if (!g || !sm || this.holdsOn || typeof document === 'undefined') return;
+    this.holdsOn = true;
+    const ev = g.events, c = sm.context;
+    // window blur / focus (Phaser.Core.Events.BLUR / FOCUS): what Phaser did with pauseOnBlur, as a hold
+    ev.off('blur', sm.onGameBlur, sm); ev.off('focus', sm.onGameFocus, sm);
+    ev.on('blur', () => { if (sm.pauseOnBlur) this.hold('blur', true); });
+    ev.on('focus', () => this.hold('blur', false));
+    // Phaser's iOS nudge 100 ms after the page shows again (VISIBLE: suspend + resume) would wake a held context: kept
+    // only while nothing holds the sound, and not on Android (no such bug there; it was a small gap in the music on
+    // every return to the app)
+    if (c && sm.onGameVisible) {
+      ev.off('visible', sm.onGameVisible, sm);
+      ev.on('visible', () => {
+        const os = g.device && g.device.os;
+        if (os && os.android) return;
+        setTimeout(() => { if (!this.holds.size && c.state !== 'closed') { quiet(c.suspend()); quiet(c.resume()); } }, 100);
+      });
+    }
+    // anything else that resumes the context while held (Phaser's unlock on the first tap, a late resume)
+    if (sm.on) sm.on('unlocked', () => this.applyHolds());
+    if (c && c.addEventListener) c.addEventListener('statechange', () => { if (this.holds.size && c.state === 'running') this.applyHolds(); else this.autoStart(true); });
+    // the page lifecycle
+    const doc = document;
+    const vis = () => {
+      const hidden = doc.visibilityState === 'hidden';
+      if (!hidden) this.holds.delete('pagehide');          // (a page that shows again was not left for good)
+      this.hold('hidden', hidden);
+    };
+    doc.addEventListener('visibilitychange', vis);
+    window.addEventListener('pagehide', () => this.hold('pagehide', true));
+    window.addEventListener('pageshow', () => { this.holds.delete('pagehide'); vis(); });
+    doc.addEventListener('freeze', () => this.hold('frozen', true));
+    doc.addEventListener('resume', () => { this.holds.delete('frozen'); vis(); });
+    // the Android app: window.__fvApp.pause('android') / resume('android') (MainActivity, evaluateJavascript), and its
+    // state when this page starts (a reload, or a new renderer while the app is in the background)
+    const app = (window.__fvApp = window.__fvApp || {});
+    app.pause = (why) => this.hold('app:' + (why || 'app'), true);
+    app.resume = (why) => this.hold('app:' + (why || 'app'), false);
+    app.state = () => ({ holds: Array.from(this.holds), ctx: c ? c.state : null, live: this.live });   // (tests, chrome://inspect)
+    try {
+      const b = window.SnowbloomAndroid;
+      if (b && typeof b.audioAllowed === 'function' && b.audioAllowed() === false) this.holds.add('app:android');
+    } catch (e) { /* no bridge */ }
+    this.tellApp();
+    vis();                                                  // (also applies the app's hold)
+  },
 };
+
+/** a promise from suspend() / resume() must never surface as an unhandled rejection */
+function quiet(p) { if (p && p.catch) p.catch(() => {}); }

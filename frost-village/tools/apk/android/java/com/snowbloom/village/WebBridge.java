@@ -9,6 +9,11 @@
 // origin (AssetRouter.ORIGIN; MainActivity reports each page start). No permission is needed (the clipboard and
 // ACTION_SEND need none); nothing goes over the network. WebView calls these methods on its own background thread, so
 // the clipboard and the share sheet are used on the main thread (minSdk 24: ClipboardManager / ClipData API 11).
+//
+// (4.2.0.1) The game's sound (src/core/Audio.js): audioAllowed() -> false while the app keeps the game silent (in the
+// background, under the exit dialog, on the lock screen, audio focus lost; read by the page as it boots, the app then
+// tells it each change through window.__fvApp) · gameMusic(on) -> the game's music setting (the app takes audio focus
+// only while it is on).
 package com.snowbloom.village;
 
 import android.app.Activity;
@@ -38,6 +43,8 @@ final class WebBridge {
     private final Handler ui = new Handler(Looper.getMainLooper());
     /** the main-frame page now in the WebView (set on the main thread, read on WebView's bridge thread) */
     private volatile String pageUrl = "";
+    /** (4.2.0.1) MainActivity.audioAllowed(), kept here for the bridge thread */
+    private volatile boolean audioAllowed = true;
 
     WebBridge(Activity activity) {
         this.activity = activity;
@@ -86,6 +93,27 @@ final class WebBridge {
     private ClipboardManager clipboard() {
         Object o = activity.getSystemService(Context.CLIPBOARD_SERVICE);
         return o instanceof ClipboardManager ? (ClipboardManager) o : null;
+    }
+
+    /** MainActivity (main thread): the game may be heard now */
+    void setAudioAllowed(boolean on) {
+        audioAllowed = on;
+    }
+
+    /** (4.2.0.1) false while the app keeps the game silent; says nothing else about the phone (any page may ask) */
+    @JavascriptInterface
+    public boolean audioAllowed() {
+        return audioAllowed;
+    }
+
+    /** (4.2.0.1) the game's music setting: on = the app holds audio focus while in front, off = it leaves it to the
+     *  player's own music app */
+    @JavascriptInterface
+    public void gameMusic(final boolean on) {
+        if (!trusted() || !(activity instanceof MainActivity)) return;
+        ui.post(new Runnable() {
+            @Override public void run() { ((MainActivity) activity).setGameMusic(on); }
+        });
     }
 
     @JavascriptInterface
