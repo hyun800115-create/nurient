@@ -112,7 +112,9 @@ const BOT = ([secs, stopAt]) => {
     const o = ob.state(), p = gs.player;
     let tg = null;
     if (o.mode === 'act1' && o.step !== 'hi') tg = o.target;
-    else if (o.mode === 'act2' && !(o.card && o.card.key === 'a2:bye')) tg = gs.tutorial.target;
+    // ((v4.2.0.1 fix stage) Act 2 walks to where the yellow arrow is DRAWN (the debounced objective), as a player does:
+    //  the raw target let the bot reach the cook / fisher pad before its card could say why)
+    else if (o.mode === 'act2' && !(o.card && o.card.key === 'a2:bye')) tg = gs.tutorial.shownTarget ? gs.tutorial.shownTarget() : gs.tutorial.target;
     let vx = 0, vy = 0;
     if (tg) {
       const dx = tg.x - p.x, dy = tg.y - p.y, d = Math.hypot(dx, dy * 2);
@@ -214,11 +216,16 @@ try {
     ok(Object.keys(r.viol).length === 0, 'layout at 412x915: the card never covers its place, the finger / ghost joystick never cover the chief or the place, nothing off screen, no text overflow', r.viol);
     ok(r.paused === 0, 'the game is never paused by the tutorial', r.paused);
     const cards = Object.values(r.cards).map((c) => c[0]);
-    ok(['물고기를 모았어요!', '잘했어요!', '코인이 모였어요!', '생선을 대신 구워 줘요', '물고기를 대신 잡아 줘요', '이제 마을을 키워 봐요!'].every((x) => cards.includes(x)), 'the success beats and the Act 2 cards were shown (the cook / fisher cards say why, the goal panel says what)', cards);
+    // ((v4.2.0.1 fix stage) the beats come on the first lap only: a first lap short of the clerk's price (the customers
+    //  want 1–3 fish at random) has 「코인이 조금 모자라요」 instead of 「코인이 모였어요!」)
+    const short1 = r.seq.some((q) => q.step === 'short');
+    ok(['물고기를 모았어요!', '잘했어요!', short1 ? '코인이 조금 모자라요' : '코인이 모였어요!', '생선을 대신 구워 줘요', '물고기를 대신 잡아 줘요', '이제 마을을 키워 봐요!'].every((x) => cards.includes(x)), 'the success beats and the Act 2 cards were shown (the cook / fisher cards say why, the goal panel says what)', cards);
     ok(r.flags.length === 0, 'no 「코인이 조금 모자라요」 and no ✓ while the coins (in hand + on the cash pad) pay for the clerk', r.flags);
     ok(r.bye && r.bye.slot === 'top' && r.bye.l2 === '다음 할 일은 위에 나와요' && r.bye.card && (!r.bye.obj || (r.bye.card[1] >= r.bye.obj[3] - 1)), 'the closing card sits right under the goal panel and points at it (no "yellow arrow" without one)', r.bye);
-    // nothing left on screen
+    // nothing left on screen ((v4.2.0.1 fix stage) two frames on: Phaser steps the UI scene before the Game scene, so the
+    //  overlay hides the card one frame after the hand-over)
     const left = await page.evaluate(() => {
+      window.__step.run(2 / 60);
       const ui = window.__FV.game.scene.getScene('UI'), ov = ui.onboardOv, gs = window.__FV.scene, o = gs.onboard;
       return { card: ov.cardC.visible, skip: ov.skipC.visible, finger: ov.fingers.some((f) => f.visible), ghost: ov.gBase.visible, spot: ov.spotC.visible, ring: !!(o.ring && o.ring.visible), tip: ov.tipC.visible, held: o.held.length, enabled: true };
     });
@@ -281,6 +288,9 @@ try {
       return r ? { x: r.b.x, y: r.b.y, label: r.label, value: r.value } : null;
     });
     ok(row && row.label === '튜토리얼' && row.value === '다시 보기', '설정 › 놀이: the row 「튜토리얼 · 다시 보기」', row);
+    // ((v4.2.0.1 fix stage) one drawn frame first: Phaser picks the topmost of the touched objects by the camera's last
+    //  render list, and the rebuilt row was never drawn (the panel's dim took the tap). A phone draws every frame)
+    await render(page, 1);
     await shot(page, 'settings_replay_row');
     if (row) await tapAt(page, row.x, row.y);
     await page.evaluate(() => window.__step.run(0.4));

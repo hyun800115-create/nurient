@@ -78,7 +78,11 @@ export class Tutorial {
         : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
         : /^op_/.test(pad.id) && prog.zonesOpen() <= 1 ? 'obj_operator' : /^raw_/.test(pad.id) && !prog.anyDone(/^raw_/) ? 'obj_raw'
         : /^tower_/.test(pad.id) ? 'obj_tower' : pad.id === 'boat_rowboat' ? 'obj_boat' : null;
-      set(pad.x, pad.y, 112, key);
+      // ((v4.2.0.1) a pad right under a station's 서서 굽기 spot (the 요리사 pad in front of the grill, 120 px below it):
+      //  at 112 the arrow's tip sat on 서서 굽기. Its label is below the pad there (world.js pads35), so the arrow comes
+      //  down onto the pad itself; with a label above it stops just over the label)
+      const lb = Array.isArray(pad.opts && pad.opts.labelAt) && pad.opts.labelAt[1] > 0;
+      set(pad.x, pad.y, this.underOpSpot(pad) ? (lb ? 44 : 98) : 112, key);
       return;
     }
     // (review fix) a pad that appeared under the chief waits until he steps off once: say so
@@ -184,6 +188,16 @@ export class Tutorial {
     if (c.pad.contains(p.x, p.y)) return false;
     set(c.x, c.y, 40, 'obj_cash');
     return true;
+  }
+
+  /** ((v4.2.0.1) a station's 서서 굽기 spot (not yet staffed: its pad and label show) stands in the column the arrow over
+   *  `pad` comes down through (60–170 px above it) */
+  underOpSpot(pad) {
+    for (const s of this.gs.stationList || []) {
+      const o = s.op;
+      if (o && !o.operator && o.label && o.label.visible && Math.abs(o.x - pad.x) < 60 && pad.y - o.y > 60 && pad.y - o.y < 170) return true;
+    }
+    return false;
   }
 
   cashes(withCivic) {

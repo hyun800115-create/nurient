@@ -102,8 +102,9 @@ export class LineUpgrades {
   spotOf(kind, line) {
     // ((v4.2.0.1) 화물칸 크게: on the open snow below-left of the station porters' pad, its label below it (at dock +
     //  (96, 84) the station's coin pile stood over it; at dock + (96, 176) the porter pad's label lay on its price; further
-    //  right a shop of the town lot A1 stands over it)
-    if (kind === 'big') { const G = this.gs.v4 && this.gs.v4.growth; return G && G.dock ? { x: G.dock.x - 97, y: G.dock.y + 226, labelAt: [0, 64] } : null; }
+    //  right a shop of the town lot A1 stands over it; at dock - 97 the fog of a closed 남동쪽 땅 drifted over the left end of
+    //  its label now and then: 90 px further right its label starts past the fog's widest billow)
+    if (kind === 'big') { const G = this.gs.v4 && this.gs.v4.growth; return G && G.dock ? { x: G.dock.x - 7, y: G.dock.y + 226, labelAt: [0, 64] } : null; }
     const SP = WORLD.stationPads && WORLD.stationPads[line], st = kind === 'st2' ? this.gs.stations[line] : this.src(line);
     if (!st) return null;
     if (SP) {

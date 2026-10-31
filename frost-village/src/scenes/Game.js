@@ -1948,8 +1948,16 @@ export class Game extends Phaser.Scene {
       fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, tv[1]));
       // ((v4.2.0.1) the 점원 고용 pad right of the till stays in the frame, price and all, while the chief works near it
       //  (with the chief at the till the view's right edge stood 120 px past him: the pad's price was cut off there)
+      //  ((v4.2.0.1) blended in over 240 px instead of switched on at 360 px: the switch swung the camera 240 px in a
+      //   few frames every time the chief walked past x 1165 between the till and the net)
       const cp = this.progress && this.progress.pads && this.progress.pads.hire_clerk_market;
-      if (cp && cp.active && Math.abs(cp.x - p.x) < 360) fx = Math.min(p.x + hw - 120, Math.max(fx, cp.x + cp.pad.w / 2 + 24 - hw));
+      if (cp && cp.active) {
+        const d = Math.abs(cp.x - p.x);
+        if (d < 360) {
+          const want = Math.min(p.x + hw - 120, Math.max(fx, cp.x + cp.pad.w / 2 + 24 - hw));
+          fx += (want - fx) * Math.min(1, (360 - d) / 240);
+        }
+      }
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }

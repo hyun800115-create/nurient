@@ -409,13 +409,22 @@ export class Aide extends Staff {
         // stands, a calm walk to his side (faster only when she is far)
         if (!this.walking) { this.bestD = d; this.noGainT = 0; }
         this.route.length = 0; this.target = null; this.want = null;
-        let cx = vx + (tx - this.x) * A.pull, cy = vy + (ty - this.y) * A.pull;
+        // ((v4.2.0.1) pressed into a prop or a fence (no headway for 0.05 s): his velocity is left out for 0.3 s and she
+        //  heads straight for her spot at her full pace — copying it kept her pushing a fence's end post while he walked
+        //  round it, until the sideways unstick slid her through the fence, 7–9 m behind him on a zig-zag)
+        const own = this.pressT > 0;
         const cap = moving ? vmax : A.minSpeed + (vmax - A.minSpeed) * lag;
+        const k = own && d > 20 ? cap / Math.max(1, Math.hypot(tx - this.x, ty - this.y)) : A.pull;
+        let cx = (own ? 0 : vx) + (tx - this.x) * k, cy = (own ? 0 : vy) + (ty - this.y) * k;
         const c0 = Math.hypot(cx, cy), c = Math.min(c0, cap);
         if (c0 > c) { cx *= c / c0; cy *= c / c0; }
         this.speed = c;
         this.walking = true;
+        const x0 = this.x, y0 = this.y;
         gs.moveAgent(this, this.x + cx, this.y + cy, c, dt, 0.5);
+        if (own) this.pressT -= dt;
+        else if (c > 30 && Math.hypot(this.x - x0, this.y - y0) < c * dt * 0.4) { if ((this.noWayT = (this.noWayT || 0) + dt) > 0.05) { this.pressT = 0.3; this.noWayT = 0; } }
+        else this.noWayT = 0;
       } else {
         this.walking = false;
         this.target = null; this.vx = this.vy = 0;

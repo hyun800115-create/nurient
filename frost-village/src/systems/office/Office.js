@@ -102,7 +102,16 @@ export class Office {
     }
     for (const [kind, x, y, nx, ny, w] of WORLD.v42.moveDecor || []) {
       if (w !== when) continue;
-      for (const im of find(x, y)) { im.setPosition(nx, ny).setDepth(ny); if (im.__ob) { im.__ob.x = nx; im.__ob.y = ny; } }
+      // ((v4.2.0.1) the collider is added again at the new spot: the grid keeps each collider only in the cells around
+      //  where it was added, so a moved one was solid only where the old and the new cells overlapped);
+      //  a lamp's night light moves with it when the lights were already made (as in BigRestaurant's terrace lamp)
+      for (const im of find(x, y)) {
+        const ox = im.x, oy = im.y;
+        im.setPosition(nx, ny).setDepth(ny);
+        if (im.__ob) { const o = im.__ob; o.active = false; im.__ob = gs.collision.add(nx, ny, o.r, o.tag); }
+        const clk = gs.v4 && gs.v4.clock;
+        if (clk && clk.lights) for (const q of clk.lights) if (Math.abs(q.x - ox) < 1 && Math.abs(q.y - (oy - 92)) < 1) { q.x = nx; q.y = ny - 92; }
+      }
       void kind;
     }
   }

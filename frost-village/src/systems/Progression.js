@@ -315,6 +315,9 @@ export class Progression {
     if (!pad) return true;
     const gs = this.gs, p = gs.player, L = gs.logistics;
     if ((pad.paid || 0) > 0 || (pad.itemStack && pad.itemStack.count > 0) || (p && pad.pad.contains(p.x, p.y))) return false;
+    // ((v4.2.0.1) an item already taken in (got: saved only by the next autosave) or still flying in keeps the pad too:
+    //  the porter's reservation ends when the item leaves his hands, and the pad takes it the moment it lands)
+    if (pad.items) for (const k in pad.items) if ((pad.got[k] || 0) + pad.itemStack.countWithIncoming(k) > 0) return false;
     if (pad.items && L && L.reserved) for (const k in pad.items) if (L.reserved(pad, k) > 0) return false;
     return true;
   }
