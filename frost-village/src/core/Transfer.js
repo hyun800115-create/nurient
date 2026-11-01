@@ -23,6 +23,12 @@ export const CODE_TAG = 'SNOWBLOOM';
 export const CODE_FMT = 1;
 /** the village that was here before the last 불러오기 (a code like the ones above): 되돌리기 brings it back */
 export const MOVE_BACKUP_KEY = 'frostVillage.move.backup';
+/** ((v4.2.0.2) 관리자 모드, src/systems/Admin.js) the 관리자 사본: the village as it was when the admin panel first opened on it
+ *  (a code like the ones above, in a slot of its own: it never writes over the spare above, which may hold the only copy
+ *  of another village). 「마을 옮기기 › 불러오기 › 관리자 사본으로 되돌리기」 brings it back; like the spare it never
+ *  travels in a code (the frostVillage.move. prefix) */
+export const ADMIN_BACKUP_KEY = 'frostVillage.move.admin';
+const SPARE_KEYS = [MOVE_BACKUP_KEY, ADMIN_BACKUP_KEY];
 const KEY_RE = /^frostVillage\.[A-Za-z0-9_.-]{1,64}$/;
 const MAX_TEXT = 12e6;          // a pasted text longer than this is not read
 const MAX_PAYLOAD = 9e6;        // decompressed bytes (a damaged / hostile code can never blow up memory)
@@ -225,6 +231,9 @@ export function summarize(s, keys, made, raw) {
 export async function applyVillage(keys, opts = {}) {
   const st = opts.storage || getStore();
   if (!st) return fail('noStorage');
+  // ((v4.2.0.2) opts.spareKey: ADMIN_BACKUP_KEY when 「관리자 사본으로 되돌리기」 brings the admin copy back — the current
+  //  village then takes its place there (the two swap), and the 불러오기 spare is left alone)
+  const SPARE = opts.spareKey === ADMIN_BACKUP_KEY ? ADMIN_BACKUP_KEY : MOVE_BACKUP_KEY;
   // ((v4.2.0.1) a village from elsewhere has played its tutorial; 「예비 사본으로 되돌리기」 (opts.undo) is the player's own
   //  village coming back — left as it was)
   if (!opts.undo) markImported(keys);
@@ -233,12 +242,12 @@ export async function applyVillage(keys, opts = {}) {
   W.__FV_NO_SAVE = true;
   const before = snapshotKeys(st);
   let spare0 = null;
-  try { spare0 = st.getItem(MOVE_BACKUP_KEY); } catch (e) { spare0 = null; }
+  try { spare0 = st.getItem(SPARE); } catch (e) { spare0 = null; }
   let backup = false;
   try {
-    if (typeof before[SAVE_KEY] === 'string') { st.setItem(MOVE_BACKUP_KEY, (await encodeVillage(before)).code); backup = true; }
+    if (typeof before[SAVE_KEY] === 'string') { st.setItem(SPARE, (await encodeVillage(before)).code); backup = true; }
   } catch (e) {
-    try { if (spare0 == null) st.removeItem(MOVE_BACKUP_KEY); else st.setItem(MOVE_BACKUP_KEY, spare0); } catch (e2) { /* */ }
+    try { if (spare0 == null) st.removeItem(SPARE); else st.setItem(SPARE, spare0); } catch (e2) { /* */ }
     W.__FV_NO_SAVE = guard0;
     return fail('noRoom');
   }
@@ -250,7 +259,7 @@ export async function applyVillage(keys, opts = {}) {
     try {
       for (const k of names) if (!(k in before)) st.removeItem(k);
       for (const k of names) if (k in before) st.setItem(k, before[k]);
-      if (spare0 == null) st.removeItem(MOVE_BACKUP_KEY); else st.setItem(MOVE_BACKUP_KEY, spare0);
+      if (spare0 == null) st.removeItem(SPARE); else st.setItem(SPARE, spare0);
     } catch (e2) { /* nothing more can be done */ }
     W.__FV_NO_SAVE = guard0;
     return fail('noRoom');
@@ -276,8 +285,9 @@ export function markImported(keys) {
   return keys;
 }
 
-/** the spare village kept by the last 불러오기 (its code), or null */
-export function backupCode(st) {
+/** the spare village kept by the last 불러오기 (its code), or null. ((v4.2.0.2) key: ADMIN_BACKUP_KEY for the 관리자 사본) */
+export function backupCode(st, key) {
   st = st || getStore();
-  try { const c = st && st.getItem(MOVE_BACKUP_KEY); return typeof c === 'string' && c.indexOf(CODE_TAG) >= 0 ? c : null; } catch (e) { return null; }
+  const k = SPARE_KEYS.indexOf(key) >= 0 ? key : MOVE_BACKUP_KEY;
+  try { const c = st && st.getItem(k); return typeof c === 'string' && c.indexOf(CODE_TAG) >= 0 ? c : null; } catch (e) { return null; }
 }

@@ -246,7 +246,10 @@ export class Site {
   feed(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const ty = ch.stack.items[i].type;
-      if (this.missing(ty) > 0) return this.gs.moveItem(ch.stack, this.stock, ty, { dur: 240, height: 60, sfx: 'drop' });
+      // ((v4.2.0.2) accept: a site finished while this flies (관리자 모드 「짓는 건물 바로 완성」, a repair) takes no more —
+      //  the item's picture goes instead of lying for good next to the new building; in play a site only leaves
+      //  'foundation' once nothing is in flight, so this never changes anything there)
+      if (this.missing(ty) > 0) return this.gs.moveItem(ch.stack, this.stock, ty, { dur: 240, height: 60, sfx: 'drop', accept: () => this.state === 'foundation' });
     }
     return false;
   }

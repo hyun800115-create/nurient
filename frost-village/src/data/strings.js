@@ -459,6 +459,21 @@ export const STRINGS = {
     tip_obs_1: '쌍안경을 눌러 관망해요', tip_obs_2: '촌장님이 알아서 하루를 보내요',
     set_tutorial: '튜토리얼', set_replay: '다시 보기', onb_tour: '다시 한 번 둘러볼까요?',
     onb_tour_net: '그물 앞에 서면 물고기가 모여요', onb_tour_take: '구운 생선은 여기서 가져가요', onb_tour_pad: '발판에 서 있으면 코인을 내요',
+
+    // ---- (v4.2.0.2) 관리자 모드 (설정에서 버전 글자를 7번 누르면 열려요 · src/scenes/AdminPanel.js)
+    adm_title: '관리자 모드', adm_pinAsk: '비밀번호를 눌러 주세요', adm_pinWrong: '비밀번호가 달라요',
+    adm_pinLocked: '잠깐 쉬었다 해요 · {s}초', adm_pinCheck: '확인하고 있어요…', adm_clear: '지우기', adm_ok: '확인',
+    adm_copyNew: '관리자 사본을 남겨 뒀어요', adm_copyKept: '관리자 사본: {d} 마을', adm_backupFail: '관리자 사본을 못 남겼어요', adm_uses: '{n}번째',
+    adm_coins: '코인 넣기', adm_inf: '코인 무제한', adm_infOn: '켜짐 ∞', adm_infNote: '켜 두면 코인을 써도 줄지 않아요',
+    adm_finish: '짓는 건물 바로 완성', adm_pads: '발판 바로 사기', adm_padNear: '가까운 발판 하나', adm_padAll: '보이는 발판 모두',
+    adm_bagNow: '가방 최대 ({n}칸)', adm_speed: '시간 빠르게', adm_daynight: '낮/밤 바꾸기',
+    adm_tutorial: '튜토리얼 다시 보기', adm_close: '관리자 모드 닫기', adm_chip: '관리자',
+    adm_gave: '{n} 코인을 넣었어요', adm_infSet: '코인 무제한을 켰어요', adm_infUnset: '코인 무제한을 껐어요',
+    adm_finished: '건물 {n}채를 다 지었어요', adm_noSites: '짓고 있는 건물이 없어요',
+    adm_bought: '발판 {n}개를 샀어요', adm_boughtOne: '「{name}」 발판을 샀어요', adm_noPads: '보이는 발판이 없어요',
+    adm_bagDone: '가방이 {n}칸이 됐어요', adm_bagMax: '가방이 이미 최대예요',
+    adm_speedSet: '시간이 {n}배로 흘러요', adm_speedOne: '시간이 원래대로 흘러요',
+    adm_night: '밤이 됐어요', adm_day: '낮이 됐어요', adm_noTutorial: '지금은 튜토리얼을 다시 볼 수 없어요',
   },
 
   en: {
@@ -880,6 +895,21 @@ export const STRINGS = {
     tip_obs_1: 'Tap the binoculars to watch', tip_obs_2: 'The chief goes about the day on his own',
     set_tutorial: 'Tutorial', set_replay: 'Replay', onb_tour: "Let's take another look!",
     onb_tour_net: 'Stand by the net to catch fish', onb_tour_take: 'Grab the grilled fish here', onb_tour_pad: 'Stand on a pad to pay with coins',
+
+    // ---- (v4.2.0.2) admin mode
+    adm_title: 'Admin mode', adm_pinAsk: 'Enter the password', adm_pinWrong: "That's not the password",
+    adm_pinLocked: 'Take a short break · {s}s', adm_pinCheck: 'Checking…', adm_clear: 'Clear', adm_ok: 'OK',
+    adm_copyNew: 'Admin copy of this village kept', adm_copyKept: 'Admin copy: village of {d}', adm_backupFail: "Couldn't keep an admin copy", adm_uses: 'use #{n}',
+    adm_coins: 'Add coins', adm_inf: 'Unlimited coins', adm_infOn: 'On ∞', adm_infNote: 'While on, spending keeps your coins',
+    adm_finish: 'Finish buildings now', adm_pads: 'Buy pads now', adm_padNear: 'Nearest one', adm_padAll: 'All on screen',
+    adm_bagNow: 'Max bag ({n} now)', adm_speed: 'Faster time', adm_daynight: 'Day / night',
+    adm_tutorial: 'Replay tutorial', adm_close: 'Close admin mode', adm_chip: 'Admin',
+    adm_gave: 'Added {n} coins', adm_infSet: 'Unlimited coins on', adm_infUnset: 'Unlimited coins off',
+    adm_finished: 'Buildings finished: {n}', adm_noSites: 'Nothing is being built',
+    adm_bought: 'Pads bought: {n}', adm_boughtOne: 'Bought: {name}', adm_noPads: 'No pads to buy on screen',
+    adm_bagDone: 'The bag holds {n} now', adm_bagMax: 'The bag is already max',
+    adm_speedSet: 'Time runs ×{n}', adm_speedOne: 'Time runs normally',
+    adm_night: "It's night now", adm_day: "It's day now", adm_noTutorial: "The tutorial can't replay right now",
   },
 };
 

@@ -13,7 +13,7 @@
 //            reloads the page.
 // The Android app (tools/apk) adds window.SnowbloomAndroid { copy(text), share(text), paste() } for its own pages only.
 import { SAVE_KEY, SETTINGS_KEY, SAVE_VERSION, Save, Settings } from '../core/Save.js';
-import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode } from '../core/Transfer.js';
+import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode, ADMIN_BACKUP_KEY } from '../core/Transfer.js';
 import { getLang } from '../data/strings.js';
 
 const S = {
@@ -34,6 +34,8 @@ const S = {
     ask: '지금 마을을 이 마을로 바꿀까요? 지금 마을은 예비 사본으로 남겨 둬요.', yes: '바꾸기', no: '취소',
     applying: '마을을 옮기는 중…', done: '다 됐어요! 새 마을을 여는 중…',
     spare: '예비 사본: {d}까지 하던 마을', undo: '예비 사본으로 되돌리기', undoAsk: '예비 사본 마을로 되돌릴까요? 지금 마을은 다시 예비 사본이 돼요.',
+    // ((v4.2.0.2) 관리자 모드의 사본: only on a phone where the admin panel was opened)
+    adminSpare: '관리자 사본: {d}까지 하던 마을', adminUndo: '관리자 사본으로 되돌리기', adminUndoAsk: '관리자 사본 마을로 되돌릴까요? 지금 마을은 관리자 사본 자리에 남겨 둬요.',
     unchanged: '지금 마을은 그대로예요.',
     rank: ['서리마을', '서리읍'],
     header: '[행복한 눈꽃마을 이야기] 마을 옮기기 코드 · {name} {coins}코인 · {d}',
@@ -70,6 +72,7 @@ const S = {
     ask: 'Replace your current village with this one? Your current village is kept as a spare copy.', yes: 'Replace', no: 'Cancel',
     applying: 'Moving the village…', done: 'Done! Opening your village…',
     spare: 'Spare copy: the village you had until {d}', undo: 'Go back to the spare copy', undoAsk: 'Go back to the spare village? Your current village becomes the spare copy.',
+    adminSpare: 'Admin copy: the village you had until {d}', adminUndo: 'Go back to the admin copy', adminUndoAsk: 'Go back to the admin copy? Your current village takes its place as the admin copy.',
     unchanged: 'Your current village has not changed.',
     rank: ['Frost Village', 'Frost Town'],
     header: '[Snowbloom Village] village code · {name} {coins} coins · {d}',
@@ -248,13 +251,20 @@ export class MovePanel {
     this.noBtn.addEventListener('click', () => this.cancelPending());
     r3.append(this.noBtn, this.yesBtn);
     card.append(this.cardTitle, this.cardList, this.cardQ, r3);
-    // the spare village of the last 불러오기
-    const undo = this.undoBox = h('div', 'fm-undo'); undo.id = 'fm-undo'; undo.hidden = true;
-    this.undoText = h('div', null);
-    this.undoBtn = h('button', 'fm-link'); this.undoBtn.type = 'button'; this.undoBtn.id = 'fm-undo-btn';
-    this.undoBtn.addEventListener('click', () => { const c = backupCode(); if (c) this.check(c, true); });
-    undo.append(this.undoText, this.undoBtn);
-    inn.append(this.inLead, this.codeIn, r2, this.msgIn, card, undo);
+    // the spare village of the last 불러오기, and ((v4.2.0.2) 관리자 모드) the 관리자 사본 — each in its own slot
+    const spareRow = (id, key, label) => {
+      const R = { key, label, code: null, when: '' };
+      R.box = h('div', 'fm-undo'); R.box.id = id; R.box.hidden = true;
+      R.text = h('div', null);
+      R.btn = h('button', 'fm-link'); R.btn.type = 'button'; R.btn.id = id + '-btn';
+      R.btn.addEventListener('click', () => { const c = backupCode(null, key); if (c) this.check(c, true, key); });
+      R.box.append(R.text, R.btn);
+      return R;
+    };
+    this.spareRow = spareRow('fm-undo', null, 'spare');
+    this.adminRow = spareRow('fm-undo-admin', ADMIN_BACKUP_KEY, 'adminSpare');
+    this.undoBox = this.spareRow.box; this.undoText = this.spareRow.text; this.undoBtn = this.spareRow.btn;
+    inn.append(this.inLead, this.codeIn, r2, this.msgIn, card, this.spareRow.box, this.adminRow.box);
 
     body.append(out, inn);
     sheet.append(head, tabs, body);
@@ -284,6 +294,7 @@ export class MovePanel {
     this.pasteBtn.textContent = L.paste; this.loadBtn.textContent = L.load;
     this.yesBtn.textContent = L.yes; this.noBtn.textContent = L.no;
     this.undoBtn.textContent = L.undo;
+    this.adminRow.btn.textContent = L.adminUndo;
     const br = bridge();
     this.shareBtn.hidden = !(br && typeof br.share === 'function');
     // (a browser that can read the clipboard, or the Android app; a long press always works)
@@ -431,7 +442,7 @@ export class MovePanel {
   }
 
   /** check a code; when it is good, show what it holds and ask */
-  async check(text, isUndo) {
+  async check(text, isUndo, spareKey) {
     if (this.busy) return;
     const L = this.L;
     this.cancelPending(true);
@@ -451,7 +462,8 @@ export class MovePanel {
     if (window.__FV) window.__FV.lastMoveCheck = r.ok ? { ok: true, summary: r.summary, keys: Object.keys(r.keys) } : { ok: false, error: r.error, info: r.info || null };
     if (!r.ok) { this.setMsg(this.msgIn, this.errText(r), true); return; }
     this.setMsg(this.msgIn, '');
-    this.pending = { keys: r.keys, summary: r.summary, undo: !!isUndo };
+    const adminCopy = !!isUndo && spareKey === ADMIN_BACKUP_KEY;
+    this.pending = { keys: r.keys, summary: r.summary, undo: !!isUndo, spareKey: adminCopy ? ADMIN_BACKUP_KEY : null };
     const sm = r.summary, li = [];
     li.push(L.rank[sm.rank === 2 ? 1 : 0] + ' · ' + fill(L.coins, { n: num(sm.coins) }));
     li.push(fill(L.residents, { n: num(sm.residents) }) + (sm.day ? ' · ' + fill(L.day, { n: sm.day }) : '') + (sm.sites ? ' · ' + fill(L.sites, { n: sm.sites }) : ''));
@@ -461,7 +473,7 @@ export class MovePanel {
     this.cardTitle.textContent = L.found;
     this.cardList.textContent = '';
     for (const s of li) this.cardList.appendChild(h('li', null, s));
-    this.cardQ.textContent = isUndo ? L.undoAsk : L.ask;
+    this.cardQ.textContent = adminCopy ? L.adminUndoAsk : isUndo ? L.undoAsk : L.ask;
     this.card.hidden = false;
     try { this.card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* */ }
   }
@@ -480,7 +492,7 @@ export class MovePanel {
     this.yesBtn.disabled = true; this.noBtn.disabled = true; this.loadBtn.disabled = true;
     this.setMsg(this.msgIn, L.applying);
     let r;
-    try { r = await applyVillage(p.keys, { undo: !!p.undo }); } catch (e) { r = { ok: false, error: 'noRoom' }; }
+    try { r = await applyVillage(p.keys, { undo: !!p.undo, spareKey: p.spareKey || undefined }); } catch (e) { r = { ok: false, error: 'noRoom' }; }
     if (!r.ok) {
       this.busy = false;
       this.applying = false;
@@ -494,20 +506,26 @@ export class MovePanel {
     setTimeout(() => { try { if (this.host.reload) this.host.reload(); else window.location.reload(); } catch (e) { /* */ } }, 450);
   }
 
-  showUndo() {
-    const c = backupCode();
-    if (!c) { this.undoBox.hidden = true; return; }
-    // (the date shown: when that village was last saved, read from the spare code itself)
-    this.undoBox.hidden = false;
-    this.undoText.textContent = fill(this.L.spare, { d: this.spareWhen || '…' });
-    if (!this.spareWhen) {
+  showUndo() { this.showSpare(this.spareRow); this.showSpare(this.adminRow); }
+
+  /** one spare row: shown while its slot holds a code; the date shown is when that village was last saved, read from the
+   *  code itself — ((v4.2.0.2) remembered per code and language: a slot written again (the admin panel) shows its own) */
+  showSpare(R) {
+    const c = backupCode(null, R.key);
+    if (!c) { R.box.hidden = true; R.code = null; R.when = ''; return; }
+    const tag = this.lang + '|' + c.length + '|' + c.slice(-8);
+    if (tag !== R.code) { R.code = tag; R.when = ''; }
+    R.box.hidden = false;
+    R.text.textContent = fill(this.L[R.label], { d: R.when || '…' });
+    if (!R.when) {
       decodeVillage(c).then((r) => {
-        if (!r.ok) { this.undoBox.hidden = true; return; }
+        if (R.code !== tag) return;
+        if (!r.ok) { R.box.hidden = true; return; }
         const dr = dryRun(r.keys, r.payload.made);
         const t = dr.ok && dr.summary.savedAt ? dr.summary.savedAt : r.payload.made;
-        this.spareWhen = when(t, this.lang);
-        this.undoText.textContent = fill(this.L.spare, { d: this.spareWhen });
-      }).catch(() => { this.undoBox.hidden = true; });
+        R.when = when(t, this.lang);
+        R.text.textContent = fill(this.L[R.label], { d: R.when });
+      }).catch(() => { if (R.code === tag) R.box.hidden = true; });
     }
   }
 }
