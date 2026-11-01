@@ -491,6 +491,10 @@ export const V42_SPEC = {
     revealPx: R(40, 2000, 260), revealHyst: R(0, 500, 60), deskPadS: R(0, 10, 0.4),
   },
   courier: { every: R(5, 3600, 60), rushAt: R(1, 1e7, 1000, true), minPad: R(1, 1e7, 100, true), speed: R(20, 1000, 150), vaultAt: R(1, 1e9, 5000, true), from: R(0, 23, 7), to: R(1, 24, 21) },
+  // ((aide fix) 총총이 keeps up with the chief)
+  aide: { catchUp: R(0, 2, 0.35), catchFrom: R(0, 2000, 16), catchFull: R(1, 4000, 256), pull: R(0.2, 20, 3), back: R(0, 600, 120), side: R(0, 600, 60),
+    backStill: R(0, 600, 40), sideStill: R(0, 600, 80), arrive: R(2, 200, 14), routeFrom: R(60, 5000, 320), replan: R(0.1, 10, 0.6), teleport: R(200, 1e5, 900),
+    minSpeed: R(20, 2000, 120), walkPx: R(10, 1000, 120), animMin: R(0.1, 3, 0.6), animMax: R(0.5, 5, 2.2) },
   bank: { site: { coins: R(1, 1e9, 3000, true), item_plank: R(0, 999, 24, true), item_ingot: R(0, 999, 12, true), time: R(1, 600, 12) } },
   ledger: { window: R(10, 3600, 300), emptyS: R(1, 3600, 30), fullS: R(1, 3600, 60) },
   news: { hour: R(0, 23, 6), keep: R(1, 10, 3, true) },
@@ -566,4 +570,7 @@ function checkV42(B) {
   if (V.letters.maxH < V.letters.minH) { warn('v42.letters.maxH', V.letters.maxH, V.letters.minH); V.letters.maxH = V.letters.minH; }
   if (V.depot.sell.close <= V.depot.sell.open) { warn('v42.depot.sell.close', V.depot.sell.close, Math.min(24, V.depot.sell.open + 1)); V.depot.sell.close = Math.min(24, V.depot.sell.open + 1); }
   if (V.freight.big < V.freight.perTrain) { warn('v42.freight.big', V.freight.big, V.freight.perTrain); V.freight.big = V.freight.perTrain; }
+  // ((aide fix) the catch-up ramp runs from catchFrom up to catchFull; the walk speeds up, never down past animMin
+  if (V.aide.catchFull <= V.aide.catchFrom) { warn('v42.aide.catchFull', V.aide.catchFull, V.aide.catchFrom + 1); V.aide.catchFull = V.aide.catchFrom + 1; }
+  if (V.aide.animMax < V.aide.animMin) { warn('v42.aide.animMax', V.aide.animMax, V.aide.animMin); V.aide.animMax = V.aide.animMin; }
 }

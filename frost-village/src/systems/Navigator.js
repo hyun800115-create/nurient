@@ -356,7 +356,8 @@ export class Navigator {
     while (R.length > 1 && gdist(p.x, p.y, R[0].x, R[0].y) < 40) this.routeStart = R.shift();
     this.measure();
     // the tutorial arrow on the same pad: only the arrow + the dots
-    const T = gs.tutorial, tg = T && T.target;
+    // ((v4.2.0.1) where the arrow is DRAWN: the objective is debounced, the live one may not be on screen yet)
+    const T = gs.tutorial, tg = T && (T.shownTarget ? T.shownTarget() : T.target);
     const samePad = !!(tg && d.pad && Math.abs(tg.x - d.pad.x) < 30 && Math.abs(tg.y - d.pad.y) < 60);
     const small = !!(tg && !samePad);
     // the chevron: 56 px ahead of his boots toward the next route point

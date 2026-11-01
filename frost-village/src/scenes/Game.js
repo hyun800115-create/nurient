@@ -16,6 +16,8 @@ import { Ground } from '../systems/Ground.js';
 import { Economy } from '../systems/Economy.js';
 import { Progression, STEPS } from '../systems/Progression.js';
 import { Tutorial, PRODUCT_ZONE } from '../systems/Tutorial.js';
+// ---- (v4.2.0.1) the first-run tutorial (a finger shows what to do)
+import { Onboarding } from '../systems/Onboarding.js';
 import { Player } from '../entities/Player.js';
 import { Worker, Porter } from '../entities/Worker.js';
 import { Roads } from '../systems/Roads.js';
@@ -90,7 +92,7 @@ class UIProxy {
   setCoins(v, ms) { const s = this.s; if (s) s.setCoins(v, ms); }
   coinFly(wx, wy, n) { const s = this.s; if (s) s.coinFly(wx, wy, n); }
   toast(msg) { const s = this.s; if (s) s.toast(msg); }
-  banner(msg, sub) { const s = this.s; if (s) s.banner(msg, sub); }
+  banner(msg, sub, opts) { const s = this.s; if (s) s.banner(msg, sub, opts); }
   setObjective(key, tg, text) { const s = this.s; if (s) s.setObjective(key, tg, text); }
   celebrate(v3) { const s = this.s; if (s) s.celebrate(v3); }
   openBuildMenu(site) { const s = this.s; if (s && s.openBuildMenu) s.openBuildMenu(site); }
@@ -115,7 +117,8 @@ const NO_AGENTS = [];
 export class Game extends Phaser.Scene {
   constructor() { super('Game'); }
 
-  init(data) { this.fresh = !!(data && data.fresh); }
+  // ((v4.2.0.1) broken: a quarantine restart — an existing player whose save broke, not a new player: no first-run tutorial)
+  init(data) { this.fresh = !!(data && data.fresh); this.brokenRestart = !!(data && data.broken); }
 
   create() {
     this._broken = false;
@@ -127,7 +130,7 @@ export class Game extends Phaser.Scene {
       console.error('[FrostVillage] could not restore the saved game, starting fresh:', e);
       if (this.fresh) throw e;
       Save.quarantine();
-      this.time.delayedCall(0, () => this.scene.restart({ fresh: true }));
+      this.time.delayedCall(0, () => this.scene.restart({ fresh: true, broken: true }));
     }
   }
 
@@ -155,6 +158,11 @@ export class Game extends Phaser.Scene {
     this.keysInUse = new Set();   // character looks taken by clerks / porters (residents and customers avoid them)
     this.roads = new Roads((z) => !!(this.zones[z] && this.zones[z].unlocked), undefined, (r) => !this.territory || this.territory.isOpen(r));
     this.roads.blocked = (x, y) => !!(this.collision && this.collision.blocked(x, y, 12));
+    // ((v4.2.0.1) the same with room to spare: a way round something keeps off the walls (Paths.gridPath)
+    this.roads.wide = (x, y) => !!(this.collision && this.collision.blocked(x, y, 22));
+    // ((v4.2.0.1 final, review #3) the safety net's way round is planned for the walker's own radius (Roads.detour)
+    this.roads.blockedR = (x, y, r) => !!(this.collision && this.collision.blocked(x, y, r));
+    this.roads.offLand = (x, y) => !!(this.collision && this.collision.offLand(x, y));
     // (v3) who needs what (porters ask), the pictures that arrive after the title
     this.logistics = new Logistics(this);
     this.lazyImgs = [];
@@ -216,6 +224,11 @@ export class Game extends Phaser.Scene {
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
     this.progress = new Progression(this, sv.progress);
     this.tutorial = new Tutorial(this);
+    // ---- (v4.2.0.1) the first-run tutorial: a new village (no save, not a quarantine restart, not a save that is there but
+    //  could not be read — cut off / from a newer build) gets it; a save carries its bits only when it began with it (an old
+    //  save never sees it)
+    this.onboard = new Onboarding(this, sv.onb, this.saved === null && !this.brokenRestart && !(!this.fresh && Save.lastUnreadable));
+    this.events.once('shutdown', () => { if (this.onboard) this.onboard.destroy(); });
     // ---- (v4.2) made before the sites are restored (its own sites take their saved state)
     buildV42(this, sv);
 
@@ -249,6 +262,9 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.pads2 || {}) spot(WORLD.pads2[id], 90);
     for (const id in WORLD.towers || {}) spot(WORLD.towers[id], 120);
     if (this.foodBox) spot(this.foodBox, 80);
+    // ((v4.2.0.1) every paid pad's spot: the ones standing now; a pad made later adds its own (UnlockPad))
+    for (const id in WORLD.pads35 || {}) spot(WORLD.pads35[id], 80);
+    for (const p of this.paidPads()) this.addPadSpot(p.x, p.y);
     this.events.on('built', (k, site) => { const b = site.built; if (b && b.inPad) spot(b.inPad, 70); if (b && b.outPad) spot(b.outPad, 70); if (b && b.op) { spot(b.op, 64); spot(b.op.post, 40); } });
     this.events.on('storeSold', () => this.progress.setFlag('firstStoreSale'));
     this.events.on('built', (k) => { if (k === 'toolsmith') this.time.delayedCall(3500, () => this.introduceFood()); });
@@ -1061,9 +1077,13 @@ export class Game extends Phaser.Scene {
     for (let i = this.lazyImgs.length - 1; i >= 0; i--) {
       const q = this.lazyImgs[i];
       if (!q.img || !q.img.active) { this.lazyImgs.splice(i, 1); continue; }
+      // ((v4.2.0.1, LAZY-1) a pooled item picture released / handed to another item since it was queued: not for it)
+      if (q.gen !== undefined && q.img.__gen !== q.gen) { this.lazyImgs.splice(i, 1); continue; }
       if (Assets.pending(q.key)) continue;
       const anim = q.img.anims && q.img.anims.isPlaying ? q.img.anims.currentAnim && q.img.anims.currentAnim.key : null;
-      if (!anim) Assets.apply(q.img, q.key);
+      // ((v4.2.0.1, LAZY-1) only a picture still on the stand-in takes the queued key: one its owner re-skinned meanwhile
+      //  keeps what it shows now)
+      if (!anim && (!q.img.texture || q.img.texture.key === 'fv_blank')) Assets.apply(q.img, q.key);
       if (q.after) { try { q.after(q.img); } catch (e) { /* keep going */ } }
       this.lazyImgs.splice(i, 1);
     }
@@ -1312,30 +1332,119 @@ export class Game extends Phaser.Scene {
     return n;
   }
 
+  /** ((v4.2.0.1) every paid pad standing now: Progression steps, the bench upgrades, the LineUpgrades offers, the office hire pad */
+  paidPads() {
+    const out = [], pr = this.progress, V = this.v42;
+    if (pr) { for (const id in pr.pads) out.push(pr.pads[id]); for (const k in pr.upPads) out.push(pr.upPads[k]); }
+    if (V && V.lines) for (const id in V.lines.pads) out.push(V.lines.pads[id]);
+    if (V && V.office && V.office.hirePad) out.push(V.office.hirePad);
+    return out;
+  }
+
+  /** ((v4.2.0.1) one live paid pad per spot: the shown pad (other than `exceptId`) whose floor diamond comes closer than
+   *  16 px to a pad of half-width `hw` at (x, y) — |dx| + 2|dy| < hw + its hw + 16 — or null. skipBench: the bench
+   *  upgrades step aside for a Progression pad (Progression.benchAside) */
+  paidPadNear(x, y, hw, exceptId, skipBench) {
+    const pr = this.progress;
+    for (const p of this.paidPads()) {
+      if (!p || !p.active || p.id === exceptId || !p.pad) continue;
+      if (skipBench && pr && pr.upPads && (pr.upPads.capacity === p || pr.upPads.speed === p)) continue;
+      if (Math.abs(p.x - x) + 2 * Math.abs(p.y - y) < hw + p.pad.w / 2 + 16) return p;
+    }
+    return null;
+  }
+
+  /** ((v4.2.0.1) a workshop's hire / 짐꾼 2 pad on a plot that names its own spot (world.js plots.<id>.pads.line /
+   *  .p2, px from the plot centre: the default spot by its output pad was behind something there), or null */
+  plotPad(src, which) {
+    const c = src && src.isWorkshop && src.site && src.site.cfg, o = c && c.pads && c.pads[which];
+    return Array.isArray(o) ? { x: src.site.x + o[0], y: src.site.y + o[1] } : null;
+  }
+
+  /** ((v4.2.0.1) how many of a paid pad's 29 sample points — its floor diamond and its price (coin + number) — a picture
+   *  standing in front of it covers: a pine, a prop, a fence, a building. 2 or fewer is a pad in clear view (the 잡화점
+   *  점원 pad; (v4.2.1) the 고기 통조림 기계 pad, MeatCan.padPos) */
+  padCover(x, y) {
+    const occ = this.occlusion, hw = 45.25 * 1.9, hh = hw / 2;
+    let pts = this._padPts;
+    if (!pts) {
+      pts = this._padPts = [];
+      for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) if (Math.abs(i) + Math.abs(j) <= 3.8) pts.push([(i / 4) * hw, (j / 4) * hh]);
+      for (const dx of [-36, -12, 12, 36]) pts.push([dx, 2]);         // the price (coin + number)
+    }
+    // (a picture covers the floor above its foot: only the ones standing below the pad's top edge, close by)
+    // (the props, the trees — the forest's choppable ones too — and the buildings standing by: a 망루 next to the plot;
+    //  not the goods in piles or in hands, which come and go)
+    // ((v4.2.1) and the props the view culling has parked off the display list while the camera is far: Culler.parked)
+    const park = (this.culler && this.culler.parked) || [];
+    const near = this.statics.concat(this.children.list.concat(park).filter((o) => o && o.texture && /^(bld_|props_(?!items))/.test(o.texture.key)))
+      .filter((o) => o && o.active && o.visible && o.frame && o.y > y - hh - 8 && o.y < y + 700 && Math.abs(o.x - x) < hw + 260);
+    let n = 0;
+    for (const [px, py] of pts) {
+      const qx = x + px, qy = y + py;
+      for (const o of near) {
+        const b = o.getBounds();
+        if (qx < b.x || qx > b.right || qy < b.y || qy > b.bottom) continue;
+        let s = true;
+        try { if (occ && occ.solid) s = occ.solid(o, qx, qy); } catch (e) { s = true; }
+        if (s) { n++; break; }
+      }
+    }
+    return n;
+  }
+
+  /** ((v4.2.0.1) the 잡화점 점원 pad: right of the register, a little in front of it. The store can stand on any M
+   *  plot: where that spot is not walkable or a pine / prop / fence stands over the pad or its price (the border forest
+   *  by se_m1, the rail fence and the 동남쪽 망루 by e_m2), the first clear spot of a few around the register — up
+   *  and right of it last (on e_m2 the only open ground) — else the least covered one */
+  storeClerkSpot() {
+    const r = this.store.register, C = this.collision;
+    const covered = (x, y) => this.padCover(x, y);
+    let best = null;
+    for (const o of [[150, 58], [150, 20], [190, 40], [150, 96], [110, 112], [230, 76], [190, -50]]) {
+      const x = r.x + o[0], y = r.y + o[1];
+      if (C.blocked(x, y, 16)) continue;
+      const n = covered(x, y);
+      if (n <= 2) return { x, y };
+      if (!best || n < best.n) best = { x, y, n };
+    }
+    return best ? { x: best.x, y: best.y } : { x: r.x + 150, y: r.y + 58 };
+  }
+
+  /** ((v4.2.0.1) a paid pad's spot joins the places residents never stand on (once per spot) */
+  addPadSpot(x, y) {
+    const S = this.padSpots;
+    if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    for (const q of S) if (Math.abs(q.x - x) < 4 && Math.abs(q.y - y) < 4) return;
+    S.push({ x, y, r: 80 });
+  }
+
   /** where the pad of a v3 step goes (towers: in front of the site; boat: by the boathouse; new porters / clerk: by their building) */
   padSpot(s) {
-    if (s.type === 'tower') { const w = WORLD.towers && WORLD.towers[s.id]; if (!w || (w.in && !this.territory.isOpen(w.in))) return null; const d = Assets.def('site_plot_S').dropPoint || [2, 64]; return { x: w.x + d[0], y: w.y + d[1] }; }
+    // ((v4.2.0.1) towers.<id>.pad: the 남쪽 / 동남쪽 pads stood inside the closed land's fog bank)
+    if (s.type === 'tower') { const w = WORLD.towers && WORLD.towers[s.id]; if (!w || (w.in && !this.territory.isOpen(w.in))) return null; const d = Array.isArray(w.pad) ? w.pad : (Assets.def('site_plot_S').dropPoint || [2, 64]); return { x: w.x + d[0], y: w.y + d[1] }; }
     if (s.type === 'boat') return this.boathouse ? this.boathouse.boatPad : null;
     if (s.type === 'porter') {
       const src = this.sourceById(s.station);
       if (!src || !src.outPad) return null;
-      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+      return this.plotPad(src, 'line') || { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
-    if (s.type === 'clerk' && s.seller === 'store' && this.store) return { x: this.store.register.x + 150, y: this.store.register.y + 20 };
+    // ((v4.2.0.1) +58: the snow fort behind it now, not over its top; on another plot the first clear spot by the register)
+    if (s.type === 'clerk' && s.seller === 'store' && this.store) return this.storeClerkSpot();
     // ---- (v4-B) the station porters' pad and the 승격식 pad on the station square
     if (s.type === 'stationPorter') { const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.porter.x, y: q.porter.y } : null; }
     if (s.type === 'rank') {
       // ---- (v4-C) the 승격식 is held in front of the town hall once it stands
-      if (this.civic && this.civic.hall) return this.civic.hall.venue('rank');
+      if (this.civic && this.civic.hall) return this.civic.hall.rankPadPos ? this.civic.hall.rankPadPos() : this.civic.hall.venue('rank');     // ((v4.2.0.1) off the tax box)
       const q = WORLD.v4 && WORLD.v4.square; return q && this.territory.isOpen('rail') ? { x: q.rank.x, y: q.rank.y } : null;
     }
     // ---- (v4-C) the big restaurant's staff (계산 점원 → 요리사 → 서빙 직원) on one spot beside it
-    if (s.type === 'restStaff') { const r = this.civic && this.civic.restaurant; return r ? { x: r.staffSpot.x, y: r.staffSpot.y } : null; }
+    if (s.type === 'restStaff') { const r = this.civic && this.civic.restaurant; return r ? (r.hirePadPos ? r.hirePadPos() : { x: r.staffSpot.x, y: r.staffSpot.y }) : null; }     // ((v4.2.0.1) a metre out)
     // (v3.5) the operator of a v3 workshop: on the porter pad's spot (the porter pad follows it)
     if (s.type === 'operator') {
       const src = this.sourceById(s.station);
       if (!src || !src.outPad) return null;
-      return { x: src.outPad.x + 120, y: src.outPad.y + 60 };
+      return this.plotPad(src, 'line') || { x: src.outPad.x + 120, y: src.outPad.y + 60 };
     }
     return null;
   }
@@ -1479,7 +1588,34 @@ export class Game extends Phaser.Scene {
 
   workerHome(type, index) {
     const h = WORLD.workerHome[type];
-    return [h[0] + index * 40, h[1] + index * 20];
+    // ((v4.2.0.1) a home on open ground: the row (+40, +20 a worker) ran into the smelter, the sawmill, the hay bale
+    //  and a fence, and an idle worker walked on the spot there for good. Looked up once per (type, index))
+    const key = type + ':' + index, C = this._homes || (this._homes = {});
+    if (C[key]) return C[key].slice();
+    const q = this.freeSpot(h[0] + index * 40, h[1] + index * 20, 16, 140);
+    const out = [Math.round(q.x), Math.round(q.y)];
+    if (this.collision.walk) C[key] = out;          // (cached once the land is known: the fog moves homes otherwise)
+    return out.slice();
+  }
+
+  /** ((v4.2.0.1) the free spot nearest (x, y) for a walker of radius `rad` (rings out to `maxR` ground px), or (x, y)
+   *  itself when it is free or nothing near is. `ok(x, y)`: a further test a spot must pass (reached from the pad) */
+  freeSpot(x, y, rad = 14, maxR = 120, ok) {
+    const C = this.collision;
+    if (!C || (!C.blocked(x, y, rad) && (!ok || ok(x, y)))) return { x, y };
+    for (let r = 12; r <= maxR; r += 12) {
+      let best = null, bd = Infinity;
+      const n = Math.max(8, Math.round(r / 6));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2, qx = x + Math.cos(a) * r, qy = y + (Math.sin(a) * r) / 2;
+        if (C.blocked(qx, qy, rad) || (ok && !ok(qx, qy))) continue;
+        // (all as near: the one most in front — south, away from the shore, seen by the camera)
+        const d = -Math.sin(a);
+        if (d < bd) { bd = d; best = { x: qx, y: qy }; }
+      }
+      if (best) return best;
+    }
+    return { x, y };
   }
 
   hireWorker(type, index, instant, x, y, role) {
@@ -1522,6 +1658,12 @@ export class Game extends Phaser.Scene {
   followRoute(a, speed, dt, tol = 10) {
     const r = a.route;
     if (!r || !r.length) return true;
+    // ((v4.2.0.1 final, soak R5) a new walk (nobody walked this one for a moment: it stood, worked, unloaded) starts
+    //  its 'no closer' bookkeeping afresh: the last trip's best distance to the same drop spot made the next trip 'give
+    //  up' 3 s in — the hunters stopped 40–250 px short of the smokehouse rack and threw the meat from there
+    const now = this.walkClock || 0;
+    if (!(now - a._frT <= 0.6)) { a._wpX = undefined; a._rpX = undefined; a._rpN = 0; }
+    a._frT = now;
     a.ri = a.ri || 0;
     while (a.ri < r.length - 1 && gdist(a.x, a.y, r[a.ri].x, r[a.ri].y) < 34) a.ri++;
     const w = r[a.ri];
@@ -1534,11 +1676,20 @@ export class Game extends Phaser.Scene {
     else if ((a._wpT += dt) > 3) {
       a._wpT = 0; a._wpBest = Infinity;
       if (!last) { a.ri++; return false; }
+      // ((v4.2.0.1) the end of the route but still far from it (a fence corner, a wall, the fog's edge): a new way
+      //  from here round what stood in the way, twice, before it counts as arrived — that 'arrival' let porters
+      //  unload, the courier scoop a till and bank his sack through fences and walls)
+      if (a._rpX !== w.x || a._rpY !== w.y) { a._rpX = w.x; a._rpY = w.y; a._rpN = 0; }
+      if (dd > 60 && a._rpN < 2) {
+        a._rpN++;
+        const way = this.roads.detour(a.x, a.y, w.x, w.y, [], a.radius);
+        if (way && way.length > 1) { r.length = 0; for (const q of way) r.push(q); a.ri = 0; a._wpX = undefined; return false; }
+      }
       a.vx = a.vy = 0;
       return true;
     }
     if (this.moveAgent(a, w.x, w.y, speed, dt, last ? tol : 28)) {
-      if (last) return true;
+      if (last) { a._rpN = 0; return true; }
       a.ri++;
     }
     return false;
@@ -1570,7 +1721,18 @@ export class Game extends Phaser.Scene {
     const v = this.cameras.main.worldView;
     return x > v.x - margin && x < v.right + margin && y > v.y - margin && y < v.bottom + margin;
   }
+  /** ((v4.2.0.1) on screen or within `margin` of it, with the camera where it is NOW: worldView is only updated when a
+   *  frame is drawn, so a camera cut (centerOn) is seen one frame late by isOnScreen) */
+  isNearView(x, y, margin = 0) {
+    if (this.isOnScreen(x, y, margin)) return true;
+    const cam = this.cameras.main, z = Math.max(0.05, cam.zoom || 1);
+    const hw = cam.width / z / 2 + margin, hh = cam.height / z / 2 + margin;
+    return Math.abs(x - (cam.scrollX + cam.width / 2)) < hw && Math.abs(y - (cam.scrollY + cam.height / 2)) < hh;
+  }
   isNear(x, y, d) { const p = this.player; return Math.abs(p.x - x) < d && Math.abs(p.y - y) < d; }
+  /** ((v4.2.0.1 final, review #4) a walker standing at (x, y) cannot be seen at all: neither its feet nor the top of
+   *  the tallest carry stack (~220 px above them) is near the view (a placement there is never seen to pop) */
+  unseen(x, y) { return !this.isOnScreen(x, y, 120) && !this.isOnScreen(x, y - 220, 120); }
 
   /** positional sfx: only when (x, y) is on or near the screen, softer just outside it. `force` = always (the chief's own actions) */
   sfxAt(key, x, y, opts, force) {
@@ -1614,6 +1776,9 @@ export class Game extends Phaser.Scene {
       dur: opts.dur || 240, height: opts.height || 60, scaleTo: to.scale,
       onDone: (s) => {
         to.arrive(it.type);
+        // ((v4.2.0.1) opts.accept(type): is the item still wanted there when it lands? (a shop sold it, the train took
+        //  the dock crate while it flew): no -> its picture goes, it never lands as an extra one that stays for good)
+        if (opts.accept && !opts.accept(it.type)) { this.effects.releaseItem(s); return; }
         to.push(it.type, s);
         if (from === this.player.stack && PRODUCT_ZONE[it.type] && (to === this.market.stock || to === this.trade.stock)) this.progress.hints[PRODUCT_ZONE[it.type]] = true;
         if (opts.sfx === 'pickup' || isPlayerDest) {
@@ -1651,9 +1816,45 @@ export class Game extends Phaser.Scene {
 
   /** steer an agent toward (tx, ty); returns true when within `arrive` px */
   moveAgent(a, tx, ty, speed, dt, arrive = 8) {
-    const dx = tx - a.x, dy = ty - a.y;
-    const d = Math.hypot(dx, dy);
-    if (d <= arrive) { a.vx = a.vy = 0; a.stuckT = 0; return true; }
+    let dx = tx - a.x, dy = ty - a.y;
+    let d = Math.hypot(dx, dy);
+    if (d <= arrive) { a.vx = a.vy = 0; a.stuckT = 0; if (a._mv) { a._mv.way = null; a._mv.retry = false; a._mv.settled = false; } return true; }
+    // ((v4.2.0.1) the safety net for every walker: no closer to where it steers for 3.5 s (pressed into a fence, a
+    //  wall, a pile) -> a way round it (Roads.detour: grid A*, the doors of walled buildings), twice; stuck close to
+    //  the spot (a crowd on it, a prop over it) -> it stands there instead of walking on the spot; still stuck far
+    //  away while off screen -> it is placed by the spot (never seen to pop). Nothing it carries changes.
+    //  ((v4.2.0.1 final, review #1) standing there lasts 2 s, then one more short try (1.5 s): the crowd or the porter
+    //  on the spot may have gone — it stood 28 px off a freed spot for good, and a shop's head of the line with it)
+    //  ((v4.2.0.1 final, soak R5) and a new walk to the same spot (none for 0.6 s) starts afresh, like followRoute's
+    const m = a._mv || (a._mv = { tx: NaN, ty: NaN, sx: NaN, sy: NaN, best: 0, t: 0, way: null, wi: 0, n: 0, st: 0, retry: false, lt: NaN });
+    const now = this.walkClock || 0, fresh = !(now - m.lt <= 0.6);
+    m.lt = now;
+    if (fresh || !(Math.abs(m.tx - tx) <= 24 && Math.abs(m.ty - ty) <= 24)) { m.tx = tx; m.ty = ty; m.way = null; m.n = 0; m.sx = NaN; m.settled = false; m.retry = false; }
+    if (m.settled) {
+      if (gdist(a.x, a.y, tx, ty) < 48 && (m.st += dt) < 2) { a.vx = a.vy = 0; return true; }
+      m.settled = false; m.retry = true; m.sx = NaN;
+    }
+    let sx = tx, sy = ty;
+    if (m.way) {
+      while (m.wi < m.way.length - 1 && gdist(a.x, a.y, m.way[m.wi].x, m.way[m.wi].y) < 24) m.wi++;
+      if (m.wi < m.way.length - 1) { sx = m.way[m.wi].x; sy = m.way[m.wi].y; } else m.way = null;
+    }
+    const sd = gdist(a.x, a.y, sx, sy);
+    if (m.sx !== sx || m.sy !== sy) { m.sx = sx; m.sy = sy; m.best = sd; m.t = 0; }
+    else if (sd < m.best - 6) { m.best = sd; m.t = 0; m.retry = false; }
+    else if ((m.t += dt) > (m.retry ? 1.5 : 3.5)) {
+      m.t = 0; m.best = sd;
+      const td = gdist(a.x, a.y, tx, ty);
+      if (m.way) m.wi++;                                     // (a corner it cannot reach: the next one)
+      else if (td < 40) { a.vx = a.vy = 0; a.stuckT = 0; m.settled = true; m.st = 0; a.locomotion(false); return true; }
+      else if (m.n < 2 && this.roads) { m.n++; const w = this.roads.detour(a.x, a.y, tx, ty, [], a.radius); m.way = w && w.length > 1 ? w : null; m.wi = 0; }
+      else if (this.unseen(a.x, a.y) && this.unseen(tx, ty)) {
+        const q = this.freeSpot(tx, ty, a.radius || 12, 90);
+        a.x = q.x; a.y = q.y; a.vx = a.vy = 0; a.stuckT = 0; m.n = 0;
+        return gdist(a.x, a.y, tx, ty) <= Math.max(arrive, 40);
+      }
+    }
+    if (sx !== tx || sy !== ty) { dx = sx - a.x; dy = sy - a.y; d = Math.hypot(dx, dy) || 1; }
     let vx = (dx / d) * speed, vy = (dy / d) * speed;
     // unstick: slide sideways for a moment when blocked
     if (a.sideT > 0) { a.sideT -= dt; const s = a.sideDir || 1; const ox = -vy * s, oy = vx * s; vx = vx * 0.3 + ox * 0.9; vy = vy * 0.3 + oy * 0.9; }
@@ -1693,6 +1894,8 @@ export class Game extends Phaser.Scene {
     const inp = Input.update(time);
     const p = this.player;
     this.ground.update(dt);
+    if (this.roads && this.roads.newFrame) this.roads.newFrame(dt);
+    this.walkClock = (this.walkClock || 0) + dt;          // ((v4.2.0.1 final) followRoute / moveAgent: a new walk
     this.updateWater(dt, delta);
     // (v4-C2) the village voices follow the sound toggle (and the context: a suspended one would pile clips up)
     if (this.voice) {
@@ -1724,6 +1927,9 @@ export class Game extends Phaser.Scene {
     if (this.warehouse) this.warehouse.update(dt);
     if (this.store) this.store.update(dt);
     if (this.boathouse) this.boathouse.update(dt);
+    // ((v4.2.0.1) the miners' food box was never updated: its food was never laid out nor drawn, deliveries flew to the
+    //  world's corner and its label kept the count it had at load. The pad itself is handled in handlePlayerPads)
+    if (this.foodBox) this.foodBox.update(dt);
     for (const h of this.houses) h.update(dt);
     for (const k in this.towers) this.towers[k].update(dt);
     this.territory.update(dt);
@@ -1746,6 +1952,7 @@ export class Game extends Phaser.Scene {
       if (!this.progress.celebrated3 && this.progress.v3Complete) this.time.delayedCall(2500, () => this.celebrate3());
     }
     this.tutorial.update(dt);
+    if (this.onboard) { try { this.onboard.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding:', e); } } }
     if (this.occlusion) this.occlusion.update(dt);
     this.updateZoom(dt, delta);
 
@@ -1754,9 +1961,23 @@ export class Game extends Phaser.Scene {
     let fx = p.x, fy = p.y - 30;
     if (this.tutorial.inTutorial && WORLD.tutorialView) {
       // first loop: frame net, grill, counter and queue together; follow the chief only near the edges
+      // ((v4.2.0.1) the first-run tutorial moves the framing to the register / the clerk's pad for its steps there)
+      const tv = (this.onboard && this.onboard.view) || WORLD.tutorialView;
       const v = this.cameras.main.worldView, hw = v.width / 2, hh = v.height / 2;
-      fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, WORLD.tutorialView[0]));
-      fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, WORLD.tutorialView[1]));
+      fx = Math.max(p.x - hw + 120, Math.min(p.x + hw - 120, tv[0]));
+      fy = Math.max(p.y - 30 - hh + 260, Math.min(p.y - 30 + hh - 260, tv[1]));
+      // ((v4.2.0.1) the 점원 고용 pad right of the till stays in the frame, price and all, while the chief works near it
+      //  (with the chief at the till the view's right edge stood 120 px past him: the pad's price was cut off there)
+      //  ((v4.2.0.1) blended in over 240 px instead of switched on at 360 px: the switch swung the camera 240 px in a
+      //   few frames every time the chief walked past x 1165 between the till and the net)
+      const cp = this.progress && this.progress.pads && this.progress.pads.hire_clerk_market;
+      if (cp && cp.active) {
+        const d = Math.abs(cp.x - p.x);
+        if (d < 360) {
+          const want = Math.min(p.x + hw - 120, Math.max(fx, cp.x + cp.pad.w / 2 + 24 - hw));
+          fx += (want - fx) * Math.min(1, (360 - d) / 240);
+        }
+      }
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
@@ -2075,6 +2296,8 @@ export class Game extends Phaser.Scene {
       // ---- (v4-C) settlers, the town hall's tax box, the big restaurant's pantry and cash
       c1: this.civic ? this.civic.serialize() : undefined,
       cid: this.cid,
+      // ---- (v4.2.0.1) the first-run tutorial's bits (only villages that began with it)
+      onb: this.onboard ? this.onboard.serialize() : (this.saved && this.saved.onb) || undefined,
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };
@@ -2324,6 +2547,12 @@ export class Game extends Phaser.Scene {
       /** the build menu's tabs and cards as shown (UI scene) */
       menu() { const ui = gs.scene.get('UI'); return ui && ui.buildOpen ? { tab: ui.buildTab, tabs: ui.buildTabs, cards: (ui.buildCards || []).map((c) => ({ key: c.ch.key, locked: c.ch.locked, text: c.ch.text })), all: (ui.buildChoicesList || []).map((c) => ({ key: c.key, cat: c.cat, locked: c.locked, text: c.text })) } : null; },
       reset() { gs.resetProgress(); },
+      // ---------------- (v4.2.0.1) the first-run tutorial
+      /** { mode, act, step, bits, card, hand, target, tip, rects (screen boxes, logical px) } */
+      onboard() { const o = gs.onboard; if (!o) return null; const ui = gs.scene.get('UI'); const st = o.state(); st.rects = ui && ui.onboardOv ? ui.onboardOv.rects() : null; return st; },
+      onboardSkip() { if (gs.onboard) gs.onboard.skip(); return gs.onboard ? gs.onboard.state() : null; },
+      onboardReplay() { return gs.onboard ? gs.onboard.replay() : false; },
+      onboardNext() { if (gs.onboard) gs.onboard.next(); return gs.onboard ? gs.onboard.state() : null; },
       warnings() { return Array.from(Assets.warned); },
     });
     window.__FV = hooks;

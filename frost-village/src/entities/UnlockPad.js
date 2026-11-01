@@ -36,16 +36,18 @@ export class UnlockPad {
     this.pad = new Pad(gs, x, y, this.kind === 'upgrade' ? 'upgrade' : this.kind === 'hire' ? 'hire' : 'unlock', sizeM, { radiusK: 0.8, tex: opts.padTex || undefined });
 
     // cost on the floor: coin icon + number
-    this.costCoin = Assets.image(gs, x - 30, y + 2, 'ui_icon_coin').setDepth(DEPTH.PAD_TEXT);
+    // ((v4.2.0.1) drawn above people, piles and buildings (DEPTH.PAD_PRICE): it used to lie under everything that stood on it)
+    this.costCoin = Assets.image(gs, x - 30, y + 2, 'ui_icon_coin').setDepth(DEPTH.PAD_PRICE);
     const cf = this.costCoin.frame;
     this.costCoin.setScale(30 / Math.max(cf.realWidth, cf.realHeight)).setOrigin(0.5, 0.5);
-    this.costText = gs.add.text(x - 10, y + 2, '', { fontFamily: gs.font, fontSize: '30px', fontStyle: '900', color: '#ffffff', stroke: '#2b2f3a', strokeThickness: 6, resolution: 2 }).setOrigin(0, 0.5).setDepth(DEPTH.PAD_TEXT);
+    this.costText = gs.add.text(x - 10, y + 2, '', { fontFamily: gs.font, fontSize: '30px', fontStyle: '900', color: '#ffffff', stroke: '#2b2f3a', strokeThickness: 6, resolution: 2 }).setOrigin(0, 0.5).setDepth(DEPTH.PAD_PRICE);
     this.maxBadge = null;
 
     // floating label: icon + title on a little panel
     // ((v4-B) opts.labelAt [dx, dy]: a label beside the pad where the one above would cover a neighbour pad)
+    // ((v4.2.0.1) above every world object (DEPTH.PAD_LABEL), in the y order among the labels themselves)
     const la = Array.isArray(opts.labelAt) ? opts.labelAt : [0, -62];
-    const lab = gs.add.container(x + la[0], y + la[1]).setDepth(y + 2000);
+    const lab = gs.add.container(x + la[0], y + la[1]).setDepth(DEPTH.PAD_LABEL + y * 0.1);
     const title = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '22px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0, 0.5);
     const icon = Assets.image(gs, 0, 0, opts.icon || 'ui_icon_lock').setOrigin(0.5, 0.5);
     const icf = icon.frame;
@@ -84,6 +86,26 @@ export class UnlockPad {
       if (gs.logistics) gs.logistics.add(this);
     }
     this.refresh();
+    // ((v4.2.0.1) residents keep off every paid pad's spot)
+    if (gs.addPadSpot) gs.addPadSpot(x, y);
+  }
+
+  /** ((v4.2.0.1) where a label pulled in at the screen edge (from bx toward lx) can stand without lying on another paid
+   *  pad's label or price: lx, else the nearest clear point back toward bx, else bx (cut by the edge, still its own) */
+  clearPull(bx, lx, hw) {
+    const gs = this.gs, y0 = this.label.y - 30, y1 = this.label.y + 30, boxes = [];
+    for (const q of gs.paidPads()) {
+      if (!q || q === this || !q.active || !q.label || !q.label.visible || !q.labelBg) continue;
+      const qw = q.labelBg.width * 0.5;
+      boxes.push([q.label.x - qw, q.label.y - 30, q.label.x + qw, q.label.y + 30]);
+      // ((v4.2.1 fold) the price as drawn: a 4-digit price's coin starts left of x - 46 and the text (30 px + stroke) is
+      //  taller than y - 16 .. y + 20 — a 2단 label pulled at the screen edge touched a 짐꾼 2 price by a few px)
+      if (q.costText && q.costText.visible) { const th = q.costText.height / 2; boxes.push([Math.min(q.x - 46, q.costCoin.x - 15), Math.min(q.y - 16, q.costText.y - th), q.costText.x + q.costText.width, Math.max(q.y + 20, q.costText.y + th)]); }
+    }
+    const clear = (cx) => boxes.every((b) => cx + hw <= b[0] || cx - hw >= b[2] || y1 <= b[1] || y0 >= b[3]);
+    if (clear(lx)) return lx;
+    for (let i = 1; i < 8; i++) { const c = lx + ((bx - lx) * i) / 8; if (clear(c)) return c; }
+    return bx;
   }
 
   // ---------------------------------------------------------------- (v3) item requirement
@@ -146,7 +168,7 @@ export class UnlockPad {
     this.active = v;
     this.pad.setVisible(v);
     this.label.setVisible(v);
-    if (!v) { this.ring.setVisible(false); this.ringBg.setVisible(false); }
+    if (!v) { this.ring.setVisible(false); this.ringBg.setVisible(false); if (this.sparkle && this.sparkle !== 'none') this.sparkle.setVisible(false); }   // ((v4.2.0.1) a bench pad stepping aside: its sparkle too)
     this.refresh();
   }
 
@@ -179,6 +201,9 @@ export class UnlockPad {
     const bx = this.x + (this.labelDx || 0);
     let lx = bx;
     if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, bx));
+    // ((v4.2.0.1, final review) pulled in only as far as it stays clear of the other paid pads' labels and prices: at the
+    //  screen edge the 빵 오븐 2단 label slid under the 판자 짐꾼 2 one)
+    if (lx !== bx && gs.paidPads) lx = this.clearPull(bx, lx, hw - 8);
     if (this.label.x !== lx) this.label.x = lx;
     // "ready" highlight when the player can afford it
     const afford = !this.maxed && this.remaining > 0 && gs.economy.coins >= this.remaining;

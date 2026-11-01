@@ -62,19 +62,29 @@ export class MeatCan {
     return { id: 'mcan', kind: 'mcan', cost: Math.max(1, Math.floor(num(M().cost, 1500))), x: p.x, y: p.y, label: 'mcan_pad', icon: Assets.pick('item_can_meat', 'ui_icon_upgrade', 'ui_icon_lock') };
   }
 
-  /** beside the cannery's input pad, on open ground (never on another pad or a porter's spot) */
+  /** beside the cannery's input pad, on open ground (never on another pad or a porter's spot) and in clear view
+   *  ((v4.2.0.1 pads rule) nothing drawn over its floor or price: on w_m2 every spot by the input lay under the border
+   *  pines, 76 % of the first one's floor hidden) — a plot that names the spot (world.js plots.<id>.pads.mcan, as for
+   *  the line / 짐꾼 2 pads: Game.plotPad), else the first free spot that Game.padCover finds clear, else the free one
+   *  least covered */
   padPos() {
     const gs = this.gs, C = this.cannery();
     if (this.padAt && this.padAt.c === C) return this.padAt;
+    const pp = gs.plotPad ? gs.plotPad(C, 'mcan') : null;
+    if (pp) { this.padAt = { x: pp.x, y: pp.y, c: C }; return this.padAt; }
     const ip = C.inPad, keep = (gs.padSpots || []).concat([{ x: C.inPad.x, y: C.inPad.y, r: 90 }, { x: C.outPad.x, y: C.outPad.y, r: 90 }]);
     if (C.op && C.op.x !== undefined) keep.push({ x: C.op.x, y: C.op.y, r: 80 });
     const free = (q) => !gs.collision.blocked(q.x, q.y, 30) && (!gs.collision.inWalk || gs.collision.inWalk(q.x, q.y)) && !keep.some((k) => Math.hypot(k.x - q.x, (k.y - q.y) * 2) < (k.r || 70) + 40);
-    let best = null;
-    for (const [dx, dy] of [[-150, 70], [-170, -40], [-60, 120], [120, 120], [-230, 20], [40, 160]]) {
+    let best = null, low = null;
+    for (const [dx, dy] of [[-150, 70], [-170, -40], [-60, 120], [120, 120], [-230, 20], [40, 160], [190, 40], [-120, 190], [110, 200], [-260, 110]]) {
       const q = { x: ip.x + dx, y: ip.y + dy };
       gs.collision.resolve(q, 30);
-      if (free(q)) { best = q; break; }
+      if (!free(q)) continue;
+      const n = gs.padCover ? gs.padCover(q.x, q.y) : 0;
+      if (n <= 2) { best = q; break; }
+      if (!low || n < low.n) low = { x: q.x, y: q.y, n };
     }
+    if (!best && low) best = { x: low.x, y: low.y };
     if (!best) { best = { x: ip.x - 150, y: ip.y + 70 }; gs.collision.resolve(best, 30); }
     this.padAt = { x: best.x, y: best.y, c: C };
     return this.padAt;
@@ -111,8 +121,18 @@ export class MeatCan {
       this.rawPorter = pr;
     }
     if (!this.goodsPorter) {
-      const h0 = Porter.homeFor(gs, C), h = { x: h0[0] + 80, y: h0[1] + 44 };
-      gs.collision.resolve(h, 14);
+      // ((v4.2.0.1 pads rule) he waits off the cannery's two paid pads — the 통조림 짐꾼 pad (still there when op_cannery
+      //  came without porter_cannery) and the 짐꾼 2 pad: at h0 + (80, 44) he stood on their floors on 7 of the 9 plots)
+      const h0 = Porter.homeFor(gs, C), L = this.v42 && this.v42.lines;
+      const pads = [L && L.spotOf ? L.spotOf('p2', 'cannery') : null, gs.padSpot ? gs.padSpot({ type: 'porter', station: 'cannery' }) : null].filter(Boolean);
+      const clear = (x, y) => pads.every((q) => Math.abs(x - q.x) + 2 * Math.abs(y - q.y) >= 188);     // (outside a pad's floor diamond, + 8 %)
+      let h = null;
+      for (const [dx, dy] of [[80, 44], [-80, 70], [190, 110]]) {
+        const q = { x: h0[0] + dx, y: h0[1] + dy };
+        gs.collision.resolve(q, 14);
+        if (clear(q.x, q.y)) { h = q; break; }
+      }
+      if (!h) h = gs.freeSpot(h0[0] + 80, h0[1] + 44, 14, 200, clear);
       const pr = new Porter(gs, C, h.x, h.y, gs.porters.length);
       pr.home = [h.x, h.y];
       pr.only = 'item_can_meat';

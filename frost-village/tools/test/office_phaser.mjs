@@ -319,7 +319,7 @@ class S extends Phaser.Scene {
     road([[-120, 880], [-170, 760], [-60, 640]], 56);
     road([[-458, 640], [-200, 760]], 34);
     road([[-62, 824], [-120, 880]], 30);
-    g.fillStyle(0xf3d27a, 0.6); g.fillEllipse(-150, 905, 90, 45);       // the staff hire pad
+    g.fillStyle(0xf3d27a, 0.6); g.fillEllipse(0, 915, 90, 45);          // the staff hire pad ((v4.2.0.1) beside the office door, WORLD.v42.office.hire)
     // the civic bank the way the game draws it (Cutaway.js, closed)
     Assets.man = civ; new Cutaway(this, 'bank', BX, BY, {}); Assets.man = man;
     if (props.sprites.tree_pine_snow) for (const [x, y] of [[420, 640], [-220, 1080], [520, 1120], [-560, 860], [280, 560], [-30, 1180]]) {

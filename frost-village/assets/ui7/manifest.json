@@ -1,0 +1,90 @@
+{
+ "version": 1,
+ "generator": "tools/fx/gen_ui7.py (procedural numpy + Pillow on fxlib; house style of ui / ui2 / ui3 / ui5)",
+ "conventions": {
+  "contract": "(v4.2.0.1) the first-run tutorial (src/systems/Onboarding.js + src/scenes/OnboardOverlay.js). Paths relative to frost-village/assets/. Fragment name: ui7, loaded at boot.",
+  "text": "No text is baked; the game renders every label.",
+  "anchor": "The two hand frames are anchored on the fingertip (sprites[k].tip in frame px).",
+  "fallback": "Without this atlas OnboardOverlay draws a Phaser Graphics stand-in (fv_finger).",
+  "pageSize": [
+   458,
+   132
+  ],
+  "pageMiB": 0.231
+ },
+ "atlases": [
+  {
+   "key": "ui7",
+   "png": "ui7/ui7.png",
+   "json": "ui7/ui7.json"
+  }
+ ],
+ "sprites": {
+  "ui_finger": {
+   "atlas": "ui7",
+   "frame": "ui_finger",
+   "anchor": [
+    0.2031,
+    0.1016
+   ],
+   "kind": "hand",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "The pointing mitten (index finger up-left, teal cuff lower right). Anchor = the fingertip: setPosition(x, y) puts the tip on (x, y). Shown 112 logical px tall; flipX near the right edge.",
+   "tip": [
+    26.0,
+    13.0
+   ],
+   "displayHeight": 112
+  },
+  "ui_finger_press": {
+   "atlas": "ui7",
+   "frame": "ui_finger_press",
+   "anchor": [
+    0.2031,
+    0.1016
+   ],
+   "kind": "hand",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "The same mitten touching the glass: finger 8 % shorter, hand turned +6 deg about the tip, tighter shadow. Same anchor.",
+   "tip": [
+    26.0,
+    13.0
+   ],
+   "displayHeight": 112
+  },
+  "ui_tap_ripple": {
+   "atlas": "ui7",
+   "frame": "ui_tap_ripple",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "fx",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "Tap ripple: white ring + warm inner glow. Scale 0.3 -> 1.1, alpha 0.9 -> 0 in 450 ms. Flattened (scaleY 0.5) it is the world pulse ring under a target pad."
+  },
+  "ui_spot_hole": {
+   "atlas": "ui7",
+   "frame": "ui_spot_hole",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "kind": "mask",
+   "frameSize": [
+    128,
+    128
+   ],
+   "notes": "Soft spotlight hole (128 px, drawn larger): transparent to r = 0.62, opaque white from r = 1.0. Tint #1b2638, alpha 0.30; four rectangles of the same tint fill the rest of the screen. Untrimmed, edge pixels extruded 2 px in the atlas."
+  }
+ }
+}

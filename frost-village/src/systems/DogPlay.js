@@ -114,11 +114,16 @@ export class DogPlay {
     const s = side !== undefined && side !== null ? side : (r.x >= p.x ? 1 : -1);
     const dx = pp[0] + (extra || 0);
     const tryS = [s, -s];
+    // ((v4.2.0.1) a spot she can trot to: not across a wall (the office floor beside the chief at his desk while she
+    //  waits outside — she was snapped through the wall and stayed in there), nor in another walled building)
+    const R = gs.roads, rd = R && R.roomAt ? R.roomAt(r.x, r.y) : null;
+    const reach = (q) => !(R && R.roomAt && R.roomAt(q.x, q.y) !== rd) && (!R || !R.clear || R.clear(r.x, r.y, q.x, q.y) || gdist(r.x, r.y, q.x, q.y) > 220);
     for (const k of tryS) {
       const q = { x: p.x + dx * k, y: p.y + pp[1] };
-      if (!gs.collision.blocked(q.x, q.y, 10)) return { x: q.x, y: q.y, side: k };
+      if (!gs.collision.blocked(q.x, q.y, 10) && reach(q)) return { x: q.x, y: q.y, side: k };
     }
-    return { x: p.x + dx * s, y: p.y + pp[1], side: s };
+    const q = { x: p.x + dx * s, y: p.y + pp[1] };
+    return { x: q.x, y: q.y, side: s, far: !reach(q) };
   }
 
   goNear(r, run) {
@@ -164,10 +169,20 @@ export class DogPlay {
     const sp = this.sideSpot(r, null, kind === 'treat' ? 24 : 0);
     this.scene = { kind, phase: 'place', t: 0, spot: sp };
     p.vx = p.vy = 0;
-    // the dog trots to the chief's side first
-    r.goTo(sp.x, sp.y, { direct: true, tol: 6, speed: 200 });
+    // the dog trots to the chief's side first ((v4.2.0.1) straight when nothing is between them, else round it / in by
+    //  the door: the walk takes longer then — sc.lim)
+    this.scene.lim = this.trot(r, sp, { tol: 6, speed: 200 }) ? 1.4 : 5;
     this.cd[kind] = this.cooldownMax(kind);
     return true;
+  }
+
+  /** ((v4.2.0.1) to a spot by the chief: a straight trot when nothing stands between (true), else along a route round
+   *  it (Roads.route: walls, the office door) */
+  trot(r, sp, opts) {
+    const R = this.gs.roads;
+    const direct = !sp.far && (!R || !R.clear || R.clear(r.x, r.y, sp.x, sp.y));
+    r.goTo(sp.x, sp.y, Object.assign({}, opts, { direct }));
+    return direct;
   }
 
   /** both turned to each other; the chief's motion with an impact callback */
@@ -175,7 +190,9 @@ export class DogPlay {
     const p = this.gs.player;
     p.dir = sc.spot.side > 0 ? SIDE.E : SIDE.W;
     r.dir = sc.spot.side > 0 ? SIDE.W : SIDE.E;
-    r.x = sc.spot.x; r.y = sc.spot.y; r.vx = r.vy = 0; r.state = 'act';
+    // ((v4.2.0.1) the snap onto the spot is the last small step only: never a jump through a wall or a fence)
+    if (gdist(r.x, r.y, sc.spot.x, sc.spot.y) <= 24) { r.x = sc.spot.x; r.y = sc.spot.y; }
+    r.vx = r.vy = 0; r.state = 'act';
   }
 
   addLove(n, x, y) {
@@ -200,7 +217,14 @@ export class DogPlay {
     // the chief walks away: the scene stops (a ball in the air still lands)
     if ((p.vx || p.vy) && sc.phase !== 'fetch' && sc.phase !== 'back' && sc.phase !== 'flight') { this.endScene(r, false); return; }
     if (sc.phase === 'place') {
-      if (r.arrived || sc.t > 1.4) {
+      const lim = sc.lim || 1.4;
+      if (r.arrived || sc.t > lim) {
+        // ((v4.2.0.1) the last step snaps her onto the spot only from nearby; from further (a wall, a fence between
+        //  them) she keeps walking a little, then the scene ends instead of a jump through it)
+        if (gdist(r.x, r.y, sc.spot.x, sc.spot.y) > 24) {
+          if (sc.t < lim + 2.5 && !r.arrived) return;
+          this.endScene(r, false); return;
+        }
         this.faceUp(r, sc);
         sc.phase = 'go'; sc.t = 0;
         if (sc.kind === 'treat') this.beginTreat(r, sc);
@@ -299,7 +323,8 @@ export class DogPlay {
     for (const a of [0, 0.35, -0.35, 0.7, -0.7, Math.PI]) {
       const ang = (side > 0 ? 0 : Math.PI) + a * (side > 0 ? 1 : -1);
       const q = { x: p.x + Math.cos(ang) * dist, y: p.y + Math.sin(ang) * dist * 0.5 };
-      if (!gs.collision.blocked(q.x, q.y, 16)) { land = q; break; }
+      // ((v4.2.0.1) and nothing between him and it: she dashes there in a straight line)
+      if (!gs.collision.blocked(q.x, q.y, 16) && (!gs.roads.clear || gs.roads.clear(p.x, p.y, q.x, q.y))) { land = q; break; }
     }
     if (!land) land = { x: p.x + side * dist * 0.6, y: p.y + 20 };
     gs.collision.resolve(land, 14);
@@ -378,7 +403,7 @@ export class DogPlay {
         r.moveAnim = 'run_ball';
         const sp = this.sideSpot(r, sc.spot.side);
         sc.spot = sp;
-        r.goTo(sp.x, sp.y, { direct: true, run: true, tol: 8, speed: 220 });
+        this.trot(r, sp, { run: true, tol: 8, speed: 220 });
         r.moveAnim = Assets.hasAnim('pet_dog', 'run_ball') ? 'run_ball' : 'run';
         r.locomotion(true);
       } else if (r.arrived && sc.t > 2) r.goTo(b.x, b.y + 6, { direct: true, run: true, tol: 10, speed: 240 });
@@ -389,7 +414,7 @@ export class DogPlay {
       sc.phase = 'back'; sc.t = 0;
       const sp = this.sideSpot(r, sc.spot.side);
       sc.spot = sp;
-      r.goTo(sp.x, sp.y, { direct: true, run: true, tol: 8, speed: 220 });
+      this.trot(r, sp, { run: true, tol: 8, speed: 220 });
       r.moveAnim = Assets.hasAnim('pet_dog', 'run_ball') ? 'run_ball' : 'run';
       r.locomotion(true);
       return;

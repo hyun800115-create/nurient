@@ -465,17 +465,14 @@ def b_shop_general():
             sphere('reg_key', 0.026, (rx - 0.1 + i * 0.1, cy_ - 0.09 + j * 0.06, 0.97 + j * 0.04),
                    flat(['#D9483B', '#F4F1EA', '#3D7CC9'][i], 0.4), scale=(1, 1, 0.6), segs=10, rings=6)
     cyl('reg_crank', 0.035, 0.12, (rx - 0.25, cy_ + 0.05, 0.94), rot=(0, 90, 0), mat=brass, segs=10, origin='center')
-    # goods on the counter: a jar + a can pyramid
+    # a jar on the counter ((v4.2.0.1) ghost sweep, GOODS-8: the 2 cans next to it are gone - cans are the store's real
+    #  goods (item_can), shown by its stock shelf; painted ones stayed when the stock was 0)
     jar_model('cjar', r=0.08, h=0.2, loc=(-0.88, cy_ + 0.04, 0.8), fill='#E8A23C', lid='#D9483B')
-    for i, x in enumerate((0.72, 0.9)):
-        can_model('ccan', r=0.075, h=0.1, loc=(x, cy_ - 0.06, 0.8), label=['#D9483B', '#3D7CC9'][i], fish=False)
-    # ---- outdoor display on the visible right side: barrel of tools + crate of cans + snow drift
+    # ---- outdoor display on the visible right side: barrel of tools + an (empty) crate + snow drift
     PA.barrel_model('tbarrel', loc=(1.55, -0.95, 0), scale=0.62, snow=False, seed=3)
     axe_model('baxe', s=0.5, loc=(1.52, -0.98, 0.62), rot=(0, -80, 20))
     pick_model('bpick', s=0.45, loc=(1.6, -0.9, 0.6), rot=(0, -72, -35))
-    PA.crate_model('ccrate', 0.5, (1.55, -0.2, 0), seed=4, snow=False)
-    for i, (x, y) in enumerate([(1.45, -0.3), (1.65, -0.1), (1.48, -0.08), (1.62, -0.31)]):
-        can_model('crcan', r=0.075, h=0.1, loc=(x, y, 0.5), label=['#3D7CC9', '#D9483B'][i % 2], fish=False)
+    PA.crate_model('ccrate', 0.5, (1.55, -0.2, 0), seed=4, snow=False)     # ((v4.2.0.1) GOODS-8: empty, no cans)
     PA.lantern('lan', (-W / 2 - 0.12, Y0 - 0.25, 1.6), 0.14, 3.0)
     cyl('lanpost', 0.04, 0.5, (-W / 2 - 0.12, Y0 - 0.25, 1.84), mat=trim, segs=8)
     LA.snow_drift('d1', 0.3, (-1.45, 1.2, 0.0), seed=3)
@@ -904,10 +901,11 @@ def half_timber(name, size, loc, plaster='#F1E6CF', beam='#5E3A22', braces=True)
 
 CANNERY_NOTE = ('Cannery (3x3 m): brick + half-timber workshop with a slate roof, a giant tin can on the ridge, a '
                 'brick chimney. In front (screen down-left) a conveyor runs along world +X: fish crate at the left '
-                '(input) end, a can-sealing press in the middle, sealed cans stacked at the right (output) end. '
-                'anims.work = cans travel along the belt (seamless), the press stamps, lamp blinks, steam + chimney '
-                'smoke. inPoint = fish/ingot pad (front-left), outPoint = cans pad (right). fxPoints: press, steam, '
-                'smoke, input, output.')
+                '(input) end, a can-sealing press in the middle, an output tray at the right end. The crate, the tray '
+                'and the idle belt are EMPTY: the fish / ingots and the cans are the stacks\' own item pictures on the '
+                'in / out pads. anims.work = cans travel along the belt (seamless), the press stamps, lamp blinks, '
+                'steam + chimney smoke. inPoint = fish/ingot pad (front-left), outPoint = cans pad (right). fxPoints: '
+                'press, steam, smoke, input, output.')
 
 
 @bld('station_cannery', 'station', 'bld_buildings', fp=(3.0, 3.0), front='-Y', catcher=22.0, work=4, fps=8,
@@ -985,17 +983,11 @@ def b_station_cannery():
     mb.seg(Vector((px_ + 0.2, cy_ + 0.2, cz + 1.2)), Vector((px_ + 0.2, cy_ + 0.2, cz + 1.75)), 0.05, pm, segs=12)
     mb.done('steampipe')
     cyl('pipecap', 0.07, 0.06, (px_ + 0.2, cy_ + 0.2, cz + 1.75), mat=pm, segs=12)
-    # ---- input crate with fish (left end) + output tray of cans (right end)
+    # ---- input crate (left end) + output tray (right end)
+    # ((v4.2.0.1) ghost sweep, GOODS-6: both EMPTY - the 3 fish in the crate and the 5 sealed cans on the tray were
+    #  painted in every frame, so an emptied cannery looked stocked; the real fish / cans are the in / out stacks)
     PA.crate_model('fishcrate', 0.55, (x0 - 0.1, cy_ - 0.05, 0), snow=False, seed=5)
-    for i, (dx, dy, rz_) in enumerate(((-0.05, -0.05, 30), (0.08, 0.1, 110), (0.0, 0.05, 70))):
-        PA.fish_model('cf%d' % i, loc=(x0 - 0.1 + dx, cy_ - 0.05 + dy, 0.6 + 0.06 * i), rot=(0, 0, rz_), scale=0.5)
     box('tray', (0.62, 0.62, 0.1), (x1 + 0.12, cy_ + 0.05, 0), mat=flat('#A87442', 0.8), bevel=0.02)
-    for i, (dx, dy, dz) in enumerate(((-0.13, -0.13, 0), (0.13, -0.13, 0), (-0.13, 0.13, 0), (0.13, 0.13, 0),
-                                      (0.0, 0.0, 0.16), (-0.02, -0.15, 0.16))):
-        if i == 5:
-            continue
-        can_model('outcan%d' % i, r=0.11, h=0.15, loc=(x1 + 0.12 + dx, cy_ + 0.05 + dy, 0.1 + dz),
-                  label=['#D9483B', '#3D7CC9'][i % 2], fish=i % 2 == 0, lid=True)
     # ---- cans on the belt (pool: open cans left of the press, sealed cans right of it)
     pitch = 0.36
     pool = []
@@ -1027,6 +1019,9 @@ def b_station_cannery():
 
     def idle():
         set_cans(0)
+        for og, sc in pool:                 # ((v4.2.0.1) GOODS-6: an idle belt carries no cans - cans only while working)
+            show(descendants([og]), False)
+            show(descendants([sc]), False)
         press.location.z = cz + 0.85
         steam.show(False)
         smoke.show(False)

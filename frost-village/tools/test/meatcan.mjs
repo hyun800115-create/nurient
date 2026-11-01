@@ -14,7 +14,7 @@
 //   the 훈제장 input ≥ smokeHas of its max, and never takes the rack below pileKeep; the 훈제장 input never runs empty
 //   because of him; the cannery's own porters leave meat cans to him below meatcan.shareAt; with the output ≥ farAt
 //   full and the 잡화점 farther than farPx his load goes to the 짐 싣는 곳
-// 6 save mid-trip + reload: v7, nothing lost (saveLost 0), the flag, both porters back, the cannery's raw meat and
+// 6 save mid-trip + reload: v8 (Save.js MIGRATE[7]: the number only), nothing lost (saveLost 0), the flag, both porters back, the cannery's raw meat and
 //   meat cans kept, the bag's raw meat back on the rack; no new top-level save field; 0 page errors
 import path from 'node:path';
 import fs from 'node:fs';
@@ -244,7 +244,7 @@ try {
     };
   });
   const keys0 = Object.keys(JSON.parse(fixture('v41_save_smart_46min.json')));
-  step('6 save mid-trip (the 고기 짐꾼 carrying ' + s6.carry + '): v7, saveLost 0, the flag, his load saved on the rack', tTrip >= 0 && s6.v === 7 && s6.lost === 0 && s6.flag && s6.pile >= Math.min(s6.rackNow + s6.carry, 80), { t: tTrip, lost: s6.lost, carry: s6.carry, pile: s6.pile, rackNow: s6.rackNow, ws: s6.ws });
+  step('6 save mid-trip (the 고기 짐꾼 carrying ' + s6.carry + '): v8, saveLost 0, the flag, his load saved on the rack', tTrip >= 0 && s6.v === 8 && s6.lost === 0 && s6.flag && s6.pile >= Math.min(s6.rackNow + s6.carry, 80), { t: tTrip, lost: s6.lost, carry: s6.carry, pile: s6.pile, rackNow: s6.rackNow, ws: s6.ws });
   step('6 no new top-level save field', s6.top.filter((k) => keys0.indexOf(k) < 0 && ['v42', 'bank', 'logistics'].indexOf(k) < 0).length === 0, s6.top.filter((k) => keys0.indexOf(k) < 0));
   await boot(s6.save);
   await park();

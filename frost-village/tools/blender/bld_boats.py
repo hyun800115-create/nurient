@@ -226,7 +226,7 @@ def b_boat_rowboat():
     w = half_width_at(rim, by) * 2 - 0.12
     parts.append(box('fishbox', (min(0.56, w), 0.34, 0.3), (0, by, fz), mat=L.stripes('#C08A55', '#A87442', 4.0, 'Z',
                                                                                        soft=0.04), bevel=0.02))
-    parts.append(PA.fish_model('bfish', loc=(0.02, by, fz + 0.33), rot=(0, 0, 70), scale=0.42))
+    # ((v4.2.0.1) ghost sweep: no fish painted on the box lid - the catch is the cargo stack drawn in this box)
     # oarlocks
     iron = flat('#5A606B', 0.4, 0.6)
     for sx in (-1, 1):
@@ -440,7 +440,8 @@ CAB_Y0, CAB_Y1, CAB_W, CAB_H = 0.1, 1.05, 1.1, 1.05
                              'sail': {'frames': 4, 'fps': 6, 'repeat': -1}},
       frame=(336, 304), anchor=(168, 236), samples=28,
       notes='Fishing boat (~4.4 m): white / blue / red hull, small wheelhouse with a red snowy roof and a smoking '
-            'stove pipe, mast with a village pennant, net boom swung out to starboard with a net of fish. Crew of 2: '
+            'stove pipe, mast with a village pennant, net boom swung out to starboard with an empty net (no fish are '
+            'painted on the boat: the catch is the cargo stack at cargoPoint). Crew of 2: '
             'the captain at the aft wheel (navy coat, white cap, white beard) and the fisherman (yellow raincoat) on '
             'the foredeck. idle = moored (gentle bob, no smoke); sail = 4-frame loop (pitching, smoke, net swing, '
             'fisherman hauling the net rope, captain steering). Anchor = waterline centre; cargoPoint = fish hold '
@@ -531,10 +532,9 @@ def b_boat_fishing():
     import bld_assets as BA
     net_m = BA.net_mat()
     with L.Collect() as nc:
+        # ((v4.2.0.1) ghost sweep, GOODS-7: an EMPTY net - the 3 fish in it were painted at cargo 0; the catch is
+        #  the boat's cargo stack, drawn at cargoPoint)
         blob('netbag', 0.3, (0, 0, -0.32), net_m, scale=(1.0, 0.9, 1.15), seed=6, amp=0.15, subdiv=3)
-        PA.fish_model('nf1', loc=(0.16, -0.18, -0.36), rot=(70, 0, 20), scale=0.45)
-        PA.fish_model('nf2', loc=(-0.12, -0.18, -0.25), rot=(100, 10, 160), scale=0.42)
-        PA.fish_model('nf3', loc=(0.02, -0.2, -0.5), rot=(80, 0, 90), scale=0.4)
     netg = L.group([o for o in nc.objs if o.parent is None], 'netg', loc=tuple(boom_tip - Vector((0, 0, 0.55))))
     netg.parent = grp
     netrope = cyl('netrope', 0.014, 0.55, tuple(boom_tip - Vector((0, 0, 0.55))), mat=flat('#D9C39A', 0.8), segs=6)
@@ -544,7 +544,7 @@ def b_boat_fishing():
     hy = -1.0
     parts.append(box('hatch', (0.7, 0.55, 0.12), (0.0, hy, DECK_Z + 0.04), mat=flat('#8A5A33', 0.8), bevel=0.02))
     parts.append(box('hatchin', (0.56, 0.42, 0.02), (0.0, hy, DECK_Z + 0.16), mat=flat('#2A1E18', 0.9), bevel=0.0))
-    parts.append(PA.fish_model('hfish', loc=(0.05, hy, DECK_Z + 0.2), rot=(0, 0, 60), scale=0.45))
+    # ((v4.2.0.1) GOODS-7: no fish lying on the hatch - the real catch is the cargo stack drawn right here)
     parts.append(PA.crate_model('fcrate', 0.38, (-0.48, -0.45, DECK_Z + 0.04), snow=True, seed=5))
     with L.Collect() as lc:
         PA.lantern('blan', (-0.42, CAB_Y0 - 0.1, cz + CAB_H - 0.35), 0.11, 3.0, light=False)

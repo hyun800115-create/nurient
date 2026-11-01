@@ -92,6 +92,8 @@ export class Boathouse {
       this.busyT -= dt;
       if (!this.working) { const a = Assets.spriteAnim('boathouse', 'work'); if (a) { this.working = true; this.img.play(a); } }
     } else if (this.working) { this.working = false; this.img.stop(); Assets.apply(this.img, 'boathouse'); }
+    // ((v4.2.0.1) idle but its loop plays: the page came back and replayed the loop it had when it was parked)
+    else if (this.img.anims && this.img.anims.isPlaying && !Assets.pending('boathouse')) { this.img.stop(); Assets.apply(this.img, 'boathouse'); }
   }
 
   serialize() {
@@ -137,7 +139,30 @@ export class Boat {
 
   get ready() { return Assets.charReady(this.key); }
 
-  setVisible(v) { this.visible = v; this.sprite.setVisible(v && this.ready); this.cargo.setVisible(v); if (this.wake) this.wake.setVisible(false); }
+  /** ((boat fix, designer "상단에 어선이 안보여") the sprite shows the boat: its page is in memory and the sprite plays
+   *  frames of it — not the '__WHITE' start, nor the 'fv_blank' stand-in Residency gives it while the 'village' area's
+   *  pictures are out of memory (the camera far away). While it cannot, the boat draws nothing on the water either */
+  get shown() {
+    const k = this.sprite.texture && this.sprite.texture.key;
+    return this.visible && this.ready && k !== '__WHITE' && k !== 'fv_blank' && k !== '__MISSING';
+  }
+
+  setVisible(v) { this.visible = v; this.sprite.setVisible(v && this.shown); this.cargo.setVisible(v && this.shown); if (this.wake) this.wake.setVisible(false); if (!v) this.dropHull(); }
+
+  /** ((boat fix) the boat's page is (back) in memory but the sprite still shows the stand-in: its anims again
+   *  (Residency.evictArea dropped them and Assets.onLazyFile builds a character only once), its anchor, and the anim
+   *  played again (play() skips the key it played last) — like the cargo sleigh does (CargoSleigh.draw) */
+  relook() {
+    Assets.buildCharacter(this.gs.game, this.key);
+    this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]);
+    this.animKey = '';
+  }
+
+  /** ((boat fix) the hull's foam collar + shadow off the water */
+  dropHull() {
+    if (this.hull && this.hullOf && this.hullOf.alive) for (const id of this.hull) this.hullOf.removeContact(id);
+    this.hull = null; this.hullOf = null;
+  }
 
   play(anim) {
     const base = DIR_BASE[this.dir], flip = DIR_FLIP[this.dir];
@@ -165,7 +190,13 @@ export class Boat {
 
   update(dt) {
     const gs = this.gs, H = this.house;
-    if (this.sprite.texture.key === '__WHITE' && this.ready) { this.sprite.setOrigin(this.def.anchor[0], this.def.anchor[1]); this.sprite.setVisible(this.visible); this.animKey = ''; }
+    // ((boat fix) the page arrived, or came back after Residency took it out: the stand-in texture, or the anim it
+    //  played gone with the page -> its look again (at most twice a second while the art lacks that anim))
+    const tk = this.sprite.texture.key;
+    if (this.ready && (tk === '__WHITE' || tk === 'fv_blank' || (this.animKey && !gs.anims.exists(this.animKey))) && !(gs.time.now < this.lookAt)) {
+      this.lookAt = gs.time.now + 500;
+      this.relook();
+    }
     let moving = false;
     switch (this.state) {
       case 'dock': {
@@ -218,13 +249,19 @@ export class Boat {
       }
     }
     this.play(moving ? this.moveAnim : 'idle');
+    // ((boat fix) no invisible boat: the sprite, its catch, the hull's foam + shadow, the wake and the rings only while
+    //  the sprite really shows the boat)
+    const shown = this.shown;
+    if (this.sprite.visible !== shown) this.sprite.setVisible(shown);
+    if (this.cargo.visible !== shown) this.cargo.setVisible(shown);
     // (v4-C2) on the living water the hull rides the swell and has a foam collar + a shadow on the water
     const wv = gs.ground && gs.ground.water, live = !!(wv && wv.isShader);
     const bob = live ? wv.heightAt(this.x, this.y) : 0;
     this.sprite.setPosition(this.x, this.y - bob);
-    if (live) {
-      if (!this.hull || this.hullOf !== wv) { this.hull = wv.addHull(this.x, this.y, this.def, this.dir, { foam: 0.8, shadow: 0.24 }); this.hullOf = wv; }
-      if (this.visible) wv.moveHull(this.hull, this.x, this.y, this.def, this.dir);
+    if (this.hull && (!live || !shown || this.hullOf !== wv)) this.dropHull();
+    if (live && shown) {
+      if (!this.hull) { this.hull = wv.addHull(this.x, this.y, this.def, this.dir, { foam: 0.8, shadow: 0.24 }); this.hullOf = wv; }
+      else wv.moveHull(this.hull, this.x, this.y, this.def, this.dir);
     }
     const d = this.y;
     if (this.sprite.depth !== d) this.sprite.setDepth(d);
@@ -232,7 +269,7 @@ export class Boat {
     const base = DIR_BASE[this.dir], flip = DIR_FLIP[this.dir];
     const wp = (this.def.wakePoint && this.def.wakePoint[base]) || [0, 0];
     const wx = this.x + (flip ? -wp[0] : wp[0]), wy = this.y + wp[1];
-    const onScreen = this.visible && gs.isOnScreen(this.x, this.y, 200);
+    const onScreen = shown && gs.isOnScreen(this.x, this.y, 200);
     if (moving && onScreen) {
       // (v4-C2) the V sheet of the heading, asked for on first use (the old fx_wake until it is there)
       const wv2 = live ? WaterSheets.wake(DIRS8[this.dir]) : null;
@@ -280,8 +317,10 @@ export class Boat {
     const sx = this.x + (Math.random() - 0.5) * 80, sy = this.y - 6 + Math.random() * 20;
     // (v4-C2) rings where the fish comes out, and the water's small splash sheet (asked for on first use)
     const wv = gs.ground && gs.ground.water;
-    if (wv && wv.isShader) { wv.ripple(sx, sy, 1.2); WaterSheets.want('fx_splash_small'); }
-    if (gs.isOnScreen(this.x, this.y, 150)) {
+    // ((boat fix) only around a boat that shows: no rings, splashes or fish jumping at an empty spot of the sea)
+    const shown = this.shown;
+    if (wv && wv.isShader && shown) { wv.ripple(sx, sy, 1.2); WaterSheets.want('fx_splash_small'); }
+    if (shown && gs.isOnScreen(this.x, this.y, 150)) {
       gs.effects.sheet(wv && wv.isShader && Assets.sheet('fx_splash_small') ? 'fx_splash_small' : 'fx_splash', sx, sy, { size: 70 });
       gs.effects.burst('splash', sx, sy, 4);
       gs.sfxAt('sfx_splash', this.x, this.y, { volume: 0.3, throttle: 300 });
@@ -293,8 +332,8 @@ export class Boat {
   destroy() {
     this.sprite.destroy();
     if (this.wake) this.wake.destroy();
-    if (this.hull && this.hullOf && this.hullOf.alive) for (const id of this.hull) this.hullOf.removeContact(id);
-    this.hull = null;
+    this.wake = null;
+    this.dropHull();
     this.cargo.clear(this.gs.effects);
   }
 }

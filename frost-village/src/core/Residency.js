@@ -424,10 +424,17 @@ export const Residency = {
       if (o.anims && o.anims.currentAnim && drop.indexOf(o.anims.currentAnim.key) >= 0 && !(o.texture && set.has(o.texture.key))) { o.anims.stop(); o.anims.currentAnim = null; }
       if (!o.texture || !set.has(o.texture.key)) continue;
       const loop = o.anims && o.anims.isPlaying && o.anims.currentAnim ? o.anims.currentAnim.key : null;
+      // ((boat fix) a sprite on a frame of its anim ('watchtower_work_1': no sprite of the manifest names that frame) is
+      //  the sprite its anim belongs to ('spr:watchtower:work'): else it was never re-skinned and stayed blank when the
+      //  area came back — the watchtowers, the town's fountain and salon)
+      const cur = o.anims && o.anims.currentAnim ? o.anims.currentAnim.key : null;
       if (o.anims) o.anims.stop();
-      const sk = this.spriteOf(o.texture.key, o.frame ? o.frame.name : '__BASE');
+      let sk = this.spriteOf(o.texture.key, o.frame ? o.frame.name : '__BASE');
+      if (!sk && cur && cur.startsWith('spr:')) { const k = cur.slice(4, cur.lastIndexOf(':')); if (Assets.m.sprites[k]) sk = k; }
       o.setTexture('fv_blank');
-      if (sk && gs.lazyImgs) gs.lazyImgs.push({ img: o, key: sk, after: loop ? (img) => { if (img.anims && g.anims.exists(loop)) img.anims.play(loop); } : null });
+      // ((v4.2.0.1, LAZY-1) a pooled item picture carries its life (__gen): released to the pool and handed to another item
+      //  before the page came back, it was re-skinned with the OLD item — a cooked fish in the chief's arms drawn as a parcel)
+      if (sk && gs.lazyImgs) gs.lazyImgs.push({ img: o, key: sk, gen: o.__gen, after: loop ? (img) => { if (img.anims && g.anims.exists(loop)) img.anims.play(loop); } : null });
     }
     for (const k of drop) dropAnim(g, k);
     for (const k of set) { tex.remove(k); Assets.held.add(k); Assets.queued.delete(k); }

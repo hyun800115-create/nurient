@@ -65,6 +65,10 @@ export class ItemStack {
     const ox = -x0 + half, oy = -y0 + tall * step + 76 * sc;
     this.slot = B.slotFor(this, w, h, ox, oy);
     if (!this.slot) { this.bakeFail = true; this.materialize(); return false; }
+    // ((v4.2.0.1) a type tower never grows past its slot: the slot is sized for max / types layers, but one type may fill
+    //  the stack (the miners' food box: 20 bread in a 10-layer slot) — the ink above the slot landed in the next stack's
+    //  slot and stayed there, a ghost)
+    if (this.typeCols) { this.towerCap = tall; this.bakeDirty = true; }
     const img = this.scene.add.image(0, 0, B.key, this.slot.name).setOrigin(ox / this.slot.w, oy / this.slot.h);
     img.setVisible(this.visible);
     img.__baked = true;
@@ -127,13 +131,17 @@ export class ItemStack {
       const it = this.items[i];
       if (!types || (Array.isArray(types) ? types.indexOf(it.type) >= 0 : it.type === types)) {
         this.items.splice(i, 1);
+        this.bakeDirty = true;           // ((v4.2.0.1) also a landed item not drawn yet: the items above it move down)
         if (!it.spr) {
           // (v4.2) a baked item: its sprite appears where it was drawn, to fly away
           const fx = this.scene.effects;
           it.spr = fx ? fx.takeItem(it.type) : null;
           if (it.spr) it.spr.setScale(it.sx || this.scale, it.sy || this.scale).setPosition(it.x, it.y).setDepth(this.depth + 0.01).setVisible(this.visible);
-          this.bakeDirty = true;
         }
+        // ((v4.2.0.1, FLICK-1) the pile is redrawn in the frame its item starts to fly: it was queued only by the owner's
+        //  next layout (often already done this frame) and then waited for the 15 Hz cap — the taken item showed twice,
+        //  on the pile and in flight, for 1-4 frames)
+        this.rebakeNow();
         return it;
       }
     }
@@ -145,6 +153,19 @@ export class ItemStack {
     this.items.length = 0;
     this.bakeDirty = true;
     if (this.bakeImg && this.slot && this.baker) this.baker.queue(this, true);
+    this.rebakeNow();                    // ((v4.2.0.1) an emptied pile on screen is wiped in this frame, not 1-4 later)
+  }
+
+  /** ((v4.2.0.1, FLICK-1) a baked stack on (or just off) the screen lost an item: redraw it in this frame's flush, past
+   *  the rate cap (the flush runs once per drawn frame at most). Far away the usual layout path re-bakes it when it
+   *  comes near */
+  rebakeNow() {
+    if (!this.bakeImg || !this.slot || !this.baker) return;
+    const gs = this.scene;
+    const near = gs && gs.isNearView ? gs.isNearView(this.bx, this.by, 160) : !(gs && gs.isOnScreen) || gs.isOnScreen(this.bx, this.by, 160);
+    if (!near) return;
+    this.baker.queue(this);
+    this.baker.urgent = true;
   }
 
   /** world position where the next item would land (for flights) */
@@ -154,7 +175,7 @@ export class ItemStack {
     if (this.typeCols && type) {
       col = this.typeCols[type] || 0;
       let k = 0;
-      const lim = this.drawMax || Infinity;
+      const lim = this.towerLim();
       for (const it of this.items) if (this.typeCols[it.type] === col && ++k < lim) h += stackStep(it.type) * this.scale;
     } else if (this.alternate) {
       const nc = this.cols.length;
@@ -258,35 +279,7 @@ export class ItemStack {
     const moved = bx !== this.bx || by !== this.by;
     this.bx = bx; this.by = by; this.depth = depth;
     const items = this.items, n = items.length;
-    if (this.bakeDirty || moved) {
-      if (this.typeCols) {
-        const hs = this._hs || (this._hs = []), cs = this._cs || (this._cs = []);
-        for (let k = 0, nk = Math.max(8, this.cols.length); k < nk; k++) { hs[k] = 0; cs[k] = 0; }
-        const lim = this.drawMax || Infinity;
-        for (let i = 0; i < n; i++) {
-          const it = items[i], col = this.typeCols[it.type] || 0, c = this.cols[col] || this.cols[0];
-          it.x = bx + c[0]; it.y = by + c[1] - hs[col];
-          if (++cs[col] < lim) hs[col] += stackStep(it.type) * this.scale;
-        }
-      } else if (this.alternate) {
-        const nc = this.cols.length, hs = this._hs || (this._hs = []);
-        for (let k = 0; k < nc; k++) hs[k] = 0;
-        const lim = this.drawMax || Infinity;
-        for (let i = 0; i < n; i++) {
-          const it = items[i], col = i % nc, c = this.cols[col];
-          it.x = bx + c[0]; it.y = by + c[1] - hs[col];
-          if (i + nc < lim) hs[col] += stackStep(it.type) * this.scale;
-        }
-      } else {
-        let h = 0, col = 0, inCol = 0;
-        for (let i = 0; i < n; i++) {
-          if (inCol >= this.perCol && col < this.cols.length - 1) { col++; inCol = 0; h = 0; }
-          const it = items[i], c = this.cols[col];
-          it.x = bx + c[0]; it.y = by + c[1] - h;
-          h += stackStep(it.type) * this.scale; inCol++;
-        }
-      }
-    }
+    if (this.bakeDirty || moved) this.place();
     // live sprites (items that landed since the last bake) keep their place
     for (let i = 0; i < n; i++) { const it = items[i]; if (it.spr) { it.spr.setPosition(it.x, it.y); if (it.spr.depth !== depth + 0.001) it.spr.setDepth(depth + 0.001); } }
     if (!this.bakeImg && (!n || !this.ensureBake())) return;
@@ -297,7 +290,54 @@ export class ItemStack {
       const gs = this.scene;
       // (off screen it waits: a stack far away is baked when it comes near; the baker draws every queued stack in
       //  one pass right before the frame is drawn, a few times a second)
-      if (!gs.isOnScreen || gs.isOnScreen(bx, by, 700) || !this.bakedOnce) this.baker.queue(this);
+      //  ((v4.2.0.1) near the camera as it is NOW: worldView is only updated when a frame is drawn, so after a camera
+      //  cut (the rank ceremony's cut back from the hall) the old picture was drawn for a frame)
+      //  ((v4.2.0.1) one that changed while far is drawn in the very frame it comes near, past the flush rate cap)
+      if (!gs.isOnScreen || (gs.isNearView ? gs.isNearView(bx, by, 700) : gs.isOnScreen(bx, by, 700)) || !this.bakedOnce) {
+        this.baker.queue(this);
+        if (this.waitFar) { this.waitFar = false; this.baker.urgent = true; }
+      } else this.waitFar = true;
+    }
+  }
+
+  /** the tallest a type tower is drawn (drawMax, and (baked) the layers its slot holds) */
+  towerLim() { return Math.min(this.drawMax || Infinity, this.towerCap || Infinity); }
+
+  /**
+   * (v4.2.0.1) the items' x / y in their towers at (bx, by) — the same towers as layout() (typeCols / alternate /
+   * perCol, drawMax). layoutBaked calls it when the stack changed or moved, and StackBaker.flush right before it draws
+   * a changed stack: a stack rebuilt AFTER its layout of the frame (the 창고 pile: a porter's take, clear() + push(),
+   * which puts every item on the base point) was drawn as one item on the base and stayed so until its next change
+   */
+  place() {
+    const items = this.items, n = items.length, bx = this.bx, by = this.by;
+    if (this.typeCols) {
+      const hs = this._hs || (this._hs = []), cs = this._cs || (this._cs = []);
+      // ((v4.2.1) one height per tower: the 잡화점 has 7 since meat cans)
+      for (let k = 0, nk = Math.max(8, this.cols.length); k < nk; k++) { hs[k] = 0; cs[k] = 0; }
+      const lim = this.towerLim();
+      for (let i = 0; i < n; i++) {
+        const it = items[i], col = this.typeCols[it.type] || 0, c = this.cols[col] || this.cols[0];
+        it.x = bx + c[0]; it.y = by + c[1] - hs[col];
+        if (++cs[col] < lim) hs[col] += stackStep(it.type) * this.scale;
+      }
+    } else if (this.alternate) {
+      const nc = this.cols.length, hs = this._hs || (this._hs = []);
+      for (let k = 0; k < nc; k++) hs[k] = 0;
+      const lim = this.drawMax || Infinity;
+      for (let i = 0; i < n; i++) {
+        const it = items[i], col = i % nc, c = this.cols[col];
+        it.x = bx + c[0]; it.y = by + c[1] - hs[col];
+        if (i + nc < lim) hs[col] += stackStep(it.type) * this.scale;
+      }
+    } else {
+      let h = 0, col = 0, inCol = 0;
+      for (let i = 0; i < n; i++) {
+        if (inCol >= this.perCol && col < this.cols.length - 1) { col++; inCol = 0; h = 0; }
+        const it = items[i], c = this.cols[col];
+        it.x = bx + c[0]; it.y = by + c[1] - h;
+        h += stackStep(it.type) * this.scale; inCol++;
+      }
     }
   }
 

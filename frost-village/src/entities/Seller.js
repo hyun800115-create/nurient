@@ -27,6 +27,7 @@ export class CashPad {
     this.value = 0;
     this.pile = new ItemStack(gs, { scale: 0.85, cols: [[0, -16], [-22, -5], [22, -5], [0, 6], [-44, 6], [44, 6], [-22, 17], [22, 17], [0, 28]], perCol: 5, max: BALANCE.cash.pileVisualMax, bake: true });
     this.collectT = 0;
+    this.toChief = 0;       // ((v4.2.1) coins of the pile the chief has already been paid for: they fly to him)
     this.enabled = true;
     this.spin = gs.effects.loop('fx_coin_spin', x, y - 70, 46, DEPTH.LABEL - 5);
     if (this.spin) this.spin.setVisible(false);
@@ -49,10 +50,26 @@ export class CashPad {
         this.pile.incoming++;
         gs.effects.fly(spr, fx, fy, () => this.pile.nextPos(), {
           dur: 340, height: 70, scaleTo: this.pile.scale,
-          onDone: (s) => { this.pile.incoming--; this.pile.push('item_coin', s); if (gs.isNear(this.x, this.y, 500)) Audio.play('sfx_coin', { volume: 0.4, rate: 0.95 + Math.random() * 0.2, throttle: 50 }); },
+          onDone: (s) => {
+            this.pile.incoming--;
+            // ((v4.2.1 fix, ghost coins) the till was emptied while this coin flew (딸랑이's round, a self-emptying till, the
+            //  chief who took it and walked on): the coin went with it — it never lands on the empty till as a coin worth
+            //  nothing (딸랑이 skips a till with no value: it stayed there for good)
+            if (this.value <= 0 && !this.pad.contains(gs.player.x, gs.player.y)) { gs.effects.releaseItem(s); gs.effects.burst('coin', this.x, this.y - 30, 1); return; }
+            this.pile.push('item_coin', s);
+            if (gs.isNear(this.x, this.y, 500)) Audio.play('sfx_coin', { volume: 0.4, rate: 0.95 + Math.random() * 0.2, throttle: 50 });
+          },
         });
       });
     }
+  }
+
+  /** ((v4.2.0.1) add `amount` coins without the flight (the till is off screen): value AND pile, by add()'s rule — the
+   *  tax box and the 물류 금고 used to raise only the value while the camera was away: real coins, no picture) */
+  addQuiet(amount) {
+    this.value += amount;
+    const n = Math.min(6, Math.max(1, Math.round(amount / 3)));
+    for (let i = 0; i < n && this.pile.count + this.pile.incoming < this.pile.max; i++) this.pile.push('item_coin', null, this.gs.effects);
   }
 
   update(dt) {
@@ -63,11 +80,16 @@ export class CashPad {
       if (this.spin.visible !== show) this.spin.setVisible(show);
       if (show) this.spin.y = this.y - 74 - this.pile.count * 0.8 + Math.sin(this.gs.time.now / 300) * 5;
     }
-    const p = this.gs.player;
-    if ((this.value > 0 || this.pile.count > 0) && this.pad.contains(p.x, p.y)) {
-      if (this.value > 0) {
+    const p = this.gs.player, on = this.pad.contains(p.x, p.y);
+    // ((v4.2.1 fix, ghost coins) the coins on the pad when the chief takes the till are his: they follow him even when he
+    //  runs straight on, and even when a customer pays again before they have all flown (a busy till); a pile that holds
+    //  no value follows him too. Left on the pad they looked uncollected, and 딸랑이 skips a till that holds no value)
+    if (this.toChief > this.pile.count) this.toChief = this.pile.count;
+    if ((this.value > 0 && on) || (this.pile.count > 0 && (on || this.value <= 0 || this.toChief > 0))) {
+      if (this.value > 0 && on) {
         const v = this.value;
         this.value = 0;
+        this.toChief = this.pile.count;
         this.gs.economy.add(v, p.x, p.y - 60, true);
         this.gs.effects.floatText(p.x, p.y - 100, '+' + v, '#ffd84a', 34);
         Audio.play('sfx_coins_many', { volume: 0.9 });
@@ -75,8 +97,9 @@ export class CashPad {
         this.pad.pulse();
       }
       this.collectT -= dt;
-      while (this.collectT <= 0 && this.pile.count > 0) {
+      while (this.collectT <= 0 && this.pile.count > 0 && (on || this.value <= 0 || this.toChief > 0)) {
         this.collectT += BALANCE.cash.collectInterval;
+        if (this.toChief > 0) this.toChief--;
         const it = this.pile.pop();
         this.gs.effects.fly(it.spr, it.spr.x, it.spr.y, () => ({ x: p.x, y: p.y - 50 }), {
           dur: 240, height: 60, scaleTo: 0.5,
@@ -98,6 +121,7 @@ export class CashPad {
       if (it.spr) gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: (ch ? ch.x : this.x) + 12, y: (ch ? ch.y : this.y) - 110 }, { dur: 260 + i * 40, height: 50, scaleTo: 0.35, onDone: (s) => gs.effects.releaseItem(s) });
     }
     this.pile.clear(gs.effects);
+    this.toChief = 0;
     if (this.pad && this.pad.pulse) this.pad.pulse();
     return n;
   }

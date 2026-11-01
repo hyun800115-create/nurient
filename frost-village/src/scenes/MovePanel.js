@@ -480,7 +480,7 @@ export class MovePanel {
     this.yesBtn.disabled = true; this.noBtn.disabled = true; this.loadBtn.disabled = true;
     this.setMsg(this.msgIn, L.applying);
     let r;
-    try { r = await applyVillage(p.keys); } catch (e) { r = { ok: false, error: 'noRoom' }; }
+    try { r = await applyVillage(p.keys, { undo: !!p.undo }); } catch (e) { r = { ok: false, error: 'noRoom' }; }
     if (!r.ok) {
       this.busy = false;
       this.applying = false;

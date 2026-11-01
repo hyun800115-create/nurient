@@ -13,6 +13,7 @@ import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 import { gdist } from '../core/Iso.js';
 import { TF } from '../core/Townfolk.js';
+import { makeRoom } from '../systems/Paths.js';
 
 export class BankBuilding42 {
   constructor(gs, site, office, instant) {
@@ -56,6 +57,8 @@ export class BankBuilding42 {
         this.obstacles.push(gs.collision.add(x, y, 16, 'bank'));
       }
     }
+    // ((v4.2.0.1) the routes go in and out by the door (the courier banked his sack through the east wall)
+    if (gs.roads && gs.roads.addRoom) this.room = gs.roads.addRoom(makeRoom(poly, door, this.cw.point('entryPoint'), 'bank'));
     // the counter (staff behind it), the 창구 pad in front
     const cp = this.cw.point('counterPoints', 1) || { x: this.x + 43, y: this.y + 2 };
     this.counter = this.cw.point('counterPoints', 0) || { x: this.x + 7, y: this.y - 16 };
@@ -164,5 +167,5 @@ export class BankBuilding42 {
 
   revealObjects() { return this.cw ? this.cw.objects() : []; }
 
-  destroy() { this.dead = true; if (this.cw) this.cw.destroy(); for (const ob of this.obstacles) ob.active = false; for (const s of this.staff) s.destroy(); if (this.windowPad) this.windowPad.img.destroy(); }
+  destroy() { this.dead = true; if (this.room && this.gs.roads) this.gs.roads.removeRoom(this.room); if (this.cw) this.cw.destroy(); for (const ob of this.obstacles) ob.active = false; for (const s of this.staff) s.destroy(); if (this.windowPad) this.windowPad.img.destroy(); }
 }

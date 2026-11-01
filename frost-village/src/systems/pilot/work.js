@@ -106,6 +106,16 @@ export function restSpot(gs, r) {
   for (const c of gs.campfires || []) out.push({ x: c.x + 60, y: c.y + 40, kind: 'fire' });
   for (const b of gs.benches || []) out.push({ x: b.x, y: b.y + 24, kind: 'bench' });
   if (gs.market) out.push({ x: gs.market.x - 220, y: gs.market.y - 120, kind: 'sea' });
+  // ((v4.2.0.1) only places on revealed land (a campfire beyond the fog's edge: he pressed the fog 38 s), each on free
+  //  ground (the bench's own collider)
+  const C = gs.collision;
+  if (C) {
+    for (let i = out.length - 1; i >= 0; i--) {
+      const q = out[i];
+      if (C.inWalk && !C.inWalk(q.x, q.y)) { out.splice(i, 1); continue; }
+      if (gs.freeSpot && C.blocked(q.x, q.y, 14)) { const f = gs.freeSpot(q.x, q.y, 14, 80); q.x = f.x; q.y = f.y; }
+    }
+  }
   if (!out.length) return null;
   return out[Math.floor(r() * out.length) % out.length];
 }

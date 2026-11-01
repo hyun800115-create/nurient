@@ -89,7 +89,7 @@ export class DepotSystem {
       const coins = sold.reduce((a, q) => a + q.coins, 0);
       const till = this.building.till;
       if (gs.isOnScreen(till.x, till.y, 300)) till.add(coins, this.building.door.x, this.building.door.y - 30);
-      else till.value += coins;
+      else till.addQuiet(coins);               // ((v4.2.0.1) the coins also on the pile while the camera is away)
       const O = this.v42.office;
       if (O) O.income.depot = (O.income.depot || 0) + coins;
     }
