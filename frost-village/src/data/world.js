@@ -39,6 +39,24 @@ const smokehouse = Z('hunt', -1.8, 1.6);
 
 const rel = (a, b) => [b[0] - a[0], b[1] - a[1]];
 
+// (v4.2.0.1) 가공소의 돈 내는 발판 자리 (가공소 중심 기준 px, 디자이너: "건물 안쪽에 있는 것들이 … 물건 쌓이거나 사람들이 있으면 안 보여")
+//   돈 내는 발판은 건물 앞쪽(화면 아래쪽)이나 옆의 빈 땅에만 둬요: 건물·울타리·밀밭·물건 더미·손님 줄 뒤에는 두지 않아요.
+//   line = 한 줄의 고용 발판 (기술자 → 일꾼 → 재료 짐꾼 → 상품 짐꾼, 차례로 하나씩), 2·3번째 일꾼(어부)과 '가공소 2단' 도 여기
+//   p2 = '짐꾼 2' 발판 (null = line 자리를 같이 써요: 한 자리에 발판은 하나씩, 앞 발판을 사면 다음 것이 나와요.
+//        화덕은 null: 화덕 둘레는 손님 줄·교역소·구운 생선 더미로 꽉 차서 따로 둘 빈 땅이 없어요. 생선 짐꾼 2 가 뜨면
+//        낚싯대가 있어야 하는 어부 2·3 발판은 (아직 돈·낚싯대를 안 넣었으면) 잠깐 비켜 줘요: Progression.yields)
+//   세 번째 값 = 이름표 자리: 'lb' = 발판 아래쪽 (위에 다른 발판이 있을 때), [오른쪽 px, 아래쪽 px] = 옆 발판 이름표와 겹치지 않게
+const STATION_PADS = {
+  grill:      { line: [-79, 155],  p2: null },
+  sawmill:    { line: [-6, 119],   p2: [168, 112, [100, -62]] },
+  bakery:     { line: [-272, 93],  p2: [-202, 188, 'lb'] },
+  smelter:    { line: [39, 148],   p2: [199, 128, 'lb'] },
+  smokehouse: { line: [-251, -25], p2: [-284, 170] },
+};
+const STC = { grill, sawmill, bakery, smelter, smokehouse };
+/** (v4.2.0.1) the spot of a station's line pads { x, y } */
+const LINE = (id) => ({ x: STC[id][0] + STATION_PADS[id].line[0], y: STC[id][1] + STATION_PADS[id].line[1] });
+
 // 바닷가 선 (y 값보다 위쪽이 바다). WORLD.shore 의 숫자로 계산합니다.
 //   (v3) slope: 동쪽(from 보다 오른쪽)으로 갈수록 해안선이 아래로 내려감 = 동쪽 해안 (배 창고가 있는 곳)
 export function shoreY(x) {
@@ -70,6 +88,9 @@ export const WORLD = {
   // 첫 판매(튜토리얼) 동안 카메라가 비추는 곳: 그물·그릴·판매대·손님 줄이 한 화면에 들어오도록
   // (촌장이 화면 가장자리로 가면 카메라가 따라감)
   tutorialView: [1095, 670],
+  // (v4.2.0.1) 첫 실행 튜토리얼: 계산대·코인(register) 단계와 점원 고용 발판(pad) 단계에서 카메라가 비추는 곳.
+  //   기본 화면(tutorialView)에서는 계산대와 점원 고용 발판이 화면 오른쪽 밖이라서 조금 옮겨요
+  onboard: { views: { register: [1215, 760], pad: [1320, 800] } },
 
   zones: ZONES,
 
@@ -112,7 +133,9 @@ export const WORLD = {
   },
   // 버리기 발판: 위에 잠깐 서 있으면 들고 있는 물건을 모닥불에 던져 버립니다 (어부 고용 후 나타남)
   trash: { x: 560, y: 700, fire: [520, 574] },
-  bench: { sprite: 'upgrade_bench', x: bench[0], y: bench[1], pads: { capacity: rel(bench, Z('plaza', 1.55, -4.75)), speed: rel(bench, Z('plaza', 5.65, -4.45)) } },
+  // (v4.2.0.1) 가방은 작업대 그림 밖으로, 신발은 손님 줄 끝·손님이 걸어오는 길 밖으로 (이름표는 발판 아래: labels)
+  //   (교역소 점원 발판과는 떨어져 있어서 둘 다 함께 보여요. 혹시 다른 발판이 그 자리에 서면 가방·신발이 잠깐 비켜 줘요)
+  bench: { sprite: 'upgrade_bench', x: bench[0], y: bench[1], pads: { capacity: rel(bench, Z('plaza', 1.22, -5.14)), speed: rel(bench, Z('plaza', 4.28, -6.33)) }, labels: { speed: [0, 64] } },
 
   // ── 자원 ───────────────────────────────────────────────
   net: { x: 880, y: 398, gather: [0, 86], fisherSpot: [-128, 30] },
@@ -121,7 +144,11 @@ export const WORLD = {
   rocks: [
     // (v3.5 리뷰: 첫 바위를 울타리 옆(-2.6, -0.4)에서 광산 안쪽으로 — 북쪽에서 오면 울타리에 막혔어요)
     [...Z('mine', 1.0, -1.4), 'rock_ore'], [...Z('mine', -0.6, -1.6), 'rock_ore_b'], [...Z('mine', -2.8, -2.8), 'rock_ore_b'],
-    [...Z('mine', 0.9, -3.2), 'rock_ore'], [...Z('mine', -0.6, 0.6), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
+    // (v4.2.0.1: 다섯째 바위를 광석 통에서 떼어 놓음 (-0.6, 0.6) -> (1.1, 0.0) — 통에서 가져가는 자리와 광부 #1 이 내려놓는 자리가
+    //  바위 안 / 바로 옆이라 짐꾼과 광부가 매번 바위에 막혔어요)
+    // (v4.2.0.1: 넷째 바위를 (0.9, -3.2) -> (2.5, -3.3) 으로 — 둘째 바위와 33 px 좁은 틈이 첫째 바위 앞에서 막혀서, 광부가 그 틈에
+    //  끼어 들어가 첫째 바위를 반대편에서 캤어요. 이제 이웃 바위와 40 px 넘게 떨어져 있고, 울타리와는 닿지 않아요)
+    [...Z('mine', 2.5, -3.3), 'rock_ore'], [...Z('mine', 1.1, 0.0), 'rock_ore'], [...Z('mine', 2.6, -1.0), 'rock_ore_b'],
     [...Z('mine', -1.2, -3.9), 'rock_ore'],
   ],
   // skip: 비워 두는 밭 칸 [줄, 칸] — 오븐 바로 앞 칸은 빵집 아주머니(와 촌장)가 서서 일하는 자리라 비워 둠 (v3.5 리뷰)
@@ -130,46 +157,53 @@ export const WORLD = {
 
   // ── 해금 / 고용 발판 ────────────────────────────────────
   //  worker: 고용되는 일꾼, hut: 일꾼 오두막 위치 (구역이 열릴 때 함께 나타남)
+  //  (v4.2.0.1) 가공소 줄의 고용 발판은 위 STATION_PADS.line 자리 (예전: 화덕 뒤, 제재소 판자 탑 밑, 밀 더미 옆 울타리, 용광로 뒤, 사냥터 안쪽)
   pads: {
-    hire_fisherman:  { x: 900,  y: 700,  worker: 'fisherman',  hut: [585, 470] },
+    hire_fisherman:  { ...LINE('grill'), worker: 'fisherman',  hut: [585, 470] },
     zone_forest:     { x: 760,  y: 1130, zone: 'forest' },
-    hire_lumberjack: { x: 790, y: 1215, worker: 'lumberjack', hut: [300, 1010] },   // (v3.5: off the sawmill's input pad)
+    hire_lumberjack: { ...LINE('sawmill'), worker: 'lumberjack', hut: [300, 1010] },
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
-    hire_farmer:     { x: 1636, y: 1229, worker: 'farmer',     hut: [1606, 1112] },
+    hire_farmer:     { ...LINE('bakery'), worker: 'farmer',     hut: [1606, 1112] },
     zone_mine:       { x: 760,  y: 1760, zone: 'mine' },
-    hire_miner:      { ...P('mine', -0.4, 3.6), worker: 'miner',      hut: [236, 1730] },
+    hire_miner:      { ...LINE('smelter'), worker: 'miner',      hut: [236, 1730] },
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
-    hire_hunter:     { x: 1640, y: 1990, worker: 'hunter',     hut: [1616, 1790] },
+    hire_hunter:     { ...LINE('smokehouse'), worker: 'hunter',     hut: [1616, 1790] },
     // (v2) 점원 고용: 첫 판매 / 첫 교역 뒤에 나타남. 점원이 있으면 촌장이 계산대에 서 있지 않아도 손님이 돈을 냄
-    hire_clerk_market: { x: 1496, y: 794, clerk: 'market' },
-    hire_clerk_trade:  { ...P('plaza', -2.6, -3.95), clerk: 'trade' },
+    // (v4.2.0.1) 판매대 점원: 계산대 오른쪽 아래·개집 위 빈 눈밭 (예전 자리는 나무 상자·통이 반쯤 덮었어요)
+    //   교역소 점원: 교역소 동전 더미 왼쪽 빈 눈밭 (예전엔 동전 더미 발판 위에 겹쳐 있었어요. 동전 더미 아래 자리는 가방 발판과
+    //   겹쳐서, 점원을 고용할 때까지 가방이 안 보였어요)
+    hire_clerk_market: { x: 1525, y: 900, clerk: 'market' },
+    hire_clerk_trade:  { x: 640, y: 830, clerk: 'trade' },
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
-    porter_grill:      { x: 905,  y: 705,  station: 'grill' },
-    porter_sawmill:    { x: 790, y: 1215, station: 'sawmill' },
-    porter_bakery:     { x: 1636, y: 1229, station: 'bakery' },
-    porter_smelter:    { ...P('mine', -0.4, 3.6), station: 'smelter' },
-    porter_smokehouse: { x: 1640, y: 1990, station: 'smokehouse' },
+    porter_grill:      { ...LINE('grill'), station: 'grill' },
+    porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
+    porter_bakery:     { ...LINE('bakery'), station: 'bakery' },
+    porter_smelter:    { ...LINE('smelter'), station: 'smelter' },
+    porter_smokehouse: { ...LINE('smokehouse'), station: 'smokehouse' },
   },
 
   // (v3.5) 분업: 기술자·짐꾼 고용 발판 (한 줄의 발판은 하나씩 차례로 나타나므로 같은 자리를 써요)
   //   op_* = 가공 기술자, raw_* = 재료 짐꾼 (모아두는 곳 → 가공소). 상품 짐꾼은 위의 porter_*
   //   hire3_* = 세 번째 일꾼 (도구 + 코인)
   pads35: {
-    op_grill:       { x: 900,  y: 700 },
-    raw_grill:      { x: 900,  y: 700 },
-    op_sawmill:     { x: 790, y: 1215 },
-    raw_sawmill:    { x: 790, y: 1215 },
-    op_bakery:      { x: 1636, y: 1229 },
-    raw_bakery:     { x: 1636, y: 1229 },
-    op_smelter:     { ...P('mine', -0.4, 3.6) },
-    raw_smelter:    { ...P('mine', -0.4, 3.6) },
-    op_smokehouse:  { x: 1640, y: 1990 },
-    raw_smokehouse: { x: 1640, y: 1990 },
-    hire3_fisherman:  { x: 985, y: 468 },
-    hire3_lumberjack: { x: 720, y: 1415 },
-    hire3_farmer:     { x: 1585, y: 1480 },
+    // (v4.2.0.1: 요리사 발판은 이름표를 발판 아래에 — 120 px 위의 '서서 굽기' 발판과 겹치지 않게, 노란 화살표가 발판을 바로 가리켜요)
+    op_grill:       { ...LINE('grill'), labelAt: [0, 64] },
+    raw_grill:      LINE('grill'),
+    op_sawmill:     LINE('sawmill'),
+    raw_sawmill:    LINE('sawmill'),
+    op_bakery:      LINE('bakery'),
+    raw_bakery:     LINE('bakery'),
+    op_smelter:     LINE('smelter'),
+    raw_smelter:    LINE('smelter'),
+    op_smokehouse:  LINE('smokehouse'),
+    raw_smokehouse: LINE('smokehouse'),
+    hire3_fisherman:  LINE('grill'),            // (v4.2.0.1) 화덕 앞 (예전 자리는 화덕 그림 바로 뒤)
+    hire3_lumberjack: { x: 720, y: 1415, labelAt: [0, 64] },   // (v4.2.0.1) 이름표는 발판 아래: 위쪽 제재소 발판들의 가격 위에 걸쳤어요
+    hire3_farmer:     { x: 1557, y: 1466 },     // (v4.2.0.1) 소나무 밖으로
     hire3_hunter:     { x: 1140, y: 2195 },
   },
+  // (v4.2.0.1) 가공소의 돈 내는 발판 자리 (위 STATION_PADS 설명)
+  stationPads: STATION_PADS,
 
   // 고용된 일꾼의 대기 위치
   workerHome: {
@@ -304,10 +338,11 @@ export const WORLD = {
     ['campfire', 2440, 2620, { region: 'se' }], ['ice_chunk', 2750, 3220, { region: 'se', scale: 0.6 }],
     // ---- (v4-C) 서쪽 숲마을 (처음부터 보여요)
     ['ice_chunk', -380, 330], ['ice_chunk', -1050, 322, { scale: 0.7 }], ['boat_small', -760, 262, { flip: true, scale: 0.85 }],
-    ['signpost', -40, 720], ['lamp_post', -190, 690], ['lamp_post', -470, 1080], ['lamp_post', -640, 1580], ['lamp_post', -330, 1820],
+    // (v4.2.0.1) 가로등 (-330, 1820 → -245, 1835): w_s2 짓기 발판 앞에서 비켜 줌
+    ['signpost', -40, 720], ['lamp_post', -190, 690], ['lamp_post', -470, 1080], ['lamp_post', -640, 1580], ['lamp_post', -245, 1835],
     ['snow_pile_a', -140, 500], ['bush_snow', -520, 520], ['barrel', -960, 520], ['crate', -930, 546], ['snow_pile_b', -1250, 520],
     ['bush_snow', -1300, 1250], ['snow_pile_a', -1000, 1450], ['bush_snow', -60, 1500], ['snow_pile_b', -180, 2300],
-    ['campfire', -260, 2350], ['firewood_pile', -390, 2420], ['tree_stump', -1200, 900], ['tree_stump', -1120, 860],
+    ['campfire', -260, 2350], ['firewood_pile', -310, 2450], ['tree_stump', -1200, 900], ['tree_stump', -1120, 860],   // (v4.2.0.1) 장작 더미: w_s4 짓기 발판 앞에서 비켜 줌 (-390, 2420 →)
     ['hay_bale', -1220, 2100, { scale: 0.9 }], ['bush_snow', -820, 2200], ['flag_pole', -1000, 1520],
   ],
 
@@ -374,10 +409,11 @@ export const WORLD = {
   },
   // 망루 공사장 (x, y = 망루 중심). 비용 발판은 공사장 앞(자재 내려놓는 곳)에 생김
   //   in: 이 땅이 열려 있어야 발판이 나타남 (없으면 처음 마을)
+  //   (v4.2.0.1) pad = 비용 발판 자리 (망루 중심 기준 px). 남쪽·동남쪽 망루 발판은 닫힌 땅의 눈안개 속에 있었어요: 안개 밖으로
   towers: {
     tower_east:  { x: 1660, y: 845, region: 'east' },
-    tower_south: { x: 1450, y: 2505, region: 'south' },
-    tower_se:    { x: 2870, y: 1370, region: 'se', in: 'east' },
+    tower_south: { x: 1450, y: 2505, region: 'south', pad: [-20, -106] },
+    tower_se:    { x: 2870, y: 1370, region: 'se', in: 'east', pad: [-8, -94] },
   },
   // 빈 건설 부지: size S(2x2m, 집) / M(3x3m, 모든 건물) / L(4x4m, 모든 건물 + 장식)
   //   region: 이 땅이 열리면 나타남, after: 이 단계를 마치면 나타남, only: 이 건물만 지을 수 있음,
@@ -387,8 +423,11 @@ export const WORLD = {
     v_house2: { x: 430, y: 2310, size: 'S', region: 'start', after: 'hire_miner' },
     e_dock:   { x: 2330, shore: 46, size: 'M', region: 'east', only: 'boathouse' },
     e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east' },
-    e_m2:     { x: 2520, y: 985, size: 'M', region: 'east' },
-    s_m1:     { x: 1360, y: 2860, size: 'M', region: 'south' },
+    // (v4.2.0.1) pads: 이 부지에 공방(대장간·통조림 공장)을 지었을 때의 고용 발판 자리 (부지 중심 기준 px)
+    //   line = 기술자·짐꾼 고용, p2 = 짐꾼 2. e_m2: 예전 자리는 기찻길 울타리 바로 뒤 (그 아래쪽은 기찻길 위: 기차가 발판을
+    //   덮었어요), s_m1: 아래 s_m2 건물 그림 뒤, w_m2: 짐꾼 2 자리를 눈 요새가 반쯤 덮었어요
+    e_m2:     { x: 2520, y: 985, size: 'M', region: 'east', pads: { line: [200, -15], p2: [21, 135] } },
+    s_m1:     { x: 1360, y: 2860, size: 'M', region: 'south', pads: { line: [200, 40], p2: [200, 40] } },
     s_m2:     { x: 1470, y: 3235, size: 'M', region: 'south' },
     s_l1:     { x: 780, y: 3220, size: 'L', region: 'south' },
     s_s1:     { x: 1160, y: 3190, size: 'S', region: 'south' },
@@ -400,13 +439,14 @@ export const WORLD = {
     // ---- (v4-A) 눈에 덮인 옛 기차역 (XL 부지, 서리역만 고칠 수 있음). drop = 자재 내려놓는 발판 (승격식 발판 자리)
     r_station: { x: 3410, y: 1330, size: 'XL', region: 'rail', only: 'station', drop: [3200, 1441] },
     // ---- (v4-C) 서쪽 숲마을의 부지. XL = 마을회관·큰 식당 자리 (동쪽 망루 공사가 시작되면 나타나요)
-    //   drop = 자재 내려놓는 발판 위치 (XL 부지만)
+    //   drop = 자재 내려놓는 발판 위치 ((v4.2.0.1) 어느 크기 부지든: 발판이 다른 건물 그림에 가릴 때)
     w_rest:  { x: -600, y: 880,  size: 'XL', region: 'west', after: 'tower_east', drop: [-390, 1000] },
     w_hall:  { x: -780, y: 1880, size: 'XL', region: 'west', after: 'tower_east', drop: [-570, 2000],
                clear: [[-150, 300, 260], [60, 300, 240]] },   // (v4 리뷰) 마을회관 앞 작은 광장: 승격식 때 사람들이 모이는 곳 (소나무를 비워 둠) [x, y, 반지름]
     w_m1:    { x: -250, y: 1360, size: 'M', region: 'west', after: 'zone_hunt' },
-    w_m2:    { x: -1100, y: 1130, size: 'M', region: 'west', after: 'hire_hunter' },
-    w_s1:    { x: -170, y: 1080, size: 'S', region: 'west', after: 'hire_miner' },
+    // ((v4.2.1) mcan = 고기 통조림 기계 발판 (MeatCan.padPos). w_m2: 통조림 공장 왼쪽·아래는 숲이라 소나무가 발판을 덮어요 → 건물 오른쪽 위 빈 눈밭)
+    w_m2:    { x: -1100, y: 1130, size: 'M', region: 'west', after: 'hire_hunter', pads: { p2: [200, 60], mcan: [217, -102] } },
+    w_s1:    { x: -170, y: 1080, size: 'S', region: 'west', after: 'hire_miner', drop: [-60, 1110] },   // (v4.2.0.1) 짓기 발판: w_m1 건물 그림 밖으로
     w_s2:    { x: -330, y: 1660, size: 'S', region: 'west', after: 'hire_miner' },
     w_s3:    { x: -1150, y: 1660, size: 'S', region: 'west', after: 'hire_hunter' },
     w_s4:    { x: -440, y: 2290, size: 'S', region: 'west', after: 'hire_hunter' },
@@ -435,15 +475,15 @@ export const WORLD = {
   foodBox: { x: 690, y: 1752 },
   // (v3) 도구가 있어야 고용되는 두 번째 일꾼 발판 (x, y) — 코인 + 도구 1개
   pads2: {
-    hire2_fisherman:  { x: 985, y: 468, worker: 'fisherman', tool: 'item_rod' },
-    hire2_lumberjack: { x: 720, y: 1415, worker: 'lumberjack', tool: 'item_axe' },
-    hire2_farmer:     { x: 1585, y: 1480, worker: 'farmer', tool: 'item_sickle' },
+    hire2_fisherman:  { ...LINE('grill'), worker: 'fisherman', tool: 'item_rod' },    // (v4.2.0.1) 화덕 앞 (화덕 줄 발판 자리)
+    hire2_lumberjack: { x: 720, y: 1415, worker: 'lumberjack', tool: 'item_axe', labelAt: [0, 64] },   // (v4.2.0.1) 이름표는 발판 아래
+    hire2_farmer:     { x: 1557, y: 1466, worker: 'farmer', tool: 'item_sickle' },     // (v4.2.0.1) 소나무 밖으로
     hire2_miner:      { x: 835, y: 1800, worker: 'miner', tool: 'item_pickaxe' },
     hire2_hunter:     { x: 1140, y: 2195, worker: 'hunter', tool: 'item_bow' },
   },
   // 보트 창고 기준 위치 (px): 배 사기 발판, 배가 나가는 바닷길 (정박 지점 기준), 고기 잡는 곳
   boathouse: {
-    boatPad: [-196, 52],
+    boatPad: [-184, -26],       // (v4.2.0.1) 통·상자 앞 땅 위로 (예전 [-196, 52] 은 통·상자 그림 뒤였어요)
     route: [[90, -110], [190, -250], [230, -420]],
     fishArea: [240, -470, 150],
   },
@@ -502,7 +542,7 @@ export const WORLD = {
       ['kids_swing', 1440, 1610, { id: 'swing', after: 'hire_farmer' }],
       ['ice_rink', 1215, 1700, { id: 'rink', after: 'zone_mine' }],
       ['igloo', 330, 1565, { id: 'igloo', after: 'hire_miner' }],
-      ['clothesline', 470, 2440, { id: 'clothes', after: 'zone_hunt' }],
+      ['clothesline', 575, 2475, { id: 'clothes', after: 'zone_hunt' }],     // (v4.2.0.1) v_house2 짓기 발판 앞에서 비켜 줌 (470, 2440 →)
       ['lantern_string', 800, 2290, { id: 'lanterns_v', after: 'zone_hunt' }],
       // (v3) 새 땅의 쉼터 (그 땅이 열리면 나타남)
       ['log_seat', 2060, 740, { id: 'seat_east_n', after: 'r:east' }], ['log_seat_y', 1965, 765, { id: 'seat_east_w', after: 'r:east' }],
@@ -602,7 +642,8 @@ WORLD.v4 = {
     // 떠 있는 이름표 위치 (발판에서 [오른쪽 px, 아래쪽 px]). 짐 싣는 곳과 역 금고 이름표가 겹치지 않게 벌려 둠
     //   (역 금고 이름표는 동전 더미 위에서 도는 동전보다 위에: 동전이 가득 쌓여도 글자를 가리지 않게)
     //   porter = 역 짐꾼 고용 발판의 이름표 (발판 아래쪽: 위에는 짐 싣는 곳과 역 금고가 있어요)
-    labels: { board: [0, -150], cargo: [-34, -70], cash: [36, -172], porter: [0, 64] },
+    //   ((v4.2.0.1) rank = 승격식 발판 이름표 (광장에 설 때): 오른쪽으로 — 동남쪽 땅이 닫혀 있으면 그 눈안개 벽이 왼쪽 끝을 가렸어요)
+    labels: { board: [0, -150], cargo: [-34, -70], cash: [36, -172], porter: [0, 64], rank: [70, -62] },
   },
   // ── 가게·집 부지 (B 가 씀). size: M 가게, L 큰 가게, S 집. m = [X m, Y m]
   lots: {
@@ -708,7 +749,8 @@ WORLD.v42 = {
   // ── 기차가 서는 자리 (맨 앞 기관차 코끝의 i): ours = 마을 열차(1) / 읍 열차(2), town = 솔방울역
   stops: { ours: { 1: -0.8, 2: -2.9 }, town: 31.6 },
   // ── 촌장 사무실 (광장 서쪽 바닷가 길): 건물 자리, 직원 뽑기 발판, 새 길 갈림 w_office
-  office: { x: 110, y: 810, key: 'chief_office', hire: [-150, 905], node: 'w_office', door: [-62, 824], desk: [150, 760] },
+  //    (v4.2.0.1) hire: 사무실 문 옆 (예전 [-150, 905] 은 w_s1 부지의 집 뒤였어요)
+  office: { x: 110, y: 810, key: 'chief_office', hire: [0, 915], node: 'w_office', door: [-62, 824], desk: [150, 760] },
   // ── 서리 은행 (사무실 서쪽 옆, 같은 길): 건물 자리, 문, 창구 발판
   bank: { x: -340, y: 570, key: 'bank', door: [-458, 629] },
   // ── 서리 물류창고 (서리역 남쪽 끝, 은행길 아래): 건물 중심 (격자), 썰매가 대는 문 번호, 물류 금고, 역의 썰매 정류장
@@ -734,16 +776,20 @@ WORLD.v42 = {
     ['snow_pile_a', -140, 500, 'bank'], ['regionTree', 2950, 1150, 'rail'], ['regionTree', 2930, 1010, 'rail'],
   ],
   // ── 옮기는 장식 [종류, x, y → 새 x, 새 y, 언제]
-  moveDecor: [['lamp_post', -190, 690, -230, 720, 'bank'], ['signpost', -40, 720, -20, 600, 'office']],
+  //    ((v4.2.0.1) 은행 터의 가로등은 (-290, 770) 으로: 은행 짓기 발판 drop 자리를 비워요)
+  moveDecor: [['lamp_post', -190, 690, -290, 770, 'bank'], ['signpost', -40, 720, -20, 600, 'office']],
   // ── 가장자리 숲에서 비워 두는 곳 [x0, y0, x1, y1] (숲의 무작위 순서는 그대로: 다른 나무가 움직이지 않아요)
-  treeGaps: [[6000, 2450, 6150, 2850], [3300, 3300, 3700, 3460]],
+  //    ((v4.2.0.1) w_s4 짓기 발판 앞, 물류창고 짓기 발판 앞, 농부 2·3 발판 옆 소나무 한 그루: 발판을 옮기며 그 둘레의 빈 땅도
+  //     옮겨 가서 동쪽 숲의 소나무 한 그루가 새로 서려 했어요 — 예전처럼 비워 둬요;
+  //     s_m2 부지 오른쪽 아래 소나무 다섯 그루: 잡화점을 s_m2 에 지으면 점원 고용 발판이 그 숲 속에 섰어요)
+  treeGaps: [[6000, 2450, 6150, 2850], [3300, 3300, 3700, 3460], [-640, 2380, -530, 2480], [2990, 3370, 3240, 3460], [1600, 1510, 1645, 1560], [1600, 3370, 1800, 3440]],
 };
 
 // ── (v4.2) 새 부지: 촌장 사무실 터 (마을회관을 지은 뒤), 서리 은행 터 (읍 + 사무실). 보통 부지처럼 자재를 날라 지어요
 //    (only = 이 건물만, after / also = 나타나는 조건, 값은 balance.js v42.office.site / v42.bank.site)
 Object.assign(WORLD.plots, {
   v42_office: { x: WORLD.v42.office.x, y: WORLD.v42.office.y, size: 'M', region: 'start', after: 'b:town_hall', only: 'chief_office', v42: true },
-  v42_bank: { x: WORLD.v42.bank.x, y: WORLD.v42.bank.y, size: 'M', region: 'west', after: 'f:rankEup', also: 'b:chief_office', only: 'bank42', v42: true },
+  v42_bank: { x: WORLD.v42.bank.x, y: WORLD.v42.bank.y, size: 'M', region: 'west', after: 'f:rankEup', also: 'b:chief_office', only: 'bank42', v42: true, drop: [-210, 660] },   // (v4.2.0.1) 짓기 발판: 큰 식당 지붕 밖으로
 });
 // ── (v4.2) 물류창고 터 (읍 + 창고 + 남동쪽 땅) — 썰매 길은 아래 street 로 (흙길)
 WORLD.plots.v42_depot = { x: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[0], y: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[1], size: 'L', region: 'rail', after: 'f:rankEup', also: ['b:warehouse', 'r:se'], only: 'depot42', v42: true };

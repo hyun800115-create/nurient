@@ -419,7 +419,7 @@
      -98
     ]
    },
-   "notes": "Fish grill: stone hearth + iron grate with fish. work = embers pulse. Long axis along world X."
+   "notes": "Fish grill: stone hearth + an EMPTY iron grate (v4.2.0.1: the fish being cooked are the game's own item pictures). work = embers pulse. Long axis along world X."
   },
   "station_sawmill": {
    "atlas": "props_buildings",
@@ -792,7 +792,7 @@
     2.8,
     2.8
    ],
-   "notes": "V-shaped fish trap net on poles. The closed corner points at the camera (screen down); the open side faces screen up (the sea). Fish shown inside. Place it on the shoreline."
+   "notes": "V-shaped fish trap net on poles. The closed corner points at the camera (screen down); the open side faces screen up (the sea). Empty (v4.2.0.1: the catch is the game's jumping fish, one per fish held). Place it on the shoreline."
   },
   "dock_pier": {
    "atlas": "props_buildings",

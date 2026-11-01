@@ -144,7 +144,7 @@ try {
   // ---- 5. save + reload
   const sv = await ev(() => { window.__FV.save(); return { save: localStorage.getItem('frostVillage.save.v1'), crew: window.__FV.v42.crew() }; });
   const blob = JSON.parse(sv.save);
-  step('5 the save stays v7 with an additive v42.crew field', blob.v === 7 && blob.v42 && blob.v42.crew && blob.v42.crew.n === per.cap - 2, { v: blob.v, crew: blob.v42 && blob.v42.crew });
+  step('5 the save is v8 ((v4.2.1) the number only) with an additive v42.crew field', blob.v === 8 && blob.v42 && blob.v42.crew && blob.v42.crew.n === per.cap - 2, { v: blob.v, crew: blob.v42 && blob.v42.crew });
   await boot();
   const r1 = await ev(() => { const gs = window.__FV.scene, W = gs.warehouse; return { crew: W.porters.length, arriving: W.porters.filter((p) => p.state === 'arrive').length, near: W.porters.every((p) => Math.hypot(p.x - W.outPad.x, p.y - W.outPad.y) < 260), p2: gs.v42.lines.p2.slice(), can: gs.porters.filter((p) => p.station === gs.sourceById('cannery') && p.role === 'porter').length, st: window.__FV.v42.crew() }; });
   step('5 reload: the whole crew is back at the 창고 at once (no walk)', r1.crew === per.cap && !r1.arriving && r1.near, r1);

@@ -57,7 +57,7 @@ try {
     ok(Math.max(...late) < s0.max * 0.9, 'the catch pad does not stay full (3 game minutes, max ' + Math.max(...late) + ' of ' + s0.max + ')', rows.join(','));
     const sv = await page.evaluate(() => { window.__FV.save(); return localStorage.getItem('frostVillage.save.v1'); });
     const d = JSON.parse(sv);
-    ok(d.v === 7 && !!d.progress.done.porter_dock && !(d.progress.paid || {}).porter_dock, 'saved (v7): porter_dock done, no part-payment left', { v: d.v, done: !!d.progress.done.porter_dock, paid: (d.progress.paid || {}).porter_dock });
+    ok(d.v === 8 && !!d.progress.done.porter_dock && !(d.progress.paid || {}).porter_dock, 'saved (v8): porter_dock done, no part-payment left', { v: d.v, done: !!d.progress.done.porter_dock, paid: (d.progress.paid || {}).porter_dock });
     for (const e of log.errors) errors.push('save35: ' + e);
     await page.context().close();
     const again = await boot(d);
@@ -88,7 +88,14 @@ try {
     await advance(page, 0.4);
     const s = await page.evaluate(() => { const F = window.__FV, gs = F.scene, ui = F.game.scene.getScene('UI'); return Object.assign({ boat: !!gs.progress.done.boat_rowboat, sub: ui && ui.bannerSub ? ui.bannerSub.text : null }, (() => { const q = {}; q.done = !!gs.progress.done.porter_dock; q.dockPorters = gs.porters.filter((p) => p.station === gs.boathouse).length; q.pad = !!gs.progress.pads.porter_dock; return q; })()); });
     ok(pads.indexOf('boat_rowboat') >= 0 && bought && s.boat && s.done && s.dockPorters === 1 && !s.pad, 'buying the rowboat: the 생선 짐꾼 comes with it, no 600-coin pad', s);
-    ok(s.sub === '생선 짐꾼도 함께 와서 잡은 생선을 날라요', 'the rowboat banner says he came along: "' + s.sub + '"');
+    // ((v4.2.0.1 fix stage) banners now queue (UI.banner): one that comes while another is up shows when that one ends
+    //  (+0.4 s) — here the 기차역 banner from the setup is still up, so the rowboat's waits its turn (≤ 8 s, else dropped)
+    let sub = s.sub, waited = 0;
+    for (; waited < 8 && sub !== '생선 짐꾼도 함께 와서 잡은 생선을 날라요'; waited += 0.2) {
+      await advance(page, 0.2);
+      sub = await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); return ui && ui.bannerBox && ui.bannerBox.visible && ui.bannerSub ? ui.bannerSub.text : null; });
+    }
+    ok(sub === '생선 짐꾼도 함께 와서 잡은 생선을 날라요', 'the rowboat banner says he came along: "' + sub + '" (after ' + (0.4 + waited).toFixed(1) + ' s)');
     await advance(page, 3);
     const s2 = await page.evaluate(() => { const gs = window.__FV.scene; return { pad: !!gs.progress.pads.porter_dock, dockPorters: gs.porters.filter((p) => p.station === gs.boathouse).length }; });
     ok(!s2.pad && s2.dockPorters === 1, 'no 생선 짐꾼 pad appears later, still one porter', s2);

@@ -148,16 +148,20 @@ export class Character {
     if (s.depth !== d) s.setDepth(d);
     // ((v4.2 CODE-2) a seated character: the shadow on the floor below the seat (shadowDy))
     this.shadow.setPosition(this.x, this.y + 1 - ly + (this.shadowDy || 0));
-    if (this.stack.count) {
+    // ((v4.2.0.1) the carry point also while the hands are empty: the stack's base stays on the carrier, so the first
+    //  items picked up fly to him — they flew toward where he last carried something, or the world's corner for a
+    //  worker who had carried nothing since the load, and snapped onto him when the first one landed)
+    const o = this.carryOffset();
+    let dx = o.dx, dy = o.dy, behind = o.behind;
+    if (this.isWorkAnim() && !this.carryMode && BALANCE.player.carryOnHead === false) {
+      // hands are busy: the stack rides on the back like a backpack
+      dx = -o.dx * 0.6; dy = o.dy - 6; behind = !behind;
+    }
+    if (!this.stack.count) { this._cdx = dx; this._cdy = dy; this.stack.bx = this.x + dx; this.stack.by = this.y + dy - ly; }
+    else {
       const moving = this.vx * this.vx + this.vy * this.vy > 100;
       if (moving) this.walkT += dt * 12;
       const bob = moving ? Math.abs(Math.sin(this.walkT)) * -2 : Math.sin(this.scene.time.now / 400) * 0.6;
-      const o = this.carryOffset();
-      let dx = o.dx, dy = o.dy, behind = o.behind;
-      if (this.isWorkAnim() && !this.carryMode && BALANCE.player.carryOnHead === false) {
-        // hands are busy: the stack rides on the back like a backpack
-        dx = -o.dx * 0.6; dy = o.dy - 6; behind = !behind;
-      }
       // glide to the new spot when turning instead of jumping
       if (this._cdx === undefined || dt <= 0) { this._cdx = dx; this._cdy = dy; }
       else { const k = Math.min(1, dt * 16); this._cdx += (dx - this._cdx) * k; this._cdy += (dy - this._cdy) * k; }
@@ -181,6 +185,9 @@ export class Character {
 
   destroy() {
     this.alive = false;
+    // ((v4.2.0.1) what it carried goes with it: the 물류창고 buyer left his parcel on the snow, one per buyer, for good)
+    const fx = this.scene && this.scene.effects;
+    if (fx && this.stack && this.stack.count) this.stack.clear(fx);
     this.sprite.destroy();
     this.shadow.destroy();
   }

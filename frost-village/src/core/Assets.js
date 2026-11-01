@@ -8,7 +8,9 @@
 import { Placeholders } from './Placeholders.js';
 import { TF } from './Townfolk.js';
 
-export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5'];
+export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5', 'ui7'];
+// ((v4.2.0.1) + ui7 = the first-run tutorial's pointing mitten, tap ripple and spotlight hole (tools/fx/gen_ui7.py): one
+//  small page at boot, the hand is on screen at second 0 of a new game — before the late v42_core page (ui5) arrives)
 // (v4-C2) water = the living sea of v7 (Water.js): its data textures come after the title (WATER_DATA, prefetched
 // while the title shows), its effect sheets only when a system asks (WaterSheets). audio5 = the sea / beach sounds:
 // only amb_sea_waves is used yet (it replaces amb_sea); the beach keys wait for the beach (USED_ONLY)

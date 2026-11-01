@@ -1,13 +1,15 @@
-// (v4.2, docs/v42_plan.md §10 + §15) save v7, Node only:
+// (v4.2, docs/v42_plan.md §10 + §15) save v7 ((v4.2.1) v8: the same fields, a new number so a 4.2.0.1 app refuses a
+// v4.2.1 village instead of dropping its meat cans), Node only:
 //   node tools/test/save_v42.mjs
 // - real v4.1 saves (tools/test/fixtures/v41_save_*: the smart / pure bots at 25–46 min, save version 6) and the real
-//   v3.5 saves migrate to v7 with nothing lost; the dock backlog is capped to two train loads
+//   v3.5 saves migrate to v8 with nothing lost; the dock backlog is capped to two train loads; a v4.2 / 4.2.0.1 save
+//   (v7) only changes its number
 // - sanitizeV42: 300 fuzzed variants never throw, its output passes itself unchanged, a full block round-trips
 // - the `bank` slice v4.2 writes passes src/bank/save.js sanitizeBank unchanged, and Save.keepBank (the local copy
 //   of its keep rules) agrees with the module on 300 random slices
 // - the `logistics` slice v4.2 writes passes src/city/logistics/save.js sanitizeLogistics unchanged, and
 //   Save.keepLogistics agrees with the module on 300 random slices
-// - a full v7 save with a maximal v42 block stays ≤ 10 KB
+// - a full save with a maximal v42 block stays ≤ 10 KB
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,8 +27,10 @@ let seed = 12345;
 const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 
-check('SAVE_VERSION is 7', SAVE_VERSION === 7);
+check('SAVE_VERSION is 8', SAVE_VERSION === 8);
 check('a v6 -> v7 step exists', typeof MIGRATE[6] === 'function');
+{ const a = { v: 7, coins: 5, onb: 14, progress: { flags: { meatCan: true } }, v42: { v: 1 } }, b = MIGRATE[7] ? MIGRATE[7](clone(a)) : null;
+  check('a v7 -> v8 step exists and changes only the number', !!b && b.v === 8 && same(Object.assign({}, b, { v: 7 }), a) && a.v === 7, b); }
 
 // ---------------------------------------------------------------- real v4.1 saves
 const v41 = fs.readdirSync(FIX).filter((f) => /^v41_save_.*\.json$/.test(f)).sort();
@@ -36,7 +40,7 @@ for (const f of v41) {
   const s = migrate(raw);
   const base = sanitizeSave(Object.assign(clone(raw), { v: SAVE_VERSION }));
   const doneA = Object.keys(raw.progress.done || {}).filter((k) => raw.progress.done[k]);
-  check(f + ': v6 -> v7', raw.v === 6 && s && s.v === 7);
+  check(f + ': v6 -> v8', raw.v === 6 && s && s.v === 8);
   check(f + ': coins, steps, stations, land, sites, piles, dog, life kept', s.coins === raw.coins && doneA.every((k) => s.progress.done[k]) && same(s.stations, base.stations) && same(s.territory, base.territory) && same(s.sites, base.sites) && same(s.labour, base.labour) && same(s.dog, base.dog) && same(s.life, base.life));
   const cap = 2 * 56;
   const before = Object.values((raw.v4 && raw.v4.cargo) || {}).reduce((a, b) => a + b, 0), after = Object.values((s.v4 && s.v4.cargo) || {}).reduce((a, b) => a + b, 0);
@@ -48,7 +52,7 @@ for (const f of v41) {
 for (const f of fs.readdirSync(FIX).filter((q) => /^v35_save_.*\.json$/.test(q)).sort()) {
   const raw = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'));
   const s = migrate(raw);
-  check(f + ': v4 -> v7, coins and steps kept', s && s.v === 7 && s.coins === raw.coins && Object.keys(raw.progress.done || {}).every((k) => !raw.progress.done[k] || s.progress.done[k]));
+  check(f + ': v4 -> v8, coins and steps kept', s && s.v === 8 && s.coins === raw.coins && Object.keys(raw.progress.done || {}).every((k) => !raw.progress.done[k] || s.progress.done[k]));
 }
 
 // ---------------------------------------------------------------- the v42 block
@@ -92,12 +96,12 @@ check('300 fuzzed v42 blocks: never throws, output stable, ≤ 3 KB', threw === 
   s.v42 = s1;
   s.bank = { v: 1, open: 1, sv: 0, ld: -1, tk: 1 };
   const a = sanitizeSave(clone(s));
-  check('a v7 save with v42 + bank round-trips through sanitizeSave', !!a && same(a.v42, s1) && same(a.bank, s.bank));
+  check('a v' + SAVE_VERSION + ' save with v42 + bank round-trips through sanitizeSave', !!a && same(a.v42, s1) && same(a.bank, s.bank));
   const big = clone(s);
   big.v42 = sanitizeV42(full);
   big.logistics = { v: 1, open: 1, gift: 1, tut: 1, day: 30, seq: 0, stock: { bread: 160, ore: 120, plank: 120, ingot: 60, fish_cooked: 100, meat_cooked: 90, log: 80, wheat: 70 }, orders: [], cash: 12345, chains: [], lv3: [], days: [90, 80, 70, 60, 50, 40, 30, 20, 10, 5], made: [0, 0], tot: [0, 123456, 999] };
   const size = JSON.stringify(sanitizeSave(big)).length;
-  check('a full v7 save stays ≤ 10 KB (' + size + ' B)', size <= 10240);
+  check('a full v' + SAVE_VERSION + ' save stays ≤ 10 KB (' + size + ' B)', size <= 10240);
 }
 
 // ---------------------------------------------------------------- module slices (contract tests)

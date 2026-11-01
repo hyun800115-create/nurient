@@ -349,7 +349,8 @@ export class Growth {
     }
     this.cargo++;
     if (this.crates.count + this.crates.incoming < CRATES_SHOWN) {
-      if (from) gs.moveItem(from.stack, this.crates, ty, { dur: 260, height: 70, sfx: 'drop' });
+      // ((v4.2.0.1) accept: the train took the crate while it flew (the card room opened mid-dwell) -> no ghost crate)
+      if (from) gs.moveItem(from.stack, this.crates, ty, { dur: 260, height: 70, sfx: 'drop', accept: () => this.crates.count < Math.min(CRATES_SHOWN, this.cargo) });
       else this.crates.push(ty, null, gs.effects);
     } else if (from) {
       const it = from.stack.pop(ty);

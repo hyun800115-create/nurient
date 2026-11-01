@@ -31,6 +31,9 @@ import { Porter } from '../entities/Worker.js';
 import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
 import { LINES } from './StockLedger.js';
+import { STEPS } from './Progression.js';
+
+const STEP_OF = (id) => STEPS.find((s) => s.id === id) || null;
 
 const V = () => BALANCE.v42 || {};
 const WORKER = { grill: 'fisherman', sawmill: 'lumberjack', bakery: 'farmer', smelter: 'miner', smokehouse: 'hunter' };
@@ -98,6 +101,27 @@ export class LineUpgrades {
     return this.v42.complete && this.p2.indexOf(line) < 0 && !!this.gs.warehouse && !!this.src(line) && this.hasPorter(line) && (this.fullT[line] || 0) >= (Number(P2.fullForS) || 45);
   }
   depotBuilt() { const d = this.v42.depot; return !!(d && d.built); }
+  /** ((v4.2.0.1) where a 짐꾼 2 / 가공소 2단 pad stands: { x, y, labelAt? }. The five stations: WORLD.stationPads (in
+   *  front of the station, on the open snow; 'lb' = its label below the pad, [dx, dy] = beside it); the workshops and the boathouse: by the
+   *  line's porter spot as before */
+  spotOf(kind, line) {
+    // ((v4.2.0.1) 화물칸 크게: on the open snow below-left of the station porters' pad, its label below it (at dock +
+    //  (96, 84) the station's coin pile stood over it; at dock + (96, 176) the porter pad's label lay on its price; further
+    //  right a shop of the town lot A1 stands over it; at dock - 97 the fog of a closed 남동쪽 땅 drifted over the left end of
+    //  its label now and then: 90 px further right its label starts past the fog's widest billow)
+    if (kind === 'big') { const G = this.gs.v4 && this.gs.v4.growth; return G && G.dock ? { x: G.dock.x - 7, y: G.dock.y + 226, labelAt: [0, 64] } : null; }
+    const SP = WORLD.stationPads && WORLD.stationPads[line], st = kind === 'st2' ? this.gs.stations[line] : this.src(line);
+    if (!st) return null;
+    if (SP) {
+      const o = kind === 'p2' && SP.p2 ? SP.p2 : SP.line;
+      return { x: st.x + o[0], y: st.y + o[1], labelAt: o[2] === 'lb' ? [0, 64] : Array.isArray(o[2]) ? o[2] : undefined };
+    }
+    if (kind === 'st2') return { x: st.x + (st.cfg.in[0] < 0 ? -1 : 1) * 30, y: st.y + 118 };
+    const pp = this.gs.plotPad ? this.gs.plotPad(st, 'p2') : null;      // (a plot that names the spot: world.js plots.<id>.pads)
+    if (pp) return pp;
+    const h = Porter.homeFor(this.gs, st);
+    return { x: h[0] + 34, y: h[1] + 30 };
+  }
   stationPorters() { const G = this.gs.v4 && this.gs.v4.growth; return G && G.porters ? G.porters.length : 0; }
 
   /** the offers due now: [{ id, kind, line?, cost, x, y, label, icon }] */
@@ -125,11 +149,12 @@ export class LineUpgrades {
       const st = this.src(line);
       if (!st) continue;
       if (this.f4Due(line)) {
-        const h = Porter.homeFor(gs, st);
-        out.push({ id: 'p2_' + line, kind: 'p2', line, cost: Number(P2.costs && P2.costs[line]) || 600, x: h[0] + 34, y: h[1] + 30, label: 'p2_pad', icon: Assets.pick('ui_icon_porter', 'ui_icon_backpack') });
+        const h = this.spotOf('p2', line);
+        if (h) out.push({ id: 'p2_' + line, kind: 'p2', line, cost: Number(P2.costs && P2.costs[line]) || 600, x: h.x, y: h.y, labelAt: h.labelAt, label: 'p2_pad', icon: Assets.pick('ui_icon_porter', 'ui_icon_backpack') });
       }
       if (WORKER[line] && this.f5Due(line)) {
-        out.push({ id: 'st2_' + line, kind: 'st2', line, cost: Number(S2.costs && S2.costs[line]) || 1000, x: st.x + (st.cfg.in[0] < 0 ? -1 : 1) * 30, y: st.y + 118, label: 'st2_pad', icon: Assets.pick('ui_icon_upgrade', 'ui_icon_lock_open', 'ui_icon_lock') });
+        const q = this.spotOf('st2', line);
+        if (q) out.push({ id: 'st2_' + line, kind: 'st2', line, cost: Number(S2.costs && S2.costs[line]) || 1000, x: q.x, y: q.y, labelAt: q.labelAt, label: 'st2_pad', icon: Assets.pick('ui_icon_upgrade', 'ui_icon_lock_open', 'ui_icon_lock') });
       }
     }
     // ((v4.2.1) 고기 통조림 기계: MeatCan says when (and where)
@@ -141,7 +166,7 @@ export class LineUpgrades {
       const n = this.stationPorters(), c34 = V().stationPorter34 || [1000, 1500];
       if (this.depotBuilt() && n >= 2 && n < 4) out.push({ id: 'sp' + (n + 1), kind: 'sp34', cost: Number(c34[n - 2]) || 1000, x: Q.porter.x, y: Q.porter.y, label: 'sp34_pad', n: n + 1, icon: Assets.pick('ui_icon_porter', 'ui_icon_backpack') });
       const FB = V().freight || {};
-      if (F && !F.big && F.stats.waitT >= (Number(FB.bigOfferS) || 120)) out.push({ id: 'bigcar', kind: 'big', cost: Number(FB.bigCost) || 2000, x: G.dock.x + 96, y: G.dock.y + 84, label: 'bigCar_pad', icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack') });
+      if (F && !F.big && F.stats.waitT >= (Number(FB.bigOfferS) || 120)) { const b = this.spotOf('big'); out.push({ id: 'bigcar', kind: 'big', cost: Number(FB.bigCost) || 2000, x: b.x, y: b.y, labelAt: b.labelAt, label: 'bigCar_pad', icon: Assets.pick('ui_icon_delivery', 'ui_icon_backpack') }); }
       const Dp = this.v42.depot, SL = (V().depot && V().depot.sleigh) || {};
       if (Dp && Dp.built && Dp.sleighN < 2 && this.sleighWaitT >= (Number(SL.offerS) || 120)) {
         const st = (WORLD.v42.depot && WORLD.v42.depot.sleighStop) || [5, -5];
@@ -184,19 +209,46 @@ export class LineUpgrades {
     if (this.v42.fromOld && !(this.v42.seen && this.v42.seen.whatsNew)) return;
     // ((v4.2 touch) the restaurant's pads stand apart, and the 짐꾼 2 pads have their own MAX_P2 slots: they used to wait
     //  behind three unbought 가공소 2단 pads for the whole game — the designer's "짐이 밀려요")
+    for (const q of this.plan(due)) {
+      if (q.yielder) gs.progress.yieldPad(q.yielder.id);
+      this.makePad(q.o);
+    }
+  }
+
+  /** which due offers get a pad now: [{ o, yielder }] — a few at a time (MAX_OFFERS line offers, MAX_P2 짐꾼 2, the
+   *  restaurant's apart), a part-paid one first ((v4.2 final, robust review #8): it could stay hidden behind unpaid ones) */
+  plan(due) {
+    const gs = this.gs, pr = gs.progress, out = [];
     const kindOf = (id) => (this.pads[id].offer && this.pads[id].offer.kind) || '';
     let n = Object.keys(this.pads).filter((id) => !APART_KINDS.has(kindOf(id)) && kindOf(id) !== 'p2').length;
     let n2 = Object.keys(this.pads).filter((id) => kindOf(id) === 'p2').length;
-    // ((v4.2 final, robust review #8) a part-paid offer takes its slot first (it could stay hidden behind unpaid ones)
     due.sort((a, b) => ((this.paid[b.id] > 0) ? 1 : 0) - ((this.paid[a.id] > 0) ? 1 : 0));
     for (const o of due) {
       if (this.pads[o.id]) continue;
-      if (APART_KINDS.has(o.kind)) { this.makePad(o); continue; }
-      if (o.kind === 'p2') { if (n2 < MAX_P2) { this.makePad(o); n2++; } continue; }
-      if (n >= MAX_OFFERS) continue;
-      this.makePad(o);
-      n++;
+      const apart = APART_KINDS.has(o.kind), slot = apart || (o.kind === 'p2' ? n2 < MAX_P2 : n < MAX_OFFERS);
+      if (!slot) continue;
+      // ((v4.2.0.1) one live paid pad per spot: an offer whose spot is taken (a hire step of the same line, another
+      //  offer) waits until that pad is bought, then appears here (looked at again every second; its part payment kept).
+      //  ((final review F1) a tool-gated side hire there with nothing paid gives the spot up (Progression.yields);
+      //  ((final review F2) a part-paid offer waiting for its spot keeps its slot: unpaid offers elsewhere do not fill it
+      //  meanwhile and leave it hidden after its spot frees)
+      const blk = gs.paidPadNear ? gs.paidPadNear(o.x, o.y, 45.25 * 1.9, o.id) : null;
+      const yielder = blk && pr && pr.pads[blk.id] === blk && pr.yields && pr.yields(STEP_OF(blk.id), blk) && !gs.paidPadNear(o.x, o.y, 45.25 * 1.9, blk.id) ? blk : null;
+      if (blk && !yielder && !((this.paid[o.id] || 0) > 0)) continue;
+      if (!apart) { if (o.kind === 'p2') n2++; else n++; }
+      if (blk && !yielder) continue;
+      out.push({ o, yielder });
     }
+    return out;
+  }
+
+  /** ((v4.2.0.1) a due offer would take the spot at (x, y) now if it were free (Progression: a yielding side hire waits) */
+  wantsSpot(x, y) {
+    if (this.v42.fromOld && !(this.v42.seen && this.v42.seen.whatsNew)) return false;
+    const now = this.gs.time ? this.gs.time.now : 0;
+    if (!this._want || this._wantAt !== now) { this._want = this.plan(this.offers()).map((q) => q.o); this._wantAt = now; }
+    const R = 45.25 * 1.9 * 2 + 16;
+    return this._want.some((o) => Math.abs(o.x - x) + 2 * Math.abs(o.y - y) < R);
   }
 
   makePad(o) {
@@ -206,7 +258,7 @@ export class LineUpgrades {
     const nm = () => (o.line ? t('p2Name_' + o.line) : t(item));
     const lab = o.kind === 'p2' ? () => t('p2_pad', { item: nm() }) : o.kind === 'st2' ? () => t('st2_pad', { st: t('line_' + o.line) }) : o.kind === 'sp34' ? () => t('sp34_pad', { n: o.n }) : o.kind === 'sleigh2' ? () => t('sleigh2_pad') : o.kind === 'tables' ? () => t('tables_pad') : o.kind === 'srv2' ? () => t('rest_server2') : o.kind === 'mcan' ? () => t('mcan_pad') : () => t('bigCar_pad');
     const pad = new UnlockPad(gs, o.id, o.x, o.y, {
-      kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' || o.kind === 'tables' || o.kind === 'mcan' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48,
+      kind: o.kind === 'st2' || o.kind === 'big' || o.kind === 'sleigh2' || o.kind === 'tables' || o.kind === 'mcan' ? 'upgrade' : 'hire', cost: o.cost, paid: this.paid[o.id] || 0, labelFn: lab, icon: o.icon, iconSize: 48, labelAt: o.labelAt,
       padTex: o.kind === 'p2' || o.kind === 'sp34' ? Assets.pick('ui_pad_porter', 'ui_pad_hire') : o.kind === 'srv2' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : undefined,
       onComplete: (p) => this.done(o, p),
     });
@@ -250,6 +302,8 @@ export class LineUpgrades {
       if (R) { R.setTables(R.tableLevel + 1, false); R.busyT = 0; const N = this.v42.news; if (N && N.today) N.today.tables = R.seats.length; }
     } else if (o.kind === 'srv2') { const R = gs.civic && gs.civic.restaurant; if (R) { R.hire('server2', false); R.serveWaitT = 0; } }
     else if (o.kind === 'mcan') { const MC = this.v42.meatcan; if (MC) MC.buy(false); }
+    // ((v4.2.0.1) a hire step waiting for this spot appears now)
+    if (gs.progress) gs.time.delayedCall(600, () => gs.progress.syncPads());
     gs.save(true);
   }
 

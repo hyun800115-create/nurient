@@ -67,7 +67,8 @@ export class ChiefPilot {
   }
   /** how far he looks for someone to chat with: further during a chore break (the break is his to spend) */
   chatRange() { return (this.locked.urgent || 0) > this.t ? 1500 : 600; }
-  get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial)); }
+  // ((v4.2.0.1) + not while the first-run tutorial's replay tour shows the village)
+  get available() { const gs = this.gs; return !!(this.v42.complete && !(gs.tutorial && gs.tutorial.inTutorial) && !(gs.onboard && gs.onboard.blocksPilot)); }
   /** may the piloted chief pay at this pad? never — except 관망 중 돈 쓰기 '고용만' on a staff / porter hire pad */
   blocksPay(kind, pad) { if (!this.on) return false; if (kind === 'hire' && Settings.data.observeSpend === 'hire' && (!pad || isHirePad(pad))) return false; return true; }
 
@@ -204,16 +205,20 @@ export class ChiefPilot {
   planTo(x, y) {
     const gs = this.gs, p = gs.player;
     if (p.seat && p.standUp) p.standUp();
-    if (gdist(p.x, p.y, x, y) < 220) { this.route.length = 0; this.route.push({ x, y }); }
-    else gs.roads.route(p.x, p.y, x, y, this.route);
-    // (CODE-2) a place inside the office: through its door (the walls have one gap)
+    // ((v4.2.0.1) Roads.route goes out of the office (and the bank, the depot) through its door, and in the same way:
+    //  after a desk act he walked his next act's first leg into the office wall for the rest of the act)
+    gs.roads.route(p.x, p.y, x, y, this.route, 220);
+    // (CODE-2) a place inside the office: through its door (the walls have one gap) — when the roads know no rooms
+    //  (the Node test's stand-in)
     const B = this.v42.office && this.v42.office.building;
-    if (B && B.cw && B.cw.onFloor(x, y - B.lift) && !B.cw.onFloor(p.x, p.y - B.lift)) {
+    if (!gs.roads.rooms && B && B.cw && B.cw.onFloor(x, y - B.lift) && !B.cw.onFloor(p.x, p.y - B.lift)) {
       const d = B.spots.door, e = B.spots.entry;
       while (this.route.length && B.cw.onFloor(this.route[this.route.length - 1].x, this.route[this.route.length - 1].y - B.lift)) this.route.pop();
       this.route.push({ x: d.x, y: d.y + 6 }, { x: e.x, y: e.y }, { x, y });
     }
     this.ri = 0;
+    this.wpRef = null;
+    this.replanned = false;
   }
 
   /** (CODE-2) arrived: the activity's pose (chief2: sit at his desk, eat at a terrace table, talk, wave, warm hands) */
@@ -266,10 +271,21 @@ export class ChiefPilot {
     const d = Math.hypot(dx, dy) || 1;
     dx /= d; dy /= d;
     // stuck: no progress for stuckSide s -> a side-step; stuckDrop s -> drop the task (unreachable 60 s)
-    const lp = this.lastPos;
-    if (lp && Math.hypot(p.x - lp.x, p.y - lp.y) < 18 * dt * 60 / 60) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt * 2);
+    // ((v4.2.0.1) progress = getting closer to this waypoint (best distance, like Game.followRoute): sliding along a
+    //  wall and the side-step moved him enough to reset a speed test, so a walled-in act was never dropped. At 4 s a
+    //  new way from here (Roads.detour: round it, out through a door) before the side-step and the drop)
+    const gw = gdist(p.x, p.y, w.x, w.y);
+    if (this.wpRef !== w) { this.wpRef = w; this.wpBest = gw; this.stuckT = Math.min(this.stuckT, 1); }
+    else if (gw < this.wpBest - 6) { this.wpBest = gw; this.stuckT = 0; }
+    else this.stuckT += dt;
     this.lastPos = { x: p.x, y: p.y };
+    if (this.stuckT > 4 && !this.replanned && gs.roads.detour && this.act && this.act.target) {
+      this.replanned = true;
+      const tg = this.act.target, way = gs.roads.detour(p.x, p.y, tg.x, tg.y, [], p.radius);
+      if (way && way.length > 1) { this.route.length = 0; for (const q of way) this.route.push(q); this.ri = 0; this.wpRef = null; this.stuckT = 0; return false; }
+    }
     if (this.stuckT > (Number(PB().stuckDrop) || 8)) {
+      this.replanned = false;
       this.stats.stuck++;
       if (this.act) this.locked[this.act.act] = this.t + 60;
       this.act = null; this.route.length = 0; this.stuckT = 0;

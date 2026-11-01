@@ -96,9 +96,12 @@ export class Collision {
     return this.inOpen(x, y) && this.inOpen(x - e, y) && this.inOpen(x + e, y) && this.inOpen(x, y - e) && this.inOpen(x, y + e);
   }
 
+  /** ((v4.2.0.1) off the land a walker can stand on: the map's edge, the sea, the fog (no obstacle looked at) */
+  offLand(x, y) { return x < this.ox + 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46 || !this.inWalk(x, y); }
+
   /** true if a circle of radius `rad` at (x, y) overlaps an active obstacle or leaves the walkable area */
   blocked(x, y, rad, ignore) {
-    if (x < this.ox + 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46 || !this.inWalk(x, y)) return true;
+    if (this.offLand(x, y)) return true;
     const cx = Math.floor((x - this.ox) / CELL), cy = Math.floor(y / CELL);
     if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return true;
     const cell = this.grid[cy * this.cols + cx];

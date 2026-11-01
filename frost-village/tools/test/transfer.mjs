@@ -456,7 +456,7 @@ async function browserPart() {
     check('C: a v4.1 code -> summary from the migrated save', r41.check.ok && r41.check.summary.fromV === 6 && r41.check.summary.coins === JSON.parse(raw41).coins, r41.check);
     await replace(C.page, false);
     const loaded41 = await C.page.evaluate(() => window.__FV.scene.saved);
-    check('C: the v4.1 village loads exactly like the stored v4.1 save (Save.load -> migrate 6 -> 7 -> sanitize)', same(loaded41, migrateSave(JSON.parse(raw41))) && loaded41.v === 7);
+    check('C: the v4.1 village loads exactly like the stored v4.1 save (Save.load -> migrate 6 -> 7 -> 8 -> sanitize)', same(loaded41, migrateSave(JSON.parse(raw41))) && loaded41.v === SV.SAVE_VERSION && loaded41.v === 8);
     // 되돌리기: the round-trip village comes back
     await openMove(C.page, 'in');
     const hasUndo = await C.page.evaluate(() => !document.getElementById('fm-undo').hidden);

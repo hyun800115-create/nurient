@@ -309,8 +309,19 @@ export class Shop {
     return (this.stock[type] || 0) < low || (L && L.reserved(this, type) > 0) ? n : 0;
   }
   prio() { return PRIO.SHOP; }
-  get ux() { return this.inPt ? this.inPt.x + 40 : this.x; }
-  get uy() { return this.inPt ? this.inPt.y + 30 : this.y; }
+  // ((v4.2.0.1) the porters' unload point on free ground: inPt + (40, 30) fell inside the station lots' own restaurant /
+  //  carpenter_workshop colliders, and every delivery ended with a 3 s push against the wall. Looked at again when
+  //  the building's collision changes (a free kept spot is reused))
+  get ux() { return this.unloadPt().x; }
+  get uy() { return this.unloadPt().y; }
+  unloadPt() {
+    const raw = this.inPt ? { x: this.inPt.x + 40, y: this.inPt.y + 30 } : { x: this.x, y: this.y };
+    const u = this._u, C = this.gs.collision;
+    if (u && u.rx === raw.x && u.ry === raw.y && (!C || !C.blocked(u.x, u.y, 14))) return u;
+    const q = this.gs.freeSpot ? this.gs.freeSpot(raw.x, raw.y, 14, 160) : raw;
+    this._u = { x: q.x, y: q.y, rx: raw.x, ry: raw.y };
+    return this._u;
+  }
   feed(ch) {
     for (let i = ch.stack.items.length - 1; i >= 0; i--) {
       const ty = ch.stack.items[i].type;
@@ -324,7 +335,9 @@ export class Shop {
     const gs = this.gs;
     this.stock[ty] = (this.stock[ty] || 0) + 1;
     this.g.payWholesale(ty, 1, this.inPt.x, this.inPt.y - 20);
-    if (this.shelf.countOf(ty) + this.shelf.inTypes.filter((q) => q === ty).length < SHOW_PER_TYPE) return gs.moveItem(ch.stack, this.shelf, ty, { dur: 260, height: 70, sfx: 'drop' });
+    // ((v4.2.0.1) accept: sold while it flew (a visitor, the town's customer) -> it does not land as an extra picture
+    //  of an item the shop no longer has — those stayed until the game was reloaded)
+    if (this.shelf.countOf(ty) + this.shelf.inTypes.filter((q) => q === ty).length < SHOW_PER_TYPE) return gs.moveItem(ch.stack, this.shelf, ty, { dur: 260, height: 70, sfx: 'drop', accept: (q) => this.shelf.countOf(q) < Math.min(SHOW_PER_TYPE, this.stock[q] || 0) });
     // (the shelf shows a few of each; the rest is counted) the item flies in and is put away
     const it = ch.stack.pop(ty);
     if (!it) return false;
@@ -365,7 +378,9 @@ export class Shop {
     this.queue.forEach((q, k) => {
       const p = this.lineSpot(k);
       const v = q.v;
-      if (gdist(v.x, v.y, p.x, p.y) > 10) { gs.moveAgent(v, p.x, p.y, (v.speed || 100) * 0.8, dt, 8); q.walking = true; }
+      // ((v4.2.0.1 final, review #1) in line when moveAgent says so too: one standing close to a spot something else
+      //  stands on (a porter unloading, a crowd) was 'walking' until his patience ran out, and the line stopped)
+      if (gdist(v.x, v.y, p.x, p.y) > 10 && !gs.moveAgent(v, p.x, p.y, (v.speed || 100) * 0.8, dt, 8)) q.walking = true;
       else if (q.walking) { q.walking = false; v.vx = v.vy = 0; v.locomotion(false); v.faceTo(this.staffPt.x, this.staffPt.y); }
     });
     const f = this.queue[0];

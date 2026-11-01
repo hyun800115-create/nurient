@@ -795,7 +795,8 @@ def b_ice_chunk():
 # =========================================================================== STATIONS
 
 @asset('station_grill', 'station', 'props_buildings', fp=(2.6, 1.6), work=4, fps=8,
-       notes='Fish grill: stone hearth + iron grate with fish. work = embers pulse. Long axis along world X.')
+       notes='Fish grill: stone hearth + an EMPTY iron grate (v4.2.0.1: the fish being cooked are the game\'s own '
+             'item pictures). work = embers pulse. Long axis along world X.')
 def b_station_grill():
     rnd = L.rng(5)
     sx, sy = 2.3, 1.3
@@ -819,10 +820,9 @@ def b_station_grill():
     for i in range(nbars):
         x = -gx / 2 + gx * (i + 0.5) / nbars
         L.cyl('bar', 0.02, gy, (x, 0, gz + 0.03), rot=(90, 0, 0), mat=iron, segs=8, bevel=0.0, origin='center')
-    food = [fish_model('gfish1', cooked=True, loc=(-0.6, -0.12, gz + 0.13), rot=(0, 0, 80), scale=0.8),
-            fish_model('gfish2', cooked=True, loc=(-0.1, 0.1, gz + 0.13), rot=(0, 0, 100), scale=0.8),
-            steak_model('gsteak1', loc=(0.5, -0.18, gz + 0.05), rot=(0, 0, 20), scale=0.72),
-            steak_model('gsteak2', loc=(0.62, 0.24, gz + 0.05), rot=(0, 0, -30), scale=0.66)]
+    # ((v4.2.0.1) no food painted on the grate: the picture showed two grilled fish and two steaks whether the grill
+    #  held anything or not — the designer read them as goods. The fish on their way in and out are the game's items)
+    food = []
     food_z = [o.location.z for o in food]
     for i, x in enumerate((-0.78, -0.26, 0.26, 0.78)):
         box('backstone', (0.5, 0.36, 0.42 + 0.06 * (i % 2)), (x, sy / 2 + 0.02, 0.48), rot=(0, 0, rnd.uniform(-5, 5)),
@@ -899,10 +899,10 @@ def b_station_sawmill():
                      origin='center', bevel=0.015))
     blade = L.group(parts, 'blade', loc=(0.25, 0, 0.9))
     # log feeding in from the left, planks out on the right
-    log('log', 0.17, 1.1, (-0.68, 0.0, 0.8 + 0.17), rot=(0, 90, 0), bark=tonal('#8A5A33', 0.16, 6.0), segs=18)
+    # ((v4.2.0.1) no log or planks painted on the bench: they showed while the sawmill held nothing — the logs going in
+    #  and the planks coming out are the game's own item pictures)
     for i in range(3):
-        box('plank', (0.85, 0.32, 0.07), (1.0 + rnd.uniform(-0.03, 0.03), rnd.uniform(-0.04, 0.04), 0.8 + 0.075 * i),
-            rot=(0, 0, rnd.uniform(-5, 5)), mat=flat(['plank', '#E0AA6C', 'wood_light'][i], 0.75), bevel=0.02)
+        rnd.uniform(-0.03, 0.03), rnd.uniform(-0.04, 0.04), rnd.uniform(-5, 5)
     dust = flat('#EBCB98', 0.95)
     blob('dust', 0.2, (0.12, -0.92, 0.0), dust, scale=(1.4, 1.1, 0.5), seed=3, amp=0.3, subdiv=2)
     blob('dust2', 0.14, (0.35, -0.2, 0.8), dust, scale=(1.4, 1.0, 0.3), seed=4, amp=0.3, subdiv=2)
@@ -1143,10 +1143,9 @@ def b_station_smokehouse():
     string = flat('rope', 0.8)
     hang = []
     for i, x in enumerate((-0.58, -0.2, 0.2, 0.58)):
-        cooked = i % 2 == 0
         st = cyl('str', 0.012, 0.3, (0, 0, -0.3), mat=string, segs=6, bevel=0.0)
-        mt = meat_model('m%d' % i, cooked=True if cooked else False, loc=(0, 0, -0.27), rot=(0, 90, 90), scale=0.75)
-        hang.append(L.group([st, mt], 'hang%d' % i, loc=(x, -0.75, 1.42)))
+        # ((v4.2.0.1) empty hooks: the hams were painted on whether the smokehouse held meat or not)
+        hang.append(L.group([st], 'hang%d' % i, loc=(x, -0.75, 1.42)))
     # ember pit under the rack
     for o in round_stone_ring(0.42, 9, seed=5, size=0.12):
         o.location.y -= 0.75
@@ -1214,14 +1213,12 @@ def b_market_counter():
         cyl('post', 0.075, 2.55, (sx_ * (W / 2 + 0.02), D / 2 + 0.05, 0), mat=flat('wood_mid', 0.8), segs=12)
     awning(W + 0.35, D, 2.62, 2.18, D / 2 + 0.3, -D / 2 - 0.45, 'red', 'cream', 8)
     box('tray', (0.9, 0.62, 0.08), (-0.82, -0.05, H + 0.06), mat=flat('#9C6A3F', 0.8), bevel=0.03)
-    for i, (x, y) in enumerate([(-1.05, -0.12), (-0.62, -0.1), (-0.85, 0.12)]):
-        steak_model('s%d' % i, loc=(x, y, H + 0.13 + 0.07 * (i == 2)), rot=(0, 0, rnd.uniform(-30, 30)), scale=0.55)
+    # ((v4.2.0.1) an empty tray, basket and crate: the steaks, bread and fish were painted on even when the shelf was
+    #  sold out — the real stock is the shelf's own item tower)
+    for i in range(3):
+        rnd.uniform(-30, 30)
     box('basket', (0.8, 0.55, 0.14), (0.35, 0.0, H + 0.06), mat=flat('straw', 0.9), bevel=0.05)
-    for i, (x, y) in enumerate([(0.18, -0.08), (0.52, 0.02), (0.33, 0.12)]):
-        bread_model('b%d' % i, loc=(x, y, H + 0.2), rot=(0, 0, 30 + 40 * i), scale=0.62)
     box('crate', (0.5, 0.5, 0.2), (1.05, 0.05, H + 0.06), mat=flat('wood_light', 0.8), bevel=0.03)
-    fish_model('cf1', loc=(1.05, 0.0, H + 0.3), rot=(0, 0, 45), scale=0.5)
-    fish_model('cf2', loc=(1.08, 0.12, H + 0.35), rot=(0, 0, 25), scale=0.5)
     L.cyl('hook', 0.015, 0.35, (-(W / 2 + 0.02), -D / 2 - 0.18, 1.92), rot=(90, 0, 0), mat=flat('iron', 0.5, 0.6),
           origin='center')
     lantern('lan', (-(W / 2 + 0.02), -D / 2 - 0.34, 1.52), 0.15, 3.0)
@@ -1562,7 +1559,8 @@ def b_upgrade_bench():
 
 @asset('fish_net', 'building', 'props_buildings', fp=(2.8, 2.8),
        notes='V-shaped fish trap net on poles. The closed corner points at the camera (screen down); the open '
-             'side faces screen up (the sea). Fish shown inside. Place it on the shoreline.')
+             'side faces screen up (the sea). Empty (v4.2.0.1: the catch is the game\'s jumping fish, one per fish '
+             'held). Place it on the shoreline.')
 def b_fish_net():
     rope = flat('#EFE9DA', 0.85)
     wood = flat('#D49A50', 0.8)
@@ -1621,13 +1619,10 @@ def b_fish_net():
             p = corner + (e - corner) * t + Vector((0, 0, z1))
             sphere('float', 0.08, tuple(p), fl[k % 2], scale=(1, 1, 0.8), segs=14, rings=8)
             k += 1
-    # catch inside
-    fish_model('f1', loc=(0.2, -0.1, 0.1), rot=(0, 0, 30), scale=0.8)
-    fish_model('f2', loc=(0.6, 0.4, 0.1), rot=(0, 0, 120), scale=0.75)
-    fish_model('f3', loc=(-0.3, -0.6, 0.1), rot=(0, 0, -20), scale=0.75)
+    # ((v4.2.0.1) no catch painted in the net or on the basket: it showed fish while the net was empty — the real
+    #  catch is drawn by the game, one jumping fish per fish held)
     # coiled rope + basket at the corner outside
     box('basket', (0.5, 0.5, 0.35), (S + 0.45, -S - 0.1, 0), mat=flat('straw', 0.9), bevel=0.1)
-    fish_model('f4', loc=(S + 0.45, -S - 0.1, 0.42), rot=(0, 0, 45), scale=0.55)
 
 
 @asset('dock_pier', 'building', 'props_buildings', fp=(2.0, 4.4),

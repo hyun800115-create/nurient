@@ -16,6 +16,24 @@ export const BALANCE = {
     firstCustomers: 3,        // 시작할 때 이미 줄 서 있는 손님 수
   },
 
+  // ── (v4.2.0.1) 첫 실행 튜토리얼 (손가락이 할 일을 보여 줘요, src/systems/Onboarding.js) ─────
+  onboard: {
+    arrowBig: 1.3,            // 1막 동안 노란 화살표 크기 (보통 = 1)
+    idleDrag: 3,              // 이만큼(초) 가만히 있으면 손가락이 '끌어 봐요'를 보여 줘요
+    idleDragLight: 5,         // 두 바퀴째부터(이미 한 번 해 본 뒤)는 이만큼(초) 기다려요
+    dragRepeat: 12,           // 계속 가만히 있으면 이만큼(초)마다 다시 보여 줘요
+    assistIdle: 5,            // 2막(요리사·어부 고용까지): 이만큼(초) 가만히 있으면 손가락이 살짝 도와줘요
+    assistGap: 20,            // 2막 손가락 도움 사이 최소 간격(초)
+    assistMax: 3,             // 2막: 할 일 하나에 손가락 도움 최대 횟수
+    dwell: 1.5,               // 안내 문구 하나가 최소한 떠 있는 시간(초)
+    beat: 0.7,                // '잘했어요!'를 보여 주는 시간(초)
+    tipGap: 45,               // 3막 버튼 안내(휘파람·지도·설정…) 사이 최소 간격(초)
+    tipShow: 7,               // 버튼 안내 하나가 떠 있는 시간(초)
+    settingsTipAfter: 480,    // 새 게임 시작 뒤 이만큼(초) 지나면 설정 안내
+    stuckSec: 45,             // 1막: 이만큼(초) 다음 단계로 못 가고 돌아다니면 안내를 작게 접어요
+    act1Max: 360,             // 1막이 이만큼(초)을 넘으면 조용히 끝내고 다음으로 넘어가요
+  },
+
   // ── 카메라 ─────────────────────────────────────────────────
   camera: {
     zoom: 1.2,                // 화면 확대 배율 (클수록 캐릭터가 크게 보임, 1.0 ~ 1.4 추천)
@@ -616,6 +634,16 @@ export const BALANCE = {
     //    speed = 걷는 속도(px/초), vaultAt = 이만큼 넘게 입금하면 금고 문이 빙글,
     //    from ~ to = 일하는 시각 (7시 ~ 21시, 밤에는 책상에서 쉬어요 — 그동안 쌓인 코인은 아침 첫 바퀴에 가져가요)
     courier: { every: 60, rushAt: 1000, minPad: 100, speed: 150, vaultAt: 5000, from: 7, to: 21 },
+    // ── 수행비서 총총이: 촌장 걸음에 맞춰 따라와요 (촌장 속도 = player.speed × 신발 배율, 그대로 따라 씀)
+    //    catchUp = 뒤처졌을 때 촌장보다 최대 이만큼 더 빨리 걸어요 (0.35 = 35% 더 빠르게),
+    //    catchFrom ~ catchFull = 자기 자리에서 이만큼(px) 떨어지면 따라잡기 시작 ~ 가장 빠르게 (64 px = 1 m),
+    //    pull = 자기 자리로 다가가는 세기 (클수록 바짝 붙어요), back / side = 걸을 때 촌장 뒤로 · 옆으로 떨어지는 거리(px),
+    //    backStill / sideStill = 촌장이 멈추면 서는 곳 (옆), arrive = 이만큼(px) 안이면 멈춰 서요,
+    //    routeFrom = 이보다(px) 멀리 뒤처지면 길을 따라 찾아와요 (건물이 가로막을 때), replan = 그 길을 다시 찾는 간격(초),
+    //    teleport = 이보다(px) 멀고 둘 다 화면 밖이면 촌장 곁에 나타나요, minSpeed = 가장 느린 걸음(px/초),
+    //    walkPx = 걷기 그림이 1배속일 때 걸음 속도(px/초), animMin ~ animMax = 걷기 그림 빠르기 한계 (발이 미끄러져 보이지 않게)
+    aide: { catchUp: 0.35, catchFrom: 16, catchFull: 256, pull: 3, back: 120, side: 60, backStill: 40, sideStill: 80, arrive: 14,
+            routeFrom: 320, replan: 0.6, teleport: 900, minSpeed: 120, walkPx: 120, animMin: 0.6, animMax: 2.2 },
     // ── 서리 은행: 짓는 값
     bank: { site: { coins: 3000, item_plank: 24, item_ingot: 12, time: 12 } },
     // ── 재고판(셈이): window = 흐름을 재는 시간(초), emptyS / fullS = 이만큼(초) 비어 / 차 있으면 '부족·길 막힘' / '남음'

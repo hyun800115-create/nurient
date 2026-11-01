@@ -54,6 +54,11 @@ export class StackBaker {
     this.flushes = 0;
     this.onPre = (renderer, time) => this.flush(false, time);
     scene.game.events.on('prerender', this.onPre);
+    // ((v4.2.0.1) a lost WebGL context (Android drops the WebView's GPU memory in the background) comes back with this
+    //  texture EMPTY: every stack is drawn again — a pile that did not change used to look empty until it changed)
+    this.onRestore = () => { for (const s of this.stacks) { s.bakeDirty = true; s.bakedOnce = false; } this.lastFlush = -1e9; };
+    const R = scene.game.renderer;
+    if (R && R.gl && R.on) R.on('restorewebgl', this.onRestore);
     scene.events.once('shutdown', () => this.destroy());
   }
 
@@ -87,8 +92,11 @@ export class StackBaker {
   /** one erase pass over the queued slots + one draw pass of their items (at most FLUSH_HZ a second unless forced) */
   flush(force, time) {
     if (!this.dirty.size) return;
+    const R = this.scene.game && this.scene.game.renderer;
+    if (R && R.contextLost) return;                    // ((v4.2.0.1) nothing can be drawn: the queue waits for the restore)
     const now = Number.isFinite(time) ? time : (this.scene.time ? this.scene.time.now : 0);
-    if (!force && now - this.lastFlush < 1000 / FLUSH_HZ && now >= this.lastFlush) return;
+    if (!force && !this.urgent && now - this.lastFlush < 1000 / FLUSH_HZ && now >= this.lastFlush) return;
+    this.urgent = false;
     this.lastFlush = now;
     this.flushes++;
     const dt = this.dt, fx = this.scene.effects;
@@ -104,7 +112,10 @@ export class StackBaker {
       er.setPosition(s.x, s.y).setScale(s.w / Math.max(1, er.width), s.h / Math.max(1, er.height));
       ers.push(er);
     }
-    if (ers.length) dt.erase(ers, 0, 0);
+    // ((v4.2.1 fix, ghost coins) no x / y: DynamicTexture.erase(list, x, y) draws every Game Object of the list AT x, y
+    //  — all the erasers landed on the texture's corner and no queued slot was erased: an emptied till kept showing its
+    //  coins, a shrinking pile its old height, and the slots near the corner were wiped by other stacks' erasers)
+    if (ers.length) dt.erase(ers);
     // 2. draw their items in one pass (landed sprites go back to the pool: their picture is drawn now)
     const st = this.stamp;
     let any = false;
@@ -112,6 +123,9 @@ export class StackBaker {
       const s = stack.slot;
       if (!s) continue;
       this.bakes++;
+      // ((v4.2.0.1) the items' places from the stack's base now: a stack rebuilt after its layout of this frame had
+      //  every item on the base point — the 창고 pile was drawn as one item until its next change)
+      if (stack.place) stack.place();
       const items = stack.items, bx = stack.bx, by = stack.by;
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
@@ -132,6 +146,8 @@ export class StackBaker {
 
   destroy() {
     if (this.scene.game && this.scene.game.events) this.scene.game.events.off('prerender', this.onPre);
+    const R = this.scene.game && this.scene.game.renderer;
+    if (R && R.off) R.off('restorewebgl', this.onRestore);
     for (const e of this.erasers) if (e) e.destroy();
     this.erasers = [];
     this.dirty.clear();

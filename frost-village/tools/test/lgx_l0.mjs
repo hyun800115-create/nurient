@@ -15,7 +15,7 @@
 //   the gate opens with use-busy ≥ busyAt and a use job waiting ≥ backlogS;
 // 7 standing cards pick the surplus item (and the plain rotation with logistics.cards.surplusFirst false);
 // 8 after 읍 the founded shops' town buyers come every inlandEveryRank2 s (20) instead of inlandEvery (40);
-// 9 save + reload: v7, the crew kept, nothing new in the save; 0 page errors.
+// 9 save + reload: v8 ((v4.2.1) the number only), the crew kept, nothing new in the save; 0 page errors.
 // --fresh N: N seeded fresh games (smart bot) to village complete + 3 min: the 창고 card never shows before village
 //   complete, and an M plot is free when it first shows (docs/logistics_plan.md §5.2: 5 seeds).
 import path from 'node:path';
@@ -289,7 +289,7 @@ try {
   const keys0 = Object.keys(JSON.parse(fixture('v41_save_smart_46min.json')));
   await boot(sv.save);
   const re = await ev(() => { const gs = window.__FV.scene; return { crew: gs.warehouse.porters.length, v42crew: window.__FV.v42.crew() }; });
-  step('9 save + reload: v7, the crew kept (' + sv.crew + '), no new save field for v4.2.1', blob.v === 7 && re.crew === sv.crew && !('logistics' in blob) && !(blob.v42 && blob.v42.crew && ('useBusy' in blob.v42.crew || 'backlog' in blob.v42.crew)), { v: blob.v, crew: re.crew, newTop: Object.keys(blob).filter((k) => keys0.indexOf(k) < 0), v42crew: blob.v42 && blob.v42.crew });
+  step('9 save + reload: v8, the crew kept (' + sv.crew + '), no new save field for v4.2.1', blob.v === 8 && re.crew === sv.crew && !('logistics' in blob) && !(blob.v42 && blob.v42.crew && ('useBusy' in blob.v42.crew || 'backlog' in blob.v42.crew)), { v: blob.v, crew: re.crew, newTop: Object.keys(blob).filter((k) => keys0.indexOf(k) < 0), v42crew: blob.v42 && blob.v42.crew });
 
   // ======================================================================= --fresh N: the card in fresh games
   for (let s = 1; s <= FRESH; s++) {

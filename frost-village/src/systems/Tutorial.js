@@ -73,11 +73,16 @@ export class Tutorial {
     // ((v4-C) the big restaurant's first meals: guests waiting at its register / for the kitchen come first too)
     if (!this.inTutorial && this.civicHint(set, dt, idle, true)) return;
     if (pad && !pad.pad.contains(p.x, p.y)) {
-      const key = this.inTutorial ? (pad.id === 'op_grill' ? 'obj_operator' : pad.id === 'hire_clerk_market' ? 'obj_clerk' : 'obj_unlock')
+      // ((v4.2.0.1) plain words for the first loop's helper pads: 요리사 / 어부 instead of 기술자 / 가공)
+      const key = this.inTutorial ? (pad.id === 'op_grill' ? 'obj_cook' : pad.id === 'hire_clerk_market' ? 'obj_clerk' : pad.id === 'hire_fisherman' ? 'obj_fisher' : 'obj_unlock')
         : /^hire_clerk/.test(pad.id) && !prog.anyDone(/^hire_clerk/) ? 'obj_clerk' : /^porter_/.test(pad.id) && !prog.anyDone(/^porter_/) ? 'obj_porter'
         : /^op_/.test(pad.id) && prog.zonesOpen() <= 1 ? 'obj_operator' : /^raw_/.test(pad.id) && !prog.anyDone(/^raw_/) ? 'obj_raw'
         : /^tower_/.test(pad.id) ? 'obj_tower' : pad.id === 'boat_rowboat' ? 'obj_boat' : null;
-      set(pad.x, pad.y, 112, key);
+      // ((v4.2.0.1) a pad right under a station's 서서 굽기 spot (the 요리사 pad in front of the grill, 120 px below it):
+      //  at 112 the arrow's tip sat on 서서 굽기. Its label is below the pad there (world.js pads35), so the arrow comes
+      //  down onto the pad itself; with a label above it stops just over the label)
+      const lb = Array.isArray(pad.opts && pad.opts.labelAt) && pad.opts.labelAt[1] > 0;
+      set(pad.x, pad.y, this.underOpSpot(pad) ? (lb ? 44 : 98) : 112, key);
       return;
     }
     // (review fix) a pad that appeared under the chief waits until he steps off once: say so
@@ -183,6 +188,16 @@ export class Tutorial {
     if (c.pad.contains(p.x, p.y)) return false;
     set(c.x, c.y, 40, 'obj_cash');
     return true;
+  }
+
+  /** ((v4.2.0.1) a station's 서서 굽기 spot (not yet staffed: its pad and label show) stands in the column the arrow over
+   *  `pad` comes down through (60–170 px above it) */
+  underOpSpot(pad) {
+    for (const s of this.gs.stationList || []) {
+      const o = s.op;
+      if (o && !o.operator && o.label && o.label.visible && Math.abs(o.x - pad.x) < 60 && pad.y - o.y > 60 && pad.y - o.y < 170) return true;
+    }
+    return false;
   }
 
   cashes(withCivic) {
@@ -730,7 +745,8 @@ export class Tutorial {
     if (!prog.benchOpen || prog.seen.upgradeHint) return false;
     if (prog.up.capacity > 0 || prog.up.speed > 0) { prog.seen.upgradeHint = true; return false; }
     const pad = prog.upPads.capacity;
-    if (!pad || pad.maxed || pad.remaining > gs.economy.coins) return false;
+    // ((v4.2.0.1) not while it steps aside for the 교역소 점원 pad: the hint waits for it to come back)
+    if (!pad || !pad.active || pad.maxed || pad.remaining > gs.economy.coins) return false;
     this.upT = (this.upT || 0) + dt;
     if (this.upT > UPGRADE_HINT_MAX) { prog.seen.upgradeHint = true; return false; }
     if (pad.pad.contains(p.x, p.y)) { this.textKey = 'obj_upgrade'; return true; }
@@ -812,14 +828,69 @@ export class Tutorial {
     this.t += dt;
     this.evalT -= dt;
     if (this.evalT <= 0) { this.evaluate(0.2 - this.evalT); this.evalT = 0.2; }
-    const tg = this.target;
     // ((v4.2 §7.1) while 관망 drives the chief the arrow and the objective text step aside for the caption; the target
     //  is still worked out: the pilot's 급한 일 follows it)
     const pl = this.gs.v42 && this.gs.v42.pilot;
     if (pl && pl.on) { if (this.arrow.visible) this.arrow.setVisible(false); this.gs.ui.setObjective(null, null, null); return; }
-    if (!tg) { this.arrow.setVisible(false); this.gs.ui.setObjective(this.textKey, null, this.text); return; }
     const bounce = Math.abs(Math.sin(this.t * 4.2)) * 16;
+    // ((v4.2.0.1) the first-run tutorial's Act 1 owns the pointer: the arrow (1.3x) goes where its step says, its coach
+    //  card is the only instruction text (the objective panel stays hidden; the edge arrow follows the same place))
+    const ob = this.gs.onboard;
+    if (ob && ob.owns()) {
+      this._owned = true;
+      const k = this.arrowK || (this.arrowK = this.arrow.scaleX);
+      const big = k * ((BALANCE.onboard && BALANCE.onboard.arrowBig) || 1.3);
+      if (Math.abs(this.arrow.scaleX - big) > 1e-6) this.arrow.setScale(big);
+      const otg = ob.target;
+      if (!otg) { if (this.arrow.visible) this.arrow.setVisible(false); this.gs.ui.setObjective(null, null, null); return; }
+      this.arrow.setVisible(true).setPosition(otg.x, otg.y - otg.h - bounce * 1.2);
+      this.gs.ui.setObjective(null, otg, null);
+      return;
+    }
+    if (this.arrowK && this.arrow.scaleX !== this.arrowK) this.arrow.setScale(this.arrowK);
+    // (right after the tutorial lets go — 「건너뛰기」, the end of Act 1 — the live objective shows at once, never the one
+    //  from before it began)
+    if (this._owned) { this._owned = false; this._sh = null; }
+    // ((v4.2.0.1) a readable objective: the text and the arrow switch to a new one only after it was asked for 0.6 s in
+    //  a row, and a shown one stays at least 1.5 s — the first loop's A→B→A flicker (30 changes a minute) is gone. Only
+    //  what is drawn waits: this.target / this.textKey (the pilot, 길 안내, the bots, the tests) are the live ones)
+    const sh = this.shown(dt);
+    const tg = sh.tg;
+    if (!tg) { this.arrow.setVisible(false); this.gs.ui.setObjective(sh.key, null, sh.text); return; }
     this.arrow.setVisible(true).setPosition(tg.x, tg.y - tg.h - bounce);
-    this.gs.ui.setObjective(this.textKey, tg, this.text);
+    this.gs.ui.setObjective(sh.key, tg, sh.text);
+  }
+
+  /**
+   * (v4.2.0.1) the objective as shown: a new one is taken after it was asked for 0.6 s in a row, and a shown one stays at
+   * least 1.5 s; going straight back to the one shown just before needs 1.5 s (the A→B→A swing). The identity is the
+   * objective's key (its first two parts: 'obj_order:<card>' without the live count) — the text, the count and the place
+   * of the same objective follow live (a moving animal, a count that ticks up), and the arrow is never off its target
+   */
+  shown(dt) {
+    const raw = this.target, key = this.textKey, text = this.text;
+    const id = key ? key.split(':').slice(0, 2).join(':') : (text ? '#' + text : '-');
+    const S = this._sh || (this._sh = { id: null, prev: null, key: null, text: null, tg: null, tgo: { x: 0, y: 0, h: 0 }, age: 0, cand: null, candT: 0 });
+    S.age += dt;
+    const follow = () => {
+      S.key = key; S.text = text;
+      if (raw) { S.tgo.x = raw.x; S.tgo.y = raw.y; S.tgo.h = raw.h; S.tg = S.tgo; } else S.tg = null;
+    };
+    if (S.id === null) { S.id = id; S.age = 0; follow(); return S; }
+    if (id === S.id) { follow(); S.cand = null; S.candT = 0; return S; }
+    if (id !== S.cand) { S.cand = id; S.candT = 0; }
+    S.candT += dt;
+    const need = id === S.prev && S.age < 4 ? 1.5 : 0.6;
+    if (S.candT >= need && S.age >= 1.5) { S.prev = S.id; S.id = id; S.age = 0; S.cand = null; S.candT = 0; follow(); }
+    return S;
+  }
+
+  /** (v4.2.0.1) where the yellow arrow is drawn now (the first-run tutorial's place in its Act 1, else the shown objective) */
+  shownTarget() {
+    const ob = this.gs.onboard;
+    if (ob && ob.owns()) return ob.target;
+    const pl = this.gs.v42 && this.gs.v42.pilot;
+    if (pl && pl.on) return this.target;
+    return this._sh ? this._sh.tg : this.target;
   }
 }

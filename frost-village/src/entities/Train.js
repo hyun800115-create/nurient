@@ -331,8 +331,10 @@ export class Train {
       c.spr.setPosition(x, y);
       if (c.spr.depth !== y) c.spr.setDepth(y);
       // the box car's door: open while it stands at a station (SE / NE, mirrored), closed before it pulls away
+      // ((v4.2.0.1) only while it carries something: the open-door picture shows crates inside — it opened on them at
+      //  every stop, '화물칸 · 상자 0개' included)
       const doorCar = c.key === 'train_boxcar' && c.look.real;
-      const wantDoor = doorCar && atStation && !moving && rail.t > 0.6 && rail.t < rail.dur(rail.phase) - 1.2;
+      const wantDoor = doorCar && atStation && !moving && this.cargo > 0 && rail.t > 0.6 && rail.t < rail.dur(rail.phase) - 1.2;
       let want;
       if (doorCar && (wantDoor || c.door === 1)) {
         if (wantDoor && c.door !== 1) { want = this.doorAnim(c, true); c.door = 1; }

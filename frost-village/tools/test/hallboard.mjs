@@ -194,7 +194,7 @@ try {
   ok(HT2.bag === 3 && HT2.open, 'standing on the board pad with cans opens the board (it says where); the hall keeps nothing', HT2);
   // ---- 7. save + reload: clean (the guide is not saved)
   const sv = await page.evaluate(() => { window.__FV.save(); return localStorage.getItem('frostVillage.save.v1'); });
-  ok(!!sv && JSON.parse(sv).v === 7, 'saves as v7', sv ? JSON.parse(sv).v : null);
+  ok(!!sv && JSON.parse(sv).v === 8, 'saves as v8', sv ? JSON.parse(sv).v : null);
   errors = errors.concat(log.errors);
   await page.context().close();
   const again = await boot(sv);

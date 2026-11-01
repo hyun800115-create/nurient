@@ -197,7 +197,7 @@ try {
     ok(!E2, 'goods on the shelf: the label goes', E2);
     // 5. save + reload
     const sv = await page.evaluate(() => { window.__FV.save(); return localStorage.getItem('frostVillage.save.v1'); });
-    ok(JSON.parse(sv).v === 7, 'saves as v7');
+    ok(JSON.parse(sv).v === 8, 'saves as v8');
     for (const e of log.errors) errors.push('s46: ' + e);
     await page.context().close();
     const again = await boot(sv);

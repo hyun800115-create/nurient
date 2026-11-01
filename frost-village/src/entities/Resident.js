@@ -70,9 +70,12 @@ export class Resident extends Character {
   /** walk (or run) to (x, y); along the roads when it is far */
   goTo(x, y, opts = {}) {
     this.unsit();
-    if (opts.direct || gdist(this.x, this.y, x, y) < 320) { this.route.length = 0; this.route.push({ x, y }); }
-    else this.gs.roads.route(this.x, this.y, x, y, this.route);
+    // ((v4.2.0.1) near: straight only while nothing stands on the line, else round it; out of / into a walled building
+    //  through its door (Roads.route). `direct` (the dog's trot to the chief's side) stays a straight line
+    if (opts.direct) { this.route.length = 0; this.route.push({ x, y }); }
+    else this.gs.roads.route(this.x, this.y, x, y, this.route, 320);
     this.ri = 0;
+    this.wpRef = null; this.rpN = 0;
     this.tol = opts.tol || 10;
     this.moveAnim = opts.run ? (this.can('skate') && opts.skate ? 'skate' : 'run') : 'walk';
     this.speed = opts.run ? this.runSpeed : this.walkSpeed;
@@ -183,14 +186,27 @@ export class Resident extends Character {
       else { this.x += (dx / d) * step; this.y += (dy / d) * step; this.vx = dx / d * this.speed; this.vy = dy / d * this.speed; this.dir = this.dirFrom(dx, dy); }
       return;
     }
-    const px = this.x, py = this.y;
     if (gs.moveAgent(this, w.x, w.y, this.speed, dt, last ? this.tol : 26)) {
       if (last) { this.state = 'idle'; this.vx = this.vy = 0; this.play(this.idleAnim); }
       else this.ri++;
+      return;
     }
     // stuck for long (crowd, obstacle): give up the walk
-    if (Math.hypot(this.x - px, this.y - py) < this.speed * dt * 0.2) { this.stuckT += dt; if (this.stuckT > 2.5) { this.state = 'idle'; this.stand(); this.stuckT = 0; } }
-    else this.stuckT = 0;
+    // ((v4.2.0.1) stuck = no nearer to this waypoint (best distance): moveAgent's side-slides moved him enough to reset
+    //  a displacement test, so a pet jittered 27 s at a fence. A middle waypoint is skipped; at the last one, far
+    //  off, a new way round from here (once) before giving up)
+    const wd = gdist(this.x, this.y, w.x, w.y);
+    if (this.wpRef !== w) { this.wpRef = w; this.wpBest = wd; this.stuckT = 0; }
+    else if (wd < this.wpBest - 5) { this.wpBest = wd; this.stuckT = 0; }
+    else if ((this.stuckT += dt) > 2.5) {
+      this.stuckT = 0;
+      if (!last) this.ri++;
+      else {
+        const way = wd > 60 && (this.rpN = (this.rpN || 0) + 1) <= 1 && gs.roads.detour ? gs.roads.detour(this.x, this.y, w.x, w.y, [], this.radius) : null;
+        if (way && way.length > 1) { this.route.length = 0; for (const q of way) this.route.push(q); this.ri = 0; this.wpRef = null; }
+        else { this.state = 'idle'; this.stand(); }
+      }
+    }
     if (this.moveT > 60) { this.state = 'idle'; this.stand(); }
   }
 
