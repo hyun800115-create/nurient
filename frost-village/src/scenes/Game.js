@@ -58,6 +58,8 @@ import { Amenity } from '../entities/Amenity.js';
 // ---- (v4-C2) the living water (docs/build_reports/water.md §6)
 import { WaterSheets, WaterBudget } from '../systems/Water.js';
 import { WATER_DATA } from '../core/Assets.js';
+// ---- (v4.2.0.2) 관리자 모드: a new game asks for the 7 taps + PIN again
+import { adminSceneStart } from '../systems/Admin.js';
 // ---- (v4-C2) 눈꽃말, the village voices (docs/build_reports/voice.md §7)
 import { attachVillageVoice } from '../voice/phaser.js';
 import { voiceFor } from '../voice/cast.js';
@@ -222,6 +224,13 @@ export class Game extends Phaser.Scene {
     const px = sp.x, py = sp.y;
     this.player = new Player(this, px, py);
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
+    // ((v4.2.0.2) 관리자 모드: 「코인 무제한」 stays on over a reload; how many times the admin panel opened; the speed never
+    //  outlives the scene (×1 after a reload / a new game))
+    this.economy.unlimited = sv.adminInf === 1;
+    this.adminUses = Math.max(0, Math.floor(Number(sv.adminUses)) || 0);
+    this.simSpeed = 1;
+    try { this.tweens.timeScale = 1; this.time.timeScale = 1; this.anims.globalTimeScale = 1; } catch (e) { /* (a restarted scene keeps its managers) */ }
+    adminSceneStart();
     this.progress = new Progression(this, sv.progress);
     this.tutorial = new Tutorial(this);
     // ---- (v4.2.0.1) the first-run tutorial: a new village (no save, not a quarantine restart, not a save that is there but
@@ -628,7 +637,7 @@ export class Game extends Phaser.Scene {
     const ck = this.v4 && this.v4.clock;
     const dark = ck && ck.on && ck.cur && Settings.data.daynight !== false ? ck.cur.a : 0;
     if (Math.abs(dark - (this._waterDark || 0)) > 0.004) { this._waterDark = dark; wv.setLighting({ dark }); }
-    if (this.waterBudget) {
+    if (this.waterBudget && !(this.simSpeed > 1)) {     // ((v4.2.0.2) not while 관리자 모드 runs the village ×2 / ×4)
       if (this.waterBudgetWait > 0) this.waterBudgetWait -= dt;
       else {
         const v = this.cameras.main.worldView;
@@ -1865,8 +1874,11 @@ export class Game extends Phaser.Scene {
   // ------------------------------------------------------------------ update
   update(time, delta) {
     if (this._broken || !this.player) return;    // create() failed and a fresh restart is queued
+    // ((v4.2.0.2) 관리자 모드 「시간 빠르게」: the village step runs 2 or 4 times a frame, each with the normal step — nothing
+    //  moves further in one step than at ×1 (collisions, pads, flights); Admin.setSpeed scales the tweens / timers to match)
+    const n = this.simSpeed > 1 ? Math.min(4, Math.floor(this.simSpeed)) : 1;
     // an exception inside Phaser's loop would stop the game for good: report it once, keep running
-    try { this.tick(time, delta); } catch (e) { if (!this._tickErr) { this._tickErr = true; console.error('[FrostVillage] update error:', e); } }
+    try { for (let i = 0; i < n && !this._broken && !this.resetting; i++) this.tick(time, delta); } catch (e) { if (!this._tickErr) { this._tickErr = true; console.error('[FrostVillage] update error:', e); } }
   }
 
   tick(time, delta) {
@@ -2278,6 +2290,9 @@ export class Game extends Phaser.Scene {
       cid: this.cid,
       // ---- (v4.2.0.1) the first-run tutorial's bits (only villages that began with it)
       onb: this.onboard ? this.onboard.serialize() : (this.saved && this.saved.onb) || undefined,
+      // ---- (v4.2.0.2) 관리자 모드 (optional: only once the designer opened it / while 「코인 무제한」 is on)
+      adminUses: this.adminUses > 0 ? this.adminUses : undefined,
+      adminInf: this.economy.unlimited ? 1 : undefined,
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };

@@ -5,6 +5,7 @@ export class Economy {
     this.gs = gs;
     this.coins = Math.max(0, Math.floor(coins));
     this.earned = 0;
+    this.unlimited = false;   // ((v4.2.0.2) 관리자 모드 「코인 무제한」: spending pays but never lowers the coins (saved as adminInf)
   }
   add(n, wx, wy, fly) {
     n = Math.floor(n);
@@ -17,7 +18,7 @@ export class Economy {
   }
   spend(n) {
     n = Math.min(this.coins, Math.floor(n));
-    this.coins -= n;
+    if (!this.unlimited) this.coins -= n;
     if (this.gs.ui) this.gs.ui.setCoins(this.coins, 0);
     return n;
   }

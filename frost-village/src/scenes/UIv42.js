@@ -176,7 +176,7 @@ export class HudV42 {
     const ui = this.ui, gs = this.gs, v = this.v42;
     this.t += dt;
     if (!v || !gs || !gs.player) return;
-    const busy = ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen || gs.overview;
+    const busy = ui.panelOpen || ui.adminOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen || gs.overview;     // ((v4.2.0.2) + 관리자 모드)
     // 관망 button
     const P = this.pilot;
     // ((v4.2.0.1) not during the first-run tutorial's replay tour either)
