@@ -150,6 +150,10 @@ export function sanitizeSave(raw) {
   if (typeof raw.cid === 'string' && /^[a-z0-9]{4,16}$/.test(raw.cid)) s.cid = raw.cid;
   // ((v4.2.0.1) the first-run tutorial's bit flags (Onboarding.js ONB): only villages that began with it carry one)
   if (raw.onb !== undefined) { const n = Math.floor(num(raw.onb, 0)); if (n > 0 && n < 1024) s.onb = n; }
+  // ((v4.2.0.2) 관리자 모드 (src/systems/Admin.js), both optional — a save without them loads exactly as before:
+  //  adminUses = how many times the admin panel opened (bug reports can tell), adminInf = 「코인 무제한」 is on)
+  if (raw.adminUses !== undefined) { const n = count(raw.adminUses, 1e6); if (n > 0) s.adminUses = n; }
+  if (raw.adminInf === 1 || raw.adminInf === true) s.adminInf = 1;
   const pr = isObj(raw.progress) ? raw.progress : {};
   const up = isObj(pr.up) ? pr.up : {};
   s.progress = {

@@ -60,7 +60,7 @@ SMOCK = [(0.285, -0.20), (0.268, -0.10), (0.240, 0.0), (0.216, 0.10), (0.208, 0.
 SPECS = {
     'npc_clerk_a': dict(
         name=('점원 미소', 'Miso'), role='adult', traits=['cheerful', 'polite', 'shopkeeper', 'register'],
-        body='adult', coat='#F2B84B', hair='#4A2E22', pants='#5A3A4A', boots='#7A4A30', bare_hands=True, **NOFUR,
+        body='adult', coat='#F1EADB', hair='#4A2E22', pants='#3E3A48', boots='#6B4128', bare_hands=True, **NOFUR,
         hem_r=0.26, hem_z=-0.12, idle_style='clasp', serve_prop='bag',
         face=dict(brow='#4A2E22', lashes=True, blush='#F49090'), shadow=[46, 18]),
     'npc_clerk_b': dict(

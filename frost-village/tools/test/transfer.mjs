@@ -13,6 +13,7 @@
 //   - applyVillage: the current village goes to the spare (move.backup, a code that reads back to it), the new keys are
 //     written exactly, the old ones that the new village does not have are gone; a storage that fills up half-way puts
 //     the old village back byte for byte and lifts the no-save guard again
+//   - (v4.2.0.2) an admin'd village's code imports without 코인 무제한 / the admin use count; 되돌리기 keeps them
 //   - without CompressionStream: a plain ('j') code, still read anywhere; a compressed code there -> 'cantOpen'
 // Browser (the real game, real taps and the real DOM sheet):
 //   A  late v4.2 village, 390x844: settings -> 「마을 옮기기」 (a real tap on the Phaser button) -> the code; the game
@@ -199,6 +200,28 @@ for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
   const r3 = await T.applyVillage(LATE, { storage: null });
   check('apply with no storage at all: refused', !r3.ok, r3.error);
   window.__FV_NO_SAVE = undefined;
+}
+// ((v4.2.0.2 fix R1/R6) 관리자 모드: the admin marks never move with a village — a code from an admin'd village (코인 무제한
+//  on, the panel opened 3 times) imports without them; 되돌리기 (the 불러오기 spare / the 관리자 사본) keeps them)
+{
+  const adm = Object.assign(JSON.parse(LATE[SAVE_KEY]), { adminInf: 1, adminUses: 3 });
+  const d = await T.decodeVillage((await T.encodeVillage(Object.assign({}, LATE, { [SAVE_KEY]: JSON.stringify(adm) }))).code);
+  const stI = memStorage({}), stU = memStorage({}), stA = memStorage({});
+  const rI = await T.applyVillage(Object.assign({}, d.keys), { storage: stI });
+  const rU = await T.applyVillage(Object.assign({}, d.keys), { storage: stU, undo: true });
+  const rA = await T.applyVillage(Object.assign({}, d.keys), { storage: stA, undo: true, spareKey: T.ADMIN_BACKUP_KEY });
+  window.__FV_NO_SAVE = undefined;
+  const [sI, sU, sA] = [stI, stU, stA].map((s) => JSON.parse(s.getItem(SAVE_KEY) || '{}'));
+  const rest = (o) => { const c = Object.assign({}, o); delete c.adminInf; delete c.adminUses; delete c.onb; return c; };
+  const others = Object.keys(LATE).filter((k) => k !== SAVE_KEY);
+  check('import of an admin\'d village: 코인 무제한 (adminInf) and the use count (adminUses) stay behind; the rest of the save and every other key as in the code',
+    d.ok && rI.ok && !('adminInf' in sI) && !('adminUses' in sI) && same(rest(sI), rest(adm)) && others.every((k) => stI.getItem(k) === LATE[k]), { adminInf: sI.adminInf, adminUses: sI.adminUses });
+  const mI = migrateSave(sI);
+  check('the imported save loads without them (Save.js migrateSave): the game starts with 코인 무제한 off, admin never used', !!mI && mI.adminInf === undefined && mI.adminUses === undefined);
+  check('되돌리기 (the spare, the 관리자 사본): this phone\'s own village comes back with its admin marks', rU.ok && rA.ok && sU.adminInf === 1 && sU.adminUses === 3 && sA.adminInf === 1 && sA.adminUses === 3, [sU.adminInf, sU.adminUses, sA.adminInf, sA.adminUses]);
+  const plain = { [SAVE_KEY]: JSON.stringify(rest(adm)) }, p0 = plain[SAVE_KEY];
+  T.markImported(plain);
+  check('a save without tutorial bits or admin marks is imported byte for byte', plain[SAVE_KEY] === p0);
 }
 // no CompressionStream
 {

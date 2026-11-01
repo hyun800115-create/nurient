@@ -248,7 +248,7 @@ export class OnboardOverlay {
     this.allHidden = false;
     try { ob.ov = this; ob.uiUpdate(dt, ui, this); } catch (e) { if (!this._err) { this._err = true; console.error('[FrostVillage] onboarding tips:', e); } }
     const gs = this.gs;
-    const panelUp = !!(ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen);
+    const panelUp = !!(ui.panelOpen || ui.adminOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen);     // ((v4.2.0.2) + 관리자 모드)
     const tip = ob.tip;
     const tipInPanel = tip && (tip.btn === 'move' || tip.btn === 'playTab');
     const tipInMap = tip && tip.id === 'T4' && gs.overview;

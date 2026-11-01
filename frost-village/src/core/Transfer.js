@@ -23,6 +23,12 @@ export const CODE_TAG = 'SNOWBLOOM';
 export const CODE_FMT = 1;
 /** the village that was here before the last 불러오기 (a code like the ones above): 되돌리기 brings it back */
 export const MOVE_BACKUP_KEY = 'frostVillage.move.backup';
+/** ((v4.2.0.2) 관리자 모드, src/systems/Admin.js) the 관리자 사본: the village as it was when the admin panel first opened on it
+ *  (a code like the ones above, in a slot of its own: it never writes over the spare above, which may hold the only copy
+ *  of another village). 「마을 옮기기 › 불러오기 › 관리자 사본으로 되돌리기」 brings it back; like the spare it never
+ *  travels in a code (the frostVillage.move. prefix) */
+export const ADMIN_BACKUP_KEY = 'frostVillage.move.admin';
+const SPARE_KEYS = [MOVE_BACKUP_KEY, ADMIN_BACKUP_KEY];
 const KEY_RE = /^frostVillage\.[A-Za-z0-9_.-]{1,64}$/;
 const MAX_TEXT = 12e6;          // a pasted text longer than this is not read
 const MAX_PAYLOAD = 9e6;        // decompressed bytes (a damaged / hostile code can never blow up memory)
@@ -225,20 +231,23 @@ export function summarize(s, keys, made, raw) {
 export async function applyVillage(keys, opts = {}) {
   const st = opts.storage || getStore();
   if (!st) return fail('noStorage');
-  // ((v4.2.0.1) a village from elsewhere has played its tutorial; 「예비 사본으로 되돌리기」 (opts.undo) is the player's own
-  //  village coming back — left as it was)
+  // ((v4.2.0.2) opts.spareKey: ADMIN_BACKUP_KEY when 「관리자 사본으로 되돌리기」 brings the admin copy back — the current
+  //  village then takes its place there (the two swap), and the 불러오기 spare is left alone)
+  const SPARE = opts.spareKey === ADMIN_BACKUP_KEY ? ADMIN_BACKUP_KEY : MOVE_BACKUP_KEY;
+  // ((v4.2.0.1) a village from elsewhere has played its tutorial (and (v4.2.0.2) leaves its admin marks behind);
+  //  「예비 사본으로 되돌리기」 (opts.undo) is the player's own village coming back — left as it was)
   if (!opts.undo) markImported(keys);
   const W = typeof window !== 'undefined' ? window : {};
   const guard0 = W.__FV_NO_SAVE;
   W.__FV_NO_SAVE = true;
   const before = snapshotKeys(st);
   let spare0 = null;
-  try { spare0 = st.getItem(MOVE_BACKUP_KEY); } catch (e) { spare0 = null; }
+  try { spare0 = st.getItem(SPARE); } catch (e) { spare0 = null; }
   let backup = false;
   try {
-    if (typeof before[SAVE_KEY] === 'string') { st.setItem(MOVE_BACKUP_KEY, (await encodeVillage(before)).code); backup = true; }
+    if (typeof before[SAVE_KEY] === 'string') { st.setItem(SPARE, (await encodeVillage(before)).code); backup = true; }
   } catch (e) {
-    try { if (spare0 == null) st.removeItem(MOVE_BACKUP_KEY); else st.setItem(MOVE_BACKUP_KEY, spare0); } catch (e2) { /* */ }
+    try { if (spare0 == null) st.removeItem(SPARE); else st.setItem(SPARE, spare0); } catch (e2) { /* */ }
     W.__FV_NO_SAVE = guard0;
     return fail('noRoom');
   }
@@ -250,7 +259,7 @@ export async function applyVillage(keys, opts = {}) {
     try {
       for (const k of names) if (!(k in before)) st.removeItem(k);
       for (const k of names) if (k in before) st.setItem(k, before[k]);
-      if (spare0 == null) st.removeItem(MOVE_BACKUP_KEY); else st.setItem(MOVE_BACKUP_KEY, spare0);
+      if (spare0 == null) st.removeItem(SPARE); else st.setItem(SPARE, spare0);
     } catch (e2) { /* nothing more can be done */ }
     W.__FV_NO_SAVE = guard0;
     return fail('noRoom');
@@ -262,22 +271,32 @@ export async function applyVillage(keys, opts = {}) {
 /**
  * ((v4.2.0.1) the first-run tutorial) a village moved in from another phone / app has been played already: when its save
  * carries the tutorial's bits (Onboarding.js ONB) they are set to "done and skipped" (ACT1 | ACT2 | SKIP = 14), so it never
- * shows the guided part or the button tips again. A save without them is left byte for byte as it was.
+ * shows the guided part or the button tips again.
+ * ((v4.2.0.2) 관리자 모드) the admin marks stay on the phone they were made on: 코인 무제한 (adminInf) and the use count
+ * (adminUses) are dropped, so a code from the designer's admin'd village never turns unlimited coins on for good on a
+ * tester's phone (its switch is behind the PIN), and the first admin opening here makes a fresh 관리자 사본 of this
+ * village instead of keeping one of another village (Admin.adminBackup). Only here: 되돌리기 (opts.undo, both spares)
+ * brings a village of this phone back as it was.
+ * A save without any of these is left byte for byte as it was.
  */
 export function markImported(keys) {
   try {
     const s = keys && keys[SAVE_KEY];
-    if (typeof s !== 'string' || s.indexOf('"onb"') < 0) return keys;
+    if (typeof s !== 'string' || !/"(onb|adminInf|adminUses)"/.test(s)) return keys;
     const o = JSON.parse(s);
-    if (!o || typeof o !== 'object' || typeof o.onb !== 'number' || !(o.onb > 0)) return keys;
-    o.onb = (Math.floor(o.onb) | 14) & 1023;
-    keys[SAVE_KEY] = JSON.stringify(o);
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return keys;
+    let changed = false;
+    if (typeof o.onb === 'number' && o.onb > 0) { o.onb = (Math.floor(o.onb) | 14) & 1023; changed = true; }
+    if ('adminInf' in o) { delete o.adminInf; changed = true; }
+    if ('adminUses' in o) { delete o.adminUses; changed = true; }
+    if (changed) keys[SAVE_KEY] = JSON.stringify(o);
   } catch (e) { /* left as it was */ }
   return keys;
 }
 
-/** the spare village kept by the last 불러오기 (its code), or null */
-export function backupCode(st) {
+/** the spare village kept by the last 불러오기 (its code), or null. ((v4.2.0.2) key: ADMIN_BACKUP_KEY for the 관리자 사본) */
+export function backupCode(st, key) {
   st = st || getStore();
-  try { const c = st && st.getItem(MOVE_BACKUP_KEY); return typeof c === 'string' && c.indexOf(CODE_TAG) >= 0 ? c : null; } catch (e) { return null; }
+  const k = SPARE_KEYS.indexOf(key) >= 0 ? key : MOVE_BACKUP_KEY;
+  try { const c = st && st.getItem(k); return typeof c === 'string' && c.indexOf(CODE_TAG) >= 0 ? c : null; } catch (e) { return null; }
 }

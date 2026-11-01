@@ -20,6 +20,8 @@ import { OfficePanel } from './OfficePanel.js';
 import { OnboardOverlay } from './OnboardOverlay.js';
 // ---- (v4.2.1) 마을 옮기기 (the export / import sheet, DOM)
 import { openMovePanel } from './MovePanel.js';
+// ---- (v4.2.0.2) 관리자 모드 (the version text tapped 7 times -> PIN keypad -> admin panel)
+import { AdminPanel } from './AdminPanel.js';
 const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
 // ---- (v4-C) the build menu's tabs
 import { CATALOG, TABS } from '../systems/Civic.js';
@@ -121,6 +123,7 @@ export class UI extends Phaser.Scene {
     this.bannerQ = [];                            // ((v4.2.0.1) banners in turn: one at a time, 0.4 s apart)
     this.bannerUntil = 0;
     this.onboardOv = new OnboardOverlay(this);    // (v4.2.0.1) 첫 실행 튜토리얼
+    this.admin = new AdminPanel(this);            // (v4.2.0.2) 관리자 모드
 
     this.layout();
     this.scale.on('resize', this.onResize, this);
@@ -136,7 +139,7 @@ export class UI extends Phaser.Scene {
       // too, and the button only fires when the finger lifts without moving (dogBarRelease)
       // ((v4.2.0.1) + the tutorial's 「건너뛰기」 chip: it skips on a tap only, a drag from it walks the chief)
       const onBar = over && over.length && over.every((o) => o.isDogBtn || o.isOnbSkip);
-      if (this.panelOpen || this.buildOpen || this.v4PanelOpen || this.v42PanelOpen || (over && over.length && !onBar)) return;
+      if (this.panelOpen || this.adminOpen || this.buildOpen || this.v4PanelOpen || this.v42PanelOpen || (over && over.length && !onBar)) return;
       if (!onBar) this.taps[p.id] = { x: p.x, y: p.y, t: this.time.now };
       const other = this.input.manager.pointers.find((q) => q && q.isDown && q.id !== p.id && q.id !== 0);
       if (other && !this.pinch) {
@@ -190,7 +193,7 @@ export class UI extends Phaser.Scene {
     this.input.on('gameout', () => { Input.release(); this.pinch = null; });
     // mouse wheel zoom (PC)
     this.input.on('wheel', (p, over, dx, dy) => {
-      if (this.panelOpen || !dy) return;
+      if (this.panelOpen || this.adminOpen || !dy) return;
       this.gs.zoomBy(dy > 0 ? 1 / 1.12 : 1.12);
     });
 
@@ -229,6 +232,7 @@ export class UI extends Phaser.Scene {
     if (this.hud4) this.hud4.layout();
     if (this.hud42) this.hud42.layout();
     if (this.onboardOv) this.onboardOv.layout();
+    if (this.admin) this.admin.layout();
   }
 
   // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
@@ -337,7 +341,7 @@ export class UI extends Phaser.Scene {
   }
 
   showChatButton(r) {
-    if (!this.chatBtn || this.panelOpen || this.buildOpen || this.v4PanelOpen) return;
+    if (!this.chatBtn || this.panelOpen || this.adminOpen || this.buildOpen || this.v4PanelOpen) return;
     this.chatFor = r; this.chatT = 6;
     this.chatBtnB.text.setText(t('chatBtn'));
     this.tweens.killTweensOf(this.chatBtn);
@@ -377,7 +381,7 @@ export class UI extends Phaser.Scene {
     if (!r) return;
     this.chatT -= dt;
     const p = this.gs.player;
-    const gone = !r.alive || r.lod || !r.sprite || !r.sprite.visible || this.chatT <= 0 || this.panelOpen || this.buildOpen || this.v4PanelOpen
+    const gone = !r.alive || r.lod || !r.sprite || !r.sprite.visible || this.chatT <= 0 || this.panelOpen || this.adminOpen || this.buildOpen || this.v4PanelOpen
       || (p && Math.hypot(p.x - r.x, (p.y - r.y) * 2) > 700) || !this.gs.isOnScreen(r.x, r.y, 20);
     if (gone) { this.hideChatButton(); return; }
     this.placeChatButton(false);
@@ -1091,7 +1095,11 @@ export class UI extends Phaser.Scene {
   panelFooter(add, cx, cy) {
     add(this.makeButton(cx - 130, cy + 330, 240, 80, 'gray', t('reset'), () => this.buildPanelContent(true), 26));
     add(this.makeButton(cx + 130, cy + 330, 240, 80, 'green', t('reload'), () => this.reloadGame(), 26));
-    add(this.add.text(cx, cy - 408, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
+    const ver = add(this.add.text(cx, cy - 408, VERSION + ' · ' + BUILD_DATE, TXT(22, '#6b7686', '#ffffff', 0, '700')).setOrigin(0.5));
+    // ((v4.2.0.2) 관리자 모드: 7 taps on the version within 4 s (AdminPanel) — no visible change on a tap; a finger-sized target)
+    ver.setInteractive(new Phaser.Geom.Rectangle(-40, -12, ver.width + 80, ver.height + 24), Phaser.Geom.Rectangle.Contains);
+    ver.on('pointerdown', () => { if (this.admin) this.admin.onVersionTap(); });
+    ver.adminTap = true;
     // ((v4.2.1) 마을 옮기기: the whole village as a text code — export here, import in another app / phone; MovePanel.js)
     const mv = add(this.makeButton(cx - 130, cy + 428, 240, 80, 'blue', MOVE_LABEL[getLang() === 'en' ? 'en' : 'ko'], () => openMovePanel(this), 26));
     if (mv.text.width > 200) mv.text.setScale(200 / mv.text.width);
@@ -1163,6 +1171,7 @@ export class UI extends Phaser.Scene {
     for (const q of this.dogBtns || []) q.lab.setText(t(q.kind === 'treat' ? 'dogTreat' : q.kind === 'play' ? 'dogPlay' : 'dogPet'));
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
     if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
+    if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
   }
 
   // ---------------------------------------------------------------- frame
@@ -1186,7 +1195,7 @@ export class UI extends Phaser.Scene {
     }
     // joystick
     const j = Input.joy;
-    if (j.active && !this.panelOpen) {
+    if (j.active && !this.panelOpen && !this.adminOpen) {
       this.joyBase.setVisible(true).setPosition(j.bx, j.by);
       const dx = j.kx - j.bx, dy = j.ky - j.by, d = Math.hypot(dx, dy), m = Math.min(d, JOY_RADIUS);
       this.joyKnob.setVisible(true).setPosition(j.bx + (d ? (dx / d) * m : 0), j.by + (d ? (dy / d) * m : 0));
@@ -1214,6 +1223,7 @@ export class UI extends Phaser.Scene {
     if (this.officePanel) this.officePanel.update(dt);
     this.updateBuildThumbs(dt);
     this.pumpBanners();
+    if (this.admin) this.admin.update(dt);
     if (this.onboardOv) { try { this.onboardOv.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding overlay:', e); } } }
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);
   }

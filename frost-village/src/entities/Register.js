@@ -5,7 +5,7 @@
 import { Assets } from '../core/Assets.js';
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
-import { gdist } from '../core/Iso.js';
+import { gdist, dirFromVec, DIRS8 } from '../core/Iso.js';
 import { Pad } from './Pad.js';
 import { Character } from './Character.js';
 import { panel } from '../core/Panel.js';
@@ -45,6 +45,13 @@ export class Register {
     // (v3) a clerk standing INSIDE a shop (staffDepth "front"): shop at depth d, clerk d + 0.5, then the
     // shop's front overlay (its counter) at d + 1 so the counter hides the clerk's legs
     this.frontDepth = sd && sd.staffDepth === 'front' ? seller.y + 0.5 : null;
+    // ((v4.2.0.2) the stage-1 stall: the clerk stands on a 12 cm plank step behind the 0.6 m counter (the art's
+    //  stepLiftPx): drawn that much higher while at the post, so the counter hides only her legs, not her apron)
+    this.stepLift = sd && Number.isFinite(sd.stepLiftPx) ? Math.max(0, Math.min(20, sd.stepLiftPx)) : 0;
+    // ((v4.2.0.2 fix STALL-C1) on the stall's step the clerk keeps her art's staff direction (SW: 3/4 to the camera,
+    //  face, apron and name tag in view) for anyone within one 45° step of it: the front customer stands front-left,
+    //  which reads as W (side-on, face under the cap). Only someone further off makes her turn fully)
+    this.holdDir = this.stepLift && this.staffDir ? DIRS8.indexOf(this.staffDir) : -1;
     this.overlay = null;
     if (ad && ad.overlay && Assets.m.sprites[ad.overlay]) {
       this.overlay = Assets.image(gs, seller.x, seller.y, ad.overlay).setDepth(seller.y + 1);
@@ -156,14 +163,28 @@ export class Clerk extends Character {
 
   faceFront() {
     const tg = this.register.seller.payTarget && this.register.seller.payTarget();
-    if (tg) this.faceTo(tg.x, tg.y);
-    else { const f = this.register.seller.front; this.faceTo(this.x + (f ? f[0] : -40), this.y + (f ? f[1] : 20)); }
+    if (tg) this.faceServe(tg.x, tg.y);
+    else { const f = this.register.seller.front; this.faceServe(this.x + (f ? f[0] : -40), this.y + (f ? f[1] : 20)); }
+  }
+
+  /** ((v4.2.0.2 fix STALL-C1) turn toward (x, y); at a post with a held direction (the stall, Register.holdDir) she
+   *  keeps that direction for anything within one 45° step of it */
+  faceServe(x, y) {
+    const h = this.register ? this.register.holdDir : -1, dx = x - this.x, dy = y - this.y;
+    if (h >= 0 && Math.abs(dx) + Math.abs(dy) >= 0.001) {
+      const k = (dirFromVec(dx, dy) - h + 8) % 8;
+      if (Math.min(k, 8 - k) <= 1) {
+        if (this.dir !== h) { this.dir = h; this.play(this.animName, false, true); }
+        return;
+      }
+    }
+    this.faceTo(x, y);
   }
 
   /** a customer paid: hand the goods over (serve anim); the register rings at the hand-over frame */
   serve(who) {
     const gs = this.gs;
-    if (who) this.faceTo(who.x, who.y);
+    if (who) this.faceServe(who.x, who.y);
     this.play('serve', true);
     this.serveT = Math.max(0.5, Assets.animDuration(this.key, 'serve'));
     const ad = this.def.anims[this.animRes];
@@ -179,9 +200,17 @@ export class Clerk extends Character {
     if (gs.isOnScreen(this.x, this.y, 60)) { const ip = this.impactPoint(); gs.effects.burst('coin', ip.x, ip.y - 4, 2); }
   }
 
-  /** depth: inside a shop the clerk sits between the shop and its counter overlay */
+  /** depth: inside a shop the clerk sits between the shop and its counter overlay; on a stall's step she stands
+   *  stepLift px higher (stepping up over her last 24 px to the post) */
   sync(dt) {
     super.sync(dt);
+    const R = this.register, L = R ? R.stepLift : 0;
+    if (L) {
+      const s = R.staff, d = Math.hypot(this.x - s.x, (this.y - s.y) * 2);
+      const ly = this.state === 'post' ? L : d < 24 ? L * (1 - d / 24) : 0;
+      if (ly) { this.sprite.y -= ly; this.shadow.y -= ly; }
+      this.stepY = ly;
+    }
     const fd = this.register ? this.register.frontDepth : null;
     if (fd !== null && fd !== undefined && this.state === 'post' && this.sprite.depth !== fd) this.sprite.setDepth(fd);
   }

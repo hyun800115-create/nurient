@@ -146,10 +146,14 @@ export class Market {
     this.id = cfg.id || 'market';
     this.goods = cfg.goods || FOODS;
     this.enabled = true;
-    this.img = Assets.image(gs, this.x, this.y, cfg.sprite).setDepth(this.y);
-    if (gs.lazyImage) gs.lazyImage(this.img, cfg.sprite);
+    // ((v4.2.0.2) the stage-1 stall 「눈꽃 노점」 (assets/market, docs: 기획서_마을새단장 ① ②): its art missing (a
+    //  failed download) -> the old awning stall it replaced (spriteOld) so the plaza never shows a hole)
+    const spr = this.sprite = cfg.spriteOld && !Assets.has(cfg.sprite) ? cfg.spriteOld : cfg.sprite;
+    this.img = Assets.image(gs, this.x, this.y, spr).setDepth(this.y);
+    if (gs.lazyImage) gs.lazyImage(this.img, spr);
     gs.addOccluder(this.img);
-    const fp = Assets.def(cfg.sprite).footprint || [195, 97];
+    this.occ = gs.occluders ? gs.occluders[gs.occluders.length - 1] : null;
+    const fp = Assets.def(spr).footprint || [195, 97];
     const co = cfg.collider || [0, 0, 0.44];
     this.obstacle = gs.collision.add(this.x + co[0], this.y + co[1], fp[0] * co[2], this.id);
     this.shelf = new Pad(gs, this.x + cfg.shelf[0], this.y + cfg.shelf[1], 'input', 1.6, { icon: this.goods[0], iconSize: 40 });
@@ -159,6 +163,11 @@ export class Market {
     this.stock = new ItemStack(gs, {
       scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]],
       typeCols: tc, max: this.maxPerType * this.goods.length, bake: cfg.id === 'store' ? true : 'eager',
+      // ((v4.2.0.2 fix STALL-P2) the plaza stall's towers stop growing below its signboard (world.js stockDrawMax):
+      //  40 cooked fish rose over the sign's last syllable 「점」. The extra items stay on top of their tower)
+      drawMax: Math.max(0, Math.floor(cfg.stockDrawMax) || 0),
+      // ((v4.2.0.2 fix R4) bread layers are about 1.5x a fish layer: its tower stops lower (world.js stockDrawMaxBy))
+      drawMaxBy: cfg.stockDrawMaxBy || null,
     });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.queue = [];      // customers in line (index 0 = front)
@@ -169,8 +178,16 @@ export class Market {
     this.lastKeys = [];
     this.front = [-60, 30];    // where the counter faces (clerk idle facing)
     // (v2) customers only pay and leave when someone stands at the register (the chief or a clerk)
-    this.register = new Register(gs, this, cfg, cfg.sprite);
+    this.register = new Register(gs, this, cfg, spr);
     this.waitPayT = 0;         // how long the front customer has been waiting to pay
+    // ((v4.2.0.2) the signboard's name, written by the game (strings.js sign_market_1 = 눈꽃 노점), so a later stage
+    //  only changes the key; the sign and the counter (the front layer over the clerk) fade with the stall's x-ray)
+    this.sign = null;
+    this.makeSign();
+    this.linkFade(this.sign);
+    // ((v4.2.0.2 fix STALL-C2) only the stall's counter layer: the 잡화점 (a Market on shop_general) keeps its counter
+    //  overlay opaque as in 4.2.0.1)
+    if (Assets.def(spr).stage) this.linkFade(this.register.overlay);
     // (v3) porters restock the shelf through logistics
     this.sink = {
       id: this.id + '_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
@@ -182,16 +199,88 @@ export class Market {
     if (gs.logistics) gs.logistics.add(this.sink);
   }
 
+  /**
+   * ((v4.2.0.2) the stall's name on its blank signboard: the art's signQuad (4 corners of the board face, px from the
+   * anchor; the face looks down-left, so its top edge falls 1 px per 2 px to the right) and signText (a strings.js
+   * key). A canvas text sheared like the board (the office sign's way, OfficeBuilding.makeSign), redrawn on a
+   * language change (refreshSign). No signQuad (the old stall, the general store): nothing.
+   */
+  makeSign() {
+    const gs = this.gs, d = Assets.def(this.sprite), q = d && d.signQuad;
+    if (!Array.isArray(q) || q.length < 4 || !d.signText) return null;
+    const txt = t(d.signText) || '';
+    const w = Math.max(8, q[1][0] - q[0][0]), h = Math.max(8, q[3][1] - q[0][1]), sh = (q[1][1] - q[0][1]) / w;
+    const S = 3, key = 'fv_sign_' + this.id + '_' + txt;
+    if (!gs.textures.exists(key)) {
+      const c = gs.textures.createCanvas(key, Math.ceil(w * S), Math.ceil((h + w * Math.abs(sh)) * S) + 2);
+      if (c) {
+        const ctx = c.context, font = (px) => '900 ' + px + 'px ' + (gs.font || 'sans-serif');
+        ctx.setTransform(S, S * sh, 0, S, 0, sh < 0 ? -S * sh * w : 0);
+        let fs = Math.round(h * 0.66);
+        ctx.font = font(fs);
+        while (fs > 7 && ctx.measureText(txt).width > w - 8) { fs--; ctx.font = font(fs); }
+        // ((v4.2.0.2 fix STALL-P3) a long name that one line shrinks (en "Snowbloom Stall": 11 px on the 25 px board)
+        //  goes on two lines, split at the space nearest its middle, when that makes the letters at least 2 px bigger
+        //  ("Snowbloom" / "Stall": 13 px in the test browser); 「눈꽃 노점」 stays one 17 px line)
+        let lines = [txt], fs2 = 0, two = null;
+        const sp = txt.indexOf(' ') > 0 ? [...txt.matchAll(/ /g)].map((m) => m.index) : [];
+        if (sp.length && fs < Math.round(h * 0.66)) {
+          const at = sp.reduce((b, i) => (Math.abs(i - txt.length / 2) < Math.abs(b - txt.length / 2) ? i : b), sp[0]);
+          two = [txt.slice(0, at), txt.slice(at + 1)];
+          const met = (l, px) => { const m = ctx.measureText(l); return { wd: m.width, a: Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : px * 0.76, dd: Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : px * 0.04 }; };
+          const fits = (px) => { ctx.font = font(px); const m = two.map((l) => met(l, px)); return m.every((q) => q.wd <= w - 6) && m[0].a + m[0].dd + m[1].a + m[1].dd + Math.max(1, px * 0.08) <= h - 1; };
+          fs2 = Math.round(h * 0.66);
+          while (fs2 > 7 && !fits(fs2)) fs2--;
+          if (fs2 >= fs + 2) lines = two; else ctx.font = font(fs);
+        }
+        ctx.textAlign = 'center';
+        const ink = (dy) => {
+          if (lines.length === 1) { ctx.textBaseline = 'middle'; ctx.fillText(txt, w / 2, h / 2 + dy); return; }
+          ctx.font = font(fs2); ctx.textBaseline = 'alphabetic';
+          const m = lines.map((l) => { const q = ctx.measureText(l); return { a: Number.isFinite(q.actualBoundingBoxAscent) ? q.actualBoundingBoxAscent : fs2 * 0.76, dd: Number.isFinite(q.actualBoundingBoxDescent) ? q.actualBoundingBoxDescent : fs2 * 0.04 }; });
+          const gap = Math.max(1, fs2 * 0.08), tall = m[0].a + m[0].dd + gap + m[1].a + m[1].dd, top = (h - tall) / 2;
+          ctx.fillText(lines[0], w / 2, top + m[0].a + dy - 0.6);
+          ctx.fillText(lines[1], w / 2, top + m[0].a + m[0].dd + gap + m[1].a + dy - 0.6);
+        };
+        // carved look: a light edge below, the brown letters on top
+        ctx.fillStyle = 'rgba(255, 248, 230, 0.55)';
+        ink(1.6);
+        ctx.fillStyle = d.signColor || '#6E3E1E';
+        ink(0.6);
+        this.signFont = lines.length === 1 ? fs : fs2;     // (tests: the letter size in sprite px)
+        this.signLines = lines.length;
+        c.refresh();
+      }
+    }
+    if (this.sign) {
+      const old = this.sign.texture && this.sign.texture.key;
+      this.sign.setTexture(key);
+      // (the other language's name: one sign texture in memory at a time)
+      if (old && old !== key && /^fv_sign_/.test(old) && gs.textures.exists(old)) gs.textures.remove(old);
+    } else this.sign = gs.add.image(this.x + q[0][0], this.y + q[0][1] - (sh < 0 ? -sh * w : 0), key).setOrigin(0, 0).setScale(1 / S).setDepth(this.y + 0.2);
+    this.sign.setVisible(this.enabled && this.img.visible);
+    return this.sign;
+  }
+  /** (v4.2.0.2) the language changed: the signboard's name again */
+  refreshSign() { if (this.sign) this.makeSign(); }
+  /** (v4.2.0.2) a picture drawn with the stall (its sign, its front layer) fades with the stall's x-ray */
+  linkFade(img) {
+    const gs = this.gs;
+    if (!img || !this.occ || !gs.occluders) return;
+    gs.occluders.push({ img, x: img.x, y: -1e9, hw: 0, top: 0, a: 1, link: this.occ });
+  }
+
   setEnabled(v) {
     this.enabled = v;
     this.sink.enabled = v;
     this.img.setVisible(v); this.shelf.setVisible(v); this.cash.setEnabled(v); this.stock.setVisible(v);
+    if (this.sign) this.sign.setVisible(v);
     this.obstacle.active = v;
     this.register.setEnabled(v);
     if (this.emptyLab && !v) this.emptyLab.c.setVisible(false);
     for (const c of this.queue) { c.sprite.setVisible(v); c.shadow.setVisible(v); if (c.bubble) c.bubble.setVisible(v); }
   }
-  revealObjects() { return [this.img, this.shelf.img, this.cash.pad.img].concat(this.register.revealObjects()); }
+  revealObjects() { const o = [this.img, this.shelf.img, this.cash.pad.img].concat(this.register.revealObjects()); if (this.sign) o.push(this.sign); return o; }
 
   /** the customer the cashier is serving (front of the line) */
   payTarget() { const f = this.queue[0]; return f && f.arrived ? f : null; }
