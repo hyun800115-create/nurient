@@ -7,7 +7,8 @@
 // magenta(A) / magenta(B). Gate: >= --min % (75) with the front customer. (4.2.0.1's awning stall: about 46-48 %.)
 // ((v4.2.0.2 fix) + with the front customer she faces SW (3/4 to the camera: face, apron, name tag), idle and while
 //  serving (STALL-C1: she turned side-on, W); + the signboard 「눈꽃 노점」 stays >= 95 % visible with a full shelf
-//  (3 kinds x 40: the fish tower used to rise over its last syllable, STALL-P2))
+//  (3 kinds x 40: the fish tower used to rise over its last syllable, STALL-P2); the bread tower tops out no higher
+//  than the fish tower (R4: at 18 layers it covered the board's right end))
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
@@ -121,6 +122,13 @@ try {
   if (sign.none) console.log('(no signboard: the old stall art)');
   else if (sign.share >= 95) console.log(`ok   signboard visible ${sign.share} % with a full shelf (${sign.stock} items, towers drawn up to ${sign.drawMax})`);
   else { fails++; console.log('FAIL signboard hidden by the shelf towers', JSON.stringify(sign)); }
+  // ((v4.2.0.2 fix R4) the same full shelf: the bread tower (a bread layer is ~1.5x a fish layer, world.js stockDrawMaxBy)
+  //  tops out no higher than the fish tower, which stays under the board — at 18 layers it rose over the board's right end)
+  if (!sign.none) {
+    const tw = await ev(() => { const m = window.__FV.scene.market, s = m.stock; s.place(); const top = {}, n = {}; for (const it of s.items) { const k = it.type.replace('item_', ''); n[k] = (n[k] || 0) + 1; if (!(k in top) || it.y < top[k]) top[k] = it.y; } for (const k in top) top[k] = Math.round(top[k] - m.y); return { top, n, by: s.drawMaxBy }; });
+    if (tw.top.bread != null && tw.top.fish_cooked != null && tw.top.bread >= tw.top.fish_cooked - 2) console.log(`ok   bread tower top ${tw.top.bread} px <= fish tower top ${tw.top.fish_cooked} px (from the stall's anchor; ${tw.n.bread} bread, drawn up to ${JSON.stringify(tw.by)})`);
+    else { fails++; console.log('FAIL bread tower rises above the fish tower (over the signboard\'s right end)', JSON.stringify(tw)); }
+  }
   await ev(([x, y]) => { window.__FV.teleport(x + 260, y + 300); window.__FV.camera(x - 30, y - 20, 1.7); }, info.t);
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.trade.stock.push('item_plank', null, gs.effects); });
   await advance(page, 4); await render(page, 3);

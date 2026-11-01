@@ -109,7 +109,9 @@ export class AdminPanel {
       b.adminKey = k;
       btns[k] = b;
     });
-    const close = add(ui.makeIconButton(cx + KP_W / 2 - 40, top + 40, 'ui_icon_close', 62, () => this.closeKeypad()));
+    // ((v4.2.0.2 fix R5) not while 「확인하고 있어요…」: the right PIN was taken, the panel opens when the backup is made —
+    //  an X then closed the keypad and the panel opened anyway)
+    const close = add(ui.makeIconButton(cx + KP_W / 2 - 40, top + 40, 'ui_icon_close', 62, () => { if (!this.busy) this.closeKeypad(); }));
     btns.close = close;
     this.kp = { c, bg, dim, ask, dots, err, lock, btns };
     this.refreshKeypad();
@@ -125,7 +127,8 @@ export class AdminPanel {
     const locked = left > 0;
     k.lockSec = locked ? Math.ceil(left / 1000) : 0;
     k.lock.setText(locked ? t('adm_pinLocked', { s: k.lockSec }) : '');
-    for (const id in k.btns) if (id !== 'close') k.btns[id].setAlpha(locked || this.busy ? 0.5 : 1);
+    // (the X stays live through the lock; while busy it is dimmed with the keys: it does nothing then)
+    for (const id in k.btns) k.btns[id].setAlpha((locked && id !== 'close') || this.busy ? 0.5 : 1);
     k.lockedShown = locked;
   }
 

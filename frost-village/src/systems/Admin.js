@@ -9,7 +9,8 @@
 //   window.__FV_ADMIN_TEST_DIGEST to the digest of its own test PIN. A phone never has navigator.webdriver set.
 // This module is the logic (PIN, lock, the actions on the Game scene, the backup); the keypad and the panel are drawn by
 // src/scenes/AdminPanel.js. Saved: `adminUses` (how many times the panel opened — bug reports can tell) and `adminInf`
-// (코인 무제한 on) — both optional, an old save loads unchanged (Save.js sanitizeSave); the speed is never saved.
+// (코인 무제한 on) — both optional, an old save loads unchanged (Save.js sanitizeSave); the speed is never saved. Both stay
+// on this phone: a village moved in with 마을 옮기기 › 불러오기 arrives without them (Transfer.js markImported).
 
 import { sha256Hex } from '../core/sha256.js';
 import { SAVE_KEY, BACKUP_KEY, migrateSave } from '../core/Save.js';
@@ -228,6 +229,8 @@ export function setSpeed(gs, n) {
   gs.simSpeed = k;
   try { gs.tweens.timeScale = k; } catch (e) { /* */ }
   try { gs.time.timeScale = k; } catch (e) { /* */ }
+  // (the animation manager is the whole game's: the UI scene's sprites would follow too — it plays none (its finger and
+  //  HUD move by its own tweens / clock, left at ×1); Game.create puts it back to ×1)
   try { gs.anims.globalTimeScale = k; } catch (e) { /* */ }
   return k;
 }

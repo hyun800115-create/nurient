@@ -606,7 +606,12 @@ try {
   await openAdmin(E, false);
   a = await st(E);
   adm = await slotSave(E, 'admin'); mv = await slotSave(E, 'move');
-  ok(a.backup.kept && adm.coins === cE && mv.coins === ownCoins && (await coins(E)) === cE + 100000, 'E: +100,000, open #2 -> both kept (관리자 사본 ' + adm.coins + ', spare ' + mv.coins + '); 「' + a.sub + '」', { backup: a.backup });
+  // ((v4.2.0.2 fix) the village keeps selling in the frames the game runs between the two openings (customers pay on
+  //  their own timing; the unchanged e5b27fa failed here in 2 of 3 runs, 12 / 48 coins earned): the +100,000 is in, plus
+  //  whatever was earned meanwhile — never less, and not more than a few sales)
+  const earned = (n) => n >= cE + 100000 && n < cE + 100000 + 2000;
+  const cNow = await coins(E);
+  ok(a.backup.kept && adm.coins === cE && mv.coins === ownCoins && earned(cNow), 'E: +100,000, open #2 -> both kept (관리자 사본 ' + adm.coins + ', spare ' + mv.coins + '; coins now ' + cNow + '); 「' + a.sub + '」', { backup: a.backup, cE, cNow });
   await shot(E, 'panel_kept_412_ko');
   await tapBtn(E, 'closeBtn');
   await render(E, 8);
@@ -638,7 +643,7 @@ try {
   const back = await E.evaluate(() => { const gs = window.__FV.scene; return { coins: gs.saved.coins, uses: gs.saved.adminUses, inf: gs.economy.unlimited, cid: gs.cid }; });
   adm = await slotSave(E, 'admin'); mv = await slotSave(E, 'move');
   ok(back.coins === cE && back.uses === undefined && !back.inf && back.cid === cidE, 'E: after 되돌리기 the village from before admin is back (' + back.coins + ' coins, never used admin)', back);
-  ok(adm && adm.coins === cE + 100000 && adm.adminUses === 2 && mv && mv.coins === ownCoins, 'E: the admin\'d village (' + (adm && adm.coins) + ') now sits in the 관리자 사본 slot; the own village (' + (mv && mv.coins) + ') is still the 불러오기 spare', { adm: adm && [adm.coins, adm.adminUses], mv: mv && mv.coins });
+  ok(adm && earned(adm.coins) && adm.cid === cidE && adm.adminUses === 2 && mv && mv.coins === ownCoins, 'E: the admin\'d village (' + (adm && adm.coins) + ') now sits in the 관리자 사본 slot; the own village (' + (mv && mv.coins) + ') is still the 불러오기 spare', { adm: adm && [adm.coins, adm.adminUses], mv: mv && mv.coins });
   ok(LE.errors.length === 0, 'E: 0 page errors', LE.errors.slice(0, 5));
   allErrors.push(...LE.errors);
   await E.context().close();

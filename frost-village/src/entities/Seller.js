@@ -166,6 +166,8 @@ export class Market {
       // ((v4.2.0.2 fix STALL-P2) the plaza stall's towers stop growing below its signboard (world.js stockDrawMax):
       //  40 cooked fish rose over the sign's last syllable 「점」. The extra items stay on top of their tower)
       drawMax: Math.max(0, Math.floor(cfg.stockDrawMax) || 0),
+      // ((v4.2.0.2 fix R4) bread layers are about 1.5x a fish layer: its tower stops lower (world.js stockDrawMaxBy))
+      drawMaxBy: cfg.stockDrawMaxBy || null,
     });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.queue = [];      // customers in line (index 0 = front)

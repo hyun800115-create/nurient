@@ -30,6 +30,8 @@ export class ItemStack {
     this.alternate = !!opts.alternate;     // fill the towers side by side (twin towers) instead of one after another
     this.hopOnPush = opts.hop !== false;
     this.drawMax = opts.drawMax || 0;      // (v3.5 review) items beyond this stay on top of their tower (a big pile never becomes a skyscraper)
+    // ((v4.2.0.2 fix R4) typeCols only: a lower drawMax for some types ({ item_bread: 12 }): their layers are taller)
+    this.drawMaxBy = opts.drawMaxBy || null;
     this._top = { x: 0, y: 0 };
     this.visible = true;
     this.incoming = 0;      // items currently flying toward this stack (reserved capacity)
@@ -175,7 +177,7 @@ export class ItemStack {
     if (this.typeCols && type) {
       col = this.typeCols[type] || 0;
       let k = 0;
-      const lim = this.towerLim();
+      const lim = this.towerLim(type);
       for (const it of this.items) if (this.typeCols[it.type] === col && ++k < lim) h += stackStep(it.type) * this.scale;
     } else if (this.alternate) {
       const nc = this.cols.length;
@@ -219,9 +221,10 @@ export class ItemStack {
     if (this.typeCols) {
       const hs = [0, 0, 0, 0, 0, 0];
       // ((v4-C) drawMax: a tower shows at most this many layers, the rest stay on its top)
-      const lim = this.drawMax || Infinity, cs = [0, 0, 0, 0, 0, 0];
+      const cs = [0, 0, 0, 0, 0, 0];
       for (let i = 0; i < n; i++) {
         const it = items[i];
+        const lim = (this.drawMaxBy && this.drawMaxBy[it.type]) || this.drawMax || Infinity;
         const col = this.typeCols[it.type] || 0;
         const c = this.cols[col] || this.cols[0];
         const st = stackStep(it.type) * this.scale;
@@ -298,8 +301,8 @@ export class ItemStack {
     }
   }
 
-  /** the tallest a type tower is drawn (drawMax, and (baked) the layers its slot holds) */
-  towerLim() { return Math.min(this.drawMax || Infinity, this.towerCap || Infinity); }
+  /** the tallest a type tower is drawn (drawMax or the type's drawMaxBy, and (baked) the layers its slot holds) */
+  towerLim(type) { return Math.min((type && this.drawMaxBy && this.drawMaxBy[type]) || this.drawMax || Infinity, this.towerCap || Infinity); }
 
   /**
    * (v4.2.0.1) the items' x / y in their towers at (bx, by) — the same towers as layout() (typeCols / alternate /
@@ -312,11 +315,10 @@ export class ItemStack {
     if (this.typeCols) {
       const hs = this._hs || (this._hs = []), cs = this._cs || (this._cs = []);
       for (let k = 0; k < 8; k++) { hs[k] = 0; cs[k] = 0; }
-      const lim = this.towerLim();
       for (let i = 0; i < n; i++) {
         const it = items[i], col = this.typeCols[it.type] || 0, c = this.cols[col] || this.cols[0];
         it.x = bx + c[0]; it.y = by + c[1] - hs[col];
-        if (++cs[col] < lim) hs[col] += stackStep(it.type) * this.scale;
+        if (++cs[col] < this.towerLim(it.type)) hs[col] += stackStep(it.type) * this.scale;
       }
     } else if (this.alternate) {
       const nc = this.cols.length, hs = this._hs || (this._hs = []);
