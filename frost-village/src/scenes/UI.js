@@ -1163,6 +1163,7 @@ export class UI extends Phaser.Scene {
     for (const q of this.dogBtns || []) q.lab.setText(t(q.kind === 'treat' ? 'dogTreat' : q.kind === 'play' ? 'dogPlay' : 'dogPet'));
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
     if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
+    if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
   }
 
   // ---------------------------------------------------------------- frame

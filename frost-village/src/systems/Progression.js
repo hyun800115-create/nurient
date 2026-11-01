@@ -361,7 +361,10 @@ export class Progression {
       if (s.type === 'hire' || s.type === 'hire2' || s.type === 'hire3') icon = face('portrait_' + workerLook(gs, s), 'portrait_' + s.worker);
       else if (s.type === 'operator') { const w = WORLD.labour && WORLD.labour.ops[s.station]; icon = w && w.who ? face('portrait_' + w.who, 'ui_icon_worker') : 'ui_icon_worker'; }
       else if (s.type === 'raw') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_b', 'ui_icon_backpack');
-      else if (s.type === 'clerk') icon = Assets.pick('ui_icon_clerk', s.seller === 'trade' ? 'portrait_npc_clerk_b' : 'portrait_npc_clerk_a', 'ui_icon_worker');
+      // ((v4.2.0.2 fix STALL-P1) the stall and the 잡화점 hire npc_clerk_a, now the grown-up clerk (navy cap, apron): their
+      //  pad shows her own portrait, like the other hire pads (the drawn ui_icon_clerk is the old red-headscarf child look).
+      //  The trade post's clerk (npc_clerk_b) keeps the drawn icon)
+      else if (s.type === 'clerk') icon = s.seller === 'trade' ? Assets.pick('ui_icon_clerk', 'portrait_npc_clerk_b', 'ui_icon_worker') : face('portrait_npc_clerk_a', Assets.pick('ui_icon_clerk', 'ui_icon_worker'));
       else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
       else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';

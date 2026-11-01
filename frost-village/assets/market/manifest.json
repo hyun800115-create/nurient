@@ -1,0 +1,116 @@
+{
+ "version": 1,
+ "generator": "tools/blender/market_render.py + market_pack.py (v4.2.0.2 M1: the first shop's stall stages)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre.",
+  "layers": "<stage>_back = the whole stall (posts, shelf, signboard, step, counter); <stage>_front = only the counter and what stands on it (same frame + anchor). Draw back (depth d), the clerk at staffPoints[0] lifted by stepLiftPx (d + 0.5), front (d + 1).",
+  "points": "every *Point(s) value is a px offset [dx, dy] from the sprite anchor (unscaled sprite).",
+  "staffPoints": "the clerk's feet on the plank step, projected to the ground (z = 0); stepLiftPx = how far the sprite is drawn higher because the clerk stands on the step.",
+  "customerPoints": "where the first customer of the line stands: diagonally front-left of the clerk, so the front customer does not stand between the camera and the clerk.",
+  "signQuad": "the 4 corners [top-left, top-right, bottom-right, bottom-left] of the blank signboard face (it faces world -Y: the top edge slopes down to the right, 1 px down per 2 px across). The game writes the stage name (signText = a strings.js key) into it, sheared the same way."
+ },
+ "atlases": [
+  {
+   "key": "market_s1",
+   "png": "market/market_s1.png",
+   "json": "market/market_s1.json"
+  }
+ ],
+ "sprites": {
+  "market_s1_back": {
+   "atlas": "market_s1",
+   "frame": "market_s1_back",
+   "anchor": [
+    0.32732,
+    0.70122
+   ],
+   "kind": "building",
+   "footprint": [
+    195,
+    97
+   ],
+   "footprintM": [
+    3.0,
+    1.3
+   ],
+   "frameSize": [
+    388,
+    328
+   ],
+   "topPx": 209,
+   "front": "-Y",
+   "staffPoints": [
+    [
+     29,
+     -6
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "front",
+   "stepLiftPx": 7,
+   "stepM": 0.12,
+   "counterM": 0.6,
+   "signTopM": 2.6,
+   "customerPoints": [
+    [
+     -100,
+     16
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "signQuad": [
+    [
+     -6,
+     -189
+    ],
+    [
+     94,
+     -139
+    ],
+    [
+     94,
+     -114
+    ],
+    [
+     -6,
+     -164
+    ]
+   ],
+   "signText": "sign_market_1",
+   "signColor": "#6E3E1E",
+   "overlay": "market_s1_front",
+   "stage": 1,
+   "notes": "Stage-1 food stall 「눈꽃 노점」 (v4.2.0.2): no awning, a blank wooden signboard on two back posts (top edge 2.6 m, the GAME writes the name into signQuad), a 0.6 m counter, a 12 cm plank step behind it. Draw market_s1_back (depth d), the clerk standing at staffPoints[0] lifted by stepLiftPx (d + 0.5), then market_s1_front (d + 1, same frame + anchor: only the counter and what stands on it). Goods-free: the real stock is the shelf pad's item tower.",
+   "fxPoints": {
+    "register": [
+     30,
+     -10
+    ],
+    "sign": [
+     44,
+     -152
+    ]
+   }
+  },
+  "market_s1_front": {
+   "atlas": "market_s1",
+   "frame": "market_s1_front",
+   "anchor": [
+    0.32732,
+    0.70122
+   ],
+   "kind": "overlay",
+   "of": "market_s1_back",
+   "frameSize": [
+    388,
+    328
+   ],
+   "notes": "Front layer of market_s1_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
+  }
+ }
+}

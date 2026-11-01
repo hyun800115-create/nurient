@@ -667,7 +667,7 @@
      "cls": "core",
      "png": "_packed/vil_npc_clerk_a.core.png",
      "json": "_packed/vil_npc_clerk_a.core.json",
-     "bytes": 1671168,
+     "bytes": 1720320,
      "anims": [
       "idle",
       "serve",
@@ -679,7 +679,7 @@
      "cls": "social",
      "png": "_packed/vil_npc_clerk_a.social.png",
      "json": "_packed/vil_npc_clerk_a.social.json",
-     "bytes": 4497408,
+     "bytes": 4554752,
      "anims": [
       "angry",
       "bow",
@@ -695,7 +695,7 @@
      ]
     }
    ],
-   "src": "d34614e766b007f1"
+   "src": "847b436d9aa2b300"
   },
   "vil_npc_clerk_b": {
    "frag": "villagers2",

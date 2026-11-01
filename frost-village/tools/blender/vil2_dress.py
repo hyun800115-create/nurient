@@ -498,42 +498,61 @@ def make_skates(rig, blade_h=0.045):
 # --------------------------------------------------------------------------- characters
 
 def dress_clerk_a(rig, spec):
-    """점원 미소: bob, red headscarf, red/white striped apron with a name tag."""
+    """점원 미소 ((v4.2.0.2, 기획서_마을새단장 ①) the adult shop look: a navy shop cap with a short brim and a
+    cream band over the bob, a cream shirt with a red neckerchief, a long navy work apron (bib, waist ties,
+    a front pocket, the name tag). The old red headscarf + red/white striped apron read as a child behind
+    the tall counter (docs: 48 % of her was visible); every anim, frame name and the serve bag stay."""
     hair = spec['hair']
-    bob_hair(rig, hair, fringe=0.30, back_low=-0.38, side_low=-0.32, base=1.10, flare=0.08)
-    scarf = M('headscarf', '#E04848', rough=0.85)
-    cb.cap_shell(rig, scarf, lambda x, y: 0.30 - 0.38 * y, base=1.150, puff=0.05, name='headscarf', soft=0.035)
-    cb.tilted_ring(rig, 'headscarf_hem', M('headscarf_hem', '#FBF6EC', rough=0.85), HEAD_R[0] * 1.075, 0.016,
-                   0.66, -0.10, sy=0.97, rz=1.0)
-    knot_tails(rig, scarf, (0.0, 0.322, -0.040), s=1.0)
-    apron = mat_vstripes('apron_stripes', '#E04848', '#FBF6EC', scale=24.0)
+    bob_hair(rig, hair, fringe=0.26, back_low=-0.34, side_low=-0.30, base=1.10, flare=0.06)
+    navy = M('cap_navy', '#2F4A72', rough=0.85)
+    # a soft flat cap (the shopkeeper / worker cap of 통통 and the uncle, in navy): puffy crown leaning forward over
+    # a short brim — a round dome read as a helmet, a flat crown with a white band as a conductor's hat
+    cb.cap_shell(rig, navy, lambda x, y: 0.28 - 0.16 * y, base=1.12, puff=0.10, name='cap_base', soft=0.03)
+    crown = g.bm_ellipsoid(0.33, 0.335, 0.12, 32, 14)
+    ho(rig, 'cap_crown', vd.fuzz(crown, 0.003, 30.0), navy, loc=(0, -0.035, 0.205), rot=(-10, 0, 0))
+    ho(rig, 'cap_button', g.bm_ellipsoid(0.03, 0.03, 0.02, 10, 6), navy, loc=(0, -0.05, 0.325))
+    brim = g.bm_lathe([(0.0, 0.0), (0.16, 0.0), (0.17, -0.008), (0.0, -0.012)], seg=32, sx=1.0, sy=0.6)
+    ho(rig, 'cap_brim', brim, M('cap_brim', '#22385A', rough=0.8), loc=(0, -0.26, 0.135), rot=(-14, 0, 0))
+    # small white snowflake badge on the crown's front
+    ho(rig, 'cap_badge', g.bm_ellipsoid(0.030, 0.010, 0.028, 12, 6), M('cap_badge', '#FFFFFF', rough=0.4,
+                                                                         emission='#FFFFFF', emission_strength=0.1),
+       loc=(0, -0.335, 0.205), rot=(-20, 0, 0))
+    apron = M('apron', '#34507C', rough=0.85)
+    apron_d = M('apron_d', '#29406A', rough=0.85)
     hz = spec.get('hem_z', -0.12)
     hr = spec.get('hem_r', 0.26)
-    g.mesh_obj('apron', vd.sector_lathe([(hr + 0.020, hz - 0.035), (0.240, 0.0), (0.224, 0.10), (0.220, 0.14)],
-                                        keep_deg=58, sy=0.88), apron, rig.j['spine'])
-    g.mesh_obj('apron_bib', vd.sector_lathe([(0.216, 0.12), (0.213, 0.22), (0.202, 0.31)], keep_deg=36, sy=0.88),
+    # long apron: from the chest to below the coat hem (a grown-up's work apron, not a pinafore)
+    g.mesh_obj('apron', vd.sector_lathe([(hr + 0.026, hz - 0.075), (hr + 0.018, hz - 0.02), (0.240, 0.0),
+                                         (0.224, 0.10), (0.220, 0.14)], keep_deg=64, sy=0.88), apron, rig.j['spine'])
+    g.mesh_obj('apron_bib', vd.sector_lathe([(0.216, 0.12), (0.213, 0.22), (0.202, 0.31)], keep_deg=38, sy=0.88),
                apron, rig.j['spine'])
-    g.mesh_obj('apron_hem', vd.sector_lathe([(hr + 0.024, hz - 0.040), (hr + 0.024, hz - 0.012)], keep_deg=59,
-                                            sy=0.88), M('apron_trim', '#C8343A', rough=0.8), rig.j['spine'])
-    cb.belt(rig, '#C8343A', z=0.13, r=0.216, buckle=None, width=0.40)
+    g.mesh_obj('apron_hem', vd.sector_lathe([(hr + 0.030, hz - 0.080), (hr + 0.030, hz - 0.060)], keep_deg=65,
+                                            sy=0.88), apron_d, rig.j['spine'])
+    # front pocket with a cream pencil in it
+    g.mesh_obj('apron_pocket', vd.sector_lathe([(0.246, -0.02), (0.243, 0.05)], keep_deg=26, sy=0.88), apron_d,
+               rig.j['spine'])
+    g.mesh_obj('pencil', g.bm_cyl(0.008, 0.008, 0.06, seg=8), M('pencil', '#F2C14E', rough=0.5), rig.j['spine'],
+               loc=(0.035, -0.212, 0.04))
+    cb.belt(rig, '#29406A', z=0.13, r=0.216, buckle=None, width=0.40)
     for s in (-1, 1):
         g.mesh_obj('apron_strap', g.bm_tube_path([(s * 0.075, -0.180, 0.30), (s * 0.095, -0.12, 0.40),
-                                                  (s * 0.10, 0.0, 0.43)], 0.012, segr=6),
-                   M('apron_trim', '#C8343A', rough=0.8), rig.j['spine'])
-    # bow at the back
+                                                  (s * 0.10, 0.0, 0.43)], 0.012, segr=6), apron_d, rig.j['spine'])
+    # waist ties: a bow at the back
     for s in (-1, 1):
-        g.mesh_obj('apron_bow', g.bm_ellipsoid(0.05, 0.02, 0.032, 12, 8), M('apron_trim', '#C8343A', rough=0.8),
+        g.mesh_obj('apron_bow', g.bm_ellipsoid(0.05, 0.02, 0.032, 12, 8), apron_d,
                    rig.j['spine'], loc=(s * 0.045, 0.19, 0.13), rot=(0, s * -20, 0))
     # name tag on the bib
     g.mesh_obj('name_tag', g.bm_box(0.075, 0.012, 0.042, bevel=0.006), M('tag', '#FFFFFF', rough=0.4,
                                                                          emission='#FFFFFF', emission_strength=0.15),
                rig.j['spine'], loc=(0.055, -0.196, 0.245), rot=(-8, 0, -6))
-    g.mesh_obj('name_tag_s', g.bm_box(0.077, 0.013, 0.012, bevel=0.003), M('tag_s', '#3D7CC9', rough=0.4),
+    g.mesh_obj('name_tag_s', g.bm_box(0.077, 0.013, 0.012, bevel=0.003), M('tag_s', '#D04A42', rough=0.4),
                rig.j['spine'], loc=(0.055, -0.197, 0.262), rot=(-8, 0, -6))
-    # rounded white collar
+    # shirt collar points + a small red neckerchief knot
     for s in (-1, 1):
-        g.mesh_obj('collar', g.bm_ellipsoid(0.065, 0.028, 0.038, 14, 8), M('collar_w', '#FBF6EC', rough=0.7),
+        g.mesh_obj('collar', g.bm_ellipsoid(0.062, 0.026, 0.034, 14, 8), M('collar_w', '#FBF6EC', rough=0.7),
                    rig.j['chest'], loc=(s * 0.055, -0.115, 0.085), rot=(30, s * 18, s * 20))
+    g.mesh_obj('neckerchief', g.bm_ellipsoid(0.034, 0.024, 0.030, 12, 8), M('kerchief', '#D04A42', rough=0.8),
+               rig.j['chest'], loc=(0.0, -0.128, 0.060))
     make_bag(rig)
 
 

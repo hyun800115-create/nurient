@@ -106,10 +106,16 @@ export const WORLD = {
 
   // ── 판매처 ─────────────────────────────────────────────
   market: {
-    sprite: 'market_counter', x: market[0], y: market[1],
+    // ((v4.2.0.2) 1단 「눈꽃 노점」: 천막 대신 간판 (글씨는 게임이 써요: strings.js sign_market_1), 낮은 계산대 0.6 m,
+    //  점원은 계산대 뒤 낮은 단 위에 서요. 그림이 없으면 예전 천막 판매대(spriteOld)를 써요)
+    sprite: 'market_s1_back', spriteOld: 'market_counter', x: market[0], y: market[1],
     shelf: rel(market, Z('plaza', 4.35, 2.8)),     // 음식 놓는 발판 (판매대 오른쪽 끝)
+    // ((v4.2.0.2) 진열대의 음식 탑은 18층까지만 높아져요 (더 많으면 맨 위에 쌓여요): 생선 탑이 간판 「점」 글자를 가리지 않게.
+    //  20층까지 간판이 다 보이고, 25층부터 가려졌어요. 0 = 끝없이)
+    stockDrawMax: 18,
     cash: rel(market, Z('plaza', 4.7, 0.3)),       // 손님 코인 쌓이는 발판
-    queueStart: rel(market, Z('plaza', 2.0, 1.25)),// 맨 앞 손님 위치 (판매대 앞)
+    // ((v4.2.0.2) 맨 앞 손님은 계산대 정면이 아니라 비스듬히 왼쪽 앞에 서요: 점원을 가리지 않게 (예전 Z(2.0, 1.25)))
+    queueStart: rel(market, Z('plaza', 1.25, 1.34)),// 맨 앞 손님 위치 (판매대 왼쪽 앞, 그림의 customerPoints 와 같은 곳)
     queueStep: YOFF(-0.9),                         // 줄 간격 (뒤로 갈수록 왼쪽 아래)
     queueTurn: 6,                                  // 이 수만큼 선 뒤에는 줄이 꺾여서
     queueStep2: XOFF(0.9),                         //   이 방향(오른쪽 아래)으로 이어짐

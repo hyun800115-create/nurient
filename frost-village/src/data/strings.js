@@ -360,6 +360,8 @@ export const STRINGS = {
     staffLocked: '{role} {name} · {cost}코인 · 사무실 앞 발판',
     // 사무실 화면
     officeTitle: '촌장 사무실', officeChip: '업무',
+    // (v4.2.0.2) 첫 가게 간판 (단계마다 이름이 바뀔 자리: 2단 눈꽃 가게, 3단 눈꽃 시장, 4단 눈꽃마을 시장)
+    sign_market_1: '눈꽃 노점',
     tab_stock: '재고', tab_news: '소식', tab_letters: '편지', tab_staff: '직원', tab_bank: '통장',
     tabLocked: '{role} {name}을(를) 뽑으면 열려요', tabLockedBank: '서리 은행을 지으면 열려요',
     stat_short: '부족', stat_jam: '길 막힘', stat_surplus: '남음', stat_ok: '적당',
@@ -786,6 +788,7 @@ export const STRINGS = {
     depositFly: 'Deposit +{n}', vaultSpin: 'The vault spins!',
     staffLocked: '{name} ({role}) · {cost} coins · pad by the office',
     officeTitle: "Chief's Office", officeChip: 'Office',
+    sign_market_1: 'Snowbloom Stall',
     tab_stock: 'Stock', tab_news: 'News', tab_letters: 'Letters', tab_staff: 'Staff', tab_bank: 'Passbook',
     tabLocked: 'Opens when you hire {name} ({role})', tabLockedBank: 'Opens when the Frost Bank stands',
     stat_short: 'Short', stat_jam: 'Stuck', stat_surplus: 'Surplus', stat_ok: 'OK',

@@ -6,7 +6,9 @@
 //   node tools/test/ghostsweep.mjs [--canvas] [--dpr 1] [--only art,fresh,v35,late,office,ctx,replay,inv] [--quick]
 //        [--root <frost-village dir>] [--out <dir>] [--full-replay]
 // Sections (each on its own page; real rendering through the fixed-step clock — the bake only runs on drawn frames):
-//   art     the goods painted into building art are gone (grill grate, smokehouse rack, sawmill bench, stall counter,
+//   art     the goods painted into building art are gone (grill grate, smokehouse rack, sawmill bench, stall counter
+//           (and the v4.2.0.2 stage-1 stall: its back shelf holds folded cloths, an empty basket, paper bags and a spoon
+//           crock, its counter an empty tray),
 //           fish net, cannery, store counter, fishing boat hatch / net, rowboat fish box): luma signatures of their
 //           frames == the goods-free renders (ghostsweep_art.json)
 //   fresh   (fresh game) the chief's empty carry stays on him (first items fly to him); a stack changed while the
@@ -170,7 +172,7 @@ await section('art', null, async (page) => {
     out.__grill = { frame: String(S.img.frame.name), tex: S.img.texture.key, working: S.working, inN: S.inStack.count, outN: S.outStack.count };
     return out;
   }, want);
-  const label = { station_grill: 'grill (서서 굽기), idle', station_grill_work_0: 'grill, cooking 0', station_grill_work_2: 'grill, cooking 2', station_smokehouse: 'smokehouse rack, idle', station_smokehouse_work_1: 'smokehouse rack, working', station_sawmill: 'sawmill bench, idle', station_sawmill_work_1: 'sawmill bench, working', market_counter: 'stall counter', fish_net: 'fish net', station_cannery: 'cannery crate / belt / tray, idle', station_cannery_work_1: 'cannery crate / tray, working', 'boat_fishing:idle_SE_0': 'fishing boat hatch, moored', 'boat_fishing:sail_E_1': 'fishing boat hatch, sailing', 'boat_rowboat:idle_SE_0': 'rowboat fish box, moored', 'boat_rowboat:row_E_3': 'rowboat fish box, rowing', 'shop_general:cans': 'general store counter + crate (cans)' };
+  const label = { station_grill: 'grill (서서 굽기), idle', station_grill_work_0: 'grill, cooking 0', station_grill_work_2: 'grill, cooking 2', station_smokehouse: 'smokehouse rack, idle', station_smokehouse_work_1: 'smokehouse rack, working', station_sawmill: 'sawmill bench, idle', station_sawmill_work_1: 'sawmill bench, working', market_counter: 'stall counter (old awning stall, title / fallback)', market_s1_back: '눈꽃 노점 stall (v4.2.0.2), back layer', market_s1_front: '눈꽃 노점 stall, counter (front layer)', fish_net: 'fish net', station_cannery: 'cannery crate / belt / tray, idle', station_cannery_work_1: 'cannery crate / tray, working', 'boat_fishing:idle_SE_0': 'fishing boat hatch, moored', 'boat_fishing:sail_E_1': 'fishing boat hatch, sailing', 'boat_rowboat:idle_SE_0': 'rowboat fish box, moored', 'boat_rowboat:row_E_3': 'rowboat fish box, rowing', 'shop_general:cans': 'general store counter + crate (cans)' };
   for (const n of Object.keys(want)) {
     const a = got[n], b = Array.isArray(want[n]) ? want[n] : want[n].sig;
     if (!a) { ok(false, `art: frame ${n} exists`); continue; }
