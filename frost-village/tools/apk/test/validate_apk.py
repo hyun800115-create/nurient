@@ -121,7 +121,7 @@ def main():
           any('anydpi-v26' in p for p in paths) and all(any(d + '-' in p or p.endswith(d + '/ic_launcher.png') or ('mipmap-' + d) in p for p in paths)
                                                         for d in ('mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi')), paths)
     for layer in ('ic_launcher_foreground', 'ic_launcher_background', 'ic_launcher_round'):
-        rid = res.get_res_id_by_key(PKG, 'mipmap', layer)
+        rid = res.get_res_id_by_key(pkg, 'mipmap', layer)
         lp = sorted(v for _, v in res.get_resolved_res_configs(rid)) if rid else []
         check('mipmap/%s in every density' % layer, rid and all(p in names for p in lp) and len([p for p in lp if p.endswith('.png')]) == 5, lp)
     theme = app.get(NS + 'theme') or ''
