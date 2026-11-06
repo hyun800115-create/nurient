@@ -59,6 +59,7 @@ def main():
     ap.add_argument('--version-code', help='expected versionCode')
     ap.add_argument('--no-v1', action='store_true', help='v1 (JAR) signature not required (bundletool output, minSdk 24)')
     ap.add_argument('--web-debug', choices=('true', 'false'), help='expected WebView-debugging meta-data (test APKs true, Play false)')
+    ap.add_argument('--preview', action='store_true', help='the designer preview app (build_apk.py --preview): its own id and label')
     a = ap.parse_args()
 
     results = []
@@ -69,7 +70,8 @@ def main():
 
     apk = APK(str(a.apk))
     check('valid APK (androguard)', apk.is_valid_APK())
-    check('package', apk.get_package() == PKG, apk.get_package())
+    pkg, want_label = (PKG + '.preview', '눈꽃마을 미리보기') if a.preview else (PKG, '행복한 눈꽃마을 이야기')
+    check('package', apk.get_package() == pkg, apk.get_package())
     check('version', bool(apk.get_androidversion_name()) and str(apk.get_androidversion_code()).isdigit() and
           (a.version_code is None or str(apk.get_androidversion_code()) == a.version_code),
           '%s (%s)%s' % (apk.get_androidversion_name(), apk.get_androidversion_code(),
@@ -108,7 +110,7 @@ def main():
     check('permissions: VIBRATE' + (' + INTERNET' if a.internet else ' only (no INTERNET)'), perms == want, perms)
 
     label = apk.get_app_name()
-    check('label', label == '행복한 눈꽃마을 이야기', label)
+    check('label', label == want_label, label)
     res = apk.get_android_resources()
     icon_ref = app.get(NS + 'icon') or ''
     icon_id = int(icon_ref.lstrip('@'), 16)

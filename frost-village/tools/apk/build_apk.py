@@ -50,6 +50,14 @@ FV = HERE.parent.parent                             # frost-village
 ANDROID = HERE / 'android'
 
 PACKAGE = 'com.snowbloom.village'
+CLASS_PKG = 'com.snowbloom.village'   # the Java package of MainActivity & co. (the manifest names it in full, so it stays
+                                      # the same when --preview changes the application id)
+APP_LABEL = None                      # None: res/values/strings.xml as it is
+# (v4.3) --preview: a separate app for the designer's preview builds. Its own application id, so it installs next to
+# the Google Play app (whose signature no sideloaded APK can match) with its own storage (a new village), its own
+# label and a badge on the icon, signed with its own throwaway key.
+PREVIEW_PACKAGE = 'com.snowbloom.village.preview'
+PREVIEW_LABEL = '눈꽃마을 미리보기'
 MIN_SDK = 24
 TARGET_SDK = 36       # Play: new apps + updates from 31 Aug 2026. >= 30 needs a v2 signature + resources.arsc stored
                       # and aligned (both done here); >= 35 is edge-to-edge and 36 has predictive back (MainActivity)
@@ -212,6 +220,25 @@ def remote_refs(www):
 
 
 # ---------------------------------------------------------------- launcher icons
+def preview_badge(img, r):
+    """(--preview) an orange disc with a white 'P' inside the visible part of the icon (r: offset from the centre as
+    a share of the size; adaptive-icon foregrounds only show their middle 2/3)."""
+    from PIL import Image, ImageDraw, ImageFont
+    img = img.copy()
+    s = img.size[0]
+    d = ImageDraw.Draw(img)
+    cx, cy, rad = s / 2 + s * r * 0.62, s / 2 - s * r * 0.62, s * r * 0.36
+    d.ellipse((cx - rad - s * 0.012, cy - rad - s * 0.012, cx + rad + s * 0.012, cy + rad + s * 0.012), fill=(255, 255, 255, 255))
+    d.ellipse((cx - rad, cy - rad, cx + rad, cy + rad), fill=(242, 120, 32, 255))
+    font = FV / 'tools' / 'fonts' / 'Fredoka-Bold.ttf'
+    try:
+        f = ImageFont.truetype(str(font), int(rad * 1.4))
+        d.text((cx, cy), 'P', font=f, fill=(255, 255, 255, 255), anchor='mm')
+    except (OSError, ValueError):
+        pass
+    return img
+
+
 def make_icons(icon_dir, res):
     try:
         from PIL import Image, ImageChops, ImageDraw
@@ -224,6 +251,8 @@ def make_icons(icon_dir, res):
     full = Image.open(icon_dir / 'icon_1024.png').convert('RGBA')
     fg = Image.open(icon_dir / 'ic_launcher_foreground.png').convert('RGBA')
     bg = Image.open(icon_dir / 'ic_launcher_background.png').convert('RGBA')
+    if APP_LABEL:                                                     # --preview: an orange badge on the icon
+        full, fg = preview_badge(full, 0.5), preview_badge(fg, 1 / 3)
     comp = Image.alpha_composite(bg.resize(fg.size, Image.LANCZOS), fg)
     s = comp.size[0]
     inner = comp.crop((s // 6, s // 6, s - s // 6, s - s // 6))      # the 72 dp a launcher shows of the 108 dp layers
@@ -272,6 +301,12 @@ def build_resources(t, work, icon_dir, version_name, version_code, internet, web
     if res.exists():
         shutil.rmtree(res)
     shutil.copytree(ANDROID / 'res', res)
+    if APP_LABEL:
+        names = res / 'values' / 'strings.xml'
+        txt = names.read_text(encoding='utf-8')
+        new = re.sub(r'(<string name="app_name">)[^<]*(</string>)', lambda m: m.group(1) + APP_LABEL + m.group(2), txt)
+        assert new != txt, 'app_name not found in res/values/strings.xml'
+        names.write_text(new, encoding='utf-8')
     icons = make_icons(icon_dir, res)
     (work / 'AndroidManifest.xml').write_text(manifest_text(internet, web_debug), encoding='utf-8')
     compiled = work / 'compiled.zip'
@@ -503,7 +538,15 @@ def main():
     ap.add_argument('--work-dir', type=Path, default=None, help='scratch folder (default: a new temp folder, removed after)')
     ap.add_argument('--internet', action='store_true', help='add the INTERNET permission (only if the game ever fetches remote files)')
     ap.add_argument('--no-web-debug', action='store_true', help='turn WebView remote debugging off (it is on in test APKs)')
+    ap.add_argument('--preview', action='store_true',
+                    help='the designer preview app: id %s, label %s, icon badge, key dist/apk/snowbloom-preview.p12 (unless --keystore)'
+                    % (PREVIEW_PACKAGE, PREVIEW_LABEL))
     a = ap.parse_args()
+    global PACKAGE, APP_LABEL
+    if a.preview:
+        PACKAGE, APP_LABEL = PREVIEW_PACKAGE, PREVIEW_LABEL
+        if a.keystore == FV / 'dist' / 'apk' / 'snowbloom-test.p12':
+            a.keystore = FV / 'dist' / 'apk' / 'snowbloom-preview.p12'
 
     t0 = time.time()
     artifact = a.artifact.resolve()
@@ -550,12 +593,14 @@ def main():
     if post['misaligned'] or post['compressedButMustBeStored'] or post['crcError']:
         problems.append('zip: ' + json.dumps(post))
     want = {'package': PACKAGE, 'versionCode': str(a.version_code), 'versionName': a.version_name, 'minSdk': str(MIN_SDK),
-            'targetSdk': str(TARGET_SDK), 'launchable': PACKAGE + '.MainActivity'}
+            'targetSdk': str(TARGET_SDK), 'launchable': CLASS_PKG + '.MainActivity'}
     for k, v in want.items():
         if b[k] != v:
             problems.append('badging %s=%r, expected %r' % (k, b[k], v))
     if not b['icon'] or not b['label']:
         problems.append('badging: no label or icon')
+    if APP_LABEL and b['label'] != APP_LABEL:
+        problems.append('badging label=%r, expected %r' % (b['label'], APP_LABEL))
     if problems:
         die('checks failed:\n  ' + '\n  '.join(problems))
     tmp_out.replace(out)

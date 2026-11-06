@@ -13,6 +13,12 @@ APK_PY=<venv with androguard>/bin/python bash frost-village/tools/apk/release_fr
 # sideloaded test APK (same app, same test key) from any commit:
 APK_EXTRA=--internet bash frost-village/tools/apk/apk_from_commit.sh <commit> 4.2.1 4022 --check
 
+# (v4.3) the designer PREVIEW app: id com.snowbloom.village.preview, label 「눈꽃마을 미리보기」, an orange P badge on the
+# icon, its own throwaway key dist/apk/snowbloom-preview.p12. It installs NEXT TO the Google Play app (Play signs that
+# one with Google's key, so no sideloaded APK can update it) and keeps its own village:
+APK_EXTRA="--internet --preview" APK_OUT=frost-village/dist/apk/snowbloom-v4.3.0-a1-preview.apk \
+  bash frost-village/tools/apk/apk_from_commit.sh <commit> 4.3.0-a1 4301 --check
+
 # or from an existing artifact build:
 python3 frost-village/tools/apk/build_aab.py frost-village/dist/artifact frost-village/dist/play/snowbloom-4.2.1.aab 4.2.1 4022
 python3 frost-village/tools/apk/build_apk.py frost-village/dist/artifact frost-village/dist/apk/snowbloom-v4.2.1-test.apk 4.2.1 4022 --internet
