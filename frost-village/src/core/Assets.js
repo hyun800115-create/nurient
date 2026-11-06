@@ -8,7 +8,7 @@
 import { Placeholders } from './Placeholders.js';
 import { TF } from './Townfolk.js';
 
-export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5', 'ui7', 'market'];
+export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5', 'ui7', 'market', 'deck43'];   // ((v4.3) deck43: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims — on screen at second 0)
 // ((v4.2.0.2) + market = the first shop's stall stages (tools/blender/market_render.py + market_pack.py): stage 1
 //  「눈꽃 노점」 is on screen at second 0 of a new game, so its one small page loads at boot like ui7)
 // ((v4.2.0.1) + ui7 = the first-run tutorial's pointing mitten, tap ripple and spotlight hole (tools/fx/gen_ui7.py): one
@@ -76,6 +76,9 @@ const ANIM_FALLBACK = {
   sit_idle: ['sit', 'idle'], sit_write: ['sit_idle', 'sit', 'idle'], sit_read: ['sit_idle', 'sit', 'idle'], sit_read_in: ['sit_read', 'sit_idle', 'idle'],
   sit_read_loop: ['sit_read', 'sit_idle', 'idle'], sit_eat: ['sit_idle', 'sit', 'idle'], doze: ['sit_idle', 'sit', 'idle'],
   warm_hands: ['idle'], cheer: ['wave', 'happy', 'idle'],
+  // ((v4.3) the fishing deck: the chief's one quick reel, the seated fisher's loop (assets/deck43) — while that art is not here
+  //  the old motions play (the impact frame of harvest still takes the first fish)
+  reel: ['harvest', 'idle'], fsit_cast: ['work', 'idle'], fsit_wait: ['idle'], fsit_bite: ['work', 'idle'], fsit_reel: ['work', 'idle'],
   // (v3.5) station operators: a worker look (no `operate`) swings its work tool instead; dog play
   operate: ['work', 'idle'], pet: ['idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
   beg: ['sit', 'happy', 'idle'], run_ball: ['run', 'walk'], catch: ['happy', 'idle'], trick: ['happy', 'idle'],
@@ -146,7 +149,17 @@ export const Assets = {
         continue;
       }
       const ch = j.characters && typeof j.characters === 'object' ? j.characters : {};
-      for (const k in ch) if (ch[k] && typeof ch[k] === 'object') { m.characters[k] = ch[k]; this.fragOf['char:' + k] = f; }
+      for (const k in ch) if (ch[k] && typeof ch[k] === 'object' && !ch[k].extends) { m.characters[k] = ch[k]; this.fragOf['char:' + k] = f; }
+      // ((v4.3) a boot fragment's `extends` character (deck43: the chief's reel, the seated fishers): its anims join the
+      //  base character as a late fragment's do (mergeLate) — each anim names its own atlas (and frameName)
+      for (const k in ch) {
+        const c = ch[k];
+        if (!c || typeof c !== 'object' || !c.extends) continue;
+        const bd = m.characters[c.extends] || (m.characters[c.extends] = {});
+        bd.anims = Object.assign({}, bd.anims || {});
+        for (const an in c.anims || {}) { if (bd.anims[an] && !bd.anims[an].atlas) continue; bd.anims[an] = Object.assign({ atlas: c.atlas }, c.anims[an]); }
+        delete this.charCache[c.extends];
+      }
       Object.assign(m.sprites, j.sprites || {});
       Object.assign(m.nineSlice, j.nineSlice || {});
       Object.assign(m.audio, j.audio || {});
@@ -733,8 +746,10 @@ export const Assets = {
         let frames = null;
         if (atlasOk) {
           const list = [];
+          // ((v4.3) an anim may name its own frame pattern (deck43_ch: '<key>/{anim}_{dir}_{i}', several characters on one atlas)
+          const fpat = typeof a.frameName === 'string' ? a.frameName : fname;
           for (let i = 0; i < (a.frames || 1); i++) {
-            const fn = fname.replace('{anim}', an).replace('{dir}', dir).replace('{i}', i);
+            const fn = fpat.replace('{anim}', an).replace('{dir}', dir).replace('{i}', i);
             const tk = this.texOf(atlas, fn);
             if (tk) list.push(Object.assign({ key: tk, frame: fn }, a.frameHold && a.frameHold[i] ? { duration: a.frameHold[i] } : null));
           }

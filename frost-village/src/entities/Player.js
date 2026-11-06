@@ -104,7 +104,7 @@ export class Player extends Character {
       gs.collision.resolve(p, this.radius);
       this.x = p.x; this.y = p.y;
       this.stillT = 0;
-      this.node = null;
+      this.node = null; this.reelT = 0;
       if (this.action) { const a = this.action; this.action = null; if (a.onCancel) a.onCancel(); }
       this.operating = null; this.opSpot = null;
       this.face(this.vx, this.vy);
@@ -137,7 +137,12 @@ export class Player extends Character {
         if (n && (!PP || PP.mayGather(n, this))) {
           if (this.room <= 0) this.warnFull();
           else if (gs.stationBlocked(n.item)) gs.fullToast();   // its station is full both ways: don't fill the bag
-          else this.node = n;
+          else {
+            this.node = n;
+            // ((v4.3) the fishing deck: one quick reel (balance.js deck.reelS), then the fish come as they did at the net
+            //  — the reel's impact frame takes the first fish, so the first sale is not slower)
+            if (n.reel) { n.reel(); this.reelT = Math.max(0.1, Number((BALANCE.deck || {}).reelS) || 0.6); }
+          }
         }
       }
       // (v3.5) a moment with the dog, or working a station from its work spot
@@ -161,7 +166,8 @@ export class Player extends Character {
       } else if (this.node) {
         this.opSpot = null;
         this.faceTo(this.node.x, this.node.y);
-        this.play(this.node.playerAnim);
+        if (this.reelT > 0) { this.reelT -= dt; this.play('reel'); }
+        else this.play(this.node.playerAnim);
       } else { this.opSpot = null; this.locomotion(false); }
     }
     this.sync(dt);

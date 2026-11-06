@@ -27,7 +27,9 @@ import { Culler } from '../systems/Culler.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
 import { Market, TradePost, FOODS, GOODS } from '../entities/Seller.js';
-import { Tree, Rock, Wheat, Net } from '../entities/ResourceNode.js';
+import { Tree, Rock, Wheat } from '../entities/ResourceNode.js';
+import { FishingDeck } from '../entities/FishingDeck.js';
+import { Workshop43 } from '../entities/Workshop43.js';
 import { TrashPad } from '../entities/TrashPad.js';
 import { rng } from '../core/Placeholders.js';
 import { View } from '../core/View.js';
@@ -256,6 +258,8 @@ export class Game extends Phaser.Scene {
     if (this.store) this.refreshStoreLine();
     this.events.on('built', (k) => { if (k !== 'store' && this.store) this.refreshStoreLine(); });
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
+    // ((v4.3) the first houses' plots open with the forest: a side goal, said once)
+    this.events.on('step', (id) => { if (id === 'zone_forest') this.time.delayedCall(9000, () => { if (this.ui && this.sites.h43_1 && this.sites.h43_1.shown) this.ui.banner(t('house43Banner'), t('house43Sub')); }); });
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
     this.padSpots = [];
@@ -264,7 +268,8 @@ export class Game extends Phaser.Scene {
     for (const id in this.piles) spot(this.piles[id], 80);
     spot(this.market.shelf, 70); spot(this.market.cash.pad, 70); spot(this.market.register, 64);
     spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
-    spot(WORLD.net.gather ? { x: WORLD.net.x + WORLD.net.gather[0], y: WORLD.net.y + WORLD.net.gather[1] } : null, 70);
+    // ((v4.3) the deck's reel spot on land (where the net's gather point was): nobody stands on it but the chief
+    spot(this.deck ? this.deck.gather : null, 70);
     for (const id in WORLD.pads) spot(WORLD.pads[id], 90);
     // (v3) plots / their drop pads, the food box, second-worker pads, watchtower pads, the new buildings' pads
     for (const id in this.sites) { const st = this.sites[id]; spot({ x: st.dropX, y: st.dropY }, 80); spot(st, (st.def.footprint || [272])[0] * 0.5); }
@@ -570,6 +575,8 @@ export class Game extends Phaser.Scene {
     for (const d of WORLD.decor) {
       const [key, x, y, o] = d;
       const img = this.staticImage(key, x, y, o || {});
+      // ((v4.3) decor with an id: the camp's tents fold when their family moves into a first house (foldTents43)
+      if (o && o.id) (this.decorById || (this.decorById = {}))[o.id] = img;
       if (key === 'campfire') {
         const fire = this.effects.loop('fx_fire', x, y - 14, 58, y + 1);
         if (fire) { if (o && o.zone) this.addToZone(o.zone, fire); if (o && o.region) this.territory.add(o.region, fire); }
@@ -678,7 +685,8 @@ export class Game extends Phaser.Scene {
         if (Math.hypot(ax + vx * tt - x, ay + vy * tt - y) < 75) return true;
       }
     }
-    const spots = [[WORLD.net.x, WORLD.net.y, 170], [WORLD.player.x, WORLD.player.y, 120]];
+    // ((v4.3) the fishing deck's reel spot and gangway foot keep clear as the net did)
+    const spots = [[WORLD.deck.reel[0], WORLD.deck.reel[1], 170], [WORLD.deck.foot[0], WORLD.deck.foot[1], 120], [WORLD.player.x, WORLD.player.y, 120]];
     for (const id in WORLD.pads) { const p = WORLD.pads[id]; spots.push([p.x, p.y, 120]); if (p.hut) spots.push([p.hut[0], p.hut[1], 150]); }
     for (const d of WORLD.decor) if (/lodge|tent|pier|flag|campfire/.test(d[0])) spots.push([d[1], d[2], d[0] === 'chief_lodge' ? 230 : 120]);
     // (v3) building plots, watchtowers, pads of the new chains: room for the building and its pads
@@ -725,9 +733,9 @@ export class Game extends Phaser.Scene {
   }
 
   buildResources() {
-    // net (start zone)
-    const n = WORLD.net;
-    this.net = new Net(this, n.x, n.y, n);
+    // ((v4.3) the fishing deck on the water (start zone): it keeps the old net's surface, so `net` stays its name too
+    this.deck = this.net = new FishingDeck(this, WORLD.deck);
+    this.events.once('shutdown', () => { if (this.deck) this.deck.destroy(); });
     // forest trees on a jittered iso grid
     this.trees = [];
     const tz = WORLD.zones[WORLD.trees.zone];
@@ -920,10 +928,10 @@ export class Game extends Phaser.Scene {
     this.trade = new TradePost(this, WORLD.trade);
     this.addToZone(WORLD.trade.zone, this.trade);
     this.trash = new TrashPad(this, WORLD.trash);
-    const b = WORLD.bench;
-    this.bench = this.staticImage(b.sprite, b.x, b.y, {});
-    this.bench.setVisible(false);
-    if (this.bench.__ob) this.bench.__ob.active = false;
+    // ((v4.3) 옷·신발 공방: the bench as a small workshop with its name on a board (Workshop43); `bench` stays its picture
+    this.workshop43 = new Workshop43(this, WORLD.bench);
+    this.workshop43.setVisible(false);
+    this.bench = this.workshop43.img;
   }
 
   buildHuts() {
@@ -1153,6 +1161,7 @@ export class Game extends Phaser.Scene {
       this.lazyImage(b.img, bkey);
       this.houses.push(b);
       if (this.life) this.life.capChanged(b, instant);
+      this.foldTents43(site, b, instant);
     } else if (bkey === 'town_hall') {
       // ---- (v4-C) the town hall: tax box, notice board, more room, the ceremony venue
       b = new TownHall(this, site, instant);
@@ -1572,13 +1581,39 @@ export class Game extends Phaser.Scene {
     return r;
   }
 
+  /** (v4.3) a first house (world.js plots h43_1 / h43_2: `tents`, `family`): the camp's tent family moves in and its tents
+   *  are packed away (a loaded village: the tents are simply gone) */
+  foldTents43(site, house, instant) {
+    const ids = site && site.cfg && site.cfg.tents;
+    if (!Array.isArray(ids) || !ids.length) return;
+    for (const id of ids) {
+      const img = this.decorById && this.decorById[id];
+      if (!img || !img.active || img.__folded) continue;
+      img.__folded = true;
+      if (img.__ob) img.__ob.active = false;
+      if (instant) { img.setVisible(false); continue; }
+      const sx = img.scaleX;
+      this.time.delayedCall(1200, () => { if (img.active) this.effects.sheet('fx_poof', img.x, img.y - 30, { size: 210 }); });
+      this.tweens.add({ targets: img, scaleY: 0.05, scaleX: sx * 0.7, alpha: 0, duration: 520, delay: 1200, ease: 'Quad.easeIn', onComplete: () => img.setVisible(false) });
+    }
+    if (!instant) {
+      if (this.life && this.life.tentFamily) this.life.tentFamily(house, site.cfg.family || []);
+      this.time.delayedCall(1800, () => { if (this.ui) this.ui.banner(t('house43Moved'), t('house43MovedSub')); });
+    }
+  }
+
   showBench(instant) {
     const b = this.bench;
+    if (this.workshop43) this.workshop43.setVisible(true);
     b.setVisible(true);
     if (b.__ob) b.__ob.active = true;
     if (!instant) {
+      if (this.ui && this.ui.banner) this.ui.banner(t('workshop43Open'), t('workshop43Sub'));
       b.setScale(0.01);
       this.tweens.add({ targets: b, scale: 1, duration: 500, ease: 'Back.easeOut' });
+      // ((v4.3) the workshop's name board fades in once the picture has popped up)
+      const sg = this.workshop43 && this.workshop43.sign;
+      if (sg) { sg.setAlpha(0); this.tweens.add({ targets: sg, alpha: 1, delay: 380, duration: 260 }); }
       this.effects.sheet('fx_poof', b.x, b.y - 30, { size: 220 });
       Audio.play('sfx_build');
       this.focusCamera(b.x, b.y, 1600);
@@ -1633,6 +1668,13 @@ export class Game extends Phaser.Scene {
     this.workers.push(w);
     // (v3.5) the line's collection pile appears with its first gatherer
     if (w.pile && !w.pile.shown) w.pile.setShown(true, !instant);
+    // ((v4.3) a fisherman sits on the fishing deck: the deck grows to his tier (어부 2 → 2단, 어부 3 → 3단); a loaded village
+    //  seats him at once, a new hire walks to the gangway and along the deck's lane to his stool)
+    if (type === 'fisherman' && this.deck) {
+      const n = this.workers.filter((q) => q.type === 'fisherman').length;
+      this.deck.setTier(Math.max(n, index + 1), !instant);
+      if (instant) w.seatNow();
+    }
     if (!instant) {
       this.effects.sheet('fx_poof', w.x, w.y - 30, { size: 180 });
       this.effects.burst('star', w.x, w.y - 40, 12);
@@ -2416,6 +2458,23 @@ export class Game extends Phaser.Scene {
         };
       },
       give(c) { gs.economy.add(Math.floor(c || 0)); return gs.economy.coins; },
+      /** (v4.3) the fishing deck: state; { hire: n } hires fishermen up to n (the steps hire_fisherman / hire2 / hire3, their
+       *  pads skipped: tests), { instant } seats them at once */
+      deck(o) {
+        if (!gs.deck) return null;
+        if (o && o.hire) {
+          const pr = gs.progress, ids = ['hire_fisherman', 'hire2_fisherman', 'hire3_fisherman'].slice(0, Math.min(3, o.hire));
+          for (const id of ids) {
+            if (pr.done[id]) continue;
+            const s = STEPS.find((q) => q.id === id);
+            pr.done[id] = true;
+            const pad = pr.pads[id];
+            if (pad) { pad.destroy(); delete pr.pads[id]; }
+            pr.applyStep(s, !!o.instant, o.x, o.y);
+          }
+        }
+        return gs.deck.state();
+      },
       unlockAll() {
         const pr = gs.progress;
         for (const s of STEPS) {

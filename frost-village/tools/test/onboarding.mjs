@@ -126,6 +126,10 @@ const BOT = ([secs, stopAt]) => {
     F.setInput(vx, vy);
     window.__step.run(0.1);
     out.t += 0.1;
+    // ((v4.3, gate G1) time to the first sale / the first coins / the clerk, in game seconds since the village loaded)
+    if (out.saleT === undefined && gs.progress.flags.firstSale) out.saleT = +ob.t.toFixed(1);
+    if (out.coinT === undefined && gs.economy.earned > 0) out.coinT = +ob.t.toFixed(1);
+    if (out.clerkT === undefined && gs.progress.isDone('hire_clerk_market')) out.clerkT = +ob.t.toFixed(1);
     const s2 = ob.state();
     const key = s2.mode + ':' + (s2.step || '');
     if (key !== last) {
@@ -190,8 +194,21 @@ try {
     ok(!!(s.rects && s.rects.ghost), 'S1: the see-through joystick moves with the finger', s.rects);
     const objOff = await page.evaluate(() => !window.__FV.game.scene.getScene('UI').objPanel.visible && window.__FV.scene.tutorial.arrow.visible);
     ok(objOff, 'Act 1: the old objective panel is hidden, the (bigger) yellow arrow points the way');
+    // ((v4.3) the fishing deck: the chief starts in the hut's yard, S1 / S2 point at the reel spot on land, the first view
+    //  frames the deck, the reel spot, the grill and the stall (and the hut's roof at its edge))
+    const v43 = await page.evaluate(() => {
+      const gs = window.__FV.scene, D = gs.deck, cam = gs.cameras.main, wv = cam.worldView, o = window.__FV.onboard();
+      const inV = (x, y, m = 0) => x >= wv.x - m && x <= wv.right + m && y >= wv.y - m && y <= wv.bottom + m;
+      const O = gs.v42 && gs.v42.office, H = O && O.hut;
+      return { start: [Math.round(gs.player.x), Math.round(gs.player.y)], reel: [D.gather.x, D.gather.y], ring: o.ring || null, target: o.target ? [Math.round(o.target.x), Math.round(o.target.y)] : null,
+        deck: inV(D.x, D.y), reelV: inV(D.gather.x, D.gather.y), grill: inV(gs.stations.grill.x, gs.stations.grill.y), stall: inV(gs.market.x - 60, gs.market.y),
+        hut: !!(H && inV(H.x + 150, H.y - 60)), wv: [Math.round(wv.x), Math.round(wv.y), Math.round(wv.width), Math.round(wv.height)] };
+    });
+    ok(v43.start[0] === 845 && v43.start[1] === 498, '(v4.3) a new game starts in the hut\'s shore-side yard', v43.start);
+    ok(v43.target && Math.abs(v43.target[0] - v43.reel[0]) < 2 && Math.abs(v43.target[1] - (v43.reel[1] - 10)) < 2, '(v4.3) S1 points at the fishing deck\'s reel spot on land (not the old net)', v43);
+    ok(v43.deck && v43.reelV && v43.grill && v43.stall && v43.hut, '(v4.3) the first view frames the deck, the reel spot, the grill, the stall and the hut\'s roof', v43);
     await shot(page, 'S1_drag_demo');
-    // one REAL touch drag (up-left, toward the net)
+    // one REAL touch drag (up-left; (v4.3) the reel spot is up-right of the yard: the bot then walks there)
     const cdp = await ctx.newCDPSession(page);
     const p0 = await css(page, 430, 760), p1 = await css(page, 360, 720);
     const pos0 = await page.evaluate(() => ({ x: window.__FV.scene.player.x, y: window.__FV.scene.player.y }));
@@ -211,6 +228,7 @@ try {
     const r = await page.evaluate(BOT, [300, 'act3']);
     const steps = r.seq.map((q) => (q.mode === 'act1' ? q.step : q.mode));
     console.log('       steps: ' + steps.join(' → ') + `  (${r.t.toFixed(0)} s game time)`);
+    console.log(`       G1: first sale ${r.saleT} s, first coins ${r.coinT} s, clerk hired ${r.clerkT} s (game time since the village loaded)`);
     ok(order(r.seq, ACT1.slice(2).concat(['act2', 'act3'])), 'every Act 1 step in order (still → toop → cook → take → shelf → register → cash → pad → on the pad → helpers), then Act 2, then Act 3', steps);
     ok(r.bits === 7 && r.mode === 'act3', 'the hand-over: bits NEW|ACT1|ACT2 = 7, Act 3 (tips)', { bits: r.bits, mode: r.mode });
     ok(Object.keys(r.viol).length === 0, 'layout at 412x915: the card never covers its place, the finger / ghost joystick never cover the chief or the place, nothing off screen, no text overflow', r.viol);
@@ -319,6 +337,7 @@ try {
     let s = await st(page);
     ok(s.step === 'move' && s.card.l1 === 'Drag on the screen' && s.card.l2 === 'The chief walks that way', 'English: S1 "Drag on the screen / The chief walks that way"', s.card);
     const r = await page.evaluate(BOT, [240, 'act2']);
+    console.log(`       G1 (360x640 en): first sale ${r.saleT} s, first coins ${r.coinT} s, clerk hired ${r.clerkT} s`);
     console.log('       steps: ' + r.seq.map((q) => (q.mode === 'act1' ? q.step : q.mode)).join(' → '));
     ok(order(r.seq, ACT1.slice(1).concat(['act2'])), 'every Act 1 step in order at 360x640', r.seq.map((q) => q.step || q.mode));
     ok(Object.keys(r.viol).length === 0, 'layout at 360x640 (en): no card / finger / ghost over its place, nothing off screen, no text overflow', r.viol);

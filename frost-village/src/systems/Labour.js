@@ -6,7 +6,7 @@
 //     takes the spot over for good: the operator stands at the work spot facing the station and plays
 //     `operate` (impactFrame / beats synced with sounds and particles), and waits with a little emote
 //     when there is nothing to do.
-//   - Pile: the collection pile of a production line (the fish crate at the net, the log pile, the wheat
+//   - Pile: the collection pile of a production line (the fish crate at the fishing deck's gangway, the log pile, the wheat
 //     pile, the ore pile, the meat rack). Gatherers drop there instead of at the station; the chief or a
 //     raw porter carries the pile to the station's input.
 // Numbers: balance.js `labour`; places: world.js `labour`; texts: strings.js.
@@ -320,7 +320,8 @@ export class Pile {
     const pa = cfg.propAt || [0, -40];
     if (cfg.prop === 'rack') this.buildRack(this.x + pa[0], this.y + pa[1]);
     else if (cfg.prop) {
-      const img = Assets.image(gs, this.x + pa[0], this.y + pa[1], cfg.prop).setDepth(this.y + pa[1]);
+      // ((v4.3) propOld: the picture to use while the new one (the deck's fish crate) is not there)
+      const img = Assets.image(gs, this.x + pa[0], this.y + pa[1], cfg.propOld ? Assets.pick(cfg.prop, cfg.propOld) : cfg.prop).setDepth(this.y + pa[1]);
       if (cfg.propScale) img.setScale(cfg.propScale);
       this.props.push(img);
       this.obstacle = gs.collision.add(this.x + pa[0], this.y + pa[1], cfg.propR || 22, 'pile');

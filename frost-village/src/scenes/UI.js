@@ -768,7 +768,7 @@ export class UI extends Phaser.Scene {
     const bg = panel(this, W / 2, top + sheetH / 2, 'ui_panel', sheetW, sheetH).setOrigin(0.5).setInteractive();
     c.add([dim, bg]);
     const title = this.add.text(W / 2, top + 46, t('buildTitle'), TXT(36, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5);
-    const sub = this.add.text(W / 2, top + 88, t(site.only ? 'plotOnly_' + site.only : 'buildSize_' + site.size), TXT(22, '#6b7686', '#ffffff', 0, '800')).setOrigin(0.5);
+    const sub = this.add.text(W / 2, top + 88, t(site.replace ? 'plotUp_' + site.only : site.only ? 'plotOnly_' + site.only : 'buildSize_' + site.size), TXT(22, '#6b7686', '#ffffff', 0, '800')).setOrigin(0.5);
     c.add([title, sub]);
     const close = this.makeIconButton(W / 2 + sheetW / 2 - 40, top + 40, 'ui_icon_close', 62, () => this.closeBuildMenu());
     c.add(close);
@@ -936,7 +936,7 @@ export class UI extends Phaser.Scene {
     const b = this.buildBtn;
     if (!b) return;
     if (!ch || ch.locked) { b.text.setText(t('buildPick')); b.setAlpha(0.6); b.ok = false; return; }
-    const cost = buildCost(ch.key).coins || 0;
+    const cost = (ch.cost && ch.cost.coins) || buildCost(ch.key, this.buildSite && this.buildSite.id).coins || 0;   // ((v4.3) a plot's own price)
     const ok = this.gs.economy.coins >= cost;
     b.text.setText(ok ? t('buildBtn', { name: t('b_' + ch.key) }) + '  ' + fmt(cost) : t('buildNoCoins') + ' (' + fmt(cost) + ')');
     b.setAlpha(ok ? 1 : 0.6);
@@ -1172,6 +1172,7 @@ export class UI extends Phaser.Scene {
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
     if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
     if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
+    if (gs.workshop43) gs.workshop43.refreshSign();                       // (v4.3) 「옷·신발 공방」 / Clothes & Shoes
   }
 
   // ---------------------------------------------------------------- frame

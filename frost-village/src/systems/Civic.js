@@ -133,10 +133,11 @@ export class Civic {
     const keys = site.only ? [site.only] : (MENU[site.size] || MENU.M);
     const out = [];
     for (const k of keys) {
-      const c = buildCost(k);
+      const c = buildCost(k, site.id);                 // ((v4.3) a plot may have its own price: the first two houses)
       const cat = (CATALOG[k] || {}).cat || 'work';
       let reason = null, text = null;
-      const need = BUILD_UNLOCK[k];
+      // ((v4.3) the first houses' plots open with the forest (their plot's `after`): their card is not locked till the miner
+      const need = site.cfg && site.cfg.side43 ? null : BUILD_UNLOCK[k];
       const unique = !!(CATALOG[k] && CATALOG[k].unique);
       if (need && !pr.met(need)) reason = 'lock_' + k;
       else if (unique && gs.isBuilt(k)) reason = 'lockBuilt';

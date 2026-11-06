@@ -164,6 +164,28 @@ export function checkBalance() {
   // ---- (v4.2) 촌장의 하루
   checkV42(B);
   checkMeatCan(B);
+  // ---- (v4.3) 마을 새 단장
+  checkV43(B);
+}
+
+// ---- (v4.3) 마을 새 단장: 낚시 좌대, 오두막 → 사무실, 첫 집 두 채 (docs/redesign_v43/engineering_plan.md §7.1)
+function checkV43(B) {
+  const D = B.deck = B.deck || {};
+  fixNum(D, 'reelS', 'deck.reelS', 0.1, 5, 0.6); fixNum(D, 'castS', 'deck.castS', 0.1, 10, 0.6);
+  fixNum(D, 'waitMin', 'deck.waitMin', 0, 30, 0.8); fixNum(D, 'waitMax', 'deck.waitMax', 0, 60, 2.0);
+  if (D.waitMax < D.waitMin) D.waitMax = D.waitMin;
+  fixNum(D, 'biteS', 'deck.biteS', 0, 5, 0.25); fixNum(D, 'fishReelS', 'deck.fishReelS', 0.1, 10, 0.6); fixNum(D, 'restS', 'deck.restS', 0, 10, 0.15);
+  const H = B.hut = B.hut || {};
+  const O = H.office = H.office || {};
+  fixNum(O, 'coins', 'hut.office.coins', 1, 1e9, 400, true); fixNum(O, 'item_plank', 'hut.office.item_plank', 0, 999, 8, true);
+  fixNum(O, 'item_ingot', 'hut.office.item_ingot', 0, 999, 0, true); fixNum(O, 'time', 'hut.office.time', 1, 600, 8);
+  const DEF = [{ coins: 80, item_plank: 4 }, { coins: 160, item_plank: 6 }];
+  if (!Array.isArray(B.houses43)) B.houses43 = DEF.map((q) => Object.assign({}, q));
+  for (let i = 0; i < DEF.length; i++) {
+    const q = B.houses43[i] = B.houses43[i] && typeof B.houses43[i] === 'object' ? B.houses43[i] : Object.assign({}, DEF[i]);
+    fixNum(q, 'coins', 'houses43[' + i + '].coins', 1, 1e9, DEF[i].coins, true);
+    fixNum(q, 'item_plank', 'houses43[' + i + '].item_plank', 0, 999, DEF[i].item_plank, true);
+  }
 }
 
 // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)

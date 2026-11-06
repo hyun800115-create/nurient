@@ -90,7 +90,7 @@ export const BALANCE = {
     // 생선 라인 (튜토리얼)
     hire_clerk_market: 12,    // 1. 판매대 점원 (첫 판매 뒤) — 계산을 대신 해 줌
     op_grill: 30,             // 2. 요리사 쿡 — 생선 굽기를 대신 해 줌
-    hire_fisherman: 45,       // 3. 어부 — 물고기를 잡아 그물 옆 생선 통에 쌓음
+    hire_fisherman: 45,       // 3. 어부 — (v4.3) 낚시 좌대 의자에 앉아 낚은 물고기를 다리 앞 생선 상자로
     raw_grill: 70,            //    생선 짐꾼 — 생선 통 → 화덕
     porter_grill: 100,        //    판매 짐꾼 — 화덕 → 판매대
     // 나무 라인
@@ -136,7 +136,7 @@ export const BALANCE = {
     tree:  { hp: 3, regrow: 7 },          // 나무: 통나무 3개 → 그루터기 → 7초 뒤 다시 자람
     rock:  { hp: 4, regrow: 9 },          // 광석 바위: 광석 4개 → 잔해 → 9초 뒤 다시 생김
     wheat: { growTime: 8, yield: 2 },     // 밀: 8초에 걸쳐 자라고, 다 자라면 밀 2개
-    net:   { max: 6, refill: 1.1 },       // 그물: 물고기 최대 6마리, 1.1초마다 1마리 들어옴
+    net:   { max: 6, refill: 1.1 },       // (v4.3) 낚시 좌대의 낚싯대 3개: 물고기 최대 6마리, 1.1초마다 1마리 걸림 (예전 그물과 같은 수)
     animal: {
       deer: 3, boar: 2,                   // 사냥터에 있는 사슴 / 멧돼지 수
       hp: 2,                              // 맞혀야 하는 횟수
@@ -263,13 +263,13 @@ export const BALANCE = {
     hire2_lumberjack: 600,    // 나무꾼 2 (도끼)
     hire2_miner: 900,         // 광부 2 (곡괭이)
     hire2_farmer: 800,        // 농부 2 (낫)
-    hire2_fisherman: 500,     // 어부 2 (낚싯대)
+    hire2_fisherman: 500,     // 어부 2 (낚싯대) — (v4.3) 낚시 좌대가 2단으로 넓어져요
     hire2_hunter: 1200,       // 사냥꾼 2 (활)
   },
   // ── (v3.5) 세 번째 일꾼 (코인 + 도구 1개) — 두 번째 일꾼과 또 다른 모습의 사람이 와요
   hire3: {
     //    (v3.5 리뷰: 모아두는 곳이 이미 넘쳐서 세 번째 일꾼이 버는 돈이 적어요 → 값을 낮춤)
-    hire3_fisherman: 450,     // 어부 3 (낚싯대)
+    hire3_fisherman: 450,     // 어부 3 (낚싯대) — (v4.3) 낚시 좌대가 3단 (작은 지붕)으로
     hire3_lumberjack: 500,    // 나무꾼 3 (도끼)
     hire3_farmer: 600,        // 농부 3 (낫)
     hire3_hunter: 700,        // 사냥꾼 3 (활)
@@ -664,4 +664,14 @@ export const BALANCE = {
     //    coachSeats = 객차 한 칸 자리, labels = 새 기차가 처음 몇 번 들어올 때 칸마다 이름표를 띄울지
     train: { speed: 3.4, curve: 2.2, accel: 0.7, brake: 0.8, dwellOurs: 12, dwellTown: 8, coachSeats: 16, labels: 3 },
   },
+
+  // ── (v4.3) 마을 새 단장 ──────────────────────────────────────
+  // 낚시 좌대 (그물 대신): 촌장 감기, 어부 던지기·기다리기·입질·감기·쉬기(초). 물고기 수는 위 resources.net 그대로 (최대 6, 1.1초마다 1)
+  //   reelS = 촌장이 자리에 서면 한 번 감아올리는 시간 (그 사이 첫 물고기가 와요: 첫 판매가 늦어지지 않게)
+  //   어부 한 바퀴 = castS + (waitMin ~ waitMax) + biteS + fishReelS + restS ≈ 3초 → 한 사람이 1분에 약 20마리, 세 사람이면 약 59마리
+  deck: { reelS: 0.6, castS: 0.6, waitMin: 0.8, waitMax: 2.0, biteS: 0.25, fishReelS: 0.6, restS: 0.15 },
+  // 오두막 → 촌장 사무실 (옆 목표). (4.3 B 부터 이 값: 지금(4.3 A)은 사무실 값과 열리는 때가 예전 그대로예요 — v42.office.site)
+  hut: { office: { coins: 400, item_plank: 8, item_ingot: 0, time: 8 } },
+  // 첫 집 두 채 (숲을 열면, 옆 목표): world.js 부지 h43_1 (뾰족집) / h43_2 (통나무집) 의 값. 사는 사람 수와 짓는 시간은 그 집 그대로
+  houses43: [{ coins: 80, item_plank: 4 }, { coins: 160, item_plank: 6 }],
 };

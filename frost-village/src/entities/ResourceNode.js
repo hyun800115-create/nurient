@@ -1,10 +1,10 @@
 // Gatherable resources: pine trees (-> stump -> regrow), ore rocks (-> rubble -> regrow),
-// wheat plots (4 growth stages) and the fish net (refills with fish).
+// wheat plots (4 growth stages). ((v4.3) the fish net became the fishing deck: entities/FishingDeck.js)
 
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
-import { shoreY } from '../data/world.js';
+
 
 export function freeStandPoint(node, fx, fy, out, bad) {
   const base = Math.atan2((fy - node.y) * 2, fx - node.x);
@@ -214,66 +214,4 @@ export class Wheat extends Node {
   }
 }
 
-// ------------------------------------------------------------------ fish net
-export class Net extends Node {
-  constructor(gs, x, y, opts) {
-    super(gs, 'net', x, y);
-    this.item = 'item_fish_raw'; this.playerAnim = 'harvest'; this.workerKey = 'fisherman';
-    this.max = BALANCE.resources.net.max;
-    this.stock = this.max;
-    this.timer = 0;
-    this.img = Assets.image(gs, x, y, 'fish_net').setDepth(y);
-    this.gather = { x: x + opts.gather[0], y: y + opts.gather[1] };
-    this.fisherSpot = { x: x + opts.fisherSpot[0], y: y + opts.fisherSpot[1] };
-    this.obstacle = gs.collision.add(x, y - 6, 92, 'net');
-    // jumping fish inside the net
-    this.fish = [];
-    for (let i = 0; i < this.max; i++) {
-      const f = gs.effects.takeItem('item_fish_raw');
-      const a = (i / this.max) * Math.PI * 2;
-      f.__hx = x + Math.cos(a) * 34 + (i % 2 ? 8 : -8);
-      f.__hy = y - 18 + Math.sin(a) * 12;
-      f.setPosition(f.__hx, f.__hy).setScale(0.6).setDepth(y + 0.5);
-      f.__t = Math.random() * 3;
-      this.fish.push(f);
-    }
-  }
-  ready() { return this.enabled && this.stock > 0; }
-  hit(by) {
-    if (!this.ready()) return null;
-    this.stock--;
-    const gs = this.gs;
-    gs.effects.sheet('fx_splash', this.x + (Math.random() - 0.5) * 50, this.y - 14, { size: 90 });
-    // (v4-C2) a ring in the living water where the fish was pulled out
-    const wv = gs.ground && gs.ground.water;
-    if (wv) wv.ripple(this.x + (Math.random() - 0.5) * 40, Math.min(this.y - 20, shoreY(this.x) - 14), by === gs.player ? 1.3 : 0.9);
-    gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 60, this.y - 20, 4);
-    gs.sfxAt('sfx_splash', this.x, this.y, { volume: by === gs.player ? 0.9 : 0.5 }, by === gs.player);
-    return this.item;
-  }
-  /** world position of the fish leaving the net */
-  fishPos() { const f = this.fish[Math.max(0, this.stock)] || this.fish[0]; return { x: f.__hx, y: f.__hy }; }
-  update(dt) {
-    if (this.stock < this.max) {
-      this.timer += dt;
-      if (this.timer >= BALANCE.resources.net.refill) {
-        this.timer = 0;
-        this.stock++;
-        if (this.gs.isOnScreen(this.x, this.y, 200)) this.gs.effects.burst('splash', this.x + (Math.random() - 0.5) * 80, this.y - 30, 4);
-      }
-    }
-    const now = this.gs.time.now / 1000;
-    for (let i = 0; i < this.fish.length; i++) {
-      const f = this.fish[i];
-      const vis = i < this.stock;
-      if (f.visible !== vis) f.setVisible(vis);
-      if (!vis) continue;
-      const t = now * 2.2 + i * 1.7;
-      const hop = Math.max(0, Math.sin(t)) ;
-      f.y = f.__hy - hop * hop * 16;
-      f.x = f.__hx + Math.sin(t * 0.5) * 3;
-      f.setFlipX(Math.cos(t * 0.5) < 0);
-      f.setAngle(Math.sin(t) * 25);
-    }
-  }
-}
+// ((v4.3) the fish net is gone: the fishing deck (entities/FishingDeck.js) keeps its surface for every caller)

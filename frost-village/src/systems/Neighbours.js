@@ -223,6 +223,8 @@ export class Neighbours {
     for (const st of [this.ours, this.townStation]) if (st) { const c = st.clock || (st.fx && st.fx.clock); if (c) this.clock.addLight(c.x, c.y, 0.7, Math.abs(c.x - 4912)); this.clock.addLight(st.x + 74, st.y - 46, 1, Math.abs(st.x - 4912)); }
     for (const img of gs.lamps || []) this.clock.addLight(img.x, img.y - 92, 0.9, 9000 + img.x);
     for (const c of gs.campfires || []) this.clock.addLight(c.x, c.y - 20, 1.3, 9500 + c.x);
+    // ((v4.3) the fishing deck's lantern, the 옷·신발 공방's lantern: { x, y, k } light points)
+    for (const q of gs.lights43 || []) this.clock.addLight(q.x, q.y, q.k || 0.9, 9000 + q.x);
     // the train (runs once the station is repaired)
     this.train = new Train(gs, this.rail);
     // ((v4.2 CODE-2) the loops' fence, switch stands, water towers and sounds (assets/train2))
