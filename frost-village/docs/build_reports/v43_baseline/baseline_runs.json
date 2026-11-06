@@ -1,0 +1,691 @@
+{
+ "fresh25": {
+  "n": 5,
+  "median": {
+   "village_complete_min": 20.17,
+   "earned_0_20": 10798,
+   "income20_per_min": 540,
+   "first_coins_row_s": 40,
+   "earned_25": 16146,
+   "errors": 0,
+   "fish_cooked_avg_0_20": 11.9,
+   "fish_cooked_empty_pct_0_20": 35,
+   "fish_cooked_first_min": 0.33,
+   "fish_cooked_avg_after_first_0_20": 12.0,
+   "fish_cooked_empty_pct_after_first_0_20": 35,
+   "bread_avg_0_20": 11.7,
+   "bread_empty_pct_0_20": 57,
+   "bread_first_min": 9.5,
+   "bread_avg_after_first_0_20": 22.7,
+   "bread_empty_pct_after_first_0_20": 19,
+   "meat_cooked_avg_0_20": 0.0,
+   "meat_cooked_empty_pct_0_20": 100,
+   "meat_cooked_first_min": 22.17,
+   "fish_cooked_max_0_20": 40,
+   "fish_cooked_full90_pct_0_20": 14,
+   "bread_max_0_20": 40,
+   "bread_full90_pct_0_20": 13,
+   "meat_cooked_max_0_20": 0,
+   "meat_cooked_full90_pct_0_20": 0,
+   "trade_stock_avg_0_20": 1.4,
+   "fish_cooked_avg_20_25": 8.4,
+   "fish_cooked_empty_pct_20_25": 17,
+   "bread_avg_20_25": 32.3,
+   "bread_empty_pct_20_25": 0,
+   "meat_cooked_avg_20_25": 4.1,
+   "meat_cooked_empty_pct_20_25": 60,
+   "fish_cooked_max_20_25": 26,
+   "fish_cooked_full90_pct_20_25": 0,
+   "bread_max_20_25": 40,
+   "bread_full90_pct_20_25": 37,
+   "meat_cooked_max_20_25": 24,
+   "meat_cooked_full90_pct_20_25": 0,
+   "trade_stock_avg_20_25": 5.6
+  },
+  "range": {
+   "village_complete_min": [
+    19.83,
+    20.33
+   ],
+   "earned_0_20": [
+    10506,
+    11216
+   ],
+   "income20_per_min": [
+    525,
+    561
+   ]
+  }
+ },
+ "pacing": {
+  "n": 3,
+  "median": {
+   "first_coin_min": 0.55,
+   "clerk_min": 0.59,
+   "village_complete_min": 20.0,
+   "tower_east_min": 20.36,
+   "hall_started_min": 42.03,
+   "hall_built_min": 43.07,
+   "office_started_min": 50.5,
+   "office_built_min": 51.58,
+   "station_min": 22.45,
+   "warehouse_min": 25.95,
+   "first_shop_min": 24.66,
+   "shops5_min": 36.16,
+   "rank_ready_min": 43.71,
+   "eup_min": 44.3,
+   "bank_built_min": 54.27,
+   "depot_built_min": 59.43,
+   "v3_complete_min": 41.87,
+   "stuck": 0,
+   "errors": 0,
+   "sim_min": 56.3
+  },
+  "range": {
+   "first_coin_min": [
+    0.52,
+    0.56
+   ],
+   "clerk_min": [
+    0.56,
+    0.6
+   ],
+   "village_complete_min": [
+    19.99,
+    20.66
+   ],
+   "tower_east_min": [
+    20.25,
+    20.98
+   ],
+   "hall_started_min": [
+    40.49,
+    48.01
+   ],
+   "hall_built_min": [
+    41.85,
+    50.02
+   ],
+   "office_started_min": [
+    50.22,
+    51.28
+   ],
+   "office_built_min": [
+    50.98,
+    52.29
+   ],
+   "station_min": [
+    22.37,
+    22.67
+   ],
+   "warehouse_min": [
+    25.31,
+    26.15
+   ],
+   "first_shop_min": [
+    24.54,
+    25.0
+   ],
+   "shops5_min": [
+    36.05,
+    37.74
+   ],
+   "rank_ready_min": [
+    37.75,
+    50.65
+   ],
+   "eup_min": [
+    44.21,
+    50.88
+   ],
+   "bank_built_min": [
+    53.56,
+    56.95
+   ],
+   "depot_built_min": [
+    59.43,
+    59.43
+   ],
+   "v3_complete_min": [
+    40.11,
+    47.86
+   ],
+   "stuck": [
+    0,
+    0
+   ],
+   "errors": [
+    0,
+    0
+   ],
+   "sim_min": [
+    56.3,
+    63.0
+   ]
+  }
+ },
+ "probes": {
+  "probe_L": {
+   "minutes": 10,
+   "rawAwayPct": 0,
+   "rawLocalPct": 0,
+   "stations": {
+    "grill": {
+     "processed": 59.2,
+     "made": 59.2,
+     "busy": 53,
+     "starved": 0,
+     "blocked": 47
+    },
+    "sawmill": {
+     "processed": 43.2,
+     "made": 43.3,
+     "busy": 48,
+     "starved": 51,
+     "blocked": 1
+    },
+    "bakery": {
+     "processed": 44.2,
+     "made": 44.2,
+     "busy": 54,
+     "starved": 29,
+     "blocked": 17
+    },
+    "smelter": {
+     "processed": 56.1,
+     "made": 56,
+     "busy": 75,
+     "starved": 0,
+     "blocked": 25
+    },
+    "smokehouse": {
+     "processed": 55.4,
+     "made": 55.3,
+     "busy": 74,
+     "starved": 0,
+     "blocked": 26
+    },
+    "cannery": {
+     "busy": 38,
+     "starved": 38,
+     "blocked": 24,
+     "noOrder": 0,
+     "made": 25.9,
+     "fishIn": 18.4,
+     "fishInByCrew": 12.4,
+     "fishInByRawPorter": 0,
+     "ingotIn": 8.9,
+     "inAvg": 16.2
+    },
+    "toolsmith": {
+     "busy": 55,
+     "starved": 46,
+     "blocked": 0,
+     "noOrder": 0
+    }
+   },
+   "pile90": {
+    "fish": 64,
+    "log": 0,
+    "wheat": 0,
+    "ore": 79,
+    "meat": 86
+   },
+   "anyPile90": 99,
+   "marketEmpty": {
+    "fish": 0,
+    "bread": 0,
+    "meat": 12
+   },
+   "rawToDock": {
+    "all": 13.7,
+    "byRawPorters": 0,
+    "byCrew": 0,
+    "byStationPorters": 13.7
+   },
+   "crew": {
+    "first": 2,
+    "last": 5,
+    "max": 5,
+    "busyPct": 99,
+    "useBusyPct": 90
+   },
+   "gatherersIdle": {
+    "all": 20,
+    "fisherman": 29,
+    "lumberjack": 0,
+    "farmer": 0,
+    "miner": 36,
+    "hunter": 43
+   },
+   "coins": {
+    "createdPerMin": 2421,
+    "shopsPerMin": 2085,
+    "restaurantPerMin": 315,
+    "exportPerMin": 19,
+    "depotPerMin": 2,
+    "collectedPerMin": 407
+   },
+   "madePerMin": 583,
+   "tradeItemsPerMin": 70.3,
+   "meatcan": {
+    "rack90": 86,
+    "rawMeatLeaving": 8.7,
+    "huntersBlocked": 43,
+    "huntersCaught": 64.1,
+    "meatCansMade": 0,
+    "fishCansMade": 25.9,
+    "ingotIntoCannery": 8.9,
+    "meatIntoCannery": 0,
+    "meatIntoCanneryBy": {
+     "meatPorter": 0,
+     "crew": 0,
+     "rawPorters": 0
+    },
+    "tradeIngots": 35.7,
+    "smokehouseProcessed": 55.4,
+    "smokehouseInEmpty": 0,
+    "smokehouseInUnderHalf": 0,
+    "canneryBlocked": 24,
+    "canneryStarved": 38,
+    "meatCansSold": 0,
+    "meatCansExported": 0,
+    "meatCansToCards": 0,
+    "meatCansToWarehouse": 0,
+    "meatCansWarehouseEnd": 0,
+    "storeSold": 29.3,
+    "storeBothCansEmpty": 44,
+    "storeCansEmpty": 44,
+    "storeMeatEmpty": 100,
+    "storeQueueAvg": 5,
+    "storeQueueFull": 44,
+    "meatPorter": null,
+    "meatPorterTrips": null,
+    "meatCanPorterTrips": null,
+    "meatCansByStationPorters": 0,
+    "meatCansByCrew": 0,
+    "meatCansByCanneryPorters": 0,
+    "canneryOut": {
+     "fullPct": 25,
+     "meatAvg": 0,
+     "fishAvg": 21.5,
+     "meatAtFull": 0,
+     "fishAtFull": 28.7
+    },
+    "soldOrExportedShare": null
+   },
+   "errors": 0
+  },
+  "probe_S25": {
+   "minutes": 6,
+   "rawAwayPct": 0,
+   "rawLocalPct": 0,
+   "stations": {
+    "grill": {
+     "processed": 38.3,
+     "made": 38.3,
+     "busy": 51,
+     "starved": 49,
+     "blocked": 0
+    },
+    "sawmill": {
+     "processed": 48.3,
+     "made": 48.3,
+     "busy": 81,
+     "starved": 19,
+     "blocked": 0
+    },
+    "bakery": {
+     "processed": 36,
+     "made": 36,
+     "busy": 66,
+     "starved": 0,
+     "blocked": 34
+    },
+    "smelter": {
+     "processed": 34.8,
+     "made": 35,
+     "busy": 70,
+     "starved": 0,
+     "blocked": 30
+    },
+    "smokehouse": {
+     "processed": 25.3,
+     "made": 25.3,
+     "busy": 50,
+     "starved": 0,
+     "blocked": 50
+    },
+    "toolsmith": {
+     "busy": 0,
+     "starved": 0,
+     "blocked": 0,
+     "noOrder": 100
+    }
+   },
+   "pile90": {
+    "fish": 0,
+    "log": 0,
+    "wheat": 99,
+    "ore": 100,
+    "meat": 98
+   },
+   "anyPile90": 100,
+   "marketEmpty": {
+    "fish": 47,
+    "bread": 47,
+    "meat": 63
+   },
+   "rawToDock": {
+    "all": 0,
+    "byRawPorters": 0,
+    "byCrew": 0,
+    "byStationPorters": 0
+   },
+   "crew": null,
+   "gatherersIdle": {
+    "all": 32,
+    "fisherman": 0,
+    "lumberjack": 0,
+    "farmer": 46,
+    "miner": 63,
+    "hunter": 56
+   },
+   "coins": {
+    "createdPerMin": 1208,
+    "shopsPerMin": 1208,
+    "restaurantPerMin": 0,
+    "exportPerMin": 0,
+    "depotPerMin": 0,
+    "collectedPerMin": 0
+   },
+   "madePerMin": 369,
+   "tradeItemsPerMin": 75.2,
+   "meatcan": {
+    "rack90": 98,
+    "rawMeatLeaving": 0,
+    "huntersBlocked": 56,
+    "huntersCaught": 25.5,
+    "meatCansMade": 0,
+    "fishCansMade": 0,
+    "ingotIntoCannery": 0,
+    "meatIntoCannery": 0,
+    "meatIntoCanneryBy": {
+     "meatPorter": 0,
+     "crew": 0,
+     "rawPorters": 0
+    },
+    "tradeIngots": 32.7,
+    "smokehouseProcessed": 25.3,
+    "smokehouseInEmpty": 0,
+    "smokehouseInUnderHalf": 0,
+    "canneryBlocked": null,
+    "canneryStarved": null,
+    "meatCansSold": 0,
+    "meatCansExported": 0,
+    "meatCansToCards": 0,
+    "meatCansToWarehouse": 0,
+    "meatCansWarehouseEnd": null,
+    "storeSold": 0,
+    "storeBothCansEmpty": null,
+    "storeCansEmpty": null,
+    "storeMeatEmpty": null,
+    "storeQueueAvg": null,
+    "storeQueueFull": null,
+    "meatPorter": null,
+    "meatPorterTrips": null,
+    "meatCanPorterTrips": null,
+    "meatCansByStationPorters": 0,
+    "meatCansByCrew": 0,
+    "meatCansByCanneryPorters": 0,
+    "soldOrExportedShare": null
+   },
+   "errors": 0
+  },
+  "probe_S35": {
+   "minutes": 6,
+   "rawAwayPct": 0,
+   "rawLocalPct": 0,
+   "stations": {
+    "grill": {
+     "processed": 57,
+     "made": 57,
+     "busy": 76,
+     "starved": 0,
+     "blocked": 24
+    },
+    "sawmill": {
+     "processed": 43.2,
+     "made": 43.2,
+     "busy": 72,
+     "starved": 28,
+     "blocked": 0
+    },
+    "bakery": {
+     "processed": 41.5,
+     "made": 41.3,
+     "busy": 76,
+     "starved": 0,
+     "blocked": 24
+    },
+    "smelter": {
+     "processed": 39.8,
+     "made": 39.8,
+     "busy": 79,
+     "starved": 0,
+     "blocked": 21
+    },
+    "smokehouse": {
+     "processed": 34.8,
+     "made": 35,
+     "busy": 70,
+     "starved": 0,
+     "blocked": 30
+    },
+    "cannery": {
+     "busy": 0,
+     "starved": 0,
+     "blocked": 0,
+     "noOrder": 0,
+     "made": 0,
+     "fishIn": 0,
+     "fishInByCrew": 0,
+     "fishInByRawPorter": 0,
+     "ingotIn": 0,
+     "inAvg": 32
+    },
+    "toolsmith": {
+     "busy": 0,
+     "starved": 0,
+     "blocked": 0,
+     "noOrder": 100
+    }
+   },
+   "pile90": {
+    "fish": 73,
+    "log": 0,
+    "wheat": 54,
+    "ore": 90,
+    "meat": 88
+   },
+   "anyPile90": 100,
+   "marketEmpty": {
+    "fish": 1,
+    "bread": 5,
+    "meat": 61
+   },
+   "rawToDock": {
+    "all": 13,
+    "byRawPorters": 0,
+    "byCrew": 0,
+    "byStationPorters": 13
+   },
+   "crew": {
+    "first": 2,
+    "last": 4,
+    "max": 4,
+    "busyPct": 99,
+    "useBusyPct": 99
+   },
+   "gatherersIdle": {
+    "all": 24,
+    "fisherman": 27,
+    "lumberjack": 0,
+    "farmer": 26,
+    "miner": 53,
+    "hunter": 30
+   },
+   "coins": {
+    "createdPerMin": 1615,
+    "shopsPerMin": 1322,
+    "restaurantPerMin": 282,
+    "exportPerMin": 11,
+    "depotPerMin": 0,
+    "collectedPerMin": 0
+   },
+   "madePerMin": 449,
+   "tradeItemsPerMin": 83.8,
+   "meatcan": {
+    "rack90": 88,
+    "rawMeatLeaving": 2.5,
+    "huntersBlocked": 30,
+    "huntersCaught": 39,
+    "meatCansMade": 0,
+    "fishCansMade": 0,
+    "ingotIntoCannery": 0,
+    "meatIntoCannery": 0,
+    "meatIntoCanneryBy": {
+     "meatPorter": 0,
+     "crew": 0,
+     "rawPorters": 0
+    },
+    "tradeIngots": 38.7,
+    "smokehouseProcessed": 34.8,
+    "smokehouseInEmpty": 0,
+    "smokehouseInUnderHalf": 0,
+    "canneryBlocked": 0,
+    "canneryStarved": 0,
+    "meatCansSold": 0,
+    "meatCansExported": 0,
+    "meatCansToCards": 0,
+    "meatCansToWarehouse": 0,
+    "meatCansWarehouseEnd": 0,
+    "storeSold": 0,
+    "storeBothCansEmpty": null,
+    "storeCansEmpty": null,
+    "storeMeatEmpty": null,
+    "storeQueueAvg": null,
+    "storeQueueFull": null,
+    "meatPorter": null,
+    "meatPorterTrips": null,
+    "meatCanPorterTrips": null,
+    "meatCansByStationPorters": 0,
+    "meatCansByCrew": 0,
+    "meatCansByCanneryPorters": 0,
+    "canneryOut": {
+     "fullPct": 0,
+     "meatAvg": 0,
+     "fishAvg": 0,
+     "meatAtFull": null,
+     "fishAtFull": null
+    },
+    "soldOrExportedShare": null
+   },
+   "errors": 0
+  }
+ },
+ "texbudget": {
+  "results": [
+   {
+    "name": "title <= 90 MiB",
+    "ok": false,
+    "info": 151.9
+   },
+   {
+    "name": "new game <= 368 MiB (must)",
+    "ok": true,
+    "info": 200.7
+   },
+   {
+    "name": "new game <= 240 MiB (target)",
+    "ok": true,
+    "info": 200.7
+   },
+   {
+    "name": "v3.5 village complete <= 455 MiB (must)",
+    "ok": true,
+    "info": 322.7
+   },
+   {
+    "name": "full v4, any view <= 455 MiB (must)",
+    "ok": true,
+    "info": 411.7
+   },
+   {
+    "name": "full v4, plaza <= 300 MiB (target)",
+    "ok": false,
+    "info": 341.3
+   },
+   {
+    "name": "full v4 tour peak <= 300 MiB (target)",
+    "ok": false,
+    "info": 411.7
+   },
+   {
+    "name": "return to the start of the tour <= start + 5 MiB",
+    "ok": true,
+    "info": {
+     "start": 341.3,
+     "end": 341.6,
+     "extra": [
+      "fv_gslot_55 1",
+      "fv_gslot_56 1",
+      "fv_gslot_57 1",
+      "fv_gslot_61 1",
+      "fv_gslot_64 1",
+      "fv_gslot_66 1",
+      "fv_gslot_68 1",
+      "fv_gslot_72 1",
+      "fv_gslot_73 1",
+      "fv_gslot_74 1",
+      "vil_npc_skater@social 4.5",
+      "vil_npc_captain@social 4.59"
+     ],
+     "gone": [
+      "fv_gslot_1 1",
+      "fv_gslot_2 1",
+      "fv_gslot_4 1",
+      "fv_gslot_5 1",
+      "fv_gslot_6 1",
+      "fv_gslot_12 1",
+      "fv_gslot_39 1",
+      "fv_gslot_41 1",
+      "vil_npc_kid_girl@social 4.18",
+      "vil_npc_toddler@social 2.69",
+      "vil_npc_clerk_b@social 4"
+     ]
+    }
+   },
+   {
+    "name": "GL texture bytes agree with the source-sum within 10 % (median)",
+    "ok": true,
+    "info": 0.01
+   },
+   {
+    "name": "renderer render targets <= 40 MiB (no FX pipeline)",
+    "ok": true,
+    "info": 33.7
+   },
+   {
+    "name": "full v4, GL total (textures + render targets) <= 455 MiB (must)",
+    "ok": true,
+    "info": 448.8
+   },
+   {
+    "name": "no page errors",
+    "ok": true,
+    "info": []
+   }
+  ]
+ }
+}

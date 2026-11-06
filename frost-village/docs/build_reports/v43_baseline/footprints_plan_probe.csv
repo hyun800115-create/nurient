@@ -1,0 +1,91 @@
+scene,area,building,kind,on,bx,by,region,type,level,other,ox,oy,measure,note
+fresh,village,plot:v42_office,plot,,110,810,start,building,overlap,probe:hall_w_hall,180,760,31038,ground px² shared
+fresh,village,station:grill,station,station_grill,1004,590,start,building,overlap,probe:grill_moved,1000,520,4033,ground px² shared
+fresh,village,probe:hut_v42_office,probe,,600,640,start,decor,touch,log_seat_x,615,561,6,collider reaches in by px
+fresh,village,probe:hut_v42_office,probe,,600,640,start,road_node,touch,beach_w,690,610,10,node this close (px)
+fresh,village,probe:hut_v42_office,probe,,600,640,start,road_edge,touch,beach_w→beach_n,1000,500,10,edge this close (px)
+fresh,village,probe:hut_v42_office,probe,,600,640,start,road_edge,overlap,beach_w→plaza_w,600,830,126,ground px of the edge inside
+fresh,village,probe:hut_v42_office,probe,,600,640,start,road_edge,touch,beach_w→plaza_c,1000,770,9,edge this close (px)
+fresh,village,probe:hut_v42_office,probe,,600,640,start,pad,overlap,trade:register (work),614,691,14,pad centre inside by px
+fresh,village,probe:hut_v42_office,probe,,600,640,start,pad,touch,trash (work),560,700,2728,ground px² of the pad floor under the footprint
+fresh,village,probe:hall_w_hall,probe,,180,760,start,road_edge,touch,w_b2→w_gate_n,-60,640,12,edge this close (px)
+fresh,village,probe:d_tool,probe,,380,1560,start,decor,overlap,igloo,330,1565,54,inside by px
+fresh,village,probe:d_wh,probe,,740,1560,start,decor,overlap,campfire,740,1575,75,inside by px
+fresh,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat,740,1521,41,inside by px
+fresh,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat_y,645,1546,9,inside by px
+fresh,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat_x,835,1546,9,inside by px
+fresh,village,probe:d_wh,probe,,740,1560,start,decor,overlap,decal:decal_snow_drift_a,760,1580,54,ground decal; inside by px
+fresh,village,probe:d_labour,probe,,1220,1610,start,decor,overlap,picnic_table,1235,1555,40,inside by px
+fresh,village,probe:d_labour,probe,,1220,1610,start,decor,touch,kids_swing,1440,1610,7,collider reaches in by px
+fresh,village,probe:d_labour,probe,,1220,1610,start,decor,overlap,decal:decal_snow_drift_b,1220,1590,100,ground decal; inside by px
+fresh,village,probe:d_cannery,probe,,1560,580,start,decor,overlap,bush_snow,1620,545,4,inside by px
+fresh,village,probe:d_cannery,probe,,1560,580,start,decor,touch,tree_pine_snow,1626,536,14,collider reaches in by px
+fresh,village,probe:d_cannery,probe,,1560,580,start,decor,touch,tree_pine_b,1691,597,2,collider reaches in by px
+fresh,village,probe:d_cannery,probe,,1560,580,start,decor,overlap,snow_fort,1530,612,30,inside by px
+fresh,village,probe:d_store,probe,,1480,940,start,decor,overlap,snow_pile_b,1393,934,26,inside by px
+fresh,village,probe:d_store,probe,,1480,940,start,decor,overlap,dog_house,1490,1000,4,inside by px
+fresh,village,probe:d_store,probe,,1480,940,start,road_node,touch,east_link,1600,930,3,node this close (px)
+fresh,village,probe:d_store,probe,,1480,940,start,road_edge,overlap,plaza_e→east_link,1600,930,198,ground px of the edge inside (edge not usable yet)
+fresh,village,probe:d_store,probe,,1480,940,start,road_edge,touch,east_link→east_gate,1830,950,3,edge this close (px)
+fresh,village,probe:d_store,probe,,1480,940,start,pad,overlap,hire_clerk_market (paid-later),1525,900,8,pad centre inside by px
+fresh,village,probe:d_school,probe,,-930,640,west,decor,overlap,tree:tree_pine_snow,-1010,640,40,inside by px
+fresh,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree_stump,-1200,900,25,inside by px
+fresh,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree_stump,-1120,860,54,inside by px
+fresh,village,probe:d_clinic,probe,,-1160,870,west,decor,touch,tree_pine_snow,-1301,861,6,collider reaches in by px
+fresh,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree:tree_pine_a,-1110,840,18,inside by px
+fresh,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree:tree_pine_snow,-1180,920,11,inside by px
+fresh,village,probe:h43_1,probe,,640,1040,start,road_edge,touch,plaza_sw→forest_link,772,1148,3,edge this close (px)
+fresh,village,probe:h43_2,probe,,1340,1050,start,road_edge,touch,plaza_se→farm_link,1196,1158,16,edge this close (px)
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_node,overlap,beach_n,1000,500,68,node inside by px
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_node,touch,gap_n,1078,556,10,node this close (px)
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,beach_w→beach_n,1000,500,127,ground px of the edge inside
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,beach_n→beach_e,1300,572,127,ground px of the edge inside
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_edge,touch,plaza_c→gap_n,1078,556,10,edge this close (px)
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,gap_n→beach_n,1000,500,129,ground px of the edge inside
+fresh,village,probe:grill_moved,probe,,1000,520,start,road_edge,touch,gap_n→beach_e,1300,572,10,edge this close (px)
+fresh,village,probe:grill_moved,probe,,1000,520,start,pad,overlap,grill:in (work),907,541,1,pad centre inside by px
+late,village,plot:v42_office,plot,chief_office,110,810,start,building,overlap,probe:hall_w_hall,180,760,31038,ground px² shared
+late,village,station:grill,station,station_grill,1004,590,start,building,overlap,probe:grill_moved,1000,520,4033,ground px² shared
+late,village,probe:hut_v42_office,probe,,600,640,start,decor,touch,log_seat_x,615,561,6,collider reaches in by px
+late,village,probe:hut_v42_office,probe,,600,640,start,road_node,touch,beach_w,690,610,10,node this close (px)
+late,village,probe:hut_v42_office,probe,,600,640,start,road_edge,touch,beach_w→beach_n,1000,500,10,edge this close (px)
+late,village,probe:hut_v42_office,probe,,600,640,start,road_edge,overlap,beach_w→plaza_w,600,830,126,ground px of the edge inside
+late,village,probe:hut_v42_office,probe,,600,640,start,road_edge,touch,beach_w→plaza_c,1000,770,9,edge this close (px)
+late,village,probe:hut_v42_office,probe,,600,640,start,pad,overlap,trade:register (work),614,691,14,pad centre inside by px
+late,village,probe:hut_v42_office,probe,,600,640,start,pad,touch,trash (work),560,700,2728,ground px² of the pad floor under the footprint
+late,village,probe:hall_w_hall,probe,,180,760,start,road_edge,touch,w_b2→w_gate_n,-60,640,12,edge this close (px)
+late,village,probe:d_tool,probe,,380,1560,start,decor,overlap,igloo,330,1565,54,inside by px
+late,village,probe:d_wh,probe,,740,1560,start,decor,overlap,campfire,740,1575,75,inside by px
+late,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat,740,1521,41,inside by px
+late,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat_y,645,1546,9,inside by px
+late,village,probe:d_wh,probe,,740,1560,start,decor,overlap,log_seat_x,835,1546,9,inside by px
+late,village,probe:d_wh,probe,,740,1560,start,decor,overlap,decal:decal_snow_drift_a,760,1580,54,ground decal; inside by px
+late,village,probe:d_labour,probe,,1220,1610,start,decor,overlap,picnic_table,1235,1555,40,inside by px
+late,village,probe:d_labour,probe,,1220,1610,start,decor,touch,kids_swing,1440,1610,7,collider reaches in by px
+late,village,probe:d_labour,probe,,1220,1610,start,decor,overlap,decal:decal_snow_drift_b,1220,1590,100,ground decal; inside by px
+late,village,probe:d_cannery,probe,,1560,580,start,decor,overlap,bush_snow,1620,545,4,inside by px
+late,village,probe:d_cannery,probe,,1560,580,start,decor,touch,tree_pine_snow,1626,536,14,collider reaches in by px
+late,village,probe:d_cannery,probe,,1560,580,start,decor,touch,tree_pine_b,1691,597,2,collider reaches in by px
+late,village,probe:d_cannery,probe,,1560,580,start,decor,overlap,snow_fort,1530,612,30,inside by px
+late,village,probe:d_store,probe,,1480,940,start,decor,overlap,snow_pile_b,1393,934,26,inside by px
+late,village,probe:d_store,probe,,1480,940,start,decor,overlap,dog_house,1490,1000,4,inside by px
+late,village,probe:d_store,probe,,1480,940,start,road_node,touch,east_link,1600,930,3,node this close (px)
+late,village,probe:d_store,probe,,1480,940,start,road_edge,overlap,plaza_e→east_link,1600,930,198,ground px of the edge inside
+late,village,probe:d_store,probe,,1480,940,start,road_edge,touch,east_link→east_gate,1830,950,3,edge this close (px)
+late,village,probe:d_school,probe,,-930,640,west,decor,overlap,tree:tree_pine_snow,-1010,640,40,inside by px
+late,village,probe:d_school,probe,,-930,640,west,pad,overlap,tables1 (paid),-887,621,39,pad centre inside by px
+late,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree_stump,-1200,900,25,inside by px
+late,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree_stump,-1120,860,54,inside by px
+late,village,probe:d_clinic,probe,,-1160,870,west,decor,touch,tree_pine_snow,-1301,861,6,collider reaches in by px
+late,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree:tree_pine_a,-1110,840,18,inside by px
+late,village,probe:d_clinic,probe,,-1160,870,west,decor,overlap,tree:tree_pine_snow,-1180,920,11,inside by px
+late,village,probe:h43_1,probe,,640,1040,start,road_edge,touch,plaza_sw→forest_link,772,1148,3,edge this close (px)
+late,village,probe:h43_2,probe,,1340,1050,start,road_edge,touch,plaza_se→farm_link,1196,1158,16,edge this close (px)
+late,village,probe:grill_moved,probe,,1000,520,start,road_node,overlap,beach_n,1000,500,68,node inside by px
+late,village,probe:grill_moved,probe,,1000,520,start,road_node,touch,gap_n,1078,556,10,node this close (px)
+late,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,beach_w→beach_n,1000,500,127,ground px of the edge inside
+late,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,beach_n→beach_e,1300,572,127,ground px of the edge inside
+late,village,probe:grill_moved,probe,,1000,520,start,road_edge,touch,plaza_c→gap_n,1078,556,10,edge this close (px)
+late,village,probe:grill_moved,probe,,1000,520,start,road_edge,overlap,gap_n→beach_n,1000,500,129,ground px of the edge inside
+late,village,probe:grill_moved,probe,,1000,520,start,road_edge,touch,gap_n→beach_e,1300,572,10,edge this close (px)
+late,village,probe:grill_moved,probe,,1000,520,start,pad,overlap,grill:in (work),907,541,1,pad centre inside by px

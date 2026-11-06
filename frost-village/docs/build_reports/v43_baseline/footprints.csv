@@ -1,0 +1,101 @@
+scene,area,building,kind,on,bx,by,region,type,level,other,ox,oy,measure,note
+fresh,village,plot:e_dock,plot,,2330,595,east,water,by design,sea,2330,549,-22,px into the sea
+fresh,village,plot:s_l1,plot,,780,3220,south,decor,overlap,lamp_post,920,3200,1,inside by px
+fresh,village,plot:s_l1,plot,,780,3220,south,road_edge,touch,s_cross→s_s,990,3290,29,edge this close (px)
+fresh,village,plot:w_rest,plot,,-600,880,west,road_node,touch,w_rest,-330,900,33,node this close (px)
+fresh,village,plot:w_rest,plot,,-600,880,west,road_edge,touch,w_gate_n→w_rest,-200,760,23,edge this close (px)
+fresh,village,plot:w_hall,plot,,-780,1880,west,decor,overlap,decal:decal_puddle_ice,-980,1880,44,ground decal; inside by px
+fresh,village,plot:w_s2,plot,,-330,1660,west,road_edge,overlap,w_gate_m→w_hall,-560,1640,104,ground px of the edge inside
+fresh,village,station:grill,station,station_grill,1004,590,start,road_edge,overlap,plaza_c→gap_n,1078,556,79,ground px of the edge inside
+fresh,village,station:sawmill,station,station_sawmill,646,1221,start,road_node,touch,forest_in,690,1290,39,node this close (px)
+fresh,village,trade,seller,trade_post,737,719,start,road_edge,overlap,beach_w→plaza_w,600,830,39,ground px of the edge inside
+fresh,village,bench,workshop,upgrade_bench,945,986,start,road_edge,overlap,plaza_c→plaza_s,990,1095,71,ground px of the edge inside
+fresh,village,net,net,net,880,398,start,water,by design,sea,834,359,-6,px into the sea
+fresh,neighbours,v4lot:lotH1,v4lot,,3171,2313,rail,decor,touch,tree_pine_a,3056,2318,20,collider reaches in by px
+fresh,neighbours,v4:t_gate,v4building,town_gate,4134,1963,rail,fog,overlap,town (flag:townInvite),4134,1963,0,part of the footprint lies in land that opens at another time; own: rail (region:east)
+late,village,plot:e_dock,plot,boathouse,2330,595,east,water,by design,sea,2330,549,-22,px into the sea
+late,village,plot:s_l1,plot,,780,3220,south,decor,overlap,lamp_post,920,3200,1,inside by px
+late,village,plot:s_l1,plot,,780,3220,south,road_edge,touch,s_cross→s_s,990,3290,29,edge this close (px)
+late,neighbours,plot:r_station,plot,station,3410,1330,rail,road_node,overlap,g:48,3234,1308,30,node inside by px
+late,neighbours,plot:r_station,plot,station,3410,1330,rail,road_edge,overlap,g:48→g:46,3729,1554,333,ground px of the edge inside
+late,village,plot:w_rest,plot,big_restaurant,-600,880,west,road_node,touch,w_rest,-330,900,33,node this close (px)
+late,village,plot:w_rest,plot,big_restaurant,-600,880,west,road_edge,touch,w_gate_n→w_rest,-200,760,23,edge this close (px)
+late,village,plot:w_hall,plot,town_hall,-780,1880,west,decor,overlap,decal:decal_puddle_ice,-980,1880,44,ground decal; inside by px
+late,village,plot:w_s2,plot,house_a,-330,1660,west,road_edge,overlap,w_gate_m→w_hall,-560,1640,104,ground px of the edge inside
+late,village,tower:tower_south,tower,watchtower,1450,2505,start,decor,overlap,bush_snow,1420,2480,7,inside by px
+late,village,station:grill,station,station_grill,1004,590,start,road_edge,overlap,plaza_c→gap_n,1078,556,79,ground px of the edge inside
+late,village,station:sawmill,station,station_sawmill,646,1221,start,road_node,touch,forest_in,690,1290,39,node this close (px)
+late,village,trade,seller,trade_post,737,719,start,road_edge,overlap,beach_w→plaza_w,600,830,39,ground px of the edge inside
+late,village,bench,workshop,upgrade_bench,945,986,start,road_edge,overlap,plaza_c→plaza_s,990,1095,71,ground px of the edge inside
+late,village,net,net,net,880,398,start,water,by design,sea,834,359,-6,px into the sea
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_node,touch,g:1,3544,1629,21,node this close (px)
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_node,overlap,g:2,3563,1639,7,node inside by px
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_node,touch,d:lotA1,3535,1725,18,node this close (px)
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_edge,touch,g:0→g:1,3544,1629,21,edge this close (px)
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_edge,touch,g:1→g:2,3563,1639,0,edge this close (px)
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_edge,overlap,g:2→g:46,3729,1554,63,ground px of the edge inside
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_edge,touch,g:3→g:1,3544,1629,21,edge this close (px)
+late,neighbours,v4lot:lotA1,v4lot,,3616,1685,rail,road_edge,touch,d:lotA1→g:4,3450,1768,18,edge this close (px)
+late,neighbours,v4lot:lotA2,v4lot,,3786,1769,rail,road_node,touch,d:lotA2,3705,1810,18,node this close (px)
+late,neighbours,v4lot:lotA2,v4lot,,3786,1769,rail,road_edge,touch,d:lotA2→g:5,3619,1853,18,edge this close (px)
+late,neighbours,v4lot:lotA3,v4lot,,3955,1854,rail,road_node,touch,d:lotA3,3875,1895,18,node this close (px)
+late,neighbours,v4lot:lotA3,v4lot,,3955,1854,rail,road_edge,touch,d:lotA3→g:6,3788,1937,18,edge this close (px)
+late,neighbours,v4lot:lotB1,v4lot,,3283,2053,rail,road_node,touch,d:lotB1,3203,2093,18,node this close (px)
+late,neighbours,v4lot:lotB1,v4lot,,3283,2053,rail,road_edge,touch,d:lotB1→g:18,3121,2148,18,edge this close (px)
+late,neighbours,v4lot:lotB2,v4lot,,3453,2137,rail,road_node,touch,d:lotB2,3372,2178,18,node this close (px)
+late,neighbours,v4lot:lotB2,v4lot,,3453,2137,rail,road_edge,touch,d:lotB2→g:19,3279,2226,18,edge this close (px)
+late,neighbours,v4lot:lotB3,v4lot,,3622,2222,rail,road_node,touch,d:lotB3,3542,2263,18,node this close (px)
+late,neighbours,v4lot:lotB3,v4lot,,3622,2222,rail,road_edge,touch,d:lotB3→g:20,3448,2311,18,edge this close (px)
+late,neighbours,v4lot:lotB5,v4lot,,3821,2321,rail,road_node,touch,d:lotB5,3731,2366,17,node this close (px)
+late,neighbours,v4lot:lotB5,v4lot,,3821,2321,rail,road_edge,touch,d:lotB5→g:21,3644,2409,17,edge this close (px)
+late,neighbours,v4lot:lotH1,v4lot,,3171,2313,rail,decor,touch,tree_pine_a,3056,2318,20,collider reaches in by px
+late,neighbours,v4lot:lotH1,v4lot,,3171,2313,rail,road_node,touch,d:lotH1,3100,2349,18,node this close (px)
+late,neighbours,v4lot:lotH1,v4lot,,3171,2313,rail,road_edge,touch,d:lotH1→g:31,3087,2418,18,edge this close (px)
+late,neighbours,v4lot:lotH2,v4lot,,3325,2390,rail,road_node,touch,d:lotH2,3253,2426,18,node this close (px)
+late,neighbours,v4lot:lotH2,v4lot,,3325,2390,rail,road_edge,touch,d:lotH2→g:32,3179,2464,18,edge this close (px)
+late,neighbours,v4lot:lotH3,v4lot,,3478,2467,rail,road_node,touch,d:lotH3,3407,2503,18,node this close (px)
+late,neighbours,v4lot:lotH3,v4lot,,3478,2467,rail,road_edge,touch,d:lotH3→g:33,3332,2541,18,edge this close (px)
+late,neighbours,v4lot:lotH4,v4lot,,3779,2617,rail,road_node,touch,d:lotH4,3708,2653,18,node this close (px)
+late,neighbours,v4lot:lotH4,v4lot,,3779,2617,rail,road_edge,touch,d:lotH4→g:34,3632,2691,18,edge this close (px)
+late,neighbours,v4lot:lotH5,v4lot,,3933,2694,rail,road_node,touch,d:lotH5,3861,2730,18,node this close (px)
+late,neighbours,v4lot:lotH5,v4lot,,3933,2694,rail,road_edge,touch,d:lotH5→g:35,3786,2768,18,edge this close (px)
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_node,overlap,g:42,4840,2095,16,node inside by px
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_node,overlap,g:43,4916,2133,70,node inside by px
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_node,overlap,d:t_station,4929,2126,89,node inside by px
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_edge,overlap,g:42→g:43,4916,2133,107,ground px of the edge inside
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_edge,overlap,g:43→g:44,5239,2295,331,ground px of the edge inside
+late,neighbours,v4:t_station,v4building,train_station,5042,2146,town,road_edge,touch,d:t_station→g:43,4916,2133,0,edge this close (px)
+late,neighbours,v4:t_police,v4building,police_box,5309,2243,town,road_node,touch,d:t_police,5271,2278,6,node this close (px)
+late,neighbours,v4:t_police,v4building,police_box,5309,2243,town,road_edge,touch,d:t_police→g:44,5239,2295,6,edge this close (px)
+late,neighbours,v4:t_cafe,v4building,cafe,4342,2048,town,road_node,touch,d:t_cafe,4298,2101,10,node this close (px)
+late,neighbours,v4:t_cafe,v4building,cafe,4342,2048,town,road_edge,touch,d:t_cafe→g:7,4207,2146,10,edge this close (px)
+late,neighbours,v4:t_book,v4building,bookstore,4502,2128,town,road_node,touch,d:t_book,4459,2181,9,node this close (px)
+late,neighbours,v4:t_book,v4building,bookstore,4502,2128,town,road_edge,touch,d:t_book→g:9,4368,2227,9,edge this close (px)
+late,neighbours,v4:t_toy,v4building,toy_shop,5258,2505,town,road_node,touch,d:t_toy,5214,2557,8,node this close (px)
+late,neighbours,v4:t_toy,v4building,toy_shop,5258,2505,town,road_edge,touch,d:t_toy→g:12,5121,2603,8,edge this close (px)
+late,neighbours,v4:t_cloth,v4building,clothing_store,5424,2589,town,road_node,touch,d:t_cloth,5381,2642,10,node this close (px)
+late,neighbours,v4:t_cloth,v4building,clothing_store,5424,2589,town,road_edge,touch,d:t_cloth→g:13,5290,2688,10,edge this close (px)
+late,neighbours,v4:t_flower,v4building,flower_shop,5590,2672,town,road_node,touch,d:t_flower,5537,2718,7,node this close (px)
+late,neighbours,v4:t_flower,v4building,flower_shop,5590,2672,town,road_edge,touch,d:t_flower→g:14,5443,2765,7,edge this close (px)
+late,neighbours,v4:t_hair,v4building,hair_salon,5757,2755,town,road_node,touch,d:t_hair,5713,2807,8,node this close (px)
+late,neighbours,v4:t_hair,v4building,hair_salon,5757,2755,town,road_edge,touch,d:t_hair→g:15,5620,2853,8,edge this close (px)
+late,neighbours,v4:t_rest,v4building,restaurant,5930,2841,town,decor,touch,signpost,5898,2781,7,collider reaches in by px
+late,neighbours,v4:t_rest,v4building,restaurant,5930,2841,town,road_node,touch,d:t_rest,5889,2895,8,node this close (px)
+late,neighbours,v4:t_rest,v4building,restaurant,5930,2841,town,road_edge,touch,d:t_rest→g:16,5796,2941,8,edge this close (px)
+late,neighbours,v4:t_post,v4building,post_office,4720,2787,town,road_node,touch,d:t_post,4678,2843,6,node this close (px)
+late,neighbours,v4:t_post,v4building,post_office,4720,2787,town,road_edge,touch,d:t_post→g:24,4596,2885,6,edge this close (px)
+late,neighbours,v4:t_school,v4building,school,4963,2909,town,road_node,overlap,d:t_school,4843,2930,20,node inside by px
+late,neighbours,v4:t_school,v4building,school,4963,2909,town,road_edge,touch,d:t_school→g:25,4765,2969,0,edge this close (px)
+late,neighbours,v4:t_clinic,v4building,clinic,5443,3149,town,road_node,touch,d:t_clinic,5398,3203,6,node this close (px)
+late,neighbours,v4:t_clinic,v4building,clinic,5443,3149,town,road_edge,touch,d:t_clinic→g:27,5314,3244,6,edge this close (px)
+late,neighbours,v4:t_fire,v4building,fire_station,5642,3248,town,road_node,overlap,d:t_fire,5762,3267,22,node inside by px
+late,neighbours,v4:t_fire,v4building,fire_station,5642,3248,town,road_edge,overlap,d:t_fire→g:28,5487,3330,183,ground px of the edge inside
+late,neighbours,v4:t_apt1,v4building,apartment_a,4426,2947,town,road_node,touch,d:t_apt1,4329,2996,29,node this close (px)
+late,neighbours,v4:t_apt1,v4building,apartment_a,4426,2947,town,road_edge,touch,d:t_apt1→g:36,4285,3017,29,edge this close (px)
+late,neighbours,v4:t_apt2,v4building,apartment_b,4634,3051,town,road_node,touch,d:t_apt2,4519,3082,22,node this close (px)
+late,neighbours,v4:t_apt2,v4building,apartment_b,4634,3051,town,road_edge,touch,d:t_apt2→g:37,4465,3108,22,edge this close (px)
+late,neighbours,v4:t_apt3,v4building,apartment_a,4842,3155,town,road_node,touch,d:t_apt3,4745,3204,29,node this close (px)
+late,neighbours,v4:t_apt3,v4building,apartment_a,4842,3155,town,road_edge,touch,d:t_apt3→g:38,4703,3227,29,edge this close (px)
+late,neighbours,v4:t_apt4,v4building,apartment_b,5050,3259,town,road_node,touch,d:t_apt4,4935,3290,22,node this close (px)
+late,neighbours,v4:t_apt4,v4building,apartment_b,5050,3259,town,road_edge,touch,d:t_apt4→g:39,4884,3317,22,edge this close (px)
+late,neighbours,v4:t_gate,v4building,town_gate,4134,1963,rail,fog,overlap,town (flag:townInvite),4134,1963,0,part of the footprint lies in land that opens at another time; own: rail (region:east)

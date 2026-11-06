@@ -1,0 +1,658 @@
+// (v4.3 「마을 새 단장」 M0, docs/redesign_v43/engineering_plan.md §1.1 / §4.5.2 / §4.6) layout + walk measures that run
+// unchanged on the old layout (4.2.1) and on the new one, so the two can be compared number for number. One browser,
+// fixed-step clock. Writes CSV (+ one JSON with everything) to --out and prints a short summary.
+//
+//   node tools/test/v43_layout.mjs [--out DIR] [--only layout,walks,firstsale,merchant] [--seeds 5] [--fresh-min 47]
+//        [--probe 'id:x,y,size;...'] [--root <a frost-village dir>] [-v]
+//   --out        where the CSV / JSON go (default: <os tmp>/v43_layout); exit code 1 on page errors
+//   --probe      proposed footprints (S / M / L / XL diamonds) checked like the real ones, e.g. the plan's new plots
+//   wall time (one browser, loaded 4-CPU box): layout,walks ≈ 1 min; firstsale ≈ 1 min a seed; merchant ≈ 9 min
+//   (+ ≈ 0.4 min a game minute of --fresh-min; 0 skips the fresh game). M0 numbers: docs/build_reports/v43_baseline/
+//
+// layout   (footprints.csv, footprint_summary.csv) every building footprint — every plot / tower (its size diamond, the
+//          building on it named), the five stations, the stall, the trade post, the bench, the net / deck, the v4
+//          station-town lots and buildings — against: other footprints, decor (the scene's static images, trees,
+//          rocks, wheat, ground decals, the props that collide), the walk graph (nodes inside, edges through), pads
+//          (every live paid pad, every pad still to come at the place the game gives it, and the work pads: in / out,
+//          shelves, registers, cash, piles, trash, build drops), the sea (shoreY) and the fog (corners in land that
+//          opens at another time than the building's own). level = overlap (inside) | touch (within the margin).
+//          Scenes: `fresh` (a new game) and `late` (fixtures/v42_village_late.json: everything built, every land open).
+// walks    (walks.csv) walks measured with the game's own path finder (gs.roads.route: roads, off-road legs round what
+//          stands there, walled buildings through their doors), metres = ground px / 64. The rows are the plan's §4.6
+//          list: the chief's first walk (start → the net's gather point / the deck's reel spot), food register ↔ trade
+//          (자재) register, oven → shop shelf, meat rack → cannery, cannery → store, the coin round (office → shop coins
+//          → store → station cash → hall tax box → restaurant → bank → office; and without the station cash), plus the
+//          first-loop legs. A place is looked up by name (window.__FV.where) with the new layout's names first, so the
+//          same rows measure the new layout once its names exist (a missing place is reported as such, never guessed).
+//          `alt` rows put a workshop on another plot by moving the place with its plot (the bots' cannery w_m1 → store
+//          w_m2). Three lengths a row: route (gs.roads.route with the walker's own "straight when near": chief pilot /
+//          courier 220, porters 360), direct (a joystick walk: the straight line when nothing stands on it at the
+//          chief's radius 16, else the shortest way round on a ground grid — Paths.gridPath — roads ignored) and
+//          straight; m = the one that walker really walks (chief rows: direct; porters and the courier: route).
+// firstsale (firstsale.csv) time to the first sale in a new game, seeds 1..--seeds (Math.random seeded):
+//          `onboarding` = the first-run tutorial on, a bot that walks only where the tutorial points (Act 1 its target,
+//          Act 2 the shown yellow arrow) — the onboarding.mjs bot without its layout checks; `smart` = the census /
+//          pacing bot (review_gameplay_bot.js, policy smart). Game seconds from the moment the bot takes the joystick:
+//          first sale (a customer pays: the 'sold' event), first coins in the chief's pocket, the clerk hired, the
+//          tutorial's hand-over (Act 3).
+// merchant (merchant.csv, merchant_fresh.csv) the trade post (later the 자재 창구): items the merchant buys a minute.
+//          `ceiling_clerk`: the shelf kept full (planks + ingots topped up every second), the chief parked away so the
+//          clerk serves: the service ceiling (trade.buyInterval × register.clerkTradeSlow, in whole frames);
+//          `ceiling_chief`: the same with the clerk stood aside and the chief on the register (trade.buyInterval).
+//          `bot`: the 25- and 46-min fixtures played by the smart bot (warm 60 s + 6 min): items / min, coins / min,
+//          staffed and shelf-empty shares, mean stock; the stall's shelf per food. `fresh`: a new game (seed 1) played by
+//          the smart bot for --fresh-min minutes, sampled every second: items bought per minute, the stall's shelf per
+//          food, coins.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { start } from './serve.mjs';
+import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
+import { installStepper } from './fv_step.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
+const ROOT = path.resolve(opt('--root', path.resolve(HERE, '..', '..')));
+const OUT = path.resolve(opt('--out', path.join(os.tmpdir(), 'v43_layout')));
+const ONLY = opt('--only', 'layout,walks').split(',');
+const SEEDS = Number(opt('--seeds', '5'));
+const FRESH_MIN = Number(opt('--fresh-min', '47'));
+const VERB = args.includes('-v');
+// --probe 'hut:600,640,M;hall:180,760,XL': footprints that do not exist in the game yet, checked like the real ones
+//   (a proposed plot before it is coded). Sizes S / M / L / XL = the Site footprints 181×91 / 272×136 / 362×181 / 525×262
+const PROBES = (opt('--probe', '') || '').split(';').filter(Boolean).map((q) => { const [id, rest] = q.split(':'); const [x, y, size] = rest.split(','); return { id, x: Number(x), y: Number(y), size: size || 'M' }; });
+const FIX = path.join(ROOT, 'tools/test/fixtures');
+fs.mkdirSync(OUT, { recursive: true });
+const t0 = Date.now();
+const wall = () => ((Date.now() - t0) / 1000).toFixed(0) + 's';
+const seedJs = (s) => `(() => { let a = ${s >>> 0}; Math.random = () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();`;
+const csvCell = (v) => { if (v === null || v === undefined) return ''; const s = typeof v === 'number' ? String(+v.toFixed(3)) : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const writeCsv = (name, rows, cols) => {
+  const C = cols || [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  fs.writeFileSync(path.join(OUT, name), [C.join(',')].concat(rows.map((r) => C.map((c) => csvCell(r[c])).join(','))).join('\n') + '\n');
+  console.log(`  wrote ${path.join(OUT, name)} (${rows.length} rows)`);
+};
+const ALL = { args, root: ROOT, at: new Date().toISOString() };
+
+// ------------------------------------------------------------------------------------------------ browser
+const srv = await start(0, { prefix: '/fv/', root: ROOT });
+const browser = await launch();
+let page = null, log = null, ctx = null;
+const errors = [];
+const ev = (fn, a) => page.evaluate(fn, a);
+/** a fresh page (own context: the init script differs per run), the save keys set, the title tapped, the stepper on */
+async function boot({ keys = null, init = '', stepper = true, viewport = { width: 390, height: 844 } } = {}) {
+  if (ctx) { errors.push(...log.errors); await ctx.close(); }
+  ({ page, log, ctx } = await openPage(browser, srv.url + 'index.html', { viewport, dpr: 1, init: init || undefined }));
+  await ev((k) => { try { localStorage.clear(); if (k) for (const n in k) localStorage.setItem(n, k[n]); } catch (e) { /* */ } }, keys);
+  await page.reload({ waitUntil: 'load', timeout: 180000 });
+  await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 180000);
+  await sleep(300);
+  await tapStart(page);
+  await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player && window.__FV.scene.v42, 180000);
+  if (stepper) {
+    await installStepper(page);
+    await ev(() => { try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ } window.__FV.setInput(0, 0); });
+  }
+}
+/** the census / pacing bot (review_gameplay_bot.js, smart policy, the census's options) */
+async function addBot() {
+  await ev(async () => { const m = await import(new URL('src/data/balance.js', location.href).href); window.__BAL = m.BALANCE; });
+  await page.addScriptTag({ path: path.join(ROOT, 'tools/test/review_gameplay_bot.js') });
+  await ev(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
+}
+const fixtureKeys = (name) => {
+  const d = JSON.parse(fs.readFileSync(path.join(FIX, name), 'utf8'));
+  return d.keys ? d.keys : { 'frostVillage.save.v1': JSON.stringify(d) };
+};
+
+// ------------------------------------------------------------------------------------------------ page side: geometry
+/** everything the layout check needs, read from the running scene (the game's own objects, no copy of world.js) */
+const DUMP = async () => {
+  const gs = window.__FV.scene, F = window.__FV, A = F.assets();
+  const W = await import(new URL('src/data/world.js', location.href).href);
+  const { WORLD, L4 } = W;
+  const r1 = (v) => Math.round(v);
+  const diamond = (x, y, w, h) => [[x - w / 2, y], [x, y - h / 2], [x + w / 2, y], [x, y + h / 2]];
+  const isoRect = (x, y, a, b) => { const P = (mx, my) => [x + 45.25 * (mx + my), y + 22.63 * (mx - my)]; return [P(-a / 2, -b / 2), P(-a / 2, b / 2), P(a / 2, b / 2), P(a / 2, -b / 2)]; };
+  /** the ground polygon of a sprite key standing at (x, y): footprintM [a, b] m, else footprint [w, h] px, else null */
+  const fpOf = (key, x, y) => {
+    const d = (key && A.def(key)) || {};
+    if (Array.isArray(d.footprintM) && d.footprintM.length === 2) return isoRect(x, y, d.footprintM[0], d.footprintM[1]);
+    if (Array.isArray(d.footprint) && d.footprint.length === 2) return diamond(x, y, d.footprint[0], d.footprint[1]);
+    return null;
+  };
+  const regionOf = (x, y) => { try { return gs.territory.regionAt(x, y) || 'start'; } catch (e) { return 'start'; } };
+  const bld = [];
+  const addB = (id, kind, x, y, poly, o) => { if (poly && Number.isFinite(x) && Number.isFinite(y)) bld.push(Object.assign({ id, kind, x: r1(x), y: r1(y), poly: poly.map(([a, b]) => [r1(a), r1(b)]), region: regionOf(x, y) }, o || {})); };
+  // plots and towers (Site: its size diamond; the building on it named)
+  for (const id in gs.sites) {
+    const st = gs.sites[id];
+    const fp = (st.def && st.def.footprint) || [272, 136];
+    addB((st.kind === 'tower' ? 'tower:' : 'plot:') + id, st.kind === 'tower' ? 'tower' : 'plot', st.x, st.y, diamond(st.x, st.y, fp[0], fp[1]),
+      { size: st.size, state: st.state, building: st.building || '', only: st.only || '', region: st.kind === 'tower' ? regionOf(st.x, st.y) : (st.cfg && st.cfg.region) || regionOf(st.x, st.y), opens: st.kind === 'tower' ? (st.cfg && st.cfg.region) || '' : '', after: (st.cfg && st.cfg.after) || '', shown: !!st.shown,
+        water: st.cfg && (Number.isFinite(st.cfg.shore) || st.only === 'boathouse') ? 1 : 0 });
+  }
+  // the fixed buildings of the first village
+  for (const s of gs.stationList || []) addB('station:' + s.id, 'station', s.x, s.y, fpOf(s.cfg.sprite, s.x, s.y) || diamond(s.x, s.y, 272, 136), { building: s.cfg.sprite, zone: s.cfg.zone || '' });
+  if (gs.market) addB('market', 'seller', gs.market.x, gs.market.y, fpOf(gs.market.sprite || (WORLD.market && WORLD.market.sprite), gs.market.x, gs.market.y) || diamond(gs.market.x, gs.market.y, 272, 136), { building: gs.market.sprite || '' });
+  if (gs.trade) addB('trade', 'seller', gs.trade.x, gs.trade.y, fpOf((WORLD.trade && WORLD.trade.sprite) || 'trade_post', gs.trade.x, gs.trade.y) || diamond(gs.trade.x, gs.trade.y, 272, 136), { building: 'trade_post', enabled: !!gs.trade.enabled });
+  if (WORLD.bench) addB('bench', 'workshop', WORLD.bench.x, WORLD.bench.y, fpOf(WORLD.bench.sprite, WORLD.bench.x, WORLD.bench.y) || diamond(WORLD.bench.x, WORLD.bench.y, 181, 91), { building: WORLD.bench.sprite });
+  // the net (a 92-px collider) — or, on the new layout, the fishing deck (WORLD.deck: its gangway polygon when given)
+  if (WORLD.deck) {
+    const D = WORLD.deck, poly = Array.isArray(D.poly) ? D.poly : Array.isArray(D.gangway) ? D.gangway : null;
+    addB('deck', 'deck', D.x, D.y, poly || fpOf(D.sprite || D.key, D.x, D.y) || diamond(D.x, D.y, 272, 136), { building: D.sprite || D.key || 'deck', water: 1 });
+  } else if (gs.net) {
+    const n = gs.net, R = 92, poly = []; for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; poly.push([n.x + Math.cos(a) * R, n.y - 6 + (Math.sin(a) * R) / 2]); }
+    addB('net', 'net', n.x, n.y, poly, { building: 'net', water: 1 });
+  }
+  // the v4 station town (lattice lots and buildings; the plan does not move them, listed for completeness)
+  const V4 = WORLD.v4;
+  if (V4) {
+    const S2 = Math.SQRT2;
+    const lat = (i, j, X, Y) => { const hx = X / 2 / S2, hy = Y / 2 / S2; return [L4(i - hx, j - hy), L4(i + hx, j - hy), L4(i + hx, j + hy), L4(i - hx, j + hy)]; };
+    const fpm = (k) => { const v = (A.def(k) || {}).footprintM; return Array.isArray(v) ? v : v && v.radius ? [v.radius * 2, v.radius * 2] : [0.6, 0.6]; };
+    for (const id in V4.lots || {}) { const l = V4.lots[id], [x, y] = L4(l.i, l.j); addB('v4lot:' + id, 'v4lot', x, y, lat(l.i, l.j, l.m[0], l.m[1])); }
+    for (const b of (V4.town && V4.town.buildings) || []) { const [x, y] = L4(b.i, b.j), m = fpm(b.key); addB('v4:' + b.id, 'v4building', x, y, lat(b.i, b.j, m[0], m[1]), { building: b.key }); }
+  }
+  // ---- decor: the static images (decor, fences, border pines), trees, rocks, wheat, decals, colliding props
+  const dec = [];
+  const keyOf = (img) => (img && img.frame && img.frame.name && img.frame.name !== '__BASE' ? img.frame.name : img && img.texture ? img.texture.key : '?');
+  for (const img of gs.statics || []) { if (!img || !img.active) continue; dec.push({ key: keyOf(img), x: r1(img.x), y: r1(img.y), r: img.__ob ? r1(img.__ob.r) : 0, region: regionOf(img.x, img.y), src: 'static' }); }
+  for (const tr of gs.trees || []) dec.push({ key: 'tree:' + (tr.key || keyOf(tr.img)), x: r1(tr.x), y: r1(tr.y), r: 24, region: regionOf(tr.x, tr.y), src: 'tree' });
+  for (const rk of gs.rocks || []) dec.push({ key: 'rock:' + (rk.key || keyOf(rk.img)), x: r1(rk.x), y: r1(rk.y), r: r1(rk.fullR || 40), region: regionOf(rk.x, rk.y), src: 'rock' });
+  for (const w of gs.wheat || []) dec.push({ key: 'wheat', x: r1(w.x), y: r1(w.y), r: 20, region: regionOf(w.x, w.y), src: 'wheat' });
+  for (const d of WORLD.decals || []) if (Array.isArray(d) && Number.isFinite(d[1])) dec.push({ key: 'decal:' + d[0], x: r1(d[1]), y: r1(d[2]), r: 0, region: regionOf(d[1], d[2]), src: 'decal', soft: 1 });
+  const near = (x, y) => dec.some((q) => Math.abs(q.x - x) < 6 && Math.abs(q.y - y) < 6);
+  const BUILD_TAGS = /^(site|station|trade|market|boathouse|warehouse|tower|house|office|bank|depot|restaurant|net|pile|mailbox|board|table|lamp)$/;
+  for (const o of (gs.collision && gs.collision.all) || []) {
+    if (!o || !o.active || o.seg) continue;
+    const tag = String(o.tag || '');
+    if (BUILD_TAGS.test(tag) || !/^(deco|life_)/.test(tag)) continue;
+    if (near(o.x, o.y)) continue;
+    dec.push({ key: 'prop:' + tag, x: r1(o.x), y: r1(o.y), r: r1(o.r), region: regionOf(o.x, o.y), src: 'collider' });
+  }
+  // ---- the walk graph (every node and edge, usable now or later) + the painted streets (v4 / v4.2 lattice corridors)
+  const R = gs.roads;
+  const nodes = R.nodes.map((n) => ({ id: n.id, x: r1(n.x), y: r1(n.y) }));
+  const edges = R.edges.map((e) => ({ a: R.nodes[e.a].id, b: R.nodes[e.b].id, pts: [[R.nodes[e.a].x, R.nodes[e.a].y]].concat(e.via || [], [[R.nodes[e.b].x, R.nodes[e.b].y]]).map(([x, y]) => [r1(x), r1(y)]), zone: e.zone || '', region: e.region || '', walk: e.walk !== false, usable: R.usable(e) }));
+  const streets = [];
+  for (const [grp, list] of [['v4', (V4 && V4.streets) || []], ['v42', (WORLD.v42 && WORLD.v42.streets) || []]]) {
+    for (const s of list) {
+      if (!s || s.axis === 'path' || !Array.isArray(s.i) || !Array.isArray(s.j)) continue;
+      streets.push({ id: grp + ':' + s.id, poly: [L4(s.i[0], s.j[0]), L4(s.i[1], s.j[0]), L4(s.i[1], s.j[1]), L4(s.i[0], s.j[1])].map(([x, y]) => [r1(x), r1(y)]) });
+    }
+  }
+  // ---- pads: live paid pads, the pads still to come (at the game's own spot), the work pads
+  const pads = [];
+  const addP = (id, kind, p, hw) => { if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) pads.push({ id, kind, x: r1(p.x), y: r1(p.y), hw: r1(hw || 68) }); };
+  for (const p of (gs.paidPads ? gs.paidPads() : []).filter((q) => q && q.active)) addP(p.id, 'paid', p, p.pad && p.pad.w ? p.pad.w / 2 : 86);
+  try {
+    const PR = await import(new URL('src/systems/Progression.js', location.href).href);
+    const pr = gs.progress, auto = new Set([].concat(...Object.values(PR.COMES_WITH || {})));
+    for (const s of PR.STEPS) {
+      if (pr.done[s.id] || auto.has(s.id) || pads.some((q) => q.id === s.id)) continue;
+      let p = null; try { p = pr.spotOf ? pr.spotOf(s) : null; } catch (e) { p = null; }
+      addP(s.id, 'paid-later', p, 45.25 * (s.type === 'rank' ? 2.1 : 1.9));
+    }
+  } catch (e) { /* */ }
+  const wk = (id, p) => addP(id, 'work', p, 68);
+  for (const s of gs.stationList || []) { wk(s.id + ':in', s.inPad); wk(s.id + ':out', s.outPad); if (s.op && Number.isFinite(s.op.x)) wk(s.id + ':work', s.op); }
+  for (const w of gs.workshops || []) { wk(w.kind + ':in', w.inPad); wk(w.kind + ':out', w.outPad); }
+  for (const [n, sl] of [['market', gs.market], ['trade', gs.trade], ['store', gs.store]]) if (sl) { wk(n + ':shelf', sl.shelf); wk(n + ':register', sl.register); wk(n + ':cash', sl.cash && (sl.cash.pad || sl.cash)); }
+  // (v4.3) the stall's counters, each with its own shelf / register / cash (when the build has them)
+  for (const c of (gs.market && Array.isArray(gs.market.counters) ? gs.market.counters : [])) { const id = 'market:' + (c.id || '?'); wk(id + ':shelf', c.shelfPad || c.shelf); wk(id + ':register', c.register); wk(id + ':cash', c.cash && (c.cash.pad || c.cash)); }
+  // (v4.3) the fishing deck's reel spot and crate (WORLD.deck: [x, y] points)
+  const DK = WORLD.deck;
+  if (DK) for (const k of ['reel', 'crate']) { const q = DK[k]; if (Array.isArray(q)) wk('deck:' + k, { x: q[0], y: q[1] }); else if (q && Number.isFinite(q.x)) wk('deck:' + k, q); }
+  for (const k in gs.piles || {}) wk('pile:' + k, gs.piles[k]);
+  if (gs.trash) wk('trash', gs.trash);
+  if (gs.foodBox) wk('foodBox', gs.foodBox);
+  for (const id in gs.sites) { const st = gs.sites[id]; if (st.state !== 'done' && Number.isFinite(st.dropX)) wk('drop:' + id, { x: st.dropX, y: st.dropY }); }
+  // ---- water and fog
+  const regions = Object.fromEntries(Object.keys(gs.territory.regions).map((k) => { const r = gs.territory.regions[k]; return [k, { open: !!r.open, rect: r.rect || (r.cfg && r.cfg.rect) || null, cfg: { open: r.cfg && r.cfg.open === true, openWith: (r.cfg && r.cfg.openWith) || '', openFlag: (r.cfg && r.cfg.openFlag) || '', tower: (r.cfg && r.cfg.tower) || '' } }]; }));
+  const shore = []; for (let x = Math.floor((WORLD.left || 0) / 8) * 8; x <= WORLD.width; x += 8) shore.push([x, r1(W.shoreY(x))]);
+  return { bld, dec, nodes, edges, streets, pads, regions, shore, world: { left: WORLD.left || 0, width: WORLD.width, height: WORLD.height, player: WORLD.player } };
+};
+
+// ------------------------------------------------------------------------------------------------ node side: geometry
+const G = ([x, y]) => [x, y * 2];                       // ground space (y doubled: 2:1 ellipses are circles)
+const inPoly = (P, x, y) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) { const [xa, ya] = P[a], [xb, yb] = P[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / ((yb - ya) || 1e-9) + xa) c = !c; } return c; };
+const segDist = (px, py, ax, ay, bx, by) => { const vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy || 1; const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / l2)); return Math.hypot(px - ax - vx * t, py - ay - vy * t); };
+/** signed ground distance from (x, y) to polygon P (screen px): < 0 inside (depth), > 0 outside */
+const polyDist = (P, x, y) => { const Q = P.map(G), [gx, gy] = G([x, y]); let d = Infinity; for (let a = 0, b = Q.length - 1; a < Q.length; b = a++) d = Math.min(d, segDist(gx, gy, Q[b][0], Q[b][1], Q[a][0], Q[a][1])); return inPoly(Q, gx, gy) ? -d : d; };
+const area = (P) => { let s = 0; for (let a = 0, b = P.length - 1; a < P.length; b = a++) s += (P[b][0] + P[a][0]) * (P[b][1] - P[a][1]); return Math.abs(s) / 2; };
+const ccw = (P) => { let s = 0; for (let a = 0, b = P.length - 1; a < P.length; b = a++) s += (P[a][0] - P[b][0]) * (P[a][1] + P[b][1]); return s < 0 ? P : P.slice().reverse(); };
+/** area of the intersection of two convex polygons (Sutherland–Hodgman), in ground px² */
+const clipArea = (P0, Q0) => {
+  let out = ccw(P0.map(G));
+  const Q = ccw(Q0.map(G));
+  for (let i = 0; i < Q.length && out.length; i++) {
+    const [ax, ay] = Q[i], [bx, by] = Q[(i + 1) % Q.length];
+    const side = ([x, y]) => (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+    const inp = out; out = [];
+    for (let k = 0; k < inp.length; k++) {
+      const p = inp[k], q = inp[(k + 1) % inp.length], sp = side(p), sq = side(q);
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+    }
+  }
+  return out.length > 2 ? area(out) : 0;
+};
+/** ground length of a polyline's part inside P (sampled every 8 ground px) and its closest approach */
+const segThrough = (P, pts) => {
+  let inside = 0, minD = Infinity;
+  for (let k = 1; k < pts.length; k++) {
+    const [ax, ay] = pts[k - 1], [bx, by] = pts[k], L = Math.hypot(bx - ax, (by - ay) * 2), n = Math.max(1, Math.ceil(L / 8));
+    for (let s = 0; s <= n; s++) { const x = ax + ((bx - ax) * s) / n, y = ay + ((by - ay) * s) / n, d = polyDist(P, x, y); minD = Math.min(minD, d); if (d < 0 && s > 0) inside += L / n; }
+  }
+  return { inside, minD };
+};
+const shoreAt = (shore, x) => { const i = Math.max(0, Math.min(shore.length - 2, Math.floor((x - shore[0][0]) / 8))); const [x0, y0] = shore[i], [x1, y1] = shore[i + 1]; return y0 + ((y1 - y0) * (x - x0)) / ((x1 - x0) || 1); };
+const regionAt = (regions, x, y) => { for (const k in regions) { const r = regions[k].rect; if (r && x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) return k; } return null; };
+/** when a region opens, as a key two regions can share: open from the start, with another region, on a flag, by its tower */
+const opensWhen = (regions, k) => { const c = regions[k] && regions[k].cfg; if (!c) return 'never'; if (k === 'start' || c.open) return 'start'; if (c.openWith) return opensWhen(regions, c.openWith); if (c.openFlag) return 'flag:' + c.openFlag; return 'region:' + k; };
+
+const MARGIN = { decor: 0, node: 40, edge: 30, pad: 0, water: 46 };
+function checkLayout(scene, D) {
+  const rows = [];
+  const add = (b, type, level, other, ox, oy, measure, note) => rows.push({ scene, area: b.x >= 3000 ? 'neighbours' : 'village', building: b.id, kind: b.kind, on: b.building || '', bx: b.x, by: b.y, region: b.region, type, level, other, ox, oy, measure: Math.round(measure), note: note || '' });
+  const B = D.bld;
+  // footprint vs footprint (a plot and the building standing on it are one entry; v4 lots hold v4 buildings by design)
+  for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) {
+    const a = B[i], b = B[j];
+    if (Math.abs(a.x - b.x) > 900 || Math.abs(a.y - b.y) > 600) continue;
+    if ((a.kind === 'v4lot' && b.kind === 'v4building') || (b.kind === 'v4lot' && a.kind === 'v4building')) continue;
+    const ov = clipArea(a.poly, b.poly);
+    if (ov > 1) add(a, 'building', 'overlap', b.id, b.x, b.y, ov, 'ground px² shared');
+  }
+  for (const b of B) {
+    // decor inside the footprint (a prop's own collider radius counts as touch)
+    for (const d of D.dec) {
+      if (Math.abs(d.x - b.x) > 700 || Math.abs(d.y - b.y) > 400) continue;
+      if (b.building && d.key === b.building && Math.abs(d.x - b.x) < 12 && Math.abs(d.y - b.y) < 12) continue;   // (its own picture)
+      const dd = polyDist(b.poly, d.x, d.y);
+      if (dd < -MARGIN.decor) add(b, 'decor', 'overlap', d.key, d.x, d.y, -dd, (d.soft ? 'ground decal; ' : '') + 'inside by px' + (d.region !== b.region ? '; decor region ' + d.region : ''));
+      else if (d.r > 0 && dd < d.r) add(b, 'decor', 'touch', d.key, d.x, d.y, d.r - dd, 'collider reaches in by px');
+    }
+    // the walk graph
+    for (const n of D.nodes) {
+      if (Math.abs(n.x - b.x) > 700 || Math.abs(n.y - b.y) > 400) continue;
+      const dd = polyDist(b.poly, n.x, n.y);
+      if (dd < 0) add(b, 'road_node', 'overlap', n.id, n.x, n.y, -dd, 'node inside by px');
+      else if (dd < MARGIN.node) add(b, 'road_node', 'touch', n.id, n.x, n.y, dd, 'node this close (px)');
+    }
+    for (const e of D.edges) {
+      const xs = e.pts.map((p) => p[0]), ys = e.pts.map((p) => p[1]);
+      if (Math.min(...xs) > b.x + 700 || Math.max(...xs) < b.x - 700 || Math.min(...ys) > b.y + 400 || Math.max(...ys) < b.y - 400) continue;
+      const s = segThrough(b.poly, e.pts);
+      const mid = e.pts[Math.floor(e.pts.length / 2)];
+      if (s.inside > 20) add(b, 'road_edge', 'overlap', e.a + '→' + e.b, mid[0], mid[1], s.inside, 'ground px of the edge inside' + (e.usable ? '' : ' (edge not usable yet)'));
+      else if (s.minD < MARGIN.edge) add(b, 'road_edge', 'touch', e.a + '→' + e.b, mid[0], mid[1], Math.max(0, s.minD), 'edge this close (px)');
+    }
+    for (const s of D.streets) {
+      if (b.kind === 'v4lot' || b.kind === 'v4building') continue;
+      const ov = clipArea(b.poly, s.poly);
+      if (ov > 1) add(b, 'street', 'overlap', s.id, s.poly[0][0], s.poly[0][1], ov, 'ground px² on the painted street');
+    }
+    // pads (centre inside = overlap; its floor diamond reaching in = touch)
+    for (const p of D.pads) {
+      if (Math.abs(p.x - b.x) > 700 || Math.abs(p.y - b.y) > 400) continue;
+      if (b.kind === 'plot' && p.id === 'drop:' + b.id.slice(5)) continue;
+      const dd = polyDist(b.poly, p.x, p.y);
+      if (dd < 0) add(b, 'pad', 'overlap', p.id + ' (' + p.kind + ')', p.x, p.y, -dd, 'pad centre inside by px');
+      else { const pd = clipArea(b.poly, [[p.x - p.hw, p.y], [p.x, p.y - p.hw / 2], [p.x + p.hw, p.y], [p.x, p.y + p.hw / 2]]); if (pd > 0.25 * 2 * p.hw * p.hw) add(b, 'pad', 'touch', p.id + ' (' + p.kind + ')', p.x, p.y, pd, 'ground px² of the pad floor under the footprint'); }
+    }
+    // the sea (the net / deck stand in it on purpose: reported, level 'by design')
+    let worst = Infinity, wx = 0;
+    for (const [x, y] of b.poly) { const m = y - shoreAt(D.shore, x); if (m < worst) { worst = m; wx = x; } }
+    for (let k = 0; k < b.poly.length; k++) { const [ax, ay] = b.poly[k], [bx, by] = b.poly[(k + 1) % b.poly.length]; const x = (ax + bx) / 2, y = (ay + by) / 2, m = y - shoreAt(D.shore, x); if (m < worst) { worst = m; wx = x; } }
+    b.shoreMargin = Math.round(worst);
+    if (worst < MARGIN.water) add(b, 'water', b.water ? 'by design' : worst < 0 ? 'overlap' : 'touch', 'sea', Math.round(wx), Math.round(shoreAt(D.shore, wx)), worst, worst < 0 ? 'px into the sea' : 'px from the shore (walkers keep 46)');
+    // the fog: a corner (or edge middle) in land that opens at another time than the building's own
+    const own = opensWhen(D.regions, b.region);
+    const pts = b.poly.concat(b.poly.map((p, k) => { const q = b.poly[(k + 1) % b.poly.length]; return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; }));
+    const bad = new Set();
+    for (const [x, y] of pts) {
+      const r = regionAt(D.regions, x, y);
+      if (!r) { if (x < D.world.left || x > D.world.width || y > D.world.height) bad.add('outside the map'); continue; }
+      if (r !== b.region && opensWhen(D.regions, r) !== own) bad.add(r + ' (' + opensWhen(D.regions, r) + ')');
+    }
+    for (const r of bad) add(b, 'fog', 'overlap', r, b.x, b.y, 0, 'part of the footprint lies in land that opens ' + (r === 'outside the map' ? 'never' : 'at another time') + '; own: ' + b.region + ' (' + own + ')');
+  }
+  return rows;
+}
+
+// ------------------------------------------------------------------------------------------------ page side: walks
+/**
+ * the walk rows. Each place: a list of __FV.where names (new layout first) or a resolver. near: the walker's
+ * "straight when near" (ChiefPilot / Staff 220, Hauler 360). alt: { place: plot to move it from, to: plot }.
+ */
+const WALKS = [
+  { id: 'chief_first_walk', who: 'chief', primary: 'direct', near: 220, from: ['@start'], to: ['reel', 'deckReel', 'net'], note: 'new game: where the chief stands → the net gather point (new: the deck reel spot)' },
+  { id: 'food_reg_to_trade_reg', who: 'chief', primary: 'direct', near: 220, from: ['register', 'foodRegister'], to: ['matRegister', 'tradeRegister'], note: 'chief: the food register ↔ the trade / 자재 register (one way; the round trip is twice)' },
+  { id: 'oven_to_shop', who: 'porter', primary: 'route', near: 360, from: ['bakeryOut'], to: ['breadShelf', 'shelf'], note: 'bread porter: oven output → the stall shelf' },
+  { id: 'meat_rack_to_cannery', who: 'porter', primary: 'route', near: 360, from: ['pile:meat'], to: ['canneryIn'], note: '고기 짐꾼: meat rack → cannery input' },
+  { id: 'cannery_to_store', who: 'porter', primary: 'route', near: 360, from: ['canneryOut'], to: ['storeShelf'], note: 'can porter: cannery output → store shelf' },
+  { id: 'cannery_to_store', alt: 'bots w_m1 → w_m2', who: 'porter', primary: 'route', near: 360, from: ['canneryOut'], to: ['storeShelf'], move: { canneryOut: 'w_m1', storeShelf: 'w_m2' }, note: 'the smart bots put the cannery on w_m1 and the store on w_m2' },
+  { id: 'meat_rack_to_cannery', alt: 'bots w_m1', who: 'porter', primary: 'route', near: 360, from: ['pile:meat'], to: ['canneryIn'], move: { canneryIn: 'w_m1' }, note: 'cannery on w_m1' },
+  { id: 'coin_round', who: 'courier', primary: 'route', near: 220, loop: [['@officeDesk'], ['cash'], ['storeCash'], ['@stationCash'], ['hallTax'], ['restCash'], ['@bankDeposit'], ['@officeDesk']], note: 'office → shop coins → store → station cash → hall → restaurant → bank → office (§4.6)' },
+  { id: 'coin_round', alt: 'no station cash', who: 'courier', primary: 'route', near: 220, loop: [['@officeDesk'], ['cash'], ['storeCash'], ['hallTax'], ['restCash'], ['@bankDeposit'], ['@officeDesk']], note: 'the same without the station cash (D10: the train carries it once the hall stands)' },
+  // the first loop's legs (the onboarding's Act 1 places)
+  { id: 'first_loop:net_to_grill_work', who: 'chief', primary: 'direct', near: 220, from: ['reel', 'deckReel', 'net'], to: ['op:grill'], note: 'net / reel → the grill work spot' },
+  { id: 'first_loop:grill_out_to_shelf', who: 'chief', primary: 'direct', near: 220, from: ['grillOut'], to: ['fishShelf', 'shelf'], note: 'grill output → stall shelf' },
+  { id: 'first_loop:shelf_to_register', who: 'chief', primary: 'direct', near: 220, from: ['fishShelf', 'shelf'], to: ['fishRegister', 'register'], note: 'stall shelf → register' },
+  { id: 'first_loop:register_to_cash', who: 'chief', primary: 'direct', near: 220, from: ['fishRegister', 'register'], to: ['fishCash', 'cash'], note: 'register → cash pad' },
+  { id: 'fish_pile_to_grill', who: 'porter', primary: 'route', near: 360, from: ['crate', 'pile:fish'], to: ['grillIn'], note: 'raw porter: fish pile (new: deck crate) → grill input' },
+  { id: 'plank_porter_to_trade', who: 'porter', primary: 'route', near: 360, from: ['sawmillOut'], to: ['matShelf', 'tradeShelf'], note: 'plank porter: sawmill output → trade / 자재 shelf' },
+  { id: 'ingot_porter_to_trade', who: 'porter', primary: 'route', near: 360, from: ['smelterOut'], to: ['matShelf', 'tradeShelf'], note: 'ingot porter: smelter output → trade / 자재 shelf' },
+];
+
+const WALK_PAGE = async (list) => {
+  const gs = window.__FV.scene, F = window.__FV;
+  const W = await import(new URL('src/data/world.js', location.href).href);
+  const { gridPath, segClear } = await import(new URL('src/systems/Paths.js', location.href).href);
+  const { WORLD, L4 } = W;
+  const gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 2);
+  const C = gs.collision;
+  const bl = (x, y) => C.blocked(x, y, 16) || C.offLand(x, y), wide = (x, y) => C.blocked(x, y, 26) || C.offLand(x, y);
+  /** a joystick walk: the straight line when nothing stands on it (chief radius 16, the sea / fog edge), else the
+   *  shortest way round on a ground grid (Paths.gridPath, the same A* the walkers' off-road legs use), roads ignored */
+  const direct = (a, b) => {
+    if (segClear(bl, a.x, a.y, b.x, b.y, 8, 0)) return { len: gd(a.x, a.y, b.x, b.y), clear: true, pts: 1 };
+    const L = gd(a.x, a.y, b.x, b.y);
+    const g = gridPath(bl, a.x, a.y, b.x, b.y, { cell: 20, wide, margin: Math.max(520, L * 0.5), maxCells: 90000, maxExpand: 400000 });
+    if (!g) return { len: null, clear: false, pts: 0 };
+    let len = 0, x = a.x, y = a.y; for (const q of g) { len += gd(x, y, q.x, q.y); x = q.x; y = q.y; }
+    return { len, clear: false, pts: g.length };
+  };
+  const special = {
+    '@start': () => ({ x: WORLD.player.x, y: WORLD.player.y }),
+    '@officeDesk': () => { const O = gs.v42 && gs.v42.office, B = O && O.building; if (B && B.spots && B.spots.deskPad) return B.spots.deskPad; const d = WORLD.v42 && WORLD.v42.office && WORLD.v42.office.desk; return B && d ? { x: d[0], y: d[1] } : null; },
+    '@bankDeposit': () => { const O = gs.v42 && gs.v42.office; return O && O.bank && O.bank.depositPoint ? O.bank.depositPoint() : null; },
+    '@stationCash': () => { const G = gs.v4 && gs.v4.growth; const t = G && G.till; if (!t) return null; if (Number.isFinite(t.x)) return t; if (t.pad) return t.pad; const c = WORLD.v4 && WORLD.v4.square && WORLD.v4.square.cash; if (c) { const [x, y] = L4(c.i, c.j); return { x, y }; } return null; },
+  };
+  const look = (names, move) => {
+    for (const n of names) {
+      let p = special[n] ? special[n]() : F.where(n);
+      if (p && Number.isFinite(p.x)) {
+        p = { x: p.x, y: p.y };
+        const plot = move && move[n];
+        if (plot) {
+          // the same place moved with its building to another plot (offset from the plot it stands on)
+          const here = Object.values(gs.sites).find((s) => s.state === 'done' && Math.abs(s.x - p.x) < 260 && Math.abs(s.y - p.y) < 200 && s.kind === 'plot'), to = gs.sites[plot];
+          if (!here || !to) return { name: n + '@' + plot, miss: 'no plot to move from / to' };
+          p = { x: p.x - here.x + to.x, y: p.y - here.y + to.y };
+          return { name: n + '@' + plot, x: p.x, y: p.y, from: here.id };
+        }
+        return { name: n, x: p.x, y: p.y };
+      }
+    }
+    return { name: names.join('|'), miss: 'not here' };
+  };
+  const route = (a, b, near) => {
+    gs.roads.newFrame(0);
+    const pts = gs.roads.route(a.x, a.y, b.x, b.y, [], near);
+    let len = 0, x = a.x, y = a.y, off = 0;
+    for (const q of pts) { const d = gd(x, y, q.x, q.y); len += d; x = q.x; y = q.y; }
+    // the part of the way on no road (farther than 60 px from every usable edge)
+    return { len, pts: pts.map((q) => [Math.round(q.x), Math.round(q.y)]), legs: pts.length, off };
+  };
+  const out = [];
+  for (const w of list) {
+    const legs = w.loop ? w.loop.slice(1).map((to, k) => [w.loop[k], to]) : [[w.from, w.to]];
+    let tot = 0, straight = 0, miss = null, n = 0, dir = 0, dirOk = true, clear = true;
+    const parts = [];
+    for (const [fa, ta] of legs) {
+      const a = look(fa, w.move), b = look(ta, w.move);
+      if (a.miss || b.miss) { miss = (a.miss ? a.name + ': ' + a.miss : '') + (b.miss ? (a.miss ? '; ' : '') + b.name + ': ' + b.miss : ''); break; }
+      const r = route(a, b, w.near), d = direct(a, b);
+      tot += r.len; straight += gd(a.x, a.y, b.x, b.y); n += r.legs;
+      if (d.len === null) dirOk = false; else dir += d.len;
+      if (!d.clear) clear = false;
+      parts.push({ from: a.name, to: b.name, ax: Math.round(a.x), ay: Math.round(a.y), bx: Math.round(b.x), by: Math.round(b.y), m: +(r.len / 64).toFixed(2), directM: d.len === null ? null : +(d.len / 64).toFixed(2), straightM: +(gd(a.x, a.y, b.x, b.y) / 64).toFixed(2), clear: d.clear, pts: r.pts });
+    }
+    const routeM = miss ? null : +(tot / 64).toFixed(2), directM = miss || !dirOk ? null : +(dir / 64).toFixed(2);
+    out.push({ id: w.id, alt: w.alt || '', who: w.who, near: w.near, note: w.note, miss, m: w.primary === 'direct' ? directM : routeM, primary: w.primary || 'route', routeM, directM, clear: miss ? null : clear, straightM: miss ? null : +(straight / 64).toFixed(2), waypoints: n, parts });
+  }
+  return out;
+};
+
+// ------------------------------------------------------------------------------------------------ sections
+const summary = {};
+if (ONLY.includes('layout') || ONLY.includes('walks')) {
+  const lrows = [], wrows = [], dumps = {};
+  for (const [scene, keys] of [['fresh', null], ['late', fixtureKeys('v42_village_late.json')]]) {
+    console.log(`— ${scene} (${wall()})`);
+    await boot({ keys });
+    await ev(() => { window.__FV.teleport(window.__FV.scene.player.x, window.__FV.scene.player.y); window.__step.run(1); });
+    if (ONLY.includes('layout')) {
+      const D = await ev(DUMP);
+      const FP = { S: [181, 91], M: [272, 136], L: [362, 181], XL: [525, 262] };
+      for (const q of PROBES) { const [w, h] = FP[q.size] || FP.M; D.bld.push({ id: 'probe:' + q.id, kind: 'probe', x: q.x, y: q.y, size: q.size, poly: [[q.x - w / 2, q.y], [q.x, q.y - h / 2], [q.x + w / 2, q.y], [q.x, q.y + h / 2]], region: regionAt(D.regions, q.x, q.y) || 'start' }); }
+      dumps[scene] = { counts: { buildings: D.bld.length, decor: D.dec.length, nodes: D.nodes.length, edges: D.edges.length, streets: D.streets.length, pads: D.pads.length }, regions: D.regions, buildings: D.bld };
+      const rows = checkLayout(scene, D);
+      lrows.push(...rows);
+      console.log(`  ${D.bld.length} footprints, ${D.dec.length} decor, ${D.nodes.length} road nodes / ${D.edges.length} edges, ${D.pads.length} pads -> ${rows.filter((r) => r.level === 'overlap').length} overlaps, ${rows.filter((r) => r.level === 'touch').length} touches`);
+    }
+    if (ONLY.includes('walks')) {
+      const W = await ev(WALK_PAGE, WALKS);
+      for (const w of W) {
+        wrows.push({ scene, walk: w.id, alt: w.alt, who: w.who, m: w.m, measure: w.primary, route_m: w.routeM, direct_m: w.directM, straight_m: w.straightM, straight_clear: w.clear, ratio: w.m && w.straightM ? +(w.m / w.straightM).toFixed(2) : null, near: w.near, waypoints: w.waypoints, places: w.parts.map((p) => `${p.from}(${p.ax},${p.ay})→${p.to}(${p.bx},${p.by}) route ${p.m} / direct ${p.directM} m`).join(' | '), missing: w.miss || '', note: w.note });
+        if (VERB) console.log(`   ${w.id}${w.alt ? ' [' + w.alt + ']' : ''}: ${w.miss ? 'MISSING ' + w.miss : w.m + ' m (' + w.primary + '; route ' + w.routeM + ', direct ' + w.directM + ', straight ' + w.straightM + (w.clear ? ', clear' : '') + ')'}`);
+      }
+      (ALL.walks = ALL.walks || {})[scene] = W;
+    }
+  }
+  if (ONLY.includes('layout')) {
+    writeCsv('footprints.csv', lrows, ['scene', 'area', 'building', 'kind', 'on', 'bx', 'by', 'region', 'type', 'level', 'other', 'ox', 'oy', 'measure', 'note']);
+    // per building: counts by type and level
+    const per = new Map();
+    for (const sc of Object.keys(dumps)) for (const b of dumps[sc].buildings) per.set(sc + '|' + b.id, { scene: sc, building: b.id, kind: b.kind, on: b.building || '', x: b.x, y: b.y, region: b.region, size: b.size || '', state: b.state || '', shore_margin: b.shoreMargin });
+    for (const r of lrows) { const k = r.scene + '|' + r.building, o = per.get(k); if (!o) continue; const c = r.type + '_' + r.level.replace(/ /g, '_'); o[c] = (o[c] || 0) + 1; }
+    const cols = ['scene', 'building', 'kind', 'on', 'x', 'y', 'region', 'size', 'state', 'shore_margin'].concat([...new Set(lrows.map((r) => r.type + '_' + r.level.replace(/ /g, '_')))].sort());
+    writeCsv('footprint_summary.csv', [...per.values()], cols);
+    ALL.layout = { dumps, rows: lrows.length };
+    summary.layout = Object.fromEntries(Object.keys(dumps).map((sc) => [sc, Object.fromEntries(['building', 'decor', 'road_node', 'road_edge', 'street', 'pad', 'water', 'fog'].map((t) => [t, lrows.filter((r) => r.scene === sc && r.area === 'village' && r.type === t && r.level === 'overlap').length]))]));
+    summary.layoutNote = 'overlaps in the first village (x < 3000) per type; footprints.csv has every row, the station town too';
+  }
+  if (ONLY.includes('walks')) {
+    writeCsv('walks.csv', wrows, ['scene', 'walk', 'alt', 'who', 'm', 'measure', 'route_m', 'direct_m', 'straight_m', 'straight_clear', 'ratio', 'near', 'waypoints', 'places', 'missing', 'note']);
+    summary.walks = wrows.filter((r) => r.m !== null && (r.scene === 'late' || r.walk.startsWith('chief_first') || r.walk.startsWith('first_loop'))).map((r) => `${r.scene}:${r.walk}${r.alt ? '[' + r.alt + ']' : ''}=${r.m}m`);
+  }
+}
+
+// ------------------------------------------------------------------------------------------------ first sale
+/** the onboarding.mjs bot (walking part only): Act 1 → its arrow target, Act 2 → the shown yellow arrow */
+const ONB_BOT = ([secs, rec]) => {
+  const F = window.__FV, gs = F.scene, ob = gs.onboard, R = window.__rec = window.__rec || rec;
+  let lastPos = window.__lastPos || null, still = window.__still || 0, last = window.__lastKey || null;
+  for (let i = 0; i < secs * 10; i++) {
+    const o = ob.state(), p = gs.player;
+    let tg = null;
+    if (o.mode === 'act1' && o.step !== 'hi') tg = o.target;
+    else if (o.mode === 'act2' && !(o.card && o.card.key === 'a2:bye')) tg = gs.tutorial.shownTarget ? gs.tutorial.shownTarget() : gs.tutorial.target;
+    let vx = 0, vy = 0;
+    if (tg) {
+      const dx = tg.x - p.x, dy = tg.y - p.y, d = Math.hypot(dx, dy * 2);
+      if (d > 16) { const n = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 60); vx = dx / n * k; vy = dy / n * k; }
+      if (lastPos && Math.hypot(p.x - lastPos.x, p.y - lastPos.y) < 0.5 && (vx || vy)) { still++; if (still > 10) { const s = Math.floor(still / 10) % 2 ? 1 : -1; const nx = -vy * s, ny = vx * s; vx = vx * 0.3 + nx; vy = vy * 0.3 + ny; R.nudges++; } } else still = 0;
+      R.walked += lastPos ? Math.hypot(p.x - lastPos.x, (p.y - lastPos.y) * 2) : 0;
+    }
+    lastPos = { x: p.x, y: p.y };
+    F.setInput(vx, vy);
+    window.__step.run(0.1);
+    R.t += 0.1;
+    const s2 = ob.state(), key = s2.mode + ':' + (s2.step || '');
+    if (key !== last) { last = key; R.seq.push([+R.t.toFixed(1), key]); }
+    if (R.firstCoins === null && gs.economy.earned > 0) R.firstCoins = +R.t.toFixed(1);
+    if (R.clerk === null && gs.progress.done.hire_clerk_market) R.clerk = +R.t.toFixed(1);
+    if (R.fisher === null && gs.progress.done.hire_fisherman) R.fisher = +R.t.toFixed(1);
+    if (R.act2 === null && s2.mode === 'act2') R.act2 = +R.t.toFixed(1);
+    if (R.act3 === null && (s2.mode === 'act3' || s2.mode === 'off') && R.act2 !== null) { R.act3 = +R.t.toFixed(1); break; }
+  }
+  window.__lastPos = lastPos; window.__still = still; window.__lastKey = last;
+  F.setInput(0, 0);
+  return R;
+};
+
+if (ONLY.includes('firstsale')) {
+  const frows = [];
+  for (let s = 1; s <= SEEDS; s++) {
+    // ---- onboarding bot
+    await boot({ init: 'window.__FV_ONBOARD = true;' + seedJs(s), viewport: { width: 412, height: 915 } });
+    const pre = await ev(() => ({ obT: +window.__FV.scene.onboard.t.toFixed(2), mode: window.__FV.scene.onboard.mode, sceneS: +(window.__FV.scene.time.now / 1000).toFixed(2) }));
+    await ev(() => { const gs = window.__FV.scene; window.__sold = null; gs.events.once('sold', () => { window.__sold = window.__rec ? +window.__rec.t.toFixed(1) : 0; }); });
+    let R = { t: 0, seq: [], firstCoins: null, clerk: null, fisher: null, act2: null, act3: null, nudges: 0, walked: 0 };
+    for (let k = 0; k < 30 && R.act3 === null; k++) R = await ev(ONB_BOT, [20, R]);
+    const sold = await ev(() => window.__sold);
+    const stepAt = (k) => { const q = R.seq.find((e) => e[1] === k); return q ? q[0] : null; };
+    frows.push({ bot: 'onboarding', seed: s, first_sale_s: sold, first_coins_s: R.firstCoins, clerk_hired_s: R.clerk, fisher_hired_s: R.fisher, act2_s: R.act2, handover_s: R.act3, still_at_net_s: stepAt('act1:still'), at_register_s: stepAt('act1:reg'), cash_step_s: stepAt('act1:cash'), preroll_s: pre.obT, walked_m: +(R.walked / 64).toFixed(1), nudges: R.nudges, steps: R.seq.map((e) => e[1].replace('act1:', '') + '@' + e[0]).join(' ') });
+    console.log(`  onboarding seed ${s}: first sale ${sold} s, coins ${R.firstCoins} s, clerk ${R.clerk} s, hand-over ${R.act3} s (pre-roll ${pre.obT} s) (${wall()})`);
+    // ---- smart bot (no tutorial: an automated browser never gets it)
+    await boot({ init: seedJs(s), stepper: false, viewport: { width: 360, height: 720 } });
+    await ev(() => {
+      const game = window.__FV.game; game.loop.sleep();
+      let D = Date.now(), T = game.loop.time || performance.now(); Date.now = () => D; const DT = 1000 / 60;
+      try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ }
+      window.__sim = { simT: 0, run(sec, tick) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (tick) tick(DT / 1000); T += DT; D += DT; this.simT += DT / 1000; game.headlessStep(T, DT); } } };
+      const gs = window.__FV.scene; window.__fs = { sold: null, coins: null, clerk: null };
+      gs.events.once('sold', () => { window.__fs.sold = +window.__sim.simT.toFixed(2); });
+    });
+    await addBot();
+    let S = null;
+    for (let k = 0; k < 60; k++) {
+      S = await ev(() => { const gs = window.__FV.scene, f = window.__fs; window.__sim.run(2, (dt) => { window.__bot.tick(dt); if (f.coins === null && gs.economy.earned > 0) f.coins = +window.__sim.simT.toFixed(2); if (f.clerk === null && gs.progress.done.hire_clerk_market) f.clerk = +window.__sim.simT.toFixed(2); }); return Object.assign({ t: window.__sim.simT }, f); });
+      if (S.sold !== null && S.coins !== null && S.clerk !== null) break;
+    }
+    frows.push({ bot: 'smart', seed: s, first_sale_s: S.sold, first_coins_s: S.coins, clerk_hired_s: S.clerk });
+    console.log(`  smart seed ${s}: first sale ${S.sold} s, coins ${S.coins} s, clerk ${S.clerk} s (${wall()})`);
+  }
+  writeCsv('firstsale.csv', frows, ['bot', 'seed', 'first_sale_s', 'first_coins_s', 'clerk_hired_s', 'fisher_hired_s', 'act2_s', 'handover_s', 'still_at_net_s', 'at_register_s', 'cash_step_s', 'preroll_s', 'walked_m', 'nudges', 'steps']);
+  const med = (a) => { const b = a.filter((x) => Number.isFinite(x)).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[b.length >> 1] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
+  summary.firstsale = Object.fromEntries(['onboarding', 'smart'].map((b) => { const r = frows.filter((q) => q.bot === b); return [b, { n: r.length, saleMedian: med(r.map((q) => q.first_sale_s)), saleMin: Math.min(...r.map((q) => q.first_sale_s ?? Infinity)), saleMax: Math.max(...r.map((q) => q.first_sale_s ?? -Infinity)), coinsMedian: med(r.map((q) => q.first_coins_s)), clerkMedian: med(r.map((q) => q.clerk_hired_s)) }]; }));
+  ALL.firstsale = frows;
+}
+
+// ------------------------------------------------------------------------------------------------ merchant
+/** 1 Hz sampler of the trade post (or the 자재 창구 through gs.trade) and the stall's food shelf; 'traded' counted */
+const MERCH_INSTALL = () => {
+  const gs = window.__FV.scene, M = window.__M = { on: false, traded: 0, coins: 0, n: 0, staffed: 0, clerk: 0, chief: 0, empty: 0, stockSum: 0, selling: 0, waiting: 0, mk: {}, mkEmpty: {}, perMin: [], cur: 0, curCoins: 0, curStaffed: 0, curN: 0 };
+  gs.events.on('traded', (v) => { if (!M.on) return; M.traded++; M.coins += Number(v) || 0; M.cur++; M.curCoins += Number(v) || 0; });
+  const FOOD = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
+  M.sample = () => {
+    if (!M.on) return;
+    const T = gs.trade, mk = gs.market;
+    M.n++; M.curN++;
+    if (T && T.enabled) {
+      const st = !!T.register.staffed; if (st) { M.staffed++; M.curStaffed++; }
+      if (T.register.clerk) M.clerk++;
+      if (st && !T.register.clerk) M.chief++;
+      const c = T.stock.count; M.stockSum += c; if (c === 0) M.empty++;
+      const keep = T.kept ? T.kept() : 0; if (c > keep) { M.selling++; if (!st) M.waiting++; }
+    }
+    if (mk && mk.stock) for (const f of FOOD) { const c = mk.stock.countOf(f); M.mk[f] = (M.mk[f] || 0) + c; if (c === 0) M.mkEmpty[f] = (M.mkEmpty[f] || 0) + 1; }
+  };
+  M.minute = (t) => { M.perMin.push({ t: Math.round(t), items: M.cur, tradeCoins: M.curCoins, staffed: M.curN ? +(M.curStaffed / M.curN).toFixed(2) : null, earned: gs.economy.earned }); M.cur = 0; M.curCoins = 0; M.curStaffed = 0; M.curN = 0; };
+  M.read = () => ({ traded: M.traded, coins: M.coins, n: M.n, staffedPct: M.n ? Math.round((100 * M.staffed) / M.n) : null, clerkPct: M.n ? Math.round((100 * M.clerk) / M.n) : null, chiefPct: M.n ? Math.round((100 * M.chief) / M.n) : null, emptyPct: M.n ? Math.round((100 * M.empty) / M.n) : null, stockAvg: M.n ? +(M.stockSum / M.n).toFixed(1) : null, waitingPct: M.n ? Math.round((100 * M.waiting) / M.n) : null,
+    mkAvg: Object.fromEntries(FOOD.map((f) => [f, M.n ? +((M.mk[f] || 0) / M.n).toFixed(1) : null])), mkEmptyPct: Object.fromEntries(FOOD.map((f) => [f, M.n ? Math.round((100 * (M.mkEmpty[f] || 0)) / M.n) : null])) });
+};
+const simInstall = () => {
+  const game = window.__FV.game; game.loop.sleep();
+  let D = Date.now(), T = game.loop.time || performance.now(); Date.now = () => D; const DT = 1000 / 60;
+  try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ }
+  window.__sim = { simT: 0, run(sec, tick, each) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (tick) tick(DT / 1000); T += DT; D += DT; this.simT += DT / 1000; game.headlessStep(T, DT); if (each) each(DT / 1000); } } };
+};
+const runSampled = (sec) => ev((s) => { let acc = 0; window.__sim.run(s, window.__bot ? window.__bot.tick : null, (dt) => { acc += dt; if (acc >= 1) { acc -= 1; window.__M.sample(); } }); return window.__sim.simT; }, sec);
+
+if (ONLY.includes('merchant')) {
+  const mrows = [];
+  for (const fx of ['v41_save_smart_25min.json', 'v41_save_smart_46min.json']) {
+    // ---- bot: the smart bot plays the save
+    await boot({ keys: fixtureKeys(fx), init: seedJs(7), stepper: false, viewport: { width: 360, height: 720 } });
+    await ev(simInstall);
+    await addBot();
+    await ev(MERCH_INSTALL);
+    for (let s = 0; s < 60; s += 10) await ev(() => window.__sim.run(10, window.__bot.tick));
+    await ev(() => { window.__M.on = true; });
+    for (let s = 0; s < 360; s += 10) await runSampled(10);
+    const b = await ev(() => Object.assign(window.__M.read(), { clerkHired: !!(window.__FV.scene.trade.register.clerk) }));
+    mrows.push(Object.assign({ case: 'bot', save: fx, minutes: 6, items_per_min: +(b.traded / 6).toFixed(1), coins_per_min: Math.round(b.coins / 6) }, flat(b)));
+    console.log(`  merchant bot ${fx}: ${(b.traded / 6).toFixed(1)} items/min, staffed ${b.staffedPct} %, shelf empty ${b.emptyPct} % (${wall()})`);
+    // ---- ceiling: the shelf kept full (topped up every second), 5 s to settle, then 60 s counted. `clerk`: the chief
+    //      parked away, the clerk serves (trade.buyInterval × register.clerkTradeSlow); `chief`: the clerk stood aside
+    //      for the minute and the chief on the register pad (trade.buyInterval) — the clerk comes back after it
+    for (const who of ['clerk', 'chief']) {
+      const c = await ev(async (w) => {
+        const gs = window.__FV.scene, T = gs.trade, M = window.__M, F = window.__FV, reg = T.register;
+        const { BALANCE } = await import(new URL('src/data/balance.js', location.href).href);
+        window.__bot = null;
+        M.on = false;
+        Object.assign(M, { traded: 0, coins: 0, n: 0, staffed: 0, clerk: 0, chief: 0, empty: 0, stockSum: 0, selling: 0, waiting: 0, mk: {}, mkEmpty: {} });
+        const stash = w === 'chief' ? reg.clerk : null;
+        if (stash) { reg.clerk = null; stash.sprite.setVisible(false); stash.shadow.setVisible(false); }
+        const rp = { x: reg.x, y: reg.y };
+        const place = () => { if (w === 'chief') F.teleport(rp.x, rp.y); else F.teleport(T.x - 900, T.y + 500); F.setInput(0, 0); };
+        const top = () => { for (const ty of ['item_plank', 'item_ingot']) { let k = 0; while (T.stock.countWithIncoming(ty) < T.maxPerType && k++ < 60) T.stock.push(ty, null, gs.effects); } };
+        place(); top();
+        let acc = 0;
+        window.__sim.run(5, null, (dt) => { acc += dt; if (acc >= 1) { acc -= 1; top(); place(); } });
+        M.on = true; acc = 0;
+        window.__sim.run(60, null, (dt) => { acc += dt; if (acc >= 1) { acc -= 1; top(); place(); M.sample(); } });
+        M.on = false;
+        const out = Object.assign(M.read(), { who: w, clerkServing: !!reg.clerk, interval: BALANCE.trade.buyInterval, slow: BALANCE.register.clerkTradeSlow, keep: T.kept ? T.kept() : 0 });
+        if (stash) { reg.clerk = stash; stash.sprite.setVisible(true); stash.shadow.setVisible(true); }
+        return out;
+      }, who);
+      // (the period is whole frames: buyT counts down by 1/60 s until ≤ 0 — 0.35 s takes 22 frames in floating point)
+      const sec = c.interval * (who === 'clerk' ? c.slow : 1);
+      let frames = 0; for (let b = sec; b > 0; frames++) b -= 1 / 60;        // (the game's own count-down, float for float)
+      mrows.push(Object.assign({ case: 'ceiling_' + who, save: fx, minutes: 1, items_per_min: c.traded, coins_per_min: c.coins, theoretical_per_min: +(60 / sec).toFixed(1), frame_period_per_min: +(3600 / frames).toFixed(1) }, flat(c)));
+      console.log(`  merchant ceiling (${who}) ${fx}: ${c.traded} items/min (trade.buyInterval ${c.interval}${who === 'clerk' ? ' × ' + c.slow : ''} = ${sec.toFixed(3)} s -> ${(60 / sec).toFixed(1)} a min; ${frames} whole frames -> ${(3600 / frames).toFixed(1)}) (${wall()})`);
+    }
+  }
+  writeCsv('merchant.csv', mrows);
+  ALL.merchant = mrows;
+  // ---- fresh: a new game, seed 1, smart bot, sampled every second
+  if (FRESH_MIN > 0) {
+    await boot({ init: seedJs(1), stepper: false, viewport: { width: 360, height: 720 } });
+    await ev(simInstall);
+    await addBot();
+    await ev(MERCH_INSTALL);
+    await ev(() => { window.__M.on = true; const gs = window.__FV.scene; window.__ev = []; gs.events.once('sold', () => window.__ev.push(['first_sale', window.__sim.simT])); });
+    const minutes = [];
+    for (let m = 1; m <= FRESH_MIN; m++) {
+      await ev(() => { window.__M.mk0 = Object.assign({}, window.__M.mk); window.__M.mkE0 = Object.assign({}, window.__M.mkEmpty); window.__M.n0 = window.__M.n; });
+      for (let s = 0; s < 60; s += 10) await runSampled(10);
+      const r = await ev((mm) => {
+        const M = window.__M, gs = window.__FV.scene, dn = M.n - M.n0 || 1;
+        const FOOD = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
+        const fill = Object.fromEntries(FOOD.map((f) => [f, +(((M.mk[f] || 0) - (M.mk0[f] || 0)) / dn).toFixed(1)]));
+        const emp = Object.fromEntries(FOOD.map((f) => [f, Math.round((100 * ((M.mkEmpty[f] || 0) - (M.mkE0[f] || 0))) / dn)]));
+        M.minute(mm * 60);
+        const row = M.perMin[M.perMin.length - 1];
+        return Object.assign({}, row, { minute: mm, tradeOn: !!gs.trade.enabled, clerk: !!gs.trade.register.clerk, fishFill: fill.item_fish_cooked, breadFill: fill.item_bread, meatFill: fill.item_meat_cooked, fishEmptyPct: emp.item_fish_cooked, breadEmptyPct: emp.item_bread, meatEmptyPct: emp.item_meat_cooked, complete: !!gs.progress.done.hire_hunter, done: Object.keys(gs.progress.done).length, wallet: gs.economy.coins });
+      }, m);
+      minutes.push(r);
+      if (m % 5 === 0) console.log(`  merchant fresh minute ${m}: ${r.items} items, earned ${r.earned} (${wall()})`);
+    }
+    writeCsv('merchant_fresh.csv', minutes, ['minute', 'items', 'tradeCoins', 'staffed', 'tradeOn', 'clerk', 'earned', 'wallet', 'fishFill', 'breadFill', 'meatFill', 'fishEmptyPct', 'breadEmptyPct', 'meatEmptyPct', 'complete', 'done']);
+    const win = (a, b) => { const r = minutes.filter((q) => q.minute > a && q.minute <= b); return r.length ? +(r.reduce((s, q) => s + q.items, 0) / r.length).toFixed(1) : null; };
+    summary.merchantFresh = { '20-30': win(20, 30), '40-50': win(40, Math.min(50, FRESH_MIN)), at25: (minutes.find((q) => q.minute === 25) || {}).items, at45: (minutes.find((q) => q.minute === 45) || {}).items, earned20: (minutes.find((q) => q.minute === 20) || {}).earned };
+    ALL.merchantFresh = { minutes, events: await ev(() => window.__ev) };
+  }
+  summary.merchant = mrows.map((r) => `${r.case} ${r.save}: ${r.items_per_min}/min`);
+}
+function flat(o) { const out = {}; for (const k in o) { if (o[k] && typeof o[k] === 'object') for (const j in o[k]) out[k + '.' + j.replace('item_', '')] = o[k][j]; else out[k] = o[k]; } return out; }
+
+// ------------------------------------------------------------------------------------------------ end
+if (ctx) errors.push(...log.errors);
+ALL.summary = summary; ALL.errors = errors.slice(0, 20); ALL.wall = wall();
+fs.writeFileSync(path.join(OUT, 'v43_layout.json'), JSON.stringify(ALL, null, 1));
+console.log('SUMMARY ' + JSON.stringify(summary));
+console.log(`page errors ${errors.length}${errors.length ? ': ' + errors.slice(0, 3).join(' | ').slice(0, 400) : ''}  (wall ${wall()})`);
+await browser.close();
+await srv.close();
+process.exit(errors.length ? 1 : 0);

@@ -1,0 +1,11 @@
+bot,seed,first_sale_s,first_coins_s,clerk_hired_s,fisher_hired_s,act2_s,handover_s,still_at_net_s,at_register_s,cash_step_s,preroll_s,walked_m,nudges,steps
+onboarding,1,15.3,18.7,22,112.1,29.1,122.2,3.9,15,18,0.24,209.2,0,@0.1 hi@0.4 move@2.4 still@3.9 toop@5.5 cook@7 take@8.9 shelf@10.4 coming@12.2 reg@15 regwait@16.5 cash@18 pad@19.5 onpad@21.1 helpers@22.1 act2:@29.1 act3:@122.2
+smart,1,20.78,32.22,34.77,,,,,,,,,,
+onboarding,2,15.2,18.6,22,115.7,29.1,125.8,3.9,14.9,17.9,0.32,213.3,0,@0.1 hi@0.3 move@2.3 still@3.9 toop@5.4 cook@6.9 take@8.8 shelf@10.4 coming@12.1 reg@14.9 regwait@16.4 cash@17.9 pad@19.5 onpad@21 helpers@22.1 act2:@29.1 act3:@125.8
+smart,2,20.78,32.02,34.57,,,,,,,,,,
+onboarding,3,14.9,16.8,20.1,110.2,27.2,120.3,3.5,14.6,16.1,0.66,209.2,0,hi@0.1 move@2 still@3.5 toop@5 cook@6.6 take@8.5 shelf@10 coming@11.8 reg@14.6 cash@16.1 pad@17.6 onpad@19.1 helpers@20.2 act2:@27.2 act3:@120.3
+smart,3,20.78,31.52,34.07,,,,,,,,,,
+onboarding,4,14.9,18.3,21.6,111.7,28.7,121.8,3.5,14.6,17.6,0.65,209.2,0,hi@0.1 move@2 still@3.5 toop@5 cook@6.6 take@8.5 shelf@10 coming@11.8 reg@14.6 regwait@16.1 cash@17.6 pad@19.1 onpad@20.6 helpers@21.7 act2:@28.7 act3:@121.8
+smart,4,20.78,32.03,34.58,,,,,,,,,,
+onboarding,5,15,16.9,20.2,117.7,27.3,127.8,3.6,14.7,16.2,0.54,225.8,0,hi@0.1 move@2.1 still@3.6 toop@5.2 cook@6.7 take@8.6 shelf@10.1 coming@11.9 reg@14.7 cash@16.2 pad@17.7 onpad@19.2 helpers@20.3 act2:@27.3 act3:@127.8
+smart,5,20.78,33.2,35.75,,,,,,,,,,

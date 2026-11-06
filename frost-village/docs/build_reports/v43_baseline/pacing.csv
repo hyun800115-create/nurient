@@ -1,0 +1,4 @@
+run,first_coin_min,clerk_min,village_complete_min,tower_east_min,hall_started_min,hall_built_min,office_started_min,office_built_min,station_min,warehouse_min,first_shop_min,shops5_min,rank_ready_min,eup_min,bank_built_min,depot_built_min,v3_complete_min,stuck,errors,sim_min
+smart_s1,0.56,0.6,19.99,20.25,48.01,50.02,50.22,50.98,22.45,25.31,24.66,36.05,50.65,50.88,56.95,59.43,47.86,0,0,63.0
+smart_s2,0.55,0.59,20.0,20.36,42.03,43.07,51.28,52.29,22.37,26.15,24.54,36.16,43.71,44.3,54.27,,41.87,0,0,56.3
+smart_s3,0.52,0.56,20.66,20.98,40.49,41.85,50.5,51.58,22.67,25.95,25.0,37.74,37.75,44.21,53.56,,40.11,0,0,56.3
