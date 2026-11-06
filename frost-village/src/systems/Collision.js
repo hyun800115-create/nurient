@@ -16,6 +16,7 @@ export class Collision {
     for (let i = 0; i < this.grid.length; i++) this.grid[i] = [];
     this.all = [];
     this.walk = null;     // (v3) walkable rects [[x0, y0, x1, y1], ...] of the revealed land (null = whole map)
+    this.lands = [];      // ((v4.3 sea) the chief's own ground beyond the shore line: his landing at the water's edge (addLand)
     this._shoreCache = new Float32Array(Math.ceil((w - this.ox) / 8) + 2);
     for (let i = 0; i < this._shoreCache.length; i++) this._shoreCache[i] = shoreY(this.ox + i * 8);
   }
@@ -96,12 +97,47 @@ export class Collision {
     return this.inOpen(x, y) && this.inOpen(x - e, y) && this.inOpen(x + e, y) && this.inOpen(x, y - e) && this.inOpen(x, y + e);
   }
 
-  /** ((v4.2.0.1) off the land a walker can stand on: the map's edge, the sea, the fog (no obstacle looked at) */
-  offLand(x, y) { return x < this.ox + 40 || x > this.w - 40 || y > this.h - 40 || y < this.shore(x) + 46 || !this.inWalk(x, y); }
+  /**
+   * ((v4.3 「바다 가까이」) ground beyond the shore line that only the CHIEF walks on: a convex polygon (screen px, the
+   * walker's centre) — his landing at the water's edge and the snow behind it. Everyone else (paths, wanderers, porters,
+   * fishers) never knows it is there: offLand / blocked / resolve take it only with `chief` true. Returns the land
+   * object ({ pts, active, tag, door }). `door` (optional): a point on ordinary land just outside it, where a walk onto
+   * it begins (the 관망 pilot's last waypoint: Paths / roads do not know the land)
+   */
+  addLand(pts, tag, door) {
+    const P = pts.map((q) => ({ x: q.x, y: q.y }));
+    const o = { pts: P, active: true, tag: tag || null, door: door ? { x: door.x, y: door.y } : null, x0: Math.min(...P.map((q) => q.x)), x1: Math.max(...P.map((q) => q.x)), y0: Math.min(...P.map((q) => q.y)), y1: Math.max(...P.map((q) => q.y)) };
+    this.lands.push(o);
+    return o;
+  }
 
-  /** true if a circle of radius `rad` at (x, y) overlaps an active obstacle or leaves the walkable area */
-  blocked(x, y, rad, ignore) {
-    if (this.offLand(x, y)) return true;
+  /** (v4.3 sea) the chief's land (addLand) under (x, y), or null */
+  inLand(x, y) {
+    const L = this.lands;
+    for (let i = 0; i < L.length; i++) {
+      const o = L[i];
+      if (!o.active || x < o.x0 || x > o.x1 || y < o.y0 || y > o.y1) continue;
+      let inside = false;
+      for (let a = 0, b = o.pts.length - 1; a < o.pts.length; b = a++) {
+        const p = o.pts[a], q = o.pts[b];
+        if ((p.y > y) !== (q.y > y) && x < ((q.x - p.x) * (y - p.y)) / ((q.y - p.y) || 1e-9) + p.x) inside = !inside;
+      }
+      if (inside) return o;
+    }
+    return null;
+  }
+
+  /** ((v4.2.0.1) off the land a walker can stand on: the map's edge, the sea, the fog (no obstacle looked at).
+   *  ((v4.3 sea) chief: his own land beyond the shore line counts as land (addLand)) */
+  offLand(x, y, chief) {
+    if (x < this.ox + 40 || x > this.w - 40 || y > this.h - 40 || !this.inWalk(x, y)) return true;
+    return y < this.shore(x) + 46 && !(chief && this.lands.length && this.inLand(x, y));
+  }
+
+  /** true if a circle of radius `rad` at (x, y) overlaps an active obstacle or leaves the walkable area
+   *  ((v4.3 sea) chief: the chief's own land counts as walkable) */
+  blocked(x, y, rad, ignore, chief) {
+    if (this.offLand(x, y, chief)) return true;
     const cx = Math.floor((x - this.ox) / CELL), cy = Math.floor(y / CELL);
     if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return true;
     const cell = this.grid[cy * this.cols + cx];
@@ -133,6 +169,29 @@ export class Collision {
     return false;
   }
 
+  /** (v4.3 sea) the nearest point just inside one of the chief's lands when it is nearer than `limit` ground px, or null */
+  landEdge(x, y, limit) {
+    let best = null, bd = limit;
+    for (const o of this.lands) {
+      if (!o.active) continue;
+      const P = o.pts;
+      // the polygon's centre: the found edge point is pulled 1.5 px toward it (inside, not on the edge)
+      let cx = 0, cy = 0;
+      for (const q of P) { cx += q.x; cy += q.y; }
+      cx /= P.length; cy /= P.length;
+      for (let a = 0, b = P.length - 1; a < P.length; b = a++) {
+        const ax = P[b].x, ay = P[b].y * 2, vx = P[a].x - ax, vy = P[a].y * 2 - ay, l2 = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y * 2 - ay) * vy) / l2));
+        const ex = ax + vx * t, ey = (ay + vy * t) / 2, d = Math.hypot(x - ex, (y - ey) * 2);
+        if (d < bd) {
+          const k = 1.5 / (Math.hypot(cx - ex, (cy - ey) * 2) || 1);
+          bd = d; best = { x: ex + (cx - ex) * k, y: ey + (cy - ey) * k };
+        }
+      }
+    }
+    return best;
+  }
+
   shore(x) {
     const u = (x - this.ox) / 8;
     const i = Math.max(0, Math.min(this._shoreCache.length - 2, Math.floor(u)));
@@ -140,8 +199,10 @@ export class Collision {
     return this._shoreCache[i] * (1 - f) + this._shoreCache[i + 1] * f;
   }
 
-  /** push a circle of radius `rad` at (p.x, p.y) out of obstacles; mutates p; returns true if it hit something */
-  resolve(p, rad) {
+  /** push a circle of radius `rad` at (p.x, p.y) out of obstacles; mutates p; returns true if it hit something
+   *  ((v4.3 sea) chief: he may stand on his own land beyond the shore line (addLand); off it he goes back to the nearer
+   *  of the land's edge and the shore's walk line, so he slides along the landing's sides instead of jumping) */
+  resolve(p, rad, chief) {
     let hit = false;
     const cx = Math.floor((p.x - this.ox) / CELL), cy = Math.floor(p.y / CELL);
     if (cx >= 0 && cy >= 0 && cx < this.cols && cy < this.rows) {
@@ -169,7 +230,11 @@ export class Collision {
     }
     // world bounds + shoreline
     const minY = this.shore(p.x) + 46;
-    if (p.y < minY) { p.y = minY; hit = true; }
+    if (p.y < minY && !(chief && this.lands.length && this.inLand(p.x, p.y))) {
+      const q = chief && this.lands.length ? this.landEdge(p.x, p.y, 2 * (minY - p.y)) : null;
+      if (q) { p.x = q.x; p.y = q.y; } else p.y = minY;
+      hit = true;
+    }
     if (p.x < this.ox + 40) { p.x = this.ox + 40; hit = true; } else if (p.x > this.w - 40) { p.x = this.w - 40; hit = true; }
     if (p.y > this.h - 40) { p.y = this.h - 40; hit = true; }
     // (v3) the fog: back into the nearest piece of revealed land

@@ -144,6 +144,9 @@ const DUMP = async () => {
   if (WORLD.deck) {
     const D = WORLD.deck, poly = Array.isArray(D.poly) ? D.poly : Array.isArray(D.gangway) ? D.gangway : null;
     addB('deck', 'deck', D.x, D.y, poly || fpOf(D.sprite || D.key, D.x, D.y) || diamond(D.x, D.y, 272, 136), { building: D.sprite || D.key || 'deck', water: 1 });
+    // ((v4.3 「바다 가까이」) the chief's landing at the surf line (in the sea on purpose)
+    const LDg = D.landing;
+    if (LDg && Array.isArray(LDg.at)) addB('deck:landing', 'deck', LDg.at[0], LDg.at[1], fpOf('deck43_landing', LDg.at[0], LDg.at[1]) || isoRect(LDg.at[0], LDg.at[1], LDg.size[0], LDg.size[1]), { building: 'deck43_landing', water: 1 });
   } else if (gs.net) {
     const n = gs.net, R = 92, poly = []; for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; poly.push([n.x + Math.cos(a) * R, n.y - 6 + (Math.sin(a) * R) / 2]); }
     addB('net', 'net', n.x, n.y, poly, { building: 'net', water: 1 });
@@ -357,13 +360,17 @@ const WALK_PAGE = async (list) => {
   const { WORLD, L4 } = W;
   const gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 2);
   const C = gs.collision;
-  const bl = (x, y) => C.blocked(x, y, 16) || C.offLand(x, y), wide = (x, y) => C.blocked(x, y, 26) || C.offLand(x, y);
+  // ((v4.3 「바다 가까이」) the chief's rows: his own ground counts (his landing at the water's edge: Collision.addLand,
+  //  `chief` true; an older build ignores the flag)
+  const blk = (chief, r) => (x, y) => C.blocked(x, y, r, null, chief) || C.offLand(x, y, chief);
+  const bl = blk(false, 16), wide = blk(false, 26), blC = blk(true, 16), wideC = blk(true, 26);
   /** a joystick walk: the straight line when nothing stands on it (chief radius 16, the sea / fog edge), else the
    *  shortest way round on a ground grid (Paths.gridPath, the same A* the walkers' off-road legs use), roads ignored */
-  const direct = (a, b) => {
-    if (segClear(bl, a.x, a.y, b.x, b.y, 8, 0)) return { len: gd(a.x, a.y, b.x, b.y), clear: true, pts: 1 };
+  const direct = (a, b, chief) => {
+    const B1 = chief ? blC : bl;
+    if (segClear(B1, a.x, a.y, b.x, b.y, 8, 0)) return { len: gd(a.x, a.y, b.x, b.y), clear: true, pts: 1 };
     const L = gd(a.x, a.y, b.x, b.y);
-    const g = gridPath(bl, a.x, a.y, b.x, b.y, { cell: 20, wide, margin: Math.max(520, L * 0.5), maxCells: 90000, maxExpand: 400000 });
+    const g = gridPath(B1, a.x, a.y, b.x, b.y, { cell: 20, wide: chief ? wideC : wide, margin: Math.max(520, L * 0.5), maxCells: 90000, maxExpand: 400000 });
     if (!g) return { len: null, clear: false, pts: 0 };
     let len = 0, x = a.x, y = a.y; for (const q of g) { len += gd(x, y, q.x, q.y); x = q.x; y = q.y; }
     return { len, clear: false, pts: g.length };
@@ -408,7 +415,7 @@ const WALK_PAGE = async (list) => {
     for (const [fa, ta] of legs) {
       const a = look(fa, w.move), b = look(ta, w.move);
       if (a.miss || b.miss) { miss = (a.miss ? a.name + ': ' + a.miss : '') + (b.miss ? (a.miss ? '; ' : '') + b.name + ': ' + b.miss : ''); break; }
-      const r = route(a, b, w.near), d = direct(a, b);
+      const r = route(a, b, w.near), d = direct(a, b, w.who === 'chief');
       tot += r.len; straight += gd(a.x, a.y, b.x, b.y); n += r.legs;
       if (d.len === null) dirOk = false; else dir += d.len;
       if (!d.clear) clear = false;

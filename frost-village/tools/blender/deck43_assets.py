@@ -248,6 +248,39 @@ def b_deck3():
     return build_deck(3)
 
 
+# =========================================================================== the chief's landing (v4.3 「바다 가까이」)
+
+LAND = (1.0, 1.2)                           # X width, Y length (m): a short jetty stub pointing out to sea (+Y, NE)
+LAND_PZ = 0.15                              # plank top above the snow / water plane (world.js deck.landing.lift 8 px)
+
+
+@deck43('deck43_landing', fp=LAND, samples=48, catcher=8.0,
+        notes='촌장님 자리 (v4.3 sea): a short jetty stub at the surf line right of the gangway head, by the deck front corner - five planks on two '
+              'beams, two snow-capped posts in the water at the sea end (foam rings), the land end resting on the snow. '
+              'Origin = the ground / water-plane point under the stub centre (world.js WORLD.deck.landing.at); planks '
+              'LAND_PZ 0.15 m up (the chief is lifted 8 px on them). Nothing painted the game sells.')
+def b_landing():
+    W, Lg = LAND
+    x0, x1, y0, y1 = -W / 2, W / 2, -Lg / 2, Lg / 2
+    objs = planks_y('ld', x0, x1, y0, y1, LAND_PZ, t=0.05, pitch=0.24, seed=91)
+    beam = wood('#7E5634', 0.1)
+    for sx in (x0 + 0.12, x1 - 0.12):
+        box('ld_beam', (0.09, Lg + 0.06, 0.1), (sx, 0.0, LAND_PZ - 0.15), mat=beam, bevel=0.015)
+    # the sea end: a cross beam and two posts standing in the water (snow caps, foam rings)
+    box('ld_cross', (W + 0.04, 0.09, 0.1), (0.0, y1 - 0.05, LAND_PZ - 0.15), mat=beam, bevel=0.015)
+    for k, sx in enumerate((x0 + 0.05, x1 - 0.05)):
+        post('ld_po%d' % k, sx, y1 - 0.02, LAND_PZ + 0.3, r=0.06, foam=True, snow=True, seed=92 + k)
+    # the land end sits on a snow bank; a little snow on the planks' corners (the middle stays clear: the pad is there)
+    LA.snow_drift('ld_bank', 0.3, (0.0, y0 - 0.12, 0.0), seed=93, scale=(1.9, 0.8, 0.35))
+    LA.snow_drift('ld_sd1', 0.14, (x0 + 0.14, y1 - 0.2, LAND_PZ), seed=94, scale=(1.2, 1.0, 0.25))
+    LA.snow_drift('ld_sd2', 0.12, (x1 - 0.12, y0 + 0.16, LAND_PZ), seed=95, scale=(1.3, 1.0, 0.22))
+    # markers: where the chief stands (the stub's middle), the two posts (foam collars in the game)
+    BA.mark('stand', (0.0, 0.0, 0.0))
+    for sx in (x0 + 0.05, x1 - 0.05):
+        BA.mark('post', (sx, y1 - 0.02, 0.0))
+    return {'frames': [('deck43_landing', None)], 'sprites': {'deck43_landing': {'frame': 'deck43_landing'}}}
+
+
 # =========================================================================== rod holder (3 frames)
 
 ROD_STATES = ('idle', 'bite', 'hooked')

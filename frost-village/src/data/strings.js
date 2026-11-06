@@ -38,7 +38,7 @@ export const STRINGS = {
     close: '닫기',
 
     // 튜토리얼 / 목표
-    obj_fish: '낚시 좌대 앞 촌장님 자리에 서서 물고기를 모으세요',
+    obj_fish: '물가의 촌장님 자리에 서서 물고기를 낚으세요',
     obj_grill: '생선을 화덕 발판에 내려놓으세요',
     obj_take: '구운 생선을 가져가세요',
     obj_sell: '구운 생선을 판매대에 놓으세요',
@@ -452,7 +452,7 @@ export const STRINGS = {
     onb_skip: '건너뛰기 ›', onb_skipped: '설정 › 놀이에서 다시 볼 수 있어요', onb_nice: '잘했어요!', onb_next: '다음 ›',
     onb_hi_1: '어서 오세요, 촌장님!', onb_hi_2: '눈꽃마을의 첫날이에요',
     onb_move_1: '손가락으로 화면을 끌어 봐요', onb_move_2: '끄는 쪽으로 촌장님이 걸어요',
-    onb_moved_1: '잘했어요! 낚시 좌대 앞까지 가요', onb_moved_2: '멈추면 물고기를 모아요', onb_net_1: '낚시 좌대 앞으로 가요',
+    onb_moved_1: '잘했어요! 물가의 촌장님 자리로 가요', onb_moved_2: '멈추면 물고기를 낚아요', onb_net_1: '물가의 촌장님 자리로 가요',
     onb_around: '막히면 옆으로 돌아가요',
     onb_still_1: '손을 떼고 가만히 있어요', onb_still_2: '물고기가 가방에 쏙쏙! {n}/{k}', onb_fishok: '물고기를 모았어요!',
     onb_toop_1: '‘서서 굽기’ 발판으로 가요', onb_toop_2: '화덕 앞 초록 발판이에요',
@@ -483,7 +483,7 @@ export const STRINGS = {
     tip_replay_1: '튜토리얼은 ‘놀이’에서', tip_replay_2: '언제든 다시 볼 수 있어요',
     tip_obs_1: '쌍안경을 눌러 관망해요', tip_obs_2: '촌장님이 알아서 하루를 보내요',
     set_tutorial: '튜토리얼', set_replay: '다시 보기', onb_tour: '다시 한 번 둘러볼까요?',
-    onb_tour_net: '좌대 앞에 서면 낚싯대의 물고기가 와요', onb_tour_take: '구운 생선은 여기서 가져가요', onb_tour_pad: '발판에 서 있으면 코인을 내요',
+    onb_tour_net: '물가 발판에 서면 낚싯줄로 물고기를 낚아요', onb_tour_take: '구운 생선은 여기서 가져가요', onb_tour_pad: '발판에 서 있으면 코인을 내요',
 
     // ---- (v4.2.0.2) 관리자 모드 (설정에서 버전 글자를 7번 누르면 열려요 · src/scenes/AdminPanel.js)
     adm_title: '관리자 모드', adm_pinAsk: '비밀번호를 눌러 주세요', adm_pinWrong: '비밀번호가 달라요',
@@ -532,7 +532,7 @@ export const STRINGS = {
     off: 'Off',
     close: 'Close',
 
-    obj_fish: "Stand on the chief's spot at the fishing deck to catch fish",
+    obj_fish: "Stand on the chief's spot by the water to catch fish",
     obj_grill: 'Drop the fish on the grill pad',
     obj_take: 'Pick up the grilled fish',
     obj_sell: 'Put the grilled fish on the counter',
@@ -907,7 +907,7 @@ export const STRINGS = {
     onb_skip: 'Skip ›', onb_skipped: 'Replay it any time in Settings › Play', onb_nice: 'Nice!', onb_next: 'Next ›',
     onb_hi_1: 'Welcome, Chief!', onb_hi_2: "It's your first day here",
     onb_move_1: 'Drag on the screen', onb_move_2: 'The chief walks that way',
-    onb_moved_1: 'Nice! Walk to the fishing deck', onb_moved_2: 'Stop there to catch fish', onb_net_1: 'Walk to the fishing deck',
+    onb_moved_1: 'Nice! Walk to your spot by the water', onb_moved_2: 'Stop there to catch fish', onb_net_1: 'Walk to your spot by the water',
     onb_around: 'Stuck? Walk around it',
     onb_still_1: 'Let go and stand still', onb_still_2: 'Fish hop into your bag! {n}/{k}', onb_fishok: 'Got the fish!',
     onb_toop_1: "Go to the 'Stand: grill' pad", onb_toop_2: 'The green pad by the grill',
@@ -938,7 +938,7 @@ export const STRINGS = {
     tip_replay_1: "Replay the tutorial in 'Play'", tip_replay_2: 'Any time you like',
     tip_obs_1: 'Tap the binoculars to watch', tip_obs_2: 'The chief goes about the day on his own',
     set_tutorial: 'Tutorial', set_replay: 'Replay', onb_tour: "Let's take another look!",
-    onb_tour_net: "Stand at the deck: the rods' fish come to you", onb_tour_take: 'Grab the grilled fish here', onb_tour_pad: 'Stand on a pad to pay with coins',
+    onb_tour_net: 'Stand on the landing: your line catches fish', onb_tour_take: 'Grab the grilled fish here', onb_tour_pad: 'Stand on a pad to pay with coins',
 
     // ---- (v4.2.0.2) admin mode
     adm_title: 'Admin mode', adm_pinAsk: 'Enter the password', adm_pinWrong: "That's not the password",

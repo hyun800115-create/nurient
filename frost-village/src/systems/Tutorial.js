@@ -549,7 +549,12 @@ export class Tutorial {
       if (grill.outStack.count < 6 || p.room <= 0) { set(op.x, op.y, 50, 'obj_op_grill'); return; }
     }
     if ((grill.outStack.count > 0 || grill.inStack.count > 0) && raw === 0) { set(grill.outPad.x, grill.outPad.y, 80, 'obj_take'); return; }
-    set(gs.net.gather.x, gs.net.gather.y - 10, 30, 'obj_fish');     // ((v4.3) the deck's reel spot on land)
+    // ((v4.3) the deck's reel spot: (v4.3 sea) his landing at the water's edge, just under the deck's front corner — a low
+    //  arrow (h 6, review ARROW-AIM): its tip on the landing's pad, not on the deck's corner posts. Standing there (his
+    //  reach, as the Act 1 「가만히 있어요」 step): the text only, no arrow over him while he fishes, like 서서 굽기 on its pad)
+    const g = gs.net.gather;
+    if (gdist(p.x, p.y, g.x, g.y) < 55) { this.textKey = 'obj_fish'; return; }
+    set(g.x, g.y - 10, 6, 'obj_fish');
   }
 
   /**

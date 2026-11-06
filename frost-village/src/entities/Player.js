@@ -6,6 +6,9 @@ import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
 
+// ((v4.3 sea) the flight of a fish leaping from the chief's float to him
+const LEAP = { height: 96, spin: -330 };
+
 export class Player extends Character {
   constructor(gs, x, y) {
     super(gs, 'player', x, y, { radius: 16, carryScale: BALANCE.player.carryScale });
@@ -101,7 +104,7 @@ export class Player extends Character {
       this.sprite.anims.timeScale = Math.max(0.6, Math.min(1.35, v / 210));
       const p = this._p;
       p.x = this.x + this.vx * dt; p.y = this.y + this.vy * dt;
-      gs.collision.resolve(p, this.radius);
+      gs.collision.resolve(p, this.radius, true);     // ((v4.3 sea) true: his own landing at the water's edge is ground too
       this.x = p.x; this.y = p.y;
       this.stillT = 0;
       this.node = null; this.reelT = 0;
@@ -141,7 +144,10 @@ export class Player extends Character {
             this.node = n;
             // ((v4.3) the fishing deck: one quick reel (balance.js deck.reelS), then the fish come as they did at the net
             //  — the reel's impact frame takes the first fish, so the first sale is not slower)
-            if (n.reel) { n.reel(); this.reelT = Math.max(0.1, Number((BALANCE.deck || {}).reelS) || 0.6); }
+            // ((v4.3 「바다 가까이」) he casts his own line from the landing (the deck draws it: FishingDeck.chiefCast) and
+            //  keeps reeling (`fish`, the reel's motion without its short line, looping at harvest's beat: one fish a
+            //  0.6 s, the first on frame 3 = 0.3 s as before)
+            if (n.reel) { n.reel(this); this.reelT = Math.max(0.1, Number((BALANCE.deck || {}).reelS) || 0.6); }
           }
         }
       }
@@ -165,10 +171,20 @@ export class Player extends Character {
         if (op.station.working && !this.sprite.anims.isPlaying) this.play(wa, true);
       } else if (this.node) {
         this.opSpot = null;
-        this.faceTo(this.node.x, this.node.y);
-        if (this.reelT > 0) { this.reelT -= dt; this.play('reel'); }
+        // ((v4.3 sea) the deck: he faces his float on the sea (NE), not the deck's middle
+        const fp = this.node.facePoint ? this.node.facePoint(this) : null;
+        if (fp) this.faceTo(fp.x, fp.y); else this.faceTo(this.node.x, this.node.y);
+        if (this.reelT > 0) this.reelT -= dt;
+        if (this.node.chiefAnim) this.play(this.node.chiefAnim);
+        else if (this.reelT > 0) this.play('reel');
         else this.play(this.node.playerAnim);
-      } else { this.opSpot = null; this.locomotion(false); }
+      } else {
+        this.opSpot = null;
+        // ((v4.3 sea) on his landing with the line out and no fish in the pool just now: he keeps fishing (no catch comes)
+        const D = gs.deck;
+        if (D && D.holdsChief && D.holdsChief(this)) { const fp = D.facePoint(); if (fp) this.faceTo(fp.x, fp.y); this.play(D.chiefAnim || 'idle'); }
+        else this.locomotion(false);
+      }
     }
     this.sync(dt);
   }
@@ -207,9 +223,11 @@ export class Player extends Character {
     if (!item) return;
     const count = n.lastYield || 1;
     n.lastYield = 0;
-    const from = n.kind === 'net' ? n.fishPos() : this.impactPoint();
+    const from = n.kind === 'net' ? n.fishPos(this) : this.impactPoint();
+    // ((v4.3 sea) a fish from his float leaps out of the water to him (a higher arc, a flip; the same flight time)
+    const fo = from.leap ? LEAP : undefined;
     for (let i = 0; i < count && this.room > 0; i++) {
-      this.gs.time.delayedCall(i * 90, () => this.gs.spawnItemTo(item, from.x, from.y, this, true));
+      this.gs.time.delayedCall(i * 90, () => this.gs.spawnItemTo(item, from.x, from.y, this, true, 0, fo));
     }
     this.gs.effects.vibrate(8);
   }

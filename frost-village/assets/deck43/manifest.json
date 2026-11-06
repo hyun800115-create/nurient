@@ -1,12 +1,12 @@
 {
  "version": 1,
- "generator": "tools/blender/deck43_render.py + deck43_chars.py + deck43_pack.py (v4.3 step A: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims)",
+ "generator": "tools/blender/deck43_render.py + deck43_chars.py + deck43_pack.py (v4.3 step A: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims; 「바다 가까이」: the chief's landing, his `fish` loop)",
  "conventions": {
   "ppu": 64,
   "anchor": "normalised [ax, ay] of the full untrimmed frame. deck43_t<n>: the water-plane point under the 1단 centre (world.js WORLD.deck x, y; every tier the same); deck43_rod: the holder foot on the planks; fish_crate / workshop43: the footprint centre.",
   "layers": "deck43_t<n>_back = the whole deck; deck43_t<n>_front = only the near rails, the gangway near rail and the 3단 roof (same frame + anchor). Draw back (depth d), the fishers on the deck (d + 0.4, lifted deckLiftPx), front (d + 0.6).",
   "points": "every *Point(s) value is a px offset [dx, dy] from the sprite anchor (unscaled sprite).",
-  "characters": "extends: the anims join the existing character (each names its atlas deck43_ch and its frameName <key>/<anim>_<dir>_<i>). Seated fisher frames (fsit_*) are 160 x 160 with the anchor at the floor under the stool (normalised as every character); dirs NE only (he faces the sea). The chief's reel plays once (impactFrame 3: the first fish comes then)."
+  "characters": "extends: the anims join the existing character (each names its atlas deck43_ch and its frameName <key>/<anim>_<dir>_<i>). Seated fisher frames (fsit_*) are 160 x 160 with the anchor at the floor under the stool (normalised as every character); dirs NE only (he faces the sea). The chief's reel plays once (impactFrame 3: the first fish comes then); his `fish` loop (v4.3 sea) is the same motion without the line and the float, tipPoints = the rod tip per frame (the game draws the line from there to his float on the sea; on frame 3 the rod points away behind his head, so its tip point is the middle of frames 2 and 4: the line never starts on his head)."
  },
  "atlases": [
   {
@@ -367,6 +367,45 @@
    ],
    "signText": "sign_workshop43",
    "signColor": "#5A3418"
+  },
+  "deck43_landing": {
+   "atlas": "deck43",
+   "frame": "deck43_landing",
+   "anchor": [
+    0.46111,
+    0.57258
+   ],
+   "kind": "building",
+   "frameSize": [
+    180,
+    124
+   ],
+   "topPx": 51,
+   "front": "-Y",
+   "notes": "촌장님 자리 (v4.3 sea): a short jetty stub at the surf line right of the gangway head, by the deck front corner - five planks on two beams, two snow-capped posts in the water at the sea end (foam rings), the land end resting on the snow. Origin = the ground / water-plane point under the stub centre (world.js WORLD.deck.landing.at); planks LAND_PZ 0.15 m up (the chief is lifted 8 px on them). Nothing painted the game sells.",
+   "footprint": [
+    100,
+    50
+   ],
+   "footprintM": [
+    1.0,
+    1.2
+   ],
+   "standPoint": [
+    0,
+    0
+   ],
+   "postPoints": [
+    [
+     6,
+     -23
+    ],
+    [
+     47,
+     -3
+    ]
+   ],
+   "liftPx": 8
   }
  },
  "characters": {
@@ -386,6 +425,51 @@
       "NE": [
        -2,
        -78
+      ]
+     },
+     "atlas": "deck43_ch",
+     "frameName": "player/{anim}_{dir}_{i}"
+    },
+    "fish": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": -1,
+     "impactFrame": 3,
+     "dirs": [
+      "NE"
+     ],
+     "impactPoint": {
+      "NE": [
+       -2,
+       -78
+      ]
+     },
+     "tipPoints": {
+      "NE": [
+       [
+        48,
+        -77
+       ],
+       [
+        36,
+        -88
+       ],
+       [
+        15,
+        -88
+       ],
+       [
+        18,
+        -89
+       ],
+       [
+        20,
+        -90
+       ],
+       [
+        42,
+        -84
+       ]
       ]
      },
      "atlas": "deck43_ch",

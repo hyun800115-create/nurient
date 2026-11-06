@@ -4,6 +4,10 @@ characters' own rigs, camera, light and PPU (char_build / wkr_build / char_rende
 
   player       `reel`       6 frames, 10 fps, once (0.6 s), impactFrame 3 (the first fish comes then): the chief
                             on the reel spot hauls a short rod up and back toward himself, facing the sea (NE only).
+               `fish`       (v4.3 「바다 가까이」) the same six poses with NO line and NO float, looping (10 fps,
+                            impactFrame 3 = today's pickup beat, as `harvest`): the chief on his landing at the water's
+                            edge; the game draws his line from the rod tip (tipPoints, per frame) out to a float on the
+                            sea, and each fish leaps from there to him.
   fisherman, fisherman_b, fisherman_c (the three fisher looks) — seated on the deck's stool, facing the sea (NE only):
                `fsit_cast`  6 frames, 10 fps, once (0.6 s): wind up, cast, the float flies out
                `fsit_wait`  4 frames, 5 fps, loop: the rod held out, the float bobbing on the water
@@ -41,9 +45,12 @@ SEAT_H = 0.25            # stool seat above the planks (deck43_assets.SEAT_H)
 WATER_Z = -0.30          # the water below the planks
 FAR = 1.25               # the float lands this far in front of him (world.js / FishingDeck.bobber)
 DIR = 'NE'
+# (v4.3 sea review LINE-HEAD) `fish` frames whose rod tip is hidden behind the chief's head (the rod points away)
+TIP_HIDDEN = {'fish': (3,)}
 FISHERS = ['fisherman', 'fisherman_b', 'fisherman_c']
 ANIMS = {
-    'player': {'reel': dict(frames=6, fps=10, repeat=0, impactFrame=3)},
+    'player': {'reel': dict(frames=6, fps=10, repeat=0, impactFrame=3),
+               'fish': dict(frames=6, fps=10, repeat=-1, impactFrame=3)},
     'fisher': {'fsit_cast': dict(frames=6, fps=10, repeat=0), 'fsit_wait': dict(frames=4, fps=5, repeat=-1),
                'fsit_bite': dict(frames=3, fps=12, repeat=-1), 'fsit_reel': dict(frames=6, fps=10, repeat=0)},
 }
@@ -77,6 +84,11 @@ def make_rod2(rig, name='rod', tilt=70.0, length=0.86):
 
     def update(r):
         if line.hide_render:
+            return
+        if r.state.get('_noline'):
+            # ((v4.3 sea) `fish`: the rod alone - the game draws the line and the float out on the sea)
+            for o in (line, bob_top, bob_bot):
+                o.hide_render = o.hide_viewport = True
             return
         tipw = r.world(name + '_tip')
         cast = float(r.state.get('_cast', 0.0))
@@ -137,7 +149,8 @@ def fisher_pose(rig, anim, i):
 
 
 def chief_pose(rig, anim, i):
-    """`reel`: both hands on a short rod, a quick haul up and back toward himself, then down to catch."""
+    """`reel`: both hands on a short rod, a quick haul up and back toward himself, then down to catch.
+    `fish` (v4.3 sea): the same poses, looping, without the line and the float (the game draws them)."""
     st = {'hip_R': (2, 3, 0), 'hip_L': (2, 3, 0), 'knee_R': (4, 0, 0), 'knee_L': (4, 0, 0)}
     keys = [
         # rod low toward the water, line out
@@ -152,14 +165,15 @@ def chief_pose(rig, anim, i):
         ({**R(52, -6, 24), **Lh(50, -24, 42), 'spine': (-2, 0, 0), 'head': (2, 0, 0)}, 0.0, 'face_smile'),
     ]
     k, cast, face = keys[i]
-    return {**st, **k, '_cast': cast, '_far': 0.9, '_wz': 0.03, '_show': {face, 'rod'}}
+    return {**st, **k, '_cast': cast, '_far': 0.9, '_wz': 0.03, '_show': {face, 'rod'}, '_noline': anim == 'fish'}
 
 
 # --------------------------------------------------------------------------- render
 
 def parse():
     a = bc.script_args()
-    opt = {'chars': 'player,' + ','.join(FISHERS), 'samples': '16', 'cache': '/tmp/fv_cache/deck43_chars', 'force': False}
+    opt = {'chars': 'player,' + ','.join(FISHERS), 'samples': '16', 'cache': '/tmp/fv_cache/deck43_chars', 'force': False,
+           'anims': ''}
     i = 0
     while i < len(a):
         k = a[i].lstrip('-')
@@ -176,6 +190,9 @@ def render_key(key, opt):
     t0 = time.time()
     kind = 'player' if key == 'player' else 'fisher'
     anims = ANIMS[kind]
+    if opt.get('anims'):
+        only = opt['anims'].split(',')
+        anims = {a: v for a, v in anims.items() if a in only}
     size, anchor = FRAME_OF[kind]
     outdir = os.path.join(opt['cache'], key)
     os.makedirs(outdir, exist_ok=True)
@@ -233,12 +250,25 @@ def render_key(key, opt):
         q = bc.world_to_pixel(tuple(rig.meta['fx_point']), size, size, anchor)
         pts['floatPoint'] = [round(q[0] - anchor[0]), round(q[1] - anchor[1])]
     else:
-        pose = chief_pose(rig, 'reel', 3)
-        rig.apply(pose, yaw_deg=bc.DIR_YAW[DIR])
-        rig.update_strings()
-        bpy.context.view_layer.update()
-        q = bc.world_to_pixel(tuple(rig.world('rod_tip')), size, size, anchor)
-        meta['anims']['reel']['impactPoint'] = {DIR: [round(q[0] - anchor[0]), round(q[1] - anchor[1])]}
+        for an in anims:
+            tips = []
+            for i in range(anims[an]['frames']):
+                pose = chief_pose(rig, an, i)
+                rig.apply(pose, yaw_deg=bc.DIR_YAW[DIR])
+                rig.update_strings()
+                bpy.context.view_layer.update()
+                q = bc.world_to_pixel(tuple(rig.world('rod_tip')), size, size, anchor)
+                tips.append([round(q[0] - anchor[0]), round(q[1] - anchor[1])])
+            # the rod tip at the impact frame (the fish come there); (v4.3 sea) `fish`: the tip in every frame (the
+            # game's line starts there)
+            meta['anims'][an]['impactPoint'] = {DIR: tips[anims[an]['impactFrame']]}
+            if an == 'fish':
+                # (review LINE-HEAD) on the frames listed in TIP_HIDDEN the rod points away from the camera and its tip
+                # lies behind his head: the game's line would start on his head - the middle of the neighbours instead
+                for i in TIP_HIDDEN.get(an, ()):
+                    a, b = tips[i - 1], tips[(i + 1) % len(tips)]
+                    tips[i] = [round((a[0] + b[0]) / 2), round((a[1] + b[1]) / 2)]
+                meta['anims'][an]['tipPoints'] = {DIR: tips}
     meta.update(pts)
     meta['shadow'] = rig.meta.get('shadow', [46, 18])
     with open(os.path.join(outdir, 'meta.json'), 'w') as f:

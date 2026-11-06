@@ -80,8 +80,9 @@ const ANIM_FALLBACK = {
   sit_read_loop: ['sit_read', 'sit_idle', 'idle'], sit_eat: ['sit_idle', 'sit', 'idle'], doze: ['sit_idle', 'sit', 'idle'],
   warm_hands: ['idle'], cheer: ['wave', 'happy', 'idle'],
   // ((v4.3) the fishing deck: the chief's one quick reel, the seated fisher's loop (assets/deck43) — while that art is not here
-  //  the old motions play (the impact frame of harvest still takes the first fish)
-  reel: ['harvest', 'idle'], fsit_cast: ['work', 'idle'], fsit_wait: ['idle'], fsit_bite: ['work', 'idle'], fsit_reel: ['work', 'idle'],
+  //  the old motions play (the impact frame of harvest still takes the first fish); ((v4.3 sea) `fish` = the chief's reel
+  //  loop on his landing (harvest's beat))
+  reel: ['harvest', 'idle'], fish: ['harvest', 'idle'], fsit_cast: ['work', 'idle'], fsit_wait: ['idle'], fsit_bite: ['work', 'idle'], fsit_reel: ['work', 'idle'],
   // (v3.5) station operators: a worker look (no `operate`) swings its work tool instead; dog play
   operate: ['work', 'idle'], pet: ['idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
   beg: ['sit', 'happy', 'idle'], run_ball: ['run', 'walk'], catch: ['happy', 'idle'], trick: ['happy', 'idle'],

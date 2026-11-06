@@ -43,8 +43,9 @@ export function onboardAllowed() {
   return true;
 }
 
-// the first loop's places ((v4.3) the fish come from the fishing deck: its reel spot on land is where the chief stands —
-//  the old net's gather point was the same idea; `net` stays as another name for it)
+// the first loop's places ((v4.3) the fish come from the fishing deck: its reel spot is where the chief stands — the old
+//  net's gather point was the same idea; `net` stays as another name for it. ((v4.3 「바다 가까이」) the spot is his landing
+//  at the water's edge, right of the gangway's head by the deck's front corner)
 const AT = {
   reel: (gs) => (gs.deck || gs.net) && (gs.deck || gs.net).gather,
   net: (gs) => (gs.deck || gs.net) && (gs.deck || gs.net).gather,
@@ -62,8 +63,10 @@ const AT = {
 // success line when the step is done (first lap)
 const STEP = {
   hi: { l: 'onb_hi' },
-  move: { at: 'reel', h: 30, l: 'onb_move', walk: true },
-  still: { at: 'reel', h: 30, l: 'onb_still', stand: true, beat: 'onb_fishok' },
+  // ((v4.3 sea review ARROW-AIM) the chief's spot lies on his landing just under the deck's front corner: a low arrow, its
+  //  tip on the landing's pad (h 30 put the tip on the deck's corner posts)
+  move: { at: 'reel', h: 4, l: 'onb_move', walk: true },
+  still: { at: 'reel', h: 4, l: 'onb_still', stand: true, beat: 'onb_fishok' },
   toop: { at: 'op', h: 50, l: 'onb_toop', walk: true },
   cook: { at: 'op', l: 'onb_cook', stand: true, beat: 'onb_nice' },
   cookaway: { at: 'op', h: 50, l: 'onb_cookaway', walk: true },
@@ -800,7 +803,7 @@ export class Onboarding {
     const c = this._via;
     if (c && c.tx === to.x && c.ty === to.y && Math.abs(c.px - p.x) < 8 && Math.abs(c.py - p.y) < 8 && this.t - c.t < 0.5) return c.pt;
     const R = p.radius || 16;
-    const free = (x, y) => !C.blocked(x, y, R);
+    const free = (x, y) => !C.blocked(x, y, R, null, true);     // ((v4.3 sea) the chief's own landing is ground for him
     // (a straight walk: sampled every 10 iso px, the last 30 px round the place itself never count — a pad by a counter)
     const line = (ax, ay, bx, by) => {
       const L = Math.hypot(bx - ax, (by - ay) * 2), n = Math.ceil(L / 10);

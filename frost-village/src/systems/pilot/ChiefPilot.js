@@ -208,6 +208,11 @@ export class ChiefPilot {
     // ((v4.2.0.1) Roads.route goes out of the office (and the bank, the depot) through its door, and in the same way:
     //  after a desk act he walked his next act's first leg into the office wall for the rest of the act)
     gs.roads.route(p.x, p.y, x, y, this.route, 220);
+    // ((v4.3 sea review PILOT-WEDGE) a place on the chief's own ground beyond the shore line (his landing: Collision.addLand,
+    //  unknown to the roads): the last leg goes through its door, straight on from the snow behind it — from the side he
+    //  pushed against the landing's edge and stuck)
+    const C = gs.collision, L = C && C.inLand ? C.inLand(x, y) : null;
+    if (L && L.door && !C.inLand(p.x, p.y) && this.route.length) this.route.splice(this.route.length - 1, 0, { x: L.door.x, y: L.door.y });
     // (CODE-2) a place inside the office: through its door (the walls have one gap) — when the roads know no rooms
     //  (the Node test's stand-in)
     const B = this.v42.office && this.v42.office.building;

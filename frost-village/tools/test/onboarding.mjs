@@ -191,11 +191,17 @@ try {
     ok(s.step === 'move' && s.hand && s.hand.g === 'drag' && s.hand.loop && s.rects && s.rects.finger && s.card.l1 === '손가락으로 화면을 끌어 봐요', 'S1: the drag demo loops with its card', { step: s.step, hand: s.hand, finger: s.rects && s.rects.finger });
     await advance(page, 0.6);
     s = await st(page);
+    // ((v4.3 sea fixer) the demo loops every 2.4 s and the joystick shows for 0.25–2.1 s of each loop: the village ran in
+    //  real time for a moment before the fixed clock (preroll 0.3–0.5 s), so a fixed sample time sometimes fell in the
+    //  loop's last 0.3 s (finger and joystick both faded out) — look again over one loop before judging)
+    for (let i = 0; i < 24 && !(s.rects && s.rects.ghost); i++) { await advance(page, 0.1); s = await st(page); }
     ok(!!(s.rects && s.rects.ghost), 'S1: the see-through joystick moves with the finger', s.rects);
     const objOff = await page.evaluate(() => !window.__FV.game.scene.getScene('UI').objPanel.visible && window.__FV.scene.tutorial.arrow.visible);
     ok(objOff, 'Act 1: the old objective panel is hidden, the (bigger) yellow arrow points the way');
-    // ((v4.3) the fishing deck: the chief starts in the hut's yard, S1 / S2 point at the reel spot on land, the first view
-    //  frames the deck, the reel spot, the grill and the stall (and the hut's roof at its edge))
+    // ((v4.3) the fishing deck: the chief starts a few steps from his spot ((v4.3 「바다 가까이」) his landing at the
+    //  water's edge), S1 / S2 point at it, the first view frames the deck, the spot, the grill and the stall (and the hut's
+    //  roof at its edge))
+    const W43 = (await page.evaluate(async () => { const m = await import(new URL('src/data/world.js', location.href).href); return { player: m.WORLD.player, reel: m.WORLD.deck.reel }; }));
     const v43 = await page.evaluate(() => {
       const gs = window.__FV.scene, D = gs.deck, cam = gs.cameras.main, wv = cam.worldView, o = window.__FV.onboard();
       const inV = (x, y, m = 0) => x >= wv.x - m && x <= wv.right + m && y >= wv.y - m && y <= wv.bottom + m;
@@ -204,11 +210,11 @@ try {
         deck: inV(D.x, D.y), reelV: inV(D.gather.x, D.gather.y), grill: inV(gs.stations.grill.x, gs.stations.grill.y), stall: inV(gs.market.x - 60, gs.market.y),
         hut: !!(H && inV(H.x + 150, H.y - 60)), wv: [Math.round(wv.x), Math.round(wv.y), Math.round(wv.width), Math.round(wv.height)] };
     });
-    ok(v43.start[0] === 845 && v43.start[1] === 498, '(v4.3) a new game starts in the hut\'s shore-side yard', v43.start);
-    ok(v43.target && Math.abs(v43.target[0] - v43.reel[0]) < 2 && Math.abs(v43.target[1] - (v43.reel[1] - 10)) < 2, '(v4.3) S1 points at the fishing deck\'s reel spot on land (not the old net)', v43);
+    ok(v43.start[0] === W43.player.x && v43.start[1] === W43.player.y && Math.hypot(v43.start[0] - v43.reel[0], (v43.start[1] - v43.reel[1]) * 2) < 120, '(v4.3) a new game starts a few steps from the chief\'s spot', { start: v43.start, reel: v43.reel });
+    ok(v43.target && v43.reel[0] === W43.reel[0] && v43.reel[1] === W43.reel[1] && Math.abs(v43.target[0] - v43.reel[0]) < 2 && Math.abs(v43.target[1] - (v43.reel[1] - 10)) < 2, '(v4.3 sea) S1 points at the chief\'s spot on his landing at the water\'s edge (not the old net, not the old spot on land)', v43);
     ok(v43.deck && v43.reelV && v43.grill && v43.stall && v43.hut, '(v4.3) the first view frames the deck, the reel spot, the grill, the stall and the hut\'s roof', v43);
     await shot(page, 'S1_drag_demo');
-    // one REAL touch drag (up-left; (v4.3) the reel spot is up-right of the yard: the bot then walks there)
+    // one REAL touch drag (up-left; (v4.3 sea) the spot is straight up from the start: the bot then walks there)
     const cdp = await ctx.newCDPSession(page);
     const p0 = await css(page, 430, 760), p1 = await css(page, 360, 720);
     const pos0 = await page.evaluate(() => ({ x: window.__FV.scene.player.x, y: window.__FV.scene.player.y }));

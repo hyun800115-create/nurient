@@ -222,7 +222,7 @@ export class Game extends Phaser.Scene {
     const X0 = Math.min(0, Number(WORLD.left) || 0);     // (v4-C) the west strip lies at negative x
     const okPos = Number.isFinite(ps.x) && Number.isFinite(ps.y) && ps.x >= X0 + 40 && ps.x <= W - 40 && ps.y >= 0 && ps.y <= H - 40;
     const sp = { x: okPos ? ps.x : WORLD.player.x, y: okPos ? ps.y : WORLD.player.y };
-    if (okPos) this.collision.resolve(sp, 16);
+    if (okPos) this.collision.resolve(sp, 16, true);     // ((v4.3 sea) true: a chief saved on his landing stays there
     const px = sp.x, py = sp.y;
     this.player = new Player(this, px, py);
     this.economy = new Economy(this, sv.coins !== undefined ? sv.coins : BALANCE.start.coins);
@@ -1847,7 +1847,7 @@ export class Game extends Phaser.Scene {
   }
 
   /** spawn a fresh item at (x, y) that flies into character `ch`'s stack */
-  spawnItemTo(type, x, y, ch, isPlayer, delay = 0) {
+  spawnItemTo(type, x, y, ch, isPlayer, delay = 0, fo) {
     const st = ch.stack;
     if (st.count + st.incoming >= (isPlayer ? this.player.capacity : st.max)) return false;
     st.reserve(type);
@@ -1855,7 +1855,8 @@ export class Game extends Phaser.Scene {
       const spr = this.effects.takeItem(type);
       spr.setScale(0.45);
       this.effects.fly(spr, x, y, () => st.nextPos(type), {
-        dur: 300, height: 70, scaleTo: st.scale,
+        // ((v4.3 sea) fo: a leap's arc / flip (the chief's fish from his float); the flight time stays 0.3 s
+        dur: 300, height: fo && fo.height !== undefined ? fo.height : 70, spin: (fo && fo.spin) || 0, scaleTo: st.scale,
         onDone: (s) => {
           st.arrive(type);
           if (!ch.alive) { this.effects.releaseItem(s); return; }

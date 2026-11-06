@@ -1,7 +1,12 @@
 """
 deck43_pack.py - turn the v4.3 step-A renders into assets/deck43/ (no Blender: python3 + numpy + Pillow (+ imagequant)).
 
-    python3 tools/blender/deck43_pack.py [--cache DIR] [--chars DIR] [--quantize auto|on|off] [--prev DIR]
+    python3 tools/blender/deck43_pack.py [--cache DIR] [--chars DIR] [--quantize auto|on|off] [--prev DIR] [--reuse]
+
+  --reuse  (v4.3 「바다 가까이」) a build or a character anim that is not in the render caches is taken from the pages
+           already in assets/deck43 (their frames cut back out of deck43.png / deck43_ch.png, untrimmed, NOT outlined
+           again; their manifest entries kept): add one new render (the chief's landing, the chief's `fish` loop)
+           without re-rendering the whole deck. Without --reuse every build and every character must be in the caches.
 
   1. buildings (deck43_render.py cache, bld_render sidecars): the SAME post as the props / v3 buildings / the stall
      (bld_pack.load: clean_alpha + tint_shadow + border_fade; a deck tier's front layer = its frame x the object mask)
@@ -31,7 +36,7 @@ TMP = __import__('tempfile').gettempdir()
 DEFAULT_CACHE = os.path.join(TMP, 'fv_cache', 'deck43')
 DEFAULT_CHARS = os.path.join(TMP, 'fv_cache', 'deck43_chars')
 PAGE_BUDGET = 1.0 * 1048576
-BUILDS = ['deck43_t1', 'deck43_t2', 'deck43_t3', 'deck43_rod', 'fish_crate', 'workshop43']
+BUILDS = ['deck43_t1', 'deck43_t2', 'deck43_t3', 'deck43_rod', 'fish_crate', 'workshop43', 'deck43_landing']
 CHARS = {'player': 'player', 'fisherman': 'fisherman', 'fisherman_b': 'fisherman_b', 'fisherman_c': 'fisherman_c'}
 
 CONVENTIONS = {
@@ -46,7 +51,9 @@ CONVENTIONS = {
     'characters': 'extends: the anims join the existing character (each names its atlas deck43_ch and its frameName '
                   '<key>/<anim>_<dir>_<i>). Seated fisher frames (fsit_*) are 160 x 160 with the anchor at the floor '
                   'under the stool (normalised as every character); dirs NE only (he faces the sea). The chief\'s reel '
-                  'plays once (impactFrame 3: the first fish comes then).',
+                  'plays once (impactFrame 3: the first fish comes then); his `fish` loop (v4.3 sea) is the same '
+                  'motion without the line and the float, tipPoints = the rod tip per frame (the game draws the line '
+                  'from there to his float on the sea).',
 }
 
 
@@ -71,6 +78,11 @@ def build_entries(k, m, frame_atlas):
         if k == 'deck43_rod':
             s['tipPoint'] = (pts.get('tip') or [[30, -62]])[0]
             s['state'] = n.rsplit('_', 1)[1]
+        if k == 'deck43_landing':
+            # (v4.3 sea) the chief's landing: where he stands, its two posts in the water (foam collars), its plank height
+            s['standPoint'] = (pts.get('stand') or [[0, 0]])[0]
+            s['postPoints'] = pts.get('post', [])
+            s['liftPx'] = round(0.15 * 55.4256)
         if k == 'workshop43':
             s['signQuad'] = pts.get('sign', [])
             s['signText'] = 'sign_workshop43'
@@ -85,16 +97,57 @@ def build_entries(k, m, frame_atlas):
     return out
 
 
-def load_chars(cdir):
+def page_frames(name):
+    """(--reuse) the frames of an existing page in assets/deck43, untrimmed (sourceSize), as packed (post / outline done)"""
+    jp, pp = os.path.join(OUT, name + '.json'), os.path.join(OUT, name + '.png')
+    if not (os.path.exists(jp) and os.path.exists(pp)):
+        return {}
+    js = json.load(open(jp, encoding='utf-8'))
+    sheet = Image.open(pp).convert('RGBA')
+    fr = js['frames'] if isinstance(js['frames'], dict) else {f['filename']: f for f in js['frames']}
+    out = {}
+    for n, f in fr.items():
+        r, ss, src = f['frame'], f['spriteSourceSize'], f['sourceSize']
+        if f.get('rotated'):
+            raise SystemExit('deck43_pack: ABORT - rotated frame %s in %s (cannot reuse)' % (n, name))
+        full = Image.new('RGBA', (src['w'], src['h']), (0, 0, 0, 0))
+        full.paste(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), (ss['x'], ss['y']))
+        out[n] = full
+    return out
+
+
+def old_manifest():
+    mp = os.path.join(OUT, 'manifest.json')
+    return json.load(open(mp, encoding='utf-8')) if os.path.exists(mp) else {}
+
+
+def load_chars(cdir, reuse=False):
     import char_pack as cp
     frames, chars = [], {}
+    old = old_manifest().get('characters', {}) if reuse else {}
+    have = page_frames('deck43_ch') if reuse else {}
     for key in CHARS:
         d = os.path.join(cdir, key)
         mp = os.path.join(d, 'meta.json')
-        if not os.path.exists(mp):
+        prev = old.get(key + '_deck43')
+        if not os.path.exists(mp) and not prev:
             raise SystemExit('deck43_pack: ABORT - no character renders for %s in %s (deck43_chars.py first)' % (key, cdir))
-        meta = json.load(open(mp))
+        meta = json.load(open(mp)) if os.path.exists(mp) else {'anims': {}, 'frameSize': prev['frameSizeOf'],
+                                                                 'anchor': prev['anchorOf']}
+        if prev and not meta.get('floatPoint') and prev.get('floatPoint'):
+            meta['floatPoint'] = prev['floatPoint']
         anims = {}
+        # (--reuse) the anims already packed and not rendered again: their frames from the page, their entries kept
+        for an, a in (prev or {}).get('anims', {}).items():
+            if an in meta['anims']:
+                continue
+            for dr in a['dirs']:
+                for i in range(a['frames']):
+                    n = key + '/%s_%s_%d' % (an, dr, i)
+                    if n not in have:
+                        raise SystemExit('deck43_pack: ABORT - %s is not on the deck43_ch page (cannot reuse)' % n)
+                    frames.append((n, have[n]))
+            anims[an] = dict(a)
         for an, info in meta['anims'].items():
             for dr in info['dirs']:
                 for i in range(info['frames']):
@@ -157,15 +210,31 @@ def main():
         return args[args.index(k) + 1] if k in args else d
     cache, cdir = opt('--cache', DEFAULT_CACHE), opt('--chars', DEFAULT_CHARS)
     mode = opt('--quantize', 'auto')
+    reuse = '--reuse' in args
     keys, builds, _boats, _staff, frames, _bf = bp.load(cache)
     missing = [k for k in BUILDS if k not in builds]
+    old_sprites, reused = {}, {}
+    if missing and reuse:
+        # (v4.3 sea) the builds not rendered again: their frames from the deck43 page, their manifest entries kept
+        old_sprites = old_manifest().get('sprites', {})
+        have = page_frames('deck43')
+        for k in list(missing):
+            mine = [n for n in old_sprites if n == k or n.startswith(k + '_')]
+            if mine and all(n in have for n in mine):
+                for n in mine:
+                    frames[n] = have[n]
+                reused[k] = mine
+                missing.remove(k)
     if missing:
-        raise SystemExit('deck43_pack: ABORT - the cache %s lacks %s; nothing was written (deck43_render.py first)'
-                         % (cache, ', '.join(missing)))
-    cframes, chars = load_chars(cdir)
+        raise SystemExit('deck43_pack: ABORT - the cache %s lacks %s; nothing was written (deck43_render.py first%s)'
+                         % (cache, ', '.join(missing), '' if reuse else ', or --reuse'))
+    cframes, chars = load_chars(cdir, reuse)
     os.makedirs(OUT, exist_ok=True)
     names = []
     for k in BUILDS:
+        if k in reused:
+            names += reused[k]
+            continue
         m = builds[k]
         names += m['frames']
         if m.get('overlay'):
@@ -174,10 +243,17 @@ def main():
     frame_atlas = {n: 'deck43' for n in atlas['frames']}
     sprites = {}
     for k in BUILDS:
+        if k in reused:
+            for n in reused[k]:
+                sprites[n] = dict(old_sprites[n], atlas=frame_atlas[n])
+            continue
         sprites.update(build_entries(k, builds[k], frame_atlas))
+    if reused:
+        print('reused from the pages: %s' % ', '.join(sorted(reused)))
     save('deck43_ch', cframes, mode)
     man = {'version': 1, 'generator': 'tools/blender/deck43_render.py + deck43_chars.py + deck43_pack.py (v4.3 step A: '
-                                      'the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims)',
+                                      'the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims; '
+                                      '「바다 가까이」: the chief\'s landing, his `fish` loop)',
            'conventions': CONVENTIONS,
            'atlases': [{'key': 'deck43', 'png': 'deck43/deck43.png', 'json': 'deck43/deck43.json'},
                        {'key': 'deck43_ch', 'png': 'deck43/deck43_ch.png', 'json': 'deck43/deck43_ch.json'}],

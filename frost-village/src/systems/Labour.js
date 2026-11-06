@@ -328,7 +328,8 @@ export class Pile {
     }
     // label "그물 더미"
     const ly = Number(cfg.labelY) || -92;     // (v3.5 review) the meat rack's name floats above its beam
-    const lab = gs.add.container(this.x, this.y + ly).setDepth(this.y + 1990);
+    const lx = Number(cfg.labelX) || 0;       // ((v4.3 sea review CRATE-LABEL) the fish crate's name sits left, off the chief's landing
+    const lab = gs.add.container(this.x + lx, this.y + ly).setDepth(this.y + 1990);
     this.labelText = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '18px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0.5, 0.5);
     this.labelBg = panel(gs, 0, 0, 'ui_panel', 100, 38).setOrigin(0.5, 0.5).setAlpha(0.9);
     lab.add([this.labelBg, this.labelText]);

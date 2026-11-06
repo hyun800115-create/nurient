@@ -180,6 +180,30 @@ web page on its own origin (new games only, its own storage), so it cannot read 
   Default: **new games start in the yard with the hut in the opening frame**; migrated saves start at the hut door (or in
   front of the shop when `v42_office` is a site). Measure in step A.
 
+- **(v4.3 「바다 가까이」, after the designer's a1 preview: "낚시를 너무 멀리서 하는데 바다 가까이 가야지")** the chief's spot
+  is no longer on land: `WORLD.deck.landing` = a 1.0 × 1.2 m jetty stub (`deck43_landing` art, planks lifted 8 px) at the
+  surf line, centred at (1100, 380): right of the gangway's head, under the deck's front corner. `deck.reel` = LD(0, -0.25)
+  = (1089, 386), 0.3 m from the water (deck.mjs: ≤ 0.6 m). He stands facing the sea (NE), casts his own line to a float
+  0.5 m / 1.5 m out (`landing.bob`), loops `fish` (the `reel` poses without their short line; rod tip per frame =
+  `tipPoints`) at today's pickup beat, and every fish leaps from his float to him (same 0.3 s flight). The three deck rods
+  still bend while he reels. Leaving reels the line in; Settings 줍기 'off' with the button let go reels it in too.
+- **The chief's own ground** (`Collision.addLand`): the planks' inside and the snow between them and the shore's walk line
+  (shore + 46) count as land only for the chief (`offLand / blocked / resolve` with `chief` true); every path, porter,
+  fisher and resident still sees the sea there. The polygon's land side overlaps ordinary land by a 14 px band (a seamless
+  step on). Its `door` (the land side's middle, a step out on the snow, (1099, 442)) is the 관망 pilot's last waypoint.
+- New games start at (1090, 440), 1.7 m behind the spot (the tutorial's card dwell sets when he leaves with 4 fish; a
+  closer start picked up a 5th fish). Old saves keep the chief where he was saved (at the old spot (880, 465) he simply
+  stands on the snow).
+- The fish crate's box stands left of its pile pad (`propAt` [-62, 14] → (938, 454)) and its name 44 px left
+  (`labelX`): the old place (1050, 418) touched the landing's planks. The pile pad (porters' spot) stays at (1000, 440).
+- **G1 cost**: every point at the water's edge is ≈ 215–245 px (screen, mostly vertical) above the grill's 서서 굽기 pad
+  (934, 625), and the grill stands between; the spot → grill walk is 1.4–1.5 s for the onboarding bot from anywhere on
+  this shore (0.85 s from the old spot on land). The onboarding bot's first sale therefore rises by ≈ 0.4 s: per seed it
+  lands at 15.7–15.8 s or 16.1 s (whether the 4th fish comes before the 「가만히 있어요」 card's 1.5 s is up), medians
+  15.8–16.1 s over four 5-seed runs against the 15.75 s gate; the smart bot stays inside (21.57 s against 21.82 s).
+  Moving the 서서 굽기 pad 0.6 m toward the shore (labour.ops.grill.pad [-92, 14]) measured 15.8 s / 21.5 s: not enough
+  alone. Open: waive G1 for the onboarding bot, or redesign the grill's pads (lead's decision).
+
 ### 4.2 The shop: stages, queues by kind, the 자재 창구
 Today: `Market` (`Seller.js:142`) = one shelf (3 foods × 40), one queue (`queueStart`, `queueStep`, turn after 6), one register;
 the front customer is served one at a time, wants **one** kind × count (`makeWant` :245), and switches kind when it runs out

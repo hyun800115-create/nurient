@@ -39,14 +39,15 @@
     const k = gridKeyNow();
     if (k !== gridKey) { grid.fill(0); gridKey = k; }
     const i = r * COLS + c;
-    if (!grid[i]) grid[i] = gs.collision.blocked(X0 + c * CX + CX / 2, r * CY + CY / 2, 15) ? 2 : 1;
+    // ((v4.3 「바다 가까이」) the bot walks the chief: his own landing at the water's edge is ground for him (Collision.addLand)
+    if (!grid[i]) grid[i] = gs.collision.blocked(X0 + c * CX + CX / 2, r * CY + CY / 2, 15, null, true) ? 2 : 1;
     return grid[i] === 2;
   }
   function los(ax, ay, bx, by) {
     const d = gd(ax, ay, bx, by), n = Math.ceil(d / 8);
     for (let i = 1; i <= n; i++) {
       const x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n;
-      if (gs.collision.blocked(x, y, 15)) return false;
+      if (gs.collision.blocked(x, y, 15, null, true)) return false;
     }
     return true;
   }

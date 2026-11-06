@@ -1,17 +1,24 @@
 // (v4.3 「마을 새 단장」 step A, docs/redesign_v43/engineering_plan.md §4.1 / §8) the fishing deck that replaces the net,
 // the chief's hut and the first houses' plots. Fixed-step clock, one browser.
 //   node tools/test/deck.mjs [--shots DIR] [--only new,old,office,houses]
-// 1 a new game: the deck (1단 art, rods, the reel spot's pad) and the hut are there; the chief starts in the hut's yard;
-//   the reel spot and the fish crate are ON LAND (walkable), the deck and its float points on the water
-// 2 the chief on the reel spot: `reel` once (balance.js deck.reelS), the first fish within 0.45 s of standing still, the
-//   pool (6) emptied at today's pickup beat (≤ 4.2 s), the rods show the pool (hooked / bite / idle)
+// 1 a new game: the deck (1단 art, rods, the reel spot's pad) and the hut are there; the fish crate is ON LAND (walkable),
+//   the deck and its float points on the water. ((v4.3 「바다 가까이」) the chief's spot is his landing at the water's edge:
+//   within 0.6 m of the water, on HIS ground only (Collision.addLand: walkable for the chief, off land for everyone
+//   else), the landing's art shown; the chief starts a few steps behind it; (review) the fish crate's box and name keep
+//   off the landing, its door (the pilot's way on) is a clear straight walk onto the spot)
+// 2 the chief on the reel spot: he fishes (`fish`, looping: the reel's motion) facing the sea, the first fish within
+//   0.45 s of standing still, the pool (6) emptied at today's pickup beat (≤ 4.2 s), the rods show the pool (hooked /
+//   bite / idle). (v4.3 sea) his line and float: cast from the rod tip, the float lands on the WATER with a splash ring,
+//   the line runs from his rod tip (above him) to the float, each fish starts at the float (leaps out of the water to
+//   him); he walks away -> the line is reeled in and gone
 // 3 the fishers: hired at once (non-instant: they walk the lane from the gangway foot to their stools), the deck grows
 //   1단 → 2단 → 3단 with them; each fisher ≈ 20 fish a minute (17..23), three ≈ 59 (52..66); their fish fly to the
 //   crate (the `fish` pile) on land; the crate keeps them when it is full (no fish lost, the fishers wait)
 // 4 nobody else on the deck: a 3-minute soak with three fishers, the fish porters (raw + goods), the cook, customers,
 //   residents and the chief walking between the reel spot and the grill — only fishers are ever inside the deck /
-//   gangway (beyond the snow) or on the water; nobody is stuck at the gangway foot (the crowd there: the chief, the raw
-//   porter at the crate, a fisher walking in)
+//   gangway (beyond the snow) or on the water (the chief only on his landing); nobody but the chief ever on the landing or
+//   the snow behind it; nobody is stuck at the gangway foot (the crowd there: the chief, the raw porter at the crate, a
+//   fisher walking in)
 // 5 old saves (v3.5 / v4.1 / v4.2 fixtures): the fishermen sit on the stools (deck tier = their number), the fish pile
 //   keeps its count (now the crate on land), coins / goods / workers kept; the hut stands on the office plot unless the
 //   village has an office (then the office stands there); no building overlaps another
@@ -69,6 +76,7 @@ const GEO = async () => {
   const gs = window.__FV.scene, D = gs.deck, C = D.cfg;
   const m = await import(new URL('src/systems/Progression.js', location.href).href);
   window.__FV.STEPS = m.STEPS; window.__FV.GOALS = m.GOALS;
+  window.__W = (await import(new URL('src/data/world.js', location.href).href)).WORLD;
   const loc = (x, y) => { const s = (x - D.x) / 45.25, d = (y - D.y) / 22.63; return { mx: (s + d) / 2, my: (s - d) / 2 }; };
   const T = C.tiers[3];
   window.__onDeck = (x, y) => { const q = loc(x, y); return q.mx > T[0] - 0.05 && q.mx < T[1] + 0.05 && q.my > T[2] - 0.05 && q.my < T[3] + 0.05; };
@@ -88,11 +96,15 @@ try {
     const s0 = await page.evaluate(() => {
       const gs = window.__FV.scene, D = gs.deck, O = gs.v42 && gs.v42.office, p = gs.player, C = gs.collision;
       const bob = [0, 1, 2].map((i) => D.bobber(i));
+      // ((v4.3 sea) how far the chief's spot is from the water (ground px: y doubled; 64 = 1 m)
+      let toWater = Infinity;
+      for (let x = D.gather.x - 120; x <= D.gather.x + 120; x += 2) { const sy = C.shore(x); toWater = Math.min(toWater, D.gather.y < sy ? 0 : Math.hypot(x - D.gather.x, (sy - D.gather.y) * 2)); }
       return { st: D.state(), hut: !!(O && O.hut), hutXY: O && O.hut ? [O.hut.x, O.hut.y] : null, plot: gs.sites.v42_office && gs.sites.v42_office.state,
-        start: [Math.round(p.x), Math.round(p.y)], reelLand: !C.offLand(D.gather.x, D.gather.y), crateLand: !C.offLand(gs.piles.fish.x, gs.piles.fish.y),
+        start: [Math.round(p.x), Math.round(p.y)], startW: [window.__W.player.x, window.__W.player.y], reelLand: !C.offLand(D.gather.x, D.gather.y, true) && !C.blocked(D.gather.x, D.gather.y, 16, null, true), reelOthers: C.offLand(D.gather.x, D.gather.y),
+        toWaterM: +(toWater / 64).toFixed(2), crateLand: !C.offLand(gs.piles.fish.x, gs.piles.fish.y),
         deckWater: window.__onWater(D.x, D.y), rodsWater: D.rods.every((r) => window.__onWater(r.bob.x, r.bob.y)), bobWater: bob.every((b) => window.__onWater(b.x, b.y)),
         startToReel: Math.round(Math.hypot(p.x - D.gather.x, (p.y - D.gather.y) * 2)), net: gs.net === gs.deck, kind: gs.net.kind,
-        reelAnim: !!(window.__FV.game.anims.exists('player:reel:NE')),
+        reelAnim: !!(window.__FV.game.anims.exists('player:reel:NE')) && !!(window.__FV.game.anims.exists('player:fish:NE')) && !!((p.def.anims.fish || {}).tipPoints),
         // (the variants' own atlases are on the lazy workers page: their seated anims are in the manifest now and built
         //  when that page comes — checked again after the soak)
         fsit: ['fisherman', 'fisherman_b', 'fisherman_c'].map((k) => { const d = window.__FV.assets().m.characters[k]; return ['fsit_cast', 'fsit_wait', 'fsit_bite', 'fsit_reel'].every((a) => d && d.anims && d.anims[a] && d.anims[a].atlas === 'deck43_ch'); }),
@@ -100,11 +112,28 @@ try {
     });
     ok(s0.st.tier === 1 && s0.st.art && s0.st.stock === 6, 'the fishing deck: 1단 with its art, the pool full (6)', s0.st);
     ok(s0.hut && s0.plot === 'plot' && s0.hutXY[0] === 600 && s0.hutXY[1] === 640, 'the chief\'s hut stands on the office plot (600, 640) from the start', { hut: s0.hut, xy: s0.hutXY, plot: s0.plot });
-    ok(s0.start[0] === 845 && s0.start[1] === 498 && s0.startToReel < 170, 'the chief starts in the hut\'s shore-side yard, a few steps from the reel spot', { start: s0.start, d: s0.startToReel });
-    ok(s0.reelLand && s0.crateLand, 'the reel spot and the fish crate are on land (walkable)', s0);
+    ok(s0.start[0] === s0.startW[0] && s0.start[1] === s0.startW[1] && s0.startToReel < 120, 'the chief starts a few steps from his spot (world.js player)', { start: s0.start, d: s0.startToReel });
+    ok(s0.reelLand && s0.crateLand, 'the reel spot (for the chief) and the fish crate are walkable', s0);
+    ok(s0.toWaterM <= 0.6, `(v4.3 sea) the chief's spot is at the water's edge: ${s0.toWaterM} m from the water (≤ 0.6)`, { reel: s0.st.reel, toWaterM: s0.toWaterM });
+    ok(s0.reelOthers, '(v4.3 sea) the landing is the chief\'s ground only: off land for every other walker', s0.reelOthers);
+    ok(s0.st.landing && s0.st.landing.art && s0.st.landing.shown, '(v4.3 sea) the landing\'s art (deck43_landing) stands at the surf line', s0.st.landing);
+    // (review CRATE-CROWD / CRATE-LABEL / PILOT-WEDGE) the fish crate's box and its name keep off the landing; the landing's
+    // door (where the 관망 pilot steps on) is ordinary snow with a clear straight walk onto the spot
+    const s1 = await page.evaluate(() => {
+      const gs = window.__FV.scene, D = gs.deck, C = gs.collision, P = gs.piles.fish, box = P.props[0];
+      const plankLeft = Math.min(...D.plankPoly.map((q) => q.x)), gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 2);
+      const door = D.landDoor;
+      let clear = !!door;
+      for (let i = 0; door && i <= 20; i++) { const x = door.x + (D.gather.x - door.x) * i / 20, y = door.y + (D.gather.y - door.y) * i / 20; if (C.blocked(x, y, 16, null, true)) clear = false; }
+      return { box: box ? [Math.round(box.x), Math.round(box.y)] : null, boxToLanding: box ? Math.round(gd(box.x, box.y, D.landAt.x, D.landAt.y)) : null,
+        boxToSpot: box ? Math.round(gd(box.x, box.y, D.gather.x, D.gather.y)) : null, labelRight: Math.round(P.label.x + P.labelBg.width / 2), plankLeft,
+        door, doorLand: !!door && !C.offLand(door.x, door.y), doorClear: clear };
+    });
+    ok(s1.box && s1.boxToLanding >= 150 && s1.boxToSpot >= 140 && s1.labelRight + 30 < s1.plankLeft, '(v4.3 sea) the fish crate\'s box and name stand clear of the chief\'s landing', s1);
+    ok(s1.doorLand && s1.doorClear, '(v4.3 sea) the landing\'s door is everyone\'s snow, a clear straight walk from it onto his spot (the pilot\'s last leg)', s1);
     ok(s0.deckWater && s0.rodsWater && s0.bobWater, 'the deck, the rods\' floats and the fishers\' floats are on the water', s0);
     ok(s0.net && s0.kind === 'net', 'gs.net is the deck (the old Net surface for every caller)');
-    ok(s0.reelAnim && s0.fsit.every(Boolean) && s0.fsitBase, 'the art: the chief\'s `reel` and the seated loop of the three fisher looks (NE)', { reel: s0.reelAnim, fsit: s0.fsit, base: s0.fsitBase });
+    ok(s0.reelAnim && s0.fsit.every(Boolean) && s0.fsitBase, 'the art: the chief\'s `reel` and `fish` (with its rod tips) and the seated loop of the three fisher looks (NE)', { reel: s0.reelAnim, fsit: s0.fsit, base: s0.fsitBase });
     await shot(page, 'open');
     // ---------------- 2. the chief on the reel spot
     const r2 = await page.evaluate(() => {
@@ -113,26 +142,45 @@ try {
       D.stock = D.max;
       window.__FV.teleport(D.gather.x, D.gather.y);
       window.__FV.setInput(0, 0);
-      const out = { anims: [], first: null, got: [] };
+      const out = { anims: [], first: null, got: [], lines: [], fromFloat: 0, fromElse: 0, dirs: [] };
+      // (review ARROW-AIM) the objective arrow over his spot while he is away: low, its tip on the landing's pad
+      const T0 = gs.tutorial;
+      out.arrowAway = T0 && T0.target ? { key: T0.textKey, x: Math.round(T0.target.x), tip: Math.round(T0.target.y - T0.target.h), h: T0.target.h } : { key: T0 && T0.textKey };
+      // (v4.3 sea) where each fish starts its flight to him (the chief's: his float)
+      const sp = gs.spawnItemTo.bind(gs);
+      gs.spawnItemTo = (type, x, y, ch, isP, d, fo) => { if (ch === p) { const k = D.cast; if (k && Math.hypot(x - k.bob.x, (y - k.bob.y) * 2) < 12 && fo) out.fromFloat++; else out.fromElse++; } return sp(type, x, y, ch, isP, d, fo); };
+      const onW = (q) => q && q.y < gs.collision.shore(q.x) - 2;
       let t = 0;
       for (let i = 0; i < 300; i++) {
         window.__step.run(1 / 60); t += 1 / 60;
         const a = p.animName; if (out.anims[out.anims.length - 1] !== a) out.anims.push(a);
         const n = p.stack.countOf('item_fish_raw') + p.stack.incoming;
         if (out.first === null && n > 0) out.first = +t.toFixed(2);
-        if (i % 30 === 29) out.got.push(n);
-        if (i === 30) out.rodsAt05 = D.rods.map((r) => r.frame);
+        if (i % 30 === 29) { out.got.push(n); const L = D.state().landing; out.lines.push({ t: +t.toFixed(1), st: L.line, float: L.float, tip: L.tip, drawn: L.drawn, rings: L.rings, onWater: onW(L.float), tipUp: !!(L.tip && L.tip.y < p.y - 40 && Math.abs(L.tip.x - p.x) < 70), dir: p.dir }); }
+        if (i === 30) { out.rodsAt05 = D.rods.map((r) => r.frame); out.arrowHere = { key: gs.tutorial.textKey, target: !!gs.tutorial.target }; }
+        if (D.cast && D.cast.rings.length) out.ringSeen = true;
       }
+      gs.spawnItemTo = sp;
       out.n = p.stack.countOf('item_fish_raw');
       out.stock = D.stock;
+      out.onPlanks = D.onPlanks(p.x, p.y); out.lift = Math.round(p.liftY || 0);
       return out;
     });
-    ok(r2.anims.includes('reel') && r2.anims.indexOf('reel') < r2.anims.indexOf('harvest') && r2.anims.filter((a) => a === 'reel').length === 1, 'the chief reels once, then gathers (today\'s pickup beat)', r2.anims);
-    ok(r2.first !== null && r2.first <= 0.45, `the first fish leaves the rods ${r2.first} s after he stands there (≤ 0.45 s: the reel takes it)`, r2.first);
+    const lin = r2.lines.filter((q) => q.t >= 0.5);
+    ok(r2.anims.includes('fish') && !r2.anims.includes('harvest') && r2.lines.every((q) => q.dir === 7), '(v4.3 sea) the chief fishes from his landing: `fish` (the reel\'s motion, looping at the pickup beat), facing the sea (NE)', { anims: r2.anims, dirs: r2.lines.map((q) => q.dir) });
+    ok(r2.onPlanks && r2.lift >= 6, `(v4.3 sea) he stands on the landing's planks, lifted onto them (${r2.lift} px)`, { on: r2.onPlanks, lift: r2.lift });
+    ok(r2.first !== null && r2.first <= 0.45, `the first fish comes ${r2.first} s after he stands there (≤ 0.45 s: the reel's beat takes it)`, r2.first);
     ok(r2.n >= 6, `the pool is his within 5 s (${r2.n} fish)`, r2.got);
     ok(r2.rodsAt05 && r2.rodsAt05.every((f) => f === 'hooked'), 'while he reels the three rods come up hooked', r2.rodsAt05);
+    ok(r2.arrowAway && r2.arrowAway.key === 'obj_fish' && Math.abs(r2.arrowAway.x - s0.st.reel.x) < 2 && r2.arrowAway.tip >= s0.st.reel.y - 24 && r2.arrowAway.tip <= s0.st.reel.y,
+      '(v4.3 sea) the arrow to his spot is low: its tip on the landing\'s pad, not on the deck\'s corner', { away: r2.arrowAway, reel: s0.st.reel });
+    ok(r2.arrowHere && r2.arrowHere.key === 'obj_fish' && !r2.arrowHere.target, '(v4.3 sea) standing at his spot: the objective text stays, no arrow over him', r2.arrowHere);
+    ok(lin.length >= 8 && lin.every((q) => q.st === 'in' && q.drawn && q.onWater && q.tipUp), '(v4.3 sea) while he reels: his line runs from the rod tip (above him) to his float, the float on the water', lin.slice(0, 4));
+    ok(r2.ringSeen && r2.fromFloat >= 6 && r2.fromElse === 0, `(v4.3 sea) the float lands with a splash ring; every fish leaps from the float to him (${r2.fromFloat} from the float, ${r2.fromElse} elsewhere)`, { ring: r2.ringSeen, float: r2.fromFloat, other: r2.fromElse });
     await page.evaluate(() => { window.__FV.teleport(1000, 620); });
     await advance(page, 4);
+    const gone = await page.evaluate(() => { const L = window.__FV.scene.deck.state().landing; return { st: L.line, drawn: L.drawn }; });
+    ok(gone.st === 'off' && !gone.drawn, '(v4.3 sea) he walks away: the line is reeled in and gone', gone);
     const pool = await page.evaluate(() => { const D = window.__FV.scene.deck; return { stock: D.stock, shown: D.fish.filter((f) => f.visible).length, rods: D.rods.map((r) => r.frame) }; });
     ok(pool.stock === pool.shown && pool.stock >= 3, 'the rods show the pool: one fish picture per fish held', pool);
     // ---------------- 3. the fishers: hired on the spot, walking the lane, the deck grows
@@ -199,12 +247,31 @@ try {
       return { a, b: pl.count + pl.stack.incoming, max: pl.stack.max, waiting: gs.workers.filter((w) => w.type === 'fisherman' && w.dk && w.dk.f === 'wait').length };
     });
     ok(full.a === full.b && full.b <= full.max + 1, 'a full crate: the fishers wait on their stools, nothing flies away', full);
+    // (review SEA-OFFMODE) Settings 줍기 'off': he fishes while the button is held; let go -> he reels in and stands
+    const offm = await page.evaluate(async () => {
+      const gs = window.__FV.scene, p = gs.player, D = gs.deck, PP = gs.v42 && gs.v42.pickup;
+      if (!PP) return null;
+      // (the pickup setting is in force once the first loop is over: hire_fisherman done, as here)
+      const S = (await import(new URL('src/core/Save.js', location.href).href)).Settings;
+      const m0 = S.data.pickup; S.data.pickup = 'off';
+      const mode = PP.mode;
+      window.__FV.clearStack(); D.stock = D.max;
+      window.__FV.teleport(D.gather.x, D.gather.y); window.__FV.setInput(0, 0); window.__step.run(0.5);
+      PP.press(); window.__step.run(1.2);
+      const held = { n: p.stack.count + p.stack.incoming, line: D.cast.st, anim: p.animName };
+      PP.release(); window.__step.run(1.5);
+      const after = { n: p.stack.count + p.stack.incoming, line: D.cast.st, anim: p.animName, node: !!p.node };
+      S.data.pickup = m0;
+      window.__FV.clearStack(); window.__FV.teleport(1000, 620); window.__step.run(1);
+      return { mode, held, after };
+    });
+    ok(!!offm && offm.mode === 'off' && (offm.held.line === 'in' && offm.held.n >= 1 && offm.after.line !== 'in' && offm.after.anim !== 'fish' && !offm.after.node), '(v4.3 sea) 줍기 off: he fishes while it is held; let go -> he reels in and stands (no endless fishing loop)', offm);
     // ---------------- 4. the soak: nobody else on the deck, nobody stuck at the gangway foot
     const soak = await page.evaluate(() => {
       const gs = window.__FV.scene, D = gs.deck, pr = gs.progress, p = gs.player;
       // the fish porters (raw: crate -> grill, goods: grill -> shelf) and the cook
       for (const id of ['op_grill', 'raw_grill', 'porter_grill']) { if (pr.done[id]) continue; pr.done[id] = true; const pad = pr.pads[id]; if (pad) { pad.destroy(); delete pr.pads[id]; } const st = (window.__FV.STEPS || []).find((q) => q.id === id); if (st) pr.applyStep(st, true); }
-      const bad = {}, stuck = {}, last = new Map();
+      const bad = {}, stuck = {}, last = new Map(), onLanding = {};
       const reel = D.gather, grill = gs.stations.grill.op;
       let leg = 0;
       for (let s = 0; s < 180 * 5; s++) {
@@ -217,7 +284,12 @@ try {
         for (const a of all) {
           if (!a || a.alive === false) continue;
           const isFisher = a.type === 'fisherman';
-          if (!isFisher && (window.__onDeck(a.x, a.y) || window.__onGang(a.x, a.y) || window.__onWater(a.x, a.y))) { const k = (a.key || a.constructor.name) + ':' + (a.role || a.type || ''); bad[k] = (bad[k] || 0) + 1; }
+          // ((v4.3 sea) the chief on his own landing (it reaches over the surf) is where he should be; nobody else ever there
+          const mine = a === p && gs.collision.inLand(a.x, a.y);
+          if (!isFisher && !mine && (window.__onDeck(a.x, a.y) || window.__onGang(a.x, a.y) || window.__onWater(a.x, a.y))) { const k = (a.key || a.constructor.name) + ':' + (a.role || a.type || ''); bad[k] = (bad[k] || 0) + 1; }
+          // ((review SEA-BAND) the land polygon's land side overlaps everyone's ground by a 14 px band (a seamless step on
+          //  for him): only the part beyond the shore's walk line is his alone
+          if (a !== p && gs.collision.inLand(a.x, a.y) && gs.collision.offLand(a.x, a.y)) { const k = (a.key || a.constructor.name) + ':' + (a.role || a.type || ''); onLanding[k] = (onLanding[k] || 0) + 1; }
           if (isFisher && !(a.dk && a.dk.st === 'sit')) { const k = 'fisher' + a.index; stuck[k] = (stuck[k] || 0) + 1; }
           // a porter standing in the same place long: counted per 0.2 s step
           if (a.role === 'porter' || a.role === 'raw') { const q = last.get(a) || { x: a.x, y: a.y, n: 0 }; if (Math.hypot(a.x - q.x, a.y - q.y) < 1 && Math.hypot(a.x - D.foot.x, (a.y - D.foot.y) * 2) < 160) q.n++; else { q.n = 0; q.x = a.x; q.y = a.y; } last.set(a, q); }
@@ -225,9 +297,10 @@ try {
       }
       window.__FV.setInput(0, 0);
       let maxStill = 0; for (const q of last.values()) maxStill = Math.max(maxStill, q.n);
-      return { bad, stuck, maxStillNearFoot: +(maxStill * 0.2).toFixed(1), raw: gs.rawPorters.length, legs: leg, crate: gs.piles.fish.count, grillIn: gs.stations.grill.inStack.count };
+      return { bad, stuck, onLanding, maxStillNearFoot: +(maxStill * 0.2).toFixed(1), raw: gs.rawPorters.length, legs: leg, crate: gs.piles.fish.count, grillIn: gs.stations.grill.inStack.count };
     });
-    ok(Object.keys(soak.bad).length === 0, 'a 3-minute soak: nobody but the fishers is ever on the deck, the gangway or the water', soak.bad);
+    ok(Object.keys(soak.bad).length === 0, 'a 3-minute soak: nobody but the fishers is ever on the deck, the gangway or the water (the chief only on his landing)', soak.bad);
+    ok(Object.keys(soak.onLanding).length === 0, '(v4.3 sea) nobody but the chief ever on his landing or the snow between it and the walk line', soak.onLanding);
     ok(Object.keys(soak.stuck).length === 0, 'the fishers stay on their stools', soak.stuck);
     // the three looks on the deck, seated (the workers page has come by now)
     for (let k = 0; k < 30; k++) { const done = await page.evaluate(() => { window.__step.frame(); const A = window.__FV.assets(); return ['fisherman_b', 'fisherman_c'].every((q) => A.charReady(q)); }); if (done) break; await sleep(500); }
