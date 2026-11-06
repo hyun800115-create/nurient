@@ -61,6 +61,10 @@ class BakeScene extends Phaser.Scene {
       if (a) {
         if (a.format === 'tfatlas') continue;
         this.load.atlas(k, 'assets/' + a.png, 'assets/' + a.json);
+      } else if (Assets.pages[k]) {
+        // ((v4-B) a packed atlas (assets/_packed): every page of it, the on-demand ones too (a frame lookup goes
+        //  through Assets.texOf, see frameInfo)
+        for (const pk of Assets.pages[k]) { const pa = m.atlases[pk]; if (pa) this.load.atlas(pk, 'assets/' + pa.png, 'assets/' + pa.json); }
       } else if (m.images[k]) this.load.image(k, 'assets/' + m.images[k].png);
       else B.errors.push('unknown file ' + k);
     }
@@ -106,7 +110,8 @@ function spriteFrame(key) {
   return frameInfo(r.tex, r.frame, r.anchor);
 }
 function frameInfo(texKey, frameName, anchor) {
-  const t = tex().get(texKey);
+  // ((v4-B) a packed atlas: the page that holds the frame)
+  const t = tex().get(Assets.texOf(texKey, frameName) || texKey);
   const f = frameName !== undefined ? t.get(frameName) : t.get();
   if (!f || f.name === '__BASE' && frameName !== undefined) throw new Error('missing frame ' + texKey + ':' + frameName);
   return { img: t.getSourceImage(), cx: f.cutX, cy: f.cutY, cw: f.cutWidth, ch: f.cutHeight, tx: f.x, ty: f.y, rw: f.realWidth, rh: f.realHeight,
@@ -160,10 +165,12 @@ function stageOfKey() {
   return st;
 }
 
-function bakeSprites() {
+/** keys: only these sprite keys (bake_title.mjs --patch); all of the layout's otherwise */
+function bakeSprites(keys) {
   const out = [];
   const st = stageOfKey();
   for (const key in st) {
+    if (keys && keys.indexOf(key) < 0) continue;
     const s = STAGE_SCALE[st[key]];
     const fi = spriteFrame(key);
     const def = Assets.def(key);
@@ -234,7 +241,7 @@ function bakeActors() {
           if (a.layered) {
             const base = (d.base || 'base_{dir}').replace('{dir}', dir);
             drawFI(ctx, frameInfo(d.atlas, base, d.anchor), ax, ay, s);
-            if (a.anim === 'move') { const foam = 'foam_' + dir + '_' + (i % 4); if (tex().get(d.atlas).has(foam)) drawFI(ctx, frameInfo(d.atlas, foam, d.anchor), ax, ay, s); }
+            if (a.anim === 'move') { const foam = 'foam_' + dir + '_' + (i % 4); if (Assets.texOf(d.atlas, foam)) drawFI(ctx, frameInfo(d.atlas, foam, d.anchor), ax, ay, s); }
           }
           const fname = d.frameName.replace('{anim}', a.anim).replace('{dir}', dir).replace('{i}', i);
           drawFI(ctx, frameInfo(d.atlas, fname, d.anchor), ax, ay, s);
@@ -607,7 +614,8 @@ function preview(stage, s = 0.5, opts = {}) {
   });
 }
 
-B.bakeSprites = () => bakeSprites();
+B.bakeSprites = (keys) => bakeSprites(keys);
+B.stageOfKey = () => stageOfKey();
 B.bakeActors = () => bakeActors();
 B.bakeGround = () => { const out = [bakeGroundBase(GROUND_SCALE)]; for (let k = 1; k <= 4; k++) out.push(bakeGroundStage(k, GROUND_SCALE)); return out; };
 B.preview = preview;

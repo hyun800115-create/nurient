@@ -5,6 +5,8 @@
 // Layout + timing of every object: src/title/layout.js. Light: setLight(t) with t 0 day .. 1 dusk .. 2 night
 // (tint on every picture + additive window / lamp / fire glows). Life: the chief carrying a tower of grilled
 // fish, 누리, villagers, the snow train, buses and cars, ferry / sailboat / rowboat, gulls, chimney smoke.
+// (v4.3) The fishing deck (layout DECK: back layer, rods with their lines and floats, the seated fisher, front rails) and
+// the stage-1 stall 「눈꽃 노점」 with its name written on the signboard (Seller.js signTexture, the title's language).
 //
 // Per frame: no allocations (records and pools are made up front; pops run on their own little clock).
 import * as L from './layout.js';
@@ -12,6 +14,8 @@ import { Assets } from '../core/Assets.js';
 import { DIR_BASE, DIR_FLIP, dirFromVec } from '../core/Iso.js';
 import { TitleAssets } from './TitleAssets.js';
 import { tod3 } from './TitleFx.js';
+import { FONT, STRINGS, getLang } from '../data/strings.js';
+import { signTexture } from '../entities/Seller.js';
 
 const ADD = () => Phaser.BlendModes.ADD;
 // window / lamp / headlight glows are many and sit between the buildings in depth order: they use NORMAL
@@ -23,6 +27,7 @@ const D_GROUND = -100000;
 const D_AIR = 100000;
 const WARM = 0xffd58f;
 const LAMP_KEYS = { streetlight: ['light'], streetlight_double: ['lightA', 'lightB'], harbor_lamp: ['light'], lamp_post: null, buoy: ['light'] };
+const SIGN_S = 3;            // signTexture's canvas resolution (Seller.js): drawn at 1 / SIGN_S
 const TINT = [0xffffff, 0xf6c7ad, 0x6d7dbd];      // pictures: day, dusk, night
 const SMOKE_TINT = [0xffffff, 0xf3d6cc, 0x9aa6d0];
 const GULL_SE = 'seagull:fly:SE', GULL_NE = 'seagull:fly:NE';
@@ -33,6 +38,9 @@ function backOut(p, s = 2.0) { const q = p - 1; return q * q * ((s + 1) * q + s)
 function hash(i) { let x = (i * 2654435761) >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return (x >>> 0) / 4294967296; }
 
 const wx = L.wx, wy = L.wy;
+/** px offset of deck metres (from the deck's centre) */
+const AXm = (mx, my) => Math.round(L.AX * (mx + my));
+const AYm = (mx, my) => Math.round(L.AY * (mx - my));
 
 export class TitleDiorama {
   /**
@@ -43,6 +51,7 @@ export class TitleDiorama {
     this.scene = scene;
     this.put = put;
     this.reduced = !!opts.reduced;
+    this.lang = opts.lang || getLang() || 'ko';
     this.cue = opts.cue || (() => {});
     this.time = 0;
     this.stage = 0;              // highest stage shown (or being shown)
@@ -76,7 +85,8 @@ export class TitleDiorama {
       const sp = man && man.sprites[o.k];
       const live = !sp || !!sp.live;
       const group = live ? 1 : Math.max(1, sp.stage || 1);
-      this.recs.push({ o, i, key: o.k, sp, live, group, img: null, glow: null, x: wx(o.x, o.y), y: wy(o.x, o.y) + (o.w ? L.WATER_PX : 0),
+      const y = wy(o.x, o.y) + (o.w ? L.WATER_PX : 0);
+      this.recs.push({ o, i, key: o.k, sp, live, group, img: null, glow: null, x: wx(o.x, o.y), y, depth: y + (o.d || 0),
         bs: 1, shown: false, want: false, popAt: 0, popDur: 0, popMode: 0, popT: -1, size: 1, bob: o.w ? hash(i) * 6.28 : -1,
         extras: [], smoke: [], th: 0.15 + hash(i + 7) * 0.45 });
     });
@@ -170,7 +180,7 @@ export class TitleDiorama {
       r.bs = 1 / sp.scale;
       r.size = Math.max(0.35, Math.min(2.2, (img.frame.realWidth * r.bs) / 260));
     }
-    img.setScale(r.bs).setDepth(r.y).setVisible(false);
+    img.setScale(r.bs).setDepth(r.depth).setVisible(false);
     if (o.f) img.setFlipX(true);
     img.setTint(this.tint);
     this.put(img);
@@ -183,7 +193,7 @@ export class TitleDiorama {
     const g = r.sp && r.sp.glow;
     if (g && s.textures.exists(g.tex)) {
       const gi = s.add.image(r.x, r.y, g.tex, g.frame).setOrigin(g.ox, g.oy).setScale(1 / (r.sp.scale * g.res)).setBlendMode(LIGHT())
-        .setDepth(r.y + 0.5).setVisible(false).setAlpha(0);
+        .setDepth(r.depth + 0.5).setVisible(false).setAlpha(0);
       if (o.f) gi.setFlipX(true);
       this.put(gi);
       r.glow = gi;
@@ -199,6 +209,11 @@ export class TitleDiorama {
     if (r.key === 'campfire') this.addFire(r, r.x, r.y - 4, 0.42);
     if (r.key === 'watchtower' && fx && fx.fire) this.addFire(r, r.x + fx.fire[0] * fxs, r.y + fx.fire[1] + 6, 0.62);
     if (r.key === 'flag_pole' || r.key === 'traffic_light') { /* no light */ }
+    // (v4.3) what rides on the picture: the deck's rods, lines, floats and front rails (+ its lantern), the stall's name
+    if (o.deck) this.addDeckParts(r);
+    if (o.sign) this.addSign(r, o.sign);
+    if (o.lamp) this.addLamp(r, r.x + o.lamp[0] * fxs, r.y + o.lamp[1], 0.42, false);
+    if (r.extras.length) this.syncExtras(r);
     // chimney smoke / steam
     if (fx) for (const n of ['smoke', 'smoke2', 'steam']) if (fx[n] && r.key !== 'lighthouse') r.smoke.push(this.smokeSrc.push({ x: r.x + fx[n][0] * fxs, y: r.y + fx[n][1], rec: r, acc: hash(r.i * 3 + n.length), rate: n === 'steam' ? 0.9 : 1.35 }) - 1);
   }
@@ -206,7 +221,7 @@ export class TitleDiorama {
   addLamp(r, x, y, sc, pool) {
     const s = this.scene;
     const gl = Assets.sprite('fx_glow');
-    const img = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(LIGHT()).setTint(WARM).setScale(sc).setDepth(r.y + 0.6).setVisible(false).setAlpha(0);
+    const img = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(LIGHT()).setTint(WARM).setScale(sc).setDepth(r.depth + 0.6).setVisible(false).setAlpha(0);
     this.put(img);
     let pl = null;
     if (pool) {
@@ -220,20 +235,103 @@ export class TitleDiorama {
     const s = this.scene;
     const an = Assets.sheet('fx_fire');
     const sd = Assets.sheetDef('fx_fire');
-    const spr = s.add.sprite(x, y, 'fx_fire', 0).setScale(sc).setDepth(r.y + 0.7).setVisible(false);
+    const spr = s.add.sprite(x, y, 'fx_fire', 0).setScale(sc).setDepth(r.depth + 0.7).setVisible(false);
     if (sd && sd.anchor) spr.setOrigin(sd.anchor[0], sd.anchor[1]);
     if (an && !this.reduced) spr.play({ key: an, startFrame: Math.floor(hash(r.i) * 10) });
     this.put(spr);
     const gl = Assets.sprite('fx_glow');
-    const glow = s.add.image(x, y - 14 * sc, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xffa040).setScale(sc * 2.4).setDepth(r.y + 0.8).setVisible(false).setAlpha(0);
+    const glow = s.add.image(x, y - 14 * sc, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xffa040).setScale(sc * 2.4).setDepth(r.depth + 0.8).setVisible(false).setAlpha(0);
     this.put(glow);
     this.fires.push({ spr, glow, rec: r, sc, ph: hash(r.i + 5) * 6.28 });
+  }
+
+  // ------------------------------------------------------------------ (v4.3) the fishing deck, the stall's sign
+  /** a picture riding on record r: (dx, dy) px from its anchor (unscaled), depth = the record's + dd. It follows the
+   *  record's pop (scale about the anchor), visibility, alpha and the light (tint) */
+  addExtra(r, img, dx, dy, dd, tint = true) {
+    img.setDepth(r.depth + dd).setVisible(false);
+    this.put(img);
+    if (tint) { img.setTint(this.tint); this.tintables.push(img); }
+    r.extras.push({ img, dx, dy, sx: img.scaleX, sy: img.scaleY });
+    return img;
+  }
+
+  syncExtras(r) {
+    const im = r.img, kx = im.scaleX / r.bs, ky = im.scaleY / r.bs;
+    for (let i = 0; i < r.extras.length; i++) {
+      const e = r.extras[i];
+      e.img.setPosition(im.x + e.dx * kx, im.y + e.dy * ky).setScale(e.sx * kx, e.sy * ky).setVisible(im.visible).setAlpha(im.alpha);
+    }
+  }
+
+  /** the deck's rods (game pictures deck43_rod_<state>), their lines and floats (one small canvas, drawn once), its
+   *  front rails over the seated fisher, and the lantern at night (FishingDeck.js draws the same, live) */
+  addDeckParts(r) {
+    const s = this.scene, D = L.DECK, lift = D.lift;
+    const P = (mx, my) => [AXm(mx, my), AYm(mx, my)];
+    // rods on the planks, lifted like the game's (depth +0.2)
+    const tips = [];
+    D.rods.forEach((q, k) => {
+      const key = 'deck43_rod_' + (q[2] || 'idle');
+      const p = Assets.sprite(key);
+      if (p.ph || p.pending) return;
+      const [dx, dy] = P(q[0], q[1]);
+      this.addExtra(r, s.add.image(0, 0, p.tex, p.frame).setOrigin(p.anchor[0], p.anchor[1]), dx, dy - lift, 0.2 + k * 0.01);
+      const tp = (Assets.def(key) || {}).tipPoint || [30, -62];
+      const [fx, fy] = P(q[0] + D.float[0], q[1] + D.float[1]);
+      tips.push([dx + tp[0], dy - lift + tp[1], fx, fy, q[2] || 'idle']);
+    });
+    // lines + floats: a little canvas in deck px (white line, red / white float; a bite dips it)
+    if (tips.length) {
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      for (const [a, b, c, d] of tips) { x0 = Math.min(x0, a, c); y0 = Math.min(y0, b, d); x1 = Math.max(x1, a, c); y1 = Math.max(y1, b, d); }
+      x0 = Math.floor(x0 - 8); y0 = Math.floor(y0 - 8); x1 = Math.ceil(x1 + 8); y1 = Math.ceil(y1 + 10);
+      const key = 'ttl_deck_lines', S = 2;
+      if (!s.textures.exists(key)) {
+        const c = s.textures.createCanvas(key, (x1 - x0) * S, (y1 - y0) * S);
+        if (c) {
+          const ctx = c.context;
+          ctx.setTransform(S, 0, 0, S, -x0 * S, -y0 * S);
+          for (const [a, b, fx, fy0, st] of tips) {
+            const fy = fy0 + (st === 'bite' ? 3 : 0);
+            ctx.strokeStyle = 'rgba(244,247,251,0.9)'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(fx, fy - 3); ctx.stroke();
+            if (st === 'bite') { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(fx, fy + 1, 9, 3.5, 0, 0, Math.PI * 2); ctx.stroke(); }
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(fx, fy - 1, 3.2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#e8433a'; ctx.beginPath(); ctx.arc(fx, fy - 3, 3.2, 0, Math.PI * 2); ctx.fill();
+          }
+          c.refresh();
+          TitleAssets.keys.add(key);          // removed with the title's textures (TitleAssets.release)
+        }
+      }
+      if (s.textures.exists(key)) this.addExtra(r, s.add.image(0, 0, key).setOrigin(0, 0).setScale(1 / S), x0, y0, 0.25);
+    }
+    // the front rails (the near rails and the gangway's near rail) over the fisher (+0.6)
+    const f = D.front && Assets.sprite(D.front);
+    if (f && !f.ph && !f.pending) this.addExtra(r, s.add.image(0, 0, f.tex, f.frame).setOrigin(f.anchor[0], f.anchor[1]), 0, 0, 0.6);
+    // the lantern at the gangway head: a warm light at dusk / night (no light pool: it hangs over the water)
+    const lp = ((Assets.def(r.key) || {}).fxPoints || {}).lantern || D.lantern;
+    if (lp) this.addLamp(r, r.x + lp[0], r.y + lp[1], 0.42, false);
+  }
+
+  /** the stall's name on its blank signboard (the game's own lettering, Seller.js signTexture), in the title's language */
+  addSign(r, strKey) {
+    const d = Assets.def(r.key) || {}, q = d.signQuad;
+    if (!Array.isArray(q) || q.length < 4) return;
+    const txt = (STRINGS[this.lang] && STRINGS[this.lang][strKey]) || STRINGS.ko[strKey] || '';
+    if (!txt) return;
+    const key = 'ttl_sign_' + strKey + '_' + this.lang;
+    const m = signTexture({ textures: this.scene.textures, font: FONT }, key, txt, q, d.signColor);
+    if (!this.scene.textures.exists(key)) return;
+    TitleAssets.keys.add(key);            // removed with the title's textures (TitleAssets.release)
+    const img = this.scene.add.image(0, 0, key).setOrigin(0, 0).setScale(1 / SIGN_S);
+    this.addExtra(r, img, q[0][0], q[0][1] - (m.sh < 0 ? -m.sh * m.w : 0), 0.2);
   }
 
   addLighthouse(r, x, y) {
     const s = this.scene;
     const gl = Assets.sprite('fx_glow');
-    const lamp = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xfff0b8).setScale(1.25).setDepth(r.y + 0.6).setVisible(false).setAlpha(0);
+    const lamp = s.add.image(x, y, gl.tex, gl.frame).setBlendMode(ADD()).setTint(0xfff0b8).setScale(1.25).setDepth(r.depth + 0.6).setVisible(false).setAlpha(0);
     this.put(lamp);
     const cont = s.add.container(x, y).setDepth(D_AIR - 30).setVisible(false).setAlpha(0);
     cont.setScale(1, 0.5);
@@ -335,6 +433,7 @@ export class TitleDiorama {
     r.img.setVisible(on).setAlpha(1).setScale(r.bs);
     if (r.o.f) r.img.setFlipX(true);
     r.img.y = r.y;
+    if (r.extras.length) this.syncExtras(r);
     if (r.glow) r.glow.setVisible(on);
     for (const l of this.lamps) if (l.rec === r) { l.img.setVisible(on); if (l.pool) l.pool.setVisible(on); }
     for (const f of this.fires) if (f.rec === r) { f.spr.setVisible(on); f.glow.setVisible(on); }
@@ -407,8 +506,9 @@ export class TitleDiorama {
         const k = 1 - p * p;
         img.setScale(r.bs * k, r.bs * k);
       }
+      if (r.extras.length) this.syncExtras(r);
       if (p >= 1) {
-        if (r.popMode > 0) { img.setScale(r.bs).setAlpha(1); img.y = r.y; if (r.glow) r.glow.setScale(1 / (r.sp.scale * r.sp.glow.res)); } else this.showRec(r, false);
+        if (r.popMode > 0) { img.setScale(r.bs).setAlpha(1); img.y = r.y; if (r.glow) r.glow.setScale(1 / (r.sp.scale * r.sp.glow.res)); if (r.extras.length) this.syncExtras(r); } else this.showRec(r, false);
         r.popMode = 0; r.popT = -1;
         this.active[i] = this.active[this.active.length - 1];
         this.active.length--;
@@ -530,7 +630,10 @@ export class TitleDiorama {
     const s = this.scene;
     // (reduced motion: everyone stands still at the second point of the path, facing the camera)
     const p0 = this.reduced && a.path.length > 1 ? a.path[1] : a.path[0];
-    const w = { def: a, char: a.char, spr: cs.spr, baked: cs.baked, key: null, i: this.reduced && a.path.length > 1 ? 1 : 0, mx: p0[0], my: p0[1], back: false, dir: 1, shadow: null, stack: null, appear: 0 };
+    const w = { def: a, char: a.char, spr: cs.spr, baked: cs.baked, key: null, i: this.reduced && a.path.length > 1 ? 1 : 0, mx: p0[0], my: p0[1], back: false, dir: 1, shadow: null, stack: null, appear: 0,
+      lift: 0, depth: null, cyc: 0, cycT: 0 };
+    // ((v4.3) on the fishing deck's stool: lifted onto the planks, between the deck and its front rails (layout DECK))
+    if (a.seat !== undefined && L.DECK) { w.lift = L.DECK.lift; w.depth = wy(L.DECK.x, L.DECK.y) + L.DECK.depth + 0.4; }
     const d = cs.baked ? null : Assets.charDef(a.char);
     const sh = s.add.image(0, 0, 'fv_shadow').setAlpha(0.5);
     const shw = d && d.shadow ? d.shadow : [46, 18];
@@ -550,7 +653,11 @@ export class TitleDiorama {
       }
     }
     if (this.reduced) {
-      this.playChar(w, a.speed > 0 ? a.anim : a.anim, 2);
+      this.playChar(w, a.anim, a.seat !== undefined ? 7 : 2);
+    } else if (a.cycle && a.cycle.length) {
+      // ((v4.3) the seated fisher's loop (cast, wait, bite, reel), facing the sea
+      w.cyc = 0; w.cycT = a.cycle[0][1] * (0.5 + hash(this.walkers.length + 3));
+      this.playChar(w, a.cycle[0][0], 7);
     } else if (a.speed > 0) {
       const p1 = a.path[1] || a.path[0];
       this.playChar(w, a.anim, dirFromVec(wx(p1[0], p1[1]) - wx(w.mx, w.my), wy(p1[0], p1[1]) - wy(w.mx, w.my)));
@@ -566,10 +673,10 @@ export class TitleDiorama {
   placeWalker(w) {
     const x = wx(w.mx, w.my), y = wy(w.mx, w.my);
     const k = w.appear < 1 ? backOut(w.appear, 2.5) : 1;
-    w.spr.setPosition(x, y).setDepth(y + 1);
+    w.spr.setPosition(x, y - w.lift).setDepth(w.depth !== null ? w.depth : y + 1);
     if (w.baseScale === undefined) w.baseScale = w.spr.scaleX;
     w.spr.setScale(w.baseScale * k);
-    w.shadow.setPosition(x, y + 1).setDepth(y - 2);
+    w.shadow.setPosition(x, y + 1 - w.lift).setDepth(w.depth !== null ? w.depth - 0.05 : y - 2);
     w.shadow.setAlpha(0.45 * k);
     if (w.stack) {
       const def = Assets.charDef(w.char);
@@ -590,7 +697,14 @@ export class TitleDiorama {
     for (const w of this.walkers) {
       if (w.appear < 1) w.appear = Math.min(1, w.appear + dt / 0.4);
       const a = w.def;
-      if (a.speed > 0 && !this.reduced) {
+      if (a.cycle && !this.reduced && a.speed <= 0) {
+        w.cycT -= dt;
+        if (w.cycT <= 0) {
+          w.cyc = (w.cyc + 1) % a.cycle.length;
+          w.cycT += a.cycle[w.cyc][1];
+          this.playChar(w, a.cycle[w.cyc][0], 7);
+        }
+      } else if (a.speed > 0 && !this.reduced) {
         const path = a.path;
         const nextI = w.back ? w.i - 1 : w.i + 1;
         const tgt = path[(nextI + path.length) % path.length];
@@ -861,6 +975,7 @@ export class TitleDiorama {
     for (const r of this.recs) {
       if (r.bob < 0 || !r.img || !r.shown || r.popMode !== 0) continue;
       r.img.y = r.y + Math.sin(t * 1.8 + r.bob) * 1.6;
+      if (r.extras.length) this.syncExtras(r);
     }
   }
 

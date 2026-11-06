@@ -93,9 +93,28 @@ export const RAIL = { my: 3.6, from: -30, to: -2.1, stage: 3 };
 /** the harbour piers (stage 4): pier_y chains going -Y from the quay at these mx */
 export const PIERS = [{ mx: 2.2, len: 3 }];
 
+// ---------------------------------------------------------------- the fishing deck (v4.3)
+/** (v4.3 「마을 새 단장」) the fishing deck 낚시 좌대 where the net was: the game's 1단 deck (assets/deck43,
+ *  src/entities/FishingDeck.js; its numbers are world.js WORLD.deck). x, y: the water-plane point under the planks'
+ *  centre (metres); its gangway foot (the art's footPoint, deck metres (0.65, -4.7)) stands on the snow 0.5 m inside the
+ *  north-east shore, between the tent (the first cabin later) and the pier, its gangway 1.7 m clear of the pier.
+ *  Like the pier it is drawn at land height (no +WATER_PX: the gangway meets the snow).
+ *  The diorama draws the back layer (OBJECTS, depth d), the three rods with their lines and floats (+0.2), the seated
+ *  fisher (ACTORS `seat`, +0.4) and the front rails (+0.6), all lifted `lift` px onto the planks like the game.
+ *  stools / rods: deck metres from the centre (WORLD.deck stools / rods); rods[k][2] = the rod's picture state */
+export const DECK = {
+  x: -2.3, y: 19.0, lift: 17, depth: -90, front: 'deck43_t1_front', lantern: [-64, -56],
+  stools: [[-0.35, 0.75]],
+  rods: [[1.12, 1.12, 'bite'], [1.12, 0.32, 'idle'], [0.32, 1.12, 'idle']],
+  float: [0.64, 0.64],          // where a rod's float sits on the water (deck metres from the rod)
+};
+
 // ---------------------------------------------------------------- objects
 // { k: sprite key, x, y: metres, s: stage it appears, u: stage it is gone (optional),
-//   f: flipX, w: stands on the water (+WATER_PX), big: big pop (puff + sound), hero: pops first }
+//   f: flipX, w: stands on the water (+WATER_PX), big: big pop (puff + sound), hero: pops first,
+//   d: depth offset (px, the fishing deck), deck: the deck's rods / front rails ride on it (DECK),
+//   sign: strings.js key the game writes on the art's blank signboard (signQuad), in the title's language,
+//   lamp: [dx, dy] px from the anchor: a lantern lit at dusk / night (pictures without a baked window glow) }
 export const OBJECTS = [
   // ---- stage 0: the snowy island before anyone came (pines, rocks, drifts)
   { k: 'tree_pine_snow', x: -12.6, y: 11.6, s: 0 }, { k: 'tree_pine_a', x: -11.2, y: 12.8, s: 0 },
@@ -120,13 +139,13 @@ export const OBJECTS = [
   //   the pier and the rowboat behind on the shore (the sea is up-right)
   { k: 'flag_pole', x: 5.2, y: 13.6, s: 1, hero: 1 },
   { k: 'station_grill', x: 0.6, y: 11.4, s: 1, big: 1 },
-  { k: 'market_counter', x: 5.6, y: 10.6, s: 1, big: 1 },
+  { k: 'market_s1_back', x: 5.6, y: 10.6, s: 1, big: 1, sign: 'sign_market_1', lamp: [-25, -146] },   // (v4.3) 「눈꽃 노점」, the game's stage-1 stall
   { k: 'tent_a', x: -3.0, y: 11.4, s: 1, u: 2 },
   { k: 'campfire', x: -1.2, y: 9.4, s: 1 },
   { k: 'log_seat_x', x: -2.3, y: 8.3, s: 1 },
   { k: 'dock_pier', x: 1.6, y: 15.0, s: 1 },
   { k: 'boat_small', x: 3.4, y: 15.8, s: 1, w: 1 },
-  { k: 'fish_net', x: -0.4, y: 13.9, s: 1 },
+  { k: 'deck43_t1_back', x: DECK.x, y: DECK.y, s: 1, d: DECK.depth, deck: 1 },          // (v4.3) the fishing deck (was the net)
   { k: 'barrel', x: 7.3, y: 10.1, s: 1 }, { k: 'crate', x: 6.9, y: 9.1, s: 1 },
   { k: 'firewood_pile', x: -4.7, y: 10.0, s: 1 },
 
@@ -181,6 +200,8 @@ export const OBJECTS = [
 
 // ---------------------------------------------------------------- moving life
 // paths are lists of [mx, my] waypoints; `loop` = go round, otherwise back and forth.
+// (v4.3) seat: k = sits on the fishing deck's stool k (DECK: lifted onto the planks, drawn between the deck and its
+//  front rails); cycle: [[anim, seconds], ...] played round and round where he sits
 export const ACTORS = [
   // the chief with a tower of grilled fish: pier -> grill -> counter and back (stage 1+)
   { id: 'chief', char: 'player', s: 1, anim: 'carry_walk', speed: 1.5, stack: 'item_fish_cooked', stackN: 9,
@@ -190,7 +211,9 @@ export const ACTORS = [
   // villagers on the dirt lane (stage 2+)
   { id: 'v1', char: 'villager_a', s: 2, anim: 'walk', speed: 1.1, path: [[-1.0, 6.4], [11.0, 6.4]] },
   { id: 'v2', char: 'villager_b', s: 2, anim: 'walk', speed: 1.0, path: [[12.0, 7.4], [-1.8, 7.4]] },
-  { id: 'fisher', char: 'fisherman', s: 2, anim: 'work', speed: 0, path: [[1.4, 16.2]], dir: 'NE' },
+  // (v4.3) the fisher sits on the deck's stool and fishes like the game's (Worker.updateDeck): cast, wait, bite, reel
+  { id: 'fisher', char: 'fisherman', s: 2, anim: 'fsit_wait', speed: 0, path: [[DECK.x + DECK.stools[0][0], DECK.y + DECK.stools[0][1]]], dir: 'NE',
+    seat: 0, cycle: [['fsit_cast', 0.6], ['fsit_wait', 1.4], ['fsit_bite', 0.5], ['fsit_reel', 0.6], ['fsit_wait', 0.4]] },
   { id: 'lumber', char: 'lumberjack', s: 2, anim: 'carry_walk', speed: 1.2, path: [[5.0, 2.2], [5.0, 8.0]] },
   // town folk on the sidewalks (stage 3+), harbour hands (stage 4)
   { id: 'v3', char: 'villager_c', s: 3, anim: 'walk', speed: 1.0, path: [[-12.0, -6.3], [10.0, -6.3]] },
@@ -221,7 +244,8 @@ export const SHIPS = [
   // ferry would hide the harbour); the intro has it glide in from introRun metres out
   { id: 'ferry', char: 'ferry', s: 4, my: -19.0, stopMx: 13.0, fromMx: -34, toMx: 40, speed: 1.7, dir: 'SE', scale: 0.85, introRun: 4.5 },
   { id: 'sail', char: 'sailboat', s: 4, my: -7.4, fromMx: 15.5, toMx: 31, speed: 0.75, dir: 'SE' },
-  { id: 'rowboat', char: 'boat_rowboat', s: 2, anim: 'row', my: 17.6, fromMx: -6, toMx: 12, speed: 0.6, dir: 'SE' },
+  // ((v4.3) it sets out past the pier's end (fromMx -6 -> 0.8): from further west it rowed through the deck's gangway)
+  { id: 'rowboat', char: 'boat_rowboat', s: 2, anim: 'row', my: 17.6, fromMx: 0.8, toMx: 12, speed: 0.6, dir: 'SE' },
 ];
 
 /** gulls circle over the harbour / the camp */
