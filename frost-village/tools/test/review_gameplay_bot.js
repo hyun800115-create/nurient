@@ -155,7 +155,7 @@
     if (aff.length) return aff[0];
     return main || cands.sort((a, b) => a.remaining - b.remaining)[0] || null;
   }
-  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; for (const c of civicCash()) v += c.value; return v; }
+  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled && gs.trade.cash !== gs.market.cash) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; for (const c of civicCash()) v += c.value; return v; }
   // (v4-C) the big restaurant's cash pad and the town hall's tax box: a person picks them up like any till
   function civicCash() { const C = gs.civic, o = []; if (!C) return o; if (C.restaurant && C.restaurant.enabled && C.restaurant.cash && C.restaurant.cash.value >= 40) o.push(C.restaurant.cash); if (C.hall && C.hall.enabled && C.hall.tax && C.hall.tax.value >= 40) o.push(C.hall.tax); return o; }
   const STORE = ['item_can', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
@@ -274,7 +274,9 @@
     {
       const m = gs.market, tr = gs.trade;
       const sellFood = Object.keys(b).some((t) => FOODS.includes(t) && canSell(t));
-      if (m.waitingPay && !m.register.clerk && !sellFood) { setTask('register', m.register, { seller: m, label: 'market', tol: 5 }); return; }
+      // ((v4.3) the staged shop: the food counter whose line waits to pay with no clerk (the stall's register before))
+      const mr = m.waitRegister || m.register;
+      if (m.waitingPay && !mr.clerk && !sellFood) { setTask('register', mr, { seller: m, label: 'market', tol: 5 }); return; }
       if (tr.enabled && tr.stock.count > (tr.kept ? tr.kept() : 0) && !tr.register.clerk && !Object.keys(b).some((t) => GOODS.includes(t))) { setTask('register', tr.register, { seller: tr, label: 'trade', tol: 5 }); return; }
     }
     // 0b. (v3) the general store's line waits at its register
@@ -446,7 +448,7 @@
   function cashTask() {
     const p = P();
     const cs = [gs.market.cash];
-    if (gs.trade.enabled) cs.push(gs.trade.cash);
+    if (gs.trade.enabled && gs.trade.cash !== gs.market.cash) cs.push(gs.trade.cash);
     // (v4) 역 금고: the wholesale and the rent pile up there
     const G = gs.v4 && gs.v4.growth;
     if (G && G.till && G.till.value >= 40) cs.push(G.till);

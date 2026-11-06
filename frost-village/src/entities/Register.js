@@ -39,7 +39,8 @@ export class Register {
     const sd0 = Assets.def(art + '_staff'), ad = Assets.def(art);
     const sd = sd0 && Array.isArray(sd0.staffPoints) ? sd0 : ad;
     const sp = sd && Array.isArray(sd.staffPoints) && sd.staffPoints.find((q) => Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1]) && (!cfg.avoid || gdist(seller.x + q[0], seller.y + q[1], seller.x + cfg.avoid[0], seller.y + cfg.avoid[1]) > 40));
-    const so = sp || cfg.staff || off;
+    // ((v4.3) a counter of the staged shop gives its own staff point (staffAt: the art's staffPoints[k] of its counter))
+    const so = cfg.staffAt || sp || cfg.staff || off;
     this.staff = { x: seller.x + so[0], y: seller.y + so[1] };
     this.staffDir = sd && Array.isArray(sd.staffDirs) ? sd.staffDirs[0] : null;
     // (v3) a clerk standing INSIDE a shop (staffDepth "front"): shop at depth d, clerk d + 0.5, then the
@@ -53,7 +54,8 @@ export class Register {
     //  which reads as W (side-on, face under the cap). Only someone further off makes her turn fully)
     this.holdDir = this.stepLift && this.staffDir ? DIRS8.indexOf(this.staffDir) : -1;
     this.overlay = null;
-    if (ad && ad.overlay && Assets.m.sprites[ad.overlay]) {
+    // ((v4.3) the staged shop draws its front layer itself, once for all its counters: cfg.noOverlay)
+    if (ad && ad.overlay && Assets.m.sprites[ad.overlay] && !cfg.noOverlay) {
       this.overlay = Assets.image(gs, seller.x, seller.y, ad.overlay).setDepth(seller.y + 1);
       if (gs.lazyImage) gs.lazyImage(this.overlay, ad.overlay);
     }
@@ -62,6 +64,31 @@ export class Register {
     this.chief = false;
     this.enabled = true;
     this.onT = 0;
+  }
+
+  /**
+   * ((v4.3) the shop grew a stage: the register pad, its label and the clerk's post move with its counter.
+   * x, y = the pad; staff = { x, y } the clerk's post; art = the stage's sprite key (step lift, held direction);
+   * depthY = the shop's depth (the clerk is drawn between its back and front layers); instant = no walk (a reload)
+   */
+  place(x, y, staff, art, depthY, instant) {
+    this.x = x; this.y = y;
+    this.pad.x = x; this.pad.y = y;
+    this.pad.img.setPosition(x, y);
+    if (this.pad.icon) this.pad.icon.setPosition(x, y);
+    this.labelBaseY = y - 46;
+    this.label.setPosition(x, this.labelBaseY).setDepth(y + 1990);
+    this.staff = { x: staff.x, y: staff.y };
+    const ad = Assets.def(art), sd0 = Assets.def(art + '_staff');
+    const sd = sd0 && Array.isArray(sd0.staffPoints) ? sd0 : ad;
+    this.staffDir = sd && Array.isArray(sd.staffDirs) ? sd.staffDirs[0] : null;
+    this.frontDepth = sd && sd.staffDepth === 'front' ? depthY + 0.5 : null;
+    this.stepLift = sd && Number.isFinite(sd.stepLiftPx) ? Math.max(0, Math.min(20, sd.stepLiftPx)) : 0;
+    this.holdDir = this.stepLift && this.staffDir ? DIRS8.indexOf(this.staffDir) : -1;
+    // (the clerk steps to the new post at once: the shop rebuilds around her in a puff of snow; a clerk still on her way
+    //  in keeps walking, to the new post)
+    const c = this.clerk;
+    if (c && (instant || c.state === 'post')) c.arrive();
   }
 
   refresh() {

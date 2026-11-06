@@ -8,12 +8,13 @@
 
 import { BALANCE } from '../data/balance.js';
 
-/** the five goods lines: raw pile -> station -> product -> where it is sold */
+/** the five goods lines: raw pile -> station -> product -> where it is sold ((v4.3) planks / ingots: the shop's 자재 창구,
+ *  the trade post merged into the shop — 'mat'; food: the shop's food rack) */
 export const LINES = [
   { id: 'grill', pile: 'fish', raw: 'item_fish_raw', product: 'item_fish_cooked', shelf: 'market' },
-  { id: 'sawmill', pile: 'log', raw: 'item_log', product: 'item_plank', shelf: 'trade' },
+  { id: 'sawmill', pile: 'log', raw: 'item_log', product: 'item_plank', shelf: 'mat' },
   { id: 'bakery', pile: 'wheat', raw: 'item_wheat', product: 'item_bread', shelf: 'market' },
-  { id: 'smelter', pile: 'ore', raw: 'item_ore', product: 'item_ingot', shelf: 'trade' },
+  { id: 'smelter', pile: 'ore', raw: 'item_ore', product: 'item_ingot', shelf: 'mat' },
   { id: 'smokehouse', pile: 'meat', raw: 'item_meat_raw', product: 'item_meat_cooked', shelf: 'market' },
 ];
 

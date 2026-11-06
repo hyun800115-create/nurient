@@ -9,6 +9,11 @@
 //  serving (STALL-C1: she turned side-on, W); + the signboard 「눈꽃 노점」 stays >= 95 % visible with a full shelf
 //  (3 kinds x 40: the fish tower used to rise over its last syllable, STALL-P2); the bread tower tops out no higher
 //  than the fish tower (R4: at 18 layers it covered the board's right end))
+// ((v4.3 「마을 새 단장」, gate G6) the staged shop: at stage 2 (자재 · 먹거리) and stage 3 (자재 · 생선 · 빵·고기) EVERY clerk is
+//  >= --min % visible with the front customer of EVERY line present (the merchant at the 자재 창구, three customers in each
+//  food line: the next line's front bubble is the one that can cover a clerk), faces SW at her post, and the stage's
+//  signboard stays >= 95 % visible with full racks. Stage 1 = the checks above, at the 4.2.0.2 stall.
+//  -> docs/previews/screens_v2/v43_clerks_s2.jpg, v43_clerks_s3.jpg
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
@@ -37,6 +42,9 @@ try {
   await ev(() => { window.__FV.give(5000); window.__FV.unlockAll(); });
   await until(page, () => { const s = window.__FV.state(); return s.market.clerk && s.trade.clerk && window.__FV.scene.market.register.clerk.ready && window.__FV.scene.trade.register.clerk.ready; }, 60);
   await until(page, () => { const g = window.__FV.scene; return g.market.register.clerk.key.startsWith('npc_clerk') && g.trade.register.clerk.key.startsWith('npc_clerk'); }, 60);
+  // ((v4.3) unlockAll builds the 눈꽃 시장 (stage 3): the stall checks below run at stage 1, the staged ones after)
+  await until(page, () => { const A = window.__FV.assets(); return !A.pending('market_s3_back') && !A.pending('market_s2_back'); }, 60);
+  await ev(() => { const m = window.__FV.scene.market; if (m.setStage) m.setStage(1, true); });
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.market.stock.push('item_fish_cooked', null, gs.effects); });
   await advance(page, 8);
   console.log('after unlock waits', JSON.stringify(await lz()));
@@ -128,6 +136,111 @@ try {
     const tw = await ev(() => { const m = window.__FV.scene.market, s = m.stock; s.place(); const top = {}, n = {}; for (const it of s.items) { const k = it.type.replace('item_', ''); n[k] = (n[k] || 0) + 1; if (!(k in top) || it.y < top[k]) top[k] = it.y; } for (const k in top) top[k] = Math.round(top[k] - m.y); return { top, n, by: s.drawMaxBy }; });
     if (tw.top.bread != null && tw.top.fish_cooked != null && tw.top.bread >= tw.top.fish_cooked - 2) console.log(`ok   bread tower top ${tw.top.bread} px <= fish tower top ${tw.top.fish_cooked} px (from the stall's anchor; ${tw.n.bread} bread, drawn up to ${JSON.stringify(tw.by)})`);
     else { fails++; console.log('FAIL bread tower rises above the fish tower (over the signboard\'s right end)', JSON.stringify(tw)); }
+  }
+  // ---- ((v4.3) the staged shop: every clerk with every line's front customer present (gate G6)
+  for (const st of [2, 3]) {
+    const res = await ev((st) => {
+      const g = window.__FV.scene, m = g.market, F = window.__FV;
+      m.setStage(st, true);
+      m.spawnT = 1e9;
+      // the food racks empty for the measure (no goods flying from the rack to a customer across the counter: those
+      //  flights pass over the clerks for a moment, like a walker; the gate is about who STANDS there), the 자재 rack
+      //  at an everyday level
+      for (const [S, n] of [[m.stock, 0], [g.trade.stock, 12]]) { const keep = {}; for (const it of S.items.slice()) { keep[it.type] = (keep[it.type] || 0) + 1; if (keep[it.type] > n) { const q = S.pop(it.type); if (q && q.spr) g.effects.releaseItem(q.spr); } } S.bakeDirty = true; }
+      for (const id in m.lanes) { const L = m.lanes[id]; for (const c of L.queue.slice()) { try { c.despawn(); } catch (e) { /* */ } } L.queue.length = 0; }
+      for (const c of m.leaving.slice()) { try { c.despawn(); } catch (e) { /* */ } } m.leaving.length = 0;
+      for (const L of m.openLanes()) for (let i = 0; i < 3; i++) {
+        const c = m.spawnCustomer(i);
+        const from = c.market; const k = from.queue.indexOf(c); if (k >= 0) from.queue.splice(k, 1);
+        L.queue.push(c); c.market = L; const s = L.slotPos(L.queue.length - 1); c.x = s.x; c.y = s.y; c.path.length = 0;
+        c.setWant(L.types[0]); c.state = 'wait'; c.arrived = true; c.faceTo(L.x + L.cfg.faceTo[0], L.y + L.cfg.faceTo[1]); c.showBubble(); c.sync(0);
+      }
+      F.clearStack(); F.teleport(m.x + 420, m.y + 420);
+      for (const k in m.seats) { const c = m.seats[k].clerk; if (c) { c.idleT = 1e9; c.serveT = 0; } }
+      return Object.keys(m.seats).filter((k) => m.seats[k].enabled && m.seats[k].clerk);
+    }, st);
+    await advance(page, 1.5);
+    await ev(() => { const m = window.__FV.scene.market; window.__FV.camera(m.x + 10, m.y - 60, 1.2); });
+    await advance(page, 0.5);
+    await ev(() => {
+      // what is drawn above clerk `seat` with a box meeting hers (bubbles in their containers count with the container's depth)
+      window.__cvCands = (seat) => {
+        const g = window.__FV.scene, c = g.market.seats[seat].clerk, s = c.sprite, b = s.getBounds(), d = s.depth;
+        const out = [];
+        const walk = (list, pd) => { for (const o of list) { if (o.list) { if (o.visible) walk(o.list, o.depth); continue; } if (!o.visible || o === s || !o.getBounds) continue; const ob = o.getBounds(); const ix = Math.max(0, Math.min(b.right, ob.right) - Math.max(b.x, ob.x)), iy = Math.max(0, Math.min(b.bottom, ob.bottom) - Math.max(b.y, ob.y)); if (ix * iy > 0 && (pd !== undefined ? pd : o.depth) > d) out.push({ o, area: ix * iy }); } };
+        walk(g.children.list);
+        return out.sort((p, q) => q.area - p.area).slice(0, 8);
+      };
+      // the share of clerk `seat` that shows (magenta in place / magenta on top); walkers false = porters, residents and
+      // workers hidden (the gate); hideK >= 0 = that candidate of __cvCands hidden as well (who covers her)
+      window.__cvShare = (seat, walkers, hideK) => new Promise((resolve) => {
+        const g = window.__FV.scene, m = g.market, R = m.seats[seat], c = R.clerk, s = c.sprite, cam = g.cameras.main, Rn = g.game.renderer;
+        const hid = [];
+        if (!walkers) for (const o of g.porters.concat(g.rawPorters, (g.life ? g.life.residents : []), g.workers)) if (o.sprite && o.sprite.visible) { o.sprite.setVisible(false); hid.push(o.sprite); }
+        for (const q of g.market.queue) { if (q.alive) { q.vx = q.vy = 0; } }
+        c.faceFront(); c.play('idle', true); s.anims.pause(); window.__step.frame();
+        let what = null;
+        if (hideK >= 0) { const cd = window.__cvCands(seat)[hideK]; if (cd) { const o = cd.o; what = { k: (o.texture && o.texture.key) + ':' + (o.frame && o.frame.name), dxy: [Math.round(o.x - c.x), Math.round(o.y - c.y)], parent: o.parentContainer ? Math.round(o.parentContainer.depth) : null }; o.setVisible(false); hid.push(o); } else return resolve(null); }
+        const dir = c.dir;
+        const b = s.getBounds(), k = cam.zoom;
+        const x = Math.max(0, Math.floor(cam.x + (b.x - cam.worldView.x) * k) - 4), y = Math.max(0, Math.floor(cam.y + (b.y - cam.worldView.y) * k) - 4);
+        const w = Math.max(1, Math.min(Rn.width - x, Math.ceil(b.width * k) + 8)), h = Math.max(1, Math.min(Rn.height - y, Math.ceil(b.height * k) + 8));
+        const count = (img, done) => { const go = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x2 = cv.getContext('2d'); x2.drawImage(img, 0, 0); const d = x2.getImageData(0, 0, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 70 && d[i + 2] > 200) n++; done(n); }; if (img.complete && img.naturalWidth) go(); else img.onload = go; };
+        s.setTintFill(0xff00ff);
+        Rn.snapshotArea(x, y, w, h, (imgA) => count(imgA, (a) => {
+          const d0 = s.depth, sy = c.sync; c.sync = () => {}; s.setDepth(1e7);
+          Rn.snapshotArea(x, y, w, h, (imgB) => count(imgB, (bb) => {
+            c.sync = sy; s.setDepth(d0); s.clearTint(); s.anims.resume();
+            for (const o of hid) o.setVisible(true);
+            const lane = R.seller, f = lane && lane.queue ? lane.queue[0] : lane && lane.payTarget ? lane.payTarget() : null;
+            resolve({ seat, counter: lane ? lane.id : '?', share: bb ? +(100 * a / bb).toFixed(1) : null, visible: a, total: bb, dir, front: f ? [Math.round(f.x - c.x), Math.round(f.y - c.y)] : null, walkers, what });
+          }));
+          window.__step.frame();
+        }));
+        window.__step.frame();
+      });
+    });
+    for (const seat of res) {
+      // (the median of three read-backs half a second apart: bubbles bob, the merchant turns)
+      const reads = [];
+      for (let k = 0; k < 3; k++) { reads.push(await ev((seat) => window.__cvShare(seat, false, -1), seat)); await advance(page, 0.5); }
+      reads.sort((p, q) => (p.share || 0) - (q.share || 0));
+      const r = Object.assign({}, reads[1], { reads: reads.map((q) => q.share) });
+      const ri = await ev((seat) => window.__cvShare(seat, true, -1), seat);
+      if (r.share >= MIN && r.dir === 3 && r.front) console.log(`ok   stage ${st} ${r.counter} clerk visible ${r.share} % >= ${MIN} % with every line's front customer present, faces SW (${ri.share} % with the porters / residents passing as they are)`, JSON.stringify(r));
+      else {
+        fails++; console.log(`FAIL stage ${st} ${r.counter} clerk visible ${r.share} % (gate ${MIN} %) / dir ${r.dir} (SW = 3) / front ${JSON.stringify(r.front)}`, JSON.stringify(r));
+        // (who covers her: each picture drawn above her, hidden in turn)
+        for (let k = 0; k < 8; k++) { const q = await ev(([seat, k]) => window.__cvShare(seat, false, k), [seat, k]); if (!q) break; console.log(`     without ${JSON.stringify(q.what)}: ${q.share} %`); }
+      }
+    }
+    // the stage's signboard with full racks (a snapshot that comes back empty — the read-back raced the frame — is taken again)
+    let sg = null;
+    for (let tries = 0; tries < 3 && !(sg && sg.share !== null); tries++) sg = await ev(() => new Promise((resolve) => {
+      const g = window.__FV.scene, m = g.market, o = m.sign, cam = g.cameras.main, R = g.game.renderer;
+      if (!o) return resolve({ none: true });
+      for (const ty of m.goods) while (m.stock.countOf(ty) < m.maxPerType) m.stock.push(ty, null, g.effects);
+      if (g.trade.enabled) for (const ty of g.trade.goods) while (g.trade.stock.countOf(ty) < g.trade.maxPerType) g.trade.stock.push(ty, null, g.effects);
+      m.stock.bakeDirty = true; g.trade.stock.bakeDirty = true;
+      window.__step.run(1); window.__step.frame();
+      const b = o.getBounds(), k = cam.zoom;
+      const x = Math.max(0, Math.floor(cam.x + (b.x - cam.worldView.x) * k) - 4), y = Math.max(0, Math.floor(cam.y + (b.y - cam.worldView.y) * k) - 4);
+      const w = Math.max(1, Math.min(R.width - x, Math.ceil(b.width * k) + 8)), h = Math.max(1, Math.min(R.height - y, Math.ceil(b.height * k) + 8));
+      const count = (img, done) => { const go = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x2 = cv.getContext('2d'); x2.drawImage(img, 0, 0); const d = x2.getImageData(0, 0, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 70 && d[i + 2] > 200) n++; done(n); }; if (img.complete && img.naturalWidth) go(); else img.onload = go; };
+      const a0 = o.alpha; o.setAlpha(1); o.setTintFill(0xff00ff);
+      R.snapshotArea(x, y, w, h, (imgA) => count(imgA, (a) => {
+        const d0 = o.depth; o.setDepth(1e7);
+        R.snapshotArea(x, y, w, h, (imgB) => count(imgB, (bb) => { o.setDepth(d0); o.clearTint(); o.setAlpha(a0); resolve({ share: bb ? +(100 * a / bb).toFixed(1) : null, font: m.signFont, stock: m.stock.count, mat: g.trade.stock.count, rect: [x, y, w, h], vis: o.visible, b: [Math.round(b.x), Math.round(b.y)], wv: [Math.round(cam.worldView.x), Math.round(cam.worldView.y)] }); }));
+        window.__step.frame();
+      }));
+      window.__step.frame();
+    }));
+    if (sg.none) { fails++; console.log(`FAIL stage ${st}: no signboard`); }
+    else if (sg.share >= 95) console.log(`ok   stage ${st} signboard visible ${sg.share} % with full racks`, JSON.stringify(sg));
+    else { fails++; console.log(`FAIL stage ${st} signboard hidden ${sg.share} %`, JSON.stringify(sg)); }
+    await ev(() => { const m = window.__FV.scene.market; window.__FV.camera(m.x - 20, m.y - 10, 1.5); });
+    await advance(page, 0.3); await render(page, 3);
+    await page.screenshot({ path: path.join(OUT, 'v43_clerks_s' + st + '.jpg'), type: 'jpeg', quality: 84 });
   }
   await ev(([x, y]) => { window.__FV.teleport(x + 260, y + 300); window.__FV.camera(x - 30, y - 20, 1.7); }, info.t);
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.trade.stock.push('item_plank', null, gs.effects); });

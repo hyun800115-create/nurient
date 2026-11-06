@@ -11,7 +11,9 @@
 //   ('place:<pad>' rows: a pad's place measured in a save where it was bought already — the office's next hire pad,
 //    the big restaurant's staff pad, the store clerk, the boat pad, the 승격식 at the hall — in that busier world)
 // Where: a fresh game through the tutorial (the market clerk → the grill line → the forest → the 작업대 upgrades,
-// pads as they appear) and every late save in fixtures/ (the pads standing there + every pad still to come whose place
+// pads as they appear; (v4.3) then the shop's stages: the forest brings 눈꽃 가게 (stage 2), the first bread sale the
+// 눈꽃 시장 pad, its purchase stage 3 and the 빵·고기 clerk's pad — and at every step no paid pad stands inside the
+// stage-4 footprint reserved beside the shop (world.js market.reserve4, 10 x 5 m)) and every late save in fixtures/ (the pads standing there + every pad still to come whose place
 // already exists, at that place: the same spot the game would give it). The game runs on the fixed-step clock; each
 // group of pads is sampled every second for --samples seconds with the chief parked away from them.
 //   node tools/test/padvis.mjs [--root <a frost-village dir>] [--only fresh,v42_village_late] [--samples 8] [--json out.json]
@@ -365,6 +367,14 @@ async function measure(page, tag, withSpecs) {
     if (!bad.length && a.mean > LIMIT.meanWarn) console.log(`       (note: ${id} mean cover ${Math.round(100 * a.mean)}% — passers-by: ${top})`);
   }
   ok(!info.over.length, `${tag} live paid pads never overlap (≥ ${LIMIT.gap} px apart)`, info.over);
+  // ((v4.3) the stage-4 shop's footprint beside the plaza shop stays clear of paid pads from the start (plaza metres)
+  const inRes = await page.evaluate((ps) => {
+    const W = window.__FV.scene.market && window.__FV.scene.market.cfg && window.__FV.scene.market.cfg.reserve4;
+    if (!W) return [];
+    const m = (x, y) => { const a = (x - 990) / 45.25, b = (y - 800) / 22.63; return [(a + b) / 2, (a - b) / 2]; };
+    return ps.filter((p) => { const [mx, my] = m(p.x, p.y); return mx > W[0] && mx < W[2] && my > W[1] && my < W[3]; }).map((p) => p.id);
+  }, pads);
+  ok(!inRes.length, `${tag} no paid pad (standing or to come) inside the stage-4 shop's reserved footprint`, inRes);
   const clash = await page.evaluate(() => window.__padVis.labelClash());
   ok(!clash.length, `${tag} no pad's name label lies on another pad's label or price`, clash);
   const pulled = await page.evaluate(() => window.__padVis.pullClash());
@@ -458,6 +468,15 @@ try {
       await done('hire_clerk_trade');
       await advance(page, 1.5);
       out.stages.bench2 = await measure(page, 'fresh/7 교역소 점원 뒤 가방', false);
+      // ((v4.3) the shop's stages: stage 2 stands since the forest; the first bread sold brings the 눈꽃 시장 pad
+      if (await page.evaluate(() => !!(window.__FV.scene.market && window.__FV.scene.market.setStage))) {
+        await page.evaluate(() => { const F = window.__FV; F.give(5000); for (const id of ['zone_farm', 'op_bakery']) F.doneStep(id); });
+        await step(page, () => window.__FV.scene.progress.setFlag('firstBreadSale'), null, 2.5);
+        out.stages.shop3pad = await measure(page, 'fresh/8 눈꽃 시장 (가게 3단) 발판', false);
+        await done('mkt_s3');
+        await advance(page, 3);
+        out.stages.shop3 = await measure(page, 'fresh/9 가게 3단 · 빵·고기 점원 발판', false);
+      }
     } else {
       out.stages.all = await measure(page, sc, true);
     }

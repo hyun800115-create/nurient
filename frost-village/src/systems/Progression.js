@@ -23,6 +23,9 @@ export function stepCost(s) {
   // ---- (v4-B) the station porters, the 승격식 (rank ceremony)
   if (s.type === 'stationPorter') { const a = (BALANCE.v4 && BALANCE.v4.stationPorter) || [600, 1100]; return a[s.id === 'stn_porter2' ? 1 : 0]; }
   if (s.type === 'rank') return ((BALANCE.v4 && BALANCE.v4.rank && BALANCE.v4.rank[2]) || { coins: 11000 }).coins;
+  // ---- (v4.3) the shop's stages (3단 눈꽃 시장) and the stage-3 빵·고기 clerk
+  if (s.type === 'shop') { const M = BALANCE.market43 || {}; return ((M['stage' + s.level]) || {}).coins || 400; }
+  if (s.id === 'hire_clerk_s3') return (BALANCE.market43 && BALANCE.market43.clerk3) || 150;
   // ---- (v4-C) the big restaurant's staff
   if (s.type === 'restStaff') { const S = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.staff) || {}; return S[s.role] || 500; }
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
@@ -43,6 +46,8 @@ export const STEPS = [
   { id: 'porter_grill', type: 'porter', station: 'grill', after: 'raw_grill', side: true },
   // wood line
   { id: 'zone_forest', type: 'zone', zone: 'forest', after: 'hire_fisherman' },
+  // ((v4.3) the shop grows with the forest: 2단 「눈꽃 가게」 = 자재 창구 (the old trade post) + 먹거리 (COMES_WITH, no pad)
+  { id: 'mkt_s2', type: 'shop', level: 2, after: 'zone_forest' },
   { id: 'hire_clerk_trade', type: 'clerk', seller: 'trade', after: 'zone_forest', flag: 'firstTrade', side: true },
   { id: 'op_sawmill', type: 'operator', station: 'sawmill', after: 'zone_forest' },
   { id: 'hire_lumberjack', type: 'hire', worker: 'lumberjack', after: 'op_sawmill' },
@@ -55,6 +60,10 @@ export const STEPS = [
   { id: 'hire_farmer', type: 'hire', worker: 'farmer', after: 'op_bakery' },
   { id: 'raw_bakery', type: 'raw', station: 'bakery', after: 'hire_farmer', side: true },
   { id: 'porter_bakery', type: 'porter', station: 'bakery', after: 'raw_bakery', side: true },
+  // ((v4.3, D4) 3단 「눈꽃 시장」 (자재 · 생선 · 빵·고기): its pad comes after the first bread is sold (400 coins + 8 planks,
+  //  balance.js market43.stage3); then the 빵·고기 counter's clerk. Both side goals, on the stall clerk's pad spot)
+  { id: 'mkt_s3', type: 'shop', level: 3, after: 'mkt_s2', flag: 'firstBreadSale', side: true, items: { item_plank: 8 } },
+  { id: 'hire_clerk_s3', type: 'clerk', seller: 'breadmeat', after: 'mkt_s3', side: true },
   // ore line
   { id: 'zone_mine', type: 'zone', zone: 'mine', after: 'hire_farmer' },
   { id: 'op_smelter', type: 'operator', station: 'smelter', after: 'zone_mine' },
@@ -112,7 +121,7 @@ export const STEPS = [
 // catch (the chief by hand; a 창고 / station porter's rare spill run): without the 생선 짐꾼 the catch pad fills, the boat
 // waits at the pier with a full hold and the fish stay. He was a 600-coin side pad nobody pointed at, beside the pile,
 // with the name of the 생선 통's porter the player already has — now he comes with the rowboat (older saves: on load)
-export const COMES_WITH = { boat_rowboat: ['porter_dock'] };
+export const COMES_WITH = { boat_rowboat: ['porter_dock'], zone_forest: ['mkt_s2'] };
 export const BENCH_AFTER = 'hire_lumberjack';
 export const COMPLETE_AFTER = 'hire_hunter';
 // (v3) the main goals after the village is complete, in order (the v3 finale: "개척 완료")
@@ -283,6 +292,7 @@ export class Progression {
   /** apply saved state instantly (no animations) and create the visible pads */
   init() {
     const gs = this.gs;
+    this.shop43();
     // (v4.2 dock fix) a save with the boat but not its 생선 짐꾼: he comes now (a partial payment on his pad comes back)
     for (const k in COMES_WITH) {
       if (!this.done[k]) continue;
@@ -300,6 +310,29 @@ export class Progression {
     }
     if (this.isDone(BENCH_AFTER)) this.openBench(true);
     this.syncPads();
+  }
+
+  /**
+   * ((v4.3) 「마을 새 단장」, docs/기획서_마을새단장.md §12 items 6-7) a village from before the staged shop, once: the shop's
+   * stage follows its progress — the forest open: 2단 (COMES_WITH, below); bread already selling: 3단 for free, with its
+   * 빵·고기 clerk when the stall had a clerk (one clerk sold every food there: nothing it did stops). The trade post's
+   * goods, coins and clerk go to the 자재 창구 by themselves (Game.restore, the 자재 점원's seat). A new village is
+   * marked at once (flags.shop43)
+   */
+  shop43() {
+    if (this.flags.shop43) return;
+    this.flags.shop43 = true;
+    const d = this.done;
+    const anyDone = Object.keys(d).some((k) => d[k]);
+    if (!anyDone) return;
+    const bread = !!(this.flags.firstBreadSale || this.hints.farm || d.op_bakery || d.hire_farmer);
+    if (d.zone_forest && bread && !d.mkt_s3) {
+      d.mkt_s2 = true;
+      d.mkt_s3 = true;
+      this.flags.firstBreadSale = true;
+      delete this.paid.mkt_s3; delete this.got.mkt_s3;
+      if (d.hire_clerk_market && !d.hire_clerk_s3) { d.hire_clerk_s3 = true; delete this.paid.hire_clerk_s3; }
+    }
   }
 
   /** where a step's pad stands ({ x, y } or null while its place does not exist yet) */
@@ -380,7 +413,10 @@ export class Progression {
       // ((v4.2.0.2 fix STALL-P1) the stall and the 잡화점 hire npc_clerk_a, now the grown-up clerk (navy cap, apron): their
       //  pad shows her own portrait, like the other hire pads (the drawn ui_icon_clerk is the old red-headscarf child look).
       //  The trade post's clerk (npc_clerk_b) keeps the drawn icon)
-      else if (s.type === 'clerk') icon = s.seller === 'trade' ? Assets.pick('ui_icon_clerk', 'portrait_npc_clerk_b', 'ui_icon_worker') : face('portrait_npc_clerk_a', Assets.pick('ui_icon_clerk', 'ui_icon_worker'));
+      // ((v4.3) the 자재 점원 (the trade post's clerk, npc_clerk_b) shows her own portrait too; the 빵·고기 clerk is a grown-up
+      //  clerk like the stall's)
+      else if (s.type === 'clerk') icon = s.seller === 'trade' ? face('portrait_npc_clerk_b', Assets.pick('ui_icon_clerk', 'ui_icon_worker')) : face('portrait_npc_clerk_a', Assets.pick('ui_icon_clerk', 'ui_icon_worker'));
+      else if (s.type === 'shop') icon = Assets.pick('ui_icon_hammer', 'ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'porter') icon = Assets.pick('ui_icon_porter', 'portrait_npc_porter_a', 'ui_icon_backpack');
       else if (s.type === 'tower') icon = Assets.pick('ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'boat') icon = s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
@@ -388,7 +424,7 @@ export class Progression {
       else if (s.type === 'rank') icon = Assets.pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_lock_open', 'ui_icon_lock');
       else if (s.type === 'restStaff') icon = s.role === 'cashier' ? Assets.pick('ui_icon_clerk', 'portrait_npc_clerk_b', 'ui_icon_worker') : s.role === 'cook' ? Assets.pick('ui_icon_food', 'portrait_npc_chef', 'ui_icon_worker') : Assets.pick('ui_icon_porter', 'ui_icon_worker');     // (v4-C)
       if (s.type === 'hire2' || s.type === 'hire3') items = { [TOOL_OF[s.worker]]: 1 };
-      const kind = s.type === 'zone' || s.type === 'tower' || s.type === 'rank' ? 'unlock' : 'hire';
+      const kind = s.type === 'zone' || s.type === 'tower' || s.type === 'rank' || s.type === 'shop' ? 'unlock' : 'hire';
       const padTex = s.type === 'clerk' || s.type === 'operator' || s.type === 'restStaff' ? Assets.pick('ui_pad_clerk', 'ui_pad_hire') : s.type === 'porter' || s.type === 'raw' || s.type === 'stationPorter' ? Assets.pick('ui_pad_porter', 'ui_pad_hire')
         : s.type === 'tower' ? Assets.pick('ui_pad_tower', 'ui_pad_unlock') : s.type === 'boat' ? Assets.pick('ui_pad_boat', 'ui_pad_hire') : null;
       const pad = new UnlockPad(gs, s.id, cfg.x, cfg.y, {
@@ -441,11 +477,19 @@ export class Progression {
     else if (s.type === 'hire3') gs.ui.banner(t('hired', { name: t('w_' + s.worker) + ' 3' }), undefined, ST);
     else if (s.type === 'operator') gs.ui.banner(t('hired', { name: t('opName_' + s.station) }), t('opSub_' + s.station), ST);
     else if (s.type === 'raw') gs.ui.banner(t('hired', { name: t('raw_' + s.station) }), t('rawSub'), ST);
-    else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: t('w_clerk') }), s.id === 'hire_clerk_market' ? t('clerkSub') : undefined, ST);
+    else if (s.type === 'clerk') gs.ui.banner(t('hired', { name: s.id === 'hire_clerk_trade' || s.id === 'hire_clerk_s3' ? t(s.id) : t('w_clerk') }), s.id === 'hire_clerk_market' ? t('clerkSub') : s.id === 'hire_clerk_s3' ? t('clerk3Sub') : s.id === 'hire_clerk_trade' ? t('obj_register_trade') : undefined, ST);
+    else if (s.type === 'shop') gs.ui.banner(t('shop' + s.level + 'Up'), t('shop' + s.level + 'Sub'), ST);
     else if (s.type === 'porter') gs.ui.banner(t('hired', { name: t('w_porter') }), undefined, ST);
     else if (s.type === 'tower') gs.ui.banner(t('towerStart'), t('towerStartSub'), ST);
     else if (s.type === 'boat') gs.ui.banner(t(s.level >= 2 ? 'boatFishing' : 'boatRowboat'), withIt.indexOf('porter_dock') >= 0 ? t('boatPorterSub') : undefined, ST);
     else if (s.type === 'stationPorter') gs.ui.banner(t('hired', { name: t('stn_porter') }), t('stnPorterSub'), ST);      // (v4-B)
+    // ((v4.3) the shop grew with the forest: once the forest's reveal is over, a look at the 눈꽃 가게 and its banner)
+    if (withIt.indexOf('mkt_s2') >= 0 && gs.market) {
+      gs.time.delayedCall(3600, () => {
+        if (gs.ui && gs.ui.banner) gs.ui.banner(t('shop2Up'), t('shop2Sub'), ST);
+        if (gs.focusCamera && !(gs.onboard && gs.onboard.active)) gs.focusCamera(gs.market.x - 40, gs.market.y - 30, 2200);
+      });
+    }
     gs.events.emit('step', s.id);
     for (const id of withIt) gs.events.emit('step', id);
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
@@ -466,7 +510,13 @@ export class Progression {
     else if (s.type === 'hire3') gs.hireWorker(s.worker, 2, instant, x, y);
     else if (s.type === 'operator') gs.hireOperator(s.station, instant, x, y);
     else if (s.type === 'raw') gs.hireRawPorter(s.station, instant, x, y);
-    else if (s.type === 'clerk') { const sel = s.seller === 'trade' ? gs.trade : s.seller === 'store' ? gs.store : gs.market; if (sel) sel.register.hireClerk(instant, x, y); }
+    else if (s.type === 'clerk') {
+      // ((v4.3) the shop's seats: 'market' = the first clerk, 'trade' = the 자재 점원, 'breadmeat' = the stage-3 clerk)
+      const M = gs.market;
+      const reg = s.seller === 'store' ? gs.store && gs.store.register : M && M.registerOf ? M.registerOf(s.seller) : (s.seller === 'trade' ? gs.trade : M).register;
+      if (reg) reg.hireClerk(instant, x, y);
+    }
+    else if (s.type === 'shop') { if (gs.market && gs.market.setStage) gs.market.setStage(Math.max(gs.market.stage, s.level), instant); }
     else if (s.type === 'porter') gs.hirePorter(s.station, instant, x, y);
     else if (s.type === 'tower') gs.startTower(s.id, instant);
     else if (s.type === 'boat') { if (gs.boathouse) gs.boathouse.setBoat(s.level, instant); }

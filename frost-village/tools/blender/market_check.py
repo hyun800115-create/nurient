@@ -12,6 +12,10 @@ market_check.py - checks assets/market/ (the first shop's stall stages) against 
     right edges vertical; signText is a key of src/data/strings.js in both languages
   * the front layer is smaller than the back layer (it is only the counter) and sits inside it
   * page budget: each stage page <= 1 MiB on disk and <= 1.5 MiB in GPU memory (RGBA)
+  * (v4.3) stages 2-3: one staff / customer / register point per counter (counters west -> east, the 자재 창구 first),
+    every customer point front-left of ITS clerk (>= 100 px left: the next line's bubble must clear this clerk), a
+    name plate per counter (a -Y face like the board, its text key in strings.js), the plates under the board and
+    over the clerks' caps; the old sled (market_sled) is a plain prop with a footprint
 """
 import json
 import os
@@ -62,6 +66,10 @@ def main():
         if n not in used:
             err('frame %s is in an atlas but no sprite uses it' % n)
     for k, s in sp.items():
+        if s.get('kind') == 'prop':
+            if not s.get('footprint'):
+                err('%s: a prop without a footprint' % k)
+            continue
         if s.get('kind') != 'building':
             continue
         W, H = s['frameSize']
@@ -81,10 +89,46 @@ def main():
             err('%s: stepLiftPx %s outside 5-12' % (k, s['stepLiftPx']))
         st = s['staffPoints'][0]
         inside(st, 'staff point')
-        for c in s['customerPoints']:
-            inside(c, 'customer point')
-            if not (c[1] > st[1] and c[0] < st[0] - 40):
-                err('%s: customer point %s is not front-left of the clerk %s' % (k, c, st))
+        counters = s.get('counters')
+        if counters:
+            n = len(counters)
+            if counters[0] != 'mat':
+                err('%s: the 자재 창구 must be the west-most counter (%s)' % (k, counters))
+            for f in ('staffPoints', 'customerPoints', 'registerPoints', 'plates'):
+                if len(s.get(f) or []) != n:
+                    err('%s: %d %s for %d counters' % (k, len(s.get(f) or []), f, n))
+            if not errors:
+                xs = [p[0] for p in s['staffPoints']]
+                if xs != sorted(xs):
+                    err('%s: staff points not west -> east' % k)
+                for i, (sp_, c) in enumerate(zip(s['staffPoints'], s['customerPoints'])):
+                    inside(sp_, 'staff point %d' % i)
+                    # (a customer point may lie in front of the frame: the lines stand on the plaza, not in the art)
+                    if not (c[1] > sp_[1] and c[0] < sp_[0] - 100):
+                        err('%s: customer point %s is not front-left (>= 100 px) of its clerk %s' % (k, c, sp_))
+                top = min(p[1] for p in s['signQuad'])
+                for i, pl in enumerate(s['plates']):
+                    pq = pl.get('quad') or []
+                    if len(pq) != 4:
+                        err('%s: plate %d needs 4 corners' % (k, i))
+                        continue
+                    for p in pq:
+                        inside(p, 'plate corner')
+                    sl = (pq[1][1] - pq[0][1]) / max(1, pq[1][0] - pq[0][0])
+                    if abs(sl - 0.5) > 0.08:
+                        err('%s: plate %d edge slope %.3f' % (k, i, sl))
+                    if len(re.findall(r'\b%s\s*:' % re.escape(pl.get('text', '?')), strings)) < 2:
+                        err('%s: plate text %s missing in strings.js (ko + en)' % (k, pl.get('text')))
+                    if min(p[1] for p in pq) <= top:
+                        err('%s: plate %d above the board' % (k, i))
+                    stf = s['staffPoints'][i]
+                    if max(p[1] for p in pq) > stf[1] - 60:
+                        err('%s: plate %d hangs too low over its clerk (%s vs post %s)' % (k, i, max(p[1] for p in pq), stf))
+        else:
+            for c in s['customerPoints']:
+                inside(c, 'customer point')
+                if not (c[1] > st[1] and c[0] < st[0] - 40):
+                    err('%s: customer point %s is not front-left of the clerk %s' % (k, c, st))
         q = s['signQuad']
         if len(q) != 4:
             err('%s: signQuad needs 4 corners' % k)

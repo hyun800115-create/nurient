@@ -120,26 +120,35 @@ def render_stage(key, cache, samples=None):
                        'notes': 'the counter and what stands on it (object mask: only the builder\'s front layer)'}
     meta['stepH'] = MA.STEP_H
     meta['counterH'] = MA.COUNTER_H
-    meta['signTop'] = MA.SIGN_TOP
+    meta['signTop'] = MA.SIGN_TOP if key == 'market_s1' else getattr(MA, 'ROW_SIGN_TOP', MA.SIGN_TOP)
     with open(os.path.join(cache, key + '.json'), 'w') as f:
         json.dump(meta, f, indent=1)
     print('[%s] front layer: %d objects -> %s' % (key, len(held['front']), mask), flush=True)
     return meta
 
 
+def render_prop(key, cache, samples=None):
+    """((v4.3) a plain prop of the market pages (the old sled): bld_render as is, no front layer"""
+    return BR.render_build(dict(MA.PROPS[key]), cache, samples)
+
+
 def main():
     opts = parse(bc.script_args())
-    keys = opts['keys'] or list(MA.MARKET)
+    props = getattr(MA, 'PROPS', {})
+    keys = opts['keys'] or (list(MA.MARKET) + list(props))
     for k in keys:
-        if k not in MA.MARKET:
-            raise SystemExit('unknown stall stage: %s (known: %s)' % (k, ', '.join(MA.MARKET)))
+        if k not in MA.MARKET and k not in props:
+            raise SystemExit('unknown stall stage: %s (known: %s)' % (k, ', '.join(list(MA.MARKET) + list(props))))
     os.makedirs(opts['cache'], exist_ok=True)
     t0 = time.time()
     for k in keys:
         if not opts['force'] and cached(k, opts['cache']):
             print('[%s] cached' % k)
             continue
-        render_stage(k, opts['cache'], opts['samples'])
+        if k in props:
+            render_prop(k, opts['cache'], opts['samples'])
+        else:
+            render_stage(k, opts['cache'], opts['samples'])
     print('all done in %.0fs' % (time.time() - t0), flush=True)
 
 

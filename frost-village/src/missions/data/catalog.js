@@ -162,7 +162,7 @@ export const CATALOG = [
   // ───────────────────────── D. 생산 목표 (게시판) — 14 ─────────────────────────
   { code: 'D1', id: 'goal_cans_today', kind: 'goal', src: 'board', title: T('오늘 통조림 30개 만들기', 'Make 30 cans today'),
     obj: [{ t: 'count', sig: 'made:item_can', n: 30, win: 'day' }], unlock: ['rank:2'], repeat: 'day', pay: 1.0, fame: 10, weight: 2, icon: 'item_can' },
-  { code: 'D2', id: 'goal_planks_trade', kind: 'goal', src: 'board', title: T('판자 50장 교역소에 납품', '50 planks to the trade post'),
+  { code: 'D2', id: 'goal_planks_trade', kind: 'goal', src: 'board', title: T('판자 50장 자재 창구에 납품', '50 planks to the materials counter'),
     obj: [{ t: 'count', sig: 'traded:item_plank', n: 50 }], unlock: ['rank:2'], repeat: 10, pay: 0.8, fame: 8, weight: 3, icon: 'item_plank' },
   { code: 'D3', id: 'goal_bread_town', kind: 'goal', src: 'board', title: T('이웃에게 빵 60개 팔기', 'Sell 60 loaves to the neighbours'),
     obj: [{ t: 'count', sig: 'sold:item_bread', n: 60 }], unlock: ['rank:2'], repeat: 10, pay: 1.0, fame: 10, weight: 3, icon: 'item_bread' },

@@ -156,13 +156,15 @@ export class Visitor extends Customer {
     }
     if (!m || !m.enabled) { this.finishTarget(0); return; }
     if (m.queue.length < m.maxQueue) {
-      m.queue.push(this);
+      // ((v4.3) the staged shop: the line of the counter that sells what they want (m.join); a plain seller's one line)
+      const type = this.pickType(m);
+      const lane = m.join ? m.join(this, type) : (m.queue.push(this), m);
       this.stage = 'shop';
       this.state = 'arrive';
       this.path = [];
       this.arrived = false;
-      this.market = m;
-      this.want = { type: this.pickType(m), count: this.wantPlan.count };
+      this.market = lane;
+      this.want = { type, count: this.wantPlan.count };
       this.need = this.want.count; this.got = 0; this.value = 0; this.bought = []; this.flying = [];
       this.bubble = null; this.bubbleShown = false; this.payWait = false;
       this.patienceT = 0;
@@ -286,6 +288,9 @@ export class Visitor extends Customer {
   /** gone without a train (reload / cleanup): the citizen goes home abstractly */
   despawn() {
     if (!this.alive) return;
+    // ((v4.3) the staged shop's line it stands in (gs.market.queue only lists them))
+    const ln = this.market;
+    if (ln && Array.isArray(ln.queue)) { const i = ln.queue.indexOf(this); if (i >= 0) ln.queue.splice(i, 1); }
     for (const m of this.nb.sellers()) {
       const i = m.queue.indexOf(this); if (i >= 0) m.queue.splice(i, 1);
       const j = m.leaving.indexOf(this); if (j >= 0) m.leaving.splice(j, 1);

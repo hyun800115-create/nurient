@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan|market43)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -111,6 +111,20 @@ export function checkBalance() {
   B.trade = B.trade || {};
   fixNum(B.trade, 'buyInterval', 'trade.buyInterval', 0.02, 60, 0.28);
   fixNum(B.trade, 'shelfMax', 'trade.shelfMax', 1, 500, 40, true);
+  // ---- (v4.3) 가게 단계 (눈꽃 노점 → 가게 → 시장): a missing block is filled silently (the stall works as in 4.2)
+  const M3 = B.market43 = B.market43 && typeof B.market43 === 'object' ? B.market43 : {};
+  const st3 = M3.stage3 = M3.stage3 && typeof M3.stage3 === 'object' ? M3.stage3 : {};
+  fixNum(st3, 'coins', 'market43.stage3.coins', 1, 1e9, 400, true);
+  fixNum(st3, 'item_plank', 'market43.stage3.item_plank', 0, 999, 8, true);
+  const listOf = (k, def, min, max, int) => {
+    if (!Array.isArray(M3[k])) { if (M3[k] !== undefined) warn('market43.' + k, M3[k], def); M3[k] = def.slice(); }
+    for (let i = 0; i < def.length; i++) fixNum(M3[k], i, 'market43.' + k + '[' + i + ']', min, max, M3[k][i - 1] !== undefined ? M3[k][i - 1] : def[i], int);
+  };
+  listOf('shelfMax', [40, 40, 60], 1, 500, true);
+  listOf('spawnMul', [1, 1, 1.1], 0.2, 5);
+  fixNum(M3, 'lineShow', 'market43.lineShow', 2, 20, 6, true);
+  fixNum(M3, 'switchS', 'market43.switchS', 0.5, 120, 4);
+  fixNum(M3, 'clerk3', 'market43.clerk3', 1, 1e9, 150, true);
   B.workers = B.workers || {};
   fixNum(B.workers, 'speed', 'workers.speed', 20, 1000, 150);
   fixNum(B.workers, 'capacity', 'workers.capacity', 1, 100, 5, true);

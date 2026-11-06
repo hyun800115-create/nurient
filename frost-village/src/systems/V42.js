@@ -19,7 +19,8 @@ export function villageTills(gs, depot) {
   const out = [];
   const add = (name, till) => { if (till && till.enabled !== false && typeof till.value === 'number') out.push({ name, till }); };
   if (gs.market) add('market', gs.market.cash);
-  if (gs.trade && gs.trade.enabled) add('trade', gs.trade.cash);
+  // ((v4.3) the 자재 창구 pays into the shop's one till (gs.market.cash): an old build's separate trade till only)
+  if (gs.trade && gs.trade.enabled && gs.trade.cash !== (gs.market && gs.market.cash)) add('trade', gs.trade.cash);
   if (gs.store && gs.store.enabled) add('store', gs.store.cash);
   const C = gs.civic;
   if (C && C.restaurant && C.restaurant.cash) add('rest', C.restaurant.cash);

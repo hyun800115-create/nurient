@@ -31,6 +31,9 @@ const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big|wave_crash|
 // (v4-C2) the water's data textures + baked shoreline field: not needed for the title's first paint (prefetched
 // while the title shows, else the Game fetches them first and the old sea shows until they are there)
 export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_village)$/;
+// ((v4.3) the shop's later stages (assets/market market_s2, market_s3): after the title, when the village nears them
+//  (Game.lazyAllowed); stage 1 「눈꽃 노점」 is in the boot set
+export const MARKET_LATE = /^market_s[2-9]$/;
 // (v4-C2) fragments of which the game uses only some keys yet; the rest is never loaded and the artifact build
 // leaves those files out (tools/build/build_artifact.mjs reads this line: keep it one JSON-like object)
 export const USED_ONLY = { "civic": ["civ_bank"], "logistics": ["lgx_center_a", "lgx_center_b", "lgx_center_c", "lgx_center_d", "lgx_items"], "vehicles": ["veh_cargo_sleigh"], "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
@@ -249,7 +252,7 @@ export const Assets = {
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || this.lateFrag.has(this.fragOf[key]); },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || MARKET_LATE.test(key) || this.lateFrag.has(this.fragOf[key]); },
 
   /**
    * (v4-C2) fetch after-title pictures now, outside any scene's loader (plain Image elements added to the

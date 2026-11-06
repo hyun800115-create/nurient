@@ -15,6 +15,16 @@
    "key": "market_s1",
    "png": "market/market_s1.png",
    "json": "market/market_s1.json"
+  },
+  {
+   "key": "market_s2",
+   "png": "market/market_s2.png",
+   "json": "market/market_s2.json"
+  },
+  {
+   "key": "market_s3",
+   "png": "market/market_s3.png",
+   "json": "market/market_s3.json"
   }
  ],
  "sprites": {
@@ -111,6 +121,382 @@
     328
    ],
    "notes": "Front layer of market_s1_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
+  },
+  "market_s2_back": {
+   "atlas": "market_s2",
+   "frame": "market_s2_back",
+   "anchor": [
+    0.34034,
+    0.68557
+   ],
+   "kind": "building",
+   "footprint": [
+    272,
+    136
+   ],
+   "footprintM": [
+    4.4,
+    1.6
+   ],
+   "frameSize": [
+    476,
+    388
+   ],
+   "topPx": 246,
+   "front": "-Y",
+   "staffPoints": [
+    [
+     -16,
+     -29
+    ],
+    [
+     74,
+     16
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "stepLiftPx": 7,
+   "stepM": 0.12,
+   "counterM": 0.6,
+   "signTopM": 2.95,
+   "customerPoints": [
+    [
+     -177,
+     2
+    ],
+    [
+     -86,
+     47
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE"
+   ],
+   "signQuad": [
+    [
+     -30,
+     -221
+    ],
+    [
+     118,
+     -147
+    ],
+    [
+     118,
+     -120
+    ],
+    [
+     -30,
+     -194
+    ]
+   ],
+   "signText": "sign_market_2",
+   "signColor": "#6E3E1E",
+   "overlay": "market_s2_front",
+   "stage": 2,
+   "notes": "Stage-2 shop 「눈꽃 가게」 (v4.3): two 2 m counters in one row - the 자재 창구 (materials) at the WEST end, the food counter east of it - a blank signboard (the game writes the name) and a blank name plate over each counter (plates[k]: the game writes 자재 / 먹거리 and draws the item icon). staffPoints / customerPoints / registerPoints west -> east, one per counter. Back (depth d) -> clerks on the step (d + 0.5) -> front = the counters (d + 1). Goods-free: the stock towers are the game's shelf pads 1.1 m beyond each end of the row.",
+   "fxPoints": {
+    "sign": [
+     44,
+     -171
+    ]
+   },
+   "counters": [
+    "mat",
+    "food"
+   ],
+   "registerPoints": [
+    [
+     -94,
+     10
+    ],
+    [
+     -3,
+     55
+    ]
+   ],
+   "plates": [
+    {
+     "quad": [
+      [
+       -37,
+       -174
+      ],
+      [
+       35,
+       -138
+      ],
+      [
+       35,
+       -117
+      ],
+      [
+       -37,
+       -153
+      ]
+     ],
+     "text": "plate_mat"
+    },
+    {
+     "quad": [
+      [
+       54,
+       -129
+      ],
+      [
+       125,
+       -93
+      ],
+      [
+       125,
+       -72
+      ],
+      [
+       54,
+       -108
+      ]
+     ],
+     "text": "plate_food"
+    }
+   ]
+  },
+  "market_s2_front": {
+   "atlas": "market_s2",
+   "frame": "market_s2_front",
+   "anchor": [
+    0.34034,
+    0.68557
+   ],
+   "kind": "overlay",
+   "of": "market_s2_back",
+   "frameSize": [
+    476,
+    388
+   ],
+   "notes": "Front layer of market_s2_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
+  },
+  "market_sled": {
+   "atlas": "market_s2",
+   "frame": "market_sled",
+   "anchor": [
+    0.43846,
+    0.63362
+   ],
+   "kind": "prop",
+   "footprint": [
+    204,
+    102
+   ],
+   "footprintM": [
+    2.9,
+    1.6
+   ],
+   "frameSize": [
+    260,
+    232
+   ],
+   "topPx": 127,
+   "front": "-Y",
+   "notes": "The old trade post's merchant sled without its canopy (v4.3 decor: the trade post is the shop's 자재 창구 now). Front faces screen down-left (world -Y); runners curl up at +X."
+  },
+  "market_s3_back": {
+   "atlas": "market_s3",
+   "frame": "market_s3_back",
+   "anchor": [
+    0.36702,
+    0.66284
+   ],
+   "kind": "building",
+   "footprint": [
+    362,
+    181
+   ],
+   "footprintM": [
+    6.4,
+    1.6
+   ],
+   "frameSize": [
+    564,
+    436
+   ],
+   "topPx": 268,
+   "front": "-Y",
+   "staffPoints": [
+    [
+     -62,
+     -52
+    ],
+    [
+     29,
+     -6
+    ],
+    [
+     119,
+     39
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "stepLiftPx": 6,
+   "stepM": 0.12,
+   "counterM": 0.6,
+   "signTopM": 2.95,
+   "customerPoints": [
+    [
+     -222,
+     -21
+    ],
+    [
+     -132,
+     24
+    ],
+    [
+     -41,
+     69
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "signQuad": [
+    [
+     -43,
+     -227
+    ],
+    [
+     132,
+     -140
+    ],
+    [
+     132,
+     -113
+    ],
+    [
+     -43,
+     -201
+    ]
+   ],
+   "signText": "sign_market_3",
+   "signColor": "#6E3E1E",
+   "overlay": "market_s3_front",
+   "stage": 3,
+   "notes": "Stage-3 market 「눈꽃 시장」 (v4.3): three 2 m counters in one row - 자재 (WEST end) · 생선 · 빵·고기 - a blank signboard and a blank plate over each counter (the sign of each line). Same layers, points and rules as stage 2.",
+   "fxPoints": {
+    "sign": [
+     44,
+     -171
+    ]
+   },
+   "counters": [
+    "mat",
+    "fish",
+    "breadmeat"
+   ],
+   "registerPoints": [
+    [
+     -139,
+     -13
+    ],
+    [
+     -48,
+     32
+    ],
+    [
+     42,
+     78
+    ]
+   ],
+   "plates": [
+    {
+     "quad": [
+      [
+       -82,
+       -197
+      ],
+      [
+       -10,
+       -161
+      ],
+      [
+       -10,
+       -140
+      ],
+      [
+       -82,
+       -176
+      ]
+     ],
+     "text": "plate_mat"
+    },
+    {
+     "quad": [
+      [
+       9,
+       -152
+      ],
+      [
+       80,
+       -116
+      ],
+      [
+       80,
+       -95
+      ],
+      [
+       9,
+       -130
+      ]
+     ],
+     "text": "plate_fish"
+    },
+    {
+     "quad": [
+      [
+       99,
+       -106
+      ],
+      [
+       171,
+       -71
+      ],
+      [
+       171,
+       -49
+      ],
+      [
+       99,
+       -85
+      ]
+     ],
+     "text": "plate_breadmeat"
+    }
+   ]
+  },
+  "market_s3_front": {
+   "atlas": "market_s3",
+   "frame": "market_s3_front",
+   "anchor": [
+    0.36702,
+    0.66284
+   ],
+   "kind": "overlay",
+   "of": "market_s3_back",
+   "frameSize": [
+    564,
+    436
+   ],
+   "notes": "Front layer of market_s3_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
   }
  }
 }
