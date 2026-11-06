@@ -6,6 +6,7 @@
 
 import { Assets } from '../core/Assets.js';
 import { BALANCE } from '../data/balance.js';
+import { WORLD } from '../data/world.js';
 import { MATERIALS } from '../data/items.js';
 import { t } from '../data/strings.js';
 import { DEPTH } from '../systems/DepthSort.js';
@@ -33,7 +34,12 @@ export function buildCost(bkey, siteId) {
   if (V && bkey === 'chief_office' && V.office && V.office.site) return V.office.site;
   if (V && bkey === 'bank42' && V.bank && V.bank.site) return V.bank.site;
   if (V && bkey === 'depot42' && V.depot && V.depot.site) return V.depot.site;
-  return (BALANCE.buildings && BALANCE.buildings[bkey]) || { coins: 100, item_plank: 6, item_ingot: 0, time: 8 };
+  const base = (BALANCE.buildings && BALANCE.buildings[bkey]) || { coins: 100, item_plank: 6, item_ingot: 0, time: 8 };
+  // ((v4.3) a plot with its own price (world.js plots.<id>.price = an index of balance.js houses43: the first two houses)
+  const pl = siteId && WORLD.plots ? WORLD.plots[siteId] : null;
+  const ov = pl && pl.price !== undefined && Array.isArray(BALANCE.houses43) ? BALANCE.houses43[pl.price] : null;
+  if (ov && pl.only === bkey) return Object.assign({}, base, ov);
+  return base;
 }
 
 export class Site {
@@ -56,6 +62,10 @@ export class Site {
     this.builders = [];
     this.built = null;            // the finished building object
     this.xl = this.size === 'XL';
+    // ((v4.3) replace mode: a building already stands on this plot (cfg.replace = its key: the chief's hut on the office plot).
+    //  The new one is built on the same plot: while it is a plot or a foundation waiting for materials the old building stays
+    //  drawn (no staked ground, no foundation picture); the scaffold replaces it (the Office draws / removes the hut))
+    this.replace = cfg.replace || null;
     const d = Object.assign({}, SIZE_FALLBACK[this.size] || SIZE_FALLBACK.M, this.xl ? {} : Assets.def('site_plot_' + this.size));
     // ((v4.2.0.1) any plot may name its drop spot (world.js plots.<id>.drop): where another building's picture hid it)
     if (Array.isArray(cfg.drop)) d.dropPoint = [cfg.drop[0] - cfg.x, cfg.drop[1] - cfg.y];
@@ -100,10 +110,14 @@ export class Site {
     this.img.setVisible(this.shown);
   }
 
+  /** (v4.3) the replaced building still stands (plot / foundation of a replace plot) */
+  get keepsOld() { return !!this.replace && (this.state === 'plot' || this.state === 'foundation'); }
+
   makePlot() {
     const gs = this.gs;
     this.makeImg('plot');
     this.img.setDepth(DEPTH.GROUND_DECAL + 5);     // a staked-out plot lies flat on the snow
+    if (this.keepsOld) this.img.setVisible(false);
     this.pad = new Pad(gs, this.dropX, this.dropY, 'build', 1.6, { tex: Assets.pick('ui_pad_build', 'ui_pad_hire'), radiusK: 0.8 });
     this.makeLabel();
   }
@@ -134,7 +148,7 @@ export class Site {
       this.labelKey = k;
       for (const o of this.labelExtra) o.destroy();
       this.labelExtra = [];
-      this.labelText.setText(this.only ? t('plotOnly_' + this.only) : t('plot_' + this.size));
+      this.labelText.setText(this.replace ? t('plotUp_' + this.only) : this.only ? t('plotOnly_' + this.only) : t('plot_' + this.size));
       const w = Math.max(120, this.labelText.width + 66);
       this.labelBg.setSize(w, 52);
       this.labelIcon.setPosition(-w / 2 + 26, 0).setVisible(true);
@@ -174,7 +188,7 @@ export class Site {
   // ------------------------------------------------------------------ state
   setShown(v) {
     this.shown = v;
-    if (this.img) this.img.setVisible(v);
+    if (this.img) this.img.setVisible(v && !this.keepsOld);
     if (this.pad) this.pad.setVisible(v);
     if (this.dropPad) this.dropPad.setVisible(v);
     if (this.label) this.label.setVisible(v && (this.state === 'plot' || this.state === 'foundation'));
@@ -205,6 +219,7 @@ export class Site {
     this.state = 'foundation';
     this.makeImg('foundation');
     this.img.setDepth(this.y);
+    if (this.keepsOld) this.img.setVisible(false);
     const fp = this.def.footprint || [272, 136];
     if (!this.obstacle) this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.36, 'site');
     this.obstacle.active = this.shown;
@@ -219,7 +234,7 @@ export class Site {
     if (gs.logistics) gs.logistics.add(this);
     if (!opts.instant) {
       this.img.setScale(0.01);
-      gs.tweens.add({ targets: this.img, scale: 1, duration: 420, ease: 'Back.easeOut' });
+      if (!this.keepsOld) gs.tweens.add({ targets: this.img, scale: 1, duration: 420, ease: 'Back.easeOut' });
       gs.effects.sheet('fx_build_dust', this.x, this.y + 10, { size: fp[0] * 0.9 });
       gs.effects.sheet('fx_poof', this.x, this.y - 20, { size: fp[0] * 0.9 });
       gs.sfxAt('sfx_build', this.x, this.y, { volume: 0.8 }, true);
@@ -260,6 +275,8 @@ export class Site {
     if (this.state === 'scaffold') return;
     this.state = 'scaffold';
     this.enabled = false;
+    // ((v4.3) replace mode: the old building goes now (Office), its foundation shows until the scaffold swaps in)
+    if (this.replace && this.img) { this.img.setVisible(this.shown).setScale(1); if (!instant) gs.effects.sheet('fx_poof', this.x, this.y - 40, { size: 320 }); }
     if (gs.logistics) gs.logistics.remove(this);
     this.buildT = Math.max(0, Math.min(this.buildTime - 0.5, Number(t0) || 0));
     if (this.label) this.label.setVisible(false);
@@ -273,6 +290,7 @@ export class Site {
     const swap = () => {
       if (this.state !== 'scaffold') return;
       this.makeImg('scaffold');
+      this.img.setVisible(this.shown).setScale(1);
       if (!instant) { this.img.setScale(0.9, 0.6); gs.tweens.add({ targets: this.img, scaleX: 1, scaleY: 1, duration: 380, ease: 'Back.easeOut' }); gs.effects.sheet('fx_build_dust', this.x, this.y + 10, { size: 220 }); }
     };
     if (instant) swap(); else gs.time.delayedCall(Math.min(1200, items.length * 45 + 300), swap);

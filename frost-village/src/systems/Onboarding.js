@@ -43,9 +43,11 @@ export function onboardAllowed() {
   return true;
 }
 
-// the first loop's places
+// the first loop's places ((v4.3) the fish come from the fishing deck: its reel spot on land is where the chief stands —
+//  the old net's gather point was the same idea; `net` stays as another name for it)
 const AT = {
-  net: (gs) => gs.net && gs.net.gather,
+  reel: (gs) => (gs.deck || gs.net) && (gs.deck || gs.net).gather,
+  net: (gs) => (gs.deck || gs.net) && (gs.deck || gs.net).gather,
   op: (gs) => gs.stations.grill && gs.stations.grill.op,
   out: (gs) => gs.stations.grill && gs.stations.grill.outPad,
   inp: (gs) => gs.stations.grill && gs.stations.grill.inPad,
@@ -60,8 +62,8 @@ const AT = {
 // success line when the step is done (first lap)
 const STEP = {
   hi: { l: 'onb_hi' },
-  move: { at: 'net', h: 30, l: 'onb_move', walk: true },
-  still: { at: 'net', h: 30, l: 'onb_still', stand: true, beat: 'onb_fishok' },
+  move: { at: 'reel', h: 30, l: 'onb_move', walk: true },
+  still: { at: 'reel', h: 30, l: 'onb_still', stand: true, beat: 'onb_fishok' },
   toop: { at: 'op', h: 50, l: 'onb_toop', walk: true },
   cook: { at: 'op', l: 'onb_cook', stand: true, beat: 'onb_nice' },
   cookaway: { at: 'op', h: 50, l: 'onb_cookaway', walk: true },
@@ -81,7 +83,7 @@ const ORDER = ['hi', 'move', 'still', 'toop', 'cook', 'cookaway', 'take', 'shelf
 const IDX = Object.fromEntries(ORDER.map((k, i) => [k, i]));
 // the replay tour (after the tutorial): the places of the first loop in order, each with its card
 const TOUR = [
-  { at: 'net', l1: 'onb_tour_net', l2: 'onb_still_1' },
+  { at: 'reel', l1: 'onb_tour_net', l2: 'onb_still_1' },
   { at: 'op', l1: 'onb_toop_1', l2: 'onb_toop_2' },
   { at: 'out', l1: 'onb_tour_take', l2: 'onb_take_2' },
   { at: 'shelf', l1: 'onb_shelf_1', l2: 'onb_shelf_2' },
@@ -264,7 +266,7 @@ export class Onboarding {
   /** the step the world asks for now (Tutorial.firstLoop's branches, plus "standing on it" variants) */
   derive() {
     const gs = this.gs, p = gs.player, prog = gs.progress, eco = gs.economy, m = gs.market, grill = gs.stations.grill;
-    const op = grill.op, net = gs.net, g = net.gather;
+    const op = grill.op, net = gs.deck || gs.net, g = net.gather;
     const raw = p.stack.countOf('item_fish_raw'), cooked = p.stack.countOf('item_fish_cooked');
     const k = Math.min(4, p.capacity);
     if (prog.isDone('hire_clerk_market')) return 'helpers';
@@ -393,8 +395,8 @@ export class Onboarding {
     const V = (WORLD.onboard && WORLD.onboard.views) || {};
     this.view = S.view && V[S.view] ? V[S.view] : null;
     // ring + arrow
-    // (the net has no pad: its ring is the reach where fish hop in, gdist 55 = 110 px wide; a pad's ring frames its art)
-    this.ringAt = place ? { x: place.x, y: place.y, w: S.at === 'net' ? 110 : 150 } : null;
+    // (the reel spot's ring is the reach where the fish come to him, gdist 55 = 110 px wide; a pad's ring frames its art)
+    this.ringAt = place ? { x: place.x, y: place.y, w: S.at === 'reel' ? 110 : 150 } : null;
     if (place && step === 'stepoff') { const tg = this._tg; tg.x = place.x; tg.y = place.y + 118; tg.h = 34; this.target = tg; }
     else if (place && !S.stand) { const tg = this._tg; tg.x = place.x; tg.y = step === 'move' || step === 'still' ? place.y - 10 : place.y; tg.h = S.h || 40; this.target = tg; }
     else this.target = null;
@@ -433,7 +435,7 @@ export class Onboarding {
     this.spot = null;
     if (!this.light && !this.collapsed) {
       const m = gs.market;
-      if (step === 'still') this.spot = { pts: [gs.net.gather, p] };
+      if (step === 'still') this.spot = { pts: [(gs.deck || gs.net).gather, p] };
       else if (step === 'cook') this.spot = { pts: [gs.stations.grill, p] };
       else if (step === 'shelf' && this.spotT < 2 && m.queue[0]) this.spot = { pts: [m.shelf, m.queue[0]] };
       else if (step === 'reg' && m.queue[0]) this.spot = { pts: [m.register, m.queue[0]] };
@@ -712,13 +714,13 @@ export class Onboarding {
     this.dragFree = !(Input.joy.active || Input.vec.mag > 0.05);
     const i = this.tourI;
     if (i === 0) { this.setCard('tour:0', t('onb_tour'), null, { next: true, tk: ['onb_tour', null] }); return; }
-    if (i === 1) { const k2 = hasTouch() ? 'onb_move_2' : 'pcHint'; this.setCard('tour:1', t('onb_move_1'), t(k2), { next: true, tk: ['onb_move_1', k2] }); this.dragTo(gs.net.gather, true); return; }
+    if (i === 1) { const k2 = hasTouch() ? 'onb_move_2' : 'pcHint'; this.setCard('tour:1', t('onb_move_1'), t(k2), { next: true, tk: ['onb_move_1', k2] }); this.dragTo((gs.deck || gs.net).gather, true); return; }
     const k = i - 2;
     if (k < TOUR.length) {
       const R = TOUR[k], pl = this.tourPlace(R.at);
       if (!pl) { this.tourNext(); return; }
       this.setCard('tour:' + i, t(R.l1), t(R.l2), { next: true, tk: [R.l1, R.l2] });
-      this.ringAt = { x: pl.x, y: pl.y, w: R.at === 'net' ? 110 : 150 };
+      this.ringAt = { x: pl.x, y: pl.y, w: R.at === 'reel' ? 110 : 150 };
       gs.focusCamera(pl.x, pl.y - 40, 1e9); this.camHeld = true;
       this.dragTo(pl, false, 2.4);
       return;

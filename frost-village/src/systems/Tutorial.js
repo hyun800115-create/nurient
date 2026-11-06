@@ -105,6 +105,8 @@ export class Tutorial {
     if (this.civicHint(set, dt, idle)) return;
     // ---- (v4-B) the neighbours: goods for an order card, the town visit, planks for the carpenter, empty shelves
     if (this.v4Hint(set, dt, idle)) return;
+    // ---- (v4.3) the first houses (a side goal): only when he stands idle and the coins also pay for the next pad
+    if (idle && this.house43Hint(set)) return;
     const nx = prog.nextPad();
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
     if (prog.complete) goal = this.goalText();
@@ -413,6 +415,22 @@ export class Tutorial {
     return best;
   }
 
+  /** (v4.3) a first-house plot (world.js plots side43) that the coins pay for without holding up the next pad */
+  house43Hint(set) {
+    const gs = this.gs, p = gs.player, prog = gs.progress;
+    const nx = prog.nextPad(), keep = nx ? nx.remaining : 0;
+    for (const id in gs.sites) {
+      const st = gs.sites[id];
+      if (!st.cfg || !st.cfg.side43 || st.state !== 'plot' || !st.shown) continue;
+      const c = gs.buildChoices(st).find((q) => q.key === st.only);
+      if (!c || c.locked || gs.economy.coins < (c.cost.coins || 0) + keep) continue;
+      if (st.pad && st.pad.contains(p.x, p.y)) { this.textKey = 'obj_house43'; return true; }
+      set(st.dropX, st.dropY, 70, 'obj_house43');
+      return true;
+    }
+    return false;
+  }
+
   /** where the chief can pick up `type` (a station / workshop output, else nothing) */
   sourceOf(type) {
     const gs = this.gs;
@@ -518,7 +536,7 @@ export class Tutorial {
     if (cooked > 0) { set(m.shelf.x, m.shelf.y, 60, 'obj_sell'); return; }
     // (v3.5) nobody cooks yet: the chief stands at the grill himself (the fish hop in from there)
     const op = grill.op, cook = !op || !!op.operator;
-    if (raw > 0 && (p.room <= 0 || !gs.net.ready() || raw >= Math.min(4, p.capacity))) {
+    if (raw > 0 && (p.room <= 0 || !gs.net.ready() || raw >= Math.min(4, p.capacity))) {      // ((v4.3) gs.net = the fishing deck)
       if (cook) set(grill.inPad.x, grill.inPad.y, 50, 'obj_grill');
       else if (op.pad.contains(p.x, p.y)) this.textKey = 'obj_operating_grill';
       else set(op.x, op.y, 50, 'obj_op_grill');
@@ -529,7 +547,7 @@ export class Tutorial {
       if (grill.outStack.count < 6 || p.room <= 0) { set(op.x, op.y, 50, 'obj_op_grill'); return; }
     }
     if ((grill.outStack.count > 0 || grill.inStack.count > 0) && raw === 0) { set(grill.outPad.x, grill.outPad.y, 80, 'obj_take'); return; }
-    set(gs.net.gather.x, gs.net.gather.y - 10, 30, 'obj_fish');
+    set(gs.net.gather.x, gs.net.gather.y - 10, 30, 'obj_fish');     // ((v4.3) the deck's reel spot on land)
   }
 
   /**

@@ -169,7 +169,8 @@ try {
   step('hired the fisherman', s.done.includes('hire_fisherman') && s.workers.length === 1, `done=${s.done} workers=${JSON.stringify(s.workers)}`);
   await sleep(5000);
   s = await st();
-  step('fisherman works', s.workers[0] && ['work', 'deliver', 'drop', 'goto'].includes(s.workers[0].state), JSON.stringify(s.workers[0]));
+  // ((v4.3) the fisherman fishes from the deck: state 'deck' (Worker.updateDeck))
+  step('fisherman works', s.workers[0] && ['work', 'deliver', 'drop', 'goto', 'deck'].includes(s.workers[0].state), JSON.stringify(s.workers[0]));
   await shot('11_fisherman_working');
   await waitFor(page, () => window.__FV.state().piles.fish.n > 0, 60000).catch(() => {});
   s = await st();

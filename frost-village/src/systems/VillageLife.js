@@ -286,6 +286,22 @@ export class VillageLife {
     gs.updatePopulation && gs.updatePopulation();
   }
 
+  /** (v4.3) a first house is done: the tent family (residents who already live here, from the camp) walks to its door */
+  tentFamily(house, keys) {
+    if (!house || !house.door) return;
+    let i = 0;
+    for (const k of keys || []) {
+      const r = this.byKey[k];
+      if (!r || !r.alive || r.event || r.isPet) continue;
+      if (r.seat) { r.unsit(); r.stand(); }
+      if (r.job && r.job.seat && r.job.seat.by === r) r.job.seat.by = null;
+      this.setArea(r, null);
+      r.job = { kind: 'arrive', t: 0, house };
+      const dx = (i++ % 2 ? 22 : -22);
+      r.goTo(house.door.x + dx, house.door.y + 10, { tol: 20 });
+    }
+  }
+
   /** step finished without fanfare (test hook unlockAll): residents + props appear right away */
   stepInstant(id) {
     this.queueMoveIn(id, true);

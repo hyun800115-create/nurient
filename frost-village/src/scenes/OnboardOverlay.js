@@ -423,7 +423,8 @@ export class OnboardOverlay {
     };
     const all = (src) => { if (src && typeof src.revealObjects === 'function') { try { for (const o of src.revealObjects()) box(o); } catch (e) { /* */ } } };
     const m = gs.market, gr = gs.stations && gs.stations.grill;
-    if (gs.net) box(gs.net.img);
+    // ((v4.3) the fishing deck (its picture, the reel spot's pad) instead of the net
+    if (gs.deck) { box(gs.deck.img); box(gs.deck.pad.img); } else if (gs.net) box(gs.net.img);
     all(gr); all(m);
     if (m) for (const c of m.queue || []) { box(c.sprite); if (c.bubble && c.bubble.visible) box(c.bubble); }
     const pads = gs.progress && gs.progress.pads;

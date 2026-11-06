@@ -15,6 +15,7 @@ import { Assets } from '../../core/Assets.js';
 import { Audio } from '../../core/Audio.js';
 import { UnlockPad } from '../../entities/UnlockPad.js';
 import { OfficeBuilding } from '../../entities/OfficeBuilding.js';
+import { ChiefHut } from '../../entities/ChiefHut.js';
 import { BankBuilding42 } from '../../entities/BankBuilding42.js';
 import { Staff, Aide, Courier } from '../../entities/staff/Staff.js';
 import { TF } from '../../core/Townfolk.js';
@@ -57,6 +58,17 @@ export class Office {
     this.camReveal = null;
     this.cleared = {};
     this.presets = false;
+    // ((v4.3) the chief's hut stands on the office plot until the office's scaffold goes up (Site replace mode)
+    this.hut = null;
+    this.syncHut(false);
+  }
+
+  /** (v4.3) the hut is there while the office plot is a plot or a foundation; taken down when the scaffold goes up */
+  syncHut(pop) {
+    const gs = this.gs, so = gs.sites && gs.sites.v42_office, H = WORLD.v42.hut;
+    const want = !!(H && so && so.keepsOld);
+    if (want && !this.hut) this.hut = new ChiefHut(gs, H);
+    else if (!want && this.hut) { this.hut.remove(pop); this.hut = null; }
   }
 
   get built() { return !!this.building; }
@@ -388,6 +400,7 @@ export class Office {
 
   // ------------------------------------------------------------------ update
   afterRestore() {
+    this.syncHut(false);
     if (!this.building) return;
     for (const r of ROLES) if (this.hired(r)) this.spawn(r, true);
     this.showHire();
@@ -395,6 +408,7 @@ export class Office {
 
   update(dt) {
     const gs = this.gs, B = this.building;
+    this.syncHut(true);
     // the plots' decor goes when they appear
     const so = gs.sites && gs.sites.v42_office, sb = gs.sites && gs.sites.v42_bank;
     if (so && so.shown && !this.cleared.office) this.clearDecor('office');
@@ -511,6 +525,8 @@ export class Office {
     //  playing in the fresh game after 처음부터)
     try { if (this.building) this.building.destroy(); } catch (e) { /* */ }
     try { if (this.bank) this.bank.destroy(); } catch (e) { /* */ }
+    try { if (this.hut) this.hut.remove(false); } catch (e) { /* */ }
+    this.hut = null;
     this.building = null; this.bank = null;
   }
 }

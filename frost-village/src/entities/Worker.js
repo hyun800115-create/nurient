@@ -107,11 +107,11 @@ export class Worker extends Character {
 
   pickNode() {
     const gs = this.gs;
+    // ((v4.3) the fishermen fish from the deck (updateDeck): their place is their stool)
     if (this.type === 'fisherman') {
-      const n = gs.net;
-      const q = this.rodSpot(n);
+      const D = gs.deck, q = D ? D.stool(this.index) : { x: this.x, y: this.y };
       this.stand.x = q.x; this.stand.y = q.y;
-      return n;
+      return D || null;
     }
     let list;
     if (this.type === 'lumberjack') list = gs.trees;
@@ -132,22 +132,6 @@ export class Worker extends Character {
     return best;
   }
 
-  /** ((v4.2.0.1) the fisherman's rod spot on the shore: the k-th one 78 px west of the net's spot — the 3rd fell inside
-   *  the fisherman hut (he pushed the hut 3 s a trip and fished from its edge): the next free one along the shore,
-   *  west then east, else the nearest free ground. Kept once the land is known */
-  rodSpot(n) {
-    if (this._rod && this._rodNet === n) return this._rod;
-    const C = this.gs.collision, f = n.fisherSpot;
-    const at = (k) => ({ x: f.x - k * 78, y: f.y + k * 78 * 0.12 });
-    let q = at(this.index);
-    if (C.blocked(q.x, q.y, 18)) {
-      const tries = [this.index + 1, this.index + 2, -1, -2, this.index + 3].map(at).filter((p) => !C.blocked(p.x, p.y, 18));
-      q = tries.length ? tries[0] : this.gs.freeSpot(q.x, q.y, 18, 120);
-    }
-    if (C.walk) { this._rod = q; this._rodNet = n; }
-    return q;
-  }
-
   update(dt) {
     const gs = this.gs;
     if (this.avoidT > 0) this.avoidT -= dt;
@@ -156,6 +140,8 @@ export class Worker extends Character {
       this.checkT = 1;
       if (Assets.charReady(this.wantKey)) { this.reskin(this.wantKey); this.wantKey = null; }
     }
+    // ((v4.3) the fishermen fish from the fishing deck: their own little loop (updateDeck)
+    if (this.type === 'fisherman' && gs.deck) { this.updateDeck(dt); this.sync(dt); return; }
     if (this.state === 'goto') {
       this.gotoT = (this.gotoT || 0) + dt;
       if (this.gotoT > (this.tripMax || 7) && this.node && this.type !== 'fisherman') {
@@ -268,6 +254,112 @@ export class Worker extends Character {
       }
     }
     this.sync(dt);
+  }
+
+  // ------------------------------------------------------------------ (v4.3) the fishing deck (FishingDeck)
+  /** a loaded village: straight onto his stool, fishing */
+  seatNow() {
+    const D = this.gs.deck;
+    if (!D || this.type !== 'fisherman') return;
+    const q = D.stool(this.index);
+    this.x = q.x; this.y = q.y;
+    this.sitDown();
+    this.sync(0);
+  }
+
+  sitDown() {
+    const D = this.gs.deck;
+    this.dk = { st: 'sit', f: 'cast', t: Number((BALANCE.deck || {}).castS) || 0.6 };
+    this.state = 'deck';
+    this.onDeck = true; this.onGangway = false; this.deckLift = D ? D.lift : 0;
+    this.seated = true;
+    this.vx = this.vy = 0;
+    this.dir = 7;                           // NE: he faces the open sea
+    this.play('fsit_cast', true);
+  }
+
+  /** walk to the gangway foot (on land, the roads), the scripted lane onto the deck (no collision), then fish seated:
+   *  cast -> wait (the float bobs) -> bite (a splash) -> reel -> the fish flies to the crate on land -> a breath -> cast.
+   *  balance.js deck: castS 0.6, waitMin 0.8 .. waitMax 2.0, biteS, fishReelS 0.6, restS (~3 s a fish = ~20 a minute) */
+  updateDeck(dt) {
+    const gs = this.gs, D = gs.deck, B = BALANCE.deck || {};
+    const k = this.dk || (this.dk = { st: 'walk' });
+    this.state = 'deck';
+    if (k.st === 'walk') {
+      this.onDeck = false; this.seated = false;
+      const f = D.foot;
+      if (this.walkTo(f.x, f.y, dt, 10) || gdist(this.x, this.y, f.x, f.y) < 26) {
+        k.st = 'lane'; k.lane = D.lane(this.index); k.i = 1; this.vx = this.vy = 0;
+        this.x = k.lane[0].x; this.y = k.lane[0].y;
+      }
+      return;
+    }
+    if (k.st === 'lane') {
+      // the lane: straight from point to point, nothing pushes him (only the fishers are ever on the deck)
+      const a = k.lane[k.i - 1], q = k.lane[k.i];
+      const dx = q.x - this.x, dy = q.y - this.y, d = Math.hypot(dx, dy), step = this.speed * 0.85 * dt;
+      const seg = Math.max(1, Math.hypot(q.x - a.x, q.y - a.y));
+      this.onDeck = true; this.onGangway = !!(a.gang && q.gang);
+      if (d <= step) {
+        this.x = q.x; this.y = q.y; k.i++;
+        if (k.i >= k.lane.length) { this.sitDown(); return; }
+      } else {
+        this.x += (dx / d) * step; this.y += (dy / d) * step;
+        this.vx = (dx / d) * this.speed; this.vy = (dy / d) * this.speed;
+        this.face(dx, dy);
+        this.locomotion(true);
+      }
+      const u = 1 - Math.min(1, Math.hypot(q.x - this.x, q.y - this.y) / seg);
+      this.deckLift = a.lift + (q.lift - a.lift) * u;
+      return;
+    }
+    // seated: the loop
+    this.vx = this.vy = 0;
+    this.dir = 7;
+    k.t -= dt;
+    const pile = this.pile, bob = D.bobber(this.index);
+    const onScr = gs.isOnScreen(bob.x, bob.y, 120);
+    switch (k.f) {
+      case 'cast':
+        this.play('fsit_cast');
+        if (k.t <= 0) {
+          k.f = 'wait'; k.t = (Number(B.waitMin) || 0.8) + Math.random() * Math.max(0, (Number(B.waitMax) || 2.0) - (Number(B.waitMin) || 0.8));
+          // the float lands: a little plop
+          if (onScr) { gs.effects.burst('splash', bob.x, bob.y, 2); const wv = gs.ground && gs.ground.water; if (wv) wv.ripple(bob.x, bob.y, 0.6); }
+        }
+        break;
+      case 'wait':
+        this.play('fsit_wait');
+        if (k.t <= 0) {
+          if (pile && pile.stack.room > 0) {
+            k.f = 'bite'; k.t = Number(B.biteS) || 0.25;
+            // a bite! the float goes under with a splash
+            if (onScr) { gs.effects.sheet('fx_splash', bob.x, bob.y + 4, { size: 60 }); gs.effects.burst('splash', bob.x, bob.y, 3); const wv = gs.ground && gs.ground.water; if (wv) wv.ripple(bob.x, bob.y, 0.9); gs.sfxAt('sfx_splash', bob.x, bob.y, { volume: 0.3, throttle: 200 }); }
+            this.fullT = 0;
+          } else {
+            // the crate is full: he waits on his stool (sweat only while the chief could help)
+            k.t = 0.6;
+            this.fullT = (this.fullT || 0) + 0.6;
+            if (this.fullT > 6 && gs.life && gs.isOnScreen(this.x, this.y, 60)) { this.fullT = 0; if (!pile || pile.needsHand()) gs.life.bubbles.emote(this, Assets.pick('emote_sweat', 'emote_dots'), 1.6); }
+          }
+        }
+        break;
+      case 'bite':
+        this.play('fsit_bite');
+        if (k.t <= 0) { k.f = 'reel'; k.t = Number(B.fishReelS) || 0.6; }
+        break;
+      case 'reel':
+        this.play('fsit_reel');
+        if (k.t <= 0) {
+          // the fish comes out of the water and flies to the crate on land
+          if (D.flyFish(bob.x, bob.y - 18, pile) && onScr) gs.sfxAt('sfx_reel', this.x, this.y, { volume: 0.3, throttle: 300 });
+          k.f = 'rest'; k.t = Number(B.restS) || 0.15;
+        }
+        break;
+      default:
+        this.play('fsit_wait');
+        if (k.t <= 0) { k.f = 'cast'; k.t = Number(B.castS) || 0.6; this.play('fsit_cast', true); }
+    }
   }
 
   /** (v3.5 review) where this worker stands to unload: the 1st / 2nd / 3rd of a profession each have their own spot */

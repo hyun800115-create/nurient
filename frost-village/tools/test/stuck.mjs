@@ -153,7 +153,9 @@ async function checksLate() {
     const gs = window.__FV.scene, C = gs.collision, why = window.__why, R = window.__R, o = {};
     o.homes = [];
     for (const ty of ['fisherman', 'lumberjack', 'farmer', 'miner', 'hunter']) for (let i = 0; i < 5; i++) { const h = gs.workerHome(ty, i); const w = why(h[0], h[1], 14); if (w) o.homes.push(ty + i + ' ' + w); }
-    o.rods = gs.workers.filter((w) => w.type === 'fisherman').map((w) => { w.pickNode(); return { i: w.index, at: R(w.stand), why: why(w.stand.x, w.stand.y, 14) }; }).filter((q) => q.why);
+    // ((v4.3) the fishermen sit on the fishing deck's stools (on the water, reached by the deck's own lane): each one on his
+    //  own stool, seated there — the shore rod spots are gone)
+    o.rods = gs.workers.filter((w) => w.type === 'fisherman').map((w) => { const q = gs.deck.stool(w.index); return { i: w.index, at: R(w), seated: !!(w.dk && w.dk.st === 'sit'), d: Math.round(Math.hypot(w.x - q.x, w.y - q.y)) }; }).filter((q) => !q.seated || q.d > 2);
     o.drops = gs.workers.filter((w) => w.pile && w.pile.pad && w.type !== 'fisherman').map((w) => { w._ds = null; const q = w.dropSpot(w.pile.pad); return { k: w.type + w.index, at: R(q), why: why(q.x, q.y, 14) }; }).filter((q) => q.why);
     const ore = gs.piles && gs.piles.ore;
     if (ore && ore.pad) {
@@ -169,7 +171,7 @@ async function checksLate() {
   });
   if (st) {
   step('V6 every worker home (5 a profession) on free ground', st.homes.length === 0, st.homes.slice(0, 6));
-  step('V11 every fisherman\'s rod spot on free ground', st.rods.length === 0, st.rods);
+  step('V11 every fisherman sits on his own stool on the fishing deck (v4.3: no shore rod spots)', st.rods.length === 0, st.rods);
   step('V12 every gatherer\'s drop spot on free ground', st.drops.length === 0, st.drops);
   step('V8 the ore pile, its take spot and miner #1\'s drop spot clear every rock by 30 px', st.oreClear >= 30, { clear: st.oreClear });
   step('V10 the terrace seats\' step-out points on free ground (' + st.seats + ' seats)', st.seats > 0 && st.seatSides.length === 0, st.seatSides);

@@ -1,0 +1,579 @@
+{
+ "version": 1,
+ "generator": "tools/blender/deck43_render.py + deck43_chars.py + deck43_pack.py (v4.3 step A: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame. deck43_t<n>: the water-plane point under the 1단 centre (world.js WORLD.deck x, y; every tier the same); deck43_rod: the holder foot on the planks; fish_crate / workshop43: the footprint centre.",
+  "layers": "deck43_t<n>_back = the whole deck; deck43_t<n>_front = only the near rails, the gangway near rail and the 3단 roof (same frame + anchor). Draw back (depth d), the fishers on the deck (d + 0.4, lifted deckLiftPx), front (d + 0.6).",
+  "points": "every *Point(s) value is a px offset [dx, dy] from the sprite anchor (unscaled sprite).",
+  "characters": "extends: the anims join the existing character (each names its atlas deck43_ch and its frameName <key>/<anim>_<dir>_<i>). Seated fisher frames (fsit_*) are 160 x 160 with the anchor at the floor under the stool (normalised as every character); dirs NE only (he faces the sea). The chief's reel plays once (impactFrame 3: the first fish comes then)."
+ },
+ "atlases": [
+  {
+   "key": "deck43",
+   "png": "deck43/deck43.png",
+   "json": "deck43/deck43.json"
+  },
+  {
+   "key": "deck43_ch",
+   "png": "deck43/deck43_ch.png",
+   "json": "deck43/deck43_ch.json"
+  }
+ ],
+ "sprites": {
+  "deck43_t1_front": {
+   "atlas": "deck43",
+   "frame": "deck43_t1_front",
+   "anchor": [
+    0.59375,
+    0.43333
+   ],
+   "kind": "overlay",
+   "of": "deck43_t1_back",
+   "frameSize": [
+    384,
+    300
+   ],
+   "notes": "Front layer of deck43_t1_back (same frame + anchor): the near rails, the gangway near rail and the 3단 roof (object mask)."
+  },
+  "deck43_t1_back": {
+   "atlas": "deck43",
+   "frame": "deck43_t1_back",
+   "anchor": [
+    0.59375,
+    0.43333
+   ],
+   "kind": "building",
+   "frameSize": [
+    384,
+    300
+   ],
+   "topPx": 110,
+   "front": "-Y",
+   "notes": "낚시 좌대 (v4.3): planks DZ 0.3 m over the water, gangway to the snow at -Y, posts with foam rings. Anchor = the water-plane point under the 1단 centre (every tier the same). Draw _back (depth d), the fishers on the deck (d + 0.4, lifted 17 px), then _front (d + 0.6: the near rails, the gangway's near rail, the 3단 roof).",
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "fxPoints": {
+    "lantern": [
+     -64,
+     -56
+    ]
+   },
+   "stoolPoints": [
+    [
+     18,
+     -25
+    ]
+   ],
+   "footPoint": [
+    -183,
+    121
+   ],
+   "deckLiftPx": 17,
+   "tier": 1,
+   "overlay": "deck43_t1_front"
+  },
+  "deck43_t2_front": {
+   "atlas": "deck43",
+   "frame": "deck43_t2_front",
+   "anchor": [
+    0.59375,
+    0.48171
+   ],
+   "kind": "overlay",
+   "of": "deck43_t2_back",
+   "frameSize": [
+    384,
+    328
+   ],
+   "notes": "Front layer of deck43_t2_back (same frame + anchor): the near rails, the gangway near rail and the 3단 roof (object mask)."
+  },
+  "deck43_t2_back": {
+   "atlas": "deck43",
+   "frame": "deck43_t2_back",
+   "anchor": [
+    0.59375,
+    0.48171
+   ],
+   "kind": "building",
+   "frameSize": [
+    384,
+    328
+   ],
+   "topPx": 137,
+   "front": "-Y",
+   "notes": "낚시 좌대 (v4.3): planks DZ 0.3 m over the water, gangway to the snow at -Y, posts with foam rings. Anchor = the water-plane point under the 1단 centre (every tier the same). Draw _back (depth d), the fishers on the deck (d + 0.4, lifted 17 px), then _front (d + 0.6: the near rails, the gangway's near rail, the 3단 roof).",
+   "footprint": [
+    290,
+    145
+   ],
+   "footprintM": [
+    3.8,
+    2.6
+   ],
+   "fxPoints": {
+    "lantern": [
+     -64,
+     -56
+    ]
+   },
+   "stoolPoints": [
+    [
+     18,
+     -25
+    ],
+    [
+     -36,
+     -52
+    ]
+   ],
+   "footPoint": [
+    -183,
+    121
+   ],
+   "deckLiftPx": 17,
+   "tier": 2,
+   "overlay": "deck43_t2_front"
+  },
+  "deck43_t3_front": {
+   "atlas": "deck43",
+   "frame": "deck43_t3_front",
+   "anchor": [
+    0.5339,
+    0.61468
+   ],
+   "kind": "overlay",
+   "of": "deck43_t3_back",
+   "frameSize": [
+    472,
+    436
+   ],
+   "notes": "Front layer of deck43_t3_back (same frame + anchor): the near rails, the gangway near rail and the 3단 roof (object mask)."
+  },
+  "deck43_t3_back": {
+   "atlas": "deck43",
+   "frame": "deck43_t3_back",
+   "anchor": [
+    0.5339,
+    0.61468
+   ],
+   "kind": "building",
+   "frameSize": [
+    472,
+    436
+   ],
+   "topPx": 247,
+   "front": "-Y",
+   "notes": "낚시 좌대 (v4.3): planks DZ 0.3 m over the water, gangway to the snow at -Y, posts with foam rings. Anchor = the water-plane point under the 1단 centre (every tier the same). Draw _back (depth d), the fishers on the deck (d + 0.4, lifted 17 px), then _front (d + 0.6: the near rails, the gangway's near rail, the 3단 roof).",
+   "footprint": [
+    344,
+    172
+   ],
+   "footprintM": [
+    5.0,
+    2.6
+   ],
+   "fxPoints": {
+    "lantern": [
+     -64,
+     -56
+    ]
+   },
+   "stoolPoints": [
+    [
+     18,
+     -25
+    ],
+    [
+     -36,
+     -52
+    ],
+    [
+     -91,
+     -79
+    ]
+   ],
+   "footPoint": [
+    -183,
+    121
+   ],
+   "deckLiftPx": 17,
+   "tier": 3,
+   "overlay": "deck43_t3_front"
+  },
+  "deck43_rod_idle": {
+   "atlas": "deck43",
+   "frame": "deck43_rod_idle",
+   "anchor": [
+    0.15909,
+    0.625
+   ],
+   "kind": "prop",
+   "frameSize": [
+    176,
+    144
+   ],
+   "topPx": 66,
+   "front": "-Y",
+   "notes": "Rod holder on the deck: frames deck43_rod_idle / _bite / _hooked; framePoints.tip = the rod tip (the game draws the line, the float and the hooked fish from there). Origin = the holder foot on the planks.",
+   "footprint": [
+    36,
+    18
+   ],
+   "footprintM": [
+    0.4,
+    0.4
+   ],
+   "tipPoint": [
+    71,
+    -65
+   ],
+   "state": "idle"
+  },
+  "deck43_rod_bite": {
+   "atlas": "deck43",
+   "frame": "deck43_rod_bite",
+   "anchor": [
+    0.15909,
+    0.625
+   ],
+   "kind": "prop",
+   "frameSize": [
+    176,
+    144
+   ],
+   "topPx": 50,
+   "front": "-Y",
+   "notes": "Rod holder on the deck: frames deck43_rod_idle / _bite / _hooked; framePoints.tip = the rod tip (the game draws the line, the float and the hooked fish from there). Origin = the holder foot on the planks.",
+   "footprint": [
+    36,
+    18
+   ],
+   "footprintM": [
+    0.4,
+    0.4
+   ],
+   "tipPoint": [
+    79,
+    -49
+   ],
+   "state": "bite"
+  },
+  "deck43_rod_hooked": {
+   "atlas": "deck43",
+   "frame": "deck43_rod_hooked",
+   "anchor": [
+    0.15909,
+    0.625
+   ],
+   "kind": "prop",
+   "frameSize": [
+    176,
+    144
+   ],
+   "topPx": 69,
+   "front": "-Y",
+   "notes": "Rod holder on the deck: frames deck43_rod_idle / _bite / _hooked; framePoints.tip = the rod tip (the game draws the line, the float and the hooked fish from there). Origin = the holder foot on the planks.",
+   "footprint": [
+    36,
+    18
+   ],
+   "footprintM": [
+    0.4,
+    0.4
+   ],
+   "tipPoint": [
+    65,
+    -68
+   ],
+   "state": "hooked"
+  },
+  "fish_crate": {
+   "atlas": "deck43",
+   "frame": "fish_crate",
+   "anchor": [
+    0.41667,
+    0.54167
+   ],
+   "kind": "building",
+   "frameSize": [
+    144,
+    120
+   ],
+   "topPx": 45,
+   "front": "-Y",
+   "notes": "The fish crate at the deck's gangway (the `fish` collection pile prop): an EMPTY open wooden crate, rope handles, a snowy rim. The fish it holds are the pile's own item pictures (ghost-sweep rule).",
+   "footprint": [
+    77,
+    38
+   ],
+   "footprintM": [
+    1.0,
+    0.7
+   ]
+  },
+  "workshop43": {
+   "atlas": "deck43",
+   "frame": "workshop43",
+   "anchor": [
+    0.36798,
+    0.59639
+   ],
+   "kind": "building",
+   "frameSize": [
+    356,
+    332
+   ],
+   "topPx": 177,
+   "front": "-Y",
+   "notes": "옷·신발 공방 (v4.3): the bag / boots bench as a small lean-to workshop. Blank signboard over the front: the game writes sign_workshop43 into signQuad. Nothing on it is sold by the game (no food, no goods).",
+   "footprint": [
+    195,
+    97
+   ],
+   "footprintM": [
+    2.8,
+    1.5
+   ],
+   "fxPoints": {
+    "lantern": [
+     -91,
+     -97
+    ]
+   },
+   "signQuad": [
+    [
+     -65,
+     -94
+    ],
+    [
+     -2,
+     -62
+    ],
+    [
+     -2,
+     -50
+    ],
+    [
+     -65,
+     -81
+    ]
+   ],
+   "signText": "sign_workshop43",
+   "signColor": "#5A3418"
+  }
+ },
+ "characters": {
+  "player_deck43": {
+   "extends": "player",
+   "atlas": "deck43_ch",
+   "anims": {
+    "reel": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "impactFrame": 3,
+     "dirs": [
+      "NE"
+     ],
+     "impactPoint": {
+      "NE": [
+       -2,
+       -78
+      ]
+     },
+     "atlas": "deck43_ch",
+     "frameName": "player/{anim}_{dir}_{i}"
+    }
+   },
+   "frameSizeOf": [
+    128,
+    128
+   ],
+   "anchorOf": [
+    0.5,
+    0.8125
+   ]
+  },
+  "fisherman_deck43": {
+   "extends": "fisherman",
+   "atlas": "deck43_ch",
+   "anims": {
+    "fsit_cast": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman/{anim}_{dir}_{i}"
+    },
+    "fsit_wait": {
+     "frames": 4,
+     "fps": 5,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman/{anim}_{dir}_{i}"
+    },
+    "fsit_bite": {
+     "frames": 3,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman/{anim}_{dir}_{i}"
+    },
+    "fsit_reel": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman/{anim}_{dir}_{i}"
+    }
+   },
+   "frameSizeOf": [
+    160,
+    160
+   ],
+   "anchorOf": [
+    0.5,
+    0.8125
+   ],
+   "floatPoint": [
+    57,
+    -11
+   ]
+  },
+  "fisherman_b_deck43": {
+   "extends": "fisherman_b",
+   "atlas": "deck43_ch",
+   "anims": {
+    "fsit_cast": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_b/{anim}_{dir}_{i}"
+    },
+    "fsit_wait": {
+     "frames": 4,
+     "fps": 5,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_b/{anim}_{dir}_{i}"
+    },
+    "fsit_bite": {
+     "frames": 3,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_b/{anim}_{dir}_{i}"
+    },
+    "fsit_reel": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_b/{anim}_{dir}_{i}"
+    }
+   },
+   "frameSizeOf": [
+    160,
+    160
+   ],
+   "anchorOf": [
+    0.5,
+    0.8125
+   ],
+   "floatPoint": [
+    57,
+    -11
+   ]
+  },
+  "fisherman_c_deck43": {
+   "extends": "fisherman_c",
+   "atlas": "deck43_ch",
+   "anims": {
+    "fsit_cast": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_c/{anim}_{dir}_{i}"
+    },
+    "fsit_wait": {
+     "frames": 4,
+     "fps": 5,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_c/{anim}_{dir}_{i}"
+    },
+    "fsit_bite": {
+     "frames": 3,
+     "fps": 12,
+     "repeat": -1,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_c/{anim}_{dir}_{i}"
+    },
+    "fsit_reel": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "NE"
+     ],
+     "atlas": "deck43_ch",
+     "frameName": "fisherman_c/{anim}_{dir}_{i}"
+    }
+   },
+   "frameSizeOf": [
+    160,
+    160
+   ],
+   "anchorOf": [
+    0.5,
+    0.8125
+   ],
+   "floatPoint": [
+    57,
+    -11
+   ]
+  }
+ }
+}
