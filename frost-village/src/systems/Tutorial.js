@@ -21,9 +21,10 @@ import { BALANCE } from '../data/balance.js';
 import { MENU } from './Civic.js';
 
 const ZONE_CHAINS = [
-  { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'trade', worker: 'hire_lumberjack' },
+  // ((v4.3) planks and ingots sell at the shop's 자재 창구 (the trade post merged into the shop): seller 'mat')
+  { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'mat', worker: 'hire_lumberjack' },
   { zone: 'farm', raw: 'item_wheat', product: 'item_bread', station: 'bakery', seller: 'market', worker: 'hire_farmer' },
-  { zone: 'mine', raw: 'item_ore', product: 'item_ingot', station: 'smelter', seller: 'trade', worker: 'hire_miner' },
+  { zone: 'mine', raw: 'item_ore', product: 'item_ingot', station: 'smelter', seller: 'mat', worker: 'hire_miner' },
   { zone: 'hunt', raw: 'item_meat_raw', product: 'item_meat_cooked', station: 'smokehouse', seller: 'market', worker: 'hire_hunter' },
 ];
 export const PRODUCT_ZONE = { item_plank: 'forest', item_bread: 'farm', item_ingot: 'mine', item_meat_cooked: 'hunt' };
@@ -206,7 +207,8 @@ export class Tutorial {
     const gs = this.gs;
     // ((v4-B) + the station till: wholesale, card bonuses and rent)
     const g = gs.v4 && gs.v4.growth;
-    const out = [gs.market.cash, gs.trade && gs.trade.enabled ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null];
+    // ((v4.3) the 자재 창구 pays into the shop's one till: listed once)
+    const out = [gs.market.cash, gs.trade && gs.trade.enabled && gs.trade.cash !== gs.market.cash ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null];
     // ((v4-C) the town hall's tax box and the big restaurant's cash pad count toward the next purchase (cashHint) only:
     // they fill all the time, and a "coins are waiting" arrow to them would never leave the chief alone — the bots
     // following the arrow collected tax for half an hour instead of filling the neighbours' orders)
@@ -556,18 +558,20 @@ export class Tutorial {
    */
   registerHint(set, dt, urgent) {
     const gs = this.gs, p = gs.player, m = gs.market, tr = gs.trade;
-    const mWait = m.waitingPay && !m.register.clerk ? m.waitPayT : 0;
+    // ((v4.3) the shop's food counters: the one whose line waits to pay with no clerk (the stall's register before)
+    const mr = m.waitRegister || m.register;
+    const mWait = m.waitingPay && !mr.clerk ? m.waitPayT : 0;
     const tWait = tr.enabled && tr.waitingPay && !tr.register.clerk ? tr.waitT : 0;
     const need = urgent ? 9 : 1.2;
     let reg = null, key = null;
-    if (mWait > need && (!tWait || mWait >= tWait)) { reg = m.register; key = 'obj_register'; }
+    if (mWait > need && (!tWait || mWait >= tWait)) { reg = mr; key = 'obj_register'; }
     else if (tWait > need + 1) { reg = tr.register; key = 'obj_register_trade'; }
     if (!reg) return false;
     if (reg.pad.contains(p.x, p.y)) { this.textKey = 'obj_register_wait'; return true; }
     // a gentle toast the first times the line gets stuck far away
     if (urgent && gdist(p.x, p.y, reg.x, reg.y) > 420 && gs.time.now - (this.waitToastT || -1e9) > 45000) {
       this.waitToastT = gs.time.now;
-      gs.ui.toast(t(reg === m.register ? 'customersWaiting' : 'merchantWaiting'));
+      gs.ui.toast(t(reg === mr ? 'customersWaiting' : 'merchantWaiting'));
     }
     set(reg.x, reg.y, 46, key);
     return true;
@@ -781,7 +785,7 @@ export class Tutorial {
       this.zoneT[z.zone] = (this.zoneT[z.zone] || 0) + dt;
       if (prog.isDone(z.worker) || this.zoneT[z.zone] > ZONE_HINT_MAX) { prog.hints[z.zone] = true; continue; }
       const st = gs.stations[z.station];
-      const seller = z.seller === 'trade' ? gs.trade.shelf : gs.market.shelf;
+      const seller = z.seller === 'mat' ? gs.trade.shelf : gs.market.shelf;
       const raw = p.stack.countOf(z.raw), room = p.room;
       if (p.stack.countOf(z.product) > 0) { set(seller.x, seller.y, 60, 'obj_' + z.zone + '_4'); return true; }
       const sd = this.stationDest(st);

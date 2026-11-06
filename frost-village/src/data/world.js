@@ -38,6 +38,8 @@ const smelter = Z('mine', 1.6, 2.4);
 const smokehouse = Z('hunt', -1.8, 1.6);
 
 const rel = (a, b) => [b[0] - a[0], b[1] - a[1]];
+// ((v4.3) 가게 단계: 광장 기준 미터 → 1단 노점(market) 기준 px
+const MK = (mx, my) => rel(market, Z('plaza', mx, my));
 
 // (v4.2.0.1) 가공소의 돈 내는 발판 자리 (가공소 중심 기준 px, 디자이너: "건물 안쪽에 있는 것들이 … 물건 쌓이거나 사람들이 있으면 안 보여")
 //   돈 내는 발판은 건물 앞쪽(화면 아래쪽)이나 옆의 빈 땅에만 둬요: 건물·울타리·밀밭·물건 더미·손님 줄 뒤에는 두지 않아요.
@@ -47,7 +49,7 @@ const rel = (a, b) => [b[0] - a[0], b[1] - a[1]];
 //        낚싯대가 있어야 하는 어부 2·3 발판은 (아직 돈·낚싯대를 안 넣었으면) 잠깐 비켜 줘요: Progression.yields)
 //   세 번째 값 = 이름표 자리: 'lb' = 발판 아래쪽 (위에 다른 발판이 있을 때), [오른쪽 px, 아래쪽 px] = 옆 발판 이름표와 겹치지 않게
 const STATION_PADS = {
-  grill:      { line: [-79, 155],  p2: null },
+  grill:      { line: [-79, 155, 'lb'],  p2: null },     // ((v4.3) 'lb': 화덕 2단 · 생선 짐꾼 2 이름표는 발판 아래 — 위쪽은 가게 3단 자재 창구)
   sawmill:    { line: [-6, 119],   p2: [168, 112, [100, -62]] },
   bakery:     { line: [-272, 93],  p2: [-202, 188, 'lb'] },
   smelter:    { line: [39, 148],   p2: [199, 128, 'lb'] },
@@ -139,6 +141,35 @@ export const WORLD = {
     register: rel(market, Z('plaza', 6.0, 3.4)),   // 촌장이 서는 계산대 발판 (판매대 오른쪽 끝, 진열대 옆)
     staff: rel(market, Z('plaza', 2.1, 3.95)),     // 점원이 서는 곳 (판매대 뒤). 그림에 staffPoints 가 있으면 그것을 씀
     clerk: ['npc_clerk_a', 'villager_c'],          // (v2) 점원 모습: 앞의 그림이 아직 없으면 다음 것 (그림이 오면 바뀜)
+    // ((v4.3) 가게가 단계마다 옆으로 자라요 (docs/기획서_마을새단장.md §4–5). 2단 「눈꽃 가게」 = 자재 창구 · 먹거리 (숲을 열 때 함께),
+    //  3단 「눈꽃 시장」 = 자재 · 생선 · 빵·고기 (빵이 처음 팔린 뒤 400 코인 + 판자 8). 창구는 한 줄로 서고 자재 창구가 서쪽(왼쪽 위) 끝,
+    //  손님 줄은 창구마다 그 앞에 나란히 서요 (맨 앞 손님은 계산대 비스듬히 왼쪽 앞: 점원을 가리지 않게. 그림의 customerPoints).
+    //  자리는 모두 광장 미터 MK(가로 m, 세로 m) → 1단 노점 기준 px. 4단 (눈꽃마을 시장, 4.3 B) 자리 10 x 5 m 는 지금부터 비워 둬요:
+    //  광장 미터 x -3 ~ 7, y 1.3 ~ 6.3 (그 안에는 돈 내는 발판을 두지 않아요). 4.2 교역소(trade)는 이제 짓지 않아요 — 자재 창구)
+    //   at = 그 단계 그림의 기준점, shelf = 먹거리 진열대 (동쪽 끝), matShelf = 판자·주괴 진열대 (서쪽 끝), cash = 가게 금고 (하나),
+    //   registers = 창구마다 촌장이 서는 계산대 발판 (점원이 오면 사라져요), wall = 창구 줄을 따라 막힌 곳 (그 두 점 사이, 반지름 px),
+    //   sled = 옛 교역소 썰매 (장식: 교역소가 있던 자리에서 조금 광장 쪽 — 상인들이 타고 온 썰매. 촌장 오두막 벽과는 떨어져 있어요.
+    //          자재 창구 바로 옆은 화덕 줄 발판 자리라 4.3 B 에서 화덕이 옮겨 가면 창구 옆으로 와요)
+    mat: { clerk: ['npc_clerk_b', 'npc_merchant'] },   // 자재 점원 모습 (예전 교역소 점원)
+    clerk3: ['npc_clerk_a', 'villager_c'],             // 3단 빵·고기 창구 점원 모습
+    stages: {
+      2: {
+        sprite: 'market_s2_back', at: MK(3.5, 2.8),
+        shelf: MK(6.6, 2.8), matShelf: MK(0.4, 2.8), cash: MK(6.4, 0.5),
+        registers: { mat: MK(2.68, 1.55), food: MK(4.68, 1.55) },
+        wall: [MK(1.45, 2.95), MK(5.55, 2.95)], wallR: 46,
+        sled: { at: MK(-3.9, -1.6), scale: 1 },
+      },
+      3: {
+        sprite: 'market_s3_back', at: MK(2.5, 2.8),
+        shelf: MK(6.6, 2.8), matShelf: MK(-1.6, 2.8), cash: MK(6.4, 0.5),
+        registers: { mat: MK(0.68, 1.55), fish: MK(2.68, 1.55), breadmeat: MK(4.68, 1.55) },
+        wall: [MK(-0.55, 2.95), MK(5.55, 2.95)], wallR: 46,
+        sled: { at: MK(-3.9, -1.6), scale: 1 },
+      },
+    },
+    // 4단 자리 (4.3 B): 발판은 이 안에 두지 않아요 (padvis 가 확인해요). [광장 x0, y0, x1, y1] m
+    reserve4: [-3, 1.3, 7, 6.3],
   },
   trade: {
     sprite: 'trade_post', x: trade[0], y: trade[1], zone: 'forest',
@@ -212,7 +243,11 @@ export const WORLD = {
     //   교역소 점원: 교역소 동전 더미 왼쪽 빈 눈밭 (예전엔 동전 더미 발판 위에 겹쳐 있었어요. 동전 더미 아래 자리는 가방 발판과
     //   겹쳐서, 점원을 고용할 때까지 가방이 안 보였어요)
     hire_clerk_market: { x: 1525, y: 900, clerk: 'market' },
-    hire_clerk_trade:  { x: 640, y: 830, clerk: 'trade' },
+    hire_clerk_trade:  { x: 640, y: 830, clerk: 'trade' },     // ((v4.3) 이제 '자재 점원': 가게 자재 창구에서 상인에게 팔아요
+    // ((v4.3) 가게 3단 「눈꽃 시장」 넓히기 → 그다음 빵·고기 창구 점원: 판매대 점원 발판과 같은 자리 (가게 동쪽 끝 옆 빈 눈밭,
+    //  4단 자리 밖). 한 자리에 발판은 하나씩: 앞 발판을 사면 다음 것이 나와요)
+    mkt_s3:            { x: 1525, y: 900, labelAt: [-40, 64] },   // 이름표는 발판 아래: 위쪽은 진열대 탑, 오른쪽은 동쪽 땅 안개
+    hire_clerk_s3:     { x: 1525, y: 900, clerk: 'breadmeat' },
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { ...LINE('grill'), station: 'grill' },
     porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
@@ -236,7 +271,7 @@ export const WORLD = {
     raw_smelter:    LINE('smelter'),
     op_smokehouse:  LINE('smokehouse'),
     raw_smokehouse: LINE('smokehouse'),
-    hire3_fisherman:  LINE('grill'),            // (v4.2.0.1) 화덕 앞 (예전 자리는 화덕 그림 바로 뒤)
+    hire3_fisherman:  { ...LINE('grill'), labelAt: [0, 64] },   // (v4.2.0.1) 화덕 앞 (예전 자리는 화덕 그림 바로 뒤). ((v4.3) 이름표는 발판 아래 (위와 같은 까닭))
     hire3_lumberjack: { x: 720, y: 1415, labelAt: [0, 64] },   // (v4.2.0.1) 이름표는 발판 아래: 위쪽 제재소 발판들의 가격 위에 걸쳤어요
     hire3_farmer:     { x: 1557, y: 1466 },     // (v4.2.0.1) 소나무 밖으로
     hire3_hunter:     { x: 1140, y: 2195 },
@@ -527,7 +562,7 @@ export const WORLD = {
   foodBox: { x: 690, y: 1752 },
   // (v3) 도구가 있어야 고용되는 두 번째 일꾼 발판 (x, y) — 코인 + 도구 1개
   pads2: {
-    hire2_fisherman:  { ...LINE('grill'), worker: 'fisherman', tool: 'item_rod' },    // (v4.2.0.1) 화덕 앞 (화덕 줄 발판 자리)
+    hire2_fisherman:  { ...LINE('grill'), worker: 'fisherman', tool: 'item_rod', labelAt: [0, 64] },    // (v4.2.0.1) 화덕 앞 (화덕 줄 발판 자리). ((v4.3) 이름표는 발판 아래: 위쪽은 가게 3단 자재 창구 점원 자리)
     hire2_lumberjack: { x: 720, y: 1415, worker: 'lumberjack', tool: 'item_axe', labelAt: [0, 64] },   // (v4.2.0.1) 이름표는 발판 아래
     hire2_farmer:     { x: 1557, y: 1466, worker: 'farmer', tool: 'item_sickle' },     // (v4.2.0.1) 소나무 밖으로
     hire2_miner:      { x: 835, y: 1800, worker: 'miner', tool: 'item_pickaxe' },

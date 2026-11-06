@@ -255,7 +255,9 @@ export class OfficePanel {
     // today's income by source
     const y0 = B.top + 236 + 8 * 44 + 30;
     this.text(B.x0 + 40, y0, t('incomeToday'), 22, '#2b2f3a');
-    const inc = O.income, keys = ['market', 'trade', 'store', 'rest', 'tax', 'station', 'export', 'depot'];
+    // ((v4.3) the 자재 창구 pays into the shop's one till: its coins are in the shop's row (no separate trade till)
+    const one = this.gs.trade && this.gs.market && this.gs.trade.cash === this.gs.market.cash;
+    const inc = O.income, keys = ['market', 'trade', 'store', 'rest', 'tax', 'station', 'export', 'depot'].filter((k) => !(one && k === 'trade' && !inc.trade));
     const F = this.gs.v42.freight;
     const vals = keys.map((k) => (k === 'export' ? (F ? F.stats.coins : 0) : inc[k] || 0));
     const max = Math.max(1, ...vals);

@@ -26,7 +26,7 @@ import { Occlusion } from '../systems/Occlusion.js';
 import { Culler } from '../systems/Culler.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
-import { Market, TradePost, FOODS, GOODS } from '../entities/Seller.js';
+import { Market, StageMarket, FOODS, GOODS } from '../entities/Seller.js';
 import { Tree, Rock, Wheat } from '../entities/ResourceNode.js';
 import { FishingDeck } from '../entities/FishingDeck.js';
 import { Workshop43 } from '../entities/Workshop43.js';
@@ -49,7 +49,7 @@ import { Tower } from '../entities/Tower.js';
 import { Boathouse } from '../entities/Boathouse.js';
 import { BUILD_UNLOCK, UNIQUE_BUILDINGS } from '../systems/Progression.js';
 import { Residency } from '../core/Residency.js';
-import { STORE_GOODS, TOOLS, MATERIALS } from '../data/items.js';
+import { STORE_GOODS, TOOLS, MATERIALS, priceOf } from '../data/items.js';
 // ---- (v4-A) the neighbour town, the snow train, day and night
 import { Neighbours } from '../systems/Neighbours.js';
 // ---- (v4-C) the west strip: the town hall, the big restaurant, decor, settlers, houses that can always be built
@@ -252,6 +252,7 @@ export class Game extends Phaser.Scene {
     this.progress.init();
     this.restore(sv);
     this.restoreV3Stock(sv);
+    this.settleShopOver();
     this.restoreLabour(sv);
     if (this.v42) this.v42.afterRestore(sv);
     // ((v4.2 final) everything that stands is solid now: the store's line once more (plot e_m1 / the farm fence))
@@ -387,7 +388,7 @@ export class Game extends Phaser.Scene {
     // then residents who live here already
     const first = working.concat((this.life && this.life.moved) || [], ['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
     // (v3) the building / construction / boat pictures come first once they are needed (plots may be on screen)
-    const n = Assets.queueLazy(this.load, first, ['bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    const n = Assets.queueLazy(this.load, first, ['market_s3', 'market_s2', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
     this.lazyGateT = 2;
     if (!want.length && !n) return;
@@ -400,6 +401,9 @@ export class Game extends Phaser.Scene {
     const pr = this.progress, f = Assets.fragOf[k];
     if (f === 'water' && !WATER_DATA.test(k)) return WaterSheets.allowed(k);     // (v4-C2) only the water sheets a system asked for
     if (!pr) return true;
+    // ((v4.3) the shop's stage pages: stage 2 once the forest is near (its pad shows), stage 3 once the farm is open
+    const ms = /^market_s([2-9])$/.exec(k);
+    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; return st >= n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_farm')); }
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
     if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
     // ---- (v4-A) late v4 files: only the ones a v4 system asked for
@@ -431,7 +435,7 @@ export class Game extends Phaser.Scene {
     if (this.lazyGateT > 0) return;
     this.lazyGateT = 2;
     if (!Assets.gate) return;
-    const n = Assets.queueLazy(this.load, [], ['bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    const n = Assets.queueLazy(this.load, [], ['market_s2', 'market_s3', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (n) this.startLazyLoad();
   }
 
@@ -924,9 +928,11 @@ export class Game extends Phaser.Scene {
   }
 
   buildSellers() {
-    this.market = new Market(this, WORLD.market);
-    this.trade = new TradePost(this, WORLD.trade);
-    this.addToZone(WORLD.trade.zone, this.trade);
+    // ((v4.3) the plaza shop grows in stages (눈꽃 노점 → 가게 → 시장); the trade post is its 자재 창구 now: gs.trade is that
+    //  counter (the old TradePost surface: stock, shelf, cash, flying, maxPerType, register, merchant). It opens with the
+    //  shop's stage 2, which comes with the forest — as the trade post did)
+    this.market = new StageMarket(this, WORLD.market);
+    this.trade = this.market.mat;
     this.trash = new TrashPad(this, WORLD.trash);
     // ((v4.3) 옷·신발 공방: the bench as a small workshop with its name on a board (Workshop43); `bench` stays its picture
     this.workshop43 = new Workshop43(this, WORLD.bench);
@@ -1974,7 +1980,6 @@ export class Game extends Phaser.Scene {
     for (const a of this.animals) a.update(dt);
     for (const s of this.stationList) s.update(dt);
     this.market.update(dt);
-    this.trade.update(dt);
     // (v3) construction, workshops, storage, the store, houses, towers, boats, fog
     for (const id in this.sites) this.sites[id].update(dt);
     for (const w of this.workshops) w.update(dt);
@@ -2158,7 +2163,7 @@ export class Game extends Phaser.Scene {
       if (ready && p.stack.hasAny(GOODS) && this.trade.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; this.trade.shelf.pulse(); }
     }
     if (this.market.cash.pad.contains(p.x, p.y) || (this.trade.enabled && this.trade.cash.pad.contains(p.x, p.y))) on = true;
-    if (this.market.register.chief || (this.trade.enabled && this.trade.register.chief)) on = true;
+    if (this.market.chiefOn()) on = true;
     // (v3) construction sites (plot pad: the build menu; drop pad: materials), workshops, storage, food, store, the catch
     for (const id in this.sites) {
       const st = this.sites[id];
@@ -2244,7 +2249,8 @@ export class Game extends Phaser.Scene {
     const pileOf = (ty) => { for (const id in this.piles) if (this.piles[id].item === ty) return this.piles[id]; return null; };
     const BIN = {
       market: (ty) => FOODS.indexOf(ty) >= 0 && this.market.stock.countWithIncoming(ty) + (unpaid[ty] || 0) < this.market.maxPerType && (add(unpaid, ty), true),
-      trade: (ty) => GOODS.indexOf(ty) >= 0 && this.trade.stock.countWithIncoming(ty) + (tradeExtra[ty] || 0) < this.trade.maxPerType && (add(tradeExtra, ty), true),
+      // ((v4.3) the shop's 자재 창구 (the trade post's place in the chain; its stock still saves as `trade`)
+      mat: (ty) => GOODS.indexOf(ty) >= 0 && this.trade.enabled && this.trade.stock.countWithIncoming(ty) + (tradeExtra[ty] || 0) < this.trade.maxPerType && (add(tradeExtra, ty), true),
       store: (ty) => !!this.store && STORE_GOODS.indexOf(ty) >= 0 && this.store.stock.countWithIncoming(ty) + (storeExtra[ty] || 0) < this.store.maxPerType && (add(storeExtra, ty), true),
       pantry: (ty) => !!pantry0 && FOODS.indexOf(ty) >= 0 && (pantry0[ty] || 0) + (pantryExtra[ty] || 0) < R.pantryMax() && (add(pantryExtra, ty), true),
       food: (ty) => !!(fb && fb.active && fb.accepts(ty)) && Math.min(fb.max, fb.stock.count + fb.stock.incoming) + sumOf(foodExtra) < fb.max && (add(foodExtra, ty), true),
@@ -2256,7 +2262,7 @@ export class Game extends Phaser.Scene {
       dock: (ty) => !!F && (F.dock[ty] || 0) + (exportExtra[ty] || 0) < 999 && (add(exportExtra, ty), true),
     };
     const chainOf = (ty) => (FOODS.indexOf(ty) >= 0 ? ['market', 'pantry', 'food', 'wh', 'out', 'dock']
-      : GOODS.indexOf(ty) >= 0 ? ['trade', 'wh', 'out', 'dock']
+      : GOODS.indexOf(ty) >= 0 ? ['mat', 'wh', 'out', 'dock']
         : STORE_GOODS.indexOf(ty) >= 0 ? ['store', 'wh', 'dock']
           : this.stationByInput[ty] ? ['input', 'pile', 'boat', 'wh', 'dock'] : ['wh', 'boat', 'dock']);
     this.saveLost = 0;
@@ -2340,7 +2346,8 @@ export class Game extends Phaser.Scene {
       progress: this.progress.serialize(),
       stations: st,
       market: { stock: shelf(this.market.stock, FOODS, unpaid), cash: this.market.cash.serialize() },
-      trade: { stock: shelf(this.trade.stock, GOODS, tradeExtra), cash: this.trade.cash.serialize() },
+      // ((v4.3) one till for the whole shop: its coins save with `market` (an old save's trade cash is added to it on load)
+      trade: { stock: shelf(this.trade.stock, GOODS, tradeExtra), cash: 0 },
       player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: pl.items.map((i) => i.type).concat(pl.inTypes) },
       life: this.life ? this.life.serialize() : undefined,
       labour: { piles },
@@ -2374,11 +2381,37 @@ export class Game extends Phaser.Scene {
   restore(sv) {
     const fx = this.effects;
     if (sv.stations) for (const s of this.stationList) s.restore(sv.stations[s.id]);
-    const fill = (stock, obj, max) => { if (!obj) return; for (const ty in obj) for (let i = 0; i < Math.min(max, obj[ty] || 0); i++) stock.push(ty, null, fx); };
-    if (sv.market) { fill(this.market.stock, sv.market.stock, this.market.maxPerType); this.market.cash.restore(sv.market.cash); }
-    if (sv.trade) { fill(this.trade.stock, sv.trade.stock, this.trade.maxPerType); this.trade.cash.restore(sv.trade.cash); }
+    // ((v4.3) the shop's stage is set by now (Progression.init): stage 3 racks hold 60 of a kind. What does not fit — an old
+    //  trade post's goods with the 자재 창구 still closed — goes to the 창고, else it is paid at today's price into the till:
+    //  nothing an old village owns may vanish)
+    const over = {};
+    const fillN = (stock, obj, max, ok) => { if (!obj) return; for (const ty in obj) { const n = Math.max(0, Math.floor(obj[ty] || 0)); const k = ok ? Math.min(max, n) : 0; for (let i = 0; i < k; i++) stock.push(ty, null, fx); if (n > k) over[ty] = (over[ty] || 0) + n - k; } };
+    if (sv.market) fillN(this.market.stock, sv.market.stock, this.market.maxPerType, true);
+    if (sv.trade) fillN(this.trade.stock, sv.trade.stock, this.trade.maxPerType, this.trade.open);
+    const tillCoins = (sv.market ? Math.max(0, Math.floor(Number(sv.market.cash) || 0)) : 0) + (sv.trade ? Math.max(0, Math.floor(Number(sv.trade.cash) || 0)) : 0);
+    if (tillCoins > 0) this.market.cash.restore(tillCoins);
+    this.shopOver = Object.keys(over).length ? over : null;
+    // (what the shop took back at load: tests compare it with the save — sales start right after)
+    const cnt = (st, types) => Object.fromEntries(types.map((ty) => [ty, st.countOf(ty)]));
+    this.shopLoaded = { stage: this.market.stage, food: cnt(this.market.stock, FOODS), mat: cnt(this.trade.stock, GOODS), till: this.market.cash.value, over: Object.assign({}, over) };
     if (sv.player && sv.player.stack) for (const ty of sv.player.stack.slice(0, this.player.capacity)) this.player.stack.push(ty, null, fx);
     this.market.restoreQueue(BALANCE.start.firstCustomers);
+  }
+
+  /** ((v4.3) what an old save's shelves held beyond the shop's racks (Game.restore): into the 창고 when there is room (after
+   *  its own stock came back), the rest paid into the shop's till at today's price */
+  settleShopOver() {
+    const over = this.shopOver;
+    this.shopOver = null;
+    if (!over) return;
+    let coins = 0;
+    const W = this.warehouse;
+    for (const ty in over) {
+      let n = over[ty];
+      if (W && W.accepts(ty)) { const k = Math.max(0, Math.min(n, W.cap - W.total)); if (k) { W.restore({ [ty]: k }); n -= k; } }
+      if (n > 0) coins += n * priceOf(ty);
+    }
+    if (coins > 0) this.market.cash.addQuiet(coins);
   }
 
   resetProgress() {
@@ -2511,7 +2544,10 @@ export class Game extends Phaser.Scene {
           net: gs.net.gather, grillIn: S.grill.inPad, grillOut: S.grill.outPad, shelf: gs.market.shelf, cash: gs.market.cash.pad,
           tradeShelf: gs.trade.shelf, tradeCash: gs.trade.cash.pad, bench: gs.bench, trash: gs.trash,
           register: gs.market.register, tradeRegister: gs.trade.register,
+          // ((v4.3) the shop's counters: matShelf / matRegister (= trade*), the food lanes' registers, the merchant
+          matShelf: gs.trade.shelf, matRegister: gs.trade.register, merchant: gs.trade.merchant,
         };
+        for (const id in gs.market.lanes || {}) { const L = gs.market.lanes[id]; if (L.open && L.register) m[id + 'Register'] = L.register; }
         for (const s of gs.stationList) { m[s.id + 'In'] = s.inPad; m[s.id + 'Out'] = s.outPad; }
         for (const id in gs.progress.pads) m[id] = gs.progress.pads[id];
         for (const k in gs.progress.upPads) m['up_' + k] = gs.progress.upPads[k];

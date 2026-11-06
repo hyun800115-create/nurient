@@ -33,7 +33,12 @@ import bld_pack as bp    # noqa: E402  (read-only reuse: load = post-processing 
 OUT = os.path.join(GAME, 'assets', 'market')
 DEFAULT_CACHE = os.path.join(__import__('tempfile').gettempdir(), 'fv_cache', 'market')
 PAGE_BUDGET = 1.0 * 1048576
-SIGN = {'market_s1': {'text': 'sign_market_1', 'color': '#6E3E1E'}}
+SIGN = {'market_s1': {'text': 'sign_market_1', 'color': '#6E3E1E'},
+        'market_s2': {'text': 'sign_market_2', 'color': '#6E3E1E', 'plates': ['plate_mat', 'plate_food'],
+                      'counters': ['mat', 'food']},
+        'market_s3': {'text': 'sign_market_3', 'color': '#6E3E1E', 'plates': ['plate_mat', 'plate_fish', 'plate_breadmeat'],
+                      'counters': ['mat', 'fish', 'breadmeat']}}
+# ((v4.3) the stage pages after the first load while the village plays (Assets.js MARKET_LATE): stage 1 is in the boot set)
 
 CONVENTIONS = {
     'ppu': 64,
@@ -57,10 +62,12 @@ def entries(k, m, frame_atlas):
     pts = m['framePoints'][first]
     dirs = m.get('frameDirs', {}).get(first, {})
     staff, step = pts['staff'][0], pts['step'][0]
+    sg = SIGN.get(k, {})
     s = {'atlas': frame_atlas[first], 'frame': first, 'anchor': m['anchor'], 'kind': 'building',
          'footprint': m['footprint'], 'footprintM': m['footprintM'], 'frameSize': m['frameSize'],
          'topPx': m['topPx'].get(first) if isinstance(m['topPx'], dict) else m['topPx'], 'front': m.get('front', '-Y'),
-         'staffPoints': [staff], 'staffDirs': dirs.get('staff', ['SW'])[:1], 'staffDepth': 'front',
+         'staffPoints': pts['staff'] if sg.get('counters') else [staff],
+         'staffDirs': dirs.get('staff', ['SW'])[:len(pts['staff']) if sg.get('counters') else 1], 'staffDepth': 'front',
          'stepLiftPx': int(staff[1] - step[1]), 'stepM': m.get('stepH'), 'counterM': m.get('counterH'),
          'signTopM': m.get('signTop'),
          'customerPoints': pts.get('customer', []), 'customerDirs': dirs.get('customer', []),
@@ -69,6 +76,12 @@ def entries(k, m, frame_atlas):
          'notes': m.get('notes', '')}
     if m.get('fxPoints'):
         s['fxPoints'] = m['fxPoints']
+    # ((v4.3) stages 2-3: one counter per staff / customer / register point (west -> east) and a name plate over each)
+    if sg.get('counters'):
+        s['counters'] = sg['counters']
+        s['registerPoints'] = pts.get('register', [])
+        s['plates'] = [{'quad': pts['plate%d' % i], 'text': t} for i, t in enumerate(sg.get('plates', []))
+                       if 'plate%d' % i in pts]
     ov = m['overlay']['key']
     o = {'atlas': frame_atlas[ov], 'frame': ov, 'anchor': m['anchor'], 'kind': 'overlay', 'of': first,
          'frameSize': m['frameSize'],
@@ -117,19 +130,35 @@ def main():
     if not os.path.isdir(cache):
         raise SystemExit('market_pack: no render cache %s - run market_render.py first' % cache)
     keys, builds, _boats, _staff, frames, _bf = bp.load(cache)
-    keys = [k for k in keys if k.startswith('market_')]
+    # ((v4.3) plain props (no front layer: the old sled) ride on a stage's page (their spec's atlas)
+    props = [k for k in keys if k.startswith('market_') and not builds[k].get('overlay')]
+    keys = [k for k in keys if k.startswith('market_') and builds[k].get('overlay')]
     man_path = os.path.join(OUT, 'manifest.json')
     old = json.load(open(man_path, encoding='utf-8')) if os.path.exists(man_path) else {}
-    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])}
-    missing = sorted(set((old.get('sprites') or {}).keys()) - have)
+    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])} | {builds[k]['frames'][0] for k in props}
+    # ((v4.3) a stage of the current manifest that is not in the cache is KEPT as it is (its atlas files and manifest
+    #  entries untouched: the shipped stage 1 stays byte-identical) - only when its files are there)
+    kept_atl, kept_spr = [], {}
+    for a in old.get('atlases') or []:
+        if a['key'] in keys:
+            continue
+        if not (os.path.exists(os.path.join(GAME, 'assets', a['png'])) and os.path.exists(os.path.join(GAME, 'assets', a['json']))):
+            continue
+        kept_atl.append(a)
+        for n, sp in (old.get('sprites') or {}).items():
+            if sp.get('atlas') == a['key']:
+                kept_spr[n] = sp
+    missing = sorted(set((old.get('sprites') or {}).keys()) - have - set(kept_spr))
     if not keys or missing:
         raise SystemExit('market_pack: ABORT - the cache %s lacks %s; nothing was written (render them first: '
                          'market_render.py)' % (cache, ', '.join(missing) or 'every stage'))
+    if kept_atl:
+        print('kept as they are:', ', '.join(a['key'] for a in kept_atl))
     os.makedirs(OUT, exist_ok=True)
-    atlases, sprites, frame_atlas = [], {}, {}
+    atlases, sprites, frame_atlas = list(kept_atl), dict(kept_spr), {}
     for k in keys:
         m = builds[k]
-        names = [m['frames'][0], m['overlay']['key']]
+        names = [m['frames'][0], m['overlay']['key']] + [builds[q]['frames'][0] for q in props if builds[q]['atlas'] == k]
         sheet, atlas = pu.pack_atlas([(n, frames[n]) for n in names], max_width=2048, trim=True, padding=2)
         png, js = os.path.join(OUT, k + '.png'), os.path.join(OUT, k + '.json')
         pu.save_atlas(sheet, atlas, png, js, quantize=False)
@@ -144,6 +173,14 @@ def main():
             frame_atlas[n] = k
         atlases.append({'key': k, 'png': 'market/%s.png' % k, 'json': 'market/%s.json' % k})
         sprites.update(entries(k, m, frame_atlas))
+        for q in props:
+            pm = builds[q]
+            if pm['atlas'] != k:
+                continue
+            sprites[q] = {'atlas': k, 'frame': pm['frames'][0], 'anchor': pm['anchor'], 'kind': 'prop',
+                          'footprint': pm.get('footprint'), 'footprintM': pm.get('footprintM'), 'frameSize': pm['frameSize'],
+                          'topPx': pm['topPx'].get(pm['frames'][0]) if isinstance(pm['topPx'], dict) else pm['topPx'],
+                          'front': pm.get('front', '-Y'), 'notes': pm.get('notes', '')}
         print('%-10s %4dx%-4d %d frames %6.1f KB  (GPU %.2f MiB)' % (k, sheet.width, sheet.height,
                                                                    len(atlas['frames']), os.path.getsize(png) / 1024.0,
                                                                    sheet.width * sheet.height * 4 / 1048576.0))

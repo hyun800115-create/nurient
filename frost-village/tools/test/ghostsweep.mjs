@@ -8,7 +8,8 @@
 // Sections (each on its own page; real rendering through the fixed-step clock — the bake only runs on drawn frames):
 //   art     the goods painted into building art are gone (grill grate, smokehouse rack, sawmill bench, stall counter
 //           (and the v4.2.0.2 stage-1 stall: its back shelf holds folded cloths, an empty basket, paper bags and a spoon
-//           crock, its counter an empty tray),
+//           crock, its counter an empty tray; (v4.3) the stage-2 / stage-3 shop rows and the old merchant sled: cloths,
+//           baskets, bags, crocks, a rope coil, a ledger, a scale — no fish, bread, meat, planks or ingots),
 //           fish net, cannery, store counter, fishing boat hatch / net, rowboat fish box): luma signatures of their
 //           frames == the goods-free renders (ghostsweep_art.json)
 //   fresh   (fresh game) the chief's empty carry stays on him (first items fly to him); a stack changed while the
@@ -141,7 +142,7 @@ await section('art', null, async (page) => {
   // fetches only from the farmer on: open that gate and fetch them through the game's own lazy loader
   await E(page, () => { const A = window.__FV.assets(), g = window.__FV.scene; A.gate = () => true; g.checkLazyGates(99); });
   for (let k = 0; k < 180; k++) {
-    const ready = await E(page, () => { window.__step.frame(); const A = window.__FV.assets(), T = window.__FV.scene.textures; return !A.pending('station_cannery') && !A.pending('shop_general') && T.exists('boat_fishing') && T.exists('boat_rowboat'); });
+    const ready = await E(page, () => { window.__step.frame(); const A = window.__FV.assets(), T = window.__FV.scene.textures; return !A.pending('station_cannery') && !A.pending('shop_general') && T.exists('boat_fishing') && T.exists('boat_rowboat') && !A.pending('market_s2_back') && !A.pending('market_s3_back'); });
     if (ready) break;
     await sleep(500);
   }
