@@ -3,6 +3,11 @@
 //   node tools/title/bake_title.mjs                     full bake -> src/title/bake/ (webp atlases + title_bake.json)
 //   node tools/title/bake_title.mjs --preview 1,2,3,4   layout check: stage composites -> --previewDir (default /tmp)
 //   node tools/title/bake_title.mjs --out <dir>         write the bake somewhere else (e.g. assets/title_bake/)
+//   node tools/title/bake_title.mjs --patch [--out <dir>] [--keys a,b]
+//        patch an existing bake after an OBJECTS change: bake only the sprite keys the bake does not have yet (or whose
+//        stage moved, or --keys), drop the keys the layout no longer uses, re-pack only the stage pages they touch
+//        (tools/title/patch_sprites.py). Every other page, the ground layers and the actors stay byte for byte
+//        (a full bake re-renders all of them: (v4.3) in today's headless Chromium the base ground comes out clipped)
 //
 // Runs tools/title/bake_page.js in headless Chromium with Phaser 3.90 and the game's REAL asset loader
 // (src/core/Assets.js), so every picture is resolved exactly like the game does (fragment merge rules,
@@ -30,6 +35,8 @@ const PREVIEW = opt('preview', null);
 const PREVIEW_DIR = path.resolve(opt('previewDir', path.join(process.env.TMPDIR || '/tmp', 'title_preview')));
 const PREVIEW_SCALE = Number(opt('scale', 0.42));
 const LABELS = !!opt('labels', false);
+const PATCH = !!opt('patch', false);
+const KEYS = typeof opt('keys', null) === 'string' ? opt('keys').split(',').filter(Boolean) : [];
 
 const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#333}</style>
 <script src="lib/phaser.min.js"></script></head><body>
@@ -69,6 +76,33 @@ if (PREVIEW) {
     writeDataUrl(f, url);
     console.log('[bake] preview', f);
   }
+} else if (PATCH) {
+  const manFile = path.join(OUT, 'title_bake.json');
+  if (!fs.existsSync(manFile)) { console.error('[bake] --patch: no bake at ' + OUT); process.exit(1); }
+  const man = JSON.parse(fs.readFileSync(manFile, 'utf8'));
+  const st = await page.evaluate(() => window.__BAKE.stageOfKey());
+  const changed = Object.keys(st).filter((k) => !man.sprites[k] || man.sprites[k].stage !== st[k] || KEYS.includes(k)).sort();
+  const gone = Object.keys(man.sprites).filter((k) => st[k] === undefined).sort();
+  console.log('[bake] patch: re-bake ' + (changed.join(', ') || '-') + ' | drop ' + (gone.join(', ') || '-'));
+  fs.rmSync(WORK, { recursive: true, force: true });
+  fs.mkdirSync(path.join(WORK, 'pieces'), { recursive: true });
+  const meta = { sprites: [], actors: [], ground: [], fx: [], patch: { changed, gone } };
+  const n = await page.evaluate((keys) => { window.__BAKE.out = window.__BAKE.bakeSprites(keys); return window.__BAKE.out.length; }, changed);
+  for (let i = 0; i < n; i += 24) {
+    const chunk = await page.evaluate(([a, b]) => window.__BAKE.out.slice(a, b), [i, i + 24]);
+    for (const p of chunk) {
+      const file = p.name.replace(/[^a-zA-Z0-9_@.-]/g, '~') + '.png';
+      writeDataUrl(path.join(WORK, 'pieces', file), p.png);
+      delete p.png;
+      p.file = file;
+      meta.sprites.push(p);
+    }
+  }
+  console.log('[bake] bakeSprites: ' + n + ' pieces');
+  fs.writeFileSync(path.join(WORK, 'pieces.json'), JSON.stringify(meta, null, 1));
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  const out = execFileSync(py, [path.join(HERE, 'patch_sprites.py'), WORK, OUT], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  process.stdout.write(out);
 } else {
   fs.rmSync(WORK, { recursive: true, force: true });
   fs.mkdirSync(path.join(WORK, 'pieces'), { recursive: true });

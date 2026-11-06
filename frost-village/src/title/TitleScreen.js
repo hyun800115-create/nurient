@@ -90,7 +90,7 @@ export class TitleScreen {
     this.setupCameras();
     TitleFx.make(scene);
     this.sky = new TitleSky(scene, this.putSky, this.W, this.H, TITLE_LAYOUT);
-    this.dio = new TitleDiorama(scene, this.putWorld, { reduced: this.reduced, cue: (n, v) => this.cue(n, v) });
+    this.dio = new TitleDiorama(scene, this.putWorld, { reduced: this.reduced, lang: this.lang, cue: (n, v) => this.cue(n, v) });
     // the gear opens the lead's settings (hooks.onSettings) or the title's own small card (hooks.settings !== false)
     this.settings = hooks.onSettings || hooks.settings === false ? null : new TitleSettings(this, this.putUI);
     const onSettings = hooks.onSettings || (this.settings ? () => this.settings.show() : null);

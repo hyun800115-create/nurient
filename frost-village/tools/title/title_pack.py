@@ -30,7 +30,10 @@ Q_GLOW = 70
 GLOW_RES = 0.5       # glow pieces are stored at this fraction of the sprite's bake scale
 GLOW_MIN_PX = 40     # fewer lit pixels than this: no glow piece
 NO_GLOW = ('tree_', 'rock_', 'snow_', 'bush_', 'ice_', 'barrel', 'crate', 'fence_', 'sled', 'log_seat', 'firewood', 'fish_net',
-           'item_', 'decal_', 'dock_pier', 'boat_small', 'snowman', 'dog_house', 'bollard', 'buoy', 'container', 'bench', 'flag_pole')
+           'item_', 'decal_', 'dock_pier', 'boat_small', 'snowman', 'dog_house', 'bollard', 'buoy', 'container', 'bench', 'flag_pole',
+           # ((v4.3) the fishing deck and the stall: no window panes, the mask only finds rope and plank highlights; their
+           #  lanterns are lit by the runtime instead (layout DECK.lantern, OBJECTS `lamp`)
+           'deck43_', 'market_s')
 
 
 # ----------------------------------------------------------------------------- MaxRects (best short side fit)
