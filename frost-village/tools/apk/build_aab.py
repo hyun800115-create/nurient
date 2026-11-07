@@ -264,9 +264,11 @@ def main():
 
         upload_pw, new_upload_key = ensure_upload_key(work)
         upload_pem = UPLOAD_KS.with_name('snowbloom-upload-certificate.pem')
-        if not TEST_KS.exists():
+        # (only the default --universal-key test needs it; with --universal-key upload the bundle is built without it)
+        if a.universal_key == 'test' and not TEST_KS.exists():
             die('the test key %s is missing: it signs the universal APK (and the sideloaded test APKs); restore it from the '
-                'backup (snowbloom-앱열쇠-보관용.zip) — a new one would not update the installed app' % TEST_KS)
+                'backup (snowbloom-앱열쇠-보관용.zip) — a new one would not update the installed app — or build with '
+                '--universal-key upload (AAB_EXTRA="--universal-key upload")' % TEST_KS)
 
         www = work / 'www'
         files, skipped = B.stage_www(artifact, www)
