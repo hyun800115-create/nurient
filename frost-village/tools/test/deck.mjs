@@ -12,7 +12,8 @@
 //   the line runs from his rod tip (above him) to the float, each fish starts at the float (leaps out of the water to
 //   him); he walks away -> the line is reeled in and gone
 // 3 the fishers: hired at once (non-instant: they walk the lane from the gangway foot to their stools), the deck grows
-//   1단 → 2단 → 3단 with them; each fisher ≈ 20 fish a minute (17..23), three ≈ 59 (52..66); their fish fly to the
+//   1단 → 2단 → 3단 with them; each fisher ≈ 34 fish a minute (29..39: two fish a reel, the 4.2 rod fisherman's rate),
+//   three ≈ 101 (88..115); their fish fly to the
 //   crate (the `fish` pile) on land; the crate keeps them when it is full (no fish lost, the fishers wait)
 // 4 nobody else on the deck: a 3-minute soak with three fishers, the fish porters (raw + goods), the cook, customers,
 //   residents and the chief walking between the reel spot and the grill — only fishers are ever inside the deck /
@@ -211,7 +212,7 @@ try {
       D.flyFish = orig;
       return { n, perMin: +(n / 2).toFixed(1), crate: pl.count, before, loops: gs.workers.filter((w) => w.type === 'fisherman').map((w) => w.dk && w.dk.f) };
     });
-    ok(rate1.perMin >= 17 && rate1.perMin <= 23, `one fisher ≈ 20 fish a minute: ${rate1.perMin}`, rate1);
+    ok(rate1.perMin >= 29 && rate1.perMin <= 39, `one fisher ≈ 34 fish a minute (the 4.2 fisherman's rate): ${rate1.perMin}`, rate1);
     // fishers 2 and 3: the deck grows (2단, 3단 with the roof)
     const tiers = await page.evaluate(() => {
       const gs = window.__FV.scene, D = gs.deck, out = [D.tier];
@@ -237,7 +238,7 @@ try {
       D.flyFish = orig;
       return { n, perMin: +(n / 2).toFixed(1) };
     });
-    ok(rate3.perMin >= 52 && rate3.perMin <= 66, `three fishers ≈ 59 fish a minute: ${rate3.perMin}`, rate3);
+    ok(rate3.perMin >= 88 && rate3.perMin <= 115, `three fishers ≈ 101 fish a minute: ${rate3.perMin}`, rate3);
     // the crate full: nothing is lost, the fishers wait
     const full = await page.evaluate(() => {
       const gs = window.__FV.scene, pl = gs.piles.fish;
@@ -356,6 +357,28 @@ try {
     if (f === 'v42_village_late.json') await shot(page, 'late');
     errors.push(...log.errors);
     ok(log.errors.length === 0, `${f}: 0 page errors`, log.errors.slice(0, 3));
+    await ctx.close();
+  }
+  // ((review CD-1) a 4.2 chief saved where the hut stands now (the 관망 rest spot by the old beach fire, 580, 630): he
+  //  comes out to the yard and walks, never stuck in the hut's walls
+  if (want('old')) {
+    const sv = JSON.parse(fx('v41_save_smart_46min.json'));
+    sv.player = Object.assign({}, sv.player || {}, { x: 580, y: 630, stack: [] });
+    const { page, ctx, log } = await boot(JSON.stringify(sv), { width: 390, height: 844 });
+    const r = await page.evaluate(() => {
+      const gs = window.__FV.scene, p = gs.player, C = gs.collision, O = gs.v42.office;
+      const s0 = { x: Math.round(p.x), y: Math.round(p.y), blocked: C.blocked(p.x, p.y, 16), hut: !!(O && O.hut) };
+      const moved = [];
+      for (const [ix, iy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x0 = p.x, y0 = p.y;
+        window.__FV.setInput(ix, iy); window.__step.run(1.0); window.__FV.setInput(0, 0); window.__step.run(0.1);
+        moved.push(Math.round(Math.hypot(p.x - x0, p.y - y0)));
+      }
+      return { s0, moved };
+    });
+    ok(r.s0.hut && !r.s0.blocked && Math.hypot(r.s0.x - 580, (r.s0.y - 630) * 2) > 150 && r.moved.filter((m) => m > 40).length >= 3,
+      'an old chief saved inside the hut\'s walls (580, 630) comes out to the yard and walks', r);
+    errors.push(...log.errors);
     await ctx.close();
   }
   // ================================================================== 6. the office replaces the hut (replace mode)

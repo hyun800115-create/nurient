@@ -680,8 +680,9 @@ export const BALANCE = {
   // ── (v4.3) 마을 새 단장 ──────────────────────────────────────
   // 낚시 좌대 (그물 대신): 촌장 감기, 어부 던지기·기다리기·입질·감기·쉬기(초). 물고기 수는 위 resources.net 그대로 (최대 6, 1.1초마다 1)
   //   reelS = 촌장이 자리에 서면 한 번 감아올리는 시간 (그 사이 첫 물고기가 와요: 첫 판매가 늦어지지 않게)
-  //   어부 한 바퀴 = castS + (waitMin ~ waitMax) + biteS + fishReelS + restS ≈ 3초 → 한 사람이 1분에 약 20마리, 세 사람이면 약 59마리
-  deck: { reelS: 0.6, castS: 0.6, waitMin: 0.8, waitMax: 2.0, biteS: 0.25, fishReelS: 0.6, restS: 0.15 },
+  //   어부 한 바퀴 = castS + (waitMin ~ waitMax) + biteS + fishReelS + restS ≈ 3.5초, 한 번 감으면 fishPerReel 마리 (두 마리가 같이 올라와요)
+  //   → 한 사람이 1분에 약 34마리, 세 사람이면 약 100마리 (4.2 어부와 같은 빠르기: 예전 어부는 한 사람이 1분에 약 34마리)
+  deck: { reelS: 0.6, castS: 0.6, waitMin: 1.0, waitMax: 2.8, biteS: 0.25, fishReelS: 0.6, restS: 0.15, fishPerReel: 2 },
   // 오두막 → 촌장 사무실 (옆 목표). (4.3 B 부터 이 값: 지금(4.3 A)은 사무실 값과 열리는 때가 예전 그대로예요 — v42.office.site)
   hut: { office: { coins: 400, item_plank: 8, item_ingot: 0, time: 8 } },
   // 첫 집 두 채 (숲을 열면, 옆 목표): world.js 부지 h43_1 (뾰족집) / h43_2 (통나무집) 의 값. 사는 사람 수와 짓는 시간은 그 집 그대로

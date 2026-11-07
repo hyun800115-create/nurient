@@ -280,7 +280,8 @@ export class Worker extends Character {
 
   /** walk to the gangway foot (on land, the roads), the scripted lane onto the deck (no collision), then fish seated:
    *  cast -> wait (the float bobs) -> bite (a splash) -> reel -> the fish flies to the crate on land -> a breath -> cast.
-   *  balance.js deck: castS 0.6, waitMin 0.8 .. waitMax 2.0, biteS, fishReelS 0.6, restS (~3 s a fish = ~20 a minute) */
+   *  balance.js deck: castS 0.6, waitMin 1.0 .. waitMax 2.8, biteS, fishReelS 0.6, restS, fishPerReel 2 (~3.5 s a pair =
+   *  ~34 a minute, the 4.2 rod fisherman's rate — review SUITES-1) */
   updateDeck(dt) {
     const gs = this.gs, D = gs.deck, B = BALANCE.deck || {};
     const k = this.dk || (this.dk = { st: 'walk' });
@@ -313,17 +314,19 @@ export class Worker extends Character {
       this.deckLift = a.lift + (q.lift - a.lift) * u;
       return;
     }
-    // seated: the loop
+    // seated: the loop ((review CD-6) ×1.1 while the chief cheers by the deck's foot, as the rod fishermen's strokes were)
     this.vx = this.vy = 0;
     this.dir = 7;
-    k.t -= dt;
+    const v42 = gs.v42, cheer = v42 && v42.aura ? v42.aura.cheerK(this) : 1;
+    k.t -= dt * cheer;
     const pile = this.pile, bob = D.bobber(this.index);
     const onScr = gs.isOnScreen(bob.x, bob.y, 120);
     switch (k.f) {
       case 'cast':
         this.play('fsit_cast');
         if (k.t <= 0) {
-          k.f = 'wait'; k.t = (Number(B.waitMin) || 0.8) + Math.random() * Math.max(0, (Number(B.waitMax) || 2.0) - (Number(B.waitMin) || 0.8));
+          const w0 = Number.isFinite(Number(B.waitMin)) ? Number(B.waitMin) : 1.0, w1 = Number.isFinite(Number(B.waitMax)) ? Number(B.waitMax) : 2.8;
+          k.f = 'wait'; k.t = w0 + Math.random() * Math.max(0, w1 - w0);
           // the float lands: a little plop
           if (onScr) { gs.effects.burst('splash', bob.x, bob.y, 2); const wv = gs.ground && gs.ground.water; if (wv) wv.ripple(bob.x, bob.y, 0.6); }
         }
@@ -351,8 +354,11 @@ export class Worker extends Character {
       case 'reel':
         this.play('fsit_reel');
         if (k.t <= 0) {
-          // the fish comes out of the water and flies to the crate on land
-          if (D.flyFish(bob.x, bob.y - 18, pile) && onScr) gs.sfxAt('sfx_reel', this.x, this.y, { volume: 0.3, throttle: 300 });
+          // the fish come out of the water (fishPerReel: two on the line, side by side) and fly to the crate on land
+          const nf = Math.max(1, Math.floor(Number(B.fishPerReel)) || 1);
+          let flew = 0;
+          for (let i = 0; i < nf; i++) if (D.flyFish(bob.x + i * 12, bob.y - 18 - i * 8, pile)) flew++;
+          if (flew && onScr) gs.sfxAt('sfx_reel', this.x, this.y, { volume: 0.3, throttle: 300 });
           k.f = 'rest'; k.t = Number(B.restS) || 0.15;
         }
         break;

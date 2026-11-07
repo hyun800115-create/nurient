@@ -43,7 +43,8 @@ try {
   await until(page, () => { const s = window.__FV.state(); return s.market.clerk && s.trade.clerk && window.__FV.scene.market.register.clerk.ready && window.__FV.scene.trade.register.clerk.ready; }, 60);
   await until(page, () => { const g = window.__FV.scene; return g.market.register.clerk.key.startsWith('npc_clerk') && g.trade.register.clerk.key.startsWith('npc_clerk'); }, 60);
   // ((v4.3) unlockAll builds the 눈꽃 시장 (stage 3): the stall checks below run at stage 1, the staged ones after)
-  await until(page, () => { const A = window.__FV.assets(); return !A.pending('market_s3_back') && !A.pending('market_s2_back'); }, 60);
+  // ((review CD-2) at stage 3 the stage-2 page is never fetched (Game.lazyAllowed): it comes when the loop below sets stage 2)
+  await until(page, () => { const A = window.__FV.assets(); return !A.pending('market_s3_back'); }, 60);
   await ev(() => { const m = window.__FV.scene.market; if (m.setStage) m.setStage(1, true); });
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.market.stock.push('item_fish_cooked', null, gs.effects); });
   await advance(page, 8);
@@ -139,6 +140,9 @@ try {
   }
   // ---- ((v4.3) the staged shop: every clerk with every line's front customer present (gate G6)
   for (const st of [2, 3]) {
+    // (the stage's page first: stage 2's is fetched only once the shop is at stage 2)
+    await ev((st) => window.__FV.scene.market.setStage(st, true), st);
+    await until(page, (st) => !window.__FV.assets().pending('market_s' + st + '_back'), 60, st);
     const res = await ev((st) => {
       const g = window.__FV.scene, m = g.market, F = window.__FV;
       m.setStage(st, true);

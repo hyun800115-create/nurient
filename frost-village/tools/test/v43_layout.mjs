@@ -138,12 +138,19 @@ const DUMP = async () => {
   // the fixed buildings of the first village
   for (const s of gs.stationList || []) addB('station:' + s.id, 'station', s.x, s.y, fpOf(s.cfg.sprite, s.x, s.y) || diamond(s.x, s.y, 272, 136), { building: s.cfg.sprite, zone: s.cfg.zone || '' });
   if (gs.market) addB('market', 'seller', gs.market.x, gs.market.y, fpOf(gs.market.sprite || (WORLD.market && WORLD.market.sprite), gs.market.x, gs.market.y) || diamond(gs.market.x, gs.market.y, 272, 136), { building: gs.market.sprite || '' });
-  if (gs.trade) addB('trade', 'seller', gs.trade.x, gs.trade.y, fpOf((WORLD.trade && WORLD.trade.sprite) || 'trade_post', gs.trade.x, gs.trade.y) || diamond(gs.trade.x, gs.trade.y, 272, 136), { building: 'trade_post', enabled: !!gs.trade.enabled });
+  // ((review PT-4) the v4.3 gs.trade is the shop's 자재 창구 (its picture is the shop's): no trade post of its own
+  if (gs.trade && gs.trade.shop !== gs.market) addB('trade', 'seller', gs.trade.x, gs.trade.y, fpOf((WORLD.trade && WORLD.trade.sprite) || 'trade_post', gs.trade.x, gs.trade.y) || diamond(gs.trade.x, gs.trade.y, 272, 136), { building: 'trade_post', enabled: !!gs.trade.enabled });
   if (WORLD.bench) addB('bench', 'workshop', WORLD.bench.x, WORLD.bench.y, fpOf(WORLD.bench.sprite, WORLD.bench.x, WORLD.bench.y) || diamond(WORLD.bench.x, WORLD.bench.y, 181, 91), { building: WORLD.bench.sprite });
   // the net (a 92-px collider) — or, on the new layout, the fishing deck (WORLD.deck: its gangway polygon when given)
   if (WORLD.deck) {
-    const D = WORLD.deck, poly = Array.isArray(D.poly) ? D.poly : Array.isArray(D.gangway) ? D.gangway : null;
-    addB('deck', 'deck', D.x, D.y, poly || fpOf(D.sprite || D.key, D.x, D.y) || diamond(D.x, D.y, 272, 136), { building: D.sprite || D.key || 'deck', water: 1 });
+    // ((review PT-4) WORLD.deck.gangway is a width [x0, x1] m, not a polygon: the deck = its current tier's rectangle,
+    //  the gangway = its strip from the land (-4.7 m) to the deck edge, both in deck metres (FishingDeck.P)
+    const D = WORLD.deck, isPoly = (a) => Array.isArray(a) && a.length >= 3 && Array.isArray(a[0]);
+    const DP = (mx, my) => [D.x + 45.25 * (mx + my), D.y + 22.63 * (mx - my)];
+    const tier = (gs.deck && gs.deck.tier) || 1, TR = D.tiers && (D.tiers[tier] || D.tiers[1]);
+    const poly = isPoly(D.poly) ? D.poly : TR ? [DP(TR[0], TR[2]), DP(TR[0], TR[3]), DP(TR[1], TR[3]), DP(TR[1], TR[2])] : null;
+    addB('deck', 'deck', D.x, D.y, poly || fpOf(D.sprite || D.key, D.x, D.y) || diamond(D.x, D.y, 272, 136), { building: D.sprite || D.key || 'deck', water: 1, tier });
+    if (Array.isArray(D.gangway) && D.gangway.length === 2 && TR) { const g = D.gangway, c = DP((g[0] + g[1]) / 2, -3); addB('deck_gangway', 'deck', c[0], c[1], [DP(g[0], -4.7), DP(g[0], TR[2]), DP(g[1], TR[2]), DP(g[1], -4.7)], { building: 'gangway', water: 1 }); }
     // ((v4.3 「바다 가까이」) the chief's landing at the surf line (in the sea on purpose)
     const LDg = D.landing;
     if (LDg && Array.isArray(LDg.at)) addB('deck:landing', 'deck', LDg.at[0], LDg.at[1], fpOf('deck43_landing', LDg.at[0], LDg.at[1]) || isoRect(LDg.at[0], LDg.at[1], LDg.size[0], LDg.size[1]), { building: 'deck43_landing', water: 1 });
@@ -204,7 +211,10 @@ const DUMP = async () => {
   const wk = (id, p) => addP(id, 'work', p, 68);
   for (const s of gs.stationList || []) { wk(s.id + ':in', s.inPad); wk(s.id + ':out', s.outPad); if (s.op && Number.isFinite(s.op.x)) wk(s.id + ':work', s.op); }
   for (const w of gs.workshops || []) { wk(w.kind + ':in', w.inPad); wk(w.kind + ':out', w.outPad); }
-  for (const [n, sl] of [['market', gs.market], ['trade', gs.trade], ['store', gs.store]]) if (sl) { wk(n + ':shelf', sl.shelf); wk(n + ':register', sl.register); wk(n + ':cash', sl.cash && (sl.cash.pad || sl.cash)); }
+  // ((review PT-4) the v4.3 gs.trade is the shop's 자재 창구: its pads are the shop's (market:mat*), its till the shop's one
+  const tradeIn = gs.trade && gs.trade.shop === gs.market;
+  for (const [n, sl] of [['market', gs.market], ['trade', tradeIn ? null : gs.trade], ['store', gs.store]]) if (sl) { wk(n + ':shelf', sl.shelf); wk(n + ':register', sl.register); wk(n + ':cash', sl.cash && (sl.cash.pad || sl.cash)); }
+  if (tradeIn && gs.trade.enabled) { wk('market:matShelf', gs.trade.shelf); wk('market:matRegister', gs.trade.register); }
   // (v4.3) the stall's counters, each with its own shelf / register / cash (when the build has them)
   for (const c of (gs.market && Array.isArray(gs.market.counters) ? gs.market.counters : [])) { const id = 'market:' + (c.id || '?'); wk(id + ':shelf', c.shelfPad || c.shelf); wk(id + ':register', c.register); wk(id + ':cash', c.cash && (c.cash.pad || c.cash)); }
   // (v4.3) the fishing deck's reel spot and crate (WORLD.deck: [x, y] points)

@@ -53,7 +53,7 @@ CONVENTIONS = {
                   'under the stool (normalised as every character); dirs NE only (he faces the sea). The chief\'s reel '
                   'plays once (impactFrame 3: the first fish comes then); his `fish` loop (v4.3 sea) is the same '
                   'motion without the line and the float, tipPoints = the rod tip per frame (the game draws the line '
-                  'from there to his float on the sea).',
+                  'from there to his float on the sea; on frame 3 the rod points away behind his head, so its tip point is the middle of frames 2 and 4: the line never starts on his head).',
 }
 
 
@@ -168,8 +168,29 @@ def load_chars(cdir, reuse=False):
     return frames, chars
 
 
+def best_width(frames, pad=2):
+    """((v4.3 review CD-2) the shelf width (multiple of 4) that gives pack_atlas its smallest sheet: the deck pages are
+    resident all game (boot), 2048-wide shelves left 40 % of deck43 empty (3.96 -> 2.88 MiB, deck43_ch 2.09 -> 1.64)"""
+    sizes = []
+    for _n, im in frames:
+        b = pu._trim_box(im.convert('RGBA'))
+        sizes.append((b[2] - b[0], b[3] - b[1]))
+    order = sorted(sizes, key=lambda s: (-s[1], -s[0]))
+    best = None
+    for mw in range((max(w for w, _h in sizes) + 3) // 4 * 4, 2049, 4):
+        x = y = sh = used = 0
+        for w, h in order:
+            if x + w > mw and x > 0:
+                x, y, sh = 0, y + sh + pad, 0
+            used = max(used, x + w); x += w + pad; sh = max(sh, h)
+        area = min(pu._pow2ish(used), max(mw, used)) * pu._pow2ish(y + sh)
+        if best is None or area < best[0]:
+            best = (area, mw)
+    return best[1]
+
+
 def save(name, frames, mode):
-    sheet, atlas = pu.pack_atlas(frames, max_width=2048, trim=True, padding=2)
+    sheet, atlas = pu.pack_atlas(frames, max_width=best_width(frames), trim=True, padding=2)
     png, js = os.path.join(OUT, name + '.png'), os.path.join(OUT, name + '.json')
     pu.save_atlas(sheet, atlas, png, js, quantize=False)
     size = os.path.getsize(png)

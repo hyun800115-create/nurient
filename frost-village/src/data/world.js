@@ -173,7 +173,8 @@ export const WORLD = {
         shelf: MK(6.6, 2.8), matShelf: MK(-1.6, 2.8), cash: MK(6.4, 0.5),
         registers: { mat: MK(0.68, 1.55), fish: MK(2.68, 1.55), breadmeat: MK(4.68, 1.55) },
         wall: [MK(-0.55, 2.95), MK(5.55, 2.95)], wallR: 46,
-        sled: { at: MK(-3.9, -1.6), scale: 1 },
+        // ((review CD-2) the same sled from the stage-3 page (market_sled_s3): the stage-2 page is not loaded at stage 3)
+        sled: { at: MK(-3.9, -1.6), scale: 1, sprite: 'market_sled_s3' },
       },
     },
     // 4단 자리 (4.3 B): 발판은 이 안에 두지 않아요 (padvis 가 확인해요). [광장 x0, y0, x1, y1] m
@@ -192,7 +193,9 @@ export const WORLD = {
   },
   // 버리기 발판: 위에 잠깐 서 있으면 들고 있는 물건을 모닥불에 던져 버립니다 (어부 고용 후 나타남)
   //   ((v4.3) 오두막 터에 있던 발판과 모닥불은 서쪽으로: 예전 { x: 560, y: 700, fire: [520, 574] })
-  trash: { x: 430, y: 688, fire: [360, 574] },
+  //   ((review CD-3) once more, clear of the office too (the office replaces the hut on that plot and its walls reach
+  //    further west): { x: 430, y: 688, fire: [360, 574] } was under the office's south-west wall)
+  trash: { x: 150, y: 700, fire: [140, 574] },
   // (v4.2.0.1) 가방은 작업대 그림 밖으로, 신발은 손님 줄 끝·손님이 걸어오는 길 밖으로 (이름표는 발판 아래: labels)
   //   (교역소 점원 발판과는 떨어져 있어서 둘 다 함께 보여요. 혹시 다른 발판이 그 자리에 서면 가방·신발이 잠깐 비켜 줘요)
   //   ((v4.3) 「옷·신발 공방」: 작업대가 작은 공방으로 바뀌었어요 (이름과 그림만, 발판·값은 그대로). sprite 그림이 아직 없으면 spriteOld,
@@ -262,7 +265,7 @@ export const WORLD = {
     // ((v4.3) 가게 3단 「눈꽃 시장」 넓히기 → 그다음 빵·고기 창구 점원: 판매대 점원 발판과 같은 자리 (가게 동쪽 끝 옆 빈 눈밭,
     //  4단 자리 밖). 한 자리에 발판은 하나씩: 앞 발판을 사면 다음 것이 나와요)
     mkt_s3:            { x: 1525, y: 900, labelAt: [-40, 64] },   // 이름표는 발판 아래: 위쪽은 진열대 탑, 오른쪽은 동쪽 땅 안개
-    hire_clerk_s3:     { x: 1525, y: 900, clerk: 'breadmeat' },
+    hire_clerk_s3:     { x: 1525, y: 900, clerk: 'breadmeat', labelAt: [-40, 64] },   // ((review PT-8) 이름표는 발판 아래 (위는 빵·고기 계산대 이름표))
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { ...LINE('grill'), station: 'grill' },
     porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
@@ -386,7 +389,7 @@ export const WORLD = {
     // ((v4.3) 바닷가 왼쪽 모닥불·장작·통·눈 더미는 촌장 오두막 터에서 서쪽으로 비켜 줬어요
     //  (예전: 모닥불 520, 590 / 장작 430, 650 / 통 640, 520 / 눈 더미 300, 520 · 345, 640))
     ['flag_pole', 1250, 530], ['snow_pile_a', 236, 512], ['snow_pile_b', 318, 700], ['bush_snow', 1620, 545], ['bush_snow', 1640, 660],
-    ['snow_pile_b', 1720, 600], ['campfire', 360, 590], ['firewood_pile', 470, 498], ['barrel', 728, 503],
+    ['snow_pile_b', 1720, 600], ['campfire', 140, 590], ['firewood_pile', 470, 498], ['barrel', 728, 503],
     // 광장
     ['lamp_post', ...Z('plaza', -6.6, -6.6)], ['lamp_post', ...Z('plaza', 6.6, -6.6)], ['lamp_post', ...Z('plaza', -0.5, 6.7)],
     ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1545, 800], ['crate', 1522, 826, { scale: 0.85 }],
@@ -522,7 +525,9 @@ export const WORLD = {
     //  천막 가족이 이사 와요 (VillageLife tent43). h43_1 은 마을 마당 남서쪽 길(plaza_sw → forest_link) 에서 비켜 서쪽으로 (계획 640, 1040))
     //  family = 그 천막에서 이사 오는 주민 (처음부터 마을에 사는 사람들)
     h43_1:    { x: 600, y: 1040, size: 'S', region: 'start', after: 'zone_forest', only: 'house_c', price: 0, side43: true, tents: ['tent43_1', 'tent43_3'], family: ['npc_aunt', 'npc_kid_girl'] },
-    h43_2:    { x: 1340, y: 1050, size: 'S', region: 'start', after: 'zone_forest', only: 'house_a', price: 1, side43: true, tents: ['tent43_2', 'tent43_4'], family: ['npc_grandpa', 'npc_kid_prankster', 'npc_kid_boy'] },
+    //  ((review PT-1) h43_2 south of the plaza by the picnic green: at (1340, 1050) its roof covered the shop's cash pad and
+    //   food shelf (stages 2-3))
+    h43_2:    { x: 1110, y: 1600, size: 'S', region: 'start', after: 'zone_forest', only: 'house_a', price: 1, side43: true, tents: ['tent43_2', 'tent43_4'], family: ['npc_grandpa', 'npc_kid_prankster', 'npc_kid_boy'] },
     e_dock:   { x: 2330, shore: 46, size: 'M', region: 'east', only: 'boathouse' },
     e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east' },
     // (v4.2.0.1) pads: 이 부지에 공방(대장간·통조림 공장)을 지었을 때의 고용 발판 자리 (부지 중심 기준 px)
@@ -633,7 +638,8 @@ export const WORLD = {
     props: [
       // 바닷가 왼쪽 모닥불 둘레 통나무 의자 (어르신들이 불을 쬐며 앉아 있음)
       //   ((v4.3) 모닥불과 함께 서쪽으로: 촌장 오두막 터 (예전 520, 536 / 425, 561 / 615, 561))
-      ['log_seat', 360, 536, { id: 'seat_beach_n' }], ['log_seat_y', 265, 561, { id: 'seat_beach_w' }], ['log_seat_x', 455, 561, { id: 'seat_beach_e' }],
+      //   ((review CD-3) and once more, clear of the office's walls (the office replaces the hut; 360, 536 / 265, 561 / 455, 561)
+      ['log_seat', 140, 536, { id: 'seat_beach_n' }], ['log_seat_y', 45, 561, { id: 'seat_beach_w' }], ['log_seat_x', 235, 561, { id: 'seat_beach_e' }],
       // 광장 서쪽 게시판 (수다 떠는 곳), 광장 남쪽 입구 줄등
       //   ((v4.3) 게시판은 조금 아래로: 사무실 터가 오두막 자리로 오면서 사무실 직원 뽑기 발판 (490, 745) 을 가렸어요 (예전 470, 812))
       ['notice_board', 500, 890, { id: 'notice' }],
@@ -665,7 +671,7 @@ export const WORLD = {
     //   acts: sit(의자에 앉기) warm(불 쬐기) chat(수다) read(게시판) play(눈싸움·술래잡기·눈사람) wander(산책) concert(공연)
     areas: {
       // stage: 음유시인이 연주하는 자리 (보면대가 없는 모닥불)
-      beach_w:   { at: [355, 605], r: 115, acts: ['sit', 'warm', 'chat'], fire: [360, 590], stage: [272, 506] },   // ((v4.3) 모닥불을 따라 서쪽으로 (예전 540, 615))
+      beach_w:   { at: [135, 605], r: 115, acts: ['sit', 'warm', 'chat'], fire: [140, 590], stage: [52, 506] },   // ((v4.3) 모닥불을 따라 서쪽으로 (예전 540, 615; review CD-3: 355, 605 was under the office's wall))
       notice:    { at: [520, 925], r: 120, acts: ['read', 'chat'] },                                              // ((v4.3) 게시판을 따라 (예전 520, 870))
       playground:{ at: [1440, 560], r: 150, acts: ['play', 'chat', 'wander'] },
       plaza_s:   { at: [990, 1210], r: 110, acts: ['chat', 'wander'] },

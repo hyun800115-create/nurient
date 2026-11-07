@@ -1007,7 +1007,8 @@ class MatCounter {
     this.shelf = new Pad(gs, shop.x, shop.y, 'input', 1.6, { icon: 'item_plank', iconSize: 40 });
     this.maxPerType = shopShelfMax(1);
     // ((v4.3) the planks / ingots tower at the west end of the row stops at 20 layers (the trade post's grew to 40))
-    this.stock = new ItemStack(gs, { scale: 0.95, cols: [[-20, -4], [20, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: this.maxPerType * GOODS.length, bake: 'eager', drawMax: 20 });
+    //  ((review SHOP-2) the rack holds the top stage's count of each kind: maxPerType (per kind) says how full it may get)
+    this.stock = new ItemStack(gs, { scale: 0.95, cols: [[-20, -4], [20, 6]], typeCols: { item_plank: 0, item_ingot: 1 }, max: shopShelfMax(SHOP_STAGE_MAX) * GOODS.length, bake: 'eager', drawMax: 20 });
     this.merchant = new Character(gs, 'villager_c', shop.x, shop.y, { dir: 1 });
     this.merchant.noXray = true;
     this.buyT = 0; this.happyT = 0; this.waitT = 0; this.waitIcon = null;
@@ -1200,6 +1201,9 @@ export class StageMarket {
     const art = this.artOf(st);
     this.sprite = art;
     const D = Assets.def(art);
+    // ((review SHOP-1) an earlier stage's page still on its way must not dress this stage's pictures when it arrives (a
+    //  reload runs stage 2 then 3: the stage-2 page came first and the shop kept the stage-2 art)
+    if (gs.lazyImgs) for (let i = gs.lazyImgs.length - 1; i >= 0; i--) { const q = gs.lazyImgs[i]; if (q.img === this.img || (this.front && q.img === this.front)) gs.lazyImgs.splice(i, 1); }
     Assets.apply(this.img, art);
     this.img.setPosition(this.x, this.y).setDepth(this.y);
     if (gs.lazyImage && Assets.pending(art)) gs.lazyImage(this.img, art);
@@ -1253,7 +1257,8 @@ export class StageMarket {
         L.cfg = {
           queueStart: cust,
           queueStep: this.cfg.queueStep || YO(-0.9),
-          queueTurn: Math.max(2, Math.floor(Number(M43().lineShow) || this.cfg.queueTurn || 6)),
+          // ((review PT-3) at stage 3 the east-most line turns east after 4: its 5th-7th places stood on the 옷·신발 공방)
+          queueTurn: Math.min(st === 3 && k === ids.length - 1 ? 4 : 1e9, Math.max(2, Math.floor(Number(M43().lineShow) || this.cfg.queueTurn || 6))),
           // the east-most line bends east (as the stall's did), the others bend west: never into the next line
           queueStep2: st === 1 ? (this.cfg.queueStep2 || XO(0.9)) : (k === ids.length - 1 ? XO(0.9) : XO(-0.9)),
           faceTo: st === 1 ? (this.cfg.faceTo || [40, -20]) : [(staff[0] + 11), (staff[1] - 14)],
@@ -1271,7 +1276,10 @@ export class StageMarket {
     this.mat.setOpen(ids.indexOf('mat') >= 0);
     for (const k in this.seats) if (!used[k]) this.seats[k].setEnabled(false); else this.seats[k].setEnabled(this.enabled);
     for (const c of moved) {
-      const L = this.laneFor(c.want.type) || this.primary;
+      // ((review SHOP-3) to a served counter: one nobody serves would keep them waiting with what they got)
+      const ty = this.servedType(c.want.type);
+      if (ty !== c.want.type && c.need > 0 && c.setWant) c.setWant(ty);
+      const L = this.laneFor(ty) || this.primary;
       L.queue.push(c);
       c.market = L; c.path = []; c.arrived = false; if (c.state === 'wait') c.state = 'arrive';
     }
@@ -1338,15 +1346,26 @@ export class StageMarket {
       if (gs.lazyImage) gs.lazyImage(this.sled, key0);
       gs.addOccluder(this.sled);
       this.sledOcc = gs.occluders ? gs.occluders[gs.occluders.length - 1] : null;
+    } else if (this.sledKey !== key0) {
+      // ((review CD-2) the stage's own page carries the sled (stage 3: market_sled_s3): the stage-2 page is not needed there)
+      if (gs.lazyImgs) for (let i = gs.lazyImgs.length - 1; i >= 0; i--) if (gs.lazyImgs[i].img === this.sled) gs.lazyImgs.splice(i, 1);
+      Assets.apply(this.sled, key0);
+      if (gs.lazyImage && Assets.pending(key0)) gs.lazyImage(this.sled, key0);
     }
+    this.sledKey = key0;
     this.sled.setPosition(x, y).setScale(k).setDepth(y);
     if (this.sledOcc) { const w = this.sled.displayWidth; this.sledOcc.x = x + (0.5 - this.sled.originX) * w; this.sledOcc.y = y; this.sledOcc.hw = w * 0.5; this.sledOcc.top = this.sled.displayHeight * this.sled.originY * 0.95; }
     this.sledObs = this.sledObs || {};
     const key = this.stage;
     if (!this.sledObs[key]) { const fp = Assets.def(key0).footprint || [204, 102]; this.sledObs[key] = gs.collision.add(x, y, fp[0] * 0.42 * k, 'sled'); }
-    this.sledObs[key].active = this.enabled;
-    this.sled.setVisible(this.enabled);
+    // ((review CD-4) the office on the hut's plot (its scaffold or the office) reaches the sled's spot: the sled is put
+    //  away until 4.3 B parks it by the 자재 창구)
+    const on = this.enabled && !this.sledAway();
+    this.sledObs[key].active = on;
+    this.sled.setVisible(on);
   }
+  /** (review CD-4) the office plot is no longer the hut (the office's scaffold is up, or it stands) */
+  sledAway() { const so = this.gs.sites && this.gs.sites.v42_office; return !!(so && so.replace && !so.keepsOld); }
 
   /** the stage changed in play: a puff of snow over the row, a sound, a banner (Progression sends the banner text) */
   celebrateStage(st) {
@@ -1537,7 +1556,16 @@ export class StageMarket {
   }
   restoreQueue(n) { for (let i = 0; i < n; i++) this.spawnCustomer(i); }
 
-  /** (v4-A) a train visitor joins: the lane of what it wants (Visitor.tryJoin) */
+  /** ((review SHOP-3) what someone who wants `type` buys here: `type` when a served lane sells it, else what a served lane
+   *  has on its rack (as moveOn does) — a counter nobody serves takes no new customers. Nobody serving at all: `type` */
+  servedType(type) {
+    if (this.laneFor(type, true)) return type;
+    const sv = this.servedLanes();
+    for (const l of sv) { const ty = l.types.find((q) => this.stock.countOf(q) > 0); if (ty) return ty; }
+    return sv.length && sv[0].types.length ? sv[0].types[0] : type;
+  }
+
+  /** (v4-A) a train visitor joins: the lane of what it wants (Visitor.tryJoin asks servedType first) */
   join(c, type) {
     const L = this.laneFor(type) || this.primary;
     L.queue.push(c);
@@ -1590,6 +1618,8 @@ export class StageMarket {
     // (the stage's page arrived after the stage was set: the x-ray box takes the real picture's size)
     if (this.img.frame !== this._occFrame) { this._occFrame = this.img.frame; this.refreshOcc(); }
     if (!this.enabled) { this.mat.update(dt); return; }
+    // ((review CD-4) the office went up on the hut's plot meanwhile: the sled goes)
+    if (this.sled && this.sled.visible && this.sledAway()) this.placeSled(this.stage > 1 ? this.cfg.stages && this.cfg.stages[this.stage] : null);
     this.cash.update(dt);
     for (const k in this.seats) this.seats[k].update(dt);
     // (the 자재 창구 after the registers, as the trade post did: who stands at its register counts this frame)

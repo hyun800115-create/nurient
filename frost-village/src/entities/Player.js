@@ -219,6 +219,9 @@ export class Player extends Character {
     if (this.opSpot && !this.node) { this.opSpot.chiefImpact(this); return; }
     const n = this.node;
     if (!n || this.room <= 0) return;
+    // ((v4.3 review SUITES-2) the tutorial's first batch: the fish the card asks for, no more (Onboarding.fishCap)
+    const ob = this.gs.onboard;
+    if (n.kind === 'net' && ob && ob.fishCap && this.stack.countWithIncoming(n.item) >= ob.fishCap()) return;
     const item = n.hit(this);
     if (!item) return;
     const count = n.lastYield || 1;

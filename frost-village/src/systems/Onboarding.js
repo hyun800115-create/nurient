@@ -386,6 +386,10 @@ export class Onboarding {
   }
 
   get light() { return this.lap > 1; }
+  /** ((v4.3 review SUITES-2) the first lap's fish batch: the card asks for min(4, bag) fish, the chief takes no more
+   *  (the deck's quick first reel brought the 4th fish a moment sooner than the net did, and a 5th while the card still
+   *  showed: one more fish to grill = the first sale ~0.8 s later). Infinity outside the first lap of Act 1 */
+  fishCap() { return this.mode === 'act1' && this.lap === 1 && this.gs.player ? Math.min(4, this.gs.player.capacity) : Infinity; }
 
   /** the card, ring, arrow, view, spotlight and finger of the current step, every frame */
   act1Frame(dt) {

@@ -316,7 +316,7 @@ export const STRINGS = {
     navFull: '{place} 가득 · 잠시 기다리거나 버려요', navNone: '받아 줄 곳이 없어요 · 잠시 기다리거나 버려요',
     navPin: '→ {place} · {m}m', navArrive: '도착했어요 · {place}', navPinMet: '부탁을 다 채웠어요 · {place} 길 안내 끝',
     navHidden: '이번 짐은 길 안내를 숨겼어요',
-    place_market: '광장 판매대', place_trade: '가게 자재 창구', place_store: '잡화점 판매대', place_warehouse: '창고', place_food: '광부 식량 상자',
+    place_market: '먹거리 진열대', place_trade: '가게 자재 창구', place_store: '잡화점 판매대', place_warehouse: '창고', place_food: '광부 식량 상자',
     place_site: '공사장', place_tower: '망루 공사장', place_pad: '고용 발판', place_dock: '짐 싣는 곳', place_rest: '큰 식당 식재료 칸',
     place_depot: '물류창고', place_trash: '버리기', place_shop: '{shop} 선반', place_house: '목수의 집터',
     place_op: '{st} 일하는 자리', place_in: '{st} 입구',
@@ -532,7 +532,7 @@ export const STRINGS = {
     off: 'Off',
     close: 'Close',
 
-    obj_fish: "Stand on the chief's spot by the water to catch fish",
+    obj_fish: "Stand on the chief's spot to fish",     // ((review PT-7) fits a 360-px screen
     obj_grill: 'Drop the fish on the grill pad',
     obj_take: 'Pick up the grilled fish',
     obj_sell: 'Put the grilled fish on the counter',
@@ -788,7 +788,7 @@ export const STRINGS = {
     navFull: '{place} is full · wait a moment or discard', navNone: 'Nowhere takes it now · wait a moment or discard',
     navPin: '→ {place} · {m} m', navArrive: 'Arrived: {place}', navPinMet: 'Request filled · guide to {place} ended',
     navHidden: 'Directions hidden for this load',
-    place_market: 'Plaza stall', place_trade: 'Materials counter', place_store: 'General store', place_warehouse: 'Warehouse', place_food: "Miners' food box",
+    place_market: 'Food shelf', place_trade: 'Materials counter', place_store: 'General store', place_warehouse: 'Warehouse', place_food: "Miners' food box",
     place_site: 'Building site', place_tower: 'Watchtower site', place_pad: 'Hire pad', place_dock: 'Loading dock', place_rest: 'Restaurant pantry',
     place_depot: 'Depot', place_trash: 'Discard', place_shop: '{shop} shelf', place_house: "Carpenter's house site",
     place_op: '{st} work spot', place_in: '{st} input',
@@ -839,7 +839,8 @@ export const STRINGS = {
     house43Moved: 'A tent family moved into its new home!', house43MovedSub: 'The tent is packed away',
     obj_house43: 'Build a first house: a tent family moves in',
     sign_market_2: 'Snowbloom Shop', sign_market_3: 'Snowbloom Market',
-    plate_mat: 'Materials', plate_food: 'Food', plate_fish: 'Fish', plate_breadmeat: 'Bread · Meat',
+    // ((review PT-8) short words: the plates are small on a 360-px screen ('Materials' / 'Bread · Meat' shrank to 8 px)
+    plate_mat: 'Trade', plate_food: 'Food', plate_fish: 'Fish', plate_breadmeat: 'Deli',
     shop2Up: 'The shop grew! Snowbloom Shop', shop2Sub: 'Stand at the materials counter so the merchant buys planks',
     shop3Up: 'It is a market now!', shop3Sub: 'Customers line up for each kind of food',
     clerk3Sub: 'A clerk serves the bread & meat line now',
