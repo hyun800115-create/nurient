@@ -157,7 +157,9 @@ export class Visitor extends Customer {
     if (!m || !m.enabled) { this.finishTarget(0); return; }
     if (m.queue.length < m.maxQueue) {
       // ((v4.3) the staged shop: the line of the counter that sells what they want (m.join); a plain seller's one line)
-      const type = this.pickType(m);
+      //  ((review SHOP-3) a kind a served counter sells: the staged shop's unserved counters take nobody new)
+      let type = this.pickType(m);
+      if (m.servedType) type = m.servedType(type);
       const lane = m.join ? m.join(this, type) : (m.queue.push(this), m);
       this.stage = 'shop';
       this.state = 'arrive';

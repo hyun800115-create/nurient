@@ -51,7 +51,8 @@ console.log('촌장 사무실: the walls hold, the door lets him in');
   const pad = { x: x + om.chiefDeskPad[0], y: y + om.chiefDeskPad[1] + L };
   const { C, poly } = building('office', x, y, om.footprintPoly, door, om.wallCircles, 8, 84);
   // the reviewer's runs: from behind (the back wall), from the east, from the hire pad (the front), from the north-west
-  const from = [[110, 671], [430, 790], [8, 891], [-200, 700], [150, 600], [380, 900], [-60, 960], [300, 700]];
+  // ((v4.3 review SUITES-4) the same 8 starts around the office wherever its plot is: they were picked round (110, 810))
+  const from = [[110, 671], [430, 790], [8, 891], [-200, 700], [150, 600], [380, 900], [-60, 960], [300, 700]].map(([a, b]) => [a + x - 110, b + y - 810]);
   let inside = 0;
   for (const [fx, fy] of from) {
     const tr = walk(C, fx, fy, pad.x, pad.y, 8);

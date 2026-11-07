@@ -12,6 +12,9 @@ export class House {
     const r = Assets.sprite(key);
     this.img = gs.add.image(this.x, this.y, r.tex, r.frame).setOrigin(r.anchor[0], r.anchor[1]).setDepth(this.y);
     gs.addOccluder(this.img);
+    // ((v4.3 review PT-2) the first houses by the plaza (world.js plots side43) stand on busy walks: only the chief makes
+    //  them see-through (as a founded shop), not every porter, resident and pet passing behind them
+    if (site && site.cfg && site.cfg.side43 && gs.occluders && gs.occluders.length) gs.occluders[gs.occluders.length - 1].chiefOnly = true;
     const d = Assets.def(key);
     const fp = d.footprint || [190, 95];
     this.obstacle = gs.collision.add(this.x, this.y, fp[0] * 0.4, 'house');

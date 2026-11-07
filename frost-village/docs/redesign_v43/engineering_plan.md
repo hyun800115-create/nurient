@@ -161,10 +161,11 @@ web page on its own origin (new games only, its own storage), so it cannot read 
   more every 1.1 s (`BALANCE.resources.net` :139 kept; add `deck.reelS` 0.6). Three rods show the pool (bobbing → bite →
   hooked). The chief on the reel spot plays `reel` once (0.6 s), then the existing pickup interval runs (no per-fish wait).
 - Fishers: today's fisherman **already** fishes with a rod (`Worker.js` `nodeOk`/`impact`: 2 work cycles per fish, the net's
-  stock ignored, carries 5 to the pile on foot). New: a seated loop `cast 0.6 → wait 0.8–2.0 (mean 1.4) → bite → reel 0.6`,
-  then the fish flies to the crate (`spawnItemTo`, like today's catch flies to the fisher): cycle ≈ 3.0 s ≈ 20 fish/min,
-  3 ≈ 59/min (today's measured rate). With the earlier 1–3 s wait the cycle is ≈ 3.5 s ≈ 17/min (≈ 51/min for three) —
-  tune `deck.waitMin/Max` in `deck.mjs`. Stools replace `fisherSpot` [-128, 30] and the `rodSpot` search (`Worker.js:135`).
+  stock ignored, carries 5 to the pile on foot). New: a seated loop `cast 0.6 → wait 1.0–2.8 (mean 1.9) → bite 0.25 →
+  reel 0.6 → rest 0.15`, two fish a reel (`deck.fishPerReel` 2), each flying to the crate: cycle ≈ 3.55 s ≈ 34 fish/min,
+  3 ≈ 101/min = today's measured rate. (Review fix SUITES-1: this line said "3 ≈ 59/min (today's measured rate)", but a
+  4.2 rod fisherman catches ≈ 34/min — 102/min for three on `v41_save_smart_46min`; tuned to 59/min the deck put village
+  complete ≈ 3.5 bot minutes later.) `deck.mjs` checks 29–39/min for one fisher and 88–115/min for three. Stools replace `fisherSpot` [-128, 30] and the `rodSpot` search (`Worker.js:135`).
   `hire2/3_fisherman` keep their ids, prices and tool rule; buying them grows the deck to 2단 / 3단.
 - The **fish pile** (`labour.piles` id `fish`) becomes the crate on land: same id, so `piles.fish` in saves is untouched;
   `raw_grill` porters never step on the deck.

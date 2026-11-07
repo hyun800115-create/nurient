@@ -29,6 +29,17 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ok   ' + msg + (
 
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
+/** ((review SHOP-1) the shop's picture once its stage's page is here: texture|frame of the back and the front layers */
+async function shownArt(page) {
+  for (let i = 0; i < 40; i++) {
+    const r = await page.evaluate(() => { const g = window.__FV.scene, m = g.market, A = window.__FV.assets(), L = g.load; if (L && L.isLoading()) L.update(); return { pending: A.pending(m.sprite), sprite: m.sprite, img: m.img.texture.key + '|' + m.img.frame.name, front: m.front ? m.front.texture.key + '|' + m.front.frame.name : null }; });
+    if (!r.pending) { await advance(page, 0.5); return page.evaluate(() => { const m = window.__FV.scene.market; return { sprite: m.sprite, img: m.img.texture.key + '|' + m.img.frame.name, front: m.front ? m.front.texture.key + '|' + m.front.frame.name : null }; }); }
+    await advance(page, 0.5); await sleep(250);
+  }
+  return { pending: true };
+}
+const artOk = (a, st) => a && !a.pending && a.img === 'market_s' + st + '|market_s' + st + '_back' && (!a.front || a.front === 'market_s' + st + '|market_s' + st + '_front');
+
 async function boot(save) {
   const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, dpr: 1 });
   await page.evaluate((sv) => { try { localStorage.clear(); if (sv) localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, save);
@@ -148,6 +159,9 @@ try {
     // the chief steps off: the ones who got nothing go to a served line after switchS
     const off = await ev(page, () => {
       const g = window.__FV.scene, m = g.market, F = window.__FV, L = m.lanes.breadmeat;
+      // ((review SUITES-5) the fish rack topped up again: 40 s of selling may have emptied it, and moveOn only sends
+      //  customers to a served line that has goods (the designed rule) — the check is about the move, not the stock)
+      while (m.stock.countOf('item_fish_cooked') < 30) m.stock.push('item_fish_cooked', null, g.effects);
       for (let i = 0; i < 4; i++) { const c = m.spawnCustomer(); m.lanes.fish.queue.splice(m.lanes.fish.queue.indexOf(c), 1); L.queue.push(c); c.market = L; c.setWant('item_bread'); }
       m.spawnT = 1e9;
       F.teleport(m.x + 400, m.y + 400);
@@ -228,6 +242,8 @@ try {
     const r = await ev(b2.page, () => { const g = window.__FV.scene, m = g.market, L = g.shopLoaded; return { stage: L.stage, fish: L.food.item_fish_cooked, bread: L.food.item_bread, till: L.till, clerks: Object.keys(m.seats).filter((k) => m.seats[k].clerk) }; });
     ok(r.stage === 3 && r.fish >= 55 && r.bread >= 55 && r.clerks.join() === 'A,M,B', 'a stage-3 village reloads at stage 3 (55 a kind kept on the 60 racks), every clerk back', r);
     ok(r.till >= sv.till, 'the till comes back (paid-for items in the line come back on the rack)', { saved: sv.till, now: r.till });
+    const art9 = await shownArt(b2.page);
+    ok(artOk(art9, 3), 'after the reload the shop shows the stage-3 picture (not the stage-2 page that arrives first)', art9);
     errors.push(...b2.log.errors);
     await b2.page.context().close();
   }
@@ -257,6 +273,7 @@ try {
     ok(Math.abs(r.till - ((mk.cash || 0) + (tr.cash || 0))) <= 1 && r.coins >= (old.coins || 0), f + ': the trade post\'s coins in the shop\'s till, the wallet kept', { till: r.till, old: (mk.cash || 0) + (tr.cash || 0), coins: r.coins, oldCoins: old.coins });
     if (pd.hire_clerk_trade) ok(r.matClerk && r.tradeOn, f + ': the trade post\'s clerk is the 자재 점원', r);
     if (want === 3) ok(r.bClerk && r.aClerk, f + ': stage 3 for free with its 빵·고기 clerk (one clerk sold every food there)', r);
+    if (want >= 2) { const a8 = await shownArt(b.page); ok(artOk(a8, want), f + ': the stage-' + want + ' picture is shown', a8); }
     const lost = Object.keys(pd).filter((k) => pd[k] && r.done.indexOf(k) < 0);
     ok(!lost.length, f + ': every step it had is still done', lost);
     errors.push(...b.log.errors);

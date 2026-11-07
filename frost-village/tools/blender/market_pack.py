@@ -119,6 +119,10 @@ def preview(keys, builds, frames, path):
     print('preview', path)
 
 
+# ((v4.3 review CD-2) props packed on more pages than their own: prop key -> the extra pages
+ALSO = {'market_sled': ['market_s3']}
+
+
 def main():
     args = sys.argv[1:]
 
@@ -133,9 +137,15 @@ def main():
     # ((v4.3) plain props (no front layer: the old sled) ride on a stage's page (their spec's atlas)
     props = [k for k in keys if k.startswith('market_') and not builds[k].get('overlay')]
     keys = [k for k in keys if k.startswith('market_') and builds[k].get('overlay')]
+    # ((v4.3 review CD-2) a prop that also rides on a later stage's page, as <prop>_<s3>: at stage 3 the stage-2 page is
+    #  never loaded (Game.lazyAllowed), the sled shows from the stage-3 page)
+    dup = {q: ['%s_%s' % (q, a.split('_')[-1]) for a in ALSO.get(q, [])] for q in props}
+    for q in props:
+        for n in dup[q]:
+            frames[n] = frames[builds[q]['frames'][0]]
     man_path = os.path.join(OUT, 'manifest.json')
     old = json.load(open(man_path, encoding='utf-8')) if os.path.exists(man_path) else {}
-    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])} | {builds[k]['frames'][0] for k in props}
+    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])} | {builds[k]['frames'][0] for k in props} | {n for q in props for n in dup[q]}
     # ((v4.3) a stage of the current manifest that is not in the cache is KEPT as it is (its atlas files and manifest
     #  entries untouched: the shipped stage 1 stays byte-identical) - only when its files are there)
     kept_atl, kept_spr = [], {}
@@ -158,7 +168,8 @@ def main():
     atlases, sprites, frame_atlas = list(kept_atl), dict(kept_spr), {}
     for k in keys:
         m = builds[k]
-        names = [m['frames'][0], m['overlay']['key']] + [builds[q]['frames'][0] for q in props if builds[q]['atlas'] == k]
+        names = [m['frames'][0], m['overlay']['key']] + [builds[q]['frames'][0] for q in props if builds[q]['atlas'] == k] \
+            + ['%s_%s' % (q, k.split('_')[-1]) for q in props if k in ALSO.get(q, [])]
         sheet, atlas = pu.pack_atlas([(n, frames[n]) for n in names], max_width=2048, trim=True, padding=2)
         png, js = os.path.join(OUT, k + '.png'), os.path.join(OUT, k + '.json')
         pu.save_atlas(sheet, atlas, png, js, quantize=False)
@@ -175,9 +186,10 @@ def main():
         sprites.update(entries(k, m, frame_atlas))
         for q in props:
             pm = builds[q]
-            if pm['atlas'] != k:
+            if pm['atlas'] != k and k not in ALSO.get(q, []):
                 continue
-            sprites[q] = {'atlas': k, 'frame': pm['frames'][0], 'anchor': pm['anchor'], 'kind': 'prop',
+            sq = q if pm['atlas'] == k else '%s_%s' % (q, k.split('_')[-1])
+            sprites[sq] = {'atlas': k, 'frame': pm['frames'][0] if sq == q else sq, 'anchor': pm['anchor'], 'kind': 'prop',
                           'footprint': pm.get('footprint'), 'footprintM': pm.get('footprintM'), 'frameSize': pm['frameSize'],
                           'topPx': pm['topPx'].get(pm['frames'][0]) if isinstance(pm['topPx'], dict) else pm['topPx'],
                           'front': pm.get('front', '-Y'), 'notes': pm.get('notes', '')}

@@ -497,6 +497,30 @@
     436
    ],
    "notes": "Front layer of market_s3_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
+  },
+  "market_sled_s3": {
+   "atlas": "market_s3",
+   "frame": "market_sled_s3",
+   "anchor": [
+    0.43846,
+    0.63362
+   ],
+   "kind": "prop",
+   "footprint": [
+    204,
+    102
+   ],
+   "footprintM": [
+    2.9,
+    1.6
+   ],
+   "frameSize": [
+    260,
+    232
+   ],
+   "topPx": 127,
+   "front": "-Y",
+   "notes": "The same sled on the stage-3 page (review CD-2: at stage 3 the market_s2 page is not loaded at all)."
   }
  }
 }

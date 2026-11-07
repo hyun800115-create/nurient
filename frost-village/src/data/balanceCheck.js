@@ -186,9 +186,10 @@ export function checkBalance() {
 function checkV43(B) {
   const D = B.deck = B.deck || {};
   fixNum(D, 'reelS', 'deck.reelS', 0.1, 5, 0.6); fixNum(D, 'castS', 'deck.castS', 0.1, 10, 0.6);
-  fixNum(D, 'waitMin', 'deck.waitMin', 0, 30, 0.8); fixNum(D, 'waitMax', 'deck.waitMax', 0, 60, 2.0);
+  fixNum(D, 'waitMin', 'deck.waitMin', 0, 30, 1.0); fixNum(D, 'waitMax', 'deck.waitMax', 0, 60, 2.8);
   if (D.waitMax < D.waitMin) D.waitMax = D.waitMin;
   fixNum(D, 'biteS', 'deck.biteS', 0, 5, 0.25); fixNum(D, 'fishReelS', 'deck.fishReelS', 0.1, 10, 0.6); fixNum(D, 'restS', 'deck.restS', 0, 10, 0.15);
+  fixNum(D, 'fishPerReel', 'deck.fishPerReel', 1, 4, 2, true);
   const H = B.hut = B.hut || {};
   const O = H.office = H.office || {};
   fixNum(O, 'coins', 'hut.office.coins', 1, 1e9, 400, true); fixNum(O, 'item_plank', 'hut.office.item_plank', 0, 999, 8, true);

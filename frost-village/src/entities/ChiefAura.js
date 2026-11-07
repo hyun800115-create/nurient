@@ -278,18 +278,26 @@ export class ChiefAura {
         if (post && s.working && gdist(post.x, post.y, p.x, p.y) < R) now.add(s);
       }
       for (const w of gs.workers || []) if (w.state === 'work' && gdist(w.x, w.y, p.x, p.y) < R) now.add(w);
+      // ((v4.3 review CD-6) the seated deck fishers: cheered while the chief stands by the deck's foot (the reel spot / the
+      //  fish crate on land — the deck itself is over the water); their loop runs ×mult (Worker.updateDeck)
+      const D = gs.deck, crate = gs.piles && gs.piles.fish;
+      const byDeck = !!(D && ((D.gather && gdist(D.gather.x, D.gather.y, p.x, p.y) < R) || (crate && gdist(crate.x, crate.y, p.x, p.y) < R)));
+      if (byDeck) for (const w of gs.workers || []) if (w.state === 'deck' && w.seated) now.add(w);
     }
     // workers' strokes: their work anim runs ×mult while cheered
     for (const w of this.cheered) if (!now.has(w) && w.sprite && w.state !== undefined && w.sprite.anims) w.sprite.anims.timeScale = 1;
-    for (const w of now) if (w.sprite && w.state !== undefined && w.sprite.anims && w.animName === 'work') w.sprite.anims.timeScale = mult;
+    for (const w of now) if (w.sprite && w.state !== undefined && w.sprite.anims && (w.animName === 'work' || /^fsit_/.test(w.animName || ''))) w.sprite.anims.timeScale = mult;
     const was = this.cheering;
     this.cheered = now;
     this.cheering = now.size > 0;
     if (this.cheering && !was && this.v42 && (this.v42.seen.cheer || 0) < 2) { this.v42.seen.cheer = (this.v42.seen.cheer || 0) + 1; gs.ui.toast(t('cheerOn')); }
     // (v4.2 CODE-2) the 응원 pose (chief2 cheer: the little 서리마을 pennant up, a hop) while his hands are free
-    if (this.cheering && on && p.stack.count === 0 && !p.seat && !p.node && !p.opSpot && (!p.action || p.action.anim === 'cheer') && !(this.v42.pilot && this.v42.pilot.on)) {
+    //  ((v4.3 review CD-6) not for the deck's fishers alone: they are out on the water, and the pose's page (char_player_b,
+    //   3.1 MiB) would come in every time he idles by his hut's yard after village complete)
+    const pose = this.cheering && [...now].some((w) => w.state !== 'deck');
+    if (pose && on && p.stack.count === 0 && !p.seat && !p.node && !p.opSpot && (!p.action || p.action.anim === 'cheer') && !(this.v42.pilot && this.v42.pilot.on)) {
       if (!p.action) p.doAction('cheer', 3.6);
-    } else if (!this.cheering && p.action && p.action.anim === 'cheer') p.action.until = 0;
+    } else if (!pose && p.action && p.action.anim === 'cheer') p.action.until = 0;
     if (this.cheering) {
       this.noteT -= dt;
       if (this.noteT <= 0) {

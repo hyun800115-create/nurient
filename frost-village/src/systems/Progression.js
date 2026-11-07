@@ -405,6 +405,8 @@ export class Progression {
       }
       let icon = 'ui_icon_lock';
       let items = s.items || null;
+      // ((review SHOP-4) 눈꽃 시장's materials come from balance.js market43.stage<n> (every key but coins), as its coins do
+      if (s.type === 'shop') { const S3 = ((BALANCE.market43 || {})['stage' + s.level]) || null; if (S3) { const o = {}; for (const k in S3) if (k !== 'coins' && Number(S3[k]) > 0) o[k] = Math.floor(Number(S3[k])); if (Object.keys(o).length) items = o; } }
       // (v3.5) the face of who comes: a portrait still loading (after the title) arrives a moment later
       const face = (k, fb) => (Assets.has(k) || Assets.pending(k) ? k : fb);
       if (s.type === 'hire' || s.type === 'hire2' || s.type === 'hire3') icon = face('portrait_' + workerLook(gs, s), 'portrait_' + s.worker);

@@ -328,7 +328,8 @@ export class Office {
     const late = !!(rk && rk.level >= 2);
     return villageTills(this.gs, this.v42.depot).filter((q) => !(late && q.name === 'station'));
   }
-  tillName(name) { return t({ market: 'place_market', trade: 'place_trade', store: 'place_store', rest: 'inc_rest', tax: 'inc_tax', station: 'inc_station', depot: 'inc_depot' }[name] || 'place_market'); }
+  // ((v4.3 review PT-5) the shop's one till by the shop's name of its stage (눈꽃 노점 / 가게 / 시장)
+  tillName(name) { if (name === 'market' || !name) { const st = (this.gs.market && this.gs.market.stage) || 1; return t('sign_market_' + st); } return t({ trade: 'place_trade', store: 'place_store', rest: 'inc_rest', tax: 'inc_tax', station: 'inc_station', depot: 'inc_depot' }[name] || 'place_market'); }
 
   /** the courier empties a till into the sack (the coins hop in: CashPad.takeAll) */
   takeTill(q, courier) {

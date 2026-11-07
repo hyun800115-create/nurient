@@ -156,6 +156,7 @@ export class Game extends Phaser.Scene {
     this.workers = [];
     this.porters = [];
     this.interiors = [];        // (v4.2) cutaway buildings: Character.sync asks them for the depth of whoever stands inside
+    this.lights43 = [];         // ((v4.3) the deck's / the workshop's lanterns (Neighbours' clock lights them): new each build
     this.zones = {};
     this.zoneObjs = {};
     this.statics = [];
@@ -255,12 +256,18 @@ export class Game extends Phaser.Scene {
     this.settleShopOver();
     this.restoreLabour(sv);
     if (this.v42) this.v42.afterRestore(sv);
+    // ((v4.3 review CD-1) every wall stands now (the hut / the office on the moved plot): a chief saved where they stand
+    //  (an old village's beach campfire, the 관망 rest spot) goes out to the yard instead of staying stuck in the walls
+    if (okPos) this.unstickChief();
     // ((v4.2 final) everything that stands is solid now: the store's line once more (plot e_m1 / the farm fence))
     if (this.store) this.refreshStoreLine();
     this.events.on('built', (k) => { if (k !== 'store' && this.store) this.refreshStoreLine(); });
     this.events.on('sold', () => this.progress.setFlag('firstSale'));
     // ((v4.3) the first houses' plots open with the forest: a side goal, said once)
-    this.events.on('step', (id) => { if (id === 'zone_forest') this.time.delayedCall(9000, () => { if (this.ui && this.sites.h43_1 && this.sites.h43_1.shown) this.ui.banner(t('house43Banner'), t('house43Sub')); }); });
+    //  ((review CD-5) a restarted scene keeps its emitter: the listener goes with the scene, not one more per 처음부터)
+    const onStep43 = (id) => { if (id === 'zone_forest') this.time.delayedCall(9000, () => { if (this.ui && this.sites.h43_1 && this.sites.h43_1.shown) this.ui.banner(t('house43Banner'), t('house43Sub')); }); };
+    this.events.on('step', onStep43);
+    this.events.once('shutdown', () => this.events.off('step', onStep43));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
     // spots residents never stand on (pads)
     this.padSpots = [];
@@ -269,6 +276,8 @@ export class Game extends Phaser.Scene {
     for (const id in this.piles) spot(this.piles[id], 80);
     spot(this.market.shelf, 70); spot(this.market.cash.pad, 70); spot(this.market.register, 64);
     spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
+    // ((review SHOP-5) every counter's register open now (a reload at stage 3: seat B's 빵·고기 register too)
+    for (const k in this.market.seats || {}) if (this.market.seats[k].enabled) spot(this.market.seats[k], 64);
     // ((v4.3) the deck's reel spot on land (where the net's gather point was): nobody stands on it but the chief
     spot(this.deck ? this.deck.gather : null, 70);
     for (const id in WORLD.pads) spot(WORLD.pads[id], 90);
@@ -323,8 +332,9 @@ export class Game extends Phaser.Scene {
     this.scale.on('resize', onResize);
     this.events.once('shutdown', () => this.scale.off('resize', onResize));
     cam.setBackgroundColor('#dbe6f2');
-    const tv = this.tutorial.inTutorial && WORLD.tutorialView && gdist(px, py, WORLD.tutorialView[0], WORLD.tutorialView[1]) < 500 ? WORLD.tutorialView : null;
-    this.camTarget = tv ? { x: tv[0], y: tv[1] } : { x: px, y: py - 20 };
+    const p0 = this.player;     // ((v4.3 review CD-1) where he stands now: unstickChief may have moved him)
+    const tv = this.tutorial.inTutorial && WORLD.tutorialView && gdist(p0.x, p0.y, WORLD.tutorialView[0], WORLD.tutorialView[1]) < 500 ? WORLD.tutorialView : null;
+    this.camTarget = tv ? { x: tv[0], y: tv[1] } : { x: p0.x, y: p0.y - 20 };
     this.camFocus = null;     // { x, y, until } temporary pan target
     cam.startFollow(this.camTarget, false, 1, 1);
     cam.centerOn(this.camTarget.x, this.camTarget.y);
@@ -403,7 +413,8 @@ export class Game extends Phaser.Scene {
     if (!pr) return true;
     // ((v4.3) the shop's stage pages: stage 2 once the forest is near (its pad shows), stage 3 once the farm is open
     const ms = /^market_s([2-9])$/.exec(k);
-    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; return st >= n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_farm')); }
+    //  ((review CD-2) a page of an earlier stage is never fetched (stage 3 carries its own sled): 1.15 MiB less at stage 3)
+    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; if (st > n) return false; return st === n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_farm')); }
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
     if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
     // ---- (v4-A) late v4 files: only the ones a v4 system asked for
@@ -1648,6 +1659,29 @@ export class Game extends Phaser.Scene {
     return out.slice();
   }
 
+  /** ((v4.3 review CD-1) a saved chief inside a building's walls (the hut / the office on the moved plot) or the hut's floor,
+   *  built after his spot was checked): out to the hut's yard (the new game's start), or the free spot nearest it */
+  unstickChief() {
+    const p = this.player, C = this.collision;
+    if (!p || !C) return false;
+    const O = this.v42 && this.v42.office;
+    const inside = (img, key) => {
+      if (!img || !img.active || !img.visible) return false;
+      const fp = Assets.def(key).footprint || [272, 136];
+      return Math.abs(p.x - img.x) / (fp[0] / 2) + Math.abs(p.y - img.y) / (fp[1] / 2) < 1;
+    };
+    // (the office is a cutaway the chief walks into: there only its walls count; the hut has no inside)
+    const hut = O && O.hut, R = p.radius || 16;
+    const inHut = !!(hut && inside(hut.img, 'chief_lodge'));
+    if (!inHut && !C.blocked(p.x, p.y, R)) return false;
+    // (in a wall somewhere else: the free spot nearest him first)
+    let q = inHut ? null : this.freeSpot(p.x, p.y, R, 120);
+    if (!q || C.blocked(q.x, q.y, R)) { const y = (hut && hut.spots && hut.spots.yard) || WORLD.player; q = this.freeSpot(y.x, y.y, R, 240); }
+    p.x = q.x; p.y = q.y; p.vx = p.vy = 0;
+    if (p.sync) p.sync(0);
+    return true;
+  }
+
   /** ((v4.2.0.1) the free spot nearest (x, y) for a walker of radius `rad` (rings out to `maxR` ground px), or (x, y)
    *  itself when it is free or nothing near is. `ok(x, y)`: a further test a spot must pass (reached from the pad) */
   freeSpot(x, y, rad = 14, maxR = 120, ok) {
@@ -2544,8 +2578,11 @@ export class Game extends Phaser.Scene {
           net: gs.net.gather, grillIn: S.grill.inPad, grillOut: S.grill.outPad, shelf: gs.market.shelf, cash: gs.market.cash.pad,
           tradeShelf: gs.trade.shelf, tradeCash: gs.trade.cash.pad, bench: gs.bench, trash: gs.trash,
           register: gs.market.register, tradeRegister: gs.trade.register,
-          // ((v4.3) the shop's counters: matShelf / matRegister (= trade*), the food lanes' registers, the merchant
-          matShelf: gs.trade.shelf, matRegister: gs.trade.register, merchant: gs.trade.merchant,
+          // ((v4.3) the shop's counters: matShelf / matRegister (= trade*, only while the 자재 창구 is open), the food lanes'
+          //  registers, the merchant; (review PT-4) the deck's reel spot and fish crate, the food lanes' shelf (one rack)
+          matShelf: gs.trade.enabled ? gs.trade.shelf : null, matRegister: gs.trade.enabled ? gs.trade.register : null, merchant: gs.trade.merchant,
+          reel: gs.deck ? gs.deck.gather : gs.net.gather, deckReel: gs.deck ? gs.deck.gather : null, crate: gs.piles.fish || null,
+          fishShelf: gs.market.shelf, breadShelf: gs.market.shelf,
         };
         for (const id in gs.market.lanes || {}) { const L = gs.market.lanes[id]; if (L.open && L.register) m[id + 'Register'] = L.register; }
         for (const s of gs.stationList) { m[s.id + 'In'] = s.inPad; m[s.id + 'Out'] = s.outPad; }
