@@ -27,7 +27,7 @@ Companion to the designer document `기획서_시장취임_로드맵.md` (same f
 
 **Totals:** launch candidate (v4.3–v4.5) **95–111**; 읍장 stage (v4.4–v4.6) 109–127; to 시장 취임 (v4.3 … v5.0 incl. prototype) **172–202**; to 안심 마을 (… v5.3) **224–272** (≈ 20–25 × step A); v6–v8 75–103; whole roadmap 299–375. Tester windows (≈ 3–5 weeks to launch; 1–2 weeks per version after it) come on top.
 
-**Calendar** (one builder, 5 days a week from 2026-11-09, no holidays deducted): public launch ≈ April to early May 2027; v5.0 public ≈ late July to early September 2027; v8 ≈ first half of 2028.
+**Calendar:** builder-days measure work, not calendar time. With parallel agent work, step A (≈11 builder-days) landed in ≈2–3 calendar days (plan 2026-11-01, build commits 2026-11-06, merged 2026-11-07). Calendar time will be dominated by designer review stops and tester windows (Play's 12-testers × 14-days rule, 1–2 weeks of testing per version). A naive single-builder, 5-days-a-week reading would put public launch in April–May 2027, v5.0 in late July–September 2027 and v8 in H1 2028; treat that as an upper bound, not a schedule.
 
 The previous draft said 76–90 to launch. The critique found unbudgeted work: newer-save protection and the structural remap, a texture task, gates kept in v4.3, the catch-up ceremony, stand-to-open panels, the missions ports (F8b), a deliver job, the balance pass and a v5 that held four integration phases. The overseer's "staged hybrid ≈ 40–50 days" covered the management layer only.
 
