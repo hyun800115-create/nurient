@@ -314,10 +314,16 @@ export class Pile {
     const max = Math.max(4, Math.floor(Number(BALANCE.labour && BALANCE.labour.pileMax)) || 40);
     this.pad = new Pad(gs, this.x, this.y, 'output', 1.45, { icon: cfg.item, iconSize: 44, tint: 0xf3e2c4 });
     // (v3.5 review) a wide, low heap: 7 little towers, never drawn higher than 6 items (a full pile is not a skyscraper)
-    this.stack = new ItemStack(gs, { scale: 0.9, cols: [[-30, -10], [0, -12], [30, -10], [-16, 2], [16, 2], [-30, 12], [30, 12]], alternate: true, max, drawMax: 42, bake: 'eager', bakeTypes: [cfg.item] });
+    //  ((v4.3 verify LOOK-3) stackCols / stackScale: a pile whose items lie in a box (the fish crate) packs them into its opening)
+    this.stack = new ItemStack(gs, { scale: Number(cfg.stackScale) || 0.9, cols: Array.isArray(cfg.stackCols) ? cfg.stackCols : [[-30, -10], [0, -12], [30, -10], [-16, 2], [16, 2], [-30, 12], [30, 12]], alternate: true, max, drawMax: 42, bake: 'eager', bakeTypes: [cfg.item] });
     // the prop that marks the place (a fish crate / log pile / hay / ore crate / a meat rack)
     this.props = [];
     const pa = cfg.propAt || [0, -40];
+    // ((v4.3 verify LOOK-3) stackAt: where its items are drawn, px from the pad (the fish crate: in its box, beside the
+    //  pad; the pad, where the chief and the porters take them, stays). Drawn just in front of that prop
+    const sa = Array.isArray(cfg.stackAt) ? cfg.stackAt : null;
+    this.stackX = this.x + (sa ? sa[0] : 0); this.stackY = this.y + (sa ? sa[1] : 6);
+    this.stackDepth = sa ? this.y + pa[1] + 1 : this.y;
     if (cfg.prop === 'rack') this.buildRack(this.x + pa[0], this.y + pa[1]);
     else if (cfg.prop) {
       // ((v4.3) propOld: the picture to use while the new one (the deck's fish crate) is not there)
@@ -395,7 +401,7 @@ export class Pile {
   revealObjects() { return this.shown ? [this.pad.img].concat(this.props) : []; }
 
   update(dt) {
-    this.stack.layout(this.x, this.y + 6, this.y, 0, dt);
+    this.stack.layout(this.stackX, this.stackY, this.stackDepth, 0, dt);
     if (!this.shown || !this.enabled) return false;
     const gs = this.gs;
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 470 + this.x * 0.02) * 3;

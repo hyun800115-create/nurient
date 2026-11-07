@@ -157,7 +157,8 @@ try {
         const a = p.animName; if (out.anims[out.anims.length - 1] !== a) out.anims.push(a);
         const n = p.stack.countOf('item_fish_raw') + p.stack.incoming;
         if (out.first === null && n > 0) out.first = +t.toFixed(2);
-        if (i % 30 === 29) { out.got.push(n); const L = D.state().landing; out.lines.push({ t: +t.toFixed(1), st: L.line, float: L.float, tip: L.tip, drawn: L.drawn, rings: L.rings, onWater: onW(L.float), tipUp: !!(L.tip && L.tip.y < p.y - 40 && Math.abs(L.tip.x - p.x) < 70), dir: p.dir }); }
+        if (out.fullAt === undefined && p.room <= 0) out.fullAt = +t.toFixed(2);
+        if (i % 30 === 29) { out.got.push(n); const L = D.state().landing; out.lines.push({ t: +t.toFixed(1), st: L.line, float: L.float, tip: L.tip, drawn: L.drawn, rings: L.rings, onWater: onW(L.float), tipUp: !!(L.tip && L.tip.y < p.y - 40 && Math.abs(L.tip.x - p.x) < 70), dir: p.dir, full: p.room <= 0, anim: p.animName, pad: +D.pad.img.alpha.toFixed(2) }); }
         if (i === 30) { out.rodsAt05 = D.rods.map((r) => r.frame); out.arrowHere = { key: gs.tutorial.textKey, target: !!gs.tutorial.target }; }
         if (D.cast && D.cast.rings.length) out.ringSeen = true;
       }
@@ -167,7 +168,9 @@ try {
       out.onPlanks = D.onPlanks(p.x, p.y); out.lift = Math.round(p.liftY || 0);
       return out;
     });
-    const lin = r2.lines.filter((q) => q.t >= 0.5);
+    // (his line while the bag has room; (v4.3 verify LOOK-5) a full bag reels it in)
+    const lin = r2.lines.filter((q) => q.t >= 0.5 && !q.full);
+    const afterFull = r2.lines.filter((q) => r2.fullAt !== undefined && q.t >= r2.fullAt + 0.5);
     ok(r2.anims.includes('fish') && !r2.anims.includes('harvest') && r2.lines.every((q) => q.dir === 7), '(v4.3 sea) the chief fishes from his landing: `fish` (the reel\'s motion, looping at the pickup beat), facing the sea (NE)', { anims: r2.anims, dirs: r2.lines.map((q) => q.dir) });
     ok(r2.onPlanks && r2.lift >= 6, `(v4.3 sea) he stands on the landing's planks, lifted onto them (${r2.lift} px)`, { on: r2.onPlanks, lift: r2.lift });
     ok(r2.first !== null && r2.first <= 0.45, `the first fish comes ${r2.first} s after he stands there (≤ 0.45 s: the reel's beat takes it)`, r2.first);
@@ -176,7 +179,11 @@ try {
     ok(r2.arrowAway && r2.arrowAway.key === 'obj_fish' && Math.abs(r2.arrowAway.x - s0.st.reel.x) < 2 && r2.arrowAway.tip >= s0.st.reel.y - 24 && r2.arrowAway.tip <= s0.st.reel.y,
       '(v4.3 sea) the arrow to his spot is low: its tip on the landing\'s pad, not on the deck\'s corner', { away: r2.arrowAway, reel: s0.st.reel });
     ok(r2.arrowHere && r2.arrowHere.key === 'obj_fish' && !r2.arrowHere.target, '(v4.3 sea) standing at his spot: the objective text stays, no arrow over him', r2.arrowHere);
-    ok(lin.length >= 8 && lin.every((q) => q.st === 'in' && q.drawn && q.onWater && q.tipUp), '(v4.3 sea) while he reels: his line runs from the rod tip (above him) to his float, the float on the water', lin.slice(0, 4));
+    // ((v4.3 verify LOOK-5) the bag (6) is full at ~3.3 s now and his line comes in then: ≥ 5 samples of 0.5 s before that)
+    ok(lin.length >= 5 && lin.every((q) => q.st === 'in' && q.drawn && q.onWater && q.tipUp), '(v4.3 sea) while he reels: his line runs from the rod tip (above him) to his float, the float on the water', lin.slice(0, 4));
+    ok(lin.length && lin.every((q) => q.pad <= 0.3), '(v4.3 verify LOOK-1) while his line is out the stand-here mat fades: the landing\'s planks show under him', lin.map((q) => q.pad));
+    ok(r2.fullAt !== undefined && afterFull.length >= 1 && afterFull.every((q) => q.st === 'off' && !q.drawn && q.anim !== 'fish' && q.pad >= 0.8),
+      `(v4.3 verify LOOK-5) his bag full (${r2.fullAt} s): he reels in and stands with his catch (no line, no \`fish\`), the mat back`, afterFull.slice(0, 3));
     ok(r2.ringSeen && r2.fromFloat >= 6 && r2.fromElse === 0, `(v4.3 sea) the float lands with a splash ring; every fish leaps from the float to him (${r2.fromFloat} from the float, ${r2.fromElse} elsewhere)`, { ring: r2.ringSeen, float: r2.fromFloat, other: r2.fromElse });
     await page.evaluate(() => { window.__FV.teleport(1000, 620); });
     await advance(page, 4);
@@ -380,6 +387,21 @@ try {
       'an old chief saved inside the hut\'s walls (580, 630) comes out to the yard and walks', r);
     errors.push(...log.errors);
     await ctx.close();
+  }
+  // ((v4.3 verify CM-1) a chief saved on his landing (autosave / app pause while he fishes) reloads on it: CD-1's unstick
+  //  check knows his own ground (it moved him 36 px off the planks, beyond his reach, before)
+  if (want('old')) {
+    const sv = JSON.parse(fx('v41_save_smart_46min.json'));
+    const W = (await import(new URL('../../src/data/world.js', import.meta.url).href)).WORLD;
+    const reel = W.deck.reel;
+    for (const pos of [reel, [W.deck.landing.at[0], W.deck.landing.at[1] + 10]]) {
+      sv.player = Object.assign({}, sv.player || {}, { x: pos[0], y: pos[1], stack: [] });
+      const { page, ctx, log } = await boot(JSON.stringify(sv), { width: 390, height: 844 });
+      const r = await page.evaluate(() => { const gs = window.__FV.scene, p = gs.player, D = gs.deck; return { at: [Math.round(p.x), Math.round(p.y)], onPlanks: D.onPlanks(p.x, p.y), reach: Math.round(Math.hypot(p.x - D.gather.x, (p.y - D.gather.y) * 2)) }; });
+      ok(r.onPlanks && Math.abs(r.at[0] - pos[0]) <= 2 && Math.abs(r.at[1] - pos[1]) <= 2 && r.reach < 55, `(v4.3 verify CM-1) a chief saved on his landing (${pos}) reloads there, on the planks within his reach`, r);
+      errors.push(...log.errors);
+      await ctx.close();
+    }
   }
   // ================================================================== 6. the office replaces the hut (replace mode)
   console.log('— the office plot: hut → office');

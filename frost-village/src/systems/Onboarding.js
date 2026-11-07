@@ -391,6 +391,9 @@ export class Onboarding {
    *  showed: one more fish to grill = the first sale ~0.8 s later). Infinity outside the first lap of Act 1 */
   fishCap() { return this.mode === 'act1' && this.lap === 1 && this.gs.player ? Math.min(4, this.gs.player.capacity) : Infinity; }
 
+  /** ((v4.3 verify LOOK-2) the chief stands at his fishing spot with his line out (fishing, or holding it for a bite) */
+  atReel(p) { const D = this.gs.deck; return !!(D && p && D.chiefHere && D.chiefHere(p) && (p.node === D || (D.holdsChief && D.holdsChief(p)))); }
+
   /** the card, ring, arrow, view, spotlight and finger of the current step, every frame */
   act1Frame(dt) {
     const gs = this.gs, p = gs.player, step = this.cur;
@@ -405,7 +408,9 @@ export class Onboarding {
     // (the reel spot's ring is the reach where the fish come to him, gdist 55 = 110 px wide; a pad's ring frames its art)
     this.ringAt = place ? { x: place.x, y: place.y, w: S.at === 'reel' ? 110 : 150 } : null;
     if (place && step === 'stepoff') { const tg = this._tg; tg.x = place.x; tg.y = place.y + 118; tg.h = 34; this.target = tg; }
-    else if (place && !S.stand) { const tg = this._tg; tg.x = place.x; tg.y = step === 'move' || step === 'still' ? place.y - 10 : place.y; tg.h = S.h || 40; this.target = tg; }
+    // ((v4.3 verify LOOK-2) S1 while he already stands at his spot and fishes (he got there before the card's 1.5 s): no
+    //  arrow — its 1.3x body covered him from feet to head through the cast and the first leaps (Tutorial's obj_fish rule)
+    else if (place && !S.stand && !(step === 'move' && this.atReel(p))) { const tg = this._tg; tg.x = place.x; tg.y = step === 'move' || step === 'still' ? place.y - 10 : place.y; tg.h = S.h || 40; this.target = tg; }
     else this.target = null;
     // pushing into a wall: the joystick held, he does not get anywhere for 1.2 s (a pocket behind a crate). The card then
     // says to go round it and the finger (which follows the way round, via()) comes back 0.6 s after he lets go

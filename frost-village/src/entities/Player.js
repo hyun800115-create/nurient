@@ -6,8 +6,9 @@ import { Audio } from '../core/Audio.js';
 import { BALANCE } from '../data/balance.js';
 import { t } from '../data/strings.js';
 
-// ((v4.3 sea) the flight of a fish leaping from the chief's float to him
-const LEAP = { height: 96, spin: -330 };
+// ((v4.3 sea) the flight of a fish leaping from the chief's float to him ((v4.3 verify LOOK-1) its height comes from the
+//  landing (WORLD.deck.landing.leap, via fishPos): 96 rose among the deck's rods and their hanging fish)
+const LEAP = { height: 50, spin: -330 };
 
 export class Player extends Character {
   constructor(gs, x, y) {
@@ -135,9 +136,11 @@ export class Player extends Character {
       // ((v4.2) 자동 줍기: gathering asks the PickupPolicy — 'still' waits a little longer, 'off' only with 줍기)
       const PP = gs.v42 && gs.v42.pickup;
       if (this.node && PP && !PP.keepGathering(this)) this.node = null;
+      // ((v4.3 verify) the tutorial's first batch is in (Onboarding.fishCap): he stops and reels in (fishCapped)
+      if (this.node && this.fishCapped(this.node)) this.node = null;
       if (!this.node && this.stillT > BALANCE.player.stillDelay && !gs.playerOnPad) {
         const n = gs.findGatherable(this.x, this.y, BALANCE.player.gatherRange);
-        if (n && (!PP || PP.mayGather(n, this))) {
+        if (n && !this.fishCapped(n) && (!PP || PP.mayGather(n, this))) {
           if (this.room <= 0) this.warnFull();
           else if (gs.stationBlocked(n.item)) gs.fullToast();   // its station is full both ways: don't fill the bag
           else {
@@ -203,6 +206,15 @@ export class Player extends Character {
     o.setOrigin(spr.originX, spr.originY).setFlipX(spr.flipX).setPosition(spr.x, spr.y).setDepth(s.deskDepth !== undefined ? s.deskDepth : spr.depth + 0.001).setVisible(spr.visible);
   }
 
+  /** ((v4.3 review SUITES-2) the tutorial's first batch: the fish its card asks for (Onboarding.fishCap: min(4, bag) on
+   *  the first lap of Act 1), no more. ((v4.3 verify) once they are in (or flying to him) he takes no more from the deck
+   *  and reels his line in — before, the line stayed out and the float kept dipping with no catch while the card already
+   *  said 「물고기를 모았어요!」 and pointed at the grill) */
+  fishCapped(n) {
+    const ob = this.gs.onboard;
+    return !!(n && n.kind === 'net' && ob && ob.fishCap && this.stack.countWithIncoming(n.item) >= ob.fishCap());
+  }
+
   warnFull() {
     if (this.fullWarnT > 0) return;
     // ((v4.2 final, gameplay review #9) 관망 drives: no "가방이 가득 찼어요!" for a bag the player is not filling)
@@ -220,15 +232,14 @@ export class Player extends Character {
     const n = this.node;
     if (!n || this.room <= 0) return;
     // ((v4.3 review SUITES-2) the tutorial's first batch: the fish the card asks for, no more (Onboarding.fishCap)
-    const ob = this.gs.onboard;
-    if (n.kind === 'net' && ob && ob.fishCap && this.stack.countWithIncoming(n.item) >= ob.fishCap()) return;
+    if (this.fishCapped(n)) return;
     const item = n.hit(this);
     if (!item) return;
     const count = n.lastYield || 1;
     n.lastYield = 0;
     const from = n.kind === 'net' ? n.fishPos(this) : this.impactPoint();
     // ((v4.3 sea) a fish from his float leaps out of the water to him (a higher arc, a flip; the same flight time)
-    const fo = from.leap ? LEAP : undefined;
+    const fo = from.leap ? (Number.isFinite(from.leap) ? { height: from.leap, spin: LEAP.spin } : LEAP) : undefined;
     for (let i = 0; i < count && this.room > 0; i++) {
       this.gs.time.delayedCall(i * 90, () => this.gs.spawnItemTo(item, from.x, from.y, this, true, 0, fo));
     }

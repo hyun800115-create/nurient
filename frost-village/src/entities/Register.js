@@ -117,8 +117,9 @@ export class Register {
     const on = this.pad.contains(p.x, p.y);
     this.chief = on;
     this.label.y = this.labelBaseY + Math.sin(gs.time.now / 430 + 2.1) * 3;
-    const la = on ? 0.3 : 1;
-    if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
+    // ((v4.3 verify LOOK-8) the chief on the pad: the name goes (at 0.3 it was still drawn across his body)
+    const la = on ? 0 : 1;
+    if (this.label.alpha !== la) this.label.setAlpha(Math.abs(la - this.label.alpha) < 0.01 ? la : this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
     if (on) {
       this.onT += dt;
       // the chief turns to the customer he is serving

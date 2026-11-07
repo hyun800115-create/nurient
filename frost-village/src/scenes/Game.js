@@ -1660,7 +1660,10 @@ export class Game extends Phaser.Scene {
   }
 
   /** ((v4.3 review CD-1) a saved chief inside a building's walls (the hut / the office on the moved plot) or the hut's floor,
-   *  built after his spot was checked): out to the hut's yard (the new game's start), or the free spot nearest it */
+   *  built after his spot was checked): out to the free spot nearest him, else to the hut's yard (no hut: the office's door,
+   *  else where the yard was). ((v4.3 verify CM-1) the chief's own ground counts as free (Collision's chief flag, as at the
+   *  spot's check before the walls stood): a chief saved on his landing at the water's edge, beyond everyone else's walk
+   *  line, stays on it — autosave / app-pause saves come while he stands there fishing) */
   unstickChief() {
     const p = this.player, C = this.collision;
     if (!p || !C) return false;
@@ -1673,10 +1676,15 @@ export class Game extends Phaser.Scene {
     // (the office is a cutaway the chief walks into: there only its walls count; the hut has no inside)
     const hut = O && O.hut, R = p.radius || 16;
     const inHut = !!(hut && inside(hut.img, 'chief_lodge'));
-    if (!inHut && !C.blocked(p.x, p.y, R)) return false;
+    if (!inHut && !C.blocked(p.x, p.y, R, null, true)) return false;
     // (in a wall somewhere else: the free spot nearest him first)
     let q = inHut ? null : this.freeSpot(p.x, p.y, R, 120);
-    if (!q || C.blocked(q.x, q.y, R)) { const y = (hut && hut.spots && hut.spots.yard) || WORLD.player; q = this.freeSpot(y.x, y.y, R, 240); }
+    if (!q || C.blocked(q.x, q.y, R, null, true)) {
+      // (WORLD.player is no longer the yard: since the sea it is by his landing)
+      const H = WORLD.v42 && WORLD.v42.hut, B = O && O.building;
+      const y = (hut && hut.spots && hut.spots.yard) || (B && B.spots && B.spots.door) || (H && H.yard ? { x: H.x + H.yard[0], y: H.y + H.yard[1] } : WORLD.player);
+      q = this.freeSpot(y.x, y.y, R, 240);
+    }
     p.x = q.x; p.y = q.y; p.vx = p.vy = 0;
     if (p.sync) p.sync(0);
     return true;
@@ -2119,8 +2127,10 @@ export class Game extends Phaser.Scene {
     // ((v4 review) the west strip (x < 0) has its own overview: with it the whole village came out at zoom 0.16,
     //  its labels specks; the chief's side of the old map edge is framed, like the v3.5 overview)
     const px = this.player ? this.player.x : 0, area = T.areaOf(px);
-    if (area === 'village') { const west = px < 0; const r = T.areaRect(area, (q) => ((q.rect[0] + q.rect[2]) / 2 < 0) === west); if (r && r !== T.camRect) return r; }
-    if (!T.isOpen('rail')) return T.camRect;
+    // ((v4.3 verify LOOK-4) the land alone (landRect): the camera's bounds look a little past the sea's top edge)
+    const land = T.landRect || T.camRect;
+    if (area === 'village') { const west = px < 0; const r = T.areaRect(area, (q) => ((q.rect[0] + q.rect[2]) / 2 < 0) === west); if (r && r !== land) return r; }
+    if (!T.isOpen('rail')) return land;
     return T.areaRect(area);
   }
 

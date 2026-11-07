@@ -100,9 +100,11 @@ export const WORLD = {
   //   slope: x 가 from 보다 크면 해안선이 k 비율로 내려감 (knee = 부드럽게 꺾이는 길이 px)
   shore: { base: 372, waves: [[16, 0.0052, 0.4], [7, 0.0165, 1.7], [3, 0.041, 0.2]], slope: { from: 1880, knee: 220, k: 0.5 } },
 
-  // 시작 위치 ((v4.3 「바다 가까이」) 물가 촌장님 자리(발판) 바로 뒤 눈밭: 두어 걸음이면 발판 위. 예전 935, 520 = 그물
+  // 시작 위치 ((v4.3 「바다 가까이」) 물가 촌장님 자리(발판) 오른쪽 뒤 눈밭 (촌장만 걷는 발판 땅 안): 한 걸음 (1.03 m)이면
+  //  발판 위. 바로 뒤(1089, 418)는 첫 화살표 끝이 촌장 머리에 걸려서 옆으로 비켜 섰어요. (v4.3 verify) 1090, 440 (1.69 m)
+  //  에서 당김: 튜토리얼 첫 물고기는 Onboarding.fishCap 이 4 마리에서 멈추니 멀리 둘 까닭이 없어졌어요. 예전 935, 520 = 그물
   //  바로 앞, v4.3 첫판 845, 498 = 오두막 바닷가 쪽 마당 (그때 자리는 땅 위 880, 465))
-  player: { x: 1090, y: 440 },
+  player: { x: 1130, y: 412 },
   // 첫 판매(튜토리얼) 동안 카메라가 비추는 곳: ((v4.3) 오두막 지붕 · 낚시 좌대 · 화덕 · 노점·손님 줄이 한 화면에 들어오도록.
   //  휴대폰 세로 화면은 땅 600 px 너비라서 오두막은 오른쪽 반쯤 보여요. 예전 [1095, 670])
   // (촌장이 화면 가장자리로 가면 카메라가 따라감)
@@ -214,8 +216,12 @@ export const WORLD = {
     reel: LD(0, -0.25),                                  // 촌장이 서는 자리 (물가 발판, 가운데에서 조금 뭍 쪽: 앞쪽 반은 물 위). 예전 [880, 465] (땅 위, 다리 앞)
     // 물가 발판: at = 발판 가운데 (그림 기준점), size = [X m, Y m], lift = 판자 높이 (화면 px: 촌장이 그만큼 올라서요),
     //   planks = 촌장 발이 판자 위인 곳 (발판 기준 m 사각형 [x0, x1, y0, y1]), walk = 촌장만 걷는 곳: 판자 안쪽 [x0, x1, y0, y1]
-    //   m 과 그 뒤 눈밭 (땅까지 fan px 넓게 퍼져요), bob = 찌가 떨어지는 곳 (발판 기준 m, 바다 위), cast = 찌가 날아가는 시간 (초)
-    landing: { at: LAND_C, size: [1.0, 1.2], lift: 8, planks: [-0.5, 0.5, -0.62, 0.6], walk: [-0.3, 0.3, -0.42, 0.36], fan: 20, bob: [0.5, 1.5], cast: 0.25 },
+    //   m 과 그 뒤 눈밭 (땅까지 fan px 넓게 퍼져요), bob = 찌가 떨어지는 곳 (발판 기준 m, 바다 위), cast = 찌가 날아가는 시간 (초),
+    //   leap = 찌에서 촌장에게 뛰어오르는 물고기의 높이 (px)
+    //   ((v4.3 verify LOOK-1) bob [0.5, 1.5] -> [-0.2, 1.7]: 찌가 오른쪽 물가 거품 위(물가에서 21 px)에 떨어져 줄이 바닷가를 따라
+    //    옆으로 갔어요. 이제 촌장 앞(NE) 좌대 모서리와 물가 사이 열린 물 (물가에서 42 px, 어부 찌와 50 px 떨어짐).
+    //    leap 96 -> 50: 높은 뜀은 좌대 낚싯대 장대와 매달린 물고기 사이로 올라가 좌대 물고기처럼 보였어요)
+    landing: { at: LAND_C, size: [1.0, 1.2], lift: 8, planks: [-0.5, 0.5, -0.62, 0.6], walk: [-0.3, 0.3, -0.42, 0.36], fan: 20, bob: [-0.2, 1.7], cast: 0.25, leap: 50 },
     foot: DK(0.65, -4.7),                                // 다리 앞 (땅 위): 어부가 여기서 다리로 올라가요
     crate: [1000, 440],                                  // 생선 상자 (땅 위, 다리 오른쪽): 어부가 낚은 물고기가 날아와 쌓여요 (labour.piles.fish)
     // 좌대 판자 (좌대 가운데 기준 m 사각형 [x0, x1, y0, y1]): 1단 / 2단 (어부 2) / 3단 (어부 3, 작은 지붕)
@@ -618,7 +624,9 @@ export const WORLD = {
       //  올라가지 않아요. 예전 = 그물 옆 생선 통 { x: 772, y: 510, prop: 'barrel', propAt: [-52, -18] })
       //  ((v4.3 「바다 가까이」 리뷰 CRATE-CROWD) 상자 그림은 생선 더미 왼쪽 (다리 앞 오른쪽 눈밭), 이름표도 왼쪽으로: 예전 자리
       //   (propAt [50, -22], 이름표 바로 위)는 촌장님 발판의 왼쪽 앞 판자에 붙어 보였어요. 발판(짐꾼이 가져가는 곳)은 그대로)
-      fish:  { x: 1000, y: 440, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'fish_crate', propOld: 'crate', propAt: [-62, 14], propR: 24, labelX: -44, labelY: -78, zone: 'plaza' },
+      //  ((v4.3 verify LOOK-3) stackAt: 생선은 상자 안에 쌓여요 (예전엔 발판 자리에 하얀 탑으로 서고 상자는 비어 있었어요: 이름표와
+      //   화살표가 빈 상자를 가리켰고, 탑이 다리 판자 위로 솟았어요). 가져가는 발판은 그대로)
+      fish:  { x: 1000, y: 440, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'fish_crate', propOld: 'crate', propAt: [-62, 14], stackAt: [-57, -5], stackScale: 0.7, stackCols: [[-19, -7], [0, -8], [19, -7], [-19, 0], [0, -1], [19, 0], [-19, 7], [0, 6], [19, 7]], propR: 24, labelX: -44, labelY: -78, zone: 'plaza' },
       log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
       wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
       ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [46, -30], propR: 24, zone: 'mine' },   // (v3.5 리뷰: 상자를 뒤로 — 서쪽 바위로 가는 길을 막지 않게)

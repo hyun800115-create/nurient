@@ -233,6 +233,7 @@ export class UI extends Phaser.Scene {
     if (this.hud42) this.hud42.layout();
     if (this.onboardOv) this.onboardOv.layout();
     if (this.admin) this.admin.layout();
+    this.fitObjective();
   }
 
   // ---------------------------------------------------------------- (v4-B) the neighbour-town HUD
@@ -693,6 +694,18 @@ export class UI extends Phaser.Scene {
     this.time.delayedCall(6500, () => e.destroy());
   }
 
+  /** ((v4.3 verify LOOK-7) the objective panel keeps clear of the day clock (top right, once the neighbours open): it slides
+   *  left, and only a text wider than the room left shrinks (EN 360 px: 「…build the Warehouse」 ran under the clock) */
+  fitObjective() {
+    if (!this.objText || !this.objBg || !this.objPanel) return;
+    const W = this.W, ck = this.hud4 && this.hud4.clock, L = 16, R = ck && ck.visible ? ck.x - 36 : W - 16;
+    const tw = Math.max(1, this.objText.width), k = Math.max(0.6, Math.min(1, (R - L - 60) / tw));
+    if (this.objText.scaleX !== k) this.objText.setScale(k);
+    const w = tw * k + 60;
+    this.objBg.setSize(w, 62);
+    this.objPanel.x = Math.max(L + w / 2, Math.min(W / 2, R - w / 2));
+  }
+
   setObjective(key, tg, text) {
     this.objTarget = tg;
     if (key !== this.objKey) {
@@ -701,7 +714,7 @@ export class UI extends Phaser.Scene {
       if (!key) { this.objPanel.setVisible(false); }
       else {
         this.objText.setText(text || t(key));
-        this.objBg.setSize(this.objText.width + 60, 62);
+        this.fitObjective();
         this.objPanel.setVisible(true).setScale(0.8);
         this.tweens.add({ targets: this.objPanel, scale: 1, duration: 220, ease: 'Back.easeOut' });
       }

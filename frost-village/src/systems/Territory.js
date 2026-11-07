@@ -14,6 +14,10 @@ import { gdist2 } from '../core/Iso.js';
 export const FOG_DEPTH = DEPTH.FLY - 1000;   // above every world object, below flying items / bubbles / arrows
 const EDGE_IN = 46;        // the walkable land stops this far before the fog (px)
 const CAM_PEEK = 260;      // how far the camera may look into the fog (px)
+// ((v4.3 verify LOOK-4) how far the camera may look past the world's top edge: it is the open sea there (Ground / Water draw
+//  it from y -200). Pinned at y 0, the chief at his landing and the fishing deck sat in the top 100-170 px of a phone,
+//  under the rank pill, the delivery panel and the objective
+const SEA_PEEK = 150;
 const FILL = 0xe6eef6;
 /** (v4-C) the world's left edge (the west strip lies at negative x) */
 const worldLeft = () => Math.min(0, Number(WORLD.left) || 0);
@@ -70,7 +74,7 @@ export class Territory {
       if (!r.open || this.areaOf((r.rect[0] + r.rect[2]) / 2) !== area || (filter && !filter(r))) continue;
       x0 = Math.min(x0, r.rect[0]); y0 = Math.min(y0, r.rect[1]); x1 = Math.max(x1, r.rect[2]); y1 = Math.max(y1, r.rect[3]);
     }
-    if (!Number.isFinite(x0)) return this.camRect;
+    if (!Number.isFinite(x0)) return this.landRect || this.camRect;
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
 
@@ -110,8 +114,9 @@ export class Territory {
     gs.collision.setWalkable(open, this.walkRects(), EDGE_IN);
   }
 
-  /** bounding box of the open land (+ a peek into the fog where there is fog) */
-  bounds() {
+  /** bounding box of the open land (+ a peek into the fog where there is fog, + SEA_PEEK past the sea's top edge unless
+   *  `land`: the land alone, as the overview frames it) */
+  bounds(land) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const id in this.regions) {
       const r = this.regions[id];
@@ -129,8 +134,8 @@ export class Territory {
     if (touches('r')) x1 += CAM_PEEK;
     if (touches('b')) y1 += CAM_PEEK;
     if (touches('l')) x0 -= CAM_PEEK;
-    const X0 = worldLeft();
-    return { x: Math.max(X0, x0), y: Math.max(0, y0), w: Math.min(WORLD.width, x1) - Math.max(X0, x0), h: Math.min(WORLD.height, y1) - Math.max(0, y0) };
+    const X0 = worldLeft(), top = y0 <= 0 ? (land ? 0 : -SEA_PEEK) : y0;
+    return { x: Math.max(X0, x0), y: top, w: Math.min(WORLD.width, x1) - Math.max(X0, x0), h: Math.min(WORLD.height, y1) - top };
   }
 
   /** walkable land + camera bounds + fog walls follow the open regions */
@@ -139,6 +144,7 @@ export class Territory {
     this.applyWalk();
     const b = this.bounds();
     this.camRect = b;
+    this.landRect = this.bounds(true);
     if (gs.cameras && gs.cameras.main && !gs.overview && !gs._freeCam) gs.cameras.main.setBounds(b.x, b.y, b.w, b.h);
     this.buildFog();
   }
@@ -309,6 +315,7 @@ export class Territory {
     }
     const b = this.bounds();
     this.camRect = b;
+    this.landRect = this.bounds(true);
     this.applyWalk();
     if (instant) {
       if (oldFog) this.destroyFog(oldFog);

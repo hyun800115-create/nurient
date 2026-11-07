@@ -192,11 +192,25 @@ web page on its own origin (new games only, its own storage), so it cannot read 
   (shore + 46) count as land only for the chief (`offLand / blocked / resolve` with `chief` true); every path, porter,
   fisher and resident still sees the sea there. The polygon's land side overlaps ordinary land by a 14 px band (a seamless
   step on). Its `door` (the land side's middle, a step out on the snow, (1099, 442)) is the 관망 pilot's last waypoint.
-- New games start at (1090, 440), 1.7 m behind the spot (the tutorial's card dwell sets when he leaves with 4 fish; a
-  closer start picked up a 5th fish). Old saves keep the chief where he was saved (at the old spot (880, 465) he simply
-  stands on the snow).
+- New games start at (1130, 412), 1.03 m from the spot, on the chief's own ground right-behind the landing ((v4.3 verify):
+  the sea branch's 1.7 m start at (1090, 440) only kept a 5th fish off the first batch, which `Onboarding.fishCap` now
+  does; straight behind at (1089, 418) the S1 arrow's tip sat on his head, beside it the arrow, ring and pad read clear at
+  412×915 and 360×640). Once the first batch is in (fishCap: the 4th fish in hand or flying) he takes no more and reels
+  his line in (`Player.fishCapped`, `FishingDeck.lineHeld`): before, the float kept bobbing and dipping with no catch
+  while the card said 「물고기를 모았어요!」 and the arrow pointed at the grill. Old saves keep the chief where he was saved
+  (at the old spot (880, 465) he simply stands on the snow).
 - The fish crate's box stands left of its pile pad (`propAt` [-62, 14] → (938, 454)) and its name 44 px left
   (`labelX`): the old place (1050, 418) touched the landing's planks. The pile pad (porters' spot) stays at (1000, 440).
+  ((v4.3 verify LOOK-3) its fish lie IN the box: `stackAt` [-57, -5] / `stackCols` (3 × 3 in the opening) /
+  `stackScale` 0.7 — they stood as white towers on the pad beside an empty box, over the gangway's foot.)
+- (v4.3 verify, the phone look check) at 1x the fishing read weakly: his float now lands in front of him on open water
+  (`landing.bob` [-0.2, 1.7] → (1168, 337), 42 px off the surf, clear of the fishers' floats; was [0.5, 1.5], 21 px off
+  the shore to his right), a fish's leap is 50 px high (`landing.leap`; 96 rose among the rods' hanging fish), and the
+  stand-here mat fades to 0.12 while his line is out (the planks show under him). A full bag reels the line in like the
+  tutorial's cap (`lineHeld`). The S1 arrow goes once he stands at his spot fishing (it covered him for the cast). A
+  chief saved on his landing reloads on it (`unstickChief` uses the chief flag; it put him 36 px behind, out of reach).
+  The camera may look 150 px past the sea's top edge (`Territory` SEA_PEEK; the overview frames the land alone): pinned
+  at y 0 the chief at his spot and the deck sat under the rank / delivery / objective panels.
 - **G1 cost**: every point at the water's edge is ≈ 215–245 px (screen, mostly vertical) above the grill's 서서 굽기 pad
   (934, 625), and the grill stands between; the spot → grill walk is 1.4–1.5 s for the onboarding bot from anywhere on
   this shore (0.85 s from the old spot on land). The onboarding bot's first sale therefore rises by ≈ 0.4 s: per seed it
@@ -204,6 +218,11 @@ web page on its own origin (new games only, its own storage), so it cannot read 
   15.8–16.1 s over four 5-seed runs against the 15.75 s gate; the smart bot stays inside (21.57 s against 21.82 s).
   Moving the 서서 굽기 pad 0.6 m toward the shore (labour.ops.grill.pad [-92, 14]) measured 15.8 s / 21.5 s: not enough
   alone. Open: waive G1 for the onboarding bot, or redesign the grill's pads (lead's decision).
+  (v4.3 verify, merged tree, 5 seeds each) start (1090, 440): onboarding 15.8 / 15.9 / 16.1 / 15.8 / 16.1 (median 15.9),
+  smart 21.57; (1089, 418): median 15.8, smart 21.47; (1130, 412) + the reel-in: 15.8 / 15.8 / 15.9 / 16.1 / 15.7 (median
+  15.8), smart 21.53. The start cannot carry the onboarding bot under 15.75: the `move` and `still` cards each stay ≥ 1.5 s
+  (onboard.dwell), so he leaves the landing at the same moment from any start that reaches it within ~3 s; the rest is
+  the spot → grill walk and the `coming` card's 2.8 s dwell (per-seed spread 15.7–16.1 s in every run).
 
 ### 4.2 The shop: stages, queues by kind, the 자재 창구
 Today: `Market` (`Seller.js:142`) = one shelf (3 foods × 40), one queue (`queueStart`, `queueStep`, turn after 6), one register;

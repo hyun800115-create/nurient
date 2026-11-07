@@ -173,8 +173,8 @@ export class FishingDeck {
     return { x: spr.x + off[0] * (spr.flipX ? -1 : 1) * Math.abs(spr.scaleX || 1), y: spr.y + off[1] * Math.abs(spr.scaleY || 1) };
   }
 
-  /** is the chief at his fishing spot now (on the landing's ground, near the spot, standing)? (with a full bag too: he
-   *  keeps his line out until he walks away) */
+  /** is the chief at his fishing spot now (on the landing's ground, near the spot, standing)? (with a full bag too; his
+   *  line is out only while lineHeld) */
   chiefHere(p) {
     if (!p || p.seat || p.action || (this.gs.collision && !this.gs.collision.inLand(p.x, p.y))) return false;
     return gd(p.x, p.y, this.gather.x, this.gather.y) < 55 && p.vx * p.vx + p.vy * p.vy < 25;
@@ -188,15 +188,22 @@ export class FishingDeck {
     this.gs.sfxAt('sfx_reel', this.gather.x, this.gather.y, { volume: 0.4, throttle: 200 }, true);
   }
 
-  /** (Player) the chief stands at his spot with the line out (no fish in the pool just now, or his bag is full): he keeps
-   *  the rod up (no catch comes: his `fish` frames' impacts find no node). ((v4.3 sea review SEA-OFFMODE) only for those
+  /** (Player) the chief stands at his spot with the line out (no fish in the pool just now): he keeps the rod up (no catch
+   *  comes: his `fish` frames' impacts find no node). ((v4.3 verify LOOK-5) a full bag reels in: lineHeld) ((v4.3 sea review SEA-OFFMODE) only for those
    *  two reasons: when his gathering stopped for another (Settings 줍기 'off' and he let go of the button) he reels in
    *  and stands, as anywhere else) */
   holdsChief(p) { const k = this.cast; return !!(k && (k.st === 'in' || k.st === 'out') && p === this.gs.player && this.chiefHere(p) && this.lineHeld(p)); }
 
-  /** his line stays out while nothing is caught (a full bag, the pool empty just now, the beat between two catches) —
-   *  unless the pickup setting stopped his gathering (줍기 'off' and the button let go: PickupPolicy.keepGathering) */
-  lineHeld(p) { const PP = this.gs.v42 && this.gs.v42.pickup; return !(PP && PP.keepGathering && !PP.keepGathering(p)); }
+  /** his line stays out while nothing is caught (the pool empty just now, the beat between two catches) — unless the
+   *  pickup setting stopped his gathering (줍기 'off' and the button let go: PickupPolicy.keepGathering) or
+   *  ((v4.3 verify) the tutorial's first batch is in (Player.fishCapped: he reels in, the card points at the grill) or
+   *  ((v4.3 verify LOOK-5) his bag is full: he reels in and stands with his catch, as at the tutorial's cap (before, the
+   *  line stayed out and the float kept dipping: only a toast and a brief MAX said "go") */
+  lineHeld(p) {
+    if (p && p.fishCapped && p.fishCapped(this)) return false;
+    if (p && p.room <= 0) return false;
+    const PP = this.gs.v42 && this.gs.v42.pickup; return !(PP && PP.keepGathering && !PP.keepGathering(p));
+  }
 
   /** a splash ring on the water at (x, y) (drawn by the chief's line graphics; the living water's ripple too) */
   ring(x, y, k = 1) {
@@ -411,7 +418,7 @@ export class FishingDeck {
    *  leap = it jumps out of the water to him) */
   fishPos(by) {
     const k = this.cast;
-    if (by && by === this.gs.player && k && (k.st === 'in' || k.st === 'out')) return { x: k.bob.x, y: k.bob.y - 2, leap: true };
+    if (by && by === this.gs.player && k && (k.st === 'in' || k.st === 'out')) return { x: k.bob.x, y: k.bob.y - 2, leap: num(this.landCfg.leap, 50) };
     const f = this.fish[Math.max(0, this.stock)] || this.fish[0]; return { x: f.x, y: f.y };
   }
 
@@ -428,9 +435,18 @@ export class FishingDeck {
     if (this.reelT > 0) this.reelT -= dt;
     // the living water came after the deck: its foam collars
     if (this.gs.ground && this.gs.ground.water && this._wv !== this.gs.ground.water) this.wireWater();
-    // pad: brighter while the chief stands on it
+    // pad: brighter while the chief stands on it; ((v4.3 verify LOOK-1) on his landing it fades while his line is out: the
+    //  stand-here mat and its ring covered the planks, he seemed to stand on the snow by the gangway, not on a jetty
     const p = this.gs.player;
-    if (p) { const on = this.pad.contains(p.x, p.y); if (on !== this._on) { this._on = on; this.pad.img.setAlpha(on ? 1 : 0.85); } }
+    if (p) {
+      const on = this.pad.contains(p.x, p.y), k = this.cast;
+      const a = this.landCfg && on && k && (k.st === 'in' || k.st === 'out') ? 0.12 : on ? 1 : 0.85, pi = this.pad.img;
+      if (pi.alpha !== a) {
+        const v = Math.abs(a - pi.alpha) < 0.01 ? a : pi.alpha + (a - pi.alpha) * Math.min(1, dt * 8);
+        pi.setAlpha(v);
+        if (this.pad.icon) this.pad.icon.setAlpha(v * 0.65);
+      }
+    }
     this.drawRods(dt);
     if (this.cast) this.updateChiefLine(dt);
   }

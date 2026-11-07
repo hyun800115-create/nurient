@@ -97,7 +97,8 @@ export class HudV4 {
     const showClock = open && !!(nb && nb.clock && nb.clock.on) && !ui.gs.overview;
     if (this.rankChip.visible !== showRank) this.pop(this.rankChip, showRank);
     if (this.orderChip.visible !== showOrder) this.pop(this.orderChip, showOrder);
-    if (this.clock.visible !== showClock) this.clock.setVisible(showClock);
+    // ((v4.3 verify LOOK-7) the objective panel makes room for the clock
+    if (this.clock.visible !== showClock) { this.clock.setVisible(showClock); if (ui.fitObjective) ui.fitObjective(); }
     this.refreshT = (this.refreshT || 0) - dt;
     if (this.refreshT <= 0) {
       this.refreshT = 0.25;
