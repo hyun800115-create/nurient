@@ -16,6 +16,8 @@ import { gdist } from '../core/Iso.js';
 import { rackFill } from '../systems/depot/rack.js';
 import { polyHas } from './Cutaway.js';
 import { makeRoom } from '../systems/Paths.js';
+import { DepotForklift } from './DepotForklift.js';
+import { DIRS8 } from '../core/Iso.js';
 
 const KEY = 'logistics_center';
 
@@ -28,6 +30,7 @@ export class DepotBuilding {
     this.door = { x: x - 278, y: y + 67 };
     this.workers = []; this.obstacles = []; this.rackImgs = []; this.imgs = {};
     this.ready = false;
+    this.hiredN = 0; this.wantHires = 0; this.wantFork = 0; this.forklift = null;     // ((v4.3 a2.2) the hired crew, the forklift
     const [tx, ty] = L4(D.till[0], D.till[1]);
     this.till = new CashPad(gs, tx, ty);
     // ((v4.2.0.1) a page arrived (lgx_items back after a trip): the racks are drawn again once, with the real art)
@@ -98,6 +101,36 @@ export class DepotBuilding {
     this.frontIndex = Math.max(0, this.order.indexOf('<actors front + floor stock>'));
     this.frontTest = def.frontTest || null;
     (gs.interiors || (gs.interiors = [])).push(this);
+    this.setCrew(this.wantHires, this.wantFork);
+  }
+
+  /** ((v4.3 a2.2) where the forecourt pads stand: the 물류창고 직원 pad left of the door pad, the forklift's right of it */
+  padSpot(kind) {
+    const D = WORLD.v42.depot, d = D.door || [27.3, -30.6];
+    // (on the forecourt below the door: the 직원 pad down-left of the door pad, the forklift's straight below it; clear of the
+    //  till, the buyers' footpath and the door pad)
+    const [x, y] = kind === 'fork' ? L4(d[0] + 2.66, d[1] - 2.81) : L4(d[0] + 0.39, d[1] - 2.73);
+    return { x, y };
+  }
+
+  /** ((v4.3 a2.2) the hired 물류창고 직원 (at the manifest's free staff points: a packer and two pickers) and the forklift */
+  setCrew(hires, fork) {
+    this.wantHires = hires || 0; this.wantFork = fork ? 1 : 0;
+    if (!this.ready) return;
+    const gs = this.gs, sp = (this.def && this.def.staffPoints) || [], sd = (this.def && this.def.staffDirs) || [];
+    const FREE = [1, 4, 5];
+    while (this.hiredN < this.wantHires && this.hiredN < FREE.length && sp.length) {
+      const k = FREE[this.hiredN] % sp.length, p = sp[k];
+      const ch = new Staff(gs, this.sys, 'depot', 4300 + this.hiredN * 41, this.x + p[0], this.y + p[1], { x: this.x + p[0], y: this.y + p[1] });
+      ch.inside = true;
+      const di = DIRS8.indexOf(sd[k]);
+      if (di >= 0) ch.dir = di;
+      ch.sprite.setVisible(this.alpha > 0.3);
+      if (ch.shadow) ch.shadow.setVisible(this.alpha > 0.3);
+      this.workers.push(ch);
+      this.hiredN++;
+    }
+    if (this.wantFork && !this.forklift) this.forklift = new DepotForklift(gs, this);
   }
 
   /** where a character is drawn (Character.sync): { depth, lift } on the floor / in front of the front walls, else null */
@@ -147,6 +180,7 @@ export class DepotBuilding {
     for (const im of this.rackImgs) if (im.visible !== this.alpha > 0.05 && im.__on) im.setVisible(this.alpha > 0.05);
     const vis = this.alpha > 0.3;
     for (const ch of this.workers) { if (ch.sprite.visible !== vis) { ch.sprite.setVisible(vis); if (ch.shadow) ch.shadow.setVisible(vis); } ch.update(dt); }
+    if (this.forklift) this.forklift.update(dt, vis);
     // ((robust review M3) workers made before the townsfolk manifest arrived get their paper-doll look in place)
     this.dressT = (this.dressT || 0) - dt;
     if (this.dressT <= 0) {
@@ -227,6 +261,7 @@ export class DepotBuilding {
     if (ai >= 0) Assets.arrivals.splice(ai, 1);
     if (this.room && this.gs.roads) this.gs.roads.removeRoom(this.room);
     for (const w of this.workers || []) w.destroy();
+    if (this.forklift) this.forklift.destroy();
     if (this.doorPad) this.doorPad.img.destroy();
   }
 }

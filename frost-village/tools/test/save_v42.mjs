@@ -64,7 +64,7 @@ const full = {
   up: { grill: 1, smelter: 1 }, p2: ['sawmill', 'bakery'],
   train: { stage: 2, big: 1, labels: 3 },
   freight: { dock: { item_plank: 30, item_ingot: 12 }, cars: { item_bread: 20 } },
-  depot: { st: 2, sleighs: 2, load: { item_ore: 40 }, porters34: 2, sales: [12, 312, 1040] },
+  depot: { st: 2, sleighs: 2, load: { item_ore: 40 }, porters34: 2, sales: [12, 312, 1040], hires: 2, fork: 1, hp: { staff: 400, fork: 0 } },
   ledger: { full: { 'out:smelter': 120, 'pile:ore': 300 } },
   seen: { whatsNew: 1, pickupTip: 1, cheer: 3, p2: { sawmill: 1 }, up: { grill: 1 }, big: { bigcar: 1 } },
   full: { smelter: 95, sawmill: 40 },
@@ -73,6 +73,12 @@ const full = {
 const s1 = sanitizeV42(full);
 check('sanitizeV42 keeps a full block', !!s1 && s1.office.st === 2 && s1.office.staff[3] === 4294967295 && s1.train.stage === 2 && s1.freight.dock.item_plank === 30 && s1.depot.porters34 === 2 && s1.up.grill === 1 && s1.p2.length === 2 && s1.letters.inbox.length === 2 && s1.full.smelter === 95 && s1.offerPaid.st2_bakery === 300, s1);
 check('sanitizeV42 output passes itself unchanged', same(sanitizeV42(s1), s1));
+// ((v4.3 a2.2) the depot's hired crew, the forklift, the coins in the pads
+check('sanitizeV42 keeps the depot crew', s1.depot.hires === 2 && s1.depot.fork === 1 && s1.depot.hp.staff === 400 && s1.depot.hp.fork === 0, s1.depot);
+const cl = sanitizeV42(Object.assign({}, full, { depot: Object.assign({}, full.depot, { hires: 99, fork: 'yes', hp: { staff: -5, fork: 1e99 } }) }));
+check('sanitizeV42 clamps a hostile depot crew', cl.depot.hires === 3 && cl.depot.fork === 1 && cl.depot.hp.staff === 0 && cl.depot.hp.fork === 1e6, cl.depot);
+const old = sanitizeV42(Object.assign({}, full, { depot: { st: 2, sleighs: 1, load: {}, porters34: 0, sales: [0, 0, 0] } }));
+check('an old depot block has no crew fields (they default when the game loads)', old.depot.hires === undefined && old.depot.fork === undefined, old.depot);
 const junk = [null, undefined, 0, -1, 1e99, NaN, 'x', '', [], {}, [1, 2], { a: 1 }, true, -0.5, 'item_plank', ['lt_minji'], { item_plank: -3 }, { evil: { __proto__: 1 } }];
 const mutate = (o, depth) => {
   if (depth > 3 || rnd() < 0.2) return pick(junk);

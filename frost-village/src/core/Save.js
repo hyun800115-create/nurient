@@ -301,6 +301,10 @@ export function sanitizeV42(raw) {
     o.depot = { st: st012(dp.st), sleighs: dp.sleighs === 2 ? 2 : 1, load: itemCounts(dp.load, 999), porters34: Math.max(0, Math.min(2, Math.floor(num(dp.porters34, 0)))), sales: [0, 0, 0] };
     if (dp.site !== undefined) { const si = siteOf(dp.site); if (si) o.depot.site = si; }
     if (Array.isArray(dp.sales)) o.depot.sales = [count(dp.sales[0], 1e6), count(dp.sales[1], 1e9), count(dp.sales[2], 1e12)];
+    // ((v4.3 a2.2) 물류창고 직원 (0–3) · 지게차 (0/1) · the coins already paid into the next pad
+    if (dp.hires !== undefined) o.depot.hires = Math.max(0, Math.min(3, Math.floor(num(dp.hires, 0))));
+    if (dp.fork !== undefined) o.depot.fork = dp.fork ? 1 : 0;
+    if (isObj(dp.hp)) o.depot.hp = { staff: count(dp.hp.staff, 1e6), fork: count(dp.hp.fork, 1e6) };
     const lg = isObj(raw.ledger) ? raw.ledger : {};
     o.ledger = { full: {} };
     if (isObj(lg.full)) { let n = 0; for (const k in lg.full) { if (n >= 40) break; if (/^[a-z0-9_:]{1,32}$/.test(k)) { o.ledger.full[k] = Math.max(0, Math.min(1e6, Math.round(num(lg.full[k], 0)))); n++; } } }

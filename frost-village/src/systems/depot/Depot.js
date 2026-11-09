@@ -63,9 +63,10 @@ export class Depot {
     return Math.max(1, Math.round(priceOf(ty) * (Number(S.rate) || 0.6)));
   }
 
-  /** the walk-in buyers: up to perMin a minute per category while open; returns [{ ty, n, coins }] */
-  sell(dt, hour) {
+  /** the walk-in buyers: up to perMin × mult a minute per category while open; returns [{ ty, n, coins }] */
+  sell(dt, hour, mult = 1) {
     const S = D().sell || {};
+    const m = Number.isFinite(mult) && mult > 0 ? mult : 1;      // ((v4.3 a2.2) the hired staff and the forklift sell faster
     const open = Number(S.open) || 7, close = Number(S.close) || 20;
     if (!(hour >= open && hour < close)) return [];
     const out = [];
@@ -81,7 +82,7 @@ export class Depot {
     // ((v4.2 CODE-2) the category buyers take the goods first (raw only when a category has nothing else); the raw
     //  buyers (sell.rawPerMin a minute, all raw together) take the raw at rawPrice
     for (const cat of V42_CATS) {
-      const per = Number(S.perMin && S.perMin[cat]) || 0;
+      const per = (Number(S.perMin && S.perMin[cat]) || 0) * m;
       if (per <= 0) continue;
       this.acc[cat] = (this.acc[cat] || 0) + (per / 60) * dt;
       // ((v4.3 hotfix, designer: "물류창고가 아무 작업도 못 하고 있어") the buyers leave sell.keep[cat] pieces on the racks: the
@@ -95,7 +96,7 @@ export class Depot {
         sale(ty);
       }
     }
-    const rp = Number(S.rawPerMin) || 0;
+    const rp = (Number(S.rawPerMin) || 0) * m;
     if (rp > 0) {
       this.acc.raw = (this.acc.raw || 0) + (rp / 60) * dt;
       while (this.acc.raw >= 1) {

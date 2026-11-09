@@ -10,6 +10,8 @@ import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { WORLD, L4 } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
+import { Staff } from './staff/Staff.js';
+import { DIRS8 } from '../core/Iso.js';
 
 const PX_PER_M = 64 / Math.SQRT2;    // one lattice cell = √2 m = (64, 32) px
 
@@ -85,7 +87,9 @@ export class CargoSleigh {
       }
       case 'go': { this.s += v * dt; if (this.s >= this.len) { this.s = this.len; this.state = 'unload'; this.t = 0; } break; }
       case 'unload': {
-        if (this.t >= 3) {
+        // ((v4.3 a2.2) the depot's forklift unloads it faster
+        const H = (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.hire) || {};
+        if (this.t >= 3 * (this.sys.fork ? (Number(H.forkUnload) || 1) : 1)) {
           const back = this.sys.unload(this.load);
           this.load = back;               // what did not fit rides back to the dock
           this.trips++;
@@ -118,6 +122,7 @@ export class CargoSleigh {
     const show = onScreen && this.ready;
     if (this.spr.visible !== show) this.spr.setVisible(show);
     for (const c of this.crates) if (!show && c.visible) c.setVisible(false);
+    if (this.driver && !show && this.driver.sprite.visible) this.driver.sprite.setVisible(false);
     if (!show) return;
     // heading: going = along the route, back = against it
     const sgn = this.state === 'back' ? -1 : 1;
@@ -130,6 +135,7 @@ export class CargoSleigh {
     const want = 'cargo_sleigh:' + (moving ? 'move' : 'idle') + ':' + dir;
     if (want !== this.anim && gs.anims.exists(want)) { this.anim = want; this.spr.anims.play(want); }
     this.spr.setFlipX(flip).setPosition(x, y).setDepth(y);
+    this.seatDriver(x, y, dir, flip);
     // crates on the sled (one per 10 items)
     const n = Math.min(6, Math.ceil(this.count() / 10));
     const tex = Assets.has('crate') ? Assets.texOf(Assets.def('crate').atlas, 'crate') : null;
@@ -142,9 +148,41 @@ export class CargoSleigh {
     });
   }
 
+  /** ((v4.3 a2.2, designer: "썰매도 사람이 없던데") a driver on the sleigh's bench: a depot hand seated (officefolk sit_idle; a
+   *  standing stand-in while that page is away) on the manifest's seat point, facing where the sleigh heads */
+  seatDriver(x, y, dir, flip) {
+    const gs = this.gs;
+    if (!this.driver) {
+      const d = new Staff(gs, this.sys, 'depot', 4900 + this.index * 13, x, y, { x, y });
+      const ai = gs.agents ? gs.agents.indexOf(d) : -1;
+      if (ai >= 0) gs.agents.splice(ai, 1);
+      d.noSeparate = true;
+      this.seat = { x, y, dir: 'SE', band: 'front', shadowDy: 0 };
+      d.sitDown(this.seat, 'sit_idle');
+      d.inside = false;
+      if (d.shadow) d.shadow.setVisible(false);
+      this.driver = d;
+    }
+    const d = this.driver, C = Assets.charDef('cargo_sleigh') || {};
+    const st = (C.seats && C.seats[dir] && C.seats[dir][0]) || (dir === 'NE' ? [10, -44] : [-13, -46]);
+    const sx = flip ? -1 : 1;
+    // the way it faces: the art's SE / NE, mirrored = SW / NW
+    const face = flip ? (dir === 'NE' ? 'NW' : 'SW') : dir;
+    d.x = x + st[0] * sx; d.y = y + st[1];
+    this.seat.x = d.x; this.seat.y = d.y;
+    const di = DIRS8.indexOf(face);
+    if (di >= 0) d.dir = di;
+    if (!d.sprite.visible) d.sprite.setVisible(true);
+    d.refreshAct(1 / 60);
+    d.sync(1 / 60);
+    if (d.shadow && d.shadow.visible) d.shadow.setVisible(false);
+    // on the bench: in front of the crates when it heads toward the viewer (SE / SW), behind them when away (NE / NW)
+    d.sprite.setDepth(y + (face === 'SE' || face === 'SW' ? 2 : 0.5));
+  }
+
   stateText() { return this.state === 'load' ? 'sleigh_load' : this.state === 'go' ? 'sleigh_go' : this.state === 'unload' ? 'sleigh_unload' : this.state === 'back' ? 'sleigh_back' : 'sleigh_wait'; }
 
-  destroy() { this.spr.destroy(); for (const c of this.crates) c.destroy(); }
+  destroy() { this.spr.destroy(); for (const c of this.crates) c.destroy(); if (this.driver) this.driver.destroy(); }
 }
 
 export { PX_PER_M };

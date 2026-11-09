@@ -343,6 +343,8 @@ export const STRINGS = {
     // 서리 물류창고
     plotOnly_depot42: '서리 물류창고 터', b_depot42: '서리 물류창고', bsub_depot42: '남는 물건을 맡아 두고 솔방울 상인에게 팔아요',
     depotTitle: '서리 물류창고', depotToday: '오늘 판매 {n}개 · +{c}코인', depotIn: '오늘 들어온 것 {n}개', depotExp: '오늘 수출 {n}개',
+    // ((v4.3 a2.2) 물류창고 직원 · 지게차
+    depotStaff_pad: '물류창고 직원 {n}', depotFork_pad: '지게차', depotStaffDone: '물류창고 직원이 왔어요!', depotStaffSub: '손님에게 더 빨리 팔아요', depotForkDone: '지게차가 왔어요!', depotForkSub: '썰매 짐을 더 빨리 내리고, 더 빨리 팔아요', depotCrew: '직원 {n}명 · 지게차 {f}', depotForkYes: '있음', depotForkNo: '없음',
     depotTotal: '선반 {n} / {cap}', depotFull: '가득 · 썰매 한 대 더 / 화물칸 크게', depotTill: '물류 금고',
     cat_materials: '자재', cat_food: '음식', cat_goods: '물건', cat_tools: '도구',
     sleigh_load: '정류장에서 짐 싣는 중', sleigh_go: '물류창고로 가는 중', sleigh_unload: '짐 내리는 중', sleigh_back: '역으로 돌아오는 중', sleigh_wait: '정류장에서 쉬는 중',
@@ -812,6 +814,7 @@ export const STRINGS = {
     dockSurplus: 'Export · for the depot {n}', dockSurplusTrain: 'Export · for the train {n}', surplusExport: '{n} surplus items go out by train',
     plotOnly_depot42: 'Frost Depot site', b_depot42: 'Frost Depot', bsub_depot42: 'Keeps the surplus and sells it to Pinecone traders',
     depotTitle: 'Frost Depot', depotToday: 'Sold today {n} · +{c} coins', depotIn: 'In today {n}', depotExp: 'Exported today {n}',
+    depotStaff_pad: 'Depot hand {n}', depotFork_pad: 'Forklift', depotStaffDone: 'A new depot hand!', depotStaffSub: 'Sales go faster', depotForkDone: 'The forklift is here!', depotForkSub: 'Unloads the sleigh faster and sells faster', depotCrew: 'Staff {n} · forklift {f}', depotForkYes: 'yes', depotForkNo: 'no',
     depotTotal: 'Racks {n} / {cap}', depotFull: 'Full · second sleigh / bigger box car', depotTill: 'Depot till',
     cat_materials: 'Materials', cat_food: 'Food', cat_goods: 'Goods', cat_tools: 'Tools',
     sleigh_load: 'Loading at the station', sleigh_go: 'On the way to the depot', sleigh_unload: 'Unloading', sleigh_back: 'Back to the station', sleigh_wait: 'Resting at the stop',

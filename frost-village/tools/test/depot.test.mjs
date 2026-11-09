@@ -98,6 +98,19 @@ console.log('the rack keep (v4.3 hotfix)');
   ok(n === 0, 'fewer than the keep: nothing sold');
 }
 
+console.log('the hired crew sells faster (v4.3 a2.2)');
+{
+  const KEEP = D.sell.keep, RKEEP = D.sell.rawKeep;
+  D.sell.keep = {}; D.sell.rawKeep = 0;
+  const run = (mult) => { const M = new Depot(); M.take([{ ty: 'item_bread', n: 200 }]); let n = 0; for (let s = 0; s < 600; s++) n += M.sell(0.1, 12, mult).length; return n; };
+  const one = run(1), two = run(2);
+  ok(Math.abs(two - 2 * one) <= 2 && one > 0, 'sell(mult 2) sells twice as much a minute', { one, two });
+  ok(run(undefined) === one && run(0) === one && run(NaN) === one, 'a missing / bad mult sells at the plain rate');
+  const H = D.hire || {};
+  ok(Array.isArray(H.staff) && H.staff.length === 3 && H.forklift > 0 && H.staffSell > 0 && H.forkSell > 0 && H.forkUnload > 0 && H.forkUnload <= 1, 'balance: 3 staff prices, the forklift, their boosts', H);
+  D.sell.keep = KEEP; D.sell.rawKeep = RKEEP;
+}
+
 console.log('days and the v8 slice');
 {
   const M = new Depot();
