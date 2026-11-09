@@ -5,6 +5,20 @@ Wraps the artifact build (`dist/artifact`) in a small Android app: one full-scre
 (Google Play's rule for new apps and updates from 31 Aug 2026). No Android SDK needed (tools from Maven Central and
 Google's GitHub releases, pinned by SHA-256).
 
+## 플레이에 올리기 — 꼭 지키기 (2026-11-09 정리)
+- **올리는 곳:** 플레이 콘솔의 「행복한 눈꽃마을 이야기」 → 테스트 및 출시 → 비공개 테스트 → **「눈꽃마을 비공개 테스트」** 트랙 → 트랙
+  관리 → 새 버전 만들기. 버전이 없는 기본 「비공개 테스트」 트랙에는 올리지 않아요.
+- **업로드 키:** `dist/play/snowbloom-upload.p12` (+ `.txt`, `-certificate.pem`), SHA1 `8F:54:F2:3D…:39:C3`. 플레이가 받아 준 키는 이것뿐이에요
+  (4310 출시 11월 8일, 4312 11월 9일). 새 키를 만들지 않아요. 컨테이너가 다시 시작돼 `dist/`가 비면 대표님 쪽 백업(세 파일)을 다시 받아요.
+- **테스트 키:** `dist/apk/snowbloom-test.p12` (+ `.txt`, 보관용 zip 안), SHA1 `7A:28:F2:B0…:FE:C5`. 직접 까는 테스트 APK와 각 번들의
+  universal APK용. 없으면 release 스크립트가 universal APK를 업로드 키로 서명해요.
+- **버전 코드:** 지금까지 쓴 코드는 `tools/apk/play_release.json`에 있어요 (플레이 4022–4024, 4310–4312 / 미리보기 4301–4304). 두 스크립트가
+  빌드 전에 `tools/apk/play_codes.py`로 **더 큰 코드인지, 업로드 키가 맞는지** 확인하고, 빌드가 끝나면 그 코드를 적어 둬요 (이 JSON을 커밋).
+- **「잘못된 키」 오류:** 다른 앱 화면에서 올린 경우가 대부분이에요 (11월 9일: 같은 키의 4310이 이미 출시된 상태였음). 앱 이름과 트랙을
+  먼저 확인하고, 정말 다른 키를 원하면 `snowbloom-upload-certificate.pem`으로 업로드 키 재설정을 요청해요.
+- **「버전 코드가 이미 사용됨」 오류:** 처음 시도에서 번들이 라이브러리에 이미 들어간 거예요. 업로드 칸에서 지우고 **「라이브러리에서 추가」**로
+  그 버전을 고르면 돼요.
+
 ```
 # Google Play: a signed .aab from any commit, without touching the working tree (+ all checks):
 APK_PY=<venv with androguard>/bin/python bash frost-village/tools/apk/release_from_commit.sh <commit> 4.2.1 4022 --check

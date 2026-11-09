@@ -1,0 +1,40 @@
+{
+  "note": "Public facts about the Google Play app (no secrets: fingerprints of public certificates only). tools/apk/play_codes.py reads it before every AAB / preview APK build and records each new versionCode. Keys live in dist/ (git-ignored) and are lost when the container restarts: restore them from the designer's backup before a build.",
+  "package": "com.snowbloom.village",
+  "track": "비공개 테스트 - 눈꽃마을 비공개 테스트 (not the empty default 비공개 테스트 track)",
+  "uploadKey": {
+    "file": "dist/play/snowbloom-upload.p12 (+ .txt, -certificate.pem)",
+    "sha1": "8F:54:F2:3D:B0:C0:F5:7C:61:4A:B4:E4:21:3F:58:FD:92:2F:39:C3",
+    "sha256": "A4:B2:9F:2E:41:3C:6D:B9:DD:B1:E4:8C:3E:9A:12:73:BD:C9:76:CE:96:7E:C4:75:85:5A:A1:24:A6:E3:DB:79",
+    "created": "2026-10-27",
+    "acceptedBy": "Play: 4310 (4.3.0-a2) released to the closed test on 2026-11-08, 4312 (4.3.0-a2.2) added from the library on 2026-11-09"
+  },
+  "testKey": {
+    "file": "dist/apk/snowbloom-test.p12 (+ .txt) — in the designer's snowbloom-앱열쇠-보관용.zip",
+    "sha1": "7A:28:F2:B0:63:83:27:E4:1E:68:D8:AB:E1:08:4B:72:7F:6C:FE:C5",
+    "use": "the sideloaded test APKs (com.snowbloom.village) and the universal APK made from each bundle"
+  },
+  "previewKey": {
+    "file": "dist/apk/snowbloom-preview.p12 (+ .txt), throwaway",
+    "sha1": "6D:60:E2:E7:88:4F:FA:20:3A:31:6A:A3:46:39:06:42:ED:BD:B9:0C",
+    "package": "com.snowbloom.village.preview"
+  },
+  "playCodes": [
+    { "code": 4022, "name": "4.2.1" },
+    { "code": 4023, "name": "4.2.0.1" },
+    { "code": 4024, "name": "4.2.0.2" },
+    { "code": 4310, "name": "4.3.0-a2", "date": "2026-11-07" },
+    { "code": 4311, "name": "4.3.0-a2.1", "date": "2026-11-09" },
+    { "code": 4312, "name": "4.3.0-a2.2", "date": "2026-11-09" }
+  ],
+  "previewCodes": [
+    { "code": 4301, "name": "4.3.0-a1" },
+    { "code": 4302, "name": "4.3.0-a2" },
+    { "code": 4303, "name": "4.3.0-a2.1" },
+    { "code": 4304, "name": "4.3.0-a2.2" }
+  ],
+  "troubleshooting": {
+    "wrongKey": "Play says the bundle is signed with the wrong key: check the console is on this app (package above) and its 눈꽃마을 비공개 테스트 track; this upload key is the one Play accepted. If Play really expects another key, ask for an upload key reset with dist/play/snowbloom-upload-certificate.pem.",
+    "codeUsed": "Play says the versionCode is already used: the bundle is already in the app's library (a first try that half-failed) — remove it from the upload box and use 라이브러리에서 추가, or build again with the next code."
+  }
+}

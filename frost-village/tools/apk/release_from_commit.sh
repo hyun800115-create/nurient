@@ -28,6 +28,10 @@ PY=${APK_PY:-python3}
 if [ "$CHECK" = "--check" ] && ! "$PY" -c 'import androguard' 2>/dev/null; then
   echo "[release] --check needs androguard: APK_PY=<venv>/bin/python (pip install androguard into that venv)"; exit 2
 fi
+# ((v4.3) the Play guard (tools/apk/play_release.json): a new versionCode, the upload key Play accepted; the universal APK
+#  is signed with the upload key when the test key is not here)
+GUARD="$(python3 "$FV/tools/apk/play_codes.py" check-aab "$CODE")" || exit 2
+case " ${AAB_EXTRA:-} " in *" --universal-key "*) ;; *) if [ -n "$GUARD" ]; then AAB_EXTRA="${AAB_EXTRA:-} $GUARD"; echo "[release] no test key here: $GUARD"; fi;; esac
 OWN_WORK=0
 if [ -z "${RELEASE_WORK:-}" ]; then RELEASE_WORK="$(mktemp -d)"; OWN_WORK=1; fi
 mkdir -p "$RELEASE_WORK"
@@ -63,5 +67,6 @@ if [ "$CHECK" = "--check" ]; then
   echo "[release] boot_test.mjs on $(basename "$UNI")"
   node "$FV/tools/apk/test/boot_test.mjs" "$UNI" --out "$FV/dist/play/boot_test_$NAME" --work "$RELEASE_WORK/boot"
 fi
+python3 "$FV/tools/apk/play_codes.py" record-aab "$CODE" "$NAME" "$(git -C "$REPO" rev-parse "$COMMIT")"
 echo "[release] done: $OUT"
 echo "[release]       $UNI"

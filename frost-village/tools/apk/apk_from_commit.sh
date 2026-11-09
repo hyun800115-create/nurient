@@ -23,6 +23,9 @@ OWN_WORK=0
 if [ -z "${APK_WORK:-}" ]; then APK_WORK="$(mktemp -d)"; OWN_WORK=1; fi
 WT="$APK_WORK/wt-$(date +%s)"
 OUT="${APK_OUT:-$FV/dist/apk/snowbloom-v$NAME-test.apk}"
+# ((v4.3) the preview app (APK_EXTRA --preview): a new versionCode for com.snowbloom.village.preview (tools/apk/play_release.json)
+PREVIEW=0; case " ${APK_EXTRA:-} " in *" --preview "*) PREVIEW=1;; esac
+if [ "$PREVIEW" = 1 ]; then python3 "$FV/tools/apk/play_codes.py" check-preview "$CODE" || exit 2; fi
 
 git -C "$REPO" worktree add --detach "$WT" "$COMMIT" >/dev/null
 # (an `if`, not `[ … ] && rm`: a false test as the trap's last command would turn a successful run into exit status 1)
@@ -48,4 +51,5 @@ if [ "$CHECK" = "--check" ]; then
   fi
   node "$FV/tools/apk/test/boot_test.mjs" "$OUT" --out "$FV/dist/apk/boot_test_v$NAME" --work "$APK_WORK/boot"
 fi
+if [ "$PREVIEW" = 1 ]; then python3 "$FV/tools/apk/play_codes.py" record-preview "$CODE" "$NAME" "$(git -C "$REPO" rev-parse "$COMMIT")"; fi
 echo "[apk] done: $OUT"
